@@ -74,9 +74,9 @@ object ReliabilityAggregateLines {
 
     /**
      * «Questa tratta: 83% in orario · ritardo medio 2 min · 12 treni · 109 corse osservate in 30 giorni», then the best
-     * and the worst departure hours when the statistics tell them apart.
+     * and the worst departure hours when the statistics tell them apart, then [extra] lines (the weekday remark).
      */
-    fun route(route: RoutePunctuality, strings: ReliabilityAggregateStrings): ReliabilityAggregateText {
+    fun route(route: RoutePunctuality, strings: ReliabilityAggregateStrings, extra: List<NetworkReliabilityLine> = emptyList()): ReliabilityAggregateText {
         val lines = listOfNotNull(
             NetworkReliabilityLine(
                 listOf(
@@ -89,7 +89,7 @@ object ReliabilityAggregateLines {
             if (route.bestBand != null && route.worstBand != null) {
                 NetworkReliabilityLine(listOf(strings.hours(band(route.bestBand, strings), band(route.worstBand, strings))))
             } else null
-        )
+        ) + extra
         return ReliabilityAggregateText(lines, strings.spoken(lines.joinToString(". ") { it.spokenText }))
     }
 

@@ -2,13 +2,18 @@
 
 from __future__ import annotations
 
+import gzip
 import hashlib
+import importlib.util
 import json
 from pathlib import Path
 import plistlib
 import re
+import sqlite3
 import struct
+import tempfile
 import unittest
+import zlib
 
 import yaml
 
@@ -24,6 +29,18 @@ LANGUAGES = {
 STRINGS_ENTRY = re.compile(r'^"((?:[^"\\]|\\.)+)"\s*=\s*"((?:[^"\\]|\\.)*)";$')
 SWIFT_REQUIRED_KEY = re.compile(r'"((?:action|app|tab|planner|catalog|schedule|result|saved|settings|watch|accessibility)\.[a-z0-9_.]+)"')
 PLACEHOLDER = re.compile(r'%(?:\d+\$)?(?:hh|h|ll|l)?[@diufFeEgGxXoscpaA]')
+# CLDR plural categories of each .lproj (docs/l10n/LOCALES.md and the batch rules).
+PLURAL_CATEGORIES = {
+    "it": {"one", "many", "other"}, "fr": {"one", "many", "other"}, "es": {"one", "many", "other"},
+    "pt-BR": {"one", "many", "other"},
+    "en": {"one", "other"}, "de": {"one", "other"}, "hi": {"one", "other"}, "tr": {"one", "other"},
+    "ar": {"zero", "one", "two", "few", "many", "other"}, "ru": {"one", "few", "many", "other"},
+    "id": {"other"}, "ja": {"other"}, "ko": {"other"}, "my": {"other"}, "th": {"other"}, "vi": {"other"},
+    "zh-Hans": {"other"},
+}
+ANDROID_STATISTICS = ROOT / "app/src/main/assets/punctuality/stats_v1.json.gz"
+IOS_STATISTICS = IOS / "Resources/binario_punctuality_stats_v1.json.gz"
+INVISIBLE = re.compile("[\ufeff\u200b\u200c\u200d\u200e\u200f\u2060\u00ad]")
 
 
 def read_strings(path: Path) -> dict[str, str]:
@@ -313,11 +330,20 @@ class IOSProjectTests(unittest.TestCase):
         italian = localized["it"]
         for language, values in localized.items():
             for key in canonical:
+                # Positional placeholders may come in another order ("%2$lld 回中 %1$lld 回").
                 self.assertEqual(
-                    PLACEHOLDER.findall(italian[key]),
-                    PLACEHOLDER.findall(values[key]),
+                    sorted(PLACEHOLDER.findall(italian[key])),
+                    sorted(PLACEHOLDER.findall(values[key])),
                     f"{language}:{key}",
                 )
+                placeholders = PLACEHOLDER.findall(values[key])
+                if len(placeholders) > 1 and any("$" not in placeholder for placeholder in placeholders):
+                    self.fail(f"{language}:{key}: several placeholders must all be positional")
+                self.assertIsNone(INVISIBLE.search(values[key]), f"{language}:{key}")
+                words = values[key].split()
+                for first, second in zip(words, words[1:]):
+                    if first.isalpha():
+                        self.assertNotEqual(first.lower(), second.lower(), f"{language}:{key}: repeated word")
 
         used: set[str] = set()
         for path in (IOS / "BinarioApp").glob("*.swift"):
@@ -613,6 +639,243 @@ class IOSProjectTests(unittest.TestCase):
 
     def test_generated_project_is_not_checked_in(self) -> None:
         self.assertFalse((IOS / "Binario.xcodeproj").exists())
+
+    def test_counted_texts_have_every_cldr_plural_form_in_every_language(self) -> None:
+        key_source = (IOS / "BinarioKit/Sources/BinarioKit/LocalizationKeys.swift").read_text(encoding="utf-8")
+        plural_block = key_source.split("public static let plural: Set<String> = [", 1)[1].split("]", 1)[0]
+        plural_keys = set(SWIFT_REQUIRED_KEY.findall(plural_block))
+        self.assertIn("result.reliability.on_time", plural_keys)
+        self.assertTrue(plural_keys <= set(SWIFT_REQUIRED_KEY.findall(key_source.split("public static let plural", 1)[0])))
+        for language in sorted(LANGUAGES):
+            with self.subTest(language=language):
+                strings = read_strings(IOS / "Resources" / f"{language}.lproj" / "Localizable.strings")
+                with (IOS / "Resources" / f"{language}.lproj" / "Localizable.stringsdict").open("rb") as source:
+                    stringsdict = plistlib.load(source)
+                self.assertEqual(plural_keys, set(stringsdict))
+                for key, entry in stringsdict.items():
+                    # The counted number is argument 1, whatever the word order.
+                    self.assertEqual({"NSStringLocalizedFormatKey": "%1$#@count@", "count": entry["count"]}, entry, key)
+                    variable = dict(entry["count"])
+                    self.assertEqual("NSStringPluralRuleType", variable.pop("NSStringFormatSpecTypeKey"), key)
+                    self.assertEqual("lld", variable.pop("NSStringFormatValueTypeKey"), key)
+                    self.assertEqual(PLURAL_CATEGORIES[language], set(variable), f"{language}:{key}")
+                    reference = sorted(PLACEHOLDER.findall(variable["other"]))
+                    self.assertIn("%1$lld", reference, f"{language}:{key}")
+                    for category, form in variable.items():
+                        self.assertEqual(reference, sorted(PLACEHOLDER.findall(form)), f"{language}:{key}:{category}")
+                        self.assertNotIn("$#@", form, f"{language}:{key}:{category}")
+                        self.assertIsNone(INVISIBLE.search(form), f"{language}:{key}:{category}")
+                    # Localizable.strings keeps the "other" form for the key checks and as a fallback.
+                    self.assertEqual(variable["other"].replace("\\", "\\\\").replace('"', '\\"'), strings[key], f"{language}:{key}")
+
+    def test_bundled_statistics_are_the_android_asset_or_absent(self) -> None:
+        # The iPhone app reads the same file as Android, from Resources (bundled like the GTFS
+        # index); a build without it hides the feature, a stale copy must be synced.
+        script = (IOS / "Scripts/sync-punctuality-stats.py").read_text(encoding="utf-8")
+        self.assertIn('ANDROID_ASSET = REPOSITORY_ROOT / "app/src/main/assets/punctuality/stats_v1.json.gz"', script)
+        self.assertIn('IOS_RESOURCE = REPOSITORY_ROOT / "ios/Resources/binario_punctuality_stats_v1.json.gz"', script)
+        # The copy is generated before XcodeGen (locally and in the Apple CI), never committed.
+        self.assertIn("ios/Resources/binario_punctuality_stats_v1.json.gz", (ROOT / ".gitignore").read_text(encoding="utf-8").splitlines())
+        generate = (IOS / "Scripts/generate-project.sh").read_text(encoding="utf-8")
+        self.assertLess(generate.index("Scripts/sync-punctuality-stats.py --remove"), generate.index("xcodegen generate --spec project.yml"))
+        self.assertIn('if [ "${BINARIO_IOS_PUNCTUALITY_STATS:-true}" = "false" ]; then', generate)
+        workflow = (ROOT / ".github/workflows/apple-watch-ci.yml").read_text(encoding="utf-8")
+        self.assertLess(workflow.index("python3 -I ios/Scripts/sync-punctuality-stats.py"), workflow.index("ios/Scripts/verify-deterministic-generation.py"))
+        if IOS_STATISTICS.exists():
+            self.assertTrue(ANDROID_STATISTICS.is_file(), "iOS statistics without the Android asset")
+            self.assertEqual(
+                hashlib.sha256(ANDROID_STATISTICS.read_bytes()).hexdigest(),
+                hashlib.sha256(IOS_STATISTICS.read_bytes()).hexdigest(),
+                "ios/Resources/binario_punctuality_stats_v1.json.gz is stale: run ios/Scripts/sync-punctuality-stats.py",
+            )
+            with gzip.open(IOS_STATISTICS, "rb") as stream:
+                self.assertEqual("binario-punctuality-v1", json.loads(stream.read())["schema"])
+            self.assertLessEqual(IOS_STATISTICS.stat().st_size, 8 * 1024 * 1024)
+        parser = (IOS / "BinarioKit/Sources/BinarioKit/NetworkReliabilityParser.swift").read_text(encoding="utf-8")
+        model = (IOS / "BinarioApp/AppModel.swift").read_text(encoding="utf-8")
+        self.assertIn('public static let resourceName = "binario_punctuality_stats_v1.json"', parser)
+        self.assertIn('public static let resourceExtension = "gz"', parser)
+        self.assertIn("inflateInit2_(&stream, MAX_WBITS + 16, ZLIB_VERSION", parser)
+        self.assertIn("maximumCompressedBytes: Int = 8 * 1_024 * 1_024", parser)
+        self.assertIn("maximumJSONBytes: Int = 64 * 1_024 * 1_024", parser)
+        self.assertIn("forResource: NetworkReliabilityParser.resourceName", model)
+        self.assertIn("NetworkReliabilityLoader.load(url: url)", model)
+        tests = (IOS / "BinarioKit/Tests/BinarioKitTests/NetworkReliabilityTests.swift").read_text(encoding="utf-8")
+        for name in (
+            "testFiveSevenAndNineElementStopsAreReadAndNullsIgnored",
+            "testAbsentCorruptOversizedAndOtherSchemaFilesHideTheFeature",
+            "testGzipWrapperIsDecompressedWithinItsBound",
+            "testOnTimeLimitsMinimumSamplesAndInterpolation",
+            "testUsualPlatformAndWeekdayRemarksFollowTheSpecificationThresholds",
+        ):
+            self.assertIn(name, tests)
+
+    def test_statistics_sync_script_copies_validates_and_removes(self) -> None:
+        spec = importlib.util.spec_from_file_location("sync_punctuality_stats", IOS / "Scripts/sync-punctuality-stats.py")
+        assert spec and spec.loader
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        with tempfile.TemporaryDirectory(prefix="ios-stats-") as temporary:
+            root = Path(temporary)
+            asset = root / "stats_v1.json.gz"
+            resource = root / "binario_punctuality_stats_v1.json.gz"
+            self.assertEqual({"bundled": False, "reason": "no Android asset"}, module.sync(asset, resource))
+            self.assertTrue(module.in_sync(asset, resource))
+            asset.write_bytes(gzip.compress(json.dumps({"schema": "binario-punctuality-v1", "windowEnd": "2026-11-09", "trains": []}).encode()))
+            self.assertFalse(resource.exists())
+            self.assertTrue(module.in_sync(asset, resource), "an absent copy is a build without statistics")
+            self.assertTrue(module.sync(asset, resource)["bundled"])
+            self.assertEqual(asset.read_bytes(), resource.read_bytes())
+            self.assertTrue(module.in_sync(asset, resource))
+            asset.write_bytes(gzip.compress(json.dumps({"schema": "binario-punctuality-v1", "windowEnd": "2026-11-16", "trains": []}).encode()))
+            self.assertFalse(module.in_sync(asset, resource))
+            asset.write_bytes(gzip.compress(b'{"schema": "other", "trains": []}'))
+            with self.assertRaises(module.StatisticsError):
+                module.sync(asset, resource)
+            asset.write_bytes(b"not gzip")
+            with self.assertRaises(module.StatisticsError):
+                module.sync(asset, resource)
+            asset.unlink()
+            module.sync(asset, resource)
+            self.assertFalse(resource.exists())
+
+    def test_reliability_rules_and_texts_follow_the_shared_specification(self) -> None:
+        rules = (IOS / "BinarioKit/Sources/BinarioKit/NetworkReliability.swift").read_text(encoding="utf-8")
+        for fragment in (
+            "public static let minimumSamples = 5",
+            "public static let highSpeedOnTimeMinutes = 5",
+            "public static let otherOnTimeMinutes = 15",
+            'private static let highSpeedCategories: Set<String> = ["FR", "FA", "FB", "EC", "ES", "ESC", "EN", "ITALO"]',
+            "public static let minimumPlatformCount = 5",
+            "public static let minimumPlatformSharePercent = 60",
+            "public static let minimumWeekdaySamples = 4",
+            "public static let minimumWeekdayGapPoints = 15",
+            "public static let minimumAggregateSamples = 20",
+            "public static let minimumBandSamples = 20",
+            "public static let minimumBandGapPoints = 5",
+            "let five = train.cumulative(at: index, limit: 5)",
+        ):
+            with self.subTest(fragment=fragment):
+                self.assertIn(fragment, rules)
+        for language in sorted(LANGUAGES):
+            with self.subTest(language=language):
+                values = read_strings(IOS / "Resources" / f"{language}.lproj" / "Localizable.strings")
+                self.assertIn("ViaggiaTreno", values["result.reliability.attribution"])
+                self.assertIn("Binario", values["result.reliability.attribution"])
+        italian = read_strings(IOS / "Resources/it.lproj/Localizable.strings")
+        self.assertEqual("Statistiche non ufficiali di Binario su dati ViaggiaTreno, aggiornate al %1$@", italian["result.reliability.attribution"])
+        self.assertEqual("Senza ritardo", italian["result.detail.band_no_delay"])
+        self.assertEqual("Più affidabili", italian["result.order.most_reliable"])
+        with (IOS / "Resources/it.lproj/Localizable.stringsdict").open("rb") as source:
+            forms = plistlib.load(source)
+        self.assertEqual("In orario %1$lld volte su %2$lld", forms["result.reliability.on_time"]["count"]["other"])
+        self.assertEqual("In orario %1$lld volta su %2$lld", forms["result.reliability.on_time"]["count"]["one"])
+        self.assertEqual("%3$@: di solito al binario %4$@ (%1$lld volte su %2$lld)", forms["result.detail.usual_platform"]["count"]["other"])
+        planner = (IOS / "BinarioApp/PlannerView.swift").read_text(encoding="utf-8")
+        texts = (IOS / "BinarioApp/ReliabilityTexts.swift").read_text(encoding="utf-8")
+        detail = (IOS / "BinarioApp/TrainDetailView.swift").read_text(encoding="utf-8")
+        self.assertIn("reliability.mostReliableFirst(snapshot.services)", planner)
+        self.assertIn("TrainDetailView(service: service, query: snapshot.query)", planner)
+        self.assertIn("RoutePunctualityView(route: route)", planner)
+        self.assertIn('parts.joined(separator: " · ")', planner)
+        self.assertIn("ReliabilityTexts.distributionRows(distribution)", detail)
+        self.assertIn("detail.usualPlatform", detail)
+        self.assertIn("detail.weekdayRemarks", detail)
+        self.assertIn("ReliabilityTexts.maxDelay(maxDelay)", detail)
+        # The Watch keeps the departure order: sorting is a view concern only.
+        self.assertNotIn("mostReliableFirst", (IOS / "BinarioApp/AppModel.swift").read_text(encoding="utf-8"))
+        self.assertIn('NSLocalizedString("result.reliability.on_time", comment: "")', texts)
+
+    def test_bikes_come_from_the_published_trip_value_and_italo_is_unknown(self) -> None:
+        builder = (ROOT / "tools/build_ios_gtfs_schedule.py").read_text(encoding="utf-8")
+        gtfs = (IOS / "BinarioKit/Sources/BinarioKit/SQLiteGTFSJourneyRepository.swift").read_text(encoding="utf-8")
+        self.assertIn('BIKES_VALUE_NOT_SHOWN = frozenset({"italo-gtfs"})', builder)
+        self.assertIn("bikes_allowed INTEGER CHECK(bikes_allowed IN (1, 2))", builder)
+        self.assertIn('"bikes_allowed"]', gtfs)
+        self.assertIn("public static let userVersion: Int32 = 2", gtfs)
+        self.assertIn("BikesLabel(allowed: bikesAllowed)", (IOS / "BinarioApp/PlannerView.swift").read_text(encoding="utf-8"))
+        self.assertIn("testBikesAllowedComesOnlyFromThePublishedTripValue", (IOS / "BinarioKit/Tests/BinarioKitTests/SQLiteGTFSJourneyRepositoryTests.swift").read_text(encoding="utf-8"))
+        with tempfile.TemporaryDirectory(prefix="ios-bikes-") as temporary:
+            database = Path(temporary) / "schedule.sqlite"
+            database.write_bytes(zlib.decompress((IOS / "Resources/binario_gtfs_schedule_v1.sqlite.zlib").read_bytes()))
+            connection = sqlite3.connect(f"file:{database}?mode=ro&immutable=1", uri=True)
+            try:
+                values = dict(connection.execute(
+                    "SELECT p.source_id, group_concat(DISTINCT t.bikes_allowed) FROM trip t JOIN pack p ON p.id = t.pack_id GROUP BY p.source_id"
+                ).fetchall())
+            finally:
+                connection.close()
+        # STA publishes 1 and 2; feeds without the column (Trenord, ÖBB, SNCF) stay unknown.
+        self.assertEqual({"1", "2"}, set(values["alto-adige-sta-gtfs"].split(",")))
+        for source in ("lombardia-trenord-gtfs", "oebb-gtfs", "sncf-gtfs", "eav-gtfs"):
+            self.assertIsNone(values[source], source)
+
+    def test_airport_links_are_the_android_list_filtered_by_the_ios_index(self) -> None:
+        swift = (IOS / "BinarioKit/Sources/BinarioKit/AirportRoutes.swift").read_text(encoding="utf-8")
+        android = (ROOT / "app/src/main/java/it/binario/app/data/AirportRoutes.kt").read_text(encoding="utf-8")
+        ios_routes = re.findall(r'AirportRoute\(cityStationID: "([^"]+)", airportStationID: "([^"]+)", packs: \[(\w+)\]\)', swift)
+        android_routes = re.findall(r'AirportRoute\("curated:([^"]+)", "curated:([^"]+)", setOf\((\w+)\)\)', android)
+        self.assertEqual([(city, airport) for city, airport, _ in android_routes], [(city, airport) for city, airport, _ in ios_routes])
+        self.assertEqual([pack.lower() for *_, pack in android_routes], [pack.lower() for *_, pack in ios_routes])
+        model = (IOS / "BinarioApp/AppModel.swift").read_text(encoding="utf-8")
+        self.assertIn("AirportRoutes.links(", model)
+        self.assertIn("packsWithTrips: Set(includedPacks.map(\\.sourceID))", model)
+        # Every route the iPhone can offer has direct trains both ways in the bundled index.
+        packs = {"trenitalia": "trenitalia-gtfs", "trenord": "lombardia-trenord-gtfs", "ferrotramviaria": "ferrotramviaria-bari-barletta"}
+        with tempfile.TemporaryDirectory(prefix="ios-airports-") as temporary:
+            database = Path(temporary) / "schedule.sqlite"
+            database.write_bytes(zlib.decompress((IOS / "Resources/binario_gtfs_schedule_v1.sqlite.zlib").read_bytes()))
+            connection = sqlite3.connect(f"file:{database}?mode=ro&immutable=1", uri=True)
+            try:
+                with_trips = {row[0] for row in connection.execute("SELECT p.source_id FROM pack p WHERE EXISTS (SELECT 1 FROM trip t WHERE t.pack_id = p.id)")}
+                covered = {row[0] for row in connection.execute("SELECT DISTINCT catalog_station_id FROM stop WHERE catalog_station_id IS NOT NULL")}
+                offered = []
+                for city, airport, pack in ios_routes:
+                    if packs[pack] not in with_trips or city not in covered or airport not in covered:
+                        continue
+                    offered.append((city, airport))
+                    for origin, destination in ((city, airport), (airport, city)):
+                        trips = connection.execute(
+                            """
+                            SELECT count(DISTINCT o.trip_id) FROM stop_time o
+                            JOIN stop_time d ON d.trip_id = o.trip_id AND d.stop_sequence > o.stop_sequence
+                            JOIN stop so ON so.id = o.stop_id JOIN stop sd ON sd.id = d.stop_id
+                            WHERE so.catalog_station_id = ? AND sd.catalog_station_id = ? AND o.pickup_type = 0 AND d.drop_off_type = 0
+                            """,
+                            (origin, destination),
+                        ).fetchone()[0]
+                        self.assertGreater(trips, 0, (origin, destination))
+            finally:
+                connection.close()
+        # Today the iPhone index carries Trenord only: Milano Centrale and Cadorna ↔ Malpensa.
+        self.assertEqual([("S01700", "S01139"), ("S01066", "S01139")], offered)
+
+    def test_watch_pin_is_persisted_respects_sharing_and_is_answered_in_the_background(self) -> None:
+        model = (IOS / "BinarioApp/AppModel.swift").read_text(encoding="utf-8")
+        saved = (IOS / "BinarioApp/SavedRoutesView.swift").read_text(encoding="utf-8")
+        app = (IOS / "BinarioApp/BinarioApp.swift").read_text(encoding="utf-8")
+        background = (IOS / "BinarioApp/BackgroundActivity.swift").read_text(encoding="utf-8")
+        tests = (IOS / "BinarioAppTests/BinarioAppTests.swift").read_text(encoding="utf-8")
+        self.assertIn('static let pinnedRouteStorageKey = "it.binario.ios.watch-pinned-route.v1"', model)
+        pin = model.split("func publishPinnedRoute(", 1)[1].split("private func unpinWatchRoute()", 1)[0]
+        self.assertIn("guard watchSharingEnabled, scheduleState == .available, watchRouteQuery == nil,", pin)
+        self.assertIn("publishAvailableSnapshot(snapshot)", pin)
+        refresh = model.split("func refreshWatchSnapshot(", 1)[1].split("func openPlanner(for", 1)[0]
+        self.assertIn('backgroundActivity?.begin(name: "Binario Watch")', refresh)
+        self.assertIn("await publishPinnedRoute(now: now)", refresh)
+        self.assertIn("model.setWatchPin(route, pinned: !pinned)", saved)
+        self.assertIn('"saved.watch.show"', saved)
+        # The model (and with it the Watch Connectivity session) exists before any window, for
+        # the background launches Watch Connectivity makes.
+        self.assertIn("let model = AppModel.bootstrap()", app.split("init()", 1)[1])
+        self.assertIn("UIApplication.shared.beginBackgroundTask(withName: name)", background)
+        self.assertNotIn("BGTaskScheduler", background)
+        for name in (
+            "testPinnedRouteIsPersistedAndDroppedWithItsRoute",
+            "testPinnedRouteIsPublishedOnlyWithSharingOnAndYieldsToASearchForNow",
+            "testWatchRefreshWithoutASearchForNowPublishesThePinnedRoute",
+        ):
+            self.assertIn(name, tests)
 
 
 if __name__ == "__main__":

@@ -33,7 +33,8 @@ from typing import Iterable, Iterator, Mapping, Sequence
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 APPLICATION_ID = int.from_bytes(b"BNGT", "big")
-USER_VERSION = 1
+# 2: trip.bikes_allowed (GTFS bikes_allowed: 1 allowed, 2 not allowed, NULL unknown).
+USER_VERSION = 2
 METADATA_SCHEMA_VERSION = 1
 DEFAULT_MAX_COMPRESSED_BYTES = 32 * 1024 * 1024
 MAX_MANIFEST_BYTES = 1 * 1024 * 1024
@@ -69,6 +70,11 @@ EXCLUSIVE_RAIL_ROUTE_IDS: Mapping[str, frozenset[str]] = {
     # TFT publishes its two railway lines as route_type=3 (bus).
     "toscana-tft-gtfs": frozenset({"1028056267", "2272465657"}),
 }
+# Packs whose bikes_allowed is stored as unknown, as on Android (GtfsDayTimetable.kt): the Italo
+# pack publishes 1 on every trip, but Italo admits only folding bikes carried in a bag, so "bikes
+# allowed" would mislead. The pack is Android-only today (binario_gtfs_source_policy_v1.json);
+# the override is named per pack, never a rule by category, and applies if it joins the index.
+BIKES_VALUE_NOT_SHOWN = frozenset({"italo-gtfs"})
 REQUIRED_FILES = ("agency.txt", "routes.txt", "trips.txt", "stops.txt", "stop_times.txt")
 SCHEMA_TABLES = ("metadata", "pack", "agency", "route", "service", "trip", "stop", "stop_time")
 REQUIRED_INDICES = (
@@ -130,6 +136,7 @@ CREATE TABLE trip (
     headsign TEXT,
     short_name TEXT,
     direction_id INTEGER,
+    bikes_allowed INTEGER CHECK(bikes_allowed IN (1, 2)),
     UNIQUE(pack_id, external_id)
 );
 CREATE TABLE stop (
@@ -338,6 +345,14 @@ def parse_int(value: str, context: str, *, minimum: int | None = None, maximum: 
     if minimum is not None and result < minimum or maximum is not None and result > maximum:
         raise BuildError(f"{context}: integer {result} outside [{minimum}, {maximum}]")
     return result
+
+def bikes_allowed(source_id: str, value: str | None) -> int | None:
+    """GTFS bikes_allowed as the apps show it: 1 allowed, 2 not allowed; empty, 0 (no information),
+    anything else or a pack of BIKES_VALUE_NOT_SHOWN is unknown (NULL)."""
+    if source_id in BIKES_VALUE_NOT_SHOWN:
+        return None
+    raw = (value or "").strip()
+    return int(raw) if raw in ("1", "2") else None
 
 def parse_optional_float(value: str | None, context: str, minimum: float, maximum: float) -> float | None:
     if value in (None, ""):
@@ -941,8 +956,8 @@ def ingest_pack(
             database_id = allocator.next("trip")
             trip_ids[external_id] = database_id
             connection.execute(
-                "INSERT INTO trip(id,pack_id,route_id,service_id,external_id,headsign,short_name,direction_id) VALUES(?,?,?,?,?,?,?,?)",
-                (database_id, pack_id, route_ids[row["route_id"]], service_ids[row["service_id"]], external_id, optional_text(row.get("trip_headsign")), optional_text(row.get("trip_short_name")), direction),
+                "INSERT INTO trip(id,pack_id,route_id,service_id,external_id,headsign,short_name,direction_id,bikes_allowed) VALUES(?,?,?,?,?,?,?,?,?)",
+                (database_id, pack_id, route_ids[row["route_id"]], service_ids[row["service_id"]], external_id, optional_text(row.get("trip_headsign")), optional_text(row.get("trip_short_name")), direction, bikes_allowed(source_id, row.get("bikes_allowed"))),
             )
             counts["trip"] += 1
 

@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Binario test fixture: invented notices in the shape of the RFI infomobility RSS (channel/item, title, description, link, pubDate). Not RFI text. -->
+<rss version="2.0">
+  <channel>
+    <title>Infomobilità (fixture)</title>
+    <item>
+      <title>Linea Milano – Venezia: lavori tra Brescia e Verona Porta Nuova</title>
+      <description><![CDATA[<p>Dalle 23.30 di sabato 14 alle 5.00 di lunedì 16 novembre 2026 la circolazione è sospesa tra Brescia e Verona Porta Nuova per lavori di potenziamento.</p><p>Bus sostitutivi tra Brescia e Desenzano del Garda-Sirmione.</p>]]></description>
+      <link>https://www.rfi.it/it/news-e-media/infomobilita/fixture-milano-venezia.html</link>
+      <pubDate>Tue, 03 Nov 2026 10:00:00 +0100</pubDate>
+    </item>
+    <item>
+      <title>Linea Roma - Napoli via Cassino: circolazione interrotta tra Cassino e Caianello</title>
+      <description>Dal 21 ottobre la circolazione è interrotta per lavori di ripristino della sede. I treni a lunga percorrenza sono instradati via Formia.</description>
+      <link>https://www.rfi.it/it/news-e-media/infomobilita/fixture-roma-napoli.html</link>
+      <pubDate>Wed, 21 Oct 2026 09:00:00 +0200</pubDate>
+    </item>
+    <item>
+      <title>Lombardia: circolazione rallentata tra Pavia e Milano Rogoredo</title>
+      <description>Ritardi fino a 20 minuti per un guasto agli impianti di segnalamento nei pressi di Locate Triulzi.</description>
+      <link>https://www.rfi.it/it/news-e-media/infomobilita/fixture-guasto.html</link>
+      <pubDate>Wed, 04 Nov 2026 07:10:00 +0100</pubDate>
+    </item>
+    <item>
+      <title>Sciopero nazionale del personale del Gruppo FS</title>
+      <description>Dalle 21 di giovedì 19 alle 21 di venerdì 20 novembre la circolazione può essere sospesa su alcune linee regionali, anche a Pavia.</description>
+      <link>https://www.rfi.it/it/news-e-media/infomobilita/fixture-sciopero.html</link>
+      <pubDate>Mon, 02 Nov 2026 12:00:00 +0100</pubDate>
+    </item>
+    <item>
+      <title>Lavori nella stazione di Monza Sobborghi</title>
+      <description>Il 28 novembre 2026 la fermata di Monza Sobborghi non è servita per lavori di manutenzione ai marciapiedi.</description>
+      <link>https://www.rfi.it/it/news-e-media/infomobilita/fixture-monza.html</link>
+      <pubDate>Mon, 02 Nov 2026 08:00:00 +0100</pubDate>
+    </item>
+    <item>
+      <title>Lavori notturni tra Pavia e Voghera</title>
+      <description>Nelle notti tra il 10 e l'11 novembre e dal 17/11/2026 al 19/11/2026 alcuni treni regionali sono sostituiti da bus tra Pavia e Voghera.</description>
+      <link>https://www.rfi.it/it/news-e-media/infomobilita/fixture-pavia.html</link>
+      <pubDate>Fri, 30 Oct 2026 16:00:00 +0100</pubDate>
+    </item>
+    <item>
+      <title>Linea Bologna – Firenze: modifiche alla circolazione per lavori dal 9 al 13 novembre</title>
+      <description>Lavori di manutenzione straordinaria sulla linea AV.</description>
+      <link>https://www.rfi.it/it/news-e-media/infomobilita/fixture-bologna-firenze.html</link>
+      <pubDate>Thu, 29 Oct 2026 11:00:00 +0100</pubDate>
+    </item>
+    <item>
+      <title>Piano di manutenzione invernale delle linee lombarde</title>
+      <description>Il piano dei lavori prevede interventi notturni su più linee.</description>
+      <link>https://www.rfi.it/it/news-e-media/infomobilita/fixture-piano.html</link>
+      <pubDate>Thu, 29 Oct 2026 10:00:00 +0100</pubDate>
+    </item>
+  </channel>
+</rss>

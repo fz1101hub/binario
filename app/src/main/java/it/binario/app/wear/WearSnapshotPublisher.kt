@@ -4,6 +4,7 @@ import android.content.Context
 import android.util.Log
 import androidx.core.content.edit
 import androidx.core.net.toUri
+import com.google.android.gms.wearable.CapabilityClient
 import com.google.android.gms.wearable.PutDataMapRequest
 import com.google.android.gms.wearable.Wearable
 import it.binario.app.data.DataResult
@@ -12,11 +13,15 @@ import it.binario.app.data.RouteSnapshot
 import it.binario.app.data.RouteSnapshotCache
 import it.binario.app.data.SavedRoute
 import it.binario.app.data.TrainDataSource
+import it.binario.app.data.TrainService
+import it.binario.app.data.reliability.NetworkReliabilityRepository
 import it.binario.app.data.repository.BinarioDataGraph
+import it.binario.app.widget.ReliabilityMark
 import it.binario.app.widget.StationWidgetCodec
 import java.util.concurrent.atomic.AtomicLong
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.withTimeoutOrNull
 import org.json.JSONObject
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
@@ -36,6 +41,7 @@ object WearSnapshotPublisher {
     private const val KEY_LAST_PAYLOAD = "last_payload"
     private const val KEY_LAST_ROUTE = "last_route"
     private const val KEY_PUBLISHING_ALLOWED = "publishing_allowed"
+    private const val CAPABILITY_TIMEOUT_MILLIS = 3_000L
     private val operationGate = WearPublicationGate()
     private val preferenceIntentLock = Any()
 
@@ -43,7 +49,8 @@ object WearSnapshotPublisher {
         val token = operationGate.publicationToken()
         val generatedAt = System.currentTimeMillis()
         val strings = WearSnapshotStrings.from(context.resources)
-        val payload = runCatching { AndroidWearSnapshotContract.operational(snapshot, generatedAt, strings) }
+        val reliability = reliabilityFor(context, snapshot)
+        val payload = runCatching { AndroidWearSnapshotContract.operational(snapshot, generatedAt, strings, reliability) }
             .getOrElse { AndroidWearSnapshotContract.unavailable(snapshot.routeLabel, snapshot.providerName, generatedAt, strings) }
         publishPayload(context, payload, token, WearRefreshTarget(snapshot.route, snapshot.direction).encode())
     }
@@ -118,7 +125,11 @@ object WearSnapshotPublisher {
                 return@runPublication false
             }
             if (!preferences.getBoolean(KEY_PUBLISHING_ALLOWED, false)) return@runPublication false
-            val payload = readLastPayload(context) ?: return@runPublication false
+            val stored = readLastPayload(context) ?: return@runPublication false
+            // A watch app of an earlier version, connected since, would reject the optional reliability pair.
+            val payload = if (AndroidWearSnapshotContract.hasReliability(stored) && !watchesDecodeReliability(context)) {
+                AndroidWearSnapshotContract.withoutReliability(stored)
+            } else stored
             val expiresAt = (payload["expiresAtEpochMillis"] as? Number)?.toLong() ?: return@runPublication false
             if (expiresAt <= System.currentTimeMillis()) return@runPublication false
             runWearSafely { putPayload(context, payload) }
@@ -164,6 +175,30 @@ object WearSnapshotPublisher {
                 if (refreshTarget != null) putString(KEY_LAST_ROUTE, refreshTarget) else remove(KEY_LAST_ROUTE)
             }
         }
+    }
+
+    /**
+     * «In orario N volte su M» for the services of [snapshot], from the embedded statistics (read on the phone, no
+     * request), only when every connected watch decodes it and the build keeps the statistics.
+     */
+    private suspend fun reliabilityFor(context: Context, snapshot: RouteSnapshot): (TrainService) -> ReliabilityMark? {
+        if (!NetworkReliabilityRepository.enabled || !watchesDecodeReliability(context)) return { null }
+        val stats = runCatching { NetworkReliabilityRepository.load(context) }.getOrNull() ?: return { null }
+        return AndroidWearSnapshotContract.reliabilityOf(stats, snapshot)
+    }
+
+    private suspend fun watchesDecodeReliability(context: Context): Boolean = try {
+        withTimeoutOrNull(CAPABILITY_TIMEOUT_MILLIS) {
+            val connected = Wearable.getNodeClient(context).connectedNodes.awaitTask().mapTo(hashSetOf()) { it.id }
+            val capable = Wearable.getCapabilityClient(context)
+                .getCapability(AndroidWearSnapshotContract.RELIABILITY_CAPABILITY, CapabilityClient.FILTER_REACHABLE)
+                .awaitTask().nodes.mapTo(hashSetOf()) { it.id }
+            AndroidWearSnapshotContract.watchesDecodeReliability(connected, capable)
+        } == true
+    } catch (error: CancellationException) {
+        throw error
+    } catch (_: Exception) {
+        false
     }
 
     private fun readRefreshTarget(context: Context): WearRefreshTarget? =

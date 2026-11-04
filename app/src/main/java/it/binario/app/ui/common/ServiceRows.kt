@@ -100,6 +100,7 @@ internal fun TrainService.presentedAsDemonstration(): TrainService = copy(
     detectionDelayMinutes = null,
     routeChange = null,
     routeChangeSourceIds = emptySet(),
+    delayMinutesUnpublished = false,
     stops = stops.map { stop ->
         stop.copy(
             expected = stop.scheduled,
@@ -239,6 +240,7 @@ internal fun DepartureListRow(
     val lastOfDayLabel = if (lastOfDay) stringResource(R.string.journey_last_of_day) else null
     val serviceContentDescription = listOfNotNull(
         stringResource(R.string.accessibility_open_service, shown.localizedAccessibleSummary(), serviceState),
+        lateWithoutMinutesLabel(shown),
         if (savedCopy) stringResource(R.string.data_chip_saved_copy) else null,
         lastOfDayLabel
     ).joinToString(". ")
@@ -265,6 +267,9 @@ internal fun DepartureListRow(
             Text(shown.scheduledDeparture, style = MaterialTheme.typography.titleMedium.copy(fontFeatureSettings = TabularFigures), fontWeight = FontWeight.Bold)
             when {
                 savedCopy -> Text(stringResource(R.string.data_chip_saved_copy), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.tertiary)
+                // «RITARDO» on the board without minutes: late, with no number to show.
+                !shown.operationalStatusVerified && shown.delayMinutesUnpublished ->
+                    Text(stringResource(R.string.run_status_delayed), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.tertiary, fontWeight = FontWeight.Bold)
                 !shown.operationalStatusVerified -> Text(stringResource(R.string.service_scheduled_lowercase), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 shown.status == ServiceStatus.CANCELLED -> Text(stringResource(R.string.service_status_cancelled), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold)
                 shown.delayMinutes > 0 -> Text(stringResource(R.string.delay_minutes, shown.delayMinutes), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.tertiary, fontWeight = FontWeight.Bold)
@@ -332,6 +337,7 @@ internal fun ResultCard(
     }
     val description = listOfNotNull(
         stringResource(R.string.accessibility_open_service, shown.localizedAccessibleSummary(), serviceState),
+        lateWithoutMinutesLabel(shown),
         arrival?.let { stringResource(R.string.service_scheduled_arrival, it) },
         duration?.let { durationAccessibleLabel(it) },
         if (dataState == DataState.SAVED_COPY) stringResource(R.string.data_chip_saved_copy) else null,
@@ -384,6 +390,9 @@ internal fun ResultCard(
                     fontWeight = FontWeight.Bold,
                     color = if (shown.status == ServiceStatus.CANCELLED) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.tertiary
                 )
+            }
+            lateWithoutMinutesLabel(shown)?.let {
+                Text(it, modifier = Modifier.testTag("result-late-unpublished"), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.tertiary)
             }
             if (lastOfDay) LastOfDayChip()
             shown.bikesAllowed?.let { BikesMark(it, Modifier.testTag("result-bikes")) }
@@ -535,9 +544,20 @@ internal fun routeChangeAccent(routeChange: OperationalRouteChange) =
         MaterialTheme.colorScheme.tertiary
     }
 
+/**
+ * «In ritardo (minuti non pubblicati)» for a train its source shows late without the minutes (RFI «RITARDO»), or null:
+ * never for a verified status, which says the minutes itself.
+ */
+@Composable
+internal fun lateWithoutMinutesLabel(service: TrainService): String? =
+    if (service.delayMinutesUnpublished && !service.operationalStatusVerified) stringResource(R.string.service_late_minutes_unpublished) else null
+
 @Composable
 internal fun ServiceStatusBadge(service: TrainService) {
-    val (container, foreground, text) = if (!service.operationalStatusVerified) {
+    val lateWithoutMinutes = lateWithoutMinutesLabel(service)
+    val (container, foreground, text) = if (lateWithoutMinutes != null) {
+        Triple(MaterialTheme.colorScheme.tertiaryContainer, MaterialTheme.colorScheme.onTertiaryContainer, lateWithoutMinutes)
+    } else if (!service.operationalStatusVerified) {
         Triple(MaterialTheme.colorScheme.secondaryContainer, MaterialTheme.colorScheme.onSecondaryContainer, stringResource(R.string.service_status_scheduled_badge))
     } else when (service.status) {
         ServiceStatus.ON_TIME -> Triple(MaterialTheme.colorScheme.secondaryContainer, MaterialTheme.colorScheme.onSecondaryContainer, stringResource(R.string.operational_on_time))
@@ -549,6 +569,7 @@ internal fun ServiceStatusBadge(service: TrainService) {
 
 @Composable
 internal fun compactStatusLabel(service: TrainService): String {
+    if (!service.operationalStatusVerified && service.delayMinutesUnpublished) return stringResource(R.string.run_status_delayed)
     if (!service.operationalStatusVerified) return stringResource(R.string.service_status_scheduled_compact)
     return when (service.status) {
         ServiceStatus.ON_TIME -> stringResource(R.string.operational_on_time)

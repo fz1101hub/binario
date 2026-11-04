@@ -75,7 +75,7 @@
     <string name="station_badge_metro">मेट्रो स्टॉप</string>
     <string name="station_badge_tram">ट्राम स्टॉप</string>
     <string name="station_badge_funicular">फ़्यूनिक्युलर या लिफ़्ट</string>
-    <string name="settings_privacy_new_sources">चालू होने पर अतिरिक्त स्रोतों को केवल वही मिलता है जो अनुरोध के लिए ज़रूरी है, बिना खाते या लोकेशन के: transport.opendata.ch को स्विस स्टेशन का UIC नंबर (या एक बार किसी सीमा स्टेशन का नाम); ViaggiaTreno को उसकी सूचनाओं के लिए ट्रेन नंबर, उसके सार्वजनिक API की तरह बिना एन्क्रिप्शन वाले HTTP पर; RFI, Trenitalia और Trenord को उनकी सूचना-सूचियों के लिए आपका कोई डेटा नहीं, जो केवल सूचना क्षेत्र, कोई विवरण या संबंधित बोर्ड खोलने पर डाउनलोड होती हैं; Open-Meteo को आगमन स्टेशन के पूर्णांकित निर्देशांक। बाहरी लिंक केवल टैप करने पर ब्राउज़र में खुलते हैं।</string>
+    <string name="settings_privacy_new_sources">चालू होने पर अतिरिक्त स्रोतों को केवल वही मिलता है जो अनुरोध के लिए ज़रूरी है, बिना खाते या लोकेशन के: transport.opendata.ch को स्विस स्टेशन का UIC नंबर (या एक बार किसी सीमा स्टेशन का नाम); ViaggiaTreno को उसकी सूचनाओं के लिए ट्रेन नंबर, उसके सार्वजनिक API की तरह बिना एन्क्रिप्शन वाले HTTP पर; RFI, Trenitalia और Trenord को उनकी सूचना-सूचियों के लिए आपका कोई डेटा नहीं, जो केवल सूचना क्षेत्र, कोई विवरण, संबंधित बोर्ड या आपके रूटों पर काम वाला भाग खोलने पर डाउनलोड होती हैं; Open-Meteo को आगमन स्टेशन के पूर्णांकित निर्देशांक। बाहरी लिंक केवल टैप करने पर ब्राउज़र में खुलते हैं।</string>
     <string name="app_name">Binario</string>
     <string name="widget_description">आपके Binario मार्ग की अगली ट्रेनें दिखाता है।</string>
     <string name="widget_refresh">ट्रेनें अपडेट करें</string>
@@ -94,6 +94,12 @@
     <string name="shortcut_active_route">सक्रिय मार्ग</string>
     <string name="shortcut_next_departures">अगले प्रस्थान</string>
     <string name="shortcut_train_search">ट्रेन खोजें</string>
+    <string name="shortcut_route_removed">मार्ग अब Binario में सहेजा नहीं है</string>
+    <string name="tile_next_train_label">अगली ट्रेन</string>
+    <string name="tile_next_train_no_route">कोई सक्रिय मार्ग नहीं</string>
+    <string name="tile_next_train_none">आज और कोई ट्रेन नहीं</string>
+    <string name="tile_next_train_departure">%1$s · %2$s</string>
+    <string name="tile_next_train_description">निर्धारित समय-सारणी से अगली ट्रेन: %1$s, %2$s बजे, %3$s</string>
     <!-- Main app shell and primary journey planner. -->
     <string name="app_brand">BINARIO</string>
     <string name="screen_title_detail">ट्रेन का विवरण</string>
@@ -378,6 +384,28 @@
     <string name="map_nearby_content_description">सबसे पास के स्टेशनों का नक्शा। वही स्टेशन दूरी के साथ नीचे सूचीबद्ध हैं।</string>
     <string name="map_nearby_tap_hint">बोर्ड खोलने के लिए किसी स्टेशन पर टैप करें।</string>
     <string name="map_legend_user_position">अनुमानित लोकेशन, सहेजी नहीं गई</string>
+    <string name="live_map_title">चलती ट्रेनें</string>
+    <string name="live_map_area_subtitle">%1$s के आसपास</string>
+    <string name="live_map_content_description">चलती ट्रेनों का नक्शा, %1$s। स्थितियाँ समय-सारणी से अनुमानित हैं, GPS स्थितियाँ नहीं; यही ट्रेनें नक्शे के नीचे सूची में हैं।</string>
+    <string name="live_map_note">अनुमानित स्थिति, GPS नहीं: Binario समय-सारणी के अनुसार गणना करता है कि हर ट्रेन कहाँ होनी चाहिए, दो ठहरावों के बीच सीधी रेखा पर (पटरियों के साथ नहीं)। अगर बोर्ड पर किसी ट्रेन की देरी पहले से है, तो अनुमान उसे ध्यान में रखता है। नक्शा खुला रहने तक स्थितियाँ हर 30 सेकंड में अपडेट होती हैं।</string>
+    <string name="live_map_legend_live">बोर्ड की देरी के साथ अनुमानित स्थिति</string>
+    <string name="live_map_legend_timetable">केवल समय-सारणी से अनुमानित स्थिति</string>
+    <string name="live_map_loading">अनुमानित स्थितियों की गणना हो रही है…</string>
+    <string name="live_map_zoom_in">चलती ट्रेनें देखने के लिए नक्शे को ज़ूम इन करें।</string>
+    <string name="live_map_none">समय-सारणी के अनुसार दिखाए गए क्षेत्र में कोई ट्रेन नहीं चल रही है।</string>
+    <string name="live_map_row_title">%1$s, %2$s की ओर</string>
+    <string name="live_map_row_at">%1$s पर रुकी हुई</string>
+    <string name="live_map_row_between">%1$s और %2$s के बीच</string>
+    <string name="live_map_row_live">बोर्ड के डेटा के साथ अनुमान: %1$s</string>
+    <string name="live_map_row_timetable">केवल समय-सारणी से अनुमान</string>
+    <plurals name="live_map_count">
+        <item quantity="one">%d चलती ट्रेन</item>
+        <item quantity="other">%d चलती ट्रेनें</item>
+    </plurals>
+    <plurals name="live_map_capped">
+        <item quantity="one">%d सबसे नज़दीकी ट्रेन दिखाई गई।</item>
+        <item quantity="other">%d सबसे नज़दीकी ट्रेनें दिखाई गईं।</item>
+    </plurals>
     <string name="settings_privacy_maps">नक्शे: केवल तभी खुलते हैं जब आप उन्हें फैलाते या लोड करते हैं। उन्हें बनाने के लिए ऐप tiles.openfreemap.org (OpenFreeMap) से शैली, टाइलें, फ़ॉन्ट और आइकन डाउनलोड करता है, जो IP पता और दिखाया गया क्षेत्र देखता है: ट्रेन का मार्ग, चुना गया स्टेशन या, पास के स्टेशनों के लिए, आपकी अनुमानित लोकेशन के आसपास का क्षेत्र। लोकेशन न भेजी जाती है न सहेजी जाती है; टाइलें ऐप के स्थानीय कैश में रहती हैं।</string>
     <string name="settings_credits_maps">नक्शे: OpenFreeMap © OpenMapTiles, डेटा © OpenStreetMap contributors (ODbL 1.0)। MapLibre Native से प्रदर्शित, BSD 2-Clause लाइसेंस।</string>
     <string name="settings_credits_trenitalia">Trenitalia समय-सारणी (ट्रेनें और बसें): Trenitalia S.p.A. का आधिकारिक डेटा, CAD के अनुच्छेद 52 और EU विनियम 2017/1926 के तहत इटली के राष्ट्रीय एक्सेस पॉइंट (CCISS) पर प्रकाशित, https://www.cciss.it/nap/mmtis/public/en/catalog/Dataset/1077621। GTFS रूपांतरण © Clément Desouche, CC BY 4.0: https://github.com/deryclem/trenitalia-gtfs (लाइसेंस https://creativecommons.org/licenses/by/4.0/)। Binario केवल निर्धारित समय का उपयोग करता है, मार्गों की ज्यामिति के बिना, और Trenitalia से संबद्ध नहीं है।</string>
@@ -658,6 +686,14 @@
     <string name="background_status_exact_on">सटीक अलार्म की अनुमति है</string>
     <string name="background_status_battery_optimized">Binario के लिए बैटरी ऑप्टिमाइज़ेशन चालू है: Android बैकग्राउंड जाँच टाल सकता है।</string>
     <string name="background_status_battery_unrestricted">Binario के लिए बैटरी ऑप्टिमाइज़ेशन बंद है</string>
+    <string name="background_runs_title">बैकग्राउंड में अगली जाँचें</string>
+    <string name="background_runs_none">बैकग्राउंड में कोई जाँच निर्धारित नहीं है।</string>
+    <string name="background_runs_running">%1$s: चल रही है</string>
+    <string name="background_runs_soon">%1$s: जल्द ही</string>
+    <string name="background_runs_today">%1$s: आज %2$s बजे</string>
+    <string name="background_runs_tomorrow">%1$s: कल %2$s बजे</string>
+    <string name="background_runs_later">%1$s: %2$s को %3$s बजे</string>
+    <string name="background_runs_note">अनुमानित समय: बैटरी बचाने या नेटवर्क की प्रतीक्षा में Android इन्हें आगे-पीछे कर सकता है।</string>
     <string name="commuter_alert_quiet_hours_feedback">अलर्ट सहेजा गया पर शेड्यूल नहीं हुआ: उसका समय शांत अवधि 22:00–07:00 में आता है।</string>
     <string name="commuter_alert_invalid_time_feedback">अलर्ट सहेजा गया पर शेड्यूल नहीं हुआ: समय मान्य नहीं है।</string>
     <string name="commuter_alert_disabled_feedback">अलर्ट सहेजा गया पर बंद है।</string>
@@ -970,6 +1006,9 @@
     <string name="widget_settings_until_arrival_description">चल चुकी ट्रेन गंतव्य पर अनुमानित आगमन तक सूची में «रास्ते में» के रूप में रहती है।</string>
     <string name="widget_settings_show_platform">प्लेटफ़ॉर्म दिखाएँ</string>
     <string name="widget_settings_show_train_name">ट्रेन का नाम और श्रेणी दिखाएँ</string>
+    <string name="widget_settings_show_reliability">विश्वसनीयता दिखाएँ</string>
+    <string name="widget_settings_show_reliability_description">हर ट्रेन के बाद, पिछले 30 दिनों में समय पर रहे दिनों का हिस्सा: ViaggiaTreno डेटा पर आधारित Binario के अनौपचारिक आँकड़े, ऐप में शामिल और कम से कम 5 अवलोकनों पर ही दिखाए जाते हैं।</string>
+    <string name="widget_reliability_mark">%1$d%% समय पर</string>
     <string name="station_widget_display_name_description">हेडर में स्टेशन के नाम की जगह लेता है और इसी विजेट तक स्थानीय रहता है।</string>
     <string name="station_widget_settings_nearest">«📍 सबसे पास» बटन</string>
     <string name="station_widget_settings_nearest_description">टैप करने पर विजेट एक बार आपकी अनुमानित लोकेशन माँगता है और कैटलॉग के सबसे पास के स्टेशन पर चला जाता है। लोकेशन न सहेजी जाती है न भेजी जाती है; स्वचालित अपडेट हमेशा अंतिम चुने गए स्टेशन का उपयोग करते हैं।</string>
@@ -1126,6 +1165,18 @@
     <string name="punctuality_history_show_all">सभी तारीखें दिखाएँ</string>
     <string name="settings_punctuality_recording_title">पसंदीदा ट्रेनों का समय-पालन</string>
     <string name="settings_punctuality_recording_description">दिन में एक बार, निर्धारित आगमन के बाद, ट्रेन की स्थिति पूछता है और केवल इसी फ़ोन पर अंतिम देरी और ठहरावों पर देरी दर्ज करता है, अधिकतम 365 दिनों तक।</string>
+    <string name="settings_weekly_digest_title">पसंदीदा ट्रेनों का साप्ताहिक सारांश</string>
+    <string name="settings_weekly_digest_description">रविवार शाम लगभग 19 बजे एक सूचना इस फ़ोन पर दर्ज पसंदीदा ट्रेनों के सप्ताह भर के समय-पालन का सारांश देती है और उपलब्ध होने पर पिछले 30 दिनों में नेटवर्क पर उनकी विश्वसनीयता भी बताती है, साथ ही उस ट्रेन का नाम बताती है जिसका प्रदर्शन बिगड़ा। कोई नेटवर्क अनुरोध नहीं; 22 से 7 बजे के बीच कभी नहीं।</string>
+    <string name="weekly_digest_channel_name">साप्ताहिक सारांश</string>
+    <string name="weekly_digest_channel_description">रविवार शाम, पसंदीदा ट्रेनों का सप्ताह भर का समय-पालन।</string>
+    <string name="weekly_digest_title">इस सप्ताह आपकी ट्रेनें</string>
+    <string name="weekly_digest_train_line">%1$s: %2$s</string>
+    <string name="weekly_digest_no_runs">कोई यात्रा दर्ज नहीं</string>
+    <plurals name="weekly_digest_network">
+        <item quantity="one">नेटवर्क पर पिछला %1$d दिन: %2$d%% समय पर</item>
+        <item quantity="other">नेटवर्क पर पिछले %1$d दिन: %2$d%% समय पर</item>
+    </plurals>
+    <string name="weekly_digest_worse">प्रदर्शन बिगड़ा: %1$s, इस सप्ताह %2$d%% बार समय पर (आमतौर पर %3$d%%)</string>
     <string name="settings_live_updates_title">लाइव सूचनाएँ</string>
     <string name="settings_live_updates_permission">ये सूचनाएँ पाने के लिए Android सेटिंग में Binario की सूचनाओं की अनुमति दें।</string>
     <string name="settings_live_updates_privacy">ये जाँचें केवल बताई गई समय-सीमाओं में बैकग्राउंड में चलती हैं। MIT को आपके किसी डेटा के बिना अनुरोध मिलता है; ट्रेन-स्थिति के स्रोतों को ट्रेन नंबर और दिन मिलता है, जैसे विवरण खोलने पर। फ़ोन के बाहर कुछ भी सहेजा नहीं जाता।</string>
@@ -1473,6 +1524,33 @@
         <item quantity="other">%1$s: %3$d में से %2$d बार देर से</item>
     </plurals>
     <string name="reliability_threshold_mixed_note">Frecce, Italo, EuroCity, Eurostar और EuroNight ट्रेनों के लिए अधिकतम 5 मिनट और अन्य ट्रेनों के लिए 15 मिनट की देरी वाला आगमन समय पर माना जाता है।</string>
+    <!-- Usual platform and weekday punctuality of the network statistics (stop elements 7 and 8) -->
+    <plurals name="reliability_usual_platform">
+        <item quantity="one">आमतौर पर प्लेटफ़ॉर्म %1$s (%3$d में से %2$d बार)</item>
+        <item quantity="other">आमतौर पर प्लेटफ़ॉर्म %1$s (%3$d में से %2$d बार)</item>
+    </plurals>
+    <string name="reliability_weekday_monday">सोमवार को</string>
+    <string name="reliability_weekday_tuesday">मंगलवार को</string>
+    <string name="reliability_weekday_wednesday">बुधवार को</string>
+    <string name="reliability_weekday_thursday">गुरुवार को</string>
+    <string name="reliability_weekday_friday">शुक्रवार को</string>
+    <string name="reliability_weekday_saturday">शनिवार को</string>
+    <string name="reliability_weekday_sunday">रविवार को</string>
+    <plurals name="reliability_weekday_worse">
+        <item quantity="one">%1$s %3$d में से %2$d बार समय पर, औसत से खराब</item>
+        <item quantity="other">%1$s %3$d में से %2$d बार समय पर, औसत से खराब</item>
+    </plurals>
+    <plurals name="reliability_weekday_better">
+        <item quantity="one">%1$s %3$d में से %2$d बार समय पर, औसत से बेहतर</item>
+        <item quantity="other">%1$s %3$d में से %2$d बार समय पर, औसत से बेहतर</item>
+    </plurals>
+    <!-- Route results: «Più presto» / «Più tardi», empty searched window, RFI «RITARDO» without minutes -->
+    <string name="results_earlier">पहले के</string>
+    <string name="results_later">बाद के</string>
+    <string name="results_no_more_earlier">इससे पहले कोई और विकल्प नहीं</string>
+    <string name="results_no_more_later">इसके बाद कोई और विकल्प नहीं</string>
+    <string name="results_no_trains_until">%1$s बजे तक कोई ट्रेन नहीं</string>
+    <string name="service_late_minutes_unpublished">देरी से (मिनट प्रकाशित नहीं)</string>
     <string name="bikes_allowed">साइकिल ले जाने की अनुमति है</string>
     <string name="bikes_not_allowed">साइकिल ले जाने की अनुमति नहीं है</string>
     <string name="bikes_conditions_link">ट्रेन में साइकिल: %1$s की शर्तें</string>
@@ -1481,4 +1559,45 @@
     <string name="compensation_notice_quarter">%1$s पर %2$s की देरी से पहुँची: विनियम (EU) 2021/782 के अनुसार आप टिकट मूल्य के 25%% के मुआवज़े के हक़दार हो सकते हैं (120 मिनट से 50%%)।</string>
     <string name="compensation_notice_half">%1$s पर %2$s की देरी से पहुँची: विनियम (EU) 2021/782 के अनुसार आप टिकट मूल्य के 50%% के मुआवज़े के हक़दार हो सकते हैं।</string>
     <string name="compensation_notice_conditions">रेल कंपनी 4 € से कम राशि और बाहरी कारणों, जैसे चरम मौसम या पटरियों पर लोगों, से हुई देरी का भुगतान करने से मना कर सकती है; उसके अपने कर्मचारियों की हड़ताल बाहरी कारण नहीं है। क्षेत्रीय ट्रेनों पर शर्तें क्षेत्र के साथ सेवा अनुबंध पर भी निर्भर करती हैं।</string>
+    <!-- Station board: RFI Sala Blu assistance (links only) -->
+    <string name="station_sala_blu_title">Sala Blu सहायता</string>
+    <string name="station_sala_blu_description">RFI स्टेशनों पर दिव्यांग या सीमित गतिशीलता वाले यात्रियों को बुकिंग पर निःशुल्क सहायता देता है।</string>
+    <string name="station_sala_blu_page">RFI का सहायता पेज</string>
+    <string name="station_sala_blu_call_toll_free">%1$s पर कॉल करें (लैंडलाइन से निःशुल्क)</string>
+    <string name="station_sala_blu_call_national">%1$s पर कॉल करें (मोबाइल से भी)</string>
+    <!-- Station board: direct connections from the station (embedded timetables) -->
+    <string name="direct_connections_title">सीधी कनेक्शन</string>
+    <string name="direct_connections_from">%1$s से, बिना बदले</string>
+    <string name="direct_connections_note">ऐप में शामिल निर्धारित समय-सारणी से, देरी या रद्दीकरण के बिना। ट्रेनें खोजने के लिए किसी गंतव्य पर टैप करें।</string>
+    <string name="direct_connections_filter">गंतव्य फ़िल्टर करें</string>
+    <string name="direct_connections_loading">समय-सारणी पढ़ी जा रही है…</string>
+    <string name="direct_connections_empty">शामिल समय-सारणी में इस दिन इस स्टेशन से कोई सीधी कनेक्शन नहीं है।</string>
+    <string name="direct_connections_no_match">किसी गंतव्य में “%1$s” नहीं है।</string>
+    <string name="direct_connections_trains">ट्रेनें</string>
+    <string name="direct_connections_urban">मेट्रो, ट्राम और फ़्यूनिकुलर</string>
+    <plurals name="direct_connections_train_count">
+        <item quantity="one">%d ट्रेन</item>
+        <item quantity="other">%d ट्रेनें</item>
+    </plurals>
+    <plurals name="direct_connections_runs">
+        <item quantity="one">%d फेरा</item>
+        <item quantity="other">%d फेरे</item>
+    </plurals>
+    <string name="direct_connections_first_last">पहली %1$s, आख़िरी %2$s</string>
+    <string name="direct_connections_fastest">सबसे तेज़ %1$s</string>
+    <string name="direct_connections_from_stop">%1$s स्टॉप से, थोड़ी दूरी पर</string>
+    <!-- Per te and route board: works and interruptions named by the network notices on the saved routes -->
+    <string name="route_works_title">आपके रूटों पर काम और रुकावटें</string>
+    <string name="route_works_title_route">इस रूट पर काम और रुकावटें</string>
+    <string name="route_works_none">फ़िलहाल काम या रुकावट की कोई सूचना आपके रूटों के स्टेशनों का नाम नहीं लेती।</string>
+    <string name="route_works_names">सूचना में उल्लेख: %1$s</string>
+    <string name="route_works_route_names">%1$s — सूचना में उल्लेख: %2$s</string>
+    <string name="route_works_line">%1$s लाइन</string>
+    <string name="route_works_date">उल्लिखित तारीख़: %1$s</string>
+    <string name="route_works_dates">उल्लिखित तारीख़ें: %1$s से %2$s तक</string>
+    <string name="route_works_note">सूचनाएँ उनमें दिए स्टेशनों और लाइनों के नामों से रूटों से जोड़ी जाती हैं: हमेशा पूरा पाठ पढ़ें।</string>
+    <plurals name="route_works_show_more">
+        <item quantity="one">%d और सूचना दिखाएँ</item>
+        <item quantity="other">%d और सूचनाएँ दिखाएँ</item>
+    </plurals>
 </resources>

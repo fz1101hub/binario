@@ -5,7 +5,8 @@ import Foundation
 /// Invalid, corrupt, ambiguous, or route-less databases fail closed.
 public struct SQLiteGTFSJourneyRepository: JourneyRepository, Sendable {
     public static let applicationID: Int32 = 0x424E_4754 // "BNGT"
-    public static let userVersion: Int32 = 1
+    /// 2: `trip.bikes_allowed` (GTFS bikes_allowed: 1 allowed, 2 not allowed, NULL unknown).
+    public static let userVersion: Int32 = 2
     public static let maximumResults = 8
 
     private static let expectedTables: [String: [String]] = [
@@ -14,7 +15,7 @@ public struct SQLiteGTFSJourneyRepository: JourneyRepository, Sendable {
         "agency": ["id", "pack_id", "external_id", "name", "timezone"],
         "route": ["id", "pack_id", "agency_id", "external_id", "short_name", "long_name", "route_type"],
         "service": ["id", "pack_id", "external_id", "start_date", "day_count", "active_days"],
-        "trip": ["id", "pack_id", "route_id", "service_id", "external_id", "headsign", "short_name", "direction_id"],
+        "trip": ["id", "pack_id", "route_id", "service_id", "external_id", "headsign", "short_name", "direction_id", "bikes_allowed"],
         "stop": ["id", "pack_id", "external_id", "name", "latitude", "longitude", "catalog_station_id", "railway_code", "trenitalia_location_id"],
         "stop_time": ["trip_id", "stop_sequence", "stop_id", "arrival_seconds", "departure_seconds", "pickup_type", "drop_off_type"],
     ]
@@ -327,7 +328,7 @@ public struct SQLiteGTFSJourneyRepository: JourneyRepository, Sendable {
                    a.name, a.timezone, destination_stop.name,
                    COALESCE(origin_time.departure_seconds, origin_time.arrival_seconds),
                    p.source_id, p.attribution,
-                   svc.start_date, svc.day_count, svc.active_days
+                   svc.start_date, svc.day_count, svc.active_days, t.bikes_allowed
             FROM stop_time AS origin_time
             JOIN stop_time AS destination_time
               ON destination_time.trip_id = origin_time.trip_id
@@ -392,6 +393,14 @@ public struct SQLiteGTFSJourneyRepository: JourneyRepository, Sendable {
                 throw SQLiteGTFSFailure.invalidData
             }
             let formattedTime = timeString(departure, timeZone: calendar.timeZone)
+            // Only a published value: 1 allowed, 2 not allowed; NULL (empty, 0 or a pack whose
+            // value is not shown, see BIKES_VALUE_NOT_SHOWN in the builder) stays unknown.
+            let bikesAllowed: Bool?
+            switch statement.int(at: 16) {
+            case 1: bikesAllowed = true
+            case 2: bikesAllowed = false
+            default: bikesAllowed = nil
+            }
             let serviceDate = encodedDate(serviceDay, calendar: calendar)
             let id = "\(sourceID):\(externalTripID):\(serviceDate):\(seconds)"
             candidates.append(Candidate(
@@ -409,7 +418,8 @@ public struct SQLiteGTFSJourneyRepository: JourneyRepository, Sendable {
                     expectedDeparture: formattedTime,
                     status: OperationalState.programmed.rawValue,
                     platform: nil,
-                    delayMinutes: 0
+                    delayMinutes: 0,
+                    bikesAllowed: bikesAllowed
                 )
             ))
         }

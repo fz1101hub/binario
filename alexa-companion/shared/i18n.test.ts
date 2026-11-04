@@ -111,7 +111,8 @@ describe("locale resolution", () => {
 
 describe("typed locale dictionaries", () => {
   it("has identical leaf-key parity for every language dictionary", () => {
-    const italianKeys = leafPaths(LOCALE_MESSAGES.it).sort();
+    // Italian has CLDR "many" forms too: the parity is on the mandatory keys.
+    const italianKeys = leafPaths(LOCALE_MESSAGES.it).filter(path => !EXTRA_PLURAL_FORM.test(path)).sort();
     for (const language of LANGUAGES)
       expect(
         leafPaths(LOCALE_MESSAGES[language]).filter(path => !EXTRA_PLURAL_FORM.test(path)).sort(),

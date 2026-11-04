@@ -240,7 +240,9 @@ data class JourneyOptionRow(
     /** The last departure of the static timetable's service day for this origin and destination ("Ultimo di oggi"). */
     val lastOfDay: Boolean = false,
     /** The longest scheduled wait at one of its changes, in minutes (0 without changes): long ones are named on the card. */
-    val longestWaitMinutes: Long = 0
+    val longestWaitMinutes: Long = 0,
+    /** Nothing left in the searched window: the first option after it ([it.binario.app.data.core.JourneyOption.firstAfterEmptyWindow]). */
+    val firstAfterEmptyWindow: Boolean = false
 ) {
     /** A wait the result card names ("Attesa di 278 minuti"): the planner offers it only when nothing spares it. */
     val hasLongWait: Boolean get() = longestWaitMinutes >= JourneyResultsPresenter.LONG_WAIT_MINUTES
@@ -437,7 +439,8 @@ object JourneyResultsPresenter {
             modes = vehicles.mapNotNullTo(linkedSetOf()) { leg ->
                 TravelMode.of(leg.mode, leg.serviceKind, leg.operatorName)
             } + vehicles.flatMap { leg -> leg.continuations.mapNotNull { TravelMode.of(leg.mode, it.serviceKind, it.operatorName) } },
-            longestWaitMinutes = transfers.maxOfOrNull { it.waitMinutes }?.coerceAtLeast(0L) ?: 0L
+            longestWaitMinutes = transfers.maxOfOrNull { it.waitMinutes }?.coerceAtLeast(0L) ?: 0L,
+            firstAfterEmptyWindow = option.firstAfterEmptyWindow
         )
     }
 

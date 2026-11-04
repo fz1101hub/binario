@@ -58,12 +58,24 @@ import { escapeSsmlText, liveDataUnavailableSpeech, plainSpeechText } from "./sp
 import { parseScreenEvent, screenResponseInterceptor, setScreen } from "./presentation";
 import { alexaRequestLogContext } from "./requestLog";
 import { matchRouteByName } from "./routeMatching";
+import { punctualityStats, railStationIndex } from "../punctuality/source";
+import { routePunctuality, trainPunctuality } from "../punctuality/stats";
+import {
+  answerText,
+  joinSentences,
+  routeAnswer,
+  trainAnswer,
+  unavailableAnswer,
+  type PunctualityAnswer,
+} from "./punctualitySpeech";
 
 /** Intent names the skill handles; the interaction model in skill-package/ must declare all of them. */
 export const HANDLED_INTENTS = [
   "NextTrainsIntent",
   "TrainStatusIntent",
   "MyRoutesIntent",
+  "TrainPunctualityIntent",
+  "RoutePunctualityIntent",
   "AMAZON.HelpIntent",
   "AMAZON.StopIntent",
   "AMAZON.CancelIntent",
@@ -169,34 +181,67 @@ type RouteSelection =
   | { ambiguous: PersonalRoute[] }
   | undefined;
 
+type RoutePurpose = "nextTrains" | "punctuality";
+type RouteSelector = (namedRoutes: PersonalRoute[], locale: SupportedLocale) => RouteSelection;
+
 /**
- * Speaks the live-data caveat for one saved route. `select` picks the route among the named ones:
- * undefined means none matched, `notFound` a spoken name that matched nothing and `ambiguous`
- * several candidates. Only reached after the account link has been verified.
+ * The saved route a request is about, or the response that asks which one or says there are
+ * none. `select` picks the route among the named ones: undefined means none matched, `notFound` a
+ * spoken name that matched nothing and `ambiguous` several candidates. Only called after the
+ * account link has been verified.
  */
-async function respondNextTrains(
+async function selectedRoute(
   input: HandlerInput,
-  select: (namedRoutes: PersonalRoute[], locale: SupportedLocale) => RouteSelection,
+  principal: { userId: number; credentialVersion: number },
+  select: RouteSelector,
+  purpose: RoutePurpose,
   onMissing?: () => Promise<SkillResponse>
-) {
+): Promise<{ route: PersonalRoute } | { response: SkillResponse }> {
   const locale = getAlexaLocale(input);
-  const messages = messagesForLocale(locale).voice;
-  const principal = await getLinkedUser(input);
-  if (!principal) return linkRequiredResponse(input);
   const routes = await listPersonalRoutesForAlexa(
     principal.userId,
     principal.credentialVersion
   );
   const namedRoutes = routes.filter(item => item.name.trim().length > 0);
   const selection = select(namedRoutes, locale);
-  if (selection && "ambiguous" in selection) return askWhichRoute(input, selection.ambiguous);
+  if (selection && "ambiguous" in selection)
+    return { response: askWhichRoute(input, selection.ambiguous, undefined, purpose) };
   if (selection && "notFound" in selection)
-    return namedRoutes.length
-      ? askWhichRoute(input, namedRoutes, selection.notFound)
-      : noRoutesResponse(input);
-  const route = selection;
-  if (!route && onMissing && namedRoutes.length) return onMissing();
-  if (!route) return noRoutesResponse(input);
+    return {
+      response: namedRoutes.length
+        ? askWhichRoute(input, namedRoutes, selection.notFound, purpose)
+        : noRoutesResponse(input),
+    };
+  if (selection) return { route: selection };
+  return { response: onMissing && namedRoutes.length ? await onMissing() : noRoutesResponse(input) };
+}
+
+/** The route the user named in the `routeName` slot, or the pinned (else first) route. */
+function spokenRouteSelector(input: HandlerInput): RouteSelector {
+  return (namedRoutes, locale) => {
+    const requestedName = intentSlot(input, "routeName", "route", "tratta");
+    if (!requestedName)
+      return namedRoutes.find(item => item.isPinned) ?? namedRoutes[0];
+    const match = matchRouteByName(namedRoutes, requestedName, locale);
+    if (match.kind === "match") return match.route;
+    if (match.kind === "ambiguous") return { ambiguous: match.routes };
+    return { notFound: requestedName };
+  };
+}
+
+/** Speaks the live-data caveat for one saved route. Only reached after the account link has been verified. */
+async function respondNextTrains(
+  input: HandlerInput,
+  select: RouteSelector,
+  onMissing?: () => Promise<SkillResponse>
+) {
+  const locale = getAlexaLocale(input);
+  const messages = messagesForLocale(locale).voice;
+  const principal = await getLinkedUser(input);
+  if (!principal) return linkRequiredResponse(input);
+  const selected = await selectedRoute(input, principal, select, "nextTrains", onMissing);
+  if ("response" in selected) return selected.response;
+  const { route } = selected;
   // SSML needs escaped text; the companion-app card is plain text and must
   // show the route name as typed, not XML entities.
   const speech = liveDataUnavailableSpeech(
@@ -242,10 +287,14 @@ const SPOKEN_ROUTE_LIMIT = 5;
 function askWhichRoute(
   input: HandlerInput,
   candidates: readonly PersonalRoute[],
-  notFound?: string
+  notFound?: string,
+  purpose: RoutePurpose = "nextTrains"
 ) {
   const locale = getAlexaLocale(input);
   const messages = messagesForLocale(locale).voice;
+  // The example must be a sample of the intent the user is in, so the answer reaches it again.
+  const choiceTemplate =
+    purpose === "punctuality" ? messagesForLocale(locale).punctuality.routeChoice : messages.routeChoice;
   const spoken = candidates.slice(0, SPOKEN_ROUTE_LIMIT);
   const remainingCount = Math.max(candidates.length - SPOKEN_ROUTE_LIMIT, 0);
   const list = spokenRouteList(locale, spoken);
@@ -257,13 +306,14 @@ function askWhichRoute(
       notFound
         ? `${formatMessage(messages.routeNotFound, { routeName: name })} ${formatMessage(messages.routesSaved, { routes, suffix })}`
         : formatMessage(messages.routeAmbiguous, { routes }),
-      formatMessage(messages.routeChoice, { example }),
+      formatMessage(choiceTemplate, { example }),
     ].join(" ");
-  const choice = formatMessage(messages.routeChoice, { example: escapeSsmlText(spoken[0].name) });
+  const choice = formatMessage(choiceTemplate, { example: escapeSsmlText(spoken[0].name) });
   setScreen(input, {
     kind: "myRoutes",
     routes: spoken.map(route => ({ name: route.name, isPinned: route.isPinned })),
     remainingCount,
+    routeAction: purpose,
   });
   return input.responseBuilder
     .speak(sentence(list.speech, escapeSsmlText(notFound ?? ""), escapeSsmlText(spoken[0].name)))
@@ -280,16 +330,7 @@ const nextTrainsHandler: RequestHandler = {
   canHandle: input =>
     getRequestType(input.requestEnvelope) === "IntentRequest" &&
     getIntentName(input.requestEnvelope) === "NextTrainsIntent",
-  handle: input =>
-    respondNextTrains(input, (namedRoutes, locale) => {
-      const requestedName = intentSlot(input, "routeName", "route", "tratta");
-      if (!requestedName)
-        return namedRoutes.find(item => item.isPinned) ?? namedRoutes[0];
-      const match = matchRouteByName(namedRoutes, requestedName, locale);
-      if (match.kind === "match") return match.route;
-      if (match.kind === "ambiguous") return { ambiguous: match.routes };
-      return { notFound: requestedName };
-    }),
+  handle: input => respondNextTrains(input, spokenRouteSelector(input)),
 };
 
 const trainStatusHandler: RequestHandler = {
@@ -356,6 +397,101 @@ async function respondMyRoutes(input: HandlerInput) {
     .getResponse();
 }
 
+/**
+ * A punctuality answer: speech (SSML-escaped user values) and card (plain), and the screen that
+ * repeats it. `text` builds the answer for one of the two forms.
+ */
+function punctualityResponse(
+  input: HandlerInput,
+  build: (text: (value: string) => string) => PunctualityAnswer,
+  subject: { about: "train"; trainNumber: string } | { about: "route"; routeName?: string },
+  windowEnd: string | undefined
+) {
+  const locale = getAlexaLocale(input);
+  const spoken = build(escapeSsmlText);
+  const written = build(plainSpeechText);
+  setScreen(input, {
+    kind: "punctuality",
+    ...subject,
+    message: joinSentences(written.sentences),
+    figures: written.figures,
+    windowEnd,
+  });
+  return input.responseBuilder
+    .speak(answerText(locale, spoken))
+    .withSimpleCard(messagesForLocale(locale).voice.cardTitle, answerText(locale, written))
+    .withShouldEndSession(true)
+    .getResponse();
+}
+
+/** A train's punctuality is not personal: it is answered with or without a linked account. */
+const trainPunctualityHandler: RequestHandler = {
+  canHandle: input => isIntent(input, "TrainPunctualityIntent"),
+  handle: async input => {
+    const locale = getAlexaLocale(input);
+    const p = messagesForLocale(locale).punctuality;
+    const trainNumber = intentSlot(input, "trainNumber", "train", "numeroTreno");
+    // AMAZON.NUMBER gives "?" when it heard no number.
+    if (!trainNumber || !/[0-9]/.test(trainNumber)) {
+      setScreen(input, { kind: "punctuality", about: "train", message: p.trainMissing });
+      return input.responseBuilder
+        .speak(p.trainMissing)
+        .reprompt(p.trainMissing)
+        .withSimpleCard(messagesForLocale(locale).voice.cardTitle, p.trainMissing)
+        .withShouldEndSession(false)
+        .getResponse();
+    }
+    const stats = await punctualityStats();
+    const result = stats ? trainPunctuality(stats, trainNumber) : null;
+    return punctualityResponse(
+      input,
+      text => (result ? trainAnswer(locale, trainNumber, result, text) : unavailableAnswer(locale)),
+      { about: "train", trainNumber },
+      stats?.windowEnd
+    );
+  },
+};
+
+/**
+ * Punctuality of one of the linked user's saved routes: every train of the statistics from its
+ * origin to its destination, matched by station name. The names stay on the server: the answer
+ * and the screen name only the route.
+ */
+async function respondRoutePunctuality(
+  input: HandlerInput,
+  select: RouteSelector,
+  onMissing?: () => Promise<SkillResponse>
+) {
+  const locale = getAlexaLocale(input);
+  const principal = await getLinkedUser(input);
+  if (!principal) return linkRequiredResponse(input);
+  const [stats, stations] = await Promise.all([punctualityStats(), railStationIndex()]);
+  if (!stats || !stations)
+    return punctualityResponse(input, () => unavailableAnswer(locale), { about: "route" }, stats?.windowEnd);
+  const selected = await selectedRoute(input, principal, select, "punctuality", onMissing);
+  if ("response" in selected) return selected.response;
+  const { route } = selected;
+  const origins = stations.codesFor(route.origin);
+  const destinations = stations.codesFor(route.destination);
+  const result = origins.length && destinations.length ? routePunctuality(stats, origins, destinations) : null;
+  const outcome = !origins.length || !destinations.length
+    ? ({ kind: "stationsUnknown" } as const)
+    : result
+      ? ({ kind: "stats", result } as const)
+      : ({ kind: "fewData" } as const);
+  return punctualityResponse(
+    input,
+    text => routeAnswer(locale, route.name, outcome, text),
+    { about: "route", routeName: route.name },
+    stats.windowEnd
+  );
+}
+
+const routePunctualityHandler: RequestHandler = {
+  canHandle: input => isIntent(input, "RoutePunctualityIntent"),
+  handle: input => respondRoutePunctuality(input, spokenRouteSelector(input)),
+};
+
 const myRoutesHandler: RequestHandler = {
   canHandle: input =>
     getRequestType(input.requestEnvelope) === "IntentRequest" &&
@@ -365,7 +501,7 @@ const myRoutesHandler: RequestHandler = {
 
 /**
  * Touches on the Echo Show document. Each event is re-authorised exactly like a voice request
- * (the access token travels with it), and only the two allowlisted actions are accepted.
+ * (the access token travels with it), and only the three allowlisted actions are accepted.
  */
 const screenEventHandler: RequestHandler = {
   canHandle: input =>
@@ -374,15 +510,16 @@ const screenEventHandler: RequestHandler = {
     const event = parseScreenEvent(input.requestEnvelope.request);
     if (!event) return unsupportedResponse(input);
     if (event.action === "myRoutes") return respondMyRoutes(input);
+    const respond = event.action === "punctuality" ? respondRoutePunctuality : respondNextTrains;
     const { routeName } = event;
     if (!routeName)
-      return respondNextTrains(
+      return respond(
         input,
         namedRoutes => namedRoutes.find(item => item.isPinned) ?? namedRoutes[0]
       );
     // The touched route may have been renamed or deleted since the screen was drawn: show the
-    // current list instead of another route's caveat.
-    return respondNextTrains(
+    // current list instead of another route's answer.
+    return respond(
       input,
       namedRoutes => namedRoutes.find(item => plainSpeechText(item.name) === routeName),
       () => respondMyRoutes(input)
@@ -478,6 +615,8 @@ export function createAlexaSkill() {
       nextTrainsHandler,
       trainStatusHandler,
       myRoutesHandler,
+      trainPunctualityHandler,
+      routePunctualityHandler,
       screenEventHandler,
       fallbackHandler
     )

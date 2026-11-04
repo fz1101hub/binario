@@ -75,7 +75,7 @@
     <string name="station_badge_metro">地铁站</string>
     <string name="station_badge_tram">有轨电车站</string>
     <string name="station_badge_funicular">缆索铁路或电梯</string>
-    <string name="settings_privacy_new_sources">启用后，附加数据源只会收到请求所需的信息，不涉及账户或位置：transport.opendata.ch 收到瑞士车站的 UIC 编号（或一次性收到某个边境车站的名称）；ViaggiaTreno 收到用于查询公告的车次号，与其公共 API 一样通过未加密的 HTTP 传输；RFI、Trenitalia 和 Trenord 的公告列表不会收到你的任何数据，且仅在你打开公告区域、详情或相关车站大屏时才会下载；Open-Meteo 收到到达站的近似坐标。外部链接仅在你点按时才会在浏览器中打开。</string>
+    <string name="settings_privacy_new_sources">启用后，附加数据源只会收到请求所需的信息，不涉及账户或位置：transport.opendata.ch 收到瑞士车站的 UIC 编号（或一次性收到某个边境车站的名称）；ViaggiaTreno 收到用于查询公告的车次号，与其公共 API 一样通过未加密的 HTTP 传输；RFI、Trenitalia 和 Trenord 的公告列表不会收到你的任何数据，且仅在你打开公告区域、详情、相关车站大屏或你的线路施工板块时才会下载；Open-Meteo 收到到达站的近似坐标。外部链接仅在你点按时才会在浏览器中打开。</string>
 
     <string name="app_name">Binario</string>
     <string name="widget_description">显示你的 Binario 路线接下来的车次。</string>
@@ -95,6 +95,12 @@
     <string name="shortcut_active_route">当前路线</string>
     <string name="shortcut_next_departures">即将出发</string>
     <string name="shortcut_train_search">查询车次</string>
+    <string name="shortcut_route_removed">该路线已不再保存在 Binario 中</string>
+    <string name="tile_next_train_label">下一班列车</string>
+    <string name="tile_next_train_no_route">没有当前路线</string>
+    <string name="tile_next_train_none">今天没有更多列车</string>
+    <string name="tile_next_train_departure">%1$s · %2$s</string>
+    <string name="tile_next_train_description">按计划时刻表的下一班列车：%1$s，%2$s 出发，%3$s</string>
 
     <!-- Main app shell and primary journey planner. -->
     <string name="app_brand">BINARIO</string>
@@ -378,6 +384,26 @@
     <string name="map_nearby_content_description">最近车站的地图。相同的车站及其距离列在下方。</string>
     <string name="map_nearby_tap_hint">点按车站即可打开其车站大屏。</string>
     <string name="map_legend_user_position">大致位置，不会保存</string>
+    <string name="live_map_title">运行中的列车</string>
+    <string name="live_map_area_subtitle">%1$s周边</string>
+    <string name="live_map_content_description">运行中列车地图，%1$s。位置根据时刻表估算，并非 GPS 位置；同样的列车列在地图下方。</string>
+    <string name="live_map_note">估算位置，并非 GPS：Binario 根据时刻表计算每趟列车应在的位置，位于两个停靠站之间的直线上（并非沿轨道）。如果车站大屏已有某趟列车的晚点信息，估算会将其计入。地图打开期间，位置每 30 秒更新一次。</string>
+    <string name="live_map_legend_live">按车站大屏晚点估算的位置</string>
+    <string name="live_map_legend_timetable">仅按时刻表估算的位置</string>
+    <string name="live_map_loading">正在计算估算位置…</string>
+    <string name="live_map_zoom_in">放大地图以查看运行中的列车。</string>
+    <string name="live_map_none">根据时刻表，所示区域内没有运行中的列车。</string>
+    <string name="live_map_row_title">%1$s 开往 %2$s</string>
+    <string name="live_map_row_at">停靠在%1$s</string>
+    <string name="live_map_row_between">%1$s 与 %2$s 之间</string>
+    <string name="live_map_row_live">按车站大屏数据估算：%1$s</string>
+    <string name="live_map_row_timetable">仅按时刻表估算</string>
+    <plurals name="live_map_count">
+        <item quantity="other">运行中的列车 %d 趟</item>
+    </plurals>
+    <plurals name="live_map_capped">
+        <item quantity="other">显示最近的 %d 趟。</item>
+    </plurals>
     <string name="settings_privacy_maps">地图：仅在你展开或加载时打开。为绘制地图，应用会从 tiles.openfreemap.org（OpenFreeMap）下载样式、图块、字体和图标，该网站可以看到你的 IP 地址和显示的区域：列车路线、所选车站，或在查看附近车站时你大致位置的周边区域。位置不会被发送或保存；图块保存在应用的本地缓存中。</string>
     <string name="settings_credits_maps">地图：OpenFreeMap © OpenMapTiles，数据 © OpenStreetMap contributors（ODbL 1.0）。使用 MapLibre Native 渲染，BSD 2-Clause 许可。</string>
     <string name="settings_credits_trenitalia">Trenitalia 时刻表（列车和巴士）：Trenitalia S.p.A. 根据 CAD 第 52 条和欧盟第 2017/1926 号条例在意大利国家访问点（CCISS）发布的官方数据，https://www.cciss.it/nap/mmtis/public/en/catalog/Dataset/1077621 。GTFS 转换 © Clément Desouche，CC BY 4.0：https://github.com/deryclem/trenitalia-gtfs （许可：https://creativecommons.org/licenses/by/4.0/ ）。Binario 仅使用计划时刻，不含路线几何数据，且与 Trenitalia 无隶属关系。</string>
@@ -657,6 +683,14 @@
     <string name="background_status_exact_on">已允许精确闹钟</string>
     <string name="background_status_battery_optimized">Binario 的电池优化已开启：Android 可能会推迟后台检查。</string>
     <string name="background_status_battery_unrestricted">Binario 的电池优化已关闭</string>
+    <string name="background_runs_title">后台下次检查</string>
+    <string name="background_runs_none">没有已安排的后台检查。</string>
+    <string name="background_runs_running">%1$s：正在运行</string>
+    <string name="background_runs_soon">%1$s：即将运行</string>
+    <string name="background_runs_today">%1$s：今天 %2$s</string>
+    <string name="background_runs_tomorrow">%1$s：明天 %2$s</string>
+    <string name="background_runs_later">%1$s：%2$s %3$s</string>
+    <string name="background_runs_note">时间仅供参考：Android 可能为节省电量或等待网络而调整时间。</string>
     <string name="commuter_alert_quiet_hours_feedback">提醒已保存但未安排：提醒时间落在 22:00–07:00 静默时段内。</string>
     <string name="commuter_alert_invalid_time_feedback">提醒已保存但未安排：时间无效。</string>
     <string name="commuter_alert_disabled_feedback">提醒已保存，但已停用。</string>
@@ -975,6 +1009,9 @@
     <string name="widget_settings_until_arrival_description">已出发的列车会继续留在列表中，标记为“运行中”，直到预计到达终点。</string>
     <string name="widget_settings_show_platform">显示站台</string>
     <string name="widget_settings_show_train_name">显示列车名称和类别</string>
+    <string name="widget_settings_show_reliability">显示可靠性</string>
+    <string name="widget_settings_show_reliability_description">在每趟列车后显示最近 30 天准点天数的占比：基于 ViaggiaTreno 数据的 Binario 非官方统计，内置于应用中，仅在至少有 5 次观测时显示。</string>
+    <string name="widget_reliability_mark">准点 %1$d%%</string>
     <string name="station_widget_display_name_description">替换标题中的车站名称，仅对此小组件生效。</string>
     <string name="station_widget_settings_nearest">“📍 最近”按钮</string>
     <string name="station_widget_settings_nearest_description">点按后，小组件会请求一次大致位置，并切换到目录中最近的车站。位置不会被保存或发送；自动更新始终使用最后选择的车站。</string>
@@ -1125,6 +1162,17 @@
     <string name="punctuality_history_show_all">显示所有日期</string>
     <string name="settings_punctuality_recording_title">收藏列车的准点率</string>
     <string name="settings_punctuality_recording_description">每天在计划到达后查询一次列车状态，并仅在本手机上记录最终晚点和各停靠站的晚点，最多保存 365 天。</string>
+    <string name="settings_weekly_digest_title">收藏列车每周摘要</string>
+    <string name="settings_weekly_digest_description">每周日 19:00 左右，一条通知会汇总本手机记录的收藏列车本周的准点情况，以及在可用时它们最近 30 天在路网上的可靠性，并指出表现变差的列车。不发出网络请求；22:00 至 7:00 之间从不通知。</string>
+    <string name="weekly_digest_channel_name">每周摘要</string>
+    <string name="weekly_digest_channel_description">周日晚上，收藏列车本周的准点情况。</string>
+    <string name="weekly_digest_title">你本周的列车</string>
+    <string name="weekly_digest_train_line">%1$s：%2$s</string>
+    <string name="weekly_digest_no_runs">没有记录的车次</string>
+    <plurals name="weekly_digest_network">
+        <item quantity="other">路网最近 %1$d 天：准点 %2$d%%</item>
+    </plurals>
+    <string name="weekly_digest_worse">变差：%1$s，本周准点率 %2$d%%（通常为 %3$d%%）</string>
     <string name="settings_live_updates_title">实时通知</string>
     <string name="settings_live_updates_permission">如需接收这些通知，请在 Android 设置中允许 Binario 发送通知。</string>
     <string name="settings_live_updates_privacy">这些检查仅在所示时段内于后台运行。MIT 收到的请求不包含你的任何数据；列车状态数据源会收到车次号和日期，与你打开详情时相同。任何数据都不会保存在手机以外。</string>
@@ -1451,6 +1499,30 @@
         <item quantity="other">%1$s：%3$d 次中晚点 %2$d 次</item>
     </plurals>
     <string name="reliability_threshold_mixed_note">Frecce、Italo、EuroCity、Eurostar 和 EuroNight 晚点不超过 5 分钟、其他列车晚点不超过 15 分钟的到达计为准点。</string>
+    <!-- Usual platform and weekday punctuality of the network statistics (stop elements 7 and 8) -->
+    <plurals name="reliability_usual_platform">
+        <item quantity="other">通常在站台 %1$s（%3$d 次中 %2$d 次）</item>
+    </plurals>
+    <string name="reliability_weekday_monday">每周一</string>
+    <string name="reliability_weekday_tuesday">每周二</string>
+    <string name="reliability_weekday_wednesday">每周三</string>
+    <string name="reliability_weekday_thursday">每周四</string>
+    <string name="reliability_weekday_friday">每周五</string>
+    <string name="reliability_weekday_saturday">每周六</string>
+    <string name="reliability_weekday_sunday">每周日</string>
+    <plurals name="reliability_weekday_worse">
+        <item quantity="other">%1$s %3$d 次中准点 %2$d 次，低于平均水平</item>
+    </plurals>
+    <plurals name="reliability_weekday_better">
+        <item quantity="other">%1$s %3$d 次中准点 %2$d 次，高于平均水平</item>
+    </plurals>
+    <!-- Route results: «Più presto» / «Più tardi», empty searched window, RFI «RITARDO» without minutes -->
+    <string name="results_earlier">更早</string>
+    <string name="results_later">更晚</string>
+    <string name="results_no_more_earlier">没有更早的方案</string>
+    <string name="results_no_more_later">没有更晚的方案</string>
+    <string name="results_no_trains_until">%1$s 前没有列车</string>
+    <string name="service_late_minutes_unpublished">晚点（未公布分钟数）</string>
     <string name="bikes_allowed">可携带自行车</string>
     <string name="bikes_not_allowed">不可携带自行车</string>
     <string name="bikes_conditions_link">携带自行车：%1$s 的规定</string>
@@ -1459,4 +1531,42 @@
     <string name="compensation_notice_quarter">晚点 %2$s 到达 %1$s：根据欧盟第 2021/782 号条例，你可能有权获得票价 25%% 的赔偿（晚点 120 分钟起为 50%%）。</string>
     <string name="compensation_notice_half">晚点 %2$s 到达 %1$s：根据欧盟第 2021/782 号条例，你可能有权获得票价 50%% 的赔偿。</string>
     <string name="compensation_notice_conditions">铁路公司可拒绝支付低于 4 欧元的金额，以及因极端天气或轨道上有人等外部原因造成的晚点；本公司员工罢工不属于外部原因。地区列车的条件还取决于与大区签订的服务合同。</string>
+    <!-- Station board: RFI Sala Blu assistance (links only) -->
+    <string name="station_sala_blu_title">Sala Blu 协助服务</string>
+    <string name="station_sala_blu_description">RFI 在车站为残障人士和行动不便的乘客提供免费协助，需提前预约。</string>
+    <string name="station_sala_blu_page">RFI 协助服务页面</string>
+    <string name="station_sala_blu_call_toll_free">拨打 %1$s（固定电话免费）</string>
+    <string name="station_sala_blu_call_national">拨打 %1$s（手机也可拨打）</string>
+    <!-- Station board: direct connections from the station (embedded timetables) -->
+    <string name="direct_connections_title">直达目的地</string>
+    <string name="direct_connections_from">从 %1$s 出发，无需换乘</string>
+    <string name="direct_connections_note">依据应用内置的计划时刻表，不含晚点和停运。点按目的地即可搜索列车。</string>
+    <string name="direct_connections_filter">筛选目的地</string>
+    <string name="direct_connections_loading">正在读取时刻表…</string>
+    <string name="direct_connections_empty">内置时刻表中，这一天没有从本站出发的直达车次。</string>
+    <string name="direct_connections_no_match">没有包含“%1$s”的目的地。</string>
+    <string name="direct_connections_trains">列车</string>
+    <string name="direct_connections_urban">地铁、有轨电车和缆车</string>
+    <plurals name="direct_connections_train_count">
+        <item quantity="other">%d 班列车</item>
+    </plurals>
+    <plurals name="direct_connections_runs">
+        <item quantity="other">%d 班</item>
+    </plurals>
+    <string name="direct_connections_first_last">首班 %1$s，末班 %2$s</string>
+    <string name="direct_connections_fastest">最快 %1$s</string>
+    <string name="direct_connections_from_stop">从步行即到的 %1$s 站出发</string>
+    <!-- Per te and route board: works and interruptions named by the network notices on the saved routes -->
+    <string name="route_works_title">你的线路上的施工与中断</string>
+    <string name="route_works_title_route">本线路的施工与中断</string>
+    <string name="route_works_none">目前没有提到你线路车站的施工或中断公告。</string>
+    <string name="route_works_names">公告提到：%1$s</string>
+    <string name="route_works_route_names">%1$s：公告提到 %2$s</string>
+    <string name="route_works_line">%1$s 线</string>
+    <string name="route_works_date">提到的日期：%1$s</string>
+    <string name="route_works_dates">提到的日期：%1$s 至 %2$s</string>
+    <string name="route_works_note">公告按其中提到的车站和线路名称与线路匹配：请务必阅读全文。</string>
+    <plurals name="route_works_show_more">
+        <item quantity="other">再显示 %d 条公告</item>
+    </plurals>
 </resources>

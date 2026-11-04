@@ -75,7 +75,7 @@
     <string name="station_badge_metro">Halte metro</string>
     <string name="station_badge_tram">Halte trem</string>
     <string name="station_badge_funicular">Funikular atau lift</string>
-    <string name="settings_privacy_new_sources">Jika aktif, sumber tambahan hanya menerima yang diperlukan untuk permintaan, tanpa akun atau lokasi: transport.opendata.ch menerima nomor UIC stasiun Swiss (atau, satu kali, nama stasiun perbatasan); ViaggiaTreno menerima nomor kereta untuk pemberitahuannya, melalui HTTP tanpa enkripsi seperti API publiknya; RFI, Trenitalia, dan Trenord tidak menerima data Anda untuk daftar pemberitahuan mereka, yang hanya diunduh saat Anda membuka area pemberitahuan, detail, atau papan yang relevan; Open-Meteo menerima koordinat stasiun kedatangan yang dibulatkan. Tautan eksternal hanya terbuka di browser jika Anda mengetuknya.</string>
+    <string name="settings_privacy_new_sources">Jika aktif, sumber tambahan hanya menerima yang diperlukan untuk permintaan, tanpa akun atau lokasi: transport.opendata.ch menerima nomor UIC stasiun Swiss (atau, satu kali, nama stasiun perbatasan); ViaggiaTreno menerima nomor kereta untuk pemberitahuannya, melalui HTTP tanpa enkripsi seperti API publiknya; RFI, Trenitalia, dan Trenord tidak menerima data Anda untuk daftar pemberitahuan mereka, yang hanya diunduh saat Anda membuka area pemberitahuan, detail, papan yang relevan, atau bagian pekerjaan di rute Anda; Open-Meteo menerima koordinat stasiun kedatangan yang dibulatkan. Tautan eksternal hanya terbuka di browser jika Anda mengetuknya.</string>
     <string name="app_name">Binario</string>
     <string name="widget_description">Menampilkan perjalanan berikutnya di rute Binario Anda.</string>
     <string name="widget_refresh">Perbarui perjalanan</string>
@@ -94,6 +94,12 @@
     <string name="shortcut_active_route">Rute aktif</string>
     <string name="shortcut_next_departures">Keberangkatan berikutnya</string>
     <string name="shortcut_train_search">Cari kereta</string>
+    <string name="shortcut_route_removed">Rute tidak lagi tersimpan di Binario</string>
+    <string name="tile_next_train_label">Kereta berikutnya</string>
+    <string name="tile_next_train_no_route">Tidak ada rute aktif</string>
+    <string name="tile_next_train_none">Tidak ada kereta lagi hari ini</string>
+    <string name="tile_next_train_departure">%1$s · %2$s</string>
+    <string name="tile_next_train_description">Kereta berikutnya menurut jadwal: %1$s pukul %2$s, %3$s</string>
     <!-- Main app shell and primary journey planner. -->
     <string name="app_brand">BINARIO</string>
     <string name="screen_title_detail">Detail perjalanan</string>
@@ -372,6 +378,26 @@
     <string name="map_nearby_content_description">Peta stasiun terdekat. Stasiun yang sama, dengan jaraknya, tercantum di bawah.</string>
     <string name="map_nearby_tap_hint">Ketuk stasiun untuk membuka papannya.</string>
     <string name="map_legend_user_position">Perkiraan posisi, tidak disimpan</string>
+    <string name="live_map_title">Kereta yang sedang berjalan</string>
+    <string name="live_map_area_subtitle">Sekitar %1$s</string>
+    <string name="live_map_content_description">Peta kereta yang sedang berjalan, %1$s. Posisi adalah perkiraan dari jadwal, bukan posisi GPS; kereta yang sama tercantum di daftar di bawah peta.</string>
+    <string name="live_map_note">Posisi perkiraan, bukan GPS: Binario menghitung di mana setiap kereta seharusnya berada menurut jadwal, pada garis lurus antara dua pemberhentian (bukan mengikuti rel). Jika papan sudah memiliki keterlambatan kereta, perkiraan ikut memperhitungkannya. Posisi diperbarui setiap 30 detik selama peta terbuka.</string>
+    <string name="live_map_legend_live">Posisi diperkirakan dengan keterlambatan dari papan</string>
+    <string name="live_map_legend_timetable">Posisi diperkirakan dari jadwal saja</string>
+    <string name="live_map_loading">Menghitung posisi perkiraan…</string>
+    <string name="live_map_zoom_in">Perbesar peta untuk melihat kereta yang sedang berjalan.</string>
+    <string name="live_map_none">Menurut jadwal, tidak ada kereta yang sedang berjalan di area yang ditampilkan.</string>
+    <string name="live_map_row_title">%1$s ke %2$s</string>
+    <string name="live_map_row_at">Berhenti di %1$s</string>
+    <string name="live_map_row_between">Antara %1$s dan %2$s</string>
+    <string name="live_map_row_live">Perkiraan dengan data papan: %1$s</string>
+    <string name="live_map_row_timetable">Perkiraan dari jadwal saja</string>
+    <plurals name="live_map_count">
+        <item quantity="other">%d kereta sedang berjalan</item>
+    </plurals>
+    <plurals name="live_map_capped">
+        <item quantity="other">Ditampilkan %d yang terdekat.</item>
+    </plurals>
     <string name="settings_privacy_maps">Peta: hanya terbuka saat Anda membentangkan atau memuatnya. Untuk menggambarnya, aplikasi mengunduh gaya, petak, font, dan ikon dari tiles.openfreemap.org (OpenFreeMap), yang melihat alamat IP dan area yang ditampilkan: rute kereta, stasiun yang dipilih, atau, untuk stasiun terdekat, area di sekitar perkiraan posisi Anda. Posisi tidak dikirim atau disimpan; petak tetap berada di cache lokal aplikasi.</string>
     <string name="settings_credits_maps">Peta: OpenFreeMap © OpenMapTiles, data © OpenStreetMap contributors (ODbL 1.0). Ditampilkan dengan MapLibre Native, lisensi BSD 2-Clause.</string>
     <string name="settings_credits_trenitalia">Jadwal Trenitalia (kereta dan bus): data resmi Trenitalia S.p.A. yang diterbitkan di National Access Point Italia (CCISS) berdasarkan pasal 52 CAD dan Peraturan UE 2017/1926, https://www.cciss.it/nap/mmtis/public/en/catalog/Dataset/1077621. Konversi GTFS © Clément Desouche, CC BY 4.0: https://github.com/deryclem/trenitalia-gtfs (lisensi https://creativecommons.org/licenses/by/4.0/). Binario hanya menggunakan jadwal, tanpa geometri rute, dan tidak berafiliasi dengan Trenitalia.</string>
@@ -643,6 +669,14 @@
     <string name="background_status_exact_on">Alarm tepat diizinkan</string>
     <string name="background_status_battery_optimized">Pengoptimalan baterai aktif untuk Binario: Android bisa menunda pemeriksaan latar belakang.</string>
     <string name="background_status_battery_unrestricted">Pengoptimalan baterai nonaktif untuk Binario</string>
+    <string name="background_runs_title">Pemeriksaan latar belakang berikutnya</string>
+    <string name="background_runs_none">Tidak ada pemeriksaan latar belakang yang dijadwalkan.</string>
+    <string name="background_runs_running">%1$s: sedang berjalan</string>
+    <string name="background_runs_soon">%1$s: sebentar lagi</string>
+    <string name="background_runs_today">%1$s: hari ini pukul %2$s</string>
+    <string name="background_runs_tomorrow">%1$s: besok pukul %2$s</string>
+    <string name="background_runs_later">%1$s: %2$s pukul %3$s</string>
+    <string name="background_runs_note">Waktu perkiraan: Android dapat menggesernya untuk menghemat baterai atau saat menunggu jaringan.</string>
     <string name="commuter_alert_quiet_hours_feedback">Peringatan disimpan tetapi tidak dijadwalkan: waktunya jatuh pada jam tenang 22:00–07:00.</string>
     <string name="commuter_alert_invalid_time_feedback">Peringatan disimpan tetapi tidak dijadwalkan: waktunya tidak valid.</string>
     <string name="commuter_alert_disabled_feedback">Peringatan disimpan tetapi nonaktif.</string>
@@ -952,6 +986,9 @@
     <string name="widget_settings_until_arrival_description">Kereta yang sudah berangkat tetap di daftar, ditandai «Dalam perjalanan», sampai perkiraan tiba di tujuan.</string>
     <string name="widget_settings_show_platform">Tampilkan peron</string>
     <string name="widget_settings_show_train_name">Tampilkan nama dan kategori kereta</string>
+    <string name="widget_settings_show_reliability">Tampilkan keandalan</string>
+    <string name="widget_settings_show_reliability_description">Setelah setiap kereta, persentase hari tepat waktu dalam 30 hari terakhir: statistik tidak resmi Binario dari data ViaggiaTreno, disertakan dalam aplikasi dan hanya ditampilkan dengan minimal 5 pengamatan.</string>
+    <string name="widget_reliability_mark">%1$d%% tepat waktu</string>
     <string name="station_widget_display_name_description">Menggantikan nama stasiun di judul dan tetap lokal untuk widget ini.</string>
     <string name="station_widget_settings_nearest">Tombol «📍 Terdekat»</string>
     <string name="station_widget_settings_nearest_description">Saat diketuk, widget meminta lokasi perkiraan Anda sekali dan beralih ke stasiun terdekat di katalog. Lokasi tidak disimpan atau dikirim; pembaruan otomatis selalu memakai stasiun terakhir yang dipilih.</string>
@@ -1102,6 +1139,17 @@
     <string name="punctuality_history_show_all">Tampilkan semua tanggal</string>
     <string name="settings_punctuality_recording_title">Ketepatan waktu kereta favorit</string>
     <string name="settings_punctuality_recording_description">Sekali sehari, setelah jadwal tiba, menanyakan status kereta dan mencatat hanya di ponsel ini keterlambatan akhir dan keterlambatan di pemberhentian, paling lama 365 hari.</string>
+    <string name="settings_weekly_digest_title">Ringkasan mingguan kereta favorit</string>
+    <string name="settings_weekly_digest_description">Setiap Minggu sekitar pukul 19.00 sebuah notifikasi merangkum ketepatan waktu minggu itu yang tercatat di ponsel ini untuk kereta favorit dan, jika tersedia, keandalannya di jaringan selama 30 hari terakhir, serta menyebut kereta yang memburuk. Tanpa permintaan jaringan; tidak pernah antara pukul 22.00 dan 07.00.</string>
+    <string name="weekly_digest_channel_name">Ringkasan mingguan</string>
+    <string name="weekly_digest_channel_description">Pada Minggu malam, ketepatan waktu kereta favorit selama seminggu.</string>
+    <string name="weekly_digest_title">Kereta Anda minggu ini</string>
+    <string name="weekly_digest_train_line">%1$s: %2$s</string>
+    <string name="weekly_digest_no_runs">tidak ada perjalanan tercatat</string>
+    <plurals name="weekly_digest_network">
+        <item quantity="other">%1$d hari terakhir di jaringan: %2$d%% tepat waktu</item>
+    </plurals>
+    <string name="weekly_digest_worse">Memburuk: %1$s, tepat waktu %2$d%% minggu ini (biasanya %3$d%%)</string>
     <string name="settings_live_updates_title">Notifikasi langsung</string>
     <string name="settings_live_updates_permission">Untuk menerima notifikasi ini, izinkan notifikasi Binario di setelan Android.</string>
     <string name="settings_live_updates_privacy">Pemeriksaan ini berjalan di latar belakang hanya pada rentang yang ditampilkan. MIT menerima permintaan tanpa data Anda; sumber status kereta menerima nomor kereta dan harinya, sama seperti saat Anda membuka detail. Tidak ada yang disimpan di luar ponsel.</string>
@@ -1428,6 +1476,30 @@
         <item quantity="other">%1$s: terlambat %2$d dari %3$d kali</item>
     </plurals>
     <string name="reliability_threshold_mixed_note">Kedatangan dihitung tepat waktu jika terlambat paling lama 5 menit untuk Frecce, Italo, EuroCity, Eurostar, dan EuroNight, serta 15 menit untuk kereta lain.</string>
+    <!-- Usual platform and weekday punctuality of the network statistics (stop elements 7 and 8) -->
+    <plurals name="reliability_usual_platform">
+        <item quantity="other">Biasanya peron %1$s (%2$d dari %3$d kali)</item>
+    </plurals>
+    <string name="reliability_weekday_monday">Setiap Senin</string>
+    <string name="reliability_weekday_tuesday">Setiap Selasa</string>
+    <string name="reliability_weekday_wednesday">Setiap Rabu</string>
+    <string name="reliability_weekday_thursday">Setiap Kamis</string>
+    <string name="reliability_weekday_friday">Setiap Jumat</string>
+    <string name="reliability_weekday_saturday">Setiap Sabtu</string>
+    <string name="reliability_weekday_sunday">Setiap Minggu</string>
+    <plurals name="reliability_weekday_worse">
+        <item quantity="other">%1$s tepat waktu %2$d dari %3$d kali, lebih buruk dari rata-rata</item>
+    </plurals>
+    <plurals name="reliability_weekday_better">
+        <item quantity="other">%1$s tepat waktu %2$d dari %3$d kali, lebih baik dari rata-rata</item>
+    </plurals>
+    <!-- Route results: «Più presto» / «Più tardi», empty searched window, RFI «RITARDO» without minutes -->
+    <string name="results_earlier">Sebelumnya</string>
+    <string name="results_later">Berikutnya</string>
+    <string name="results_no_more_earlier">Tidak ada solusi lain sebelumnya</string>
+    <string name="results_no_more_later">Tidak ada solusi lain berikutnya</string>
+    <string name="results_no_trains_until">Tidak ada kereta sampai pukul %1$s</string>
+    <string name="service_late_minutes_unpublished">Terlambat (menit tidak dipublikasikan)</string>
     <string name="bikes_allowed">Sepeda diizinkan</string>
     <string name="bikes_not_allowed">Sepeda tidak diizinkan</string>
     <string name="bikes_conditions_link">Sepeda di kereta: ketentuan %1$s</string>
@@ -1436,4 +1508,42 @@
     <string name="compensation_notice_quarter">Tiba di %1$s terlambat %2$s: menurut Peraturan (UE) 2021/782 Anda mungkin berhak atas kompensasi 25%% dari harga tiket (50%% mulai 120 menit).</string>
     <string name="compensation_notice_half">Tiba di %1$s terlambat %2$s: menurut Peraturan (UE) 2021/782 Anda mungkin berhak atas kompensasi 50%% dari harga tiket.</string>
     <string name="compensation_notice_conditions">Perusahaan kereta dapat menolak jumlah di bawah €4 dan keterlambatan akibat sebab eksternal, seperti cuaca ekstrem atau orang di rel; mogok kerja stafnya sendiri bukan sebab eksternal. Pada kereta regional, ketentuannya juga bergantung pada kontrak layanan dengan wilayah.</string>
+    <!-- Station board: RFI Sala Blu assistance (links only) -->
+    <string name="station_sala_blu_title">Bantuan Sala Blu</string>
+    <string name="station_sala_blu_description">RFI membantu penumpang penyandang disabilitas atau dengan mobilitas terbatas di stasiun secara gratis, dengan pemesanan.</string>
+    <string name="station_sala_blu_page">Halaman bantuan RFI</string>
+    <string name="station_sala_blu_call_toll_free">Telepon %1$s (gratis dari telepon rumah)</string>
+    <string name="station_sala_blu_call_national">Telepon %1$s (juga dari ponsel)</string>
+    <!-- Station board: direct connections from the station (embedded timetables) -->
+    <string name="direct_connections_title">Koneksi langsung</string>
+    <string name="direct_connections_from">Dari %1$s, tanpa ganti</string>
+    <string name="direct_connections_note">Dari jadwal terencana yang ada di aplikasi, tanpa keterlambatan atau pembatalan. Ketuk tujuan untuk mencari kereta.</string>
+    <string name="direct_connections_filter">Saring tujuan</string>
+    <string name="direct_connections_loading">Membaca jadwal…</string>
+    <string name="direct_connections_empty">Jadwal yang disertakan tidak memiliki koneksi langsung dari stasiun ini pada hari ini.</string>
+    <string name="direct_connections_no_match">Tidak ada tujuan yang memuat “%1$s”.</string>
+    <string name="direct_connections_trains">Kereta</string>
+    <string name="direct_connections_urban">Metro, trem, dan funikular</string>
+    <plurals name="direct_connections_train_count">
+        <item quantity="other">%d kereta</item>
+    </plurals>
+    <plurals name="direct_connections_runs">
+        <item quantity="other">%d perjalanan</item>
+    </plurals>
+    <string name="direct_connections_first_last">pertama %1$s, terakhir %2$s</string>
+    <string name="direct_connections_fastest">tercepat %1$s</string>
+    <string name="direct_connections_from_stop">dari halte %1$s, beberapa langkah saja</string>
+    <!-- Per te and route board: works and interruptions named by the network notices on the saved routes -->
+    <string name="route_works_title">Pekerjaan dan gangguan di rute Anda</string>
+    <string name="route_works_title_route">Pekerjaan dan gangguan di rute ini</string>
+    <string name="route_works_none">Saat ini tidak ada pemberitahuan pekerjaan atau gangguan yang menyebut stasiun di rute Anda.</string>
+    <string name="route_works_names">Pemberitahuan menyebut: %1$s</string>
+    <string name="route_works_route_names">%1$s — pemberitahuan menyebut: %2$s</string>
+    <string name="route_works_line">jalur %1$s</string>
+    <string name="route_works_date">Tanggal yang disebut: %1$s</string>
+    <string name="route_works_dates">Tanggal yang disebut: %1$s sampai %2$s</string>
+    <string name="route_works_note">Pemberitahuan dicocokkan dengan rute dari nama stasiun dan jalur yang dimuatnya: selalu baca teks lengkapnya.</string>
+    <plurals name="route_works_show_more">
+        <item quantity="other">Tampilkan %d pemberitahuan lagi</item>
+    </plurals>
 </resources>

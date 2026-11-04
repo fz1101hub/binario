@@ -42,6 +42,7 @@ import it.binario.app.data.ServiceStatus
 import it.binario.app.data.SnapshotWarning
 import it.binario.app.data.Station
 import it.binario.app.data.TrainCategory
+import it.binario.app.data.reliability.NetworkReliability
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.time.Instant
@@ -205,6 +206,14 @@ class RouteWidgetProvider : AppWidgetProvider() {
                 WidgetRowPagination.pageCount(visible.size, pageSize)
             )
 
+            // «83% in orario» from the embedded statistics, read off the main thread; demonstration rows get none.
+            val reliabilityStats = if (settings.showReliability && state.confidence != DataConfidence.DEMONSTRATION) {
+                WidgetReliabilityStats.cachedOrLoad(context) { refreshAll(it) }
+            } else null
+            val reliabilityStrings = WidgetReliabilityStrings.from(context)
+            val originCode = NetworkReliability.stationCode(state.route.origin(state.direction))
+            val destinationCode = NetworkReliability.stationCode(state.route.destination(state.direction))
+
             val title = configuration.widgetTitle(state.routeLabel)
             views.setTextViewText(R.id.widget_route, title)
             views.setTextViewText(R.id.widget_meta, state.compactMeta(strings, pageLabel, freshness))
@@ -232,9 +241,13 @@ class RouteWidgetProvider : AppWidgetProvider() {
                     views.setViewVisibility(id, View.VISIBLE)
                     views.setTextViewText(timeIds[index], if (timetableOnly) service.scheduledDeparture else service.expectedDeparture)
                     views.setTextViewText(destinationIds[index], service.destination)
+                    val reliability = reliabilityStats
+                        ?.let { ReliabilityMarks.widgetRow(it, service, originCode, destinationCode) }
+                        ?.let { WidgetReliabilityText.of(it, reliabilityStrings) }
                     val trainLine = listOfNotNull(
                         inTransitLabel,
-                        if (settings.showTrainName) "${service.operator.shortLabel} · ${strings.categoryLabels.getValue(service.category)} ${service.number}" else null
+                        if (settings.showTrainName) "${service.operator.shortLabel} · ${strings.categoryLabels.getValue(service.category)} ${service.number}" else null,
+                        reliability?.shown
                     ).joinToString(" · ")
                     views.setTextViewText(trainIds[index], trainLine)
                     views.setViewVisibility(trainIds[index], if (trainLine.isBlank()) View.GONE else View.VISIBLE)
@@ -250,7 +263,8 @@ class RouteWidgetProvider : AppWidgetProvider() {
                         listOfNotNull(
                             service.accessibleLabel(strings),
                             inTransitLabel,
-                            if (timetableOnly) strings.scheduledUnverified else null
+                            if (timetableOnly) strings.scheduledUnverified else null,
+                            reliability?.spoken
                         ).joinToString(" ")
                     )
                     views.setTextColor(statusIds[index], statusColor(context, if (timetableOnly) ServiceStatus.ON_TIME else service.status))

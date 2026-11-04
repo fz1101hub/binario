@@ -5080,103 +5080,103 @@
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Chiede all’iPhone di ripetere da adesso l’ultima ricerca e rilegge lo snapshot salvato."
+            "value": "Chiede all’iPhone i prossimi treni della tratta mostrata, o di quella scelta con «Mostra su Watch», e rilegge lo snapshot salvato."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Asks the iPhone to repeat the last search from now and rereads the saved snapshot."
+            "value": "Asks the iPhone for the next trains of the route shown, or of the one chosen with “Show on Watch”, and rereads the saved snapshot."
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Bittet das iPhone, die letzte Suche ab jetzt zu wiederholen, und liest den gespeicherten Snapshot erneut."
+            "value": "Fragt das iPhone nach den nächsten Zügen der gezeigten Strecke oder der mit „Auf der Watch zeigen“ gewählten und liest den gespeicherten Snapshot erneut."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Demande à l’iPhone de relancer la dernière recherche à partir de maintenant et relit l’instantané enregistré."
+            "value": "Demande à l’iPhone les prochains trains du trajet affiché, ou de celui choisi avec « Afficher sur la Watch », et relit l’instantané enregistré."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Pide al iPhone que repita la última búsqueda desde ahora y vuelve a leer la instantánea guardada."
+            "value": "Pide al iPhone los próximos trenes de la ruta mostrada, o de la elegida con «Mostrar en el Watch», y vuelve a leer la instantánea guardada."
           }
         },
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "يطلب من iPhone تكرار آخر بحث بدءًا من الآن ويعيد قراءة اللقطة المحفوظة."
+            "value": "يطلب من iPhone القطارات التالية للمسار المعروض، أو للمسار المختار بـ«عرض على الساعة»، ويعيد قراءة اللقطة المحفوظة."
           }
         },
         "hi": {
           "stringUnit": {
             "state": "translated",
-            "value": "iPhone से अभी से अंतिम खोज दोहराने को कहता है और सहेजा गया स्नैपशॉट दोबारा पढ़ता है।"
+            "value": "iPhone से दिखाए गए रूट की, या “Watch पर दिखाएँ” से चुने गए रूट की, अगली ट्रेनें माँगता है और सहेजा गया स्नैपशॉट दोबारा पढ़ता है।"
           }
         },
         "id": {
           "stringUnit": {
             "state": "translated",
-            "value": "Meminta iPhone mengulangi pencarian terakhir mulai sekarang dan membaca ulang snapshot yang tersimpan."
+            "value": "Meminta iPhone kereta berikutnya dari rute yang ditampilkan, atau rute yang dipilih dengan “Tampilkan di Watch”, dan membaca ulang snapshot yang tersimpan."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "iPhone に最後の検索を現在時刻から再実行するよう依頼し、保存済みのスナップショットを再読み込みします。"
+            "value": "表示中のルート、または「Watch に表示」で選んだルートの次の列車を iPhone に求め、保存済みのスナップショットを再読み込みします。"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "iPhone에 마지막 검색을 지금부터 다시 실행하도록 요청하고 저장된 스냅샷을 다시 읽습니다."
+            "value": "표시된 경로 또는 “Watch에 표시”로 고른 경로의 다음 열차를 iPhone에 요청하고 저장된 스냅샷을 다시 읽습니다."
           }
         },
         "my": {
           "stringUnit": {
             "state": "translated",
-            "value": "နောက်ဆုံးရှာဖွေမှုကို ယခုမှစ၍ ပြန်လုပ်ရန် iPhone ကို တောင်းဆိုပြီး သိမ်းထားသော snapshot ကို ပြန်ဖတ်သည်။"
+            "value": "ပြထားသော လမ်းကြောင်း သို့မဟုတ် “Watch တွင် ပြရန်” ဖြင့် ရွေးထားသော လမ်းကြောင်း၏ နောက်ထပ် ရထားများကို iPhone ထံ တောင်းဆိုပြီး သိမ်းထားသော snapshot ကို ပြန်ဖတ်သည်။"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Pede ao iPhone para repetir a última busca a partir de agora e relê o instantâneo salvo."
+            "value": "Pede ao iPhone os próximos trens do trajeto mostrado, ou do escolhido com “Mostrar no Watch”, e relê o instantâneo salvo."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Просит iPhone повторить последний поиск с текущего момента и перечитывает сохранённый снимок."
+            "value": "Запрашивает у iPhone ближайшие поезда показанного маршрута или выбранного кнопкой «Показывать на часах» и перечитывает сохранённый снимок."
           }
         },
         "th": {
           "stringUnit": {
             "state": "translated",
-            "value": "ขอให้ iPhone ค้นหาครั้งล่าสุดอีกครั้งโดยเริ่มจากตอนนี้ และอ่านสแนปช็อตที่บันทึกไว้ใหม่"
+            "value": "ขอขบวนถัดไปของเส้นทางที่แสดง หรือของเส้นทางที่เลือกด้วย “แสดงบน Watch” จาก iPhone และอ่านสแนปช็อตที่บันทึกไว้ใหม่"
           }
         },
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "iPhone’dan son aramayı şu andan itibaren yinelemesini ister ve kayıtlı anlık görüntüyü yeniden okur."
+            "value": "iPhone’dan gösterilen güzergâhın ya da “Watch’ta göster” ile seçilenin sonraki trenlerini ister ve kayıtlı anlık görüntüyü yeniden okur."
           }
         },
         "vi": {
           "stringUnit": {
             "state": "translated",
-            "value": "Yêu cầu iPhone lặp lại lần tìm kiếm gần nhất từ bây giờ và đọc lại ảnh chụp đã lưu."
+            "value": "Yêu cầu iPhone gửi các chuyến tàu tiếp theo của tuyến đang hiển thị, hoặc của tuyến đã chọn bằng “Hiển thị trên Watch”, và đọc lại ảnh chụp đã lưu."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "请求 iPhone 从现在起重新执行上次搜索，并重新读取已保存的快照。"
+            "value": "向 iPhone 请求所显示路线或通过“在 Watch 上显示”选择的路线的下一班列车，并重新读取已保存的快照。"
           }
         }
       }

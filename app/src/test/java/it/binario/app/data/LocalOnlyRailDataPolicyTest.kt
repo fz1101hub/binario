@@ -41,25 +41,11 @@ class LocalOnlyRailDataPolicyTest {
         assertEquals("RfiProgrammedStationBoardAdapter", displayBoards.first())
         assertEquals(1 + boardProviderNames.size, displayBoards.size)
 
-        val alerts = LocalOnlyRailDataPolicy.alertProviders()
         val personalAlerts = if (BuildConfig.PERSONAL_REALTIME_SOURCES) setOf(TrenitaliaInfomobilityNewsAdapter.SOURCE_ID) else emptySet()
         val trenordAlerts = if (BuildConfig.PERSONAL_REALTIME_SOURCES) setOf(TrenordLineNoticesAdapter.SOURCE_ID) else emptySet()
-        assertEquals(
-            setOf(
-                RfiInfomobilityRssAdapter.SOURCE_ID,
-                StaRealtimeAdapter.SOURCE_ID,
-                SncfGtfsRealtimeAdapter.SOURCE_ID
-            ) + personalAlerts + trenordAlerts,
-            alerts.map { it.descriptor.id }.toSet()
-        )
         assertEquals(trenordAlerts, LocalOnlyRailDataPolicy.trenordLineNoticeProviders().map { it.descriptor.id }.toSet())
         assertEquals(setOf(RfiInfomobilityRssAdapter.SOURCE_ID) + personalAlerts,
             LocalOnlyRailDataPolicy.networkNoticeProviders().map { it.descriptor.id }.toSet())
-
-        assertEquals(
-            setOf(StaRealtimeAdapter.SOURCE_ID),
-            LocalOnlyRailDataPolicy.vehiclePositionProviders().map { it.descriptor.id }.toSet()
-        )
 
         assertEquals(
             setOf(StaRealtimeAdapter.SOURCE_ID, SncfGtfsRealtimeAdapter.SOURCE_ID),
@@ -77,19 +63,18 @@ class LocalOnlyRailDataPolicyTest {
         assertSame(firstRoutes[0], secondRoutes[0])
         assertSame(firstRoutes[1], secondRoutes[1])
 
-        val staAlert = LocalOnlyRailDataPolicy.alertProviders().single { it.descriptor.id == StaRealtimeAdapter.SOURCE_ID }
         val staTripUpdate = LocalOnlyRailDataPolicy.tripUpdateProviders().single { it.descriptor.id == StaRealtimeAdapter.SOURCE_ID }
-        val staVehicle = LocalOnlyRailDataPolicy.vehiclePositionProviders().single()
-        assertSame(staAlert, staTripUpdate)
-        assertSame(staAlert, staVehicle)
+        assertSame(staTripUpdate, LocalOnlyRailDataPolicy.tripUpdateProviders().single { it.descriptor.id == StaRealtimeAdapter.SOURCE_ID })
+        val rfiNotices = LocalOnlyRailDataPolicy.networkNoticeProviders().single { it.descriptor.id == RfiInfomobilityRssAdapter.SOURCE_ID }
+        assertSame(rfiNotices, LocalOnlyRailDataPolicy.networkNoticeProviders().single { it.descriptor.id == RfiInfomobilityRssAdapter.SOURCE_ID })
     }
 
     @Test
     fun `liste runtime seguono provider attivi e priorita del registry`() {
         val registryOrder = BinarioDataGraph.providerRegistry()
-            .activeFor(ProviderCapability.SERVICE_ALERTS)
+            .activeFor(ProviderCapability.TRAIN_RUN_REALTIME)
             .map { it.descriptor.id }
-        val runtimeIds = BinarioDataGraph.alertProviders().map { it.descriptor.id }
+        val runtimeIds = BinarioDataGraph.tripUpdateProviders().map { it.descriptor.id }
 
         assertEquals(registryOrder.filter { it in runtimeIds }, runtimeIds)
     }

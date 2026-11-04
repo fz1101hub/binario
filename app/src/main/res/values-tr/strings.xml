@@ -75,7 +75,7 @@
     <string name="station_badge_metro">Metro durağı</string>
     <string name="station_badge_tram">Tramvay durağı</string>
     <string name="station_badge_funicular">Füniküler veya asansör</string>
-    <string name="settings_privacy_new_sources">Etkin olduklarında ek kaynaklar, hesap veya konum olmadan yalnızca isteğin gerektirdiğini alır: transport.opendata.ch, İsviçre istasyonunun UIC numarasını (ya da bir kez, bir sınır istasyonunun adını); ViaggiaTreno, duyurular için tren numarasını, herkese açık API\'si gibi şifrelenmemiş HTTP üzerinden; RFI, Trenitalia ve Trenord, duyuru listeleri için sizden hiçbir veri almaz ve listeler yalnızca duyuru alanını, bir ayrıntıyı veya ilgili bir panoyu açtığınızda indirilir; Open-Meteo, varış istasyonunun yuvarlanmış koordinatlarını. Harici bağlantılar yalnızca dokunduğunuzda tarayıcıda açılır.</string>
+    <string name="settings_privacy_new_sources">Etkin olduklarında ek kaynaklar, hesap veya konum olmadan yalnızca isteğin gerektirdiğini alır: transport.opendata.ch, İsviçre istasyonunun UIC numarasını (ya da bir kez, bir sınır istasyonunun adını); ViaggiaTreno, duyurular için tren numarasını, herkese açık API\'si gibi şifrelenmemiş HTTP üzerinden; RFI, Trenitalia ve Trenord, duyuru listeleri için sizden hiçbir veri almaz ve listeler yalnızca duyuru alanını, bir ayrıntıyı, ilgili bir panoyu veya hatlarınızdaki çalışmalar bölümünü açtığınızda indirilir; Open-Meteo, varış istasyonunun yuvarlanmış koordinatlarını. Harici bağlantılar yalnızca dokunduğunuzda tarayıcıda açılır.</string>
 
     <string name="app_name">Binario</string>
     <string name="widget_description">Binario güzergâhınızdaki sonraki seferleri gösterir.</string>
@@ -95,6 +95,12 @@
     <string name="shortcut_active_route">Etkin güzergâh</string>
     <string name="shortcut_next_departures">Sonraki kalkışlar</string>
     <string name="shortcut_train_search">Tren arama</string>
+    <string name="shortcut_route_removed">Güzergâh artık Binario\'da kayıtlı değil</string>
+    <string name="tile_next_train_label">Sonraki tren</string>
+    <string name="tile_next_train_no_route">Etkin güzergâh yok</string>
+    <string name="tile_next_train_none">Bugün başka tren yok</string>
+    <string name="tile_next_train_departure">%1$s · %2$s</string>
+    <string name="tile_next_train_description">Planlanan tarifeye göre sonraki tren: %1$s, saat %2$s, %3$s</string>
 
     <!-- Main app shell and primary journey planner. -->
     <string name="app_brand">BINARIO</string>
@@ -384,6 +390,28 @@
     <string name="map_nearby_content_description">En yakın istasyonların haritası. Aynı istasyonlar mesafeleriyle birlikte aşağıda listelenmiştir.</string>
     <string name="map_nearby_tap_hint">Panosunu açmak için bir istasyona dokunun.</string>
     <string name="map_legend_user_position">Yaklaşık konum, kaydedilmez</string>
+    <string name="live_map_title">Hareket hâlindeki trenler</string>
+    <string name="live_map_area_subtitle">%1$s çevresi</string>
+    <string name="live_map_content_description">Hareket hâlindeki trenlerin haritası, %1$s. Konumlar tarifeden tahmindir, GPS konumu değildir; aynı trenler haritanın altındaki listede yer alır.</string>
+    <string name="live_map_note">Tahmini konum, GPS değil: Binario her trenin tarifeye göre nerede olması gerektiğini iki durak arasındaki düz bir çizgi üzerinde hesaplar (raylar boyunca değil). Pano bir trenin gecikmesini zaten biliyorsa tahmin bunu hesaba katar. Harita açık olduğu sürece konumlar her 30 saniyede bir güncellenir.</string>
+    <string name="live_map_legend_live">Panonun gecikmesiyle tahmin edilen konum</string>
+    <string name="live_map_legend_timetable">Yalnızca tarifeden tahmin edilen konum</string>
+    <string name="live_map_loading">Tahmini konumlar hesaplanıyor…</string>
+    <string name="live_map_zoom_in">Hareket hâlindeki trenleri görmek için haritayı yakınlaştırın.</string>
+    <string name="live_map_none">Tarifeye göre gösterilen alanda hareket hâlinde tren yok.</string>
+    <string name="live_map_row_title">%1$s, %2$s yönüne</string>
+    <string name="live_map_row_at">%1$s durağında duruyor</string>
+    <string name="live_map_row_between">%1$s ile %2$s arasında</string>
+    <string name="live_map_row_live">Pano verisiyle tahmin: %1$s</string>
+    <string name="live_map_row_timetable">Yalnızca tarifeden tahmin</string>
+    <plurals name="live_map_count">
+        <item quantity="one">Hareket hâlinde %d tren</item>
+        <item quantity="other">Hareket hâlinde %d tren</item>
+    </plurals>
+    <plurals name="live_map_capped">
+        <item quantity="one">En yakın %d tren gösteriliyor.</item>
+        <item quantity="other">En yakın %d tren gösteriliyor.</item>
+    </plurals>
     <string name="settings_privacy_maps">Haritalar: yalnızca genişlettiğinizde veya yüklediğinizde açılır. Uygulama haritaları çizmek için stil, karo, yazı tipi ve simgeleri tiles.openfreemap.org (OpenFreeMap) adresinden indirir; bu hizmet IP adresinizi ve gösterilen alanı görür: trenin güzergâhı, seçilen istasyon veya yakındaki istasyonlar için yaklaşık konumunuzun çevresi. Konum gönderilmez ve kaydedilmez; karolar uygulamanın yerel önbelleğinde kalır.</string>
     <string name="settings_credits_maps">Haritalar: OpenFreeMap © OpenMapTiles, veriler © OpenStreetMap contributors (ODbL 1.0). MapLibre Native ile görüntülenir, BSD 2-Clause lisansı.</string>
     <string name="settings_credits_trenitalia">Trenitalia tarifeleri (tren ve otobüs): Trenitalia S.p.A.\'nın CAD madde 52 ve AB 2017/1926 sayılı Tüzüğü uyarınca İtalya Ulusal Erişim Noktası\'nda (CCISS) yayımladığı resmî veriler, https://www.cciss.it/nap/mmtis/public/en/catalog/Dataset/1077621. GTFS dönüştürmesi © Clément Desouche, CC BY 4.0: https://github.com/deryclem/trenitalia-gtfs (lisans https://creativecommons.org/licenses/by/4.0/). Binario yalnızca planlanan saatleri, güzergâh geometrisi olmadan kullanır ve Trenitalia ile bağlantılı değildir.</string>
@@ -672,6 +700,14 @@
     <string name="background_status_exact_on">Tam zamanlı alarmlara izin verildi</string>
     <string name="background_status_battery_optimized">Binario için pil optimizasyonu açık: Android arka plan kontrollerini erteleyebilir.</string>
     <string name="background_status_battery_unrestricted">Binario için pil optimizasyonu kapalı</string>
+    <string name="background_runs_title">Arka plandaki sonraki kontroller</string>
+    <string name="background_runs_none">Planlanmış arka plan kontrolü yok.</string>
+    <string name="background_runs_running">%1$s: çalışıyor</string>
+    <string name="background_runs_soon">%1$s: birazdan</string>
+    <string name="background_runs_today">%1$s: bugün %2$s</string>
+    <string name="background_runs_tomorrow">%1$s: yarın %2$s</string>
+    <string name="background_runs_later">%1$s: %2$s %3$s</string>
+    <string name="background_runs_note">Saatler yaklaşıktır: Android pil tasarrufu için veya ağ beklerken bunları kaydırabilir.</string>
     <string name="commuter_alert_quiet_hours_feedback">Uyarı kaydedildi ancak zamanlanmadı: uyarı zamanı 22:00–07:00 sessiz saatlerine denk geliyor.</string>
     <string name="commuter_alert_invalid_time_feedback">Uyarı kaydedildi ancak zamanlanmadı: saat geçersiz.</string>
     <string name="commuter_alert_disabled_feedback">Uyarı kaydedildi ancak kapalı.</string>
@@ -993,6 +1029,9 @@
     <string name="widget_settings_until_arrival_description">Kalkmış bir tren, varış noktasına tahmini varışına kadar listede “Yolda” olarak işaretli kalır.</string>
     <string name="widget_settings_show_platform">Peronu göster</string>
     <string name="widget_settings_show_train_name">Tren adını ve kategorisini göster</string>
+    <string name="widget_settings_show_reliability">Güvenilirliği göster</string>
+    <string name="widget_settings_show_reliability_description">Her trenden sonra son 30 günde zamanında olunan günlerin oranı: ViaggiaTreno verilerine dayanan, uygulamaya dahil resmî olmayan Binario istatistikleri; yalnızca en az 5 gözlem varsa gösterilir.</string>
+    <string name="widget_reliability_mark">%%%1$d zamanında</string>
     <string name="station_widget_display_name_description">Başlıktaki istasyon adının yerini alır ve yalnızca bu widget için geçerlidir.</string>
     <string name="station_widget_settings_nearest">“📍 En yakın” düğmesi</string>
     <string name="station_widget_settings_nearest_description">Dokunduğunuzda widget yaklaşık konumu bir kez ister ve katalogdaki en yakın istasyona geçer. Konum kaydedilmez ve gönderilmez; otomatik güncellemeler her zaman en son seçilen istasyonu kullanır.</string>
@@ -1149,6 +1188,18 @@
     <string name="punctuality_history_show_all">Tüm tarihleri göster</string>
     <string name="settings_punctuality_recording_title">Favori trenlerin dakikliği</string>
     <string name="settings_punctuality_recording_description">Günde bir kez, planlanan varıştan sonra trenin durumunu sorgular ve son gecikmeyi ve duraklardaki gecikmeleri yalnızca bu telefonda, en fazla 365 gün boyunca kaydeder.</string>
+    <string name="settings_weekly_digest_title">Favori trenlerin haftalık özeti</string>
+    <string name="settings_weekly_digest_description">Pazar günleri saat 19:00 civarında bir bildirim, bu telefonda kaydedilen favori trenlerin haftalık dakikliğini ve varsa son 30 gündeki ağ güvenilirliğini özetler ve kötüleşen treni belirtir. Ağ isteği yapılmaz; 22:00 ile 07:00 arasında asla gösterilmez.</string>
+    <string name="weekly_digest_channel_name">Haftalık özet</string>
+    <string name="weekly_digest_channel_description">Pazar akşamı favori trenlerin haftalık dakikliği.</string>
+    <string name="weekly_digest_title">Bu hafta trenleriniz</string>
+    <string name="weekly_digest_train_line">%1$s: %2$s</string>
+    <string name="weekly_digest_no_runs">kayıtlı sefer yok</string>
+    <plurals name="weekly_digest_network">
+        <item quantity="one">ağda son %1$d gün: %%%2$d zamanında</item>
+        <item quantity="other">ağda son %1$d gün: %%%2$d zamanında</item>
+    </plurals>
+    <string name="weekly_digest_worse">Kötüleşti: %1$s, bu hafta seferlerin %%%2$d kadarında zamanında (genellikle %%%3$d)</string>
     <string name="settings_live_updates_title">Canlı bildirimler</string>
     <string name="settings_live_updates_permission">Bu bildirimleri almak için Android ayarlarında Binario bildirimlerine izin verin.</string>
     <string name="settings_live_updates_privacy">Bu kontroller yalnızca belirtilen aralıklarda arka planda çalışır. MIT, sizden hiçbir veri içermeyen bir istek alır; tren durumu kaynakları, ayrıntıyı açtığınızdaki gibi tren numarasını ve günü alır. Telefon dışında hiçbir şey saklanmaz.</string>
@@ -1496,6 +1547,33 @@
         <item quantity="other">%1$s: %3$d seferin %2$d tanesinde gecikmeli</item>
     </plurals>
     <string name="reliability_threshold_mixed_note">Frecce, Italo, EuroCity, Eurostar ve EuroNight için en fazla 5 dakika, diğer trenler için en fazla 15 dakika gecikmeli varış zamanında sayılır.</string>
+    <!-- Usual platform and weekday punctuality of the network statistics (stop elements 7 and 8) -->
+    <plurals name="reliability_usual_platform">
+        <item quantity="one">Genellikle peron %1$s (%3$d seferin %2$d tanesinde)</item>
+        <item quantity="other">Genellikle peron %1$s (%3$d seferin %2$d tanesinde)</item>
+    </plurals>
+    <string name="reliability_weekday_monday">Pazartesileri</string>
+    <string name="reliability_weekday_tuesday">Salıları</string>
+    <string name="reliability_weekday_wednesday">Çarşambaları</string>
+    <string name="reliability_weekday_thursday">Perşembeleri</string>
+    <string name="reliability_weekday_friday">Cumaları</string>
+    <string name="reliability_weekday_saturday">Cumartesileri</string>
+    <string name="reliability_weekday_sunday">Pazarları</string>
+    <plurals name="reliability_weekday_worse">
+        <item quantity="one">%1$s %3$d seferin %2$d tanesinde zamanında, ortalamadan kötü</item>
+        <item quantity="other">%1$s %3$d seferin %2$d tanesinde zamanında, ortalamadan kötü</item>
+    </plurals>
+    <plurals name="reliability_weekday_better">
+        <item quantity="one">%1$s %3$d seferin %2$d tanesinde zamanında, ortalamadan iyi</item>
+        <item quantity="other">%1$s %3$d seferin %2$d tanesinde zamanında, ortalamadan iyi</item>
+    </plurals>
+    <!-- Route results: «Più presto» / «Più tardi», empty searched window, RFI «RITARDO» without minutes -->
+    <string name="results_earlier">Daha erken</string>
+    <string name="results_later">Daha geç</string>
+    <string name="results_no_more_earlier">Daha erken başka seçenek yok</string>
+    <string name="results_no_more_later">Daha geç başka seçenek yok</string>
+    <string name="results_no_trains_until">%1$s saatine kadar tren yok</string>
+    <string name="service_late_minutes_unpublished">Gecikmeli (dakika yayımlanmadı)</string>
     <string name="bikes_allowed">Bisiklet kabul edilir</string>
     <string name="bikes_not_allowed">Bisiklet kabul edilmez</string>
     <string name="bikes_conditions_link">Trende bisiklet: %1$s koşulları</string>
@@ -1504,4 +1582,45 @@
     <string name="compensation_notice_quarter">%1$s istasyonuna %2$s gecikmeyle vardı: (AB) 2021/782 sayılı Tüzük uyarınca bilet fiyatının %%25’i kadar tazminat hakkınız olabilir (120 dakikadan itibaren %%50).</string>
     <string name="compensation_notice_half">%1$s istasyonuna %2$s gecikmeyle vardı: (AB) 2021/782 sayılı Tüzük uyarınca bilet fiyatının %%50’si kadar tazminat hakkınız olabilir.</string>
     <string name="compensation_notice_conditions">Demiryolu şirketi 4 €’nun altındaki tutarları ve aşırı hava koşulları ya da raylarda insan bulunması gibi dış nedenlerden kaynaklanan gecikmeleri ödemeyi reddedebilir; kendi personelinin grevi dış neden sayılmaz. Bölgesel trenlerde koşullar bölgeyle yapılan hizmet sözleşmesine de bağlıdır.</string>
+    <!-- Station board: RFI Sala Blu assistance (links only) -->
+    <string name="station_sala_blu_title">Sala Blu yardımı</string>
+    <string name="station_sala_blu_description">RFI, engelli veya hareket kısıtlılığı olan yolculara istasyonlarda rezervasyonla ücretsiz yardım sağlar.</string>
+    <string name="station_sala_blu_page">RFI yardım sayfası</string>
+    <string name="station_sala_blu_call_toll_free">%1$s numarasını ara (sabit hattan ücretsiz)</string>
+    <string name="station_sala_blu_call_national">%1$s numarasını ara (cep telefonundan da)</string>
+    <!-- Station board: direct connections from the station (embedded timetables) -->
+    <string name="direct_connections_title">Aktarmasız bağlantılar</string>
+    <string name="direct_connections_from">%1$s çıkışlı, aktarmasız</string>
+    <string name="direct_connections_note">Uygulamadaki planlı tarifelere göre, gecikme ve iptaller hariç. Tren aramak için bir varış noktasına dokunun.</string>
+    <string name="direct_connections_filter">Varış noktalarını filtrele</string>
+    <string name="direct_connections_loading">Tarifeler okunuyor…</string>
+    <string name="direct_connections_empty">Dahil edilen tarifelerde bu gün bu istasyondan aktarmasız bağlantı yok.</string>
+    <string name="direct_connections_no_match">“%1$s” içeren varış noktası yok.</string>
+    <string name="direct_connections_trains">Trenler</string>
+    <string name="direct_connections_urban">Metro, tramvay ve füniküler</string>
+    <plurals name="direct_connections_train_count">
+        <item quantity="one">%d tren</item>
+        <item quantity="other">%d tren</item>
+    </plurals>
+    <plurals name="direct_connections_runs">
+        <item quantity="one">%d sefer</item>
+        <item quantity="other">%d sefer</item>
+    </plurals>
+    <string name="direct_connections_first_last">ilk %1$s, son %2$s</string>
+    <string name="direct_connections_fastest">en hızlı %1$s</string>
+    <string name="direct_connections_from_stop">birkaç adım ötedeki %1$s durağından</string>
+    <!-- Per te and route board: works and interruptions named by the network notices on the saved routes -->
+    <string name="route_works_title">Hatlarınızdaki çalışmalar ve kesintiler</string>
+    <string name="route_works_title_route">Bu hattaki çalışmalar ve kesintiler</string>
+    <string name="route_works_none">Şu anda hiçbir çalışma veya kesinti duyurusu hatlarınızdaki istasyonları anmıyor.</string>
+    <string name="route_works_names">Duyuruda geçenler: %1$s</string>
+    <string name="route_works_route_names">%1$s — duyuruda geçenler: %2$s</string>
+    <string name="route_works_line">%1$s hattı</string>
+    <string name="route_works_date">Belirtilen tarih: %1$s</string>
+    <string name="route_works_dates">Belirtilen tarihler: %1$s – %2$s</string>
+    <string name="route_works_note">Duyurular, içerdikleri istasyon ve hat adlarıyla hatlarınızla eşleştirilir: her zaman metnin tamamını okuyun.</string>
+    <plurals name="route_works_show_more">
+        <item quantity="one">%d duyuru daha göster</item>
+        <item quantity="other">%d duyuru daha göster</item>
+    </plurals>
 </resources>

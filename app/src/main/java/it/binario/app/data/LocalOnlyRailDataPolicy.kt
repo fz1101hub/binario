@@ -24,7 +24,6 @@ import it.binario.app.data.provider.AlertProvider
 import it.binario.app.data.provider.StationBoardProvider
 import it.binario.app.data.provider.TrainNoticeProvider
 import it.binario.app.data.provider.TripUpdateProvider
-import it.binario.app.data.provider.VehiclePositionProvider
 
 /**
  * Runtime source policy.
@@ -101,12 +100,6 @@ object LocalOnlyRailDataPolicy {
     fun stationBoardRunDetailProviders(): List<StationBoardRunDetailProvider> =
         if (BuildConfig.PERSONAL_REALTIME_SOURCES) listOf(viaggiaTrenoBoard) else emptyList()
 
-    fun alertProviders(): List<AlertProvider> = listOf(
-        rfiAlerts,
-        staRealtime,
-        sncfRealtime
-    ) + personalNoticeProviders() + trenordLineNoticeProviders()
-
     /** Network notices for the notices area: official RFI feed always, best-effort operator notices if enabled. */
     fun networkNoticeProviders(): List<AlertProvider> = listOf(rfiAlerts) + personalNoticeProviders()
 
@@ -132,10 +125,6 @@ object LocalOnlyRailDataPolicy {
      * personal realtime flag. It is not a network notice provider: the notices area and the 18:00 reminder read it.
      */
     fun strikeCalendarProvider(): it.binario.app.data.live.MitStrikeRssAdapter = mitStrikes
-
-    fun vehiclePositionProviders(): List<VehiclePositionProvider> = listOf(
-        staRealtime
-    )
 
     /**
      * Only realtime feeds that can currently be reconciled against a trusted

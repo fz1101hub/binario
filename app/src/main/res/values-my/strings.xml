@@ -75,7 +75,7 @@
     <string name="station_badge_metro">မြေအောက်ရထား ဘူတာ</string>
     <string name="station_badge_tram">ဓာတ်ရထား မှတ်တိုင်</string>
     <string name="station_badge_funicular">ကေဘယ်ရထား သို့မဟုတ် ဓာတ်လှေကား</string>
-    <string name="settings_privacy_new_sources">ဖွင့်ထားသောအခါ ထပ်ဆောင်း ရင်းမြစ်များသည် အကောင့် သို့မဟုတ် တည်နေရာ မပါဘဲ တောင်းဆိုမှုအတွက် လိုအပ်သည်ကိုသာ ရရှိသည်- transport.opendata.ch သည် ဆွစ်ဇာလန် ဘူတာ၏ UIC နံပါတ် (သို့မဟုတ် တစ်ကြိမ်တွင် နယ်စပ်ဘူတာ အမည်)၊ ViaggiaTreno သည် ကြေညာချက်များအတွက် ရထားနံပါတ်ကို ၎င်း၏ အများသုံး API ကဲ့သို့ပင် ကုဒ်မပြောင်းထားသော HTTP ဖြင့်၊ RFI၊ Trenitalia နှင့် Trenord တို့သည် ကြေညာချက်စာရင်းများအတွက် သင့်ဒေတာ လုံးဝမရရှိဘဲ ကြေညာချက်ကဏ္ဍ၊ အသေးစိတ် သို့မဟုတ် သက်ဆိုင်ရာ အချိန်ပြဘုတ်ကို ဖွင့်မှသာ ဒေါင်းလုဒ်လုပ်သည်၊ Open-Meteo သည် ဆိုက်ရောက်မည့်ဘူတာ၏ ပတ်ချထားသော ကိုဩဒိနိတ်ကို ရရှိသည်။ ပြင်ပလင့်ခ်များကို သင် နှိပ်မှသာ ဘရောက်ဇာတွင် ဖွင့်သည်။</string>
+    <string name="settings_privacy_new_sources">ဖွင့်ထားသောအခါ ထပ်ဆောင်း ရင်းမြစ်များသည် အကောင့် သို့မဟုတ် တည်နေရာ မပါဘဲ တောင်းဆိုမှုအတွက် လိုအပ်သည်ကိုသာ ရရှိသည်- transport.opendata.ch သည် ဆွစ်ဇာလန် ဘူတာ၏ UIC နံပါတ် (သို့မဟုတ် တစ်ကြိမ်တွင် နယ်စပ်ဘူတာ အမည်)၊ ViaggiaTreno သည် ကြေညာချက်များအတွက် ရထားနံပါတ်ကို ၎င်း၏ အများသုံး API ကဲ့သို့ပင် ကုဒ်မပြောင်းထားသော HTTP ဖြင့်၊ RFI၊ Trenitalia နှင့် Trenord တို့သည် ကြေညာချက်စာရင်းများအတွက် သင့်ဒေတာ လုံးဝမရရှိဘဲ ကြေညာချက်ကဏ္ဍ၊ အသေးစိတ်၊ သက်ဆိုင်ရာ အချိန်ပြဘုတ် သို့မဟုတ် သင့်ခရီးစဉ်များ၏ ပြုပြင်ရေးကဏ္ဍကို ဖွင့်မှသာ ဒေါင်းလုဒ်လုပ်သည်၊ Open-Meteo သည် ဆိုက်ရောက်မည့်ဘူတာ၏ ပတ်ချထားသော ကိုဩဒိနိတ်ကို ရရှိသည်။ ပြင်ပလင့်ခ်များကို သင် နှိပ်မှသာ ဘရောက်ဇာတွင် ဖွင့်သည်။</string>
     <string name="app_name">Binario</string>
     <string name="widget_description">သင်၏ Binario လမ်းကြောင်းပေါ်ရှိ နောက်ရထားများကို ပြသည်။</string>
     <string name="widget_refresh">ရထားများ ပြန်ယူရန်</string>
@@ -94,6 +94,12 @@
     <string name="shortcut_active_route">လက်ရှိ လမ်းကြောင်း</string>
     <string name="shortcut_next_departures">နောက် ထွက်ခွာမည့်ရထားများ</string>
     <string name="shortcut_train_search">ရထား ရှာရန်</string>
+    <string name="shortcut_route_removed">Binario တွင် လမ်းကြောင်းကို မသိမ်းထားတော့ပါ</string>
+    <string name="tile_next_train_label">နောက်ရထား</string>
+    <string name="tile_next_train_no_route">အသုံးပြုနေသော လမ်းကြောင်း မရှိ</string>
+    <string name="tile_next_train_none">ယနေ့ နောက်ထပ် ရထား မရှိတော့ပါ</string>
+    <string name="tile_next_train_departure">%1$s · %2$s</string>
+    <string name="tile_next_train_description">စီစဉ်ထားသော အချိန်ဇယားအရ နောက်ရထား- %1$s၊ %2$s တွင်၊ %3$s</string>
     <!-- Main app shell and primary journey planner. -->
     <string name="app_brand">BINARIO</string>
     <string name="screen_title_detail">ရထား အသေးစိတ်</string>
@@ -372,6 +378,26 @@
     <string name="map_nearby_content_description">အနီးဆုံး ဘူတာများ၏ မြေပုံ။ အလားတူ ဘူတာများကို အကွာအဝေးနှင့်အတူ အောက်တွင် စာရင်းပြုထားသည်။</string>
     <string name="map_nearby_tap_hint">အချိန်ပြဘုတ် ဖွင့်ရန် ဘူတာကို တို့ပါ။</string>
     <string name="map_legend_user_position">ခန့်မှန်း တည်နေရာ၊ မသိမ်းပါ</string>
+    <string name="live_map_title">ပြေးဆွဲနေသော ရထားများ</string>
+    <string name="live_map_area_subtitle">%1$s အနီးတစ်ဝိုက်</string>
+    <string name="live_map_content_description">ပြေးဆွဲနေသော ရထားများ မြေပုံ၊ %1$s။ တည်နေရာများသည် အချိန်ဇယားမှ ခန့်မှန်းထားခြင်းဖြစ်ပြီး GPS တည်နေရာ မဟုတ်ပါ၊ တူညီသော ရထားများကို မြေပုံအောက်ရှိ စာရင်းတွင် ဖော်ပြထားသည်။</string>
+    <string name="live_map_note">ခန့်မှန်းတည်နေရာ၊ GPS မဟုတ်ပါ- Binario သည် အချိန်ဇယားအရ ရထားတစ်စင်းစီ ရှိသင့်သည့်နေရာကို ရပ်နားဘူတာနှစ်ခုကြား မျဉ်းဖြောင့်ပေါ်တွင် တွက်ချက်သည် (သံလမ်းအတိုင်း မဟုတ်ပါ)။ အချိန်ပြဘုတ်တွင် ရထား၏ နောက်ကျမှု ရှိပြီးဖြစ်ပါက ခန့်မှန်းချက်တွင် ထည့်သွင်းသည်။ မြေပုံဖွင့်ထားစဉ် တည်နေရာများကို စက္ကန့် 30 တိုင်း အပ်ဒိတ်လုပ်သည်။</string>
+    <string name="live_map_legend_live">အချိန်ပြဘုတ်၏ နောက်ကျမှုဖြင့် ခန့်မှန်းထားသော တည်နေရာ</string>
+    <string name="live_map_legend_timetable">အချိန်ဇယားမှသာ ခန့်မှန်းထားသော တည်နေရာ</string>
+    <string name="live_map_loading">ခန့်မှန်းတည်နေရာများကို တွက်ချက်နေသည်…</string>
+    <string name="live_map_zoom_in">ပြေးဆွဲနေသော ရထားများကို ကြည့်ရန် မြေပုံကို ချဲ့ပါ။</string>
+    <string name="live_map_none">အချိန်ဇယားအရ ပြသထားသော နေရာတွင် ပြေးဆွဲနေသော ရထား မရှိပါ။</string>
+    <string name="live_map_row_title">%2$s သို့ %1$s</string>
+    <string name="live_map_row_at">%1$s တွင် ရပ်နားနေသည်</string>
+    <string name="live_map_row_between">%1$s နှင့် %2$s ကြား</string>
+    <string name="live_map_row_live">အချိန်ပြဘုတ်၏ ဒေတာဖြင့် ခန့်မှန်းချက်- %1$s</string>
+    <string name="live_map_row_timetable">အချိန်ဇယားမှသာ ခန့်မှန်းချက်</string>
+    <plurals name="live_map_count">
+        <item quantity="other">ပြေးဆွဲနေသော ရထား %d စင်း</item>
+    </plurals>
+    <plurals name="live_map_capped">
+        <item quantity="other">အနီးဆုံး %d စင်းကို ပြသထားသည်။</item>
+    </plurals>
     <string name="settings_privacy_maps">မြေပုံများ- ချဲ့ကြည့်သည့်အခါ သို့မဟုတ် ဖွင့်သည့်အခါမှသာ ပေါ်သည်။ ၎င်းတို့ကို ဆွဲရန် အက်ပ်သည် tiles.openfreemap.org (OpenFreeMap) မှ ပုံစံ၊ အကွက်များ၊ ဖောင့်များနှင့် အိုင်ကွန်များကို ဒေါင်းလုဒ်လုပ်ပြီး ၎င်းသည် IP လိပ်စာနှင့် ပြထားသော ဧရိယာကို မြင်ရသည်- ရထား လမ်းကြောင်း၊ ရွေးထားသော ဘူတာ သို့မဟုတ် အနီးရှိ ဘူတာများအတွက် သင်၏ ခန့်မှန်းတည်နေရာ ပတ်လည် ဧရိယာ။ တည်နေရာကို မပို့ပါ၊ မသိမ်းပါ၊ အကွက်များကို အက်ပ်၏ စက်တွင်း ကက်ရှ်တွင် သိမ်းသည်။</string>
     <string name="settings_credits_maps">မြေပုံများ- OpenFreeMap © OpenMapTiles၊ ဒေတာ © OpenStreetMap contributors (ODbL 1.0)။ MapLibre Native ဖြင့် ပြသည်၊ BSD 2-Clause လိုင်စင်။</string>
     <string name="settings_credits_trenitalia">Trenitalia အချိန်ဇယားများ (ရထားနှင့် ဘတ်စ်ကား)- CAD ပုဒ်မ 52 နှင့် EU စည်းမျဉ်း 2017/1926 အရ အီတလီ National Access Point (CCISS) တွင် ထုတ်ပြန်ထားသော Trenitalia S.p.A. ၏ တရားဝင် ဒေတာ၊ https://www.cciss.it/nap/mmtis/public/en/catalog/Dataset/1077621။ GTFS ပြောင်းလဲမှု © Clément Desouche, CC BY 4.0: https://github.com/deryclem/trenitalia-gtfs (လိုင်စင် https://creativecommons.org/licenses/by/4.0/)။ Binario သည် လမ်းကြောင်း ဂျီဩမေတြီ မပါဘဲ အချိန်ဇယားပါ အချိန်များကိုသာ သုံးပြီး Trenitalia နှင့် ဆက်စပ်မှု မရှိပါ။</string>
@@ -643,6 +669,14 @@
     <string name="background_status_exact_on">အချိန်တိကျ နှိုးစက်များ ခွင့်ပြုထားသည်</string>
     <string name="background_status_battery_optimized">Binario အတွက် ဘက်ထရီ အကောင်းဆုံးဖြစ်အောင် ပြုလုပ်ခြင်း ဖွင့်ထားသည် - Android က နောက်ခံ စစ်ဆေးမှုများကို ရွှေ့ဆိုင်းနိုင်သည်။</string>
     <string name="background_status_battery_unrestricted">Binario အတွက် ဘက်ထရီ အကောင်းဆုံးဖြစ်အောင် ပြုလုပ်ခြင်း ပိတ်ထားသည်</string>
+    <string name="background_runs_title">နောက်ခံတွင် နောက်ထပ် စစ်ဆေးမှုများ</string>
+    <string name="background_runs_none">နောက်ခံတွင် စီစဉ်ထားသော စစ်ဆေးမှု မရှိပါ။</string>
+    <string name="background_runs_running">%1$s: လုပ်ဆောင်နေသည်</string>
+    <string name="background_runs_soon">%1$s: မကြာမီ</string>
+    <string name="background_runs_today">%1$s: ယနေ့ %2$s တွင်</string>
+    <string name="background_runs_tomorrow">%1$s: မနက်ဖြန် %2$s တွင်</string>
+    <string name="background_runs_later">%1$s: %2$s %3$s တွင်</string>
+    <string name="background_runs_note">ခန့်မှန်းချိန်များ ဖြစ်သည်- ဘက်ထရီ ချွေတာရန် သို့မဟုတ် ကွန်ရက်ကို စောင့်နေစဉ် Android က ရွှေ့နိုင်သည်။</string>
     <string name="commuter_alert_quiet_hours_feedback">သတိပေးချက်ကို သိမ်းသော်လည်း အချိန် မသတ်မှတ်ရပါ- ကြိုတင်သတိပေးချိန်သည် အသံတိတ်ချိန် 22:00–07:00 အတွင်း ကျနေသည်။</string>
     <string name="commuter_alert_invalid_time_feedback">သတိပေးချက်ကို သိမ်းသော်လည်း အချိန် မသတ်မှတ်ရပါ- အချိန် မမှန်ကန်ပါ။</string>
     <string name="commuter_alert_disabled_feedback">သတိပေးချက်ကို သိမ်းသော်လည်း ပိတ်ထားသည်။</string>
@@ -952,6 +986,9 @@
     <string name="widget_settings_until_arrival_description">ထွက်ခွာပြီးသော ရထားသည် ခရီးဆုံးသို့ ခန့်မှန်း ဆိုက်ရောက်ချိန်အထိ “ခရီးသွားနေသည်” ဟု မှတ်သားလျက် စာရင်းထဲတွင် ရှိနေမည်။</string>
     <string name="widget_settings_show_platform">ပလက်ဖောင်း ပြရန်</string>
     <string name="widget_settings_show_train_name">ရထား အမည်နှင့် အမျိုးအစား ပြရန်</string>
+    <string name="widget_settings_show_reliability">ယုံကြည်စိတ်ချရမှုကို ပြရန်</string>
+    <string name="widget_settings_show_reliability_description">ရထားတိုင်း၏ နောက်တွင် ပြီးခဲ့သော ရက် 30 အတွင်း အချိန်မှန်ခဲ့သော ရက်များ၏ အချိုး- ViaggiaTreno ဒေတာအပေါ် အခြေခံသည့် Binario ၏ တရားဝင်မဟုတ်သော စာရင်းအင်းများဖြစ်ပြီး အက်ပ်တွင် ပါဝင်ကာ အနည်းဆုံး လေ့လာမှု 5 ကြိမ်ရှိမှသာ ပြသည်။</string>
+    <string name="widget_reliability_mark">အချိန်မှန် %1$d%%</string>
     <string name="station_widget_display_name_description">ခေါင်းစီးရှိ ဘူတာ အမည်ကို အစားထိုးပြီး ဤဝစ်ဂျက်တွင်သာ သိမ်းသည်။</string>
     <string name="station_widget_settings_nearest">“📍 အနီးဆုံး” ခလုတ်</string>
     <string name="station_widget_settings_nearest_description">၎င်းကို တို့လျှင် ဝစ်ဂျက်သည် ခန့်မှန်း တည်နေရာကို တစ်ကြိမ်သာ တောင်းပြီး ကက်တလောက်ရှိ အနီးဆုံး ဘူတာသို့ ပြောင်းသည်။ တည်နေရာကို မသိမ်း၊ မပို့ပါ၊ အလိုအလျောက် အပ်ဒိတ်များသည် နောက်ဆုံး ရွေးထားသော ဘူတာကို အမြဲ သုံးသည်။</string>
@@ -1102,6 +1139,17 @@
     <string name="punctuality_history_show_all">ရက်စွဲအားလုံး ပြရန်</string>
     <string name="settings_punctuality_recording_title">အကြိုက်ဆုံး ရထားများ၏ အချိန်မှန်မှု</string>
     <string name="settings_punctuality_recording_description">တစ်နေ့တစ်ကြိမ် ခန့်မှန်း ဆိုက်ရောက်ချိန်ပြီးနောက် ရထား အခြေအနေကို မေးပြီး နောက်ဆုံး နောက်ကျမှုနှင့် ရပ်နားဘူတာများရှိ နောက်ကျမှုကို ဤဖုန်းပေါ်တွင်သာ ရက် 365 အထိ မှတ်တမ်းတင်သည်။</string>
+    <string name="settings_weekly_digest_title">အကြိုက်ဆုံး ရထားများ၏ အပတ်စဉ် အနှစ်ချုပ်</string>
+    <string name="settings_weekly_digest_description">တနင်္ဂနွေနေ့ ည 19 နာရီခန့်တွင် ဤဖုန်းတွင် မှတ်တမ်းတင်ထားသော အကြိုက်ဆုံး ရထားများ၏ တစ်ပတ်တာ အချိန်မှန်မှုကို အသိပေးချက်ဖြင့် အနှစ်ချုပ်ပြီး ရရှိနိုင်လျှင် ပြီးခဲ့သော ရက် 30 အတွင်း ကွန်ရက်ပေါ်ရှိ ယုံကြည်စိတ်ချရမှုကိုလည်း ပြကာ ပိုဆိုးလာသည့် ရထားကို ဖော်ပြသည်။ ကွန်ရက် တောင်းဆိုမှု မရှိပါ။ 22 နာရီမှ 7 နာရီကြား ဘယ်တော့မှ မပြပါ။</string>
+    <string name="weekly_digest_channel_name">အပတ်စဉ် အနှစ်ချုပ်</string>
+    <string name="weekly_digest_channel_description">တနင်္ဂနွေ ညနေတွင် အကြိုက်ဆုံး ရထားများ၏ တစ်ပတ်တာ အချိန်မှန်မှု။</string>
+    <string name="weekly_digest_title">ဤအပတ် သင်၏ ရထားများ</string>
+    <string name="weekly_digest_train_line">%1$s: %2$s</string>
+    <string name="weekly_digest_no_runs">မှတ်တမ်းတင်ထားသော ခရီးစဉ် မရှိ</string>
+    <plurals name="weekly_digest_network">
+        <item quantity="other">ကွန်ရက်ပေါ်တွင် ပြီးခဲ့သော ရက် %1$d: အချိန်မှန် %2$d%%</item>
+    </plurals>
+    <string name="weekly_digest_worse">ပိုဆိုးလာသည်- %1$s၊ ဤအပတ် အချိန်မှန် %2$d%% (ပုံမှန် %3$d%%)</string>
     <string name="settings_live_updates_title">အချိန်နှင့်တပြေးညီ အသိပေးချက်များ</string>
     <string name="settings_live_updates_permission">ဤအသိပေးချက်များကို ရရှိရန် Android ဆက်တင်တွင် Binario အသိပေးချက်များကို ခွင့်ပြုပါ။</string>
     <string name="settings_live_updates_privacy">ဤစစ်ဆေးမှုများသည် ပြထားသော အချိန်ပိုင်းများတွင်သာ နောက်ခံတွင် လုပ်ဆောင်သည်။ MIT သည် သင့်ဒေတာ မပါသော တောင်းဆိုမှုကို ရရှိသည်၊ ရထား အခြေအနေ ရင်းမြစ်များသည် အသေးစိတ်ကို ဖွင့်သည့်အခါကဲ့သို့ ရထားနံပါတ်နှင့် ရက်ကို ရရှိသည်။ ဖုန်းပြင်ပတွင် မည်သည့်အရာမျှ မသိမ်းပါ။</string>
@@ -1428,6 +1476,30 @@
         <item quantity="other">%1$s- %3$d ကြိမ်တွင် %2$d ကြိမ် နောက်ကျ</item>
     </plurals>
     <string name="reliability_threshold_mixed_note">Frecce၊ Italo၊ EuroCity၊ Eurostar နှင့် EuroNight အတွက် နောက်ကျမှု 5 မိနစ်အထိ၊ အခြားရထားများအတွက် 15 မိနစ်အထိ ဆိုက်ရောက်မှုကို အချိန်မှန်ဟု သတ်မှတ်သည်။</string>
+    <!-- Usual platform and weekday punctuality of the network statistics (stop elements 7 and 8) -->
+    <plurals name="reliability_usual_platform">
+        <item quantity="other">များသောအားဖြင့် ပလက်ဖောင်း %1$s (%3$d ကြိမ်တွင် %2$d ကြိမ်)</item>
+    </plurals>
+    <string name="reliability_weekday_monday">တနင်္လာနေ့များတွင်</string>
+    <string name="reliability_weekday_tuesday">အင်္ဂါနေ့များတွင်</string>
+    <string name="reliability_weekday_wednesday">ဗုဒ္ဓဟူးနေ့များတွင်</string>
+    <string name="reliability_weekday_thursday">ကြာသပတေးနေ့များတွင်</string>
+    <string name="reliability_weekday_friday">သောကြာနေ့များတွင်</string>
+    <string name="reliability_weekday_saturday">စနေနေ့များတွင်</string>
+    <string name="reliability_weekday_sunday">တနင်္ဂနွေနေ့များတွင်</string>
+    <plurals name="reliability_weekday_worse">
+        <item quantity="other">%1$s %3$d ကြိမ်တွင် %2$d ကြိမ် အချိန်မှန်၊ ပျမ်းမျှထက် ဆိုး</item>
+    </plurals>
+    <plurals name="reliability_weekday_better">
+        <item quantity="other">%1$s %3$d ကြိမ်တွင် %2$d ကြိမ် အချိန်မှန်၊ ပျမ်းမျှထက် ကောင်း</item>
+    </plurals>
+    <!-- Route results: «Più presto» / «Più tardi», empty searched window, RFI «RITARDO» without minutes -->
+    <string name="results_earlier">အစောပိုင်း</string>
+    <string name="results_later">နောက်ပိုင်း</string>
+    <string name="results_no_more_earlier">ပိုစောသော ရွေးချယ်စရာ မရှိပါ</string>
+    <string name="results_no_more_later">ပိုနောက်ကျသော ရွေးချယ်စရာ မရှိပါ</string>
+    <string name="results_no_trains_until">%1$s အထိ ရထား မရှိပါ</string>
+    <string name="service_late_minutes_unpublished">နောက်ကျ (မိနစ် မထုတ်ပြန်ပါ)</string>
     <string name="bikes_allowed">စက်ဘီး ယူဆောင်ခွင့်ရှိ</string>
     <string name="bikes_not_allowed">စက်ဘီး ယူဆောင်ခွင့်မရှိ</string>
     <string name="bikes_conditions_link">ရထားပေါ်တွင် စက်ဘီး- %1$s ၏ စည်းကမ်းချက်များ</string>
@@ -1436,4 +1508,42 @@
     <string name="compensation_notice_quarter">%1$s သို့ %2$s နောက်ကျ၍ ဆိုက်ရောက်သည်- စည်းမျဉ်း (EU) 2021/782 အရ လက်မှတ်ခ၏ 25%% လျော်ကြေး ရနိုင်သည် (မိနစ် 120 မှစ၍ 50%%)။</string>
     <string name="compensation_notice_half">%1$s သို့ %2$s နောက်ကျ၍ ဆိုက်ရောက်သည်- စည်းမျဉ်း (EU) 2021/782 အရ လက်မှတ်ခ၏ 50%% လျော်ကြေး ရနိုင်သည်။</string>
     <string name="compensation_notice_conditions">ရထားကုမ္ပဏီသည် 4 ယူရိုအောက် ပမာဏနှင့် ပြင်းထန်သော ရာသီဥတု သို့မဟုတ် သံလမ်းပေါ်ရှိ လူများကဲ့သို့ ပြင်ပအကြောင်းရင်းကြောင့် နောက်ကျမှုများကို ငြင်းပယ်နိုင်သည်။ ၎င်း၏ ဝန်ထမ်းများ သပိတ်မှောက်ခြင်းသည် ပြင်ပအကြောင်းရင်း မဟုတ်ပါ။ ဒေသတွင်းရထားများတွင် စည်းကမ်းချက်များသည် ဒေသနှင့် ချုပ်ဆိုထားသော ဝန်ဆောင်မှုစာချုပ်အပေါ်လည်း မူတည်သည်။</string>
+    <!-- Station board: RFI Sala Blu assistance (links only) -->
+    <string name="station_sala_blu_title">Sala Blu အကူအညီ</string>
+    <string name="station_sala_blu_description">RFI သည် မသန်စွမ်းသူများနှင့် လှုပ်ရှားသွားလာရန် ခက်ခဲသူများကို ဘူတာများတွင် ကြိုတင်စာရင်းပေးပြီး အခမဲ့ ကူညီပေးသည်။</string>
+    <string name="station_sala_blu_page">RFI အကူအညီ စာမျက်နှာ</string>
+    <string name="station_sala_blu_call_toll_free">%1$s ကို ခေါ်ဆိုရန် (ကြိုးဖုန်းမှ အခမဲ့)</string>
+    <string name="station_sala_blu_call_national">%1$s ကို ခေါ်ဆိုရန် (မိုဘိုင်းဖုန်းမှလည်း ရသည်)</string>
+    <!-- Station board: direct connections from the station (embedded timetables) -->
+    <string name="direct_connections_title">တိုက်ရိုက် ချိတ်ဆက်မှုများ</string>
+    <string name="direct_connections_from">%1$s မှ ပြောင်းစီးစရာမလိုဘဲ</string>
+    <string name="direct_connections_note">အက်ပ်တွင်ပါသော စီစဉ်ထားသည့် အချိန်ဇယားများအရ ဖြစ်ပြီး နောက်ကျမှု သို့မဟုတ် ဖျက်သိမ်းမှု မပါဝင်ပါ။ ရထားရှာရန် ခရီးဆုံးကို တို့ပါ။</string>
+    <string name="direct_connections_filter">ခရီးဆုံးများကို စစ်ထုတ်ရန်</string>
+    <string name="direct_connections_loading">အချိန်ဇယားများကို ဖတ်နေသည်…</string>
+    <string name="direct_connections_empty">ပါဝင်သော အချိန်ဇယားများတွင် ဤနေ့၌ ဤဘူတာမှ တိုက်ရိုက် ချိတ်ဆက်မှု မရှိပါ။</string>
+    <string name="direct_connections_no_match">“%1$s” ပါသော ခရီးဆုံး မရှိပါ။</string>
+    <string name="direct_connections_trains">ရထားများ</string>
+    <string name="direct_connections_urban">မြေအောက်ရထား၊ ဓာတ်ရထားနှင့် ကေဘယ်ရထား</string>
+    <plurals name="direct_connections_train_count">
+        <item quantity="other">ရထား %d စင်း</item>
+    </plurals>
+    <plurals name="direct_connections_runs">
+        <item quantity="other">%d ကြိမ်</item>
+    </plurals>
+    <string name="direct_connections_first_last">ပထမ %1$s၊ နောက်ဆုံး %2$s</string>
+    <string name="direct_connections_fastest">အမြန်ဆုံး %1$s</string>
+    <string name="direct_connections_from_stop">အနီးရှိ %1$s မှတ်တိုင်မှ</string>
+    <!-- Per te and route board: works and interruptions named by the network notices on the saved routes -->
+    <string name="route_works_title">သင့်ခရီးစဉ်များပေါ်ရှိ ပြုပြင်ရေးလုပ်ငန်းနှင့် ရပ်ဆိုင်းမှုများ</string>
+    <string name="route_works_title_route">ဤခရီးစဉ်ပေါ်ရှိ ပြုပြင်ရေးလုပ်ငန်းနှင့် ရပ်ဆိုင်းမှုများ</string>
+    <string name="route_works_none">ယခုအချိန်တွင် သင့်ခရီးစဉ်များ၏ ဘူတာများကို ဖော်ပြသော ပြုပြင်ရေး သို့မဟုတ် ရပ်ဆိုင်းမှု အသိပေးချက် မရှိပါ။</string>
+    <string name="route_works_names">အသိပေးချက်တွင် ဖော်ပြထားသည်- %1$s</string>
+    <string name="route_works_route_names">%1$s — အသိပေးချက်တွင် ဖော်ပြထားသည်- %2$s</string>
+    <string name="route_works_line">%1$s လိုင်း</string>
+    <string name="route_works_date">ဖော်ပြထားသော ရက်စွဲ- %1$s</string>
+    <string name="route_works_dates">ဖော်ပြထားသော ရက်စွဲများ- %1$s မှ %2$s အထိ</string>
+    <string name="route_works_note">အသိပေးချက်များကို ၎င်းတို့တွင်ပါသော ဘူတာနှင့် လိုင်းအမည်များဖြင့် ခရီးစဉ်များနှင့် တွဲထားသည်- စာသားအပြည့်အစုံကို အမြဲဖတ်ပါ။</string>
+    <plurals name="route_works_show_more">
+        <item quantity="other">နောက်ထပ် အသိပေးချက် %d ခု ပြရန်</item>
+    </plurals>
 </resources>

@@ -70,13 +70,27 @@ data class WearService(
     val expectedDeparture: String,
     val status: String,
     val platform: String?,
-    val delayMinutes: Int
+    val delayMinutes: Int,
+    /** Optional since 4 Nov 2026: how often the train was on time in the phone's embedded network statistics. */
+    val reliability: WearReliability? = null
 )
 
 /**
+ * «In orario 8 volte su 10»: [onTime] of [samples] days within the train's own on-time limit, from the unofficial
+ * network statistics the phone app embeds; the phone sends it only from [MIN_SAMPLES] samples.
+ */
+data class WearReliability(val onTime: Int, val samples: Int) {
+    companion object {
+        const val MIN_SAMPLES = 5
+        const val MAX_SAMPLES = 10_000
+    }
+}
+
+/**
  * Independent v1 decoder for the phone Data Layer. It accepts only the closed key set defined in
- * contracts/wear-snapshot/v1, including an explicit expiry; malformed, expired and future-version
- * input returns null so the caller never replaces a valid cache.
+ * contracts/wear-snapshot/v1, including an explicit expiry and the optional reliability pair of each
+ * service; malformed, expired and future-version input returns null so the caller never replaces a
+ * valid cache.
  */
 object WearSnapshotCodec {
     const val SCHEMA_VERSION = 1L
@@ -109,7 +123,16 @@ object WearSnapshotCodec {
                 add("service${index}DelayMinutes")
             }
         }
-        if (payload.keys != expectedKeys) return null
+        // The optional reliability of a service comes as a pair: both keys or neither.
+        val reliabilityKeys = (0 until serviceCount).flatMap { index ->
+            val pair = listOf(reliabilityOnTimeKey(index), reliabilitySamplesKey(index))
+            when (pair.count { it in payload }) {
+                0 -> emptyList()
+                2 -> pair
+                else -> return null
+            }
+        }
+        if (payload.keys != expectedKeys + reliabilityKeys) return null
 
         val generatedAt = payload.long("generatedAtEpochMillis") ?: return null
         val expiresAt = payload.long("expiresAtEpochMillis") ?: return null
@@ -147,7 +170,12 @@ object WearSnapshotCodec {
             val status = payload.requiredText("service${index}Status", 64) ?: return null
             val platform = payload.optionalText("service${index}Platform", 16) ?: return null
             val delay = payload.int("service${index}DelayMinutes", -720, 1_440) ?: return null
-            WearService(number, operator, category, destination, scheduled, expected, status, platform.ifBlank { null }, delay)
+            val reliability = if (reliabilitySamplesKey(index) in payload) {
+                val samples = payload.int(reliabilitySamplesKey(index), WearReliability.MIN_SAMPLES, WearReliability.MAX_SAMPLES) ?: return null
+                val onTime = payload.int(reliabilityOnTimeKey(index), 0, samples) ?: return null
+                WearReliability(onTime, samples)
+            } else null
+            WearService(number, operator, category, destination, scheduled, expected, status, platform.ifBlank { null }, delay, reliability)
         }
         return WearSnapshot(
             routeId = routeId,
@@ -192,8 +220,15 @@ object WearSnapshotCodec {
             put("service${index}Status", service.status)
             put("service${index}Platform", service.platform.orEmpty())
             put("service${index}DelayMinutes", service.delayMinutes)
+            service.reliability?.let { reliability ->
+                put(reliabilityOnTimeKey(index), reliability.onTime)
+                put(reliabilitySamplesKey(index), reliability.samples)
+            }
         }
     }
+
+    fun reliabilityOnTimeKey(index: Int): String = "service${index}ReliabilityOnTime"
+    fun reliabilitySamplesKey(index: Int): String = "service${index}ReliabilitySamples"
 
     private fun Map<String, Any?>.long(key: String): Long? {
         val number = this[key] as? Number ?: return null

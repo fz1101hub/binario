@@ -9,9 +9,14 @@ import it.binario.app.data.RouteSnapshot
 import it.binario.app.data.ServiceStatus
 import it.binario.app.data.SnapshotWarning
 import it.binario.app.data.TrainCategory
+import it.binario.app.data.TrainService
 import it.binario.app.data.orderServicesForDisplay
+import it.binario.app.data.reliability.NetworkReliability
+import it.binario.app.data.reliability.NetworkReliabilityStats
 import it.binario.app.labelRes
 import it.binario.app.resourceId
+import it.binario.app.widget.ReliabilityMark
+import it.binario.app.widget.ReliabilityMarks
 
 /**
  * Phone-language texts carried by the v1 payload. The watch shows them verbatim, so they are
@@ -51,8 +56,20 @@ internal data class WearSnapshotStrings(
 internal object AndroidWearSnapshotContract {
     const val schemaVersion = 1L
     private const val maxTtlMillis = 15 * 60 * 1_000L
+    /** Advertised by the watch apps that decode the optional reliability pair (wear/src/main/res/values/wear.xml). */
+    const val RELIABILITY_CAPABILITY = "binario_wear_reliability_v1"
+    private val reliabilityKey = Regex("service[0-9]+Reliability(OnTime|Samples)")
 
-    fun operational(snapshot: RouteSnapshot, generatedAtEpochMillis: Long, strings: WearSnapshotStrings): Map<String, Any> {
+    /**
+     * The v1 payload of [snapshot]. [reliabilityOf] gives the optional «In orario N volte su M» of a service (the
+     * `service{n}ReliabilityOnTime` / `service{n}ReliabilitySamples` pair); it stays out when it gives none.
+     */
+    fun operational(
+        snapshot: RouteSnapshot,
+        generatedAtEpochMillis: Long,
+        strings: WearSnapshotStrings,
+        reliabilityOf: (TrainService) -> ReliabilityMark? = { null }
+    ): Map<String, Any> {
         val expiresAt = minOf(snapshot.expiresAtEpochMillis, generatedAtEpochMillis + maxTtlMillis)
         require(expiresAt > generatedAtEpochMillis) { "Uno snapshot scaduto non può essere pubblicato" }
         val services = orderServicesForDisplay(snapshot.services).take(2)
@@ -88,6 +105,10 @@ internal object AndroidWearSnapshotContract {
                 )
                 put("service${index}Platform", optional(service.platform.orEmpty(), 16))
                 put("service${index}DelayMinutes", service.delayMinutes.coerceIn(-720, 1_440))
+                reliabilityOf(service)?.takeIf { it.samples in NetworkReliability.MIN_SAMPLES..MAX_RELIABILITY_SAMPLES && it.onTime in 0..it.samples }?.let { mark ->
+                    put("service${index}ReliabilityOnTime", mark.onTime)
+                    put("service${index}ReliabilitySamples", mark.samples)
+                }
             }
         }
     }
@@ -110,6 +131,33 @@ internal object AndroidWearSnapshotContract {
         "notice" to optional(strings.unavailableNotice, 180),
         "serviceCount" to 0
     )
+
+    /**
+     * The reliability of a service of [snapshot] in the embedded statistics: a direct train boarded at the route's
+     * origin, measured at its destination; none for coaches, journeys with changes or demonstration data.
+     */
+    fun reliabilityOf(stats: NetworkReliabilityStats, snapshot: RouteSnapshot): (TrainService) -> ReliabilityMark? {
+        if (snapshot.confidence == DataConfidence.DEMONSTRATION) return { null }
+        val origin = NetworkReliability.stationCode(snapshot.route.origin(snapshot.direction))
+        val destination = NetworkReliability.stationCode(snapshot.route.destination(snapshot.direction))
+        return { service ->
+            if (service.scheduledBus || service.transferCount > 0) null else ReliabilityMarks.route(stats, service.number, origin, destination)
+        }
+    }
+
+    /** [payload] without the optional reliability pairs, for a watch that does not decode them. */
+    fun withoutReliability(payload: Map<String, Any?>): Map<String, Any?> = payload.filterKeys { !reliabilityKey.matches(it) }
+
+    fun hasReliability(payload: Map<String, Any?>): Boolean = payload.keys.any(reliabilityKey::matches)
+
+    /**
+     * Whether the pair may be sent: a v1 decoder of an earlier watch app rejects unknown keys, so only when every
+     * connected watch advertises [RELIABILITY_CAPABILITY] (and at least one is connected).
+     */
+    fun watchesDecodeReliability(connectedNodes: Set<String>, capableNodes: Set<String>): Boolean =
+        connectedNodes.isNotEmpty() && capableNodes.containsAll(connectedNodes)
+
+    private const val MAX_RELIABILITY_SAMPLES = 10_000
 
     /** The phone's own advisory, else its first quality warning: the data layer's free text is Italian prose and never reaches the watch. */
     private fun notice(snapshot: RouteSnapshot, strings: WearSnapshotStrings): String =

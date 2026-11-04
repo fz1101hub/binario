@@ -75,7 +75,7 @@
     <string name="station_badge_metro">Fermata della metropolitana</string>
     <string name="station_badge_tram">Fermata del tram</string>
     <string name="station_badge_funicular">Funicolare o ascensore</string>
-    <string name="settings_privacy_new_sources">Quando sono attive, le fonti aggiuntive ricevono solo ciò che serve alla richiesta, senza account né posizione: transport.opendata.ch il numero UIC della stazione svizzera (o, una volta, il nome di una stazione di confine); ViaggiaTreno il numero del treno per gli avvisi, in HTTP non cifrato come la sua API pubblica; RFI, Trenitalia e Trenord nessun dato tuo per gli elenchi di avvisi, scaricati solo quando apri l’area avvisi, un dettaglio o un tabellone pertinente; Open-Meteo le coordinate arrotondate della stazione di arrivo. I collegamenti esterni si aprono nel browser solo se li tocchi.</string>
+    <string name="settings_privacy_new_sources">Quando sono attive, le fonti aggiuntive ricevono solo ciò che serve alla richiesta, senza account né posizione: transport.opendata.ch il numero UIC della stazione svizzera (o, una volta, il nome di una stazione di confine); ViaggiaTreno il numero del treno per gli avvisi, in HTTP non cifrato come la sua API pubblica; RFI, Trenitalia e Trenord nessun dato tuo per gli elenchi di avvisi, scaricati solo quando apri l’area avvisi, un dettaglio, un tabellone pertinente o la sezione dei lavori sulle tue tratte; Open-Meteo le coordinate arrotondate della stazione di arrivo. I collegamenti esterni si aprono nel browser solo se li tocchi.</string>
 
     <string name="app_name">Binario</string>
     <string name="widget_description">Mostra le prossime corse della tua tratta Binario.</string>
@@ -95,6 +95,12 @@
     <string name="shortcut_active_route">Tratta attiva</string>
     <string name="shortcut_next_departures">Prossime partenze</string>
     <string name="shortcut_train_search">Ricerca treno</string>
+    <string name="shortcut_route_removed">Tratta non più salvata in Binario</string>
+    <string name="tile_next_train_label">Prossimo treno</string>
+    <string name="tile_next_train_no_route">Nessuna tratta attiva</string>
+    <string name="tile_next_train_none">Nessun altro treno oggi</string>
+    <string name="tile_next_train_departure">%1$s · %2$s</string>
+    <string name="tile_next_train_description">Prossimo treno dall’orario programmato: %1$s alle %2$s, %3$s</string>
 
     <!-- Main app shell and primary journey planner. -->
     <string name="app_brand">BINARIO</string>
@@ -390,6 +396,30 @@
     <string name="map_nearby_content_description">Mappa delle stazioni più vicine. Le stesse stazioni, con la distanza, sono elencate sotto.</string>
     <string name="map_nearby_tap_hint">Tocca una stazione per aprirne il tabellone.</string>
     <string name="map_legend_user_position">Posizione approssimativa, non salvata</string>
+    <string name="live_map_title">Treni in movimento</string>
+    <string name="live_map_area_subtitle">Attorno a %1$s</string>
+    <string name="live_map_content_description">Mappa dei treni in movimento, %1$s. Le posizioni sono stime dall’orario, non posizioni GPS; gli stessi treni sono elencati sotto la mappa.</string>
+    <string name="live_map_note">Posizione stimata, non GPS: Binario calcola dove dovrebbe trovarsi ogni treno secondo l’orario, in linea retta fra due fermate (non lungo i binari). Se il tabellone ha già il ritardo di un treno, la stima ne tiene conto. Le posizioni si aggiornano ogni 30 secondi mentre la mappa è aperta.</string>
+    <string name="live_map_legend_live">Posizione stimata con il ritardo del tabellone</string>
+    <string name="live_map_legend_timetable">Posizione stimata dal solo orario</string>
+    <string name="live_map_loading">Calcolo delle posizioni stimate…</string>
+    <string name="live_map_zoom_in">Avvicina la mappa per vedere i treni in movimento.</string>
+    <string name="live_map_none">Secondo l’orario nessun treno è in movimento nella zona mostrata.</string>
+    <string name="live_map_row_title">%1$s per %2$s</string>
+    <string name="live_map_row_at">In stazione a %1$s</string>
+    <string name="live_map_row_between">Tra %1$s e %2$s</string>
+    <string name="live_map_row_live">Stima con il dato del tabellone: %1$s</string>
+    <string name="live_map_row_timetable">Stima dal solo orario</string>
+    <plurals name="live_map_count">
+        <item quantity="one">%d treno in movimento</item>
+        <item quantity="many">%d treni in movimento</item>
+        <item quantity="other">%d treni in movimento</item>
+    </plurals>
+    <plurals name="live_map_capped">
+        <item quantity="one">Mostrato %d treno, il più vicino.</item>
+        <item quantity="many">Mostrati i %d più vicini.</item>
+        <item quantity="other">Mostrati i %d più vicini.</item>
+    </plurals>
     <string name="settings_privacy_maps">Mappe: si aprono solo quando le espandi o le carichi. Per disegnarle l’app scarica stile, tessere, caratteri e icone da tiles.openfreemap.org (OpenFreeMap), che vede l’indirizzo IP e la zona mostrata: il percorso del treno, la stazione scelta o, per le stazioni vicine, l’area attorno alla tua posizione approssimativa. La posizione non viene inviata né salvata; le tessere restano in una cache locale dell’app.</string>
     <string name="settings_credits_maps">Mappe: OpenFreeMap © OpenMapTiles, dati © OpenStreetMap contributors (ODbL 1.0). Visualizzazione con MapLibre Native, licenza BSD 2-Clause.</string>
     <string name="settings_credits_trenitalia">Orari Trenitalia (treni e bus): dati ufficiali di Trenitalia S.p.A. pubblicati sul National Access Point italiano (CCISS) ai sensi dell’art. 52 CAD e del Reg. UE 2017/1926, https://www.cciss.it/nap/mmtis/public/en/catalog/Dataset/1077621. Conversione GTFS © Clément Desouche, CC BY 4.0: https://github.com/deryclem/trenitalia-gtfs (licenza https://creativecommons.org/licenses/by/4.0/). Binario usa solo gli orari programmati, senza le geometrie dei percorsi, e non è affiliata a Trenitalia.</string>
@@ -687,6 +717,14 @@
     <string name="background_status_exact_on">Sveglie esatte consentite</string>
     <string name="background_status_battery_optimized">Ottimizzazione batteria attiva per Binario: Android può rinviare i controlli in background.</string>
     <string name="background_status_battery_unrestricted">Ottimizzazione batteria non attiva per Binario</string>
+    <string name="background_runs_title">Prossimi controlli in background</string>
+    <string name="background_runs_none">Nessun controllo in background programmato.</string>
+    <string name="background_runs_running">%1$s: in corso</string>
+    <string name="background_runs_soon">%1$s: a breve</string>
+    <string name="background_runs_today">%1$s: oggi alle %2$s</string>
+    <string name="background_runs_tomorrow">%1$s: domani alle %2$s</string>
+    <string name="background_runs_later">%1$s: %2$s alle %3$s</string>
+    <string name="background_runs_note">Orari indicativi: Android può spostarli per risparmiare batteria o in attesa della rete.</string>
     <string name="commuter_alert_quiet_hours_feedback">Avviso salvato ma non pianificato: l’anticipo cade nella fascia silenziosa 22:00–07:00.</string>
     <string name="commuter_alert_invalid_time_feedback">Avviso salvato ma non pianificato: l’orario non è valido.</string>
     <string name="commuter_alert_disabled_feedback">Avviso salvato ma disattivato.</string>
@@ -1011,6 +1049,9 @@
     <string name="widget_settings_until_arrival_description">Un treno partito resta in elenco, segnato «In viaggio», fino all’arrivo previsto a destinazione.</string>
     <string name="widget_settings_show_platform">Mostra il binario</string>
     <string name="widget_settings_show_train_name">Mostra nome e categoria del treno</string>
+    <string name="widget_settings_show_reliability">Mostra l’affidabilità</string>
+    <string name="widget_settings_show_reliability_description">Dopo ogni treno, la quota di giorni in orario degli ultimi 30 giorni: statistiche non ufficiali di Binario su dati ViaggiaTreno, incluse nell’app e mostrate solo con almeno 5 rilevazioni.</string>
+    <string name="widget_reliability_mark">%1$d%% in orario</string>
     <string name="station_widget_display_name_description">Sostituisce il nome della stazione nella testata e resta locale a questa istanza.</string>
     <string name="station_widget_settings_nearest">Pulsante «📍 Più vicina»</string>
     <string name="station_widget_settings_nearest_description">Se lo tocchi, il widget chiede la posizione approssimativa una sola volta e passa alla stazione più vicina del catalogo. La posizione non viene salvata né inviata; gli aggiornamenti automatici usano sempre l’ultima stazione scelta.</string>
@@ -1173,6 +1214,19 @@
     <string name="punctuality_history_show_all">Mostra tutte le date</string>
     <string name="settings_punctuality_recording_title">Puntualità dei treni preferiti</string>
     <string name="settings_punctuality_recording_description">Una volta al giorno, dopo l’arrivo previsto, chiede lo stato del treno e registra solo su questo telefono il ritardo finale e quello alle fermate, per al massimo 365 giorni.</string>
+    <string name="settings_weekly_digest_title">Riepilogo settimanale dei treni preferiti</string>
+    <string name="settings_weekly_digest_description">La domenica verso le 19 una notifica riassume la puntualità della settimana registrata su questo telefono per i treni preferiti e, quando disponibile, la loro affidabilità sulla rete negli ultimi 30 giorni, e indica quello peggiorato. Nessuna richiesta di rete; mai tra le 22 e le 7.</string>
+    <string name="weekly_digest_channel_name">Riepilogo settimanale</string>
+    <string name="weekly_digest_channel_description">La domenica sera, la puntualità della settimana dei treni preferiti.</string>
+    <string name="weekly_digest_title">I tuoi treni questa settimana</string>
+    <string name="weekly_digest_train_line">%1$s: %2$s</string>
+    <string name="weekly_digest_no_runs">nessuna corsa registrata</string>
+    <plurals name="weekly_digest_network">
+        <item quantity="one">ultimo %1$d giorno sulla rete: %2$d%% in orario</item>
+        <item quantity="many">ultimi %1$d giorni sulla rete: %2$d%% in orario</item>
+        <item quantity="other">ultimi %1$d giorni sulla rete: %2$d%% in orario</item>
+    </plurals>
+    <string name="weekly_digest_worse">Peggiorato: %1$s, %2$d%% in orario questa settimana (di solito %3$d%%)</string>
     <string name="settings_live_updates_title">Notifiche in tempo reale</string>
     <string name="settings_live_updates_permission">Per ricevere queste notifiche consenti le notifiche di Binario nelle impostazioni Android.</string>
     <string name="settings_live_updates_privacy">Questi controlli girano in background solo nelle finestre indicate. Il MIT riceve una richiesta senza dati tuoi; le fonti dello stato dei treni ricevono il numero del treno e il giorno, come quando apri il dettaglio. Nulla viene salvato fuori dal telefono.</string>
@@ -1542,6 +1596,36 @@
         <item quantity="other">%1$s: in ritardo %2$d volte su %3$d</item>
     </plurals>
     <string name="reliability_threshold_mixed_note">Conta come in orario un arrivo con al massimo 5 minuti di ritardo per Frecce, Italo, EuroCity, Eurostar ed EuroNight, 15 minuti per gli altri treni.</string>
+    <!-- Usual platform and weekday punctuality of the network statistics (stop elements 7 and 8) -->
+    <plurals name="reliability_usual_platform">
+        <item quantity="one">Di solito al binario %1$s (%2$d volta su %3$d)</item>
+        <item quantity="many">Di solito al binario %1$s (%2$d volte su %3$d)</item>
+        <item quantity="other">Di solito al binario %1$s (%2$d volte su %3$d)</item>
+    </plurals>
+    <string name="reliability_weekday_monday">Il lunedì</string>
+    <string name="reliability_weekday_tuesday">Il martedì</string>
+    <string name="reliability_weekday_wednesday">Il mercoledì</string>
+    <string name="reliability_weekday_thursday">Il giovedì</string>
+    <string name="reliability_weekday_friday">Il venerdì</string>
+    <string name="reliability_weekday_saturday">Il sabato</string>
+    <string name="reliability_weekday_sunday">La domenica</string>
+    <plurals name="reliability_weekday_worse">
+        <item quantity="one">%1$s è in orario %2$d volta su %3$d, peggio della media</item>
+        <item quantity="many">%1$s è in orario %2$d volte su %3$d, peggio della media</item>
+        <item quantity="other">%1$s è in orario %2$d volte su %3$d, peggio della media</item>
+    </plurals>
+    <plurals name="reliability_weekday_better">
+        <item quantity="one">%1$s è in orario %2$d volta su %3$d, meglio della media</item>
+        <item quantity="many">%1$s è in orario %2$d volte su %3$d, meglio della media</item>
+        <item quantity="other">%1$s è in orario %2$d volte su %3$d, meglio della media</item>
+    </plurals>
+    <!-- Route results: «Più presto» / «Più tardi», empty searched window, RFI «RITARDO» without minutes -->
+    <string name="results_earlier">Più presto</string>
+    <string name="results_later">Più tardi</string>
+    <string name="results_no_more_earlier">Nessun’altra soluzione più presto</string>
+    <string name="results_no_more_later">Nessun’altra soluzione più tardi</string>
+    <string name="results_no_trains_until">Nessun treno fino alle %1$s</string>
+    <string name="service_late_minutes_unpublished">In ritardo (minuti non pubblicati)</string>
     <!-- Bikes on board (GTFS bikes_allowed), only when the timetable publishes it -->
     <string name="bikes_allowed">Bici ammessa</string>
     <string name="bikes_not_allowed">Bici non ammessa</string>
@@ -1553,4 +1637,48 @@
     <string name="compensation_notice_quarter">Arrivato a %1$s con %2$s di ritardo: per il regolamento UE 2021/782 potresti avere diritto a un indennizzo del 25%% del prezzo del biglietto (50%% da 120 minuti).</string>
     <string name="compensation_notice_half">Arrivato a %1$s con %2$s di ritardo: per il regolamento UE 2021/782 potresti avere diritto a un indennizzo del 50%% del prezzo del biglietto.</string>
     <string name="compensation_notice_conditions">L’impresa ferroviaria può non pagare importi inferiori a 4 € e ritardi dovuti a cause esterne, come condizioni meteo estreme o persone sui binari; uno sciopero del suo personale non è una causa esterna. Sui treni regionali le condizioni dipendono anche dal contratto di servizio con la regione.</string>
+    <!-- Station board: RFI Sala Blu assistance (links only) -->
+    <string name="station_sala_blu_title">Assistenza Sala Blu</string>
+    <string name="station_sala_blu_description">RFI assiste gratuitamente nelle stazioni, su prenotazione, chi ha una disabilità o una mobilità ridotta.</string>
+    <string name="station_sala_blu_page">Pagina RFI sull’assistenza</string>
+    <string name="station_sala_blu_call_toll_free">Chiama %1$s (numero verde da rete fissa)</string>
+    <string name="station_sala_blu_call_national">Chiama %1$s (anche da cellulare)</string>
+    <!-- Station board: direct connections from the station (embedded timetables) -->
+    <string name="direct_connections_title">Collegamenti diretti</string>
+    <string name="direct_connections_from">Da %1$s, senza cambi</string>
+    <string name="direct_connections_note">Dagli orari programmati inclusi nell’app, senza ritardi né soppressioni. Tocca una destinazione per cercare i treni.</string>
+    <string name="direct_connections_filter">Filtra le destinazioni</string>
+    <string name="direct_connections_loading">Leggo gli orari…</string>
+    <string name="direct_connections_empty">Negli orari inclusi non ci sono collegamenti diretti da questa stazione in questo giorno.</string>
+    <string name="direct_connections_no_match">Nessuna destinazione contiene «%1$s».</string>
+    <string name="direct_connections_trains">Treni</string>
+    <string name="direct_connections_urban">Metro, tram e funicolari</string>
+    <plurals name="direct_connections_train_count">
+        <item quantity="one">%d treno</item>
+        <item quantity="many">%d treni</item>
+        <item quantity="other">%d treni</item>
+    </plurals>
+    <plurals name="direct_connections_runs">
+        <item quantity="one">%d corsa</item>
+        <item quantity="many">%d corse</item>
+        <item quantity="other">%d corse</item>
+    </plurals>
+    <string name="direct_connections_first_last">primo %1$s, ultimo %2$s</string>
+    <string name="direct_connections_fastest">il più veloce %1$s</string>
+    <string name="direct_connections_from_stop">dalla fermata %1$s, a pochi passi</string>
+    <!-- Per te and route board: works and interruptions named by the network notices on the saved routes -->
+    <string name="route_works_title">Lavori e interruzioni sulle tue tratte</string>
+    <string name="route_works_title_route">Lavori e interruzioni su questa tratta</string>
+    <string name="route_works_none">Nessun avviso di lavori o interruzioni cita ora le stazioni delle tue tratte.</string>
+    <string name="route_works_names">L’avviso cita: %1$s</string>
+    <string name="route_works_route_names">%1$s — l’avviso cita: %2$s</string>
+    <string name="route_works_line">la linea %1$s</string>
+    <string name="route_works_date">Data citata: %1$s</string>
+    <string name="route_works_dates">Date citate: dal %1$s al %2$s</string>
+    <string name="route_works_note">Avvisi abbinati alle tratte dai nomi di stazioni e linee che contengono: leggi sempre il testo completo.</string>
+    <plurals name="route_works_show_more">
+        <item quantity="one">Mostra %d altro avviso</item>
+        <item quantity="many">Mostra altri %d avvisi</item>
+        <item quantity="other">Mostra altri %d avvisi</item>
+    </plurals>
 </resources>

@@ -47,11 +47,17 @@ def write_feed(
     child_longitude: str = "9",
     second_arrival: str = "25:00:00",
     second_departure: str = "25:01:00",
+    bikes: str | None = None,
 ) -> None:
+    trip_headers = ["route_id", "service_id", "trip_id", "trip_headsign", "direction_id"]
+    trip_rows = [["R", "WK", "KEEP", "Terminus", "0"], ["R", "WK", "DROP", "Elsewhere", "1"]]
+    if bikes is not None:
+        trip_headers.append("bikes_allowed")
+        trip_rows = [row + [bikes] for row in trip_rows]
     members = {
         "agency.txt": csv_bytes(["agency_id", "agency_name", "agency_url", "agency_timezone"], [["A", "Rail", "https://example.test", timezone]]),
         "routes.txt": csv_bytes(["route_id", "agency_id", "route_short_name", "route_long_name", "route_type"], [["R", "A", "R1", "Test", route_type]]),
-        "trips.txt": csv_bytes(["route_id", "service_id", "trip_id", "trip_headsign", "direction_id"], [["R", "WK", "KEEP", "Terminus", "0"], ["R", "WK", "DROP", "Elsewhere", "1"]]),
+        "trips.txt": csv_bytes(trip_headers, trip_rows),
         "stops.txt": csv_bytes(["stop_id", "stop_name", "stop_lat", "stop_lon", "location_type", "parent_station"], [["P", "Citta Alta", "45", "9", "1", ""], ["PL", "Platform 1", child_latitude, child_longitude, "0", "P"], ["X", "Nowhere", "46", "10", "0", ""], ["Y", "Elsewhere", "47", "11", "0", ""]]),
         "stop_times.txt": csv_bytes(["trip_id", "arrival_time", "departure_time", "stop_id", "stop_sequence", "pickup_type", "drop_off_type"], [["KEEP", second_arrival, second_departure, "PL", "2", "0", "0"], ["KEEP", "23:00:00", "23:00:00", "X", "1", "0", "0"], ["DROP", "10:00:00", "10:00:00", "Y", "1", "0", "0"]]),
         "calendar.txt": csv_bytes(["service_id", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday", "start_date", "end_date"], [["WK", "1", "0", "0", "0", "0", "0", "0", "20260105", "20260107"]]),
@@ -97,7 +103,9 @@ class IosGtfsScheduleTest(unittest.TestCase):
         raw.write_bytes(zlib.decompress(output.read_bytes()))
         connection = sqlite3.connect(raw)
         self.assertEqual(builder.APPLICATION_ID, connection.execute("PRAGMA application_id").fetchone()[0])
-        self.assertEqual(1, connection.execute("PRAGMA user_version").fetchone()[0])
+        self.assertEqual(2, connection.execute("PRAGMA user_version").fetchone()[0])
+        # A feed without the column leaves bikes unknown.
+        self.assertEqual([(None,)], connection.execute("SELECT DISTINCT bikes_allowed FROM trip").fetchall())
         names = connection.execute("SELECT name,catalog_station_id FROM stop WHERE pack_id=1 ORDER BY external_id").fetchall()
         self.assertEqual([("Platform 1", "S1"), ("Nowhere", None)], names)
         start, days, bits = connection.execute("SELECT start_date,day_count,active_days FROM service WHERE pack_id=1").fetchone()
@@ -109,6 +117,28 @@ class IosGtfsScheduleTest(unittest.TestCase):
             connection.execute("SELECT value FROM metadata WHERE key='source_generated_at'").fetchone()[0],
         )
         self.assertEqual("2026-01-04", result["inputs"]["sourceGeneratedAt"])
+
+    def test_bikes_allowed_keeps_published_values_and_treats_italo_as_unknown(self) -> None:
+        self.assertEqual(1, builder.bikes_allowed("alto-adige-sta-gtfs", "1"))
+        self.assertEqual(2, builder.bikes_allowed("arst-gtfs", " 2 "))
+        for raw in ("0", "", None, "3", "yes"):
+            with self.subTest(raw=raw):
+                self.assertIsNone(builder.bikes_allowed("arst-gtfs", raw))
+        # Italo admits only folding bikes in a bag: its pack-wide 1 is not shown, as on Android.
+        self.assertIsNone(builder.bikes_allowed("italo-gtfs", "1"))
+
+        manifest, catalog = write_inputs(self.temp, bikes="2")
+        output = self.temp / "bikes.sqlite.zlib"
+        metadata = self.temp / "bikes.metadata.json"
+        builder.build_database(manifest, catalog, output, metadata, max_compressed_bytes=4 * 1024 * 1024)
+        raw = self.temp / "bikes.sqlite"
+        raw.write_bytes(zlib.decompress(output.read_bytes()))
+        connection = sqlite3.connect(raw)
+        self.addCleanup(connection.close)
+        self.assertEqual([(2,)], connection.execute("SELECT DISTINCT bikes_allowed FROM trip").fetchall())
+        verifier.verify(output, metadata, max_compressed_bytes=4 * 1024 * 1024, max_database_bytes=16 * 1024 * 1024)
+        with self.assertRaises(sqlite3.IntegrityError):
+            connection.execute("UPDATE trip SET bikes_allowed=0 WHERE id=1")
 
     def test_verifier_accepts_output_and_rejects_tampering(self) -> None:
         _, _, output, metadata, _ = self.build()

@@ -75,7 +75,7 @@
     <string name="station_badge_metro">محطة مترو</string>
     <string name="station_badge_tram">محطة ترام</string>
     <string name="station_badge_funicular">قطار جبلي أو مصعد</string>
-    <string name="settings_privacy_new_sources">عند تفعيلها، لا تتلقى المصادر الإضافية إلا ما يلزم للطلب، دون حساب أو موقع: يتلقى transport.opendata.ch رقم UIC للمحطة السويسرية (أو اسم محطة حدودية مرة واحدة)؛ ويتلقى ViaggiaTreno رقم القطار لتنبيهاته، عبر HTTP غير مشفّر مثل واجهته البرمجية العامة؛ ولا تتلقى RFI وTrenitalia وTrenord أي بيانات عنك لقوائم تنبيهاتها، التي لا تُنزَّل إلا عند فتح منطقة التنبيهات أو تفاصيل أو لوحة ذات صلة؛ ويتلقى Open-Meteo الإحداثيات المقرّبة لمحطة الوصول. لا تُفتح الروابط الخارجية في المتصفح إلا عند لمسها.</string>
+    <string name="settings_privacy_new_sources">عند تفعيلها، لا تتلقى المصادر الإضافية إلا ما يلزم للطلب، دون حساب أو موقع: يتلقى transport.opendata.ch رقم UIC للمحطة السويسرية (أو اسم محطة حدودية مرة واحدة)؛ ويتلقى ViaggiaTreno رقم القطار لتنبيهاته، عبر HTTP غير مشفّر مثل واجهته البرمجية العامة؛ ولا تتلقى RFI وTrenitalia وTrenord أي بيانات عنك لقوائم تنبيهاتها، التي لا تُنزَّل إلا عند فتح منطقة التنبيهات أو تفاصيل أو لوحة ذات صلة أو قسم الأعمال على مساراتك؛ ويتلقى Open-Meteo الإحداثيات المقرّبة لمحطة الوصول. لا تُفتح الروابط الخارجية في المتصفح إلا عند لمسها.</string>
     <string name="app_name">Binario</string>
     <string name="widget_description">يعرض الرحلات التالية على مسارك في Binario.</string>
     <string name="widget_refresh">تحديث الرحلات</string>
@@ -94,6 +94,12 @@
     <string name="shortcut_active_route">المسار النشط</string>
     <string name="shortcut_next_departures">المغادرات التالية</string>
     <string name="shortcut_train_search">البحث عن قطار</string>
+    <string name="shortcut_route_removed">لم يعد المسار محفوظًا في Binario</string>
+    <string name="tile_next_train_label">القطار التالي</string>
+    <string name="tile_next_train_no_route">لا يوجد مسار نشط</string>
+    <string name="tile_next_train_none">لا مزيد من القطارات اليوم</string>
+    <string name="tile_next_train_departure">%1$s · %2$s</string>
+    <string name="tile_next_train_description">القطار التالي حسب الجدول المبرمج: %1$s في الساعة %2$s، %3$s</string>
     <!-- Main app shell and primary journey planner. -->
     <string name="app_brand">BINARIO</string>
     <string name="screen_title_detail">تفاصيل الرحلة</string>
@@ -402,6 +408,36 @@
     <string name="map_nearby_content_description">خريطة أقرب المحطات. المحطات نفسها مع مسافاتها مدرجة أدناه.</string>
     <string name="map_nearby_tap_hint">المس محطة لفتح لوحتها.</string>
     <string name="map_legend_user_position">موقع تقريبي، غير محفوظ</string>
+    <string name="live_map_title">قطارات في الطريق</string>
+    <string name="live_map_area_subtitle">حول %1$s</string>
+    <string name="live_map_content_description">خريطة القطارات في الطريق، %1$s. المواقع تقديرية من الجدول الزمني وليست مواقع GPS؛ القطارات نفسها مدرجة تحت الخريطة.</string>
+    <string name="live_map_note">موقع تقديري وليس GPS: يحسب Binario المكان الذي يُفترض أن يكون فيه كل قطار وفق الجدول الزمني، على خط مستقيم بين محطتين (وليس على امتداد السكة). إذا كانت اللوحة تعرض تأخير القطار، يأخذه التقدير في الحسبان. تتحدّث المواقع كل 30 ثانية ما دامت الخريطة مفتوحة.</string>
+    <string name="live_map_legend_live">موقع مقدّر مع تأخير اللوحة</string>
+    <string name="live_map_legend_timetable">موقع مقدّر من الجدول الزمني فقط</string>
+    <string name="live_map_loading">جارٍ حساب المواقع التقديرية…</string>
+    <string name="live_map_zoom_in">قرّب الخريطة لرؤية القطارات في الطريق.</string>
+    <string name="live_map_none">وفق الجدول الزمني لا يوجد قطار في الطريق في المنطقة المعروضة.</string>
+    <string name="live_map_row_title">%1$s إلى %2$s</string>
+    <string name="live_map_row_at">متوقف في %1$s</string>
+    <string name="live_map_row_between">بين %1$s و%2$s</string>
+    <string name="live_map_row_live">تقدير ببيانات اللوحة: %1$s</string>
+    <string name="live_map_row_timetable">تقدير من الجدول الزمني فقط</string>
+    <plurals name="live_map_count">
+        <item quantity="zero">%d قطار في الطريق</item>
+        <item quantity="one">%d قطار في الطريق</item>
+        <item quantity="two">%d قطاران في الطريق</item>
+        <item quantity="few">%d قطارات في الطريق</item>
+        <item quantity="many">%d قطارًا في الطريق</item>
+        <item quantity="other">%d قطار في الطريق</item>
+    </plurals>
+    <plurals name="live_map_capped">
+        <item quantity="zero">المعروض: أقرب %d قطار.</item>
+        <item quantity="one">المعروض: أقرب %d قطار.</item>
+        <item quantity="two">المعروض: أقرب %d قطارين.</item>
+        <item quantity="few">المعروض: أقرب %d قطارات.</item>
+        <item quantity="many">المعروض: أقرب %d قطارًا.</item>
+        <item quantity="other">المعروض: أقرب %d قطار.</item>
+    </plurals>
     <string name="settings_privacy_maps">الخرائط: لا تُفتح إلا عند توسيعها أو تحميلها. لرسمها ينزّل التطبيق النمط والمربعات والخطوط والأيقونات من tiles.openfreemap.org (OpenFreeMap)، الذي يرى عنوان IP والمنطقة المعروضة: مسار القطار أو المحطة المختارة أو، للمحطات القريبة، المنطقة المحيطة بموقعك التقريبي. لا يُرسل الموقع ولا يُحفظ؛ وتبقى المربعات في ذاكرة تخزين مؤقت محلية للتطبيق.</string>
     <string name="settings_credits_maps">الخرائط: OpenFreeMap © OpenMapTiles، البيانات © OpenStreetMap contributors (ODbL 1.0). العرض باستخدام MapLibre Native، ترخيص BSD 2-Clause.</string>
     <string name="settings_credits_trenitalia">مواعيد Trenitalia (قطارات وحافلات): بيانات رسمية من Trenitalia S.p.A. منشورة على نقطة الوصول الوطنية الإيطالية (CCISS) بموجب المادة 52 من CAD ولائحة الاتحاد الأوروبي 2017/1926، https://www.cciss.it/nap/mmtis/public/en/catalog/Dataset/1077621. تحويل GTFS © Clément Desouche، CC BY 4.0: https://github.com/deryclem/trenitalia-gtfs (الترخيص https://creativecommons.org/licenses/by/4.0/). يستخدم Binario المواعيد المجدولة فقط، دون الأشكال الهندسية للمسارات، وليس تابعًا لـ Trenitalia.</string>
@@ -718,6 +754,14 @@
     <string name="background_status_exact_on">المنبّهات الدقيقة مسموح بها</string>
     <string name="background_status_battery_optimized">تحسين البطارية مفعّل لتطبيق Binario: قد يؤجل Android عمليات التحقق في الخلفية.</string>
     <string name="background_status_battery_unrestricted">تحسين البطارية غير مفعّل لتطبيق Binario</string>
+    <string name="background_runs_title">عمليات التحقق التالية في الخلفية</string>
+    <string name="background_runs_none">لا توجد عملية تحقق مجدولة في الخلفية.</string>
+    <string name="background_runs_running">%1$s: قيد التشغيل</string>
+    <string name="background_runs_soon">%1$s: قريبًا</string>
+    <string name="background_runs_today">%1$s: اليوم الساعة %2$s</string>
+    <string name="background_runs_tomorrow">%1$s: غدًا الساعة %2$s</string>
+    <string name="background_runs_later">%1$s: %2$s الساعة %3$s</string>
+    <string name="background_runs_note">أوقات تقريبية: قد يؤجلها Android لتوفير البطارية أو أثناء انتظار الشبكة.</string>
     <string name="commuter_alert_quiet_hours_feedback">حُفظ التنبيه ولم يُجدول: يقع وقته ضمن فترة الهدوء 22:00–07:00.</string>
     <string name="commuter_alert_invalid_time_feedback">حُفظ التنبيه ولم يُجدول: الوقت غير صالح.</string>
     <string name="commuter_alert_disabled_feedback">حُفظ التنبيه لكنه متوقف.</string>
@@ -1042,6 +1086,9 @@
     <string name="widget_settings_until_arrival_description">يبقى القطار الذي غادر في القائمة، موسومًا «في الطريق»، حتى وصوله المتوقع إلى الوجهة.</string>
     <string name="widget_settings_show_platform">عرض الرصيف</string>
     <string name="widget_settings_show_train_name">عرض اسم القطار وفئته</string>
+    <string name="widget_settings_show_reliability">إظهار الموثوقية</string>
+    <string name="widget_settings_show_reliability_description">بعد كل قطار، نسبة الأيام التي كان فيها في الموعد خلال آخر 30 يومًا: إحصاءات غير رسمية من Binario مبنية على بيانات ViaggiaTreno، مضمّنة في التطبيق ولا تظهر إلا مع 5 رصدات على الأقل.</string>
+    <string name="widget_reliability_mark">%1$d%% في الموعد</string>
     <string name="station_widget_display_name_description">يحل محل اسم المحطة في الترويسة ويبقى محليًا لهذه الأداة.</string>
     <string name="station_widget_settings_nearest">زر «📍 الأقرب»</string>
     <string name="station_widget_settings_nearest_description">عند لمسه تطلب الأداة موقعك التقريبي مرة واحدة وتنتقل إلى أقرب محطة في الكتالوج. لا يُحفظ الموقع ولا يُرسل؛ وتستخدم التحديثات التلقائية دائمًا آخر محطة مختارة.</string>
@@ -1222,6 +1269,22 @@
     <string name="punctuality_history_show_all">عرض كل التواريخ</string>
     <string name="settings_punctuality_recording_title">الالتزام بالمواعيد للقطارات المفضّلة</string>
     <string name="settings_punctuality_recording_description">مرة يوميًا، بعد الوصول المتوقع، يطلب حالة القطار ويسجّل على هذا الهاتف فقط التأخير النهائي والتأخير في المحطات، لمدة أقصاها 365 يومًا.</string>
+    <string name="settings_weekly_digest_title">ملخص أسبوعي للقطارات المفضّلة</string>
+    <string name="settings_weekly_digest_description">يوم الأحد نحو الساعة 19 يلخّص إشعار الالتزام بالمواعيد خلال الأسبوع المسجّل على هذا الهاتف للقطارات المفضّلة، وموثوقيتها على الشبكة خلال آخر 30 يومًا عند توفرها، ويذكر القطار الذي تراجع أداؤه. لا يرسل أي طلب عبر الشبكة؛ ولا يظهر أبدًا بين 22 و7.</string>
+    <string name="weekly_digest_channel_name">ملخص أسبوعي</string>
+    <string name="weekly_digest_channel_description">مساء الأحد، الالتزام بالمواعيد خلال الأسبوع للقطارات المفضّلة.</string>
+    <string name="weekly_digest_title">قطاراتك هذا الأسبوع</string>
+    <string name="weekly_digest_train_line">%1$s: %2$s</string>
+    <string name="weekly_digest_no_runs">لم تُسجَّل أي رحلة</string>
+    <plurals name="weekly_digest_network">
+        <item quantity="zero">آخر %1$d يوم على الشبكة: %2$d%% في الموعد</item>
+        <item quantity="one">آخر %1$d يوم على الشبكة: %2$d%% في الموعد</item>
+        <item quantity="two">آخر %1$d يومين على الشبكة: %2$d%% في الموعد</item>
+        <item quantity="few">آخر %1$d أيام على الشبكة: %2$d%% في الموعد</item>
+        <item quantity="many">آخر %1$d يومًا على الشبكة: %2$d%% في الموعد</item>
+        <item quantity="other">آخر %1$d يوم على الشبكة: %2$d%% في الموعد</item>
+    </plurals>
+    <string name="weekly_digest_worse">تراجع: %1$s، في الموعد %2$d%% من المرات هذا الأسبوع (عادةً %3$d%%)</string>
     <string name="settings_live_updates_title">إشعارات مباشرة</string>
     <string name="settings_live_updates_permission">لتلقّي هذه الإشعارات، اسمح بإشعارات Binario في إعدادات Android.</string>
     <string name="settings_live_updates_privacy">تعمل هذه الفحوصات في الخلفية فقط في الفترات المبيّنة. يتلقى MIT طلبًا دون أي بيانات عنك؛ وتتلقى مصادر حالة القطارات رقم القطار واليوم، كما عند فتح التفاصيل. لا يُحفظ شيء خارج الهاتف.</string>
@@ -1653,6 +1716,45 @@
         <item quantity="other">%1$s: متأخر %2$d مرة من أصل %3$d</item>
     </plurals>
     <string name="reliability_threshold_mixed_note">يُعدّ الوصول في الموعد إذا لم يتجاوز التأخير 5 دقائق لقطارات Frecce وItalo وEuroCity وEurostar وEuroNight، و15 دقيقة للقطارات الأخرى.</string>
+    <!-- Usual platform and weekday punctuality of the network statistics (stop elements 7 and 8) -->
+    <plurals name="reliability_usual_platform">
+        <item quantity="zero">عادةً الرصيف %1$s (%2$d مرة من أصل %3$d)</item>
+        <item quantity="one">عادةً الرصيف %1$s (%2$d مرة من أصل %3$d)</item>
+        <item quantity="two">عادةً الرصيف %1$s (%2$d مرتين من أصل %3$d)</item>
+        <item quantity="few">عادةً الرصيف %1$s (%2$d مرات من أصل %3$d)</item>
+        <item quantity="many">عادةً الرصيف %1$s (%2$d مرة من أصل %3$d)</item>
+        <item quantity="other">عادةً الرصيف %1$s (%2$d مرة من أصل %3$d)</item>
+    </plurals>
+    <string name="reliability_weekday_monday">أيام الاثنين</string>
+    <string name="reliability_weekday_tuesday">أيام الثلاثاء</string>
+    <string name="reliability_weekday_wednesday">أيام الأربعاء</string>
+    <string name="reliability_weekday_thursday">أيام الخميس</string>
+    <string name="reliability_weekday_friday">أيام الجمعة</string>
+    <string name="reliability_weekday_saturday">أيام السبت</string>
+    <string name="reliability_weekday_sunday">أيام الأحد</string>
+    <plurals name="reliability_weekday_worse">
+        <item quantity="zero">%1$s: في الموعد %2$d مرة من أصل %3$d، أسوأ من المتوسط</item>
+        <item quantity="one">%1$s: في الموعد %2$d مرة من أصل %3$d، أسوأ من المتوسط</item>
+        <item quantity="two">%1$s: في الموعد %2$d مرتين من أصل %3$d، أسوأ من المتوسط</item>
+        <item quantity="few">%1$s: في الموعد %2$d مرات من أصل %3$d، أسوأ من المتوسط</item>
+        <item quantity="many">%1$s: في الموعد %2$d مرة من أصل %3$d، أسوأ من المتوسط</item>
+        <item quantity="other">%1$s: في الموعد %2$d مرة من أصل %3$d، أسوأ من المتوسط</item>
+    </plurals>
+    <plurals name="reliability_weekday_better">
+        <item quantity="zero">%1$s: في الموعد %2$d مرة من أصل %3$d، أفضل من المتوسط</item>
+        <item quantity="one">%1$s: في الموعد %2$d مرة من أصل %3$d، أفضل من المتوسط</item>
+        <item quantity="two">%1$s: في الموعد %2$d مرتين من أصل %3$d، أفضل من المتوسط</item>
+        <item quantity="few">%1$s: في الموعد %2$d مرات من أصل %3$d، أفضل من المتوسط</item>
+        <item quantity="many">%1$s: في الموعد %2$d مرة من أصل %3$d، أفضل من المتوسط</item>
+        <item quantity="other">%1$s: في الموعد %2$d مرة من أصل %3$d، أفضل من المتوسط</item>
+    </plurals>
+    <!-- Route results: «Più presto» / «Più tardi», empty searched window, RFI «RITARDO» without minutes -->
+    <string name="results_earlier">أبكر</string>
+    <string name="results_later">لاحقًا</string>
+    <string name="results_no_more_earlier">لا توجد حلول أخرى أبكر</string>
+    <string name="results_no_more_later">لا توجد حلول أخرى لاحقًا</string>
+    <string name="results_no_trains_until">لا توجد قطارات حتى الساعة %1$s</string>
+    <string name="service_late_minutes_unpublished">متأخر (الدقائق غير منشورة)</string>
     <string name="bikes_allowed">يُسمح بالدراجات</string>
     <string name="bikes_not_allowed">لا يُسمح بالدراجات</string>
     <string name="bikes_conditions_link">الدراجات على متن القطار: شروط %1$s</string>
@@ -1661,4 +1763,57 @@
     <string name="compensation_notice_quarter">وصل إلى %1$s بتأخير %2$s: وفق اللائحة (الاتحاد الأوروبي) 2021/782 قد يحق لك تعويض بنسبة 25%% من سعر التذكرة (50%% ابتداءً من 120 دقيقة).</string>
     <string name="compensation_notice_half">وصل إلى %1$s بتأخير %2$s: وفق اللائحة (الاتحاد الأوروبي) 2021/782 قد يحق لك تعويض بنسبة 50%% من سعر التذكرة.</string>
     <string name="compensation_notice_conditions">يجوز لشركة السكك الحديدية رفض المبالغ التي تقل عن 4 يورو والتأخيرات الناجمة عن أسباب خارجية، مثل الطقس القاسي أو وجود أشخاص على السكة؛ ولا يُعدّ إضراب موظفيها سببًا خارجيًا. في القطارات الإقليمية تتوقف الشروط أيضًا على عقد الخدمة مع الإقليم.</string>
+    <!-- Station board: RFI Sala Blu assistance (links only) -->
+    <string name="station_sala_blu_title">مساعدة Sala Blu</string>
+    <string name="station_sala_blu_description">تقدّم RFI مساعدة مجانية في المحطات، بحجز مسبق، للأشخاص ذوي الإعاقة أو محدودي الحركة.</string>
+    <string name="station_sala_blu_page">صفحة المساعدة لدى RFI</string>
+    <string name="station_sala_blu_call_toll_free">اتصل بالرقم %1$s (مجاني من الهاتف الثابت)</string>
+    <string name="station_sala_blu_call_national">اتصل بالرقم %1$s (من الهاتف المحمول أيضًا)</string>
+    <!-- Station board: direct connections from the station (embedded timetables) -->
+    <string name="direct_connections_title">الرحلات المباشرة</string>
+    <string name="direct_connections_from">من %1$s، بدون تبديل</string>
+    <string name="direct_connections_note">من الجداول المبرمجة المضمّنة في التطبيق، دون تأخيرات أو إلغاءات. المس وجهة للبحث عن القطارات.</string>
+    <string name="direct_connections_filter">تصفية الوجهات</string>
+    <string name="direct_connections_loading">جارٍ قراءة الجداول…</string>
+    <string name="direct_connections_empty">لا تتضمن الجداول المضمّنة رحلات مباشرة من هذه المحطة في هذا اليوم.</string>
+    <string name="direct_connections_no_match">لا توجد وجهة تحتوي على «%1$s».</string>
+    <string name="direct_connections_trains">القطارات</string>
+    <string name="direct_connections_urban">المترو والترام والقطارات الجبلية</string>
+    <plurals name="direct_connections_train_count">
+        <item quantity="zero">%d قطار</item>
+        <item quantity="one">%d قطار</item>
+        <item quantity="two">%d قطاران</item>
+        <item quantity="few">%d قطارات</item>
+        <item quantity="many">%d قطارًا</item>
+        <item quantity="other">%d قطار</item>
+    </plurals>
+    <plurals name="direct_connections_runs">
+        <item quantity="zero">%d رحلة</item>
+        <item quantity="one">%d رحلة</item>
+        <item quantity="two">%d رحلتان</item>
+        <item quantity="few">%d رحلات</item>
+        <item quantity="many">%d رحلة</item>
+        <item quantity="other">%d رحلة</item>
+    </plurals>
+    <string name="direct_connections_first_last">الأول %1$s، الأخير %2$s</string>
+    <string name="direct_connections_fastest">الأسرع %1$s</string>
+    <string name="direct_connections_from_stop">من محطة %1$s، على بُعد خطوات</string>
+    <!-- Per te and route board: works and interruptions named by the network notices on the saved routes -->
+    <string name="route_works_title">الأعمال والانقطاعات على مساراتك</string>
+    <string name="route_works_title_route">الأعمال والانقطاعات على هذا المسار</string>
+    <string name="route_works_none">لا يذكر أي إشعار عن أعمال أو انقطاعات محطات مساراتك حاليًا.</string>
+    <string name="route_works_names">يذكر الإشعار: %1$s</string>
+    <string name="route_works_route_names">%1$s — يذكر الإشعار: %2$s</string>
+    <string name="route_works_line">الخط %1$s</string>
+    <string name="route_works_date">التاريخ المذكور: %1$s</string>
+    <string name="route_works_dates">التواريخ المذكورة: من %1$s إلى %2$s</string>
+    <string name="route_works_note">تُربط الإشعارات بالمسارات من خلال أسماء المحطات والخطوط الواردة فيها: اقرأ النص الكامل دائمًا.</string>
+    <plurals name="route_works_show_more">
+        <item quantity="zero">عرض %d إشعار آخر</item>
+        <item quantity="one">عرض %d إشعار آخر</item>
+        <item quantity="two">عرض %d إشعارين آخرين</item>
+        <item quantity="few">عرض %d إشعارات أخرى</item>
+        <item quantity="many">عرض %d إشعارًا آخر</item>
+        <item quantity="other">عرض %d إشعار آخر</item>
+    </plurals>
 </resources>

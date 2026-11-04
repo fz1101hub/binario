@@ -10,8 +10,9 @@ data class OpenMapMarkerStyle(
 )
 
 /**
- * Hand-built GeoJSON for the two map sources. Only coordinates, a marker index and drawing attributes are
- * written: station names never enter the renderer, so no user-visible text depends on the base map's fonts.
+ * Hand-built GeoJSON for the map sources. Only coordinates, a marker index and drawing attributes are written, plus
+ * the short machine labels of [labels]: station names never enter the renderer, so no user-visible sentence depends
+ * on the base map's fonts.
  */
 internal object OpenMapGeoJson {
     const val EMPTY_COLLECTION = """{"type":"FeatureCollection","features":[]}"""
@@ -31,6 +32,25 @@ internal object OpenMapGeoJson {
             append(""","strokeColor":""").appendJsonString(style.strokeColor)
             append(""","strokeWidth":""").appendNumber(style.strokeWidth.toDouble())
             append(""","opacity":""").appendNumber(style.opacity.toDouble())
+            append("}}")
+        }
+        append("]}")
+    }
+
+    /**
+     * Points carrying a short `label` for the symbol layer (train category, number and delay of the map of trains in
+     * motion). Only machine text built by the app goes here, never a station name.
+     */
+    fun labels(points: List<Pair<GeoPoint, String>>): String = buildString {
+        append("""{"type":"FeatureCollection","features":[""")
+        var first = true
+        points.forEach { (point, label) ->
+            if (!point.isValid || label.isBlank()) return@forEach
+            if (!first) append(',')
+            first = false
+            append("""{"type":"Feature","geometry":{"type":"Point","coordinates":""")
+            appendPosition(point)
+            append("""},"properties":{"label":""").appendJsonString(label)
             append("}}")
         }
         append("]}")

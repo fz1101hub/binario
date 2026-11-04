@@ -26,4 +26,8 @@
     <string name="service_destination_status">%1$s · %2$s</string>
     <string name="service_operator_category">%1$s · %2$s</string>
     <string name="service_operator_category_platform">%1$s · %2$s · ပလက်ဖောင်း %3$s</string>
+    <string name="accessibility_reliability">%1$s (တရားဝင်မဟုတ်သော စာရင်းအင်း)</string>
+    <plurals name="service_reliability_on_time">
+        <item quantity="other">%2$d ကြိမ်တွင် %1$d ကြိမ် အချိန်မှန်</item>
+    </plurals>
 </resources>

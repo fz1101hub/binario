@@ -75,7 +75,7 @@
     <string name="station_badge_metro">Станция метро</string>
     <string name="station_badge_tram">Остановка трамвая</string>
     <string name="station_badge_funicular">Фуникулёр или подъёмник</string>
-    <string name="settings_privacy_new_sources">Когда дополнительные источники включены, они получают только то, что нужно для запроса, без аккаунта и местоположения: transport.opendata.ch — номер UIC швейцарской станции (или однажды название пограничной станции); ViaggiaTreno — номер поезда для объявлений, по незашифрованному HTTP, как и его публичный API; RFI, Trenitalia и Trenord — никаких ваших данных для списков объявлений, которые загружаются, только когда вы открываете раздел объявлений, карточку или соответствующее табло; Open-Meteo — округлённые координаты станции прибытия. Внешние ссылки открываются в браузере, только если вы нажмёте на них.</string>
+    <string name="settings_privacy_new_sources">Когда дополнительные источники включены, они получают только то, что нужно для запроса, без аккаунта и местоположения: transport.opendata.ch — номер UIC швейцарской станции (или однажды название пограничной станции); ViaggiaTreno — номер поезда для объявлений, по незашифрованному HTTP, как и его публичный API; RFI, Trenitalia и Trenord — никаких ваших данных для списков объявлений, которые загружаются, только когда вы открываете раздел объявлений, карточку, соответствующее табло или раздел о работах на ваших маршрутах; Open-Meteo — округлённые координаты станции прибытия. Внешние ссылки открываются в браузере, только если вы нажмёте на них.</string>
     <string name="app_name">Binario</string>
     <string name="widget_description">Показывает ближайшие поезда по вашему маршруту в Binario.</string>
     <string name="widget_refresh">Обновить поезда</string>
@@ -94,6 +94,12 @@
     <string name="shortcut_active_route">Активный маршрут</string>
     <string name="shortcut_next_departures">Ближайшие отправления</string>
     <string name="shortcut_train_search">Поиск поезда</string>
+    <string name="shortcut_route_removed">Маршрут больше не сохранён в Binario</string>
+    <string name="tile_next_train_label">Следующий поезд</string>
+    <string name="tile_next_train_no_route">Нет активного маршрута</string>
+    <string name="tile_next_train_none">Сегодня поездов больше нет</string>
+    <string name="tile_next_train_departure">%1$s · %2$s</string>
+    <string name="tile_next_train_description">Следующий поезд по расписанию: %1$s в %2$s, %3$s</string>
     <!-- Main app shell and primary journey planner. -->
     <string name="app_brand">BINARIO</string>
     <string name="screen_title_detail">Сведения о поезде</string>
@@ -390,6 +396,32 @@
     <string name="map_nearby_content_description">Карта ближайших станций. Те же станции с расстоянием перечислены ниже.</string>
     <string name="map_nearby_tap_hint">Нажмите на станцию, чтобы открыть её табло.</string>
     <string name="map_legend_user_position">Приблизительное местоположение, не сохраняется</string>
+    <string name="live_map_title">Поезда в пути</string>
+    <string name="live_map_area_subtitle">Окрестности: %1$s</string>
+    <string name="live_map_content_description">Карта поездов в пути, %1$s. Положения рассчитаны по расписанию, это не данные GPS; те же поезда перечислены под картой.</string>
+    <string name="live_map_note">Расчётное положение, не GPS: Binario вычисляет по расписанию, где должен находиться каждый поезд, на прямой между двумя остановками (не вдоль путей). Если на табло уже есть опоздание поезда, расчёт его учитывает. Пока карта открыта, положения обновляются каждые 30 секунд.</string>
+    <string name="live_map_legend_live">Положение рассчитано с опозданием по табло</string>
+    <string name="live_map_legend_timetable">Положение рассчитано только по расписанию</string>
+    <string name="live_map_loading">Расчёт положений…</string>
+    <string name="live_map_zoom_in">Приблизьте карту, чтобы увидеть поезда в пути.</string>
+    <string name="live_map_none">По расписанию в показанной области нет поездов в пути.</string>
+    <string name="live_map_row_title">%1$s, направление: %2$s</string>
+    <string name="live_map_row_at">Стоянка: %1$s</string>
+    <string name="live_map_row_between">Перегон %1$s — %2$s</string>
+    <string name="live_map_row_live">Расчёт по данным табло: %1$s</string>
+    <string name="live_map_row_timetable">Расчёт только по расписанию</string>
+    <plurals name="live_map_count">
+        <item quantity="one">%d поезд в пути</item>
+        <item quantity="few">%d поезда в пути</item>
+        <item quantity="many">%d поездов в пути</item>
+        <item quantity="other">%d поезда в пути</item>
+    </plurals>
+    <plurals name="live_map_capped">
+        <item quantity="one">Показан %d ближайший.</item>
+        <item quantity="few">Показаны %d ближайших.</item>
+        <item quantity="many">Показаны %d ближайших.</item>
+        <item quantity="other">Показаны %d ближайших.</item>
+    </plurals>
     <string name="settings_privacy_maps">Карты открываются, только когда вы их разворачиваете или загружаете. Чтобы их нарисовать, приложение загружает стиль, тайлы, шрифты и значки с tiles.openfreemap.org (OpenFreeMap), который видит ваш IP-адрес и показанную область: маршрут поезда, выбранную станцию или, для ближайших станций, область вокруг вашего приблизительного местоположения. Местоположение не передаётся и не сохраняется; тайлы хранятся в локальном кеше приложения.</string>
     <string name="settings_credits_maps">Карты: OpenFreeMap © OpenMapTiles, данные © участники OpenStreetMap (ODbL 1.0). Отображение с помощью MapLibre Native, лицензия BSD 2-Clause.</string>
     <string name="settings_credits_trenitalia">Расписания Trenitalia (поезда и автобусы): официальные данные Trenitalia S.p.A., опубликованные в итальянской National Access Point (CCISS) в соответствии со ст. 52 CAD и Регламентом ЕС 2017/1926, https://www.cciss.it/nap/mmtis/public/en/catalog/Dataset/1077621. Преобразование в GTFS © Clément Desouche, CC BY 4.0: https://github.com/deryclem/trenitalia-gtfs (лицензия https://creativecommons.org/licenses/by/4.0/). Binario использует только плановое расписание, без геометрии маршрутов, и не связана с Trenitalia.</string>
@@ -688,6 +720,14 @@
     <string name="background_status_exact_on">Точные будильники разрешены</string>
     <string name="background_status_battery_optimized">Оптимизация батареи для Binario включена: Android может откладывать фоновые проверки.</string>
     <string name="background_status_battery_unrestricted">Оптимизация батареи для Binario выключена</string>
+    <string name="background_runs_title">Следующие проверки в фоне</string>
+    <string name="background_runs_none">Проверок в фоне не запланировано.</string>
+    <string name="background_runs_running">%1$s: выполняется</string>
+    <string name="background_runs_soon">%1$s: скоро</string>
+    <string name="background_runs_today">%1$s: сегодня в %2$s</string>
+    <string name="background_runs_tomorrow">%1$s: завтра в %2$s</string>
+    <string name="background_runs_later">%1$s: %2$s в %3$s</string>
+    <string name="background_runs_note">Время примерное: Android может сдвинуть проверки ради экономии батареи или в ожидании сети.</string>
     <string name="commuter_alert_quiet_hours_feedback">Оповещение сохранено, но не запланировано: время оповещения попадает в тихие часы 22:00–07:00.</string>
     <string name="commuter_alert_invalid_time_feedback">Оповещение сохранено, но не запланировано: неверное время.</string>
     <string name="commuter_alert_disabled_feedback">Оповещение сохранено, но выключено.</string>
@@ -1006,6 +1046,9 @@
     <string name="widget_settings_until_arrival_description">Отправившийся поезд остаётся в списке с пометкой «В пути» до ожидаемого прибытия в пункт назначения.</string>
     <string name="widget_settings_show_platform">Показывать путь</string>
     <string name="widget_settings_show_train_name">Показывать название и категорию поезда</string>
+    <string name="widget_settings_show_reliability">Показывать надёжность</string>
+    <string name="widget_settings_show_reliability_description">После каждого поезда — доля дней без опоздания за последние 30 дней: неофициальная статистика Binario по данным ViaggiaTreno, встроенная в приложение и показываемая только при наличии не менее 5 наблюдений.</string>
+    <string name="widget_reliability_mark">вовремя %1$d%%</string>
     <string name="station_widget_display_name_description">Заменяет название станции в заголовке и хранится только для этого виджета.</string>
     <string name="station_widget_settings_nearest">Кнопка «📍 Ближайшая»</string>
     <string name="station_widget_settings_nearest_description">При нажатии виджет один раз запрашивает приблизительное местоположение и переключается на ближайшую станцию из каталога. Местоположение не сохраняется и не передаётся; автообновления всегда используют последнюю выбранную станцию.</string>
@@ -1174,6 +1217,20 @@
     <string name="punctuality_history_show_all">Показать все даты</string>
     <string name="settings_punctuality_recording_title">Пунктуальность избранных поездов</string>
     <string name="settings_punctuality_recording_description">Раз в день после ожидаемого прибытия запрашивает статус поезда и записывает только на этом телефоне итоговое опоздание и опоздания на остановках, не более 365 дней.</string>
+    <string name="settings_weekly_digest_title">Еженедельная сводка по избранным поездам</string>
+    <string name="settings_weekly_digest_description">По воскресеньям около 19:00 уведомление подводит итоги пунктуальности избранных поездов за неделю, записанной на этом телефоне, и, если есть данные, их надёжности в сети за последние 30 дней, а также называет поезд, который стал хуже. Без сетевых запросов; никогда с 22:00 до 7:00.</string>
+    <string name="weekly_digest_channel_name">Еженедельная сводка</string>
+    <string name="weekly_digest_channel_description">В воскресенье вечером — пунктуальность избранных поездов за неделю.</string>
+    <string name="weekly_digest_title">Ваши поезда на этой неделе</string>
+    <string name="weekly_digest_train_line">%1$s: %2$s</string>
+    <string name="weekly_digest_no_runs">поездок не записано</string>
+    <plurals name="weekly_digest_network">
+        <item quantity="one">последний %1$d день в сети: вовремя %2$d%%</item>
+        <item quantity="few">последние %1$d дня в сети: вовремя %2$d%%</item>
+        <item quantity="many">последние %1$d дней в сети: вовремя %2$d%%</item>
+        <item quantity="other">последние %1$d дня в сети: вовремя %2$d%%</item>
+    </plurals>
+    <string name="weekly_digest_worse">Стало хуже: %1$s, на этой неделе вовремя в %2$d%% случаев (обычно %3$d%%)</string>
     <string name="settings_live_updates_title">Уведомления в реальном времени</string>
     <string name="settings_live_updates_permission">Чтобы получать эти уведомления, разрешите уведомления Binario в настройках Android.</string>
     <string name="settings_live_updates_privacy">Эти проверки выполняются в фоне только в указанные интервалы. MIT получает запрос без ваших данных; источники статуса поездов получают номер поезда и дату, как при открытии карточки. За пределами телефона ничего не сохраняется.</string>
@@ -1563,6 +1620,39 @@
         <item quantity="other">%1$s: опоздал %2$d раза из %3$d</item>
     </plurals>
     <string name="reliability_threshold_mixed_note">Вовремя считается прибытие с опозданием не более 5 минут для поездов Frecce, Italo, EuroCity, Eurostar и EuroNight и не более 15 минут для остальных поездов.</string>
+    <!-- Usual platform and weekday punctuality of the network statistics (stop elements 7 and 8) -->
+    <plurals name="reliability_usual_platform">
+        <item quantity="one">Обычно путь %1$s (%2$d раз из %3$d)</item>
+        <item quantity="few">Обычно путь %1$s (%2$d раза из %3$d)</item>
+        <item quantity="many">Обычно путь %1$s (%2$d раз из %3$d)</item>
+        <item quantity="other">Обычно путь %1$s (%2$d раза из %3$d)</item>
+    </plurals>
+    <string name="reliability_weekday_monday">По понедельникам</string>
+    <string name="reliability_weekday_tuesday">По вторникам</string>
+    <string name="reliability_weekday_wednesday">По средам</string>
+    <string name="reliability_weekday_thursday">По четвергам</string>
+    <string name="reliability_weekday_friday">По пятницам</string>
+    <string name="reliability_weekday_saturday">По субботам</string>
+    <string name="reliability_weekday_sunday">По воскресеньям</string>
+    <plurals name="reliability_weekday_worse">
+        <item quantity="one">%1$s вовремя %2$d раз из %3$d, хуже среднего</item>
+        <item quantity="few">%1$s вовремя %2$d раза из %3$d, хуже среднего</item>
+        <item quantity="many">%1$s вовремя %2$d раз из %3$d, хуже среднего</item>
+        <item quantity="other">%1$s вовремя %2$d раза из %3$d, хуже среднего</item>
+    </plurals>
+    <plurals name="reliability_weekday_better">
+        <item quantity="one">%1$s вовремя %2$d раз из %3$d, лучше среднего</item>
+        <item quantity="few">%1$s вовремя %2$d раза из %3$d, лучше среднего</item>
+        <item quantity="many">%1$s вовремя %2$d раз из %3$d, лучше среднего</item>
+        <item quantity="other">%1$s вовремя %2$d раза из %3$d, лучше среднего</item>
+    </plurals>
+    <!-- Route results: «Più presto» / «Più tardi», empty searched window, RFI «RITARDO» without minutes -->
+    <string name="results_earlier">Раньше</string>
+    <string name="results_later">Позже</string>
+    <string name="results_no_more_earlier">Более ранних вариантов нет</string>
+    <string name="results_no_more_later">Более поздних вариантов нет</string>
+    <string name="results_no_trains_until">Поездов нет до %1$s</string>
+    <string name="service_late_minutes_unpublished">Опаздывает (минуты не опубликованы)</string>
     <string name="bikes_allowed">Велосипеды разрешены</string>
     <string name="bikes_not_allowed">Велосипеды не разрешены</string>
     <string name="bikes_conditions_link">Велосипеды в поезде: условия %1$s</string>
@@ -1571,4 +1661,51 @@
     <string name="compensation_notice_quarter">Прибыл на станцию %1$s с опозданием %2$s: по Регламенту (ЕС) 2021/782 вы можете иметь право на компенсацию 25%% стоимости билета (50%% при опоздании от 120 минут).</string>
     <string name="compensation_notice_half">Прибыл на станцию %1$s с опозданием %2$s: по Регламенту (ЕС) 2021/782 вы можете иметь право на компенсацию 50%% стоимости билета.</string>
     <string name="compensation_notice_conditions">Железнодорожная компания может отказать в выплате сумм менее 4 € и при опозданиях по внешним причинам, например из-за экстремальной погоды или людей на путях; забастовка её собственного персонала внешней причиной не считается. Для региональных поездов условия зависят также от договора на обслуживание с регионом.</string>
+    <!-- Station board: RFI Sala Blu assistance (links only) -->
+    <string name="station_sala_blu_title">Помощь Sala Blu</string>
+    <string name="station_sala_blu_description">RFI бесплатно помогает на вокзалах по предварительной заявке людям с инвалидностью или ограниченной мобильностью.</string>
+    <string name="station_sala_blu_page">Страница помощи RFI</string>
+    <string name="station_sala_blu_call_toll_free">Позвонить по номеру %1$s (бесплатно со стационарного)</string>
+    <string name="station_sala_blu_call_national">Позвонить по номеру %1$s (в том числе с мобильного)</string>
+    <!-- Station board: direct connections from the station (embedded timetables) -->
+    <string name="direct_connections_title">Прямые поездки</string>
+    <string name="direct_connections_from">Из %1$s без пересадок</string>
+    <string name="direct_connections_note">По плановому расписанию, встроенному в приложение, без задержек и отмен. Нажмите на пункт назначения, чтобы найти поезда.</string>
+    <string name="direct_connections_filter">Фильтр по назначению</string>
+    <string name="direct_connections_loading">Читаю расписание…</string>
+    <string name="direct_connections_empty">Во встроенном расписании на этот день нет прямых поездок с этой станции.</string>
+    <string name="direct_connections_no_match">Нет пунктов назначения с «%1$s».</string>
+    <string name="direct_connections_trains">Поезда</string>
+    <string name="direct_connections_urban">Метро, трамвай и фуникулёры</string>
+    <plurals name="direct_connections_train_count">
+        <item quantity="one">%d поезд</item>
+        <item quantity="few">%d поезда</item>
+        <item quantity="many">%d поездов</item>
+        <item quantity="other">%d поезда</item>
+    </plurals>
+    <plurals name="direct_connections_runs">
+        <item quantity="one">%d рейс</item>
+        <item quantity="few">%d рейса</item>
+        <item quantity="many">%d рейсов</item>
+        <item quantity="other">%d рейса</item>
+    </plurals>
+    <string name="direct_connections_first_last">первый в %1$s, последний в %2$s</string>
+    <string name="direct_connections_fastest">быстрее всего за %1$s</string>
+    <string name="direct_connections_from_stop">от остановки %1$s в нескольких шагах</string>
+    <!-- Per te and route board: works and interruptions named by the network notices on the saved routes -->
+    <string name="route_works_title">Работы и перерывы движения на ваших маршрутах</string>
+    <string name="route_works_title_route">Работы и перерывы движения на этом маршруте</string>
+    <string name="route_works_none">Сейчас ни одно сообщение о работах или перерывах движения не называет станции ваших маршрутов.</string>
+    <string name="route_works_names">В сообщении упомянуто: %1$s</string>
+    <string name="route_works_route_names">%1$s — в сообщении упомянуто: %2$s</string>
+    <string name="route_works_line">линия %1$s</string>
+    <string name="route_works_date">Указанная дата: %1$s</string>
+    <string name="route_works_dates">Указанные даты: с %1$s по %2$s</string>
+    <string name="route_works_note">Сообщения связаны с маршрутами по названиям станций и линий в их тексте: всегда читайте текст полностью.</string>
+    <plurals name="route_works_show_more">
+        <item quantity="one">Показать ещё %d сообщение</item>
+        <item quantity="few">Показать ещё %d сообщения</item>
+        <item quantity="many">Показать ещё %d сообщений</item>
+        <item quantity="other">Показать ещё %d сообщения</item>
+    </plurals>
 </resources>

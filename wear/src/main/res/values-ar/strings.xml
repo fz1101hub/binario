@@ -26,4 +26,13 @@
     <string name="service_destination_status">%1$s · %2$s</string>
     <string name="service_operator_category">%1$s · %2$s</string>
     <string name="service_operator_category_platform">%1$s · %2$s · رصيف %3$s</string>
+    <string name="accessibility_reliability">%1$s (إحصاءات غير رسمية)</string>
+    <plurals name="service_reliability_on_time">
+        <item quantity="zero">في الموعد %1$d مرة من أصل %2$d</item>
+        <item quantity="one">في الموعد %1$d مرة من أصل %2$d</item>
+        <item quantity="two">في الموعد %1$d مرتين من أصل %2$d</item>
+        <item quantity="few">في الموعد %1$d مرات من أصل %2$d</item>
+        <item quantity="many">في الموعد %1$d مرة من أصل %2$d</item>
+        <item quantity="other">في الموعد %1$d مرة من أصل %2$d</item>
+    </plurals>
 </resources>

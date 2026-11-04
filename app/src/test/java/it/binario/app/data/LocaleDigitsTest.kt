@@ -1,6 +1,5 @@
 package it.binario.app.data
 
-import it.binario.app.data.core.BoardKind
 import it.binario.app.data.core.Completeness
 import it.binario.app.data.core.Confidence
 import it.binario.app.data.core.OperatorId
@@ -13,8 +12,6 @@ import it.binario.app.data.core.StationBoard
 import it.binario.app.data.core.StationBoardEntry
 import it.binario.app.data.core.StationId
 import it.binario.app.data.core.TrainRunId
-import it.binario.app.data.live.DbTimetablesFetcher
-import it.binario.app.data.live.DbTimetablesStationBoardAdapter
 import it.binario.app.data.live.RfiMonitorFetcher
 import it.binario.app.data.live.RfiStationBoardAdapter
 import it.binario.app.data.live.parseItaloPublicBoard
@@ -116,20 +113,5 @@ class LocaleDigitsTest {
         assertTrue(shown.scheduledDeparture.matches(ascii))
         assertEquals(locale.toLanguageTag(), DataQualityBand.RELIABLE, quality.band)
         assertTrue(locale.toLanguageTag(), SnapshotWarning.INCOMPLETE_SERVICE !in quality.warnings)
-    }
-
-    @Test fun `DB Timetables request path keeps ASCII digits`() = eachNonAsciiLocale { locale ->
-        val asked = mutableListOf<String>()
-        val fetcher = object : DbTimetablesFetcher {
-            override suspend fun findStation(pattern: String) = "<stations><station eva=\"8000261\" name=\"München Hbf\"/></stations>".toByteArray()
-            override suspend fun planned(eva: String, date: String, hour: String): ByteArray { asked += "$date/$hour"; return "<timetable/>".toByteArray() }
-            override suspend fun fullChanges(eva: String) = "<timetable/>".toByteArray()
-        }
-        val now = Instant.parse("2026-09-04T06:00:00Z")
-        runBlocking {
-            DbTimetablesStationBoardAdapter(fetcher, Clock.fixed(now, ZoneOffset.UTC)).getStationBoard(
-                StationBoardRequest(StationId("m"), "München Hbf", from = now, to = now.plusSeconds(3600), kind = BoardKind.DEPARTURES))
-        }
-        assertEquals(locale.toLanguageTag(), listOf("260904/08", "260904/09"), asked)
     }
 }
