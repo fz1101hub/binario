@@ -75,7 +75,7 @@
     <string name="station_badge_metro">Станция метро</string>
     <string name="station_badge_tram">Остановка трамвая</string>
     <string name="station_badge_funicular">Фуникулёр или подъёмник</string>
-    <string name="settings_privacy_new_sources">Когда дополнительные источники включены, они получают только то, что нужно для запроса, без аккаунта и местоположения: transport.opendata.ch — номер UIC швейцарской станции (или однажды название пограничной станции); ViaggiaTreno — номер поезда для объявлений, по незашифрованному HTTP, как и его публичный API; RFI, Trenitalia и Trenord — никаких ваших данных для списков объявлений, которые загружаются, только когда вы открываете раздел объявлений, карточку или соответствующее табло; Open-Meteo — округлённые координаты станции прибытия. Внешние ссылки открываются в браузере, только если вы нажмёте на них.</string>
+    <string name="settings_privacy_new_sources">Когда дополнительные источники включены, они получают только то, что нужно для запроса, без аккаунта и местоположения: transport.opendata.ch — номер UIC швейцарской станции (или однажды название пограничной станции); ViaggiaTreno — номер поезда для объявлений, по незашифрованному HTTP, как и его публичный API; RFI, Trenitalia и Trenord — никаких ваших данных для списков объявлений, которые загружаются, только когда вы открываете раздел объявлений, карточку, соответствующее табло или раздел о работах на ваших маршрутах; Open-Meteo — округлённые координаты станции прибытия. Внешние ссылки открываются в браузере, только если вы нажмёте на них.</string>
     <string name="app_name">Binario</string>
     <string name="widget_description">Показывает ближайшие поезда по вашему маршруту в Binario.</string>
     <string name="widget_refresh">Обновить поезда</string>
@@ -1602,4 +1602,20 @@
     <string name="direct_connections_first_last">первый в %1$s, последний в %2$s</string>
     <string name="direct_connections_fastest">быстрее всего за %1$s</string>
     <string name="direct_connections_from_stop">от остановки %1$s в нескольких шагах</string>
+    <!-- Per te and route board: works and interruptions named by the network notices on the saved routes -->
+    <string name="route_works_title">Работы и перерывы движения на ваших маршрутах</string>
+    <string name="route_works_title_route">Работы и перерывы движения на этом маршруте</string>
+    <string name="route_works_none">Сейчас ни одно сообщение о работах или перерывах движения не называет станции ваших маршрутов.</string>
+    <string name="route_works_names">В сообщении упомянуто: %1$s</string>
+    <string name="route_works_route_names">%1$s — в сообщении упомянуто: %2$s</string>
+    <string name="route_works_line">линия %1$s</string>
+    <string name="route_works_date">Указанная дата: %1$s</string>
+    <string name="route_works_dates">Указанные даты: с %1$s по %2$s</string>
+    <string name="route_works_note">Сообщения связаны с маршрутами по названиям станций и линий в их тексте: всегда читайте текст полностью.</string>
+    <plurals name="route_works_show_more">
+        <item quantity="one">Показать ещё %d сообщение</item>
+        <item quantity="few">Показать ещё %d сообщения</item>
+        <item quantity="many">Показать ещё %d сообщений</item>
+        <item quantity="other">Показать ещё %d сообщения</item>
+    </plurals>
 </resources>

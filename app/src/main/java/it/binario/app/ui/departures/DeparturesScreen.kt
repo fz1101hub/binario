@@ -356,6 +356,15 @@ private fun RouteBoard(
         if (viewModel.savedRoutes.size > 1) {
             item { MonitoredRoutesStrip(viewModel.savedRoutes, viewModel.activeRoute.id, viewModel::activateRoute, manageRoutes) }
         }
+        // Works and interruptions the network notices name on this saved route (none: nothing shown).
+        if (viewModel.hasActiveRoute && !viewModel.activeRouteIsSearch) item(key = "route-works") {
+            RouteWorksSection(
+                routes = listOf(viewModel.activeRoute),
+                catalogue = viewModel.stations,
+                title = R.string.route_works_title_route,
+                showWhenNone = false
+            )
+        }
         item { RailNoticesArea() }
         item {
             Text(

@@ -75,7 +75,7 @@
     <string name="station_badge_metro">ป้ายรถไฟใต้ดิน</string>
     <string name="station_badge_tram">ป้ายรถราง</string>
     <string name="station_badge_funicular">รถรางไต่เขาหรือลิฟต์</string>
-    <string name="settings_privacy_new_sources">เมื่อเปิดใช้ แหล่งข้อมูลเพิ่มเติมจะได้รับเฉพาะสิ่งที่คำขอต้องใช้ โดยไม่มีบัญชีหรือตำแหน่ง: transport.opendata.ch ได้รับหมายเลข UIC ของสถานีในสวิตเซอร์แลนด์ (หรือชื่อสถานีชายแดนหนึ่งครั้ง); ViaggiaTreno ได้รับหมายเลขขบวนเพื่อดูประกาศ ผ่าน HTTP ที่ไม่เข้ารหัสเช่นเดียวกับ API สาธารณะของบริการ; RFI, Trenitalia และ Trenord ไม่ได้รับข้อมูลใดของคุณสำหรับรายการประกาศ ซึ่งจะดาวน์โหลดเมื่อคุณเปิดส่วนประกาศ รายละเอียด หรือกระดานขบวนรถที่เกี่ยวข้องเท่านั้น; Open-Meteo ได้รับพิกัดที่ปัดเศษของสถานีปลายทาง ลิงก์ภายนอกจะเปิดในเบราว์เซอร์เมื่อคุณแตะเท่านั้น</string>
+    <string name="settings_privacy_new_sources">เมื่อเปิดใช้ แหล่งข้อมูลเพิ่มเติมจะได้รับเฉพาะสิ่งที่คำขอต้องใช้ โดยไม่มีบัญชีหรือตำแหน่ง: transport.opendata.ch ได้รับหมายเลข UIC ของสถานีในสวิตเซอร์แลนด์ (หรือชื่อสถานีชายแดนหนึ่งครั้ง); ViaggiaTreno ได้รับหมายเลขขบวนเพื่อดูประกาศ ผ่าน HTTP ที่ไม่เข้ารหัสเช่นเดียวกับ API สาธารณะของบริการ; RFI, Trenitalia และ Trenord ไม่ได้รับข้อมูลใดของคุณสำหรับรายการประกาศ ซึ่งจะดาวน์โหลดเมื่อคุณเปิดส่วนประกาศ รายละเอียด กระดานขบวนรถที่เกี่ยวข้อง หรือส่วนงานซ่อมบำรุงในเส้นทางของคุณเท่านั้น; Open-Meteo ได้รับพิกัดที่ปัดเศษของสถานีปลายทาง ลิงก์ภายนอกจะเปิดในเบราว์เซอร์เมื่อคุณแตะเท่านั้น</string>
 
     <string name="app_name">Binario</string>
     <string name="widget_description">แสดงขบวนถัดไปบนเส้นทาง Binario ของคุณ</string>
@@ -1484,4 +1484,17 @@
     <string name="direct_connections_first_last">เที่ยวแรก %1$s เที่ยวสุดท้าย %2$s</string>
     <string name="direct_connections_fastest">เร็วที่สุด %1$s</string>
     <string name="direct_connections_from_stop">จากป้าย %1$s ที่อยู่ใกล้ๆ</string>
+    <!-- Per te and route board: works and interruptions named by the network notices on the saved routes -->
+    <string name="route_works_title">งานซ่อมบำรุงและการหยุดเดินรถในเส้นทางของคุณ</string>
+    <string name="route_works_title_route">งานซ่อมบำรุงและการหยุดเดินรถในเส้นทางนี้</string>
+    <string name="route_works_none">ขณะนี้ไม่มีประกาศงานซ่อมบำรุงหรือการหยุดเดินรถที่ระบุสถานีในเส้นทางของคุณ</string>
+    <string name="route_works_names">ประกาศระบุถึง: %1$s</string>
+    <string name="route_works_route_names">%1$s — ประกาศระบุถึง: %2$s</string>
+    <string name="route_works_line">สาย %1$s</string>
+    <string name="route_works_date">วันที่ที่ระบุ: %1$s</string>
+    <string name="route_works_dates">วันที่ที่ระบุ: %1$s ถึง %2$s</string>
+    <string name="route_works_note">ประกาศถูกจับคู่กับเส้นทางจากชื่อสถานีและสายที่อยู่ในข้อความ โปรดอ่านข้อความฉบับเต็มเสมอ</string>
+    <plurals name="route_works_show_more">
+        <item quantity="other">แสดงประกาศอีก %d รายการ</item>
+    </plurals>
 </resources>

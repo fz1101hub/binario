@@ -79,6 +79,7 @@ import it.binario.app.ui.common.localizedDisplayName
 import it.binario.app.ui.common.localizedName
 import it.binario.app.ui.common.localizedSummary
 import it.binario.app.ui.common.ltrUnit
+import it.binario.app.ui.departures.RouteWorksSection
 import it.binario.app.ui.departures.StationPreferenceRow
 
 // Per te: "Le tue tratte" (favourite and recent routes), the agenda, favourite stations, the trip being
@@ -187,6 +188,16 @@ internal fun ForYouScreen(
                     }
                 }
             }
+        }
+        // «Lavori e interruzioni sulle tue tratte»: network notices that name the stations or lines of the saved routes.
+        if (viewModel.savedRoutes.isNotEmpty()) item(key = "route-works") {
+            RouteWorksSection(
+                routes = viewModel.savedRoutes,
+                catalogue = viewModel.stations,
+                title = R.string.route_works_title,
+                showWhenNone = true,
+                modifier = Modifier.padding(top = 12.dp)
+            )
         }
         item {
             BinarioCard(Modifier.padding(horizontal = ScreenMargin, vertical = 12.dp)) {

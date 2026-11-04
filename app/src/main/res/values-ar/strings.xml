@@ -75,7 +75,7 @@
     <string name="station_badge_metro">محطة مترو</string>
     <string name="station_badge_tram">محطة ترام</string>
     <string name="station_badge_funicular">قطار جبلي أو مصعد</string>
-    <string name="settings_privacy_new_sources">عند تفعيلها، لا تتلقى المصادر الإضافية إلا ما يلزم للطلب، دون حساب أو موقع: يتلقى transport.opendata.ch رقم UIC للمحطة السويسرية (أو اسم محطة حدودية مرة واحدة)؛ ويتلقى ViaggiaTreno رقم القطار لتنبيهاته، عبر HTTP غير مشفّر مثل واجهته البرمجية العامة؛ ولا تتلقى RFI وTrenitalia وTrenord أي بيانات عنك لقوائم تنبيهاتها، التي لا تُنزَّل إلا عند فتح منطقة التنبيهات أو تفاصيل أو لوحة ذات صلة؛ ويتلقى Open-Meteo الإحداثيات المقرّبة لمحطة الوصول. لا تُفتح الروابط الخارجية في المتصفح إلا عند لمسها.</string>
+    <string name="settings_privacy_new_sources">عند تفعيلها، لا تتلقى المصادر الإضافية إلا ما يلزم للطلب، دون حساب أو موقع: يتلقى transport.opendata.ch رقم UIC للمحطة السويسرية (أو اسم محطة حدودية مرة واحدة)؛ ويتلقى ViaggiaTreno رقم القطار لتنبيهاته، عبر HTTP غير مشفّر مثل واجهته البرمجية العامة؛ ولا تتلقى RFI وTrenitalia وTrenord أي بيانات عنك لقوائم تنبيهاتها، التي لا تُنزَّل إلا عند فتح منطقة التنبيهات أو تفاصيل أو لوحة ذات صلة أو قسم الأعمال على مساراتك؛ ويتلقى Open-Meteo الإحداثيات المقرّبة لمحطة الوصول. لا تُفتح الروابط الخارجية في المتصفح إلا عند لمسها.</string>
     <string name="app_name">Binario</string>
     <string name="widget_description">يعرض الرحلات التالية على مسارك في Binario.</string>
     <string name="widget_refresh">تحديث الرحلات</string>
@@ -1696,4 +1696,22 @@
     <string name="direct_connections_first_last">الأول %1$s، الأخير %2$s</string>
     <string name="direct_connections_fastest">الأسرع %1$s</string>
     <string name="direct_connections_from_stop">من محطة %1$s، على بُعد خطوات</string>
+    <!-- Per te and route board: works and interruptions named by the network notices on the saved routes -->
+    <string name="route_works_title">الأعمال والانقطاعات على مساراتك</string>
+    <string name="route_works_title_route">الأعمال والانقطاعات على هذا المسار</string>
+    <string name="route_works_none">لا يذكر أي إشعار عن أعمال أو انقطاعات محطات مساراتك حاليًا.</string>
+    <string name="route_works_names">يذكر الإشعار: %1$s</string>
+    <string name="route_works_route_names">%1$s — يذكر الإشعار: %2$s</string>
+    <string name="route_works_line">الخط %1$s</string>
+    <string name="route_works_date">التاريخ المذكور: %1$s</string>
+    <string name="route_works_dates">التواريخ المذكورة: من %1$s إلى %2$s</string>
+    <string name="route_works_note">تُربط الإشعارات بالمسارات من خلال أسماء المحطات والخطوط الواردة فيها: اقرأ النص الكامل دائمًا.</string>
+    <plurals name="route_works_show_more">
+        <item quantity="zero">عرض %d إشعار آخر</item>
+        <item quantity="one">عرض %d إشعار آخر</item>
+        <item quantity="two">عرض %d إشعارين آخرين</item>
+        <item quantity="few">عرض %d إشعارات أخرى</item>
+        <item quantity="many">عرض %d إشعارًا آخر</item>
+        <item quantity="other">عرض %d إشعار آخر</item>
+    </plurals>
 </resources>

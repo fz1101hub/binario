@@ -75,7 +75,7 @@
     <string name="station_badge_metro">Estação de metrô</string>
     <string name="station_badge_tram">Parada de bonde</string>
     <string name="station_badge_funicular">Funicular ou elevador</string>
-    <string name="settings_privacy_new_sources">Quando ativas, as fontes adicionais recebem apenas o necessário para a solicitação, sem conta nem localização: transport.opendata.ch, o número UIC da estação suíça (ou, uma vez, o nome de uma estação de fronteira); ViaggiaTreno, o número do trem para os avisos, em HTTP não criptografado, como sua API pública; RFI, Trenitalia e Trenord, nenhum dado seu para as listas de avisos, baixadas apenas quando você abre a área de avisos, um detalhe ou um painel relevante; Open-Meteo, as coordenadas arredondadas da estação de chegada. Os links externos só abrem no navegador se você tocar neles.</string>
+    <string name="settings_privacy_new_sources">Quando ativas, as fontes adicionais recebem apenas o necessário para a solicitação, sem conta nem localização: transport.opendata.ch, o número UIC da estação suíça (ou, uma vez, o nome de uma estação de fronteira); ViaggiaTreno, o número do trem para os avisos, em HTTP não criptografado, como sua API pública; RFI, Trenitalia e Trenord, nenhum dado seu para as listas de avisos, baixadas apenas quando você abre a área de avisos, um detalhe, um painel relevante ou a seção de obras nos seus trajetos; Open-Meteo, as coordenadas arredondadas da estação de chegada. Os links externos só abrem no navegador se você tocar neles.</string>
     <string name="app_name">Binario</string>
     <string name="widget_description">Mostra os próximos trens do seu trajeto no Binario.</string>
     <string name="widget_refresh">Atualizar trens</string>
@@ -1555,4 +1555,19 @@
     <string name="direct_connections_first_last">primeiro %1$s, último %2$s</string>
     <string name="direct_connections_fastest">o mais rápido %1$s</string>
     <string name="direct_connections_from_stop">da parada %1$s, a poucos passos</string>
+    <!-- Per te and route board: works and interruptions named by the network notices on the saved routes -->
+    <string name="route_works_title">Obras e interrupções nos seus trajetos</string>
+    <string name="route_works_title_route">Obras e interrupções neste trajeto</string>
+    <string name="route_works_none">Nenhum aviso de obras ou interrupções cita agora as estações dos seus trajetos.</string>
+    <string name="route_works_names">O aviso cita: %1$s</string>
+    <string name="route_works_route_names">%1$s — o aviso cita: %2$s</string>
+    <string name="route_works_line">a linha %1$s</string>
+    <string name="route_works_date">Data citada: %1$s</string>
+    <string name="route_works_dates">Datas citadas: de %1$s a %2$s</string>
+    <string name="route_works_note">Os avisos são associados aos trajetos pelos nomes de estações e linhas que contêm: leia sempre o texto completo.</string>
+    <plurals name="route_works_show_more">
+        <item quantity="one">Mostrar mais %d aviso</item>
+        <item quantity="many">Mostrar mais %d avisos</item>
+        <item quantity="other">Mostrar mais %d avisos</item>
+    </plurals>
 </resources>

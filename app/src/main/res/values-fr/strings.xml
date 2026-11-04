@@ -75,7 +75,7 @@
     <string name="station_badge_metro">Station de métro</string>
     <string name="station_badge_tram">Arrêt de tram</string>
     <string name="station_badge_funicular">Funiculaire ou ascenseur</string>
-    <string name="settings_privacy_new_sources">Lorsqu’elles sont actives, les sources supplémentaires ne reçoivent que ce dont la requête a besoin, sans compte ni position : transport.opendata.ch le numéro UIC de la gare suisse (ou, une fois, le nom d’une gare frontalière) ; ViaggiaTreno le numéro du train pour ses avis, en HTTP non chiffré comme son API publique ; RFI, Trenitalia et Trenord aucune donnée vous concernant pour leurs listes d’avis, téléchargées seulement quand vous ouvrez la zone des avis, un détail ou un tableau concerné ; Open-Meteo les coordonnées arrondies de la gare d’arrivée. Les liens externes ne s’ouvrent dans le navigateur que si vous les touchez.</string>
+    <string name="settings_privacy_new_sources">Lorsqu’elles sont actives, les sources supplémentaires ne reçoivent que ce dont la requête a besoin, sans compte ni position : transport.opendata.ch le numéro UIC de la gare suisse (ou, une fois, le nom d’une gare frontalière) ; ViaggiaTreno le numéro du train pour ses avis, en HTTP non chiffré comme son API publique ; RFI, Trenitalia et Trenord aucune donnée vous concernant pour leurs listes d’avis, téléchargées seulement quand vous ouvrez la zone des avis, un détail, un tableau concerné ou la section des travaux sur vos trajets ; Open-Meteo les coordonnées arrondies de la gare d’arrivée. Les liens externes ne s’ouvrent dans le navigateur que si vous les touchez.</string>
 
     <string name="app_name">Binario</string>
     <string name="widget_description">Affiche les prochains services de votre itinéraire Binario.</string>
@@ -1578,4 +1578,19 @@
     <string name="direct_connections_first_last">premier %1$s, dernier %2$s</string>
     <string name="direct_connections_fastest">le plus rapide %1$s</string>
     <string name="direct_connections_from_stop">depuis l’arrêt %1$s, à quelques pas</string>
+    <!-- Per te and route board: works and interruptions named by the network notices on the saved routes -->
+    <string name="route_works_title">Travaux et interruptions sur vos trajets</string>
+    <string name="route_works_title_route">Travaux et interruptions sur ce trajet</string>
+    <string name="route_works_none">Aucun avis de travaux ou d’interruption ne cite actuellement les gares de vos trajets.</string>
+    <string name="route_works_names">L’avis cite : %1$s</string>
+    <string name="route_works_route_names">%1$s — l’avis cite : %2$s</string>
+    <string name="route_works_line">la ligne %1$s</string>
+    <string name="route_works_date">Date indiquée : %1$s</string>
+    <string name="route_works_dates">Dates indiquées : du %1$s au %2$s</string>
+    <string name="route_works_note">Les avis sont associés aux trajets par les noms de gares et de lignes qu’ils contiennent : lisez toujours le texte complet.</string>
+    <plurals name="route_works_show_more">
+        <item quantity="one">Afficher %d autre avis</item>
+        <item quantity="many">Afficher %d autres avis</item>
+        <item quantity="other">Afficher %d autres avis</item>
+    </plurals>
 </resources>

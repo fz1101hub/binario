@@ -75,7 +75,7 @@
     <string name="station_badge_metro">Metro stop</string>
     <string name="station_badge_tram">Tram stop</string>
     <string name="station_badge_funicular">Funicular or lift</string>
-    <string name="settings_privacy_new_sources">When active, the additional sources receive only what the request needs, with no account or location: transport.opendata.ch the UIC number of the Swiss station (or, once, the name of a border station); ViaggiaTreno the train number for its notices, over unencrypted HTTP like its public API; RFI, Trenitalia and Trenord no data of yours for their notice lists, downloaded only when you open the notices area, a detail or a relevant board; Open-Meteo the rounded coordinates of the arrival station. External links open in the browser only when you tap them.</string>
+    <string name="settings_privacy_new_sources">When active, the additional sources receive only what the request needs, with no account or location: transport.opendata.ch the UIC number of the Swiss station (or, once, the name of a border station); ViaggiaTreno the train number for its notices, over unencrypted HTTP like its public API; RFI, Trenitalia and Trenord no data of yours for their notice lists, downloaded only when you open the notices area, a detail, a relevant board or the works section of your routes; Open-Meteo the rounded coordinates of the arrival station. External links open in the browser only when you tap them.</string>
 
     <string name="app_name">Binario</string>
     <string name="widget_description">Displays the next services on your Binario route.</string>
@@ -1531,4 +1531,18 @@
     <string name="direct_connections_first_last">first %1$s, last %2$s</string>
     <string name="direct_connections_fastest">fastest %1$s</string>
     <string name="direct_connections_from_stop">from the %1$s stop, a short walk away</string>
+    <!-- Per te and route board: works and interruptions named by the network notices on the saved routes -->
+    <string name="route_works_title">Works and disruptions on your routes</string>
+    <string name="route_works_title_route">Works and disruptions on this route</string>
+    <string name="route_works_none">No notice of works or disruptions currently names the stations of your routes.</string>
+    <string name="route_works_names">The notice names: %1$s</string>
+    <string name="route_works_route_names">%1$s — the notice names: %2$s</string>
+    <string name="route_works_line">the %1$s line</string>
+    <string name="route_works_date">Date given: %1$s</string>
+    <string name="route_works_dates">Dates given: from %1$s to %2$s</string>
+    <string name="route_works_note">Notices are matched to routes by the station and line names they contain: always read the full text.</string>
+    <plurals name="route_works_show_more">
+        <item quantity="one">Show %d more notice</item>
+        <item quantity="other">Show %d more notices</item>
+    </plurals>
 </resources>

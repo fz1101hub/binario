@@ -75,7 +75,7 @@
     <string name="station_badge_metro">Halte metro</string>
     <string name="station_badge_tram">Halte trem</string>
     <string name="station_badge_funicular">Funikular atau lift</string>
-    <string name="settings_privacy_new_sources">Jika aktif, sumber tambahan hanya menerima yang diperlukan untuk permintaan, tanpa akun atau lokasi: transport.opendata.ch menerima nomor UIC stasiun Swiss (atau, satu kali, nama stasiun perbatasan); ViaggiaTreno menerima nomor kereta untuk pemberitahuannya, melalui HTTP tanpa enkripsi seperti API publiknya; RFI, Trenitalia, dan Trenord tidak menerima data Anda untuk daftar pemberitahuan mereka, yang hanya diunduh saat Anda membuka area pemberitahuan, detail, atau papan yang relevan; Open-Meteo menerima koordinat stasiun kedatangan yang dibulatkan. Tautan eksternal hanya terbuka di browser jika Anda mengetuknya.</string>
+    <string name="settings_privacy_new_sources">Jika aktif, sumber tambahan hanya menerima yang diperlukan untuk permintaan, tanpa akun atau lokasi: transport.opendata.ch menerima nomor UIC stasiun Swiss (atau, satu kali, nama stasiun perbatasan); ViaggiaTreno menerima nomor kereta untuk pemberitahuannya, melalui HTTP tanpa enkripsi seperti API publiknya; RFI, Trenitalia, dan Trenord tidak menerima data Anda untuk daftar pemberitahuan mereka, yang hanya diunduh saat Anda membuka area pemberitahuan, detail, papan yang relevan, atau bagian pekerjaan di rute Anda; Open-Meteo menerima koordinat stasiun kedatangan yang dibulatkan. Tautan eksternal hanya terbuka di browser jika Anda mengetuknya.</string>
     <string name="app_name">Binario</string>
     <string name="widget_description">Menampilkan perjalanan berikutnya di rute Binario Anda.</string>
     <string name="widget_refresh">Perbarui perjalanan</string>
@@ -1461,4 +1461,17 @@
     <string name="direct_connections_first_last">pertama %1$s, terakhir %2$s</string>
     <string name="direct_connections_fastest">tercepat %1$s</string>
     <string name="direct_connections_from_stop">dari halte %1$s, beberapa langkah saja</string>
+    <!-- Per te and route board: works and interruptions named by the network notices on the saved routes -->
+    <string name="route_works_title">Pekerjaan dan gangguan di rute Anda</string>
+    <string name="route_works_title_route">Pekerjaan dan gangguan di rute ini</string>
+    <string name="route_works_none">Saat ini tidak ada pemberitahuan pekerjaan atau gangguan yang menyebut stasiun di rute Anda.</string>
+    <string name="route_works_names">Pemberitahuan menyebut: %1$s</string>
+    <string name="route_works_route_names">%1$s — pemberitahuan menyebut: %2$s</string>
+    <string name="route_works_line">jalur %1$s</string>
+    <string name="route_works_date">Tanggal yang disebut: %1$s</string>
+    <string name="route_works_dates">Tanggal yang disebut: %1$s sampai %2$s</string>
+    <string name="route_works_note">Pemberitahuan dicocokkan dengan rute dari nama stasiun dan jalur yang dimuatnya: selalu baca teks lengkapnya.</string>
+    <plurals name="route_works_show_more">
+        <item quantity="other">Tampilkan %d pemberitahuan lagi</item>
+    </plurals>
 </resources>

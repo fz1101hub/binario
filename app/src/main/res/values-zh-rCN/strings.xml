@@ -75,7 +75,7 @@
     <string name="station_badge_metro">地铁站</string>
     <string name="station_badge_tram">有轨电车站</string>
     <string name="station_badge_funicular">缆索铁路或电梯</string>
-    <string name="settings_privacy_new_sources">启用后，附加数据源只会收到请求所需的信息，不涉及账户或位置：transport.opendata.ch 收到瑞士车站的 UIC 编号（或一次性收到某个边境车站的名称）；ViaggiaTreno 收到用于查询公告的车次号，与其公共 API 一样通过未加密的 HTTP 传输；RFI、Trenitalia 和 Trenord 的公告列表不会收到你的任何数据，且仅在你打开公告区域、详情或相关车站大屏时才会下载；Open-Meteo 收到到达站的近似坐标。外部链接仅在你点按时才会在浏览器中打开。</string>
+    <string name="settings_privacy_new_sources">启用后，附加数据源只会收到请求所需的信息，不涉及账户或位置：transport.opendata.ch 收到瑞士车站的 UIC 编号（或一次性收到某个边境车站的名称）；ViaggiaTreno 收到用于查询公告的车次号，与其公共 API 一样通过未加密的 HTTP 传输；RFI、Trenitalia 和 Trenord 的公告列表不会收到你的任何数据，且仅在你打开公告区域、详情、相关车站大屏或你的线路施工板块时才会下载；Open-Meteo 收到到达站的近似坐标。外部链接仅在你点按时才会在浏览器中打开。</string>
 
     <string name="app_name">Binario</string>
     <string name="widget_description">显示你的 Binario 路线接下来的车次。</string>
@@ -1484,4 +1484,17 @@
     <string name="direct_connections_first_last">首班 %1$s，末班 %2$s</string>
     <string name="direct_connections_fastest">最快 %1$s</string>
     <string name="direct_connections_from_stop">从步行即到的 %1$s 站出发</string>
+    <!-- Per te and route board: works and interruptions named by the network notices on the saved routes -->
+    <string name="route_works_title">你的线路上的施工与中断</string>
+    <string name="route_works_title_route">本线路的施工与中断</string>
+    <string name="route_works_none">目前没有提到你线路车站的施工或中断公告。</string>
+    <string name="route_works_names">公告提到：%1$s</string>
+    <string name="route_works_route_names">%1$s：公告提到 %2$s</string>
+    <string name="route_works_line">%1$s 线</string>
+    <string name="route_works_date">提到的日期：%1$s</string>
+    <string name="route_works_dates">提到的日期：%1$s 至 %2$s</string>
+    <string name="route_works_note">公告按其中提到的车站和线路名称与线路匹配：请务必阅读全文。</string>
+    <plurals name="route_works_show_more">
+        <item quantity="other">再显示 %d 条公告</item>
+    </plurals>
 </resources>

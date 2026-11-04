@@ -75,7 +75,7 @@
     <string name="station_badge_metro">지하철역</string>
     <string name="station_badge_tram">트램 정류장</string>
     <string name="station_badge_funicular">푸니쿨라 또는 엘리베이터</string>
-    <string name="settings_privacy_new_sources">추가 출처를 켜면 각 출처는 요청에 필요한 정보만 받으며 계정이나 위치는 받지 않습니다. transport.opendata.ch는 스위스 역의 UIC 번호(한 번은 국경역 이름)를 받습니다. ViaggiaTreno는 공지 조회를 위해 열차 번호를 받으며, 공개 API와 마찬가지로 암호화되지 않은 HTTP를 사용합니다. RFI, Trenitalia, Trenord는 공지 목록에 대해 사용자 데이터를 전혀 받지 않으며, 목록은 공지 영역, 상세 정보 또는 관련 전광판을 열 때만 다운로드됩니다. Open-Meteo는 도착역의 반올림된 좌표를 받습니다. 외부 링크는 탭할 때만 브라우저에서 열립니다.</string>
+    <string name="settings_privacy_new_sources">추가 출처를 켜면 각 출처는 요청에 필요한 정보만 받으며 계정이나 위치는 받지 않습니다. transport.opendata.ch는 스위스 역의 UIC 번호(한 번은 국경역 이름)를 받습니다. ViaggiaTreno는 공지 조회를 위해 열차 번호를 받으며, 공개 API와 마찬가지로 암호화되지 않은 HTTP를 사용합니다. RFI, Trenitalia, Trenord는 공지 목록에 대해 사용자 데이터를 전혀 받지 않으며, 목록은 공지 영역, 상세 정보, 관련 전광판 또는 내 구간의 공사 섹션을 열 때만 다운로드됩니다. Open-Meteo는 도착역의 반올림된 좌표를 받습니다. 외부 링크는 탭할 때만 브라우저에서 열립니다.</string>
     <string name="app_name">Binario</string>
     <string name="widget_description">Binario 구간의 다음 열차를 표시합니다.</string>
     <string name="widget_refresh">열차 새로고침</string>
@@ -1461,4 +1461,17 @@
     <string name="direct_connections_first_last">첫차 %1$s, 막차 %2$s</string>
     <string name="direct_connections_fastest">최단 %1$s</string>
     <string name="direct_connections_from_stop">가까운 %1$s 정류장에서</string>
+    <!-- Per te and route board: works and interruptions named by the network notices on the saved routes -->
+    <string name="route_works_title">내 구간의 공사 및 운행 중단</string>
+    <string name="route_works_title_route">이 구간의 공사 및 운행 중단</string>
+    <string name="route_works_none">현재 내 구간의 역을 언급한 공사 또는 운행 중단 공지가 없습니다.</string>
+    <string name="route_works_names">공지에 언급됨: %1$s</string>
+    <string name="route_works_route_names">%1$s — 공지에 언급됨: %2$s</string>
+    <string name="route_works_line">%1$s 노선</string>
+    <string name="route_works_date">언급된 날짜: %1$s</string>
+    <string name="route_works_dates">언급된 날짜: %1$s~%2$s</string>
+    <string name="route_works_note">공지는 포함된 역 이름과 노선 이름으로 구간과 연결됩니다. 항상 전체 내용을 읽어 주세요.</string>
+    <plurals name="route_works_show_more">
+        <item quantity="other">공지 %d개 더 보기</item>
+    </plurals>
 </resources>

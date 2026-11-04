@@ -75,7 +75,7 @@
     <string name="station_badge_metro">Metro durağı</string>
     <string name="station_badge_tram">Tramvay durağı</string>
     <string name="station_badge_funicular">Füniküler veya asansör</string>
-    <string name="settings_privacy_new_sources">Etkin olduklarında ek kaynaklar, hesap veya konum olmadan yalnızca isteğin gerektirdiğini alır: transport.opendata.ch, İsviçre istasyonunun UIC numarasını (ya da bir kez, bir sınır istasyonunun adını); ViaggiaTreno, duyurular için tren numarasını, herkese açık API\'si gibi şifrelenmemiş HTTP üzerinden; RFI, Trenitalia ve Trenord, duyuru listeleri için sizden hiçbir veri almaz ve listeler yalnızca duyuru alanını, bir ayrıntıyı veya ilgili bir panoyu açtığınızda indirilir; Open-Meteo, varış istasyonunun yuvarlanmış koordinatlarını. Harici bağlantılar yalnızca dokunduğunuzda tarayıcıda açılır.</string>
+    <string name="settings_privacy_new_sources">Etkin olduklarında ek kaynaklar, hesap veya konum olmadan yalnızca isteğin gerektirdiğini alır: transport.opendata.ch, İsviçre istasyonunun UIC numarasını (ya da bir kez, bir sınır istasyonunun adını); ViaggiaTreno, duyurular için tren numarasını, herkese açık API\'si gibi şifrelenmemiş HTTP üzerinden; RFI, Trenitalia ve Trenord, duyuru listeleri için sizden hiçbir veri almaz ve listeler yalnızca duyuru alanını, bir ayrıntıyı, ilgili bir panoyu veya hatlarınızdaki çalışmalar bölümünü açtığınızda indirilir; Open-Meteo, varış istasyonunun yuvarlanmış koordinatlarını. Harici bağlantılar yalnızca dokunduğunuzda tarayıcıda açılır.</string>
 
     <string name="app_name">Binario</string>
     <string name="widget_description">Binario güzergâhınızdaki sonraki seferleri gösterir.</string>
@@ -1531,4 +1531,18 @@
     <string name="direct_connections_first_last">ilk %1$s, son %2$s</string>
     <string name="direct_connections_fastest">en hızlı %1$s</string>
     <string name="direct_connections_from_stop">birkaç adım ötedeki %1$s durağından</string>
+    <!-- Per te and route board: works and interruptions named by the network notices on the saved routes -->
+    <string name="route_works_title">Hatlarınızdaki çalışmalar ve kesintiler</string>
+    <string name="route_works_title_route">Bu hattaki çalışmalar ve kesintiler</string>
+    <string name="route_works_none">Şu anda hiçbir çalışma veya kesinti duyurusu hatlarınızdaki istasyonları anmıyor.</string>
+    <string name="route_works_names">Duyuruda geçenler: %1$s</string>
+    <string name="route_works_route_names">%1$s — duyuruda geçenler: %2$s</string>
+    <string name="route_works_line">%1$s hattı</string>
+    <string name="route_works_date">Belirtilen tarih: %1$s</string>
+    <string name="route_works_dates">Belirtilen tarihler: %1$s – %2$s</string>
+    <string name="route_works_note">Duyurular, içerdikleri istasyon ve hat adlarıyla hatlarınızla eşleştirilir: her zaman metnin tamamını okuyun.</string>
+    <plurals name="route_works_show_more">
+        <item quantity="one">%d duyuru daha göster</item>
+        <item quantity="other">%d duyuru daha göster</item>
+    </plurals>
 </resources>

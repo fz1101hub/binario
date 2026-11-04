@@ -75,7 +75,7 @@
     <string name="station_badge_metro">Điểm dừng tàu điện ngầm</string>
     <string name="station_badge_tram">Điểm dừng tàu điện mặt đất</string>
     <string name="station_badge_funicular">Tàu leo núi hoặc thang máy</string>
-    <string name="settings_privacy_new_sources">Khi được bật, các nguồn bổ sung chỉ nhận những gì yêu cầu cần, không có tài khoản hay vị trí: transport.opendata.ch nhận số UIC của ga Thụy Sĩ (hoặc, một lần, tên của một ga biên giới); ViaggiaTreno nhận số hiệu tàu để lấy thông báo, qua HTTP không mã hóa như API công khai của họ; RFI, Trenitalia và Trenord không nhận dữ liệu nào của bạn cho danh sách thông báo, chỉ được tải xuống khi bạn mở khu vực thông báo, một trang chi tiết hoặc một bảng giờ tàu liên quan; Open-Meteo nhận tọa độ đã làm tròn của ga đến. Liên kết ngoài chỉ mở trong trình duyệt khi bạn nhấn vào.</string>
+    <string name="settings_privacy_new_sources">Khi được bật, các nguồn bổ sung chỉ nhận những gì yêu cầu cần, không có tài khoản hay vị trí: transport.opendata.ch nhận số UIC của ga Thụy Sĩ (hoặc, một lần, tên của một ga biên giới); ViaggiaTreno nhận số hiệu tàu để lấy thông báo, qua HTTP không mã hóa như API công khai của họ; RFI, Trenitalia và Trenord không nhận dữ liệu nào của bạn cho danh sách thông báo, chỉ được tải xuống khi bạn mở khu vực thông báo, một trang chi tiết, một bảng giờ tàu liên quan hoặc mục thi công trên tuyến của bạn; Open-Meteo nhận tọa độ đã làm tròn của ga đến. Liên kết ngoài chỉ mở trong trình duyệt khi bạn nhấn vào.</string>
 
     <string name="app_name">Binario</string>
     <string name="widget_description">Hiển thị các chuyến tiếp theo trên tuyến Binario của bạn.</string>
@@ -1484,4 +1484,17 @@
     <string name="direct_connections_first_last">chuyến đầu %1$s, chuyến cuối %2$s</string>
     <string name="direct_connections_fastest">nhanh nhất %1$s</string>
     <string name="direct_connections_from_stop">từ trạm %1$s, cách vài bước</string>
+    <!-- Per te and route board: works and interruptions named by the network notices on the saved routes -->
+    <string name="route_works_title">Thi công và gián đoạn trên tuyến của bạn</string>
+    <string name="route_works_title_route">Thi công và gián đoạn trên tuyến này</string>
+    <string name="route_works_none">Hiện không có thông báo thi công hay gián đoạn nào nêu tên các ga trên tuyến của bạn.</string>
+    <string name="route_works_names">Thông báo nêu: %1$s</string>
+    <string name="route_works_route_names">%1$s — thông báo nêu: %2$s</string>
+    <string name="route_works_line">tuyến %1$s</string>
+    <string name="route_works_date">Ngày được nêu: %1$s</string>
+    <string name="route_works_dates">Các ngày được nêu: từ %1$s đến %2$s</string>
+    <string name="route_works_note">Thông báo được ghép với tuyến theo tên ga và tên tuyến có trong nội dung: hãy luôn đọc toàn văn.</string>
+    <plurals name="route_works_show_more">
+        <item quantity="other">Hiện thêm %d thông báo</item>
+    </plurals>
 </resources>
