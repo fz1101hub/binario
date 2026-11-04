@@ -296,6 +296,44 @@ def _check_release_signing(
         problems.append(f"{path.name}: release-sign deve escludere i pack personali con -Pbinario.personalSources=false")
 
 
+PUNCTUALITY_SWITCH_OFF = "-Pbinario.punctualityStats=false"
+PUNCTUALITY_ABSENT = "--punctuality-stats absent"
+
+
+def _check_punctuality_switch(path: Path, workflow: Mapping[str, Any], problems: list[str]) -> None:
+    """The withdrawal switch of the punctuality statistics is proved on every run of the android job: one step builds
+    the release with the switch off and checks that its APK has no assets/punctuality/; the ordinary bundle check never
+    expects them absent; a signed release built with the switch off is checked for their absence (and only then)."""
+    jobs = _mapping(workflow.get("jobs")) or {}
+
+    def steps(job_name: str) -> list[Mapping[str, Any]]:
+        raw = (_mapping(jobs.get(job_name)) or {}).get("steps")
+        return [step for item in (raw if isinstance(raw, list) else []) for step in [_mapping(item)] if step]
+
+    android = steps("android")
+    switched = [step for step in android if PUNCTUALITY_SWITCH_OFF in _commands(step.get("run"))]
+    if len(switched) != 1:
+        problems.append(f"{path.name}: serve uno step android che costruisca con {PUNCTUALITY_SWITCH_OFF} ({len(switched)} trovati)")
+    else:
+        step = switched[0]
+        command = _commands(step.get("run"))
+        if "if" in step or "continue-on-error" in step:
+            problems.append(f"{path.name}: la verifica di {PUNCTUALITY_SWITCH_OFF} deve girare sempre e poter fallire")
+        if ":app:assembleRelease" not in command and ":app:bundleRelease" not in command:
+            problems.append(f"{path.name}: con {PUNCTUALITY_SWITCH_OFF} va costruita la release del telefono")
+        if not re.search(r"tools/verify_android_app_bundles\.py[^\n]*" + re.escape(PUNCTUALITY_ABSENT), command.replace("\\\n", " ")):
+            problems.append(f"{path.name}: la build con {PUNCTUALITY_SWITCH_OFF} va verificata con {PUNCTUALITY_ABSENT}")
+    for step in android:
+        if step in switched:
+            continue
+        for line in _commands(step.get("run")).splitlines():
+            if "tools/verify_android_app_bundles.py" in line and PUNCTUALITY_ABSENT in line:
+                problems.append(f"{path.name}: il controllo ordinario dei bundle non può attendere le statistiche assenti")
+    signing = "\n".join(_commands(step.get("run")) for step in steps("release-sign"))
+    if signing and (PUNCTUALITY_SWITCH_OFF in signing) != (PUNCTUALITY_ABSENT in signing):
+        problems.append(f"{path.name}: release-sign verifica {PUNCTUALITY_ABSENT} esattamente quando firma con {PUNCTUALITY_SWITCH_OFF}")
+
+
 STABILIZATION_PULL_REQUEST = "${{ github.event_name == 'pull_request' && startsWith(github.base_ref, 'stabilization/') }}"
 # Where the 30-day release-freshness gate must run (audit A7-06, proposal P2): (workflow, job) -> step condition, None
 # for a job that only runs on a release path. Anywhere else the gate would hide correctness signal behind data age.
@@ -369,6 +407,7 @@ THIRD_PARTY_DATA_MARKERS = (
     "tools/build_gtfs_packs.py --refresh",
     "LiveProviderNetworkTest",
     "tools/collect_punctuality.py",
+    "tools/nap_watch.py",
 )
 # Steps that print text read from downloads: they must run with workflow commands stopped (audit A7-02).
 UNTRUSTED_LOG_MARKERS = (
@@ -376,6 +415,7 @@ UNTRUSTED_LOG_MARKERS = (
     "tools/acquire_transit_sources.py --out",
     "tools/acquire_transit_sources.py --validate-netex",
     "tools/collect_punctuality.py",
+    "tools/nap_watch.py",
 )
 
 
@@ -1034,6 +1074,7 @@ def workflow_problems(
         _check_push_branches(path, root or {}, lock, problems)
     if path.name == "android-ci.yml":
         _check_release_signing(path, root or {}, problems)
+        _check_punctuality_switch(path, root or {}, problems)
     if path.name == PUNCTUALITY_WORKFLOW:
         _check_punctuality(path, root or {}, problems)
     elif "tools/collect_punctuality.py" in _workflow_commands(jobs):

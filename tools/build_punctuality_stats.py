@@ -9,20 +9,27 @@ cancelled), sorted by number and origin::
     {"schema": "binario-punctuality-v1", "generatedAt": ..., "windowStart": ..., "windowEnd": ..., "windowDays": 30,
      "source": "ViaggiaTreno, elaborazione Binario (non ufficiale)", "buckets": [0, 2, 5, 10, 15, 20, 30, 60],
      "trains": [{"n": "9558", "o": "S08409", "c": "FR", "d": 28, "x": 1,
-                 "s": [["S08409", 27, 0.8, [20, 24, 26, 27, 27, 27, 27, 27], 0, 7, 420], ...]}]}
+                 "s": [["S08409", 27, 0.8, [20, 24, 26, 27, 27, 27, 27, 27], 0, 7, 420, ["12", 20, 25],
+                        [[4, 4, 4], [4, 4, 4], [4, 3, 4], [4, 4, 4], [4, 4, 4], [4, 4, 4], [3, 3, 3]]], ...]}]}
 
 ``d`` days known, ``x`` of them fully cancelled; per stop (in run order, only stops with at least one sample):
 station code, samples (days the train ran and the stop was served with an actual time), mean delay in minutes with
 one decimal (early arrivals count as 0), cumulative counts of samples with delay <= each bucket (early arrivals are
 <= 0), days the stop was suppressed while the train ran, largest delay of the samples in whole minutes (early
-arrivals count as 0) and scheduled time on the most recent day that has one, as minutes since local midnight of the
+arrivals count as 0), scheduled time on the most recent day that has one, as minutes since local midnight of the
 departure day (Europe/Rome, 1440 or more after midnight; ``null`` while only observations collected before the
-extension of 4 November 2026 cover the stop).  The origin stop uses the departure delay and time, the others the
-arrival delay and time.  Nothing else from ViaggiaTreno reaches the file: no actual times, names or texts.
+extension of 4 November 2026 cover the stop), usual platform ``[name, count, observedWithPlatform]`` and weekday
+punctuality (seven ``[samples, le5, le15]`` for Monday..Sunday of the departure day, ``null`` below 14 samples).  The
+usual platform is the most frequent actual platform of the sampled days (``count`` days) among the sampled days
+with an actual platform (``observedWithPlatform``); only at a stop where no sampled day had an actual platform the
+programmed ones are counted the same way; ``null`` without any.  The origin stop uses the departure delay, time and
+platform, the others the arrival ones.  Nothing else from ViaggiaTreno reaches the file: no actual times, station
+names or texts.
 
 ``--check FILE`` validates a file (schema, canonical encoding, sizes, bounds, monotonic cumulative counts, maximum
-delay within the bucket the counts imply and between the mean and the sum, sorted unique entries; stops of 7
-elements, or of 5 as in files built before the extension) and is used by the tests, by the print step and by ``tools/apply_ci_punctuality.py``.
+delay within the bucket the counts imply and between the mean and the sum, platform labels and counts, weekday
+counts within the stop's counts, sorted unique entries; stops of 9 elements, or of 5 or 7 as in files built before
+the extensions) and is used by the tests, by the print step and by ``tools/apply_ci_punctuality.py``.
 ``--print FILE`` checks the file and prints it in the job log as a ``BINARIO_BEGIN``/``BINARIO_DONE`` frame
 (``tools/ci_log_frames.py``).
 
@@ -62,9 +69,12 @@ MAX_STOPS = collector.MAX_STOPS
 MAX_MEAN = collector.MAX_DELAY
 MAX_DELAY_MINUTES = 1440  # bound of maxDelayMinutes in the format (the collector keeps at most MAX_MEAN)
 MAX_SCHEDULED_MINUTE = collector.MAX_SCHEDULED_MINUTE  # exclusive
-# A stop is [code, samples, mean, cumulative, suppressed, maxDelay, scheduledMinute]; files built before the
-# extension of 4 November 2026 have the first five only.
-STOP_LENGTHS = (5, 7)
+# A stop is [code, samples, mean, cumulative, suppressed, maxDelay, scheduledMinute, platform, weekdays]; files built
+# before the extensions of 4 November 2026 have the first five or the first seven.
+STOP_LENGTHS = (5, 7, 9)
+# Weekday punctuality: [samples, delay <= 5, delay <= 15] per ISO weekday, only for stops with this many samples.
+WEEKDAY_MIN_SAMPLES = 14
+WEEKDAY_THRESHOLDS = (5, 15)
 TOP_KEYS = frozenset({"schema", "generatedAt", "windowStart", "windowEnd", "windowDays", "source", "buckets", "trains"})
 TRAIN_KEYS = frozenset({"n", "o", "c", "d", "x", "s"})
 GENERATED_AT = re.compile(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z")
@@ -98,6 +108,22 @@ def _mean_tenths(delays: Sequence[int]) -> float:
     return ((20 * total + len(delays)) // (2 * len(delays))) / 10
 
 
+def usual_platform(tallies: Mapping[int, Mapping[str, list[Any]]]) -> list[Any] | None:
+    """``[name, count, observedWithPlatform]`` from the actual platforms (``tallies[1]``: name -> [days, latest day]),
+    or from the programmed ones (``tallies[0]``) when no day had an actual one; ties go to the most recent, then to
+    the first name."""
+    for kind in (1, 0):
+        names = tallies.get(kind)
+        if names:
+            name, (count, _) = min(names.items(), key=lambda item: (-item[1][0], _negated_day(item[1][1]), item[0]))
+            return [name, count, sum(days for days, _ in names.values())]
+    return None
+
+
+def _negated_day(day: str) -> int:
+    return -date.fromisoformat(day).toordinal()
+
+
 def aggregate(records: Iterable[Mapping[str, Any]]) -> list[dict[str, Any]]:
     """One entry per train (number, origin) known on at least one day of ``records``."""
     groups: dict[tuple[str, str], dict[str, Mapping[str, Any]]] = {}
@@ -115,6 +141,8 @@ def aggregate(records: Iterable[Mapping[str, Any]]) -> list[dict[str, Any]]:
         samples: dict[str, list[int]] = {}
         suppressed: dict[str, int] = {}
         scheduled: dict[str, tuple[str, int]] = {}  # code -> (most recent day with a scheduled time, minute)
+        platforms: dict[str, dict[int, dict[str, list[Any]]]] = {}  # code -> actual 1/0 -> name -> [days, latest]
+        weekdays: dict[str, list[list[int]]] = {}  # code -> Monday..Sunday [samples, <= 5, <= 15]
         cancelled = 0
         for record in days.values():
             categories[record["c"]] = categories.get(record["c"], 0) + 1
@@ -122,6 +150,7 @@ def aggregate(records: Iterable[Mapping[str, Any]]) -> list[dict[str, Any]]:
                 cancelled += 1
                 continue
             last = max(1, len(record["s"]) - 1)
+            weekday = date.fromisoformat(record["d"]).weekday()
             for index, stop in enumerate(record["s"]):
                 code, delay, stop_suppressed = stop[0], stop[1], stop[2]
                 minute = stop[3] if len(stop) > 3 else None  # none in lines collected before the extension
@@ -132,13 +161,22 @@ def aggregate(records: Iterable[Mapping[str, Any]]) -> list[dict[str, Any]]:
                     suppressed[code] = suppressed.get(code, 0) + 1
                 elif delay is not None:
                     samples.setdefault(code, []).append(delay)
+                    counts = weekdays.setdefault(code, [[0, 0, 0] for _ in range(7)])[weekday]
+                    counts[0] += 1
+                    counts[1] += 1 if delay <= WEEKDAY_THRESHOLDS[0] else 0
+                    counts[2] += 1 if delay <= WEEKDAY_THRESHOLDS[1] else 0
+                    if len(stop) > 5 and stop[4] is not None:  # none in lines collected before the extension
+                        tally = platforms.setdefault(code, {}).setdefault(stop[5], {}).setdefault(stop[4], [0, record["d"]])
+                        tally[0] += 1
+                        tally[1] = max(tally[1], record["d"])
         stops = []
         for code, delays in samples.items():
             order = sum(positions[code]) / len(positions[code])
             cumulative = [sum(1 for delay in delays if delay <= bucket) for bucket in BUCKETS]
             minute = scheduled[code][1] if code in scheduled else None
+            by_weekday = weekdays[code] if len(delays) >= WEEKDAY_MIN_SAMPLES else None
             stops.append((order, code, [code, len(delays), _mean_tenths(delays), cumulative, suppressed.get(code, 0),
-                                        max(0, max(delays)), minute]))
+                                        max(0, max(delays)), minute, usual_platform(platforms.get(code, {})), by_weekday]))
         stops.sort(key=lambda item: (item[0], item[1]))
         category = min(categories, key=lambda name: (-categories[name], name))
         trains.append({"n": number, "o": origin, "c": category, "d": len(days), "x": cancelled,
@@ -232,10 +270,54 @@ def _check_extension(maximum: object, minute: object, where: str, samples: int, 
         problems.append(f"{where}: minuto programmato né null né in 0..{MAX_SCHEDULED_MINUTE - 1}")
 
 
+def _check_platform(platform: object, where: str, samples: int, problems: list[str]) -> None:
+    """Element 7: ``null`` or ``[name, count, observedWithPlatform]`` with ``1 <= count <= observed <= samples``."""
+    if platform is None:
+        return
+    if not isinstance(platform, list) or len(platform) != 3:
+        problems.append(f"{where}: binario non è null né [nome, giorni, giorni con binario]")
+        return
+    name, count, observed = platform
+    if not collector.valid_platform(name):
+        problems.append(f"{where}: nome del binario non valido (1..{collector.MAX_PLATFORM_CHARS} caratteri, "
+                        "lettere, cifre e separatori, senza spazi in testa, in coda o doppi)")
+    if not _is_int(count) or not _is_int(observed) or not 1 <= count <= observed <= samples:
+        problems.append(f"{where}: giorni del binario fuori da 1 <= giorni <= giorni con binario <= {samples}")
+
+
+def _check_weekdays(weekdays: object, where: str, samples: int, cumulative: Sequence[int] | None,
+                    problems: list[str]) -> None:
+    """Element 8: ``null`` or seven ``[samples, le5, le15]`` (Monday..Sunday), a part of the stop's samples."""
+    if weekdays is None:
+        return
+    if (
+        not isinstance(weekdays, list) or len(weekdays) != 7
+        or not all(isinstance(day, list) and len(day) == 3 and all(_is_int(value) for value in day) for day in weekdays)
+    ):
+        problems.append(f"{where}: giorni della settimana non sono null né sette [campioni, <= 5, <= 15]")
+        return
+    if samples < WEEKDAY_MIN_SAMPLES:
+        problems.append(f"{where}: giorni della settimana con meno di {WEEKDAY_MIN_SAMPLES} campioni (devono essere null)")
+    if not all(0 <= le5 <= le15 <= count for count, le5, le15 in weekdays):
+        problems.append(f"{where}: giorni della settimana fuori da 0 <= <=5 <= <=15 <= campioni del giorno")
+        return
+    total, le5, le15 = (sum(day[index] for day in weekdays) for index in range(3))
+    if total > samples:
+        problems.append(f"{where}: campioni dei giorni della settimana oltre i campioni della fermata")
+    elif cumulative is not None:
+        # The weekday samples are some of the stop's samples: no more on time, and no more late, than the stop has.
+        on_time = {threshold: cumulative[BUCKETS.index(threshold)] for threshold in WEEKDAY_THRESHOLDS}
+        if (
+            le5 > on_time[5] or le15 > on_time[15]
+            or total - le5 > samples - on_time[5] or total - le15 > samples - on_time[15]
+        ):
+            problems.append(f"{where}: giorni della settimana incompatibili con i cumulati")
+
+
 def _check_stop(stop: object, where: str, runs: int, problems: list[str]) -> str | None:
     if not isinstance(stop, list) or len(stop) not in STOP_LENGTHS:
-        problems.append(f"{where}: fermata non è [codice, campioni, media, cumulati, soppressioni] "
-                        "seguito o no da [ritardo massimo, minuto programmato]")
+        problems.append(f"{where}: fermata non è [codice, campioni, media, cumulati, soppressioni] seguito o no da "
+                        "[ritardo massimo, minuto programmato] e da [binario, giorni della settimana]")
         return None
     code, samples, mean, cumulative, suppressed = stop[:5]
     if not isinstance(code, str) or not collector.CODE.fullmatch(code):
@@ -262,8 +344,11 @@ def _check_stop(stop: object, where: str, runs: int, problems: list[str]) -> str
     elif any(later < earlier for earlier, later in zip(cumulative, cumulative[1:])):
         problems.append(f"{where}: cumulati non monotoni")
         cumulative = None
-    if len(stop) == 7:
+    if len(stop) >= 7:
         _check_extension(stop[5], stop[6], where, samples, mean if mean_valid else None, cumulative, problems)
+    if len(stop) == 9:
+        _check_platform(stop[7], where, samples, problems)
+        _check_weekdays(stop[8], where, samples, cumulative, problems)
     if cumulative is None:
         return code
     if isinstance(mean, (int, float)) and not isinstance(mean, bool):
