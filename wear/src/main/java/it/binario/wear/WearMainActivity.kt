@@ -15,6 +15,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -111,13 +112,15 @@ private fun WearHome(snapshot: WearSnapshot?, phoneApp: WearPhoneAppPresence, fe
                     items = snapshot.services,
                     key = { index, service -> "$index-${service.number}-${service.expectedDeparture}-${service.destination}" }
                 ) { _, service ->
+                    // «In orario 8 volte su 10»: the phone's network statistics, when it sent them for this train.
+                    val reliability = service.reliability?.let { pluralStringResource(R.plurals.service_reliability_on_time, it.onTime, it.onTime, it.samples) }
                     // A plain container: a Card needs onClick, and an empty one made TalkBack offer
                     // "double-tap to activate" with nothing behind it. One focus stop reads the label.
                     Column(
                         Modifier
                             .fillMaxWidth()
                             .background(MaterialTheme.colorScheme.surfaceContainer, MaterialTheme.shapes.large)
-                            .clearAndSetSemantics { contentDescription = service.accessibleLabel(context) }
+                            .clearAndSetSemantics { contentDescription = service.accessibleLabel(context, reliability) }
                             .padding(horizontal = 14.dp, vertical = 10.dp),
                         verticalArrangement = Arrangement.spacedBy(2.dp),
                     ) {
@@ -129,6 +132,7 @@ private fun WearHome(snapshot: WearSnapshot?, phoneApp: WearPhoneAppPresence, fe
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurface,
                         )
+                        reliability?.let { Text(it, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
                     }
                 }
                 item { Button(onClick = onRefreshPhone, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.refresh_on_phone)) } }

@@ -25,7 +25,7 @@ Gli orari `service{n}Scheduled` e `service{n}Expected` del produttore Android so
 
 Il campo `notice` del produttore Android contiene l'avviso nella lingua del telefono (fonte di copertura non ufficiale, fonti in conflitto, altrimenti il primo avviso di qualità dello snapshot), mai il testo libero della fonte dati; senza avvisi il campo è vuoto.
 
-Il set di chiavi è chiuso. Non sono ammessi segreti o materiale sensibile: token, password, credenziali, header/autorizzazioni, identificativi di sessione, posizione/coordinate, tracce GPS, audio, trascrizioni o comandi vocali. In particolare non esistono campi per location, latitude, longitude, audio, transcript o voice. I valori non elencati non possono essere aggiunti in v1: richiedono una nuova `schemaVersion` e fixture.
+Il set di chiavi è chiuso: comprende le chiavi obbligatorie e la sola coppia facoltativa descritta in *Campo facoltativo: affidabilità*. Non sono ammessi segreti o materiale sensibile: token, password, credenziali, header/autorizzazioni, identificativi di sessione, posizione/coordinate, tracce GPS, audio, trascrizioni o comandi vocali. In particolare non esistono campi per location, latitude, longitude, audio, transcript o voice. I valori non elencati non possono essere aggiunti in v1: richiedono una nuova `schemaVersion` e fixture. L'unica eccezione è la coppia facoltativa di affidabilità, inviata solo ai decoder che dichiarano di conoscerla (vedi sotto).
 
 ## Campi e enum
 
@@ -46,12 +46,28 @@ La forma canonica è un oggetto JSON piatto; sulle Data Layer Android le stesse 
 | `notice` | string | Avviso testuale limitato; può essere vuoto. |
 | `serviceCount` | integer | Da 0 a 2. |
 | `service{n}Number`, `Operator`, `Category`, `Destination`, `Scheduled`, `Expected`, `Status`, `Platform`, `DelayMinutes` | string/string/string/string/string/string/string/string/integer | Tutti obbligatori per ogni `n < serviceCount`, eccetto `Platform` che può essere stringa vuota. `DelayMinutes` è tra -720 e 1.440. |
+| `service{n}ReliabilityOnTime`, `service{n}ReliabilitySamples` | integer/integer | **Facoltativi**, sempre in coppia (entrambi o nessuno) per un `n < serviceCount`; vedi sotto. |
 
 `UNAVAILABLE` richiede `serviceCount: 0` e provenienza `UNAVAILABLE`. `PROGRAMMED` dichiara esplicitamente che i dati non sono realtime. Le fixture sono esempi stabili: i test usano un clock fissato, non l'orologio reale.
+
+## Campo facoltativo: affidabilità (aggiunto il 4 novembre 2026)
+
+Una corsa può portare la propria affidabilità nelle statistiche di rete non ufficiali che l'app Android include (`assets/punctuality/stats_v1.json.gz`, aggregati di osservazioni ViaggiaTreno elaborati da Binario): il watch la mostra come «In orario 22 volte su 27» sotto la corsa nella schermata dell'app, non nella complication né nel Tile.
+
+| Chiave | Tipo | Vincoli |
+|---|---|---|
+| `service{n}ReliabilitySamples` | integer | Giorni con una rilevazione alla fermata di arrivo della tratta, tra 5 e 10.000. Sotto 5 rilevazioni il produttore non invia la coppia. |
+| `service{n}ReliabilityOnTime` | integer | Giorni in orario fra quelli, tra 0 e `service{n}ReliabilitySamples`, entro il limite della categoria (5 minuti per FR, FA, FB, EC, ES, ESC, EN e Italo, 15 per le altre). |
+
+- **Compatibilità**: la versione resta `schemaVersion: 1`. Un payload senza la coppia è valido come prima, quindi i produttori che non la conoscono (Companion, iPhone) non cambiano e i decoder aggiornati accettano ogni payload precedente. Una coppia incompleta, fuori intervallo, di tipo errato o per un indice `n >= serviceCount` fa rifiutare il payload intero, come ogni altro campo non valido.
+- **Decoder precedenti**: un decoder che non conosce la coppia la tratta come chiave non prevista e rifiuta il payload. Per questo il produttore Android la aggiunge solo se tutti i nodi Wear connessi pubblicano la capability Data Layer `binario_wear_reliability_v1` (dichiarata dall'app Wear in `wear/src/main/res/values/wear.xml`) e la toglie dal payload conservato prima di reinviarlo se un orologio connesso nel frattempo non la pubblica; senza orologi connessi o con la verifica non riuscita non la invia.
+- **Origine del dato**: il telefono la ricava sul dispositivo, senza richieste di rete, per un treno diretto della tratta (partenza dalla stazione di origine della tratta, misura alla destinazione), mai per bus sostitutivi, viaggi con cambi o dati dimostrativi; le build con `-Pbinario.punctualityStats=false` non la inviano mai.
+- **Decoder Wear OS**: `WearService.reliability` (`WearReliability(onTime, samples)`); i decoder Apple Watch non la ricevono, perché il produttore iOS non la invia.
 
 ## Fixture golden
 
 - `android-to-wear-v1.json`: app Android nativa → Wear OS, stato operativo con due corse.
+- `android-to-wear-v1-reliability.json`: come la precedente, con la coppia facoltativa di affidabilità sulla prima corsa soltanto.
 - `companion-to-wear-v1.json`: Companion → Wear OS, pianificazione locale senza informazione ferroviaria realtime.
 - `ios-to-apple-watch-v1.json`: schema previsto iOS → Apple Watch tramite il contesto WCSession esistente.
 

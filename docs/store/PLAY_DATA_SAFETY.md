@@ -20,7 +20,7 @@
 | Collegamenti ufficiali | Biglietti e assistenza, «Apri sul sito ufficiale», bollettino FS News e treni garantiti aprono il browser solo su tocco, senza parametri dell'utente (nessuna ricerca precompilata). | `links/OfficialLinks.kt` |
 | Calendario | "Aggiungi al calendario" passa un evento precompilato all'app calendario con `ACTION_INSERT`; nessun permesso calendario, nessuna lettura o scrittura diretta dei calendari. | `TrainCalendarEvent.kt` |
 | Backup | `allowBackup="false"`, regole di esclusione per cloud backup e trasferimento; l'export JSON è manuale e scelto dall'utente. | `app/src/main/res/xml/backup_rules.xml`, `data_extraction_rules.xml` |
-| Wear OS | Il telefono invia tramite Google Play Services Data Layer etichetta tratta, provenienza, freschezza, avviso e al massimo due corse; nessuna credenziale, posizione o audio. La revoca cancella il DataItem e la cache del watch. | `app/src/main/java/it/binario/app/wear/`, `wear/src/main/java/it/binario/wear/sync/` |
+| Wear OS | Il telefono invia tramite Google Play Services Data Layer etichetta tratta, provenienza, freschezza, avviso e al massimo due corse, con la loro affidabilità dalle statistiche incluse nell'app (due numeri, solo agli orologi che la leggono); nessuna credenziale, posizione o audio. La revoca cancella il DataItem e la cache del watch. | `app/src/main/java/it/binario/app/wear/`, `wear/src/main/java/it/binario/wear/sync/` |
 
 ## Flussi di rete
 

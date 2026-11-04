@@ -26,4 +26,9 @@
     <string name="service_destination_status">%1$s · %2$s</string>
     <string name="service_operator_category">%1$s · %2$s</string>
     <string name="service_operator_category_platform">%1$s · %2$s · Platform %3$s</string>
+    <string name="accessibility_reliability">%1$s (unofficial statistics)</string>
+    <plurals name="service_reliability_on_time">
+        <item quantity="one">On time %1$d time out of %2$d</item>
+        <item quantity="other">On time %1$d times out of %2$d</item>
+    </plurals>
 </resources>
