@@ -3,8 +3,6 @@ package it.binario.app.data.repository
 import it.binario.app.data.Station
 import it.binario.app.data.core.BoardKind
 import it.binario.app.data.core.StationId
-import it.binario.app.data.live.DbTimetablesFetcher
-import it.binario.app.data.live.DbTimetablesStationBoardAdapter
 import it.binario.app.data.live.RfiMonitorFetcher
 import it.binario.app.data.live.RfiStationBoardAdapter
 import it.binario.app.data.provider.ProviderResult
@@ -13,7 +11,6 @@ import java.time.Clock
 import java.time.Duration
 import java.time.Instant
 import java.time.ZoneId
-import java.time.ZoneOffset
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
@@ -67,24 +64,5 @@ class LateTrainBoardTest {
         assertFalse(request.keeps(now.minusSeconds(7300), now.plusSeconds(60)))
         assertTrue(request.keeps(now, null))
         assertFalse(request.keeps(now.plusSeconds(3601), null))
-    }
-
-    @Test fun `DB Timetables keeps a changed departure that is still to come`() = runBlocking {
-        val clock = Clock.fixed(Instant.parse("2026-09-04T06:35:00Z"), ZoneOffset.UTC) // 08:35 in Munich
-        val fetcher = object : DbTimetablesFetcher {
-            override suspend fun findStation(pattern: String) = "<stations><station eva=\"8000261\" name=\"München Hbf\"/></stations>".toByteArray()
-            override suspend fun planned(eva: String, date: String, hour: String) = if (hour == "08") """<timetable>
-                <s id="trip-1218-2609040830-1"><tl o="DB" c="EC" n="1218"/><dp pt="2609040830" pp="12" ppth="Kufstein|Verona Porta Nuova"/></s>
-                </timetable>""".toByteArray() else "<timetable/>".toByteArray()
-            override suspend fun fullChanges(eva: String) = """<timetable>
-                <s id="trip-1218-2609040830-1"><tl o="DB" c="EC" n="1218"/><dp ct="2609040842" cp="14"/></s></timetable>""".toByteArray()
-        }
-        val from = clock.instant()
-        val withWindow = DbTimetablesStationBoardAdapter(fetcher, clock).getStationBoard(StationBoardRequest(StationId("m"), "München Hbf",
-            from = from, to = from.plusSeconds(3600), kind = BoardKind.DEPARTURES, lateSince = from.minusSeconds(7200)))
-        assertEquals(listOf("1218"), (withWindow as ProviderResult.Success).value.entries.map { it.publicNumber })
-        val withoutWindow = DbTimetablesStationBoardAdapter(fetcher, clock).getStationBoard(StationBoardRequest(StationId("m"), "München Hbf",
-            from = from, to = from.plusSeconds(3600), kind = BoardKind.DEPARTURES))
-        assertTrue((withoutWindow as ProviderResult.Success).value.entries.isEmpty())
     }
 }

@@ -142,8 +142,6 @@ La tabella copre ogni host `http(s)://` trovato in `app/src/main/java`, `wear/sr
 | `gbfs.urbansharing.com` | A | `data/bikesharing/BikeSharing.kt` | Solo dopo il tocco su «Mostra bici e monopattini entro 300 m» per una stazione di Milano o Verona | `GET` HTTPS dei file GBFS di BikeMi e Verona Bike, senza parametri utente |
 | `tpl.actv.it` | P | `data/urban/UrbanRealtime.kt` | Build personali: tabellone di una fermata del tram di Mestre aperto, o un tratto in tram di Mestre in un risultato entro due ore | `GET` HTTPS dei Trip Updates ACTV automobilistico, senza parametri utente; cache di 30 secondi |
 | `mds.bird.co` | P | `data/bikesharing/BikeSharing.kt` | Build personali: tocco su «Mostra bici e monopattini entro 300 m» per una stazione di Roma | `GET` HTTPS del GBFS Bird Roma (monopattini), senza parametri utente |
-| `api.opentransportdata.swiss` | C | `data/live/SwissGtfsRealtimeAdapter.kt` | Mai: richiede un token `ExternalRailCredentials` che nessun chiamante fornisce | — |
-| `apis.deutschebahn.com` | C | `data/live/DbTimetablesStationBoardAdapter.kt` | Mai: richiede `DB-Client-Id`/`DB-Api-Key` custoditi fuori dall'APK; nessun chiamante | — |
 
 ### Host presenti solo come provenienza o metadati (D, E)
 

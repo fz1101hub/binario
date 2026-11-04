@@ -289,24 +289,6 @@ interface TrainDataSource {
 /** A current-day route source whose availability follows the provider registry. */
 interface RealtimeRouteDataSource : TrainDataSource, it.binario.app.data.provider.RailProvider
 
-/** A future authorised server-side gateway for Trenitalia operational data. */
-interface AuthorizedRailGateway {
-    suspend fun loadTrenitaliaRoute(route: SavedRoute, direction: Direction): DataResult
-}
-
-/**
- * Reserved adapter for an authorised Trenitalia / ViaggiaTreno integration.
- * With no gateway configured, it deliberately performs no network request.
- */
-class TrenitaliaViaggiaTrenoAdapter(
-    private val gateway: AuthorizedRailGateway? = null
-) : TrainDataSource {
-    override suspend fun loadRoute(route: SavedRoute, direction: Direction): DataResult {
-        return gateway?.loadTrenitaliaRoute(route, direction)
-            ?: DataResult.Failure("Il canale live Trenitalia non è configurato o autorizzato su questo dispositivo.")
-    }
-}
-
 /**
  * Tries only expressly configured, authorised adapters and falls back to a
  * local fixture. This keeps app and widget usable without pretending that a
