@@ -893,6 +893,7 @@ private fun DelayCompensationNotice(compensation: DelayCompensation, refundsPage
             Text(
                 stringResource(
                     if (compensation.share == CompensationShare.HALF) R.string.compensation_notice_half else R.string.compensation_notice_quarter,
+                    compensation.stationName,
                     delay
                 ),
                 style = MaterialTheme.typography.bodyMedium,

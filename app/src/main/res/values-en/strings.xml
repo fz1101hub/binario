@@ -1464,7 +1464,7 @@
     <string name="reliability_detail_days">Days observed: %1$d · cancellations: %2$d</string>
     <string name="reliability_threshold_note">An arrival counts as on time when it is at most %1$s late.</string>
     <string name="reliability_distribution_title">Delay distribution</string>
-    <string name="reliability_band_on_time">On time</string>
+    <string name="reliability_band_no_delay">No delay</string>
     <string name="reliability_band_range">%1$d–%2$s</string>
     <string name="reliability_band_over">Over %1$s</string>
     <plurals name="reliability_band_share">
@@ -1501,7 +1501,7 @@
     <string name="bikes_conditions_link">Bikes on board: %1$s conditions</string>
     <string name="planner_airport_links">Airport rail links</string>
     <string name="planner_airport_search">Search trains from %1$s to %2$s</string>
-    <string name="compensation_notice_quarter">Arrived %1$s late: under Regulation (EU) 2021/782 you may be entitled to compensation of 25%% of the ticket price (50%% from 120 minutes).</string>
-    <string name="compensation_notice_half">Arrived %1$s late: under Regulation (EU) 2021/782 you may be entitled to compensation of 50%% of the ticket price.</string>
+    <string name="compensation_notice_quarter">Arrived at %1$s %2$s late: under Regulation (EU) 2021/782 you may be entitled to compensation of 25%% of the ticket price (50%% from 120 minutes).</string>
+    <string name="compensation_notice_half">Arrived at %1$s %2$s late: under Regulation (EU) 2021/782 you may be entitled to compensation of 50%% of the ticket price.</string>
     <string name="compensation_notice_conditions">The railway company may refuse amounts under €4 and delays due to external causes, such as extreme weather or people on the tracks; a strike by its own staff is not an external cause. On regional trains the conditions also depend on the service contract with the region.</string>
 </resources>

@@ -63,7 +63,7 @@ class NetworkReliabilityAggregatesTest {
             train("9600", roma, "FR", 30, 0, stop7(torino, 30, 6.0, listOf(12, 15, 20, 24, 26, 27, 29, 29), maxDelay = 72, scheduledMinute = 600))
         )
         val distribution = requireNotNull(NetworkReliabilityAggregates.distribution(stats.trains.single(), 0))
-        // On time c[0]; 1–5 c[2]−c[0]; 6–15 c[4]−c[2]; 16–30 c[6]−c[4]; over 30 samples−c[6].
+        // No delay c[0]; 1–5 c[2]−c[0]; 6–15 c[4]−c[2]; 16–30 c[6]−c[4]; over 30 samples−c[6].
         assertEquals(listOf(12, 8, 6, 3, 1), distribution.counts)
         assertEquals(30, distribution.counts.sum())
         // 40, 26.7, 20, 10, 3.3: the point left over goes to the largest remainder, and the shares add up to 100.

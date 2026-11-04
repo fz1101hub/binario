@@ -127,7 +127,10 @@ private fun minutes(value: Int): String = pluralStringResource(R.plurals.minutes
 /** The texts of the delay distribution, as functions of their numbers (resources on screen, resource files in tests). */
 class DelayDistributionStrings(
     val title: String,
-    /** «In orario», «1–5 min», «6–15 min», «16–30 min», «Oltre 30 min», in band order. */
+    /**
+     * «Senza ritardo», «1–5 min», «6–15 min», «16–30 min», «Oltre 30 min», in band order. The first band is no delay
+     * at all, not «in orario», which elsewhere means within the train's 5 or 15 minutes.
+     */
     val bands: List<String>,
     /** «40% · 12 volte» (plural on the count). */
     val share: (percent: Int, count: Int) -> String,
@@ -145,7 +148,7 @@ object DelayDistributionTexts {
         return distribution.counts.mapIndexed { index, count -> DelayDistributionRow(strings.bands[index], strings.share(percentages[index], count), count) }
     }
 
-    /** «Distribuzione dei ritardi: In orario 40% · 12 volte, 1–5 min 27% · 8 volte, …. Ritardo massimo: 47 min». */
+    /** «Distribuzione dei ritardi: Senza ritardo 40% · 12 volte, 1–5 min 27% · 8 volte, …. Ritardo massimo: 47 min». */
     fun spoken(rows: List<DelayDistributionRow>, maxDelayMinutes: Int?, strings: DelayDistributionStrings): String =
         listOfNotNull(
             strings.title + ": " + rows.joinToString(", ") { "${it.label} ${it.value}" },
@@ -161,7 +164,7 @@ private fun rememberDelayDistributionStrings(): DelayDistributionStrings {
         DelayDistributionStrings(
             title = resources.getString(R.string.reliability_distribution_title),
             bands = listOf(
-                resources.getString(R.string.reliability_band_on_time),
+                resources.getString(R.string.reliability_band_no_delay),
                 resources.getString(R.string.reliability_band_range, 1, minutes(5)),
                 resources.getString(R.string.reliability_band_range, 6, minutes(15)),
                 resources.getString(R.string.reliability_band_range, 16, minutes(30)),

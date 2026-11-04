@@ -52,6 +52,16 @@ internal fun bikesValue(raw: String?): Byte = when (raw?.trim()) {
 }
 
 /**
+ * Packs whose bikes_allowed is not shown and counts as unknown. The Italo pack publishes 1 on every trip, but Italo's
+ * own conditions admit only folding bikes carried in a bag: "Bici ammessa" would mislead. A named override per pack,
+ * never a rule by category; every other pack's value is shown as published.
+ */
+private val BIKES_VALUE_NOT_SHOWN = setOf("italo-gtfs")
+
+/** bikes_allowed of a trip of [sourceId] as the app takes it: [BIKES_UNKNOWN] for a pack of [BIKES_VALUE_NOT_SHOWN]. */
+internal fun packBikesValue(sourceId: String, value: Byte): Byte = if (sourceId in BIKES_VALUE_NOT_SHOWN) BIKES_UNKNOWN else value
+
+/**
  * bikes_allowed of one vehicle leg run as several trips one after the other ("Resta a bordo"): allowed only when every
  * trip allows bikes, not allowed as soon as one does not, unknown otherwise.
  */

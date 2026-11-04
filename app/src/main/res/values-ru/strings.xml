@@ -1521,7 +1521,7 @@
     <string name="reliability_detail_days">Дней под наблюдением: %1$d · отмен: %2$d</string>
     <string name="reliability_threshold_note">Вовремя считается прибытие с опозданием не более %1$s.</string>
     <string name="reliability_distribution_title">Распределение опозданий</string>
-    <string name="reliability_band_on_time">Вовремя</string>
+    <string name="reliability_band_no_delay">Без опоздания</string>
     <string name="reliability_band_range">%1$d–%2$s</string>
     <string name="reliability_band_over">Более %1$s</string>
     <plurals name="reliability_band_share">
@@ -1568,7 +1568,7 @@
     <string name="bikes_conditions_link">Велосипеды в поезде: условия %1$s</string>
     <string name="planner_airport_links">Поезда в аэропорты</string>
     <string name="planner_airport_search">Найти поезда: %1$s → %2$s</string>
-    <string name="compensation_notice_quarter">Прибыл с опозданием %1$s: по Регламенту (ЕС) 2021/782 вы можете иметь право на компенсацию 25%% стоимости билета (50%% при опоздании от 120 минут).</string>
-    <string name="compensation_notice_half">Прибыл с опозданием %1$s: по Регламенту (ЕС) 2021/782 вы можете иметь право на компенсацию 50%% стоимости билета.</string>
+    <string name="compensation_notice_quarter">Прибыл на станцию %1$s с опозданием %2$s: по Регламенту (ЕС) 2021/782 вы можете иметь право на компенсацию 25%% стоимости билета (50%% при опоздании от 120 минут).</string>
+    <string name="compensation_notice_half">Прибыл на станцию %1$s с опозданием %2$s: по Регламенту (ЕС) 2021/782 вы можете иметь право на компенсацию 50%% стоимости билета.</string>
     <string name="compensation_notice_conditions">Железнодорожная компания может отказать в выплате сумм менее 4 € и при опозданиях по внешним причинам, например из-за экстремальной погоды или людей на путях; забастовка её собственного персонала внешней причиной не считается. Для региональных поездов условия зависят также от договора на обслуживание с регионом.</string>
 </resources>

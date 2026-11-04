@@ -812,7 +812,7 @@ class EmbeddedGtfsRouteAdapter(
                 operatorDisplayName = canonicalAgencyLabel(agencyName, sourceId),
                 trainCategory = if (scheduledBus) TrainCategory.OTHER else category(route?.type, route, agencyName),
                 scheduledBus = scheduledBus,
-                bikesAllowed = bikesOnBoard(trip.bikes),
+                bikesAllowed = bikesOnBoard(packBikesValue(sourceId, trip.bikes)),
                 origin = stops.name(stopTimes.stop(segment.originEntry)),
                 destination = stops.name(stopTimes.stop(segment.destinationEntry)),
                 scheduledDeparture = hhmm(departureMinutes),
@@ -1013,7 +1013,7 @@ class EmbeddedGtfsRouteAdapter(
                     mode = mode,
                     blockId = trip.blockId,
                     wheelchairAccessible = trip.wheelchair,
-                    bikesAllowed = trip.bikes
+                    bikesAllowed = packBikesValue(sourceId.value, trip.bikes)
                 )
                 var previous = -1
                 var lastArrival = Int.MIN_VALUE

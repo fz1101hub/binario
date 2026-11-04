@@ -8,8 +8,11 @@ enum class CompensationShare(val percent: Int) {
     HALF(50)
 }
 
-/** A run that reached the traveller's destination [delayMinutes] late, enough for the compensation notice. */
-data class DelayCompensation(val delayMinutes: Int, val share: CompensationShare)
+/**
+ * A run that reached [stationName] [delayMinutes] late, enough for the compensation notice. The notice names the
+ * station: after a train-number search the last stop shown is the terminus, not necessarily where the traveller left.
+ */
+data class DelayCompensation(val stationName: String, val delayMinutes: Int, val share: CompensationShare)
 
 /**
  * When the train detail shows the delay compensation notice: only on the actual arrival a source verified at the last
@@ -29,6 +32,6 @@ object DelayCompensationRule {
         if (!(destination.operationalStatusVerified ?: service.operationalStatusVerified)) return null
         val delay = destination.delayMinutes
         if (delay < QUARTER_FROM_MINUTES) return null
-        return DelayCompensation(delay, if (delay >= HALF_FROM_MINUTES) CompensationShare.HALF else CompensationShare.QUARTER)
+        return DelayCompensation(destination.station, delay, if (delay >= HALF_FROM_MINUTES) CompensationShare.HALF else CompensationShare.QUARTER)
     }
 }

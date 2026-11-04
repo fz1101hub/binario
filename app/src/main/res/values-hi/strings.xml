@@ -1441,7 +1441,7 @@
     <string name="reliability_detail_days">देखे गए दिन: %1$d · रद्द: %2$d</string>
     <string name="reliability_threshold_note">अधिकतम %1$s की देरी वाला आगमन समय पर माना जाता है।</string>
     <string name="reliability_distribution_title">देरी का वितरण</string>
-    <string name="reliability_band_on_time">समय पर</string>
+    <string name="reliability_band_no_delay">बिना देरी</string>
     <string name="reliability_band_range">%1$d–%2$s</string>
     <string name="reliability_band_over">%1$s से अधिक</string>
     <plurals name="reliability_band_share">
@@ -1478,7 +1478,7 @@
     <string name="bikes_conditions_link">ट्रेन में साइकिल: %1$s की शर्तें</string>
     <string name="planner_airport_links">हवाई अड्डों से रेल संपर्क</string>
     <string name="planner_airport_search">%1$s से %2$s तक की ट्रेनें खोजें</string>
-    <string name="compensation_notice_quarter">%1$s की देरी से पहुँची: विनियम (EU) 2021/782 के अनुसार आप टिकट मूल्य के 25%% के मुआवज़े के हक़दार हो सकते हैं (120 मिनट से 50%%)।</string>
-    <string name="compensation_notice_half">%1$s की देरी से पहुँची: विनियम (EU) 2021/782 के अनुसार आप टिकट मूल्य के 50%% के मुआवज़े के हक़दार हो सकते हैं।</string>
+    <string name="compensation_notice_quarter">%1$s पर %2$s की देरी से पहुँची: विनियम (EU) 2021/782 के अनुसार आप टिकट मूल्य के 25%% के मुआवज़े के हक़दार हो सकते हैं (120 मिनट से 50%%)।</string>
+    <string name="compensation_notice_half">%1$s पर %2$s की देरी से पहुँची: विनियम (EU) 2021/782 के अनुसार आप टिकट मूल्य के 50%% के मुआवज़े के हक़दार हो सकते हैं।</string>
     <string name="compensation_notice_conditions">रेल कंपनी 4 € से कम राशि और बाहरी कारणों, जैसे चरम मौसम या पटरियों पर लोगों, से हुई देरी का भुगतान करने से मना कर सकती है; उसके अपने कर्मचारियों की हड़ताल बाहरी कारण नहीं है। क्षेत्रीय ट्रेनों पर शर्तें क्षेत्र के साथ सेवा अनुबंध पर भी निर्भर करती हैं।</string>
 </resources>

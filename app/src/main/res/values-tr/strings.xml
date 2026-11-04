@@ -1464,7 +1464,7 @@
     <string name="reliability_detail_days">Gözlenen gün: %1$d · iptal: %2$d</string>
     <string name="reliability_threshold_note">En fazla %1$s gecikmeli varış zamanında sayılır.</string>
     <string name="reliability_distribution_title">Gecikme dağılımı</string>
-    <string name="reliability_band_on_time">Zamanında</string>
+    <string name="reliability_band_no_delay">Gecikmesiz</string>
     <string name="reliability_band_range">%1$d–%2$s</string>
     <string name="reliability_band_over">%1$s üzeri</string>
     <plurals name="reliability_band_share">
@@ -1501,7 +1501,7 @@
     <string name="bikes_conditions_link">Trende bisiklet: %1$s koşulları</string>
     <string name="planner_airport_links">Havalimanı bağlantıları</string>
     <string name="planner_airport_search">%1$s → %2$s trenlerini ara</string>
-    <string name="compensation_notice_quarter">%1$s gecikmeyle vardı: (AB) 2021/782 sayılı Tüzük uyarınca bilet fiyatının %%25’i kadar tazminat hakkınız olabilir (120 dakikadan itibaren %%50).</string>
-    <string name="compensation_notice_half">%1$s gecikmeyle vardı: (AB) 2021/782 sayılı Tüzük uyarınca bilet fiyatının %%50’si kadar tazminat hakkınız olabilir.</string>
+    <string name="compensation_notice_quarter">%1$s istasyonuna %2$s gecikmeyle vardı: (AB) 2021/782 sayılı Tüzük uyarınca bilet fiyatının %%25’i kadar tazminat hakkınız olabilir (120 dakikadan itibaren %%50).</string>
+    <string name="compensation_notice_half">%1$s istasyonuna %2$s gecikmeyle vardı: (AB) 2021/782 sayılı Tüzük uyarınca bilet fiyatının %%50’si kadar tazminat hakkınız olabilir.</string>
     <string name="compensation_notice_conditions">Demiryolu şirketi 4 €’nun altındaki tutarları ve aşırı hava koşulları ya da raylarda insan bulunması gibi dış nedenlerden kaynaklanan gecikmeleri ödemeyi reddedebilir; kendi personelinin grevi dış neden sayılmaz. Bölgesel trenlerde koşullar bölgeyle yapılan hizmet sözleşmesine de bağlıdır.</string>
 </resources>

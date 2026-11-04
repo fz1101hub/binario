@@ -1481,7 +1481,7 @@
     <string name="reliability_detail_days">Dias observados: %1$d · cancelamentos: %2$d</string>
     <string name="reliability_threshold_note">Conta como no horário uma chegada com no máximo %1$s de atraso.</string>
     <string name="reliability_distribution_title">Distribuição dos atrasos</string>
-    <string name="reliability_band_on_time">No horário</string>
+    <string name="reliability_band_no_delay">Sem atraso</string>
     <string name="reliability_band_range">%1$d–%2$s</string>
     <string name="reliability_band_over">Mais de %1$s</string>
     <plurals name="reliability_band_share">
@@ -1523,7 +1523,7 @@
     <string name="bikes_conditions_link">Bicicletas a bordo: condições da %1$s</string>
     <string name="planner_airport_links">Ligações com os aeroportos</string>
     <string name="planner_airport_search">Procurar trens de %1$s para %2$s</string>
-    <string name="compensation_notice_quarter">Chegou com %1$s de atraso: pelo Regulamento (UE) 2021/782 você pode ter direito a uma indenização de 25%% do preço da passagem (50%% a partir de 120 minutos).</string>
-    <string name="compensation_notice_half">Chegou com %1$s de atraso: pelo Regulamento (UE) 2021/782 você pode ter direito a uma indenização de 50%% do preço da passagem.</string>
+    <string name="compensation_notice_quarter">Chegou a %1$s com %2$s de atraso: pelo Regulamento (UE) 2021/782 você pode ter direito a uma indenização de 25%% do preço da passagem (50%% a partir de 120 minutos).</string>
+    <string name="compensation_notice_half">Chegou a %1$s com %2$s de atraso: pelo Regulamento (UE) 2021/782 você pode ter direito a uma indenização de 50%% do preço da passagem.</string>
     <string name="compensation_notice_conditions">A empresa ferroviária pode recusar valores abaixo de 4 € e atrasos por causas externas, como clima extremo ou pessoas nos trilhos; uma greve do próprio pessoal não é causa externa. Nos trens regionais, as condições dependem também do contrato de serviço com a região.</string>
 </resources>

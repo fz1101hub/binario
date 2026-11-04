@@ -22,7 +22,7 @@ data class NetworkReliabilityDetail(
     val worstStop: WorstStop?,
     /** Catalogue name of [worstStop]; the stop is left out when the catalogue does not know its code. */
     val worstStopName: String?,
-    /** On time, 1–5, 6–15, 16–30 and over 30 minutes at [arrival]; null when the file cannot tell them apart. */
+    /** No delay, 1–5, 6–15, 16–30 and over 30 minutes at [arrival]; null when the file cannot tell them apart. */
     val distribution: DelayDistribution? = null,
     /** The largest delay at [arrival], when the file publishes it. */
     val maxDelayMinutes: Int? = null

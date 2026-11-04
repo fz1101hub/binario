@@ -1504,7 +1504,7 @@
     <string name="reliability_detail_days">Días observados: %1$d · cancelaciones: %2$d</string>
     <string name="reliability_threshold_note">Cuenta como puntual una llegada con %1$s de retraso como máximo.</string>
     <string name="reliability_distribution_title">Distribución de los retrasos</string>
-    <string name="reliability_band_on_time">Puntual</string>
+    <string name="reliability_band_no_delay">Sin retraso</string>
     <string name="reliability_band_range">%1$d–%2$s</string>
     <string name="reliability_band_over">Más de %1$s</string>
     <plurals name="reliability_band_share">
@@ -1546,7 +1546,7 @@
     <string name="bikes_conditions_link">Bicicletas a bordo: condiciones de %1$s</string>
     <string name="planner_airport_links">Conexiones con los aeropuertos</string>
     <string name="planner_airport_search">Buscar trenes de %1$s a %2$s</string>
-    <string name="compensation_notice_quarter">Llegó con %1$s de retraso: según el Reglamento (UE) 2021/782 podrías tener derecho a una indemnización del 25%% del precio del billete (50%% a partir de 120 minutos).</string>
-    <string name="compensation_notice_half">Llegó con %1$s de retraso: según el Reglamento (UE) 2021/782 podrías tener derecho a una indemnización del 50%% del precio del billete.</string>
+    <string name="compensation_notice_quarter">Llegó a %1$s con %2$s de retraso: según el Reglamento (UE) 2021/782 podrías tener derecho a una indemnización del 25%% del precio del billete (50%% a partir de 120 minutos).</string>
+    <string name="compensation_notice_half">Llegó a %1$s con %2$s de retraso: según el Reglamento (UE) 2021/782 podrías tener derecho a una indemnización del 50%% del precio del billete.</string>
     <string name="compensation_notice_conditions">La empresa ferroviaria puede no pagar importes inferiores a 4 € ni retrasos por causas externas, como condiciones meteorológicas extremas o personas en las vías; una huelga de su personal no es una causa externa. En los trenes regionales las condiciones dependen también del contrato de servicio con la región.</string>
 </resources>

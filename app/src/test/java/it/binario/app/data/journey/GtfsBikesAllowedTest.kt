@@ -14,6 +14,7 @@ import it.binario.app.data.gtfs.bikesAcrossTrips
 import it.binario.app.data.gtfs.bikesOfCopies
 import it.binario.app.data.gtfs.bikesOnBoard
 import it.binario.app.data.gtfs.bikesValue
+import it.binario.app.data.gtfs.packBikesValue
 import it.binario.app.data.journey.JourneyFixtures.Trip
 import it.binario.app.data.journey.JourneyFixtures.alfa
 import it.binario.app.data.journey.JourneyFixtures.delta
@@ -76,6 +77,27 @@ class GtfsBikesAllowedTest {
         assertEquals(mapOf("100" to true, "200" to false, "300" to null, "400" to null), services(feed(trips)))
         // Trenord publishes no bikes_allowed column at all.
         assertEquals(mapOf("100" to null, "200" to null, "300" to null, "400" to null), services(feed(trips, bikesColumn = false)))
+    }
+
+    @Test fun `the Italo pack's value is not shown, as Italo admits only folding bikes in a bag`() = runBlocking {
+        val trips = listOf(Trip("I", "9901", listOf("A" to "08:00", "D" to "08:40"), bikes = "1"), Trip("J", "9903", listOf("A" to "09:00", "D" to "09:40"), bikes = "2"))
+        val italo = pack("italo-gtfs")
+        val route = SavedRoute("test", "Alfa – Delta", alfa, delta)
+        val direct = (
+            EmbeddedGtfsRouteAdapter(openAsset = { ByteArrayInputStream(feed(trips)) }, packs = listOf(italo), clock = { 1_000L })
+                .loadRoute(route, Direction.OUTBOUND, JourneyQuery(monday, LocalTime.of(7, 0))) as DataResult.Success
+            ).snapshot.services
+        assertEquals(listOf<Boolean?>(null, null), direct.map { it.bikesAllowed })
+        val legs = options(provider(mapOf(italo to feed(trips))).searchJourneys(request(alfa, delta, time = "07:50"))).map { it.legs.single() }
+        assertEquals(listOf("9901", "9903"), legs.map { it.publicNumber })
+        assertEquals(listOf<Boolean?>(null, null), legs.map { it.bikesAllowed })
+        // The override names the pack: the same values in another pack are shown as published.
+        assertEquals(BIKES_UNKNOWN, packBikesValue("italo-gtfs", BIKES_YES))
+        assertEquals(BIKES_UNKNOWN, packBikesValue("italo-gtfs", BIKES_NO))
+        assertEquals(BIKES_YES, packBikesValue("alto-adige-sta-gtfs", BIKES_YES))
+        assertEquals(BIKES_NO, packBikesValue("trenitalia-gtfs", BIKES_NO))
+        // No Italo bikes page is known to Binario: the Italo detail offers no conditions row.
+        assertNull(OfficialLinks.operatorOf(RailOperator.ITALO, "Italo")?.url(OperatorLinkKind.BIKES))
     }
 
     @Test fun `journey legs carry it, through the trips the vehicle runs on as`() = runBlocking {

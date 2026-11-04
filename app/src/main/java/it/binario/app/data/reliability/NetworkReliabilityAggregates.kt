@@ -4,19 +4,20 @@ import kotlin.math.floor
 import kotlin.math.roundToInt
 
 /**
- * How the delays of one train at one stop spread: on time (no delay at all), 1–5, 6–15, 16–30 and over 30 minutes,
- * from the cumulative counts of the statistics (whole minutes, so "at most 5" is "1–5" once the on-time days are taken
- * out). The five counts add up to [samples].
+ * How the delays of one train at one stop spread: no delay at all, 1–5, 6–15, 16–30 and over 30 minutes,
+ * from the cumulative counts of the statistics (whole minutes, so "at most 5" is "1–5" once the days without delay are
+ * taken out). The five counts add up to [samples].
  */
 data class DelayDistribution(
     val samples: Int,
-    val onTime: Int,
+    /** Delay of 0 or less (early arrivals included): not the train's on-time limit of 5 or 15 minutes. */
+    val noDelay: Int,
     val upTo5: Int,
     val upTo15: Int,
     val upTo30: Int,
     val over30: Int
 ) {
-    val counts: List<Int> get() = listOf(onTime, upTo5, upTo15, upTo30, over30)
+    val counts: List<Int> get() = listOf(noDelay, upTo5, upTo15, upTo30, over30)
 
     /**
      * Whole percentages of [samples], one per band, that add up to 100: rounded down, then the points left over go to

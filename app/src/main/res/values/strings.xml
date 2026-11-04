@@ -1505,7 +1505,7 @@
     <string name="reliability_threshold_note">Conta come in orario un arrivo con al massimo %1$s di ritardo.</string>
     <!-- Network statistics aggregates: delay distribution, route and hour bands, station arrivals -->
     <string name="reliability_distribution_title">Distribuzione dei ritardi</string>
-    <string name="reliability_band_on_time">In orario</string>
+    <string name="reliability_band_no_delay">Senza ritardo</string>
     <string name="reliability_band_range">%1$d–%2$s</string>
     <string name="reliability_band_over">Oltre %1$s</string>
     <plurals name="reliability_band_share">
@@ -1550,7 +1550,7 @@
     <string name="planner_airport_links">Collegamenti con gli aeroporti</string>
     <string name="planner_airport_search">Cerca i treni da %1$s a %2$s</string>
     <!-- Delay compensation notice (Regulation (EU) 2021/782 art. 19) in the train detail -->
-    <string name="compensation_notice_quarter">Arrivato con %1$s di ritardo: per il regolamento UE 2021/782 potresti avere diritto a un indennizzo del 25%% del prezzo del biglietto (50%% da 120 minuti).</string>
-    <string name="compensation_notice_half">Arrivato con %1$s di ritardo: per il regolamento UE 2021/782 potresti avere diritto a un indennizzo del 50%% del prezzo del biglietto.</string>
+    <string name="compensation_notice_quarter">Arrivato a %1$s con %2$s di ritardo: per il regolamento UE 2021/782 potresti avere diritto a un indennizzo del 25%% del prezzo del biglietto (50%% da 120 minuti).</string>
+    <string name="compensation_notice_half">Arrivato a %1$s con %2$s di ritardo: per il regolamento UE 2021/782 potresti avere diritto a un indennizzo del 50%% del prezzo del biglietto.</string>
     <string name="compensation_notice_conditions">L’impresa ferroviaria può non pagare importi inferiori a 4 € e ritardi dovuti a cause esterne, come condizioni meteo estreme o persone sui binari; uno sciopero del suo personale non è una causa esterna. Sui treni regionali le condizioni dipendono anche dal contratto di servizio con la regione.</string>
 </resources>

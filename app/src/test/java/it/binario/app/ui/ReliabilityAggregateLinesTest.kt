@@ -83,14 +83,15 @@ class ReliabilityAggregateLinesTest {
         val distribution = DelayDistribution(30, 12, 8, 6, 3, 1)
         val italian = distribution("it")
         val rows = DelayDistributionTexts.rows(distribution, italian)
-        assertEquals(listOf("In orario", "1–5 min", "6–15 min", "16–30 min", "Oltre 30 min"), rows.map { it.label })
+        // The first band is no delay at all: never «In orario», which means within the train's 5 or 15 minutes.
+        assertEquals(listOf("Senza ritardo", "1–5 min", "6–15 min", "16–30 min", "Oltre 30 min"), rows.map { it.label })
         assertEquals(listOf("40% · 12 volte", "27% · 8 volte", "20% · 6 volte", "10% · 3 volte", "3% · 1 volta"), rows.map { it.value })
         assertEquals(
-            "Distribuzione dei ritardi: In orario 40% · 12 volte, 1–5 min 27% · 8 volte, 6–15 min 20% · 6 volte, " +
+            "Distribuzione dei ritardi: Senza ritardo 40% · 12 volte, 1–5 min 27% · 8 volte, 6–15 min 20% · 6 volte, " +
                 "16–30 min 10% · 3 volte, Oltre 30 min 3% · 1 volta. Ritardo massimo: 47 min",
             DelayDistributionTexts.spoken(rows, 47, italian)
         )
-        assertEquals("Delay distribution: On time 40% · 12 times, 1–5 min 27% · 8 times, 6–15 min 20% · 6 times, 16–30 min 10% · 3 times, Over 30 min 3% · 1 time", DelayDistributionTexts.spoken(DelayDistributionTexts.rows(distribution, distribution("en")), null, distribution("en")))
+        assertEquals("Delay distribution: No delay 40% · 12 times, 1–5 min 27% · 8 times, 6–15 min 20% · 6 times, 16–30 min 10% · 3 times, Over 30 min 3% · 1 time", DelayDistributionTexts.spoken(DelayDistributionTexts.rows(distribution, distribution("en")), null, distribution("en")))
     }
 
     @Test fun `every language composes every text without a leftover placeholder`() {
@@ -136,7 +137,7 @@ class ReliabilityAggregateLinesTest {
         return DelayDistributionStrings(
             title = r.string("reliability_distribution_title"),
             bands = listOf(
-                r.string("reliability_band_on_time"),
+                r.string("reliability_band_no_delay"),
                 r.string("reliability_band_range", 1, minutes(5)),
                 r.string("reliability_band_range", 6, minutes(15)),
                 r.string("reliability_band_range", 16, minutes(30)),
