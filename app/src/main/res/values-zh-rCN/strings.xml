@@ -1459,4 +1459,10 @@
     <string name="compensation_notice_quarter">晚点 %2$s 到达 %1$s：根据欧盟第 2021/782 号条例，你可能有权获得票价 25%% 的赔偿（晚点 120 分钟起为 50%%）。</string>
     <string name="compensation_notice_half">晚点 %2$s 到达 %1$s：根据欧盟第 2021/782 号条例，你可能有权获得票价 50%% 的赔偿。</string>
     <string name="compensation_notice_conditions">铁路公司可拒绝支付低于 4 欧元的金额，以及因极端天气或轨道上有人等外部原因造成的晚点；本公司员工罢工不属于外部原因。地区列车的条件还取决于与大区签订的服务合同。</string>
+    <!-- Station board: RFI Sala Blu assistance (links only) -->
+    <string name="station_sala_blu_title">Sala Blu 协助服务</string>
+    <string name="station_sala_blu_description">RFI 在车站为残障人士和行动不便的乘客提供免费协助，需提前预约。</string>
+    <string name="station_sala_blu_page">RFI 协助服务页面</string>
+    <string name="station_sala_blu_call_toll_free">拨打 %1$s（固定电话免费）</string>
+    <string name="station_sala_blu_call_national">拨打 %1$s（手机也可拨打）</string>
 </resources>

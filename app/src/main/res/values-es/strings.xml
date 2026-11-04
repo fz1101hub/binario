@@ -1549,4 +1549,10 @@
     <string name="compensation_notice_quarter">Llegó a %1$s con %2$s de retraso: según el Reglamento (UE) 2021/782 podrías tener derecho a una indemnización del 25%% del precio del billete (50%% a partir de 120 minutos).</string>
     <string name="compensation_notice_half">Llegó a %1$s con %2$s de retraso: según el Reglamento (UE) 2021/782 podrías tener derecho a una indemnización del 50%% del precio del billete.</string>
     <string name="compensation_notice_conditions">La empresa ferroviaria puede no pagar importes inferiores a 4 € ni retrasos por causas externas, como condiciones meteorológicas extremas o personas en las vías; una huelga de su personal no es una causa externa. En los trenes regionales las condiciones dependen también del contrato de servicio con la región.</string>
+    <!-- Station board: RFI Sala Blu assistance (links only) -->
+    <string name="station_sala_blu_title">Asistencia Sala Blu</string>
+    <string name="station_sala_blu_description">RFI ayuda gratis en las estaciones, con reserva previa, a las personas con discapacidad o movilidad reducida.</string>
+    <string name="station_sala_blu_page">Página de asistencia de RFI</string>
+    <string name="station_sala_blu_call_toll_free">Llamar al %1$s (gratuito desde fijo)</string>
+    <string name="station_sala_blu_call_national">Llamar al %1$s (también desde el móvil)</string>
 </resources>

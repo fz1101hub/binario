@@ -1436,4 +1436,10 @@
     <string name="compensation_notice_quarter">%1$s에 %2$s 늦게 도착: 규정 (EU) 2021/782에 따라 승차권 가격의 25%%를 보상받을 수 있습니다(120분부터 50%%).</string>
     <string name="compensation_notice_half">%1$s에 %2$s 늦게 도착: 규정 (EU) 2021/782에 따라 승차권 가격의 50%%를 보상받을 수 있습니다.</string>
     <string name="compensation_notice_conditions">철도 회사는 4유로 미만의 금액과 극한 기상이나 선로 위의 사람 등 외부 요인으로 인한 지연에 대해서는 지급을 거부할 수 있습니다. 자사 직원의 파업은 외부 요인이 아닙니다. 지역 열차의 조건은 주와 맺은 운행 계약에 따라서도 달라집니다.</string>
+    <!-- Station board: RFI Sala Blu assistance (links only) -->
+    <string name="station_sala_blu_title">Sala Blu 지원</string>
+    <string name="station_sala_blu_description">RFI는 장애가 있거나 이동이 불편한 승객을 역에서 예약제로 무료 지원합니다.</string>
+    <string name="station_sala_blu_page">RFI 지원 페이지</string>
+    <string name="station_sala_blu_call_toll_free">%1$s로 전화(유선 전화는 무료)</string>
+    <string name="station_sala_blu_call_national">%1$s로 전화(휴대전화로도 가능)</string>
 </resources>

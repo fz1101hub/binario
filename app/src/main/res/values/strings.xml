@@ -1553,4 +1553,10 @@
     <string name="compensation_notice_quarter">Arrivato a %1$s con %2$s di ritardo: per il regolamento UE 2021/782 potresti avere diritto a un indennizzo del 25%% del prezzo del biglietto (50%% da 120 minuti).</string>
     <string name="compensation_notice_half">Arrivato a %1$s con %2$s di ritardo: per il regolamento UE 2021/782 potresti avere diritto a un indennizzo del 50%% del prezzo del biglietto.</string>
     <string name="compensation_notice_conditions">L’impresa ferroviaria può non pagare importi inferiori a 4 € e ritardi dovuti a cause esterne, come condizioni meteo estreme o persone sui binari; uno sciopero del suo personale non è una causa esterna. Sui treni regionali le condizioni dipendono anche dal contratto di servizio con la regione.</string>
+    <!-- Station board: RFI Sala Blu assistance (links only) -->
+    <string name="station_sala_blu_title">Assistenza Sala Blu</string>
+    <string name="station_sala_blu_description">RFI assiste gratuitamente nelle stazioni, su prenotazione, chi ha una disabilità o una mobilità ridotta.</string>
+    <string name="station_sala_blu_page">Pagina RFI sull’assistenza</string>
+    <string name="station_sala_blu_call_toll_free">Chiama %1$s (numero verde da rete fissa)</string>
+    <string name="station_sala_blu_call_national">Chiama %1$s (anche da cellulare)</string>
 </resources>

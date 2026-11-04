@@ -1481,4 +1481,10 @@
     <string name="compensation_notice_quarter">%1$s पर %2$s की देरी से पहुँची: विनियम (EU) 2021/782 के अनुसार आप टिकट मूल्य के 25%% के मुआवज़े के हक़दार हो सकते हैं (120 मिनट से 50%%)।</string>
     <string name="compensation_notice_half">%1$s पर %2$s की देरी से पहुँची: विनियम (EU) 2021/782 के अनुसार आप टिकट मूल्य के 50%% के मुआवज़े के हक़दार हो सकते हैं।</string>
     <string name="compensation_notice_conditions">रेल कंपनी 4 € से कम राशि और बाहरी कारणों, जैसे चरम मौसम या पटरियों पर लोगों, से हुई देरी का भुगतान करने से मना कर सकती है; उसके अपने कर्मचारियों की हड़ताल बाहरी कारण नहीं है। क्षेत्रीय ट्रेनों पर शर्तें क्षेत्र के साथ सेवा अनुबंध पर भी निर्भर करती हैं।</string>
+    <!-- Station board: RFI Sala Blu assistance (links only) -->
+    <string name="station_sala_blu_title">Sala Blu सहायता</string>
+    <string name="station_sala_blu_description">RFI स्टेशनों पर दिव्यांग या सीमित गतिशीलता वाले यात्रियों को बुकिंग पर निःशुल्क सहायता देता है।</string>
+    <string name="station_sala_blu_page">RFI का सहायता पेज</string>
+    <string name="station_sala_blu_call_toll_free">%1$s पर कॉल करें (लैंडलाइन से निःशुल्क)</string>
+    <string name="station_sala_blu_call_national">%1$s पर कॉल करें (मोबाइल से भी)</string>
 </resources>

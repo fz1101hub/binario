@@ -1459,4 +1459,10 @@
     <string name="compensation_notice_quarter">มาถึง %1$s ช้า %2$s: ตามข้อบังคับ (EU) 2021/782 คุณอาจมีสิทธิ์ได้รับค่าชดเชย 25%% ของราคาตั๋ว (50%% ตั้งแต่ 120 นาที)</string>
     <string name="compensation_notice_half">มาถึง %1$s ช้า %2$s: ตามข้อบังคับ (EU) 2021/782 คุณอาจมีสิทธิ์ได้รับค่าชดเชย 50%% ของราคาตั๋ว</string>
     <string name="compensation_notice_conditions">บริษัทรถไฟอาจปฏิเสธจำนวนเงินที่ต่ำกว่า 4 ยูโร และความล่าช้าจากสาเหตุภายนอก เช่น สภาพอากาศรุนแรงหรือมีคนอยู่บนราง ส่วนการนัดหยุดงานของพนักงานของบริษัทเองไม่ถือเป็นสาเหตุภายนอก สำหรับรถไฟภูมิภาค เงื่อนไขยังขึ้นอยู่กับสัญญาบริการกับภูมิภาคด้วย</string>
+    <!-- Station board: RFI Sala Blu assistance (links only) -->
+    <string name="station_sala_blu_title">ความช่วยเหลือ Sala Blu</string>
+    <string name="station_sala_blu_description">RFI ให้ความช่วยเหลือฟรีที่สถานีแก่ผู้พิการหรือผู้ที่เคลื่อนไหวลำบาก โดยต้องจองล่วงหน้า</string>
+    <string name="station_sala_blu_page">หน้าความช่วยเหลือของ RFI</string>
+    <string name="station_sala_blu_call_toll_free">โทร %1$s (ฟรีจากโทรศัพท์บ้าน)</string>
+    <string name="station_sala_blu_call_national">โทร %1$s (โทรจากมือถือได้ด้วย)</string>
 </resources>

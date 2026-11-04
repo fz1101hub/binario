@@ -1661,4 +1661,10 @@
     <string name="compensation_notice_quarter">وصل إلى %1$s بتأخير %2$s: وفق اللائحة (الاتحاد الأوروبي) 2021/782 قد يحق لك تعويض بنسبة 25%% من سعر التذكرة (50%% ابتداءً من 120 دقيقة).</string>
     <string name="compensation_notice_half">وصل إلى %1$s بتأخير %2$s: وفق اللائحة (الاتحاد الأوروبي) 2021/782 قد يحق لك تعويض بنسبة 50%% من سعر التذكرة.</string>
     <string name="compensation_notice_conditions">يجوز لشركة السكك الحديدية رفض المبالغ التي تقل عن 4 يورو والتأخيرات الناجمة عن أسباب خارجية، مثل الطقس القاسي أو وجود أشخاص على السكة؛ ولا يُعدّ إضراب موظفيها سببًا خارجيًا. في القطارات الإقليمية تتوقف الشروط أيضًا على عقد الخدمة مع الإقليم.</string>
+    <!-- Station board: RFI Sala Blu assistance (links only) -->
+    <string name="station_sala_blu_title">مساعدة Sala Blu</string>
+    <string name="station_sala_blu_description">تقدّم RFI مساعدة مجانية في المحطات، بحجز مسبق، للأشخاص ذوي الإعاقة أو محدودي الحركة.</string>
+    <string name="station_sala_blu_page">صفحة المساعدة لدى RFI</string>
+    <string name="station_sala_blu_call_toll_free">اتصل بالرقم %1$s (مجاني من الهاتف الثابت)</string>
+    <string name="station_sala_blu_call_national">اتصل بالرقم %1$s (من الهاتف المحمول أيضًا)</string>
 </resources>

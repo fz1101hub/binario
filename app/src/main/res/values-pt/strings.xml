@@ -1526,4 +1526,10 @@
     <string name="compensation_notice_quarter">Chegou a %1$s com %2$s de atraso: pelo Regulamento (UE) 2021/782 você pode ter direito a uma indenização de 25%% do preço da passagem (50%% a partir de 120 minutos).</string>
     <string name="compensation_notice_half">Chegou a %1$s com %2$s de atraso: pelo Regulamento (UE) 2021/782 você pode ter direito a uma indenização de 50%% do preço da passagem.</string>
     <string name="compensation_notice_conditions">A empresa ferroviária pode recusar valores abaixo de 4 € e atrasos por causas externas, como clima extremo ou pessoas nos trilhos; uma greve do próprio pessoal não é causa externa. Nos trens regionais, as condições dependem também do contrato de serviço com a região.</string>
+    <!-- Station board: RFI Sala Blu assistance (links only) -->
+    <string name="station_sala_blu_title">Assistência Sala Blu</string>
+    <string name="station_sala_blu_description">A RFI presta assistência gratuita nas estações, mediante reserva, a pessoas com deficiência ou mobilidade reduzida.</string>
+    <string name="station_sala_blu_page">Página de assistência da RFI</string>
+    <string name="station_sala_blu_call_toll_free">Ligar para %1$s (gratuito de telefone fixo)</string>
+    <string name="station_sala_blu_call_national">Ligar para %1$s (também de celular)</string>
 </resources>

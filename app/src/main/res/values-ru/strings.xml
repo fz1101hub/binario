@@ -1571,4 +1571,10 @@
     <string name="compensation_notice_quarter">Прибыл на станцию %1$s с опозданием %2$s: по Регламенту (ЕС) 2021/782 вы можете иметь право на компенсацию 25%% стоимости билета (50%% при опоздании от 120 минут).</string>
     <string name="compensation_notice_half">Прибыл на станцию %1$s с опозданием %2$s: по Регламенту (ЕС) 2021/782 вы можете иметь право на компенсацию 50%% стоимости билета.</string>
     <string name="compensation_notice_conditions">Железнодорожная компания может отказать в выплате сумм менее 4 € и при опозданиях по внешним причинам, например из-за экстремальной погоды или людей на путях; забастовка её собственного персонала внешней причиной не считается. Для региональных поездов условия зависят также от договора на обслуживание с регионом.</string>
+    <!-- Station board: RFI Sala Blu assistance (links only) -->
+    <string name="station_sala_blu_title">Помощь Sala Blu</string>
+    <string name="station_sala_blu_description">RFI бесплатно помогает на вокзалах по предварительной заявке людям с инвалидностью или ограниченной мобильностью.</string>
+    <string name="station_sala_blu_page">Страница помощи RFI</string>
+    <string name="station_sala_blu_call_toll_free">Позвонить по номеру %1$s (бесплатно со стационарного)</string>
+    <string name="station_sala_blu_call_national">Позвонить по номеру %1$s (в том числе с мобильного)</string>
 </resources>

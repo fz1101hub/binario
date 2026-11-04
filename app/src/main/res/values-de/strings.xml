@@ -1504,4 +1504,10 @@
     <string name="compensation_notice_quarter">In %1$s mit %2$s Verspätung angekommen: Nach der Verordnung (EU) 2021/782 hast du eventuell Anspruch auf eine Entschädigung von 25%% des Fahrpreises (50%% ab 120 Minuten).</string>
     <string name="compensation_notice_half">In %1$s mit %2$s Verspätung angekommen: Nach der Verordnung (EU) 2021/782 hast du eventuell Anspruch auf eine Entschädigung von 50%% des Fahrpreises.</string>
     <string name="compensation_notice_conditions">Das Eisenbahnunternehmen kann Beträge unter 4 € und Verspätungen aus äußeren Gründen ablehnen, etwa durch extremes Wetter oder Personen im Gleis; ein Streik des eigenen Personals ist kein äußerer Grund. Bei Regionalzügen hängen die Bedingungen auch vom Verkehrsvertrag mit der Region ab.</string>
+    <!-- Station board: RFI Sala Blu assistance (links only) -->
+    <string name="station_sala_blu_title">Assistenz Sala Blu</string>
+    <string name="station_sala_blu_description">RFI unterstützt Reisende mit Behinderung oder eingeschränkter Mobilität in den Bahnhöfen kostenlos nach Voranmeldung.</string>
+    <string name="station_sala_blu_page">RFI-Seite zur Assistenz</string>
+    <string name="station_sala_blu_call_toll_free">%1$s anrufen (gebührenfrei aus dem Festnetz)</string>
+    <string name="station_sala_blu_call_national">%1$s anrufen (auch vom Handy)</string>
 </resources>

@@ -1549,4 +1549,10 @@
     <string name="compensation_notice_quarter">Arrivé à %1$s avec %2$s de retard : selon le règlement (UE) 2021/782, vous pourriez avoir droit à une indemnisation de 25%% du prix du billet (50%% à partir de 120 minutes).</string>
     <string name="compensation_notice_half">Arrivé à %1$s avec %2$s de retard : selon le règlement (UE) 2021/782, vous pourriez avoir droit à une indemnisation de 50%% du prix du billet.</string>
     <string name="compensation_notice_conditions">L’entreprise ferroviaire peut refuser les montants inférieurs à 4 € et les retards dus à des causes extérieures, comme des conditions météorologiques extrêmes ou des personnes sur les voies ; une grève de son personnel n’est pas une cause extérieure. Dans les trains régionaux, les conditions dépendent aussi du contrat de service avec la région.</string>
+    <!-- Station board: RFI Sala Blu assistance (links only) -->
+    <string name="station_sala_blu_title">Assistance Sala Blu</string>
+    <string name="station_sala_blu_description">RFI assiste gratuitement en gare, sur réservation, les personnes handicapées ou à mobilité réduite.</string>
+    <string name="station_sala_blu_page">Page d’assistance de RFI</string>
+    <string name="station_sala_blu_call_toll_free">Appeler le %1$s (gratuit depuis un fixe)</string>
+    <string name="station_sala_blu_call_national">Appeler le %1$s (aussi depuis un mobile)</string>
 </resources>

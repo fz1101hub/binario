@@ -1459,4 +1459,10 @@
     <string name="compensation_notice_quarter">Đến %1$s trễ %2$s: theo Quy định (EU) 2021/782, bạn có thể được bồi thường 25%% giá vé (50%% từ 120 phút).</string>
     <string name="compensation_notice_half">Đến %1$s trễ %2$s: theo Quy định (EU) 2021/782, bạn có thể được bồi thường 50%% giá vé.</string>
     <string name="compensation_notice_conditions">Công ty đường sắt có thể từ chối khoản dưới 4 € và các trường hợp trễ do nguyên nhân bên ngoài như thời tiết khắc nghiệt hoặc có người trên đường ray; đình công của chính nhân viên công ty không phải là nguyên nhân bên ngoài. Với tàu khu vực, điều kiện còn phụ thuộc vào hợp đồng dịch vụ với vùng.</string>
+    <!-- Station board: RFI Sala Blu assistance (links only) -->
+    <string name="station_sala_blu_title">Hỗ trợ Sala Blu</string>
+    <string name="station_sala_blu_description">RFI hỗ trợ miễn phí tại nhà ga, theo đặt trước, cho người khuyết tật hoặc người hạn chế khả năng di chuyển.</string>
+    <string name="station_sala_blu_page">Trang hỗ trợ của RFI</string>
+    <string name="station_sala_blu_call_toll_free">Gọi %1$s (miễn phí từ điện thoại bàn)</string>
+    <string name="station_sala_blu_call_national">Gọi %1$s (cả từ di động)</string>
 </resources>

@@ -1504,4 +1504,10 @@
     <string name="compensation_notice_quarter">Arrived at %1$s %2$s late: under Regulation (EU) 2021/782 you may be entitled to compensation of 25%% of the ticket price (50%% from 120 minutes).</string>
     <string name="compensation_notice_half">Arrived at %1$s %2$s late: under Regulation (EU) 2021/782 you may be entitled to compensation of 50%% of the ticket price.</string>
     <string name="compensation_notice_conditions">The railway company may refuse amounts under €4 and delays due to external causes, such as extreme weather or people on the tracks; a strike by its own staff is not an external cause. On regional trains the conditions also depend on the service contract with the region.</string>
+    <!-- Station board: RFI Sala Blu assistance (links only) -->
+    <string name="station_sala_blu_title">Sala Blu assistance</string>
+    <string name="station_sala_blu_description">RFI assists passengers with a disability or reduced mobility in stations free of charge, on booking.</string>
+    <string name="station_sala_blu_page">RFI assistance page</string>
+    <string name="station_sala_blu_call_toll_free">Call %1$s (toll-free from landlines)</string>
+    <string name="station_sala_blu_call_national">Call %1$s (also from mobiles)</string>
 </resources>

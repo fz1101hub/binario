@@ -82,6 +82,7 @@ import it.binario.app.data.core.ServiceKind
 import it.binario.app.data.core.StationBoardEntry
 import it.binario.app.data.urban.UrbanRealtimeFeeds
 import it.binario.app.data.repository.StationBoardRunDetails
+import it.binario.app.links.OfficialLinks
 import it.binario.app.localized
 import it.binario.app.requestSingleLocationFix
 import it.binario.app.maps.GeoPoint
@@ -298,6 +299,8 @@ internal fun StationBoardScreen(modifier: Modifier, viewModel: TrainViewModel, r
         // Shared bikes near the chosen station, on request only (GBFS of the systems serving that place).
         selectedStation?.let { station ->
             item(key = "bike-sharing-${station.id}") { BikeSharingNearbySection(station) }
+            // RFI's Sala Blu: its accessibility page and national numbers, for the stations of the Italian network.
+            if (OfficialLinks.SalaBlu.appliesTo(station)) item(key = "sala-blu-${station.id}") { SalaBluAssistanceSection(station) }
             if (reliabilityStats != null && stationPunctuality != null) {
                 item(key = "station-punctuality-${station.id}") {
                     StationPunctualityCard(stationPunctuality, reliabilityStats.windowEnd, originName = reliabilityStations::name)

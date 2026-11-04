@@ -1436,4 +1436,10 @@
     <string name="compensation_notice_quarter">%1$s သို့ %2$s နောက်ကျ၍ ဆိုက်ရောက်သည်- စည်းမျဉ်း (EU) 2021/782 အရ လက်မှတ်ခ၏ 25%% လျော်ကြေး ရနိုင်သည် (မိနစ် 120 မှစ၍ 50%%)။</string>
     <string name="compensation_notice_half">%1$s သို့ %2$s နောက်ကျ၍ ဆိုက်ရောက်သည်- စည်းမျဉ်း (EU) 2021/782 အရ လက်မှတ်ခ၏ 50%% လျော်ကြေး ရနိုင်သည်။</string>
     <string name="compensation_notice_conditions">ရထားကုမ္ပဏီသည် 4 ယူရိုအောက် ပမာဏနှင့် ပြင်းထန်သော ရာသီဥတု သို့မဟုတ် သံလမ်းပေါ်ရှိ လူများကဲ့သို့ ပြင်ပအကြောင်းရင်းကြောင့် နောက်ကျမှုများကို ငြင်းပယ်နိုင်သည်။ ၎င်း၏ ဝန်ထမ်းများ သပိတ်မှောက်ခြင်းသည် ပြင်ပအကြောင်းရင်း မဟုတ်ပါ။ ဒေသတွင်းရထားများတွင် စည်းကမ်းချက်များသည် ဒေသနှင့် ချုပ်ဆိုထားသော ဝန်ဆောင်မှုစာချုပ်အပေါ်လည်း မူတည်သည်။</string>
+    <!-- Station board: RFI Sala Blu assistance (links only) -->
+    <string name="station_sala_blu_title">Sala Blu အကူအညီ</string>
+    <string name="station_sala_blu_description">RFI သည် မသန်စွမ်းသူများနှင့် လှုပ်ရှားသွားလာရန် ခက်ခဲသူများကို ဘူတာများတွင် ကြိုတင်စာရင်းပေးပြီး အခမဲ့ ကူညီပေးသည်။</string>
+    <string name="station_sala_blu_page">RFI အကူအညီ စာမျက်နှာ</string>
+    <string name="station_sala_blu_call_toll_free">%1$s ကို ခေါ်ဆိုရန် (ကြိုးဖုန်းမှ အခမဲ့)</string>
+    <string name="station_sala_blu_call_national">%1$s ကို ခေါ်ဆိုရန် (မိုဘိုင်းဖုန်းမှလည်း ရသည်)</string>
 </resources>

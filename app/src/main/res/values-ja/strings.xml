@@ -1436,4 +1436,10 @@
     <string name="compensation_notice_quarter">%1$s に %2$s 遅れて到着：規則 (EU) 2021/782 により、運賃の 25%% の補償を受けられる場合があります（120 分以上は 50%%）。</string>
     <string name="compensation_notice_half">%1$s に %2$s 遅れて到着：規則 (EU) 2021/782 により、運賃の 50%% の補償を受けられる場合があります。</string>
     <string name="compensation_notice_conditions">鉄道会社は 4 ユーロ未満の金額や、異常気象や線路内の人など外部要因による遅れについては支払いを拒否できます。自社職員のストライキは外部要因に当たりません。地域列車の条件は州との運行契約にもよります。</string>
+    <!-- Station board: RFI Sala Blu assistance (links only) -->
+    <string name="station_sala_blu_title">Sala Blu のサポート</string>
+    <string name="station_sala_blu_description">RFI は駅で、障害のある方や移動に制約のある方を予約制で無料サポートします。</string>
+    <string name="station_sala_blu_page">RFI のサポートページ</string>
+    <string name="station_sala_blu_call_toll_free">%1$s に電話（固定電話から無料）</string>
+    <string name="station_sala_blu_call_national">%1$s に電話（携帯電話からも可）</string>
 </resources>
