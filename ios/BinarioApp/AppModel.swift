@@ -378,8 +378,9 @@ final class AppModel: ObservableObject {
         let end = backgroundActivity?.begin(name: "Binario Watch")
         defer { end?() }
         guard scheduleState == .available else {
+            // Held until the index is open (installSchedule answers the refresh, then ends it).
             if scheduleState == .loading, pendingWatchRefreshEnd == nil {
-                pendingWatchRefreshEnd = backgroundActivity?.begin(name: "Binario Watch") ?? {}
+                pendingWatchRefreshEnd = backgroundActivity?.begin(name: "Binario Watch")
             }
             return
         }
