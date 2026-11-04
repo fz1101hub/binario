@@ -9,8 +9,8 @@ cancelled), sorted by number and origin::
     {"schema": "binario-punctuality-v1", "generatedAt": ..., "windowStart": ..., "windowEnd": ..., "windowDays": 30,
      "source": "ViaggiaTreno, elaborazione Binario (non ufficiale)", "buckets": [0, 2, 5, 10, 15, 20, 30, 60],
      "trains": [{"n": "9558", "o": "S08409", "c": "FR", "d": 28, "x": 1,
-                 "s": [["S08409", 27, 0.8, [20, 24, 26, 27, 27, 27, 27, 27], 0, 7, 420, ["5", 22, 26],
-                        [[4, 4, 4], [4, 4, 4], [4, 3, 4], [4, 4, 4], [4, 3, 4], [4, 4, 4], [3, 3, 3]]], ...]}]}
+                 "s": [["S08409", 27, 0.8, [20, 24, 26, 27, 27, 27, 27, 27], 0, 7, 420, ["12", 20, 25],
+                        [[4, 4, 4], [4, 4, 4], [4, 3, 4], [4, 4, 4], [4, 4, 4], [4, 4, 4], [3, 3, 3]]], ...]}]}
 
 ``d`` days known, ``x`` of them fully cancelled; per stop (in run order, only stops with at least one sample):
 station code, samples (days the train ran and the stop was served with an actual time), mean delay in minutes with
@@ -163,8 +163,8 @@ def aggregate(records: Iterable[Mapping[str, Any]]) -> list[dict[str, Any]]:
                     samples.setdefault(code, []).append(delay)
                     counts = weekdays.setdefault(code, [[0, 0, 0] for _ in range(7)])[weekday]
                     counts[0] += 1
-                    counts[1] += delay <= WEEKDAY_THRESHOLDS[0]
-                    counts[2] += delay <= WEEKDAY_THRESHOLDS[1]
+                    counts[1] += 1 if delay <= WEEKDAY_THRESHOLDS[0] else 0
+                    counts[2] += 1 if delay <= WEEKDAY_THRESHOLDS[1] else 0
                     if len(stop) > 5 and stop[4] is not None:  # none in lines collected before the extension
                         tally = platforms.setdefault(code, {}).setdefault(stop[5], {}).setdefault(stop[4], [0, record["d"]])
                         tally[0] += 1
