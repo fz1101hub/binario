@@ -3,11 +3,13 @@
 
 The weekly refresh writes `app/src/main/assets/punctuality/stats_v1.json.gz` (tools/apply_ci_punctuality.py).
 The iPhone app reads the same bytes from `ios/Resources/binario_punctuality_stats_v1.json.gz`, which
-XcodeGen bundles with the rest of `Resources` like the GTFS index. This script copies the Android
-asset there after checking that it is a bounded gzip of a `binario-punctuality-v1` document, and
-removes the copy when the asset is absent, so a build without statistics simply has no file and
-hides the feature. `--remove` withdraws the statistics from the iPhone app alone; `--check` only
-reports whether the copy is in sync (absent, or identical to the asset).
+XcodeGen bundles with the rest of `Resources` like the GTFS index. That copy is generated, never
+committed (`.gitignore`): `ios/Scripts/generate-project.sh` and the Apple CI run this script before
+XcodeGen, so the weekly refresh updates one file. It copies the Android asset after checking that it
+is a bounded gzip of a `binario-punctuality-v1` document, and removes the copy when the asset is
+absent, so a build without statistics simply has no file and hides the feature. `--remove`
+(`BINARIO_IOS_PUNCTUALITY_STATS=false` for generate-project.sh) withdraws the statistics from the
+iPhone app alone; `--check` only reports whether the copy is in sync (absent, or identical to the asset).
 """
 
 from __future__ import annotations

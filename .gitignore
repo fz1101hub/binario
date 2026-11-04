@@ -35,6 +35,8 @@ consegna_*/
 DerivedData/
 **/.build/
 ios/Binario.xcodeproj/
+# Generated from app/src/main/assets/punctuality/ by ios/Scripts/sync-punctuality-stats.py
+ios/Resources/binario_punctuality_stats_v1.json.gz
 *.xcuserstate
 xcuserdata/
 

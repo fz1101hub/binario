@@ -674,6 +674,13 @@ class IOSProjectTests(unittest.TestCase):
         script = (IOS / "Scripts/sync-punctuality-stats.py").read_text(encoding="utf-8")
         self.assertIn('ANDROID_ASSET = REPOSITORY_ROOT / "app/src/main/assets/punctuality/stats_v1.json.gz"', script)
         self.assertIn('IOS_RESOURCE = REPOSITORY_ROOT / "ios/Resources/binario_punctuality_stats_v1.json.gz"', script)
+        # The copy is generated before XcodeGen (locally and in the Apple CI), never committed.
+        self.assertIn("ios/Resources/binario_punctuality_stats_v1.json.gz", (ROOT / ".gitignore").read_text(encoding="utf-8").splitlines())
+        generate = (IOS / "Scripts/generate-project.sh").read_text(encoding="utf-8")
+        self.assertLess(generate.index("Scripts/sync-punctuality-stats.py --remove"), generate.index("xcodegen generate --spec project.yml"))
+        self.assertIn('if [ "${BINARIO_IOS_PUNCTUALITY_STATS:-true}" = "false" ]; then', generate)
+        workflow = (ROOT / ".github/workflows/apple-watch-ci.yml").read_text(encoding="utf-8")
+        self.assertLess(workflow.index("python3 -I ios/Scripts/sync-punctuality-stats.py"), workflow.index("ios/Scripts/verify-deterministic-generation.py"))
         if IOS_STATISTICS.exists():
             self.assertTrue(ANDROID_STATISTICS.is_file(), "iOS statistics without the Android asset")
             self.assertEqual(

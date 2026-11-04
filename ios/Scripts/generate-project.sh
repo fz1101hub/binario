@@ -21,4 +21,12 @@ if [ -z "$BINARIO_APPLE_TEAM_ID" ]; then
   echo "BINARIO_APPLE_TEAM_ID is not set: generating an unsigned project (simulator builds only)." >&2
 fi
 
+# The punctuality statistics come from the Android asset (absent: the iPhone app hides them); the copy in
+# Resources is generated, never committed. BINARIO_IOS_PUNCTUALITY_STATS=false leaves them out of an iPhone
+# build alone, like the Gradle property binario.punctualityStats=false on Android.
+if [ "${BINARIO_IOS_PUNCTUALITY_STATS:-true}" = "false" ]; then
+  python3 -I Scripts/sync-punctuality-stats.py --remove
+else
+  python3 -I Scripts/sync-punctuality-stats.py
+fi
 xcodegen generate --spec project.yml
