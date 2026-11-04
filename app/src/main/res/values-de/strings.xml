@@ -384,6 +384,28 @@
     <string name="map_nearby_content_description">Karte der nächstgelegenen Bahnhöfe. Dieselben Bahnhöfe stehen mit Entfernung in der Liste darunter.</string>
     <string name="map_nearby_tap_hint">Tippe auf einen Bahnhof, um seine Tafel zu öffnen.</string>
     <string name="map_legend_user_position">Ungefähre Position, nicht gespeichert</string>
+    <string name="live_map_title">Fahrende Züge</string>
+    <string name="live_map_area_subtitle">Rund um %1$s</string>
+    <string name="live_map_content_description">Karte der fahrenden Züge, %1$s. Die Positionen sind aus dem Fahrplan geschätzt, keine GPS-Positionen; dieselben Züge stehen in der Liste unter der Karte.</string>
+    <string name="live_map_note">Geschätzte Position, kein GPS: Binario berechnet nach dem Fahrplan, wo sich jeder Zug befinden sollte, auf einer geraden Linie zwischen zwei Halten (nicht entlang der Gleise). Kennt die Tafel bereits die Verspätung eines Zuges, wird sie berücksichtigt. Die Positionen werden alle 30 Sekunden aktualisiert, solange die Karte geöffnet ist.</string>
+    <string name="live_map_legend_live">Position mit der Verspätung der Tafel geschätzt</string>
+    <string name="live_map_legend_timetable">Position nur aus dem Fahrplan geschätzt</string>
+    <string name="live_map_loading">Geschätzte Positionen werden berechnet…</string>
+    <string name="live_map_zoom_in">Karte vergrößern, um die fahrenden Züge zu sehen.</string>
+    <string name="live_map_none">Laut Fahrplan ist im gezeigten Bereich kein Zug unterwegs.</string>
+    <string name="live_map_row_title">%1$s nach %2$s</string>
+    <string name="live_map_row_at">Halt in %1$s</string>
+    <string name="live_map_row_between">Zwischen %1$s und %2$s</string>
+    <string name="live_map_row_live">Schätzung mit den Daten der Tafel: %1$s</string>
+    <string name="live_map_row_timetable">Schätzung nur aus dem Fahrplan</string>
+    <plurals name="live_map_count">
+        <item quantity="one">%d fahrender Zug</item>
+        <item quantity="other">%d fahrende Züge</item>
+    </plurals>
+    <plurals name="live_map_capped">
+        <item quantity="one">Angezeigt: %d Zug, der nächste.</item>
+        <item quantity="other">Angezeigt: die %d nächsten.</item>
+    </plurals>
     <string name="settings_privacy_maps">Karten: Sie öffnen sich nur, wenn du sie aufklappst oder lädst. Zum Zeichnen lädt die App Stil, Kacheln, Schriften und Symbole von tiles.openfreemap.org (OpenFreeMap), das deine IP-Adresse und den gezeigten Bereich sieht: die Zugstrecke, den gewählten Bahnhof oder, bei Bahnhöfen in der Nähe, den Bereich um deine ungefähre Position. Die Position wird weder gesendet noch gespeichert; Kacheln bleiben in einem lokalen App-Cache.</string>
     <string name="settings_credits_maps">Karten: OpenFreeMap © OpenMapTiles, Daten © OpenStreetMap contributors (ODbL 1.0). Darstellung mit MapLibre Native, Lizenz BSD 2-Clause.</string>
     <string name="settings_credits_trenitalia">Trenitalia-Fahrpläne (Züge und Busse): offizielle Daten der Trenitalia S.p.A., veröffentlicht auf dem italienischen National Access Point (CCISS) gemäß Art. 52 CAD und Verordnung (EU) 2017/1926, https://www.cciss.it/nap/mmtis/public/en/catalog/Dataset/1077621. GTFS-Umwandlung © Clément Desouche, CC BY 4.0: https://github.com/deryclem/trenitalia-gtfs (Lizenz https://creativecommons.org/licenses/by/4.0/). Binario nutzt nur die Sollfahrzeiten, ohne Streckengeometrie, und ist nicht mit Trenitalia verbunden.</string>

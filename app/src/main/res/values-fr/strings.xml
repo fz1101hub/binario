@@ -390,6 +390,30 @@
     <string name="map_nearby_content_description">Carte des gares les plus proches. Les mêmes gares, avec leur distance, sont listées ci-dessous.</string>
     <string name="map_nearby_tap_hint">Touchez une gare pour ouvrir son tableau.</string>
     <string name="map_legend_user_position">Position approximative, non enregistrée</string>
+    <string name="live_map_title">Trains en circulation</string>
+    <string name="live_map_area_subtitle">Autour de %1$s</string>
+    <string name="live_map_content_description">Carte des trains en circulation, %1$s. Les positions sont estimées d’après l’horaire, ce ne sont pas des positions GPS ; les mêmes trains sont listés sous la carte.</string>
+    <string name="live_map_note">Position estimée, pas de GPS : Binario calcule où chaque train devrait se trouver selon son horaire, en ligne droite entre deux arrêts (pas le long des voies). Si le tableau connaît déjà le retard d’un train, l’estimation en tient compte. Les positions se mettent à jour toutes les 30 secondes tant que la carte est ouverte.</string>
+    <string name="live_map_legend_live">Position estimée avec le retard du tableau</string>
+    <string name="live_map_legend_timetable">Position estimée d’après l’horaire seul</string>
+    <string name="live_map_loading">Calcul des positions estimées…</string>
+    <string name="live_map_zoom_in">Zoomez sur la carte pour voir les trains en circulation.</string>
+    <string name="live_map_none">Selon l’horaire, aucun train ne circule dans la zone affichée.</string>
+    <string name="live_map_row_title">%1$s vers %2$s</string>
+    <string name="live_map_row_at">À l’arrêt à %1$s</string>
+    <string name="live_map_row_between">Entre %1$s et %2$s</string>
+    <string name="live_map_row_live">Estimation avec les données du tableau : %1$s</string>
+    <string name="live_map_row_timetable">Estimation d’après l’horaire seul</string>
+    <plurals name="live_map_count">
+        <item quantity="one">%d train en circulation</item>
+        <item quantity="many">%d de trains en circulation</item>
+        <item quantity="other">%d trains en circulation</item>
+    </plurals>
+    <plurals name="live_map_capped">
+        <item quantity="one">Affiché : %d train, le plus proche.</item>
+        <item quantity="many">Affichés : les %d plus proches.</item>
+        <item quantity="other">Affichés : les %d plus proches.</item>
+    </plurals>
     <string name="settings_privacy_maps">Cartes : elles ne s’ouvrent que si vous les dépliez ou les chargez. Pour les dessiner, l’app télécharge style, tuiles, polices et icônes depuis tiles.openfreemap.org (OpenFreeMap), qui voit votre adresse IP et la zone affichée : le parcours du train, la gare choisie ou, pour les gares proches, la zone autour de votre position approximative. La position n’est ni envoyée ni enregistrée ; les tuiles restent dans un cache local de l’app.</string>
     <string name="settings_credits_maps">Cartes : OpenFreeMap © OpenMapTiles, données © contributeurs OpenStreetMap (ODbL 1.0). Affichage avec MapLibre Native, licence BSD 2-Clause.</string>
     <string name="settings_credits_trenitalia">Horaires Trenitalia (trains et cars) : données officielles de Trenitalia S.p.A. publiées sur le National Access Point italien (CCISS) en application de l’art. 52 du CAD et du règlement (UE) 2017/1926, https://www.cciss.it/nap/mmtis/public/en/catalog/Dataset/1077621. Conversion GTFS © Clément Desouche, CC BY 4.0 : https://github.com/deryclem/trenitalia-gtfs (licence https://creativecommons.org/licenses/by/4.0/). Binario n’utilise que les horaires prévus, sans la géométrie des parcours, et n’est pas affiliée à Trenitalia.</string>

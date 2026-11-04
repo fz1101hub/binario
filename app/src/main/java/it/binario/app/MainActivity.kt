@@ -492,6 +492,13 @@ internal fun BinarioApp(
         pendingFavouriteTrain = monitor.number + FAVOURITE_SEPARATOR + monitor.origin
         showResults(AppScreen.NUMBER_RESULTS, AppScreen.FOR_YOU)
     }
+    // A train of the map of trains in motion that no board lists: its number search, opening the run from its origin.
+    fun openTrainFromMap(number: String, origin: String) {
+        viewModel.updateTrainNumberQuery(number)
+        viewModel.searchTrainNumber()
+        pendingFavouriteTrain = number + FAVOURITE_SEPARATOR + origin
+        showResults(AppScreen.NUMBER_RESULTS, AppScreen.PLANNER)
+    }
     namingFavouriteTrain?.let { number ->
         val monitor = viewModel.monitoredServices.firstOrNull { it.number.equals(number, ignoreCase = true) }
         if (monitor == null) {
@@ -590,7 +597,8 @@ internal fun BinarioApp(
                 openDetails = { service -> openDetail(AppScreen.DEPARTURES) { viewModel.openService(service) } },
                 manageRoutes = { showScreen(AppScreen.FOR_YOU) },
                 stationRunDetailsInSheet = !inSidePane,
-                selectedServiceId = viewModel.selectedService?.id.takeIf { inSidePane && screen == AppScreen.DETAIL }
+                selectedServiceId = viewModel.selectedService?.id.takeIf { inSidePane && screen == AppScreen.DETAIL },
+                openTrainNumber = ::openTrainFromMap
             )
             AppScreen.FOR_YOU -> ForYouScreen(
                 modifier = modifier,

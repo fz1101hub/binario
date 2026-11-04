@@ -378,6 +378,28 @@
     <string name="map_nearby_content_description">सबसे पास के स्टेशनों का नक्शा। वही स्टेशन दूरी के साथ नीचे सूचीबद्ध हैं।</string>
     <string name="map_nearby_tap_hint">बोर्ड खोलने के लिए किसी स्टेशन पर टैप करें।</string>
     <string name="map_legend_user_position">अनुमानित लोकेशन, सहेजी नहीं गई</string>
+    <string name="live_map_title">चलती ट्रेनें</string>
+    <string name="live_map_area_subtitle">%1$s के आसपास</string>
+    <string name="live_map_content_description">चलती ट्रेनों का नक्शा, %1$s। स्थितियाँ समय-सारणी से अनुमानित हैं, GPS स्थितियाँ नहीं; यही ट्रेनें नक्शे के नीचे सूची में हैं।</string>
+    <string name="live_map_note">अनुमानित स्थिति, GPS नहीं: Binario समय-सारणी के अनुसार गणना करता है कि हर ट्रेन कहाँ होनी चाहिए, दो ठहरावों के बीच सीधी रेखा पर (पटरियों के साथ नहीं)। अगर बोर्ड पर किसी ट्रेन की देरी पहले से है, तो अनुमान उसे ध्यान में रखता है। नक्शा खुला रहने तक स्थितियाँ हर 30 सेकंड में अपडेट होती हैं।</string>
+    <string name="live_map_legend_live">बोर्ड की देरी के साथ अनुमानित स्थिति</string>
+    <string name="live_map_legend_timetable">केवल समय-सारणी से अनुमानित स्थिति</string>
+    <string name="live_map_loading">अनुमानित स्थितियों की गणना हो रही है…</string>
+    <string name="live_map_zoom_in">चलती ट्रेनें देखने के लिए नक्शे को ज़ूम इन करें।</string>
+    <string name="live_map_none">समय-सारणी के अनुसार दिखाए गए क्षेत्र में कोई ट्रेन नहीं चल रही है।</string>
+    <string name="live_map_row_title">%1$s, %2$s की ओर</string>
+    <string name="live_map_row_at">%1$s पर रुकी हुई</string>
+    <string name="live_map_row_between">%1$s और %2$s के बीच</string>
+    <string name="live_map_row_live">बोर्ड के डेटा के साथ अनुमान: %1$s</string>
+    <string name="live_map_row_timetable">केवल समय-सारणी से अनुमान</string>
+    <plurals name="live_map_count">
+        <item quantity="one">%d चलती ट्रेन</item>
+        <item quantity="other">%d चलती ट्रेनें</item>
+    </plurals>
+    <plurals name="live_map_capped">
+        <item quantity="one">%d सबसे नज़दीकी ट्रेन दिखाई गई।</item>
+        <item quantity="other">%d सबसे नज़दीकी ट्रेनें दिखाई गईं।</item>
+    </plurals>
     <string name="settings_privacy_maps">नक्शे: केवल तभी खुलते हैं जब आप उन्हें फैलाते या लोड करते हैं। उन्हें बनाने के लिए ऐप tiles.openfreemap.org (OpenFreeMap) से शैली, टाइलें, फ़ॉन्ट और आइकन डाउनलोड करता है, जो IP पता और दिखाया गया क्षेत्र देखता है: ट्रेन का मार्ग, चुना गया स्टेशन या, पास के स्टेशनों के लिए, आपकी अनुमानित लोकेशन के आसपास का क्षेत्र। लोकेशन न भेजी जाती है न सहेजी जाती है; टाइलें ऐप के स्थानीय कैश में रहती हैं।</string>
     <string name="settings_credits_maps">नक्शे: OpenFreeMap © OpenMapTiles, डेटा © OpenStreetMap contributors (ODbL 1.0)। MapLibre Native से प्रदर्शित, BSD 2-Clause लाइसेंस।</string>
     <string name="settings_credits_trenitalia">Trenitalia समय-सारणी (ट्रेनें और बसें): Trenitalia S.p.A. का आधिकारिक डेटा, CAD के अनुच्छेद 52 और EU विनियम 2017/1926 के तहत इटली के राष्ट्रीय एक्सेस पॉइंट (CCISS) पर प्रकाशित, https://www.cciss.it/nap/mmtis/public/en/catalog/Dataset/1077621। GTFS रूपांतरण © Clément Desouche, CC BY 4.0: https://github.com/deryclem/trenitalia-gtfs (लाइसेंस https://creativecommons.org/licenses/by/4.0/)। Binario केवल निर्धारित समय का उपयोग करता है, मार्गों की ज्यामिति के बिना, और Trenitalia से संबद्ध नहीं है।</string>

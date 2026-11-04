@@ -87,6 +87,7 @@ import it.binario.app.requestSingleLocationFix
 import it.binario.app.maps.GeoPoint
 import it.binario.app.maps.NearbyStationsMapCard
 import it.binario.app.maps.RouteMapPlanner
+import it.binario.app.maps.StationLiveTrainsEntry
 import it.binario.app.maps.StationMapCard
 import it.binario.app.maps.rememberOpenMapStationIndex
 import it.binario.app.ui.common.BinarioCard
@@ -121,7 +122,13 @@ import java.util.Locale
 // Partenze: departures and arrivals of a station, with the run details of a board entry.
 
 @Composable
-internal fun StationBoardScreen(modifier: Modifier, viewModel: TrainViewModel, runDetailsInSheet: Boolean = true) {
+internal fun StationBoardScreen(
+    modifier: Modifier,
+    viewModel: TrainViewModel,
+    runDetailsInSheet: Boolean = true,
+    /** Opens the train-number search for a train of the map of trains in motion that the board does not list. */
+    openTrainNumber: (number: String, origin: String) -> Unit = { _, _ -> }
+) {
     LaunchedEffect(Unit) { viewModel.refreshStationBoardIfIdle() }
     // From 840 dp the run details sit in the side pane instead (StationBoardRunDetailsPane).
     if (runDetailsInSheet) viewModel.selectedBoardEntry?.let { selected ->
@@ -265,6 +272,7 @@ internal fun StationBoardScreen(modifier: Modifier, viewModel: TrainViewModel, r
                         stationText = it.name
                         viewModel.selectStationBoardStation(it)
                     })
+                    StationLiveTrainsEntry(viewModel, station, onOpenTrainNumber = openTrainNumber, modifier = Modifier.testTag("station-board-live-map"))
                 }
 
                 val findNearbyStationsDescription = stringResource(R.string.accessibility_find_nearby_stations)

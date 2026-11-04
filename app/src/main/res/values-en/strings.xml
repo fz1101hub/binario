@@ -384,6 +384,28 @@
     <string name="map_nearby_content_description">Map of the nearest stations. The same stations, with their distance, are listed below.</string>
     <string name="map_nearby_tap_hint">Tap a station to open its board.</string>
     <string name="map_legend_user_position">Approximate position, not saved</string>
+    <string name="live_map_title">Trains on the move</string>
+    <string name="live_map_area_subtitle">Around %1$s</string>
+    <string name="live_map_content_description">Map of trains on the move, %1$s. Positions are estimates from the timetable, not GPS positions; the same trains are listed below the map.</string>
+    <string name="live_map_note">Estimated position, not GPS: Binario works out where each train should be according to its timetable, on a straight line between two stops (not along the tracks). When the board already has a train’s delay, the estimate takes it into account. Positions update every 30 seconds while the map is open.</string>
+    <string name="live_map_legend_live">Position estimated with the board’s delay</string>
+    <string name="live_map_legend_timetable">Position estimated from the timetable only</string>
+    <string name="live_map_loading">Working out estimated positions…</string>
+    <string name="live_map_zoom_in">Zoom in to see the trains on the move.</string>
+    <string name="live_map_none">According to the timetable, no train is on the move in the area shown.</string>
+    <string name="live_map_row_title">%1$s to %2$s</string>
+    <string name="live_map_row_at">Stopped at %1$s</string>
+    <string name="live_map_row_between">Between %1$s and %2$s</string>
+    <string name="live_map_row_live">Estimate with the board’s data: %1$s</string>
+    <string name="live_map_row_timetable">Estimate from the timetable only</string>
+    <plurals name="live_map_count">
+        <item quantity="one">%d train on the move</item>
+        <item quantity="other">%d trains on the move</item>
+    </plurals>
+    <plurals name="live_map_capped">
+        <item quantity="one">Showing %d train, the nearest.</item>
+        <item quantity="other">Showing the %d nearest.</item>
+    </plurals>
     <string name="settings_privacy_maps">Maps: they open only when you expand or load them. To draw them the app downloads style, tiles, fonts and icons from tiles.openfreemap.org (OpenFreeMap), which sees your IP address and the area shown: the train route, the chosen station or, for nearby stations, the area around your approximate position. The position is neither sent nor saved; tiles stay in a local app cache.</string>
     <string name="settings_credits_maps">Maps: OpenFreeMap © OpenMapTiles, data © OpenStreetMap contributors (ODbL 1.0). Rendered with MapLibre Native, BSD 2-Clause licence.</string>
     <string name="settings_credits_trenitalia">Trenitalia timetables (trains and buses): official Trenitalia S.p.A. data published on the Italian National Access Point (CCISS) under art. 52 CAD and EU Regulation 2017/1926, https://www.cciss.it/nap/mmtis/public/en/catalog/Dataset/1077621. GTFS conversion © Clément Desouche, CC BY 4.0: https://github.com/deryclem/trenitalia-gtfs (licence https://creativecommons.org/licenses/by/4.0/). Binario uses the scheduled times only, without route geometry, and is not affiliated with Trenitalia.</string>

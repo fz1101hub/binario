@@ -390,6 +390,30 @@
     <string name="map_nearby_content_description">Mappa delle stazioni più vicine. Le stesse stazioni, con la distanza, sono elencate sotto.</string>
     <string name="map_nearby_tap_hint">Tocca una stazione per aprirne il tabellone.</string>
     <string name="map_legend_user_position">Posizione approssimativa, non salvata</string>
+    <string name="live_map_title">Treni in movimento</string>
+    <string name="live_map_area_subtitle">Attorno a %1$s</string>
+    <string name="live_map_content_description">Mappa dei treni in movimento, %1$s. Le posizioni sono stime dall’orario, non posizioni GPS; gli stessi treni sono elencati sotto la mappa.</string>
+    <string name="live_map_note">Posizione stimata, non GPS: Binario calcola dove dovrebbe trovarsi ogni treno secondo l’orario, in linea retta fra due fermate (non lungo i binari). Se il tabellone ha già il ritardo di un treno, la stima ne tiene conto. Le posizioni si aggiornano ogni 30 secondi mentre la mappa è aperta.</string>
+    <string name="live_map_legend_live">Posizione stimata con il ritardo del tabellone</string>
+    <string name="live_map_legend_timetable">Posizione stimata dal solo orario</string>
+    <string name="live_map_loading">Calcolo delle posizioni stimate…</string>
+    <string name="live_map_zoom_in">Avvicina la mappa per vedere i treni in movimento.</string>
+    <string name="live_map_none">Secondo l’orario nessun treno è in movimento nella zona mostrata.</string>
+    <string name="live_map_row_title">%1$s per %2$s</string>
+    <string name="live_map_row_at">In stazione a %1$s</string>
+    <string name="live_map_row_between">Tra %1$s e %2$s</string>
+    <string name="live_map_row_live">Stima con il dato del tabellone: %1$s</string>
+    <string name="live_map_row_timetable">Stima dal solo orario</string>
+    <plurals name="live_map_count">
+        <item quantity="one">%d treno in movimento</item>
+        <item quantity="many">%d treni in movimento</item>
+        <item quantity="other">%d treni in movimento</item>
+    </plurals>
+    <plurals name="live_map_capped">
+        <item quantity="one">Mostrato %d treno, il più vicino.</item>
+        <item quantity="many">Mostrati i %d più vicini.</item>
+        <item quantity="other">Mostrati i %d più vicini.</item>
+    </plurals>
     <string name="settings_privacy_maps">Mappe: si aprono solo quando le espandi o le carichi. Per disegnarle l’app scarica stile, tessere, caratteri e icone da tiles.openfreemap.org (OpenFreeMap), che vede l’indirizzo IP e la zona mostrata: il percorso del treno, la stazione scelta o, per le stazioni vicine, l’area attorno alla tua posizione approssimativa. La posizione non viene inviata né salvata; le tessere restano in una cache locale dell’app.</string>
     <string name="settings_credits_maps">Mappe: OpenFreeMap © OpenMapTiles, dati © OpenStreetMap contributors (ODbL 1.0). Visualizzazione con MapLibre Native, licenza BSD 2-Clause.</string>
     <string name="settings_credits_trenitalia">Orari Trenitalia (treni e bus): dati ufficiali di Trenitalia S.p.A. pubblicati sul National Access Point italiano (CCISS) ai sensi dell’art. 52 CAD e del Reg. UE 2017/1926, https://www.cciss.it/nap/mmtis/public/en/catalog/Dataset/1077621. Conversione GTFS © Clément Desouche, CC BY 4.0: https://github.com/deryclem/trenitalia-gtfs (licenza https://creativecommons.org/licenses/by/4.0/). Binario usa solo gli orari programmati, senza le geometrie dei percorsi, e non è affiliata a Trenitalia.</string>

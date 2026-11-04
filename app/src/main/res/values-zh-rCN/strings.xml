@@ -378,6 +378,26 @@
     <string name="map_nearby_content_description">最近车站的地图。相同的车站及其距离列在下方。</string>
     <string name="map_nearby_tap_hint">点按车站即可打开其车站大屏。</string>
     <string name="map_legend_user_position">大致位置，不会保存</string>
+    <string name="live_map_title">运行中的列车</string>
+    <string name="live_map_area_subtitle">%1$s周边</string>
+    <string name="live_map_content_description">运行中列车地图，%1$s。位置根据时刻表估算，并非 GPS 位置；同样的列车列在地图下方。</string>
+    <string name="live_map_note">估算位置，并非 GPS：Binario 根据时刻表计算每趟列车应在的位置，位于两个停靠站之间的直线上（并非沿轨道）。如果车站大屏已有某趟列车的晚点信息，估算会将其计入。地图打开期间，位置每 30 秒更新一次。</string>
+    <string name="live_map_legend_live">按车站大屏晚点估算的位置</string>
+    <string name="live_map_legend_timetable">仅按时刻表估算的位置</string>
+    <string name="live_map_loading">正在计算估算位置…</string>
+    <string name="live_map_zoom_in">放大地图以查看运行中的列车。</string>
+    <string name="live_map_none">根据时刻表，所示区域内没有运行中的列车。</string>
+    <string name="live_map_row_title">%1$s 开往 %2$s</string>
+    <string name="live_map_row_at">停靠在%1$s</string>
+    <string name="live_map_row_between">%1$s 与 %2$s 之间</string>
+    <string name="live_map_row_live">按车站大屏数据估算：%1$s</string>
+    <string name="live_map_row_timetable">仅按时刻表估算</string>
+    <plurals name="live_map_count">
+        <item quantity="other">运行中的列车 %d 趟</item>
+    </plurals>
+    <plurals name="live_map_capped">
+        <item quantity="other">显示最近的 %d 趟。</item>
+    </plurals>
     <string name="settings_privacy_maps">地图：仅在你展开或加载时打开。为绘制地图，应用会从 tiles.openfreemap.org（OpenFreeMap）下载样式、图块、字体和图标，该网站可以看到你的 IP 地址和显示的区域：列车路线、所选车站，或在查看附近车站时你大致位置的周边区域。位置不会被发送或保存；图块保存在应用的本地缓存中。</string>
     <string name="settings_credits_maps">地图：OpenFreeMap © OpenMapTiles，数据 © OpenStreetMap contributors（ODbL 1.0）。使用 MapLibre Native 渲染，BSD 2-Clause 许可。</string>
     <string name="settings_credits_trenitalia">Trenitalia 时刻表（列车和巴士）：Trenitalia S.p.A. 根据 CAD 第 52 条和欧盟第 2017/1926 号条例在意大利国家访问点（CCISS）发布的官方数据，https://www.cciss.it/nap/mmtis/public/en/catalog/Dataset/1077621 。GTFS 转换 © Clément Desouche，CC BY 4.0：https://github.com/deryclem/trenitalia-gtfs （许可：https://creativecommons.org/licenses/by/4.0/ ）。Binario 仅使用计划时刻，不含路线几何数据，且与 Trenitalia 无隶属关系。</string>

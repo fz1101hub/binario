@@ -339,27 +339,33 @@ private fun OpenMapCardFrame(
 }
 
 @Composable
-private fun OpenMapNote(text: String) {
+internal fun OpenMapNote(text: String) {
     Text(text, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
 }
 
 @Composable
-private fun OpenMapAttribution() {
+internal fun OpenMapAttribution() {
     Text(stringResource(R.string.map_attribution), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
 }
 
 @Composable
-private fun LegendEntry(style: OpenMapMarkerStyle, label: String) {
+internal fun LegendEntry(style: OpenMapMarkerStyle, label: String) {
     Row(verticalAlignment = Alignment.CenterVertically) {
-        Box(
-            Modifier
-                .size(14.dp)
-                .background(cssColor(style.color).copy(alpha = style.opacity.coerceIn(0.3f, 1f)), CircleShape)
-                .border(2.dp, cssColor(style.strokeColor), CircleShape)
-        )
+        OpenMapMarkerDot(style)
         Spacer(Modifier.width(8.dp))
         Text(label, style = MaterialTheme.typography.bodySmall)
     }
+}
+
+/** A marker as the map draws it, for legends and list rows. */
+@Composable
+internal fun OpenMapMarkerDot(style: OpenMapMarkerStyle, modifier: Modifier = Modifier) {
+    Box(
+        modifier
+            .size(14.dp)
+            .background(cssColor(style.color).copy(alpha = style.opacity.coerceIn(0.3f, 1f)), CircleShape)
+            .border(2.dp, cssColor(style.strokeColor), CircleShape)
+    )
 }
 
 @Composable
@@ -384,7 +390,7 @@ private fun routeStopLine(stop: RouteMapStop): String = listOfNotNull(
     if (stop.point == null) stringResource(R.string.map_stop_not_on_map) else null
 ).joinToString(" · ")
 
-private fun openMapPalette(colors: ColorScheme): OpenMapPalette = OpenMapPalette(
+internal fun openMapPalette(colors: ColorScheme): OpenMapPalette = OpenMapPalette(
     primary = OpenMapMarkerStyles.cssHex(colors.primary.toArgb()),
     tertiary = OpenMapMarkerStyles.cssHex(colors.tertiary.toArgb()),
     error = OpenMapMarkerStyles.cssHex(colors.error.toArgb()),

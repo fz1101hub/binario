@@ -34,6 +34,15 @@ internal object OpenMapMarkerStyles {
     /** Any other station that opens its board when tapped. */
     fun station(palette: OpenMapPalette): OpenMapMarkerStyle = OpenMapMarkerStyle(palette.primary, 6f, palette.surface, 2f)
 
+    /**
+     * A train of the map of trains in motion: filled when its estimate uses the live delay the app had, hollow when it
+     * comes from the timetable alone. Both are estimates; neither is a GPS position.
+     */
+    fun liveTrain(estimate: LiveTrainEstimate, palette: OpenMapPalette): OpenMapMarkerStyle = when (estimate) {
+        LiveTrainEstimate.LIVE_DELAY -> OpenMapMarkerStyle(palette.primary, 7f, palette.surface, 2f)
+        LiveTrainEstimate.TIMETABLE -> OpenMapMarkerStyle(palette.surface, 6f, palette.primary, 3f)
+    }
+
     /** The approximate position: a large translucent disc, not a precise dot. */
     fun approximatePosition(palette: OpenMapPalette): OpenMapMarkerStyle =
         OpenMapMarkerStyle(palette.secondary, 14f, palette.secondary, 1f, opacity = 0.3f)
