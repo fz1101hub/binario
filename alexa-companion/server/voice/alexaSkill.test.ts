@@ -27,7 +27,16 @@ vi.mock("../db", () => ({
   rotateRefreshToken: vi.fn(),
 }));
 
+const railData = vi.hoisted(() => ({
+  punctualityStats: vi.fn(),
+  railStationIndex: vi.fn(),
+}));
+vi.mock("../punctuality/source", () => railData);
+
 import { getAlexaLinkStatus, listPersonalRoutesForAlexa } from "../db";
+import { parseStationCatalog } from "../punctuality/stations";
+import { parsePunctualityStats } from "../punctuality/stats";
+import { catalogDocument, networkDocument } from "../punctuality/testFixtures";
 import { createAlexaSkill, HANDLED_INTENTS } from "./alexa";
 import { issueVoiceAccessToken } from "./crypto";
 
@@ -328,7 +337,9 @@ describe("Echo Show screens (APL)", () => {
   });
 
   it("never puts tokens, identifiers, origins or destinations on the screen", async () => {
-    for (const name of ["NextTrainsIntent", "MyRoutesIntent", "TrainStatusIntent"]) {
+    railData.punctualityStats.mockResolvedValue(parsePunctualityStats(networkDocument()));
+    railData.railStationIndex.mockResolvedValue(parseStationCatalog(catalogDocument()));
+    for (const name of ["NextTrainsIntent", "MyRoutesIntent", "TrainStatusIntent", "RoutePunctualityIntent"]) {
       const { request, accessToken } = await linkedRequest(withApl(intent(name, "it-IT", { trainNumber: "9512" })));
       const serialized = JSON.stringify((await createAlexaSkill().invoke(request)).response.directives);
       expect(serialized).toContain("RenderDocument");
@@ -355,7 +366,7 @@ describe("Echo Show screens (APL)", () => {
   });
 
   it("renders nothing before account linking, after Stop, or on an older APL runtime", async () => {
-    for (const name of ["NextTrainsIntent", "MyRoutesIntent", "TrainStatusIntent", "AMAZON.StopIntent"]) {
+    for (const name of ["NextTrainsIntent", "MyRoutesIntent", "TrainStatusIntent", "RoutePunctualityIntent", "AMAZON.StopIntent"]) {
       const response = await createAlexaSkill().invoke(withApl(intent(name)));
       expect(response.response.directives ?? [], name).toHaveLength(0);
       expect(response.response.shouldEndSession, name).toBe(true);
@@ -595,6 +606,9 @@ describe("versioned interaction models", () => {
         screen.hintNextTrains,
         screen.hintTrainStatus,
         screen.hintMyRoutes,
+        messagesForLocale(locale).punctuality.hint,
+        PUNCTUALITY_PHRASES[locale].train,
+        PUNCTUALITY_PHRASES[locale].route,
       ])
         expect(phrase.toLocaleLowerCase(locale), `${locale}: ${phrase}`).toContain(invocation);
     }
@@ -618,6 +632,21 @@ describe("versioned interaction models", () => {
     "hi-IN": { open: "^अलेक्सा, INV खोलो$", ask: "^अलेक्सा, INV से (.+) पूछो$" },
     "ja-JP": { open: "^アレクサ、INVを開いて$", ask: "^アレクサ、INVで(.+)$" },
     "pt-BR": { open: "^alexa, abra INV$", ask: "^alexa, pergunte ao INV (.+)$" },
+  };
+  /** The brief's phrases, «quanto è puntuale il treno 9558» and «… la mia tratta casa lavoro», in every locale. */
+  const PUNCTUALITY_PHRASES: Record<(typeof LOCALES)[number], { train: string; route: string }> = {
+    "it-IT": { train: "Alexa, chiedi a binario treni quanto è puntuale il treno 9558", route: "Alexa, chiedi a binario treni quanto è puntuale la mia tratta casa lavoro" },
+    "en-US": { train: "Alexa, ask binario trains how punctual train 9558 is", route: "Alexa, ask binario trains about the punctuality of my route casa lavoro" },
+    "en-GB": { train: "Alexa, ask binario trains how punctual train 9558 is", route: "Alexa, ask binario trains about the punctuality of my route casa lavoro" },
+    "en-IN": { train: "Alexa, ask binario trains how punctual train 9558 is", route: "Alexa, ask binario trains about the punctuality of my route casa lavoro" },
+    "de-DE": { train: "Alexa, frage binario züge nach der Pünktlichkeit von Zug 9558", route: "Alexa, frage binario züge nach der Pünktlichkeit meiner Strecke casa lavoro" },
+    "fr-FR": { train: "Alexa, demande à binario trains la ponctualité du train 9558", route: "Alexa, demande à binario trains la ponctualité de mon trajet casa lavoro" },
+    "es-ES": { train: "Alexa, pregunta a binario trenes por la puntualidad del tren 9558", route: "Alexa, pregunta a binario trenes por la puntualidad de mi ruta casa lavoro" },
+    "es-US": { train: "Alexa, pregunta a binario trenes por la puntualidad del tren 9558", route: "Alexa, pregunta a binario trenes por la puntualidad de mi ruta casa lavoro" },
+    "ar-SA": { train: "أليكسا، اسأل قطارات بيناريو عن دقة مواعيد القطار 9558", route: "أليكسا، اسأل قطارات بيناريو عن دقة مواعيد مساري casa lavoro" },
+    "hi-IN": { train: "अलेक्सा, बिनारियो ट्रेन से ट्रेन 9558 की समयबद्धता पूछो", route: "अलेक्सा, बिनारियो ट्रेन से मेरे रूट casa lavoro की समयबद्धता पूछो" },
+    "ja-JP": { train: "アレクサ、ビナリオトレインで9558号の定時運行率を教えて", route: "アレクサ、ビナリオトレインでマイルートcasa lavoroの定時運行率を教えて" },
+    "pt-BR": { train: "Alexa, pergunte ao binario trens qual é a pontualidade do trem 9558", route: "Alexa, pergunte ao binario trens qual é a pontualidade do meu trajeto casa lavoro" },
   };
   const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   const plain = (locale: string, value: string) => {
@@ -661,6 +690,9 @@ describe("versioned interaction models", () => {
         [screen.hintNextTrains, "NextTrainsIntent"],
         [screen.hintTrainStatus, "TrainStatusIntent"],
         [screen.hintMyRoutes, "MyRoutesIntent"],
+        [messagesForLocale(locale).punctuality.hint, "TrainPunctualityIntent"],
+        [PUNCTUALITY_PHRASES[locale].train, "TrainPunctualityIntent"],
+        [PUNCTUALITY_PHRASES[locale].route, "RoutePunctualityIntent"],
       ];
       for (const [phrase, intentName] of phrases) {
         const utterance = utteranceOf(locale, phrase);
@@ -671,6 +703,43 @@ describe("versioned interaction models", () => {
       expect(utteranceOf(locale, published[locale].examplePhrases[0]), `${locale}: the first example phrase opens the skill`).toBeNull();
     }
     expect(problems).toEqual([]);
+  });
+
+  it("reaches the punctuality intents with the documented phrases and with no other intent", () => {
+    const problems: string[] = [];
+    for (const locale of LOCALES) {
+      const intents = model(locale).interactionModel.languageModel.intents.filter(item => !item.name.startsWith("AMAZON."));
+      for (const [kind, intentName] of [["train", "TrainPunctualityIntent"], ["route", "RoutePunctualityIntent"]] as const) {
+        const utterance = utteranceOf(locale, PUNCTUALITY_PHRASES[locale][kind]);
+        const reached = intents.filter(item => item.samples.some(sample => sampleMatches(locale, sample, utterance ?? ""))).map(item => item.name);
+        if (reached.join() !== intentName) problems.push(`${locale}: "${utterance}" reaches ${reached.join(", ") || "nothing"}`);
+      }
+    }
+    expect(problems).toEqual([]);
+  });
+
+  it("never uses one sample for two intents", () => {
+    for (const locale of LOCALES) {
+      const samples = model(locale).interactionModel.languageModel.intents.flatMap(item => item.samples.map(sample => plain(locale, sample)));
+      expect(samples.filter((sample, index) => samples.indexOf(sample) !== index), locale).toEqual([]);
+    }
+  });
+
+  it("asks which train and which route with phrases the punctuality intents understand", () => {
+    for (const locale of LOCALES) {
+      const p = messagesForLocale(locale).punctuality;
+      const samplesOf = (name: string) => model(locale).interactionModel.languageModel.intents.find(item => item.name === name)!.samples;
+      const trainQuestion = plain(locale, p.trainMissing);
+      expect(
+        samplesOf("TrainPunctualityIntent").some(sample => trainQuestion.includes(plain(locale, sample.replace("{trainNumber}", "9558")))),
+        `${locale}: ${trainQuestion}`
+      ).toBe(true);
+      const routeQuestion = plain(locale, formatMessage(p.routeChoice, { example: "mare" }));
+      expect(
+        samplesOf("RoutePunctualityIntent").some(sample => sample.includes("{routeName}") && routeQuestion.includes(plain(locale, sample.replace("{routeName}", "mare")))),
+        `${locale}: ${routeQuestion}`
+      ).toBe(true);
+    }
   });
 
   it("asks which route with a phrase the locale's NextTrainsIntent understands", () => {
@@ -698,5 +767,170 @@ describe("versioned interaction models", () => {
     );
     expect(serialized).not.toMatch(/http:\/\//);
     expect(serialized.match(/REPLACE_WITH_HTTPS_HOST/g)?.length).toBeGreaterThan(0);
+  });
+});
+
+describe("punctuality intents", () => {
+  type SkillResponse = Awaited<ReturnType<ReturnType<typeof createAlexaSkill>["invoke"]>>;
+  const ROUTES = [
+    { id: 1, name: "Casa-Lavoro", origin: "Roma Termini", destination: "Tivoli", isPinned: true },
+    { id: 2, name: "Mare", origin: "Roma Ostiense", destination: "Ostia", isPinned: false },
+    { id: 3, name: "Milano", origin: "Tivoli", destination: "Milano Centrale", isPinned: false },
+  ];
+  const card = (response: SkillResponse) => (response.response.card as { content?: string } | undefined)?.content ?? "";
+  const screenOf = (response: SkillResponse) =>
+    (response.response.directives?.find(item => item.type === "Alexa.Presentation.APL.RenderDocument") as
+      | { datasources: { binario: Record<string, unknown> & { stats: Array<{ value: string; label: string }>; routes: Array<{ event: string; name: string }> } } }
+      | undefined)?.datasources.binario;
+
+  function withApl(request: Envelope): Envelope {
+    request.context.System.device!.supportedInterfaces["Alexa.Presentation.APL"] = { runtime: { maxVersion: "1.8" } };
+    return request;
+  }
+
+  async function linked(request: Envelope) {
+    vi.mocked(getAlexaLinkStatus).mockResolvedValue({ userId: 7, credentialVersion: 3, revokedAt: null } as Awaited<ReturnType<typeof getAlexaLinkStatus>>);
+    vi.mocked(listPersonalRoutesForAlexa).mockResolvedValue(ROUTES as Awaited<ReturnType<typeof listPersonalRoutesForAlexa>>);
+    return withAccessToken(request, await issueVoiceAccessToken(7, 3));
+  }
+
+  function withStatistics(available = true) {
+    railData.punctualityStats.mockResolvedValue(available ? parsePunctualityStats(networkDocument()) : null);
+    railData.railStationIndex.mockResolvedValue(parseStationCatalog(catalogDocument()));
+  }
+
+  it("answers a train's punctuality at its terminus, with the attribution, without an account link", async () => {
+    withStatistics();
+    vi.mocked(getAlexaLinkStatus).mockClear();
+    const response = await createAlexaSkill().invoke(intent("TrainPunctualityIntent", "it-IT", { trainNumber: "9558" }));
+    expect(card(response)).toBe(
+      "Il treno 9558 è arrivato al capolinea in orario, cioè entro 5 minuti, 81 volte su 100 in 28 giorni osservati. " +
+        "Il ritardo medio è stato di 6 minuti. È stato soppresso 1 volta. " +
+        "Sono statistiche non ufficiali di Binario su dati ViaggiaTreno."
+    );
+    expect(speechText(response)).toContain("81 volte su 100");
+    expect(response.response.shouldEndSession).toBe(true);
+    expect(getAlexaLinkStatus).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["en-US", "Train 9558 reached its final stop on time, that is within 5 minutes, 81 times out of 100 over 28 observed days."],
+    ["de-DE", "Zug 9558 kam an 28 beobachteten Tagen 81-mal von 100 pünktlich an der Endstation an, also mit einer Verspätung von höchstens 5 Minuten."],
+    ["fr-FR", "Le train 9558 est arrivé à l’heure à son terminus, c’est-à-dire avec un retard d’au plus 5 minutes, 81 fois sur 100 en 28 jours observés."],
+    ["es-ES", "El tren 9558 llegó puntual a su destino final, es decir, con un retraso máximo de 5 minutos, 81 veces de cada 100 en 28 días observados."],
+    ["pt-BR", "Em 28 dias observados, o trem 9558 chegou no horário ao destino final 81% das vezes, ou seja, com atraso de no máximo 5 minutos."],
+    ["ar-SA", "وصل القطار 9558 إلى محطته الأخيرة في الموعد، أي بتأخير لا يتجاوز 5 دقائق، 81 مرة من كل 100 خلال 28 يومًا مرصودًا."],
+    ["hi-IN", "28 देखे गए दिनों में ट्रेन 9558 अपने आख़िरी स्टेशन पर 100 में से 81 बार समय पर पहुँची, यानी अधिकतम 5 मिनट की देरी के साथ।"],
+    ["ja-JP", "9558 号が終着駅に定刻どおり、つまり遅れ 5 分以内で着いたのは、観測した 28 日間で 100 回中 81 回でした。平均の遅れは 6 分でした。"],
+  ] as const)("%s: says the train's on-time share, mean delay, observed days and source", async (locale, expected) => {
+    withStatistics();
+    const response = await createAlexaSkill().invoke(intent("TrainPunctualityIntent", locale, { trainNumber: "9558" }));
+    const p = messagesForLocale(locale).punctuality;
+    expect(card(response).startsWith(expected), card(response)).toBe(true);
+    expect(card(response).endsWith(p.source)).toBe(true);
+  });
+
+  it("says when the train is unknown, has too few observations or was cancelled every day", async () => {
+    withStatistics();
+    const answer = async (trainNumber: string) => card(await createAlexaSkill().invoke(intent("TrainPunctualityIntent", "it-IT", { trainNumber })));
+    expect(await answer("4242")).toBe("Non ho statistiche di puntualità per il treno 4242.");
+    expect(await answer("1234")).toBe("Per il treno 1234 non ci sono ancora abbastanza osservazioni.");
+    expect(await answer("7777")).toBe(
+      "Il treno 7777 è stato soppresso in ognuno dei 7 giorni osservati. Sono statistiche non ufficiali di Binario su dati ViaggiaTreno."
+    );
+  });
+
+  it("asks for the number when none was understood, keeping the session open", async () => {
+    withStatistics();
+    for (const slots of [undefined, { trainNumber: "?" }]) {
+      const response = await createAlexaSkill().invoke(intent("TrainPunctualityIntent", "it-IT", slots));
+      expect(card(response)).toBe(messagesForLocale("it-IT").punctuality.trainMissing);
+      expect(response.response.shouldEndSession).toBe(false);
+      expect(response.response.reprompt).toBeDefined();
+    }
+  });
+
+  it("says the statistics are not available yet when the file is absent", async () => {
+    withStatistics(false);
+    const train = await createAlexaSkill().invoke(intent("TrainPunctualityIntent", "it-IT", { trainNumber: "9558" }));
+    expect(card(train)).toBe("Le statistiche di puntualità di Binario non sono ancora disponibili.");
+    const route = await createAlexaSkill().invoke(await linked(intent("RoutePunctualityIntent", "en-GB")));
+    expect(card(route)).toBe("Binario's punctuality statistics are not available yet.");
+    expect(listPersonalRoutesForAlexa).not.toHaveBeenCalledWith(7, 4);
+  });
+
+  it("aggregates a saved route of the linked user, by spoken name or the pinned one", async () => {
+    withStatistics();
+    const expected =
+      "Sulla tratta Casa-Lavoro, con 3 treni in 28 giorni osservati, gli arrivi a destinazione sono stati in orario, cioè entro 15 minuti, 93 volte su 100. " +
+      "Il ritardo medio è stato di 5 minuti. Sono statistiche non ufficiali di Binario su dati ViaggiaTreno.";
+    const spoken = await createAlexaSkill().invoke(await linked(intent("RoutePunctualityIntent", "it-IT", { routeName: "casa lavoro" })));
+    expect(card(spoken)).toBe(expected);
+    const pinned = await createAlexaSkill().invoke(await linked(intent("RoutePunctualityIntent", "it-IT")));
+    expect(card(pinned)).toBe(expected);
+    expect(JSON.stringify(spoken.response)).not.toMatch(/Roma Termini|Tivoli/);
+  });
+
+  it("asks for linking before reading a saved route", async () => {
+    withStatistics();
+    const response = await createAlexaSkill().invoke(intent("RoutePunctualityIntent", "it-IT", { routeName: "casa lavoro" }));
+    expect(response.response.card?.type).toBe("LinkAccount");
+  });
+
+  it("says when the route's stations are not recognised or its trains have too few observations", async () => {
+    withStatistics();
+    const ask = async (routeName: string) =>
+      card(await createAlexaSkill().invoke(await linked(intent("RoutePunctualityIntent", "it-IT", { routeName }))));
+    expect(await ask("mare")).toBe(
+      "Non riconosco le stazioni della tratta Mare: nella dashboard Binario indica origine e destinazione con il nome della stazione, per esempio Roma Termini."
+    );
+    expect(await ask("milano")).toBe("Per la tratta Milano non ci sono ancora abbastanza osservazioni.");
+  });
+
+  it("asks which route with a punctuality example, and its screen rows ask for punctuality", async () => {
+    withStatistics();
+    const response = await createAlexaSkill().invoke(withApl(await linked(intent("RoutePunctualityIntent", "it-IT", { routeName: "montagna" }))));
+    expect(card(response)).toBe(
+      "Non ho trovato la tratta montagna. Le tue tratte salvate sono: Casa-Lavoro, Mare e Milano. Quale tratta ti interessa? Puoi dire, per esempio: quanto è puntuale la tratta Casa-Lavoro."
+    );
+    expect(response.response.shouldEndSession).toBe(false);
+    expect(screenOf(response)?.routes.map(route => route.event)).toEqual(["binario.punctuality", "binario.punctuality", "binario.punctuality"]);
+  });
+
+  it("projects the answer on Echo Show: figures, unofficial statistics label and the window end", async () => {
+    withStatistics();
+    const train = screenOf(await createAlexaSkill().invoke(withApl(intent("TrainPunctualityIntent", "it-IT", { trainNumber: "9558" }))));
+    expect(train).toMatchObject({
+      screen: "punctuality",
+      title: "Puntualità",
+      hero: "Treno 9558",
+      quality: { state: "statistics", label: "Statistiche non ufficiali di Binario su dati ViaggiaTreno", checked: "Dati fino al 9 novembre 2026" },
+    });
+    expect(train?.stats.map(stat => `${stat.value} ${stat.label}`)).toEqual(["81% In orario", "6 min Ritardo medio", "28 Giorni osservati"]);
+    const route = screenOf(await createAlexaSkill().invoke(withApl(await linked(intent("RoutePunctualityIntent", "de-DE")))));
+    expect(route).toMatchObject({ hero: "Casa-Lavoro", title: "Pünktlichkeit" });
+    // German writes a no-break space before the percent sign.
+    expect(route?.stats.map(stat => stat.value)).toEqual(["93\u00a0%", "5 Min.", "28", "3"]);
+  });
+
+  it("answers a touched route's punctuality after re-checking the link", async () => {
+    withStatistics();
+    const event = envelope({ type: "Alexa.Presentation.APL.UserEvent", token: "binario.myRoutes", arguments: ["binario.punctuality", "Casa-Lavoro"] });
+    const response = await createAlexaSkill().invoke(withApl(await linked(event)));
+    expect(card(response)).toContain("Sulla tratta Casa-Lavoro, con 3 treni");
+    const unlinked = await createAlexaSkill().invoke(withApl(envelope({ type: "Alexa.Presentation.APL.UserEvent", token: "binario.myRoutes", arguments: ["binario.punctuality", "Casa-Lavoro"] })));
+    expect(unlinked.response.card?.type).toBe("LinkAccount");
+  });
+
+  it("logs a failed punctuality request without the route, its stations or the train number", async () => {
+    const errors = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    railData.punctualityStats.mockResolvedValue(parsePunctualityStats(networkDocument()));
+    railData.railStationIndex.mockRejectedValueOnce(new Error("catalogue unreadable"));
+    await createAlexaSkill().invoke(await linked(intent("RoutePunctualityIntent", "it-IT", { routeName: "casa lavoro" })));
+    expect(errors).toHaveBeenCalledTimes(1);
+    expect(errors.mock.calls[0][1]).toMatchObject({ intent: "RoutePunctualityIntent", error: { name: "Error" } });
+    const serialized = JSON.stringify(errors.mock.calls);
+    for (const secret of ["casa lavoro", "Casa-Lavoro", "Roma Termini", "Tivoli", "amzn1.ask.account"]) expect(serialized).not.toContain(secret);
+    errors.mockRestore();
   });
 });

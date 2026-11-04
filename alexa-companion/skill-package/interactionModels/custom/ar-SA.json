@@ -62,6 +62,37 @@
             "ما المسارات التي حفظتها",
             "المسارات المحفوظة"
           ]
+        },
+        {
+          "name": "TrainPunctualityIntent",
+          "slots": [
+            {
+              "name": "trainNumber",
+              "type": "AMAZON.NUMBER"
+            }
+          ],
+          "samples": [
+            "دقة مواعيد القطار {trainNumber}",
+            "ما مدى دقة مواعيد القطار {trainNumber}",
+            "هل يصل القطار {trainNumber} عادة في موعده",
+            "مدى التزام القطار {trainNumber} بالمواعيد"
+          ]
+        },
+        {
+          "name": "RoutePunctualityIntent",
+          "slots": [
+            {
+              "name": "routeName",
+              "type": "AMAZON.SearchQuery"
+            }
+          ],
+          "samples": [
+            "دقة مواعيد مساري",
+            "دقة مواعيد مساري {routeName}",
+            "ما مدى دقة مواعيد مساري",
+            "ما مدى دقة مواعيد مساري {routeName}",
+            "دقة مواعيد المسار {routeName}"
+          ]
         }
       ],
       "types": []

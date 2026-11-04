@@ -7,6 +7,7 @@
 Il companion gestisce:
 
 - webhook HTTPS della Custom Skill Alexa;
+- risposte sulla puntualità di un treno o di una tratta salvata, dalle statistiche non ufficiali di Binario su dati ViaggiaTreno incluse nel bundle ([`docs/ALEXA_SETUP.md`](docs/ALEXA_SETUP.md#statistiche-di-puntualità));
 - schermate Echo Show (APL) che proiettano le stesse risposte vocali, solo sui dispositivi che dichiarano APL;
 - account linking OAuth 2.0 con consenso esplicito e protezione CSRF;
 - revoca e nuovo collegamento dell'account;
@@ -18,7 +19,7 @@ Non è una seconda app Binario, non sostituisce l'app smartphone e non mantiene 
 
 ## Fonte dei dati
 
-Le risposte Alexa devono derivare dallo stesso contratto dati dell'app principale o da snapshot sincronizzati che includano provider, timestamp, TTL e stato operativo. In assenza di una fonte autorizzata e fresca, la risposta resta fail-closed: **“dati non disponibili in tempo reale”**.
+Le risposte Alexa devono derivare dallo stesso contratto dati dell'app principale o da snapshot sincronizzati che includano provider, timestamp, TTL e stato operativo. In assenza di una fonte autorizzata e fresca, la risposta resta fail-closed: **“dati non disponibili in tempo reale”**. Le domande di puntualità usano invece il file settimanale delle statistiche dell'app (`app/src/main/assets/punctuality/stats_v1.json.gz`), che la build copia in `dist/data/` e verifica; senza file la skill dice che le statistiche non sono ancora disponibili.
 
 Wear OS e Apple Watch sono companion separati. Le loro preferenze locali non fanno parte dell'API pubblica Alexa.
 
@@ -35,7 +36,7 @@ pnpm test
 pnpm run build
 ```
 
-Il comando di build verifica anche che il bundle di produzione non contenga runtime o token di anteprima Manus.
+Il comando di build verifica anche che il bundle di produzione non contenga runtime o token di anteprima Manus, e che le copie in `dist/data/` delle statistiche di puntualità e del catalogo stazioni coincidano con i file di `app/src/main/assets/` (la build va quindi eseguita dal checkout completo del repository).
 
 `pnpm run check` controlla i tipi sia del codice sia dei test (`tsconfig.test.json`): Vitest da solo non li controlla.
 

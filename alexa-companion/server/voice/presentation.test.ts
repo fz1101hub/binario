@@ -143,6 +143,7 @@ describe("screen datasource", () => {
       name: "Casa & <b>lavoro</b>",
       pinnedText: "Fissata",
       accessibilityLabel: "Prossimi treni per Casa & <b>lavoro</b> (Fissata)",
+      event: "binario.nextTrains",
     });
     expect(data.routes[1].pinnedText).toBe("");
     expect(buildScreenDatasource(departures, { locale: "it-IT", checkedAt: CHECKED_AT }).hero).toBe("Casa &amp; &lt;lavoro&gt;");
@@ -159,10 +160,59 @@ describe("screen datasource", () => {
       { locale: "it-IT", checkedAt: CHECKED_AT }
     );
     expect(data.more).toBe("Altre 3 tratte sono nella dashboard Binario.");
-    expect(Object.keys(data.routes[0]).sort()).toEqual(["accessibilityLabel", "name", "pinnedText", "text"]);
+    expect(Object.keys(data.routes[0]).sort()).toEqual(["accessibilityLabel", "event", "name", "pinnedText", "text"]);
     const empty = buildScreenDatasource({ kind: "myRoutes", routes: [], remainingCount: 0 }, { locale: "it-IT", checkedAt: CHECKED_AT });
     expect(empty.message).toBe("Non hai ancora salvato alcuna tratta in Binario.");
     expect(empty.actions).toEqual([]);
+  });
+
+  it("shows a punctuality answer as figures under the unofficial-statistics banner, dated by the window end", () => {
+    const train = buildScreenDatasource(
+      { kind: "punctuality", about: "train", trainNumber: "9558", message: "Il treno 9558 è arrivato…", figures: { percent: 81, meanDelayMinutes: 6, days: 28 }, windowEnd: "2026-11-09" },
+      { locale: "it-IT", checkedAt: CHECKED_AT }
+    );
+    expect(train).toMatchObject({
+      screen: "punctuality",
+      title: "Puntualità",
+      hero: "Treno 9558",
+      message: "Il treno 9558 è arrivato…",
+      quality: {
+        state: "statistics",
+        label: "Statistiche non ufficiali di Binario su dati ViaggiaTreno",
+        source: "Statistiche, non dati in tempo reale",
+        checked: "Dati fino al 9 novembre 2026",
+      },
+      actions: [{ event: "binario.myRoutes" }],
+    });
+    expect(train.stats).toEqual([
+      { value: "81%", label: "In orario", accessibilityLabel: "In orario: 81%" },
+      { value: "6 min", label: "Ritardo medio", accessibilityLabel: "Ritardo medio: 6 min" },
+      { value: "28", label: "Giorni osservati", accessibilityLabel: "Giorni osservati: 28" },
+    ]);
+    const route = buildScreenDatasource(
+      { kind: "punctuality", about: "route", routeName: "Casa & <lavoro>", message: "x", figures: { percent: 93, meanDelayMinutes: 5, days: 28, trains: 3 } },
+      { locale: "en-US", checkedAt: CHECKED_AT }
+    );
+    expect(route.hero).toBe("Casa &amp; &lt;lavoro&gt;");
+    expect(route.stats.map(stat => stat.label)).toEqual(["On time", "Average delay", "Observed days", "Trains"]);
+    // Without the window end (statistics not available) the banner keeps the check time.
+    expect(route.quality.checked).toMatch(/^Checked at 02:05 PM /);
+    // Arabic Saudi Arabia defaults to the Hijri calendar: the statistics window is dated in Gregorian.
+    const arabic = buildScreenDatasource({ kind: "punctuality", about: "train", message: "x", windowEnd: "2026-11-09" }, { locale: "ar-SA", checkedAt: CHECKED_AT });
+    expect(arabic.quality.checked).toContain("نوفمبر");
+    expect(arabic.hero).toBe("لم يُذكر رقم القطار");
+    expect(arabic.stats).toEqual([]);
+  });
+
+  it("makes the saved routes ask for their punctuality after a punctuality question", () => {
+    const data = buildScreenDatasource(
+      { kind: "myRoutes", routes: [{ name: "Casa", isPinned: true }], remainingCount: 0, routeAction: "punctuality" },
+      { locale: "it-IT", checkedAt: CHECKED_AT }
+    );
+    expect(data.routes[0]).toMatchObject({ event: "binario.punctuality", accessibilityLabel: "Puntualità della tratta Casa (Fissata)" });
+    const document = JSON.stringify(buildRenderDocumentDirective({ kind: "myRoutes", routes: [], remainingCount: 0 }, { locale: "it-IT", checkedAt: CHECKED_AT }).document);
+    expect(document).toContain('"arguments":["${route.event}","${route.name}"]');
+    expect(document).toContain('"data":"${payload.binario.stats}"');
   });
 
   it("names the train asked for, or says none was given, without any status", () => {
@@ -260,6 +310,8 @@ describe("screen events", () => {
     [["binario.myRoutes", ""], { action: "myRoutes" }],
     [["binario.nextTrains", ""], { action: "nextTrains" }],
     [["binario.nextTrains", "Casa & lavoro"], { action: "nextTrains", routeName: "Casa & lavoro" }],
+    [["binario.punctuality", ""], { action: "punctuality" }],
+    [["binario.punctuality", "Casa"], { action: "punctuality", routeName: "Casa" }],
   ] as const)("accepts %j", (args, expected) => {
     expect(parseScreenEvent(userEvent([...args]))).toEqual(expected);
   });
@@ -270,6 +322,8 @@ describe("screen events", () => {
     [["binario.nextTrains", 42]],
     [["binario.nextTrains", "x".repeat(201)]],
     [["binario.nextTrains", "Casa", "extra"]],
+    [["binario.punctuality", 7]],
+    [["binario.punctuality", "x".repeat(201)]],
     [[]],
   ])("rejects %j", args => {
     expect(parseScreenEvent(userEvent(args))).toBeNull();
@@ -282,6 +336,6 @@ describe("screen events", () => {
 
   it("covers every Alexa publishing locale", () => {
     for (const locale of SUPPORTED_LOCALES)
-      expect(buildScreenDatasource({ kind: "home", message: "x" }, { locale, checkedAt: CHECKED_AT }).hints.items).toHaveLength(3);
+      expect(buildScreenDatasource({ kind: "home", message: "x" }, { locale, checkedAt: CHECKED_AT }).hints.items).toHaveLength(4);
   });
 });

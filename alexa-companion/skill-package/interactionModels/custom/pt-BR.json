@@ -64,6 +64,38 @@
             "quais trajetos eu salvei",
             "trajetos salvos"
           ]
+        },
+        {
+          "name": "TrainPunctualityIntent",
+          "slots": [
+            {
+              "name": "trainNumber",
+              "type": "AMAZON.NUMBER"
+            }
+          ],
+          "samples": [
+            "qual é a pontualidade do trem {trainNumber}",
+            "a pontualidade do trem {trainNumber}",
+            "pontualidade do trem {trainNumber}",
+            "quão pontual é o trem {trainNumber}",
+            "o trem {trainNumber} costuma chegar no horário"
+          ]
+        },
+        {
+          "name": "RoutePunctualityIntent",
+          "slots": [
+            {
+              "name": "routeName",
+              "type": "AMAZON.SearchQuery"
+            }
+          ],
+          "samples": [
+            "qual é a pontualidade do meu trajeto",
+            "qual é a pontualidade do meu trajeto {routeName}",
+            "a pontualidade do meu trajeto {routeName}",
+            "pontualidade do meu trajeto",
+            "pontualidade do meu trajeto {routeName}"
+          ]
         }
       ],
       "types": []

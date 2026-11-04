@@ -62,6 +62,36 @@
             "मैंने कौन से रूट सहेजे हैं",
             "सहेजे गए रूट"
           ]
+        },
+        {
+          "name": "TrainPunctualityIntent",
+          "slots": [
+            {
+              "name": "trainNumber",
+              "type": "AMAZON.NUMBER"
+            }
+          ],
+          "samples": [
+            "ट्रेन {trainNumber} की समयबद्धता",
+            "ट्रेन {trainNumber} कितनी बार समय पर पहुँचती है",
+            "क्या ट्रेन {trainNumber} आम तौर पर समय पर रहती है",
+            "ट्रेन {trainNumber} कितनी पंक्चुअल है"
+          ]
+        },
+        {
+          "name": "RoutePunctualityIntent",
+          "slots": [
+            {
+              "name": "routeName",
+              "type": "AMAZON.SearchQuery"
+            }
+          ],
+          "samples": [
+            "मेरे रूट की समयबद्धता",
+            "मेरे रूट {routeName} की समयबद्धता",
+            "रूट {routeName} की समयबद्धता",
+            "मेरा रूट {routeName} कितना पंक्चुअल है"
+          ]
         }
       ],
       "types": []
