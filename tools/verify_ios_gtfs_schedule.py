@@ -16,7 +16,7 @@ from typing import Sequence
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 APPLICATION_ID = int.from_bytes(b"BNGT", "big")
-USER_VERSION = 1
+USER_VERSION = 2
 METADATA_SCHEMA_VERSION = 1
 MAX_METADATA_BYTES = 4 * 1024 * 1024
 DEFAULT_MAX_COMPRESSED_BYTES = 32 * 1024 * 1024
@@ -27,7 +27,7 @@ REQUIRED_TABLE_COLUMNS = {
     "agency": ("id", "pack_id", "external_id", "name", "timezone"),
     "route": ("id", "pack_id", "agency_id", "external_id", "short_name", "long_name", "route_type"),
     "service": ("id", "pack_id", "external_id", "start_date", "day_count", "active_days"),
-    "trip": ("id", "pack_id", "route_id", "service_id", "external_id", "headsign", "short_name", "direction_id"),
+    "trip": ("id", "pack_id", "route_id", "service_id", "external_id", "headsign", "short_name", "direction_id", "bikes_allowed"),
     "stop": ("id", "pack_id", "external_id", "name", "latitude", "longitude", "catalog_station_id", "railway_code", "trenitalia_location_id"),
     "stop_time": ("trip_id", "stop_sequence", "stop_id", "arrival_seconds", "departure_seconds", "pickup_type", "drop_off_type"),
 }
@@ -221,6 +221,8 @@ def verify_database(path: Path, metadata: dict[str, object], input_fingerprint: 
             """
         ).fetchone()[0]
         require(non_rail == 0, "non-rail route found")
+        invalid_bikes = connection.execute("SELECT count(*) FROM trip WHERE bikes_allowed IS NOT NULL AND bikes_allowed NOT IN (1, 2)").fetchone()[0]
+        require(invalid_bikes == 0, "trip bikes_allowed outside 1, 2 or NULL")
         invalid_bits = connection.execute("SELECT count(*) FROM service WHERE length(active_days) != (day_count + 7) / 8").fetchone()[0]
         require(invalid_bits == 0, "service bitset length mismatch")
         for (timezone,) in connection.execute("SELECT DISTINCT timezone FROM agency"):
