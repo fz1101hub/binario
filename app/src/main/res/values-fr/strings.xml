@@ -1565,6 +1565,36 @@
         <item quantity="other">%1$s : en retard %2$d fois sur %3$d</item>
     </plurals>
     <string name="reliability_threshold_mixed_note">Une arrivée compte comme à l’heure avec au plus 5 minutes de retard pour les Frecce, Italo, EuroCity, Eurostar et EuroNight, 15 minutes pour les autres trains.</string>
+    <!-- Usual platform and weekday punctuality of the network statistics (stop elements 7 and 8) -->
+    <plurals name="reliability_usual_platform">
+        <item quantity="one">Habituellement voie %1$s (%2$d fois sur %3$d)</item>
+        <item quantity="many">Habituellement voie %1$s (%2$d fois sur %3$d)</item>
+        <item quantity="other">Habituellement voie %1$s (%2$d fois sur %3$d)</item>
+    </plurals>
+    <string name="reliability_weekday_monday">Le lundi</string>
+    <string name="reliability_weekday_tuesday">Le mardi</string>
+    <string name="reliability_weekday_wednesday">Le mercredi</string>
+    <string name="reliability_weekday_thursday">Le jeudi</string>
+    <string name="reliability_weekday_friday">Le vendredi</string>
+    <string name="reliability_weekday_saturday">Le samedi</string>
+    <string name="reliability_weekday_sunday">Le dimanche</string>
+    <plurals name="reliability_weekday_worse">
+        <item quantity="one">%1$s, à l’heure %2$d fois sur %3$d, moins bien que la moyenne</item>
+        <item quantity="many">%1$s, à l’heure %2$d fois sur %3$d, moins bien que la moyenne</item>
+        <item quantity="other">%1$s, à l’heure %2$d fois sur %3$d, moins bien que la moyenne</item>
+    </plurals>
+    <plurals name="reliability_weekday_better">
+        <item quantity="one">%1$s, à l’heure %2$d fois sur %3$d, mieux que la moyenne</item>
+        <item quantity="many">%1$s, à l’heure %2$d fois sur %3$d, mieux que la moyenne</item>
+        <item quantity="other">%1$s, à l’heure %2$d fois sur %3$d, mieux que la moyenne</item>
+    </plurals>
+    <!-- Route results: «Più presto» / «Più tardi», empty searched window, RFI «RITARDO» without minutes -->
+    <string name="results_earlier">Plus tôt</string>
+    <string name="results_later">Plus tard</string>
+    <string name="results_no_more_earlier">Aucune autre solution plus tôt</string>
+    <string name="results_no_more_later">Aucune autre solution plus tard</string>
+    <string name="results_no_trains_until">Aucun train avant %1$s</string>
+    <string name="service_late_minutes_unpublished">En retard (minutes non publiées)</string>
     <string name="bikes_allowed">Vélos admis</string>
     <string name="bikes_not_allowed">Vélos non admis</string>
     <string name="bikes_conditions_link">Vélos à bord : conditions de %1$s</string>

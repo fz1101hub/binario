@@ -2,10 +2,12 @@ package it.binario.app.ui.planner
 
 import it.binario.app.data.Station
 import it.binario.app.data.TrainService
+import it.binario.app.data.core.LegMode
 import it.binario.app.data.reliability.NetworkReliability
 import it.binario.app.data.reliability.NetworkReliabilityStations
 import it.binario.app.data.reliability.NetworkReliabilityStats
 import it.binario.app.data.reliability.StopReliability
+import it.binario.app.data.reliability.UsualPlatform
 import it.binario.app.journeys.JourneyNetworkReliability
 import it.binario.app.journeys.JourneyNetworkReliabilityAssessor
 import kotlin.math.roundToLong
@@ -63,6 +65,49 @@ internal object ResultsReliability {
         val match = NetworkReliability.match(stats, service.number, destinationCode, boardingCode = originCode)
             ?: return NetworkReliability.cancelledEveryDay(stats, service.number, originCode)
         return NetworkReliability.at(match.train, match.alightingIndex)
+    }
+
+    /**
+     * «Di solito al binario 12 (8 volte su 10)» of each row where the user boards, while no platform of the run is
+     * known: a direct train at [origin] (its live, announced or timetable platform wins), a journey at the station of
+     * its first vehicle when that is a train (the offline planner publishes no platforms). Rows below the thresholds
+     * of [NetworkReliability.usualPlatform] get none.
+     */
+    fun usualPlatforms(
+        entries: List<ResultEntry>,
+        stats: NetworkReliabilityStats,
+        origin: Station,
+        destination: Station,
+        stations: NetworkReliabilityStations
+    ): Map<String, UsualPlatform> {
+        val originCode = NetworkReliability.stationCode(origin)
+        val destinationCode = NetworkReliability.stationCode(destination)
+        return buildMap {
+            for (entry in entries) {
+                val platform = when (entry) {
+                    is ResultEntry.Train -> {
+                        val service = entry.service
+                        if (service.scheduledBus || originCode == null) null
+                        else NetworkReliability.usualPlatformShown(
+                            boardingPlatform(stats, service.number, originCode, destinationCode),
+                            service.platform, service.scheduledPlatform, service.stops.firstOrNull()?.platform, service.stops.firstOrNull()?.scheduledPlatform
+                        )
+                    }
+                    is ResultEntry.Journey -> entry.row.legs.firstOrNull { it.mode != LegMode.WALK }?.takeIf { it.mode == LegMode.TRAIN }?.let { leg ->
+                        stations.code(leg.fromStationId)?.let { boarding -> boardingPlatform(stats, leg.number, boarding, stations.code(leg.toStationId)) }
+                    }
+                }
+                platform?.let { put(entry.key, it) }
+            }
+        }
+    }
+
+    /** The usual platform of the train numbered [number] where it is boarded at [boardingCode] (left at [alightingCode]). */
+    private fun boardingPlatform(stats: NetworkReliabilityStats, number: String?, boardingCode: String, alightingCode: String?): UsualPlatform? {
+        val match = NetworkReliability.match(stats, number, alightingCode, boardingCode = boardingCode)?.takeIf { it.boardingIndex >= 0 }
+            ?: NetworkReliability.matchTerminus(stats, number, boardingCode)
+            ?: return null
+        return NetworkReliability.usualPlatform(match.train, match.boardingIndex)
     }
 
     /**

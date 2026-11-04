@@ -1565,6 +1565,36 @@
         <item quantity="other">%1$s: con retraso %2$d veces de %3$d</item>
     </plurals>
     <string name="reliability_threshold_mixed_note">Cuenta como puntual una llegada con 5 minutos de retraso como máximo en los Frecce, Italo, EuroCity, Eurostar y EuroNight, y 15 minutos en los demás trenes.</string>
+    <!-- Usual platform and weekday punctuality of the network statistics (stop elements 7 and 8) -->
+    <plurals name="reliability_usual_platform">
+        <item quantity="one">Normalmente andén %1$s (%2$d vez de %3$d)</item>
+        <item quantity="many">Normalmente andén %1$s (%2$d veces de %3$d)</item>
+        <item quantity="other">Normalmente andén %1$s (%2$d veces de %3$d)</item>
+    </plurals>
+    <string name="reliability_weekday_monday">Los lunes</string>
+    <string name="reliability_weekday_tuesday">Los martes</string>
+    <string name="reliability_weekday_wednesday">Los miércoles</string>
+    <string name="reliability_weekday_thursday">Los jueves</string>
+    <string name="reliability_weekday_friday">Los viernes</string>
+    <string name="reliability_weekday_saturday">Los sábados</string>
+    <string name="reliability_weekday_sunday">Los domingos</string>
+    <plurals name="reliability_weekday_worse">
+        <item quantity="one">%1$s es puntual %2$d vez de %3$d, peor que la media</item>
+        <item quantity="many">%1$s es puntual %2$d veces de %3$d, peor que la media</item>
+        <item quantity="other">%1$s es puntual %2$d veces de %3$d, peor que la media</item>
+    </plurals>
+    <plurals name="reliability_weekday_better">
+        <item quantity="one">%1$s es puntual %2$d vez de %3$d, mejor que la media</item>
+        <item quantity="many">%1$s es puntual %2$d veces de %3$d, mejor que la media</item>
+        <item quantity="other">%1$s es puntual %2$d veces de %3$d, mejor que la media</item>
+    </plurals>
+    <!-- Route results: «Più presto» / «Più tardi», empty searched window, RFI «RITARDO» without minutes -->
+    <string name="results_earlier">Más temprano</string>
+    <string name="results_later">Más tarde</string>
+    <string name="results_no_more_earlier">No hay más soluciones antes</string>
+    <string name="results_no_more_later">No hay más soluciones después</string>
+    <string name="results_no_trains_until">No hay trenes hasta las %1$s</string>
+    <string name="service_late_minutes_unpublished">Con retraso (minutos no publicados)</string>
     <string name="bikes_allowed">Se admiten bicicletas</string>
     <string name="bikes_not_allowed">No se admiten bicicletas</string>
     <string name="bikes_conditions_link">Bicicletas a bordo: condiciones de %1$s</string>

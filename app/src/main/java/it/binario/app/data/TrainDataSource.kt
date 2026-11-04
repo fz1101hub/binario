@@ -189,7 +189,13 @@ data class TrainService(
      * Bikes on board as the offline timetable publishes them (GTFS bikes_allowed): true allowed, false not allowed,
      * null unknown (most packs leave it empty). Never inferred from the category.
      */
-    val bikesAllowed: Boolean? = null
+    val bikesAllowed: Boolean? = null,
+    /**
+     * The source shows the train late without the minutes (the RFI boards' bare «RITARDO»): «In ritardo (minuti non
+     * pubblicati)». Not a verified status: [operationalStatusVerified], [status] and the delays keep what is known, so
+     * nothing reads it as on time and no minutes are invented.
+     */
+    val delayMinutesUnpublished: Boolean = false
 ) {
     val displayOperator: String get() = operatorDisplayName?.takeIf(String::isNotBlank) ?: operator.shortLabel
     val accessibleOperator: String get() = operatorDisplayName?.takeIf(String::isNotBlank) ?: operator.accessibleLabel
