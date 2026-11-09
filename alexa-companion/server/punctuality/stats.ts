@@ -338,6 +338,19 @@ export function boundedShare(part: number, whole: number, scale: number): number
   return Math.min(scale - 1, Math.max(1, Math.round((part * scale) / whole)));
 }
 
+/**
+ * The days the train ran and arrived on time at the stop, of the days observed, as an exact
+ * fraction: (days − cancelled) × on time ÷ (days × samples). With no day known, no cancellation
+ * is counted (on time ÷ samples).
+ */
+export function daysOnTime(train: PunctualityTrain, stop: number): { part: number; whole: number } {
+  const samples = train.samples[stop];
+  const onTime = train.onTime[stop];
+  if (train.daysObserved <= 0) return { part: onTime, whole: samples };
+  const cancelled = Math.min(Math.max(train.daysCancelled, 0), train.daysObserved);
+  return { part: (train.daysObserved - cancelled) * onTime, whole: train.daysObserved * samples };
+}
+
 export type PunctualDeparture = {
   /** The number as the app shows it ({@link publicTrainNumber}). */
   number: string;
@@ -348,7 +361,10 @@ export type PunctualDeparture = {
   /** Arrivals at the route's destination: samples and how many within the train's own limit. */
   samples: number;
   onTime: number;
-  /** On time in tenths (0–10) and in percent, bounded ({@link boundedShare}). */
+  /**
+   * The days it ran and arrived on time, of the days observed, in tenths (0–10) and in percent,
+   * bounded ({@link boundedShare}): a cancelled day counts as a day not on time.
+   */
   tenths: number;
   percent: number;
   limitMinutes: number;
@@ -363,9 +379,12 @@ export type PunctualDeparture = {
  * destination. A train without a scheduled minute there is left out, and so is one whose weekdays
  * at the origin, when the file lists them, show it does not run on the day of that departure.
  *
- * Ranked by on-time share at the destination against each train's own limit (exact, in integers),
- * then by mean delay there, then by the earlier departure; at most `limit` trains. Null without
- * codes or when the ends share a code; empty when no such train leaves in the window.
+ * Ranked by the share of observed days on which the train ran and arrived on time at the
+ * destination against its own limit ({@link daysOnTime}, so a train often cancelled is not first
+ * for being punctual on the days it runs), then by on-time share of its arrivals, then by mean
+ * delay there, then by the earlier departure; every share exact, in integers. At most `limit`
+ * trains. Null without codes or when the ends share a code; empty when no such train leaves in
+ * the window.
  */
 export function mostPunctualDepartures(
   stats: PunctualityStats,
@@ -399,7 +418,10 @@ export function mostPunctualDepartures(
   candidates.sort((left, right) => {
     const leftSamples = left.train.samples[left.alighting];
     const rightSamples = right.train.samples[right.alighting];
+    const leftDays = daysOnTime(left.train, left.alighting);
+    const rightDays = daysOnTime(right.train, right.alighting);
     return (
+      rightDays.part * leftDays.whole - leftDays.part * rightDays.whole ||
       right.train.onTime[right.alighting] * leftSamples - left.train.onTime[left.alighting] * rightSamples ||
       left.train.meanTenths[left.alighting] - right.train.meanTenths[right.alighting] ||
       left.minutesUntil - right.minutesUntil ||
@@ -410,14 +432,15 @@ export function mostPunctualDepartures(
   return candidates.slice(0, Math.max(0, limit)).map(({ train, alighting, minuteOfDay, minutesUntil }) => {
     const samples = train.samples[alighting];
     const onTime = train.onTime[alighting];
+    const days = daysOnTime(train, alighting);
     return {
       number: publicTrainNumber(train.number),
       minuteOfDay,
       minutesUntil,
       samples,
       onTime,
-      tenths: boundedShare(onTime, samples, 10),
-      percent: boundedShare(onTime, samples, 100),
+      tenths: boundedShare(days.part, days.whole, 10),
+      percent: boundedShare(days.part, days.whole, 100),
       limitMinutes: train.onTimeLimitMinutes,
       meanDelayMinutes: shownDelay(train.meanDelayMinutes(alighting)),
     };

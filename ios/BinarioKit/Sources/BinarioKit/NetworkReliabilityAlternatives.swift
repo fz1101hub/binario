@@ -36,9 +36,12 @@ public struct ResultAlternative: Equatable, Sendable {
 
 /// «Più puntuale», the rule of the Android app: for a train often late where the user gets off,
 /// another train of the same list leaving around the same time that is clearly more often on time
-/// there. Each train is measured against its own on-time limit (5 minutes for the high-speed
-/// categories, 15 for the others, `NetworkReliability.onTimeLimitMinutes`); every share is
-/// compared exactly, in integers.
+/// there. Only trains measured against the same on-time limit are compared (5 minutes for the
+/// high-speed categories, 15 for the others, `NetworkReliability.onTimeLimitMinutes`): a regional
+/// on time within 15 minutes is not «more punctual» than a Frecciarossa on time within 5, and the
+/// two need different tickets anyway. Cancellations count too: the alternative must also be
+/// clearly more likely to run and arrive on time on a day (`StopReliability.score`). Every share
+/// is compared exactly, in integers.
 public enum ReliableAlternatives {
     /// A train is helped only when it is on time in fewer than this many percent of its samples…
     public static let maximumOnTimePercent = 70
@@ -53,8 +56,9 @@ public enum ReliableAlternatives {
     /// The alternative of every train of `candidates` that has one, by the train's key. A train
     /// needs at least `NetworkReliability.minimumSamples` samples, an on-time share below
     /// `maximumOnTimePercent` percent and to be still to depart; the alternative too needs the
-    /// samples and to be still to depart, leaves within `windowMinutes` of it (scheduled times)
-    /// and is on time at least `minimumGapPoints` points more often. Among several, the departure
+    /// samples and to be still to depart, has the same on-time limit, leaves within
+    /// `windowMinutes` of it (scheduled times), is on time at least `minimumGapPoints` points more
+    /// often and its `score` is at least `minimumGapPoints` points higher. Among several, the departure
     /// closest to the train's wins, then the earlier one, then the more punctual one, then the
     /// one with more samples.
     public static func find(_ candidates: [AlternativeCandidate]) -> [String: ReliableAlternative] {
@@ -147,6 +151,28 @@ public enum ReliableAlternatives {
         return gap >= needed
     }
 
+    /// `better`'s `score` (runs and is on time, cancelled days included) is at least
+    /// `minimumGapPoints` points above `worse`'s, exact in integers: the score is
+    /// (days − cancelled) × on time ÷ (days × samples), with no cancellation counted when no day
+    /// is known.
+    static func clearlyMoreReliable(_ better: StopReliability, than worse: StopReliability) -> Bool {
+        let (betterRan, betterDays) = ran(better)
+        let (worseRan, worseDays) = ran(worse)
+        let betterDenominator = betterDays * Int64(better.samples)
+        let worseDenominator = worseDays * Int64(worse.samples)
+        let betterScaled: Int64 = betterRan * Int64(better.onTime) * worseDenominator
+        let worseScaled: Int64 = worseRan * Int64(worse.onTime) * betterDenominator
+        let gap = (betterScaled - worseScaled) * 100
+        return gap >= Int64(minimumGapPoints) * betterDenominator * worseDenominator
+    }
+
+    /// The days the train ran and the days known; one day run of one known when no day is.
+    private static func ran(_ stop: StopReliability) -> (Int64, Int64) {
+        guard stop.daysObserved > 0 else { return (1, 1) }
+        let cancelled = min(max(stop.daysCancelled, 0), stop.daysObserved)
+        return (Int64(stop.daysObserved - cancelled), Int64(stop.daysObserved))
+    }
+
     /// Whether `first` comes before `second` as the alternative of a train leaving at
     /// `departure`: the closer departure, then the earlier one, then the higher on-time share,
     /// then more samples, then the key.
@@ -169,8 +195,10 @@ public enum ReliableAlternatives {
         var best: ReliableAlternative?
         for candidate in eligible where candidate.key != train.key {
             guard let otherDeparture = candidate.departure, let otherStop = candidate.stop,
+                  otherStop.onTimeLimitMinutes == stop.onTimeLimitMinutes,
                   abs(otherDeparture.timeIntervalSince(departure)) <= window,
-                  clearlyBetter(otherStop, than: stop)
+                  clearlyBetter(otherStop, than: stop),
+                  clearlyMoreReliable(otherStop, than: stop)
             else { continue }
             let suggestion = ReliableAlternative(key: candidate.key, departure: otherDeparture, stop: otherStop)
             if let current = best, !precedes(suggestion, current, around: departure) { continue }

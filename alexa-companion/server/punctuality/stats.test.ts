@@ -345,6 +345,31 @@ describe("most punctual departures", () => {
     ]);
   });
 
+  it("counts a cancelled day as a day not on time, so a train often cancelled is not first", () => {
+    // Every arrival on time, but cancelled on `cancelled` of `days` days, leaving Roma Termini at `scheduled`.
+    const cancelledOn = (number: string, scheduled: number, days: number, cancelled: number) =>
+      fixtureTrain(number, ROMA_TERMINI, "REG", days, cancelled, [
+        stopFromDelays(ROMA_TERMINI, Array(days - cancelled).fill(0), [0, 0, scheduled, null, null]),
+        stopFromDelays(TIVOLI, Array(days - cancelled).fill(3), [0, 3, scheduled + 40, null, null]),
+      ]);
+    const stats = parsePunctualityStats(
+      statsDocument([
+        // On time on the 10 days it ran, cancelled on 10 more: on time on half the days.
+        cancelledOn("often-cancelled", 500, 20, 10),
+        // 8 of 10, never cancelled.
+        departure("steady", "REG", 540, arrivals(10, 8)),
+        // On time on the 10 days it ran, cancelled once: 10 of 11 days.
+        cancelledOn("once-cancelled", 580, 11, 1),
+      ])
+    )!;
+    const result = mostPunctualDepartures(stats, [ROMA_TERMINI], [TIVOLI], clockAt(8, 0), 10);
+    expect(numbers(result)).toEqual(["once-cancelled", "steady", "often-cancelled"]);
+    // The arrivals stay those of the days it ran; the share said is of the days observed.
+    expect(result?.[2]).toMatchObject({ samples: 10, onTime: 10, tenths: 5, percent: 50 });
+    expect(result?.[0]).toMatchObject({ samples: 10, onTime: 10, tenths: 9, percent: 91 });
+    expect(result?.[1]).toMatchObject({ samples: 10, onTime: 8, tenths: 8, percent: 80 });
+  });
+
   it("measures each train against its own limit: 5 minutes for high speed, 15 for the others and Trenord", () => {
     const sixMinutes = Array(10).fill(6);
     const stats = parsePunctualityStats(
