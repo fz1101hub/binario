@@ -1571,4 +1571,7 @@
     <plurals name="route_works_alert_more">
         <item quantity="other">Dan %d pemberitahuan lain di Untuk Anda</item>
     </plurals>
+    <plurals name="favourite_trains_limit">
+        <item quantity="other">Anda dapat menyimpan maksimal %1$d kereta.</item>
+    </plurals>
 </resources>

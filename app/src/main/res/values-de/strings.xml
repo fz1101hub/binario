@@ -1652,4 +1652,8 @@
         <item quantity="one">Und %d weitere Meldung in Für dich</item>
         <item quantity="other">Und %d weitere Meldungen in Für dich</item>
     </plurals>
+    <plurals name="favourite_trains_limit">
+        <item quantity="one">Sie können höchstens %1$d Zug speichern.</item>
+        <item quantity="other">Sie können höchstens %1$d Züge speichern.</item>
+    </plurals>
 </resources>

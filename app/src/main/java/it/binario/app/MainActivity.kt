@@ -65,6 +65,7 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
@@ -809,11 +810,16 @@ internal fun BinarioApp(
             }
             AppScreen.DETAIL -> viewModel.selectedService?.let { service ->
                 val monitored = viewModel.isMonitoring(service)
+                val favouritesFull = pluralStringResource(R.plurals.favourite_trains_limit, FavouriteTrains.MAX, FavouriteTrains.MAX)
                 // The heart is the existing "Salva": it adds the train to "I miei treni" of Per te (and the
-                // widget), then offers a custom name; tapped again it removes the train.
+                // widget), then offers a custom name; tapped again it removes the train. With the list full it
+                // says so and changes nothing.
                 IconButton(onClick = {
-                    viewModel.toggleServiceMonitoring(service)
-                    if (!monitored) namingFavouriteTrain = service.number
+                    when (viewModel.toggleServiceMonitoring(service)) {
+                        is FavouriteToggle.Added -> namingFavouriteTrain = service.number
+                        is FavouriteToggle.Full -> appSnackbar.show(favouritesFull)
+                        is FavouriteToggle.Removed -> Unit
+                    }
                 }, modifier = Modifier.testTag("detail-save")) {
                     Icon(
                         if (monitored) Icons.Default.Favorite else Icons.Default.FavoriteBorder,

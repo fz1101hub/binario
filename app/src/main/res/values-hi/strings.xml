@@ -1629,4 +1629,8 @@
         <item quantity="one">«आपके लिए» में %d और सूचना</item>
         <item quantity="other">«आपके लिए» में %d और सूचनाएँ</item>
     </plurals>
+    <plurals name="favourite_trains_limit">
+        <item quantity="one">आप अधिकतम %1$d ट्रेन सहेज सकते हैं।</item>
+        <item quantity="other">आप अधिकतम %1$d ट्रेनें सहेज सकते हैं।</item>
+    </plurals>
 </resources>

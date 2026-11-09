@@ -1571,4 +1571,7 @@
     <plurals name="route_works_alert_more">
         <item quantity="other">ほかのお知らせ %d 件はマイページで</item>
     </plurals>
+    <plurals name="favourite_trains_limit">
+        <item quantity="other">保存できる列車は最大 %1$d 本です。</item>
+    </plurals>
 </resources>

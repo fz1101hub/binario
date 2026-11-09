@@ -1571,4 +1571,7 @@
     <plurals name="route_works_alert_more">
         <item quantity="other">သင့်အတွက် ကဏ္ဍတွင် နောက်ထပ် အသိပေးချက် %d ခု</item>
     </plurals>
+    <plurals name="favourite_trains_limit">
+        <item quantity="other">ရထား အများဆုံး %1$d စီး သိမ်းနိုင်သည်။</item>
+    </plurals>
 </resources>

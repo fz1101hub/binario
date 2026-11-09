@@ -1234,10 +1234,14 @@ class TrainViewModel @JvmOverloads constructor(
 
     fun isMonitoring(service: TrainService): Boolean = monitoredServices.any { it.number.equals(service.number, ignoreCase = true) }
 
-    fun toggleServiceMonitoring(service: TrainService) {
-        val added = !isMonitoring(service)
-        monitoredServices = routeStore.toggleServiceMonitor(service)
-        TrainsWidgetProvider.onFavouritesChanged(getApplication(), lookUpNewTrains = added)
+    /** The heart of the detail; [FavouriteToggle.Full] leaves «I miei treni» as it is. */
+    fun toggleServiceMonitoring(service: TrainService): FavouriteToggle {
+        val outcome = routeStore.toggleServiceMonitor(service)
+        monitoredServices = outcome.monitors
+        if (outcome !is FavouriteToggle.Full) {
+            TrainsWidgetProvider.onFavouritesChanged(getApplication(), lookUpNewTrains = outcome is FavouriteToggle.Added)
+        }
+        return outcome
     }
 
     fun removeServiceMonitoring(number: String) {
@@ -1611,7 +1615,7 @@ private class RouteStore(context: Context) {
     // The favourite ("monitored") trains live in the same preferences; FavouriteTrainStore owns their format.
     fun monitoredServices(): List<ServiceMonitor> = favourites.all()
 
-    fun toggleServiceMonitor(service: TrainService): List<ServiceMonitor> = favourites.toggle(service)
+    fun toggleServiceMonitor(service: TrainService): FavouriteToggle = favourites.toggle(service)
 
     fun removeServiceMonitor(number: String): List<ServiceMonitor> = favourites.remove(number)
 

@@ -1710,4 +1710,9 @@
         <item quantity="many">Et %d autres avis dans Pour vous</item>
         <item quantity="other">Et %d autres avis dans Pour vous</item>
     </plurals>
+    <plurals name="favourite_trains_limit">
+        <item quantity="one">Vous pouvez enregistrer au maximum %1$d train.</item>
+        <item quantity="many">Vous pouvez enregistrer au maximum %1$d trains.</item>
+        <item quantity="other">Vous pouvez enregistrer au maximum %1$d trains.</item>
+    </plurals>
 </resources>

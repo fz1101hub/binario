@@ -1745,4 +1745,10 @@
         <item quantity="many">И ещё %d сообщений в разделе «Для вас»</item>
         <item quantity="other">И ещё %d сообщения в разделе «Для вас»</item>
     </plurals>
+    <plurals name="favourite_trains_limit">
+        <item quantity="one">Можно сохранить не более %1$d поезда.</item>
+        <item quantity="few">Можно сохранить не более %1$d поездов.</item>
+        <item quantity="many">Можно сохранить не более %1$d поездов.</item>
+        <item quantity="other">Можно сохранить не более %1$d поезда.</item>
+    </plurals>
 </resources>

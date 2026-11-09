@@ -1710,4 +1710,9 @@
         <item quantity="many">Y %d avisos más en Para ti</item>
         <item quantity="other">Y %d avisos más en Para ti</item>
     </plurals>
+    <plurals name="favourite_trains_limit">
+        <item quantity="one">Puedes guardar hasta %1$d tren.</item>
+        <item quantity="many">Puedes guardar hasta %1$d trenes.</item>
+        <item quantity="other">Puedes guardar hasta %1$d trenes.</item>
+    </plurals>
 </resources>

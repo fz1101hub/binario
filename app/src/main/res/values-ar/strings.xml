@@ -1861,4 +1861,12 @@
         <item quantity="many">و%d إشعارًا آخر في قسم «لك»</item>
         <item quantity="other">و%d إشعار آخر في قسم «لك»</item>
     </plurals>
+    <plurals name="favourite_trains_limit">
+        <item quantity="zero">يمكنك حفظ %1$d قطار كحد أقصى.</item>
+        <item quantity="one">يمكنك حفظ %1$d قطار كحد أقصى.</item>
+        <item quantity="two">يمكنك حفظ %1$d قطارين كحد أقصى.</item>
+        <item quantity="few">يمكنك حفظ %1$d قطارات كحد أقصى.</item>
+        <item quantity="many">يمكنك حفظ %1$d قطارًا كحد أقصى.</item>
+        <item quantity="other">يمكنك حفظ %1$d قطار كحد أقصى.</item>
+    </plurals>
 </resources>

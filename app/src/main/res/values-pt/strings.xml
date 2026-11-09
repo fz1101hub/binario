@@ -1687,4 +1687,9 @@
         <item quantity="many">E mais %d avisos em Para você</item>
         <item quantity="other">E mais %d avisos em Para você</item>
     </plurals>
+    <plurals name="favourite_trains_limit">
+        <item quantity="one">Você pode salvar no máximo %1$d trem.</item>
+        <item quantity="many">Você pode salvar no máximo %1$d trens.</item>
+        <item quantity="other">Você pode salvar no máximo %1$d trens.</item>
+    </plurals>
 </resources>

@@ -1571,4 +1571,7 @@
     <plurals name="route_works_alert_more">
         <item quantity="other">나머지 공지 %d개는 마이에서 확인하세요</item>
     </plurals>
+    <plurals name="favourite_trains_limit">
+        <item quantity="other">열차는 최대 %1$d편까지 저장할 수 있습니다.</item>
+    </plurals>
 </resources>

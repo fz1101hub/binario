@@ -1,5 +1,9 @@
 # Changelog
 
+## In sviluppo — «I miei treni» pieno non cancella più nulla su Android
+
+- **Android, «I miei treni»**: con 12 treni già salvati, il cuore del dettaglio non elimina più in silenzio il più vecchio, nome personalizzato compreso. Il treno non viene aggiunto e un avviso dice «Puoi salvare al massimo 12 treni.», come su iPhone. Il cuore toglie sempre un treno già salvato, anche con la lista piena, e la richiesta del nome personalizzato compare solo quando un treno viene davvero aggiunto.
+
 ## In sviluppo — «I miei treni» e «Affidabilità dei miei treni» su iPhone
 
 - **I miei treni** su iPhone, in una scheda nuova dopo «Tratte»:

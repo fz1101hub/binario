@@ -71,6 +71,30 @@ class FavouriteTrainsTest {
     }
 
     @Test
+    fun `the heart saves newest first, removes a saved train, and refuses a thirteenth without dropping one`() {
+        val added = FavouriteTrains.toggled(emptyList(), service("2153", "Orte", "07:42"))
+        assertTrue(added is FavouriteToggle.Added)
+        assertEquals(listOf("2153"), added.monitors.map { it.number })
+        val second = FavouriteTrains.toggled(added.monitors, service("9541", "Roma Termini", "08:00"))
+        assertEquals(listOf("9541", "2153"), second.monitors.map { it.number })
+        // The same number, whatever its case, is the saved train: the heart removes it.
+        val removed = FavouriteTrains.toggled(second.monitors, service("2153", "Orte", "07:42"))
+        assertTrue(removed is FavouriteToggle.Removed)
+        assertEquals(listOf("9541"), removed.monitors.map { it.number })
+
+        val full = (1..FavouriteTrains.MAX).map { ServiceMonitor(it.toString(), "Treno $it", customName = if (it == 12) "Il più vecchio" else "") }
+        val refused = FavouriteTrains.toggled(full, service("2153", "Orte", "07:42"))
+        assertTrue(refused is FavouriteToggle.Full)
+        // Nothing changes: the oldest keeps its place and its name.
+        assertEquals(full, refused.monitors)
+        assertEquals("Il più vecchio", refused.monitors.last().displayName)
+        // A full list still lets the heart remove one of its trains.
+        val freed = FavouriteTrains.toggled(full, service("12", "Orte", "07:42"))
+        assertTrue(freed is FavouriteToggle.Removed)
+        assertEquals(FavouriteTrains.MAX - 1, freed.monitors.size)
+    }
+
+    @Test
     fun `ordering by departure puts trains without one last and by name follows the collation`() {
         val label: (String) -> String = { "Treno $it" }
         val evening = ServiceMonitor("9541", "", customName = "Ritorno", scheduledDeparture = "18:10")
