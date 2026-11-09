@@ -1152,7 +1152,7 @@
     <string name="weekly_digest_worse">Memburuk: %1$s, tepat waktu %2$d%% minggu ini (biasanya %3$d%%)</string>
     <string name="settings_live_updates_title">Notifikasi langsung</string>
     <string name="settings_live_updates_permission">Untuk menerima notifikasi ini, izinkan notifikasi Binario di setelan Android.</string>
-    <string name="settings_live_updates_privacy">Pemeriksaan ini berjalan di latar belakang hanya pada rentang yang ditampilkan. MIT menerima permintaan tanpa data Anda; sumber status kereta menerima nomor kereta dan harinya, sama seperti saat Anda membuka detail. Tidak ada yang disimpan di luar ponsel.</string>
+    <string name="settings_live_updates_privacy">Pemeriksaan ini berjalan di latar belakang hanya jika sakelarnya aktif dan hanya pada rentang yang ditampilkan. «Mogok kerja besok» meminta kalender MIT dan «Pekerjaan besok di rute Anda» meminta feed infomobilitas RFI, tanpa data Anda; sumber status dan pemberitahuan kereta menerima paling banyak nomor kereta dan harinya, sama seperti saat Anda membuka detail; ringkasan mingguan tidak mengirim permintaan. Tidak ada yang disimpan di luar ponsel.</string>
     <plurals name="train_alerts_notification_title">
         <item quantity="other">%1$d pemberitahuan baru untuk %2$s</item>
     </plurals>

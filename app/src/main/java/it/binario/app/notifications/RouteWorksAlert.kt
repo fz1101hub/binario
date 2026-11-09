@@ -42,18 +42,22 @@ import org.json.JSONObject
 data class RouteWorksAlertItem(val works: RouteWorksNotice, val reason: RouteWorksReason, val dates: NoticeDates)
 
 /**
- * The evening alert of [day] (tomorrow): the notices shown, at most [RouteWorksAlertPlanner.MAX_ITEMS]; the ids of
- * every notice due, shown or not; every route they name, in Per te's order (the title names the first one).
+ * The evening alert of [day] (tomorrow): every notice due, in Per te's order of the routes, and every route they name
+ * in that order (the title names the first one).
  */
-data class RouteWorksAlert(val day: LocalDate, val items: List<RouteWorksAlertItem>, val noticeIds: List<String>, val routeNames: List<String>) {
+data class RouteWorksAlert(val day: LocalDate, val due: List<RouteWorksAlertItem>, val routeNames: List<String>) {
+    /** The notices shown, at most [RouteWorksAlertPlanner.MAX_ITEMS]. */
+    val items: List<RouteWorksAlertItem> get() = due.take(RouteWorksAlertPlanner.MAX_ITEMS)
+
     /** Notices due tomorrow beyond the ones shown: the notification counts them and sends to Per te. */
-    val hidden: Int get() = noticeIds.size - items.size
+    val hidden: Int get() = due.size - items.size
 }
 
 /**
  * «Lavori di domani sulle tue tratte»: one run a day at [RUN_AT]; a works or interruption notice that names a saved
- * route and whose dates include tomorrow is notified once for that day, in at most one notification an evening. A
- * notice without readable dates never triggers it, and nothing is shown before [RUN_AT] or in the quiet hours (22–7).
+ * route and whose dates include tomorrow is notified once, however many days it covers: the evening before the first
+ * of its days the check sees as tomorrow. At most one notification an evening; a notice without readable dates never
+ * triggers it, and nothing is shown before [RUN_AT] or in the quiet hours (22–7).
  */
 object RouteWorksAlertPlanner {
     val RUN_AT: LocalTime = LocalTime.of(19, 0)
@@ -62,7 +66,9 @@ object RouteWorksAlertPlanner {
     const val MAX_ITEMS = 3
     /** The routes read, as in Per te: the pinned ones first, in the saved order. */
     const val MAX_ROUTES = RouteWorksViewModel.MAX_ROUTES
-    const val NOTIFIED_RETENTION_DAYS = 3L
+    /** A notified notice is remembered until the day after its last date, but never longer than this. */
+    const val MAX_KEEP_DAYS = 45L
+    const val MAX_NOTIFIED = 200
 
     fun quiet(now: ZonedDateTime): Boolean = !now.toLocalTime().isBefore(QUIET_FROM) || now.toLocalTime().isBefore(QUIET_UNTIL)
 
@@ -85,22 +91,26 @@ object RouteWorksAlertPlanner {
 
     fun validOn(dates: NoticeDates?, day: LocalDate): Boolean = dates != null && !day.isBefore(dates.first) && !day.isAfter(dates.last)
 
-    /** The key of [noticeId] notified for [day]. */
-    fun notifiedKey(noticeId: String, day: LocalDate): String = "$day|$noticeId"
+    /** Whether this evening ([today]) already had its alert ([lastAlertDay]): one notification an evening at most. */
+    fun alertedOn(lastAlertDay: LocalDate?, today: LocalDate): Boolean = lastAlertDay == today
 
-    /** Whether this evening ([today]) already had its alert: one notification an evening at most. */
-    fun notifiedOn(notified: Map<String, Long>, today: LocalDate): Boolean = today.toEpochDay() in notified.values
+    /** Whether [noticeId] was notified already: [notified] keeps it, as id → last day kept (epoch day), until that day. */
+    fun notifiedBefore(notified: Map<String, Long>, noticeId: String, today: LocalDate): Boolean =
+        notified[noticeId]?.let { it >= today.toEpochDay() } == true
+
+    /** The last day a notice notified on [today] is remembered: the day after its last date, at most [MAX_KEEP_DAYS] ahead. */
+    fun keepUntil(dates: NoticeDates, today: LocalDate): LocalDate = minOf(dates.last.plusDays(1), today.plusDays(MAX_KEEP_DAYS))
 
     /**
      * The alert of tomorrow from the notices matched to [routeIds] (Per te's order), or null when none is due: works and
-     * interruptions only (never a strike), with dates that include tomorrow, not notified yet for tomorrow. Each notice
-     * goes under the first route it names; within a route the notices keep the matcher's order.
+     * interruptions only (never a strike), with dates that include tomorrow, never notified before. Each notice goes
+     * under the first route it names; within a route the notices keep the matcher's order.
      */
     fun select(works: List<RouteWorksNotice>, routeIds: List<String>, today: LocalDate, notified: Map<String, Long>): RouteWorksAlert? {
         val tomorrow = today.plusDays(1)
         val rank = routeIds.withIndex().associate { it.value to it.index }
         val due = works
-            .filter { !it.notice.mentionsStrike && notifiedKey(it.notice.id, tomorrow) !in notified }
+            .filter { !it.notice.mentionsStrike && !notifiedBefore(notified, it.notice.id, today) }
             .mapNotNull { matched ->
                 val dates = matched.dates?.takeIf { validOn(it, tomorrow) } ?: return@mapNotNull null
                 val reason = matched.reasons.filter { it.routeId in rank }.minByOrNull { rank.getValue(it.routeId) } ?: return@mapNotNull null
@@ -114,13 +124,20 @@ object RouteWorksAlertPlanner {
             .sortedBy { rank.getValue(it.routeId) }
             .distinctBy { it.routeId }
             .map { it.routeName }
-        return RouteWorksAlert(tomorrow, due.take(MAX_ITEMS), due.map { it.works.notice.id }, routeNames)
+        return RouteWorksAlert(tomorrow, due, routeNames)
     }
 
-    /** [notified] with every notice of [alert] under this evening ([today]), without entries older than [NOTIFIED_RETENTION_DAYS]. */
+    /**
+     * [notified] with every notice of [alert] (also those beyond the ones shown, which the notification counts) until
+     * its [keepUntil], without the entries whose day is past; at most [MAX_NOTIFIED], the ones kept longest first.
+     */
     fun remember(notified: Map<String, Long>, alert: RouteWorksAlert, today: LocalDate): Map<String, Long> {
-        val evening = today.toEpochDay()
-        return (notified + alert.noticeIds.associate { notifiedKey(it, alert.day) to evening }).filterValues { evening - it < NOTIFIED_RETENTION_DAYS }
+        val added = alert.due.associate { it.works.notice.id to keepUntil(it.dates, today).toEpochDay() }
+        val kept = notified.filter { (id, until) -> id !in added && until >= today.toEpochDay() }.entries
+            .sortedByDescending { it.value }
+            .take((MAX_NOTIFIED - added.size).coerceAtLeast(0))
+            .associate { it.key to it.value }
+        return added.entries.take(MAX_NOTIFIED).associate { it.key to it.value } + kept
     }
 }
 
@@ -174,22 +191,27 @@ object RouteWorksAlertText {
     }
 }
 
-/** The notices already notified, as «day|id» → the evening it was done (epoch day), kept for three days. */
+/** The notices already notified, as id → the last day they are kept (epoch day), and the day of the last alert. */
 internal class RouteWorksAlertStore(context: Context) {
     private val preferences = context.getSharedPreferences("binario_route_works_alert_v1", Context.MODE_PRIVATE)
 
     fun notified(): Map<String, Long> = runCatching {
-        val value = JSONObject(preferences.getString(KEY, null) ?: return emptyMap())
-        value.keys().asSequence().take(MAX_ENTRIES).associateWith { value.optLong(it) }
+        val value = JSONObject(preferences.getString(KEY_NOTIFIED, null) ?: return emptyMap())
+        value.keys().asSequence().take(RouteWorksAlertPlanner.MAX_NOTIFIED).associateWith { value.optLong(it) }
     }.getOrDefault(emptyMap())
 
-    fun save(notified: Map<String, Long>) = preferences.edit {
-        putString(KEY, JSONObject().apply { notified.entries.take(MAX_ENTRIES).forEach { (key, day) -> put(key, day) } }.toString())
+    val lastAlertDay: LocalDate?
+        get() = preferences.getString(KEY_LAST_ALERT, null)?.let { runCatching { LocalDate.parse(it) }.getOrNull() }
+
+    /** The notices of this evening's alert and its day, together. */
+    fun saveAlert(notified: Map<String, Long>, day: LocalDate) = preferences.edit {
+        putString(KEY_NOTIFIED, JSONObject().apply { notified.entries.take(RouteWorksAlertPlanner.MAX_NOTIFIED).forEach { (id, until) -> put(id, until) } }.toString())
+        putString(KEY_LAST_ALERT, day.toString())
     }
 
     private companion object {
-        const val KEY = "notified"
-        const val MAX_ENTRIES = 200
+        const val KEY_NOTIFIED = "notified"
+        const val KEY_LAST_ALERT = "last_alert_day"
     }
 }
 
@@ -245,8 +267,8 @@ class RouteWorksAlertWorker(appContext: Context, params: WorkerParameters) : Cor
 
     private suspend fun alert(context: Context, today: LocalDate) {
         val store = RouteWorksAlertStore(context)
+        if (RouteWorksAlertPlanner.alertedOn(store.lastAlertDay, today)) return
         val notified = store.notified()
-        if (RouteWorksAlertPlanner.notifiedOn(notified, today)) return
         // The saved routes as the app last wrote them for its shortcuts; without any, no request at all.
         val routes = RouteWorksAlertPlanner.routes(RouteShortcutStore(context).routes())
         if (routes.isEmpty()) return
@@ -282,7 +304,7 @@ class RouteWorksAlertWorker(appContext: Context, params: WorkerParameters) : Cor
         // The matching can take a while: the quiet hours are checked again right before posting.
         if (!RouteWorksAlertPlanner.mayNotify(ZonedDateTime.now(RailTime.defaultZone))) return
         if (LiveNotifications.post(context, LiveNotifications.ROUTE_WORKS_ID, notification)) {
-            store.save(RouteWorksAlertPlanner.remember(notified, alert, today))
+            store.saveAlert(RouteWorksAlertPlanner.remember(notified, alert, today), today)
         }
     }
 

@@ -1202,7 +1202,7 @@
     <string name="weekly_digest_worse">Verschlechtert: %1$s, diese Woche zu %2$d%% pünktlich (sonst zu %3$d%%)</string>
     <string name="settings_live_updates_title">Live-Benachrichtigungen</string>
     <string name="settings_live_updates_permission">Um diese Benachrichtigungen zu erhalten, erlaube Binario-Benachrichtigungen in den Android-Einstellungen.</string>
-    <string name="settings_live_updates_privacy">Diese Prüfungen laufen im Hintergrund nur in den angegebenen Zeitfenstern. Das MIT erhält eine Anfrage ohne Daten von dir; die Quellen des Zugstatus erhalten Zugnummer und Tag, wie beim Öffnen des Details. Nichts wird außerhalb des Telefons gespeichert.</string>
+    <string name="settings_live_updates_privacy">Diese Prüfungen laufen im Hintergrund nur mit eingeschaltetem Schalter und nur in den angegebenen Zeitfenstern. „Streiks am nächsten Tag“ fragt beim MIT den Streikkalender ab und „Bauarbeiten von morgen auf deinen Strecken“ bei RFI den Infomobilitäts-Feed, ohne Daten von dir; die Quellen für Zugstatus und Zugmeldungen erhalten höchstens Zugnummer und Tag, wie beim Öffnen des Details; die Wochenübersicht stellt keine Anfrage. Nichts wird außerhalb des Telefons gespeichert.</string>
     <plurals name="train_alerts_notification_title">
         <item quantity="one">%1$d neuer Hinweis zu %2$s</item>
         <item quantity="other">%1$d neue Hinweise zu %2$s</item>

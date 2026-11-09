@@ -1287,7 +1287,7 @@
     <string name="weekly_digest_worse">تراجع: %1$s، في الموعد %2$d%% من المرات هذا الأسبوع (عادةً %3$d%%)</string>
     <string name="settings_live_updates_title">إشعارات مباشرة</string>
     <string name="settings_live_updates_permission">لتلقّي هذه الإشعارات، اسمح بإشعارات Binario في إعدادات Android.</string>
-    <string name="settings_live_updates_privacy">تعمل هذه الفحوصات في الخلفية فقط في الفترات المبيّنة. يتلقى MIT طلبًا دون أي بيانات عنك؛ وتتلقى مصادر حالة القطارات رقم القطار واليوم، كما عند فتح التفاصيل. لا يُحفظ شيء خارج الهاتف.</string>
+    <string name="settings_live_updates_privacy">تعمل هذه الفحوصات في الخلفية فقط عند تفعيل مفتاحها وفي الفترات المبيّنة. يطلب «إضرابات اليوم التالي» تقويم MIT ويطلب «أعمال الغد على مساراتك» موجز معلومات الحركة من RFI، دون أي بيانات عنك؛ وتتلقى مصادر حالة القطارات وإشعاراتها رقم القطار واليوم على الأكثر، كما عند فتح التفاصيل؛ ولا يرسل الملخص الأسبوعي أي طلب. لا يُحفظ شيء خارج الهاتف.</string>
     <plurals name="train_alerts_notification_title">
         <item quantity="zero">%1$d تنبيه جديد لـ %2$s</item>
         <item quantity="one">%1$d تنبيه جديد لـ %2$s</item>

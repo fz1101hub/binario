@@ -1202,7 +1202,7 @@
     <string name="weekly_digest_worse">Kötüleşti: %1$s, bu hafta seferlerin %%%2$d kadarında zamanında (genellikle %%%3$d)</string>
     <string name="settings_live_updates_title">Canlı bildirimler</string>
     <string name="settings_live_updates_permission">Bu bildirimleri almak için Android ayarlarında Binario bildirimlerine izin verin.</string>
-    <string name="settings_live_updates_privacy">Bu kontroller yalnızca belirtilen aralıklarda arka planda çalışır. MIT, sizden hiçbir veri içermeyen bir istek alır; tren durumu kaynakları, ayrıntıyı açtığınızdaki gibi tren numarasını ve günü alır. Telefon dışında hiçbir şey saklanmaz.</string>
+    <string name="settings_live_updates_privacy">Bu kontroller yalnızca anahtarları açıkken ve yalnızca belirtilen aralıklarda arka planda çalışır. “Ertesi günün grevleri” MIT\'den grev takvimini, “Hatlarınızda yarınki çalışmalar” RFI\'dan bilgilendirme akışını ister ve sizden hiçbir veri göndermez; tren durumu ve duyuru kaynakları, ayrıntıyı açtığınızdaki gibi en fazla tren numarasını ve günü alır; haftalık özet istek göndermez. Telefon dışında hiçbir şey saklanmaz.</string>
     <plurals name="train_alerts_notification_title">
         <item quantity="one">%1$d yeni duyuru: %2$s</item>
         <item quantity="other">%1$d yeni duyuru: %2$s</item>

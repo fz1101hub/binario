@@ -91,21 +91,45 @@ class RouteWorksAlertTest {
         assertFalse(RouteWorksAlertPlanner.validOn(null, tomorrow))
     }
 
-    @Test fun `a notice is never notified twice for the same day, and one alert an evening`() {
-        val matched = listOf(works("a", november(9, 12), reason("casa", "Pavia")), works("b", november(10), reason("mare", "Genova Brignole")))
-        val first = requireNotNull(RouteWorksAlertPlanner.select(matched, routeIds, today, emptyMap()))
+    @Test fun `a notice alerts once, the evening before the first of its days, however many days it covers`() {
+        val pavia = works("pavia", november(10, 19), reason("casa", "Pavia"))
+        val first = requireNotNull(RouteWorksAlertPlanner.select(listOf(pavia), routeIds, today, emptyMap()))
+        assertEquals(listOf("pavia"), ids(first))
         val notified = RouteWorksAlertPlanner.remember(emptyMap(), first, today)
-        assertEquals(setOf("2026-11-10|a", "2026-11-10|b"), notified.keys)
-        assertTrue(RouteWorksAlertPlanner.notifiedOn(notified, today))
-        assertFalse(RouteWorksAlertPlanner.notifiedOn(notified, tomorrow))
-        // Already notified for tomorrow: nothing again, also from another run the same evening.
-        assertNull(RouteWorksAlertPlanner.select(matched, routeIds, today, notified))
-        assertEquals(listOf("b"), ids(RouteWorksAlertPlanner.select(matched, routeIds, today, mapOf(RouteWorksAlertPlanner.notifiedKey("a", tomorrow) to today.toEpochDay()))))
-        // The next evening the works still running are due for the day after: another day, another alert.
-        assertEquals(listOf("a"), ids(RouteWorksAlertPlanner.select(matched, routeIds, tomorrow, notified)))
-        // Entries are forgotten after three days.
-        val later = requireNotNull(RouteWorksAlertPlanner.select(matched, routeIds, tomorrow, notified))
-        assertEquals(setOf("2026-11-11|a"), RouteWorksAlertPlanner.remember(notified, later, today.plusDays(3)).keys)
+        // Kept until the day after the last date of its range.
+        assertEquals(mapOf("pavia" to LocalDate.of(2026, 11, 20).toEpochDay()), notified)
+        // Not again on any later evening of its range, from the 10th to the 18th, nor on the 9th from another run.
+        (0L..9L).forEach { days -> assertNull(RouteWorksAlertPlanner.select(listOf(pavia), routeIds, today.plusDays(days), notified)) }
+        // Another notice about the same works, under a new id, alerts again.
+        val republished = works("pavia-bis", november(10, 19), reason("casa", "Pavia"))
+        assertEquals(listOf("pavia-bis"), ids(RouteWorksAlertPlanner.select(listOf(pavia, republished), routeIds, today.plusDays(3), notified)))
+        // A notice first read while already under way alerts the evening it is first seen, once.
+        val running = works("running", november(5, 12), reason("mare", "Voghera"))
+        val late = requireNotNull(RouteWorksAlertPlanner.select(listOf(pavia, running), routeIds, today, notified))
+        assertEquals(listOf("running"), ids(late))
+        assertNull(RouteWorksAlertPlanner.select(listOf(pavia, running), routeIds, tomorrow, RouteWorksAlertPlanner.remember(notified, late, today)))
+    }
+
+    @Test fun `notified ids are kept until the day after their range, at most 45 days and 200 ids, and one alert an evening`() {
+        val long = works("long", NoticeDates(LocalDate.of(2026, 11, 10), LocalDate.of(2027, 3, 31)), reason("casa", "Pavia"))
+        val alert = requireNotNull(RouteWorksAlertPlanner.select(listOf(long), routeIds, today, emptyMap()))
+        assertEquals(today.plusDays(45).toEpochDay(), RouteWorksAlertPlanner.remember(emptyMap(), alert, today)["long"])
+        assertEquals(LocalDate.of(2026, 11, 11), RouteWorksAlertPlanner.keepUntil(november(10), today))
+        // An id whose day is past is forgotten; one kept until today still counts today.
+        val earlier = mapOf("old" to today.minusDays(1).toEpochDay(), "current" to today.toEpochDay())
+        assertEquals(setOf("long", "current"), RouteWorksAlertPlanner.remember(earlier, alert, today).keys)
+        assertTrue(RouteWorksAlertPlanner.notifiedBefore(earlier, "current", today))
+        assertFalse(RouteWorksAlertPlanner.notifiedBefore(earlier, "old", today))
+        assertFalse(RouteWorksAlertPlanner.notifiedBefore(earlier, "new", today))
+        // At most 200 ids: this evening's first, then those kept longest.
+        val many = (1..250).associate { "n$it" to today.plusDays(it.toLong()).toEpochDay() }
+        val capped = RouteWorksAlertPlanner.remember(many, alert, today)
+        assertEquals(200, capped.size)
+        assertTrue("long" in capped && "n250" in capped && "n51" !in capped)
+        // One alert an evening.
+        assertTrue(RouteWorksAlertPlanner.alertedOn(today, today))
+        assertFalse(RouteWorksAlertPlanner.alertedOn(today.minusDays(1), today))
+        assertFalse(RouteWorksAlertPlanner.alertedOn(null, today))
     }
 
     @Test fun `at most three notices, in Per te's order of the routes, each under the first route it names`() {

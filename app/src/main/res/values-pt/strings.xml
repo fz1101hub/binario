@@ -1206,7 +1206,7 @@
     <string name="weekly_digest_worse">Piorou: %1$s, no horário em %2$d%% das vezes nesta semana (normalmente %3$d%%)</string>
     <string name="settings_live_updates_title">Notificações em tempo real</string>
     <string name="settings_live_updates_permission">Para receber estas notificações, permita as notificações do Binario nas configurações do Android.</string>
-    <string name="settings_live_updates_privacy">Essas verificações rodam em segundo plano apenas nas faixas indicadas. O MIT recebe uma solicitação sem dados seus; as fontes do status dos trens recebem o número do trem e o dia, como quando você abre o detalhe. Nada é salvo fora do celular.</string>
+    <string name="settings_live_updates_privacy">Essas verificações rodam em segundo plano apenas com o interruptor ativado e apenas nas faixas indicadas. “Greves do dia seguinte” pede ao MIT o seu calendário e “Obras de amanhã nos seus trajetos” pede à RFI o seu feed de infomobilidade, sem dados seus; as fontes do status e dos avisos dos trens recebem no máximo o número do trem e o dia, como quando você abre o detalhe; o resumo semanal não faz solicitações. Nada é salvo fora do celular.</string>
     <plurals name="train_alerts_notification_title">
         <item quantity="one">%1$d novo aviso para %2$s</item>
         <item quantity="many">%1$d novos avisos para %2$s</item>

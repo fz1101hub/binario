@@ -1229,7 +1229,7 @@
     <string name="weekly_digest_worse">Ha empeorado: %1$s, puntual el %2$d%% de las veces esta semana (normalmente el %3$d%%)</string>
     <string name="settings_live_updates_title">Notificaciones en tiempo real</string>
     <string name="settings_live_updates_permission">Para recibir estas notificaciones, permite las notificaciones de Binario en los ajustes de Android.</string>
-    <string name="settings_live_updates_privacy">Estas comprobaciones se ejecutan en segundo plano solo en las franjas indicadas. El MIT recibe una solicitud sin datos tuyos; las fuentes del estado de los trenes reciben el número del tren y el día, como cuando abres el detalle. Nada se guarda fuera del teléfono.</string>
+    <string name="settings_live_updates_privacy">Estas comprobaciones se ejecutan en segundo plano solo con su interruptor activado y solo en las franjas indicadas. «Huelgas del día siguiente» pide al MIT su calendario y «Obras de mañana en tus trayectos» pide a RFI su feed de infomovilidad, sin datos tuyos; las fuentes del estado y de los avisos de los trenes reciben como mucho el número del tren y el día, como cuando abres el detalle; el resumen semanal no hace solicitudes. Nada se guarda fuera del teléfono.</string>
     <plurals name="train_alerts_notification_title">
         <item quantity="one">%1$d aviso nuevo para %2$s</item>
         <item quantity="many">%1$d avisos nuevos para %2$s</item>

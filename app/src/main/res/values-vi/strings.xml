@@ -1175,7 +1175,7 @@
     <string name="weekly_digest_worse">Kém đi: %1$s, đúng giờ %2$d%% số lần trong tuần này (thường là %3$d%%)</string>
     <string name="settings_live_updates_title">Thông báo thời gian thực</string>
     <string name="settings_live_updates_permission">Để nhận các thông báo này, hãy cho phép thông báo của Binario trong phần cài đặt Android.</string>
-    <string name="settings_live_updates_privacy">Các lần kiểm tra này chỉ chạy nền trong các khung giờ đã nêu. MIT nhận một yêu cầu không chứa dữ liệu nào của bạn; các nguồn trạng thái tàu nhận số hiệu tàu và ngày, giống như khi bạn mở chi tiết. Không có gì được lưu bên ngoài điện thoại.</string>
+    <string name="settings_live_updates_privacy">Các lần kiểm tra này chỉ chạy nền khi công tắc được bật và chỉ trong các khung giờ đã nêu. “Đình công ngày mai” yêu cầu lịch của MIT và “Thi công ngày mai trên tuyến của bạn” yêu cầu nguồn tin điều hành của RFI, không chứa dữ liệu nào của bạn; các nguồn trạng thái và thông báo của tàu nhận tối đa số hiệu tàu và ngày, giống như khi bạn mở chi tiết; bản tóm tắt hằng tuần không gửi yêu cầu nào. Không có gì được lưu bên ngoài điện thoại.</string>
     <plurals name="train_alerts_notification_title">
         <item quantity="other">%1$d thông báo mới cho %2$s</item>
     </plurals>

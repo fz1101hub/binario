@@ -1229,7 +1229,7 @@
     <string name="weekly_digest_worse">Dégradé : %1$s, à l’heure %2$d %% du temps cette semaine (d’habitude %3$d %%)</string>
     <string name="settings_live_updates_title">Notifications en temps réel</string>
     <string name="settings_live_updates_permission">Pour recevoir ces notifications, autorisez les notifications de Binario dans les paramètres Android.</string>
-    <string name="settings_live_updates_privacy">Ces vérifications s’exécutent en arrière-plan uniquement dans les plages indiquées. Le MIT reçoit une requête sans données vous concernant ; les sources de l’état des trains reçoivent le numéro du train et le jour, comme quand vous ouvrez le détail. Rien n’est enregistré hors du téléphone.</string>
+    <string name="settings_live_updates_privacy">Ces vérifications s’exécutent en arrière-plan uniquement avec leur interrupteur activé et dans les plages indiquées. « Grèves du lendemain » demande au MIT son calendrier et « Travaux de demain sur vos trajets » demande à RFI son flux d’infomobilité, sans données vous concernant ; les sources de l’état et des avis des trains reçoivent au plus le numéro du train et le jour, comme quand vous ouvrez le détail ; le résumé hebdomadaire ne fait aucune requête. Rien n’est enregistré hors du téléphone.</string>
     <plurals name="train_alerts_notification_title">
         <item quantity="one">%1$d nouvel avis pour %2$s</item>
         <item quantity="many">%1$d nouveaux avis pour %2$s</item>
