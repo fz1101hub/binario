@@ -1652,4 +1652,8 @@
         <item quantity="one">Sana özel bölümünde %d duyuru daha</item>
         <item quantity="other">Sana özel bölümünde %d duyuru daha</item>
     </plurals>
+    <plurals name="favourite_trains_limit">
+        <item quantity="one">En fazla %1$d tren kaydedebilirsiniz.</item>
+        <item quantity="other">En fazla %1$d tren kaydedebilirsiniz.</item>
+    </plurals>
 </resources>

@@ -1652,4 +1652,8 @@
         <item quantity="one">And %d more notice in For you</item>
         <item quantity="other">And %d more notices in For you</item>
     </plurals>
+    <plurals name="favourite_trains_limit">
+        <item quantity="one">You can save up to %1$d train.</item>
+        <item quantity="other">You can save up to %1$d trains.</item>
+    </plurals>
 </resources>

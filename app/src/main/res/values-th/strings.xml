@@ -1594,4 +1594,7 @@
     <plurals name="route_works_alert_more">
         <item quantity="other">และประกาศอีก %d รายการในหน้าสำหรับคุณ</item>
     </plurals>
+    <plurals name="favourite_trains_limit">
+        <item quantity="other">บันทึกรถไฟได้สูงสุด %1$d ขบวน</item>
+    </plurals>
 </resources>

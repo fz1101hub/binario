@@ -1594,4 +1594,7 @@
     <plurals name="route_works_alert_more">
         <item quantity="other">“我的”中还有 %d 条公告</item>
     </plurals>
+    <plurals name="favourite_trains_limit">
+        <item quantity="other">最多可保存 %1$d 趟列车。</item>
+    </plurals>
 </resources>

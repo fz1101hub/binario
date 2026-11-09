@@ -1594,4 +1594,7 @@
     <plurals name="route_works_alert_more">
         <item quantity="other">Và %d thông báo khác trong Dành cho bạn</item>
     </plurals>
+    <plurals name="favourite_trains_limit">
+        <item quantity="other">Bạn có thể lưu tối đa %1$d tàu.</item>
+    </plurals>
 </resources>

@@ -33,13 +33,14 @@ class FavouriteTrainStore(context: Context) {
 
     fun all(): List<ServiceMonitor> = FavouriteTrainCodec.decode(preferences.getString(KEY, "").orEmpty())
 
-    /** Saves [service] (newest first) or, when it is already saved, removes it: the heart of the detail. */
-    fun toggle(service: TrainService): List<ServiceMonitor> {
-        val current = all()
-        val exists = current.any { it.number.equals(service.number, ignoreCase = true) }
-        val updated = if (exists) current.filterNot { it.number.equals(service.number, ignoreCase = true) }
-        else (listOf(FavouriteTrains.monitorOf(service)) + current).take(FavouriteTrains.MAX)
-        return save(updated)
+    /**
+     * Saves [service] (newest first) or, when it is already saved, removes it: the heart of the detail. A full list
+     * refuses the train ([FavouriteToggle.Full]) and keeps every saved one.
+     */
+    fun toggle(service: TrainService): FavouriteToggle {
+        val outcome = FavouriteTrains.toggled(all(), service)
+        if (outcome !is FavouriteToggle.Full) save(outcome.monitors)
+        return outcome
     }
 
     fun remove(number: String): List<ServiceMonitor> = save(all().filterNot { it.number.equals(number, ignoreCase = true) })
@@ -60,6 +61,16 @@ class FavouriteTrainStore(context: Context) {
     }
 }
 
+/** What the heart of the train detail did to «I miei treni»; [monitors] is the list afterwards. */
+sealed interface FavouriteToggle {
+    val monitors: List<ServiceMonitor>
+
+    data class Added(override val monitors: List<ServiceMonitor>) : FavouriteToggle
+    data class Removed(override val monitors: List<ServiceMonitor>) : FavouriteToggle
+    /** [FavouriteTrains.MAX] trains are saved already: nothing changes, and the user is told to remove one first. */
+    data class Full(override val monitors: List<ServiceMonitor>) : FavouriteToggle
+}
+
 /** Pure rules of the favourite trains, shared by the app, the backup and the widget. */
 object FavouriteTrains {
     const val MAX = 12
@@ -71,6 +82,19 @@ object FavouriteTrains {
         origin = service.origin,
         scheduledDeparture = service.scheduledDeparture.trim().takeIf { runCatching { LocalTime.parse(it) }.isSuccess }.orEmpty()
     )
+
+    /**
+     * The heart of the detail on [current]: removes [service] when it is saved, else saves it first. With [MAX] trains
+     * saved the new one is refused rather than dropping the oldest, which would lose its name without a word.
+     */
+    fun toggled(current: List<ServiceMonitor>, service: TrainService): FavouriteToggle {
+        val saved = current.any { it.number.equals(service.number, ignoreCase = true) }
+        return when {
+            saved -> FavouriteToggle.Removed(current.filterNot { it.number.equals(service.number, ignoreCase = true) })
+            current.size >= MAX -> FavouriteToggle.Full(current)
+            else -> FavouriteToggle.Added(listOf(monitorOf(service)) + current)
+        }
+    }
 
     fun rename(monitors: List<ServiceMonitor>, number: String, customName: String): List<ServiceMonitor> {
         val name = customName.trim().take(MAX_NAME_LENGTH)
