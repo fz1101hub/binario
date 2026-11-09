@@ -120,3 +120,6 @@
 "result.detail.band_share" = "%2$lld%% · %1$lld مرة";
 "result.detail.usual_platform" = "%3$@: عادةً الرصيف %4$@ (%1$lld مرة من أصل %2$lld)";
 "result.detail.weekday" = "%3$@: في الموعد %1$lld مرة من أصل %2$lld (في المتوسط %4$lld%%)";
+"result.alternative.train" = "أكثر التزامًا بالموعد: %1$@ الساعة %2$@";
+"result.alternative.open" = "عرض قطار الساعة %1$@";
+"result.alternative.on_time" = "في الموعد %1$lld مرة من أصل %2$lld";

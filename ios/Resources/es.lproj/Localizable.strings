@@ -120,3 +120,6 @@
 "result.detail.band_share" = "%2$lld%% · %1$lld veces";
 "result.detail.usual_platform" = "%3$@: normalmente andén %4$@ (%1$lld veces de %2$lld)";
 "result.detail.weekday" = "%3$@: puntual %1$lld veces de %2$lld (de media %4$lld%%)";
+"result.alternative.train" = "Más puntual: %1$@ de las %2$@";
+"result.alternative.open" = "Mostrar el tren de las %1$@";
+"result.alternative.on_time" = "puntual %1$lld veces de %2$lld";

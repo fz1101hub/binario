@@ -15,6 +15,8 @@ struct PlannerView: View {
     @State private var validationKey: String?
     @State private var isSearching = false
     @State private var searchRequestID = 0
+    /// The minute the results are read at: «Più puntuale» never suggests a train that has left.
+    @State private var clock = Date()
 
     var body: some View {
         Form {
@@ -107,7 +109,7 @@ struct PlannerView: View {
                 }
 
                 if let snapshot = model.latestSnapshot {
-                    AvailableResultView(snapshot: snapshot)
+                    AvailableResultView(snapshot: snapshot, now: clock)
                 } else if case let .unavailable(reason) = model.searchState {
                     UnavailableResultView(reason: reason)
                 }
@@ -129,6 +131,7 @@ struct PlannerView: View {
             if canSearch { search() }
         }
         .task(id: model.plannerRequest?.id) { applyPlannerRequest() }
+        .task { await followTheClock() }
     }
 
     private var canSearch: Bool {
@@ -181,10 +184,23 @@ struct PlannerView: View {
     /// Back in the app with the default time: move it to now and, when a result is on screen,
     /// search again so the iPhone and the Watch list the trains still to come.
     private func followCurrentTime() {
+        // The clock's task may have slept through the time in the background.
+        clock = Date()
         guard !departureEdited else { return }
         departure = Date()
         if model.latestSnapshot != nil || model.searchState != .idle, canSearch {
             search()
+        }
+    }
+
+    /// Moves `clock` at every new minute while the planner is on screen (the task ends when it
+    /// leaves the screen and starts again, from the current time, when it comes back).
+    private func followTheClock() async {
+        while !Task.isCancelled {
+            let current = Date()
+            clock = current
+            let seconds = 60 - current.timeIntervalSince1970.truncatingRemainder(dividingBy: 60)
+            try? await Task.sleep(nanoseconds: UInt64((seconds + 0.5) * 1_000_000_000))
         }
     }
 
@@ -301,12 +317,17 @@ private enum ResultOrder: Hashable {
 private struct AvailableResultView: View {
     @EnvironmentObject private var model: AppModel
     let snapshot: JourneySnapshot
+    /// The current minute: a listed train is gone a minute after its scheduled departure.
+    let now: Date
     @State private var order: ResultOrder = .departure
 
     var body: some View {
         // The statistics of this result: computed by the model when the search or the file arrives.
         let reliability = model.resultReliability
         let measuredTrains = reliability?.byServiceID ?? [:]
+        // «Più puntuale: …» under a train often late at the destination: another listed train
+        // leaving within 30 minutes, still to be taken, clearly more often on time there.
+        let alternatives = ReliableAlternatives.find(in: snapshot, reliability: measuredTrains, now: now)
         Section("result.title") {
             if let route = reliability?.route {
                 RoutePunctualityView(route: route)
@@ -319,12 +340,24 @@ private struct AvailableResultView: View {
                 .pickerStyle(.segmented)
             }
             ForEach(orderedServices(reliability), id: \.id) { service in
+                let alternative = alternatives[service.id]
                 NavigationLink {
                     TrainDetailView(service: service, query: snapshot.query)
                 } label: {
                     ResultRow(service: service, reliability: measuredTrains[service.id])
                 }
                 .accessibilityHint(Text("accessibility.open_train_detail"))
+                .listRowSeparator(alternative == nil ? .automatic : .hidden, edges: .bottom)
+                if let alternative {
+                    // Opens the suggested train as a tap on its own row does.
+                    NavigationLink {
+                        TrainDetailView(service: alternative.service, query: snapshot.query)
+                    } label: {
+                        ReliableAlternativeLine(alternative: alternative)
+                    }
+                    .accessibilityHint(Text(ReliabilityTexts.alternativeOpen(alternative)))
+                    .listRowSeparator(.hidden, edges: .top)
+                }
             }
 
             if let reliability, !reliability.isEmpty {
@@ -388,6 +421,26 @@ private struct ResultRow: View {
             }
         }
         .accessibilityElement(children: .combine)
+    }
+}
+
+/// «Più puntuale: REG 16000 delle 08:12 · in orario 9 volte su 10» under a train often late at the
+/// searched destination: a row of its own that opens the suggested train, read as one sentence
+/// that says the statistics are unofficial; what a tap does is its hint.
+private struct ReliableAlternativeLine: View {
+    let alternative: ResultAlternative
+
+    var body: some View {
+        let parts = ReliabilityTexts.alternativeParts(alternative)
+        Label {
+            Text(parts.joined(separator: " · "))
+        } icon: {
+            Image(systemName: "arrow.up.arrow.down")
+        }
+        .font(.caption.weight(.medium))
+        .foregroundStyle(.tint)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(Text(ReliabilityTexts.spoken(parts.joined(separator: ", "))))
     }
 }
 

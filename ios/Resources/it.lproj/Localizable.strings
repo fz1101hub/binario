@@ -120,3 +120,6 @@
 "result.detail.band_share" = "%2$lld%% · %1$lld volte";
 "result.detail.usual_platform" = "%3$@: di solito al binario %4$@ (%1$lld volte su %2$lld)";
 "result.detail.weekday" = "%3$@: in orario %1$lld volte su %2$lld (in media %4$lld%%)";
+"result.alternative.train" = "Più puntuale: %1$@ delle %2$@";
+"result.alternative.open" = "Mostra il treno delle %1$@";
+"result.alternative.on_time" = "in orario %1$lld volte su %2$lld";

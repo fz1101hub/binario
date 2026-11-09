@@ -120,3 +120,6 @@
 "result.detail.band_share" = "%2$lld%% · %1$lld times";
 "result.detail.usual_platform" = "%3$@: usually platform %4$@ (%1$lld times out of %2$lld)";
 "result.detail.weekday" = "%3$@: on time %1$lld times out of %2$lld (%4$lld%% on average)";
+"result.alternative.train" = "More punctual: %1$@ at %2$@";
+"result.alternative.open" = "Show the %1$@ train";
+"result.alternative.on_time" = "on time %1$lld times out of %2$lld";

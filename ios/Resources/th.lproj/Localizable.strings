@@ -120,3 +120,6 @@
 "result.detail.band_share" = "%2$lld%% · %1$lld ครั้ง";
 "result.detail.usual_platform" = "%3$@: ปกติชานชาลา %4$@ (%1$lld จาก %2$lld ครั้ง)";
 "result.detail.weekday" = "%3$@: ตรงเวลา %1$lld จาก %2$lld ครั้ง (เฉลี่ย %4$lld%%)";
+"result.alternative.train" = "ตรงเวลากว่า: %1$@ เวลา %2$@";
+"result.alternative.open" = "แสดงรถไฟเวลา %1$@";
+"result.alternative.on_time" = "ตรงเวลา %1$lld จาก %2$lld ครั้ง";

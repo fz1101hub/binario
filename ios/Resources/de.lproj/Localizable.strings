@@ -120,3 +120,6 @@
 "result.detail.band_share" = "%2$lld%% · %1$lld Mal";
 "result.detail.usual_platform" = "%3$@: meist Gleis %4$@ (%1$lld von %2$lld Mal)";
 "result.detail.weekday" = "%3$@: %1$lld von %2$lld Mal pünktlich (im Schnitt %4$lld%%)";
+"result.alternative.train" = "Pünktlicher: %1$@ um %2$@";
+"result.alternative.open" = "Zug um %1$@ anzeigen";
+"result.alternative.on_time" = "%1$lld von %2$lld Mal pünktlich";

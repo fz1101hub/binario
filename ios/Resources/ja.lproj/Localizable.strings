@@ -120,3 +120,6 @@
 "result.detail.band_share" = "%2$lld%% · %1$lld 回";
 "result.detail.usual_platform" = "%3$@：通常は %4$@ 番線（%2$lld 回中 %1$lld 回）";
 "result.detail.weekday" = "%3$@：%2$lld 回中 %1$lld 回定刻（平均 %4$lld%%）";
+"result.alternative.train" = "より時間に正確：%2$@ 発の %1$@";
+"result.alternative.open" = "%1$@ 発の列車を表示";
+"result.alternative.on_time" = "%2$lld 回中 %1$lld 回定刻";

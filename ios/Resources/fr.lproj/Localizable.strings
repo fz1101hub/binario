@@ -120,3 +120,6 @@
 "result.detail.band_share" = "%2$lld%% · %1$lld fois";
 "result.detail.usual_platform" = "%3$@ : en général voie %4$@ (%1$lld fois sur %2$lld)";
 "result.detail.weekday" = "%3$@ : à l’heure %1$lld fois sur %2$lld (en moyenne %4$lld%%)";
+"result.alternative.train" = "Plus ponctuel : %1$@ de %2$@";
+"result.alternative.open" = "Afficher le train de %1$@";
+"result.alternative.on_time" = "à l’heure %1$lld fois sur %2$lld";

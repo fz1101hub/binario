@@ -120,3 +120,6 @@
 "result.detail.band_share" = "%2$lld%% · %1$lld раза";
 "result.detail.usual_platform" = "%3$@: обычно путь %4$@ (%1$lld раза из %2$lld)";
 "result.detail.weekday" = "%3$@: вовремя %1$lld раза из %2$lld (в среднем %4$lld%%)";
+"result.alternative.train" = "Пунктуальнее: %1$@ в %2$@";
+"result.alternative.open" = "Показать поезд в %1$@";
+"result.alternative.on_time" = "вовремя %1$lld раза из %2$lld";

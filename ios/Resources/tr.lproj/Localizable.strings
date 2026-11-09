@@ -120,3 +120,6 @@
 "result.detail.band_share" = "%%%2$lld · %1$lld kez";
 "result.detail.usual_platform" = "%3$@: genellikle peron %4$@ (%2$lld seferin %1$lld tanesinde)";
 "result.detail.weekday" = "%3$@: %2$lld seferin %1$lld tanesinde zamanında (ortalama %%%4$lld)";
+"result.alternative.train" = "Daha dakik: %2$@ kalkışlı %1$@";
+"result.alternative.open" = "%1$@ trenini göster";
+"result.alternative.on_time" = "%2$lld seferin %1$lld tanesinde zamanında";

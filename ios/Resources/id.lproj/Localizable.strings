@@ -120,3 +120,6 @@
 "result.detail.band_share" = "%2$lld%% · %1$lld kali";
 "result.detail.usual_platform" = "%3$@: biasanya peron %4$@ (%1$lld dari %2$lld kali)";
 "result.detail.weekday" = "%3$@: tepat waktu %1$lld dari %2$lld kali (rata-rata %4$lld%%)";
+"result.alternative.train" = "Lebih tepat waktu: %1$@ pukul %2$@";
+"result.alternative.open" = "Tampilkan kereta pukul %1$@";
+"result.alternative.on_time" = "tepat waktu %1$lld dari %2$lld kali";

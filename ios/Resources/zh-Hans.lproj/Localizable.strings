@@ -120,3 +120,6 @@
 "result.detail.band_share" = "%2$lld%% · %1$lld 次";
 "result.detail.usual_platform" = "%3$@：通常在站台 %4$@（%2$lld 次中 %1$lld 次）";
 "result.detail.weekday" = "%3$@：%2$lld 次中准点 %1$lld 次（平均 %4$lld%%）";
+"result.alternative.train" = "更准点：%2$@ 出发的 %1$@";
+"result.alternative.open" = "显示 %1$@ 出发的列车";
+"result.alternative.on_time" = "%2$lld 次中准点 %1$lld 次";
