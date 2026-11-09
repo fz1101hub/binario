@@ -1,22 +1,14 @@
 package it.binario.app.data.live
 
 import com.google.transit.realtime.GtfsRealtime
-import it.binario.app.data.core.AlertId
-import it.binario.app.data.core.AlertSeverity
 import it.binario.app.data.core.Confidence
 import it.binario.app.data.core.GtfsRealtimeFreshness
-import it.binario.app.data.core.LocalizedText
-import it.binario.app.data.core.OperatorId
-import it.binario.app.data.core.ServiceAlert
 import it.binario.app.data.core.SourceId
 import it.binario.app.data.core.SourceRef
 import it.binario.app.data.core.SourcedValue
 import it.binario.app.data.core.RealtimeStopUpdate
-import it.binario.app.data.core.StationId
 import it.binario.app.data.core.TrainRunId
 import it.binario.app.data.provider.AccessMode
-import it.binario.app.data.provider.AlertProvider
-import it.binario.app.data.provider.AlertRequest
 import it.binario.app.data.provider.CoverageDescriptor
 import it.binario.app.data.provider.ProviderCapability
 import it.binario.app.data.provider.ProviderDescriptor
@@ -44,7 +36,6 @@ fun interface SncfRealtimeFetcher {
 }
 
 enum class SncfRealtimeFeed(val url: String) {
-    SERVICE_ALERTS("https://proxy.transport.data.gouv.fr/resource/sncf-gtfs-rt-service-alerts"),
     TRIP_UPDATES("https://proxy.transport.data.gouv.fr/resource/sncf-gtfs-rt-trip-updates")
 }
 
@@ -58,51 +49,29 @@ internal class HttpSncfRealtimeFetcher(
     override suspend fun fetch(feed: SncfRealtimeFeed): ByteArray = http.fetch(feed.url)
 }
 
-/** Adapter open-data SNCF per gli avvisi GTFS-Realtime; gli aggiornamenti corsa restano disponibili al decoder ma richiedono matching con il GTFS statico. */
+/**
+ * Adapter open-data SNCF per i Trip Updates GTFS-Realtime, abbinati al GTFS statico del pack SNCF. Gli avvisi (Service
+ * Alerts) non sono letti: nessuna schermata li usava (pulizia dell'audit A1 F13, novembre 2026).
+ */
 class SncfGtfsRealtimeAdapter(
     private val fetcher: SncfRealtimeFetcher = HttpSncfRealtimeFetcher(),
     private val clock: Clock = Clock.systemUTC(),
     private val cacheTtl: Duration = Duration.ofMinutes(2)
-) : AlertProvider, TripUpdateProvider {
+) : TripUpdateProvider {
     override val descriptor = ProviderDescriptor(
         id = SOURCE_ID,
         displayName = "SNCF Open Data — GTFS-Realtime",
-        capabilities = setOf(ProviderCapability.SERVICE_ALERTS, ProviderCapability.TRAIN_RUN_REALTIME),
-        coverage = CoverageDescriptor(countryCodes = setOf("FR", "IT"), description = "Avvisi e aggiornamenti SNCF, incluse corse internazionali quando presenti nel feed"),
+        capabilities = setOf(ProviderCapability.TRAIN_RUN_REALTIME),
+        coverage = CoverageDescriptor(countryCodes = setOf("FR", "IT"), description = "Aggiornamenti corsa SNCF, incluse corse internazionali quando presenti nel feed"),
         accessMode = AccessMode.OPEN_DIRECT,
         ratePolicy = RatePolicy(Duration.ofSeconds(30), defaultTimeToLive = cacheTtl),
         schemaVersion = 1
     )
 
-    private val alertsMutex = Mutex()
     private val tripUpdatesMutex = Mutex()
 
-    private var cachedAlerts: CachedAlerts? = null
     private var cachedTripUpdates: CachedTripUpdates? = null
     private val tripUpdatesGuard = RealtimeFeedGuard(clock, "SNCF Open Data")
-
-    override suspend fun getAlerts(request: AlertRequest): ProviderResult<List<ServiceAlert>> = alertsMutex.withLock {
-        val now = clock.instant()
-        cachedAlerts?.takeIf { now.isBefore(it.expiresAt) }?.let { cache ->
-            return@withLock ProviderResult.Success(filter(cache.alerts, request), meta(now, cache.observedAt, cache.expiresAt, true, cache.fingerprint))
-        }
-        try {
-            val payload = fetcher.fetch(SncfRealtimeFeed.SERVICE_ALERTS)
-            val feed = GtfsRealtime.FeedMessage.parseFrom(payload)
-            val observed = feed.header.timestamp.takeIf { it > 0 }?.let(Instant::ofEpochSecond) ?: now
-            val alerts = parseAlerts(feed, observed)
-            val expires = now.plus(cacheTtl)
-            val fingerprint = fingerprint(payload)
-            cachedAlerts = CachedAlerts(alerts, observed, expires, fingerprint)
-            ProviderResult.Success(filter(alerts, request), meta(now, observed, expires, false, fingerprint))
-        } catch (error: CancellationException) {
-            throw error
-        } catch (error: IOException) {
-            ProviderResult.Failure(ProviderError(ProviderErrorKind.NETWORK, "Realtime SNCF non raggiungibile.", error::class.java.name))
-        } catch (error: Exception) {
-            ProviderResult.Failure(ProviderError(ProviderErrorKind.PARSE_ERROR, "Realtime SNCF non leggibile.", error::class.java.name))
-        }
-    }
 
     override suspend fun getTripUpdates(): ProviderResult<List<RealtimeStopUpdate>> = tripUpdatesMutex.withLock {
         val now = clock.instant()
@@ -172,45 +141,6 @@ class SncfGtfsRealtimeAdapter(
         }
     }
 
-    internal fun parseAlerts(feed: GtfsRealtime.FeedMessage, observedAt: Instant): List<ServiceAlert> = feed.entityList.mapNotNull { entity ->
-        if (!entity.hasAlert()) return@mapNotNull null
-        val alert = entity.alert
-        val id = entity.id.takeIf(String::isNotBlank) ?: return@mapNotNull null
-        val title = localized(alert.headerText) ?: LocalizedText("Avviso SNCF", "fr")
-        val description = localized(alert.descriptionText)
-        val stations = alert.informedEntityList.mapNotNull { it.stopId.takeIf(String::isNotBlank)?.let { stop -> StationId("sncf-gtfs:$stop") } }.toSet()
-        val runs = alert.informedEntityList.mapNotNull { it.trip.tripId.takeIf(String::isNotBlank)?.let { trip -> TrainRunId("sncf-gtfs:$trip") } }.toSet()
-        val operators = alert.informedEntityList.mapNotNull { it.agencyId.takeIf(String::isNotBlank)?.let(::OperatorId) }.toSet()
-        ServiceAlert(
-            id = AlertId("sncf:$id"),
-            title = title,
-            description = description,
-            severity = severity(alert.effect),
-            validFrom = alert.activePeriodList.firstOrNull()?.start?.takeIf { it > 0 }?.let(Instant::ofEpochSecond),
-            validUntil = alert.activePeriodList.firstOrNull()?.end?.takeIf { it > 0 }?.let(Instant::ofEpochSecond),
-            affectedStations = stations,
-            affectedRuns = runs,
-            affectedOperators = operators,
-            source = sourceRef(id, observedAt)
-        )
-    }
-
-    private fun filter(alerts: List<ServiceAlert>, request: AlertRequest): List<ServiceAlert> = alerts.filter { alert ->
-        (request.stationIds.isEmpty() || alert.affectedStations.any(request.stationIds::contains)) &&
-            (request.operatorIds.isEmpty() || alert.affectedOperators.any(request.operatorIds::contains)) &&
-            (request.runIds.isEmpty() || alert.affectedRuns.any(request.runIds::contains))
-    }
-
-    private fun localized(value: GtfsRealtime.TranslatedString): LocalizedText? = value.translationList.firstOrNull { it.text.isNotBlank() }?.let {
-        LocalizedText(it.text, it.language.takeIf(String::isNotBlank) ?: "fr")
-    }
-
-    private fun severity(effect: GtfsRealtime.Alert.Effect): AlertSeverity = when (effect) {
-        GtfsRealtime.Alert.Effect.NO_SERVICE, GtfsRealtime.Alert.Effect.STOP_MOVED -> AlertSeverity.SEVERE
-        GtfsRealtime.Alert.Effect.REDUCED_SERVICE, GtfsRealtime.Alert.Effect.SIGNIFICANT_DELAYS, GtfsRealtime.Alert.Effect.DETOUR -> AlertSeverity.WARNING
-        else -> AlertSeverity.INFO
-    }
-
     private fun meta(fetched: Instant, observed: Instant, expires: Instant, fromCache: Boolean, fingerprint: String) =
         ProviderResponseMeta(SOURCE_ID, fetched, observedAt = observed, expiresAt = expires, fromCache = fromCache, responseFingerprint = fingerprint)
 
@@ -227,7 +157,6 @@ class SncfGtfsRealtimeAdapter(
 
     private fun fingerprint(payload: ByteArray): String = MessageDigest.getInstance("SHA-256").digest(payload).joinToString("") { "%02x".format(it) }
 
-    private data class CachedAlerts(val alerts: List<ServiceAlert>, val observedAt: Instant, val expiresAt: Instant, val fingerprint: String)
     private data class CachedTripUpdates(val updates: List<RealtimeStopUpdate>, val observedAt: Instant, val expiresAt: Instant, val fingerprint: String)
 
     companion object {
