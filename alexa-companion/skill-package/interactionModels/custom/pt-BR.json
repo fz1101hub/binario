@@ -96,6 +96,24 @@
             "pontualidade do meu trajeto",
             "pontualidade do meu trajeto {routeName}"
           ]
+        },
+        {
+          "name": "MostPunctualTrainIntent",
+          "slots": [
+            {
+              "name": "routeName",
+              "type": "AMAZON.SearchQuery"
+            }
+          ],
+          "samples": [
+            "qual é o trem mais pontual",
+            "qual é o trem mais pontual para {routeName}",
+            "qual trem é o mais pontual para {routeName}",
+            "o trem mais pontual",
+            "o trem mais pontual para {routeName}",
+            "o trem mais pontual do meu trajeto {routeName}",
+            "qual é o trem mais pontual nas próximas três horas"
+          ]
         }
       ],
       "types": []
