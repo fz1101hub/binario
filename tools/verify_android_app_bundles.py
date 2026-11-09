@@ -2,9 +2,11 @@
 """Validate unsigned Android App Bundles before signing or Play upload.
 
 The phone bundle of the root profile also carries the punctuality statistics switch (``-Pbinario.punctualityStats``,
-docs/data-sources/PUNCTUALITY_STATS.md): ``--punctuality-stats auto`` (default) requires
-``base/assets/punctuality/stats_v1.json.gz``, identical to the tree's, when the tree has that file and nothing
-otherwise; ``present`` always requires it; ``absent`` refuses anything under ``punctuality/``.  ``--apk FILE`` checks
+docs/data-sources/PUNCTUALITY_STATS.md): ``--punctuality-stats auto`` (default) requires the statistics when the
+tree has ``app/src/main/assets/punctuality/stats_v1.json.gz`` and nothing otherwise; ``present`` always requires them;
+``absent`` refuses anything under ``punctuality/``.  The Android Gradle plugin decompresses a ``.gz`` asset and drops
+the extension, so the package carries ``base/assets/punctuality/stats_v1.json``, which must be the tree file
+decompressed (a ``stats_v1.json.gz`` kept as it is must be identical to it).  ``--apk FILE`` checks
 only that expectation on an APK (``assets/punctuality/``), for the build made with the switch off.
 
     python3 tools/verify_android_app_bundles.py
@@ -14,7 +16,9 @@ only that expectation on an APK (``assets/punctuality/``), for the build made wi
 from __future__ import annotations
 
 import argparse
+import gzip
 import hashlib
+import io
 import json
 import re
 import struct
@@ -49,6 +53,12 @@ PERSONAL_ASSET_PREFIX = "base/assets/gtfs-personal/"
 PUNCTUALITY_DIRECTORY = "punctuality/"
 PUNCTUALITY_ASSET = "punctuality/stats_v1.json.gz"
 PUNCTUALITY_TREE_ASSET = ROOT / "app" / "src" / "main" / "assets" / PUNCTUALITY_ASSET
+# The Android Gradle plugin decompresses a .gz asset while merging and drops the extension: the package carries the
+# tree's statistics as plain JSON under this name (NetworkReliabilityRepository.ASSET_PATH), or, should a toolchain keep
+# the file as it is, under PUNCTUALITY_ASSET.
+PUNCTUALITY_PACKAGED_ASSET = "punctuality/stats_v1.json"
+# The app reads at most this much decompressed JSON (NetworkReliabilityParser.Limits.maxJsonBytes).
+PUNCTUALITY_MAX_JSON_BYTES = 64 * 1024 * 1024
 PUNCTUALITY_EXPECTATIONS = ("auto", "present", "absent")
 BUNDLE_ASSET_PREFIX = "base/assets/"
 APK_ASSET_PREFIX = "assets/"
@@ -397,15 +407,29 @@ def punctuality_problems(
     in_tree = tree_asset.is_file()
     if expectation == "auto" and not in_tree:
         return []
-    asset = asset_prefix + PUNCTUALITY_ASSET
-    if asset not in names:
+    plain = asset_prefix + PUNCTUALITY_PACKAGED_ASSET
+    kept = asset_prefix + PUNCTUALITY_ASSET
+    if plain not in names and kept not in names:
         reason = f"presente in {tree_asset.relative_to(ROOT) if tree_asset.is_relative_to(ROOT) else tree_asset}" if in_tree else "richiesto"
-        return [f"statistiche di puntualità assenti dal pacchetto: {asset} ({reason})"]
+        return [f"statistiche di puntualità assenti dal pacchetto: {plain} ({reason})"]
     if in_tree:
-        info = archive.getinfo(asset)
-        expected = tree_asset.read_bytes()
-        if info.file_size != len(expected) or archive.read(info) != expected:
-            return [f"statistiche di puntualità diverse dal file dell'albero: {asset}"]
+        tree_bytes = tree_asset.read_bytes()
+        if plain in names:
+            # The plain JSON must be the tree file decompressed, read within the app's own bound.
+            try:
+                with gzip.GzipFile(fileobj=io.BytesIO(tree_bytes)) as source:
+                    expected = source.read(PUNCTUALITY_MAX_JSON_BYTES + 1)
+            except (OSError, EOFError, zlib.error) as error:
+                return [f"statistiche di puntualità dell'albero non leggibili come gzip: {error}"]
+            if len(expected) > PUNCTUALITY_MAX_JSON_BYTES:
+                return [f"statistiche di puntualità dell'albero oltre {PUNCTUALITY_MAX_JSON_BYTES} byte decompressi"]
+            info = archive.getinfo(plain)
+            if info.file_size != len(expected) or archive.read(info) != expected:
+                return [f"statistiche di puntualità diverse dal file dell'albero: {plain}"]
+        if kept in names:
+            info = archive.getinfo(kept)
+            if info.file_size != len(tree_bytes) or archive.read(info) != tree_bytes:
+                return [f"statistiche di puntualità diverse dal file dell'albero: {kept}"]
     return []
 
 

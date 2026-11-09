@@ -70,6 +70,25 @@ class NetworkReliabilityParserTest {
         assertNull(NetworkReliabilityParser.parseGzip(ByteArrayInputStream(bomb), NetworkReliabilityParser.Limits(maxJsonBytes = 1024 * 1024)))
     }
 
+    @Test fun `the packaged document is read whether the package keeps it gzipped or as plain JSON`() {
+        val text = document(FR_9558, REG_2041)
+        // The Android Gradle plugin decompresses the tree's stats_v1.json.gz into the package's stats_v1.json.
+        val plain = requireNotNull(NetworkReliabilityParser.parseDocument(ByteArrayInputStream(text.toByteArray(Charsets.UTF_8))))
+        val gzipped = requireNotNull(NetworkReliabilityParser.parseDocument(ByteArrayInputStream(gzip(text))))
+        assertEquals(2, plain.trains.size)
+        assertEquals(gzipped.windowEnd, plain.windowEnd)
+        assertEquals(gzipped.trainsNumbered("9558").single().samples(1), plain.trainsNumbered("9558").single().samples(1))
+        // Empty, garbage and truncated documents of either kind hide the feature.
+        assertNull(NetworkReliabilityParser.parseDocument(ByteArrayInputStream(ByteArray(0))))
+        assertNull(NetworkReliabilityParser.parseDocument(ByteArrayInputStream("not json".toByteArray())))
+        assertNull(NetworkReliabilityParser.parseDocument(ByteArrayInputStream(text.substring(0, text.length / 2).toByteArray())))
+        assertNull(NetworkReliabilityParser.parseDocument(ByteArrayInputStream(gzip(text).let { it.copyOf(it.size / 2) })))
+        // The plain document is bounded like the decompressed one.
+        val limits = NetworkReliabilityParser.Limits(maxJsonBytes = text.length - 1L)
+        assertNull(NetworkReliabilityParser.parseDocument(ByteArrayInputStream(text.toByteArray(Charsets.UTF_8)), limits))
+        assertNull(NetworkReliabilityParser.parseDocument(ByteArrayInputStream(gzip(text)), limits))
+    }
+
     @Test fun `another or a missing schema hides the feature`() {
         assertNull(parse(document(FR_9558, schema = "binario-punctuality-v0")))
         assertNull(parse(document(FR_9558, schema = "binario-punctuality-v2")))
