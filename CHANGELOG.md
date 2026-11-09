@@ -1,5 +1,14 @@
 # Changelog
 
+## In sviluppo — Correzioni dopo la revisione di novembre
+
+- **Avviso serale dei lavori**: le date di inizio non si perdono più. «nei giorni 14, 15, 21 e 22 novembre», «dalle 22.50 del 14 alle 5.50 del 15 novembre» e «dal 1° al 3 dicembre» ora partono dal primo giorno (prima risultavano 22, 15 e 3), quindi «Date citate» è corretta e l'avviso arriva la sera prima dell'inizio, non a lavori già cominciati.
+- **«Più puntuale»** su Android e iPhone:
+  - confronta solo treni con la stessa soglia: un regionale in orario entro 15 minuti non viene più proposto al posto di un Frecciarossa misurato a 5, né viceversa (servono anche biglietti diversi);
+  - conta le soppressioni: il treno proposto deve anche circolare ed arrivare in orario in almeno 20 punti percentuali di giorni in più, quindi un treno spesso soppresso non viene proposto perché puntuale nei giorni in cui circola.
+- **Alexa, «qual è il treno più puntuale»**: l'ordine e la quota detta contano i giorni di soppressione come giorni non in orario («in orario 5 volte su 10» per un treno sempre puntuale ma soppresso un giorno su due).
+- **Riquadro Wear «Prossimo treno»**: quando sono partiti tutti i 24 treni memorizzati non dice più «Nessun altro treno oggi» mentre rilegge l'orario; mostra la tratta finché non ha i treni successivi.
+
 ## In sviluppo — Affidabilità dei miei treni, il treno più puntuale su Alexa, «Più puntuale» su iPhone
 
 - **Affidabilità dei miei treni** in Per te, dopo «I miei treni». Per ogni treno preferito, fino a 8, mostra:

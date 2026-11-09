@@ -808,6 +808,12 @@ class IOSProjectTests(unittest.TestCase):
             with self.subTest(fragment=fragment):
                 self.assertIn(android_fragment, android)
                 self.assertIn(fragment, rule)
+        for android_fragment in (
+            "it.key != train.key && it.stop!!.onTimeLimitMinutes == stop.onTimeLimitMinutes",
+            "clearlyBetter(it.stop!!, stop) && clearlyMoreReliable(it.stop!!, stop)",
+        ):
+            with self.subTest(android=android_fragment):
+                self.assertIn(android_fragment, android)
         for fragment in (
             "public static let departedGraceSeconds: TimeInterval = 60",
             "let onTimeScaled = Int64(stop.onTime) * 100",
@@ -817,6 +823,10 @@ class IOSProjectTests(unittest.TestCase):
             "&& stop.samples >= NetworkReliability.minimumSamples",
             "!stop.cancelledEveryDay",
             "abs(otherDeparture.timeIntervalSince(departure)) <= window",
+            # Same limit only, and the cancellations count, as on Android.
+            "otherStop.onTimeLimitMinutes == stop.onTimeLimitMinutes",
+            "clearlyMoreReliable(otherStop, than: stop)",
+            "return gap >= Int64(minimumGapPoints) * betterDenominator * worseDenominator",
             "return now < departure.addingTimeInterval(departedGraceSeconds)",
             "let calendar = NetworkReliabilityDay.romeCalendar",
         ):
@@ -832,7 +842,8 @@ class IOSProjectTests(unittest.TestCase):
             "testTiesGoToTheClosestDepartureThenTheEarlierOneThenTheMorePunctualOne",
             "testTrainsAlreadyGoneAreNeverSuggestedAndGetNoSuggestion",
             "testEveryLateTrainOfTheListGetsItsOwnAlternativeNeverItself",
-            "testEachTrainIsMeasuredAgainstItsOwnLimitFiveMinutesForAFrecciarossaFifteenForARegional",
+            "testATrainOftenCancelledIsNotOfferedForBeingPunctualOnTheDaysItRuns",
+            "testOnlyTrainsWithTheSameOnTimeLimitAreComparedFiveMinutesForAFrecciarossaFifteenForARegional",
             "testATrenordRegionalOftenLateAtPaviaGetsTheNextOneByItsPublishedNumber",
             "testTheClosestTrainStillToDepartIsSuggestedNeverOneAlreadyGoneOrNeverRunning",
             "testATrainIsGoneAMinuteAfterItsScheduledDeparture",

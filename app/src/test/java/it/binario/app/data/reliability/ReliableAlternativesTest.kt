@@ -17,12 +17,12 @@ class ReliableAlternativesTest {
 
     private fun at(time: String): LocalDateTime = day.atTime(LocalTime.parse(time))
 
-    /** A train at the destination: [onTime] of [samples] within [limit] minutes. */
-    private fun arrival(onTime: Int, samples: Int, limit: Int = NetworkReliability.OTHER_ON_TIME_MINUTES) =
-        StopReliability("S00219", samples, onTime, limit, 4.0, samples, 0)
+    /** A train at the destination: [onTime] of [samples] within [limit] minutes, and [cancelled] more days cancelled. */
+    private fun arrival(onTime: Int, samples: Int, limit: Int = NetworkReliability.OTHER_ON_TIME_MINUTES, cancelled: Int = 0) =
+        StopReliability("S00219", samples, onTime, limit, 4.0, samples + cancelled, cancelled)
 
-    private fun candidate(key: String, time: String?, onTime: Int, samples: Int, stillToDepart: Boolean = true, limit: Int = 15) =
-        AlternativeCandidate(key, time?.let(::at), arrival(onTime, samples, limit), stillToDepart)
+    private fun candidate(key: String, time: String?, onTime: Int, samples: Int, stillToDepart: Boolean = true, limit: Int = 15, cancelled: Int = 0) =
+        AlternativeCandidate(key, time?.let(::at), arrival(onTime, samples, limit, cancelled), stillToDepart)
 
     private fun alternativeOf(key: String, vararg candidates: AlternativeCandidate): String? = ReliableAlternatives.find(candidates.toList())[key]?.key
 
@@ -117,7 +117,26 @@ class ReliableAlternativesTest {
         assertTrue(ReliableAlternatives.find(emptyList()).isEmpty())
     }
 
-    @Test fun `each train is measured against its own limit, 5 minutes for a Frecciarossa and 15 for a regional`() {
+    @Test fun `a train often cancelled is not offered for being punctual on the days it runs`() {
+        val late = candidate("a", "08:00", 18, 30)
+        // On time 10 times of 10, but cancelled on 10 more days: it runs and arrives on time on half the days, as «a» does.
+        assertNull(alternativeOf("a", late, candidate("b", "08:10", 10, 10, cancelled = 10)))
+        // One cancellation in 30 days still leaves it clearly more reliable.
+        assertEquals("b", alternativeOf("a", late, candidate("b", "08:10", 28, 29, cancelled = 1)))
+        // On time 20 of 24 days and cancelled on 6 of 30: on time on 67 % of the days, only 7 points above «a» (60 %) …
+        assertNull(alternativeOf("a", late, candidate("b", "08:10", 20, 24, cancelled = 6)))
+        // … but 27 points above a train cancelled on 10 of 30 days and on time 12 of the 20 it ran (40 % of the days).
+        assertEquals("b", alternativeOf("a", candidate("a", "08:00", 12, 20, cancelled = 10), candidate("b", "08:10", 20, 24, cancelled = 6)))
+        // Exactly 20 points of the days is enough, counted exactly: 24 of 30 days against 18 of 30; 23 of 30 is not.
+        assertEquals("b", alternativeOf("a", late, candidate("b", "08:10", 24, 24, cancelled = 6)))
+        assertNull(alternativeOf("a", late, candidate("b", "08:10", 23, 23, cancelled = 7)))
+        assertTrue(ReliableAlternatives.clearlyMoreReliable(arrival(24, 30), arrival(18, 30)))
+        assertFalse(ReliableAlternatives.clearlyMoreReliable(arrival(23, 30), arrival(18, 30)))
+        // No day known: no cancellation counted.
+        assertTrue(ReliableAlternatives.clearlyMoreReliable(StopReliability("S00219", 30, 27, 15, 2.0, 0, 0), arrival(18, 30)))
+    }
+
+    @Test fun `only trains with the same on-time limit are compared, 5 minutes for a Frecciarossa and 15 for a regional`() {
         val stats = ReliabilityFixtures.stats(
             // Roma → Torino: 18 of 30 within 5 minutes (60 %), 29 of 30 within 15.
             train("9560", "S08409", "FR", 30, 0,
@@ -146,12 +165,15 @@ class ReliableAlternativesTest {
         assertEquals(18, fr9560.stop?.onTime)
         assertEquals(15, reg2041.stop?.onTimeLimitMinutes)
         assertEquals(27, reg2041.stop?.onTime)
-        // The Frecciarossa at 5 minutes (60 %) gets the regional at 15 (90 %); at 5 minutes the regional would be 50 %.
-        assertEquals("2041", alternativeOf("9560", fr9560, reg2041))
+        // The Frecciarossa at 5 minutes (60 %) does not get the regional at 15 (90 %): at 5 minutes it would be 50 %.
         assertTrue(ReliableAlternatives.oftenLate(fr9560.stop!!))
+        assertNull(alternativeOf("9560", fr9560, reg2041))
         assertFalse(ReliableAlternatives.clearlyBetter(reg2041.stop!!.copy(onTime = 15, onTimeLimitMinutes = 5), fr9560.stop!!))
-        // The other way round: a regional at 15 minutes (60 %) gets a Frecciarossa at 5 (90 %).
-        assertEquals("9562", alternativeOf("2043", measured("2043", "08:00"), measured("9562", "08:20")))
+        // It gets the other Frecciarossa, at 5 minutes too (90 %).
+        assertEquals("9562", alternativeOf("9560", fr9560, reg2041, measured("9562", "08:20")))
+        // A regional at 15 minutes (60 %) gets the other regional (90 %), never the Frecciarossa at 5.
+        assertNull(alternativeOf("2043", measured("2043", "08:00"), measured("9562", "08:20")))
+        assertEquals("2041", alternativeOf("2043", measured("2043", "08:00"), reg2041, measured("9562", "08:20")))
         // A regional at 90 % within 15 minutes is not «often late», though only half of its arrivals are within 5.
         assertNull(alternativeOf("2041", reg2041, measured("9562", "08:20")))
     }

@@ -117,8 +117,11 @@ object NextTrainTilePlanner {
                 active = true
             )
         }
-        // Still being read for this route and day: only the route; read and empty: no more trains today.
-        val known = timetable != null && timetable.routeKey == route.key && timetable.serviceDate == now.atZone(zone).toLocalDate()
+        // Still being read for this route and day: only the route; read and empty: no more trains today. A timetable
+        // that hit [MAX_DEPARTURES] stopped counting, so once its trains have left it says nothing about the later ones
+        // and shows the route until it is read again.
+        val known = timetable != null && timetable.routeKey == route.key && timetable.serviceDate == now.atZone(zone).toLocalDate() &&
+            timetable.departures.size < MAX_DEPARTURES
         val subtitle = if (known) strings.noTrain else route.label
         return TileDisplay(strings.title, subtitle, "${strings.title}. $subtitle", active = false)
     }
