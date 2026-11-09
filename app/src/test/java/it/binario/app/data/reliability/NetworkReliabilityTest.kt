@@ -163,6 +163,8 @@ class NetworkReliabilityTest {
         assertEquals("S08409", NetworkReliability.stationCode(station(" S08409 ", "Roma Termini")))
         assertTrue(NetworkReliability.isStationCode("S00219"))
         assertEquals("9558", NetworkReliability.numberKey("FR 9558"))
+        assertEquals("2153", NetworkReliability.numberKey("RE_11 - 2153"))  // Trenord: not 112153
+        assertEquals("24901", NetworkReliability.numberKey("S9 - 24901"))
         assertEquals("ABC", NetworkReliability.numberKey("a bc"))
     }
 

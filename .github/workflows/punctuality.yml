@@ -2,9 +2,9 @@ name: Punctuality statistics
 
 # Binario's unofficial punctuality statistics (docs/data-sources/PUNCTUALITY_STATS.md, owner decision of 3 November
 # 2026: computed "as Treniamo does", aggregated only, withdrawn if Trenitalia/RFI object). From the default branch
-# only (GitHub runs schedules there), tools/collect_punctuality.py asks ViaggiaTreno once about each Trenitalia train
-# of the embedded pack that arrived today and is not known yet, at most 2 requests per second (about 6,400 trains a
-# day, each asked once whatever the number of runs). GitHub skips many scheduled runs (4 of 12 on 8 November 2026) and
+# only (GitHub runs schedules there), tools/collect_punctuality.py asks ViaggiaTreno once about each Trenitalia and
+# Trenord train of the embedded packs that arrived today and is not known yet, at most 2 requests per second (about
+# 8,800 trains a day, each asked once whatever the number of runs). GitHub skips many scheduled runs (4 of 12 on 8 November 2026) and
 # ViaggiaTreno forgets the previous day at midnight, so the schedule tries every hour and once more just before
 # midnight (Rome, winter time). The raw observations stay in the Actions cache (prefix punctuality-raw-, 35 days):
 # never printed, uploaded or committed.

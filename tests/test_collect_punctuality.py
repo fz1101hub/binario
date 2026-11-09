@@ -190,6 +190,51 @@ class StationAndTimetableTest(Base):
             with self.subTest(code=code):
                 self.assertIsNone(resolve(code, None, None, ""))
 
+    def test_a_trenord_pack_gives_numbers_after_the_line_and_its_own_viaggiatreno_codes(self) -> None:
+        trenord = self.temp / "lombardia-trenord-gtfs.zip"
+        with zipfile.ZipFile(trenord, "w") as archive:
+            archive.writestr("routes.txt", csv_text("route_id,agency_id,route_short_name,route_long_name,route_type", [
+                ("RE_11", "1", "RE11", "Mantova-Milano", 2), ("S9", "1", "S9", "Saronno-Albairate", 2),
+                ("TN", "1", "Trenord (linea non specificata)", "Trenord", 2), ("BUS", "1", "AUTOBUS", "Bus", 3),
+            ]))
+            archive.writestr("stops.txt", csv_text("stop_id,stop_name,stop_lat,stop_lon", [
+                ("S01700", "Milano Centrale", 45.486, 9.204), ("S01066", "Milano Cadorna", 45.468, 9.175),
+                ("S00999", "Mantova", 45.15, 10.78), ("X1", "Deposito", 45.5, 9.2),
+            ]))
+            archive.writestr("trips.txt", csv_text("route_id,service_id,trip_id,trip_short_name", [
+                ("RE_11", "DAILY", "t1", "RE_11 - 2153"), ("S9", "DAILY", "t2", "24901"), ("TN", "DAILY", "t3", "TN - 651"),
+                ("RE_11", "DAILY", "t4", "RE_11 - 2155A"), ("RE_11", "DAILY", "t5", "RE_11 - 2157"), ("BUS", "DAILY", "t6", "B - 7"),
+            ]))
+            archive.writestr("stop_times.txt", csv_text("trip_id,arrival_time,departure_time,stop_id,stop_sequence", [
+                ("t1", "07:00:00", "07:00:00", "S00999", 1), ("t1", "09:00:00", "09:00:00", "S01700", 2),
+                ("t2", "08:00:00", "08:00:00", "S01066", 1), ("t2", "08:50:00", "08:50:00", "S01700", 2),
+                ("t3", "08:10:00", "08:10:00", "S01066", 1), ("t3", "09:20:00", "09:20:00", "S00999", 2),
+                ("t4", "07:00:00", "07:00:00", "S00999", 1), ("t4", "09:00:00", "09:00:00", "S01700", 2),
+                ("t5", "07:00:00", "07:00:00", "X1", 1), ("t5", "09:00:00", "09:00:00", "S01700", 2),
+                ("t6", "07:00:00", "07:00:00", "S01066", 1), ("t6", "08:00:00", "08:00:00", "S01700", 2),
+            ]))
+            # The same service id as the Trenitalia pack, with another calendar: weekends only.
+            archive.writestr("calendar.txt", csv_text(
+                "service_id,monday,tuesday,wednesday,thursday,friday,saturday,sunday,start_date,end_date", [
+                    ("DAILY", 0, 0, 0, 0, 0, 1, 1, 20261001, 20261231)]))
+        both = collector.load_timetables([self.gtfs, trenord], self.codes)
+        plans = {trip.number: trip for trip in both.trips if trip.service_id.startswith("lombardia-trenord-gtfs: ")}
+        self.assertEqual({"2153", "24901", "651"}, set(plans))
+        self.assertEqual(("RE", "S00999"), (plans["2153"].category, plans["2153"].origin))
+        self.assertEqual(("S", "S01066"), (plans["24901"].category, plans["24901"].origin))
+        self.assertEqual("REG", plans["651"].category)  # a line without a name is a regional train
+        self.assertEqual({"lombardia-trenord-gtfs: numero non ViaggiaTreno": 1, "lombardia-trenord-gtfs: origine senza codice ViaggiaTreno": 1,
+                          "lombardia-trenord-gtfs: non ferroviaria": 1, "trenitalia-gtfs: non ferroviaria": 1,
+                          "trenitalia-gtfs: origine senza codice ViaggiaTreno": 1}, both.skipped)
+        # Each pack keeps its own calendar: on a Wednesday the Trenitalia DAILY trains run, Trenord's weekend ones do not.
+        wednesday = {due.number for due in collector.trains_on(both, DAY).values()}
+        self.assertIn("9558", wednesday)
+        self.assertNotIn("2153", wednesday)
+        saturday = {key: due for key, due in collector.trains_on(both, date(2026, 11, 7)).items()}
+        self.assertIn(("2026-11-07", "S00999", "2153"), saturday)
+        self.assertEqual("andamentoTreno/S01066/24901/" + str(collector.midnight_millis(date(2026, 11, 7))),
+                         collector.run_path(saturday[("2026-11-07", "S01066", "24901")]))
+
     def test_bus_routes_foreign_origins_and_alphanumeric_numbers_are_left_out(self) -> None:
         self.assertEqual({"non ferroviaria": 1, "origine senza codice ViaggiaTreno": 1}, self.timetable.skipped)
         numbers = {trip.number for trip in self.timetable.trips}

@@ -1,5 +1,11 @@
 # Changelog
 
+## In sviluppo — Statistiche di puntualità: tutta la giornata e i treni Trenord
+
+- **Raccolta di tutta la giornata**: ogni run chiede tutti i treni partiti oggi e non ancora noti, non solo quelli delle ultime 4 ore. Prima si perdevano le serate, perché ViaggiaTreno dimentica il giorno prima a mezzanotte (alla run delle 00:58 del 9 novembre 585 treni su 602 risultavano sconosciuti), e intere fasce del giorno, perché GitHub salta molte run programmate (l'8 novembre ne sono partite 4 su 12). Il workflow ora prova ogni ora e una volta poco prima di mezzanotte. Ogni treno resta chiesto una sola volta, a 2 richieste al secondo.
+- **Treni Trenord** nelle statistiche, da ViaggiaTreno come quelli Trenitalia: circa 2.480 treni al giorno in Lombardia, comprese le linee Ferrovienord da Milano Cadorna. Il pack Trenord usa già i codici ViaggiaTreno delle stazioni.
+- **App Android**: le statistiche di un treno Trenord si trovano anche quando il pack lo numera «RE_11 - 2153»; prima il numero diventava 112153.
+
 ## In sviluppo — Più presto e più tardi, binario abituale, collegamenti da una stazione, lavori sulle tratte, mappa dei treni, scorciatoie; iPhone, Apple Watch e Alexa
 
 - **Risultati**: «Più presto» sopra e «Più tardi» sotto l’elenco aggiungono fino a 6 soluzioni senza buchi né doppioni, per i treni diretti e per i viaggi con cambi; «Nessun treno fino alle HH:mm» quando la prima soluzione arriva dopo una finestra vuota. Una partenza RFI con «RITARDO» senza minuti resta «In ritardo (minuti non pubblicati)», mai «in orario».

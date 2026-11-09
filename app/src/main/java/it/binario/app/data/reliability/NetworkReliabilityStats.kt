@@ -245,9 +245,13 @@ object NetworkReliability {
     fun onTimeLimitMinutes(category: String): Int =
         if (category.trim().uppercase(Locale.ROOT) in HIGH_SPEED_CATEGORIES) HIGH_SPEED_ON_TIME_MINUTES else OTHER_ON_TIME_MINUTES
 
-    /** "9558" for "9558", "FR 9558" and "09558"; a number without digits keeps its letters. */
+    /**
+     * "9558" for "9558", "FR 9558" and "09558", "2153" for Trenord's "RE_11 - 2153" (the line's digits are not part of
+     * the number); a number without digits keeps its letters.
+     */
     fun numberKey(number: String): String {
-        val digits = number.filter { it in '0'..'9' }.trimStart('0')
+        val run = number.substringAfterLast(" - ").ifBlank { number }
+        val digits = run.filter { it in '0'..'9' }.trimStart('0')
         return digits.ifEmpty { number.trim().replace(" ", "").uppercase(Locale.ROOT) }
     }
 
