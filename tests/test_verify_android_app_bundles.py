@@ -295,15 +295,22 @@ class VerifyAndroidAppBundlesTest(unittest.TestCase):
             archive.writestr("AndroidManifest.xml", b"binary xml")
             archive.writestr("classes.dex", b"dex")
             archive.writestr("assets/punctuality/stats_v1.json.gz", b"statistics")
+        # The tree's file is the test's own, whatever the checkout carries: the APK's copy must match it.
+        tree = Path(self.temp.name) / "tree_stats_v1.json.gz"
+        tree.write_bytes(b"statistics")
         output, errors = io.StringIO(), io.StringIO()
-        with mock.patch("sys.stdout", output), mock.patch("sys.stderr", errors):
+        with mock.patch("sys.stdout", output), mock.patch("sys.stderr", errors), \
+                mock.patch.object(POLICY, "PUNCTUALITY_TREE_ASSET", tree):
             self.assertEqual(1, POLICY.main(["--apk", str(apk), "--punctuality-stats", "absent"]))
             self.assertEqual(0, POLICY.main(["--apk", str(apk), "--punctuality-stats", "present"]))
+            tree.write_bytes(b"newer statistics")
+            self.assertEqual(1, POLICY.main(["--apk", str(apk), "--punctuality-stats", "present"]))
             with self.assertRaises(SystemExit):
                 POLICY.main(["--apk", str(apk)])
             with self.assertRaises(SystemExit):
                 POLICY.main(["--profile", "companion", "--punctuality-stats", "absent"])
         self.assertIn("Android APK: FAIL: statistiche di puntualità nel pacchetto", errors.getvalue())
+        self.assertIn("Android APK: FAIL: statistiche di puntualità diverse dal file dell'albero", errors.getvalue())
         self.assertIn("Android APK: PASS (", output.getvalue())
 
         # The default (auto) applies to the phone bundle of the root profile only, never to Wear.
