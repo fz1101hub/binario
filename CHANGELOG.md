@@ -1,5 +1,15 @@
 # Changelog
 
+## In sviluppo — «I miei treni» e «Affidabilità dei miei treni» su iPhone
+
+- **I miei treni** su iPhone, in una scheda nuova dopo «Tratte»:
+  - la stella nel dettaglio di un treno lo salva, fino a 12 treni, solo su questo iPhone; la stella piena lo toglie, come uno scorrimento nella lista;
+  - un tocco riapre il dettaglio del treno, con l'orario programmato del giorno in cui è stato salvato;
+  - come su Android un treno è il suo numero con la stazione di partenza; i numeri come «RE_11 - 2153» di Trenord si salvano, i nomi di linea no;
+  - con 12 treni il tredicesimo non entra finché non se ne toglie uno, invece di cancellare il più vecchio.
+- **Affidabilità dei miei treni** sotto la lista: per i primi 8 treni la puntualità di rete all'ultima fermata, per esempio «Arrivo a Pavia: in orario 24 volte su 28 · ritardo medio 6 min». Valgono le regole di Android: la soglia del treno (5 o 15 minuti), almeno 5 rilevazioni, nessun treno indovinato fra più treni con lo stesso numero. Senza il file delle statistiche la sezione non compare. Le corse registrate sul telefono e l'andamento delle ultime 4 settimane restano solo su Android, perché l'iPhone non registra corse.
+- [PRIVACY.md](PRIVACY.md): i treni salvati restano nelle `UserDefaults` dell'iPhone, con la chiave `it.binario.ios.favourite-trains.v1`.
+
 ## In sviluppo — Treni notturni sulla mappa
 
 - **Mappa dei treni in movimento**: un treno notturno partito ieri prima delle 20 conserva la sua vera stazione di partenza. Prima, al mattino, la mappa leggeva l'orario di ieri solo dalla sera e lo faceva partire dalla prima fermata dopo le 20. Ora il tocco sul treno cerca il numero dalla stazione d'origine giusta, e un ritardo rilevato alla partenza viene associato al treno. L'orario di oggi, letto da mezzanotte, non cambia.
