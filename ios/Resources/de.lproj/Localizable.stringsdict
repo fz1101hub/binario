@@ -194,5 +194,37 @@
 			<string>%1$lld Züge</string>
 		</dict>
 	</dict>
+	<key>saved.trains.limit_error</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>Sie können höchstens %1$lld Zug speichern.</string>
+			<key>other</key>
+			<string>Sie können höchstens %1$lld Züge speichern.</string>
+		</dict>
+	</dict>
+	<key>saved.trains.reliability.description</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>Letzter %1$lld Tag, bei Ankunft an der letzten Haltestelle jedes Zuges. Tippen Sie auf einen Zug, um ihn zu öffnen.</string>
+			<key>other</key>
+			<string>Letzte %1$lld Tage, bei Ankunft an der letzten Haltestelle jedes Zuges. Tippen Sie auf einen Zug, um ihn zu öffnen.</string>
+		</dict>
+	</dict>
 </dict>
 </plist>

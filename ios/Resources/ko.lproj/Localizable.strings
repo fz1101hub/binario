@@ -54,7 +54,7 @@
 "settings.privacy.title" = "개인정보 보호";
 "settings.privacy.body" = "iOS용 Binario는 최소한의 로컬 구성을 사용합니다.";
 "settings.privacy.no_collection" = "계정, 분석, 위치, 마이크, 백그라운드 네트워크 접근 없음";
-"settings.privacy.local_routes" = "앱 클라우드 동기화 없음. 시스템 백업에는 저장된 경로가 포함될 수 있음";
+"settings.privacy.local_routes" = "앱 클라우드 동기화 없음. 시스템 백업에는 저장된 경로와 열차가 포함될 수 있음";
 "settings.privacy.watch" = "Apple Watch는 Watch Connectivity를 통해 계약에 맞는 스냅샷만 받습니다";
 "settings.about.title" = "정보";
 "settings.about.version" = "버전";
@@ -123,3 +123,14 @@
 "result.alternative.train" = "정시성이 더 높은 열차: %2$@ 출발 %1$@";
 "result.alternative.open" = "%1$@ 출발 열차 보기";
 "result.alternative.on_time" = "%2$lld회 중 %1$lld회 정시";
+"tab.trains" = "내 열차";
+"saved.trains.title" = "내 열차";
+"saved.trains.empty.title" = "저장된 열차 없음";
+"saved.trains.empty.body" = "검색 결과에서 열차를 열고 별표를 탭하면 이 iPhone의 여기에서 다시 찾을 수 있습니다.";
+"saved.trains.local_only" = "열차 상세 정보에서 별표로 저장하며 이 iPhone에만 보관됩니다. Apple 시스템 백업에 포함될 수 있습니다. 각 열차에는 저장한 날의 예정 시간이 표시됩니다.";
+"saved.trains.storage_error" = "저장된 열차를 업데이트할 수 없습니다.";
+"saved.trains.limit_error" = "열차는 최대 %1$lld편까지 저장할 수 있습니다.";
+"result.favourite.add" = "내 열차에 저장";
+"result.favourite.remove" = "내 열차에서 삭제";
+"saved.trains.reliability.title" = "내 열차 신뢰도";
+"saved.trains.reliability.description" = "최근 %1$lld일, 각 열차의 종착역 도착 기준입니다. 열차를 탭하면 열립니다.";

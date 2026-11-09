@@ -54,7 +54,7 @@
 "settings.privacy.title" = "Quyền riêng tư";
 "settings.privacy.body" = "Binario cho iOS dùng cấu hình tối giản, chỉ trên máy.";
 "settings.privacy.no_collection" = "Không tài khoản, phân tích, vị trí, micrô hay truy cập mạng nền";
-"settings.privacy.local_routes" = "Ứng dụng không đồng bộ đám mây; bản sao lưu hệ thống có thể bao gồm các tuyến đã lưu";
+"settings.privacy.local_routes" = "Ứng dụng không đồng bộ đám mây; bản sao lưu hệ thống có thể bao gồm các tuyến và tàu đã lưu";
 "settings.privacy.watch" = "Apple Watch chỉ nhận ảnh chụp dữ liệu hợp lệ theo hợp đồng qua Watch Connectivity";
 "settings.about.title" = "Giới thiệu";
 "settings.about.version" = "Phiên bản";
@@ -123,3 +123,14 @@
 "result.alternative.train" = "Đúng giờ hơn: %1$@ lúc %2$@";
 "result.alternative.open" = "Hiện tàu lúc %1$@";
 "result.alternative.on_time" = "đúng giờ %1$lld trên %2$lld lần";
+"tab.trains" = "Tàu của tôi";
+"saved.trains.title" = "Tàu của tôi";
+"saved.trains.empty.title" = "Chưa có tàu nào được lưu";
+"saved.trains.empty.body" = "Mở một tàu từ kết quả và nhấn vào ngôi sao để tìm lại tàu ở đây, trên iPhone này.";
+"saved.trains.local_only" = "Được lưu bằng ngôi sao trong chi tiết tàu, chỉ trên iPhone này; bản sao lưu hệ thống của Apple có thể bao gồm chúng. Mỗi tàu hiển thị giờ theo lịch của ngày bạn lưu.";
+"saved.trains.storage_error" = "Không thể cập nhật các tàu đã lưu.";
+"saved.trains.limit_error" = "Bạn có thể lưu tối đa %1$lld tàu.";
+"result.favourite.add" = "Lưu vào Tàu của tôi";
+"result.favourite.remove" = "Xóa khỏi Tàu của tôi";
+"saved.trains.reliability.title" = "Độ tin cậy các tàu của tôi";
+"saved.trains.reliability.description" = "%1$lld ngày gần nhất, khi đến ga cuối của mỗi tàu. Nhấn vào một tàu để mở.";

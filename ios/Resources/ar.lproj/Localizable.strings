@@ -54,7 +54,7 @@
 "settings.privacy.title" = "الخصوصية";
 "settings.privacy.body" = "يستخدم Binario على iOS إعدادًا محليًا وبسيطًا.";
 "settings.privacy.no_collection" = "لا حساب ولا تحليلات ولا موقع ولا ميكروفون ولا اتصال بالشبكة في الخلفية";
-"settings.privacy.local_routes" = "لا مزامنة سحابية في التطبيق، لكن قد تتضمن النسخ الاحتياطية للنظام المسارات";
+"settings.privacy.local_routes" = "لا مزامنة سحابية في التطبيق، لكن قد تتضمن النسخ الاحتياطية للنظام المسارات والقطارات";
 "settings.privacy.watch" = "تتلقى Apple Watch لقطات مطابقة للعقد فقط عبر Watch Connectivity";
 "settings.about.title" = "حول";
 "settings.about.version" = "الإصدار";
@@ -123,3 +123,14 @@
 "result.alternative.train" = "أكثر التزامًا بالموعد: %1$@ الساعة %2$@";
 "result.alternative.open" = "عرض قطار الساعة %1$@";
 "result.alternative.on_time" = "في الموعد %1$lld مرة من أصل %2$lld";
+"tab.trains" = "قطاراتي";
+"saved.trains.title" = "قطاراتي";
+"saved.trains.empty.title" = "لا توجد قطارات محفوظة";
+"saved.trains.empty.body" = "افتح قطارًا من النتائج والمس النجمة لتجده هنا على هذا الـ iPhone.";
+"saved.trains.local_only" = "تُحفظ بالنجمة في تفاصيل القطار، على هذا الـ iPhone فقط؛ قد تتضمنها النسخ الاحتياطية لنظام Apple. يعرض كل قطار الموعد المجدول في اليوم الذي حفظته فيه.";
+"saved.trains.storage_error" = "تعذّر تحديث القطارات المحفوظة.";
+"saved.trains.limit_error" = "يمكنك حفظ %1$lld قطار كحد أقصى.";
+"result.favourite.add" = "حفظ في قطاراتي";
+"result.favourite.remove" = "إزالة من قطاراتي";
+"saved.trains.reliability.title" = "موثوقية قطاراتي";
+"saved.trains.reliability.description" = "آخر %1$lld يوم، عند الوصول إلى المحطة الأخيرة لكل قطار. المس قطارًا لفتحه.";

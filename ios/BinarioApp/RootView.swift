@@ -13,6 +13,10 @@ struct RootView: View {
                 .tabItem { Label("tab.saved", systemImage: "star") }
                 .tag(AppModel.Tab.saved)
 
+            NavigationStack { MyTrainsView() }
+                .tabItem { Label("tab.trains", systemImage: "train.side.front.car") }
+                .tag(AppModel.Tab.trains)
+
             NavigationStack { SettingsView() }
                 .tabItem { Label("tab.settings", systemImage: "gearshape") }
                 .tag(AppModel.Tab.settings)

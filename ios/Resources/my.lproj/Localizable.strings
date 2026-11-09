@@ -54,7 +54,7 @@
 "settings.privacy.title" = "ကိုယ်ရေးလုံခြုံမှု";
 "settings.privacy.body" = "iOS အတွက် Binario သည် အနည်းဆုံးနှင့် စက်တွင်းသာ ဖွဲ့စည်းပုံကို အသုံးပြုသည်။";
 "settings.privacy.no_collection" = "အကောင့်၊ ခွဲခြမ်းစိတ်ဖြာမှု၊ တည်နေရာ၊ မိုက်ခရိုဖုန်း သို့မဟုတ် နောက်ခံ ကွန်ရက်သုံးစွဲမှု မရှိပါ";
-"settings.privacy.local_routes" = "အက်ပ်တွင် cloud စင့်ခ် မရှိပါ။ စနစ် အရန်သိမ်းမှုများတွင် သိမ်းထားသော လမ်းကြောင်းများ ပါဝင်နိုင်သည်";
+"settings.privacy.local_routes" = "အက်ပ်တွင် cloud စင့်ခ် မရှိပါ။ စနစ် အရန်သိမ်းမှုများတွင် သိမ်းထားသော လမ်းကြောင်းများနှင့် ရထားများ ပါဝင်နိုင်သည်";
 "settings.privacy.watch" = "Apple Watch သည် Watch Connectivity မှတစ်ဆင့် စာချုပ်နှင့်ကိုက်ညီသော snapshot များကိုသာ လက်ခံသည်";
 "settings.about.title" = "အကြောင်း";
 "settings.about.version" = "ဗားရှင်း";
@@ -123,3 +123,14 @@
 "result.alternative.train" = "ပိုအချိန်မှန်သည်- %2$@ ထွက် %1$@";
 "result.alternative.open" = "%1$@ ထွက် ရထားကို ပြရန်";
 "result.alternative.on_time" = "%2$lld ကြိမ်တွင် %1$lld ကြိမ် အချိန်မှန်";
+"tab.trains" = "ကျွန်ုပ်၏ ရထားများ";
+"saved.trains.title" = "ကျွန်ုပ်၏ ရထားများ";
+"saved.trains.empty.title" = "သိမ်းထားသော ရထား မရှိပါ";
+"saved.trains.empty.body" = "ဤ iPhone တွင် ဤနေရာ၌ ပြန်ရှာနိုင်ရန် ရလဒ်များမှ ရထားတစ်စီးကို ဖွင့်ပြီး ကြယ်ပုံကို တို့ပါ။";
+"saved.trains.local_only" = "ရထားအသေးစိတ်ရှိ ကြယ်ပုံဖြင့် သိမ်းထားပြီး ဤ iPhone တွင်သာ ရှိသည်။ Apple စနစ် အရန်သိမ်းမှုများတွင် ပါဝင်နိုင်သည်။ ရထားတစ်စီးစီသည် သိမ်းခဲ့သည့်နေ့၏ စီစဉ်ထားသော အချိန်ကို ပြသည်။";
+"saved.trains.storage_error" = "သိမ်းထားသော ရထားများကို အပ်ဒိတ်လုပ်၍ မရပါ။";
+"saved.trains.limit_error" = "ရထား အများဆုံး %1$lld စီး သိမ်းနိုင်သည်။";
+"result.favourite.add" = "ကျွန်ုပ်၏ ရထားများတွင် သိမ်းရန်";
+"result.favourite.remove" = "ကျွန်ုပ်၏ ရထားများမှ ဖယ်ရှားရန်";
+"saved.trains.reliability.title" = "ကျွန်ုပ်၏ ရထားများ၏ ယုံကြည်စိတ်ချရမှု";
+"saved.trains.reliability.description" = "နောက်ဆုံး %1$lld ရက်အတွင်း၊ ရထားတစ်စီးစီ၏ နောက်ဆုံးမှတ်တိုင်သို့ ရောက်ချိန်။ ဖွင့်ရန် ရထားတစ်စီးကို တို့ပါ။";

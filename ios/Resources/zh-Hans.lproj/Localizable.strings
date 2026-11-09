@@ -54,7 +54,7 @@
 "settings.privacy.title" = "隐私";
 "settings.privacy.body" = "iOS 版 Binario 采用最精简的本地配置。";
 "settings.privacy.no_collection" = "无账户、无分析、无定位、无麦克风、无后台网络访问";
-"settings.privacy.local_routes" = "App 不进行云同步；系统备份可能包含已保存的路线";
+"settings.privacy.local_routes" = "App 不进行云同步；系统备份可能包含已保存的路线和列车";
 "settings.privacy.watch" = "Apple Watch 仅通过 Watch Connectivity 接收符合约定的快照";
 "settings.about.title" = "关于";
 "settings.about.version" = "版本";
@@ -123,3 +123,14 @@
 "result.alternative.train" = "更准点：%2$@ 出发的 %1$@";
 "result.alternative.open" = "显示 %1$@ 出发的列车";
 "result.alternative.on_time" = "%2$lld 次中准点 %1$lld 次";
+"tab.trains" = "我的列车";
+"saved.trains.title" = "我的列车";
+"saved.trains.empty.title" = "没有已保存的列车";
+"saved.trains.empty.body" = "从结果中打开一趟列车并点按星标，即可在这台 iPhone 上的这里再次找到它。";
+"saved.trains.local_only" = "在列车详情中点按星标保存，仅保存在这台 iPhone 上；Apple 系统备份可能包含这些列车。每趟列车显示保存当天的计划时刻。";
+"saved.trains.storage_error" = "无法更新已保存的列车。";
+"saved.trains.limit_error" = "最多可保存 %1$lld 趟列车。";
+"result.favourite.add" = "保存到“我的列车”";
+"result.favourite.remove" = "从“我的列车”中移除";
+"saved.trains.reliability.title" = "我的列车可靠性";
+"saved.trains.reliability.description" = "最近 %1$lld 天，按各列车到达终点站计算。点按列车即可打开。";

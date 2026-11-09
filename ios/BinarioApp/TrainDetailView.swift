@@ -3,11 +3,15 @@ import BinarioKit
 
 /// A listed train: its programmed departure, bikes on board when the timetable says, and the
 /// «Affidabilità ultimi N giorni» block of the unofficial network statistics at the searched
-/// destination. Every line is a sentence of its own; nothing is said by colour alone.
+/// destination. Every line is a sentence of its own; nothing is said by colour alone. The star of
+/// the navigation bar saves the train in «I miei treni» or removes it.
 struct TrainDetailView: View {
     @EnvironmentObject private var model: AppModel
     let service: TrainService
     let query: JourneyQuery
+    /// Why the star did nothing: «I miei treni» is full, or could not be written.
+    @State private var favouriteMessage = ""
+    @State private var showsFavouriteMessage = false
 
     var body: some View {
         List {
@@ -43,6 +47,44 @@ struct TrainDetailView: View {
         }
         .navigationTitle(Text(verbatim: service.number))
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                if model.canToggleFavourite(service, query: query) {
+                    FavouriteTrainButton(saved: model.isFavourite(service, query: query)) { toggleFavourite() }
+                }
+            }
+        }
+        .alert(favouriteMessage, isPresented: $showsFavouriteMessage) {
+            Button("action.ok", role: .cancel) { showsFavouriteMessage = false }
+        }
+    }
+
+    private func toggleFavourite() {
+        switch model.toggleFavourite(service, query: query) {
+        case .added, .removed:
+            return
+        case .limitReached:
+            favouriteMessage = MyTrainsTexts.limitError(FavouriteTrainCollection.maximumTrains)
+        case .failed:
+            favouriteMessage = String(localized: "saved.trains.storage_error")
+        }
+        showsFavouriteMessage = true
+    }
+}
+
+/// The star of a train detail: «Salva in I miei treni» or «Rimuovi da I miei treni», which is
+/// what VoiceOver reads; the filled star says the train is saved.
+private struct FavouriteTrainButton: View {
+    let saved: Bool
+    let toggle: () -> Void
+
+    var body: some View {
+        Button(action: toggle) {
+            Label(
+                LocalizedStringKey(saved ? "result.favourite.remove" : "result.favourite.add"),
+                systemImage: saved ? "star.fill" : "star"
+            )
+        }
     }
 }
 

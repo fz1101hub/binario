@@ -20,7 +20,18 @@ final class AppModel: ObservableObject {
     enum Tab: Hashable {
         case planner
         case saved
+        case trains
         case settings
+    }
+
+    /// What a tap on the star of a train detail did.
+    enum FavouriteChange: Equatable {
+        case added
+        case removed
+        /// «I miei treni» is full: a train is removed before another is saved.
+        case limitReached
+        /// The train cannot be saved, or the list could not be written.
+        case failed
     }
 
     /// A saved route tapped in its tab: the planner takes it over and searches it from now.
@@ -42,6 +53,8 @@ final class AppModel: ObservableObject {
 
     @Published private(set) var catalogState: CatalogState
     @Published private(set) var savedRoutes: [SavedRoute]
+    /// «I miei treni»: the trains saved with the star of the train detail, newest first.
+    @Published private(set) var favouriteTrains: [FavouriteTrain]
     @Published private(set) var watchSharingEnabled: Bool
     @Published fileprivate(set) var watchSyncStatus: WatchSyncStatus
     @Published var searchState: SearchState = .idle
@@ -80,6 +93,7 @@ final class AppModel: ObservableObject {
     let versionDisplay: String
 
     private let savedRouteStore: SavedRouteStore
+    private let favouriteTrainStore: FavouriteTrainStore
     private let watchSharingStore: WatchSharingPreferenceStore
     private let watchPublisher: WatchSnapshotPublisher?
     private let backgroundActivity: (any BackgroundActivityRunning)?
@@ -87,6 +101,7 @@ final class AppModel: ObservableObject {
     init(
         catalogState: CatalogState,
         savedRouteStore: SavedRouteStore,
+        favouriteTrainStore: FavouriteTrainStore = FavouriteTrainStore(),
         watchSharingStore: WatchSharingPreferenceStore,
         repository: any JourneyRepository,
         scheduleState: ScheduleState = .available,
@@ -97,6 +112,7 @@ final class AppModel: ObservableObject {
     ) {
         self.catalogState = catalogState
         self.savedRouteStore = savedRouteStore
+        self.favouriteTrainStore = favouriteTrainStore
         self.watchSharingStore = watchSharingStore
         self.repository = repository
         self.scheduleState = scheduleState
@@ -107,6 +123,7 @@ final class AppModel: ObservableObject {
         self.versionDisplay = versionDisplay
         let routes = savedRouteStore.load()
         self.savedRoutes = routes
+        self.favouriteTrains = favouriteTrainStore.load().trains
         let sharingEnabled = watchSharingStore.load()
         self.watchSharingEnabled = sharingEnabled
         self.watchSyncStatus = sharingEnabled ? .activating : .disabled
@@ -153,6 +170,7 @@ final class AppModel: ObservableObject {
         let model = AppModel(
             catalogState: .loading,
             savedRouteStore: SavedRouteStore(),
+            favouriteTrainStore: FavouriteTrainStore(),
             watchSharingStore: WatchSharingPreferenceStore(),
             repository: FailClosedJourneyRepository(),
             scheduleState: .loading,
@@ -238,6 +256,12 @@ final class AppModel: ObservableObject {
             boardingCode: NetworkReliability.stationCode(query.origin),
             destinationCode: NetworkReliability.stationCode(query.destination)
         )
+    }
+
+    /// «Affidabilità dei miei treni»: the first favourite trains at their last stop in the network
+    /// statistics; nil while the file is read, in a build without it or without a train measured.
+    var favouriteTrainsReliability: FavouriteTrainsReliability? {
+        FavouriteTrainsReliability.assess(favouriteTrains, stats: reliabilityStats)
     }
 
     /// Recomputes `airportLinks` once both the catalogue and the timetable index are read.
@@ -552,6 +576,54 @@ final class AppModel: ObservableObject {
         } catch {
             persistenceMessageKey = "saved.storage_error"
         }
+    }
+
+    /// Whether the train of a detail is in «I miei treni»: its number boarded at the query's origin.
+    func isFavourite(_ service: TrainService, query: JourneyQuery) -> Bool {
+        let id = FavouriteTrain.identifier(number: service.number, originID: query.origin.id)
+        return favouriteTrains.contains { $0.id == id }
+    }
+
+    /// Whether the star of a detail is offered: a saved train can always be removed; a train is
+    /// saved only with a train number (not a line name) and the texts the timetable bounds.
+    func canToggleFavourite(_ service: TrainService, query: JourneyQuery) -> Bool {
+        if isFavourite(service, query: query) { return true }
+        return (try? FavouriteTrain(service: service, query: query, savedAt: Date())) != nil
+    }
+
+    /// The star of a train detail: saves the train first in «I miei treni» or, when it is there,
+    /// removes it. A full list refuses the train rather than dropping another one.
+    func toggleFavourite(_ service: TrainService, query: JourneyQuery, now: Date = Date()) -> FavouriteChange {
+        let id = FavouriteTrain.identifier(number: service.number, originID: query.origin.id)
+        let current = FavouriteTrainCollection.normalized(favouriteTrains)
+        if current.contains(id: id) {
+            return setFavourites(current.removing(ids: [id])) ? .removed : .failed
+        }
+        guard let train = try? FavouriteTrain(service: service, query: query, savedAt: now) else { return .failed }
+        let updated: FavouriteTrainCollection
+        do {
+            updated = try current.adding(train)
+        } catch FavouriteTrainValidationError.tooManyTrains {
+            return .limitReached
+        } catch {
+            return .failed
+        }
+        return setFavourites(updated) ? .added : .failed
+    }
+
+    /// Removes favourite trains from «I miei treni»; false when the list could not be written.
+    func removeFavourites(ids: Set<String>) -> Bool {
+        setFavourites(FavouriteTrainCollection.normalized(favouriteTrains).removing(ids: ids))
+    }
+
+    private func setFavourites(_ collection: FavouriteTrainCollection) -> Bool {
+        do {
+            try favouriteTrainStore.save(collection)
+        } catch {
+            return false
+        }
+        favouriteTrains = collection.trains
+        return true
     }
 
     private func setRoutes(_ routes: [SavedRoute]) throws {

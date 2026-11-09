@@ -194,5 +194,37 @@
 			<string>%1$lld tren</string>
 		</dict>
 	</dict>
+	<key>saved.trains.limit_error</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>En fazla %1$lld tren kaydedebilirsiniz.</string>
+			<key>other</key>
+			<string>En fazla %1$lld tren kaydedebilirsiniz.</string>
+		</dict>
+	</dict>
+	<key>saved.trains.reliability.description</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>Son %1$lld gün, her trenin son durağına varışta. Açmak için bir trene dokunun.</string>
+			<key>other</key>
+			<string>Son %1$lld gün, her trenin son durağına varışta. Açmak için bir trene dokunun.</string>
+		</dict>
+	</dict>
 </dict>
 </plist>

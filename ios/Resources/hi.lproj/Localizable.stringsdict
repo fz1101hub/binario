@@ -194,5 +194,37 @@
 			<string>%1$lld ट्रेनें</string>
 		</dict>
 	</dict>
+	<key>saved.trains.limit_error</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>आप अधिकतम %1$lld ट्रेन सहेज सकते हैं।</string>
+			<key>other</key>
+			<string>आप अधिकतम %1$lld ट्रेनें सहेज सकते हैं।</string>
+		</dict>
+	</dict>
+	<key>saved.trains.reliability.description</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>पिछला %1$lld दिन, हर ट्रेन के आख़िरी स्टॉप पर पहुँचने पर। खोलने के लिए किसी ट्रेन पर टैप करें।</string>
+			<key>other</key>
+			<string>पिछले %1$lld दिन, हर ट्रेन के आख़िरी स्टॉप पर पहुँचने पर। खोलने के लिए किसी ट्रेन पर टैप करें।</string>
+		</dict>
+	</dict>
 </dict>
 </plist>

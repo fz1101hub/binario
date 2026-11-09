@@ -194,5 +194,37 @@
 			<string>%1$lld trains</string>
 		</dict>
 	</dict>
+	<key>saved.trains.limit_error</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>You can save up to %1$lld train.</string>
+			<key>other</key>
+			<string>You can save up to %1$lld trains.</string>
+		</dict>
+	</dict>
+	<key>saved.trains.reliability.description</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>Last %1$lld day, on arrival at the last stop of each train. Tap a train to open it.</string>
+			<key>other</key>
+			<string>Last %1$lld days, on arrival at the last stop of each train. Tap a train to open it.</string>
+		</dict>
+	</dict>
 </dict>
 </plist>

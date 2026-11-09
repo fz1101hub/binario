@@ -54,7 +54,7 @@
 "settings.privacy.title" = "गोपनीयता";
 "settings.privacy.body" = "iOS के लिए Binario एक न्यूनतम, स्थानीय कॉन्फ़िगरेशन का उपयोग करता है।";
 "settings.privacy.no_collection" = "कोई खाता, एनालिटिक्स, लोकेशन, माइक्रोफ़ोन या बैकग्राउंड नेटवर्क एक्सेस नहीं";
-"settings.privacy.local_routes" = "ऐप में क्लाउड सिंक नहीं; सिस्टम बैकअप में सहेजे गए रूट शामिल हो सकते हैं";
+"settings.privacy.local_routes" = "ऐप में क्लाउड सिंक नहीं; सिस्टम बैकअप में सहेजे गए रूट और ट्रेनें शामिल हो सकती हैं";
 "settings.privacy.watch" = "Apple Watch को Watch Connectivity के ज़रिए केवल अनुबंध-मान्य स्नैपशॉट मिलते हैं";
 "settings.about.title" = "जानकारी";
 "settings.about.version" = "संस्करण";
@@ -123,3 +123,14 @@
 "result.alternative.train" = "अधिक समयनिष्ठ: %2$@ बजे की %1$@";
 "result.alternative.open" = "%1$@ बजे की ट्रेन दिखाएँ";
 "result.alternative.on_time" = "%2$lld में से %1$lld बार समय पर";
+"tab.trains" = "मेरी ट्रेनें";
+"saved.trains.title" = "मेरी ट्रेनें";
+"saved.trains.empty.title" = "कोई सहेजी गई ट्रेन नहीं";
+"saved.trains.empty.body" = "नतीजों से कोई ट्रेन खोलें और उसे यहाँ, इस iPhone पर दोबारा पाने के लिए तारे पर टैप करें।";
+"saved.trains.local_only" = "ट्रेन के विवरण में तारे से सहेजी गई, सिर्फ़ इस iPhone पर; Apple के सिस्टम बैकअप में ये शामिल हो सकती हैं। हर ट्रेन उस दिन का निर्धारित समय दिखाती है जिस दिन आपने उसे सहेजा था।";
+"saved.trains.storage_error" = "सहेजी गई ट्रेनें अपडेट नहीं हो सकीं।";
+"saved.trains.limit_error" = "आप अधिकतम %1$lld ट्रेनें सहेज सकते हैं।";
+"result.favourite.add" = "मेरी ट्रेनें में सहेजें";
+"result.favourite.remove" = "मेरी ट्रेनें से हटाएँ";
+"saved.trains.reliability.title" = "मेरी ट्रेनों की विश्वसनीयता";
+"saved.trains.reliability.description" = "पिछले %1$lld दिन, हर ट्रेन के आख़िरी स्टॉप पर पहुँचने पर। खोलने के लिए किसी ट्रेन पर टैप करें।";
