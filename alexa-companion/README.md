@@ -7,7 +7,7 @@
 Il companion gestisce:
 
 - webhook HTTPS della Custom Skill Alexa;
-- risposte sulla puntualità di un treno o di una tratta salvata, dalle statistiche non ufficiali di Binario su dati ViaggiaTreno incluse nel bundle ([`docs/ALEXA_SETUP.md`](docs/ALEXA_SETUP.md#statistiche-di-puntualità));
+- risposte sulla puntualità di un treno o di una tratta salvata e sul treno più puntuale di una tratta nelle prossime tre ore, dalle statistiche non ufficiali di Binario su dati ViaggiaTreno incluse nel bundle ([`docs/ALEXA_SETUP.md`](docs/ALEXA_SETUP.md#statistiche-di-puntualità));
 - schermate Echo Show (APL) che proiettano le stesse risposte vocali, solo sui dispositivi che dichiarano APL;
 - account linking OAuth 2.0 con consenso esplicito e protezione CSRF;
 - revoca e nuovo collegamento dell'account;

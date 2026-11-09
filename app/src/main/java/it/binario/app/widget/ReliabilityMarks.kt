@@ -2,12 +2,14 @@ package it.binario.app.widget
 
 import android.content.Context
 import it.binario.app.R
+import it.binario.app.ServiceMonitor
 import it.binario.app.data.StationAutocompleteEngine
 import it.binario.app.data.catalog.EmbeddedCuratedRailStationCatalog
 import it.binario.app.data.reliability.NetworkReliability
 import it.binario.app.data.reliability.NetworkReliabilityMatch
 import it.binario.app.data.reliability.NetworkReliabilityRepository
 import it.binario.app.data.reliability.NetworkReliabilityStats
+import it.binario.app.data.reliability.StopReliability
 import java.util.Locale
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.math.floor
@@ -59,12 +61,22 @@ object ReliabilityMarks {
      * that leaves (or calls at) [originCode]; without a code, the only train with that number that runs. Several
      * trains with the number and no code to tell them apart give none rather than a guess.
      */
-    fun favourite(stats: NetworkReliabilityStats, number: String?, originCode: String?): ReliabilityMark? {
+    fun favourite(stats: NetworkReliabilityStats, number: String?, originCode: String?): ReliabilityMark? =
+        favouriteMatch(stats, number, originCode)?.let { mark(stats, it) }
+
+    /**
+     * The same favourite train as [favourite], at its last stop, as the result and detail lines show it («In orario 27
+     * volte su 30 · ritardo medio 3 min», «Affidabilità dei miei treni»); null below [NetworkReliability.MIN_SAMPLES].
+     */
+    fun favouriteStop(stats: NetworkReliabilityStats, number: String?, originCode: String?): StopReliability? =
+        favouriteMatch(stats, number, originCode)?.let { NetworkReliability.at(it.train, it.alightingIndex) }
+
+    private fun favouriteMatch(stats: NetworkReliabilityStats, number: String?, originCode: String?): NetworkReliabilityMatch? {
         if (number.isNullOrBlank()) return null
-        NetworkReliability.matchTerminus(stats, number, originCode)?.let { return mark(stats, it) }
+        NetworkReliability.matchTerminus(stats, number, originCode)?.let { return it }
         if (originCode != null && NetworkReliability.isStationCode(originCode)) return null
         val single = stats.trainsNumbered(number).filter { it.stopCount > 1 }.singleOrNull() ?: return null
-        return mark(stats, NetworkReliabilityMatch(single, 0, single.stopCount - 1))
+        return NetworkReliabilityMatch(single, 0, single.stopCount - 1)
     }
 
     /**
@@ -95,6 +107,10 @@ object CatalogueStationCodes {
     @Volatile private var engine: StationAutocompleteEngine? = null
 
     suspend fun code(context: Context, name: String): String? = NetworkReliability.stationCode(engine(context)?.findExact(name))
+
+    /** The code of the origin each favourite train was saved with, by train number; null without an origin or a match. */
+    suspend fun originCodes(context: Context, monitors: List<ServiceMonitor>): Map<String, String?> =
+        monitors.associate { it.number to it.origin.takeIf(String::isNotBlank)?.let { origin -> code(context, origin) } }
 
     /** Whether the catalogue is already read in this process. */
     val loaded: Boolean get() = engine != null

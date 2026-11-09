@@ -204,6 +204,52 @@ describe("screen datasource", () => {
     expect(arabic.stats).toEqual([]);
   });
 
+  it("lists the most punctual trains with usual time, number and on-time share under the statistics banner", () => {
+    const screen: BinarioScreen = {
+      kind: "punctuality",
+      about: "route",
+      routeName: "Casa & <lavoro>",
+      message: "Per la tratta Casa & <lavoro>, fra i treni che di solito partono nelle prossime tre ore, il più puntuale è il 2157 delle 8:12…",
+      trains: [
+        { trainNumber: "2157", minuteOfDay: 492, percent: 90 },
+        { trainNumber: "21<61>", minuteOfDay: 552, percent: 80 },
+      ],
+      windowEnd: "2026-11-09",
+    };
+    const data = buildScreenDatasource(screen, { locale: "it-IT", checkedAt: CHECKED_AT });
+    expect(data).toMatchObject({
+      screen: "punctuality",
+      title: "Puntualità",
+      hero: "Casa &amp; &lt;lavoro&gt;",
+      quality: { state: "statistics", label: "Statistiche non ufficiali di Binario su dati ViaggiaTreno", checked: "Dati fino al 9 novembre 2026" },
+      stats: [],
+      actions: [{ event: "binario.myRoutes" }],
+    });
+    expect(data.trains).toEqual([
+      { time: "8:12", train: "Treno 2157", value: "90%", label: "In orario", accessibilityLabel: "8:12, Treno 2157, In orario: 90%" },
+      { time: "9:12", train: "Treno 21&lt;61&gt;", value: "80%", label: "In orario", accessibilityLabel: "9:12, Treno 21<61>, In orario: 80%" },
+    ]);
+    const english = buildScreenDatasource(screen, { locale: "en-US", checkedAt: CHECKED_AT });
+    // The locale's own spacing (a narrow no-break space before AM on recent runtimes) stays on screen.
+    expect(english.trains.map(row => `${row.time} ${row.train} ${row.value}`.replace(/\s/g, " "))).toEqual(["8:12 AM Train 2157 90%", "9:12 AM Train 21&lt;61&gt; 80%"]);
+    // The other screens have no list.
+    expect(buildScreenDatasource(departures, { locale: "it-IT", checkedAt: CHECKED_AT }).trains).toEqual([]);
+    const document = JSON.stringify(buildRenderDocumentDirective(screen, { locale: "it-IT", checkedAt: CHECKED_AT }).document);
+    expect(document).toContain('"data":"${payload.binario.trains}"');
+    expect(document).toContain('"accessibilityLabel":"${train.accessibilityLabel}"');
+  });
+
+  it("makes the saved routes ask for their most punctual train after that question", () => {
+    const data = buildScreenDatasource(
+      { kind: "myRoutes", routes: [{ name: "Casa", isPinned: true }, { name: "Mare", isPinned: false }], remainingCount: 0, routeAction: "mostPunctual" },
+      { locale: "it-IT", checkedAt: CHECKED_AT }
+    );
+    expect(data.routes.map(route => [route.event, route.accessibilityLabel])).toEqual([
+      ["binario.mostPunctual", "Treno più puntuale per Casa (Fissata)"],
+      ["binario.mostPunctual", "Treno più puntuale per Mare"],
+    ]);
+  });
+
   it("makes the saved routes ask for their punctuality after a punctuality question", () => {
     const data = buildScreenDatasource(
       { kind: "myRoutes", routes: [{ name: "Casa", isPinned: true }], remainingCount: 0, routeAction: "punctuality" },
@@ -312,6 +358,8 @@ describe("screen events", () => {
     [["binario.nextTrains", "Casa & lavoro"], { action: "nextTrains", routeName: "Casa & lavoro" }],
     [["binario.punctuality", ""], { action: "punctuality" }],
     [["binario.punctuality", "Casa"], { action: "punctuality", routeName: "Casa" }],
+    [["binario.mostPunctual", ""], { action: "mostPunctual" }],
+    [["binario.mostPunctual", "Casa"], { action: "mostPunctual", routeName: "Casa" }],
   ] as const)("accepts %j", (args, expected) => {
     expect(parseScreenEvent(userEvent([...args]))).toEqual(expected);
   });
@@ -324,6 +372,10 @@ describe("screen events", () => {
     [["binario.nextTrains", "Casa", "extra"]],
     [["binario.punctuality", 7]],
     [["binario.punctuality", "x".repeat(201)]],
+    [["binario.mostPunctual", "Casa", "extra"]],
+    [["binario.mostPunctual", "x".repeat(201)]],
+    [["binario.constructor"]],
+    [["toString"]],
     [[]],
   ])("rejects %j", args => {
     expect(parseScreenEvent(userEvent(args))).toBeNull();
@@ -336,6 +388,6 @@ describe("screen events", () => {
 
   it("covers every Alexa publishing locale", () => {
     for (const locale of SUPPORTED_LOCALES)
-      expect(buildScreenDatasource({ kind: "home", message: "x" }, { locale, checkedAt: CHECKED_AT }).hints.items).toHaveLength(4);
+      expect(buildScreenDatasource({ kind: "home", message: "x" }, { locale, checkedAt: CHECKED_AT }).hints.items).toHaveLength(5);
   });
 });

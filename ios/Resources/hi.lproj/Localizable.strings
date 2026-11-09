@@ -120,3 +120,6 @@
 "result.detail.band_share" = "%2$lld%% · %1$lld बार";
 "result.detail.usual_platform" = "%3$@: आमतौर पर प्लेटफ़ॉर्म %4$@ (%2$lld में से %1$lld बार)";
 "result.detail.weekday" = "%3$@: %2$lld में से %1$lld बार समय पर (औसतन %4$lld%%)";
+"result.alternative.train" = "अधिक समयनिष्ठ: %2$@ बजे की %1$@";
+"result.alternative.open" = "%1$@ बजे की ट्रेन दिखाएँ";
+"result.alternative.on_time" = "%2$lld में से %1$lld बार समय पर";

@@ -4,9 +4,9 @@
  * aggregated from ViaggiaTreno observations by the repository pipeline. The same file the Android
  * app embeds; the skill answers from it and never asks ViaggiaTreno anything.
  *
- * The reader keeps only what the voice answers need (per stop: station code, samples, mean delay
- * and the samples within the train's on-time limit), so about nine thousand trains stay a few
- * megabytes. It is tolerant like the app's reader: a file that is malformed, of another schema or
+ * The reader keeps only what the voice answers need (per stop: station code, samples, mean delay,
+ * the samples within the train's on-time limit, the scheduled minute and the weekdays observed),
+ * so about nine thousand trains stay a few megabytes. It is tolerant like the app's reader: a file that is malformed, of another schema or
  * over the bounds gives null (the skill says the statistics are not available), and a train whose
  * fields do not add up is left out.
  */
@@ -25,6 +25,13 @@ const STATION_CODE = /^S[0-9]{5}$/;
 const MAX_TEXT = 16;
 const MAX_DELAY_MINUTES = 24 * 60;
 const MAX_WINDOW_DAYS = 366;
+const MINUTES_PER_DAY = 24 * 60;
+/** Scheduled minutes are counted from the midnight of the run's departure day: at most three days, as the app reads them. */
+const MAX_SCHEDULED_MINUTE = 3 * MINUTES_PER_DAY;
+/** {@link PunctualityTrain.scheduledMinute} of a stop whose file gives no (valid) scheduled minute. */
+export const NO_SCHEDULED_MINUTE = -1;
+/** Bit set in {@link PunctualityTrain.weekdays} when the file lists the weekdays of the stop. */
+const WEEKDAYS_KNOWN = 0x80;
 
 export type PunctualityLimits = {
   /** The pipeline's own bounds (tools/build_punctuality_stats.py): 50,000 trains, 400 stops per train. */
@@ -46,9 +53,19 @@ export function onTimeLimitMinutes(category: string): number {
   return HIGH_SPEED_CATEGORIES.has(category.trim().toUpperCase()) ? HIGH_SPEED_ON_TIME_MINUTES : OTHER_ON_TIME_MINUTES;
 }
 
-/** "9558" for "9558", "FR 9558" and "09558"; a number without digits keeps its letters. */
+/**
+ * The number a train is known by: the run after the line of a Trenord timetable number
+ * («RE_11 - 2153» → «2153», as the app shows it), otherwise the number as published.
+ */
+export function publicTrainNumber(number: string): string {
+  const separator = number.lastIndexOf(" - ");
+  const run = separator >= 0 ? number.slice(separator + 3).trim() : "";
+  return run || number.trim();
+}
+
+/** "9558" for "9558", "FR 9558", "09558" and "RE_11 - 9558"; a number without digits keeps its letters. */
 export function trainNumberKey(number: string): string {
-  const digits = number.replace(/[^0-9]/g, "").replace(/^0+/, "");
+  const digits = publicTrainNumber(number).replace(/[^0-9]/g, "").replace(/^0+/, "");
   return digits || number.trim().replace(/\s+/g, "").toUpperCase();
 }
 
@@ -71,7 +88,18 @@ export class PunctualityTrain {
     readonly codes: readonly string[],
     readonly samples: Uint16Array,
     readonly onTime: Uint16Array,
-    readonly meanTenths: Int16Array
+    readonly meanTenths: Int16Array,
+    /**
+     * Scheduled arrival (departure at the origin) in minutes from the midnight of the run's
+     * departure day, Europe/Rome, on the most recent observed day; may pass 1439 after midnight.
+     * {@link NO_SCHEDULED_MINUTE} where the file gives none (older files, `null`).
+     */
+    readonly scheduledMinute: Int16Array = new Int16Array(codes.length).fill(NO_SCHEDULED_MINUTE),
+    /**
+     * Weekdays (of the run's departure day) with at least one sample at the stop: bit 0 Monday …
+     * bit 6 Sunday, plus {@link WEEKDAYS_KNOWN}; 0 where the file has no weekdays (below 14 samples).
+     */
+    readonly weekdays: Uint8Array = new Uint8Array(codes.length)
   ) {}
 
   get stopCount() {
@@ -84,6 +112,15 @@ export class PunctualityTrain {
 
   meanDelayMinutes(index: number) {
     return this.meanTenths[index] / 10;
+  }
+
+  /**
+   * False only when the file lists the stop's weekdays and none of its samples fell on
+   * `isoWeekday` (1 Monday … 7 Sunday): the train does not stop there on that day of the week.
+   */
+  mayRunOn(index: number, isoWeekday: number) {
+    const mask = this.weekdays[index];
+    return !(mask & WEEKDAYS_KNOWN) || (mask & (1 << (isoWeekday - 1))) !== 0;
   }
 }
 
@@ -195,6 +232,29 @@ export type RoutePunctuality = {
   limits: number[];
 };
 
+type RouteEnds = { origins: ReadonlySet<string>; destinations: ReadonlySet<string> };
+
+/** The station codes of the two ends, or null without codes or when the ends share a code. */
+function routeEnds(originCodes: Iterable<string>, destinationCodes: Iterable<string>): RouteEnds | null {
+  const origins = new Set([...originCodes].filter(isStationCode));
+  const destinations = new Set([...destinationCodes].filter(isStationCode));
+  if (!origins.size || !destinations.size) return null;
+  for (const code of origins) if (destinations.has(code)) return null;
+  return { origins, destinations };
+}
+
+/**
+ * Where `train` serves the route: its first stop at one of the origins and its first later stop
+ * at one of the destinations, or null when it does not go from one to the other.
+ */
+function routeStops(train: PunctualityTrain, { origins, destinations }: RouteEnds): [number, number] | null {
+  const boarding = train.codes.findIndex(code => origins.has(code));
+  if (boarding < 0) return null;
+  for (let index = boarding + 1; index < train.stopCount; index++)
+    if (destinations.has(train.codes[index])) return [boarding, index];
+  return null;
+}
+
 /**
  * Every train that stops at one of `originCodes` (its first such stop) and later at one of
  * `destinationCodes`, measured on arrival there against its own limit; the mean delay is weighted
@@ -206,25 +266,17 @@ export function routePunctuality(
   originCodes: Iterable<string>,
   destinationCodes: Iterable<string>
 ): RoutePunctuality | null {
-  const origins = new Set([...originCodes].filter(isStationCode));
-  const destinations = new Set([...destinationCodes].filter(isStationCode));
-  if (!origins.size || !destinations.size) return null;
-  for (const code of origins) if (destinations.has(code)) return null;
+  const ends = routeEnds(originCodes, destinationCodes);
+  if (!ends) return null;
   let trains = 0;
   let samples = 0;
   let onTime = 0;
   let delaySum = 0;
   const limits = new Set<number>();
   for (const train of stats.trains) {
-    const boarding = train.codes.findIndex(code => origins.has(code));
-    if (boarding < 0) continue;
-    let alighting = -1;
-    for (let index = boarding + 1; index < train.stopCount; index++)
-      if (destinations.has(train.codes[index])) {
-        alighting = index;
-        break;
-      }
-    if (alighting < 0) continue;
+    const stops = routeStops(train, ends);
+    if (!stops) continue;
+    const alighting = stops[1];
     const count = train.samples[alighting];
     if (count <= 0) continue;
     trains += 1;
@@ -243,6 +295,133 @@ export function routePunctuality(
     days: stats.coveredDays,
     limits: [...limits].sort((left, right) => left - right),
   };
+}
+
+/** «In the next three hours»: the departures the most-punctual question looks at. */
+export const DEPARTURE_WINDOW_MINUTES = 180;
+/** The best train and up to two more. */
+export const MOST_PUNCTUAL_LIMIT = 3;
+
+/** A moment on the Italian railway clock (Europe/Rome). */
+export type RailClock = {
+  /** Minutes since local midnight, 0–1439. */
+  minuteOfDay: number;
+  /** ISO weekday of the local day: 1 Monday … 7 Sunday. */
+  isoWeekday: number;
+};
+
+const ISO_WEEKDAYS: Readonly<Record<string, number>> = { Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6, Sun: 7 };
+const railClockFormat = new Intl.DateTimeFormat("en-US", {
+  timeZone: "Europe/Rome",
+  weekday: "short",
+  hour: "2-digit",
+  minute: "2-digit",
+  hourCycle: "h23",
+});
+
+/** The Europe/Rome minute of the day and weekday of `instant`, daylight saving included. */
+export function railClock(instant: Date): RailClock {
+  const parts = Object.fromEntries(railClockFormat.formatToParts(instant).map(part => [part.type, part.value]));
+  return {
+    minuteOfDay: (Number(parts.hour) % 24) * 60 + Number(parts.minute),
+    isoWeekday: ISO_WEEKDAYS[parts.weekday] ?? 1,
+  };
+}
+
+/**
+ * A share said «in tenths» or as a percentage, never claiming «always» or «never» when it is
+ * not: all or none on time only when every sample or no sample was.
+ */
+export function boundedShare(part: number, whole: number, scale: number): number {
+  if (whole <= 0 || part <= 0) return 0;
+  if (part >= whole) return scale;
+  return Math.min(scale - 1, Math.max(1, Math.round((part * scale) / whole)));
+}
+
+export type PunctualDeparture = {
+  /** The number as the app shows it ({@link publicTrainNumber}). */
+  number: string;
+  /** Usual departure from the route's origin: the scheduled minute there, 0–1439, of the latest observed day. */
+  minuteOfDay: number;
+  /** Minutes from now to that departure, 0 to {@link DEPARTURE_WINDOW_MINUTES} − 1. */
+  minutesUntil: number;
+  /** Arrivals at the route's destination: samples and how many within the train's own limit. */
+  samples: number;
+  onTime: number;
+  /** On time in tenths (0–10) and in percent, bounded ({@link boundedShare}). */
+  tenths: number;
+  percent: number;
+  limitMinutes: number;
+  meanDelayMinutes: number;
+};
+
+/**
+ * «Qual è il treno più puntuale per casa lavoro?»: the trains of the statistics that stop at one
+ * of `originCodes` and later at one of `destinationCodes` (as {@link routePunctuality}), whose
+ * scheduled minute at that origin (`% 1440`) falls in the {@link DEPARTURE_WINDOW_MINUTES} after
+ * `clock` (past midnight too) and that have at least {@link MIN_SAMPLES} arrivals at the
+ * destination. A train without a scheduled minute there is left out, and so is one whose weekdays
+ * at the origin, when the file lists them, show it does not run on the day of that departure.
+ *
+ * Ranked by on-time share at the destination against each train's own limit (exact, in integers),
+ * then by mean delay there, then by the earlier departure; at most `limit` trains. Null without
+ * codes or when the ends share a code; empty when no such train leaves in the window.
+ */
+export function mostPunctualDepartures(
+  stats: PunctualityStats,
+  originCodes: Iterable<string>,
+  destinationCodes: Iterable<string>,
+  clock: RailClock,
+  limit: number = MOST_PUNCTUAL_LIMIT
+): PunctualDeparture[] | null {
+  const ends = routeEnds(originCodes, destinationCodes);
+  if (!ends) return null;
+  type Candidate = { train: PunctualityTrain; alighting: number; minuteOfDay: number; minutesUntil: number };
+  const candidates: Candidate[] = [];
+  for (const train of stats.trains) {
+    const stops = routeStops(train, ends);
+    if (!stops) continue;
+    const [boarding, alighting] = stops;
+    if (train.samples[alighting] < MIN_SAMPLES) continue;
+    const scheduled = train.scheduledMinute[boarding];
+    if (scheduled < 0) continue;
+    const minuteOfDay = scheduled % MINUTES_PER_DAY;
+    const minutesUntil = (minuteOfDay - clock.minuteOfDay + MINUTES_PER_DAY) % MINUTES_PER_DAY;
+    if (minutesUntil >= DEPARTURE_WINDOW_MINUTES) continue;
+    // The weekdays are those of the run's departure day: a stop reached after midnight belongs to
+    // the run of the day before.
+    const daysAfterToday = clock.minuteOfDay + minutesUntil >= MINUTES_PER_DAY ? 1 : 0;
+    const runDay = daysAfterToday - Math.floor(scheduled / MINUTES_PER_DAY);
+    const runWeekday = ((((clock.isoWeekday - 1 + runDay) % 7) + 7) % 7) + 1;
+    if (!train.mayRunOn(boarding, runWeekday)) continue;
+    candidates.push({ train, alighting, minuteOfDay, minutesUntil });
+  }
+  candidates.sort((left, right) => {
+    const leftSamples = left.train.samples[left.alighting];
+    const rightSamples = right.train.samples[right.alighting];
+    return (
+      right.train.onTime[right.alighting] * leftSamples - left.train.onTime[left.alighting] * rightSamples ||
+      left.train.meanTenths[left.alighting] - right.train.meanTenths[right.alighting] ||
+      left.minutesUntil - right.minutesUntil ||
+      left.train.number.localeCompare(right.train.number) ||
+      left.train.originCode.localeCompare(right.train.originCode)
+    );
+  });
+  return candidates.slice(0, Math.max(0, limit)).map(({ train, alighting, minuteOfDay, minutesUntil }) => {
+    const samples = train.samples[alighting];
+    const onTime = train.onTime[alighting];
+    return {
+      number: publicTrainNumber(train.number),
+      minuteOfDay,
+      minutesUntil,
+      samples,
+      onTime,
+      tenths: boundedShare(onTime, samples, 10),
+      percent: boundedShare(onTime, samples, 100),
+      limitMinutes: train.onTimeLimitMinutes,
+      meanDelayMinutes: shownDelay(train.meanDelayMinutes(alighting)),
+    };
+  });
 }
 
 /* ------------------------------------------------------------------------------------------ */
@@ -384,7 +563,38 @@ export function countAtMost(cumulative: readonly number[], buckets: readonly num
   return low + ((high - low) * (minutes - buckets[bucket])) / (buckets[bucket + 1] - buckets[bucket]);
 }
 
-type CompactStop = { code: string; samples: number; meanTenths: number; onTime: number };
+type CompactStop = {
+  code: string;
+  samples: number;
+  meanTenths: number;
+  onTime: number;
+  scheduledMinute: number;
+  weekdays: number;
+};
+
+/**
+ * The weekdays with samples of a stop's seven `[samples, le5, le15]` triples (Monday … Sunday), as
+ * {@link PunctualityTrain.weekdays}; 0 for `null`, an absent element or one that does not add up
+ * (the element is optional, so it never costs the train). The pipeline counts every sample of the
+ * stop in its weekday; a file whose triples cover only part of the samples (the format allows it)
+ * cannot say that a train never runs on a day, so it gives 0 too.
+ */
+function weekdayMask(value: unknown, samples: number): number {
+  if (!Array.isArray(value) || value.length !== 7) return 0;
+  let mask = WEEKDAYS_KNOWN;
+  let total = 0;
+  for (const [day, triple] of value.entries()) {
+    if (!Array.isArray(triple) || triple.length !== 3) return 0;
+    const [count, withinFive, withinFifteen] = triple as unknown[];
+    const daySamples = intIn(count, 0, samples);
+    const five = intIn(withinFive, 0, samples);
+    const fifteen = intIn(withinFifteen, 0, samples);
+    if (daySamples === undefined || five === undefined || fifteen === undefined || five > fifteen || fifteen > daySamples) return 0;
+    total += daySamples;
+    if (daySamples > 0) mask |= 1 << day;
+  }
+  return total === samples ? mask : 0;
+}
 
 function compactStop(
   value: unknown,
@@ -394,8 +604,9 @@ function compactStop(
   codes: Map<string, string>
 ): CompactStop | null {
   if (!Array.isArray(value) || value.length < 4) return null;
-  // Later elements (suppressions, max delay, scheduled minute, platform, weekdays) are not spoken.
-  const [rawCode, rawSamples, mean, cumulative, suppressed] = value as unknown[];
+  // The max delay and the platform are not spoken; the scheduled minute (element 6) and the
+  // weekdays (element 8) choose the trains of the most-punctual question.
+  const [rawCode, rawSamples, mean, cumulative, suppressed, , rawScheduled, , rawWeekdays] = value as unknown[];
   const code = shortText(rawCode);
   const samples = intIn(rawSamples, 0, limits.maxCount);
   if (code === undefined || samples === undefined) return null;
@@ -410,7 +621,14 @@ function compactStop(
   const onTime = Math.min(samples, Math.max(0, Math.floor(countAtMost(cumulative as number[], buckets, limit) + 1e-9)));
   const interned = codes.get(code) ?? code;
   codes.set(interned, interned);
-  return { code: interned, samples, meanTenths: Math.round(mean * 10), onTime };
+  return {
+    code: interned,
+    samples,
+    meanTenths: Math.round(mean * 10),
+    onTime,
+    scheduledMinute: intIn(rawScheduled, 0, MAX_SCHEDULED_MINUTE - 1) ?? NO_SCHEDULED_MINUTE,
+    weekdays: weekdayMask(rawWeekdays, samples),
+  };
 }
 
 function compactTrain(
@@ -445,7 +663,9 @@ function compactTrain(
     stops.map(stop => stop.code),
     Uint16Array.from(stops, stop => stop.samples),
     Uint16Array.from(stops, stop => stop.onTime),
-    Int16Array.from(stops, stop => stop.meanTenths)
+    Int16Array.from(stops, stop => stop.meanTenths),
+    Int16Array.from(stops, stop => stop.scheduledMinute),
+    Uint8Array.from(stops, stop => stop.weekdays)
   );
 }
 

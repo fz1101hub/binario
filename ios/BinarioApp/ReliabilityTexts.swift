@@ -73,6 +73,29 @@ enum ReliabilityTexts {
         String.localizedStringWithFormat(NSLocalizedString("result.route.hour_band", comment: ""), band.startHour, band.endHour)
     }
 
+    /// «Più puntuale: REG 16000 delle 08:12» and «in orario 9 volte su 10»: the parts of the line
+    /// under a train often late at the destination, naming the suggested train as its row does.
+    static func alternativeParts(_ alternative: ResultAlternative) -> [String] {
+        let service = alternative.service
+        return [
+            String.localizedStringWithFormat(
+                NSLocalizedString("result.alternative.train", comment: ""),
+                ReliableAlternatives.trainLabel(service),
+                service.scheduledDeparture
+            ),
+            String.localizedStringWithFormat(
+                NSLocalizedString("result.alternative.on_time", comment: ""),
+                alternative.stop.onTime,
+                alternative.stop.samples
+            ),
+        ]
+    }
+
+    /// «Mostra il treno delle 08:12»: what a tap on the line does, read by VoiceOver.
+    static func alternativeOpen(_ alternative: ResultAlternative) -> String {
+        String.localizedStringWithFormat(NSLocalizedString("result.alternative.open", comment: ""), alternative.service.scheduledDeparture)
+    }
+
     // MARK: Detail
 
     /// «Affidabilità ultimi 30 giorni».

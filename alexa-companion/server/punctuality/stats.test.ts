@@ -1,25 +1,36 @@
 import { describe, expect, it } from "vitest";
 import {
+  boundedShare,
   countAtMost,
   DEFAULT_PUNCTUALITY_LIMITS,
+  mostPunctualDepartures,
+  NO_SCHEDULED_MINUTE,
   onTimeLimitMinutes,
   parsePunctualityStats,
+  publicTrainNumber,
+  railClock,
   routePunctuality,
   trainNumberKey,
   trainPunctuality,
+  type RailClock,
 } from "./stats";
 import {
+  arrivals,
   BUCKETS,
+  departure,
+  departuresDocument,
   FIRENZE_SMN,
   type FixtureStop,
   fixtureTrain,
   GUIDONIA,
   MILANO_CENTRALE,
+  MONDAY_MORNING,
   networkDocument,
   ROMA_TERMINI,
   statsDocument,
   stopFromDelays,
   TIVOLI,
+  weekdaysOnTime,
 } from "./testFixtures";
 
 function network() {
@@ -73,6 +84,40 @@ describe("statistics reader", () => {
     expect(trainNumberKey("09558")).toBe("9558");
     expect(trainNumberKey(" ab c ")).toBe("ABC");
     expect(network().trainsNumbered("FR 9558")).toHaveLength(2);
+  });
+
+  it("knows a Trenord train by the run after its line, as the app does", () => {
+    expect(publicTrainNumber("RE_11 - 2153")).toBe("2153");
+    expect(publicTrainNumber("S9 - 25012")).toBe("25012");
+    expect(publicTrainNumber(" 2153 ")).toBe("2153");
+    expect(publicTrainNumber("RE_11 - ")).toBe("RE_11 -");
+    expect(trainNumberKey("RE_11 - 2153")).toBe("2153");
+    expect(trainNumberKey("2153")).toBe("2153");
+  });
+
+  it("keeps the scheduled minute (element 6) and the weekdays (element 8) of each stop, tolerating their absence", () => {
+    const stats = parsePunctualityStats(
+      statsDocument([
+        departure("1", "REG", 1450, arrivals(14, 14), weekdaysOnTime([2, 2, 2, 2, 2, 2, 2])),
+        departure("2", "REG", null, arrivals(5, 5)),
+        fixtureTrain("3", ROMA_TERMINI, "REG", 5, 0, [stopFromDelays(ROMA_TERMINI, [0, 0, 0, 0, 0]), stopFromDelays(TIVOLI, [0, 0, 0, 0, 0], [0, 0, 600])]),
+        // Not a minute (out of the three days, a fraction, a string) or weekdays that do not add up: unknown, the train stays.
+        departure("4", "REG", 4320, arrivals(14, 14), weekdaysOnTime([2, 2, 2, 2, 2, 2, 1])),
+        departure("5", "REG", 61.5, arrivals(14, 14), [[2, 3, 2], [2, 2, 2], [2, 2, 2], [2, 2, 2], [2, 2, 2], [2, 2, 2], [2, 2, 2]]),
+        departure("6", "REG", "08:12" as unknown as number, arrivals(14, 14), "every day"),
+      ])
+    )!;
+    const [one, two, three, four, five, six] = stats.trains;
+    expect(Array.from(one.scheduledMinute)).toEqual([1450, 1490]);
+    expect(one.weekdays[0]).toBe(0xff);
+    expect(one.weekdays[1]).toBe(0);
+    expect(Array.from(two.scheduledMinute)).toEqual([NO_SCHEDULED_MINUTE, NO_SCHEDULED_MINUTE]);
+    expect(Array.from(three.scheduledMinute)).toEqual([NO_SCHEDULED_MINUTE, 600]);
+    for (const train of [four, five, six]) {
+      expect(train.scheduledMinute[0], train.number).toBe(NO_SCHEDULED_MINUTE);
+      expect(train.weekdays[0], train.number).toBe(0);
+      expect(train.mayRunOn(0, 7), train.number).toBe(true);
+    }
   });
 
   it("leaves out a train whose fields do not add up and keeps the others", () => {
@@ -213,5 +258,155 @@ describe("route punctuality", () => {
   it("covers only the days the window really has", () => {
     const stats = network();
     expect(stats.coveredDays).toBe(28);
+  });
+});
+
+describe("most punctual departures", () => {
+  const clockAt = (hours: number, minutes: number, isoWeekday = 1): RailClock => ({ minuteOfDay: hours * 60 + minutes, isoWeekday });
+  const numbers = (result: ReturnType<typeof mostPunctualDepartures>) => result?.map(train => train.number);
+  const departures = () => parsePunctualityStats(departuresDocument())!;
+
+  it("reads the Italian clock, winter and summer time, with the weekday", () => {
+    expect(railClock(new Date(MONDAY_MORNING))).toEqual({ minuteOfDay: 7 * 60 + 30, isoWeekday: 1 });
+    expect(railClock(new Date("2026-11-08T22:30:00Z"))).toEqual({ minuteOfDay: 23 * 60 + 30, isoWeekday: 7 });
+    expect(railClock(new Date("2026-07-05T21:45:00Z"))).toEqual({ minuteOfDay: 23 * 60 + 45, isoWeekday: 7 });
+    // The night the clocks go forward: 01:30 CET, then 03:30 CEST an hour later.
+    expect(railClock(new Date("2026-03-29T00:30:00Z")).minuteOfDay).toBe(90);
+    expect(railClock(new Date("2026-03-29T01:30:00Z")).minuteOfDay).toBe(210);
+    expect(railClock(new Date("2026-11-09T23:00:00Z"))).toEqual({ minuteOfDay: 0, isoWeekday: 2 });
+  });
+
+  it("keeps the trains leaving the origin in the next three hours with five arrivals or more, best first, three at most", () => {
+    const result = mostPunctualDepartures(departures(), [ROMA_TERMINI], [TIVOLI], clockAt(7, 30));
+    expect(result).toEqual([
+      { number: "2157", minuteOfDay: 492, minutesUntil: 42, samples: 10, onTime: 9, tenths: 9, percent: 90, limitMinutes: 15, meanDelayMinutes: 5 },
+      { number: "2161", minuteOfDay: 552, minutesUntil: 102, samples: 10, onTime: 8, tenths: 8, percent: 80, limitMinutes: 15, meanDelayMinutes: 7 },
+      { number: "2165", minuteOfDay: 612, minutesUntil: 162, samples: 10, onTime: 7, tenths: 7, percent: 70, limitMinutes: 15, meanDelayMinutes: 10 },
+    ]);
+    expect(numbers(mostPunctualDepartures(departures(), [ROMA_TERMINI], [TIVOLI], clockAt(7, 30), 10))).toEqual(["2157", "2161", "2165", "2169"]);
+  });
+
+  it("includes a train leaving now and leaves out one leaving exactly three hours later", () => {
+    const stats = parsePunctualityStats(statsDocument([departure("1", "REG", 600, arrivals(5, 5)), departure("2", "REG", 780, arrivals(5, 5))]))!;
+    expect(numbers(mostPunctualDepartures(stats, [ROMA_TERMINI], [TIVOLI], clockAt(10, 0)))).toEqual(["1"]);
+    expect(numbers(mostPunctualDepartures(stats, [ROMA_TERMINI], [TIVOLI], clockAt(10, 1)))).toEqual(["2"]);
+    expect(numbers(mostPunctualDepartures(stats, [ROMA_TERMINI], [TIVOLI], clockAt(13, 1)))).toEqual([]);
+  });
+
+  it("wraps past midnight, reading scheduled minutes beyond 1439 as the next day's", () => {
+    const stats = parsePunctualityStats(
+      statsDocument([
+        departure("late", "REG", 1430, arrivals(5, 5)),
+        departure("after-midnight", "REG", 1450, arrivals(5, 4)),
+        departure("early", "REG", 60, arrivals(5, 3)),
+        departure("too-early", "REG", 140, arrivals(5, 5)),
+        departure("gone", "REG", 1300, arrivals(5, 5)),
+      ])
+    )!;
+    const result = mostPunctualDepartures(stats, [ROMA_TERMINI], [TIVOLI], clockAt(23, 0), 10);
+    expect(result?.map(train => [train.number, train.minuteOfDay, train.minutesUntil])).toEqual([
+      ["late", 1430, 50],
+      ["after-midnight", 10, 70],
+      ["early", 60, 120],
+    ]);
+  });
+
+  it("leaves out trains without a scheduled minute at the origin and below five arrivals at the destination", () => {
+    const stats = parsePunctualityStats(
+      statsDocument([
+        departure("none", "REG", null, arrivals(30, 30)),
+        departure("four", "REG", 500, arrivals(4, 4)),
+        departure("five", "REG", 500, arrivals(5, 1)),
+        // Scheduled minutes only at the destination: the departure is unknown.
+        fixtureTrain("arrival-only", ROMA_TERMINI, "REG", 5, 0, [stopFromDelays(ROMA_TERMINI, [0, 0, 0, 0, 0]), stopFromDelays(TIVOLI, [0, 0, 0, 0, 0], [0, 0, 520])]),
+      ])
+    )!;
+    expect(numbers(mostPunctualDepartures(stats, [ROMA_TERMINI], [TIVOLI], clockAt(8, 0)))).toEqual(["five"]);
+  });
+
+  it("ranks by on-time share in exact integers, then mean delay, then the earlier departure", () => {
+    const stats = parsePunctualityStats(
+      statsDocument([
+        // 7 of 10 and 14 of 20: the same share; the mean delay decides, then the departure.
+        departure("later-same", "REG", 560, [...Array(14).fill(2), ...Array(6).fill(40)]),
+        departure("earlier-same", "REG", 520, [...Array(7).fill(2), ...Array(3).fill(40)]),
+        departure("lower-mean", "REG", 590, [...Array(7).fill(0), ...Array(3).fill(30)]),
+        // 2 of 3 rounds like 7 of 10 but is less: it comes after them.
+        departure("two-thirds", "REG", 500, [...Array(4).fill(0), ...Array(2).fill(20)]),
+        departure("best", "REG", 600, arrivals(6, 6)),
+      ])
+    )!;
+    expect(numbers(mostPunctualDepartures(stats, [ROMA_TERMINI], [TIVOLI], clockAt(8, 0), 10))).toEqual([
+      "best",
+      "lower-mean",
+      "earlier-same",
+      "later-same",
+      "two-thirds",
+    ]);
+  });
+
+  it("measures each train against its own limit: 5 minutes for high speed, 15 for the others and Trenord", () => {
+    const sixMinutes = Array(10).fill(6);
+    const stats = parsePunctualityStats(
+      statsDocument([
+        departure("9530", "FR", 480, sixMinutes),
+        departure("8901", "ITALO", 490, sixMinutes),
+        departure("2301", "REG", 500, sixMinutes),
+        departure("RE_11 - 2153", "RE", 510, sixMinutes),
+        departure("25012", "S", 520, sixMinutes),
+      ])
+    )!;
+    const result = mostPunctualDepartures(stats, [ROMA_TERMINI], [TIVOLI], clockAt(8, 0), 10)!;
+    expect(result.map(train => [train.number, train.limitMinutes, train.tenths])).toEqual([
+      ["2301", 15, 10],
+      ["2153", 15, 10],
+      ["25012", 15, 10],
+      ["9530", 5, 0],
+      ["8901", 5, 0],
+    ]);
+  });
+
+  it("leaves out a train whose weekdays show it does not run on the day of the departure", () => {
+    const weekend = weekdaysOnTime([0, 0, 0, 0, 0, 8, 8]);
+    const stats = parsePunctualityStats(
+      statsDocument([
+        departure("weekend", "REG", 510, arrivals(16, 16), weekend),
+        // Reached after midnight: Saturday's run reaches the origin on Sunday at 00:20.
+        departure("night", "REG", 1460, arrivals(16, 16), weekdaysOnTime([0, 0, 0, 0, 0, 16, 0])),
+        departure("daily", "REG", 520, arrivals(10, 5)),
+      ])
+    )!;
+    const at = (hours: number, minutes: number, weekday: number) =>
+      numbers(mostPunctualDepartures(stats, [ROMA_TERMINI], [TIVOLI], clockAt(hours, minutes, weekday), 10));
+    expect(at(8, 0, 1)).toEqual(["daily"]);
+    expect(at(8, 0, 6)).toEqual(["weekend", "daily"]);
+    expect(at(8, 0, 7)).toEqual(["weekend", "daily"]);
+    // Saturday 23:30: the 00:20 departure is on Sunday, of Saturday's run.
+    expect(at(23, 30, 6)).toEqual(["night"]);
+    // Sunday 00:10: still Saturday's run.
+    expect(at(0, 10, 7)).toEqual(["night"]);
+    expect(at(0, 10, 1)).toEqual([]);
+  });
+
+  it("matches the route as the route's punctuality does, and says nothing without codes", () => {
+    const stats = departures();
+    expect(mostPunctualDepartures(stats, [TIVOLI], [ROMA_TERMINI], clockAt(7, 30))).toEqual([]);
+    expect(mostPunctualDepartures(stats, [ROMA_TERMINI, "S99999"], [TIVOLI], clockAt(7, 30))).toHaveLength(3);
+    expect(mostPunctualDepartures(stats, [ROMA_TERMINI], [ROMA_TERMINI], clockAt(7, 30))).toBeNull();
+    expect(mostPunctualDepartures(stats, [], [TIVOLI], clockAt(7, 30))).toBeNull();
+    expect(mostPunctualDepartures(stats, ["Roma Termini"], [TIVOLI], clockAt(7, 30))).toBeNull();
+    // A file of before the 4 November extension has no scheduled minutes: no train to propose.
+    expect(mostPunctualDepartures(network(), [ROMA_TERMINI], [TIVOLI], clockAt(7, 30))).toEqual([]);
+  });
+
+  it("never says always or never unless every or no arrival was on time", () => {
+    expect(boundedShare(29, 30, 10)).toBe(9);
+    expect(boundedShare(30, 30, 10)).toBe(10);
+    expect(boundedShare(1, 30, 10)).toBe(1);
+    expect(boundedShare(0, 30, 10)).toBe(0);
+    expect(boundedShare(8, 10, 10)).toBe(8);
+    expect(boundedShare(17, 20, 10)).toBe(9);
+    expect(boundedShare(199, 200, 100)).toBe(99);
+    expect(boundedShare(0, 0, 10)).toBe(0);
   });
 });

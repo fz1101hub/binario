@@ -55,14 +55,15 @@ import { isAlexaConfigured } from "./config";
 import { needsAccountLink } from "./guards";
 import { parseOAuthAuthorizationParameters } from "./oauthContract";
 import { escapeSsmlText, liveDataUnavailableSpeech, plainSpeechText } from "./speech";
-import { parseScreenEvent, screenResponseInterceptor, setScreen } from "./presentation";
+import { parseScreenEvent, requestTime, screenResponseInterceptor, setScreen, type RouteAction } from "./presentation";
 import { alexaRequestLogContext } from "./requestLog";
 import { matchRouteByName } from "./routeMatching";
 import { punctualityStats, railStationIndex } from "../punctuality/source";
-import { routePunctuality, trainPunctuality } from "../punctuality/stats";
+import { mostPunctualDepartures, railClock, routePunctuality, trainPunctuality } from "../punctuality/stats";
 import {
   answerText,
   joinSentences,
+  mostPunctualAnswer,
   routeAnswer,
   trainAnswer,
   unavailableAnswer,
@@ -76,6 +77,7 @@ export const HANDLED_INTENTS = [
   "MyRoutesIntent",
   "TrainPunctualityIntent",
   "RoutePunctualityIntent",
+  "MostPunctualTrainIntent",
   "AMAZON.HelpIntent",
   "AMAZON.StopIntent",
   "AMAZON.CancelIntent",
@@ -181,7 +183,7 @@ type RouteSelection =
   | { ambiguous: PersonalRoute[] }
   | undefined;
 
-type RoutePurpose = "nextTrains" | "punctuality";
+type RoutePurpose = RouteAction;
 type RouteSelector = (namedRoutes: PersonalRoute[], locale: SupportedLocale) => RouteSelection;
 
 /**
@@ -293,8 +295,8 @@ function askWhichRoute(
   const locale = getAlexaLocale(input);
   const messages = messagesForLocale(locale).voice;
   // The example must be a sample of the intent the user is in, so the answer reaches it again.
-  const choiceTemplate =
-    purpose === "punctuality" ? messagesForLocale(locale).punctuality.routeChoice : messages.routeChoice;
+  const p = messagesForLocale(locale).punctuality;
+  const choiceTemplate = { nextTrains: messages.routeChoice, punctuality: p.routeChoice, mostPunctual: p.mostPunctualRouteChoice }[purpose];
   const spoken = candidates.slice(0, SPOKEN_ROUTE_LIMIT);
   const remainingCount = Math.max(candidates.length - SPOKEN_ROUTE_LIMIT, 0);
   const list = spokenRouteList(locale, spoken);
@@ -415,6 +417,7 @@ function punctualityResponse(
     ...subject,
     message: joinSentences(written.sentences),
     figures: written.figures,
+    trains: written.trains,
     windowEnd,
   });
   return input.responseBuilder
@@ -492,6 +495,49 @@ const routePunctualityHandler: RequestHandler = {
   handle: input => respondRoutePunctuality(input, spokenRouteSelector(input)),
 };
 
+/**
+ * «Qual è il treno più puntuale per casa lavoro?»: among the trains of the statistics from the
+ * saved route's origin to its destination (as the route's punctuality), those that usually leave
+ * the origin in the next three hours, Italian time, best on-time share first. Needs the account
+ * link like every route question; the stations stay on the server and nothing is logged.
+ */
+async function respondMostPunctual(
+  input: HandlerInput,
+  select: RouteSelector,
+  onMissing?: () => Promise<SkillResponse>
+) {
+  const locale = getAlexaLocale(input);
+  const principal = await getLinkedUser(input);
+  if (!principal) return linkRequiredResponse(input);
+  const [stats, stations] = await Promise.all([punctualityStats(), railStationIndex()]);
+  if (!stats || !stations)
+    return punctualityResponse(input, () => unavailableAnswer(locale), { about: "route" }, stats?.windowEnd);
+  const selected = await selectedRoute(input, principal, select, "mostPunctual", onMissing);
+  if ("response" in selected) return selected.response;
+  const { route } = selected;
+  const origins = stations.codesFor(route.origin);
+  const destinations = stations.codesFor(route.destination);
+  const trains = origins.length && destinations.length
+    ? mostPunctualDepartures(stats, origins, destinations, railClock(requestTime(input)))
+    : null;
+  const outcome = !origins.length || !destinations.length
+    ? ({ kind: "stationsUnknown" } as const)
+    : trains?.length
+      ? ({ kind: "trains", trains } as const)
+      : ({ kind: "none" } as const);
+  return punctualityResponse(
+    input,
+    text => mostPunctualAnswer(locale, route.name, outcome, text),
+    { about: "route", routeName: route.name },
+    stats.windowEnd
+  );
+}
+
+const mostPunctualTrainHandler: RequestHandler = {
+  canHandle: input => isIntent(input, "MostPunctualTrainIntent"),
+  handle: input => respondMostPunctual(input, spokenRouteSelector(input)),
+};
+
 const myRoutesHandler: RequestHandler = {
   canHandle: input =>
     getRequestType(input.requestEnvelope) === "IntentRequest" &&
@@ -499,9 +545,17 @@ const myRoutesHandler: RequestHandler = {
   handle: input => respondMyRoutes(input),
 };
 
+const ROUTE_RESPONDERS: Readonly<
+  Record<RouteAction, (input: HandlerInput, select: RouteSelector, onMissing?: () => Promise<SkillResponse>) => Promise<SkillResponse>>
+> = {
+  nextTrains: respondNextTrains,
+  punctuality: respondRoutePunctuality,
+  mostPunctual: respondMostPunctual,
+};
+
 /**
  * Touches on the Echo Show document. Each event is re-authorised exactly like a voice request
- * (the access token travels with it), and only the three allowlisted actions are accepted.
+ * (the access token travels with it), and only the four allowlisted actions are accepted.
  */
 const screenEventHandler: RequestHandler = {
   canHandle: input =>
@@ -510,7 +564,7 @@ const screenEventHandler: RequestHandler = {
     const event = parseScreenEvent(input.requestEnvelope.request);
     if (!event) return unsupportedResponse(input);
     if (event.action === "myRoutes") return respondMyRoutes(input);
-    const respond = event.action === "punctuality" ? respondRoutePunctuality : respondNextTrains;
+    const respond = ROUTE_RESPONDERS[event.action];
     const { routeName } = event;
     if (!routeName)
       return respond(
@@ -617,6 +671,7 @@ export function createAlexaSkill() {
       myRoutesHandler,
       trainPunctualityHandler,
       routePunctualityHandler,
+      mostPunctualTrainHandler,
       screenEventHandler,
       fallbackHandler
     )

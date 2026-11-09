@@ -8,8 +8,9 @@ import androidx.work.ExistingWorkPolicy
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
+import it.binario.app.FavouriteTrainPunctuality
 import it.binario.app.FavouriteTrainStore
-import it.binario.app.PunctualityHistory
+import it.binario.app.LocalPunctuality
 import it.binario.app.PunctualityHistoryStore
 import it.binario.app.PunctualityObservation
 import it.binario.app.R
@@ -29,15 +30,9 @@ import java.time.format.FormatStyle
 import java.time.temporal.TemporalAdjusters
 import java.util.Locale
 import java.util.concurrent.TimeUnit
-import kotlin.math.roundToInt
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-
-/** The runs of one train recorded on this phone over some days: how many, how many on time, cancelled. */
-data class LocalPunctuality(val runs: Int, val onTime: Int, val cancelled: Int) {
-    val onTimePercent: Int get() = if (runs > 0) (onTime * 100.0 / runs).roundToInt() else 0
-}
 
 /**
  * One favourite train in the weekly digest: its runs recorded this week and in the four weeks before, and its
@@ -104,7 +99,10 @@ object WeeklyDigestPlanner {
     fun weekStart(weekEnd: LocalDate): LocalDate = weekEnd.minusDays(6)
 }
 
-/** Pure rules of the digest: what each favourite train did, and which one got worse. */
+/**
+ * Pure rules of the digest: what each favourite train did ([FavouriteTrainPunctuality.local], shared with «Affidabilità
+ * dei miei treni» in Per te), and which one got worse.
+ */
 object WeeklyDigestBuilder {
     /** The earlier weeks compared with this one. */
     const val EARLIER_DAYS = 28L
@@ -112,17 +110,6 @@ object WeeklyDigestBuilder {
     const val MIN_EARLIER_RUNS = 3
     /** A drop of at least this many percentage points names the train. */
     const val MIN_DROP_POINTS = 20
-
-    fun punctuality(history: List<PunctualityObservation>, trainNumber: String, from: LocalDate, to: LocalDate): LocalPunctuality? {
-        val key = PunctualityHistory.trainKey(trainNumber)
-        val runs = history.filter { it.trainNumber == key && !it.serviceDate.isBefore(from) && !it.serviceDate.isAfter(to) }
-        if (runs.isEmpty()) return null
-        return LocalPunctuality(
-            runs = runs.size,
-            onTime = runs.count { !it.cancelled && it.delayMinutes <= PunctualityHistory.ON_TIME_MINUTES },
-            cancelled = runs.count { it.cancelled }
-        )
-    }
 
     /**
      * The digest of the week ending on [weekEnd], or null when no favourite train has anything to show (no run recorded
@@ -138,8 +125,8 @@ object WeeklyDigestBuilder {
         val trains = monitors.map { monitor ->
             DigestTrain(
                 monitor = monitor,
-                week = punctuality(history, monitor.number, weekStart, weekEnd),
-                earlier = punctuality(history, monitor.number, weekStart.minusDays(EARLIER_DAYS), weekStart.minusDays(1)),
+                week = FavouriteTrainPunctuality.local(history, monitor.number, weekStart, weekEnd),
+                earlier = FavouriteTrainPunctuality.local(history, monitor.number, weekStart.minusDays(EARLIER_DAYS), weekStart.minusDays(1)),
                 network = network(monitor)
             )
         }.filter { it.week != null || it.network != null }
@@ -291,7 +278,7 @@ class WeeklyDigestWorker(appContext: Context, params: WorkerParameters) : Corout
         if (monitors.isEmpty()) return
         val history = PunctualityHistoryStore(context).read()
         val stats = NetworkReliabilityRepository.load(context)
-        val codes = monitors.associate { it.number to it.origin.takeIf(String::isNotBlank)?.let { origin -> CatalogueStationCodes.code(context, origin) } }
+        val codes = CatalogueStationCodes.originCodes(context, monitors)
         val digest = WeeklyDigestBuilder.build(monitors, history, weekEnd) { monitor ->
             stats?.let { ReliabilityMarks.favourite(it, monitor.number, codes[monitor.number]) }
         } ?: return
