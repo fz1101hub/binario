@@ -1499,6 +1499,14 @@
         <item quantity="other">tepat waktu %1$d dari %2$d kali</item>
     </plurals>
     <string name="reliability_alternative_open">Tampilkan kereta pukul %1$s</string>
+    <string name="my_trains_reliability_title">Keandalan kereta saya</string>
+    <string name="my_trains_reliability_description">30 hari terakhir, di jaringan dan pada perjalanan yang tercatat di ponsel ini; tren membandingkan 4 minggu terakhir dengan 4 minggu sebelumnya. Ketuk kereta untuk membukanya.</string>
+    <plurals name="my_trains_reliability_personal">
+        <item quantity="other">Dalam perjalanan Anda: tepat waktu %1$d dari %2$d kali</item>
+    </plurals>
+    <string name="my_trains_reliability_worse">Memburuk</string>
+    <string name="my_trains_reliability_better">Membaik</string>
+    <string name="my_trains_reliability_no_data">Belum ada data</string>
     <!-- Route results: «Più presto» / «Più tardi», empty searched window, RFI «RITARDO» without minutes -->
     <string name="results_earlier">Sebelumnya</string>
     <string name="results_later">Berikutnya</string>

@@ -1551,6 +1551,15 @@
         <item quantity="other">%2$d में से %1$d बार समय पर</item>
     </plurals>
     <string name="reliability_alternative_open">%1$s बजे की ट्रेन दिखाएँ</string>
+    <string name="my_trains_reliability_title">मेरी ट्रेनों की विश्वसनीयता</string>
+    <string name="my_trains_reliability_description">पिछले 30 दिन, नेटवर्क पर और इस फ़ोन पर दर्ज यात्राओं में; रुझान पिछले 4 सप्ताहों की तुलना उनसे पहले के 4 सप्ताहों से करता है। खोलने के लिए किसी ट्रेन पर टैप करें।</string>
+    <plurals name="my_trains_reliability_personal">
+        <item quantity="one">आपकी यात्राओं में: %2$d में से %1$d बार समय पर</item>
+        <item quantity="other">आपकी यात्राओं में: %2$d में से %1$d बार समय पर</item>
+    </plurals>
+    <string name="my_trains_reliability_worse">बिगड़ रही है</string>
+    <string name="my_trains_reliability_better">सुधर रही है</string>
+    <string name="my_trains_reliability_no_data">अभी कोई डेटा नहीं</string>
     <!-- Route results: «Più presto» / «Più tardi», empty searched window, RFI «RITARDO» without minutes -->
     <string name="results_earlier">पहले के</string>
     <string name="results_later">बाद के</string>

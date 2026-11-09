@@ -1499,6 +1499,14 @@
         <item quantity="other">%2$d회 중 %1$d회 정시</item>
     </plurals>
     <string name="reliability_alternative_open">%1$s 출발 열차 보기</string>
+    <string name="my_trains_reliability_title">내 열차 신뢰도</string>
+    <string name="my_trains_reliability_description">최근 30일 동안 네트워크 전체와 이 휴대전화에 기록된 운행 기준입니다. 추세는 최근 4주를 그 이전 4주와 비교합니다. 열차를 탭하면 열립니다.</string>
+    <plurals name="my_trains_reliability_personal">
+        <item quantity="other">내 기록: %2$d회 중 %1$d회 정시</item>
+    </plurals>
+    <string name="my_trains_reliability_worse">나빠지는 중</string>
+    <string name="my_trains_reliability_better">좋아지는 중</string>
+    <string name="my_trains_reliability_no_data">아직 데이터 없음</string>
     <!-- Route results: «Più presto» / «Più tardi», empty searched window, RFI «RITARDO» without minutes -->
     <string name="results_earlier">이전 시간</string>
     <string name="results_later">이후 시간</string>

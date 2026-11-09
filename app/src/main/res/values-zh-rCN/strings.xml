@@ -1522,6 +1522,14 @@
         <item quantity="other">%2$d 次中准点 %1$d 次</item>
     </plurals>
     <string name="reliability_alternative_open">显示 %1$s 出发的列车</string>
+    <string name="my_trains_reliability_title">我的列车可靠性</string>
+    <string name="my_trains_reliability_description">最近 30 天在路网上以及本手机记录的车次中的准点情况；趋势将最近 4 周与之前 4 周进行比较。点按列车即可打开。</string>
+    <plurals name="my_trains_reliability_personal">
+        <item quantity="other">你的记录：%2$d 次中准点 %1$d 次</item>
+    </plurals>
+    <string name="my_trains_reliability_worse">正在变差</string>
+    <string name="my_trains_reliability_better">正在改善</string>
+    <string name="my_trains_reliability_no_data">暂无数据</string>
     <!-- Route results: «Più presto» / «Più tardi», empty searched window, RFI «RITARDO» without minutes -->
     <string name="results_earlier">更早</string>
     <string name="results_later">更晚</string>

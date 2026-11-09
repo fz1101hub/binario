@@ -1627,6 +1627,17 @@
         <item quantity="other">in orario %1$d volte su %2$d</item>
     </plurals>
     <string name="reliability_alternative_open">Mostra il treno delle %1$s</string>
+    <!-- «Affidabilità dei miei treni» in Per te: network statistics and punctuality history of the favourite trains -->
+    <string name="my_trains_reliability_title">Affidabilità dei miei treni</string>
+    <string name="my_trains_reliability_description">Ultimi 30 giorni, sulla rete e nelle corse registrate su questo telefono; l’andamento confronta le ultime 4 settimane con le 4 precedenti. Tocca un treno per aprirlo.</string>
+    <plurals name="my_trains_reliability_personal">
+        <item quantity="one">Nei tuoi viaggi: in orario %1$d volta su %2$d</item>
+        <item quantity="many">Nei tuoi viaggi: in orario %1$d volte su %2$d</item>
+        <item quantity="other">Nei tuoi viaggi: in orario %1$d volte su %2$d</item>
+    </plurals>
+    <string name="my_trains_reliability_worse">In peggioramento</string>
+    <string name="my_trains_reliability_better">In miglioramento</string>
+    <string name="my_trains_reliability_no_data">Ancora nessun dato</string>
     <!-- Route results: «Più presto» / «Più tardi», empty searched window, RFI «RITARDO» without minutes -->
     <string name="results_earlier">Più presto</string>
     <string name="results_later">Più tardi</string>

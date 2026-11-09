@@ -1499,6 +1499,14 @@
         <item quantity="other">%2$d 回中 %1$d 回定刻</item>
     </plurals>
     <string name="reliability_alternative_open">%1$s 発の列車を表示</string>
+    <string name="my_trains_reliability_title">マイ列車の信頼性</string>
+    <string name="my_trains_reliability_description">直近 30 日間の、ネットワーク全体とこのスマートフォンに記録された運行の定時状況です。傾向は直近 4 週間をその前の 4 週間と比べます。タップすると列車が開きます。</string>
+    <plurals name="my_trains_reliability_personal">
+        <item quantity="other">あなたの記録：%2$d 回中 %1$d 回定刻</item>
+    </plurals>
+    <string name="my_trains_reliability_worse">悪化傾向</string>
+    <string name="my_trains_reliability_better">改善傾向</string>
+    <string name="my_trains_reliability_no_data">まだデータがありません</string>
     <!-- Route results: «Più presto» / «Più tardi», empty searched window, RFI «RITARDO» without minutes -->
     <string name="results_earlier">より早い時間</string>
     <string name="results_later">より遅い時間</string>
