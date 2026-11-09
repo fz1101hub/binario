@@ -22,6 +22,14 @@ internal enum class LiveChannel(val id: String, val nameRes: Int, val descriptio
     TRAIN_ALERTS("binario_train_alerts", R.string.train_alerts_channel_name, R.string.train_alerts_channel_description, NotificationManager.IMPORTANCE_DEFAULT),
     STRIKES("binario_strikes", R.string.strike_reminder_channel_name, R.string.strike_reminder_channel_description, NotificationManager.IMPORTANCE_DEFAULT),
 
+    /** The evening works alert of the saved routes: the same importance as the strike reminder, the day before. */
+    ROUTE_WORKS(
+        "binario_route_works",
+        R.string.route_works_alert_channel_name,
+        R.string.route_works_alert_channel_description,
+        NotificationManager.IMPORTANCE_DEFAULT
+    ),
+
     /** Cancellation, platform change or connection at risk on the followed trip: with sound, once per change. */
     FOLLOWED_TRIP_ALERTS(
         "binario_followed_trip_alerts",
@@ -52,6 +60,10 @@ internal object LiveNotifications {
     const val STRIKE_ID = 0x5EA2
     const val FOLLOWED_TRIP_ALERT_ID = 0x5EA3
     const val WEEKLY_DIGEST_ID = 0x5EA4
+    const val ROUTE_WORKS_ID = 0x5EA5
+
+    /** The action of a tap on the evening works alert: Per te, where the works of the saved routes are listed. */
+    const val ACTION_OPEN_FOR_YOU = "it.binario.app.action.OPEN_FOR_YOU"
 
     /** Whether Binario may post now: the runtime permission (Android 13+) and the app's notification switch. */
     fun allowed(context: Context): Boolean {
@@ -81,13 +93,25 @@ internal object LiveNotifications {
         Intent(context, MainActivity::class.java).apply { flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP },
         PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
     )
+
+    /** Opens Per te. */
+    fun openForYou(context: Context, requestCode: Int): PendingIntent = PendingIntent.getActivity(
+        context,
+        requestCode,
+        Intent(context, MainActivity::class.java).apply {
+            action = ACTION_OPEN_FOR_YOU
+            flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+        },
+        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+    )
 }
 
 /**
  * The switches of the live features, kept on the device: notices for followed and favourite trains (off until the
- * user turns it on), the day-before strike reminder (on by default, effective only when notifications are allowed)
- * the daily punctuality recording of the favourite trains (on by default, nothing leaves the device but the
- * status request itself) and the weekly digest of the favourite trains (off until the user turns it on, no request).
+ * user turns it on), the day-before strike reminder (on by default, effective only when notifications are allowed),
+ * the evening alert of tomorrow's works on the saved routes (off until the user turns it on; RFI's feed only), the
+ * daily punctuality recording of the favourite trains (on by default, nothing leaves the device but the status request
+ * itself) and the weekly digest of the favourite trains (off until the user turns it on, no request).
  */
 internal class LiveNotificationSettings(context: Context) {
     private val preferences = context.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE)
@@ -99,6 +123,10 @@ internal class LiveNotificationSettings(context: Context) {
     var strikeReminderEnabled: Boolean
         get() = preferences.getBoolean(KEY_STRIKES, true)
         set(value) = preferences.edit { putBoolean(KEY_STRIKES, value) }
+
+    var routeWorksAlertEnabled: Boolean
+        get() = preferences.getBoolean(KEY_ROUTE_WORKS, false)
+        set(value) = preferences.edit { putBoolean(KEY_ROUTE_WORKS, value) }
 
     var punctualityRecordingEnabled: Boolean
         get() = preferences.getBoolean(KEY_PUNCTUALITY, true)
@@ -112,6 +140,7 @@ internal class LiveNotificationSettings(context: Context) {
         const val PREFERENCES = "binario_live_notifications_v1"
         const val KEY_TRAIN_ALERTS = "train_alerts"
         const val KEY_STRIKES = "strike_reminder"
+        const val KEY_ROUTE_WORKS = "route_works_alert"
         const val KEY_PUNCTUALITY = "punctuality_recording"
         const val KEY_WEEKLY_DIGEST = "weekly_digest"
     }
@@ -124,6 +153,7 @@ object LiveNotificationScheduling {
         runCatching { FollowedTripScheduler.reschedule(app) }
         runCatching { TrainAlertScheduler.reschedule(app, keepPending = true) }
         runCatching { StrikeReminderScheduler.reschedule(app, keepPending = true) }
+        runCatching { RouteWorksAlertScheduler.reschedule(app, keepPending = true) }
         runCatching { PunctualityRecorderScheduler.reschedule(app) }
         runCatching { ApproachAlertScheduler.reschedule(app) }
         runCatching { WeeklyDigestScheduler.reschedule(app, keepPending = true) }

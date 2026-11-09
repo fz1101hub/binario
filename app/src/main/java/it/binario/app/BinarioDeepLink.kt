@@ -15,6 +15,8 @@ sealed interface BinarioDeepLink {
     data object ActiveRoute : BinarioDeepLink
     data object NextDepartures : BinarioDeepLink
     data object Agenda : BinarioDeepLink
+    /** Per te, from a tap on the evening works alert; never from an external URI. */
+    data object ForYou : BinarioDeepLink
     data class TrainSearch(val number: String?) : BinarioDeepLink
     data class WidgetRoute(val route: SavedRoute, val direction: Direction) : BinarioDeepLink
     /** A row of the "I miei treni" widget: today's run of that favourite train, found by number and origin. */

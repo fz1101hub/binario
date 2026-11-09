@@ -1287,7 +1287,7 @@
     <string name="weekly_digest_worse">تراجع: %1$s، في الموعد %2$d%% من المرات هذا الأسبوع (عادةً %3$d%%)</string>
     <string name="settings_live_updates_title">إشعارات مباشرة</string>
     <string name="settings_live_updates_permission">لتلقّي هذه الإشعارات، اسمح بإشعارات Binario في إعدادات Android.</string>
-    <string name="settings_live_updates_privacy">تعمل هذه الفحوصات في الخلفية فقط في الفترات المبيّنة. يتلقى MIT طلبًا دون أي بيانات عنك؛ وتتلقى مصادر حالة القطارات رقم القطار واليوم، كما عند فتح التفاصيل. لا يُحفظ شيء خارج الهاتف.</string>
+    <string name="settings_live_updates_privacy">تعمل هذه الفحوصات في الخلفية فقط عند تفعيل مفتاحها وفي الفترات المبيّنة. يطلب «إضرابات اليوم التالي» تقويم MIT ويطلب «أعمال الغد على مساراتك» موجز معلومات الحركة من RFI، دون أي بيانات عنك؛ وتتلقى مصادر حالة القطارات وإشعاراتها رقم القطار واليوم على الأكثر، كما عند فتح التفاصيل؛ ولا يرسل الملخص الأسبوعي أي طلب. لا يُحفظ شيء خارج الهاتف.</string>
     <plurals name="train_alerts_notification_title">
         <item quantity="zero">%1$d تنبيه جديد لـ %2$s</item>
         <item quantity="one">%1$d تنبيه جديد لـ %2$s</item>
@@ -1748,6 +1748,17 @@
         <item quantity="many">%1$s: في الموعد %2$d مرة من أصل %3$d، أفضل من المتوسط</item>
         <item quantity="other">%1$s: في الموعد %2$d مرة من أصل %3$d، أفضل من المتوسط</item>
     </plurals>
+    <!-- «Alternativa più puntuale» under a direct train of the route results (network statistics) -->
+    <string name="reliability_alternative_train">أكثر التزامًا بالموعد: %1$s الساعة %2$s</string>
+    <plurals name="reliability_alternative_on_time">
+        <item quantity="zero">في الموعد %1$d مرة من أصل %2$d</item>
+        <item quantity="one">في الموعد %1$d مرة من أصل %2$d</item>
+        <item quantity="two">في الموعد %1$d مرتين من أصل %2$d</item>
+        <item quantity="few">في الموعد %1$d مرات من أصل %2$d</item>
+        <item quantity="many">في الموعد %1$d مرة من أصل %2$d</item>
+        <item quantity="other">في الموعد %1$d مرة من أصل %2$d</item>
+    </plurals>
+    <string name="reliability_alternative_open">عرض قطار الساعة %1$s</string>
     <!-- Route results: «Più presto» / «Più tardi», empty searched window, RFI «RITARDO» without minutes -->
     <string name="results_earlier">أبكر</string>
     <string name="results_later">لاحقًا</string>
@@ -1815,5 +1826,26 @@
         <item quantity="few">عرض %d إشعارات أخرى</item>
         <item quantity="many">عرض %d إشعارًا آخر</item>
         <item quantity="other">عرض %d إشعار آخر</item>
+    </plurals>
+    <string name="settings_route_works_alert_title">أعمال الغد على مساراتك</string>
+    <string name="settings_route_works_alert_description">نحو الساعة 19 يقرأ إشعارات RFI وينبّهك إذا كانت هناك أعمال أو انقطاعات غدًا على مساراتك المحفوظة.</string>
+    <string name="route_works_alert_channel_name">الأعمال على مساراتك</string>
+    <string name="route_works_alert_channel_description">في المساء السابق، نحو الساعة 19، أعمال الغد وانقطاعاته على مساراتك المحفوظة كما تذكرها إشعارات RFI.</string>
+    <string name="route_works_alert_title">أعمال غدًا على %1$s</string>
+    <plurals name="route_works_alert_title_more">
+        <item quantity="zero">أعمال غدًا على %1$s وعلى %2$d مسار آخر</item>
+        <item quantity="one">أعمال غدًا على %1$s وعلى %2$d مسار آخر</item>
+        <item quantity="two">أعمال غدًا على %1$s وعلى %2$d مسارين آخرين</item>
+        <item quantity="few">أعمال غدًا على %1$s وعلى %2$d مسارات أخرى</item>
+        <item quantity="many">أعمال غدًا على %1$s وعلى %2$d مسارًا آخر</item>
+        <item quantity="other">أعمال غدًا على %1$s وعلى %2$d مسار آخر</item>
+    </plurals>
+    <plurals name="route_works_alert_more">
+        <item quantity="zero">و%d إشعار آخر في قسم «لك»</item>
+        <item quantity="one">و%d إشعار آخر في قسم «لك»</item>
+        <item quantity="two">و%d إشعاران آخران في قسم «لك»</item>
+        <item quantity="few">و%d إشعارات أخرى في قسم «لك»</item>
+        <item quantity="many">و%d إشعارًا آخر في قسم «لك»</item>
+        <item quantity="other">و%d إشعار آخر في قسم «لك»</item>
     </plurals>
 </resources>

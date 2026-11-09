@@ -1152,7 +1152,7 @@
     <string name="weekly_digest_worse">ပိုဆိုးလာသည်- %1$s၊ ဤအပတ် အချိန်မှန် %2$d%% (ပုံမှန် %3$d%%)</string>
     <string name="settings_live_updates_title">အချိန်နှင့်တပြေးညီ အသိပေးချက်များ</string>
     <string name="settings_live_updates_permission">ဤအသိပေးချက်များကို ရရှိရန် Android ဆက်တင်တွင် Binario အသိပေးချက်များကို ခွင့်ပြုပါ။</string>
-    <string name="settings_live_updates_privacy">ဤစစ်ဆေးမှုများသည် ပြထားသော အချိန်ပိုင်းများတွင်သာ နောက်ခံတွင် လုပ်ဆောင်သည်။ MIT သည် သင့်ဒေတာ မပါသော တောင်းဆိုမှုကို ရရှိသည်၊ ရထား အခြေအနေ ရင်းမြစ်များသည် အသေးစိတ်ကို ဖွင့်သည့်အခါကဲ့သို့ ရထားနံပါတ်နှင့် ရက်ကို ရရှိသည်။ ဖုန်းပြင်ပတွင် မည်သည့်အရာမျှ မသိမ်းပါ။</string>
+    <string name="settings_live_updates_privacy">ဤစစ်ဆေးမှုများသည် ခလုတ်ဖွင့်ထားမှသာ ပြထားသော အချိန်ပိုင်းများတွင် နောက်ခံတွင် လုပ်ဆောင်သည်။ “နောက်နေ့ သပိတ်များ” သည် MIT ထံမှ ပြက္ခဒိန်ကို၊ “သင့်ခရီးစဉ်များပေါ်ရှိ မနက်ဖြန် ပြုပြင်ရေးလုပ်ငန်းများ” သည် RFI ထံမှ ခရီးသွားသတင်း feed ကို သင့်ဒေတာ မပါဘဲ တောင်းဆိုသည်၊ ရထား အခြေအနေနှင့် အသိပေးချက် ရင်းမြစ်များသည် အသေးစိတ်ကို ဖွင့်သည့်အခါကဲ့သို့ အများဆုံး ရထားနံပါတ်နှင့် ရက်ကို ရရှိသည်၊ အပတ်စဉ် အနှစ်ချုပ်သည် မည်သည့် တောင်းဆိုမှုမျှ မပြုလုပ်ပါ။ ဖုန်းပြင်ပတွင် မည်သည့်အရာမျှ မသိမ်းပါ။</string>
     <plurals name="train_alerts_notification_title">
         <item quantity="other">ကြေညာချက်အသစ် %1$d ခု- %2$s</item>
     </plurals>
@@ -1493,6 +1493,12 @@
     <plurals name="reliability_weekday_better">
         <item quantity="other">%1$s %3$d ကြိမ်တွင် %2$d ကြိမ် အချိန်မှန်၊ ပျမ်းမျှထက် ကောင်း</item>
     </plurals>
+    <!-- «Alternativa più puntuale» under a direct train of the route results (network statistics) -->
+    <string name="reliability_alternative_train">ပိုအချိန်မှန်သည်- %2$s ထွက် %1$s</string>
+    <plurals name="reliability_alternative_on_time">
+        <item quantity="other">%2$d ကြိမ်တွင် %1$d ကြိမ် အချိန်မှန်</item>
+    </plurals>
+    <string name="reliability_alternative_open">%1$s ထွက် ရထားကို ပြရန်</string>
     <!-- Route results: «Più presto» / «Più tardi», empty searched window, RFI «RITARDO» without minutes -->
     <string name="results_earlier">အစောပိုင်း</string>
     <string name="results_later">နောက်ပိုင်း</string>
@@ -1545,5 +1551,16 @@
     <string name="route_works_note">အသိပေးချက်များကို ၎င်းတို့တွင်ပါသော ဘူတာနှင့် လိုင်းအမည်များဖြင့် ခရီးစဉ်များနှင့် တွဲထားသည်- စာသားအပြည့်အစုံကို အမြဲဖတ်ပါ။</string>
     <plurals name="route_works_show_more">
         <item quantity="other">နောက်ထပ် အသိပေးချက် %d ခု ပြရန်</item>
+    </plurals>
+    <string name="settings_route_works_alert_title">သင့်ခရီးစဉ်များပေါ်ရှိ မနက်ဖြန် ပြုပြင်ရေးလုပ်ငန်းများ</string>
+    <string name="settings_route_works_alert_description">19:00 ခန့်တွင် RFI အသိပေးချက်များကို ဖတ်ပြီး မနက်ဖြန် သိမ်းထားသော ခရီးစဉ်များပေါ်တွင် ပြုပြင်ရေးလုပ်ငန်း သို့မဟုတ် ရပ်ဆိုင်းမှု ရှိလျှင် အသိပေးသည်။</string>
+    <string name="route_works_alert_channel_name">သင့်ခရီးစဉ်များပေါ်ရှိ ပြုပြင်ရေးလုပ်ငန်းများ</string>
+    <string name="route_works_alert_channel_description">တစ်ရက်အလို ညနေ 19:00 ခန့်တွင် RFI အသိပေးချက်များတွင် ဖော်ပြထားသော သိမ်းထားသည့် ခရီးစဉ်များပေါ်ရှိ မနက်ဖြန် ပြုပြင်ရေးလုပ်ငန်းနှင့် ရပ်ဆိုင်းမှုများ။</string>
+    <string name="route_works_alert_title">မနက်ဖြန် %1$s တွင် ပြုပြင်ရေးလုပ်ငန်း</string>
+    <plurals name="route_works_alert_title_more">
+        <item quantity="other">မနက်ဖြန် %1$s နှင့် အခြား ခရီးစဉ် %2$d ခုတွင် ပြုပြင်ရေးလုပ်ငန်း</item>
+    </plurals>
+    <plurals name="route_works_alert_more">
+        <item quantity="other">သင့်အတွက် ကဏ္ဍတွင် နောက်ထပ် အသိပေးချက် %d ခု</item>
     </plurals>
 </resources>

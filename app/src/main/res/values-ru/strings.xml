@@ -1233,7 +1233,7 @@
     <string name="weekly_digest_worse">Стало хуже: %1$s, на этой неделе вовремя в %2$d%% случаев (обычно %3$d%%)</string>
     <string name="settings_live_updates_title">Уведомления в реальном времени</string>
     <string name="settings_live_updates_permission">Чтобы получать эти уведомления, разрешите уведомления Binario в настройках Android.</string>
-    <string name="settings_live_updates_privacy">Эти проверки выполняются в фоне только в указанные интервалы. MIT получает запрос без ваших данных; источники статуса поездов получают номер поезда и дату, как при открытии карточки. За пределами телефона ничего не сохраняется.</string>
+    <string name="settings_live_updates_privacy">Эти проверки выполняются в фоне только при включённом переключателе и только в указанные интервалы. «Забастовки на завтра» запрашивает у MIT календарь забастовок, а «Работы завтра на ваших маршрутах» — у RFI ленту оперативных сообщений, без ваших данных; источники статуса и сообщений о поездах получают не больше чем номер поезда и дату, как при открытии карточки; еженедельная сводка не делает запросов. За пределами телефона ничего не сохраняется.</string>
     <plurals name="train_alerts_notification_title">
         <item quantity="one">%1$d новое объявление по %2$s</item>
         <item quantity="few">%1$d новых объявления по %2$s</item>
@@ -1646,6 +1646,15 @@
         <item quantity="many">%1$s вовремя %2$d раз из %3$d, лучше среднего</item>
         <item quantity="other">%1$s вовремя %2$d раза из %3$d, лучше среднего</item>
     </plurals>
+    <!-- «Alternativa più puntuale» under a direct train of the route results (network statistics) -->
+    <string name="reliability_alternative_train">Пунктуальнее: %1$s в %2$s</string>
+    <plurals name="reliability_alternative_on_time">
+        <item quantity="one">вовремя %1$d раз из %2$d</item>
+        <item quantity="few">вовремя %1$d раза из %2$d</item>
+        <item quantity="many">вовремя %1$d раз из %2$d</item>
+        <item quantity="other">вовремя %1$d раза из %2$d</item>
+    </plurals>
+    <string name="reliability_alternative_open">Показать поезд в %1$s</string>
     <!-- Route results: «Più presto» / «Più tardi», empty searched window, RFI «RITARDO» without minutes -->
     <string name="results_earlier">Раньше</string>
     <string name="results_later">Позже</string>
@@ -1707,5 +1716,22 @@
         <item quantity="few">Показать ещё %d сообщения</item>
         <item quantity="many">Показать ещё %d сообщений</item>
         <item quantity="other">Показать ещё %d сообщения</item>
+    </plurals>
+    <string name="settings_route_works_alert_title">Работы завтра на ваших маршрутах</string>
+    <string name="settings_route_works_alert_description">Около 19:00 проверяет сообщения RFI и предупреждает, если завтра на сохранённых маршрутах будут работы или перерывы движения.</string>
+    <string name="route_works_alert_channel_name">Работы на ваших маршрутах</string>
+    <string name="route_works_alert_channel_description">Накануне вечером, около 19:00, завтрашние работы и перерывы движения на сохранённых маршрутах из сообщений RFI.</string>
+    <string name="route_works_alert_title">Завтра работы на маршруте %1$s</string>
+    <plurals name="route_works_alert_title_more">
+        <item quantity="one">Завтра работы на маршруте %1$s и ещё на %2$d маршруте</item>
+        <item quantity="few">Завтра работы на маршруте %1$s и ещё на %2$d маршрутах</item>
+        <item quantity="many">Завтра работы на маршруте %1$s и ещё на %2$d маршрутах</item>
+        <item quantity="other">Завтра работы на маршруте %1$s и ещё на %2$d маршрута</item>
+    </plurals>
+    <plurals name="route_works_alert_more">
+        <item quantity="one">И ещё %d сообщение в разделе «Для вас»</item>
+        <item quantity="few">И ещё %d сообщения в разделе «Для вас»</item>
+        <item quantity="many">И ещё %d сообщений в разделе «Для вас»</item>
+        <item quantity="other">И ещё %d сообщения в разделе «Для вас»</item>
     </plurals>
 </resources>

@@ -492,7 +492,7 @@ PUNCTUALITY_ACTIONS = frozenset({"actions/checkout", "actions/setup-python", "ac
 PUNCTUALITY_DEADLINE_MARGIN_SECONDS = 600
 # Each train is asked once whatever the number of runs; more runs only cover the gaps of the runs GitHub skips (4 of
 # 12 on 8 November 2026) and the evening before ViaggiaTreno forgets the day. About one an hour at most.
-PUNCTUALITY_MAX_DAILY_RUNS = 25
+PUNCTUALITY_MAX_DAILY_RUNS = 26
 
 
 def _daily_runs(cron: object) -> int | None:

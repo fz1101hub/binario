@@ -1152,7 +1152,7 @@
     <string name="weekly_digest_worse">悪化：%1$s、今週の定時率 %2$d%%（通常は %3$d%%）</string>
     <string name="settings_live_updates_title">リアルタイム通知</string>
     <string name="settings_live_updates_permission">これらの通知を受け取るには、Android の設定で Binario の通知を許可してください。</string>
-    <string name="settings_live_updates_privacy">これらの確認は、表示されている時間帯にのみバックグラウンドで行われます。MIT にはあなたのデータを含まないリクエストが送られ、列車の状況の情報源には、詳細を開いたときと同じく列車番号と日付が送られます。スマートフォンの外には何も保存されません。</string>
+    <string name="settings_live_updates_privacy">これらの確認は、スイッチがオンのときに、表示されている時間帯にのみバックグラウンドで行われます。「翌日のストライキ」は MIT にストライキ予定表を、「あなたの区間の明日の工事」は RFI に運行情報フィードをリクエストしますが、あなたのデータは送られません。列車の状況やお知らせの情報源には、詳細を開いたときと同じく最大で列車番号と日付が送られます。週間まとめはリクエストを行いません。スマートフォンの外には何も保存されません。</string>
     <plurals name="train_alerts_notification_title">
         <item quantity="other">%2$s の新しいお知らせ %1$d 件</item>
     </plurals>
@@ -1493,6 +1493,12 @@
     <plurals name="reliability_weekday_better">
         <item quantity="other">%1$sは %3$d 回中 %2$d 回定刻で、平均より良い</item>
     </plurals>
+    <!-- «Alternativa più puntuale» under a direct train of the route results (network statistics) -->
+    <string name="reliability_alternative_train">より時間に正確：%2$s 発の %1$s</string>
+    <plurals name="reliability_alternative_on_time">
+        <item quantity="other">%2$d 回中 %1$d 回定刻</item>
+    </plurals>
+    <string name="reliability_alternative_open">%1$s 発の列車を表示</string>
     <!-- Route results: «Più presto» / «Più tardi», empty searched window, RFI «RITARDO» without minutes -->
     <string name="results_earlier">より早い時間</string>
     <string name="results_later">より遅い時間</string>
@@ -1545,5 +1551,16 @@
     <string name="route_works_note">お知らせは、含まれる駅名や路線名で区間と照合しています。必ず全文をお読みください。</string>
     <plurals name="route_works_show_more">
         <item quantity="other">ほかのお知らせ %d 件を表示</item>
+    </plurals>
+    <string name="settings_route_works_alert_title">あなたの区間の明日の工事</string>
+    <string name="settings_route_works_alert_description">19 時ごろ RFI のお知らせを確認し、保存した区間で明日工事や運転見合わせがある場合に通知します。</string>
+    <string name="route_works_alert_channel_name">あなたの区間の工事</string>
+    <string name="route_works_alert_channel_description">前日の 19 時ごろ、RFI のお知らせに記載された保存済み区間の明日の工事と運転見合わせをお知らせします。</string>
+    <string name="route_works_alert_title">明日 %1$s で工事</string>
+    <plurals name="route_works_alert_title_more">
+        <item quantity="other">明日 %1$s とほか %2$d 区間で工事</item>
+    </plurals>
+    <plurals name="route_works_alert_more">
+        <item quantity="other">ほかのお知らせ %d 件はマイページで</item>
     </plurals>
 </resources>

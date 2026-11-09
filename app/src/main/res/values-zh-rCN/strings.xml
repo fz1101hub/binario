@@ -1175,7 +1175,7 @@
     <string name="weekly_digest_worse">变差：%1$s，本周准点率 %2$d%%（通常为 %3$d%%）</string>
     <string name="settings_live_updates_title">实时通知</string>
     <string name="settings_live_updates_permission">如需接收这些通知，请在 Android 设置中允许 Binario 发送通知。</string>
-    <string name="settings_live_updates_privacy">这些检查仅在所示时段内于后台运行。MIT 收到的请求不包含你的任何数据；列车状态数据源会收到车次号和日期，与你打开详情时相同。任何数据都不会保存在手机以外。</string>
+    <string name="settings_live_updates_privacy">这些检查仅在开关打开时、并且仅在所示时段内于后台运行。“次日罢工”向 MIT 请求罢工日历，“你的线路明天的施工”向 RFI 请求运营信息源，均不包含你的任何数据；列车状态和公告数据源最多收到车次号和日期，与你打开详情时相同；每周摘要不发送任何请求。任何数据都不会保存在手机以外。</string>
     <plurals name="train_alerts_notification_title">
         <item quantity="other">%1$d 条新公告：%2$s</item>
     </plurals>
@@ -1516,6 +1516,12 @@
     <plurals name="reliability_weekday_better">
         <item quantity="other">%1$s %3$d 次中准点 %2$d 次，高于平均水平</item>
     </plurals>
+    <!-- «Alternativa più puntuale» under a direct train of the route results (network statistics) -->
+    <string name="reliability_alternative_train">更准点：%2$s 出发的 %1$s</string>
+    <plurals name="reliability_alternative_on_time">
+        <item quantity="other">%2$d 次中准点 %1$d 次</item>
+    </plurals>
+    <string name="reliability_alternative_open">显示 %1$s 出发的列车</string>
     <!-- Route results: «Più presto» / «Più tardi», empty searched window, RFI «RITARDO» without minutes -->
     <string name="results_earlier">更早</string>
     <string name="results_later">更晚</string>
@@ -1568,5 +1574,16 @@
     <string name="route_works_note">公告按其中提到的车站和线路名称与线路匹配：请务必阅读全文。</string>
     <plurals name="route_works_show_more">
         <item quantity="other">再显示 %d 条公告</item>
+    </plurals>
+    <string name="settings_route_works_alert_title">你的线路明天的施工</string>
+    <string name="settings_route_works_alert_description">每天 19:00 左右读取 RFI 公告，如果明天你保存的线路上有施工或中断则通知你。</string>
+    <string name="route_works_alert_channel_name">你的线路上的施工</string>
+    <string name="route_works_alert_channel_description">前一天 19:00 左右，提醒 RFI 公告中提到的你保存的线路明天的施工与中断。</string>
+    <string name="route_works_alert_title">明天 %1$s 有施工</string>
+    <plurals name="route_works_alert_title_more">
+        <item quantity="other">明天 %1$s 和另外 %2$d 条线路有施工</item>
+    </plurals>
+    <plurals name="route_works_alert_more">
+        <item quantity="other">“我的”中还有 %d 条公告</item>
     </plurals>
 </resources>

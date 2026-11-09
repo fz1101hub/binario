@@ -1175,7 +1175,7 @@
     <string name="weekly_digest_worse">แย่ลง: %1$s ตรงเวลา %2$d%% ในสัปดาห์นี้ (ปกติ %3$d%%)</string>
     <string name="settings_live_updates_title">การแจ้งเตือนแบบเรียลไทม์</string>
     <string name="settings_live_updates_permission">หากต้องการรับการแจ้งเตือนเหล่านี้ ให้อนุญาตการแจ้งเตือนของ Binario ในการตั้งค่า Android</string>
-    <string name="settings_live_updates_privacy">การตรวจสอบเหล่านี้ทำงานในเบื้องหลังเฉพาะในช่วงเวลาที่ระบุ MIT จะได้รับคำขอที่ไม่มีข้อมูลของคุณ แหล่งข้อมูลสถานะขบวนรถจะได้รับหมายเลขขบวนและวันที่ เช่นเดียวกับเมื่อคุณเปิดรายละเอียด ไม่มีสิ่งใดถูกเก็บไว้นอกโทรศัพท์</string>
+    <string name="settings_live_updates_privacy">การตรวจสอบเหล่านี้ทำงานในเบื้องหลังเฉพาะเมื่อเปิดสวิตช์และเฉพาะในช่วงเวลาที่ระบุ “การนัดหยุดงานในวันพรุ่งนี้” ขอปฏิทินจาก MIT และ “งานซ่อมบำรุงพรุ่งนี้ในเส้นทางของคุณ” ขอฟีดข้อมูลการเดินรถจาก RFI โดยไม่มีข้อมูลของคุณ แหล่งข้อมูลสถานะและประกาศของขบวนรถจะได้รับอย่างมากเพียงหมายเลขขบวนและวันที่ เช่นเดียวกับเมื่อคุณเปิดรายละเอียด สรุปรายสัปดาห์ไม่ส่งคำขอใดๆ ไม่มีสิ่งใดถูกเก็บไว้นอกโทรศัพท์</string>
     <plurals name="train_alerts_notification_title">
         <item quantity="other">ประกาศใหม่ %1$d รายการสำหรับ %2$s</item>
     </plurals>
@@ -1516,6 +1516,12 @@
     <plurals name="reliability_weekday_better">
         <item quantity="other">%1$s ตรงเวลา %2$d จาก %3$d ครั้ง ดีกว่าค่าเฉลี่ย</item>
     </plurals>
+    <!-- «Alternativa più puntuale» under a direct train of the route results (network statistics) -->
+    <string name="reliability_alternative_train">ตรงเวลากว่า: %1$s เวลา %2$s</string>
+    <plurals name="reliability_alternative_on_time">
+        <item quantity="other">ตรงเวลา %1$d จาก %2$d ครั้ง</item>
+    </plurals>
+    <string name="reliability_alternative_open">แสดงรถไฟเวลา %1$s</string>
     <!-- Route results: «Più presto» / «Più tardi», empty searched window, RFI «RITARDO» without minutes -->
     <string name="results_earlier">ก่อนหน้า</string>
     <string name="results_later">ถัดไป</string>
@@ -1568,5 +1574,16 @@
     <string name="route_works_note">ประกาศถูกจับคู่กับเส้นทางจากชื่อสถานีและสายที่อยู่ในข้อความ โปรดอ่านข้อความฉบับเต็มเสมอ</string>
     <plurals name="route_works_show_more">
         <item quantity="other">แสดงประกาศอีก %d รายการ</item>
+    </plurals>
+    <string name="settings_route_works_alert_title">งานซ่อมบำรุงพรุ่งนี้ในเส้นทางของคุณ</string>
+    <string name="settings_route_works_alert_description">ราว 19:00 จะอ่านประกาศของ RFI และแจ้งคุณหากพรุ่งนี้มีงานซ่อมบำรุงหรือการหยุดเดินรถในเส้นทางที่บันทึกไว้</string>
+    <string name="route_works_alert_channel_name">งานซ่อมบำรุงในเส้นทางของคุณ</string>
+    <string name="route_works_alert_channel_description">เย็นวันก่อนหน้า ราว 19:00 งานซ่อมบำรุงและการหยุดเดินรถของพรุ่งนี้ในเส้นทางที่บันทึกไว้ตามประกาศของ RFI</string>
+    <string name="route_works_alert_title">พรุ่งนี้มีงานซ่อมบำรุงบน %1$s</string>
+    <plurals name="route_works_alert_title_more">
+        <item quantity="other">พรุ่งนี้มีงานซ่อมบำรุงบน %1$s และอีก %2$d เส้นทาง</item>
+    </plurals>
+    <plurals name="route_works_alert_more">
+        <item quantity="other">และประกาศอีก %d รายการในหน้าสำหรับคุณ</item>
     </plurals>
 </resources>

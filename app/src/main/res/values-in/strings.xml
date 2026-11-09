@@ -1152,7 +1152,7 @@
     <string name="weekly_digest_worse">Memburuk: %1$s, tepat waktu %2$d%% minggu ini (biasanya %3$d%%)</string>
     <string name="settings_live_updates_title">Notifikasi langsung</string>
     <string name="settings_live_updates_permission">Untuk menerima notifikasi ini, izinkan notifikasi Binario di setelan Android.</string>
-    <string name="settings_live_updates_privacy">Pemeriksaan ini berjalan di latar belakang hanya pada rentang yang ditampilkan. MIT menerima permintaan tanpa data Anda; sumber status kereta menerima nomor kereta dan harinya, sama seperti saat Anda membuka detail. Tidak ada yang disimpan di luar ponsel.</string>
+    <string name="settings_live_updates_privacy">Pemeriksaan ini berjalan di latar belakang hanya jika sakelarnya aktif dan hanya pada rentang yang ditampilkan. «Mogok kerja besok» meminta kalender MIT dan «Pekerjaan besok di rute Anda» meminta feed infomobilitas RFI, tanpa data Anda; sumber status dan pemberitahuan kereta menerima paling banyak nomor kereta dan harinya, sama seperti saat Anda membuka detail; ringkasan mingguan tidak mengirim permintaan. Tidak ada yang disimpan di luar ponsel.</string>
     <plurals name="train_alerts_notification_title">
         <item quantity="other">%1$d pemberitahuan baru untuk %2$s</item>
     </plurals>
@@ -1493,6 +1493,12 @@
     <plurals name="reliability_weekday_better">
         <item quantity="other">%1$s tepat waktu %2$d dari %3$d kali, lebih baik dari rata-rata</item>
     </plurals>
+    <!-- «Alternativa più puntuale» under a direct train of the route results (network statistics) -->
+    <string name="reliability_alternative_train">Lebih tepat waktu: %1$s pukul %2$s</string>
+    <plurals name="reliability_alternative_on_time">
+        <item quantity="other">tepat waktu %1$d dari %2$d kali</item>
+    </plurals>
+    <string name="reliability_alternative_open">Tampilkan kereta pukul %1$s</string>
     <!-- Route results: «Più presto» / «Più tardi», empty searched window, RFI «RITARDO» without minutes -->
     <string name="results_earlier">Sebelumnya</string>
     <string name="results_later">Berikutnya</string>
@@ -1545,5 +1551,16 @@
     <string name="route_works_note">Pemberitahuan dicocokkan dengan rute dari nama stasiun dan jalur yang dimuatnya: selalu baca teks lengkapnya.</string>
     <plurals name="route_works_show_more">
         <item quantity="other">Tampilkan %d pemberitahuan lagi</item>
+    </plurals>
+    <string name="settings_route_works_alert_title">Pekerjaan besok di rute Anda</string>
+    <string name="settings_route_works_alert_description">Sekitar pukul 19.00 membaca pemberitahuan RFI dan memberi tahu jika besok ada pekerjaan atau gangguan di rute tersimpan Anda.</string>
+    <string name="route_works_alert_channel_name">Pekerjaan di rute Anda</string>
+    <string name="route_works_alert_channel_description">Malam sebelumnya, sekitar pukul 19.00, pekerjaan dan gangguan besok di rute tersimpan Anda yang disebut dalam pemberitahuan RFI.</string>
+    <string name="route_works_alert_title">Besok ada pekerjaan di %1$s</string>
+    <plurals name="route_works_alert_title_more">
+        <item quantity="other">Besok ada pekerjaan di %1$s dan %2$d rute lain</item>
+    </plurals>
+    <plurals name="route_works_alert_more">
+        <item quantity="other">Dan %d pemberitahuan lain di Untuk Anda</item>
     </plurals>
 </resources>

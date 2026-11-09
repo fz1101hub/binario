@@ -1229,7 +1229,7 @@
     <string name="weekly_digest_worse">Dégradé : %1$s, à l’heure %2$d %% du temps cette semaine (d’habitude %3$d %%)</string>
     <string name="settings_live_updates_title">Notifications en temps réel</string>
     <string name="settings_live_updates_permission">Pour recevoir ces notifications, autorisez les notifications de Binario dans les paramètres Android.</string>
-    <string name="settings_live_updates_privacy">Ces vérifications s’exécutent en arrière-plan uniquement dans les plages indiquées. Le MIT reçoit une requête sans données vous concernant ; les sources de l’état des trains reçoivent le numéro du train et le jour, comme quand vous ouvrez le détail. Rien n’est enregistré hors du téléphone.</string>
+    <string name="settings_live_updates_privacy">Ces vérifications s’exécutent en arrière-plan uniquement avec leur interrupteur activé et dans les plages indiquées. « Grèves du lendemain » demande au MIT son calendrier et « Travaux de demain sur vos trajets » demande à RFI son flux d’infomobilité, sans données vous concernant ; les sources de l’état et des avis des trains reçoivent au plus le numéro du train et le jour, comme quand vous ouvrez le détail ; le résumé hebdomadaire ne fait aucune requête. Rien n’est enregistré hors du téléphone.</string>
     <plurals name="train_alerts_notification_title">
         <item quantity="one">%1$d nouvel avis pour %2$s</item>
         <item quantity="many">%1$d nouveaux avis pour %2$s</item>
@@ -1618,6 +1618,14 @@
         <item quantity="many">%1$s, à l’heure %2$d fois sur %3$d, mieux que la moyenne</item>
         <item quantity="other">%1$s, à l’heure %2$d fois sur %3$d, mieux que la moyenne</item>
     </plurals>
+    <!-- «Alternativa più puntuale» under a direct train of the route results (network statistics) -->
+    <string name="reliability_alternative_train">Plus ponctuel : %1$s de %2$s</string>
+    <plurals name="reliability_alternative_on_time">
+        <item quantity="one">à l’heure %1$d fois sur %2$d</item>
+        <item quantity="many">à l’heure %1$d fois sur %2$d</item>
+        <item quantity="other">à l’heure %1$d fois sur %2$d</item>
+    </plurals>
+    <string name="reliability_alternative_open">Afficher le train de %1$s</string>
     <!-- Route results: «Più presto» / «Più tardi», empty searched window, RFI «RITARDO» without minutes -->
     <string name="results_earlier">Plus tôt</string>
     <string name="results_later">Plus tard</string>
@@ -1676,5 +1684,20 @@
         <item quantity="one">Afficher %d autre avis</item>
         <item quantity="many">Afficher %d autres avis</item>
         <item quantity="other">Afficher %d autres avis</item>
+    </plurals>
+    <string name="settings_route_works_alert_title">Travaux de demain sur vos trajets</string>
+    <string name="settings_route_works_alert_description">Vers 19 h, lit les avis de RFI et vous prévient si des travaux ou des interruptions touchent demain vos trajets enregistrés.</string>
+    <string name="route_works_alert_channel_name">Travaux sur vos trajets</string>
+    <string name="route_works_alert_channel_description">La veille vers 19 h, les travaux et interruptions de demain sur vos trajets enregistrés cités dans les avis de RFI.</string>
+    <string name="route_works_alert_title">Demain, travaux sur %1$s</string>
+    <plurals name="route_works_alert_title_more">
+        <item quantity="one">Demain, travaux sur %1$s et sur %2$d autre trajet</item>
+        <item quantity="many">Demain, travaux sur %1$s et sur %2$d autres trajets</item>
+        <item quantity="other">Demain, travaux sur %1$s et sur %2$d autres trajets</item>
+    </plurals>
+    <plurals name="route_works_alert_more">
+        <item quantity="one">Et %d autre avis dans Pour vous</item>
+        <item quantity="many">Et %d autres avis dans Pour vous</item>
+        <item quantity="other">Et %d autres avis dans Pour vous</item>
     </plurals>
 </resources>
