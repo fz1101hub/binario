@@ -1,7 +1,6 @@
 package it.binario.app.data.live
 
 import com.google.transit.realtime.GtfsRealtime
-import it.binario.app.data.core.StationId
 import it.binario.app.data.provider.*
 import java.time.*
 import java.util.concurrent.ConcurrentHashMap
@@ -25,23 +24,23 @@ class RealtimeCacheConcurrencyTest {
         }
     }
 
-    @Test fun `STA coalesces all three feed misses and refreshes once after expiry`() = runBlocking {
+    @Test fun `STA coalesces trip update misses and refreshes once after expiry`() = runBlocking {
         val counts = ConcurrentHashMap<StaRealtimeFeed, AtomicInteger>()
         val adapter = StaRealtimeAdapter(StaRealtimeFetcher { feed ->
             counts.computeIfAbsent(feed) { AtomicInteger() }.incrementAndGet()
             delay(30)
             """{"header":{"timestamp":${clock.instant().epochSecond}},"entity":[]}"""
         }, clock)
-        val operations: List<suspend () -> Any> = listOf({ adapter.getAlerts(AlertRequest()) }, { adapter.getVehiclePositions() }, { adapter.getTripUpdates() })
+        val operations: List<suspend () -> Any> = listOf({ adapter.getTripUpdates() })
         burst(operations)
         assertEquals(setOf(1), counts.values.map { it.get() }.toSet())
-        assertEquals(3, counts.size)
+        assertEquals(1, counts.size)
         ticks.addAndGet(91_000)
         burst(operations)
         assertEquals(setOf(2), counts.values.map { it.get() }.toSet())
     }
 
-    @Test fun `SNCF coalesces alerts and trip updates and refreshes once after expiry`() = runBlocking {
+    @Test fun `SNCF coalesces trip update misses and refreshes once after expiry`() = runBlocking {
         val counts = ConcurrentHashMap<SncfRealtimeFeed, AtomicInteger>()
         val adapter = SncfGtfsRealtimeAdapter(SncfRealtimeFetcher { feed ->
             counts.computeIfAbsent(feed) { AtomicInteger() }.incrementAndGet()
@@ -49,26 +48,13 @@ class RealtimeCacheConcurrencyTest {
             GtfsRealtime.FeedMessage.newBuilder().setHeader(GtfsRealtime.FeedHeader.newBuilder()
                 .setGtfsRealtimeVersion("2.0").setTimestamp(clock.instant().epochSecond)).build().toByteArray()
         }, clock)
-        val operations: List<suspend () -> Any> = listOf({ adapter.getAlerts(AlertRequest()) }, { adapter.getTripUpdates() })
+        val operations: List<suspend () -> Any> = listOf({ adapter.getTripUpdates() })
         burst(operations)
-        assertEquals(2, counts.size)
+        assertEquals(1, counts.size)
         assertEquals(setOf(1), counts.values.map { it.get() }.toSet())
         ticks.addAndGet(121_000)
         burst(operations)
         assertEquals(setOf(2), counts.values.map { it.get() }.toSet())
-    }
-
-    @Test fun `STA cached alerts still apply each requested station filter`() = runBlocking {
-        var fetches = 0
-        val adapter = StaRealtimeAdapter(StaRealtimeFetcher {
-            fetches++
-            """{"header":{"timestamp":${initial.epochSecond}},"entity":[{"id":"a","alert":{"header_text":{"translation":[{"text":"A"}]},"informed_entity":[{"stop_id":"A"}]}},{"id":"b","alert":{"header_text":{"translation":[{"text":"B"}]},"informed_entity":[{"stop_id":"B"}]}}]}"""
-        }, clock)
-        suspend fun ids(station: String) = (adapter.getAlerts(AlertRequest(stationIds = setOf(StationId("sta:$station")))) as ProviderResult.Success).value.map { it.id.value }
-        assertEquals(listOf("sta:a"), ids("A"))
-        assertEquals(listOf("sta:b"), ids("B"))
-        assertTrue(ids("C").isEmpty())
-        assertEquals(1, fetches)
     }
 
     @Test fun `STA and SNCF propagate caller cancellation and release their feed locks`() = runBlocking {

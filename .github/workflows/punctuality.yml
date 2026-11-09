@@ -5,8 +5,8 @@ name: Punctuality statistics
 # only (GitHub runs schedules there), tools/collect_punctuality.py asks ViaggiaTreno once about each Trenitalia and
 # Trenord train of the embedded packs that arrived today and is not known yet, at most 2 requests per second (about
 # 8,800 trains a day, each asked once whatever the number of runs). GitHub skips many scheduled runs (4 of 12 on 8 November 2026) and
-# ViaggiaTreno forgets the previous day at midnight, so the schedule tries every hour and once more just before
-# midnight (Rome, winter time). The raw observations stay in the Actions cache (prefix punctuality-raw-, 35 days):
+# ViaggiaTreno forgets the previous day at midnight, so the schedule tries every hour and twice more before midnight
+# (21:47 and 22:47 UTC: 22:47 and 23:47 in Rome in winter, 23:47 in summer). The raw observations stay in the Actions cache (prefix punctuality-raw-, 35 days):
 # never printed, uploaded or committed.
 # A workflow_dispatch with print_stats=true also prints the aggregated stats_v1.json.gz as one nonce frame for
 # tools/apply_ci_punctuality.py; nothing else leaves the job.
@@ -14,7 +14,7 @@ on:
   schedule:
     - cron: "41 */2 * * *"
     - cron: "11 1-23/2 * * *"
-    - cron: "47 22 * * *"
+    - cron: "47 21,22 * * *"
   workflow_dispatch:
     inputs:
       print_stats:

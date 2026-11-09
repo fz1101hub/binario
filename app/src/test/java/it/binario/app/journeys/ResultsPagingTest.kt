@@ -11,7 +11,10 @@ import it.binario.app.data.repository.JourneySearchService
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
+import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.job
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
@@ -30,8 +33,19 @@ import org.junit.Test
 /** «Più presto» / «Più tardi»: the windows around a search, for the direct trains and the journeys with changes. */
 @OptIn(ExperimentalCoroutinesApi::class)
 class ResultsPagingTest {
+    private val models = mutableListOf<JourneySearchViewModel>()
+
     @Before fun setUp() = Dispatchers.setMain(UnconfinedTestDispatcher())
-    @After fun tearDown() = Dispatchers.resetMain()
+
+    /**
+     * A search of a model can still be finishing on a background thread, and it resumes on Main: resetting Main at the
+     * same moment fails with "Dispatchers.Main is used concurrently with setting it" (seen under load). The models'
+     * work is cancelled and awaited first.
+     */
+    @After fun tearDown() {
+        runBlocking { models.forEach { it.viewModelScope.coroutineContext.job.cancelAndJoin() } }
+        Dispatchers.resetMain()
+    }
 
     private val day = LocalDate.of(2026, 11, 20)
     private fun at(time: String): LocalDateTime = day.atTime(LocalTime.parse(time))
@@ -101,7 +115,7 @@ class ResultsPagingTest {
         (6..20).map { hour -> Trip("T$hour", "${2000 + hour}", listOf("A" to "%02d:10".format(hour), "D" to "%02d:50".format(hour))) }
     )))
 
-    private fun model() = JourneySearchViewModel(JourneySearchService(listOf(hourly)))
+    private fun model() = JourneySearchViewModel(JourneySearchService(listOf(hourly))).also(models::add)
 
     private fun JourneySearchViewModel.await(condition: (JourneySearchUiState) -> Boolean) = runBlocking {
         withTimeout(10_000) { state.first(condition) }
@@ -144,7 +158,7 @@ class ResultsPagingTest {
             Trip("M2", "2", listOf("A" to "19:00", "D" to "20:00")),
             Trip("M3", "3", listOf("A" to "21:00", "D" to "22:00"))
         ))))
-        val model = JourneySearchViewModel(JourneySearchService(listOf(rare)))
+        val model = JourneySearchViewModel(JourneySearchService(listOf(rare))).also(models::add)
         // The window of 07:30 ends at 15:30 with nothing: 19:00 follows, the first after it.
         model.searchJourneys(JourneyFixtures.alfa, JourneyFixtures.delta, JourneyFixtures.monday, LocalTime.of(7, 30))
         val state = model.await { !it.loading && it.result != null }
