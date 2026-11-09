@@ -1655,6 +1655,17 @@
         <item quantity="other">вовремя %1$d раза из %2$d</item>
     </plurals>
     <string name="reliability_alternative_open">Показать поезд в %1$s</string>
+    <string name="my_trains_reliability_title">Надёжность моих поездов</string>
+    <string name="my_trains_reliability_description">Последние 30 дней — в сети и в поездках, записанных на этом телефоне; тенденция сравнивает последние 4 недели с 4 предыдущими. Нажмите на поезд, чтобы открыть его.</string>
+    <plurals name="my_trains_reliability_personal">
+        <item quantity="one">Записано на этом телефоне: вовремя %1$d раз из %2$d</item>
+        <item quantity="few">Записано на этом телефоне: вовремя %1$d раза из %2$d</item>
+        <item quantity="many">Записано на этом телефоне: вовремя %1$d раз из %2$d</item>
+        <item quantity="other">Записано на этом телефоне: вовремя %1$d раза из %2$d</item>
+    </plurals>
+    <string name="my_trains_reliability_worse">Становится хуже</string>
+    <string name="my_trains_reliability_better">Становится лучше</string>
+    <string name="my_trains_reliability_no_data">Данных пока нет</string>
     <!-- Route results: «Più presto» / «Più tardi», empty searched window, RFI «RITARDO» without minutes -->
     <string name="results_earlier">Раньше</string>
     <string name="results_later">Позже</string>

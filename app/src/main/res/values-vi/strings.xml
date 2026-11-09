@@ -1522,6 +1522,14 @@
         <item quantity="other">đúng giờ %1$d trên %2$d lần</item>
     </plurals>
     <string name="reliability_alternative_open">Hiện tàu lúc %1$s</string>
+    <string name="my_trains_reliability_title">Độ tin cậy các tàu của tôi</string>
+    <string name="my_trains_reliability_description">30 ngày gần nhất, trên mạng lưới và trong các chuyến được ghi lại trên điện thoại này; xu hướng so sánh 4 tuần gần nhất với 4 tuần trước đó. Nhấn vào một tàu để mở.</string>
+    <plurals name="my_trains_reliability_personal">
+        <item quantity="other">Ghi trên điện thoại này: đúng giờ %1$d trên %2$d lần</item>
+    </plurals>
+    <string name="my_trains_reliability_worse">Đang kém đi</string>
+    <string name="my_trains_reliability_better">Đang cải thiện</string>
+    <string name="my_trains_reliability_no_data">Chưa có dữ liệu</string>
     <!-- Route results: «Più presto» / «Più tardi», empty searched window, RFI «RITARDO» without minutes -->
     <string name="results_earlier">Sớm hơn</string>
     <string name="results_later">Muộn hơn</string>

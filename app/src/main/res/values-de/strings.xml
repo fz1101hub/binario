@@ -1574,6 +1574,15 @@
         <item quantity="other">%1$d von %2$d Mal pünktlich</item>
     </plurals>
     <string name="reliability_alternative_open">Zug um %1$s anzeigen</string>
+    <string name="my_trains_reliability_title">Zuverlässigkeit meiner Züge</string>
+    <string name="my_trains_reliability_description">Letzte 30 Tage, im Netz und bei den auf diesem Telefon erfassten Fahrten; der Trend vergleicht die letzten 4 Wochen mit den 4 davor. Tippe auf einen Zug, um ihn zu öffnen.</string>
+    <plurals name="my_trains_reliability_personal">
+        <item quantity="one">Auf diesem Telefon erfasst: %1$d von %2$d Mal pünktlich</item>
+        <item quantity="other">Auf diesem Telefon erfasst: %1$d von %2$d Mal pünktlich</item>
+    </plurals>
+    <string name="my_trains_reliability_worse">Verschlechtert sich</string>
+    <string name="my_trains_reliability_better">Verbessert sich</string>
+    <string name="my_trains_reliability_no_data">Noch keine Daten</string>
     <!-- Route results: «Più presto» / «Più tardi», empty searched window, RFI «RITARDO» without minutes -->
     <string name="results_earlier">Früher</string>
     <string name="results_later">Später</string>

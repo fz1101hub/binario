@@ -1,5 +1,7 @@
 package it.binario.app.notifications
 
+import it.binario.app.FavouriteTrainPunctuality
+import it.binario.app.LocalPunctuality
 import it.binario.app.PunctualityObservation
 import it.binario.app.ServiceMonitor
 import it.binario.app.TestStringCatalogue
@@ -62,9 +64,9 @@ class WeeklyDigestTest {
             observation(6, "2153", 5), observation(7, "2153", 40),
             observation(1, "9558", 2)
         )
-        assertEquals(LocalPunctuality(runs = 4, onTime = 2, cancelled = 1), WeeklyDigestBuilder.punctuality(history, "2153", sunday.minusDays(6), sunday))
-        assertEquals(LocalPunctuality(runs = 1, onTime = 0, cancelled = 0), WeeklyDigestBuilder.punctuality(history, "2153", sunday.minusDays(34), sunday.minusDays(7)))
-        assertNull(WeeklyDigestBuilder.punctuality(history, "701", sunday.minusDays(6), sunday))
+        assertEquals(LocalPunctuality(runs = 4, onTime = 2, cancelled = 1), FavouriteTrainPunctuality.local(history, "2153", sunday.minusDays(6), sunday))
+        assertEquals(LocalPunctuality(runs = 1, onTime = 0, cancelled = 0), FavouriteTrainPunctuality.local(history, "2153", sunday.minusDays(34), sunday.minusDays(7)))
+        assertNull(FavouriteTrainPunctuality.local(history, "701", sunday.minusDays(6), sunday))
         assertEquals(50, LocalPunctuality(4, 2, 1).onTimePercent)
     }
 

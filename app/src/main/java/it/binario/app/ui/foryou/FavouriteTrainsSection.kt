@@ -89,16 +89,24 @@ internal fun FavouriteTrainsSection(
     }
 }
 
+/** How a favourite train is named: its custom name, else «Treno 9558», and the line under it (number, route, departure). */
+internal data class FavouriteTrainNames(val title: String, val detail: String)
+
 @Composable
-private fun FavouriteTrainRow(monitor: ServiceMonitor, onOpen: () -> Unit, onRename: () -> Unit, onRemove: () -> Unit) {
-    var menuOpen by remember { mutableStateOf(false) }
+internal fun favouriteTrainNames(monitor: ServiceMonitor): FavouriteTrainNames {
     val trainLabel = stringResource(R.string.train_number_label, monitor.number)
-    val title = monitor.displayName ?: trainLabel
     val detail = listOfNotNull(
         trainLabel.takeIf { monitor.displayName != null },
         monitor.label.takeIf(String::isNotBlank),
         monitor.scheduledDeparture.takeIf(String::isNotBlank)?.let { stringResource(R.string.favourite_train_departure, it) }
     ).joinToString(" · ")
+    return FavouriteTrainNames(monitor.displayName ?: trainLabel, detail)
+}
+
+@Composable
+private fun FavouriteTrainRow(monitor: ServiceMonitor, onOpen: () -> Unit, onRename: () -> Unit, onRemove: () -> Unit) {
+    var menuOpen by remember { mutableStateOf(false) }
+    val (title, detail) = favouriteTrainNames(monitor)
     Row(Modifier.fillMaxWidth().padding(end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
         Row(
             Modifier

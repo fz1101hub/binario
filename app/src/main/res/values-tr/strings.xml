@@ -1574,6 +1574,15 @@
         <item quantity="other">%2$d seferin %1$d tanesinde zamanında</item>
     </plurals>
     <string name="reliability_alternative_open">%1$s trenini göster</string>
+    <string name="my_trains_reliability_title">Trenlerimin güvenilirliği</string>
+    <string name="my_trains_reliability_description">Son 30 gün, ağda ve bu telefonda kaydedilen seferlerde; eğilim son 4 haftayı önceki 4 haftayla karşılaştırır. Açmak için bir trene dokunun.</string>
+    <plurals name="my_trains_reliability_personal">
+        <item quantity="one">Bu telefonda kaydedilen: %2$d seferin %1$d tanesinde zamanında</item>
+        <item quantity="other">Bu telefonda kaydedilen: %2$d seferin %1$d tanesinde zamanında</item>
+    </plurals>
+    <string name="my_trains_reliability_worse">Kötüleşiyor</string>
+    <string name="my_trains_reliability_better">İyileşiyor</string>
+    <string name="my_trains_reliability_no_data">Henüz veri yok</string>
     <!-- Route results: «Più presto» / «Più tardi», empty searched window, RFI «RITARDO» without minutes -->
     <string name="results_earlier">Daha erken</string>
     <string name="results_later">Daha geç</string>

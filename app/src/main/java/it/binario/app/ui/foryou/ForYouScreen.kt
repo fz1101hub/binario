@@ -262,6 +262,15 @@ internal fun ForYouScreen(
                 }
             )
         }
+        // «Affidabilità dei miei treni»: network statistics and the user's own records of the favourite trains.
+        if (viewModel.monitoredServices.isNotEmpty()) item(key = "my-trains-reliability") {
+            MyTrainsReliabilitySection(
+                monitors = viewModel.monitoredServices,
+                history = viewModel.punctualityHistory,
+                onOpen = openFavouriteTrain,
+                modifier = Modifier.padding(top = 8.dp)
+            )
+        }
         item { Spacer(Modifier.height(24.dp)) }
     }
 }

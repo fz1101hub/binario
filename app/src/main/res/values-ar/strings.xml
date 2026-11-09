@@ -1759,6 +1759,19 @@
         <item quantity="other">في الموعد %1$d مرة من أصل %2$d</item>
     </plurals>
     <string name="reliability_alternative_open">عرض قطار الساعة %1$s</string>
+    <string name="my_trains_reliability_title">موثوقية قطاراتي</string>
+    <string name="my_trains_reliability_description">آخر 30 يومًا، على الشبكة وفي الرحلات المسجّلة على هذا الهاتف؛ يقارن الاتجاه آخر 4 أسابيع بالأسابيع الأربعة السابقة. المس قطارًا لفتحه.</string>
+    <plurals name="my_trains_reliability_personal">
+        <item quantity="zero">مسجّل على هذا الهاتف: في الموعد %1$d مرة من أصل %2$d</item>
+        <item quantity="one">مسجّل على هذا الهاتف: في الموعد %1$d مرة من أصل %2$d</item>
+        <item quantity="two">مسجّل على هذا الهاتف: في الموعد %1$d مرتين من أصل %2$d</item>
+        <item quantity="few">مسجّل على هذا الهاتف: في الموعد %1$d مرات من أصل %2$d</item>
+        <item quantity="many">مسجّل على هذا الهاتف: في الموعد %1$d مرة من أصل %2$d</item>
+        <item quantity="other">مسجّل على هذا الهاتف: في الموعد %1$d مرة من أصل %2$d</item>
+    </plurals>
+    <string name="my_trains_reliability_worse">يتراجع</string>
+    <string name="my_trains_reliability_better">يتحسّن</string>
+    <string name="my_trains_reliability_no_data">لا توجد بيانات بعد</string>
     <!-- Route results: «Più presto» / «Più tardi», empty searched window, RFI «RITARDO» without minutes -->
     <string name="results_earlier">أبكر</string>
     <string name="results_later">لاحقًا</string>
