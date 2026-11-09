@@ -134,6 +134,22 @@ internal object LiveAcceptanceEvidence {
         }
     }.distinct().size
 
+    /**
+     * Rows of a ViaggiaTreno `partenze`/`arrivi` board the station board adapter has to report with a status: cancelled
+     * (`provvedimento` 1), or detected at most five minutes before [fetched] (`ultimoRilev`) with `ritardo` published
+     * and not `nonPartito`. At night a board lists the morning's trains, none detected yet: zero, nothing to verify.
+     */
+    fun viaggiaTrenoBoardObservations(body: String, fetched: Instant): Int =
+        if (body.trim() == "null") 0 else JSONArray(body).objects().count { row ->
+            if (row.text("provvedimento") == "1") return@count true
+            val observed = row.text("ultimoRilev")?.toLongOrNull()?.let(Instant::ofEpochMilli) ?: return@count false
+            row.text("ritardo")?.toIntOrNull() != null && !row.optBoolean("nonPartito", false) &&
+                !observed.isBefore(fetched.minusSeconds(300)) && !observed.isAfter(fetched.plusSeconds(60))
+        }
+
+    /** Departures an Italo station board publishes (`ListaTreniPartenza`); none overnight, when Italo runs no train. */
+    fun italoDepartureRows(body: String): Int = JSONObject(body).optJSONArray("ListaTreniPartenza")?.length() ?: 0
+
     /** The identities a static GTFS pack publishes: each trip with its route, and the stops. */
     class GtfsPackIdentity(val tripRoutes: Map<String, String>, val stopIds: Set<String>) {
         val tripIds: Set<String> get() = tripRoutes.keys
