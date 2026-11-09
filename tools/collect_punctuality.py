@@ -1,13 +1,16 @@
 #!/usr/bin/env python3
 """Collect ViaggiaTreno observations of the Trenitalia trains that ran recently, for Binario's punctuality statistics.
 
-Run on a GitHub runner every two hours (``.github/workflows/punctuality.yml``, ``python3 -I``; the development
+Run on a GitHub runner several times a day (``.github/workflows/punctuality.yml``, ``python3 -I``; the development
 container cannot reach viaggiatreno.it).  Each run:
 
 1. reads the embedded Trenitalia pack (``app/src/main/assets/gtfs/trenitalia-gtfs.zip``): the rail trips (bus routes
    and non-numeric numbers left out) running yesterday or today (``calendar.txt`` and ``calendar_dates.txt``, times in
-   Europe/Rome from noon minus 12 h of the service day) whose scheduled arrival at the last stop lies between now - 4 h
-   and now - 20 min.  Number = ``trip_short_name``, category = suffix of ``route_short_name`` (``0083_REG`` -> ``REG``),
+   Europe/Rome from noon minus 12 h of the service day) whose scheduled arrival at the last stop is at least 20 min
+   old and that ViaggiaTreno still answers about (``answerable``): every train that left today (local date), and a
+   train that left yesterday only within 3 h of its arrival (a night train).  ViaggiaTreno forgets the runs of the
+   previous day at midnight, and GitHub skips many scheduled runs, so each run covers the whole day so far rather
+   than the last hours (trains already known are never asked again).  Number = ``trip_short_name``, category = suffix of ``route_short_name`` (``0083_REG`` -> ``REG``),
    origin = ViaggiaTreno code of the first stop, resolved from its ``stop_code`` (``830008409``) with the curated
    station catalogue as the app does (``GtfsStationCodeIndex``): the station with that ``trenitaliaLocationId``,
    otherwise ``S`` + the last five digits of an ``8300xxxxx`` code, each confirmed by position or name;
@@ -23,7 +26,7 @@ container cannot reach viaggiatreno.it).  Each run:
    a short label of at most 12 characters, anything else dropped), and for the run
    whether it was cancelled (``provvedimento`` 1, ``tipoTreno`` ``ST`` or every stop suppressed).  A train with no
    actual time at its last served stop (and not cancelled) stays pending and is asked again by later runs up to 8 h after its scheduled arrival, then dropped as
-   ``unknown``; a train ViaggiaTreno does not know (HTTP 204/404, ``null``) or whose identity differs (number, origin,
+   ``unknown``; a train left for a later run by the limits stays pending while ViaggiaTreno still answers about it; a train ViaggiaTreno does not know (HTTP 204/404, ``null``) or whose identity differs (number, origin,
    day) is recorded as ``missing``/``mismatch`` and not asked again;
 4. writes the state directory (``--state``): ``obs-YYYY-MM-DD.jsonl.gz`` (one compact JSON line per train and
    departure day, deduplicated by day, origin and number) and ``pending.jsonl.gz``, gzip with a fixed header, written
@@ -70,8 +73,12 @@ BASE_URL = "http://www.viaggiatreno.it/infomobilita/resteasy/viaggiatreno/"
 # runners; the collector still stops at the first 403/429 and never poses as a browser.
 USER_AGENT = "Binario-punctuality/1.0 (personal timetable app; read-only)"
 
-LOOKBACK = timedelta(hours=4)
+# ViaggiaTreno answers only about the runs of its current day: right after midnight the previous day's are gone (the
+# run of 9 November 2026 at 00:58 got 585 "unknown" for the 602 trains of the evening before), except a train still
+# travelling.  GitHub also skips most scheduled runs (4 of 12 on 8 November, 5 to 7 hours apart), so a run asks about
+# every train of the day not known yet instead of the last few hours.
 MIN_AGE = timedelta(minutes=20)
+PREVIOUS_DAY_GRACE = timedelta(hours=3)
 PENDING_LIMIT = timedelta(hours=8)
 RETENTION_DAYS = 35
 MAX_RATE = 2.0
@@ -390,14 +397,23 @@ def trains_on(timetable: Timetable, service_day: date) -> dict[tuple[str, str, s
     return result
 
 
+def answerable(day: str, arrival: float, moment: float) -> bool:
+    """Whether ViaggiaTreno still answers about the run that left on ``day`` (ISO date) with its scheduled arrival at
+    ``arrival``: it left today (Rome), or yesterday and arrived at most PREVIOUS_DAY_GRACE ago (a night train)."""
+    today = rome_date(moment)
+    if day == today.isoformat():
+        return True
+    return day == (today - timedelta(days=1)).isoformat() and arrival >= moment - PREVIOUS_DAY_GRACE.total_seconds()
+
+
 def due_trains(timetable: Timetable, now: datetime) -> list[Due]:
-    """Trains of yesterday and today whose scheduled arrival lies between now - 4 h and now - 20 min."""
+    """Trains arrived at least 20 min ago that ViaggiaTreno still answers about (``answerable``), oldest first."""
     moment = now.timestamp()
     today = rome_date(moment)
     selected: dict[tuple[str, str, str], Due] = {}
     for service_day in (today - timedelta(days=1), today):
         for key, due in trains_on(timetable, service_day).items():
-            if moment - LOOKBACK.total_seconds() <= due.arrival <= moment - MIN_AGE.total_seconds():
+            if due.arrival <= moment - MIN_AGE.total_seconds() and answerable(due.day, due.arrival, moment):
                 previous = selected.get(key)
                 if previous is None or due.arrival > previous.arrival:
                     selected[key] = due
@@ -908,9 +924,12 @@ def collect(
     report = Report()
     moment = int(now.timestamp())
     for key, entry in sorted(state.pending.items()):
-        if moment > entry["a"] + PENDING_LIMIT.total_seconds():
+        # Asked and not arrived yet: 8 h after the scheduled arrival.  Left over by the limits of a run, never asked:
+        # while ViaggiaTreno still answers about it.  Either way, never past ViaggiaTreno's day.
+        closed = not answerable(entry["d"], entry["a"], moment)
+        if closed or (entry["k"] > 0 and moment > entry["a"] + PENDING_LIMIT.total_seconds()):
             state.add({"d": key[0], "o": key[1], "n": key[2], "c": entry["c"], "st": "unknown", "t": moment, "s": []})
-            report.add("scaduti_sconosciuti")
+            report.add("giorno_chiuso" if closed and entry["k"] == 0 else "scaduti_sconosciuti")
     queue: list[tuple[Due, int]] = []
     for key, entry in sorted(state.pending.items(), key=lambda item: (item[1]["a"], item[0])):
         if state.known(key):  # answered by an earlier run whose pending list was not saved
@@ -991,7 +1010,7 @@ LABELS = (
     ("treni_chiesti", "Treni chiesti"), ("richieste_http", "Richieste HTTP"), ("arrivati", "Arrivati"), ("cancellati", "Cancellati"),
     ("non_ancora_arrivati", "Non ancora arrivati (in sospeso)"), ("missing", "Sconosciuti a ViaggiaTreno"),
     ("mismatch", "Identità diversa"), ("errori", "Errori"), ("rimandati", "Rimandati alla prossima run"),
-    ("scaduti_sconosciuti", "Scaduti dopo 8 h (sconosciuti)"), ("in_sospeso_dopo", "In sospeso dopo la run"),
+    ("scaduti_sconosciuti", "Scaduti dopo 8 h (sconosciuti)"), ("giorno_chiuso", "Mai chiesti, giorno chiuso da ViaggiaTreno"), ("in_sospeso_dopo", "In sospeso dopo la run"),
     ("campioni", "Campioni di ritardo"), ("fermate_straordinarie", "Fermate straordinarie ignorate"),
     ("ritardi_non_plausibili", "Ritardi fuori intervallo scartati"), ("binari_non_validi", "Binari non validi scartati"), ("state_invalid_lines", "Righe di stato scartate"),
     ("pruned_days", "Giorni eliminati (oltre 35)"),

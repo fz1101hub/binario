@@ -482,7 +482,7 @@ def _check_run_hygiene(path: Path, workflow: Mapping[str, Any], problems: list[s
 
 
 # The punctuality statistics (docs/data-sources/PUNCTUALITY_STATS.md): ViaggiaTreno is asked only from this workflow,
-# on a two-hour schedule or a dispatch, read-only, one run at a time, with the raw observations kept in the Actions
+# on a schedule of at most about one run an hour or a dispatch, read-only, one run at a time, with the raw observations kept in the Actions
 # cache under one prefix and only the aggregated file printed, and only when the dispatch asks for it.
 PUNCTUALITY_WORKFLOW = "punctuality.yml"
 PUNCTUALITY_CACHE_PREFIX = "punctuality-raw-"
@@ -490,6 +490,27 @@ PUNCTUALITY_PRINT_CONDITION = "${{ github.event_name == 'workflow_dispatch' && i
 PUNCTUALITY_ACTIONS = frozenset({"actions/checkout", "actions/setup-python", "actions/cache/restore", "actions/cache/save"})
 # Time the job needs besides the collection itself: checkout, pack loading, cache save, aggregation and print.
 PUNCTUALITY_DEADLINE_MARGIN_SECONDS = 600
+# Each train is asked once whatever the number of runs; more runs only cover the gaps of the runs GitHub skips (4 of
+# 12 on 8 November 2026) and the evening before ViaggiaTreno forgets the day. About one an hour at most.
+PUNCTUALITY_MAX_DAILY_RUNS = 25
+
+
+def _daily_runs(cron: object) -> int | None:
+    """Runs a day of ``M H * * *`` with a fixed minute and hours ``*/2``, ``1-23/2`` or a list; None otherwise."""
+    if not isinstance(cron, str):
+        return None
+    match = re.fullmatch(r"([1-5]?\d) (\S+) \* \* \*", cron)
+    if not match:
+        return None
+    hours = match.group(2)
+    if hours == "*/2":
+        return 12
+    if hours == "1-23/2":
+        return 12
+    values = hours.split(",")
+    if not all(re.fullmatch(r"1?\d|2[0-3]", value) for value in values) or len(set(values)) != len(values):
+        return None
+    return len(values)
 
 
 def _workflow_commands(jobs: Mapping[str, Any]) -> str:
@@ -508,8 +529,9 @@ def _check_punctuality(path: Path, workflow: Mapping[str, Any], problems: list[s
         problems.append(f"{name}: trigger ammessi soltanto schedule e workflow_dispatch")
     schedule = triggers.get("schedule")
     crons = [entry.get("cron") for entry in schedule if isinstance(entry, Mapping)] if isinstance(schedule, list) else []
-    if len(crons) != 1 or not isinstance(crons[0], str) or not re.fullmatch(r"[1-5]?\d \*/2 \* \* \*", crons[0]):
-        problems.append(f"{name}: schedule deve essere una sola cron ogni due ore (M */2 * * *)")
+    runs = [_daily_runs(cron) for cron in crons]
+    if not 1 <= len(crons) <= 3 or None in runs or sum(runs) > PUNCTUALITY_MAX_DAILY_RUNS:
+        problems.append(f"{name}: schedule da una a tre cron con minuto fisso, al massimo {PUNCTUALITY_MAX_DAILY_RUNS} run al giorno")
     dispatch_inputs = _mapping((_mapping(triggers.get("workflow_dispatch")) or {}).get("inputs")) or {}
     print_input = _mapping(dispatch_inputs.get("print_stats"))
     if (

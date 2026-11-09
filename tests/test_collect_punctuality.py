@@ -237,19 +237,24 @@ class StationAndTimetableTest(Base):
             with self.subTest(outside=outside):
                 self.assertIsNone(collector.scheduled_minute(DAY, outside))
 
-    def test_due_trains_are_those_arrived_between_four_hours_and_twenty_minutes_ago(self) -> None:
+    def test_due_trains_are_todays_arrived_twenty_minutes_ago_and_last_nights_still_answered(self) -> None:
         selected = {train.number: train for train in collector.due_trains(self.timetable, NOW)}
-        # 2001 arrives 09:40 (08:40 UTC), 2003 at 12:20 (11:20 UTC), 9558 at 10:10, 2011 at 10:00, 1963 (service day
-        # 3 November) at 10:30 the next morning, 1965 at 09:00 exactly four hours ago.
-        self.assertEqual({"2001", "2003", "9558", "2011", "1963", "1965"}, set(selected))
+        # Every train that left today and arrived by 12:40: 2001 at 09:40 (08:40 UTC), 2003 at 12:20 (11:20 UTC),
+        # 9558 at 10:10, 2011 at 10:00, 2007 at 08:59 and 1965 at 09:00 (left at 00:30); 1963 left yesterday at 22:00
+        # and arrived at 10:30, within the three hours ViaggiaTreno still answers about a train of the day before.
+        self.assertEqual({"2001", "2003", "9558", "2011", "2007", "1963", "1965"}, set(selected))
         self.assertEqual("2026-11-03", selected["1963"].day)
         self.assertEqual("2026-11-04", selected["1965"].day)  # leaves at 24:30 of the 3 November service day
         self.assertEqual(int(datetime(2026, 11, 4, 8, 0, tzinfo=timezone.utc).timestamp()), selected["1965"].arrival)
         self.assertEqual("andamentoTreno/S08409/1965/1793746800000", collector.run_path(selected["1965"]))
         just_before = {train.number for train in collector.due_trains(self.timetable, datetime(2026, 11, 4, 11, 39, tzinfo=timezone.utc))}
         self.assertNotIn("2003", just_before)  # arrived only 19 minutes earlier
-        later = {train.number for train in collector.due_trains(self.timetable, datetime(2026, 11, 4, 12, 1, tzinfo=timezone.utc))}
-        self.assertNotIn("1965", later)
+        # The whole day stays due (GitHub skips scheduled runs); yesterday's night train only for three hours.
+        later = {train.number for train in collector.due_trains(self.timetable, datetime(2026, 11, 4, 12, 31, tzinfo=timezone.utc))}
+        self.assertEqual({"2001", "2003", "2005", "9558", "2011", "2007", "1965"}, later)
+        # After midnight ViaggiaTreno has closed the 4 November: none of its day trains is asked any more.
+        night = {(train.day, train.number) for train in collector.due_trains(self.timetable, datetime(2026, 11, 4, 23, 30, tzinfo=timezone.utc))}
+        self.assertEqual(set(), {key for key in night if key[0] == "2026-11-04" and key[1] != "1963"})
         self.assertEqual([train.arrival for train in collector.due_trains(self.timetable, NOW)],
                          sorted(train.arrival for train in selected.values()))
 
@@ -512,14 +517,14 @@ class CollectTest(Base):
     def test_a_run_records_each_due_train_once_and_a_second_run_asks_nothing(self) -> None:
         answers = Answers(self.answer_all)
         state, report = self.collect(answers)
-        self.assertEqual(6, len(answers.paths))
-        self.assertEqual(6, report.counters["arrivati"])
-        self.assertEqual(12, report.counters["campioni"])
+        self.assertEqual(7, len(answers.paths))
+        self.assertEqual(7, report.counters["arrivati"])
+        self.assertEqual(14, report.counters["campioni"])
         self.assertEqual({}, state.pending)
         again = Answers(self.answer_all)
         _, second = self.collect(again)
         self.assertEqual([], again.paths)
-        self.assertEqual(6, second.counters["gia_noti"])
+        self.assertEqual(7, second.counters["gia_noti"])
         records = collector.load_observations(self.temp / "state", "2026-11-04", {})
         self.assertEqual([1, 7], [stop[1] for stop in records[("S08235", "2001")]["s"]])
         self.assertEqual("REG", records[("S08235", "2001")]["c"])
@@ -592,19 +597,42 @@ class CollectTest(Base):
         state, report = self.collect(refused)
         self.assertEqual(1, len(refused.paths))
         self.assertIn("http-429", report.stop_reason)
-        self.assertEqual(6, len(state.pending))
+        self.assertEqual(7, len(state.pending))
 
     def test_request_budget_and_deadline(self) -> None:
         answers = Answers(self.answer_all)
         state, report = self.collect(answers, max_requests=2)
         self.assertEqual(2, len(answers.paths))
         self.assertEqual("limite --max-requests", report.stop_reason)
-        self.assertEqual(4, len(state.pending))
+        self.assertEqual(5, len(state.pending))
         ticks = iter([0.0, 0.0, 5.0, 11.0])
         answers = Answers(self.answer_all)
         state, report = self.collect(answers, deadline=10.0, clock=lambda: next(ticks, 99.0))
         self.assertEqual(3, len(answers.paths))  # earlier pending first, then one new train before the deadline
         self.assertEqual("limite --deadline-seconds", report.stop_reason)
+
+    def test_trains_left_over_by_the_limits_wait_for_the_next_run_until_viaggiatreno_closes_the_day(self) -> None:
+        state, report = self.collect(Answers(self.answer_all), max_requests=1)  # 2007, the oldest, is asked
+        left = {key for key, entry in state.pending.items() if entry["k"] == 0}
+        self.assertEqual({"1965", "2001", "2011", "9558", "1963", "2003"}, {key[2] for key in left})
+        # Nine hours later (22:00 in Rome) today's are still asked, although their arrival is more than 8 h old; the
+        # night train of the day before is past ViaggiaTreno's three hours and is dropped without a request.
+        evening = Answers(self.answer_all)
+        state, report = self.collect(evening, NOW + timedelta(hours=9))
+        self.assertEqual(0, report.counters.get("scaduti_sconosciuti", 0))
+        self.assertEqual(1, report.counters["giorno_chiuso"])
+        # (2005, due since 12:41, is new for this run.)
+        self.assertEqual({"1965", "2001", "2011", "9558", "2003", "2005"}, {path.split("/")[2] for path in evening.paths})
+        # Left over by a run just before midnight, they are lost once ViaggiaTreno has closed the day: recorded as
+        # unknown, counted apart, never asked.
+        shutil.rmtree(self.temp / "state")
+        self.collect(Answers(self.answer_all), max_requests=0)
+        after = Answers(self.answer_all)
+        state, report = self.collect(after, datetime(2026, 11, 4, 23, 30, tzinfo=timezone.utc))
+        self.assertEqual(7, report.counters["giorno_chiuso"])
+        self.assertEqual([], after.paths)
+        self.assertEqual({}, state.pending)
+        self.assertEqual("unknown", collector.load_observations(self.temp / "state", "2026-11-04", {})[("S08235", "2001")]["st"])
 
 
 class HttpFetcherTest(unittest.TestCase):
@@ -692,15 +720,15 @@ class EndToEndTest(Base):
         with contextlib.redirect_stdout(output):
             self.assertEqual(0, collector.main(arguments))
         log = output.getvalue() + summary.read_text(encoding="utf-8")
-        self.assertIn("Treni chiesti: 6", log)
+        self.assertIn("Treni chiesti: 7", log)
         self.assertIn("Arrivati: 2", log)  # 9558 and 2001
         self.assertIn("Cancellati: 1", log)  # 2003
-        self.assertIn("Sconosciuti a ViaggiaTreno: 1", log)  # 1963: the server answers 204
+        self.assertIn("Sconosciuti a ViaggiaTreno: 2", log)  # 1963 and 2007: the server answers 204
         self.assertIn("Non ancora arrivati (in sospeso): 1", log)  # 2011
         self.assertIn("Errore json-non-valido: 1", log)
         for leaked in ("MILANO", "maintenance", "html", "ROMA", "soppressa", "S08409"):
             self.assertNotIn(leaked, log)  # counts only, never text from a response
-        self.assertEqual(6, len(server.requests))
+        self.assertEqual(7, len(server.requests))
         pending = {(entry["n"]) for entry in collector.State(state).pending.values()}
         self.assertEqual({"2011", "1965"}, pending)
 
@@ -709,7 +737,7 @@ class EndToEndTest(Base):
                                             stops=[stop("S08409", 540, 0, first=True), stop("S08235", 600, -90)]))
         with contextlib.redirect_stdout(io.StringIO()):
             self.assertEqual(0, collector.main(arguments))
-        self.assertEqual(8, len(server.requests))
+        self.assertEqual(9, len(server.requests))
 
         output_path = self.temp / "stats_v1.json.gz"
         with contextlib.redirect_stdout(io.StringIO()):
