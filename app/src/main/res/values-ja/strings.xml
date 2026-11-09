@@ -1546,4 +1546,15 @@
     <plurals name="route_works_show_more">
         <item quantity="other">ほかのお知らせ %d 件を表示</item>
     </plurals>
+    <string name="settings_route_works_alert_title">あなたの区間の明日の工事</string>
+    <string name="settings_route_works_alert_description">19 時ごろ RFI のお知らせを確認し、保存した区間で明日工事や運転見合わせがある場合に通知します。</string>
+    <string name="route_works_alert_channel_name">あなたの区間の工事</string>
+    <string name="route_works_alert_channel_description">前日の 19 時ごろ、RFI のお知らせに記載された保存済み区間の明日の工事と運転見合わせをお知らせします。</string>
+    <string name="route_works_alert_title">明日 %1$s で工事</string>
+    <plurals name="route_works_alert_title_more">
+        <item quantity="other">明日 %1$s とほか %2$d 区間で工事</item>
+    </plurals>
+    <plurals name="route_works_alert_more">
+        <item quantity="other">ほかのお知らせ %d 件はマイページで</item>
+    </plurals>
 </resources>

@@ -126,6 +126,8 @@ class AppNavigationTest {
         val route = SavedRoute("r", "Roma – Napoli", Station("roma", "Roma Termini", "Roma"), Station("napoli", "Napoli Centrale", "Napoli"))
         assertEquals(departures, AppNavigation.targetOf(BinarioDeepLink.WidgetRoute(route, Direction.RETURN)))
         assertEquals(NavigationTarget(AppScreen.AGENDA), AppNavigation.targetOf(BinarioDeepLink.Agenda))
+        // A tap on the evening works alert of the saved routes opens Per te.
+        assertEquals(NavigationTarget(AppScreen.FOR_YOU), AppNavigation.targetOf(BinarioDeepLink.ForYou))
         assertEquals(
             NavigationTarget(AppScreen.PLANNER, plannerMode = SearchMode.TRAIN),
             AppNavigation.targetOf(BinarioDeepLink.TrainSearch("9920"))

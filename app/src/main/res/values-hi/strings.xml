@@ -1600,4 +1600,17 @@
         <item quantity="one">%d और सूचना दिखाएँ</item>
         <item quantity="other">%d और सूचनाएँ दिखाएँ</item>
     </plurals>
+    <string name="settings_route_works_alert_title">आपके रूटों पर कल के काम</string>
+    <string name="settings_route_works_alert_description">शाम लगभग 19 बजे RFI की सूचनाएँ पढ़ता है और बताता है अगर कल आपके सहेजे गए रूटों पर काम या रुकावटें हों।</string>
+    <string name="route_works_alert_channel_name">आपके रूटों पर काम</string>
+    <string name="route_works_alert_channel_description">एक शाम पहले, लगभग 19 बजे, RFI की सूचनाओं में बताए गए आपके सहेजे गए रूटों पर कल के काम और रुकावटें।</string>
+    <string name="route_works_alert_title">कल %1$s पर काम</string>
+    <plurals name="route_works_alert_title_more">
+        <item quantity="one">कल %1$s और %2$d अन्य रूट पर काम</item>
+        <item quantity="other">कल %1$s और %2$d अन्य रूटों पर काम</item>
+    </plurals>
+    <plurals name="route_works_alert_more">
+        <item quantity="one">«आपके लिए» में %d और सूचना</item>
+        <item quantity="other">«आपके लिए» में %d और सूचनाएँ</item>
+    </plurals>
 </resources>

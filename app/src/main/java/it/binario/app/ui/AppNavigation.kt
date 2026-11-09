@@ -106,6 +106,7 @@ internal object AppNavigation {
 
     fun targetOf(deepLink: BinarioDeepLink): NavigationTarget = when (deepLink) {
         BinarioDeepLink.Agenda -> NavigationTarget(AppScreen.AGENDA)
+        BinarioDeepLink.ForYou -> NavigationTarget(AppScreen.FOR_YOU)
         BinarioDeepLink.ActiveRoute, BinarioDeepLink.NextDepartures, is BinarioDeepLink.WidgetRoute ->
             NavigationTarget(AppScreen.DEPARTURES, departuresSection = OperationsSection.TRAINS)
         is BinarioDeepLink.TrainSearch -> NavigationTarget(AppScreen.PLANNER, plannerMode = SearchMode.TRAIN)

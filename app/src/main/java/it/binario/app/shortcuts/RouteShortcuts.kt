@@ -99,11 +99,17 @@ object SavedRouteCodec {
     }.getOrDefault(emptyList())
 }
 
-/** The saved routes a shortcut may open, written by the app itself: an intent only names a route by its id. */
+/**
+ * The saved routes a shortcut may open, written by the app itself: an intent only names a route by its id. The evening
+ * works alert reads them too, in the background, where the station catalogue the app decodes its routes with is not read.
+ */
 internal class RouteShortcutStore(context: Context) {
     private val preferences = context.applicationContext.getSharedPreferences("binario_route_shortcuts_v1", Context.MODE_PRIVATE)
 
-    fun route(id: String): SavedRoute? = SavedRouteCodec.decodeAll(preferences.getString(KEY_ROUTES, null)).firstOrNull { it.id == id }
+    fun route(id: String): SavedRoute? = routes().firstOrNull { it.id == id }
+
+    /** Every saved route as the app last wrote it: pinned first, in the saved order. */
+    fun routes(): List<SavedRoute> = SavedRouteCodec.decodeAll(preferences.getString(KEY_ROUTES, null))
 
     fun save(routes: List<SavedRoute>) = preferences.edit { putString(KEY_ROUTES, SavedRouteCodec.encodeAll(routes)) }
 

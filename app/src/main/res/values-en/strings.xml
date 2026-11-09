@@ -1623,4 +1623,17 @@
         <item quantity="one">Show %d more notice</item>
         <item quantity="other">Show %d more notices</item>
     </plurals>
+    <string name="settings_route_works_alert_title">Tomorrow’s works on your routes</string>
+    <string name="settings_route_works_alert_description">Around 19:00 reads RFI’s notices and tells you if there are works or disruptions on your saved routes tomorrow.</string>
+    <string name="route_works_alert_channel_name">Works on your routes</string>
+    <string name="route_works_alert_channel_description">The evening before, around 19:00, tomorrow’s works and disruptions on your saved routes named in RFI’s notices.</string>
+    <string name="route_works_alert_title">Works tomorrow on %1$s</string>
+    <plurals name="route_works_alert_title_more">
+        <item quantity="one">Works tomorrow on %1$s and %2$d other route</item>
+        <item quantity="other">Works tomorrow on %1$s and %2$d other routes</item>
+    </plurals>
+    <plurals name="route_works_alert_more">
+        <item quantity="one">And %d more notice in For you</item>
+        <item quantity="other">And %d more notices in For you</item>
+    </plurals>
 </resources>

@@ -1623,4 +1623,17 @@
         <item quantity="one">%d duyuru daha göster</item>
         <item quantity="other">%d duyuru daha göster</item>
     </plurals>
+    <string name="settings_route_works_alert_title">Hatlarınızda yarınki çalışmalar</string>
+    <string name="settings_route_works_alert_description">Saat 19:00 civarında RFI duyurularını okur ve yarın kayıtlı hatlarınızda çalışma veya kesinti varsa sizi uyarır.</string>
+    <string name="route_works_alert_channel_name">Hatlarınızdaki çalışmalar</string>
+    <string name="route_works_alert_channel_description">Bir önceki akşam saat 19:00 civarında, RFI duyurularında geçen kayıtlı hatlarınızdaki yarınki çalışmalar ve kesintiler.</string>
+    <string name="route_works_alert_title">Yarın %1$s hattında çalışma var</string>
+    <plurals name="route_works_alert_title_more">
+        <item quantity="one">Yarın %1$s hattında ve %2$d hatta daha çalışma var</item>
+        <item quantity="other">Yarın %1$s hattında ve %2$d hatta daha çalışma var</item>
+    </plurals>
+    <plurals name="route_works_alert_more">
+        <item quantity="one">Sana özel bölümünde %d duyuru daha</item>
+        <item quantity="other">Sana özel bölümünde %d duyuru daha</item>
+    </plurals>
 </resources>

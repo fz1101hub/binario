@@ -1677,4 +1677,19 @@
         <item quantity="many">Afficher %d autres avis</item>
         <item quantity="other">Afficher %d autres avis</item>
     </plurals>
+    <string name="settings_route_works_alert_title">Travaux de demain sur vos trajets</string>
+    <string name="settings_route_works_alert_description">Vers 19 h, lit les avis de RFI et vous prévient si des travaux ou des interruptions touchent demain vos trajets enregistrés.</string>
+    <string name="route_works_alert_channel_name">Travaux sur vos trajets</string>
+    <string name="route_works_alert_channel_description">La veille vers 19 h, les travaux et interruptions de demain sur vos trajets enregistrés cités dans les avis de RFI.</string>
+    <string name="route_works_alert_title">Demain, travaux sur %1$s</string>
+    <plurals name="route_works_alert_title_more">
+        <item quantity="one">Demain, travaux sur %1$s et sur %2$d autre trajet</item>
+        <item quantity="many">Demain, travaux sur %1$s et sur %2$d autres trajets</item>
+        <item quantity="other">Demain, travaux sur %1$s et sur %2$d autres trajets</item>
+    </plurals>
+    <plurals name="route_works_alert_more">
+        <item quantity="one">Et %d autre avis dans Pour vous</item>
+        <item quantity="many">Et %d autres avis dans Pour vous</item>
+        <item quantity="other">Et %d autres avis dans Pour vous</item>
+    </plurals>
 </resources>

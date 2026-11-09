@@ -1569,4 +1569,15 @@
     <plurals name="route_works_show_more">
         <item quantity="other">Hiện thêm %d thông báo</item>
     </plurals>
+    <string name="settings_route_works_alert_title">Thi công ngày mai trên tuyến của bạn</string>
+    <string name="settings_route_works_alert_description">Khoảng 19:00, đọc thông báo của RFI và báo cho bạn nếu ngày mai có thi công hoặc gián đoạn trên các tuyến đã lưu.</string>
+    <string name="route_works_alert_channel_name">Thi công trên tuyến của bạn</string>
+    <string name="route_works_alert_channel_description">Tối hôm trước, khoảng 19:00, thi công và gián đoạn của ngày mai trên các tuyến đã lưu được nêu trong thông báo của RFI.</string>
+    <string name="route_works_alert_title">Ngày mai thi công trên %1$s</string>
+    <plurals name="route_works_alert_title_more">
+        <item quantity="other">Ngày mai thi công trên %1$s và %2$d tuyến khác</item>
+    </plurals>
+    <plurals name="route_works_alert_more">
+        <item quantity="other">Và %d thông báo khác trong Dành cho bạn</item>
+    </plurals>
 </resources>

@@ -1708,4 +1708,21 @@
         <item quantity="many">Показать ещё %d сообщений</item>
         <item quantity="other">Показать ещё %d сообщения</item>
     </plurals>
+    <string name="settings_route_works_alert_title">Работы завтра на ваших маршрутах</string>
+    <string name="settings_route_works_alert_description">Около 19:00 проверяет сообщения RFI и предупреждает, если завтра на сохранённых маршрутах будут работы или перерывы движения.</string>
+    <string name="route_works_alert_channel_name">Работы на ваших маршрутах</string>
+    <string name="route_works_alert_channel_description">Накануне вечером, около 19:00, завтрашние работы и перерывы движения на сохранённых маршрутах из сообщений RFI.</string>
+    <string name="route_works_alert_title">Завтра работы на маршруте %1$s</string>
+    <plurals name="route_works_alert_title_more">
+        <item quantity="one">Завтра работы на маршруте %1$s и ещё на %2$d маршруте</item>
+        <item quantity="few">Завтра работы на маршруте %1$s и ещё на %2$d маршрутах</item>
+        <item quantity="many">Завтра работы на маршруте %1$s и ещё на %2$d маршрутах</item>
+        <item quantity="other">Завтра работы на маршруте %1$s и ещё на %2$d маршрута</item>
+    </plurals>
+    <plurals name="route_works_alert_more">
+        <item quantity="one">И ещё %d сообщение в разделе «Для вас»</item>
+        <item quantity="few">И ещё %d сообщения в разделе «Для вас»</item>
+        <item quantity="many">И ещё %d сообщений в разделе «Для вас»</item>
+        <item quantity="other">И ещё %d сообщения в разделе «Для вас»</item>
+    </plurals>
 </resources>

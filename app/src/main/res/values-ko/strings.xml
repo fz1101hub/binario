@@ -1546,4 +1546,15 @@
     <plurals name="route_works_show_more">
         <item quantity="other">공지 %d개 더 보기</item>
     </plurals>
+    <string name="settings_route_works_alert_title">내 구간의 내일 공사</string>
+    <string name="settings_route_works_alert_description">19:00쯤 RFI 공지를 확인하고 저장한 구간에 내일 공사나 운행 중단이 있으면 알려 줍니다.</string>
+    <string name="route_works_alert_channel_name">내 구간의 공사</string>
+    <string name="route_works_alert_channel_description">전날 저녁 19:00쯤 RFI 공지에 언급된 저장한 구간의 내일 공사와 운행 중단을 알려 줍니다.</string>
+    <string name="route_works_alert_title">내일 %1$s 공사</string>
+    <plurals name="route_works_alert_title_more">
+        <item quantity="other">내일 %1$s 외 %2$d개 구간 공사</item>
+    </plurals>
+    <plurals name="route_works_alert_more">
+        <item quantity="other">나머지 공지 %d개는 마이에서 확인하세요</item>
+    </plurals>
 </resources>

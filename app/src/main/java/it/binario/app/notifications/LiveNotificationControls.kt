@@ -331,7 +331,10 @@ internal fun ApproachAlertControl(service: TrainService, eligible: Boolean, modi
     }
 }
 
-/** "Notifiche in tempo reale" in Impostazioni → Notifiche e sveglie: the switches of the live features and the weekly digest. */
+/**
+ * "Notifiche in tempo reale" in Impostazioni → Notifiche e sveglie: the switches of the live features, the evening works
+ * alert of the saved routes and the weekly digest.
+ */
 @Composable
 fun LiveUpdatesSettingsPanel() {
     val context = LocalContext.current
@@ -339,6 +342,8 @@ fun LiveUpdatesSettingsPanel() {
     val settings = remember(context) { LiveNotificationSettings(context) }
     var trainAlerts by remember { mutableStateOf(settings.trainAlertsEnabled) }
     var strikes by remember { mutableStateOf(settings.strikeReminderEnabled) }
+    var works by remember { mutableStateOf(settings.routeWorksAlertEnabled) }
+    val worksAvailable = remember { BinarioDataGraph.routeWorksAlertNoticesService().hasNetworkAlertSources }
     var punctuality by remember { mutableStateOf(settings.punctualityRecordingEnabled) }
     var digest by remember { mutableStateOf(settings.weeklyDigestEnabled) }
     var feedback by remember { mutableStateOf<String?>(null) }
@@ -378,6 +383,22 @@ fun LiveUpdatesSettingsPanel() {
                 }
             )
         }
+        if (worksAvailable) {
+            ToggleRow(
+                title = stringResource(R.string.settings_route_works_alert_title),
+                description = stringResource(R.string.settings_route_works_alert_description),
+                checked = works,
+                onChange = { enable ->
+                    val apply = {
+                        settings.routeWorksAlertEnabled = enable
+                        works = enable
+                        RouteWorksAlertScheduler.reschedule(context)
+                    }
+                    if (enable) withPermission(apply) else apply()
+                },
+                modifier = Modifier.testTag("settings-route-works-alert")
+            )
+        }
         ToggleRow(
             title = stringResource(R.string.settings_punctuality_recording_title),
             description = stringResource(R.string.settings_punctuality_recording_description),
@@ -403,7 +424,7 @@ fun LiveUpdatesSettingsPanel() {
             modifier = Modifier.testTag("settings-weekly-digest")
         )
         Text(stringResource(R.string.settings_live_updates_privacy), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        if ((strikes || digest) && needsPermission(context)) {
+        if ((strikes || works || digest) && needsPermission(context)) {
             Text(stringResource(R.string.settings_live_updates_permission), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         feedback?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }

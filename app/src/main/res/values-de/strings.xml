@@ -1623,4 +1623,17 @@
         <item quantity="one">%d weitere Meldung anzeigen</item>
         <item quantity="other">%d weitere Meldungen anzeigen</item>
     </plurals>
+    <string name="settings_route_works_alert_title">Bauarbeiten von morgen auf deinen Strecken</string>
+    <string name="settings_route_works_alert_description">Liest gegen 19 Uhr die RFI-Meldungen und meldet, wenn morgen Bauarbeiten oder Unterbrechungen auf deinen gespeicherten Strecken anstehen.</string>
+    <string name="route_works_alert_channel_name">Bauarbeiten auf deinen Strecken</string>
+    <string name="route_works_alert_channel_description">Am Vorabend gegen 19 Uhr die Bauarbeiten und Unterbrechungen von morgen auf deinen gespeicherten Strecken aus den RFI-Meldungen.</string>
+    <string name="route_works_alert_title">Morgen Bauarbeiten auf %1$s</string>
+    <plurals name="route_works_alert_title_more">
+        <item quantity="one">Morgen Bauarbeiten auf %1$s und %2$d weiteren Strecke</item>
+        <item quantity="other">Morgen Bauarbeiten auf %1$s und %2$d weiteren Strecken</item>
+    </plurals>
+    <plurals name="route_works_alert_more">
+        <item quantity="one">Und %d weitere Meldung in Für dich</item>
+        <item quantity="other">Und %d weitere Meldungen in Für dich</item>
+    </plurals>
 </resources>

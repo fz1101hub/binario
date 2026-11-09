@@ -1654,4 +1654,19 @@
         <item quantity="many">Mostrar mais %d avisos</item>
         <item quantity="other">Mostrar mais %d avisos</item>
     </plurals>
+    <string name="settings_route_works_alert_title">Obras de amanhã nos seus trajetos</string>
+    <string name="settings_route_works_alert_description">Por volta das 19h lê os avisos da RFI e avisa se amanhã houver obras ou interrupções nos seus trajetos salvos.</string>
+    <string name="route_works_alert_channel_name">Obras nos seus trajetos</string>
+    <string name="route_works_alert_channel_description">Na noite anterior, por volta das 19h, as obras e interrupções de amanhã nos seus trajetos salvos citadas nos avisos da RFI.</string>
+    <string name="route_works_alert_title">Amanhã obras em %1$s</string>
+    <plurals name="route_works_alert_title_more">
+        <item quantity="one">Amanhã obras em %1$s e em mais %2$d trajeto</item>
+        <item quantity="many">Amanhã obras em %1$s e em mais %2$d trajetos</item>
+        <item quantity="other">Amanhã obras em %1$s e em mais %2$d trajetos</item>
+    </plurals>
+    <plurals name="route_works_alert_more">
+        <item quantity="one">E mais %d aviso em Para você</item>
+        <item quantity="many">E mais %d avisos em Para você</item>
+        <item quantity="other">E mais %d avisos em Para você</item>
+    </plurals>
 </resources>

@@ -1677,4 +1677,19 @@
         <item quantity="many">Mostrar %d avisos más</item>
         <item quantity="other">Mostrar %d avisos más</item>
     </plurals>
+    <string name="settings_route_works_alert_title">Obras de mañana en tus trayectos</string>
+    <string name="settings_route_works_alert_description">Hacia las 19 lee los avisos de RFI y te avisa si mañana hay obras o interrupciones en tus trayectos guardados.</string>
+    <string name="route_works_alert_channel_name">Obras en tus trayectos</string>
+    <string name="route_works_alert_channel_description">La tarde anterior, hacia las 19, las obras e interrupciones de mañana en tus trayectos guardados citadas en los avisos de RFI.</string>
+    <string name="route_works_alert_title">Mañana obras en %1$s</string>
+    <plurals name="route_works_alert_title_more">
+        <item quantity="one">Mañana obras en %1$s y en %2$d trayecto más</item>
+        <item quantity="many">Mañana obras en %1$s y en %2$d trayectos más</item>
+        <item quantity="other">Mañana obras en %1$s y en %2$d trayectos más</item>
+    </plurals>
+    <plurals name="route_works_alert_more">
+        <item quantity="one">Y %d aviso más en Para ti</item>
+        <item quantity="many">Y %d avisos más en Para ti</item>
+        <item quantity="other">Y %d avisos más en Para ti</item>
+    </plurals>
 </resources>

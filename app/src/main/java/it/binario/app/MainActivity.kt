@@ -199,6 +199,7 @@ class MainActivity : ComponentActivity() {
 
     private fun receiveDeepLinkIntent(intent: Intent?) {
         val widgetDeepLink = parseFavouriteTrainDeepLink(intent)
+            ?: parseForYouDeepLink(intent)
             ?: RouteShortcuts.deepLink(intent, applicationContext)
             ?: parseWidgetDeepLink(intent, applicationContext)
         deepLinkRequest = if (widgetDeepLink != null) {
@@ -455,7 +456,7 @@ internal fun BinarioApp(
                 viewModel.searchTrainNumber()
                 pendingFavouriteTrain = deepLink.number + FAVOURITE_SEPARATOR + deepLink.origin
             }
-            BinarioDeepLink.ActiveRoute, BinarioDeepLink.NextDepartures -> Unit
+            BinarioDeepLink.ActiveRoute, BinarioDeepLink.NextDepartures, BinarioDeepLink.ForYou -> Unit
         }
         val target = AppNavigation.targetOf(deepLink)
         target.departuresSection?.let { operationsSectionName = it.name }
@@ -963,6 +964,10 @@ private fun parseFavouriteTrainDeepLink(intent: Intent?): BinarioDeepLink.Favour
         intent.getStringExtra(TrainsWidgetProvider.EXTRA_TRAIN_ORIGIN)
     )
 }
+
+/** A tap on the evening works alert of the saved routes: Per te, which lists them. */
+private fun parseForYouDeepLink(intent: Intent?): BinarioDeepLink.ForYou? =
+    if (intent?.action == it.binario.app.notifications.LiveNotifications.ACTION_OPEN_FOR_YOU) BinarioDeepLink.ForYou else null
 
 private fun parseWidgetDeepLink(intent: Intent?, context: android.content.Context): BinarioDeepLink.WidgetRoute? {
     val widgetId = intent?.getIntExtra(android.appwidget.AppWidgetManager.EXTRA_APPWIDGET_ID, android.appwidget.AppWidgetManager.INVALID_APPWIDGET_ID)

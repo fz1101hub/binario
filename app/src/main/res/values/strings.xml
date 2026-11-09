@@ -1681,4 +1681,20 @@
         <item quantity="many">Mostra altri %d avvisi</item>
         <item quantity="other">Mostra altri %d avvisi</item>
     </plurals>
+    <!-- Notifiche e sveglie: the evening alert of tomorrow's works on the saved routes -->
+    <string name="settings_route_works_alert_title">Lavori di domani sulle tue tratte</string>
+    <string name="settings_route_works_alert_description">Verso le 19 legge gli avvisi RFI e ti avvisa se domani ci sono lavori o interruzioni sulle tue tratte salvate.</string>
+    <string name="route_works_alert_channel_name">Lavori sulle tue tratte</string>
+    <string name="route_works_alert_channel_description">La sera prima, verso le 19, i lavori e le interruzioni di domani sulle tratte salvate citati negli avvisi RFI.</string>
+    <string name="route_works_alert_title">Domani lavori su %1$s</string>
+    <plurals name="route_works_alert_title_more">
+        <item quantity="one">Domani lavori su %1$s e su %2$d altra tratta</item>
+        <item quantity="many">Domani lavori su %1$s e su altre %2$d tratte</item>
+        <item quantity="other">Domani lavori su %1$s e su altre %2$d tratte</item>
+    </plurals>
+    <plurals name="route_works_alert_more">
+        <item quantity="one">E %d altro avviso in Per te</item>
+        <item quantity="many">E altri %d avvisi in Per te</item>
+        <item quantity="other">E altri %d avvisi in Per te</item>
+    </plurals>
 </resources>

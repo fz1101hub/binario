@@ -1569,4 +1569,15 @@
     <plurals name="route_works_show_more">
         <item quantity="other">แสดงประกาศอีก %d รายการ</item>
     </plurals>
+    <string name="settings_route_works_alert_title">งานซ่อมบำรุงพรุ่งนี้ในเส้นทางของคุณ</string>
+    <string name="settings_route_works_alert_description">ราว 19:00 จะอ่านประกาศของ RFI และแจ้งคุณหากพรุ่งนี้มีงานซ่อมบำรุงหรือการหยุดเดินรถในเส้นทางที่บันทึกไว้</string>
+    <string name="route_works_alert_channel_name">งานซ่อมบำรุงในเส้นทางของคุณ</string>
+    <string name="route_works_alert_channel_description">เย็นวันก่อนหน้า ราว 19:00 งานซ่อมบำรุงและการหยุดเดินรถของพรุ่งนี้ในเส้นทางที่บันทึกไว้ตามประกาศของ RFI</string>
+    <string name="route_works_alert_title">พรุ่งนี้มีงานซ่อมบำรุงบน %1$s</string>
+    <plurals name="route_works_alert_title_more">
+        <item quantity="other">พรุ่งนี้มีงานซ่อมบำรุงบน %1$s และอีก %2$d เส้นทาง</item>
+    </plurals>
+    <plurals name="route_works_alert_more">
+        <item quantity="other">และประกาศอีก %d รายการในหน้าสำหรับคุณ</item>
+    </plurals>
 </resources>
