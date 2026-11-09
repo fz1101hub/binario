@@ -37,7 +37,7 @@ internal object TransitGtfsPacks {
         EmbeddedGtfsPack(
             SourceId("amt-genova-casella-gtfs"),
             "gtfs-transit/amt-genova-casella-gtfs.zip",
-            LocalDate.of(2026, 12, 18)
+            LocalDate.of(2026, 12, 25)
         ),
         EmbeddedGtfsPack(
             SourceId("cotral-ferro-gtfs"),
@@ -56,7 +56,7 @@ internal object TransitGtfsPacks {
         EmbeddedGtfsPack(
             SourceId("genova-amt-gtfs"),
             "gtfs-transit/genova-amt-gtfs.zip",
-            LocalDate.of(2026, 12, 18),
+            LocalDate.of(2026, 12, 24),
             kind = EmbeddedGtfsPackKind.URBAN,
             areas = listOf(TransitArea("Genova", 44.4072, 8.934, 15.0))
         ),

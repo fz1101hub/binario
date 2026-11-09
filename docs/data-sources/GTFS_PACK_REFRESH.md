@@ -125,7 +125,7 @@ python3 tools/build_gtfs_packs.py --only trenitalia-gtfs --only italo-gtfs \
 
 In alternativa `--refresh --source-id trenitalia-gtfs --only trenitalia-gtfs` scarica l'archivio dall'URL fissato. Restano da allineare `lastServiceDate` in `EmbeddedGtfsPacks.all`, l'URL in `RailSourceCatalog.kt` e in `androidOnlySources` della policy iOS, e l'indice iOS (`tools/build_ios_gtfs_schedule.py` legge il manifest anche se i due pack sono `androidOnlySources`).
 
-**Italo: scadenza il 12 dicembre 2026.** Il calendario Italo del commit fissato al 2 novembre 2026 (`calendar.txt` fino al 12 dicembre 2026, una data isolata il 2 febbraio 2027) termina con il cambio orario: va rinnovato appena l'upstream pubblica l'orario dal 13 dicembre 2026 (vedi «Cambio orario» sopra). Trenitalia è valido fino all'11 dicembre 2027.
+**Italo: scadenza il 12 dicembre 2026.** Il calendario Italo del commit fissato al 9 novembre 2026 (`calendar.txt` fino al 12 dicembre 2026, una data isolata il 2 febbraio 2027) termina con il cambio orario: va rinnovato appena l'upstream pubblica l'orario dal 13 dicembre 2026 (vedi «Cambio orario» sopra). Trenitalia è valido fino all'11 dicembre 2027.
 
 ## Ferrovie regionali e reti urbane (`gtfs-transit/`, `gtfs-personal/`)
 

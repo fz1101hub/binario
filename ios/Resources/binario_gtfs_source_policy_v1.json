@@ -4,13 +4,13 @@
       "accessMode": "OPEN_DIRECT",
       "reason": "Android-only for now: the iOS index keeps rail route types only and the iOS app has no scheduled-bus leg mode yet; the pack also needs the station-code identity used on Android. Review before adding it to sources.",
       "sourceId": "italo-gtfs",
-      "sourceUrl": "https://raw.githubusercontent.com/deryclem/italo-gtfs/7ee9ff77eeab7ba2a26a3464472a2fa15bf959b3/gtfs-italo.zip"
+      "sourceUrl": "https://raw.githubusercontent.com/deryclem/italo-gtfs/faa1b3c273dbcc45a41c29325450f82c3bfd1db1/gtfs-italo.zip"
     },
     {
       "accessMode": "OPEN_DIRECT",
       "reason": "Android-only for now: the iOS index keeps rail route types only and the iOS app has no scheduled-bus leg mode yet; the pack also needs the station-code identity used on Android. Review before adding it to sources.",
       "sourceId": "trenitalia-gtfs",
-      "sourceUrl": "https://raw.githubusercontent.com/deryclem/trenitalia-gtfs/6c907245537b84a705265905dd41b62ef854bf29/gtfs-trenitalia.zip"
+      "sourceUrl": "https://raw.githubusercontent.com/deryclem/trenitalia-gtfs/0e62b3ebe98654ab37b3bd0b2d39864c4c155abc/gtfs-trenitalia.zip"
     }
   ],
   "schemaVersion": 1,
