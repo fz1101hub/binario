@@ -113,3 +113,55 @@ export function catalogDocument() {
     ],
   });
 }
+
+/** Seven `[samples, le5, le15]` triples, Monday … Sunday, of a stop whose delays were all 0. */
+export function weekdaysOnTime(samplesPerDay: readonly number[]) {
+  return samplesPerDay.map(count => [count, count, count]);
+}
+
+/**
+ * A train from Roma Termini to Tivoli leaving Roma Termini at `scheduled` (minutes of the day, or
+ * null when the file has none) and arriving at Tivoli with `tivoliDelays`; `weekdays` are the
+ * triples at Roma Termini (null below 14 samples).
+ */
+export function departure(
+  number: string,
+  category: string,
+  scheduled: number | null,
+  tivoliDelays: readonly number[],
+  weekdays: unknown = null
+) {
+  const days = tivoliDelays.length;
+  return fixtureTrain(number, ROMA_TERMINI, category, days, 0, [
+    stopFromDelays(ROMA_TERMINI, Array(days).fill(0), [0, 0, scheduled, null, weekdays]),
+    stopFromDelays(TIVOLI, tivoliDelays, [0, Math.max(0, ...tivoliDelays), scheduled === null ? null : scheduled + 40, null, null]),
+  ]);
+}
+
+/** `onTime` arrivals 3 minutes late, the others 25 minutes late: late for every category. */
+export function arrivals(samples: number, onTime: number) {
+  return [...Array(onTime).fill(3), ...Array(samples - onTime).fill(25)];
+}
+
+/**
+ * Departures from Roma Termini to Tivoli around a Monday morning at 07:30: the 2157 at 8:12 (9 of
+ * 10 on time), 2161 at 9:12 (8 of 10), 2165 at 10:12 (7 of 10) and 2169 at 10:20 (6 of 10); left
+ * out are the 2151 (7:00, gone), 2171 (11:00, beyond three hours), 2159 (no scheduled time), 2163
+ * (4 samples) and the weekend-only 2167 (8:30, every day on time on Saturdays and Sundays).
+ */
+export function departuresDocument() {
+  return statsDocument([
+    departure("2151", "REG", 420, arrivals(10, 10)),
+    departure("2157", "REG", 492, arrivals(10, 9)),
+    departure("2159", "REG", null, arrivals(10, 10)),
+    departure("2161", "REG", 552, arrivals(10, 8)),
+    departure("2163", "REG", 500, arrivals(4, 4)),
+    departure("2165", "REG", 612, arrivals(10, 7)),
+    departure("2167", "REG", 510, arrivals(16, 16), weekdaysOnTime([0, 0, 0, 0, 0, 8, 8])),
+    departure("2169", "REG", 620, arrivals(10, 6)),
+    departure("2171", "REG", 660, arrivals(10, 10)),
+  ]);
+}
+
+/** Monday 9 November 2026 at 07:30 in Rome. */
+export const MONDAY_MORNING = "2026-11-09T06:30:00Z";

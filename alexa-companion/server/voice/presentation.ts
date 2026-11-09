@@ -11,6 +11,7 @@ import {
   textDirection,
   type SupportedLocale,
 } from "@shared/i18n";
+import { displayedTime } from "./punctualitySpeech";
 import { plainSpeechText } from "./speech";
 
 /**
@@ -30,6 +31,7 @@ const SCREEN_ATTRIBUTE = "binarioScreen";
 const EVENT_NEXT_TRAINS = "binario.nextTrains";
 const EVENT_MY_ROUTES = "binario.myRoutes";
 const EVENT_PUNCTUALITY = "binario.punctuality";
+const EVENT_MOST_PUNCTUAL = "binario.mostPunctual";
 const TOKEN_PREFIX = "binario.";
 const MAX_DISPLAY_LENGTH = 120;
 /** Sentences the screen repeats from the voice answer (help, punctuality) are longer than a label. */
@@ -46,8 +48,11 @@ export type BinarioScreen =
       kind: "myRoutes";
       routes: ReadonlyArray<{ name: string; isPinned: boolean }>;
       remainingCount: number;
-      /** What touching a route asks: its next trains (default) or, after a punctuality question, its punctuality. */
-      routeAction?: "nextTrains" | "punctuality";
+      /**
+       * What touching a route asks: its next trains (default) or, after a punctuality question,
+       * its punctuality or its most punctual train.
+       */
+      routeAction?: RouteAction;
     }
   | {
       kind: "punctuality";
@@ -58,9 +63,21 @@ export type BinarioScreen =
       /** The spoken answer without the attribution, which the banner shows. */
       message: string;
       figures?: PunctualityFigures;
+      /** The trains of a most-punctual answer, best first. */
+      trains?: readonly PunctualityTrainRow[];
       /** Last day of the statistics window (YYYY-MM-DD), when the statistics were read. */
       windowEnd?: string;
     };
+
+export type RouteAction = "nextTrains" | "punctuality" | "mostPunctual";
+
+/** One train of a most-punctual answer: the number, its usual departure and on-time percentage the voice reads. */
+export type PunctualityTrainRow = {
+  trainNumber: string;
+  /** Usual departure from the route's origin, minutes since midnight (Italian time). */
+  minuteOfDay: number;
+  percent: number;
+};
 
 /** What a punctuality answer measured: the same numbers the voice says. */
 export type PunctualityFigures = {
@@ -85,8 +102,7 @@ export type ScreenOptions = {
 };
 
 export type ScreenEvent =
-  | { action: "nextTrains"; routeName?: string }
-  | { action: "punctuality"; routeName?: string }
+  | { action: RouteAction; routeName?: string }
   | { action: "myRoutes" };
 
 type ScreenAction = {
@@ -120,6 +136,8 @@ export type ScreenDatasource = {
   }>;
   /** Punctuality figures, as tiles: value and label. */
   stats: Array<{ value: string; label: string; accessibilityLabel: string }>;
+  /** Trains of a most-punctual answer: usual time, train, on-time share and its label. */
+  trains: Array<{ time: string; train: string; value: string; label: string; accessibilityLabel: string }>;
   more: string;
   actions: ScreenAction[];
   hints: { title: string; items: string[] };
@@ -153,14 +171,25 @@ function currentScreen(input: HandlerInput): BinarioScreen | null {
   return (input.attributesManager.getRequestAttributes()[SCREEN_ATTRIBUTE] as BinarioScreen | null) ?? null;
 }
 
-/** Validates a TouchWrapper SendEvent against the three actions the document can send. */
+const ROUTE_EVENTS: Readonly<Record<string, RouteAction>> = {
+  [EVENT_NEXT_TRAINS]: "nextTrains",
+  [EVENT_PUNCTUALITY]: "punctuality",
+  [EVENT_MOST_PUNCTUAL]: "mostPunctual",
+};
+const ROUTE_ACTION_EVENTS: Readonly<Record<RouteAction, string>> = {
+  nextTrains: EVENT_NEXT_TRAINS,
+  punctuality: EVENT_PUNCTUALITY,
+  mostPunctual: EVENT_MOST_PUNCTUAL,
+};
+
+/** Validates a TouchWrapper SendEvent against the four actions the document can send. */
 export function parseScreenEvent(request: HandlerInput["requestEnvelope"]["request"]): ScreenEvent | null {
   if (request.type !== "Alexa.Presentation.APL.UserEvent") return null;
   if (typeof request.token !== "string" || !request.token.startsWith(TOKEN_PREFIX)) return null;
   const [action, routeName, ...rest] = Array.isArray(request.arguments) ? request.arguments : [];
   if (rest.length) return null;
   if (action === EVENT_MY_ROUTES && (routeName === undefined || routeName === "")) return { action: "myRoutes" };
-  const routeAction = action === EVENT_NEXT_TRAINS ? "nextTrains" : action === EVENT_PUNCTUALITY ? "punctuality" : null;
+  const routeAction = typeof action === "string" && Object.hasOwn(ROUTE_EVENTS, action) ? ROUTE_EVENTS[action] : null;
   if (!routeAction) return null;
   if (routeName === undefined || routeName === "") return { action: routeAction };
   if (typeof routeName !== "string" || routeName.length > MAX_EVENT_ROUTE_LENGTH) return null;
@@ -213,6 +242,26 @@ function punctualityTiles(figures: PunctualityFigures | undefined, locale: Suppo
   return tiles.map(([value, label]) => ({ value: aplText(value), label: aplText(label), accessibilityLabel: `${label}: ${value}` }));
 }
 
+/** The most-punctual list: the same trains, times and shares the voice reads, best first. */
+function punctualityTrainRows(rows: readonly PunctualityTrainRow[] | undefined, locale: SupportedLocale): ScreenDatasource["trains"] {
+  if (!rows?.length) return [];
+  const messages = messagesForLocale(locale);
+  const percent = new Intl.NumberFormat(locale, { style: "percent", maximumFractionDigits: 0 });
+  return rows.map(row => {
+    const time = displayedTime(locale, row.minuteOfDay);
+    const train = formatMessage(messages.screen.trainNumber, { trainNumber: plainLabel(row.trainNumber) });
+    const value = percent.format(row.percent / 100);
+    const label = messages.punctuality.onTimeLabel;
+    return {
+      time: aplText(time),
+      train: aplText(train),
+      value: aplText(value),
+      label: aplText(label),
+      accessibilityLabel: `${time}, ${train}, ${label}: ${value}`,
+    };
+  });
+}
+
 export function buildScreenDatasource(screen: BinarioScreen, options: ScreenOptions): ScreenDatasource {
   const { locale } = options;
   const messages = messagesForLocale(locale);
@@ -258,11 +307,12 @@ export function buildScreenDatasource(screen: BinarioScreen, options: ScreenOpti
     message: "",
     routes: [],
     stats: [],
+    trains: [],
     more: "",
     actions: [],
     hints: {
       title: aplText(t.hintsTitle),
-      items: [t.hintNextTrains, t.hintTrainStatus, p.hint, t.hintMyRoutes].map(hint => aplText(hint)),
+      items: [t.hintNextTrains, t.hintTrainStatus, p.hint, p.mostPunctualHint, t.hintMyRoutes].map(hint => aplText(hint)),
     },
   };
 
@@ -297,7 +347,8 @@ export function buildScreenDatasource(screen: BinarioScreen, options: ScreenOpti
       };
     }
     case "myRoutes": {
-      const punctuality = screen.routeAction === "punctuality";
+      const routeAction = screen.routeAction ?? "nextTrains";
+      const label = { nextTrains: t.showRoute, punctuality: p.showRoute, mostPunctual: p.showRouteMostPunctual }[routeAction];
       return {
         ...base,
         title: aplText(t.myRoutesTitle),
@@ -306,9 +357,9 @@ export function buildScreenDatasource(screen: BinarioScreen, options: ScreenOpti
           text: aplText(route.name),
           name: plainSpeechText(route.name),
           pinnedText: route.isPinned ? aplText(t.pinned) : "",
-          accessibilityLabel: formatMessage(punctuality ? p.showRoute : t.showRoute, { routeName: plainLabel(route.name) }) +
+          accessibilityLabel: formatMessage(label, { routeName: plainLabel(route.name) }) +
             (route.isPinned ? ` (${t.pinned})` : ""),
-          event: punctuality ? EVENT_PUNCTUALITY : EVENT_NEXT_TRAINS,
+          event: ROUTE_ACTION_EVENTS[routeAction],
         })),
         more: screen.remainingCount > 0
           ? aplText(formatPlural(locale, screen.remainingCount, t.moreRoutes))
@@ -330,6 +381,7 @@ export function buildScreenDatasource(screen: BinarioScreen, options: ScreenOpti
         heroAccessibilityLabel: heading,
         message: aplText(screen.message, MAX_MESSAGE_LENGTH),
         stats: punctualityTiles(screen.figures, locale),
+        trains: punctualityTrainRows(screen.trains, locale),
         actions: [myRoutes],
       };
     }
@@ -366,7 +418,8 @@ function aplDocumentFor(locale: SupportedLocale): Record<string, unknown> {
   };
 }
 
-function requestTime(input: HandlerInput) {
+/** The instant of the request (Alexa's signed timestamp, checked by the webhook), else now. */
+export function requestTime(input: HandlerInput) {
   const timestamp = Date.parse(input.requestEnvelope.request.timestamp ?? "");
   return Number.isFinite(timestamp) ? new Date(timestamp) : new Date();
 }
@@ -633,6 +686,38 @@ const BINARIO_APL_DOCUMENT: Record<string, unknown> = {
         },
       ],
     },
+    BinarioTrainRow: {
+      description: "One train of the most-punctual list: usual time, train and on-time share; read as one VoiceView item.",
+      parameters: ["train"],
+      items: [
+        {
+          type: "Frame",
+          width: "100%",
+          backgroundColor: "@binarioSurface",
+          borderRadius: "@binarioRadius",
+          item: {
+            type: "Container",
+            direction: "row",
+            alignItems: "center",
+            width: "100%",
+            accessibilityLabel: "${train.accessibilityLabel}",
+            ...padding("@binarioSpacing", "12dp"),
+            items: [
+              { type: "Text", text: "${train.time}", color: "@binarioOnSurface", fontSize: "@binarioBodySize", fontWeight: "700", maxLines: 1, textAlign: "@binarioTextAlign" },
+              { type: "Text", text: "${train.train}", spacing: "@binarioSpacing", grow: 1, shrink: 1, maxLines: 2, color: "@binarioOnSurface", fontSize: "@binarioBodySize", textAlign: "@binarioTextAlign" },
+              {
+                type: "Container",
+                spacing: "@binarioSpacing",
+                items: [
+                  { type: "Text", text: "${train.value}", color: "@binarioOnSurface", fontSize: "@binarioBodySize", fontWeight: "700", maxLines: 1, textAlign: "@binarioTextAlign" },
+                  { type: "Text", text: "${train.label}", color: "@binarioOnSurfaceVariant", fontSize: "@binarioLabelSize", maxLines: 1, textAlign: "@binarioTextAlign" },
+                ],
+              },
+            ],
+          },
+        },
+      ],
+    },
     BinarioAction: {
       description: "A primary button that sends one allowlisted event back to the skill.",
       parameters: ["action"],
@@ -726,6 +811,13 @@ const BINARIO_APL_DOCUMENT: Record<string, unknown> = {
                         spacing: "@binarioSpacing",
                         data: "${payload.binario.stats}",
                         items: [{ type: "BinarioStat", stat: "${data}", spacing: "@binarioSpacing" }],
+                      },
+                      {
+                        type: "Container",
+                        width: "100%",
+                        spacing: "@binarioSpacing",
+                        data: "${payload.binario.trains}",
+                        items: [{ type: "BinarioTrainRow", train: "${data}", spacing: "@binarioSpacing" }],
                       },
                       { type: "Text", when: "${payload.binario.message != ''}", text: "${payload.binario.message}", color: "@binarioOnSurfaceVariant", fontSize: "@binarioBodySize", textAlign: "@binarioTextAlign", spacing: "@binarioSpacing" },
                       {

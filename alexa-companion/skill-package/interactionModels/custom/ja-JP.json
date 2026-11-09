@@ -96,6 +96,24 @@
             "マイルート{routeName}の定時運行率を教えて",
             "ルート{routeName}の定時運行率"
           ]
+        },
+        {
+          "name": "MostPunctualTrainIntent",
+          "slots": [
+            {
+              "name": "routeName",
+              "type": "AMAZON.SearchQuery"
+            }
+          ],
+          "samples": [
+            "一番時間に正確な電車",
+            "一番時間に正確な電車を教えて",
+            "一番時間に正確な電車は何",
+            "マイルート{routeName}の一番時間に正確な電車",
+            "マイルート{routeName}の一番時間に正確な電車を教えて",
+            "{routeName}で一番時間に正確な電車を教えて",
+            "これから三時間で一番時間に正確な電車を教えて"
+          ]
         }
       ],
       "types": []

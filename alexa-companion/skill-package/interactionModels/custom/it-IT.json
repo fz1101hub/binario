@@ -99,6 +99,25 @@
             "puntualità della tratta {routeName}",
             "quanto sono puntuali i treni della mia tratta {routeName}"
           ]
+        },
+        {
+          "name": "MostPunctualTrainIntent",
+          "slots": [
+            {
+              "name": "routeName",
+              "type": "AMAZON.SearchQuery"
+            }
+          ],
+          "samples": [
+            "qual è il treno più puntuale",
+            "qual è il treno più puntuale per {routeName}",
+            "qual è il treno più puntuale della mia tratta {routeName}",
+            "il treno più puntuale",
+            "il treno più puntuale per {routeName}",
+            "quale treno è più puntuale per {routeName}",
+            "il treno più puntuale delle prossime tre ore",
+            "quale treno è il più puntuale nelle prossime tre ore"
+          ]
         }
       ],
       "types": []
