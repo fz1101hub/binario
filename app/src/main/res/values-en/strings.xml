@@ -1202,7 +1202,7 @@
     <string name="weekly_digest_worse">Got worse: %1$s, on time %2$d%% of the time this week (usually %3$d%%)</string>
     <string name="settings_live_updates_title">Live notifications</string>
     <string name="settings_live_updates_permission">To receive these notifications, allow Binario notifications in Android settings.</string>
-    <string name="settings_live_updates_privacy">These checks run in the background only in the windows shown. The MIT receives a request with no data of yours; the train-status sources receive the train number and the day, as when you open the detail. Nothing is stored outside the phone.</string>
+    <string name="settings_live_updates_privacy">These checks run in the background only with their switch on and only in the windows shown. “Next-day strikes” asks the MIT for its calendar and “Tomorrow’s works on your routes” asks RFI for its infomobility feed, with no data of yours; the train status and notice sources receive at most the train number and the day, as when you open the detail; the weekly summary makes no request. Nothing is stored outside the phone.</string>
     <plurals name="train_alerts_notification_title">
         <item quantity="one">%1$d new notice for %2$s</item>
         <item quantity="other">%1$d new notices for %2$s</item>
@@ -1629,5 +1629,18 @@
     <plurals name="route_works_show_more">
         <item quantity="one">Show %d more notice</item>
         <item quantity="other">Show %d more notices</item>
+    </plurals>
+    <string name="settings_route_works_alert_title">Tomorrow’s works on your routes</string>
+    <string name="settings_route_works_alert_description">Around 19:00 reads RFI’s notices and tells you if there are works or disruptions on your saved routes tomorrow.</string>
+    <string name="route_works_alert_channel_name">Works on your routes</string>
+    <string name="route_works_alert_channel_description">The evening before, around 19:00, tomorrow’s works and disruptions on your saved routes named in RFI’s notices.</string>
+    <string name="route_works_alert_title">Works tomorrow on %1$s</string>
+    <plurals name="route_works_alert_title_more">
+        <item quantity="one">Works tomorrow on %1$s and %2$d other route</item>
+        <item quantity="other">Works tomorrow on %1$s and %2$d other routes</item>
+    </plurals>
+    <plurals name="route_works_alert_more">
+        <item quantity="one">And %d more notice in For you</item>
+        <item quantity="other">And %d more notices in For you</item>
     </plurals>
 </resources>

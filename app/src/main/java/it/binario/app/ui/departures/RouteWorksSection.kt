@@ -32,19 +32,16 @@ import it.binario.app.UNCONFIGURED_ROUTE_ID
 import it.binario.app.data.RailTime
 import it.binario.app.data.SavedRoute
 import it.binario.app.data.Station
-import it.binario.app.data.core.StationId
-import it.binario.app.data.gtfs.directRunStations
 import it.binario.app.data.notices.NoticeDates
 import it.binario.app.data.notices.RouteWorks
 import it.binario.app.data.notices.RouteWorksMatcher
 import it.binario.app.data.notices.RouteWorksNotice
+import it.binario.app.data.notices.RouteWorksStations
 import it.binario.app.data.notices.WorksRoute
-import it.binario.app.data.provider.JourneyEndpoint
 import it.binario.app.data.repository.BinarioDataGraph
 import it.binario.app.ui.common.LocalizedDates
 import java.time.LocalDate
 import java.util.Locale
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
@@ -168,25 +165,10 @@ class RouteWorksViewModel(application: Application) : AndroidViewModel(applicati
 
     /** Both ends and the stations the route's direct trains call at today; the ends alone when no train runs direct. */
     private suspend fun stationsOf(route: SavedRoute, today: LocalDate): List<Station> {
-        val origin = route.outwardOrigin
-        val destination = route.outwardDestination
-        val cacheKey = "${origin.id}>${destination.id}|$today"
+        val cacheKey = "${route.outwardOrigin.id}>${route.outwardDestination.id}|$today"
         synchronized(routeStations) { routeStations[cacheKey] }?.let { return it }
-        val between = try {
-            BinarioDataGraph.offlineJourneyPlanner(getApplication()).directRunStations(
-                StationId(origin.id), origin.endpoint(), StationId(destination.id), destination.endpoint(), today
-            )
-        } catch (error: CancellationException) {
-            throw error
-        } catch (_: RuntimeException) {
-            emptyList()
-        }
-        return (listOf(origin) + between + listOf(destination)).distinctBy(Station::id)
-            .also { synchronized(routeStations) { routeStations[cacheKey] = it } }
+        return RouteWorksStations.of(getApplication(), route, today).also { synchronized(routeStations) { routeStations[cacheKey] = it } }
     }
-
-    private fun Station.endpoint(): JourneyEndpoint? =
-        name.takeIf(String::isNotBlank)?.let { JourneyEndpoint(name = it, aliases = aliases, railwayCode = railwayCode) }
 
     companion object {
         /** Routes read at most: the pinned ones come first in the saved order. */

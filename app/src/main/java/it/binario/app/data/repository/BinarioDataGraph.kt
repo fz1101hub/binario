@@ -221,6 +221,18 @@ object BinarioDataGraph {
         trenord = null
     )
 
+    /**
+     * RFI's infomobility feed alone (no Trenitalia list, no Trenord lines), for the evening alert of tomorrow's works on
+     * the saved routes: the same adapter, and so the same cache, as the notices area.
+     */
+    fun routeWorksAlertNoticesService(): it.binario.app.data.notices.RailNoticesService = it.binario.app.data.notices.RailNoticesService(
+        trainNoticeProviders = emptyList(),
+        networkAlertProviders = activeProviders(localOnlyPolicy.networkNoticeProviders(), ProviderCapability.SERVICE_ALERTS).filter { provider ->
+            it.binario.app.data.notices.RailNoticesService.publisherOf(provider.descriptor.id) == it.binario.app.data.notices.NoticePublisher.RFI
+        },
+        trenord = null
+    )
+
     /** The MIT strike calendar (RSS), when the registry enables it. */
     fun strikeCalendar(): it.binario.app.data.live.MitStrikeRssAdapter? =
         activeProviders(listOf(localOnlyPolicy.strikeCalendarProvider()), ProviderCapability.SERVICE_ALERTS).firstOrNull()

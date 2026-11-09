@@ -1175,7 +1175,7 @@
     <string name="weekly_digest_worse">Kém đi: %1$s, đúng giờ %2$d%% số lần trong tuần này (thường là %3$d%%)</string>
     <string name="settings_live_updates_title">Thông báo thời gian thực</string>
     <string name="settings_live_updates_permission">Để nhận các thông báo này, hãy cho phép thông báo của Binario trong phần cài đặt Android.</string>
-    <string name="settings_live_updates_privacy">Các lần kiểm tra này chỉ chạy nền trong các khung giờ đã nêu. MIT nhận một yêu cầu không chứa dữ liệu nào của bạn; các nguồn trạng thái tàu nhận số hiệu tàu và ngày, giống như khi bạn mở chi tiết. Không có gì được lưu bên ngoài điện thoại.</string>
+    <string name="settings_live_updates_privacy">Các lần kiểm tra này chỉ chạy nền khi công tắc được bật và chỉ trong các khung giờ đã nêu. “Đình công ngày mai” yêu cầu lịch của MIT và “Thi công ngày mai trên tuyến của bạn” yêu cầu nguồn tin điều hành của RFI, không chứa dữ liệu nào của bạn; các nguồn trạng thái và thông báo của tàu nhận tối đa số hiệu tàu và ngày, giống như khi bạn mở chi tiết; bản tóm tắt hằng tuần không gửi yêu cầu nào. Không có gì được lưu bên ngoài điện thoại.</string>
     <plurals name="train_alerts_notification_title">
         <item quantity="other">%1$d thông báo mới cho %2$s</item>
     </plurals>
@@ -1574,5 +1574,16 @@
     <string name="route_works_note">Thông báo được ghép với tuyến theo tên ga và tên tuyến có trong nội dung: hãy luôn đọc toàn văn.</string>
     <plurals name="route_works_show_more">
         <item quantity="other">Hiện thêm %d thông báo</item>
+    </plurals>
+    <string name="settings_route_works_alert_title">Thi công ngày mai trên tuyến của bạn</string>
+    <string name="settings_route_works_alert_description">Khoảng 19:00, đọc thông báo của RFI và báo cho bạn nếu ngày mai có thi công hoặc gián đoạn trên các tuyến đã lưu.</string>
+    <string name="route_works_alert_channel_name">Thi công trên tuyến của bạn</string>
+    <string name="route_works_alert_channel_description">Tối hôm trước, khoảng 19:00, thi công và gián đoạn của ngày mai trên các tuyến đã lưu được nêu trong thông báo của RFI.</string>
+    <string name="route_works_alert_title">Ngày mai thi công trên %1$s</string>
+    <plurals name="route_works_alert_title_more">
+        <item quantity="other">Ngày mai thi công trên %1$s và %2$d tuyến khác</item>
+    </plurals>
+    <plurals name="route_works_alert_more">
+        <item quantity="other">Và %d thông báo khác trong Dành cho bạn</item>
     </plurals>
 </resources>

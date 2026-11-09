@@ -1179,7 +1179,7 @@
     <string name="weekly_digest_worse">प्रदर्शन बिगड़ा: %1$s, इस सप्ताह %2$d%% बार समय पर (आमतौर पर %3$d%%)</string>
     <string name="settings_live_updates_title">लाइव सूचनाएँ</string>
     <string name="settings_live_updates_permission">ये सूचनाएँ पाने के लिए Android सेटिंग में Binario की सूचनाओं की अनुमति दें।</string>
-    <string name="settings_live_updates_privacy">ये जाँचें केवल बताई गई समय-सीमाओं में बैकग्राउंड में चलती हैं। MIT को आपके किसी डेटा के बिना अनुरोध मिलता है; ट्रेन-स्थिति के स्रोतों को ट्रेन नंबर और दिन मिलता है, जैसे विवरण खोलने पर। फ़ोन के बाहर कुछ भी सहेजा नहीं जाता।</string>
+    <string name="settings_live_updates_privacy">ये जाँचें केवल अपना स्विच चालू होने पर और केवल बताई गई समय-सीमाओं में बैकग्राउंड में चलती हैं। «अगले दिन की हड़तालें» MIT से उसका कैलेंडर माँगता है और «आपके रूटों पर कल के काम» RFI से उसकी इन्फ़ोमोबिलिटी फ़ीड, आपके किसी डेटा के बिना; ट्रेन-स्थिति और ट्रेन-सूचनाओं के स्रोतों को अधिकतम ट्रेन नंबर और दिन मिलता है, जैसे विवरण खोलने पर; साप्ताहिक सारांश कोई अनुरोध नहीं करता। फ़ोन के बाहर कुछ भी सहेजा नहीं जाता।</string>
     <plurals name="train_alerts_notification_title">
         <item quantity="one">%2$s के लिए %1$d नई सूचना</item>
         <item quantity="other">%2$s के लिए %1$d नई सूचनाएँ</item>
@@ -1606,5 +1606,18 @@
     <plurals name="route_works_show_more">
         <item quantity="one">%d और सूचना दिखाएँ</item>
         <item quantity="other">%d और सूचनाएँ दिखाएँ</item>
+    </plurals>
+    <string name="settings_route_works_alert_title">आपके रूटों पर कल के काम</string>
+    <string name="settings_route_works_alert_description">शाम लगभग 19 बजे RFI की सूचनाएँ पढ़ता है और बताता है अगर कल आपके सहेजे गए रूटों पर काम या रुकावटें हों।</string>
+    <string name="route_works_alert_channel_name">आपके रूटों पर काम</string>
+    <string name="route_works_alert_channel_description">एक शाम पहले, लगभग 19 बजे, RFI की सूचनाओं में बताए गए आपके सहेजे गए रूटों पर कल के काम और रुकावटें।</string>
+    <string name="route_works_alert_title">कल %1$s पर काम</string>
+    <plurals name="route_works_alert_title_more">
+        <item quantity="one">कल %1$s और %2$d अन्य रूट पर काम</item>
+        <item quantity="other">कल %1$s और %2$d अन्य रूटों पर काम</item>
+    </plurals>
+    <plurals name="route_works_alert_more">
+        <item quantity="one">«आपके लिए» में %d और सूचना</item>
+        <item quantity="other">«आपके लिए» में %d और सूचनाएँ</item>
     </plurals>
 </resources>

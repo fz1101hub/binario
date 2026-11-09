@@ -1229,7 +1229,7 @@
     <string name="weekly_digest_worse">Peggiorato: %1$s, %2$d%% in orario questa settimana (di solito %3$d%%)</string>
     <string name="settings_live_updates_title">Notifiche in tempo reale</string>
     <string name="settings_live_updates_permission">Per ricevere queste notifiche consenti le notifiche di Binario nelle impostazioni Android.</string>
-    <string name="settings_live_updates_privacy">Questi controlli girano in background solo nelle finestre indicate. Il MIT riceve una richiesta senza dati tuoi; le fonti dello stato dei treni ricevono il numero del treno e il giorno, come quando apri il dettaglio. Nulla viene salvato fuori dal telefono.</string>
+    <string name="settings_live_updates_privacy">Questi controlli girano in background solo con il loro interruttore attivo e solo nelle finestre indicate. «Scioperi del giorno dopo» chiede al MIT il suo calendario e «Lavori di domani sulle tue tratte» chiede a RFI il suo feed infomobilità, senza dati tuoi; le fonti dello stato e degli avvisi dei treni ricevono al più il numero del treno e il giorno, come quando apri il dettaglio; il riepilogo settimanale non fa richieste. Nulla viene salvato fuori dal telefono.</string>
     <plurals name="train_alerts_notification_title">
         <item quantity="one">%1$d nuovo avviso per %2$s</item>
         <item quantity="many">%1$d nuovi avvisi per %2$s</item>
@@ -1688,5 +1688,21 @@
         <item quantity="one">Mostra %d altro avviso</item>
         <item quantity="many">Mostra altri %d avvisi</item>
         <item quantity="other">Mostra altri %d avvisi</item>
+    </plurals>
+    <!-- Notifiche e sveglie: the evening alert of tomorrow's works on the saved routes -->
+    <string name="settings_route_works_alert_title">Lavori di domani sulle tue tratte</string>
+    <string name="settings_route_works_alert_description">Verso le 19 legge gli avvisi RFI e ti avvisa se domani ci sono lavori o interruzioni sulle tue tratte salvate.</string>
+    <string name="route_works_alert_channel_name">Lavori sulle tue tratte</string>
+    <string name="route_works_alert_channel_description">La sera prima, verso le 19, i lavori e le interruzioni di domani sulle tratte salvate citati negli avvisi RFI.</string>
+    <string name="route_works_alert_title">Domani lavori su %1$s</string>
+    <plurals name="route_works_alert_title_more">
+        <item quantity="one">Domani lavori su %1$s e su %2$d altra tratta</item>
+        <item quantity="many">Domani lavori su %1$s e su altre %2$d tratte</item>
+        <item quantity="other">Domani lavori su %1$s e su altre %2$d tratte</item>
+    </plurals>
+    <plurals name="route_works_alert_more">
+        <item quantity="one">E %d altro avviso in Per te</item>
+        <item quantity="many">E altri %d avvisi in Per te</item>
+        <item quantity="other">E altri %d avvisi in Per te</item>
     </plurals>
 </resources>

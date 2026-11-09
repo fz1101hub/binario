@@ -1202,7 +1202,7 @@
     <string name="weekly_digest_worse">Kötüleşti: %1$s, bu hafta seferlerin %%%2$d kadarında zamanında (genellikle %%%3$d)</string>
     <string name="settings_live_updates_title">Canlı bildirimler</string>
     <string name="settings_live_updates_permission">Bu bildirimleri almak için Android ayarlarında Binario bildirimlerine izin verin.</string>
-    <string name="settings_live_updates_privacy">Bu kontroller yalnızca belirtilen aralıklarda arka planda çalışır. MIT, sizden hiçbir veri içermeyen bir istek alır; tren durumu kaynakları, ayrıntıyı açtığınızdaki gibi tren numarasını ve günü alır. Telefon dışında hiçbir şey saklanmaz.</string>
+    <string name="settings_live_updates_privacy">Bu kontroller yalnızca anahtarları açıkken ve yalnızca belirtilen aralıklarda arka planda çalışır. “Ertesi günün grevleri” MIT\'den grev takvimini, “Hatlarınızda yarınki çalışmalar” RFI\'dan bilgilendirme akışını ister ve sizden hiçbir veri göndermez; tren durumu ve duyuru kaynakları, ayrıntıyı açtığınızdaki gibi en fazla tren numarasını ve günü alır; haftalık özet istek göndermez. Telefon dışında hiçbir şey saklanmaz.</string>
     <plurals name="train_alerts_notification_title">
         <item quantity="one">%1$d yeni duyuru: %2$s</item>
         <item quantity="other">%1$d yeni duyuru: %2$s</item>
@@ -1629,5 +1629,18 @@
     <plurals name="route_works_show_more">
         <item quantity="one">%d duyuru daha göster</item>
         <item quantity="other">%d duyuru daha göster</item>
+    </plurals>
+    <string name="settings_route_works_alert_title">Hatlarınızda yarınki çalışmalar</string>
+    <string name="settings_route_works_alert_description">Saat 19:00 civarında RFI duyurularını okur ve yarın kayıtlı hatlarınızda çalışma veya kesinti varsa sizi uyarır.</string>
+    <string name="route_works_alert_channel_name">Hatlarınızdaki çalışmalar</string>
+    <string name="route_works_alert_channel_description">Bir önceki akşam saat 19:00 civarında, RFI duyurularında geçen kayıtlı hatlarınızdaki yarınki çalışmalar ve kesintiler.</string>
+    <string name="route_works_alert_title">Yarın %1$s hattında çalışma var</string>
+    <plurals name="route_works_alert_title_more">
+        <item quantity="one">Yarın %1$s hattında ve %2$d hatta daha çalışma var</item>
+        <item quantity="other">Yarın %1$s hattında ve %2$d hatta daha çalışma var</item>
+    </plurals>
+    <plurals name="route_works_alert_more">
+        <item quantity="one">Sana özel bölümünde %d duyuru daha</item>
+        <item quantity="other">Sana özel bölümünde %d duyuru daha</item>
     </plurals>
 </resources>

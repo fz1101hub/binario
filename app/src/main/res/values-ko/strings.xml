@@ -1152,7 +1152,7 @@
     <string name="weekly_digest_worse">나빠짐: %1$s, 이번 주 정시율 %2$d%% (평소 %3$d%%)</string>
     <string name="settings_live_updates_title">실시간 알림</string>
     <string name="settings_live_updates_permission">이 알림을 받으려면 Android 설정에서 Binario 알림을 허용하세요.</string>
-    <string name="settings_live_updates_privacy">이 확인 작업은 표시된 시간대에만 백그라운드에서 실행됩니다. MIT는 사용자 데이터가 없는 요청을 받고, 열차 상태 출처는 상세 정보를 열 때와 마찬가지로 열차 번호와 날짜를 받습니다. 휴대전화 외부에는 아무것도 저장되지 않습니다.</string>
+    <string name="settings_live_updates_privacy">이 확인 작업은 스위치가 켜져 있을 때 표시된 시간대에만 백그라운드에서 실행됩니다. ‘다음 날 파업’은 MIT에 파업 일정을, ‘내 구간의 내일 공사’는 RFI에 운행 정보 피드를 요청하며 사용자 데이터는 보내지 않습니다. 열차 상태 및 공지 출처는 상세 정보를 열 때와 마찬가지로 최대 열차 번호와 날짜를 받습니다. 주간 요약은 요청을 보내지 않습니다. 휴대전화 외부에는 아무것도 저장되지 않습니다.</string>
     <plurals name="train_alerts_notification_title">
         <item quantity="other">새 공지 %1$d건: %2$s</item>
     </plurals>
@@ -1551,5 +1551,16 @@
     <string name="route_works_note">공지는 포함된 역 이름과 노선 이름으로 구간과 연결됩니다. 항상 전체 내용을 읽어 주세요.</string>
     <plurals name="route_works_show_more">
         <item quantity="other">공지 %d개 더 보기</item>
+    </plurals>
+    <string name="settings_route_works_alert_title">내 구간의 내일 공사</string>
+    <string name="settings_route_works_alert_description">19:00쯤 RFI 공지를 확인하고 저장한 구간에 내일 공사나 운행 중단이 있으면 알려 줍니다.</string>
+    <string name="route_works_alert_channel_name">내 구간의 공사</string>
+    <string name="route_works_alert_channel_description">전날 저녁 19:00쯤 RFI 공지에 언급된 저장한 구간의 내일 공사와 운행 중단을 알려 줍니다.</string>
+    <string name="route_works_alert_title">내일 %1$s 공사</string>
+    <plurals name="route_works_alert_title_more">
+        <item quantity="other">내일 %1$s 외 %2$d개 구간 공사</item>
+    </plurals>
+    <plurals name="route_works_alert_more">
+        <item quantity="other">나머지 공지 %d개는 마이에서 확인하세요</item>
     </plurals>
 </resources>
