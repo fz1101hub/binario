@@ -1,5 +1,11 @@
 # Changelog
 
+## In sviluppo — Avviso serale dei lavori, «Più puntuale» nei risultati, pulizia degli adattatori
+
+- **Lavori di domani sulle tue tratte** (facoltativo, spento in partenza, in Notifiche e sveglie): verso le 19 una notifica se un avviso RFI di lavori o interruzioni che nomina una stazione di una tratta salvata vale il giorno dopo. Ogni avviso è notificato una sola volta, la sera prima del primo giorno; al più una notifica per sera, mai fra le 22 e le 7; il tocco apre Per te. Legge solo il feed infomobilità di RFI, solo con l'interruttore acceso.
+- **«Più puntuale»** sotto un treno diretto dei risultati che arriva in orario meno di 7 volte su 10: un altro treno diretto della stessa lista, entro 30 minuti, ancora da partire, in orario almeno 20 punti in più, per esempio «Più puntuale: Regionale 2157 delle 08:12 · in orario 9 volte su 10»; il tocco porta a quel treno. Statistiche incluse nell'app, nessuna richiesta di rete.
+- **Pulizia**: gli adattatori STA e SNCF leggono solo i Trip Updates; avvisi e posizioni, che nessuna schermata usava, sono stati tolti. La raccolta serale della puntualità cade prima di mezzanotte anche con l'ora legale. Un test dei risultati che a volte falliva sotto carico ora aspetta le ricerche ancora in corso.
+
 ## In sviluppo — Statistiche di puntualità: tutta la giornata e i treni Trenord
 
 - **Raccolta di tutta la giornata**: ogni run chiede tutti i treni partiti oggi e non ancora noti, non solo quelli delle ultime 4 ore. Prima si perdevano le serate, perché ViaggiaTreno dimentica il giorno prima a mezzanotte (alla run delle 00:58 del 9 novembre 585 treni su 602 risultavano sconosciuti), e intere fasce del giorno, perché GitHub salta molte run programmate (l'8 novembre ne sono partite 4 su 12). Il workflow ora prova ogni ora e una volta poco prima di mezzanotte. Ogni treno resta chiesto una sola volta, a 2 richieste al secondo.
