@@ -109,7 +109,25 @@ final class ReliableAlternativesTests: XCTestCase {
         XCTAssertTrue(ReliableAlternatives.find([]).isEmpty)
     }
 
-    func testEachTrainIsMeasuredAgainstItsOwnLimitFiveMinutesForAFrecciarossaFifteenForARegional() throws {
+    func testATrainOftenCancelledIsNotOfferedForBeingPunctualOnTheDaysItRuns() {
+        let late = candidate("a", "08:00", 18, 30)
+        // On time 10 times of 10, but cancelled on 10 more days: it runs and arrives on time on half the days.
+        XCTAssertNil(suggested(for: "a", late, candidate("b", "08:10", 10, 10, cancelled: 10)))
+        // One cancellation in 30 days still leaves it clearly more reliable.
+        XCTAssertEqual(suggested(for: "a", late, candidate("b", "08:10", 28, 29, cancelled: 1)), "b")
+        // On time 20 of 24 days and cancelled on 6 of 30: on time on 67 % of the days, only 7 points above «a» …
+        XCTAssertNil(suggested(for: "a", late, candidate("b", "08:10", 20, 24, cancelled: 6)))
+        // … but 27 points above a train cancelled on 10 of 30 days and on time 12 of the 20 it ran.
+        XCTAssertEqual(suggested(for: "a", candidate("a", "08:00", 12, 20, cancelled: 10), candidate("b", "08:10", 20, 24, cancelled: 6)), "b")
+        // Exactly 20 points of the days is enough, counted exactly; 23 of 30 is not.
+        XCTAssertEqual(suggested(for: "a", late, candidate("b", "08:10", 24, 24, cancelled: 6)), "b")
+        XCTAssertNil(suggested(for: "a", late, candidate("b", "08:10", 23, 23, cancelled: 7)))
+        // No day known: no cancellation counted.
+        let unknownDays = StopReliability(stationCode: "S00219", samples: 30, onTime: 27, onTimeLimitMinutes: 15, meanDelayMinutes: 2, daysObserved: 0, daysCancelled: 0)
+        XCTAssertTrue(ReliableAlternatives.clearlyMoreReliable(unknownDays, than: arrival(18, 30)))
+    }
+
+    func testOnlyTrainsWithTheSameOnTimeLimitAreComparedFiveMinutesForAFrecciarossaFifteenForARegional() throws {
         let stats = try XCTUnwrap(NetworkReliabilityParser.parse(json: document([
             // Roma → Torino: 18 of 30 within 5 minutes (60 %), 29 of 30 within 15.
             """
@@ -157,13 +175,16 @@ final class ReliableAlternativesTests: XCTestCase {
         XCTAssertEqual(frStop.onTime, 18)
         XCTAssertEqual(regStop.onTimeLimitMinutes, 15)
         XCTAssertEqual(regStop.onTime, 27)
-        // The Frecciarossa at 5 minutes (60 %) gets the regional at 15 (90 %); at 5 minutes the regional would be 50 %.
-        XCTAssertEqual(suggested(for: "9560", fr9560, reg2041), "2041")
+        // The Frecciarossa at 5 minutes (60 %) does not get the regional at 15 (90 %): at 5 minutes it would be 50 %.
         XCTAssertTrue(ReliableAlternatives.oftenLate(frStop))
+        XCTAssertNil(suggested(for: "9560", fr9560, reg2041))
         let regionalAtFive = StopReliability(stationCode: "S00219", samples: 30, onTime: 15, onTimeLimitMinutes: 5, meanDelayMinutes: 7, daysObserved: 30, daysCancelled: 0)
         XCTAssertFalse(ReliableAlternatives.clearlyBetter(regionalAtFive, than: frStop))
-        // The other way round: a regional at 15 minutes (60 %) gets a Frecciarossa at 5 (90 %).
-        XCTAssertEqual(suggested(for: "2043", try measured("2043", "08:00"), try measured("9562", "08:20")), "9562")
+        // It gets the other Frecciarossa, at 5 minutes too (90 %).
+        XCTAssertEqual(suggested(for: "9560", fr9560, reg2041, try measured("9562", "08:20")), "9562")
+        // A regional at 15 minutes (60 %) gets the other regional (90 %), never the Frecciarossa at 5.
+        XCTAssertNil(suggested(for: "2043", try measured("2043", "08:00"), try measured("9562", "08:20")))
+        XCTAssertEqual(suggested(for: "2043", try measured("2043", "08:00"), reg2041, try measured("9562", "08:20")), "2041")
         // A regional at 90 % within 15 minutes is not «often late», though only half of its arrivals are within 5.
         XCTAssertNil(suggested(for: "2041", reg2041, try measured("9562", "08:20")))
     }
@@ -253,21 +274,22 @@ final class ReliableAlternativesTests: XCTestCase {
         return calendar.date(from: components)!
     }
 
-    /// A train at the destination: `onTime` of `samples` within 15 minutes.
-    private func arrival(_ onTime: Int, _ samples: Int) -> StopReliability {
+    /// A train at the destination: `onTime` of `samples` within 15 minutes, and `cancelled` more
+    /// days cancelled.
+    private func arrival(_ onTime: Int, _ samples: Int, cancelled: Int = 0) -> StopReliability {
         StopReliability(
             stationCode: "S00219",
             samples: samples,
             onTime: onTime,
             onTimeLimitMinutes: NetworkReliability.otherOnTimeMinutes,
             meanDelayMinutes: 4,
-            daysObserved: samples,
-            daysCancelled: 0
+            daysObserved: samples + cancelled,
+            daysCancelled: cancelled
         )
     }
 
-    private func candidate(_ key: String, _ time: String?, _ onTime: Int, _ samples: Int, stillToDepart: Bool = true) -> AlternativeCandidate {
-        AlternativeCandidate(key: key, departure: time.map { self.at($0) }, stop: arrival(onTime, samples), stillToDepart: stillToDepart)
+    private func candidate(_ key: String, _ time: String?, _ onTime: Int, _ samples: Int, stillToDepart: Bool = true, cancelled: Int = 0) -> AlternativeCandidate {
+        AlternativeCandidate(key: key, departure: time.map { self.at($0) }, stop: arrival(onTime, samples, cancelled: cancelled), stillToDepart: stillToDepart)
     }
 
     /// The key of the train suggested for `key`, or nil.

@@ -113,6 +113,19 @@ class RouteWorksTest {
         assertNull(dates("Nessuna data"))
     }
 
+    @Test fun `a list of days and a day after del take the month of the full date that follows`() {
+        fun dates(text: String) = NoticeDateParser.dates(text, today)
+        // Before: only the 22nd and the 15th, so the evening alert came after the works had begun.
+        assertEquals(NoticeDates(LocalDate.of(2026, 11, 14), LocalDate.of(2026, 11, 22)), dates("Lavori nei giorni 14, 15, 21 e 22 novembre"))
+        assertEquals(NoticeDates(LocalDate.of(2026, 11, 14), LocalDate.of(2026, 11, 15)), dates("Dalle ore 22.50 del 14 alle ore 5.50 del 15 novembre circolazione sospesa"))
+        assertEquals(NoticeDates(LocalDate.of(2026, 11, 14), LocalDate.of(2026, 11, 15)), dates("Bus sostitutivi 14 e 15 novembre"))
+        assertEquals(NoticeDates(LocalDate.of(2026, 11, 10), LocalDate.of(2026, 11, 11)), dates("Nelle giornate del 10 e dell'11 novembre"))
+        assertEquals(NoticeDates(LocalDate.of(2026, 12, 1), LocalDate.of(2026, 12, 3)), dates("Dal 1° al 3 dicembre bus sostitutivi"))
+        // A time before a list is not a day.
+        assertEquals(NoticeDates(LocalDate.of(2026, 11, 15), LocalDate.of(2026, 11, 16)), dates("Dalle ore 23.30, 15 e 16 novembre"))
+        assertNull(dates("Lavori sui binari 4, 5 e 6 dalle ore 23.30"))
+    }
+
     @Test fun `works words decide, strikes stay out`() {
         assertTrue(RouteWorksMatcher.isWorks("Interruzione della circolazione tra Alfa e Beta"))
         assertTrue(RouteWorksMatcher.isWorks("Attivi bus SOSTITUTIVI"))

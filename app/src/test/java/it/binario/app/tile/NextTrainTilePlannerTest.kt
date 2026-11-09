@@ -106,6 +106,15 @@ class NextTrainTilePlannerTest {
         val none = NextTrainTilePlanner.display(route, timetable, at(9, 0), strings, rome)
         assertEquals(TileDisplay("Prossimo treno", "Nessun altro treno oggi", "Prossimo treno. Nessun altro treno oggi", false), none)
         assertEquals("Nessun altro treno oggi", none.labelWithoutSubtitle)
+        val full = NextTrainTilePlanner.timetable(
+            route.key,
+            (0 until NextTrainTilePlanner.MAX_DEPARTURES + 2).map { service("${2100 + it}", String.format(Locale.ROOT, "08:%02d", it)) },
+            at(7, 40),
+            rome
+        )
+        assertEquals(NextTrainTilePlanner.MAX_DEPARTURES, full.departures.size)
+        // Every stored train has left, but the list was cut: later trains may exist, so only the route until it is read again.
+        assertEquals("Roma Termini → Napoli Centrale", NextTrainTilePlanner.display(route, full, at(9, 0), strings, rome).subtitle)
         val reading = NextTrainTilePlanner.display(route, null, at(9, 0), strings, rome)
         assertEquals("Roma Termini → Napoli Centrale", reading.subtitle)
         assertFalse(reading.active)
