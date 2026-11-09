@@ -35,7 +35,9 @@ class ScheduledRailRunsTest {
         Trip("T2", "102", listOf("C" to "10:05", "B" to "10:25", "A" to "10:45")),
         Trip("T3", "104", listOf("A" to "06:00", "C" to "06:40")),
         Trip("T4", "106", listOf("D" to "23:30", "E" to "24:10", "Z" to "25:30")),
-        Trip("T5", "B1", listOf("A" to "10:00", "C" to "10:30"), route = "BUS")
+        Trip("T5", "B1", listOf("A" to "10:00", "C" to "10:30"), route = "BUS"),
+        // A night train leaving Alfa at 19:00, before the evening the morning map reads of yesterday's service day.
+        Trip("T6", "108", listOf("A" to "19:00", "B" to "20:30", "D" to "22:30", "Z" to "25:00"))
     )
 
     private val planner = provider(
@@ -91,6 +93,26 @@ class ScheduledRailRunsTest {
         assertEquals(47.0, night.stops[2].latitude!!, 0.0)
         // In the afternoon yesterday's runs are no longer read.
         assertTrue(planner.scheduledRailRuns(ScheduledRunRequest(at("15:00", tuesday), around(46.0, 10.0))).none { it.serviceDate == monday })
+    }
+
+    @Test
+    fun `a night train read from yesterday's evening keeps its true origin and departure`() = runBlocking {
+        val tuesday = monday.plusDays(1)
+        val runs = planner.scheduledRailRuns(ScheduledRunRequest(at("00:30", tuesday), around(46.0, 10.0)))
+        val night = runs.single { it.publicNumber == "108" }
+        assertEquals(monday, night.serviceDate)
+        // Only the stops from 20:00 on are read, but the run still says it left Alfa at 19:00.
+        assertEquals(listOf("Beta", "Delta", "Zeta"), night.stops.map { it.name })
+        assertEquals(ScheduledRunOrigin("Alfa", 19 * 60), night.origin)
+        assertEquals("Alfa", night.originName)
+        assertEquals(19 * 60, night.originDepartureMinute)
+        // A run read from its first stop has no separate origin.
+        val fromStart = runs.single { it.publicNumber == "106" }
+        assertNull(fromStart.origin)
+        assertEquals("Delta", fromStart.originName)
+        assertEquals(fromStart.firstDepartureMinute, fromStart.originDepartureMinute)
+        // Today's whole day is read from midnight: its runs never carry one.
+        assertTrue(planner.scheduledRailRuns(ScheduledRunRequest(at("10:15"), around(45.0, 9.0))).all { it.origin == null })
     }
 
     @Test

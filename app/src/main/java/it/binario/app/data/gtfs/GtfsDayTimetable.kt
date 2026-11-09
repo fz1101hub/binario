@@ -24,7 +24,15 @@ internal class GtfsDayTrip(
     /** GTFS wheelchair_accessible: [WHEELCHAIR_YES], [WHEELCHAIR_NO] or [WHEELCHAIR_UNKNOWN] (0 or empty). */
     val wheelchairAccessible: Byte = WHEELCHAIR_UNKNOWN,
     /** GTFS bikes_allowed: [BIKES_YES], [BIKES_NO] or [BIKES_UNKNOWN] (0, empty or no column). */
-    val bikesAllowed: Byte = BIKES_UNKNOWN
+    val bikesAllowed: Byte = BIKES_UNKNOWN,
+    /**
+     * The trip's true origin when the day was read from a later minute and its first connections were left out (a night
+     * train of yesterday read from the evening): the GTFS stop_id, the name as the pack writes it and the scheduled
+     * departure minute there. Null and -1 when the trip's first connection is its origin.
+     */
+    val originStopId: String? = null,
+    val originStopName: String? = null,
+    val originDepartureMinute: Int = -1
 )
 
 /** GTFS wheelchair_boarding / wheelchair_accessible values; anything but 1 is never treated as accessible. */
@@ -125,7 +133,7 @@ internal class GtfsDayTimetable private constructor(
     }
 
     /** Rough retained size, used to bound the planner's cache. */
-    fun approximateBytes(): Long = connectionCount * (5L * Int.SIZE_BYTES + 1) + trips.size * 96L + stopIds.size * 96L
+    fun approximateBytes(): Long = connectionCount * (5L * Int.SIZE_BYTES + 1) + trips.size * 104L + stopIds.size * 96L
 
     internal class Builder(
         private val sourceId: SourceId,
@@ -157,10 +165,19 @@ internal class GtfsDayTimetable private constructor(
             mode: LegMode,
             blockId: String? = null,
             wheelchairAccessible: Byte = WHEELCHAIR_UNKNOWN,
-            bikesAllowed: Byte = BIKES_UNKNOWN
+            bikesAllowed: Byte = BIKES_UNKNOWN,
+            /** The index stop of the trip's true origin when its first connections are left out of the day, else -1. */
+            originIndexStop: Int = -1,
+            originDepartureMinute: Int = -1
         ) {
             check(pending == null) { "Trip precedente non chiuso" }
-            pending = PendingTrip(tripId, publicNumber, lineLabel, operatorName, category, operator, mode, count, blockId, wheelchairAccessible, bikesAllowed)
+            val cut = originIndexStop >= 0 && originDepartureMinute >= 0
+            pending = PendingTrip(
+                tripId, publicNumber, lineLabel, operatorName, category, operator, mode, count, blockId, wheelchairAccessible, bikesAllowed,
+                originStopId = if (cut) stopId(originIndexStop) else null,
+                originStopName = if (cut) stopName(originIndexStop) else null,
+                originDepartureMinute = if (cut) originDepartureMinute else -1
+            )
         }
 
         fun connection(
@@ -200,7 +217,10 @@ internal class GtfsDayTimetable private constructor(
                 connectionCount = trip.connections,
                 blockId = trip.blockId,
                 wheelchairAccessible = trip.wheelchairAccessible,
-                bikesAllowed = trip.bikesAllowed
+                bikesAllowed = trip.bikesAllowed,
+                originStopId = trip.originStopId,
+                originStopName = trip.originStopName,
+                originDepartureMinute = trip.originDepartureMinute
             )
         }
 
@@ -254,6 +274,9 @@ internal class GtfsDayTimetable private constructor(
             val blockId: String?,
             val wheelchairAccessible: Byte,
             val bikesAllowed: Byte,
+            val originStopId: String?,
+            val originStopName: String?,
+            val originDepartureMinute: Int,
             var connections: Int = 0
         )
     }
