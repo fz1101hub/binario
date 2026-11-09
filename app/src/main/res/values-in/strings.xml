@@ -1493,6 +1493,12 @@
     <plurals name="reliability_weekday_better">
         <item quantity="other">%1$s tepat waktu %2$d dari %3$d kali, lebih baik dari rata-rata</item>
     </plurals>
+    <!-- «Alternativa più puntuale» under a direct train of the route results (network statistics) -->
+    <string name="reliability_alternative_train">Lebih tepat waktu: %1$s pukul %2$s</string>
+    <plurals name="reliability_alternative_on_time">
+        <item quantity="other">tepat waktu %1$d dari %2$d kali</item>
+    </plurals>
+    <string name="reliability_alternative_open">Tampilkan kereta pukul %1$s</string>
     <!-- Route results: «Più presto» / «Più tardi», empty searched window, RFI «RITARDO» without minutes -->
     <string name="results_earlier">Sebelumnya</string>
     <string name="results_later">Berikutnya</string>

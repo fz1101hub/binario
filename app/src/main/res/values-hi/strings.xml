@@ -1544,6 +1544,13 @@
         <item quantity="one">%1$s %3$d में से %2$d बार समय पर, औसत से बेहतर</item>
         <item quantity="other">%1$s %3$d में से %2$d बार समय पर, औसत से बेहतर</item>
     </plurals>
+    <!-- «Alternativa più puntuale» under a direct train of the route results (network statistics) -->
+    <string name="reliability_alternative_train">अधिक समयनिष्ठ: %2$s बजे की %1$s</string>
+    <plurals name="reliability_alternative_on_time">
+        <item quantity="one">%2$d में से %1$d बार समय पर</item>
+        <item quantity="other">%2$d में से %1$d बार समय पर</item>
+    </plurals>
+    <string name="reliability_alternative_open">%1$s बजे की ट्रेन दिखाएँ</string>
     <!-- Route results: «Più presto» / «Più tardi», empty searched window, RFI «RITARDO» without minutes -->
     <string name="results_earlier">पहले के</string>
     <string name="results_later">बाद के</string>

@@ -93,6 +93,8 @@ Le osservazioni grezze (una riga JSON compatta per treno e giorno, per fermata `
 
 **Soglie, come Treniamo.** In orario = ritardo ≤ 5 minuti per FR, FA, FB, EC, ES, ESC, EN e Italo; ≤ 15 minuti per tutte le altre categorie (REG, RV, IC, ICN, …). 5 e 15 sono soglie del file, quindi il conteggio è esatto. Sotto 5 campioni alla fermata considerata l'app non mostra nulla; per un margine di coincidenza fra due soglie interpola linearmente i cumulati.
 
+**«Più puntuale: …» nei risultati.** Sotto un treno diretto in orario meno del 70 % delle volte alla destinazione cercata (almeno 5 campioni, ciascun treno con la propria soglia di 5 o 15 minuti) l'app propone un altro treno diretto della stessa lista, non ancora partito né soppresso, in partenza entro 30 minuti prima o dopo, con almeno 5 campioni e almeno 20 punti percentuali in più di arrivi in orario; fra più treni sceglie la partenza più vicina, poi la più presto, poi il più puntuale. Niente per i viaggi con cambi, senza statistiche o con dati dimostrativi.
+
 ## Applicazione con l'aggiornamento settimanale
 
 Il lunedì, sullo stesso ramo del refresh degli orari ([GTFS_PACK_REFRESH.md](GTFS_PACK_REFRESH.md#aggiornamento-settimanale)):

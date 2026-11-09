@@ -1619,6 +1619,14 @@
         <item quantity="many">%1$s è in orario %2$d volte su %3$d, meglio della media</item>
         <item quantity="other">%1$s è in orario %2$d volte su %3$d, meglio della media</item>
     </plurals>
+    <!-- «Alternativa più puntuale» under a direct train of the route results (network statistics) -->
+    <string name="reliability_alternative_train">Più puntuale: %1$s delle %2$s</string>
+    <plurals name="reliability_alternative_on_time">
+        <item quantity="one">in orario %1$d volta su %2$d</item>
+        <item quantity="many">in orario %1$d volte su %2$d</item>
+        <item quantity="other">in orario %1$d volte su %2$d</item>
+    </plurals>
+    <string name="reliability_alternative_open">Mostra il treno delle %1$s</string>
     <!-- Route results: «Più presto» / «Più tardi», empty searched window, RFI «RITARDO» without minutes -->
     <string name="results_earlier">Più presto</string>
     <string name="results_later">Più tardi</string>

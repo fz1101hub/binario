@@ -1516,6 +1516,12 @@
     <plurals name="reliability_weekday_better">
         <item quantity="other">%1$s %3$d 次中准点 %2$d 次，高于平均水平</item>
     </plurals>
+    <!-- «Alternativa più puntuale» under a direct train of the route results (network statistics) -->
+    <string name="reliability_alternative_train">更准点：%2$s 出发的 %1$s</string>
+    <plurals name="reliability_alternative_on_time">
+        <item quantity="other">%2$d 次中准点 %1$d 次</item>
+    </plurals>
+    <string name="reliability_alternative_open">显示 %1$s 出发的列车</string>
     <!-- Route results: «Più presto» / «Più tardi», empty searched window, RFI «RITARDO» without minutes -->
     <string name="results_earlier">更早</string>
     <string name="results_later">更晚</string>

@@ -1595,6 +1595,14 @@
         <item quantity="many">%1$s, no horário %2$d vezes de %3$d, melhor que a média</item>
         <item quantity="other">%1$s, no horário %2$d vezes de %3$d, melhor que a média</item>
     </plurals>
+    <!-- «Alternativa più puntuale» under a direct train of the route results (network statistics) -->
+    <string name="reliability_alternative_train">Mais pontual: %1$s das %2$s</string>
+    <plurals name="reliability_alternative_on_time">
+        <item quantity="one">no horário %1$d vez de %2$d</item>
+        <item quantity="many">no horário %1$d vezes de %2$d</item>
+        <item quantity="other">no horário %1$d vezes de %2$d</item>
+    </plurals>
+    <string name="reliability_alternative_open">Mostrar o trem das %1$s</string>
     <!-- Route results: «Più presto» / «Più tardi», empty searched window, RFI «RITARDO» without minutes -->
     <string name="results_earlier">Mais cedo</string>
     <string name="results_later">Mais tarde</string>

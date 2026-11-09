@@ -1567,6 +1567,13 @@
         <item quantity="one">%1$s it is on time %2$d time out of %3$d, better than average</item>
         <item quantity="other">%1$s it is on time %2$d times out of %3$d, better than average</item>
     </plurals>
+    <!-- «Alternativa più puntuale» under a direct train of the route results (network statistics) -->
+    <string name="reliability_alternative_train">More punctual: %1$s at %2$s</string>
+    <plurals name="reliability_alternative_on_time">
+        <item quantity="one">on time %1$d time out of %2$d</item>
+        <item quantity="other">on time %1$d times out of %2$d</item>
+    </plurals>
+    <string name="reliability_alternative_open">Show the %1$s train</string>
     <!-- Route results: «Più presto» / «Più tardi», empty searched window, RFI «RITARDO» without minutes -->
     <string name="results_earlier">Earlier</string>
     <string name="results_later">Later</string>

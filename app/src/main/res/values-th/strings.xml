@@ -1516,6 +1516,12 @@
     <plurals name="reliability_weekday_better">
         <item quantity="other">%1$s ตรงเวลา %2$d จาก %3$d ครั้ง ดีกว่าค่าเฉลี่ย</item>
     </plurals>
+    <!-- «Alternativa più puntuale» under a direct train of the route results (network statistics) -->
+    <string name="reliability_alternative_train">ตรงเวลากว่า: %1$s เวลา %2$s</string>
+    <plurals name="reliability_alternative_on_time">
+        <item quantity="other">ตรงเวลา %1$d จาก %2$d ครั้ง</item>
+    </plurals>
+    <string name="reliability_alternative_open">แสดงรถไฟเวลา %1$s</string>
     <!-- Route results: «Più presto» / «Più tardi», empty searched window, RFI «RITARDO» without minutes -->
     <string name="results_earlier">ก่อนหน้า</string>
     <string name="results_later">ถัดไป</string>
