@@ -1,13 +1,16 @@
 #!/usr/bin/env python3
 """Collect ViaggiaTreno observations of the Trenitalia trains that ran recently, for Binario's punctuality statistics.
 
-Run on a GitHub runner every two hours (``.github/workflows/punctuality.yml``, ``python3 -I``; the development
+Run on a GitHub runner several times a day (``.github/workflows/punctuality.yml``, ``python3 -I``; the development
 container cannot reach viaggiatreno.it).  Each run:
 
-1. reads the embedded Trenitalia pack (``app/src/main/assets/gtfs/trenitalia-gtfs.zip``): the rail trips (bus routes
-   and non-numeric numbers left out) running yesterday or today (``calendar.txt`` and ``calendar_dates.txt``, times in
-   Europe/Rome from noon minus 12 h of the service day) whose scheduled arrival at the last stop lies between now - 4 h
-   and now - 20 min.  Number = ``trip_short_name``, category = suffix of ``route_short_name`` (``0083_REG`` -> ``REG``),
+1. reads the embedded Trenitalia and Trenord packs (``app/src/main/assets/gtfs/trenitalia-gtfs.zip`` and
+   ``lombardia-trenord-gtfs.zip``, ``--gtfs`` once per pack): the rail trips (bus routes and non-numeric numbers left out) running yesterday or today (``calendar.txt`` and ``calendar_dates.txt``, times in
+   Europe/Rome from noon minus 12 h of the service day) whose scheduled arrival at the last stop is at least 20 min
+   old and that ViaggiaTreno still answers about (``answerable``): every train that left today (local date), and a
+   train that left yesterday only within 3 h of its arrival (a night train).  ViaggiaTreno forgets the runs of the
+   previous day at midnight, and GitHub skips many scheduled runs, so each run covers the whole day so far rather
+   than the last hours (trains already known are never asked again).  Number = ``trip_short_name``, category = suffix of ``route_short_name`` (``0083_REG`` -> ``REG``),
    origin = ViaggiaTreno code of the first stop, resolved from its ``stop_code`` (``830008409``) with the curated
    station catalogue as the app does (``GtfsStationCodeIndex``): the station with that ``trenitaliaLocationId``,
    otherwise ``S`` + the last five digits of an ``8300xxxxx`` code, each confirmed by position or name;
@@ -23,7 +26,7 @@ container cannot reach viaggiatreno.it).  Each run:
    a short label of at most 12 characters, anything else dropped), and for the run
    whether it was cancelled (``provvedimento`` 1, ``tipoTreno`` ``ST`` or every stop suppressed).  A train with no
    actual time at its last served stop (and not cancelled) stays pending and is asked again by later runs up to 8 h after its scheduled arrival, then dropped as
-   ``unknown``; a train ViaggiaTreno does not know (HTTP 204/404, ``null``) or whose identity differs (number, origin,
+   ``unknown``; a train left for a later run by the limits stays pending while ViaggiaTreno still answers about it; a train ViaggiaTreno does not know (HTTP 204/404, ``null``) or whose identity differs (number, origin,
    day) is recorded as ``missing``/``mismatch`` and not asked again;
 4. writes the state directory (``--state``): ``obs-YYYY-MM-DD.jsonl.gz`` (one compact JSON line per train and
    departure day, deduplicated by day, origin and number) and ``pending.jsonl.gz``, gzip with a fixed header, written
@@ -63,6 +66,9 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_GTFS = ROOT / "app/src/main/assets/gtfs/trenitalia-gtfs.zip"
+# Trenord publishes its runs on ViaggiaTreno too (the live check finds 651 Milano Cadorna - Asso, origin S01066), and
+# its pack already uses ViaggiaTreno codes as stop_id ("S01066"): Lombardy's regional and suburban trains.
+DEFAULT_TRENORD = ROOT / "app/src/main/assets/gtfs/lombardia-trenord-gtfs.zip"
 DEFAULT_STATIONS = ROOT / "app/src/main/assets/stations/curated_it_rail_stations.json"
 BASE_URL = "http://www.viaggiatreno.it/infomobilita/resteasy/viaggiatreno/"
 # Honest, in the style of the app ("Binario/0.20 (personal realtime client)") and of the discovery tool.  The
@@ -70,8 +76,12 @@ BASE_URL = "http://www.viaggiatreno.it/infomobilita/resteasy/viaggiatreno/"
 # runners; the collector still stops at the first 403/429 and never poses as a browser.
 USER_AGENT = "Binario-punctuality/1.0 (personal timetable app; read-only)"
 
-LOOKBACK = timedelta(hours=4)
+# ViaggiaTreno answers only about the runs of its current day: right after midnight the previous day's are gone (the
+# run of 9 November 2026 at 00:58 got 585 "unknown" for the 602 trains of the evening before), except a train still
+# travelling.  GitHub also skips most scheduled runs (4 of 12 on 8 November, 5 to 7 hours apart), so a run asks about
+# every train of the day not known yet instead of the last few hours.
 MIN_AGE = timedelta(minutes=20)
+PREVIOUS_DAY_GRACE = timedelta(hours=3)
 PENDING_LIMIT = timedelta(hours=8)
 RETENTION_DAYS = 35
 MAX_RATE = 2.0
@@ -104,6 +114,7 @@ RAIL_ROUTE_TYPES = frozenset({"2", *map(str, range(100, 200))})
 NUMBER = re.compile(r"[1-9][0-9]{0,5}")
 CODE = re.compile(r"S[0-9]{5}")
 CATEGORY = re.compile(r"[A-Z]{1,6}")
+LINE = re.compile(r"([A-Z]{1,6})[0-9]{0,3}")  # a Trenord line: RE11, S9, R14
 LOCATION_ID = re.compile(r"[0-9]{9}")
 OBS_FILE = re.compile(r"obs-(\d{4}-\d{2}-\d{2})\.jsonl\.gz")
 PENDING_FILE = "pending.jsonl.gz"
@@ -278,11 +289,17 @@ def _float(value: str | None) -> float | None:
         return None
 
 
-def load_timetable(path: Path, stations: StationCodes) -> Timetable:
-    """The rail trips of a Trenitalia-style pack whose number and origin ViaggiaTreno can be asked about."""
+def load_timetable(path: Path, stations: StationCodes, namespace: str = "") -> Timetable:
+    """The rail trips of a pack whose number and origin ViaggiaTreno can be asked about.
+
+    Trenitalia: number = ``trip_short_name``, category = suffix of ``route_short_name`` (``0083_REG``), origin from the
+    ``stop_code`` (``StationCodes``).  Trenord: number after the line (``RE_11 - 2153`` is 2153), category = letters of
+    the line (``RE11`` is RE, ``S9`` is S; a line without a name is REG), origin = the ``stop_id``, already a
+    ViaggiaTreno code (``S01066``).  ``namespace`` prefixes the service ids, so that two packs never share one."""
     skipped: dict[str, int] = {}
 
     def skip(reason: str) -> None:
+        reason = f"{namespace}{reason}"
         skipped[reason] = skipped.get(reason, 0) + 1
 
     try:
@@ -315,7 +332,7 @@ def load_timetable(path: Path, stations: StationCodes) -> Timetable:
         weekly: dict[str, tuple[date, date, tuple[bool, ...]]] = {}
         for row in _rows(archive, "calendar.txt", required=False):
             try:
-                weekly[row.get("service_id", "")] = (
+                weekly[namespace + row.get("service_id", "")] = (
                     parse_gtfs_date(row.get("start_date", "")), parse_gtfs_date(row.get("end_date", "")),
                     tuple(row.get(day, "0").strip() == "1" for day in WEEKDAYS),
                 )
@@ -327,7 +344,7 @@ def load_timetable(path: Path, stations: StationCodes) -> Timetable:
                 day = parse_gtfs_date(row.get("date", ""))
             except ValueError:
                 continue
-            exceptions.setdefault(row.get("service_id", ""), {})[day] = row.get("exception_type", "").strip()
+            exceptions.setdefault(namespace + row.get("service_id", ""), {})[day] = row.get("exception_type", "").strip()
 
     plans: list[TripPlan] = []
     origins: dict[str, str | None] = {}
@@ -336,29 +353,46 @@ def load_timetable(path: Path, stations: StationCodes) -> Timetable:
         if route is None or route.get("route_type", "").strip() not in RAIL_ROUTE_TYPES:
             skip("non ferroviaria")
             continue
-        number = trip.get("trip_short_name", "").strip()
+        number = trip.get("trip_short_name", "").strip().rsplit(" - ", 1)[-1].strip()
         if not NUMBER.fullmatch(number):
             skip("numero non ViaggiaTreno")
-            continue
-        category = route.get("route_short_name", "").strip().rsplit("_", 1)[-1].upper()
-        if not CATEGORY.fullmatch(category):
-            skip("categoria non valida")
             continue
         end = ends.get(trip_id)
         if end is None or end[2] is None or end[5] is None or end[0] == end[3]:
             skip("orari incompleti")
             continue
-        stop_id = end[1]
+        stop_id = end[1].strip()
+        coded = CODE.fullmatch(stop_id) is not None
         if stop_id not in origins:
             stop = stops.get(stop_id, {})
-            origins[stop_id] = stations.resolve(stop.get("stop_code", ""), _float(stop.get("stop_lat")),
-                                                _float(stop.get("stop_lon")), stop.get("stop_name", ""))
+            origins[stop_id] = stop_id if coded else stations.resolve(
+                stop.get("stop_code", ""), _float(stop.get("stop_lat")), _float(stop.get("stop_lon")), stop.get("stop_name", ""))
         origin = origins[stop_id]
         if origin is None:
             skip("origine senza codice ViaggiaTreno")
             continue
-        plans.append(TripPlan(number, category, origin, end[2], end[5], trip.get("service_id", "")))
+        line = route.get("route_short_name", "").strip().rsplit("_", 1)[-1].upper()
+        lettered = LINE.fullmatch(line)
+        category = (lettered.group(1) if lettered else "REG") if coded else line
+        if not CATEGORY.fullmatch(category):
+            skip("categoria non valida")
+            continue
+        plans.append(TripPlan(number, category, origin, end[2], end[5], namespace + trip.get("service_id", "")))
     return Timetable(plans, weekly, exceptions, skipped)
+
+
+def load_timetables(paths: Sequence[Path], stations: StationCodes) -> Timetable:
+    """The packs of ``paths`` as one timetable: each pack's service ids and skip reasons are prefixed by its name."""
+    if len(paths) == 1:
+        return load_timetable(paths[0], stations)
+    merged = Timetable([], {}, {})
+    for path in paths:
+        part = load_timetable(path, stations, namespace=f"{path.stem}: ")
+        merged.trips.extend(part.trips)
+        merged.weekly.update(part.weekly)
+        merged.exceptions.update(part.exceptions)
+        merged.skipped.update(part.skipped)
+    return merged
 
 
 @dataclass(frozen=True)
@@ -390,14 +424,23 @@ def trains_on(timetable: Timetable, service_day: date) -> dict[tuple[str, str, s
     return result
 
 
+def answerable(day: str, arrival: float, moment: float) -> bool:
+    """Whether ViaggiaTreno still answers about the run that left on ``day`` (ISO date) with its scheduled arrival at
+    ``arrival``: it left today (Rome), or yesterday and arrived at most PREVIOUS_DAY_GRACE ago (a night train)."""
+    today = rome_date(moment)
+    if day == today.isoformat():
+        return True
+    return day == (today - timedelta(days=1)).isoformat() and arrival >= moment - PREVIOUS_DAY_GRACE.total_seconds()
+
+
 def due_trains(timetable: Timetable, now: datetime) -> list[Due]:
-    """Trains of yesterday and today whose scheduled arrival lies between now - 4 h and now - 20 min."""
+    """Trains arrived at least 20 min ago that ViaggiaTreno still answers about (``answerable``), oldest first."""
     moment = now.timestamp()
     today = rome_date(moment)
     selected: dict[tuple[str, str, str], Due] = {}
     for service_day in (today - timedelta(days=1), today):
         for key, due in trains_on(timetable, service_day).items():
-            if moment - LOOKBACK.total_seconds() <= due.arrival <= moment - MIN_AGE.total_seconds():
+            if due.arrival <= moment - MIN_AGE.total_seconds() and answerable(due.day, due.arrival, moment):
                 previous = selected.get(key)
                 if previous is None or due.arrival > previous.arrival:
                     selected[key] = due
@@ -908,9 +951,12 @@ def collect(
     report = Report()
     moment = int(now.timestamp())
     for key, entry in sorted(state.pending.items()):
-        if moment > entry["a"] + PENDING_LIMIT.total_seconds():
+        # Asked and not arrived yet: 8 h after the scheduled arrival.  Left over by the limits of a run, never asked:
+        # while ViaggiaTreno still answers about it.  Either way, never past ViaggiaTreno's day.
+        closed = not answerable(entry["d"], entry["a"], moment)
+        if closed or (entry["k"] > 0 and moment > entry["a"] + PENDING_LIMIT.total_seconds()):
             state.add({"d": key[0], "o": key[1], "n": key[2], "c": entry["c"], "st": "unknown", "t": moment, "s": []})
-            report.add("scaduti_sconosciuti")
+            report.add("giorno_chiuso" if closed and entry["k"] == 0 else "scaduti_sconosciuti")
     queue: list[tuple[Due, int]] = []
     for key, entry in sorted(state.pending.items(), key=lambda item: (item[1]["a"], item[0])):
         if state.known(key):  # answered by an earlier run whose pending list was not saved
@@ -991,7 +1037,7 @@ LABELS = (
     ("treni_chiesti", "Treni chiesti"), ("richieste_http", "Richieste HTTP"), ("arrivati", "Arrivati"), ("cancellati", "Cancellati"),
     ("non_ancora_arrivati", "Non ancora arrivati (in sospeso)"), ("missing", "Sconosciuti a ViaggiaTreno"),
     ("mismatch", "Identità diversa"), ("errori", "Errori"), ("rimandati", "Rimandati alla prossima run"),
-    ("scaduti_sconosciuti", "Scaduti dopo 8 h (sconosciuti)"), ("in_sospeso_dopo", "In sospeso dopo la run"),
+    ("scaduti_sconosciuti", "Scaduti dopo 8 h (sconosciuti)"), ("giorno_chiuso", "Mai chiesti, giorno chiuso da ViaggiaTreno"), ("in_sospeso_dopo", "In sospeso dopo la run"),
     ("campioni", "Campioni di ritardo"), ("fermate_straordinarie", "Fermate straordinarie ignorate"),
     ("ritardi_non_plausibili", "Ritardi fuori intervallo scartati"), ("binari_non_validi", "Binari non validi scartati"), ("state_invalid_lines", "Righe di stato scartate"),
     ("pruned_days", "Giorni eliminati (oltre 35)"),
@@ -1026,7 +1072,8 @@ def estimate(timetable: Timetable, days: Sequence[date]) -> str:
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--state", type=Path, help="directory dello stato (osservazioni e treni in sospeso)")
-    parser.add_argument("--gtfs", type=Path, default=DEFAULT_GTFS, help="pack GTFS Trenitalia")
+    parser.add_argument("--gtfs", type=Path, action="append",
+                        help="pack GTFS, una volta per pack (predefiniti: Trenitalia e Trenord inclusi nell'app)")
     parser.add_argument("--stations", type=Path, default=DEFAULT_STATIONS, help="catalogo curato delle stazioni")
     parser.add_argument("--now", help="istante della run (ISO 8601 con fuso; predefinito: adesso)")
     parser.add_argument("--max-requests", type=int, default=3000, help="richieste HTTP al massimo (predefinito 3000)")
@@ -1041,7 +1088,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     started = time.monotonic()
     try:
         stations = StationCodes.load(args.stations)
-        timetable = load_timetable(args.gtfs, stations)
+        timetable = load_timetables(args.gtfs or [DEFAULT_GTFS, DEFAULT_TRENORD], stations)
         if args.estimate:
             print(estimate(timetable, args.estimate))
             return 0

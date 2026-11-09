@@ -1,15 +1,20 @@
 name: Punctuality statistics
 
 # Binario's unofficial punctuality statistics (docs/data-sources/PUNCTUALITY_STATS.md, owner decision of 3 November
-# 2026: computed "as Treniamo does", aggregated only, withdrawn if Trenitalia/RFI object). Every two hours, from the
-# default branch only (GitHub runs schedules there), tools/collect_punctuality.py asks ViaggiaTreno once about each
-# Trenitalia train of the embedded pack that arrived in the last hours, at most 2 requests per second. The raw
-# observations stay in the Actions cache (prefix punctuality-raw-, 35 days): never printed, uploaded or committed.
+# 2026: computed "as Treniamo does", aggregated only, withdrawn if Trenitalia/RFI object). From the default branch
+# only (GitHub runs schedules there), tools/collect_punctuality.py asks ViaggiaTreno once about each Trenitalia and
+# Trenord train of the embedded packs that arrived today and is not known yet, at most 2 requests per second (about
+# 8,800 trains a day, each asked once whatever the number of runs). GitHub skips many scheduled runs (4 of 12 on 8 November 2026) and
+# ViaggiaTreno forgets the previous day at midnight, so the schedule tries every hour and once more just before
+# midnight (Rome, winter time). The raw observations stay in the Actions cache (prefix punctuality-raw-, 35 days):
+# never printed, uploaded or committed.
 # A workflow_dispatch with print_stats=true also prints the aggregated stats_v1.json.gz as one nonce frame for
 # tools/apply_ci_punctuality.py; nothing else leaves the job.
 on:
   schedule:
     - cron: "41 */2 * * *"
+    - cron: "11 1-23/2 * * *"
+    - cron: "47 22 * * *"
   workflow_dispatch:
     inputs:
       print_stats:
@@ -29,7 +34,7 @@ concurrency:
 jobs:
   punctuality:
     runs-on: ubuntu-24.04
-    timeout-minutes: 45
+    timeout-minutes: 60
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
@@ -56,7 +61,7 @@ jobs:
           echo "::stop-commands::$marker"
           trap 'echo "::$marker::"' EXIT
           python3 -I tools/collect_punctuality.py --state "$RUNNER_TEMP/punctuality-raw" \
-            --rate 2 --max-requests 3000 --deadline-seconds 1800 --summary "$GITHUB_STEP_SUMMARY"
+            --rate 2 --max-requests 5400 --deadline-seconds 2700 --summary "$GITHUB_STEP_SUMMARY"
 
       - name: Save the raw observations
         if: ${{ !cancelled() }}
