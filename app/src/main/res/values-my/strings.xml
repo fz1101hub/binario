@@ -1502,7 +1502,7 @@
     <string name="my_trains_reliability_title">ကျွန်ုပ်၏ ရထားများ၏ ယုံကြည်စိတ်ချရမှု</string>
     <string name="my_trains_reliability_description">နောက်ဆုံး ရက် 30၊ ကွန်ရက်ပေါ်တွင်နှင့် ဤဖုန်းတွင် မှတ်တမ်းတင်ထားသော ခရီးစဉ်များတွင်။ လမ်းကြောင်းသည် နောက်ဆုံး 4 ပတ်ကို ယခင် 4 ပတ်နှင့် နှိုင်းယှဉ်သည်။ ဖွင့်ရန် ရထားကို တို့ပါ။</string>
     <plurals name="my_trains_reliability_personal">
-        <item quantity="other">သင်၏ ခရီးစဉ်များတွင်- %2$d ကြိမ်တွင် %1$d ကြိမ် အချိန်မှန်</item>
+        <item quantity="other">ဤဖုန်းတွင် မှတ်တမ်းတင်ထားသည်- %2$d ကြိမ်တွင် %1$d ကြိမ် အချိန်မှန်</item>
     </plurals>
     <string name="my_trains_reliability_worse">ပိုဆိုးလာနေသည်</string>
     <string name="my_trains_reliability_better">ပိုကောင်းလာနေသည်</string>

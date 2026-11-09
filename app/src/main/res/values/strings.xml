@@ -1631,9 +1631,9 @@
     <string name="my_trains_reliability_title">Affidabilità dei miei treni</string>
     <string name="my_trains_reliability_description">Ultimi 30 giorni, sulla rete e nelle corse registrate su questo telefono; l’andamento confronta le ultime 4 settimane con le 4 precedenti. Tocca un treno per aprirlo.</string>
     <plurals name="my_trains_reliability_personal">
-        <item quantity="one">Nei tuoi viaggi: in orario %1$d volta su %2$d</item>
-        <item quantity="many">Nei tuoi viaggi: in orario %1$d volte su %2$d</item>
-        <item quantity="other">Nei tuoi viaggi: in orario %1$d volte su %2$d</item>
+        <item quantity="one">Registrato su questo telefono: in orario %1$d volta su %2$d</item>
+        <item quantity="many">Registrato su questo telefono: in orario %1$d volte su %2$d</item>
+        <item quantity="other">Registrato su questo telefono: in orario %1$d volte su %2$d</item>
     </plurals>
     <string name="my_trains_reliability_worse">In peggioramento</string>
     <string name="my_trains_reliability_better">In miglioramento</string>

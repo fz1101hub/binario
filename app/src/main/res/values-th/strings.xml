@@ -1525,7 +1525,7 @@
     <string name="my_trains_reliability_title">ความน่าเชื่อถือของรถไฟของฉัน</string>
     <string name="my_trains_reliability_description">30 วันล่าสุด บนเครือข่ายและในเที่ยวที่บันทึกไว้ในโทรศัพท์เครื่องนี้ แนวโน้มเปรียบเทียบ 4 สัปดาห์ล่าสุดกับ 4 สัปดาห์ก่อนหน้า แตะขบวนเพื่อเปิด</string>
     <plurals name="my_trains_reliability_personal">
-        <item quantity="other">ในการเดินทางของคุณ: ตรงเวลา %1$d จาก %2$d ครั้ง</item>
+        <item quantity="other">บันทึกในโทรศัพท์เครื่องนี้: ตรงเวลา %1$d จาก %2$d ครั้ง</item>
     </plurals>
     <string name="my_trains_reliability_worse">แย่ลง</string>
     <string name="my_trains_reliability_better">ดีขึ้น</string>

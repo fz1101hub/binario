@@ -1577,8 +1577,8 @@
     <string name="my_trains_reliability_title">Reliability of my trains</string>
     <string name="my_trains_reliability_description">Last 30 days, on the network and in the runs recorded on this phone; the trend compares the last 4 weeks with the 4 before. Tap a train to open it.</string>
     <plurals name="my_trains_reliability_personal">
-        <item quantity="one">On your trips: on time %1$d time out of %2$d</item>
-        <item quantity="other">On your trips: on time %1$d times out of %2$d</item>
+        <item quantity="one">Recorded on this phone: on time %1$d time out of %2$d</item>
+        <item quantity="other">Recorded on this phone: on time %1$d times out of %2$d</item>
     </plurals>
     <string name="my_trains_reliability_worse">Getting worse</string>
     <string name="my_trains_reliability_better">Improving</string>

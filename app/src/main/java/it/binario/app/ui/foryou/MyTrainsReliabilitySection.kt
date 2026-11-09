@@ -69,7 +69,7 @@ import kotlinx.coroutines.withContext
 class MyTrainsReliabilityStrings(
     /** The network figures, worded as the result and detail lines («In orario 27 volte su 30 · ritardo medio 3 min»). */
     val network: NetworkReliabilityStrings,
-    /** «Nei tuoi viaggi: in orario 8 volte su 10» (plural on the first number): the user's own records. */
+    /** «Registrato su questo telefono: in orario 8 volte su 10» (plural on the first number): the local history, not the network. */
     val personal: (onTime: Int, runs: Int) -> String,
     /** «In peggioramento». */
     val worse: String,
