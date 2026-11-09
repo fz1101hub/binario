@@ -242,5 +242,45 @@
 			<string>%1$lld поезда</string>
 		</dict>
 	</dict>
+	<key>saved.trains.limit_error</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>few</key>
+			<string>Можно сохранить не более %1$lld поездов.</string>
+			<key>many</key>
+			<string>Можно сохранить не более %1$lld поездов.</string>
+			<key>one</key>
+			<string>Можно сохранить не более %1$lld поезда.</string>
+			<key>other</key>
+			<string>Можно сохранить не более %1$lld поезда.</string>
+		</dict>
+	</dict>
+	<key>saved.trains.reliability.description</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>few</key>
+			<string>За последние %1$lld дня, по прибытии на конечную остановку каждого поезда. Нажмите на поезд, чтобы открыть его.</string>
+			<key>many</key>
+			<string>За последние %1$lld дней, по прибытии на конечную остановку каждого поезда. Нажмите на поезд, чтобы открыть его.</string>
+			<key>one</key>
+			<string>За последний %1$lld день, по прибытии на конечную остановку каждого поезда. Нажмите на поезд, чтобы открыть его.</string>
+			<key>other</key>
+			<string>За последние %1$lld дня, по прибытии на конечную остановку каждого поезда. Нажмите на поезд, чтобы открыть его.</string>
+		</dict>
+	</dict>
 </dict>
 </plist>

@@ -54,7 +54,7 @@
 "settings.privacy.title" = "Datenschutz";
 "settings.privacy.body" = "Binario iOS verwendet eine minimale, lokale Konfiguration.";
 "settings.privacy.no_collection" = "Kein Konto, keine Analyse, kein Standort, kein Mikrofon und kein Netzwerkzugriff im Hintergrund";
-"settings.privacy.local_routes" = "Keine Cloud-Synchronisierung durch die App; Systembackups können gespeicherte Strecken enthalten";
+"settings.privacy.local_routes" = "Keine Cloud-Synchronisierung durch die App; Systembackups können gespeicherte Strecken und Züge enthalten";
 "settings.privacy.watch" = "Die Apple Watch erhält nur vertragsgültige Snapshots über Watch Connectivity";
 "settings.about.title" = "Info";
 "settings.about.version" = "Version";
@@ -123,3 +123,14 @@
 "result.alternative.train" = "Pünktlicher: %1$@ um %2$@";
 "result.alternative.open" = "Zug um %1$@ anzeigen";
 "result.alternative.on_time" = "%1$lld von %2$lld Mal pünktlich";
+"tab.trains" = "Meine Züge";
+"saved.trains.title" = "Meine Züge";
+"saved.trains.empty.title" = "Keine gespeicherten Züge";
+"saved.trains.empty.body" = "Öffnen Sie einen Zug in den Ergebnissen und tippen Sie auf den Stern, um ihn hier auf diesem iPhone wiederzufinden.";
+"saved.trains.local_only" = "Mit dem Stern in den Zugdetails gespeichert, nur auf diesem iPhone; Apple-Systembackups können sie enthalten. Jeder Zug zeigt die planmäßige Zeit des Tages, an dem Sie ihn gespeichert haben.";
+"saved.trains.storage_error" = "Gespeicherte Züge konnten nicht aktualisiert werden.";
+"saved.trains.limit_error" = "Sie können höchstens %1$lld Züge speichern.";
+"result.favourite.add" = "In „Meine Züge“ speichern";
+"result.favourite.remove" = "Aus „Meine Züge“ entfernen";
+"saved.trains.reliability.title" = "Zuverlässigkeit meiner Züge";
+"saved.trains.reliability.description" = "Letzte %1$lld Tage, bei Ankunft an der letzten Haltestelle jedes Zuges. Tippen Sie auf einen Zug, um ihn zu öffnen.";

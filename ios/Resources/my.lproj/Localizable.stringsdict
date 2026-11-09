@@ -170,5 +170,33 @@
 			<string>ရထား %1$lld စီး</string>
 		</dict>
 	</dict>
+	<key>saved.trains.limit_error</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>other</key>
+			<string>ရထား အများဆုံး %1$lld စီး သိမ်းနိုင်သည်။</string>
+		</dict>
+	</dict>
+	<key>saved.trains.reliability.description</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>other</key>
+			<string>နောက်ဆုံး %1$lld ရက်အတွင်း၊ ရထားတစ်စီးစီ၏ နောက်ဆုံးမှတ်တိုင်သို့ ရောက်ချိန်။ ဖွင့်ရန် ရထားတစ်စီးကို တို့ပါ။</string>
+		</dict>
+	</dict>
 </dict>
 </plist>

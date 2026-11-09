@@ -54,7 +54,7 @@
 "settings.privacy.title" = "Privacidade";
 "settings.privacy.body" = "O Binario para iOS usa uma configuração local e mínima.";
 "settings.privacy.no_collection" = "Sem conta, análises, localização, microfone ou acesso à rede em segundo plano";
-"settings.privacy.local_routes" = "Sem sincronização do app na nuvem; os backups do sistema podem incluir os trajetos";
+"settings.privacy.local_routes" = "Sem sincronização do app na nuvem; os backups do sistema podem incluir os trajetos e os trens";
 "settings.privacy.watch" = "O Apple Watch recebe apenas instantâneos válidos pelo contrato via Watch Connectivity";
 "settings.about.title" = "Sobre";
 "settings.about.version" = "Versão";
@@ -123,3 +123,14 @@
 "result.alternative.train" = "Mais pontual: %1$@ das %2$@";
 "result.alternative.open" = "Mostrar o trem das %1$@";
 "result.alternative.on_time" = "no horário %1$lld vezes de %2$lld";
+"tab.trains" = "Meus trens";
+"saved.trains.title" = "Meus trens";
+"saved.trains.empty.title" = "Nenhum trem salvo";
+"saved.trains.empty.body" = "Abra um trem nos resultados e toque na estrela para encontrá-lo aqui, neste iPhone.";
+"saved.trains.local_only" = "Salvos com a estrela no detalhe do trem, apenas neste iPhone; os backups do sistema da Apple podem incluí-los. Cada trem mostra o horário programado do dia em que você o salvou.";
+"saved.trains.storage_error" = "Não foi possível atualizar os trens salvos.";
+"saved.trains.limit_error" = "Você pode salvar no máximo %1$lld trens.";
+"result.favourite.add" = "Salvar em Meus trens";
+"result.favourite.remove" = "Remover de Meus trens";
+"saved.trains.reliability.title" = "Confiabilidade dos meus trens";
+"saved.trains.reliability.description" = "Últimos %1$lld dias, na chegada à última parada de cada trem. Toque em um trem para abri-lo.";

@@ -903,6 +903,124 @@ class IOSProjectTests(unittest.TestCase):
         self.assertEqual("Mostra il treno delle %1$@", italian["result.alternative.open"])
         self.assertEqual("in orario %1$lld volte su %2$lld", italian["result.alternative.on_time"])
 
+    def test_my_trains_are_androids_rules_kept_on_the_iphone_only(self) -> None:
+        # «I miei treni» and «Affidabilità dei miei treni»: Android's limits and matching
+        # (FavouriteTrains.kt, FavouriteTrainPunctuality.kt, ReliabilityMarks.favouriteStop and the
+        # number of BinarioDeepLink.FavouriteTrain), stored in the iPhone's UserDefaults only.
+        rules = (IOS / "BinarioKit/Sources/BinarioKit/FavouriteTrains.swift").read_text(encoding="utf-8")
+        android_sources = ROOT / "app/src/main/java/it/binario/app"
+        android = {
+            "favourites": (android_sources / "FavouriteTrains.kt").read_text(encoding="utf-8"),
+            "punctuality": (android_sources / "FavouriteTrainPunctuality.kt").read_text(encoding="utf-8"),
+            "marks": (android_sources / "widget/ReliabilityMarks.kt").read_text(encoding="utf-8"),
+            "link": (android_sources / "BinarioDeepLink.kt").read_text(encoding="utf-8"),
+        }
+        for source, android_fragment, fragment in (
+            ("favourites", "const val MAX = 12", "public static let maximumTrains = 12"),
+            ("punctuality", "const val MAX_ROWS = 8", "public static let maximumRows = 8"),
+            ("link", 'Regex("^[A-Za-z0-9]{1,12}$")', "public static let maximumNumberKeyLength = 12"),
+            (
+                "marks",
+                "NetworkReliability.matchTerminus(stats, number, originCode)?.let { return it }",
+                "if let terminus = NetworkReliability.matchTerminus(stats, number: number, boardingCode: originCode) { return terminus }",
+            ),
+            (
+                "marks",
+                "if (originCode != null && NetworkReliability.isStationCode(originCode)) return null",
+                "if NetworkReliability.isStationCode(originCode) { return nil }",
+            ),
+            (
+                "marks",
+                "stats.trainsNumbered(number).filter { it.stopCount > 1 }.singleOrNull()",
+                "let running = stats.trains(numbered: number).filter { $0.stopCount > 1 }",
+            ),
+            ("marks", "NetworkReliability.at(it.train, it.alightingIndex)", "return NetworkReliability.at(found.train, index: found.alightingIndex)"),
+            ("punctuality", "monitors.take(MAX_ROWS).map", "favourites.prefix(maximumRows).compactMap"),
+        ):
+            with self.subTest(fragment=fragment):
+                self.assertIn(android_fragment, android[source])
+                self.assertIn(fragment, rules)
+        for fragment in (
+            'public static let storageKey = "it.binario.ios.favourite-trains.v1"',
+            "let key = NetworkReliability.numberKey(number)",
+            "public static let maximumNumberLength = 24",
+            "_ = try JourneyQuery(origin: origin, destination: destination, departure: savedAt)",
+            "guard trains.count < Self.maximumTrains else { throw FavouriteTrainValidationError.tooManyTrains }",
+            "guard data.count <= maximumStoredBytes else { return [] }",
+            "train = try? FavouriteTrain(from: decoder)",
+            "\"\\(number.uppercased())@\\(originID)\"",
+        ):
+            with self.subTest(fragment=fragment):
+                self.assertIn(fragment, rules)
+
+        model = (IOS / "BinarioApp/AppModel.swift").read_text(encoding="utf-8")
+        detail = (IOS / "BinarioApp/TrainDetailView.swift").read_text(encoding="utf-8")
+        trains = (IOS / "BinarioApp/MyTrainsView.swift").read_text(encoding="utf-8")
+        root = (IOS / "BinarioApp/RootView.swift").read_text(encoding="utf-8")
+        for source, fragment in (
+            (model, "self.favouriteTrains = favouriteTrainStore.load().trains"),
+            (model, "FavouriteTrainsReliability.assess(favouriteTrains, stats: reliabilityStats)"),
+            (model, "} catch FavouriteTrainValidationError.tooManyTrains {"),
+            (detail, "switch model.toggleFavourite(service, query: query) {"),
+            (detail, 'LocalizedStringKey(saved ? "result.favourite.remove" : "result.favourite.add")'),
+            (detail, "MyTrainsTexts.limitError(FavouriteTrainCollection.maximumTrains)"),
+            (root, "NavigationStack { MyTrainsView() }"),
+            (root, ".tag(AppModel.Tab.trains)"),
+            (trains, ".navigationDestination(for: FavouriteTrain.self)"),
+            (trains, "TrainDetailView(service: train.service, query: query)"),
+            (trains, "if let reliability = model.favouriteTrainsReliability {"),
+            (trains, "Text(ReliabilityTexts.attribution(reliability.windowEnd))"),
+            (trains, '.accessibilityLabel(Text(ReliabilityTexts.spoken(parts.joined(separator: ", "))))'),
+            (trains, '.accessibilityAction(named: Text("result.favourite.remove"))'),
+            (trains, 'NSLocalizedString("saved.trains.limit_error", comment: "")'),
+            (trains, 'NSLocalizedString("saved.trains.reliability.description", comment: "")'),
+        ):
+            with self.subTest(fragment=fragment):
+                self.assertIn(fragment, source)
+        # The Watch gets no favourite train: the snapshot contract is unchanged.
+        snapshots = sorted((IOS / "BinarioKit/Sources/BinarioKit").glob("WearSnapshot*.swift"))
+        self.assertTrue(snapshots)
+        for path in snapshots:
+            self.assertNotIn("favourite", path.read_text(encoding="utf-8").lower(), path.name)
+
+        kit_tests = (IOS / "BinarioKit/Tests/BinarioKitTests/FavouriteTrainsTests.swift").read_text(encoding="utf-8")
+        for name in (
+            "testANumberIsAcceptedWhenAndroidAcceptsItsTrainNumberAndThePublishedFormIsKept",
+            "testAFavouriteIsItsNumberBoardedAtItsOriginAndOpensAsItWasSaved",
+            "testTextsDeparturesAndStationsAreValidated",
+            "testTheListIsNewestFirstHoldsTwelveAndRemovingIsAlwaysPossible",
+            "testTheStoreKeepsTheTrainsInItsOwnKeyAndReadsThemBack",
+            "testAnUnreadableStoreReadsAsNoTrainAndAnInvalidRecordIsSkippedOnItsOwn",
+            "testEachFavouriteIsMeasuredAtItsLastStopWithItsOwnLimitFromFiveSamples",
+            "testOnlyTheFirstEightFavouritesAreConsideredInTheirOrder",
+            "testAbsentStatisticsOrNoTrainMeasuredShowNothing",
+        ):
+            with self.subTest(test=name):
+                self.assertIn(f"func {name}()", kit_tests)
+        self.assertIn(
+            "func testTheStarSavesATrainOnThisIPhoneRemovesItAndRefusesOneTooMany()",
+            (IOS / "BinarioAppTests/BinarioAppTests.swift").read_text(encoding="utf-8"),
+        )
+
+        # Disclosed as stored on the iPhone only.
+        privacy = (ROOT / "PRIVACY.md").read_text(encoding="utf-8")
+        self.assertIn("`it.binario.ios.favourite-trains.v1`", privacy)
+        self.assertIn("I treni salvati restano solo sull'iPhone", privacy)
+
+        # The titles are Android's in every language; the limit is the one of the code.
+        for language, folder in sorted(ANDROID_VALUES.items()):
+            with self.subTest(language=language):
+                resources = ElementTree.parse(ROOT / "app/src/main/res" / folder / "strings.xml").getroot()
+                android_strings = {element.get("name"): element.text for element in resources.findall("string")}
+                values = read_strings(IOS / "Resources" / f"{language}.lproj" / "Localizable.strings")
+                self.assertEqual(android_strings["favourite_trains_title"], values["tab.trains"])
+                self.assertEqual(android_strings["favourite_trains_title"], values["saved.trains.title"])
+                self.assertEqual(android_strings["my_trains_reliability_title"], values["saved.trains.reliability.title"])
+        with (IOS / "Resources/it.lproj/Localizable.stringsdict").open("rb") as source:
+            forms = plistlib.load(source)
+        self.assertEqual("Puoi salvare al massimo %1$lld treni.", forms["saved.trains.limit_error"]["count"]["other"])
+        self.assertEqual("Puoi salvare al massimo %1$lld treno.", forms["saved.trains.limit_error"]["count"]["one"])
+
     def test_bikes_come_from_the_published_trip_value_and_italo_is_unknown(self) -> None:
         builder = (ROOT / "tools/build_ios_gtfs_schedule.py").read_text(encoding="utf-8")
         gtfs = (IOS / "BinarioKit/Sources/BinarioKit/SQLiteGTFSJourneyRepository.swift").read_text(encoding="utf-8")

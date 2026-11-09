@@ -54,7 +54,7 @@
 "settings.privacy.title" = "プライバシー";
 "settings.privacy.body" = "iOS 版 Binario は最小限のローカル構成で動作します。";
 "settings.privacy.no_collection" = "アカウント、分析、位置情報、マイク、バックグラウンド通信は一切なし";
-"settings.privacy.local_routes" = "アプリによるクラウド同期なし。システムのバックアップには保存したルートが含まれる場合があります";
+"settings.privacy.local_routes" = "アプリによるクラウド同期なし。システムのバックアップには保存したルートと列車が含まれる場合があります";
 "settings.privacy.watch" = "Apple Watch は Watch Connectivity 経由で、契約に適合したスナップショットのみを受け取ります";
 "settings.about.title" = "情報";
 "settings.about.version" = "バージョン";
@@ -123,3 +123,14 @@
 "result.alternative.train" = "より時間に正確：%2$@ 発の %1$@";
 "result.alternative.open" = "%1$@ 発の列車を表示";
 "result.alternative.on_time" = "%2$lld 回中 %1$lld 回定刻";
+"tab.trains" = "マイ列車";
+"saved.trains.title" = "マイ列車";
+"saved.trains.empty.title" = "保存した列車はありません";
+"saved.trains.empty.body" = "検索結果から列車を開いて星をタップすると、この iPhone のここに表示されます。";
+"saved.trains.local_only" = "列車の詳細で星をタップして保存します。この iPhone にのみ保存され、Apple のシステムバックアップに含まれる場合があります。各列車には保存した日の予定時刻が表示されます。";
+"saved.trains.storage_error" = "保存した列車を更新できませんでした。";
+"saved.trains.limit_error" = "保存できる列車は最大 %1$lld 本です。";
+"result.favourite.add" = "マイ列車に保存";
+"result.favourite.remove" = "マイ列車から削除";
+"saved.trains.reliability.title" = "マイ列車の信頼性";
+"saved.trains.reliability.description" = "直近 %1$lld 日間、各列車の終点到着時の値です。列車をタップすると開きます。";

@@ -54,7 +54,7 @@
 "settings.privacy.title" = "Privasi";
 "settings.privacy.body" = "Binario untuk iOS menggunakan konfigurasi lokal yang minimal.";
 "settings.privacy.no_collection" = "Tanpa akun, analitik, lokasi, mikrofon, atau akses jaringan di latar belakang";
-"settings.privacy.local_routes" = "Tanpa sinkronisasi cloud di aplikasi; cadangan sistem dapat menyertakan rute tersimpan";
+"settings.privacy.local_routes" = "Tanpa sinkronisasi cloud di aplikasi; cadangan sistem dapat menyertakan rute dan kereta tersimpan";
 "settings.privacy.watch" = "Apple Watch hanya menerima snapshot yang sesuai kontrak melalui Watch Connectivity";
 "settings.about.title" = "Tentang";
 "settings.about.version" = "Versi";
@@ -123,3 +123,14 @@
 "result.alternative.train" = "Lebih tepat waktu: %1$@ pukul %2$@";
 "result.alternative.open" = "Tampilkan kereta pukul %1$@";
 "result.alternative.on_time" = "tepat waktu %1$lld dari %2$lld kali";
+"tab.trains" = "Kereta saya";
+"saved.trains.title" = "Kereta saya";
+"saved.trains.empty.title" = "Belum ada kereta tersimpan";
+"saved.trains.empty.body" = "Buka kereta dari hasil pencarian lalu ketuk bintang untuk menemukannya lagi di sini, di iPhone ini.";
+"saved.trains.local_only" = "Disimpan dengan bintang di detail kereta, hanya di iPhone ini; cadangan sistem Apple dapat menyertakannya. Setiap kereta menampilkan jadwal terencana pada hari Anda menyimpannya.";
+"saved.trains.storage_error" = "Kereta tersimpan tidak dapat diperbarui.";
+"saved.trains.limit_error" = "Anda dapat menyimpan maksimal %1$lld kereta.";
+"result.favourite.add" = "Simpan di Kereta saya";
+"result.favourite.remove" = "Hapus dari Kereta saya";
+"saved.trains.reliability.title" = "Keandalan kereta saya";
+"saved.trains.reliability.description" = "%1$lld hari terakhir, saat tiba di perhentian terakhir setiap kereta. Ketuk kereta untuk membukanya.";

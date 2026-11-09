@@ -54,7 +54,7 @@
 "settings.privacy.title" = "Gizlilik";
 "settings.privacy.body" = "iOS için Binario yerel ve en az düzeyde bir yapılandırma kullanır.";
 "settings.privacy.no_collection" = "Hesap, analiz, konum, mikrofon veya arka planda ağ erişimi yok";
-"settings.privacy.local_routes" = "Uygulamada bulut eşitlemesi yok; sistem yedekleri kayıtlı güzergâhları içerebilir";
+"settings.privacy.local_routes" = "Uygulamada bulut eşitlemesi yok; sistem yedekleri kayıtlı güzergâhları ve trenleri içerebilir";
 "settings.privacy.watch" = "Apple Watch, Watch Connectivity üzerinden yalnızca sözleşmeye uygun anlık görüntüler alır";
 "settings.about.title" = "Hakkında";
 "settings.about.version" = "Sürüm";
@@ -123,3 +123,14 @@
 "result.alternative.train" = "Daha dakik: %2$@ kalkışlı %1$@";
 "result.alternative.open" = "%1$@ trenini göster";
 "result.alternative.on_time" = "%2$lld seferin %1$lld tanesinde zamanında";
+"tab.trains" = "Trenlerim";
+"saved.trains.title" = "Trenlerim";
+"saved.trains.empty.title" = "Kayıtlı tren yok";
+"saved.trains.empty.body" = "Sonuçlardan bir tren açın ve onu burada, bu iPhone'da yeniden bulmak için yıldıza dokunun.";
+"saved.trains.local_only" = "Tren ayrıntısındaki yıldızla kaydedilir, yalnızca bu iPhone'da; Apple sistem yedekleri bunları içerebilir. Her tren, kaydettiğiniz günün planlanan saatini gösterir.";
+"saved.trains.storage_error" = "Kayıtlı trenler güncellenemedi.";
+"saved.trains.limit_error" = "En fazla %1$lld tren kaydedebilirsiniz.";
+"result.favourite.add" = "Trenlerim'e kaydet";
+"result.favourite.remove" = "Trenlerim'den kaldır";
+"saved.trains.reliability.title" = "Trenlerimin güvenilirliği";
+"saved.trains.reliability.description" = "Son %1$lld gün, her trenin son durağına varışta. Açmak için bir trene dokunun.";

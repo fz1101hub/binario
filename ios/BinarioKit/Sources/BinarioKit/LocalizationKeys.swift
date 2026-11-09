@@ -1,7 +1,7 @@
 public enum BinarioLocalizationKeys {
     public static let required: Set<String> = [
         "action.ok",
-        "tab.planner", "tab.saved", "tab.settings",
+        "tab.planner", "tab.saved", "tab.trains", "tab.settings",
         "planner.title", "planner.intro.title", "planner.intro.body",
         "planner.origin", "planner.destination", "planner.departure", "planner.departure.italian_time",
         "planner.choose_station", "planner.search_station",
@@ -22,6 +22,7 @@ public enum BinarioLocalizationKeys {
         "result.route.hours", "result.route.hour_band",
         "result.alternative.train", "result.alternative.on_time", "result.alternative.open",
         "result.bikes.allowed", "result.bikes.not_allowed",
+        "result.favourite.add", "result.favourite.remove",
         "result.detail.reliability_title", "result.detail.arrival_on_time", "result.detail.mean_delay",
         "result.detail.days", "result.detail.distribution_title", "result.detail.band_no_delay",
         "result.detail.band_range", "result.detail.band_over", "result.detail.band_share",
@@ -30,6 +31,9 @@ public enum BinarioLocalizationKeys {
         "saved.title", "saved.empty.title", "saved.empty.body", "saved.local_only",
         "saved.delete_all", "saved.storage_error", "saved.limit_error",
         "saved.watch.show", "saved.watch.stop", "saved.watch.pinned", "saved.watch.footer", "saved.watch.sharing_off",
+        "saved.trains.title", "saved.trains.empty.title", "saved.trains.empty.body", "saved.trains.local_only",
+        "saved.trains.storage_error", "saved.trains.limit_error",
+        "saved.trains.reliability.title", "saved.trains.reliability.description",
         "settings.title", "settings.data.title", "settings.data.catalog",
         "settings.data.provider", "settings.data.provider_unavailable",
         "settings.data.provider_loading", "settings.data.provider_programmed", "settings.data.valid_until",
@@ -57,5 +61,6 @@ public enum BinarioLocalizationKeys {
         "result.route.trains", "result.route.runs_observed", "result.route.days",
         "result.detail.reliability_title", "result.detail.arrival_on_time", "result.detail.band_share",
         "result.detail.usual_platform", "result.detail.weekday", "result.alternative.on_time",
+        "saved.trains.limit_error", "saved.trains.reliability.description",
     ]
 }

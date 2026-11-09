@@ -170,5 +170,33 @@
 			<string>%1$lld 本の列車</string>
 		</dict>
 	</dict>
+	<key>saved.trains.limit_error</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>other</key>
+			<string>保存できる列車は最大 %1$lld 本です。</string>
+		</dict>
+	</dict>
+	<key>saved.trains.reliability.description</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>other</key>
+			<string>直近 %1$lld 日間、各列車の終点到着時の値です。列車をタップすると開きます。</string>
+		</dict>
+	</dict>
 </dict>
 </plist>

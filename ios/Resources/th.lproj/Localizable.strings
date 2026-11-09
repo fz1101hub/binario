@@ -54,7 +54,7 @@
 "settings.privacy.title" = "ความเป็นส่วนตัว";
 "settings.privacy.body" = "Binario สำหรับ iOS ใช้การกำหนดค่าภายในเครื่องที่น้อยที่สุด";
 "settings.privacy.no_collection" = "ไม่มีบัญชี การวิเคราะห์ ตำแหน่ง ไมโครโฟน หรือการเข้าถึงเครือข่ายเบื้องหลัง";
-"settings.privacy.local_routes" = "แอปไม่ซิงค์กับคลาวด์ แต่ข้อมูลสำรองของระบบอาจรวมเส้นทางที่บันทึกไว้";
+"settings.privacy.local_routes" = "แอปไม่ซิงค์กับคลาวด์ แต่ข้อมูลสำรองของระบบอาจรวมเส้นทางและรถไฟที่บันทึกไว้";
 "settings.privacy.watch" = "Apple Watch รับเฉพาะสแนปช็อตที่ตรงตามสัญญาผ่าน Watch Connectivity";
 "settings.about.title" = "เกี่ยวกับ";
 "settings.about.version" = "เวอร์ชัน";
@@ -123,3 +123,14 @@
 "result.alternative.train" = "ตรงเวลากว่า: %1$@ เวลา %2$@";
 "result.alternative.open" = "แสดงรถไฟเวลา %1$@";
 "result.alternative.on_time" = "ตรงเวลา %1$lld จาก %2$lld ครั้ง";
+"tab.trains" = "รถไฟของฉัน";
+"saved.trains.title" = "รถไฟของฉัน";
+"saved.trains.empty.title" = "ยังไม่มีรถไฟที่บันทึกไว้";
+"saved.trains.empty.body" = "เปิดขบวนรถจากผลการค้นหาแล้วแตะรูปดาวเพื่อเปิดดูอีกครั้งที่นี่บน iPhone เครื่องนี้";
+"saved.trains.local_only" = "บันทึกด้วยรูปดาวในรายละเอียดขบวนรถ เก็บไว้ใน iPhone เครื่องนี้เท่านั้น ข้อมูลสำรองของระบบ Apple อาจรวมไว้ด้วย แต่ละขบวนแสดงเวลาตามกำหนดของวันที่คุณบันทึก";
+"saved.trains.storage_error" = "ไม่สามารถอัปเดตรถไฟที่บันทึกไว้ได้";
+"saved.trains.limit_error" = "บันทึกรถไฟได้สูงสุด %1$lld ขบวน";
+"result.favourite.add" = "บันทึกในรถไฟของฉัน";
+"result.favourite.remove" = "นำออกจากรถไฟของฉัน";
+"saved.trains.reliability.title" = "ความน่าเชื่อถือของรถไฟของฉัน";
+"saved.trains.reliability.description" = "%1$lld วันล่าสุด เมื่อถึงป้ายสุดท้ายของแต่ละขบวน แตะขบวนรถเพื่อเปิด";

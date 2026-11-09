@@ -218,5 +218,41 @@
 			<string>%1$lld treni</string>
 		</dict>
 	</dict>
+	<key>saved.trains.limit_error</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>many</key>
+			<string>Puoi salvare al massimo %1$lld treni.</string>
+			<key>one</key>
+			<string>Puoi salvare al massimo %1$lld treno.</string>
+			<key>other</key>
+			<string>Puoi salvare al massimo %1$lld treni.</string>
+		</dict>
+	</dict>
+	<key>saved.trains.reliability.description</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>many</key>
+			<string>Ultimi %1$lld giorni, all’arrivo all’ultima fermata di ogni treno. Tocca un treno per aprirlo.</string>
+			<key>one</key>
+			<string>Ultimo %1$lld giorno, all’arrivo all’ultima fermata di ogni treno. Tocca un treno per aprirlo.</string>
+			<key>other</key>
+			<string>Ultimi %1$lld giorni, all’arrivo all’ultima fermata di ogni treno. Tocca un treno per aprirlo.</string>
+		</dict>
+	</dict>
 </dict>
 </plist>

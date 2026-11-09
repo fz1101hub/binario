@@ -54,7 +54,7 @@
 "settings.privacy.title" = "Конфиденциальность";
 "settings.privacy.body" = "Binario для iOS использует минимальную локальную конфигурацию.";
 "settings.privacy.no_collection" = "Без аккаунта, аналитики, геолокации, микрофона и фонового доступа к сети";
-"settings.privacy.local_routes" = "Приложение не синхронизирует данные с облаком; системные резервные копии могут включать маршруты";
+"settings.privacy.local_routes" = "Приложение не синхронизирует данные с облаком; системные резервные копии могут включать маршруты и поезда";
 "settings.privacy.watch" = "Apple Watch получают только соответствующие контракту снимки через Watch Connectivity";
 "settings.about.title" = "О приложении";
 "settings.about.version" = "Версия";
@@ -123,3 +123,14 @@
 "result.alternative.train" = "Пунктуальнее: %1$@ в %2$@";
 "result.alternative.open" = "Показать поезд в %1$@";
 "result.alternative.on_time" = "вовремя %1$lld раза из %2$lld";
+"tab.trains" = "Мои поезда";
+"saved.trains.title" = "Мои поезда";
+"saved.trains.empty.title" = "Нет сохранённых поездов";
+"saved.trains.empty.body" = "Откройте поезд в результатах и нажмите на звёздочку, чтобы найти его здесь, на этом iPhone.";
+"saved.trains.local_only" = "Сохраняются звёздочкой в сведениях о поезде, только на этом iPhone; системные резервные копии Apple могут их включать. Для каждого поезда показано плановое время на день сохранения.";
+"saved.trains.storage_error" = "Не удалось обновить сохранённые поезда.";
+"saved.trains.limit_error" = "Можно сохранить не более %1$lld поезда.";
+"result.favourite.add" = "Сохранить в «Мои поезда»";
+"result.favourite.remove" = "Удалить из списка «Мои поезда»";
+"saved.trains.reliability.title" = "Надёжность моих поездов";
+"saved.trains.reliability.description" = "За последние %1$lld дня, по прибытии на конечную остановку каждого поезда. Нажмите на поезд, чтобы открыть его.";

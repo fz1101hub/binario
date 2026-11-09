@@ -54,7 +54,7 @@
 "settings.privacy.title" = "Privacy";
 "settings.privacy.body" = "Binario iOS uses a minimal, local configuration.";
 "settings.privacy.no_collection" = "No account, analytics, location, microphone, or background network access";
-"settings.privacy.local_routes" = "No app cloud sync; system backups may include saved routes";
+"settings.privacy.local_routes" = "No app cloud sync; system backups may include saved routes and trains";
 "settings.privacy.watch" = "Apple Watch receives only contract-valid snapshots through Watch Connectivity";
 "settings.about.title" = "About";
 "settings.about.version" = "Version";
@@ -123,3 +123,14 @@
 "result.alternative.train" = "More punctual: %1$@ at %2$@";
 "result.alternative.open" = "Show the %1$@ train";
 "result.alternative.on_time" = "on time %1$lld times out of %2$lld";
+"tab.trains" = "My trains";
+"saved.trains.title" = "My trains";
+"saved.trains.empty.title" = "No saved trains";
+"saved.trains.empty.body" = "Open a train from the results and tap the star to find it here, on this iPhone.";
+"saved.trains.local_only" = "Saved with the star in the train details, on this iPhone only; Apple system backups may include them. Each train shows the scheduled time of the day you saved it.";
+"saved.trains.storage_error" = "Saved trains could not be updated.";
+"saved.trains.limit_error" = "You can save up to %1$lld trains.";
+"result.favourite.add" = "Save to My trains";
+"result.favourite.remove" = "Remove from My trains";
+"saved.trains.reliability.title" = "Reliability of my trains";
+"saved.trains.reliability.description" = "Last %1$lld days, on arrival at the last stop of each train. Tap a train to open it.";

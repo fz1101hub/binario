@@ -587,6 +587,58 @@ final class BinarioAppTests: XCTestCase {
         XCTAssertEqual(StationIdentity(model.station(for: route.origin)), route.origin)
     }
 
+    func testTheStarSavesATrainOnThisIPhoneRemovesItAndRefusesOneTooMany() throws {
+        let defaults = try makeDefaults()
+        defer { clear(defaults) }
+        let model = AppModel(
+            catalogState: .loading,
+            savedRouteStore: SavedRouteStore(defaults: defaults),
+            favouriteTrainStore: FavouriteTrainStore(defaults: defaults),
+            watchSharingStore: WatchSharingPreferenceStore(defaults: defaults),
+            repository: FailClosedJourneyRepository(),
+            watchPublisher: nil,
+            versionDisplay: "test"
+        )
+        let query = try JourneyQuery(origin: milano, destination: roma, departure: Date())
+        let service = fixtureSnapshot(query: query, serviceNumber: "2153").services[0]
+        XCTAssertEqual(model.favouriteTrains, [])
+        XCTAssertTrue(model.canToggleFavourite(service, query: query))
+        XCTAssertFalse(model.isFavourite(service, query: query))
+
+        XCTAssertEqual(model.toggleFavourite(service, query: query), .added)
+        XCTAssertTrue(model.isFavourite(service, query: query))
+        XCTAssertEqual(FavouriteTrainStore(defaults: defaults).load().trains.map(\.number), ["2153"])
+        // The same number boarded at another station is another train.
+        let elsewhere = try JourneyQuery(origin: napoli, destination: roma, departure: Date())
+        XCTAssertFalse(model.isFavourite(service, query: elsewhere))
+        // Without the statistics «Affidabilità dei miei treni» is hidden.
+        XCTAssertNil(model.favouriteTrainsReliability)
+
+        XCTAssertEqual(model.toggleFavourite(service, query: query), .removed)
+        XCTAssertEqual(model.favouriteTrains, [])
+        XCTAssertEqual(FavouriteTrainStore(defaults: defaults).load().trains, [])
+
+        // A line name is not a train number: no star.
+        let line = fixtureSnapshot(query: query, serviceNumber: "Linea SASSARI-SORSO").services[0]
+        XCTAssertFalse(model.canToggleFavourite(line, query: query))
+        XCTAssertEqual(model.toggleFavourite(line, query: query), .failed)
+
+        // Twelve trains: the thirteenth is refused, none is dropped, and removing stays possible.
+        for number in 1...FavouriteTrainCollection.maximumTrains {
+            let train = fixtureSnapshot(query: query, serviceNumber: "\(2_100 + number)").services[0]
+            XCTAssertEqual(model.toggleFavourite(train, query: query), .added)
+        }
+        let thirteenth = fixtureSnapshot(query: query, serviceNumber: "2199").services[0]
+        XCTAssertEqual(model.toggleFavourite(thirteenth, query: query), .limitReached)
+        XCTAssertEqual(model.favouriteTrains.count, 12)
+        XCTAssertEqual(model.favouriteTrains.first?.number, "2112")
+        XCTAssertEqual(model.favouriteTrains.last?.number, "2101")
+        XCTAssertTrue(model.removeFavourites(ids: [model.favouriteTrains[0].id]))
+        XCTAssertEqual(model.toggleFavourite(thirteenth, query: query), .added)
+        XCTAssertTrue(model.removeFavourites(ids: Set(model.favouriteTrains.map(\.id))))
+        XCTAssertEqual(FavouriteTrainStore(defaults: defaults).load().trains, [])
+    }
+
     func testPlannerCaptionAppearsOnlyWhenTheDeviceClockDiffersFromTimetables() throws {
         let summer = try rome(2026, 7, 1, 9, 0)
         let winter = try rome(2026, 12, 1, 9, 0)
@@ -744,6 +796,7 @@ final class BinarioAppTests: XCTestCase {
             defaults.removePersistentDomain(forName: suite)
         }
         defaults.removeObject(forKey: SavedRouteStore.storageKey)
+        defaults.removeObject(forKey: FavouriteTrainStore.storageKey)
         defaults.removeObject(forKey: WatchSharingPreferenceStore.storageKey)
         defaults.removeObject(forKey: WatchSharingPreferenceStore.pinnedRouteStorageKey)
     }
