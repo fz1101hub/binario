@@ -1,5 +1,18 @@
 # Changelog
 
+## In sviluppo — Affidabilità dei miei treni, il treno più puntuale su Alexa, «Più puntuale» su iPhone
+
+- **Affidabilità dei miei treni** in Per te, dopo «I miei treni». Per ogni treno preferito, fino a 8, mostra:
+  - la puntualità di rete all'ultima fermata («In orario 20 volte su 30 · ritardo medio 6 min»), con la soglia del treno e almeno 5 rilevazioni;
+  - le corse registrate su questo telefono negli ultimi 30 giorni («Registrato su questo telefono: in orario 8 volte su 10»);
+  - «In miglioramento» o «In peggioramento» quando le ultime 4 settimane distano almeno 15 punti dalle 4 precedenti.
+  Il calcolo è lo stesso del riepilogo settimanale. Con `binario.punctualityStats=false` restano solo i dati del telefono.
+- **Alexa**: «qual è il treno più puntuale per casa lavoro?».
+  - Fra i treni della tratta salvata che di solito partono nelle prossime tre ore, indica i tre più puntuali alla destinazione, con l'orario abituale e quante volte arrivano in orario.
+  - Su Echo Show c'è l'elenco nella schermata «Puntualità».
+  - Richiede l'account collegato e non nomina mai le stazioni.
+- **iPhone**: la riga «Più puntuale» nei risultati, con le stesse regole di Android; il tocco apre quel treno.
+
 ## In sviluppo — Avviso serale dei lavori, «Più puntuale» nei risultati, pulizia degli adattatori
 
 - **Lavori di domani sulle tue tratte** (facoltativo, spento in partenza, in Notifiche e sveglie): verso le 19 una notifica se un avviso RFI di lavori o interruzioni che nomina una stazione di una tratta salvata vale il giorno dopo. Ogni avviso è notificato una sola volta, la sera prima del primo giorno; al più una notifica per sera, mai fra le 22 e le 7; il tocco apre Per te. Legge solo il feed infomobilità di RFI, solo con l'interruttore acceso.
