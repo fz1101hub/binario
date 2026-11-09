@@ -39,7 +39,7 @@ class LiveProviderNetworkTest {
         val upstream = diagnosticViaggiaTrenoFetcher()
         val adapter = ViaggiaTrenoRealtimeAdapter(upstream, clock)
         val started = System.nanoTime()
-        board(adapter, "S08409", "Roma Termini", "S08409")
+        viaggiaTrenoBoard(upstream, "S08409", "Roma Termini")
         println("LIVE_ACCEPTANCE Roma Termini board millis=${(System.nanoTime() - started) / 1_000_000}")
         val now = clock.instant()
         val result = adapter.getStationBoard(StationBoardRequest(StationId("S01700"), "Milano Centrale", railwayCode = "S01700",
@@ -140,12 +140,17 @@ class LiveProviderNetworkTest {
         }, clock = clock)
         val numbers = linkedSetOf<String>()
         val stationFetcher = HttpItaloPublicStationFetcher()
+        var published = 0
         for (slug in listOf("roma-termini", "milano-centrale", "napoli-centrale")) {
-            val rows = org.json.JSONObject(stationFetcher.fetch(slug)).optJSONArray("ListaTreniPartenza") ?: continue
+            val body = stationFetcher.fetch(slug)
+            published += LiveAcceptanceEvidence.italoDepartureRows(body)
+            val rows = org.json.JSONObject(body).optJSONArray("ListaTreniPartenza") ?: continue
             for (i in 0 until rows.length()) rows.optJSONObject(i)?.optString("Numero")?.takeIf { it.matches(Regex("[0-9]{3,5}")) }?.let(numbers::add)
         }
-        println("LIVE_ACCEPTANCE Italo currently published candidate numbers: $numbers")
-        assertTrue("Italo published no candidate number for a direct lookup", numbers.isNotEmpty())
+        println("LIVE_ACCEPTANCE Italo currently published candidate numbers: $numbers (departure rows=$published)")
+        // Overnight Italo runs no train and its boards are empty: nothing to look up.
+        assumeTrue("Italo: the sampled boards publish no departure at this moment", published > 0)
+        assertTrue("Italo published departures but no candidate number for a direct lookup", numbers.isNotEmpty())
         var onlyEmptyResponses = true
         for (number in numbers.take(8)) {
             val query = it.binario.app.data.repository.TrainNumberQuery(number, clock.instant().atZone(zone).toLocalDate())
@@ -195,6 +200,7 @@ class LiveProviderNetworkTest {
     @Test fun italo() = runBlocking {
         selected("italo")
         var shape = "not fetched"
+        var published = 0
         val upstream = HttpItaloPublicStationFetcher()
         val adapter = ItaloPublicStationAdapter(fetcher = ItaloPublicStationFetcher { slug ->
             val json = try { upstream.fetch(slug) } catch (error: java.io.IOException) {
@@ -202,6 +208,7 @@ class LiveProviderNetworkTest {
             }
             val root = org.json.JSONObject(json)
             shape = "keys=${root.keySet()}, LastUpdate=${root.optString("LastUpdate")}, rows=${root.optJSONArray("ListaTreniPartenza")?.length()}"
+            published += LiveAcceptanceEvidence.italoDepartureRows(json)
             json
         })
         // Overnight a single station can legitimately have no published departures.
@@ -215,12 +222,37 @@ class LiveProviderNetworkTest {
                 failures += "$name: ${error.message}"
             }
         }
+        // Overnight every hub publishes an empty board: nothing to verify, the check is skipped rather than passed.
+        assumeTrue("Italo: the sampled hubs publish no departure at this moment; ${failures.joinToString("; ")}", published > 0)
         fail("Italo: no verified operational board in sampled hubs; ${failures.joinToString("; ")}")
     }
 
     @Test fun viaggiatreno() = runBlocking {
         selected("viaggiatreno")
-        board(ViaggiaTrenoRealtimeAdapter(diagnosticViaggiaTrenoFetcher()), "S01700", "Milano Centrale", "S01700")
+        val verified = viaggiaTrenoBoard(diagnosticViaggiaTrenoFetcher(), "S01700", "Milano Centrale")
+        assumeTrue("ViaggiaTreno: Milano Centrale's departures publish no detected or cancelled train at this moment", verified)
+    }
+
+    /**
+     * The ViaggiaTreno station board on the very payload the adapter read: it has to list departures, and it has to
+     * report a status as soon as a row is cancelled or detected recently ([LiveAcceptanceEvidence.viaggiaTrenoBoardObservations]).
+     * Returns false when the board publishes nothing to verify (overnight, before the first train leaves).
+     */
+    private suspend fun viaggiaTrenoBoard(upstream: ViaggiaTrenoRealtimeFetcher, code: String, name: String): Boolean {
+        val bodies = mutableListOf<String>()
+        val recording = ViaggiaTrenoRealtimeFetcher { path -> upstream.fetch(path).also { if (path.startsWith("partenze/")) bodies += it } }
+        val adapter = ViaggiaTrenoRealtimeAdapter(recording, clock)
+        val now = clock.instant()
+        val result = adapter.getStationBoard(StationBoardRequest(StationId(code), name, railwayCode = code,
+            from = now.minusSeconds(3600), to = now.plusSeconds(20 * 3600), kind = BoardKind.DEPARTURES))
+        if (result !is ProviderResult.Success) fail("viaggiatreno $name: $result")
+        val entries = (result as ProviderResult.Success).value.entries
+        assertTrue("viaggiatreno $name: no parseable departures", entries.isNotEmpty())
+        val operational = entries.count { it.expectedTime != null || it.status != null }
+        val published = bodies.sumOf { LiveAcceptanceEvidence.viaggiaTrenoBoardObservations(it, now) }
+        println("LIVE_ACCEPTANCE viaggiatreno $name: departures=${entries.size}, operational=$operational, publishedObservations=$published")
+        if (published > 0) assertTrue("viaggiatreno $name: the board publishes $published detected or cancelled trains, the adapter reports none", operational > 0)
+        return operational > 0
     }
 
     /** Appiano → Roma Ostiense, then the other [LiveRouteChecks.regionalRoutes] while no run has a recent detection. */

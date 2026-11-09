@@ -390,6 +390,24 @@ class LiveAcceptanceEvidenceTest {
         assertTrue(empty.message!!, empty.message!!.contains("Milano Centrale arrivi: no parseable runs"))
     }
 
+    @Test fun `a ViaggiaTreno board has something to verify only with a recent detection or a cancellation`() {
+        val ms = now.toEpochMilli()
+        fun row(extra: String) = """{"numeroTreno":2101,"orarioPartenza":${ms + 600_000}$extra}"""
+        // Overnight: the morning's trains, none detected yet (ultimoRilev null or hours old, nonPartito).
+        val night = "[" + listOf(row(""), row(""","ritardo":0,"nonPartito":true,"ultimoRilev":${ms - 120_000}"""),
+            row(""","ritardo":3,"ultimoRilev":${ms - 6 * 3_600_000}""")).joinToString(",") + "]"
+        assertEquals(0, LiveAcceptanceEvidence.viaggiaTrenoBoardObservations(night, now))
+        assertEquals(0, LiveAcceptanceEvidence.viaggiaTrenoBoardObservations("null", now))
+        val day = "[" + listOf(row(""","ritardo":4,"ultimoRilev":${ms - 120_000}"""), row(""","provvedimento":1""")).joinToString(",") + "]"
+        assertEquals(2, LiveAcceptanceEvidence.viaggiaTrenoBoardObservations(day, now))
+    }
+
+    @Test fun `an Italo board publishes no departure overnight`() {
+        assertEquals(0, LiveAcceptanceEvidence.italoDepartureRows("""{"IsEmpty":true,"ListaTreniPartenza":[],"LastUpdate":"00:28"}"""))
+        assertEquals(0, LiveAcceptanceEvidence.italoDepartureRows("""{"IsEmpty":true}"""))
+        assertEquals(2, LiveAcceptanceEvidence.italoDepartureRows("""{"IsEmpty":false,"ListaTreniPartenza":[{"Numero":"9966"},{"Numero":"8924"}]}"""))
+    }
+
     @Test fun `RFI accuracy is skipped only after every sampled board publishes no minutes and passes on the first that does`() {
         val log = mutableListOf<String>()
         val skipped = thrown<AssumptionViolatedException> { accuracy(accuracyPages(), log) }
