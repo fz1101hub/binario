@@ -249,12 +249,15 @@ internal object LiveTrainSelector {
         return LiveTrainSelection(trains.take(cap.coerceAtLeast(0)), trains.size)
     }
 
-    /** The observation of [run]: same number, and a time inside the run's scheduled span (so not yesterday's train). */
+    /**
+     * The observation of [run]: same number, and a time inside the run's scheduled span from its true origin (so not
+     * yesterday's train, and a night train seen at its origin before the stops the map read).
+     */
     fun match(run: ScheduledRailRun, byNumber: Map<String?, List<LiveRunObservation>>): LiveRunObservation? {
         val key = run.publicNumber?.let(::numberKey) ?: return null
         val candidates = byNumber[key] ?: return null
         val midnight = run.serviceDate.atStartOfDay()
-        val start = midnight.plusMinutes(run.firstDepartureMinute - MATCH_MARGIN_MINUTES)
+        val start = midnight.plusMinutes(run.originDepartureMinute - MATCH_MARGIN_MINUTES)
         val end = midnight.plusMinutes(run.lastArrivalMinute + MATCH_MARGIN_MINUTES)
         val inSpan = candidates.filter { !it.scheduledAt.isBefore(start) && !it.scheduledAt.isAfter(end) }
         return inSpan.firstOrNull { it.cancelled } ?: inSpan.firstOrNull { it.delayMinutes != null } ?: inSpan.firstOrNull()

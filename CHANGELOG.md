@@ -1,5 +1,9 @@
 # Changelog
 
+## In sviluppo — Treni notturni sulla mappa
+
+- **Mappa dei treni in movimento**: un treno notturno partito ieri prima delle 20 conserva la sua vera stazione di partenza. Prima, al mattino, la mappa leggeva l'orario di ieri solo dalla sera e lo faceva partire dalla prima fermata dopo le 20. Ora il tocco sul treno cerca il numero dalla stazione d'origine giusta, e un ritardo rilevato alla partenza viene associato al treno. L'orario di oggi, letto da mezzanotte, non cambia.
+
 ## In sviluppo — Correzioni dopo la revisione di novembre
 
 - **Avviso serale dei lavori**: le date di inizio non si perdono più. «nei giorni 14, 15, 21 e 22 novembre», «dalle 22.50 del 14 alle 5.50 del 15 novembre» e «dal 1° al 3 dicembre» ora partono dal primo giorno (prima risultavano 22, 15 e 3), quindi «Date citate» è corretta e l'avviso arriva la sera prima dell'inizio, non a lavori già cominciati.

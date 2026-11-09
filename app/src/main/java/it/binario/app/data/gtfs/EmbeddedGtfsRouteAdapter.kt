@@ -1003,6 +1003,11 @@ class EmbeddedGtfsRouteAdapter(
                     entries[position + 1] = value
                 }
                 val agency = agencyName(route)
+                // A day read from a later minute leaves out the trip's first connections: keep where it really starts.
+                var origin = -1
+                for (index in 0 until count) if (stopTimes.preferredDeparture(entries[index]) >= 0) { origin = entries[index]; break }
+                val originDeparture = if (origin >= 0) stopTimes.preferredDeparture(origin) else -1
+                val cutOrigin = origin >= 0 && originDeparture < fromMinute
                 builder.beginTrip(
                     tripId = trip.id,
                     publicNumber = publicNumber(trip, route),
@@ -1013,7 +1018,9 @@ class EmbeddedGtfsRouteAdapter(
                     mode = mode,
                     blockId = trip.blockId,
                     wheelchairAccessible = trip.wheelchair,
-                    bikesAllowed = packBikesValue(sourceId.value, trip.bikes)
+                    bikesAllowed = packBikesValue(sourceId.value, trip.bikes),
+                    originIndexStop = if (cutOrigin) stopTimes.stop(origin) else -1,
+                    originDepartureMinute = if (cutOrigin) originDeparture else -1
                 )
                 var previous = -1
                 var lastArrival = Int.MIN_VALUE

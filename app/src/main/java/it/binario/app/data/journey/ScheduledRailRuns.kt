@@ -24,6 +24,12 @@ data class ScheduledRunStop(
 )
 
 /**
+ * Where a [ScheduledRailRun] really starts when its first stops were left out: a night train of yesterday read from
+ * the evening only. The minute counts from the run's service-day midnight, as the stops' do.
+ */
+data class ScheduledRunOrigin(val name: String, val departureMinute: Int)
+
+/**
  * A train of the static timetable on one service day: its public number and its timed stops in order. Only the
  * scheduled times are here; a live delay, when the app has one, is applied by the caller.
  */
@@ -38,11 +44,17 @@ data class ScheduledRailRun(
     val category: TrainCategory,
     val operator: RailOperator,
     val operatorName: String?,
-    /** At least two, in run order. */
-    val stops: List<ScheduledRunStop>
+    /** At least two, in run order; for a run read from a later minute, only the stops from there on. */
+    val stops: List<ScheduledRunStop>,
+    /** The true origin when it comes before [stops] (see [ScheduledRunOrigin]); null when the first stop is the origin. */
+    val origin: ScheduledRunOrigin? = null
 ) {
     val firstDepartureMinute: Int get() = stops.first().departureMinute
     val lastArrivalMinute: Int get() = stops.last().arrivalMinute
+    /** The name of the station the run leaves from: its true origin, else its first stop. */
+    val originName: String get() = origin?.name ?: stops.first().name
+    /** The scheduled departure from [originName], minutes from the service-day midnight. */
+    val originDepartureMinute: Int get() = origin?.departureMinute ?: firstDepartureMinute
 }
 
 /** Which runs the live train map asks the static timetable for. */
@@ -88,7 +100,9 @@ internal object ScheduledRunCollector {
      * Appends to [into] the train runs of [day] whose span overlaps `[fromMinute, untilMinute]` (minutes of the day's
      * service date) and that [accept] keeps. A stop is identified by its index in [day]'s stop table: [nodeOf] gives
      * its transfer point (the catalogue station when it has one), [nameOf] its display name and [pointOf] its
-     * coordinates. Coaches, replacement buses and city lines are not trains and are left out.
+     * coordinates; [originNameOf] names the true origin of a trip whose first connections the day left out
+     * ([it.binario.app.data.gtfs.GtfsDayTrip.originStopId]), null to leave it unnamed. Coaches, replacement buses and
+     * city lines are not trains and are left out.
      */
     fun collect(
         day: GtfsDayTimetable,
@@ -99,7 +113,8 @@ internal object ScheduledRunCollector {
         nameOf: (Int) -> String,
         pointOf: (Int) -> DoubleArray?,
         accept: (nodes: List<String>, stops: List<ScheduledRunStop>) -> Boolean,
-        into: MutableList<ScheduledRailRun>
+        into: MutableList<ScheduledRailRun>,
+        originNameOf: (stopId: String, packName: String?) -> String? = { _, _ -> null }
     ) {
         for (trip in day.trips) {
             if (trip.mode != LegMode.TRAIN || trip.connectionCount == 0) continue
@@ -125,6 +140,10 @@ internal object ScheduledRunCollector {
                 }
             }
             if (!accept(nodes, stops)) continue
+            val origin = trip.originStopId
+                ?.takeIf { trip.originDepartureMinute in 0 until day.departureMinute[first] }
+                ?.let { stopId -> originNameOf(stopId, trip.originStopName) }
+                ?.let { name -> ScheduledRunOrigin(name, trip.originDepartureMinute) }
             into += ScheduledRailRun(
                 id = "$sourceId:${trip.tripId}:${day.serviceDate}",
                 serviceDate = day.serviceDate,
@@ -133,7 +152,8 @@ internal object ScheduledRunCollector {
                 category = trip.category,
                 operator = trip.operator,
                 operatorName = trip.operatorName,
-                stops = stops
+                stops = stops,
+                origin = origin
             )
         }
     }

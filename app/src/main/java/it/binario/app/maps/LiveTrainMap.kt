@@ -181,7 +181,7 @@ internal fun StationLiveTrainsEntry(
 
 private fun openByNumber(train: LiveTrain, onOpenTrainNumber: (String, String) -> Unit) {
     val number = train.run.publicNumber ?: return
-    onOpenTrainNumber(number, train.run.stops.first().name)
+    onOpenTrainNumber(number, train.run.originName)
 }
 
 @Composable

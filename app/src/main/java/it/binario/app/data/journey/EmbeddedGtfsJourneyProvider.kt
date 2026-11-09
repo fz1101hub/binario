@@ -412,7 +412,12 @@ class EmbeddedGtfsJourneyProvider internal constructor(
                             }
                         }
                     },
-                    into = result
+                    into = result,
+                    // Named as [place] names the stops: the catalogue station, else the pack's own name.
+                    originNameOf = { stopId, packName ->
+                        resolver.station(stops.nodeKey(stopId))?.name ?: packName?.let(resolver::displayName)
+                            ?.let { if (pack.sourceId in transitSources) StopNameCase.display(it) else it }
+                    }
                 )
             }
         }

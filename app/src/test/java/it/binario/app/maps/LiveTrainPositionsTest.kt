@@ -13,6 +13,7 @@ import it.binario.app.data.core.StationBoardEntry
 import it.binario.app.data.core.StationId
 import it.binario.app.data.core.TrainRunId
 import it.binario.app.data.journey.ScheduledRailRun
+import it.binario.app.data.journey.ScheduledRunOrigin
 import it.binario.app.data.journey.ScheduledRunStop
 import java.time.Instant
 import java.time.LocalDate
@@ -119,6 +120,20 @@ class LiveTrainPositionsTest {
         // A run of the new service day that leaves at 00:30 has not started yet.
         val early = run(number = "1961", runStops = listOf(stop("Alfa", alfa, 30), stop("Gamma", gamma, 60)), date = day.plusDays(1))
         assertTrue(LiveTrainSelector.select(listOf(early), emptyList(), now, everywhere, alfa).trains.isEmpty())
+    }
+
+    @Test
+    fun `a night train read from the evening is matched from its true origin`() {
+        // Left Alfa at 19:00; the map read yesterday's service day only from Beta at 20:30.
+        val evening = listOf(stop("Beta", beta, 20 * 60 + 30), stop("Gamma", gamma, 22 * 60))
+        val withOrigin = run(number = "1951", runStops = evening).copy(origin = ScheduledRunOrigin("Alfa", 19 * 60))
+        val seenAtOrigin = listOf(LiveRunObservation("1951", at("19:00"), delayMinutes = 6))
+        val now = at("21:00")
+        assertEquals(6, LiveTrainSelector.select(listOf(withOrigin), seenAtOrigin, now, everywhere, alfa).trains.single().delayMinutes)
+        // Without the origin, an observation from 19:00 falls before the run's span and is not this train's.
+        assertNull(LiveTrainSelector.select(listOf(run(number = "1951", runStops = evening)), seenAtOrigin, now, everywhere, alfa).trains.single().delayMinutes)
+        assertEquals("Alfa", withOrigin.originName)
+        assertEquals("Beta", run(number = "1951", runStops = evening).originName)
     }
 
     @Test
