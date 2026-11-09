@@ -169,8 +169,10 @@ class RouteWorksMatcher(catalogue: List<Station>) {
 
 /**
  * The dates named in a notice's Italian text: "9 novembre 2026", "14/11/2026", "dal 9 al 13 novembre", "tra il 10 e
- * l'11 novembre", "dalle 23.30 di sabato 7 alle 5 di lunedì 9 novembre" (a bare day takes the month of the next full
- * date). A date without a year takes the year that puts it nearest to [reference] (the publication day).
+ * l'11 novembre", "dalle 23.30 di sabato 7 alle 5 di lunedì 9 novembre", "dalle 22.50 del 14 alle 5.50 del 15
+ * novembre", "dal 1° al 3 dicembre", "nei giorni 14, 15, 21 e 22 novembre" (a bare day, or a day of a list, takes the
+ * month of the next full date). A date without a year takes the year that puts it nearest to [reference] (the
+ * publication day).
  */
 internal object NoticeDateParser {
     private val MONTHS = listOf(
@@ -180,7 +182,12 @@ internal object NoticeDateParser {
     private val NUMERIC = Regex("(?<![\\d/.])(\\d{1,2})[/.](\\d{1,2})[/.](\\d{4}|\\d{2})(?![\\d/.])")
     private val TEXTUAL = Regex("\\b(\\d{1,2})(?:°|º)?\\s+($MONTH)(?:\\s+(\\d{4}))?\\b")
     private val BARE_DAY = Regex(
-        "\\b(?:dal|dall|al|tra il|fra il|tra|fra|il|lunedi|martedi|mercoledi|giovedi|venerdi|sabato|domenica)\\s+(\\d{1,2})\\b(?!\\s*(?:[:.]\\d|°|º|$MONTH|/))"
+        "\\b(?:dal|dall|del|dell|al|tra il|fra il|tra|fra|il|lunedi|martedi|mercoledi|giovedi|venerdi|sabato|domenica)\\s+(\\d{1,2})(?!\\d)(?:°|º)?(?!\\s*(?:[:.]\\d|°|º|$MONTH|/))"
+    )
+    /** A day of a list closed by a full date: "14", "15" and "21" in "nei giorni 14, 15, 21 e 22 novembre" (not a time, "23.30"). */
+    private const val LIST_SEPARATOR = "(?:\\s*,\\s*|\\s+e\\s+|\\s+ed\\s+)"
+    private val LISTED_DAY = Regex(
+        "(?<![\\d.:/])\\b(\\d{1,2})(?=$LIST_SEPARATOR(?:\\d{1,2}$LIST_SEPARATOR)*\\d{1,2}(?:°|º)?\\s+(?:$MONTH)\\b)"
     )
 
     fun dates(text: String, reference: LocalDate): NoticeDates? {
@@ -199,7 +206,7 @@ internal object NoticeDateParser {
             date?.let { match.range.first to it }
         }.toList()
         found += textual.map { it.second }
-        BARE_DAY.findAll(lower).forEach { match ->
+        (BARE_DAY.findAll(lower) + LISTED_DAY.findAll(lower)).forEach { match ->
             val position = match.range.first
             val next = textual.firstOrNull { it.first > position }?.second ?: return@forEach
             val day = match.groupValues[1].toInt()
