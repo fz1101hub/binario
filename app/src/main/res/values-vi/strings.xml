@@ -1516,6 +1516,12 @@
     <plurals name="reliability_weekday_better">
         <item quantity="other">%1$s đúng giờ %2$d trên %3$d lần, tốt hơn mức trung bình</item>
     </plurals>
+    <!-- «Alternativa più puntuale» under a direct train of the route results (network statistics) -->
+    <string name="reliability_alternative_train">Đúng giờ hơn: %1$s lúc %2$s</string>
+    <plurals name="reliability_alternative_on_time">
+        <item quantity="other">đúng giờ %1$d trên %2$d lần</item>
+    </plurals>
+    <string name="reliability_alternative_open">Hiện tàu lúc %1$s</string>
     <!-- Route results: «Più presto» / «Più tardi», empty searched window, RFI «RITARDO» without minutes -->
     <string name="results_earlier">Sớm hơn</string>
     <string name="results_later">Muộn hơn</string>

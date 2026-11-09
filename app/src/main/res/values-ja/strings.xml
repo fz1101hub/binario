@@ -1493,6 +1493,12 @@
     <plurals name="reliability_weekday_better">
         <item quantity="other">%1$sは %3$d 回中 %2$d 回定刻で、平均より良い</item>
     </plurals>
+    <!-- «Alternativa più puntuale» under a direct train of the route results (network statistics) -->
+    <string name="reliability_alternative_train">より時間に正確：%2$s 発の %1$s</string>
+    <plurals name="reliability_alternative_on_time">
+        <item quantity="other">%2$d 回中 %1$d 回定刻</item>
+    </plurals>
+    <string name="reliability_alternative_open">%1$s 発の列車を表示</string>
     <!-- Route results: «Più presto» / «Più tardi», empty searched window, RFI «RITARDO» without minutes -->
     <string name="results_earlier">より早い時間</string>
     <string name="results_later">より遅い時間</string>

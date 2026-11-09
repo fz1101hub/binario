@@ -1618,6 +1618,14 @@
         <item quantity="many">%1$s, à l’heure %2$d fois sur %3$d, mieux que la moyenne</item>
         <item quantity="other">%1$s, à l’heure %2$d fois sur %3$d, mieux que la moyenne</item>
     </plurals>
+    <!-- «Alternativa più puntuale» under a direct train of the route results (network statistics) -->
+    <string name="reliability_alternative_train">Plus ponctuel : %1$s de %2$s</string>
+    <plurals name="reliability_alternative_on_time">
+        <item quantity="one">à l’heure %1$d fois sur %2$d</item>
+        <item quantity="many">à l’heure %1$d fois sur %2$d</item>
+        <item quantity="other">à l’heure %1$d fois sur %2$d</item>
+    </plurals>
+    <string name="reliability_alternative_open">Afficher le train de %1$s</string>
     <!-- Route results: «Più presto» / «Più tardi», empty searched window, RFI «RITARDO» without minutes -->
     <string name="results_earlier">Plus tôt</string>
     <string name="results_later">Plus tard</string>

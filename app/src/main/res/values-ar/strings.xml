@@ -1748,6 +1748,17 @@
         <item quantity="many">%1$s: في الموعد %2$d مرة من أصل %3$d، أفضل من المتوسط</item>
         <item quantity="other">%1$s: في الموعد %2$d مرة من أصل %3$d، أفضل من المتوسط</item>
     </plurals>
+    <!-- «Alternativa più puntuale» under a direct train of the route results (network statistics) -->
+    <string name="reliability_alternative_train">أكثر التزامًا بالموعد: %1$s الساعة %2$s</string>
+    <plurals name="reliability_alternative_on_time">
+        <item quantity="zero">في الموعد %1$d مرة من أصل %2$d</item>
+        <item quantity="one">في الموعد %1$d مرة من أصل %2$d</item>
+        <item quantity="two">في الموعد %1$d مرتين من أصل %2$d</item>
+        <item quantity="few">في الموعد %1$d مرات من أصل %2$d</item>
+        <item quantity="many">في الموعد %1$d مرة من أصل %2$d</item>
+        <item quantity="other">في الموعد %1$d مرة من أصل %2$d</item>
+    </plurals>
+    <string name="reliability_alternative_open">عرض قطار الساعة %1$s</string>
     <!-- Route results: «Più presto» / «Più tardi», empty searched window, RFI «RITARDO» without minutes -->
     <string name="results_earlier">أبكر</string>
     <string name="results_later">لاحقًا</string>

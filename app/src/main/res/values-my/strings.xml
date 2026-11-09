@@ -1493,6 +1493,12 @@
     <plurals name="reliability_weekday_better">
         <item quantity="other">%1$s %3$d ကြိမ်တွင် %2$d ကြိမ် အချိန်မှန်၊ ပျမ်းမျှထက် ကောင်း</item>
     </plurals>
+    <!-- «Alternativa più puntuale» under a direct train of the route results (network statistics) -->
+    <string name="reliability_alternative_train">ပိုအချိန်မှန်သည်- %2$s ထွက် %1$s</string>
+    <plurals name="reliability_alternative_on_time">
+        <item quantity="other">%2$d ကြိမ်တွင် %1$d ကြိမ် အချိန်မှန်</item>
+    </plurals>
+    <string name="reliability_alternative_open">%1$s ထွက် ရထားကို ပြရန်</string>
     <!-- Route results: «Più presto» / «Più tardi», empty searched window, RFI «RITARDO» without minutes -->
     <string name="results_earlier">အစောပိုင်း</string>
     <string name="results_later">နောက်ပိုင်း</string>

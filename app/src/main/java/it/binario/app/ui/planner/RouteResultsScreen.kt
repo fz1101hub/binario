@@ -13,9 +13,11 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListLayoutInfo
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.BookmarkAdd
 import androidx.compose.material.icons.filled.BookmarkAdded
@@ -37,13 +39,16 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
@@ -53,6 +58,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import it.binario.app.BinarioTheme
 import it.binario.app.JourneyChangeFilter
@@ -71,6 +77,7 @@ import it.binario.app.journeys.JourneyOptionRow
 import it.binario.app.journeys.JourneyResultsFilter
 import it.binario.app.journeys.JourneyResultsPresentation
 import it.binario.app.journeys.JourneySearchUiState
+import it.binario.app.labelRes
 import it.binario.app.localized
 import it.binario.app.maps.OpenMapStationIndex
 import it.binario.app.maps.rememberOpenMapStationIndex
@@ -100,6 +107,10 @@ import it.binario.app.ui.journeys.JourneyResultCard
 import it.binario.app.ui.journeys.journeyLegLabel
 import it.binario.app.ui.common.NetworkReliabilityLines
 import it.binario.app.ui.common.NetworkReliabilityText
+import it.binario.app.ui.common.BidiText
+import it.binario.app.ui.common.ReliableAlternativeLines
+import it.binario.app.ui.common.ReliableAlternativeText
+import it.binario.app.ui.common.rememberReliableAlternativeStrings
 import it.binario.app.ui.common.ReliabilityAggregateLines
 import it.binario.app.ui.common.RoutePunctualityLines
 import it.binario.app.ui.common.networkReliabilityAttribution
@@ -113,9 +124,13 @@ import it.binario.app.data.reliability.NetworkReliabilityStations
 import it.binario.app.data.reliability.NetworkReliability
 import it.binario.app.data.reliability.NetworkReliabilityAggregates
 import java.time.LocalDate
+import java.time.LocalDateTime
+import java.time.temporal.ChronoUnit
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 import java.util.UUID
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 // Pianifica: the solutions of a route or round-trip search.
 
@@ -205,6 +220,10 @@ internal fun RouteResultsScreen(
     val returnReliability = remember(returnEntries, reliabilityStats, reliabilityStations, route) {
         reliabilityStats?.let { ResultsReliability.assess(returnEntries, it, route.origin(Direction.RETURN), route.destination(Direction.RETURN), reliabilityStations) }.orEmpty()
     }
+    // «Più puntuale: …» under a direct train often late at the destination: a train of the outbound list leaving around
+    // the same time, still to be taken, clearly more often on time there.
+    val now = rememberRailMinute()
+    val alternatives = remember(entries, reliability, now) { ResultsAlternatives.find(entries, reliability, now) }
     // «Di solito al binario 12 (8 volte su 10)» where each row is boarded, while its own platform is not known.
     val usualPlatforms = remember(entries, reliabilityStats, reliabilityStations, route, primaryDirection) {
         reliabilityStats?.let { ResultsReliability.usualPlatforms(entries, it, route.origin(primaryDirection), route.destination(primaryDirection), reliabilityStations) }.orEmpty()
@@ -284,6 +303,17 @@ internal fun RouteResultsScreen(
     var savedTimetableId by rememberSaveable(route.id, primaryDirection, if (viewModel.journeyFollowsCurrentTime) null else query) { mutableStateOf<String?>(null) }
     val stationIndex = rememberOpenMapStationIndex(viewModel.stations, viewModel::stationFromName)
 
+    val scrollState = rememberLazyListState()
+    val scope = rememberCoroutineScope()
+    // The suggested train is shown as a tap on its card shows it (beside the list from 840 dp, where it is tinted as
+    // selected; its detail on phones), after scrolling the list to its card when that is not fully on screen.
+    val showAlternative: (ResultEntry, ResultEntry.Train) -> Unit = { source, target ->
+        val index = scrollIndexOf(scrollState.layoutInfo, OUTBOUND_KEY_PREFIX, shown, source, target)
+        scope.launch {
+            index?.let { scrollState.scrollToItem(it) }
+            openDetails(target.service)
+        }
+    }
     val outboundStates = ResultStates(
         loading = stringResource(R.string.search_outbound_loading_title) to stringResource(R.string.search_outbound_loading_message),
         unavailable = stringResource(R.string.search_outbound_unavailable_title) to
@@ -298,7 +328,7 @@ internal fun RouteResultsScreen(
         empty = stringResource(R.string.search_return_empty_title) to stringResource(R.string.search_return_empty_message),
         noDirect = stringResource(R.string.journey_empty_no_direct)
     )
-    LazyColumn(modifier = modifier.fillMaxSize().testTag("route-results")) {
+    LazyColumn(modifier = modifier.fillMaxSize().testTag("route-results"), state = scrollState) {
         item {
             ScreenHeader(
                 title = ltrUnit(headline?.short ?: route.localizedDisplayName(primaryDirection)),
@@ -424,7 +454,7 @@ internal fun RouteResultsScreen(
             }
         }
         resultItems(
-            keyPrefix = "out",
+            keyPrefix = OUTBOUND_KEY_PREFIX,
             entries = shown,
             anyEntries = entries.isNotEmpty(),
             state = viewModel.refreshState,
@@ -438,7 +468,9 @@ internal fun RouteResultsScreen(
             openJourney = openJourney,
             stationIndex = stationIndex,
             reliability = reliability,
-            usualPlatforms = usualPlatforms
+            usualPlatforms = usualPlatforms,
+            alternatives = alternatives,
+            onAlternative = showAlternative
         )
         if (pagingAvailable) {
             item(key = "out-later") {
@@ -554,7 +586,10 @@ private fun LazyListScope.resultItems(
     openJourney: (JourneyOptionRow) -> Unit,
     stationIndex: OpenMapStationIndex,
     reliability: Map<String, EntryReliability>,
-    usualPlatforms: Map<String, UsualPlatform> = emptyMap()
+    usualPlatforms: Map<String, UsualPlatform> = emptyMap(),
+    /** «Più puntuale: …» by the key of the train it is suggested for (the outbound list only). */
+    alternatives: Map<String, ResultAlternative> = emptyMap(),
+    onAlternative: (ResultEntry, ResultEntry.Train) -> Unit = { _, _ -> }
 ) {
     when {
         state == RefreshState.LOADING && !hasSnapshot ->
@@ -563,7 +598,7 @@ private fun LazyListScope.resultItems(
             item(key = "$keyPrefix-error") { SearchInfoState(states.unavailable.first, states.unavailable.second) }
     }
     when {
-        entries.isNotEmpty() -> items(entries, key = { "$keyPrefix-${it.key}" }) { entry ->
+        entries.isNotEmpty() -> items(entries, key = { resultItemKey(keyPrefix, it) }) { entry ->
             val itemModifier = Modifier.padding(horizontal = ScreenMargin, vertical = 6.dp)
             when (entry) {
                 is ResultEntry.Train -> ResultCard(
@@ -575,7 +610,9 @@ private fun LazyListScope.resultItems(
                     co2 = rememberCo2(entry.service, stationIndex),
                     lastOfDay = entry.lastOfDay,
                     dataState = DataState.ofService(entry.service, listState),
-                    reliability = rememberEntryReliabilityText(reliability[entry.key], null, usualPlatforms[entry.key])
+                    reliability = rememberEntryReliabilityText(reliability[entry.key], null, usualPlatforms[entry.key]),
+                    alternative = rememberReliableAlternativeText(alternatives[entry.key]),
+                    onAlternative = { alternatives[entry.key]?.let { onAlternative(entry, it.target) } }
                 )
                 is ResultEntry.Journey -> JourneyResultCard(
                     row = entry.row,
@@ -671,6 +708,66 @@ private fun rememberEntryReliabilityText(assessment: EntryReliability?, row: Jou
         NetworkReliabilityLines.text(lines, strings)
     }
 }
+
+/**
+ * «Più puntuale: Regionale 2157 delle 08:12 · in orario 9 volte su 10» for [alternative], the train named as its card
+ * names it; null without one.
+ */
+@Composable
+private fun rememberReliableAlternativeText(alternative: ResultAlternative?): ReliableAlternativeText? {
+    if (alternative == null) return null
+    val strings = rememberReliableAlternativeStrings()
+    val resources = LocalResources.current
+    val rightToLeft = LocalLayoutDirection.current == LayoutDirection.Rtl
+    return remember(alternative, strings, resources, rightToLeft) {
+        val service = alternative.target.service
+        val label = resources.getString(
+            R.string.service_category_number,
+            resources.getString(service.trainCategory.labelRes()),
+            BidiText.ltrUnit(service.number.trim(), rightToLeft)
+        )
+        ReliableAlternativeLines.text(label, service.scheduledDeparture.trim(), alternative.stop, strings)
+    }
+}
+
+/** The keys of the outbound rows in the list ([resultItemKey]). */
+private const val OUTBOUND_KEY_PREFIX = "out"
+
+/** The key of [entry]'s item in the results list. */
+private fun resultItemKey(keyPrefix: String, entry: ResultEntry): String = "$keyPrefix-${entry.key}"
+
+/**
+ * The index in the list of [target]'s card when it is not fully on screen, counted from the card of [source] (on
+ * screen: its line was just tapped) and their places in [entries], which are consecutive items; null when [target] is
+ * already fully visible or [source] is not on screen.
+ */
+private fun scrollIndexOf(layout: LazyListLayoutInfo, keyPrefix: String, entries: List<ResultEntry>, source: ResultEntry, target: ResultEntry): Int? {
+    val sourceItem = layout.visibleItemsInfo.firstOrNull { it.key == resultItemKey(keyPrefix, source) } ?: return null
+    val from = entries.indexOfFirst { it.key == source.key }
+    val to = entries.indexOfFirst { it.key == target.key }
+    if (from < 0 || to < 0) return null
+    val index = sourceItem.index + (to - from)
+    val targetItem = layout.visibleItemsInfo.firstOrNull { it.index == index }
+    val fullyVisible = targetItem != null && targetItem.key == resultItemKey(keyPrefix, target) &&
+        targetItem.offset >= layout.viewportStartOffset && targetItem.offset + targetItem.size <= layout.viewportEndOffset
+    return index.takeUnless { fullyVisible }
+}
+
+/** The railway-local time to the minute, moving on at every minute while the results are on screen. */
+@Composable
+private fun rememberRailMinute(): LocalDateTime {
+    val now by produceState(railMinute()) {
+        while (true) {
+            delay(MINUTE_MILLIS - System.currentTimeMillis() % MINUTE_MILLIS)
+            value = railMinute()
+        }
+    }
+    return now
+}
+
+private const val MINUTE_MILLIS = 60_000L
+
+private fun railMinute(): LocalDateTime = LocalDateTime.now(RailTime.defaultZone).truncatedTo(ChronoUnit.MINUTES)
 
 /**
  * «Più presto» / «Più tardi» under or above the list: the button, a progress bar while the window loads, and

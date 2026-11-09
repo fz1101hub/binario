@@ -1567,6 +1567,13 @@
         <item quantity="one">%1$s %2$d von %3$d Mal pünktlich, besser als im Schnitt</item>
         <item quantity="other">%1$s %2$d von %3$d Mal pünktlich, besser als im Schnitt</item>
     </plurals>
+    <!-- «Alternativa più puntuale» under a direct train of the route results (network statistics) -->
+    <string name="reliability_alternative_train">Pünktlicher: %1$s um %2$s</string>
+    <plurals name="reliability_alternative_on_time">
+        <item quantity="one">%1$d von %2$d Mal pünktlich</item>
+        <item quantity="other">%1$d von %2$d Mal pünktlich</item>
+    </plurals>
+    <string name="reliability_alternative_open">Zug um %1$s anzeigen</string>
     <!-- Route results: «Più presto» / «Più tardi», empty searched window, RFI «RITARDO» without minutes -->
     <string name="results_earlier">Früher</string>
     <string name="results_later">Später</string>

@@ -49,6 +49,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.SemanticsPropertyReceiver
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.onClick
@@ -324,7 +325,11 @@ internal fun ResultCard(
     /** Live, scheduled or saved copy, as the chip of the card; null shows no chip. */
     dataState: DataState? = null,
     /** «In orario 27 volte su 30 · ritardo medio 3 min» from the network statistics; null shows nothing. */
-    reliability: NetworkReliabilityText? = null
+    reliability: NetworkReliabilityText? = null,
+    /** «Più puntuale: Regionale 2157 delle 08:12 · …» under the reliability line, a button of its own; null shows nothing. */
+    alternative: ReliableAlternativeText? = null,
+    /** Shows the train [alternative] suggests. */
+    onAlternative: () -> Unit = {}
 ) {
     val shown = if (isDemonstration) service.presentedAsDemonstration() else service
     val locale = LocalConfiguration.current.locales[0]
@@ -347,14 +352,18 @@ internal fun ResultCard(
         co2?.let { co2Spoken(it) },
         if (selected) stringResource(R.string.accessibility_row_selected) else null
     ).joinToString(". ")
+    val cardSemantics: SemanticsPropertyReceiver.() -> Unit = {
+        contentDescription = description
+        role = Role.Button
+        onClick { onOpen(); true }
+    }
+    // The card is one button read as one sentence. With «Più puntuale: …» its texts are cleared around that line, which
+    // stays a button of its own (it is not part of the card's sentence).
+    val readByCard = if (alternative == null) Modifier else Modifier.clearAndSetSemantics {}
     Surface(
         modifier = modifier
             .fillMaxWidth()
-            .clearAndSetSemantics {
-                contentDescription = description
-                role = Role.Button
-                onClick { onOpen(); true }
-            },
+            .then(if (alternative == null) Modifier.clearAndSetSemantics(cardSemantics) else Modifier.semantics(properties = cardSemantics)),
         onClick = onOpen,
         color = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface,
         shape = RoundedCornerShape(20.dp),
@@ -362,50 +371,55 @@ internal fun ResultCard(
         border = if (selected) BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else null
     ) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    ltrUnit(listOfNotNull(shown.scheduledDeparture, arrival).joinToString(" → ")),
-                    modifier = Modifier.weight(1f),
-                    style = MaterialTheme.typography.titleLarge.copy(fontFeatureSettings = TabularFigures)
-                )
-                duration?.let {
-                    Text(compactDurationLabel(it), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Column(readByCard, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        ltrUnit(listOfNotNull(shown.scheduledDeparture, arrival).joinToString(" → ")),
+                        modifier = Modifier.weight(1f),
+                        style = MaterialTheme.typography.titleLarge.copy(fontFeatureSettings = TabularFigures)
+                    )
+                    duration?.let {
+                        Text(compactDurationLabel(it), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
                 }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        stringResource(R.string.service_category_number, shown.trainCategory.localizedLabel(), shown.number).uppercase(locale),
+                        modifier = Modifier.weight(1f),
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        letterSpacing = 0.5.sp
+                    )
+                    // Unverified runs say "Programmato": a timetable card never looks like a live on-time one.
+                    dataState?.let { DataStateChip(it, Modifier.padding(start = 8.dp)) }
+                }
+                if (shown.operationalStatusVerified && shown.status != ServiceStatus.ON_TIME) {
+                    Text(
+                        compactStatusLabel(shown),
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = if (shown.status == ServiceStatus.CANCELLED) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.tertiary
+                    )
+                }
+                lateWithoutMinutesLabel(shown)?.let {
+                    Text(it, modifier = Modifier.testTag("result-late-unpublished"), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.tertiary)
+                }
+                if (lastOfDay) LastOfDayChip()
+                shown.bikesAllowed?.let { BikesMark(it, Modifier.testTag("result-bikes")) }
+                reliability?.let { NetworkReliabilityLinesText(it.lines, Modifier.padding(top = 2.dp).testTag("result-reliability")) }
             }
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    stringResource(R.string.service_category_number, shown.trainCategory.localizedLabel(), shown.number).uppercase(locale),
-                    modifier = Modifier.weight(1f),
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    letterSpacing = 0.5.sp
-                )
-                // Unverified runs say "Programmato": a timetable card never looks like a live on-time one.
-                dataState?.let { DataStateChip(it, Modifier.padding(start = 8.dp)) }
+            alternative?.let { ReliableAlternativeLine(it, onAlternative, Modifier.testTag("result-reliable-alternative")) }
+            Column(readByCard, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Row(Modifier.padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                    ChangesBadge(shown.transferCount, Modifier.weight(1f))
+                    Text(
+                        platformText(shown.platform, shown.scheduledPlatform, long = true) ?: stringResource(R.string.platform_label, "—"),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = platformColor(shown.platform, shown.scheduledPlatform, MaterialTheme.colorScheme.onSurfaceVariant)
+                    )
+                }
+                co2?.let { Text(co2Line(it), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
             }
-            if (shown.operationalStatusVerified && shown.status != ServiceStatus.ON_TIME) {
-                Text(
-                    compactStatusLabel(shown),
-                    style = MaterialTheme.typography.labelLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = if (shown.status == ServiceStatus.CANCELLED) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.tertiary
-                )
-            }
-            lateWithoutMinutesLabel(shown)?.let {
-                Text(it, modifier = Modifier.testTag("result-late-unpublished"), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.tertiary)
-            }
-            if (lastOfDay) LastOfDayChip()
-            shown.bikesAllowed?.let { BikesMark(it, Modifier.testTag("result-bikes")) }
-            reliability?.let { NetworkReliabilityLinesText(it.lines, Modifier.padding(top = 2.dp).testTag("result-reliability")) }
-            Row(Modifier.padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                ChangesBadge(shown.transferCount, Modifier.weight(1f))
-                Text(
-                    platformText(shown.platform, shown.scheduledPlatform, long = true) ?: stringResource(R.string.platform_label, "—"),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = platformColor(shown.platform, shown.scheduledPlatform, MaterialTheme.colorScheme.onSurfaceVariant)
-                )
-            }
-            co2?.let { Text(co2Line(it), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
         }
     }
 }

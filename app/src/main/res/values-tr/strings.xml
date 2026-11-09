@@ -1567,6 +1567,13 @@
         <item quantity="one">%1$s %3$d seferin %2$d tanesinde zamanında, ortalamadan iyi</item>
         <item quantity="other">%1$s %3$d seferin %2$d tanesinde zamanında, ortalamadan iyi</item>
     </plurals>
+    <!-- «Alternativa più puntuale» under a direct train of the route results (network statistics) -->
+    <string name="reliability_alternative_train">Daha dakik: %2$s kalkışlı %1$s</string>
+    <plurals name="reliability_alternative_on_time">
+        <item quantity="one">%2$d seferin %1$d tanesinde zamanında</item>
+        <item quantity="other">%2$d seferin %1$d tanesinde zamanında</item>
+    </plurals>
+    <string name="reliability_alternative_open">%1$s trenini göster</string>
     <!-- Route results: «Più presto» / «Più tardi», empty searched window, RFI «RITARDO» without minutes -->
     <string name="results_earlier">Daha erken</string>
     <string name="results_later">Daha geç</string>
