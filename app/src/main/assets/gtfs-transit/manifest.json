@@ -1,6 +1,6 @@
 {
   "schemaVersion": 4,
-  "generatedAt": "2026-11-02",
+  "generatedAt": "2026-11-09",
   "purpose": "Offline timetable packs of regional railways and city networks",
   "refreshCadence": "every-timetable-change",
   "filteringVersion": 2,
@@ -589,16 +589,16 @@
       "acquisition": {
         "format": "gtfs",
         "transport": "http",
-        "downloadSha256": "9d4651d668b2de1e731c2006ded0304442c9461d5881598977c516ccd7416b11",
-        "downloadBytes": 9122184,
+        "downloadSha256": "952ff25fc2590e8a0eaa715d397a64fbe442aa869cd77b12b516ef8da0faea98",
+        "downloadBytes": 5488585,
         "finalUrl": "http://opendatagoogletransit.comune.genova.it/downloads/google_transit.zip",
         "corroboratedBy": {
           "url": "https://files.mobilitydatabase.org/tld-958/latest.zip",
-          "sha256": "9d4651d668b2de1e731c2006ded0304442c9461d5881598977c516ccd7416b11"
+          "sha256": "952ff25fc2590e8a0eaa715d397a64fbe442aa869cd77b12b516ef8da0faea98"
         }
       },
-      "sha256": "df5e79a65541a517e75ba458a6b30a18e097d35761413fe306dafec83d9813cf",
-      "lastServiceDate": "2026-12-18",
+      "sha256": "e9ca4187a5a466c57ca51316289e193bf56ea8842a921edb85b6448bb6b313d1",
+      "lastServiceDate": "2026-12-25",
       "filter": {
         "kind": "explicit-route-ids",
         "description": "Selettore revisionato specifico della fonte; nessun matching per nome.",
@@ -606,8 +606,8 @@
           "FGC-191"
         ]
       },
-      "sourceArchiveSha256": "9d4651d668b2de1e731c2006ded0304442c9461d5881598977c516ccd7416b11",
-      "contentSha256": "190ca2628b28bdbb209c7f6d55fac80f7e53d1f99167395c9e6b7b74501c6a69"
+      "sourceArchiveSha256": "952ff25fc2590e8a0eaa715d397a64fbe442aa869cd77b12b516ef8da0faea98",
+      "contentSha256": "62b3611ffabc4ce9d46a37efbd0459b7d19929a59270c184e27b8d35dc925166"
     },
     {
       "sourceId": "genova-amt-gtfs",
@@ -623,17 +623,17 @@
       "acquisition": {
         "format": "gtfs",
         "transport": "http",
-        "downloadSha256": "9d4651d668b2de1e731c2006ded0304442c9461d5881598977c516ccd7416b11",
-        "downloadBytes": 9122184,
+        "downloadSha256": "952ff25fc2590e8a0eaa715d397a64fbe442aa869cd77b12b516ef8da0faea98",
+        "downloadBytes": 5488585,
         "finalUrl": "http://opendatagoogletransit.comune.genova.it/downloads/google_transit.zip",
         "corroboratedBy": {
           "url": "https://files.mobilitydatabase.org/tld-958/latest.zip",
-          "sha256": "9d4651d668b2de1e731c2006ded0304442c9461d5881598977c516ccd7416b11"
+          "sha256": "952ff25fc2590e8a0eaa715d397a64fbe442aa869cd77b12b516ef8da0faea98"
         }
       },
       "minValidDays": 14,
-      "sha256": "1c228933bcf69252a99c8ab2e718fdda0eaed3f1e29eeb0809178bfc2d856122",
-      "lastServiceDate": "2026-12-18",
+      "sha256": "3a19c0d8229e0d1fd359d0111357c4febcaa49de7f171d42865bfc5727e50c7e",
+      "lastServiceDate": "2026-12-24",
       "filter": {
         "kind": "gtfs-urban-route-types",
         "description": "Rete urbana: metropolitana (1, 400-499), tram (0, 900-999), funicolari, cremagliere e ascensori (5, 6, 7, 1300-1499) e monorotaia (12); mai autobus.",
@@ -1046,8 +1046,8 @@
           "1499"
         ]
       },
-      "sourceArchiveSha256": "9d4651d668b2de1e731c2006ded0304442c9461d5881598977c516ccd7416b11",
-      "contentSha256": "f8ecdf98d4469fdf1b5c9aa251ff4ae9b2978cffecb617c641526ebc64effd7f"
+      "sourceArchiveSha256": "952ff25fc2590e8a0eaa715d397a64fbe442aa869cd77b12b516ef8da0faea98",
+      "contentSha256": "2392f9e143098f29a89c63de2df170413f7033d802ce53f9114c0ec3f74a69cc"
     },
     {
       "sourceId": "milano-atm-gtfs",

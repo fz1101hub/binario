@@ -16,7 +16,7 @@ Ne derivano tre regole di progetto:
    3. cancellare le cache `punctuality-raw-*` (`gh cache list --key punctuality-raw- --json id -q '.[].id' | xargs -n1 gh cache delete`, o dalla pagina Actions → Caches);
    4. aggiornare questo documento e la riga in `SOURCE_POLICY.md`.
 
-   L'interruttore è provato a ogni run del job `android` di `android-ci.yml`: dopo le build normali (il cui bundle telefono deve contenere `punctuality/stats_v1.json.gz`, identico all'albero, quando l'albero ha il file: `tools/verify_android_app_bundles.py --punctuality-stats auto`, predefinito) lo step «Verify the punctuality switch leaves the statistics out» ricostruisce la release del telefono con `-Pbinario.punctualityStats=false` e verifica con `--apk … --punctuality-stats absent` che l'APK non abbia nulla sotto `assets/punctuality/`. Finché l'albero non ha il file delle statistiche, lo step crea per la durata della build un file sonda in `app/src/main/assets/punctuality/` (poi rimosso), così l'esclusione è dimostrata comunque. Costa un `assembleRelease` in più (lint vital escluso, già eseguito dalla build normale).
+   L'interruttore è provato a ogni run del job `android` di `android-ci.yml`: dopo le build normali (il cui bundle telefono deve contenere le statistiche quando l'albero ha il file: `punctuality/stats_v1.json`, cioè il file dell'albero decompresso, vedi sotto; `tools/verify_android_app_bundles.py --punctuality-stats auto`, predefinito) lo step «Verify the punctuality switch leaves the statistics out» ricostruisce la release del telefono con `-Pbinario.punctualityStats=false` e verifica con `--apk … --punctuality-stats absent` che l'APK non abbia nulla sotto `assets/punctuality/`. Finché l'albero non ha il file delle statistiche, lo step crea per la durata della build un file sonda in `app/src/main/assets/punctuality/` (poi rimosso), così l'esclusione è dimostrata comunque. Costa un `assembleRelease` in più (lint vital escluso, già eseguito dalla build normale).
 
 ## Cosa si raccoglie e da dove
 
@@ -64,6 +64,8 @@ Le osservazioni grezze (una riga JSON compatta per treno e giorno, per fermata `
 ## Il file `stats_v1.json.gz`
 
 `tools/build_punctuality_stats.py` aggrega gli **ultimi 30 giorni completi** (fino al giorno prima della generazione) in `app/src/main/assets/punctuality/stats_v1.json.gz`: gzip deterministico (senza nome né data) di un unico oggetto JSON canonico.
+
+**Nel pacchetto Android il file è `punctuality/stats_v1.json`.** Unendo gli asset, l'Android Gradle plugin decomprime ogni file `.gz` e ne toglie l'estensione: APK e bundle contengono quindi il JSON in chiaro (compresso dallo ZIP del pacchetto, dimensione simile). L'app legge `punctuality/stats_v1.json` e, se un giorno il pacchetto tenesse il file com'è, `stats_v1.json.gz` (`NetworkReliabilityRepository`); il parser riconosce il gzip dai primi due byte, con gli stessi limiti. `verify_android_app_bundles.py` richiede che il JSON del pacchetto sia identico al file dell'albero decompresso. iPhone e Alexa usano il file così com'è.
 
 ```json
 {"schema": "binario-punctuality-v1", "generatedAt": "2026-11-10T04:00:00Z",

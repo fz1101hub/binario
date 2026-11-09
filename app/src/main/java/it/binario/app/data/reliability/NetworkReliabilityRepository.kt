@@ -15,7 +15,14 @@ import kotlinx.coroutines.withContext
  * file is absent, unreadable or of another schema.
  */
 object NetworkReliabilityRepository {
-    const val ASSET_PATH = "punctuality/stats_v1.json.gz"
+    /**
+     * The statistics as the app's package carries them: the tree's `punctuality/stats_v1.json.gz`
+     * ([SOURCE_ASSET_PATH]), decompressed by the Android Gradle plugin when it merges the assets, which drops the
+     * extension of every `.gz` asset.
+     */
+    const val ASSET_PATH = "punctuality/stats_v1.json"
+    /** The file as the weekly refresh writes it in the tree; read only if a package ever keeps it as it is. */
+    const val SOURCE_ASSET_PATH = "punctuality/stats_v1.json.gz"
 
     val enabled: Boolean get() = BuildConfig.NETWORK_PUNCTUALITY_STATS
 
@@ -39,9 +46,15 @@ object NetworkReliabilityRepository {
         }
     }
 
-    private fun read(context: Context): NetworkReliabilityStats? = try {
-        context.assets.open(ASSET_PATH).use { NetworkReliabilityParser.parseGzip(it) }
-    } catch (_: IOException) {
-        null
+    private fun read(context: Context): NetworkReliabilityStats? {
+        for (path in listOf(ASSET_PATH, SOURCE_ASSET_PATH)) {
+            val input = try {
+                context.assets.open(path)
+            } catch (_: IOException) {
+                continue
+            }
+            return input.use { NetworkReliabilityParser.parseDocument(it) }
+        }
+        return null
     }
 }

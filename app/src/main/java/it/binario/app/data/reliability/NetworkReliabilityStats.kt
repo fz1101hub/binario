@@ -2,6 +2,7 @@ package it.binario.app.data.reliability
 
 import it.binario.app.data.RailTime
 import it.binario.app.data.Station
+import java.io.BufferedInputStream
 import java.io.IOException
 import java.io.InputStream
 import java.io.InputStreamReader
@@ -449,6 +450,29 @@ object NetworkReliabilityParser {
         val maxCount: Int = 10_000
     )
 
+    /**
+     * The statistics of the packaged document, gzipped or plain JSON: the tree keeps `stats_v1.json.gz`, while the
+     * Android Gradle plugin decompresses a `.gz` asset when it merges the assets and drops the extension, so APKs and
+     * bundles carry the plain JSON (zip-compressed by the package itself). Told apart by the gzip magic number; both
+     * bounded by [Limits.maxJsonBytes], the gzipped one also by [Limits.maxCompressedBytes].
+     */
+    fun parseDocument(input: InputStream, limits: Limits = Limits()): NetworkReliabilityStats? = try {
+        val buffered = BufferedInputStream(input, 64 * 1024)
+        buffered.mark(2)
+        val first = buffered.read()
+        val second = buffered.read()
+        buffered.reset()
+        if (first == GZIP_MAGIC_FIRST && second == GZIP_MAGIC_SECOND) {
+            parseGzip(buffered, limits)
+        } else {
+            parse(InputStreamReader(BoundedInputStream(buffered, limits.maxJsonBytes), Charsets.UTF_8), limits)
+        }
+    } catch (_: IOException) {
+        null
+    } catch (_: RuntimeException) {
+        null
+    }
+
     fun parseGzip(input: InputStream, limits: Limits = Limits()): NetworkReliabilityStats? = try {
         GZIPInputStream(BoundedInputStream(input, limits.maxCompressedBytes), 64 * 1024).use { gzip ->
             parse(InputStreamReader(BoundedInputStream(gzip, limits.maxJsonBytes), Charsets.UTF_8), limits)
@@ -698,6 +722,8 @@ object NetworkReliabilityParser {
     }
 
     private const val MAX_TEXT = 16
+    private const val GZIP_MAGIC_FIRST = 0x1f
+    private const val GZIP_MAGIC_SECOND = 0x8b
     /** Platform names are published trimmed, at most 12 characters ("3 Ovest", "I"). */
     private const val MAX_PLATFORM_NAME = 12
     private const val MAX_DELAY_MINUTES = 24.0 * 60

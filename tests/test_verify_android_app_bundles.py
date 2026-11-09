@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
+import gzip
 import importlib.util
 import io
 import struct
@@ -213,11 +214,22 @@ class VerifyAndroidAppBundlesTest(unittest.TestCase):
     def test_punctuality_statistics_follow_the_switch_and_the_tree(self) -> None:
         tree = Path(self.temp.name) / "tree" / "stats_v1.json.gz"
         missing = Path(self.temp.name) / "missing" / "stats_v1.json.gz"
+        broken = Path(self.temp.name) / "broken" / "stats_v1.json.gz"
         tree.parent.mkdir()
-        tree.write_bytes(b"\x1f\x8b statistics")
+        broken.parent.mkdir()
+        tree.write_bytes(gzip.compress(b'{"schema":"binario-punctuality-v1"}'))
+        broken.write_bytes(b"\x1f\x8b not really gzip")
         asset = "base/assets/punctuality/stats_v1.json.gz"
+        plain = "base/assets/punctuality/stats_v1.json"
         cases = {
             # (bundle asset, tree file, expectation) -> problem fragment or None
+            # As the Android Gradle plugin packages it: the tree's .gz decompressed, without the extension.
+            ("plain", tree, "auto"): None,
+            ("plain", tree, "present"): None,
+            ("plain-other", tree, "auto"): "diverse dal file dell'albero: base/assets/punctuality/stats_v1.json",
+            ("plain", broken, "auto"): "non leggibili come gzip",
+            ("plain", missing, "present"): None,
+            # A .gz kept as it is must be the tree's bytes.
             ("same", tree, "auto"): None,
             ("same", tree, "present"): None,
             (None, tree, "auto"): "assenti dal pacchetto",
@@ -240,6 +252,10 @@ class VerifyAndroidAppBundlesTest(unittest.TestCase):
                 entries = self.valid_entries()
                 if content == "probe":
                     entries["base/assets/punctuality/switch-probe.txt"] = b"switch probe"
+                elif content == "plain":
+                    entries[plain] = gzip.decompress(tree.read_bytes())
+                elif content == "plain-other":
+                    entries[plain] = b'{"schema":"other"}'
                 elif content is not None:
                     entries[asset] = tree.read_bytes() if content == "same" else b"other statistics"
                 entries["base/assets/punctuality-notes/readme.txt"] = b"not the statistics directory"
@@ -295,15 +311,22 @@ class VerifyAndroidAppBundlesTest(unittest.TestCase):
             archive.writestr("AndroidManifest.xml", b"binary xml")
             archive.writestr("classes.dex", b"dex")
             archive.writestr("assets/punctuality/stats_v1.json.gz", b"statistics")
+        # The tree's file is the test's own, whatever the checkout carries: the APK's copy must match it.
+        tree = Path(self.temp.name) / "tree_stats_v1.json.gz"
+        tree.write_bytes(b"statistics")
         output, errors = io.StringIO(), io.StringIO()
-        with mock.patch("sys.stdout", output), mock.patch("sys.stderr", errors):
+        with mock.patch("sys.stdout", output), mock.patch("sys.stderr", errors), \
+                mock.patch.object(POLICY, "PUNCTUALITY_TREE_ASSET", tree):
             self.assertEqual(1, POLICY.main(["--apk", str(apk), "--punctuality-stats", "absent"]))
             self.assertEqual(0, POLICY.main(["--apk", str(apk), "--punctuality-stats", "present"]))
+            tree.write_bytes(b"newer statistics")
+            self.assertEqual(1, POLICY.main(["--apk", str(apk), "--punctuality-stats", "present"]))
             with self.assertRaises(SystemExit):
                 POLICY.main(["--apk", str(apk)])
             with self.assertRaises(SystemExit):
                 POLICY.main(["--profile", "companion", "--punctuality-stats", "absent"])
         self.assertIn("Android APK: FAIL: statistiche di puntualità nel pacchetto", errors.getvalue())
+        self.assertIn("Android APK: FAIL: statistiche di puntualità diverse dal file dell'albero", errors.getvalue())
         self.assertIn("Android APK: PASS (", output.getvalue())
 
         # The default (auto) applies to the phone bundle of the root profile only, never to Wear.

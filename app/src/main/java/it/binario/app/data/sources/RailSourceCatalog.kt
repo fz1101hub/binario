@@ -212,7 +212,7 @@ object RailSourceCatalog {
             countryCodes = setOf("IT"),
             coverage = "Treni Trenitalia nazionali, regionali e internazionali e bus di linea Trenitalia, orario programmato.",
             landingPage = uri("https://www.cciss.it/nap/mmtis/public/en/catalog/Dataset/1077621"),
-            downloadOrProbeUri = uri("https://raw.githubusercontent.com/deryclem/trenitalia-gtfs/6c907245537b84a705265905dd41b62ef854bf29/gtfs-trenitalia.zip"),
+            downloadOrProbeUri = uri("https://raw.githubusercontent.com/deryclem/trenitalia-gtfs/0e62b3ebe98654ab37b3bd0b2d39864c4c155abc/gtfs-trenitalia.zip"),
             attribution = "Trenitalia S.p.A. via NAP CCISS (CAD art. 52, Reg. UE 2017/1926); GTFS © Clément Desouche, CC BY 4.0",
             notes = "Dati MMTIS ufficiali pubblicati in NeTEx sul National Access Point (dataset 1077621), convertiti in GTFS " +
                 "dalla comunità (deryclem/trenitalia-gtfs, CC BY 4.0). Data pack offline fissato a un commit e allo SHA-256 " +
@@ -229,7 +229,7 @@ object RailSourceCatalog {
             countryCodes = setOf("IT"),
             coverage = "Treni Italo AV e ItaloBus, orario programmato.",
             landingPage = uri("https://www.cciss.it/nap/mmtis/public/en/catalog/Dataset/1814124"),
-            downloadOrProbeUri = uri("https://raw.githubusercontent.com/deryclem/italo-gtfs/7ee9ff77eeab7ba2a26a3464472a2fa15bf959b3/gtfs-italo.zip"),
+            downloadOrProbeUri = uri("https://raw.githubusercontent.com/deryclem/italo-gtfs/faa1b3c273dbcc45a41c29325450f82c3bfd1db1/gtfs-italo.zip"),
             attribution = "Italo S.p.A. via NAP CCISS (CAD art. 52, Reg. UE 2017/1926); GTFS © Clément Desouche, CC BY 4.0",
             notes = "Dati MMTIS ufficiali pubblicati in NeTEx sul National Access Point (dataset 1814124), convertiti in GTFS " +
                 "dalla comunità (deryclem/italo-gtfs, CC BY 4.0). Data pack offline fissato a un commit e allo SHA-256 " +
