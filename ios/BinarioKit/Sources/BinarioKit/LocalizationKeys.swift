@@ -20,6 +20,7 @@ public enum BinarioLocalizationKeys {
         "result.order.title", "result.order.departure", "result.order.most_reliable",
         "result.route.on_time", "result.route.trains", "result.route.runs_observed", "result.route.days",
         "result.route.hours", "result.route.hour_band",
+        "result.alternative.train", "result.alternative.on_time", "result.alternative.open",
         "result.bikes.allowed", "result.bikes.not_allowed",
         "result.detail.reliability_title", "result.detail.arrival_on_time", "result.detail.mean_delay",
         "result.detail.days", "result.detail.distribution_title", "result.detail.band_no_delay",
@@ -55,6 +56,6 @@ public enum BinarioLocalizationKeys {
         "result.reliability.on_time", "result.reliability.cancelled", "result.reliability.cancelled_share",
         "result.route.trains", "result.route.runs_observed", "result.route.days",
         "result.detail.reliability_title", "result.detail.arrival_on_time", "result.detail.band_share",
-        "result.detail.usual_platform", "result.detail.weekday",
+        "result.detail.usual_platform", "result.detail.weekday", "result.alternative.on_time",
     ]
 }

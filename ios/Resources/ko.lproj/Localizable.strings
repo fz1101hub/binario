@@ -120,3 +120,6 @@
 "result.detail.band_share" = "%2$lld%% · %1$lld회";
 "result.detail.usual_platform" = "%3$@: 보통 승강장 %4$@ (%2$lld회 중 %1$lld회)";
 "result.detail.weekday" = "%3$@: %2$lld회 중 %1$lld회 정시 (평균 %4$lld%%)";
+"result.alternative.train" = "정시성이 더 높은 열차: %2$@ 출발 %1$@";
+"result.alternative.open" = "%1$@ 출발 열차 보기";
+"result.alternative.on_time" = "%2$lld회 중 %1$lld회 정시";

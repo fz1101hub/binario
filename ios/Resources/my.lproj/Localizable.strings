@@ -120,3 +120,6 @@
 "result.detail.band_share" = "%2$lld%% · %1$lld ကြိမ်";
 "result.detail.usual_platform" = "%3$@: များသောအားဖြင့် ပလက်ဖောင်း %4$@ (%2$lld ကြိမ်တွင် %1$lld ကြိမ်)";
 "result.detail.weekday" = "%3$@: %2$lld ကြိမ်တွင် %1$lld ကြိမ် အချိန်မှန် (ပျမ်းမျှ %4$lld%%)";
+"result.alternative.train" = "ပိုအချိန်မှန်သည်- %2$@ ထွက် %1$@";
+"result.alternative.open" = "%1$@ ထွက် ရထားကို ပြရန်";
+"result.alternative.on_time" = "%2$lld ကြိမ်တွင် %1$lld ကြိမ် အချိန်မှန်";

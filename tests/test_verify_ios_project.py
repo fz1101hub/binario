@@ -13,6 +13,7 @@ import sqlite3
 import struct
 import tempfile
 import unittest
+import xml.etree.ElementTree as ElementTree
 import zlib
 
 import yaml
@@ -41,6 +42,13 @@ PLURAL_CATEGORIES = {
 ANDROID_STATISTICS = ROOT / "app/src/main/assets/punctuality/stats_v1.json.gz"
 IOS_STATISTICS = IOS / "Resources/binario_punctuality_stats_v1.json.gz"
 INVISIBLE = re.compile("[\ufeff\u200b\u200c\u200d\u200e\u200f\u2060\u00ad]")
+# The Android resource folder of each .lproj, for the texts shared with the Android app.
+ANDROID_VALUES = {
+    "it": "values", "en": "values-en", "de": "values-de", "es": "values-es", "fr": "values-fr",
+    "ar": "values-ar", "hi": "values-hi", "id": "values-in", "ja": "values-ja", "ko": "values-ko",
+    "my": "values-my", "pt-BR": "values-pt", "ru": "values-ru", "th": "values-th", "tr": "values-tr",
+    "vi": "values-vi", "zh-Hans": "values-zh-rCN",
+}
 
 
 def read_strings(path: Path) -> dict[str, str]:
@@ -785,6 +793,104 @@ class IOSProjectTests(unittest.TestCase):
         # The Watch keeps the departure order: sorting is a view concern only.
         self.assertNotIn("mostReliableFirst", (IOS / "BinarioApp/AppModel.swift").read_text(encoding="utf-8"))
         self.assertIn('NSLocalizedString("result.reliability.on_time", comment: "")', texts)
+
+    def test_more_punctual_alternative_is_the_android_rule_under_the_result_row(self) -> None:
+        # «Più puntuale» (app/.../data/reliability/ReliableAlternatives.kt): the same thresholds,
+        # shares compared exactly in integers, every listed train a candidate, gone a minute after
+        # its scheduled departure (the bundled timetables have no live data).
+        rule = (IOS / "BinarioKit/Sources/BinarioKit/NetworkReliabilityAlternatives.swift").read_text(encoding="utf-8")
+        android = (ROOT / "app/src/main/java/it/binario/app/data/reliability/ReliableAlternatives.kt").read_text(encoding="utf-8")
+        for android_fragment, fragment in (
+            ("const val MAX_ON_TIME_PERCENT = 70", "public static let maximumOnTimePercent = 70"),
+            ("const val MIN_GAP_POINTS = 20", "public static let minimumGapPoints = 20"),
+            ("const val WINDOW_MINUTES = 30L", "public static let windowMinutes = 30"),
+        ):
+            with self.subTest(fragment=fragment):
+                self.assertIn(android_fragment, android)
+                self.assertIn(fragment, rule)
+        for fragment in (
+            "public static let departedGraceSeconds: TimeInterval = 60",
+            "let onTimeScaled = Int64(stop.onTime) * 100",
+            "let limitScaled = Int64(maximumOnTimePercent) * Int64(stop.samples)",
+            "let gap = (betterScaled - worseScaled) * 100",
+            "let needed = Int64(minimumGapPoints) * Int64(better.samples) * Int64(worse.samples)",
+            "&& stop.samples >= NetworkReliability.minimumSamples",
+            "!stop.cancelledEveryDay",
+            "abs(otherDeparture.timeIntervalSince(departure)) <= window",
+            "return now < departure.addingTimeInterval(departedGraceSeconds)",
+            "let calendar = NetworkReliabilityDay.romeCalendar",
+        ):
+            with self.subTest(fragment=fragment):
+                self.assertIn(fragment, rule)
+        self.assertNotIn("onTimeShare", rule, "shares are compared in integers, never as doubles")
+        tests = (IOS / "BinarioKit/Tests/BinarioKitTests/ReliableAlternativesTests.swift").read_text(encoding="utf-8")
+        for name in (
+            "testATrainOnTimeLessThan70PercentGetsATrainAtLeast20PointsBetter",
+            "testTheGapIsAtLeast20PointsCountedExactly",
+            "testOnlyTrainsLeavingWithin30MinutesBeforeOrAfterCount",
+            "testBothTrainsNeedAtLeast5SamplesAtTheDestination",
+            "testTiesGoToTheClosestDepartureThenTheEarlierOneThenTheMorePunctualOne",
+            "testTrainsAlreadyGoneAreNeverSuggestedAndGetNoSuggestion",
+            "testEveryLateTrainOfTheListGetsItsOwnAlternativeNeverItself",
+            "testEachTrainIsMeasuredAgainstItsOwnLimitFiveMinutesForAFrecciarossaFifteenForARegional",
+            "testATrenordRegionalOftenLateAtPaviaGetsTheNextOneByItsPublishedNumber",
+            "testTheClosestTrainStillToDepartIsSuggestedNeverOneAlreadyGoneOrNeverRunning",
+            "testATrainIsGoneAMinuteAfterItsScheduledDeparture",
+            "testListedTimesArePlacedFromTheQueryTimeOnAcrossMidnight",
+            "testTheWindowIs30MinutesAndATrainAsLateGivesNothing",
+        ):
+            with self.subTest(test=name):
+                self.assertIn(f"func {name}()", tests)
+
+        # The line sits under the row of the late train, opens the suggested train's detail as its
+        # own row does, reads as one sentence with «statistiche non ufficiali» and says what a tap
+        # does; the clock moves every minute while the planner is on screen.
+        planner = (IOS / "BinarioApp/PlannerView.swift").read_text(encoding="utf-8")
+        texts = (IOS / "BinarioApp/ReliabilityTexts.swift").read_text(encoding="utf-8")
+        for fragment in (
+            "ReliableAlternatives.find(in: snapshot, reliability: measuredTrains, now: now)",
+            "TrainDetailView(service: alternative.service, query: snapshot.query)",
+            "ReliableAlternativeLine(alternative: alternative)",
+            ".accessibilityHint(Text(ReliabilityTexts.alternativeOpen(alternative)))",
+            "let parts = ReliabilityTexts.alternativeParts(alternative)",
+            ".accessibilityElement(children: .ignore)",
+            "AvailableResultView(snapshot: snapshot, now: clock)",
+            ".task { await followTheClock() }",
+        ):
+            with self.subTest(fragment=fragment):
+                self.assertIn(fragment, planner)
+        for key in ("result.alternative.train", "result.alternative.on_time", "result.alternative.open"):
+            self.assertIn(f'NSLocalizedString("{key}", comment: "")', texts)
+        self.assertIn("ReliableAlternatives.trainLabel(service)", texts)
+        # The Watch lists the trains as they are: the suggestion is a view of the iPhone results.
+        self.assertNotIn("ReliableAlternatives", (IOS / "BinarioApp/AppModel.swift").read_text(encoding="utf-8"))
+
+        # The texts are Android's (reliability_alternative_*), with Apple placeholders.
+        def apple(text: str) -> str:
+            return re.sub(r"%(\d)\$d", r"%\1$lld", re.sub(r"%(\d)\$s", r"%\1$@", text))
+
+        for language, folder in sorted(ANDROID_VALUES.items()):
+            with self.subTest(language=language):
+                resources = ElementTree.parse(ROOT / "app/src/main/res" / folder / "strings.xml").getroot()
+                android_strings = {element.get("name"): element.text for element in resources.findall("string")}
+                android_forms = {
+                    item.get("quantity"): apple(item.text or "")
+                    for element in resources.findall("plurals")
+                    if element.get("name") == "reliability_alternative_on_time"
+                    for item in element.findall("item")
+                }
+                values = read_strings(IOS / "Resources" / f"{language}.lproj" / "Localizable.strings")
+                self.assertEqual(apple(android_strings["reliability_alternative_train"]), values["result.alternative.train"])
+                self.assertEqual(apple(android_strings["reliability_alternative_open"]), values["result.alternative.open"])
+                with (IOS / "Resources" / f"{language}.lproj" / "Localizable.stringsdict").open("rb") as source:
+                    forms = dict(plistlib.load(source)["result.alternative.on_time"]["count"])
+                forms.pop("NSStringFormatSpecTypeKey")
+                forms.pop("NSStringFormatValueTypeKey")
+                self.assertEqual(android_forms, forms)
+        italian = read_strings(IOS / "Resources/it.lproj/Localizable.strings")
+        self.assertEqual("Più puntuale: %1$@ delle %2$@", italian["result.alternative.train"])
+        self.assertEqual("Mostra il treno delle %1$@", italian["result.alternative.open"])
+        self.assertEqual("in orario %1$lld volte su %2$lld", italian["result.alternative.on_time"])
 
     def test_bikes_come_from_the_published_trip_value_and_italo_is_unknown(self) -> None:
         builder = (ROOT / "tools/build_ios_gtfs_schedule.py").read_text(encoding="utf-8")

@@ -120,3 +120,6 @@
 "result.detail.band_share" = "%2$lld%% · %1$lld lần";
 "result.detail.usual_platform" = "%3$@: thường ở sân ga %4$@ (%1$lld trên %2$lld lần)";
 "result.detail.weekday" = "%3$@: đúng giờ %1$lld trên %2$lld lần (trung bình %4$lld%%)";
+"result.alternative.train" = "Đúng giờ hơn: %1$@ lúc %2$@";
+"result.alternative.open" = "Hiện tàu lúc %1$@";
+"result.alternative.on_time" = "đúng giờ %1$lld trên %2$lld lần";

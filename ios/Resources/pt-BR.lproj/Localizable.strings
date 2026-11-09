@@ -120,3 +120,6 @@
 "result.detail.band_share" = "%2$lld%% · %1$lld vezes";
 "result.detail.usual_platform" = "%3$@: geralmente plataforma %4$@ (%1$lld vezes de %2$lld)";
 "result.detail.weekday" = "%3$@: no horário %1$lld vezes de %2$lld (em média %4$lld%%)";
+"result.alternative.train" = "Mais pontual: %1$@ das %2$@";
+"result.alternative.open" = "Mostrar o trem das %1$@";
+"result.alternative.on_time" = "no horário %1$lld vezes de %2$lld";
