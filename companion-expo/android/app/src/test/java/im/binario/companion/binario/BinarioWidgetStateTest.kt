@@ -1,5 +1,6 @@
 package im.binario.companion.binario
 
+import android.text.format.DateUtils
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
@@ -18,16 +19,9 @@ class BinarioWidgetStateTest {
   )
 
   @Test
-  fun countdownRoundsUpAndRecomputesAgainstCurrentTime() {
-    val scheduledAt = now + 61_000L
-    assertEquals("Tra 2 min", BinarioWidgetPresentation.countdownLabel(scheduledAt, now))
-    assertEquals("Tra 1 min", BinarioWidgetPresentation.countdownLabel(scheduledAt, now + 1_000L))
-  }
-
-  @Test
-  fun countdownAndStateBecomeUnavailableAtDeparture() {
-    assertEquals("Dati non disponibili in tempo reale.", BinarioWidgetPresentation.countdownLabel(now, now))
+  fun stateBecomesUnavailableAtDeparture() {
     assertEquals(BinarioWidgetStore.unavailable(available(now).title), BinarioWidgetStore.accepted(available(now), now))
+    assertEquals(BinarioWidgetStore.unavailable(available(now - 1L).title), BinarioWidgetStore.accepted(available(now - 1L), now))
   }
 
   @Test
@@ -52,5 +46,15 @@ class BinarioWidgetStateTest {
     assertEquals(false, BinarioWidgetPresentation.sameTravelDay(lateEvening, afterMidnight))
     assertEquals(true, BinarioWidgetPresentation.sameTravelDay(afterMidnight, afterMidnight + 20 * 3_600_000L))
     assertEquals("Europe/Rome", BinarioWidgetPresentation.TRAVEL_TIME_ZONE)
+  }
+
+  @Test
+  fun departureLabelAddsTheDateOnlyForAnotherItalianDay() {
+    val lateEvening = 1_783_891_800_000L // 2026-07-12T21:30:00Z, 23:30 in Italy
+    assertEquals(DateUtils.FORMAT_SHOW_TIME, BinarioWidgetPresentation.departureFlags(lateEvening + 10 * 60_000L, lateEvening))
+    val tomorrow = BinarioWidgetPresentation.departureFlags(lateEvening + 3_600_000L, lateEvening)
+    assertEquals(DateUtils.FORMAT_SHOW_TIME, tomorrow and DateUtils.FORMAT_SHOW_TIME)
+    assertEquals(DateUtils.FORMAT_SHOW_DATE, tomorrow and DateUtils.FORMAT_SHOW_DATE)
+    assertEquals(DateUtils.FORMAT_SHOW_WEEKDAY, tomorrow and DateUtils.FORMAT_SHOW_WEEKDAY)
   }
 }

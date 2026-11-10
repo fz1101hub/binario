@@ -196,11 +196,13 @@ describe("contratti delle superfici native Binario", () => {
       expect(generated).toContain("return if (fresh && futureJourney) state else unavailable(state.title)");
     }
     for (const generated of [widgetPlugin, widget]) {
-      expect(generated).toContain('if (scheduledAt <= now) return "Dati non disponibili in tempo reale."');
-      expect(generated).toContain("kotlin.math.ceil((scheduledAt - now).toDouble() / 60_000).toLong()");
+      // The rendered label: unavailable at departure, otherwise the Italian clock time; no dead Italian-only countdown.
+      expect(generated).toContain("if (scheduledAt <= now) return context.getString(R.string.binario_unavailable)");
+      expect(generated).toContain("val flags = BinarioWidgetPresentation.departureFlags(scheduledAt, now)");
+      expect(generated).not.toContain("fun countdownLabel(");
     }
-    expect(test).toContain("countdownRoundsUpAndRecomputesAgainstCurrentTime");
-    expect(test).toContain("countdownAndStateBecomeUnavailableAtDeparture");
+    expect(test).toContain("stateBecomesUnavailableAtDeparture");
+    expect(test).toContain("departureLabelAddsTheDateOnlyForAnotherItalianDay");
     expect(widgetPlugin).toContain('path.join(testKotlinRoot, "BinarioWidgetStateTest.kt")');
   });
 
