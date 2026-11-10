@@ -23,9 +23,11 @@ import {
   NameConstraints,
 } from "pkijs";
 import {
+  AnotherSkillError,
   createAlexaRequestVerifier,
   createAlexaWebhookHandler,
 } from "./alexaWebhook";
+import { failedWith, perIpFailureLimiter } from "../_core/rateLimit";
 
 const NOW = Date.parse("2026-10-15T12:00:00Z");
 const SKILL_ID = "amzn1.ask.skill.binario-test";
@@ -578,6 +580,29 @@ describe("Alexa HTTP dispatch", () => {
       expect(await rejected.json()).toEqual({ error: "invalid_alexa_request" });
       expect(rejected.headers.get("cache-control")).toBe("no-store");
     }
+    expect(invoke).toHaveBeenCalledTimes(1);
+  });
+
+  it("rejects a request for another skill, as Amazon relays it to anyone's endpoint, without counting it against the address", async () => {
+    const { verify, fetchCertificateChain } = verifier();
+    const foreign = body({ context: { System: { application: { applicationId: "amzn1.ask.skill.someone-else" } } } });
+    await expect(verify(foreign, headers(foreign), SKILL_ID)).rejects.toBeInstanceOf(AnotherSkillError);
+    expect(fetchCertificateChain).not.toHaveBeenCalled();
+
+    const invoke = vi.fn(async () => ({ version: "1.0", response: {} }));
+    const app = express();
+    app.post("/webhook", perIpFailureLimiter(2, failedWith(400)), createAlexaWebhookHandler({ invoke }, SKILL_ID, verify));
+    server = app.listen(0);
+    await new Promise<void>(resolve => server!.once("listening", () => resolve()));
+    const url = `http://127.0.0.1:${(server.address() as AddressInfo).port}/webhook`;
+    const post = (data: ReturnType<typeof body>, signature: string) =>
+      fetch(url, { method: "POST", body: data, headers: { "content-type": "application/json", "Signature-256": signature, SignatureCertChainUrl: CERT_URL } });
+    for (let attempt = 0; attempt < 5; attempt++) expect((await post(foreign, headers(foreign).signature)).status).toBe(400);
+    // Legitimate traffic from the same address still passes; forged requests are still limited.
+    expect((await post(body(), headers(body()).signature)).status).toBe(200);
+    const forged = [];
+    for (let attempt = 0; attempt < 3; attempt++) forged.push((await post(body(), headers(foreign).signature)).status);
+    expect(forged).toEqual([400, 400, 429]);
     expect(invoke).toHaveBeenCalledTimes(1);
   });
 

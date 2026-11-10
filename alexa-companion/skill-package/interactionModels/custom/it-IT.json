@@ -48,7 +48,6 @@
           ],
           "samples": [
             "stato del treno {trainNumber}",
-            "il treno {trainNumber} è puntuale",
             "com'è messo il treno {trainNumber}",
             "ritardo del treno {trainNumber}",
             "lo stato del treno {trainNumber}"
@@ -78,7 +77,8 @@
             "puntualità del treno {trainNumber}",
             "quanto è affidabile il treno {trainNumber}",
             "il treno {trainNumber} di solito è in orario",
-            "quanto ritarda di solito il treno {trainNumber}"
+            "quanto ritarda di solito il treno {trainNumber}",
+            "il treno {trainNumber} è puntuale"
           ]
         },
         {

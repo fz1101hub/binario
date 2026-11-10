@@ -129,7 +129,7 @@ export const zh: LocaleMessages = {
     myRoutesAction: "我的路线",
     hintsTitle: "试着问问",
     hintNextTrains: "“Alexa, ask Binario Trains for the next trains”",
-    hintTrainStatus: "“Alexa, ask Binario Trains is train 9512 on time”",
+    hintTrainStatus: "“Alexa, ask Binario Trains for the status of train 9512”",
     hintMyRoutes: "“Alexa, ask Binario Trains for my routes”",
   },
   punctuality: {
@@ -163,6 +163,7 @@ export const zh: LocaleMessages = {
     showRoute: "路线 {routeName} 的准点情况",
     hint: "“Alexa, ask Binario Trains how punctual train 9558 is”",
     mostPunctualBest: "在路线 {routeName} 上，通常在未来三小时内发车的列车中，最准点的是 {train}。",
+    mostPunctualItalianTime: "时间为意大利时间。",
     mostPunctualOthers: "其次是 {trains}。",
     mostPunctualTrain: { one: "{time} 发车的 {trainNumber} 次列车，{onTime}准点", other: "{time} 发车的 {trainNumber} 次列车，{onTime}准点" },
     outOfTen: { one: "每 10 次中有 {count} 次", other: "每 10 次中有 {count} 次" },

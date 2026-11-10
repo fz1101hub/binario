@@ -129,7 +129,7 @@ export const th: LocaleMessages = {
     myRoutesAction: "เส้นทางของฉัน",
     hintsTitle: "ลองถามว่า",
     hintNextTrains: "“Alexa, ask Binario Trains for the next trains”",
-    hintTrainStatus: "“Alexa, ask Binario Trains is train 9512 on time”",
+    hintTrainStatus: "“Alexa, ask Binario Trains for the status of train 9512”",
     hintMyRoutes: "“Alexa, ask Binario Trains for my routes”",
   },
   punctuality: {
@@ -163,6 +163,7 @@ export const th: LocaleMessages = {
     showRoute: "ความตรงเวลาของเส้นทาง {routeName}",
     hint: "“Alexa, ask Binario Trains how punctual train 9558 is”",
     mostPunctualBest: "ในเส้นทาง {routeName} จากรถไฟที่มักออกเดินทางในสามชั่วโมงข้างหน้า ขบวนที่ตรงเวลาที่สุดคือ {train}",
+    mostPunctualItalianTime: "เวลาที่บอกเป็นเวลาอิตาลี",
     mostPunctualOthers: "ถัดไปคือ {trains}",
     mostPunctualTrain: { one: "ขบวน {trainNumber} เวลา {time} ตรงเวลา {onTime}", other: "ขบวน {trainNumber} เวลา {time} ตรงเวลา {onTime}" },
     outOfTen: { one: "{count} ครั้งจาก 10 ครั้ง", other: "{count} ครั้งจาก 10 ครั้ง" },

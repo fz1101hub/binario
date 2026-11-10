@@ -232,6 +232,8 @@ describe("screen datasource", () => {
     const english = buildScreenDatasource(screen, { locale: "en-US", checkedAt: CHECKED_AT });
     // The locale's own spacing (a narrow no-break space before AM on recent runtimes) stays on screen.
     expect(english.trains.map(row => `${row.time} ${row.train} ${row.value}`.replace(/\s/g, " "))).toEqual(["8:12 AM Train 2157 90%", "9:12 AM Train 21&lt;61&gt; 80%"]);
+    // Outside Italian the data line says the listed times are Italian time.
+    expect(english.quality.checked).toBe("Data up to November 9, 2026 · Times are Italian time.");
     // The other screens have no list.
     expect(buildScreenDatasource(departures, { locale: "it-IT", checkedAt: CHECKED_AT }).trains).toEqual([]);
     const document = JSON.stringify(buildRenderDocumentDirective(screen, { locale: "it-IT", checkedAt: CHECKED_AT }).document);

@@ -122,16 +122,17 @@ export function weekdaysOnTime(samplesPerDay: readonly number[]) {
 /**
  * A train from Roma Termini to Tivoli leaving Roma Termini at `scheduled` (minutes of the day, or
  * null when the file has none) and arriving at Tivoli with `tivoliDelays`; `weekdays` are the
- * triples at Roma Termini (null below 14 samples).
+ * triples at Roma Termini (null below 14 samples). It is observed, and leaves Roma Termini, on
+ * `days` days: by default one per arrival at Tivoli.
  */
 export function departure(
   number: string,
   category: string,
   scheduled: number | null,
   tivoliDelays: readonly number[],
-  weekdays: unknown = null
+  weekdays: unknown = null,
+  days: number = tivoliDelays.length
 ) {
-  const days = tivoliDelays.length;
   return fixtureTrain(number, ROMA_TERMINI, category, days, 0, [
     stopFromDelays(ROMA_TERMINI, Array(days).fill(0), [0, 0, scheduled, null, weekdays]),
     stopFromDelays(TIVOLI, tivoliDelays, [0, Math.max(0, ...tivoliDelays), scheduled === null ? null : scheduled + 40, null, null]),
@@ -144,22 +145,24 @@ export function arrivals(samples: number, onTime: number) {
 }
 
 /**
- * Departures from Roma Termini to Tivoli around a Monday morning at 07:30: the 2157 at 8:12 (9 of
- * 10 on time), 2161 at 9:12 (8 of 10), 2165 at 10:12 (7 of 10) and 2169 at 10:20 (6 of 10); left
- * out are the 2151 (7:00, gone), 2171 (11:00, beyond three hours), 2159 (no scheduled time), 2163
- * (4 samples) and the weekend-only 2167 (8:30, every day on time on Saturdays and Sundays).
+ * Departures from Roma Termini to Tivoli around a Monday morning at 07:30, over the 30 days of the
+ * window: the 2157 at 8:12 (27 of 30 on time), 2161 at 9:12 (24 of 30), 2165 at 10:12 (21 of 30)
+ * and 2169 at 10:20 (18 of 30); left out are the 2151 (7:00, gone), 2171 (11:00, beyond three
+ * hours), 2159 (no scheduled time), 2163 (4 samples) and the weekend-only 2167 (8:30, on time on
+ * the 8 Saturdays and Sundays observed, with its weekdays in the file as one that lists them for
+ * every stop would have them; the pipeline leaves them out below 14 samples).
  */
 export function departuresDocument() {
   return statsDocument([
-    departure("2151", "REG", 420, arrivals(10, 10)),
-    departure("2157", "REG", 492, arrivals(10, 9)),
-    departure("2159", "REG", null, arrivals(10, 10)),
-    departure("2161", "REG", 552, arrivals(10, 8)),
+    departure("2151", "REG", 420, arrivals(30, 30)),
+    departure("2157", "REG", 492, arrivals(30, 27)),
+    departure("2159", "REG", null, arrivals(30, 30)),
+    departure("2161", "REG", 552, arrivals(30, 24)),
     departure("2163", "REG", 500, arrivals(4, 4)),
-    departure("2165", "REG", 612, arrivals(10, 7)),
-    departure("2167", "REG", 510, arrivals(16, 16), weekdaysOnTime([0, 0, 0, 0, 0, 8, 8])),
-    departure("2169", "REG", 620, arrivals(10, 6)),
-    departure("2171", "REG", 660, arrivals(10, 10)),
+    departure("2165", "REG", 612, arrivals(30, 21)),
+    departure("2167", "REG", 510, arrivals(8, 8), weekdaysOnTime([0, 0, 0, 0, 0, 4, 4])),
+    departure("2169", "REG", 620, arrivals(30, 18)),
+    departure("2171", "REG", 660, arrivals(30, 30)),
   ]);
 }
 

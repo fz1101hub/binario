@@ -129,7 +129,7 @@ export const id: LocaleMessages = {
     myRoutesAction: "Rute saya",
     hintsTitle: "Coba tanyakan",
     hintNextTrains: "“Alexa, ask Binario Trains for the next trains”",
-    hintTrainStatus: "“Alexa, ask Binario Trains is train 9512 on time”",
+    hintTrainStatus: "“Alexa, ask Binario Trains for the status of train 9512”",
     hintMyRoutes: "“Alexa, ask Binario Trains for my routes”",
   },
   punctuality: {
@@ -163,6 +163,7 @@ export const id: LocaleMessages = {
     showRoute: "Ketepatan waktu rute {routeName}",
     hint: "“Alexa, ask Binario Trains how punctual train 9558 is”",
     mostPunctualBest: "Di rute {routeName}, dari kereta yang biasanya berangkat dalam tiga jam ke depan, yang paling tepat waktu adalah {train}.",
+    mostPunctualItalianTime: "Jam yang disebut adalah waktu Italia.",
     mostPunctualOthers: "Lalu {trains}.",
     mostPunctualTrain: { one: "kereta {trainNumber} pukul {time}, tepat waktu {onTime}", other: "kereta {trainNumber} pukul {time}, tepat waktu {onTime}" },
     outOfTen: { one: "{count} kali dari 10", other: "{count} kali dari 10" },
