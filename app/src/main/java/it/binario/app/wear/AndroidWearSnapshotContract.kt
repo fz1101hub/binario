@@ -17,6 +17,7 @@ import it.binario.app.labelRes
 import it.binario.app.resourceId
 import it.binario.app.widget.ReliabilityMark
 import it.binario.app.widget.ReliabilityMarks
+import java.util.Locale
 
 /**
  * Phone-language texts carried by the v1 payload. The watch shows them verbatim, so they are
@@ -30,7 +31,9 @@ internal data class WearSnapshotStrings(
     val warningLabels: Map<SnapshotWarning, String>,
     val scheduledStatus: String,
     val unavailableNotice: String,
-    val missingValue: String
+    val missingValue: String,
+    /** «Soppresso: %1$s delle %2$s»: train number and scheduled time of a cancellation left out of the services. */
+    val cancelledNotice: String
 ) {
     companion object {
         /** The advisories RouteSnapshot.advisoryMessage() can raise; the watch shows them as the notice. */
@@ -44,7 +47,8 @@ internal data class WearSnapshotStrings(
             warningLabels = SnapshotWarning.entries.associateWith { resources.getString(it.labelRes()) },
             scheduledStatus = resources.getString(R.string.service_status_scheduled_badge),
             unavailableNotice = resources.getString(R.string.data_status_unavailable),
-            missingValue = resources.getString(R.string.wear_payload_value_unavailable)
+            missingValue = resources.getString(R.string.wear_payload_value_unavailable),
+            cancelledNotice = resources.getString(R.string.wear_notice_cancelled)
         )
     }
 }
@@ -76,7 +80,9 @@ internal object AndroidWearSnapshotContract {
     ): Map<String, Any> {
         val expiresAt = minOf(generatedAtEpochMillis, snapshot.expiresAtEpochMillis) + maxTtlMillis
         require(expiresAt > generatedAtEpochMillis) { "Uno snapshot scaduto non può essere pubblicato" }
-        val services = orderServicesForDisplay(snapshot.services).take(2)
+        val ordered = orderServicesForDisplay(snapshot.services)
+        // The Tile and the complication show the next of these as "the next train" without its status.
+        val services = ordered.filterNot(::confirmedCancelled).take(2)
         val operational = services.any { it.operationalStatusVerified }
         val dataNature = if (operational) "OPERATIONAL" else "PROGRAMMED"
         return buildMap {
@@ -94,7 +100,7 @@ internal object AndroidWearSnapshotContract {
             put("routeId", required(snapshot.route.id, 64, strings.missingValue))
             put("routeLabel", required(snapshot.routeLabel, 96, strings.missingValue))
             put("direction", snapshot.direction.name)
-            put("notice", optional(notice(snapshot, strings), 180))
+            put("notice", optional(notice(snapshot, skippedCancellation(ordered, services), strings), 180))
             put("serviceCount", services.size)
             services.forEachIndexed { index, service ->
                 put("service${index}Number", required(service.number, 24, strings.missingValue))
@@ -163,9 +169,23 @@ internal object AndroidWearSnapshotContract {
 
     private const val MAX_RELIABILITY_SAMPLES = 10_000
 
-    /** The phone's own advisory, else its first quality warning: the data layer's free text is Italian prose and never reaches the watch. */
-    private fun notice(snapshot: RouteSnapshot, strings: WearSnapshotStrings): String =
-        snapshot.advisoryMessage()?.let { strings.advisoryNotices.getValue(it.key) }
+    /** A cancellation the source confirmed; such a train is never sent as one of the two services. */
+    private fun confirmedCancelled(service: TrainService): Boolean =
+        service.operationalStatusVerified && service.status == ServiceStatus.CANCELLED
+
+    /** The first confirmed cancellation listed before the last service sent (anywhere, when fewer than two are sent). */
+    private fun skippedCancellation(ordered: List<TrainService>, sent: List<TrainService>): TrainService? {
+        val window = if (sent.size == 2) ordered.subList(0, ordered.indexOf(sent[1])) else ordered
+        return window.firstOrNull(::confirmedCancelled)
+    }
+
+    /**
+     * The cancellation the services leave out, else the phone's own advisory, else its first quality warning: the
+     * data layer's free text is Italian prose and never reaches the watch.
+     */
+    private fun notice(snapshot: RouteSnapshot, cancellation: TrainService?, strings: WearSnapshotStrings): String =
+        cancellation?.let { String.format(Locale.ROOT, strings.cancelledNotice, it.number, it.scheduledDeparture) }
+            ?: snapshot.advisoryMessage()?.let { strings.advisoryNotices.getValue(it.key) }
             ?: snapshot.qualityWarnings.firstOrNull()?.let { strings.warningLabels.getValue(it) }
             ?: ""
 

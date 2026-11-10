@@ -81,6 +81,31 @@ class AndroidWearSnapshotContractTest {
     }
 
     @Test
+    fun `a confirmed cancellation never leads the glance and is named in the notice`() {
+        val cancelled = goldenSnapshot.services[0].copy(status = ServiceStatus.CANCELLED, expectedDeparture = "08:10", delayMinutes = 0)
+        val later = service("r3", "R 3", RailOperator.TRENITALIA_REGIONALE, TrainCategory.REGIONALE, "09:00", "09:00", "2", 0, ServiceStatus.ON_TIME)
+        val snapshot = goldenSnapshot.copy(services = listOf(cancelled, goldenSnapshot.services[1], later))
+
+        val payload = AndroidWearSnapshotContract.operational(snapshot, generatedAt, strings(locale = null))
+        val english = AndroidWearSnapshotContract.operational(snapshot, generatedAt, strings("en"))
+
+        assertEquals(2, payload["serviceCount"])
+        assertEquals("IC 701", payload["service0Number"])
+        assertEquals("R 3", payload["service1Number"])
+        assertEquals("Soppresso: FR 9505 delle 08:10", payload["notice"])
+        assertEquals("Cancelled: FR 9505 at 08:10", english["notice"])
+        // A cancellation after the two trains sent, or one the source did not confirm, changes nothing.
+        val afterBoth = AndroidWearSnapshotContract.operational(
+            goldenSnapshot.copy(services = goldenSnapshot.services + later.copy(status = ServiceStatus.CANCELLED)), generatedAt, strings(locale = null)
+        )
+        assertEquals("", afterBoth["notice"])
+        val unconfirmed = AndroidWearSnapshotContract.operational(
+            goldenSnapshot.copy(services = listOf(cancelled.copy(operationalStatusVerified = false), later)), generatedAt, strings(locale = null)
+        )
+        assertEquals("FR 9505", unconfirmed["service0Number"])
+    }
+
+    @Test
     fun `encoder adds the optional reliability pair as in the reliability golden fixture`() {
         val reliability = { service: TrainService -> if (service.number == "FR 9505") ReliabilityMark(22, 27, 5, 22, 30) else null }
         val actual = AndroidWearSnapshotContract.operational(goldenSnapshot, generatedAt, strings(locale = null), reliability).normalisedNumbers()
@@ -243,7 +268,8 @@ class AndroidWearSnapshotContractTest {
             warningLabels = SnapshotWarning.entries.associateWith { catalogue.getValue("snapshot_warning_${it.name.lowercase()}") },
             scheduledStatus = catalogue.getValue("service_status_scheduled_badge"),
             unavailableNotice = catalogue.getValue("data_status_unavailable"),
-            missingValue = catalogue.getValue("wear_payload_value_unavailable")
+            missingValue = catalogue.getValue("wear_payload_value_unavailable"),
+            cancelledNotice = catalogue.getValue("wear_notice_cancelled")
         )
     }
 

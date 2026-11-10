@@ -849,6 +849,7 @@
 
     <!-- Texts carried verbatim in the Wear payload. -->
     <string name="wear_payload_value_unavailable">ไม่มีข้อมูล</string>
+    <string name="wear_notice_cancelled">ยกเลิก: %1$s เวลา %2$s</string>
 
     <plurals name="search_results_count">
         <item quantity="other">%d ผลลัพธ์</item>
