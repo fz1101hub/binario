@@ -18,6 +18,8 @@ const config: ExpoConfig = {
   },
   plugins: [
     "expo-router",
+    // Before expo-notifications on purpose: it removes the push entitlement that plugin adds (local reminders only).
+    "./plugins/with-binario-local-notifications-only.cjs",
     "expo-notifications",
     [
       "expo-localization",
