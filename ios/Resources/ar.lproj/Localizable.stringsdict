@@ -170,6 +170,30 @@
 			<string>%3$@: في الموعد %1$lld مرة من أصل %2$lld (في المتوسط %4$lld%%)</string>
 		</dict>
 	</dict>
+	<key>result.live.delay</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>few</key>
+			<string>متأخر %1$lld دقائق</string>
+			<key>many</key>
+			<string>متأخر %1$lld دقيقة</string>
+			<key>one</key>
+			<string>متأخر %1$lld دقيقة</string>
+			<key>other</key>
+			<string>متأخر %1$lld دقيقة</string>
+			<key>two</key>
+			<string>متأخر %1$lld دقيقتين</string>
+			<key>zero</key>
+			<string>متأخر %1$lld دقيقة</string>
+		</dict>
+	</dict>
 	<key>result.reliability.cancelled</key>
 	<dict>
 		<key>NSStringLocalizedFormatKey</key>

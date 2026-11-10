@@ -313,4 +313,41 @@ final class LiveRailDataTests: XCTestCase {
         let empty = makeRow(.italo, number: "1", scheduled: scheduled, expectedMinutes: nil, platform: nil, status: nil, operatorID: "italo")
         XCTAssertNil(empty.stationBoardLiveStatus(at: now))
     }
+
+    func testThePartenzeLiveStatusNamesTheSourceOfEachValueAndABareLateLabel() {
+        let scheduled = LiveTestDates.rome(2026, 10, 16, 10, 5)
+        let viaggiaTreno = observation(.viaggiaTreno)
+        let rfi = observation(.rfiStationBoard)
+        // A merged row: ViaggiaTreno's expected time and state, RFI's platform.
+        let merged = LiveDeparture(
+            id: "rfi-station-board:2153:2026-10-16", number: "2153", operatorID: "trenitalia", category: "REG",
+            destination: "Bergamo", scheduled: scheduled,
+            expected: LiveSourced(scheduled.addingTimeInterval(5 * 60), observation: viaggiaTreno),
+            platform: LiveSourced("4", observation: rfi), scheduledPlatform: "3",
+            status: LiveSourced(.delayed, observation: viaggiaTreno), sources: [.rfiStationBoard, .viaggiaTreno],
+            viaggiaTrenoRun: nil, observation: rfi
+        )
+        let status = merged.stationBoardLiveStatus(at: now)
+        XCTAssertEqual(status?.source, .viaggiaTreno, "named after the source of the expected time")
+        XCTAssertEqual(status?.platformSource, .rfiStationBoard)
+        XCTAssertEqual(status?.platform, "4")
+        XCTAssertEqual(status?.delayMinutes, 5)
+        XCTAssertEqual(status?.lateWithoutMinutes, false)
+
+        // «RITARDO» without minutes: late, no expected time, no delay, never on time.
+        let late = makeRow(.rfiStationBoard, number: "2155", scheduled: scheduled, expectedMinutes: nil, platform: nil,
+                           status: .delayed, operatorID: "trenord")
+        let lateStatus = late.stationBoardLiveStatus(at: now)
+        XCTAssertEqual(lateStatus?.lateWithoutMinutes, true)
+        XCTAssertNil(lateStatus?.expectedDeparture)
+        XCTAssertNil(lateStatus?.delayMinutes)
+        XCTAssertEqual(lateStatus?.source, .rfiStationBoard)
+        XCTAssertNil(lateStatus?.platformSource)
+
+        // A cancellation is never «late without minutes».
+        let cancelled = makeRow(.rfiStationBoard, number: "2157", scheduled: scheduled, expectedMinutes: nil, platform: nil,
+                                status: .cancelled, operatorID: "trenord")
+        XCTAssertEqual(cancelled.stationBoardLiveStatus(at: now)?.cancelled, true)
+        XCTAssertEqual(cancelled.stationBoardLiveStatus(at: now)?.lateWithoutMinutes, false)
+    }
 }

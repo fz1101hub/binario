@@ -100,6 +100,20 @@
 			<string>%3$@: ตรงเวลา %1$lld จาก %2$lld ครั้ง (เฉลี่ย %4$lld%%)</string>
 		</dict>
 	</dict>
+	<key>result.live.delay</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>other</key>
+			<string>ล่าช้า %1$lld นาที</string>
+		</dict>
+	</dict>
 	<key>result.reliability.cancelled</key>
 	<dict>
 		<key>NSStringLocalizedFormatKey</key>

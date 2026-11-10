@@ -2,6 +2,7 @@ import SwiftUI
 
 struct RootView: View {
     @EnvironmentObject private var model: AppModel
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
         TabView(selection: $model.selectedTab) {
@@ -26,6 +27,26 @@ struct RootView: View {
             NavigationStack { SettingsView() }
                 .tabItem { Label("tab.settings", systemImage: "gearshape") }
                 .tag(AppModel.Tab.settings)
+        }
+        // Live data only in the foreground: the requests on their way stop when the app leaves it,
+        // and the screen on display asks again when it comes back. No background mode, no refresh
+        // on a schedule.
+        .onChange(of: scenePhase) { _, phase in
+            switch phase {
+            case .active: model.liveDidBecomeActive()
+            case .background: model.liveDidEnterBackground()
+            default: break
+            }
+        }
+        .task { await expireLiveValues() }
+    }
+
+    /// Every minute while the app is open: live values older than `AppModel.liveDisplaySeconds`
+    /// stop being shown. Nothing is asked here.
+    private func expireLiveValues() async {
+        while !Task.isCancelled {
+            model.expireLiveValues(now: Date())
+            try? await Task.sleep(nanoseconds: 60 * 1_000_000_000)
         }
     }
 }

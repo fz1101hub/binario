@@ -828,7 +828,7 @@ class IOSProjectTests(unittest.TestCase):
         texts = (IOS / "BinarioApp/ReliabilityTexts.swift").read_text(encoding="utf-8")
         detail = (IOS / "BinarioApp/TrainDetailView.swift").read_text(encoding="utf-8")
         self.assertIn("reliability.mostReliableFirst(snapshot.services)", planner)
-        self.assertIn("TrainDetailView(service: service, query: snapshot.query)", planner)
+        self.assertIn("TrainDetailView(service: service, query: snapshot.query, boardLive: live)", planner)
         self.assertIn("RoutePunctualityView(route: route)", planner)
         self.assertIn('parts.joined(separator: " · ")', planner)
         self.assertIn("ReliabilityTexts.distributionRows(distribution)", detail)
@@ -1137,13 +1137,13 @@ class IOSProjectTests(unittest.TestCase):
             (model, "let remaining = listed.filter { $0.stillToLeave(at: now) }"),
             (model, "return try? JourneyQuery(origin: station, destination: terminus, departure: departure.departure)"),
             (view, 'StationPickerField(titleKey: "departures.station", selection: stationSelection)'),
-            (view, "TrainDetailView(service: departure.service, query: query)"),
+            (view, "TrainDetailView(service: departure.service, query: query, boardLive: departure.live)"),
             (view, "Text(ReliableAlternatives.trainLabel(service))"),
             (view, "BikesLabel(allowed: bikesAllowed)"),
             (view, "if rows.contains(where: { $0.isScheduled }) {"),
             (view, 'Label("result.programmed.disclosure", systemImage: "clock")'),
             (view, ".accessibilityElement(children: .ignore)"),
-            (view, ".accessibilityLabel(Text(DeparturesTexts.spoken(service)))"),
+            (view, ".accessibilityLabel(Text(DeparturesTexts.spoken(departure)))"),
             (view, 'NSLocalizedString("departures.later.loaded", comment: "")'),
             (view, ".task { await followTheClock() }"),
             (root, "NavigationStack { DeparturesView() }"),
@@ -1236,6 +1236,199 @@ class IOSProjectTests(unittest.TestCase):
             forms = plistlib.load(source)
         self.assertEqual("%1$lld treno in più", forms["departures.later.loaded"]["count"]["one"])
         self.assertEqual("%1$lld treni in più", forms["departures.later.loaded"]["count"]["other"])
+
+    def test_live_data_is_asked_in_the_foreground_only_behind_a_switch_that_is_on_by_default(self) -> None:
+        # Owner decision, November 2026: the iPhone shows Android's live data over the bundled
+        # timetable, from one `LiveRailData.standard()`, only for the screen on display, never in the
+        # background, and with «Dati in tempo reale» (on by default) off it makes no request at all.
+        app = {path.name: path.read_text(encoding="utf-8") for path in (IOS / "BinarioApp").glob("*.swift")}
+        model = app["AppModel.swift"]
+        # The screens never build a request themselves: only BinarioKit's live core talks to the network.
+        for name, source in app.items():
+            with self.subTest(source=name):
+                self.assertNotIn("URLSession", source)
+                self.assertNotRegex(source, r"https?://")
+        code = {name: "\n".join(line for line in source.splitlines() if not line.strip().startswith("//")) for name, source in app.items()}
+        self.assertEqual(1, sum(source.count("LiveRailData.standard(") for source in code.values()))
+        self.assertIn("liveData: LiveRailData.standard(),", model.split("static func bootstrap(", 1)[1].split("func loadCatalog(", 1)[0])
+        # No background mode, task or schedule was added for it.
+        for path in [IOS / "project.yml", IOS / "Configuration/Binario-Info.plist"]:
+            text = path.read_text(encoding="utf-8")
+            for absent in ("UIBackgroundModes", "BGTaskScheduler", "fetch", "remote-notification"):
+                self.assertNotIn(absent, text, f"{path.name}: {absent}")
+        for name, source in app.items():
+            with self.subTest(source=name):
+                self.assertNotIn("BGTaskScheduler", source)
+                self.assertNotIn("registerForRemoteNotifications", source)
+
+        # The switch: its own key, on unless the app wrote a boolean false, saved like the other stores.
+        store = model.split("final class LiveDataPreferenceStore {", 1)[1].split("extension WatchSyncStatus", 1)[0]
+        for fragment in (
+            'static let storageKey = "it.binario.ios.live-data-enabled.v1"',
+            "guard let stored = defaults.object(forKey: Self.storageKey) as? NSNumber,",
+            "CFGetTypeID(stored) == CFBooleanGetTypeID() else { return true }",
+            "defaults.set(enabled, forKey: Self.storageKey)",
+        ):
+            with self.subTest(fragment=fragment):
+                self.assertIn(fragment, store)
+        self.assertIn("set: { enabled in model.setLiveDataEnabled(enabled) }", app["SettingsView.swift"])
+        switch = model.split("func setLiveDataEnabled(_ enabled: Bool) {", 1)[1].split("func liveDidBecomeActive()", 1)[0]
+        self.assertIn("liveDataStore.save(enabled)", switch)
+        self.assertIn("clearLiveData()", switch)
+        # Every request goes through a guard of the switch and of the screen on display.
+        for guard in (
+            "guard boardLiveVisible, liveDataEnabled, let liveData, let identity = boardStation else { return }",
+            "guard plannerLiveVisible, liveDataEnabled, let liveData, let snapshot = latestSnapshot else { return }",
+            "guard liveDataEnabled, let liveData, let key = detailLiveKey else { return }",
+            "guard favouritesLiveVisible, liveDataEnabled, let liveData else { return }",
+        ):
+            with self.subTest(guard=guard):
+                self.assertIn(guard, model)
+        self.assertEqual(3, model.count("await liveData."), "board, planner and the train status lookup")
+        self.assertEqual(1, model.count("await liveData.trainStatus("))
+        # Stale answers are dropped as the board's are.
+        for fragment in (
+            "guard requestID == boardLiveRequestID, boardStation == identity, liveDataEnabled else { return }",
+            "guard requestID == resultLiveRequestID, searchID == searchRequestID, liveDataEnabled else { return }",
+            "guard requestID == detailLiveRequestID, detailLiveKey == key, liveDataEnabled else { return }",
+            "guard requestID == favouriteLiveRequestID, favouritesLiveVisible, liveDataEnabled else { return }",
+        ):
+            with self.subTest(fragment=fragment):
+                self.assertIn(fragment, model)
+        # Android's numbers: the first 8 favourites, the ±3 hour window, two runs 2 hours apart are two.
+        punctuality = (ROOT / "app/src/main/java/it/binario/app/FavouriteTrainPunctuality.kt").read_text(encoding="utf-8")
+        candidates = (ROOT / "app/src/main/java/it/binario/app/journeys/JourneyLiveLookup.kt").read_text(encoding="utf-8")
+        self.assertIn("const val MAX_ROWS = 8", punctuality)
+        self.assertIn("static let maximumLiveFavourites = 8", model)
+        self.assertIn("val LOOKBACK: Duration = Duration.ofHours(3)", candidates)
+        self.assertIn("val LOOKAHEAD: Duration = Duration.ofHours(3)", candidates)
+        self.assertIn("val SAME_RUN_TOLERANCE: Duration = Duration.ofHours(2)", candidates)
+        for fragment in (
+            "static let liveLookback: TimeInterval = 3 * 3_600",
+            "static let liveLookahead: TimeInterval = 3 * 3_600",
+            "static let sameRunTolerance: TimeInterval = 2 * 3_600",
+            "let number = NetworkReliability.numberKey(service.number)",
+            "LiveOverlay.stationBoard(rows, with: live.board, at: live.at)",
+            "LiveOverlay.departure(number: service.number, scheduled: departure, in: board.departures)",
+            "guard let run = candidates.run(for: request),",
+        ):
+            with self.subTest(fragment=fragment):
+                self.assertIn(fragment, model)
+
+        # Each screen asks only while it is on screen; the app cancels everything in the background.
+        for name, appear, disappear in (
+            ("DeparturesView.swift", ".onAppear { model.boardLiveDidAppear() }", ".onDisappear { model.boardLiveDidDisappear() }"),
+            ("PlannerView.swift", ".onAppear { model.plannerLiveDidAppear() }", ".onDisappear { model.plannerLiveDidDisappear() }"),
+            ("MyTrainsView.swift", ".onAppear { model.favouritesLiveDidAppear() }", ".onDisappear { model.favouritesLiveDidDisappear() }"),
+            ("TrainDetailView.swift", "if let key { model.detailLiveDidAppear(key) }", "if let liveKey { model.detailLiveDidDisappear(liveKey) }"),
+        ):
+            with self.subTest(view=name):
+                self.assertIn(appear, app[name])
+                self.assertIn(disappear, app[name])
+        for name in ("DeparturesView.swift", "TrainDetailView.swift", "MyTrainsView.swift"):
+            with self.subTest(refreshable=name):
+                self.assertIn(".refreshable {", app[name])
+                self.assertIn('Label("action.refresh", systemImage: "arrow.clockwise")', app[name])
+        self.assertIn("case .background: model.liveDidEnterBackground()", app["RootView.swift"])
+        self.assertIn("case .active: model.liveDidBecomeActive()", app["RootView.swift"])
+        # The rows keep the «orario programmato» disclosure for the trains without a live value.
+        self.assertIn("if snapshot.services.contains(where: { model.resultLive[$0.id] == nil }) {", app["PlannerView.swift"])
+        self.assertIn("if rows.contains(where: { $0.isScheduled }) {", app["DeparturesView.swift"])
+        self.assertIn("if liveRun == nil, shownBoardLive == nil {", app["TrainDetailView.swift"])
+        # The live state is part of each row's sentence.
+        self.assertIn("parts += LiveTexts.spoken(live, includingPlatform: false)", app["DeparturesView.swift"])
+        self.assertIn(".accessibilityLabel(Text(LiveTexts.spokenStop(stop)))", app["TrainDetailView.swift"])
+        self.assertIn('.accessibilityLabel(Text(LiveTexts.spoken(status, includingPlatform: showsPlatform).joined(separator: ". ")))', app["LiveTexts.swift"])
+        # The Watch keeps the programmed snapshot.
+        publish = model.split("private func publishAvailableSnapshot(", 1)[1].split("static func isCurrent(", 1)[0]
+        self.assertNotIn("Live", publish)
+
+        model_tests = (IOS / "BinarioAppTests/BinarioAppTests.swift").read_text(encoding="utf-8")
+        for name in (
+            "testPartenzeLaysTheLiveBoardOverItsRowsOnlyOnScreenAndFallsBackWhenEverySourceFails",
+            "testAnAnswerForTheStationLeftBehindNeverReachesTheNewOne",
+            "testPlannerResultsTakeTheLiveBoardOfTheOriginWithinTheLiveWindow",
+            "testTrainDetailShowsItsOwnRunAtTheBoardingStationAndNeverAnotherDays",
+            "testMyTrainsAsksTheFirstEightFavouritesOnlyWhileOnScreen",
+            "testTheLiveSwitchIsOnByDefaultPersistedValidatedAndOffAsksNothing",
+        ):
+            with self.subTest(test=name):
+                self.assertIn(f"func {name}()", model_tests)
+        self.assertIn(
+            "func testThePartenzeLiveStatusNamesTheSourceOfEachValueAndABareLateLabel()",
+            (IOS / "BinarioKit/Tests/BinarioKitTests/LiveRailDataTests.swift").read_text(encoding="utf-8"),
+        )
+
+        # Disclosed before it is wired: the sources, what each receives, the switch and its key.
+        privacy = (ROOT / "PRIVACY.md").read_text(encoding="utf-8")
+        live_privacy = privacy.split("### Dati in tempo reale", 1)[1].split("### Condivisione con Apple Watch", 1)[0]
+        for fragment in (
+            "`it.binario.ios.live-data-enabled.v1`", "`www.viaggiatreno.it`", "`iechub.rfi.it`",
+            "`italoinviaggio.italotreno.com`", "solo con l'app in primo piano", "indirizzo IP",
+            "Le risposte restano solo in memoria", "nulla viene scritto sul dispositivo", "l'app non fa più alcuna richiesta di rete",
+        ):
+            with self.subTest(fragment=fragment):
+                self.assertIn(fragment, live_privacy)
+        self.assertIn("Disattivare **Dati in tempo reale** in Impostazioni", privacy)
+        store = (ROOT / "docs/store/APP_STORE_SUBMISSION.md").read_text(encoding="utf-8")
+        notes = store.split("#### Note per la revisione", 1)[1].split("## 6.", 1)[0]
+        for fragment in ("ViaggiaTreno", "RFI", "Italo", "\"Dati in tempo reale\"", "\"Real-time data\""):
+            self.assertIn(fragment, notes)
+        self.assertIn("**Dati non raccolti**", store)
+        for absent in ("funziona interamente offline", "works entirely offline", "nessuna richiesta di rete.", "no network requests."):
+            self.assertNotIn(absent, store)
+
+        # The texts are Android's in every language where Android has them, with Apple placeholders.
+        def apple(text: str) -> str:
+            text = re.sub(r"%(\d)\$d", r"%\1$lld", re.sub(r"%(\d)\$s", r"%\1$@", text))
+            return text.replace("%d", "%1$lld")
+
+        shared = {
+            "action.refresh": "action_refresh",
+            "result.live.title": "data_chip_live",
+            "result.live.unavailable": "data_status_unavailable",
+            "result.live.source": "route_change_source",
+            "result.live.paused": "data_status_source_paused",
+            "result.live.expected_short": "expected_time_short",
+            "result.live.expected": "expected_time",
+            "result.live.scheduled": "map_stop_scheduled",
+            "result.live.delay_short": "delay_minutes",
+            "result.live.on_time": "run_status_on_time",
+            "result.live.cancelled": "run_status_cancelled",
+            "result.live.partially_cancelled": "run_status_partially_cancelled",
+            "result.live.late_unpublished": "service_late_minutes_unpublished",
+            "result.live.unverified": "operational_status_unverified",
+            "result.live.expected_departure": "detail_info_expected",
+            "result.live.platform": "detail_info_platform",
+            "result.live.last_observation": "trains_widget_settings_info_last",
+            "result.live.stops": "service_stops_title",
+            "result.live.passed": "stop_position_passed",
+            "result.live.skipped": "map_role_skipped",
+        }
+        for language, folder in sorted(ANDROID_VALUES.items()):
+            with self.subTest(language=language):
+                resources = ElementTree.parse(ROOT / "app/src/main/res" / folder / "strings.xml").getroot()
+                android_strings = {element.get("name"): element.text for element in resources.findall("string")}
+                android_forms = {
+                    item.get("quantity"): apple(item.text or "")
+                    for element in resources.findall("plurals")
+                    if element.get("name") == "trains_widget_delay_accessibility"
+                    for item in element.findall("item")
+                }
+                values = read_strings(IOS / "Resources" / f"{language}.lproj" / "Localizable.strings")
+                for key, android_name in shared.items():
+                    self.assertEqual(apple(android_strings[android_name]), values[key], key)
+                with (IOS / "Resources" / f"{language}.lproj" / "Localizable.stringsdict").open("rb") as source:
+                    forms = dict(plistlib.load(source)["result.live.delay"]["count"])
+                forms.pop("NSStringFormatSpecTypeKey")
+                forms.pop("NSStringFormatValueTypeKey")
+                self.assertEqual(android_forms, forms)
+        italian = read_strings(IOS / "Resources/it.lproj/Localizable.strings")
+        self.assertEqual("Dati in tempo reale", italian["settings.live.toggle"])
+        self.assertEqual("Dati in tempo reale da %1$@", italian["result.live.from_sources"])
+        self.assertEqual("Fonte: %1$@", italian["result.live.source"])
+        self.assertEqual("+%1$lld min", italian["result.live.delay_short"])
+        self.assertEqual("In ritardo di %1$lld minuti", italian["result.live.delay"])
 
     def test_bikes_come_from_the_published_trip_value_and_italo_is_unknown(self) -> None:
         builder = (ROOT / "tools/build_ios_gtfs_schedule.py").read_text(encoding="utf-8")
