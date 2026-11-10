@@ -10,6 +10,7 @@ import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.ZoneId
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -77,6 +78,19 @@ class TrainAlertWatchTest {
 
         assertEquals(setOf("vt:recent"), TrainAlertWatch.remember(old, emptyList(), today).keys)
         assertEquals(TrainAlertWatch.MAX_SEEN, TrainAlertWatch.remember(emptyMap(), many, today).size)
+    }
+
+    @Test fun `a notice still published after a week is not notified again`() {
+        val works = WatchedNotice("news:lavori", "Lavori dal 3 al 30 novembre, treni 2153", at("09:00"))
+        var seen = TrainAlertWatch.remember(emptyMap(), listOf(works), today)
+        (1L..21L).forEach { offset ->
+            assertTrue("day +$offset", TrainAlertWatch.newNotices(listOf(works), seen, subscribed).isEmpty())
+            seen = TrainAlertWatch.remember(seen, listOf(works), today.plusDays(offset))
+        }
+        // Once it is no longer published it is forgotten a week after it was last seen.
+        val lastSeen = today.plusDays(21)
+        assertTrue("news:lavori" in TrainAlertWatch.remember(seen, emptyList(), lastSeen.plusDays(6)))
+        assertFalse("news:lavori" in TrainAlertWatch.remember(seen, emptyList(), lastSeen.plusDays(7)))
     }
 
     @Test fun `only favourite or followed trains are watched and only Trenitalia numbers can be subscribed`() {

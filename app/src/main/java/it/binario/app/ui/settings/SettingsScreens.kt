@@ -370,7 +370,7 @@ private fun DataSettings(viewModel: TrainViewModel) {
                     LocalDataBackupCodec.decode(raw, stationCatalog)
                 }
                 viewModel.importLocalBackup(decoded).resolve(resources)
-            }.getOrElse { resources.getString(R.string.backup_import_failure, it.message ?: resources.getString(R.string.backup_file_error)) }
+            }.getOrElse { resources.getString(R.string.backup_import_failure, LocalDataBackupCodec.importFailureReason(it, resources::getString)) }
         }
     }
     SourcesSettingsPanel()

@@ -410,6 +410,7 @@
     <string name="backup_export_success">စက်တွင်း အရန်ကို ထုတ်ယူပြီးပါပြီ။ လုံခြုံသော နေရာတွင် သိမ်းထားပါ။</string>
     <string name="backup_export_failure">ထုတ်ယူ၍ မရပါ- %1$s</string>
     <string name="backup_import_failure">တင်သွင်း၍ မရပါ- %1$s</string>
+    <string name="backup_import_too_large">အရန်သည် 1 MiB ကန့်သတ်ချက်ထက် ကျော်လွန်နေသည်။</string>
     <string name="personal_travel_title">ခရီးစဉ်နှင့် စောင့်ကြည့်မှု</string>
     <string name="personal_travel_active">လက်ရှိ ခရီးစဉ် · ရထား %1$s</string>
     <string name="personal_travel_next_stop">နောက် ရပ်နားဘူတာ- %1$s၊ ခန့်မှန်း %2$s</string>
@@ -823,6 +824,9 @@
     <string name="widget_warning_identity_ambiguous">အတည်ပြုရန် လိုသည်</string>
     <string name="widget_warning_delay_divergence">နောက်ကျမှု မကိုက်ညီ</string>
     <string name="widget_service_accessibility">ဝန်ဆောင်မှုပေးသူ %1$s။ %2$s %3$s၊ %4$s သို့။ ခန့်မှန်း ထွက်ခွာချိန် %5$s။ %6$s။ %7$s။</string>
+    <string name="widget_operator_other_short">အခြား</string>
+    <string name="widget_operator_other">အခြား ရထားလုပ်ငန်း</string>
+    <string name="widget_operator_rhb">Rhaetian ရထားလမ်း</string>
     <string name="widget_data_accessibility">ဝန်ဆောင်မှုပေးသူ %1$s။ %2$s။ %3$s။ %4$s</string>
     <string name="widget_quality_score_accessibility">၊ အရည်အသွေး ရမှတ် %1$d/100</string>
     <string name="widget_warnings_accessibility">။ သတိပေးချက်- %1$s</string>

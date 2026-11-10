@@ -432,6 +432,7 @@
     <string name="backup_export_success">Sauvegarde locale exportée. Conservez-la dans un endroit protégé.</string>
     <string name="backup_export_failure">Échec de l’exportation : %1$s</string>
     <string name="backup_import_failure">Échec de l’importation : %1$s</string>
+    <string name="backup_import_too_large">Le backup dépasse la limite de 1 Mio.</string>
 
     <string name="personal_travel_title">Voyage et suivis</string>
     <string name="personal_travel_active">Voyage actif · Train %1$s</string>
@@ -877,6 +878,9 @@
     <string name="widget_warning_identity_ambiguous">IDENTITÉ À VÉRIFIER</string>
     <string name="widget_warning_delay_divergence">RETARDS DIVERGENTS</string>
     <string name="widget_service_accessibility">Opérateur %1$s. %2$s %3$s vers %4$s. Départ prévu %5$s. %6$s. %7$s.</string>
+    <string name="widget_operator_other_short">Autre</string>
+    <string name="widget_operator_other">Autre opérateur</string>
+    <string name="widget_operator_rhb">Chemins de fer rhétiques</string>
     <string name="widget_data_accessibility">Source %1$s. %2$s. %3$s. %4$s</string>
     <string name="widget_quality_score_accessibility">, score de qualité %1$d sur 100</string>
     <string name="widget_warnings_accessibility">. Avertissements : %1$s</string>

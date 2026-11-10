@@ -424,6 +424,7 @@
     <string name="backup_export_success">Lokales Backup exportiert. Bewahre es an einem geschützten Ort auf.</string>
     <string name="backup_export_failure">Export fehlgeschlagen: %1$s</string>
     <string name="backup_import_failure">Import fehlgeschlagen: %1$s</string>
+    <string name="backup_import_too_large">Das Backup überschreitet die Grenze von 1 MiB.</string>
 
     <string name="personal_travel_title">Reise und Überwachungen</string>
     <string name="personal_travel_active">Aktive Reise · Zug %1$s</string>
@@ -860,6 +861,9 @@
     <string name="widget_warning_identity_ambiguous">IDENTITÄT ZU PRÜFEN</string>
     <string name="widget_warning_delay_divergence">ABWEICHENDE VERSPÄTUNGEN</string>
     <string name="widget_service_accessibility">Betreiber %1$s. %2$s %3$s nach %4$s. Voraussichtliche Abfahrt %5$s. %6$s. %7$s.</string>
+    <string name="widget_operator_other_short">Andere</string>
+    <string name="widget_operator_other">Anderer Betreiber</string>
+    <string name="widget_operator_rhb">Rhätische Bahn</string>
     <string name="widget_data_accessibility">Quelle %1$s. %2$s. %3$s. %4$s</string>
     <string name="widget_quality_score_accessibility">, Qualitätswert %1$d von 100</string>
     <string name="widget_warnings_accessibility">. Hinweise: %1$s</string>

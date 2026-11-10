@@ -9,6 +9,7 @@ import android.content.Intent
 import android.util.TypedValue
 import android.view.View
 import android.widget.RemoteViews
+import androidx.annotation.StringRes
 import androidx.core.content.ContextCompat
 import androidx.core.content.edit
 import androidx.work.Constraints
@@ -198,8 +199,9 @@ class RouteWidgetProvider : AppWidgetProvider() {
             val rows = visible.drop(rowOffset).take(pageSize)
             val freshness = if (state.freshness == Freshness.UNAVAILABLE) Freshness.UNAVAILABLE
             else WidgetFreshness.fromAge(state.retrievedAt, nowMillis)
-            // "Whole day" keeps showing the cached timetable offline: without fresh data it is the timetable only.
-            val timetableOnly = settings.timeRange == RouteTimeRange.WHOLE_DAY && freshness !in setOf(Freshness.FRESH, Freshness.AGING)
+            // Without fresh data the rows are the timetable only, in every time range: no old delay or cancellation is
+            // shown or spoken as the current state (the meta line says "ULTIMO DATO").
+            val timetableOnly = WidgetChangeHighlight.showsTimetable(freshness)
             val pageLabel = context.getString(
                 R.string.widget_page_label,
                 WidgetRowPagination.pageNumber(rowOffset, pageSize),
@@ -246,7 +248,7 @@ class RouteWidgetProvider : AppWidgetProvider() {
                         ?.let { WidgetReliabilityText.of(it, reliabilityStrings) }
                     val trainLine = listOfNotNull(
                         inTransitLabel,
-                        if (settings.showTrainName) "${service.operator.shortLabel} · ${strings.categoryLabels.getValue(service.category)} ${service.number}" else null,
+                        if (settings.showTrainName) "${strings.operatorShort(service.operator)} · ${strings.categoryLabels.getValue(service.category)} ${service.number}" else null,
                         reliability?.shown
                     ).joinToString(" · ")
                     views.setTextViewText(trainIds[index], trainLine)
@@ -256,14 +258,13 @@ class RouteWidgetProvider : AppWidgetProvider() {
                     views.setViewVisibility(platformIds[index], if (settings.showPlatform) View.VISIBLE else View.GONE)
                     views.setTextViewText(
                         statusIds[index],
-                        if (timetableOnly) strings.statusScheduled else WidgetChangeHighlight.displayStatus(service, state.confidence, strings)
+                        WidgetChangeHighlight.displayStatus(service, state.confidence, strings, freshness)
                     )
                     views.setContentDescription(
                         id,
                         listOfNotNull(
-                            service.accessibleLabel(strings),
+                            service.accessibleLabel(strings, live = !timetableOnly),
                             inTransitLabel,
-                            if (timetableOnly) strings.scheduledUnverified else null,
                             reliability?.spoken
                         ).joinToString(" ")
                     )
@@ -278,6 +279,9 @@ class RouteWidgetProvider : AppWidgetProvider() {
             }
             views.setTextViewText(R.id.widget_direction, strings.directionLabels.getValue(state.direction).uppercase())
             views.setTextViewText(R.id.widget_refresh, context.getString(R.string.widget_refresh_symbol))
+            // The host reapplies each update on the same views: the spoken labels of the other states are reset here.
+            describeActions(context, views, R.string.widget_switch_direction, R.string.widget_refresh)
+            views.setContentDescription(R.id.widget_root, null)
             views.setOnClickPendingIntent(R.id.widget_previous_page, actionIntent(context, ACTION_PREVIOUS_PAGE, widgetId))
             views.setOnClickPendingIntent(R.id.widget_next_page, actionIntent(context, ACTION_NEXT_PAGE, widgetId))
             views.setOnClickPendingIntent(R.id.widget_direction, actionIntent(context, ACTION_SWITCH_DIRECTION, widgetId))
@@ -310,6 +314,8 @@ class RouteWidgetProvider : AppWidgetProvider() {
             views.setViewVisibility(R.id.widget_column_header, View.GONE)
             views.setTextViewText(R.id.widget_direction, context.getString(R.string.widget_configuration_action))
             views.setTextViewText(R.id.widget_refresh, context.getString(R.string.widget_open_action))
+            describeActions(context, views, R.string.widget_configure_title, R.string.widget_open_app)
+            views.setContentDescription(R.id.widget_root, null)
             views.setOnClickPendingIntent(R.id.widget_root, configureIntent(context, widgetId))
             views.setOnClickPendingIntent(R.id.widget_direction, configureIntent(context, widgetId))
             views.setOnClickPendingIntent(R.id.widget_refresh, openAppIntent(context, widgetId))
@@ -327,7 +333,7 @@ class RouteWidgetProvider : AppWidgetProvider() {
             views.setViewVisibility(R.id.widget_column_header, View.GONE)
             views.setTextViewText(R.id.widget_direction, context.getString(R.string.widget_configuration_action))
             views.setTextViewText(R.id.widget_refresh, context.getString(R.string.widget_refresh_symbol))
-            views.setContentDescription(R.id.widget_refresh, context.getString(R.string.widget_refresh))
+            describeActions(context, views, R.string.widget_configure_title, R.string.widget_refresh)
             views.setContentDescription(
                 R.id.widget_root,
                 context.getString(
@@ -341,6 +347,12 @@ class RouteWidgetProvider : AppWidgetProvider() {
             // Without data (automatic refresh off, or a direction just swapped) the button loads it now.
             views.setOnClickPendingIntent(R.id.widget_refresh, actionIntent(context, ACTION_REFRESH, widgetId))
             manager.updateAppWidget(widgetId, views)
+        }
+
+        /** TalkBack labels of the two action buttons, which change role with the state of the widget. */
+        private fun describeActions(context: Context, views: RemoteViews, @StringRes directionLabel: Int, @StringRes refreshLabel: Int) {
+            views.setContentDescription(R.id.widget_direction, context.getString(directionLabel))
+            views.setContentDescription(R.id.widget_refresh, context.getString(refreshLabel))
         }
 
         private fun actionIntent(context: Context, action: String, widgetId: Int): PendingIntent {
@@ -544,19 +556,20 @@ data class WidgetService(
         ServiceStatus.DELAYED -> strings.format(strings.statusDelayed, delayMinutes)
         ServiceStatus.CANCELLED -> strings.statusCancelled
     }
-    fun accessibleLabel(strings: WidgetStrings): String {
+    /** The spoken row; with [live] false (old data) it reads the timetable time and no operational state. */
+    fun accessibleLabel(strings: WidgetStrings, live: Boolean = true): String {
         val operational = when {
-            !operationalStatusVerified -> strings.scheduledUnverified
+            !operationalStatusVerified || !live -> strings.scheduledUnverified
             status == ServiceStatus.DELAYED && delayMinutes > 0 -> "${strings.statusLabels.getValue(status)} ${strings.format(strings.delayMinutes, delayMinutes)}"
             else -> strings.statusLabels.getValue(status)
         }
         return strings.format(
             strings.serviceAccessibility,
-            operator.accessibleLabel,
+            strings.operatorAccessible(operator),
             strings.categoryLabels.getValue(category),
             number,
             destination,
-            expectedDeparture,
+            if (live) expectedDeparture else scheduledDeparture,
             operational,
             strings.platformSpoken(platform, scheduledPlatform)
         )
@@ -582,7 +595,7 @@ data class WidgetState(
     val routeLabel: String get() = route.displayName(direction)
 
     fun compactMeta(strings: WidgetStrings, pageLabel: String? = null, freshnessAtRender: Freshness = freshness, updatedAt: String? = null): String = listOfNotNull(
-        providerName.ifBlank { null },
+        providerName.ifBlank { null }?.let(strings.providerLabel),
         strings.confidenceLabels.getValue(confidence),
         qualityScore?.let { strings.format(strings.qualityScore, it) },
         strings.freshnessLabels.getValue(freshnessAtRender),
@@ -595,7 +608,7 @@ data class WidgetState(
         append(
             strings.format(
                 strings.dataAccessibility,
-                providerName,
+                strings.providerLabel(providerName),
                 strings.freshnessAccessibleLabels.getValue(freshnessAtRender),
                 strings.confidenceAccessibleLabels.getValue(confidence),
                 strings.qualityBandLabels.getValue(qualityBand)

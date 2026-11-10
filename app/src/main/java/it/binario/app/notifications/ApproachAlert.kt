@@ -1,9 +1,12 @@
 package it.binario.app.notifications
 
+import it.binario.app.FavouriteTrainMatcher
+import it.binario.app.ServiceMonitor
 import it.binario.app.data.RailTime
 import it.binario.app.data.ServiceStatus
 import it.binario.app.data.StopRouteChange
 import it.binario.app.data.TrainService
+import it.binario.app.data.repository.TrainNumberSearchUpdate
 import it.binario.app.journeys.LiveStopTimes
 import java.time.Duration
 import java.time.Instant
@@ -42,6 +45,18 @@ data class ApproachObservation(
     val cancelled: Boolean
 ) {
     val live: Boolean get() = delayMinutes != null
+}
+
+/** What the train-number search said about the run of the day at the alert's station. */
+sealed interface ApproachLookup {
+    /** The run calls at the station. */
+    data class Observed(val observation: ApproachObservation) : ApproachLookup
+
+    /** Every source answered: the train has no run that day, or its run does not call at the station. */
+    data object NotRunning : ApproachLookup
+
+    /** No usable answer (offline, a source failed or timed out, several candidate runs): the timetable stays the fallback. */
+    data object Unknown : ApproachLookup
 }
 
 sealed interface ApproachDecision {
@@ -86,6 +101,15 @@ object ApproachAlertPlanner {
         return LocalDateTime.of(day, time).atZone(zone).toInstant()
     }
 
+    /**
+     * The departure date of the run that reaches the station on [day]: the day before for a station the train reaches
+     * after midnight (a station time before the departure time), else [day]. Lookups and the day state use this date.
+     */
+    fun serviceDate(alert: ApproachAlert, day: LocalDate, zone: ZoneId = RailTime.defaultZone): LocalDate {
+        val arrival = scheduledAt(alert, day, zone) ?: return day
+        return if (arrival.atZone(zone).toLocalDate().isAfter(day)) day.minusDays(1) else day
+    }
+
     /** When the checks of [date] run: around the scheduled time, inside 07:00 – 22:00 of the day the train gets there. */
     fun window(alert: ApproachAlert, date: LocalDate, zone: ZoneId = RailTime.defaultZone): ClosedRange<Instant>? {
         val scheduled = scheduledAt(alert, date, zone) ?: return null
@@ -119,6 +143,44 @@ object ApproachAlertPlanner {
         return ApproachDecision.WaitUntil(maxOf(minOf(nextCheck, notifyAt), now.plus(MIN_DELAY_BETWEEN_RUNS)))
     }
 
+    /**
+     * The check after a lookup: a day without the train at the station is over; without an answer the last observation
+     * of the day ([last]), else the timetable, decides as before.
+     */
+    fun decide(
+        alert: ApproachAlert,
+        date: LocalDate,
+        lookup: ApproachLookup,
+        last: ApproachObservation?,
+        now: Instant,
+        zone: ZoneId = RailTime.defaultZone
+    ): ApproachDecision =
+        if (lookup == ApproachLookup.NotRunning) ApproachDecision.Done
+        else decide(alert, date, observationAfter(lookup, last), now, notified = false, zone)
+
+    /** The observation a check keeps: the lookup's, else (no answer) the last one of the day; none on a day without the train. */
+    fun observationAfter(lookup: ApproachLookup, last: ApproachObservation?): ApproachObservation? = when (lookup) {
+        is ApproachLookup.Observed -> lookup.observation
+        ApproachLookup.NotRunning -> null
+        ApproachLookup.Unknown -> last
+    }
+
+    /**
+     * Reads the last answer of the train-number search for the run of [date]; [update] is null when the search failed or
+     * timed out. Only a complete answer with every source available says that the train does not run that day: a source
+     * that failed keeps the timetable fallback. A run that publishes its stops without the station does not call there.
+     */
+    fun lookupOf(update: TrainNumberSearchUpdate?, monitor: ServiceMonitor, alert: ApproachAlert, date: LocalDate, zone: ZoneId = RailTime.defaultZone): ApproachLookup {
+        if (update == null) return ApproachLookup.Unknown
+        val service = FavouriteTrainMatcher.pick(update.matches.map { it.service }, monitor)
+        if (service != null) {
+            observe(service, alert, date, zone)?.let { return ApproachLookup.Observed(it) }
+            return if (service.stops.isNotEmpty()) ApproachLookup.NotRunning else ApproachLookup.Unknown
+        }
+        val everySourceAnswered = update.complete && update.unavailableSources.isEmpty()
+        return if (everySourceAnswered && update.matches.isEmpty()) ApproachLookup.NotRunning else ApproachLookup.Unknown
+    }
+
     /** Whole minutes still to go, rounded up: "tra ~4 min" at 3 minutes 20 seconds. */
     fun minutesUntil(now: Instant, expected: Instant): Int {
         val seconds = Duration.between(now, expected).seconds
@@ -126,20 +188,21 @@ object ApproachAlertPlanner {
     }
 
     /**
-     * The next run for [alert]: the next check or moment to notify of today (from the last observation), else the
-     * window of tomorrow. [doneOn] is the last day the alert finished (notified, passed, cancelled or too late).
+     * The next run for [alert]: the next check or moment to notify of the run reaching the station today (from the last
+     * observation), else the window of the next run. [doneOn] and [notifiedOn] are departure dates ([serviceDate]) of
+     * the last run the alert finished (notified, passed, cancelled or too late) or notified.
      */
     fun nextRun(alert: ApproachAlert, doneOn: LocalDate?, notifiedOn: LocalDate?, observation: ApproachObservation?, now: Instant, zone: ZoneId = RailTime.defaultZone): Instant? {
-        val today = now.atZone(zone).toLocalDate()
-        val todayWindow = window(alert, today, zone)
-        if (doneOn != today && notifiedOn != today && todayWindow != null && !now.isAfter(todayWindow.endInclusive)) {
-            when (val decision = decide(alert, today, observation, now, notified = false, zone)) {
+        val date = serviceDate(alert, now.atZone(zone).toLocalDate(), zone)
+        val window = window(alert, date, zone)
+        if (doneOn != date && notifiedOn != date && window != null && !now.isAfter(window.endInclusive)) {
+            when (val decision = decide(alert, date, observation, now, notified = false, zone)) {
                 is ApproachDecision.WaitUntil -> return decision.at
                 is ApproachDecision.Notify -> return now
                 ApproachDecision.Done -> Unit
             }
         }
-        return (1L..2L).asSequence().mapNotNull { window(alert, today.plusDays(it), zone)?.start }.firstOrNull { it.isAfter(now) }
+        return (1L..2L).asSequence().mapNotNull { window(alert, date.plusDays(it), zone)?.start }.firstOrNull { it.isAfter(now) }
     }
 
     /**

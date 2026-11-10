@@ -231,7 +231,7 @@ object StationWidgetPresenter {
 
     /** Source, scheduled-only marker, freshness and (when given) update time, like the route widget's meta line. */
     fun meta(snapshot: StationWidgetSnapshot, freshness: Freshness, updatedAt: String?, strings: StationWidgetStrings): String = listOfNotNull(
-        snapshot.providerNames.joinToString(", ").ifBlank { null },
+        snapshot.providerNames.joinToString(", ") { strings.widget.providerLabel(it) }.ifBlank { null },
         strings.widget.confidenceLabels.getValue(DataConfidence.STATIC_ONLY).takeIf { snapshot.departures.none { isLive(it, freshness) } },
         strings.widget.freshnessLabels.getValue(freshness),
         updatedAt
@@ -241,7 +241,7 @@ object StationWidgetPresenter {
         strings.format(
             strings.titleAccessibility,
             snapshot.stationName,
-            snapshot.providerNames.joinToString(", "),
+            snapshot.providerNames.joinToString(", ") { strings.widget.providerLabel(it) },
             strings.widget.freshnessAccessibleLabels.getValue(freshness),
             updatedAt
         )
