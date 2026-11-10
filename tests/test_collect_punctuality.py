@@ -869,12 +869,18 @@ class HttpFetcherTest(unittest.TestCase):
         self.assertEqual([120, 3600, 7200, None, collector.MAX_PAUSE.total_seconds()],
                          [result.retry_after for result in results])
 
-    def test_user_agent_names_binario_and_carries_no_address(self) -> None:
-        # The form with a URL was refused (HTTP 403) by ViaggiaTreno; the identity must stay honest.
-        self.assertTrue(collector.USER_AGENT.startswith("Binario-punctuality/"))
-        self.assertIn("read-only", collector.USER_AGENT)
-        self.assertNotIn("http", collector.USER_AGENT.lower())
-        self.assertNotIn("mozilla", collector.USER_AGENT.lower())
+    def test_user_agent_says_what_the_collector_is_and_carries_no_address(self) -> None:
+        # What the operator sees is what runs: a scheduled, automated, read-only collector of the statistics, at a low
+        # rate, for the open-source app (not "a personal timetable app"), never a browser.  No URL (the form with one
+        # was refused with HTTP 403) and no e-mail address (the owner's is private).
+        agent = collector.USER_AGENT
+        self.assertTrue(agent.startswith("Binario-punctuality/"))
+        for words in ("automated", "read-only", "collector", "punctuality statistics", "open-source Binario app",
+                      "low rate", f"at most {collector.MAX_RATE:g} requests per second"):
+            self.assertIn(words, agent)
+        for absent in ("http", "www.", "@", "mozilla", "applewebkit", "chrome", "safari", "personal"):
+            self.assertNotIn(absent, agent.lower())
+        self.assertTrue(agent.isascii() and agent.isprintable())
 
     def test_redirects_stay_on_the_same_resource(self) -> None:
         base = collector.BASE_URL

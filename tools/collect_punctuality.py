@@ -80,10 +80,12 @@ DEFAULT_GTFS = ROOT / "app/src/main/assets/gtfs/trenitalia-gtfs.zip"
 DEFAULT_TRENORD = ROOT / "app/src/main/assets/gtfs/lombardia-trenord-gtfs.zip"
 DEFAULT_STATIONS = ROOT / "app/src/main/assets/stations/curated_it_rail_stations.json"
 BASE_URL = "http://www.viaggiatreno.it/infomobilita/resteasy/viaggiatreno/"
-# Honest, in the style of the app ("Binario/0.20 (personal realtime client)") and of the discovery tool.  The
-# first form carried a URL and ViaggiaTreno answered 403 to it while answering 200 to these from the same
-# runners; the collector still stops at the first 403/429 and never poses as a browser.
-USER_AGENT = "Binario-punctuality/1.0 (personal timetable app; read-only)"
+# What the operator sees is what runs: a scheduled, automated, read-only collector of the statistics for the
+# open-source app, at a low rate.  No URL (ViaggiaTreno answered 403 to the first form, which carried one) and no
+# e-mail address (the owner's is private); never a browser.  A refusal stops the run and pauses the next ones
+# (refusal.json); if ViaggiaTreno keeps refusing this identity, the collection is switched off (PUNCTUALITY_STATS.md).
+USER_AGENT = ("Binario-punctuality/1.1 (automated read-only collector of public punctuality statistics for the "
+              "open-source Binario app; low rate, at most 2 requests per second)")
 
 # ViaggiaTreno answers only about the runs of its current day: right after midnight the previous day's are gone (the
 # run of 9 November 2026 at 00:58 got 585 "unknown" for the 602 trains of the evening before), except a train still
