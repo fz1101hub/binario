@@ -844,6 +844,9 @@
     <string name="widget_warning_identity_ambiguous">身份待核实</string>
     <string name="widget_warning_delay_divergence">晚点数据不一致</string>
     <string name="widget_service_accessibility">运营商 %1$s。%2$s %3$s 开往 %4$s。预计 %5$s 出发。%6$s。%7$s。</string>
+    <string name="widget_operator_other_short">其他</string>
+    <string name="widget_operator_other">其他运营商</string>
+    <string name="widget_operator_rhb">雷蒂亚铁路</string>
     <string name="widget_data_accessibility">提供方 %1$s。%2$s。%3$s。%4$s</string>
     <string name="widget_quality_score_accessibility">，质量评分 %1$d/100</string>
     <string name="widget_warnings_accessibility">。警告：%1$s</string>

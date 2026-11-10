@@ -841,6 +841,9 @@
     <string name="widget_warning_identity_ambiguous">पहचान जाँचें</string>
     <string name="widget_warning_delay_divergence">देरी में अंतर</string>
     <string name="widget_service_accessibility">ऑपरेटर %1$s। %2$s %3$s, %4$s की ओर। अनुमानित प्रस्थान %5$s। %6$s। %7$s।</string>
+    <string name="widget_operator_other_short">अन्य</string>
+    <string name="widget_operator_other">अन्य ऑपरेटर</string>
+    <string name="widget_operator_rhb">रेटियन रेलवे</string>
     <string name="widget_data_accessibility">प्रदाता %1$s। %2$s। %3$s। %4$s</string>
     <string name="widget_quality_score_accessibility">, गुणवत्ता स्कोर 100 में से %1$d</string>
     <string name="widget_warnings_accessibility">। चेतावनियाँ: %1$s</string>

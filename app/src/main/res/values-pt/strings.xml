@@ -858,6 +858,9 @@
     <string name="widget_warning_identity_ambiguous">IDENTIFICAÇÃO A VERIFICAR</string>
     <string name="widget_warning_delay_divergence">ATRASOS DIVERGENTES</string>
     <string name="widget_service_accessibility">Operadora %1$s. %2$s %3$s para %4$s. Partida prevista %5$s. %6$s. %7$s.</string>
+    <string name="widget_operator_other_short">Outro</string>
+    <string name="widget_operator_other">Outro operador</string>
+    <string name="widget_operator_rhb">Ferrovia Rética</string>
     <string name="widget_data_accessibility">Provedor %1$s. %2$s. %3$s. %4$s</string>
     <string name="widget_quality_score_accessibility">, pontuação de qualidade %1$d de 100</string>
     <string name="widget_warnings_accessibility">. Alertas: %1$s</string>

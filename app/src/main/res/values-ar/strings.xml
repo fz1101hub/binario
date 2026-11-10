@@ -909,6 +909,9 @@
     <string name="widget_warning_identity_ambiguous">الهوية بحاجة إلى تحقّق</string>
     <string name="widget_warning_delay_divergence">تأخيرات متباينة</string>
     <string name="widget_service_accessibility">المشغّل %1$s. %2$s %3$s إلى %4$s. المغادرة المتوقعة %5$s. %6$s. %7$s.</string>
+    <string name="widget_operator_other_short">آخر</string>
+    <string name="widget_operator_other">مشغّل آخر</string>
+    <string name="widget_operator_rhb">السكك الحديدية الريتية</string>
     <string name="widget_data_accessibility">المزوّد %1$s. %2$s. %3$s. %4$s</string>
     <string name="widget_quality_score_accessibility">، درجة الجودة %1$d من 100</string>
     <string name="widget_warnings_accessibility">. التنبيهات: %1$s</string>

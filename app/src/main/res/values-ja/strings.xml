@@ -824,6 +824,9 @@
     <string name="widget_warning_identity_ambiguous">列車の特定を確認中</string>
     <string name="widget_warning_delay_divergence">遅れ情報が不一致</string>
     <string name="widget_service_accessibility">事業者 %1$s。%2$s %3$s、%4$s 行き。出発見込み %5$s。%6$s。%7$s。</string>
+    <string name="widget_operator_other_short">その他</string>
+    <string name="widget_operator_other">その他の事業者</string>
+    <string name="widget_operator_rhb">レーティッシュ鉄道</string>
     <string name="widget_data_accessibility">提供元 %1$s。%2$s。%3$s。%4$s</string>
     <string name="widget_quality_score_accessibility">、品質スコア 100 点中 %1$d 点</string>
     <string name="widget_warnings_accessibility">。警告：%1$s</string>

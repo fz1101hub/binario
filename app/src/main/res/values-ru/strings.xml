@@ -875,6 +875,9 @@
     <string name="widget_warning_identity_ambiguous">ТРЕБУЕТ ПРОВЕРКИ</string>
     <string name="widget_warning_delay_divergence">ОПОЗДАНИЯ РАСХОДЯТСЯ</string>
     <string name="widget_service_accessibility">Перевозчик %1$s. %2$s %3$s до %4$s. Ожидаемое отправление %5$s. %6$s. %7$s.</string>
+    <string name="widget_operator_other_short">Другой</string>
+    <string name="widget_operator_other">Другой перевозчик</string>
+    <string name="widget_operator_rhb">Ретийская железная дорога</string>
     <string name="widget_data_accessibility">Поставщик %1$s. %2$s. %3$s. %4$s</string>
     <string name="widget_quality_score_accessibility">, оценка качества %1$d из 100</string>
     <string name="widget_warnings_accessibility">. Предупреждения: %1$s</string>

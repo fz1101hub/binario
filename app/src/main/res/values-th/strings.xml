@@ -844,6 +844,9 @@
     <string name="widget_warning_identity_ambiguous">ต้องตรวจสอบตัวตน</string>
     <string name="widget_warning_delay_divergence">ความล่าช้าไม่ตรงกัน</string>
     <string name="widget_service_accessibility">ผู้ให้บริการ %1$s %2$s %3$s ไป %4$s คาดว่าจะออก %5$s %6$s %7$s</string>
+    <string name="widget_operator_other_short">อื่น ๆ</string>
+    <string name="widget_operator_other">ผู้ให้บริการรายอื่น</string>
+    <string name="widget_operator_rhb">การรถไฟเรเชียน</string>
     <string name="widget_data_accessibility">ผู้ให้บริการข้อมูล %1$s %2$s %3$s %4$s</string>
     <string name="widget_quality_score_accessibility">, คะแนนคุณภาพ %1$d จาก 100</string>
     <string name="widget_warnings_accessibility">. คำเตือน: %1$s</string>

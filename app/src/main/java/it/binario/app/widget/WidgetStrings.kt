@@ -8,10 +8,12 @@ import it.binario.app.data.DataQualityBand
 import it.binario.app.data.Direction
 import it.binario.app.data.Freshness
 import it.binario.app.data.PlatformChange
+import it.binario.app.data.RailOperator
 import it.binario.app.data.ServiceStatus
 import it.binario.app.data.SnapshotWarning
 import it.binario.app.data.TrainCategory
 import it.binario.app.labelRes
+import it.binario.app.ui.common.ProviderLabels
 import java.util.Locale
 
 /**
@@ -46,8 +48,17 @@ data class WidgetStrings(
     val qualityBandLabels: Map<DataQualityBand, String>,
     val warningAccessibleLabels: Map<SnapshotWarning, String>,
     /** "Binario cambiato: %1$s, previsto %2$s"; blank falls back to [platform]. */
-    val platformChanged: String = ""
+    val platformChanged: String = "",
+    /** A provider label of the data layer with its Italian descriptors in the display language ([ProviderLabels]). */
+    val providerLabel: (String) -> String = { it },
+    /** Operators whose label is a description rather than a proper name ("Altro"), in the display language. */
+    val operatorShortLabels: Map<RailOperator, String> = emptyMap(),
+    val operatorAccessibleLabels: Map<RailOperator, String> = emptyMap()
 ) {
+    fun operatorShort(operator: RailOperator): String = operatorShortLabels[operator] ?: operator.shortLabel
+
+    fun operatorAccessible(operator: RailOperator): String = operatorAccessibleLabels[operator] ?: operator.accessibleLabel
+
     /** "Binario cambiato: 7, previsto 5", "Binario 7" or "Binario non disponibile". */
     fun platformSpoken(actual: String?, scheduled: String?): String {
         val shown = actual?.takeIf(String::isNotBlank) ?: return platformUnavailable
@@ -85,7 +96,13 @@ data class WidgetStrings(
             confidenceAccessibleLabels = DataConfidence.entries.associateWith { context.getString(it.labelRes()) },
             freshnessAccessibleLabels = Freshness.entries.associateWith { context.getString(it.labelRes()) },
             qualityBandLabels = DataQualityBand.entries.associateWith { context.getString(it.labelRes()) },
-            warningAccessibleLabels = SnapshotWarning.entries.associateWith { context.getString(it.labelRes()) }
+            warningAccessibleLabels = SnapshotWarning.entries.associateWith { context.getString(it.labelRes()) },
+            providerLabel = { raw -> ProviderLabels.localize(raw) { context.getString(it) } },
+            operatorShortLabels = mapOf(RailOperator.OTHER to context.getString(R.string.widget_operator_other_short)),
+            operatorAccessibleLabels = mapOf(
+                RailOperator.OTHER to context.getString(R.string.widget_operator_other),
+                RailOperator.RHB to context.getString(R.string.widget_operator_rhb)
+            )
         )
     }
 }

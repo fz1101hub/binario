@@ -861,6 +861,9 @@
     <string name="widget_warning_identity_ambiguous">KİMLİK DOĞRULANMALI</string>
     <string name="widget_warning_delay_divergence">GECİKMELER FARKLI</string>
     <string name="widget_service_accessibility">İşletmeci %1$s. %2$s %3$s, %4$s yönüne. Tahmini kalkış %5$s. %6$s. %7$s.</string>
+    <string name="widget_operator_other_short">Diğer</string>
+    <string name="widget_operator_other">Diğer işletmeci</string>
+    <string name="widget_operator_rhb">Ret Demiryolu</string>
     <string name="widget_data_accessibility">Sağlayıcı %1$s. %2$s. %3$s. %4$s</string>
     <string name="widget_quality_score_accessibility">, kalite puanı %1$d/100</string>
     <string name="widget_warnings_accessibility">. Uyarılar: %1$s</string>

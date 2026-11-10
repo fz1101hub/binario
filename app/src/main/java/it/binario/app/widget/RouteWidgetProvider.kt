@@ -248,7 +248,7 @@ class RouteWidgetProvider : AppWidgetProvider() {
                         ?.let { WidgetReliabilityText.of(it, reliabilityStrings) }
                     val trainLine = listOfNotNull(
                         inTransitLabel,
-                        if (settings.showTrainName) "${service.operator.shortLabel} · ${strings.categoryLabels.getValue(service.category)} ${service.number}" else null,
+                        if (settings.showTrainName) "${strings.operatorShort(service.operator)} · ${strings.categoryLabels.getValue(service.category)} ${service.number}" else null,
                         reliability?.shown
                     ).joinToString(" · ")
                     views.setTextViewText(trainIds[index], trainLine)
@@ -565,7 +565,7 @@ data class WidgetService(
         }
         return strings.format(
             strings.serviceAccessibility,
-            operator.accessibleLabel,
+            strings.operatorAccessible(operator),
             strings.categoryLabels.getValue(category),
             number,
             destination,
@@ -595,7 +595,7 @@ data class WidgetState(
     val routeLabel: String get() = route.displayName(direction)
 
     fun compactMeta(strings: WidgetStrings, pageLabel: String? = null, freshnessAtRender: Freshness = freshness, updatedAt: String? = null): String = listOfNotNull(
-        providerName.ifBlank { null },
+        providerName.ifBlank { null }?.let(strings.providerLabel),
         strings.confidenceLabels.getValue(confidence),
         qualityScore?.let { strings.format(strings.qualityScore, it) },
         strings.freshnessLabels.getValue(freshnessAtRender),
@@ -608,7 +608,7 @@ data class WidgetState(
         append(
             strings.format(
                 strings.dataAccessibility,
-                providerName,
+                strings.providerLabel(providerName),
                 strings.freshnessAccessibleLabels.getValue(freshnessAtRender),
                 strings.confidenceAccessibleLabels.getValue(confidence),
                 strings.qualityBandLabels.getValue(qualityBand)
