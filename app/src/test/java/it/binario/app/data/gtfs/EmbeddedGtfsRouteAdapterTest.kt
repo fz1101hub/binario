@@ -421,6 +421,45 @@ class EmbeddedGtfsRouteAdapterTest {
         assertEquals("—", unknown.expected)
     }
 
+    /**
+     * Audit android-data-1 (the Fortezza → Brunico shape: STA 1839 arrives 07:28 and leaves 07:45 for Lienz): where the
+     * traveller gets off, the stop carries the train's arrival, not its departure after the dwell. Duration, the fastest
+     * sort, widget, Wear, calendar and connection risk all read it from there.
+     */
+    @Test
+    fun `alla fermata di discesa mostra l arrivo e non la partenza dopo la sosta`() = runBlocking {
+        val dwellAtMonza = "trip_id,arrival_time,departure_time,stop_id,stop_sequence\n" +
+            "T1,08:05:00,08:05:00,MI,1\n" +
+            "T1,08:22:00,08:39:00,MO,2\n" +
+            "T1,08:50:00,08:50:00,CO,3\n"
+        val query = JourneyQuery(LocalDate.of(2026, 9, 4), LocalTime.of(8, 0))
+        val toMonza = route.copy(outwardDestination = Station("monza", "Monza", "Monza"))
+
+        val service = (adapter(feed(stopTimes = dwellAtMonza)).loadRoute(toMonza, Direction.OUTBOUND, query) as DataResult.Success)
+            .snapshot.services.single()
+        assertEquals(listOf("08:05", "08:22"), service.stops.map { it.scheduled })
+        assertEquals("08:22", service.stops.last().expected)
+        assertEquals("08:22", it.binario.app.ui.common.JourneyTimes.arrival(service))
+        assertEquals(17, it.binario.app.ui.common.JourneyTimes.durationMinutes(service))
+
+        // Riding on, Monza is an intermediate stop: the time there stays the departure, as before.
+        val throughMonza = (adapter(feed(stopTimes = dwellAtMonza)).loadRoute(route, Direction.OUTBOUND, query) as DataResult.Success)
+            .snapshot.services.single()
+        assertEquals(listOf("08:05", "08:39", "08:50"), throughMonza.stops.map { it.scheduled })
+
+        // Two packs that publish the same train with different dwells at the alighting stop still pair on the arrival.
+        val trenordPack = EmbeddedGtfsPack(SourceId("lombardia-trenord-gtfs"), "gtfs/trenord.zip")
+        val swissPack = EmbeddedGtfsPack(SourceId("ch-otd-gtfs"), "gtfs/swiss.zip")
+        val shorterDwell = dwellAtMonza.replace("08:39:00", "08:30:00")
+        val feeds = mapOf(trenordPack.assetPath to feed(stopTimes = dwellAtMonza), swissPack.assetPath to feed(stopTimes = shorterDwell))
+        val twoPacks = EmbeddedGtfsRouteAdapter(
+            openAsset = { path -> ByteArrayInputStream(requireNotNull(feeds[path])) },
+            packs = listOf(trenordPack, swissPack),
+            clock = { 1_000L }
+        )
+        assertEquals(1, (twoPacks.loadRoute(toMonza, Direction.OUTBOUND, query) as DataResult.Success).snapshot.services.size)
+    }
+
     @Test
     fun `senza trip_short_name usa il headsign numerico o la linea e mai il trip_id`() = runBlocking {
         val query = JourneyQuery(LocalDate.of(2026, 9, 4), LocalTime.of(8, 0))

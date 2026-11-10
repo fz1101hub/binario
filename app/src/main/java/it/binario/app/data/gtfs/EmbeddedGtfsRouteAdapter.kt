@@ -828,8 +828,11 @@ class EmbeddedGtfsRouteAdapter(
                         it.binario.app.data.GtfsStopIdentity(stops.id(stopTimes.stop(entry)), stopTimes.sequence(entry))
                     }
                 ),
-                stops = segmentEntries.map { entry ->
-                    val scheduled = hhmm(stopTimes.preferredDeparture(entry))
+                stops = segmentEntries.mapIndexed { index, entry ->
+                    // Where the traveller gets off (the segment's last stop) the time is the train's arrival, not its
+                    // departure after the dwell; the boarding and intermediate stops keep the departure.
+                    val alighting = index > 0 && index == segmentEntries.lastIndex
+                    val scheduled = hhmm(if (alighting) stopTimes.preferredArrival(entry) else stopTimes.preferredDeparture(entry))
                     TrainStop(stops.name(stopTimes.stop(entry)), scheduled, scheduled, null, 0, false, operationalStatusVerified = false)
                 }
             )
