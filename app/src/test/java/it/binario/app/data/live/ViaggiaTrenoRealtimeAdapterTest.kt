@@ -135,6 +135,29 @@ class ViaggiaTrenoRealtimeAdapterTest {
         assertEquals(now.minusSeconds(30), details.observedAt)
     }
 
+    /** Audit android-data-4: a board row or run says who runs it; without that the operator stays unknown, never Trenitalia. */
+    @Test fun `board rows and live runs take the operator the source states`() = runBlocking {
+        fun board(brand: String?) = ViaggiaTrenoRealtimeAdapter(ViaggiaTrenoRealtimeFetcher { path ->
+            if (path.startsWith("partenze/")) JSONArray().put(JSONObject().put("numeroTreno", 12345).put("codOrigine", "S08001")
+                .put("dataPartenzaTreno", runDate).put("orarioPartenza", now.plusSeconds(300).toEpochMilli())
+                .apply { brand?.let { put("compImpresa", it) } }).toString()
+            else run().toString()
+        }, clock)
+        val request = it.binario.app.data.provider.StationBoardRequest(
+            it.binario.app.data.core.StationId(route.outwardOrigin.id), route.outwardOrigin.name,
+            railwayCode = route.outwardOrigin.railwayCode, from = now, to = now.plusSeconds(3600),
+            kind = it.binario.app.data.core.BoardKind.DEPARTURES)
+        suspend fun operatorOf(brand: String?) = (board(brand).getStationBoard(request) as it.binario.app.data.provider.ProviderResult.Success)
+            .value.entries.single().operatorId?.value
+        assertEquals("trenord", operatorOf("TRENORD"))
+        assertEquals("trenitalia", operatorOf("TRENITALIA"))
+        assertNull(operatorOf(null))
+
+        assertEquals(RailOperator.OTHER, adapter().parseRun(run(), "12345", "S08001", runDate, route, Direction.OUTBOUND, query, now)?.operator)
+        val trenord = run().put("compImpresa", "TRENORD")
+        assertEquals(RailOperator.TRENORD, adapter().parseRun(trenord, "12345", "S08001", runDate, route, Direction.OUTBOUND, query, now)?.operator)
+    }
+
     @Test fun `arrival board uses arrival time origin label and arrival detail`() = runBlocking {
         val adapter = ViaggiaTrenoRealtimeAdapter(ViaggiaTrenoRealtimeFetcher { path ->
             if (path.startsWith("arrivi/")) JSONArray().put(JSONObject().put("numeroTreno", 12345).put("codOrigine", "S08001")

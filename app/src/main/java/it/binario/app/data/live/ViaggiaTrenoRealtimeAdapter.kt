@@ -226,7 +226,9 @@ class ViaggiaTrenoRealtimeAdapter(
                 val verified = cancelled || (observed != null && delay != null && !row.optBoolean("nonPartito", false))
                 TrainService(
                     id = "viaggiatreno:$stationCode:$number:${scheduled.toEpochMilli()}", number = number,
-                    operator = RailOperator.TRENITALIA_REGIONALE, trainCategory = TrainCategory.OTHER,
+                    // ViaggiaTreno also lists Trenord runs: the operator is the one the row states, else unknown.
+                    operator = operatorOf(row, row.text("categoria").orEmpty().uppercase(Locale.ROOT)), trainCategory = TrainCategory.OTHER,
+                    operatorDisplayName = row.text("compImpresa"),
                     origin = request.stationName.orEmpty(), destination = row.text(if (arrival) "origine" else "destinazione").orEmpty(),
                     scheduledDeparture = time(scheduled), expectedDeparture = time(scheduled.plusSeconds(if (verified) (delay ?: 0) * 60L else 0)),
                     platform = row.text(if (arrival) "binarioEffettivoArrivoDescrizione" else "binarioEffettivoPartenzaDescrizione"), delayMinutes = if (verified) delay ?: 0 else 0,
@@ -468,7 +470,7 @@ class ViaggiaTrenoRealtimeAdapter(
         val category = run.text("categoria").orEmpty().uppercase(Locale.ROOT)
         return TrainService(
             id = "viaggiatreno:$runOrigin:$number:$runDate:${route.origin(direction).railwayCode}", number = number,
-            operator = if (category.startsWith("IC")) RailOperator.TRENITALIA_LONG_DISTANCE else if (category.startsWith("FR")) RailOperator.TRENITALIA_AV else RailOperator.TRENITALIA_REGIONALE,
+            operator = operatorOf(run, category), operatorDisplayName = run.text("compImpresa"),
             trainCategory = if (category.startsWith("IC")) TrainCategory.INTERCITY else if (category.startsWith("FR")) TrainCategory.FRECCE else TrainCategory.REGIONALE,
             origin = route.origin(direction).name, destination = route.destination(direction).name,
             scheduledDeparture = time(departure), expectedDeparture = trainStops.first().expected,
@@ -491,6 +493,24 @@ class ViaggiaTrenoRealtimeAdapter(
         SUPPRESSED_STOP_TYPE -> StopRouteChange.SKIPPED
         EXTRAORDINARY_STOP_TYPE -> StopRouteChange.ADDED
         else -> StopRouteChange.NONE
+    }
+
+    /**
+     * The operator a board row or run states in compImpresa, as the number search reads it: Trenord, Trenitalia (by
+     * category), another named company or nothing as unknown ([RailOperator.OTHER], no operator id). Never assumed to
+     * be Trenitalia, so a Trenord run clusters with the RFI row and takes its delay (audit android-data-4).
+     */
+    private fun operatorOf(row: JSONObject, category: String): RailOperator {
+        val brand = row.text("compImpresa")?.lowercase(Locale.ROOT) ?: return RailOperator.OTHER
+        return when {
+            "trenord" in brand -> RailOperator.TRENORD
+            "trenitalia" in brand -> when {
+                category.startsWith("IC") -> RailOperator.TRENITALIA_LONG_DISTANCE
+                category.startsWith("F") -> RailOperator.TRENITALIA_AV
+                else -> RailOperator.TRENITALIA_REGIONALE
+            }
+            else -> RailOperator.OTHER
+        }
     }
 
     private fun recent(observed: Instant, fetched: Instant) = !observed.isBefore(fetched.minusSeconds(300)) && !observed.isAfter(fetched.plusSeconds(60))
