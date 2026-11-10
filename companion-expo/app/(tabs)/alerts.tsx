@@ -5,7 +5,7 @@ import { LocalRoutePriorityCard } from "@/components/local-route-priority-card";
 import { useIncomingSharedText } from "@/lib/incoming-shared-text";
 import { cancelPlannedRouteReminder, consumeLegacyReminderMigrationNotice, listScheduledRouteIds, schedulePlannedRouteReminder } from "@/lib/planned-reminder-service";
 import { addExplicitRecurringLocalPlannedRoutes, addLocalPlannedRoute, isLocalRoutesArchiveFull, loadLocalPlannedRoutes, removeLocalPlannedRoute, setLocalPlannedRouteChecklistItem, setLocalPlannedRouteCompletion, type LocalPlannedRoute } from "@/lib/local-routes";
-import { pickLocalJourneyIcs, shareLocalJourneyIcs, type CalendarRouteDraft } from "@/lib/local-calendar";
+import { calendarDraftKey, pickLocalJourneyIcs, shareLocalJourneyIcs, type CalendarRouteDraft } from "@/lib/local-calendar";
 import { reconcileLocalJourneyItineraries } from "@/lib/local-itineraries";
 import { deleteLocalPlannedRoute } from "@/lib/local-journey-privacy";
 import { acknowledgeNativeAction, confirmNativeAction } from "@/lib/native-feedback";
@@ -103,9 +103,8 @@ export default function AlertsScreen() {
     setCalendarImportSelection(drafts.map(draft => calendarImportKey(draft)));
     setMessage(t("alerts.icsPreviewReady", { count: drafts.length }));
   }
-  function calendarImportKey(draft: CalendarRouteDraft) {
-    return `${draft.originStationCode}|${draft.destinationStationCode}|${draft.travelDate}|${draft.travelTime}`;
-  }
+  // Imported events have no station codes: the key is the journey, date and time, unique per preview.
+  const calendarImportKey = calendarDraftKey;
   function toggleCalendarImportSelection(key: string) {
     setCalendarImportSelection(current => current.includes(key) ? current.filter(item => item !== key) : [...current, key]);
   }
