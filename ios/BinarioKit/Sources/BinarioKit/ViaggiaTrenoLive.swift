@@ -307,6 +307,10 @@ public struct ViaggiaTrenoLiveSource: LiveTrainStatusSource, LiveDepartureBoardS
     static let defaultDetailsTimeout: TimeInterval = 8
     /// The optional earlier board for late trains.
     static let defaultLookbackTimeout: TimeInterval = 2
+    /// The main board and the optional lookback together, within `LiveRailData`'s 12-second board
+    /// deadline with a second to spare: the lookback only gets the time the main board left, so a
+    /// slow but complete main board is never thrown away for it.
+    static let defaultBoardBudget: TimeInterval = 11
     /// Android's `DETAIL_PERMITS`.
     static let detailConcurrency = 3
     static let maximumBoardRows = 300
@@ -316,16 +320,19 @@ public struct ViaggiaTrenoLiveSource: LiveTrainStatusSource, LiveDepartureBoardS
     let now: @Sendable () -> Date
     let detailsTimeout: TimeInterval
     let lookbackTimeout: TimeInterval
+    let boardBudget: TimeInterval
 
     init(
         client: LiveSourceClient, gate: LiveSourceGate, now: @escaping @Sendable () -> Date,
-        detailsTimeout: TimeInterval = Self.defaultDetailsTimeout, lookbackTimeout: TimeInterval = Self.defaultLookbackTimeout
+        detailsTimeout: TimeInterval = Self.defaultDetailsTimeout, lookbackTimeout: TimeInterval = Self.defaultLookbackTimeout,
+        boardBudget: TimeInterval = Self.defaultBoardBudget
     ) {
         self.client = client
         self.gate = gate
         self.now = now
         self.detailsTimeout = detailsTimeout
         self.lookbackTimeout = lookbackTimeout
+        self.boardBudget = boardBudget
     }
 
     public init(
@@ -411,6 +418,8 @@ public struct ViaggiaTrenoLiveSource: LiveTrainStatusSource, LiveDepartureBoardS
 
     public func departures(for window: LiveBoardWindow) async -> LiveSourceAnswer<[LiveDeparture]> {
         guard let code = NetworkReliability.stationCode(StationIdentity(window.station)) else { return .unavailable(.notCovered) }
+        // Elapsed time on the monotonic clock: `now` may be a test's fixed clock.
+        let started = ProcessInfo.processInfo.systemUptime
         let board = await body("partenze/\(code)/\(ViaggiaTrenoParser.boardTimePathComponent(window.from))")
         guard case let .body(main) = board else {
             if case let .failure(failure) = board { return .unavailable(failure.unavailableReason) }
@@ -421,9 +430,10 @@ public struct ViaggiaTrenoLiveSource: LiveTrainStatusSource, LiveDepartureBoardS
         }
         // From the window start, then (optional, short) from `lateSince` for the trains still late to
         // leave: an earlier board alone could hide the next trains of a busy station.
-        if let since = window.lateSince, since < window.from {
+        let remaining = boardBudget - (ProcessInfo.processInfo.systemUptime - started)
+        if let since = window.lateSince, since < window.from, remaining > 0 {
             let path = "partenze/\(code)/\(ViaggiaTrenoParser.boardTimePathComponent(since))"
-            let lookback = await LiveTasks.withDeadline(seconds: lookbackTimeout) { [self] in await self.body(path) }
+            let lookback = await LiveTasks.withDeadline(seconds: min(lookbackTimeout, remaining)) { [self] in await self.body(path) }
             if case let .body(earlier)? = lookback,
                let extra = ViaggiaTrenoParser.departures(earlier.text, window: window, fetchedAt: earlier.fetchedAt) {
                 rows += extra
