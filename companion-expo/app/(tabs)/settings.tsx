@@ -2,7 +2,7 @@ import { ScreenContainer } from "@/components/screen-container";
 import { createNativeDiagnosticReport } from "@/lib/diagnostics";
 import { useTranslation } from "@/lib/i18n";
 import { type ThemeMode, useCompanionTheme } from "@/lib/theme";
-import { clearLocalPlannedRoutes, importSelectedManualPlannedRoutes, loadLocalPlannedRoutes } from "@/lib/local-routes";
+import { clearLocalPlannedRoutes, importSelectedManualPlannedRoutes, loadLocalPlannedRoutes, localRoutesArchiveStatus } from "@/lib/local-routes";
 import { pickLocalJourneyTransfer, shareLocalJourneyTransfer } from "@/lib/manual-route-transfer";
 import { previewManualRouteTransfer, type ManualRouteTransferPreview } from "@/lib/manual-route-transfer-contract";
 import { clearLocalJourneyItineraries } from "@/lib/local-itineraries";
@@ -76,7 +76,7 @@ export default function SettingsScreen() {
     const imported = await importSelectedManualPlannedRoutes(selected);
     if (imported) await refreshNativeCompanionSurfaces(locale);
     setManualTransferPreview([]); setSelectedManualTransfer([]);
-    setStatus(t("settings.imported", { count: imported }));
+    setStatus(imported === 0 && selected.length > 0 && await localRoutesArchiveStatus() === "read-only" ? t("common.archiveReadOnly") : t("settings.imported", { count: imported }));
   }
 
   const toggle = (key: string, current: string[], set: (next: string[]) => void) => set(current.includes(key) ? current.filter(item => item !== key) : [...current, key]);

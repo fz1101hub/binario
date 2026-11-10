@@ -1,4 +1,4 @@
-import { addLocalPlannedRoute, isLocalRoutesArchiveFull } from "@/lib/local-routes";
+import { addLocalPlannedRoute, localRoutesArchiveStatus } from "@/lib/local-routes";
 import { savedRouteReminderMessageKeys, scheduleReminderForSavedRoute } from "@/lib/planned-reminder-service";
 import { applyLocalJourneyChecklistPreset, localJourneyChecklistPresets, type ControlledLocalRouteDraft, type LocalJourneyChecklistItem } from "@/lib/local-route-contract";
 import { parseLocalDictation } from "@/lib/local-dictation";
@@ -149,8 +149,9 @@ export function LocalPlanCard({ onSaved, planningDraft, onPlanningDraftApplied }
       }
       const route = await addLocalPlannedRoute({ origin, originStationCode, destination, destinationStationCode, travelDate, travelTime, plannedReminderMinutes, checklist });
       if (!route) {
-        if (await isLocalRoutesArchiveFull()) {
-          setMessage(t("common.archiveFull"));
+        const archive = await localRoutesArchiveStatus();
+        if (archive !== "writable") {
+          setMessage(t(archive === "full" ? "common.archiveFull" : "common.archiveReadOnly"));
           return;
         }
         setFieldError(t("planner.routeFieldsError"));

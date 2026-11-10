@@ -19,6 +19,7 @@ export const pt: Dictionary = {
   "common.cancel": "Cancelar",
   "common.save": "Salvar",
   "common.archiveFull": "Arquivo cheio (40 viagens). Nenhuma viagem foi substituída: apague uma antes de salvar outra.",
+  "common.archiveReadOnly": "O arquivo de viagens contém dados que esta versão não consegue ler, por isso não é alterado, para não perdê-los. Em Ajustes use “Exportar arquivo”, depois “Limpar arquivo local” e “Importar arquivo”.",
   "common.delete": "Apagar",
   "common.select": "Selecionar",
   "common.update": "Atualizar",

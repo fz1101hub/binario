@@ -19,6 +19,7 @@ export const id: Dictionary = {
   "common.cancel": "Batal",
   "common.save": "Simpan",
   "common.archiveFull": "Arsip penuh (40 perjalanan). Tidak ada perjalanan yang diganti: hapus satu sebelum menyimpan yang lain.",
+  "common.archiveReadOnly": "Arsip perjalanan berisi data yang tidak dapat dibaca versi ini, jadi arsip tidak diubah agar data itu tidak hilang. Di Pengaturan gunakan “Ekspor arsip”, lalu “Hapus arsip lokal” dan “Impor arsip”.",
   "common.delete": "Hapus",
   "common.select": "Pilih",
   "common.update": "Perbarui",

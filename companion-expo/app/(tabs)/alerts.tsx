@@ -4,7 +4,7 @@ import { GuidedTextRouteImportCard } from "@/components/guided-text-route-import
 import { LocalRoutePriorityCard } from "@/components/local-route-priority-card";
 import { useIncomingSharedText } from "@/lib/incoming-shared-text";
 import { cancelPlannedRouteReminder, consumeLegacyReminderMigrationNotice, listScheduledRouteIds, schedulePlannedRouteReminder } from "@/lib/planned-reminder-service";
-import { addExplicitRecurringLocalPlannedRoutes, addLocalPlannedRoute, isLocalRoutesArchiveFull, loadLocalPlannedRoutes, removeLocalPlannedRoute, setLocalPlannedRouteChecklistItem, setLocalPlannedRouteCompletion, type LocalPlannedRoute } from "@/lib/local-routes";
+import { addExplicitRecurringLocalPlannedRoutes, addLocalPlannedRoute, archiveRefusalMessageKey, isLocalRoutesArchiveFull, loadLocalPlannedRoutes, localRoutesArchiveStatus, removeLocalPlannedRoute, setLocalPlannedRouteChecklistItem, setLocalPlannedRouteCompletion, type LocalPlannedRoute } from "@/lib/local-routes";
 import { calendarDraftKey, pickLocalJourneyIcs, shareLocalJourneyIcs, type CalendarRouteDraft } from "@/lib/local-calendar";
 import { reconcileLocalJourneyItineraries } from "@/lib/local-itineraries";
 import { deleteLocalPlannedRoute } from "@/lib/local-journey-privacy";
@@ -92,9 +92,20 @@ export default function AlertsScreen() {
       setError(t("alerts.reminderUpdateError"));
     }
   }
+  async function deleteRoute(route: LocalPlannedRoute) {
+    // A read-only archive would refuse the removal after the reminder was cancelled: stop before touching either.
+    if (await localRoutesArchiveStatus() === "read-only") { setError(t("common.archiveReadOnly")); return; }
+    try {
+      const result = await deleteLocalPlannedRoute({ routeId: route.id, cancelReminder: cancelPlannedRouteReminder, removeRoute: removeLocalPlannedRoute, listRemainingRouteIds: async () => (await loadLocalPlannedRoutes()).map(item => item.id), reconcileItineraries: reconcileLocalJourneyItineraries });
+      if (result.cancelledReminder) setScheduledIds(current => current.filter(id => id !== route.id));
+      await refresh();
+      if (!result.removed) { setError(t(archiveRefusalMessageKey(await localRoutesArchiveStatus(), "alerts.deleteError"))); return; }
+      setMessage(t(result.cancelledReminder ? "alerts.deletedWithReminder" : "alerts.deleted"));
+    } catch { setError(t("alerts.deleteError")); }
+  }
   function confirmDelete(route: LocalPlannedRoute) {
     const prompt = deleteRoutePrompt(route.name, locale);
-    Alert.alert(prompt.title, prompt.message, [{ text: prompt.cancel, style: "cancel" }, { text: prompt.confirm, style: "destructive", onPress: () => void deleteLocalPlannedRoute({ routeId: route.id, cancelReminder: cancelPlannedRouteReminder, removeRoute: removeLocalPlannedRoute, listRemainingRouteIds: async () => (await loadLocalPlannedRoutes()).map(item => item.id), reconcileItineraries: reconcileLocalJourneyItineraries }).then(result => { setScheduledIds(current => current.filter(id => id !== route.id)); setMessage(t(result.cancelledReminder ? "alerts.deletedWithReminder" : "alerts.deleted")); return refresh(); }).catch(() => { setError(t("alerts.deleteError")); }) }]);
+    Alert.alert(prompt.title, prompt.message, [{ text: prompt.cancel, style: "cancel" }, { text: prompt.confirm, style: "destructive", onPress: () => void deleteRoute(route) }]);
   }
   async function toggleChecklist(route: LocalPlannedRoute, itemId: keyof typeof localJourneyChecklistTranslationKeys, completed: boolean) {
     if (await setLocalPlannedRouteChecklistItem(route.id, itemId, completed)) {
@@ -119,6 +130,7 @@ export default function AlertsScreen() {
     if (chosen.length === 0) { setError(t("alerts.icsSelectOne")); return; }
     let imported = 0;
     for (const draft of chosen) if (await addLocalPlannedRoute(draft)) imported += 1;
+    if (imported === 0 && await localRoutesArchiveStatus() === "read-only") { setError(t("common.archiveReadOnly")); return; }
     const full = imported < chosen.length && await isLocalRoutesArchiveFull();
     if (!full) { setCalendarImports([]); setCalendarImportSelection([]); }
     await refresh();
@@ -149,7 +161,7 @@ export default function AlertsScreen() {
   }
   async function toggleCompleted(route: LocalPlannedRoute) {
     const completing = route.completedAtUtcMs == null;
-    if (!await setLocalPlannedRouteCompletion(route.id, completing)) { setError(t("alerts.routeUpdateError")); return; }
+    if (!await setLocalPlannedRouteCompletion(route.id, completing)) { setError(t(archiveRefusalMessageKey(await localRoutesArchiveStatus(), "alerts.routeUpdateError"))); return; }
     // Annulla sempre: l’elenco in memoria può essere vecchio, e l’annullamento di un promemoria assente non fa nulla.
     if (completing) {
       await cancelPlannedRouteReminder(route.id);
@@ -176,7 +188,7 @@ export default function AlertsScreen() {
   async function saveControlledRoute() {
     if (!pendingDraft || !pendingDate || !pendingTime) { setError(t("alerts.chooseDateTime")); return; }
     const route = await addLocalPlannedRoute({ ...pendingDraft, travelDate: pendingDate, travelTime: pendingTime });
-    if (!route) { setError(t(await isLocalRoutesArchiveFull() ? "common.archiveFull" : "alerts.duplicateRoute")); return; }
+    if (!route) { setError(t(archiveRefusalMessageKey(await localRoutesArchiveStatus(), "alerts.duplicateRoute"))); return; }
     setPendingDraft(null); setPendingKind(null); setPendingDate(""); setPendingTime("");
     await refresh(); setMessage(t(pendingKind === "return" ? "alerts.returnSaved" : "alerts.replanSaved")); confirmNativeAction();
   }

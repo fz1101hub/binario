@@ -11,8 +11,11 @@ describe("urgenza dei messaggi dell’Agenda", () => {
     expect(agenda).toContain("accessibilityLiveRegion={feedbackPoliteness(feedback.severity)}");
     expect(agenda).not.toMatch(/Politeness\(message\)/);
     // Errors are declared as errors in every language.
-    for (const key of ["alerts.readError", "alerts.deleteError", "alerts.reminderUpdateError", "alerts.permissionDenied", "alerts.routeUpdateError"]) {
+    for (const key of ["alerts.readError", "alerts.deleteError", "alerts.reminderUpdateError", "alerts.permissionDenied"]) {
       expect(agenda, key).toContain(`setError(t("${key}"))`);
+    }
+    for (const key of ["alerts.deleteError", "alerts.routeUpdateError", "alerts.duplicateRoute"]) {
+      expect(agenda, key).toContain(`setError(t(archiveRefusalMessageKey(await localRoutesArchiveStatus(), "${key}")))`);
     }
     expect(agenda).toContain('setMessage(t("alerts.reminderScheduled"))');
   });

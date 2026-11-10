@@ -19,6 +19,7 @@ export const vi: Dictionary = {
   "common.cancel": "Hủy",
   "common.save": "Lưu",
   "common.archiveFull": "Kho lưu trữ đã đầy (40 hành trình). Không có hành trình nào bị thay thế: hãy xóa một hành trình trước khi lưu hành trình khác.",
+  "common.archiveReadOnly": "Kho hành trình chứa dữ liệu mà phiên bản này không đọc được, nên kho không bị thay đổi để tránh mất dữ liệu. Trong Cài đặt, hãy dùng “Xuất kho lưu trữ”, rồi “Xóa kho lưu trữ trên máy” và “Nhập kho lưu trữ”.",
   "common.delete": "Xóa",
   "common.select": "Chọn",
   "common.update": "Cập nhật",

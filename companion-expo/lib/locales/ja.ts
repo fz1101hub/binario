@@ -19,6 +19,7 @@ export const ja: Dictionary = {
   "common.cancel": "キャンセル",
   "common.save": "保存",
   "common.archiveFull": "アーカイブがいっぱいです（40 件）。置き換えた移動はありません。保存する前に1件削除してください。",
+  "common.archiveReadOnly": "移動のアーカイブに、このバージョンでは読めないデータが含まれています。失わないようにアーカイブは変更しません。設定で「アーカイブを書き出す」、次に「端末内のアーカイブを消去」と「アーカイブを読み込む」を使ってください。",
   "common.delete": "削除",
   "common.select": "選択",
   "common.update": "更新",

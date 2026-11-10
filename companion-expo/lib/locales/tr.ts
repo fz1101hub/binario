@@ -19,6 +19,7 @@ export const tr: Dictionary = {
   "common.cancel": "İptal",
   "common.save": "Kaydet",
   "common.archiveFull": "Arşiv dolu (40 yolculuk). Hiçbir yolculuk değiştirilmedi: başka birini kaydetmeden önce birini silin.",
+  "common.archiveReadOnly": "Yolculuk arşivi bu sürümün okuyamadığı veriler içeriyor; bu verileri kaybetmemek için arşiv değiştirilmiyor. Ayarlar'da “Arşivi dışa aktar”, ardından “Yerel arşivi temizle” ve “Arşiv içe aktar” seçeneklerini kullanın.",
   "common.delete": "Sil",
   "common.select": "Seç",
   "common.update": "Güncelle",

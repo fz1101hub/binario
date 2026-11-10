@@ -19,6 +19,7 @@ export const ko: Dictionary = {
   "common.cancel": "취소",
   "common.save": "저장",
   "common.archiveFull": "보관함이 가득 찼습니다(여정 40개). 대체된 여정은 없습니다. 다른 여정을 저장하기 전에 하나를 삭제하세요.",
+  "common.archiveReadOnly": "여정 보관함에 이 버전에서 읽을 수 없는 데이터가 있어, 데이터를 잃지 않도록 보관함을 변경하지 않습니다. 설정에서 “보관 파일 내보내기”를 누른 다음 “로컬 보관함 지우기”와 “보관 파일 가져오기”를 사용하세요.",
   "common.delete": "삭제",
   "common.select": "선택",
   "common.update": "업데이트",

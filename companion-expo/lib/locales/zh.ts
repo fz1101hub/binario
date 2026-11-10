@@ -19,6 +19,7 @@ export const zh: Dictionary = {
   "common.cancel": "取消",
   "common.save": "保存",
   "common.archiveFull": "存档已满（40 个行程）。没有替换任何行程：请先删除一个再保存新的行程。",
+  "common.archiveReadOnly": "行程存档包含此版本无法读取的数据，为避免丢失，不会修改存档。请在设置中使用“导出存档”，然后使用“清除本机存档”和“导入存档”。",
   "common.delete": "删除",
   "common.select": "选择",
   "common.update": "更新",

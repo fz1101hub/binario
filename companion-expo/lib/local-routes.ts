@@ -1,6 +1,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { createExplicitRecurringLocalRouteDrafts, createLocalPlannedRoute, isLocalPlannedRoute, setLocalJourneyChecklistItem, setLocalPlannedRouteCompleted, setLocalPlannedRouteLabel, setLocalPlannedRoutePinned, sortLocalPlannedRoutes, type ExplicitLocalJourneyRecurrence, type LocalJourneyChecklistItem, type LocalPlannedRoute, type LocalRouteDraft } from "@/lib/local-route-contract";
 import type { ManualRouteTransferRoute } from "@/lib/manual-route-transfer-contract";
+import type { TranslationKey } from "@/lib/i18n";
 
 const storageKey = "binario-local-planned-routes-v1";
 const maxLocalRoutes = 40;
@@ -24,6 +25,23 @@ export async function loadLocalPlannedRoutes(): Promise<LocalPlannedRoute[]> { r
 export async function isLocalRoutesArchiveFull(): Promise<boolean> {
   const { routes, writable } = await load();
   return writable && routes.length >= maxLocalRoutes;
+}
+
+export type LocalRoutesArchiveStatus = "writable" | "full" | "read-only";
+
+/**
+ * Why a write may be refused. "read-only": the stored archive has records this version cannot read, and
+ * every write is refused so that they are never overwritten.
+ */
+export async function localRoutesArchiveStatus(): Promise<LocalRoutesArchiveStatus> {
+  const { routes, writable } = await load();
+  if (!writable) return "read-only";
+  return routes.length >= maxLocalRoutes ? "full" : "writable";
+}
+
+/** Message for a refused write: the archive's own state first, the caller's reason only for a writable archive. */
+export function archiveRefusalMessageKey(status: LocalRoutesArchiveStatus, otherwise: TranslationKey): TranslationKey {
+  return status === "read-only" ? "common.archiveReadOnly" : status === "full" ? "common.archiveFull" : otherwise;
 }
 
 async function save(routes: LocalPlannedRoute[]) {
