@@ -5,10 +5,13 @@ import UIKit
 #endif
 
 /// «Partenze»: the next trains leaving a station, from the bundled timetable (the first
-/// `StationBoardProvider`). Each row reads as one sentence, time, train, destination and platform,
-/// and opens the train detail, whose star saves the train boarded at this station. The iPhone's
-/// «orario programmato» disclosure is shown while a listed row comes from the scheduled timetable.
-/// No network reliability per row: Android's station board shows none.
+/// `StationBoardProvider`), with what the live board of the station (RFI, Italo and ViaggiaTreno,
+/// merged as on Android) observed of them: expected time and delay, cancellation, actual platform,
+/// source and time of the observation. The live board is asked when the board appears, comes back
+/// to the foreground, changes station or is pulled, never by itself. Each row reads as one sentence,
+/// time, train, destination, platform and live state, and opens the train detail, whose star saves
+/// the train boarded at this station. The iPhone's «orario programmato» disclosure is shown while a
+/// listed row has no live value. No network reliability per row: Android's station board shows none.
 struct DeparturesView: View {
     @EnvironmentObject private var model: AppModel
     @Environment(\.scenePhase) private var scenePhase
@@ -47,13 +50,36 @@ struct DeparturesView: View {
             }
         }
         .navigationTitle("departures.title")
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                if model.isLiveDataActive, model.boardStation != nil {
+                    // Pull to refresh, as a button VoiceOver finds.
+                    Button {
+                        Task { await refresh() }
+                    } label: {
+                        Label("action.refresh", systemImage: "arrow.clockwise")
+                    }
+                    .disabled(model.boardLiveState == .loading)
+                }
+            }
+        }
+        .refreshable { await refresh() }
         .onChange(of: scenePhase) { _, phase in
             guard phase == .active else { return }
-            // Back in the app: the board is read again from now.
+            // Back in the app: the board is read again from now (its live board by RootView).
             clock = Date()
             Task { await model.reloadBoard() }
         }
+        .onAppear { model.boardLiveDidAppear() }
+        .onDisappear { model.boardLiveDidDisappear() }
         .task { await followTheClock() }
+    }
+
+    /// The board again from now, and its live board through the sources' gates.
+    private func refresh() async {
+        clock = Date()
+        await model.reloadBoard()
+        await model.pullBoardLive()
     }
 
     /// Choosing a station shows its board from now and remembers it on this iPhone.
@@ -133,7 +159,7 @@ private struct DepartureListSection: View {
                 // As a planner row: the detail of the train, boarded at this station.
                 if let query = model.boardDetailQuery(for: departure) {
                     NavigationLink {
-                        TrainDetailView(service: departure.service, query: query)
+                        TrainDetailView(service: departure.service, query: query, boardLive: departure.live)
                     } label: {
                         DepartureRow(departure: departure)
                     }
@@ -154,6 +180,7 @@ private struct DepartureListSection: View {
                 .disabled(model.boardIsLoadingMore)
             }
             BoardSourceFooter(rows: model.boardDepartures, attributions: model.boardAttributions)
+            LiveSourcesFooter(state: model.boardLiveState, sources: model.boardLiveSources, pauses: model.liveSourcePauses)
         } header: {
             Text("departures.list.title")
         }
@@ -170,7 +197,7 @@ private struct DepartureListSection: View {
 }
 
 /// The feeds of the listed trains, and «Orari programmati statici. Non sono dati in tempo reale.»
-/// while a row comes from the scheduled timetable (every row today).
+/// while a row has no live value.
 private struct BoardSourceFooter: View {
     let rows: [StationBoardDeparture]
     let attributions: [String]
@@ -189,10 +216,11 @@ private struct BoardSourceFooter: View {
     }
 }
 
-/// One train: scheduled time and the train as the planner rows name it, its destination (the
-/// trip's last stop), the platform when the timetable has one, the operator and bikes on board.
-/// VoiceOver reads «08:12, treno REG 2153 per Bergamo, binario non disponibile», then the operator
-/// and bikes.
+/// One train: scheduled time and the train as the planner rows name it, its live state when a
+/// source observed it («prev. 08:17 · +5 min», «Soppresso»), its destination (the trip's last stop),
+/// the actual platform or the timetable's, the operator, bikes on board and where the live values
+/// come from. VoiceOver reads «08:12, treno REG 2153 per Bergamo, binario 3. Previsto 08:17. In
+/// ritardo di 5 minuti. Fonte: ViaggiaTreno. Rilevato alle 08:10», then the operator and bikes.
 private struct DepartureRow: View {
     let departure: StationBoardDeparture
 
@@ -205,10 +233,13 @@ private struct DepartureRow: View {
                 Text(ReliableAlternatives.trainLabel(service))
                     .font(.headline)
                 Spacer()
-                if let platform = service.platform {
+                if let platform = departure.live?.platform ?? service.platform {
                     Text(DeparturesTexts.platform(platform))
                         .font(.subheadline.weight(.semibold))
                 }
+            }
+            if let live = departure.live {
+                LiveStatusLine(status: live)
             }
             Text(DeparturesTexts.destination(service.destination))
             Text(service.operatorName)
@@ -221,7 +252,7 @@ private struct DepartureRow: View {
             }
         }
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(Text(DeparturesTexts.spoken(service)))
+        .accessibilityLabel(Text(DeparturesTexts.spoken(departure)))
     }
 }
 
@@ -305,11 +336,13 @@ enum DeparturesTexts {
         String.localizedStringWithFormat(NSLocalizedString("departures.later.loaded", comment: ""), count)
     }
 
-    /// The row as one sentence, «08:12, treno REG 2153 per Bergamo, binario non disponibile»,
-    /// then the operator and, when the timetable publishes it, bikes on board.
-    static func spoken(_ service: TrainService) -> String {
+    /// The row as one sentence, «08:12, treno REG 2153 per Bergamo, binario non disponibile», then
+    /// its live state and provenance when a source observed it, the operator and, when the
+    /// timetable publishes it, bikes on board.
+    static func spoken(_ departure: StationBoardDeparture) -> String {
+        let service = departure.service
         let platform: String
-        if let name = service.platform {
+        if let name = departure.live?.platform ?? service.platform {
             platform = String.localizedStringWithFormat(NSLocalizedString("departures.row.platform_spoken", comment: ""), name)
         } else {
             platform = NSLocalizedString("departures.row.platform_unknown", comment: "")
@@ -321,7 +354,11 @@ enum DeparturesTexts {
             service.destination,
             platform
         )
-        var parts: [String] = [sentence, service.operatorName]
+        var parts: [String] = [sentence]
+        if let live = departure.live {
+            parts += LiveTexts.spoken(live, includingPlatform: false)
+        }
+        parts.append(service.operatorName)
         if let bikesAllowed = service.bikesAllowed {
             parts.append(NSLocalizedString(bikesAllowed ? "result.bikes.allowed" : "result.bikes.not_allowed", comment: ""))
         }

@@ -2,6 +2,10 @@ import Foundation
 import Combine
 import BinarioKit
 
+/// The live sources together, `LiveRailData.standard()` in the app: train status by number and the
+/// departures of a station, each never throwing and cancellable.
+typealias LiveRailProviding = LiveTrainStatusProviding & LiveDeparturesProviding
+
 @MainActor
 final class AppModel: ObservableObject {
     typealias CatalogState = StationCatalogLoadState
@@ -59,6 +63,53 @@ final class AppModel: ObservableObject {
         let departure: Date
     }
 
+    /// What the live sources gave a screen. The bundled timetable stays on screen in every state.
+    enum LiveState: Equatable {
+        /// «Dati in tempo reale» is off, or the build has no live source: nothing is asked.
+        case off
+        /// Nothing asked for what is on screen: hidden, or outside the live window.
+        case idle
+        case loading
+        /// The sources answered a request started at this instant (some values may be missing).
+        case available(Date)
+        /// No source gave a value: the screen keeps the bundled timetable alone.
+        case unavailable
+    }
+
+    /// One run a train detail or «I miei treni» asks the live sources about: the train number proper
+    /// (`NetworkReliability.numberKey`, «2153» of «RE_11 - 2153»), the instant it leaves the boarding
+    /// station on that day and that station.
+    struct LiveTrainKey: Hashable, Sendable {
+        let number: String
+        let departure: Date
+        let boarding: StationIdentity
+    }
+
+    /// The live state of one run as its sources published it, with its stop at the boarding station.
+    struct TrainLiveStatus: Equatable, Sendable {
+        let key: LiveTrainKey
+        let run: LiveRunStatus
+        let boarding: LiveStopStatus
+        /// When the request started: the values are shown for `liveDisplaySeconds` from then.
+        let receivedAt: Date
+    }
+
+    /// The merged live board of «Partenze», for the station it was asked for, and when.
+    private struct BoardLive {
+        let stationID: String
+        let board: LiveDepartureBoard
+        let at: Date
+    }
+
+    /// How a train status lookup ended for one run.
+    private enum TrainLiveOutcome {
+        case found(TrainLiveStatus)
+        /// The sources answered and none of their runs is this one.
+        case notFound
+        case failed
+        case cancelled
+    }
+
     /// The bundled timetables print times in their agency zone; every agency they include keeps
     /// Central European time, as Rome does.
     static let timetableTimeZone = TimeZone(identifier: "Europe/Rome") ?? .current
@@ -99,6 +150,25 @@ final class AppModel: ObservableObject {
     @Published private(set) var boardFirstTomorrow: StationBoardDeparture? = nil
     /// The feeds of the listed trains, for the board footer.
     @Published private(set) var boardAttributions: [String] = []
+    /// «Dati in tempo reale» (Settings, `LiveDataPreferenceStore`): on unless the user turned it off.
+    @Published private(set) var liveDataEnabled: Bool
+    /// The sources not asked again before a time, for «ViaggiaTreno in pausa fino alle 10:42».
+    @Published private(set) var liveSourcePauses: [LiveSourcePause] = []
+    /// «Partenze»: what the live board of the station gave its rows.
+    @Published private(set) var boardLiveState: LiveState
+    /// The sources whose boards gave the live values of «Partenze», in Android's provider order.
+    @Published private(set) var boardLiveSources: [LiveSource] = []
+    /// The planner: the live values of the trains of `latestSnapshot`, by service identifier, from
+    /// the live board of the search's origin.
+    @Published private(set) var resultLive: [String: StationBoardLiveStatus] = [:]
+    @Published private(set) var resultLiveState: LiveState
+    @Published private(set) var resultLiveSources: [LiveSource] = []
+    /// The train detail on screen: its run as the sources published it.
+    @Published private(set) var detailLive: TrainLiveStatus?
+    @Published private(set) var detailLiveState: LiveState
+    /// «I miei treni»: today's live state of the first favourites, by favourite identifier.
+    @Published private(set) var favouriteLive: [String: TrainLiveStatus] = [:]
+    @Published private(set) var favouriteLiveState: LiveState
 
     private(set) var repository: any JourneyRepository
     /// «Partenze»: the bundled timetable once the index is validated (the first provider, and the
@@ -130,6 +200,32 @@ final class AppModel: ObservableObject {
     private let watchSharingStore: WatchSharingPreferenceStore
     private let watchPublisher: WatchSnapshotPublisher?
     private let backgroundActivity: (any BackgroundActivityRunning)?
+    /// The live sources; nil in a model without them (the tests that do not need them): nothing is asked.
+    private let liveData: (any LiveRailProviding)?
+    private let liveDataStore: LiveDataPreferenceStore
+    private let livePauses: LiveSourcePauses
+
+    /// «Partenze»: the rows of the bundled timetable, before the live values are laid over them.
+    private var boardScheduled: [StationBoardDeparture] = []
+    private var boardLive: BoardLive?
+    /// When the live values of the planner's result were asked for.
+    private var resultLiveAt: Date?
+    /// The screens that ask live sources do so only while they are on screen.
+    private var boardLiveVisible = false
+    private var plannerLiveVisible = false
+    private var favouritesLiveVisible = false
+    /// The train detail on screen, if any.
+    private var detailLiveKey: LiveTrainKey?
+    /// Bumped by every live request and whenever its screen goes, so only the latest answer is shown.
+    private var boardLiveRequestID = 0
+    private var resultLiveRequestID = 0
+    private var detailLiveRequestID = 0
+    private var favouriteLiveRequestID = 0
+    /// The live requests started by a screen appearing, an input changing or a pull.
+    private var boardLiveLoad: Task<Void, Never>?
+    private var resultLiveLoad: Task<Void, Never>?
+    private var detailLiveLoad: Task<Void, Never>?
+    private var favouriteLiveLoad: Task<Void, Never>?
 
     init(
         catalogState: CatalogState,
@@ -143,6 +239,9 @@ final class AppModel: ObservableObject {
         coveredStationIDs: Set<String>? = nil,
         watchPublisher: WatchSnapshotPublisher?,
         backgroundActivity: (any BackgroundActivityRunning)? = nil,
+        liveData: (any LiveRailProviding)? = nil,
+        liveDataStore: LiveDataPreferenceStore = LiveDataPreferenceStore(),
+        livePauses: LiveSourcePauses = .shared,
         versionDisplay: String
     ) {
         self.catalogState = catalogState
@@ -157,6 +256,16 @@ final class AppModel: ObservableObject {
         self.latestSnapshot = nil
         self.watchPublisher = watchPublisher
         self.backgroundActivity = backgroundActivity
+        self.liveData = liveData
+        self.liveDataStore = liveDataStore
+        self.livePauses = livePauses
+        let liveEnabled = liveDataStore.load()
+        let liveState: LiveState = liveData != nil && liveEnabled ? .idle : .off
+        self.liveDataEnabled = liveEnabled
+        self.boardLiveState = liveState
+        self.resultLiveState = liveState
+        self.detailLiveState = liveState
+        self.favouriteLiveState = liveState
         self.versionDisplay = versionDisplay
         let routes = savedRouteStore.load()
         self.savedRoutes = routes
@@ -215,6 +324,10 @@ final class AppModel: ObservableObject {
             scheduleState: .loading,
             watchPublisher: publisher,
             backgroundActivity: background,
+            // One instance for the whole app: its sources share their gates (one request per
+            // resource every 30 seconds, pause at the first refusal) across every screen.
+            liveData: LiveRailData.standard(),
+            liveDataStore: LiveDataPreferenceStore(),
             versionDisplay: versionFormatter.displayVersion(bundle: bundle)
         )
 
@@ -405,12 +518,15 @@ final class AppModel: ObservableObject {
         guard requestID == searchRequestID else { return }
         let isForNow = Self.isCurrent(query, now: Date())
         watchRouteQuery = isForNow ? query : nil
+        // The live values of the previous result never reach this one's trains.
+        clearResultLive()
         switch result {
         case let .available(snapshot):
             searchState = .idle
             latestSnapshot = snapshot
             resultReliability = reliabilityStats.map { JourneyReliability.assess(snapshot, stats: $0) }
             if isForNow { publishAvailableSnapshot(snapshot) }
+            restartResultLive()
         case let .unavailable(reason):
             searchState = .unavailable(reason)
             latestSnapshot = nil
@@ -427,6 +543,7 @@ final class AppModel: ObservableObject {
         searchState = .idle
         latestSnapshot = nil
         resultReliability = nil
+        clearResultLive()
         watchRouteQuery = nil
         guard watchSharingEnabled else { return }
         if pinnedWatchRoute != nil {
@@ -563,13 +680,16 @@ final class AppModel: ObservableObject {
         guard station != boardStation || boardState == .idle else { return }
         boardStation = station
         boardStationStore.save(station)
-        // The trains of another station are never shown under this one.
-        boardDepartures = []
+        // The trains of another station are never shown under this one, nor its live values.
+        boardLive = nil
+        boardLiveSources = []
+        setBoardRows([])
         boardHasMore = false
         boardFirstTomorrow = nil
         boardAttributions = []
         boardState = .loading
         scheduleBoardReload()
+        restartBoardLive()
     }
 
     private func scheduleBoardReload() {
@@ -606,7 +726,7 @@ final class AppModel: ObservableObject {
         guard requestID == boardRequestID, boardStation == station else { return }
         switch result {
         case let .available(page):
-            boardDepartures = page.departures
+            setBoardRows(page.departures)
             boardHasMore = page.hasMore
             boardFirstTomorrow = page.firstDepartureNextDay
             boardAttributions = page.attributions
@@ -618,7 +738,7 @@ final class AppModel: ObservableObject {
     }
 
     private func applyBoardUnavailable(_ reason: JourneyUnavailableReason, day: Int) {
-        boardDepartures = []
+        setBoardRows([])
         boardHasMore = false
         boardFirstTomorrow = nil
         boardAttributions = []
@@ -652,7 +772,7 @@ final class AppModel: ObservableObject {
         let known = Set(boardDepartures.map(\.id))
         let room = max(0, Self.maximumBoardDepartures - boardDepartures.count)
         let added = Array(page.departures.filter { !known.contains($0.id) }.prefix(room))
-        boardDepartures += added
+        setBoardRows(boardScheduled + added)
         boardHasMore = page.hasMore && boardDepartures.count < Self.maximumBoardDepartures
         for attribution in page.attributions where !boardAttributions.contains(attribution) {
             boardAttributions.append(attribution)
@@ -678,9 +798,9 @@ final class AppModel: ObservableObject {
         case .available:
             break
         }
-        let listed = boardDepartures
+        let listed = boardScheduled
         let remaining = listed.filter { $0.stillToLeave(at: now) }
-        if remaining.count != listed.count { boardDepartures = remaining }
+        if remaining.count != listed.count { setBoardRows(remaining) }
         let emptied = remaining.isEmpty && !listed.isEmpty
         if emptied || boardDay != Self.boardDay(now) {
             await reloadBoard(now: now)
@@ -703,6 +823,518 @@ final class AppModel: ObservableObject {
         let month: Int = parts.month ?? 0
         let day: Int = parts.day ?? 0
         return year * 10_000 + month * 100 + day
+    }
+
+    // MARK: Live data
+
+    /// Live data is asked only for trains leaving from three hours ago to three hours ahead
+    /// (Android's `JourneyLiveCandidates.LOOKBACK` and `LOOKAHEAD`); the others keep their timetable.
+    static let liveLookback: TimeInterval = 3 * 3_600
+    static let liveLookahead: TimeInterval = 3 * 3_600
+    /// A live value is shown for five minutes after it was asked for (Android's recency limit for an
+    /// observation), then its row goes back to the timetable until the screen is refreshed.
+    static let liveDisplaySeconds: TimeInterval = 5 * 60
+    /// Two runs of one number further apart than this at the boarding station are two runs, as
+    /// Android's `JourneyLiveCandidates.SAME_RUN_TOLERANCE` (yesterday's night train is not today's).
+    static let sameRunTolerance: TimeInterval = 2 * 3_600
+    /// «I miei treni» asks the live state of its first favourites only, as Android's
+    /// `FavouriteTrainPunctuality.MAX_ROWS`.
+    static let maximumLiveFavourites = 8
+
+    /// The switch is on and the build has live sources.
+    var isLiveDataActive: Bool { liveDataEnabled && liveData != nil }
+
+    static func isInLiveWindow(_ departure: Date, now: Date) -> Bool {
+        departure >= now.addingTimeInterval(-liveLookback) && departure <= now.addingTimeInterval(liveLookahead)
+    }
+
+    static func isLiveDisplayable(since start: Date, now: Date) -> Bool {
+        now.timeIntervalSince(start) <= liveDisplaySeconds
+    }
+
+    /// «Dati in tempo reale» in Settings. Off, every request on its way is cancelled, every live
+    /// value goes and no screen asks anything: the app is the bundled timetable alone, as before.
+    func setLiveDataEnabled(_ enabled: Bool) {
+        guard liveDataEnabled != enabled else { return }
+        liveDataStore.save(enabled)
+        liveDataEnabled = enabled
+        guard enabled else {
+            clearLiveData()
+            return
+        }
+        let state: LiveState = liveData == nil ? .off : .idle
+        boardLiveState = state
+        resultLiveState = state
+        detailLiveState = state
+        favouriteLiveState = state
+        restartBoardLive()
+        restartResultLive()
+        restartDetailLive()
+        restartFavouritesLive()
+    }
+
+    private func clearLiveData() {
+        cancelBoardLive()
+        cancelResultLive()
+        cancelDetailLive()
+        cancelFavouritesLive()
+        boardLive = nil
+        boardLiveSources = []
+        setBoardRows(boardScheduled)
+        resultLive = [:]
+        resultLiveSources = []
+        resultLiveAt = nil
+        detailLive = nil
+        favouriteLive = [:]
+        liveSourcePauses = []
+        boardLiveState = .off
+        resultLiveState = .off
+        detailLiveState = .off
+        favouriteLiveState = .off
+    }
+
+    /// Back in the foreground: the screens on display ask again (through the sources' gates).
+    func liveDidBecomeActive() {
+        if boardLiveState != .loading { restartBoardLive() }
+        if resultLiveState != .loading { restartResultLive() }
+        if detailLiveState != .loading { restartDetailLive() }
+        if favouriteLiveState != .loading { restartFavouritesLive() }
+    }
+
+    /// In the background nothing is asked: the requests on their way are cancelled.
+    func liveDidEnterBackground() {
+        cancelBoardLive()
+        cancelResultLive()
+        cancelDetailLive()
+        cancelFavouritesLive()
+    }
+
+    /// Every minute while the app is open: the live values asked for more than
+    /// `liveDisplaySeconds` ago are no longer shown.
+    func expireLiveValues(now: Date = Date()) {
+        if let live = boardLive, !Self.isLiveDisplayable(since: live.at, now: now) {
+            boardLive = nil
+            boardLiveSources = []
+            if boardLiveState != .loading { boardLiveState = isLiveDataActive ? .idle : .off }
+            setBoardRows(boardScheduled)
+        }
+        if let at = resultLiveAt, !Self.isLiveDisplayable(since: at, now: now) {
+            resultLive = [:]
+            resultLiveSources = []
+            resultLiveAt = nil
+            if resultLiveState != .loading { resultLiveState = isLiveDataActive ? .idle : .off }
+        }
+        if let live = detailLive, !Self.isLiveDisplayable(since: live.receivedAt, now: now) {
+            detailLive = nil
+            if detailLiveState != .loading { detailLiveState = isLiveDataActive ? .idle : .off }
+        }
+        let fresh = favouriteLive.filter { Self.isLiveDisplayable(since: $0.value.receivedAt, now: now) }
+        if fresh.count != favouriteLive.count {
+            favouriteLive = fresh
+            if fresh.isEmpty, favouriteLiveState != .loading { favouriteLiveState = isLiveDataActive ? .idle : .off }
+        }
+    }
+
+    // MARK: Live data of «Partenze»
+
+    /// «Partenze» is on screen: the live board of its station is asked now.
+    func boardLiveDidAppear() {
+        boardLiveVisible = true
+        restartBoardLive()
+    }
+
+    /// «Partenze» left the screen: nothing more is asked and an answer on its way is dropped.
+    func boardLiveDidDisappear() {
+        boardLiveVisible = false
+        cancelBoardLive()
+    }
+
+    /// Pull to refresh, or «Aggiorna»: the live board again, through the sources' gates.
+    func pullBoardLive() async {
+        restartBoardLive()
+        await boardLiveLoad?.value
+    }
+
+    /// Waits until the live board started by an appearance, a station or a pull has been read.
+    func boardLiveLoadFinished() async {
+        await boardLiveLoad?.value
+    }
+
+    /// The live board of the chosen station, merged from RFI, Italo and ViaggiaTreno, over its
+    /// timetable rows (`LiveOverlay.stationBoard`): asked only while «Partenze» is on screen with
+    /// «Dati in tempo reale» on. When every source fails the rows stay the timetable's.
+    func refreshBoardLive(now: Date = Date()) async {
+        guard boardLiveVisible, liveDataEnabled, let liveData, let identity = boardStation else { return }
+        boardLiveRequestID &+= 1
+        let requestID = boardLiveRequestID
+        boardLiveState = .loading
+        let request = LiveDeparturesRequest(station: station(for: identity), from: StationBoardQuery.minuteStart(of: now))
+        let result = await liveData.departures(request)
+        guard requestID == boardLiveRequestID, boardStation == identity, liveDataEnabled else { return }
+        liveSourcePauses = livePauses.active(at: now)
+        switch result {
+        case let .available(board):
+            boardLive = BoardLive(stationID: identity.id, board: board, at: now)
+            boardLiveSources = board.sources
+            boardLiveState = .available(now)
+        case .unavailable(.cancelled):
+            boardLiveState = boardLiveRestingState
+        case .unavailable:
+            boardLive = nil
+            boardLiveSources = []
+            boardLiveState = .unavailable
+        }
+        setBoardRows(boardScheduled)
+    }
+
+    private var boardLiveRestingState: LiveState {
+        guard isLiveDataActive else { return .off }
+        guard let boardLive else { return .idle }
+        return .available(boardLive.at)
+    }
+
+    private func restartBoardLive() {
+        boardLiveLoad?.cancel()
+        boardLiveLoad = nil
+        guard boardLiveVisible, isLiveDataActive, boardStation != nil else { return }
+        boardLiveState = .loading
+        boardLiveLoad = Task { await self.refreshBoardLive() }
+    }
+
+    private func cancelBoardLive() {
+        boardLiveRequestID &+= 1
+        boardLiveLoad?.cancel()
+        boardLiveLoad = nil
+        if boardLiveState == .loading { boardLiveState = boardLiveRestingState }
+    }
+
+    /// The rows of «Partenze»: the bundled timetable's, with the values of the last live board of
+    /// the same station on the trains it lists; every other row stays «orario programmato».
+    private func setBoardRows(_ rows: [StationBoardDeparture]) {
+        boardScheduled = rows
+        guard liveDataEnabled, let live = boardLive, live.stationID == boardStation?.id else {
+            boardDepartures = rows
+            return
+        }
+        boardDepartures = LiveOverlay.stationBoard(rows, with: live.board, at: live.at)
+    }
+
+    // MARK: Live data of the planner
+
+    /// The planner is on screen: the live values of the result shown are asked again.
+    func plannerLiveDidAppear() {
+        plannerLiveVisible = true
+        restartResultLive()
+    }
+
+    func plannerLiveDidDisappear() {
+        plannerLiveVisible = false
+        cancelResultLive()
+    }
+
+    /// Waits until the live values asked for the result have arrived.
+    func resultLiveLoadFinished() async {
+        await resultLiveLoad?.value
+    }
+
+    /// The live values of the listed trains, for a search leaving within the live window: the live
+    /// board of its origin, one request whatever the number of trains, each train matched by its
+    /// number proper within five minutes of its departure. Every source failing leaves the results
+    /// as they are, on the bundled timetable.
+    func refreshResultLive(now: Date = Date()) async {
+        guard plannerLiveVisible, liveDataEnabled, let liveData, let snapshot = latestSnapshot else { return }
+        let query = snapshot.query
+        guard Self.isInLiveWindow(query.departure, now: now) else {
+            resultLive = [:]
+            resultLiveSources = []
+            resultLiveAt = nil
+            resultLiveState = .idle
+            return
+        }
+        resultLiveRequestID &+= 1
+        let requestID = resultLiveRequestID
+        let searchID = searchRequestID
+        resultLiveState = .loading
+        let request = LiveDeparturesRequest(station: station(for: query.origin), from: StationBoardQuery.minuteStart(of: query.departure))
+        let result = await liveData.departures(request)
+        guard requestID == resultLiveRequestID, searchID == searchRequestID, liveDataEnabled else { return }
+        liveSourcePauses = livePauses.active(at: now)
+        switch result {
+        case let .available(board):
+            resultLive = Self.liveValues(of: snapshot, board: board, at: now)
+            resultLiveSources = board.sources
+            resultLiveAt = now
+            resultLiveState = .available(now)
+        case .unavailable(.cancelled):
+            resultLiveState = resultLiveRestingState
+        case .unavailable:
+            resultLive = [:]
+            resultLiveSources = []
+            resultLiveAt = nil
+            resultLiveState = .unavailable
+        }
+    }
+
+    /// Each listed train's row on `board`, placed in time as the Watch places them (the "HH:mm" of
+    /// each train from the query's minute on, in order), with what is still live at `now`.
+    static func liveValues(of journey: JourneySnapshot, board: LiveDepartureBoard, at now: Date) -> [String: StationBoardLiveStatus] {
+        let calendar = timetableCalendar
+        var cursor = journey.query.departure.addingTimeInterval(-60)
+        var live: [String: StationBoardLiveStatus] = [:]
+        for service in journey.services {
+            guard let departure = nextOccurrence(of: service.scheduledDeparture, after: cursor, calendar: calendar) else { continue }
+            cursor = departure.addingTimeInterval(-1)
+            guard let row = LiveOverlay.departure(number: service.number, scheduled: departure, in: board.departures),
+                  let status = row.stationBoardLiveStatus(at: now) else { continue }
+            live[service.id] = status
+        }
+        return live
+    }
+
+    private var resultLiveRestingState: LiveState {
+        guard isLiveDataActive else { return .off }
+        guard let resultLiveAt else { return .idle }
+        return .available(resultLiveAt)
+    }
+
+    private func restartResultLive() {
+        resultLiveLoad?.cancel()
+        resultLiveLoad = nil
+        guard plannerLiveVisible, isLiveDataActive, latestSnapshot != nil else { return }
+        resultLiveLoad = Task { await self.refreshResultLive() }
+    }
+
+    private func cancelResultLive() {
+        resultLiveRequestID &+= 1
+        resultLiveLoad?.cancel()
+        resultLiveLoad = nil
+        if resultLiveState == .loading { resultLiveState = resultLiveRestingState }
+    }
+
+    private func clearResultLive() {
+        cancelResultLive()
+        resultLive = [:]
+        resultLiveSources = []
+        resultLiveAt = nil
+        resultLiveState = isLiveDataActive ? .idle : .off
+    }
+
+    // MARK: Live data of a train detail and «I miei treni»
+
+    /// The run a train detail asks about, when it leaves within the live window: its number proper
+    /// and its "HH:mm" at the boarding station, from the query's time on (a board row's departure,
+    /// a search's time) and never before the window (a favourite saved weeks ago means today's
+    /// run). Nil for a train without a number the sources know (a line name) or outside the window.
+    func liveTrainKey(for service: TrainService, query: JourneyQuery, now: Date = Date()) -> LiveTrainKey? {
+        let number = NetworkReliability.numberKey(service.number)
+        let digits = number.unicodeScalars.allSatisfy { ("0"..."9").contains($0) }
+        let anchor = max(query.departure, now.addingTimeInterval(-Self.liveLookback))
+        guard digits, (1...6).contains(number.count),
+              let departure = Self.nextOccurrence(
+                  of: service.scheduledDeparture, after: anchor.addingTimeInterval(-60), calendar: Self.timetableCalendar
+              ),
+              Self.isInLiveWindow(departure, now: now) else { return nil }
+        return LiveTrainKey(number: number, departure: departure, boarding: query.origin)
+    }
+
+    /// A train detail is on screen: its run is asked now.
+    func detailLiveDidAppear(_ key: LiveTrainKey) {
+        if detailLive?.key != key { detailLive = nil }
+        detailLiveKey = key
+        restartDetailLive()
+    }
+
+    /// The detail of `key` left the screen (another detail may already be on it).
+    func detailLiveDidDisappear(_ key: LiveTrainKey) {
+        guard detailLiveKey == key else { return }
+        detailLiveKey = nil
+        cancelDetailLive()
+    }
+
+    func pullDetailLive(_ key: LiveTrainKey) async {
+        guard detailLiveKey == key else { return }
+        restartDetailLive()
+        await detailLiveLoad?.value
+    }
+
+    func detailLiveLoadFinished() async {
+        await detailLiveLoad?.value
+    }
+
+    /// The run of the detail on screen, which wins over the row it was opened from.
+    func liveRun(for key: LiveTrainKey) -> TrainLiveStatus? {
+        guard liveDataEnabled, let detailLive, detailLive.key == key else { return nil }
+        return detailLive
+    }
+
+    func liveRunState(for key: LiveTrainKey) -> LiveState {
+        guard isLiveDataActive else { return .off }
+        return detailLiveKey == key ? detailLiveState : .idle
+    }
+
+    /// The status of the run of the detail on screen (`trainLive`).
+    func refreshDetailLive(now: Date = Date()) async {
+        guard liveDataEnabled, let liveData, let key = detailLiveKey else { return }
+        detailLiveRequestID &+= 1
+        let requestID = detailLiveRequestID
+        detailLiveState = .loading
+        let outcome = await Self.trainLive(key, from: liveData, at: now)
+        guard requestID == detailLiveRequestID, detailLiveKey == key, liveDataEnabled else { return }
+        liveSourcePauses = livePauses.active(at: now)
+        switch outcome {
+        case let .found(status):
+            detailLive = status
+            detailLiveState = .available(now)
+        case .cancelled:
+            if let detailLive {
+                detailLiveState = .available(detailLive.receivedAt)
+            } else {
+                detailLiveState = .idle
+            }
+        case .notFound, .failed:
+            detailLive = nil
+            detailLiveState = .unavailable
+        }
+    }
+
+    private func restartDetailLive() {
+        detailLiveLoad?.cancel()
+        detailLiveLoad = nil
+        guard isLiveDataActive, detailLiveKey != nil else { return }
+        detailLiveState = .loading
+        detailLiveLoad = Task { await self.refreshDetailLive() }
+    }
+
+    private func cancelDetailLive() {
+        detailLiveRequestID &+= 1
+        detailLiveLoad?.cancel()
+        detailLiveLoad = nil
+        guard detailLiveState == .loading else { return }
+        guard isLiveDataActive else {
+            detailLiveState = .off
+            return
+        }
+        if let detailLive {
+            detailLiveState = .available(detailLive.receivedAt)
+        } else {
+            detailLiveState = .idle
+        }
+    }
+
+    /// «I miei treni» is on screen: today's runs of its first favourites are asked now.
+    func favouritesLiveDidAppear() {
+        favouritesLiveVisible = true
+        restartFavouritesLive()
+    }
+
+    func favouritesLiveDidDisappear() {
+        favouritesLiveVisible = false
+        cancelFavouritesLive()
+    }
+
+    func pullFavouritesLive() async {
+        restartFavouritesLive()
+        await favouriteLiveLoad?.value
+    }
+
+    func favouritesLiveLoadFinished() async {
+        await favouriteLiveLoad?.value
+    }
+
+    /// Today's live state of the first `maximumLiveFavourites` favourites leaving within the live
+    /// window, asked one train after the other through the sources' gates while «I miei treni» is
+    /// on screen; each row shows its state as soon as it arrives.
+    func refreshFavouritesLive(now: Date = Date()) async {
+        guard favouritesLiveVisible, liveDataEnabled, let liveData else { return }
+        favouriteLiveRequestID &+= 1
+        let requestID = favouriteLiveRequestID
+        var runs: [(id: String, run: LiveTrainKey)] = []
+        for train in favouriteTrains.prefix(Self.maximumLiveFavourites) {
+            guard let query = train.query, let run = liveTrainKey(for: train.service, query: query, now: now) else { continue }
+            runs.append((id: train.id, run: run))
+        }
+        // Only the values of the runs asked now stay on screen meanwhile.
+        var shown: [String: TrainLiveStatus] = [:]
+        for entry in runs {
+            if let kept = favouriteLive[entry.id], kept.key == entry.run { shown[entry.id] = kept }
+        }
+        favouriteLive = shown
+        guard !runs.isEmpty else {
+            favouriteLiveState = .idle
+            return
+        }
+        favouriteLiveState = .loading
+        var failures = 0
+        for entry in runs {
+            let outcome = await Self.trainLive(entry.run, from: liveData, at: now)
+            guard requestID == favouriteLiveRequestID, favouritesLiveVisible, liveDataEnabled else { return }
+            switch outcome {
+            case let .found(status):
+                shown[entry.id] = status
+            case .notFound:
+                shown[entry.id] = nil
+            case .failed:
+                shown[entry.id] = nil
+                failures += 1
+            case .cancelled:
+                favouriteLiveState = shown.isEmpty ? .idle : .available(now)
+                return
+            }
+            favouriteLive = shown
+        }
+        liveSourcePauses = livePauses.active(at: now)
+        favouriteLiveState = shown.isEmpty && failures > 0 ? .unavailable : .available(now)
+    }
+
+    private func restartFavouritesLive() {
+        favouriteLiveLoad?.cancel()
+        favouriteLiveLoad = nil
+        guard favouritesLiveVisible, isLiveDataActive, !favouriteTrains.isEmpty else { return }
+        favouriteLiveState = .loading
+        favouriteLiveLoad = Task { await self.refreshFavouritesLive() }
+    }
+
+    private func cancelFavouritesLive() {
+        favouriteLiveRequestID &+= 1
+        favouriteLiveLoad?.cancel()
+        favouriteLiveLoad = nil
+        guard favouriteLiveState == .loading else { return }
+        guard isLiveDataActive else {
+            favouriteLiveState = .off
+            return
+        }
+        if let receivedAt = favouriteLive.values.map(\.receivedAt).max() {
+            favouriteLiveState = .available(receivedAt)
+        } else {
+            favouriteLiveState = .idle
+        }
+    }
+
+    /// The live state of the run `key` names: ViaggiaTreno and Italo asked by its number proper and
+    /// the day, the boarding station's code picking the run (`LiveTrainStatusLookup.run(for:)`)
+    /// among those calling there within `sameRunTolerance` of the timetable's departure, so another
+    /// day's run of the same number, or another train with that number, is never shown.
+    private static func trainLive(_ key: LiveTrainKey, from liveData: any LiveRailProviding, at now: Date) async -> TrainLiveOutcome {
+        let code = NetworkReliability.stationCode(key.boarding)
+        let request = LiveTrainStatusRequest(number: key.number, serviceDate: key.departure, stationCode: code)
+        switch await liveData.trainStatus(request) {
+        case let .available(lookup):
+            let sameRun = lookup.runs.filter { run in
+                guard let stop = LiveOverlay.stop(in: run, stationCode: code, stationName: key.boarding.name) else { return false }
+                let scheduled: Date = stop.scheduledDeparture ?? stop.scheduled
+                return abs(scheduled.timeIntervalSince(key.departure)) <= sameRunTolerance
+            }
+            let candidates = LiveTrainStatusLookup(runs: sameRun, unavailableSources: lookup.unavailableSources, isComplete: lookup.isComplete)
+            guard let run = candidates.run(for: request),
+                  let stop = LiveOverlay.stop(in: run, stationCode: code, stationName: key.boarding.name) else { return .notFound }
+            return .found(TrainLiveStatus(key: key, run: run, boarding: stop, receivedAt: now))
+        case .unavailable(.cancelled):
+            return .cancelled
+        case .unavailable(.notFound), .unavailable(.notCovered), .unavailable(.invalidRequest):
+            return .notFound
+        case .unavailable:
+            return .failed
+        }
     }
 
     func takePlannerRequest() -> PlannerRequest? {
@@ -1076,6 +1708,29 @@ final class WatchSharingPreferenceStore {
         } else {
             defaults.removeObject(forKey: Self.pinnedRouteStorageKey)
         }
+    }
+}
+
+/// «Dati in tempo reale» in Settings, in the app's `UserDefaults` on this iPhone only: on by
+/// default, as the owner decided; the user can turn it off. Only a boolean the app wrote counts:
+/// a missing value, or a value of any other type, reads as on.
+final class LiveDataPreferenceStore {
+    static let storageKey = "it.binario.ios.live-data-enabled.v1"
+
+    private let defaults: UserDefaults
+
+    init(defaults: UserDefaults = .standard) {
+        self.defaults = defaults
+    }
+
+    func load() -> Bool {
+        guard let stored = defaults.object(forKey: Self.storageKey) as? NSNumber,
+              CFGetTypeID(stored) == CFBooleanGetTypeID() else { return true }
+        return stored.boolValue
+    }
+
+    func save(_ enabled: Bool) {
+        defaults.set(enabled, forKey: Self.storageKey)
     }
 }
 

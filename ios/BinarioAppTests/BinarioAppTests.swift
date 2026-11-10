@@ -734,6 +734,381 @@ final class BinarioAppTests: XCTestCase {
         XCTAssertEqual(failClosed.boardDepartures, [])
     }
 
+    // MARK: Live data
+
+    func testPartenzeLaysTheLiveBoardOverItsRowsOnlyOnScreenAndFallsBackWhenEverySourceFails() async throws {
+        let defaults = try makeDefaults()
+        defer { clear(defaults) }
+        let base = try rome(2026, 11, 10, 8, 0)
+        let rows = (0..<5).map { boardDeparture($0, after: base) }
+        let live = FakeLiveRailData(board: .available(LiveFixtures.board([
+            LiveFixtures.row("2101", scheduled: rows[0].departure, delay: 5, platform: "3", status: .delayed,
+                             platformSource: .rfiStationBoard, at: base),
+            LiveFixtures.row("2102", scheduled: rows[1].departure, delay: nil, platform: nil, status: .cancelled, at: base),
+        ], stationID: milanoCode.id, at: base)))
+        let model = makeLiveModel(defaults: defaults, live: live, boardProvider: StubBoardProvider(rows: rows))
+        XCTAssertTrue(model.liveDataEnabled, "on by default")
+        XCTAssertEqual(model.boardLiveState, .idle)
+
+        model.selectBoardStation(milanoCode)
+        await model.boardLoadFinished()
+        await model.reloadBoard(now: base)
+        // Not on screen: nothing is asked and the rows are the timetable's.
+        await model.refreshBoardLive(now: base)
+        let hidden = await live.requestCount
+        XCTAssertEqual(hidden, 0)
+        XCTAssertTrue(model.boardDepartures.allSatisfy(\.isScheduled))
+
+        // On screen: the live board of the station over its rows.
+        model.boardLiveDidAppear()
+        await model.boardLiveLoadFinished()
+        await model.refreshBoardLive(now: base)
+        let asked = await live.departureRequests
+        XCTAssertEqual(asked.last?.station.id, milanoCode.id)
+        XCTAssertEqual(asked.last?.from, base)
+        XCTAssertEqual(model.boardLiveState, .available(base))
+        XCTAssertEqual(model.boardLiveSources, [.rfiStationBoard, .viaggiaTreno])
+        let delayed = try XCTUnwrap(model.boardDepartures[0].live)
+        XCTAssertEqual(delayed.delayMinutes, 5)
+        XCTAssertEqual(delayed.expectedDeparture, rows[0].departure.addingTimeInterval(5 * 60))
+        XCTAssertEqual(delayed.platform, "3")
+        XCTAssertEqual(delayed.source, .viaggiaTreno)
+        XCTAssertEqual(delayed.platformSource, .rfiStationBoard, "the platform keeps its own source")
+        XCTAssertEqual(model.boardDepartures[1].live?.cancelled, true)
+        XCTAssertTrue(model.boardDepartures[2].isScheduled, "a train the live board does not list stays scheduled")
+        // The live state is part of the row's spoken sentence.
+        let sentence = DeparturesTexts.spoken(model.boardDepartures[0])
+        XCTAssertTrue(sentence.contains(LiveTexts.delaySentence(5)))
+        XCTAssertTrue(sentence.contains(LiveTexts.fromSource(.viaggiaTreno)))
+        XCTAssertTrue(sentence.contains(LiveTexts.platformFrom(.rfiStationBoard)))
+        XCTAssertEqual(LiveTexts.state(delayed), [LiveTexts.expectedShortTime(rows[0].departure.addingTimeInterval(5 * 60)),
+                                                  LiveTexts.delayBadge(5)].joined(separator: " · "))
+        let cancelledRow = try XCTUnwrap(model.boardDepartures[1].live)
+        XCTAssertEqual(LiveTexts.state(cancelledRow), LiveTexts.cancelled)
+
+        // «Più tardi» keeps the live values of the rows already listed.
+        _ = await model.loadMoreBoard()
+        XCTAssertEqual(model.boardDepartures[0].live?.delayMinutes, 5)
+
+        // Five minutes on, the values are no longer shown as live.
+        model.expireLiveValues(now: base.addingTimeInterval(AppModel.liveDisplaySeconds + 1))
+        XCTAssertTrue(model.boardDepartures.allSatisfy(\.isScheduled))
+        XCTAssertEqual(model.boardLiveState, .idle)
+
+        // Every source failing: the rows stay the timetable's, all of them.
+        await live.setBoard(.unavailable(.sourceUnavailable))
+        await model.refreshBoardLive(now: base)
+        XCTAssertEqual(model.boardLiveState, .unavailable)
+        XCTAssertEqual(model.boardDepartures.count, rows.count)
+        XCTAssertTrue(model.boardDepartures.allSatisfy(\.isScheduled))
+
+        // Off screen again: nothing more is asked.
+        model.boardLiveDidDisappear()
+        let before = await live.requestCount
+        await model.refreshBoardLive(now: base)
+        let after = await live.requestCount
+        XCTAssertEqual(before, after)
+    }
+
+    func testAnAnswerForTheStationLeftBehindNeverReachesTheNewOne() async throws {
+        let defaults = try makeDefaults()
+        defer { clear(defaults) }
+        let base = try rome(2026, 11, 10, 8, 0)
+        let rows = (0..<3).map { boardDeparture($0, after: base) }
+        let live = ControlledLiveBoards()
+        let model = makeLiveModel(defaults: defaults, live: live, boardProvider: StubBoardProvider(rows: rows))
+        model.selectBoardStation(milanoCode)
+        await model.boardLoadFinished()
+        await model.reloadBoard(now: base)
+        model.boardLiveDidAppear()
+        await live.waitUntilPending(milanoCode.id)
+
+        model.selectBoardStation(bergamoCode)
+        await live.waitUntilPending(bergamoCode.id)
+        await live.complete(milanoCode.id, with: .available(LiveFixtures.board([
+            LiveFixtures.row("2101", scheduled: rows[0].departure, delay: 9, platform: "1", status: .delayed, at: base),
+        ], stationID: milanoCode.id, at: base)))
+        await live.complete(bergamoCode.id, with: .unavailable(.sourceUnavailable))
+        await model.boardLiveLoadFinished()
+        await model.boardLoadFinished()
+        await model.reloadBoard(now: base)
+
+        XCTAssertEqual(model.boardStation, bergamoCode)
+        XCTAssertEqual(model.boardLiveState, .unavailable)
+        XCTAssertEqual(model.boardDepartures.count, rows.count)
+        XCTAssertTrue(model.boardDepartures.allSatisfy(\.isScheduled), "Milano's answer never reaches Bergamo's rows")
+    }
+
+    func testPlannerResultsTakeTheLiveBoardOfTheOriginWithinTheLiveWindow() async throws {
+        let defaults = try makeDefaults()
+        defer { clear(defaults) }
+        let now = Date()
+        let query = try JourneyQuery(origin: milanoCode, destination: bergamoCode, departure: now)
+        let snapshot = fixtureSnapshot(query: query, serviceNumber: "RE_11 - 2153")
+        let live = FakeLiveRailData(board: .available(LiveFixtures.board([
+            LiveFixtures.row("2153", scheduled: now.addingTimeInterval(30 * 60), delay: 4, platform: "7", status: .delayed, at: now),
+        ], stationID: milanoCode.id, at: now)))
+        let model = makeLiveModel(defaults: defaults, live: live, repository: StubJourneyRepository(result: .available(snapshot)))
+
+        // A search with the planner off screen asks nothing.
+        await model.run(query: query)
+        let hidden = await live.requestCount
+        XCTAssertEqual(hidden, 0)
+        XCTAssertTrue(model.resultLive.isEmpty)
+
+        // On screen: one board request for the origin, whatever the number of trains.
+        model.plannerLiveDidAppear()
+        await model.resultLiveLoadFinished()
+        let asked = await live.departureRequests
+        XCTAssertEqual(asked.count, 1)
+        XCTAssertEqual(asked.last?.station.id, milanoCode.id)
+        XCTAssertEqual(asked.last?.from, StationBoardQuery.minuteStart(of: now))
+        let status = try XCTUnwrap(model.resultLive[snapshot.services[0].id], "matched by the number proper of «RE_11 - 2153»")
+        XCTAssertEqual(status.delayMinutes, 4)
+        XCTAssertEqual(status.platform, "7")
+        guard case .available = model.resultLiveState else { return XCTFail("expected live values, got \(model.resultLiveState)") }
+        XCTAssertEqual(model.resultLiveSources, [.rfiStationBoard, .viaggiaTreno])
+
+        // Every source failing: the results stay, without live values.
+        await live.setBoard(.unavailable(.refused))
+        await model.refreshResultLive(now: now)
+        XCTAssertEqual(model.resultLiveState, .unavailable)
+        XCTAssertTrue(model.resultLive.isEmpty)
+        XCTAssertEqual(model.latestSnapshot, snapshot)
+
+        // A changed input drops them and the answer on its way.
+        await live.setBoard(.available(LiveFixtures.board([
+            LiveFixtures.row("2153", scheduled: now.addingTimeInterval(30 * 60), delay: 4, platform: "7", status: .delayed, at: now),
+        ], stationID: milanoCode.id, at: now)))
+        await model.refreshResultLive(now: now)
+        XCTAssertFalse(model.resultLive.isEmpty)
+        model.invalidateSearchResult()
+        XCTAssertTrue(model.resultLive.isEmpty)
+        XCTAssertEqual(model.resultLiveState, .idle)
+
+        // A search beyond the live window asks nothing.
+        let later = try JourneyQuery(origin: milanoCode, destination: bergamoCode, departure: now.addingTimeInterval(5 * 3_600))
+        let laterLive = FakeLiveRailData()
+        let laterModel = makeLiveModel(
+            defaults: defaults, live: laterLive,
+            repository: StubJourneyRepository(result: .available(fixtureSnapshot(query: later, serviceNumber: "2153")))
+        )
+        laterModel.plannerLiveDidAppear()
+        await laterModel.run(query: later)
+        await laterModel.resultLiveLoadFinished()
+        let laterAsked = await laterLive.requestCount
+        XCTAssertEqual(laterAsked, 0)
+        XCTAssertEqual(laterModel.resultLiveState, .idle)
+    }
+
+    func testTrainDetailShowsItsOwnRunAtTheBoardingStationAndNeverAnotherDays() async throws {
+        let defaults = try makeDefaults()
+        defer { clear(defaults) }
+        let now = Date()
+        let departure = StationBoardQuery.minuteStart(of: now.addingTimeInterval(20 * 60))
+        let query = try JourneyQuery(origin: milanoCode, destination: bergamoCode, departure: departure)
+        let service = TrainService(
+            id: "trenord:2153", number: "RE_11 - 2153", operatorName: "Trenord", category: "RE", destination: "Bergamo",
+            scheduledDeparture: romeTime(departure), expectedDeparture: romeTime(departure), status: "PROGRAMMED",
+            platform: nil, delayMinutes: 0
+        )
+        let today = LiveFixtures.run("2153", id: "viaggiatreno:today", boardingCode: "S01700", departure: departure, delay: 7, at: now)
+        let yesterday = LiveFixtures.run(
+            "2153", id: "viaggiatreno:yesterday", boardingCode: "S01700", departure: departure.addingTimeInterval(-86_400), delay: 30, at: now
+        )
+        let live = FakeLiveRailData(status: { _ in
+            .available(LiveTrainStatusLookup(runs: [yesterday, today], unavailableSources: [:], isComplete: true))
+        })
+        let model = makeLiveModel(defaults: defaults, live: live)
+
+        let key = try XCTUnwrap(model.liveTrainKey(for: service, query: query, now: now))
+        XCTAssertEqual(key.number, "2153", "the number proper, as Android asks it")
+        XCTAssertEqual(key.departure, departure)
+        // Not on screen: nothing is asked.
+        await model.refreshDetailLive(now: now)
+        let hidden = await live.requestCount
+        XCTAssertEqual(hidden, 0)
+
+        model.detailLiveDidAppear(key)
+        await model.detailLiveLoadFinished()
+        let request = await live.statusRequests.last
+        XCTAssertEqual(request?.number, "2153")
+        XCTAssertEqual(request?.stationCode, "S01700")
+        XCTAssertEqual(request?.serviceDate, departure)
+        let status = try XCTUnwrap(model.liveRun(for: key))
+        XCTAssertEqual(status.run.id, "viaggiatreno:today", "yesterday's run of the same number is another run")
+        XCTAssertEqual(status.boarding.delayMinutes, 7)
+        XCTAssertEqual(status.boarding.platform, "5")
+        XCTAssertEqual(LiveTexts.runState(status), [LiveTexts.delaySentence(7)])
+        XCTAssertEqual(LiveTexts.boardingDeparture(status.boarding)?.time, departure.addingTimeInterval(7 * 60))
+        XCTAssertTrue(LiveTexts.spokenStop(status.boarding).contains(LiveTexts.delaySentence(7)))
+        if case .available = model.liveRunState(for: key) {} else { XCTFail("expected the run, got \(model.liveRunState(for: key))") }
+
+        // Only another day's run: nothing is shown rather than a guess.
+        await live.setStatus { _ in .available(LiveTrainStatusLookup(runs: [yesterday], unavailableSources: [:], isComplete: true)) }
+        await model.refreshDetailLive(now: now)
+        XCTAssertNil(model.liveRun(for: key))
+        XCTAssertEqual(model.liveRunState(for: key), .unavailable)
+
+        // Every source failing: the detail stays on its timetable.
+        await live.setStatus { _ in .unavailable(.sourceUnavailable) }
+        await model.refreshDetailLive(now: now)
+        XCTAssertNil(model.liveRun(for: key))
+        XCTAssertEqual(model.liveRunState(for: key), .unavailable)
+
+        // Leaving the screen: nothing more is asked.
+        model.detailLiveDidDisappear(key)
+        let before = await live.requestCount
+        await model.refreshDetailLive(now: now)
+        let after = await live.requestCount
+        XCTAssertEqual(before, after)
+        XCTAssertEqual(model.liveRunState(for: key), .idle)
+
+        // A train outside the live window, or a line name, is never asked about.
+        let tomorrow = try JourneyQuery(origin: milanoCode, destination: bergamoCode, departure: departure.addingTimeInterval(86_400))
+        XCTAssertNil(model.liveTrainKey(for: service, query: tomorrow, now: now))
+        let line = fixtureSnapshot(query: query, serviceNumber: "Linea SASSARI-SORSO").services[0]
+        XCTAssertNil(model.liveTrainKey(for: line, query: query, now: now))
+    }
+
+    func testMyTrainsAsksTheFirstEightFavouritesOnlyWhileOnScreen() async throws {
+        let defaults = try makeDefaults()
+        defer { clear(defaults) }
+        let now = Date()
+        let query = try JourneyQuery(origin: milanoCode, destination: bergamoCode, departure: now)
+        let live = FakeLiveRailData(status: { request in
+            .available(LiveTrainStatusLookup(runs: [
+                LiveFixtures.run(request.number, id: "viaggiatreno:\(request.number)", boardingCode: request.stationCode,
+                                 departure: request.serviceDate, delay: 3, at: request.serviceDate),
+            ], unavailableSources: [:], isComplete: true))
+        })
+        let model = makeLiveModel(defaults: defaults, live: live)
+        for number in 1...10 {
+            let time = romeTime(now.addingTimeInterval(TimeInterval(10 + number) * 60))
+            let service = TrainService(
+                id: "trenord:\(number)", number: "\(2_100 + number)", operatorName: "Trenord", category: "RE",
+                destination: "Bergamo", scheduledDeparture: time, expectedDeparture: time, status: "PROGRAMMED",
+                platform: nil, delayMinutes: 0
+            )
+            XCTAssertEqual(model.toggleFavourite(service, query: query, now: now), .added)
+        }
+
+        // Not on screen: nothing is asked.
+        await model.refreshFavouritesLive(now: now)
+        let hidden = await live.requestCount
+        XCTAssertEqual(hidden, 0)
+
+        model.favouritesLiveDidAppear()
+        await model.favouritesLiveLoadFinished()
+        let asked = await live.statusRequests
+        XCTAssertEqual(asked.count, AppModel.maximumLiveFavourites)
+        XCTAssertEqual(asked.map(\.number), model.favouriteTrains.prefix(AppModel.maximumLiveFavourites).map { NetworkReliability.numberKey($0.number) })
+        XCTAssertEqual(model.favouriteLive.count, AppModel.maximumLiveFavourites)
+        let first = try XCTUnwrap(model.favouriteLive[model.favouriteTrains[0].id])
+        XCTAssertEqual(LiveTexts.runState(first), [LiveTexts.delaySentence(3)])
+        XCTAssertNil(model.favouriteLive[model.favouriteTrains[9].id], "the ninth and tenth are not asked")
+        guard case .available = model.favouriteLiveState else { return XCTFail("expected live states, got \(model.favouriteLiveState)") }
+
+        // Off screen: nothing more is asked.
+        model.favouritesLiveDidDisappear()
+        await model.refreshFavouritesLive(now: now)
+        let after = await live.requestCount
+        XCTAssertEqual(after, AppModel.maximumLiveFavourites)
+    }
+
+    func testTheLiveSwitchIsOnByDefaultPersistedValidatedAndOffAsksNothing() async throws {
+        let defaults = try makeDefaults()
+        defer { clear(defaults) }
+        let store = LiveDataPreferenceStore(defaults: defaults)
+        XCTAssertTrue(store.load(), "on by default")
+        let foreign: [Any] = ["false", 0, Data([0])]
+        for value in foreign {
+            defaults.set(value, forKey: LiveDataPreferenceStore.storageKey)
+            XCTAssertTrue(store.load(), "a value the app did not write reads as on: \(value)")
+        }
+        store.save(false)
+        XCTAssertFalse(LiveDataPreferenceStore(defaults: defaults).load())
+
+        // Off: no screen asks anything, and every state reads as off.
+        let base = try rome(2026, 11, 10, 8, 0)
+        let rows = (0..<3).map { boardDeparture($0, after: base) }
+        let now = Date()
+        let query = try JourneyQuery(origin: milanoCode, destination: bergamoCode, departure: now)
+        let snapshot = fixtureSnapshot(query: query, serviceNumber: "2153")
+        let live = FakeLiveRailData(
+            board: .available(LiveFixtures.board([
+                LiveFixtures.row("2101", scheduled: rows[0].departure, delay: 2, platform: "4", status: .delayed, at: base),
+            ], stationID: milanoCode.id, at: base)),
+            status: { request in
+                .available(LiveTrainStatusLookup(runs: [
+                    LiveFixtures.run(request.number, id: "viaggiatreno:\(request.number)", boardingCode: request.stationCode,
+                                     departure: request.serviceDate, delay: 1, at: request.serviceDate),
+                ], unavailableSources: [:], isComplete: true))
+            }
+        )
+        let model = makeLiveModel(
+            defaults: defaults, live: live, repository: StubJourneyRepository(result: .available(snapshot)),
+            boardProvider: StubBoardProvider(rows: rows)
+        )
+        XCTAssertFalse(model.liveDataEnabled)
+        XCTAssertFalse(model.isLiveDataActive)
+        model.selectBoardStation(milanoCode)
+        await model.boardLoadFinished()
+        await model.reloadBoard(now: base)
+        model.boardLiveDidAppear()
+        await model.boardLiveLoadFinished()
+        await model.refreshBoardLive(now: base)
+        model.plannerLiveDidAppear()
+        await model.run(query: query)
+        await model.resultLiveLoadFinished()
+        let service = snapshot.services[0]
+        XCTAssertEqual(model.toggleFavourite(service, query: query, now: now), .added)
+        model.favouritesLiveDidAppear()
+        await model.favouritesLiveLoadFinished()
+        let key = try XCTUnwrap(model.liveTrainKey(for: service, query: query, now: now))
+        model.detailLiveDidAppear(key)
+        await model.detailLiveLoadFinished()
+        let offCount = await live.requestCount
+        XCTAssertEqual(offCount, 0, "with the switch off the app makes no request")
+        XCTAssertEqual(model.boardLiveState, .off)
+        XCTAssertEqual(model.resultLiveState, .off)
+        XCTAssertEqual(model.favouriteLiveState, .off)
+        XCTAssertEqual(model.liveRunState(for: key), .off)
+        XCTAssertTrue(model.boardDepartures.allSatisfy(\.isScheduled))
+
+        // On again: the screens on display ask, through the provider.
+        model.setLiveDataEnabled(true)
+        XCTAssertTrue(LiveDataPreferenceStore(defaults: defaults).load())
+        await model.boardLiveLoadFinished()
+        await model.resultLiveLoadFinished()
+        await model.detailLiveLoadFinished()
+        await model.favouritesLiveLoadFinished()
+        let onCount = await live.requestCount
+        XCTAssertGreaterThan(onCount, 0)
+        XCTAssertEqual(model.boardDepartures[0].live?.delayMinutes, 2)
+        XCTAssertNotNil(model.liveRun(for: key))
+
+        // Off again: every live value goes at once and nothing more is asked.
+        model.setLiveDataEnabled(false)
+        XCTAssertFalse(LiveDataPreferenceStore(defaults: defaults).load())
+        XCTAssertTrue(model.boardDepartures.allSatisfy(\.isScheduled))
+        XCTAssertTrue(model.resultLive.isEmpty)
+        XCTAssertTrue(model.favouriteLive.isEmpty)
+        XCTAssertNil(model.liveRun(for: key))
+        XCTAssertEqual(model.boardLiveState, .off)
+        await model.refreshBoardLive(now: base)
+        await model.refreshDetailLive(now: now)
+        await model.refreshFavouritesLive(now: now)
+        let finalCount = await live.requestCount
+        XCTAssertEqual(finalCount, onCount)
+
+        // A model without live sources never asks either, whatever the switch says.
+        let offline = makeLiveModel(defaults: defaults, live: nil)
+        offline.setLiveDataEnabled(true)
+        XCTAssertFalse(offline.isLiveDataActive)
+        XCTAssertEqual(offline.boardLiveState, .off)
+    }
+
     func testPlannerCaptionAppearsOnlyWhenTheDeviceClockDiffersFromTimetables() throws {
         let summer = try rome(2026, 7, 1, 9, 0)
         let winter = try rome(2026, 12, 1, 9, 0)
@@ -790,6 +1165,32 @@ final class BinarioAppTests: XCTestCase {
     private var roma: StationIdentity { StationIdentity(id: "S08409", name: "Roma Termini") }
     private var napoli: StationIdentity { StationIdentity(id: "S09218", name: "Napoli Centrale") }
     private var milano: StationIdentity { StationIdentity(id: "S01700", name: "Milano Centrale") }
+    /// With their railway codes, which the live sources are asked with.
+    private var milanoCode: StationIdentity { StationIdentity(id: "S01700", name: "Milano Centrale", railwayCode: "S01700") }
+    private var bergamoCode: StationIdentity { StationIdentity(id: "S01529", name: "Bergamo", railwayCode: "S01529") }
+
+    /// A model with live sources (or none), every store in `defaults`, and its own pauses.
+    private func makeLiveModel(
+        defaults: UserDefaults,
+        live: (any LiveRailProviding)?,
+        repository: any JourneyRepository = FailClosedJourneyRepository(),
+        boardProvider: any StationBoardProvider = FailClosedStationBoardProvider()
+    ) -> AppModel {
+        AppModel(
+            catalogState: .loading,
+            savedRouteStore: SavedRouteStore(defaults: defaults),
+            favouriteTrainStore: FavouriteTrainStore(defaults: defaults),
+            boardStationStore: StationBoardStationStore(defaults: defaults),
+            watchSharingStore: WatchSharingPreferenceStore(defaults: defaults),
+            repository: repository,
+            boardProvider: boardProvider,
+            watchPublisher: nil,
+            liveData: live,
+            liveDataStore: LiveDataPreferenceStore(defaults: defaults),
+            livePauses: LiveSourcePauses(),
+            versionDisplay: "test"
+        )
+    }
 
     private func makeModel(
         defaults: UserDefaults,
@@ -917,6 +1318,7 @@ final class BinarioAppTests: XCTestCase {
         defaults.removeObject(forKey: StationBoardStationStore.storageKey)
         defaults.removeObject(forKey: WatchSharingPreferenceStore.storageKey)
         defaults.removeObject(forKey: WatchSharingPreferenceStore.pinnedRouteStorageKey)
+        defaults.removeObject(forKey: LiveDataPreferenceStore.storageKey)
     }
 
     private func encodedRouteArray(
@@ -1048,6 +1450,131 @@ private final class FakeAppSession: WatchSnapshotSession {
     func completeActivation(_ state: WatchSessionActivationState) {
         activationState = state
         activationHandler?(state)
+    }
+}
+
+/// Live values for the model tests. Their observations stay live for a year, so no test depends
+/// on the machine's clock; nothing here touches the network.
+private enum LiveFixtures {
+    static func observation(_ source: LiveSource, at date: Date) -> LiveObservation {
+        LiveObservation(source: source, fetchedAt: date, observedAt: date, expiresAt: date.addingTimeInterval(365 * 86_400))
+    }
+
+    /// A row of a live board, its time and state from `source`, its platform from `platformSource`.
+    static func row(
+        _ number: String, scheduled: Date, delay: Int?, platform: String?, status: LiveDepartureStatus?,
+        source: LiveSource = .viaggiaTreno, platformSource: LiveSource? = nil, at date: Date
+    ) -> LiveDeparture {
+        let seen = observation(source, at: date)
+        let platformSeen = observation(platformSource ?? source, at: date)
+        let expected: LiveSourced<Date>? = delay.map { minutes in
+            LiveSourced(scheduled.addingTimeInterval(TimeInterval(minutes) * 60), observation: seen)
+        }
+        return LiveDeparture(
+            id: "\(source.rawValue):\(number)", number: number, operatorID: "trenitalia", category: "REG",
+            destination: "Bergamo", scheduled: scheduled, expected: expected,
+            platform: platform.map { LiveSourced($0, observation: platformSeen) }, scheduledPlatform: nil,
+            status: status.map { LiveSourced($0, observation: seen) }, sources: [source], viaggiaTrenoRun: nil,
+            observation: seen
+        )
+    }
+
+    static func board(_ rows: [LiveDeparture], stationID: String, at date: Date) -> LiveDepartureBoard {
+        LiveDepartureBoard(
+            stationID: stationID, from: date, to: date.addingTimeInterval(6 * 3_600), departures: rows,
+            sources: [.rfiStationBoard, .viaggiaTreno], unavailableSources: [:], warnings: [], fetchedAt: date
+        )
+    }
+
+    /// A verified ViaggiaTreno run leaving the boarding station at `departure` with `delay`
+    /// minutes, platform 5, then Bergamo an hour later.
+    static func run(
+        _ number: String, id: String, boardingCode: String?, departure: Date, delay: Int, at date: Date
+    ) -> LiveRunStatus {
+        let late: TimeInterval = TimeInterval(delay) * 60
+        let arrival = departure.addingTimeInterval(3_600)
+        let boarding = LiveStopStatus(
+            stationCode: boardingCode, stationName: "MILANO CENTRALE", scheduled: departure, scheduledDeparture: nil,
+            expected: departure.addingTimeInterval(late), actual: nil, actualDeparture: nil, platform: "5",
+            scheduledPlatform: "4", delayMinutes: delay, passed: false, skipped: false, operationalStatusVerified: true
+        )
+        let last = LiveStopStatus(
+            stationCode: "S01529", stationName: "BERGAMO", scheduled: arrival, scheduledDeparture: nil,
+            expected: arrival.addingTimeInterval(late), actual: nil, actualDeparture: nil, platform: nil,
+            scheduledPlatform: nil, delayMinutes: delay, passed: false, skipped: false, operationalStatusVerified: true
+        )
+        return LiveRunStatus(
+            id: id, number: number, category: "REG", operatorName: "Trenitalia", operatorID: "trenitalia",
+            originCode: boardingCode, originName: "MILANO CENTRALE", destinationName: "BERGAMO",
+            scheduledDeparture: departure, expectedDeparture: departure.addingTimeInterval(late), platform: "5",
+            scheduledPlatform: "4", state: delay > 0 ? .delayed : .onTime, cancellation: .none, delayMinutes: delay,
+            operationalStatusVerified: true,
+            lastObservation: LiveRunObservationPoint(stationName: "MILANO LAMBRATE", at: date, isRecent: true),
+            stops: [boarding, last], observation: observation(.viaggiaTreno, at: date), viaggiaTrenoRun: nil
+        )
+    }
+}
+
+/// Live sources answering what the test sets and recording every request.
+private actor FakeLiveRailData: LiveTrainStatusProviding, LiveDeparturesProviding {
+    typealias StatusHandler = @Sendable (LiveTrainStatusRequest) -> LiveTrainStatusResult
+
+    private(set) var departureRequests: [LiveDeparturesRequest] = []
+    private(set) var statusRequests: [LiveTrainStatusRequest] = []
+    private var board: LiveDeparturesResult
+    private var status: StatusHandler
+
+    init(
+        board: LiveDeparturesResult = .unavailable(.sourceUnavailable),
+        status: @escaping StatusHandler = { _ in .unavailable(.sourceUnavailable) }
+    ) {
+        self.board = board
+        self.status = status
+    }
+
+    var requestCount: Int { departureRequests.count + statusRequests.count }
+
+    func setBoard(_ result: LiveDeparturesResult) {
+        board = result
+    }
+
+    func setStatus(_ handler: @escaping StatusHandler) {
+        status = handler
+    }
+
+    func departures(_ request: LiveDeparturesRequest) async -> LiveDeparturesResult {
+        departureRequests.append(request)
+        return board
+    }
+
+    func trainStatus(_ request: LiveTrainStatusRequest) async -> LiveTrainStatusResult {
+        statusRequests.append(request)
+        return status(request)
+    }
+}
+
+/// Live boards that answer only when the test says, by station.
+private actor ControlledLiveBoards: LiveTrainStatusProviding, LiveDeparturesProviding {
+    private var pending: [String: CheckedContinuation<LiveDeparturesResult, Never>] = [:]
+
+    func departures(_ request: LiveDeparturesRequest) async -> LiveDeparturesResult {
+        await withCheckedContinuation { continuation in
+            pending[request.station.id] = continuation
+        }
+    }
+
+    func trainStatus(_ request: LiveTrainStatusRequest) async -> LiveTrainStatusResult {
+        .unavailable(.notCovered)
+    }
+
+    func waitUntilPending(_ stationID: String) async {
+        while pending[stationID] == nil {
+            await Task.yield()
+        }
+    }
+
+    func complete(_ stationID: String, with result: LiveDeparturesResult) {
+        pending.removeValue(forKey: stationID)?.resume(returning: result)
     }
 }
 

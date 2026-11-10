@@ -66,6 +66,12 @@ public struct StationBoardLiveStatus: Equatable, Sendable {
     public let sourceLabel: String
     /// When the source observed the train.
     public let observedAt: Date
+    /// The live source `sourceLabel` names, when the status comes from one of Binario's.
+    public let source: LiveSource?
+    /// The source of `platform`, which may not be `source` (RFI's platform under ViaggiaTreno's time).
+    public let platformSource: LiveSource?
+    /// Late without an expected time: the bare «RITARDO» of an RFI board, never «on time».
+    public let lateWithoutMinutes: Bool
 
     public init(
         expectedDeparture: Date?,
@@ -73,7 +79,10 @@ public struct StationBoardLiveStatus: Equatable, Sendable {
         cancelled: Bool,
         platform: String?,
         sourceLabel: String,
-        observedAt: Date
+        observedAt: Date,
+        source: LiveSource? = nil,
+        platformSource: LiveSource? = nil,
+        lateWithoutMinutes: Bool = false
     ) {
         self.expectedDeparture = expectedDeparture
         self.delayMinutes = delayMinutes
@@ -81,6 +90,9 @@ public struct StationBoardLiveStatus: Equatable, Sendable {
         self.platform = platform
         self.sourceLabel = sourceLabel
         self.observedAt = observedAt
+        self.source = source
+        self.platformSource = platformSource
+        self.lateWithoutMinutes = lateWithoutMinutes
     }
 }
 

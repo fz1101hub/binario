@@ -1,6 +1,6 @@
 public enum BinarioLocalizationKeys {
     public static let required: Set<String> = [
-        "action.ok",
+        "action.ok", "action.refresh",
         "tab.planner", "tab.departures", "tab.saved", "tab.trains", "tab.settings",
         "planner.title", "planner.intro.title", "planner.intro.body",
         "planner.origin", "planner.destination", "planner.departure", "planner.departure.italian_time",
@@ -28,6 +28,13 @@ public enum BinarioLocalizationKeys {
         "result.detail.band_range", "result.detail.band_over", "result.detail.band_share",
         "result.detail.max_delay", "result.detail.worst_stop", "result.detail.usual_platform",
         "result.detail.weekday", "result.detail.threshold_note",
+        "result.live.title", "result.live.loading", "result.live.unavailable", "result.live.from_sources",
+        "result.live.source", "result.live.platform_source", "result.live.observed", "result.live.paused",
+        "result.live.expected_short", "result.live.expected", "result.live.actual", "result.live.scheduled",
+        "result.live.delay_short", "result.live.delay", "result.live.on_time", "result.live.cancelled",
+        "result.live.partially_cancelled", "result.live.late_unpublished", "result.live.unverified",
+        "result.live.expected_departure", "result.live.platform", "result.live.last_observation",
+        "result.live.stops", "result.live.passed", "result.live.skipped",
         "departures.title", "departures.station", "departures.empty.body", "departures.local_only",
         "departures.list.title", "departures.loading", "departures.none.title", "departures.none.body",
         "departures.no_more_today", "departures.not_covered.body", "departures.expired.body",
@@ -50,6 +57,8 @@ public enum BinarioLocalizationKeys {
         "settings.privacy.no_collection", "settings.privacy.local_routes",
         "settings.privacy.watch", "settings.privacy.watch_sharing",
         "settings.privacy.watch_sharing_detail", "settings.privacy.watch_status",
+        "settings.live.sources_title", "settings.live.toggle", "settings.live.detail",
+        "settings.live.viaggiatreno", "settings.live.rfi", "settings.live.italo", "settings.live.privacy",
         "settings.about.title", "settings.about.version", "settings.about.version_unavailable",
         "watch.source.unavailable", "watch.notice.unavailable", "watch.notice.programmed",
         "watch.status.disabled", "watch.status.activating", "watch.status.pending",
@@ -68,5 +77,6 @@ public enum BinarioLocalizationKeys {
         "result.detail.reliability_title", "result.detail.arrival_on_time", "result.detail.band_share",
         "result.detail.usual_platform", "result.detail.weekday", "result.alternative.on_time",
         "saved.trains.limit_error", "saved.trains.reliability.description", "departures.later.loaded",
+        "result.live.delay",
     ]
 }

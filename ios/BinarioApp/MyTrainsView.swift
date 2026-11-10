@@ -2,9 +2,11 @@ import SwiftUI
 import BinarioKit
 
 /// «I miei treni»: the trains saved with the star of the train detail, newest first, kept on this
-/// iPhone only. A tap opens the train's detail as a planner row does; a swipe, or the VoiceOver
-/// action, removes it. Below, «Affidabilità dei miei treni»: each of the first trains at its last
-/// stop in the unofficial network statistics, hidden without them.
+/// iPhone only, with today's live state of the first eight leaving within the live window («In
+/// ritardo di 7 minuti», «Soppresso», «In orario»), asked when the tab appears or is pulled and only
+/// while it is on screen. A tap opens the train's detail as a planner row does; a swipe, or the
+/// VoiceOver action, removes it. Below, «Affidabilità dei miei treni»: each of the first trains at
+/// its last stop in the unofficial network statistics, hidden without them.
 struct MyTrainsView: View {
     @EnvironmentObject private var model: AppModel
     @State private var showsStorageError = false
@@ -22,8 +24,13 @@ struct MyTrainsView: View {
                     Section {
                         ForEach(model.favouriteTrains) { train in
                             NavigationLink(value: train) {
-                                FavouriteTrainHeading(train: train)
-                                    .accessibilityElement(children: .combine)
+                                VStack(alignment: .leading, spacing: 5) {
+                                    FavouriteTrainHeading(train: train)
+                                    if model.liveDataEnabled, let live = model.favouriteLive[train.id] {
+                                        FavouriteLiveLine(status: live)
+                                    }
+                                }
+                                .accessibilityElement(children: .combine)
                             }
                             .accessibilityHint(Text("accessibility.open_train_detail"))
                             .accessibilityAction(named: Text("result.favourite.remove")) {
@@ -38,7 +45,14 @@ struct MyTrainsView: View {
                             remove(Set(ids))
                         }
                     } footer: {
-                        Text("saved.trains.local_only")
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text("saved.trains.local_only")
+                            LiveSourcesFooter(
+                                state: model.favouriteLiveState,
+                                sources: favouriteLiveSources,
+                                pauses: model.liveSourcePauses
+                            )
+                        }
                     }
 
                     if let reliability = model.favouriteTrainsReliability {
@@ -48,6 +62,23 @@ struct MyTrainsView: View {
             }
         }
         .navigationTitle("saved.trains.title")
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                if model.isLiveDataActive, !model.favouriteTrains.isEmpty {
+                    // Pull to refresh, as a button VoiceOver finds.
+                    Button {
+                        Task { await refreshLive() }
+                    } label: {
+                        Label("action.refresh", systemImage: "arrow.clockwise")
+                    }
+                    .disabled(model.favouriteLiveState == .loading)
+                }
+            }
+        }
+        .refreshable { await refreshLive() }
+        // Requests only while the tab is on screen: a detail opened from it asks its own run.
+        .onAppear { model.favouritesLiveDidAppear() }
+        .onDisappear { model.favouritesLiveDidDisappear() }
         // On the Group, not the List: a detail stays open when its train is removed from the list,
         // even the last one.
         .navigationDestination(for: FavouriteTrain.self) { train in
@@ -56,6 +87,16 @@ struct MyTrainsView: View {
         .alert("saved.trains.storage_error", isPresented: $showsStorageError) {
             Button("action.ok", role: .cancel) { showsStorageError = false }
         }
+    }
+
+    private func refreshLive() async {
+        await model.pullFavouritesLive()
+    }
+
+    /// The sources of the live states shown, in Android's provider order.
+    private var favouriteLiveSources: [LiveSource] {
+        let used = Set(model.favouriteLive.values.map(\.run.observation.source))
+        return LiveSource.allCases.filter { used.contains($0) }
     }
 
     /// Removing is always possible; only a list that cannot be written is reported.
@@ -99,6 +140,27 @@ private struct FavouriteTrainHeading: View {
             }
             Text(verbatim: "\(train.origin.name) → \(train.terminus)")
             Text(train.operatorName)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+    }
+}
+
+/// Today's live state of a favourite: «In ritardo di 7 minuti», «Soppresso», «In orario» or
+/// «Stato operativo non verificato», then where it comes from and when it was observed.
+private struct FavouriteLiveLine: View {
+    let status: AppModel.TrainLiveStatus
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Label {
+                Text(LiveTexts.runState(status).joined(separator: " · "))
+            } icon: {
+                Image(systemName: LiveTexts.isDisrupted(status) ? "exclamationmark.circle" : "dot.radiowaves.left.and.right")
+            }
+            .font(.subheadline.weight(.semibold))
+            .foregroundStyle(LiveTexts.isDisrupted(status) ? BinarioPalette.statusError : Color.primary)
+            Text(LiveTexts.provenance(status).joined(separator: " · "))
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }

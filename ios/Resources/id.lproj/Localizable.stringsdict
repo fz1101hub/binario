@@ -100,6 +100,20 @@
 			<string>%3$@: tepat waktu %1$lld dari %2$lld kali (rata-rata %4$lld%%)</string>
 		</dict>
 	</dict>
+	<key>result.live.delay</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>other</key>
+			<string>Terlambat %1$lld menit</string>
+		</dict>
+	</dict>
 	<key>result.reliability.cancelled</key>
 	<dict>
 		<key>NSStringLocalizedFormatKey</key>
