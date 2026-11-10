@@ -848,6 +848,47 @@ final class BinarioAppTests: XCTestCase {
         XCTAssertTrue(model.boardDepartures.allSatisfy(\.isScheduled), "Milano's answer never reaches Bergamo's rows")
     }
 
+    func testNoLiveRequestStartsInTheBackgroundEvenFromAReadingBegunJustBefore() async throws {
+        let defaults = try makeDefaults()
+        defer { clear(defaults) }
+        let base = try rome(2026, 11, 10, 8, 0)
+        let rows = (0..<3).map { boardDeparture($0, after: base) }
+        let now = Date()
+        let query = try JourneyQuery(origin: milanoCode, destination: bergamoCode, departure: now)
+        let snapshot = fixtureSnapshot(query: query, serviceNumber: "2153")
+        let live = FakeLiveRailData(board: .available(LiveFixtures.board([
+            LiveFixtures.row("2101", scheduled: rows[0].departure, delay: 2, platform: "4", status: .delayed, at: base),
+        ], stationID: milanoCode.id, at: base)))
+        let model = makeLiveModel(
+            defaults: defaults, live: live, repository: StubJourneyRepository(result: .available(snapshot)),
+            boardProvider: StubBoardProvider(rows: rows)
+        )
+        model.selectBoardStation(milanoCode)
+        await model.boardLoadFinished()
+        model.boardLiveDidAppear()
+        model.plannerLiveDidAppear()
+        await model.boardLiveLoadFinished()
+        let before = await live.requestCount
+        XCTAssertGreaterThan(before, 0)
+
+        // Home pressed while a pull or a search was still reading the timetable: when it reaches
+        // its live step, nothing is asked.
+        model.liveDidEnterBackground()
+        await model.pullBoardLive()
+        await model.run(query: query)
+        await model.resultLiveLoadFinished()
+        await model.refreshBoardLive(now: base)
+        let background = await live.requestCount
+        XCTAssertEqual(background, before, "no live request starts in the background")
+
+        // Back in the foreground the screens on display ask again.
+        model.liveDidBecomeActive()
+        await model.boardLiveLoadFinished()
+        await model.resultLiveLoadFinished()
+        let after = await live.requestCount
+        XCTAssertGreaterThan(after, background)
+    }
+
     func testPlannerResultsTakeTheLiveBoardOfTheOriginWithinTheLiveWindow() async throws {
         let defaults = try makeDefaults()
         defer { clear(defaults) }
