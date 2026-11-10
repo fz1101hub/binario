@@ -9,6 +9,7 @@ import android.content.Intent
 import android.util.TypedValue
 import android.view.View
 import android.widget.RemoteViews
+import androidx.annotation.StringRes
 import androidx.core.content.ContextCompat
 import androidx.core.content.edit
 import androidx.work.Constraints
@@ -278,6 +279,9 @@ class RouteWidgetProvider : AppWidgetProvider() {
             }
             views.setTextViewText(R.id.widget_direction, strings.directionLabels.getValue(state.direction).uppercase())
             views.setTextViewText(R.id.widget_refresh, context.getString(R.string.widget_refresh_symbol))
+            // The host reapplies each update on the same views: the spoken labels of the other states are reset here.
+            describeActions(context, views, R.string.widget_switch_direction, R.string.widget_refresh)
+            views.setContentDescription(R.id.widget_root, null)
             views.setOnClickPendingIntent(R.id.widget_previous_page, actionIntent(context, ACTION_PREVIOUS_PAGE, widgetId))
             views.setOnClickPendingIntent(R.id.widget_next_page, actionIntent(context, ACTION_NEXT_PAGE, widgetId))
             views.setOnClickPendingIntent(R.id.widget_direction, actionIntent(context, ACTION_SWITCH_DIRECTION, widgetId))
@@ -310,6 +314,8 @@ class RouteWidgetProvider : AppWidgetProvider() {
             views.setViewVisibility(R.id.widget_column_header, View.GONE)
             views.setTextViewText(R.id.widget_direction, context.getString(R.string.widget_configuration_action))
             views.setTextViewText(R.id.widget_refresh, context.getString(R.string.widget_open_action))
+            describeActions(context, views, R.string.widget_configure_title, R.string.widget_open_app)
+            views.setContentDescription(R.id.widget_root, null)
             views.setOnClickPendingIntent(R.id.widget_root, configureIntent(context, widgetId))
             views.setOnClickPendingIntent(R.id.widget_direction, configureIntent(context, widgetId))
             views.setOnClickPendingIntent(R.id.widget_refresh, openAppIntent(context, widgetId))
@@ -327,7 +333,7 @@ class RouteWidgetProvider : AppWidgetProvider() {
             views.setViewVisibility(R.id.widget_column_header, View.GONE)
             views.setTextViewText(R.id.widget_direction, context.getString(R.string.widget_configuration_action))
             views.setTextViewText(R.id.widget_refresh, context.getString(R.string.widget_refresh_symbol))
-            views.setContentDescription(R.id.widget_refresh, context.getString(R.string.widget_refresh))
+            describeActions(context, views, R.string.widget_configure_title, R.string.widget_refresh)
             views.setContentDescription(
                 R.id.widget_root,
                 context.getString(
@@ -341,6 +347,12 @@ class RouteWidgetProvider : AppWidgetProvider() {
             // Without data (automatic refresh off, or a direction just swapped) the button loads it now.
             views.setOnClickPendingIntent(R.id.widget_refresh, actionIntent(context, ACTION_REFRESH, widgetId))
             manager.updateAppWidget(widgetId, views)
+        }
+
+        /** TalkBack labels of the two action buttons, which change role with the state of the widget. */
+        private fun describeActions(context: Context, views: RemoteViews, @StringRes directionLabel: Int, @StringRes refreshLabel: Int) {
+            views.setContentDescription(R.id.widget_direction, context.getString(directionLabel))
+            views.setContentDescription(R.id.widget_refresh, context.getString(refreshLabel))
         }
 
         private fun actionIntent(context: Context, action: String, widgetId: Int): PendingIntent {
