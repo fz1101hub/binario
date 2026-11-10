@@ -89,10 +89,10 @@ android {
 dependencies {
     // Compose BOM 2026.09.00 selects Compose 1.12.1, which requires AGP >= 9.1 and compileSdk >= 37; TODO: remove when the toolchain reaches AGP >= 9.1 and compileSdk >= 37.
     //noinspection GradleDependency
-    implementation(platform("androidx.compose:compose-bom:2026.06.01"))
+    implementation(platform("androidx.compose:compose-bom:2026.09.00"))
     // Core 1.19.1 requires AGP >= 9.1 and compileSdk >= 37; TODO: remove when the toolchain reaches AGP >= 9.1 and compileSdk >= 37.
     //noinspection GradleDependency
-    implementation("androidx.core:core-ktx:1.15.0")
+    implementation("androidx.core:core-ktx:1.19.1")
     implementation("androidx.activity:activity-compose:1.13.0")
     // Lifecycle 2.11.0 resolves lifecycle-runtime-compose 2.11.0, which requires AGP >= 9.1 and compileSdk >= 37; TODO: remove when the toolchain reaches AGP >= 9.1 and compileSdk >= 37.
     //noinspection GradleDependency
