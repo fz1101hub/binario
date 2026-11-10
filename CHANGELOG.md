@@ -1,5 +1,58 @@
 # Changelog
 
+## In sviluppo — Audit indipendente del 10 novembre: correzioni
+
+Otto revisori indipendenti, uno per area, hanno trovato 87 difetti. Ognuno è stato prima verificato o confutato, poi riprodotto con un test e corretto con un commit a parte. Le correzioni sono arrivate in quattro PR: #79 iPhone e Apple Watch, #80 companion Expo, #81 Wear OS, raccolta della puntualità, CI e documenti, e questa per dati Android, notifiche, widget e Alexa.
+
+- **Android, risultati e dati in tempo reale**:
+  - alla stazione di arrivo vale l'orario di arrivo, non quello in cui il treno riparte (prima STA 1839 Fortezza → Brunico durava 54 minuti invece di 37);
+  - una corsa in tempo reale verificata non sostituisce più l'intero elenco: i treni Italo e quelli successivi restano, con l'orario programmato e i dati dei tabelloni;
+  - una fermata intermedia aggiunta o soppressa non fa più sparire la corsa;
+  - le righe di ViaggiaTreno prendono l'operatore che dichiarano (Trenord compreso), mai Trenitalia per ipotesi;
+  - due treni di pacchetti diversi alla stessa ora restano due treni se numero e operatore non coincidono (REG 16348 e Italo 8984 Venezia S. Lucia → Mestre);
+  - dopo mezzanotte si vedono ancora i treni della sera prima in ritardo.
+- **Fonti pubbliche**:
+  - un 403 o 429 mette subito in pausa ViaggiaTreno, il monitor RFI e Italo, per il Retry-After o 15 minuti;
+  - ViaggiaTreno ha un solo stato condiviso in tutta l'app;
+  - i redirect sono ammessi solo sullo stesso host.
+- **Avviso di arrivo dei treni preferiti**: non suona più nei giorni in cui il treno non circola né quando la corsa salta la fermata, e funziona anche per le fermate dopo mezzanotte. Un avviso di lavori non viene più notificato di nuovo ogni 7 giorni.
+- **Widget**:
+  - «I miei treni» non mostra più come attuale lo stato di un giorno precedente;
+  - il widget della tratta con dati vecchi mostra l'orario;
+  - nomi delle fonti e degli operatori nella lingua del telefono;
+  - TalkBack legge l'azione giusta sui pulsanti.
+- **Altre correzioni Android**: un'app riaperta da Recenti non ripete il link di avvio; un backup troppo grande è spiegato nella lingua dell'app; il permesso di notifica concesso dopo una rotazione accende davvero la notifica.
+- **Wear OS** (#81):
+  - i dati restano 15 minuti con l'ora della rilevazione;
+  - un treno soppresso non è più la prossima partenza;
+  - Tile e complicazione passano al treno successivo un minuto dopo la partenza;
+  - i treni del mattino dopo non risultano già partiti.
+- **iPhone e Apple Watch** (#79):
+  - i treni Trenord letti da RFI e ViaggiaTreno hanno i dati in tempo reale;
+  - una fonte in pausa non viene sbloccata da una risposta arrivata in ritardo, e la mancanza di rete non la mette in pausa;
+  - «In orario» non compare più accanto a un orario che la fonte ha spostato;
+  - i nomi di linea (SNCF, TFT, Trentino, ARST) non sono più trattati come numeri di treno;
+  - nessuna richiesta parte in background.
+- **Companion Expo** (#80):
+  - i promemoria funzionano e si annullano in tutte le 17 lingue;
+  - il promemoria scelto nel pianificatore viene programmato;
+  - la dettatura legge le ore dalle 20 alle 23;
+  - date e orari sono sempre ora italiana;
+  - il calendario ICS importa ed esporta i fusi orari.
+- **Alexa**:
+  - «qual è il treno più puntuale» non propone più i treni del fine settimana nei giorni feriali;
+  - «il treno N è puntuale» va alla risposta sulla puntualità;
+  - lo stato di un treno non chiede più il collegamento dell'account;
+  - fuori dall'italiano gli orari sono indicati come ora italiana;
+  - la dashboard non riceve più i vecchi campi personali del database;
+  - il server non parte con un MariaDB che trasformerebbe le date vuote nella data corrente.
+- **Raccolta della puntualità** (#81):
+  - una cache non ripristinata non può più cancellare 35 giorni di osservazioni;
+  - un rifiuto mette in pausa le run successive (da 2 ore fino a 7 giorni);
+  - il User-Agent descrive con precisione il raccoglitore.
+- **CI**: la firma della release solo da `main` o `stabilization/*`, nell'ambiente `release`; controlli più severi su trigger, checkout e segreti dei workflow.
+- **Documenti**: PRIVACY.md, scheda Data safety di Play, note per la revisione Apple (eccezione ATS) e AZIONI_TITOLARE allineati al codice.
+
 ## In sviluppo — Dati in tempo reale su iPhone: le schermate
 
 - **Partenze** su iPhone mostra quello che le fonti pubbliche vedono dei treni della stazione, come su Android: orario previsto e ritardo («prev. 08:17 · +5 min»), «Soppresso», il binario effettivo, la fonte di ogni valore («Fonte: ViaggiaTreno · Binario da RFI») e l'ora del rilevamento. I treni senza dati in tempo reale restano con «Orari programmati statici». Il tabellone si aggiorna quando compare, quando l'app torna in primo piano, cambiando stazione e trascinando in basso o con «Aggiorna», mai da solo.
