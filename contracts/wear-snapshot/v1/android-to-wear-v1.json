@@ -10,7 +10,7 @@
   "operationalState": "OPERATIONAL",
   "freshness": "FRESH",
   "confidence": "OPERATOR_PRIMARY",
-  "routeId": "roma-termini-napoli-centrale",
+  "routeId": "active",
   "routeLabel": "Roma Termini → Napoli Centrale",
   "direction": "OUTBOUND",
   "notice": "",

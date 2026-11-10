@@ -42,7 +42,7 @@ La forma canonica è un oggetto JSON piatto; sulle Data Layer Android le stesse 
 | `operationalState` | enum | `PROGRAMMED`, `OPERATIONAL`, `UNAVAILABLE`, `UNKNOWN`. Non dedurre `OPERATIONAL` da un orario. |
 | `freshness` | enum | `FRESH`, `AGING`, `STALE`, `UNAVAILABLE`, `UNKNOWN`. |
 | `confidence` | enum | `OPERATOR_PRIMARY`, `INFRASTRUCTURE_PRIMARY`, `OPEN_DATA`, `LICENSED_AGGREGATE`, `STATIC_ONLY`, `CACHED`, `LOCAL_PLANNED`, `UNKNOWN`. |
-| `routeId`, `routeLabel`, `direction` | string | Identità e label minimali; `direction` è `OUTBOUND`, `RETURN` oppure `UNKNOWN`. |
+| `routeId`, `routeLabel`, `direction` | string | Identità e label minimali; `direction` è `OUTBOUND`, `RETURN` oppure `UNKNOWN`. Il produttore Android invia sempre `routeId: "active"` (`"unavailable"` nello stato non disponibile): l'orologio non usa l'identità della tratta e l'identificativo persistente della tratta salvata resta sul telefono; la chiave resta perché i decoder v1 la richiedono non vuota. |
 | `notice` | string | Avviso testuale limitato; può essere vuoto. |
 | `serviceCount` | integer | Da 0 a 2. |
 | `service{n}Number`, `Operator`, `Category`, `Destination`, `Scheduled`, `Expected`, `Status`, `Platform`, `DelayMinutes` | string/string/string/string/string/string/string/string/integer | Tutti obbligatori per ogni `n < serviceCount`, eccetto `Platform` che può essere stringa vuota. `DelayMinutes` è tra -720 e 1.440. |

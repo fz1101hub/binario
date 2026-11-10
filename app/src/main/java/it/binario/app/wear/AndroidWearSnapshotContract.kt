@@ -66,6 +66,11 @@ internal object AndroidWearSnapshotContract {
     private const val maxTtlMillis = 15 * 60 * 1_000L
     /** Advertised by the watch apps that decode the optional reliability pair (wear/src/main/res/values/wear.xml). */
     const val RELIABILITY_CAPABILITY = "binario_wear_reliability_v1"
+    /**
+     * The `routeId` of every operational payload. The watch never uses the route identity, so the saved route's
+     * persistent id stays on the phone; v1 decoders require a non-blank value, so the key cannot be left out.
+     */
+    const val ACTIVE_ROUTE_ID = "active"
     private val reliabilityKey = Regex("service[0-9]+Reliability(OnTime|Samples)")
 
     /**
@@ -101,7 +106,7 @@ internal object AndroidWearSnapshotContract {
             put("operationalState", dataNature)
             put("freshness", snapshot.freshness.name)
             put("confidence", snapshot.confidence.name.takeUnless { it == "DEMONSTRATION" } ?: "UNKNOWN")
-            put("routeId", required(snapshot.route.id, 64, strings.missingValue))
+            put("routeId", ACTIVE_ROUTE_ID)
             put("routeLabel", required(snapshot.routeLabel, 96, strings.missingValue))
             put("direction", snapshot.direction.name)
             put("notice", optional(notice(snapshot, skippedCancellation(ordered, services), strings), 180))

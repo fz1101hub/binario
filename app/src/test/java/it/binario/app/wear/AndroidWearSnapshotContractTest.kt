@@ -121,6 +121,14 @@ class AndroidWearSnapshotContractTest {
     }
 
     @Test
+    fun `the saved route's persistent id stays on the phone`() {
+        val payload = AndroidWearSnapshotContract.operational(goldenSnapshot.copy(route = goldenSnapshot.route.copy(id = "6f1c2a8e-uuid")), generatedAt, strings(locale = null))
+
+        assertEquals("active", payload["routeId"])
+        assertFalse(payload.values.contains("6f1c2a8e-uuid"))
+    }
+
+    @Test
     fun `encoder adds the optional reliability pair as in the reliability golden fixture`() {
         val reliability = { service: TrainService -> if (service.number == "FR 9505") ReliabilityMark(22, 27, 5, 22, 30) else null }
         val actual = AndroidWearSnapshotContract.operational(goldenSnapshot, generatedAt, strings(locale = null), reliability).normalisedNumbers()
