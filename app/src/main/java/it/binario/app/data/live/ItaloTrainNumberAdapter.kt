@@ -21,6 +21,7 @@ class ItaloTrainNumberAdapter(
         setOf(ProviderCapability.TRAIN_RUN_REALTIME), CoverageDescriptor(countryCodes = setOf("IT"), description = "Ricerca pubblica Italo per numero"),
         AccessMode.PUBLIC_BEST_EFFORT, RatePolicy(Duration.ofSeconds(30), defaultTimeToLive = Duration.ofSeconds(30)), 1)
     private val cache = BoundedSingleFlightCache<Result<String>>(32, 30_000, clock::millis)
+    private val refusals = PublicSourceRefusalGate(clock, "Italo")
     private val zone = RailTime.defaultZone
 
     override suspend fun searchByNumber(query: TrainNumberQuery): ProviderResult<List<TrainNumberMatch>> = withContext(Dispatchers.IO) {
@@ -31,7 +32,7 @@ class ItaloTrainNumberAdapter(
         if (query.date != fetched.atZone(zone).toLocalDate()) return@withContext ProviderResult.Success(emptyList(), meta)
         try {
             val body = cache.getOrLoad(number, expireFromLoadStart = true, cancelWhenUnused = true) {
-                try { Result.success(fetch("${ItaloPublicStationAdapter.BASE_URL}/api/RicercaTrenoService?TrainNumber=$number")) }
+                try { Result.success(refusals.call { fetch("${ItaloPublicStationAdapter.BASE_URL}/api/RicercaTrenoService?TrainNumber=$number") }) }
                 catch (error: CancellationException) { throw error }
                 catch (error: IOException) { Result.failure(error) }
             }.value.getOrThrow()

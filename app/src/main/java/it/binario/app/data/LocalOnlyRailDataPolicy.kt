@@ -13,6 +13,7 @@ import it.binario.app.data.live.SwissOpenTransportStationBoardAdapter
 import it.binario.app.data.live.TrenitaliaInfomobilityNewsAdapter
 import it.binario.app.data.live.TrenordLineNoticesAdapter
 import it.binario.app.data.live.ViaggiaTrenoRealtimeAdapter
+import it.binario.app.data.live.ViaggiaTrenoRequests
 import it.binario.app.data.live.ViaggiaTrenoTrainNoticesAdapter
 import it.binario.app.data.planned.RfiProgrammedStationBoardAdapter
 import it.binario.app.data.planned.RfiProgrammedTimetableAdapter
@@ -42,7 +43,9 @@ object LocalOnlyRailDataPolicy {
     private val rfiLiveRoutes by lazy { RfiLiveRouteDataSource(rfiStationBoard) }
     private val italoStationBoard by lazy { ItaloPublicStationAdapter() }
     private val italoNumber by lazy { ItaloTrainNumberAdapter() }
-    private val viaggiaTrenoBoard by lazy { ViaggiaTrenoRealtimeAdapter() }
+    // One cache, one set of permits and one refusal pause for every ViaggiaTreno instance (audit android-data-5).
+    private val viaggiaTrenoRequests by lazy { ViaggiaTrenoRequests() }
+    private val viaggiaTrenoBoard by lazy { ViaggiaTrenoRealtimeAdapter(requests = viaggiaTrenoRequests) }
     private val rfiAlerts by lazy { RfiInfomobilityRssAdapter() }
     private val staRealtime by lazy { StaRealtimeAdapter() }
     private val sncfRealtime by lazy { SncfGtfsRealtimeAdapter() }
@@ -62,7 +65,8 @@ object LocalOnlyRailDataPolicy {
     /** Current-day operator data is queried before waiting for programmed timetables. */
     fun liveRouteSources(routeCandidateSource: TrainDataSource? = null): List<RealtimeRouteDataSource> =
         if (BuildConfig.PERSONAL_REALTIME_SOURCES) listOf(
-            if (routeCandidateSource == null) viaggiaTrenoBoard else ViaggiaTrenoRealtimeAdapter(routeCandidateSource = routeCandidateSource),
+            if (routeCandidateSource == null) viaggiaTrenoBoard
+            else ViaggiaTrenoRealtimeAdapter(routeCandidateSource = routeCandidateSource, requests = viaggiaTrenoRequests),
             rfiLiveRoutes
         ) else emptyList()
 

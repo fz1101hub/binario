@@ -19,6 +19,38 @@ internal const val BINARIO_PUBLIC_SOURCE_USER_AGENT = "Binario/0.20 (personal ra
  */
 internal class PublicSourceHttpException(val status: Int, message: String, val retryAfter: java.time.Duration? = null) : IOException(message)
 
+/** Thrown without a request while [PublicSourceRefusalGate] keeps a source paused. */
+internal class PublicSourcePausedException(message: String) : IOException(message)
+
+/**
+ * Stops asking a public source that refused (audit android-data-5): a 403 or 429 pauses it at once, for the
+ * `Retry-After` it sent or [refusalPause]; a 503 with `Retry-After` for that long (at most an hour, as
+ * [SourceCircuitBreaker] caps it). While paused every call fails at once without a request, and the pause is published
+ * to [SourcePauses] under [label]. Other failures are left to the caller as before.
+ */
+internal class PublicSourceRefusalGate(
+    clock: java.time.Clock,
+    private val label: String,
+    private val refusalPause: java.time.Duration = java.time.Duration.ofMinutes(15)
+) {
+    private val breaker = SourceCircuitBreaker(clock, pauseLabel = label)
+
+    suspend fun <T> call(block: suspend () -> T): T {
+        if (!breaker.allowRequest()) throw PublicSourcePausedException("$label in pausa dopo il rifiuto della fonte")
+        val value = try {
+            block()
+        } catch (error: PublicSourceHttpException) {
+            when {
+                error.status == 403 || error.status == 429 -> breaker.recordFailure(error.retryAfter ?: refusalPause)
+                error.status == 503 && error.retryAfter != null -> breaker.recordFailure(error.retryAfter)
+            }
+            throw error
+        }
+        breaker.recordSuccess()
+        return value
+    }
+}
+
 /** A public source answered, but not with the expected shape. Never retried. */
 internal class PublicSourceFormatException(message: String) : Exception(message)
 

@@ -166,7 +166,10 @@ class RfiStationBoardAdapter(
 
     private val mutex = Mutex()
     private val cache = mutableMapOf<String, CachedSnapshot>()
-    private val stationCatalog = RfiStationCatalog(fetcher, clock)
+    // A refusal (403, 429, 503 with Retry-After) pauses the monitor and its catalogue (audit android-data-5).
+    private val refusals = PublicSourceRefusalGate(clock, "RFI")
+    private val gated = RfiMonitorFetcher { url -> refusals.call { fetcher.fetch(url) } }
+    private val stationCatalog = RfiStationCatalog(gated, clock)
 
     /** Catalogue and board parsing (Jsoup/JSON, up to a few MB) never run on the caller's thread, which can be Main. */
     override suspend fun getStationBoard(request: StationBoardRequest): ProviderResult<it.binario.app.data.core.StationBoard> =
@@ -181,7 +184,7 @@ class RfiStationBoardAdapter(
         return try {
             val arrivals = if (request.kind == BoardKind.ARRIVALS) "True" else "False"
             val url = "https://iechub.rfi.it/ArriviPartenze/ArrivalsDepartures/Monitor?placeId=$placeId&arrivals=$arrivals"
-            val html = fetcher.fetch(url)
+            val html = gated.fetch(url)
             val syntheticRoute = SavedRoute(
                 id = "station-board:${request.stationId.value}",
                 name = stationName,
@@ -243,7 +246,7 @@ class RfiStationBoardAdapter(
 
         return try {
             val url = "https://iechub.rfi.it/ArriviPartenze/ArrivalsDepartures/Monitor?placeId=$placeId&arrivals=False"
-            val html = fetcher.fetch(url)
+            val html = gated.fetch(url)
             val services = parseDepartures(html, origin.name, destination.name, route, direction)
             if (services.isEmpty()) {
                 return DataResult.Failure("RFI non mostra partenze utilizzabili da ${origin.name} in questo momento.")

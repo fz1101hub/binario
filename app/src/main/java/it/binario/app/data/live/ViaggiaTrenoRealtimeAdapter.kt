@@ -58,7 +58,8 @@ internal class HttpViaggiaTrenoRealtimeFetcher(
                     if (status in setOf(301, 302, 303, 307, 308)) connection.getHeaderField("Location") else null,
                     if (status in 200..299 && status != 204) connection.inputStream.use {
                         readBoundedRfiHtml(it, connection.contentLengthLong.takeIf { n -> n >= 0 })
-                    } else null)
+                    } else null,
+                    if (status !in 200..399) connection.getHeaderField("Retry-After") else null)
             }
             val status = response.status
             if (status in setOf(301, 302, 303, 307, 308)) {
@@ -87,14 +88,32 @@ internal class HttpViaggiaTrenoRealtimeFetcher(
                 url = target
             } else {
                 if (status == 204) return@withTimeoutOrNull "null"
-                if (status !in 200..299) throw IOException("ViaggiaTreno HTTP $status")
+                if (status !in 200..299) throw PublicSourceHttpException(status, "ViaggiaTreno HTTP $status", retryAfterOf(response.retryAfter))
                 return@withTimeoutOrNull response.body ?: throw IOException("Risposta ViaggiaTreno vuota")
             }
         }
         throw IOException("ViaggiaTreno: destinazione non raggiunta")
     } ?: throw java.net.SocketTimeoutException("ViaggiaTreno supera il tempo massimo della richiesta")
 
-    private data class Response(val status: Int, val location: String?, val body: String?)
+    private data class Response(val status: Int, val location: String?, val body: String?, val retryAfter: String? = null)
+}
+
+/**
+ * What every ViaggiaTreno adapter of the app shares, so the declared limits hold app-wide and not per instance (audit
+ * android-data-5): the response cache (one request per resource every 30 s, failures included), the request permits
+ * (boards and number discovery apart from run details) and the pause after a refusal (403, 429, 503 with Retry-After).
+ */
+class ViaggiaTrenoRequests(clock: Clock = Clock.system(RailTime.defaultZone)) {
+    internal val cache = BoundedSingleFlightCache<Result<String>>(128, 30_000L, clock::millis)
+    internal val discovery = Semaphore(DISCOVERY_PERMITS)
+    internal val details = Semaphore(DETAIL_PERMITS)
+    internal val refusals = PublicSourceRefusalGate(clock, "ViaggiaTreno")
+
+    internal companion object {
+        /** Boards and number discovery, which must not queue behind a batch of run details. */
+        const val DISCOVERY_PERMITS = 2
+        const val DETAIL_PERMITS = 3
+    }
 }
 
 /** Personal best-effort source. Matches commercial stops by code, not the train's final destination. */
@@ -102,27 +121,27 @@ class ViaggiaTrenoRealtimeAdapter(
     private val fetcher: ViaggiaTrenoRealtimeFetcher = HttpViaggiaTrenoRealtimeFetcher(),
     private val clock: Clock = Clock.system(RailTime.defaultZone),
     private val routeDetailsTimeoutMillis: Long = 8_000,
-    private val routeCandidateSource: TrainDataSource? = null
+    private val routeCandidateSource: TrainDataSource? = null,
+    private val requests: ViaggiaTrenoRequests = ViaggiaTrenoRequests(clock)
 ) : RealtimeRouteDataSource, StationBoardProvider, StationBoardRunDetailProvider, TrainNumberSearchProvider {
     override val descriptor = ProviderDescriptor(
         id = SourceId("viaggiatreno"), displayName = "Trenitalia — ViaggiaTreno realtime",
         capabilities = setOf(ProviderCapability.STATION_BOARD, ProviderCapability.TRAIN_RUN_REALTIME),
         coverage = CoverageDescriptor(countryCodes = setOf("IT"), description = "Corse Trenitalia con codici stazione e fermate pubblicate"),
         accessMode = AccessMode.PUBLIC_BEST_EFFORT,
-        // Enforced below: one request per resource every 30 s (the response cache) and at most
-        // DISCOVERY_PERMITS + DETAIL_PERMITS requests at a time.
-        ratePolicy = RatePolicy(Duration.ofSeconds(30), maxConcurrentRequests = DISCOVERY_PERMITS + DETAIL_PERMITS,
+        // Enforced by [ViaggiaTrenoRequests], shared by the app's instances: one request per resource every 30 s (the
+        // response cache) and at most DISCOVERY_PERMITS + DETAIL_PERMITS requests at a time.
+        ratePolicy = RatePolicy(Duration.ofSeconds(30),
+            maxConcurrentRequests = ViaggiaTrenoRequests.DISCOVERY_PERMITS + ViaggiaTrenoRequests.DETAIL_PERMITS,
             defaultTimeToLive = Duration.ofSeconds(30)), schemaVersion = 1
     )
     private val zone = RailTime.defaultZone
-    // Cache failures for the cooldown too, without representing them as an empty board.
-    private val cache = BoundedSingleFlightCache<Result<String>>(128, descriptor.ratePolicy.minimumRequestInterval.toMillis(), clock::millis)
-    // Boards and number discovery must not queue behind an entire batch of optional run details.
-    private val discoveryRequests = Semaphore(DISCOVERY_PERMITS)
-    private val detailRequests = Semaphore(DETAIL_PERMITS)
-
-    private suspend fun json(path: String): String = cache.getOrLoad(path, expireFromLoadStart = true, cancelWhenUnused = true) {
-        try { Result.success((if (path.startsWith("andamentoTreno/")) detailRequests else discoveryRequests).withPermit { fetcher.fetch(path) }) }
+    // Cache failures for the cooldown too, without representing them as an empty board. Boards and number discovery
+    // must not queue behind an entire batch of optional run details. A refusal pauses every request.
+    private suspend fun json(path: String): String = requests.cache.getOrLoad(path, expireFromLoadStart = true, cancelWhenUnused = true) {
+        try { Result.success((if (path.startsWith("andamentoTreno/")) requests.details else requests.discovery).withPermit {
+            requests.refusals.call { fetcher.fetch(path) }
+        }) }
         catch (error: CancellationException) { throw error }
         catch (error: IOException) { Result.failure(error) }
     }.value.getOrThrow()
@@ -522,9 +541,6 @@ class ViaggiaTrenoRealtimeAdapter(
     private fun JSONObject.intOrNull(key: String): Int? = text(key)?.toIntOrNull()
 
     private companion object {
-        /** Boards and number discovery, which must not queue behind a batch of run details. */
-        const val DISCOVERY_PERMITS = 2
-        const val DETAIL_PERMITS = 3
         const val EXTRAORDINARY_STOP_TYPE = 2
         const val SUPPRESSED_STOP_TYPE = 3
         val VARIED_STOP_TYPES = setOf(EXTRAORDINARY_STOP_TYPE, SUPPRESSED_STOP_TYPE)
