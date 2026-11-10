@@ -36,6 +36,12 @@ describe("widget e orologio dopo ogni modifica", () => {
     expect(nativeSurfaceStateFor([{ ...route, completedAtUtcMs: now }], [9], now).route).toBeNull();
   });
 
+  it("dopo la prima partenza passa alla tratta successiva invece di restare vuoto", () => {
+    const morning = createLocalPlannedRoute({ origin: "Roma Termini", destination: "Napoli Centrale", travelDate: "2030-01-02", travelTime: "08:00", plannedReminderMinutes: 15 }, 8, 1)!;
+    expect(nativeSurfaceStateFor([route, morning], [], now - 60_000).route?.id).toBe(8);
+    expect(nativeSurfaceStateFor([route, morning], [], now + 50).route?.id).toBe(9);
+  });
+
   it("invia al widget lo stato non disponibile quando l’archivio è vuoto", async () => {
     mocks.loadLocalPlannedRoutes.mockResolvedValue([]);
     await refreshNativeCompanionSurfaces("it", now);

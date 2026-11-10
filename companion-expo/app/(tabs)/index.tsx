@@ -58,9 +58,11 @@ export default function BinarioHome() {
       if (msUntilSnapshotExpiry(snapshot.provenance) > 0) { setExpiryCheck(value => value + 1); return; }
       setSnapshot(createUnavailableSnapshot(snapshot.subject, locale));
       setFeedback(t("home.planExpired"));
+      // The departed journey gives way to the next saved one, which also reaches the widget and the watch.
+      void loadLocalPlan();
     }, clampTimerDelay(msUntilSnapshotExpiry(snapshot.provenance) + 50));
     return () => clearTimeout(timer);
-  }, [expiryCheck, locale, snapshot, t]);
+  }, [expiryCheck, loadLocalPlan, locale, snapshot, t]);
 
   const sourceText = snapshot.provenance.dataNature === "scheduled" ? t("home.sourceScheduled") : t("home.sourceUnavailable");
   const guidance = getCompanionGuidance(simpleMode, locale);
