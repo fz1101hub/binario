@@ -10,11 +10,11 @@ import { createTranslator, deviceCompanionLocale, type CompanionLocale } from "@
 const legacyStorageKey = "binario.planned-route-reminders.v1";
 const legacyMigrationNoticeKey = "binario.planned-route-reminders.v1-migration-notice";
 const legacyMigrationNoticeAcknowledgedKey = "binario.planned-route-reminders.v1-migration-notice-acknowledged";
-const notificationTitles = new Set(["it", "en", "de", "fr", "es"].map(locale => createTranslator(locale as Parameters<typeof createTranslator>[0])("reminder.notificationTitle")));
+const reminderIdentifierPrefix = "binario_planned_route_";
 let reminderMutationQueue: Promise<void> = Promise.resolve();
 
 function reminderIdentifier(routeId: number) {
-  return `binario_planned_route_${routeId}`;
+  return `${reminderIdentifierPrefix}${routeId}`;
 }
 
 function serializeMutation<T>(operation: () => Promise<T>): Promise<T> {
@@ -33,6 +33,22 @@ function routeIdFromRequest(request: Notifications.NotificationRequest) {
     routeId > 0
     ? routeId
     : null;
+}
+
+function routeIdFromIdentifier(identifier: string) {
+  if (!identifier.startsWith(reminderIdentifierPrefix)) return null;
+  const digits = identifier.slice(reminderIdentifierPrefix.length);
+  const routeId = /^[1-9]\d*$/.test(digits) ? Number(digits) : Number.NaN;
+  return Number.isSafeInteger(routeId) ? routeId : null;
+}
+
+/**
+ * The Companion schedules no other local notification, so a request is one of its route reminders
+ * when it carries a route id in its data (canonical or legacy identifier) or the canonical identifier.
+ * The title is never used: it is written in the device language of the moment it was scheduled.
+ */
+function reminderRouteId(request: Notifications.NotificationRequest) {
+  return routeIdFromRequest(request) ?? routeIdFromIdentifier(request.identifier);
 }
 
 function legacyRouteIdsByIdentifier(raw: string): Map<string, number> {
@@ -131,11 +147,9 @@ async function migrateLegacyState(): Promise<void> {
     : legacyRouteIdsByIdentifier(raw);
   const scheduled = await Notifications.getAllScheduledNotificationsAsync();
   const legacyRequests = scheduled.filter((request) => {
-    const routeId = routeIdFromRequest(request) ?? storedRouteIds.get(request.identifier);
+    const routeId = routeIdFromRequest(request);
     return storedRouteIds.has(request.identifier) ||
-      (routeId !== undefined &&
-        notificationTitles.has(request.content.title ?? "") &&
-        request.identifier !== reminderIdentifier(routeId));
+      (routeId !== null && request.identifier !== reminderIdentifier(routeId));
   });
   if (legacyRequests.length === 0) {
     if (raw !== null) await AsyncStorage.removeItem(legacyStorageKey);
@@ -180,8 +194,7 @@ async function scheduledRouteIds(): Promise<Set<number>> {
   const requests = await Notifications.getAllScheduledNotificationsAsync();
   return new Set(
     requests
-      .filter((request) => notificationTitles.has(request.content.title ?? ""))
-      .map(routeIdFromRequest)
+      .map(reminderRouteId)
       .filter((routeId): routeId is number => routeId !== null),
   );
 }
@@ -213,11 +226,7 @@ export function cancelPlannedRouteReminder(routeId: number) {
     const identifiers = (
       await Notifications.getAllScheduledNotificationsAsync()
     )
-      .filter(
-        (request) =>
-          notificationTitles.has(request.content.title ?? "") &&
-          routeIdFromRequest(request) === routeId,
-      )
+      .filter((request) => reminderRouteId(request) === routeId)
       .map((request) => request.identifier);
     const hadScheduledReminder = identifiers.length > 0;
     if (!identifiers.includes(reminderIdentifier(routeId))) {

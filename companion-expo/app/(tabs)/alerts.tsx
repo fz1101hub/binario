@@ -145,7 +145,8 @@ export default function AlertsScreen() {
   async function toggleCompleted(route: LocalPlannedRoute) {
     const completing = route.completedAtUtcMs == null;
     if (!await setLocalPlannedRouteCompletion(route.id, completing)) { setMessage(t("alerts.routeUpdateError")); return; }
-    if (completing && scheduledIds.includes(route.id)) {
+    // Annulla sempre: l’elenco in memoria può essere vecchio, e l’annullamento di un promemoria assente non fa nulla.
+    if (completing) {
       await cancelPlannedRouteReminder(route.id);
       setScheduledIds(current => current.filter(id => id !== route.id));
     }

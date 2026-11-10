@@ -1,10 +1,18 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createLocalPlannedRoute } from "../lib/local-route-contract";
+import { clearLocalJourneyArchive } from "../lib/local-journey-privacy";
+import { createTranslator, supportedLocales } from "../lib/i18n";
 
 const storageKey = "binario.planned-route-reminders.v1";
 const state = vi.hoisted(() => ({
   storage: new Map<string, string>(),
   scheduled: new Map<string, any>(),
+  deviceLanguageTag: "it-IT",
+}));
+
+vi.mock("expo-localization", () => ({
+  getLocales: () => [{ languageTag: state.deviceLanguageTag }],
+  useLocales: () => [{ languageTag: state.deviceLanguageTag }],
 }));
 
 const storageMocks = vi.hoisted(() => ({
@@ -69,6 +77,7 @@ const secondRoute = createLocalPlannedRoute(
 beforeEach(() => {
   state.storage.clear();
   state.scheduled.clear();
+  state.deviceLanguageTag = "it-IT";
   vi.clearAllMocks();
   storageMocks.getItem.mockImplementation(
     async (key: string) => state.storage.get(key) ?? null,
@@ -324,5 +333,65 @@ describe("planned reminder native reconciliation", () => {
 
     expect(await listScheduledRouteIds()).toEqual([42]);
     expect(state.storage.has(storageKey)).toBe(false);
+  });
+});
+
+describe("promemoria riconosciuti in ogni lingua del dispositivo", () => {
+  for (const languageTag of ["ja-JP", "ar-EG", "ru-RU", "pt-BR", "zh-Hans-CN", "hi-IN"]) {
+    it(`elenca, annulla e cancella con l’archivio un promemoria scritto in ${languageTag}`, async () => {
+      state.deviceLanguageTag = languageTag;
+      await expect(schedulePlannedRouteReminder(route)).resolves.toBe("scheduled");
+      const scheduledTitle = state.scheduled.get("binario_planned_route_42")?.content.title;
+      expect(scheduledTitle).not.toBe(createTranslator("it")("reminder.notificationTitle"));
+
+      expect(await listScheduledRouteIds()).toEqual([42]);
+      await expect(clearLocalJourneyArchive({
+        listScheduledRouteIds,
+        cancelReminder: cancelPlannedRouteReminder,
+        clearRoutes: async () => undefined,
+        clearItineraries: async () => undefined,
+      })).resolves.toEqual({ clearedReminders: 1 });
+      expect(state.scheduled.size).toBe(0);
+    });
+  }
+
+  it("riconosce il promemoria di ogni lingua servita, anche dopo un cambio di lingua", async () => {
+    for (const locale of supportedLocales) {
+      state.scheduled.clear();
+      state.deviceLanguageTag = locale;
+      await schedulePlannedRouteReminder(route);
+      state.deviceLanguageTag = "en-US";
+      expect(await listScheduledRouteIds(), locale).toEqual([42]);
+      await expect(cancelPlannedRouteReminder(42), locale).resolves.toBe(true);
+      expect(state.scheduled.size, locale).toBe(0);
+    }
+  });
+
+  it("riconosce il promemoria dall’identificativo canonico anche senza dati della tratta", async () => {
+    state.scheduled.set("binario_planned_route_42", {
+      identifier: "binario_planned_route_42",
+      content: { title: "Binario · 計画した移動", data: {} },
+      trigger: null,
+    });
+    state.scheduled.set("binario_planned_route_x", {
+      identifier: "binario_planned_route_x",
+      content: { title: "Binario", data: {} },
+      trigger: null,
+    });
+
+    expect(await listScheduledRouteIds()).toEqual([42]);
+    await expect(cancelPlannedRouteReminder(42)).resolves.toBe(true);
+    expect([...state.scheduled.keys()]).toEqual(["binario_planned_route_x"]);
+  });
+
+  it("migra un promemoria precedente scritto in un’altra lingua", async () => {
+    state.scheduled.set("legacy-random-ja", {
+      identifier: "legacy-random-ja",
+      content: { title: "Binario · 計画した移動", data: { routeId: 42 } },
+      trigger: null,
+    });
+
+    expect(await listScheduledRouteIds()).toEqual([42]);
+    expect([...state.scheduled.keys()]).toEqual(["binario_planned_route_42"]);
   });
 });
