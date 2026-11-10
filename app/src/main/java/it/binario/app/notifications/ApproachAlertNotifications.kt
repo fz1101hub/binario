@@ -11,7 +11,6 @@ import androidx.work.WorkerParameters
 import it.binario.app.CommuterAlertStatusLookup
 import it.binario.app.CommuterAlertStatusRules
 import it.binario.app.CommuterLiveStatus
-import it.binario.app.FavouriteTrainMatcher
 import it.binario.app.FavouriteTrainStore
 import it.binario.app.R
 import it.binario.app.ServiceMonitor
@@ -145,9 +144,11 @@ class ApproachAlertWorker(appContext: Context, params: WorkerParameters) : Corou
                 return@forEach
             }
             val monitor = favourites.firstOrNull { TrainAlertWatch.key(it.number) == alert.key } ?: return@forEach
-            // Offline or without an answer, the last observation of the day (or the timetable) decides.
-            val observation = lookUp(context, monitor, alert, today) ?: state.observation
-            when (val decision = ApproachAlertPlanner.decide(alert, today, observation, now, notified = false, zone)) {
+            // Offline or without an answer, the last observation of the day (or the timetable) decides; a day the sources
+            // say the train does not run, or does not call at the station, is over.
+            val lookup = lookUp(context, monitor, alert, today)
+            val observation = ApproachAlertPlanner.observationAfter(lookup, state.observation)
+            when (val decision = ApproachAlertPlanner.decide(alert, today, lookup, state.observation, now, zone)) {
                 is ApproachDecision.Notify -> {
                     if (LiveNotifications.allowed(context)) notify(context, alert, monitor, observation, decision.minutesLeft)
                     store.saveState(alert.key, state.copy(notifiedOn = today, observation = observation))
@@ -158,16 +159,18 @@ class ApproachAlertWorker(appContext: Context, params: WorkerParameters) : Corou
         }
     }
 
-    private suspend fun lookUp(context: Context, monitor: ServiceMonitor, alert: ApproachAlert, date: LocalDate): ApproachObservation? = try {
-        withTimeoutOrNull(LOOKUP_TIMEOUT_MILLIS) {
-            val search = BinarioDataGraph.trainNumberSearchService(context)
-            val matches = search.search(TrainNumberQuery(monitor.number, date)).lastOrNull()?.matches.orEmpty()
-            FavouriteTrainMatcher.pick(matches.map { it.service }, monitor)?.let { ApproachAlertPlanner.observe(it, alert, date) }
+    private suspend fun lookUp(context: Context, monitor: ServiceMonitor, alert: ApproachAlert, date: LocalDate): ApproachLookup {
+        // The last update of the search keeps whether every source answered; a timeout or a failure gives no update.
+        val update = try {
+            withTimeoutOrNull(LOOKUP_TIMEOUT_MILLIS) {
+                BinarioDataGraph.trainNumberSearchService(context).search(TrainNumberQuery(monitor.number, date)).lastOrNull()
+            }
+        } catch (error: CancellationException) {
+            throw error
+        } catch (_: Exception) {
+            null
         }
-    } catch (error: CancellationException) {
-        throw error
-    } catch (_: Exception) {
-        null
+        return ApproachAlertPlanner.lookupOf(update, monitor, alert, date)
     }
 
     private fun notify(context: Context, alert: ApproachAlert, monitor: ServiceMonitor, observation: ApproachObservation?, minutes: Int) {

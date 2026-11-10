@@ -1,11 +1,15 @@
 package it.binario.app.notifications
 
+import it.binario.app.ServiceMonitor
+import it.binario.app.data.DataConfidence
 import it.binario.app.data.RailOperator
 import it.binario.app.data.ServiceStatus
 import it.binario.app.data.StopRouteChange
 import it.binario.app.data.TrainCategory
 import it.binario.app.data.TrainService
 import it.binario.app.data.TrainStop
+import it.binario.app.data.repository.TrainNumberMatch
+import it.binario.app.data.repository.TrainNumberSearchUpdate
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -93,6 +97,36 @@ class ApproachAlertPlannerTest {
         assertEquals(tomorrow, ApproachAlertPlanner.nextRun(alert, null, notifiedOn = today, observation = null, now = at("08:45"), zone = zone))
         assertEquals(tomorrow, ApproachAlertPlanner.nextRun(alert, doneOn = today, notifiedOn = null, observation = null, now = at("08:45"), zone = zone))
         assertEquals(tomorrow, ApproachAlertPlanner.nextRun(alert, null, null, null, at("12:00"), zone))
+    }
+
+    @Test fun `a day the train does not run, or does not call at the station, ends without a notification`() {
+        val monitor = ServiceMonitor("2153", "REG 2153", origin = "Milano Centrale", scheduledDeparture = "08:30")
+        fun update(vararg services: TrainService, complete: Boolean = true, unavailable: Set<String> = emptySet()) =
+            TrainNumberSearchUpdate(services.map { TrainNumberMatch.create(it, "ViaggiaTreno", DataConfidence.OPERATOR_PRIMARY, 0L, 0L) }, complete, unavailable)
+
+        // A Saturday: every source answered and none has a run of 2153 that day.
+        val noRun = ApproachAlertPlanner.lookupOf(update(), monitor, alert, today, zone)
+        assertEquals(ApproachLookup.NotRunning, noRun)
+        assertEquals(ApproachDecision.Done, ApproachAlertPlanner.decide(alert, today, noRun, null, at("08:32"), zone))
+        assertNull(ApproachAlertPlanner.observationAfter(noRun, observation("08:52", 10)))
+        // The run of the day does not call at Monza.
+        val elsewhere = service(listOf(stop("Milano Centrale", "08:30", "08:30", 0), stop("Lecco", "09:20", "09:20", 0)))
+        assertEquals(ApproachLookup.NotRunning, ApproachAlertPlanner.lookupOf(update(elsewhere), monitor, alert, today, zone))
+
+        // A source that failed, a search cut short or no answer at all say nothing: the timetable decides, as offline.
+        val failed = ApproachAlertPlanner.lookupOf(update(unavailable = setOf("ViaggiaTreno")), monitor, alert, today, zone)
+        assertEquals(ApproachLookup.Unknown, failed)
+        assertEquals(ApproachLookup.Unknown, ApproachAlertPlanner.lookupOf(update(complete = false), monitor, alert, today, zone))
+        assertEquals(ApproachLookup.Unknown, ApproachAlertPlanner.lookupOf(null, monitor, alert, today, zone))
+        assertEquals(ApproachDecision.Notify(10), ApproachAlertPlanner.decide(alert, today, failed, null, at("08:32"), zone))
+        // ... and the last observation of the day is kept.
+        assertEquals(ApproachDecision.WaitUntil(at("08:42")), ApproachAlertPlanner.decide(alert, today, failed, observation("08:52", 10), at("08:32"), zone))
+
+        // A run that calls there is observed and notified.
+        val calling = service(listOf(stop("Milano Centrale", "08:30", "08:30", 0), stop("MONZA", "08:42", "08:42", 0, platform = "3")))
+        val observed = ApproachAlertPlanner.lookupOf(update(calling), monitor, alert, today, zone)
+        assertTrue(observed is ApproachLookup.Observed)
+        assertEquals(ApproachDecision.Notify(10), ApproachAlertPlanner.decide(alert, today, observed, null, at("08:32"), zone))
     }
 
     @Test fun `the observation reads the verified delay and platform at the station, else the timetable`() {
