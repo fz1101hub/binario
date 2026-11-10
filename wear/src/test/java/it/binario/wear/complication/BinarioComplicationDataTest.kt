@@ -106,6 +106,23 @@ class BinarioComplicationDataTest {
         assertNull(upcomingService(snapshot(services = emptyList()), now))
     }
 
+    @Test
+    fun `the complication timeline switches to the next service a minute after the first one leaves`() {
+        val next = service.copy(number = "RV 2347", scheduledDeparture = "08:42", expectedDeparture = "08:42")
+        val snapshot = snapshot(expiresAt = now + 3_600_000L, services = listOf(service, next))
+        val handOver = Instant.parse("2030-01-01T07:16:00Z").toEpochMilli()
+
+        // Requested at 08:00: the watch face itself moves to the 08:42 at 08:16, until the snapshot deadline.
+        assertEquals(listOf(GlanceSegment(handOver, now + 3_600_000L)), laterGlanceSegments(snapshot, now))
+        assertEquals("RV 2345", upcomingService(snapshot, handOver - 1)?.first?.number)
+        assertEquals("08:42", shortTextComplicationTexts(snapshot, ResourceNameStrings, handOver).title)
+        assertEquals(Instant.parse("2030-01-01T07:42:00Z"), shortTextComplicationTexts(snapshot, ResourceNameStrings, handOver).countdownTo)
+        // The last service stays until the deadline: no switch after it leaves, none after the deadline or before now.
+        assertEquals(emptyList<GlanceSegment>(), laterGlanceSegments(snapshot, handOver))
+        assertEquals(emptyList<GlanceSegment>(), laterGlanceSegments(snapshot(expiresAt = handOver, services = listOf(service, next)), now))
+        assertEquals(emptyList<GlanceSegment>(), laterGlanceSegments(snapshot(services = listOf(service)), now))
+    }
+
     // binarioComplicationData() only hands these texts to the library builders (ShortText/LongText ComplicationData,
     // TimeDifferenceComplicationText, TimeRange), which need the Android runtime and cannot be built in a JVM unit
     // test; their wiring (validity, minute countdown, tap action) is checked on a watch (docs/AZIONI_TITOLARE.md §3).

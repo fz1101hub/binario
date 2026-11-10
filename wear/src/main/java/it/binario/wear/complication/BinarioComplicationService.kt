@@ -13,8 +13,11 @@ import androidx.wear.watchface.complications.data.ShortTextComplicationData
 import androidx.wear.watchface.complications.data.TimeDifferenceComplicationText
 import androidx.wear.watchface.complications.data.TimeDifferenceStyle
 import androidx.wear.watchface.complications.data.TimeRange
+import androidx.wear.watchface.complications.datasource.ComplicationDataTimeline
 import androidx.wear.watchface.complications.datasource.ComplicationRequest
-import androidx.wear.watchface.complications.datasource.SuspendingComplicationDataSourceService
+import androidx.wear.watchface.complications.datasource.SuspendingTimelineComplicationDataSourceService
+import androidx.wear.watchface.complications.datasource.TimeInterval
+import androidx.wear.watchface.complications.datasource.TimelineEntry
 import it.binario.wear.R
 import it.binario.wear.WearMainActivity
 import it.binario.wear.WearStringProvider
@@ -29,16 +32,29 @@ import java.time.LocalTime
 import java.time.ZoneId
 import java.util.concurrent.TimeUnit
 
-/** Watch-face surface for the same local snapshot rendered by the Wear app and Tile. */
-class BinarioComplicationService : SuspendingComplicationDataSourceService() {
-    override suspend fun onComplicationRequest(request: ComplicationRequest): ComplicationData? =
-        binarioComplicationData(
-            request.complicationType,
-            WearSnapshotStore.current(this),
-            wearStrings(),
-            System.currentTimeMillis(),
-            openAppIntent(),
+/**
+ * Watch-face surface for the same local snapshot rendered by the Wear app and Tile. Nothing requests
+ * an update when a train leaves, so the value comes as a timeline: the watch face itself moves to
+ * the next service one minute after a departure.
+ */
+class BinarioComplicationService : SuspendingTimelineComplicationDataSourceService() {
+    override suspend fun onComplicationRequest(request: ComplicationRequest): ComplicationDataTimeline {
+        val snapshot = WearSnapshotStore.current(this)
+        val strings = wearStrings()
+        val now = System.currentTimeMillis()
+        val tapAction = openAppIntent()
+        val current = binarioComplicationData(request.complicationType, snapshot, strings, now, tapAction)
+        val later = if (snapshot == null || current is NoDataComplicationData) emptyList() else laterGlanceSegments(snapshot, now)
+        return ComplicationDataTimeline(
+            current,
+            later.map { segment ->
+                TimelineEntry(
+                    TimeInterval(Instant.ofEpochMilli(segment.startEpochMillis), Instant.ofEpochMilli(segment.endEpochMillis)),
+                    binarioComplicationData(request.complicationType, snapshot, strings, segment.startEpochMillis, tapAction),
+                )
+            },
         )
+    }
 
     override fun getPreviewData(type: ComplicationType): ComplicationData? {
         val label = PlainComplicationText.Builder(getString(R.string.app_name)).build()
@@ -104,6 +120,26 @@ internal fun upcomingService(snapshot: WearSnapshot, nowEpochMillis: Long): Pair
         ?: departures.lastOrNull()
 }
 
+/** A stretch of a snapshot's validity, [startEpochMillis] included and [endEpochMillis] excluded. */
+internal data class GlanceSegment(val startEpochMillis: Long, val endEpochMillis: Long)
+
+/**
+ * The stretches after [nowEpochMillis] in which the glance shows another service: each starts one
+ * minute after a departure that hands over to the next service ([upcomingService]) and lasts until
+ * the next hand-over or the snapshot deadline. Empty when the glance keeps its service until then.
+ * The Tile and the complication timelines switch on these instants without a new request.
+ */
+internal fun laterGlanceSegments(snapshot: WearSnapshot, nowEpochMillis: Long): List<GlanceSegment> {
+    val handOvers = snapshot.services
+        .mapNotNull { service -> departureInstant(service.expectedDeparture, snapshot.generatedAtEpochMillis) }
+        .map { departure -> departure.toEpochMilli() + DEPARTED_GRACE_MILLIS }
+        .filter { at -> at > nowEpochMillis && at < snapshot.expiresAtEpochMillis }
+        .distinct()
+        .sorted()
+        .filter { at -> upcomingService(snapshot, at - 1)?.first != upcomingService(snapshot, at)?.first }
+    return handOvers.mapIndexed { index, start -> GlanceSegment(start, handOvers.getOrElse(index + 1) { snapshot.expiresAtEpochMillis }) }
+}
+
 /**
  * A short slot renders a few characters: the time left to the departure is the text and the
  * clock time the title, the watch face keeping the countdown current without a new request. A time
@@ -130,7 +166,8 @@ internal fun longTextComplicationTexts(snapshot: WearSnapshot, strings: WearStri
 /**
  * Push-driven payload: the manifest declares no polling period, the Data Layer listener and the
  * store's expiry callback request updates, and the valid time range lets the watch face drop the
- * value at the snapshot deadline even when neither of them runs. [tapAction] opens the app.
+ * value at the snapshot deadline even when neither of them runs. [nowEpochMillis] picks the service
+ * shown (a later timeline entry passes its own start). [tapAction] opens the app.
  */
 internal fun binarioComplicationData(
     type: ComplicationType,
