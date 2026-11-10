@@ -128,6 +128,24 @@
 			<string>%3$@: in orario %1$lld volte su %2$lld (in media %4$lld%%)</string>
 		</dict>
 	</dict>
+	<key>result.live.delay</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>many</key>
+			<string>In ritardo di %1$lld minuti</string>
+			<key>one</key>
+			<string>In ritardo di %1$lld minuto</string>
+			<key>other</key>
+			<string>In ritardo di %1$lld minuti</string>
+		</dict>
+	</dict>
 	<key>result.reliability.cancelled</key>
 	<dict>
 		<key>NSStringLocalizedFormatKey</key>

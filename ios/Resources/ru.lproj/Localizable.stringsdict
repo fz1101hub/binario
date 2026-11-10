@@ -142,6 +142,26 @@
 			<string>%3$@: вовремя %1$lld раза из %2$lld (в среднем %4$lld%%)</string>
 		</dict>
 	</dict>
+	<key>result.live.delay</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>few</key>
+			<string>Опаздывает на %1$lld минуты</string>
+			<key>many</key>
+			<string>Опаздывает на %1$lld минут</string>
+			<key>one</key>
+			<string>Опаздывает на %1$lld минуту</string>
+			<key>other</key>
+			<string>Опаздывает на %1$lld минуты</string>
+		</dict>
+	</dict>
 	<key>result.reliability.cancelled</key>
 	<dict>
 		<key>NSStringLocalizedFormatKey</key>

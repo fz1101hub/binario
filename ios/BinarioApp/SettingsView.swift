@@ -39,6 +39,27 @@ struct SettingsView: View {
                 }
             }
 
+            // Android has no switch for its live sources; the iPhone has one, on by default, and
+            // says what each source receives (PRIVACY.md, «Dati in tempo reale»).
+            Section("settings.live.sources_title") {
+                Toggle(
+                    "settings.live.toggle",
+                    isOn: Binding(
+                        get: { model.liveDataEnabled },
+                        set: { enabled in model.setLiveDataEnabled(enabled) }
+                    )
+                )
+                Text("settings.live.detail")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                LiveSourceRow(name: LiveTexts.sourceName(.viaggiaTreno), detailKey: "settings.live.viaggiatreno")
+                LiveSourceRow(name: LiveTexts.sourceName(.rfiStationBoard), detailKey: "settings.live.rfi")
+                LiveSourceRow(name: LiveTexts.sourceName(.italo), detailKey: "settings.live.italo")
+                Text("settings.live.privacy")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            }
+
             Section("settings.privacy.title") {
                 Text("settings.privacy.body")
                 Label("settings.privacy.no_collection", systemImage: "hand.raised")
@@ -89,6 +110,22 @@ struct SettingsView: View {
         )
         case .unavailable: String(localized: "settings.data.provider_unavailable")
         }
+    }
+}
+
+/// One live source and what the iPhone sends it; the name is never translated.
+private struct LiveSourceRow: View {
+    let name: String
+    let detailKey: LocalizedStringKey
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Text(verbatim: name)
+            Text(detailKey)
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+        }
+        .accessibilityElement(children: .combine)
     }
 }
 

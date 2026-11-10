@@ -132,6 +132,9 @@ struct PlannerView: View {
         }
         .task(id: model.plannerRequest?.id) { applyPlannerRequest() }
         .task { await followTheClock() }
+        // The live values of the results are asked only while the planner is on screen.
+        .onAppear { model.plannerLiveDidAppear() }
+        .onDisappear { model.plannerLiveDidDisappear() }
     }
 
     private var canSearch: Bool {
@@ -341,10 +344,11 @@ private struct AvailableResultView: View {
             }
             ForEach(orderedServices(reliability), id: \.id) { service in
                 let alternative = alternatives[service.id]
+                let live = model.resultLive[service.id]
                 NavigationLink {
-                    TrainDetailView(service: service, query: snapshot.query)
+                    TrainDetailView(service: service, query: snapshot.query, boardLive: live)
                 } label: {
-                    ResultRow(service: service, reliability: measuredTrains[service.id])
+                    ResultRow(service: service, reliability: measuredTrains[service.id], live: live)
                 }
                 .accessibilityHint(Text("accessibility.open_train_detail"))
                 .listRowSeparator(alternative == nil ? .automatic : .hidden, edges: .bottom)
@@ -368,9 +372,13 @@ private struct AvailableResultView: View {
             Text("\(String(localized: "result.source_label")) \(snapshot.provenance.sourceLabel)")
                 .font(.footnote)
                 .foregroundStyle(.secondary)
-            Label("result.programmed.disclosure", systemImage: "clock")
-                .font(.footnote)
-                .foregroundStyle(.secondary)
+            // The timetable's trains without a live value keep the disclosure, as in «Partenze».
+            if snapshot.services.contains(where: { model.resultLive[$0.id] == nil }) {
+                Label("result.programmed.disclosure", systemImage: "clock")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            }
+            LiveSourcesFooter(state: model.resultLiveState, sources: model.resultLiveSources, pauses: model.liveSourcePauses)
         }
     }
 
@@ -381,11 +389,13 @@ private struct AvailableResultView: View {
     }
 }
 
-/// One listed train: time, number, category, destination and operator, then bikes on board and
-/// the unofficial statistics at the searched destination when known.
+/// One listed train: time, number, category, its live state at the origin when the live board
+/// lists it (delay, cancellation, platform and their source, read as one sentence), destination and
+/// operator, then bikes on board and the unofficial statistics at the searched destination when known.
 private struct ResultRow: View {
     let service: TrainService
     let reliability: StopReliability?
+    let live: StationBoardLiveStatus?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 5) {
@@ -398,6 +408,9 @@ private struct ResultRow: View {
                 Text(service.category)
                     .font(.caption)
                     .foregroundStyle(.secondary)
+            }
+            if let live {
+                LiveStatusLine(status: live, showsPlatform: true)
             }
             Text(service.destination)
             Text(service.operatorName)
