@@ -48,37 +48,26 @@ fun interface RfiMonitorFetcher {
     suspend fun fetch(url: String): String
 }
 
+/**
+ * The RFI monitor page through [HttpPublicSourceFetcher]: HTTPS only, redirects only to the same host, path and query,
+ * a bounded body and a whole-request deadline that also closes a blocked socket (audit android-data-7).
+ */
 internal class HttpRfiMonitorFetcher(
-    private val requestTimeoutMillis: Long = 10_000,
-    private val openConnection: (URL) -> HttpURLConnection = { it.openConnection() as HttpURLConnection }
+    requestTimeoutMillis: Long = 10_000,
+    openConnection: (URL) -> HttpURLConnection = { it.openConnection() as HttpURLConnection }
 ) : RfiMonitorFetcher {
-    override suspend fun fetch(url: String): String = kotlinx.coroutines.withTimeoutOrNull(requestTimeoutMillis) {
-        val connection = openConnection(URL(url))
-            ?: throw IOException("Il monitor RFI non usa una connessione HTTP")
-        connection.requestMethod = "GET"
-        connection.connectTimeout = 12_000
-        connection.readTimeout = 20_000
-        connection.instanceFollowRedirects = true
-        connection.useCaches = false
-        connection.setRequestProperty("Cache-Control", "no-cache")
-        connection.setRequestProperty("Accept", "text/html,application/xhtml+xml")
-        connection.setRequestProperty("User-Agent", "Binario/0.20 (personal rail information client)")
-        withCancellableHttpConnection(connection) {
-            val status = connection.responseCode
-            if (status !in 200..299) throw IOException("RFI ha risposto HTTP $status")
-            connection.inputStream.use { input ->
-                val output = java.io.ByteArrayOutputStream()
-                val buffer = ByteArray(8192)
-                while (true) {
-                    val count = input.read(buffer)
-                    if (count < 0) break
-                    if (output.size() + count > 2 * 1024 * 1024) throw IOException("Risposta RFI troppo grande")
-                    output.write(buffer, 0, count)
-                }
-                output.toString("UTF-8")
-            }
-        }
-    } ?: throw java.net.SocketTimeoutException("RFI supera il tempo massimo della richiesta")
+    private val http = HttpPublicSourceFetcher(
+        PublicSourceRequestPolicy(
+            accept = "text/html,application/xhtml+xml",
+            connectTimeoutMillis = 12_000,
+            readTimeoutMillis = 20_000,
+            totalTimeoutMillis = requestTimeoutMillis,
+            maxBytes = 2 * 1024 * 1024
+        ),
+        openConnection
+    )
+
+    override suspend fun fetch(url: String): String = http.get(url)
 }
 
 /**

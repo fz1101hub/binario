@@ -31,7 +31,6 @@ import it.binario.app.data.provider.ProviderResult
 import it.binario.app.data.provider.RatePolicy
 import it.binario.app.data.provider.StationBoardProvider
 import it.binario.app.data.provider.StationBoardRequest
-import it.binario.app.data.planned.readBoundedRfiHtml
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -94,20 +93,18 @@ internal class HttpItaloPublicStationFetcher(
 
 internal suspend fun downloadItaloPublic(url: String): String = downloadItaloPublic(url, 10_000) { it.openConnection() as HttpURLConnection }
 
+/** Italo's public pages through [HttpPublicSourceFetcher]: same-host redirects only and a deadline that closes the socket. */
 internal suspend fun downloadItaloPublic(url: String, timeoutMillis: Long, openConnection: (URL) -> HttpURLConnection): String =
-    kotlinx.coroutines.withTimeoutOrNull(timeoutMillis) {
-    val connection = openConnection(URL(url))
-    connection.requestMethod = "GET"
-    connection.connectTimeout = 12_000
-    connection.readTimeout = 20_000
-    connection.instanceFollowRedirects = true
-    connection.setRequestProperty("Accept", "application/json,text/html")
-    connection.setRequestProperty("User-Agent", "Binario/0.20 (personal rail information client)")
-    withCancellableHttpConnection(connection) {
-        if (connection.responseCode !in 200..299) throw IOException("Italo in Viaggio ha risposto HTTP ${connection.responseCode}")
-        connection.inputStream.use { readBoundedRfiHtml(it, connection.contentLengthLong.takeIf { size -> size >= 0 }) }
-    }
-} ?: throw java.net.SocketTimeoutException("Italo supera il tempo massimo della richiesta")
+    HttpPublicSourceFetcher(
+        PublicSourceRequestPolicy(
+            accept = "application/json,text/html",
+            connectTimeoutMillis = 12_000,
+            readTimeoutMillis = 20_000,
+            totalTimeoutMillis = timeoutMillis,
+            maxBytes = it.binario.app.data.planned.RFI_PROGRAMMED_TIMETABLE_MAX_BYTES
+        ),
+        openConnection
+    ).get(url)
 
 /**
  * Tabellone pubblico Italo in Viaggio. Non utilizza area personale, vendita,
