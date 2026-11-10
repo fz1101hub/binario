@@ -38,7 +38,7 @@ import zipfile
 from collections import Counter
 from pathlib import Path
 
-USER_AGENT = "Binario-source-discovery/1.0 (personal timetable app; read-only)"
+USER_AGENT = "Binario-source-discovery/1.1 (read-only discovery of public transit data sources for the open-source Binario app, run on request)"
 PAGE_LIMIT = 4 * 1024 * 1024
 JSON_LIMIT = 16 * 1024 * 1024
 ARCHIVE_LIMIT = 400 * 1024 * 1024

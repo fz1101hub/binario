@@ -10,6 +10,10 @@ on:
       - "docs/store/**"
       - "docs/data-sources/SOURCE_POLICY.md"
       - "PRIVACY.md"
+      # The iPhone and Watch sources: the offline tests check that PRIVACY.md discloses every host they name.
+      - "ios/BinarioKit/Sources/**"
+      - "ios/BinarioApp/**"
+      - "apple-watch/**/*.swift"
       - "app/src/main/res/xml/locale_config.xml"
       - "gradle/verification-metadata.xml"
       - "requirements-ci.txt"
@@ -29,6 +33,10 @@ on:
       - "docs/store/**"
       - "docs/data-sources/SOURCE_POLICY.md"
       - "PRIVACY.md"
+      # The iPhone and Watch sources: the offline tests check that PRIVACY.md discloses every host they name.
+      - "ios/BinarioKit/Sources/**"
+      - "ios/BinarioApp/**"
+      - "apple-watch/**/*.swift"
       - "app/src/main/res/xml/locale_config.xml"
       - "gradle/verification-metadata.xml"
       - "requirements-ci.txt"

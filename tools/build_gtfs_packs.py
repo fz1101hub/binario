@@ -1089,9 +1089,11 @@ def _build_packs_locked(
 ) -> dict[str, Any]:
     """Build the registered packs and atomically replace ``output_dir``.
 
-    With ``only``, just those sources are filtered again; every other pack must
-    already be published in ``output_dir`` and is copied with its manifest entry
-    unchanged, so adding a source never rewrites the bytes of the others.
+    With ``only``, just those sources are filtered again, from ``input_overrides``
+    or ``input_dir`` (never from the pack already published in ``output_dir``);
+    every other pack must already be published in ``output_dir`` and is copied
+    with its manifest entry unchanged, so adding a source never rewrites the bytes
+    of the others.
     """
     manifest_path = manifest_path or input_dir / "manifest.json"
     source_manifest = read_manifest(manifest_path)
@@ -1136,7 +1138,10 @@ def _build_packs_locked(
             if source_id in kept_entries:
                 shutil.copyfile(output_dir / name, staging / name)
                 continue
-            source = overrides.get(source_id) or published_assets.get(source_id) or input_dir / name
+            # A source named by --only is rebuilt from its --source-archive or from --input-dir, never from the pack
+            # already published in output_dir: that would report a refresh while ignoring the new archive.
+            published = None if source_id in selected else published_assets.get(source_id)
+            source = overrides.get(source_id) or published or input_dir / name
             # The registry entry and the published entry name the bytes of a published pack; only a byte-identical
             # input keeps their recorded upstream digest (A7-01).
             results[source_id] = filter_archive(

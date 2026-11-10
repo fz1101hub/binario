@@ -8,7 +8,8 @@ container cannot reach viaggiatreno.it).  Each run:
    ``lombardia-trenord-gtfs.zip``, ``--gtfs`` once per pack): the rail trips (bus routes and non-numeric numbers left out) running yesterday or today (``calendar.txt`` and ``calendar_dates.txt``, times in
    Europe/Rome from noon minus 12 h of the service day) whose scheduled arrival at the last stop is at least 20 min
    old and that ViaggiaTreno still answers about (``answerable``): every train that left today (local date), and a
-   train that left yesterday only within 3 h of its arrival (a night train).  ViaggiaTreno forgets the runs of the
+   train that left yesterday only within 3 h of its arrival and if still travelling at midnight (a night train, or a
+   late train already asked and not arrived).  ViaggiaTreno forgets the runs of the
    previous day at midnight, and GitHub skips many scheduled runs, so each run covers the whole day so far rather
    than the last hours (trains already known are never asked again).  Number = ``trip_short_name``, category = suffix of ``route_short_name`` (``0083_REG`` -> ``REG``),
    origin = ViaggiaTreno code of the first stop, resolved from its ``stop_code`` (``830008409``) with the curated
@@ -16,7 +17,11 @@ container cannot reach viaggiatreno.it).  Each run:
    otherwise ``S`` + the last five digits of an ``8300xxxxx`` code, each confirmed by position or name;
 2. asks ``andamentoTreno/{origin}/{number}/{midnight}`` once per train (midnight = local midnight of the departure
    day, epoch milliseconds), at most ``--rate`` requests per second (2 by default and at most), within
-   ``--max-requests`` and ``--deadline-seconds``, stopping after 20 consecutive failures or at once on HTTP 403/429;
+   ``--max-requests`` and ``--deadline-seconds``, stopping after 20 consecutive failures or at once on a refusal
+   (HTTP 403/429, or 503 with ``Retry-After``: kept in ``refusal.json``, the following runs send nothing for 2 h, then
+   4, 8... up to 7 days, or the ``Retry-After`` when longer; the first answer ends the pause; exit status 3),
+   and when more than 40 of the last 50 answers are unknown or of another identity (a changed path, a soft block, a
+   new day convention): those trains go back to pending unrecorded and the run exits with status 3;
 3. keeps per stop the ViaggiaTreno station code, the delay in whole minutes (actual minus scheduled time, truncated
    towards zero as the app shows it: departure at the origin, arrival elsewhere; early arrivals are <= 0), whether
    the stop was suppressed (``actualFermataType`` 3), the scheduled time (same departure/arrival rule) as minutes
@@ -29,9 +34,11 @@ container cannot reach viaggiatreno.it).  Each run:
    ``unknown``; a train left for a later run by the limits stays pending while ViaggiaTreno still answers about it; a train ViaggiaTreno does not know (HTTP 204/404, ``null``) or whose identity differs (number, origin,
    day) is recorded as ``missing``/``mismatch`` and not asked again;
 4. writes the state directory (``--state``): ``obs-YYYY-MM-DD.jsonl.gz`` (one compact JSON line per train and
-   departure day, deduplicated by day, origin and number) and ``pending.jsonl.gz``, gzip with a fixed header, written
-   atomically, observations older than 35 days removed.  A run is resumable and idempotent: a train already known is
-   never asked again.
+   departure day, deduplicated by day, origin and number) and ``pending.jsonl.gz``, gzip with a fixed header, the
+   last refusal ``refusal.json`` and ``state.json`` with the days kept, all written atomically, observations older
+   than 35 days removed.  A run is resumable and idempotent: a train already known is never asked again.  Before any
+   request it refuses (exit status 1, nothing written) a state with no observations and no ``state.json`` (a cache
+   that was not restored) or with fewer days than ``state.json`` records, unless ``--bootstrap``.
 
 Every response is untrusted: size cap, strict UTF-8 JSON (no NaN, no duplicate keys), identity and value bounds; only
 derived numbers are kept, nothing is executed, and the log and ``--summary`` show counts only, never a payload.
@@ -43,6 +50,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import email.utils
 import gzip
 import http.client
 import io
@@ -57,6 +65,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 import zipfile
+from collections import deque
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
@@ -70,11 +79,19 @@ DEFAULT_GTFS = ROOT / "app/src/main/assets/gtfs/trenitalia-gtfs.zip"
 # its pack already uses ViaggiaTreno codes as stop_id ("S01066"): Lombardy's regional and suburban trains.
 DEFAULT_TRENORD = ROOT / "app/src/main/assets/gtfs/lombardia-trenord-gtfs.zip"
 DEFAULT_STATIONS = ROOT / "app/src/main/assets/stations/curated_it_rail_stations.json"
+# Plain HTTP on purpose.  ViaggiaTreno answers an HTTPS request for this API with a redirect to the same resource on
+# http://www.viaggiatreno.it (SOURCE_POLICY.md, «Cleartext»; the apps start over HTTPS and follow that one hop, which is
+# why Android allows cleartext for that host and iOS has an ATS exception): the answer arrives over HTTP either way.
+# Starting over HTTPS would add a request per train (two per second at most, redirects included, and counted in
+# --max-requests), doubling the load on ViaggiaTreno and halving the trains of a run, without protecting the answer.
+# redirect_target still accepts an HTTPS hop, should ViaggiaTreno start answering over HTTPS.
 BASE_URL = "http://www.viaggiatreno.it/infomobilita/resteasy/viaggiatreno/"
-# Honest, in the style of the app ("Binario/0.20 (personal realtime client)") and of the discovery tool.  The
-# first form carried a URL and ViaggiaTreno answered 403 to it while answering 200 to these from the same
-# runners; the collector still stops at the first 403/429 and never poses as a browser.
-USER_AGENT = "Binario-punctuality/1.0 (personal timetable app; read-only)"
+# What the operator sees is what runs: a scheduled, automated, read-only collector of the statistics for the
+# open-source app, at a low rate.  No URL (ViaggiaTreno answered 403 to the first form, which carried one) and no
+# e-mail address (the owner's is private); never a browser.  A refusal stops the run and pauses the next ones
+# (refusal.json); if ViaggiaTreno keeps refusing this identity, the collection is switched off (PUNCTUALITY_STATS.md).
+USER_AGENT = ("Binario-punctuality/1.1 (automated read-only collector of public punctuality statistics for the "
+              "open-source Binario app; low rate, at most 2 requests per second)")
 
 # ViaggiaTreno answers only about the runs of its current day: right after midnight the previous day's are gone (the
 # run of 9 November 2026 at 00:58 got 585 "unknown" for the 602 trains of the evening before), except a train still
@@ -86,6 +103,26 @@ PENDING_LIMIT = timedelta(hours=8)
 RETENTION_DAYS = 35
 MAX_RATE = 2.0
 MAX_CONSECUTIVE_FAILURES = 20
+# A changed path (every call 404), a soft block (204 or null) or a new day convention (every identity differs) looks
+# like a day of unknown trains: more than MAX_BAD_ANSWERS unknown or foreign answers among the last BAD_ANSWER_WINDOW
+# stop the run, put those trains back as pending instead of recording them, and fail the job.
+BAD_ANSWER_WINDOW = 50
+MAX_BAD_ANSWERS = 40
+# Exit status of a run that saved its state but stopped on a refusal or on implausible answers: the job fails, the
+# state (with the trains put back and the refusal) is still saved by the workflow.
+EXIT_STOPPED = 3
+# A refusal (HTTP 403 or 429, or 503 with Retry-After) is kept in the state: the following runs send nothing for
+# BACKOFF_BASE, doubled at each refusal in a row (or the Retry-After when longer), at most MAX_PAUSE; an answer ends it.
+BACKOFF_BASE = timedelta(hours=2)
+MAX_PAUSE = timedelta(days=7)
+REFUSAL_FILE = "refusal.json"
+# The days with observations after the last save.  A state with fewer of them (still within the retention) than its
+# marker records, or one with no observations and no marker (a cache that was not restored), is refused: saving it
+# would replace observations ViaggiaTreno no longer has.  Only --bootstrap (first run, or a loss the owner accepts)
+# starts from it.
+MARKER_FILE = "state.json"
+MARKER_SCHEMA = "binario-punctuality-state-v1"
+REFUSAL_REASON = re.compile(r"http-(?:403|429|503)")
 MAX_RESPONSE_BYTES = 1024 * 1024
 MAX_REDIRECTS = 3
 MAX_STOPS = 400
@@ -424,13 +461,17 @@ def trains_on(timetable: Timetable, service_day: date) -> dict[tuple[str, str, s
     return result
 
 
-def answerable(day: str, arrival: float, moment: float) -> bool:
+def answerable(day: str, arrival: float, moment: float, *, asked: bool = False) -> bool:
     """Whether ViaggiaTreno still answers about the run that left on ``day`` (ISO date) with its scheduled arrival at
-    ``arrival``: it left today (Rome), or yesterday and arrived at most PREVIOUS_DAY_GRACE ago (a night train)."""
+    ``arrival``: it left today (Rome), or yesterday, arrived at most PREVIOUS_DAY_GRACE ago and was still travelling
+    at midnight, when ViaggiaTreno forgets the runs that had ended (a night train).  Its scheduled arrival after
+    midnight says so; for a train ``asked`` before and not arrived yet, that answer does (a late train)."""
     today = rome_date(moment)
     if day == today.isoformat():
         return True
-    return day == (today - timedelta(days=1)).isoformat() and arrival >= moment - PREVIOUS_DAY_GRACE.total_seconds()
+    if day != (today - timedelta(days=1)).isoformat() or arrival < moment - PREVIOUS_DAY_GRACE.total_seconds():
+        return False
+    return asked or arrival > midnight_millis(today) // 1000
 
 
 def due_trains(timetable: Timetable, now: datetime) -> list[Due]:
@@ -591,8 +632,45 @@ def load_observations(directory: Path, day: str, counters: dict[str, int]) -> di
     return records
 
 
+def read_refusal(path: Path) -> dict[str, Any] | None:
+    """The refusal kept by an earlier run (``{"since", "until", "count", "reason"}``), ``None`` without one.  A record
+    that is not exactly what this tool writes stops the collector: ignoring it could ask a source that refused."""
+    if not path.is_file():
+        return None
+    try:
+        record = json.loads(path.read_text(encoding="ascii"), parse_constant=_reject_constant)
+    except (OSError, ValueError, RecursionError) as error:
+        raise CollectorError(f"{REFUSAL_FILE} non leggibile: rimuoverlo solo dopo aver verificato la fonte") from error
+    if (
+        not isinstance(record, dict) or set(record) != {"since", "until", "count", "reason"}
+        or not all(_is_int(record[key]) for key in ("since", "until", "count"))
+        or not 0 < record["count"] <= 1000 or not 0 <= record["since"] <= record["until"]
+        or not isinstance(record["reason"], str) or not REFUSAL_REASON.fullmatch(record["reason"])
+    ):
+        raise CollectorError(f"{REFUSAL_FILE} non valido: rimuoverlo solo dopo aver verificato la fonte")
+    return record
+
+
+def read_marker(path: Path) -> list[str] | None:
+    """The days recorded by ``state.json``, ``None`` without one (a state written before the marker existed)."""
+    if not path.is_file():
+        return None
+    try:
+        marker = json.loads(path.read_text(encoding="ascii"), parse_constant=_reject_constant)
+    except (OSError, ValueError, RecursionError) as error:
+        raise CollectorError(f"{MARKER_FILE} non leggibile") from error
+    days = marker.get("days") if isinstance(marker, dict) else None
+    if (
+        not isinstance(marker, dict) or set(marker) != {"schema", "days"} or marker["schema"] != MARKER_SCHEMA
+        or not isinstance(days, list) or len(days) > 1000 or not all(_iso_day(day) for day in days)
+        or days != sorted(set(days))
+    ):
+        raise CollectorError(f"{MARKER_FILE} non valido")
+    return days
+
+
 class State:
-    """Observations (one file per departure day) and pending trains in ``directory``."""
+    """Observations (one file per departure day), pending trains and the last refusal in ``directory``."""
 
     def __init__(self, directory: Path):
         self.directory = directory
@@ -600,7 +678,9 @@ class State:
         self.days: dict[str, dict[tuple[str, str], dict[str, Any]]] = {}
         self.dirty: set[str] = set()
         self.pending: dict[tuple[str, str, str], dict[str, Any]] = {}
+        self.expected_days: set[str] = set()  # days the save must keep (verify_retained)
         directory.mkdir(parents=True, exist_ok=True)
+        self.refusal = read_refusal(directory / REFUSAL_FILE)
         pending_path = directory / PENDING_FILE
         if pending_path.is_file():
             for entry in read_lines(pending_path, self.counters):
@@ -608,6 +688,30 @@ class State:
                     self.pending[(entry["d"], entry["o"], entry["n"])] = entry
                 else:
                     self.counters["state_invalid_lines"] = self.counters.get("state_invalid_lines", 0) + 1
+
+    def verify_retained(self, today: date, *, bootstrap: bool) -> None:
+        """Refuse a state that lost observation days its marker records (within the retention), or one with no
+        observations and no marker, unless ``bootstrap``; the days found are the ones the save must keep."""
+        present = set(observation_files(self.directory))
+        marker = read_marker(self.directory / MARKER_FILE)
+        cutoff = (today - timedelta(days=RETENTION_DAYS)).isoformat()
+        if marker is None:
+            if not present and not bootstrap:
+                raise CollectorError(
+                    "stato vuoto: nessuna osservazione né state.json (cache non ripristinata?); nulla è stato chiesto "
+                    "né scritto. --bootstrap solo per la prima raccolta o per ripartire da zero dopo una perdita accertata")
+            self.expected_days = {day for day in present if day >= cutoff}
+            return
+        expected = {day for day in marker if day >= cutoff}
+        lost = expected - present
+        if lost and not bootstrap:
+            raise CollectorError(
+                f"lo stato ha perso {len(lost)} dei {len(expected)} giorni di osservazioni registrati in {MARKER_FILE} "
+                f"(il più vecchio {min(lost)}): nulla è stato chiesto né scritto; ripristinare la cache giusta, o "
+                "--bootstrap per accettare la perdita")
+        if lost:
+            self.counters["giorni_persi"] = len(lost)
+        self.expected_days = expected - lost
 
     def records(self, day: str) -> dict[tuple[str, str], dict[str, Any]]:
         if day not in self.days:
@@ -625,20 +729,37 @@ class State:
             self.dirty.add(record["d"])
         self.pending.pop((record["d"], record["o"], record["n"]), None)
 
+    def retract(self, key: tuple[str, str, str]) -> None:
+        """Forget the record of ``key`` added by this run (the run only asks about trains with no record)."""
+        if self.records(key[0]).pop((key[1], key[2]), None) is not None:
+            self.dirty.add(key[0])
+
     def save(self, today: date) -> None:
         cutoff = (today - timedelta(days=RETENTION_DAYS)).isoformat()
+        kept = {day for day in observation_files(self.directory) if day >= cutoff}
+        kept |= {day for day in self.dirty if day >= cutoff and self.days[day]}
+        missing = {day for day in self.expected_days if day >= cutoff} - kept
+        if missing:
+            raise CollectorError(f"salvataggio rifiutato: meno giorni di osservazioni ({len(missing)} mancanti) di "
+                                 "quelli trovati all'inizio della run")
         for day in sorted(self.dirty):
-            if day < cutoff:
+            if day < cutoff or not self.days[day]:  # nothing left after a retraction: no empty day file
                 continue
             lines = [encode(self.days[day][key]) for key in sorted(self.days[day])]
             _write_atomic(self.directory / f"obs-{day}.jsonl.gz", _gzip_lines(lines))
         self.dirty.clear()
         pending = [encode(self.pending[key]) for key in sorted(self.pending)]
         _write_atomic(self.directory / PENDING_FILE, _gzip_lines(pending))
+        if self.refusal is not None:
+            _write_atomic(self.directory / REFUSAL_FILE, (encode(self.refusal) + "\n").encode("ascii"))
+        else:
+            (self.directory / REFUSAL_FILE).unlink(missing_ok=True)
         for day, path in observation_files(self.directory).items():
             if day < cutoff:
                 path.unlink()
                 self.counters["pruned_days"] = self.counters.get("pruned_days", 0) + 1
+        marker = {"schema": MARKER_SCHEMA, "days": sorted(observation_files(self.directory))}
+        _write_atomic(self.directory / MARKER_FILE, (encode(marker) + "\n").encode("ascii"))
 
 
 # --- ViaggiaTreno -------------------------------------------------------------------------------------------------
@@ -649,6 +770,26 @@ class FetchResult:
     kind: str  # "ok", "missing", "failure", "refused"
     body: bytes = b""
     reason: str = ""  # fixed label, never text from the response
+    retry_after: float | None = None  # seconds asked by a refusal (Retry-After), at most MAX_PAUSE
+
+
+def retry_after_seconds(value: str | None, now: float) -> float | None:
+    """``Retry-After`` (delay in seconds or HTTP date) as seconds from ``now``, at most MAX_PAUSE; ``None`` if absent or
+    not readable."""
+    if value is None:
+        return None
+    text = value.strip()
+    if re.fullmatch(r"[0-9]{1,12}", text):
+        seconds = float(text)
+    else:
+        try:
+            moment = email.utils.parsedate_to_datetime(text)
+        except (TypeError, ValueError, IndexError):
+            return None
+        if moment is None or moment.tzinfo is None:
+            return None
+        seconds = max(0.0, moment.timestamp() - now)
+    return min(seconds, MAX_PAUSE.total_seconds())
 
 
 class _NoRedirect(urllib.request.HTTPRedirectHandler):
@@ -755,8 +896,10 @@ class HttpFetcher:
                     continue
                 if status == 404:
                     return FetchResult("missing", reason="http-404")
-                if status in (403, 429):
-                    return FetchResult("refused", reason=f"http-{status}")
+                retry_after = retry_after_seconds(error.headers.get("Retry-After") if error.headers else None, time.time())
+                # An overloaded source that names a delay (503 with Retry-After) is a refusal like 429.
+                if status in (403, 429) or (status == 503 and retry_after is not None):
+                    return FetchResult("refused", reason=f"http-{status}", retry_after=retry_after)
                 return FetchResult("failure", reason=f"http-{status}")
             except TimeoutError:
                 return FetchResult("failure", reason="timeout")
@@ -927,6 +1070,7 @@ class Report:
     counters: dict[str, int] = field(default_factory=dict)
     failures: dict[str, int] = field(default_factory=dict)
     stop_reason: str = "completata"
+    stopped_abnormally: bool = False  # a refusal or implausible answers: the job must fail (EXIT_STOPPED)
 
     def add(self, name: str, amount: int = 1) -> None:
         self.counters[name] = self.counters.get(name, 0) + amount
@@ -953,7 +1097,7 @@ def collect(
     for key, entry in sorted(state.pending.items()):
         # Asked and not arrived yet: 8 h after the scheduled arrival.  Left over by the limits of a run, never asked:
         # while ViaggiaTreno still answers about it.  Either way, never past ViaggiaTreno's day.
-        closed = not answerable(entry["d"], entry["a"], moment)
+        closed = not answerable(entry["d"], entry["a"], moment, asked=entry["k"] > 0)
         if closed or (entry["k"] > 0 and moment > entry["a"] + PENDING_LIMIT.total_seconds()):
             state.add({"d": key[0], "o": key[1], "n": key[2], "c": entry["c"], "st": "unknown", "t": moment, "s": []})
             report.add("giorno_chiuso" if closed and entry["k"] == 0 else "scaduti_sconosciuti")
@@ -975,6 +1119,7 @@ def collect(
         report.add("nuovi")
     report.add("in_coda", len(queue))
     consecutive = 0
+    recent: deque[tuple[Due, int, bool]] = deque(maxlen=BAD_ANSWER_WINDOW)  # (train, attempts, unknown or foreign)
     issued = requests or (lambda: report.counters.get("treni_chiesti", 0))
 
     def defer(rest: Sequence[tuple[Due, int]], reason: str) -> None:
@@ -988,6 +1133,13 @@ def collect(
         report.failures[reason] = report.failures.get(reason, 0) + 1
         state.pending[due.key] = pending_entry(due, attempts + 1)
         report.add("errori")
+
+    if state.refusal is not None and moment < state.refusal["until"]:
+        # Refused by an earlier run: nothing is sent until the pause ends; the trains wait as pending.
+        until = datetime.fromtimestamp(state.refusal["until"], timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+        defer(queue, f"in pausa dopo un rifiuto ({state.refusal['reason']}) fino al {until}")
+        report.add("in_sospeso_dopo", len(state.pending))
+        return report
 
     for position, (due, attempts) in enumerate(queue):
         if issued() >= max_requests:
@@ -1005,9 +1157,17 @@ def collect(
             consecutive += 1
             failed(due, attempts, result.reason)
             if result.kind == "refused":
-                defer(queue[position + 1:], f"fonte che rifiuta le richieste ({result.reason})")
+                count = (state.refusal["count"] if state.refusal is not None else 0) + 1
+                pause = min(MAX_PAUSE.total_seconds(),
+                            max(BACKOFF_BASE.total_seconds() * 2 ** min(count - 1, 20), result.retry_after or 0.0))
+                state.refusal = {"since": moment, "until": moment + int(pause), "count": count, "reason": result.reason}
+                report.stopped_abnormally = True
+                defer(queue[position + 1:], f"fonte che rifiuta le richieste ({result.reason}): pausa di "
+                                            f"{pause / 3600:.0f} h, rifiuto {count} di fila")
                 break
             continue
+        if result.kind in ("ok", "missing"):
+            state.refusal = None  # the source answers again: the back-off ends
         if result.kind == "missing":
             observation = Observation("missing")
         else:
@@ -1020,6 +1180,7 @@ def collect(
         consecutive = 0
         for name, amount in observation.notes.items():
             report.add(name, amount)
+        recent.append((due, attempts, observation.status in ("missing", "mismatch")))
         if observation.status == "pending":
             state.pending[due.key] = pending_entry(due, attempts + 1)
             report.add("non_ancora_arrivati")
@@ -1028,6 +1189,16 @@ def collect(
                    "t": moment, "s": observation.stops})
         report.add({"ok": "arrivati", "cancelled": "cancellati"}.get(observation.status, observation.status))
         report.add("campioni", sum(1 for stop in observation.stops if stop[1] is not None))
+        bad = [(train, train_attempts) for train, train_attempts, unknown in recent if unknown]
+        if len(bad) > MAX_BAD_ANSWERS:
+            for train, train_attempts in bad:
+                state.retract(train.key)
+                state.pending[train.key] = pending_entry(train, train_attempts)
+            report.add("rimessi_in_sospeso", len(bad))
+            report.stopped_abnormally = True
+            defer(queue[position + 1:], f"{len(bad)} delle ultime {len(recent)} risposte sconosciute o con identità "
+                                        "diversa: fonte cambiata o che blocca")
+            break
     report.add("in_sospeso_dopo", len(state.pending))
     return report
 
@@ -1036,11 +1207,12 @@ LABELS = (
     ("in_coda", "Treni in coda"), ("nuovi", "nuovi nella finestra"), ("gia_noti", "già noti, non richiesti"),
     ("treni_chiesti", "Treni chiesti"), ("richieste_http", "Richieste HTTP"), ("arrivati", "Arrivati"), ("cancellati", "Cancellati"),
     ("non_ancora_arrivati", "Non ancora arrivati (in sospeso)"), ("missing", "Sconosciuti a ViaggiaTreno"),
-    ("mismatch", "Identità diversa"), ("errori", "Errori"), ("rimandati", "Rimandati alla prossima run"),
+    ("mismatch", "Identità diversa"), ("rimessi_in_sospeso", "Sconosciuti o di altra identità rimessi in sospeso"),
+    ("errori", "Errori"), ("rimandati", "Rimandati alla prossima run"),
     ("scaduti_sconosciuti", "Scaduti dopo 8 h (sconosciuti)"), ("giorno_chiuso", "Mai chiesti, giorno chiuso da ViaggiaTreno"), ("in_sospeso_dopo", "In sospeso dopo la run"),
     ("campioni", "Campioni di ritardo"), ("fermate_straordinarie", "Fermate straordinarie ignorate"),
     ("ritardi_non_plausibili", "Ritardi fuori intervallo scartati"), ("binari_non_validi", "Binari non validi scartati"), ("state_invalid_lines", "Righe di stato scartate"),
-    ("pruned_days", "Giorni eliminati (oltre 35)"),
+    ("pruned_days", "Giorni eliminati (oltre 35)"), ("giorni_persi", "Giorni persi accettati con --bootstrap"),
 )
 
 
@@ -1083,6 +1255,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--summary", type=Path, help="file Markdown a cui aggiungere il riepilogo (GITHUB_STEP_SUMMARY)")
     parser.add_argument("--estimate", action="append", type=date.fromisoformat, metavar="AAAA-MM-GG",
                         help="stampa i treni del giorno e le richieste per run, senza rete né stato")
+    parser.add_argument("--bootstrap", action="store_true",
+                        help="accetta uno stato vuoto o con meno giorni di state.json (prima raccolta, o perdita accertata)")
     parser.add_argument("--base-url", default=BASE_URL, help=argparse.SUPPRESS)
     args = parser.parse_args(argv)
     started = time.monotonic()
@@ -1101,6 +1275,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             parser.error("--now deve indicare il fuso orario")
         fetcher = HttpFetcher(args.base_url, rate=args.rate, timeout=args.timeout)
         state = State(args.state)
+        state.verify_retained(rome_date(now.timestamp()), bootstrap=args.bootstrap)
         report = collect(timetable, state, fetcher.fetch, now, max_requests=args.max_requests,
                          deadline=started + args.deadline_seconds, requests=lambda: fetcher.requests)
         report.counters["richieste_http"] = fetcher.requests
@@ -1114,7 +1289,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     if args.summary:
         with args.summary.open("a", encoding="utf-8") as summary:
             summary.write(render(report, markdown=True))
-    return 0
+    return EXIT_STOPPED if report.stopped_abnormally else 0
 
 
 if __name__ == "__main__":

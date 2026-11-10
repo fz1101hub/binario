@@ -308,7 +308,9 @@ class FetchTest(unittest.TestCase):
                 handler.redirect_request(request, None, 302, "Found", {}, target)
         self.assertIsNotNone(handler.redirect_request(request, None, 302, "Found", {}, nap.CATALOGUE + "Organisation?x=1"))
         self.assertTrue(nap.USER_AGENT.startswith("Binario-nap-watch/"))
-        self.assertNotIn("mozilla", nap.USER_AGENT.lower())
+        self.assertIn("automated weekly read-only", nap.USER_AGENT)
+        for absent in ("mozilla", "http", "@", "personal"):
+            self.assertNotIn(absent, nap.USER_AGENT.lower())
 
 
 class CommandLineTest(unittest.TestCase):

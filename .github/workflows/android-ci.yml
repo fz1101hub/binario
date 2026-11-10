@@ -270,9 +270,13 @@ jobs:
         if: ${{ github.event_name == 'pull_request' && startsWith(github.base_ref, 'stabilization/') }}
         run: python3 tools/verify_embedded_assets.py --min-valid-days 30
 
+  # Signs only a dispatch on a release branch (main or stabilization/*), through the protected environment "release":
+  # the owner keeps the four signing secrets there, with a required reviewer and the same branch policy, so neither
+  # another branch nor another workflow can read them (docs/RELEASE_BUILD.md).
   release-sign:
     needs: android
-    if: ${{ github.event_name == 'workflow_dispatch' && inputs.sign_release }}
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.sign_release && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/stabilization/')) }}
+    environment: release
     runs-on: ubuntu-24.04
     timeout-minutes: 60
 

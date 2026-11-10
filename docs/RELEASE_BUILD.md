@@ -108,7 +108,7 @@ I rail ordinari non leggono alcun secret: un ambiente di distribuzione può inie
 
 Il job `android` conserva per 14 giorni l'artifact `binario-play-bundles-unsigned` con `app-release.aab`, `wear-release.aab` e il log del verifier, ma soltanto per i push su `main`/`stabilization/**` e per i dispatch manuali: le pull request non caricano artifact, così lo spazio di archiviazione del repository non cresce a ogni revisione. I bundle unsigned servono come evidenza e per un confronto locale; non sono caricabili su Play. Entrambi gli upload hanno `overwrite: true`: `actions/upload-artifact` dalla v4 rifiuta un secondo artifact con lo stesso nome nello stesso run, quindi senza quell'opzione un *Re-run failed jobs* dopo un passo fallito a valle dell'upload (per esempio la ricostruzione di riproducibilità) fallirebbe per conflitto di nome e costringerebbe a rilanciare l'intero workflow.
 
-Il job `release-sign` produce invece i bundle pronti per l'upload. Gira soltanto con `workflow_dispatch` e `sign_release=true`, dopo che il job `android` dello stesso commit è verde, e legge quattro secret del repository:
+Il job `release-sign` produce invece i bundle pronti per l'upload. Gira soltanto con `workflow_dispatch` e `sign_release=true` **su un ramo di release** (`main` o `stabilization/*`, la stessa politica dei push nel lock CI), dopo che il job `android` dello stesso commit è verde, e passa dall'**environment protetto `release`**, da cui legge quattro secret:
 
 | Secret | Contenuto |
 |---|---|
@@ -117,7 +117,7 @@ Il job `release-sign` produce invece i bundle pronti per l'upload. Gira soltanto
 | `BINARIO_RELEASE_KEY_ALIAS` | Alias della chiave di upload (per esempio `binario-upload`) |
 | `BINARIO_RELEASE_KEY_PASSWORD` | Password della chiave |
 
-Il job decodifica il keystore in `RUNNER_TEMP`, esporta le quattro variabili `BINARIO_RELEASE_*` che `app/build.gradle.kts` e `wear/build.gradle.kts` già riconoscono, esegue `:app:bundleRelease :wear:bundleRelease`, verifica i due AAB con `tools/verify_android_app_bundles.py --signed` (stessi controlli del gate unsigned, ma la firma JAR `META-INF/MANIFEST.MF`, `*.SF` e `*.RSA|DSA|EC` diventa obbligatoria) e pubblica l'artifact `binario-play-bundles-signed`, anch'esso con scadenza a 14 giorni; il keystore viene rimosso a fine job. `tools/verify_ci_pinning.py` blocca un job di firma senza `needs: android`, senza la condizione di dispatch, con secret interpolati nello script, con keystore fuori da `RUNNER_TEMP`, senza `--signed`, con artifact oltre i 14 giorni o senza `overwrite: true`.
+Il job decodifica il keystore in `RUNNER_TEMP`, esporta le quattro variabili `BINARIO_RELEASE_*` che `app/build.gradle.kts` e `wear/build.gradle.kts` già riconoscono, esegue `:app:bundleRelease :wear:bundleRelease`, verifica i due AAB con `tools/verify_android_app_bundles.py --signed` (stessi controlli del gate unsigned, ma la firma JAR `META-INF/MANIFEST.MF`, `*.SF` e `*.RSA|DSA|EC` diventa obbligatoria) e pubblica l'artifact `binario-play-bundles-signed`, anch'esso con scadenza a 14 giorni; il keystore viene rimosso a fine job. `tools/verify_ci_pinning.py` blocca un job di firma senza `needs: android`, senza la condizione di dispatch limitata a `main` e `stabilization/*`, senza `environment: release`, con secret interpolati nello script, con keystore fuori da `RUNNER_TEMP`, senza `--signed`, con artifact oltre i 14 giorni o senza `overwrite: true`; in ogni workflow rifiuta inoltre un secret usato fuori dalle `env` di questi step (o accanto a un'espressione che un esterno può influenzare), un trigger diverso da `pull_request`, `push`, `schedule` e `workflow_dispatch` (niente `pull_request_target`, `workflow_run` o eventi dei commenti) e un checkout di un altro `ref` o repository.
 
 ```sh
 gh workflow run android-ci.yml \
@@ -127,6 +127,19 @@ gh workflow run android-ci.yml \
   -f sign_release=true
 gh run download --repo fz1101hub/binario --name binario-play-bundles-signed
 ```
+
+### Environment `release` (impostazione del titolare)
+
+La condizione sul ramo non basta da sola: un secret del repository è leggibile da qualunque workflow di qualunque ramo, quindi chi può fare push su un ramo qualsiasi potrebbe aggiungere uno step che lo usa. I secret di firma vanno perciò tenuti **solo** nell'environment, che GitHub consegna al job dopo l'approvazione e solo sui rami ammessi. In GitHub › Settings › Environments:
+
+1. creare (o aprire, se una prima run l'ha già creato vuoto) l'environment `release`;
+2. **Required reviewers**: il titolare (ed eventuali altri responsabili della release); facoltativo «Prevent self-review» se i revisori sono più di uno;
+3. **Deployment branches and tags**: «Selected branches and tags» con `main` e `stabilization/*`;
+4. **Environment secrets**: aggiungere `BINARIO_RELEASE_KEYSTORE_BASE64`, `BINARIO_RELEASE_STORE_PASSWORD`, `BINARIO_RELEASE_KEY_ALIAS` e `BINARIO_RELEASE_KEY_PASSWORD`;
+5. in Settings › Secrets and variables › Actions **eliminare** gli stessi quattro secret a livello di repository, se c'erano;
+6. proteggere `main` e `stabilization/*` (Settings › Rules o Branches: pull request con revisione obbligatoria, niente force push), così sui rami ammessi arriva solo codice revisionato.
+
+Finché l'environment non ha revisori, regole sui rami e secret propri, il job resta limitato a `main` e `stabilization/*` dalla sua condizione, ma i secret restano quelli del repository: la protezione è completa solo dopo i sei passi. A ogni dispatch con `sign_release=true` la run si ferma in attesa dell'approvazione nella pagina della run («Review deployments»).
 
 Il keystore di upload va generato fuori dal repository, una sola volta, con validità superiore ai 25 anni richiesti da Play:
 

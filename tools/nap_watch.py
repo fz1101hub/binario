@@ -44,7 +44,7 @@ DEFAULT_BASELINE = ROOT / "tools/nap_watch_baseline.json"
 CATALOGUE = "https://www.cciss.it/nap/mmtis/public/it/catalog/"
 ALLOWED_PREFIX = "https://www.cciss.it/nap/"
 LIST_PAGES = ("Organisation", "Organisation?orderBy=NAME_DESC")
-USER_AGENT = "Binario-nap-watch/1.0 (personal timetable app; read-only)"
+USER_AGENT = "Binario-nap-watch/1.1 (automated weekly read-only check of the public NAP catalogue for the open-source Binario app)"
 SCHEMA = "binario-nap-watch-v1"
 MAX_PAGE_BYTES = 4 * 1024 * 1024
 TIMEOUT_SECONDS = 30.0

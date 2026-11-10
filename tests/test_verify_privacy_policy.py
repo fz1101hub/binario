@@ -99,6 +99,31 @@ class VerifyPrivacyPolicyTest(unittest.TestCase):
         self.assertFalse({"apache.org", "xml.org", "javax.xml.xmlconstants", "schemas.android.com"} & hosts)
         self.assertFalse(any(":" in host or host != host.lower() for host in hosts))
 
+    def test_hosts_built_in_code_are_found_too(self) -> None:
+        # Audit ci-docs-8: Android asks viaggiatreno.it through URL("https", "viaggiatreno.it", url.file), with no
+        # literal URL, and the iPhone names its hosts in constants.
+        self.assertIn("viaggiatreno.it", POLICY.code_hosts())
+        samples = {
+            'target = URL("https", "alt.example.org", url.file)': "alt.example.org",
+            'const val MIRROR_HOST = "mirror.example.org"': "mirror.example.org",
+            'static let viaggiaTrenoApexHost = "apex.example.org"': "apex.example.org",
+            'alternate.host = "other.example.org"': "other.example.org",
+            'private let feedHost: String = "feed.example.org"': "feed.example.org",
+        }
+        for line, host in samples.items():
+            with self.subTest(line=line):
+                self.assertEqual({host}, POLICY.hosts_in(line))
+        for line in ('val label = "transport.opendata.ch"', 'if (url.host == "www.example.org")', 'host = "localhost"'):
+            with self.subTest(line=line):
+                self.assertEqual(set(), POLICY.hosts_in(line))
+
+    def test_every_iphone_host_must_be_disclosed_in_the_privacy_policy(self) -> None:
+        hosts = POLICY.ios_code_hosts()
+        self.assertTrue({"www.viaggiatreno.it", "viaggiatreno.it", "iechub.rfi.it", "italoinviaggio.italotreno.com"} <= hosts)
+        self.assertEqual([], POLICY.verification_errors(ios_hosts=hosts))
+        errors = POLICY.verification_errors(ios_hosts=hosts | {"telemetry.example.invalid"})
+        self.assertIn("PRIVACY.md: iPhone host `telemetry.example.invalid` not disclosed", errors)
+
     def test_every_host_in_app_code_must_be_classified_in_the_data_safety_table(self) -> None:
         hosts = POLICY.code_hosts()
         self.assertEqual([], POLICY.verification_errors(hosts=hosts))
