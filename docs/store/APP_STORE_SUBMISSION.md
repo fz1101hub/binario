@@ -21,7 +21,7 @@
 1. **Le mie app → + → Nuova app**: piattaforma *iOS*, nome `Binario`, lingua principale *Italiano*, ID bundle `it.binario.ios` (registrato al punto 0), SKU `binario-ios`, accesso utente *Accesso completo*. L'app Apple Watch incorporata non ha un record proprio: viene caricata dentro la build iPhone (sezione 6).
 2. **Informazioni sull'app**: categoria primaria *Viaggi* (secondaria facoltativa *Navigazione*); diritti sui contenuti: *Sì, l'app contiene, mostra o accede a contenuti di terzi* — gli orari GTFS open data elencati nelle impostazioni dell'app (**Fonti dati GTFS**) con attribuzione, validità, licenza e pagina della fonte e, quando la build include `ios/Resources/binario_punctuality_stats_v1.json.gz`, le statistiche aggregate non ufficiali che Binario calcola da osservazioni pubbliche di ViaggiaTreno, attribuite in ogni schermata («Statistiche non ufficiali di Binario su dati ViaggiaTreno») — e dichiarare di disporre dei diritti solo dopo aver completato il punto 0 sulle licenze. Se Trenitalia o RFI obiettano all'uso delle statistiche, `BINARIO_IOS_PUNCTUALITY_STATS=false ios/Scripts/generate-project.sh` le toglie dalla build iPhone successiva senza altre modifiche (su Android `-Pbinario.punctualityStats=false`).
 3. **Classificazione per età**: rispondere *No* a ogni voce del questionario (nessuna violenza, contenuto sessuale o di nudità, linguaggio scurrile, droghe, gioco d'azzardo, concorsi, horror, contenuti medici o generati dagli utenti; nessun accesso web illimitato: i collegamenti alle fonti aprono il browser di sistema). Esito atteso: **4+**.
-4. **Privacy dell'app**: inserire l'URL dell'informativa; nel questionario dichiarare **Dati non raccolti** (*Data Not Collected*). È coerente con i tre `PrivacyInfo.xcprivacy` (nessun tracciamento, nessun dominio di tracciamento, nessun tipo di dato raccolto, sola API `UserDefaults` con motivi `CA92.1`/`1C8F.1`) e con il codice: nessun account, analytics, posizione, microfono né richiesta di rete. Le statistiche di affidabilità sono un file incluso nell'app, letto solo sul dispositivo, e «Mostra su Watch» salva soltanto l'identificativo di una tratta nelle `UserDefaults`: la risposta non cambia.
+4. **Privacy dell'app**: inserire l'URL dell'informativa; nel questionario dichiarare **Dati non raccolti** (*Data Not Collected*). È coerente con i tre `PrivacyInfo.xcprivacy` (nessun tracciamento, nessun dominio di tracciamento, nessun tipo di dato raccolto, sola API `UserDefaults` con motivi `CA92.1`/`1C8F.1`) e con il codice: nessun account, analytics, posizione, microfono né richiesta di rete. Le statistiche di affidabilità sono un file incluso nell'app, letto solo sul dispositivo; «Mostra su Watch» salva soltanto l'identificativo di una tratta, «I miei treni» i treni salvati con la stella e «Partenze» l'ultima stazione scelta nelle `UserDefaults` dell'iPhone, senza alcun invio: la risposta non cambia.
 5. **Prezzo e disponibilità**: *Gratuita*; paesi almeno Italia, poi i paesi delle lingue supportate (Austria, Svizzera, Germania, Francia, Spagna, Regno Unito, Stati Uniti); le lingue aggiunte (sezione 2) non obbligano ad ampliare la disponibilità, perché i dati restano quelli delle reti incluse. La build esclude Mac con Apple Silicon e Apple Vision (`SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD` e `SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD` a `NO`): controllare che le due opzioni risultino disattivate nella pagina di disponibilità.
 
 ## 2. Testi del listing
@@ -325,6 +325,8 @@ COSA INCLUDE
 • Orari programmati di nove reti regionali ed estere: Alto Adige (STA), Lombardia (Trenord), Trentino, Toscana (TFT), Campania (EAV), Sardegna (ARST), Svizzera (Open Data Platform Mobility), Austria (ÖBB) e Francia (SNCF). Trenitalia e Italo non sono inclusi: le stazioni senza orari sono segnalate nella ricerca.
 • Catalogo offline di 5.239 stazioni italiane con alias e codici ferroviari; la ricerca ignora accenti e punteggiatura e mostra per prime le stazioni coperte.
 • Tratte salvate, fino a 32, sul tuo iPhone e senza account.
+• Partenze: i prossimi treni in partenza da una stazione, dagli stessi orari programmati, con «Più tardi» per i successivi; un tocco apre il treno.
+• I miei treni: fino a 12 treni salvati con la stella nel dettaglio, sul tuo iPhone.
 • Impostazioni con l'elenco delle fonti, la validità di ogni orario, le licenze e i collegamenti ai portali open data.
 
 APPLE WATCH
@@ -350,6 +352,8 @@ WHAT IS INCLUDED
 • Scheduled timetables of nine regional and cross-border networks: South Tyrol (STA), Lombardy (Trenord), Trentino, Tuscany (TFT), Campania (EAV), Sardinia (ARST), Switzerland (Open Data Platform Mobility), Austria (ÖBB) and France (SNCF). Trenitalia and Italo are not included: stations without timetables are flagged in the search.
 • Offline catalogue of 5,239 Italian stations with aliases and railway codes; the search ignores accents and punctuation and lists covered stations first.
 • Saved routes, up to 32, on your iPhone and without an account.
+• Departures: the next trains leaving a station, from the same scheduled timetables, with “Later” for the following ones; a tap opens the train.
+• My trains: up to 12 trains saved with the star of the train detail, on your iPhone.
 • Settings list every source with its validity, licence and a link to the open-data portal.
 
 APPLE WATCH
@@ -375,6 +379,8 @@ WAS ENTHALTEN IST
 • Planzeiten von neun regionalen und grenzüberschreitenden Netzen: Südtirol (STA), Lombardei (Trenord), Trentino, Toskana (TFT), Kampanien (EAV), Sardinien (ARST), Schweiz (Open Data Platform Mobility), Österreich (ÖBB) und Frankreich (SNCF). Trenitalia und Italo sind nicht enthalten: Bahnhöfe ohne Fahrplan werden in der Suche gekennzeichnet.
 • Offline-Katalog mit 5.239 italienischen Bahnhöfen, Aliasnamen und Bahncodes; die Suche ignoriert Akzente und Satzzeichen und zeigt abgedeckte Bahnhöfe zuerst.
 • Gespeicherte Strecken, bis zu 32, auf deinem iPhone und ohne Konto.
+• Abfahrten: die nächsten Züge ab einem Bahnhof aus denselben Planfahrplänen, mit „Später“ für die folgenden; ein Tippen öffnet den Zug.
+• Meine Züge: bis zu 12 Züge, mit dem Stern im Zugdetail gespeichert, auf deinem iPhone.
 • Einstellungen mit allen Quellen, ihrer Gültigkeit, Lizenz und dem Link zum Open-Data-Portal.
 
 APPLE WATCH
@@ -400,6 +406,8 @@ CE QUI EST INCLUS
 • Horaires programmés de neuf réseaux régionaux et transfrontaliers : Haut-Adige (STA), Lombardie (Trenord), Trentin, Toscane (TFT), Campanie (EAV), Sardaigne (ARST), Suisse (Open Data Platform Mobility), Autriche (ÖBB) et France (SNCF). Trenitalia et Italo ne sont pas inclus : les gares sans horaires sont signalées dans la recherche.
 • Catalogue hors ligne de 5 239 gares italiennes avec alias et codes ferroviaires ; la recherche ignore accents et ponctuation et affiche d'abord les gares couvertes.
 • Trajets enregistrés, jusqu'à 32, sur votre iPhone et sans compte.
+• Départs : les prochains trains au départ d'une gare, d'après les mêmes horaires programmés, avec « Plus tard » pour les suivants ; un toucher ouvre le train.
+• Mes trains : jusqu'à 12 trains enregistrés avec l'étoile du détail, sur votre iPhone.
 • Réglages avec la liste des sources, la validité de chaque horaire, les licences et les liens vers les portails open data.
 
 APPLE WATCH
@@ -425,6 +433,8 @@ QUÉ INCLUYE
 • Horarios programados de nueve redes regionales y transfronterizas: Alto Adigio (STA), Lombardía (Trenord), Trentino, Toscana (TFT), Campania (EAV), Cerdeña (ARST), Suiza (Open Data Platform Mobility), Austria (ÖBB) y Francia (SNCF). Trenitalia e Italo no están incluidos: las estaciones sin horarios se señalan en la búsqueda.
 • Catálogo sin conexión de 5.239 estaciones italianas con alias y códigos ferroviarios; la búsqueda ignora acentos y puntuación y muestra primero las estaciones cubiertas.
 • Rutas guardadas, hasta 32, en tu iPhone y sin cuenta.
+• Salidas: los próximos trenes que salen de una estación, de los mismos horarios programados, con «Más tarde» para los siguientes; un toque abre el tren.
+• Mis trenes: hasta 12 trenes guardados con la estrella del detalle, en tu iPhone.
 • Ajustes con la lista de fuentes, la validez de cada horario, las licencias y los enlaces a los portales de datos abiertos.
 
 APPLE WATCH
@@ -450,6 +460,8 @@ Binario لـ iPhone مخطِّط رحلات قطارات يعمل دون اتص�
 • مواعيد مجدولة لتسع شبكات إقليمية وعابرة للحدود: جنوب تيرول (STA) ولومبارديا (Trenord) وترينتينو وتوسكانا (TFT) وكامبانيا (EAV) وسردينيا (ARST) وسويسرا (Open Data Platform Mobility) والنمسا (ÖBB) وفرنسا (SNCF). Trenitalia وItalo غير مضمَّنتين: يُشار في البحث إلى المحطات التي لا تتوفر لها مواعيد.
 • كتالوج دون اتصال يضم 5239 محطة إيطالية بأسمائها البديلة ورموزها؛ يتجاهل البحث علامات التشكيل والترقيم ويعرض المحطات المغطّاة أولًا.
 • مسارات محفوظة، حتى 32 مسارًا، على جهاز iPhone ودون حساب.
+• المغادرات: القطارات التالية المغادرة من محطة، من المواعيد المجدولة نفسها، مع «لاحقًا» للقطارات التالية؛ ولمسة تفتح القطار.
+• قطاراتي: حتى 12 قطارًا محفوظًا بالنجمة في تفاصيل القطار، على جهاز iPhone.
 • إعدادات تعرض كل مصدر مع صلاحيته وترخيصه ورابطًا إلى بوابة البيانات المفتوحة.
 
 Apple Watch
@@ -475,6 +487,8 @@ iPhone के लिए Binario एक रेल यात्रा प्ला
 • नौ क्षेत्रीय और सीमा-पार नेटवर्क की निर्धारित समय-सारणियाँ: दक्षिण टायरॉल (STA), लोम्बार्डी (Trenord), ट्रेंटिनो, टस्कनी (TFT), कैम्पानिया (EAV), सार्डिनिया (ARST), स्विट्ज़रलैंड (Open Data Platform Mobility), ऑस्ट्रिया (ÖBB) और फ़्रांस (SNCF)। Trenitalia और Italo शामिल नहीं हैं: बिना समय-सारणी वाले स्टेशन खोज में चिह्नित किए जाते हैं।
 • उपनामों और रेलवे कोड के साथ 5,239 इतालवी स्टेशनों का ऑफ़लाइन कैटलॉग; खोज एक्सेंट और विराम चिह्नों को अनदेखा करती है और कवर किए गए स्टेशन पहले दिखाती है।
 • आपके iPhone पर, बिना खाते के, अधिकतम 32 सहेजे गए रूट।
+• प्रस्थान: किसी स्टेशन से अगली ट्रेनें, उन्हीं निर्धारित समय-सारणियों से, आगे की ट्रेनों के लिए «बाद के» के साथ; टैप करने पर ट्रेन खुलती है।
+• मेरी ट्रेनें: ट्रेन विवरण के तारे से सहेजी गई अधिकतम 12 ट्रेनें, आपके iPhone पर।
 • सेटिंग्स में हर स्रोत उसकी वैधता, लाइसेंस और ओपन-डेटा पोर्टल के लिंक के साथ।
 
 APPLE WATCH
@@ -500,6 +514,8 @@ YANG DISERTAKAN
 • Jadwal terencana dari sembilan jaringan regional dan lintas batas: Tirol Selatan (STA), Lombardia (Trenord), Trentino, Toskana (TFT), Campania (EAV), Sardinia (ARST), Swiss (Open Data Platform Mobility), Austria (ÖBB), dan Prancis (SNCF). Trenitalia dan Italo tidak disertakan: stasiun tanpa jadwal ditandai dalam pencarian.
 • Katalog offline berisi 5.239 stasiun Italia dengan nama alias dan kode kereta; pencarian mengabaikan aksen dan tanda baca serta menampilkan stasiun yang tercakup lebih dulu.
 • Hingga 32 rute tersimpan di iPhone Anda, tanpa akun.
+• Keberangkatan: kereta berikutnya yang berangkat dari sebuah stasiun, dari jadwal terencana yang sama, dengan «Berikutnya» untuk kereta selanjutnya; ketuk untuk membuka kereta.
+• Kereta saya: hingga 12 kereta yang disimpan dengan bintang di detail kereta, di iPhone Anda.
 • Pengaturan mencantumkan setiap sumber beserta masa berlaku, lisensi, dan tautan ke portal data terbuka.
 
 APPLE WATCH
@@ -525,6 +541,8 @@ iPhone 版 Binario は、完全にオフラインで動作する鉄道の経路�
 • 地域路線と国境を越える9つの鉄道網の計画時刻表：南チロル（STA）、ロンバルディア（Trenord）、トレンティーノ、トスカーナ（TFT）、カンパニア（EAV）、サルデーニャ（ARST）、スイス（Open Data Platform Mobility）、オーストリア（ÖBB）、フランス（SNCF）。Trenitalia と Italo は含まれず、時刻表のない駅は検索で表示されます。
 • 別名と鉄道コードを備えたイタリアの 5,239 駅のオフラインカタログ。検索はアクセント記号や句読点を区別せず、時刻表のある駅を先に表示します。
 • 最大 32 件のルートを、アカウントなしで iPhone に保存。
+• 発車案内：同じ予定時刻表から、駅を発車する次の列車を表示。「より遅い時間」で続きを表示し、タップで列車を開きます。
+• マイ列車：列車の詳細の星で保存した最大 12 本の列車を iPhone に保存。
 • 設定では各出典の有効期限、ライセンス、オープンデータポータルへのリンクを確認できます。
 
 APPLE WATCH
@@ -550,6 +568,8 @@ iPhone용 Binario는 완전히 오프라인으로 작동하는 철도 여정 플
 • 지역 및 국경 간 철도망 9곳의 계획 시간표: 남티롤(STA), 롬바르디아(Trenord), 트렌티노, 토스카나(TFT), 캄파니아(EAV), 사르데냐(ARST), 스위스(Open Data Platform Mobility), 오스트리아(ÖBB), 프랑스(SNCF). Trenitalia와 Italo는 포함되지 않으며, 시간표가 없는 역은 검색에서 표시됩니다.
 • 별칭과 철도 코드를 갖춘 이탈리아 5,239개 역의 오프라인 카탈로그. 검색은 악센트와 문장 부호를 무시하고 시간표가 있는 역을 먼저 보여 줍니다.
 • 계정 없이 iPhone에 최대 32개의 경로 저장.
+• 출발: 같은 예정 시간표에서 역을 출발하는 다음 열차를 보여 주며, '이후 시간'으로 다음 열차를 더 볼 수 있고 탭하면 열차가 열립니다.
+• 내 열차: 열차 상세의 별표로 저장한 최대 12개의 열차를 iPhone에 보관.
 • 설정에서 각 출처의 유효 기간, 라이선스, 공개 데이터 포털 링크 확인.
 
 APPLE WATCH
@@ -575,6 +595,8 @@ O QUE ESTÁ INCLUÍDO
 • Horários programados de nove redes regionais e internacionais: Tirol do Sul (STA), Lombardia (Trenord), Trentino, Toscana (TFT), Campânia (EAV), Sardenha (ARST), Suíça (Open Data Platform Mobility), Áustria (ÖBB) e França (SNCF). Trenitalia e Italo não estão incluídas: as estações sem horários são sinalizadas na busca.
 • Catálogo offline de 5.239 estações italianas com nomes alternativos e códigos ferroviários; a busca ignora acentos e pontuação e mostra primeiro as estações cobertas.
 • Até 32 trajetos salvos no seu iPhone, sem conta.
+• Partidas: os próximos trens que partem de uma estação, dos mesmos horários programados, com «Mais tarde» para os seguintes; um toque abre o trem.
+• Meus trens: até 12 trens salvos com a estrela do detalhe, no seu iPhone.
 • Ajustes com cada fonte, sua validade, licença e link para o portal de dados abertos.
 
 APPLE WATCH
@@ -600,6 +622,8 @@ Binario для iPhone — планировщик железнодорожных 
 • Плановые расписания девяти региональных и трансграничных сетей: Южный Тироль (STA), Ломбардия (Trenord), Трентино, Тоскана (TFT), Кампания (EAV), Сардиния (ARST), Швейцария (Open Data Platform Mobility), Австрия (ÖBB) и Франция (SNCF). Trenitalia и Italo не включены: станции без расписания отмечаются при поиске.
 • Офлайн-каталог из 5 239 итальянских станций с альтернативными названиями и железнодорожными кодами; поиск не учитывает диакритику и пунктуацию и сначала показывает станции с расписанием.
 • До 32 сохранённых маршрутов на вашем iPhone без аккаунта.
+• Отправления: ближайшие поезда со станции по тому же плановому расписанию, кнопка «Позже» показывает следующие; касание открывает поезд.
+• Мои поезда: до 12 поездов, сохранённых звёздочкой в карточке поезда, на вашем iPhone.
 • В настройках указан каждый источник со сроком действия, лицензией и ссылкой на портал открытых данных.
 
 APPLE WATCH
@@ -625,6 +649,8 @@ Binario สำหรับ iPhone คือแอปวางแผนการ�
 • ตารางเวลาตามแผนของเครือข่ายระดับภูมิภาคและข้ามพรมแดน 9 เครือข่าย: เซาท์ทิโรล (STA), ลอมบาร์เดีย (Trenord), เตรนตีโน, ทัสคานี (TFT), คัมปาเนีย (EAV), ซาร์ดิเนีย (ARST), สวิตเซอร์แลนด์ (Open Data Platform Mobility), ออสเตรีย (ÖBB) และฝรั่งเศส (SNCF) ไม่รวม Trenitalia และ Italo: สถานีที่ไม่มีตารางเวลาจะถูกระบุไว้ในการค้นหา
 • แค็ตตาล็อกออฟไลน์ของสถานีในอิตาลี 5,239 แห่ง พร้อมชื่อเรียกอื่นและรหัสรถไฟ การค้นหาไม่สนใจเครื่องหมายเน้นเสียงและเครื่องหมายวรรคตอน และแสดงสถานีที่มีตารางเวลาก่อน
 • บันทึกเส้นทางได้สูงสุด 32 เส้นทางบน iPhone ของคุณ โดยไม่ต้องมีบัญชี
+• ขบวนออก: ขบวนถัดไปที่ออกจากสถานี จากตารางเวลาตามแผนชุดเดียวกัน พร้อมปุ่ม «ถัดไป» สำหรับขบวนต่อไป แตะเพื่อเปิดขบวน
+• รถไฟของฉัน: บันทึกได้สูงสุด 12 ขบวนด้วยรูปดาวในรายละเอียดขบวน บน iPhone ของคุณ
 • การตั้งค่าแสดงแหล่งข้อมูลทุกแหล่งพร้อมระยะเวลาที่ใช้ได้ สัญญาอนุญาต และลิงก์ไปยังพอร์ทัลข้อมูลเปิด
 
 APPLE WATCH
@@ -650,6 +676,8 @@ NELER DAHİL
 • Dokuz bölgesel ve sınır ötesi ağın planlı tarifeleri: Güney Tirol (STA), Lombardiya (Trenord), Trentino, Toskana (TFT), Campania (EAV), Sardinya (ARST), İsviçre (Open Data Platform Mobility), Avusturya (ÖBB) ve Fransa (SNCF). Trenitalia ve Italo dahil değildir: tarifesi olmayan istasyonlar aramada işaretlenir.
 • Diğer adları ve demiryolu kodlarıyla 5.239 İtalyan istasyonundan oluşan çevrimdışı katalog; arama aksanları ve noktalama işaretlerini yok sayar ve kapsanan istasyonları önce listeler.
 • iPhone'unuzda, hesap gerekmeden en fazla 32 kayıtlı güzergâh.
+• Kalkışlar: aynı planlı tarifelerden bir istasyondan kalkan sonraki trenler, sonrakiler için «Daha geç»; dokununca tren açılır.
+• Trenlerim: tren ayrıntısındaki yıldızla kaydedilen en fazla 12 tren, iPhone'unuzda.
 • Ayarlarda her kaynak geçerlilik süresi, lisansı ve açık veri portalının bağlantısıyla listelenir.
 
 APPLE WATCH
@@ -675,6 +703,8 @@ Binario cho iPhone là ứng dụng lập kế hoạch hành trình tàu hỏa h
 • Lịch trình theo kế hoạch của chín mạng lưới khu vực và xuyên biên giới: Nam Tyrol (STA), Lombardia (Trenord), Trentino, Toscana (TFT), Campania (EAV), Sardegna (ARST), Thụy Sĩ (Open Data Platform Mobility), Áo (ÖBB) và Pháp (SNCF). Không bao gồm Trenitalia và Italo: các ga không có lịch trình được đánh dấu khi tìm kiếm.
 • Danh mục ngoại tuyến gồm 5.239 ga tại Ý với tên gọi khác và mã đường sắt; tìm kiếm bỏ qua dấu và ký tự chấm câu, đồng thời hiển thị trước các ga có lịch trình.
 • Lưu tối đa 32 tuyến trên iPhone của bạn, không cần tài khoản.
+• Tàu đi: các chuyến tàu sắp khởi hành từ một ga, theo cùng lịch trình dự kiến, có nút «Muộn hơn» để xem tiếp; chạm để mở tàu.
+• Tàu của tôi: tối đa 12 tàu được lưu bằng ngôi sao trong chi tiết tàu, trên iPhone của bạn.
 • Phần Cài đặt liệt kê từng nguồn kèm thời hạn hiệu lực, giấy phép và liên kết đến cổng dữ liệu mở.
 
 APPLE WATCH
@@ -700,6 +730,8 @@ iPhone 版 Binario 是一款完全离线运行的铁路行程规划工具：选�
 • 九个区域和跨境铁路网的计划时刻表：南蒂罗尔 (STA)、伦巴第 (Trenord)、特伦蒂诺、托斯卡纳 (TFT)、坎帕尼亚 (EAV)、撒丁岛 (ARST)、瑞士 (Open Data Platform Mobility)、奥地利 (ÖBB) 和法国 (SNCF)。不含 Trenitalia 和 Italo：没有时刻表的车站会在搜索中标出。
 • 离线目录收录 5,239 个意大利车站及其别名和铁路代码；搜索忽略重音和标点，并优先列出有时刻表的车站。
 • 无需账户，即可在 iPhone 上保存最多 32 条路线。
+• 出发：根据相同的计划时刻表显示从车站出发的下一班列车，点“更晚”查看后续车次，轻点即可打开列车。
+• 我的列车：用列车详情中的星标保存最多 12 趟列车，保存在 iPhone 上。
 • 设置中列出每个来源的有效期、许可和开放数据门户链接。
 
 APPLE WATCH
@@ -815,97 +847,97 @@ tàu hỏa,lịch tàu,đường sắt,nhà ga,đi làm,khu vực,tuyến,ngoạ
 #### Novità (it)
 
 ```text
-Prima pubblicazione di Binario 0.1.0 su App Store: pianificatore offline con orari GTFS ufficiali di nove reti regionali ed estere, catalogo di 5.239 stazioni con segnalazione delle stazioni senza orari, tratte salvate e app per Apple Watch. Nessun account, nessuna pubblicità, nessuna richiesta di rete.
+Prima pubblicazione di Binario 0.1.0 su App Store: pianificatore offline con orari GTFS ufficiali di nove reti regionali ed estere, catalogo di 5.239 stazioni con segnalazione delle stazioni senza orari, partenze di una stazione, tratte e treni salvati e app per Apple Watch. Nessun account, nessuna pubblicità, nessuna richiesta di rete.
 ```
 
 #### Novità (en)
 
 ```text
-First App Store release of Binario 0.1.0: offline planner with official GTFS timetables of nine regional and cross-border networks, a catalogue of 5,239 stations that flags those without timetables, saved routes and an Apple Watch app. No account, no ads, no network requests.
+First App Store release of Binario 0.1.0: offline planner with official GTFS timetables of nine regional and cross-border networks, a catalogue of 5,239 stations that flags those without timetables, station departures, saved routes and trains and an Apple Watch app. No account, no ads, no network requests.
 ```
 
 #### Novità (de)
 
 ```text
-Erste App-Store-Veröffentlichung von Binario 0.1.0: Offline-Planer mit offiziellen GTFS-Fahrplänen von neun regionalen und grenzüberschreitenden Netzen, Katalog mit 5.239 Bahnhöfen mit Kennzeichnung der Bahnhöfe ohne Fahrplan, gespeicherte Strecken und App für die Apple Watch. Kein Konto, keine Werbung, keine Netzwerkanfragen.
+Erste App-Store-Veröffentlichung von Binario 0.1.0: Offline-Planer mit offiziellen GTFS-Fahrplänen von neun regionalen und grenzüberschreitenden Netzen, Katalog mit 5.239 Bahnhöfen mit Kennzeichnung der Bahnhöfe ohne Fahrplan, Abfahrten eines Bahnhofs, gespeicherte Strecken und Züge und App für die Apple Watch. Kein Konto, keine Werbung, keine Netzwerkanfragen.
 ```
 
 #### Novità (fr)
 
 ```text
-Première publication de Binario 0.1.0 sur l'App Store : planificateur hors ligne avec les horaires GTFS officiels de neuf réseaux régionaux et transfrontaliers, catalogue de 5 239 gares signalant celles sans horaires, trajets enregistrés et app Apple Watch. Pas de compte, pas de publicité, aucune requête réseau.
+Première publication de Binario 0.1.0 sur l'App Store : planificateur hors ligne avec les horaires GTFS officiels de neuf réseaux régionaux et transfrontaliers, catalogue de 5 239 gares signalant celles sans horaires, départs d'une gare, trajets et trains enregistrés et app Apple Watch. Pas de compte, pas de publicité, aucune requête réseau.
 ```
 
 #### Novità (es)
 
 ```text
-Primera publicación de Binario 0.1.0 en App Store: planificador sin conexión con horarios GTFS oficiales de nueve redes regionales y transfronterizas, catálogo de 5.239 estaciones que señala las que no tienen horarios, rutas guardadas y app para Apple Watch. Sin cuenta, sin publicidad, sin solicitudes de red.
+Primera publicación de Binario 0.1.0 en App Store: planificador sin conexión con horarios GTFS oficiales de nueve redes regionales y transfronterizas, catálogo de 5.239 estaciones que señala las que no tienen horarios, salidas de una estación, rutas y trenes guardados y app para Apple Watch. Sin cuenta, sin publicidad, sin solicitudes de red.
 ```
 
 #### Novità (ar)
 
 ```text
-أول إصدار من Binario 0.1.0 على App Store: مخطِّط يعمل دون اتصال بجداول GTFS الرسمية لتسع شبكات إقليمية وعابرة للحدود، وكتالوج يضم 5239 محطة يشير إلى المحطات التي لا تتوفر لها مواعيد، ومسارات محفوظة وتطبيق لـ Apple Watch. بلا حساب وبلا إعلانات وبلا طلبات شبكة.
+أول إصدار من Binario 0.1.0 على App Store: مخطِّط يعمل دون اتصال بجداول GTFS الرسمية لتسع شبكات إقليمية وعابرة للحدود، وكتالوج يضم 5239 محطة يشير إلى المحطات التي لا تتوفر لها مواعيد، ومغادرات المحطة، ومسارات وقطارات محفوظة وتطبيق لـ Apple Watch. بلا حساب وبلا إعلانات وبلا طلبات شبكة.
 ```
 
 #### Novità (hi)
 
 ```text
-App Store पर Binario 0.1.0 की पहली रिलीज़: नौ क्षेत्रीय और सीमा-पार नेटवर्क की आधिकारिक GTFS समय-सारणियों वाला ऑफ़लाइन प्लानर, 5,239 स्टेशनों का कैटलॉग जो बिना समय-सारणी वाले स्टेशनों को चिह्नित करता है, सहेजे गए रूट और Apple Watch ऐप। न खाता, न विज्ञापन, न नेटवर्क अनुरोध।
+App Store पर Binario 0.1.0 की पहली रिलीज़: नौ क्षेत्रीय और सीमा-पार नेटवर्क की आधिकारिक GTFS समय-सारणियों वाला ऑफ़लाइन प्लानर, 5,239 स्टेशनों का कैटलॉग जो बिना समय-सारणी वाले स्टेशनों को चिह्नित करता है, स्टेशन के प्रस्थान, सहेजे गए रूट और ट्रेनें तथा Apple Watch ऐप। न खाता, न विज्ञापन, न नेटवर्क अनुरोध।
 ```
 
 #### Novità (id)
 
 ```text
-Rilis pertama Binario 0.1.0 di App Store: perencana offline dengan jadwal GTFS resmi dari sembilan jaringan regional dan lintas batas, katalog 5.239 stasiun yang menandai stasiun tanpa jadwal, rute tersimpan, dan aplikasi Apple Watch. Tanpa akun, tanpa iklan, tanpa permintaan jaringan.
+Rilis pertama Binario 0.1.0 di App Store: perencana offline dengan jadwal GTFS resmi dari sembilan jaringan regional dan lintas batas, katalog 5.239 stasiun yang menandai stasiun tanpa jadwal, keberangkatan stasiun, rute dan kereta tersimpan, dan aplikasi Apple Watch. Tanpa akun, tanpa iklan, tanpa permintaan jaringan.
 ```
 
 #### Novità (ja)
 
 ```text
-Binario 0.1.0 を App Store で初めて公開しました。地域路線と国境を越える9つの鉄道網の公式 GTFS 時刻表を収録したオフライン経路検索、時刻表のない駅を表示する 5,239 駅のカタログ、ルート保存、Apple Watch アプリを備えています。アカウント不要、広告なし、ネットワーク通信なし。
+Binario 0.1.0 を App Store で初めて公開しました。地域路線と国境を越える9つの鉄道網の公式 GTFS 時刻表を収録したオフライン経路検索、時刻表のない駅を表示する 5,239 駅のカタログ、駅の発車案内、ルートと列車の保存、Apple Watch アプリを備えています。アカウント不要、広告なし、ネットワーク通信なし。
 ```
 
 #### Novità (ko)
 
 ```text
-App Store에 Binario 0.1.0을 처음 출시합니다. 지역 및 국경 간 철도망 9곳의 공식 GTFS 시간표를 담은 오프라인 플래너, 시간표가 없는 역을 표시하는 5,239개 역 카탈로그, 경로 저장, Apple Watch 앱을 제공합니다. 계정, 광고, 네트워크 요청이 없습니다.
+App Store에 Binario 0.1.0을 처음 출시합니다. 지역 및 국경 간 철도망 9곳의 공식 GTFS 시간표를 담은 오프라인 플래너, 시간표가 없는 역을 표시하는 5,239개 역 카탈로그, 역 출발 안내, 경로와 열차 저장, Apple Watch 앱을 제공합니다. 계정, 광고, 네트워크 요청이 없습니다.
 ```
 
 #### Novità (pt-BR)
 
 ```text
-Primeira versão do Binario 0.1.0 na App Store: planejador offline com horários GTFS oficiais de nove redes regionais e internacionais, catálogo de 5.239 estações que sinaliza as que não têm horários, trajetos salvos e app para Apple Watch. Sem conta, sem anúncios, sem solicitações de rede.
+Primeira versão do Binario 0.1.0 na App Store: planejador offline com horários GTFS oficiais de nove redes regionais e internacionais, catálogo de 5.239 estações que sinaliza as que não têm horários, partidas de uma estação, trajetos e trens salvos e app para Apple Watch. Sem conta, sem anúncios, sem solicitações de rede.
 ```
 
 #### Novità (ru)
 
 ```text
-Первый выпуск Binario 0.1.0 в App Store: офлайн-планировщик с официальными расписаниями GTFS девяти региональных и трансграничных сетей, каталог из 5 239 станций с отметкой станций без расписания, сохранённые маршруты и приложение для Apple Watch. Без аккаунта, рекламы и сетевых запросов.
+Первый выпуск Binario 0.1.0 в App Store: офлайн-планировщик с официальными расписаниями GTFS девяти региональных и трансграничных сетей, каталог из 5 239 станций с отметкой станций без расписания, отправления со станции, сохранённые маршруты и поезда и приложение для Apple Watch. Без аккаунта, рекламы и сетевых запросов.
 ```
 
 #### Novità (th)
 
 ```text
-Binario 0.1.0 เปิดตัวครั้งแรกบน App Store: ตัววางแผนแบบออฟไลน์พร้อมตารางเวลา GTFS อย่างเป็นทางการของเครือข่ายระดับภูมิภาคและข้ามพรมแดน 9 เครือข่าย แค็ตตาล็อก 5,239 สถานีที่ระบุสถานีที่ไม่มีตารางเวลา การบันทึกเส้นทาง และแอป Apple Watch ไม่มีบัญชี ไม่มีโฆษณา ไม่มีคำขอเครือข่าย
+Binario 0.1.0 เปิดตัวครั้งแรกบน App Store: ตัววางแผนแบบออฟไลน์พร้อมตารางเวลา GTFS อย่างเป็นทางการของเครือข่ายระดับภูมิภาคและข้ามพรมแดน 9 เครือข่าย แค็ตตาล็อก 5,239 สถานีที่ระบุสถานีที่ไม่มีตารางเวลา ขบวนออกจากสถานี การบันทึกเส้นทางและรถไฟ และแอป Apple Watch ไม่มีบัญชี ไม่มีโฆษณา ไม่มีคำขอเครือข่าย
 ```
 
 #### Novità (tr)
 
 ```text
-Binario 0.1.0'ın App Store'daki ilk sürümü: dokuz bölgesel ve sınır ötesi ağın resmî GTFS tarifelerini içeren çevrimdışı planlayıcı, tarifesi olmayan istasyonları işaretleyen 5.239 istasyonluk katalog, kayıtlı güzergâhlar ve Apple Watch uygulaması. Hesap yok, reklam yok, ağ isteği yok.
+Binario 0.1.0'ın App Store'daki ilk sürümü: dokuz bölgesel ve sınır ötesi ağın resmî GTFS tarifelerini içeren çevrimdışı planlayıcı, tarifesi olmayan istasyonları işaretleyen 5.239 istasyonluk katalog, istasyon kalkışları, kayıtlı güzergâhlar ile trenler ve Apple Watch uygulaması. Hesap yok, reklam yok, ağ isteği yok.
 ```
 
 #### Novità (vi)
 
 ```text
-Phát hành Binario 0.1.0 lần đầu trên App Store: trình lập kế hoạch ngoại tuyến với lịch trình GTFS chính thức của chín mạng lưới khu vực và xuyên biên giới, danh mục 5.239 ga có đánh dấu các ga không có lịch trình, lưu tuyến và ứng dụng Apple Watch. Không tài khoản, không quảng cáo, không yêu cầu mạng.
+Phát hành Binario 0.1.0 lần đầu trên App Store: trình lập kế hoạch ngoại tuyến với lịch trình GTFS chính thức của chín mạng lưới khu vực và xuyên biên giới, danh mục 5.239 ga có đánh dấu các ga không có lịch trình, giờ tàu đi tại ga, lưu tuyến và tàu, cùng ứng dụng Apple Watch. Không tài khoản, không quảng cáo, không yêu cầu mạng.
 ```
 
 #### Novità (zh-Hans)
 
 ```text
-Binario 0.1.0 首次在 App Store 发布：离线规划工具，内含九个区域和跨境铁路网的官方 GTFS 时刻表；5,239 个车站的目录，并标出没有时刻表的车站；路线保存功能及 Apple Watch App。无需账户，没有广告，没有网络请求。
+Binario 0.1.0 首次在 App Store 发布：离线规划工具，内含九个区域和跨境铁路网的官方 GTFS 时刻表；5,239 个车站的目录，并标出没有时刻表的车站；车站出发信息、路线和列车保存功能及 Apple Watch App。无需账户，没有广告，没有网络请求。
 ```
 
 ## 3. Grafica del listing
@@ -930,9 +962,9 @@ Binario 0.1.0 首次在 App Store 发布：离线规划工具，内含九个区�
 #### Note per la revisione
 
 ```text
-Binario è un pianificatore ferroviario offline: nessun account, nessun login, nessuna richiesta di rete. Gli orari sono dati programmati (GTFS ufficiali di nove reti regionali ed estere) inclusi nell'app; Trenitalia e Italo non sono inclusi e le stazioni senza orari sono contrassegnate "Orari non inclusi" nella ricerca. Tratte di prova coperte: Milano Centrale → Bergamo (Trenord) e Bolzano Bozen → Merano Meran (STA), con data e ora correnti. Apple Watch: abbinare un Watch, attivare "Condividi le tratte con Apple Watch" in Impostazioni › Privacy ed eseguire una ricerca per l'orario corrente; il Watch mostra la tratta, le prossime due corse e la complicazione. In alternativa salvare una tratta, tenerla premuta nella scheda Tratte e scegliere "Mostra su Watch": il Watch la mostra quando sull'iPhone non c'è una ricerca per l'orario corrente, e "Aggiorna" sul Watch la chiede all'iPhone anche con l'app in background. Le righe "In orario … volte su …" sono statistiche non ufficiali incluse nell'app (nessuna rete) e compaiono solo per i treni osservati, per esempio Bolzano Bozen → Merano Meran. Conformità all'esportazione: nessuna crittografia (ITSAppUsesNonExemptEncryption = NO).
+Binario è un pianificatore ferroviario offline: nessun account, nessun login, nessuna richiesta di rete. Gli orari sono dati programmati (GTFS ufficiali di nove reti regionali ed estere) inclusi nell'app; Trenitalia e Italo non sono inclusi e le stazioni senza orari sono contrassegnate "Orari non inclusi" nella ricerca. Tratte di prova coperte: Milano Centrale → Bergamo (Trenord) e Bolzano Bozen → Merano Meran (STA), con data e ora correnti. Apple Watch: abbinare un Watch, attivare "Condividi le tratte con Apple Watch" in Impostazioni › Privacy ed eseguire una ricerca per l'orario corrente; il Watch mostra la tratta, le prossime due corse e la complicazione. In alternativa salvare una tratta, tenerla premuta nella scheda Tratte e scegliere "Mostra su Watch": il Watch la mostra quando sull'iPhone non c'è una ricerca per l'orario corrente, e "Aggiorna" sul Watch la chiede all'iPhone anche con l'app in background. "Partenze": scegliere Milano Centrale per i prossimi treni programmati; un tocco apre il treno e la stella lo salva in "I miei treni". Le righe "In orario … volte su …" sono statistiche non ufficiali incluse nell'app (nessuna rete) e compaiono solo per i treni osservati, per esempio Bolzano Bozen → Merano Meran. Conformità all'esportazione: nessuna crittografia (ITSAppUsesNonExemptEncryption = NO).
 
-Binario is an offline rail journey planner: no account, no login, no network requests. Timetables are scheduled data (official GTFS feeds of nine regional and cross-border networks) bundled in the app; Trenitalia and Italo are not included and stations without timetables are flagged "No timetable included" in the search. Covered test routes: Milano Centrale → Bergamo (Trenord) and Bolzano Bozen → Merano Meran (STA), with the current date and time. Apple Watch: pair a Watch, turn on "Share routes with Apple Watch" in Settings › Privacy and run a search for now; the Watch shows the route, the next two services and the complication. Alternatively save a route, touch and hold it in the Routes tab and choose "Show on Watch": the Watch shows it whenever the iPhone has no search for now, and "Refresh" on the Watch asks the iPhone for it even with the app in the background. The "On time … times out of …" lines are unofficial statistics bundled with the app (no network) and appear only for observed trains, for example Bolzano Bozen → Merano Meran. Export compliance: no encryption (ITSAppUsesNonExemptEncryption = NO).
+Binario is an offline rail journey planner: no account, no login, no network requests. Timetables are scheduled data (official GTFS feeds of nine regional and cross-border networks) bundled in the app; Trenitalia and Italo are not included and stations without timetables are flagged "No timetable included" in the search. Covered test routes: Milano Centrale → Bergamo (Trenord) and Bolzano Bozen → Merano Meran (STA), with the current date and time. Apple Watch: pair a Watch, turn on "Share routes with Apple Watch" in Settings › Privacy and run a search for now; the Watch shows the route, the next two services and the complication. Alternatively save a route, touch and hold it in the Routes tab and choose "Show on Watch": the Watch shows it whenever the iPhone has no search for now, and "Refresh" on the Watch asks the iPhone for it even with the app in the background. "Departures": choose Milano Centrale for the next scheduled trains; a tap opens the train and its star saves it in "My trains". The "On time … times out of …" lines are unofficial statistics bundled with the app (no network) and appear only for observed trains, for example Bolzano Bozen → Merano Meran. Export compliance: no encryption (ITSAppUsesNonExemptEncryption = NO).
 ```
 
 ## 6. Apple Watch nel listing
