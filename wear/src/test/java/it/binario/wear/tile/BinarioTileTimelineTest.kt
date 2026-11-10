@@ -35,7 +35,7 @@ class BinarioTileTimelineTest {
     }
 
     @Test
-    fun `fallback used after expiry is the same unavailable layout returned without a snapshot`() {
+    fun `fallback used after expiry says the data expired, and without a snapshot that nothing is synced`() {
         val withSnapshot = binarioTileTimeline(snapshot(1_893_485_700_000L), 1_893_485_640_000L, ::productionLayout).timelineEntries
         val unavailableOnly = binarioTileTimeline(null, 1_893_485_640_000L, ::productionLayout).timelineEntries
 
@@ -43,7 +43,12 @@ class BinarioTileTimelineTest {
         assertNull(unavailableOnly.single().validity)
         assertArrayEquals(
             requireNotNull(unavailableOnly.single().layout).toByteArray(),
+            LayoutElementBuilders.Layout.fromLayoutElement(productionLayout(WearTileContent.NotSynced)).toByteArray(),
+        )
+        assertNull(withSnapshot.first().validity)
+        assertArrayEquals(
             requireNotNull(withSnapshot.first().layout).toByteArray(),
+            LayoutElementBuilders.Layout.fromLayoutElement(productionLayout(WearTileContent.Expired)).toByteArray(),
         )
     }
 
@@ -52,6 +57,18 @@ class BinarioTileTimelineTest {
         assertEquals(
             listOf("app_name", "tile_no_synced_route", "empty_snapshot_message", "tile_snapshot_unavailable"),
             texts(productionLayout(null)),
+        )
+        // An expired snapshot does not ask to turn on sharing that is already on.
+        assertEquals(listOf("app_name", "tile_snapshot_expired", "snapshot_expired_message"), texts(productionLayout(WearTileContent.Expired)))
+    }
+
+    @Test
+    fun `a snapshot without departures, as after a failed refresh, says so instead of the setup text`() {
+        val unavailable = snapshot(1_893_485_700_000L).copy(operationalState = WearOperationalState.UNAVAILABLE, freshness = WearFreshness.UNAVAILABLE)
+
+        assertEquals(
+            listOf("app_name", "Roma Termini → Firenze S. M. Novella", "tile_no_departures", "status_live_unavailable"),
+            texts(productionLayout(unavailable)),
         )
     }
 
@@ -83,13 +100,13 @@ class BinarioTileTimelineTest {
         assertNull(entries[0].validity)
         assertEquals(listOf(0L to handOver, handOver to expiresAt), entries.drop(1).map { requireNotNull(it.validity).let { v -> v.startMillis to v.endMillis } })
         assertEquals(
-            listOf("not-synced", "RV 2345", "RV 2347"),
+            listOf("expired", "RV 2345", "RV 2347"),
             entries.map { texts(requireNotNull(requireNotNull(it.layout).root)).single() },
         )
 
         // Rendered after the first train left, the Tile shows the second one at once and has nothing later to switch to.
         val late = binarioTileTimeline(snapshot, handOver + 60_000L, ::contentLayout).timelineEntries
-        assertEquals(listOf("not-synced", "RV 2347"), late.map { texts(requireNotNull(requireNotNull(it.layout).root)).single() })
+        assertEquals(listOf("expired", "RV 2347"), late.map { texts(requireNotNull(requireNotNull(it.layout).root)).single() })
         assertEquals(expiresAt, requireNotNull(late[1].validity).endMillis)
     }
 
@@ -135,6 +152,7 @@ class BinarioTileTimelineTest {
                             .setText(
                                 when (content) {
                                     WearTileContent.NotSynced -> "not-synced"
+                                    WearTileContent.Expired -> "expired"
                                     is WearTileContent.Current -> content.service?.number ?: "no-service"
                                 }
                             )

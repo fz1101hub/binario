@@ -11,6 +11,9 @@
     <string name="refresh_phone_unreachable">تعذّر الوصول إلى الهاتف</string>
     <string name="tile_no_synced_route">لا يوجد مسار متزامن</string>
     <string name="tile_snapshot_unavailable">اللقطة غير متاحة</string>
+    <string name="tile_snapshot_expired">انتهت صلاحية البيانات</string>
+    <string name="snapshot_expired_message">انتهت صلاحية بيانات المسار: حدّثها على الهاتف.</string>
+    <string name="tile_no_departures">لا توجد رحلات لعرضها</string>
     <string name="tile_service_details">%1$s · %2$s · %3$s</string>
     <string name="status_programmed">الموعد المجدول</string>
     <string name="status_live_as_of">البيانات محدّثة في %1$s</string>

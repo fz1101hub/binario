@@ -60,14 +60,17 @@ internal sealed interface WearTileContent {
     /** Nothing received from the phone, or sharing revoked. */
     data object NotSynced : WearTileContent
 
+    /** The snapshot shown has passed its deadline: sharing is on, the data need a refresh on the phone. */
+    data object Expired : WearTileContent
+
     /** [snapshot] with [service], the one the glance shows during the entry (null without services). */
     data class Current(val snapshot: WearSnapshot, val service: WearService?) : WearTileContent
 }
 
 /**
  * The renderer owns the transitions even when the app process and its callbacks are not running.
- * The unbounded entry is the fallback selected whenever no snapshot entry is valid, so after the
- * deadline. The snapshot entries cover the time up to the deadline: the first one shows the service
+ * The unbounded entry is the fallback selected whenever no snapshot entry is valid: "expired" after
+ * the deadline of a snapshot, "nothing synced" without one. The snapshot entries cover the time up to the deadline: the first one shows the service
  * of the glance at [nowEpochMillis], each later one the next service from one minute after the
  * previous one leaves ([laterGlanceSegments]). Every entry comes from the same [layout].
  */
@@ -78,7 +81,7 @@ internal fun binarioTileTimeline(
 ): TimelineBuilders.Timeline =
     TimelineBuilders.Timeline.Builder()
         .addTimelineEntry(
-            TimelineBuilders.TimelineEntry.fromLayoutElement(layout(WearTileContent.NotSynced))
+            TimelineBuilders.TimelineEntry.fromLayoutElement(layout(if (snapshot != null) WearTileContent.Expired else WearTileContent.NotSynced))
         )
         .apply {
             if (snapshot != null) {
@@ -130,10 +133,16 @@ internal fun binarioTileLayout(
             strings.string(R.string.empty_snapshot_message),
             strings.string(R.string.tile_snapshot_unavailable),
         )
+        WearTileContent.Expired -> listOf(
+            strings.string(R.string.tile_snapshot_expired),
+            strings.string(R.string.snapshot_expired_message),
+            null,
+        )
+        // No service, as in the "not available" snapshot of a failed refresh: sharing works, nothing to list.
         is WearTileContent.Current -> listOf(
             content.snapshot.routeLabel,
             content.service?.let { strings.string(R.string.tile_service_details, it.expectedDeparture, it.number, it.destination) }
-                ?: strings.string(R.string.empty_snapshot_message),
+                ?: strings.string(R.string.tile_no_departures),
             strings.string(content.snapshot.dataStatus()),
         )
     }
@@ -142,9 +151,9 @@ internal fun binarioTileLayout(
         .setWidth(DimensionBuilders.expand())
         .setHorizontalAlignment(LayoutElementBuilders.HORIZONTAL_ALIGN_CENTER)
         .addContent(binarioTileText(strings.string(R.string.app_name), 18f, BinarioWearPalette.ON_BACKGROUND.toInt(), 1))
-        .addContent(binarioTileText(lines[0], 15f, BinarioWearPalette.PRIMARY.toInt(), 2))
-        .addContent(binarioTileText(lines[1], 14f, BinarioWearPalette.ON_BACKGROUND.toInt(), 2))
-        .addContent(binarioTileText(lines[2], 12f, BinarioWearPalette.ON_SURFACE_VARIANT.toInt(), 2))
+        .addContent(binarioTileText(requireNotNull(lines[0]), 15f, BinarioWearPalette.PRIMARY.toInt(), 2))
+        .addContent(binarioTileText(requireNotNull(lines[1]), 14f, BinarioWearPalette.ON_BACKGROUND.toInt(), 2))
+        .apply { lines[2]?.let { addContent(binarioTileText(it, 12f, BinarioWearPalette.ON_SURFACE_VARIANT.toInt(), 2)) } }
         .build()
     return LayoutElementBuilders.Box.Builder()
         .setWidth(DimensionBuilders.expand())

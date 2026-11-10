@@ -33,7 +33,8 @@ class WearMainActivityTest {
 
         assertTrue(source.contains("getCapability(PHONE_APP_CAPABILITY, CapabilityClient.FILTER_ALL)"))
         assertTrue(source.contains("WearPhoneAppPresence.fromNodeCount(info.nodes.size)"))
-        assertTrue(source.contains("stringResource(emptySnapshotMessageResId(phoneApp))"))
+        assertTrue(source.contains("stringResource(emptySnapshotMessageResId(phoneApp, expired))"))
+        assertTrue(source.contains("WearSnapshotStore.expired(this).collectAsState()"))
     }
 
     @Test

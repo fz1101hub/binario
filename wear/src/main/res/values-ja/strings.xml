@@ -11,6 +11,9 @@
     <string name="refresh_phone_unreachable">スマートフォンに接続できません</string>
     <string name="tile_no_synced_route">同期した区間なし</string>
     <string name="tile_snapshot_unavailable">スナップショットなし</string>
+    <string name="tile_snapshot_expired">データの期限切れ</string>
+    <string name="snapshot_expired_message">区間のデータの期限が切れました。スマートフォンで更新してください。</string>
+    <string name="tile_no_departures">表示する列車はありません</string>
     <string name="tile_service_details">%1$s · %2$s · %3$s</string>
     <string name="status_programmed">時刻表どおり</string>
     <string name="status_live_as_of">%1$s 時点のデータ</string>

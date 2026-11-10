@@ -11,6 +11,9 @@
     <string name="refresh_phone_unreachable">Телефон недоступен</string>
     <string name="tile_no_synced_route">Нет синхронизированного маршрута</string>
     <string name="tile_snapshot_unavailable">Снимок недоступен</string>
+    <string name="tile_snapshot_expired">Данные устарели</string>
+    <string name="snapshot_expired_message">Данные маршрута устарели: обновите их на телефоне.</string>
+    <string name="tile_no_departures">Нет рейсов для показа</string>
     <string name="tile_service_details">%1$s · %2$s · %3$s</string>
     <string name="status_programmed">Время по расписанию</string>
     <string name="status_live_as_of">Данные обновлены в %1$s</string>

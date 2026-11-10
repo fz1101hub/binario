@@ -11,6 +11,9 @@
     <string name="refresh_phone_unreachable">Telefono non raggiungibile</string>
     <string name="tile_no_synced_route">Nessuna tratta sincronizzata</string>
     <string name="tile_snapshot_unavailable">Snapshot non disponibile</string>
+    <string name="tile_snapshot_expired">Dati scaduti</string>
+    <string name="snapshot_expired_message">I dati della tratta sono scaduti: aggiorna sul telefono.</string>
+    <string name="tile_no_departures">Nessuna corsa da mostrare</string>
     <string name="tile_service_details">%1$s · %2$s · %3$s</string>
     <string name="status_programmed">Orario programmato</string>
     <string name="status_live_as_of">Dati aggiornati alle %1$s</string>

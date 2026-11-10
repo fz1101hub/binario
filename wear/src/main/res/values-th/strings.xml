@@ -11,6 +11,9 @@
     <string name="refresh_phone_unreachable">เชื่อมต่อโทรศัพท์ไม่ได้</string>
     <string name="tile_no_synced_route">ไม่มีเส้นทางที่ซิงค์</string>
     <string name="tile_snapshot_unavailable">ไม่มีภาพรวม</string>
+    <string name="tile_snapshot_expired">ข้อมูลหมดอายุ</string>
+    <string name="snapshot_expired_message">ข้อมูลเส้นทางหมดอายุแล้ว: รีเฟรชบนโทรศัพท์</string>
+    <string name="tile_no_departures">ไม่มีเที่ยวรถไฟที่จะแสดง</string>
     <string name="tile_service_details">%1$s · %2$s · %3$s</string>
     <string name="status_programmed">ตารางเวลาตามแผน</string>
     <string name="status_live_as_of">ข้อมูลอัปเดตเมื่อ %1$s</string>

@@ -35,6 +35,6 @@ Prima del test, annotare modello, versione Android/Wear OS, versione TalkBack, l
 | W-02 | Aprire l’app Wear e il Tile dopo la ricezione di uno snapshot GTFS programmato. | Etichetta “Orario programmato”, tratta e prima corsa leggibili; nessuna affermazione realtime. |
 | W-03 | Disattivare la condivisione o simulare l’assenza di snapshot. | App, Tile e complication mostrano indisponibilità o assenza snapshot senza inventare dati. |
 | W-04 | Aggiungere la complication breve e lunga, quindi usare TalkBack se disponibile. | Nome accessibile, testo breve comprensibile, nessun contenuto essenziale affidato al solo colore. |
-| W-05 | Con dati in tempo reale attivi, aprire la tratta sul telefono, bloccarlo e guardare app, Tile e complication dopo 1, 5 e 14 minuti. | Lo snapshot resta visibile per circa 15 minuti, la riga di stato riporta l’ora della rilevazione («Dati aggiornati alle …»). |
+| W-05 | Con dati in tempo reale attivi, aprire la tratta sul telefono, bloccarlo e guardare app, Tile e complication dopo 1, 5 e 14 minuti. | Lo snapshot resta visibile per circa 15 minuti, la riga di stato riporta l’ora della rilevazione («Dati aggiornati alle …»); dopo la scadenza app e Tile dicono che i dati sono scaduti e chiedono di aggiornare sul telefono, senza ripetere le istruzioni di attivazione. |
 
 Al termine, registrare per ogni ID **passato**, **fallito**, **non eseguito** oppure **bloccato**, insieme a una breve descrizione. I difetti devono riferirsi al solo flusso e non riportare dati di viaggio personali.

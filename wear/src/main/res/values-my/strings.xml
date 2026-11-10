@@ -11,6 +11,9 @@
     <string name="refresh_phone_unreachable">ဖုန်းနှင့် ချိတ်ဆက်၍ မရပါ</string>
     <string name="tile_no_synced_route">စင့်ခ်လုပ်ထားသော လမ်းကြောင်း မရှိပါ</string>
     <string name="tile_snapshot_unavailable">Snapshot မရနိုင်ပါ</string>
+    <string name="tile_snapshot_expired">ဒေတာ သက်တမ်းကုန်သွားပြီ</string>
+    <string name="snapshot_expired_message">လမ်းကြောင်း ဒေတာ သက်တမ်းကုန်သွားပြီ- ဖုန်းတွင် ပြန်ယူပါ။</string>
+    <string name="tile_no_departures">ပြရန် ထွက်ခွာမှု မရှိပါ</string>
     <string name="tile_service_details">%1$s · %2$s · %3$s</string>
     <string name="status_programmed">အချိန်ဇယားပါ အချိန်</string>
     <string name="status_live_as_of">%1$s တွင် အပ်ဒိတ်လုပ်ထားသော ဒေတာ</string>

@@ -78,6 +78,32 @@ class WearSnapshotRuntimeTest {
     }
 
     @Test
+    fun `an expired snapshot is told apart from nothing received until a new one arrives or sharing is revoked`() {
+        val clock = MutableClock(1_000L)
+        val scheduler = ControlledScheduler()
+        val runtime = WearSnapshotRuntime(InMemoryStorage(), clock, scheduler)
+        assertFalse(runtime.expired().value)
+
+        runtime.update(snapshot(expiresAt = 1_500L))
+        clock.now = 1_500L
+        scheduler.runDue(clock.now)
+        assertTrue(runtime.expired().value)
+
+        runtime.update(snapshot(expiresAt = 3_000L))
+        assertFalse(runtime.expired().value)
+        clock.now = 3_000L
+        assertNull(runtime.current())
+        assertTrue(runtime.expired().value)
+
+        // Sharing revoked on the phone: the watch has nothing, not an expired route.
+        runtime.clear()
+        assertFalse(runtime.expired().value)
+
+        val restarted = WearSnapshotRuntime(InMemoryStorage(snapshot(expiresAt = 2_000L)), MutableClock(2_500L), ControlledScheduler())
+        assertTrue(restarted.expired().value)
+    }
+
+    @Test
     fun `expired persisted value is cleared during runtime initialization`() {
         val clock = MutableClock(500L)
         val storage = InMemoryStorage(snapshot(expiresAt = 500L))

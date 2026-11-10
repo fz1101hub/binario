@@ -11,6 +11,9 @@
     <string name="refresh_phone_unreachable">无法连接手机</string>
     <string name="tile_no_synced_route">没有已同步的路线</string>
     <string name="tile_snapshot_unavailable">快照不可用</string>
+    <string name="tile_snapshot_expired">数据已过期</string>
+    <string name="snapshot_expired_message">路线数据已过期：请在手机上刷新。</string>
+    <string name="tile_no_departures">没有可显示的车次</string>
     <string name="tile_service_details">%1$s · %2$s · %3$s</string>
     <string name="status_programmed">计划时刻</string>
     <string name="status_live_as_of">数据更新于 %1$s</string>

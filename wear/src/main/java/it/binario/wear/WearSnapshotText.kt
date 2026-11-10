@@ -47,11 +47,15 @@ internal fun WearSnapshot.dataStatus(): WearText = when (operationalState) {
     WearOperationalState.UNAVAILABLE, WearOperationalState.UNKNOWN -> WearText(R.string.status_live_unavailable)
 }
 
-/** A missing phone app gets its own message; otherwise the phone setting that enables sharing is named. */
+/**
+ * A missing phone app gets its own message; a snapshot that [expired] asks for a refresh, since
+ * sharing is already on; otherwise the phone setting that enables sharing is named.
+ */
 @StringRes
-internal fun emptySnapshotMessageResId(phoneApp: WearPhoneAppPresence): Int = when (phoneApp) {
-    WearPhoneAppPresence.ABSENT -> R.string.empty_snapshot_phone_app_missing
-    WearPhoneAppPresence.PRESENT, WearPhoneAppPresence.UNKNOWN -> R.string.empty_snapshot_message
+internal fun emptySnapshotMessageResId(phoneApp: WearPhoneAppPresence, expired: Boolean): Int = when {
+    phoneApp == WearPhoneAppPresence.ABSENT -> R.string.empty_snapshot_phone_app_missing
+    expired -> R.string.snapshot_expired_message
+    else -> R.string.empty_snapshot_message
 }
 
 /** [reliability] is the spoken reliability line of the watch screen; the tile and the complication have none. */

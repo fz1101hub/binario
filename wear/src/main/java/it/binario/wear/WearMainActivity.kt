@@ -48,11 +48,12 @@ class WearMainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setContent {
             val snapshot by WearSnapshotStore.snapshot(this).collectAsState()
+            val expired by WearSnapshotStore.expired(this).collectAsState()
             val phoneAppPresence by phoneApp.collectAsState()
             val feedback by refreshFeedback.collectAsState()
             // A newly received snapshot answers the request, so its note is no longer current.
             LaunchedEffect(snapshot?.generatedAtEpochMillis) { refreshFeedback.value = null }
-            BinarioWearTheme { AppScaffold { WearHome(snapshot, phoneAppPresence, feedback, ::requestRefreshFromPhone) } }
+            BinarioWearTheme { AppScaffold { WearHome(snapshot, expired, phoneAppPresence, feedback, ::requestRefreshFromPhone) } }
         }
     }
 
@@ -92,14 +93,14 @@ class WearMainActivity : ComponentActivity() {
  * ScalingLazyColumn keep the first and last items inside the visible disc of a round screen.
  */
 @Composable
-private fun WearHome(snapshot: WearSnapshot?, phoneApp: WearPhoneAppPresence, feedback: WearRefreshFeedback?, onRefreshPhone: () -> Unit) {
+private fun WearHome(snapshot: WearSnapshot?, expired: Boolean, phoneApp: WearPhoneAppPresence, feedback: WearRefreshFeedback?, onRefreshPhone: () -> Unit) {
     val context = LocalContext.current
     val listState = rememberScalingLazyListState()
     ScreenScaffold(scrollState = listState) { contentPadding ->
         ScalingLazyColumn(state = listState, contentPadding = contentPadding, modifier = Modifier.fillMaxSize()) {
             if (snapshot == null) {
                 item { Text(stringResource(R.string.app_name), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary, textAlign = TextAlign.Center) }
-                item { Text(stringResource(emptySnapshotMessageResId(phoneApp)), style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center) }
+                item { Text(stringResource(emptySnapshotMessageResId(phoneApp, expired)), style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center) }
                 item { Button(onClick = onRefreshPhone, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.refresh_phone)) } }
                 refreshFeedbackItem(feedback)
             } else {

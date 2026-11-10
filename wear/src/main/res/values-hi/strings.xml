@@ -11,6 +11,9 @@
     <string name="refresh_phone_unreachable">फ़ोन से संपर्क नहीं हो पा रहा</string>
     <string name="tile_no_synced_route">कोई सिंक किया गया मार्ग नहीं</string>
     <string name="tile_snapshot_unavailable">स्नैपशॉट उपलब्ध नहीं</string>
+    <string name="tile_snapshot_expired">डेटा की अवधि समाप्त</string>
+    <string name="snapshot_expired_message">मार्ग का डेटा समाप्त हो गया है: फ़ोन पर अपडेट करें।</string>
+    <string name="tile_no_departures">दिखाने के लिए कोई प्रस्थान नहीं</string>
     <string name="tile_service_details">%1$s · %2$s · %3$s</string>
     <string name="status_programmed">निर्धारित समय</string>
     <string name="status_live_as_of">डेटा %1$s बजे अपडेट हुआ</string>

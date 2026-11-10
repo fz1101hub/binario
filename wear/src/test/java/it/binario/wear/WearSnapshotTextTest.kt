@@ -38,10 +38,14 @@ class WearSnapshotTextTest {
     }
 
     @Test
-    fun `empty state names the phone setting unless the phone app is missing`() {
-        assertEquals(R.string.empty_snapshot_phone_app_missing, emptySnapshotMessageResId(WearPhoneAppPresence.ABSENT))
-        assertEquals(R.string.empty_snapshot_message, emptySnapshotMessageResId(WearPhoneAppPresence.PRESENT))
-        assertEquals(R.string.empty_snapshot_message, emptySnapshotMessageResId(WearPhoneAppPresence.UNKNOWN))
+    fun `empty state names the phone setting unless the phone app is missing or the route data expired`() {
+        assertEquals(R.string.empty_snapshot_phone_app_missing, emptySnapshotMessageResId(WearPhoneAppPresence.ABSENT, expired = false))
+        assertEquals(R.string.empty_snapshot_message, emptySnapshotMessageResId(WearPhoneAppPresence.PRESENT, expired = false))
+        assertEquals(R.string.empty_snapshot_message, emptySnapshotMessageResId(WearPhoneAppPresence.UNKNOWN, expired = false))
+        // Sharing is on when a snapshot expired: the setup text would ask to enable what is already enabled.
+        assertEquals(R.string.snapshot_expired_message, emptySnapshotMessageResId(WearPhoneAppPresence.PRESENT, expired = true))
+        assertEquals(R.string.snapshot_expired_message, emptySnapshotMessageResId(WearPhoneAppPresence.UNKNOWN, expired = true))
+        assertEquals(R.string.empty_snapshot_phone_app_missing, emptySnapshotMessageResId(WearPhoneAppPresence.ABSENT, expired = true))
     }
 
     @Test
