@@ -1,10 +1,11 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { createContext, useContext, useEffect, useMemo, useState, type PropsWithChildren } from "react";
-import { useColorScheme } from "react-native";
+import { AccessibilityInfo, useColorScheme } from "react-native";
+import { isMotionReduced } from "@/lib/motion";
 
 export type ThemeMode = "system" | "light" | "dark";
 type CompanionColors = { primary: string; background: string; surface: string; border: string; foreground: string; muted: string; danger: string; warning: string; success: string };
-type ThemeContextValue = { colors: CompanionColors; isDark: boolean; mode: ThemeMode; setMode: (mode: ThemeMode) => void; highContrast: boolean; setHighContrast: (value: boolean) => void; reduceMotion: boolean; setReduceMotion: (value: boolean) => void; simpleMode: boolean; setSimpleMode: (value: boolean) => void };
+type ThemeContextValue = { colors: CompanionColors; isDark: boolean; mode: ThemeMode; setMode: (mode: ThemeMode) => void; highContrast: boolean; setHighContrast: (value: boolean) => void; reduceMotion: boolean; setReduceMotion: (value: boolean) => void; /** The app or the system asks for less motion. */ motionReduced: boolean; simpleMode: boolean; setSimpleMode: (value: boolean) => void };
 
 const storageKey = "binario.companion.theme.v1";
 const ThemeContext = createContext<ThemeContextValue | null>(null);
@@ -24,6 +25,14 @@ export function CompanionThemeProvider({ children }: PropsWithChildren) {
   const [highContrast, setHighContrastState] = useState(false);
   const [reduceMotion, setReduceMotionState] = useState(false);
   const [simpleMode, setSimpleModeState] = useState(false);
+  const [systemReduceMotion, setSystemReduceMotion] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    void AccessibilityInfo.isReduceMotionEnabled().then(value => { if (active) setSystemReduceMotion(value); }).catch(() => undefined);
+    const subscription = AccessibilityInfo.addEventListener("reduceMotionChanged", setSystemReduceMotion);
+    return () => { active = false; subscription.remove(); };
+  }, []);
 
   useEffect(() => { void AsyncStorage.getItem(storageKey).then(value => {
     try {
@@ -44,7 +53,8 @@ export function CompanionThemeProvider({ children }: PropsWithChildren) {
   const setReduceMotion = (next: boolean) => { setReduceMotionState(next); update({ reduceMotion: next }); };
   const setSimpleMode = (next: boolean) => { setSimpleModeState(next); update({ simpleMode: next }); };
   const isDark = mode === "dark" || (mode === "system" && systemScheme === "dark");
-  const value = useMemo<ThemeContextValue>(() => ({ colors: makeColors(isDark, highContrast), isDark, mode, setMode, highContrast, setHighContrast, reduceMotion, setReduceMotion, simpleMode, setSimpleMode }), [highContrast, isDark, mode, reduceMotion, simpleMode]);
+  const motionReduced = isMotionReduced(reduceMotion, systemReduceMotion);
+  const value = useMemo<ThemeContextValue>(() => ({ colors: makeColors(isDark, highContrast), isDark, mode, setMode, highContrast, setHighContrast, reduceMotion, setReduceMotion, motionReduced, simpleMode, setSimpleMode }), [highContrast, isDark, mode, motionReduced, reduceMotion, simpleMode]);
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
 }
 
