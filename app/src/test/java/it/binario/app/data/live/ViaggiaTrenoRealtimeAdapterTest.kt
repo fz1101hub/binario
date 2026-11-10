@@ -336,6 +336,17 @@ class ViaggiaTrenoRealtimeAdapterTest {
         assertTrue(departed is DataResult.Failure)
     }
 
+    /** Audit android-data-8: after midnight the look-back reaches the previous evening's board, where late trains are. */
+    @Test fun `after midnight the look back reaches the previous evening`() = runBlocking {
+        val midnight = Clock.fixed(Instant.parse("2026-10-15T22:20:00Z"), zone)
+        val paths = mutableListOf<String>()
+        val adapter = ViaggiaTrenoRealtimeAdapter(ViaggiaTrenoRealtimeFetcher { path -> synchronized(paths) { paths += path }; "[]" }, midnight)
+        adapter.loadRoute(route, Direction.OUTBOUND, JourneyQuery(LocalDate.of(2026, 10, 16), LocalTime.of(0, 20)))
+        val boards = paths.filter { it.startsWith("partenze/") }.map { java.net.URLDecoder.decode(it, "UTF-8") }
+        assertTrue(boards.toString(), boards.any { it.contains("Oct 16 2026 00:20:00") })
+        assertTrue(boards.toString(), boards.any { it.contains("Oct 15 2026 22:20:00") })
+    }
+
     @Test fun `date future e codici mancanti non interrogano il live`() = runBlocking {
         val paths = mutableListOf<String>()
         val adapter = adapter(paths)

@@ -167,13 +167,13 @@ class ViaggiaTrenoRealtimeAdapter(
             // starting two hours earlier must not hide the user's upcoming trains.
             val boardRows = departures(originCode, requested).toMutableList()
             if (!requested.isAfter(fetched.plusSeconds(600))) {
-                val earlier = maxOf(requested.minusSeconds(2 * 3600), query.serviceDate.atStartOfDay(zone).toInstant())
-                if (earlier < requested) {
-                    try { withTimeoutOrNull(2_000) { departures(originCode, earlier) }?.let(boardRows::addAll) }
-                    catch (error: CancellationException) { throw error }
-                    catch (_: IOException) { /* Optional lookback must not erase the current board. */ }
-                    catch (_: org.json.JSONException) { }
-                }
+                // The look-back crosses midnight like the boards' lateSince: at 00:20 a 23:50 train 40 minutes late
+                // is still to leave (audit android-data-8).
+                val earlier = requested.minusSeconds(2 * 3600)
+                try { withTimeoutOrNull(2_000) { departures(originCode, earlier) }?.let(boardRows::addAll) }
+                catch (error: CancellationException) { throw error }
+                catch (_: IOException) { /* Optional lookback must not erase the current board. */ }
+                catch (_: org.json.JSONException) { }
             }
             val rows = boardRows.distinctBy { Triple(it.text("codOrigine"), it.text("numeroTreno"), it.millis("dataPartenzaTreno") ?: it.millis("millisDataPartenza")) }
                 .filter { row -> row.millis("orarioPartenza")?.let { it + (row.intOrNull("ritardo") ?: 0).coerceAtLeast(0) * 60_000L >= requested.toEpochMilli() } ?: true }
