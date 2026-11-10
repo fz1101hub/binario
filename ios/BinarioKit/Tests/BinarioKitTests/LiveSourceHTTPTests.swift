@@ -170,8 +170,8 @@ final class LiveSourceHTTPTests: XCTestCase {
     }
 
     func testAMissingConnectionIsTheDevicesNotTheSources() {
-        func failure(_ code: Int, response: Bool = false) -> LiveFetchFailure {
-            LiveDataTaskDelegate.failure(for: NSError(domain: NSURLErrorDomain, code: code), receivedResponse: response)
+        func failure(_ code: Int) -> LiveFetchFailure {
+            LiveDataTaskDelegate.failure(for: NSError(domain: NSURLErrorDomain, code: code))
         }
         for code in [
             NSURLErrorNotConnectedToInternet, NSURLErrorNetworkConnectionLost, NSURLErrorDataNotAllowed,
@@ -179,11 +179,10 @@ final class LiveSourceHTTPTests: XCTestCase {
         ] {
             XCTAssertEqual(failure(code), .offline, "\(code)")
         }
-        XCTAssertEqual(failure(NSURLErrorTimedOut), .offline, "no answer at all before the time limit")
-        XCTAssertEqual(failure(NSURLErrorTimedOut, response: true), .timedOut, "the source started to answer, then stalled")
+        XCTAssertEqual(failure(NSURLErrorTimedOut), .timedOut, "a source that stops answering still counts")
         XCTAssertEqual(failure(NSURLErrorCancelled), .cancelled)
         XCTAssertEqual(failure(NSURLErrorSecureConnectionFailed), .network)
-        XCTAssertEqual(LiveDataTaskDelegate.failure(for: NSError(domain: "other", code: NSURLErrorTimedOut), receivedResponse: false), .network)
+        XCTAssertEqual(LiveDataTaskDelegate.failure(for: NSError(domain: "other", code: NSURLErrorTimedOut)), .network)
     }
 
     func testBodiesOverTheLimitAreRefusedNeverTruncated() async throws {

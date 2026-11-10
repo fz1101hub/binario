@@ -18,8 +18,8 @@ public enum LiveFetchFailure: Equatable, Hashable, Sendable {
     case invalidRequest
     case network
     /// The device had no usable connection: none, lost on the way, refused by the system (data
-    /// off, roaming), no address for the host, or no answer at all before the time limit. Not the
-    /// source's fault: it never counts towards pausing the source.
+    /// off, roaming), or no address for the host. Not the source's fault: it never counts towards
+    /// pausing the source. A time-out stays `timedOut`: a source that stops answering counts.
     case offline
     case timedOut
     /// The body (declared or received) is larger than the policy allows: refused, never truncated.
@@ -292,16 +292,16 @@ final class LiveDataTaskDelegate: NSObject, URLSessionDataDelegate, @unchecked S
     }
 
     /// What a failed task means: the caller's cancellation; the device without a usable connection
-    /// (`offline`, never held against the source); a time-out once the source had started to
-    /// answer; any other failure of the network or the source.
-    static func failure(for error: any Error, receivedResponse: Bool) -> LiveFetchFailure {
+    /// (`offline`, never held against the source); a time-out (held against the source: one that
+    /// stops answering is paused like one that fails); any other failure of the network or the source.
+    static func failure(for error: any Error) -> LiveFetchFailure {
         let nsError = error as NSError
         guard nsError.domain == NSURLErrorDomain else { return .network }
         switch nsError.code {
         case NSURLErrorCancelled:
             return .cancelled
         case NSURLErrorTimedOut:
-            return receivedResponse ? .timedOut : .offline
+            return .timedOut
         case NSURLErrorNotConnectedToInternet, NSURLErrorNetworkConnectionLost, NSURLErrorDataNotAllowed,
              NSURLErrorInternationalRoamingOff, NSURLErrorCallIsActive, NSURLErrorCannotFindHost, NSURLErrorDNSLookupFailed:
             return .offline
@@ -346,7 +346,7 @@ final class LiveDataTaskDelegate: NSObject, URLSessionDataDelegate, @unchecked S
         lock.unlock()
         if tooLarge { return finish(.failure(.tooLarge)) }
         if cancelledByCaller { return finish(.failure(.cancelled)) }
-        if let error { return finish(.failure(Self.failure(for: error, receivedResponse: task.response != nil))) }
+        if let error { return finish(.failure(Self.failure(for: error))) }
         guard let response = task.response as? HTTPURLResponse else { return finish(.failure(.network)) }
         // Should the system ever follow a redirect by itself, the answer is not the one asked for.
         if let answered = response.url, answered.absoluteString != requestedURL.absoluteString {
