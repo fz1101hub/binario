@@ -126,6 +126,8 @@ export const pt: Dictionary = {
   "full.body": "Os horários exibidos vêm das viagens pessoais salvas. Atrasos, plataformas e cancelamentos permanecem indisponíveis sem uma fonte autorizada.",
   "reminder.notificationTitle": "Binario · viagem programada",
   "reminder.notificationBody": "{origin} → {destination} às {time}. Aviso local aproximado, não em tempo real.",
+  "reminder.channelName": "Lembretes de viagens",
+  "reminder.channelDescription": "Alertas locais antes das partidas planejadas neste celular. Não são em tempo real.",
   "reminder.deleteTitle": "Apagar a viagem local?",
   "reminder.deleteBody": "Apague “{name}” do celular e cancele o lembrete associado, se houver. Isso não altera dados ferroviários nem da conta.",
   "reminder.deleteConfirm": "Apagar",

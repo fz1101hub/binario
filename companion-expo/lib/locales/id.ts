@@ -126,6 +126,8 @@ export const id: Dictionary = {
   "full.body": "Waktu yang ditampilkan berasal dari perjalanan pribadi yang disimpan. Keterlambatan, peron, dan pembatalan tetap tidak tersedia tanpa sumber resmi.",
   "reminder.notificationTitle": "Binario · perjalanan terjadwal",
   "reminder.notificationBody": "{origin} → {destination} pukul {time}. Peringatan lokal perkiraan, bukan waktu nyata.",
+  "reminder.channelName": "Pengingat perjalanan",
+  "reminder.channelDescription": "Peringatan lokal sebelum keberangkatan yang direncanakan di ponsel ini. Bukan waktu nyata.",
   "reminder.deleteTitle": "Hapus perjalanan lokal?",
   "reminder.deleteBody": "Hapus “{name}” dari ponsel dan batalkan pengingatnya jika ada. Ini tidak mengubah data kereta atau akun.",
   "reminder.deleteConfirm": "Hapus",

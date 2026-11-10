@@ -12,6 +12,11 @@ const legacyStorageKey = "binario.planned-route-reminders.v1";
 const legacyMigrationNoticeKey = "binario.planned-route-reminders.v1-migration-notice";
 const legacyMigrationNoticeAcknowledgedKey = "binario.planned-route-reminders.v1-migration-notice-acknowledged";
 const reminderIdentifierPrefix = "binario_planned_route_";
+/**
+ * Android 8+ files every notification under a channel. Without one, expo-notifications uses its fallback
+ * channel, named "Miscellaneous" in every language; the reminders get their own localised channel.
+ */
+export const plannedRouteReminderChannelId = "binario-planned-route-reminders";
 let reminderMutationQueue: Promise<void> = Promise.resolve();
 
 function reminderIdentifier(routeId: number) {
@@ -101,8 +106,19 @@ function reminderRequest(route: LocalPlannedRoute, fireAt: number) {
     trigger: {
       type: Notifications.SchedulableTriggerInputTypes.DATE,
       date: new Date(fireAt),
+      channelId: plannedRouteReminderChannelId,
     },
   } as const;
+}
+
+/** Creates the channel, or renames it in the current device language; does nothing outside Android. */
+async function ensureReminderChannel() {
+  const t = createTranslator(deviceCompanionLocale());
+  await Notifications.setNotificationChannelAsync(plannedRouteReminderChannelId, {
+    name: t("reminder.channelName"),
+    description: t("reminder.channelDescription"),
+    importance: Notifications.AndroidImportance.DEFAULT,
+  });
 }
 
 async function recordPreservedLegacyWarning(count: number) {
@@ -156,6 +172,7 @@ async function migrateLegacyState(): Promise<void> {
       preserved.add(request.identifier);
       continue;
     }
+    await ensureReminderChannel();
     await Notifications.scheduleNotificationAsync(reminderRequest(route, fireAt));
     canonicalIdentifiers.add(canonicalIdentifier);
     await Notifications.cancelScheduledNotificationAsync(request.identifier);
@@ -237,6 +254,7 @@ export async function schedulePlannedRouteReminder(
     if (!permission.granted) return "permission-denied" as const;
     if (fireAt <= Date.now()) return "invalid" as const;
 
+    await ensureReminderChannel();
     await Notifications.scheduleNotificationAsync(reminderRequest(route, fireAt));
     return "scheduled" as const;
   });

@@ -126,6 +126,8 @@ export const th: Dictionary = {
   "full.body": "เวลาที่แสดงมาจากการเดินทางส่วนตัวที่บันทึกไว้ หากไม่มีแหล่งข้อมูลที่ได้รับอนุญาต ความล่าช้า ชานชาลา และการยกเลิกจะไม่พร้อมใช้งาน",
   "reminder.notificationTitle": "Binario · การเดินทางตามแผน",
   "reminder.notificationBody": "{origin} → {destination} เวลา {time} การแจ้งเตือนในเครื่องโดยประมาณ ไม่ใช่เรียลไทม์",
+  "reminder.channelName": "การเตือนการเดินทาง",
+  "reminder.channelDescription": "การแจ้งเตือนในเครื่องก่อนออกเดินทางตามที่วางแผนไว้ในโทรศัพท์เครื่องนี้ ไม่ใช่เรียลไทม์",
   "reminder.deleteTitle": "ลบการเดินทางในเครื่องใช่ไหม",
   "reminder.deleteBody": "ลบ “{name}” ออกจากโทรศัพท์และยกเลิกการเตือนที่เกี่ยวข้อง จะไม่เปลี่ยนข้อมูลรถไฟหรือข้อมูลบัญชี",
   "reminder.deleteConfirm": "ลบ",

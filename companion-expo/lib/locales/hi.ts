@@ -126,6 +126,8 @@ export const hi: Dictionary = {
   "full.body": "दिखाए गए समय सहेजी गई निजी यात्राओं से आते हैं। अधिकृत स्रोत के बिना देरी, प्लेटफ़ॉर्म और रद्दीकरण उपलब्ध नहीं रहते।",
   "reminder.notificationTitle": "Binario · निर्धारित यात्रा",
   "reminder.notificationBody": "{origin} → {destination}, {time} पर। अनुमानित स्थानीय अलर्ट, रीयल-टाइम नहीं।",
+  "reminder.channelName": "यात्रा रिमाइंडर",
+  "reminder.channelDescription": "इस फ़ोन पर निर्धारित प्रस्थानों से पहले स्थानीय सूचनाएँ। ये रीयल-टाइम नहीं हैं।",
   "reminder.deleteTitle": "स्थानीय यात्रा हटाएँ?",
   "reminder.deleteBody": "“{name}” को फ़ोन से हटाएँ और उससे जुड़ा कोई भी रिमाइंडर रद्द करें। इससे रेलवे या खाते का डेटा नहीं बदलता।",
   "reminder.deleteConfirm": "हटाएँ",

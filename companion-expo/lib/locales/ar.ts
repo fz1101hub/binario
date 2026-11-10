@@ -126,6 +126,8 @@ export const ar: Dictionary = {
   "full.body": "المواعيد المعروضة مأخوذة من الرحلات الشخصية المحفوظة. تبقى التأخيرات والأرصفة والإلغاءات غير متاحة من دون مصدر مُصرَّح به.",
   "reminder.notificationTitle": "Binario · رحلة مجدولة",
   "reminder.notificationBody": "{origin} → {destination} الساعة {time}. تنبيه محلي تقريبي، وليس في الوقت الفعلي.",
+  "reminder.channelName": "تذكيرات الرحلات",
+  "reminder.channelDescription": "تنبيهات محلية قبل المغادرات المخطط لها على هذا الهاتف. ليست في الوقت الفعلي.",
   "reminder.deleteTitle": "حذف الرحلة المحلية؟",
   "reminder.deleteBody": "احذف «{name}» من الهاتف وألغِ أي تذكير مرتبط بها. لا يغيّر ذلك بيانات السكك الحديدية أو الحساب.",
   "reminder.deleteConfirm": "حذف",

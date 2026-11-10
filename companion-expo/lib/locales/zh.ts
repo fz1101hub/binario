@@ -126,6 +126,8 @@ export const zh: Dictionary = {
   "full.body": "显示的时刻来自已保存的个人行程。没有经授权的数据源时，晚点、站台和停运信息不可用。",
   "reminder.notificationTitle": "Binario · 计划行程",
   "reminder.notificationBody": "{origin} → {destination}，{time}。本机大致提醒，非实时。",
+  "reminder.channelName": "行程提醒",
+  "reminder.channelDescription": "在此手机上计划的出发前发出的本地通知。并非实时。",
   "reminder.deleteTitle": "删除本机行程？",
   "reminder.deleteBody": "从手机中删除“{name}”，并取消相关提醒。这不会更改铁路或账户数据。",
   "reminder.deleteConfirm": "删除",

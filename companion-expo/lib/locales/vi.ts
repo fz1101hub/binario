@@ -126,6 +126,8 @@ export const vi: Dictionary = {
   "full.body": "Giờ hiển thị lấy từ các hành trình cá nhân đã lưu. Khi không có nguồn được cấp phép, độ trễ, sân ga và chuyến bị hủy vẫn không khả dụng.",
   "reminder.notificationTitle": "Binario · hành trình theo kế hoạch",
   "reminder.notificationBody": "{origin} → {destination} lúc {time}. Cảnh báo trên máy mang tính ước lượng, không theo thời gian thực.",
+  "reminder.channelName": "Lời nhắc hành trình",
+  "reminder.channelDescription": "Cảnh báo cục bộ trước các chuyến khởi hành đã lên kế hoạch trên điện thoại này. Không phải thời gian thực.",
   "reminder.deleteTitle": "Xóa hành trình trên máy?",
   "reminder.deleteBody": "Xóa “{name}” khỏi điện thoại và hủy lời nhắc liên quan, nếu có. Thao tác này không thay đổi dữ liệu đường sắt hay tài khoản.",
   "reminder.deleteConfirm": "Xóa",

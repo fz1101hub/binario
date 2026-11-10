@@ -126,6 +126,8 @@ export const ja: Dictionary = {
   "full.body": "表示される時刻は保存した個人の移動に基づいています。認可された情報源がない限り、遅延、番線、運休は利用できません。",
   "reminder.notificationTitle": "Binario · 計画した移動",
   "reminder.notificationBody": "{origin} → {destination}、{time}。端末内のおおよその通知で、リアルタイムではありません。",
+  "reminder.channelName": "移動のリマインダー",
+  "reminder.channelDescription": "このスマートフォンで計画した出発の前に届くローカル通知です。リアルタイムではありません。",
   "reminder.deleteTitle": "端末内の移動を削除しますか？",
   "reminder.deleteBody": "「{name}」をスマートフォンから削除し、関連するリマインダーを取り消します。鉄道やアカウントのデータは変わりません。",
   "reminder.deleteConfirm": "削除",

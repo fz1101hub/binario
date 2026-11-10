@@ -32,6 +32,7 @@ const notificationMocks = vi.hoisted(() => ({
   getAllScheduledNotificationsAsync: vi.fn(),
   scheduleNotificationAsync: vi.fn(),
   cancelScheduledNotificationAsync: vi.fn(),
+  setNotificationChannelAsync: vi.fn(),
 }));
 
 vi.mock("@react-native-async-storage/async-storage", () => ({
@@ -40,6 +41,7 @@ vi.mock("@react-native-async-storage/async-storage", () => ({
 
 vi.mock("expo-notifications", () => ({
   SchedulableTriggerInputTypes: { DATE: "date" },
+  AndroidImportance: { DEFAULT: 5 },
   ...notificationMocks,
 }));
 
@@ -448,5 +450,25 @@ describe("promemoria scelto nel planner", () => {
     notificationMocks.scheduleNotificationAsync.mockRejectedValueOnce(new Error("native"));
     await expect(scheduleReminderForSavedRoute(route)).resolves.toBe("error");
     expect(state.scheduled.size).toBe(0);
+  });
+});
+
+describe("canale Android dei promemoria", () => {
+  it("programma ogni promemoria nel proprio canale, con nome e descrizione nella lingua del dispositivo", async () => {
+    state.deviceLanguageTag = "ar-EG";
+    await schedulePlannedRouteReminder(route);
+    expect(notificationMocks.setNotificationChannelAsync).toHaveBeenCalledWith("binario-planned-route-reminders", {
+      name: createTranslator("ar")("reminder.channelName"),
+      description: createTranslator("ar")("reminder.channelDescription"),
+      importance: 5,
+    });
+    expect(notificationMocks.setNotificationChannelAsync.mock.invocationCallOrder[0]).toBeLessThan(notificationMocks.scheduleNotificationAsync.mock.invocationCallOrder[0]!);
+    expect(state.scheduled.get("binario_planned_route_42")?.trigger.channelId).toBe("binario-planned-route-reminders");
+  });
+
+  it("non usa il canale di riserva «Miscellaneous» neppure per i promemoria migrati", async () => {
+    state.scheduled.set("legacy-random-id", { identifier: "legacy-random-id", content: { title: "Binario · tratta pianificata", data: { routeId: 42 } }, trigger: null });
+    await listScheduledRouteIds();
+    expect(state.scheduled.get("binario_planned_route_42")?.trigger.channelId).toBe("binario-planned-route-reminders");
   });
 });

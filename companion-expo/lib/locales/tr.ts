@@ -126,6 +126,8 @@ export const tr: Dictionary = {
   "full.body": "Gösterilen saatler kayıtlı kişisel yolculuklardan gelir. Yetkili bir kaynak olmadan gecikmeler, peronlar ve iptaller kullanılamaz.",
   "reminder.notificationTitle": "Binario · planlı yolculuk",
   "reminder.notificationBody": "{origin} → {destination}, saat {time}. Yaklaşık yerel uyarı, gerçek zamanlı değil.",
+  "reminder.channelName": "Yolculuk hatırlatıcıları",
+  "reminder.channelDescription": "Bu telefonda planlanan kalkışlardan önce gelen yerel uyarılar. Gerçek zamanlı değildir.",
   "reminder.deleteTitle": "Yerel yolculuk silinsin mi?",
   "reminder.deleteBody": "“{name}” telefondan silinsin ve varsa hatırlatıcısı iptal edilsin. Demiryolu veya hesap verileri değişmez.",
   "reminder.deleteConfirm": "Sil",

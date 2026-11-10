@@ -126,6 +126,8 @@ export const ko: Dictionary = {
   "full.body": "표시되는 시각은 저장된 개인 여정에서 나옵니다. 승인된 출처가 없으면 지연, 승강장, 운행 취소는 사용할 수 없습니다.",
   "reminder.notificationTitle": "Binario · 계획된 여정",
   "reminder.notificationBody": "{origin} → {destination}, {time}. 대략적인 로컬 알림이며 실시간이 아닙니다.",
+  "reminder.channelName": "여정 리마인더",
+  "reminder.channelDescription": "이 휴대전화에서 계획한 출발 전에 받는 로컬 알림입니다. 실시간이 아닙니다.",
   "reminder.deleteTitle": "로컬 여정을 삭제할까요?",
   "reminder.deleteBody": "“{name}”을(를) 휴대전화에서 삭제하고 관련 리마인더를 취소합니다. 철도나 계정 데이터는 변경되지 않습니다.",
   "reminder.deleteConfirm": "삭제",
