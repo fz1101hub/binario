@@ -26,6 +26,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -64,26 +66,46 @@ private fun needsPermission(context: Context): Boolean =
     Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
         ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
 
-/**
- * Runs [action] once notifications may be posted: at once when allowed, else after the system permission dialog;
- * a refusal calls [onDenied]. The permission is asked only when the user turns a live notification on.
- */
-@Composable
-private fun rememberWithNotificationPermission(onDenied: () -> Unit): ((() -> Unit) -> Unit) {
-    val context = LocalContext.current
-    var pending by remember { mutableStateOf<(() -> Unit)?>(null) }
-    val launcher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-        val action = pending
-        pending = null
-        if (granted) action?.invoke() else onDenied()
-    }
-    return { action ->
-        if (needsPermission(context)) {
-            pending = action
-            launcher.launch(Manifest.permission.POST_NOTIFICATIONS)
-        } else action()
+/** What happens when the answer of the notification permission dialog arrives. */
+internal object NotificationPermissionFlow {
+    /**
+     * Runs the action saved under [pendingKey] when [granted], else [onDenied]. [actions] are those of the screen
+     * receiving the answer, which after a recreation (a rotation while the dialog is shown) is a new one.
+     */
+    fun onResult(granted: Boolean, pendingKey: String?, actions: Map<String, () -> Unit>, onDenied: () -> Unit) {
+        if (granted) pendingKey?.let(actions::get)?.invoke() else onDenied()
     }
 }
+
+/**
+ * Runs the action of a key of [actions] once notifications may be posted: at once when allowed, else after the system
+ * permission dialog; a refusal calls [onDenied]. Only the key waits for the answer, saved with the screen state, so a
+ * grant that arrives after the activity was recreated still runs the action of the recreated screen. The permission is
+ * asked only when the user turns a live notification on.
+ */
+@Composable
+private fun rememberWithNotificationPermission(actions: Map<String, () -> Unit>, onDenied: () -> Unit): (String) -> Unit {
+    val context = LocalContext.current
+    var pendingKey by rememberSaveable { mutableStateOf<String?>(null) }
+    val currentActions by rememberUpdatedState(actions)
+    val launcher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        val key = pendingKey
+        pendingKey = null
+        NotificationPermissionFlow.onResult(granted, key, currentActions, onDenied)
+    }
+    return { key ->
+        if (needsPermission(context)) {
+            pendingKey = key
+            launcher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        } else currentActions[key]?.invoke()
+    }
+}
+
+private const val ENABLE = "enable"
+private const val TRAIN_ALERTS = "train_alerts"
+private const val STRIKES = "strikes"
+private const val WORKS = "works"
+private const val DIGEST = "digest"
 
 @Composable
 private fun ToggleRow(title: String, description: String, checked: Boolean, onChange: (Boolean) -> Unit, modifier: Modifier = Modifier) {
@@ -119,7 +141,20 @@ internal fun FollowedTripNotificationToggle(
     val label = stringResource(R.string.service_category_number, service.trainCategory.localizedLabel(), service.number)
     var active by remember(service.number) { mutableStateOf(FollowedTripScheduler.current(context)?.let { followsOnly(it, service) } == true) }
     var feedback by remember(service.number) { mutableStateOf<String?>(null) }
-    val withPermission = rememberWithNotificationPermission { feedback = resources.getString(R.string.settings_live_updates_permission) }
+    val follow = {
+        val trip = FollowedTrip.fromService(service, label, LocalDate.now(RailTime.defaultZone))
+        if (trip == null || !FollowedTripPlanner.isUpcomingOrRunning(trip, Instant.now())) {
+            feedback = resources.getString(R.string.followed_trip_notification_unavailable)
+        } else {
+            FollowedTripScheduler.start(context, trip)
+            active = true
+            val start = FollowedTripPlanner.windowStart(trip)
+            feedback = start.takeIf { it.isAfter(Instant.now()) }?.let {
+                resources.getString(R.string.followed_trip_notification_pending, it.atZone(RailTime.defaultZone).format(clock))
+            }
+        }
+    }
+    val withPermission = rememberWithNotificationPermission(mapOf(ENABLE to follow)) { feedback = resources.getString(R.string.settings_live_updates_permission) }
     Column(modifier, verticalArrangement = Arrangement.spacedBy(4.dp)) {
         ToggleRow(
             title = stringResource(R.string.followed_trip_notification_toggle),
@@ -130,19 +165,7 @@ internal fun FollowedTripNotificationToggle(
                     FollowedTripScheduler.stop(context)
                     active = false
                     feedback = null
-                } else withPermission {
-                    val trip = FollowedTrip.fromService(service, label, LocalDate.now(RailTime.defaultZone))
-                    if (trip == null || !FollowedTripPlanner.isUpcomingOrRunning(trip, Instant.now())) {
-                        feedback = resources.getString(R.string.followed_trip_notification_unavailable)
-                    } else {
-                        FollowedTripScheduler.start(context, trip)
-                        active = true
-                        val start = FollowedTripPlanner.windowStart(trip)
-                        feedback = start.takeIf { it.isAfter(Instant.now()) }?.let {
-                            resources.getString(R.string.followed_trip_notification_pending, it.atZone(RailTime.defaultZone).format(clock))
-                        }
-                    }
-                }
+                } else withPermission(ENABLE)
             },
             modifier = Modifier.testTag("detail-follow-notification")
         )
@@ -171,7 +194,15 @@ internal fun FollowJourneyNotificationControl(row: JourneyOptionRow, modifier: M
         mutableStateOf(FollowedTripScheduler.current(context)?.let { trip -> trip.legs.map { it.number to it.departure } == signature } == true)
     }
     var feedback by remember(row.id) { mutableStateOf<String?>(null) }
-    val withPermission = rememberWithNotificationPermission { feedback = resources.getString(R.string.settings_live_updates_permission) }
+    val follow = {
+        FollowedTripScheduler.start(context, candidate)
+        active = true
+        val start = FollowedTripPlanner.windowStart(candidate)
+        feedback = start.takeIf { it.isAfter(Instant.now()) }?.let {
+            resources.getString(R.string.followed_trip_notification_pending, it.atZone(RailTime.defaultZone).format(clock))
+        }
+    }
+    val withPermission = rememberWithNotificationPermission(mapOf(ENABLE to follow)) { feedback = resources.getString(R.string.settings_live_updates_permission) }
     Column(modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Text(stringResource(R.string.followed_trip_journey_description), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         OutlinedButton(
@@ -180,14 +211,7 @@ internal fun FollowJourneyNotificationControl(row: JourneyOptionRow, modifier: M
                     FollowedTripScheduler.stop(context)
                     active = false
                     feedback = null
-                } else withPermission {
-                    FollowedTripScheduler.start(context, candidate)
-                    active = true
-                    val start = FollowedTripPlanner.windowStart(candidate)
-                    feedback = start.takeIf { it.isAfter(Instant.now()) }?.let {
-                        resources.getString(R.string.followed_trip_notification_pending, it.atZone(RailTime.defaultZone).format(clock))
-                    }
-                }
+                } else withPermission(ENABLE)
             },
             modifier = Modifier.testTag("journey-follow-notification")
         ) {
@@ -212,7 +236,17 @@ internal fun TrainAlertToggle(service: TrainService, eligible: Boolean, modifier
     val store = remember(context) { TrainAlertStore(context) }
     var subscribed by remember(service.number) { mutableStateOf(store.isSubscribed(service.number) && LiveNotificationSettings(context).trainAlertsEnabled) }
     var feedback by remember(service.number) { mutableStateOf<String?>(null) }
-    val withPermission = rememberWithNotificationPermission { feedback = resources.getString(R.string.settings_live_updates_permission) }
+    val subscribe = {
+        TrainAlertWatch.subscriptionOf(noticeContext, service.number, service.scheduledDeparture, label, Instant.now())?.let { subscription ->
+            store.subscribe(subscription)
+            LiveNotificationSettings(context).trainAlertsEnabled = true
+            subscribed = true
+            feedback = null
+            TrainAlertScheduler.reschedule(context)
+        }
+        Unit
+    }
+    val withPermission = rememberWithNotificationPermission(mapOf(ENABLE to subscribe)) { feedback = resources.getString(R.string.settings_live_updates_permission) }
     Column(modifier, verticalArrangement = Arrangement.spacedBy(4.dp)) {
         ToggleRow(
             title = stringResource(R.string.train_alerts_toggle),
@@ -223,15 +257,7 @@ internal fun TrainAlertToggle(service: TrainService, eligible: Boolean, modifier
                     store.unsubscribe(service.number)
                     subscribed = false
                     TrainAlertScheduler.reschedule(context)
-                } else withPermission {
-                    TrainAlertWatch.subscriptionOf(noticeContext, service.number, service.scheduledDeparture, label, Instant.now())?.let { subscription ->
-                        store.subscribe(subscription)
-                        LiveNotificationSettings(context).trainAlertsEnabled = true
-                        subscribed = true
-                        feedback = null
-                        TrainAlertScheduler.reschedule(context)
-                    }
-                }
+                } else withPermission(ENABLE)
             },
             modifier = Modifier.testTag("detail-train-alerts")
         )
@@ -259,7 +285,6 @@ internal fun ApproachAlertControl(service: TrainService, eligible: Boolean, modi
     var alert by remember(service.number) { mutableStateOf(store.alert(service.number)) }
     var choosing by remember(service.number) { mutableStateOf(false) }
     var feedback by remember(service.number) { mutableStateOf<String?>(null) }
-    val withPermission = rememberWithNotificationPermission { feedback = resources.getString(R.string.settings_live_updates_permission) }
     val defaultStop = remember(service.number, stops) {
         val origin = FavouriteTrainStore(context).all().firstOrNull { it.number.equals(service.number, ignoreCase = true) }?.origin.orEmpty()
         stops.firstOrNull { origin.isNotBlank() && LiveStopTimes.namesMatch(it.station, origin) } ?: stops.first()
@@ -279,6 +304,9 @@ internal fun ApproachAlertControl(service: TrainService, eligible: Boolean, modi
         feedback = null
         ApproachAlertScheduler.reschedule(context)
     }
+    val withPermission = rememberWithNotificationPermission(mapOf(ENABLE to { save(defaultStop, ApproachAlertPlanner.DEFAULT_LEAD) })) {
+        feedback = resources.getString(R.string.settings_live_updates_permission)
+    }
     Column(modifier.testTag("detail-approach-alert"), verticalArrangement = Arrangement.spacedBy(6.dp)) {
         ToggleRow(
             title = stringResource(R.string.approach_alert_toggle),
@@ -290,7 +318,7 @@ internal fun ApproachAlertControl(service: TrainService, eligible: Boolean, modi
                     alert = null
                     feedback = null
                     ApproachAlertScheduler.reschedule(context)
-                } else withPermission { save(defaultStop, ApproachAlertPlanner.DEFAULT_LEAD) }
+                } else withPermission(ENABLE)
             }
         )
         alert?.let { current ->
@@ -347,7 +375,34 @@ fun LiveUpdatesSettingsPanel() {
     var punctuality by remember { mutableStateOf(settings.punctualityRecordingEnabled) }
     var digest by remember { mutableStateOf(settings.weeklyDigestEnabled) }
     var feedback by remember { mutableStateOf<String?>(null) }
-    val withPermission = rememberWithNotificationPermission { feedback = resources.getString(R.string.settings_live_updates_permission) }
+    val setTrainAlerts = { enable: Boolean ->
+        settings.trainAlertsEnabled = enable
+        trainAlerts = enable
+        TrainAlertScheduler.reschedule(context)
+    }
+    val setStrikes = { enable: Boolean ->
+        settings.strikeReminderEnabled = enable
+        strikes = enable
+        StrikeReminderScheduler.reschedule(context)
+    }
+    val setWorks = { enable: Boolean ->
+        settings.routeWorksAlertEnabled = enable
+        works = enable
+        RouteWorksAlertScheduler.reschedule(context)
+    }
+    val setDigest = { enable: Boolean ->
+        settings.weeklyDigestEnabled = enable
+        digest = enable
+        WeeklyDigestScheduler.reschedule(context)
+    }
+    val withPermission = rememberWithNotificationPermission(
+        mapOf(
+            TRAIN_ALERTS to { setTrainAlerts(true) },
+            STRIKES to { setStrikes(true) },
+            WORKS to { setWorks(true) },
+            DIGEST to { setDigest(true) }
+        )
+    ) { feedback = resources.getString(R.string.settings_live_updates_permission) }
     Column(Modifier.padding(horizontal = 20.dp, vertical = 10.dp).testTag("settings-live-updates"), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Text(
             stringResource(R.string.settings_live_updates_title),
@@ -359,28 +414,14 @@ fun LiveUpdatesSettingsPanel() {
             title = stringResource(R.string.settings_train_alerts_title),
             description = stringResource(R.string.settings_train_alerts_description),
             checked = trainAlerts,
-            onChange = { enable ->
-                val apply = {
-                    settings.trainAlertsEnabled = enable
-                    trainAlerts = enable
-                    TrainAlertScheduler.reschedule(context)
-                }
-                if (enable) withPermission(apply) else apply()
-            }
+            onChange = { enable -> if (enable) withPermission(TRAIN_ALERTS) else setTrainAlerts(false) }
         )
         if (BinarioDataGraph.strikeCalendar() != null) {
             ToggleRow(
                 title = stringResource(R.string.settings_strike_reminder_title),
                 description = stringResource(R.string.settings_strike_reminder_description),
                 checked = strikes,
-                onChange = { enable ->
-                    val apply = {
-                        settings.strikeReminderEnabled = enable
-                        strikes = enable
-                        StrikeReminderScheduler.reschedule(context)
-                    }
-                    if (enable) withPermission(apply) else apply()
-                }
+                onChange = { enable -> if (enable) withPermission(STRIKES) else setStrikes(false) }
             )
         }
         if (worksAvailable) {
@@ -388,14 +429,7 @@ fun LiveUpdatesSettingsPanel() {
                 title = stringResource(R.string.settings_route_works_alert_title),
                 description = stringResource(R.string.settings_route_works_alert_description),
                 checked = works,
-                onChange = { enable ->
-                    val apply = {
-                        settings.routeWorksAlertEnabled = enable
-                        works = enable
-                        RouteWorksAlertScheduler.reschedule(context)
-                    }
-                    if (enable) withPermission(apply) else apply()
-                },
+                onChange = { enable -> if (enable) withPermission(WORKS) else setWorks(false) },
                 modifier = Modifier.testTag("settings-route-works-alert")
             )
         }
@@ -413,14 +447,7 @@ fun LiveUpdatesSettingsPanel() {
             title = stringResource(R.string.settings_weekly_digest_title),
             description = stringResource(R.string.settings_weekly_digest_description),
             checked = digest,
-            onChange = { enable ->
-                val apply = {
-                    settings.weeklyDigestEnabled = enable
-                    digest = enable
-                    WeeklyDigestScheduler.reschedule(context)
-                }
-                if (enable) withPermission(apply) else apply()
-            },
+            onChange = { enable -> if (enable) withPermission(DIGEST) else setDigest(false) },
             modifier = Modifier.testTag("settings-weekly-digest")
         )
         Text(stringResource(R.string.settings_live_updates_privacy), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
