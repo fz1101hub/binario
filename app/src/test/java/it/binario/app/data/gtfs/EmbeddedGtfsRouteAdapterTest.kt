@@ -192,6 +192,71 @@ class EmbeddedGtfsRouteAdapterTest {
         assertTrue(services.single().id.startsWith("ch-otd-gtfs:"))
     }
 
+    /**
+     * Audit android-data-6: Venezia S. Lucia → Venezia Mestre has REG 16348 (Trenitalia) and Italo 8984 both at
+     * 13:57 → 14:09 on 10 Nov 2026. Same minutes from two packs are one train only when the numbers match, the
+     * operator is the same, or one pack republishes partner trains under its own numbers (cross-border national feeds,
+     * South Tyrol's multi-operator feed).
+     */
+    @Test
+    fun `due treni di operatori diversi agli stessi minuti restano entrambi`() = runBlocking {
+        val trenitaliaPack = EmbeddedGtfsPack(SourceId("trenitalia-gtfs"), "gtfs/trenitalia.zip")
+        val italoPack = EmbeddedGtfsPack(SourceId("italo-gtfs"), "gtfs/italo.zip")
+        val query = JourneyQuery(LocalDate.of(2026, 9, 4), LocalTime.of(8, 0))
+        suspend fun load(vararg feeds: Pair<EmbeddedGtfsPack, ByteArray>): List<it.binario.app.data.TrainService> {
+            val byPath = feeds.associate { (pack, bytes) -> pack.assetPath to bytes }
+            val adapter = EmbeddedGtfsRouteAdapter(
+                openAsset = { path -> ByteArrayInputStream(requireNotNull(byPath[path])) },
+                packs = feeds.map { it.first },
+                clock = { 1_000L }
+            )
+            return (adapter.loadRoute(route, Direction.OUTBOUND, query) as DataResult.Success).snapshot.services
+        }
+
+        val regAndItalo = load(
+            trenitaliaPack to feed(tripId = "REG", tripNumber = "16348", agencyName = "TRENITALIA"),
+            italoPack to feed(tripId = "ITA", tripNumber = "8984", agencyName = "Italo - Nuovo Trasporto Viaggiatori")
+        )
+        assertEquals(listOf("16348", "8984"), regAndItalo.map { it.number }.sorted())
+
+        // The same train under the same number from two operators' feeds (Trentino trasporti and Trenitalia) is one
+        // row, even when the packs spell the stations differently.
+        val trentinoPack = EmbeddedGtfsPack(SourceId("trentino-gtfs"), "gtfs/trentino.zip")
+        val aliased = route.copy(outwardOrigin = Station("milano", "Milano Centrale", "Milano", aliases = listOf("Milano C.le")))
+        val sameNumber = EmbeddedGtfsRouteAdapter(
+            openAsset = { path ->
+                ByteArrayInputStream(
+                    if (path == trentinoPack.assetPath) {
+                        feed(tripId = "TT", tripNumber = "16691", agencyName = "Trentino trasporti S.p.A.",
+                            stopNames = Triple("Milano C.le", "Monza", "Como S. Giovanni"))
+                    } else {
+                        feed(tripId = "REG", tripNumber = "R 16691", agencyName = "TRENITALIA")
+                    }
+                )
+            },
+            packs = listOf(trentinoPack, trenitaliaPack),
+            clock = { 1_000L }
+        ).loadRoute(aliased, Direction.OUTBOUND, query)
+        assertEquals(1, (sameNumber as DataResult.Success).snapshot.services.size)
+
+        // A cross-border national feed republishes the Trenord train under its own number and operator: still one row.
+        val trenordPack = EmbeddedGtfsPack(SourceId("lombardia-trenord-gtfs"), "gtfs/trenord.zip")
+        val swissPack = EmbeddedGtfsPack(SourceId("ch-otd-gtfs"), "gtfs/swiss.zip")
+        val crossBorder = load(
+            trenordPack to feed(tripId = "T1", tripNumber = "S30 - 25318", agencyName = "Trenord"),
+            swissPack to feed(tripId = "CH1", tripNumber = "25358", agencyName = "Schweizerische Bundesbahnen SBB")
+        )
+        assertEquals(1, crossBorder.size)
+
+        // Two Italian operators' feeds with different numbers (Trenord RE 2618 from Verona and Trenitalia 95343 from
+        // Asti, both Milano Lambrate 08:28 → Milano Centrale 08:35) are two trains.
+        val trenordAndTrenitalia = load(
+            trenordPack to feed(tripId = "T1", tripNumber = "RE_6 - 2618", agencyName = "Trenord"),
+            trenitaliaPack to feed(tripId = "REG", tripNumber = "95343", agencyName = "TRENITALIA")
+        )
+        assertEquals(2, trenordAndTrenitalia.size)
+    }
+
     @Test
     fun `non restituisce partenze precedenti all ora richiesta`() = runBlocking {
         val result = adapter(feed()).loadRoute(
@@ -597,7 +662,9 @@ class EmbeddedGtfsRouteAdapterTest {
         tripNumber: String = "2581",
         departure: String = "08:05:00",
         headsign: String = "Como S. Giovanni",
-        routeShortName: String = "RE"
+        routeShortName: String = "RE",
+        agencyName: String = "Test Rail",
+        stopNames: Triple<String, String, String> = Triple("Milano Centrale", "Monza", "Como S. Giovanni")
     ): ByteArray {
         val effectiveStopTimes = stopTimes ?: (
             "trip_id,arrival_time,departure_time,stop_id,stop_sequence\n" +
@@ -606,8 +673,9 @@ class EmbeddedGtfsRouteAdapterTest {
                 "$tripId,08:50:00,08:50:00,CO,3\n"
             )
         val content = linkedMapOf(
-            "agency.txt" to "agency_id,agency_name,agency_url,agency_timezone\nT,Test Rail,https://example.test,Europe/Rome\n",
-            "stops.txt" to "stop_id,stop_name,stop_lat,stop_lon\nMI,Milano Centrale,45.48,9.20\nMO,Monza,45.58,9.27\nCO,Como S. Giovanni,45.80,9.08\n",
+            "agency.txt" to "agency_id,agency_name,agency_url,agency_timezone\nT,$agencyName,https://example.test,Europe/Rome\n",
+            "stops.txt" to "stop_id,stop_name,stop_lat,stop_lon\nMI,${stopNames.first},45.48,9.20\nMO,${stopNames.second},45.58,9.27\n" +
+                "CO,${stopNames.third},45.80,9.08\n",
             "routes.txt" to "route_id,agency_id,route_short_name,route_long_name,route_type\nR,T,$routeShortName,Milano Como,2\n",
             "trips.txt" to "route_id,service_id,trip_id,trip_headsign,trip_short_name\nR,W,$tripId,$headsign,$tripNumber\n",
             "stop_times.txt" to effectiveStopTimes,
