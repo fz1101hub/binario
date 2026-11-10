@@ -947,7 +947,9 @@ class NationalPackTest(unittest.TestCase):
 
     def test_shipped_national_packs_are_pinned_and_current(self) -> None:
         # The pins move with each reviewed refresh (tools/apply_ci_gtfs_refresh.py); what must hold is that each
-        # names one commit and one archive of the reviewed repository and dataset, and that the pack came from it.
+        # names one commit and one archive of the reviewed repository and dataset, and that the manifest, the pin and
+        # the pack's own filter manifest declare the same source archive.  These are declarations: proving that the
+        # pack's content was filtered from that archive needs the archive (a network rebuild, audit data-tools-8).
         manifest = builder.read_manifest(ASSETS / "manifest.json")
         packs = {pack["sourceId"]: pack for pack in manifest["packs"]}
         expected = {
