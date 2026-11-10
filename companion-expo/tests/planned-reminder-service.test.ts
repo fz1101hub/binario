@@ -49,6 +49,7 @@ import {
   cancelPlannedRouteReminder,
   consumeLegacyReminderMigrationNotice,
   listScheduledRouteIds,
+  scheduleReminderForSavedRoute,
   schedulePlannedRouteReminder,
 } from "../lib/planned-reminder-service";
 
@@ -420,5 +421,29 @@ describe("promemoria riconosciuti in ogni lingua del dispositivo", () => {
 
     expect(await listScheduledRouteIds()).toEqual([42]);
     expect([...state.scheduled.keys()]).toEqual(["binario_planned_route_42"]);
+  });
+});
+
+describe("promemoria scelto nel planner", () => {
+  it("lo programma al salvataggio della tratta", async () => {
+    await expect(scheduleReminderForSavedRoute(route)).resolves.toBe("scheduled");
+    expect(await listScheduledRouteIds()).toEqual([42]);
+  });
+
+  it("non programma nulla con «Nessuno»", async () => {
+    await expect(scheduleReminderForSavedRoute({ ...route, plannedReminderMinutes: null })).resolves.toBe("none");
+    expect(notificationMocks.scheduleNotificationAsync).not.toHaveBeenCalled();
+    expect(notificationMocks.requestPermissionsAsync).not.toHaveBeenCalled();
+  });
+
+  it("riferisce permesso negato, orario passato ed errore nativo senza perdere la tratta", async () => {
+    notificationMocks.getPermissionsAsync.mockResolvedValue({ granted: false });
+    notificationMocks.requestPermissionsAsync.mockResolvedValue({ granted: false });
+    await expect(scheduleReminderForSavedRoute(route)).resolves.toBe("permission-denied");
+    await expect(scheduleReminderForSavedRoute({ ...route, travelDate: "2020-01-02" })).resolves.toBe("invalid");
+    notificationMocks.getPermissionsAsync.mockResolvedValue({ granted: true });
+    notificationMocks.scheduleNotificationAsync.mockRejectedValueOnce(new Error("native"));
+    await expect(scheduleReminderForSavedRoute(route)).resolves.toBe("error");
+    expect(state.scheduled.size).toBe(0);
   });
 });

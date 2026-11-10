@@ -233,3 +233,14 @@ export function filterLocalJourneyAgenda(routes: LocalPlannedRoute[], filter: Lo
     return route.completedAtUtcMs == null && scheduledAt !== null && scheduledAt >= start && scheduledAt < end;
   });
 }
+
+/** Home's reminder line, from the reminders really scheduled rather than the minutes chosen when planning. */
+export function plannedReminderSummaryKey(route: Pick<LocalPlannedRoute, "plannedReminderMinutes">, scheduled: boolean): "home.noReminder" | "home.reminderAtTime" | "home.reminderBefore" {
+  if (!scheduled || route.plannedReminderMinutes === null) return "home.noReminder";
+  return route.plannedReminderMinutes === 0 ? "home.reminderAtTime" : "home.reminderBefore";
+}
+
+/** Agenda's lead label: "Nessuno" (null) is not "at the chosen time" (0). */
+export function agendaReminderLeadKey(minutes: number | null): "alerts.leadNone" | "alerts.leadAtTime" | "alerts.leadBefore" {
+  return minutes === null ? "alerts.leadNone" : minutes === 0 ? "alerts.leadAtTime" : "alerts.leadBefore";
+}

@@ -5,7 +5,7 @@ import {
   type LocalPlannedRoute,
 } from "@/lib/local-route-contract";
 import { loadLocalPlannedRoutes } from "@/lib/local-routes";
-import { createTranslator, deviceCompanionLocale, type CompanionLocale } from "@/lib/i18n";
+import { createTranslator, deviceCompanionLocale, type CompanionLocale, type TranslationKey } from "@/lib/i18n";
 import { travelEpochMs } from "@/lib/travel-time-zone";
 
 const legacyStorageKey = "binario.planned-route-reminders.v1";
@@ -240,4 +240,28 @@ export async function schedulePlannedRouteReminder(
     await Notifications.scheduleNotificationAsync(reminderRequest(route, fireAt));
     return "scheduled" as const;
   });
+}
+
+export type SavedRouteReminderOutcome = "none" | "scheduled" | "permission-denied" | "invalid" | "error";
+
+/** Planner feedback for each outcome: the journey is always saved, the reminder only when it could be scheduled. */
+export const savedRouteReminderMessageKeys: Record<SavedRouteReminderOutcome, TranslationKey> = {
+  none: "planner.saved",
+  scheduled: "planner.savedWithReminder",
+  "permission-denied": "planner.savedReminderDenied",
+  invalid: "planner.savedReminderTooLate",
+  error: "planner.savedReminderError",
+};
+
+/**
+ * Schedules the reminder chosen in the planner as soon as the journey is saved, so that the planner's
+ * promise ("programmato sul telefono") and Home's reminder line are true. "Nessuno" schedules nothing.
+ */
+export async function scheduleReminderForSavedRoute(route: LocalPlannedRoute): Promise<SavedRouteReminderOutcome> {
+  if (route.plannedReminderMinutes === null) return "none";
+  try {
+    return await schedulePlannedRouteReminder(route);
+  } catch {
+    return "error";
+  }
 }

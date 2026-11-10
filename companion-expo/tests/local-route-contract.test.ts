@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { applyLocalJourneyChecklistPreset, createLocalPlannedRoute, createReplannedLocalRouteDraft, createReturnLocalRouteDraft, displayLocalPlannedRouteName, filterLocalJourneyAgenda, getLocalJourneyPreparationPreset, isLocalPlannedRoute, localCountdownLabel, remainingLocalJourneyChecklistItems, selectNextLocalPlannedRoute, setLocalJourneyChecklistItem, setLocalPlannedRouteLabel, sortLocalPlannedRoutes } from "../lib/local-route-contract";
+import { agendaReminderLeadKey, applyLocalJourneyChecklistPreset, plannedReminderSummaryKey, createLocalPlannedRoute, createReplannedLocalRouteDraft, createReturnLocalRouteDraft, displayLocalPlannedRouteName, filterLocalJourneyAgenda, getLocalJourneyPreparationPreset, isLocalPlannedRoute, localCountdownLabel, remainingLocalJourneyChecklistItems, selectNextLocalPlannedRoute, setLocalJourneyChecklistItem, setLocalPlannedRouteLabel, sortLocalPlannedRoutes } from "../lib/local-route-contract";
 import { createLocalScheduledSnapshot, evaluateSnapshot } from "../lib/companion-snapshot";
 // Journey dates and times are Italian wall-clock time: "now" is built the same way.
 import { travelEpochMs } from "../lib/travel-time-zone";
@@ -44,6 +44,15 @@ describe("pianificazione locale Binario", () => {
     expect(selectNextLocalPlannedRoute([pinnedNextWeek, reorderedTomorrow, laterToday, today], now)?.id).toBe(1);
     // Pin and manual order still decide the list order.
     expect(sortLocalPlannedRoutes([pinnedNextWeek, reorderedTomorrow, laterToday, today]).map(route => route.id)).toEqual([2, 3, 1, 4]);
+  });
+  it("descrive il promemoria da quello programmato e distingue «Nessuno» da «All’ora»", () => {
+    expect(plannedReminderSummaryKey({ plannedReminderMinutes: 15 }, false)).toBe("home.noReminder");
+    expect(plannedReminderSummaryKey({ plannedReminderMinutes: 15 }, true)).toBe("home.reminderBefore");
+    expect(plannedReminderSummaryKey({ plannedReminderMinutes: 0 }, true)).toBe("home.reminderAtTime");
+    expect(plannedReminderSummaryKey({ plannedReminderMinutes: null }, true)).toBe("home.noReminder");
+    expect(agendaReminderLeadKey(null)).toBe("alerts.leadNone");
+    expect(agendaReminderLeadKey(0)).toBe("alerts.leadAtTime");
+    expect(agendaReminderLeadKey(30)).toBe("alerts.leadBefore");
   });
   it("filtra imminenti, settimana e archivio con il solo orario programmato locale", () => {
     const now = travelEpochMs("2026-10-02", "08:00")!;

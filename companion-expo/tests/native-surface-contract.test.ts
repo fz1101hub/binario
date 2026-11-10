@@ -403,7 +403,7 @@ describe("contratti delle superfici native Binario", () => {
 describe("contratto JS ↔ Kotlin di BinarioWidgetBridge", () => {
   const route = createLocalPlannedRoute({ origin: "Roma Termini", destination: "Napoli Centrale", travelDate: "2030-01-02", travelTime: "09:30", plannedReminderMinutes: 15 }, 4, 1)!;
   const now = travelEpochMs("2030-01-02", "08:00")!;
-  const usable = buildNativeSurfacePayload(createLocalScheduledSnapshot(route, now - 1), route, now);
+  const usable = buildNativeSurfacePayload(createLocalScheduledSnapshot(route, now - 1), route, now, "it", true);
   const unavailable = buildNativeSurfacePayload(createUnavailableSnapshot({ kind: "route", id: "none", label: "Nessuna tratta attiva" }), null, now);
 
   it("chiama il modulo con il nome dichiarato da getName() nel template Kotlin", () => {
@@ -457,5 +457,13 @@ describe("contratto JS ↔ Kotlin di BinarioWidgetBridge", () => {
     expect(usable.widget).toMatchObject({ title: route.name, status: "available", updatedAtUtcMs: now - 1, expiresAtUtcMs: travelEpochMs("2030-01-02", "09:30")!, plannedJourney: { title: route.name, scheduledAtUtcMs: travelEpochMs("2030-01-02", "09:30")!, reminderMinutes: 15 } });
     expect(usable.watch).toMatchObject({ schemaVersion: 1, routeLabel: route.name, provenanceProducer: "COMPANION", provenanceDataNature: "PROGRAMMED", operationalState: "PROGRAMMED", confidence: "LOCAL_PLANNED", serviceCount: 0, generatedAtEpochMillis: now - 1 });
     expect(usable.watch.notice).toBe(italian("snapshot.localNotice"));
+  });
+
+  it("mostra i minuti del promemoria solo se è davvero programmato", () => {
+    const snapshot = createLocalScheduledSnapshot(route, now - 1);
+    expect(buildNativeSurfacePayload(snapshot, route, now).widget.plannedJourney?.reminderMinutes).toBeNull();
+    expect(buildNativeSurfacePayload(snapshot, route, now, "it", false).widget.plannedJourney?.reminderMinutes).toBeNull();
+    expect(buildNativeSurfacePayload(snapshot, route, now, "it", true).widget.plannedJourney?.reminderMinutes).toBe(15);
+    expect(buildNativeSurfacePayload(snapshot, { ...route, plannedReminderMinutes: 0 }, now, "it", true).widget.plannedJourney?.reminderMinutes).toBe(0);
   });
 });

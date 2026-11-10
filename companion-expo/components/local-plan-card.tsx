@@ -1,4 +1,5 @@
 import { addLocalPlannedRoute, isLocalRoutesArchiveFull } from "@/lib/local-routes";
+import { savedRouteReminderMessageKeys, scheduleReminderForSavedRoute } from "@/lib/planned-reminder-service";
 import { applyLocalJourneyChecklistPreset, localJourneyChecklistPresets, type ControlledLocalRouteDraft, type LocalJourneyChecklistItem } from "@/lib/local-route-contract";
 import { parseLocalDictation } from "@/lib/local-dictation";
 import { requestNearestOfflineStation } from "@/lib/nearby-offline-stations";
@@ -154,6 +155,7 @@ export function LocalPlanCard({ onSaved, planningDraft, onPlanningDraftApplied }
         destinationRef.current?.focus();
         return;
       }
+      const reminder = await scheduleReminderForSavedRoute(route);
       setOrigin("");
       setOriginStationCode(null);
       setDestination("");
@@ -161,7 +163,7 @@ export function LocalPlanCard({ onSaved, planningDraft, onPlanningDraftApplied }
       setTravelTime("");
       setScheduleConfirmation({ date: false, time: false });
       setFieldError("");
-      setMessage(t("planner.saved"));
+      setMessage(t(savedRouteReminderMessageKeys[reminder]));
       confirmNativeAction();
       onSaved();
     } finally { setSaving(false); }
