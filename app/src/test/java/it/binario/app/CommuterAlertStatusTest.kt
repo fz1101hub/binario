@@ -2,6 +2,7 @@ package it.binario.app
 
 import it.binario.app.data.RailOperator
 import it.binario.app.data.ServiceStatus
+import it.binario.app.data.Station
 import it.binario.app.data.TrainCategory
 import it.binario.app.data.TrainService
 import it.binario.app.data.TrainStop
@@ -10,6 +11,24 @@ import org.junit.Assert.assertNull
 import org.junit.Test
 
 class CommuterAlertStatusTest {
+    @Test fun `the route stations are found in the catalogue when the device does not remember them`() {
+        val milano = Station("milano-centrale", "Milano Centrale", "Milano")
+        val pavia = Station("pavia", "Pavia", "Pavia")
+        val remembered = Station("custom:pavia", "Pavia", "Pavia")
+        var catalogueReads = 0
+        val catalogue = { catalogueReads++; listOf(milano, pavia) }
+
+        // After a backup import only stations outside the catalogue are remembered: the catalogue resolves the rest.
+        assertEquals(milano to pavia, CommuterAlertStatusRules.routeEndpoints("Milano Centrale → Pavia", emptyList(), catalogue))
+        assertEquals(milano to remembered, CommuterAlertStatusRules.routeEndpoints("milano centrale → Pavia", listOf(remembered), catalogue))
+        // Stations the device remembers win and the catalogue is not read.
+        val reads = catalogueReads
+        assertEquals(milano to remembered, CommuterAlertStatusRules.routeEndpoints("Milano Centrale → Pavia", listOf(remembered, milano), catalogue))
+        assertEquals(reads, catalogueReads)
+        assertNull(CommuterAlertStatusRules.routeEndpoints("Milano Centrale → Atlantide", emptyList(), catalogue))
+        assertNull(CommuterAlertStatusRules.routeEndpoints("Milano Centrale", emptyList(), catalogue))
+    }
+
     private val strings = CommuterAlertStatusStrings(
         unavailable = "stato non disponibile",
         onTime = "in orario",
