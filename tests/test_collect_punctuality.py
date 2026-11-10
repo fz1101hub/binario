@@ -303,6 +303,24 @@ class StationAndTimetableTest(Base):
         self.assertEqual([train.arrival for train in collector.due_trains(self.timetable, NOW)],
                          sorted(train.arrival for train in selected.values()))
 
+    def test_after_midnight_only_yesterdays_trains_still_running_at_midnight_are_asked(self) -> None:
+        # ViaggiaTreno forgets at midnight the runs that had already ended (585 of 602 unknown at 00:58 on 9 November
+        # 2026): of yesterday's trains only one still travelling at midnight is asked, within the three hours.
+        self.timetable.trips = [
+            collector.TripPlan("3001", "REG", "S08409", 22 * 3600, 23 * 3600 + 30 * 60, "DAILY"),  # ends 23:30
+            collector.TripPlan("3003", "REG", "S08409", 22 * 3600 + 30 * 60, 24 * 3600 + 20 * 60, "DAILY"),  # 00:20
+        ]
+        after_midnight = datetime(2026, 11, 4, 23, 41, tzinfo=timezone.utc)  # 00:41 of 5 November in Rome
+        self.assertEqual([("2026-11-04", "3003")],
+                         [(train.day, train.number) for train in collector.due_trains(self.timetable, after_midnight)])
+        ended = collector.Due("2026-11-04", "S08409", "3001", "REG",
+                              int(datetime(2026, 11, 4, 22, 30, tzinfo=timezone.utc).timestamp()))
+        moment = after_midnight.timestamp()
+        self.assertFalse(collector.answerable(ended.day, ended.arrival, moment))
+        # Asked before midnight and not arrived yet: it was still travelling, so it is asked again.
+        self.assertTrue(collector.answerable(ended.day, ended.arrival, moment, asked=True))
+        self.assertFalse(collector.answerable(ended.day, ended.arrival, moment + 3 * 3600, asked=True))
+
 
 class InterpretTest(unittest.TestCase):
     def test_a_full_answer_keeps_station_delays_and_suppressed_stops_only(self) -> None:

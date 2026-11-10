@@ -8,7 +8,8 @@ container cannot reach viaggiatreno.it).  Each run:
    ``lombardia-trenord-gtfs.zip``, ``--gtfs`` once per pack): the rail trips (bus routes and non-numeric numbers left out) running yesterday or today (``calendar.txt`` and ``calendar_dates.txt``, times in
    Europe/Rome from noon minus 12 h of the service day) whose scheduled arrival at the last stop is at least 20 min
    old and that ViaggiaTreno still answers about (``answerable``): every train that left today (local date), and a
-   train that left yesterday only within 3 h of its arrival (a night train).  ViaggiaTreno forgets the runs of the
+   train that left yesterday only within 3 h of its arrival and if still travelling at midnight (a night train, or a
+   late train already asked and not arrived).  ViaggiaTreno forgets the runs of the
    previous day at midnight, and GitHub skips many scheduled runs, so each run covers the whole day so far rather
    than the last hours (trains already known are never asked again).  Number = ``trip_short_name``, category = suffix of ``route_short_name`` (``0083_REG`` -> ``REG``),
    origin = ViaggiaTreno code of the first stop, resolved from its ``stop_code`` (``830008409``) with the curated
@@ -424,13 +425,17 @@ def trains_on(timetable: Timetable, service_day: date) -> dict[tuple[str, str, s
     return result
 
 
-def answerable(day: str, arrival: float, moment: float) -> bool:
+def answerable(day: str, arrival: float, moment: float, *, asked: bool = False) -> bool:
     """Whether ViaggiaTreno still answers about the run that left on ``day`` (ISO date) with its scheduled arrival at
-    ``arrival``: it left today (Rome), or yesterday and arrived at most PREVIOUS_DAY_GRACE ago (a night train)."""
+    ``arrival``: it left today (Rome), or yesterday, arrived at most PREVIOUS_DAY_GRACE ago and was still travelling
+    at midnight, when ViaggiaTreno forgets the runs that had ended (a night train).  Its scheduled arrival after
+    midnight says so; for a train ``asked`` before and not arrived yet, that answer does (a late train)."""
     today = rome_date(moment)
     if day == today.isoformat():
         return True
-    return day == (today - timedelta(days=1)).isoformat() and arrival >= moment - PREVIOUS_DAY_GRACE.total_seconds()
+    if day != (today - timedelta(days=1)).isoformat() or arrival < moment - PREVIOUS_DAY_GRACE.total_seconds():
+        return False
+    return asked or arrival > midnight_millis(today) // 1000
 
 
 def due_trains(timetable: Timetable, now: datetime) -> list[Due]:
@@ -953,7 +958,7 @@ def collect(
     for key, entry in sorted(state.pending.items()):
         # Asked and not arrived yet: 8 h after the scheduled arrival.  Left over by the limits of a run, never asked:
         # while ViaggiaTreno still answers about it.  Either way, never past ViaggiaTreno's day.
-        closed = not answerable(entry["d"], entry["a"], moment)
+        closed = not answerable(entry["d"], entry["a"], moment, asked=entry["k"] > 0)
         if closed or (entry["k"] > 0 and moment > entry["a"] + PENDING_LIMIT.total_seconds()):
             state.add({"d": key[0], "o": key[1], "n": key[2], "c": entry["c"], "st": "unknown", "t": moment, "s": []})
             report.add("giorno_chiuso" if closed and entry["k"] == 0 else "scaduti_sconosciuti")
