@@ -363,21 +363,42 @@ class EmbeddedGtfsRouteAdapter(
 
     /**
      * Cross-border trains are published by more than one pack under unrelated numbers (Trenord
-     * "S10 - 25107", Swiss OTD "12878") and with different stop spellings, so [serviceIdentity]
+     * "S30 - 25318", Swiss OTD "25358") and with different stop spellings, so [serviceIdentity]
      * cannot pair them. Between the same requested stations, two services from different packs
-     * leaving and arriving at the same minute are the same train: only the first, which the sort
-     * puts on the preferred source, is kept. Services of the same pack are never merged here.
+     * leaving and arriving at the same minute are one train when [mayBeSameRun] says so: only the
+     * first, which the sort puts on the preferred source, is kept. Two different trains can share
+     * the minutes (REG 16348 and Italo 8984, Venezia S. Lucia 13:57 → Mestre 14:09), so the times
+     * alone are not enough (audit android-data-6). Services of the same pack are never merged here.
      */
     private fun withoutCrossPackDuplicates(items: List<SourcedService>): List<SourcedService> {
-        val firstSourceByTimes = HashMap<String, SourceId>()
+        val keptByTimes = HashMap<String, MutableList<SourcedService>>()
         return items.filter { item ->
             val service = item.service
             val departure = service.scheduledDepartureDateTime ?: return@filter true
             val arrival = service.stops.lastOrNull()?.scheduled ?: return@filter true
-            val source = firstSourceByTimes.getOrPut("$departure|$arrival") { item.sourceId }
-            source == item.sourceId
+            val kept = keptByTimes.getOrPut("$departure|$arrival") { mutableListOf() }
+            if (kept.any { other -> other.sourceId != item.sourceId && mayBeSameRun(other, item) }) return@filter false
+            kept += item
+            true
         }
     }
+
+    /**
+     * Two services of different packs at the same minutes are the same run when their public numbers match, when the
+     * operator is the same, or when one of the packs republishes partner operators' trains under its own numbering
+     * ([CROSS_PUBLISHING_PACKS]). Otherwise (two Italian operators' own feeds, different numbers) they are two trains.
+     */
+    private fun mayBeSameRun(first: SourcedService, second: SourcedService): Boolean {
+        val number = coreTrainNumber(first.service.number)
+        if (number != null && number == coreTrainNumber(second.service.number)) return true
+        val operator = first.service.operatorDisplayName?.trim()?.lowercase(Locale.ROOT)?.takeIf(String::isNotEmpty)
+        if (operator != null && operator == second.service.operatorDisplayName?.trim()?.lowercase(Locale.ROOT)) return true
+        return first.sourceId.value in CROSS_PUBLISHING_PACKS || second.sourceId.value in CROSS_PUBLISHING_PACKS
+    }
+
+    /** The run number without line prefix or category: "S11 - 25017" → "25017", "REX 1826" → "1826". */
+    private fun coreTrainNumber(value: String): String? =
+        Regex("[0-9]+").findAll(value.substringAfterLast(" - ")).lastOrNull()?.value?.trimStart('0')?.takeIf(String::isNotEmpty)
 
     private fun sourcePreference(sourceId: SourceId, operatorName: String?): Int =
         RailSourceSelectionPolicy.score(
@@ -828,8 +849,11 @@ class EmbeddedGtfsRouteAdapter(
                         it.binario.app.data.GtfsStopIdentity(stops.id(stopTimes.stop(entry)), stopTimes.sequence(entry))
                     }
                 ),
-                stops = segmentEntries.map { entry ->
-                    val scheduled = hhmm(stopTimes.preferredDeparture(entry))
+                stops = segmentEntries.mapIndexed { index, entry ->
+                    // Where the traveller gets off (the segment's last stop) the time is the train's arrival, not its
+                    // departure after the dwell; the boarding and intermediate stops keep the departure.
+                    val alighting = index > 0 && index == segmentEntries.lastIndex
+                    val scheduled = hhmm(if (alighting) stopTimes.preferredArrival(entry) else stopTimes.preferredDeparture(entry))
                     TrainStop(stops.name(stopTimes.stop(entry)), scheduled, scheduled, null, 0, false, operationalStatusVerified = false)
                 }
             )
@@ -1265,6 +1289,12 @@ class EmbeddedGtfsRouteAdapter(
         private const val MISSING_TIME = Int.MIN_VALUE
         private const val INVALID_TIME = Int.MIN_VALUE + 1
         private const val NEXT_DAY_LOOK_AHEAD_HOURS = 24L
+        /**
+         * Packs that also publish partner operators' trains under their own numbers and operator names, as the shipped
+         * data shows: the Swiss, French and Austrian national feeds (TILO trains of Trenord, SNCF/SBB border runs, ÖBB
+         * trains into South Tyrol) and South Tyrol's multi-operator feed (Trenitalia, ÖBB, Italo and Trenord runs).
+         */
+        private val CROSS_PUBLISHING_PACKS = setOf("ch-otd-gtfs", "sncf-gtfs", "oebb-gtfs", "alto-adige-sta-gtfs")
         private val RAIL_ROUTE_TYPES = setOf("2", "100", "101", "102", "103", "104", "105", "106", "107", "108", "109")
         /** Trenitalia's route_short_name: its company code 0083, then the category ("0083_REG", "0083_BUS"). */
         private val TRENITALIA_LINE = Regex("0083_([A-Za-z]{1,4})")

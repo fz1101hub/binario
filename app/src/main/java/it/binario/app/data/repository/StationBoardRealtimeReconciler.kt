@@ -29,9 +29,10 @@ import it.binario.app.data.sources.RailInformationCategory
 import it.binario.app.data.sources.RailSourceSelectionPolicy
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
-import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.channelFlow
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.currentCoroutineContext
@@ -62,36 +63,48 @@ class StationBoardEnrichedTrainDataSource(
 
     override suspend fun loadRoute(route: SavedRoute, direction: Direction, query: JourneyQuery): DataResult {
         val live = liveFirst(route, direction, query)
-        live.verified?.let { return it }
-        return afterPlanned(plannedSource.loadRoute(route, direction, query), live.unverified, route, direction, query)
+        val verified = live.verified
+            ?: return afterPlanned(plannedSource.loadRoute(route, direction, query), live.unverified, route, direction, query)
+        // A live route holds only the runs whose details arrived in time (never Italo): it enriches the planned list,
+        // whose other trains keep their timetable and board data (audit android-data-2).
+        val planned = plannedSource.loadRoute(route, direction, query) as? DataResult.Success ?: return verified
+        return LiveRunMerge.merge(afterPlanned(planned, null, route, direction, query), verified, query)
     }
 
     /**
      * [loadRoute] published as it improves: the offline rows (then with their GTFS-Realtime) appear while the live
-     * sources answer; a verified live result still replaces them, and the board reconciliation comes last. The final
-     * emission is exactly what [loadRoute] returns.
+     * sources answer; the verified live runs then take the place of the same planned runs, and the board
+     * reconciliation comes last. The final emission is exactly what [loadRoute] returns.
      */
     override fun observeRoute(route: SavedRoute, direction: Direction, query: JourneyQuery): Flow<DataResult> = channelFlow {
-        val liveWon = java.util.concurrent.atomic.AtomicBoolean(false)
+        val lock = Mutex()
+        var verifiedLive: DataResult.Success? = null
+        var latestPlanned: DataResult? = null
+        var lastSent: DataResult? = null
+        suspend fun publish(result: DataResult) {
+            if (result != lastSent) { lastSent = result; send(result) }
+        }
         val live = async { liveFirst(route, direction, query) }
         val planned = async {
-            var latest: DataResult? = null
             plannedSource.observeRoute(route, direction, query).collect { result ->
-                latest = result
-                if (result is DataResult.Success && !liveWon.get()) send(result)
+                lock.withLock {
+                    latestPlanned = result
+                    if (result is DataResult.Success) publish(LiveRunMerge.merge(result, verifiedLive, query))
+                }
             }
-            latest
+            lock.withLock { latestPlanned }
         }
         val verdict = live.await()
         verdict.verified?.let { verified ->
-            liveWon.set(true)
-            planned.cancelAndJoin()
-            send(verified)
-            return@channelFlow
+            lock.withLock {
+                verifiedLive = verified
+                (latestPlanned as? DataResult.Success)?.let { publish(LiveRunMerge.merge(it, verified, query)) }
+            }
         }
         val plannedResult = planned.await() ?: plannedSource.loadRoute(route, direction, query)
-        val final = afterPlanned(plannedResult, verdict.unverified, route, direction, query)
-        if (final !== plannedResult) send(final)
+        val final = verdict.verified?.takeIf { plannedResult !is DataResult.Success }
+            ?: LiveRunMerge.merge(afterPlanned(plannedResult, verdict.unverified, route, direction, query), verdict.verified, query)
+        lock.withLock { publish(final) }
     }
 
     private class LiveVerdict(val verified: DataResult.Success?, val unverified: DataResult.Success?)
@@ -165,6 +178,91 @@ class StationBoardEnrichedTrainDataSource(
             }
         }
         return planned
+    }
+}
+
+/**
+ * The verified live runs of a route over the planned list (audit android-data-2). A live route holds only the runs whose
+ * details arrived in time, never Italo: it must never replace the list. A live run takes the place of the planned
+ * service of the same run (core number, compatible operator, scheduled departure within [SCHEDULE_TOLERANCE]) unless
+ * the live run is unverified and the boards verified the planned one; a live run the timetable does not list is added;
+ * every other planned service stays as the timetable and the boards left it. Which live source answered is decided
+ * before, in the same order as always.
+ */
+internal object LiveRunMerge {
+    private val SCHEDULE_TOLERANCE: Duration = Duration.ofMinutes(20)
+
+    fun merge(planned: DataResult, live: DataResult.Success?, query: JourneyQuery): DataResult {
+        if (live == null) return planned
+        if (planned !is DataResult.Success) return live
+        val base = planned.snapshot
+        val services = base.services.toMutableList()
+        val taken = HashSet<Int>()
+        val added = mutableListOf<TrainService>()
+        var used = false
+        live.snapshot.services.forEach { run ->
+            val runTime = scheduled(run, query) ?: return@forEach
+            val index = services.indices
+                .filter { it !in taken && sameRun(services[it], run) }
+                .mapNotNull { index -> scheduled(services[index], query)?.let { index to abs(Duration.between(it, runTime).toMinutes()) } }
+                .filter { (_, delta) -> delta <= SCHEDULE_TOLERANCE.toMinutes() }
+                .minByOrNull { (_, delta) -> delta }?.first
+            if (index == null) {
+                added += run
+                used = true
+            } else {
+                taken += index
+                // An unverified live run does not mask what the boards verified for the same train.
+                if (run.operationalStatusVerified || !services[index].operationalStatusVerified) {
+                    services[index] = run
+                    used = true
+                }
+            }
+        }
+        if (!used) return planned
+        val liveSnapshot = live.snapshot
+        return DataResult.Success(base.copy(
+            services = it.binario.app.data.orderServicesForDisplay(services + added),
+            providerName = "${base.providerName} + ${liveSnapshot.providerName}",
+            retrievedAtEpochMillis = maxOf(base.retrievedAtEpochMillis, liveSnapshot.retrievedAtEpochMillis),
+            sourceObservedAtEpochMillis = maxOf(base.sourceObservedAtEpochMillis, liveSnapshot.sourceObservedAtEpochMillis),
+            expiresAtEpochMillis = minOf(base.expiresAtEpochMillis, liveSnapshot.expiresAtEpochMillis),
+            freshness = if (base.freshness == Freshness.FRESH || liveSnapshot.freshness == Freshness.FRESH) Freshness.FRESH else liveSnapshot.freshness,
+            qualityWarnings = base.qualityWarnings - SnapshotWarning.STATIC_ONLY,
+            notice = listOfNotNull(base.notice?.takeIf(String::isNotBlank), liveSnapshot.notice?.takeIf(String::isNotBlank))
+                .joinToString(" ").takeIf(String::isNotBlank)
+        ))
+    }
+
+    private fun sameRun(planned: TrainService, live: TrainService): Boolean {
+        val number = coreNumber(live.number) ?: return false
+        if (coreNumber(planned.number) != number) return false
+        val plannedOperator = operatorFamily(planned.operator) ?: return true
+        val liveOperator = operatorFamily(live.operator) ?: return true
+        return plannedOperator == liveOperator
+    }
+
+    /** ViaggiaTreno publishes Trenitalia and Trenord runs under one identity, so the two count as one family here. */
+    private fun operatorFamily(operator: RailOperator): String? = when (operator) {
+        RailOperator.TRENITALIA_REGIONALE, RailOperator.TRENITALIA_LONG_DISTANCE, RailOperator.TRENITALIA_AV,
+        RailOperator.TRENORD -> "trenitalia-trenord"
+        RailOperator.ITALO -> "italo"
+        RailOperator.OTHER -> null
+        else -> operator.name
+    }
+
+    /** "S11 - 25017" → "25017", "REG 16348" → "16348". */
+    private fun coreNumber(value: String): String? =
+        Regex("[0-9]+").findAll(value.substringAfterLast(" - ")).lastOrNull()?.value?.trimStart('0')?.takeIf(String::isNotEmpty)
+
+    private fun scheduled(service: TrainService, query: JourneyQuery): LocalDateTime? {
+        service.scheduledDepartureDateTime?.let { return it }
+        val parts = service.scheduledDeparture.trim().split(':')
+        val hour = parts.getOrNull(0)?.toIntOrNull() ?: return null
+        val minute = parts.getOrNull(1)?.toIntOrNull() ?: return null
+        if (hour !in 0..23 || minute !in 0..59) return null
+        val candidate = query.requestedAt.toLocalDate().atTime(hour, minute)
+        return if (candidate.isBefore(query.requestedAt.minusHours(12))) candidate.plusDays(1) else candidate
     }
 }
 

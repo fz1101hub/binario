@@ -24,6 +24,7 @@ import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertSame
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /** Audit proposal 4: the offline result shows first; the last emission is what loadRoute returns, live first as before. */
@@ -44,13 +45,33 @@ class ObserveRouteTest {
         override suspend fun loadRoute(route: SavedRoute, direction: Direction, query: JourneyQuery): DataResult = loadRoute(route, direction)
     }
 
-    @Test fun `offline rows show while the live source answers, and the verified live result still wins`() = runBlocking {
+    /** Audit android-data-2: the verified live run takes the place of the same planned run instead of replacing the list. */
+    @Test fun `offline rows show while the live source answers, then the verified live run replaces the same planned run`() = runBlocking {
         val planned = DataResult.Success(snapshot("offline", verified = false))
         val live = DataResult.Success(snapshot("live", verified = true))
         val enriched = StationBoardEnrichedTrainDataSource(source(planned), emptyList(), clock, zone, liveRouteSources = listOf(source(live, 300)))
         val emissions = enriched.observeRoute(route, Direction.OUTBOUND, query).toList()
-        assertEquals(listOf("offline", "live"), emissions.map { (it as DataResult.Success).snapshot.providerName })
-        assertEquals("live", (enriched.loadRoute(route, Direction.OUTBOUND, query) as DataResult.Success).snapshot.providerName)
+        assertEquals(listOf("offline", "offline + live"), emissions.map { (it as DataResult.Success).snapshot.providerName })
+        assertEquals(listOf("live-1"), (emissions.last() as DataResult.Success).snapshot.services.map { it.id })
+        val loaded = enriched.loadRoute(route, Direction.OUTBOUND, query)
+        assertEquals(emissions.last(), loaded)
+        assertTrue((loaded as DataResult.Success).snapshot.services.single().operationalStatusVerified)
+    }
+
+    /** Audit android-data-2: a verified ViaggiaTreno route never hides the planned trains it has no run for (Italo). */
+    @Test fun `an Italo train of the timetable survives a verified ViaggiaTreno route`() = runBlocking {
+        val italo = TrainService("italo-8984", "8984", RailOperator.ITALO, TrainCategory.AV_ITALO, "A", "B", "10:05", "10:05", null, 0,
+            ServiceStatus.ON_TIME, listOf(TrainStop("A", "10:05", "10:05", null, 0, false)), operationalStatusVerified = false)
+        val offline = snapshot("offline", verified = false).let { it.copy(services = it.services + italo) }
+        val planned = DataResult.Success(offline)
+        val live = DataResult.Success(snapshot("live", verified = true))
+        val enriched = StationBoardEnrichedTrainDataSource(source(planned), emptyList(), clock, zone, liveRouteSources = listOf(source(live, 300)))
+        val emissions = enriched.observeRoute(route, Direction.OUTBOUND, query).toList()
+        val final = (emissions.last() as DataResult.Success).snapshot.services
+        assertEquals(listOf("live-1", "italo-8984"), final.map { it.id })
+        assertEquals(listOf(true, false), final.map { it.operationalStatusVerified })
+        assertTrue(emissions.all { (it as DataResult.Success).snapshot.services.any { train -> train.id == "italo-8984" } })
+        assertEquals(emissions.last(), enriched.loadRoute(route, Direction.OUTBOUND, query))
     }
 
     @Test fun `without a verified live result the planned result is the answer`() = runBlocking {

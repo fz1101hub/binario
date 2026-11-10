@@ -46,6 +46,7 @@ import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.async
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -70,7 +71,7 @@ class StationBoardRealtimeReconcilerTest {
             }
         }
         val fast = source { DataResult.Success(plannedSnapshot().let { it.copy(services = it.services.map { train -> train.copy(operationalStatusVerified = true) }) }) }
-        val result = StationBoardEnrichedTrainDataSource(source { error("Fallback must not run") }, emptyList(), clock, zone,
+        val result = StationBoardEnrichedTrainDataSource(source { DataResult.Success(plannedSnapshot()) }, emptyList(), clock, zone,
             liveRouteSources = listOf(slow, fast)).loadRoute(route, Direction.OUTBOUND, query) as DataResult.Success
         assertTrue(result.snapshot.services.single().operationalStatusVerified)
         assertTrue(cancelled)
@@ -87,7 +88,7 @@ class StationBoardRealtimeReconcilerTest {
         }
         val fallback = source { DataResult.Success(plannedSnapshot().let { it.copy(services = it.services.map { train -> train.copy(
             operationalStatusVerified = true, officialDelayMinutes = 8, delayMinutes = 8) }) }) }
-        val result = StationBoardEnrichedTrainDataSource(source { error("Fallback must not run") }, emptyList(), clock, zone,
+        val result = StationBoardEnrichedTrainDataSource(source { DataResult.Success(plannedSnapshot()) }, emptyList(), clock, zone,
             liveRouteSources = listOf(preferred, fallback)).loadRoute(route, Direction.OUTBOUND, query) as DataResult.Success
         assertEquals(6, result.snapshot.services.single().officialDelayMinutes)
         assertEquals(1_000L, testScheduler.currentTime)
@@ -392,18 +393,60 @@ class StationBoardRealtimeReconcilerTest {
         assertEquals(0, boardCalls)
     }
 
+    /** Audit android-data-2: the live route enriches the planned list instead of replacing it. */
     @Test
-    fun `la ricerca odierna restituisce il live senza attendere il programmato`() = runBlocking {
+    fun `la ricerca odierna mette la corsa live al posto della stessa corsa programmata`() = runBlocking {
         val calls = mutableListOf<String>()
         val live = DataResult.Success(plannedSnapshot().copy(providerName = "ViaggiaTreno",
-            services = plannedSnapshot().services.map { it.copy(operationalStatusVerified = true) }))
+            services = plannedSnapshot().services.map { it.copy(id = "viaggiatreno:9401", operationalStatusVerified = true) }))
         val wrapper = StationBoardEnrichedTrainDataSource(
-            source { calls.add("planned"); error("Il programmato non deve bloccare il live") },
+            source { calls.add("planned"); DataResult.Success(plannedSnapshot()) },
             emptyList(), clock, zone,
             listOf(source { calls.add("live"); live })
         )
-        assertEquals(live, wrapper.loadRoute(route, Direction.OUTBOUND, query))
-        assertEquals(listOf("live"), calls)
+        val result = wrapper.loadRoute(route, Direction.OUTBOUND, query) as DataResult.Success
+        assertEquals(live.snapshot.services, result.snapshot.services)
+        assertEquals("GTFS programmato + ViaggiaTreno", result.snapshot.providerName)
+        assertEquals(listOf("live", "planned"), calls)
+        // Without a planned list the verified live route is still the answer.
+        val alone = StationBoardEnrichedTrainDataSource(source { DataResult.Failure("no timetable") }, emptyList(), clock, zone,
+            listOf(source { live })).loadRoute(route, Direction.OUTBOUND, query)
+        assertEquals(live, alone)
+    }
+
+    /**
+     * Audit android-data-2: with a verified ViaggiaTreno route the boards still reconcile the other trains: the Italo
+     * train it never lists keeps the Italo board delay, and a run it lists unverified keeps the RFI board delay.
+     */
+    @Test
+    fun `una tratta ViaggiaTreno verificata non nasconde Italo e non salta la riconciliazione dei tabelloni`() = runBlocking {
+        val frecciarossa = plannedSnapshot().services.single()
+        val italo = frecciarossa.copy(id = "gtfs:I1", number = "9921", operator = RailOperator.ITALO, operatorDisplayName = "Italo",
+            trainCategory = TrainCategory.AV_ITALO, scheduledDeparture = "12:40", expectedDeparture = "12:40",
+            scheduledDepartureDateTime = LocalDateTime.of(2026, 9, 4, 12, 40))
+        val regional = frecciarossa.copy(id = "gtfs:R1", number = "9405", scheduledDeparture = "12:50", expectedDeparture = "12:50",
+            scheduledDepartureDateTime = LocalDateTime.of(2026, 9, 4, 12, 50))
+        val planned = plannedSnapshot().copy(services = listOf(frecciarossa, italo, regional))
+        val live = plannedSnapshot().copy(providerName = "ViaggiaTreno", services = listOf(
+            frecciarossa.copy(id = "viaggiatreno:9401", operationalStatusVerified = true, delayMinutes = 2, officialDelayMinutes = 2,
+                expectedDeparture = "12:32", operationalSourceIds = setOf("viaggiatreno")),
+            regional.copy(id = "viaggiatreno:9405", operationalStatusVerified = false)
+        ))
+        val rfi = SourceId("rfi-station-board")
+        val italoBoard = SourceId("italo-status")
+        val providers = listOf(
+            FakeBoardProvider(rfi, "RFI", board(rfi, "9405", zdt(12, 50), zdt(12, 57), "4", RunStatus.DELAYED)),
+            FakeBoardProvider(italoBoard, "Italo", board(italoBoard, "9921", zdt(12, 40), zdt(12, 44), "9", RunStatus.DELAYED, operator = "italo"))
+        )
+        val wrapper = StationBoardEnrichedTrainDataSource(source { DataResult.Success(planned) }, providers, clock, zone,
+            listOf(source { DataResult.Success(live) }))
+
+        val result = (wrapper.loadRoute(route, Direction.OUTBOUND, query) as DataResult.Success).snapshot.services
+        assertEquals(listOf("viaggiatreno:9401", "gtfs:I1", "gtfs:R1"), result.map { it.id })
+        assertEquals(listOf(2, 4, 7), result.map { it.delayMinutes })
+        assertTrue(result.all { it.operationalStatusVerified })
+        val observed = wrapper.observeRoute(route, Direction.OUTBOUND, query).toList()
+        assertEquals(wrapper.loadRoute(route, Direction.OUTBOUND, query), observed.last())
     }
 
     @Test
@@ -425,9 +468,10 @@ class StationBoardRealtimeReconcilerTest {
         val fresh = DataResult.Success(plannedSnapshot().copy(services = plannedSnapshot().services.map {
             it.copy(delayMinutes = 6, officialDelayMinutes = 6, expectedDeparture = "12:36", operationalStatusVerified = true)
         }))
-        val wrapper = StationBoardEnrichedTrainDataSource(source { error("Nessun programmato se esiste il live") },
+        val wrapper = StationBoardEnrichedTrainDataSource(source { DataResult.Success(plannedSnapshot()) },
             emptyList(), clock, zone, listOf(source { unknown }, source { fresh }))
-        assertEquals(fresh, wrapper.loadRoute(route, Direction.OUTBOUND, query))
+        assertEquals(fresh.snapshot.services,
+            (wrapper.loadRoute(route, Direction.OUTBOUND, query) as DataResult.Success).snapshot.services)
     }
 
     @Test
@@ -485,7 +529,8 @@ class StationBoardRealtimeReconcilerTest {
         platform: String,
         status: RunStatus,
         destinationLabel: String = "Napoli Centrale",
-        routeChange: OperationalRouteChange? = null
+        routeChange: OperationalRouteChange? = null,
+        operator: String = "trenitalia"
     ): StationBoard {
         val ref = SourceRef(
             sourceId = source,
@@ -509,7 +554,7 @@ class StationBoardRealtimeReconcilerTest {
                     destinationOrOrigin = StationId("published:napolicentrale"),
                     destinationOrOriginLabel = destinationLabel,
                     publicNumber = number,
-                    operatorId = OperatorId("trenitalia"),
+                    operatorId = OperatorId(operator),
                     platform = SourcedValue(platform, ref),
                     status = SourcedValue(status, ref),
                     routeChange = routeChange?.let { SourcedValue(it, ref) }

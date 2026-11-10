@@ -93,7 +93,12 @@ class GtfsRealtimeEnrichedTrainDataSource(
                     val live = timed[index] ?: return@mapIndexed if (!service.operationalStatusVerified && stop.operationalStatusVerified == null) {
                         stop.copy(operationalStatusVerified = false)
                     } else stop
-                    stop.copy(expected = expected(live), delayMinutes = delay(live)!!, operationalStatusVerified = true)
+                    val minutes = delay(live)!!
+                    // The planned alighting stop carries the arrival, while the trip update there may be the departure
+                    // event after the dwell: the expected arrival is the arrival plus the delay.
+                    val alighting = index > 0 && index == service.stops.lastIndex
+                    val expected = if (alighting) shifted(stop.scheduled, minutes) ?: expected(live) else expected(live)
+                    stop.copy(expected = expected, delayMinutes = minutes, operationalStatusVerified = true)
                 }
                 val originTiming = timed.firstOrNull()
                 val departure = if (useLatestStopForService) {
@@ -158,6 +163,12 @@ class GtfsRealtimeEnrichedTrainDataSource(
         (stop.update.officialDelay?.value ?: stop.update.predictedAt?.value?.let {
             Duration.between(stop.scheduledStop.scheduledAt, it)
         })?.toMinutes()?.toInt()
+
+    /** [scheduled] ("HH:mm") moved by [minutes]; null when it is not a time ("—"). */
+    private fun shifted(scheduled: String, minutes: Int): String? = runCatching {
+        java.time.LocalTime.parse(scheduled.trim()).plusMinutes(minutes.toLong())
+            .format(DateTimeFormatter.ofPattern("HH:mm", java.util.Locale.ROOT))
+    }.getOrNull()
 
     private fun expected(stop: EnrichedRealtimeStop): String =
         (stop.update.predictedAt?.value ?: stop.scheduledStop.scheduledAt.plusMinutes(delay(stop)!!.toLong()))

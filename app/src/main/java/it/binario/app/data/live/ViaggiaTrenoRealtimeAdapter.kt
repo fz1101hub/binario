@@ -58,7 +58,8 @@ internal class HttpViaggiaTrenoRealtimeFetcher(
                     if (status in setOf(301, 302, 303, 307, 308)) connection.getHeaderField("Location") else null,
                     if (status in 200..299 && status != 204) connection.inputStream.use {
                         readBoundedRfiHtml(it, connection.contentLengthLong.takeIf { n -> n >= 0 })
-                    } else null)
+                    } else null,
+                    if (status !in 200..399) connection.getHeaderField("Retry-After") else null)
             }
             val status = response.status
             if (status in setOf(301, 302, 303, 307, 308)) {
@@ -87,14 +88,32 @@ internal class HttpViaggiaTrenoRealtimeFetcher(
                 url = target
             } else {
                 if (status == 204) return@withTimeoutOrNull "null"
-                if (status !in 200..299) throw IOException("ViaggiaTreno HTTP $status")
+                if (status !in 200..299) throw PublicSourceHttpException(status, "ViaggiaTreno HTTP $status", retryAfterOf(response.retryAfter))
                 return@withTimeoutOrNull response.body ?: throw IOException("Risposta ViaggiaTreno vuota")
             }
         }
         throw IOException("ViaggiaTreno: destinazione non raggiunta")
     } ?: throw java.net.SocketTimeoutException("ViaggiaTreno supera il tempo massimo della richiesta")
 
-    private data class Response(val status: Int, val location: String?, val body: String?)
+    private data class Response(val status: Int, val location: String?, val body: String?, val retryAfter: String? = null)
+}
+
+/**
+ * What every ViaggiaTreno adapter of the app shares, so the declared limits hold app-wide and not per instance (audit
+ * android-data-5): the response cache (one request per resource every 30 s, failures included), the request permits
+ * (boards and number discovery apart from run details) and the pause after a refusal (403, 429, 503 with Retry-After).
+ */
+class ViaggiaTrenoRequests(clock: Clock = Clock.system(RailTime.defaultZone)) {
+    internal val cache = BoundedSingleFlightCache<Result<String>>(128, 30_000L, clock::millis)
+    internal val discovery = Semaphore(DISCOVERY_PERMITS)
+    internal val details = Semaphore(DETAIL_PERMITS)
+    internal val refusals = PublicSourceRefusalGate(clock, "ViaggiaTreno")
+
+    internal companion object {
+        /** Boards and number discovery, which must not queue behind a batch of run details. */
+        const val DISCOVERY_PERMITS = 2
+        const val DETAIL_PERMITS = 3
+    }
 }
 
 /** Personal best-effort source. Matches commercial stops by code, not the train's final destination. */
@@ -102,27 +121,27 @@ class ViaggiaTrenoRealtimeAdapter(
     private val fetcher: ViaggiaTrenoRealtimeFetcher = HttpViaggiaTrenoRealtimeFetcher(),
     private val clock: Clock = Clock.system(RailTime.defaultZone),
     private val routeDetailsTimeoutMillis: Long = 8_000,
-    private val routeCandidateSource: TrainDataSource? = null
+    private val routeCandidateSource: TrainDataSource? = null,
+    private val requests: ViaggiaTrenoRequests = ViaggiaTrenoRequests(clock)
 ) : RealtimeRouteDataSource, StationBoardProvider, StationBoardRunDetailProvider, TrainNumberSearchProvider {
     override val descriptor = ProviderDescriptor(
         id = SourceId("viaggiatreno"), displayName = "Trenitalia — ViaggiaTreno realtime",
         capabilities = setOf(ProviderCapability.STATION_BOARD, ProviderCapability.TRAIN_RUN_REALTIME),
         coverage = CoverageDescriptor(countryCodes = setOf("IT"), description = "Corse Trenitalia con codici stazione e fermate pubblicate"),
         accessMode = AccessMode.PUBLIC_BEST_EFFORT,
-        // Enforced below: one request per resource every 30 s (the response cache) and at most
-        // DISCOVERY_PERMITS + DETAIL_PERMITS requests at a time.
-        ratePolicy = RatePolicy(Duration.ofSeconds(30), maxConcurrentRequests = DISCOVERY_PERMITS + DETAIL_PERMITS,
+        // Enforced by [ViaggiaTrenoRequests], shared by the app's instances: one request per resource every 30 s (the
+        // response cache) and at most DISCOVERY_PERMITS + DETAIL_PERMITS requests at a time.
+        ratePolicy = RatePolicy(Duration.ofSeconds(30),
+            maxConcurrentRequests = ViaggiaTrenoRequests.DISCOVERY_PERMITS + ViaggiaTrenoRequests.DETAIL_PERMITS,
             defaultTimeToLive = Duration.ofSeconds(30)), schemaVersion = 1
     )
     private val zone = RailTime.defaultZone
-    // Cache failures for the cooldown too, without representing them as an empty board.
-    private val cache = BoundedSingleFlightCache<Result<String>>(128, descriptor.ratePolicy.minimumRequestInterval.toMillis(), clock::millis)
-    // Boards and number discovery must not queue behind an entire batch of optional run details.
-    private val discoveryRequests = Semaphore(DISCOVERY_PERMITS)
-    private val detailRequests = Semaphore(DETAIL_PERMITS)
-
-    private suspend fun json(path: String): String = cache.getOrLoad(path, expireFromLoadStart = true, cancelWhenUnused = true) {
-        try { Result.success((if (path.startsWith("andamentoTreno/")) detailRequests else discoveryRequests).withPermit { fetcher.fetch(path) }) }
+    // Cache failures for the cooldown too, without representing them as an empty board. Boards and number discovery
+    // must not queue behind an entire batch of optional run details. A refusal pauses every request.
+    private suspend fun json(path: String): String = requests.cache.getOrLoad(path, expireFromLoadStart = true, cancelWhenUnused = true) {
+        try { Result.success((if (path.startsWith("andamentoTreno/")) requests.details else requests.discovery).withPermit {
+            requests.refusals.call { fetcher.fetch(path) }
+        }) }
         catch (error: CancellationException) { throw error }
         catch (error: IOException) { Result.failure(error) }
     }.value.getOrThrow()
@@ -148,13 +167,13 @@ class ViaggiaTrenoRealtimeAdapter(
             // starting two hours earlier must not hide the user's upcoming trains.
             val boardRows = departures(originCode, requested).toMutableList()
             if (!requested.isAfter(fetched.plusSeconds(600))) {
-                val earlier = maxOf(requested.minusSeconds(2 * 3600), query.serviceDate.atStartOfDay(zone).toInstant())
-                if (earlier < requested) {
-                    try { withTimeoutOrNull(2_000) { departures(originCode, earlier) }?.let(boardRows::addAll) }
-                    catch (error: CancellationException) { throw error }
-                    catch (_: IOException) { /* Optional lookback must not erase the current board. */ }
-                    catch (_: org.json.JSONException) { }
-                }
+                // The look-back crosses midnight like the boards' lateSince: at 00:20 a 23:50 train 40 minutes late
+                // is still to leave (audit android-data-8).
+                val earlier = requested.minusSeconds(2 * 3600)
+                try { withTimeoutOrNull(2_000) { departures(originCode, earlier) }?.let(boardRows::addAll) }
+                catch (error: CancellationException) { throw error }
+                catch (_: IOException) { /* Optional lookback must not erase the current board. */ }
+                catch (_: org.json.JSONException) { }
             }
             val rows = boardRows.distinctBy { Triple(it.text("codOrigine"), it.text("numeroTreno"), it.millis("dataPartenzaTreno") ?: it.millis("millisDataPartenza")) }
                 .filter { row -> row.millis("orarioPartenza")?.let { it + (row.intOrNull("ritardo") ?: 0).coerceAtLeast(0) * 60_000L >= requested.toEpochMilli() } ?: true }
@@ -226,7 +245,9 @@ class ViaggiaTrenoRealtimeAdapter(
                 val verified = cancelled || (observed != null && delay != null && !row.optBoolean("nonPartito", false))
                 TrainService(
                     id = "viaggiatreno:$stationCode:$number:${scheduled.toEpochMilli()}", number = number,
-                    operator = RailOperator.TRENITALIA_REGIONALE, trainCategory = TrainCategory.OTHER,
+                    // ViaggiaTreno also lists Trenord runs: the operator is the one the row states, else unknown.
+                    operator = operatorOf(row, row.text("categoria").orEmpty().uppercase(Locale.ROOT)), trainCategory = TrainCategory.OTHER,
+                    operatorDisplayName = row.text("compImpresa"),
                     origin = request.stationName.orEmpty(), destination = row.text(if (arrival) "origine" else "destinazione").orEmpty(),
                     scheduledDeparture = time(scheduled), expectedDeparture = time(scheduled.plusSeconds(if (verified) (delay ?: 0) * 60L else 0)),
                     platform = row.text(if (arrival) "binarioEffettivoArrivoDescrizione" else "binarioEffettivoPartenzaDescrizione"), delayMinutes = if (verified) delay ?: 0 else 0,
@@ -397,7 +418,7 @@ class ViaggiaTrenoRealtimeAdapter(
                 platform = row.text(if (index == 0) "binarioEffettivoPartenzaDescrizione" else "binarioEffettivoArrivoDescrizione"),
                 delayMinutes = actualStop?.let { Duration.between(at, it).toMinutes().toInt() } ?: if (stopVerified) delay ?: 0 else 0,
                 completed = actualStop != null, operationalStatusVerified = stopVerified,
-                routeChange = if (row.intOrNull("actualFermataType") in setOf(2, 3)) StopRouteChange.SKIPPED else StopRouteChange.NONE,
+                routeChange = stopRouteChange(row),
                 scheduledPlatform = row.text(if (index == 0) "binarioProgrammatoPartenzaDescrizione" else "binarioProgrammatoArrivoDescrizione"))
         }
         if (stops.isEmpty()) return null
@@ -426,7 +447,12 @@ class ViaggiaTrenoRealtimeAdapter(
         if (start < 0 || end <= start) return null
         val segment = stops.subList(start, end + 1)
         val cancelled = run.intOrNull("provvedimento") == 1 || run.text("tipoTreno") == "ST"
-        if (!cancelled && segment.any { it.intOrNull("actualFermataType") == 2 || it.intOrNull("actualFermataType") == 3 }) return null
+        // Only the traveller's own stops decide: a run that does not stop where they board or get off is not offered
+        // (2 is read as an extraordinary stop, 3 as a suppressed one; Trenitalia does not document 2, so both are
+        // refused there). A suppressed or extraordinary stop in between is shown on the stop, not a reason to drop the
+        // run (audit android-data-3).
+        if (!cancelled && (segment.first().intOrNull("actualFermataType") in VARIED_STOP_TYPES ||
+                segment.last().intOrNull("actualFermataType") in VARIED_STOP_TYPES)) return null
         val boarding = segment.first()
         val departure = (boarding.millis("partenza_teorica") ?: boarding.millis("programmata"))?.let(Instant::ofEpochMilli) ?: return null
         val requested = query.requestedAt.atZone(zone).toInstant()
@@ -439,13 +465,21 @@ class ViaggiaTrenoRealtimeAdapter(
         val expectedDeparture = actualDeparture ?: departure.plusSeconds(visibleDelay * 60L)
         if (expectedDeparture.isBefore(requested) || expectedDeparture.isAfter(requested.plusSeconds(8 * 3600))) return null
         val trainStops = segment.mapIndexed { index, stop ->
-            val scheduled = (if (index == 0) stop.millis("partenza_teorica") else stop.millis("arrivo_teorico"))
-                ?: stop.millis("programmata") ?: return null
+            val scheduledMillis = (if (index == 0) stop.millis("partenza_teorica") else stop.millis("arrivo_teorico"))
+                ?: stop.millis("programmata")
+            val routeChange = stopRouteChange(stop)
+            if (scheduledMillis == null && routeChange == StopRouteChange.ADDED && index in 1 until segment.lastIndex) {
+                // An extraordinary stop has no timetable time to show.
+                return@mapIndexed TrainStop(stop.text("stazione") ?: return null, "—", "—", null, 0, completed = false,
+                    routeChange = routeChange, operationalStatusVerified = false)
+            }
+            val scheduled = scheduledMillis ?: return null
             val actual = if (index == 0) stop.millis("partenzaReale") else stop.millis("arrivoReale")
             val at = Instant.ofEpochMilli(scheduled)
             TrainStop(
                 station = if (index == 0) route.origin(direction).name else if (index == segment.lastIndex) route.destination(direction).name else stop.text("stazione") ?: return null,
                 scheduled = time(at), expected = time(actual?.let(Instant::ofEpochMilli) ?: at.plusSeconds(visibleDelay * 60L)),
+                routeChange = routeChange,
                 platform = stop.text(if (index == 0) "binarioEffettivoPartenzaDescrizione" else "binarioEffettivoArrivoDescrizione"),
                 delayMinutes = actual?.let { Duration.between(at, Instant.ofEpochMilli(it)).toMinutes().toInt() } ?: visibleDelay,
                 completed = actual != null, operationalStatusVerified = actual != null || (verified && !cancelled),
@@ -455,7 +489,7 @@ class ViaggiaTrenoRealtimeAdapter(
         val category = run.text("categoria").orEmpty().uppercase(Locale.ROOT)
         return TrainService(
             id = "viaggiatreno:$runOrigin:$number:$runDate:${route.origin(direction).railwayCode}", number = number,
-            operator = if (category.startsWith("IC")) RailOperator.TRENITALIA_LONG_DISTANCE else if (category.startsWith("FR")) RailOperator.TRENITALIA_AV else RailOperator.TRENITALIA_REGIONALE,
+            operator = operatorOf(run, category), operatorDisplayName = run.text("compImpresa"),
             trainCategory = if (category.startsWith("IC")) TrainCategory.INTERCITY else if (category.startsWith("FR")) TrainCategory.FRECCE else TrainCategory.REGIONALE,
             origin = route.origin(direction).name, destination = route.destination(direction).name,
             scheduledDeparture = time(departure), expectedDeparture = trainStops.first().expected,
@@ -469,6 +503,35 @@ class ViaggiaTrenoRealtimeAdapter(
         )
     }
 
+    /**
+     * ViaggiaTreno's actualFermataType, read as the punctuality pipeline reads it (tools/collect_punctuality.py,
+     * docs/data-sources/PUNCTUALITY_STATS.md): 3 a suppressed stop, 2 an extraordinary stop the timetable does not have.
+     * Trenitalia does not document 2.
+     */
+    private fun stopRouteChange(row: JSONObject): StopRouteChange = when (row.intOrNull("actualFermataType")) {
+        SUPPRESSED_STOP_TYPE -> StopRouteChange.SKIPPED
+        EXTRAORDINARY_STOP_TYPE -> StopRouteChange.ADDED
+        else -> StopRouteChange.NONE
+    }
+
+    /**
+     * The operator a board row or run states in compImpresa, as the number search reads it: Trenord, Trenitalia (by
+     * category), another named company or nothing as unknown ([RailOperator.OTHER], no operator id). Never assumed to
+     * be Trenitalia, so a Trenord run clusters with the RFI row and takes its delay (audit android-data-4).
+     */
+    private fun operatorOf(row: JSONObject, category: String): RailOperator {
+        val brand = row.text("compImpresa")?.lowercase(Locale.ROOT) ?: return RailOperator.OTHER
+        return when {
+            "trenord" in brand -> RailOperator.TRENORD
+            "trenitalia" in brand -> when {
+                category.startsWith("IC") -> RailOperator.TRENITALIA_LONG_DISTANCE
+                category.startsWith("F") -> RailOperator.TRENITALIA_AV
+                else -> RailOperator.TRENITALIA_REGIONALE
+            }
+            else -> RailOperator.OTHER
+        }
+    }
+
     private fun recent(observed: Instant, fetched: Instant) = !observed.isBefore(fetched.minusSeconds(300)) && !observed.isAfter(fetched.plusSeconds(60))
     private fun TrainService.publicNumericNumber(): String? = TrainNumberQuery(number.substringAfterLast(" - "), clock.instant().atZone(zone).toLocalDate()).numeric
     private fun code(value: String?) = value?.takeIf { it.matches(Regex("S[0-9]{5}")) }
@@ -478,8 +541,8 @@ class ViaggiaTrenoRealtimeAdapter(
     private fun JSONObject.intOrNull(key: String): Int? = text(key)?.toIntOrNull()
 
     private companion object {
-        /** Boards and number discovery, which must not queue behind a batch of run details. */
-        const val DISCOVERY_PERMITS = 2
-        const val DETAIL_PERMITS = 3
+        const val EXTRAORDINARY_STOP_TYPE = 2
+        const val SUPPRESSED_STOP_TYPE = 3
+        val VARIED_STOP_TYPES = setOf(EXTRAORDINARY_STOP_TYPE, SUPPRESSED_STOP_TYPE)
     }
 }

@@ -101,6 +101,26 @@ class GtfsRealtimeEnrichedTrainDataSourceTest {
         assertEquals("12:00", result.services.single().expectedDeparture)
     }
 
+    /**
+     * Audit android-data-1: the planned alighting stop carries the arrival (12:30) while the trip update there is a
+     * departure event, resolved against the departure after the dwell (12:45). The expected arrival is the arrival
+     * plus the delay, never the predicted departure.
+     */
+    @Test fun `alla fermata di discesa il ritardo si applica all arrivo e non alla partenza dopo la sosta`() = runBlocking {
+        val dwell = "trip_id,arrival_time,departure_time,stop_id,stop_sequence\nT1,12:00:00,12:00:00,A,1\nT1,12:30:00,12:45:00,B,2\n"
+        val byDelay = load(listOf(service()), listOf(provider(sta, listOf(update(sta, 300, stop = "B", sequence = 2)))), stopTimes = dwell)
+        assertEquals("12:30", byDelay.services.single().stops.last().scheduled)
+        assertEquals("12:35", byDelay.services.single().stops.last().expected)
+        assertEquals(5, byDelay.services.single().stops.last().delayMinutes)
+
+        val predicted = update(sta, 0, stop = "B", sequence = 2).let {
+            it.copy(officialDelay = null, predictedAt = SourcedValue(date.atTime(12, 49).atZone(zone), it.source))
+        }
+        val byPrediction = load(listOf(service()), listOf(provider(sta, listOf(predicted))), stopTimes = dwell)
+        assertEquals("12:34", byPrediction.services.single().stops.last().expected)
+        assertEquals(4, byPrediction.services.single().stops.last().delayMinutes)
+    }
+
     @Test fun `predizione assoluta calcola il ritardo senza creare un evento effettivo`() = runBlocking {
         val update = update(sta, 0).let { it.copy(officialDelay = null,
             predictedAt = SourcedValue(date.atTime(12, 4).atZone(zone), it.source)) }
@@ -187,7 +207,12 @@ class GtfsRealtimeEnrichedTrainDataSourceTest {
         assertEquals(5, live.delayMinutes)
     }
 
-    private suspend fun load(services: List<TrainService>, providers: List<TripUpdateProvider>, requested: JourneyQuery = query): RouteSnapshot {
+    private suspend fun load(
+        services: List<TrainService>,
+        providers: List<TripUpdateProvider>,
+        requested: JourneyQuery = query,
+        stopTimes: String = DEFAULT_STOP_TIMES
+    ): RouteSnapshot {
         val snapshot = RouteSnapshot(route, Direction.OUTBOUND, services, "GTFS", now.toEpochMilli(),
             now.plusSeconds(3600).toEpochMilli(), it.binario.app.data.Freshness.AGING, confidence = DataConfidence.STATIC_ONLY,
             notice = "Orario programmato. Ritardi, binari e soppressioni richiedono fonti realtime.")
@@ -195,7 +220,7 @@ class GtfsRealtimeEnrichedTrainDataSourceTest {
             override suspend fun loadRoute(route: SavedRoute, direction: Direction): DataResult = DataResult.Success(snapshot)
         }
         val packs = listOf("alto-adige-sta-gtfs", "sncf-gtfs").map { EmbeddedGtfsPack(SourceId(it), it) }
-        val resolver = EmbeddedGtfsRealtimeScheduleResolver({ ByteArrayInputStream(feed()) }, packs)
+        val resolver = EmbeddedGtfsRealtimeScheduleResolver({ ByteArrayInputStream(feed(stopTimes)) }, packs)
         val enriched = GtfsRealtimeEnrichedTrainDataSource(planned, RealtimeEnrichmentService(providers, resolver), clock, zone)
         return (LegacyTrainDataSourceFacade(enriched, KnownProviders.defaultRegistry(), clock::millis)
             .loadRoute(route, Direction.OUTBOUND, requested) as DataResult.Success).snapshot
@@ -227,14 +252,17 @@ class GtfsRealtimeEnrichedTrainDataSourceTest {
         }
     }
 
-    private fun feed(): ByteArray {
+    private fun feed(stopTimes: String = DEFAULT_STOP_TIMES): ByteArray {
         val out = ByteArrayOutputStream()
         ZipOutputStream(out).use { zip ->
-            mapOf("stops.txt" to "stop_id,stop_name\nA,A\nB,B\n",
-                "stop_times.txt" to "trip_id,arrival_time,departure_time,stop_id,stop_sequence\nT1,12:00:00,12:00:00,A,1\nT1,12:30:00,12:30:00,B,2\n").forEach { (file, contents) ->
+            mapOf("stops.txt" to "stop_id,stop_name\nA,A\nB,B\n", "stop_times.txt" to stopTimes).forEach { (file, contents) ->
                 zip.putNextEntry(ZipEntry(file)); zip.write(contents.toByteArray()); zip.closeEntry()
             }
         }
         return out.toByteArray()
+    }
+
+    private companion object {
+        const val DEFAULT_STOP_TIMES = "trip_id,arrival_time,departure_time,stop_id,stop_sequence\nT1,12:00:00,12:00:00,A,1\nT1,12:30:00,12:30:00,B,2\n"
     }
 }
