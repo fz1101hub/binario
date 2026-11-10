@@ -291,6 +291,48 @@ class VerifyCiPinningTest(unittest.TestCase):
         apple = ROOT / ".github/workflows/apple-watch-ci.yml"
         self.assertEqual([], policy.workflow_problems(apple, apple.read_text(encoding="utf-8"), LOCK))
 
+    def test_untrusted_triggers_head_checkouts_and_secrets_outside_release_sign_are_rejected(self) -> None:
+        # Audit ci-docs-9: the classic fork pull request secret leak passed the guard with no problem at all.
+        leak = (
+            "name: Evil\non:\n  pull_request_target:\n    branches: [main]\npermissions:\n  contents: read\n"
+            "jobs:\n  build:\n    runs-on: ubuntu-24.04\n    steps:\n"
+            f"      - uses: {CHECKOUT}\n        with:\n          persist-credentials: false\n"
+            "          ref: ${{ github.event.pull_request.head.sha }}\n"
+            "      - name: Build\n        env:\n          KEY: ${{ secrets.BINARIO_RELEASE_KEYSTORE_BASE64 }}\n"
+            "        run: ./gradlew build\n"
+        )
+        problems = policy.workflow_problems(Path("evil.yml"), leak, LOCK)
+        for expected in ("trigger pull_request_target non revisionato", "checkout con ref",
+                         "secret fuori dagli step revisionati di release-sign"):
+            with self.subTest(expected=expected):
+                self.assertTrue(any(expected in problem for problem in problems), problems)
+        for trigger in ("workflow_run", "issue_comment", "pull_request_review_comment", "repository_dispatch"):
+            with self.subTest(trigger=trigger):
+                mutated = leak.replace("pull_request_target", trigger, 1)
+                problems = policy.workflow_problems(Path("evil.yml"), mutated, LOCK)
+                self.assertTrue(any(f"trigger {trigger} non revisionato" in problem for problem in problems), problems)
+        android = ROOT / ".github/workflows/android-ci.yml"
+        text = android.read_text(encoding="utf-8")
+        mutations = {
+            # A secret in another job of the signing workflow, in a with: input, or inherited by a reusable workflow.
+            "secret fuori dagli step revisionati di release-sign": text.replace(
+                "      - name: Enable Gradle wrapper\n        run: chmod +x gradlew\n",
+                "      - name: Enable Gradle wrapper\n        env:\n          X: ${{ secrets.BINARIO_RELEASE_KEY_PASSWORD }}\n"
+                "        run: chmod +x gradlew\n", 1),
+            "secret fuori dagli step revisionati di release-sign ": text.replace(
+                "          BINARIO_RELEASE_KEY_ALIAS: ${{ secrets.BINARIO_RELEASE_KEY_ALIAS }}\n",
+                "          BINARIO_RELEASE_KEY_ALIAS: ${{ secrets.OTHER_TOKEN }}\n", 1),
+            "checkout con ref": text.replace(
+                "      - name: Checkout\n        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7\n        with:\n",
+                "      - name: Checkout\n        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7\n        with:\n"
+                "          ref: ${{ inputs.ref }}\n", 1),
+        }
+        for expected, mutated in mutations.items():
+            with self.subTest(expected=expected):
+                self.assertNotEqual(text, mutated)
+                problems = policy.workflow_problems(android, mutated, LOCK)
+                self.assertTrue(any(expected.strip() in problem for problem in problems), problems)
+
     def test_document_gates_run_when_their_documents_change(self) -> None:
         # Audit A7-11: store-doc tests and the SOURCE_POLICY privacy gate ran on no change to those documents.
         workflow_path = ROOT / ".github/workflows/gtfs-assets-ci.yml"

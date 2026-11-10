@@ -432,6 +432,75 @@ UNTRUSTED_LOG_MARKERS = (
 )
 
 
+# Events a workflow may run on (audit ci-docs-9). pull_request_target, workflow_run and the comment or dispatch events
+# run with the base repository's token and secrets on input an outsider controls; none is used, so any is refused.
+REVIEWED_TRIGGERS = frozenset({"pull_request", "push", "workflow_dispatch", "schedule"})
+# The only secrets a workflow may read: the upload-key signing material, as step env of the release-sign job.
+REVIEWED_SECRET_JOBS: frozenset[tuple[str, str]] = frozenset({("android-ci.yml", "release-sign")})
+RELEASE_SIGN_SECRETS = frozenset({
+    "BINARIO_RELEASE_KEYSTORE_BASE64",
+    "BINARIO_RELEASE_STORE_PASSWORD",
+    "BINARIO_RELEASE_KEY_ALIAS",
+    "BINARIO_RELEASE_KEY_PASSWORD",
+})
+SECRET_EXPRESSION = re.compile(r"\$\{\{(?:(?!\}\}).)*\bsecrets\b", re.DOTALL)
+
+
+def _check_triggers_checkouts_and_secrets(path: Path, workflow: Mapping[str, Any], problems: list[str]) -> None:
+    """Only reviewed triggers; no checkout of another ref or repository; secrets only where reviewed, never next to
+    an expression an outsider can shape."""
+    triggers = workflow.get("on")
+    names = [triggers] if isinstance(triggers, str) else list(triggers) if isinstance(triggers, (list, Mapping)) else []
+    for name in names:
+        if str(name) not in REVIEWED_TRIGGERS:
+            problems.append(f"{path.name}: trigger {name} non revisionato (gira con token e secret del repository)")
+    jobs = _mapping(workflow.get("jobs")) or {}
+    for job_name, raw_job in jobs.items():
+        job = _mapping(raw_job) or {}
+        location = f"{path.name}:{job_name}"
+        if "secrets" in job:
+            problems.append(f"{location}: secrets passati a un workflow riutilizzabile, non revisionati")
+        steps = [step for raw in (job.get("steps") if isinstance(job.get("steps"), list) else []) for step in [_mapping(raw)] if step]
+        for index, step in enumerate(steps):
+            if _action_name(str(step.get("uses", ""))) == "actions/checkout":
+                inputs = _mapping(step.get("with")) or {}
+                if "ref" in inputs or "repository" in inputs:
+                    problems.append(f"{location}: step {index} checkout con ref o repository non revisionato")
+        uses_secrets = False
+
+        def visit(node: object, where: tuple[str, ...]) -> None:
+            nonlocal uses_secrets
+            if isinstance(node, Mapping):
+                for key, value in node.items():
+                    visit(value, where + (str(key),))
+            elif isinstance(node, list):
+                for item_index, item in enumerate(node):
+                    visit(item, where + (str(item_index),))
+            elif isinstance(node, str) and SECRET_EXPRESSION.search(node):
+                uses_secrets = True
+                reviewed = (
+                    (path.name, str(job_name)) in REVIEWED_SECRET_JOBS and len(where) == 4 and where[0] == "steps"
+                    and where[2] == "env" and where[3] in RELEASE_SIGN_SECRETS
+                    and node.strip() == "${{ secrets." + where[3] + " }}"
+                )
+                if not reviewed:
+                    problems.append(f"{location}: secret fuori dagli step revisionati di release-sign ({'.'.join(where)})")
+
+        visit(job, ())
+        if not uses_secrets:
+            continue
+        for scope, values in [("env", job.get("env"))] + [
+            (f"step {index} {key}", step.get(key)) for index, step in enumerate(steps) for key in ("env", "with")
+        ]:
+            for value in (_mapping(values) or {}).values():
+                for expression in re.findall(r"\$\{\{(.*?)\}\}", str(value), flags=re.DOTALL):
+                    if UNTRUSTED_RUN_EXPRESSION.search(expression):
+                        problems.append(f"{location}: {scope} interpola {expression.strip()!r} in un job con secret")
+    for key in ("env", "defaults"):
+        if SECRET_EXPRESSION.search(str(workflow.get(key, ""))):
+            problems.append(f"{path.name}: secret fuori dagli step revisionati di release-sign ({key} globale)")
+
+
 def _check_permissions(path: Path, workflow: Mapping[str, Any], problems: list[str]) -> None:
     """An explicit top-level permissions mapping, and only read/none scopes unless a write scope was reviewed."""
 
@@ -1136,6 +1205,7 @@ def workflow_problems(
     _check_freshness_gates(path, root or {}, problems)
     _check_permissions(path, root or {}, problems)
     _check_run_hygiene(path, root or {}, problems)
+    _check_triggers_checkouts_and_secrets(path, root or {}, problems)
     if path.name not in {"alexa-companion-ci.yml", "android-ci.yml", "companion-ci.yml", "gtfs-assets-ci.yml", "apple-watch-ci.yml"}:
         # The named workflows check the same policy with their own messages above.
         _check_push_branches(path, root or {}, lock, problems)
