@@ -4,6 +4,8 @@ import net from "net";
 import { createApp } from "./app";
 import { ENV } from "./env";
 import { assertRuntimeEnvironment } from "./envCheck";
+import { checkTimestampSemantics } from "./dbEngine";
+import { createConnection } from "mysql2/promise";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -24,8 +26,31 @@ async function findAvailablePort(startPort: number = 3000): Promise<number> {
   throw new Error(`No available port found starting from ${startPort}`);
 }
 
+/**
+ * Refuses to start on a database whose nullable dates would not stay NULL (explicit_defaults_for_timestamp
+ * OFF, or tables already migrated that way): linking and routes would fail silently. A database that
+ * cannot be reached now is left to the usual lazy connection.
+ */
+async function assertDatabaseTimestamps() {
+  if (!process.env.DATABASE_URL) return;
+  let connection: Awaited<ReturnType<typeof createConnection>>;
+  try {
+    connection = await createConnection(process.env.DATABASE_URL);
+  } catch {
+    console.warn("[Database] Timestamp check skipped: database not reachable at startup");
+    return;
+  }
+  try {
+    const problem = await checkTimestampSemantics(connection);
+    if (problem) throw new Error(`[Database] ${problem}`);
+  } finally {
+    await connection.end();
+  }
+}
+
 async function startServer() {
   assertRuntimeEnvironment();
+  await assertDatabaseTimestamps();
   const preferredPort = parseInt(process.env.PORT || "3000");
   // In production the port is a contract with the reverse proxy: a process
   // that silently moves elsewhere is unreachable, not resilient.
