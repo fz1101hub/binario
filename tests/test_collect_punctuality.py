@@ -15,6 +15,7 @@ import tempfile
 import threading
 import unittest
 import zipfile
+from unittest import mock
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Callable
@@ -303,6 +304,24 @@ class StationAndTimetableTest(Base):
         self.assertEqual([train.arrival for train in collector.due_trains(self.timetable, NOW)],
                          sorted(train.arrival for train in selected.values()))
 
+    def test_after_midnight_only_yesterdays_trains_still_running_at_midnight_are_asked(self) -> None:
+        # ViaggiaTreno forgets at midnight the runs that had already ended (585 of 602 unknown at 00:58 on 9 November
+        # 2026): of yesterday's trains only one still travelling at midnight is asked, within the three hours.
+        self.timetable.trips = [
+            collector.TripPlan("3001", "REG", "S08409", 22 * 3600, 23 * 3600 + 30 * 60, "DAILY"),  # ends 23:30
+            collector.TripPlan("3003", "REG", "S08409", 22 * 3600 + 30 * 60, 24 * 3600 + 20 * 60, "DAILY"),  # 00:20
+        ]
+        after_midnight = datetime(2026, 11, 4, 23, 41, tzinfo=timezone.utc)  # 00:41 of 5 November in Rome
+        self.assertEqual([("2026-11-04", "3003")],
+                         [(train.day, train.number) for train in collector.due_trains(self.timetable, after_midnight)])
+        ended = collector.Due("2026-11-04", "S08409", "3001", "REG",
+                              int(datetime(2026, 11, 4, 22, 30, tzinfo=timezone.utc).timestamp()))
+        moment = after_midnight.timestamp()
+        self.assertFalse(collector.answerable(ended.day, ended.arrival, moment))
+        # Asked before midnight and not arrived yet: it was still travelling, so it is asked again.
+        self.assertTrue(collector.answerable(ended.day, ended.arrival, moment, asked=True))
+        self.assertFalse(collector.answerable(ended.day, ended.arrival, moment + 3 * 3600, asked=True))
+
 
 class InterpretTest(unittest.TestCase):
     def test_a_full_answer_keeps_station_delays_and_suppressed_stops_only(self) -> None:
@@ -435,6 +454,48 @@ class StateTest(Base):
         path.write_bytes(path.read_bytes() + gzip.compress((collector.encode(self.record(t=2)) + "\n").encode()))
         self.assertEqual(1, len(collector.load_observations(self.temp / "state", "2026-11-04", {})))
 
+    def test_an_empty_state_or_one_with_fewer_days_than_its_marker_is_refused(self) -> None:
+        # A missed or failed cache restore leaves nothing: saving that would replace 35 days of observations that
+        # ViaggiaTreno no longer has.  Only an explicit bootstrap starts from nothing.
+        directory = self.temp / "state"
+        with self.assertRaisesRegex(collector.CollectorError, "stato vuoto"):
+            collector.State(directory).verify_retained(DAY, bootstrap=False)
+        collector.State(directory).verify_retained(DAY, bootstrap=True)
+        state = collector.State(directory)
+        for day in ("2026-10-01", "2026-10-02", "2026-11-03"):
+            state.add(self.record(day=day))
+        state.save(DAY)
+        self.assertEqual({"schema": collector.MARKER_SCHEMA, "days": ["2026-10-01", "2026-10-02", "2026-11-03"]},
+                         json.loads((directory / collector.MARKER_FILE).read_text(encoding="ascii")))
+        collector.State(directory).verify_retained(DAY, bootstrap=False)
+        # A day lost on the way (another cache restored, a damaged archive) is refused before any request.
+        (directory / "obs-2026-10-02.jsonl.gz").unlink()
+        with self.assertRaisesRegex(collector.CollectorError, "1 dei 3 giorni"):
+            collector.State(directory).verify_retained(DAY, bootstrap=False)
+        # Days the 35-day retention removes are not missed; a bootstrap accepts the loss and counts it.
+        collector.State(directory).verify_retained(date(2026, 11, 7), bootstrap=False)
+        accepted = collector.State(directory)
+        accepted.verify_retained(DAY, bootstrap=True)
+        self.assertEqual(1, accepted.counters["giorni_persi"])
+        # And the save itself never writes a marker with fewer days than the one it started from.
+        thin = collector.State(directory)
+        (directory / "obs-2026-10-02.jsonl.gz").write_bytes(collector._gzip_lines([collector.encode(self.record(day="2026-10-02"))]))
+        thin.verify_retained(DAY, bootstrap=False)
+        (directory / "obs-2026-10-01.jsonl.gz").unlink()
+        marker = (directory / collector.MARKER_FILE).read_bytes()
+        with self.assertRaisesRegex(collector.CollectorError, "meno giorni"):
+            thin.save(DAY)
+        self.assertEqual(marker, (directory / collector.MARKER_FILE).read_bytes())
+        # A state written before the marker existed loads when it has observations.
+        (directory / collector.MARKER_FILE).unlink()
+        collector.State(directory).verify_retained(DAY, bootstrap=False)
+        for content in ("{", "[]", '{"schema": "other", "days": []}', '{"schema": "%s", "days": ["2026-13-01"]}' % collector.MARKER_SCHEMA,
+                        '{"schema": "%s", "days": ["2026-11-03", "2026-10-01"]}' % collector.MARKER_SCHEMA):
+            with self.subTest(content=content):
+                (directory / collector.MARKER_FILE).write_text(content, encoding="ascii")
+                with self.assertRaises(collector.CollectorError):
+                    collector.State(directory).verify_retained(DAY, bootstrap=False)
+
     def test_files_are_deterministic_atomic_and_pruned_after_35_days(self) -> None:
         state = collector.State(self.temp / "state")
         for day in ("2026-09-29", "2026-09-30", "2026-11-04"):
@@ -443,7 +504,7 @@ class StateTest(Base):
         self.assertTrue((self.temp / "state/obs-2026-09-29.jsonl.gz").is_file())
         state.save(date(2026, 11, 4))
         names = sorted(path.name for path in (self.temp / "state").iterdir())
-        self.assertEqual(["obs-2026-09-30.jsonl.gz", "obs-2026-11-04.jsonl.gz", "pending.jsonl.gz"], names)
+        self.assertEqual(["obs-2026-09-30.jsonl.gz", "obs-2026-11-04.jsonl.gz", "pending.jsonl.gz", "state.json"], names)
         data = (self.temp / "state/obs-2026-11-04.jsonl.gz").read_bytes()
         self.assertEqual(b"\x1f\x8b\x08\x00\x00\x00\x00\x00", data[:8])  # no name, no time
         other = collector.State(self.temp / "other")
@@ -637,12 +698,90 @@ class CollectTest(Base):
         self.assertEqual("completata", report.stop_reason)
         self.assertEqual({"json-non-valido": 19, "rete": 10}, report.failures)
 
+    def test_a_run_of_unknown_or_foreign_answers_trips_the_breaker_and_records_none_of_them(self) -> None:
+        # A changed path (every call 404), a soft block (204 or null) or a new day convention (every identity
+        # differs) must not mark the whole day as permanently missing while the job stays green.
+        self.timetable.trips = [collector.TripPlan(str(3000 + index), "REG", "S08409", 9 * 3600, 10 * 3600, "DAILY")
+                                for index in range(70)]
+        answers = iter([collector.FetchResult("missing", reason="http-404")] * 30
+                       + [ok(run(number="1", origin="S08409"))] * 15 + [None] * 100)
+        mixed = Answers(lambda path: next(answers) or self.answer_all(path))
+        state, report = self.collect(mixed)
+        # 41 of the last (at most) 50 answers are unknown or foreign: more than 80 %, whatever the next 9 say.
+        self.assertEqual(collector.MAX_BAD_ANSWERS + 1, len(mixed.paths))
+        self.assertTrue(report.stopped_abnormally)
+        self.assertIn("sconosciute o con identità diversa", report.stop_reason)
+        self.assertEqual((30, 11), (report.counters["missing"], report.counters["mismatch"]))
+        self.assertEqual({}, collector.load_observations(self.temp / "state", "2026-11-04", {}))
+        self.assertEqual(70, len(state.pending))
+        self.assertEqual({0}, {entry["k"] for entry in state.pending.values()})  # as if never asked
+        self.assertEqual(41, report.counters["rimessi_in_sospeso"])
+        self.assertEqual(29, report.counters["rimandati"])
+        # A share at the limit does not trip: 40 of the last 50 unknown is still believed.
+        shutil.rmtree(self.temp / "state")
+        answers = iter(([collector.FetchResult("missing", reason="http-204")] * 4 + [None]) * 14)
+        believed = Answers(lambda path: next(answers, None) or self.answer_all(path))
+        state, report = self.collect(believed)
+        self.assertEqual(70, len(believed.paths))
+        self.assertFalse(report.stopped_abnormally)
+        self.assertEqual(56, report.counters["missing"])
+
     def test_a_refusing_source_stops_the_run_at_once(self) -> None:
         refused = Answers(lambda _: collector.FetchResult("refused", reason="http-429"))
         state, report = self.collect(refused)
         self.assertEqual(1, len(refused.paths))
         self.assertIn("http-429", report.stop_reason)
         self.assertEqual(7, len(state.pending))
+        self.assertTrue(report.stopped_abnormally)
+
+    def test_a_refusal_pauses_the_following_runs_with_a_growing_back_off(self) -> None:
+        hour = 3600
+        start = int(NOW.timestamp())
+        self.collect(Answers(lambda _: collector.FetchResult("refused", reason="http-403")))
+        self.assertEqual({"since": start, "until": start + 2 * hour, "count": 1, "reason": "http-403"},
+                         collector.State(self.temp / "state").refusal)
+        # The hourly runs within the pause send nothing; their trains wait as pending; the job is not failed again.
+        paused = Answers(self.answer_all)
+        state, report = self.collect(paused, NOW + timedelta(hours=1))
+        self.assertEqual([], paused.paths)
+        self.assertIn("in pausa", report.stop_reason)
+        self.assertFalse(report.stopped_abnormally)
+        self.assertEqual(7, len(state.pending))
+        # Refused again after the pause: twice as long, or the Retry-After if longer.
+        self.collect(Answers(lambda _: collector.FetchResult("refused", reason="http-429")), NOW + timedelta(hours=2))
+        self.assertEqual((2, start + 2 * hour + 4 * hour), (collector.State(self.temp / "state").refusal["count"],
+                                                            collector.State(self.temp / "state").refusal["until"]))
+        self.collect(Answers(lambda _: collector.FetchResult("refused", reason="http-503", retry_after=30 * hour)),
+                     NOW + timedelta(hours=6))
+        self.assertEqual(start + 6 * hour + 30 * hour, collector.State(self.temp / "state").refusal["until"])
+        # Never longer than a week; an answer ends the back-off.
+        def after_pause() -> datetime:
+            """The first 13:00 in Rome (trains are due then) after the pause."""
+            until = datetime.fromtimestamp(collector.State(self.temp / "state").refusal["until"], timezone.utc)
+            noon = until.replace(hour=12, minute=0, second=0)
+            return noon if noon >= until else noon + timedelta(days=1)
+
+        pauses = []
+        for _ in range(4, 12):
+            moment = after_pause()
+            self.collect(Answers(lambda _: collector.FetchResult("refused", reason="http-429")), moment)
+            pauses.append((collector.State(self.temp / "state").refusal["until"] - int(moment.timestamp())) // hour)
+        self.assertEqual([16, 32, 64, 128, 168, 168, 168, 168], pauses)
+        answered = Answers(self.answer_all)
+        self.collect(answered, after_pause())
+        self.assertTrue(answered.paths)
+        self.assertIsNone(collector.State(self.temp / "state").refusal)
+        self.assertFalse((self.temp / "state" / collector.REFUSAL_FILE).exists())
+
+    def test_a_damaged_refusal_record_stops_the_collector_before_any_request(self) -> None:
+        directory = self.temp / "state"
+        directory.mkdir()
+        for content in ("{", '{"since": 1, "until": 2, "count": 1, "reason": "free text"}', "[]",
+                        '{"since": 1, "until": 2, "count": 0, "reason": "http-429"}'):
+            with self.subTest(content=content):
+                (directory / collector.REFUSAL_FILE).write_text(content, encoding="utf-8")
+                with self.assertRaises(collector.CollectorError):
+                    collector.State(directory)
 
     def test_request_budget_and_deadline(self) -> None:
         answers = Answers(self.answer_all)
@@ -707,6 +846,7 @@ class HttpFetcherTest(unittest.TestCase):
         results = [self.fetcher.fetch(self.path(number)) for number in ("2001", "2003", "2005", "2007", "2009", "2011", "2013", "2001")]
         self.assertEqual(["ok", "failure", "failure", "missing", "refused", "ok", "missing", "ok"], [result.kind for result in results])
         self.assertEqual(["", "troppo-grande", "http-503", "http-404", "http-429", "", "http-204", ""], [result.reason for result in results])
+        self.assertIsNone(results[4].retry_after)
         self.assertEqual(run(), json.loads(results[0].body))
         self.assertEqual([0.5] * 7, self.slept)  # 2 requests per second, never faster
         for _, headers in self.server.requests:
@@ -716,12 +856,31 @@ class HttpFetcherTest(unittest.TestCase):
         with self.assertRaises(collector.CollectorError):
             collector.HttpFetcher(rate=3)
 
-    def test_user_agent_names_binario_and_carries_no_address(self) -> None:
-        # The form with a URL was refused (HTTP 403) by ViaggiaTreno; the identity must stay honest.
-        self.assertTrue(collector.USER_AGENT.startswith("Binario-punctuality/"))
-        self.assertIn("read-only", collector.USER_AGENT)
-        self.assertNotIn("http", collector.USER_AGENT.lower())
-        self.assertNotIn("mozilla", collector.USER_AGENT.lower())
+    def test_retry_after_is_read_and_a_503_with_it_is_a_refusal(self) -> None:
+        self.server.answer(due(number="2001"), b"", status=429, headers={"Retry-After": "120"})
+        self.server.answer(due(number="2003"), b"", status=503, headers={"Retry-After": "3600"})
+        self.server.answer(due(number="2005"), b"", status=403, headers={"Retry-After": "Wed, 04 Nov 2026 14:00:00 GMT"})
+        self.server.answer(due(number="2007"), b"", status=503, headers={"Retry-After": "soon"})
+        self.server.answer(due(number="2009"), b"", status=429, headers={"Retry-After": "99999999999"})
+        with mock.patch.object(collector.time, "time", return_value=NOW.timestamp()):
+            results = [self.fetcher.fetch(self.path(number)) for number in ("2001", "2003", "2005", "2007", "2009")]
+        self.assertEqual(["refused", "refused", "refused", "failure", "refused"], [result.kind for result in results])
+        self.assertEqual(["http-429", "http-503", "http-403", "http-503", "http-429"], [result.reason for result in results])
+        self.assertEqual([120, 3600, 7200, None, collector.MAX_PAUSE.total_seconds()],
+                         [result.retry_after for result in results])
+
+    def test_user_agent_says_what_the_collector_is_and_carries_no_address(self) -> None:
+        # What the operator sees is what runs: a scheduled, automated, read-only collector of the statistics, at a low
+        # rate, for the open-source app (not "a personal timetable app"), never a browser.  No URL (the form with one
+        # was refused with HTTP 403) and no e-mail address (the owner's is private).
+        agent = collector.USER_AGENT
+        self.assertTrue(agent.startswith("Binario-punctuality/"))
+        for words in ("automated", "read-only", "collector", "punctuality statistics", "open-source Binario app",
+                      "low rate", f"at most {collector.MAX_RATE:g} requests per second"):
+            self.assertIn(words, agent)
+        for absent in ("http", "www.", "@", "mozilla", "applewebkit", "chrome", "safari", "personal"):
+            self.assertNotIn(absent, agent.lower())
+        self.assertTrue(agent.isascii() and agent.isprintable())
 
     def test_redirects_stay_on_the_same_resource(self) -> None:
         base = collector.BASE_URL
@@ -761,9 +920,15 @@ class EndToEndTest(Base):
         summary = self.temp / "summary.md"
         arguments = ["--state", str(state), "--gtfs", str(self.gtfs), "--stations", str(self.stations_path),
                      "--now", NOW.isoformat(), "--base-url", server.base_url, "--rate", "2", "--summary", str(summary)]
+        # An empty state (a cache that was not restored) is refused before any request, unless bootstrapped.
+        with contextlib.redirect_stderr(io.StringIO()) as errors:
+            self.assertEqual(1, collector.main(arguments))
+        self.assertIn("stato vuoto", errors.getvalue())
+        self.assertEqual([], server.requests)
+        self.assertEqual([], list(state.iterdir()) if state.exists() else [])
         output = io.StringIO()
         with contextlib.redirect_stdout(output):
-            self.assertEqual(0, collector.main(arguments))
+            self.assertEqual(0, collector.main(arguments + ["--bootstrap"]))
         log = output.getvalue() + summary.read_text(encoding="utf-8")
         self.assertIn("Treni chiesti: 7", log)
         self.assertIn("Arrivati: 2", log)  # 9558 and 2001
@@ -800,6 +965,26 @@ class EndToEndTest(Base):
         self.assertEqual(["S01700", 1, 9.0, [0, 0, 0, 1, 1, 1, 1, 1], 0, 9, 610, ["21", 1, 1], None], fr["s"][-1])
         # The programmed platform of Tiburtina is counted by itself (no actual one there); one day: no weekdays.
         self.assertEqual([["14", 1, 1], ["3", 1, 1], ["8", 1, 1], ["21", 1, 1]], [entry[7] for entry in fr["s"]])
+
+    def test_a_run_stopped_by_the_breaker_saves_its_state_and_fails(self) -> None:
+        server = FakeViaggiaTreno()  # 204 for every train: unknown answers only
+        self.addCleanup(server.close)
+        trips = [(f"reg{4000 + index}", "REG", "DAILY", str(4000 + index),
+                  [("ROMA", "08:00:00", "08:00:00"), ("FIDENE", "08:40:00", "08:40:00")]) for index in range(45)]
+        gtfs = self.temp / "many.zip"
+        with mock.patch.object(sys.modules[__name__], "TRIPS", trips):
+            write_gtfs(gtfs)
+        state = self.temp / "state"
+        arguments = ["--state", str(state), "--gtfs", str(gtfs), "--stations", str(self.stations_path),
+                     "--now", NOW.isoformat(), "--base-url", server.base_url, "--rate", "2", "--bootstrap"]
+        output = io.StringIO()
+        # The local server needs no pause between requests.
+        with contextlib.redirect_stdout(output), mock.patch.object(collector.HttpFetcher, "_throttle", lambda _: None):
+            self.assertEqual(collector.EXIT_STOPPED, collector.main(arguments))
+        self.assertEqual(collector.MAX_BAD_ANSWERS + 1, len(server.requests))
+        self.assertIn("sconosciute o con identità diversa", output.getvalue())
+        self.assertEqual(45, len(collector.State(state).pending))  # saved, nothing recorded as missing
+        self.assertEqual({}, collector.observation_files(state))  # and no empty day file
 
 
 if __name__ == "__main__":

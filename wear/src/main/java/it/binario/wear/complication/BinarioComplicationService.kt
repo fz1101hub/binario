@@ -13,13 +13,18 @@ import androidx.wear.watchface.complications.data.ShortTextComplicationData
 import androidx.wear.watchface.complications.data.TimeDifferenceComplicationText
 import androidx.wear.watchface.complications.data.TimeDifferenceStyle
 import androidx.wear.watchface.complications.data.TimeRange
+import androidx.wear.watchface.complications.datasource.ComplicationDataTimeline
 import androidx.wear.watchface.complications.datasource.ComplicationRequest
-import androidx.wear.watchface.complications.datasource.SuspendingComplicationDataSourceService
+import androidx.wear.watchface.complications.datasource.SuspendingTimelineComplicationDataSourceService
+import androidx.wear.watchface.complications.datasource.TimeInterval
+import androidx.wear.watchface.complications.datasource.TimelineEntry
 import it.binario.wear.R
 import it.binario.wear.WearMainActivity
 import it.binario.wear.WearStringProvider
 import it.binario.wear.accessibleLabel
-import it.binario.wear.dataStatusResId
+import it.binario.wear.RAIL_TIME_ZONE
+import it.binario.wear.dataStatus
+import it.binario.wear.string
 import it.binario.wear.model.WearService
 import it.binario.wear.model.WearSnapshot
 import it.binario.wear.sync.WearSnapshotStore
@@ -28,18 +33,30 @@ import java.time.Instant
 import java.time.LocalTime
 import java.time.ZoneId
 import java.util.concurrent.TimeUnit
-import kotlin.math.abs
 
-/** Watch-face surface for the same local snapshot rendered by the Wear app and Tile. */
-class BinarioComplicationService : SuspendingComplicationDataSourceService() {
-    override suspend fun onComplicationRequest(request: ComplicationRequest): ComplicationData? =
-        binarioComplicationData(
-            request.complicationType,
-            WearSnapshotStore.current(this),
-            wearStrings(),
-            System.currentTimeMillis(),
-            openAppIntent(),
+/**
+ * Watch-face surface for the same local snapshot rendered by the Wear app and Tile. Nothing requests
+ * an update when a train leaves, so the value comes as a timeline: the watch face itself moves to
+ * the next service one minute after a departure.
+ */
+class BinarioComplicationService : SuspendingTimelineComplicationDataSourceService() {
+    override suspend fun onComplicationRequest(request: ComplicationRequest): ComplicationDataTimeline {
+        val snapshot = WearSnapshotStore.current(this)
+        val strings = wearStrings()
+        val now = System.currentTimeMillis()
+        val tapAction = openAppIntent()
+        val current = binarioComplicationData(request.complicationType, snapshot, strings, now, tapAction)
+        val later = if (snapshot == null || current is NoDataComplicationData) emptyList() else laterGlanceSegments(snapshot, now)
+        return ComplicationDataTimeline(
+            current,
+            later.map { segment ->
+                TimelineEntry(
+                    TimeInterval(Instant.ofEpochMilli(segment.startEpochMillis), Instant.ofEpochMilli(segment.endEpochMillis)),
+                    binarioComplicationData(request.complicationType, snapshot, strings, segment.startEpochMillis, tapAction),
+                )
+            },
         )
+    }
 
     override fun getPreviewData(type: ComplicationType): ComplicationData? {
         val label = PlainComplicationText.Builder(getString(R.string.app_name)).build()
@@ -70,24 +87,29 @@ internal data class WearComplicationTexts(
     val countdownTo: Instant? = null,
 )
 
-/** The phone formats rail times as Italian clock times ("HH:mm" in Europe/Rome, RailTime.defaultZone). */
-internal val RAIL_TIME_ZONE: ZoneId = ZoneId.of("Europe/Rome")
-
 /** A service counts as gone one minute after its expected departure; the next one is shown then. */
 private const val DEPARTED_GRACE_MILLIS = 60_000L
 
 /**
- * The instant of an "HH:mm" departure: of the occurrences on the day before, the same day and the
- * day after the snapshot's generation, the nearest one. A 00:10 train listed at 23:50 is the next
- * day's, a 23:58 one listed at 00:05 the previous day's. Null for a time that does not parse.
+ * A listed departure up to this long before the snapshot's generation is one that has just left;
+ * any other clock time is its next occurrence. The phone lists departures from the time of the
+ * request and, after the day's last train, the next morning's first ones up to a day ahead.
+ */
+private const val LISTED_DEPARTURE_LOOKBACK_MILLIS = 2 * 60 * 60 * 1_000L
+
+/**
+ * The instant of an "HH:mm" departure: the first occurrence, on the day before, the same day or the
+ * day after the snapshot's generation, that is not more than two hours before the generation. A
+ * 00:10 train listed at 23:50 is the next day's, a 23:58 one listed at 00:05 the previous day's, a
+ * 05:50 one listed at 17:30 the next morning's. Null for a time that does not parse.
  */
 internal fun departureInstant(time: String, generatedAtEpochMillis: Long, zone: ZoneId = RAIL_TIME_ZONE): Instant? {
     val clock = runCatching { LocalTime.parse(time) }.getOrNull() ?: return null
-    val generated = Instant.ofEpochMilli(generatedAtEpochMillis)
-    val day = generated.atZone(zone).toLocalDate()
+    val earliest = generatedAtEpochMillis - LISTED_DEPARTURE_LOOKBACK_MILLIS
+    val day = Instant.ofEpochMilli(generatedAtEpochMillis).atZone(zone).toLocalDate()
     return listOf(day.minusDays(1), day, day.plusDays(1))
         .map { date -> date.atTime(clock).atZone(zone).toInstant() }
-        .minByOrNull { candidate -> abs(candidate.toEpochMilli() - generatedAtEpochMillis) }
+        .firstOrNull { candidate -> candidate.toEpochMilli() >= earliest }
 }
 
 /** The service a glance should show at [nowEpochMillis]: the first not yet gone, else the last one. */
@@ -95,6 +117,26 @@ internal fun upcomingService(snapshot: WearSnapshot, nowEpochMillis: Long): Pair
     val departures = snapshot.services.map { service -> service to departureInstant(service.expectedDeparture, snapshot.generatedAtEpochMillis) }
     return departures.firstOrNull { (_, departure) -> departure == null || departure.toEpochMilli() + DEPARTED_GRACE_MILLIS > nowEpochMillis }
         ?: departures.lastOrNull()
+}
+
+/** A stretch of a snapshot's validity, [startEpochMillis] included and [endEpochMillis] excluded. */
+internal data class GlanceSegment(val startEpochMillis: Long, val endEpochMillis: Long)
+
+/**
+ * The stretches after [nowEpochMillis] in which the glance shows another service: each starts one
+ * minute after a departure that hands over to the next service ([upcomingService]) and lasts until
+ * the next hand-over or the snapshot deadline. Empty when the glance keeps its service until then.
+ * The Tile and the complication timelines switch on these instants without a new request.
+ */
+internal fun laterGlanceSegments(snapshot: WearSnapshot, nowEpochMillis: Long): List<GlanceSegment> {
+    val handOvers = snapshot.services
+        .mapNotNull { service -> departureInstant(service.expectedDeparture, snapshot.generatedAtEpochMillis) }
+        .map { departure -> departure.toEpochMilli() + DEPARTED_GRACE_MILLIS }
+        .filter { at -> at > nowEpochMillis && at < snapshot.expiresAtEpochMillis }
+        .distinct()
+        .sorted()
+        .filter { at -> upcomingService(snapshot, at - 1)?.first != upcomingService(snapshot, at)?.first }
+    return handOvers.mapIndexed { index, start -> GlanceSegment(start, handOvers.getOrElse(index + 1) { snapshot.expiresAtEpochMillis }) }
 }
 
 /**
@@ -105,7 +147,7 @@ internal fun upcomingService(snapshot: WearSnapshot, nowEpochMillis: Long): Pair
  */
 internal fun shortTextComplicationTexts(snapshot: WearSnapshot, strings: WearStringProvider, nowEpochMillis: Long): WearComplicationTexts {
     val (service, departure) = upcomingService(snapshot, nowEpochMillis)
-        ?: return WearComplicationTexts(strings.string(R.string.app_name), null, strings.string(snapshot.dataStatusResId()))
+        ?: return WearComplicationTexts(strings.string(R.string.app_name), null, strings.string(snapshot.dataStatus()))
     if (departure == null) return WearComplicationTexts(service.expectedDeparture, service.number, service.accessibleLabel(strings))
     return WearComplicationTexts(COUNTDOWN, service.expectedDeparture, service.accessibleLabel(strings), departure)
 }
@@ -113,7 +155,7 @@ internal fun shortTextComplicationTexts(snapshot: WearSnapshot, strings: WearStr
 internal fun longTextComplicationTexts(snapshot: WearSnapshot, strings: WearStringProvider, nowEpochMillis: Long): WearComplicationTexts {
     val title = snapshot.routeLabel.take(48)
     val (service, departure) = upcomingService(snapshot, nowEpochMillis)
-        ?: return WearComplicationTexts(strings.string(snapshot.dataStatusResId()), title, strings.string(snapshot.dataStatusResId()))
+        ?: return WearComplicationTexts(strings.string(snapshot.dataStatus()), title, strings.string(snapshot.dataStatus()))
     val label = strings.string(R.string.service_time_number, service.expectedDeparture, service.number)
     // Same " · " separator as service_time_number in every language.
     return if (departure == null) WearComplicationTexts(label, title, service.accessibleLabel(strings))
@@ -123,7 +165,8 @@ internal fun longTextComplicationTexts(snapshot: WearSnapshot, strings: WearStri
 /**
  * Push-driven payload: the manifest declares no polling period, the Data Layer listener and the
  * store's expiry callback request updates, and the valid time range lets the watch face drop the
- * value at the snapshot deadline even when neither of them runs. [tapAction] opens the app.
+ * value at the snapshot deadline even when neither of them runs. [nowEpochMillis] picks the service
+ * shown (a later timeline entry passes its own start). [tapAction] opens the app.
  */
 internal fun binarioComplicationData(
     type: ComplicationType,

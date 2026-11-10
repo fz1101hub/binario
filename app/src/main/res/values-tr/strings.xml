@@ -866,6 +866,8 @@
 
     <!-- Texts carried verbatim in the Wear payload. -->
     <string name="wear_payload_value_unavailable">Kullanılamıyor</string>
+    <string name="wear_notice_cancelled">İptal edildi: %2$s %1$s</string>
+    <string name="wear_operator_other">Diğer işletmeci</string>
 
     <plurals name="search_results_count">
         <item quantity="one">%d sonuç</item>

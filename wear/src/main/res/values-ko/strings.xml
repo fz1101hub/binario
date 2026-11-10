@@ -11,10 +11,13 @@
     <string name="refresh_phone_unreachable">휴대전화에 연결할 수 없음</string>
     <string name="tile_no_synced_route">동기화된 구간 없음</string>
     <string name="tile_snapshot_unavailable">스냅샷 없음</string>
+    <string name="tile_snapshot_expired">데이터 만료됨</string>
+    <string name="snapshot_expired_message">구간 데이터가 만료되었습니다. 휴대전화에서 새로고침하세요.</string>
+    <string name="tile_no_departures">표시할 열차 없음</string>
     <string name="tile_service_details">%1$s · %2$s · %3$s</string>
     <string name="status_programmed">예정 시각</string>
-    <string name="status_received_from_phone">휴대전화에서 받은 상태</string>
-    <string name="status_updating">데이터 업데이트 중</string>
+    <string name="status_live_as_of">%1$s 기준 데이터</string>
+    <string name="status_not_recent_as_of">최신이 아닌 데이터(%1$s 기준)</string>
     <string name="status_local_snapshot">마지막 로컬 스냅샷</string>
     <string name="status_live_unavailable">실시간 데이터를 이용할 수 없음</string>
     <string name="accessibility_data_status">데이터 상태: %1$s</string>

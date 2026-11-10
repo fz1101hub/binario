@@ -47,12 +47,13 @@ object WearSnapshotPublisher {
 
     suspend fun publish(context: Context, snapshot: RouteSnapshot) {
         val token = operationGate.publicationToken()
-        val generatedAt = System.currentTimeMillis()
         val strings = WearSnapshotStrings.from(context.resources)
+        // Up to 3 s for the capability check, plus the statistics load: the payload is dated after it.
         val reliability = reliabilityFor(context, snapshot)
-        val payload = runCatching { AndroidWearSnapshotContract.operational(snapshot, generatedAt, strings, reliability) }
-            .getOrElse { AndroidWearSnapshotContract.unavailable(snapshot.routeLabel, snapshot.providerName, generatedAt, strings) }
-        publishPayload(context, payload, token, WearRefreshTarget(snapshot.route, snapshot.direction).encode())
+        publishPayload(context, token, WearRefreshTarget(snapshot.route, snapshot.direction).encode()) { generatedAt ->
+            runCatching { AndroidWearSnapshotContract.operational(snapshot, generatedAt, strings, reliability) }
+                .getOrElse { AndroidWearSnapshotContract.unavailable(snapshot.routeLabel, snapshot.providerName, generatedAt, strings) }
+        }
     }
 
     /** A null provider means nothing was ever cached; the payload then carries the localized "not available". */
@@ -60,12 +61,10 @@ object WearSnapshotPublisher {
         val token = operationGate.publicationToken()
         // The route stays refreshable from the watch only while the payload still names it.
         val refreshTarget = readRefreshTarget(context)?.takeIf { it.routeLabel == routeLabel }?.encode()
-        publishPayload(
-            context,
-            AndroidWearSnapshotContract.unavailable(routeLabel, provider.orEmpty(), System.currentTimeMillis(), WearSnapshotStrings.from(context.resources)),
-            token,
-            refreshTarget
-        )
+        val strings = WearSnapshotStrings.from(context.resources)
+        publishPayload(context, token, refreshTarget) { generatedAt ->
+            AndroidWearSnapshotContract.unavailable(routeLabel, provider.orEmpty(), generatedAt, strings)
+        }
     }
 
     /**
@@ -164,11 +163,16 @@ object WearSnapshotPublisher {
         }
     }
 
-    private suspend fun publishPayload(context: Context, payload: Map<String, Any>, token: Long, refreshTarget: String?) {
+    /**
+     * Builds the payload with [payloadAt] at the time of writing, after any wait for the publication lock, so the
+     * watch's display window starts when the Data Item is written.
+     */
+    private suspend fun publishPayload(context: Context, token: Long, refreshTarget: String?, payloadAt: (generatedAt: Long) -> Map<String, Any>) {
         operationGate.runPublication(token) {
             val preferences = preferences(context)
             if (!preferences.getBoolean(KEY_PUBLISHING_ALLOWED, false)) return@runPublication
             if (preferences.getBoolean(KEY_REVOCATION_PENDING, false)) return@runPublication
+            val payload = payloadAt(System.currentTimeMillis())
             runWearSafely { putPayload(context, payload) }
             preferences.edit(commit = true) {
                 putString(KEY_LAST_PAYLOAD, JSONObject(payload).toString())

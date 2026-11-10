@@ -11,10 +11,13 @@
     <string name="refresh_phone_unreachable">Phone not reachable</string>
     <string name="tile_no_synced_route">No synchronized journey</string>
     <string name="tile_snapshot_unavailable">Snapshot unavailable</string>
+    <string name="tile_snapshot_expired">Data expired</string>
+    <string name="snapshot_expired_message">The route data has expired: refresh it on your phone.</string>
+    <string name="tile_no_departures">No departures to show</string>
     <string name="tile_service_details">%1$s · %2$s · %3$s</string>
     <string name="status_programmed">Scheduled timetable</string>
-    <string name="status_received_from_phone">Status received from phone</string>
-    <string name="status_updating">Updating data</string>
+    <string name="status_live_as_of">Data updated at %1$s</string>
+    <string name="status_not_recent_as_of">Data not recent, observed at %1$s</string>
     <string name="status_local_snapshot">Latest local snapshot</string>
     <string name="status_live_unavailable">Real-time data not available</string>
     <string name="accessibility_data_status">Data status: %1$s</string>

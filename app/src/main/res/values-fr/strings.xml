@@ -883,6 +883,8 @@
 
     <!-- Texts carried verbatim in the Wear payload. -->
     <string name="wear_payload_value_unavailable">Non disponible</string>
+    <string name="wear_notice_cancelled">Supprimé : %1$s de %2$s</string>
+    <string name="wear_operator_other">Autre opérateur</string>
 
     <plurals name="search_results_count">
         <item quantity="one">%d résultat</item>

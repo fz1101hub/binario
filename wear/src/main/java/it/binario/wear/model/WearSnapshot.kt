@@ -105,8 +105,15 @@ object WearSnapshotCodec {
         "operationalState", "freshness", "confidence", "routeId", "routeLabel", "direction", "notice", "serviceCount"
     )
 
-    fun decode(payload: Map<String, Any?>, nowEpochMillis: Long = System.currentTimeMillis()): WearSnapshot? {
-        if (estimatedUtf8Size(payload) > MAX_PAYLOAD_BYTES) return null
+    fun decode(payload: Map<String, Any?>, nowEpochMillis: Long = System.currentTimeMillis()): WearSnapshot? =
+        decode(payload, nowEpochMillis, MAX_PAYLOAD_BYTES)
+
+    /**
+     * [decode] with an explicit byte budget. The per-field limits keep every valid v1 payload well under
+     * [MAX_PAYLOAD_BYTES], so tests lower the budget to show the size check rejects a payload on its own.
+     */
+    internal fun decode(payload: Map<String, Any?>, nowEpochMillis: Long, maxPayloadBytes: Int): WearSnapshot? {
+        if (estimatedUtf8Size(payload) > maxPayloadBytes) return null
         if (payload.long("schemaVersion") != SCHEMA_VERSION) return null
         val serviceCount = payload.int("serviceCount", 0, MAX_SERVICES) ?: return null
         val expectedKeys = buildSet {
@@ -252,7 +259,7 @@ object WearSnapshotCodec {
     private fun normalise(value: String): String = value.replace(Regex("\\s+"), " ").trim()
 
     /** Conservative upper bound independent of a JSON implementation; nested/binary values are rejected by the closed key set. */
-    private fun estimatedUtf8Size(payload: Map<String, Any?>): Int = payload.entries.sumOf { (key, value) ->
+    internal fun estimatedUtf8Size(payload: Map<String, Any?>): Int = payload.entries.sumOf { (key, value) ->
         key.toByteArray(Charsets.UTF_8).size + 8 + when (value) {
             is String -> value.toByteArray(Charsets.UTF_8).size
             is Number, is Boolean -> 24

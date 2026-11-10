@@ -54,7 +54,9 @@ class WearRefreshTargetTest {
         assertTrue(listener.contains("ExistingWorkPolicy.KEEP"))
         assertFalse(listener.contains("republishLastSnapshot"))
         assertTrue(publisher.contains("is DataResult.Success -> publish(context, result.snapshot)"))
-        assertTrue(publisher.contains("publishPayload(context, payload, token, WearRefreshTarget(snapshot.route, snapshot.direction).encode())"))
+        assertTrue(publisher.contains("publishPayload(context, token, WearRefreshTarget(snapshot.route, snapshot.direction).encode()) { generatedAt ->"))
+        // The payload is dated when it is written, after the capability check and the publication lock.
+        assertTrue(publisher.contains("val payload = payloadAt(System.currentTimeMillis())\n            runWearSafely { putPayload(context, payload) }"))
         // Removed with the payload after a revocation (on enable and on clear) and by a payload without a route.
         assertEquals(3, Regex("remove\\(KEY_LAST_ROUTE\\)").findAll(publisher).count())
     }

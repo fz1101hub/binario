@@ -11,10 +11,13 @@
     <string name="refresh_phone_unreachable">Ponsel tidak terjangkau</string>
     <string name="tile_no_synced_route">Tidak ada rute tersinkron</string>
     <string name="tile_snapshot_unavailable">Snapshot tidak tersedia</string>
+    <string name="tile_snapshot_expired">Data kedaluwarsa</string>
+    <string name="snapshot_expired_message">Data rute sudah kedaluwarsa: perbarui di ponsel.</string>
+    <string name="tile_no_departures">Tidak ada keberangkatan untuk ditampilkan</string>
     <string name="tile_service_details">%1$s · %2$s · %3$s</string>
     <string name="status_programmed">Jadwal</string>
-    <string name="status_received_from_phone">Status diterima dari ponsel</string>
-    <string name="status_updating">Data sedang diperbarui</string>
+    <string name="status_live_as_of">Data diperbarui pukul %1$s</string>
+    <string name="status_not_recent_as_of">Data tidak terbaru, pukul %1$s</string>
     <string name="status_local_snapshot">Snapshot lokal terakhir</string>
     <string name="status_live_unavailable">Data real-time tidak tersedia</string>
     <string name="accessibility_data_status">Status data: %1$s</string>

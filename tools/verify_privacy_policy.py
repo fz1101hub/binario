@@ -25,6 +25,16 @@ NON_NETWORK_URI_PREFIXES = (
     "http://javax.xml.XMLConstants/",
 )
 URL_PATTERN = re.compile(r"(https?://([A-Za-z0-9.-]+))[^\s\"'<>)]*")
+# Hosts the code builds without a literal URL (audit ci-docs-8): Kotlin's URL("https", "host", file), and a host
+# assigned to a name ending in host (Kotlin `const val VIAGGIATRENO_HOST = "…"`, Swift `static let …Host = "…"`,
+# `components.host = "…"`).  A comparison (`host == "…"`) is not an assignment.
+DOMAIN = r"([A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+)"
+CONSTRUCTED_HOST_PATTERNS = (
+    re.compile(r"\bURL\(\s*\"https?\"\s*,\s*\"" + DOMAIN + r"\""),
+    re.compile(r"\b\w*(?:host|Host|HOST)\s*(?::\s*String\??)?\s*=(?!=)\s*\"" + DOMAIN + r"\""),
+)
+# The iPhone and Apple Watch sources: every host they name must be disclosed, backticked, in PRIVACY.md.
+IOS_HOST_SOURCE_GLOBS = ("ios/BinarioKit/Sources/**/*.swift", "ios/BinarioApp/**/*.swift", "apple-watch/**/*.swift")
 HOST_ROW = re.compile(r"^\| `([a-z0-9.-]+)` \|", re.MULTILINE)
 
 REQUIRED_DISCLOSURES: tuple[tuple[str, str, tuple[str, ...]], ...] = (
@@ -140,6 +150,17 @@ def require_all(label: str, text: str, fragments: tuple[str, ...]) -> list[str]:
     return [f"{label}: missing {fragment!r}" for fragment in fragments if fragment not in text]
 
 
+def hosts_in(text: str) -> set[str]:
+    """The network hosts ``text`` names: in literal URLs (XML namespace URIs aside) or built by the code."""
+    hosts = {
+        match.group(2).lower() for match in URL_PATTERN.finditer(text)
+        if not match.group(0).startswith(NON_NETWORK_URI_PREFIXES)
+    }
+    for pattern in CONSTRUCTED_HOST_PATTERNS:
+        hosts.update(match.group(1).lower() for match in pattern.finditer(text))
+    return hosts
+
+
 def code_hosts(root: Path = ROOT) -> set[str]:
     """Every network host referenced by the Android sources and asset manifests."""
     paths = [path for pattern in HOST_SOURCE_GLOBS for path in root.glob(pattern)]
@@ -147,10 +168,23 @@ def code_hosts(root: Path = ROOT) -> set[str]:
     paths += [root / relative for relative in OPTIONAL_HOST_SOURCE_FILES if (root / relative).is_file()]
     hosts: set[str] = set()
     for path in paths:
-        for match in URL_PATTERN.finditer(path.read_text(encoding="utf-8")):
-            if not match.group(0).startswith(NON_NETWORK_URI_PREFIXES):
-                hosts.add(match.group(2).lower())
+        hosts |= hosts_in(path.read_text(encoding="utf-8"))
     return hosts
+
+
+def ios_code_hosts(root: Path = ROOT) -> set[str]:
+    """Every network host named by the iPhone and Apple Watch sources."""
+    hosts: set[str] = set()
+    for pattern in IOS_HOST_SOURCE_GLOBS:
+        for path in root.glob(pattern):
+            hosts |= hosts_in(path.read_text(encoding="utf-8"))
+    return hosts
+
+
+def ios_host_errors(privacy: str, hosts: set[str]) -> list[str]:
+    """An iPhone host absent from PRIVACY.md (as `host`).  The whole policy is read: the iPhone section is the
+    natural place, but a host the Android section already discloses is not a new disclosure."""
+    return [f"PRIVACY.md: iPhone host `{host}` not disclosed" for host in sorted(hosts) if f"`{host}`" not in privacy]
 
 
 def host_inventory_errors(data_safety: str, hosts: set[str]) -> list[str]:
@@ -160,11 +194,12 @@ def host_inventory_errors(data_safety: str, hosts: set[str]) -> list[str]:
     return errors
 
 
-def verification_errors(read_file=read, hosts: set[str] | None = None) -> list[str]:
+def verification_errors(read_file=read, hosts: set[str] | None = None, ios_hosts: set[str] | None = None) -> list[str]:
     errors: list[str] = []
     for label, relative_path, fragments in REQUIRED_DISCLOSURES:
         errors += require_all(label, read_file(relative_path), fragments)
     errors += host_inventory_errors(read_file(DATA_SAFETY_PATH), code_hosts() if hosts is None else hosts)
+    errors += ios_host_errors(read_file("PRIVACY.md"), ios_code_hosts() if ios_hosts is None else ios_hosts)
     return errors
 
 

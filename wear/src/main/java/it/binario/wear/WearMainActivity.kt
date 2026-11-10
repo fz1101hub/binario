@@ -13,6 +13,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
@@ -47,11 +48,12 @@ class WearMainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setContent {
             val snapshot by WearSnapshotStore.snapshot(this).collectAsState()
+            val expired by WearSnapshotStore.expired(this).collectAsState()
             val phoneAppPresence by phoneApp.collectAsState()
             val feedback by refreshFeedback.collectAsState()
             // A newly received snapshot answers the request, so its note is no longer current.
             LaunchedEffect(snapshot?.generatedAtEpochMillis) { refreshFeedback.value = null }
-            BinarioWearTheme { AppScaffold { WearHome(snapshot, phoneAppPresence, feedback, ::requestRefreshFromPhone) } }
+            BinarioWearTheme { AppScaffold { WearHome(snapshot, expired, phoneAppPresence, feedback, ::requestRefreshFromPhone) } }
         }
     }
 
@@ -91,22 +93,27 @@ class WearMainActivity : ComponentActivity() {
  * ScalingLazyColumn keep the first and last items inside the visible disc of a round screen.
  */
 @Composable
-private fun WearHome(snapshot: WearSnapshot?, phoneApp: WearPhoneAppPresence, feedback: WearRefreshFeedback?, onRefreshPhone: () -> Unit) {
+private fun WearHome(snapshot: WearSnapshot?, expired: Boolean, phoneApp: WearPhoneAppPresence, feedback: WearRefreshFeedback?, onRefreshPhone: () -> Unit) {
     val context = LocalContext.current
     val listState = rememberScalingLazyListState()
     ScreenScaffold(scrollState = listState) { contentPadding ->
         ScalingLazyColumn(state = listState, contentPadding = contentPadding, modifier = Modifier.fillMaxSize()) {
             if (snapshot == null) {
                 item { Text(stringResource(R.string.app_name), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary, textAlign = TextAlign.Center) }
-                item { Text(stringResource(emptySnapshotMessageResId(phoneApp)), style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center) }
+                item { Text(stringResource(emptySnapshotMessageResId(phoneApp, expired)), style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center) }
                 item { Button(onClick = onRefreshPhone, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.refresh_phone)) } }
                 refreshFeedbackItem(feedback)
             } else {
                 item { Text(snapshot.routeLabel, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary, textAlign = TextAlign.Center) }
                 item {
-                    val dataStatus = stringResource(snapshot.dataStatusResId())
+                    val status = snapshot.dataStatus()
+                    val dataStatus = stringResource(status.id, *status.args.toTypedArray())
                     val statusDescription = stringResource(R.string.accessibility_data_status, dataStatus)
-                    Text(dataStatus, style = MaterialTheme.typography.labelMedium, textAlign = TextAlign.Center, modifier = Modifier.semantics { contentDescription = statusDescription })
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(dataStatus, style = MaterialTheme.typography.labelMedium, textAlign = TextAlign.Center, modifier = Modifier.semantics { contentDescription = statusDescription })
+                        // Where the phone took the data from («Fonte primaria dell’operatore», the timetable…), in the phone's language.
+                        Text(snapshot.provider, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
+                    }
                 }
                 itemsIndexed(
                     items = snapshot.services,

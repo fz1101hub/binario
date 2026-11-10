@@ -180,7 +180,8 @@ class VerifyCiPinningTest(unittest.TestCase):
         workflow_path = ROOT / ".github/workflows/android-ci.yml"
         original = workflow_path.read_text(encoding="utf-8")
         self.assertEqual([], policy.workflow_problems(workflow_path, original, LOCK))
-        sign_condition = "    if: ${{ github.event_name == 'workflow_dispatch' && inputs.sign_release }}\n"
+        sign_condition = ("    if: ${{ github.event_name == 'workflow_dispatch' && inputs.sign_release && (github.ref == "
+                          "'refs/heads/main' || startsWith(github.ref, 'refs/heads/stabilization/')) }}\n")
         mutations = {
             # Mutate the sign_release input itself, wherever it sits among the dispatch inputs.
             "input booleano sign_release": re.sub(
@@ -190,6 +191,14 @@ class VerifyCiPinningTest(unittest.TestCase):
                 count=1,
             ),
             "non è limitato a un dispatch esplicito con sign_release": original.replace(sign_condition, "", 1),
+            # Audit ci-docs-1: any branch could be signed with the repository secrets.
+            "su main o stabilization/*": original.replace(
+                sign_condition, "    if: ${{ github.event_name == 'workflow_dispatch' && inputs.sign_release }}\n", 1),
+            "con sign_release su main o": original.replace(
+                sign_condition, sign_condition.replace("startsWith(github.ref, 'refs/heads/stabilization/')",
+                                                       "startsWith(github.ref, 'refs/heads/')"), 1),
+            "environment protetto release": original.replace("    environment: release\n", "", 1),
+            "environment protetto release ": original.replace("    environment: release\n", "    environment: production\n", 1),
             "deve dipendere dal gate unsigned": original.replace("    needs: android\n", "", 1),
             "interpola un secret nello script": original.replace(
                 '          test -n "$BINARIO_RELEASE_KEYSTORE_BASE64"\n',
@@ -282,6 +291,48 @@ class VerifyCiPinningTest(unittest.TestCase):
         apple = ROOT / ".github/workflows/apple-watch-ci.yml"
         self.assertEqual([], policy.workflow_problems(apple, apple.read_text(encoding="utf-8"), LOCK))
 
+    def test_untrusted_triggers_head_checkouts_and_secrets_outside_release_sign_are_rejected(self) -> None:
+        # Audit ci-docs-9: the classic fork pull request secret leak passed the guard with no problem at all.
+        leak = (
+            "name: Evil\non:\n  pull_request_target:\n    branches: [main]\npermissions:\n  contents: read\n"
+            "jobs:\n  build:\n    runs-on: ubuntu-24.04\n    steps:\n"
+            f"      - uses: {CHECKOUT}\n        with:\n          persist-credentials: false\n"
+            "          ref: ${{ github.event.pull_request.head.sha }}\n"
+            "      - name: Build\n        env:\n          KEY: ${{ secrets.BINARIO_RELEASE_KEYSTORE_BASE64 }}\n"
+            "        run: ./gradlew build\n"
+        )
+        problems = policy.workflow_problems(Path("evil.yml"), leak, LOCK)
+        for expected in ("trigger pull_request_target non revisionato", "checkout con ref",
+                         "secret fuori dagli step revisionati di release-sign"):
+            with self.subTest(expected=expected):
+                self.assertTrue(any(expected in problem for problem in problems), problems)
+        for trigger in ("workflow_run", "issue_comment", "pull_request_review_comment", "repository_dispatch"):
+            with self.subTest(trigger=trigger):
+                mutated = leak.replace("pull_request_target", trigger, 1)
+                problems = policy.workflow_problems(Path("evil.yml"), mutated, LOCK)
+                self.assertTrue(any(f"trigger {trigger} non revisionato" in problem for problem in problems), problems)
+        android = ROOT / ".github/workflows/android-ci.yml"
+        text = android.read_text(encoding="utf-8")
+        mutations = {
+            # A secret in another job of the signing workflow, in a with: input, or inherited by a reusable workflow.
+            "secret fuori dagli step revisionati di release-sign": text.replace(
+                "      - name: Enable Gradle wrapper\n        run: chmod +x gradlew\n",
+                "      - name: Enable Gradle wrapper\n        env:\n          X: ${{ secrets.BINARIO_RELEASE_KEY_PASSWORD }}\n"
+                "        run: chmod +x gradlew\n", 1),
+            "secret fuori dagli step revisionati di release-sign ": text.replace(
+                "          BINARIO_RELEASE_KEY_ALIAS: ${{ secrets.BINARIO_RELEASE_KEY_ALIAS }}\n",
+                "          BINARIO_RELEASE_KEY_ALIAS: ${{ secrets.OTHER_TOKEN }}\n", 1),
+            "checkout con ref": text.replace(
+                "      - name: Checkout\n        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7\n        with:\n",
+                "      - name: Checkout\n        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7\n        with:\n"
+                "          ref: ${{ inputs.ref }}\n", 1),
+        }
+        for expected, mutated in mutations.items():
+            with self.subTest(expected=expected):
+                self.assertNotEqual(text, mutated)
+                problems = policy.workflow_problems(android, mutated, LOCK)
+                self.assertTrue(any(expected.strip() in problem for problem in problems), problems)
+
     def test_document_gates_run_when_their_documents_change(self) -> None:
         # Audit A7-11: store-doc tests and the SOURCE_POLICY privacy gate ran on no change to those documents.
         workflow_path = ROOT / ".github/workflows/gtfs-assets-ci.yml"
@@ -359,6 +410,8 @@ class VerifyCiPinningTest(unittest.TestCase):
         collect = '          python3 -I tools/collect_punctuality.py --state "$RUNNER_TEMP/punctuality-raw" \\\n'
         print_if = "        if: ${{ github.event_name == 'workflow_dispatch' && inputs.print_stats }}\n"
         build, printing = "      - name: Build the statistics\n", "      - name: Print the punctuality statistics\n"
+        guard, collect_step = "      # A miss or a failed restore", "      - name: Collect ViaggiaTreno observations\n"
+        save_if = "        if: ${{ !cancelled() && steps.collect.outputs.saved == 'true' }}\n"
         upload = (
             "      - name: Upload\n        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9\n"
             "        with:\n          name: raw\n          path: x\n          retention-days: 1\n"
@@ -389,6 +442,19 @@ class VerifyCiPinningTest(unittest.TestCase):
                 '          python3 -I tools/build_punctuality_stats.py --check "$RUNNER_TEMP/punctuality/stats_v1.json.gz"\n', "", 1),
             "ordine richiesto": original[:original.index(build)] + original[original.index(printing):] + "\n" + original[original.index(build):original.index(printing)],
             "esattamente uno step di raccolta": original.replace("      - name: Python 3\n", "      - name: Early collect\n        run: python3 -I tools/collect_punctuality.py --x\n\n      - name: Python 3\n", 1),
+            # Audit data-tools-1: a missed restore must not save an empty cache over 35 days of observations.
+            "senza cache ripristinata": original[:original.index(guard)] + original[original.index(collect_step):],
+            "senza cache ripristinata ": original.replace("        id: restore\n", "", 1),
+            "si salva solo quando la raccolta ha scritto": original.replace(save_if, "        if: ${{ !cancelled() }}\n", 1),
+            "si salva solo quando la raccolta ha scritto ": original.replace(
+                'if [ "$status" -eq 0 ] || [ "$status" -eq 3 ]', 'if [ "$status" -ne 99 ]', 1),
+            "input booleano bootstrap": original.replace(
+                "        type: boolean\n        default: false\n\npermissions:", "        type: boolean\n        default: true\n\npermissions:", 1),
+            "ammessi soltanto print_stats, bootstrap": original.replace(
+                "      bootstrap:\n", "      extra:\n        type: string\n      bootstrap:\n", 1),
+            "bootstrap solo come BOOTSTRAP": original.replace(
+                "          BOOTSTRAP: ${{ github.event_name == 'workflow_dispatch' && inputs.bootstrap }}\n        run: |\n          # The collector",
+                "          BOOTSTRAP: ${{ inputs.bootstrap || github.event_name == 'schedule' }}\n        run: |\n          # The collector", 1),
         }
         for expected, mutated in mutations.items():
             with self.subTest(expected=expected):

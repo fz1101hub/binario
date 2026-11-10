@@ -11,10 +11,13 @@
     <string name="refresh_phone_unreachable">Không kết nối được với điện thoại</string>
     <string name="tile_no_synced_route">Chưa có tuyến được đồng bộ</string>
     <string name="tile_snapshot_unavailable">Không có ảnh chụp nhanh</string>
+    <string name="tile_snapshot_expired">Dữ liệu đã hết hạn</string>
+    <string name="snapshot_expired_message">Dữ liệu tuyến đã hết hạn: hãy làm mới trên điện thoại.</string>
+    <string name="tile_no_departures">Không có chuyến nào để hiển thị</string>
     <string name="tile_service_details">%1$s · %2$s · %3$s</string>
     <string name="status_programmed">Lịch theo kế hoạch</string>
-    <string name="status_received_from_phone">Đã nhận trạng thái từ điện thoại</string>
-    <string name="status_updating">Dữ liệu đang cập nhật</string>
+    <string name="status_live_as_of">Dữ liệu cập nhật lúc %1$s</string>
+    <string name="status_not_recent_as_of">Dữ liệu không mới, lúc %1$s</string>
     <string name="status_local_snapshot">Ảnh chụp nhanh cục bộ gần nhất</string>
     <string name="status_live_unavailable">Không có dữ liệu thời gian thực</string>
     <string name="accessibility_data_status">Trạng thái dữ liệu: %1$s</string>

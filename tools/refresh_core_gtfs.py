@@ -349,8 +349,22 @@ def refresh(
 
 
 def _cell(value: object) -> str:
-    text = "" if value is None else str(value)
-    return text.replace("|", "\\|").replace("\r", " ").replace("\n", " ")[:300]
+    """A short value (identifier, date, count, label) in a Markdown table cell of the public job summary: one line,
+    and no HTML, link, image, emphasis, code span or column break (the escaping of ``nap_watch.markdown``)."""
+    text = " ".join(("" if value is None else str(value)).split())[:300]
+    for character, escaped in (("\\", "\\\\"), ("|", "\\|"), ("`", "'"), ("<", "&lt;"), (">", "&gt;"), ("[", "\\["),
+                               ("]", "\\]"), ("*", "\\*"), ("_", "\\_")):
+        text = text.replace(character, escaped)
+    return text
+
+
+def _code_cell(value: object) -> str:
+    """Free text from a download (an error naming feed values, a commit date from the GitHub API) as one code span in a
+    table cell: Markdown renders nothing inside it (no link, autolink, image or HTML); only ``|`` needs escaping."""
+    text = " ".join(("" if value is None else str(value)).split())[:300]
+    if not text:
+        return ""
+    return "`" + text.replace("`", "'").replace("|", "\\|") + "`"
 
 
 STATUS_LABELS = {
@@ -386,7 +400,7 @@ def report_markdown(report: Mapping[str, Any]) -> str:
                     f"fissato {str(proposed.get('previousCommit'))[:12]}" + (f"; {note}" if note else ""))
         lines.append(
             f"| {_cell(source_id)} | {_cell(STATUS_LABELS.get(entry.get('status'), entry.get('status')))} | "
-            f"{_cell(dates)} | {_cell(trips)} | {_cell(note)} |"
+            f"{_cell(dates)} | {_cell(trips)} | {_code_cell(note)} |"
         )
     return "\n".join(lines) + "\n"
 

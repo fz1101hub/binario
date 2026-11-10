@@ -828,6 +828,8 @@
     <string name="widget_warnings_accessibility">。警告：%1$s</string>
     <!-- Texts carried verbatim in the Wear payload. -->
     <string name="wear_payload_value_unavailable">利用できません</string>
+    <string name="wear_notice_cancelled">運休: %2$s の %1$s</string>
+    <string name="wear_operator_other">その他の事業者</string>
     <plurals name="search_results_count">
         <item quantity="other">%d 件の結果</item>
     </plurals>

@@ -245,6 +245,15 @@ def _check_upload_artifact(step: Mapping[str, Any], *, location: str, problems: 
         problems.append(f"{location}.with.overwrite: upload artifact deve sovrascrivere l'artifact omonimo di un re-run")
 
 
+# The upload-key signing job (audit ci-docs-1): a dispatch with sign_release on a release branch only (the push policy of
+# the lock: main and stabilization/**), through the protected environment that holds the signing secrets.
+RELEASE_SIGN_CONDITION = (
+    "${{ github.event_name == 'workflow_dispatch' && inputs.sign_release && "
+    "(github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/stabilization/')) }}"
+)
+RELEASE_SIGN_ENVIRONMENT = "release"
+
+
 def _check_release_signing(
     path: Path,
     workflow: Mapping[str, Any],
@@ -269,8 +278,12 @@ def _check_release_signing(
         return
     if job.get("needs") not in ("android", ["android"]):
         problems.append(f"{path.name}: release-sign deve dipendere dal gate unsigned del job android")
-    if job.get("if") != "${{ github.event_name == 'workflow_dispatch' && inputs.sign_release }}":
-        problems.append(f"{path.name}: release-sign non è limitato a un dispatch esplicito con sign_release")
+    if job.get("if") != RELEASE_SIGN_CONDITION:
+        problems.append(f"{path.name}: release-sign non è limitato a un dispatch esplicito con sign_release "
+                        "su main o stabilization/*")
+    if job.get("environment") != RELEASE_SIGN_ENVIRONMENT:
+        problems.append(f"{path.name}: release-sign deve usare l'environment protetto {RELEASE_SIGN_ENVIRONMENT} "
+                        "(secret di firma, revisore e rami ammessi)")
     steps = job.get("steps")
     step_list = [step for raw_step in (steps if isinstance(steps, list) else []) for step in [_mapping(raw_step)] if step]
     for index, step in enumerate(step_list):
@@ -419,6 +432,75 @@ UNTRUSTED_LOG_MARKERS = (
 )
 
 
+# Events a workflow may run on (audit ci-docs-9). pull_request_target, workflow_run and the comment or dispatch events
+# run with the base repository's token and secrets on input an outsider controls; none is used, so any is refused.
+REVIEWED_TRIGGERS = frozenset({"pull_request", "push", "workflow_dispatch", "schedule"})
+# The only secrets a workflow may read: the upload-key signing material, as step env of the release-sign job.
+REVIEWED_SECRET_JOBS: frozenset[tuple[str, str]] = frozenset({("android-ci.yml", "release-sign")})
+RELEASE_SIGN_SECRETS = frozenset({
+    "BINARIO_RELEASE_KEYSTORE_BASE64",
+    "BINARIO_RELEASE_STORE_PASSWORD",
+    "BINARIO_RELEASE_KEY_ALIAS",
+    "BINARIO_RELEASE_KEY_PASSWORD",
+})
+SECRET_EXPRESSION = re.compile(r"\$\{\{(?:(?!\}\}).)*\bsecrets\b", re.DOTALL)
+
+
+def _check_triggers_checkouts_and_secrets(path: Path, workflow: Mapping[str, Any], problems: list[str]) -> None:
+    """Only reviewed triggers; no checkout of another ref or repository; secrets only where reviewed, never next to
+    an expression an outsider can shape."""
+    triggers = workflow.get("on")
+    names = [triggers] if isinstance(triggers, str) else list(triggers) if isinstance(triggers, (list, Mapping)) else []
+    for name in names:
+        if str(name) not in REVIEWED_TRIGGERS:
+            problems.append(f"{path.name}: trigger {name} non revisionato (gira con token e secret del repository)")
+    jobs = _mapping(workflow.get("jobs")) or {}
+    for job_name, raw_job in jobs.items():
+        job = _mapping(raw_job) or {}
+        location = f"{path.name}:{job_name}"
+        if "secrets" in job:
+            problems.append(f"{location}: secrets passati a un workflow riutilizzabile, non revisionati")
+        steps = [step for raw in (job.get("steps") if isinstance(job.get("steps"), list) else []) for step in [_mapping(raw)] if step]
+        for index, step in enumerate(steps):
+            if _action_name(str(step.get("uses", ""))) == "actions/checkout":
+                inputs = _mapping(step.get("with")) or {}
+                if "ref" in inputs or "repository" in inputs:
+                    problems.append(f"{location}: step {index} checkout con ref o repository non revisionato")
+        uses_secrets = False
+
+        def visit(node: object, where: tuple[str, ...]) -> None:
+            nonlocal uses_secrets
+            if isinstance(node, Mapping):
+                for key, value in node.items():
+                    visit(value, where + (str(key),))
+            elif isinstance(node, list):
+                for item_index, item in enumerate(node):
+                    visit(item, where + (str(item_index),))
+            elif isinstance(node, str) and SECRET_EXPRESSION.search(node):
+                uses_secrets = True
+                reviewed = (
+                    (path.name, str(job_name)) in REVIEWED_SECRET_JOBS and len(where) == 4 and where[0] == "steps"
+                    and where[2] == "env" and where[3] in RELEASE_SIGN_SECRETS
+                    and node.strip() == "${{ secrets." + where[3] + " }}"
+                )
+                if not reviewed:
+                    problems.append(f"{location}: secret fuori dagli step revisionati di release-sign ({'.'.join(where)})")
+
+        visit(job, ())
+        if not uses_secrets:
+            continue
+        for scope, values in [("env", job.get("env"))] + [
+            (f"step {index} {key}", step.get(key)) for index, step in enumerate(steps) for key in ("env", "with")
+        ]:
+            for value in (_mapping(values) or {}).values():
+                for expression in re.findall(r"\$\{\{(.*?)\}\}", str(value), flags=re.DOTALL):
+                    if UNTRUSTED_RUN_EXPRESSION.search(expression):
+                        problems.append(f"{location}: {scope} interpola {expression.strip()!r} in un job con secret")
+    for key in ("env", "defaults"):
+        if SECRET_EXPRESSION.search(str(workflow.get(key, ""))):
+            problems.append(f"{path.name}: secret fuori dagli step revisionati di release-sign ({key} globale)")
+
+
 def _check_permissions(path: Path, workflow: Mapping[str, Any], problems: list[str]) -> None:
     """An explicit top-level permissions mapping, and only read/none scopes unless a write scope was reviewed."""
 
@@ -487,6 +569,13 @@ def _check_run_hygiene(path: Path, workflow: Mapping[str, Any], problems: list[s
 PUNCTUALITY_WORKFLOW = "punctuality.yml"
 PUNCTUALITY_CACHE_PREFIX = "punctuality-raw-"
 PUNCTUALITY_PRINT_CONDITION = "${{ github.event_name == 'workflow_dispatch' && inputs.print_stats }}"
+# The raw observations cannot be collected again (ViaggiaTreno forgets past days): a run that restored no cache stops
+# before collecting unless a dispatch asks to bootstrap, and the cache is saved only when the collector wrote a state
+# (exit status 0, or 3 for a run stopped by a refusal or implausible answers) - never an empty or thinner one.
+PUNCTUALITY_DISPATCH_INPUTS = ("print_stats", "bootstrap")
+PUNCTUALITY_BOOTSTRAP = "${{ github.event_name == 'workflow_dispatch' && inputs.bootstrap }}"
+PUNCTUALITY_RESTORE_MATCH = "${{ steps.restore.outputs.cache-matched-key }}"
+PUNCTUALITY_SAVE_CONDITION = "${{ !cancelled() && steps.collect.outputs.saved == 'true' }}"
 PUNCTUALITY_ACTIONS = frozenset({"actions/checkout", "actions/setup-python", "actions/cache/restore", "actions/cache/save"})
 # Time the job needs besides the collection itself: checkout, pack loading, cache save, aggregation and print.
 PUNCTUALITY_DEADLINE_MARGIN_SECONDS = 600
@@ -533,12 +622,15 @@ def _check_punctuality(path: Path, workflow: Mapping[str, Any], problems: list[s
     if not 1 <= len(crons) <= 3 or None in runs or sum(runs) > PUNCTUALITY_MAX_DAILY_RUNS:
         problems.append(f"{name}: schedule da una a tre cron con minuto fisso, al massimo {PUNCTUALITY_MAX_DAILY_RUNS} run al giorno")
     dispatch_inputs = _mapping((_mapping(triggers.get("workflow_dispatch")) or {}).get("inputs")) or {}
-    print_input = _mapping(dispatch_inputs.get("print_stats"))
-    if (
-        set(dispatch_inputs) != {"print_stats"} or not print_input or print_input.get("type") != "boolean"
-        or print_input.get("required") is not False or print_input.get("default") is not False
-    ):
-        problems.append(f"{name}: serve il solo input booleano print_stats, fail-closed (predefinito false)")
+    if set(dispatch_inputs) != set(PUNCTUALITY_DISPATCH_INPUTS):
+        problems.append(f"{name}: input del dispatch ammessi soltanto {', '.join(PUNCTUALITY_DISPATCH_INPUTS)}")
+    for input_name in PUNCTUALITY_DISPATCH_INPUTS:
+        declared = _mapping(dispatch_inputs.get(input_name))
+        if (
+            not declared or declared.get("type") != "boolean"
+            or declared.get("required") is not False or declared.get("default") is not False
+        ):
+            problems.append(f"{name}: serve l'input booleano {input_name}, fail-closed (predefinito false)")
     if workflow.get("permissions") != {"contents": "read"}:
         problems.append(f"{name}: permissions deve essere esattamente contents: read")
     concurrency = _mapping(workflow.get("concurrency")) or {}
@@ -589,6 +681,28 @@ def _check_punctuality(path: Path, workflow: Mapping[str, Any], problems: list[s
             problems.append(f"{name}: la stampa deve essere l'ultimo step, solo con un dispatch e print_stats")
     if build is not None and "tools/build_punctuality_stats.py --check" not in _commands(steps[build].get("run")):
         problems.append(f"{name}: l'aggregazione deve verificare il file con --check")
+    for index, step in enumerate(steps):
+        for variable, value in (_mapping(step.get("env")) or {}).items():
+            if "inputs.bootstrap" in str(value) and (variable != "BOOTSTRAP" or value != PUNCTUALITY_BOOTSTRAP):
+                problems.append(f"{name}: step {index}: bootstrap solo come BOOTSTRAP: {PUNCTUALITY_BOOTSTRAP}")
+    if restore is not None and collect is not None:
+        guards = [
+            step for step in steps[restore + 1:collect]
+            if (_mapping(step.get("env")) or {}).get("MATCHED_KEY") == PUNCTUALITY_RESTORE_MATCH
+            and (_mapping(step.get("env")) or {}).get("BOOTSTRAP") == PUNCTUALITY_BOOTSTRAP
+            and '[ -z "$MATCHED_KEY" ] && [ "$BOOTSTRAP" != "true" ]' in _commands(step.get("run"))
+            and "exit 1" in _commands(step.get("run")) and "if" not in step
+        ]
+        if steps[restore].get("id") != "restore" or len(guards) != 1:
+            problems.append(f"{name}: fra ripristino e raccolta serve lo step che ferma la run senza cache ripristinata "
+                            "(cache-matched-key vuota e nessun bootstrap)")
+    if collect is not None and save is not None:
+        command = _commands(steps[collect].get("run"))
+        if (
+            steps[collect].get("id") != "collect" or steps[save].get("if") != PUNCTUALITY_SAVE_CONDITION
+            or 'if [ "$status" -eq 0 ] || [ "$status" -eq 3 ]; then echo "saved=true" >> "$GITHUB_OUTPUT"; fi' not in command
+        ):
+            problems.append(f"{name}: la cache si salva solo quando la raccolta ha scritto uno stato ({PUNCTUALITY_SAVE_CONDITION})")
     if restore is not None and save is not None:
         restored = _mapping(steps[restore].get("with")) or {}
         saved = _mapping(steps[save].get("with")) or {}
@@ -1091,6 +1205,7 @@ def workflow_problems(
     _check_freshness_gates(path, root or {}, problems)
     _check_permissions(path, root or {}, problems)
     _check_run_hygiene(path, root or {}, problems)
+    _check_triggers_checkouts_and_secrets(path, root or {}, problems)
     if path.name not in {"alexa-companion-ci.yml", "android-ci.yml", "companion-ci.yml", "gtfs-assets-ci.yml", "apple-watch-ci.yml"}:
         # The named workflows check the same policy with their own messages above.
         _check_push_branches(path, root or {}, lock, problems)
