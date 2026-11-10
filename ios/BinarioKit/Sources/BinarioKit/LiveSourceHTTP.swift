@@ -221,8 +221,19 @@ public struct URLSessionLiveTransport: LiveHTTPTransport {
         } onCancel: {
             delegate.cancel()
         }
-        session.finishTasksAndInvalidate()
+        Self.invalidate(session, after: outcome)
         return outcome
+    }
+
+    /// Ends the session of one request. A request cancelled before it started leaves its task
+    /// suspended, which `finishTasksAndInvalidate` would wait for forever, keeping the session and
+    /// its delegate: after a cancellation whatever the session still holds is cancelled.
+    static func invalidate(_ session: URLSession, after outcome: LiveTransportOutcome) {
+        if outcome == .failure(.cancelled) {
+            session.invalidateAndCancel()
+        } else {
+            session.finishTasksAndInvalidate()
+        }
     }
 }
 

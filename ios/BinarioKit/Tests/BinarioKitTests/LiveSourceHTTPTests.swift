@@ -240,4 +240,20 @@ final class LiveSourceHTTPTests: XCTestCase {
         XCTAssertEqual(outcome, .failure(.cancelled))
         XCTAssertEqual(task.state, .suspended, "the task was never resumed")
     }
+
+    func testACancelledRequestReleasesItsSessionWithTheTaskItNeverStarted() async throws {
+        let url = try XCTUnwrap(URL(string: "https://iechub.rfi.it/ArriviPartenze"))
+        let session = URLSession(configuration: .ephemeral)
+        let task = session.dataTask(with: url)
+        let delegate = LiveDataTaskDelegate(maximumBytes: 1_024, requestedURL: url)
+        delegate.cancel()
+        let outcome = await withCheckedContinuation { (continuation: CheckedContinuation<LiveTransportOutcome, Never>) in
+            delegate.start(task, continuation: continuation)
+        }
+        XCTAssertEqual(outcome, .failure(.cancelled))
+        URLSessionLiveTransport.invalidate(session, after: outcome)
+        for _ in 0..<50 where task.state == .suspended { try await Task.sleep(nanoseconds: 20_000_000) }
+        XCTAssertNotEqual(task.state, .suspended, "the task left suspended is cancelled, so the session can go")
+        XCTAssertNotEqual(task.state, .running, "and it was never sent")
+    }
 }
