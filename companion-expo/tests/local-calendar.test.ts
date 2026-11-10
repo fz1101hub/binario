@@ -1,10 +1,11 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("expo-document-picker", () => ({ getDocumentAsync: vi.fn() }));
-vi.mock("expo-file-system/legacy", () => ({ cacheDirectory: "file:///cache/", writeAsStringAsync: vi.fn(), readAsStringAsync: vi.fn() }));
+const files = vi.hoisted(() => ({ getDocumentAsync: vi.fn(), readAsStringAsync: vi.fn(), deleteAsync: vi.fn() }));
+vi.mock("expo-document-picker", () => ({ getDocumentAsync: files.getDocumentAsync }));
+vi.mock("expo-file-system/legacy", () => ({ cacheDirectory: "file:///cache/", writeAsStringAsync: vi.fn(), readAsStringAsync: files.readAsStringAsync, deleteAsync: files.deleteAsync }));
 vi.mock("expo-sharing", () => ({ isAvailableAsync: vi.fn(), shareAsync: vi.fn() }));
 
-import { buildLocalJourneyIcs, calendarDraftKey, foldIcsLine, parseLocalJourneyIcs } from "@/lib/local-calendar";
+import { buildLocalJourneyIcs, calendarDraftKey, foldIcsLine, parseLocalJourneyIcs, pickLocalJourneyIcs } from "@/lib/local-calendar";
 
 const deviceTimeZone = process.env.TZ;
 afterEach(() => { process.env.TZ = deviceTimeZone; });
@@ -63,6 +64,17 @@ describe("importazione ICS", () => {
       ["SUMMARY:Riunione", "DTSTART:20261112T080000"],
       ["SUMMARY:Roma Termini → Milano Centrale", "DTSTART:20270328T023000"],
     ))).toEqual([]);
+  });
+});
+
+describe("copia del file scelto", () => {
+  it("rimuove dalla cache la copia del calendario importato, anche se non è leggibile", async () => {
+    files.getDocumentAsync.mockResolvedValue({ canceled: false, assets: [{ uri: "file:///cache/DocumentPicker/a.ics" }] });
+    files.readAsStringAsync.mockResolvedValueOnce(calendar(["SUMMARY:Roma Termini → Milano Centrale", "DTSTART:20261112T080000"]));
+    await expect(pickLocalJourneyIcs()).resolves.toHaveLength(1);
+    files.readAsStringAsync.mockRejectedValueOnce(new Error("unreadable"));
+    await expect(pickLocalJourneyIcs()).resolves.toEqual([]);
+    expect(files.deleteAsync.mock.calls).toEqual([["file:///cache/DocumentPicker/a.ics", { idempotent: true }], ["file:///cache/DocumentPicker/a.ics", { idempotent: true }]]);
   });
 });
 

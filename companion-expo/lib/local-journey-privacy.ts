@@ -4,14 +4,18 @@ export type LocalJourneyArchiveDependencies = {
   clearRoutes: () => Promise<unknown>;
   /** Obbligatorio: gli itinerari a tappe referenziano le tratte e devono sparire insieme all’archivio. */
   clearItineraries: () => Promise<unknown>;
+  /** Obbligatorio: file di esportazione e copie dei file importati rimasti nella cache dell’app. */
+  clearCachedFiles: () => Promise<unknown>;
 };
 
 export async function clearLocalJourneyArchive(dependencies: LocalJourneyArchiveDependencies) {
   if (typeof dependencies.clearItineraries !== "function") throw new TypeError("clearLocalJourneyArchive richiede clearItineraries: gli itinerari locali vanno cancellati insieme alle tratte.");
+  if (typeof dependencies.clearCachedFiles !== "function") throw new TypeError("clearLocalJourneyArchive richiede clearCachedFiles: le copie in cache di esportazioni e importazioni contengono tratte.");
   const scheduledIds = await dependencies.listScheduledRouteIds();
   await Promise.all(scheduledIds.map(routeId => dependencies.cancelReminder(routeId)));
   await dependencies.clearRoutes();
   await dependencies.clearItineraries();
+  await dependencies.clearCachedFiles();
   return { clearedReminders: scheduledIds.length };
 }
 

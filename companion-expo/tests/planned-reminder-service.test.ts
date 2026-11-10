@@ -378,6 +378,7 @@ describe("promemoria riconosciuti in ogni lingua del dispositivo", () => {
         cancelReminder: cancelPlannedRouteReminder,
         clearRoutes: async () => undefined,
         clearItineraries: async () => undefined,
+        clearCachedFiles: async () => undefined,
       })).resolves.toEqual({ clearedReminders: 1 });
       expect(state.scheduled.size).toBe(0);
     });

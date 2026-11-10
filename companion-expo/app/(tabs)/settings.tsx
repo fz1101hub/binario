@@ -9,6 +9,8 @@ import { clearLocalJourneyItineraries } from "@/lib/local-itineraries";
 import { clearLocalJourneyArchive } from "@/lib/local-journey-privacy";
 import { loadLocalJourneyTimingPreferences, localJourneyReminderOptions, saveLocalJourneyTimingPreferences, type LocalJourneyReminderPreference } from "@/lib/local-journey-timing";
 import { cancelPlannedRouteReminder, listScheduledRouteIds } from "@/lib/planned-reminder-service";
+import { deleteLocalJourneyCacheFiles } from "@/lib/local-journey-files";
+import { refreshNativeCompanionSurfaces } from "@/lib/native-surface-refresh";
 import Constants from "expo-constants";
 import { router } from "expo-router";
 import { useEffect, useState } from "react";
@@ -41,7 +43,9 @@ export default function SettingsScreen() {
   }
 
   async function clearLocalJourneyData() {
-    const result = await clearLocalJourneyArchive({ listScheduledRouteIds, cancelReminder: cancelPlannedRouteReminder, clearRoutes: clearLocalPlannedRoutes, clearItineraries: clearLocalJourneyItineraries });
+    const result = await clearLocalJourneyArchive({ listScheduledRouteIds, cancelReminder: cancelPlannedRouteReminder, clearRoutes: clearLocalPlannedRoutes, clearItineraries: clearLocalJourneyItineraries, clearCachedFiles: deleteLocalJourneyCacheFiles });
+    // The widget and the watch must not keep showing a journey that is no longer on the phone.
+    await refreshNativeCompanionSurfaces(locale);
     setStatus(t("settings.cleared", { count: result.clearedReminders }));
   }
 
@@ -68,6 +72,7 @@ export default function SettingsScreen() {
   async function importManualTransfer() {
     const selected = manualTransferPreview.filter(candidate => candidate.state === "new" && selectedManualTransfer.includes(candidate.key)).map(candidate => candidate.route);
     const imported = await importSelectedManualPlannedRoutes(selected);
+    if (imported) await refreshNativeCompanionSurfaces(locale);
     setManualTransferPreview([]); setSelectedManualTransfer([]);
     setStatus(t("settings.imported", { count: imported }));
   }

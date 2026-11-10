@@ -3,12 +3,13 @@ import * as FileSystem from "expo-file-system/legacy";
 import * as Sharing from "expo-sharing";
 import type { LocalPlannedRoute } from "@/lib/local-route-contract";
 import { createTranslator, type CompanionLocale } from "@/lib/i18n";
+import { deletePickedFileCopy, localJourneyExportFileNames } from "@/lib/local-journey-files";
 import { formatTravelDate, formatTravelTime, italianWallClock, travelEpochMs, travelTimeZone, zonedWallClockToEpoch, type WallClock } from "@/lib/travel-time-zone";
 
 export type CalendarRouteDraft = Pick<LocalPlannedRoute, "origin" | "originStationCode" | "destination" | "destinationStationCode" | "travelDate" | "travelTime" | "plannedReminderMinutes">;
 
 /** The cache file of the last calendar export; removed by «Cancella archivio locale». */
-export const localJourneyIcsFileName = "binario-tratta.ics";
+export const localJourneyIcsFileName = localJourneyExportFileNames[0];
 
 /** Zone names that keep Italian time all year. */
 const italianTimeZoneIds = new Set(["europe/rome", "europe/vatican", "europe/san_marino"]);
@@ -140,5 +141,5 @@ export async function shareLocalJourneyIcs(route: LocalPlannedRoute, locale?: Co
 export async function pickLocalJourneyIcs(): Promise<CalendarRouteDraft[]> {
   const result = await DocumentPicker.getDocumentAsync({ type: ["text/calendar", "text/plain"], copyToCacheDirectory: true });
   if (result.canceled || !result.assets[0]) return [];
-  try { return parseLocalJourneyIcs(await FileSystem.readAsStringAsync(result.assets[0].uri)); } catch { return []; }
+  try { return parseLocalJourneyIcs(await FileSystem.readAsStringAsync(result.assets[0].uri)); } catch { return []; } finally { await deletePickedFileCopy(result.assets[0].uri); }
 }

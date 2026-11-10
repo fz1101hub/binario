@@ -8,6 +8,7 @@ import { addExplicitRecurringLocalPlannedRoutes, addLocalPlannedRoute, isLocalRo
 import { calendarDraftKey, pickLocalJourneyIcs, shareLocalJourneyIcs, type CalendarRouteDraft } from "@/lib/local-calendar";
 import { reconcileLocalJourneyItineraries } from "@/lib/local-itineraries";
 import { deleteLocalPlannedRoute } from "@/lib/local-journey-privacy";
+import { refreshNativeCompanionSurfaces } from "@/lib/native-surface-refresh";
 import { acknowledgeNativeAction, confirmNativeAction } from "@/lib/native-feedback";
 import { agendaReminderLeadKey, createReplannedLocalRouteDraft, createReturnLocalRouteDraft, filterLocalJourneyAgenda, getLocalJourneyPreparationPreset, localJourneyChecklistPresets, localJourneyChecklistTranslationKeys, localJourneyWeekdays, maxExplicitLocalJourneyOccurrences, remainingLocalJourneyChecklistItems, type ControlledLocalRouteDraft, type LocalAgendaFilter, type LocalJourneyChecklistPreset, type LocalJourneyWeekday } from "@/lib/local-route-contract";
 import { useCompanionTheme } from "@/lib/theme";
@@ -63,6 +64,8 @@ export default function AlertsScreen() {
   }
   useFocusEffect(useCallback(() => { void refresh(); }, [locale]));
   useEffect(() => { if (message && Platform.OS !== "web") AccessibilityInfo.announceForAccessibility(message); }, [message]);
+  // Every Agenda change (delete, complete, reminder, import, copies, priority) reaches the widget and the watch at once.
+  useEffect(() => { if (!loading) void refreshNativeCompanionSurfaces(locale); }, [loading, locale, routes, scheduledIds]);
   async function toggle(route: LocalPlannedRoute) {
     try {
       if (scheduledIds.includes(route.id)) {
