@@ -28,7 +28,6 @@ import java.time.Instant
 import java.time.LocalTime
 import java.time.ZoneId
 import java.util.concurrent.TimeUnit
-import kotlin.math.abs
 
 /** Watch-face surface for the same local snapshot rendered by the Wear app and Tile. */
 class BinarioComplicationService : SuspendingComplicationDataSourceService() {
@@ -77,17 +76,25 @@ internal val RAIL_TIME_ZONE: ZoneId = ZoneId.of("Europe/Rome")
 private const val DEPARTED_GRACE_MILLIS = 60_000L
 
 /**
- * The instant of an "HH:mm" departure: of the occurrences on the day before, the same day and the
- * day after the snapshot's generation, the nearest one. A 00:10 train listed at 23:50 is the next
- * day's, a 23:58 one listed at 00:05 the previous day's. Null for a time that does not parse.
+ * A listed departure up to this long before the snapshot's generation is one that has just left;
+ * any other clock time is its next occurrence. The phone lists departures from the time of the
+ * request and, after the day's last train, the next morning's first ones up to a day ahead.
+ */
+private const val LISTED_DEPARTURE_LOOKBACK_MILLIS = 2 * 60 * 60 * 1_000L
+
+/**
+ * The instant of an "HH:mm" departure: the first occurrence, on the day before, the same day or the
+ * day after the snapshot's generation, that is not more than two hours before the generation. A
+ * 00:10 train listed at 23:50 is the next day's, a 23:58 one listed at 00:05 the previous day's, a
+ * 05:50 one listed at 17:30 the next morning's. Null for a time that does not parse.
  */
 internal fun departureInstant(time: String, generatedAtEpochMillis: Long, zone: ZoneId = RAIL_TIME_ZONE): Instant? {
     val clock = runCatching { LocalTime.parse(time) }.getOrNull() ?: return null
-    val generated = Instant.ofEpochMilli(generatedAtEpochMillis)
-    val day = generated.atZone(zone).toLocalDate()
+    val earliest = generatedAtEpochMillis - LISTED_DEPARTURE_LOOKBACK_MILLIS
+    val day = Instant.ofEpochMilli(generatedAtEpochMillis).atZone(zone).toLocalDate()
     return listOf(day.minusDays(1), day, day.plusDays(1))
         .map { date -> date.atTime(clock).atZone(zone).toInstant() }
-        .minByOrNull { candidate -> abs(candidate.toEpochMilli() - generatedAtEpochMillis) }
+        .firstOrNull { candidate -> candidate.toEpochMilli() >= earliest }
 }
 
 /** The service a glance should show at [nowEpochMillis]: the first not yet gone, else the last one. */

@@ -65,7 +65,7 @@ class BinarioComplicationDataTest {
     }
 
     @Test
-    fun `a departure is the occurrence of its clock time nearest to the snapshot generation`() {
+    fun `a departure is the first occurrence of its clock time from two hours before the snapshot generation`() {
         val lateEvening = Instant.parse("2030-01-01T22:50:00Z").toEpochMilli() // 23:50 in Rome
         val afterMidnight = Instant.parse("2030-01-01T23:05:00Z").toEpochMilli() // 00:05 in Rome
 
@@ -74,6 +74,24 @@ class BinarioComplicationDataTest {
         assertEquals(Instant.parse("2030-07-01T06:15:00Z"), departureInstant("08:15", Instant.parse("2030-07-01T06:00:00Z").toEpochMilli()))
         assertNull(departureInstant("", lateEvening))
         assertNull(departureInstant("25:00", lateEvening))
+    }
+
+    @Test
+    fun `next-morning trains listed after the last train of the day are in the future`() {
+        // 10 Nov 2026 17:30 in Rome: the phone lists the next morning's first departures after the day's last train.
+        val evening = Instant.parse("2026-11-10T16:30:00Z").toEpochMilli()
+
+        assertEquals(Instant.parse("2026-11-11T04:50:00Z"), departureInstant("05:50", evening))
+        assertEquals(Instant.parse("2026-11-11T05:20:00Z"), departureInstant("06:20", evening))
+        // Exactly twelve hours ahead is the next occurrence, not the one twelve hours ago.
+        assertEquals(Instant.parse("2026-11-11T04:30:00Z"), departureInstant("05:30", evening))
+        // A train that left within the last two hours stays in the past, so the glance skips it.
+        assertEquals(Instant.parse("2026-11-10T15:45:00Z"), departureInstant("16:45", evening))
+
+        val nextMorning = snapshot(services = listOf(service.copy(scheduledDeparture = "05:50", expectedDeparture = "05:50")))
+            .copy(generatedAtEpochMillis = evening)
+        val texts = shortTextComplicationTexts(nextMorning, ResourceNameStrings, evening + 60_000L)
+        assertEquals(Instant.parse("2026-11-11T04:50:00Z"), texts.countdownTo)
     }
 
     @Test

@@ -21,7 +21,7 @@ Un decoder accetta esclusivamente `schemaVersion: 1`. Una versione superiore (o 
 
 `generatedAtEpochMillis` identifica l'istante di generazione dello snapshot; `expiresAtEpochMillis` è il limite assoluto di visualizzazione e `ttlMillis` rende verificabile la finestra senza interpretazioni implicite del trasporto. Il produttore Android limita ulteriormente i dati operativi alla scadenza ricevuta e a 15 minuti; il Companion usa la scadenza della pianificazione locale.
 
-Gli orari `service{n}Scheduled` e `service{n}Expected` del produttore Android sono orari locali `HH:mm` di Europe/Rome (`RailTime.defaultZone`): la complication Wear ne ricava l'istante più vicino a `generatedAtEpochMillis` per il conto alla rovescia e, se l'orario non è interpretabile, mostra il testo così com'è.
+Gli orari `service{n}Scheduled` e `service{n}Expected` del produttore Android sono orari locali `HH:mm` di Europe/Rome (`RailTime.defaultZone`): il watch Wear ne ricava la prima occorrenza non anteriore di oltre due ore a `generatedAtEpochMillis` (una corsa del mattino dopo elencata la sera è nel futuro) per il conto alla rovescia e per passare alla corsa successiva e, se l'orario non è interpretabile, mostra il testo così com'è.
 
 Il campo `notice` del produttore Android contiene l'avviso nella lingua del telefono (fonte di copertura non ufficiale, fonti in conflitto, altrimenti il primo avviso di qualità dello snapshot), mai il testo libero della fonte dati; senza avvisi il campo è vuoto.
 
