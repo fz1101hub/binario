@@ -397,7 +397,7 @@ class ViaggiaTrenoRealtimeAdapter(
                 platform = row.text(if (index == 0) "binarioEffettivoPartenzaDescrizione" else "binarioEffettivoArrivoDescrizione"),
                 delayMinutes = actualStop?.let { Duration.between(at, it).toMinutes().toInt() } ?: if (stopVerified) delay ?: 0 else 0,
                 completed = actualStop != null, operationalStatusVerified = stopVerified,
-                routeChange = if (row.intOrNull("actualFermataType") in setOf(2, 3)) StopRouteChange.SKIPPED else StopRouteChange.NONE,
+                routeChange = stopRouteChange(row),
                 scheduledPlatform = row.text(if (index == 0) "binarioProgrammatoPartenzaDescrizione" else "binarioProgrammatoArrivoDescrizione"))
         }
         if (stops.isEmpty()) return null
@@ -426,7 +426,12 @@ class ViaggiaTrenoRealtimeAdapter(
         if (start < 0 || end <= start) return null
         val segment = stops.subList(start, end + 1)
         val cancelled = run.intOrNull("provvedimento") == 1 || run.text("tipoTreno") == "ST"
-        if (!cancelled && segment.any { it.intOrNull("actualFermataType") == 2 || it.intOrNull("actualFermataType") == 3 }) return null
+        // Only the traveller's own stops decide: a run that does not stop where they board or get off is not offered
+        // (2 is read as an extraordinary stop, 3 as a suppressed one; Trenitalia does not document 2, so both are
+        // refused there). A suppressed or extraordinary stop in between is shown on the stop, not a reason to drop the
+        // run (audit android-data-3).
+        if (!cancelled && (segment.first().intOrNull("actualFermataType") in VARIED_STOP_TYPES ||
+                segment.last().intOrNull("actualFermataType") in VARIED_STOP_TYPES)) return null
         val boarding = segment.first()
         val departure = (boarding.millis("partenza_teorica") ?: boarding.millis("programmata"))?.let(Instant::ofEpochMilli) ?: return null
         val requested = query.requestedAt.atZone(zone).toInstant()
@@ -439,13 +444,21 @@ class ViaggiaTrenoRealtimeAdapter(
         val expectedDeparture = actualDeparture ?: departure.plusSeconds(visibleDelay * 60L)
         if (expectedDeparture.isBefore(requested) || expectedDeparture.isAfter(requested.plusSeconds(8 * 3600))) return null
         val trainStops = segment.mapIndexed { index, stop ->
-            val scheduled = (if (index == 0) stop.millis("partenza_teorica") else stop.millis("arrivo_teorico"))
-                ?: stop.millis("programmata") ?: return null
+            val scheduledMillis = (if (index == 0) stop.millis("partenza_teorica") else stop.millis("arrivo_teorico"))
+                ?: stop.millis("programmata")
+            val routeChange = stopRouteChange(stop)
+            if (scheduledMillis == null && routeChange == StopRouteChange.ADDED && index in 1 until segment.lastIndex) {
+                // An extraordinary stop has no timetable time to show.
+                return@mapIndexed TrainStop(stop.text("stazione") ?: return null, "—", "—", null, 0, completed = false,
+                    routeChange = routeChange, operationalStatusVerified = false)
+            }
+            val scheduled = scheduledMillis ?: return null
             val actual = if (index == 0) stop.millis("partenzaReale") else stop.millis("arrivoReale")
             val at = Instant.ofEpochMilli(scheduled)
             TrainStop(
                 station = if (index == 0) route.origin(direction).name else if (index == segment.lastIndex) route.destination(direction).name else stop.text("stazione") ?: return null,
                 scheduled = time(at), expected = time(actual?.let(Instant::ofEpochMilli) ?: at.plusSeconds(visibleDelay * 60L)),
+                routeChange = routeChange,
                 platform = stop.text(if (index == 0) "binarioEffettivoPartenzaDescrizione" else "binarioEffettivoArrivoDescrizione"),
                 delayMinutes = actual?.let { Duration.between(at, Instant.ofEpochMilli(it)).toMinutes().toInt() } ?: visibleDelay,
                 completed = actual != null, operationalStatusVerified = actual != null || (verified && !cancelled),
@@ -469,6 +482,17 @@ class ViaggiaTrenoRealtimeAdapter(
         )
     }
 
+    /**
+     * ViaggiaTreno's actualFermataType, read as the punctuality pipeline reads it (tools/collect_punctuality.py,
+     * docs/data-sources/PUNCTUALITY_STATS.md): 3 a suppressed stop, 2 an extraordinary stop the timetable does not have.
+     * Trenitalia does not document 2.
+     */
+    private fun stopRouteChange(row: JSONObject): StopRouteChange = when (row.intOrNull("actualFermataType")) {
+        SUPPRESSED_STOP_TYPE -> StopRouteChange.SKIPPED
+        EXTRAORDINARY_STOP_TYPE -> StopRouteChange.ADDED
+        else -> StopRouteChange.NONE
+    }
+
     private fun recent(observed: Instant, fetched: Instant) = !observed.isBefore(fetched.minusSeconds(300)) && !observed.isAfter(fetched.plusSeconds(60))
     private fun TrainService.publicNumericNumber(): String? = TrainNumberQuery(number.substringAfterLast(" - "), clock.instant().atZone(zone).toLocalDate()).numeric
     private fun code(value: String?) = value?.takeIf { it.matches(Regex("S[0-9]{5}")) }
@@ -481,5 +505,8 @@ class ViaggiaTrenoRealtimeAdapter(
         /** Boards and number discovery, which must not queue behind a batch of run details. */
         const val DISCOVERY_PERMITS = 2
         const val DETAIL_PERMITS = 3
+        const val EXTRAORDINARY_STOP_TYPE = 2
+        const val SUPPRESSED_STOP_TYPE = 3
+        val VARIED_STOP_TYPES = setOf(EXTRAORDINARY_STOP_TYPE, SUPPRESSED_STOP_TYPE)
     }
 }

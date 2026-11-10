@@ -275,6 +275,25 @@ class ViaggiaTrenoRealtimeAdapterTest {
         assertNull(adapter.parseRun(run(), "12345", "S08001", runDate, route, Direction.RETURN, query, now))
     }
 
+    /** Audit android-data-3: a varied stop in between is shown on the stop; only the traveller's own stops refuse the run. */
+    @Test fun `fermata soppressa o straordinaria intermedia non fa sparire la corsa`() {
+        val adapter = adapter()
+        val skipped = run().apply { getJSONArray("fermate").getJSONObject(2).put("actualFermataType", 3) }
+        val kept = adapter.parseRun(skipped, "12345", "S08001", runDate, route, Direction.OUTBOUND, query, now)
+        assertEquals(listOf(StopRouteChange.NONE, StopRouteChange.SKIPPED, StopRouteChange.NONE), kept?.stops?.map { it.routeChange })
+        val extraordinary = run().apply {
+            getJSONArray("fermate").getJSONObject(2).put("actualFermataType", 2).remove("arrivo_teorico")
+            getJSONArray("fermate").getJSONObject(2).remove("partenza_teorica")
+        }
+        val added = adapter.parseRun(extraordinary, "12345", "S08001", runDate, route, Direction.OUTBOUND, query, now)?.stops?.get(1)
+        assertEquals(StopRouteChange.ADDED, added?.routeChange)
+        assertEquals("—", added?.scheduled)
+        for (index in listOf(1, 3)) for (type in listOf(2, 3)) {
+            val own = run().apply { getJSONArray("fermate").getJSONObject(index).put("actualFermataType", type) }
+            assertNull("stop $index type $type", adapter.parseRun(own, "12345", "S08001", runDate, route, Direction.OUTBOUND, query, now))
+        }
+    }
+
     @Test fun `cancellazione esplicita resta visibile anche con fermate soppresse`() = runBlocking {
         val run = run().put("tipoTreno", "ST").put("provvedimento", 1).put("oraUltimoRilevamento", JSONObject.NULL)
         run.getJSONArray("fermate").getJSONObject(3).put("actualFermataType", 3)
