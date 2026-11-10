@@ -208,6 +208,60 @@ final class LiveRailDataTests: XCTestCase {
         XCTAssertTrue(board.warnings.contains(.identityAmbiguous))
     }
 
+    func testATrenordTrainListedByRfiAndViaggiaTrenoKeepsItsLiveValues() async throws {
+        let scheduled = now.addingTimeInterval(2 * 3_600)
+        let window = LiveBoardWindow(
+            station: station, from: now.addingTimeInterval(-600), to: now.addingTimeInterval(6 * 3_600),
+            lateSince: now.addingTimeInterval(-2 * 3_600)
+        )
+        // ViaggiaTreno's board lists Trenord's trains without naming the carrier.
+        func viaggiaTrenoBoard(destination: String) throws -> [LiveDeparture] {
+            let text = """
+                [{"numeroTreno": 2153, "codOrigine": "S01700", "dataPartenzaTreno": \(LiveTestDates.runDateMillis),
+                  "orarioPartenza": \(LiveRailTime.millis(scheduled)), "ritardo": 4,
+                  "ultimoRilev": \(LiveRailTime.millis(now.addingTimeInterval(-30))), "destinazione": "\(destination)",
+                  "categoria": "REG", "provvedimento": 0, "nonPartito": false,
+                  "binarioProgrammatoPartenzaDescrizione": "4", "binarioEffettivoPartenzaDescrizione": "5"}]
+                """
+            return try XCTUnwrap(ViaggiaTrenoParser.departures(text, window: window, fetchedAt: now))
+        }
+        let rfiRow = makeRow(.rfiStationBoard, number: "2153", scheduled: scheduled, expectedMinutes: nil, platform: "5",
+                             status: nil, operatorID: "trenord", destination: "Bergamo")
+        let rfi = CannedBoardSource(source: .rfiStationBoard, answer: .answered([rfiRow], complete: true))
+
+        let same = try viaggiaTrenoBoard(destination: "BERGAMO")
+        XCTAssertNil(same.first?.operatorID, "a carrier the row does not name is unknown, not Trenitalia")
+        let viaggiaTreno = CannedBoardSource(source: .viaggiaTreno, answer: .answered(same, complete: true))
+        let result = await LiveRailData(statusSources: [], boardSources: [rfi, viaggiaTreno]).departures(LiveDeparturesRequest(station: station, from: now))
+        guard case let .available(board) = result else { return XCTFail("expected a board, got \(result)") }
+        XCTAssertEqual(board.departures.count, 1, "RFI's «TRENORD» row and ViaggiaTreno's row are one train")
+        XCTAssertFalse(board.warnings.contains(.identityAmbiguous))
+        let merged = try XCTUnwrap(LiveOverlay.departure(number: "RE_11 - 2153", scheduled: scheduled, in: board.departures))
+        XCTAssertEqual(merged.sources, [.rfiStationBoard, .viaggiaTreno])
+        XCTAssertEqual(merged.delayMinutes, 4)
+        XCTAssertEqual(merged.expected?.observation.source, .viaggiaTreno)
+        XCTAssertEqual(merged.platform?.observation.source, .rfiStationBoard)
+
+        // A destination spelt differently keeps the rows apart: the board's best source answers
+        // instead of nothing.
+        let apartRows = try viaggiaTrenoBoard(destination: "BERGAMO FS")
+        let apart = CannedBoardSource(source: .viaggiaTreno, answer: .answered(apartRows, complete: true))
+        let split = await LiveRailData(statusSources: [], boardSources: [rfi, apart]).departures(LiveDeparturesRequest(station: station, from: now))
+        guard case let .available(splitBoard) = split else { return XCTFail("expected a board, got \(split)") }
+        XCTAssertEqual(splitBoard.departures.count, 2)
+        let chosen = try XCTUnwrap(LiveOverlay.departure(number: "2153", scheduled: scheduled, in: splitBoard.departures))
+        XCTAssertEqual(chosen.sources, [.rfiStationBoard], "RFI is the authority for the row")
+        XCTAssertEqual(chosen.platform?.value, "5")
+
+        // Two rows of one source at the same time are two trains: none is guessed.
+        let twice = [
+            makeRow(.rfiStationBoard, number: "2153", scheduled: scheduled, expectedMinutes: nil, platform: "1", status: nil, operatorID: "trenord"),
+            makeRow(.rfiStationBoard, number: "2153", scheduled: scheduled, expectedMinutes: nil, platform: "2", status: nil, operatorID: "trenord",
+                    destination: "Lecco"),
+        ]
+        XCTAssertNil(LiveOverlay.departure(number: "2153", scheduled: scheduled, in: twice))
+    }
+
     func testAFailedOrSlowSourceLeavesTheOthersAndEveryoneNotCoveringIsFinal() async {
         let scheduled = now.addingTimeInterval(3_600)
         let rfi = CannedBoardSource(source: .rfiStationBoard, answer: .answered([

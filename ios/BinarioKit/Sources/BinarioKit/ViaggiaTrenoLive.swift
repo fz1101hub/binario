@@ -221,7 +221,7 @@ enum ViaggiaTrenoParser {
             return ViaggiaTrenoRunReference(originCode: origin, number: number, departureDateMillis: date)
         }
         return LiveDeparture(
-            id: "viaggiatreno:\(number):\(LiveRailTime.isoDay(scheduled))", number: number, operatorID: "trenitalia",
+            id: "viaggiatreno:\(number):\(LiveRailTime.isoDay(scheduled))", number: number, operatorID: boardOperatorID(row),
             category: LiveText.bounded(row.text("categoria"), maximumLength: 16) ?? "",
             destination: LiveText.bounded(row.text("destinazione"), maximumLength: maximumNameLength) ?? "",
             scheduled: scheduled, expected: expectedTime.map { LiveSourced($0, observation: observation) },
@@ -231,6 +231,16 @@ enum ViaggiaTrenoParser {
             status: status.map { LiveSourced($0, observation: observation) }, sources: [.viaggiaTreno], viaggiaTrenoRun: run,
             observation: observation
         )
+    }
+
+    /// The operator a board row names itself (`compImpresa`, read as `run` reads it), else nil: the
+    /// board lists Trenord's trains too, and an operator the row does not state must never keep it
+    /// apart from RFI's row of the same train («TRENORD»).
+    static func boardOperatorID(_ row: LiveJSONObject) -> String? {
+        guard let brand = LiveText.bounded(row.text("compImpresa"), maximumLength: 64) else { return nil }
+        if brand.range(of: "trenord", options: .caseInsensitive) != nil { return "trenord" }
+        if brand.range(of: "trenitalia", options: .caseInsensitive) != nil { return "trenitalia" }
+        return nil
     }
 
     /// A time of the payload within a day of `reference`, else nil (an unreadable or default value).

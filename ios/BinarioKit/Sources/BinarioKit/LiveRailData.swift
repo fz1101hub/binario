@@ -352,17 +352,38 @@ public enum LiveOverlay {
 
     /// The live row of the train numbered `number` (any form: "RE_11 - 2153", "FR 9558") leaving
     /// at `scheduled`: the same number key, scheduled within five minutes; the closer one when
-    /// two are, nil when none is or two are equally close.
+    /// two are. Rows equally close are one train only when the board could not merge them (other
+    /// sources, the same scheduled time: a destination spelt differently): the row of the board's
+    /// best source then. Nil when none is close, or two equally close rows may be two trains.
     public static func departure(number: String, scheduled: Date, in departures: [LiveDeparture]) -> LiveDeparture? {
         let key = NetworkReliability.numberKey(number)
         let near = departures.filter {
             $0.numberKey == key && abs($0.scheduled.timeIntervalSince(scheduled)) <= identityTolerance
         }.sorted { abs($0.scheduled.timeIntervalSince(scheduled)) < abs($1.scheduled.timeIntervalSince(scheduled)) }
         guard let closest = near.first else { return nil }
-        if near.count > 1, abs(near[1].scheduled.timeIntervalSince(scheduled)) == abs(closest.scheduled.timeIntervalSince(scheduled)) {
-            return nil
+        let distance = abs(closest.scheduled.timeIntervalSince(scheduled))
+        let tied = near.filter { abs($0.scheduled.timeIntervalSince(scheduled)) == distance }
+        guard tied.count > 1 else { return closest }
+        return bestRowOfOneTrain(tied)
+    }
+
+    /// Rows of one train that sources listed apart: all at the same scheduled time and no source
+    /// in two of them (one source listing two rows means two trains). The row whose source scores
+    /// best for the row itself (`LiveSourcePolicy`, `.stationBoard`: RFI first); nil on a tie.
+    static func bestRowOfOneTrain(_ rows: [LiveDeparture]) -> LiveDeparture? {
+        guard let first = rows.first, rows.allSatisfy({ $0.scheduled == first.scheduled }) else { return nil }
+        var seen: Set<LiveSource> = []
+        for row in rows {
+            guard seen.isDisjoint(with: row.sources) else { return nil }
+            seen.formUnion(row.sources)
         }
-        return closest
+        let hint = rows.compactMap(\.operatorID).first
+        let scores: [Int] = rows.map { row in
+            row.sources.map { LiveSourcePolicy.score(.stationBoard, $0, operatorHint: hint) }.max() ?? 0
+        }
+        guard let best = scores.max(), scores.filter({ $0 == best }).count == 1,
+              let index = scores.firstIndex(of: best) else { return nil }
+        return rows[index]
     }
 
     /// The live row of a bundled timetable train: its "HH:mm" departure on `day` (Italian time;
