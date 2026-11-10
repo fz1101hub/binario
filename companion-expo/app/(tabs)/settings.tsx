@@ -2,13 +2,18 @@ import { ScreenContainer } from "@/components/screen-container";
 import { createNativeDiagnosticReport } from "@/lib/diagnostics";
 import { useTranslation } from "@/lib/i18n";
 import { type ThemeMode, useCompanionTheme } from "@/lib/theme";
-import { clearLocalPlannedRoutes, importSelectedManualPlannedRoutes, loadLocalPlannedRoutes } from "@/lib/local-routes";
+import { clearLocalPlannedRoutes, importSelectedManualPlannedRoutes, loadLocalPlannedRoutes, localRoutesArchiveStatus } from "@/lib/local-routes";
 import { pickLocalJourneyTransfer, shareLocalJourneyTransfer } from "@/lib/manual-route-transfer";
 import { previewManualRouteTransfer, type ManualRouteTransferPreview } from "@/lib/manual-route-transfer-contract";
 import { clearLocalJourneyItineraries } from "@/lib/local-itineraries";
 import { clearLocalJourneyArchive } from "@/lib/local-journey-privacy";
 import { loadLocalJourneyTimingPreferences, localJourneyReminderOptions, saveLocalJourneyTimingPreferences, type LocalJourneyReminderPreference } from "@/lib/local-journey-timing";
 import { cancelPlannedRouteReminder, listScheduledRouteIds } from "@/lib/planned-reminder-service";
+import { deleteLocalJourneyCacheFiles } from "@/lib/local-journey-files";
+import { clearLocalJourneyTemplates } from "@/lib/local-journey-templates";
+import { clearLocalRecentStations } from "@/lib/local-recent-stations";
+import { refreshNativeCompanionSurfaces } from "@/lib/native-surface-refresh";
+import { hasAndroidSurfaces } from "@/lib/platform-surfaces";
 import Constants from "expo-constants";
 import { router } from "expo-router";
 import { useEffect, useState } from "react";
@@ -41,7 +46,9 @@ export default function SettingsScreen() {
   }
 
   async function clearLocalJourneyData() {
-    const result = await clearLocalJourneyArchive({ listScheduledRouteIds, cancelReminder: cancelPlannedRouteReminder, clearRoutes: clearLocalPlannedRoutes, clearItineraries: clearLocalJourneyItineraries });
+    const result = await clearLocalJourneyArchive({ listScheduledRouteIds, cancelReminder: cancelPlannedRouteReminder, clearRoutes: clearLocalPlannedRoutes, clearItineraries: clearLocalJourneyItineraries, clearCachedFiles: deleteLocalJourneyCacheFiles, clearTemplates: clearLocalJourneyTemplates, clearRecentStations: clearLocalRecentStations });
+    // The widget and the watch must not keep showing a journey that is no longer on the phone.
+    await refreshNativeCompanionSurfaces(locale);
     setStatus(t("settings.cleared", { count: result.clearedReminders }));
   }
 
@@ -68,8 +75,9 @@ export default function SettingsScreen() {
   async function importManualTransfer() {
     const selected = manualTransferPreview.filter(candidate => candidate.state === "new" && selectedManualTransfer.includes(candidate.key)).map(candidate => candidate.route);
     const imported = await importSelectedManualPlannedRoutes(selected);
+    if (imported) await refreshNativeCompanionSurfaces(locale);
     setManualTransferPreview([]); setSelectedManualTransfer([]);
-    setStatus(t("settings.imported", { count: imported }));
+    setStatus(imported === 0 && selected.length > 0 && await localRoutesArchiveStatus() === "read-only" ? t("common.archiveReadOnly") : t("settings.imported", { count: imported }));
   }
 
   const toggle = (key: string, current: string[], set: (next: string[]) => void) => set(current.includes(key) ? current.filter(item => item !== key) : [...current, key]);
@@ -91,7 +99,7 @@ export default function SettingsScreen() {
       <Text style={[styles.copy, { color: colors.muted }]}>{t("settings.advanceDescription")}</Text>
       <View accessibilityRole="radiogroup" accessibilityLabel={t("settings.advanceGroupA11y")} style={styles.row}>{localJourneyReminderOptions.map(minutes => <Pressable key={minutes} accessibilityRole="radio" accessibilityState={{ checked: preferredReminderMinutes === minutes }} accessibilityLabel={t("settings.advanceOptionA11y", { minutes })} onPress={() => void setPreferredReminder(minutes)} style={({ pressed }) => [styles.choice, { borderColor: preferredReminderMinutes === minutes ? colors.primary : colors.border, backgroundColor: preferredReminderMinutes === minutes ? colors.primary : colors.surface, opacity: pressed ? 0.72 : 1 }]}><Text style={{ color: preferredReminderMinutes === minutes ? "#fff" : colors.foreground, fontWeight: "800" }}>{minutes} min</Text></Pressable>)}</View>
     </View>
-    <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}><Text accessibilityRole="header" style={[styles.heading, { color: colors.foreground }]}>{t("settings.phoneWatch")}</Text><Text style={[styles.copy, { color: colors.muted }]}>{t("settings.phoneWatchDescription")}</Text></View>
+    {hasAndroidSurfaces(Platform.OS) ? <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}><Text accessibilityRole="header" style={[styles.heading, { color: colors.foreground }]}>{t("settings.phoneWatch")}</Text><Text style={[styles.copy, { color: colors.muted }]}>{t("settings.phoneWatchDescription")}</Text></View> : null}
     <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}><Text accessibilityRole="header" style={[styles.heading, { color: colors.foreground }]}>{t("settings.remoteSync")}</Text><Text style={[styles.copy, { color: colors.muted }]}>{t("settings.remoteUnavailable")}</Text><Text style={[styles.copy, { color: colors.muted }]}>{t("settings.remoteDescription")}</Text></View>
     <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
       <Text accessibilityRole="header" style={[styles.heading, { color: colors.foreground }]}>{t("settings.privacy")}</Text>

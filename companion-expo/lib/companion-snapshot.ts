@@ -1,5 +1,6 @@
 import type { LocalPlannedRoute } from "@/lib/local-route-contract";
 import { createTranslator, type CompanionLocale } from "@/lib/i18n";
+import { travelEpochMs } from "@/lib/travel-time-zone";
 
 export type CompanionSnapshotSubject = { kind: "route"; id: string; label: string };
 export type CompanionSnapshot = { subject: CompanionSnapshotSubject; title: string; summary: string; provenance: { dataNature: "scheduled" | "unavailable"; sourceLabel: string; capturedAtUtcMs: number; expiresAtUtcMs: number | null; notice: string } };
@@ -12,8 +13,8 @@ export function createUnavailableSnapshot(subject: CompanionSnapshotSubject, loc
 
 export function createLocalScheduledSnapshot(route: Pick<LocalPlannedRoute, "id" | "name" | "travelDate" | "travelTime">, now = Date.now(), locale?: CompanionLocale): CompanionSnapshot {
   const t = createTranslator(locale);
-  const scheduledAt = new Date(`${route.travelDate}T${route.travelTime}:00`).getTime();
-  return { subject: { kind: "route", id: String(route.id), label: route.name }, title: route.name, summary: `${route.travelDate} · ${route.travelTime}`, provenance: { dataNature: "scheduled", sourceLabel: t("snapshot.localSource"), capturedAtUtcMs: now, expiresAtUtcMs: Number.isFinite(scheduledAt) ? scheduledAt : null, notice: t("snapshot.localNotice") } };
+  const scheduledAt = travelEpochMs(route.travelDate, route.travelTime);
+  return { subject: { kind: "route", id: String(route.id), label: route.name }, title: route.name, summary: `${route.travelDate} · ${route.travelTime}`, provenance: { dataNature: "scheduled", sourceLabel: t("snapshot.localSource"), capturedAtUtcMs: now, expiresAtUtcMs: scheduledAt, notice: t("snapshot.localNotice") } };
 }
 
 export function evaluateSnapshot(snapshot: CompanionSnapshot, now = Date.now(), locale?: CompanionLocale): SnapshotDecision {

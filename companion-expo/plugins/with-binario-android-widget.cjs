@@ -207,14 +207,25 @@ import androidx.work.WorkerParameters
 import java.util.concurrent.TimeUnit
 
 internal object BinarioWidgetPresentation {
-  fun countdownLabel(scheduledAt: Long, now: Long = System.currentTimeMillis()): String {
-    if (scheduledAt <= now) return "Dati non disponibili in tempo reale."
-    val minutes = kotlin.math.ceil((scheduledAt - now).toDouble() / 60_000).toLong()
-    if (minutes < 60) return "Tra ${'$'}minutes min"
-    val hours = minutes / 60
-    val remainder = minutes % 60
-    return if (remainder == 0L) "Tra ${'$'}hours h" else "Tra ${'$'}hours h ${'$'}remainder min"
+  /** Journeys are Italian trains: the app saves and shows their times as Italian wall-clock time. */
+  const val TRAVEL_TIME_ZONE = "Europe/Rome"
+
+  /** True when both instants fall on the same calendar day in Italy, whatever the phone's time zone. */
+  fun sameTravelDay(first: Long, second: Long): Boolean {
+    val zone = java.util.TimeZone.getTimeZone(TRAVEL_TIME_ZONE)
+    val firstDay = java.util.Calendar.getInstance(zone).apply { timeInMillis = first }
+    val secondDay = java.util.Calendar.getInstance(zone).apply { timeInMillis = second }
+    return firstDay.get(java.util.Calendar.YEAR) == secondDay.get(java.util.Calendar.YEAR) &&
+      firstDay.get(java.util.Calendar.DAY_OF_YEAR) == secondDay.get(java.util.Calendar.DAY_OF_YEAR)
   }
+
+  /**
+   * DateUtils flags of the departure label: the time alone on the same Italian day, otherwise also the
+   * abbreviated weekday and date.
+   */
+  fun departureFlags(scheduledAt: Long, now: Long): Int =
+    if (sameTravelDay(scheduledAt, now)) DateUtils.FORMAT_SHOW_TIME
+    else DateUtils.FORMAT_SHOW_TIME or DateUtils.FORMAT_SHOW_DATE or DateUtils.FORMAT_ABBREV_MONTH or DateUtils.FORMAT_SHOW_WEEKDAY or DateUtils.FORMAT_ABBREV_WEEKDAY
 
   /**
    * Delay until the widget's state next changes: the departure, after which the journey is no
@@ -226,14 +237,15 @@ internal object BinarioWidgetPresentation {
 
 class BinarioStatusWidget : GlanceAppWidget() {
   /**
-   * The departure as a local clock time (with the date when it is not today). A widget is redrawn
-   * only by the app or by WorkManager, so a relative "in 10 min" would stay frozen between redraws.
+   * The departure as an Italian clock time (with the date when it is not today in Italy), the time the
+   * user typed in the app, whatever the phone's time zone. A widget is redrawn only by the app or by
+   * WorkManager, so a relative "in 10 min" would stay frozen between redraws.
    */
   private fun departureLabel(context: Context, scheduledAt: Long, now: Long = System.currentTimeMillis()): String {
     if (scheduledAt <= now) return context.getString(R.string.binario_unavailable)
-    val flags = if (DateUtils.isToday(scheduledAt)) DateUtils.FORMAT_SHOW_TIME
-    else DateUtils.FORMAT_SHOW_TIME or DateUtils.FORMAT_SHOW_DATE or DateUtils.FORMAT_ABBREV_MONTH or DateUtils.FORMAT_SHOW_WEEKDAY or DateUtils.FORMAT_ABBREV_WEEKDAY
-    return DateUtils.formatDateTime(context, scheduledAt, flags)
+    val flags = BinarioWidgetPresentation.departureFlags(scheduledAt, now)
+    val formatter = java.util.Formatter(StringBuilder(), java.util.Locale.getDefault())
+    return DateUtils.formatDateRange(context, formatter, scheduledAt, scheduledAt, flags, BinarioWidgetPresentation.TRAVEL_TIME_ZONE).toString()
   }
   override suspend fun provideGlance(context: Context, id: GlanceId) {
     val state = BinarioWidgetStore.read(context)
@@ -737,6 +749,27 @@ const shortcutsXml = `<?xml version="1.0" encoding="utf-8"?>
   </shortcut>
 </shortcuts>
 `;
+
+/**
+ * Android 12+ ignores allowBackup="false" for device-to-device transfer: without these rules a phone
+ * migration copies the AsyncStorage database (journeys, reminders, templates) and the widget and Wear
+ * preferences. Same rules as the main Binario app, for the phone and the Wear module.
+ */
+const dataExtractionRulesXml = `<?xml version="1.0" encoding="utf-8"?>
+<data-extraction-rules>
+    <cloud-backup disableIfNoEncryptionCapabilities="true">
+        <exclude domain="sharedpref" path="." />
+        <exclude domain="database" path="." />
+        <exclude domain="file" path="." />
+    </cloud-backup>
+    <device-transfer>
+        <exclude domain="sharedpref" path="." />
+        <exclude domain="database" path="." />
+        <exclude domain="file" path="." />
+    </device-transfer>
+</data-extraction-rules>
+`;
+const dataExtractionRulesResource = "@xml/binario_data_extraction_rules";
 
 /** Kept in the config-plugin template so Android prebuilds are deterministic and idempotent. */
 // Resource qualifiers: legacy "in" is Android's Indonesian folder; b+zh+Hans serves Simplified
@@ -1793,6 +1826,7 @@ function withBinarioAndroidWidget(config) {
     application.$ = application.$ ?? {};
     application.$["android:allowBackup"] = "false";
     application.$["android:usesCleartextTraffic"] = "false";
+    application.$["android:dataExtractionRules"] = dataExtractionRulesResource;
     application.receiver = application.receiver ?? [];
     application.service = application.service ?? [];
     application["meta-data"] = application["meta-data"] ?? [];
@@ -1855,6 +1889,7 @@ function withBinarioAndroidWidget(config) {
     fs.writeFileSync(path.join(kotlinRoot, "BinarioSharedTextReceiver.kt"), sharedTextReceiverKt);
     fs.writeFileSync(path.join(xmlRoot, "binario_status_widget_info.xml"), widgetXml);
     fs.writeFileSync(path.join(xmlRoot, "binario_shortcuts.xml"), shortcutsXml);
+    fs.writeFileSync(path.join(xmlRoot, "binario_data_extraction_rules.xml"), dataExtractionRulesXml);
 
     const phoneResRoot = path.join(appRoot, "src", "main", "res");
     for (const [locale, strings] of Object.entries(localizedNativeStrings)) {
@@ -1938,7 +1973,7 @@ dependencies {
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
   <uses-feature android:name="android.hardware.type.watch" />
   <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
-  <application android:label="@string/app_name" android:icon="@drawable/ic_binario_companion_wear" android:allowBackup="false" android:usesCleartextTraffic="false" android:supportsRtl="true" android:theme="@android:style/Theme.DeviceDefault">
+  <application android:label="@string/app_name" android:icon="@drawable/ic_binario_companion_wear" android:allowBackup="false" android:dataExtractionRules="${dataExtractionRulesResource}" android:usesCleartextTraffic="false" android:supportsRtl="true" android:theme="@android:style/Theme.DeviceDefault">
     <meta-data android:name="com.google.android.wearable.standalone" android:value="false" />
     <service android:name=".BinarioTileService" android:exported="true" android:icon="@drawable/ic_binario_companion_wear" android:label="@string/tile_name" android:permission="com.google.android.wearable.permission.BIND_TILE_PROVIDER">
       <intent-filter><action android:name="androidx.wear.tiles.action.BIND_TILE_PROVIDER" /></intent-filter>
@@ -1964,6 +1999,9 @@ dependencies {
     fs.mkdirSync(wearDrawableRoot, { recursive: true });
     fs.writeFileSync(path.join(wearDrawableRoot, "ic_binario_companion_wear.xml"), wearIconXml);
     fs.writeFileSync(path.join(wearDrawableRoot, "binario_tile_preview.xml"), wearTilePreviewXml);
+    const wearXmlRoot = path.join(wearRoot, "src", "main", "res", "xml");
+    fs.mkdirSync(wearXmlRoot, { recursive: true });
+    fs.writeFileSync(path.join(wearXmlRoot, "binario_data_extraction_rules.xml"), dataExtractionRulesXml);
     for (const [locale, strings] of Object.entries(localizedNativeStrings)) {
       const valuesDirectory = path.join(wearRoot, "src", "main", "res", locale === "it" ? "values" : `values-${locale}`);
       fs.mkdirSync(valuesDirectory, { recursive: true });

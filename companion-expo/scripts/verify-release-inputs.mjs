@@ -128,6 +128,29 @@ if (!/android:usesCleartextTraffic="false"/.test(mainManifest)) {
   fail("production manifest must disable cleartext traffic.");
 }
 
+// Android 12+ ignores allowBackup="false" for device-to-device transfer: both modules need extraction rules
+// that exclude every app domain from cloud backup and from device transfer.
+const extractionRulesAttribute = 'android:dataExtractionRules="@xml/binario_data_extraction_rules"';
+for (const [label, manifest, rulesPath] of [
+  ["production", mainManifest, "android/app/src/main/res/xml/binario_data_extraction_rules.xml"],
+  ["Wear production", read("android/wear/src/main/AndroidManifest.xml"), "android/wear/src/main/res/xml/binario_data_extraction_rules.xml"],
+]) {
+  if (!manifest.includes(extractionRulesAttribute)) {
+    fail(`${label} manifest must declare data extraction rules (device transfer ignores allowBackup on Android 12+).`);
+  }
+  let rules = "";
+  try { rules = read(rulesPath); } catch { fail(`${rulesPath} is missing.`); }
+  for (const section of ["cloud-backup", "device-transfer"]) {
+    const body = rules.match(new RegExp(`<${section}\\b[^>]*>([\\s\\S]*?)</${section}>`))?.[1] ?? "";
+    for (const domain of ["sharedpref", "database", "file"]) {
+      if (!new RegExp(`<exclude domain="${domain}" path="\\." />`).test(body)) {
+        fail(`${rulesPath} must exclude the ${domain} domain from ${section}.`);
+      }
+    }
+    if (/<include\b/.test(body)) fail(`${rulesPath} must not include any domain in ${section}.`);
+  }
+}
+
 const debugManifest = read("android/app/src/debug/AndroidManifest.xml");
 if (!/android:usesCleartextTraffic="true"/.test(debugManifest)) {
   fail("debug cleartext override is expected to remain isolated in the debug manifest.");

@@ -1,5 +1,6 @@
 import type { LocalPlannedRoute } from "@/lib/local-route-contract";
 import { createTranslator, type CompanionLocale } from "@/lib/i18n";
+import { travelEpochMs } from "@/lib/travel-time-zone";
 
 export const maxLocalItinerarySegments = 4;
 export const maxGuidedTextImportCharacters = 4_000;
@@ -46,8 +47,8 @@ export function deriveLocalItineraryChangeSummary(routeIds: readonly number[], r
   const byId = new Map(routes.map(route => [route.id, route]));
   const segments = routeIds.map(id => byId.get(id)).filter((route): route is LocalPlannedRoute => Boolean(route)).sort((left, right) => `${left.travelDate}T${left.travelTime}`.localeCompare(`${right.travelDate}T${right.travelTime}`));
   const nextIndex = segments.findIndex(route => {
-    const scheduled = new Date(`${route.travelDate}T${route.travelTime}:00`).getTime();
-    return Number.isFinite(scheduled) && scheduled >= now;
+    const scheduled = travelEpochMs(route.travelDate, route.travelTime);
+    return scheduled !== null && scheduled >= now;
   });
   const nextSegment = nextIndex >= 0 ? segments[nextIndex]! : null;
   return { segments, nextSegment, followingSegment: nextIndex >= 0 ? segments[nextIndex + 1] ?? null : null, remainingChecklistItems: nextSegment?.checklist?.filter(item => !item.completed).length ?? 0 };

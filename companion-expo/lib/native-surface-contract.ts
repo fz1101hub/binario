@@ -29,7 +29,8 @@ function unavailableWidgetPayload(locale?: CompanionLocale): NativeWidgetPayload
  * Costruisce le superfici locali. Il watch riceve sempre il contratto v1 completo e bounded;
  * la sua disponibilità rimane subordinata alla pianificazione locale dell'app Companion.
  */
-export function buildNativeSurfacePayload(snapshot: CompanionSnapshot, route: LocalPlannedRoute | null, now = Date.now(), locale?: CompanionLocale): NativeSurfacePayload {
+/** `reminderScheduled`: whether a reminder is really scheduled for `route`; the widget shows its minutes only then. */
+export function buildNativeSurfacePayload(snapshot: CompanionSnapshot, route: LocalPlannedRoute | null, now = Date.now(), locale?: CompanionLocale, reminderScheduled = false): NativeSurfacePayload {
   const t = createTranslator(locale);
   const watch = buildCompanionWearPayloadV1(snapshot, route, now, locale);
   const expiresAtUtcMs = snapshot.provenance.expiresAtUtcMs;
@@ -43,7 +44,7 @@ export function buildNativeSurfacePayload(snapshot: CompanionSnapshot, route: Lo
       status: "available",
       updatedAtUtcMs: snapshot.provenance.capturedAtUtcMs,
       expiresAtUtcMs,
-      plannedJourney: { title: route.name, scheduledAtUtcMs, reminderMinutes: route.plannedReminderMinutes },
+      plannedJourney: { title: route.name, scheduledAtUtcMs, reminderMinutes: reminderScheduled ? route.plannedReminderMinutes : null },
     },
     watch,
   };

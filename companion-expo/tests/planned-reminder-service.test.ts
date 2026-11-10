@@ -1,10 +1,19 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createLocalPlannedRoute } from "../lib/local-route-contract";
+import { clearLocalJourneyArchive } from "../lib/local-journey-privacy";
+import { createTranslator, supportedLocales } from "../lib/i18n";
+import { travelEpochMs } from "../lib/travel-time-zone";
 
 const storageKey = "binario.planned-route-reminders.v1";
 const state = vi.hoisted(() => ({
   storage: new Map<string, string>(),
   scheduled: new Map<string, any>(),
+  deviceLanguageTag: "it-IT",
+}));
+
+vi.mock("expo-localization", () => ({
+  getLocales: () => [{ languageTag: state.deviceLanguageTag }],
+  useLocales: () => [{ languageTag: state.deviceLanguageTag }],
 }));
 
 const storageMocks = vi.hoisted(() => ({
@@ -23,6 +32,7 @@ const notificationMocks = vi.hoisted(() => ({
   getAllScheduledNotificationsAsync: vi.fn(),
   scheduleNotificationAsync: vi.fn(),
   cancelScheduledNotificationAsync: vi.fn(),
+  setNotificationChannelAsync: vi.fn(),
 }));
 
 vi.mock("@react-native-async-storage/async-storage", () => ({
@@ -31,6 +41,7 @@ vi.mock("@react-native-async-storage/async-storage", () => ({
 
 vi.mock("expo-notifications", () => ({
   SchedulableTriggerInputTypes: { DATE: "date" },
+  AndroidImportance: { DEFAULT: 5 },
   ...notificationMocks,
 }));
 
@@ -40,6 +51,7 @@ import {
   cancelPlannedRouteReminder,
   consumeLegacyReminderMigrationNotice,
   listScheduledRouteIds,
+  scheduleReminderForSavedRoute,
   schedulePlannedRouteReminder,
 } from "../lib/planned-reminder-service";
 
@@ -69,6 +81,7 @@ const secondRoute = createLocalPlannedRoute(
 beforeEach(() => {
   state.storage.clear();
   state.scheduled.clear();
+  state.deviceLanguageTag = "it-IT";
   vi.clearAllMocks();
   storageMocks.getItem.mockImplementation(
     async (key: string) => state.storage.get(key) ?? null,
@@ -232,7 +245,7 @@ describe("planned reminder native reconciliation", () => {
 
   it("rechecks the deadline after waiting inside the mutation queue", async () => {
     const fireAt =
-      new Date(`${route.travelDate}T${route.travelTime}:00`).getTime() -
+      travelEpochMs(route.travelDate, route.travelTime)! -
       route.plannedReminderMinutes! * 60_000;
     vi.spyOn(Date, "now")
       .mockReturnValueOnce(fireAt - 1_000)
@@ -294,6 +307,32 @@ describe("planned reminder native reconciliation", () => {
     }
   });
 
+  it("fires at the Italian departure time minus the lead, whatever the phone's time zone", async () => {
+    const previousTimezone = process.env.TZ;
+    const summerRoute = createLocalPlannedRoute(
+      {
+        origin: "Roma Termini",
+        destination: "Firenze Santa Maria Novella",
+        travelDate: "2035-07-12",
+        travelTime: "09:00",
+        plannedReminderMinutes: 15,
+      },
+      45,
+      4,
+    )!;
+    try {
+      for (const timeZone of ["Europe/London", "America/New_York", "Europe/Rome"]) {
+        process.env.TZ = timeZone;
+        state.scheduled.clear();
+        await expect(schedulePlannedRouteReminder(summerRoute)).resolves.toBe("scheduled");
+        // 09:00 in Italy in July is 07:00 UTC; 15 minutes before is 06:45 UTC.
+        expect(state.scheduled.get("binario_planned_route_45")?.trigger.date.getTime(), timeZone).toBe(Date.UTC(2035, 6, 12, 6, 45));
+      }
+    } finally {
+      process.env.TZ = previousTimezone;
+    }
+  });
+
   it("retains the previous native reminder when replacement scheduling fails", async () => {
     await schedulePlannedRouteReminder(route);
     notificationMocks.scheduleNotificationAsync.mockRejectedValueOnce(
@@ -324,5 +363,112 @@ describe("planned reminder native reconciliation", () => {
 
     expect(await listScheduledRouteIds()).toEqual([42]);
     expect(state.storage.has(storageKey)).toBe(false);
+  });
+});
+
+describe("promemoria riconosciuti in ogni lingua del dispositivo", () => {
+  for (const languageTag of ["ja-JP", "ar-EG", "ru-RU", "pt-BR", "zh-Hans-CN", "hi-IN"]) {
+    it(`elenca, annulla e cancella con l’archivio un promemoria scritto in ${languageTag}`, async () => {
+      state.deviceLanguageTag = languageTag;
+      await expect(schedulePlannedRouteReminder(route)).resolves.toBe("scheduled");
+      const scheduledTitle = state.scheduled.get("binario_planned_route_42")?.content.title;
+      expect(scheduledTitle).not.toBe(createTranslator("it")("reminder.notificationTitle"));
+
+      expect(await listScheduledRouteIds()).toEqual([42]);
+      await expect(clearLocalJourneyArchive({
+        listScheduledRouteIds,
+        cancelReminder: cancelPlannedRouteReminder,
+        clearRoutes: async () => undefined,
+        clearItineraries: async () => undefined,
+        clearCachedFiles: async () => undefined,
+        clearTemplates: async () => undefined,
+        clearRecentStations: async () => undefined,
+      })).resolves.toEqual({ clearedReminders: 1 });
+      expect(state.scheduled.size).toBe(0);
+    });
+  }
+
+  it("riconosce il promemoria di ogni lingua servita, anche dopo un cambio di lingua", async () => {
+    for (const locale of supportedLocales) {
+      state.scheduled.clear();
+      state.deviceLanguageTag = locale;
+      await schedulePlannedRouteReminder(route);
+      state.deviceLanguageTag = "en-US";
+      expect(await listScheduledRouteIds(), locale).toEqual([42]);
+      await expect(cancelPlannedRouteReminder(42), locale).resolves.toBe(true);
+      expect(state.scheduled.size, locale).toBe(0);
+    }
+  });
+
+  it("riconosce il promemoria dall’identificativo canonico anche senza dati della tratta", async () => {
+    state.scheduled.set("binario_planned_route_42", {
+      identifier: "binario_planned_route_42",
+      content: { title: "Binario · 計画した移動", data: {} },
+      trigger: null,
+    });
+    state.scheduled.set("binario_planned_route_x", {
+      identifier: "binario_planned_route_x",
+      content: { title: "Binario", data: {} },
+      trigger: null,
+    });
+
+    expect(await listScheduledRouteIds()).toEqual([42]);
+    await expect(cancelPlannedRouteReminder(42)).resolves.toBe(true);
+    expect([...state.scheduled.keys()]).toEqual(["binario_planned_route_x"]);
+  });
+
+  it("migra un promemoria precedente scritto in un’altra lingua", async () => {
+    state.scheduled.set("legacy-random-ja", {
+      identifier: "legacy-random-ja",
+      content: { title: "Binario · 計画した移動", data: { routeId: 42 } },
+      trigger: null,
+    });
+
+    expect(await listScheduledRouteIds()).toEqual([42]);
+    expect([...state.scheduled.keys()]).toEqual(["binario_planned_route_42"]);
+  });
+});
+
+describe("promemoria scelto nel planner", () => {
+  it("lo programma al salvataggio della tratta", async () => {
+    await expect(scheduleReminderForSavedRoute(route)).resolves.toBe("scheduled");
+    expect(await listScheduledRouteIds()).toEqual([42]);
+  });
+
+  it("non programma nulla con «Nessuno»", async () => {
+    await expect(scheduleReminderForSavedRoute({ ...route, plannedReminderMinutes: null })).resolves.toBe("none");
+    expect(notificationMocks.scheduleNotificationAsync).not.toHaveBeenCalled();
+    expect(notificationMocks.requestPermissionsAsync).not.toHaveBeenCalled();
+  });
+
+  it("riferisce permesso negato, orario passato ed errore nativo senza perdere la tratta", async () => {
+    notificationMocks.getPermissionsAsync.mockResolvedValue({ granted: false });
+    notificationMocks.requestPermissionsAsync.mockResolvedValue({ granted: false });
+    await expect(scheduleReminderForSavedRoute(route)).resolves.toBe("permission-denied");
+    await expect(scheduleReminderForSavedRoute({ ...route, travelDate: "2020-01-02" })).resolves.toBe("invalid");
+    notificationMocks.getPermissionsAsync.mockResolvedValue({ granted: true });
+    notificationMocks.scheduleNotificationAsync.mockRejectedValueOnce(new Error("native"));
+    await expect(scheduleReminderForSavedRoute(route)).resolves.toBe("error");
+    expect(state.scheduled.size).toBe(0);
+  });
+});
+
+describe("canale Android dei promemoria", () => {
+  it("programma ogni promemoria nel proprio canale, con nome e descrizione nella lingua del dispositivo", async () => {
+    state.deviceLanguageTag = "ar-EG";
+    await schedulePlannedRouteReminder(route);
+    expect(notificationMocks.setNotificationChannelAsync).toHaveBeenCalledWith("binario-planned-route-reminders", {
+      name: createTranslator("ar")("reminder.channelName"),
+      description: createTranslator("ar")("reminder.channelDescription"),
+      importance: 5,
+    });
+    expect(notificationMocks.setNotificationChannelAsync.mock.invocationCallOrder[0]).toBeLessThan(notificationMocks.scheduleNotificationAsync.mock.invocationCallOrder[0]!);
+    expect(state.scheduled.get("binario_planned_route_42")?.trigger.channelId).toBe("binario-planned-route-reminders");
+  });
+
+  it("non usa il canale di riserva «Miscellaneous» neppure per i promemoria migrati", async () => {
+    state.scheduled.set("legacy-random-id", { identifier: "legacy-random-id", content: { title: "Binario · tratta pianificata", data: { routeId: 42 } }, trigger: null });
+    await listScheduledRouteIds();
+    expect(state.scheduled.get("binario_planned_route_42")?.trigger.channelId).toBe("binario-planned-route-reminders");
   });
 });

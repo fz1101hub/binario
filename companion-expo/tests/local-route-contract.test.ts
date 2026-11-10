@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { applyLocalJourneyChecklistPreset, createLocalPlannedRoute, createReplannedLocalRouteDraft, createReturnLocalRouteDraft, displayLocalPlannedRouteName, filterLocalJourneyAgenda, getLocalJourneyPreparationPreset, isLocalPlannedRoute, localCountdownLabel, remainingLocalJourneyChecklistItems, selectNextLocalPlannedRoute, setLocalJourneyChecklistItem, setLocalPlannedRouteLabel, sortLocalPlannedRoutes } from "../lib/local-route-contract";
+import { agendaReminderLeadKey, applyLocalJourneyChecklistPreset, plannedReminderSummaryKey, createLocalPlannedRoute, createReplannedLocalRouteDraft, createReturnLocalRouteDraft, displayLocalPlannedRouteName, filterLocalJourneyAgenda, getLocalJourneyPreparationPreset, isLocalPlannedRoute, localCountdownLabel, remainingLocalJourneyChecklistItems, selectNextLocalPlannedRoute, setLocalJourneyChecklistItem, setLocalPlannedRouteLabel, sortLocalPlannedRoutes } from "../lib/local-route-contract";
 import { createLocalScheduledSnapshot, evaluateSnapshot } from "../lib/companion-snapshot";
+// Journey dates and times are Italian wall-clock time: "now" is built the same way.
+import { travelEpochMs } from "../lib/travel-time-zone";
 
 describe("pianificazione locale Binario", () => {
   it("applica soltanto preset pertinenti alla preparazione del viaggio", () => {
@@ -22,19 +24,38 @@ describe("pianificazione locale Binario", () => {
   it("ordina le tratte per data e non presenta la pianificazione scaduta", () => {
     const routes = sortLocalPlannedRoutes([createLocalPlannedRoute({ origin: "Roma", destination: "Milano", travelDate: "2026-10-04", travelTime: "08:15", plannedReminderMinutes: 15 }, 2, 1)!, createLocalPlannedRoute({ origin: "Roma", destination: "Bologna", travelDate: "2026-10-02", travelTime: "08:15", plannedReminderMinutes: 15 }, 1, 1)!]);
     expect(routes[0]?.id).toBe(1);
-    const snapshot = createLocalScheduledSnapshot(routes[0]!, new Date("2026-10-01T10:00:00").getTime());
-    expect(evaluateSnapshot(snapshot, new Date("2026-10-03T20:00:00").getTime()).action).toBe("suppress");
+    const snapshot = createLocalScheduledSnapshot(routes[0]!, travelEpochMs("2026-10-01", "10:00")!);
+    expect(evaluateSnapshot(snapshot, travelEpochMs("2026-10-03", "20:00")!).action).toBe("suppress");
   });
   it("seleziona solo la prossima tratta futura e calcola un countdown programmato", () => {
     const oldRoute = createLocalPlannedRoute({ origin: "Roma", destination: "Milano", travelDate: "2026-10-02", travelTime: "08:15", plannedReminderMinutes: 15 }, 1, 1)!;
     const nextRoute = createLocalPlannedRoute({ origin: "Roma", destination: "Bologna", travelDate: "2026-10-02", travelTime: "09:30", plannedReminderMinutes: 15 }, 2, 1)!;
-    const now = new Date("2026-10-02T08:20:00").getTime();
+    const now = travelEpochMs("2026-10-02", "08:20")!;
     expect(selectNextLocalPlannedRoute([nextRoute, oldRoute], now)?.id).toBe(2);
     expect(localCountdownLabel(nextRoute, now)).toBe("Tra 1 h 10 min");
     expect(selectNextLocalPlannedRoute([oldRoute], now)).toBeNull();
   });
+  it("sceglie la prossima tratta per orario anche se un’altra è fissata o riordinata", () => {
+    const now = travelEpochMs("2026-10-02", "08:00")!;
+    const today = createLocalPlannedRoute({ origin: "Roma", destination: "Napoli", travelDate: "2026-10-02", travelTime: "19:00", plannedReminderMinutes: 15 }, 1, 1)!;
+    const pinnedNextWeek = { ...createLocalPlannedRoute({ origin: "Milano Centrale", destination: "Torino Porta Nuova", travelDate: "2026-10-09", travelTime: "07:10", plannedReminderMinutes: 15 }, 2, 1)!, pinned: true };
+    const reorderedTomorrow = { ...createLocalPlannedRoute({ origin: "Roma", destination: "Firenze", travelDate: "2026-10-03", travelTime: "09:00", plannedReminderMinutes: 15 }, 3, 1)!, manualOrder: 0 };
+    const laterToday = { ...createLocalPlannedRoute({ origin: "Roma", destination: "Pisa", travelDate: "2026-10-02", travelTime: "20:00", plannedReminderMinutes: 15 }, 4, 1)!, manualOrder: null };
+    expect(selectNextLocalPlannedRoute([pinnedNextWeek, reorderedTomorrow, laterToday, today], now)?.id).toBe(1);
+    // Pin and manual order still decide the list order.
+    expect(sortLocalPlannedRoutes([pinnedNextWeek, reorderedTomorrow, laterToday, today]).map(route => route.id)).toEqual([2, 3, 1, 4]);
+  });
+  it("descrive il promemoria da quello programmato e distingue «Nessuno» da «All’ora»", () => {
+    expect(plannedReminderSummaryKey({ plannedReminderMinutes: 15 }, false)).toBe("home.noReminder");
+    expect(plannedReminderSummaryKey({ plannedReminderMinutes: 15 }, true)).toBe("home.reminderBefore");
+    expect(plannedReminderSummaryKey({ plannedReminderMinutes: 0 }, true)).toBe("home.reminderAtTime");
+    expect(plannedReminderSummaryKey({ plannedReminderMinutes: null }, true)).toBe("home.noReminder");
+    expect(agendaReminderLeadKey(null)).toBe("alerts.leadNone");
+    expect(agendaReminderLeadKey(0)).toBe("alerts.leadAtTime");
+    expect(agendaReminderLeadKey(30)).toBe("alerts.leadBefore");
+  });
   it("filtra imminenti, settimana e archivio con il solo orario programmato locale", () => {
-    const now = new Date("2026-10-02T08:00:00").getTime();
+    const now = travelEpochMs("2026-10-02", "08:00")!;
     const oldRoute = createLocalPlannedRoute({ origin: "Roma", destination: "Pisa", travelDate: "2026-10-01", travelTime: "08:00", plannedReminderMinutes: null }, 1, 1)!;
     const todayRoute = createLocalPlannedRoute({ origin: "Roma", destination: "Milano", travelDate: "2026-10-02", travelTime: "08:15", plannedReminderMinutes: null }, 2, 1)!;
     const nextWeekRoute = createLocalPlannedRoute({ origin: "Roma", destination: "Napoli", travelDate: "2026-10-09", travelTime: "08:15", plannedReminderMinutes: null }, 3, 1)!;

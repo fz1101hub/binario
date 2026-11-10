@@ -32,14 +32,25 @@ import androidx.work.WorkerParameters
 import java.util.concurrent.TimeUnit
 
 internal object BinarioWidgetPresentation {
-  fun countdownLabel(scheduledAt: Long, now: Long = System.currentTimeMillis()): String {
-    if (scheduledAt <= now) return "Dati non disponibili in tempo reale."
-    val minutes = kotlin.math.ceil((scheduledAt - now).toDouble() / 60_000).toLong()
-    if (minutes < 60) return "Tra $minutes min"
-    val hours = minutes / 60
-    val remainder = minutes % 60
-    return if (remainder == 0L) "Tra $hours h" else "Tra $hours h $remainder min"
+  /** Journeys are Italian trains: the app saves and shows their times as Italian wall-clock time. */
+  const val TRAVEL_TIME_ZONE = "Europe/Rome"
+
+  /** True when both instants fall on the same calendar day in Italy, whatever the phone's time zone. */
+  fun sameTravelDay(first: Long, second: Long): Boolean {
+    val zone = java.util.TimeZone.getTimeZone(TRAVEL_TIME_ZONE)
+    val firstDay = java.util.Calendar.getInstance(zone).apply { timeInMillis = first }
+    val secondDay = java.util.Calendar.getInstance(zone).apply { timeInMillis = second }
+    return firstDay.get(java.util.Calendar.YEAR) == secondDay.get(java.util.Calendar.YEAR) &&
+      firstDay.get(java.util.Calendar.DAY_OF_YEAR) == secondDay.get(java.util.Calendar.DAY_OF_YEAR)
   }
+
+  /**
+   * DateUtils flags of the departure label: the time alone on the same Italian day, otherwise also the
+   * abbreviated weekday and date.
+   */
+  fun departureFlags(scheduledAt: Long, now: Long): Int =
+    if (sameTravelDay(scheduledAt, now)) DateUtils.FORMAT_SHOW_TIME
+    else DateUtils.FORMAT_SHOW_TIME or DateUtils.FORMAT_SHOW_DATE or DateUtils.FORMAT_ABBREV_MONTH or DateUtils.FORMAT_SHOW_WEEKDAY or DateUtils.FORMAT_ABBREV_WEEKDAY
 
   /**
    * Delay until the widget's state next changes: the departure, after which the journey is no
@@ -51,14 +62,15 @@ internal object BinarioWidgetPresentation {
 
 class BinarioStatusWidget : GlanceAppWidget() {
   /**
-   * The departure as a local clock time (with the date when it is not today). A widget is redrawn
-   * only by the app or by WorkManager, so a relative "in 10 min" would stay frozen between redraws.
+   * The departure as an Italian clock time (with the date when it is not today in Italy), the time the
+   * user typed in the app, whatever the phone's time zone. A widget is redrawn only by the app or by
+   * WorkManager, so a relative "in 10 min" would stay frozen between redraws.
    */
   private fun departureLabel(context: Context, scheduledAt: Long, now: Long = System.currentTimeMillis()): String {
     if (scheduledAt <= now) return context.getString(R.string.binario_unavailable)
-    val flags = if (DateUtils.isToday(scheduledAt)) DateUtils.FORMAT_SHOW_TIME
-    else DateUtils.FORMAT_SHOW_TIME or DateUtils.FORMAT_SHOW_DATE or DateUtils.FORMAT_ABBREV_MONTH or DateUtils.FORMAT_SHOW_WEEKDAY or DateUtils.FORMAT_ABBREV_WEEKDAY
-    return DateUtils.formatDateTime(context, scheduledAt, flags)
+    val flags = BinarioWidgetPresentation.departureFlags(scheduledAt, now)
+    val formatter = java.util.Formatter(StringBuilder(), java.util.Locale.getDefault())
+    return DateUtils.formatDateRange(context, formatter, scheduledAt, scheduledAt, flags, BinarioWidgetPresentation.TRAVEL_TIME_ZONE).toString()
   }
   override suspend fun provideGlance(context: Context, id: GlanceId) {
     val state = BinarioWidgetStore.read(context)
