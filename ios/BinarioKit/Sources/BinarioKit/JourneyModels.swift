@@ -16,7 +16,8 @@ public enum JourneyValidationError: Error, Equatable, Sendable {
     case duplicateSavedRoute
 }
 
-private enum JourneyModelValidator {
+/// The rules every station identity and saved text follow (also «Partenze» and its store).
+enum JourneyModelValidator {
     static func text(
         _ value: String,
         maximum: Int,

@@ -639,6 +639,101 @@ final class BinarioAppTests: XCTestCase {
         XCTAssertEqual(FavouriteTrainStore(defaults: defaults).load().trains, [])
     }
 
+    func testPartenzeRemembersTheStationReadsLaterPagesAndOpensTheTrainBoardedThere() async throws {
+        let defaults = try makeDefaults()
+        defer { clear(defaults) }
+        let base = try rome(2026, 11, 10, 8, 0)
+        let provider = StubBoardProvider(rows: (0..<25).map { boardDeparture($0, after: base) })
+        let station = StationIdentity(id: "S01700", name: "Milano Centrale", railwayCode: "S01700")
+        func makeBoardModel() -> AppModel {
+            AppModel(
+                catalogState: .loading,
+                savedRouteStore: SavedRouteStore(defaults: defaults),
+                favouriteTrainStore: FavouriteTrainStore(defaults: defaults),
+                boardStationStore: StationBoardStationStore(defaults: defaults),
+                watchSharingStore: WatchSharingPreferenceStore(defaults: defaults),
+                repository: FailClosedJourneyRepository(),
+                boardProvider: provider,
+                watchPublisher: nil,
+                versionDisplay: "test"
+            )
+        }
+        let model = makeBoardModel()
+        XCTAssertNil(model.boardStation)
+        XCTAssertEqual(model.boardState, .idle)
+
+        // Choosing a station shows its first page and remembers it on this iPhone.
+        model.selectBoardStation(station)
+        XCTAssertEqual(model.boardState, .loading)
+        await model.boardLoadFinished()
+        await model.reloadBoard(now: base)
+        XCTAssertEqual(model.boardState, .available)
+        XCTAssertEqual(model.boardDepartures.count, AppModel.boardPageSize)
+        XCTAssertEqual(model.boardDepartures.first?.service.number, "2101")
+        XCTAssertTrue(model.boardHasMore)
+        XCTAssertEqual(model.boardAttributions, ["Synthetic feed"])
+        XCTAssertEqual(StationBoardStationStore(defaults: defaults).load(), station)
+        let firstPage = await provider.queries.last
+        XCTAssertEqual(firstPage?.from, base)
+        XCTAssertNil(firstPage?.after)
+
+        // «Più tardi» continues after the last listed train, without repeating one.
+        let added = await model.loadMoreBoard()
+        XCTAssertEqual(added, 5)
+        XCTAssertEqual(model.boardDepartures.map(\.service.number), (0..<25).map { "\(2_101 + $0)" })
+        XCTAssertFalse(model.boardHasMore)
+        let laterPage = await provider.queries.last
+        XCTAssertEqual(laterPage?.after, model.boardDepartures[AppModel.boardPageSize - 1].cursor)
+        let nothingMore = await model.loadMoreBoard()
+        XCTAssertEqual(nothingMore, 0)
+
+        // A row opens the train boarded at the board's station: the identity of its star.
+        let first = model.boardDepartures[0]
+        let query = try XCTUnwrap(model.boardDetailQuery(for: first))
+        XCTAssertEqual(query.origin, station)
+        XCTAssertEqual(query.destination, first.terminus)
+        XCTAssertEqual(model.toggleFavourite(first.service, query: query), .added)
+        XCTAssertEqual(model.favouriteTrains.map(\.id), [FavouriteTrain.identifier(number: "2101", originID: "S01700")])
+        XCTAssertTrue(model.isFavourite(first.service, query: query))
+
+        // A train goes a minute after its departure; an emptied board is read again from then.
+        await model.refreshBoardIfNeeded(now: first.departure.addingTimeInterval(60))
+        XCTAssertEqual(model.boardDepartures.count, 24)
+        let last = try XCTUnwrap(model.boardDepartures.last)
+        await model.refreshBoardIfNeeded(now: last.departure.addingTimeInterval(60))
+        XCTAssertEqual(model.boardState, .available)
+        XCTAssertEqual(model.boardDepartures, [])
+        XCTAssertFalse(model.boardHasMore)
+
+        // Another station never shows the trains of the previous one.
+        model.selectBoardStation(StationIdentity(id: "S01529", name: "Bergamo", railwayCode: "S01529"))
+        XCTAssertEqual(model.boardDepartures, [])
+        XCTAssertEqual(model.boardState, .loading)
+        await model.boardLoadFinished()
+
+        // The next launch opens on the station chosen last.
+        let relaunched = makeBoardModel()
+        XCTAssertEqual(relaunched.boardStation?.id, "S01529")
+        XCTAssertEqual(relaunched.boardState, .idle)
+        await relaunched.refreshBoardIfNeeded(now: base)
+        XCTAssertEqual(relaunched.boardState, .available)
+        XCTAssertEqual(relaunched.boardDepartures.count, AppModel.boardPageSize)
+
+        // Without a validated index the board fails closed.
+        let failClosed = AppModel(
+            catalogState: .loading,
+            savedRouteStore: SavedRouteStore(defaults: defaults),
+            boardStationStore: StationBoardStationStore(defaults: defaults),
+            watchSharingStore: WatchSharingPreferenceStore(defaults: defaults),
+            repository: FailClosedJourneyRepository(),
+            watchPublisher: nil,
+            versionDisplay: "test"
+        )
+        await failClosed.reloadBoard(now: base)
+        XCTAssertEqual(failClosed.boardState, .unavailable(.noAuthorizedProvider))
+        XCTAssertEqual(failClosed.boardDepartures, [])
+    }
+
     func testPlannerCaptionAppearsOnlyWhenTheDeviceClockDiffersFromTimetables() throws {
         let summer = try rome(2026, 7, 1, 9, 0)
         let winter = try rome(2026, 12, 1, 9, 0)
@@ -723,6 +818,28 @@ final class BinarioAppTests: XCTestCase {
         )
     }
 
+    /// The board train `index` minutes after the first one, ten minutes after `base`.
+    private func boardDeparture(_ index: Int, after base: Date) -> StationBoardDeparture {
+        let departure = base.addingTimeInterval(TimeInterval(10 * 60 + index * 60))
+        let time = romeTime(departure)
+        return StationBoardDeparture(
+            departure: departure,
+            service: TrainService(
+                id: "source:trip-\(index):20261110:\(36_600 + index * 60)",
+                number: "\(2_101 + index)",
+                operatorName: "Trenord",
+                category: "REG",
+                destination: "Bergamo",
+                scheduledDeparture: time,
+                expectedDeparture: time,
+                status: "PROGRAMMED",
+                platform: nil,
+                delayMinutes: 0
+            ),
+            terminus: StationIdentity(id: "S01529", name: "Bergamo", railwayCode: "S01529")
+        )
+    }
+
     /// A programmed result whose trains depart at `times` ("HH:mm", Rome), valid 12 hours.
     private func programmedJourney(query: JourneyQuery, generatedAt: Date, times: [String]) -> JourneySnapshot {
         let fixture = fixtureSnapshot(query: query, serviceNumber: "FR 1")
@@ -797,6 +914,7 @@ final class BinarioAppTests: XCTestCase {
         }
         defaults.removeObject(forKey: SavedRouteStore.storageKey)
         defaults.removeObject(forKey: FavouriteTrainStore.storageKey)
+        defaults.removeObject(forKey: StationBoardStationStore.storageKey)
         defaults.removeObject(forKey: WatchSharingPreferenceStore.storageKey)
         defaults.removeObject(forKey: WatchSharingPreferenceStore.pinnedRouteStorageKey)
     }
@@ -884,6 +1002,32 @@ private actor ControlledJourneyRepository: JourneyRepository {
 
     func complete(queryID: String, with result: JourneyResult) {
         pending.removeValue(forKey: queryID)?.resume(returning: result)
+    }
+}
+
+/// «Partenze» over a fixed list of trains: those from the query's time on, after its cursor.
+private actor StubBoardProvider: StationBoardProvider {
+    private(set) var queries: [StationBoardQuery] = []
+    private let rows: [StationBoardDeparture]
+
+    init(rows: [StationBoardDeparture]) {
+        self.rows = rows
+    }
+
+    func departures(for query: StationBoardQuery) async -> StationBoardResult {
+        queries.append(query)
+        let following = rows.filter { row in
+            guard row.departure >= query.from else { return false }
+            guard let after = query.after else { return true }
+            return after < row.cursor
+        }
+        return .available(StationBoardPage(
+            query: query,
+            departures: Array(following.prefix(query.limit)),
+            hasMore: following.count > query.limit,
+            firstDepartureNextDay: nil,
+            attributions: ["Synthetic feed"]
+        ))
     }
 }
 
