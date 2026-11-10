@@ -276,4 +276,41 @@ final class LiveRailDataTests: XCTestCase {
         XCTAssertEqual(LiveOverlay.stop(in: run, stationCode: nil, stationName: "s01700")?.stationCode, "S01700")
         XCTAssertNil(LiveOverlay.stop(in: run, stationCode: "S00000", stationName: nil))
     }
+
+    func testLiveRowsBecomeThePartenzeLiveStatusWhileTheyAreLive() {
+        let day = LiveTestDates.rome(2026, 10, 16, 9, 0)
+        let scheduled = LiveTestDates.rome(2026, 10, 16, 10, 5)
+        let live = makeRow(.viaggiaTreno, number: "2153", scheduled: scheduled.addingTimeInterval(60), expectedMinutes: 7,
+                           platform: "3", status: .delayed, operatorID: "trenitalia")
+        let cancelled = makeRow(.rfiStationBoard, number: "2155", scheduled: scheduled, expectedMinutes: 0,
+                                platform: nil, status: .cancelled, operatorID: "trenord")
+        let board = LiveDepartureBoard(
+            stationID: "S01700", from: day, to: day.addingTimeInterval(6 * 3_600), departures: [live, cancelled],
+            sources: [.rfiStationBoard, .viaggiaTreno], unavailableSources: [:], warnings: [], fetchedAt: now
+        )
+        func row(_ number: String) -> StationBoardDeparture {
+            StationBoardDeparture(
+                departure: scheduled,
+                service: TrainService(id: "gtfs:\(number)", number: "RE_11 - \(number)", operatorName: "Trenord", category: "RE",
+                                      destination: "Bergamo", scheduledDeparture: "10:05", expectedDeparture: "10:05",
+                                      status: "PROGRAMMED", platform: nil, delayMinutes: 0),
+                terminus: StationIdentity(id: "S01529", name: "Bergamo")
+            )
+        }
+        let rows = LiveOverlay.stationBoard([row("2153"), row("2155"), row("2157")], with: board, at: now)
+        let status = rows[0].live
+        XCTAssertEqual(status?.expectedDeparture, scheduled.addingTimeInterval(8 * 60))
+        XCTAssertEqual(status?.delayMinutes, 7)
+        XCTAssertEqual(status?.platform, "3")
+        XCTAssertEqual(status?.cancelled, false)
+        XCTAssertEqual(status?.sourceLabel, "Trenitalia — ViaggiaTreno realtime")
+        XCTAssertEqual(status?.observedAt, now)
+        XCTAssertEqual(rows[1].live?.cancelled, true)
+        XCTAssertNil(rows[1].live?.expectedDeparture, "a cancelled train has no expected time")
+        XCTAssertTrue(rows[2].isScheduled, "a train no source lists stays scheduled")
+        let expired = LiveOverlay.stationBoard([row("2153")], with: board, at: now.addingTimeInterval(31))
+        XCTAssertTrue(expired[0].isScheduled, "expired observations are not shown as live")
+        let empty = makeRow(.italo, number: "1", scheduled: scheduled, expectedMinutes: nil, platform: nil, status: nil, operatorID: "italo")
+        XCTAssertNil(empty.stationBoardLiveStatus(at: now))
+    }
 }
