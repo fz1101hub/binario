@@ -454,6 +454,48 @@ class StateTest(Base):
         path.write_bytes(path.read_bytes() + gzip.compress((collector.encode(self.record(t=2)) + "\n").encode()))
         self.assertEqual(1, len(collector.load_observations(self.temp / "state", "2026-11-04", {})))
 
+    def test_an_empty_state_or_one_with_fewer_days_than_its_marker_is_refused(self) -> None:
+        # A missed or failed cache restore leaves nothing: saving that would replace 35 days of observations that
+        # ViaggiaTreno no longer has.  Only an explicit bootstrap starts from nothing.
+        directory = self.temp / "state"
+        with self.assertRaisesRegex(collector.CollectorError, "stato vuoto"):
+            collector.State(directory).verify_retained(DAY, bootstrap=False)
+        collector.State(directory).verify_retained(DAY, bootstrap=True)
+        state = collector.State(directory)
+        for day in ("2026-10-01", "2026-10-02", "2026-11-03"):
+            state.add(self.record(day=day))
+        state.save(DAY)
+        self.assertEqual({"schema": collector.MARKER_SCHEMA, "days": ["2026-10-01", "2026-10-02", "2026-11-03"]},
+                         json.loads((directory / collector.MARKER_FILE).read_text(encoding="ascii")))
+        collector.State(directory).verify_retained(DAY, bootstrap=False)
+        # A day lost on the way (another cache restored, a damaged archive) is refused before any request.
+        (directory / "obs-2026-10-02.jsonl.gz").unlink()
+        with self.assertRaisesRegex(collector.CollectorError, "1 dei 3 giorni"):
+            collector.State(directory).verify_retained(DAY, bootstrap=False)
+        # Days the 35-day retention removes are not missed; a bootstrap accepts the loss and counts it.
+        collector.State(directory).verify_retained(date(2026, 11, 7), bootstrap=False)
+        accepted = collector.State(directory)
+        accepted.verify_retained(DAY, bootstrap=True)
+        self.assertEqual(1, accepted.counters["giorni_persi"])
+        # And the save itself never writes a marker with fewer days than the one it started from.
+        thin = collector.State(directory)
+        (directory / "obs-2026-10-02.jsonl.gz").write_bytes(collector._gzip_lines([collector.encode(self.record(day="2026-10-02"))]))
+        thin.verify_retained(DAY, bootstrap=False)
+        (directory / "obs-2026-10-01.jsonl.gz").unlink()
+        marker = (directory / collector.MARKER_FILE).read_bytes()
+        with self.assertRaisesRegex(collector.CollectorError, "meno giorni"):
+            thin.save(DAY)
+        self.assertEqual(marker, (directory / collector.MARKER_FILE).read_bytes())
+        # A state written before the marker existed loads when it has observations.
+        (directory / collector.MARKER_FILE).unlink()
+        collector.State(directory).verify_retained(DAY, bootstrap=False)
+        for content in ("{", "[]", '{"schema": "other", "days": []}', '{"schema": "%s", "days": ["2026-13-01"]}' % collector.MARKER_SCHEMA,
+                        '{"schema": "%s", "days": ["2026-11-03", "2026-10-01"]}' % collector.MARKER_SCHEMA):
+            with self.subTest(content=content):
+                (directory / collector.MARKER_FILE).write_text(content, encoding="ascii")
+                with self.assertRaises(collector.CollectorError):
+                    collector.State(directory).verify_retained(DAY, bootstrap=False)
+
     def test_files_are_deterministic_atomic_and_pruned_after_35_days(self) -> None:
         state = collector.State(self.temp / "state")
         for day in ("2026-09-29", "2026-09-30", "2026-11-04"):
@@ -462,7 +504,7 @@ class StateTest(Base):
         self.assertTrue((self.temp / "state/obs-2026-09-29.jsonl.gz").is_file())
         state.save(date(2026, 11, 4))
         names = sorted(path.name for path in (self.temp / "state").iterdir())
-        self.assertEqual(["obs-2026-09-30.jsonl.gz", "obs-2026-11-04.jsonl.gz", "pending.jsonl.gz"], names)
+        self.assertEqual(["obs-2026-09-30.jsonl.gz", "obs-2026-11-04.jsonl.gz", "pending.jsonl.gz", "state.json"], names)
         data = (self.temp / "state/obs-2026-11-04.jsonl.gz").read_bytes()
         self.assertEqual(b"\x1f\x8b\x08\x00\x00\x00\x00\x00", data[:8])  # no name, no time
         other = collector.State(self.temp / "other")
@@ -872,9 +914,15 @@ class EndToEndTest(Base):
         summary = self.temp / "summary.md"
         arguments = ["--state", str(state), "--gtfs", str(self.gtfs), "--stations", str(self.stations_path),
                      "--now", NOW.isoformat(), "--base-url", server.base_url, "--rate", "2", "--summary", str(summary)]
+        # An empty state (a cache that was not restored) is refused before any request, unless bootstrapped.
+        with contextlib.redirect_stderr(io.StringIO()) as errors:
+            self.assertEqual(1, collector.main(arguments))
+        self.assertIn("stato vuoto", errors.getvalue())
+        self.assertEqual([], server.requests)
+        self.assertEqual([], list(state.iterdir()) if state.exists() else [])
         output = io.StringIO()
         with contextlib.redirect_stdout(output):
-            self.assertEqual(0, collector.main(arguments))
+            self.assertEqual(0, collector.main(arguments + ["--bootstrap"]))
         log = output.getvalue() + summary.read_text(encoding="utf-8")
         self.assertIn("Treni chiesti: 7", log)
         self.assertIn("Arrivati: 2", log)  # 9558 and 2001
@@ -922,7 +970,7 @@ class EndToEndTest(Base):
             write_gtfs(gtfs)
         state = self.temp / "state"
         arguments = ["--state", str(state), "--gtfs", str(gtfs), "--stations", str(self.stations_path),
-                     "--now", NOW.isoformat(), "--base-url", server.base_url, "--rate", "2"]
+                     "--now", NOW.isoformat(), "--base-url", server.base_url, "--rate", "2", "--bootstrap"]
         output = io.StringIO()
         # The local server needs no pause between requests.
         with contextlib.redirect_stdout(output), mock.patch.object(collector.HttpFetcher, "_throttle", lambda _: None):

@@ -359,6 +359,8 @@ class VerifyCiPinningTest(unittest.TestCase):
         collect = '          python3 -I tools/collect_punctuality.py --state "$RUNNER_TEMP/punctuality-raw" \\\n'
         print_if = "        if: ${{ github.event_name == 'workflow_dispatch' && inputs.print_stats }}\n"
         build, printing = "      - name: Build the statistics\n", "      - name: Print the punctuality statistics\n"
+        guard, collect_step = "      # A miss or a failed restore", "      - name: Collect ViaggiaTreno observations\n"
+        save_if = "        if: ${{ !cancelled() && steps.collect.outputs.saved == 'true' }}\n"
         upload = (
             "      - name: Upload\n        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9\n"
             "        with:\n          name: raw\n          path: x\n          retention-days: 1\n"
@@ -389,6 +391,19 @@ class VerifyCiPinningTest(unittest.TestCase):
                 '          python3 -I tools/build_punctuality_stats.py --check "$RUNNER_TEMP/punctuality/stats_v1.json.gz"\n', "", 1),
             "ordine richiesto": original[:original.index(build)] + original[original.index(printing):] + "\n" + original[original.index(build):original.index(printing)],
             "esattamente uno step di raccolta": original.replace("      - name: Python 3\n", "      - name: Early collect\n        run: python3 -I tools/collect_punctuality.py --x\n\n      - name: Python 3\n", 1),
+            # Audit data-tools-1: a missed restore must not save an empty cache over 35 days of observations.
+            "senza cache ripristinata": original[:original.index(guard)] + original[original.index(collect_step):],
+            "senza cache ripristinata ": original.replace("        id: restore\n", "", 1),
+            "si salva solo quando la raccolta ha scritto": original.replace(save_if, "        if: ${{ !cancelled() }}\n", 1),
+            "si salva solo quando la raccolta ha scritto ": original.replace(
+                'if [ "$status" -eq 0 ] || [ "$status" -eq 3 ]', 'if [ "$status" -ne 99 ]', 1),
+            "input booleano bootstrap": original.replace(
+                "        type: boolean\n        default: false\n\npermissions:", "        type: boolean\n        default: true\n\npermissions:", 1),
+            "ammessi soltanto print_stats, bootstrap": original.replace(
+                "      bootstrap:\n", "      extra:\n        type: string\n      bootstrap:\n", 1),
+            "bootstrap solo come BOOTSTRAP": original.replace(
+                "          BOOTSTRAP: ${{ github.event_name == 'workflow_dispatch' && inputs.bootstrap }}\n        run: |\n          # The collector",
+                "          BOOTSTRAP: ${{ inputs.bootstrap || github.event_name == 'schedule' }}\n        run: |\n          # The collector", 1),
         }
         for expected, mutated in mutations.items():
             with self.subTest(expected=expected):

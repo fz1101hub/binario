@@ -10,6 +10,8 @@ name: Punctuality statistics
 # never printed, uploaded or committed.
 # A workflow_dispatch with print_stats=true also prints the aggregated stats_v1.json.gz as one nonce frame for
 # tools/apply_ci_punctuality.py; nothing else leaves the job.
+# A run that restores no cache stops before collecting and saves nothing (ViaggiaTreno forgets past days, so an
+# empty cache saved as the newest would lose up to 35 days for good); only a dispatch with bootstrap=true starts empty.
 on:
   schedule:
     - cron: "41 */2 * * *"
@@ -19,6 +21,11 @@ on:
     inputs:
       print_stats:
         description: "Stampa nel log (pubblico) stats_v1.json.gz, solo statistiche aggregate, per tools/apply_ci_punctuality.py"
+        required: false
+        type: boolean
+        default: false
+      bootstrap:
+        description: "Solo per la prima raccolta o dopo una perdita accertata della cache: parte da uno stato vuoto (i giorni persi non si recuperano)"
         required: false
         type: boolean
         default: false
@@ -48,23 +55,45 @@ jobs:
 
       # The newest cache of this branch or of the default branch; the key itself never exists yet.
       - name: Restore the raw observations
+        id: restore
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ${{ runner.temp }}/punctuality-raw
           key: punctuality-raw-${{ github.run_id }}-${{ github.run_attempt }}
           restore-keys: punctuality-raw-
 
+      # A miss or a failed restore only logs a warning: stop here, before any request, and save nothing.
+      - name: Stop without the restored observations
+        env:
+          MATCHED_KEY: ${{ steps.restore.outputs.cache-matched-key }}
+          BOOTSTRAP: ${{ github.event_name == 'workflow_dispatch' && inputs.bootstrap }}
+        run: |
+          if [ -z "$MATCHED_KEY" ] && [ "$BOOTSTRAP" != "true" ]; then
+            echo "::error::Nessuna cache punctuality-raw- ripristinata: la run si ferma e non salva (bootstrap=true solo per ripartire da zero)."
+            exit 1
+          fi
+
       - name: Collect ViaggiaTreno observations
+        id: collect
+        env:
+          BOOTSTRAP: ${{ github.event_name == 'workflow_dispatch' && inputs.bootstrap }}
         run: |
           # The collector prints counts only; workflow commands stay stopped in case a reason label ever carries text.
           marker="$(python3 -I -c 'import secrets; print(secrets.token_hex(16))')"
           echo "::stop-commands::$marker"
           trap 'echo "::$marker::"' EXIT
+          bootstrap=()
+          if [ "$BOOTSTRAP" = "true" ]; then bootstrap=(--bootstrap); fi
+          status=0
           python3 -I tools/collect_punctuality.py --state "$RUNNER_TEMP/punctuality-raw" \
-            --rate 2 --max-requests 5400 --deadline-seconds 2700 --summary "$GITHUB_STEP_SUMMARY"
+            --rate 2 --max-requests 5400 --deadline-seconds 2700 --summary "$GITHUB_STEP_SUMMARY" "${bootstrap[@]}" || status=$?
+          # 0: collected; 3: stopped by a refusal or by implausible answers, state saved, job failed. Any other status
+          # (a state refused as empty or thinner than its state.json, an error) leaves nothing worth saving.
+          if [ "$status" -eq 0 ] || [ "$status" -eq 3 ]; then echo "saved=true" >> "$GITHUB_OUTPUT"; fi
+          exit "$status"
 
       - name: Save the raw observations
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && steps.collect.outputs.saved == 'true' }}
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ${{ runner.temp }}/punctuality-raw

@@ -487,6 +487,13 @@ def _check_run_hygiene(path: Path, workflow: Mapping[str, Any], problems: list[s
 PUNCTUALITY_WORKFLOW = "punctuality.yml"
 PUNCTUALITY_CACHE_PREFIX = "punctuality-raw-"
 PUNCTUALITY_PRINT_CONDITION = "${{ github.event_name == 'workflow_dispatch' && inputs.print_stats }}"
+# The raw observations cannot be collected again (ViaggiaTreno forgets past days): a run that restored no cache stops
+# before collecting unless a dispatch asks to bootstrap, and the cache is saved only when the collector wrote a state
+# (exit status 0, or 3 for a run stopped by a refusal or implausible answers) - never an empty or thinner one.
+PUNCTUALITY_DISPATCH_INPUTS = ("print_stats", "bootstrap")
+PUNCTUALITY_BOOTSTRAP = "${{ github.event_name == 'workflow_dispatch' && inputs.bootstrap }}"
+PUNCTUALITY_RESTORE_MATCH = "${{ steps.restore.outputs.cache-matched-key }}"
+PUNCTUALITY_SAVE_CONDITION = "${{ !cancelled() && steps.collect.outputs.saved == 'true' }}"
 PUNCTUALITY_ACTIONS = frozenset({"actions/checkout", "actions/setup-python", "actions/cache/restore", "actions/cache/save"})
 # Time the job needs besides the collection itself: checkout, pack loading, cache save, aggregation and print.
 PUNCTUALITY_DEADLINE_MARGIN_SECONDS = 600
@@ -533,12 +540,15 @@ def _check_punctuality(path: Path, workflow: Mapping[str, Any], problems: list[s
     if not 1 <= len(crons) <= 3 or None in runs or sum(runs) > PUNCTUALITY_MAX_DAILY_RUNS:
         problems.append(f"{name}: schedule da una a tre cron con minuto fisso, al massimo {PUNCTUALITY_MAX_DAILY_RUNS} run al giorno")
     dispatch_inputs = _mapping((_mapping(triggers.get("workflow_dispatch")) or {}).get("inputs")) or {}
-    print_input = _mapping(dispatch_inputs.get("print_stats"))
-    if (
-        set(dispatch_inputs) != {"print_stats"} or not print_input or print_input.get("type") != "boolean"
-        or print_input.get("required") is not False or print_input.get("default") is not False
-    ):
-        problems.append(f"{name}: serve il solo input booleano print_stats, fail-closed (predefinito false)")
+    if set(dispatch_inputs) != set(PUNCTUALITY_DISPATCH_INPUTS):
+        problems.append(f"{name}: input del dispatch ammessi soltanto {', '.join(PUNCTUALITY_DISPATCH_INPUTS)}")
+    for input_name in PUNCTUALITY_DISPATCH_INPUTS:
+        declared = _mapping(dispatch_inputs.get(input_name))
+        if (
+            not declared or declared.get("type") != "boolean"
+            or declared.get("required") is not False or declared.get("default") is not False
+        ):
+            problems.append(f"{name}: serve l'input booleano {input_name}, fail-closed (predefinito false)")
     if workflow.get("permissions") != {"contents": "read"}:
         problems.append(f"{name}: permissions deve essere esattamente contents: read")
     concurrency = _mapping(workflow.get("concurrency")) or {}
@@ -589,6 +599,28 @@ def _check_punctuality(path: Path, workflow: Mapping[str, Any], problems: list[s
             problems.append(f"{name}: la stampa deve essere l'ultimo step, solo con un dispatch e print_stats")
     if build is not None and "tools/build_punctuality_stats.py --check" not in _commands(steps[build].get("run")):
         problems.append(f"{name}: l'aggregazione deve verificare il file con --check")
+    for index, step in enumerate(steps):
+        for variable, value in (_mapping(step.get("env")) or {}).items():
+            if "inputs.bootstrap" in str(value) and (variable != "BOOTSTRAP" or value != PUNCTUALITY_BOOTSTRAP):
+                problems.append(f"{name}: step {index}: bootstrap solo come BOOTSTRAP: {PUNCTUALITY_BOOTSTRAP}")
+    if restore is not None and collect is not None:
+        guards = [
+            step for step in steps[restore + 1:collect]
+            if (_mapping(step.get("env")) or {}).get("MATCHED_KEY") == PUNCTUALITY_RESTORE_MATCH
+            and (_mapping(step.get("env")) or {}).get("BOOTSTRAP") == PUNCTUALITY_BOOTSTRAP
+            and '[ -z "$MATCHED_KEY" ] && [ "$BOOTSTRAP" != "true" ]' in _commands(step.get("run"))
+            and "exit 1" in _commands(step.get("run")) and "if" not in step
+        ]
+        if steps[restore].get("id") != "restore" or len(guards) != 1:
+            problems.append(f"{name}: fra ripristino e raccolta serve lo step che ferma la run senza cache ripristinata "
+                            "(cache-matched-key vuota e nessun bootstrap)")
+    if collect is not None and save is not None:
+        command = _commands(steps[collect].get("run"))
+        if (
+            steps[collect].get("id") != "collect" or steps[save].get("if") != PUNCTUALITY_SAVE_CONDITION
+            or 'if [ "$status" -eq 0 ] || [ "$status" -eq 3 ]; then echo "saved=true" >> "$GITHUB_OUTPUT"; fi' not in command
+        ):
+            problems.append(f"{name}: la cache si salva solo quando la raccolta ha scritto uno stato ({PUNCTUALITY_SAVE_CONDITION})")
     if restore is not None and save is not None:
         restored = _mapping(steps[restore].get("with")) or {}
         saved = _mapping(steps[save].get("with")) or {}

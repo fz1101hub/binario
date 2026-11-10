@@ -34,9 +34,11 @@ container cannot reach viaggiatreno.it).  Each run:
    ``unknown``; a train left for a later run by the limits stays pending while ViaggiaTreno still answers about it; a train ViaggiaTreno does not know (HTTP 204/404, ``null``) or whose identity differs (number, origin,
    day) is recorded as ``missing``/``mismatch`` and not asked again;
 4. writes the state directory (``--state``): ``obs-YYYY-MM-DD.jsonl.gz`` (one compact JSON line per train and
-   departure day, deduplicated by day, origin and number) and ``pending.jsonl.gz``, gzip with a fixed header, and the
-   last refusal ``refusal.json``, all written atomically, observations older than 35 days removed.  A run is
-   resumable and idempotent: a train already known is never asked again.
+   departure day, deduplicated by day, origin and number) and ``pending.jsonl.gz``, gzip with a fixed header, the
+   last refusal ``refusal.json`` and ``state.json`` with the days kept, all written atomically, observations older
+   than 35 days removed.  A run is resumable and idempotent: a train already known is never asked again.  Before any
+   request it refuses (exit status 1, nothing written) a state with no observations and no ``state.json`` (a cache
+   that was not restored) or with fewer days than ``state.json`` records, unless ``--bootstrap``.
 
 Every response is untrusted: size cap, strict UTF-8 JSON (no NaN, no duplicate keys), identity and value bounds; only
 derived numbers are kept, nothing is executed, and the log and ``--summary`` show counts only, never a payload.
@@ -106,6 +108,12 @@ EXIT_STOPPED = 3
 BACKOFF_BASE = timedelta(hours=2)
 MAX_PAUSE = timedelta(days=7)
 REFUSAL_FILE = "refusal.json"
+# The days with observations after the last save.  A state with fewer of them (still within the retention) than its
+# marker records, or one with no observations and no marker (a cache that was not restored), is refused: saving it
+# would replace observations ViaggiaTreno no longer has.  Only --bootstrap (first run, or a loss the owner accepts)
+# starts from it.
+MARKER_FILE = "state.json"
+MARKER_SCHEMA = "binario-punctuality-state-v1"
 REFUSAL_REASON = re.compile(r"http-(?:403|429|503)")
 MAX_RESPONSE_BYTES = 1024 * 1024
 MAX_REDIRECTS = 3
@@ -635,6 +643,24 @@ def read_refusal(path: Path) -> dict[str, Any] | None:
     return record
 
 
+def read_marker(path: Path) -> list[str] | None:
+    """The days recorded by ``state.json``, ``None`` without one (a state written before the marker existed)."""
+    if not path.is_file():
+        return None
+    try:
+        marker = json.loads(path.read_text(encoding="ascii"), parse_constant=_reject_constant)
+    except (OSError, ValueError, RecursionError) as error:
+        raise CollectorError(f"{MARKER_FILE} non leggibile") from error
+    days = marker.get("days") if isinstance(marker, dict) else None
+    if (
+        not isinstance(marker, dict) or set(marker) != {"schema", "days"} or marker["schema"] != MARKER_SCHEMA
+        or not isinstance(days, list) or len(days) > 1000 or not all(_iso_day(day) for day in days)
+        or days != sorted(set(days))
+    ):
+        raise CollectorError(f"{MARKER_FILE} non valido")
+    return days
+
+
 class State:
     """Observations (one file per departure day), pending trains and the last refusal in ``directory``."""
 
@@ -644,6 +670,7 @@ class State:
         self.days: dict[str, dict[tuple[str, str], dict[str, Any]]] = {}
         self.dirty: set[str] = set()
         self.pending: dict[tuple[str, str, str], dict[str, Any]] = {}
+        self.expected_days: set[str] = set()  # days the save must keep (verify_retained)
         directory.mkdir(parents=True, exist_ok=True)
         self.refusal = read_refusal(directory / REFUSAL_FILE)
         pending_path = directory / PENDING_FILE
@@ -653,6 +680,30 @@ class State:
                     self.pending[(entry["d"], entry["o"], entry["n"])] = entry
                 else:
                     self.counters["state_invalid_lines"] = self.counters.get("state_invalid_lines", 0) + 1
+
+    def verify_retained(self, today: date, *, bootstrap: bool) -> None:
+        """Refuse a state that lost observation days its marker records (within the retention), or one with no
+        observations and no marker, unless ``bootstrap``; the days found are the ones the save must keep."""
+        present = set(observation_files(self.directory))
+        marker = read_marker(self.directory / MARKER_FILE)
+        cutoff = (today - timedelta(days=RETENTION_DAYS)).isoformat()
+        if marker is None:
+            if not present and not bootstrap:
+                raise CollectorError(
+                    "stato vuoto: nessuna osservazione né state.json (cache non ripristinata?); nulla è stato chiesto "
+                    "né scritto. --bootstrap solo per la prima raccolta o per ripartire da zero dopo una perdita accertata")
+            self.expected_days = {day for day in present if day >= cutoff}
+            return
+        expected = {day for day in marker if day >= cutoff}
+        lost = expected - present
+        if lost and not bootstrap:
+            raise CollectorError(
+                f"lo stato ha perso {len(lost)} dei {len(expected)} giorni di osservazioni registrati in {MARKER_FILE} "
+                f"(il più vecchio {min(lost)}): nulla è stato chiesto né scritto; ripristinare la cache giusta, o "
+                "--bootstrap per accettare la perdita")
+        if lost:
+            self.counters["giorni_persi"] = len(lost)
+        self.expected_days = expected - lost
 
     def records(self, day: str) -> dict[tuple[str, str], dict[str, Any]]:
         if day not in self.days:
@@ -677,6 +728,12 @@ class State:
 
     def save(self, today: date) -> None:
         cutoff = (today - timedelta(days=RETENTION_DAYS)).isoformat()
+        kept = {day for day in observation_files(self.directory) if day >= cutoff}
+        kept |= {day for day in self.dirty if day >= cutoff and self.days[day]}
+        missing = {day for day in self.expected_days if day >= cutoff} - kept
+        if missing:
+            raise CollectorError(f"salvataggio rifiutato: meno giorni di osservazioni ({len(missing)} mancanti) di "
+                                 "quelli trovati all'inizio della run")
         for day in sorted(self.dirty):
             if day < cutoff or not self.days[day]:  # nothing left after a retraction: no empty day file
                 continue
@@ -693,6 +750,8 @@ class State:
             if day < cutoff:
                 path.unlink()
                 self.counters["pruned_days"] = self.counters.get("pruned_days", 0) + 1
+        marker = {"schema": MARKER_SCHEMA, "days": sorted(observation_files(self.directory))}
+        _write_atomic(self.directory / MARKER_FILE, (encode(marker) + "\n").encode("ascii"))
 
 
 # --- ViaggiaTreno -------------------------------------------------------------------------------------------------
@@ -1145,7 +1204,7 @@ LABELS = (
     ("scaduti_sconosciuti", "Scaduti dopo 8 h (sconosciuti)"), ("giorno_chiuso", "Mai chiesti, giorno chiuso da ViaggiaTreno"), ("in_sospeso_dopo", "In sospeso dopo la run"),
     ("campioni", "Campioni di ritardo"), ("fermate_straordinarie", "Fermate straordinarie ignorate"),
     ("ritardi_non_plausibili", "Ritardi fuori intervallo scartati"), ("binari_non_validi", "Binari non validi scartati"), ("state_invalid_lines", "Righe di stato scartate"),
-    ("pruned_days", "Giorni eliminati (oltre 35)"),
+    ("pruned_days", "Giorni eliminati (oltre 35)"), ("giorni_persi", "Giorni persi accettati con --bootstrap"),
 )
 
 
@@ -1188,6 +1247,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--summary", type=Path, help="file Markdown a cui aggiungere il riepilogo (GITHUB_STEP_SUMMARY)")
     parser.add_argument("--estimate", action="append", type=date.fromisoformat, metavar="AAAA-MM-GG",
                         help="stampa i treni del giorno e le richieste per run, senza rete né stato")
+    parser.add_argument("--bootstrap", action="store_true",
+                        help="accetta uno stato vuoto o con meno giorni di state.json (prima raccolta, o perdita accertata)")
     parser.add_argument("--base-url", default=BASE_URL, help=argparse.SUPPRESS)
     args = parser.parse_args(argv)
     started = time.monotonic()
@@ -1206,6 +1267,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             parser.error("--now deve indicare il fuso orario")
         fetcher = HttpFetcher(args.base_url, rate=args.rate, timeout=args.timeout)
         state = State(args.state)
+        state.verify_retained(rome_date(now.timestamp()), bootstrap=args.bootstrap)
         report = collect(timetable, state, fetcher.fetch, now, max_requests=args.max_requests,
                          deadline=started + args.deadline_seconds, requests=lambda: fetcher.requests)
         report.counters["richieste_http"] = fetcher.requests
