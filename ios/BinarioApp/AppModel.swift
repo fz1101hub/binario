@@ -19,6 +19,7 @@ final class AppModel: ObservableObject {
 
     enum Tab: Hashable {
         case planner
+        case departures
         case saved
         case trains
         case settings
@@ -32,6 +33,17 @@ final class AppModel: ObservableObject {
         case limitReached
         /// The train cannot be saved, or the list could not be written.
         case failed
+    }
+
+    /// «Partenze»: what the board of the chosen station shows.
+    enum BoardState: Equatable {
+        /// No station chosen, or its board not read yet.
+        case idle
+        /// The first page is being read, or the timetables are still being opened.
+        case loading
+        /// `boardDepartures` is on screen; empty, it is «nessun treno».
+        case available
+        case unavailable(JourneyUnavailableReason)
     }
 
     /// A saved route tapped in its tab: the planner takes it over and searches it from now.
@@ -76,8 +88,28 @@ final class AppModel: ObservableObject {
     @Published private(set) var pinnedWatchRouteID: String? = nil
     /// «Collegamenti con gli aeroporti»: the airport routes the bundled timetables can answer.
     @Published private(set) var airportLinks: [AirportLink] = []
+    /// «Partenze»: the station chosen, remembered on this iPhone (`StationBoardStationStore`).
+    @Published private(set) var boardStation: StationIdentity?
+    @Published private(set) var boardState: BoardState = .idle
+    /// The trains still to leave, in departure order: the first page and those «Più tardi» added.
+    @Published private(set) var boardDepartures: [StationBoardDeparture] = []
+    @Published private(set) var boardHasMore = false
+    @Published private(set) var boardIsLoadingMore = false
+    /// «Non ci sono più treni oggi: primo domani alle …», on a board without any train left today.
+    @Published private(set) var boardFirstTomorrow: StationBoardDeparture? = nil
+    /// The feeds of the listed trains, for the board footer.
+    @Published private(set) var boardAttributions: [String] = []
 
     private(set) var repository: any JourneyRepository
+    /// «Partenze»: the bundled timetable once the index is validated (the first provider, and the
+    /// fallback of a live one), else the fail-closed provider.
+    private(set) var boardProvider: any StationBoardProvider
+    /// Bumped by every first page asked for, so only the latest board reaches the screen.
+    private var boardRequestID = 0
+    /// The Rome day the board was read on: a new day reads it again.
+    private var boardDay: Int?
+    /// The reading started by a station choice or by the timetables opening.
+    private var boardLoad: Task<Void, Never>?
     private var searchRequestID = 0
     /// The last search that was for now, whose route the Watch shows; nil once the input changes.
     private var watchRouteQuery: JourneyQuery?
@@ -94,6 +126,7 @@ final class AppModel: ObservableObject {
 
     private let savedRouteStore: SavedRouteStore
     private let favouriteTrainStore: FavouriteTrainStore
+    private let boardStationStore: StationBoardStationStore
     private let watchSharingStore: WatchSharingPreferenceStore
     private let watchPublisher: WatchSnapshotPublisher?
     private let backgroundActivity: (any BackgroundActivityRunning)?
@@ -102,8 +135,10 @@ final class AppModel: ObservableObject {
         catalogState: CatalogState,
         savedRouteStore: SavedRouteStore,
         favouriteTrainStore: FavouriteTrainStore = FavouriteTrainStore(),
+        boardStationStore: StationBoardStationStore = StationBoardStationStore(),
         watchSharingStore: WatchSharingPreferenceStore,
         repository: any JourneyRepository,
+        boardProvider: any StationBoardProvider = FailClosedStationBoardProvider(),
         scheduleState: ScheduleState = .available,
         coveredStationIDs: Set<String>? = nil,
         watchPublisher: WatchSnapshotPublisher?,
@@ -113,8 +148,10 @@ final class AppModel: ObservableObject {
         self.catalogState = catalogState
         self.savedRouteStore = savedRouteStore
         self.favouriteTrainStore = favouriteTrainStore
+        self.boardStationStore = boardStationStore
         self.watchSharingStore = watchSharingStore
         self.repository = repository
+        self.boardProvider = boardProvider
         self.scheduleState = scheduleState
         self.coveredStationIDs = coveredStationIDs
         self.latestSnapshot = nil
@@ -124,6 +161,7 @@ final class AppModel: ObservableObject {
         let routes = savedRouteStore.load()
         self.savedRoutes = routes
         self.favouriteTrains = favouriteTrainStore.load().trains
+        self.boardStation = boardStationStore.load()
         let sharingEnabled = watchSharingStore.load()
         self.watchSharingEnabled = sharingEnabled
         self.watchSyncStatus = sharingEnabled ? .activating : .disabled
@@ -171,6 +209,7 @@ final class AppModel: ObservableObject {
             catalogState: .loading,
             savedRouteStore: SavedRouteStore(),
             favouriteTrainStore: FavouriteTrainStore(),
+            boardStationStore: StationBoardStationStore(),
             watchSharingStore: WatchSharingPreferenceStore(),
             repository: FailClosedJourneyRepository(),
             scheduleState: .loading,
@@ -319,20 +358,25 @@ final class AppModel: ObservableObject {
         }.value
         guard let installed else {
             repository = FailClosedJourneyRepository()
+            boardProvider = FailClosedStationBoardProvider()
             schedulePacks = []
             coveredStationIDs = nil
             sourcePolicy = nil
             scheduleState = .unavailable
             updateAirportLinks()
+            scheduleBoardReload()
             endPendingWatchRefresh()
             return
         }
         repository = installed.repository
+        boardProvider = installed.repository
         schedulePacks = installed.packs
         coveredStationIDs = installed.coveredStationIDs
         sourcePolicy = installed.sourcePolicy
         scheduleState = .available
         updateAirportLinks()
+        // A station remembered from the last time «Partenze» was open is read now.
+        scheduleBoardReload()
         // At launch the Watch gets the pinned route; a refresh it asked for meanwhile is answered.
         await refreshWatchSnapshot()
         endPendingWatchRefresh()
@@ -505,6 +549,160 @@ final class AppModel: ObservableObject {
     private func endPendingWatchRefresh() {
         pendingWatchRefreshEnd?()
         pendingWatchRefreshEnd = nil
+    }
+
+    // MARK: «Partenze»
+
+    /// Trains asked for at a time; «Più tardi» adds as many.
+    static let boardPageSize = 20
+    /// «Più tardi» stops adding trains once this many are listed.
+    static let maximumBoardDepartures = 200
+
+    /// «Partenze» of `station` from now: remembered on this iPhone, its first page read at once.
+    func selectBoardStation(_ station: StationIdentity) {
+        guard station != boardStation || boardState == .idle else { return }
+        boardStation = station
+        boardStationStore.save(station)
+        // The trains of another station are never shown under this one.
+        boardDepartures = []
+        boardHasMore = false
+        boardFirstTomorrow = nil
+        boardAttributions = []
+        boardState = .loading
+        scheduleBoardReload()
+    }
+
+    private func scheduleBoardReload() {
+        guard boardStation != nil else { return }
+        boardLoad = Task { await self.reloadBoard() }
+    }
+
+    /// Waits until the reading started by a station choice or by the timetables has finished.
+    func boardLoadFinished() async {
+        await boardLoad?.value
+    }
+
+    /// Reads the first page of the chosen station from the current minute. While the timetables
+    /// are still being opened the board waits: `loadSchedule` reads it once they are.
+    func reloadBoard(now: Date = Date()) async {
+        guard let station = boardStation else { return }
+        boardRequestID &+= 1
+        let requestID = boardRequestID
+        boardIsLoadingMore = false
+        if boardDepartures.isEmpty { boardState = .loading }
+        guard scheduleState != .loading else {
+            boardState = .loading
+            return
+        }
+        guard let query = try? StationBoardQuery(
+            station: station,
+            from: StationBoardQuery.minuteStart(of: now),
+            limit: Self.boardPageSize
+        ) else {
+            applyBoardUnavailable(.noJourney, day: Self.boardDay(now))
+            return
+        }
+        let result = await boardProvider.departures(for: query)
+        guard requestID == boardRequestID, boardStation == station else { return }
+        switch result {
+        case let .available(page):
+            boardDepartures = page.departures
+            boardHasMore = page.hasMore
+            boardFirstTomorrow = page.firstDepartureNextDay
+            boardAttributions = page.attributions
+            boardDay = Self.boardDay(now)
+            boardState = .available
+        case let .unavailable(reason):
+            applyBoardUnavailable(reason, day: Self.boardDay(now))
+        }
+    }
+
+    private func applyBoardUnavailable(_ reason: JourneyUnavailableReason, day: Int) {
+        boardDepartures = []
+        boardHasMore = false
+        boardFirstTomorrow = nil
+        boardAttributions = []
+        boardDay = day
+        boardState = .unavailable(reason)
+    }
+
+    /// «Più tardi»: the page after the last listed train, without repeating one; returns how many
+    /// trains were added (for VoiceOver). A newer first page or another station discards it.
+    @discardableResult
+    func loadMoreBoard() async -> Int {
+        guard boardState == .available, boardHasMore, !boardIsLoadingMore,
+              let station = boardStation, let last = boardDepartures.last,
+              boardDepartures.count < Self.maximumBoardDepartures,
+              let query = try? StationBoardQuery(
+                  station: station,
+                  from: last.departure,
+                  limit: Self.boardPageSize,
+                  after: last.cursor
+              )
+        else { return 0 }
+        let requestID = boardRequestID
+        boardIsLoadingMore = true
+        let result = await boardProvider.departures(for: query)
+        guard requestID == boardRequestID, boardStation == station else { return 0 }
+        boardIsLoadingMore = false
+        guard case let .available(page) = result else {
+            boardHasMore = false
+            return 0
+        }
+        let known = Set(boardDepartures.map(\.id))
+        let room = max(0, Self.maximumBoardDepartures - boardDepartures.count)
+        let added = Array(page.departures.filter { !known.contains($0.id) }.prefix(room))
+        boardDepartures += added
+        boardHasMore = page.hasMore && boardDepartures.count < Self.maximumBoardDepartures
+        for attribution in page.attributions where !boardAttributions.contains(attribution) {
+            boardAttributions.append(attribution)
+        }
+        return added.count
+    }
+
+    /// When «Partenze» appears and every minute while it is on screen: drops the trains that have
+    /// left (a minute after their scheduled departure, as the planner's «Più puntuale» counts
+    /// them) and reads the board again when it was never read, the list has just emptied or the
+    /// Rome day has changed.
+    func refreshBoardIfNeeded(now: Date = Date()) async {
+        guard boardStation != nil, scheduleState != .loading else { return }
+        switch boardState {
+        case .idle:
+            await reloadBoard(now: now)
+            return
+        case .loading:
+            return
+        case .unavailable:
+            if boardDay != Self.boardDay(now) { await reloadBoard(now: now) }
+            return
+        case .available:
+            break
+        }
+        let listed = boardDepartures
+        let remaining = listed.filter { $0.stillToLeave(at: now) }
+        if remaining.count != listed.count { boardDepartures = remaining }
+        let emptied = remaining.isEmpty && !listed.isEmpty
+        if emptied || boardDay != Self.boardDay(now) {
+            await reloadBoard(now: now)
+        }
+    }
+
+    /// The ride a board row opens in the train detail: boarded at the board's station, which with
+    /// the number is the identity of its star in «I miei treni», and measured at the train's last
+    /// stop, named as the catalogue names it.
+    func boardDetailQuery(for departure: StationBoardDeparture) -> JourneyQuery? {
+        guard let station = boardStation else { return nil }
+        let terminus = StationIdentity(self.station(for: departure.terminus))
+        return try? JourneyQuery(origin: station, destination: terminus, departure: departure.departure)
+    }
+
+    /// The Rome calendar day of `date` as yyyymmdd.
+    static func boardDay(_ date: Date) -> Int {
+        let parts = timetableCalendar.dateComponents([.year, .month, .day], from: date)
+        let year: Int = parts.year ?? 0
+        let month: Int = parts.month ?? 0
+        let day: Int = parts.day ?? 0
+        return year * 10_000 + month * 100 + day
     }
 
     func takePlannerRequest() -> PlannerRequest? {

@@ -1,5 +1,19 @@
 # Changelog
 
+## In sviluppo — «Partenze» su iPhone
+
+- **Partenze** su iPhone, nella seconda scheda come su Android: scegli una stazione e vedi i prossimi treni in partenza dagli orari programmati inclusi nell'app, senza rete.
+  - Oggi da adesso, più le corse di ieri che partono ancora dopo mezzanotte (orari oltre le 24:00); i treni del giorno dopo no.
+  - Ogni riga: orario, treno come nei risultati del pianificatore («REG 2153»), destinazione (l'ultima fermata del treno), operatore e bici a bordo quando l'orario le pubblica. Il binario non c'è, perché gli orari inclusi non lo riportano.
+  - 20 treni alla volta, «Più tardi» per i successivi; un treno partito da un minuto sparisce.
+  - Quando oggi non parte più nulla: «Non ci sono più treni oggi: primo domani alle …», come su Android.
+  - Un tocco apre il dettaglio del treno; la stella lo salva in «I miei treni» con questa stazione come partenza.
+  - Con le righe dell'orario programmato compare «Orari programmati statici. Non sono dati in tempo reale.» e VoiceOver legge ogni riga come una frase: orario, treno, destinazione, binario.
+  - Pullman e bus sostitutivi seguono la regola del pianificatore. Nessuna affidabilità per riga, perché il tabellone Android non la mostra.
+- **Pronto per i dati live**: il tabellone passa da un fornitore che oggi è solo l'orario incluso e che resterà la riserva di una fonte live; ogni riga può già portare ritardo, soppressione, binario effettivo e fonte. Nessuna richiesta di rete in questa versione.
+- **Statistiche di rete**: la documentazione iPhone ora dice che dal 9 novembre la raccolta comprende anche i treni Trenord, che entrano nel file con gli aggiornamenti settimanali.
+- [PRIVACY.md](PRIVACY.md): l'ultima stazione di Partenze resta nelle `UserDefaults` dell'iPhone, con la chiave `it.binario.ios.departures-station.v1`. Testi in tutte le 17 lingue.
+
 ## In sviluppo — «I miei treni» pieno non cancella più nulla su Android
 
 - **Android, «I miei treni»**: con 12 treni già salvati, il cuore del dettaglio non elimina più in silenzio il più vecchio, nome personalizzato compreso. Il treno non viene aggiunto e un avviso dice «Puoi salvare al massimo 12 treni.», come su iPhone. Il cuore toglie sempre un treno già salvato, anche con la lista piena, e la richiesta del nome personalizzato compare solo quando un treno viene davvero aggiunto.

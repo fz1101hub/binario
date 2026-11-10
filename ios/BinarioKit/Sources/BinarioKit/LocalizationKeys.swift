@@ -1,7 +1,7 @@
 public enum BinarioLocalizationKeys {
     public static let required: Set<String> = [
         "action.ok",
-        "tab.planner", "tab.saved", "tab.trains", "tab.settings",
+        "tab.planner", "tab.departures", "tab.saved", "tab.trains", "tab.settings",
         "planner.title", "planner.intro.title", "planner.intro.body",
         "planner.origin", "planner.destination", "planner.departure", "planner.departure.italian_time",
         "planner.choose_station", "planner.search_station",
@@ -28,6 +28,12 @@ public enum BinarioLocalizationKeys {
         "result.detail.band_range", "result.detail.band_over", "result.detail.band_share",
         "result.detail.max_delay", "result.detail.worst_stop", "result.detail.usual_platform",
         "result.detail.weekday", "result.detail.threshold_note",
+        "departures.title", "departures.station", "departures.empty.body", "departures.local_only",
+        "departures.list.title", "departures.loading", "departures.none.title", "departures.none.body",
+        "departures.no_more_today", "departures.not_covered.body", "departures.expired.body",
+        "departures.later", "departures.later.loaded",
+        "departures.row.destination", "departures.row.platform", "departures.row.spoken",
+        "departures.row.platform_spoken", "departures.row.platform_unknown",
         "saved.title", "saved.empty.title", "saved.empty.body", "saved.local_only",
         "saved.delete_all", "saved.storage_error", "saved.limit_error",
         "saved.watch.show", "saved.watch.stop", "saved.watch.pinned", "saved.watch.footer", "saved.watch.sharing_off",
@@ -61,6 +67,6 @@ public enum BinarioLocalizationKeys {
         "result.route.trains", "result.route.runs_observed", "result.route.days",
         "result.detail.reliability_title", "result.detail.arrival_on_time", "result.detail.band_share",
         "result.detail.usual_platform", "result.detail.weekday", "result.alternative.on_time",
-        "saved.trains.limit_error", "saved.trains.reliability.description",
+        "saved.trains.limit_error", "saved.trains.reliability.description", "departures.later.loaded",
     ]
 }

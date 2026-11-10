@@ -28,7 +28,7 @@ LANGUAGES = {
     "ar", "hi", "id", "ja", "ko", "my", "pt-BR", "ru", "th", "tr", "vi", "zh-Hans",
 }
 STRINGS_ENTRY = re.compile(r'^"((?:[^"\\]|\\.)+)"\s*=\s*"((?:[^"\\]|\\.)*)";$')
-SWIFT_REQUIRED_KEY = re.compile(r'"((?:action|app|tab|planner|catalog|schedule|result|saved|settings|watch|accessibility)\.[a-z0-9_.]+)"')
+SWIFT_REQUIRED_KEY = re.compile(r'"((?:action|app|tab|planner|departures|catalog|schedule|result|saved|settings|watch|accessibility)\.[a-z0-9_.]+)"')
 PLACEHOLDER = re.compile(r'%(?:\d+\$)?(?:hh|h|ll|l)?[@diufFeEgGxXoscpaA]')
 # CLDR plural categories of each .lproj (docs/l10n/LOCALES.md and the batch rules).
 PLURAL_CATEGORIES = {
@@ -1020,6 +1020,177 @@ class IOSProjectTests(unittest.TestCase):
             forms = plistlib.load(source)
         self.assertEqual("Puoi salvare al massimo %1$lld treni.", forms["saved.trains.limit_error"]["count"]["other"])
         self.assertEqual("Puoi salvare al massimo %1$lld treno.", forms["saved.trains.limit_error"]["count"]["one"])
+
+    def test_departures_board_reads_the_bundled_timetable_behind_a_provider(self) -> None:
+        # «Partenze»: the trains leaving a station from the bundled index, behind a Sendable
+        # provider protocol (the bundled timetable first, the fallback of a later live source),
+        # with the planner's naming, bikes and bounds; rows can carry a live status, and the
+        # «orario programmato» disclosure follows the rows of the scheduled source.
+        board = (IOS / "BinarioKit/Sources/BinarioKit/StationBoard.swift").read_text(encoding="utf-8")
+        gtfs = (IOS / "BinarioKit/Sources/BinarioKit/SQLiteGTFSJourneyRepository.swift").read_text(encoding="utf-8")
+        for fragment in (
+            "public protocol StationBoardProvider: Sendable {",
+            "func departures(for query: StationBoardQuery) async -> StationBoardResult",
+            "public struct FailClosedStationBoardProvider: StationBoardProvider {",
+            "public struct StationBoardLiveStatus: Equatable, Sendable {",
+            "public let live: StationBoardLiveStatus?",
+            "public var isScheduled: Bool { live == nil }",
+            "public static let maximumPageSize = 50",
+            "self.limit = min(max(limit, 1), Self.maximumPageSize)",
+            "try JourneyModelValidator.identity(station)",
+            "ReliableAlternatives.stillToDepart(departure, now: now)",
+            'public static let storageKey = "it.binario.ios.departures-station.v1"',
+            "guard let data = defaults.data(forKey: Self.storageKey), data.count <= Self.maximumStoredBytes,",
+        ):
+            with self.subTest(fragment=fragment):
+                self.assertIn(fragment, board)
+        self.assertNotIn("URLSession", board)
+        query = gtfs.split("// MARK: - «Partenze»", 1)[1]
+        for fragment in (
+            "extension SQLiteGTFSJourneyRepository: StationBoardProvider {",
+            "if try indexEnded(before: query.from, timeZone: referenceTimeZone, database: database) {",
+            "for offset in 0...maximumServiceDayLookback {",
+            "AND board_time.pickup_type = 0",
+            "AND board_time.departure_seconds BETWEEN ? AND ?",
+            "try statement.bind(Int64(maximumCandidateRows + 1), at: binding)",
+            "guard rowsRead <= maximumCandidateRows else { throw SQLiteGTFSFailure.limitExceeded }",
+            "serviceRuns(serviceDay: serviceDay, startDate: startDate, dayCount: dayCount,",
+            "let number = trainNumber(trip: statement.text(at: 2), route: statement.text(at: 3), externalTripID: externalTripID)",
+            "let category = trainCategory(route: statement.text(at: 3), longName: statement.text(at: 4), type: statement.int(at: 5))",
+            "bikesAllowed: bikes(statement.int(at: 15))",
+            "platform: nil,",
+            "status: OperationalState.programmed.rawValue,",
+            "!boardStops.contains(terminus.stopID),",
+            "ORDER BY last_time.stop_sequence DESC",
+        ):
+            with self.subTest(fragment=fragment):
+                self.assertIn(fragment, query)
+        # Coaches and replacement buses follow the planner's rule: the index keeps only the packs'
+        # rail routes, and neither query filters route types of its own.
+        self.assertIn("RAIL_ROUTE_TYPES = frozenset({2, *range(100, 200)})", (ROOT / "tools/build_ios_gtfs_schedule.py").read_text(encoding="utf-8"))
+        self.assertNotIn("route_type IN", gtfs)
+        self.assertNotIn("route_type =", gtfs)
+        # The planner rows and the board name trains with the same helpers.
+        planner_query = gtfs.split("private static func queryCandidates(", 1)[1].split("private static func trainNumber(", 1)[0]
+        self.assertIn("let number = trainNumber(trip: statement.text(at: 2), route: statement.text(at: 4), externalTripID: externalTripID)", planner_query)
+        self.assertIn("let bikesAllowed = bikes(statement.int(at: 16))", planner_query)
+
+        model = (IOS / "BinarioApp/AppModel.swift").read_text(encoding="utf-8")
+        view = (IOS / "BinarioApp/DeparturesView.swift").read_text(encoding="utf-8")
+        root = (IOS / "BinarioApp/RootView.swift").read_text(encoding="utf-8")
+        for source, fragment in (
+            (model, "private(set) var boardProvider: any StationBoardProvider"),
+            (model, "boardProvider = installed.repository"),
+            (model, "boardProvider = FailClosedStationBoardProvider()"),
+            (model, "static let boardPageSize = 20"),
+            (model, "static let maximumBoardDepartures = 200"),
+            (model, "self.boardStation = boardStationStore.load()"),
+            (model, "boardStationStore.save(station)"),
+            (model, "guard requestID == boardRequestID, boardStation == station else { return }"),
+            (model, "from: StationBoardQuery.minuteStart(of: now),"),
+            (model, "after: last.cursor"),
+            (model, "let remaining = listed.filter { $0.stillToLeave(at: now) }"),
+            (model, "return try? JourneyQuery(origin: station, destination: terminus, departure: departure.departure)"),
+            (view, 'StationPickerField(titleKey: "departures.station", selection: stationSelection)'),
+            (view, "TrainDetailView(service: departure.service, query: query)"),
+            (view, "Text(ReliableAlternatives.trainLabel(service))"),
+            (view, "BikesLabel(allowed: bikesAllowed)"),
+            (view, "if rows.contains(where: { $0.isScheduled }) {"),
+            (view, 'Label("result.programmed.disclosure", systemImage: "clock")'),
+            (view, ".accessibilityElement(children: .ignore)"),
+            (view, ".accessibilityLabel(Text(DeparturesTexts.spoken(service)))"),
+            (view, 'NSLocalizedString("departures.later.loaded", comment: "")'),
+            (view, ".task { await followTheClock() }"),
+            (root, "NavigationStack { DeparturesView() }"),
+            (root, ".tag(AppModel.Tab.departures)"),
+        ):
+            with self.subTest(fragment=fragment):
+                self.assertIn(fragment, source)
+        # Second tab, as on Android (Pianifica, Partenze, Per te).
+        self.assertLess(root.index("PlannerView()"), root.index("DeparturesView()"))
+        self.assertLess(root.index("DeparturesView()"), root.index("SavedRoutesView()"))
+        # Android's station board shows no reliability per row: neither does the iPhone's.
+        for name in ("NetworkReliability", "resultReliability", "reliabilityStats", "ReliabilityTexts"):
+            self.assertNotIn(name, view)
+        # Nothing of the board reaches the Watch.
+        for path in sorted((IOS / "BinarioKit/Sources/BinarioKit").glob("WearSnapshot*.swift")):
+            self.assertNotIn("StationBoard", path.read_text(encoding="utf-8"), path.name)
+
+        kit_tests = (IOS / "BinarioKit/Tests/BinarioKitTests/StationBoardTests.swift").read_text(encoding="utf-8")
+        for name in (
+            "testTheBoardListsTodaysNextTrainsInDepartureOrderNamedAsThePlannerNamesThem",
+            "testTrainsGoneNotBoardingHereOrEndingHereAreNoDeparturesAndATrainCallingTwiceIsListedOnce",
+            "testPagesFollowTheLastListedTrainWithoutGapsOrRepeats",
+            "testYesterdaysRunsStillToLeaveAfterMidnightJoinTodaysServiceDay",
+            "testTheServiceDayFollowsTheTimetableCalendarAcrossRomeDST",
+            "testOnlyTodaysServiceDayIsListedAndTheFirstTrainOfTomorrowWhenNoneIsLeft",
+            "testUnservedStationsEndedTimetablesAndInvalidIndexesFailClosed",
+            "testQueriesAreBoundedAndInvalidStationsAreRefused",
+            "testARowIsScheduledUnlessALiveSourceObservedItAndLeavesAMinuteAfterItsDeparture",
+            "testTheLastStationIsRememberedOnThisIPhoneOnlyWhenItIsValid",
+        ):
+            with self.subTest(test=name):
+                self.assertIn(f"func {name}()", kit_tests)
+        self.assertIn(
+            "func testPartenzeRemembersTheStationReadsLaterPagesAndOpensTheTrainBoardedThere()",
+            (IOS / "BinarioAppTests/BinarioAppTests.swift").read_text(encoding="utf-8"),
+        )
+
+        # The board reads at most maximumCandidateRows rows of a service day: every station of the
+        # bundled index has fewer boarding rows per agency time zone, whatever the day.
+        with tempfile.TemporaryDirectory(prefix="ios-board-") as temporary:
+            database = Path(temporary) / "schedule.sqlite"
+            database.write_bytes(zlib.decompress((IOS / "Resources/binario_gtfs_schedule_v1.sqlite.zlib").read_bytes()))
+            connection = sqlite3.connect(f"file:{database}?mode=ro&immutable=1", uri=True)
+            try:
+                busiest = connection.execute(
+                    """
+                    SELECT max(rows) FROM (
+                        SELECT count(*) AS rows FROM stop_time AS st
+                        JOIN stop AS s ON s.id = st.stop_id
+                        JOIN trip AS t ON t.id = st.trip_id JOIN route AS r ON r.id = t.route_id
+                        JOIN agency AS a ON a.id = r.agency_id
+                        WHERE s.catalog_station_id IS NOT NULL AND st.pickup_type = 0
+                        GROUP BY s.catalog_station_id, a.timezone
+                    )
+                    """
+                ).fetchone()[0]
+            finally:
+                connection.close()
+        self.assertIn("private static let maximumCandidateRows = 4_096", gtfs)
+        self.assertLessEqual(busiest, 4_096)
+
+        # Disclosed as stored on the iPhone only.
+        privacy = (ROOT / "PRIVACY.md").read_text(encoding="utf-8")
+        self.assertIn("`it.binario.ios.departures-station.v1`", privacy)
+
+        # The names are Android's in every language.
+        def apple(text: str) -> str:
+            return re.sub(r"%(\d)\$d", r"%\1$lld", re.sub(r"%(\d)\$s", r"%\1$@", text))
+
+        for language, folder in sorted(ANDROID_VALUES.items()):
+            with self.subTest(language=language):
+                resources = ElementTree.parse(ROOT / "app/src/main/res" / folder / "strings.xml").getroot()
+                android_strings = {element.get("name"): element.text for element in resources.findall("string")}
+                values = read_strings(IOS / "Resources" / f"{language}.lproj" / "Localizable.strings")
+                for key, android_name in (
+                    ("tab.departures", "nav_departures"),
+                    ("departures.title", "nav_departures"),
+                    ("departures.station", "station_label"),
+                    ("departures.list.title", "shortcut_next_departures"),
+                    ("departures.later", "results_later"),
+                    ("departures.no_more_today", "journey_no_more_today"),
+                    ("departures.row.destination", "station_board_departure_to"),
+                    ("departures.row.platform", "station_board_platform"),
+                ):
+                    self.assertEqual(apple(android_strings[android_name]), values[key], key)
+        italian = read_strings(IOS / "Resources/it.lproj/Localizable.strings")
+        self.assertEqual("Partenze", italian["tab.departures"])
+        self.assertEqual("%1$@, treno %2$@ per %3$@, %4$@", italian["departures.row.spoken"])
+        with (IOS / "Resources/it.lproj/Localizable.stringsdict").open("rb") as source:
+            forms = plistlib.load(source)
+        self.assertEqual("%1$lld treno in più", forms["departures.later.loaded"]["count"]["one"])
+        self.assertEqual("%1$lld treni in più", forms["departures.later.loaded"]["count"]["other"])
 
     def test_bikes_come_from_the_published_trip_value_and_italo_is_unknown(self) -> None:
         builder = (ROOT / "tools/build_ios_gtfs_schedule.py").read_text(encoding="utf-8")
