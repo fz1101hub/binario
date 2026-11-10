@@ -1,5 +1,6 @@
 package it.binario.app
 
+import android.content.Intent
 import it.binario.app.data.Direction
 import it.binario.app.data.SavedRoute
 import it.binario.app.data.Station
@@ -10,6 +11,13 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class BinarioDeepLinkTest {
+    @Test fun `a task reopened from Recents or a restored activity does not replay the launch request`() {
+        assertTrue(LaunchDeepLinkPolicy.shouldReceive(restoringState = false, intentFlags = 0))
+        assertTrue(LaunchDeepLinkPolicy.shouldReceive(false, Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP))
+        assertFalse(LaunchDeepLinkPolicy.shouldReceive(false, Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY or Intent.FLAG_ACTIVITY_NEW_TASK))
+        assertFalse(LaunchDeepLinkPolicy.shouldReceive(restoringState = true, intentFlags = 0))
+    }
+
     @Test fun `agenda notification opens only the allowlisted destination without parameters`() {
         assertEquals(BinarioDeepLink.Agenda, BinarioDeepLinkParser.parse(BinarioDeepLinkParser.viewAction, "binario://agenda"))
         listOf("binario://agenda?journey=private", "binario://agenda/extra", "binario://agenda#fragment")

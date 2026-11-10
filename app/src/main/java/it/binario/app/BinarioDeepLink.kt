@@ -1,5 +1,6 @@
 package it.binario.app
 
+import android.content.Intent
 import it.binario.app.data.Direction
 import it.binario.app.data.SavedRoute
 import java.net.URI
@@ -87,6 +88,16 @@ object BinarioDeepLinkParser {
  * observe the same request repeatedly, but only [consume] with its current id can
  * clear it and apply its navigation side effect.
  */
+/**
+ * Whether a new activity applies the request of its launch intent: not when it restores saved state, and not when the
+ * task is reopened from Recents ([Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY]), whose base intent is still the widget,
+ * notification or shortcut tap that first started it and must not move the user again.
+ */
+object LaunchDeepLinkPolicy {
+    fun shouldReceive(restoringState: Boolean, intentFlags: Int): Boolean =
+        !restoringState && (intentFlags and Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY) == 0
+}
+
 class DeepLinkRequestDispatcher(
     private val parser: (String?, String?) -> BinarioDeepLink? = BinarioDeepLinkParser::parse
 ) {

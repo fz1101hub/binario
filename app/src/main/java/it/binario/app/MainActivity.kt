@@ -158,9 +158,9 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        // An Activity recreated from saved state must restore its UI, not replay the
-        // launch Intent and navigate away from the screen the user was using.
-        if (savedInstanceState == null) receiveDeepLinkIntent(intent)
+        // An Activity recreated from saved state must restore its UI, not replay the launch Intent and navigate away
+        // from the screen the user was using; nor does a task reopened from Recents replay the tap that started it.
+        if (LaunchDeepLinkPolicy.shouldReceive(savedInstanceState != null, intent?.flags ?: 0)) receiveDeepLinkIntent(intent)
         // Only a fresh start (also after a force stop, which clears alarms and works) plans again: a rotation or
         // another configuration change must not move a reminder that is due but not delivered yet.
         if (savedInstanceState == null) {
