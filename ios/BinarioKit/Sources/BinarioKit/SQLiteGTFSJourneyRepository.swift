@@ -379,28 +379,15 @@ public struct SQLiteGTFSJourneyRepository: JourneyRepository, Sendable {
             else { continue }
 
             let departure = try gtfsDate(serviceDay: serviceDay, seconds: TimeInterval(seconds), calendar: calendar)
-            let rawNumber = statement.text(at: 2)?.nonEmpty
-                ?? statement.text(at: 4)?.nonEmpty
-                ?? externalTripID
-            let rawCategory = statement.text(at: 4)?.nonEmpty
-                ?? statement.text(at: 5)?.nonEmpty
-                ?? "GTFS \(statement.int(at: 6))"
-            let number = bounded(rawNumber, maximum: 24)
+            let number = trainNumber(trip: statement.text(at: 2), route: statement.text(at: 4), externalTripID: externalTripID)
             let operatorName = bounded(agencyName, maximum: 64)
-            let category = bounded(rawCategory, maximum: 64)
+            let category = trainCategory(route: statement.text(at: 4), longName: statement.text(at: 5), type: statement.int(at: 6))
             let destination = bounded(destinationName, maximum: 96)
             guard !number.isEmpty, !operatorName.isEmpty, !category.isEmpty, !destination.isEmpty else {
                 throw SQLiteGTFSFailure.invalidData
             }
             let formattedTime = timeString(departure, timeZone: calendar.timeZone)
-            // Only a published value: 1 allowed, 2 not allowed; NULL (empty, 0 or a pack whose
-            // value is not shown, see BIKES_VALUE_NOT_SHOWN in the builder) stays unknown.
-            let bikesAllowed: Bool?
-            switch statement.int(at: 16) {
-            case 1: bikesAllowed = true
-            case 2: bikesAllowed = false
-            default: bikesAllowed = nil
-            }
+            let bikesAllowed = bikes(statement.int(at: 16))
             let serviceDate = encodedDate(serviceDay, calendar: calendar)
             let id = "\(sourceID):\(externalTripID):\(serviceDate):\(seconds)"
             candidates.append(Candidate(
@@ -424,6 +411,30 @@ public struct SQLiteGTFSJourneyRepository: JourneyRepository, Sendable {
             ))
         }
         return candidates
+    }
+
+    /// The number a train is listed with: the trip's published number, else its route's short
+    /// name, else the trip's identifier. With `trainCategory`, the naming of the planner rows and of
+    /// «Partenze» (`ReliableAlternatives.trainLabel` joins the two).
+    private static func trainNumber(trip tripShortName: String?, route routeShortName: String?, externalTripID: String) -> String {
+        let raw: String = tripShortName?.nonEmpty ?? routeShortName?.nonEmpty ?? externalTripID
+        return bounded(raw, maximum: 24)
+    }
+
+    /// The route's short name, else its long name, else its GTFS route type.
+    private static func trainCategory(route routeShortName: String?, longName: String?, type routeType: Int64) -> String {
+        let raw: String = routeShortName?.nonEmpty ?? longName?.nonEmpty ?? "GTFS \(routeType)"
+        return bounded(raw, maximum: 64)
+    }
+
+    /// Only a published value: 1 allowed, 2 not allowed; NULL (empty, 0 or a pack whose value is
+    /// not shown, see BIKES_VALUE_NOT_SHOWN in the builder) stays unknown.
+    private static func bikes(_ value: Int64) -> Bool? {
+        switch value {
+        case 1: return true
+        case 2: return false
+        default: return nil
+        }
     }
 
     private static func serviceRuns(
@@ -517,6 +528,335 @@ public struct SQLiteGTFSJourneyRepository: JourneyRepository, Sendable {
         let attribution: String
         let service: TrainService
     }
+}
+
+// MARK: - «Partenze»
+
+/// The bundled timetable as the first `StationBoardProvider`, and the fallback of any live one.
+extension SQLiteGTFSJourneyRepository: StationBoardProvider {
+    /// The trains leaving `query.station` from `query.from`, read from the index as the planner
+    /// reads its results: the station's stops, boarding allowed there (`pickup_type = 0`), the
+    /// service days the trips run on, the planner's naming and bikes, nothing live. A page holds the
+    /// trains of today's service day of each agency time zone and the runs of earlier service days
+    /// still to leave (yesterday's after midnight, GTFS times from 24:00), never the next service
+    /// day's: that one gives only `firstDepartureNextDay`, on a first page without any train left.
+    /// A trip whose last stop is the station itself (it only arrives there) is no departure, and a
+    /// trip calling twice is listed once, at its first departure from `query.from`. Coaches and
+    /// replacement buses follow the planner's rule: the index keeps only the rail routes of the
+    /// packs (tools/build_ios_gtfs_schedule.py, RAIL_ROUTE_TYPES), as the feeds publish them.
+    public func departures(for query: StationBoardQuery) async -> StationBoardResult {
+        do {
+            return .available(try Self.loadBoard(databaseURL: databaseURL, query: query))
+        } catch SQLiteGTFSFailure.noRoute {
+            return .unavailable(.noJourney)
+        } catch SQLiteGTFSFailure.scheduleExpired {
+            return .unavailable(.scheduleExpired)
+        } catch {
+            return .unavailable(.providerInvalid)
+        }
+    }
+
+    private static func loadBoard(databaseURL: URL, query: StationBoardQuery) throws -> StationBoardPage {
+        let database = try SQLiteDatabase(readOnlyURL: databaseURL)
+        _ = try validate(database)
+        let timeZones = try agencyTimeZones(database)
+        let referenceTimeZone = timeZones.first ?? TimeZone(identifier: "Europe/Rome") ?? .current
+        // As for the planner: after the last day of every pack the board needs an app update.
+        if try indexEnded(before: query.from, timeZone: referenceTimeZone, database: database) {
+            throw SQLiteGTFSFailure.scheduleExpired
+        }
+        let stopIDs = try resolve(query.station, database: database)
+        // One more than the page tells whether «Più tardi» has anything to add.
+        let wanted = query.limit + 1
+
+        var candidates: [StationBoardCandidate] = []
+        for timeZone in timeZones {
+            let calendar = serviceCalendar(timeZone: timeZone)
+            let today = calendar.startOfDay(for: query.from)
+            // Today's service day, then the earlier ones, whose runs past 24:00 can still leave.
+            for offset in 0...maximumServiceDayLookback {
+                guard let serviceDay = calendar.date(byAdding: .day, value: -offset, to: today) else {
+                    throw SQLiteGTFSFailure.invalidData
+                }
+                candidates += try boardCandidates(
+                    database: database,
+                    query: query,
+                    stopIDs: stopIDs,
+                    agencyTimeZone: timeZone.identifier,
+                    serviceDay: serviceDay,
+                    calendar: calendar,
+                    wanted: wanted
+                )
+            }
+        }
+        var seen = Set<String>()
+        let ordered = candidates
+            .sorted { $0.entry.cursor < $1.entry.cursor }
+            .filter { seen.insert($0.entry.id).inserted }
+        let listed = Array(ordered.prefix(query.limit))
+
+        var firstNextDay: StationBoardCandidate?
+        if listed.isEmpty {
+            if try stationPacksEnded(before: query.from, stopIDs: stopIDs, timeZone: referenceTimeZone, database: database) {
+                throw SQLiteGTFSFailure.scheduleExpired
+            }
+            if query.after == nil {
+                firstNextDay = try firstDepartureOfNextServiceDay(
+                    database: database,
+                    query: query,
+                    stopIDs: stopIDs,
+                    timeZones: timeZones
+                )
+            }
+        }
+        let shown: [StationBoardCandidate] = listed + (firstNextDay.map { [$0] } ?? [])
+        return StationBoardPage(
+            query: query,
+            departures: listed.map(\.entry),
+            hasMore: ordered.count > query.limit,
+            firstDepartureNextDay: firstNextDay?.entry,
+            attributions: shown.map(\.attribution).uniqued().map { String($0.prefix(96)) }
+        )
+    }
+
+    /// «Primo domani alle …»: the first train of the service day after today's, over every agency
+    /// time zone.
+    private static func firstDepartureOfNextServiceDay(
+        database: SQLiteDatabase,
+        query: StationBoardQuery,
+        stopIDs: [Int64],
+        timeZones: [TimeZone]
+    ) throws -> StationBoardCandidate? {
+        var first: StationBoardCandidate?
+        for timeZone in timeZones {
+            let calendar = serviceCalendar(timeZone: timeZone)
+            guard let nextDay = calendar.date(byAdding: .day, value: 1, to: calendar.startOfDay(for: query.from)) else {
+                throw SQLiteGTFSFailure.invalidData
+            }
+            let found = try boardCandidates(
+                database: database,
+                query: query,
+                stopIDs: stopIDs,
+                agencyTimeZone: timeZone.identifier,
+                serviceDay: nextDay,
+                calendar: calendar,
+                wanted: 1
+            )
+            for candidate in found where first.map({ candidate.entry.cursor < $0.entry.cursor }) ?? true {
+                first = candidate
+            }
+        }
+        return first
+    }
+
+    /// The trains of `serviceDay` leaving the station's stops from `query.from`, and after its
+    /// cursor, in departure order: at least `wanted` of them when the day has as many, with every
+    /// train of the same second as the last one, so that the first trains of all the service days
+    /// merged are exact. At most `maximumCandidateRows` rows are read, as by the planner.
+    private static func boardCandidates(
+        database: SQLiteDatabase,
+        query: StationBoardQuery,
+        stopIDs: [Int64],
+        agencyTimeZone: String,
+        serviceDay: Date,
+        calendar: Calendar,
+        wanted: Int
+    ) throws -> [StationBoardCandidate] {
+        // The GTFS second of `query.from` on this service day: earlier runs have left.
+        let base = try gtfsDate(serviceDay: serviceDay, seconds: 0, calendar: calendar)
+        let earliest: Double = query.from.timeIntervalSince(base).rounded(.up)
+        guard earliest <= Double(maximumGTFSSeconds) else { return [] }
+        let lowerSeconds: Int64 = earliest <= 0 ? 0 : Int64(earliest)
+        let placeholders = Array(repeating: "?", count: stopIDs.count).joined(separator: ",")
+        // The builder stores arrival and departure both or neither, so departure_seconds is the
+        // planner's COALESCE and the (stop_id, departure_seconds) index bounds the read.
+        let statement = try database.statement(
+            """
+            SELECT t.id, t.external_id, t.short_name,
+                   r.short_name, r.long_name, r.route_type,
+                   a.name, a.timezone,
+                   board_time.departure_seconds, board_time.stop_sequence,
+                   p.source_id, p.attribution,
+                   svc.start_date, svc.day_count, svc.active_days, t.bikes_allowed
+            FROM stop_time AS board_time
+            JOIN trip AS t ON t.id = board_time.trip_id
+            JOIN route AS r ON r.id = t.route_id
+            JOIN agency AS a ON a.id = r.agency_id
+            JOIN pack AS p ON p.id = t.pack_id
+            JOIN service AS svc ON svc.id = t.service_id
+            WHERE board_time.stop_id IN (\(placeholders))
+              AND board_time.pickup_type = 0
+              AND a.timezone = ?
+              AND board_time.departure_seconds BETWEEN ? AND ?
+            ORDER BY board_time.departure_seconds, t.id, board_time.stop_sequence
+            LIMIT ?
+            """
+        )
+        var binding: Int32 = 1
+        for id in stopIDs { try statement.bind(id, at: binding); binding += 1 }
+        try statement.bind(agencyTimeZone, at: binding); binding += 1
+        try statement.bind(lowerSeconds, at: binding); binding += 1
+        try statement.bind(Int64(maximumGTFSSeconds), at: binding); binding += 1
+        try statement.bind(Int64(maximumCandidateRows + 1), at: binding)
+
+        let boardStops = Set(stopIDs)
+        var seenTrips = Set<Int64>()
+        var candidates: [StationBoardCandidate] = []
+        var rowsRead = 0
+        while try statement.step() {
+            rowsRead += 1
+            guard rowsRead <= maximumCandidateRows else { throw SQLiteGTFSFailure.limitExceeded }
+            let seconds = statement.int(at: 8)
+            // Enough trains, and none later can come before them.
+            if candidates.count >= wanted, let last = candidates.last, seconds > last.seconds { break }
+            let tripID = statement.int(at: 0)
+            guard
+                let externalTripID = statement.text(at: 1), !externalTripID.isEmpty,
+                let agencyName = statement.text(at: 6), !agencyName.isEmpty,
+                statement.text(at: 7) == agencyTimeZone,
+                let sourceID = statement.text(at: 10), !sourceID.isEmpty,
+                let attribution = statement.text(at: 11)?.normalizedWhitespace, !attribution.isEmpty,
+                let activeDays = statement.blob(at: 14)
+            else { throw SQLiteGTFSFailure.invalidData }
+            let startDate = statement.int(at: 12)
+            let dayCount = statement.int(at: 13)
+            guard
+                seconds >= 0, seconds <= Int64(maximumGTFSSeconds),
+                !seenTrips.contains(tripID),
+                serviceRuns(serviceDay: serviceDay, startDate: startDate, dayCount: dayCount,
+                            activeDays: activeDays, calendar: calendar)
+            else { continue }
+            let departure = try gtfsDate(serviceDay: serviceDay, seconds: TimeInterval(seconds), calendar: calendar)
+            guard departure >= query.from else { continue }
+            // A trip calling at the station twice is listed at its first departure only.
+            seenTrips.insert(tripID)
+            let number = trainNumber(trip: statement.text(at: 2), route: statement.text(at: 3), externalTripID: externalTripID)
+            let serviceDate = encodedDate(serviceDay, calendar: calendar)
+            let id = "\(sourceID):\(externalTripID):\(serviceDate):\(seconds)"
+            if let after = query.after, !(after < StationBoardCursor(departure: departure, number: number, id: id)) {
+                continue
+            }
+            guard let terminus = try lastStop(database: database, tripID: tripID) else {
+                throw SQLiteGTFSFailure.invalidData
+            }
+            // A trip ending at the station (it only arrives there) is no departure.
+            let boardSequence = statement.int(at: 9)
+            guard terminus.sequence > boardSequence,
+                  !boardStops.contains(terminus.stopID),
+                  terminus.catalogStationID != query.station.id
+            else { continue }
+            let operatorName = bounded(agencyName, maximum: 64)
+            let category = trainCategory(route: statement.text(at: 3), longName: statement.text(at: 4), type: statement.int(at: 5))
+            let destination = bounded(terminus.name, maximum: 96)
+            guard !number.isEmpty, !operatorName.isEmpty, !category.isEmpty, !destination.isEmpty else {
+                throw SQLiteGTFSFailure.invalidData
+            }
+            let formattedTime = timeString(departure, timeZone: calendar.timeZone)
+            let service = TrainService(
+                id: id,
+                number: number,
+                operatorName: operatorName,
+                category: category,
+                destination: destination,
+                scheduledDeparture: formattedTime,
+                expectedDeparture: formattedTime,
+                status: OperationalState.programmed.rawValue,
+                platform: nil,
+                delayMinutes: 0,
+                bikesAllowed: bikes(statement.int(at: 15))
+            )
+            candidates.append(StationBoardCandidate(
+                entry: StationBoardDeparture(
+                    departure: departure,
+                    service: service,
+                    terminus: terminusIdentity(terminus, sourceID: sourceID, name: destination)
+                ),
+                seconds: seconds,
+                attribution: attribution
+            ))
+        }
+        return candidates
+    }
+
+    /// The last stop of a trip, by stop sequence (the primary key of `stop_time`).
+    private static func lastStop(database: SQLiteDatabase, tripID: Int64) throws -> TripLastStop? {
+        let statement = try database.statement(
+            """
+            SELECT last_time.stop_id, last_time.stop_sequence, last_stop.name, last_stop.external_id,
+                   last_stop.catalog_station_id, last_stop.railway_code
+            FROM stop_time AS last_time
+            JOIN stop AS last_stop ON last_stop.id = last_time.stop_id
+            WHERE last_time.trip_id = ?
+            ORDER BY last_time.stop_sequence DESC
+            LIMIT 1
+            """
+        )
+        try statement.bind(tripID, at: 1)
+        guard try statement.step() else { return nil }
+        guard let name = statement.text(at: 2)?.normalizedWhitespace, !name.isEmpty,
+              let externalID = statement.text(at: 3), !externalID.isEmpty
+        else { throw SQLiteGTFSFailure.invalidData }
+        return TripLastStop(
+            stopID: statement.int(at: 0),
+            sequence: statement.int(at: 1),
+            name: name,
+            externalID: externalID,
+            catalogStationID: statement.text(at: 4)?.nonEmpty,
+            railwayCode: statement.text(at: 5)?.nonEmpty
+        )
+    }
+
+    /// The catalogue identity of a last stop, or, for a stop no catalogue station is bound to, one
+    /// made of its pack and its own identifier: it is only the destination of the train detail
+    /// (measured at the train's terminus) and is never looked up in the catalogue.
+    private static func terminusIdentity(_ stop: TripLastStop, sourceID: String, name: String) -> StationIdentity {
+        if let catalogStationID = stop.catalogStationID {
+            return StationIdentity(id: catalogStationID, name: name, railwayCode: stop.railwayCode)
+        }
+        let identifier = "gtfs:\(sourceID):\(stop.externalID)".normalizedWhitespace
+        return StationIdentity(id: String(identifier.prefix(128)), name: name)
+    }
+
+    /// True when every pack with a stop of the station has its last service day before the day of
+    /// `date`: the station's board needs an app update, not another time.
+    private static func stationPacksEnded(
+        before date: Date,
+        stopIDs: [Int64],
+        timeZone: TimeZone,
+        database: SQLiteDatabase
+    ) throws -> Bool {
+        let placeholders = Array(repeating: "?", count: stopIDs.count).joined(separator: ",")
+        let statement = try database.statement(
+            """
+            SELECT COALESCE(MAX(p.last_service_date), 0) FROM pack AS p
+            WHERE p.id IN (SELECT pack_id FROM stop WHERE id IN (\(placeholders)))
+            """
+        )
+        var binding: Int32 = 1
+        for id in stopIDs { try statement.bind(id, at: binding); binding += 1 }
+        guard try statement.step() else { return false }
+        let lastServiceDate = statement.int(at: 0)
+        guard lastServiceDate > 0 else { return false }
+        let requestedDay = Int64(encodedDate(date, calendar: serviceCalendar(timeZone: timeZone)))
+        return lastServiceDate < requestedDay
+    }
+}
+
+/// A train of a service day read for «Partenze», with its GTFS second and its feed.
+private struct StationBoardCandidate {
+    let entry: StationBoardDeparture
+    let seconds: Int64
+    let attribution: String
+}
+
+/// The last stop of a trip: its terminus on the board.
+private struct TripLastStop {
+    let stopID: Int64
+    let sequence: Int64
+    let name: String
+    let externalID: String
+    let catalogStationID: String?
+    let railwayCode: String?
 }
 
 /// One bundled GTFS pack as listed in the artifact's `pack` table.

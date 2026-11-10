@@ -9,6 +9,12 @@ struct RootView: View {
                 .tabItem { Label("tab.planner", systemImage: "point.topleft.down.to.point.bottomright.curvepath") }
                 .tag(AppModel.Tab.planner)
 
+            // «Partenze» second, as on Android (Pianifica, Partenze, Per te): the board of a
+            // station is a task of its own, not a step of a route search.
+            NavigationStack { DeparturesView() }
+                .tabItem { Label("tab.departures", systemImage: "list.bullet.rectangle") }
+                .tag(AppModel.Tab.departures)
+
             NavigationStack { SavedRoutesView() }
                 .tabItem { Label("tab.saved", systemImage: "star") }
                 .tag(AppModel.Tab.saved)

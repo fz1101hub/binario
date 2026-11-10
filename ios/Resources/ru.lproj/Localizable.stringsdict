@@ -2,6 +2,26 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>departures.later.loaded</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>few</key>
+			<string>ещё %1$lld поезда</string>
+			<key>many</key>
+			<string>ещё %1$lld поездов</string>
+			<key>one</key>
+			<string>ещё %1$lld поезд</string>
+			<key>other</key>
+			<string>ещё %1$lld поезда</string>
+		</dict>
+	</dict>
 	<key>result.alternative.on_time</key>
 	<dict>
 		<key>NSStringLocalizedFormatKey</key>
