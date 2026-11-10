@@ -539,9 +539,11 @@ export async function rotateRefreshToken(input: {
           )
         );
       if (Number(familyRevocation[0].affectedRows) > 0) {
+        // The only live family is gone (a new link revokes the older ones), so the link is
+        // dead until the user links again: say so, as unlinking does, for the dashboard.
         await tx
           .update(alexaAccountLinks)
-          .set({ credentialVersion: sql`${alexaAccountLinks.credentialVersion} + 1` })
+          .set({ revokedAt: now, credentialVersion: sql`${alexaAccountLinks.credentialVersion} + 1` })
           .where(eq(alexaAccountLinks.id, links[0].id));
       }
       return null;

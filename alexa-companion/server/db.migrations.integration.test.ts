@@ -9,6 +9,7 @@ import {
   createAuthorizationCode,
   deleteUserAccount,
   exchangeAuthorizationCode,
+  getAlexaLinkStatus,
   getDb,
   listPersonalRoutes,
   listPersonalRoutesForAlexa,
@@ -558,6 +559,8 @@ describeDatabase("migrazioni MariaDB reali", () => {
       );
       await expect(rotate(kept, "e5".repeat(32))).resolves.toBeNull();
       expect(await liveTokenCount()).toBe(0);
+      // The link is dead until the user links again: the dashboard must not say «linked».
+      expect((await getAlexaLinkStatus(userId))?.revokedAt).toBeInstanceOf(Date);
       await expect(
         listPersonalRoutesForAlexa(userId, relinked?.credentialVersion ?? 0)
       ).resolves.toEqual([]);
@@ -580,6 +583,7 @@ describeDatabase("migrazioni MariaDB reali", () => {
       expect(recovered?.credentialVersion).toBeGreaterThan(
         relinked?.credentialVersion ?? 0
       );
+      expect((await getAlexaLinkStatus(userId))?.revokedAt).toBeNull();
       await expect(
         listPersonalRoutesForAlexa(userId, recovered?.credentialVersion ?? 0)
       ).resolves.toHaveLength(1);
