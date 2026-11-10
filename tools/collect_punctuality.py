@@ -17,7 +17,9 @@ container cannot reach viaggiatreno.it).  Each run:
    otherwise ``S`` + the last five digits of an ``8300xxxxx`` code, each confirmed by position or name;
 2. asks ``andamentoTreno/{origin}/{number}/{midnight}`` once per train (midnight = local midnight of the departure
    day, epoch milliseconds), at most ``--rate`` requests per second (2 by default and at most), within
-   ``--max-requests`` and ``--deadline-seconds``, stopping after 20 consecutive failures or at once on HTTP 403/429;
+   ``--max-requests`` and ``--deadline-seconds``, stopping after 20 consecutive failures or at once on HTTP 403/429,
+   and when more than 40 of the last 50 answers are unknown or of another identity (a changed path, a soft block, a
+   new day convention): those trains go back to pending unrecorded and the run exits with status 3;
 3. keeps per stop the ViaggiaTreno station code, the delay in whole minutes (actual minus scheduled time, truncated
    towards zero as the app shows it: departure at the origin, arrival elsewhere; early arrivals are <= 0), whether
    the stop was suppressed (``actualFermataType`` 3), the scheduled time (same departure/arrival rule) as minutes
@@ -58,6 +60,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 import zipfile
+from collections import deque
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
@@ -87,6 +90,14 @@ PENDING_LIMIT = timedelta(hours=8)
 RETENTION_DAYS = 35
 MAX_RATE = 2.0
 MAX_CONSECUTIVE_FAILURES = 20
+# A changed path (every call 404), a soft block (204 or null) or a new day convention (every identity differs) looks
+# like a day of unknown trains: more than MAX_BAD_ANSWERS unknown or foreign answers among the last BAD_ANSWER_WINDOW
+# stop the run, put those trains back as pending instead of recording them, and fail the job.
+BAD_ANSWER_WINDOW = 50
+MAX_BAD_ANSWERS = 40
+# Exit status of a run that saved its state but stopped on a refusal or on implausible answers: the job fails, the
+# state (with the trains put back and the refusal) is still saved by the workflow.
+EXIT_STOPPED = 3
 MAX_RESPONSE_BYTES = 1024 * 1024
 MAX_REDIRECTS = 3
 MAX_STOPS = 400
@@ -630,10 +641,15 @@ class State:
             self.dirty.add(record["d"])
         self.pending.pop((record["d"], record["o"], record["n"]), None)
 
+    def retract(self, key: tuple[str, str, str]) -> None:
+        """Forget the record of ``key`` added by this run (the run only asks about trains with no record)."""
+        if self.records(key[0]).pop((key[1], key[2]), None) is not None:
+            self.dirty.add(key[0])
+
     def save(self, today: date) -> None:
         cutoff = (today - timedelta(days=RETENTION_DAYS)).isoformat()
         for day in sorted(self.dirty):
-            if day < cutoff:
+            if day < cutoff or not self.days[day]:  # nothing left after a retraction: no empty day file
                 continue
             lines = [encode(self.days[day][key]) for key in sorted(self.days[day])]
             _write_atomic(self.directory / f"obs-{day}.jsonl.gz", _gzip_lines(lines))
@@ -932,6 +948,7 @@ class Report:
     counters: dict[str, int] = field(default_factory=dict)
     failures: dict[str, int] = field(default_factory=dict)
     stop_reason: str = "completata"
+    stopped_abnormally: bool = False  # a refusal or implausible answers: the job must fail (EXIT_STOPPED)
 
     def add(self, name: str, amount: int = 1) -> None:
         self.counters[name] = self.counters.get(name, 0) + amount
@@ -980,6 +997,7 @@ def collect(
         report.add("nuovi")
     report.add("in_coda", len(queue))
     consecutive = 0
+    recent: deque[tuple[Due, int, bool]] = deque(maxlen=BAD_ANSWER_WINDOW)  # (train, attempts, unknown or foreign)
     issued = requests or (lambda: report.counters.get("treni_chiesti", 0))
 
     def defer(rest: Sequence[tuple[Due, int]], reason: str) -> None:
@@ -1025,6 +1043,7 @@ def collect(
         consecutive = 0
         for name, amount in observation.notes.items():
             report.add(name, amount)
+        recent.append((due, attempts, observation.status in ("missing", "mismatch")))
         if observation.status == "pending":
             state.pending[due.key] = pending_entry(due, attempts + 1)
             report.add("non_ancora_arrivati")
@@ -1033,6 +1052,16 @@ def collect(
                    "t": moment, "s": observation.stops})
         report.add({"ok": "arrivati", "cancelled": "cancellati"}.get(observation.status, observation.status))
         report.add("campioni", sum(1 for stop in observation.stops if stop[1] is not None))
+        bad = [(train, train_attempts) for train, train_attempts, unknown in recent if unknown]
+        if len(bad) > MAX_BAD_ANSWERS:
+            for train, train_attempts in bad:
+                state.retract(train.key)
+                state.pending[train.key] = pending_entry(train, train_attempts)
+            report.add("rimessi_in_sospeso", len(bad))
+            report.stopped_abnormally = True
+            defer(queue[position + 1:], f"{len(bad)} delle ultime {len(recent)} risposte sconosciute o con identità "
+                                        "diversa: fonte cambiata o che blocca")
+            break
     report.add("in_sospeso_dopo", len(state.pending))
     return report
 
@@ -1041,7 +1070,8 @@ LABELS = (
     ("in_coda", "Treni in coda"), ("nuovi", "nuovi nella finestra"), ("gia_noti", "già noti, non richiesti"),
     ("treni_chiesti", "Treni chiesti"), ("richieste_http", "Richieste HTTP"), ("arrivati", "Arrivati"), ("cancellati", "Cancellati"),
     ("non_ancora_arrivati", "Non ancora arrivati (in sospeso)"), ("missing", "Sconosciuti a ViaggiaTreno"),
-    ("mismatch", "Identità diversa"), ("errori", "Errori"), ("rimandati", "Rimandati alla prossima run"),
+    ("mismatch", "Identità diversa"), ("rimessi_in_sospeso", "Sconosciuti o di altra identità rimessi in sospeso"),
+    ("errori", "Errori"), ("rimandati", "Rimandati alla prossima run"),
     ("scaduti_sconosciuti", "Scaduti dopo 8 h (sconosciuti)"), ("giorno_chiuso", "Mai chiesti, giorno chiuso da ViaggiaTreno"), ("in_sospeso_dopo", "In sospeso dopo la run"),
     ("campioni", "Campioni di ritardo"), ("fermate_straordinarie", "Fermate straordinarie ignorate"),
     ("ritardi_non_plausibili", "Ritardi fuori intervallo scartati"), ("binari_non_validi", "Binari non validi scartati"), ("state_invalid_lines", "Righe di stato scartate"),
@@ -1119,7 +1149,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     if args.summary:
         with args.summary.open("a", encoding="utf-8") as summary:
             summary.write(render(report, markdown=True))
-    return 0
+    return EXIT_STOPPED if report.stopped_abnormally else 0
 
 
 if __name__ == "__main__":

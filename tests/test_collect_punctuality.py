@@ -15,6 +15,7 @@ import tempfile
 import threading
 import unittest
 import zipfile
+from unittest import mock
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Callable
@@ -655,6 +656,34 @@ class CollectTest(Base):
         self.assertEqual("completata", report.stop_reason)
         self.assertEqual({"json-non-valido": 19, "rete": 10}, report.failures)
 
+    def test_a_run_of_unknown_or_foreign_answers_trips_the_breaker_and_records_none_of_them(self) -> None:
+        # A changed path (every call 404), a soft block (204 or null) or a new day convention (every identity
+        # differs) must not mark the whole day as permanently missing while the job stays green.
+        self.timetable.trips = [collector.TripPlan(str(3000 + index), "REG", "S08409", 9 * 3600, 10 * 3600, "DAILY")
+                                for index in range(70)]
+        answers = iter([collector.FetchResult("missing", reason="http-404")] * 30
+                       + [ok(run(number="1", origin="S08409"))] * 15 + [None] * 100)
+        mixed = Answers(lambda path: next(answers) or self.answer_all(path))
+        state, report = self.collect(mixed)
+        # 41 of the last (at most) 50 answers are unknown or foreign: more than 80 %, whatever the next 9 say.
+        self.assertEqual(collector.MAX_BAD_ANSWERS + 1, len(mixed.paths))
+        self.assertTrue(report.stopped_abnormally)
+        self.assertIn("sconosciute o con identità diversa", report.stop_reason)
+        self.assertEqual((30, 11), (report.counters["missing"], report.counters["mismatch"]))
+        self.assertEqual({}, collector.load_observations(self.temp / "state", "2026-11-04", {}))
+        self.assertEqual(70, len(state.pending))
+        self.assertEqual({0}, {entry["k"] for entry in state.pending.values()})  # as if never asked
+        self.assertEqual(41, report.counters["rimessi_in_sospeso"])
+        self.assertEqual(29, report.counters["rimandati"])
+        # A share at the limit does not trip: 40 of the last 50 unknown is still believed.
+        shutil.rmtree(self.temp / "state")
+        answers = iter(([collector.FetchResult("missing", reason="http-204")] * 4 + [None]) * 14)
+        believed = Answers(lambda path: next(answers, None) or self.answer_all(path))
+        state, report = self.collect(believed)
+        self.assertEqual(70, len(believed.paths))
+        self.assertFalse(report.stopped_abnormally)
+        self.assertEqual(56, report.counters["missing"])
+
     def test_a_refusing_source_stops_the_run_at_once(self) -> None:
         refused = Answers(lambda _: collector.FetchResult("refused", reason="http-429"))
         state, report = self.collect(refused)
@@ -818,6 +847,26 @@ class EndToEndTest(Base):
         self.assertEqual(["S01700", 1, 9.0, [0, 0, 0, 1, 1, 1, 1, 1], 0, 9, 610, ["21", 1, 1], None], fr["s"][-1])
         # The programmed platform of Tiburtina is counted by itself (no actual one there); one day: no weekdays.
         self.assertEqual([["14", 1, 1], ["3", 1, 1], ["8", 1, 1], ["21", 1, 1]], [entry[7] for entry in fr["s"]])
+
+    def test_a_run_stopped_by_the_breaker_saves_its_state_and_fails(self) -> None:
+        server = FakeViaggiaTreno()  # 204 for every train: unknown answers only
+        self.addCleanup(server.close)
+        trips = [(f"reg{4000 + index}", "REG", "DAILY", str(4000 + index),
+                  [("ROMA", "08:00:00", "08:00:00"), ("FIDENE", "08:40:00", "08:40:00")]) for index in range(45)]
+        gtfs = self.temp / "many.zip"
+        with mock.patch.object(sys.modules[__name__], "TRIPS", trips):
+            write_gtfs(gtfs)
+        state = self.temp / "state"
+        arguments = ["--state", str(state), "--gtfs", str(gtfs), "--stations", str(self.stations_path),
+                     "--now", NOW.isoformat(), "--base-url", server.base_url, "--rate", "2"]
+        output = io.StringIO()
+        # The local server needs no pause between requests.
+        with contextlib.redirect_stdout(output), mock.patch.object(collector.HttpFetcher, "_throttle", lambda _: None):
+            self.assertEqual(collector.EXIT_STOPPED, collector.main(arguments))
+        self.assertEqual(collector.MAX_BAD_ANSWERS + 1, len(server.requests))
+        self.assertIn("sconosciute o con identità diversa", output.getvalue())
+        self.assertEqual(45, len(collector.State(state).pending))  # saved, nothing recorded as missing
+        self.assertEqual({}, collector.observation_files(state))  # and no empty day file
 
 
 if __name__ == "__main__":
