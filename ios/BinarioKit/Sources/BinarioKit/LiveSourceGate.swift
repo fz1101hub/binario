@@ -44,7 +44,8 @@ public final class LiveSourcePauses: @unchecked Sendable {
 ///   included, is reused until the interval has passed since the request started;
 /// - a refusal (HTTP 403 or 429) pauses the whole source at once, for the `Retry-After` it sent
 ///   (at most an hour) or for a minute that doubles with every new pause, up to 15 minutes;
-/// - three failures in a row pause it the same way; after a pause one request is let through (the
+/// - three failures in a row pause it the same way (a device without a connection is not the
+///   source's failure and never counts); after a pause one request is let through (the
 ///   others are refused as during the pause until it answers) and a single failure pauses it again;
 /// - only an answer to a request sent since the last pause ends it: one sent before says nothing of
 ///   the source after its refusal;
@@ -289,7 +290,7 @@ final class LiveSourceGate: @unchecked Sendable {
     /// end, when the source is now paused.
     private func record(_ failure: LiveFetchFailure, at current: Date) -> Date? {
         switch failure {
-        case .cancelled, .paused, .invalidRequest: return nil
+        case .cancelled, .paused, .invalidRequest, .offline: return nil
         default: break
         }
         consecutiveFailures += 1

@@ -17,6 +17,10 @@ public enum LiveFetchFailure: Equatable, Hashable, Sendable {
     /// Not an HTTPS URL without credentials.
     case invalidRequest
     case network
+    /// The device had no usable connection: none, lost on the way, refused by the system (data
+    /// off, roaming), no address for the host, or no answer at all before the time limit. Not the
+    /// source's fault: it never counts towards pausing the source.
+    case offline
     case timedOut
     /// The body (declared or received) is larger than the policy allows: refused, never truncated.
     case tooLarge
@@ -47,7 +51,7 @@ public enum LiveFetchFailure: Equatable, Hashable, Sendable {
         case let .http(status, _):
             if status == 403 || status == 429 { return .refused }
             return status == 404 ? .notFound : .sourceUnavailable
-        case .network, .timedOut, .tooLarge, .redirectRefused, .tooManyRedirects: return .sourceUnavailable
+        case .network, .offline, .timedOut, .tooLarge, .redirectRefused, .tooManyRedirects: return .sourceUnavailable
         }
     }
 }
@@ -276,6 +280,25 @@ final class LiveDataTaskDelegate: NSObject, URLSessionDataDelegate, @unchecked S
         continuation.resume(returning: outcome)
     }
 
+    /// What a failed task means: the caller's cancellation; the device without a usable connection
+    /// (`offline`, never held against the source); a time-out once the source had started to
+    /// answer; any other failure of the network or the source.
+    static func failure(for error: any Error, receivedResponse: Bool) -> LiveFetchFailure {
+        let nsError = error as NSError
+        guard nsError.domain == NSURLErrorDomain else { return .network }
+        switch nsError.code {
+        case NSURLErrorCancelled:
+            return .cancelled
+        case NSURLErrorTimedOut:
+            return receivedResponse ? .timedOut : .offline
+        case NSURLErrorNotConnectedToInternet, NSURLErrorNetworkConnectionLost, NSURLErrorDataNotAllowed,
+             NSURLErrorInternationalRoamingOff, NSURLErrorCallIsActive, NSURLErrorCannotFindHost, NSURLErrorDNSLookupFailed:
+            return .offline
+        default:
+            return .network
+        }
+    }
+
     /// No redirect is followed by the system: the redirect response itself completes the task.
     func urlSession(
         _ session: URLSession, task: URLSessionTask, willPerformHTTPRedirection response: HTTPURLResponse,
@@ -312,13 +335,7 @@ final class LiveDataTaskDelegate: NSObject, URLSessionDataDelegate, @unchecked S
         lock.unlock()
         if tooLarge { return finish(.failure(.tooLarge)) }
         if cancelledByCaller { return finish(.failure(.cancelled)) }
-        if let error {
-            let code = (error as NSError).code
-            let domain = (error as NSError).domain
-            if domain == NSURLErrorDomain, code == NSURLErrorTimedOut { return finish(.failure(.timedOut)) }
-            if domain == NSURLErrorDomain, code == NSURLErrorCancelled { return finish(.failure(.cancelled)) }
-            return finish(.failure(.network))
-        }
+        if let error { return finish(.failure(Self.failure(for: error, receivedResponse: task.response != nil))) }
         guard let response = task.response as? HTTPURLResponse else { return finish(.failure(.network)) }
         // Should the system ever follow a redirect by itself, the answer is not the one asked for.
         if let answered = response.url, answered.absoluteString != requestedURL.absoluteString {

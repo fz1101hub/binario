@@ -150,6 +150,31 @@ final class LiveSourceGateTests: XCTestCase {
         XCTAssertEqual(loads.value, 1)
     }
 
+    func testADeviceWithoutAConnectionNeverPausesTheSourceButIsNotAskedAgainAtOnce() async {
+        let clock = LiveTestClock(LiveTestDates.viaggiaTrenoNow)
+        let pauses = LiveSourcePauses()
+        let gate = makeGate(clock, pauses: pauses)
+        for key in ["a", "b", "c", "d", "e"] {
+            _ = await gate.fetch(key) { .failure(.offline) }
+        }
+        XCTAssertNil(gate.pausedUntil(), "in a tunnel the sources are not to blame")
+        XCTAssertEqual(pauses.active(at: clock.now()), [])
+        let loads = LiveCounter()
+        let again = await gate.fetch("a") {
+            loads.increment()
+            return .body(LiveBody(text: "ok", fetchedAt: clock.now()))
+        }
+        XCTAssertEqual(again, .failure(.offline))
+        XCTAssertEqual(loads.value, 0, "the same resource is still asked once per interval")
+        // Back in coverage: the failures of the source count from zero.
+        clock.advance(31)
+        for key in ["f", "g"] {
+            _ = await gate.fetch(key) { .failure(.timedOut) }
+        }
+        XCTAssertNil(gate.pausedUntil())
+        XCTAssertEqual(LiveFetchFailure.offline.unavailableReason, .sourceUnavailable)
+    }
+
     func testThreeFailuresInARowPauseTheSourceForAMinute() async {
         let clock = LiveTestClock(LiveTestDates.viaggiaTrenoNow)
         let gate = makeGate(clock)

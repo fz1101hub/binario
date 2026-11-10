@@ -169,6 +169,23 @@ final class LiveSourceHTTPTests: XCTestCase {
         XCTAssertNil(LiveRedirect.retryAfter("Mon, 26 Oct 2020 08:33:20 GMT", now: now), "a date in the past asks no pause")
     }
 
+    func testAMissingConnectionIsTheDevicesNotTheSources() {
+        func failure(_ code: Int, response: Bool = false) -> LiveFetchFailure {
+            LiveDataTaskDelegate.failure(for: NSError(domain: NSURLErrorDomain, code: code), receivedResponse: response)
+        }
+        for code in [
+            NSURLErrorNotConnectedToInternet, NSURLErrorNetworkConnectionLost, NSURLErrorDataNotAllowed,
+            NSURLErrorInternationalRoamingOff, NSURLErrorCallIsActive, NSURLErrorCannotFindHost, NSURLErrorDNSLookupFailed,
+        ] {
+            XCTAssertEqual(failure(code), .offline, "\(code)")
+        }
+        XCTAssertEqual(failure(NSURLErrorTimedOut), .offline, "no answer at all before the time limit")
+        XCTAssertEqual(failure(NSURLErrorTimedOut, response: true), .timedOut, "the source started to answer, then stalled")
+        XCTAssertEqual(failure(NSURLErrorCancelled), .cancelled)
+        XCTAssertEqual(failure(NSURLErrorSecureConnectionFailed), .network)
+        XCTAssertEqual(LiveDataTaskDelegate.failure(for: NSError(domain: "other", code: NSURLErrorTimedOut), receivedResponse: false), .network)
+    }
+
     func testBodiesOverTheLimitAreRefusedNeverTruncated() async throws {
         let url = try XCTUnwrap(URL(string: "https://www.trenord.it/x"))
         let small = LiveRequestPolicy(accept: "application/json", requestTimeout: 12, totalTimeout: 15, maximumBytes: 8)
