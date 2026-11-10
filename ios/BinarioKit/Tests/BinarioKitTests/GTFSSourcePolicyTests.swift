@@ -12,6 +12,10 @@ final class GTFSSourcePolicyTests: XCTestCase {
         XCTAssertTrue(policy.sources.allSatisfy { $0.sourceURL.scheme == "https" && $0.accessMode == "OPEN_DIRECT" })
         XCTAssertEqual(policy.source(id: "oebb-gtfs")?.licence, "CC BY 4.0")
         XCTAssertEqual(policy.source(id: "alto-adige-sta-gtfs")?.licence, "CC0 1.0")
+        XCTAssertEqual(policy.source(id: "arst-gtfs")?.licence, "CC BY 4.0", "as the Android manifest records it")
+        XCTAssertEqual(policy.source(id: "eav-gtfs")?.licence, "Italian Open Data License (IODL)")
+        XCTAssertTrue(policy.sources.allSatisfy { $0.landingPage?.scheme == "https" }, "every feed links its public page")
+        XCTAssertEqual(policy.source(id: "arst-gtfs")?.landingPage?.absoluteString, "https://www.arst.sardegna.it/open-data/")
         XCTAssertNotNil(policy.source(id: "sncf-gtfs"))
         XCTAssertNil(policy.source(id: "missing"))
     }
@@ -24,7 +28,10 @@ final class GTFSSourcePolicyTests: XCTestCase {
         XCTAssertThrowsError(try decode(["schemaVersion": 2, "sources": [source]])) { error in
             XCTAssertEqual(error as? GTFSSourcePolicyError, .unsupportedSchema)
         }
-        for (key, value) in [("sourceUrl", "ftp://example.test/a.zip"), ("accessMode", "GATEWAY"), ("licence", ""), ("sourceId", "")] {
+        for (key, value) in [
+            ("sourceUrl", "ftp://example.test/a.zip"), ("accessMode", "GATEWAY"), ("licence", ""), ("sourceId", ""),
+            ("landingPage", "ftp://example.test/a"),
+        ] {
             var invalid = source
             invalid[key] = value
             XCTAssertThrowsError(try decode(["schemaVersion": 1, "sources": [invalid]]), key) { error in

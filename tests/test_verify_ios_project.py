@@ -624,7 +624,7 @@ class IOSProjectTests(unittest.TestCase):
         self.assertEqual(set(metadata["packRowCounts"]), {source["sourceId"] for source in policy["sources"]})
         for source in policy["sources"]:
             with self.subTest(source=source["sourceId"]):
-                self.assertEqual({"sourceId", "sourceUrl", "accessMode", "licence"}, set(source))
+                self.assertEqual({"sourceId", "sourceUrl", "accessMode", "licence", "landingPage"}, set(source))
                 self.assertTrue(source["licence"] is None or source["licence"].strip())
         self.assertEqual("CC BY 4.0", next(source["licence"] for source in policy["sources"] if source["sourceId"] == "oebb-gtfs"))
         self.assertIn("verify_source_policy(source_policy_path, pack_source_ids(raw_path))", verifier)
@@ -637,6 +637,34 @@ class IOSProjectTests(unittest.TestCase):
         self.assertIn("ForEach(model.schedulePacks, id: \\.sourceID)", settings)
         self.assertIn("model.sourcePolicy?.source(id: pack.sourceID)", settings)
         self.assertIn("settings.sources.licence", settings)
+        # The link opens the feed's public page, not the archive.
+        self.assertIn("let page = source.landingPage ?? source.sourceURL", settings)
+
+    def test_ios_source_policy_licences_and_pages_match_android(self) -> None:
+        # Audit ci-docs-3: the iPhone showed no licence for ARST (CC BY 4.0) and EAV (IODL), which
+        # Android records, and linked the raw archives. Each licence is the Android manifest's
+        # (or the short form it gives in brackets, «CC BY» of «Creative Commons Attribution (CC
+        # BY)»); null exactly while Android's is still to be confirmed by the owner; each link is
+        # the landing page Android's source catalogue opens.
+        policy = json.loads((IOS / "Resources/binario_gtfs_source_policy_v1.json").read_text(encoding="utf-8"))
+        manifest = json.loads((ROOT / "app/src/main/assets/gtfs/manifest.json").read_text(encoding="utf-8"))
+        android = {pack["sourceId"]: pack.get("licence") for pack in manifest["packs"]}
+        catalogue = (ROOT / "app/src/main/java/it/binario/app/data/sources/RailSourceCatalog.kt").read_text(encoding="utf-8")
+        pages = dict(re.findall(r'id = SourceId\("([^"]+)"\),.*?landingPage = uri\("([^"]+)"\)', catalogue, re.S))
+        unconfirmed = "Da confermare dal titolare"
+        for source in policy["sources"]:
+            source_id = source["sourceId"]
+            with self.subTest(source=source_id):
+                self.assertIn(source_id, android)
+                expected = android[source_id]
+                if expected is None or expected == unconfirmed:
+                    self.assertIsNone(source["licence"])
+                else:
+                    self.assertIsNotNone(source["licence"], f"Android records {expected!r}")
+                    self.assertTrue(source["licence"] == expected or expected.endswith(f"({source['licence']})"),
+                                    f"{source['licence']!r} is not {expected!r}")
+                self.assertEqual(pages.get(source_id), source["landingPage"])
+        self.assertEqual(5, sum(source["licence"] is None for source in policy["sources"]))
 
     def test_bundled_schedule_fast_path_validates_the_cache_without_rehashing_it(self) -> None:
         installer = (IOS / "BinarioKit/Sources/BinarioKit/BundledGTFSScheduleInstaller.swift").read_text(encoding="utf-8")

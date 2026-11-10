@@ -6,8 +6,8 @@ public enum GTFSSourcePolicyError: Error, Equatable, Sendable {
 }
 
 /// The reviewed list of bundled GTFS sources (`binario_gtfs_source_policy_v1.json`): the
-/// source id of each pack, its HTTPS download URL, the access mode and the licence recorded
-/// for the in-app source list. It is an input of the artifact fingerprint, so it cannot
+/// source id of each pack, its HTTPS download URL, the access mode, the licence and the public
+/// page of the feed (Android's `RailSourceCatalog.landingPage`) recorded for the in-app source list. It is an input of the artifact fingerprint, so it cannot
 /// drift from the index it ships with.
 public struct GTFSSourcePolicy: Decodable, Equatable, Sendable {
     public static let supportedSchemaVersion = 1
@@ -20,12 +20,15 @@ public struct GTFSSourcePolicy: Decodable, Equatable, Sendable {
         public let accessMode: String
         /// Nil until the owner records the licence; the app then shows only attribution and URL.
         public let licence: String?
+        /// The feed's public page, which the source list links to rather than the archive.
+        public let landingPage: URL?
 
         enum CodingKeys: String, CodingKey {
             case sourceID = "sourceId"
             case sourceURL = "sourceUrl"
             case accessMode
             case licence
+            case landingPage
         }
     }
 
@@ -50,6 +53,7 @@ public struct GTFSSourcePolicy: Decodable, Equatable, Sendable {
                   !source.sourceID.isEmpty
                       && source.accessMode == Self.openDirectAccessMode
                       && source.sourceURL.scheme == "https"
+                      && source.landingPage.map { $0.scheme == "https" } ?? true
                       && source.licence.map { !$0.isEmpty } ?? true
               })
         else { throw GTFSSourcePolicyError.invalidSource }

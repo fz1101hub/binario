@@ -128,11 +128,14 @@ def verify_source_policy(source_policy_path: Path, pack_source_ids: set[str]) ->
     require(isinstance(policy, dict) and policy.get("schemaVersion") == 1 and isinstance(sources, list), "invalid GTFS source policy")
     policy_ids: set[str] = set()
     for index, source in enumerate(sources):
-        require(isinstance(source, dict) and set(source) == {"sourceId", "sourceUrl", "accessMode", "licence"}, f"GTFS source policy entry {index} is invalid")
+        require(isinstance(source, dict) and set(source) == {"sourceId", "sourceUrl", "accessMode", "licence", "landingPage"}, f"GTFS source policy entry {index} is invalid")
         source_id, source_url, access_mode, licence = source["sourceId"], source["sourceUrl"], source["accessMode"], source["licence"]
         require(isinstance(source_id, str) and source_id and source_id not in policy_ids, f"GTFS source policy entry {index} has an invalid sourceId")
         require(isinstance(source_url, str) and source_url.startswith("https://") and access_mode == "OPEN_DIRECT", f"GTFS source policy entry {source_id!r} is not an HTTPS direct source")
         require(licence is None or (isinstance(licence, str) and licence.strip()), f"GTFS source policy entry {source_id!r} has an invalid licence")
+        landing_page = source["landingPage"]
+        require(isinstance(landing_page, str) and landing_page.startswith("https://") and len(landing_page) > len("https://"),
+                f"GTFS source policy entry {source_id!r} has an invalid landing page")
         policy_ids.add(source_id)
     require(policy_ids == pack_source_ids, f"GTFS source policy ids {sorted(policy_ids)} differ from the index packs {sorted(pack_source_ids)}")
 

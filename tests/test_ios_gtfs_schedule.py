@@ -191,7 +191,8 @@ class IosGtfsScheduleTest(unittest.TestCase):
         policy.write_text(json.dumps({
             "schemaVersion": 1,
             "sources": [
-                {"sourceId": pack["sourceId"], "sourceUrl": pack["sourceUrl"], "accessMode": pack["accessMode"], "licence": "CC BY 4.0" if index else None}
+                {"sourceId": pack["sourceId"], "sourceUrl": pack["sourceUrl"], "accessMode": pack["accessMode"], "licence": "CC BY 4.0" if index else None,
+                 "landingPage": "https://example.test/" + pack["sourceId"]}
                 for index, pack in enumerate(manifest_payload["packs"])
             ],
         }), encoding="utf-8")
@@ -228,7 +229,8 @@ class IosGtfsScheduleTest(unittest.TestCase):
         manifest, catalog = write_inputs(self.temp)
         manifest_payload = json.loads(manifest.read_text(encoding="utf-8"))
         sources = [
-            {"sourceId": pack["sourceId"], "sourceUrl": pack["sourceUrl"], "accessMode": pack["accessMode"], "licence": None}
+            {"sourceId": pack["sourceId"], "sourceUrl": pack["sourceUrl"], "accessMode": pack["accessMode"], "licence": None,
+             "landingPage": "https://example.test/" + pack["sourceId"]}
             for pack in manifest_payload["packs"]
         ]
         policy = self.temp / "source-policy.json"
@@ -244,6 +246,15 @@ class IosGtfsScheduleTest(unittest.TestCase):
         policy.write_text(json.dumps({"schemaVersion": 1, "sources": blank_licence}), encoding="utf-8")
         with self.assertRaisesRegex(builder.BuildError, "invalid licence"):
             builder.build_database(manifest, catalog, output, metadata, **options)
+        # The source list links each feed's public page: never a cleartext or missing one.
+        cleartext_page = [dict(source, landingPage="http://example.test/page") for source in sources]
+        policy.write_text(json.dumps({"schemaVersion": 1, "sources": cleartext_page}), encoding="utf-8")
+        with self.assertRaisesRegex(builder.BuildError, "invalid landing page"):
+            builder.build_database(manifest, catalog, output, metadata, **options)
+        without_page = [{key: value for key, value in source.items() if key != "landingPage"} for source in sources]
+        policy.write_text(json.dumps({"schemaVersion": 1, "sources": without_page}), encoding="utf-8")
+        with self.assertRaisesRegex(builder.BuildError, "policy entry 0 is invalid"):
+            builder.build_database(manifest, catalog, output, metadata, **options)
 
         policy.write_text(json.dumps({"schemaVersion": 1, "sources": sources}), encoding="utf-8")
         builder.build_database(manifest, catalog, output, metadata, **options)
@@ -256,13 +267,16 @@ class IosGtfsScheduleTest(unittest.TestCase):
             verifier.verify_source_policy(self.write_policy(renamed), {source["sourceId"] for source in sources})
         with self.assertRaisesRegex(verifier.VerificationError, "invalid licence"):
             verifier.verify_source_policy(self.write_policy([dict(source, licence="") for source in sources]), {source["sourceId"] for source in sources})
+        with self.assertRaisesRegex(verifier.VerificationError, "invalid landing page"):
+            verifier.verify_source_policy(self.write_policy([dict(source, landingPage="http://example.test/") for source in sources]), {source["sourceId"] for source in sources})
         verifier.verify_source_policy(self.write_policy(sources), {source["sourceId"] for source in sources})
 
     def test_android_only_packs_are_reviewed_in_the_policy_and_left_out_of_the_index(self) -> None:
         manifest, catalog = write_inputs(self.temp)
         payload = json.loads(manifest.read_text(encoding="utf-8"))
         sources = [
-            {"sourceId": pack["sourceId"], "sourceUrl": pack["sourceUrl"], "accessMode": pack["accessMode"], "licence": None}
+            {"sourceId": pack["sourceId"], "sourceUrl": pack["sourceUrl"], "accessMode": pack["accessMode"], "licence": None,
+             "landingPage": "https://example.test/" + pack["sourceId"]}
             for pack in payload["packs"]
         ]
         # An eleventh, Android-only pack whose archive the iOS index never reads.
