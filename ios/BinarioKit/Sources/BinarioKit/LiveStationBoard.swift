@@ -29,7 +29,8 @@ extension LiveOverlay {
     /// (same number key, scheduled within five minutes); every other row stays as it is.
     public static func stationBoard(_ rows: [StationBoardDeparture], with board: LiveDepartureBoard, at now: Date) -> [StationBoardDeparture] {
         rows.map { row -> StationBoardDeparture in
-            guard let live = departure(number: row.service.number, scheduled: row.departure, in: board.departures),
+            guard row.service.hasTrainNumber,
+                  let live = departure(number: row.service.number, scheduled: row.departure, in: board.departures),
                   let status = live.stationBoardLiveStatus(at: now, timetable: row.departure) else { return row }
             return StationBoardDeparture(departure: row.departure, service: row.service, terminus: row.terminus, live: status)
         }

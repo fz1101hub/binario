@@ -319,6 +319,10 @@ final class LiveRailDataTests: XCTestCase {
         XCTAssertNil(LiveOverlay.departure(for: service("RE_11 - 2154", "10:05"), on: day, in: board), "another number")
         XCTAssertEqual(LiveOverlay.departure(for: service("2153", "24:10"), on: day, in: board), late, "past midnight is the next day")
         XCTAssertNil(LiveOverlay.departure(for: service("2153", "10:5"), on: day, in: board))
+        let line = TrainService(id: "gtfs:C2153", number: "2153", operatorName: "SNCF", category: "2153", destination: "Nice",
+                                scheduledDeparture: "10:06", expectedDeparture: "10:06", status: "PROGRAMMED", platform: nil,
+                                delayMinutes: 0, hasTrainNumber: false)
+        XCTAssertNil(LiveOverlay.departure(for: line, on: day, in: board), "a route's short name is not a train number")
         let tie = [
             makeRow(.rfiStationBoard, number: "1", scheduled: day.addingTimeInterval(-60), expectedMinutes: nil, platform: nil, status: nil, operatorID: nil),
             makeRow(.italo, number: "1", scheduled: day.addingTimeInterval(60), expectedMinutes: nil, platform: nil, status: nil, operatorID: nil),

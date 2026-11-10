@@ -622,6 +622,15 @@ final class BinarioAppTests: XCTestCase {
         let line = fixtureSnapshot(query: query, serviceNumber: "Linea SASSARI-SORSO").services[0]
         XCTAssertFalse(model.canToggleFavourite(line, query: query))
         XCTAssertEqual(model.toggleFavourite(line, query: query), .failed)
+        // Nor is a route's short name («C3» of every SNCF train of the line): no star.
+        let route = TrainService(
+            id: "sncf:c3", number: "C3", operatorName: "SNCF", category: "C3", destination: "Nice",
+            scheduledDeparture: service.scheduledDeparture, expectedDeparture: service.scheduledDeparture,
+            status: "PROGRAMMED", platform: nil, delayMinutes: 0, hasTrainNumber: false
+        )
+        XCTAssertFalse(model.canToggleFavourite(route, query: query))
+        XCTAssertEqual(model.toggleFavourite(route, query: query), .failed)
+        XCTAssertEqual(model.favouriteTrains, [])
 
         // Twelve trains: the thirteenth is refused, none is dropped, and removing stays possible.
         for number in 1...FavouriteTrainCollection.maximumTrains {
@@ -969,6 +978,13 @@ final class BinarioAppTests: XCTestCase {
         XCTAssertNil(model.liveTrainKey(for: service, query: tomorrow, now: now))
         let line = fixtureSnapshot(query: query, serviceNumber: "Linea SASSARI-SORSO").services[0]
         XCTAssertNil(model.liveTrainKey(for: line, query: query, now: now))
+        // A route's short name («R35») would be asked as train 35: never.
+        let route = TrainService(
+            id: "trentino:r35", number: "R35", operatorName: "Trentino Trasporti", category: "R35", destination: "Bergamo",
+            scheduledDeparture: romeTime(departure), expectedDeparture: romeTime(departure), status: "PROGRAMMED",
+            platform: nil, delayMinutes: 0, hasTrainNumber: false
+        )
+        XCTAssertNil(model.liveTrainKey(for: route, query: query, now: now))
     }
 
     func testMyTrainsAsksTheFirstEightFavouritesOnlyWhileOnScreen() async throws {

@@ -1084,7 +1084,8 @@ final class AppModel: ObservableObject {
         for service in journey.services {
             guard let departure = nextOccurrence(of: service.scheduledDeparture, after: cursor, calendar: calendar) else { continue }
             cursor = departure.addingTimeInterval(-1)
-            guard let row = LiveOverlay.departure(number: service.number, scheduled: departure, in: board.departures),
+            guard service.hasTrainNumber,
+                  let row = LiveOverlay.departure(number: service.number, scheduled: departure, in: board.departures),
                   let status = row.stationBoardLiveStatus(at: now, timetable: departure) else { continue }
             live[service.id] = status
         }
@@ -1124,8 +1125,10 @@ final class AppModel: ObservableObject {
     /// The run a train detail asks about, when it leaves within the live window: its number proper
     /// and its "HH:mm" at the boarding station, from the query's time on (a board row's departure,
     /// a search's time) and never before the window (a favourite saved weeks ago means today's
-    /// run). Nil for a train without a number the sources know (a line name) or outside the window.
+    /// run). Nil for a train without a number the sources know (a line name, a route's short name)
+    /// or outside the window.
     func liveTrainKey(for service: TrainService, query: JourneyQuery, now: Date = Date()) -> LiveTrainKey? {
+        guard service.hasTrainNumber else { return nil }
         let number = NetworkReliability.numberKey(service.number)
         let digits = number.unicodeScalars.allSatisfy { ("0"..."9").contains($0) }
         let anchor = max(query.departure, now.addingTimeInterval(-Self.liveLookback))
@@ -1415,9 +1418,11 @@ final class AppModel: ObservableObject {
     }
 
     /// Whether the star of a detail is offered: a saved train can always be removed; a train is
-    /// saved only with a train number (not a line name) and the texts the timetable bounds.
+    /// saved only with a train number (not a line name nor a route's short name, which every train
+    /// of the line shares) and the texts the timetable bounds.
     func canToggleFavourite(_ service: TrainService, query: JourneyQuery) -> Bool {
         if isFavourite(service, query: query) { return true }
+        guard service.hasTrainNumber else { return false }
         return (try? FavouriteTrain(service: service, query: query, savedAt: Date())) != nil
     }
 
@@ -1429,7 +1434,8 @@ final class AppModel: ObservableObject {
         if current.contains(id: id) {
             return setFavourites(current.removing(ids: [id])) ? .removed : .failed
         }
-        guard let train = try? FavouriteTrain(service: service, query: query, savedAt: now) else { return .failed }
+        guard service.hasTrainNumber,
+              let train = try? FavouriteTrain(service: service, query: query, savedAt: now) else { return .failed }
         let updated: FavouriteTrainCollection
         do {
             updated = try current.adding(train)

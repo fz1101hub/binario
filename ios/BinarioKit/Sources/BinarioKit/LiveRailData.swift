@@ -389,7 +389,7 @@ public enum LiveOverlay {
     /// The live row of a bundled timetable train: its "HH:mm" departure on `day` (Italian time;
     /// "24:10" and later are past midnight).
     public static func departure(for service: TrainService, on day: Date, in board: LiveDepartureBoard) -> LiveDeparture? {
-        guard let scheduled = scheduledDate(service.scheduledDeparture, on: day) else { return nil }
+        guard service.hasTrainNumber, let scheduled = scheduledDate(service.scheduledDeparture, on: day) else { return nil }
         return departure(number: service.number, scheduled: scheduled, in: board.departures)
     }
 

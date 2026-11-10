@@ -54,6 +54,24 @@ final class StationBoardTests: XCTestCase {
         XCTAssertEqual(page.attributions, ["Synthetic official feed"])
     }
 
+    func testATripWithoutItsOwnNumberIsListedByItsRouteAndMarkedAsNoTrainNumber() async throws {
+        let fixture = try BoardFixture()
+        try fixture.insertTrip(id: 1, externalID: "numbered", number: "2153", calls: [
+            BoardCall(stop: 1, seconds: 9 * 3_600 + 30 * 60), BoardCall(stop: 2, seconds: 10 * 3_600),
+        ])
+        // SNCF and Trentino trips publish no trip_short_name: the row shows the route's «C3».
+        try fixture.execute("""
+            INSERT INTO route VALUES (2, 1, 1, 'route-c3', 'C3', NULL, 2);
+            INSERT INTO trip VALUES (2, 1, 2, 1, 'line', NULL, NULL, NULL, NULL);
+            INSERT INTO stop_time VALUES (2, 1, 1, \(10 * 3_600), \(10 * 3_600), 0, 0);
+            INSERT INTO stop_time VALUES (2, 2, 2, \(11 * 3_600), \(11 * 3_600), 0, 0);
+            """)
+        let result = await fixture.repository.departures(for: try boardQuery("2024-04-01 09:00"))
+        let page = try availablePage(result)
+        XCTAssertEqual(page.departures.map(\.service.number), ["2153", "C3"])
+        XCTAssertEqual(page.departures.map(\.service.hasTrainNumber), [true, false])
+    }
+
     func testTrainsGoneNotBoardingHereOrEndingHereAreNoDeparturesAndATrainCallingTwiceIsListedOnce() async throws {
         let fixture = try BoardFixture()
         try fixture.insertTrip(id: 1, externalID: "left", number: "2301", calls: [

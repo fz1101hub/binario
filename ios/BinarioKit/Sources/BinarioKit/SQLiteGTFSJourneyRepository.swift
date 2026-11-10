@@ -406,7 +406,8 @@ public struct SQLiteGTFSJourneyRepository: JourneyRepository, Sendable {
                     status: OperationalState.programmed.rawValue,
                     platform: nil,
                     delayMinutes: 0,
-                    bikesAllowed: bikesAllowed
+                    bikesAllowed: bikesAllowed,
+                    hasTrainNumber: statement.text(at: 2)?.nonEmpty != nil
                 )
             ))
         }
@@ -414,7 +415,7 @@ public struct SQLiteGTFSJourneyRepository: JourneyRepository, Sendable {
     }
 
     /// The number a train is listed with: the trip's published number, else its route's short
-    /// name, else the trip's identifier. With `trainCategory`, the naming of the planner rows and of
+    /// name, else the trip's identifier (`TrainService.hasTrainNumber` is then false). With `trainCategory`, the naming of the planner rows and of
     /// «Partenze» (`ReliableAlternatives.trainLabel` joins the two).
     private static func trainNumber(trip tripShortName: String?, route routeShortName: String?, externalTripID: String) -> String {
         let raw: String = tripShortName?.nonEmpty ?? routeShortName?.nonEmpty ?? externalTripID
@@ -763,7 +764,8 @@ extension SQLiteGTFSJourneyRepository: StationBoardProvider {
                 status: OperationalState.programmed.rawValue,
                 platform: nil,
                 delayMinutes: 0,
-                bikesAllowed: bikes(statement.int(at: 15))
+                bikesAllowed: bikes(statement.int(at: 15)),
+                hasTrainNumber: statement.text(at: 2)?.nonEmpty != nil
             )
             candidates.append(StationBoardCandidate(
                 entry: StationBoardDeparture(
