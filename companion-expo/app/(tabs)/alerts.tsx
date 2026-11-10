@@ -13,7 +13,7 @@ import { acknowledgeNativeAction, confirmNativeAction } from "@/lib/native-feedb
 import { agendaReminderLeadKey, createReplannedLocalRouteDraft, createReturnLocalRouteDraft, filterLocalJourneyAgenda, getLocalJourneyPreparationPreset, localJourneyChecklistPresets, localJourneyChecklistTranslationKeys, localJourneyWeekdays, maxExplicitLocalJourneyOccurrences, remainingLocalJourneyChecklistItems, type ControlledLocalRouteDraft, type LocalAgendaFilter, type LocalJourneyChecklistPreset, type LocalJourneyWeekday } from "@/lib/local-route-contract";
 import { useCompanionTheme } from "@/lib/theme";
 import { useTranslation } from "@/lib/i18n";
-import { deleteRoutePrompt, reminderFeedbackPoliteness } from "@/lib/reminder-accessibility";
+import { deleteRoutePrompt, feedbackPoliteness, shouldAnnounceFeedback, type ScreenFeedback } from "@/lib/reminder-accessibility";
 import { alertsRailwayStatusSemantics } from "@/lib/companion-ui-semantics";
 import { formatLocalJourneyDate, formatLocalJourneySchedule, formatLocalJourneyTime, fromLocalDateAndTime, toLocalIsoDate, toLocalTime } from "@/lib/local-date-time";
 import type { GuidedTextLocalRouteDraft } from "@/lib/local-journey-itineraries";
@@ -29,7 +29,10 @@ export default function AlertsScreen() {
   const [routes, setRoutes] = useState<LocalPlannedRoute[]>([]);
   const [scheduledIds, setScheduledIds] = useState<number[]>([]);
   const [loading, setLoading] = useState(true);
-  const [message, setMessage] = useState("");
+  const [feedback, setFeedback] = useState<ScreenFeedback>({ text: "", severity: "info" });
+  const message = feedback.text;
+  const setMessage = (text: string) => setFeedback({ text, severity: "info" });
+  const setError = (text: string) => setFeedback({ text, severity: "error" });
   const [agendaFilter, setAgendaFilter] = useState<LocalAgendaFilter>("upcoming");
   const [routeSearch, setRouteSearch] = useState("");
   const [monthFilter, setMonthFilter] = useState<string | null>(null);
@@ -57,13 +60,13 @@ export default function AlertsScreen() {
       setScheduledIds(nextScheduled);
       if (migrationNotice) setMessage(migrationNotice);
     } catch {
-      setMessage(t("alerts.readError"));
+      setError(t("alerts.readError"));
     } finally {
       setLoading(false);
     }
   }
   useFocusEffect(useCallback(() => { void refresh(); }, [locale]));
-  useEffect(() => { if (message && Platform.OS !== "web") AccessibilityInfo.announceForAccessibility(message); }, [message]);
+  useEffect(() => { if (message && shouldAnnounceFeedback(Platform.OS)) AccessibilityInfo.announceForAccessibility(message); }, [feedback]);
   // Every Agenda change (delete, complete, reminder, import, copies, priority) reaches the widget and the watch at once.
   useEffect(() => { if (!loading) void refreshNativeCompanionSurfaces(locale); }, [loading, locale, routes, scheduledIds]);
   async function toggle(route: LocalPlannedRoute) {
@@ -81,17 +84,17 @@ export default function AlertsScreen() {
         setMessage(t("alerts.reminderScheduled"));
         confirmNativeAction();
       } else if (result === "permission-denied") {
-        setMessage(t("alerts.permissionDenied"));
+        setError(t("alerts.permissionDenied"));
       } else {
-        setMessage(t("alerts.reminderInvalid"));
+        setError(t("alerts.reminderInvalid"));
       }
     } catch {
-      setMessage(t("alerts.reminderUpdateError"));
+      setError(t("alerts.reminderUpdateError"));
     }
   }
   function confirmDelete(route: LocalPlannedRoute) {
     const prompt = deleteRoutePrompt(route.name, locale);
-    Alert.alert(prompt.title, prompt.message, [{ text: prompt.cancel, style: "cancel" }, { text: prompt.confirm, style: "destructive", onPress: () => void deleteLocalPlannedRoute({ routeId: route.id, cancelReminder: cancelPlannedRouteReminder, removeRoute: removeLocalPlannedRoute, listRemainingRouteIds: async () => (await loadLocalPlannedRoutes()).map(item => item.id), reconcileItineraries: reconcileLocalJourneyItineraries }).then(result => { setScheduledIds(current => current.filter(id => id !== route.id)); setMessage(t(result.cancelledReminder ? "alerts.deletedWithReminder" : "alerts.deleted")); return refresh(); }).catch(() => { setMessage(t("alerts.deleteError")); }) }]);
+    Alert.alert(prompt.title, prompt.message, [{ text: prompt.cancel, style: "cancel" }, { text: prompt.confirm, style: "destructive", onPress: () => void deleteLocalPlannedRoute({ routeId: route.id, cancelReminder: cancelPlannedRouteReminder, removeRoute: removeLocalPlannedRoute, listRemainingRouteIds: async () => (await loadLocalPlannedRoutes()).map(item => item.id), reconcileItineraries: reconcileLocalJourneyItineraries }).then(result => { setScheduledIds(current => current.filter(id => id !== route.id)); setMessage(t(result.cancelledReminder ? "alerts.deletedWithReminder" : "alerts.deleted")); return refresh(); }).catch(() => { setError(t("alerts.deleteError")); }) }]);
   }
   async function toggleChecklist(route: LocalPlannedRoute, itemId: keyof typeof localJourneyChecklistTranslationKeys, completed: boolean) {
     if (await setLocalPlannedRouteChecklistItem(route.id, itemId, completed)) {
@@ -101,7 +104,7 @@ export default function AlertsScreen() {
   }
   async function importCalendar() {
     const drafts = await pickLocalJourneyIcs();
-    if (drafts.length === 0) { setMessage(t("alerts.icsInvalid")); return; }
+    if (drafts.length === 0) { setError(t("alerts.icsInvalid")); return; }
     setCalendarImports(drafts);
     setCalendarImportSelection(drafts.map(draft => calendarImportKey(draft)));
     setMessage(t("alerts.icsPreviewReady", { count: drafts.length }));
@@ -113,18 +116,18 @@ export default function AlertsScreen() {
   }
   async function confirmCalendarImport() {
     const chosen = calendarImports.filter(draft => calendarImportSelection.includes(calendarImportKey(draft)));
-    if (chosen.length === 0) { setMessage(t("alerts.icsSelectOne")); return; }
+    if (chosen.length === 0) { setError(t("alerts.icsSelectOne")); return; }
     let imported = 0;
     for (const draft of chosen) if (await addLocalPlannedRoute(draft)) imported += 1;
     const full = imported < chosen.length && await isLocalRoutesArchiveFull();
     if (!full) { setCalendarImports([]); setCalendarImportSelection([]); }
     await refresh();
-    setMessage(full ? `${imported ? `${t("alerts.icsImported", { count: imported })} ` : ""}${t("common.archiveFull")}` : imported ? t("alerts.icsImported", { count: imported }) : t("alerts.icsNoneImported"));
+    (full ? setError : setMessage)(full ? `${imported ? `${t("alerts.icsImported", { count: imported })} ` : ""}${t("common.archiveFull")}` : imported ? t("alerts.icsImported", { count: imported }) : t("alerts.icsNoneImported"));
     if (imported) confirmNativeAction();
   }
   async function exportCalendar(route: LocalPlannedRoute) {
-    try { const shared = await shareLocalJourneyIcs(route, locale); setMessage(shared ? t("alerts.icsShared") : t("alerts.icsShareUnavailable")); if (shared) acknowledgeNativeAction(); }
-    catch { setMessage(t("alerts.icsShareError")); }
+    try { const shared = await shareLocalJourneyIcs(route, locale); if (shared) setMessage(t("alerts.icsShared")); else setError(t("alerts.icsShareUnavailable")); if (shared) acknowledgeNativeAction(); }
+    catch { setError(t("alerts.icsShareError")); }
   }
   async function importGuidedText(drafts: GuidedTextLocalRouteDraft[]) {
     let imported = 0;
@@ -137,7 +140,7 @@ export default function AlertsScreen() {
     setMessage(t("alerts.recurrenceOpen"));
   }
   async function createRecurrences() {
-    if (!recurrenceRoute || recurrenceWeekdays.length === 0) { setMessage(t("alerts.recurrenceChooseDay")); return; }
+    if (!recurrenceRoute || recurrenceWeekdays.length === 0) { setError(t("alerts.recurrenceChooseDay")); return; }
     const added = await addExplicitRecurringLocalPlannedRoutes(recurrenceRoute.id, { weekdays: recurrenceWeekdays, occurrences: recurrenceOccurrences });
     setRecurrenceRoute(null); setRecurrenceWeekdays([]);
     await refresh();
@@ -146,7 +149,7 @@ export default function AlertsScreen() {
   }
   async function toggleCompleted(route: LocalPlannedRoute) {
     const completing = route.completedAtUtcMs == null;
-    if (!await setLocalPlannedRouteCompletion(route.id, completing)) { setMessage(t("alerts.routeUpdateError")); return; }
+    if (!await setLocalPlannedRouteCompletion(route.id, completing)) { setError(t("alerts.routeUpdateError")); return; }
     // Annulla sempre: l’elenco in memoria può essere vecchio, e l’annullamento di un promemoria assente non fa nulla.
     if (completing) {
       await cancelPlannedRouteReminder(route.id);
@@ -171,9 +174,9 @@ export default function AlertsScreen() {
     else setPendingTime(toLocalTime(value));
   }
   async function saveControlledRoute() {
-    if (!pendingDraft || !pendingDate || !pendingTime) { setMessage(t("alerts.chooseDateTime")); return; }
+    if (!pendingDraft || !pendingDate || !pendingTime) { setError(t("alerts.chooseDateTime")); return; }
     const route = await addLocalPlannedRoute({ ...pendingDraft, travelDate: pendingDate, travelTime: pendingTime });
-    if (!route) { setMessage(t(await isLocalRoutesArchiveFull() ? "common.archiveFull" : "alerts.duplicateRoute")); return; }
+    if (!route) { setError(t(await isLocalRoutesArchiveFull() ? "common.archiveFull" : "alerts.duplicateRoute")); return; }
     setPendingDraft(null); setPendingKind(null); setPendingDate(""); setPendingTime("");
     await refresh(); setMessage(t(pendingKind === "return" ? "alerts.returnSaved" : "alerts.replanSaved")); confirmNativeAction();
   }
@@ -208,7 +211,7 @@ export default function AlertsScreen() {
       {!loading && routes.length === 0 ? <Text accessibilityLiveRegion="polite" style={[styles.copy, { color: colors.muted }]}>{t("alerts.noRoutes")}</Text> : null}
       {!loading && routes.length > 0 && visibleRoutes.length === 0 ? <Text accessibilityLiveRegion="polite" style={[styles.copy, { color: colors.muted }]}>{t(routeSearch.trim() || monthFilter || preparationFilter ? "alerts.noSearchResults" : "alerts.noFiltered")}</Text> : null}
       {visibleRoutes.map(route => { const scheduled = scheduledIds.includes(route.id); const completed = route.completedAtUtcMs != null; const lead = t(agendaReminderLeadKey(route.plannedReminderMinutes), { minutes: route.plannedReminderMinutes ?? 0 }); const canSchedule = scheduled || route.plannedReminderMinutes !== null; const remainingChecklist = remainingLocalJourneyChecklistItems(route); const schedule = formatLocalJourneySchedule(route.travelDate, route.travelTime, locale); return <View key={route.id} accessibilityLabel={t("alerts.routeA11y", { name: route.name, origin: route.origin, destination: route.destination, schedule, state: completed ? t("alerts.completedState") : t("alerts.checklistState", { count: remainingChecklist }), reminder: t(scheduled ? "alerts.reminderActive" : "alerts.reminderInactive") })} style={[styles.route, { borderColor: colors.border }]}><View style={styles.flex}><Text accessibilityRole="header" style={[styles.routeName, { color: colors.foreground }]}>{route.name}</Text><Text style={[styles.meta, { color: colors.muted }]}>{route.origin} → {route.destination}</Text><Text style={[styles.meta, { color: colors.muted }]}>{schedule} · {lead}</Text>{completed ? <Text style={[styles.meta, { color: colors.muted }]}>{t("alerts.completedDisclaimer")}</Text> : <View accessibilityRole="list" accessibilityLabel={t("alerts.checklistA11y", { name: route.name })} style={styles.checklist}>{(route.checklist ?? [{ id: "time-margin", completed: false }, { id: "documents", completed: false }, { id: "belongings", completed: false }]).map(item => <Pressable key={item.id} accessibilityRole="checkbox" accessibilityState={{ checked: item.completed }} accessibilityLabel={checklistLabel(item.id)} onPress={() => void toggleChecklist(route, item.id, !item.completed)} style={({ pressed }) => [styles.checklistItem, { borderColor: item.completed ? colors.primary : colors.border, opacity: pressed ? 0.72 : 1 }]}><Text style={{ color: colors.foreground }}>{item.completed ? "✓ " : "○ "}{checklistLabel(item.id)}</Text></Pressable>)}</View>}</View><View style={styles.actions}><Pressable accessibilityRole="button" accessibilityLabel={t(completed ? "alerts.restoreA11y" : "alerts.completeA11y", { name: route.name })} accessibilityHint={t("alerts.manualStateHint")} onPress={() => void toggleCompleted(route)} style={({ pressed }) => [styles.action, { borderColor: colors.border, backgroundColor: colors.surface, opacity: pressed ? 0.72 : 1 }]}><Text style={{ color: colors.foreground, fontWeight: "800" }}>{t(completed ? "alerts.restore" : "alerts.complete")}</Text></Pressable>{!completed ? <Pressable accessibilityRole="button" accessibilityLabel={t("alerts.duplicateA11y", { name: route.name })} accessibilityHint={t("alerts.duplicateHint")} onPress={() => openRecurrence(route)} style={({ pressed }) => [styles.action, { borderColor: colors.border, backgroundColor: colors.surface, opacity: pressed ? 0.72 : 1 }]}><Text style={{ color: colors.foreground, fontWeight: "800" }}>{t("alerts.recurrence")}</Text></Pressable> : null}<Pressable accessibilityRole="button" accessibilityLabel={t("alerts.returnA11y", { name: route.name })} accessibilityHint={t("alerts.returnHint")} onPress={() => prepareControlledRoute(route, "return")} style={({ pressed }) => [styles.action, { borderColor: colors.border, backgroundColor: colors.surface, opacity: pressed ? 0.72 : 1 }]}><Text style={{ color: colors.foreground, fontWeight: "800" }}>{t("home.return")}</Text></Pressable><Pressable accessibilityRole="button" accessibilityLabel={t("alerts.replanA11y", { name: route.name })} accessibilityHint={t("alerts.replanHint")} onPress={() => prepareControlledRoute(route, "replan")} style={({ pressed }) => [styles.action, { borderColor: colors.border, backgroundColor: colors.surface, opacity: pressed ? 0.72 : 1 }]}><Text style={{ color: colors.foreground, fontWeight: "800" }}>{t("home.replan")}</Text></Pressable><Pressable accessibilityRole="button" accessibilityLabel={t("alerts.exportCalendarA11y", { name: route.name })} accessibilityHint={t("alerts.exportCalendarHint")} onPress={() => void exportCalendar(route)} style={({ pressed }) => [styles.calendarAction, { borderColor: colors.primary, opacity: pressed ? 0.72 : 1 }]}><Text style={{ color: colors.primary, fontWeight: "800" }}>{t("alerts.exportCalendar")}</Text><Text style={{ color: colors.muted }}>ICS</Text></Pressable>{canSchedule ? <Pressable accessibilityRole="button" accessibilityLabel={t(scheduled ? "alerts.cancelReminderA11y" : "alerts.scheduleReminderA11y", { name: route.name })} accessibilityHint={t("alerts.reminderHint")} onPress={() => void toggle(route)} style={({ pressed }) => [styles.action, { borderColor: scheduled ? colors.warning : colors.primary, backgroundColor: scheduled ? colors.surface : colors.primary, opacity: pressed ? 0.72 : 1 }]}><Text style={{ color: scheduled ? colors.foreground : "#fff", fontWeight: "800" }}>{t(scheduled ? "common.cancel" : "alerts.schedule")}</Text></Pressable> : null}<Pressable accessibilityRole="button" accessibilityLabel={t("alerts.deleteA11y", { name: route.name })} accessibilityHint={t("alerts.deleteHint")} onPress={() => confirmDelete(route)} style={({ pressed }) => [styles.delete, { borderColor: colors.danger, opacity: pressed ? 0.72 : 1 }]}><Text style={{ color: colors.danger, fontWeight: "800" }}>{t("common.delete")}</Text></Pressable></View></View>; })}
-      {message ? <Text accessibilityLiveRegion={reminderFeedbackPoliteness(message)} style={[styles.feedback, { color: colors.muted }]}>{message}</Text> : null}
+      {message ? <Text accessibilityLiveRegion={feedbackPoliteness(feedback.severity)} style={[styles.feedback, { color: colors.muted }]}>{message}</Text> : null}
     </View>
   </ScrollView></ScreenContainer>;
 }

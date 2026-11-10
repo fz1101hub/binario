@@ -13,6 +13,7 @@ import { useCompanionTheme } from "@/lib/theme";
 import { useTranslation } from "@/lib/i18n";
 import { getCompanionGuidance } from "@/lib/simple-mode";
 import { railwayStatusSemantics } from "@/lib/companion-ui-semantics";
+import { shouldAnnounceFeedback } from "@/lib/reminder-accessibility";
 import { router, useFocusEffect, type Href } from "expo-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
@@ -50,7 +51,7 @@ export default function BinarioHome() {
 
   useFocusEffect(useCallback(() => { void loadLocalPlan(); }, [loadLocalPlan]));
   useEffect(() => { syncNativeCompanionSurfaces(snapshot, nextLocalRoute, nextReminderScheduled); }, [nextLocalRoute, nextReminderScheduled, snapshot]);
-  useEffect(() => { if (feedback && Platform.OS !== "web") AccessibilityInfo.announceForAccessibility(feedback); }, [feedback]);
+  useEffect(() => { if (feedback && shouldAnnounceFeedback(Platform.OS)) AccessibilityInfo.announceForAccessibility(feedback); }, [feedback]);
   useEffect(() => {
     if (snapshot.provenance.dataNature === "unavailable" || !snapshot.provenance.expiresAtUtcMs) return;
     const timer = setTimeout(() => {

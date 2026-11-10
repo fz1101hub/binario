@@ -10,6 +10,7 @@ import { loadLocalJourneyTimingPreferences } from "@/lib/local-journey-timing";
 import { useCompanionTheme } from "@/lib/theme";
 import { createTranslator, useTranslation } from "@/lib/i18n";
 import { StationAutocompleteInput } from "@/components/station-autocomplete-input";
+import { shouldAnnounceFeedback } from "@/lib/reminder-accessibility";
 import { formatLocalJourneyDate, formatLocalJourneyTime, fromLocalDateAndTime, toLocalIsoDate, toLocalTime } from "@/lib/local-date-time";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useFocusEffect } from "expo-router";
@@ -52,7 +53,7 @@ export function LocalPlanCard({ onSaved, planningDraft, onPlanningDraftApplied }
   const [scheduleConfirmation, setScheduleConfirmation] = useState({ date: false, time: false });
   const destinationRef = useRef<TextInput>(null);
 
-  useEffect(() => { if (message && Platform.OS !== "web") AccessibilityInfo.announceForAccessibility(message); }, [message]);
+  useEffect(() => { if (message && shouldAnnounceFeedback(Platform.OS)) AccessibilityInfo.announceForAccessibility(message); }, [message]);
   // Reloaded on every visit: «Cancella archivio locale» in Settings removes the templates.
   useFocusEffect(useCallback(() => { void loadLocalJourneyTemplates().then(setTemplates); }, []));
   useEffect(() => { void loadLocalFavoriteStations().then(setFavoriteStations); }, []);
