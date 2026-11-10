@@ -828,6 +828,8 @@
     <string name="widget_warnings_accessibility">။ သတိပေးချက်- %1$s</string>
     <!-- Texts carried verbatim in the Wear payload. -->
     <string name="wear_payload_value_unavailable">မရနိုင်ပါ</string>
+    <string name="wear_notice_cancelled">ဖျက်သိမ်းပြီး- %2$s ၏ %1$s</string>
+    <string name="wear_operator_other">အခြား ဝန်ဆောင်မှုပေးသူ</string>
     <plurals name="search_results_count">
         <item quantity="other">ရလဒ် %d ခု</item>
     </plurals>

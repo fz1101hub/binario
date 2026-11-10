@@ -4,6 +4,7 @@ import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class WearSnapshotCodecTest {
@@ -64,9 +65,30 @@ class WearSnapshotCodecTest {
     }
 
     @Test
-    fun `payload oltre budget non sostituisce la cache`() {
+    fun `un avviso oltre il proprio limite non sostituisce la cache`() {
         val oversized = fixture("android-to-wear-v1.json") + ("notice" to "x".repeat(WearSnapshotCodec.MAX_PAYLOAD_BYTES))
         assertNull(WearSnapshotCodec.decode(oversized, now))
+    }
+
+    @Test
+    fun `payload oltre budget non sostituisce la cache anche quando ogni campo è valido`() {
+        val valid = fixture("android-to-wear-v1.json")
+        val size = WearSnapshotCodec.estimatedUtf8Size(valid)
+
+        assertNotNull(WearSnapshotCodec.decode(valid, now, maxPayloadBytes = size))
+        assertNull(WearSnapshotCodec.decode(valid, now, maxPayloadBytes = size - 1))
+    }
+
+    @Test
+    fun `il payload valido più grande resta sotto il budget`() {
+        // Every text at its limit in three-byte characters: the 8,192-byte budget is a safety net, not a field limit.
+        val largest = fixture("android-to-wear-v1-reliability.json").mapValues { (key, value) ->
+            val limit = TEXT_LIMITS.entries.firstOrNull { key.endsWith(it.key) }?.value
+            if (value is String && limit != null) "€".repeat(limit) else value
+        } + ("service1ReliabilityOnTime" to 1L) + ("service1ReliabilitySamples" to 5L)
+
+        assertNotNull(WearSnapshotCodec.decode(largest, now))
+        assertTrue(WearSnapshotCodec.estimatedUtf8Size(largest) < WearSnapshotCodec.MAX_PAYLOAD_BYTES)
     }
 
     @Test
@@ -76,6 +98,11 @@ class WearSnapshotCodecTest {
 
         assertEquals(decoded, roundTrip)
     }
+
+    private val TEXT_LIMITS = mapOf(
+        "provenanceSourceLabel" to 96, "routeId" to 64, "routeLabel" to 96, "notice" to 180,
+        "Number" to 24, "Operator" to 64, "Category" to 64, "Destination" to 96, "Status" to 64, "Platform" to 16,
+    )
 
     private fun fixture(name: String): Map<String, Any?> {
         val text = requireNotNull(javaClass.classLoader?.getResourceAsStream(name)).bufferedReader().use { it.readText() }

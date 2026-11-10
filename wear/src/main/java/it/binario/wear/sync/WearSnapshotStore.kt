@@ -51,6 +51,7 @@ internal class WearSnapshotRuntime(
 ) {
     private val lock = Any()
     private val stateFlow = MutableStateFlow<WearSnapshot?>(null)
+    private val expiredFlow = MutableStateFlow(false)
     private var expiryCancellation: WearSnapshotExpiryCancellation? = null
     private var expiryGeneration = 0L
 
@@ -66,6 +67,7 @@ internal class WearSnapshotRuntime(
                 if (restored != null) {
                     storage.clear()
                     expiredAtStartup = true
+                    expiredFlow.value = true
                 }
             }
         }
@@ -77,13 +79,22 @@ internal class WearSnapshotRuntime(
         return stateFlow
     }
 
+    /**
+     * True once the cached snapshot passed its deadline, until a new one arrives or sharing is
+     * revoked: the empty screen then asks for a refresh instead of the sharing setup.
+     */
+    fun expired(): StateFlow<Boolean> {
+        current()
+        return expiredFlow
+    }
+
     /** Revalidates before returning so Tile and complication cannot render a late cache. */
     fun current(): WearSnapshot? {
         var notifyExpired = false
         val snapshot = synchronized(lock) {
             val candidate = stateFlow.value
             if (candidate != null && !isCurrent(candidate)) {
-                invalidateLocked()
+                invalidateLocked(expired = true)
                 notifyExpired = true
                 null
             } else {
@@ -99,12 +110,13 @@ internal class WearSnapshotRuntime(
         var notifyExpired = false
         synchronized(lock) {
             if (stateFlow.value?.let(::isCurrent) == false) {
-                invalidateLocked()
+                invalidateLocked(expired = true)
                 notifyExpired = true
             }
             if (isCurrent(snapshot)) {
                 storage.write(snapshot)
                 stateFlow.value = snapshot
+                expiredFlow.value = false
                 scheduleExpiryLocked(snapshot)
             }
         }
@@ -123,6 +135,7 @@ internal class WearSnapshotRuntime(
             if (cached != null && cached.generatedAtEpochMillis >= snapshot.generatedAtEpochMillis) return false
             storage.write(snapshot)
             stateFlow.value = snapshot
+            expiredFlow.value = false
             scheduleExpiryLocked(snapshot)
         }
         return true
@@ -149,7 +162,7 @@ internal class WearSnapshotRuntime(
                     // A wall-clock correction can make a delayed callback arrive early; try again.
                     scheduleExpiryLocked(snapshot)
                 } else {
-                    invalidateLocked()
+                    invalidateLocked(expired = true)
                     notifyExpired = true
                 }
             }
@@ -157,12 +170,14 @@ internal class WearSnapshotRuntime(
         }
     }
 
-    private fun invalidateLocked() {
+    /** [expired]: the value passed its deadline (rather than being revoked by the phone). */
+    private fun invalidateLocked(expired: Boolean = false) {
         expiryCancellation?.cancel()
         expiryCancellation = null
         expiryGeneration++
         storage.clear()
         stateFlow.value = null
+        expiredFlow.value = expired
     }
 }
 
@@ -228,6 +243,9 @@ object WearSnapshotStore {
 
     /** Tile and complication use the same revalidating path as UI initialization. */
     fun current(context: Context): WearSnapshot? = entry(context).current()
+
+    /** Whether the empty state follows an expired snapshot rather than no snapshot at all. */
+    fun expired(context: Context): StateFlow<Boolean> = entry(context).expired()
 
     fun updateFromDataMap(context: Context, dataMap: DataMap) {
         val runtime = entry(context)

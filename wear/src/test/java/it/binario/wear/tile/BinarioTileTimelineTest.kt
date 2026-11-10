@@ -25,7 +25,7 @@ class BinarioTileTimelineTest {
     fun `snapshot entry expires at its payload deadline and unavailable fallback remains valid`() {
         val expiresAt = 1_893_485_700_000L
 
-        val entries = binarioTileTimeline(snapshot(expiresAt), ::productionLayout).timelineEntries
+        val entries = binarioTileTimeline(snapshot(expiresAt), expiresAt - 60_000L, ::productionLayout).timelineEntries
 
         assertEquals(2, entries.size)
         assertNull(entries[0].validity)
@@ -35,15 +35,20 @@ class BinarioTileTimelineTest {
     }
 
     @Test
-    fun `fallback used after expiry is the same unavailable layout returned without a snapshot`() {
-        val withSnapshot = binarioTileTimeline(snapshot(1_893_485_700_000L), ::productionLayout).timelineEntries
-        val unavailableOnly = binarioTileTimeline(null, ::productionLayout).timelineEntries
+    fun `fallback used after expiry says the data expired, and without a snapshot that nothing is synced`() {
+        val withSnapshot = binarioTileTimeline(snapshot(1_893_485_700_000L), 1_893_485_640_000L, ::productionLayout).timelineEntries
+        val unavailableOnly = binarioTileTimeline(null, 1_893_485_640_000L, ::productionLayout).timelineEntries
 
         assertEquals(1, unavailableOnly.size)
         assertNull(unavailableOnly.single().validity)
         assertArrayEquals(
             requireNotNull(unavailableOnly.single().layout).toByteArray(),
+            LayoutElementBuilders.Layout.fromLayoutElement(productionLayout(WearTileContent.NotSynced)).toByteArray(),
+        )
+        assertNull(withSnapshot.first().validity)
+        assertArrayEquals(
             requireNotNull(withSnapshot.first().layout).toByteArray(),
+            LayoutElementBuilders.Layout.fromLayoutElement(productionLayout(WearTileContent.Expired)).toByteArray(),
         )
     }
 
@@ -52,6 +57,18 @@ class BinarioTileTimelineTest {
         assertEquals(
             listOf("app_name", "tile_no_synced_route", "empty_snapshot_message", "tile_snapshot_unavailable"),
             texts(productionLayout(null)),
+        )
+        // An expired snapshot does not ask to turn on sharing that is already on.
+        assertEquals(listOf("app_name", "tile_snapshot_expired", "snapshot_expired_message"), texts(productionLayout(WearTileContent.Expired)))
+    }
+
+    @Test
+    fun `a snapshot without departures, as after a failed refresh, says so instead of the setup text`() {
+        val unavailable = snapshot(1_893_485_700_000L).copy(operationalState = WearOperationalState.UNAVAILABLE, freshness = WearFreshness.UNAVAILABLE)
+
+        assertEquals(
+            listOf("app_name", "Roma Termini → Firenze S. M. Novella", "tile_no_departures", "status_live_unavailable"),
+            texts(productionLayout(unavailable)),
         )
     }
 
@@ -62,16 +79,41 @@ class BinarioTileTimelineTest {
                 "app_name",
                 "Roma Termini → Firenze S. M. Novella",
                 "tile_service_details(08:15, RV 2345, Firenze S. M. Novella)",
-                "status_received_from_phone",
+                "status_live_as_of(09:14)",
             ),
             texts(productionLayout(snapshot(1_893_485_700_000L, services = listOf(service)))),
         )
     }
 
     @Test
+    fun `the Tile moves to the next service a minute after the first one leaves, without a new request`() {
+        // 08:00 in Rome; services at 08:15 and 08:42; the snapshot is valid until 08:30.
+        val now = 1_893_481_200_000L
+        val expiresAt = now + 30 * 60_000L
+        val next = service.copy(number = "RV 2347", scheduledDeparture = "08:42", expectedDeparture = "08:42", platform = "5")
+        val snapshot = snapshot(expiresAt, services = listOf(service, next)).copy(generatedAtEpochMillis = now, ttlMillis = expiresAt - now)
+        val handOver = now + 16 * 60_000L // 08:16
+
+        val entries = binarioTileTimeline(snapshot, now, ::contentLayout).timelineEntries
+
+        assertEquals(3, entries.size)
+        assertNull(entries[0].validity)
+        assertEquals(listOf(0L to handOver, handOver to expiresAt), entries.drop(1).map { requireNotNull(it.validity).let { v -> v.startMillis to v.endMillis } })
+        assertEquals(
+            listOf("expired", "RV 2345", "RV 2347"),
+            entries.map { texts(requireNotNull(requireNotNull(it.layout).root)).single() },
+        )
+
+        // Rendered after the first train left, the Tile shows the second one at once and has nothing later to switch to.
+        val late = binarioTileTimeline(snapshot, handOver + 60_000L, ::contentLayout).timelineEntries
+        assertEquals(listOf("expired", "RV 2347"), late.map { texts(requireNotNull(requireNotNull(it.layout).root)).single() })
+        assertEquals(expiresAt, requireNotNull(late[1].validity).endMillis)
+    }
+
+    @Test
     fun `round screens inset the centred column more than square ones`() {
-        val round = binarioTileLayout(null, device(DeviceParametersBuilders.SCREEN_SHAPE_ROUND), ResourceNameStrings, PACKAGE) as LayoutElementBuilders.Box
-        val square = binarioTileLayout(null, device(DeviceParametersBuilders.SCREEN_SHAPE_RECT), ResourceNameStrings, PACKAGE) as LayoutElementBuilders.Box
+        val round = binarioTileLayout(WearTileContent.NotSynced, device(DeviceParametersBuilders.SCREEN_SHAPE_ROUND), ResourceNameStrings, PACKAGE) as LayoutElementBuilders.Box
+        val square = binarioTileLayout(WearTileContent.NotSynced, device(DeviceParametersBuilders.SCREEN_SHAPE_RECT), ResourceNameStrings, PACKAGE) as LayoutElementBuilders.Box
 
         assertTrue(tileInsetFraction(device(DeviceParametersBuilders.SCREEN_SHAPE_ROUND)) > tileInsetFraction(device(DeviceParametersBuilders.SCREEN_SHAPE_RECT)))
         assertEquals(192f * tileInsetFraction(device(DeviceParametersBuilders.SCREEN_SHAPE_ROUND)), sidePadding(round), 0.001f)
@@ -95,7 +137,30 @@ class BinarioTileTimelineTest {
     }
 
     private fun productionLayout(snapshot: WearSnapshot?): LayoutElementBuilders.LayoutElement =
-        binarioTileLayout(snapshot, device(DeviceParametersBuilders.SCREEN_SHAPE_ROUND), ResourceNameStrings, PACKAGE)
+        productionLayout(snapshot?.let { WearTileContent.Current(it, it.services.firstOrNull()) } ?: WearTileContent.NotSynced)
+
+    private fun productionLayout(content: WearTileContent): LayoutElementBuilders.LayoutElement =
+        binarioTileLayout(content, device(DeviceParametersBuilders.SCREEN_SHAPE_ROUND), ResourceNameStrings, PACKAGE)
+
+    /** One text per entry: which content the timeline asked for. */
+    private fun contentLayout(content: WearTileContent): LayoutElementBuilders.LayoutElement =
+        LayoutElementBuilders.Box.Builder()
+            .addContent(
+                LayoutElementBuilders.Column.Builder()
+                    .addContent(
+                        LayoutElementBuilders.Text.Builder()
+                            .setText(
+                                when (content) {
+                                    WearTileContent.NotSynced -> "not-synced"
+                                    WearTileContent.Expired -> "expired"
+                                    is WearTileContent.Current -> content.service?.number ?: "no-service"
+                                }
+                            )
+                            .build()
+                    )
+                    .build()
+            )
+            .build()
 
     private fun device(shape: Int): DeviceParametersBuilders.DeviceParameters =
         DeviceParametersBuilders.DeviceParameters.Builder().setScreenWidthDp(192).setScreenHeightDp(192).setScreenShape(shape).build()

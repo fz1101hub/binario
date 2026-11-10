@@ -33,7 +33,8 @@ class WearMainActivityTest {
 
         assertTrue(source.contains("getCapability(PHONE_APP_CAPABILITY, CapabilityClient.FILTER_ALL)"))
         assertTrue(source.contains("WearPhoneAppPresence.fromNodeCount(info.nodes.size)"))
-        assertTrue(source.contains("stringResource(emptySnapshotMessageResId(phoneApp))"))
+        assertTrue(source.contains("stringResource(emptySnapshotMessageResId(phoneApp, expired))"))
+        assertTrue(source.contains("WearSnapshotStore.expired(this).collectAsState()"))
     }
 
     @Test
@@ -48,6 +49,14 @@ class WearMainActivityTest {
         assertTrue(source.contains("LaunchedEffect(snapshot?.generatedAtEpochMillis) { refreshFeedback.value = null }"))
         assertTrue(source.contains("liveRegion = LiveRegionMode.Polite"))
         assertFalse(source.contains("connectedNodes"))
+    }
+
+    @Test
+    fun `the status names the source of the data the phone sent`() {
+        val source = activitySource()
+        val statusItem = source.substring(source.indexOf("val status = snapshot.dataStatus()"), source.indexOf("itemsIndexed("))
+
+        assertTrue(statusItem.contains("snapshot.provider"))
     }
 
     @Test

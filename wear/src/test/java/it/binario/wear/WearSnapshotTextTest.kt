@@ -1,9 +1,35 @@
 package it.binario.wear
 
+import it.binario.wear.model.WearConfidence
+import it.binario.wear.model.WearDataNature
+import it.binario.wear.model.WearDirection
+import it.binario.wear.model.WearFreshness
+import it.binario.wear.model.WearOperationalState
+import it.binario.wear.model.WearProvenance
+import it.binario.wear.model.WearProvenanceProducer
+import it.binario.wear.model.WearSnapshot
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
 class WearSnapshotTextTest {
+    @Test
+    fun `live data name the time their source observed them, scheduled data do not`() {
+        // Observed at 08:12 in Rome, shown up to fifteen minutes later: the status says how old the values are.
+        val live = snapshot(WearOperationalState.OPERATIONAL, WearFreshness.FRESH, observedAt = 1_893_481_920_000L)
+
+        assertEquals(WearText(R.string.status_live_as_of, listOf("08:12")), live.dataStatus())
+        assertEquals("status_live_as_of(08:12)", ResourceNameStrings.string(live.dataStatus()))
+        assertEquals(WearText(R.string.status_programmed), snapshot(WearOperationalState.PROGRAMMED, WearFreshness.FRESH).dataStatus())
+        assertEquals(WearText(R.string.status_live_unavailable), snapshot(WearOperationalState.UNAVAILABLE, WearFreshness.UNAVAILABLE).dataStatus())
+        // Live data without a recent observation are not "updating": they say how old they are.
+        assertEquals(
+            WearText(R.string.status_not_recent_as_of, listOf("08:12")),
+            snapshot(WearOperationalState.OPERATIONAL, WearFreshness.AGING).dataStatus(),
+        )
+        // The time is the rail clock (Europe/Rome), like the departures, also in summer.
+        assertEquals("09:12", railClockTime(1_909_120_320_000L))
+    }
+
     @Test
     fun `phone app presence comes from the number of nodes advertising the capability`() {
         assertEquals(WearPhoneAppPresence.ABSENT, WearPhoneAppPresence.fromNodeCount(0))
@@ -12,10 +38,14 @@ class WearSnapshotTextTest {
     }
 
     @Test
-    fun `empty state names the phone setting unless the phone app is missing`() {
-        assertEquals(R.string.empty_snapshot_phone_app_missing, emptySnapshotMessageResId(WearPhoneAppPresence.ABSENT))
-        assertEquals(R.string.empty_snapshot_message, emptySnapshotMessageResId(WearPhoneAppPresence.PRESENT))
-        assertEquals(R.string.empty_snapshot_message, emptySnapshotMessageResId(WearPhoneAppPresence.UNKNOWN))
+    fun `empty state names the phone setting unless the phone app is missing or the route data expired`() {
+        assertEquals(R.string.empty_snapshot_phone_app_missing, emptySnapshotMessageResId(WearPhoneAppPresence.ABSENT, expired = false))
+        assertEquals(R.string.empty_snapshot_message, emptySnapshotMessageResId(WearPhoneAppPresence.PRESENT, expired = false))
+        assertEquals(R.string.empty_snapshot_message, emptySnapshotMessageResId(WearPhoneAppPresence.UNKNOWN, expired = false))
+        // Sharing is on when a snapshot expired: the setup text would ask to enable what is already enabled.
+        assertEquals(R.string.snapshot_expired_message, emptySnapshotMessageResId(WearPhoneAppPresence.PRESENT, expired = true))
+        assertEquals(R.string.snapshot_expired_message, emptySnapshotMessageResId(WearPhoneAppPresence.UNKNOWN, expired = true))
+        assertEquals(R.string.empty_snapshot_phone_app_missing, emptySnapshotMessageResId(WearPhoneAppPresence.ABSENT, expired = true))
     }
 
     @Test
@@ -49,4 +79,19 @@ class WearSnapshotTextTest {
         assertEquals(R.string.refresh_phone_unreachable, WearRefreshFeedback.UNREACHABLE.messageResId)
         assertEquals("/binario/wear/request-refresh", REFRESH_REQUEST_PATH)
     }
+
+    private fun snapshot(state: WearOperationalState, freshness: WearFreshness, observedAt: Long = 1_893_481_920_000L) = WearSnapshot(
+        routeId = "route",
+        routeLabel = "Roma Termini → Napoli Centrale",
+        direction = WearDirection.OUTBOUND,
+        provenance = WearProvenance(WearProvenanceProducer.ANDROID_APP, WearDataNature.OPERATIONAL, "Fonte", observedAt),
+        operationalState = state,
+        freshness = freshness,
+        confidence = WearConfidence.OPERATOR_PRIMARY,
+        generatedAtEpochMillis = observedAt,
+        expiresAtEpochMillis = observedAt + 900_000L,
+        ttlMillis = 900_000L,
+        notice = "",
+        services = emptyList(),
+    )
 }

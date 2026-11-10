@@ -58,6 +58,77 @@ class AndroidWearSnapshotContractTest {
     }
 
     @Test
+    fun `the watch shows a live snapshot for fifteen minutes, not for the source cache lifetime`() {
+        // A live board cached for 45 s: the route snapshot expires with it, the watch's display window must not.
+        val live = goldenSnapshot.copy(expiresAtEpochMillis = generatedAt + 45_000L)
+
+        val payload = AndroidWearSnapshotContract.operational(live, generatedAt, strings(locale = null))
+
+        assertEquals(generatedAt + 15 * 60_000L, (payload["expiresAtEpochMillis"] as Number).toLong())
+        assertEquals(15 * 60_000L, (payload["ttlMillis"] as Number).toLong())
+        // The observation time still travels with it, so the watch can show how old the live values are.
+        assertEquals(goldenSnapshot.sourceObservedAtEpochMillis, (payload["provenanceObservedAtEpochMillis"] as Number).toLong())
+    }
+
+    @Test
+    fun `a snapshot loaded long ago is shown at most fifteen minutes past its source validity`() {
+        val expiredFiveMinutesAgo = goldenSnapshot.copy(expiresAtEpochMillis = generatedAt - 5 * 60_000L)
+        val payload = AndroidWearSnapshotContract.operational(expiredFiveMinutesAgo, generatedAt, strings(locale = null))
+        assertEquals(generatedAt + 10 * 60_000L, (payload["expiresAtEpochMillis"] as Number).toLong())
+
+        val expiredLongAgo = goldenSnapshot.copy(expiresAtEpochMillis = generatedAt - 15 * 60_000L)
+        assertTrue(runCatching { AndroidWearSnapshotContract.operational(expiredLongAgo, generatedAt, strings(locale = null)) }.isFailure)
+    }
+
+    @Test
+    fun `a confirmed cancellation never leads the glance and is named in the notice`() {
+        val cancelled = goldenSnapshot.services[0].copy(status = ServiceStatus.CANCELLED, expectedDeparture = "08:10", delayMinutes = 0)
+        val later = service("r3", "R 3", RailOperator.TRENITALIA_REGIONALE, TrainCategory.REGIONALE, "09:00", "09:00", "2", 0, ServiceStatus.ON_TIME)
+        val snapshot = goldenSnapshot.copy(services = listOf(cancelled, goldenSnapshot.services[1], later))
+
+        val payload = AndroidWearSnapshotContract.operational(snapshot, generatedAt, strings(locale = null))
+        val english = AndroidWearSnapshotContract.operational(snapshot, generatedAt, strings("en"))
+
+        assertEquals(2, payload["serviceCount"])
+        assertEquals("IC 701", payload["service0Number"])
+        assertEquals("R 3", payload["service1Number"])
+        assertEquals("Soppresso: FR 9505 delle 08:10", payload["notice"])
+        assertEquals("Cancelled: FR 9505 at 08:10", english["notice"])
+        // A cancellation after the two trains sent, or one the source did not confirm, changes nothing.
+        val afterBoth = AndroidWearSnapshotContract.operational(
+            goldenSnapshot.copy(services = goldenSnapshot.services + later.copy(status = ServiceStatus.CANCELLED)), generatedAt, strings(locale = null)
+        )
+        assertEquals("", afterBoth["notice"])
+        val unconfirmed = AndroidWearSnapshotContract.operational(
+            goldenSnapshot.copy(services = listOf(cancelled.copy(operationalStatusVerified = false), later)), generatedAt, strings(locale = null)
+        )
+        assertEquals("FR 9505", unconfirmed["service0Number"])
+    }
+
+    @Test
+    fun `the operator is the real agency, and the generic one follows the phone language`() {
+        val agency = goldenSnapshot.services[0].copy(operator = RailOperator.OTHER, operatorDisplayName = "EAV")
+        val unnamed = goldenSnapshot.services[1].copy(operator = RailOperator.OTHER, operatorDisplayName = null)
+        val snapshot = goldenSnapshot.copy(services = listOf(agency, unnamed))
+
+        val italian = AndroidWearSnapshotContract.operational(snapshot, generatedAt, strings(locale = null))
+        val english = AndroidWearSnapshotContract.operational(snapshot, generatedAt, strings("en"))
+
+        assertEquals("EAV", italian["service0Operator"])
+        assertEquals("EAV", english["service0Operator"])
+        assertEquals("Altro operatore", italian["service1Operator"])
+        assertEquals("Other operator", english["service1Operator"])
+    }
+
+    @Test
+    fun `the saved route's persistent id stays on the phone`() {
+        val payload = AndroidWearSnapshotContract.operational(goldenSnapshot.copy(route = goldenSnapshot.route.copy(id = "6f1c2a8e-uuid")), generatedAt, strings(locale = null))
+
+        assertEquals("active", payload["routeId"])
+        assertFalse(payload.values.contains("6f1c2a8e-uuid"))
+    }
+
+    @Test
     fun `encoder adds the optional reliability pair as in the reliability golden fixture`() {
         val reliability = { service: TrainService -> if (service.number == "FR 9505") ReliabilityMark(22, 27, 5, 22, 30) else null }
         val actual = AndroidWearSnapshotContract.operational(goldenSnapshot, generatedAt, strings(locale = null), reliability).normalisedNumbers()
@@ -220,7 +291,9 @@ class AndroidWearSnapshotContractTest {
             warningLabels = SnapshotWarning.entries.associateWith { catalogue.getValue("snapshot_warning_${it.name.lowercase()}") },
             scheduledStatus = catalogue.getValue("service_status_scheduled_badge"),
             unavailableNotice = catalogue.getValue("data_status_unavailable"),
-            missingValue = catalogue.getValue("wear_payload_value_unavailable")
+            missingValue = catalogue.getValue("wear_payload_value_unavailable"),
+            cancelledNotice = catalogue.getValue("wear_notice_cancelled"),
+            otherOperator = catalogue.getValue("wear_operator_other")
         )
     }
 

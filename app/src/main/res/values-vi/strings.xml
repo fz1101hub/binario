@@ -849,6 +849,8 @@
 
     <!-- Texts carried verbatim in the Wear payload. -->
     <string name="wear_payload_value_unavailable">Không có</string>
+    <string name="wear_notice_cancelled">Đã hủy: %1$s lúc %2$s</string>
+    <string name="wear_operator_other">Nhà khai thác khác</string>
 
     <plurals name="search_results_count">
         <item quantity="other">%d kết quả</item>

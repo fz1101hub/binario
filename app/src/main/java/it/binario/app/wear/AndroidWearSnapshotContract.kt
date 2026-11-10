@@ -5,6 +5,7 @@ import it.binario.app.R
 import it.binario.app.UiMessageKey
 import it.binario.app.advisoryMessage
 import it.binario.app.data.DataConfidence
+import it.binario.app.data.RailOperator
 import it.binario.app.data.RouteSnapshot
 import it.binario.app.data.ServiceStatus
 import it.binario.app.data.SnapshotWarning
@@ -17,6 +18,7 @@ import it.binario.app.labelRes
 import it.binario.app.resourceId
 import it.binario.app.widget.ReliabilityMark
 import it.binario.app.widget.ReliabilityMarks
+import java.util.Locale
 
 /**
  * Phone-language texts carried by the v1 payload. The watch shows them verbatim, so they are
@@ -30,7 +32,11 @@ internal data class WearSnapshotStrings(
     val warningLabels: Map<SnapshotWarning, String>,
     val scheduledStatus: String,
     val unavailableNotice: String,
-    val missingValue: String
+    val missingValue: String,
+    /** «Soppresso: %1$s delle %2$s»: train number and scheduled time of a cancellation left out of the services. */
+    val cancelledNotice: String,
+    /** The operator of a train whose source names none and whose legacy enum is the generic «other». */
+    val otherOperator: String
 ) {
     companion object {
         /** The advisories RouteSnapshot.advisoryMessage() can raise; the watch shows them as the notice. */
@@ -44,7 +50,9 @@ internal data class WearSnapshotStrings(
             warningLabels = SnapshotWarning.entries.associateWith { resources.getString(it.labelRes()) },
             scheduledStatus = resources.getString(R.string.service_status_scheduled_badge),
             unavailableNotice = resources.getString(R.string.data_status_unavailable),
-            missingValue = resources.getString(R.string.wear_payload_value_unavailable)
+            missingValue = resources.getString(R.string.wear_payload_value_unavailable),
+            cancelledNotice = resources.getString(R.string.wear_notice_cancelled),
+            otherOperator = resources.getString(R.string.wear_operator_other)
         )
     }
 }
@@ -58,11 +66,20 @@ internal object AndroidWearSnapshotContract {
     private const val maxTtlMillis = 15 * 60 * 1_000L
     /** Advertised by the watch apps that decode the optional reliability pair (wear/src/main/res/values/wear.xml). */
     const val RELIABILITY_CAPABILITY = "binario_wear_reliability_v1"
+    /**
+     * The `routeId` of every operational payload. The watch never uses the route identity, so the saved route's
+     * persistent id stays on the phone; v1 decoders require a non-blank value, so the key cannot be left out.
+     */
+    const val ACTIVE_ROUTE_ID = "active"
     private val reliabilityKey = Regex("service[0-9]+Reliability(OnTime|Samples)")
 
     /**
      * The v1 payload of [snapshot]. [reliabilityOf] gives the optional «In orario N volte su M» of a service (the
      * `service{n}ReliabilityOnTime` / `service{n}ReliabilitySamples` pair); it stays out when it gives none.
+     *
+     * The watch shows it for 15 minutes from [generatedAtEpochMillis] and never more than 15 minutes past the
+     * snapshot's own validity. That validity is the source cache's (30-60 s for a live board): used as the deadline,
+     * it expired the glance before the user looked at it. The watch names the observation time of live values.
      */
     fun operational(
         snapshot: RouteSnapshot,
@@ -70,9 +87,11 @@ internal object AndroidWearSnapshotContract {
         strings: WearSnapshotStrings,
         reliabilityOf: (TrainService) -> ReliabilityMark? = { null }
     ): Map<String, Any> {
-        val expiresAt = minOf(snapshot.expiresAtEpochMillis, generatedAtEpochMillis + maxTtlMillis)
+        val expiresAt = minOf(generatedAtEpochMillis, snapshot.expiresAtEpochMillis) + maxTtlMillis
         require(expiresAt > generatedAtEpochMillis) { "Uno snapshot scaduto non può essere pubblicato" }
-        val services = orderServicesForDisplay(snapshot.services).take(2)
+        val ordered = orderServicesForDisplay(snapshot.services)
+        // The Tile and the complication show the next of these as "the next train" without its status.
+        val services = ordered.filterNot(::confirmedCancelled).take(2)
         val operational = services.any { it.operationalStatusVerified }
         val dataNature = if (operational) "OPERATIONAL" else "PROGRAMMED"
         return buildMap {
@@ -87,14 +106,14 @@ internal object AndroidWearSnapshotContract {
             put("operationalState", dataNature)
             put("freshness", snapshot.freshness.name)
             put("confidence", snapshot.confidence.name.takeUnless { it == "DEMONSTRATION" } ?: "UNKNOWN")
-            put("routeId", required(snapshot.route.id, 64, strings.missingValue))
+            put("routeId", ACTIVE_ROUTE_ID)
             put("routeLabel", required(snapshot.routeLabel, 96, strings.missingValue))
             put("direction", snapshot.direction.name)
-            put("notice", optional(notice(snapshot, strings), 180))
+            put("notice", optional(notice(snapshot, skippedCancellation(ordered, services), strings), 180))
             put("serviceCount", services.size)
             services.forEachIndexed { index, service ->
                 put("service${index}Number", required(service.number, 24, strings.missingValue))
-                put("service${index}Operator", required(service.operator.accessibleLabel, 64, strings.missingValue))
+                put("service${index}Operator", required(operatorLabel(service, strings), 64, strings.missingValue))
                 put("service${index}Category", required(strings.categoryLabels.getValue(service.trainCategory), 64, strings.missingValue))
                 put("service${index}Destination", required(service.destination, 96, strings.missingValue))
                 put("service${index}Scheduled", required(service.scheduledDeparture, 16, strings.missingValue))
@@ -159,9 +178,31 @@ internal object AndroidWearSnapshotContract {
 
     private const val MAX_RELIABILITY_SAMPLES = 10_000
 
-    /** The phone's own advisory, else its first quality warning: the data layer's free text is Italian prose and never reaches the watch. */
-    private fun notice(snapshot: RouteSnapshot, strings: WearSnapshotStrings): String =
-        snapshot.advisoryMessage()?.let { strings.advisoryNotices.getValue(it.key) }
+    /**
+     * The operator as the phone names it ([TrainService.accessibleOperator]: the GTFS agency or the source's brand,
+     * else the legacy enum's name), with the generic «other operator» in the phone language instead of the Italian label.
+     */
+    private fun operatorLabel(service: TrainService, strings: WearSnapshotStrings): String =
+        service.operatorDisplayName?.takeIf(String::isNotBlank)
+            ?: if (service.operator == RailOperator.OTHER) strings.otherOperator else service.operator.accessibleLabel
+
+    /** A cancellation the source confirmed; such a train is never sent as one of the two services. */
+    private fun confirmedCancelled(service: TrainService): Boolean =
+        service.operationalStatusVerified && service.status == ServiceStatus.CANCELLED
+
+    /** The first confirmed cancellation listed before the last service sent (anywhere, when fewer than two are sent). */
+    private fun skippedCancellation(ordered: List<TrainService>, sent: List<TrainService>): TrainService? {
+        val window = if (sent.size == 2) ordered.subList(0, ordered.indexOf(sent[1])) else ordered
+        return window.firstOrNull(::confirmedCancelled)
+    }
+
+    /**
+     * The cancellation the services leave out, else the phone's own advisory, else its first quality warning: the
+     * data layer's free text is Italian prose and never reaches the watch.
+     */
+    private fun notice(snapshot: RouteSnapshot, cancellation: TrainService?, strings: WearSnapshotStrings): String =
+        cancellation?.let { String.format(Locale.ROOT, strings.cancelledNotice, it.number, it.scheduledDeparture) }
+            ?: snapshot.advisoryMessage()?.let { strings.advisoryNotices.getValue(it.key) }
             ?: snapshot.qualityWarnings.firstOrNull()?.let { strings.warningLabels.getValue(it) }
             ?: ""
 

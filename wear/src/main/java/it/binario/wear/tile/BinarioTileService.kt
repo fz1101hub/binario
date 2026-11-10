@@ -17,8 +17,12 @@ import it.binario.wear.BinarioWearPalette
 import it.binario.wear.R
 import it.binario.wear.WearMainActivity
 import it.binario.wear.WearStringProvider
-import it.binario.wear.dataStatusResId
+import it.binario.wear.complication.laterGlanceSegments
+import it.binario.wear.complication.upcomingService
+import it.binario.wear.dataStatus
+import it.binario.wear.model.WearService
 import it.binario.wear.model.WearSnapshot
+import it.binario.wear.string
 import it.binario.wear.sync.WearSnapshotStore
 import it.binario.wear.wearStrings
 
@@ -32,7 +36,7 @@ class BinarioTileService : TileService() {
             TileBuilders.Tile.Builder()
                 .setResourcesVersion(RESOURCES_VERSION)
                 .setFreshnessIntervalMillis(30L * 60L * 1000L)
-                .setTileTimeline(binarioTileTimeline(snapshot) { entry -> binarioTileLayout(entry, device, strings, packageName) })
+                .setTileTimeline(binarioTileTimeline(snapshot, System.currentTimeMillis()) { content -> binarioTileLayout(content, device, strings, packageName) })
                 .build()
         )
     }
@@ -51,56 +55,105 @@ class BinarioTileService : TileService() {
     }
 }
 
+/** What one Tile timeline entry shows. */
+internal sealed interface WearTileContent {
+    /** Nothing received from the phone, or sharing revoked. */
+    data object NotSynced : WearTileContent
+
+    /** The snapshot shown has passed its deadline: sharing is on, the data need a refresh on the phone. */
+    data object Expired : WearTileContent
+
+    /** [snapshot] with [service], the one the glance shows during the entry (null without services). */
+    data class Current(val snapshot: WearSnapshot, val service: WearService?) : WearTileContent
+}
+
 /**
- * The renderer owns this expiry transition even when the app process and its expiry callback are
- * not running. The unbounded entry is the fallback selected whenever the snapshot entry is no
- * longer valid; both entries come from the same [layout] so the fallback is the production one.
+ * The renderer owns the transitions even when the app process and its callbacks are not running.
+ * The unbounded entry is the fallback selected whenever no snapshot entry is valid: "expired" after
+ * the deadline of a snapshot, "nothing synced" without one. The snapshot entries cover the time up to the deadline: the first one shows the service
+ * of the glance at [nowEpochMillis], each later one the next service from one minute after the
+ * previous one leaves ([laterGlanceSegments]). Every entry comes from the same [layout].
  */
 internal fun binarioTileTimeline(
     snapshot: WearSnapshot?,
-    layout: (WearSnapshot?) -> LayoutElementBuilders.LayoutElement,
+    nowEpochMillis: Long,
+    layout: (WearTileContent) -> LayoutElementBuilders.LayoutElement,
 ): TimelineBuilders.Timeline =
     TimelineBuilders.Timeline.Builder()
         .addTimelineEntry(
-            TimelineBuilders.TimelineEntry.fromLayoutElement(layout(null))
+            TimelineBuilders.TimelineEntry.fromLayoutElement(layout(if (snapshot != null) WearTileContent.Expired else WearTileContent.NotSynced))
         )
         .apply {
             if (snapshot != null) {
+                val later = laterGlanceSegments(snapshot, nowEpochMillis)
                 addTimelineEntry(
-                    TimelineBuilders.TimelineEntry.Builder()
-                        .setLayout(LayoutElementBuilders.Layout.fromLayoutElement(layout(snapshot)))
-                        .setValidity(
-                            TimelineBuilders.TimeInterval.Builder()
-                                .setEndMillis(snapshot.expiresAtEpochMillis)
-                                .build()
-                        )
-                        .build()
+                    tileEntry(
+                        layout(WearTileContent.Current(snapshot, upcomingService(snapshot, nowEpochMillis)?.first)),
+                        TimelineBuilders.TimeInterval.Builder()
+                            .setEndMillis(later.firstOrNull()?.startEpochMillis ?: snapshot.expiresAtEpochMillis)
+                            .build(),
+                    )
                 )
+                later.forEach { segment ->
+                    addTimelineEntry(
+                        tileEntry(
+                            layout(WearTileContent.Current(snapshot, upcomingService(snapshot, segment.startEpochMillis)?.first)),
+                            TimelineBuilders.TimeInterval.Builder()
+                                .setStartMillis(segment.startEpochMillis)
+                                .setEndMillis(segment.endEpochMillis)
+                                .build(),
+                        )
+                    )
+                }
             }
         }
         .build()
 
+private fun tileEntry(layout: LayoutElementBuilders.LayoutElement, validity: TimelineBuilders.TimeInterval): TimelineBuilders.TimelineEntry =
+    TimelineBuilders.TimelineEntry.Builder()
+        .setLayout(LayoutElementBuilders.Layout.fromLayoutElement(layout))
+        .setValidity(validity)
+        .build()
+
 /**
- * Production layout for both timeline entries; a null snapshot renders the "nothing synced" texts.
- * The column is centred and inset from the bezel: a round display clips the corners of a
- * full-width block, so the margin is a share of the screen width that keeps every line inside the
- * visible disc, while a square display keeps a smaller one.
+ * Production layout for every timeline entry; [WearTileContent.NotSynced] renders the "nothing
+ * synced" texts. The column is centred and inset from the bezel: a round display clips the corners
+ * of a full-width block, so the margin is a share of the screen width that keeps every line inside
+ * the visible disc, while a square display keeps a smaller one.
  */
 internal fun binarioTileLayout(
-    snapshot: WearSnapshot?,
+    content: WearTileContent,
     device: DeviceParametersBuilders.DeviceParameters,
     strings: WearStringProvider,
     packageName: String,
 ): LayoutElementBuilders.LayoutElement {
-    val details = snapshot?.services?.firstOrNull()
+    val lines = when (content) {
+        WearTileContent.NotSynced -> listOf(
+            strings.string(R.string.tile_no_synced_route),
+            strings.string(R.string.empty_snapshot_message),
+            strings.string(R.string.tile_snapshot_unavailable),
+        )
+        WearTileContent.Expired -> listOf(
+            strings.string(R.string.tile_snapshot_expired),
+            strings.string(R.string.snapshot_expired_message),
+            null,
+        )
+        // No service, as in the "not available" snapshot of a failed refresh: sharing works, nothing to list.
+        is WearTileContent.Current -> listOf(
+            content.snapshot.routeLabel,
+            content.service?.let { strings.string(R.string.tile_service_details, it.expectedDeparture, it.number, it.destination) }
+                ?: strings.string(R.string.tile_no_departures),
+            strings.string(content.snapshot.dataStatus()),
+        )
+    }
     val inset = DimensionBuilders.dp(device.screenWidthDp * tileInsetFraction(device))
     val column = LayoutElementBuilders.Column.Builder()
         .setWidth(DimensionBuilders.expand())
         .setHorizontalAlignment(LayoutElementBuilders.HORIZONTAL_ALIGN_CENTER)
         .addContent(binarioTileText(strings.string(R.string.app_name), 18f, BinarioWearPalette.ON_BACKGROUND.toInt(), 1))
-        .addContent(binarioTileText(snapshot?.routeLabel ?: strings.string(R.string.tile_no_synced_route), 15f, BinarioWearPalette.PRIMARY.toInt(), 2))
-        .addContent(binarioTileText(details?.let { strings.string(R.string.tile_service_details, it.expectedDeparture, it.number, it.destination) } ?: strings.string(R.string.empty_snapshot_message), 14f, BinarioWearPalette.ON_BACKGROUND.toInt(), 2))
-        .addContent(binarioTileText(snapshot?.let { strings.string(it.dataStatusResId()) } ?: strings.string(R.string.tile_snapshot_unavailable), 12f, BinarioWearPalette.ON_SURFACE_VARIANT.toInt(), 2))
+        .addContent(binarioTileText(requireNotNull(lines[0]), 15f, BinarioWearPalette.PRIMARY.toInt(), 2))
+        .addContent(binarioTileText(requireNotNull(lines[1]), 14f, BinarioWearPalette.ON_BACKGROUND.toInt(), 2))
+        .apply { lines[2]?.let { addContent(binarioTileText(it, 12f, BinarioWearPalette.ON_SURFACE_VARIANT.toInt(), 2)) } }
         .build()
     return LayoutElementBuilders.Box.Builder()
         .setWidth(DimensionBuilders.expand())
