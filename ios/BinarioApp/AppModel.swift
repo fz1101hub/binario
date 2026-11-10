@@ -898,7 +898,14 @@ final class AppModel: ObservableObject {
 
     /// Back in the foreground: the screens on display ask again (through the sources' gates).
     func liveDidBecomeActive() {
+        liveDidBecomeActive(now: Date())
+    }
+
+    /// Back in the foreground at `now`: what went stale meanwhile goes first (the minute tick does
+    /// not count the time the device slept), then the screens on display ask again.
+    func liveDidBecomeActive(now: Date) {
         isForeground = true
+        expireLiveValues(now: now)
         if boardLiveState != .loading { restartBoardLive() }
         if resultLiveState != .loading { restartResultLive() }
         if detailLiveState != .loading { restartDetailLive() }
@@ -914,9 +921,11 @@ final class AppModel: ObservableObject {
         cancelFavouritesLive()
     }
 
-    /// Every minute while the app is open: the live values asked for more than
-    /// `liveDisplaySeconds` ago are no longer shown.
+    /// Every minute while the app is open, and when it comes back to the foreground: the live values
+    /// asked for more than `liveDisplaySeconds` ago are no longer shown, nor the pauses that ended.
     func expireLiveValues(now: Date = Date()) {
+        let pauses: [LiveSourcePause] = liveDataEnabled ? livePauses.active(at: now) : []
+        if pauses != liveSourcePauses { liveSourcePauses = pauses }
         if let live = boardLive, !Self.isLiveDisplayable(since: live.at, now: now) {
             boardLive = nil
             boardLiveSources = []

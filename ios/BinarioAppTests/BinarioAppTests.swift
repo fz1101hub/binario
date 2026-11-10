@@ -889,6 +889,37 @@ final class BinarioAppTests: XCTestCase {
         XCTAssertGreaterThan(after, background)
     }
 
+    func testBackInTheForegroundStaleLiveValuesGoBeforeTheScreenAsksAgain() async throws {
+        let defaults = try makeDefaults()
+        defer { clear(defaults) }
+        let base = try rome(2026, 11, 10, 8, 0)
+        let rows = (0..<3).map { boardDeparture($0, after: base) }
+        let live = ControlledLiveBoards()
+        let model = makeLiveModel(defaults: defaults, live: live, boardProvider: StubBoardProvider(rows: rows))
+        model.selectBoardStation(milanoCode)
+        await model.boardLoadFinished()
+        await model.reloadBoard(now: base)
+        model.boardLiveDidAppear()
+        await live.waitUntilPending(milanoCode.id)
+        await live.complete(milanoCode.id, with: .available(LiveFixtures.board([
+            LiveFixtures.row("2101", scheduled: rows[0].departure, delay: 7, platform: "1", status: .delayed, at: base),
+        ], stationID: milanoCode.id, at: base)))
+        await model.boardLiveLoadFinished()
+        XCTAssertEqual(model.boardDepartures[0].live?.delayMinutes, 7)
+
+        // Two hours away, with the minute tick asleep meanwhile: the old values are not shown as
+        // current while the board is asked again.
+        model.liveDidEnterBackground()
+        model.liveDidBecomeActive(now: Date().addingTimeInterval(2 * 3_600))
+        XCTAssertTrue(model.boardDepartures.allSatisfy(\.isScheduled), "values of two hours ago are not the train's state")
+        XCTAssertEqual(model.boardLiveState, .loading)
+        XCTAssertEqual(model.liveSourcePauses, [])
+        await live.waitUntilPending(milanoCode.id)
+        await live.complete(milanoCode.id, with: .unavailable(.sourceUnavailable))
+        await model.boardLiveLoadFinished()
+        XCTAssertEqual(model.boardLiveState, .unavailable)
+    }
+
     func testPlannerResultsTakeTheLiveBoardOfTheOriginWithinTheLiveWindow() async throws {
         let defaults = try makeDefaults()
         defer { clear(defaults) }
