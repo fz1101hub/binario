@@ -752,6 +752,27 @@ const shortcutsXml = `<?xml version="1.0" encoding="utf-8"?>
 </shortcuts>
 `;
 
+/**
+ * Android 12+ ignores allowBackup="false" for device-to-device transfer: without these rules a phone
+ * migration copies the AsyncStorage database (journeys, reminders, templates) and the widget and Wear
+ * preferences. Same rules as the main Binario app, for the phone and the Wear module.
+ */
+const dataExtractionRulesXml = `<?xml version="1.0" encoding="utf-8"?>
+<data-extraction-rules>
+    <cloud-backup disableIfNoEncryptionCapabilities="true">
+        <exclude domain="sharedpref" path="." />
+        <exclude domain="database" path="." />
+        <exclude domain="file" path="." />
+    </cloud-backup>
+    <device-transfer>
+        <exclude domain="sharedpref" path="." />
+        <exclude domain="database" path="." />
+        <exclude domain="file" path="." />
+    </device-transfer>
+</data-extraction-rules>
+`;
+const dataExtractionRulesResource = "@xml/binario_data_extraction_rules";
+
 /** Kept in the config-plugin template so Android prebuilds are deterministic and idempotent. */
 // Resource qualifiers: legacy "in" is Android's Indonesian folder; b+zh+Hans serves Simplified
 // Chinese only (zh-Hant devices fall back to Italian, as the JS UI does) and, having no region,
@@ -1807,6 +1828,7 @@ function withBinarioAndroidWidget(config) {
     application.$ = application.$ ?? {};
     application.$["android:allowBackup"] = "false";
     application.$["android:usesCleartextTraffic"] = "false";
+    application.$["android:dataExtractionRules"] = dataExtractionRulesResource;
     application.receiver = application.receiver ?? [];
     application.service = application.service ?? [];
     application["meta-data"] = application["meta-data"] ?? [];
@@ -1869,6 +1891,7 @@ function withBinarioAndroidWidget(config) {
     fs.writeFileSync(path.join(kotlinRoot, "BinarioSharedTextReceiver.kt"), sharedTextReceiverKt);
     fs.writeFileSync(path.join(xmlRoot, "binario_status_widget_info.xml"), widgetXml);
     fs.writeFileSync(path.join(xmlRoot, "binario_shortcuts.xml"), shortcutsXml);
+    fs.writeFileSync(path.join(xmlRoot, "binario_data_extraction_rules.xml"), dataExtractionRulesXml);
 
     const phoneResRoot = path.join(appRoot, "src", "main", "res");
     for (const [locale, strings] of Object.entries(localizedNativeStrings)) {
@@ -1952,7 +1975,7 @@ dependencies {
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
   <uses-feature android:name="android.hardware.type.watch" />
   <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
-  <application android:label="@string/app_name" android:icon="@drawable/ic_binario_companion_wear" android:allowBackup="false" android:usesCleartextTraffic="false" android:supportsRtl="true" android:theme="@android:style/Theme.DeviceDefault">
+  <application android:label="@string/app_name" android:icon="@drawable/ic_binario_companion_wear" android:allowBackup="false" android:dataExtractionRules="${dataExtractionRulesResource}" android:usesCleartextTraffic="false" android:supportsRtl="true" android:theme="@android:style/Theme.DeviceDefault">
     <meta-data android:name="com.google.android.wearable.standalone" android:value="false" />
     <service android:name=".BinarioTileService" android:exported="true" android:icon="@drawable/ic_binario_companion_wear" android:label="@string/tile_name" android:permission="com.google.android.wearable.permission.BIND_TILE_PROVIDER">
       <intent-filter><action android:name="androidx.wear.tiles.action.BIND_TILE_PROVIDER" /></intent-filter>
@@ -1978,6 +2001,9 @@ dependencies {
     fs.mkdirSync(wearDrawableRoot, { recursive: true });
     fs.writeFileSync(path.join(wearDrawableRoot, "ic_binario_companion_wear.xml"), wearIconXml);
     fs.writeFileSync(path.join(wearDrawableRoot, "binario_tile_preview.xml"), wearTilePreviewXml);
+    const wearXmlRoot = path.join(wearRoot, "src", "main", "res", "xml");
+    fs.mkdirSync(wearXmlRoot, { recursive: true });
+    fs.writeFileSync(path.join(wearXmlRoot, "binario_data_extraction_rules.xml"), dataExtractionRulesXml);
     for (const [locale, strings] of Object.entries(localizedNativeStrings)) {
       const valuesDirectory = path.join(wearRoot, "src", "main", "res", locale === "it" ? "values" : `values-${locale}`);
       fs.mkdirSync(valuesDirectory, { recursive: true });
