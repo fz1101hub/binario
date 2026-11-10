@@ -192,8 +192,18 @@ export function localRouteScheduledAtUtcMs(route: Pick<LocalPlannedRoute, "trave
   return travelEpochMs(route.travelDate, route.travelTime);
 }
 
+/**
+ * The earliest future journey not marked completed. Pin and manual order arrange only the Agenda list
+ * (priority.description): Home, hub, widget and watch always show the journey that departs first.
+ */
 export function selectNextLocalPlannedRoute(routes: LocalPlannedRoute[], now = Date.now()): LocalPlannedRoute | null {
-  return sortLocalPlannedRoutes(routes).find(route => route.completedAtUtcMs == null && (localRouteScheduledAtUtcMs(route) ?? 0) >= now) ?? null;
+  let next: { route: LocalPlannedRoute; scheduledAt: number } | null = null;
+  for (const route of routes) {
+    const scheduledAt = localRouteScheduledAtUtcMs(route);
+    if (route.completedAtUtcMs != null || scheduledAt === null || scheduledAt < now) continue;
+    if (!next || scheduledAt < next.scheduledAt || (scheduledAt === next.scheduledAt && route.createdAtUtcMs > next.route.createdAtUtcMs)) next = { route, scheduledAt };
+  }
+  return next?.route ?? null;
 }
 
 export function localCountdownLabel(route: Pick<LocalPlannedRoute, "travelDate" | "travelTime">, now = Date.now(), locale?: CompanionLocale): string | null {

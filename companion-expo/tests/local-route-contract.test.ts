@@ -35,6 +35,16 @@ describe("pianificazione locale Binario", () => {
     expect(localCountdownLabel(nextRoute, now)).toBe("Tra 1 h 10 min");
     expect(selectNextLocalPlannedRoute([oldRoute], now)).toBeNull();
   });
+  it("sceglie la prossima tratta per orario anche se un’altra è fissata o riordinata", () => {
+    const now = travelEpochMs("2026-10-02", "08:00")!;
+    const today = createLocalPlannedRoute({ origin: "Roma", destination: "Napoli", travelDate: "2026-10-02", travelTime: "19:00", plannedReminderMinutes: 15 }, 1, 1)!;
+    const pinnedNextWeek = { ...createLocalPlannedRoute({ origin: "Milano Centrale", destination: "Torino Porta Nuova", travelDate: "2026-10-09", travelTime: "07:10", plannedReminderMinutes: 15 }, 2, 1)!, pinned: true };
+    const reorderedTomorrow = { ...createLocalPlannedRoute({ origin: "Roma", destination: "Firenze", travelDate: "2026-10-03", travelTime: "09:00", plannedReminderMinutes: 15 }, 3, 1)!, manualOrder: 0 };
+    const laterToday = { ...createLocalPlannedRoute({ origin: "Roma", destination: "Pisa", travelDate: "2026-10-02", travelTime: "20:00", plannedReminderMinutes: 15 }, 4, 1)!, manualOrder: null };
+    expect(selectNextLocalPlannedRoute([pinnedNextWeek, reorderedTomorrow, laterToday, today], now)?.id).toBe(1);
+    // Pin and manual order still decide the list order.
+    expect(sortLocalPlannedRoutes([pinnedNextWeek, reorderedTomorrow, laterToday, today]).map(route => route.id)).toEqual([2, 3, 1, 4]);
+  });
   it("filtra imminenti, settimana e archivio con il solo orario programmato locale", () => {
     const now = travelEpochMs("2026-10-02", "08:00")!;
     const oldRoute = createLocalPlannedRoute({ origin: "Roma", destination: "Pisa", travelDate: "2026-10-01", travelTime: "08:00", plannedReminderMinutes: null }, 1, 1)!;
