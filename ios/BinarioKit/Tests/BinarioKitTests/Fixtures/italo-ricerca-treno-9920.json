@@ -1,0 +1,12 @@
+{
+ "IsEmpty": false,
+ "LastUpdate": "2026-10-16T08:00:00Z",
+ "TrainSchedule": {
+  "TrainNumber": 9920,
+  "DepartureDate": "2026-10-16",
+  "Distruption": {"DelayAmount": 6, "RunningState": "IN CORSA"},
+  "StazionePartenza": {"LocationCode": "A", "LocationDescription": "Torino Porta Nuova", "StationNumber": 1, "EstimatedDepartureTime": "08:00", "EstimatedArrivalTime": "08:00", "ActualDepartureTime": "08:06"},
+  "StazioniFerme": [{"LocationCode": "B", "LocationDescription": "Milano Centrale", "StationNumber": 2, "EstimatedDepartureTime": "09:00", "EstimatedArrivalTime": "09:00", "ActualArrivalDateTime": "2026-10-16T09:06:00", "ActualArrivalPlatform": "12"}],
+  "StazioniNonFerme": [{"LocationCode": "C", "LocationDescription": "Roma Termini", "StationNumber": 3, "EstimatedDepartureTime": "12:00", "EstimatedArrivalTime": "12:00"}]
+ }
+}

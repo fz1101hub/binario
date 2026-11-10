@@ -1,0 +1,57 @@
+[
+ {
+  "numeroTreno": 12345,
+  "codOrigine": "S08001",
+  "dataPartenzaTreno": 1792101600000,
+  "orarioPartenza": 1792137900000,
+  "ritardo": 6,
+  "ultimoRilev": 1792137570000,
+  "destinazione": "ROMA TIBURTINA",
+  "categoria": "REG",
+  "provvedimento": 0,
+  "nonPartito": false,
+  "binarioProgrammatoPartenzaDescrizione": "5",
+  "binarioEffettivoPartenzaDescrizione": "7"
+ },
+ {
+  "numeroTreno": 12347,
+  "codOrigine": "S08001",
+  "dataPartenzaTreno": 1792101600000,
+  "orarioPartenza": 1792138500000,
+  "ritardo": 0,
+  "ultimoRilev": null,
+  "destinazione": "ROMA TIBURTINA",
+  "categoria": "REG",
+  "provvedimento": 0,
+  "binarioProgrammatoPartenzaDescrizione": "4",
+  "binarioEffettivoPartenzaDescrizione": null
+ },
+ {
+  "numeroTreno": 12349,
+  "codOrigine": "S08001",
+  "dataPartenzaTreno": 1792101600000,
+  "orarioPartenza": 1792139100000,
+  "ritardo": 0,
+  "ultimoRilev": null,
+  "destinazione": "ROMA TIBURTINA",
+  "categoria": "REG",
+  "provvedimento": 1
+ },
+ {
+  "numeroTreno": "treno",
+  "codOrigine": "S08001",
+  "orarioPartenza": 1792138200000,
+  "destinazione": "ROMA"
+ },
+ {
+  "numeroTreno": 12351,
+  "codOrigine": "S08001",
+  "dataPartenzaTreno": 1792101600000,
+  "orarioPartenza": 1792134600000,
+  "ritardo": 2,
+  "ultimoRilev": 1792137570000,
+  "destinazione": "ROMA TIBURTINA",
+  "categoria": "REG",
+  "provvedimento": 0
+ }
+]

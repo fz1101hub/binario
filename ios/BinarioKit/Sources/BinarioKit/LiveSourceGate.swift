@@ -1,0 +1,405 @@
+import Foundation
+
+/// A source that is not asked again before `until`.
+public struct LiveSourcePause: Equatable, Sendable {
+    public let source: LiveSource
+    public let until: Date
+}
+
+/// The paused sources, for a data status line («ViaggiaTreno in pausa fino alle 10:42»), as
+/// Android's `SourcePauses`: process memory only.
+public final class LiveSourcePauses: @unchecked Sendable {
+    public static let shared = LiveSourcePauses()
+
+    private let lock = NSLock()
+    private var pauses: [LiveSource: Date] = [:]
+
+    public init() {}
+
+    func pause(_ source: LiveSource, until: Date) {
+        lock.lock()
+        pauses[source] = max(pauses[source] ?? until, until)
+        lock.unlock()
+    }
+
+    func resume(_ source: LiveSource) {
+        lock.lock()
+        pauses[source] = nil
+        lock.unlock()
+    }
+
+    /// The paused sources and when each will be asked again, earliest first; expired pauses are dropped.
+    public func active(at now: Date) -> [LiveSourcePause] {
+        lock.lock()
+        pauses = pauses.filter { $0.value > now }
+        let active = pauses.map { LiveSourcePause(source: $0.key, until: $0.value) }
+        lock.unlock()
+        return active.sorted { $0.until == $1.until ? $0.source.rawValue < $1.source.rawValue : $0.until < $1.until }
+    }
+}
+
+/// The manners of one source, Android's `BoundedSingleFlightCache`, `SourceCircuitBreaker` and
+/// `ResilientSourceCache` together:
+/// - one request per resource and interval: concurrent callers share it, and its answer, failure
+///   included, is reused until the interval has passed since the request started;
+/// - a refusal (HTTP 403 or 429) pauses the whole source at once, for the `Retry-After` it sent
+///   (at most an hour) or for a minute that doubles with every new pause, up to 15 minutes;
+/// - three failures in a row pause it the same way; after a pause one request is let through and
+///   a single failure pauses it again;
+/// - nothing is retried by itself: the next caller after the interval asks again.
+/// A caller that is cancelled returns at once; the request is cancelled when no caller waits for it.
+final class LiveSourceGate: @unchecked Sendable {
+    struct Configuration: Equatable, Sendable {
+        var minimumInterval: TimeInterval
+        var maximumEntries = 64
+        var failureThreshold = 3
+        var baseOpenDuration: TimeInterval = 60
+        var maximumOpenDuration: TimeInterval = 900
+        var maximumRetryAfter: TimeInterval = 3_600
+    }
+
+    let source: LiveSource
+    private let configuration: Configuration
+    private let pauses: LiveSourcePauses
+    private let now: @Sendable () -> Date
+    private let lock = NSLock()
+    private var cache: [String: CachedResult] = [:]
+    private var cacheOrder: [String] = []
+    private var activeFlights: [String: UInt64] = [:]
+    private var flights: [UInt64: Flight] = [:]
+    private var nextIdentifier: UInt64 = 0
+    private var consecutiveFailures = 0
+    private var openings = 0
+    private var openUntil: Date?
+
+    private struct CachedResult {
+        let result: LiveFetchResult
+        let expiresAt: Date
+    }
+
+    private final class Flight {
+        let key: String
+        let startedAt: Date
+        var task: Task<Void, Never>?
+        var abandoned = false
+        var result: LiveFetchResult?
+        /// Callers given this flight that have not started waiting yet.
+        var registered: Set<UInt64> = []
+        /// Callers cancelled before they started waiting.
+        var cancelledEarly: Set<UInt64> = []
+        var waiting: [UInt64: CheckedContinuation<LiveFetchResult, Never>] = [:]
+
+        init(key: String, startedAt: Date) {
+            self.key = key
+            self.startedAt = startedAt
+        }
+
+        var isSettled: Bool { registered.isEmpty && cancelledEarly.isEmpty && waiting.isEmpty }
+    }
+
+    private enum Ticket {
+        case ready(LiveFetchResult)
+        case wait(flight: UInt64, caller: UInt64)
+        case start(flight: UInt64, caller: UInt64)
+    }
+
+    init(source: LiveSource, configuration: Configuration, pauses: LiveSourcePauses, now: @escaping @Sendable () -> Date) {
+        self.source = source
+        self.configuration = configuration
+        self.pauses = pauses
+        self.now = now
+    }
+
+    /// The answer for `key`: cached, shared with a request in flight, refused while the source is
+    /// paused, or loaded now with `load`.
+    func fetch(_ key: String, load: @escaping @Sendable () async -> LiveFetchResult) async -> LiveFetchResult {
+        let flight: UInt64
+        let caller: UInt64
+        switch enter(key) {
+        case let .ready(result):
+            return result
+        case let .wait(flightID, callerID):
+            flight = flightID
+            caller = callerID
+        case let .start(flightID, callerID):
+            flight = flightID
+            caller = callerID
+            let task = Task { [self] in
+                let result = await load()
+                self.complete(flight: flightID, with: result)
+            }
+            attach(task, to: flightID)
+        }
+        return await withTaskCancellationHandler {
+            await withCheckedContinuation { (continuation: CheckedContinuation<LiveFetchResult, Never>) in
+                self.wait(flight: flight, caller: caller, continuation: continuation)
+            }
+        } onCancel: {
+            self.leave(flight: flight, caller: caller)
+        }
+    }
+
+    /// When the source is paused, the end of the pause.
+    func pausedUntil() -> Date? {
+        lock.lock()
+        defer { lock.unlock() }
+        guard let until = openUntil, now() < until else { return nil }
+        return until
+    }
+
+    private func enter(_ key: String) -> Ticket {
+        lock.lock()
+        defer { lock.unlock() }
+        let current = now()
+        purgeExpired(at: current)
+        if let cached = cache[key] { return .ready(cached.result) }
+        if let until = openUntil {
+            if current < until { return .ready(.failure(.paused(until: until))) }
+            // Half-open: one request goes through, and one more failure pauses the source again.
+            openUntil = nil
+            consecutiveFailures = max(0, configuration.failureThreshold - 1)
+        }
+        nextIdentifier += 1
+        let caller = nextIdentifier
+        if let active = activeFlights[key], let flight = flights[active] {
+            flight.registered.insert(caller)
+            return .wait(flight: active, caller: caller)
+        }
+        nextIdentifier += 1
+        let identifier = nextIdentifier
+        let flight = Flight(key: key, startedAt: current)
+        flight.registered.insert(caller)
+        flights[identifier] = flight
+        activeFlights[key] = identifier
+        return .start(flight: identifier, caller: caller)
+    }
+
+    private func attach(_ task: Task<Void, Never>, to identifier: UInt64) {
+        lock.lock()
+        let abandoned = flights[identifier]?.abandoned ?? true
+        if !abandoned { flights[identifier]?.task = task }
+        lock.unlock()
+        if abandoned { task.cancel() }
+    }
+
+    private func wait(flight identifier: UInt64, caller: UInt64, continuation: CheckedContinuation<LiveFetchResult, Never>) {
+        lock.lock()
+        guard let flight = flights[identifier] else {
+            lock.unlock()
+            continuation.resume(returning: .failure(.cancelled))
+            return
+        }
+        if flight.cancelledEarly.remove(caller) != nil {
+            settle(identifier)
+            lock.unlock()
+            continuation.resume(returning: .failure(.cancelled))
+            return
+        }
+        flight.registered.remove(caller)
+        if let result = flight.result {
+            settle(identifier)
+            lock.unlock()
+            continuation.resume(returning: result)
+            return
+        }
+        flight.waiting[caller] = continuation
+        lock.unlock()
+    }
+
+    private func leave(flight identifier: UInt64, caller: UInt64) {
+        lock.lock()
+        guard let flight = flights[identifier] else {
+            lock.unlock()
+            return
+        }
+        let continuation = flight.waiting.removeValue(forKey: caller)
+        if continuation == nil, flight.registered.remove(caller) != nil {
+            flight.cancelledEarly.insert(caller)
+        }
+        var abandonedTask: Task<Void, Never>?
+        if flight.result == nil, flight.waiting.isEmpty, flight.registered.isEmpty, !flight.abandoned {
+            // Nobody waits for the request any more: it is cancelled, and the next caller starts afresh.
+            flight.abandoned = true
+            if activeFlights[flight.key] == identifier { activeFlights[flight.key] = nil }
+            abandonedTask = flight.task
+        }
+        if flight.result != nil || flight.abandoned { settle(identifier) }
+        lock.unlock()
+        continuation?.resume(returning: .failure(.cancelled))
+        abandonedTask?.cancel()
+    }
+
+    private func complete(flight identifier: UInt64, with result: LiveFetchResult) {
+        lock.lock()
+        let current = now()
+        var pauseUntil: Date?
+        var resumed = false
+        var continuations: [CheckedContinuation<LiveFetchResult, Never>] = []
+        if let flight = flights[identifier] {
+            if activeFlights[flight.key] == identifier { activeFlights[flight.key] = nil }
+            if Self.isCacheable(result) { store(result, for: flight.key, startedAt: flight.startedAt, at: current) }
+            flight.result = result
+            continuations = Array(flight.waiting.values)
+            flight.waiting = [:]
+            flight.task = nil
+            settle(identifier)
+        }
+        switch result {
+        case .body:
+            consecutiveFailures = 0
+            openings = 0
+            openUntil = nil
+            resumed = true
+        case let .failure(failure):
+            pauseUntil = record(failure, at: current)
+        }
+        lock.unlock()
+        if resumed { pauses.resume(source) }
+        if let pauseUntil { pauses.pause(source, until: pauseUntil) }
+        for continuation in continuations { continuation.resume(returning: result) }
+    }
+
+    /// Android's `SourceCircuitBreaker.recordFailure`, with a refusal pausing at once. The pause
+    /// end, when the source is now paused.
+    private func record(_ failure: LiveFetchFailure, at current: Date) -> Date? {
+        switch failure {
+        case .cancelled, .paused, .invalidRequest: return nil
+        default: break
+        }
+        consecutiveFailures += 1
+        if let asked = failure.retryAfter, asked > 0 {
+            let pause = min(asked, configuration.maximumRetryAfter)
+            openUntil = max(openUntil ?? current, current.addingTimeInterval(pause))
+            openings += 1
+            consecutiveFailures = 0
+        } else if failure.isRefusal || consecutiveFailures >= configuration.failureThreshold {
+            let factor: Double = Double(1 << min(openings, 6))
+            let duration: TimeInterval = min(configuration.baseOpenDuration * factor, configuration.maximumOpenDuration)
+            openUntil = current.addingTimeInterval(duration)
+            openings += 1
+            consecutiveFailures = 0
+        }
+        guard let until = openUntil, current < until else { return nil }
+        return until
+    }
+
+    private static func isCacheable(_ result: LiveFetchResult) -> Bool {
+        switch result {
+        case .body: return true
+        case .failure(.cancelled), .failure(.paused), .failure(.invalidRequest): return false
+        case .failure: return true
+        }
+    }
+
+    private func store(_ result: LiveFetchResult, for key: String, startedAt: Date, at current: Date) {
+        let expiresAt = startedAt.addingTimeInterval(configuration.minimumInterval)
+        guard expiresAt > current else { return }
+        if cache[key] == nil { cacheOrder.append(key) }
+        cache[key] = CachedResult(result: result, expiresAt: expiresAt)
+        while cacheOrder.count > configuration.maximumEntries {
+            cache[cacheOrder.removeFirst()] = nil
+        }
+    }
+
+    private func purgeExpired(at current: Date) {
+        guard !cache.isEmpty else { return }
+        cache = cache.filter { $0.value.expiresAt > current }
+        cacheOrder.removeAll { cache[$0] == nil }
+    }
+
+    /// Forgets a flight nobody can still ask about.
+    private func settle(_ identifier: UInt64) {
+        guard let flight = flights[identifier], flight.result != nil || flight.abandoned, flight.isSettled else { return }
+        flights[identifier] = nil
+    }
+}
+
+/// Time limits and bounded parallel work for the live sources.
+enum LiveTasks {
+    private enum Outcome<Value: Sendable>: Sendable {
+        case finished(Value)
+        case expired
+    }
+
+    /// `operation`'s value, or nil when it takes longer than `seconds` (it is then cancelled).
+    static func withDeadline<Value: Sendable>(
+        seconds: TimeInterval, _ operation: @escaping @Sendable () async -> Value
+    ) async -> Value? {
+        let clamped: TimeInterval = min(max(seconds, 0), 3_600)
+        let nanoseconds = UInt64(clamped * 1_000_000_000)
+        return await withTaskGroup(of: Outcome<Value>.self) { group in
+            group.addTask {
+                let value = await operation()
+                return Outcome.finished(value)
+            }
+            group.addTask {
+                try? await Task.sleep(nanoseconds: nanoseconds)
+                return Outcome.expired
+            }
+            let first = await group.next()
+            group.cancelAll()
+            guard let first, case let .finished(value) = first else { return nil }
+            return value
+        }
+    }
+
+    /// `transform` of every input, at most `maximumConcurrent` at a time, in the order of `inputs`.
+    static func boundedMap<Input: Sendable, Output: Sendable>(
+        _ inputs: [Input], maximumConcurrent: Int, _ transform: @escaping @Sendable (Input) async -> Output
+    ) async -> [Output] {
+        guard !inputs.isEmpty else { return [] }
+        return await withTaskGroup(of: (Int, Output).self) { group in
+            var results: [Output?] = Array(repeating: nil, count: inputs.count)
+            var next = 0
+            let width = max(1, min(maximumConcurrent, inputs.count))
+            while next < width {
+                let index = next
+                let input = inputs[index]
+                group.addTask {
+                    let output = await transform(input)
+                    return (index, output)
+                }
+                next += 1
+            }
+            while let finished = await group.next() {
+                results[finished.0] = finished.1
+                if next < inputs.count, !Task.isCancelled {
+                    let index = next
+                    let input = inputs[index]
+                    group.addTask {
+                        let output = await transform(input)
+                        return (index, output)
+                    }
+                    next += 1
+                }
+            }
+            return results.compactMap { $0 }
+        }
+    }
+}
+
+/// Values gathered by parallel work that may run out of time: what finished is kept.
+final class LiveCollector<Value: Sendable>: @unchecked Sendable {
+    private let lock = NSLock()
+    private var values: [(Int, Value)] = []
+    private var failures: [LiveUnavailableReason] = []
+
+    func append(_ value: Value, order: Int) {
+        lock.lock()
+        values.append((order, value))
+        lock.unlock()
+    }
+
+    func fail(_ reason: LiveUnavailableReason) {
+        lock.lock()
+        failures.append(reason)
+        lock.unlock()
+    }
+
+    /// The values in the order they were asked for, and the failures in the order they happened.
+    func snapshot() -> (values: [Value], failures: [LiveUnavailableReason]) {
+        lock.lock()
+        defer { lock.unlock() }
+        return (values.sorted { $0.0 < $1.0 }.map { $0.1 }, failures)
+    }
+}

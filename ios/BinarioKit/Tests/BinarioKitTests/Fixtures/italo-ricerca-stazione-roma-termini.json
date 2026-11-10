@@ -1,0 +1,6 @@
+{"DescrizioneLocalita":"Roma Termini","IsEmpty":false,"LastUpdate":"12:00:00","ListaTreniPartenza":[
+ {"Numero":9923,"DescrizioneLocalita":"Napoli Centrale","OraPassaggio":"12:30","NuovoOrario":"12:42","Ritardo":12,"Binario":"5","Informazioni":"Regolare"},
+ {"Numero":9925,"DescrizioneLocalita":"Napoli Centrale","OraPassaggio":"12:45","NuovoOrario":null,"Ritardo":null,"Binario":"N/D","Informazioni":"Treno soppresso"},
+ {"Numero":99,"DescrizioneLocalita":"Napoli Centrale","OraPassaggio":"12:50","Ritardo":0},
+ {"Numero":9927,"DescrizioneLocalita":"Milano Centrale","OraPassaggio":"25:61","Ritardo":0}
+]}

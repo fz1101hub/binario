@@ -44,7 +44,10 @@ let package = Package(
         .testTarget(
             name: "BinarioKitTests",
             dependencies: ["BinarioKit", "CSQLite", "CZlib"],
-            path: "Tests/BinarioKitTests"
+            path: "Tests/BinarioKitTests",
+            // Recorded and synthetic payloads of the live sources; the tests read them from the
+            // checkout (#filePath), as under the Xcode test bundle, and never touch the network.
+            resources: [.copy("Fixtures")]
         )
     ],
     swiftLanguageModes: [.v6]

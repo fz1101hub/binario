@@ -1,5 +1,13 @@
 # Changelog
 
+## In sviluppo — Dati in tempo reale su iPhone: il nucleo
+
+- **Dati in tempo reale su iPhone, prima parte**: l'iPhone sa chiedere lo stato di un treno per numero e le partenze di una stazione alle stesse fonti pubbliche di Android e nello stesso ordine: ViaggiaTreno e Italo per il numero, monitor RFI, Italo e ViaggiaTreno per le partenze. Ogni dato prende la fonte migliore, come su Android: RFI per il binario, l'operatore del treno per ritardo e soppressione. L'orario incluso nell'app resta la riserva.
+  - Valgono le regole di Android: un ritardo conta solo con una rilevazione degli ultimi 5 minuti, «RITARDO» senza minuti resta in ritardo senza orario previsto, una fermata soppressa rende il treno parzialmente soppresso.
+  - Solo HTTPS, con un User-Agent onesto di Binario per iPhone, senza cookie né cache; l'unico passaggio in chiaro è quello che ViaggiaTreno impone sul proprio dominio, lo stesso permesso su Android.
+  - Una richiesta per risorsa ogni 30 secondi (20 per RFI); al primo rifiuto la fonte va in pausa almeno un minuto, o per il tempo che chiede, e non viene richiesta prima.
+- **Ancora nessuna richiesta di rete**: le schermate useranno questi dati nel passo successivo, con l'informativa privacy aggiornata.
+
 ## In sviluppo — «Partenze» su iPhone
 
 - **Partenze** su iPhone, nella seconda scheda come su Android: scegli una stazione e vedi i prossimi treni in partenza dagli orari programmati inclusi nell'app, senza rete.
@@ -13,6 +21,7 @@
 - **Pronto per i dati live**: il tabellone passa da un fornitore che oggi è solo l'orario incluso e che resterà la riserva di una fonte live; ogni riga può già portare ritardo, soppressione, binario effettivo e fonte. Nessuna richiesta di rete in questa versione.
 - **Statistiche di rete**: la documentazione iPhone ora dice che dal 9 novembre la raccolta comprende anche i treni Trenord, che entrano nel file con gli aggiornamenti settimanali.
 - [PRIVACY.md](PRIVACY.md): l'ultima stazione di Partenze resta nelle `UserDefaults` dell'iPhone, con la chiave `it.binario.ios.departures-station.v1`. Testi in tutte le 17 lingue.
+
 
 ## In sviluppo — «I miei treni» pieno non cancella più nulla su Android
 

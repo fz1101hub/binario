@@ -386,19 +386,64 @@ class IOSProjectTests(unittest.TestCase):
             }], manifest["NSPrivacyAccessedAPITypes"])
 
     def test_no_forbidden_capability_or_network_declaration_is_present(self) -> None:
-        text = "\n".join(
-            path.read_text(encoding="utf-8")
-            for path in IOS.rglob("*")
+        paths = [
+            path for path in IOS.rglob("*")
             if path.is_file() and ".build" not in path.parts and path.suffix in {".swift", ".yml", ".strings", ".md"}
-        )
+        ]
+        text = "\n".join(path.read_text(encoding="utf-8") for path in paths)
+        # NSAppTransportSecurity lives only in Configuration/Binario-Info.plist (pinned below).
         forbidden = [
             "NSLocationWhenInUseUsageDescription", "NSMicrophoneUsageDescription",
-            "NSAppTransportSecurity", "http://", "CloudKit", "Firebase",
+            "NSAppTransportSecurity", "NSAllowsArbitraryLoads", "CloudKit", "Firebase",
             "Mixpanel", "Amplitude", "BGTaskSchedulerPermittedIdentifiers",
         ]
         for value in forbidden:
             self.assertNotIn(value, text)
         self.assertNotRegex(text, re.compile(r"AKIA[0-9A-Z]{16}"))
+        # Live rail data (owner decision, November 2026): every request is HTTPS. The one cleartext
+        # address allowed is Android's hop to www.viaggiatreno.it; only the HTTP client's tests spell
+        # out the cleartext redirects that the client refuses.
+        refused_redirect_tests = IOS / "BinarioKit/Tests/BinarioKitTests/LiveSourceHTTPTests.swift"
+        for path in paths:
+            if path != refused_redirect_tests:
+                self.assertNotRegex(path.read_text(encoding="utf-8"), r"http://(?!www\.viaggiatreno\.it/)", str(path))
+
+    def test_the_only_cleartext_exception_is_androids_viaggiatreno_hop(self) -> None:
+        # GENERATE_INFOPLIST_FILE cannot express a dictionary: the exception is a partial Info.plist
+        # that Xcode merges with the INFOPLIST_KEY_ settings, outside every target's sources.
+        settings = self.targets["Binario"]["settings"]["base"]
+        self.assertIs(True, settings["GENERATE_INFOPLIST_FILE"])
+        self.assertEqual("Configuration/Binario-Info.plist", settings["INFOPLIST_FILE"])
+        info = plistlib.loads((IOS / "Configuration/Binario-Info.plist").read_bytes())
+        self.assertEqual({"NSAppTransportSecurity": {"NSExceptionDomains": {"www.viaggiatreno.it": {
+            "NSExceptionAllowsInsecureHTTPLoads": True, "NSIncludesSubdomains": False,
+        }}}}, info)
+        android = ElementTree.parse(ROOT / "app/src/main/res/xml/network_security_config.xml").getroot()
+        self.assertEqual(
+            [domain.text.strip() for domain in android.iter("domain") if domain.text],
+            list(info["NSAppTransportSecurity"]["NSExceptionDomains"]),
+        )
+        for name, target in self.targets.items():
+            for entry in target.get("sources", []):
+                path = entry["path"] if isinstance(entry, dict) else entry
+                self.assertFalse(path.startswith("Configuration"), name)
+            self.assertNotIn("info", target, name)
+        for path in list(IOS.rglob("*.plist")) + list((ROOT / "apple-watch").rglob("*.plist")):
+            if path != IOS / "Configuration/Binario-Info.plist" and ".build" not in path.parts:
+                self.assertNotIn(b"NSAppTransportSecurity", path.read_bytes(), str(path))
+        # The client follows that hop only for the same resource, with an ephemeral session and an
+        # honest User-Agent, and the system follows no redirect by itself.
+        live = (IOS / "BinarioKit/Sources/BinarioKit/LiveSourceHTTP.swift").read_text(encoding="utf-8")
+        for expected in [
+            'static let viaggiaTrenoHost = "www.viaggiatreno.it"', "URLSessionConfiguration.ephemeral",
+            "configuration.httpCookieStorage = nil", "configuration.urlCredentialStorage = nil",
+            "configuration.urlCache = nil", "completionHandler(nil)",
+            'public static let general = "Binario/0.1 (iOS; personal rail information client)"',
+        ]:
+            self.assertIn(expected, live)
+        sources = "\n".join(path.read_text(encoding="utf-8") for path in (IOS / "BinarioKit/Sources").rglob("*.swift"))
+        for absent in ["URLSession.shared", "Mozilla", "AppleWebKit"]:
+            self.assertNotIn(absent, sources)
 
     def test_bundled_gtfs_fallback_bounded_snapshot_and_explicit_clear_are_wired(self) -> None:
         repository = (IOS / "BinarioKit/Sources/BinarioKit/JourneyRepository.swift").read_text(encoding="utf-8")
