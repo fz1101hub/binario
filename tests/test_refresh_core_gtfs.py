@@ -6,6 +6,7 @@ import contextlib
 import hashlib
 import io
 import json
+import re
 import shutil
 import sys
 import tempfile
@@ -204,6 +205,27 @@ class RefreshCoreTest(unittest.TestCase):
         self.assertIn("NON aggiornato", markdown)
         # The published directory of the checkout is never touched.
         self.assertEqual(self.before, {path.name: path.read_bytes() for path in self.published.iterdir()})
+
+    def test_feed_text_in_the_job_summary_cannot_render_links_images_or_html(self) -> None:
+        # A BuildError carries stop_ids from the feed (stop_times riferisce stop assenti: [...]): in the public job
+        # summary it must stay text, whatever the publisher puts there.
+        hostile = ("BuildError: stop_times riferisce stop assenti: ['![x](https://tracker.example/p.png)', "
+                   "'[Download fix](https://evil.example)', '<img src=x onerror=alert(1)>', 'a|b', '`code`', "
+                   "'https://bare.example/x', '**bold**']\nsecond line")
+        report = {"directory": "gtfs", "generatedAt": "2026-11-10", "packs": {
+            "plain-gtfs": {"status": "failed", "error": hostile, "previous": {"lastServiceDate": "2026-12-12"}},
+            "[x](https://evil.example)": {"status": "<b>changed</b>", "previous": {}},
+        }}
+        lines = refresh.report_markdown(report).splitlines()
+        row = next(line for line in lines if line.startswith("| plain-gtfs |"))
+        note = row.split(" | ")[-1].removesuffix(" |")
+        # The feed text is one code span: no link, image, HTML or emphasis is rendered inside it, and the row keeps
+        # its five columns.
+        self.assertTrue(note.startswith("`") and note.endswith("`") and note.count("`") == 2, note)
+        self.assertEqual(6, len(re.findall(r"(?<!\\)\|", row)), row)
+        self.assertNotIn("\n", row)
+        other = next(line for line in lines if line.startswith("| \\[x\\](https://evil.example) |"))
+        self.assertIn("&lt;b&gt;changed&lt;/b&gt;", other)
 
     def test_identical_archive_and_identical_filtered_content_keep_the_pack_byte_for_byte(self) -> None:
         sources = self.temp / "new"
