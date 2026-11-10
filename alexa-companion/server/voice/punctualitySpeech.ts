@@ -175,6 +175,8 @@ export function mostPunctualAnswer(
     sentences: [
       formatMessage(p.mostPunctualBest, { train: best, routeName: routeNameText }),
       ...(others.length ? [formatMessage(p.mostPunctualOthers, { trains: formatList(locale, others) })] : []),
+      // The times are Rome's wall clock: say so to a listener who may be elsewhere.
+      ...(locale === "it-IT" ? [] : [p.mostPunctualItalianTime]),
     ],
     attributed: true,
     trains: outcome.trains.map(train => ({ trainNumber: train.number, minuteOfDay: train.minuteOfDay, percent: train.percent })),

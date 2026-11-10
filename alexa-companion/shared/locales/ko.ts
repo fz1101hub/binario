@@ -163,6 +163,7 @@ export const ko: LocaleMessages = {
     showRoute: "{routeName} 경로의 정시성",
     hint: "“Alexa, ask Binario Trains how punctual train 9558 is”",
     mostPunctualBest: "{routeName} 경로에서 앞으로 3시간 안에 보통 출발하는 열차 중 가장 정시성이 높은 열차는 {train}입니다.",
+    mostPunctualItalianTime: "시간은 이탈리아 시간입니다.",
     mostPunctualOthers: "다음은 {trains}입니다.",
     mostPunctualTrain: { one: "{time} 출발 {trainNumber} 열차, {onTime} 정시", other: "{time} 출발 {trainNumber} 열차, {onTime} 정시" },
     outOfTen: { one: "10번 중 {count}번", other: "10번 중 {count}번" },

@@ -163,6 +163,7 @@ export const vi: LocaleMessages = {
     showRoute: "Mức đúng giờ của tuyến {routeName}",
     hint: "“Alexa, ask Binario Trains how punctual train 9558 is”",
     mostPunctualBest: "Trên tuyến {routeName}, trong các chuyến tàu thường khởi hành trong ba giờ tới, chuyến đúng giờ nhất là {train}.",
+    mostPunctualItalianTime: "Giờ được tính theo giờ Ý.",
     mostPunctualOthers: "Tiếp theo là {trains}.",
     mostPunctualTrain: { one: "tàu {trainNumber} lúc {time}, đúng giờ {onTime}", other: "tàu {trainNumber} lúc {time}, đúng giờ {onTime}" },
     outOfTen: { one: "{count} lần trên 10", other: "{count} lần trên 10" },

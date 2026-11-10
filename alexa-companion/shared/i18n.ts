@@ -246,6 +246,11 @@ export type LocaleMessages = {
      * {onTime}, an `outOfTen`.
      */
     mostPunctualTrain: PluralMessages;
+    /**
+     * Said after the trains, and added to the screen's data line, outside Italian: the usual times
+     * are Italian wall-clock times, not the listener's.
+     */
+    mostPunctualItalianTime: string;
     /** {count} = arrivals on time at the destination, in tenths (0–10). */
     outOfTen: PluralMessages;
     /** No train with enough observations leaves in the next three hours; {routeName}. */
@@ -407,6 +412,7 @@ const it: LocaleMessages = {
     showRoute: "Puntualità della tratta {routeName}",
     hint: "«Alexa, chiedi a Binario Treni quanto è puntuale il treno 9558»",
     mostPunctualBest: "Per la tratta {routeName}, fra i treni che di solito partono nelle prossime tre ore, il più puntuale è {train}.",
+    mostPunctualItalianTime: "Gli orari sono in ora italiana.",
     mostPunctualOthers: "Poi {trains}.",
     mostPunctualTrain: { one: "il {trainNumber} dell'{time}, in orario {onTime}", many: "il {trainNumber} delle {time}, in orario {onTime}", other: "il {trainNumber} delle {time}, in orario {onTime}" },
     outOfTen: { one: "{count} volta su 10", many: "{count} volte su 10", other: "{count} volte su 10" },
@@ -457,6 +463,7 @@ const en: LocaleMessages = {
     showRoute: "Punctuality of the route {routeName}",
     hint: "“Alexa, ask Binario Trains how punctual train 9558 is”",
     mostPunctualBest: "On the route {routeName}, of the trains that usually leave in the next three hours, the most punctual is {train}.",
+    mostPunctualItalianTime: "Times are Italian time.",
     mostPunctualOthers: "Then {trains}.",
     mostPunctualTrain: { one: "train {trainNumber} at {time}, on time {onTime}", other: "train {trainNumber} at {time}, on time {onTime}" },
     outOfTen: { one: "{count} time out of 10", other: "{count} times out of 10" },
@@ -506,6 +513,7 @@ const de: LocaleMessages = {
     showRoute: "Pünktlichkeit der Strecke {routeName}",
     hint: "„Alexa, frage Binario Züge nach der Pünktlichkeit von Zug 9558“",
     mostPunctualBest: "Auf der Strecke {routeName} ist von den Zügen, die üblicherweise in den nächsten drei Stunden abfahren, dieser am pünktlichsten: {train}.",
+    mostPunctualItalianTime: "Die Zeiten sind in italienischer Zeit angegeben.",
     mostPunctualOthers: "Danach {trains}.",
     mostPunctualTrain: { one: "Zug {trainNumber} um {time}, {onTime} pünktlich", other: "Zug {trainNumber} um {time}, {onTime} pünktlich" },
     outOfTen: { one: "{count}-mal von 10", other: "{count}-mal von 10" },
@@ -555,6 +563,7 @@ const fr: LocaleMessages = {
     showRoute: "Ponctualité du trajet {routeName}",
     hint: "« Alexa, demande à Binario Trains la ponctualité du train 9558 »",
     mostPunctualBest: "Sur le trajet {routeName}, parmi les trains qui partent habituellement dans les trois prochaines heures, le plus ponctuel est {train}.",
+    mostPunctualItalianTime: "Les horaires sont à l’heure italienne.",
     mostPunctualOthers: "Puis {trains}.",
     mostPunctualTrain: { one: "le {trainNumber} de {time}, à l’heure {onTime}", many: "le {trainNumber} de {time}, à l’heure {onTime}", other: "le {trainNumber} de {time}, à l’heure {onTime}" },
     outOfTen: { one: "{count} fois sur 10", many: "{count} fois sur 10", other: "{count} fois sur 10" },
@@ -604,6 +613,7 @@ const es: LocaleMessages = {
     showRoute: "Puntualidad de la ruta {routeName}",
     hint: "«Alexa, pregunta a Binario Trenes por la puntualidad del tren 9558»",
     mostPunctualBest: "En la ruta {routeName}, de los trenes que suelen salir en las próximas tres horas, el más puntual es {train}.",
+    mostPunctualItalianTime: "Los horarios están en hora italiana.",
     mostPunctualOthers: "Después, {trains}.",
     mostPunctualTrain: { one: "el {trainNumber} de la {time}, puntual {onTime}", many: "el {trainNumber} de las {time}, puntual {onTime}", other: "el {trainNumber} de las {time}, puntual {onTime}" },
     outOfTen: { one: "{count} vez de cada 10", many: "{count} veces de cada 10", other: "{count} veces de cada 10" },

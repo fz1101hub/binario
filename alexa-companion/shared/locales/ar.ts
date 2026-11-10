@@ -163,6 +163,7 @@ export const ar: LocaleMessages = {
     showRoute: "دقة مواعيد المسار {routeName}",
     hint: "«أليكسا، اسأل قطارات بيناريو عن دقة مواعيد القطار 9558»",
     mostPunctualBest: "على المسار {routeName}، من بين القطارات التي تغادر عادةً خلال الساعات الثلاث القادمة، القطار الأكثر دقة في المواعيد هو {train}.",
+    mostPunctualItalianTime: "الأوقات بتوقيت إيطاليا.",
     mostPunctualOthers: "ثم {trains}.",
     mostPunctualTrain: { zero: "القطار {trainNumber} الساعة {time}، في الموعد {onTime}", one: "القطار {trainNumber} الساعة {time}، في الموعد {onTime}", two: "القطار {trainNumber} الساعة {time}، في الموعد {onTime}", few: "القطار {trainNumber} الساعة {time}، في الموعد {onTime}", many: "القطار {trainNumber} الساعة {time}، في الموعد {onTime}", other: "القطار {trainNumber} الساعة {time}، في الموعد {onTime}" },
     outOfTen: { zero: "{count} مرة من كل 10", one: "{count} مرة من كل 10", two: "{count} مرتين من كل 10", few: "{count} مرات من كل 10", many: "{count} مرة من كل 10", other: "{count} مرة من كل 10" },

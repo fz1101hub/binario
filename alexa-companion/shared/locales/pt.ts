@@ -163,6 +163,7 @@ export const pt: LocaleMessages = {
     showRoute: "Pontualidade do trajeto {routeName}",
     hint: "“Alexa, pergunte ao Binario Trens qual é a pontualidade do trem 9558”",
     mostPunctualBest: "No trajeto {routeName}, entre os trens que costumam sair nas próximas três horas, o mais pontual é {train}.",
+    mostPunctualItalianTime: "Os horários estão no horário da Itália.",
     mostPunctualOthers: "Depois, {trains}.",
     mostPunctualTrain: { one: "o {trainNumber} da {time}, no horário {onTime}", many: "o {trainNumber} das {time}, no horário {onTime}", other: "o {trainNumber} das {time}, no horário {onTime}" },
     outOfTen: { one: "{count} vez em 10", many: "{count} vezes em 10", other: "{count} vezes em 10" },

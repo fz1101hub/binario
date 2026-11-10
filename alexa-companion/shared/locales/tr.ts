@@ -163,6 +163,7 @@ export const tr: LocaleMessages = {
     showRoute: "{routeName} güzergâhının dakikliği",
     hint: "“Alexa, ask Binario Trains how punctual train 9558 is”",
     mostPunctualBest: "{routeName} güzergâhında, genellikle önümüzdeki üç saat içinde kalkan trenler arasında en dakik olanı şu: {train}.",
+    mostPunctualItalianTime: "Saatler İtalya saatine göredir.",
     mostPunctualOthers: "Ardından {trains}.",
     mostPunctualTrain: { one: "saat {time} kalkışlı {trainNumber} sayılı tren, {onTime} zamanında", other: "saat {time} kalkışlı {trainNumber} sayılı tren, {onTime} zamanında" },
     outOfTen: { one: "10 seferin {count} tanesinde", other: "10 seferin {count} tanesinde" },

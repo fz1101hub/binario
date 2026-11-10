@@ -163,6 +163,7 @@ export const ja: LocaleMessages = {
     showRoute: "{routeName} の定時運行率",
     hint: "「アレクサ、ビナリオトレインで 9558 号の定時運行率を教えて」",
     mostPunctualBest: "{routeName} では、これから 3 時間以内にふだん出発する電車のうち、一番時間に正確なのは {train}です。",
+    mostPunctualItalianTime: "時刻はイタリア時間です。",
     mostPunctualOthers: "次は {trains}です。",
     mostPunctualTrain: { one: "{time} 発の {trainNumber} 号、定刻どおり {onTime}", other: "{time} 発の {trainNumber} 号、定刻どおり {onTime}" },
     outOfTen: { one: "10 回中 {count} 回", other: "10 回中 {count} 回" },

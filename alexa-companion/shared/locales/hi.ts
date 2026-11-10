@@ -163,6 +163,7 @@ export const hi: LocaleMessages = {
     showRoute: "रूट {routeName} की समयबद्धता",
     hint: "“अलेक्सा, बिनारियो ट्रेन से ट्रेन 9558 की समयबद्धता पूछो”",
     mostPunctualBest: "रूट {routeName} पर, अगले तीन घंटों में आम तौर पर छूटने वाली ट्रेनों में सबसे समयबद्ध यह है: {train}।",
+    mostPunctualItalianTime: "समय इटली के समय के अनुसार हैं।",
     mostPunctualOthers: "उसके बाद {trains}।",
     mostPunctualTrain: { one: "{time} वाली ट्रेन {trainNumber}, जो {onTime} समय पर पहुँची", other: "{time} वाली ट्रेन {trainNumber}, जो {onTime} समय पर पहुँची" },
     outOfTen: { one: "10 में से {count} बार", other: "10 में से {count} बार" },
