@@ -1,0 +1,51 @@
+{
+ "numeroTreno": 1990,
+ "idOrigine": "S08409",
+ "dataPartenzaTreno": 1792101600000,
+ "categoria": "ICN",
+ "compImpresa": "TRENITALIA",
+ "destinazione": "MILANO CENTRALE",
+ "ritardo": 3,
+ "oraUltimoRilevamento": 1792189440000,
+ "stazioneUltimoRilevamento": "FIRENZE S. M. NOVELLA",
+ "nonPartito": false,
+ "provvedimento": 0,
+ "tipoTreno": "PG",
+ "fermate": [
+  {
+   "id": "S08409",
+   "stazione": "ROMA TERMINI",
+   "actualFermataType": 1,
+   "partenza_teorica": 1792186800000,
+   "arrivo_teorico": null,
+   "programmata": 1792186800000,
+   "partenzaReale": 1792186980000,
+   "arrivoReale": null,
+   "binarioEffettivoPartenzaDescrizione": "11",
+   "binarioProgrammatoPartenzaDescrizione": "11"
+  },
+  {
+   "id": "S06421",
+   "stazione": "FIRENZE S. M. NOVELLA",
+   "actualFermataType": 1,
+   "partenza_teorica": 1792189500000,
+   "arrivo_teorico": 1792189200000,
+   "programmata": 1792189200000,
+   "partenzaReale": null,
+   "arrivoReale": 1792189380000,
+   "binarioEffettivoArrivoDescrizione": "9",
+   "binarioProgrammatoArrivoDescrizione": "8"
+  },
+  {
+   "id": "S01700",
+   "stazione": "MILANO CENTRALE",
+   "actualFermataType": 0,
+   "partenza_teorica": null,
+   "arrivo_teorico": 1792192200000,
+   "programmata": 1792192200000,
+   "partenzaReale": null,
+   "arrivoReale": null,
+   "binarioProgrammatoArrivoDescrizione": "21"
+  }
+ ]
+}
