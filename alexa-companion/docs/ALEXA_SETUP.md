@@ -39,9 +39,9 @@ L’adapter Express precedente è stato rimosso perché trascinava `node-forge` 
 | Intent              | Esempi di utterance italiane                                         | Slot                      |
 | ------------------- | -------------------------------------------------------------------- | ------------------------- |
 | `NextTrainsIntent`  | “quali sono i prossimi treni”, “prossimi treni per {routeName}”      | `routeName` facoltativo   |
-| `TrainStatusIntent` | “stato del treno {trainNumber}”, “il treno {trainNumber} è puntuale” | `trainNumber` facoltativo |
+| `TrainStatusIntent` | “stato del treno {trainNumber}”, “ritardo del treno {trainNumber}” (senza collegamento: dice solo che i dati in tempo reale non sono disponibili) | `trainNumber` facoltativo |
 | `MyRoutesIntent`    | “le mie tratte”, “elenca le tratte salvate”                          | nessuno                   |
-| `TrainPunctualityIntent` | “quanto è puntuale il treno {trainNumber}”, “puntualità del treno {trainNumber}” | `trainNumber` (`AMAZON.NUMBER`) |
+| `TrainPunctualityIntent` | “quanto è puntuale il treno {trainNumber}”, “puntualità del treno {trainNumber}”, “il treno {trainNumber} è puntuale” | `trainNumber` (`AMAZON.NUMBER`) |
 | `RoutePunctualityIntent` | “quanto è puntuale la mia tratta {routeName}”, “quanto è puntuale la mia tratta” | `routeName` (`AMAZON.SearchQuery`) facoltativo |
 | `MostPunctualTrainIntent` | “qual è il treno più puntuale per {routeName}”, “qual è il treno più puntuale” | `routeName` (`AMAZON.SearchQuery`) facoltativo |
 

@@ -335,6 +335,7 @@ const nextTrainsHandler: RequestHandler = {
   handle: input => respondNextTrains(input, spokenRouteSelector(input)),
 };
 
+/** Says only that live data is not available: nothing personal, so no linked account is needed. */
 const trainStatusHandler: RequestHandler = {
   canHandle: input =>
     getRequestType(input.requestEnvelope) === "IntentRequest" &&
@@ -342,14 +343,9 @@ const trainStatusHandler: RequestHandler = {
   handle: async input => {
     const locale = getAlexaLocale(input);
     const messages = messagesForLocale(locale).voice;
-    const principal = await getLinkedUser(input);
-    if (!principal) return linkRequiredResponse(input);
-    const trainNumber = intentSlot(
-      input,
-      "trainNumber",
-      "train",
-      "numeroTreno"
-    );
+    const slot = intentSlot(input, "trainNumber", "train", "numeroTreno");
+    // AMAZON.NUMBER gives "?" when it heard no number: no «Treno ?».
+    const trainNumber = slot && /[0-9]/.test(slot) ? slot : undefined;
     const subject = trainNumber
       ? formatMessage(messages.trainSubject, { trainNumber: escapeSsmlText(trainNumber) })
       : undefined;

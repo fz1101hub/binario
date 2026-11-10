@@ -129,7 +129,7 @@ export const ko: LocaleMessages = {
     myRoutesAction: "내 경로",
     hintsTitle: "이렇게 물어보세요",
     hintNextTrains: "“Alexa, ask Binario Trains for the next trains”",
-    hintTrainStatus: "“Alexa, ask Binario Trains is train 9512 on time”",
+    hintTrainStatus: "“Alexa, ask Binario Trains for the status of train 9512”",
     hintMyRoutes: "“Alexa, ask Binario Trains for my routes”",
   },
   punctuality: {

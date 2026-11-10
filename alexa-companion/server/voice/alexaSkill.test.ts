@@ -165,6 +165,18 @@ describe("Alexa skill handlers", () => {
     expect(response.response.outputSpeech).toBeUndefined();
   });
 
+  it("answers the train status without a linked account, as it says nothing personal", async () => {
+    vi.mocked(listPersonalRoutesForAlexa).mockClear();
+    const response = await createAlexaSkill().invoke(intent("TrainStatusIntent", "it-IT", { trainNumber: "9512" }));
+    expect(response.response.card?.type).not.toBe("LinkAccount");
+    expect(speechText(response)).toContain("Per il treno 9512: dati non disponibili in tempo reale");
+    expect(listPersonalRoutesForAlexa).not.toHaveBeenCalled();
+    // AMAZON.NUMBER gives "?" when it heard no number: no «Treno ?».
+    const unheard = await createAlexaSkill().invoke(intent("TrainStatusIntent", "it-IT", { trainNumber: "?" }));
+    expect(speechText(unheard)).not.toContain("?");
+    expect(unheard.response.card?.type).not.toBe("LinkAccount");
+  });
+
   it("returns an account-link card for an unlinked personal intent", async () => {
     const response = await createAlexaSkill().invoke(intent("MyRoutesIntent"));
     expect(response.response.card?.type).toBe("LinkAccount");
@@ -366,7 +378,7 @@ describe("Echo Show screens (APL)", () => {
   });
 
   it("renders nothing before account linking, after Stop, or on an older APL runtime", async () => {
-    for (const name of ["NextTrainsIntent", "MyRoutesIntent", "TrainStatusIntent", "RoutePunctualityIntent", "MostPunctualTrainIntent", "AMAZON.StopIntent"]) {
+    for (const name of ["NextTrainsIntent", "MyRoutesIntent", "RoutePunctualityIntent", "MostPunctualTrainIntent", "AMAZON.StopIntent"]) {
       const response = await createAlexaSkill().invoke(withApl(intent(name)));
       expect(response.response.directives ?? [], name).toHaveLength(0);
       expect(response.response.shouldEndSession, name).toBe(true);
@@ -529,8 +541,8 @@ describe("dynamic Alexa speech values", () => {
     }
   });
   it("escapes a user-provided train number", async () => {
-    const response = await createAlexaSkill().invoke(await linked("TrainStatusIntent", { trainNumber: unsafeText }));
-    expect(speechText(response)).toContain(escapedUnsafeText);
+    const response = await createAlexaSkill().invoke(await linked("TrainStatusIntent", { trainNumber: `9512 ${unsafeText}` }));
+    expect(speechText(response)).toContain(`9512 ${escapedUnsafeText}`);
     expect(speechText(response)).not.toContain(`<break time="1s"/>`);
   });
   it("treats blank route names as absent", async () => {

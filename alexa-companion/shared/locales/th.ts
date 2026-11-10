@@ -129,7 +129,7 @@ export const th: LocaleMessages = {
     myRoutesAction: "เส้นทางของฉัน",
     hintsTitle: "ลองถามว่า",
     hintNextTrains: "“Alexa, ask Binario Trains for the next trains”",
-    hintTrainStatus: "“Alexa, ask Binario Trains is train 9512 on time”",
+    hintTrainStatus: "“Alexa, ask Binario Trains for the status of train 9512”",
     hintMyRoutes: "“Alexa, ask Binario Trains for my routes”",
   },
   punctuality: {

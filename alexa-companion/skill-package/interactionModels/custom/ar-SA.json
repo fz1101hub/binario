@@ -48,7 +48,6 @@
           ],
           "samples": [
             "حالة القطار {trainNumber}",
-            "هل القطار {trainNumber} في موعده",
             "كيف وضع القطار {trainNumber}",
             "تأخير القطار {trainNumber}"
           ]
@@ -75,7 +74,8 @@
             "دقة مواعيد القطار {trainNumber}",
             "ما مدى دقة مواعيد القطار {trainNumber}",
             "هل يصل القطار {trainNumber} عادة في موعده",
-            "مدى التزام القطار {trainNumber} بالمواعيد"
+            "مدى التزام القطار {trainNumber} بالمواعيد",
+            "هل القطار {trainNumber} في موعده"
           ]
         },
         {
