@@ -101,6 +101,15 @@ object ApproachAlertPlanner {
         return LocalDateTime.of(day, time).atZone(zone).toInstant()
     }
 
+    /**
+     * The departure date of the run that reaches the station on [day]: the day before for a station the train reaches
+     * after midnight (a station time before the departure time), else [day]. Lookups and the day state use this date.
+     */
+    fun serviceDate(alert: ApproachAlert, day: LocalDate, zone: ZoneId = RailTime.defaultZone): LocalDate {
+        val arrival = scheduledAt(alert, day, zone) ?: return day
+        return if (arrival.atZone(zone).toLocalDate().isAfter(day)) day.minusDays(1) else day
+    }
+
     /** When the checks of [date] run: around the scheduled time, inside 07:00 – 22:00 of the day the train gets there. */
     fun window(alert: ApproachAlert, date: LocalDate, zone: ZoneId = RailTime.defaultZone): ClosedRange<Instant>? {
         val scheduled = scheduledAt(alert, date, zone) ?: return null
@@ -179,20 +188,21 @@ object ApproachAlertPlanner {
     }
 
     /**
-     * The next run for [alert]: the next check or moment to notify of today (from the last observation), else the
-     * window of tomorrow. [doneOn] is the last day the alert finished (notified, passed, cancelled or too late).
+     * The next run for [alert]: the next check or moment to notify of the run reaching the station today (from the last
+     * observation), else the window of the next run. [doneOn] and [notifiedOn] are departure dates ([serviceDate]) of
+     * the last run the alert finished (notified, passed, cancelled or too late) or notified.
      */
     fun nextRun(alert: ApproachAlert, doneOn: LocalDate?, notifiedOn: LocalDate?, observation: ApproachObservation?, now: Instant, zone: ZoneId = RailTime.defaultZone): Instant? {
-        val today = now.atZone(zone).toLocalDate()
-        val todayWindow = window(alert, today, zone)
-        if (doneOn != today && notifiedOn != today && todayWindow != null && !now.isAfter(todayWindow.endInclusive)) {
-            when (val decision = decide(alert, today, observation, now, notified = false, zone)) {
+        val date = serviceDate(alert, now.atZone(zone).toLocalDate(), zone)
+        val window = window(alert, date, zone)
+        if (doneOn != date && notifiedOn != date && window != null && !now.isAfter(window.endInclusive)) {
+            when (val decision = decide(alert, date, observation, now, notified = false, zone)) {
                 is ApproachDecision.WaitUntil -> return decision.at
                 is ApproachDecision.Notify -> return now
                 ApproachDecision.Done -> Unit
             }
         }
-        return (1L..2L).asSequence().mapNotNull { window(alert, today.plusDays(it), zone)?.start }.firstOrNull { it.isAfter(now) }
+        return (1L..2L).asSequence().mapNotNull { window(alert, date.plusDays(it), zone)?.start }.firstOrNull { it.isAfter(now) }
     }
 
     /**

@@ -89,6 +89,21 @@ class ApproachAlertPlannerTest {
         assertEquals(at("00:20", today.plusDays(1)), ApproachAlertPlanner.scheduledAt(late, today, zone))
     }
 
+    @Test fun `a stop after midnight is checked on the morning the train gets there`() {
+        // A night train leaving at 22:40 that calls at the station at 07:30 the next morning.
+        val night = alert.copy(stationTime = "07:30", departure = "22:40")
+        val arrivalDay = today.plusDays(1)
+        // The day of departure plans the check for the next morning.
+        assertEquals(at("07:00", arrivalDay), ApproachAlertPlanner.nextRun(night, null, null, null, at("12:00"), zone))
+        // That morning the run that left the evening before is checked, not the one leaving that evening.
+        assertEquals(today, ApproachAlertPlanner.serviceDate(night, arrivalDay, zone))
+        assertEquals(today, ApproachAlertPlanner.serviceDate(alert, today, zone))
+        assertEquals(at("07:15", arrivalDay), ApproachAlertPlanner.nextRun(night, null, null, null, at("07:00", arrivalDay), zone))
+        assertEquals(at("07:20", arrivalDay), ApproachAlertPlanner.nextRun(night, null, null, null, at("07:20", arrivalDay), zone))
+        // Once yesterday's run is done, the next check is the following morning.
+        assertEquals(at("07:00", arrivalDay.plusDays(1)), ApproachAlertPlanner.nextRun(night, doneOn = today, notifiedOn = null, observation = null, now = at("08:00", arrivalDay), zone = zone))
+    }
+
     @Test fun `the next run is today's check or moment, else tomorrow's window`() {
         assertEquals(at("08:02"), ApproachAlertPlanner.nextRun(alert, null, null, null, at("07:00"), zone))
         assertEquals(at("08:42"), ApproachAlertPlanner.nextRun(alert, null, null, observation("08:52", 10), at("08:32"), zone))
