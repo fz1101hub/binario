@@ -245,6 +245,15 @@ def _check_upload_artifact(step: Mapping[str, Any], *, location: str, problems: 
         problems.append(f"{location}.with.overwrite: upload artifact deve sovrascrivere l'artifact omonimo di un re-run")
 
 
+# The upload-key signing job (audit ci-docs-1): a dispatch with sign_release on a release branch only (the push policy of
+# the lock: main and stabilization/**), through the protected environment that holds the signing secrets.
+RELEASE_SIGN_CONDITION = (
+    "${{ github.event_name == 'workflow_dispatch' && inputs.sign_release && "
+    "(github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/stabilization/')) }}"
+)
+RELEASE_SIGN_ENVIRONMENT = "release"
+
+
 def _check_release_signing(
     path: Path,
     workflow: Mapping[str, Any],
@@ -269,8 +278,12 @@ def _check_release_signing(
         return
     if job.get("needs") not in ("android", ["android"]):
         problems.append(f"{path.name}: release-sign deve dipendere dal gate unsigned del job android")
-    if job.get("if") != "${{ github.event_name == 'workflow_dispatch' && inputs.sign_release }}":
-        problems.append(f"{path.name}: release-sign non è limitato a un dispatch esplicito con sign_release")
+    if job.get("if") != RELEASE_SIGN_CONDITION:
+        problems.append(f"{path.name}: release-sign non è limitato a un dispatch esplicito con sign_release "
+                        "su main o stabilization/*")
+    if job.get("environment") != RELEASE_SIGN_ENVIRONMENT:
+        problems.append(f"{path.name}: release-sign deve usare l'environment protetto {RELEASE_SIGN_ENVIRONMENT} "
+                        "(secret di firma, revisore e rami ammessi)")
     steps = job.get("steps")
     step_list = [step for raw_step in (steps if isinstance(steps, list) else []) for step in [_mapping(raw_step)] if step]
     for index, step in enumerate(step_list):

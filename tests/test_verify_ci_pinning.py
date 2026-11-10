@@ -180,7 +180,8 @@ class VerifyCiPinningTest(unittest.TestCase):
         workflow_path = ROOT / ".github/workflows/android-ci.yml"
         original = workflow_path.read_text(encoding="utf-8")
         self.assertEqual([], policy.workflow_problems(workflow_path, original, LOCK))
-        sign_condition = "    if: ${{ github.event_name == 'workflow_dispatch' && inputs.sign_release }}\n"
+        sign_condition = ("    if: ${{ github.event_name == 'workflow_dispatch' && inputs.sign_release && (github.ref == "
+                          "'refs/heads/main' || startsWith(github.ref, 'refs/heads/stabilization/')) }}\n")
         mutations = {
             # Mutate the sign_release input itself, wherever it sits among the dispatch inputs.
             "input booleano sign_release": re.sub(
@@ -190,6 +191,14 @@ class VerifyCiPinningTest(unittest.TestCase):
                 count=1,
             ),
             "non è limitato a un dispatch esplicito con sign_release": original.replace(sign_condition, "", 1),
+            # Audit ci-docs-1: any branch could be signed with the repository secrets.
+            "su main o stabilization/*": original.replace(
+                sign_condition, "    if: ${{ github.event_name == 'workflow_dispatch' && inputs.sign_release }}\n", 1),
+            "con sign_release su main o": original.replace(
+                sign_condition, sign_condition.replace("startsWith(github.ref, 'refs/heads/stabilization/')",
+                                                       "startsWith(github.ref, 'refs/heads/')"), 1),
+            "environment protetto release": original.replace("    environment: release\n", "", 1),
+            "environment protetto release ": original.replace("    environment: release\n", "    environment: production\n", 1),
             "deve dipendere dal gate unsigned": original.replace("    needs: android\n", "", 1),
             "interpola un secret nello script": original.replace(
                 '          test -n "$BINARIO_RELEASE_KEYSTORE_BASE64"\n',

@@ -28,7 +28,7 @@ Stato al 3 novembre 2026, dopo l'audit indipendente finale. Il codice di tutte l
 
 - Verifica dell'identità dell'account e, per un account personale, test chiuso con almeno 12 tester per 14 giorni.
 - Pubblicare `PRIVACY.md` a un URL stabile con **titolare e recapito**, e collegarlo nell'app e nella Console.
-- Keystore di upload, i quattro secret di firma e dispatch con `sign_release=true`.
+- Keystore di upload e i quattro secret di firma **nell'environment protetto `release`**, non nel repository: in Settings › Environments creare `release` con il titolare come revisore obbligatorio e i soli rami `main` e `stabilization/*`, aggiungervi i quattro secret, eliminare quelli del repository e proteggere i due rami ([RELEASE_BUILD.md](RELEASE_BUILD.md), «Environment `release`»). Poi dispatch con `sign_release=true` su `main` o `stabilization/*` e approvazione della run.
 - Dichiarazione del servizio in primo piano di tipo `location`, con video, e risposte di Sicurezza dei dati da [PLAY_DATA_SAFETY.md](store/PLAY_DATA_SAFETY.md).
 - **Sveglie esatte**: il manifest dichiara già `SCHEDULE_EXACT_ALARM` e l'app ha il pulsante «Consenti sveglie esatte»; decidere se citarlo nelle note per i revisori.
 
