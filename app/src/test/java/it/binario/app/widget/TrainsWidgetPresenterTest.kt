@@ -23,6 +23,7 @@ class TrainsWidgetPresenterTest {
     private val zone = ZoneId.of("Europe/Rome")
     private val day = LocalDate.of(2026, 11, 2)
     private fun millis(hour: Int, minute: Int) = ZonedDateTime.of(day, LocalTime.of(hour, minute), zone).toInstant().toEpochMilli()
+    private fun millisOn(date: LocalDate, hour: Int, minute: Int) = ZonedDateTime.of(date, LocalTime.of(hour, minute), zone).toInstant().toEpochMilli()
 
     private val strings = TrainsWidgetStrings(
         locale = Locale.ITALIAN,
@@ -119,6 +120,35 @@ class TrainsWidgetPresenterTest {
         val waiting = TrainsWidgetPresenter.row(ServiceMonitor("9541", "", "Ritorno"), null, TrainsWidgetSettings(), millis(8, 0), strings)
         assertEquals("Ritorno", waiting.title)
         assertEquals("Treno 9541 · In attesa del primo aggiornamento", waiting.detail)
+    }
+
+    @Test
+    fun `the run of an earlier day never shows its live values the next day`() {
+        // The last refresh saw the run of 2 November cancelled; on the 3rd, before any refresh, the row is that day's timetable.
+        val cancelled = status.copy(cancelled = true, delayMinutes = null)
+        val nextDay = day.plusDays(1)
+        val row = TrainsWidgetPresenter.row(ServiceMonitor("2153", ""), cancelled, TrainsWidgetSettings(), millisOn(nextDay, 7, 0), strings)
+
+        assertEquals("PROGRAM.", row.status)
+        assertEquals(TrainsRowEmphasis.NORMAL, row.emphasis)
+        assertEquals("Partenza 07:42 da Roma Termini", row.detail)
+        assertFalse(row.accessibility.contains("soppresso"))
+        // The "only running trains" filter judges that day's run by its timetable, not by the old cancellation.
+        assertFalse(TrainsWidgetPresenter.isRunning(cancelled, millisOn(nextDay, 7, 0)))
+        assertTrue(TrainsWidgetPresenter.isRunning(cancelled, millisOn(nextDay, 8, 0)))
+        assertFalse(TrainsWidgetPresenter.isRunning(cancelled, millisOn(nextDay, 9, 0)))
+    }
+
+    @Test
+    fun `old live data of a run still going carries its date`() {
+        // A night train seen at 23:00 and still running after midnight: the marker names the day of the data.
+        val night = status.copy(scheduledDeparture = "22:40", scheduledDepartureEpochMillis = millis(22, 40),
+            arrivalEpochMillis = millisOn(day.plusDays(1), 7, 30), retrievedAt = millis(23, 0))
+        val row = TrainsWidgetPresenter.row(ServiceMonitor("2153", ""), night, TrainsWidgetSettings(), millisOn(day.plusDays(1), 1, 0), strings)
+
+        assertTrue(row.detail, row.detail.startsWith("Ultimo dato 2 nov 23:00"))
+        assertEquals("+4", row.status)
+        assertEquals(TrainsRowEmphasis.MUTED, row.emphasis)
     }
 
     @Test

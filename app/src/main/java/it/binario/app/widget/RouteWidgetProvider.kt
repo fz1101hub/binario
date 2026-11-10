@@ -198,8 +198,9 @@ class RouteWidgetProvider : AppWidgetProvider() {
             val rows = visible.drop(rowOffset).take(pageSize)
             val freshness = if (state.freshness == Freshness.UNAVAILABLE) Freshness.UNAVAILABLE
             else WidgetFreshness.fromAge(state.retrievedAt, nowMillis)
-            // "Whole day" keeps showing the cached timetable offline: without fresh data it is the timetable only.
-            val timetableOnly = settings.timeRange == RouteTimeRange.WHOLE_DAY && freshness !in setOf(Freshness.FRESH, Freshness.AGING)
+            // Without fresh data the rows are the timetable only, in every time range: no old delay or cancellation is
+            // shown or spoken as the current state (the meta line says "ULTIMO DATO").
+            val timetableOnly = WidgetChangeHighlight.showsTimetable(freshness)
             val pageLabel = context.getString(
                 R.string.widget_page_label,
                 WidgetRowPagination.pageNumber(rowOffset, pageSize),
@@ -256,14 +257,13 @@ class RouteWidgetProvider : AppWidgetProvider() {
                     views.setViewVisibility(platformIds[index], if (settings.showPlatform) View.VISIBLE else View.GONE)
                     views.setTextViewText(
                         statusIds[index],
-                        if (timetableOnly) strings.statusScheduled else WidgetChangeHighlight.displayStatus(service, state.confidence, strings)
+                        WidgetChangeHighlight.displayStatus(service, state.confidence, strings, freshness)
                     )
                     views.setContentDescription(
                         id,
                         listOfNotNull(
-                            service.accessibleLabel(strings),
+                            service.accessibleLabel(strings, live = !timetableOnly),
                             inTransitLabel,
-                            if (timetableOnly) strings.scheduledUnverified else null,
                             reliability?.spoken
                         ).joinToString(" ")
                     )
@@ -544,9 +544,10 @@ data class WidgetService(
         ServiceStatus.DELAYED -> strings.format(strings.statusDelayed, delayMinutes)
         ServiceStatus.CANCELLED -> strings.statusCancelled
     }
-    fun accessibleLabel(strings: WidgetStrings): String {
+    /** The spoken row; with [live] false (old data) it reads the timetable time and no operational state. */
+    fun accessibleLabel(strings: WidgetStrings, live: Boolean = true): String {
         val operational = when {
-            !operationalStatusVerified -> strings.scheduledUnverified
+            !operationalStatusVerified || !live -> strings.scheduledUnverified
             status == ServiceStatus.DELAYED && delayMinutes > 0 -> "${strings.statusLabels.getValue(status)} ${strings.format(strings.delayMinutes, delayMinutes)}"
             else -> strings.statusLabels.getValue(status)
         }
@@ -556,7 +557,7 @@ data class WidgetService(
             strings.categoryLabels.getValue(category),
             number,
             destination,
-            expectedDeparture,
+            if (live) expectedDeparture else scheduledDeparture,
             operational,
             strings.platformSpoken(platform, scheduledPlatform)
         )

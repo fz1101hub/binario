@@ -5,6 +5,7 @@ import it.binario.app.data.Freshness
 import it.binario.app.data.RailOperator
 import it.binario.app.data.ServiceStatus
 import it.binario.app.data.TrainCategory
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -42,5 +43,21 @@ class WidgetChangeHighlightTest {
     @Test fun `static reconciled status shows live result`() {
         val service = WidgetService("123", RailOperator.TRENITALIA_REGIONALE, TrainCategory.REGIONALE, "Roma", "12:04", ServiceStatus.DELAYED, 4, "7", true)
         assertTrue(WidgetChangeHighlight.displayStatus(service, DataConfidence.STATIC_ONLY, englishWidgetStrings()) == "+4")
+    }
+
+    @Test fun `old data never shows or speaks a delay as the current state`() {
+        val service = WidgetService("123", RailOperator.TRENITALIA_REGIONALE, TrainCategory.REGIONALE, "Roma", "12:12", ServiceStatus.DELAYED, 12, "7", true, scheduledDeparture = "12:00")
+        val strings = italianWidgetStrings()
+
+        assertTrue(WidgetChangeHighlight.showsTimetable(Freshness.STALE))
+        assertTrue(WidgetChangeHighlight.showsTimetable(Freshness.UNAVAILABLE))
+        assertFalse(WidgetChangeHighlight.showsTimetable(Freshness.AGING))
+        assertEquals("PROGRAM.", WidgetChangeHighlight.displayStatus(service, DataConfidence.OPERATOR_PRIMARY, strings, Freshness.STALE))
+        assertEquals("+12", WidgetChangeHighlight.displayStatus(service, DataConfidence.OPERATOR_PRIMARY, strings, Freshness.AGING))
+        assertEquals(
+            "Operatore Trenitalia Regionale. Regionale 123 verso Roma. Partenza prevista 12:00. Stato operativo non verificato. Binario 7.",
+            service.accessibleLabel(strings, live = false)
+        )
+        assertTrue(service.accessibleLabel(strings).contains("In ritardo +12 min"))
     }
 }
