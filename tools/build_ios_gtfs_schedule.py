@@ -665,7 +665,7 @@ def read_manifest(
             raise BuildError("GTFS source policy must contain exactly 10 schema-v1 sources")
         policy_by_id = {}
         for index, source in enumerate(sources):
-            if not isinstance(source, dict) or set(source) != {"sourceId", "sourceUrl", "accessMode", "licence"}:
+            if not isinstance(source, dict) or set(source) != {"sourceId", "sourceUrl", "accessMode", "licence", "landingPage"}:
                 raise BuildError(f"GTFS source policy entry {index} is invalid")
             source_id, source_url, access_mode = source["sourceId"], source["sourceUrl"], source["accessMode"]
             if not all(isinstance(value, str) and value for value in (source_id, source_url, access_mode)):
@@ -677,6 +677,10 @@ def read_manifest(
                 raise BuildError(f"GTFS source policy entry {source_id!r} has an invalid licence")
             if source_id in policy_by_id or access_mode != "OPEN_DIRECT" or not source_url.startswith("https://"):
                 raise BuildError(f"GTFS source policy entry {source_id!r} is not an authorised HTTPS direct source")
+            # The public page of the feed, which the app's source list links to (not the archive).
+            landing_page = source["landingPage"]
+            if not isinstance(landing_page, str) or not landing_page.startswith("https://") or len(landing_page) <= len("https://"):
+                raise BuildError(f"GTFS source policy entry {source_id!r} has an invalid landing page")
             policy_by_id[source_id] = (source_url, access_mode)
         # Packs the Android app embeds but the iOS index deliberately leaves out (reviewed, with a reason): they
         # must still match the manifest exactly, so an unreviewed manifest addition keeps failing closed.

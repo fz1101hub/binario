@@ -622,6 +622,15 @@ final class BinarioAppTests: XCTestCase {
         let line = fixtureSnapshot(query: query, serviceNumber: "Linea SASSARI-SORSO").services[0]
         XCTAssertFalse(model.canToggleFavourite(line, query: query))
         XCTAssertEqual(model.toggleFavourite(line, query: query), .failed)
+        // Nor is a route's short name («C3» of every SNCF train of the line): no star.
+        let route = TrainService(
+            id: "sncf:c3", number: "C3", operatorName: "SNCF", category: "C3", destination: "Nice",
+            scheduledDeparture: service.scheduledDeparture, expectedDeparture: service.scheduledDeparture,
+            status: "PROGRAMMED", platform: nil, delayMinutes: 0, hasTrainNumber: false
+        )
+        XCTAssertFalse(model.canToggleFavourite(route, query: query))
+        XCTAssertEqual(model.toggleFavourite(route, query: query), .failed)
+        XCTAssertEqual(model.favouriteTrains, [])
 
         // Twelve trains: the thirteenth is refused, none is dropped, and removing stays possible.
         for number in 1...FavouriteTrainCollection.maximumTrains {
@@ -839,6 +848,78 @@ final class BinarioAppTests: XCTestCase {
         XCTAssertTrue(model.boardDepartures.allSatisfy(\.isScheduled), "Milano's answer never reaches Bergamo's rows")
     }
 
+    func testNoLiveRequestStartsInTheBackgroundEvenFromAReadingBegunJustBefore() async throws {
+        let defaults = try makeDefaults()
+        defer { clear(defaults) }
+        let base = try rome(2026, 11, 10, 8, 0)
+        let rows = (0..<3).map { boardDeparture($0, after: base) }
+        let now = Date()
+        let query = try JourneyQuery(origin: milanoCode, destination: bergamoCode, departure: now)
+        let snapshot = fixtureSnapshot(query: query, serviceNumber: "2153")
+        let live = FakeLiveRailData(board: .available(LiveFixtures.board([
+            LiveFixtures.row("2101", scheduled: rows[0].departure, delay: 2, platform: "4", status: .delayed, at: base),
+        ], stationID: milanoCode.id, at: base)))
+        let model = makeLiveModel(
+            defaults: defaults, live: live, repository: StubJourneyRepository(result: .available(snapshot)),
+            boardProvider: StubBoardProvider(rows: rows)
+        )
+        model.selectBoardStation(milanoCode)
+        await model.boardLoadFinished()
+        model.boardLiveDidAppear()
+        model.plannerLiveDidAppear()
+        await model.boardLiveLoadFinished()
+        let before = await live.requestCount
+        XCTAssertGreaterThan(before, 0)
+
+        // Home pressed while a pull or a search was still reading the timetable: when it reaches
+        // its live step, nothing is asked.
+        model.liveDidEnterBackground()
+        await model.pullBoardLive()
+        await model.run(query: query)
+        await model.resultLiveLoadFinished()
+        await model.refreshBoardLive(now: base)
+        let background = await live.requestCount
+        XCTAssertEqual(background, before, "no live request starts in the background")
+
+        // Back in the foreground the screens on display ask again.
+        model.liveDidBecomeActive()
+        await model.boardLiveLoadFinished()
+        await model.resultLiveLoadFinished()
+        let after = await live.requestCount
+        XCTAssertGreaterThan(after, background)
+    }
+
+    func testBackInTheForegroundStaleLiveValuesGoBeforeTheScreenAsksAgain() async throws {
+        let defaults = try makeDefaults()
+        defer { clear(defaults) }
+        let base = try rome(2026, 11, 10, 8, 0)
+        let rows = (0..<3).map { boardDeparture($0, after: base) }
+        let live = ControlledLiveBoards()
+        let model = makeLiveModel(defaults: defaults, live: live, boardProvider: StubBoardProvider(rows: rows))
+        model.selectBoardStation(milanoCode)
+        await model.boardLoadFinished()
+        await model.reloadBoard(now: base)
+        model.boardLiveDidAppear()
+        await live.waitUntilPending(milanoCode.id)
+        await live.complete(milanoCode.id, with: .available(LiveFixtures.board([
+            LiveFixtures.row("2101", scheduled: rows[0].departure, delay: 7, platform: "1", status: .delayed, at: base),
+        ], stationID: milanoCode.id, at: base)))
+        await model.boardLiveLoadFinished()
+        XCTAssertEqual(model.boardDepartures[0].live?.delayMinutes, 7)
+
+        // Two hours away, with the minute tick asleep meanwhile: the old values are not shown as
+        // current while the board is asked again.
+        model.liveDidEnterBackground()
+        model.liveDidBecomeActive(now: Date().addingTimeInterval(2 * 3_600))
+        XCTAssertTrue(model.boardDepartures.allSatisfy(\.isScheduled), "values of two hours ago are not the train's state")
+        XCTAssertEqual(model.boardLiveState, .loading)
+        XCTAssertEqual(model.liveSourcePauses, [])
+        await live.waitUntilPending(milanoCode.id)
+        await live.complete(milanoCode.id, with: .unavailable(.sourceUnavailable))
+        await model.boardLiveLoadFinished()
+        XCTAssertEqual(model.boardLiveState, .unavailable)
+    }
+
     func testPlannerResultsTakeTheLiveBoardOfTheOriginWithinTheLiveWindow() async throws {
         let defaults = try makeDefaults()
         defer { clear(defaults) }
@@ -969,6 +1050,13 @@ final class BinarioAppTests: XCTestCase {
         XCTAssertNil(model.liveTrainKey(for: service, query: tomorrow, now: now))
         let line = fixtureSnapshot(query: query, serviceNumber: "Linea SASSARI-SORSO").services[0]
         XCTAssertNil(model.liveTrainKey(for: line, query: query, now: now))
+        // A route's short name («R35») would be asked as train 35: never.
+        let route = TrainService(
+            id: "trentino:r35", number: "R35", operatorName: "Trentino Trasporti", category: "R35", destination: "Bergamo",
+            scheduledDeparture: romeTime(departure), expectedDeparture: romeTime(departure), status: "PROGRAMMED",
+            platform: nil, delayMinutes: 0, hasTrainNumber: false
+        )
+        XCTAssertNil(model.liveTrainKey(for: route, query: query, now: now))
     }
 
     func testMyTrainsAsksTheFirstEightFavouritesOnlyWhileOnScreen() async throws {

@@ -271,7 +271,11 @@ final class ViaggiaTrenoLiveTests: XCTestCase {
         XCTAssertEqual(delayed.status?.value, .delayed)
         XCTAssertEqual(delayed.platform?.value, "7")
         XCTAssertEqual(delayed.scheduledPlatform, "5", "the timetable platform travels with the actual one")
-        XCTAssertEqual(delayed.operatorID, "trenitalia")
+        XCTAssertNil(delayed.operatorID, "the board row names no carrier: Trenord's trains are listed too")
+        let trenord = try XCTUnwrap(LiveJSONObject(LiveJSON.parse("{\"compImpresa\": \"TRENORD\"}")))
+        XCTAssertEqual(ViaggiaTrenoParser.boardOperatorID(trenord), "trenord")
+        let trenitalia = try XCTUnwrap(LiveJSONObject(LiveJSON.parse("{\"compImpresa\": \"Trenitalia\"}")))
+        XCTAssertEqual(ViaggiaTrenoParser.boardOperatorID(trenitalia), "trenitalia")
         XCTAssertEqual(delayed.destination, "ROMA TIBURTINA")
         XCTAssertEqual(delayed.viaggiaTrenoRun?.nativeID, "S08001:12345:\(runDate)")
         XCTAssertEqual(delayed.expected?.observation.observedAt, now.addingTimeInterval(-30))
@@ -291,6 +295,31 @@ final class ViaggiaTrenoLiveTests: XCTestCase {
         XCTAssertEqual(broken, .unavailable(.unreadable))
         let empty = await source(FakeLiveTransport { _ in .response(status: 204, headers: [:], body: Data()) }).departures(for: window)
         XCTAssertEqual(empty, .answered([], complete: true))
+    }
+
+    func testASlowMainBoardIsKeptAndTheLookbackOnlyGetsTheTimeLeft() async throws {
+        let board = try LiveFixtures.text("viaggiatreno-partenze-S08328.json")
+        // The main board (from 09:50) answers late; the earlier board for late trains never does.
+        let transport = FakeLiveTransport { request in
+            guard request.url.absoluteString.contains("09%3A50") else { return await FakeLiveTransport.stall() }
+            try? await Task.sleep(nanoseconds: 200_000_000)
+            return FakeLiveTransport.ok(board)
+        }
+        let clock = LiveTestClock(now)
+        let source = ViaggiaTrenoLiveSource(
+            client: LiveSourceClient(transport: transport, now: clock.closure),
+            gate: LiveSourceGate(source: .viaggiaTreno, configuration: .init(minimumInterval: 30), pauses: LiveSourcePauses(), now: clock.closure),
+            now: clock.closure, lookbackTimeout: 2, boardBudget: 0.6
+        )
+        let station = Station(id: "S08328", name: "Appiano", railwayCode: "S08328")
+        let started = Date()
+        // The whole source is cut off after 1.5 s: before, the main board waited for the full lookback.
+        let result = await LiveRailData(statusSources: [], boardSources: [source], boardTimeout: 1.5)
+            .departures(LiveDeparturesRequest(station: station, from: now))
+        XCTAssertLessThan(Date().timeIntervalSince(started), 10)
+        guard case let .available(departures) = result else { return XCTFail("expected the main board, got \(result)") }
+        XCTAssertEqual(departures.departures.map(\.number), ["12345", "12347", "12349"])
+        XCTAssertEqual(transport.requests.count, 2, "the lookback was asked, within the time left")
     }
 
     func testTheBoardTimeIsAndroidsEncodedDate() {

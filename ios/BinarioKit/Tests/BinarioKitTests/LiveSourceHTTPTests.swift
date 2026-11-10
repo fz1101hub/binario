@@ -169,6 +169,22 @@ final class LiveSourceHTTPTests: XCTestCase {
         XCTAssertNil(LiveRedirect.retryAfter("Mon, 26 Oct 2020 08:33:20 GMT", now: now), "a date in the past asks no pause")
     }
 
+    func testAMissingConnectionIsTheDevicesNotTheSources() {
+        func failure(_ code: Int) -> LiveFetchFailure {
+            LiveDataTaskDelegate.failure(for: NSError(domain: NSURLErrorDomain, code: code))
+        }
+        for code in [
+            NSURLErrorNotConnectedToInternet, NSURLErrorNetworkConnectionLost, NSURLErrorDataNotAllowed,
+            NSURLErrorInternationalRoamingOff, NSURLErrorCallIsActive, NSURLErrorCannotFindHost, NSURLErrorDNSLookupFailed,
+        ] {
+            XCTAssertEqual(failure(code), .offline, "\(code)")
+        }
+        XCTAssertEqual(failure(NSURLErrorTimedOut), .timedOut, "a source that stops answering still counts")
+        XCTAssertEqual(failure(NSURLErrorCancelled), .cancelled)
+        XCTAssertEqual(failure(NSURLErrorSecureConnectionFailed), .network)
+        XCTAssertEqual(LiveDataTaskDelegate.failure(for: NSError(domain: "other", code: NSURLErrorTimedOut)), .network)
+    }
+
     func testBodiesOverTheLimitAreRefusedNeverTruncated() async throws {
         let url = try XCTUnwrap(URL(string: "https://www.trenord.it/x"))
         let small = LiveRequestPolicy(accept: "application/json", requestTimeout: 12, totalTimeout: 15, maximumBytes: 8)
@@ -222,5 +238,21 @@ final class LiveSourceHTTPTests: XCTestCase {
         }
         XCTAssertEqual(outcome, .failure(.cancelled))
         XCTAssertEqual(task.state, .suspended, "the task was never resumed")
+    }
+
+    func testACancelledRequestReleasesItsSessionWithTheTaskItNeverStarted() async throws {
+        let url = try XCTUnwrap(URL(string: "https://iechub.rfi.it/ArriviPartenze"))
+        let session = URLSession(configuration: .ephemeral)
+        let task = session.dataTask(with: url)
+        let delegate = LiveDataTaskDelegate(maximumBytes: 1_024, requestedURL: url)
+        delegate.cancel()
+        let outcome = await withCheckedContinuation { (continuation: CheckedContinuation<LiveTransportOutcome, Never>) in
+            delegate.start(task, continuation: continuation)
+        }
+        XCTAssertEqual(outcome, .failure(.cancelled))
+        URLSessionLiveTransport.invalidate(session, after: outcome)
+        for _ in 0..<50 where task.state == .suspended { try await Task.sleep(nanoseconds: 20_000_000) }
+        XCTAssertNotEqual(task.state, .suspended, "the task left suspended is cancelled, so the session can go")
+        XCTAssertNotEqual(task.state, .running, "and it was never sent")
     }
 }

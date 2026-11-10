@@ -57,7 +57,9 @@ public struct StationBoardQuery: Equatable, Sendable {
 public struct StationBoardLiveStatus: Equatable, Sendable {
     /// The expected departure, when the source publishes one.
     public let expectedDeparture: Date?
-    /// The delay at the station in whole minutes, when the source publishes it.
+    /// The delay at the station in whole minutes, when the source publishes an expected time:
+    /// counted from the time the row prints (the bundled timetable's), so a train the source lists
+    /// earlier or later than the timetable is never «on time» at a time it does not leave.
     public let delayMinutes: Int?
     public let cancelled: Bool
     /// The actual platform, when the source publishes it.

@@ -102,6 +102,12 @@ class AppStoreDocsTest(unittest.TestCase):
         self.assertIsNotNone(notes, "note per la revisione assenti")
         self.assertIn("Trenitalia e Italo non sono inclusi", notes.group(1))
         self.assertIn("Trenitalia and Italo are not included", notes.group(1))
+        # App Review asks why App Transport Security has an exception: the notes say it, in both
+        # languages, within the 4,000 characters of the App Review notes field.
+        self.assertIn("Eccezione ATS (solo www.viaggiatreno.it, senza sottodomini)", notes.group(1))
+        self.assertIn("ATS exception (www.viaggiatreno.it only, no subdomains)", notes.group(1))
+        self.assertNotIn("solo l'HTTPS del sistema operativo", notes.group(1))
+        self.assertLessEqual(len(notes.group(1)), 4000)
         for label in REVIEW_ROUTES:
             self.assertIn(label, notes.group(1))
 

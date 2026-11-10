@@ -44,8 +44,11 @@ public final class LiveSourcePauses: @unchecked Sendable {
 ///   included, is reused until the interval has passed since the request started;
 /// - a refusal (HTTP 403 or 429) pauses the whole source at once, for the `Retry-After` it sent
 ///   (at most an hour) or for a minute that doubles with every new pause, up to 15 minutes;
-/// - three failures in a row pause it the same way; after a pause one request is let through and
-///   a single failure pauses it again;
+/// - three failures in a row pause it the same way (a device without a connection is not the
+///   source's failure and never counts); after a pause one request is let through (the
+///   others are refused as during the pause until it answers) and a single failure pauses it again;
+/// - only an answer to a request sent since the last pause ends it: one sent before says nothing of
+///   the source after its refusal;
 /// - nothing is retried by itself: the next caller after the interval asks again.
 /// A caller that is cancelled returns at once; the request is cancelled when no caller waits for it.
 final class LiveSourceGate: @unchecked Sendable {
@@ -71,6 +74,10 @@ final class LiveSourceGate: @unchecked Sendable {
     private var consecutiveFailures = 0
     private var openings = 0
     private var openUntil: Date?
+    /// Bumped by every pause: the requests sent before it cannot end it.
+    private var pauseGeneration: UInt64 = 0
+    /// The one request let through after a pause, while it has not answered.
+    private var probe: UInt64?
 
     private struct CachedResult {
         let result: LiveFetchResult
@@ -80,6 +87,8 @@ final class LiveSourceGate: @unchecked Sendable {
     private final class Flight {
         let key: String
         let startedAt: Date
+        /// The pause generation when the request was sent.
+        let generation: UInt64
         var task: Task<Void, Never>?
         var abandoned = false
         var result: LiveFetchResult?
@@ -89,9 +98,10 @@ final class LiveSourceGate: @unchecked Sendable {
         var cancelledEarly: Set<UInt64> = []
         var waiting: [UInt64: CheckedContinuation<LiveFetchResult, Never>] = [:]
 
-        init(key: String, startedAt: Date) {
+        init(key: String, startedAt: Date, generation: UInt64) {
             self.key = key
             self.startedAt = startedAt
+            self.generation = generation
         }
 
         var isSettled: Bool { registered.isEmpty && cancelledEarly.isEmpty && waiting.isEmpty }
@@ -153,11 +163,17 @@ final class LiveSourceGate: @unchecked Sendable {
         let current = now()
         purgeExpired(at: current)
         if let cached = cache[key] { return .ready(cached.result) }
+        var probing = false
         if let until = openUntil {
             if current < until { return .ready(.failure(.paused(until: until))) }
-            // Half-open: one request goes through, and one more failure pauses the source again.
-            openUntil = nil
-            consecutiveFailures = max(0, configuration.failureThreshold - 1)
+            // Half-open: one request goes through (callers of the same resource share it) and the
+            // others are refused as during the pause until it answers; one more failure pauses the
+            // source again.
+            if let running = probe {
+                guard activeFlights[key] == running else { return .ready(.failure(.paused(until: until))) }
+            } else {
+                probing = true
+            }
         }
         nextIdentifier += 1
         let caller = nextIdentifier
@@ -167,10 +183,14 @@ final class LiveSourceGate: @unchecked Sendable {
         }
         nextIdentifier += 1
         let identifier = nextIdentifier
-        let flight = Flight(key: key, startedAt: current)
+        let flight = Flight(key: key, startedAt: current, generation: pauseGeneration)
         flight.registered.insert(caller)
         flights[identifier] = flight
         activeFlights[key] = identifier
+        if probing {
+            probe = identifier
+            consecutiveFailures = max(0, configuration.failureThreshold - 1)
+        }
         return .start(flight: identifier, caller: caller)
     }
 
@@ -221,6 +241,8 @@ final class LiveSourceGate: @unchecked Sendable {
             // Nobody waits for the request any more: it is cancelled, and the next caller starts afresh.
             flight.abandoned = true
             if activeFlights[flight.key] == identifier { activeFlights[flight.key] = nil }
+            // An abandoned probe lets the next caller through instead.
+            if probe == identifier { probe = nil }
             abandonedTask = flight.task
         }
         if flight.result != nil || flight.abandoned { settle(identifier) }
@@ -235,7 +257,10 @@ final class LiveSourceGate: @unchecked Sendable {
         var pauseUntil: Date?
         var resumed = false
         var continuations: [CheckedContinuation<LiveFetchResult, Never>] = []
+        var sentSinceLastPause = false
+        if probe == identifier { probe = nil }
         if let flight = flights[identifier] {
+            sentSinceLastPause = flight.generation == pauseGeneration
             if activeFlights[flight.key] == identifier { activeFlights[flight.key] = nil }
             if Self.isCacheable(result) { store(result, for: flight.key, startedAt: flight.startedAt, at: current) }
             flight.result = result
@@ -246,6 +271,8 @@ final class LiveSourceGate: @unchecked Sendable {
         }
         switch result {
         case .body:
+            // A request sent before the last pause answers for the source as it was then.
+            guard sentSinceLastPause else { break }
             consecutiveFailures = 0
             openings = 0
             openUntil = nil
@@ -263,7 +290,7 @@ final class LiveSourceGate: @unchecked Sendable {
     /// end, when the source is now paused.
     private func record(_ failure: LiveFetchFailure, at current: Date) -> Date? {
         switch failure {
-        case .cancelled, .paused, .invalidRequest: return nil
+        case .cancelled, .paused, .invalidRequest, .offline: return nil
         default: break
         }
         consecutiveFailures += 1
@@ -271,12 +298,14 @@ final class LiveSourceGate: @unchecked Sendable {
             let pause = min(asked, configuration.maximumRetryAfter)
             openUntil = max(openUntil ?? current, current.addingTimeInterval(pause))
             openings += 1
+            pauseGeneration &+= 1
             consecutiveFailures = 0
         } else if failure.isRefusal || consecutiveFailures >= configuration.failureThreshold {
             let factor: Double = Double(1 << min(openings, 6))
             let duration: TimeInterval = min(configuration.baseOpenDuration * factor, configuration.maximumOpenDuration)
             openUntil = current.addingTimeInterval(duration)
             openings += 1
+            pauseGeneration &+= 1
             consecutiveFailures = 0
         }
         guard let until = openUntil, current < until else { return nil }

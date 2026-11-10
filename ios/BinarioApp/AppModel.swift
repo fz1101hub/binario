@@ -210,6 +210,9 @@ final class AppModel: ObservableObject {
     private var boardLive: BoardLive?
     /// When the live values of the planner's result were asked for.
     private var resultLiveAt: Date?
+    /// False from the moment the app goes to the background until it is active again: no live
+    /// request starts meanwhile, not even one a pull or a search begun just before reaches.
+    private var isForeground = true
     /// The screens that ask live sources do so only while they are on screen.
     private var boardLiveVisible = false
     private var plannerLiveVisible = false
@@ -895,23 +898,34 @@ final class AppModel: ObservableObject {
 
     /// Back in the foreground: the screens on display ask again (through the sources' gates).
     func liveDidBecomeActive() {
+        liveDidBecomeActive(now: Date())
+    }
+
+    /// Back in the foreground at `now`: what went stale meanwhile goes first (the minute tick does
+    /// not count the time the device slept), then the screens on display ask again.
+    func liveDidBecomeActive(now: Date) {
+        isForeground = true
+        expireLiveValues(now: now)
         if boardLiveState != .loading { restartBoardLive() }
         if resultLiveState != .loading { restartResultLive() }
         if detailLiveState != .loading { restartDetailLive() }
         if favouriteLiveState != .loading { restartFavouritesLive() }
     }
 
-    /// In the background nothing is asked: the requests on their way are cancelled.
+    /// In the background nothing is asked: the requests on their way are cancelled and none starts.
     func liveDidEnterBackground() {
+        isForeground = false
         cancelBoardLive()
         cancelResultLive()
         cancelDetailLive()
         cancelFavouritesLive()
     }
 
-    /// Every minute while the app is open: the live values asked for more than
-    /// `liveDisplaySeconds` ago are no longer shown.
+    /// Every minute while the app is open, and when it comes back to the foreground: the live values
+    /// asked for more than `liveDisplaySeconds` ago are no longer shown, nor the pauses that ended.
     func expireLiveValues(now: Date = Date()) {
+        let pauses: [LiveSourcePause] = liveDataEnabled ? livePauses.active(at: now) : []
+        if pauses != liveSourcePauses { liveSourcePauses = pauses }
         if let live = boardLive, !Self.isLiveDisplayable(since: live.at, now: now) {
             boardLive = nil
             boardLiveSources = []
@@ -964,6 +978,7 @@ final class AppModel: ObservableObject {
     /// timetable rows (`LiveOverlay.stationBoard`): asked only while «Partenze» is on screen with
     /// «Dati in tempo reale» on. When every source fails the rows stay the timetable's.
     func refreshBoardLive(now: Date = Date()) async {
+        guard isForeground else { return }
         guard boardLiveVisible, liveDataEnabled, let liveData, let identity = boardStation else { return }
         boardLiveRequestID &+= 1
         let requestID = boardLiveRequestID
@@ -996,7 +1011,7 @@ final class AppModel: ObservableObject {
     private func restartBoardLive() {
         boardLiveLoad?.cancel()
         boardLiveLoad = nil
-        guard boardLiveVisible, isLiveDataActive, boardStation != nil else { return }
+        guard isForeground, boardLiveVisible, isLiveDataActive, boardStation != nil else { return }
         boardLiveState = .loading
         boardLiveLoad = Task { await self.refreshBoardLive() }
     }
@@ -1042,6 +1057,7 @@ final class AppModel: ObservableObject {
     /// number proper within five minutes of its departure. Every source failing leaves the results
     /// as they are, on the bundled timetable.
     func refreshResultLive(now: Date = Date()) async {
+        guard isForeground else { return }
         guard plannerLiveVisible, liveDataEnabled, let liveData, let snapshot = latestSnapshot else { return }
         let query = snapshot.query
         guard Self.isInLiveWindow(query.departure, now: now) else {
@@ -1084,8 +1100,9 @@ final class AppModel: ObservableObject {
         for service in journey.services {
             guard let departure = nextOccurrence(of: service.scheduledDeparture, after: cursor, calendar: calendar) else { continue }
             cursor = departure.addingTimeInterval(-1)
-            guard let row = LiveOverlay.departure(number: service.number, scheduled: departure, in: board.departures),
-                  let status = row.stationBoardLiveStatus(at: now) else { continue }
+            guard service.hasTrainNumber,
+                  let row = LiveOverlay.departure(number: service.number, scheduled: departure, in: board.departures),
+                  let status = row.stationBoardLiveStatus(at: now, timetable: departure) else { continue }
             live[service.id] = status
         }
         return live
@@ -1100,7 +1117,7 @@ final class AppModel: ObservableObject {
     private func restartResultLive() {
         resultLiveLoad?.cancel()
         resultLiveLoad = nil
-        guard plannerLiveVisible, isLiveDataActive, latestSnapshot != nil else { return }
+        guard isForeground, plannerLiveVisible, isLiveDataActive, latestSnapshot != nil else { return }
         resultLiveLoad = Task { await self.refreshResultLive() }
     }
 
@@ -1124,8 +1141,10 @@ final class AppModel: ObservableObject {
     /// The run a train detail asks about, when it leaves within the live window: its number proper
     /// and its "HH:mm" at the boarding station, from the query's time on (a board row's departure,
     /// a search's time) and never before the window (a favourite saved weeks ago means today's
-    /// run). Nil for a train without a number the sources know (a line name) or outside the window.
+    /// run). Nil for a train without a number the sources know (a line name, a route's short name)
+    /// or outside the window.
     func liveTrainKey(for service: TrainService, query: JourneyQuery, now: Date = Date()) -> LiveTrainKey? {
+        guard service.hasTrainNumber else { return nil }
         let number = NetworkReliability.numberKey(service.number)
         let digits = number.unicodeScalars.allSatisfy { ("0"..."9").contains($0) }
         let anchor = max(query.departure, now.addingTimeInterval(-Self.liveLookback))
@@ -1174,6 +1193,7 @@ final class AppModel: ObservableObject {
 
     /// The status of the run of the detail on screen (`trainLive`).
     func refreshDetailLive(now: Date = Date()) async {
+        guard isForeground else { return }
         guard liveDataEnabled, let liveData, let key = detailLiveKey else { return }
         detailLiveRequestID &+= 1
         let requestID = detailLiveRequestID
@@ -1200,7 +1220,7 @@ final class AppModel: ObservableObject {
     private func restartDetailLive() {
         detailLiveLoad?.cancel()
         detailLiveLoad = nil
-        guard isLiveDataActive, detailLiveKey != nil else { return }
+        guard isForeground, isLiveDataActive, detailLiveKey != nil else { return }
         detailLiveState = .loading
         detailLiveLoad = Task { await self.refreshDetailLive() }
     }
@@ -1245,6 +1265,7 @@ final class AppModel: ObservableObject {
     /// window, asked one train after the other through the sources' gates while «I miei treni» is
     /// on screen; each row shows its state as soon as it arrives.
     func refreshFavouritesLive(now: Date = Date()) async {
+        guard isForeground else { return }
         guard favouritesLiveVisible, liveDataEnabled, let liveData else { return }
         favouriteLiveRequestID &+= 1
         let requestID = favouriteLiveRequestID
@@ -1289,7 +1310,7 @@ final class AppModel: ObservableObject {
     private func restartFavouritesLive() {
         favouriteLiveLoad?.cancel()
         favouriteLiveLoad = nil
-        guard favouritesLiveVisible, isLiveDataActive, !favouriteTrains.isEmpty else { return }
+        guard isForeground, favouritesLiveVisible, isLiveDataActive, !favouriteTrains.isEmpty else { return }
         favouriteLiveState = .loading
         favouriteLiveLoad = Task { await self.refreshFavouritesLive() }
     }
@@ -1415,9 +1436,11 @@ final class AppModel: ObservableObject {
     }
 
     /// Whether the star of a detail is offered: a saved train can always be removed; a train is
-    /// saved only with a train number (not a line name) and the texts the timetable bounds.
+    /// saved only with a train number (not a line name nor a route's short name, which every train
+    /// of the line shares) and the texts the timetable bounds.
     func canToggleFavourite(_ service: TrainService, query: JourneyQuery) -> Bool {
         if isFavourite(service, query: query) { return true }
+        guard service.hasTrainNumber else { return false }
         return (try? FavouriteTrain(service: service, query: query, savedAt: Date())) != nil
     }
 
@@ -1429,7 +1452,8 @@ final class AppModel: ObservableObject {
         if current.contains(id: id) {
             return setFavourites(current.removing(ids: [id])) ? .removed : .failed
         }
-        guard let train = try? FavouriteTrain(service: service, query: query, savedAt: now) else { return .failed }
+        guard service.hasTrainNumber,
+              let train = try? FavouriteTrain(service: service, query: query, savedAt: now) else { return .failed }
         let updated: FavouriteTrainCollection
         do {
             updated = try current.adding(train)

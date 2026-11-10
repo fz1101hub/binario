@@ -151,7 +151,9 @@ private struct SourcePackRow: View {
                     .foregroundStyle(.secondary)
             }
             if let source {
-                Link(source.sourceURL.host() ?? source.sourceURL.absoluteString, destination: source.sourceURL)
+                // The feed's public page (licence and terms), not the archive the index was built from.
+                let page = source.landingPage ?? source.sourceURL
+                Link(page.host() ?? page.absoluteString, destination: page)
                     .font(.footnote)
             }
         }

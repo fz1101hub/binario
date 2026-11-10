@@ -79,6 +79,11 @@ public struct TrainService: Codable, Equatable, Identifiable, Sendable {
     /// GTFS bikes_allowed of the trip: true allowed, false not allowed, nil when the timetable
     /// does not say (never inferred from the category).
     public let bikesAllowed: Bool?
+    /// The number is the trip's own (GTFS trip_short_name). False when the timetable publishes
+    /// none and the row shows its route's short name or the trip's identifier instead («C3»,
+    /// «R35»): that names a line, not a train, so it is never asked to the live sources, matched
+    /// with their rows or saved in «I miei treni», where every train of the line would be one.
+    public let hasTrainNumber: Bool
 
     public init(
         id: String,
@@ -91,7 +96,8 @@ public struct TrainService: Codable, Equatable, Identifiable, Sendable {
         status: String,
         platform: String?,
         delayMinutes: Int,
-        bikesAllowed: Bool? = nil
+        bikesAllowed: Bool? = nil,
+        hasTrainNumber: Bool = true
     ) {
         self.id = id
         self.number = number
@@ -104,6 +110,7 @@ public struct TrainService: Codable, Equatable, Identifiable, Sendable {
         self.platform = platform
         self.delayMinutes = delayMinutes
         self.bikesAllowed = bikesAllowed
+        self.hasTrainNumber = hasTrainNumber
     }
 }
 
