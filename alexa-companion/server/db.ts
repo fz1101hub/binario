@@ -126,11 +126,28 @@ export async function touchExistingUserSession(userId: number): Promise<boolean>
   return Number(result[0].affectedRows) === 1;
 }
 
+/**
+ * The fields of a personal route the dashboard shows. Never `select()` the whole
+ * row: a database adopted from the historical WebDev lineage (0000-0011) may
+ * still hold columns no code writes any more (personal and accessibility notes,
+ * travel dates and times, profile, tags, checklist), and they must not reach the
+ * browser.
+ */
+export const personalRouteColumns = {
+  id: railwayRoutes.id,
+  origin: railwayRoutes.origin,
+  destination: railwayRoutes.destination,
+  name: railwayRoutes.name,
+  isPinned: railwayRoutes.isPinned,
+  createdAt: railwayRoutes.createdAt,
+  updatedAt: railwayRoutes.updatedAt,
+};
+
 export async function listPersonalRoutes(userId: number) {
   const db = await getDb();
   if (!db) throw new Error("Archivio personale non disponibile");
   return db
-    .select()
+    .select(personalRouteColumns)
     .from(railwayRoutes)
     // Routes archived in the historical WebDev dashboard stay archived: the
     // adopted 0000-0011 lineage keeps `archivedAt`, and showing those rows
@@ -150,7 +167,7 @@ export async function createPersonalRoute(
   const result = await db.insert(railwayRoutes).values(values);
   const id = Number(result[0].insertId);
   const created = await db
-    .select()
+    .select(personalRouteColumns)
     .from(railwayRoutes)
     .where(and(eq(railwayRoutes.id, id), eq(railwayRoutes.userId, userId)))
     .limit(1);

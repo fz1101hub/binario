@@ -383,8 +383,10 @@ describeDatabase("migrazioni MariaDB reali", () => {
         refreshTokenExpiresAt: new Date(Date.now() + 60_000),
       });
       expect(initialLink).toMatchObject({ userId, credentialVersion: 1 });
+      // The historical WebDev columns may still hold personal free text in an
+      // adopted database: the dashboard never receives them.
       await connection.query(
-        "INSERT INTO railway_routes (`userId`, `origin`, `destination`, `name`) VALUES (?, 'Roma', 'Milano', 'Casa — lavoro')",
+        "INSERT INTO railway_routes (`userId`, `origin`, `destination`, `name`, `travelDate`, `travelProfile`, `personalNote`, `accessibilityNote`, `personalTagsJson`) VALUES (?, 'Roma', 'Milano', 'Casa — lavoro', '2026-01-02', 'accessibility', 'nota privata', 'sedia a rotelle', '[\"lavoro\"]')",
         [userId]
       );
       // A route archived in the historical WebDev dashboard must stay hidden
@@ -396,9 +398,10 @@ describeDatabase("migrazioni MariaDB reali", () => {
       await expect(
         listPersonalRoutesForAlexa(userId, initialLink?.credentialVersion ?? 0)
       ).resolves.toEqual([expect.objectContaining({ name: "Casa — lavoro" })]);
-      await expect(listPersonalRoutes(userId)).resolves.toEqual([
-        expect.objectContaining({ name: "Casa — lavoro" }),
-      ]);
+      const listed = await listPersonalRoutes(userId);
+      expect(listed).toEqual([expect.objectContaining({ name: "Casa — lavoro", origin: "Roma", destination: "Milano" })]);
+      expect(Object.keys(listed[0]).sort()).toEqual(["createdAt", "destination", "id", "isPinned", "name", "origin", "updatedAt"]);
+      expect(JSON.stringify(listed)).not.toMatch(/nota privata|sedia a rotelle|2026-01-02|accessibility/);
 
       await createAuthorizationCode({
         userId,
