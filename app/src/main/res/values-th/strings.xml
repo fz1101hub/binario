@@ -416,6 +416,7 @@
     <string name="backup_export_success">ส่งออกข้อมูลสำรองในเครื่องแล้ว โปรดเก็บไว้ในที่ปลอดภัย</string>
     <string name="backup_export_failure">ส่งออกไม่สำเร็จ: %1$s</string>
     <string name="backup_import_failure">นำเข้าไม่สำเร็จ: %1$s</string>
+    <string name="backup_import_too_large">ข้อมูลสำรองเกินขีดจำกัด 1 MiB</string>
 
     <string name="personal_travel_title">การเดินทางและการติดตาม</string>
     <string name="personal_travel_active">การเดินทางปัจจุบัน · ขบวน %1$s</string>

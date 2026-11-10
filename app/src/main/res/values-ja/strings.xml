@@ -410,6 +410,7 @@
     <string name="backup_export_success">ローカルバックアップをエクスポートしました。安全な場所に保管してください。</string>
     <string name="backup_export_failure">エクスポートに失敗しました：%1$s</string>
     <string name="backup_import_failure">インポートに失敗しました：%1$s</string>
+    <string name="backup_import_too_large">バックアップが上限の1 MiBを超えています。</string>
     <string name="personal_travel_title">旅程とモニタリング</string>
     <string name="personal_travel_active">追跡中の旅程 · 列車 %1$s</string>
     <string name="personal_travel_next_stop">次の停車駅：%1$s、見込み %2$s</string>

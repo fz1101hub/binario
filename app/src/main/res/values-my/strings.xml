@@ -410,6 +410,7 @@
     <string name="backup_export_success">စက်တွင်း အရန်ကို ထုတ်ယူပြီးပါပြီ။ လုံခြုံသော နေရာတွင် သိမ်းထားပါ။</string>
     <string name="backup_export_failure">ထုတ်ယူ၍ မရပါ- %1$s</string>
     <string name="backup_import_failure">တင်သွင်း၍ မရပါ- %1$s</string>
+    <string name="backup_import_too_large">အရန်သည် 1 MiB ကန့်သတ်ချက်ထက် ကျော်လွန်နေသည်။</string>
     <string name="personal_travel_title">ခရီးစဉ်နှင့် စောင့်ကြည့်မှု</string>
     <string name="personal_travel_active">လက်ရှိ ခရီးစဉ် · ရထား %1$s</string>
     <string name="personal_travel_next_stop">နောက် ရပ်နားဘူတာ- %1$s၊ ခန့်မှန်း %2$s</string>
