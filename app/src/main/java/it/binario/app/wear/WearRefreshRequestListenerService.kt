@@ -20,12 +20,15 @@ import it.binario.app.IntegrationSettingsStore
  * cancelled, as soon as the message is delivered.
  */
 class WearRefreshRequestListenerService : WearableListenerService() {
-    private val requestGate = WearRefreshRequestGate()
-
     override fun onMessageReceived(messageEvent: MessageEvent) {
         if (!requestGate.accepts(messageEvent.path, messageEvent.sourceNodeId)) return
         if (!IntegrationSettingsStore(applicationContext).read().wearSnapshotSharingEnabled) return
         WearRefreshWorker.enqueue(applicationContext)
+    }
+
+    private companion object {
+        /** Process-wide: Play services binds a new listener for a delivery, which would reset a per-instance limit. */
+        val requestGate = WearRefreshRequestGate()
     }
 }
 

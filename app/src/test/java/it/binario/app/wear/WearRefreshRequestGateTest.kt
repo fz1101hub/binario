@@ -1,5 +1,7 @@
 package it.binario.app.wear
 
+import java.lang.reflect.Modifier
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -20,6 +22,15 @@ class WearRefreshRequestGateTest {
         assertFalse(WearRefreshWorker.runsExpedited(30))
         assertTrue(WearRefreshWorker.runsExpedited(31))
         assertTrue(WearRefreshWorker.runsExpedited(36))
+    }
+
+    @Test
+    fun `the per-node limit outlives a listener instance`() {
+        // Play services binds a new WearRefreshRequestListenerService for a delivery: the gate must not be per instance.
+        val gates = WearRefreshRequestListenerService::class.java.declaredFields.filter { it.type == WearRefreshRequestGate::class.java }
+
+        assertEquals(1, gates.size)
+        assertTrue(Modifier.isStatic(gates.single().modifiers))
     }
 
     @Test
