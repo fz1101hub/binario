@@ -14,7 +14,7 @@
     <string name="tile_service_details">%1$s · %2$s · %3$s</string>
     <string name="status_programmed">예정 시각</string>
     <string name="status_live_as_of">%1$s 기준 데이터</string>
-    <string name="status_updating">데이터 업데이트 중</string>
+    <string name="status_not_recent_as_of">최신이 아닌 데이터(%1$s 기준)</string>
     <string name="status_local_snapshot">마지막 로컬 스냅샷</string>
     <string name="status_live_unavailable">실시간 데이터를 이용할 수 없음</string>
     <string name="accessibility_data_status">데이터 상태: %1$s</string>

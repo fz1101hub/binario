@@ -51,6 +51,14 @@ class WearMainActivityTest {
     }
 
     @Test
+    fun `the status names the source of the data the phone sent`() {
+        val source = activitySource()
+        val statusItem = source.substring(source.indexOf("val status = snapshot.dataStatus()"), source.indexOf("itemsIndexed("))
+
+        assertTrue(statusItem.contains("snapshot.provider"))
+    }
+
+    @Test
     fun `service rows are plain containers with one spoken label, not clickable cards without an action`() {
         val source = activitySource()
 

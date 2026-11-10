@@ -14,7 +14,7 @@
     <string name="tile_service_details">%1$s · %2$s · %3$s</string>
     <string name="status_programmed">Geplanter Fahrplan</string>
     <string name="status_live_as_of">Daten von %1$s Uhr</string>
-    <string name="status_updating">Daten werden aktualisiert</string>
+    <string name="status_not_recent_as_of">Daten nicht aktuell, Stand %1$s Uhr</string>
     <string name="status_local_snapshot">Letzter lokaler Snapshot</string>
     <string name="status_live_unavailable">Echtzeitdaten nicht verfügbar</string>
     <string name="accessibility_data_status">Datenstatus: %1$s</string>

@@ -14,7 +14,7 @@
     <string name="tile_service_details">%1$s · %2$s · %3$s</string>
     <string name="status_programmed">အချိန်ဇယားပါ အချိန်</string>
     <string name="status_live_as_of">%1$s တွင် အပ်ဒိတ်လုပ်ထားသော ဒေတာ</string>
-    <string name="status_updating">ဒေတာ အပ်ဒိတ်လုပ်နေသည်</string>
+    <string name="status_not_recent_as_of">နောက်ဆုံးမဟုတ်သော ဒေတာ၊ %1$s အချိန်က</string>
     <string name="status_local_snapshot">နောက်ဆုံး စက်တွင်း snapshot</string>
     <string name="status_live_unavailable">အချိန်နှင့်တပြေးညီ ဒေတာ မရနိုင်ပါ</string>
     <string name="accessibility_data_status">ဒေတာ အခြေအနေ- %1$s</string>

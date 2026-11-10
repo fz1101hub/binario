@@ -14,7 +14,7 @@
     <string name="tile_service_details">%1$s · %2$s · %3$s</string>
     <string name="status_programmed">الموعد المجدول</string>
     <string name="status_live_as_of">البيانات محدّثة في %1$s</string>
-    <string name="status_updating">البيانات قيد التحديث</string>
+    <string name="status_not_recent_as_of">بيانات غير حديثة، رُصدت في %1$s</string>
     <string name="status_local_snapshot">آخر لقطة محلية</string>
     <string name="status_live_unavailable">البيانات المباشرة غير متاحة</string>
     <string name="accessibility_data_status">حالة البيانات: %1$s</string>

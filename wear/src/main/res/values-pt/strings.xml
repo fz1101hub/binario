@@ -14,7 +14,7 @@
     <string name="tile_service_details">%1$s · %2$s · %3$s</string>
     <string name="status_programmed">Horário programado</string>
     <string name="status_live_as_of">Dados atualizados às %1$s</string>
-    <string name="status_updating">Dados em atualização</string>
+    <string name="status_not_recent_as_of">Dados não recentes, das %1$s</string>
     <string name="status_local_snapshot">Último snapshot local</string>
     <string name="status_live_unavailable">Dados em tempo real indisponíveis</string>
     <string name="accessibility_data_status">Status dos dados: %1$s</string>

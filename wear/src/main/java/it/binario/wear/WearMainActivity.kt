@@ -13,6 +13,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
@@ -107,7 +108,11 @@ private fun WearHome(snapshot: WearSnapshot?, phoneApp: WearPhoneAppPresence, fe
                     val status = snapshot.dataStatus()
                     val dataStatus = stringResource(status.id, *status.args.toTypedArray())
                     val statusDescription = stringResource(R.string.accessibility_data_status, dataStatus)
-                    Text(dataStatus, style = MaterialTheme.typography.labelMedium, textAlign = TextAlign.Center, modifier = Modifier.semantics { contentDescription = statusDescription })
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(dataStatus, style = MaterialTheme.typography.labelMedium, textAlign = TextAlign.Center, modifier = Modifier.semantics { contentDescription = statusDescription })
+                        // Where the phone took the data from («Fonte primaria dell’operatore», the timetable…), in the phone's language.
+                        Text(snapshot.provider, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
+                    }
                 }
                 itemsIndexed(
                     items = snapshot.services,

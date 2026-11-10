@@ -14,7 +14,7 @@
     <string name="tile_service_details">%1$s · %2$s · %3$s</string>
     <string name="status_programmed">Planlanan tarife</string>
     <string name="status_live_as_of">Veriler %1$s itibarıyla güncel</string>
-    <string name="status_updating">Veriler güncelleniyor</string>
+    <string name="status_not_recent_as_of">Veriler güncel değil, saat %1$s</string>
     <string name="status_local_snapshot">Son yerel anlık görüntü</string>
     <string name="status_live_unavailable">Gerçek zamanlı veri yok</string>
     <string name="accessibility_data_status">Veri durumu: %1$s</string>

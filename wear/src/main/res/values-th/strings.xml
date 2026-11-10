@@ -14,7 +14,7 @@
     <string name="tile_service_details">%1$s · %2$s · %3$s</string>
     <string name="status_programmed">ตารางเวลาตามแผน</string>
     <string name="status_live_as_of">ข้อมูลอัปเดตเมื่อ %1$s</string>
-    <string name="status_updating">กำลังอัปเดตข้อมูล</string>
+    <string name="status_not_recent_as_of">ข้อมูลไม่ใหม่ ณ %1$s</string>
     <string name="status_local_snapshot">ภาพรวมล่าสุดในเครื่อง</string>
     <string name="status_live_unavailable">ไม่มีข้อมูลเรียลไทม์</string>
     <string name="accessibility_data_status">สถานะข้อมูล: %1$s</string>

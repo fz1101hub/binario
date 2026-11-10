@@ -14,7 +14,7 @@
     <string name="tile_service_details">%1$s · %2$s · %3$s</string>
     <string name="status_programmed">Lịch theo kế hoạch</string>
     <string name="status_live_as_of">Dữ liệu cập nhật lúc %1$s</string>
-    <string name="status_updating">Dữ liệu đang cập nhật</string>
+    <string name="status_not_recent_as_of">Dữ liệu không mới, lúc %1$s</string>
     <string name="status_local_snapshot">Ảnh chụp nhanh cục bộ gần nhất</string>
     <string name="status_live_unavailable">Không có dữ liệu thời gian thực</string>
     <string name="accessibility_data_status">Trạng thái dữ liệu: %1$s</string>

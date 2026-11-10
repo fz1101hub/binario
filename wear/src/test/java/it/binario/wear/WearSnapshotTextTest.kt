@@ -21,6 +21,11 @@ class WearSnapshotTextTest {
         assertEquals("status_live_as_of(08:12)", ResourceNameStrings.string(live.dataStatus()))
         assertEquals(WearText(R.string.status_programmed), snapshot(WearOperationalState.PROGRAMMED, WearFreshness.FRESH).dataStatus())
         assertEquals(WearText(R.string.status_live_unavailable), snapshot(WearOperationalState.UNAVAILABLE, WearFreshness.UNAVAILABLE).dataStatus())
+        // Live data without a recent observation are not "updating": they say how old they are.
+        assertEquals(
+            WearText(R.string.status_not_recent_as_of, listOf("08:12")),
+            snapshot(WearOperationalState.OPERATIONAL, WearFreshness.AGING).dataStatus(),
+        )
         // The time is the rail clock (Europe/Rome), like the departures, also in summer.
         assertEquals("09:12", railClockTime(1_909_120_320_000L))
     }

@@ -33,13 +33,14 @@ internal fun railClockTime(epochMillis: Long): String = RAIL_CLOCK.format(Instan
 
 /**
  * The data status line. The watch keeps a snapshot for up to fifteen minutes, so live values name
- * the time the phone's source observed them instead of reading as current for that long.
+ * the time the phone's source observed them instead of reading as current for that long; data the
+ * phone already marked as not recent say so, rather than "updating" while nothing updates.
  */
 internal fun WearSnapshot.dataStatus(): WearText = when (operationalState) {
     WearOperationalState.PROGRAMMED -> WearText(R.string.status_programmed)
     WearOperationalState.OPERATIONAL -> when (freshness) {
         WearFreshness.FRESH -> WearText(R.string.status_live_as_of, listOf(railClockTime(provenance.observedAtEpochMillis)))
-        WearFreshness.AGING -> WearText(R.string.status_updating)
+        WearFreshness.AGING -> WearText(R.string.status_not_recent_as_of, listOf(railClockTime(provenance.observedAtEpochMillis)))
         WearFreshness.STALE -> WearText(R.string.status_local_snapshot)
         WearFreshness.UNAVAILABLE, WearFreshness.UNKNOWN -> WearText(R.string.status_live_unavailable)
     }
