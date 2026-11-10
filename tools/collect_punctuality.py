@@ -17,7 +17,9 @@ container cannot reach viaggiatreno.it).  Each run:
    otherwise ``S`` + the last five digits of an ``8300xxxxx`` code, each confirmed by position or name;
 2. asks ``andamentoTreno/{origin}/{number}/{midnight}`` once per train (midnight = local midnight of the departure
    day, epoch milliseconds), at most ``--rate`` requests per second (2 by default and at most), within
-   ``--max-requests`` and ``--deadline-seconds``, stopping after 20 consecutive failures or at once on HTTP 403/429,
+   ``--max-requests`` and ``--deadline-seconds``, stopping after 20 consecutive failures or at once on a refusal
+   (HTTP 403/429, or 503 with ``Retry-After``: kept in ``refusal.json``, the following runs send nothing for 2 h, then
+   4, 8... up to 7 days, or the ``Retry-After`` when longer; the first answer ends the pause; exit status 3),
    and when more than 40 of the last 50 answers are unknown or of another identity (a changed path, a soft block, a
    new day convention): those trains go back to pending unrecorded and the run exits with status 3;
 3. keeps per stop the ViaggiaTreno station code, the delay in whole minutes (actual minus scheduled time, truncated
@@ -32,9 +34,9 @@ container cannot reach viaggiatreno.it).  Each run:
    ``unknown``; a train left for a later run by the limits stays pending while ViaggiaTreno still answers about it; a train ViaggiaTreno does not know (HTTP 204/404, ``null``) or whose identity differs (number, origin,
    day) is recorded as ``missing``/``mismatch`` and not asked again;
 4. writes the state directory (``--state``): ``obs-YYYY-MM-DD.jsonl.gz`` (one compact JSON line per train and
-   departure day, deduplicated by day, origin and number) and ``pending.jsonl.gz``, gzip with a fixed header, written
-   atomically, observations older than 35 days removed.  A run is resumable and idempotent: a train already known is
-   never asked again.
+   departure day, deduplicated by day, origin and number) and ``pending.jsonl.gz``, gzip with a fixed header, and the
+   last refusal ``refusal.json``, all written atomically, observations older than 35 days removed.  A run is
+   resumable and idempotent: a train already known is never asked again.
 
 Every response is untrusted: size cap, strict UTF-8 JSON (no NaN, no duplicate keys), identity and value bounds; only
 derived numbers are kept, nothing is executed, and the log and ``--summary`` show counts only, never a payload.
@@ -46,6 +48,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import email.utils
 import gzip
 import http.client
 import io
@@ -98,6 +101,12 @@ MAX_BAD_ANSWERS = 40
 # Exit status of a run that saved its state but stopped on a refusal or on implausible answers: the job fails, the
 # state (with the trains put back and the refusal) is still saved by the workflow.
 EXIT_STOPPED = 3
+# A refusal (HTTP 403 or 429, or 503 with Retry-After) is kept in the state: the following runs send nothing for
+# BACKOFF_BASE, doubled at each refusal in a row (or the Retry-After when longer), at most MAX_PAUSE; an answer ends it.
+BACKOFF_BASE = timedelta(hours=2)
+MAX_PAUSE = timedelta(days=7)
+REFUSAL_FILE = "refusal.json"
+REFUSAL_REASON = re.compile(r"http-(?:403|429|503)")
 MAX_RESPONSE_BYTES = 1024 * 1024
 MAX_REDIRECTS = 3
 MAX_STOPS = 400
@@ -607,8 +616,27 @@ def load_observations(directory: Path, day: str, counters: dict[str, int]) -> di
     return records
 
 
+def read_refusal(path: Path) -> dict[str, Any] | None:
+    """The refusal kept by an earlier run (``{"since", "until", "count", "reason"}``), ``None`` without one.  A record
+    that is not exactly what this tool writes stops the collector: ignoring it could ask a source that refused."""
+    if not path.is_file():
+        return None
+    try:
+        record = json.loads(path.read_text(encoding="ascii"), parse_constant=_reject_constant)
+    except (OSError, ValueError, RecursionError) as error:
+        raise CollectorError(f"{REFUSAL_FILE} non leggibile: rimuoverlo solo dopo aver verificato la fonte") from error
+    if (
+        not isinstance(record, dict) or set(record) != {"since", "until", "count", "reason"}
+        or not all(_is_int(record[key]) for key in ("since", "until", "count"))
+        or not 0 < record["count"] <= 1000 or not 0 <= record["since"] <= record["until"]
+        or not isinstance(record["reason"], str) or not REFUSAL_REASON.fullmatch(record["reason"])
+    ):
+        raise CollectorError(f"{REFUSAL_FILE} non valido: rimuoverlo solo dopo aver verificato la fonte")
+    return record
+
+
 class State:
-    """Observations (one file per departure day) and pending trains in ``directory``."""
+    """Observations (one file per departure day), pending trains and the last refusal in ``directory``."""
 
     def __init__(self, directory: Path):
         self.directory = directory
@@ -617,6 +645,7 @@ class State:
         self.dirty: set[str] = set()
         self.pending: dict[tuple[str, str, str], dict[str, Any]] = {}
         directory.mkdir(parents=True, exist_ok=True)
+        self.refusal = read_refusal(directory / REFUSAL_FILE)
         pending_path = directory / PENDING_FILE
         if pending_path.is_file():
             for entry in read_lines(pending_path, self.counters):
@@ -656,6 +685,10 @@ class State:
         self.dirty.clear()
         pending = [encode(self.pending[key]) for key in sorted(self.pending)]
         _write_atomic(self.directory / PENDING_FILE, _gzip_lines(pending))
+        if self.refusal is not None:
+            _write_atomic(self.directory / REFUSAL_FILE, (encode(self.refusal) + "\n").encode("ascii"))
+        else:
+            (self.directory / REFUSAL_FILE).unlink(missing_ok=True)
         for day, path in observation_files(self.directory).items():
             if day < cutoff:
                 path.unlink()
@@ -670,6 +703,26 @@ class FetchResult:
     kind: str  # "ok", "missing", "failure", "refused"
     body: bytes = b""
     reason: str = ""  # fixed label, never text from the response
+    retry_after: float | None = None  # seconds asked by a refusal (Retry-After), at most MAX_PAUSE
+
+
+def retry_after_seconds(value: str | None, now: float) -> float | None:
+    """``Retry-After`` (delay in seconds or HTTP date) as seconds from ``now``, at most MAX_PAUSE; ``None`` if absent or
+    not readable."""
+    if value is None:
+        return None
+    text = value.strip()
+    if re.fullmatch(r"[0-9]{1,12}", text):
+        seconds = float(text)
+    else:
+        try:
+            moment = email.utils.parsedate_to_datetime(text)
+        except (TypeError, ValueError, IndexError):
+            return None
+        if moment is None or moment.tzinfo is None:
+            return None
+        seconds = max(0.0, moment.timestamp() - now)
+    return min(seconds, MAX_PAUSE.total_seconds())
 
 
 class _NoRedirect(urllib.request.HTTPRedirectHandler):
@@ -776,8 +829,10 @@ class HttpFetcher:
                     continue
                 if status == 404:
                     return FetchResult("missing", reason="http-404")
-                if status in (403, 429):
-                    return FetchResult("refused", reason=f"http-{status}")
+                retry_after = retry_after_seconds(error.headers.get("Retry-After") if error.headers else None, time.time())
+                # An overloaded source that names a delay (503 with Retry-After) is a refusal like 429.
+                if status in (403, 429) or (status == 503 and retry_after is not None):
+                    return FetchResult("refused", reason=f"http-{status}", retry_after=retry_after)
                 return FetchResult("failure", reason=f"http-{status}")
             except TimeoutError:
                 return FetchResult("failure", reason="timeout")
@@ -1012,6 +1067,13 @@ def collect(
         state.pending[due.key] = pending_entry(due, attempts + 1)
         report.add("errori")
 
+    if state.refusal is not None and moment < state.refusal["until"]:
+        # Refused by an earlier run: nothing is sent until the pause ends; the trains wait as pending.
+        until = datetime.fromtimestamp(state.refusal["until"], timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+        defer(queue, f"in pausa dopo un rifiuto ({state.refusal['reason']}) fino al {until}")
+        report.add("in_sospeso_dopo", len(state.pending))
+        return report
+
     for position, (due, attempts) in enumerate(queue):
         if issued() >= max_requests:
             defer(queue[position:], "limite --max-requests")
@@ -1028,9 +1090,17 @@ def collect(
             consecutive += 1
             failed(due, attempts, result.reason)
             if result.kind == "refused":
-                defer(queue[position + 1:], f"fonte che rifiuta le richieste ({result.reason})")
+                count = (state.refusal["count"] if state.refusal is not None else 0) + 1
+                pause = min(MAX_PAUSE.total_seconds(),
+                            max(BACKOFF_BASE.total_seconds() * 2 ** min(count - 1, 20), result.retry_after or 0.0))
+                state.refusal = {"since": moment, "until": moment + int(pause), "count": count, "reason": result.reason}
+                report.stopped_abnormally = True
+                defer(queue[position + 1:], f"fonte che rifiuta le richieste ({result.reason}): pausa di "
+                                            f"{pause / 3600:.0f} h, rifiuto {count} di fila")
                 break
             continue
+        if result.kind in ("ok", "missing"):
+            state.refusal = None  # the source answers again: the back-off ends
         if result.kind == "missing":
             observation = Observation("missing")
         else:

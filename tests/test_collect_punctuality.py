@@ -690,6 +690,56 @@ class CollectTest(Base):
         self.assertEqual(1, len(refused.paths))
         self.assertIn("http-429", report.stop_reason)
         self.assertEqual(7, len(state.pending))
+        self.assertTrue(report.stopped_abnormally)
+
+    def test_a_refusal_pauses_the_following_runs_with_a_growing_back_off(self) -> None:
+        hour = 3600
+        start = int(NOW.timestamp())
+        self.collect(Answers(lambda _: collector.FetchResult("refused", reason="http-403")))
+        self.assertEqual({"since": start, "until": start + 2 * hour, "count": 1, "reason": "http-403"},
+                         collector.State(self.temp / "state").refusal)
+        # The hourly runs within the pause send nothing; their trains wait as pending; the job is not failed again.
+        paused = Answers(self.answer_all)
+        state, report = self.collect(paused, NOW + timedelta(hours=1))
+        self.assertEqual([], paused.paths)
+        self.assertIn("in pausa", report.stop_reason)
+        self.assertFalse(report.stopped_abnormally)
+        self.assertEqual(7, len(state.pending))
+        # Refused again after the pause: twice as long, or the Retry-After if longer.
+        self.collect(Answers(lambda _: collector.FetchResult("refused", reason="http-429")), NOW + timedelta(hours=2))
+        self.assertEqual((2, start + 2 * hour + 4 * hour), (collector.State(self.temp / "state").refusal["count"],
+                                                            collector.State(self.temp / "state").refusal["until"]))
+        self.collect(Answers(lambda _: collector.FetchResult("refused", reason="http-503", retry_after=30 * hour)),
+                     NOW + timedelta(hours=6))
+        self.assertEqual(start + 6 * hour + 30 * hour, collector.State(self.temp / "state").refusal["until"])
+        # Never longer than a week; an answer ends the back-off.
+        def after_pause() -> datetime:
+            """The first 13:00 in Rome (trains are due then) after the pause."""
+            until = datetime.fromtimestamp(collector.State(self.temp / "state").refusal["until"], timezone.utc)
+            noon = until.replace(hour=12, minute=0, second=0)
+            return noon if noon >= until else noon + timedelta(days=1)
+
+        pauses = []
+        for _ in range(4, 12):
+            moment = after_pause()
+            self.collect(Answers(lambda _: collector.FetchResult("refused", reason="http-429")), moment)
+            pauses.append((collector.State(self.temp / "state").refusal["until"] - int(moment.timestamp())) // hour)
+        self.assertEqual([16, 32, 64, 128, 168, 168, 168, 168], pauses)
+        answered = Answers(self.answer_all)
+        self.collect(answered, after_pause())
+        self.assertTrue(answered.paths)
+        self.assertIsNone(collector.State(self.temp / "state").refusal)
+        self.assertFalse((self.temp / "state" / collector.REFUSAL_FILE).exists())
+
+    def test_a_damaged_refusal_record_stops_the_collector_before_any_request(self) -> None:
+        directory = self.temp / "state"
+        directory.mkdir()
+        for content in ("{", '{"since": 1, "until": 2, "count": 1, "reason": "free text"}', "[]",
+                        '{"since": 1, "until": 2, "count": 0, "reason": "http-429"}'):
+            with self.subTest(content=content):
+                (directory / collector.REFUSAL_FILE).write_text(content, encoding="utf-8")
+                with self.assertRaises(collector.CollectorError):
+                    collector.State(directory)
 
     def test_request_budget_and_deadline(self) -> None:
         answers = Answers(self.answer_all)
@@ -754,6 +804,7 @@ class HttpFetcherTest(unittest.TestCase):
         results = [self.fetcher.fetch(self.path(number)) for number in ("2001", "2003", "2005", "2007", "2009", "2011", "2013", "2001")]
         self.assertEqual(["ok", "failure", "failure", "missing", "refused", "ok", "missing", "ok"], [result.kind for result in results])
         self.assertEqual(["", "troppo-grande", "http-503", "http-404", "http-429", "", "http-204", ""], [result.reason for result in results])
+        self.assertIsNone(results[4].retry_after)
         self.assertEqual(run(), json.loads(results[0].body))
         self.assertEqual([0.5] * 7, self.slept)  # 2 requests per second, never faster
         for _, headers in self.server.requests:
@@ -762,6 +813,19 @@ class HttpFetcherTest(unittest.TestCase):
         self.assertEqual(8, self.fetcher.requests)
         with self.assertRaises(collector.CollectorError):
             collector.HttpFetcher(rate=3)
+
+    def test_retry_after_is_read_and_a_503_with_it_is_a_refusal(self) -> None:
+        self.server.answer(due(number="2001"), b"", status=429, headers={"Retry-After": "120"})
+        self.server.answer(due(number="2003"), b"", status=503, headers={"Retry-After": "3600"})
+        self.server.answer(due(number="2005"), b"", status=403, headers={"Retry-After": "Wed, 04 Nov 2026 14:00:00 GMT"})
+        self.server.answer(due(number="2007"), b"", status=503, headers={"Retry-After": "soon"})
+        self.server.answer(due(number="2009"), b"", status=429, headers={"Retry-After": "99999999999"})
+        with mock.patch.object(collector.time, "time", return_value=NOW.timestamp()):
+            results = [self.fetcher.fetch(self.path(number)) for number in ("2001", "2003", "2005", "2007", "2009")]
+        self.assertEqual(["refused", "refused", "refused", "failure", "refused"], [result.kind for result in results])
+        self.assertEqual(["http-429", "http-503", "http-403", "http-503", "http-429"], [result.reason for result in results])
+        self.assertEqual([120, 3600, 7200, None, collector.MAX_PAUSE.total_seconds()],
+                         [result.retry_after for result in results])
 
     def test_user_agent_names_binario_and_carries_no_address(self) -> None:
         # The form with a URL was refused (HTTP 403) by ViaggiaTreno; the identity must stay honest.
