@@ -1,5 +1,13 @@
 # Changelog
 
+## In sviluppo — Dati in tempo reale su iPhone: il nucleo
+
+- **Dati in tempo reale su iPhone, prima parte**: l'iPhone sa chiedere lo stato di un treno per numero e le partenze di una stazione alle stesse fonti pubbliche di Android e nello stesso ordine: ViaggiaTreno e Italo per il numero, monitor RFI, Italo e ViaggiaTreno per le partenze. Ogni dato prende la fonte migliore, come su Android: RFI per il binario, l'operatore del treno per ritardo e soppressione. L'orario incluso nell'app resta la riserva.
+  - Valgono le regole di Android: un ritardo conta solo con una rilevazione degli ultimi 5 minuti, «RITARDO» senza minuti resta in ritardo senza orario previsto, una fermata soppressa rende il treno parzialmente soppresso.
+  - Solo HTTPS, con un User-Agent onesto di Binario per iPhone, senza cookie né cache; l'unico passaggio in chiaro è quello che ViaggiaTreno impone sul proprio dominio, lo stesso permesso su Android.
+  - Una richiesta per risorsa ogni 30 secondi (20 per RFI); al primo rifiuto la fonte va in pausa almeno un minuto, o per il tempo che chiede, e non viene richiesta prima.
+- **Ancora nessuna richiesta di rete**: le schermate useranno questi dati nel passo successivo, con l'informativa privacy aggiornata.
+
 ## In sviluppo — «I miei treni» pieno non cancella più nulla su Android
 
 - **Android, «I miei treni»**: con 12 treni già salvati, il cuore del dettaglio non elimina più in silenzio il più vecchio, nome personalizzato compreso. Il treno non viene aggiunto e un avviso dice «Puoi salvare al massimo 12 treni.», come su iPhone. Il cuore toglie sempre un treno già salvato, anche con la lista piena, e la richiesta del nome personalizzato compare solo quando un treno viene davvero aggiunto.
