@@ -846,6 +846,7 @@
     <!-- Texts carried verbatim in the Wear payload. -->
     <string name="wear_payload_value_unavailable">उपलब्ध नहीं</string>
     <string name="wear_notice_cancelled">रद्द: %1$s, %2$s बजे</string>
+    <string name="wear_operator_other">अन्य ऑपरेटर</string>
     <plurals name="search_results_count">
         <item quantity="one">%d परिणाम</item>
         <item quantity="other">%d परिणाम</item>

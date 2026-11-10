@@ -914,6 +914,7 @@
     <!-- Texts carried verbatim in the Wear payload. -->
     <string name="wear_payload_value_unavailable">غير متاح</string>
     <string name="wear_notice_cancelled">ملغى: %1$s في %2$s</string>
+    <string name="wear_operator_other">مشغّل آخر</string>
     <plurals name="search_results_count">
         <item quantity="zero">%d نتيجة</item>
         <item quantity="one">%d نتيجة</item>

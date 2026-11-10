@@ -829,6 +829,7 @@
     <!-- Texts carried verbatim in the Wear payload. -->
     <string name="wear_payload_value_unavailable">정보 없음</string>
     <string name="wear_notice_cancelled">운행 취소: %2$s %1$s</string>
+    <string name="wear_operator_other">기타 운영사</string>
     <plurals name="search_results_count">
         <item quantity="other">결과 %d개</item>
     </plurals>

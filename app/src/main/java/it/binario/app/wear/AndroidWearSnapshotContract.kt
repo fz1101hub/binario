@@ -5,6 +5,7 @@ import it.binario.app.R
 import it.binario.app.UiMessageKey
 import it.binario.app.advisoryMessage
 import it.binario.app.data.DataConfidence
+import it.binario.app.data.RailOperator
 import it.binario.app.data.RouteSnapshot
 import it.binario.app.data.ServiceStatus
 import it.binario.app.data.SnapshotWarning
@@ -33,7 +34,9 @@ internal data class WearSnapshotStrings(
     val unavailableNotice: String,
     val missingValue: String,
     /** «Soppresso: %1$s delle %2$s»: train number and scheduled time of a cancellation left out of the services. */
-    val cancelledNotice: String
+    val cancelledNotice: String,
+    /** The operator of a train whose source names none and whose legacy enum is the generic «other». */
+    val otherOperator: String
 ) {
     companion object {
         /** The advisories RouteSnapshot.advisoryMessage() can raise; the watch shows them as the notice. */
@@ -48,7 +51,8 @@ internal data class WearSnapshotStrings(
             scheduledStatus = resources.getString(R.string.service_status_scheduled_badge),
             unavailableNotice = resources.getString(R.string.data_status_unavailable),
             missingValue = resources.getString(R.string.wear_payload_value_unavailable),
-            cancelledNotice = resources.getString(R.string.wear_notice_cancelled)
+            cancelledNotice = resources.getString(R.string.wear_notice_cancelled),
+            otherOperator = resources.getString(R.string.wear_operator_other)
         )
     }
 }
@@ -104,7 +108,7 @@ internal object AndroidWearSnapshotContract {
             put("serviceCount", services.size)
             services.forEachIndexed { index, service ->
                 put("service${index}Number", required(service.number, 24, strings.missingValue))
-                put("service${index}Operator", required(service.operator.accessibleLabel, 64, strings.missingValue))
+                put("service${index}Operator", required(operatorLabel(service, strings), 64, strings.missingValue))
                 put("service${index}Category", required(strings.categoryLabels.getValue(service.trainCategory), 64, strings.missingValue))
                 put("service${index}Destination", required(service.destination, 96, strings.missingValue))
                 put("service${index}Scheduled", required(service.scheduledDeparture, 16, strings.missingValue))
@@ -168,6 +172,14 @@ internal object AndroidWearSnapshotContract {
         connectedNodes.isNotEmpty() && capableNodes.containsAll(connectedNodes)
 
     private const val MAX_RELIABILITY_SAMPLES = 10_000
+
+    /**
+     * The operator as the phone names it ([TrainService.accessibleOperator]: the GTFS agency or the source's brand,
+     * else the legacy enum's name), with the generic «other operator» in the phone language instead of the Italian label.
+     */
+    private fun operatorLabel(service: TrainService, strings: WearSnapshotStrings): String =
+        service.operatorDisplayName?.takeIf(String::isNotBlank)
+            ?: if (service.operator == RailOperator.OTHER) strings.otherOperator else service.operator.accessibleLabel
 
     /** A cancellation the source confirmed; such a train is never sent as one of the two services. */
     private fun confirmedCancelled(service: TrainService): Boolean =

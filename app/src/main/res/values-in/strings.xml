@@ -829,6 +829,7 @@
     <!-- Texts carried verbatim in the Wear payload. -->
     <string name="wear_payload_value_unavailable">Tidak tersedia</string>
     <string name="wear_notice_cancelled">Dibatalkan: %1$s pukul %2$s</string>
+    <string name="wear_operator_other">Operator lain</string>
     <plurals name="search_results_count">
         <item quantity="other">%d hasil</item>
     </plurals>
