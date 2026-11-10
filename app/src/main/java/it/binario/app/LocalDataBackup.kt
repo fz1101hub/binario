@@ -36,6 +36,9 @@ data class LocalDataBackup(
     val travelPreferences: JourneyPreferences? = null
 )
 
+/** The file chosen for an import is larger than [LocalDataBackupCodec.MAX_BYTES]; the screen names it in the app language. */
+class BackupTooLargeException : IllegalArgumentException("backup larger than ${LocalDataBackupCodec.MAX_BYTES} bytes")
+
 sealed interface LocalBackupResult {
     data class Success(val backup: LocalDataBackup) : LocalBackupResult
     data class Failure(val message: String) : LocalBackupResult
@@ -88,12 +91,16 @@ object LocalDataBackupCodec {
                 val count = stream.read(buffer)
                 if (count < 0) break
                 total += count
-                require(total <= MAX_BYTES) { "Il backup supera il limite di 1 MiB." }
+                if (total > MAX_BYTES) throw BackupTooLargeException()
                 output.write(buffer, 0, count)
             }
         }
         return String(output.toByteArray(), Charsets.UTF_8)
     }
+
+    /** The reason shown after "Importazione non riuscita": a known failure in the app language, else the error's own message. */
+    fun importFailureReason(error: Throwable, text: (Int) -> String): String =
+        if (error is BackupTooLargeException) text(R.string.backup_import_too_large) else error.message ?: text(R.string.backup_file_error)
 
     fun decode(raw: String, stations: List<Station>): LocalBackupResult = runCatching {
         require(raw.toByteArray(Charsets.UTF_8).size <= MAX_BYTES) { "Il backup supera il limite di 1 MiB." }

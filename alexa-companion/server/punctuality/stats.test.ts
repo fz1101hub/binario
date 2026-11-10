@@ -279,9 +279,9 @@ describe("most punctual departures", () => {
   it("keeps the trains leaving the origin in the next three hours with five arrivals or more, best first, three at most", () => {
     const result = mostPunctualDepartures(departures(), [ROMA_TERMINI], [TIVOLI], clockAt(7, 30));
     expect(result).toEqual([
-      { number: "2157", minuteOfDay: 492, minutesUntil: 42, samples: 10, onTime: 9, tenths: 9, percent: 90, limitMinutes: 15, meanDelayMinutes: 5 },
-      { number: "2161", minuteOfDay: 552, minutesUntil: 102, samples: 10, onTime: 8, tenths: 8, percent: 80, limitMinutes: 15, meanDelayMinutes: 7 },
-      { number: "2165", minuteOfDay: 612, minutesUntil: 162, samples: 10, onTime: 7, tenths: 7, percent: 70, limitMinutes: 15, meanDelayMinutes: 10 },
+      { number: "2157", minuteOfDay: 492, minutesUntil: 42, samples: 30, onTime: 27, tenths: 9, percent: 90, limitMinutes: 15, meanDelayMinutes: 5 },
+      { number: "2161", minuteOfDay: 552, minutesUntil: 102, samples: 30, onTime: 24, tenths: 8, percent: 80, limitMinutes: 15, meanDelayMinutes: 7 },
+      { number: "2165", minuteOfDay: 612, minutesUntil: 162, samples: 30, onTime: 21, tenths: 7, percent: 70, limitMinutes: 15, meanDelayMinutes: 10 },
     ]);
     expect(numbers(mostPunctualDepartures(departures(), [ROMA_TERMINI], [TIVOLI], clockAt(7, 30), 10))).toEqual(["2157", "2161", "2165", "2169"]);
   });
@@ -314,7 +314,7 @@ describe("most punctual departures", () => {
   it("leaves out trains without a scheduled minute at the origin and below five arrivals at the destination", () => {
     const stats = parsePunctualityStats(
       statsDocument([
-        departure("none", "REG", null, arrivals(30, 30)),
+        departure("none", "REG", null, arrivals(5, 5)),
         departure("four", "REG", 500, arrivals(4, 4)),
         departure("five", "REG", 500, arrivals(5, 1)),
         // Scheduled minutes only at the destination: the departure is unknown.
@@ -327,13 +327,14 @@ describe("most punctual departures", () => {
   it("ranks by on-time share in exact integers, then mean delay, then the earlier departure", () => {
     const stats = parsePunctualityStats(
       statsDocument([
+        // All observed on the same 20 days, with arrivals at Tivoli measured on some of them.
         // 7 of 10 and 14 of 20: the same share; the mean delay decides, then the departure.
-        departure("later-same", "REG", 560, [...Array(14).fill(2), ...Array(6).fill(40)]),
-        departure("earlier-same", "REG", 520, [...Array(7).fill(2), ...Array(3).fill(40)]),
-        departure("lower-mean", "REG", 590, [...Array(7).fill(0), ...Array(3).fill(30)]),
+        departure("later-same", "REG", 560, [...Array(14).fill(2), ...Array(6).fill(40)], null, 20),
+        departure("earlier-same", "REG", 520, [...Array(7).fill(2), ...Array(3).fill(40)], null, 20),
+        departure("lower-mean", "REG", 590, [...Array(7).fill(0), ...Array(3).fill(30)], null, 20),
         // 2 of 3 rounds like 7 of 10 but is less: it comes after them.
-        departure("two-thirds", "REG", 500, [...Array(4).fill(0), ...Array(2).fill(20)]),
-        departure("best", "REG", 600, arrivals(6, 6)),
+        departure("two-thirds", "REG", 500, [...Array(4).fill(0), ...Array(2).fill(20)], null, 20),
+        departure("best", "REG", 600, arrivals(6, 6), null, 20),
       ])
     )!;
     expect(numbers(mostPunctualDepartures(stats, [ROMA_TERMINI], [TIVOLI], clockAt(8, 0), 10))).toEqual([
@@ -354,19 +355,20 @@ describe("most punctual departures", () => {
       ]);
     const stats = parsePunctualityStats(
       statsDocument([
+        // Every train observed on the same 20 days.
         // On time on the 10 days it ran, cancelled on 10 more: on time on half the days.
         cancelledOn("often-cancelled", 500, 20, 10),
-        // 8 of 10, never cancelled.
-        departure("steady", "REG", 540, arrivals(10, 8)),
-        // On time on the 10 days it ran, cancelled once: 10 of 11 days.
-        cancelledOn("once-cancelled", 580, 11, 1),
+        // 8 of the 10 arrivals measured, never cancelled.
+        departure("steady", "REG", 540, arrivals(10, 8), null, 20),
+        // On time on the 19 days it ran, cancelled once: 19 of 20 days.
+        cancelledOn("once-cancelled", 580, 20, 1),
       ])
     )!;
     const result = mostPunctualDepartures(stats, [ROMA_TERMINI], [TIVOLI], clockAt(8, 0), 10);
     expect(numbers(result)).toEqual(["once-cancelled", "steady", "often-cancelled"]);
     // The arrivals stay those of the days it ran; the share said is of the days observed.
     expect(result?.[2]).toMatchObject({ samples: 10, onTime: 10, tenths: 5, percent: 50 });
-    expect(result?.[0]).toMatchObject({ samples: 10, onTime: 10, tenths: 9, percent: 91 });
+    expect(result?.[0]).toMatchObject({ samples: 19, onTime: 19, tenths: 9, percent: 95 });
     expect(result?.[1]).toMatchObject({ samples: 10, onTime: 8, tenths: 8, percent: 80 });
   });
 
@@ -398,7 +400,7 @@ describe("most punctual departures", () => {
         departure("weekend", "REG", 510, arrivals(16, 16), weekend),
         // Reached after midnight: Saturday's run reaches the origin on Sunday at 00:20.
         departure("night", "REG", 1460, arrivals(16, 16), weekdaysOnTime([0, 0, 0, 0, 0, 16, 0])),
-        departure("daily", "REG", 520, arrivals(10, 5)),
+        departure("daily", "REG", 520, arrivals(16, 8)),
       ])
     )!;
     const at = (hours: number, minutes: number, weekday: number) =>
@@ -411,6 +413,40 @@ describe("most punctual departures", () => {
     // Sunday 00:10: still Saturday's run.
     expect(at(0, 10, 7)).toEqual(["night"]);
     expect(at(0, 10, 1)).toEqual([]);
+  });
+
+  it("proposes a train whose weekdays the file leaves out only on a weekday its observed days show it runs", () => {
+    // 30 days covered, 11 October – 9 November 2026 (a Monday): five Sundays and Mondays, four of every other weekday.
+    const stats = parsePunctualityStats(
+      statsDocument([
+        // Saturdays and Sundays only: 8 days of 30, every one on time, so no weekdays in the file (below 14 samples).
+        departure("weekend", "REG", 510, arrivals(8, 8)),
+        // Every day but three not observed: fewer missing days than the four or five of any weekday.
+        departure("daily-gaps", "REG", 515, arrivals(27, 24)),
+        departure("daily", "REG", 520, arrivals(30, 24)),
+      ])
+    )!;
+    expect(stats.coveredDays).toBe(30);
+    expect([1, 2, 3, 4, 5, 6, 7].map(weekday => stats.coveredDaysOn(weekday))).toEqual([5, 4, 4, 4, 4, 4, 5]);
+    const at = (weekday: number) => numbers(mostPunctualDepartures(stats, [ROMA_TERMINI], [TIVOLI], clockAt(8, 0, weekday), 10));
+    // On a Tuesday the weekend train does not run, however punctual it is.
+    expect(at(2)).toEqual(["daily-gaps", "daily"]);
+    // Nor is it proposed at the weekend: without its weekdays nothing tells which days it runs.
+    expect(at(6)).toEqual(["daily-gaps", "daily"]);
+    expect(at(7)).toEqual(["daily-gaps", "daily"]);
+  });
+
+  it("early in the collection proposes, without weekdays, only the trains observed on every covered day", () => {
+    // Six days covered, Tuesday 3 – Sunday 8 November 2026: one of each weekday but Monday.
+    const stats = parsePunctualityStats(
+      statsDocument([departure("every-day", "REG", 520, arrivals(6, 5)), departure("five-days", "REG", 510, arrivals(5, 5))], {
+        windowEnd: "2026-11-08",
+      })
+    )!;
+    expect(stats.coveredDays).toBe(6);
+    // The day «five-days» was not observed may be the only Sunday, Wednesday… of the window: it may not run then.
+    for (const weekday of [1, 3, 7])
+      expect(numbers(mostPunctualDepartures(stats, [ROMA_TERMINI], [TIVOLI], clockAt(8, 0, weekday), 10)), String(weekday)).toEqual(["every-day"]);
   });
 
   it("matches the route as the route's punctuality does, and says nothing without codes", () => {

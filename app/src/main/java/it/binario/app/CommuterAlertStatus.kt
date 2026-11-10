@@ -5,7 +5,9 @@ import it.binario.app.data.DataResult
 import it.binario.app.data.Direction
 import it.binario.app.data.SavedRoute
 import it.binario.app.data.ServiceStatus
+import it.binario.app.data.Station
 import it.binario.app.data.TrainService
+import it.binario.app.data.catalog.EmbeddedCuratedRailStationCatalog
 import it.binario.app.data.repository.BinarioDataGraph
 import it.binario.app.journeys.LiveStopTimes
 import kotlinx.coroutines.CancellationException
@@ -39,6 +41,24 @@ object CommuterAlertStatusRules {
         val origin = parts[0].trim()
         val destination = parts[1].trim()
         return if (origin.isEmpty() || destination.isEmpty()) null else origin to destination
+    }
+
+    /**
+     * The two stations of [routeLabel], by name: first among the stations remembered on this device ([known]), else in
+     * the embedded catalogue ([catalogue], read only when needed), since a backup import or a new device remembers only
+     * the stations outside the catalogue. Null when a name is found in neither.
+     */
+    fun routeEndpoints(routeLabel: String, known: List<Station>, catalogue: () -> List<Station>): Pair<Station, Station>? {
+        val (originName, destinationName) = routeStations(routeLabel) ?: return null
+        fun named(stations: List<Station>, name: String) = stations.firstOrNull { it.name.equals(name, ignoreCase = true) }
+        var origin = named(known, originName)
+        var destination = named(known, destinationName)
+        if (origin == null || destination == null) {
+            val all = catalogue()
+            origin = origin ?: named(all, originName)
+            destination = destination ?: named(all, destinationName)
+        }
+        return if (origin != null && destination != null) origin to destination else null
     }
 
     /**
@@ -96,10 +116,9 @@ internal object CommuterAlertStatusLookup {
     }
 
     private suspend fun lookUp(context: Context, alert: CommuterAlert): CommuterLiveStatus? {
-        val (originName, destinationName) = CommuterAlertStatusRules.routeStations(alert.routeLabel) ?: return null
-        val stations = CustomStationStore(context).stations()
-        val origin = stations.firstOrNull { it.name.equals(originName, ignoreCase = true) } ?: return null
-        val destination = stations.firstOrNull { it.name.equals(destinationName, ignoreCase = true) } ?: return null
+        val (origin, destination) = CommuterAlertStatusRules.routeEndpoints(alert.routeLabel, CustomStationStore(context).stations()) {
+            runCatching { EmbeddedCuratedRailStationCatalog({ path -> context.assets.open(path) }).load() }.getOrDefault(emptyList())
+        } ?: return null
         val route = SavedRoute("commuter-alert-${alert.id}", alert.routeLabel, origin, destination)
         val snapshot = (BinarioDataGraph.routeDataSource(context).loadRoute(route, Direction.OUTBOUND) as? DataResult.Success)?.snapshot ?: return null
         if (snapshot.isExpired) return null

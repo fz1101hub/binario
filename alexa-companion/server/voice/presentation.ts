@@ -275,7 +275,11 @@ export function buildScreenDatasource(screen: BinarioScreen, options: ScreenOpti
   const source = state === "statistics" ? p.statisticsNotLive : state === "demo" ? t.sourceDemo : t.sourceNone;
   const checked =
     screen.kind === "punctuality" && screen.windowEnd
-      ? formatMessage(p.statisticsUntil, { date: formatRailDate(screen.windowEnd, locale) })
+      ? [
+          formatMessage(p.statisticsUntil, { date: formatRailDate(screen.windowEnd, locale) }),
+          // The listed usual times are Rome's wall clock.
+          ...(screen.trains?.length && locale !== "it-IT" ? [p.mostPunctualItalianTime] : []),
+        ].join(" · ")
       : formatMessage(t.checkedAt, { time: formatCheckedTime(options.checkedAt, locale) });
   const nextTrains: ScreenAction = {
     text: aplText(t.nextTrainsAction),

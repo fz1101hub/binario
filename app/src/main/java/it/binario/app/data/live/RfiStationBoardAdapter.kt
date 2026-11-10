@@ -48,37 +48,26 @@ fun interface RfiMonitorFetcher {
     suspend fun fetch(url: String): String
 }
 
+/**
+ * The RFI monitor page through [HttpPublicSourceFetcher]: HTTPS only, redirects only to the same host, path and query,
+ * a bounded body and a whole-request deadline that also closes a blocked socket (audit android-data-7).
+ */
 internal class HttpRfiMonitorFetcher(
-    private val requestTimeoutMillis: Long = 10_000,
-    private val openConnection: (URL) -> HttpURLConnection = { it.openConnection() as HttpURLConnection }
+    requestTimeoutMillis: Long = 10_000,
+    openConnection: (URL) -> HttpURLConnection = { it.openConnection() as HttpURLConnection }
 ) : RfiMonitorFetcher {
-    override suspend fun fetch(url: String): String = kotlinx.coroutines.withTimeoutOrNull(requestTimeoutMillis) {
-        val connection = openConnection(URL(url))
-            ?: throw IOException("Il monitor RFI non usa una connessione HTTP")
-        connection.requestMethod = "GET"
-        connection.connectTimeout = 12_000
-        connection.readTimeout = 20_000
-        connection.instanceFollowRedirects = true
-        connection.useCaches = false
-        connection.setRequestProperty("Cache-Control", "no-cache")
-        connection.setRequestProperty("Accept", "text/html,application/xhtml+xml")
-        connection.setRequestProperty("User-Agent", "Binario/0.20 (personal rail information client)")
-        withCancellableHttpConnection(connection) {
-            val status = connection.responseCode
-            if (status !in 200..299) throw IOException("RFI ha risposto HTTP $status")
-            connection.inputStream.use { input ->
-                val output = java.io.ByteArrayOutputStream()
-                val buffer = ByteArray(8192)
-                while (true) {
-                    val count = input.read(buffer)
-                    if (count < 0) break
-                    if (output.size() + count > 2 * 1024 * 1024) throw IOException("Risposta RFI troppo grande")
-                    output.write(buffer, 0, count)
-                }
-                output.toString("UTF-8")
-            }
-        }
-    } ?: throw java.net.SocketTimeoutException("RFI supera il tempo massimo della richiesta")
+    private val http = HttpPublicSourceFetcher(
+        PublicSourceRequestPolicy(
+            accept = "text/html,application/xhtml+xml",
+            connectTimeoutMillis = 12_000,
+            readTimeoutMillis = 20_000,
+            totalTimeoutMillis = requestTimeoutMillis,
+            maxBytes = 2 * 1024 * 1024
+        ),
+        openConnection
+    )
+
+    override suspend fun fetch(url: String): String = http.get(url)
 }
 
 /**
@@ -177,7 +166,10 @@ class RfiStationBoardAdapter(
 
     private val mutex = Mutex()
     private val cache = mutableMapOf<String, CachedSnapshot>()
-    private val stationCatalog = RfiStationCatalog(fetcher, clock)
+    // A refusal (403, 429, 503 with Retry-After) pauses the monitor and its catalogue (audit android-data-5).
+    private val refusals = PublicSourceRefusalGate(clock, "RFI")
+    private val gated = RfiMonitorFetcher { url -> refusals.call { fetcher.fetch(url) } }
+    private val stationCatalog = RfiStationCatalog(gated, clock)
 
     /** Catalogue and board parsing (Jsoup/JSON, up to a few MB) never run on the caller's thread, which can be Main. */
     override suspend fun getStationBoard(request: StationBoardRequest): ProviderResult<it.binario.app.data.core.StationBoard> =
@@ -192,7 +184,7 @@ class RfiStationBoardAdapter(
         return try {
             val arrivals = if (request.kind == BoardKind.ARRIVALS) "True" else "False"
             val url = "https://iechub.rfi.it/ArriviPartenze/ArrivalsDepartures/Monitor?placeId=$placeId&arrivals=$arrivals"
-            val html = fetcher.fetch(url)
+            val html = gated.fetch(url)
             val syntheticRoute = SavedRoute(
                 id = "station-board:${request.stationId.value}",
                 name = stationName,
@@ -254,7 +246,7 @@ class RfiStationBoardAdapter(
 
         return try {
             val url = "https://iechub.rfi.it/ArriviPartenze/ArrivalsDepartures/Monitor?placeId=$placeId&arrivals=False"
-            val html = fetcher.fetch(url)
+            val html = gated.fetch(url)
             val services = parseDepartures(html, origin.name, destination.name, route, direction)
             if (services.isEmpty()) {
                 return DataResult.Failure("RFI non mostra partenze utilizzabili da ${origin.name} in questo momento.")

@@ -10,6 +10,19 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class LocalDataBackupCodecTest {
+    @Test fun `a file over 1 MiB is refused with a reason in the app language`() {
+        val text = { id: Int -> if (id == R.string.backup_import_too_large) "The backup is larger than the 1 MiB limit." else "file error" }
+        val tooLarge = runCatching { LocalDataBackupCodec.readBoundedUtf8(java.io.ByteArrayInputStream(ByteArray(LocalDataBackupCodec.MAX_BYTES + 1) { ' '.code.toByte() })) }
+            .exceptionOrNull()
+
+        assertTrue(tooLarge is BackupTooLargeException)
+        assertEquals("The backup is larger than the 1 MiB limit.", LocalDataBackupCodec.importFailureReason(tooLarge!!, text))
+        assertEquals(LocalDataBackupCodec.MAX_BYTES, LocalDataBackupCodec.readBoundedUtf8(java.io.ByteArrayInputStream(ByteArray(LocalDataBackupCodec.MAX_BYTES) { ' '.code.toByte() })).length)
+        // Other failures keep their own message, or the generic file error.
+        assertEquals("Permission denied", LocalDataBackupCodec.importFailureReason(java.io.IOException("Permission denied"), text))
+        assertEquals("file error", LocalDataBackupCodec.importFailureReason(java.io.IOException(), text))
+    }
+
     private val curatedStations by lazy {
         EmbeddedCuratedRailStationCatalog(
             openAsset = { assetPath -> File("src/main/assets", assetPath).inputStream() }

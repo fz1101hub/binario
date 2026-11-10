@@ -1,7 +1,7 @@
 // Run by `pnpm db:migrate` before drizzle-kit: refuses an engine the migrations cannot run on.
 import "dotenv/config";
 import { createConnection } from "mysql2/promise";
-import { databaseEngineProblem } from "../server/_core/dbEngine";
+import { checkTimestampSemantics, databaseEngineProblem } from "../server/_core/dbEngine";
 
 const url = process.env.DATABASE_URL;
 if (!url) {
@@ -21,6 +21,12 @@ try {
       process.exitCode = 1;
     }
   } else console.log(`check-db-engine: ${version}`);
+  // Not overridable: on such a server the nullable dates of the migrations silently break linking and routes.
+  const timestamps = await checkTimestampSemantics(connection);
+  if (timestamps) {
+    console.error(`check-db-engine: ${timestamps}`);
+    process.exitCode = 1;
+  }
 } finally {
   await connection.end();
 }

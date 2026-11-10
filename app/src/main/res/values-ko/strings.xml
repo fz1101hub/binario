@@ -410,6 +410,7 @@
     <string name="backup_export_success">로컬 백업을 내보냈습니다. 안전한 곳에 보관하세요.</string>
     <string name="backup_export_failure">내보내기 실패: %1$s</string>
     <string name="backup_import_failure">가져오기 실패: %1$s</string>
+    <string name="backup_import_too_large">백업이 1 MiB 제한을 초과합니다.</string>
     <string name="personal_travel_title">여정 및 모니터링</string>
     <string name="personal_travel_active">진행 중인 여정 · 열차 %1$s</string>
     <string name="personal_travel_next_stop">다음 정차역: %1$s, 예상 %2$s</string>
@@ -823,6 +824,9 @@
     <string name="widget_warning_identity_ambiguous">확인 필요</string>
     <string name="widget_warning_delay_divergence">지연 정보 불일치</string>
     <string name="widget_service_accessibility">운영사 %1$s. %2$s %3$s, %4$s행. 출발 예정 %5$s. %6$s. %7$s.</string>
+    <string name="widget_operator_other_short">기타</string>
+    <string name="widget_operator_other">기타 운영사</string>
+    <string name="widget_operator_rhb">레티셰 철도</string>
     <string name="widget_data_accessibility">제공자 %1$s. %2$s. %3$s. %4$s</string>
     <string name="widget_quality_score_accessibility">, 품질 점수 %1$d/100</string>
     <string name="widget_warnings_accessibility">. 경고: %1$s</string>

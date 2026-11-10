@@ -9,7 +9,7 @@ import { registerAlexaRoutes } from "../voice/alexa";
 import { registerAndroidDeepLinks } from "../voice/deepLinks";
 import { registerLegalPages } from "../legal/pages";
 import { securityHeaders } from "./securityHeaders";
-import { perIpFailureLimiter, perIpLimiter } from "./rateLimit";
+import { failedWith, perIpFailureLimiter, perIpLimiter } from "./rateLimit";
 import { ENV } from "./env";
 import { TRPC_MAX_BATCH_SIZE } from "@shared/const";
 
@@ -96,14 +96,14 @@ export async function createApp(
   app.use("/api/alexa/oauth/authorize", perIpLimiter(OAUTH_REQUESTS_PER_MINUTE));
   app.use(
     "/api/alexa/oauth/token",
-    perIpFailureLimiter(ALEXA_TOKEN_FAILED_REQUESTS_PER_MINUTE, (_req, res) => res.statusCode === 401)
+    perIpFailureLimiter(ALEXA_TOKEN_FAILED_REQUESTS_PER_MINUTE, failedWith(401))
   );
   app.use("/api/oauth", perIpLimiter(OAUTH_REQUESTS_PER_MINUTE));
   app.use("/api/trpc", perIpLimiter(API_REQUESTS_PER_MINUTE));
   app.use("/api/trpc", trpcMutationCsrfGate);
   app.use(
     "/api/alexa/webhook",
-    perIpFailureLimiter(ALEXA_WEBHOOK_FAILED_REQUESTS_PER_MINUTE, (_req, res) => res.statusCode === 400)
+    perIpFailureLimiter(ALEXA_WEBHOOK_FAILED_REQUESTS_PER_MINUTE, failedWith(400))
   );
   // Alexa needs the untouched signed body, so its own verifier is registered
   // before the generic JSON parser used by tRPC and the dashboard.

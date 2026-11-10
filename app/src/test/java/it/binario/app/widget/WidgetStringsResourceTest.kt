@@ -1,6 +1,7 @@
 package it.binario.app.widget
 
 import it.binario.app.AppLocales
+import it.binario.app.R
 import it.binario.app.data.DataConfidence
 import it.binario.app.data.DataQualityBand
 import it.binario.app.data.Direction
@@ -11,10 +12,12 @@ import it.binario.app.data.ServiceStatus
 import it.binario.app.data.SnapshotWarning
 import it.binario.app.data.Station
 import it.binario.app.data.TrainCategory
+import it.binario.app.ui.common.ProviderLabels
 import java.io.File
 import java.util.Locale
 import javax.xml.parsers.DocumentBuilderFactory
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.w3c.dom.Element
@@ -65,6 +68,29 @@ class WidgetStringsResourceTest {
             state.accessibleDataSummary(strings)
         )
         assertEquals("Operator Trenitalia Regionale. Regional 123 to Roma. Expected departure 12:04. Delayed +4 min. Platform 7.", delayed.accessibleLabel(strings))
+    }
+
+    @Test fun `provider descriptors and descriptive operator names follow the display language`() {
+        val english = catalogue("en")
+        val scheduledLabel = english.getValue("provider_descriptor_scheduled")
+        val strings = widgetStrings("en").copy(
+            providerLabel = { raw -> ProviderLabels.localize(raw) { id -> if (id == R.string.provider_descriptor_scheduled) scheduledLabel else error("unexpected $id") } },
+            operatorShortLabels = mapOf(RailOperator.OTHER to english.getValue("widget_operator_other_short")),
+            operatorAccessibleLabels = mapOf(
+                RailOperator.OTHER to english.getValue("widget_operator_other"),
+                RailOperator.RHB to english.getValue("widget_operator_rhb")
+            )
+        )
+        val scheduled = state.copy(providerName = "Trenitalia · orario programmato")
+
+        assertTrue(scheduled.compactMeta(strings), scheduled.compactMeta(strings).startsWith("Trenitalia · $scheduledLabel · "))
+        assertFalse(scheduled.accessibleDataSummary(strings).contains("orario programmato"))
+        assertTrue(delayed.copy(operator = RailOperator.OTHER).accessibleLabel(strings).startsWith("Operator Other operator."))
+        assertEquals("Other", strings.operatorShort(RailOperator.OTHER))
+        assertEquals("Rhaetian Railway", strings.operatorAccessible(RailOperator.RHB))
+        // Proper names stay as published.
+        assertEquals("Trenitalia", strings.operatorAccessible(RailOperator.TRENITALIA_LONG_DISTANCE))
+        assertEquals("RhB", strings.operatorShort(RailOperator.RHB))
     }
 
     @Test fun `every language composes the widget texts with all values and no leftover placeholder`() {

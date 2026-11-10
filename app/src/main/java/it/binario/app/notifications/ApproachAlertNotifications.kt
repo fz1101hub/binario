@@ -11,7 +11,6 @@ import androidx.work.WorkerParameters
 import it.binario.app.CommuterAlertStatusLookup
 import it.binario.app.CommuterAlertStatusRules
 import it.binario.app.CommuterLiveStatus
-import it.binario.app.FavouriteTrainMatcher
 import it.binario.app.FavouriteTrainStore
 import it.binario.app.R
 import it.binario.app.ServiceMonitor
@@ -99,7 +98,8 @@ object ApproachAlertScheduler {
         // Without the permission to notify the checks could show nothing: no lookup runs, the next app start plans again.
         val next = if (!LiveNotifications.allowed(context)) null else alerts.mapNotNull { alert ->
             val state = store.state(alert.key)
-            ApproachAlertPlanner.nextRun(alert, state.doneOn, state.notifiedOn, state.observation.takeIf { state.date == today }, now)
+            val date = ApproachAlertPlanner.serviceDate(alert, today)
+            ApproachAlertPlanner.nextRun(alert, state.doneOn, state.notifiedOn, state.observation.takeIf { state.date == date }, now)
         }.minOrNull()
         if (next == null) {
             if (!fromWorker) workManager.cancelUniqueWork(WORK)
@@ -138,36 +138,42 @@ class ApproachAlertWorker(appContext: Context, params: WorkerParameters) : Corou
         val zone = RailTime.defaultZone
         alerts.forEach { alert ->
             val now = Instant.now()
-            val today = now.atZone(zone).toLocalDate()
-            val state = store.state(alert.key).let { if (it.date == today) it else ApproachAlertCodec.DayState(today, it.doneOn, it.notifiedOn, null) }
-            val window = ApproachAlertPlanner.window(alert, today, zone) ?: return@forEach
-            if (state.doneOn == today || state.notifiedOn == today || now.isBefore(window.start.minus(ApproachAlertPlanner.EARLY_TOLERANCE)) || now.isAfter(window.endInclusive)) {
+            // The run reaching the station today: for a station after midnight, the one that left yesterday. Its
+            // departure date is the date of the lookup and of the day state.
+            val date = ApproachAlertPlanner.serviceDate(alert, now.atZone(zone).toLocalDate(), zone)
+            val state = store.state(alert.key).let { if (it.date == date) it else ApproachAlertCodec.DayState(date, it.doneOn, it.notifiedOn, null) }
+            val window = ApproachAlertPlanner.window(alert, date, zone) ?: return@forEach
+            if (state.doneOn == date || state.notifiedOn == date || now.isBefore(window.start.minus(ApproachAlertPlanner.EARLY_TOLERANCE)) || now.isAfter(window.endInclusive)) {
                 return@forEach
             }
             val monitor = favourites.firstOrNull { TrainAlertWatch.key(it.number) == alert.key } ?: return@forEach
-            // Offline or without an answer, the last observation of the day (or the timetable) decides.
-            val observation = lookUp(context, monitor, alert, today) ?: state.observation
-            when (val decision = ApproachAlertPlanner.decide(alert, today, observation, now, notified = false, zone)) {
+            // Offline or without an answer, the last observation of the day (or the timetable) decides; a day the sources
+            // say the train does not run, or does not call at the station, is over.
+            val lookup = lookUp(context, monitor, alert, date)
+            val observation = ApproachAlertPlanner.observationAfter(lookup, state.observation)
+            when (val decision = ApproachAlertPlanner.decide(alert, date, lookup, state.observation, now, zone)) {
                 is ApproachDecision.Notify -> {
                     if (LiveNotifications.allowed(context)) notify(context, alert, monitor, observation, decision.minutesLeft)
-                    store.saveState(alert.key, state.copy(notifiedOn = today, observation = observation))
+                    store.saveState(alert.key, state.copy(notifiedOn = date, observation = observation))
                 }
-                ApproachDecision.Done -> store.saveState(alert.key, state.copy(doneOn = today, observation = observation))
+                ApproachDecision.Done -> store.saveState(alert.key, state.copy(doneOn = date, observation = observation))
                 is ApproachDecision.WaitUntil -> store.saveState(alert.key, state.copy(observation = observation))
             }
         }
     }
 
-    private suspend fun lookUp(context: Context, monitor: ServiceMonitor, alert: ApproachAlert, date: LocalDate): ApproachObservation? = try {
-        withTimeoutOrNull(LOOKUP_TIMEOUT_MILLIS) {
-            val search = BinarioDataGraph.trainNumberSearchService(context)
-            val matches = search.search(TrainNumberQuery(monitor.number, date)).lastOrNull()?.matches.orEmpty()
-            FavouriteTrainMatcher.pick(matches.map { it.service }, monitor)?.let { ApproachAlertPlanner.observe(it, alert, date) }
+    private suspend fun lookUp(context: Context, monitor: ServiceMonitor, alert: ApproachAlert, date: LocalDate): ApproachLookup {
+        // The last update of the search keeps whether every source answered; a timeout or a failure gives no update.
+        val update = try {
+            withTimeoutOrNull(LOOKUP_TIMEOUT_MILLIS) {
+                BinarioDataGraph.trainNumberSearchService(context).search(TrainNumberQuery(monitor.number, date)).lastOrNull()
+            }
+        } catch (error: CancellationException) {
+            throw error
+        } catch (_: Exception) {
+            null
         }
-    } catch (error: CancellationException) {
-        throw error
-    } catch (_: Exception) {
-        null
+        return ApproachAlertPlanner.lookupOf(update, monitor, alert, date)
     }
 
     private fun notify(context: Context, alert: ApproachAlert, monitor: ServiceMonitor, observation: ApproachObservation?, minutes: Int) {

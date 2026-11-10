@@ -125,11 +125,14 @@ object TrainAlertWatch {
         .filter { it.id !in seen }
         .filter { notice -> notice.publishedAt?.isBefore(subscribedAt) != true }
 
-    /** [seen] with [notices] added (first-seen day kept), older than [SEEN_RETENTION_DAYS] dropped, newest kept. */
+    /**
+     * [seen] with [notices] marked as seen [today] (the day of a notice still published is refreshed, so it is never
+     * notified again while it stays up), ids not seen for [SEEN_RETENTION_DAYS] dropped, most recently seen kept.
+     */
     fun remember(seen: Map<String, Long>, notices: List<WatchedNotice>, today: LocalDate): Map<String, Long> {
         val day = today.toEpochDay()
         val merged = LinkedHashMap(seen)
-        notices.forEach { merged.putIfAbsent(it.id, day) }
+        notices.forEach { merged[it.id] = day }
         return merged.entries.filter { day - it.value < SEEN_RETENTION_DAYS }
             .sortedByDescending { it.value }
             .take(MAX_SEEN)

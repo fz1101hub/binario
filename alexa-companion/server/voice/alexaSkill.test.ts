@@ -48,7 +48,8 @@ function envelope(request: Record<string, unknown>, locale = "it-IT"): Envelope 
     version: "1.0",
     session: { new: true, sessionId: "amzn1.echo-api.session.test", application: { applicationId: SKILL_ID }, user },
     context: { System: { application: { applicationId: SKILL_ID }, user, device: { deviceId: "device", supportedInterfaces: {} }, apiEndpoint: "https://api.eu.amazonalexa.com" } },
-    request: { requestId: "amzn1.echo-api.request.test", timestamp: new Date().toISOString(), locale, ...request },
+    // A fixed instant the day after the fixtures' statistics window, so no answer ages with the calendar.
+    request: { requestId: "amzn1.echo-api.request.test", timestamp: "2026-11-10T08:00:00Z", locale, ...request },
   } as unknown as Envelope;
 }
 
@@ -163,6 +164,18 @@ describe("Alexa skill handlers", () => {
       envelope({ type: "SessionEndedRequest", reason: "USER_INITIATED" })
     );
     expect(response.response.outputSpeech).toBeUndefined();
+  });
+
+  it("answers the train status without a linked account, as it says nothing personal", async () => {
+    vi.mocked(listPersonalRoutesForAlexa).mockClear();
+    const response = await createAlexaSkill().invoke(intent("TrainStatusIntent", "it-IT", { trainNumber: "9512" }));
+    expect(response.response.card?.type).not.toBe("LinkAccount");
+    expect(speechText(response)).toContain("Per il treno 9512: dati non disponibili in tempo reale");
+    expect(listPersonalRoutesForAlexa).not.toHaveBeenCalled();
+    // AMAZON.NUMBER gives "?" when it heard no number: no «Treno ?».
+    const unheard = await createAlexaSkill().invoke(intent("TrainStatusIntent", "it-IT", { trainNumber: "?" }));
+    expect(speechText(unheard)).not.toContain("?");
+    expect(unheard.response.card?.type).not.toBe("LinkAccount");
   });
 
   it("returns an account-link card for an unlinked personal intent", async () => {
@@ -366,7 +379,7 @@ describe("Echo Show screens (APL)", () => {
   });
 
   it("renders nothing before account linking, after Stop, or on an older APL runtime", async () => {
-    for (const name of ["NextTrainsIntent", "MyRoutesIntent", "TrainStatusIntent", "RoutePunctualityIntent", "MostPunctualTrainIntent", "AMAZON.StopIntent"]) {
+    for (const name of ["NextTrainsIntent", "MyRoutesIntent", "RoutePunctualityIntent", "MostPunctualTrainIntent", "AMAZON.StopIntent"]) {
       const response = await createAlexaSkill().invoke(withApl(intent(name)));
       expect(response.response.directives ?? [], name).toHaveLength(0);
       expect(response.response.shouldEndSession, name).toBe(true);
@@ -529,8 +542,8 @@ describe("dynamic Alexa speech values", () => {
     }
   });
   it("escapes a user-provided train number", async () => {
-    const response = await createAlexaSkill().invoke(await linked("TrainStatusIntent", { trainNumber: unsafeText }));
-    expect(speechText(response)).toContain(escapedUnsafeText);
+    const response = await createAlexaSkill().invoke(await linked("TrainStatusIntent", { trainNumber: `9512 ${unsafeText}` }));
+    expect(speechText(response)).toContain(`9512 ${escapedUnsafeText}`);
     expect(speechText(response)).not.toContain(`<break time="1s"/>`);
   });
   it("treats blank route names as absent", async () => {
@@ -832,6 +845,24 @@ describe("punctuality intents", () => {
     railData.punctualityStats.mockResolvedValue(available ? parsePunctualityStats(networkDocument()) : null);
     railData.railStationIndex.mockResolvedValue(parseStationCatalog(catalogDocument()));
   }
+
+  it("says until when the statistics run once they are more than two weeks old", async () => {
+    withStatistics();
+    const at = (request: Envelope, isoInstant: string) => {
+      (request.request as { timestamp: string }).timestamp = isoInstant;
+      return request;
+    };
+    const fresh = await createAlexaSkill().invoke(at(intent("TrainPunctualityIntent", "it-IT", { trainNumber: "9558" }), "2026-11-23T20:00:00Z"));
+    expect(card(fresh)).not.toContain("Dati fino al");
+    const stale = await createAlexaSkill().invoke(at(intent("TrainPunctualityIntent", "it-IT", { trainNumber: "9558" }), "2026-11-24T08:00:00Z"));
+    expect(card(stale)).toContain("È stato soppresso 1 volta. Dati fino al 9 novembre 2026. Sono statistiche non ufficiali");
+    expect(speechText(stale)).toContain("Dati fino al 9 novembre 2026.");
+    const english = await createAlexaSkill().invoke(at(intent("TrainPunctualityIntent", "en-US", { trainNumber: "9558" }), "2027-01-10T08:00:00Z"));
+    expect(card(english)).toContain("Data up to November 9, 2026.");
+    // Nothing is said about the age of statistics that are not there.
+    withStatistics(false);
+    expect(card(await createAlexaSkill().invoke(at(intent("TrainPunctualityIntent", "it-IT", { trainNumber: "9558" }), "2027-01-10T08:00:00Z")))).not.toContain("Dati fino al");
+  });
 
   it("answers a train's punctuality at its terminus, with the attribution, without an account link", async () => {
     withStatistics();

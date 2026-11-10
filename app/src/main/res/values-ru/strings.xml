@@ -434,6 +434,7 @@
     <string name="backup_export_success">Локальная резервная копия экспортирована. Храните её в надёжном месте.</string>
     <string name="backup_export_failure">Не удалось экспортировать: %1$s</string>
     <string name="backup_import_failure">Не удалось импортировать: %1$s</string>
+    <string name="backup_import_too_large">Резервная копия превышает ограничение в 1 МиБ.</string>
     <string name="personal_travel_title">Поездка и отслеживание</string>
     <string name="personal_travel_active">Текущая поездка · Поезд %1$s</string>
     <string name="personal_travel_next_stop">Следующая остановка: %1$s, ожидается %2$s</string>
@@ -874,6 +875,9 @@
     <string name="widget_warning_identity_ambiguous">ТРЕБУЕТ ПРОВЕРКИ</string>
     <string name="widget_warning_delay_divergence">ОПОЗДАНИЯ РАСХОДЯТСЯ</string>
     <string name="widget_service_accessibility">Перевозчик %1$s. %2$s %3$s до %4$s. Ожидаемое отправление %5$s. %6$s. %7$s.</string>
+    <string name="widget_operator_other_short">Другой</string>
+    <string name="widget_operator_other">Другой перевозчик</string>
+    <string name="widget_operator_rhb">Ретийская железная дорога</string>
     <string name="widget_data_accessibility">Поставщик %1$s. %2$s. %3$s. %4$s</string>
     <string name="widget_quality_score_accessibility">, оценка качества %1$d из 100</string>
     <string name="widget_warnings_accessibility">. Предупреждения: %1$s</string>

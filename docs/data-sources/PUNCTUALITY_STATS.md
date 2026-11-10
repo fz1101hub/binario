@@ -125,7 +125,7 @@ Le statistiche si stimano da ViaggiaTreno perché nessun operatore pubblica rita
 
 ## Limiti noti
 
-- `actualFermataType` 2 è trattato come fermata straordinaria (non prevista): l'app lo mostra come fermata saltata insieme al 3, ma il significato non è documentato da Trenitalia.
+- `actualFermataType` 2 è trattato come fermata straordinaria (non prevista), ma il significato non è documentato da Trenitalia. L'app Android lo legge allo stesso modo (fermata aggiunta; il 3 è una fermata saltata); per prudenza non propone una corsa se il 2 o il 3 cade sulla fermata di salita o di discesa, mentre a una fermata intermedia lo mostra sulla fermata senza scartare la corsa. iPhone mostra ancora 2 e 3 come fermata saltata.
 - Alcuni regionali non hanno la rilevazione all'ultima fermata: senza `arrivoReale` né `arrivato` restano in sospeso e dopo 8 ore diventano «sconosciuti» (non contano).
 - Le corse con origine all'estero non sono raccolte; un treno con lo stesso numero e origine ma orario diverso in giorni diversi resta una sola voce.
 - Le run pianificate di GitHub possono slittare o saltare: con una run saltata si perdono i treni arrivati in circa 20 minuti fra le due finestre.

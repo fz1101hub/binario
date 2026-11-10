@@ -12,9 +12,11 @@ import it.binario.app.data.ServiceStatus
 import it.binario.app.data.StopRouteChange
 import it.binario.app.data.TrainCategory
 import it.binario.app.data.TrainService
+import it.binario.app.ui.common.LocalizedDates
 import java.time.Duration
 import java.time.Instant
 import java.time.ZoneId
+import java.time.temporal.ChronoUnit
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
@@ -194,19 +196,62 @@ data class TrainsWidgetStrings(
 /**
  * Rows of the "I miei treni" widget: ordering, the "only running trains" filter and the texts of
  * each row. Live values count only while the status is fresh (under fifteen minutes) and was not
- * left over by a failed lookup; otherwise the row keeps them, marked with the time of the data.
+ * left over by a failed lookup; otherwise the row keeps them, marked with the time (and, when it is
+ * not today's, the date) of the data. The run of an earlier day that is over shows today's timetable.
  */
 object TrainsWidgetPresenter {
     private val arrivalGrace: Duration = Duration.ofMinutes(10)
     private val timeFormatter = DateTimeFormatter.ofPattern("HH:mm").withZone(RailTime.defaultZone)
 
     /**
+     * [status] as it may be shown at [nowEpochMillis]. The run of an earlier service day that is over (arrived, or past
+     * its arrival) says nothing about today's train: it becomes today's timetable, with the same departure and arrival
+     * times moved to today and without delay, cancellation, variation, detections or observations. Anything else is
+     * returned unchanged, including a run of yesterday still travelling after midnight.
+     */
+    fun forToday(status: FavouriteTrainStatus, nowEpochMillis: Long, zone: ZoneId = RailTime.defaultZone): FavouriteTrainStatus {
+        val departure = status.scheduledDepartureEpochMillis ?: return status
+        val today = Instant.ofEpochMilli(nowEpochMillis).atZone(zone).toLocalDate()
+        val serviceDay = Instant.ofEpochMilli(departure).atZone(zone).toLocalDate()
+        if (!serviceDay.isBefore(today)) return status
+        val end = status.arrivalEpochMillis ?: departure
+        if (status.arrived != true && nowEpochMillis <= end + arrivalGrace.toMillis()) return status
+        val days = ChronoUnit.DAYS.between(serviceDay, today)
+        fun moved(epochMillis: Long) = Instant.ofEpochMilli(epochMillis).atZone(zone).plusDays(days).toInstant().toEpochMilli()
+        return status.copy(
+            scheduledDepartureEpochMillis = moved(departure),
+            arrivalEpochMillis = status.arrivalEpochMillis?.let(::moved),
+            delayMinutes = null,
+            cancelled = false,
+            variation = false,
+            nextStation = null,
+            nextStationTime = null,
+            lastDetectionStation = null,
+            lastDetectionTime = null,
+            platform = status.scheduledPlatform ?: status.platform,
+            scheduledPlatform = null,
+            departed = null,
+            arrived = null,
+            operationalVerified = false,
+            stale = false
+        )
+    }
+
+    /** "18:30" for data of today, "7 nov 18:30" for data of another day. */
+    private fun dataTime(retrievedAt: Long, nowEpochMillis: Long, locale: Locale, zone: ZoneId = RailTime.defaultZone): String {
+        val at = Instant.ofEpochMilli(retrievedAt).atZone(zone)
+        val time = timeFormatter.format(at)
+        return if (at.toLocalDate() == Instant.ofEpochMilli(nowEpochMillis).atZone(zone).toLocalDate()) time
+        else "${LocalizedDates.dayMonth(locale).format(at)} $time"
+    }
+
+    /**
      * A train is running unless it is cancelled, has clearly not left yet (no observed departure and
      * before its scheduled departure) or has arrived (observed, or ten minutes past its arrival).
      * Without times it counts as running: an unknown state never hides a train.
      */
-    fun isRunning(status: FavouriteTrainStatus?, nowEpochMillis: Long): Boolean {
-        if (status == null) return true
+    fun isRunning(lastKnown: FavouriteTrainStatus?, nowEpochMillis: Long): Boolean {
+        val status = lastKnown?.let { forToday(it, nowEpochMillis) } ?: return true
         if (status.cancelled) return false
         val departure = status.scheduledDepartureEpochMillis
         val notLeftYet = status.departed != true && departure != null && nowEpochMillis < departure
@@ -245,12 +290,13 @@ object TrainsWidgetPresenter {
      */
     fun row(
         monitor: ServiceMonitor,
-        status: FavouriteTrainStatus?,
+        lastKnown: FavouriteTrainStatus?,
         settings: TrainsWidgetSettings,
         nowEpochMillis: Long,
         strings: TrainsWidgetStrings,
         reliability: WidgetReliabilityText? = null
     ): TrainsWidgetRow {
+        val status = lastKnown?.let { forToday(it, nowEpochMillis) }
         val trainLabel = status?.category?.let { strings.format(strings.categoryNumber, strings.categoryLabels.getValue(it), monitor.number) }
             ?: strings.format(strings.trainNumber, monitor.number)
         val title = monitor.displayName ?: trainLabel
@@ -275,7 +321,7 @@ object TrainsWidgetPresenter {
                 ?: strings.noDetection.takeIf { status.operationalVerified }
         } ?: status.scheduledDeparture.takeIf { it.isNotBlank() }?.let { strings.format(strings.departureFrom, it, status.origin) }
         val staleMarker = if (live || !status.operationalVerified) null
-        else strings.format(strings.staleData, timeFormatter.format(Instant.ofEpochMilli(status.retrievedAt)))
+        else strings.format(strings.staleData, dataTime(status.retrievedAt, nowEpochMillis, strings.locale))
         val (statusLabel, emphasis, statusAccessibility) = when {
             !status.operationalVerified -> Triple(strings.scheduled, TrainsRowEmphasis.NORMAL, strings.scheduledAccessibility)
             status.cancelled -> Triple(strings.cancelled, if (live) TrainsRowEmphasis.ERROR else TrainsRowEmphasis.MUTED, strings.cancelledAccessibility)

@@ -246,6 +246,11 @@ export type LocaleMessages = {
      * {onTime}, an `outOfTen`.
      */
     mostPunctualTrain: PluralMessages;
+    /**
+     * Said after the trains, and added to the screen's data line, outside Italian: the usual times
+     * are Italian wall-clock times, not the listener's.
+     */
+    mostPunctualItalianTime: string;
     /** {count} = arrivals on time at the destination, in tenths (0–10). */
     outOfTen: PluralMessages;
     /** No train with enough observations leaves in the next three hours; {routeName}. */
@@ -407,6 +412,7 @@ const it: LocaleMessages = {
     showRoute: "Puntualità della tratta {routeName}",
     hint: "«Alexa, chiedi a Binario Treni quanto è puntuale il treno 9558»",
     mostPunctualBest: "Per la tratta {routeName}, fra i treni che di solito partono nelle prossime tre ore, il più puntuale è {train}.",
+    mostPunctualItalianTime: "Gli orari sono in ora italiana.",
     mostPunctualOthers: "Poi {trains}.",
     mostPunctualTrain: { one: "il {trainNumber} dell'{time}, in orario {onTime}", many: "il {trainNumber} delle {time}, in orario {onTime}", other: "il {trainNumber} delle {time}, in orario {onTime}" },
     outOfTen: { one: "{count} volta su 10", many: "{count} volte su 10", other: "{count} volte su 10" },
@@ -425,7 +431,7 @@ const en: LocaleMessages = {
   accessibility: { close: "Close", loading: "Loading", pagination: "Pagination", previousPage: "Go to previous page", nextPage: "Go to next page", morePages: "More pages", previousSlide: "Previous slide", nextSlide: "Next slide", breadcrumb: "Breadcrumb", more: "More", mobileSidebar: "Sidebar", mobileSidebarDescription: "Displays the mobile sidebar." },
   consent: { title: "Link Alexa to Binario", signedInAs: " as <strong>{userName}</strong>", description: "You are about to link Amazon Alexa to your Binario account{signedInAs}. Alexa will be able to read the names of routes you have saved. No real-time data is shared.", allow: "Link", deny: "Cancel", loginRequired: "Sign in to the Binario dashboard first, then repeat Alexa linking.", errorTitle: "Alexa linking failed", notConfigured: "The Alexa integration is not configured. No account can be linked.", invalidRequest: "The linking request is invalid or no longer available. Restart the process from the Alexa app.", invalidCsrf: "The security check has expired or is invalid. No account was linked; restart the process from the Alexa app.", returnDashboard: "Return to the dashboard" },
   voice: { cardTitle: "Binario", accountLinkRequired: "To use personal information, first link your Binario account in the Alexa app.", unsupported: "I didn't understand that request. You can ask for the next trains, a train's status, or your routes.", help: "With Binario, you can ask for the next trains on a saved route, a train's status, how punctual a train or one of your routes is, the most punctual train of the next three hours on one of your routes, or a list of your routes. What would you like to know?", goodbye: "See you soon.", launch: "Welcome to Binario. You can ask for the next trains, a train's status, or your routes.", noRoutes: "You have not saved any routes in Binario yet.", routeSubject: "For the route {routeName}", trainSubject: "For train {trainNumber}", liveDataUnavailable: "real-time data is not available", routesSaved: "Your saved routes are: {routes}{suffix}", moreRoutes: { one: ". There is one more route in the Binario dashboard.", other: ". There are {count} more routes in the Binario dashboard." }, error: "A problem occurred. Please try again later.", launchReprompt: "What would you like to know? You can ask for the next trains, a train's status, or your routes.", listTerminator: ".", routeNotFound: "I couldn't find the route {routeName}.", routeAmbiguous: "I found more than one route: {routes}.", routeChoice: "Which route would you like? You can say, for example: next trains for {example}." },
-  screen: { homeTitle: "What you can ask", departuresTitle: "Departures", trainStatusTitle: "Train status", myRoutesTitle: "My routes", demoData: "Local demo catalogue — not live", sourceNone: "Source: no real-time rail provider connected", sourceDemo: "Source: demo data, not operational", checkedAt: "Checked at {time}", noTimetable: "No times shown: Binario never invents departures, delays or platforms.", trainNumber: "Train {trainNumber}", trainNumberMissing: "No train number given", pinned: "Pinned", moreRoutes: { one: "One more route is in the Binario dashboard.", other: "{count} more routes are in the Binario dashboard." }, showRoute: "Next trains for {routeName}", nextTrainsAction: "Next trains", myRoutesAction: "My routes", hintsTitle: "Try asking", hintNextTrains: "“Alexa, ask Binario Trains for the next trains”", hintTrainStatus: "“Alexa, ask Binario Trains is train 9512 on time”", hintMyRoutes: "“Alexa, ask Binario Trains for my routes”" },
+  screen: { homeTitle: "What you can ask", departuresTitle: "Departures", trainStatusTitle: "Train status", myRoutesTitle: "My routes", demoData: "Local demo catalogue — not live", sourceNone: "Source: no real-time rail provider connected", sourceDemo: "Source: demo data, not operational", checkedAt: "Checked at {time}", noTimetable: "No times shown: Binario never invents departures, delays or platforms.", trainNumber: "Train {trainNumber}", trainNumberMissing: "No train number given", pinned: "Pinned", moreRoutes: { one: "One more route is in the Binario dashboard.", other: "{count} more routes are in the Binario dashboard." }, showRoute: "Next trains for {routeName}", nextTrainsAction: "Next trains", myRoutesAction: "My routes", hintsTitle: "Try asking", hintNextTrains: "“Alexa, ask Binario Trains for the next trains”", hintTrainStatus: "“Alexa, ask Binario Trains for the status of train 9512”", hintMyRoutes: "“Alexa, ask Binario Trains for my routes”" },
   punctuality: {
     train: { one: "Train {trainNumber} reached its final stop on time, that is within {limit}, {count} time out of 100 over {days}.", other: "Train {trainNumber} reached its final stop on time, that is within {limit}, {count} times out of 100 over {days}." },
     route: { one: "On the route {routeName}, with {trains} over {days}, arrivals at the destination were on time, that is within {limit}, {count} time out of 100.", other: "On the route {routeName}, with {trains} over {days}, arrivals at the destination were on time, that is within {limit}, {count} times out of 100." },
@@ -457,6 +463,7 @@ const en: LocaleMessages = {
     showRoute: "Punctuality of the route {routeName}",
     hint: "“Alexa, ask Binario Trains how punctual train 9558 is”",
     mostPunctualBest: "On the route {routeName}, of the trains that usually leave in the next three hours, the most punctual is {train}.",
+    mostPunctualItalianTime: "Times are Italian time.",
     mostPunctualOthers: "Then {trains}.",
     mostPunctualTrain: { one: "train {trainNumber} at {time}, on time {onTime}", other: "train {trainNumber} at {time}, on time {onTime}" },
     outOfTen: { one: "{count} time out of 10", other: "{count} times out of 10" },
@@ -506,6 +513,7 @@ const de: LocaleMessages = {
     showRoute: "Pünktlichkeit der Strecke {routeName}",
     hint: "„Alexa, frage Binario Züge nach der Pünktlichkeit von Zug 9558“",
     mostPunctualBest: "Auf der Strecke {routeName} ist von den Zügen, die üblicherweise in den nächsten drei Stunden abfahren, dieser am pünktlichsten: {train}.",
+    mostPunctualItalianTime: "Die Zeiten sind in italienischer Zeit angegeben.",
     mostPunctualOthers: "Danach {trains}.",
     mostPunctualTrain: { one: "Zug {trainNumber} um {time}, {onTime} pünktlich", other: "Zug {trainNumber} um {time}, {onTime} pünktlich" },
     outOfTen: { one: "{count}-mal von 10", other: "{count}-mal von 10" },
@@ -555,6 +563,7 @@ const fr: LocaleMessages = {
     showRoute: "Ponctualité du trajet {routeName}",
     hint: "« Alexa, demande à Binario Trains la ponctualité du train 9558 »",
     mostPunctualBest: "Sur le trajet {routeName}, parmi les trains qui partent habituellement dans les trois prochaines heures, le plus ponctuel est {train}.",
+    mostPunctualItalianTime: "Les horaires sont à l’heure italienne.",
     mostPunctualOthers: "Puis {trains}.",
     mostPunctualTrain: { one: "le {trainNumber} de {time}, à l’heure {onTime}", many: "le {trainNumber} de {time}, à l’heure {onTime}", other: "le {trainNumber} de {time}, à l’heure {onTime}" },
     outOfTen: { one: "{count} fois sur 10", many: "{count} fois sur 10", other: "{count} fois sur 10" },
@@ -604,6 +613,7 @@ const es: LocaleMessages = {
     showRoute: "Puntualidad de la ruta {routeName}",
     hint: "«Alexa, pregunta a Binario Trenes por la puntualidad del tren 9558»",
     mostPunctualBest: "En la ruta {routeName}, de los trenes que suelen salir en las próximas tres horas, el más puntual es {train}.",
+    mostPunctualItalianTime: "Los horarios están en hora italiana.",
     mostPunctualOthers: "Después, {trains}.",
     mostPunctualTrain: { one: "el {trainNumber} de la {time}, puntual {onTime}", many: "el {trainNumber} de las {time}, puntual {onTime}", other: "el {trainNumber} de las {time}, puntual {onTime}" },
     outOfTen: { one: "{count} vez de cada 10", many: "{count} veces de cada 10", other: "{count} veces de cada 10" },

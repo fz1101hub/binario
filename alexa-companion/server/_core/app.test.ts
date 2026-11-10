@@ -74,6 +74,20 @@ describe("applicazione HTTP", () => {
     expect(lastStatus).toBe(429);
   });
 
+  it("non conta per IP le credenziali di un altro client, che Amazon inoltra dagli stessi indirizzi", async () => {
+    const baseUrl = await start();
+    const statuses = new Set<number>();
+    for (let attempt = 0; attempt <= ALEXA_TOKEN_FAILED_REQUESTS_PER_MINUTE + 5; attempt++) {
+      const response = await fetch(`${baseUrl}/api/alexa/oauth/token`, {
+        method: "POST",
+        headers: { "content-type": "application/x-www-form-urlencoded" },
+        body: "grant_type=authorization_code&client_id=someone-elses-skill&client_secret=theirs",
+      });
+      statuses.add(response.status);
+    }
+    expect([...statuses]).toEqual([401]);
+  });
+
   it("non limita per IP il traffico token del client autenticato, che arriva da pochi indirizzi Amazon", async () => {
     const baseUrl = await start();
     const statuses = new Set<number>();

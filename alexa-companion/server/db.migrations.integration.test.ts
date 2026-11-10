@@ -9,6 +9,7 @@ import {
   createAuthorizationCode,
   deleteUserAccount,
   exchangeAuthorizationCode,
+  getAlexaLinkStatus,
   getDb,
   listPersonalRoutes,
   listPersonalRoutesForAlexa,
@@ -16,6 +17,7 @@ import {
   rotateRefreshToken,
   touchExistingUserSession,
 } from "./db";
+import { checkTimestampSemantics, NULLABLE_TIMESTAMP_COLUMNS } from "./_core/dbEngine";
 
 /** mysql2 types SELECT results as RowDataPacket rows. */
 type Rows<T> = Array<T & RowDataPacket>;
@@ -123,6 +125,7 @@ describeDatabase("migrazioni MariaDB reali", () => {
     });
     try {
       await applyMigrations(connection, 0, 13);
+      expect(await checkTimestampSemantics(connection)).toBeNull();
       expect(await tableNames(connection)).toEqual([
         "alexa_account_links",
         "binario_profiles",
@@ -148,6 +151,30 @@ describeDatabase("migrazioni MariaDB reali", () => {
       expect(familyColumns).toHaveLength(1);
     } finally {
       await connection.end();
+    }
+  });
+
+  it("rifiuta un server con explicit_defaults_for_timestamp=OFF e il database che vi è stato migrato", async () => {
+    const database = `binario_migration_timestamps_${randomUUID().replaceAll("-", "")}`;
+    await admin.query(`CREATE DATABASE \`${database}\``);
+    const connection = await createConnection({ ...rootOptions, database });
+    try {
+      expect(await checkTimestampSemantics(connection)).toBeNull();
+      await connection.query("SET SESSION explicit_defaults_for_timestamp = 0");
+      await applyMigrations(connection, 0, 13);
+      const problem = await checkTimestampSemantics(connection);
+      expect(problem).toMatch(/explicit_defaults_for_timestamp = 0/);
+      for (const [table, column] of NULLABLE_TIMESTAMP_COLUMNS) expect(problem).toContain(`${table}.${column}`);
+      // What the check prevents: NULL becomes the current time.
+      await connection.query("INSERT INTO users (`openId`) VALUES ('timestamps')");
+      await connection.query("INSERT INTO railway_routes (`userId`, `origin`, `destination`, `name`, `archivedAt`) SELECT id, 'Roma', 'Milano', 'Casa', NULL FROM users");
+      const [rows] = await connection.query<Rows<{ archivedAt: Date | null }>>("SELECT archivedAt FROM railway_routes");
+      expect(rows[0].archivedAt).not.toBeNull();
+      await connection.query("SET SESSION explicit_defaults_for_timestamp = 1");
+      expect(await checkTimestampSemantics(connection)).toMatch(/NOT NULL.*railway_routes\.archivedAt/);
+    } finally {
+      await connection.end();
+      await admin.query(`DROP DATABASE IF EXISTS \`${database}\``);
     }
   });
 
@@ -383,8 +410,10 @@ describeDatabase("migrazioni MariaDB reali", () => {
         refreshTokenExpiresAt: new Date(Date.now() + 60_000),
       });
       expect(initialLink).toMatchObject({ userId, credentialVersion: 1 });
+      // The historical WebDev columns may still hold personal free text in an
+      // adopted database: the dashboard never receives them.
       await connection.query(
-        "INSERT INTO railway_routes (`userId`, `origin`, `destination`, `name`) VALUES (?, 'Roma', 'Milano', 'Casa — lavoro')",
+        "INSERT INTO railway_routes (`userId`, `origin`, `destination`, `name`, `travelDate`, `travelProfile`, `personalNote`, `accessibilityNote`, `personalTagsJson`) VALUES (?, 'Roma', 'Milano', 'Casa — lavoro', '2026-01-02', 'accessibility', 'nota privata', 'sedia a rotelle', '[\"lavoro\"]')",
         [userId]
       );
       // A route archived in the historical WebDev dashboard must stay hidden
@@ -396,9 +425,10 @@ describeDatabase("migrazioni MariaDB reali", () => {
       await expect(
         listPersonalRoutesForAlexa(userId, initialLink?.credentialVersion ?? 0)
       ).resolves.toEqual([expect.objectContaining({ name: "Casa — lavoro" })]);
-      await expect(listPersonalRoutes(userId)).resolves.toEqual([
-        expect.objectContaining({ name: "Casa — lavoro" }),
-      ]);
+      const listed = await listPersonalRoutes(userId);
+      expect(listed).toEqual([expect.objectContaining({ name: "Casa — lavoro", origin: "Roma", destination: "Milano" })]);
+      expect(Object.keys(listed[0]).sort()).toEqual(["createdAt", "destination", "id", "isPinned", "name", "origin", "updatedAt"]);
+      expect(JSON.stringify(listed)).not.toMatch(/nota privata|sedia a rotelle|2026-01-02|accessibility/);
 
       await createAuthorizationCode({
         userId,
@@ -529,6 +559,8 @@ describeDatabase("migrazioni MariaDB reali", () => {
       );
       await expect(rotate(kept, "e5".repeat(32))).resolves.toBeNull();
       expect(await liveTokenCount()).toBe(0);
+      // The link is dead until the user links again: the dashboard must not say «linked».
+      expect((await getAlexaLinkStatus(userId))?.revokedAt).toBeInstanceOf(Date);
       await expect(
         listPersonalRoutesForAlexa(userId, relinked?.credentialVersion ?? 0)
       ).resolves.toEqual([]);
@@ -551,6 +583,7 @@ describeDatabase("migrazioni MariaDB reali", () => {
       expect(recovered?.credentialVersion).toBeGreaterThan(
         relinked?.credentialVersion ?? 0
       );
+      expect((await getAlexaLinkStatus(userId))?.revokedAt).toBeNull();
       await expect(
         listPersonalRoutesForAlexa(userId, recovered?.credentialVersion ?? 0)
       ).resolves.toHaveLength(1);

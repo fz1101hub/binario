@@ -100,7 +100,7 @@ internal object LiveAcceptanceEvidence {
         val start = stops.indexOfFirst { it.text("id") == origin }
         val end = stops.indexOfFirst { it.text("id") == destination }
         if (start < 0 || end <= start) return@mapNotNull null
-        if (stops.subList(start, end + 1).any { it.text("actualFermataType") in setOf("2", "3") }) return@mapNotNull null
+        if (listOf(stops[start], stops[end]).any { it.text("actualFermataType") in setOf("2", "3") }) return@mapNotNull null
         val boarding = stops[start]
         val scheduled = (boarding.text("partenza_teorica") ?: boarding.text("programmata"))?.toLongOrNull()?.let(Instant::ofEpochMilli)
             ?: return@mapNotNull null

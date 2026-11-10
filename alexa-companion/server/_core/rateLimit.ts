@@ -36,6 +36,22 @@ export function perIpFailureLimiter(
 }
 
 /**
+ * Marks a rejected request that Amazon relayed for another skill or another OAuth client: a
+ * correctly signed webhook request with a foreign skill ID, or token credentials naming a client
+ * that is not ours. Anyone can point their own skill at these URLs, and Amazon then calls from
+ * the same few addresses as our users, so such rejections must not use up the per-IP failure
+ * budget ({@link failedWith}).
+ */
+export function markRelayedForAnotherSkill(res: Response) {
+  res.locals.relayedForAnotherSkill = true;
+}
+
+/** `isFailure` for {@link perIpFailureLimiter}: `status`, unless {@link markRelayedForAnotherSkill} marked it. */
+export function failedWith(status: number) {
+  return (_req: Request, res: Response) => res.statusCode === status && res.locals.relayedForAnotherSkill !== true;
+}
+
+/**
  * Fixed one-minute window counter keyed on an identity the caller has already verified
  * (an authenticated OAuth client, a signed Alexa user). Memory is bounded: expired keys are
  * pruned before a new one is stored, and when `maxKeys` live keys exist new keys are let

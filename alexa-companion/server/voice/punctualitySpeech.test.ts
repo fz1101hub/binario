@@ -23,54 +23,68 @@ describe("most punctual train answer", () => {
       "en-US",
       "On the route Casa-Lavoro, of the trains that usually leave in the next three hours, the most punctual is train 2157 at 8:12 AM, on time 9 times out of 10. " +
         "Then train 2161 at 9:12 AM, on time 8 times out of 10 and train 2165 at 10:12 AM, on time 7 times out of 10. " +
+        "Times are Italian time. " +
         "These are unofficial Binario statistics from ViaggiaTreno data.",
     ],
     [
       "de-DE",
       "Auf der Strecke Casa-Lavoro ist von den Zügen, die üblicherweise in den nächsten drei Stunden abfahren, dieser am pünktlichsten: Zug 2157 um 8:12, 9-mal von 10 pünktlich. " +
         "Danach Zug 2161 um 9:12, 8-mal von 10 pünktlich und Zug 2165 um 10:12, 7-mal von 10 pünktlich. " +
+        "Die Zeiten sind in italienischer Zeit angegeben. " +
         "Das sind inoffizielle Binario-Statistiken aus ViaggiaTreno-Daten.",
     ],
     [
       "fr-FR",
       "Sur le trajet Casa-Lavoro, parmi les trains qui partent habituellement dans les trois prochaines heures, le plus ponctuel est le 2157 de 8:12, à l’heure 9 fois sur 10. " +
         "Puis le 2161 de 9:12, à l’heure 8 fois sur 10 et le 2165 de 10:12, à l’heure 7 fois sur 10. " +
+        "Les horaires sont à l’heure italienne. " +
         "Ce sont des statistiques non officielles de Binario sur données ViaggiaTreno.",
     ],
     [
       "es-ES",
       "En la ruta Casa-Lavoro, de los trenes que suelen salir en las próximas tres horas, el más puntual es el 2157 de las 8:12, puntual 9 veces de cada 10. " +
         "Después, el 2161 de las 9:12, puntual 8 veces de cada 10 y el 2165 de las 10:12, puntual 7 veces de cada 10. " +
+        "Los horarios están en hora italiana. " +
         "Son estadísticas no oficiales de Binario con datos de ViaggiaTreno.",
     ],
     [
       "pt-BR",
       "No trajeto Casa-Lavoro, entre os trens que costumam sair nas próximas três horas, o mais pontual é o 2157 das 8:12, no horário 9 vezes em 10. " +
         "Depois, o 2161 das 9:12, no horário 8 vezes em 10 e o 2165 das 10:12, no horário 7 vezes em 10. " +
+        "Os horários estão no horário da Itália. " +
         "São estatísticas não oficiais do Binario com dados do ViaggiaTreno.",
     ],
     [
       "ar-SA",
       "على المسار Casa-Lavoro، من بين القطارات التي تغادر عادةً خلال الساعات الثلاث القادمة، القطار الأكثر دقة في المواعيد هو القطار 2157 الساعة 8:12 ص، في الموعد 9 مرات من كل 10. " +
         "ثم القطار 2161 الساعة 9:12 ص، في الموعد 8 مرات من كل 10 والقطار 2165 الساعة 10:12 ص، في الموعد 7 مرات من كل 10. " +
+        "الأوقات بتوقيت إيطاليا. " +
         "هذه إحصاءات غير رسمية من بيناريو استنادًا إلى بيانات ViaggiaTreno.",
     ],
     [
       "hi-IN",
       "रूट Casa-Lavoro पर, अगले तीन घंटों में आम तौर पर छूटने वाली ट्रेनों में सबसे समयबद्ध यह है: 8:12 am वाली ट्रेन 2157, जो 10 में से 9 बार समय पर पहुँची। " +
         "उसके बाद 9:12 am वाली ट्रेन 2161, जो 10 में से 8 बार समय पर पहुँची और 10:12 am वाली ट्रेन 2165, जो 10 में से 7 बार समय पर पहुँची। " +
+        "समय इटली के समय के अनुसार हैं। " +
         "ये ViaggiaTreno डेटा पर आधारित बिनारियो के अनौपचारिक आँकड़े हैं।",
     ],
     [
       "ja-JP",
       "Casa-Lavoro では、これから 3 時間以内にふだん出発する電車のうち、一番時間に正確なのは 8:12 発の 2157 号、定刻どおり 10 回中 9 回です。" +
         "次は 9:12 発の 2161 号、定刻どおり 10 回中 8 回、10:12 発の 2165 号、定刻どおり 10 回中 7 回です。" +
+        "時刻はイタリア時間です。" +
         "これは ViaggiaTreno のデータに基づくビナリオの非公式統計です。",
     ],
   ] as const)("%s: names the best train and two more, with usual time and share out of ten, then the source", (locale, expected) => {
     const answer = mostPunctualAnswer(locale, "Casa-Lavoro", { kind: "trains", trains: mondayMorning() }, plain);
     // Some runtimes write a narrow no-break space before AM/PM: the answer has plain spaces.
     expect(answerText(locale, answer)).toBe(expected);
+  });
+
+  it.each(SUPPORTED_LOCALES)("%s: says the usual times are Italian time, except in Italian", locale => {
+    const text = answerText(locale, mostPunctualAnswer(locale, "Casa-Lavoro", { kind: "trains", trains: mondayMorning() }, plain));
+    const note = messagesForLocale(locale).punctuality.mostPunctualItalianTime;
+    expect(text.includes(note)).toBe(locale !== "it-IT");
   });
 
   it.each(SUPPORTED_LOCALES)("%s: says every train, its time and share, attributes the statistics and lists them for the screen", locale => {
@@ -127,7 +141,7 @@ describe("most punctual train answer", () => {
     expect(at("pt-BR", 65)).toContain("o 2157 da 1:05, no horário 1 vez em 10");
     expect(at("pt-BR", 21 * 60)).toContain("o 2157 das 21:00");
     expect(at("en-US", 0, 10)).toContain("train 2157 at 12:00 AM, on time 10 times out of 10");
-    expect(at("ar-SA", 8 * 60 + 12, 2)).toContain("في الموعد 2 مرتين من كل 10");
+    expect(at("ar-SA", 8 * 60 + 12, 2)).toContain("في الموعد مرتين من كل 10");
   });
 
   it("escapes the route name and the file's train number for SSML, and keeps them plain for the card", () => {

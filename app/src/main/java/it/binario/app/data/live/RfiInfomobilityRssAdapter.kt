@@ -19,10 +19,7 @@ import it.binario.app.data.provider.ProviderResponseMeta
 import it.binario.app.data.provider.ProviderResult
 import it.binario.app.data.provider.ProviderWarning
 import it.binario.app.data.provider.RatePolicy
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.withLock
-import kotlinx.coroutines.withContext
-import kotlinx.coroutines.withTimeoutOrNull
 import org.w3c.dom.Element
 import java.io.ByteArrayInputStream
 import java.io.IOException
@@ -39,25 +36,26 @@ fun interface RfiRssFetcher {
     suspend fun fetch(url: String): String
 }
 
-internal class HttpRfiRssFetcher(private val maxBytes: Int = 2 * 1024 * 1024) : RfiRssFetcher {
-    override suspend fun fetch(url: String): String = withTimeoutOrNull(25_000) {
-        withContext(Dispatchers.IO) {
-            val connection = URL(url).openConnection() as? HttpURLConnection
-                ?: throw IOException("Il feed RFI non usa una connessione HTTP")
-            connection.requestMethod = "GET"
-            connection.connectTimeout = 12_000
-            connection.readTimeout = 20_000
-            connection.setRequestProperty("Accept", "application/rss+xml, application/xml, text/xml")
-            connection.setRequestProperty("User-Agent", "Binario/0.15 (personal rail information client)")
-            try {
-                if (connection.responseCode !in 200..299) throw IOException("RFI RSS ha risposto HTTP ${connection.responseCode}")
-                // The feed is now read from the notices area: a body is bounded instead of read whole into memory.
-                connection.inputStream.use { readBoundedUtf8(it, connection.contentLengthLong.takeIf { n -> n >= 0 }, maxBytes) }
-            } finally {
-                connection.disconnect()
-            }
-        }
-    } ?: throw java.net.SocketTimeoutException("RFI RSS supera il tempo massimo della richiesta")
+/**
+ * The RFI RSS feed through [HttpPublicSourceFetcher]: same-host redirects only, a deadline that closes a blocked socket
+ * (a blocking read inside withContext(IO) could not be interrupted) and the shared User-Agent (audit android-data-7).
+ */
+internal class HttpRfiRssFetcher(
+    maxBytes: Int = 2 * 1024 * 1024,
+    openConnection: (URL) -> HttpURLConnection = { it.openConnection() as HttpURLConnection }
+) : RfiRssFetcher {
+    private val http = HttpPublicSourceFetcher(
+        PublicSourceRequestPolicy(
+            accept = "application/rss+xml, application/xml, text/xml",
+            connectTimeoutMillis = 12_000,
+            readTimeoutMillis = 20_000,
+            totalTimeoutMillis = 25_000,
+            maxBytes = maxBytes
+        ),
+        openConnection
+    )
+
+    override suspend fun fetch(url: String): String = http.get(url)
 }
 
 /** Feed ufficiale RFI per aggiornamenti nazionali di infomobilità. */

@@ -71,7 +71,7 @@ describe("pagine legali", () => {
     const headings = [...alexaSection.matchAll(/^### (.+)$/gm)].map(match => match[1]);
     expect(headings).toEqual(["Quando viene usato", "Voce, dati inviati da Alexa e risposte", "Revoca, cancellazione e conservazione"]);
     for (const heading of headings) expect(html).toContain(`<h2>${heading}</h2>`);
-    for (const fact of ["digest HMAC", "non salva il contenuto audio", "ON DELETE CASCADE", "<code>ELIMINA</code>", "Da completare dal titolare"])
+    for (const fact of ["digest HMAC", "non salva il contenuto audio", "ON DELETE CASCADE", "<code>ELIMINA</code>", "Da completare dal titolare", "note di accessibilità"])
       expect(html).toContain(fact);
     expect(html).toContain('<html lang="it">');
   });

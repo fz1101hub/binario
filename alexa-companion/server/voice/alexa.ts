@@ -29,7 +29,7 @@ import {
 import { ENV } from "../_core/env";
 import { isSecureRequest } from "../_core/cookies";
 import { describeErrorForLog } from "../_core/logRedaction";
-import { createWindowCounter } from "../_core/rateLimit";
+import { createWindowCounter, markRelayedForAnotherSkill } from "../_core/rateLimit";
 import {
   createOpaqueSecret,
   hashVoiceSecret,
@@ -55,7 +55,7 @@ import { isAlexaConfigured } from "./config";
 import { needsAccountLink } from "./guards";
 import { parseOAuthAuthorizationParameters } from "./oauthContract";
 import { escapeSsmlText, liveDataUnavailableSpeech, plainSpeechText } from "./speech";
-import { parseScreenEvent, requestTime, screenResponseInterceptor, setScreen, type RouteAction } from "./presentation";
+import { formatRailDate, parseScreenEvent, requestTime, screenResponseInterceptor, setScreen, type RouteAction } from "./presentation";
 import { alexaRequestLogContext } from "./requestLog";
 import { matchRouteByName } from "./routeMatching";
 import { punctualityStats, railStationIndex } from "../punctuality/source";
@@ -335,6 +335,7 @@ const nextTrainsHandler: RequestHandler = {
   handle: input => respondNextTrains(input, spokenRouteSelector(input)),
 };
 
+/** Says only that live data is not available: nothing personal, so no linked account is needed. */
 const trainStatusHandler: RequestHandler = {
   canHandle: input =>
     getRequestType(input.requestEnvelope) === "IntentRequest" &&
@@ -342,14 +343,9 @@ const trainStatusHandler: RequestHandler = {
   handle: async input => {
     const locale = getAlexaLocale(input);
     const messages = messagesForLocale(locale).voice;
-    const principal = await getLinkedUser(input);
-    if (!principal) return linkRequiredResponse(input);
-    const trainNumber = intentSlot(
-      input,
-      "trainNumber",
-      "train",
-      "numeroTreno"
-    );
+    const slot = intentSlot(input, "trainNumber", "train", "numeroTreno");
+    // AMAZON.NUMBER gives "?" when it heard no number: no «Treno ?».
+    const trainNumber = slot && /[0-9]/.test(slot) ? slot : undefined;
     const subject = trainNumber
       ? formatMessage(messages.trainSubject, { trainNumber: escapeSsmlText(trainNumber) })
       : undefined;
@@ -403,6 +399,23 @@ async function respondMyRoutes(input: HandlerInput) {
  * A punctuality answer: speech (SSML-escaped user values) and card (plain), and the screen that
  * repeats it. `text` builds the answer for one of the two forms.
  */
+/** Statistics whose window ended longer ago than this are still answered, saying until when. */
+export const STALE_STATISTICS_DAYS = 14;
+const SENTENCE_END: Partial<Record<SupportedLocale, string>> = { "ja-JP": "。", "hi-IN": "।" };
+
+/**
+ * «Dati fino al 9 novembre 2026.» after the figures when the file's window ended more than
+ * {@link STALE_STATISTICS_DAYS} days before the request: the file is rebuilt and redeployed by
+ * hand, and an old one must not sound current.
+ */
+function withDataAge(answer: PunctualityAnswer, locale: SupportedLocale, windowEnd: string | undefined, now: Date): PunctualityAnswer {
+  if (!answer.attributed || !windowEnd) return answer;
+  const ended = Date.parse(`${windowEnd}T23:59:59Z`);
+  if (!Number.isFinite(ended) || now.getTime() - ended <= STALE_STATISTICS_DAYS * 86_400_000) return answer;
+  const until = formatMessage(messagesForLocale(locale).punctuality.statisticsUntil, { date: formatRailDate(windowEnd, locale) });
+  return { ...answer, sentences: [...answer.sentences, `${until}${SENTENCE_END[locale] ?? "."}`] };
+}
+
 function punctualityResponse(
   input: HandlerInput,
   build: (text: (value: string) => string) => PunctualityAnswer,
@@ -410,8 +423,9 @@ function punctualityResponse(
   windowEnd: string | undefined
 ) {
   const locale = getAlexaLocale(input);
-  const spoken = build(escapeSsmlText);
-  const written = build(plainSpeechText);
+  const now = requestTime(input);
+  const spoken = withDataAge(build(escapeSsmlText), locale, windowEnd, now);
+  const written = withDataAge(build(plainSpeechText), locale, windowEnd, now);
   setScreen(input, {
     kind: "punctuality",
     ...subject,
@@ -934,6 +948,10 @@ export function registerAlexaRoutes(
         !secureStringEquals(credentials.clientId, ENV.alexaOAuthClientId) ||
         !secureStringEquals(credentials.clientSecret, ENV.alexaOAuthClientSecret)
       ) {
+        // Credentials of another client (someone's own skill pointed at this URL, relayed by
+        // Amazon from our users' addresses) do not use up the per-IP failure budget; a wrong
+        // secret for our client, or no usable credentials, does.
+        if (credentials && !secureStringEquals(credentials.clientId, ENV.alexaOAuthClientId)) markRelayedForAnotherSkill(res);
         res.set("WWW-Authenticate", 'Basic realm="binario-alexa", charset="UTF-8"');
         return oauthError(res, 401, "invalid_client");
       }
