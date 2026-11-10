@@ -79,6 +79,12 @@ DEFAULT_GTFS = ROOT / "app/src/main/assets/gtfs/trenitalia-gtfs.zip"
 # its pack already uses ViaggiaTreno codes as stop_id ("S01066"): Lombardy's regional and suburban trains.
 DEFAULT_TRENORD = ROOT / "app/src/main/assets/gtfs/lombardia-trenord-gtfs.zip"
 DEFAULT_STATIONS = ROOT / "app/src/main/assets/stations/curated_it_rail_stations.json"
+# Plain HTTP on purpose.  ViaggiaTreno answers an HTTPS request for this API with a redirect to the same resource on
+# http://www.viaggiatreno.it (SOURCE_POLICY.md, «Cleartext»; the apps start over HTTPS and follow that one hop, which is
+# why Android allows cleartext for that host and iOS has an ATS exception): the answer arrives over HTTP either way.
+# Starting over HTTPS would add a request per train (two per second at most, redirects included, and counted in
+# --max-requests), doubling the load on ViaggiaTreno and halving the trains of a run, without protecting the answer.
+# redirect_target still accepts an HTTPS hop, should ViaggiaTreno start answering over HTTPS.
 BASE_URL = "http://www.viaggiatreno.it/infomobilita/resteasy/viaggiatreno/"
 # What the operator sees is what runs: a scheduled, automated, read-only collector of the statistics for the
 # open-source app, at a low rate.  No URL (ViaggiaTreno answered 403 to the first form, which carried one) and no
