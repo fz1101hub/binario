@@ -368,6 +368,37 @@ final class LiveRailDataTests: XCTestCase {
         XCTAssertNil(empty.stationBoardLiveStatus(at: now))
     }
 
+    func testADelayIsCountedFromTheTimeTheRowPrintsWhenTheSourceListsTheTrainAtAnotherTime() {
+        let day = LiveTestDates.rome(2026, 10, 16, 9, 0)
+        let bundled = LiveTestDates.rome(2026, 10, 16, 10, 14)
+        // RFI lists the train at 10:10 (a timetable change the monthly bundle lacks), «Nessuno».
+        let earlier = makeRow(.rfiStationBoard, number: "2153", scheduled: LiveTestDates.rome(2026, 10, 16, 10, 10), expectedMinutes: 0,
+                              platform: "2", status: .onTime, operatorID: "trenord")
+        let later = makeRow(.rfiStationBoard, number: "2155", scheduled: LiveTestDates.rome(2026, 10, 16, 10, 10), expectedMinutes: 6,
+                            platform: "3", status: .delayed, operatorID: "trenord")
+        let same = makeRow(.rfiStationBoard, number: "2157", scheduled: bundled, expectedMinutes: 0,
+                           platform: "4", status: .onTime, operatorID: "trenord")
+        let board = LiveDepartureBoard(
+            stationID: "S01700", from: day, to: day.addingTimeInterval(6 * 3_600), departures: [earlier, later, same],
+            sources: [.rfiStationBoard], unavailableSources: [:], warnings: [], fetchedAt: now
+        )
+        func row(_ number: String) -> StationBoardDeparture {
+            StationBoardDeparture(
+                departure: bundled,
+                service: TrainService(id: "gtfs:\(number)", number: number, operatorName: "Trenord", category: "RE",
+                                      destination: "Bergamo", scheduledDeparture: "10:14", expectedDeparture: "10:14",
+                                      status: "PROGRAMMED", platform: nil, delayMinutes: 0),
+                terminus: StationIdentity(id: "S01529", name: "Bergamo")
+            )
+        }
+        let rows = LiveOverlay.stationBoard([row("2153"), row("2155"), row("2157")], with: board, at: now)
+        XCTAssertEqual(rows[0].live?.expectedDeparture, LiveTestDates.rome(2026, 10, 16, 10, 10))
+        XCTAssertEqual(rows[0].live?.delayMinutes, -4, "leaves four minutes before the printed 10:14: never «on time»")
+        XCTAssertEqual(rows[1].live?.delayMinutes, 2, "10:16 is two minutes after the printed time")
+        XCTAssertEqual(rows[2].live?.delayMinutes, 0)
+        XCTAssertEqual(earlier.stationBoardLiveStatus(at: now)?.delayMinutes, 0, "against the source's own time without a timetable row")
+    }
+
     func testThePartenzeLiveStatusNamesTheSourceOfEachValueAndABareLateLabel() {
         let scheduled = LiveTestDates.rome(2026, 10, 16, 10, 5)
         let viaggiaTreno = observation(.viaggiaTreno)

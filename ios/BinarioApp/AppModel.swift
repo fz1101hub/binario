@@ -1085,7 +1085,7 @@ final class AppModel: ObservableObject {
             guard let departure = nextOccurrence(of: service.scheduledDeparture, after: cursor, calendar: calendar) else { continue }
             cursor = departure.addingTimeInterval(-1)
             guard let row = LiveOverlay.departure(number: service.number, scheduled: departure, in: board.departures),
-                  let status = row.stationBoardLiveStatus(at: now) else { continue }
+                  let status = row.stationBoardLiveStatus(at: now, timetable: departure) else { continue }
             live[service.id] = status
         }
         return live
