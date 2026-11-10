@@ -6,16 +6,23 @@ export type LocalJourneyArchiveDependencies = {
   clearItineraries: () => Promise<unknown>;
   /** Obbligatorio: file di esportazione e copie dei file importati rimasti nella cache dell’app. */
   clearCachedFiles: () => Promise<unknown>;
+  /** Obbligatorio: i modelli di viaggio ripetono origine, destinazione e orario delle tratte abituali. */
+  clearTemplates: () => Promise<unknown>;
+  /** Obbligatorio: le stazioni recenti (codice, nome, ora d’uso). */
+  clearRecentStations: () => Promise<unknown>;
 };
 
 export async function clearLocalJourneyArchive(dependencies: LocalJourneyArchiveDependencies) {
   if (typeof dependencies.clearItineraries !== "function") throw new TypeError("clearLocalJourneyArchive richiede clearItineraries: gli itinerari locali vanno cancellati insieme alle tratte.");
   if (typeof dependencies.clearCachedFiles !== "function") throw new TypeError("clearLocalJourneyArchive richiede clearCachedFiles: le copie in cache di esportazioni e importazioni contengono tratte.");
+  if (typeof dependencies.clearTemplates !== "function" || typeof dependencies.clearRecentStations !== "function") throw new TypeError("clearLocalJourneyArchive richiede clearTemplates e clearRecentStations: modelli e stazioni recenti descrivono gli spostamenti abituali.");
   const scheduledIds = await dependencies.listScheduledRouteIds();
   await Promise.all(scheduledIds.map(routeId => dependencies.cancelReminder(routeId)));
   await dependencies.clearRoutes();
   await dependencies.clearItineraries();
   await dependencies.clearCachedFiles();
+  await dependencies.clearTemplates();
+  await dependencies.clearRecentStations();
   return { clearedReminders: scheduledIds.length };
 }
 

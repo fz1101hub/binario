@@ -31,3 +31,5 @@ export async function saveLocalJourneyTemplate(template: LocalJourneyTemplate) {
   await AsyncStorage.setItem(storageKey, JSON.stringify(next)); return next;
 }
 export async function removeLocalJourneyTemplate(id: string) { const { templates, writable } = await load(); if (!writable) return templates; const next = templates.filter(item => item.id !== id); await AsyncStorage.setItem(storageKey, JSON.stringify(next)); return next; }
+/** «Cancella archivio locale»: templates hold origin, destination and time of the user's usual journeys. */
+export async function clearLocalJourneyTemplates() { await AsyncStorage.removeItem(storageKey); }

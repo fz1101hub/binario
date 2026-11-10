@@ -9,15 +9,17 @@ describe("cancellazione archivio viaggio locale", () => {
     const clearRoutes = vi.fn(async () => { calls.push("clear"); });
     const clearItineraries = vi.fn(async () => { calls.push("clear-itineraries"); });
     const clearCachedFiles = vi.fn(async () => { calls.push("clear-files"); });
-    await expect(clearLocalJourneyArchive({ listScheduledRouteIds, cancelReminder, clearRoutes, clearItineraries, clearCachedFiles })).resolves.toEqual({ clearedReminders: 2 });
-    expect(calls).toEqual(["cancel:4", "cancel:8", "clear", "clear-itineraries", "clear-files"]);
+    const clearTemplates = vi.fn(async () => { calls.push("clear-templates"); });
+    const clearRecentStations = vi.fn(async () => { calls.push("clear-recent"); });
+    await expect(clearLocalJourneyArchive({ listScheduledRouteIds, cancelReminder, clearRoutes, clearItineraries, clearCachedFiles, clearTemplates, clearRecentStations })).resolves.toEqual({ clearedReminders: 2 });
+    expect(calls).toEqual(["cancel:4", "cancel:8", "clear", "clear-itineraries", "clear-files", "clear-templates", "clear-recent"]);
   });
 
   it("rimuove comunque archivio e itinerari quando non esistono promemoria", async () => {
     const clearRoutes = vi.fn();
     const clearItineraries = vi.fn();
     const clearCachedFiles = vi.fn();
-    await expect(clearLocalJourneyArchive({ listScheduledRouteIds: async () => [], cancelReminder: async () => undefined, clearRoutes, clearItineraries, clearCachedFiles })).resolves.toEqual({ clearedReminders: 0 });
+    await expect(clearLocalJourneyArchive({ listScheduledRouteIds: async () => [], cancelReminder: async () => undefined, clearRoutes, clearItineraries, clearCachedFiles, clearTemplates: async () => undefined, clearRecentStations: async () => undefined })).resolves.toEqual({ clearedReminders: 0 });
     expect(clearRoutes).toHaveBeenCalledOnce();
     expect(clearItineraries).toHaveBeenCalledOnce();
     expect(clearCachedFiles).toHaveBeenCalledOnce();
@@ -26,7 +28,7 @@ describe("cancellazione archivio viaggio locale", () => {
   it("rifiuta una cancellazione senza clearItineraries, per tsc e a runtime, senza toccare l’archivio", async () => {
     const cancelReminder = vi.fn();
     const clearRoutes = vi.fn();
-    const incomplete = { listScheduledRouteIds: async () => [4], cancelReminder, clearRoutes, clearCachedFiles: async () => undefined };
+    const incomplete = { listScheduledRouteIds: async () => [4], cancelReminder, clearRoutes, clearCachedFiles: async () => undefined, clearTemplates: async () => undefined, clearRecentStations: async () => undefined };
     // @ts-expect-error clearItineraries è una dipendenza obbligatoria: ometterla deve fallire in `pnpm run check`
     await expect(clearLocalJourneyArchive(incomplete)).rejects.toThrow(TypeError);
     expect(cancelReminder).not.toHaveBeenCalled();
@@ -35,9 +37,19 @@ describe("cancellazione archivio viaggio locale", () => {
 
   it("rifiuta una cancellazione che lascerebbe in cache le copie dei file esportati o importati", async () => {
     const clearRoutes = vi.fn();
-    const incomplete = { listScheduledRouteIds: async () => [], cancelReminder: vi.fn(), clearRoutes, clearItineraries: async () => undefined };
+    const incomplete = { listScheduledRouteIds: async () => [], cancelReminder: vi.fn(), clearRoutes, clearItineraries: async () => undefined, clearTemplates: async () => undefined, clearRecentStations: async () => undefined };
     // @ts-expect-error clearCachedFiles è obbligatoria
     await expect(clearLocalJourneyArchive(incomplete)).rejects.toThrow(TypeError);
+    expect(clearRoutes).not.toHaveBeenCalled();
+  });
+
+  it("rifiuta una cancellazione che lascerebbe modelli di viaggio o stazioni recenti", async () => {
+    const clearRoutes = vi.fn();
+    const base = { listScheduledRouteIds: async () => [], cancelReminder: vi.fn(), clearRoutes, clearItineraries: async () => undefined, clearCachedFiles: async () => undefined };
+    // @ts-expect-error clearTemplates e clearRecentStations sono obbligatorie
+    await expect(clearLocalJourneyArchive({ ...base, clearRecentStations: async () => undefined })).rejects.toThrow(TypeError);
+    // @ts-expect-error clearTemplates e clearRecentStations sono obbligatorie
+    await expect(clearLocalJourneyArchive({ ...base, clearTemplates: async () => undefined })).rejects.toThrow(TypeError);
     expect(clearRoutes).not.toHaveBeenCalled();
   });
 });

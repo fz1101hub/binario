@@ -10,6 +10,8 @@ import { clearLocalJourneyArchive } from "@/lib/local-journey-privacy";
 import { loadLocalJourneyTimingPreferences, localJourneyReminderOptions, saveLocalJourneyTimingPreferences, type LocalJourneyReminderPreference } from "@/lib/local-journey-timing";
 import { cancelPlannedRouteReminder, listScheduledRouteIds } from "@/lib/planned-reminder-service";
 import { deleteLocalJourneyCacheFiles } from "@/lib/local-journey-files";
+import { clearLocalJourneyTemplates } from "@/lib/local-journey-templates";
+import { clearLocalRecentStations } from "@/lib/local-recent-stations";
 import { refreshNativeCompanionSurfaces } from "@/lib/native-surface-refresh";
 import Constants from "expo-constants";
 import { router } from "expo-router";
@@ -43,7 +45,7 @@ export default function SettingsScreen() {
   }
 
   async function clearLocalJourneyData() {
-    const result = await clearLocalJourneyArchive({ listScheduledRouteIds, cancelReminder: cancelPlannedRouteReminder, clearRoutes: clearLocalPlannedRoutes, clearItineraries: clearLocalJourneyItineraries, clearCachedFiles: deleteLocalJourneyCacheFiles });
+    const result = await clearLocalJourneyArchive({ listScheduledRouteIds, cancelReminder: cancelPlannedRouteReminder, clearRoutes: clearLocalPlannedRoutes, clearItineraries: clearLocalJourneyItineraries, clearCachedFiles: deleteLocalJourneyCacheFiles, clearTemplates: clearLocalJourneyTemplates, clearRecentStations: clearLocalRecentStations });
     // The widget and the watch must not keep showing a journey that is no longer on the phone.
     await refreshNativeCompanionSurfaces(locale);
     setStatus(t("settings.cleared", { count: result.clearedReminders }));

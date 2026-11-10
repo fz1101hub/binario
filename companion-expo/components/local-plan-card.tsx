@@ -11,7 +11,8 @@ import { useCompanionTheme } from "@/lib/theme";
 import { createTranslator, useTranslation } from "@/lib/i18n";
 import { StationAutocompleteInput } from "@/components/station-autocomplete-input";
 import { formatLocalJourneyDate, formatLocalJourneyTime, fromLocalDateAndTime, toLocalIsoDate, toLocalTime } from "@/lib/local-date-time";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useFocusEffect } from "expo-router";
 import DateTimePicker, { type DateTimePickerEvent } from "@react-native-community/datetimepicker";
 import { AccessibilityInfo, Platform, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 
@@ -52,7 +53,8 @@ export function LocalPlanCard({ onSaved, planningDraft, onPlanningDraftApplied }
   const destinationRef = useRef<TextInput>(null);
 
   useEffect(() => { if (message && Platform.OS !== "web") AccessibilityInfo.announceForAccessibility(message); }, [message]);
-  useEffect(() => { void loadLocalJourneyTemplates().then(setTemplates); }, []);
+  // Reloaded on every visit: «Cancella archivio locale» in Settings removes the templates.
+  useFocusEffect(useCallback(() => { void loadLocalJourneyTemplates().then(setTemplates); }, []));
   useEffect(() => { void loadLocalFavoriteStations().then(setFavoriteStations); }, []);
   useEffect(() => { void loadLocalJourneyTimingPreferences().then(preferences => setPlannedReminderMinutes(preferences.preferredReminderMinutes)); }, []);
   useEffect(() => {

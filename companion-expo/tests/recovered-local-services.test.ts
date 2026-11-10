@@ -12,7 +12,8 @@ vi.mock("@react-native-async-storage/async-storage", () => ({
 import { createLocalScheduledSnapshot, createUnavailableSnapshot, evaluateSnapshot } from "@/lib/companion-snapshot";
 import { supportedLocales, translationDictionaries, type CompanionLocale } from "@/lib/i18n";
 import { parseLocalDictation } from "@/lib/local-dictation";
-import { createLocalJourneyTemplate, loadLocalJourneyTemplates, saveLocalJourneyTemplate } from "@/lib/local-journey-templates";
+import { clearLocalJourneyTemplates, createLocalJourneyTemplate, loadLocalJourneyTemplates, saveLocalJourneyTemplate } from "@/lib/local-journey-templates";
+import { clearLocalRecentStations, loadLocalRecentStations, recordLocalRecentStation, saveLocalRecentStations } from "@/lib/local-recent-stations";
 import { loadLocalJourneyTimingPreferences, saveLocalJourneyTimingPreferences } from "@/lib/local-journey-timing";
 import { parseManualRouteTransfer, previewManualRouteTransfer } from "@/lib/manual-route-transfer-contract";
 import { travelEpochMs } from "@/lib/travel-time-zone";
@@ -138,6 +139,12 @@ describe("servizi locali recuperati", () => {
     expect(valid).not.toBeNull();
     await saveLocalJourneyTemplate(valid!);
     await expect(loadLocalJourneyTemplates()).resolves.toHaveLength(1);
+    await clearLocalJourneyTemplates();
+    await expect(loadLocalJourneyTemplates()).resolves.toEqual([]);
+    await saveLocalRecentStations(recordLocalRecentStation([], { code: "S08409", name: "Roma San Pietro" }, 5));
+    await expect(loadLocalRecentStations()).resolves.toHaveLength(1);
+    await clearLocalRecentStations();
+    await expect(loadLocalRecentStations()).resolves.toEqual([]);
     expect(createLocalJourneyTemplate({ id: "x", label: "x", origin: "Roma", originStationCode: "", destination: "Milano", destinationStationCode: "S1", travelTime: "08:15", plannedReminderMinutes: 15, checklist: [] })).toBeNull();
   });
 
