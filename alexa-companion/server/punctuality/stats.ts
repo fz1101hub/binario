@@ -114,9 +114,15 @@ export class PunctualityTrain {
     return this.meanTenths[index] / 10;
   }
 
+  /** Whether the file lists the weekdays of the stop (14 samples or more there). */
+  hasWeekdays(index: number) {
+    return (this.weekdays[index] & WEEKDAYS_KNOWN) !== 0;
+  }
+
   /**
    * False only when the file lists the stop's weekdays and none of its samples fell on
    * `isoWeekday` (1 Monday … 7 Sunday): the train does not stop there on that day of the week.
+   * Without the weekdays it says nothing: {@link PunctualityStats.mayRunOn} weighs the days observed.
    */
   mayRunOn(index: number, isoWeekday: number) {
     const mask = this.weekdays[index];
@@ -126,6 +132,7 @@ export class PunctualityTrain {
 
 export class PunctualityStats {
   private readonly byNumber = new Map<string, PunctualityTrain[]>();
+  private covered: number | undefined;
 
   constructor(
     readonly windowEnd: string,
@@ -145,9 +152,36 @@ export class PunctualityStats {
    * collection the window is not full yet.
    */
   get coveredDays(): number {
-    let observed = 0;
-    for (const train of this.trains) observed = Math.max(observed, train.daysObserved);
-    return Math.max(1, Math.min(this.windowDays, observed || this.windowDays));
+    if (this.covered === undefined) {
+      let observed = 0;
+      for (const train of this.trains) observed = Math.max(observed, train.daysObserved);
+      this.covered = Math.max(1, Math.min(this.windowDays, observed || this.windowDays));
+    }
+    return this.covered;
+  }
+
+  /** How many of the {@link coveredDays}, the last days of the window up to `windowEnd`, fall on `isoWeekday`. */
+  coveredDaysOn(isoWeekday: number): number {
+    const endWeekday = ((new Date(`${this.windowEnd}T00:00:00Z`).getUTCDay() + 6) % 7) + 1;
+    const latest = (((endWeekday - isoWeekday) % 7) + 7) % 7;
+    return latest >= this.coveredDays ? 0 : Math.floor((this.coveredDays - 1 - latest) / 7) + 1;
+  }
+
+  /**
+   * Whether `train` is known to stop at `stop` on the runs that depart on `isoWeekday`. With the
+   * stop's weekdays in the file, as they say ({@link PunctualityTrain.mayRunOn}). Without them (the
+   * pipeline leaves them out below 14 samples, so always for a train of the weekend or of the first
+   * weeks of the collection) only when the days observed there prove it as the weekdays would: the
+   * covered days missing (no sample at the stop and no cancellation) are fewer than the
+   * `isoWeekday`s among them, so at least one of its runs fell on that weekday, or none is missing.
+   * A weekend-only train (8 days of 30) is then never proposed on a Tuesday, and neither on a
+   * Saturday, since nothing tells which days it runs.
+   */
+  mayRunOn(train: PunctualityTrain, stop: number, isoWeekday: number): boolean {
+    if (train.hasWeekdays(stop)) return train.mayRunOn(stop, isoWeekday);
+    const known = Math.min(train.daysObserved, train.samples[stop] + train.daysCancelled);
+    const missing = this.coveredDays - known;
+    return missing <= 0 || missing < this.coveredDaysOn(isoWeekday);
   }
 
   /** Every train published with the number; the same number from another origin is another train. */
@@ -376,8 +410,9 @@ export type PunctualDeparture = {
  * of `originCodes` and later at one of `destinationCodes` (as {@link routePunctuality}), whose
  * scheduled minute at that origin (`% 1440`) falls in the {@link DEPARTURE_WINDOW_MINUTES} after
  * `clock` (past midnight too) and that have at least {@link MIN_SAMPLES} arrivals at the
- * destination. A train without a scheduled minute there is left out, and so is one whose weekdays
- * at the origin, when the file lists them, show it does not run on the day of that departure.
+ * destination. A train without a scheduled minute there is left out, and so is one not known to run
+ * on the day of that departure ({@link PunctualityStats.mayRunOn}: its weekdays at the origin or,
+ * without them, its days observed there).
  *
  * Ranked by the share of observed days on which the train ran and arrived on time at the
  * destination against its own limit ({@link daysOnTime}, so a train often cancelled is not first
@@ -412,7 +447,7 @@ export function mostPunctualDepartures(
     const daysAfterToday = clock.minuteOfDay + minutesUntil >= MINUTES_PER_DAY ? 1 : 0;
     const runDay = daysAfterToday - Math.floor(scheduled / MINUTES_PER_DAY);
     const runWeekday = ((((clock.isoWeekday - 1 + runDay) % 7) + 7) % 7) + 1;
-    if (!train.mayRunOn(boarding, runWeekday)) continue;
+    if (!stats.mayRunOn(train, boarding, runWeekday)) continue;
     candidates.push({ train, alighting, minuteOfDay, minutesUntil });
   }
   candidates.sort((left, right) => {
