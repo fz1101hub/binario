@@ -1,9 +1,11 @@
 package it.binario.app.wear
 
 import android.content.Context
+import android.os.Build
 import androidx.work.CoroutineWorker
 import androidx.work.ExistingWorkPolicy
 import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.OutOfQuotaPolicy
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import com.google.android.gms.wearable.MessageEvent
@@ -40,9 +42,18 @@ class WearRefreshWorker(appContext: Context, params: WorkerParameters) : Corouti
         private const val WORK = "binario-wear-refresh"
 
         fun enqueue(context: Context) {
-            WorkManager.getInstance(context)
-                .enqueueUniqueWork(WORK, ExistingWorkPolicy.KEEP, OneTimeWorkRequestBuilder<WearRefreshWorker>().build())
+            val request = OneTimeWorkRequestBuilder<WearRefreshWorker>().apply {
+                // The user is waiting at the watch: a plain request waits for a Doze maintenance window.
+                if (runsExpedited(Build.VERSION.SDK_INT)) setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
+            }.build()
+            WorkManager.getInstance(context).enqueueUniqueWork(WORK, ExistingWorkPolicy.KEEP, request)
         }
+
+        /**
+         * Expedited from Android 12, where it is an expedited job. Before it WorkManager would run it as a foreground
+         * service with a notification from getForegroundInfo(), which this worker does not have.
+         */
+        internal fun runsExpedited(sdkInt: Int): Boolean = sdkInt >= Build.VERSION_CODES.S
     }
 }
 

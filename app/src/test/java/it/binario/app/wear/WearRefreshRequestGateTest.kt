@@ -15,6 +15,14 @@ class WearRefreshRequestGateTest {
     }
 
     @Test
+    fun `the refresh asked from the watch runs expedited where that needs no foreground notification`() {
+        assertFalse(WearRefreshWorker.runsExpedited(26))
+        assertFalse(WearRefreshWorker.runsExpedited(30))
+        assertTrue(WearRefreshWorker.runsExpedited(31))
+        assertTrue(WearRefreshWorker.runsExpedited(36))
+    }
+
+    @Test
     fun `deduplicates each node within the rate limit`() {
         var now = 1_000L
         val gate = WearRefreshRequestGate(clock = { now }, minimumIntervalMillis = 15_000L)
