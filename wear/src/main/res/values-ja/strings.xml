@@ -13,7 +13,7 @@
     <string name="tile_snapshot_unavailable">スナップショットなし</string>
     <string name="tile_service_details">%1$s · %2$s · %3$s</string>
     <string name="status_programmed">時刻表どおり</string>
-    <string name="status_received_from_phone">スマホから受信した状況</string>
+    <string name="status_live_as_of">%1$s 時点のデータ</string>
     <string name="status_updating">データを更新中</string>
     <string name="status_local_snapshot">前回のスナップショット</string>
     <string name="status_live_unavailable">リアルタイムデータなし</string>

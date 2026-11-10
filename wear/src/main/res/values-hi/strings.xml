@@ -13,7 +13,7 @@
     <string name="tile_snapshot_unavailable">स्नैपशॉट उपलब्ध नहीं</string>
     <string name="tile_service_details">%1$s · %2$s · %3$s</string>
     <string name="status_programmed">निर्धारित समय</string>
-    <string name="status_received_from_phone">फ़ोन से मिली स्थिति</string>
+    <string name="status_live_as_of">डेटा %1$s बजे अपडेट हुआ</string>
     <string name="status_updating">डेटा अपडेट हो रहा है</string>
     <string name="status_local_snapshot">अंतिम स्थानीय स्नैपशॉट</string>
     <string name="status_live_unavailable">रीयल-टाइम डेटा उपलब्ध नहीं</string>

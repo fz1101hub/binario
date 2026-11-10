@@ -58,6 +58,29 @@ class AndroidWearSnapshotContractTest {
     }
 
     @Test
+    fun `the watch shows a live snapshot for fifteen minutes, not for the source cache lifetime`() {
+        // A live board cached for 45 s: the route snapshot expires with it, the watch's display window must not.
+        val live = goldenSnapshot.copy(expiresAtEpochMillis = generatedAt + 45_000L)
+
+        val payload = AndroidWearSnapshotContract.operational(live, generatedAt, strings(locale = null))
+
+        assertEquals(generatedAt + 15 * 60_000L, (payload["expiresAtEpochMillis"] as Number).toLong())
+        assertEquals(15 * 60_000L, (payload["ttlMillis"] as Number).toLong())
+        // The observation time still travels with it, so the watch can show how old the live values are.
+        assertEquals(goldenSnapshot.sourceObservedAtEpochMillis, (payload["provenanceObservedAtEpochMillis"] as Number).toLong())
+    }
+
+    @Test
+    fun `a snapshot loaded long ago is shown at most fifteen minutes past its source validity`() {
+        val expiredFiveMinutesAgo = goldenSnapshot.copy(expiresAtEpochMillis = generatedAt - 5 * 60_000L)
+        val payload = AndroidWearSnapshotContract.operational(expiredFiveMinutesAgo, generatedAt, strings(locale = null))
+        assertEquals(generatedAt + 10 * 60_000L, (payload["expiresAtEpochMillis"] as Number).toLong())
+
+        val expiredLongAgo = goldenSnapshot.copy(expiresAtEpochMillis = generatedAt - 15 * 60_000L)
+        assertTrue(runCatching { AndroidWearSnapshotContract.operational(expiredLongAgo, generatedAt, strings(locale = null)) }.isFailure)
+    }
+
+    @Test
     fun `encoder adds the optional reliability pair as in the reliability golden fixture`() {
         val reliability = { service: TrainService -> if (service.number == "FR 9505") ReliabilityMark(22, 27, 5, 22, 30) else null }
         val actual = AndroidWearSnapshotContract.operational(goldenSnapshot, generatedAt, strings(locale = null), reliability).normalisedNumbers()

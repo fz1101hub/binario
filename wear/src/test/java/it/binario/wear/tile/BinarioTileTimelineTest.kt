@@ -62,7 +62,7 @@ class BinarioTileTimelineTest {
                 "app_name",
                 "Roma Termini → Firenze S. M. Novella",
                 "tile_service_details(08:15, RV 2345, Firenze S. M. Novella)",
-                "status_received_from_phone",
+                "status_live_as_of(09:14)",
             ),
             texts(productionLayout(snapshot(1_893_485_700_000L, services = listOf(service)))),
         )

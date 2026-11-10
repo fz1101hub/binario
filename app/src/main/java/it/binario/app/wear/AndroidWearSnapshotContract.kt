@@ -63,6 +63,10 @@ internal object AndroidWearSnapshotContract {
     /**
      * The v1 payload of [snapshot]. [reliabilityOf] gives the optional «In orario N volte su M» of a service (the
      * `service{n}ReliabilityOnTime` / `service{n}ReliabilitySamples` pair); it stays out when it gives none.
+     *
+     * The watch shows it for 15 minutes from [generatedAtEpochMillis] and never more than 15 minutes past the
+     * snapshot's own validity. That validity is the source cache's (30-60 s for a live board): used as the deadline,
+     * it expired the glance before the user looked at it. The watch names the observation time of live values.
      */
     fun operational(
         snapshot: RouteSnapshot,
@@ -70,7 +74,7 @@ internal object AndroidWearSnapshotContract {
         strings: WearSnapshotStrings,
         reliabilityOf: (TrainService) -> ReliabilityMark? = { null }
     ): Map<String, Any> {
-        val expiresAt = minOf(snapshot.expiresAtEpochMillis, generatedAtEpochMillis + maxTtlMillis)
+        val expiresAt = minOf(generatedAtEpochMillis, snapshot.expiresAtEpochMillis) + maxTtlMillis
         require(expiresAt > generatedAtEpochMillis) { "Uno snapshot scaduto non può essere pubblicato" }
         val services = orderServicesForDisplay(snapshot.services).take(2)
         val operational = services.any { it.operationalStatusVerified }

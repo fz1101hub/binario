@@ -48,7 +48,7 @@ class BinarioComplicationDataTest {
 
         assertEquals("app_name", texts.text)
         assertNull(texts.title)
-        assertEquals("status_received_from_phone", texts.contentDescription)
+        assertEquals("status_live_as_of(07:59)", texts.contentDescription)
     }
 
     @Test
@@ -59,7 +59,7 @@ class BinarioComplicationDataTest {
         assertEquals("service_time_number(08:15, RV 2345) · ^1", withService.text)
         assertEquals(Instant.parse("2030-01-01T07:15:00Z"), withService.countdownTo)
         assertEquals("Roma Termini → Firenze S. M. Novella", withService.title)
-        assertEquals("status_received_from_phone", withoutService.text)
+        assertEquals("status_live_as_of(07:59)", withoutService.text)
         assertNull(withoutService.countdownTo)
         assertEquals("Roma Termini → Firenze S. M. Novella", withoutService.title)
     }

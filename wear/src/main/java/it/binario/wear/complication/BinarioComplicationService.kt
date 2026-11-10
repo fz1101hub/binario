@@ -22,7 +22,9 @@ import it.binario.wear.R
 import it.binario.wear.WearMainActivity
 import it.binario.wear.WearStringProvider
 import it.binario.wear.accessibleLabel
-import it.binario.wear.dataStatusResId
+import it.binario.wear.RAIL_TIME_ZONE
+import it.binario.wear.dataStatus
+import it.binario.wear.string
 import it.binario.wear.model.WearService
 import it.binario.wear.model.WearSnapshot
 import it.binario.wear.sync.WearSnapshotStore
@@ -85,9 +87,6 @@ internal data class WearComplicationTexts(
     val countdownTo: Instant? = null,
 )
 
-/** The phone formats rail times as Italian clock times ("HH:mm" in Europe/Rome, RailTime.defaultZone). */
-internal val RAIL_TIME_ZONE: ZoneId = ZoneId.of("Europe/Rome")
-
 /** A service counts as gone one minute after its expected departure; the next one is shown then. */
 private const val DEPARTED_GRACE_MILLIS = 60_000L
 
@@ -148,7 +147,7 @@ internal fun laterGlanceSegments(snapshot: WearSnapshot, nowEpochMillis: Long): 
  */
 internal fun shortTextComplicationTexts(snapshot: WearSnapshot, strings: WearStringProvider, nowEpochMillis: Long): WearComplicationTexts {
     val (service, departure) = upcomingService(snapshot, nowEpochMillis)
-        ?: return WearComplicationTexts(strings.string(R.string.app_name), null, strings.string(snapshot.dataStatusResId()))
+        ?: return WearComplicationTexts(strings.string(R.string.app_name), null, strings.string(snapshot.dataStatus()))
     if (departure == null) return WearComplicationTexts(service.expectedDeparture, service.number, service.accessibleLabel(strings))
     return WearComplicationTexts(COUNTDOWN, service.expectedDeparture, service.accessibleLabel(strings), departure)
 }
@@ -156,7 +155,7 @@ internal fun shortTextComplicationTexts(snapshot: WearSnapshot, strings: WearStr
 internal fun longTextComplicationTexts(snapshot: WearSnapshot, strings: WearStringProvider, nowEpochMillis: Long): WearComplicationTexts {
     val title = snapshot.routeLabel.take(48)
     val (service, departure) = upcomingService(snapshot, nowEpochMillis)
-        ?: return WearComplicationTexts(strings.string(snapshot.dataStatusResId()), title, strings.string(snapshot.dataStatusResId()))
+        ?: return WearComplicationTexts(strings.string(snapshot.dataStatus()), title, strings.string(snapshot.dataStatus()))
     val label = strings.string(R.string.service_time_number, service.expectedDeparture, service.number)
     // Same " · " separator as service_time_number in every language.
     return if (departure == null) WearComplicationTexts(label, title, service.accessibleLabel(strings))

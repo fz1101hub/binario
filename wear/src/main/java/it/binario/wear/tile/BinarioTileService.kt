@@ -19,9 +19,10 @@ import it.binario.wear.WearMainActivity
 import it.binario.wear.WearStringProvider
 import it.binario.wear.complication.laterGlanceSegments
 import it.binario.wear.complication.upcomingService
-import it.binario.wear.dataStatusResId
+import it.binario.wear.dataStatus
 import it.binario.wear.model.WearService
 import it.binario.wear.model.WearSnapshot
+import it.binario.wear.string
 import it.binario.wear.sync.WearSnapshotStore
 import it.binario.wear.wearStrings
 
@@ -133,7 +134,7 @@ internal fun binarioTileLayout(
             content.snapshot.routeLabel,
             content.service?.let { strings.string(R.string.tile_service_details, it.expectedDeparture, it.number, it.destination) }
                 ?: strings.string(R.string.empty_snapshot_message),
-            strings.string(content.snapshot.dataStatusResId()),
+            strings.string(content.snapshot.dataStatus()),
         )
     }
     val inset = DimensionBuilders.dp(device.screenWidthDp * tileInsetFraction(device))

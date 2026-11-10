@@ -13,7 +13,7 @@
     <string name="tile_snapshot_unavailable">Snapshot nicht verfügbar</string>
     <string name="tile_service_details">%1$s · %2$s · %3$s</string>
     <string name="status_programmed">Geplanter Fahrplan</string>
-    <string name="status_received_from_phone">Status vom Telefon empfangen</string>
+    <string name="status_live_as_of">Daten von %1$s Uhr</string>
     <string name="status_updating">Daten werden aktualisiert</string>
     <string name="status_local_snapshot">Letzter lokaler Snapshot</string>
     <string name="status_live_unavailable">Echtzeitdaten nicht verfügbar</string>

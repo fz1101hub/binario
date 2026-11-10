@@ -13,7 +13,7 @@
     <string name="tile_snapshot_unavailable">Snapshot unavailable</string>
     <string name="tile_service_details">%1$s · %2$s · %3$s</string>
     <string name="status_programmed">Scheduled timetable</string>
-    <string name="status_received_from_phone">Status received from phone</string>
+    <string name="status_live_as_of">Data updated at %1$s</string>
     <string name="status_updating">Updating data</string>
     <string name="status_local_snapshot">Latest local snapshot</string>
     <string name="status_live_unavailable">Real-time data not available</string>

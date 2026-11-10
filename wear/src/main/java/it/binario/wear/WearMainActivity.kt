@@ -104,7 +104,8 @@ private fun WearHome(snapshot: WearSnapshot?, phoneApp: WearPhoneAppPresence, fe
             } else {
                 item { Text(snapshot.routeLabel, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary, textAlign = TextAlign.Center) }
                 item {
-                    val dataStatus = stringResource(snapshot.dataStatusResId())
+                    val status = snapshot.dataStatus()
+                    val dataStatus = stringResource(status.id, *status.args.toTypedArray())
                     val statusDescription = stringResource(R.string.accessibility_data_status, dataStatus)
                     Text(dataStatus, style = MaterialTheme.typography.labelMedium, textAlign = TextAlign.Center, modifier = Modifier.semantics { contentDescription = statusDescription })
                 }

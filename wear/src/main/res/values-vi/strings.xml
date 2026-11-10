@@ -13,7 +13,7 @@
     <string name="tile_snapshot_unavailable">Không có ảnh chụp nhanh</string>
     <string name="tile_service_details">%1$s · %2$s · %3$s</string>
     <string name="status_programmed">Lịch theo kế hoạch</string>
-    <string name="status_received_from_phone">Đã nhận trạng thái từ điện thoại</string>
+    <string name="status_live_as_of">Dữ liệu cập nhật lúc %1$s</string>
     <string name="status_updating">Dữ liệu đang cập nhật</string>
     <string name="status_local_snapshot">Ảnh chụp nhanh cục bộ gần nhất</string>
     <string name="status_live_unavailable">Không có dữ liệu thời gian thực</string>
