@@ -130,6 +130,12 @@ describe("typed locale dictionaries", () => {
     }
   });
 
+  it("says an Arabic dual with the dual noun alone, never «2 مرتين» (two twice)", () => {
+    const p = messagesForLocale("ar-SA").punctuality;
+    const duals = [p.cancelled, p.meanDelay, p.minutes, p.observedDays, p.trainCount, p.outOfTen, p.train, p.route];
+    for (const messages of duals) expect(formatPlural("ar-SA", 2, messages).replace("{count}", "2")).not.toMatch(/2 (?:مرتين|دقيقتين|يومين|قطارين)/);
+  });
+
   it("has identical interpolation-placeholder parity for every translated leaf", () => {
     const italianLeaves = new Map(stringLeaves(LOCALE_MESSAGES.it));
     for (const language of LANGUAGES) {
@@ -138,10 +144,10 @@ describe("typed locale dictionaries", () => {
         const references = EXTRA_PLURAL_FORM.test(path)
           ? [".one", ".other"].map(form => path.replace(EXTRA_PLURAL_FORM, form))
           : [path];
-        expect(
-          references.map(reference => placeholders(italianLeaves.get(reference) ?? "")),
-          `${language}:${path}`
-        ).toContainEqual(placeholders(translation));
+        const expected = references.map(reference => placeholders(italianLeaves.get(reference) ?? ""));
+        // An Arabic dual says the number with the noun itself («مرتين», twice): no {count}.
+        if (language === "ar" && path.endsWith(".two")) expected.push(...expected.map(names => names.filter(name => name !== "count")));
+        expect(expected, `${language}:${path}`).toContainEqual(placeholders(translation));
       }
     }
   });

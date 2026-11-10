@@ -141,7 +141,7 @@ describe("most punctual train answer", () => {
     expect(at("pt-BR", 65)).toContain("o 2157 da 1:05, no horário 1 vez em 10");
     expect(at("pt-BR", 21 * 60)).toContain("o 2157 das 21:00");
     expect(at("en-US", 0, 10)).toContain("train 2157 at 12:00 AM, on time 10 times out of 10");
-    expect(at("ar-SA", 8 * 60 + 12, 2)).toContain("في الموعد 2 مرتين من كل 10");
+    expect(at("ar-SA", 8 * 60 + 12, 2)).toContain("في الموعد مرتين من كل 10");
   });
 
   it("escapes the route name and the file's train number for SSML, and keeps them plain for the card", () => {
