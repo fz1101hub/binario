@@ -11,7 +11,7 @@ vi.mock("@react-native-async-storage/async-storage", () => ({
 
 import { addLocalJourneyItinerary, loadLocalJourneyItineraries } from "@/lib/local-itineraries";
 import { loadLocalJourneyTemplates, saveLocalJourneyTemplate, type LocalJourneyTemplate } from "@/lib/local-journey-templates";
-import { addLocalPlannedRoute, loadLocalPlannedRoutes } from "@/lib/local-routes";
+import { addLocalPlannedRoute, archiveRefusalMessageKey, loadLocalPlannedRoutes, localRoutesArchiveStatus, removeLocalPlannedRoute } from "@/lib/local-routes";
 
 const route = (id: number, origin: string, destination: string) => ({
   id,
@@ -81,5 +81,29 @@ describe("archivi locali parzialmente corrotti", () => {
     await expect(loadLocalJourneyTemplates()).resolves.toHaveLength(2);
     await expect(saveLocalJourneyTemplate(template("nuovo", "Bologna", "Firenze"))).resolves.toEqual([first, second]);
     expect(storage.get(key)).toBe(raw);
+  });
+});
+
+describe("archivio delle tratte in sola lettura", () => {
+  beforeEach(() => storage.clear());
+
+  it("rifiuta eliminazione e aggiunta e lo dice invece di dare la colpa ai campi", async () => {
+    storage.set("binario-local-planned-routes-v1", JSON.stringify([route(1, "Roma Termini", "Milano Centrale"), { legacy: true }]));
+    expect(await localRoutesArchiveStatus()).toBe("read-only");
+    await expect(removeLocalPlannedRoute(1)).resolves.toBe(false);
+    await expect(addLocalPlannedRoute({ origin: "Roma Termini", destination: "Napoli Centrale", travelDate: "2030-01-05", travelTime: "09:00", plannedReminderMinutes: null })).resolves.toBeNull();
+    expect(archiveRefusalMessageKey(await localRoutesArchiveStatus(), "planner.routeFieldsError")).toBe("common.archiveReadOnly");
+    expect(archiveRefusalMessageKey(await localRoutesArchiveStatus(), "alerts.deleteError")).toBe("common.archiveReadOnly");
+    // The unreadable record is kept untouched.
+    expect(JSON.parse(storage.get("binario-local-planned-routes-v1")!)).toHaveLength(2);
+  });
+
+  it("distingue archivio pieno e archivio scrivibile", async () => {
+    storage.set("binario-local-planned-routes-v1", JSON.stringify(Array.from({ length: 40 }, (_, index) => route(index + 1, `Origine ${index}`, `Destinazione ${index}`))));
+    expect(await localRoutesArchiveStatus()).toBe("full");
+    expect(archiveRefusalMessageKey("full", "alerts.duplicateRoute")).toBe("common.archiveFull");
+    storage.clear();
+    expect(await localRoutesArchiveStatus()).toBe("writable");
+    expect(archiveRefusalMessageKey("writable", "alerts.duplicateRoute")).toBe("alerts.duplicateRoute");
   });
 });

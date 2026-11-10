@@ -1,5 +1,6 @@
 import type { CompanionPlannedRoute } from "@/lib/planned-route-reminder";
 import { createTranslator, type CompanionLocale, type TranslationKey } from "@/lib/i18n";
+import { italianWallClock, italianWallClockToEpoch, travelEpochMs } from "@/lib/travel-time-zone";
 
 export type LocalRouteDraft = {
   origin: string;
@@ -186,13 +187,23 @@ export function sortLocalPlannedRoutes(routes: LocalPlannedRoute[]) {
   return [...routes].sort((left, right) => Number(Boolean(right.pinned)) - Number(Boolean(left.pinned)) || order(left) - order(right) || `${left.travelDate}T${left.travelTime}`.localeCompare(`${right.travelDate}T${right.travelTime}`) || right.createdAtUtcMs - left.createdAtUtcMs);
 }
 
+/** Departure instant of the Italian date and time the user typed, independent of the phone's time zone. */
 export function localRouteScheduledAtUtcMs(route: Pick<LocalPlannedRoute, "travelDate" | "travelTime">): number | null {
-  const scheduledAtUtcMs = new Date(`${route.travelDate}T${route.travelTime}:00`).getTime();
-  return Number.isFinite(scheduledAtUtcMs) ? scheduledAtUtcMs : null;
+  return travelEpochMs(route.travelDate, route.travelTime);
 }
 
+/**
+ * The earliest future journey not marked completed. Pin and manual order arrange only the Agenda list
+ * (priority.description): Home, hub, widget and watch always show the journey that departs first.
+ */
 export function selectNextLocalPlannedRoute(routes: LocalPlannedRoute[], now = Date.now()): LocalPlannedRoute | null {
-  return sortLocalPlannedRoutes(routes).find(route => route.completedAtUtcMs == null && (localRouteScheduledAtUtcMs(route) ?? 0) >= now) ?? null;
+  let next: { route: LocalPlannedRoute; scheduledAt: number } | null = null;
+  for (const route of routes) {
+    const scheduledAt = localRouteScheduledAtUtcMs(route);
+    if (route.completedAtUtcMs != null || scheduledAt === null || scheduledAt < now) continue;
+    if (!next || scheduledAt < next.scheduledAt || (scheduledAt === next.scheduledAt && route.createdAtUtcMs > next.route.createdAtUtcMs)) next = { route, scheduledAt };
+  }
+  return next?.route ?? null;
 }
 
 export function localCountdownLabel(route: Pick<LocalPlannedRoute, "travelDate" | "travelTime">, now = Date.now(), locale?: CompanionLocale): string | null {
@@ -212,12 +223,24 @@ export function filterLocalJourneyAgenda(routes: LocalPlannedRoute[], filter: Lo
   const sorted = sortLocalPlannedRoutes(routes);
   if (filter === "upcoming") return sorted.filter(route => route.completedAtUtcMs == null && (localRouteScheduledAtUtcMs(route) ?? -1) >= now);
   if (filter === "archive") return sorted.filter(route => route.completedAtUtcMs != null || (localRouteScheduledAtUtcMs(route) ?? Number.POSITIVE_INFINITY) < now).reverse();
-  const start = new Date(now);
-  start.setHours(0, 0, 0, 0);
-  const end = new Date(start);
-  end.setDate(end.getDate() + 7);
+  // Seven Italian calendar days from today's Italian midnight, like the journeys' own dates.
+  const today = italianWallClock(now);
+  const start = italianWallClockToEpoch({ ...today, hour: 0, minute: 0 }) ?? now;
+  const lastDay = new Date(Date.UTC(today.year, today.month - 1, today.day + 7));
+  const end = italianWallClockToEpoch({ year: lastDay.getUTCFullYear(), month: lastDay.getUTCMonth() + 1, day: lastDay.getUTCDate(), hour: 0, minute: 0 }) ?? now + 7 * 86_400_000;
   return sorted.filter(route => {
     const scheduledAt = localRouteScheduledAtUtcMs(route);
-    return route.completedAtUtcMs == null && scheduledAt !== null && scheduledAt >= start.getTime() && scheduledAt < end.getTime();
+    return route.completedAtUtcMs == null && scheduledAt !== null && scheduledAt >= start && scheduledAt < end;
   });
+}
+
+/** Home's reminder line, from the reminders really scheduled rather than the minutes chosen when planning. */
+export function plannedReminderSummaryKey(route: Pick<LocalPlannedRoute, "plannedReminderMinutes">, scheduled: boolean): "home.noReminder" | "home.reminderAtTime" | "home.reminderBefore" {
+  if (!scheduled || route.plannedReminderMinutes === null) return "home.noReminder";
+  return route.plannedReminderMinutes === 0 ? "home.reminderAtTime" : "home.reminderBefore";
+}
+
+/** Agenda's lead label: "Nessuno" (null) is not "at the chosen time" (0). */
+export function agendaReminderLeadKey(minutes: number | null): "alerts.leadNone" | "alerts.leadAtTime" | "alerts.leadBefore" {
+  return minutes === null ? "alerts.leadNone" : minutes === 0 ? "alerts.leadAtTime" : "alerts.leadBefore";
 }

@@ -7,7 +7,7 @@ import { createLocalPlannedRoute } from "@/lib/local-route-contract";
 
 const now = new Date("2030-01-01T00:00:00Z").getTime();
 const fixture = JSON.parse(readFileSync(path.resolve(process.cwd(), "../contracts/wear-snapshot/v1/companion-to-wear-v1.json"), "utf8")) as Record<string, unknown>;
-const route = createLocalPlannedRoute({ origin: "Roma Termini", destination: "Napoli Centrale", travelDate: "2030-01-01", travelTime: "01:30", plannedReminderMinutes: 15 }, 42, now)!;
+const route = createLocalPlannedRoute({ origin: "Roma Termini", destination: "Napoli Centrale", travelDate: "2030-01-01", travelTime: "02:30", plannedReminderMinutes: 15 }, 42, now)!; // 02:30 in Italy (UTC+1) is 01:30 UTC: the fixture's 90-minute TTL.
 
 function fixtureAtNow() {
   const ttlMillis = fixture.ttlMillis as number;

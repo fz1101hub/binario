@@ -10,11 +10,13 @@ vi.mock("@react-native-async-storage/async-storage", () => ({
 }));
 
 import { createLocalScheduledSnapshot, createUnavailableSnapshot, evaluateSnapshot } from "@/lib/companion-snapshot";
-import { translationDictionaries } from "@/lib/i18n";
+import { supportedLocales, translationDictionaries, type CompanionLocale } from "@/lib/i18n";
 import { parseLocalDictation } from "@/lib/local-dictation";
-import { createLocalJourneyTemplate, loadLocalJourneyTemplates, saveLocalJourneyTemplate } from "@/lib/local-journey-templates";
+import { clearLocalJourneyTemplates, createLocalJourneyTemplate, loadLocalJourneyTemplates, saveLocalJourneyTemplate } from "@/lib/local-journey-templates";
+import { clearLocalRecentStations, loadLocalRecentStations, recordLocalRecentStation, saveLocalRecentStations } from "@/lib/local-recent-stations";
 import { loadLocalJourneyTimingPreferences, saveLocalJourneyTimingPreferences } from "@/lib/local-journey-timing";
 import { parseManualRouteTransfer, previewManualRouteTransfer } from "@/lib/manual-route-transfer-contract";
+import { travelEpochMs } from "@/lib/travel-time-zone";
 
 describe("servizi locali recuperati", () => {
   beforeEach(() => storage.clear());
@@ -22,7 +24,7 @@ describe("servizi locali recuperati", () => {
   it("sopprime una pianificazione locale scaduta e non converte mai indisponibilità in realtime", () => {
     const snapshot = createLocalScheduledSnapshot({ id: 4, name: "Roma → Napoli", travelDate: "2030-01-02", travelTime: "09:30" }, 1);
     expect(snapshot.provenance.dataNature).toBe("scheduled");
-    expect(evaluateSnapshot(snapshot, new Date("2030-01-02T10:00:00").getTime()).action).toBe("suppress");
+    expect(evaluateSnapshot(snapshot, travelEpochMs("2030-01-02", "10:00")!).action).toBe("suppress");
     expect(createUnavailableSnapshot({ kind: "route", id: "none", label: "Nessuna" }).provenance.dataNature).toBe("unavailable");
   });
 
@@ -79,11 +81,70 @@ describe("servizi locali recuperati", () => {
     }
   });
 
+  it("legge le ore serali 20–23 in ogni lingua senza ridurle alle 02", () => {
+    const now = new Date("2030-01-02T12:00:00");
+    const templates: Record<CompanionLocale, string> = {
+      it: "Da Roma Ostiense a Roma San Pietro domani alle {h}:{m}",
+      en: "From Roma Ostiense to Roma San Pietro tomorrow at {h}:{m}",
+      de: "Von Roma Ostiense nach Roma San Pietro morgen um {h}:{m}",
+      fr: "De Roma Ostiense à Roma San Pietro demain à {h}:{m}",
+      es: "De Roma Ostiense a Roma San Pietro mañana a las {h}:{m}",
+      ar: "من Roma Ostiense إلى Roma San Pietro غدًا الساعة {h}:{m}",
+      hi: "Roma Ostiense से Roma San Pietro कल {h}:{m} बजे",
+      id: "Dari Roma Ostiense ke Roma San Pietro besok pukul {h}.{m}",
+      ja: "Roma Ostiense から Roma San Pietro まで 明日 {h}時{m}分",
+      ko: "Roma Ostiense에서 Roma San Pietro까지 내일 {h}시 {m}분",
+      my: "Roma Ostiense မှ Roma San Pietro သို့ မနက်ဖြန် {h}:{m}",
+      pt: "De Roma Ostiense para Roma San Pietro amanhã às {h}:{m}",
+      ru: "От Roma Ostiense до Roma San Pietro завтра в {h}:{m}",
+      th: "จาก Roma Ostiense ไป Roma San Pietro พรุ่งนี้ เวลา {h}:{m}",
+      tr: "Roma Ostiense'den Roma San Pietro'ya yarın saat {h}:{m}",
+      vi: "Từ Roma Ostiense đến Roma San Pietro ngày mai lúc {h}:{m}",
+      zh: "从 Roma Ostiense 到 Roma San Pietro 明天 {h}点{m}分",
+    };
+    for (const locale of supportedLocales) {
+      for (const [hour, minute] of [["20", "15"], ["21", "40"], ["22", "05"], ["23", "59"], ["20", "00"]] as const) {
+        const phrase = templates[locale].replace("{h}", hour).replace("{m}", minute);
+        expect(parseLocalDictation(phrase, now, locale), `${locale} ${phrase}`).toEqual({
+          origin: "Roma Ostiense", destination: "Roma San Pietro", travelDate: "2030-01-03", travelTime: `${hour}:${minute}`,
+        });
+      }
+    }
+    // An hour without minutes, and an impossible hour that must not be cut to its first digit.
+    expect(parseLocalDictation("Da Roma Termini a Milano Centrale domani alle 21", now, "it").travelTime).toBe("21:00");
+    expect(parseLocalDictation("Da Roma Termini a Milano Centrale domani alle 24:00", now, "it").travelTime).toBe("");
+    expect(parseLocalDictation("Von Roma Termini nach Milano Centrale morgen um 25", now, "de").travelTime).toBe("");
+    // French and Portuguese also write the hour with «h».
+    expect(parseLocalDictation("De Roma Termini à Milano Centrale demain à 20h15", now, "fr").travelTime).toBe("20:15");
+    expect(parseLocalDictation("De Roma Termini para Milano Centrale amanhã às 21h30", now, "pt").travelTime).toBe("21:30");
+  });
+
+  it("converte am/pm della dettatura inglese", () => {
+    const now = new Date("2030-01-02T12:00:00");
+    const time = (spoken: string) => parseLocalDictation(`From Roma Termini to Milano Centrale tomorrow at ${spoken}`, now, "en").travelTime;
+    expect(time("8pm")).toBe("20:00");
+    expect(time("8 pm")).toBe("20:00");
+    expect(time("8:30 p.m.")).toBe("20:30");
+    expect(time("11:59 PM")).toBe("23:59");
+    expect(time("12pm")).toBe("12:00");
+    expect(time("12am")).toBe("00:00");
+    expect(time("8am")).toBe("08:00");
+    expect(time("8")).toBe("08:00");
+    expect(time("13pm")).toBe("");
+    expect(parseLocalDictation("From Roma Termini to Milano Centrale at 8pm", now, "en")).toEqual({ origin: "Roma Termini", destination: "Milano Centrale", travelDate: "", travelTime: "20:00" });
+  });
+
   it("salva modelli limitati al dispositivo e rifiuta stazioni non complete", async () => {
     const valid = createLocalJourneyTemplate({ id: "casa-lavoro", label: "Casa lavoro", origin: "Roma Ostiense", originStationCode: "S08406", destination: "Roma San Pietro", destinationStationCode: "S08409", travelTime: "08:15", plannedReminderMinutes: 15, checklist: [] });
     expect(valid).not.toBeNull();
     await saveLocalJourneyTemplate(valid!);
     await expect(loadLocalJourneyTemplates()).resolves.toHaveLength(1);
+    await clearLocalJourneyTemplates();
+    await expect(loadLocalJourneyTemplates()).resolves.toEqual([]);
+    await saveLocalRecentStations(recordLocalRecentStation([], { code: "S08409", name: "Roma San Pietro" }, 5));
+    await expect(loadLocalRecentStations()).resolves.toHaveLength(1);
+    await clearLocalRecentStations();
+    await expect(loadLocalRecentStations()).resolves.toEqual([]);
     expect(createLocalJourneyTemplate({ id: "x", label: "x", origin: "Roma", originStationCode: "", destination: "Milano", destinationStationCode: "S1", travelTime: "08:15", plannedReminderMinutes: 15, checklist: [] })).toBeNull();
   });
 

@@ -1,5 +1,6 @@
 import { MaterialIcons } from "@expo/vector-icons";
-import { useEffect, useState } from "react";
+import { useCallback, useState } from "react";
+import { useFocusEffect } from "expo-router";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { StationAutocompleteInput } from "@/components/station-autocomplete-input";
 import { loadLocalFavoriteStations, saveLocalFavoriteStations, toggleLocalFavoriteStation, type LocalFavoriteStation } from "@/lib/local-favorite-stations";
@@ -19,7 +20,8 @@ export function LocalStationBoardCard() {
   const [boardOpen, setBoardOpen] = useState(false);
   const [message, setMessage] = useState("");
 
-  useEffect(() => { void Promise.all([loadLocalFavoriteStations(), loadLocalRecentStations()]).then(([nextFavorites, nextRecents]) => { setFavorites(nextFavorites); setRecents(nextRecents); }); }, []);
+  // Reloaded on every visit: «Cancella archivio locale» in Settings removes the recent stations.
+  useFocusEffect(useCallback(() => { void Promise.all([loadLocalFavoriteStations(), loadLocalRecentStations()]).then(([nextFavorites, nextRecents]) => { setFavorites(nextFavorites); setRecents(nextRecents); }); }, []));
 
   async function selectStation(nextStation: OfflineStation) {
     setStation(nextStation);

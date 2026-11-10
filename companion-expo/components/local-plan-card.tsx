@@ -1,4 +1,5 @@
-import { addLocalPlannedRoute, isLocalRoutesArchiveFull } from "@/lib/local-routes";
+import { addLocalPlannedRoute, localRoutesArchiveStatus } from "@/lib/local-routes";
+import { savedRouteReminderMessageKeys, scheduleReminderForSavedRoute } from "@/lib/planned-reminder-service";
 import { applyLocalJourneyChecklistPreset, localJourneyChecklistPresets, type ControlledLocalRouteDraft, type LocalJourneyChecklistItem } from "@/lib/local-route-contract";
 import { parseLocalDictation } from "@/lib/local-dictation";
 import { requestNearestOfflineStation } from "@/lib/nearby-offline-stations";
@@ -9,8 +10,10 @@ import { loadLocalJourneyTimingPreferences } from "@/lib/local-journey-timing";
 import { useCompanionTheme } from "@/lib/theme";
 import { createTranslator, useTranslation } from "@/lib/i18n";
 import { StationAutocompleteInput } from "@/components/station-autocomplete-input";
+import { shouldAnnounceFeedback } from "@/lib/reminder-accessibility";
 import { formatLocalJourneyDate, formatLocalJourneyTime, fromLocalDateAndTime, toLocalIsoDate, toLocalTime } from "@/lib/local-date-time";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useFocusEffect } from "expo-router";
 import DateTimePicker, { type DateTimePickerEvent } from "@react-native-community/datetimepicker";
 import { AccessibilityInfo, Platform, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 
@@ -50,8 +53,9 @@ export function LocalPlanCard({ onSaved, planningDraft, onPlanningDraftApplied }
   const [scheduleConfirmation, setScheduleConfirmation] = useState({ date: false, time: false });
   const destinationRef = useRef<TextInput>(null);
 
-  useEffect(() => { if (message && Platform.OS !== "web") AccessibilityInfo.announceForAccessibility(message); }, [message]);
-  useEffect(() => { void loadLocalJourneyTemplates().then(setTemplates); }, []);
+  useEffect(() => { if (message && shouldAnnounceFeedback(Platform.OS)) AccessibilityInfo.announceForAccessibility(message); }, [message]);
+  // Reloaded on every visit: «Cancella archivio locale» in Settings removes the templates.
+  useFocusEffect(useCallback(() => { void loadLocalJourneyTemplates().then(setTemplates); }, []));
   useEffect(() => { void loadLocalFavoriteStations().then(setFavoriteStations); }, []);
   useEffect(() => { void loadLocalJourneyTimingPreferences().then(preferences => setPlannedReminderMinutes(preferences.preferredReminderMinutes)); }, []);
   useEffect(() => {
@@ -145,8 +149,9 @@ export function LocalPlanCard({ onSaved, planningDraft, onPlanningDraftApplied }
       }
       const route = await addLocalPlannedRoute({ origin, originStationCode, destination, destinationStationCode, travelDate, travelTime, plannedReminderMinutes, checklist });
       if (!route) {
-        if (await isLocalRoutesArchiveFull()) {
-          setMessage(t("common.archiveFull"));
+        const archive = await localRoutesArchiveStatus();
+        if (archive !== "writable") {
+          setMessage(t(archive === "full" ? "common.archiveFull" : "common.archiveReadOnly"));
           return;
         }
         setFieldError(t("planner.routeFieldsError"));
@@ -154,6 +159,7 @@ export function LocalPlanCard({ onSaved, planningDraft, onPlanningDraftApplied }
         destinationRef.current?.focus();
         return;
       }
+      const reminder = await scheduleReminderForSavedRoute(route);
       setOrigin("");
       setOriginStationCode(null);
       setDestination("");
@@ -161,7 +167,7 @@ export function LocalPlanCard({ onSaved, planningDraft, onPlanningDraftApplied }
       setTravelTime("");
       setScheduleConfirmation({ date: false, time: false });
       setFieldError("");
-      setMessage(t("planner.saved"));
+      setMessage(t(savedRouteReminderMessageKeys[reminder]));
       confirmNativeAction();
       onSaved();
     } finally { setSaving(false); }

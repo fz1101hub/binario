@@ -5,16 +5,22 @@ import {
   type LocalPlannedRoute,
 } from "@/lib/local-route-contract";
 import { loadLocalPlannedRoutes } from "@/lib/local-routes";
-import { createTranslator, deviceCompanionLocale, type CompanionLocale } from "@/lib/i18n";
+import { createTranslator, deviceCompanionLocale, type CompanionLocale, type TranslationKey } from "@/lib/i18n";
+import { travelEpochMs } from "@/lib/travel-time-zone";
 
 const legacyStorageKey = "binario.planned-route-reminders.v1";
 const legacyMigrationNoticeKey = "binario.planned-route-reminders.v1-migration-notice";
 const legacyMigrationNoticeAcknowledgedKey = "binario.planned-route-reminders.v1-migration-notice-acknowledged";
-const notificationTitles = new Set(["it", "en", "de", "fr", "es"].map(locale => createTranslator(locale as Parameters<typeof createTranslator>[0])("reminder.notificationTitle")));
+const reminderIdentifierPrefix = "binario_planned_route_";
+/**
+ * Android 8+ files every notification under a channel. Without one, expo-notifications uses its fallback
+ * channel, named "Miscellaneous" in every language; the reminders get their own localised channel.
+ */
+export const plannedRouteReminderChannelId = "binario-planned-route-reminders";
 let reminderMutationQueue: Promise<void> = Promise.resolve();
 
 function reminderIdentifier(routeId: number) {
-  return `binario_planned_route_${routeId}`;
+  return `${reminderIdentifierPrefix}${routeId}`;
 }
 
 function serializeMutation<T>(operation: () => Promise<T>): Promise<T> {
@@ -33,6 +39,22 @@ function routeIdFromRequest(request: Notifications.NotificationRequest) {
     routeId > 0
     ? routeId
     : null;
+}
+
+function routeIdFromIdentifier(identifier: string) {
+  if (!identifier.startsWith(reminderIdentifierPrefix)) return null;
+  const digits = identifier.slice(reminderIdentifierPrefix.length);
+  const routeId = /^[1-9]\d*$/.test(digits) ? Number(digits) : Number.NaN;
+  return Number.isSafeInteger(routeId) ? routeId : null;
+}
+
+/**
+ * The Companion schedules no other local notification, so a request is one of its route reminders
+ * when it carries a route id in its data (canonical or legacy identifier) or the canonical identifier.
+ * The title is never used: it is written in the device language of the moment it was scheduled.
+ */
+function reminderRouteId(request: Notifications.NotificationRequest) {
+  return routeIdFromRequest(request) ?? routeIdFromIdentifier(request.identifier);
 }
 
 function legacyRouteIdsByIdentifier(raw: string): Map<string, number> {
@@ -57,36 +79,12 @@ function legacyRouteIdsByIdentifier(raw: string): Map<string, number> {
   }
 }
 
+/**
+ * Departure instant of the Italian date and time, whatever the phone's time zone. A time skipped by the
+ * spring change to summer time has no instant and is refused instead of being moved by an hour.
+ */
 function localDepartureEpoch(route: LocalPlannedRoute): number | null {
-  const dateMatch = /^(\d{4})-(\d{2})-(\d{2})$/.exec(route.travelDate);
-  const timeMatch = /^([01]\d|2[0-3]):([0-5]\d)$/.exec(route.travelTime);
-  if (!dateMatch || !timeMatch) return null;
-  const expected = {
-    year: Number(dateMatch[1]),
-    month: Number(dateMatch[2]),
-    day: Number(dateMatch[3]),
-    hour: Number(timeMatch[1]),
-    minute: Number(timeMatch[2]),
-  };
-  const departure = new Date(
-    expected.year,
-    expected.month - 1,
-    expected.day,
-    expected.hour,
-    expected.minute,
-    0,
-    0,
-  );
-  if (
-    departure.getFullYear() !== expected.year ||
-    departure.getMonth() !== expected.month - 1 ||
-    departure.getDate() !== expected.day ||
-    departure.getHours() !== expected.hour ||
-    departure.getMinutes() !== expected.minute
-  ) {
-    return null;
-  }
-  return departure.getTime();
+  return travelEpochMs(route.travelDate, route.travelTime, { strict: true });
 }
 
 function reminderFireAt(route: LocalPlannedRoute): number | null {
@@ -108,8 +106,19 @@ function reminderRequest(route: LocalPlannedRoute, fireAt: number) {
     trigger: {
       type: Notifications.SchedulableTriggerInputTypes.DATE,
       date: new Date(fireAt),
+      channelId: plannedRouteReminderChannelId,
     },
   } as const;
+}
+
+/** Creates the channel, or renames it in the current device language; does nothing outside Android. */
+async function ensureReminderChannel() {
+  const t = createTranslator(deviceCompanionLocale());
+  await Notifications.setNotificationChannelAsync(plannedRouteReminderChannelId, {
+    name: t("reminder.channelName"),
+    description: t("reminder.channelDescription"),
+    importance: Notifications.AndroidImportance.DEFAULT,
+  });
 }
 
 async function recordPreservedLegacyWarning(count: number) {
@@ -131,11 +140,9 @@ async function migrateLegacyState(): Promise<void> {
     : legacyRouteIdsByIdentifier(raw);
   const scheduled = await Notifications.getAllScheduledNotificationsAsync();
   const legacyRequests = scheduled.filter((request) => {
-    const routeId = routeIdFromRequest(request) ?? storedRouteIds.get(request.identifier);
+    const routeId = routeIdFromRequest(request);
     return storedRouteIds.has(request.identifier) ||
-      (routeId !== undefined &&
-        notificationTitles.has(request.content.title ?? "") &&
-        request.identifier !== reminderIdentifier(routeId));
+      (routeId !== null && request.identifier !== reminderIdentifier(routeId));
   });
   if (legacyRequests.length === 0) {
     if (raw !== null) await AsyncStorage.removeItem(legacyStorageKey);
@@ -165,6 +172,7 @@ async function migrateLegacyState(): Promise<void> {
       preserved.add(request.identifier);
       continue;
     }
+    await ensureReminderChannel();
     await Notifications.scheduleNotificationAsync(reminderRequest(route, fireAt));
     canonicalIdentifiers.add(canonicalIdentifier);
     await Notifications.cancelScheduledNotificationAsync(request.identifier);
@@ -180,8 +188,7 @@ async function scheduledRouteIds(): Promise<Set<number>> {
   const requests = await Notifications.getAllScheduledNotificationsAsync();
   return new Set(
     requests
-      .filter((request) => notificationTitles.has(request.content.title ?? ""))
-      .map(routeIdFromRequest)
+      .map(reminderRouteId)
       .filter((routeId): routeId is number => routeId !== null),
   );
 }
@@ -213,11 +220,7 @@ export function cancelPlannedRouteReminder(routeId: number) {
     const identifiers = (
       await Notifications.getAllScheduledNotificationsAsync()
     )
-      .filter(
-        (request) =>
-          notificationTitles.has(request.content.title ?? "") &&
-          routeIdFromRequest(request) === routeId,
-      )
+      .filter((request) => reminderRouteId(request) === routeId)
       .map((request) => request.identifier);
     const hadScheduledReminder = identifiers.length > 0;
     if (!identifiers.includes(reminderIdentifier(routeId))) {
@@ -251,7 +254,32 @@ export async function schedulePlannedRouteReminder(
     if (!permission.granted) return "permission-denied" as const;
     if (fireAt <= Date.now()) return "invalid" as const;
 
+    await ensureReminderChannel();
     await Notifications.scheduleNotificationAsync(reminderRequest(route, fireAt));
     return "scheduled" as const;
   });
+}
+
+export type SavedRouteReminderOutcome = "none" | "scheduled" | "permission-denied" | "invalid" | "error";
+
+/** Planner feedback for each outcome: the journey is always saved, the reminder only when it could be scheduled. */
+export const savedRouteReminderMessageKeys: Record<SavedRouteReminderOutcome, TranslationKey> = {
+  none: "planner.saved",
+  scheduled: "planner.savedWithReminder",
+  "permission-denied": "planner.savedReminderDenied",
+  invalid: "planner.savedReminderTooLate",
+  error: "planner.savedReminderError",
+};
+
+/**
+ * Schedules the reminder chosen in the planner as soon as the journey is saved, so that the planner's
+ * promise ("programmato sul telefono") and Home's reminder line are true. "Nessuno" schedules nothing.
+ */
+export async function scheduleReminderForSavedRoute(route: LocalPlannedRoute): Promise<SavedRouteReminderOutcome> {
+  if (route.plannedReminderMinutes === null) return "none";
+  try {
+    return await schedulePlannedRouteReminder(route);
+  } catch {
+    return "error";
+  }
 }
