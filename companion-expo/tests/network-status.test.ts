@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { createLocalScheduledSnapshot, createUnavailableSnapshot } from "@/lib/companion-snapshot";
 import { clampTimerDelay, maxTimerDelayMs, msUntilSnapshotExpiry } from "@/lib/network-status";
+import { travelEpochMs } from "@/lib/travel-time-zone";
 
-const now = new Date("2030-01-02T08:00:00").getTime();
+const now = travelEpochMs("2030-01-02", "08:00")!;
 
 describe("scadenza dello snapshot e timer", () => {
   it("misura i millisecondi alla scadenza senza scendere sotto zero", () => {

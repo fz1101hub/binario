@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createLocalPlannedRoute } from "../lib/local-route-contract";
 import { clearLocalJourneyArchive } from "../lib/local-journey-privacy";
 import { createTranslator, supportedLocales } from "../lib/i18n";
+import { travelEpochMs } from "../lib/travel-time-zone";
 
 const storageKey = "binario.planned-route-reminders.v1";
 const state = vi.hoisted(() => ({
@@ -241,7 +242,7 @@ describe("planned reminder native reconciliation", () => {
 
   it("rechecks the deadline after waiting inside the mutation queue", async () => {
     const fireAt =
-      new Date(`${route.travelDate}T${route.travelTime}:00`).getTime() -
+      travelEpochMs(route.travelDate, route.travelTime)! -
       route.plannedReminderMinutes! * 60_000;
     vi.spyOn(Date, "now")
       .mockReturnValueOnce(fireAt - 1_000)
@@ -298,6 +299,32 @@ describe("planned reminder native reconciliation", () => {
       await expect(schedulePlannedRouteReminder(gapRoute)).resolves.toBe(
         "invalid",
       );
+    } finally {
+      process.env.TZ = previousTimezone;
+    }
+  });
+
+  it("fires at the Italian departure time minus the lead, whatever the phone's time zone", async () => {
+    const previousTimezone = process.env.TZ;
+    const summerRoute = createLocalPlannedRoute(
+      {
+        origin: "Roma Termini",
+        destination: "Firenze Santa Maria Novella",
+        travelDate: "2035-07-12",
+        travelTime: "09:00",
+        plannedReminderMinutes: 15,
+      },
+      45,
+      4,
+    )!;
+    try {
+      for (const timeZone of ["Europe/London", "America/New_York", "Europe/Rome"]) {
+        process.env.TZ = timeZone;
+        state.scheduled.clear();
+        await expect(schedulePlannedRouteReminder(summerRoute)).resolves.toBe("scheduled");
+        // 09:00 in Italy in July is 07:00 UTC; 15 minutes before is 06:45 UTC.
+        expect(state.scheduled.get("binario_planned_route_45")?.trigger.date.getTime(), timeZone).toBe(Date.UTC(2035, 6, 12, 6, 45));
+      }
     } finally {
       process.env.TZ = previousTimezone;
     }

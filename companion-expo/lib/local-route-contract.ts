@@ -1,5 +1,6 @@
 import type { CompanionPlannedRoute } from "@/lib/planned-route-reminder";
 import { createTranslator, type CompanionLocale, type TranslationKey } from "@/lib/i18n";
+import { italianWallClock, italianWallClockToEpoch, travelEpochMs } from "@/lib/travel-time-zone";
 
 export type LocalRouteDraft = {
   origin: string;
@@ -186,9 +187,9 @@ export function sortLocalPlannedRoutes(routes: LocalPlannedRoute[]) {
   return [...routes].sort((left, right) => Number(Boolean(right.pinned)) - Number(Boolean(left.pinned)) || order(left) - order(right) || `${left.travelDate}T${left.travelTime}`.localeCompare(`${right.travelDate}T${right.travelTime}`) || right.createdAtUtcMs - left.createdAtUtcMs);
 }
 
+/** Departure instant of the Italian date and time the user typed, independent of the phone's time zone. */
 export function localRouteScheduledAtUtcMs(route: Pick<LocalPlannedRoute, "travelDate" | "travelTime">): number | null {
-  const scheduledAtUtcMs = new Date(`${route.travelDate}T${route.travelTime}:00`).getTime();
-  return Number.isFinite(scheduledAtUtcMs) ? scheduledAtUtcMs : null;
+  return travelEpochMs(route.travelDate, route.travelTime);
 }
 
 export function selectNextLocalPlannedRoute(routes: LocalPlannedRoute[], now = Date.now()): LocalPlannedRoute | null {
@@ -212,12 +213,13 @@ export function filterLocalJourneyAgenda(routes: LocalPlannedRoute[], filter: Lo
   const sorted = sortLocalPlannedRoutes(routes);
   if (filter === "upcoming") return sorted.filter(route => route.completedAtUtcMs == null && (localRouteScheduledAtUtcMs(route) ?? -1) >= now);
   if (filter === "archive") return sorted.filter(route => route.completedAtUtcMs != null || (localRouteScheduledAtUtcMs(route) ?? Number.POSITIVE_INFINITY) < now).reverse();
-  const start = new Date(now);
-  start.setHours(0, 0, 0, 0);
-  const end = new Date(start);
-  end.setDate(end.getDate() + 7);
+  // Seven Italian calendar days from today's Italian midnight, like the journeys' own dates.
+  const today = italianWallClock(now);
+  const start = italianWallClockToEpoch({ ...today, hour: 0, minute: 0 }) ?? now;
+  const lastDay = new Date(Date.UTC(today.year, today.month - 1, today.day + 7));
+  const end = italianWallClockToEpoch({ year: lastDay.getUTCFullYear(), month: lastDay.getUTCMonth() + 1, day: lastDay.getUTCDate(), hour: 0, minute: 0 }) ?? now + 7 * 86_400_000;
   return sorted.filter(route => {
     const scheduledAt = localRouteScheduledAtUtcMs(route);
-    return route.completedAtUtcMs == null && scheduledAt !== null && scheduledAt >= start.getTime() && scheduledAt < end.getTime();
+    return route.completedAtUtcMs == null && scheduledAt !== null && scheduledAt >= start && scheduledAt < end;
   });
 }

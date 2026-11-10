@@ -43,4 +43,14 @@ class BinarioWidgetStateTest {
   fun futureJourneyRemainsAvailableWhileSnapshotIsFresh() {
     assertEquals(available(), BinarioWidgetStore.accepted(available(), now))
   }
+
+  @Test
+  fun departureDayIsTheItalianCalendarDay() {
+    // 23:30 and 00:30 in Italy (summer time, UTC+2): different Italian days, the same day in UTC or London.
+    val lateEvening = 1_783_891_800_000L // 2026-07-12T21:30:00Z
+    val afterMidnight = lateEvening + 3_600_000L
+    assertEquals(false, BinarioWidgetPresentation.sameTravelDay(lateEvening, afterMidnight))
+    assertEquals(true, BinarioWidgetPresentation.sameTravelDay(afterMidnight, afterMidnight + 20 * 3_600_000L))
+    assertEquals("Europe/Rome", BinarioWidgetPresentation.TRAVEL_TIME_ZONE)
+  }
 }

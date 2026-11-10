@@ -6,6 +6,7 @@ import {
 } from "@/lib/local-route-contract";
 import { loadLocalPlannedRoutes } from "@/lib/local-routes";
 import { createTranslator, deviceCompanionLocale, type CompanionLocale } from "@/lib/i18n";
+import { travelEpochMs } from "@/lib/travel-time-zone";
 
 const legacyStorageKey = "binario.planned-route-reminders.v1";
 const legacyMigrationNoticeKey = "binario.planned-route-reminders.v1-migration-notice";
@@ -73,36 +74,12 @@ function legacyRouteIdsByIdentifier(raw: string): Map<string, number> {
   }
 }
 
+/**
+ * Departure instant of the Italian date and time, whatever the phone's time zone. A time skipped by the
+ * spring change to summer time has no instant and is refused instead of being moved by an hour.
+ */
 function localDepartureEpoch(route: LocalPlannedRoute): number | null {
-  const dateMatch = /^(\d{4})-(\d{2})-(\d{2})$/.exec(route.travelDate);
-  const timeMatch = /^([01]\d|2[0-3]):([0-5]\d)$/.exec(route.travelTime);
-  if (!dateMatch || !timeMatch) return null;
-  const expected = {
-    year: Number(dateMatch[1]),
-    month: Number(dateMatch[2]),
-    day: Number(dateMatch[3]),
-    hour: Number(timeMatch[1]),
-    minute: Number(timeMatch[2]),
-  };
-  const departure = new Date(
-    expected.year,
-    expected.month - 1,
-    expected.day,
-    expected.hour,
-    expected.minute,
-    0,
-    0,
-  );
-  if (
-    departure.getFullYear() !== expected.year ||
-    departure.getMonth() !== expected.month - 1 ||
-    departure.getDate() !== expected.day ||
-    departure.getHours() !== expected.hour ||
-    departure.getMinutes() !== expected.minute
-  ) {
-    return null;
-  }
-  return departure.getTime();
+  return travelEpochMs(route.travelDate, route.travelTime, { strict: true });
 }
 
 function reminderFireAt(route: LocalPlannedRoute): number | null {

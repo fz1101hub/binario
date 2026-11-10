@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
+import { travelEpochMs } from "@/lib/travel-time-zone";
 import { createLocalScheduledSnapshot, createUnavailableSnapshot } from "@/lib/companion-snapshot";
 import { createLocalPlannedRoute } from "@/lib/local-route-contract";
 import { binarioSharedTextReceivedEventName, binarioSharedTextReceiverModuleName, binarioWidgetBridgeModuleName } from "@/lib/native-module-names";
@@ -209,7 +210,10 @@ describe("contratti delle superfici native Binario", () => {
     const test = source("android/app/src/test/java/im/binario/companion/binario/BinarioWidgetStateTest.kt");
     for (const generated of [widgetPlugin, widget]) {
       // A relative "Tra 10 min" froze between WorkManager redraws; the clock time stays true.
-      expect(generated).toContain("DateUtils.formatDateTime(context, scheduledAt, flags)");
+      // The clock time is the Italian time the user typed, not the phone's time zone.
+      expect(generated).toContain("DateUtils.formatDateRange(context, formatter, scheduledAt, scheduledAt, flags, BinarioWidgetPresentation.TRAVEL_TIME_ZONE)");
+      expect(generated).toContain('const val TRAVEL_TIME_ZONE = "Europe/Rome"');
+      expect(generated).not.toContain("DateUtils.isToday(");
       expect(generated).not.toContain("countdownLabel(context, state.plannedJourneyAtUtcMs)");
       expect(generated).toContain("OneTimeWorkRequestBuilder<BinarioWidgetRefreshWorker>().setInitialDelay(delay, TimeUnit.MILLISECONDS).build()");
       expect(generated).toContain("workManager.enqueueUniqueWork(transitionWorkName, ExistingWorkPolicy.REPLACE, request)");
@@ -398,7 +402,7 @@ describe("contratti delle superfici native Binario", () => {
 
 describe("contratto JS ↔ Kotlin di BinarioWidgetBridge", () => {
   const route = createLocalPlannedRoute({ origin: "Roma Termini", destination: "Napoli Centrale", travelDate: "2030-01-02", travelTime: "09:30", plannedReminderMinutes: 15 }, 4, 1)!;
-  const now = new Date("2030-01-02T08:00:00").getTime();
+  const now = travelEpochMs("2030-01-02", "08:00")!;
   const usable = buildNativeSurfacePayload(createLocalScheduledSnapshot(route, now - 1), route, now);
   const unavailable = buildNativeSurfacePayload(createUnavailableSnapshot({ kind: "route", id: "none", label: "Nessuna tratta attiva" }), null, now);
 
@@ -443,14 +447,14 @@ describe("contratto JS ↔ Kotlin di BinarioWidgetBridge", () => {
     expect(unavailable.widget).toEqual({ title: "Binario", subtitle: italian("native.unavailable"), status: "unavailable", updatedAtUtcMs: null, expiresAtUtcMs: null, plannedJourney: null });
     expect(unavailable.watch).toMatchObject({ schemaVersion: 1, provenanceProducer: "COMPANION", provenanceDataNature: "UNAVAILABLE", operationalState: "UNAVAILABLE", freshness: "UNAVAILABLE", serviceCount: 0, direction: "UNKNOWN" });
     const unavailableSnapshot = buildNativeSurfacePayload(createUnavailableSnapshot({ kind: "route", id: "4", label: route.name }), route, now);
-    const expiredSnapshot = buildNativeSurfacePayload(createLocalScheduledSnapshot(route, now), route, new Date("2030-01-02T09:30:00").getTime());
+    const expiredSnapshot = buildNativeSurfacePayload(createLocalScheduledSnapshot(route, now), route, travelEpochMs("2030-01-02", "09:30")!);
     expect(unavailableSnapshot.widget).toEqual(unavailable.widget);
     expect(expiredSnapshot.widget).toEqual(unavailable.widget);
     for (const candidate of [unavailableSnapshot.watch, expiredSnapshot.watch]) {
       expect(candidate).toMatchObject({ schemaVersion: 1, provenanceDataNature: "UNAVAILABLE", operationalState: "UNAVAILABLE", serviceCount: 0 });
       expect(candidate.expiresAtEpochMillis - candidate.generatedAtEpochMillis).toBe(candidate.ttlMillis);
     }
-    expect(usable.widget).toMatchObject({ title: route.name, status: "available", updatedAtUtcMs: now - 1, expiresAtUtcMs: new Date("2030-01-02T09:30:00").getTime(), plannedJourney: { title: route.name, scheduledAtUtcMs: new Date("2030-01-02T09:30:00").getTime(), reminderMinutes: 15 } });
+    expect(usable.widget).toMatchObject({ title: route.name, status: "available", updatedAtUtcMs: now - 1, expiresAtUtcMs: travelEpochMs("2030-01-02", "09:30")!, plannedJourney: { title: route.name, scheduledAtUtcMs: travelEpochMs("2030-01-02", "09:30")!, reminderMinutes: 15 } });
     expect(usable.watch).toMatchObject({ schemaVersion: 1, routeLabel: route.name, provenanceProducer: "COMPANION", provenanceDataNature: "PROGRAMMED", operationalState: "PROGRAMMED", confidence: "LOCAL_PLANNED", serviceCount: 0, generatedAtEpochMillis: now - 1 });
     expect(usable.watch.notice).toBe(italian("snapshot.localNotice"));
   });

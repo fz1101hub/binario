@@ -15,6 +15,7 @@ import { parseLocalDictation } from "@/lib/local-dictation";
 import { createLocalJourneyTemplate, loadLocalJourneyTemplates, saveLocalJourneyTemplate } from "@/lib/local-journey-templates";
 import { loadLocalJourneyTimingPreferences, saveLocalJourneyTimingPreferences } from "@/lib/local-journey-timing";
 import { parseManualRouteTransfer, previewManualRouteTransfer } from "@/lib/manual-route-transfer-contract";
+import { travelEpochMs } from "@/lib/travel-time-zone";
 
 describe("servizi locali recuperati", () => {
   beforeEach(() => storage.clear());
@@ -22,7 +23,7 @@ describe("servizi locali recuperati", () => {
   it("sopprime una pianificazione locale scaduta e non converte mai indisponibilità in realtime", () => {
     const snapshot = createLocalScheduledSnapshot({ id: 4, name: "Roma → Napoli", travelDate: "2030-01-02", travelTime: "09:30" }, 1);
     expect(snapshot.provenance.dataNature).toBe("scheduled");
-    expect(evaluateSnapshot(snapshot, new Date("2030-01-02T10:00:00").getTime()).action).toBe("suppress");
+    expect(evaluateSnapshot(snapshot, travelEpochMs("2030-01-02", "10:00")!).action).toBe("suppress");
     expect(createUnavailableSnapshot({ kind: "route", id: "none", label: "Nessuna" }).provenance.dataNature).toBe("unavailable");
   });
 
