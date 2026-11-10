@@ -358,7 +358,7 @@ final class LiveRailDataTests: XCTestCase {
         let rows = LiveOverlay.stationBoard([row("2153"), row("2155"), row("2157")], with: board, at: now)
         let status = rows[0].live
         XCTAssertEqual(status?.expectedDeparture, scheduled.addingTimeInterval(8 * 60))
-        XCTAssertEqual(status?.delayMinutes, 7)
+        XCTAssertEqual(status?.delayMinutes, 8, "counted from the 10:05 the row prints, not the source's 10:06")
         XCTAssertEqual(status?.platform, "3")
         XCTAssertEqual(status?.cancelled, false)
         XCTAssertEqual(status?.sourceLabel, "Trenitalia — ViaggiaTreno realtime")
