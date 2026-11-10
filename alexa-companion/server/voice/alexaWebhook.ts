@@ -10,7 +10,7 @@ import {
 import { constants, createHash, verify, webcrypto, X509Certificate } from "node:crypto";
 import { rootCertificates } from "node:tls";
 import { describeErrorForLog } from "../_core/logRedaction";
-import { createWindowCounter } from "../_core/rateLimit";
+import { createWindowCounter, markRelayedForAnotherSkill } from "../_core/rateLimit";
 import { alexaRequestLogContext } from "./requestLog";
 
 type RequestEnvelope = Parameters<Skill["invoke"]>[0];
@@ -49,6 +49,13 @@ const cryptoEngine = new CryptoEngine({
 
 function reject(): never {
   throw new Error("invalid_alexa_request");
+}
+
+/** A request for another skill: rejected all the same, but not counted against the sender's address. */
+export class AnotherSkillError extends Error {
+  constructor() {
+    super("invalid_alexa_request");
+  }
 }
 
 function certificateUrl(value: string | undefined): string {
@@ -107,6 +114,11 @@ function parseChain(pem: string): X509Certificate[] {
   return blocks.map(block => new X509Certificate(block));
 }
 
+/**
+ * Shape, freshness and skill of the envelope. A request for another skill raises
+ * {@link AnotherSkillError}: it is refused before any certificate work, so it costs nothing, and
+ * it is what Amazon relays when someone points their own skill at this endpoint.
+ */
 function checkEnvelope(
   value: unknown,
   skillId: string,
@@ -128,8 +140,8 @@ function checkEnvelope(
     envelope.context?.System?.application?.applicationId,
     envelope.session?.application?.applicationId,
   ].filter(id => id !== undefined);
-  if (!applicationIds.length || applicationIds.some(id => id !== skillId))
-    reject();
+  if (!applicationIds.length) reject();
+  if (applicationIds.some(id => id !== skillId)) throw new AnotherSkillError();
   return envelope;
 }
 
@@ -295,7 +307,8 @@ export function createAlexaWebhookHandler(
             },
             skillId
           );
-        } catch {
+        } catch (error) {
+          if (error instanceof AnotherSkillError) markRelayedForAnotherSkill(res);
           res.status(400).json({ error: "invalid_alexa_request" });
           return;
         }

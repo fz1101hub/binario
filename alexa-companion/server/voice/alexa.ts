@@ -29,7 +29,7 @@ import {
 import { ENV } from "../_core/env";
 import { isSecureRequest } from "../_core/cookies";
 import { describeErrorForLog } from "../_core/logRedaction";
-import { createWindowCounter } from "../_core/rateLimit";
+import { createWindowCounter, markRelayedForAnotherSkill } from "../_core/rateLimit";
 import {
   createOpaqueSecret,
   hashVoiceSecret,
@@ -930,6 +930,10 @@ export function registerAlexaRoutes(
         !secureStringEquals(credentials.clientId, ENV.alexaOAuthClientId) ||
         !secureStringEquals(credentials.clientSecret, ENV.alexaOAuthClientSecret)
       ) {
+        // Credentials of another client (someone's own skill pointed at this URL, relayed by
+        // Amazon from our users' addresses) do not use up the per-IP failure budget; a wrong
+        // secret for our client, or no usable credentials, does.
+        if (credentials && !secureStringEquals(credentials.clientId, ENV.alexaOAuthClientId)) markRelayedForAnotherSkill(res);
         res.set("WWW-Authenticate", 'Basic realm="binario-alexa", charset="UTF-8"');
         return oauthError(res, 401, "invalid_client");
       }
