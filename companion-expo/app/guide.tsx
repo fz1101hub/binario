@@ -1,8 +1,9 @@
 import { router } from "expo-router";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { ScreenContainer } from "@/components/screen-container";
 import { useCompanionTheme } from "@/lib/theme";
 import { useTranslation } from "@/lib/i18n";
+import { platformTextKey } from "@/lib/platform-surfaces";
 
 export default function GuideScreen() {
   const { colors } = useCompanionTheme();
@@ -10,8 +11,8 @@ export default function GuideScreen() {
   const dataStates = [
     { id: "scheduled", label: t("guide.scheduled.label"), body: t("guide.scheduled.body") },
     { id: "realtime", label: t("guide.realtime.label"), body: t("guide.realtime.body") },
-    { id: "expired", label: t("guide.expired.label"), body: t("guide.expired.body") },
-    { id: "unavailable", label: t("guide.unavailable.label"), body: t("guide.unavailable.body") },
+    { id: "expired", label: t("guide.expired.label"), body: t(platformTextKey("guide.expired.body", Platform.OS)) },
+    { id: "unavailable", label: t("guide.unavailable.label"), body: t(platformTextKey("guide.unavailable.body", Platform.OS)) },
   ];
   return <ScreenContainer><ScrollView contentContainerStyle={styles.content}>
     <Text accessibilityRole="header" style={[styles.title, { color: colors.foreground }]}>{t("guide.title")}</Text>

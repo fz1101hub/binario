@@ -14,6 +14,7 @@ import { useTranslation } from "@/lib/i18n";
 import { getCompanionGuidance } from "@/lib/simple-mode";
 import { railwayStatusSemantics } from "@/lib/companion-ui-semantics";
 import { shouldAnnounceFeedback } from "@/lib/reminder-accessibility";
+import { platformTextKey } from "@/lib/platform-surfaces";
 import { router, useFocusEffect, type Href } from "expo-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
@@ -58,7 +59,7 @@ export default function BinarioHome() {
       // Un ritardo tagliato da clampTimerDelay scatta prima della scadenza: in tal caso si riprogramma soltanto.
       if (msUntilSnapshotExpiry(snapshot.provenance) > 0) { setExpiryCheck(value => value + 1); return; }
       setSnapshot(createUnavailableSnapshot(snapshot.subject, locale));
-      setFeedback(t("home.planExpired"));
+      setFeedback(t(platformTextKey("home.planExpired", Platform.OS)));
       // The departed journey gives way to the next saved one, which also reaches the widget and the watch.
       void loadLocalPlan();
     }, clampTimerDelay(msUntilSnapshotExpiry(snapshot.provenance) + 50));

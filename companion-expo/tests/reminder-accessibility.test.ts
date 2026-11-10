@@ -17,7 +17,7 @@ describe("urgenza dei messaggi dell’Agenda", () => {
     for (const key of ["alerts.deleteError", "alerts.routeUpdateError", "alerts.duplicateRoute"]) {
       expect(agenda, key).toContain(`setError(t(archiveRefusalMessageKey(await localRoutesArchiveStatus(), "${key}")))`);
     }
-    expect(agenda).toContain('setMessage(t("alerts.reminderScheduled"))');
+    expect(agenda).toContain('setMessage(t(platformTextKey("alerts.reminderScheduled", Platform.OS)))');
   });
 
   it("annuncia esplicitamente solo su iOS, dove non esistono live region", () => {

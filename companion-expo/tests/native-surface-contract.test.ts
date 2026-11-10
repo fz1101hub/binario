@@ -152,7 +152,7 @@ describe("contratti delle superfici native Binario", () => {
     expect(companion).toContain("const semantics = getCompanionHubActions(locale)[action.id];");
     expect(companion).toContain("<Pressable key={action.id} {...semantics}");
     expect(companion).toContain('t("hub.scheduledStatus")');
-    expect(companion).toContain('t("hub.intro")');
+    expect(companion).toContain('t(platformTextKey("hub.intro", Platform.OS))');
   });
 
   it("aggiorna la Tile Wear del Companion a ogni payload e la fa scadere nel renderer", () => {

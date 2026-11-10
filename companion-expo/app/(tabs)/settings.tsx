@@ -13,6 +13,7 @@ import { deleteLocalJourneyCacheFiles } from "@/lib/local-journey-files";
 import { clearLocalJourneyTemplates } from "@/lib/local-journey-templates";
 import { clearLocalRecentStations } from "@/lib/local-recent-stations";
 import { refreshNativeCompanionSurfaces } from "@/lib/native-surface-refresh";
+import { hasAndroidSurfaces } from "@/lib/platform-surfaces";
 import Constants from "expo-constants";
 import { router } from "expo-router";
 import { useEffect, useState } from "react";
@@ -98,7 +99,7 @@ export default function SettingsScreen() {
       <Text style={[styles.copy, { color: colors.muted }]}>{t("settings.advanceDescription")}</Text>
       <View accessibilityRole="radiogroup" accessibilityLabel={t("settings.advanceGroupA11y")} style={styles.row}>{localJourneyReminderOptions.map(minutes => <Pressable key={minutes} accessibilityRole="radio" accessibilityState={{ checked: preferredReminderMinutes === minutes }} accessibilityLabel={t("settings.advanceOptionA11y", { minutes })} onPress={() => void setPreferredReminder(minutes)} style={({ pressed }) => [styles.choice, { borderColor: preferredReminderMinutes === minutes ? colors.primary : colors.border, backgroundColor: preferredReminderMinutes === minutes ? colors.primary : colors.surface, opacity: pressed ? 0.72 : 1 }]}><Text style={{ color: preferredReminderMinutes === minutes ? "#fff" : colors.foreground, fontWeight: "800" }}>{minutes} min</Text></Pressable>)}</View>
     </View>
-    <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}><Text accessibilityRole="header" style={[styles.heading, { color: colors.foreground }]}>{t("settings.phoneWatch")}</Text><Text style={[styles.copy, { color: colors.muted }]}>{t("settings.phoneWatchDescription")}</Text></View>
+    {hasAndroidSurfaces(Platform.OS) ? <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}><Text accessibilityRole="header" style={[styles.heading, { color: colors.foreground }]}>{t("settings.phoneWatch")}</Text><Text style={[styles.copy, { color: colors.muted }]}>{t("settings.phoneWatchDescription")}</Text></View> : null}
     <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}><Text accessibilityRole="header" style={[styles.heading, { color: colors.foreground }]}>{t("settings.remoteSync")}</Text><Text style={[styles.copy, { color: colors.muted }]}>{t("settings.remoteUnavailable")}</Text><Text style={[styles.copy, { color: colors.muted }]}>{t("settings.remoteDescription")}</Text></View>
     <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
       <Text accessibilityRole="header" style={[styles.heading, { color: colors.foreground }]}>{t("settings.privacy")}</Text>
