@@ -218,6 +218,29 @@ class BuildGtfsPacksTest(unittest.TestCase):
                 filter_manifest["memberSha256"],
             )
 
+    def test_only_rebuilds_from_the_input_directory_not_from_the_published_pack(self) -> None:
+        # Audit data-tools-10: a manual "--only X --input-dir B" rebuilt X from the filtered pack already in the output
+        # directory and reported success, never opening the new archive in B.
+        first = self.make_input()
+        output_dir = self.temp / "output"
+        builder.build_packs(first, output_dir, generated_at="2026-01-01")
+        second = self.temp / "second"
+        second.mkdir()
+        write_fixture_zip_with_agency(second / "amt-genova-casella-gtfs.zip", "AMT Nuova")
+        write_manifest(second)
+        manifest = builder.build_packs(second, output_dir, generated_at="2026-01-02", only=["amt-genova-casella-gtfs"])
+        pack = manifest["packs"][0]
+        self.assertEqual(hashlib.sha256((second / "amt-genova-casella-gtfs.zip").read_bytes()).hexdigest(),
+                         pack["sourceArchiveSha256"])
+        with zipfile.ZipFile(output_dir / "amt-genova-casella-gtfs.zip") as archive:
+            self.assertIn("AMT Nuova", archive.read("agency.txt").decode("utf-8"))
+        # Without the archive in the input directory the rebuild fails instead of reusing the published pack.
+        (second / "amt-genova-casella-gtfs.zip").unlink()
+        published = (output_dir / "amt-genova-casella-gtfs.zip").read_bytes()
+        with self.assertRaises((builder.BuildError, OSError)):
+            builder.build_packs(second, output_dir, generated_at="2026-01-03", only=["amt-genova-casella-gtfs"])
+        self.assertEqual(published, (output_dir / "amt-genova-casella-gtfs.zip").read_bytes())
+
     def test_transit_directory_keeps_its_asset_prefix(self) -> None:
         input_dir = self.make_input()
         manifest = json.loads((input_dir / "manifest.json").read_text(encoding="utf-8"))
