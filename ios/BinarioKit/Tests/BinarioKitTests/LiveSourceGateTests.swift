@@ -97,6 +97,59 @@ final class LiveSourceGateTests: XCTestCase {
         XCTAssertEqual(pauses.active(at: clock.now()), [])
     }
 
+    func testAnAnswerSentBeforeAPauseNeitherEndsItNorResetsTheBackOffAndOneProbeFollowsIt() async throws {
+        let clock = LiveTestClock(LiveTestDates.viaggiaTrenoNow)
+        let pauses = LiveSourcePauses()
+        let gate = makeGate(clock, pauses: pauses)
+        let flags = LiveCounter()
+        // A run detail already on its way when another one is refused with Retry-After.
+        let early = Task {
+            await gate.fetch("andamentoTreno/S01700/2153/1") {
+                flags.mark("early sent")
+                for _ in 0..<500 where !flags.marked("early answers") { try? await Task.sleep(nanoseconds: 10_000_000) }
+                return .body(LiveBody(text: "run", fetchedAt: clock.now()))
+            }
+        }
+        for _ in 0..<500 where !flags.marked("early sent") { try await Task.sleep(nanoseconds: 10_000_000) }
+        XCTAssertTrue(flags.marked("early sent"))
+        _ = await gate.fetch("andamentoTreno/S01700/2155/1") { .failure(.http(status: 429, retryAfter: 600)) }
+        let until = clock.now().addingTimeInterval(600)
+        XCTAssertEqual(gate.pausedUntil(), until)
+        flags.mark("early answers")
+        let late = await early.value
+        XCTAssertEqual(late, .body(LiveBody(text: "run", fetchedAt: clock.now())), "its caller still gets the answer")
+        XCTAssertEqual(gate.pausedUntil(), until, "an answer to a request sent before the refusal does not end the pause")
+        XCTAssertEqual(pauses.active(at: clock.now()), [LiveSourcePause(source: .viaggiaTreno, until: until)])
+
+        // After the pause one request goes through; the others are refused until it answers.
+        clock.advance(601)
+        let loads = LiveCounter()
+        let probe = Task {
+            await gate.fetch("partenze/S01700") {
+                flags.mark("probe sent")
+                for _ in 0..<500 where !flags.marked("probe answers") { try? await Task.sleep(nanoseconds: 10_000_000) }
+                return .body(LiveBody(text: "board", fetchedAt: clock.now()))
+            }
+        }
+        for _ in 0..<500 where !flags.marked("probe sent") { try await Task.sleep(nanoseconds: 10_000_000) }
+        XCTAssertTrue(flags.marked("probe sent"))
+        let refused = await gate.fetch("partenze/S01529") {
+            loads.increment()
+            return .body(LiveBody(text: "other", fetchedAt: clock.now()))
+        }
+        XCTAssertEqual(refused, .failure(.paused(until: until)))
+        XCTAssertEqual(loads.value, 0, "a single request after a pause")
+        flags.mark("probe answers")
+        _ = await probe.value
+        XCTAssertNil(gate.pausedUntil(), "the probe's answer ends the pause")
+        XCTAssertEqual(pauses.active(at: clock.now()), [])
+        _ = await gate.fetch("partenze/S01529") {
+            loads.increment()
+            return .body(LiveBody(text: "other", fetchedAt: clock.now()))
+        }
+        XCTAssertEqual(loads.value, 1)
+    }
+
     func testThreeFailuresInARowPauseTheSourceForAMinute() async {
         let clock = LiveTestClock(LiveTestDates.viaggiaTrenoNow)
         let gate = makeGate(clock)
