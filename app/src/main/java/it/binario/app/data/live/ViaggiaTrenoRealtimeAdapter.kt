@@ -330,7 +330,10 @@ class ViaggiaTrenoRealtimeAdapter(
                         val brand = run.text("compImpresa")
                         val service = TrainService(
                             id = entry.runId.value, number = publicNumber,
-                            operator = if (brand?.contains("trenord", true) == true) RailOperator.TRENORD else if (category.startsWith("IC")) RailOperator.TRENITALIA_LONG_DISTANCE
+                            // The operator the run states; a number search has no timetable row to fall back on, so an
+                            // unstated one keeps the category's Trenitalia label it always had.
+                            operator = operatorOf(run, category).takeIf { it != RailOperator.OTHER }
+                                ?: if (category.startsWith("IC")) RailOperator.TRENITALIA_LONG_DISTANCE
                                 else if (category.startsWith("F")) RailOperator.TRENITALIA_AV else RailOperator.TRENITALIA_REGIONALE,
                             trainCategory = if (category.startsWith("IC")) TrainCategory.INTERCITY else if (category.startsWith("F")) TrainCategory.FRECCE else TrainCategory.REGIONALE,
                             origin = detail.origin, destination = detail.destination, scheduledDeparture = time(scheduled),
@@ -515,19 +518,29 @@ class ViaggiaTrenoRealtimeAdapter(
     }
 
     /**
-     * The operator a board row or run states in compImpresa, as the number search reads it: Trenord, Trenitalia (by
-     * category), another named company or nothing as unknown ([RailOperator.OTHER], no operator id). Never assumed to
-     * be Trenitalia, so a Trenord run clusters with the RFI row and takes its delay (audit android-data-4).
+     * The operator a board row or run states: in compImpresa as the number search reads it, else in codiceCliente,
+     * the field the real answers carry (1 Trenitalia long distance, 2 and 18 Trenitalia regional, 4 Intercity,
+     * 63 Trenord). Trenitalia's kind follows the category. A row that states neither, or another company, is unknown
+     * ([RailOperator.OTHER], no operator id): never assumed to be Trenitalia, so a Trenord run clusters with the RFI
+     * row and takes its delay (audit android-data-4), and never shown as «Altro operatore» when the row does say
+     * who runs it (audit fix-android-1).
      */
     private fun operatorOf(row: JSONObject, category: String): RailOperator {
-        val brand = row.text("compImpresa")?.lowercase(Locale.ROOT) ?: return RailOperator.OTHER
+        val brand = row.text("compImpresa")?.lowercase(Locale.ROOT)
+        val client = row.intOrNull("codiceCliente")
+        fun trenitalia(regional: Boolean) = when {
+            category.startsWith("IC") -> RailOperator.TRENITALIA_LONG_DISTANCE
+            category.startsWith("F") -> RailOperator.TRENITALIA_AV
+            regional -> RailOperator.TRENITALIA_REGIONALE
+            else -> RailOperator.TRENITALIA_LONG_DISTANCE
+        }
         return when {
-            "trenord" in brand -> RailOperator.TRENORD
-            "trenitalia" in brand -> when {
-                category.startsWith("IC") -> RailOperator.TRENITALIA_LONG_DISTANCE
-                category.startsWith("F") -> RailOperator.TRENITALIA_AV
-                else -> RailOperator.TRENITALIA_REGIONALE
-            }
+            brand != null && "trenord" in brand -> RailOperator.TRENORD
+            brand != null && "trenitalia" in brand -> trenitalia(regional = client == null || client in TRENITALIA_REGIONAL_CLIENTS)
+            brand != null -> RailOperator.OTHER
+            client == TRENORD_CLIENT -> RailOperator.TRENORD
+            client in TRENITALIA_REGIONAL_CLIENTS -> trenitalia(regional = true)
+            client in TRENITALIA_LONG_DISTANCE_CLIENTS -> trenitalia(regional = false)
             else -> RailOperator.OTHER
         }
     }
@@ -544,5 +557,9 @@ class ViaggiaTrenoRealtimeAdapter(
         const val EXTRAORDINARY_STOP_TYPE = 2
         const val SUPPRESSED_STOP_TYPE = 3
         val VARIED_STOP_TYPES = setOf(EXTRAORDINARY_STOP_TYPE, SUPPRESSED_STOP_TYPE)
+        /** codiceCliente of ViaggiaTreno: who the train runs for. */
+        const val TRENORD_CLIENT = 63
+        val TRENITALIA_REGIONAL_CLIENTS = setOf(2, 18)
+        val TRENITALIA_LONG_DISTANCE_CLIENTS = setOf(1, 4)
     }
 }

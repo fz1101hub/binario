@@ -158,6 +158,25 @@ class ViaggiaTrenoRealtimeAdapterTest {
         assertEquals(RailOperator.TRENORD, adapter().parseRun(trenord, "12345", "S08001", runDate, route, Direction.OUTBOUND, query, now)?.operator)
     }
 
+    /**
+     * Audit fix-android-1: the real answers carry no compImpresa (tests/fixtures/punctuality/andamentoTreno-9558-arrivato.json
+     * has codiceCliente 1 and categoria FR), so the operator is read from codiceCliente: a live run must not turn a
+     * Frecciarossa or a regional train into «Altro operatore».
+     */
+    @Test fun `live runs without compImpresa take the operator from codiceCliente`() {
+        fun operatorOf(client: Int?, category: String) = adapter().parseRun(
+            run().put("categoria", category).apply { client?.let { put("codiceCliente", it) } },
+            "12345", "S08001", runDate, route, Direction.OUTBOUND, query, now)?.operator
+        assertEquals(RailOperator.TRENITALIA_AV, operatorOf(1, "FR"))
+        assertEquals(RailOperator.TRENITALIA_LONG_DISTANCE, operatorOf(4, "IC"))
+        assertEquals(RailOperator.TRENITALIA_LONG_DISTANCE, operatorOf(1, "EC"))
+        assertEquals(RailOperator.TRENITALIA_REGIONALE, operatorOf(2, "REG"))
+        assertEquals(RailOperator.TRENITALIA_REGIONALE, operatorOf(18, "REG"))
+        assertEquals(RailOperator.TRENORD, operatorOf(63, "REG"))
+        assertEquals("another company's code stays unknown", RailOperator.OTHER, operatorOf(64, "EC"))
+        assertEquals("neither field: unknown, never Trenitalia", RailOperator.OTHER, operatorOf(null, "REG"))
+    }
+
     @Test fun `arrival board uses arrival time origin label and arrival detail`() = runBlocking {
         val adapter = ViaggiaTrenoRealtimeAdapter(ViaggiaTrenoRealtimeFetcher { path ->
             if (path.startsWith("arrivi/")) JSONArray().put(JSONObject().put("numeroTreno", 12345).put("codOrigine", "S08001")
