@@ -134,6 +134,8 @@ class TrainViewModel @JvmOverloads constructor(
     private var stationBoardJob: Job? = null
     private var stationBoardRunJob: Job? = null
     private var stationBoardRunRequestId = 0L
+    /** When [stationBoardRunDetails] was read (wall clock), for the age of its live values. */
+    private var stationBoardRunLoadedAtMillis: Long? = null
 
     var savedRoutes by mutableStateOf(pinnedFirst(routeStore.routes(stations)))
         private set
@@ -489,6 +491,11 @@ class TrainViewModel @JvmOverloads constructor(
     }
 
     fun openStationBoardRun(entry: StationBoardEntry) {
+        // Another run: nothing of the previous one stays under its name.
+        if (selectedBoardEntry?.runId != entry.runId) {
+            stationBoardRunDetails = null
+            stationBoardRunLoadedAtMillis = null
+        }
         selectedBoardEntry = entry.withoutExpiredObservations(java.time.Instant.now())
         refreshStationBoardRun()
     }
@@ -500,12 +507,19 @@ class TrainViewModel @JvmOverloads constructor(
         selectedBoardEntry = entry.withoutExpiredObservations(java.time.Instant.now())
         val requestId = ++stationBoardRunRequestId
         stationBoardRunJob?.cancel()
-        stationBoardRunDetails = null
+        // The stops on screen stay while they are read again, and if that fails: the list is not emptied (and its
+        // scroll position lost) at every periodic refresh. Only their live claims go once they are too old.
+        stationBoardRunDetails = retainedRunDetails(stationBoardRunDetails, stationBoardRunLoadedAtMillis, System.currentTimeMillis())
         stationBoardRunRefreshState = RefreshState.LOADING
         stationBoardRunJob = viewModelScope.launch {
             val details = stationBoardDetailsService.load(station, kind, entry)
             if (requestId != stationBoardRunRequestId) return@launch
-            stationBoardRunDetails = details
+            if (details != null) {
+                stationBoardRunDetails = details
+                stationBoardRunLoadedAtMillis = System.currentTimeMillis()
+            } else {
+                stationBoardRunDetails = retainedRunDetails(stationBoardRunDetails, stationBoardRunLoadedAtMillis, System.currentTimeMillis())
+            }
             stationBoardRunRefreshState = if (details != null) RefreshState.SUCCESS else RefreshState.ERROR
         }
     }
@@ -525,6 +539,7 @@ class TrainViewModel @JvmOverloads constructor(
         stationBoardRunJob?.cancel()
         selectedBoardEntry = null
         stationBoardRunDetails = null
+        stationBoardRunLoadedAtMillis = null
         stationBoardRunRefreshState = RefreshState.IDLE
     }
 
@@ -1587,6 +1602,22 @@ internal fun findRefreshedService(selected: TrainService, services: List<TrainSe
                 it.origin == selected.origin &&
                 it.destination == selected.destination
         }
+
+/** The stops of a board run keep their live values this long after they were read, when they cannot be read again. */
+internal const val STATION_RUN_DETAILS_MAX_AGE_MILLIS = 120_000L
+
+/**
+ * The details of a board run kept on screen while they are read again or after a reading failed: the same stops, so
+ * the list neither empties nor jumps. Read more than [STATION_RUN_DETAILS_MAX_AGE_MILLIS] ago (or at an unknown time)
+ * they lose their live claims: no stop is shown as verified and the entry drops its expired observations.
+ */
+internal fun retainedRunDetails(previous: StationBoardRunDetails?, loadedAtMillis: Long?, nowMillis: Long): StationBoardRunDetails? {
+    if (previous == null) return null
+    val entry = previous.entry.withoutExpiredObservations(java.time.Instant.ofEpochMilli(nowMillis))
+    val current = loadedAtMillis != null && nowMillis >= loadedAtMillis && nowMillis - loadedAtMillis <= STATION_RUN_DETAILS_MAX_AGE_MILLIS
+    return if (current) previous.copy(entry = entry)
+    else previous.copy(entry = entry, stops = previous.stops.map { it.copy(operationalStatusVerified = false) })
+}
 
 /** Retain the last known times for context without claiming a current zero-minute delay. */
 internal fun serviceWithoutCurrentObservation(service: TrainService): TrainService = service.copy(

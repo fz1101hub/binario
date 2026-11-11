@@ -702,7 +702,8 @@ private fun StationBoardRunDetailsContent(
             }
             if (state == RefreshState.LOADING) {
                 LinearProgressIndicator(Modifier.fillMaxWidth())
-                Text(stringResource(R.string.station_board_run_details_loading), modifier = Modifier.padding(20.dp))
+                // The stops already read stay below while they are read again: only the first load says so in words.
+                if (details == null) Text(stringResource(R.string.station_board_run_details_loading), modifier = Modifier.padding(20.dp))
             } else if (details == null) {
                 Text(stringResource(R.string.station_board_run_details_unavailable), modifier = Modifier.padding(20.dp),
                     style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
