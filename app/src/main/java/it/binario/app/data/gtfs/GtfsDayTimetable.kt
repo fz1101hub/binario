@@ -121,6 +121,9 @@ internal class GtfsDayTimetable private constructor(
     /** The latest departure minute of the day (-1 without connections), computed once. */
     val lastDepartureMinute: Int by lazy(LazyThreadSafetyMode.PUBLICATION) { departureMinute.maxOrNull() ?: -1 }
 
+    /** The latest arrival minute of the day (-1 without connections), computed once: when its last run ends. */
+    val lastArrivalMinute: Int by lazy(LazyThreadSafetyMode.PUBLICATION) { arrivalMinute.maxOrNull() ?: -1 }
+
     /**
      * The trips of every GTFS block with two trips or more, each in order of first departure: the runs one vehicle makes
      * one after the other ("Resta a bordo"). Computed once per day and shared by the searches that use it.

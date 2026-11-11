@@ -191,6 +191,11 @@ class EmbeddedGtfsJourneyProvider internal constructor(
     private val packStopsMutex = Mutex()
     private val packStops = HashMap<SourceId, PackStops>()
     private val dayMutex = Mutex()
+    /**
+     * When the last run of a pack's evening part ends (pack, service day and first minute of the part → minute of that
+     * service day), so the map of trains stops reading yesterday once nothing of it is still on the move.
+     */
+    private val eveningEnd = HashMap<String, Int>()
     private val dayCache = LinkedHashMap<String, GtfsDayTimetable>(16, 0.75f, true)
 
     override suspend fun searchJourneys(request: JourneySearchRequest): ProviderResult<List<JourneyOption>> =
@@ -369,7 +374,7 @@ class EmbeddedGtfsJourneyProvider internal constructor(
      * The train runs of the railway packs that can be on the move around [request]'s time, for the map of trains in
      * motion: the runs of the route (every pack serving both ends) or of the packs with the most stops inside the area
      * (at most [MAX_RUN_PACKS] packs). Read from the same cached service days as the searches (today's whole day, and the
-     * evening of yesterday's service day in the morning); empty when no pack serves the scope or a pack is unreadable.
+     * evening of yesterday's service day until its last run ends); empty when no pack serves the scope or a pack is unreadable.
      */
     internal suspend fun scheduledRailRuns(request: ScheduledRunRequest): List<ScheduledRailRun> = withContext(dispatcher) {
         try {
@@ -413,16 +418,22 @@ class EmbeddedGtfsJourneyProvider internal constructor(
         for ((pack, stops, _) in candidates.sortedByDescending { it.third }.take(runPacks)) {
             val originNodes = ends?.let { stops.nodesFor(it.first) }.orEmpty()
             val destinationNodes = ends?.let { stops.nodesFor(it.second) }.orEmpty()
+            // Runs of yesterday's service day still on the move (night trains): its evening only, for as long as its
+            // last run has not ended. Milano 20:10 → Palermo 16:55 is on the map until the afternoon of the next day.
+            val evening = DayPart(today.minusDays(1), (MINUTES_PER_DAY - request.lookBackMinutes - RUN_SEGMENT_MARGIN_MINUTES).coerceAtLeast(0), Int.MAX_VALUE)
+            val eveningKey = "${pack.sourceId.value}|${evening.date}|${evening.fromMinute}"
+            val eveningEnds = synchronized(eveningEnd) { eveningEnd[eveningKey] }
             val parts = buildList {
-                // Runs of yesterday's service day still on the move this morning (night trains): its evening only.
-                if (minuteOfToday < YESTERDAY_RUNS_UNTIL_MINUTE) {
-                    add(DayPart(today.minusDays(1), (MINUTES_PER_DAY - request.lookBackMinutes - RUN_SEGMENT_MARGIN_MINUTES).coerceAtLeast(0), Int.MAX_VALUE) to MINUTES_PER_DAY)
-                }
+                if (eveningEnds == null || eveningEnds >= minuteOfToday + MINUTES_PER_DAY - request.lookBackMinutes) add(evening to MINUTES_PER_DAY)
                 // Today whole, as the searches and "Ultimo di oggi" cache it.
                 add(DayPart(today, 0, Int.MAX_VALUE) to 0)
             }
             for ((part, offset) in parts) {
                 val day = day(pack, part)
+                if (part === evening && eveningEnds == null) synchronized(eveningEnd) {
+                    if (eveningEnd.size >= MAX_EVENING_ENDS) eveningEnd.clear()
+                    eveningEnd[eveningKey] = day.lastArrivalMinute
+                }
                 val nodeOfStop = Array(day.stopIds.size) { stops.nodeKey(day.stopIds[it]) }
                 val names = arrayOfNulls<String>(day.stopIds.size)
                 val minute = minuteOfToday + offset
@@ -2123,8 +2134,8 @@ class EmbeddedGtfsJourneyProvider internal constructor(
         private const val MINUTES_PER_DAY = 24 * 60
         /** Packs read for the map of trains in motion of an area. */
         private const val MAX_RUN_PACKS = 3
-        /** Until this minute of the day (noon) the runs of yesterday's service day can still be on the move. */
-        private const val YESTERDAY_RUNS_UNTIL_MINUTE = 12 * 60
+        /** Bound on the remembered ends of yesterday's evening parts (one per pack and day). */
+        private const val MAX_EVENING_ENDS = 64
         /** Yesterday's evening is read from this long before the look-back, so a run between two stops keeps both. */
         private const val RUN_SEGMENT_MARGIN_MINUTES = 60
         /** Longest stop of a vehicle between two trips the traveller can stay on board through. */
