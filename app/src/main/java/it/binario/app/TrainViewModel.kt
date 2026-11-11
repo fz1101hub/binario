@@ -261,6 +261,7 @@ class TrainViewModel @JvmOverloads constructor(
                 }
                 .getOrDefault(emptyList())
             withContext(Dispatchers.Main) {
+                val routeAtConstruction = activeRoute
                 if (imported.isNotEmpty()) {
                     val legacyCustom = customStationStore.stations()
                     val importedCanonicalizer = StationCanonicalizer(imported)
@@ -274,20 +275,27 @@ class TrainViewModel @JvmOverloads constructor(
                     recentRoutes = routeStore.recentRoutes(stations).map { recent ->
                         RecentRoute(canonicalStation(recent.origin), canonicalStation(recent.destination))
                     }
-                    // Canonicalize the route that is current *now*. Re-reading RouteStore here
-                    // could overwrite an ad-hoc route selected while the catalog was loading.
-                    activeRoute = savedRoutes.firstOrNull { it.id == activeRoute.id }
-                        ?: canonicalRoute(activeRoute)
-                    // Before the catalogue loads only remembered stations can decode the saved
-                    // routes, so the stored active route may not have resolved at construction.
-                    // Resolve it again unless the user already activated a route meanwhile.
-                    if (!hasActiveRoute && refreshRequestId == 0L) {
-                        activeRoute = routeStore.activeRoute(savedRoutes)
-                    }
+                    // Before the catalogue loads only remembered stations can decode the saved routes, so the
+                    // route taken at construction may not be the stored one (a route imported from a backup next
+                    // to one created here). The stored route is resolved again, unless the user chose a route
+                    // while the catalogue was loading: that one stays, canonicalized.
+                    activeRoute = RouteStateRules.activeRouteAfterCatalogue(
+                        current = activeRoute, routes = savedRoutes, storedId = routeStore.activeRouteId(),
+                        routeChosenInSession = routeChangedInSession, canonical = ::canonicalRoute
+                    )
                     favouriteStations = stationPreferences.favourites(stations)
                     stationMonitors = personalTravelStore.stationMonitors(stations)
                 }
 
+                // A refresh already started for the route taken at construction (the refresh button, pressed
+                // while the catalogue was loading) does not count when the stored route is another one: its
+                // rows are not this route's.
+                if (activeRoute.id != routeAtConstruction.id && !routeChangedInSession && refreshRequestId != 0L) {
+                    clearSelectedService()
+                    primarySnapshot = null
+                    rebuildServicePresentations()
+                    if (enableStartupEffects && hasActiveRoute) refresh()
+                }
                 // If no user-driven refresh started while the catalog was loading, perform
                 // the one bootstrap refresh now (also when the catalog load failed/was empty).
                 if (enableStartupEffects && refreshRequestId == 0L && hasActiveRoute) refresh()
@@ -1551,13 +1559,18 @@ class TrainViewModel @JvmOverloads constructor(
         return saved.firstOrNull { it.id == existing.id } ?: existing
     }
 
-    /** Stations only the backup knows must be remembered, or its routes vanish at the next start. */
+    /**
+     * Stations only the backup knows must be remembered, or its routes vanish at the next start. The catalogue
+     * stations of its routes are remembered too, like those of a route created here: the saved routes are decoded
+     * before the catalogue has loaded, and the active one must be among them.
+     */
     private fun restoreBackupStations(backup: LocalDataBackup) {
-        if (backup.stations.isEmpty()) return
-        val retained = retainedStationIds() +
-            backup.routes.flatMap { listOf(it.outwardOrigin.id, it.outwardDestination.id) } +
+        val routeStations = backup.routes.flatMap { listOf(it.outwardOrigin, it.outwardDestination) }
+        val remembered = (backup.stations + routeStations).distinctBy { it.id }
+        if (remembered.isEmpty()) return
+        val retained = retainedStationIds() + routeStations.map { it.id } +
             backup.favouriteStationIds + backup.stationMonitors.map { it.stationId }
-        addKnownStations(customStationStore.rememberAll(backup.stations, retained))
+        addKnownStations(customStationStore.rememberAll(remembered, retained))
     }
 
     private fun addKnownStations(candidates: List<Station>) {
@@ -1706,10 +1719,9 @@ private class RouteStore(context: Context) {
         return stored.filterNot { route -> route.id.startsWith("default-") }
     }
 
-    fun activeRoute(routes: List<SavedRoute>): SavedRoute {
-        val activeId = preferences.getString(KEY_ACTIVE_ROUTE, null)
-        return routes.firstOrNull { it.id == activeId } ?: routes.firstOrNull() ?: unconfiguredRoute()
-    }
+    fun activeRouteId(): String? = preferences.getString(KEY_ACTIVE_ROUTE, null)
+
+    fun activeRoute(routes: List<SavedRoute>): SavedRoute = RouteStateRules.storedActiveRoute(routes, activeRouteId())
 
     fun direction(): Direction = runCatching {
         Direction.valueOf(preferences.getString(KEY_DIRECTION, Direction.OUTBOUND.name) ?: Direction.OUTBOUND.name)
