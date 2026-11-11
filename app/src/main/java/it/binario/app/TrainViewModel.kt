@@ -207,6 +207,8 @@ class TrainViewModel @JvmOverloads constructor(
     private var availableOperatorNames by mutableStateOf<List<String>>(emptyList())
     /** «Più presto» / «Più tardi» of the route results: windows of direct trains loaded around the primary search. */
     private var servicePages by mutableStateOf(ServicePages.EMPTY)
+    /** The request that reads again the open train of one of those windows. */
+    private var pagedServiceJob: Job? = null
 
     private val journeyQueryState = JourneyQueryState()
     private var returnJourneyQuery: JourneyQuery? = null
@@ -866,6 +868,7 @@ class TrainViewModel @JvmOverloads constructor(
         }
         refreshState = RefreshState.LOADING
         refreshMessage = null
+        expireServicePages()
         val routeAtRequest = activeRoute
         val directionAtRequest = direction
         val queryAtRequest = journeyQueryState.value
@@ -1076,6 +1079,7 @@ class TrainViewModel @JvmOverloads constructor(
     }
 
     private fun clearSelectedService() {
+        pagedServiceJob?.cancel()
         selectedGlobalTrainId = null
         selectedService = null
         selectedServiceDirection = null
@@ -1097,9 +1101,53 @@ class TrainViewModel @JvmOverloads constructor(
             selectedServiceSnapshot = updated
             notePunctuality(listOf(refreshed), updated)
         } ?: run {
-            // A train of «Più presto» / «Più tardi» keeps the page it came from: the primary search never held it.
-            if (servicePages.snapshots.any { it === selectedServiceSnapshot }) return
-            invalidateSelectedService(updatedDirection)
+            // A train of «Più presto» / «Più tardi»: the primary search never held it, so its own window is asked again.
+            if (isPagedService(selected)) refreshSelectedPagedService(updatedDirection)
+            else invalidateSelectedService(updatedDirection)
+        }
+    }
+
+    private fun isPagedService(service: TrainService): Boolean =
+        currentServicePages()?.snapshots.orEmpty().any { page -> page.services.any { it.id == service.id } }
+
+    /**
+     * The trains of «Più presto» / «Più tardi» are read once, when their window is loaded: at every refresh the windows
+     * past their expiry keep their trains as timetable rows, with no delay or platform shown as current.
+     */
+    private fun expireServicePages(nowMillis: Long = System.currentTimeMillis()) {
+        val pages = servicePages
+        val updated = pages.snapshots.map { pageWithoutExpiredObservations(it, nowMillis) }
+        if (updated.indices.any { updated[it] !== pages.snapshots[it] }) servicePages = pages.copy(snapshots = updated)
+    }
+
+    /**
+     * Reads again the open train of a «Più presto» / «Più tardi» window, from the same route sources and from its own
+     * departure: one request per refresh, only while that detail is open. The answer replaces the train in its window;
+     * without an answer the detail keeps what it had, with no live claim once that has expired.
+     */
+    private fun refreshSelectedPagedService(directionAtRequest: Direction) {
+        val selected = selectedService ?: return
+        val key = servicePagingKey()
+        val from = ResultsPaging.departureOf(selected, journeyQueryState.value.serviceDate) ?: return
+        val routeAtRequest = activeRoute
+        pagedServiceJob?.cancel()
+        pagedServiceJob = viewModelScope.launch {
+            val answer = routePage(routeAtRequest, directionAtRequest, from)
+            val open = selectedService
+            val pages = currentServicePages()?.takeIf { it.key == key }
+            if (open == null || pages == null || open.id != selected.id || selectedServiceDirection != directionAtRequest) return@launch
+            val refreshed = answer?.let { findRefreshedService(open, it.services) }
+            if (answer == null || refreshed == null) {
+                invalidateSelectedService(directionAtRequest, onlyIfExpired = true)
+                return@launch
+            }
+            // The train keeps the day of its window, so one of tomorrow morning stays after this evening's.
+            val train = if (refreshed.scheduledDepartureDateTime != null) refreshed else refreshed.copy(scheduledDepartureDateTime = from)
+            val page = answer.copy(services = listOf(train))
+            servicePages = pages.copy(snapshots = pagesWithRefreshedService(pages.snapshots, open.id, page))
+            selectedService = train
+            selectedServiceSnapshot = page
+            notePunctuality(listOf(train), page)
         }
     }
 
@@ -1142,6 +1190,8 @@ class TrainViewModel @JvmOverloads constructor(
             else -> primarySnapshot
         }
         notePunctuality(listOf(service), selectedServiceSnapshot)
+        // A window read a while ago: the detail asks for its train again instead of waiting for the next refresh.
+        if (page != null && (page.freshness == Freshness.STALE || page.isExpired)) refreshSelectedPagedService(resolvedDirection)
     }
 
     /** Statistics of the open train from the local history; null below two observations. */
@@ -1544,6 +1594,24 @@ internal fun serviceWithoutCurrentObservation(service: TrainService): TrainServi
     officialDelayMinutes = null,
     stops = service.stops.map { it.copy(operationalStatusVerified = false) }
 )
+
+/**
+ * A «Più presto» / «Più tardi» window at [nowMillis]: unchanged while its data is current; past its expiry its trains
+ * stay as timetable rows (no verified status, no official delay) and the window is marked stale.
+ */
+internal fun pageWithoutExpiredObservations(page: RouteSnapshot, nowMillis: Long): RouteSnapshot =
+    if (nowMillis <= page.expiresAtEpochMillis || page.freshness == Freshness.STALE) page
+    else page.copy(services = page.services.map(::serviceWithoutCurrentObservation), freshness = Freshness.STALE)
+
+/**
+ * The windows after the train [serviceId] was read again: it leaves the window that held it (a window left empty goes)
+ * and [refreshed], the new answer with that train alone, joins them. The other trains keep their own window and age.
+ */
+internal fun pagesWithRefreshedService(pages: List<RouteSnapshot>, serviceId: String, refreshed: RouteSnapshot): List<RouteSnapshot> =
+    pages.mapNotNull { page ->
+        if (page.services.none { it.id == serviceId }) page
+        else page.copy(services = page.services.filterNot { it.id == serviceId }).takeIf { it.services.isNotEmpty() }
+    } + refreshed
 
 /** The windows «Più presto» / «Più tardi» loaded for the search [key]: their snapshots (new trains only) and states. */
 private data class ServicePages(
