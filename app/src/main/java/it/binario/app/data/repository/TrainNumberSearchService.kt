@@ -12,9 +12,13 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.collect
 
-/** Exact public-number matching; category/line labels never turn this into substring search. */
+/**
+ * Exact public-number matching; category/line labels never turn this into substring search. A published
+ * "line - number" label ("RE_11 - 2153", "S5 - 811A": what a favourite saved from a timetable row keeps) is asked by
+ * its run number, as [matches] reads it.
+ */
 data class TrainNumberQuery(val number: String, val date: LocalDate) {
-    val normalized: String = normalize(number)
+    val normalized: String = normalize(number.trim().substringAfterLast(" - "))
     val numeric: String? = numeric(normalized)
     val valid: Boolean get() = normalized.length in 1..32 && normalized.all { it.isLetterOrDigit() } && normalized.any(Char::isDigit)
 

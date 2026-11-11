@@ -89,7 +89,7 @@ internal class HttpRfiProgrammedTimetableFetcher(
         connection.readTimeout = 25_000
         connection.instanceFollowRedirects = false
         connection.setRequestProperty("Accept", "text/html,application/xhtml+xml")
-        connection.setRequestProperty("User-Agent", "Binario/0.20 (personal rail timetable client)")
+        connection.setRequestProperty("User-Agent", it.binario.app.data.live.BINARIO_PUBLIC_SOURCE_USER_AGENT)
         previous?.etag?.let { connection.setRequestProperty("If-None-Match", it) }
         previous?.lastModified?.let { connection.setRequestProperty("If-Modified-Since", it) }
         it.binario.app.data.live.withCancellableHttpConnection(connection) {

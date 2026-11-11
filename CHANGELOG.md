@@ -1,6 +1,23 @@
 # Changelog
 
-## In sviluppo — Secondo audit dell'11 novembre: due regressioni corrette subito
+## In sviluppo — Secondo audit dell'11 novembre: correzioni
+
+Dodici revisori indipendenti, ognuno con un punto di vista diverso, hanno trovato 115 problemi e proposto circa 80 miglioramenti. Ogni rilievo è prima verificato o confutato, poi riprodotto con un test e corretto con un commit a parte. Le correzioni arrivano per area.
+
+- **Android, treni preferiti**: un preferito salvato da una riga dell'orario con numero composto («RE_11 - 2153», «S5 - 811A») viene cercato con il numero della corsa. Tornano così lo stato in tempo reale nel widget e in «I miei treni», l'avviso di avvicinamento e la registrazione della puntualità, che ora resta sotto il numero del preferito.
+- **Android, dati in tempo reale**:
+  - un treno con l'orario spostato (lavori, pack vecchio) è una riga sola: la corsa in tempo reale prende il posto del treno programmato con lo stesso numero entro tre ore, non più entro venti minuti;
+  - il caricamento di una tratta avvia l'orario insieme alle fonti in tempo reale, non dopo;
+  - il tabellone RFI della stazione di partenza è chiesto una volta per aggiornamento, non due, e ViaggiaTreno non riceve più una terza finestra di partenze.
+- **Fonti pubbliche, comportamento più prudente**:
+  - una risposta arrivata in ritardo a una richiesta precedente non annulla più la pausa dopo un 403 o 429;
+  - la pausa vale per il sito, non per il singolo adattatore: le due richieste a Italo la condividono, e così gli avvisi di ViaggiaTreno e le notizie di Trenitalia, che ora si fermano al primo 403;
+  - lo scaricamento di riserva degli orari segue i reindirizzamenti solo sullo stesso sito e si ferma a un rifiuto, per il Retry-After o 15 minuti;
+  - un solo User-Agent per tutte le richieste dell'app Android, con la versione della build: «Binario/0.20.4 (Android; rail timetable app)».
+- **Avvisi da fonti non cifrate**: un indirizzo costruito ad arte (schema annidato, barre codificate più volte) non diventa più un link toccabile. Il controllo sui siti ammessi vale nel punto in cui il link viene creato.
+- **CI iPhone** (#84): l'età degli orari blocca solo le release (run avviata a mano, PR verso un ramo di stabilizzazione). Nelle altre run è un avviso: dal 13 novembre il job sarebbe diventato rosso su ogni modifica.
+
+Corrette subito con la PR #83:
 
 - **Android**: un treno con dati in tempo reale di ViaggiaTreno non diventa più «Altro operatore». La correzione del 10 novembre leggeva l'operatore solo da un campo che le risposte reali non hanno; ora si legge anche `codiceCliente` (Trenitalia, Trenord), e quando la fonte non dice chi gestisce il treno restano operatore, categoria e bici dell'orario. Tornano così il filtro per operatore, il link di acquisto di Frecce e Intercity e le etichette giuste su widget, orologio e storico.
 - **iPhone**: il tempo trascorso per la seconda richiesta a ViaggiaTreno non usa più `systemUptime`, un'API che Apple accetta solo se dichiarata nel manifest della privacy: il caricamento su App Store Connect sarebbe stato rifiutato. Un nuovo controllo ferma la CI se i sorgenti usano un'API di quel tipo non dichiarata.

@@ -62,14 +62,18 @@ class StationBoardEnrichedTrainDataSource(
     override suspend fun loadRoute(route: SavedRoute, direction: Direction): DataResult =
         loadRoute(route, direction, JourneyQuery.now())
 
-    override suspend fun loadRoute(route: SavedRoute, direction: Direction, query: JourneyQuery): DataResult {
+    override suspend fun loadRoute(route: SavedRoute, direction: Direction, query: JourneyQuery): DataResult = coroutineScope {
+        // The timetable is always needed and starts with the live sources, as in [observeRoute], not after them: a
+        // caller with little time (the commuter reminder has seven seconds in a cold process) no longer waits for
+        // the two one after the other (audit fix-android-6). The same requests, only not in sequence.
+        val plannedCall = async { plannedSource.loadRoute(route, direction, query) }
         val live = liveFirst(route, direction, query)
         val verified = live.verified
-            ?: return afterPlanned(plannedSource.loadRoute(route, direction, query), live.unverified, route, direction, query)
+            ?: return@coroutineScope afterPlanned(plannedCall.await(), live.unverified, route, direction, query)
         // A live route holds only the runs whose details arrived in time (never Italo): it enriches the planned list,
         // whose other trains keep their timetable and board data (audit android-data-2).
-        val planned = plannedSource.loadRoute(route, direction, query) as? DataResult.Success ?: return verified
-        return LiveRunMerge.merge(afterPlanned(planned, null, route, direction, query), verified, query)
+        val planned = plannedCall.await() as? DataResult.Success ?: return@coroutineScope verified
+        LiveRunMerge.merge(afterPlanned(planned, null, route, direction, query), verified, query)
     }
 
     /**
@@ -185,13 +189,18 @@ class StationBoardEnrichedTrainDataSource(
 /**
  * The verified live runs of a route over the planned list (audit android-data-2). A live route holds only the runs whose
  * details arrived in time, never Italo: it must never replace the list. A live run takes the place of the planned
- * service of the same run (core number, compatible operator, scheduled departure within [SCHEDULE_TOLERANCE]) unless
- * the live run is unverified and the boards verified the planned one; a live run the timetable does not list is added;
- * every other planned service stays as the timetable and the boards left it. Which live source answered is decided
- * before, in the same order as always.
+ * service of the same run (core number, compatible operator, the nearest scheduled departure within [RETIMING_WINDOW])
+ * unless the live run is unverified and the boards verified the planned one; a live run the timetable does not list is
+ * added; every other planned service stays as the timetable and the boards left it. Which live source answered is
+ * decided before, in the same order as always.
  */
 internal object LiveRunMerge {
-    private val SCHEDULE_TOLERANCE: Duration = Duration.ofMinutes(20)
+    /**
+     * On one day and one station pair a train number is one train: a run the day's timetable moved by half an hour
+     * (works, an old pack) is still the planned train, not a second one (audit fix-android-2). Both sides carry the
+     * full date and time, so the run of the next day, about 24 hours away, stays apart.
+     */
+    private val RETIMING_WINDOW: Duration = Duration.ofHours(3)
 
     fun merge(planned: DataResult, live: DataResult.Success?, query: JourneyQuery): DataResult {
         if (live == null) return planned
@@ -206,7 +215,7 @@ internal object LiveRunMerge {
             val index = services.indices
                 .filter { it !in taken && sameRun(services[it], run) }
                 .mapNotNull { index -> scheduled(services[index], query)?.let { index to abs(Duration.between(it, runTime).toMinutes()) } }
-                .filter { (_, delta) -> delta <= SCHEDULE_TOLERANCE.toMinutes() }
+                .filter { (_, delta) -> delta <= RETIMING_WINDOW.toMinutes() }
                 .minByOrNull { (_, delta) -> delta }?.first
             if (index == null) {
                 added += run
@@ -296,13 +305,18 @@ class StationBoardRealtimeReconciler(
         val origin = snapshot.route.origin(snapshot.direction)
         val destination = snapshot.route.destination(snapshot.direction)
         val requested = query.requestedAt.atZone(zone)
+        // The instants the live route of the same refresh asks ViaggiaTreno for (the requested time and, for a search
+        // around now, two hours before it for the trains still late to leave): the board is then answered from the
+        // shared response cache instead of asking for a third window (audit fix-android-5).
+        val from = requested.toInstant()
         val request = StationBoardRequest(
             stationId = StationId(origin.id),
             stationName = origin.name,
             stationAliases = origin.aliases,
             railwayCode = origin.railwayCode,
-            from = requested.minusMinutes(30).toInstant(),
+            from = from,
             to = requested.plusHours(8).toInstant(),
+            lateSince = from.minus(LATE_LOOKBACK).takeIf { !from.isAfter(clock.instant().plus(AROUND_NOW)) },
             kind = BoardKind.DEPARTURES,
             trenitaliaLocationId = origin.trenitaliaLocationId,
             coordinates = origin.catalogueCoordinates()
@@ -636,6 +650,12 @@ class StationBoardRealtimeReconciler(
         RailOperator.WESTBAHN -> "westbahn"
         RailOperator.EUROPEAN_SLEEPER -> "european-sleeper"
         RailOperator.OTHER -> null
+    }
+
+    private companion object {
+        /** As ViaggiaTrenoRealtimeAdapter.loadRoute: the look-back and when it applies. */
+        val LATE_LOOKBACK: Duration = Duration.ofHours(2)
+        val AROUND_NOW: Duration = Duration.ofMinutes(10)
     }
 
     private data class ProviderBoard(

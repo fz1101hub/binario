@@ -30,6 +30,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.withLink
+import it.binario.app.data.notices.CleartextNoticeLinks
 import it.binario.app.data.notices.NoticeLine
 import it.binario.app.data.notices.NoticeLinks
 import it.binario.app.data.notices.NoticePublisher
@@ -90,20 +91,25 @@ internal fun openExternalLink(uriHandler: UriHandler, url: String) {
     runCatching { uriHandler.openUri(link) }
 }
 
-/** Text whose http(s) URLs open in the browser on tap; everything else stays plain. */
+/**
+ * Text whose http(s) URLs open in the browser on tap; everything else stays plain. With [officialLinksOnly] (text
+ * that reached the app over the cleartext ViaggiaTreno hop) only HTTPS links to the publisher's own domains are
+ * tappable, whatever the text went through before.
+ */
 @Composable
 internal fun LinkifiedText(
     text: String,
     style: TextStyle,
     modifier: Modifier = Modifier,
     maxLines: Int = Int.MAX_VALUE,
-    fontWeight: FontWeight? = null
+    fontWeight: FontWeight? = null,
+    officialLinksOnly: Boolean = false
 ) {
     val uriHandler = LocalUriHandler.current
     val linkColor = MaterialTheme.colorScheme.primary
-    val annotated = remember(text, linkColor) {
+    val annotated = remember(text, linkColor, officialLinksOnly) {
         buildAnnotatedString {
-            NoticeLinks.segments(text).forEach { segment ->
+            NoticeLinks.segments(text) { !officialLinksOnly || CleartextNoticeLinks.allowed(it) }.forEach { segment ->
                 when (segment) {
                     is NoticeLinks.Segment.Plain -> append(segment.text)
                     is NoticeLinks.Segment.Link -> withLink(
@@ -158,13 +164,15 @@ internal fun RailNoticeItem(notice: RailNotice, showLines: Boolean = true) {
     val titleInBody = notice.body?.startsWith(notice.title.removeSuffix("…").trimEnd()) == true
     Column(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
         if (notice.mentionsStrike) StrikeBadge()
-        if (!titleInBody) LinkifiedText(notice.title, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+        if (!titleInBody) LinkifiedText(notice.title, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold,
+            officialLinksOnly = notice.cleartextHop)
         if (showLines) noticeLinesLabel(notice.lines)?.let { SourceSectionNote(it) }
         notice.body?.let { body ->
             LinkifiedText(
                 body,
                 style = if (titleInBody) MaterialTheme.typography.bodyMedium else MaterialTheme.typography.bodySmall,
-                maxLines = if (expanded) Int.MAX_VALUE else COLLAPSED_LINES
+                maxLines = if (expanded) Int.MAX_VALUE else COLLAPSED_LINES,
+                officialLinksOnly = notice.cleartextHop
             )
             if (body.length > COLLAPSED_CHARACTERS || body.count { it == '\n' } >= COLLAPSED_LINES) {
                 TextButton(onClick = { expanded = !expanded }) {
@@ -176,7 +184,7 @@ internal fun RailNoticeItem(notice: RailNotice, showLines: Boolean = true) {
             notice.publishedAt?.let { stringResource(R.string.notices_published_by_at, notice.publisher.brand(), noticeTimestamp(it, locale)) }
                 ?: stringResource(R.string.notices_published_by, notice.publisher.brand())
         )
-        notice.link?.let { link ->
+        notice.link?.takeIf(notice::allowsLink)?.let { link ->
             TextButton(onClick = { openExternalLink(uriHandler, link) }) { Text(stringResource(R.string.notices_open_source)) }
         }
         // A strike notice of Trenitalia or Trenord: the operator's own page of guaranteed trains (none is known for RFI).

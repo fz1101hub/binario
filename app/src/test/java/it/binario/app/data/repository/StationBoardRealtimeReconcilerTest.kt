@@ -121,18 +121,22 @@ class StationBoardRealtimeReconcilerTest {
 
     @Test fun `cancelling the route search propagates instead of starting a fallback`() = runTest {
         val started = CompletableDeferred<Unit>()
-        var plannedCalled = false
+        var plannedCalls = 0
         val slow = object : TrainDataSource {
             override suspend fun loadRoute(route: SavedRoute, direction: Direction): DataResult {
                 started.complete(Unit); awaitCancellation()
             }
         }
-        val wrapper = StationBoardEnrichedTrainDataSource(source { plannedCalled = true; DataResult.Success(plannedSnapshot()) }, emptyList(), clock, zone,
+        val wrapper = StationBoardEnrichedTrainDataSource(source { plannedCalls++; DataResult.Success(plannedSnapshot()) }, emptyList(), clock, zone,
             liveRouteSources = listOf(slow))
         val pending = async { wrapper.loadRoute(route, Direction.OUTBOUND, query) }
         started.await()
+        // The timetable load started together with the live source (audit fix-android-6); the cancellation starts nothing more.
+        val before = plannedCalls
         pending.cancelAndJoin()
-        assertFalse(plannedCalled)
+        assertTrue(pending.isCancelled)
+        assertEquals(before, plannedCalls)
+        assertTrue(plannedCalls <= 1)
     }
 
     @Test
@@ -407,11 +411,92 @@ class StationBoardRealtimeReconcilerTest {
         val result = wrapper.loadRoute(route, Direction.OUTBOUND, query) as DataResult.Success
         assertEquals(live.snapshot.services, result.snapshot.services)
         assertEquals("GTFS programmato + ViaggiaTreno", result.snapshot.providerName)
-        assertEquals(listOf("live", "planned"), calls)
+        assertEquals(listOf("live", "planned"), calls.sorted())
         // Without a planned list the verified live route is still the answer.
         val alone = StationBoardEnrichedTrainDataSource(source { DataResult.Failure("no timetable") }, emptyList(), clock, zone,
             listOf(source { live })).loadRoute(route, Direction.OUTBOUND, query)
         assertEquals(live, alone)
+    }
+
+    /**
+     * Audit fix-android-6: the timetable load starts with the live sources and not after them, so a caller with a few
+     * seconds (the commuter reminder) does not pay for the two in sequence. Each source is still asked once.
+     */
+    @Test
+    fun `il programmato parte insieme alle fonti live e non dopo`() = runBlocking {
+        val plannedStarted = CompletableDeferred<Unit>()
+        var plannedCalls = 0
+        var liveCalls = 0
+        val verified = DataResult.Success(plannedSnapshot().copy(providerName = "ViaggiaTreno",
+            services = plannedSnapshot().services.map { it.copy(id = "viaggiatreno:9401", operationalStatusVerified = true) }))
+        // The live source answers only once the timetable load has started: in sequence it would wait for its timeout.
+        val live = object : TrainDataSource {
+            override suspend fun loadRoute(route: SavedRoute, direction: Direction): DataResult {
+                liveCalls++
+                plannedStarted.await()
+                return verified
+            }
+        }
+        val planned = source { plannedCalls++; plannedStarted.complete(Unit); DataResult.Success(plannedSnapshot()) }
+        val wrapper = StationBoardEnrichedTrainDataSource(planned, emptyList(), clock, zone, listOf(live), liveSourceTimeoutMillis = 60_000)
+
+        val result = kotlinx.coroutines.withTimeout(5_000) { wrapper.loadRoute(route, Direction.OUTBOUND, query) } as DataResult.Success
+        assertEquals("viaggiatreno:9401", result.snapshot.services.single().id)
+        assertEquals(1, plannedCalls)
+        assertEquals(1, liveCalls)
+
+        // Without a verified live route the same single timetable load is the answer.
+        plannedCalls = 0
+        val offline = StationBoardEnrichedTrainDataSource(planned, emptyList(), clock, zone, listOf(source { DataResult.Failure("offline") }))
+        assertFalse((offline.loadRoute(route, Direction.OUTBOUND, query) as DataResult.Success).snapshot.services.single().operationalStatusVerified)
+        assertEquals(1, plannedCalls)
+    }
+
+    /**
+     * Audit fix-android-5: the boards are asked from the instants the live route already asked ViaggiaTreno for (the
+     * requested time and, around now, two hours before it), so no source is asked for a third window.
+     */
+    @Test
+    fun `la riconciliazione chiede i tabelloni dagli stessi istanti della tratta live`() = runBlocking {
+        val rfi = SourceId("rfi-station-board")
+        val seen = mutableListOf<StationBoardRequest>()
+        val provider = FakeBoardProvider(rfi, "RFI", board(rfi, "9401", zdt(12, 30), zdt(12, 37), "4", RunStatus.DELAYED)) { seen += it }
+        val reconciler = StationBoardRealtimeReconciler(listOf(provider), clock, zone)
+
+        val enriched = reconciler.enrich(plannedSnapshot(), query)
+        val aroundNow = seen.single()
+        assertEquals(query.requestedAt.atZone(zone).toInstant(), aroundNow.from)
+        assertEquals(aroundNow.from.minus(Duration.ofHours(2)), aroundNow.lateSince)
+        assertEquals(7, enriched.services.single().delayMinutes)
+
+        // A search for later today has no look-back, as the live route has none.
+        reconciler.enrich(plannedSnapshot(), query.copy(departureTime = LocalTime.of(15, 0)))
+        assertEquals(LocalDateTime.of(2026, 9, 4, 15, 0).atZone(zone).toInstant(), seen.last().from)
+        assertEquals(null, seen.last().lateSince)
+    }
+
+    /**
+     * Audit fix-android-2: a train the day's timetable moved by half an hour is one train, not a timetable row that
+     * does not exist plus the live row. Tomorrow's run of the same number, and a run hours away, stay apart.
+     */
+    @Test
+    fun `la corsa live spostata di trenta minuti prende il posto della stessa corsa programmata`() = runBlocking {
+        val today = plannedSnapshot().services.single()
+        val departure = today.scheduledDepartureDateTime!!
+        val tomorrow = today.copy(id = "gtfs:tomorrow", scheduledDepartureDateTime = departure.plusDays(1))
+        val planned = plannedSnapshot().copy(services = listOf(today, tomorrow))
+        fun liveAt(time: LocalDateTime) = DataResult.Success(plannedSnapshot().copy(providerName = "ViaggiaTreno", services = listOf(
+            today.copy(id = "viaggiatreno:9401", scheduledDeparture = time.toLocalTime().toString(), expectedDeparture = time.toLocalTime().toString(),
+                scheduledDepartureDateTime = time, operationalStatusVerified = true))))
+        suspend fun merged(live: DataResult.Success) = (StationBoardEnrichedTrainDataSource(source { DataResult.Success(planned) }, emptyList(),
+            clock, zone, listOf(source { live })).loadRoute(route, Direction.OUTBOUND, query) as DataResult.Success).snapshot.services
+
+        assertEquals(setOf("viaggiatreno:9401", "gtfs:tomorrow"), merged(liveAt(departure.plusMinutes(30))).map { it.id }.toSet())
+        assertEquals(setOf("viaggiatreno:9401", "gtfs:tomorrow"), merged(liveAt(departure.minusMinutes(45))).map { it.id }.toSet())
+        // More than three hours away it is not the same run of the day: both stay.
+        assertEquals(setOf("gtfs:T1", "viaggiatreno:9401", "gtfs:tomorrow"), merged(liveAt(departure.plusHours(4))).map { it.id }.toSet())
+        // The live run of tomorrow takes tomorrow's place, never today's.
+        assertEquals(setOf("gtfs:T1", "viaggiatreno:9401"), merged(liveAt(departure.plusDays(1).plusMinutes(30))).map { it.id }.toSet())
     }
 
     /**
@@ -490,7 +575,7 @@ class StationBoardRealtimeReconcilerTest {
             listOf(source { calls.add("live"); DataResult.Failure("offline") })
         )
         val result = wrapper.loadRoute(route, Direction.OUTBOUND, query) as DataResult.Success
-        assertEquals(listOf("live", "planned"), calls)
+        assertEquals(listOf("live", "planned"), calls.sorted())
         assertFalse(result.snapshot.services.single().operationalStatusVerified)
     }
 
@@ -619,7 +704,8 @@ class StationBoardRealtimeReconcilerTest {
     private class FakeBoardProvider(
         source: SourceId,
         name: String,
-        private val board: StationBoard
+        private val board: StationBoard,
+        private val onRequest: (StationBoardRequest) -> Unit = {}
     ) : StationBoardProvider {
         override val descriptor: ProviderDescriptor = ProviderDescriptor(
             id = source,
@@ -633,7 +719,7 @@ class StationBoardRealtimeReconcilerTest {
 
         override suspend fun getStationBoard(request: StationBoardRequest): ProviderResult<StationBoard> =
             ProviderResult.Success(
-                board,
+                board.also { onRequest(request) },
                 ProviderResponseMeta(
                     providerId = descriptor.id,
                     fetchedAt = board.snapshot.generatedAt,
