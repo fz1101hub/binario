@@ -47,7 +47,14 @@ data class EmbeddedGtfsPack(
      * Suffixes the curated catalogue adds to this operator's stations ("Matera Centrale FAL", "Bari Centrale FNB"):
      * a stop published as "Matera Centrale" is that station before any station named "Matera Centrale" alone.
      */
-    val catalogueNameSuffixes: List<String> = emptyList()
+    val catalogueNameSuffixes: List<String> = emptyList(),
+    /**
+     * The pack also publishes the operator's combined itineraries as trips (train A, a change, train B): the same
+     * physical run is then several trips, some under the first train's number (Italo's NeTEx products). The readers keep
+     * one trip per run of a service day, the train under its own number (EmbeddedGtfsRouteAdapter, `copiesOn`). Off for
+     * the packs whose trips at the same minutes are coupled portions, each a train of its own (Trenord, SNCF, ÖBB).
+     */
+    val itineraryCopies: Boolean = false
 ) {
     val isUrban: Boolean get() = kind == EmbeddedGtfsPackKind.URBAN
 }
@@ -98,7 +105,7 @@ object EmbeddedGtfsPacks {
         EmbeddedGtfsPack(SourceId("hzpp-gtfs"), "gtfs/hzpp-gtfs.zip", LocalDate.of(2026, 12, 12)),
         EmbeddedGtfsPack(
             SourceId("italo-gtfs"), "gtfs/italo-gtfs.zip", LocalDate.of(2026, 12, 12),
-            stopCodeScheme = GtfsStopCodeScheme.ITALO_STATION_CODE, busRoutesAreScheduledCoaches = true
+            stopCodeScheme = GtfsStopCodeScheme.ITALO_STATION_CODE, busRoutesAreScheduledCoaches = true, itineraryCopies = true
         ),
         EmbeddedGtfsPack(SourceId("lombardia-trenord-gtfs"), "gtfs/lombardia-trenord-gtfs.zip", LocalDate.of(2026, 12, 12)),
         EmbeddedGtfsPack(SourceId("oebb-gtfs"), "gtfs/oebb-gtfs.zip", LocalDate.of(2026, 12, 12)),

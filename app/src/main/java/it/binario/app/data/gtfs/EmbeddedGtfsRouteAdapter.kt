@@ -113,7 +113,7 @@ class EmbeddedGtfsRouteAdapter(
                 try {
                     val matches = numberCache.getOrLoad("${pack.sourceId.value}:${query.normalized}:${query.date}", cancelWhenUnused = true) {
                         val bytes = assetBytes(pack.assetPath)
-                        val index = parse({ ByteArrayInputStream(bytes) }, query)
+                        val index = parse({ ByteArrayInputStream(bytes) }, query, pack.itineraryCopies)
                         val now = clock()
                         index.servicesByNumber(pack.sourceId.value, query).map { service ->
                             TrainNumberMatch.create(service, source.displayName, DataConfidence.STATIC_ONLY, now, now + 12 * 60 * 60_000)
@@ -347,7 +347,7 @@ class EmbeddedGtfsRouteAdapter(
                 val bytes = assetBytes(pack.assetPath)
                 val parsed = withContext(parsingDispatcher) {
                     onParsing?.invoke()
-                    parse({ ByteArrayInputStream(bytes) })
+                    parse({ ByteArrayInputStream(bytes) }, itineraryCopies = pack.itineraryCopies)
                 }
                 synchronized(indexCache) { indexCache[pack.sourceId] ?: parsed.also { indexCache[pack.sourceId] = it } }
             }
@@ -491,14 +491,17 @@ class EmbeddedGtfsRouteAdapter(
      * una tabella GTFS in List<Map<String, String>>: ogni riga viene consumata
      * subito e le sole colonne necessarie alla tratta sono mantenute in array.
      */
-    private fun parse(openStream: () -> InputStream, numberQuery: TrainNumberQuery? = null): StaticGtfsIndex {
-        val index = StaticGtfsIndex(compactIndexLimits)
+    private fun parse(openStream: () -> InputStream, numberQuery: TrainNumberQuery? = null, itineraryCopies: Boolean = false): StaticGtfsIndex {
+        val index = StaticGtfsIndex(compactIndexLimits, itineraryCopies)
+        // A copy of a train under another train's number is only told from the train itself next to the other trips
+        // of the day: such a pack (a small one) is read whole even for one number.
+        val tripFilter = numberQuery.takeUnless { itineraryCopies }
         BoundedGtfsZipScanner(compactIndexLimits).scan(openStream(), compactIndexTables - "stop_times.txt") { table, rows ->
             when (table) {
                 "agency.txt" -> index.readAgencies(rows)
                 "stops.txt" -> index.readStops(rows)
                 "routes.txt" -> index.readRoutes(rows)
-                "trips.txt" -> index.readTrips(rows, numberQuery)
+                "trips.txt" -> index.readTrips(rows, tripFilter)
                 "calendar.txt" -> index.readCalendars(rows)
                 "calendar_dates.txt" -> index.readCalendarDates(rows)
             }
@@ -508,6 +511,7 @@ class EmbeddedGtfsRouteAdapter(
         index.finishReading()
         if (numberQuery == null || index.hasTrips()) {
             BoundedGtfsZipScanner(compactIndexLimits).scan(openStream(), setOf("stop_times.txt")) { _, rows -> index.readStopTimes(rows) }
+            index.finishStopTimes()
         }
         return index
     }
@@ -526,7 +530,11 @@ class EmbeddedGtfsRouteAdapter(
         val trips: Int
     )
 
-    private class StaticGtfsIndex(private val limits: GtfsCompactIndexLimits) {
+    private class StaticGtfsIndex(
+        private val limits: GtfsCompactIndexLimits,
+        /** [EmbeddedGtfsPack.itineraryCopies]: one trip per physical run of a service day is kept ([copiesOn]). */
+        private val itineraryCopies: Boolean = false
+    ) {
         private val stops = CompactStops(limits.maxStops)
         private val agencies = HashMap<String, String>()
         private val routes = HashMap<String, CompactRoute>()
@@ -539,6 +547,10 @@ class EmbeddedGtfsRouteAdapter(
          * national pack has a service per trip), dropped by [finishReading].
          */
         private var serviceIds: HashMap<String, String>? = HashMap()
+        /** [copiesOn] per service date (yyyyMMdd), a few days at most; an empty array is a day without copies. */
+        private val copiesByDate = object : LinkedHashMap<Int, BooleanArray>(8, 0.75f, true) {
+            override fun removeEldestEntry(eldest: MutableMap.MutableEntry<Int, BooleanArray>?): Boolean = size > MAX_COPY_DAYS
+        }
 
         private fun serviceId(value: String): String {
             val pool = serviceIds ?: return value
@@ -602,8 +614,7 @@ class EmbeddedGtfsRouteAdapter(
                 val shortName = row.getOrNull(shortNameIndex)
                 // SNCF publishes the train number as trip_headsign; a destination name there is not a number.
                 val numericHeadsign = row.getOrNull(headsignIndex)?.trim()?.takeIf { it.isNotEmpty() && it.all(Char::isDigit) }
-                val publicNumber = shortName?.takeIf(String::isNotBlank) ?: numericHeadsign ?: tripId
-                if (numberQuery != null && !numberQuery.matches(publicNumber)) return@forEachRow
+                if (numberQuery != null && !numberQuery.matches(searchNumber(shortName, numericHeadsign, tripId))) return@forEachRow
                 val routeId = row.gtfsRawValue(routeIndex)
                 trips.configure(
                     tripId = tripId,
@@ -681,10 +692,18 @@ class EmbeddedGtfsRouteAdapter(
 
         fun hasTrips(): Boolean = trips.size() > 0
 
+        /** The number a train-number search compares: trip_short_name, else a numeric trip_headsign, else the trip id. */
+        private fun searchNumber(shortName: String?, numericHeadsign: String?, tripId: String): String =
+            shortName?.takeIf(String::isNotBlank) ?: numericHeadsign ?: tripId
+
         fun servicesByNumber(sourceId: String, query: TrainNumberQuery): List<TrainService> {
             val selected = ArrayList<TrainService>()
             for (serviceDate in listOf(query.date.minusDays(2), query.date.minusDays(1), query.date)) {
+                val copies = copiesOn(serviceDate)
                 trips.forEachDeclared { tripIndex, trip ->
+                    // A pack read whole ([itineraryCopies]) holds every number: only the trips of the asked one, and no copy.
+                    if (itineraryCopies && !query.matches(searchNumber(trip.shortName, trip.numericHeadsign, trip.id))) return@forEachDeclared
+                    if (copies != null && copies[tripIndex]) return@forEachDeclared
                     if (!serviceRunsOn(trip.serviceId, serviceDate)) return@forEachDeclared
                     val type = routes[trip.routeId]?.type?.toIntOrNull() ?: return@forEachDeclared
                     if (type != 1 && type != 2 && type !in 100..199 && type !in 400..499) return@forEachDeclared
@@ -733,8 +752,10 @@ class EmbeddedGtfsRouteAdapter(
                 nextServiceDate
             )
             serviceDates.forEach { serviceDate ->
+                val copies = copiesOn(serviceDate)
                 trips.forEachDeclared { tripIndex, trip ->
                     if (!serviceRunsOn(trip.serviceId, serviceDate)) return@forEachDeclared
+                    if (copies != null && copies[tripIndex]) return@forEachDeclared
                     val segment = findSegment(tripIndex, wantedOrigin, wantedDestination) ?: return@forEachDeclared
                     val departureMinutes = stopTimes.preferredDeparture(segment.originEntry)
                     if (departureMinutes < 0) return@forEachDeclared
@@ -996,10 +1017,12 @@ class EmbeddedGtfsRouteAdapter(
             val builder = GtfsDayTimetable.Builder(sourceId, serviceDate, stops.size(), stops::id, stops::name)
             var entries = IntArray(64)
             var visited = 0
+            val copies = copiesOn(serviceDate)
             trips.forEachDeclared { tripIndex, trip ->
                 visited += 1
                 if (visited and 255 == 0) ensureActive()
                 if (!serviceRunsOn(trip.serviceId, serviceDate)) return@forEachDeclared
+                if (copies != null && copies[tripIndex]) return@forEachDeclared
                 val route = routes[trip.routeId]
                 val mode = journeyLegMode(route?.type, scheduledCoaches) ?: return@forEachDeclared
                 var count = 0
@@ -1074,6 +1097,163 @@ class EmbeddedGtfsRouteAdapter(
                 builder.endTrip()
             }
             return builder.build()
+        }
+
+        /**
+         * The trips of [serviceDate] left out as copies, by trip index; null when the pack has none
+         * ([EmbeddedGtfsPack.itineraryCopies] off, or a day without copies). A pack that publishes the operator's
+         * combined itineraries as trips (train A, a change, train B) repeats one physical run under several trip ids,
+         * some under the first train's number: Italo's 14:35 Milano Centrale → Venezia (8987) is also "9920" and "9939".
+         * A trip is a copy when another trip of the day runs the same stops in the same order with the same arrival
+         * times over the whole of it ([RunOfDay.offsetIn]) and that trip is the better one to keep ([keptBefore]): the
+         * one that starts where the first train of its number that day starts (the train under its own number), then
+         * the longer one. Two trains that both start their own number (coupled portions) are never merged.
+         */
+        private fun copiesOn(serviceDate: LocalDate): BooleanArray? {
+            if (!itineraryCopies) return null
+            val key = serviceDate.toGtfsInt()
+            synchronized(copiesByDate) { copiesByDate[key] }?.let { return it.takeIf { found -> found.isNotEmpty() } }
+            val runs = railRuns { trip -> serviceRunsOn(trip.serviceId, serviceDate) }
+            // Where the first train of each number starts that day: stop and minute.
+            val firstStart = HashMap<String, Long>()
+            for (run in runs) {
+                val start = run.start()
+                val known = firstStart[run.number]
+                if (known == null || start < known) firstStart[run.number] = start
+            }
+            runs.forEach { it.own = firstStart[it.number] == it.start() }
+            val copies = BooleanArray(trips.size())
+            var found = false
+            forEachSharingPair(runs) { first, second ->
+                for ((copy, kept) in listOf(first to second, second to first)) {
+                    if (!copies[copy.tripIndex] && keptBefore(kept, copy) && copy.offsetIn(kept) >= 0) {
+                        copies[copy.tripIndex] = true
+                        found = true
+                    }
+                }
+            }
+            val result = if (found) copies else BooleanArray(0)
+            synchronized(copiesByDate) { copiesByDate[key] = result }
+            return result.takeIf { it.isNotEmpty() }
+        }
+
+        /** [kept] stays and [copy] goes when both are the same run: see [copiesOn]. */
+        private fun keptBefore(kept: RunOfDay, copy: RunOfDay): Boolean {
+            if (kept.own != copy.own) return kept.own
+            // Two trains under their own numbers on the same track at the same minutes are coupled portions.
+            if (kept.own && kept.number != copy.number) return false
+            if (kept.stops.size != copy.stops.size) return kept.stops.size > copy.stops.size
+            return kept.tripIndex < copy.tripIndex
+        }
+
+        /**
+         * The copies of a pack with [itineraryCopies] often lose a dwell (arrival and departure at the same minute) that
+         * another copy of the same run still has: Italo's 9939 leaves Roma Termini at 17:30, as the itineraries that
+         * board it there say, while its own trip says 17:19, its arrival. Every trip takes the latest departure the
+         * trips of the same run publish for a stop, once, when the pack is read.
+         */
+        fun finishStopTimes() {
+            if (!itineraryCopies) return
+            val runs = railRuns { true }
+            forEachSharingPair(runs) { first, second ->
+                val (inner, outer) = if (first.stops.size <= second.stops.size) first to second else second to first
+                val offset = inner.offsetIn(outer)
+                if (offset < 0) return@forEachSharingPair
+                // The last stop of the shorter trip has no departure of its own.
+                for (position in 0 until inner.stops.size - 1) {
+                    val latest = maxOf(inner.departures[position], outer.departures[offset + position])
+                    if (latest > inner.arrivals[position + 1]) continue
+                    for ((run, at) in listOf(inner to position, outer to offset + position)) {
+                        if (run.departures[at] == latest) continue
+                        run.departures[at] = latest
+                        stopTimes.setDeparture(run.entries[at], latest)
+                    }
+                }
+            }
+        }
+
+        /** The train trips [wanted] with two timed stops at least, in stop order. */
+        private fun railRuns(wanted: (CompactTrip) -> Boolean): List<RunOfDay> {
+            val runs = ArrayList<RunOfDay>()
+            trips.forEachDeclared { tripIndex, trip ->
+                if (!wanted(trip)) return@forEachDeclared
+                val route = routes[trip.routeId]
+                if (journeyLegMode(route?.type) != LegMode.TRAIN) return@forEachDeclared
+                val entries = ArrayList<Int>()
+                var entry = trips.head(tripIndex)
+                while (entry >= 0) {
+                    if (stopTimes.preferredDeparture(entry) >= 0) entries += entry
+                    entry = stopTimes.next(entry)
+                }
+                if (entries.size < 2) return@forEachDeclared
+                entries.sortWith(compareBy<Int> { stopTimes.sequence(it) }.thenBy { stopTimes.ordinal(it) })
+                runs += RunOfDay(
+                    tripIndex = tripIndex,
+                    number = publicNumber(trip, route),
+                    entries = entries.toIntArray(),
+                    stops = IntArray(entries.size) { stopTimes.stop(entries[it]) },
+                    arrivals = IntArray(entries.size) { stopTimes.preferredArrival(entries[it]) },
+                    departures = IntArray(entries.size) { stopTimes.preferredDeparture(entries[it]) }
+                )
+            }
+            return runs
+        }
+
+        /** Every pair of [runs] with a hop in common: the same two stops, reached at the same minute. */
+        private fun forEachSharingPair(runs: List<RunOfDay>, visit: (RunOfDay, RunOfDay) -> Unit) {
+            val byHop = HashMap<Long, MutableList<Int>>()
+            runs.forEachIndexed { index, run ->
+                for (position in 1 until run.stops.size) {
+                    val hop = (run.stops[position - 1].toLong() shl 40) or (run.stops[position].toLong() shl 16) or
+                        (run.arrivals[position].toLong() and 0xFFFF)
+                    val sharing = byHop.getOrPut(hop) { ArrayList(2) }
+                    if (sharing.lastOrNull() != index) sharing += index
+                }
+            }
+            val seen = HashSet<Long>()
+            for (sharing in byHop.values) {
+                if (sharing.size < 2) continue
+                for (first in sharing.indices) for (second in first + 1 until sharing.size) {
+                    val low = minOf(sharing[first], sharing[second])
+                    val high = maxOf(sharing[first], sharing[second])
+                    if (seen.add((low.toLong() shl 32) or high.toLong())) visit(runs[low], runs[high])
+                }
+            }
+        }
+
+        /** One train trip in stop order ([entries]: its stop_times), for [copiesOn]. */
+        private class RunOfDay(
+            val tripIndex: Int,
+            val number: String,
+            val entries: IntArray,
+            val stops: IntArray,
+            val arrivals: IntArray,
+            val departures: IntArray
+        ) {
+            /** It starts where the first train of its number starts that day: the train under its own number. */
+            var own = false
+
+            fun start(): Long = (departures[0].toLong() shl 32) or stops[0].toLong()
+
+            /**
+             * Where this trip lies inside [other] (the position of its first stop there), or -1: the same stops in the
+             * same order, reached at the same minutes after the first one, and left within [MAX_DWELL_SKEW_MINUTES] (a
+             * copy may have lost a dwell).
+             */
+            fun offsetIn(other: RunOfDay): Int {
+                val size = stops.size
+                offsets@ for (offset in 0..other.stops.size - size) {
+                    for (position in 0 until size) {
+                        if (stops[position] != other.stops[offset + position]) continue@offsets
+                        if (position > 0 && arrivals[position] != other.arrivals[offset + position]) continue@offsets
+                        if (position < size - 1 &&
+                            Math.abs(departures[position] - other.departures[offset + position]) > MAX_DWELL_SKEW_MINUTES
+                        ) continue@offsets
+                    }
+                    return offset
+                }
+                return -1
+            }
         }
 
         fun stats(): GtfsCompactIndexStats = GtfsCompactIndexStats(
@@ -1234,6 +1414,8 @@ class EmbeddedGtfsRouteAdapter(
             fun preferredDeparture(index: Int): Int = departures[index].takeIf { it >= 0 } ?: arrivals[index]
             /** The mirror of [preferredDeparture] for the arrival side of a stop. */
             fun preferredArrival(index: Int): Int = arrivals[index].takeIf { it >= 0 } ?: departures[index]
+            /** A departure another copy of the same run publishes ([finishStopTimes]). */
+            fun setDeparture(index: Int, minute: Int) { departures[index] = minute }
             fun recordRowsRead(value: Int) { sourceRowsRead = value }
             fun rowsRead(): Int = sourceRowsRead
             fun size(): Int = count
@@ -1289,6 +1471,10 @@ class EmbeddedGtfsRouteAdapter(
         private const val MISSING_TIME = Int.MIN_VALUE
         private const val INVALID_TIME = Int.MIN_VALUE + 1
         private const val NEXT_DAY_LOOK_AHEAD_HOURS = 24L
+        /** Service days whose copies are remembered per index: the days of one search and of the next. */
+        private const val MAX_COPY_DAYS = 8
+        /** Two copies of one run leave a stop within this many minutes of each other (a lost dwell at a large station). */
+        private const val MAX_DWELL_SKEW_MINUTES = 20
         /**
          * Packs that also publish partner operators' trains under their own numbers and operator names, as the shipped
          * data shows: the Swiss, French and Austrian national feeds (TILO trains of Trenord, SNCF/SBB border runs, ÖBB
