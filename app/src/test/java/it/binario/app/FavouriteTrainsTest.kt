@@ -111,6 +111,25 @@ class FavouriteTrainsTest {
     }
 
     @Test
+    fun `a favourite saved from a timetable row follows the live run of the same number`() {
+        // The Trenord pack publishes "RE_11 - 2153"; the live source lists the same run as "2153".
+        val timetable = service("RE_11 - 2153", "Milano Centrale", "08:10", "Tirano").copy(operationalStatusVerified = false)
+        val live = service("2153", "MILANO CENTRALE", "08:40", "TIRANO").copy(id = "live", operationalStatusVerified = true)
+        val elsewhere = service("2153", "Orte", "08:10").copy(id = "elsewhere", operationalStatusVerified = true)
+        val saved = ServiceMonitor("RE_11 - 2153", "", origin = "Milano Centrale", scheduledDeparture = "08:10")
+
+        assertEquals(live, FavouriteTrainMatcher.pick(listOf(timetable, live), saved))
+        assertEquals(live, FavouriteTrainMatcher.pick(listOf(elsewhere, timetable, live), saved))
+        // No live run from the saved origin: the timetable row, never a homonym from elsewhere.
+        assertEquals(timetable, FavouriteTrainMatcher.pick(listOf(timetable), saved))
+        assertEquals(timetable, FavouriteTrainMatcher.pick(listOf(elsewhere, timetable), saved))
+        // Without a saved origin the live run cannot be told from a homonym.
+        assertEquals(timetable, FavouriteTrainMatcher.pick(listOf(timetable, live), saved.copy(origin = "")))
+        // A favourite saved from the live row keeps its live run.
+        assertEquals(live, FavouriteTrainMatcher.pick(listOf(timetable, live), saved.copy(number = "2153")))
+    }
+
+    @Test
     fun `the run of a favourite is the only match or the one from its origin, never a guess`() {
         val fromOrte = service("2153", "Orte", "07:42")
         val fromRoma = service("2153", "Roma Termini", "18:10")

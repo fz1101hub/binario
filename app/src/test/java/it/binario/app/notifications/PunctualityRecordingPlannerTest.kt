@@ -1,5 +1,6 @@
 package it.binario.app.notifications
 
+import it.binario.app.FavouriteTrainPunctuality
 import it.binario.app.data.RailOperator
 import it.binario.app.data.ServiceStatus
 import it.binario.app.data.TrainCategory
@@ -66,6 +67,18 @@ class PunctualityRecordingPlannerTest {
         assertFalse(PunctualityRecordingPlanner.arrived(running, at("09:35"), at("09:50")))
         assertTrue(PunctualityRecordingPlanner.arrived(running, at("09:35"), at("09:55")))
         assertTrue(PunctualityRecordingPlanner.arrived(service(completed = true), at("09:35"), at("09:36")))
+    }
+
+    @Test fun `a favourite saved with its timetable label is recorded under that label`() {
+        val day = LocalDate.of(2026, 11, 10)
+        val live = service(completed = true).copy(scheduledDepartureDateTime = day.atTime(8, 30))
+        val recorded = PunctualityRecordingPlanner.observation(live, "RE_11 - 2153", day)!!
+
+        assertEquals("RE_11 - 2153", recorded.trainNumber)
+        assertEquals(day, recorded.serviceDate)
+        assertEquals(1, FavouriteTrainPunctuality.local(listOf(recorded), "RE_11 - 2153", day, day)?.runs)
+        assertEquals("2153", PunctualityRecordingPlanner.observation(live, "2153", day)!!.trainNumber)
+        assertNull(PunctualityRecordingPlanner.observation(live.copy(operationalStatusVerified = false), "RE_11 - 2153", day))
     }
 
     private fun service(completed: Boolean) = TrainService(

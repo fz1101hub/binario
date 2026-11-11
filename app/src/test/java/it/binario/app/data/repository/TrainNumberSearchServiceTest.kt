@@ -64,6 +64,36 @@ class TrainNumberSearchServiceTest {
         // The prefixed query still finds the train.
         assertTrue(TrainNumberQuery("NJ40235", date).matches("NJ 40235"))
     }
+    @Test fun `a published line and number label is searched by its run number`() {
+        // A favourite saved from a timetable row keeps the published label (Trenord "RE_11 - 2153").
+        listOf("RE_11 - 2153" to "2153", "R1 - 10101" to "10101", "S5 - 811A" to "811A", "S10 - 25107" to "25107").forEach { (label, run) ->
+            val labelled = TrainNumberQuery(label, date)
+            assertTrue(label, labelled.valid)
+            assertEquals(label, run, labelled.normalized)
+            assertTrue(label, labelled.matches(label))
+            assertTrue(label, labelled.matches(run))
+            assertTrue(label, TrainNumberQuery(run, date).matches(label))
+        }
+        assertEquals("2153", TrainNumberQuery("RE_11 - 2153", date).numeric)
+        assertEquals("10101", TrainNumberQuery("R1 - 10101", date).numeric)
+        assertNull(TrainNumberQuery("S5 - 811A", date).numeric)
+        // What the search field keeps of the label (no underscore) is the same train; the line is never part of the number.
+        assertEquals("2153", TrainNumberQuery("RE11 - 2153", date).numeric)
+        assertFalse(TrainNumberQuery("RE_11 - 2153", date).matches("112153"))
+        assertFalse(TrainNumberQuery("RE_11 - 2153", date).matches("RE_11 - 21530"))
+        assertFalse(TrainNumberQuery("R1 - 10101", date).matches("110101"))
+        // A label still being typed, or without a run number, is not a train.
+        assertEquals("2153", TrainNumberQuery("2153 - ", date).normalized)
+        assertFalse(TrainNumberQuery("RE_11 - ", date).valid)
+    }
+    @Test fun `a favourite saved with its published label finds the live run and the timetable row`() = runBlocking {
+        val live = match("live", live = true)
+        val timetable = match("timetable").let { it.copy(service = it.service.copy(number = "RE_11 - 23263")) }
+        val source = TrainNumberSearchService(listOf(provider("a") { result(live, timetable) }))
+        val update = source.search(TrainNumberQuery("RE_11 - 23263", date)).last()
+        assertEquals(setOf("live", "timetable"), update.matches.map { it.id }.toSet())
+        assertTrue(update.unavailableSources.isEmpty())
+    }
     @Test fun `same public number can identify multiple independent runs`() = runBlocking {
         val source = TrainNumberSearchService(listOf(provider("a") { result(match("a")) }, provider("b") { result(match("b")) }))
         assertEquals(setOf("a", "b"), source.search(query).last().matches.map { it.id }.toSet())
