@@ -9,6 +9,9 @@ import java.net.HttpURLConnection
 import java.net.URL
 import java.time.Duration
 import java.time.Instant
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.async
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -78,6 +81,42 @@ class PublicSourceRefusalPauseTest {
             clock.advance(Duration.ofSeconds(2))
         }
         assertEquals(2, errors)
+    }
+
+    /** Audit fix-android-4: a request sent before the refusal and answered after it does not cancel the pause. */
+    @Test fun `a late success of an earlier request does not cancel the pause`() = runBlocking {
+        val gate = PublicSourceRefusalGate(clock, "ViaggiaTreno")
+        val slow = CompletableDeferred<String>()
+        val earlier = async(start = CoroutineStart.UNDISPATCHED) { gate.call { slow.await() } }
+        val refusal = runCatching { gate.call<String> { throw PublicSourceHttpException(429, "ViaggiaTreno HTTP 429") } }.exceptionOrNull()
+        assertTrue(refusal.toString(), refusal is PublicSourceHttpException)
+        slow.complete("in ritardo")
+        assertEquals("in ritardo", earlier.await())
+
+        var calls = 0
+        repeat(3) { assertTrue(runCatching { gate.call { calls++ } }.exceptionOrNull() is PublicSourcePausedException) }
+        assertEquals(0, calls)
+        assertEquals(listOf("ViaggiaTreno" to clock.instant().plus(Duration.ofMinutes(15))), SourcePauses.active(clock.instant()))
+
+        // Once the pause is over one request goes out, and its success closes the pause.
+        clock.advance(Duration.ofMinutes(15).plusSeconds(1))
+        gate.call { calls++ }
+        gate.call { calls++ }
+        assertEquals(2, calls)
+        assertTrue(SourcePauses.active(clock.instant()).isEmpty())
+    }
+
+    @Test fun `a success while the circuit is open leaves it open`() {
+        val breaker = SourceCircuitBreaker(clock, pauseLabel = "RFI")
+        breaker.recordFailure(Duration.ofMinutes(5))
+        breaker.recordSuccess()
+        assertTrue(breaker.isOpen())
+        assertEquals(clock.instant().plus(Duration.ofMinutes(5)), breaker.pausedUntil())
+        assertEquals(1, SourcePauses.active(clock.instant()).size)
+        clock.advance(Duration.ofMinutes(5).plusSeconds(1))
+        assertTrue(breaker.allowRequest())
+        breaker.recordSuccess()
+        assertTrue(!breaker.isOpen())
     }
 
     private fun request(code: String, id: String = "station:$code", name: String = code) = StationBoardRequest(

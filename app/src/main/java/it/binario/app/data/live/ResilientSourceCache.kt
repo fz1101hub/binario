@@ -68,8 +68,13 @@ internal class SourceCircuitBreaker(
         return true
     }
 
+    /**
+     * A success closes the circuit, except while it is open: no request is let through then, so that success belongs
+     * to a request sent before the source refused, and a refusal is not cancelled by it (audit fix-android-4).
+     */
     @Synchronized
     fun recordSuccess() {
+        if (openUntil?.let { clock.instant().isBefore(it) } == true) return
         consecutiveFailures = 0
         openings = 0
         openUntil = null
