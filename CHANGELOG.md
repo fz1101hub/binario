@@ -1,5 +1,10 @@
 # Changelog
 
+## In sviluppo — Secondo audit dell'11 novembre: due regressioni corrette subito
+
+- **Android**: un treno con dati in tempo reale di ViaggiaTreno non diventa più «Altro operatore». La correzione del 10 novembre leggeva l'operatore solo da un campo che le risposte reali non hanno; ora si legge anche `codiceCliente` (Trenitalia, Trenord), e quando la fonte non dice chi gestisce il treno restano operatore, categoria e bici dell'orario. Tornano così il filtro per operatore, il link di acquisto di Frecce e Intercity e le etichette giuste su widget, orologio e storico.
+- **iPhone**: il tempo trascorso per la seconda richiesta a ViaggiaTreno non usa più `systemUptime`, un'API che Apple accetta solo se dichiarata nel manifest della privacy: il caricamento su App Store Connect sarebbe stato rifiutato. Un nuovo controllo ferma la CI se i sorgenti usano un'API di quel tipo non dichiarata.
+
 ## In sviluppo — Audit indipendente del 10 novembre: correzioni
 
 Otto revisori indipendenti, uno per area, hanno trovato 87 difetti. Ognuno è stato prima verificato o confutato, poi riprodotto con un test e corretto con un commit a parte. Le correzioni sono arrivate in quattro PR: #79 iPhone e Apple Watch, #80 companion Expo, #81 Wear OS, raccolta della puntualità, CI e documenti, e questa per dati Android, notifiche, widget e Alexa.
