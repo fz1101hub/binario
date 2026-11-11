@@ -247,9 +247,12 @@ private fun RouteBoard(
     val group = groupName?.let { name -> ServiceGroup.entries.firstOrNull { it.name == name } }?.takeIf { it in groups }
     val shownLater = JourneyTimes.filtered(laterServices, group)
     // "Ultimo di oggi" and "Non ci sono più treni oggi" from the static timetable of the packs, never from live data.
+    // Only on a board of today: a search planned for another day shows that day, not «oggi» (LastOfDayMarks.markedDay).
     val today = LocalDate.now(RailTime.defaultZone)
+    val markedDay = LastOfDayMarks.markedDay(today, viewModel.journeyFollowsCurrentTime, viewModel.journeyQuery.serviceDate)
     val boardDestination = viewModel.activeRoute.destination(viewModel.direction).takeIf { viewModel.hasActiveRoute }
-    val staticDay by rememberStaticDayDepartures(boardStation, boardDestination, today)
+    val loadedDay by rememberStaticDayDepartures(boardStation.takeIf { markedDay != null }, boardDestination, today)
+    val staticDay = loadedDay.takeIf { markedDay != null }
     fun lastOfDay(service: TrainService): Boolean = LastOfDayMarks.isLast(
         staticDay, service.number,
         service.scheduledDepartureDateTime ?: runCatching { LocalDateTime.of(today, LocalTime.parse(service.scheduledDeparture.trim())) }.getOrNull()
