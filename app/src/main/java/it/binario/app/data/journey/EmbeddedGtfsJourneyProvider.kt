@@ -42,6 +42,7 @@ import it.binario.app.data.planned.RfiProgrammedStationIds
 import it.binario.app.data.planned.SupplementalRfiProgrammedStationIds
 import it.binario.app.data.provider.AccessMode
 import it.binario.app.data.provider.CoverageDescriptor
+import it.binario.app.data.provider.ExpiredTimetable
 import it.binario.app.data.provider.JourneyEndpoint
 import it.binario.app.data.provider.JourneyProvider
 import it.binario.app.data.provider.JourneyPreferences
@@ -56,6 +57,7 @@ import it.binario.app.data.provider.ProviderResponseMeta
 import it.binario.app.data.provider.ProviderResult
 import it.binario.app.data.provider.ProviderWarning
 import it.binario.app.data.provider.RatePolicy
+import it.binario.app.data.provider.TimetableValidityAware
 import it.binario.app.data.provider.TravelMode
 import it.binario.app.data.provider.WheelchairDataAware
 import it.binario.app.data.sources.RailInformationCategory
@@ -176,7 +178,7 @@ class EmbeddedGtfsJourneyProvider internal constructor(
     private val settings: GtfsJourneyPlannerSettings = GtfsJourneyPlannerSettings(),
     private val clock: Clock = Clock.system(RailTime.defaultZone),
     private val dispatcher: CoroutineDispatcher = Dispatchers.Default
-) : JourneyProvider, WheelchairDataAware {
+) : JourneyProvider, WheelchairDataAware, TimetableValidityAware {
     override val descriptor: ProviderDescriptor = DESCRIPTOR
 
     private val zone = RailTime.defaultZone
@@ -231,6 +233,29 @@ class EmbeddedGtfsJourneyProvider internal constructor(
             throw error
         } catch (_: IOException) {
             false
+        }
+    }
+
+    /**
+     * The packs serving an end of [request] whose timetable ends before its day (see [expiredPacks]): the networks the
+     * results of that day miss. Empty when every pack covers the day, or when the stations or a pack cannot be read.
+     */
+    override suspend fun expiredTimetables(request: JourneySearchRequest): List<ExpiredTimetable> = withContext(dispatcher) {
+        try {
+            val resolver = resolver()
+            val origin = endpoint(request.origin, request.originEndpoint, resolver) ?: return@withContext emptyList()
+            val destination = endpoint(request.destination, request.destinationEndpoint, resolver) ?: return@withContext emptyList()
+            locateStop(origin, resolver)
+            locateStop(destination, resolver)
+            val serviceDate = request.departureAt.withZoneSameInstant(zone).toLocalDate()
+            val (coverage, _) = packCoverage(origin, destination, plannerSettings(request.preferences), resolver)
+            expiredPacks(coverage, origin, destination, serviceDate).mapNotNull { covered ->
+                covered.pack.lastServiceDate?.let { ExpiredTimetable(covered.pack.sourceId, it) }
+            }
+        } catch (error: CancellationException) {
+            throw error
+        } catch (_: IOException) {
+            emptyList()
         }
     }
 
@@ -499,29 +524,16 @@ class EmbeddedGtfsJourneyProvider internal constructor(
         val startMinute = departure.hour * 60 + departure.minute
         val endMinute = startMinute + settings.searchWindowMinutes
 
-        var incomplete = false
-        val coverage = ArrayList<PackCoverage>()
-        for (pack in packs) {
-            currentCoroutineContext().ensureActive()
-            // A city network is read only for a search with an end in its city (or at one of its stops).
-            if (pack.isUrban && !urbanCandidate(pack, origin, destination)) continue
-            val stops = try {
-                packStops(pack, resolver)
-            } catch (_: GtfsCompactIndexLimitException) {
-                incomplete = true
-                continue
-            }
-            val originNodes = stops.accessFor(origin, planner)
-            val destinationNodes = stops.accessFor(destination, planner)
-            if (originNodes.isNotEmpty() || destinationNodes.isNotEmpty()) {
-                coverage += PackCoverage(pack, stops, originNodes, destinationNodes)
-            }
-        }
+        val (coverage, unreadable) = packCoverage(origin, destination, planner, resolver)
+        var incomplete = unreadable
         if (coverage.none { it.coversOrigin } || coverage.none { it.coversDestination }) return notCovered()
         val current = coverage.filter { it.pack.lastServiceDate?.isBefore(serviceDate) != true }
         if (current.none { it.coversOrigin } || current.none { it.coversDestination }) {
             return ProviderResult.Partial(emptyList(), setOf(ProviderWarning.STALE_SOURCE), meta)
         }
+        // A pack that ended before the searched day is left out: the answer says so even when the other packs find
+        // journeys (after 12 December 2026 a Milano – Roma search would otherwise list Trenitalia only, as if complete).
+        val stale = expiredPacks(coverage, origin, destination, serviceDate).isNotEmpty()
 
         // The pack the route search prefers for planned itineraries comes first, so that when two packs publish
         // the same train its copy is the one kept.
@@ -571,9 +583,59 @@ class EmbeddedGtfsJourneyProvider internal constructor(
             // that allows a change between packs.
             if (options.isNotEmpty()) break
         }
-        return if (incomplete) ProviderResult.Partial(options, setOf(ProviderWarning.INCOMPLETE_COVERAGE), meta)
-        else ProviderResult.Success(options, meta)
+        val warnings = buildSet {
+            if (incomplete) add(ProviderWarning.INCOMPLETE_COVERAGE)
+            if (stale) add(ProviderWarning.STALE_SOURCE)
+        }
+        return if (warnings.isEmpty()) ProviderResult.Success(options, meta) else ProviderResult.Partial(options, warnings, meta)
     }
+
+    /**
+     * The packs that know [origin] or [destination] (their own stops, or stops a short walk away), in registry order,
+     * and whether a pack over its reading limits had to be left out.
+     */
+    private suspend fun packCoverage(
+        origin: Endpoint,
+        destination: Endpoint,
+        planner: GtfsJourneyPlannerSettings,
+        resolver: GtfsStopStationResolver
+    ): Pair<List<PackCoverage>, Boolean> {
+        var unreadable = false
+        val coverage = ArrayList<PackCoverage>()
+        for (pack in packs) {
+            currentCoroutineContext().ensureActive()
+            // A city network is read only for a search with an end in its city (or at one of its stops).
+            if (pack.isUrban && !urbanCandidate(pack, origin, destination)) continue
+            val stops = try {
+                packStops(pack, resolver)
+            } catch (_: GtfsCompactIndexLimitException) {
+                unreadable = true
+                continue
+            }
+            val originNodes = stops.accessFor(origin, planner)
+            val destinationNodes = stops.accessFor(destination, planner)
+            if (originNodes.isNotEmpty() || destinationNodes.isNotEmpty()) {
+                coverage += PackCoverage(pack, stops, originNodes, destinationNodes)
+            }
+        }
+        return coverage to unreadable
+    }
+
+    /**
+     * The packs of [coverage] that end before [serviceDate] and whose trains a journey of that day would miss: a
+     * railway pack with a stop of its own at either end (not one that is only a walk away), and a city network when an
+     * end is one of its stops.
+     */
+    private fun expiredPacks(coverage: List<PackCoverage>, origin: Endpoint, destination: Endpoint, serviceDate: LocalDate): List<PackCoverage> =
+        coverage.filter { covered ->
+            if (covered.pack.lastServiceDate?.isBefore(serviceDate) != true) return@filter false
+            if (covered.pack.isUrban) {
+                val id = covered.pack.sourceId.value
+                origin.gtfsStop?.first == id || destination.gtfsStop?.first == id
+            } else {
+                covered.originNodes.containsValue(0) || covered.destinationNodes.containsValue(0)
+            }
+        }
 
     /**
      * Packs for a journey that changes between packs. A pack serving the origin and one serving the destination
