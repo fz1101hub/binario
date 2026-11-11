@@ -121,18 +121,22 @@ class StationBoardRealtimeReconcilerTest {
 
     @Test fun `cancelling the route search propagates instead of starting a fallback`() = runTest {
         val started = CompletableDeferred<Unit>()
-        var plannedCalled = false
+        var plannedCalls = 0
         val slow = object : TrainDataSource {
             override suspend fun loadRoute(route: SavedRoute, direction: Direction): DataResult {
                 started.complete(Unit); awaitCancellation()
             }
         }
-        val wrapper = StationBoardEnrichedTrainDataSource(source { plannedCalled = true; DataResult.Success(plannedSnapshot()) }, emptyList(), clock, zone,
+        val wrapper = StationBoardEnrichedTrainDataSource(source { plannedCalls++; DataResult.Success(plannedSnapshot()) }, emptyList(), clock, zone,
             liveRouteSources = listOf(slow))
         val pending = async { wrapper.loadRoute(route, Direction.OUTBOUND, query) }
         started.await()
+        // The timetable load started together with the live source (audit fix-android-6); the cancellation starts nothing more.
+        val before = plannedCalls
         pending.cancelAndJoin()
-        assertFalse(plannedCalled)
+        assertTrue(pending.isCancelled)
+        assertEquals(before, plannedCalls)
+        assertTrue(plannedCalls <= 1)
     }
 
     @Test
@@ -407,11 +411,45 @@ class StationBoardRealtimeReconcilerTest {
         val result = wrapper.loadRoute(route, Direction.OUTBOUND, query) as DataResult.Success
         assertEquals(live.snapshot.services, result.snapshot.services)
         assertEquals("GTFS programmato + ViaggiaTreno", result.snapshot.providerName)
-        assertEquals(listOf("live", "planned"), calls)
+        assertEquals(listOf("live", "planned"), calls.sorted())
         // Without a planned list the verified live route is still the answer.
         val alone = StationBoardEnrichedTrainDataSource(source { DataResult.Failure("no timetable") }, emptyList(), clock, zone,
             listOf(source { live })).loadRoute(route, Direction.OUTBOUND, query)
         assertEquals(live, alone)
+    }
+
+    /**
+     * Audit fix-android-6: the timetable load starts with the live sources and not after them, so a caller with a few
+     * seconds (the commuter reminder) does not pay for the two in sequence. Each source is still asked once.
+     */
+    @Test
+    fun `il programmato parte insieme alle fonti live e non dopo`() = runBlocking {
+        val plannedStarted = CompletableDeferred<Unit>()
+        var plannedCalls = 0
+        var liveCalls = 0
+        val verified = DataResult.Success(plannedSnapshot().copy(providerName = "ViaggiaTreno",
+            services = plannedSnapshot().services.map { it.copy(id = "viaggiatreno:9401", operationalStatusVerified = true) }))
+        // The live source answers only once the timetable load has started: in sequence it would wait for its timeout.
+        val live = object : TrainDataSource {
+            override suspend fun loadRoute(route: SavedRoute, direction: Direction): DataResult {
+                liveCalls++
+                plannedStarted.await()
+                return verified
+            }
+        }
+        val planned = source { plannedCalls++; plannedStarted.complete(Unit); DataResult.Success(plannedSnapshot()) }
+        val wrapper = StationBoardEnrichedTrainDataSource(planned, emptyList(), clock, zone, listOf(live), liveSourceTimeoutMillis = 60_000)
+
+        val result = kotlinx.coroutines.withTimeout(5_000) { wrapper.loadRoute(route, Direction.OUTBOUND, query) } as DataResult.Success
+        assertEquals("viaggiatreno:9401", result.snapshot.services.single().id)
+        assertEquals(1, plannedCalls)
+        assertEquals(1, liveCalls)
+
+        // Without a verified live route the same single timetable load is the answer.
+        plannedCalls = 0
+        val offline = StationBoardEnrichedTrainDataSource(planned, emptyList(), clock, zone, listOf(source { DataResult.Failure("offline") }))
+        assertFalse((offline.loadRoute(route, Direction.OUTBOUND, query) as DataResult.Success).snapshot.services.single().operationalStatusVerified)
+        assertEquals(1, plannedCalls)
     }
 
     /**
@@ -537,7 +575,7 @@ class StationBoardRealtimeReconcilerTest {
             listOf(source { calls.add("live"); DataResult.Failure("offline") })
         )
         val result = wrapper.loadRoute(route, Direction.OUTBOUND, query) as DataResult.Success
-        assertEquals(listOf("live", "planned"), calls)
+        assertEquals(listOf("live", "planned"), calls.sorted())
         assertFalse(result.snapshot.services.single().operationalStatusVerified)
     }
 

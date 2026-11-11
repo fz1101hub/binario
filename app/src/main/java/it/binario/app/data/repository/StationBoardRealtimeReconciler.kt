@@ -62,14 +62,18 @@ class StationBoardEnrichedTrainDataSource(
     override suspend fun loadRoute(route: SavedRoute, direction: Direction): DataResult =
         loadRoute(route, direction, JourneyQuery.now())
 
-    override suspend fun loadRoute(route: SavedRoute, direction: Direction, query: JourneyQuery): DataResult {
+    override suspend fun loadRoute(route: SavedRoute, direction: Direction, query: JourneyQuery): DataResult = coroutineScope {
+        // The timetable is always needed and starts with the live sources, as in [observeRoute], not after them: a
+        // caller with little time (the commuter reminder has seven seconds in a cold process) no longer waits for
+        // the two one after the other (audit fix-android-6). The same requests, only not in sequence.
+        val plannedCall = async { plannedSource.loadRoute(route, direction, query) }
         val live = liveFirst(route, direction, query)
         val verified = live.verified
-            ?: return afterPlanned(plannedSource.loadRoute(route, direction, query), live.unverified, route, direction, query)
+            ?: return@coroutineScope afterPlanned(plannedCall.await(), live.unverified, route, direction, query)
         // A live route holds only the runs whose details arrived in time (never Italo): it enriches the planned list,
         // whose other trains keep their timetable and board data (audit android-data-2).
-        val planned = plannedSource.loadRoute(route, direction, query) as? DataResult.Success ?: return verified
-        return LiveRunMerge.merge(afterPlanned(planned, null, route, direction, query), verified, query)
+        val planned = plannedCall.await() as? DataResult.Success ?: return@coroutineScope verified
+        LiveRunMerge.merge(afterPlanned(planned, null, route, direction, query), verified, query)
     }
 
     /**
