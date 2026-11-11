@@ -37,10 +37,14 @@ import org.json.JSONObject
 class TrenitaliaInfomobilityNewsAdapter internal constructor(
     private val fetcher: PublicSourceFetcher,
     private val clock: Clock,
-    retryDelayMillis: Long
+    retryDelayMillis: Long,
+    // The pause of www.viaggiatreno.it after a refusal: the one of the realtime API when the app shares it.
+    private val refusals: PublicSourceRefusalGate = PublicSourceRefusalGate(clock, "ViaggiaTreno")
 ) : AlertProvider {
-    constructor(clock: Clock = Clock.systemUTC()) : this(
-        HttpPublicSourceFetcher(PublicSourceRequestPolicy(maxBytes = MAX_BYTES, allowViaggiaTrenoCleartextRedirect = true)), clock, 750
+    /** With [requests] a refusal of the ViaggiaTreno host pauses this client together with the realtime adapters (audit fix-android-7). */
+    constructor(clock: Clock = Clock.systemUTC(), requests: ViaggiaTrenoRequests? = null) : this(
+        HttpPublicSourceFetcher(PublicSourceRequestPolicy(maxBytes = MAX_BYTES, allowViaggiaTrenoCleartextRedirect = true)), clock, 750,
+        requests?.refusals ?: PublicSourceRefusalGate(clock, "ViaggiaTreno")
     )
 
     override val descriptor = ProviderDescriptor(
@@ -56,7 +60,7 @@ class TrenitaliaInfomobilityNewsAdapter internal constructor(
     private val cache = ResilientSourceCache<List<ParsedNews>>(TTL, Duration.ofHours(1), clock, maxEntries = 1, retryDelayMillis = retryDelayMillis)
 
     override suspend fun getAlerts(request: AlertRequest): ProviderResult<List<ServiceAlert>> = withContext(Dispatchers.Default) {
-        cache.get(URL) { parse(fetcher.get(URL)) }
+        cache.get(URL) { parse(refusals.call { fetcher.get(URL) }) }
             .toProviderResult(SOURCE_ID, UNAVAILABLE, UNREADABLE) { news, fetchedAt -> news.map { it.toAlert(fetchedAt) } }
     }
 

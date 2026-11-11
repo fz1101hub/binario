@@ -1,9 +1,13 @@
 package it.binario.app.data.live
 
+import it.binario.app.data.RailTime
 import it.binario.app.data.core.BoardKind
 import it.binario.app.data.core.StationId
+import it.binario.app.data.provider.AlertRequest
 import it.binario.app.data.provider.ProviderResult
 import it.binario.app.data.provider.StationBoardRequest
+import it.binario.app.data.provider.TrainNoticeRequest
+import it.binario.app.data.repository.TrainNumberQuery
 import java.io.InputStream
 import java.net.HttpURLConnection
 import java.net.URL
@@ -81,6 +85,59 @@ class PublicSourceRefusalPauseTest {
             clock.advance(Duration.ofSeconds(2))
         }
         assertEquals(2, errors)
+    }
+
+    /** Audit fix-android-7: the pause is of the host, not of the adapter that happened to be refused. */
+    @Test fun `a refusal of the Italo board pauses the Italo number search of the same host`() = runBlocking {
+        val requests = ItaloRequests(clock)
+        var boardCalls = 0
+        var numberCalls = 0
+        val board = ItaloPublicStationAdapter(ItaloPublicStationFetcher { boardCalls++; throw PublicSourceHttpException(403, "Italo HTTP 403") }, clock,
+            requests = requests)
+        val number = ItaloTrainNumberAdapter({ numberCalls++; """{"IsEmpty":true}""" }, clock, requests)
+        val today = clock.instant().atZone(RailTime.defaultZone).toLocalDate()
+
+        board.getStationBoard(request("S08409", "roma-termini", "Roma Termini"))
+        assertTrue(number.searchByNumber(TrainNumberQuery("9921", today)) is ProviderResult.Failure)
+        assertEquals(1, boardCalls)
+        assertEquals(0, numberCalls)
+        assertEquals(listOf("Italo"), SourcePauses.active(clock.instant()).map { it.first })
+
+        // After the pause the host is asked again, and the answer ends the pause for both.
+        clock.advance(Duration.ofMinutes(15).plusSeconds(1))
+        assertTrue(number.searchByNumber(TrainNumberQuery("9922", today)) is ProviderResult.Success)
+        assertEquals(1, numberCalls)
+        assertTrue(SourcePauses.active(clock.instant()).isEmpty())
+    }
+
+    /** Audit fix-android-7: the two notice clients of www.viaggiatreno.it stop with its realtime API, and the reverse. */
+    @Test fun `a refusal of ViaggiaTreno pauses the notice clients of the same host`() = runBlocking {
+        val requests = ViaggiaTrenoRequests(clock)
+        var realtimeCalls = 0
+        val realtime = ViaggiaTrenoRealtimeAdapter(ViaggiaTrenoRealtimeFetcher {
+            realtimeCalls++; throw PublicSourceHttpException(429, "ViaggiaTreno HTTP 429", Duration.ofSeconds(600))
+        }, clock, requests = requests)
+        val fetcher = RecordingPublicSourceFetcher { "[]" }
+        val notices = ViaggiaTrenoTrainNoticesAdapter(fetcher, clock, 0, requests.refusals)
+        val news = TrenitaliaInfomobilityNewsAdapter(fetcher, clock, 0, requests.refusals)
+        val today = clock.instant().atZone(RailTime.defaultZone).toLocalDate()
+
+        assertTrue(realtime.getStationBoard(request("S01700")) is ProviderResult.Failure)
+        repeat(2) {
+            assertTrue(notices.getTrainNotices(TrainNoticeRequest("2153", today)) is ProviderResult.Failure)
+            assertTrue(news.getAlerts(AlertRequest()) is ProviderResult.Failure)
+        }
+        assertEquals(1, realtimeCalls)
+        assertTrue(fetcher.urls.toString(), fetcher.urls.isEmpty())
+
+        // After the Retry-After the notices are asked again; a refusal there pauses the realtime API in turn.
+        clock.advance(Duration.ofSeconds(601))
+        assertTrue(news.getAlerts(AlertRequest()) is ProviderResult.Success)
+        assertEquals(1, fetcher.urls.size)
+        val refused = ViaggiaTrenoTrainNoticesAdapter(PublicSourceFetcher { throw PublicSourceHttpException(403, "HTTP 403") }, clock, 0, requests.refusals)
+        assertTrue(refused.getTrainNotices(TrainNoticeRequest("2154", today)) is ProviderResult.Failure)
+        assertTrue(realtime.getStationBoard(request("S01645")) is ProviderResult.Failure)
+        assertEquals(1, realtimeCalls)
     }
 
     /** Audit fix-android-4: a request sent before the refusal and answered after it does not cancel the pause. */

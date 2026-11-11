@@ -2,6 +2,7 @@ package it.binario.app.data
 
 import it.binario.app.BuildConfig
 import it.binario.app.data.gtfs.RemoteGtfsFallbackDataSource
+import it.binario.app.data.live.ItaloRequests
 import it.binario.app.data.live.ItaloTrainNumberAdapter
 import it.binario.app.data.live.ItaloPublicStationAdapter
 import it.binario.app.data.live.RfiInfomobilityRssAdapter
@@ -41,17 +42,20 @@ object LocalOnlyRailDataPolicy {
     private val rfiProgrammedBoard by lazy { RfiProgrammedStationBoardAdapter(pages = RfiTimetablePages.shared) }
     private val rfiStationBoard by lazy { RfiStationBoardAdapter() }
     private val rfiLiveRoutes by lazy { RfiLiveRouteDataSource(rfiStationBoard) }
-    private val italoStationBoard by lazy { ItaloPublicStationAdapter() }
-    private val italoNumber by lazy { ItaloTrainNumberAdapter() }
-    // One cache, one set of permits and one refusal pause for every ViaggiaTreno instance (audit android-data-5).
+    // One refusal pause per host: the Italo board and the Italo number search stop together (audit fix-android-7).
+    private val italoRequests by lazy { ItaloRequests() }
+    private val italoStationBoard by lazy { ItaloPublicStationAdapter(requests = italoRequests) }
+    private val italoNumber by lazy { ItaloTrainNumberAdapter(requests = italoRequests) }
+    // One cache, one set of permits and one refusal pause for every ViaggiaTreno instance (audit android-data-5);
+    // the two notice clients of the same host share the pause (audit fix-android-7).
     private val viaggiaTrenoRequests by lazy { ViaggiaTrenoRequests() }
     private val viaggiaTrenoBoard by lazy { ViaggiaTrenoRealtimeAdapter(requests = viaggiaTrenoRequests) }
     private val rfiAlerts by lazy { RfiInfomobilityRssAdapter() }
     private val staRealtime by lazy { StaRealtimeAdapter() }
     private val sncfRealtime by lazy { SncfGtfsRealtimeAdapter() }
     private val swissOpenTransportBoard by lazy { SwissOpenTransportStationBoardAdapter() }
-    private val viaggiaTrenoTrainNotices by lazy { ViaggiaTrenoTrainNoticesAdapter() }
-    private val trenitaliaNews by lazy { TrenitaliaInfomobilityNewsAdapter() }
+    private val viaggiaTrenoTrainNotices by lazy { ViaggiaTrenoTrainNoticesAdapter(requests = viaggiaTrenoRequests) }
+    private val trenitaliaNews by lazy { TrenitaliaInfomobilityNewsAdapter(requests = viaggiaTrenoRequests) }
     private val trenordNotices by lazy { TrenordLineNoticesAdapter() }
     private val openMeteo by lazy { it.binario.app.data.weather.OpenMeteoForecastAdapter() }
     private val mitStrikes by lazy { it.binario.app.data.live.MitStrikeRssAdapter() }

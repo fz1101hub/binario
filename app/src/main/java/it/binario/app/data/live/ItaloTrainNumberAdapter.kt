@@ -15,13 +15,14 @@ import org.json.JSONObject
 /** Public website train lookup; no account, station scanning, private APIs or third-party proxy. */
 class ItaloTrainNumberAdapter(
     private val fetch: suspend (String) -> String = ::downloadItaloPublic,
-    private val clock: Clock = Clock.system(RailTime.defaultZone)
+    private val clock: Clock = Clock.system(RailTime.defaultZone),
+    requests: ItaloRequests = ItaloRequests(clock)
 ) : TrainNumberSearchProvider {
     override val descriptor = ProviderDescriptor(SourceId("italo-status"), "Italo in Viaggio",
         setOf(ProviderCapability.TRAIN_RUN_REALTIME), CoverageDescriptor(countryCodes = setOf("IT"), description = "Ricerca pubblica Italo per numero"),
         AccessMode.PUBLIC_BEST_EFFORT, RatePolicy(Duration.ofSeconds(30), defaultTimeToLive = Duration.ofSeconds(30)), 1)
     private val cache = BoundedSingleFlightCache<Result<String>>(32, 30_000, clock::millis)
-    private val refusals = PublicSourceRefusalGate(clock, "Italo")
+    private val refusals = requests.refusals
     private val zone = RailTime.defaultZone
 
     override suspend fun searchByNumber(query: TrainNumberQuery): ProviderResult<List<TrainNumberMatch>> = withContext(Dispatchers.IO) {

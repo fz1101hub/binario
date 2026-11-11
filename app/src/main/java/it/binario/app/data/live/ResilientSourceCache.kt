@@ -194,6 +194,9 @@ internal class ResilientSourceCache<T>(
                     return SourceRead.Fresh(value, now, entry.expiresAt, fromCache = false)
                 } catch (error: CancellationException) {
                     throw error
+                } catch (error: PublicSourcePausedException) {
+                    // The host is paused after a refusal: nothing was asked, so nothing is retried or counted.
+                    return staleOrFailed(key, SourceFailure(SourceFailureKind.CIRCUIT_OPEN, error.message.orEmpty(), error::class.java.name))
                 } catch (error: PublicSourceHttpException) {
                     failure = SourceFailure(SourceFailureKind.HTTP, error.message.orEmpty(), error::class.java.name, error.status)
                     retryAfter = error.retryAfter

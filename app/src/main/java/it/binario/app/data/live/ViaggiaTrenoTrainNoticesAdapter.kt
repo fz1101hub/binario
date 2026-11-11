@@ -36,10 +36,14 @@ import org.json.JSONObject
 class ViaggiaTrenoTrainNoticesAdapter internal constructor(
     private val fetcher: PublicSourceFetcher,
     private val clock: Clock,
-    retryDelayMillis: Long
+    retryDelayMillis: Long,
+    // The pause of www.viaggiatreno.it after a refusal: the one of the realtime API when the app shares it.
+    private val refusals: PublicSourceRefusalGate = PublicSourceRefusalGate(clock, "ViaggiaTreno")
 ) : TrainNoticeProvider {
-    constructor(clock: Clock = Clock.systemUTC()) : this(
-        HttpPublicSourceFetcher(PublicSourceRequestPolicy(maxBytes = MAX_BYTES, allowViaggiaTrenoCleartextRedirect = true)), clock, 750
+    /** With [requests] a refusal of the ViaggiaTreno host pauses this client together with the realtime adapters (audit fix-android-7). */
+    constructor(clock: Clock = Clock.systemUTC(), requests: ViaggiaTrenoRequests? = null) : this(
+        HttpPublicSourceFetcher(PublicSourceRequestPolicy(maxBytes = MAX_BYTES, allowViaggiaTrenoCleartextRedirect = true)), clock, 750,
+        requests?.refusals ?: PublicSourceRefusalGate(clock, "ViaggiaTreno")
     )
 
     override val descriptor = ProviderDescriptor(
@@ -60,7 +64,7 @@ class ViaggiaTrenoTrainNoticesAdapter internal constructor(
                 ?: return@withContext ProviderResult.Failure(ProviderError(ProviderErrorKind.INVALID_REQUEST, "Numero treno non valido per ViaggiaTreno."))
             val origin = request.originCode?.trim()?.uppercase()?.takeIf { it.matches(ORIGIN) }
             val url = "$BASE_URL?commercialTrainNumber=$number"
-            cache.get(url) { parseNotes(fetcher.get(url)) }
+            cache.get(url) { parseNotes(refusals.call { fetcher.get(url) }) }
                 .toProviderResult(SOURCE_ID, UNAVAILABLE, UNREADABLE) { notes, fetchedAt ->
                     select(notes, number, origin, request.serviceDate, fetchedAt)
                 }
