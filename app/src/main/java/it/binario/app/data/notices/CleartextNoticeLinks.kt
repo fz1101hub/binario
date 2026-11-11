@@ -28,8 +28,8 @@ internal object CleartextNoticeLinks {
 
     /**
      * [text] with every URL that is not [allowed] reduced to plain text (scheme removed). Removing a scheme can
-     * uncover another one ("https://https://host", "https://a/https://host"): repeated until nothing changes. Every
-     * changing pass makes the text shorter, so it ends.
+     * uncover another one (a scheme written twice in a row, or a second URL inside the path of the first): repeated
+     * until nothing changes. Every changing pass makes the text shorter, so it ends.
      */
     fun neutralize(text: String?): String? = text?.let {
         var current = it
