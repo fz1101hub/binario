@@ -415,6 +415,38 @@ class StationBoardRealtimeReconcilerTest {
     }
 
     /**
+     * Audit fix-android-1: a live run that does not say who runs the train (ViaggiaTreno without compImpresa or
+     * codiceCliente) takes the place of the planned train but keeps the timetable's operator, category and bikes.
+     */
+    @Test
+    fun `la corsa live senza operatore conserva operatore categoria e bici del treno programmato`() = runBlocking {
+        val planned = plannedSnapshot().let { snapshot ->
+            snapshot.copy(services = snapshot.services.map {
+                it.copy(operator = RailOperator.TRENORD, operatorDisplayName = "Trenord", bikesAllowed = true)
+            })
+        }
+        val live = DataResult.Success(planned.copy(providerName = "ViaggiaTreno", services = planned.services.map {
+            it.copy(id = "viaggiatreno:9401", operator = RailOperator.OTHER, operatorDisplayName = null,
+                trainCategory = TrainCategory.OTHER, bikesAllowed = null, delayMinutes = 7,
+                officialDelayMinutes = 7, status = ServiceStatus.DELAYED, operationalStatusVerified = true)
+        }))
+        val result = StationBoardEnrichedTrainDataSource(source { DataResult.Success(planned) }, emptyList(), clock, zone,
+            listOf(source { live })).loadRoute(route, Direction.OUTBOUND, query) as DataResult.Success
+        val merged = result.snapshot.services.single()
+        assertEquals("viaggiatreno:9401", merged.id)
+        assertEquals(7, merged.delayMinutes)
+        assertEquals(RailOperator.TRENORD, merged.operator)
+        assertEquals("Trenord", merged.operatorDisplayName)
+        assertEquals(planned.services.single().trainCategory, merged.trainCategory)
+        assertEquals(true, merged.bikesAllowed)
+        // A live run that states its operator keeps it.
+        val stated = DataResult.Success(live.snapshot.copy(services = live.snapshot.services.map { it.copy(operator = RailOperator.TRENITALIA_REGIONALE) }))
+        val kept = StationBoardEnrichedTrainDataSource(source { DataResult.Success(planned) }, emptyList(), clock, zone,
+            listOf(source { stated })).loadRoute(route, Direction.OUTBOUND, query) as DataResult.Success
+        assertEquals(RailOperator.TRENITALIA_REGIONALE, kept.snapshot.services.single().operator)
+    }
+
+    /**
      * Audit android-data-2: with a verified ViaggiaTreno route the boards still reconcile the other trains: the Italo
      * train it never lists keeps the Italo board delay, and a run it lists unverified keeps the RFI board delay.
      */

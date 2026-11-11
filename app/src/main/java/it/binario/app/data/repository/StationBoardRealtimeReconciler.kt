@@ -12,6 +12,7 @@ import it.binario.app.data.ServiceStatus
 import it.binario.app.data.SnapshotWarning
 import it.binario.app.data.Station
 import it.binario.app.data.StopRouteChange
+import it.binario.app.data.TrainCategory
 import it.binario.app.data.TrainDataSource
 import it.binario.app.data.TrainService
 import it.binario.app.data.TrainStop
@@ -214,7 +215,7 @@ internal object LiveRunMerge {
                 taken += index
                 // An unverified live run does not mask what the boards verified for the same train.
                 if (run.operationalStatusVerified || !services[index].operationalStatusVerified) {
-                    services[index] = run
+                    services[index] = withTimetableIdentity(run, services[index])
                     used = true
                 }
             }
@@ -232,6 +233,21 @@ internal object LiveRunMerge {
             notice = listOfNotNull(base.notice?.takeIf(String::isNotBlank), liveSnapshot.notice?.takeIf(String::isNotBlank))
                 .joinToString(" ").takeIf(String::isNotBlank)
         ))
+    }
+
+    /**
+     * The live run in the place of its planned service keeps what only the timetable knows: who runs the train when
+     * the live source does not say (never «Altro operatore» over a known company, audit fix-android-1), the category
+     * and whether bikes are allowed. Everything operational is the live run's.
+     */
+    private fun withTimetableIdentity(live: TrainService, planned: TrainService): TrainService {
+        val unknownOperator = live.operator == RailOperator.OTHER && live.operatorDisplayName.isNullOrBlank()
+        return live.copy(
+            operator = if (unknownOperator) planned.operator else live.operator,
+            operatorDisplayName = if (unknownOperator) planned.operatorDisplayName else live.operatorDisplayName,
+            trainCategory = if (live.trainCategory == TrainCategory.OTHER) planned.trainCategory else live.trainCategory,
+            bikesAllowed = live.bikesAllowed ?: planned.bikesAllowed
+        )
     }
 
     private fun sameRun(planned: TrainService, live: TrainService): Boolean {

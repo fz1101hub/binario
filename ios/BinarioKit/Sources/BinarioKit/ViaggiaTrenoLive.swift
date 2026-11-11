@@ -418,8 +418,10 @@ public struct ViaggiaTrenoLiveSource: LiveTrainStatusSource, LiveDepartureBoardS
 
     public func departures(for window: LiveBoardWindow) async -> LiveSourceAnswer<[LiveDeparture]> {
         guard let code = NetworkReliability.stationCode(StationIdentity(window.station)) else { return .unavailable(.notCovered) }
-        // Elapsed time on the monotonic clock: `now` may be a test's fixed clock.
-        let started = ProcessInfo.processInfo.systemUptime
+        // Elapsed time on a monotonic clock: `now` may be a test's fixed clock. DispatchTime, not
+        // ProcessInfo.systemUptime: that one is a required-reason API (system boot time) the privacy
+        // manifest would have to declare, or App Store Connect refuses the upload (ITMS-91053).
+        let started = DispatchTime.now().uptimeNanoseconds
         let board = await body("partenze/\(code)/\(ViaggiaTrenoParser.boardTimePathComponent(window.from))")
         guard case let .body(main) = board else {
             if case let .failure(failure) = board { return .unavailable(failure.unavailableReason) }
@@ -430,7 +432,8 @@ public struct ViaggiaTrenoLiveSource: LiveTrainStatusSource, LiveDepartureBoardS
         }
         // From the window start, then (optional, short) from `lateSince` for the trains still late to
         // leave: an earlier board alone could hide the next trains of a busy station.
-        let remaining = boardBudget - (ProcessInfo.processInfo.systemUptime - started)
+        let elapsed = TimeInterval(DispatchTime.now().uptimeNanoseconds &- started) / 1_000_000_000
+        let remaining = boardBudget - elapsed
         if let since = window.lateSince, since < window.from, remaining > 0 {
             let path = "partenze/\(code)/\(ViaggiaTrenoParser.boardTimePathComponent(since))"
             let lookback = await LiveTasks.withDeadline(seconds: min(lookbackTimeout, remaining)) { [self] in await self.body(path) }
