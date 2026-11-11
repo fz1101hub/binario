@@ -55,7 +55,13 @@ class GtfsCompactIndexLimitException(message: String) : IllegalArgumentException
  * file non necessari al caso d'uso corrente.
  */
 internal class BoundedGtfsZipScanner(
-    private val limits: GtfsCompactIndexLimits
+    private val limits: GtfsCompactIndexLimits,
+    /**
+     * Called before every entry, every [CHECKPOINT_ROWS] rows of a wanted table and every [CHECKPOINT_BLOCKS] blocks of
+     * an entry that is only drained: a caller throws from it (a cancelled coroutine's `ensureActive`) to stop a scan
+     * nobody waits for any more, instead of reading the pack to its end.
+     */
+    private val checkpoint: () -> Unit = {}
 ) {
     fun scan(
         stream: InputStream,
@@ -68,6 +74,7 @@ internal class BoundedGtfsZipScanner(
             var entry = zip.nextEntry
             while (entry != null) {
                 if (!entry.isDirectory) {
+                    checkpoint()
                     entryCount += 1
                     if (entryCount > limits.maxEntries) {
                         throw GtfsCompactIndexLimitException("Il data pack GTFS supera il numero massimo di file")
@@ -83,7 +90,7 @@ internal class BoundedGtfsZipScanner(
                         }
                     }
                     if (tableName in wantedTables) {
-                        onTable(tableName, GtfsCsvRows(bounded, limits.maxCsvLineLength))
+                        onTable(tableName, GtfsCsvRows(bounded, limits.maxCsvLineLength, checkpoint))
                     }
                     drain(bounded)
                     zip.closeEntry()
@@ -95,16 +102,27 @@ internal class BoundedGtfsZipScanner(
 
     private fun drain(input: InputStream) {
         val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+        var blocks = 0
         while (input.read(buffer) >= 0) {
             // Il BoundedEntryInputStream contabilizza e applica i limiti.
+            blocks += 1
+            if (blocks % CHECKPOINT_BLOCKS == 0) checkpoint()
         }
+    }
+
+    internal companion object {
+        /** Rows of a table between two checkpoints. */
+        const val CHECKPOINT_ROWS = 4096
+        /** Blocks of [DEFAULT_BUFFER_SIZE] bytes of a drained entry between two checkpoints (about half a megabyte). */
+        const val CHECKPOINT_BLOCKS = 64
     }
 }
 
 /** CSV a consumo: una riga viene tenuta solo per la durata della callback. */
 internal class GtfsCsvRows(
     input: InputStream,
-    private val maxLineLength: Int
+    private val maxLineLength: Int,
+    private val checkpoint: () -> Unit = {}
 ) {
     private val reader = BoundedLineReader(input, maxLineLength)
     val header: List<String> = reader.readLine()?.let(::parseGtfsCsvLine).orEmpty()
@@ -118,6 +136,7 @@ internal class GtfsCsvRows(
             if (rowCount > maxRows) {
                 throw GtfsCompactIndexLimitException("La tabella GTFS supera il limite di righe")
             }
+            if (rowCount % BoundedGtfsZipScanner.CHECKPOINT_ROWS == 0) checkpoint()
             consumer(parseGtfsCsvLine(line))
         }
     }

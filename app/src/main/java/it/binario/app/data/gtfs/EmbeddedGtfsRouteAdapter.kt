@@ -125,7 +125,8 @@ class EmbeddedGtfsRouteAdapter(
                         if (known != null && !known.mayContain(query)) return@getOrLoad emptyList()
                         val bytes = assetBytes(pack.assetPath)
                         val numbers = if (known == null) GtfsPackNumbers.Builder() else null
-                        val index = parse({ ByteArrayInputStream(bytes) }, query, pack.itineraryCopies, numbers)
+                        val job = currentCoroutineContext().job
+                        val index = parse({ ByteArrayInputStream(bytes) }, query, pack.itineraryCopies, numbers) { job.ensureActive() }
                         if (numbers != null) {
                             val learnt = numbers.build(query.date)
                             synchronized(packNumbers) { packNumbers.putIfAbsent(pack.sourceId, learnt) }
@@ -301,7 +302,10 @@ class EmbeddedGtfsRouteAdapter(
     /** stop_id, stop_name and parent_station of [pack], read with the same bounded scanner as the index. */
     internal suspend fun stopDirectory(pack: EmbeddedGtfsPack): GtfsStopDirectory {
         val bytes = assetBytes(pack.assetPath)
-        return withContext(parsingDispatcher) { scanStopDirectory(ByteArrayInputStream(bytes)) }
+        return withContext(parsingDispatcher) {
+            val job = currentCoroutineContext().job
+            scanStopDirectory(ByteArrayInputStream(bytes)) { job.ensureActive() }
+        }
     }
 
     /**
@@ -345,7 +349,8 @@ class EmbeddedGtfsRouteAdapter(
                 val bytes = assetBytes(pack.assetPath)
                 val names = withContext(parsingDispatcher) {
                     onParsing?.invoke()
-                    scanStopNames(ByteArrayInputStream(bytes))
+                    val job = currentCoroutineContext().job
+                    scanStopNames(ByteArrayInputStream(bytes)) { job.ensureActive() }
                 }
                 synchronized(stopPresenceCache) { stopPresenceCache[pack.sourceId] ?: names.also { stopPresenceCache[pack.sourceId] = it } }
             }
@@ -363,7 +368,8 @@ class EmbeddedGtfsRouteAdapter(
                 val bytes = assetBytes(pack.assetPath)
                 val parsed = withContext(parsingDispatcher) {
                     onParsing?.invoke()
-                    parse({ ByteArrayInputStream(bytes) }, itineraryCopies = pack.itineraryCopies)
+                    val job = currentCoroutineContext().job
+                    parse({ ByteArrayInputStream(bytes) }, itineraryCopies = pack.itineraryCopies) { job.ensureActive() }
                 }
                 synchronized(indexCache) { indexCache[pack.sourceId] ?: parsed.also { indexCache[pack.sourceId] = it } }
             }
@@ -449,9 +455,9 @@ class EmbeddedGtfsRouteAdapter(
         return SourceId(source)
     }
 
-    private fun scanStopNames(stream: InputStream): Set<String> {
+    private fun scanStopNames(stream: InputStream, checkpoint: () -> Unit = {}): Set<String> {
         val names = linkedSetOf<String>()
-        BoundedGtfsZipScanner(compactIndexLimits).scan(stream, setOf("stops.txt")) { _, rows ->
+        BoundedGtfsZipScanner(compactIndexLimits, checkpoint).scan(stream, setOf("stops.txt")) { _, rows ->
             val nameIndex = rows.header.indexOf("stop_name")
             if (nameIndex >= 0) {
                 rows.forEachRow(compactIndexLimits.maxStops) { row ->
@@ -462,7 +468,7 @@ class EmbeddedGtfsRouteAdapter(
         return names
     }
 
-    private fun scanStopDirectory(stream: InputStream): GtfsStopDirectory {
+    private fun scanStopDirectory(stream: InputStream, checkpoint: () -> Unit = {}): GtfsStopDirectory {
         val ids = ArrayList<String>()
         val names = ArrayList<String>()
         val parents = ArrayList<String>()
@@ -470,7 +476,7 @@ class EmbeddedGtfsRouteAdapter(
         val latitudes = ArrayList<Double>()
         val longitudes = ArrayList<Double>()
         val wheelchair = ArrayList<Byte>()
-        BoundedGtfsZipScanner(compactIndexLimits).scan(stream, setOf("stops.txt")) { _, rows ->
+        BoundedGtfsZipScanner(compactIndexLimits, checkpoint).scan(stream, setOf("stops.txt")) { _, rows ->
             val idIndex = rows.header.indexOf("stop_id")
             val nameIndex = rows.header.indexOf("stop_name")
             val parentIndex = rows.header.indexOf("parent_station")
@@ -512,13 +518,15 @@ class EmbeddedGtfsRouteAdapter(
         numberQuery: TrainNumberQuery? = null,
         itineraryCopies: Boolean = false,
         /** Collects the number of every trip of the pack, also of those [numberQuery] leaves out. */
-        numbers: GtfsPackNumbers.Builder? = null
+        numbers: GtfsPackNumbers.Builder? = null,
+        /** Stops the reading when the search it serves was cancelled ([BoundedGtfsZipScanner]). */
+        checkpoint: () -> Unit = {}
     ): StaticGtfsIndex {
         val index = StaticGtfsIndex(compactIndexLimits, itineraryCopies)
         // A copy of a train under another train's number is only told from the train itself next to the other trips
         // of the day: such a pack (a small one) is read whole even for one number.
         val tripFilter = numberQuery.takeUnless { itineraryCopies }
-        BoundedGtfsZipScanner(compactIndexLimits).scan(openStream(), compactIndexTables - "stop_times.txt") { table, rows ->
+        BoundedGtfsZipScanner(compactIndexLimits, checkpoint).scan(openStream(), compactIndexTables - "stop_times.txt") { table, rows ->
             when (table) {
                 "agency.txt" -> index.readAgencies(rows)
                 "stops.txt" -> index.readStops(rows)
@@ -532,7 +540,7 @@ class EmbeddedGtfsRouteAdapter(
         // prima entry (come nel pack AMT), quindi non indicizziamo trip ignoti.
         index.finishReading()
         if (numberQuery == null || index.hasTrips()) {
-            BoundedGtfsZipScanner(compactIndexLimits).scan(openStream(), setOf("stop_times.txt")) { _, rows -> index.readStopTimes(rows) }
+            BoundedGtfsZipScanner(compactIndexLimits, checkpoint).scan(openStream(), setOf("stop_times.txt")) { _, rows -> index.readStopTimes(rows) }
             index.finishStopTimes()
         }
         return index
