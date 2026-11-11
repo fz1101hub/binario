@@ -142,6 +142,8 @@ def load_ci_lock(path: Path = LOCK_PATH) -> dict[str, Any]:
             "Select an available iOS simulator",
             "Build and test integrated iPhone and Watch app",
             "Archive Release build and check the App Store bundle layout",
+            "Gate GTFS freshness of the iOS timetable index for at least 30 days",
+            "Report GTFS freshness without failing",
         },
     }
     for lock_key, expected_run_names in expected_apple_runs.items():
@@ -152,11 +154,12 @@ def load_ci_lock(path: Path = LOCK_PATH) -> dict[str, Any]:
             or {entry.get("name") for entry in run_steps if isinstance(entry, Mapping)} != expected_run_names
             or any(
                 not isinstance(entry, Mapping)
-                or not set(entry) <= {"name", "sha256", "workingDirectory", "id"}
+                or not set(entry) <= {"name", "sha256", "workingDirectory", "id", "if"}
                 or not isinstance(entry.get("sha256"), str)
                 or not HEX_64.fullmatch(entry["sha256"])
                 or ("workingDirectory" in entry and not isinstance(entry["workingDirectory"], str))
                 or ("id" in entry and not isinstance(entry["id"], str))
+                or ("if" in entry and not isinstance(entry["if"], str))
                 for entry in run_steps
             )
         ):
@@ -350,10 +353,16 @@ def _check_punctuality_switch(path: Path, workflow: Mapping[str, Any], problems:
 STABILIZATION_PULL_REQUEST = "${{ github.event_name == 'pull_request' && startsWith(github.base_ref, 'stabilization/') }}"
 # Where the 30-day release-freshness gate must run (audit A7-06, proposal P2): (workflow, job) -> step condition, None
 # for a job that only runs on a release path. Anywhere else the gate would hide correctness signal behind data age.
+# The iPhone archive of a dispatch is the one the owner may sign and upload: there the gate holds as well.
+IOS_RELEASE_ARCHIVE = (
+    "${{ github.event_name == 'workflow_dispatch' || "
+    "(github.event_name == 'pull_request' && startsWith(github.base_ref, 'stabilization/')) }}"
+)
 FRESHNESS_GATES: Mapping[tuple[str, str], str | None] = {
     ("android-ci.yml", "android"): STABILIZATION_PULL_REQUEST,
     ("android-ci.yml", "release-sign"): None,
     ("gtfs-assets-ci.yml", "gtfs-assets"): STABILIZATION_PULL_REQUEST,
+    ("apple-watch-ci.yml", "ios"): IOS_RELEASE_ARCHIVE,
 }
 
 
@@ -377,12 +386,12 @@ def _check_freshness_gates(path: Path, workflow: Mapping[str, Any], problems: li
             if not _freshness_gate_lines(_commands(step.get("run"))):
                 continue
             key = (path.name, str(job_name))
-            if key not in FRESHNESS_GATES and path.name != "apple-watch-ci.yml":
+            if key not in FRESHNESS_GATES:
                 problems.append(f"{path.name}:{job_name}: gate di freshness GTFS fuori dai percorsi di release")
                 continue
             expected = FRESHNESS_GATES.get(key)
             if expected is not None and step.get("if") != expected:
-                problems.append(f"{path.name}:{job_name}: il gate di freshness GTFS deve valere solo per le PR di stabilizzazione")
+                problems.append(f"{path.name}:{job_name}: il gate di freshness GTFS deve valere solo sui percorsi di release (PR di stabilizzazione)")
             found.add(key)
     for key in FRESHNESS_GATES:
         if key[0] == path.name and key not in found:
@@ -1023,6 +1032,8 @@ def _check_apple_toolchain(
                 expected_keys.add("working-directory")
             if "id" in locked:
                 expected_keys.add("id")
+            if "if" in locked:
+                expected_keys.add("if")
             if set(step) != expected_keys:
                 problems.append(f"{path.name}:{job_name}: run step {index} contiene chiavi non revisionate")
             name = step.get("name")
@@ -1033,6 +1044,8 @@ def _check_apple_toolchain(
                 problems.append(f"{path.name}:{job_name}: working-directory diversa dal lock")
             if step.get("id") != locked.get("id"):
                 problems.append(f"{path.name}:{job_name}: id step diverso dal lock")
+            if step.get("if") != locked.get("if"):
+                problems.append(f"{path.name}:{job_name}: condizione step diversa dal lock")
             if hashlib.sha256(command.encode("utf-8")).hexdigest() != locked.get("sha256"):
                 problems.append(f"{path.name}:{job_name}: contenuto step run diverso dal lock")
             if isinstance(name, str):
@@ -1105,8 +1118,6 @@ def _check_apple_toolchain(
                 '[ "$top_level" = "Binario.app" ]',
                 "WKCompanionAppBundleIdentifier",
                 '[ "$value" = "it.binario.ios" ]',
-                # Release freshness of the packs behind the iOS index (audit A7-06, P2), reported as a layout failure.
-                "python3 ../tools/build_gtfs_packs.py --check --input-dir ../app/src/main/assets/gtfs --min-valid-days 30",
             )
             # Each check records a failure instead of exiting, so the step must end on the tally.
             if any(marker not in archive for marker in archive_markers) or not archive.rstrip().endswith('test "$failures" -eq 0'):

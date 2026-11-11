@@ -282,10 +282,19 @@ jobs:
           [ "$value" = "it" ] || fail "Binario.app: CFBundleDevelopmentRegion is $value, expected it"
           value="$(info "$watch" WKCompanionAppBundleIdentifier)"
           [ "$value" = "it.binario.ios" ] || fail "BinarioWatch.app: WKCompanionAppBundleIdentifier is $value, expected it.binario.ios"
-          # The archive is what App Store Connect receives: the packs of its timetable index must run 30 more days.
-          python3 ../tools/build_gtfs_packs.py --check --input-dir ../app/src/main/assets/gtfs --min-valid-days 30 \
-            || fail "GTFS packs of the iOS timetable index end within 30 days (tools/build_gtfs_packs.py --check)"
           test "$failures" -eq 0
+      # Release freshness is a release gate, not a correctness check (audit A7-06): the archive of a dispatch or of a
+      # pull request into a stabilization branch is the one that may reach App Store Connect, so the packs of its
+      # timetable index must run 30 more days. On every other run data age is a warning: tests, build and the layout
+      # checks above must not turn red because a timetable year is about to end.
+      - name: Gate GTFS freshness of the iOS timetable index for at least 30 days
+        if: ${{ github.event_name == 'workflow_dispatch' || (github.event_name == 'pull_request' && startsWith(github.base_ref, 'stabilization/')) }}
+        run: python3 tools/build_gtfs_packs.py --check --input-dir app/src/main/assets/gtfs --min-valid-days 30
+      - name: Report GTFS freshness without failing
+        if: ${{ !(github.event_name == 'workflow_dispatch' || (github.event_name == 'pull_request' && startsWith(github.base_ref, 'stabilization/'))) }}
+        run: >-
+          python3 -I tools/refresh_core_gtfs.py --as-of "$(date -u +%F)" --summary "$GITHUB_STEP_SUMMARY"
+          --min-valid-days 30 --warn --freshness app/src/main/assets/gtfs
       - name: Upload unsigned Release archive
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
