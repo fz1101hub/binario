@@ -517,7 +517,8 @@ internal fun StationBoardEntryRow(
     lastOfDay: Boolean = false
 ) {
     val scheduled = entry.scheduledTime.withZoneSameInstant(BOARD_ZONE)
-    val expected = entry.expectedTime?.value?.withZoneSameInstant(BOARD_ZONE)
+    // A cancelled train has no expected time, whatever the source filled in (StationBoardEntrySpeech.expectedTime).
+    val expected = StationBoardEntrySpeech.expectedTime(entry)?.withZoneSameInstant(BOARD_ZONE)
     val delayedMinutes = expected?.let {
         java.time.Duration.between(scheduled, it).toMinutes().coerceAtLeast(0)
     } ?: 0L
@@ -529,26 +530,13 @@ internal fun StationBoardEntryRow(
         else R.string.station_board_arrival_from,
         endpoint
     )
-    val scheduledLabel = stringResource(
-        R.string.station_board_scheduled_time,
-        scheduled.format(BOARD_TIME_FORMATTER)
-    )
-    val statusLabel = stationBoardStatusAnnouncement(entry)
     val platformChange = PlatformChange.of(platform, entry.scheduledPlatform?.value)
-    val platformLabel = platformChange?.let { stringResource(R.string.platform_changed_accessible, it.actual, it.scheduled) }
-        ?: platform?.let { stringResource(R.string.station_board_platform_accessible, it) }
-        ?: stringResource(R.string.station_board_platform_unavailable)
-    val trainLabel = entry.publicNumber?.takeIf(String::isNotBlank)
-        ?.let { stringResource(R.string.station_board_train_number, it) }
-        .orEmpty()
-    val accessibilityDescription = stringResource(
-        R.string.station_board_entry_accessibility,
-        directionLabel,
-        scheduledLabel,
-        statusLabel,
-        platformLabel,
-        trainLabel
-    ) + if (lastOfDay) ". " + stringResource(R.string.journey_last_of_day) else ""
+    // Cancelled, cut short, diverted or replaced by a bus: a label of its own, and the first thing TalkBack says.
+    val disruption = StationBoardEntrySpeech.disruption(entry)
+    val resources = LocalResources.current
+    val accessibilityDescription = remember(entry, kind, lastOfDay, resources) {
+        StationBoardEntrySpeech.description(entry, kind, lastOfDay) { id, arguments -> resources.getString(id, *arguments) }
+    }
     val selectedState = if (selected) stringResource(R.string.accessibility_row_selected) else null
 
     Row(
@@ -585,12 +573,20 @@ internal fun StationBoardEntryRow(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
+            disruption?.let { status ->
+                Text(
+                    status.stationBoardLabel(),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.error,
+                    fontWeight = FontWeight.Bold
+                )
+            }
             Text(
                 listOfNotNull(
                     entry.lineLabel?.takeIf(String::isNotBlank),
                     entry.publicNumber?.takeIf(String::isNotBlank)?.let { stringResource(R.string.station_board_train_number, it) },
                     entry.operatorId?.value?.let(OperatorNames::displayName),
-                    entry.status?.value?.stationBoardLabel()
+                    entry.status?.value?.takeIf { disruption == null }?.stationBoardLabel()
                 ).joinToString(" · "),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -725,33 +721,7 @@ private fun StationBoardRunDetailsContent(
 }
 
 @Composable
-private fun stationBoardStatusAnnouncement(entry: StationBoardEntry): String {
-    val runStatus = entry.status?.value
-    return when {
-        entry.expectedTime != null -> stringResource(
-            R.string.station_board_status_live_prediction,
-            entry.expectedTime.value.withZoneSameInstant(BOARD_ZONE).format(BOARD_TIME_FORMATTER)
-        )
-        runStatus != null && runStatus != RunStatus.SCHEDULED && runStatus != RunStatus.UNKNOWN ->
-            stringResource(R.string.station_board_status_live, runStatus.stationBoardLabel())
-        runStatus == RunStatus.UNKNOWN -> stringResource(R.string.station_board_status_unavailable)
-        else -> stringResource(R.string.station_board_status_planned)
-    }
-}
-
-@Composable
-internal fun RunStatus.stationBoardLabel(): String = when (this) {
-    RunStatus.SCHEDULED -> stringResource(R.string.run_status_scheduled)
-    RunStatus.ON_TIME -> stringResource(R.string.run_status_on_time)
-    RunStatus.DELAYED -> stringResource(R.string.run_status_delayed)
-    RunStatus.CANCELLED -> stringResource(R.string.run_status_cancelled)
-    RunStatus.PARTIALLY_CANCELLED -> stringResource(R.string.run_status_partially_cancelled)
-    RunStatus.DIVERTED -> stringResource(R.string.run_status_diverted)
-    RunStatus.ADDED -> stringResource(R.string.run_status_added)
-    RunStatus.REPLACED_BY_BUS -> stringResource(R.string.run_status_bus_replacement)
-    RunStatus.COMPLETED -> stringResource(R.string.run_status_completed)
-    RunStatus.UNKNOWN -> stringResource(R.string.run_status_unknown)
-}
+internal fun RunStatus.stationBoardLabel(): String = stringResource(StationBoardEntrySpeech.label(this))
 
 private val BOARD_ZONE: ZoneId = ZoneId.of("Europe/Rome")
 
