@@ -628,7 +628,7 @@ class TrainViewModel @JvmOverloads constructor(
         } else {
             journeyQueryValue(serviceDate, departureTime).let { journeyQueryState.selectPlanned(it.serviceDate, it.departureTime) }
         }
-        routeStore.saveDirection(direction)
+        storeDirectionOfStoredRoute()
         recentRoutes = routeStore.recordRecent(rememberedOrigin, rememberedDestination, stations)
         clearSelectedService()
         primarySnapshot = null
@@ -671,12 +671,17 @@ class TrainViewModel @JvmOverloads constructor(
         routeChangedInSession = true
         routeSearchRecord = null
         direction = if (direction == Direction.OUTBOUND) Direction.RETURN else Direction.OUTBOUND
-        routeStore.saveDirection(direction)
+        storeDirectionOfStoredRoute()
         clearSelectedService()
         primarySnapshot = null
         rebuildServicePresentations()
         operatorFilter = null
         refresh()
+    }
+
+    /** The direction is stored only for the route the next start opens, never for a search ([RouteStateRules.storesDirection]). */
+    private fun storeDirectionOfStoredRoute() {
+        if (RouteStateRules.storesDirection(activeRoute, savedRoutes, routeStore.activeRouteId())) routeStore.saveDirection(direction)
     }
 
     /**

@@ -34,4 +34,12 @@ internal object RouteStateRules {
      */
     fun activeRouteAfterPin(current: SavedRoute, routes: List<SavedRoute>): SavedRoute =
         routes.firstOrNull { it.id == current.id } ?: current
+
+    /**
+     * Whether the direction shown is stored. One direction is stored, for the route the next start opens
+     * ([storedActiveRoute]): a search in Pianifica, or a change of direction on a searched route, is not that route
+     * and must not turn «Casa – Lavoro» left on «Ritorno» back to «Andata».
+     */
+    fun storesDirection(active: SavedRoute, routes: List<SavedRoute>, storedId: String?): Boolean =
+        active.id != UNCONFIGURED_ROUTE_ID && storedActiveRoute(routes, storedId).id == active.id
 }

@@ -57,4 +57,21 @@ class RouteStateRulesTest {
         // The placeholder stays the placeholder.
         assertEquals(UNCONFIGURED_ROUTE_ID, RouteStateRules.activeRouteAfterPin(unconfiguredRoute(), pinned).id)
     }
+
+    @Test fun `only the route the next start opens stores its direction`() {
+        val home = route("home")
+        val trip = route("trip")
+        val routes = listOf(home, trip)
+        // «Casa – Lavoro» is the stored route: its direction is stored when it changes.
+        assertEquals(true, RouteStateRules.storesDirection(home, routes, storedId = "home"))
+        // A search of other stations, and a change of direction on it, leave the stored direction alone.
+        val searched = route(searchedRouteId(station("milano"), station("roma")), "milano", "roma")
+        assertEquals(false, RouteStateRules.storesDirection(searched, routes, storedId = "home"))
+        // So does a search that happens to be another saved route: the next start still opens «Casa – Lavoro».
+        assertEquals(false, RouteStateRules.storesDirection(trip, routes, storedId = "home"))
+        // Without a stored route the first one is the one the next start opens.
+        assertEquals(true, RouteStateRules.storesDirection(home, routes, storedId = null))
+        assertEquals(false, RouteStateRules.storesDirection(trip, routes, storedId = null))
+        assertEquals(false, RouteStateRules.storesDirection(unconfiguredRoute(), emptyList(), storedId = null))
+    }
 }
