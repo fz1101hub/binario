@@ -185,13 +185,18 @@ class StationBoardEnrichedTrainDataSource(
 /**
  * The verified live runs of a route over the planned list (audit android-data-2). A live route holds only the runs whose
  * details arrived in time, never Italo: it must never replace the list. A live run takes the place of the planned
- * service of the same run (core number, compatible operator, scheduled departure within [SCHEDULE_TOLERANCE]) unless
- * the live run is unverified and the boards verified the planned one; a live run the timetable does not list is added;
- * every other planned service stays as the timetable and the boards left it. Which live source answered is decided
- * before, in the same order as always.
+ * service of the same run (core number, compatible operator, the nearest scheduled departure within [RETIMING_WINDOW])
+ * unless the live run is unverified and the boards verified the planned one; a live run the timetable does not list is
+ * added; every other planned service stays as the timetable and the boards left it. Which live source answered is
+ * decided before, in the same order as always.
  */
 internal object LiveRunMerge {
-    private val SCHEDULE_TOLERANCE: Duration = Duration.ofMinutes(20)
+    /**
+     * On one day and one station pair a train number is one train: a run the day's timetable moved by half an hour
+     * (works, an old pack) is still the planned train, not a second one (audit fix-android-2). Both sides carry the
+     * full date and time, so the run of the next day, about 24 hours away, stays apart.
+     */
+    private val RETIMING_WINDOW: Duration = Duration.ofHours(3)
 
     fun merge(planned: DataResult, live: DataResult.Success?, query: JourneyQuery): DataResult {
         if (live == null) return planned
@@ -206,7 +211,7 @@ internal object LiveRunMerge {
             val index = services.indices
                 .filter { it !in taken && sameRun(services[it], run) }
                 .mapNotNull { index -> scheduled(services[index], query)?.let { index to abs(Duration.between(it, runTime).toMinutes()) } }
-                .filter { (_, delta) -> delta <= SCHEDULE_TOLERANCE.toMinutes() }
+                .filter { (_, delta) -> delta <= RETIMING_WINDOW.toMinutes() }
                 .minByOrNull { (_, delta) -> delta }?.first
             if (index == null) {
                 added += run

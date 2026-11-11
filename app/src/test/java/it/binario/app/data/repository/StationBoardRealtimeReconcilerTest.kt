@@ -415,6 +415,30 @@ class StationBoardRealtimeReconcilerTest {
     }
 
     /**
+     * Audit fix-android-2: a train the day's timetable moved by half an hour is one train, not a timetable row that
+     * does not exist plus the live row. Tomorrow's run of the same number, and a run hours away, stay apart.
+     */
+    @Test
+    fun `la corsa live spostata di trenta minuti prende il posto della stessa corsa programmata`() = runBlocking {
+        val today = plannedSnapshot().services.single()
+        val departure = today.scheduledDepartureDateTime!!
+        val tomorrow = today.copy(id = "gtfs:tomorrow", scheduledDepartureDateTime = departure.plusDays(1))
+        val planned = plannedSnapshot().copy(services = listOf(today, tomorrow))
+        fun liveAt(time: LocalDateTime) = DataResult.Success(plannedSnapshot().copy(providerName = "ViaggiaTreno", services = listOf(
+            today.copy(id = "viaggiatreno:9401", scheduledDeparture = time.toLocalTime().toString(), expectedDeparture = time.toLocalTime().toString(),
+                scheduledDepartureDateTime = time, operationalStatusVerified = true))))
+        suspend fun merged(live: DataResult.Success) = (StationBoardEnrichedTrainDataSource(source { DataResult.Success(planned) }, emptyList(),
+            clock, zone, listOf(source { live })).loadRoute(route, Direction.OUTBOUND, query) as DataResult.Success).snapshot.services
+
+        assertEquals(setOf("viaggiatreno:9401", "gtfs:tomorrow"), merged(liveAt(departure.plusMinutes(30))).map { it.id }.toSet())
+        assertEquals(setOf("viaggiatreno:9401", "gtfs:tomorrow"), merged(liveAt(departure.minusMinutes(45))).map { it.id }.toSet())
+        // More than three hours away it is not the same run of the day: both stay.
+        assertEquals(setOf("gtfs:T1", "viaggiatreno:9401", "gtfs:tomorrow"), merged(liveAt(departure.plusHours(4))).map { it.id }.toSet())
+        // The live run of tomorrow takes tomorrow's place, never today's.
+        assertEquals(setOf("gtfs:T1", "viaggiatreno:9401"), merged(liveAt(departure.plusDays(1).plusMinutes(30))).map { it.id }.toSet())
+    }
+
+    /**
      * Audit fix-android-1: a live run that does not say who runs the train (ViaggiaTreno without compImpresa or
      * codiceCliente) takes the place of the planned train but keeps the timetable's operator, category and bikes.
      */
