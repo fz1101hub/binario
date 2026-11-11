@@ -81,8 +81,8 @@ class GtfsArtifactDownloaderTest {
     fun `rifiuta catene di redirect oltre il limite`() {
         val locations = ArrayDeque(
             listOf(
-                "https://one.example.test/feed.zip",
-                "https://two.example.test/feed.zip"
+                "/one/feed.zip",
+                "/two/feed.zip"
             )
         )
         val redirecting = GtfsArtifactDownloader(
@@ -98,7 +98,7 @@ class GtfsArtifactDownloaderTest {
         val opened = mutableListOf<URL>()
         val redirecting = GtfsArtifactDownloader(connectionFactory = { url ->
             opened += url
-            val location = if (opened.size == 1) "https://mirror.example.test/feed.zip" else eavGtfs.downloadOrProbeUri.toString()
+            val location = if (opened.size == 1) "/mirror/feed.zip" else eavGtfs.downloadOrProbeUri.toString()
             redirectConnection(url, location)
         })
 
@@ -136,6 +136,73 @@ class GtfsArtifactDownloaderTest {
         assertEquals(listOf(1, 2, 3), bytes.map(Byte::toInt))
         assertEquals("https", opened.last().protocol)
         assertEquals("/final.zip", opened.last().path)
+    }
+
+    /** Audit2 security-privacy-2: the archive comes from the host that was asked, never from where it points. */
+    @Test
+    fun `rifiuta un redirect verso un altro host senza aprirlo`() {
+        for (location in listOf("https://other.example.test/feed.zip", "https://other.example.test:443/feed.zip",
+            "//other.example.test/feed.zip", "https://user@${eavGtfs.downloadOrProbeUri!!.host}/feed.zip",
+            "https://${eavGtfs.downloadOrProbeUri!!.host}:8443/feed.zip")) {
+            val opened = mutableListOf<URL>()
+            val redirecting = GtfsArtifactDownloader(connectionFactory = { url ->
+                opened += url
+                redirectConnection(url, location)
+            })
+
+            val error = runCatching { redirecting.open(eavGtfs) }.exceptionOrNull()
+
+            assertTrue(location, error is GtfsDownloadException)
+            assertEquals(location, listOf(eavGtfs.downloadOrProbeUri!!.toURL()), opened)
+        }
+    }
+
+    /** Audit2 security-privacy-2: a refusal pauses the host for the Retry-After it sent, or a quarter of an hour. */
+    @Test
+    fun `un rifiuto mette in pausa il download e rispetta Retry-After`() {
+        val clock = object : java.time.Clock() {
+            var now = java.time.Instant.parse("2026-11-11T09:00:00Z")
+            override fun getZone() = java.time.ZoneOffset.UTC
+            override fun withZone(zone: java.time.ZoneId?) = this
+            override fun instant() = now
+        }
+        var status = 429
+        var retryAfter: String? = "3600"
+        var opened = 0
+        val downloader = GtfsArtifactDownloader(clock = clock, connectionFactory = { url ->
+            opened++
+            if (status == 200) fakeConnection(url, byteArrayOf(1), 1) else object : HttpURLConnection(url) {
+                override fun connect() = Unit
+                override fun disconnect() = Unit
+                override fun usingProxy(): Boolean = false
+                override fun getResponseCode(): Int = status
+                override fun getHeaderField(name: String?): String? = if (name.equals("Retry-After", ignoreCase = true)) retryAfter else null
+            }
+        })
+        fun refused() = runCatching { downloader.open(eavGtfs).close() }.exceptionOrNull() is GtfsDownloadException
+
+        assertTrue(refused())
+        clock.now = clock.now.plusSeconds(3_599)
+        assertTrue(refused())
+        assertEquals(1, opened)
+        // After the Retry-After the host is asked again; a 403 without one pauses it for fifteen minutes.
+        clock.now = clock.now.plusSeconds(2)
+        status = 403
+        retryAfter = null
+        assertTrue(refused())
+        clock.now = clock.now.plusSeconds(14 * 60)
+        assertTrue(refused())
+        assertEquals(2, opened)
+        // A plain server error is not a refusal: the caller's own cooldown decides when to ask again.
+        clock.now = clock.now.plusSeconds(61)
+        status = 500
+        assertTrue(refused())
+        assertTrue(refused())
+        assertEquals(4, opened)
+        status = 200
+        downloader.open(eavGtfs).close()
+        assertEquals(5, opened)
+        it.binario.app.data.live.SourcePauses.clearForTest()
     }
 
     private val eavGtfs = RailSourceCatalog.byId(SourceId("eav-gtfs"))!!

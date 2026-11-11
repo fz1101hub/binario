@@ -1,5 +1,7 @@
 package it.binario.app.data.gtfs
 
+import it.binario.app.data.live.SourceCircuitBreaker
+import it.binario.app.data.live.retryAfterOf
 import it.binario.app.data.provider.AccessMode
 import it.binario.app.data.sources.RailSourceDefinition
 import it.binario.app.data.sources.SourceFormat
@@ -10,6 +12,9 @@ import java.net.HttpURLConnection
 import java.net.MalformedURLException
 import java.net.URL
 import java.net.URLConnection
+import java.time.Clock
+import java.time.Duration
+import java.util.Locale
 
 class GtfsDownloadException(message: String) : IllegalStateException(message)
 
@@ -23,6 +28,11 @@ fun interface GtfsArtifactSource {
  * Non esegue refresh automatici, non segue fonti HTTP in chiaro e non gestisce
  * token: queste policy restano responsabilità del gateway o della pipeline CI.
  *
+ * A redirect is followed only on the host that was asked (HTTPS, default port): the archive never comes from, and the
+ * user's address never reaches, a host the privacy documents do not name. A refusal (403, 429, or 503 with
+ * Retry-After) pauses that host for the Retry-After it sent or [refusalPause], as the other public-source clients do;
+ * while paused no request is sent (audit2 security-privacy-2).
+ *
  * Le fonti BEST_EFFORT_FALLBACK richiedono opt-in esplicito: possono colmare
  * una tratta scoperta ma non diventano accidentalmente equivalenti ai feed
  * ufficiali READY_FOR_GTFS_PACK.
@@ -32,8 +42,12 @@ class GtfsArtifactDownloader(
     private val readTimeoutMillis: Int = 45_000,
     private val maxContentLengthBytes: Long = 256L * 1024L * 1024L,
     private val maxRedirects: Int = 5,
-    private val connectionFactory: (URL) -> URLConnection = { url -> url.openConnection() }
+    private val connectionFactory: (URL) -> URLConnection = { url -> url.openConnection() },
+    private val clock: Clock = Clock.systemUTC(),
+    private val refusalPause: Duration = Duration.ofMinutes(15)
 ) : GtfsArtifactSource {
+    private val refusals = HashMap<String, SourceCircuitBreaker>()
+
     init {
         require(connectTimeoutMillis > 0 && readTimeoutMillis > 0)
         require(maxContentLengthBytes > 0)
@@ -53,7 +67,13 @@ class GtfsArtifactDownloader(
         allowBestEffortFallback: Boolean
     ): GtfsDownloadSession {
         validate(source, allowBestEffortFallback)
-        var url = source.downloadOrProbeUri!!.toURL()
+        val requested = source.downloadOrProbeUri!!.toURL()
+        val host = requested.host.orEmpty().lowercase(Locale.ROOT)
+        val refusal = synchronized(refusals) { refusals.getOrPut(host) { SourceCircuitBreaker(clock, pauseLabel = source.displayName) } }
+        if (!refusal.allowRequest()) {
+            throw GtfsDownloadException("Download GTFS in pausa dopo il rifiuto della fonte")
+        }
+        var url = requested
         val visited = mutableSetOf<String>()
         var redirects = 0
         while (true) {
@@ -83,20 +103,33 @@ class GtfsArtifactDownloader(
                 if (redirects >= maxRedirects) {
                     throw GtfsDownloadException("Il download GTFS supera il limite di redirect")
                 }
-                url = try {
+                val target = try {
                     URL(url, location)
                 } catch (_: MalformedURLException) {
                     throw GtfsDownloadException("Redirect GTFS non valido")
                 } catch (_: IllegalArgumentException) {
                     throw GtfsDownloadException("Redirect GTFS non valido")
                 }
+                if (target.protocol != "https") {
+                    throw GtfsDownloadException("Binario accetta soltanto data pack GTFS su HTTPS")
+                }
+                if (!target.host.equals(requested.host, ignoreCase = true) || target.port !in setOf(-1, 443) || target.userInfo != null) {
+                    throw GtfsDownloadException("Redirect GTFS verso un altro host non consentito")
+                }
+                url = target
                 redirects += 1
                 continue
             }
             if (responseCode !in 200..299) {
+                val retryAfter = retryAfterOf(connection.getHeaderField("Retry-After"), clock)
                 connection.disconnect()
+                when {
+                    responseCode == 403 || responseCode == 429 -> refusal.recordFailure(retryAfter ?: refusalPause)
+                    responseCode == 503 && retryAfter != null -> refusal.recordFailure(retryAfter)
+                }
                 throw GtfsDownloadException("Download GTFS non disponibile: HTTP $responseCode")
             }
+            refusal.recordSuccess()
             val length = connection.contentLengthLong
             if (length > maxContentLengthBytes) {
                 connection.disconnect()
