@@ -51,6 +51,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
@@ -106,6 +107,7 @@ import it.binario.app.journeys.LastOfDayMarks
 import it.binario.app.ui.common.InfoNoticeCard
 import it.binario.app.ui.common.OperatorNames
 import it.binario.app.ui.common.LastOfDayChip
+import it.binario.app.ui.common.ListRowLayout
 import it.binario.app.ui.common.StationPunctualityCard
 import it.binario.app.ui.common.WheelchairMark
 import it.binario.app.ui.common.rememberNetworkReliability
@@ -533,6 +535,8 @@ internal fun StationBoardEntryRow(
     val platformChange = PlatformChange.of(platform, entry.scheduledPlatform?.value)
     // Cancelled, cut short, diverted or replaced by a bus: a label of its own, and the first thing TalkBack says.
     val disruption = StationBoardEntrySpeech.disruption(entry)
+    // With large text, or with the long «Bin. 7 (era 5)», the platform goes under the destination instead of beside it.
+    val platformBelow = ListRowLayout.stacksSideColumn(LocalDensity.current.fontScale, wideSide = platformChange != null)
     val resources = LocalResources.current
     val accessibilityDescription = remember(entry, kind, lastOfDay, resources) {
         StationBoardEntrySpeech.description(entry, kind, lastOfDay) { id, arguments -> resources.getString(id, *arguments) }
@@ -570,7 +574,8 @@ internal fun StationBoardEntryRow(
                 directionLabel,
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.Bold,
-                maxLines = 1,
+                // Two lines, as the route rows: «Per Milano Porta G…» is both Garibaldi and Genova.
+                maxLines = 2,
                 overflow = TextOverflow.Ellipsis
             )
             disruption?.let { status ->
@@ -602,25 +607,29 @@ internal fun StationBoardEntryRow(
                     color = MaterialTheme.colorScheme.error
                 )
             }
+            if (platformBelow) platform?.let { BoardPlatformPill(it, platformChange) }
         }
-        platform?.let {
-            // A platform the source moved: "Bin. 7 (era 5)" in the attention colour, never the colour alone.
-            Surface(
-                shape = RoundedCornerShape(10.dp),
-                color = if (platformChange != null) MaterialTheme.colorScheme.tertiaryContainer else MaterialTheme.colorScheme.secondaryContainer,
-                contentColor = if (platformChange != null) MaterialTheme.colorScheme.onTertiaryContainer else MaterialTheme.colorScheme.onSecondaryContainer
-            ) {
-                Text(
-                    platformChange?.let { change -> stringResource(R.string.platform_changed_short, change.actual, change.scheduled) }
-                        ?: stringResource(R.string.station_board_platform, it),
-                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp),
-                    fontWeight = FontWeight.Bold
-                )
-            }
-        }
+        if (!platformBelow) platform?.let { BoardPlatformPill(it, platformChange) }
         if (onOpen != null) {
             Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
         }
+    }
+}
+
+/** The platform of a board row; a platform the source moved reads "Bin. 7 (era 5)" in the attention colour, never the colour alone. */
+@Composable
+private fun BoardPlatformPill(platform: String, change: PlatformChange?) {
+    Surface(
+        shape = RoundedCornerShape(10.dp),
+        color = if (change != null) MaterialTheme.colorScheme.tertiaryContainer else MaterialTheme.colorScheme.secondaryContainer,
+        contentColor = if (change != null) MaterialTheme.colorScheme.onTertiaryContainer else MaterialTheme.colorScheme.onSecondaryContainer
+    ) {
+        Text(
+            change?.let { stringResource(R.string.platform_changed_short, it.actual, it.scheduled) }
+                ?: stringResource(R.string.station_board_platform, platform),
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp),
+            fontWeight = FontWeight.Bold
+        )
     }
 }
 

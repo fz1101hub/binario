@@ -46,6 +46,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -246,6 +247,8 @@ internal fun DepartureListRow(
         lastOfDayLabel
     ).joinToString(". ")
     val selectedState = if (selected) stringResource(R.string.accessibility_row_selected) else null
+    // With large text the time and the platform columns leave the destination a few letters: platform and status go under it.
+    val stacked = ListRowLayout.stacksSideColumn(LocalDensity.current.fontScale)
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -292,18 +295,27 @@ internal fun DepartureListRow(
                     fontWeight = FontWeight.Bold
                 )
             }
+            if (stacked) DepartureRowPlatformAndStatus(shown, TextAlign.Start)
         }
-        Column(horizontalAlignment = Alignment.End, modifier = Modifier.widthIn(min = SIDE_COLUMN)) {
-            Text(
-                platformText(shown.platform, shown.scheduledPlatform) ?: "—",
-                style = MaterialTheme.typography.labelLarge,
-                fontWeight = FontWeight.Bold,
-                color = platformColor(shown.platform, shown.scheduledPlatform, MaterialTheme.colorScheme.onSurface),
-                textAlign = TextAlign.End
-            )
-            Text(compactStatusLabel(shown), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.End)
+        if (!stacked) {
+            Column(horizontalAlignment = Alignment.End, modifier = Modifier.widthIn(min = SIDE_COLUMN)) {
+                DepartureRowPlatformAndStatus(shown, TextAlign.End)
+            }
         }
     }
+}
+
+/** Platform and compact status of a [DepartureListRow]: its side column, or two lines under the destination. */
+@Composable
+private fun DepartureRowPlatformAndStatus(shown: TrainService, align: TextAlign) {
+    Text(
+        platformText(shown.platform, shown.scheduledPlatform) ?: "—",
+        style = MaterialTheme.typography.labelLarge,
+        fontWeight = FontWeight.Bold,
+        color = platformColor(shown.platform, shown.scheduledPlatform, MaterialTheme.colorScheme.onSurface),
+        textAlign = align
+    )
+    Text(compactStatusLabel(shown), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = align)
 }
 
 /**
