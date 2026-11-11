@@ -21,6 +21,8 @@ import it.binario.app.data.core.BoardKind
 import it.binario.app.data.core.Confidence
 import it.binario.app.data.core.SourceId
 import it.binario.app.data.core.StationId
+import it.binario.app.data.planned.BoundedSingleFlightCache
+import it.binario.app.data.planned.TimedCacheValue
 import it.binario.app.data.provider.AccessMode
 import it.binario.app.data.provider.CoverageDescriptor
 import it.binario.app.data.provider.ProviderCapability
@@ -42,6 +44,7 @@ import java.net.HttpURLConnection
 import java.net.URL
 import java.time.Clock
 import java.time.Duration
+import java.time.Instant
 import java.util.Locale
 
 fun interface RfiMonitorFetcher {
@@ -170,6 +173,13 @@ class RfiStationBoardAdapter(
     private val refusals = PublicSourceRefusalGate(clock, "RFI")
     private val gated = RfiMonitorFetcher { url -> refusals.call { fetcher.fetch(url) } }
     private val stationCatalog = RfiStationCatalog(gated, clock)
+    /**
+     * One monitor page serves every reader of the same refresh (audit fix-android-5): the live route and the board
+     * reconciliation asked for the same page seconds apart. A page fetched in the last [PAGE_TTL_MILLIS] is reused
+     * with its own fetch time, and concurrent readers share one request. Failures are never kept.
+     */
+    private val pages = BoundedSingleFlightCache<String>(MAX_PAGES, PAGE_TTL_MILLIS, clock::millis)
+    private suspend fun page(url: String): TimedCacheValue<String> = pages.getOrLoad(url) { gated.fetch(url) }
 
     /** Catalogue and board parsing (Jsoup/JSON, up to a few MB) never run on the caller's thread, which can be Main. */
     override suspend fun getStationBoard(request: StationBoardRequest): ProviderResult<it.binario.app.data.core.StationBoard> =
@@ -180,11 +190,12 @@ class RfiStationBoardAdapter(
         val placeId = RfiStationIds.placeId(request.stationId.value, stationName)
             ?: stationCatalog.placeId(listOf(stationName) + request.stationAliases)
             ?: return ProviderResult.Failure(ProviderError(ProviderErrorKind.NOT_SUPPORTED, "Stazione assente dal catalogo live RFI disponibile."))
-        val fetchedAt = clock.instant()
         return try {
             val arrivals = if (request.kind == BoardKind.ARRIVALS) "True" else "False"
             val url = "https://iechub.rfi.it/ArriviPartenze/ArrivalsDepartures/Monitor?placeId=$placeId&arrivals=$arrivals"
-            val html = gated.fetch(url)
+            val page = page(url)
+            val html = page.value
+            val fetchedAt = Instant.ofEpochMilli(page.fetchedAtEpochMillis)
             val syntheticRoute = SavedRoute(
                 id = "station-board:${request.stationId.value}",
                 name = stationName,
@@ -239,14 +250,17 @@ class RfiStationBoardAdapter(
             ?: stationCatalog.placeId(listOf(origin.name) + origin.aliases)
             ?: return DataResult.Failure("Il catalogo live RFI disponibile non contiene ${origin.name}.")
         val key = "${origin.id}:${destination.id}:${direction.name}"
-        val now = clock.millis()
         mutex.withLock {
+            val now = clock.millis()
             cache[key]?.takeIf { now < it.expiresAtEpochMillis }?.let { return DataResult.Success(it.snapshot) }
         }
 
         return try {
             val url = "https://iechub.rfi.it/ArriviPartenze/ArrivalsDepartures/Monitor?placeId=$placeId&arrivals=False"
-            val html = gated.fetch(url)
+            val page = page(url)
+            val html = page.value
+            // The time the page was fetched, which is not now when another reader fetched it a moment ago.
+            val now = page.fetchedAtEpochMillis
             val services = parseDepartures(html, origin.name, destination.name, route, direction)
             if (services.isEmpty()) {
                 return DataResult.Failure("RFI non mostra partenze utilizzabili da ${origin.name} in questo momento.")
@@ -391,6 +405,12 @@ class RfiStationBoardAdapter(
     }
 
     private data class CachedSnapshot(val snapshot: RouteSnapshot, val expiresAtEpochMillis: Long)
+
+    private companion object {
+        /** Below the 30-second poll of the app and the 20 seconds RfiLiveRouteDataSource keeps a board. */
+        const val PAGE_TTL_MILLIS = 15_000L
+        const val MAX_PAGES = 4
+    }
 }
 
 private fun String.normalizeSpace(): String = replace(Regex("\\s+"), " ").trim()

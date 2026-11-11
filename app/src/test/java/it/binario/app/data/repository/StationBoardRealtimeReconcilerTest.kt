@@ -415,6 +415,29 @@ class StationBoardRealtimeReconcilerTest {
     }
 
     /**
+     * Audit fix-android-5: the boards are asked from the instants the live route already asked ViaggiaTreno for (the
+     * requested time and, around now, two hours before it), so no source is asked for a third window.
+     */
+    @Test
+    fun `la riconciliazione chiede i tabelloni dagli stessi istanti della tratta live`() = runBlocking {
+        val rfi = SourceId("rfi-station-board")
+        val seen = mutableListOf<StationBoardRequest>()
+        val provider = FakeBoardProvider(rfi, "RFI", board(rfi, "9401", zdt(12, 30), zdt(12, 37), "4", RunStatus.DELAYED)) { seen += it }
+        val reconciler = StationBoardRealtimeReconciler(listOf(provider), clock, zone)
+
+        val enriched = reconciler.enrich(plannedSnapshot(), query)
+        val aroundNow = seen.single()
+        assertEquals(query.requestedAt.atZone(zone).toInstant(), aroundNow.from)
+        assertEquals(aroundNow.from.minus(Duration.ofHours(2)), aroundNow.lateSince)
+        assertEquals(7, enriched.services.single().delayMinutes)
+
+        // A search for later today has no look-back, as the live route has none.
+        reconciler.enrich(plannedSnapshot(), query.copy(departureTime = LocalTime.of(15, 0)))
+        assertEquals(LocalDateTime.of(2026, 9, 4, 15, 0).atZone(zone).toInstant(), seen.last().from)
+        assertEquals(null, seen.last().lateSince)
+    }
+
+    /**
      * Audit fix-android-2: a train the day's timetable moved by half an hour is one train, not a timetable row that
      * does not exist plus the live row. Tomorrow's run of the same number, and a run hours away, stay apart.
      */
@@ -643,7 +666,8 @@ class StationBoardRealtimeReconcilerTest {
     private class FakeBoardProvider(
         source: SourceId,
         name: String,
-        private val board: StationBoard
+        private val board: StationBoard,
+        private val onRequest: (StationBoardRequest) -> Unit = {}
     ) : StationBoardProvider {
         override val descriptor: ProviderDescriptor = ProviderDescriptor(
             id = source,
@@ -657,7 +681,7 @@ class StationBoardRealtimeReconcilerTest {
 
         override suspend fun getStationBoard(request: StationBoardRequest): ProviderResult<StationBoard> =
             ProviderResult.Success(
-                board,
+                board.also { onRequest(request) },
                 ProviderResponseMeta(
                     providerId = descriptor.id,
                     fetchedAt = board.snapshot.generatedAt,

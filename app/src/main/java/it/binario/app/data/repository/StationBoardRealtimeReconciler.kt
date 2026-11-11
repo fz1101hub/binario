@@ -301,13 +301,18 @@ class StationBoardRealtimeReconciler(
         val origin = snapshot.route.origin(snapshot.direction)
         val destination = snapshot.route.destination(snapshot.direction)
         val requested = query.requestedAt.atZone(zone)
+        // The instants the live route of the same refresh asks ViaggiaTreno for (the requested time and, for a search
+        // around now, two hours before it for the trains still late to leave): the board is then answered from the
+        // shared response cache instead of asking for a third window (audit fix-android-5).
+        val from = requested.toInstant()
         val request = StationBoardRequest(
             stationId = StationId(origin.id),
             stationName = origin.name,
             stationAliases = origin.aliases,
             railwayCode = origin.railwayCode,
-            from = requested.minusMinutes(30).toInstant(),
+            from = from,
             to = requested.plusHours(8).toInstant(),
+            lateSince = from.minus(LATE_LOOKBACK).takeIf { !from.isAfter(clock.instant().plus(AROUND_NOW)) },
             kind = BoardKind.DEPARTURES,
             trenitaliaLocationId = origin.trenitaliaLocationId,
             coordinates = origin.catalogueCoordinates()
@@ -641,6 +646,12 @@ class StationBoardRealtimeReconciler(
         RailOperator.WESTBAHN -> "westbahn"
         RailOperator.EUROPEAN_SLEEPER -> "european-sleeper"
         RailOperator.OTHER -> null
+    }
+
+    private companion object {
+        /** As ViaggiaTrenoRealtimeAdapter.loadRoute: the look-back and when it applies. */
+        val LATE_LOOKBACK: Duration = Duration.ofHours(2)
+        val AROUND_NOW: Duration = Duration.ofMinutes(10)
     }
 
     private data class ProviderBoard(

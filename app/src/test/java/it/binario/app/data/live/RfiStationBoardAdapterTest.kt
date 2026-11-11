@@ -175,6 +175,32 @@ class RfiStationBoardAdapterTest {
         assertEquals(listOf("Caserta"), entry.routeChange?.value?.viaStopLabels)
     }
 
+    /** Audit fix-android-5: the live route and the board reconciliation of one refresh read the same page once. */
+    @Test
+    fun `una pagina del monitor serve tutte le letture dello stesso aggiornamento`() = runBlocking {
+        val clock = MutablePublicSourceClock(Instant.parse("2026-08-14T12:00:00Z"))
+        val urls = mutableListOf<String>()
+        val adapter = RfiStationBoardAdapter(fetcher = RfiMonitorFetcher { url -> urls += url; htmlFixture() }, clock = clock)
+        fun request(from: Instant, kind: BoardKind = BoardKind.DEPARTURES) = StationBoardRequest(StationId("roma-termini"), "Roma Termini",
+            from = from, to = from.plusSeconds(8 * 3600), kind = kind)
+
+        val live = adapter.getStationBoard(request(clock.instant().minusSeconds(2 * 3600))) as ProviderResult.Success
+        clock.advance(java.time.Duration.ofSeconds(9))
+        val reconciled = adapter.getStationBoard(request(clock.instant())) as ProviderResult.Success
+        adapter.loadRoute(route, Direction.OUTBOUND)
+        assertEquals(urls.toString(), 1, urls.size)
+        // The page read again keeps the time it was fetched: it is not presented as newer than it is.
+        assertEquals(live.meta.fetchedAt, reconciled.meta.fetchedAt)
+        assertEquals(Instant.parse("2026-08-14T12:00:00Z"), reconciled.meta.fetchedAt)
+
+        // The arrivals are another page, and a page lives less than the 30-second poll of the app.
+        adapter.getStationBoard(request(clock.instant(), BoardKind.ARRIVALS))
+        assertEquals(2, urls.size)
+        clock.advance(java.time.Duration.ofSeconds(16))
+        adapter.getStationBoard(request(clock.instant()))
+        assertEquals(3, urls.size)
+    }
+
     @Test
     fun `riusa lo snapshot RFI entro il ttl`() = runBlocking {
         var calls = 0

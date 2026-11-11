@@ -26,6 +26,20 @@ class ViaggiaTrenoRealtimeAdapterTest {
         withTimeout(2_000) { cancelled.await() }
     }
 
+    /** Audit fix-android-5: the board reconciliation of a refresh reads the windows its live route asked, from the cache. */
+    @Test fun `the live route and the reconciled board of one refresh ask two departure windows, not three`() = runBlocking {
+        val paths = java.util.Collections.synchronizedList(mutableListOf<String>())
+        val source = ViaggiaTrenoRealtimeAdapter(ViaggiaTrenoRealtimeFetcher { path -> paths += path; "[]" }, clock)
+        source.loadRoute(route, Direction.OUTBOUND, query)
+        assertEquals(2, paths.count { it.startsWith("partenze/") })
+
+        val planned = RouteSnapshot(route, Direction.OUTBOUND, listOf(TrainService("planned", "12345", RailOperator.OTHER, TrainCategory.OTHER,
+            route.outwardOrigin.name, route.outwardDestination.name, "10:05", "10:05", null, 0, ServiceStatus.ON_TIME, emptyList())),
+            "Static", now.toEpochMilli(), now.plusSeconds(60).toEpochMilli(), Freshness.AGING)
+        it.binario.app.data.repository.StationBoardRealtimeReconciler(listOf(source), clock, zone).enrich(planned, query)
+        assertEquals(paths.toString(), 2, paths.size)
+    }
+
     @Test fun `a hub prioritizes scheduled route numbers beyond its first twelve departures`() = runBlocking {
         val hint = object : TrainDataSource {
             override suspend fun loadRoute(route: SavedRoute, direction: Direction): DataResult = DataResult.Success(RouteSnapshot(
