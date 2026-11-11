@@ -369,6 +369,27 @@ class EmbeddedGtfsJourneyProviderTest {
         assertTrue(elsewhere.searchJourneys(request(alfa, delta)) is ProviderResult.Success)
     }
 
+    @Test fun `two stops with the same name far apart are two places joined by a walk`() = runBlocking {
+        // Two stops called "Corso" that the catalogue does not know: the first train ends at one, the second leaves the other.
+        fun search(metersApart: Double): List<JourneyOption> {
+            val names = mapOf("A" to "Alfa", "D" to "Delta", "X1" to "Corso", "X2" to "Corso")
+            val points = mapOf("X1" to (45.0 to 9.0), "X2" to (45.0 + metersApart / 111_195.0 to 9.0))
+            val provider = provider(mapOf(pack() to feed(
+                listOf(Trip("T1", "100", listOf("A" to "08:00", "X1" to "08:30")), Trip("T2", "200", listOf("X2" to "08:40", "D" to "09:10"))),
+                stopNames = names, stopPoints = points
+            )))
+            return options(runBlocking { provider.searchJourneys(request(alfa, delta)) })
+        }
+        // 100 m: one place, a plain change as before.
+        assertEquals(listOf(LegMode.TRAIN, LegMode.TRAIN), search(100.0).single().legs.map { it.mode })
+        // 300 m: two places, the change is a walk (4 minutes at 4.5 km/h, plus the margin).
+        val walked = search(300.0).single()
+        assertEquals(listOf(LegMode.TRAIN, LegMode.WALK, LegMode.TRAIN), walked.legs.map { it.mode })
+        assertEquals(6, java.time.Duration.between(walked.legs[1].scheduledDeparture, walked.legs[1].scheduledArrival).toMinutes())
+        // 780 m (Napoli's two "C.so V. Emanuele"): farther than a walk of the default preferences, no change there.
+        assertTrue(search(780.0).isEmpty())
+    }
+
     @Test fun `the search window bounds departures`() = runBlocking {
         val provider = provider(mapOf(pack() to feed(listOf(
             Trip("T0", "90", listOf("A" to "08:30", "D" to "09:30")),

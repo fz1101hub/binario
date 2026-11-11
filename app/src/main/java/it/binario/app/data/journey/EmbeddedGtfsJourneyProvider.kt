@@ -1874,6 +1874,8 @@ class EmbeddedGtfsJourneyProvider internal constructor(
         companion object {
             /** About 550 m of latitude: the nearby search reads the 3 x 5 cells around a point. */
             private const val GRID_DEGREES = 0.005
+            /** Stops of one pack with the same name and no parent station are one transfer point up to this distance. */
+            private const val SAME_PLACE_METERS = 150.0
 
             private fun key(row: Long, column: Long): Long = (row shl 32) xor (column and 0xFFFFFFFFL)
 
@@ -1885,7 +1887,7 @@ class EmbeddedGtfsJourneyProvider internal constructor(
              * publishes, if any, else by name, else by its coordinates and name: [GtfsStopStationResolver.nearbyStation],
              * so that STA's "Verona" is Verona Porta Nuova, with its change time and no walk between two names of one
              * station); the platforms of one parent_station share the station any of them resolves to (when they agree). Stops the catalogue does not know stay points of their own pack:
-             * grouped by parent_station, or by identical name when they have none. The stops of a city network
+             * grouped by parent_station, or by identical name when they have none and are at most [SAME_PLACE_METERS] apart. The stops of a city network
              * ([EmbeddedGtfsPack.isUrban]) never resolve to a catalogue station: they reach stations by walking.
              */
             fun build(pack: EmbeddedGtfsPack, directory: GtfsStopDirectory, resolver: GtfsStopStationResolver): PackStops {
@@ -1920,6 +1922,26 @@ class EmbeddedGtfsJourneyProvider internal constructor(
                         resolved[index] != null -> resolved[index]!!.id
                         grouped -> "${sourceId.value}:group:$group"
                         else -> "${sourceId.value}:name:${GtfsStopStationResolver.normalize(directory.names[index])}"
+                    }
+                }
+                // Two stops with one name are one place only when they are close: Napoli's two funicular stations
+                // "C.so V. Emanuele" are 780 m apart, and a change between them is a walk, not a three-minute change.
+                val sameName = HashMap<String, MutableList<Int>>()
+                val namePrefix = "${sourceId.value}:name:"
+                for (index in 0 until size) if (nodeKeys[index].startsWith(namePrefix)) sameName.getOrPut(nodeKeys[index]) { ArrayList(2) } += index
+                for ((key, members) in sameName) {
+                    if (members.size < 2) continue
+                    // The first stop of each place; a stop without coordinates stays with the first one.
+                    val anchors = ArrayList<Int>(2)
+                    for (index in members) {
+                        val latitude = directory.latitude(index) ?: continue
+                        val longitude = directory.longitude(index) ?: continue
+                        val place = anchors.indexOfFirst { anchor ->
+                            GtfsStationCodeIndex.distanceKm(directory.latitude(anchor)!!, directory.longitude(anchor)!!, latitude, longitude) * 1000.0 <= SAME_PLACE_METERS
+                        }
+                        if (place < 0) anchors += index
+                        val number = if (place < 0) anchors.size else place + 1
+                        if (number > 1) nodeKeys[index] = "$key#$number"
                     }
                 }
                 val indexById = HashMap<String, Int>(size * 2)
