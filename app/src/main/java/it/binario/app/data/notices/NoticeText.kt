@@ -75,13 +75,14 @@ object NoticeLinks {
     private const val TRAILING = ".,;:!?)]}»"
     private const val MIN_URL_LENGTH = 9
 
-    fun segments(text: String): List<Segment> {
+    /** A URL that [allow] refuses stays plain text: the rule is enforced here, where the link is made. */
+    fun segments(text: String, allow: (String) -> Boolean = { true }): List<Segment> {
         val out = mutableListOf<Segment>()
         var cursor = 0
         for (match in URL.findAll(text)) {
             val url = match.value.trimEnd { it in TRAILING }
             // Shorter than a scheme plus one host character: not a usable link.
-            if (url.length < MIN_URL_LENGTH) continue
+            if (url.length < MIN_URL_LENGTH || !allow(url)) continue
             if (match.range.first > cursor) out += Segment.Plain(text.substring(cursor, match.range.first))
             out += Segment.Link(url, url)
             cursor = match.range.first + url.length

@@ -87,8 +87,16 @@ data class RailNotice(
     val body: String?,
     val publishedAt: Instant?,
     val link: String?,
-    val lines: List<NoticeLine> = emptyList()
+    val lines: List<NoticeLine> = emptyList(),
+    /** True when the notice reached the app over the cleartext ViaggiaTreno hop: see [allowsLink]. */
+    val cleartextHop: Boolean = false
 ) {
+    /**
+     * Whether [url], found in the text of this notice or as its link, may be tappable. A notice that travelled over
+     * the cleartext hop could have been rewritten on the way: only HTTPS links to the publisher's own domains are.
+     */
+    fun allowsLink(url: String): Boolean = !cleartextHop || CleartextNoticeLinks.allowed(url)
+
     /** Strike badge: RFI, Trenitalia and Trenord notices whose text mentions "sciopero" or "scioperi". */
     val mentionsStrike: Boolean get() = NoticeText.mentionsStrike(title, body)
 }
@@ -231,15 +239,20 @@ class RailNoticesService(
 
     private fun ServiceAlert.toNotice(sourceId: SourceId): RailNotice? {
         val publisher = publisherOf(sourceId) ?: return null
-        val cleanTitle = NoticeText.normalize(title.value, 300) ?: return null
+        val cleartextHop = sourceId.value in CLEARTEXT_HOP_SOURCES
+        // The last transformation of the text happens here (decoding an entity can complete a URL), so the links of a
+        // cleartext source are checked again after it; the UI checks once more when it makes them tappable.
+        fun String.checked(): String? = if (cleartextHop) CleartextNoticeLinks.neutralize(this) else this
+        val cleanTitle = NoticeText.normalize(title.value, 300)?.checked() ?: return null
         return RailNotice(
             id = id.value,
             publisher = publisher,
             title = cleanTitle,
             // RFI RSS descriptions can carry markup; Trenitalia's are already plain text.
-            body = description?.value?.let { NoticeText.fromHtml(it, 6_000) }?.takeIf { NoticeText.dedupKey(it) != NoticeText.dedupKey(cleanTitle) },
+            body = description?.value?.let { NoticeText.fromHtml(it, 6_000) }?.checked()?.takeIf { NoticeText.dedupKey(it) != NoticeText.dedupKey(cleanTitle) },
             publishedAt = validFrom,
-            link = link
+            link = if (cleartextHop) CleartextNoticeLinks.link(link) else link,
+            cleartextHop = cleartextHop
         )
     }
 
@@ -259,6 +272,9 @@ class RailNoticesService(
     private data class Read<T>(val value: T?, val failed: Boolean = false, val stale: Boolean = false)
 
     companion object {
+        /** Network notices fetched through the ViaggiaTreno host, which redirects its HTTPS requests to HTTP. */
+        private val CLEARTEXT_HOP_SOURCES = setOf("trenitalia-infomobility-news")
+
         fun publisherOf(sourceId: SourceId): NoticePublisher? = when (sourceId.value) {
             "rfi-infomobility-rss" -> NoticePublisher.RFI
             "trenitalia-infomobility-news" -> NoticePublisher.TRENITALIA

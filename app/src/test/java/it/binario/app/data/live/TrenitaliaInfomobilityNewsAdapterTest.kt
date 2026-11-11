@@ -1,5 +1,6 @@
 package it.binario.app.data.live
 
+import it.binario.app.data.notices.CleartextNoticeLinks
 import it.binario.app.data.notices.NoticeLinks
 import it.binario.app.data.RailOperator
 import it.binario.app.data.core.AlertSeverity
@@ -82,6 +83,44 @@ class TrenitaliaInfomobilityNewsAdapterTest {
         assertTrue(hostile.title.contains("trenitalia-rimborsi.example/login"))
         assertTrue(hostile.description!!.contains("bit.ly/x"))
         assertEquals("https://www.fsitaliane.it/content/fsitaliane/it/notizie.html", parsed.last().link)
+    }
+
+    /**
+     * Audit2 security-privacy-1: a nested scheme survived one removal, and entity-encoded slashes were decoded after
+     * the check; either way a link to any site became tappable under «Pubblicato da Trenitalia».
+     */
+    @Test fun `a nested scheme or an entity-encoded URL never becomes a tappable link`() = runBlocking {
+        fun links(text: String?) = NoticeLinks.segments(text.orEmpty()).filterIsInstance<NoticeLinks.Segment.Link>().map { it.url }
+        for (hostile in listOf("Rimborso: https://https://evil.example/login", "Rimborso: http://https://evil.example/login",
+            "Rimborso: https://a/https://evil.example/login", "Rimborso: HTTPS://https://http://evil.example/login.")) {
+            val neutral = CleartextNoticeLinks.neutralize(hostile)!!
+            assertEquals(hostile, emptyList<String>(), links(neutral))
+            assertTrue(neutral, neutral.contains("evil.example/login"))
+        }
+        assertEquals("Vedi https://www.trenitalia.com/it/info.html e bit.ly/x",
+            CleartextNoticeLinks.neutralize("Vedi https://www.trenitalia.com/it/info.html e https://https://bit.ly/x"))
+
+        // Slashes encoded three times: the adapter decodes twice and sees no URL, the notice decodes once more.
+        val item = JSONObject()
+            .put("title", "Rimborsi: https://https://evil.example/titolo")
+            .put("description", "Rimborso su https:&amp;amp;#47;&amp;amp;#47;evil.example/login e su https://www.trenitalia.com/it/info.html")
+            .put("link", "https://www.trenitalia.com/it/info.html")
+            .put("pubDate", 1_790_000_000_000L)
+        val service = RailNoticesService(emptyList(), listOf(adapter(RecordingPublicSourceFetcher { JSONArray().put(item).toString() })))
+        val notice = service.general().network.single()
+        assertTrue(notice.cleartextHop)
+        assertEquals(listOf("https://www.trenitalia.com/it/info.html"), links(notice.title + " " + notice.body))
+        assertTrue(notice.body, notice.body!!.contains("evil.example/login"))
+        assertEquals("https://www.trenitalia.com/it/info.html", notice.link)
+
+        // Where the link is made the rule holds on its own, whatever the text went through before.
+        val unchecked = notice.copy(body = "Rimborso su https://evil.example/login e su https://www.trenitalia.com/it/info.html", link = "https://evil.example/")
+        assertEquals(listOf("https://www.trenitalia.com/it/info.html"),
+            NoticeLinks.segments(unchecked.body!!, unchecked::allowsLink).filterIsInstance<NoticeLinks.Segment.Link>().map { it.url })
+        assertEquals("Rimborso su https://evil.example/login e su ", NoticeLinks.segments(unchecked.body!!, unchecked::allowsLink).first().text)
+        assertFalse(unchecked.allowsLink(unchecked.link!!))
+        // A notice fetched over HTTPS end to end keeps its links.
+        assertTrue(unchecked.copy(cleartextHop = false).allowsLink("https://example.org/avviso"))
     }
 
     @Test fun `empty, malformed and failing feeds are typed results`() = runBlocking {
