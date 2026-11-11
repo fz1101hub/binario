@@ -17,6 +17,8 @@ import it.binario.app.data.repository.JourneySearchResult
 import it.binario.app.data.repository.JourneySearchService
 import it.binario.app.data.repository.JourneySearchStatus
 import it.binario.app.data.repository.SourcedJourneyOption
+import java.time.Duration
+import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
@@ -47,6 +49,31 @@ data class JourneySearchUiState(
 )
 
 /**
+ * How the live data of the legs is kept up to date while the results or a journey stay on screen: the lookup is
+ * repeated (never more often than [MIN_INTERVAL] by the periodic refresh), its answers replace the earlier ones and
+ * an earlier answer that is not confirmed again is shown for [MAX_AGE] at most, then the leg is back on its timetable.
+ */
+object JourneyLiveRefresh {
+    /** A leg's live times are shown this long after the lookup that found them, unless a newer lookup replaces them. */
+    val MAX_AGE: Duration = Duration.ofMinutes(5)
+
+    /** The periodic refresh repeats the lookup (up to eight train numbers) once a minute, not at every 30-second tick. */
+    val MIN_INTERVAL: Duration = Duration.ofSeconds(60)
+
+    /** The legs of [legs] whose lookup ([fetchedAt], by leg key) is not older than [MAX_AGE] at [now]. */
+    fun current(legs: Map<String, JourneyLegLive>, fetchedAt: Map<String, Instant>, now: Instant): Map<String, JourneyLegLive> =
+        legs.filterKeys { key -> fetchedAt[key]?.let { Duration.between(it, now) <= MAX_AGE } == true }
+
+    /** A periodic lookup is due at [now] when none started in the last [MIN_INTERVAL]. */
+    fun isDue(lastStartedAt: Instant?, now: Instant): Boolean =
+        lastStartedAt == null || Duration.between(lastStartedAt, now) >= MIN_INTERVAL
+
+    /** [options] with the journey on screen ([focusedId]) first, so its trains are always among those looked up. */
+    fun <T> focusedFirst(options: List<T>, focusedId: String?, idOf: (T) -> String): List<T> =
+        if (focusedId == null) options else options.sortedByDescending { idOf(it) == focusedId }
+}
+
+/**
  * Entry point of the journeys-with-changes results, separate from [it.binario.app.TrainViewModel] so the direct-
  * train search keeps working exactly as before. The screen obtains it with `viewModel(factory =
  * JourneySearchViewModel.factory(context))`, calls [searchJourneys] with the planner's stations, date and time, and
@@ -60,13 +87,20 @@ class JourneySearchViewModel(
     /** Live times of the metro and tram legs from their city's open realtime feed; null keeps them scheduled. */
     private val urbanLiveLookup: UrbanJourneyLiveLookup? = null,
     /** "Preferenze di viaggio" sent with every search; a change searches the shown journeys again. Null: none. */
-    private val preferences: StateFlow<JourneyPreferences>? = null
+    private val preferences: StateFlow<JourneyPreferences>? = null,
+    private val now: () -> Instant = Instant::now
 ) : ViewModel() {
     private val mutableState = MutableStateFlow(JourneySearchUiState())
     val state: StateFlow<JourneySearchUiState> = mutableState.asStateFlow()
     private var searchJob: Job? = null
     private var pageJob: Job? = null
+    private var liveJob: Job? = null
     private var searchGeneration = 0L
+    /** When the lookup that answered each live leg started (by leg key), and when the last lookup started. */
+    private val liveFetchedAt = HashMap<String, Instant>()
+    private var liveLookupStartedAt: Instant? = null
+    /** A search or a live lookup is running: [refreshLive] starts nothing meanwhile. */
+    internal val isBusy: Boolean get() = searchJob?.isActive == true || liveJob?.isActive == true
     private val zone = RailTime.defaultZone
 
     init {
@@ -116,8 +150,67 @@ class JourneySearchViewModel(
     fun reset() {
         searchJob?.cancel()
         pageJob?.cancel()
+        liveJob?.cancel()
         searchGeneration += 1
+        liveFetchedAt.clear()
+        liveLookupStartedAt = null
         mutableState.value = JourneySearchUiState()
+    }
+
+    /**
+     * Repeats only the live lookup of the journeys shown (same legs, window and train cap as after the search), so the
+     * expected times and «Coincidenza a rischio» follow the trains while the results or a journey stay open. The
+     * journey on screen ([focusedOptionId]) is looked up first. Live times older than [JourneyLiveRefresh.MAX_AGE] are
+     * dropped at once, before the answer. The periodic caller is limited to one lookup per
+     * [JourneyLiveRefresh.MIN_INTERVAL]; [force] (the refresh button) is not, but nothing starts while a search or
+     * another lookup is running.
+     */
+    fun refreshLive(focusedOptionId: String? = null, force: Boolean = false) {
+        val current = state.value
+        val result = current.result ?: return
+        if (liveLookup == null && urbanLiveLookup == null) return
+        val instant = now()
+        dropExpiredLive(instant)
+        if (current.loading || isBusy) return
+        if (!force && !JourneyLiveRefresh.isDue(liveLookupStartedAt, instant)) return
+        val options = JourneyLiveRefresh.focusedFirst(result.options, focusedOptionId) { it.option.id.value }
+        val generation = searchGeneration
+        liveLookupStartedAt = instant
+        liveJob = viewModelScope.launch {
+            val live = lookupLive(options)
+            if (generation != searchGeneration) return@launch
+            // Also without an answer: what the earlier lookups found is not shown past its age.
+            publishLive(live, instant)
+        }
+    }
+
+    /** Adds [live] (found by the lookup started at [startedAt]) to the legs shown and drops those past their age. */
+    private fun publishLive(live: Map<String, JourneyLegLive>, startedAt: Instant) {
+        live.keys.forEach { liveFetchedAt[it] = startedAt }
+        val instant = now()
+        mutableState.update { state ->
+            val legs = JourneyLiveRefresh.current(state.liveLegs + live, liveFetchedAt, instant)
+            if (legs == state.liveLegs) state
+            else state.copy(liveLegs = legs, presentation = state.result?.let { JourneyResultsPresenter.present(it, state.filter, live = legs) })
+        }
+        liveFetchedAt.keys.retainAll(state.value.liveLegs.keys)
+    }
+
+    private fun dropExpiredLive(instant: Instant) {
+        if (state.value.liveLegs.isEmpty()) return
+        mutableState.update { state ->
+            val legs = JourneyLiveRefresh.current(state.liveLegs, liveFetchedAt, instant)
+            if (legs.size == state.liveLegs.size) state
+            else state.copy(liveLegs = legs, presentation = state.result?.let { JourneyResultsPresenter.present(it, state.filter, live = legs) })
+        }
+        liveFetchedAt.keys.retainAll(state.value.liveLegs.keys)
+    }
+
+    /** The live data of [options]: the train legs of the journeys with changes and the city legs with a realtime feed. */
+    private suspend fun lookupLive(options: List<SourcedJourneyOption>): Map<String, JourneyLegLive> = coroutineScope {
+        val trains = async { liveLookup?.takeIf { options.any { it.option.transfers > 0 } }?.lookup(options).orEmpty() }
+        val urban = async { urbanLiveLookup?.takeIf { it.wants(options) }?.lookup(options).orEmpty() }
+        trains.await() + urban.await()
     }
 
     /**
@@ -167,16 +260,10 @@ class JourneySearchViewModel(
                 )
             }
             if (fresh.isEmpty()) return@launch
-            val live = coroutineScope {
-                val trains = async { liveLookup?.takeIf { fresh.any { it.option.transfers > 0 } }?.lookup(fresh).orEmpty() }
-                val urban = async { urbanLiveLookup?.takeIf { it.wants(fresh) }?.lookup(fresh).orEmpty() }
-                trains.await() + urban.await()
-            }
+            val lookupStartedAt = now()
+            val live = lookupLive(fresh)
             if (generation != searchGeneration || live.isEmpty()) return@launch
-            mutableState.update { state ->
-                val legs = state.liveLegs + live
-                state.copy(liveLegs = legs, presentation = state.result?.let { JourneyResultsPresenter.present(it, state.filter, live = legs) })
-            }
+            publishLive(live, lookupStartedAt)
         }
     }
 
@@ -189,7 +276,10 @@ class JourneySearchViewModel(
     private fun start(query: JourneySearchQuery) {
         searchJob?.cancel()
         pageJob?.cancel()
+        liveJob?.cancel()
         val generation = ++searchGeneration
+        liveFetchedAt.clear()
+        liveLookupStartedAt = null
         mutableState.update {
             it.copy(
                 loading = true, query = query, result = null, presentation = null, validationMessage = null, liveLegs = emptyMap(),
@@ -204,15 +294,11 @@ class JourneySearchViewModel(
             }
             // The scheduled results are shown first; the live check of the changes follows when it answers. The metro
             // and tram legs of the city networks with an open realtime feed are checked at the same time.
-            val live = coroutineScope {
-                val trains = async { liveLookup?.takeIf { result.options.any { it.option.transfers > 0 } }?.lookup(result.options).orEmpty() }
-                val urban = async { urbanLiveLookup?.takeIf { it.wants(result.options) }?.lookup(result.options).orEmpty() }
-                trains.await() + urban.await()
-            }
+            val lookupStartedAt = now()
+            liveLookupStartedAt = lookupStartedAt
+            val live = lookupLive(result.options)
             if (generation != searchGeneration || live.isEmpty()) return@launch
-            mutableState.update { current ->
-                current.copy(liveLegs = live, presentation = JourneyResultsPresenter.present(result, current.filter, live = live))
-            }
+            publishLive(live, lookupStartedAt)
         }
     }
 

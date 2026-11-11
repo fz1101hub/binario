@@ -86,9 +86,12 @@ internal object AppNavigation {
     fun showsNavigation(screen: AppScreen, widthClass: WidthClass): Boolean =
         widthClass != WidthClass.COMPACT || screen !in DETAIL_SCREENS
 
-    /** Screens whose rail data is refreshed every 30 seconds while visible. */
+    /**
+     * Screens whose rail data is refreshed every 30 seconds while visible. The journey detail refreshes the live
+     * times of its legs, which decide «Coincidenza a rischio».
+     */
     fun refreshesPeriodically(screen: AppScreen): Boolean =
-        screen in setOf(AppScreen.RESULTS, AppScreen.NUMBER_RESULTS, AppScreen.DETAIL, AppScreen.DEPARTURES)
+        screen in setOf(AppScreen.RESULTS, AppScreen.NUMBER_RESULTS, AppScreen.DETAIL, AppScreen.DEPARTURES, AppScreen.JOURNEY_DETAIL)
 
     /**
      * From 840 dp lists and detail sit side by side: the list screen kept on the left, or null for a

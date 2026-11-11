@@ -291,7 +291,13 @@ internal fun BinarioApp(
                         viewModel.searchTrainNumber(refresh = true)
                     } else if (screen == AppScreen.DEPARTURES && operationsSectionName == OperationsSection.STATIONS.name) {
                         viewModel.refreshStationBoardIfIdle()
-                    } else viewModel.refreshLiveIfIdle()
+                    } else if (screen == AppScreen.JOURNEY_DETAIL) {
+                        // The journey on screen: its legs' live times and its changes follow the trains.
+                        journeyViewModel.refreshLive(selectedJourneyId)
+                    } else {
+                        viewModel.refreshLiveIfIdle()
+                        if (screen == AppScreen.RESULTS) journeyViewModel.refreshLive()
+                    }
                 }
             }
         }
@@ -800,11 +806,17 @@ internal fun BinarioApp(
             AppScreen.FOR_YOU -> IconButton(onClick = { showScreen(AppScreen.SETTINGS) }, modifier = Modifier.testTag("top-bar-settings")) {
                 Icon(Icons.Default.Settings, contentDescription = stringResource(R.string.settings_title))
             }
-            AppScreen.DEPARTURES, AppScreen.RESULTS, AppScreen.NUMBER_RESULTS -> IconButton(onClick = {
+            AppScreen.DEPARTURES, AppScreen.RESULTS, AppScreen.NUMBER_RESULTS, AppScreen.JOURNEY_DETAIL -> IconButton(onClick = {
                 if (screen == AppScreen.NUMBER_RESULTS) viewModel.searchTrainNumber(refresh = true)
                 else if (screen == AppScreen.DEPARTURES && operationsSection == OperationsSection.STATIONS) {
                     viewModel.refreshStationBoardIfIdle()
-                } else viewModel.refresh()
+                } else if (screen == AppScreen.JOURNEY_DETAIL) {
+                    journeyViewModel.refreshLive(selectedJourneyId, force = true)
+                } else {
+                    viewModel.refresh()
+                    // The journeys with changes listed with the direct trains: their live legs too.
+                    if (screen == AppScreen.RESULTS) journeyViewModel.refreshLive(force = true)
+                }
             }) {
                 Icon(Icons.Default.Refresh, contentDescription = stringResource(R.string.action_refresh_rail_information))
             }
@@ -832,7 +844,7 @@ internal fun BinarioApp(
                     }
                 }
             }
-            AppScreen.AGENDA, AppScreen.SETTINGS, AppScreen.SETTINGS_SECTION, AppScreen.JOURNEY_DETAIL, AppScreen.SAVED_TIMETABLE -> Unit
+            AppScreen.AGENDA, AppScreen.SETTINGS, AppScreen.SETTINGS_SECTION, AppScreen.SAVED_TIMETABLE -> Unit
         }
     }
 

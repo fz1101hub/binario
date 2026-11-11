@@ -145,6 +145,7 @@ class AppNavigationTest {
         assertFalse(AppNavigation.refreshesPeriodically(AppScreen.FOR_YOU))
         assertFalse(AppNavigation.refreshesPeriodically(AppScreen.AGENDA))
         assertFalse(AppNavigation.refreshesPeriodically(AppScreen.SETTINGS))
-        assertFalse(AppNavigation.refreshesPeriodically(AppScreen.JOURNEY_DETAIL))
+        // The legs of a journey with changes keep their live times and «Coincidenza a rischio» up to date.
+        assertTrue(AppNavigation.refreshesPeriodically(AppScreen.JOURNEY_DETAIL))
     }
 }
