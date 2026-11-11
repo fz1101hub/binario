@@ -26,4 +26,12 @@ internal object RouteStateRules {
     ): SavedRoute =
         if (routeChosenInSession) routes.firstOrNull { it.id == current.id } ?: canonical(current)
         else storedActiveRoute(routes, storedId)
+
+    /**
+     * The active route after a saved route was pinned or unpinned ([routes] is the new list): the same route, in its
+     * new form when it is a saved one. A route that is not saved (a search in Pianifica, a widget's route) stays as
+     * it is: pinning another route is not a reason to forget it.
+     */
+    fun activeRouteAfterPin(current: SavedRoute, routes: List<SavedRoute>): SavedRoute =
+        routes.firstOrNull { it.id == current.id } ?: current
 }

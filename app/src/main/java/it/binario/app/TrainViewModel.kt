@@ -829,7 +829,7 @@ class TrainViewModel @JvmOverloads constructor(
         }
         savedRoutes = pinnedFirst(updated)
         routeStore.saveRoutes(savedRoutes)
-        activeRoute = savedRoutes.firstOrNull { it.id == activeRoute.id } ?: unconfiguredRoute()
+        activeRoute = RouteStateRules.activeRouteAfterPin(activeRoute, savedRoutes)
     }
 
     fun canMoveRoute(route: SavedRoute, delta: Int): Boolean =

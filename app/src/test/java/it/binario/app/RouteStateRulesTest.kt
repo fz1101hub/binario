@@ -46,4 +46,15 @@ class RouteStateRulesTest {
             RouteStateRules.activeRouteAfterCatalogue(unconfiguredRoute(), emptyList(), "A", routeChosenInSession = false) { it }.id
         )
     }
+
+    @Test fun `pinning a route keeps an unsaved search active`() {
+        // Milano → Roma searched in Pianifica (not saved), then «Casa – Lavoro» pinned in Per te.
+        val searched = route(searchedRouteId(station("milano"), station("roma")), "milano", "roma")
+        val pinned = listOf(imported.copy(isPinned = true), created)
+        assertSame(searched, RouteStateRules.activeRouteAfterPin(searched, pinned))
+        // The active saved route takes its new form (the pin).
+        assertEquals(true, RouteStateRules.activeRouteAfterPin(imported, pinned).isPinned)
+        // The placeholder stays the placeholder.
+        assertEquals(UNCONFIGURED_ROUTE_ID, RouteStateRules.activeRouteAfterPin(unconfiguredRoute(), pinned).id)
+    }
 }
