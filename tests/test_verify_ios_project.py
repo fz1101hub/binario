@@ -385,6 +385,43 @@ class IOSProjectTests(unittest.TestCase):
                 "NSPrivacyAccessedAPITypeReasons": ["1C8F.1"],
             }], manifest["NSPrivacyAccessedAPITypes"])
 
+    def test_sources_use_no_required_reason_api_the_privacy_manifests_do_not_declare(self) -> None:
+        """Apple refuses an upload whose binary uses a required-reason API missing from the privacy manifest
+        (ITMS-91053). The manifests declare UserDefaults only, so the shipped Swift sources must not touch the
+        other categories: system boot time, file timestamps, disk space, active keyboards."""
+        categories = {
+            "NSPrivacyAccessedAPICategorySystemBootTime": r"\bsystemUptime\b|\bmach_absolute_time\b",
+            "NSPrivacyAccessedAPICategoryFileTimestamp": (
+                r"\bcreationDate\b|\bmodificationDate\b|\bcontentModificationDate(Key)?\b|\bcreationDateKey\b"
+                r"|\bfileModificationDate\b|\bgetattrlist(bulk)?\b|\b[fl]?stat\("
+            ),
+            "NSPrivacyAccessedAPICategoryDiskSpace": (
+                r"\bvolumeAvailableCapacity\w*|\bvolumeTotalCapacity\w*|\bsystemFreeSize\b|\bsystemSize\b"
+                r"|\bstatv?fs\("
+            ),
+            "NSPrivacyAccessedAPICategoryActiveKeyboards": r"\bactiveInputModes\b",
+        }
+        sources = [
+            path for base in (IOS / "BinarioKit/Sources", IOS / "BinarioApp", ROOT / "apple-watch")
+            for path in base.rglob("*.swift")
+            if ".build" not in path.parts and "Tests" not in path.name and not any(part.endswith("Tests") for part in path.parts)
+        ]
+        self.assertGreater(len(sources), 40)
+        declared = {
+            entry["NSPrivacyAccessedAPIType"]
+            for relative in ("ios/Resources/PrivacyInfo.xcprivacy", "apple-watch/BinarioWatch/PrivacyInfo.xcprivacy",
+                             "apple-watch/BinarioWatchWidgets/PrivacyInfo.xcprivacy")
+            for entry in privacy_manifest(ROOT / relative)["NSPrivacyAccessedAPITypes"]
+        }
+        problems = []
+        for path in sources:
+            # Comments may name an API to explain why it is not used.
+            code = "\n".join(line.split("//", 1)[0] for line in path.read_text(encoding="utf-8").splitlines())
+            for category, pattern in categories.items():
+                if category not in declared and re.search(pattern, code):
+                    problems.append(f"{path.relative_to(ROOT)}: {category}")
+        self.assertEqual([], problems)
+
     def test_no_forbidden_capability_or_network_declaration_is_present(self) -> None:
         paths = [
             path for path in IOS.rglob("*")
