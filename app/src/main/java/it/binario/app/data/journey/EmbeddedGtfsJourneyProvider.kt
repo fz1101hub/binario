@@ -1562,7 +1562,9 @@ class EmbeddedGtfsJourneyProvider internal constructor(
                 serviceDate = day.serviceDate,
                 wheelchair = wheelchair,
                 bikesAllowed = bikesOnBoard(bikes),
-                continuations = continuations
+                continuations = continuations,
+                // What the scan asked for a change at the boarding point, so the live check of the change asks the same.
+                changeMinutes = graph.timetable.transferMinutes[graph.timetable.departureNode[leg.boardConnection]]
             )
         }
         fun walk(from: Pair<StationId, String>, to: Pair<StationId, String>, startMinute: Int, minutes: Int, fromAccessible: Boolean, toAccessible: Boolean) = JourneyLeg(

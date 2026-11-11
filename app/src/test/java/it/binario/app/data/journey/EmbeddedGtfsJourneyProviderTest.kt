@@ -110,8 +110,11 @@ class EmbeddedGtfsJourneyProviderTest {
 
         val hub = provider(mapOf(pack() to feed(trips)), GtfsJourneyPlannerSettings(largeHubRailwayCodes = setOf(beta.railwayCode!!)))
         // Beta as a large hub needs 10 minutes: only the 09:00 can be reached.
-        assertEquals("200 Alfa 08:10-08:40 Beta | 700 Beta 09:00-09:30 Epsilon",
-            options(hub.searchJourneys(request(alfa, epsilon))).single().summary())
+        val atHub = options(hub.searchJourneys(request(alfa, epsilon))).single()
+        assertEquals("200 Alfa 08:10-08:40 Beta | 700 Beta 09:00-09:30 Epsilon", atHub.summary())
+        // Each leg says the change time of the station where it is boarded, for the live check of the change.
+        assertEquals(listOf(5, 10), atHub.legs.map { it.changeMinutes })
+        assertEquals(listOf(5, 5), options(ordinary.searchJourneys(request(alfa, epsilon))).single().legs.map { it.changeMinutes })
 
         val strict = provider(mapOf(pack() to feed(trips)), GtfsJourneyPlannerSettings(defaultTransferMinutes = 21, largeHubRailwayCodes = emptySet()))
         assertTrue(options(strict.searchJourneys(request(alfa, epsilon))).isEmpty())

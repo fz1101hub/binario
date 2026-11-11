@@ -82,6 +82,24 @@ class TransferRiskTest {
         assertNull(TransferRiskCalculator.assessChange(legs, 0, live))
     }
 
+    @Test fun `a change at a large hub is checked with the ten minutes the planner required there`() {
+        // Bologna Centrale: planned with 12 minutes; the first train arrives 6 minutes late and leaves 6 minutes.
+        val arriving = leg("9515", "Milano Centrale", "Bologna Centrale", "08:00", "09:00")
+        val leaving = leg("2069", "Bologna Centrale", "Rimini", "09:12", "10:30")
+        val live = mapOf(TransferRiskCalculator.legKey(arriving) to JourneyLegLive(expectedArrival = at("09:06")))
+        val hub = TransferRiskCalculator.assessChange(listOf(arriving, leaving.copy(changeMinutes = 10)), 1, live)!!
+        assertEquals(TransferRiskLevel.AT_RISK, hub.level)
+        assertEquals(-4, hub.marginMinutes)
+        // An ordinary station (five minutes), or a source that does not say: confirmed, as before.
+        assertEquals(TransferRiskLevel.OK, TransferRiskCalculator.assessChange(listOf(arriving, leaving.copy(changeMinutes = 5)), 1, live)!!.level)
+        assertEquals(TransferRiskLevel.OK, TransferRiskCalculator.assessChange(listOf(arriving, leaving), 1, live)!!.level)
+        // On time, the hub's ten minutes are met by the twelve planned.
+        val onTime = mapOf(TransferRiskCalculator.legKey(arriving) to JourneyLegLive(expectedArrival = at("09:00")))
+        assertEquals(TransferRiskLevel.OK, TransferRiskCalculator.assessChange(listOf(arriving, leaving.copy(changeMinutes = 10)), 1, onTime)!!.level)
+        // The change time is never more than the wait the planner accepted.
+        assertEquals(Duration.ofMinutes(8), TransferRiskCalculator.defaultTransfer(Duration.ofMinutes(8), 10))
+    }
+
     @Test fun `the presenter puts the risk on the change and on the row only with live data`() {
         val first = leg("2153", "Milano Centrale", "Monza", "08:30", "08:50", run = "trenord:2153")
         val second = leg("5521", "Monza", "Lecco", "08:58", "09:40", run = "trenord:5521")
