@@ -1,6 +1,7 @@
 package it.binario.app.ui
 
 import it.binario.app.BinarioDeepLink
+import it.binario.app.PeriodicRefresh
 import it.binario.app.ui.departures.OperationsSection
 import it.binario.app.ui.planner.SearchMode
 
@@ -90,8 +91,21 @@ internal object AppNavigation {
      * Screens whose rail data is refreshed every 30 seconds while visible. The journey detail refreshes the live
      * times of its legs, which decide «Coincidenza a rischio».
      */
-    fun refreshesPeriodically(screen: AppScreen): Boolean =
-        screen in setOf(AppScreen.RESULTS, AppScreen.NUMBER_RESULTS, AppScreen.DETAIL, AppScreen.DEPARTURES, AppScreen.JOURNEY_DETAIL)
+    fun refreshesPeriodically(screen: AppScreen): Boolean = periodicRefreshOf(screen, stationsSection = false) != null
+
+    /**
+     * What [screen] refreshes while visible, or null. The periodic loop is keyed on this and not on the screen, so
+     * moving between two screens that refresh the same data (Partenze and a train detail) does not restart its wait.
+     */
+    fun periodicRefreshOf(screen: AppScreen, stationsSection: Boolean): PeriodicRefresh? = when (screen) {
+        AppScreen.RESULTS -> PeriodicRefresh.ROUTE_AND_JOURNEYS
+        AppScreen.JOURNEY_DETAIL -> PeriodicRefresh.JOURNEY
+        AppScreen.NUMBER_RESULTS -> PeriodicRefresh.TRAIN_NUMBER
+        AppScreen.DEPARTURES -> if (stationsSection) PeriodicRefresh.STATION_BOARD else PeriodicRefresh.ROUTE
+        AppScreen.DETAIL -> PeriodicRefresh.ROUTE
+        AppScreen.PLANNER, AppScreen.FOR_YOU, AppScreen.AGENDA, AppScreen.SETTINGS, AppScreen.SETTINGS_SECTION,
+        AppScreen.SAVED_TIMETABLE -> null
+    }
 
     /**
      * From 840 dp lists and detail sit side by side: the list screen kept on the left, or null for a

@@ -1,6 +1,7 @@
 package it.binario.app.ui
 
 import it.binario.app.BinarioDeepLink
+import it.binario.app.PeriodicRefresh
 import it.binario.app.data.Direction
 import it.binario.app.data.SavedRoute
 import it.binario.app.data.Station
@@ -147,5 +148,19 @@ class AppNavigationTest {
         assertFalse(AppNavigation.refreshesPeriodically(AppScreen.SETTINGS))
         // The legs of a journey with changes keep their live times and «Coincidenza a rischio» up to date.
         assertTrue(AppNavigation.refreshesPeriodically(AppScreen.JOURNEY_DETAIL))
+    }
+
+    @Test
+    fun `the periodic refresh follows what the screen shows, not the screen`() {
+        // Partenze and a train detail refresh the same trains: moving between them keeps the same loop.
+        assertEquals(PeriodicRefresh.ROUTE, AppNavigation.periodicRefreshOf(AppScreen.DEPARTURES, stationsSection = false))
+        assertEquals(PeriodicRefresh.ROUTE, AppNavigation.periodicRefreshOf(AppScreen.DETAIL, stationsSection = false))
+        assertEquals(PeriodicRefresh.ROUTE, AppNavigation.periodicRefreshOf(AppScreen.DETAIL, stationsSection = true))
+        assertEquals(PeriodicRefresh.STATION_BOARD, AppNavigation.periodicRefreshOf(AppScreen.DEPARTURES, stationsSection = true))
+        assertEquals(PeriodicRefresh.ROUTE_AND_JOURNEYS, AppNavigation.periodicRefreshOf(AppScreen.RESULTS, stationsSection = false))
+        assertEquals(PeriodicRefresh.JOURNEY, AppNavigation.periodicRefreshOf(AppScreen.JOURNEY_DETAIL, stationsSection = false))
+        assertEquals(PeriodicRefresh.TRAIN_NUMBER, AppNavigation.periodicRefreshOf(AppScreen.NUMBER_RESULTS, stationsSection = true))
+        assertNull(AppNavigation.periodicRefreshOf(AppScreen.PLANNER, stationsSection = true))
+        assertNull(AppNavigation.periodicRefreshOf(AppScreen.SAVED_TIMETABLE, stationsSection = false))
     }
 }

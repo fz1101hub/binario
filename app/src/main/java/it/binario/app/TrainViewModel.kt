@@ -216,6 +216,17 @@ class TrainViewModel @JvmOverloads constructor(
     private var returnRefreshRequestId: Long = 0L
     /** Independent station-board token; changing station/kind invalidates older responses. */
     private var stationBoardRequestId: Long = 0L
+    /**
+     * When the last request of each kind of visible data started ([refreshClock]); null before the first. The periodic
+     * refresh asks again 30 seconds after these, not 30 seconds after the screen appeared ([refreshIfDue]).
+     */
+    private var routeRequestedAtMillis: Long? = null
+    private var returnRequestedAtMillis: Long? = null
+    private var trainNumberRequestedAtMillis: Long? = null
+    private var stationBoardRequestedAtMillis: Long? = null
+    /** The catalogue has been applied and the bootstrap refresh decided: the periodic refresh may ask for the route. */
+    private var bootstrapCompleted = false
+    private fun refreshClock(): Long = android.os.SystemClock.elapsedRealtime()
 
     init {
         if (enableStartupEffects) {
@@ -276,6 +287,7 @@ class TrainViewModel @JvmOverloads constructor(
                 // If no user-driven refresh started while the catalog was loading, perform
                 // the one bootstrap refresh now (also when the catalog load failed/was empty).
                 if (enableStartupEffects && refreshRequestId == 0L && hasActiveRoute) refresh()
+                bootstrapCompleted = true
             }
         }
     }
@@ -424,6 +436,7 @@ class TrainViewModel @JvmOverloads constructor(
         }
         stationBoardStation = canonical
         stationBoardKind = kind
+        stationBoardRequestedAtMillis = refreshClock()
         stationBoardRefreshState = RefreshState.LOADING
         stationBoardMessages = emptyList()
         stationBoardJob = viewModelScope.launch {
@@ -704,6 +717,7 @@ class TrainViewModel @JvmOverloads constructor(
             }
         }
         trainNumberSearchDate = query.date
+        trainNumberRequestedAtMillis = refreshClock()
         val retainedMatches = trainNumberMatches
         trainNumberSearchState = RefreshState.LOADING
         trainNumberUnavailableSources = emptySet()
@@ -861,6 +875,7 @@ class TrainViewModel @JvmOverloads constructor(
         val publishesCurrentDepartures = journeyQueryState.followsCurrentTime
         val publishesToWear = publishesCurrentDepartures && !activeRouteIsSearch
         val requestId = ++refreshRequestId
+        routeRequestedAtMillis = refreshClock()
         viewModelScope.launch {
             val result = observeRouteShowingProgress(routeAtRequest, directionAtRequest, queryAtRequest, { requestId == refreshRequestId }) { early ->
                 primarySnapshot = early
@@ -951,6 +966,36 @@ class TrainViewModel @JvmOverloads constructor(
         }
     }
 
+    /**
+     * The periodic refresh of the screen on show ([target]), run when the screen appears, when the app returns to the
+     * foreground and then at every wait it returns (milliseconds). The data is asked for again only when its last
+     * request started 30 seconds ago or more: a return after a long pause refreshes at once instead of showing old
+     * delays and platforms for 30 seconds, while moving between screens never asks more often than every 30 seconds.
+     */
+    internal fun refreshIfDue(target: PeriodicRefresh, nowMillis: Long = refreshClock()): Long {
+        val requestedAt = when (target) {
+            PeriodicRefresh.JOURNEY -> return LiveRefreshCadence.INTERVAL_MILLIS
+            PeriodicRefresh.STATION_BOARD -> stationBoardRequestedAtMillis
+            // Nothing was searched in this process yet (a restored screen searches by itself).
+            PeriodicRefresh.TRAIN_NUMBER -> trainNumberRequestedAtMillis ?: return LiveRefreshCadence.INTERVAL_MILLIS
+            PeriodicRefresh.ROUTE, PeriodicRefresh.ROUTE_AND_JOURNEYS -> when {
+                selectedGlobalTrainId != null -> trainNumberRequestedAtMillis
+                // The first request belongs to the bootstrap, after the catalogue has canonicalized the saved route.
+                !bootstrapCompleted -> return LiveRefreshCadence.INTERVAL_MILLIS
+                selectedServiceDirection == Direction.RETURN && returnJourneyQuery != null -> returnRequestedAtMillis
+                else -> routeRequestedAtMillis
+            }
+        }
+        if (!LiveRefreshCadence.isDue(requestedAt, nowMillis)) return LiveRefreshCadence.waitMillis(requestedAt, nowMillis)
+        when (target) {
+            PeriodicRefresh.STATION_BOARD -> refreshStationBoardIfIdle()
+            PeriodicRefresh.TRAIN_NUMBER -> searchTrainNumber(refresh = true)
+            PeriodicRefresh.ROUTE, PeriodicRefresh.ROUTE_AND_JOURNEYS -> refreshLiveIfIdle()
+            PeriodicRefresh.JOURNEY -> Unit
+        }
+        return LiveRefreshCadence.INTERVAL_MILLIS
+    }
+
     fun refreshSelectedService() {
         if (selectedServiceDirection == Direction.RETURN && returnJourneyQuery != null) {
             refreshReturn()
@@ -969,6 +1014,7 @@ class TrainViewModel @JvmOverloads constructor(
         returnRefreshMessage = null
         val routeAtRequest = activeRoute
         val requestId = ++returnRefreshRequestId
+        returnRequestedAtMillis = refreshClock()
         viewModelScope.launch {
             val result = observeRouteShowingProgress(routeAtRequest, Direction.RETURN, queryAtRequest,
                 { requestId == returnRefreshRequestId && returnJourneyQuery == queryAtRequest }) { early ->

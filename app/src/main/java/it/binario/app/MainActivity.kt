@@ -279,26 +279,19 @@ internal fun BinarioApp(
     var namingFavouriteTrain by rememberSaveable { mutableStateOf<String?>(null) }
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
-    LaunchedEffect(lifecycleOwner, screen, operationsSectionName) {
-        if (AppNavigation.refreshesPeriodically(screen)) {
-            lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                if (screen == AppScreen.DEPARTURES && operationsSectionName == OperationsSection.STATIONS.name) {
-                    viewModel.refreshStationBoardIfIdle()
-                }
-                while (true) {
-                    delay(30_000)
-                    if (screen == AppScreen.NUMBER_RESULTS) {
-                        viewModel.searchTrainNumber(refresh = true)
-                    } else if (screen == AppScreen.DEPARTURES && operationsSectionName == OperationsSection.STATIONS.name) {
-                        viewModel.refreshStationBoardIfIdle()
-                    } else if (screen == AppScreen.JOURNEY_DETAIL) {
-                        // The journey on screen: its legs' live times and its changes follow the trains.
-                        journeyViewModel.refreshLive(selectedJourneyId)
-                    } else {
-                        viewModel.refreshLiveIfIdle()
-                        if (screen == AppScreen.RESULTS) journeyViewModel.refreshLive()
-                    }
-                }
+    // Keyed on what is refreshed, not on the screen: Partenze and a train detail share one loop. Each pass refreshes
+    // at once what was asked for 30 seconds ago or more (the app back in the foreground, another screen) and then
+    // waits for the rest of the interval; the source caches (30 seconds) bound the requests as before.
+    val periodicRefresh = AppNavigation.periodicRefreshOf(screen, operationsSectionName == OperationsSection.STATIONS.name)
+    LaunchedEffect(lifecycleOwner, periodicRefresh) {
+        val target = periodicRefresh ?: return@LaunchedEffect
+        lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            while (true) {
+                val wait = viewModel.refreshIfDue(target)
+                // The live legs of the journeys with changes, at most once a minute: all those listed, or the one open.
+                if (target == PeriodicRefresh.ROUTE_AND_JOURNEYS) journeyViewModel.refreshLive()
+                if (target == PeriodicRefresh.JOURNEY) journeyViewModel.refreshLive(selectedJourneyId)
+                delay(wait)
             }
         }
     }
