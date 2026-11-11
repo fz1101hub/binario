@@ -120,7 +120,8 @@ object LocalDataBackupCodec {
             // Stations outside the catalogue (free text, search index) only exist in the backup.
             return embeddedStations[stationId]?.also { restoredStations[it.id] = it }
         }
-        val routes = root.optJSONArray("routes").orEmpty().mapNotNull { item ->
+        val listedRoutes = root.optJSONArray("routes").orEmpty()
+        val routes = listedRoutes.mapNotNull { item ->
             val objectValue = item as? JSONObject ?: return@mapNotNull null
             require(!isReservedRouteId(objectValue.optString("id"))) { "Il backup contiene un identificativo di tratta riservato." }
             val origin = station(objectValue.optString("originId")) ?: return@mapNotNull null
@@ -138,9 +139,9 @@ object LocalDataBackupCodec {
                 it.name.isNotBlank() &&
                 it.outwardOrigin != it.outwardDestination
         }.distinctBy { it.id }.take(32)
-        // Schema v1/v2 has always required at least one valid personal route. Keep rejecting
-        // route-less files rather than silently applying a partial backup with ambiguous intent.
-        require(routes.isNotEmpty()) { "Il backup non contiene tratte valide." }
+        // A file that lists routes of which none is valid stays refused: applying it would erase the routes of this
+        // device for a reason the user cannot see. A file that lists none is judged below, by what else it carries.
+        require(routes.isNotEmpty() || listedRoutes.isEmpty()) { "Il backup non contiene tratte valide." }
         val favouriteIds = root.optJSONArray("favouriteStationIds").orEmpty()
             .mapNotNull { (it as? String)?.let(::station)?.id }
             .toSet()
@@ -169,6 +170,13 @@ object LocalDataBackupCodec {
         val punctuality = root.optJSONArray("punctualityHistory")?.let(PunctualityHistory::fromJson)
         val savedTimetables = root.optJSONArray("savedTimetables")?.let(SavedTimetableCodec::fromJson)
         val travel = root.optJSONObject("travel")?.let(TravelPreferencesCodec::fromJson)
+        // «Esporta» writes a file for everyone, also for who never saved a route and keeps favourite trains and
+        // stations, saved timetables, a punctuality history or their own preferences: that file is a backup too.
+        // Only a file that carries nothing at all is refused.
+        val carriesSomethingElse = favouriteIds.isNotEmpty() || services.isNotEmpty() || stationMonitors.isNotEmpty() || alerts.isNotEmpty() ||
+            !punctuality.isNullOrEmpty() || !savedTimetables.isNullOrEmpty() || mobility != MobilityPreferences() ||
+            (travel != null && travel != JourneyPreferences())
+        require(routes.isNotEmpty() || carriesSomethingElse) { "Il backup non contiene dati da importare." }
         LocalDataBackup(
             routes, favouriteIds, services, stationMonitors, alerts, mobility, restoredStations.values.filter { it.id in usedIds },
             punctuality, savedTimetables, travel

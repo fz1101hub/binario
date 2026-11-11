@@ -182,6 +182,7 @@ class JourneySearchViewModelTest {
         val state = model.awaitChange(TransferRiskLevel.MISSED)
         assertEquals(setOf("2", "3"), lookups.toSet())
         assertTrue(state.liveLegs.values.any { it.expectedArrival == JourneyFixtures.monday.atTime(9, 5).atZone(zone).toInstant() })
+        model.awaitNotBusy()
     }
 
     @Test fun `the periodic refresh looks the trains up once a minute at most`() {
@@ -197,6 +198,7 @@ class JourneySearchViewModelTest {
         model.refreshLive()
         model.awaitChange(TransferRiskLevel.MISSED)
         assertEquals(setOf("2", "3"), lookups.toSet())
+        model.awaitNotBusy()
     }
 
     @Test fun `live times that cannot be confirmed are dropped after a few minutes`() {
@@ -215,6 +217,8 @@ class JourneySearchViewModelTest {
         // Dropped at once, before the lookup answers.
         assertTrue(model.state.value.liveLegs.isEmpty())
         assertEquals(TransferRiskLevel.UNKNOWN, model.state.value.presentation!!.rows.first { it.changes == 1 }.transfers.single().risk)
+        // The lookup that refresh started ends before the test does.
+        model.awaitNotBusy()
     }
 
     @Test fun `the journey on screen is looked up first and a new search forgets the earlier live legs`() {
