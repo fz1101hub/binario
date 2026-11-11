@@ -64,7 +64,7 @@ internal class HttpViaggiaTrenoStationFetcher : ViaggiaTrenoStationFetcher {
         connection.instanceFollowRedirects = false
         connection.setRequestProperty("Content-Type", "application/x-www-form-urlencoded; charset=UTF-8")
         connection.setRequestProperty("Accept", "text/html,application/xhtml+xml")
-        connection.setRequestProperty("User-Agent", "Binario/0.15 (personal rail information client)")
+        connection.setRequestProperty("User-Agent", BINARIO_PUBLIC_SOURCE_USER_AGENT)
         try {
             connection.outputStream.bufferedWriter(Charsets.UTF_8).use { it.write(form) }
             val status = connection.responseCode

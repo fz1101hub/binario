@@ -90,7 +90,7 @@ class GtfsArtifactDownloader(
             connection.readTimeout = readTimeoutMillis
             connection.requestMethod = "GET"
             connection.setRequestProperty("Accept", "application/zip, application/octet-stream;q=0.9")
-            connection.setRequestProperty("User-Agent", "Binario/0.20 data-pack importer")
+            connection.setRequestProperty("User-Agent", it.binario.app.data.live.BINARIO_PUBLIC_SOURCE_USER_AGENT)
             connection.connect()
 
             val responseCode = connection.responseCode

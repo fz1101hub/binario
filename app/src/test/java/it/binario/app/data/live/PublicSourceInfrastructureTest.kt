@@ -17,6 +17,21 @@ import org.junit.Assert.fail
 import org.junit.Test
 
 class PublicSourceInfrastructureTest {
+    /** Audit2 parity-docs-10: one honest User-Agent, with the version of the build and no stale or personal wording. */
+    @Test fun `the User-Agent names the app and the version of this build`() {
+        assertEquals("Binario/0.20.4 (Android; rail timetable app)", binarioUserAgent("0.20.4"))
+        assertEquals("Binario/1.0.0-rc1X-Injected1", binarioUserAgent(" 1.0.0-rc1\r\nX-Injected: 1 ").substringBefore(" "))
+        assertEquals("Binario/0 (Android; rail timetable app)", binarioUserAgent(""))
+        assertEquals(binarioUserAgent(it.binario.app.BuildConfig.VERSION_NAME), BINARIO_PUBLIC_SOURCE_USER_AGENT)
+        assertTrue(BINARIO_PUBLIC_SOURCE_USER_AGENT, Regex("Binario/[0-9][0-9A-Za-z.+_-]* \\(Android; rail timetable app\\)").matches(BINARIO_PUBLIC_SOURCE_USER_AGENT))
+        // No client of the app spells its own version or wording any more.
+        val literal = Regex("\"Binario/[0-9]")
+        val offenders = java.io.File("src/main/java").walkTopDown().filter { it.isFile && it.extension == "kt" }
+            .filter { literal.containsMatchIn(it.readText()) }.map { it.name }.toList()
+        assertTrue(java.io.File("src/main/java").isDirectory)
+        assertEquals(emptyList<String>(), offenders)
+    }
+
     private val clock = MutablePublicSourceClock(Instant.parse("2026-10-25T19:00:00Z"))
 
     @Test fun `fetcher sends the Binario user agent over HTTPS and closes the connection`() = runBlocking {

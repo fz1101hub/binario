@@ -1,5 +1,6 @@
 package it.binario.app.data.live
 
+import it.binario.app.BuildConfig
 import java.io.ByteArrayOutputStream
 import java.io.IOException
 import java.io.InputStream
@@ -10,8 +11,16 @@ import java.net.URL
 import java.util.Locale
 import kotlinx.coroutines.withTimeoutOrNull
 
-/** User-Agent shared by the public notice, board and weather clients, in the style of the other adapters. */
-internal const val BINARIO_PUBLIC_SOURCE_USER_AGENT = "Binario/0.20 (personal rail information client)"
+/**
+ * The one User-Agent of every request the Android app sends to a public source: the app by its name with the version
+ * of this build, never a browser's. The version comes from the build, so it cannot go stale, and the wording fits a
+ * build anyone can install (audit2 parity-docs-10).
+ */
+internal val BINARIO_PUBLIC_SOURCE_USER_AGENT: String = binarioUserAgent(BuildConfig.VERSION_NAME)
+
+/** «Binario/0.20.4 (Android; rail timetable app)»; only the characters of a version reach the header. */
+internal fun binarioUserAgent(versionName: String): String =
+    "Binario/${versionName.filter { it.isLetterOrDigit() && it.code < 128 || it in ".-+_" }.ifEmpty { "0" }} (Android; rail timetable app)"
 
 /**
  * A public source answered with a non-success HTTP status. Never retried by [ResilientSourceCache]; a [retryAfter]
