@@ -94,6 +94,14 @@ class EmbeddedGtfsRouteAdapter(
     /** Per code-publishing pack: catalogue station id → the pack's stop names bound to it by code. */
     private val codeNamesCache = HashMap<SourceId, Map<String, List<String>>>()
     private val numberCache = BoundedSingleFlightCache<List<TrainNumberMatch>>(40, 6 * 60 * 60_000L, clock)
+    /**
+     * The train numbers of each pack ([GtfsPackNumbers]), learnt by the first number lookup that reads the pack: every
+     * later lookup opens only the packs that have the number, instead of reading all of them again.
+     */
+    private val packNumbers = HashMap<SourceId, GtfsPackNumbers>()
+
+    /** Diagnostics for tests: the packs whose numbers are known. */
+    internal fun knownNumberPacksForTest(): Set<SourceId> = synchronized(packNumbers) { packNumbers.keys.toSet() }
 
     /** Diagnostica interna usata dal test di regressione a heap limitato. */
     internal fun compactIndexStats(): List<GtfsCompactIndexStats> = synchronized(indexCache) {
@@ -112,8 +120,16 @@ class EmbeddedGtfsRouteAdapter(
                 val source = RailSourceCatalog.byId(pack.sourceId) ?: continue
                 try {
                     val matches = numberCache.getOrLoad("${pack.sourceId.value}:${query.normalized}:${query.date}", cancelWhenUnused = true) {
+                        // A pack already read for another number says at once whether it has this one.
+                        val known = synchronized(packNumbers) { packNumbers[pack.sourceId] }
+                        if (known != null && !known.mayContain(query)) return@getOrLoad emptyList()
                         val bytes = assetBytes(pack.assetPath)
-                        val index = parse({ ByteArrayInputStream(bytes) }, query, pack.itineraryCopies)
+                        val numbers = if (known == null) GtfsPackNumbers.Builder() else null
+                        val index = parse({ ByteArrayInputStream(bytes) }, query, pack.itineraryCopies, numbers)
+                        if (numbers != null) {
+                            val learnt = numbers.build(query.date)
+                            synchronized(packNumbers) { packNumbers.putIfAbsent(pack.sourceId, learnt) }
+                        }
                         val now = clock()
                         index.servicesByNumber(pack.sourceId.value, query).map { service ->
                             TrainNumberMatch.create(service, source.displayName, DataConfidence.STATIC_ONLY, now, now + 12 * 60 * 60_000)
@@ -491,7 +507,13 @@ class EmbeddedGtfsRouteAdapter(
      * una tabella GTFS in List<Map<String, String>>: ogni riga viene consumata
      * subito e le sole colonne necessarie alla tratta sono mantenute in array.
      */
-    private fun parse(openStream: () -> InputStream, numberQuery: TrainNumberQuery? = null, itineraryCopies: Boolean = false): StaticGtfsIndex {
+    private fun parse(
+        openStream: () -> InputStream,
+        numberQuery: TrainNumberQuery? = null,
+        itineraryCopies: Boolean = false,
+        /** Collects the number of every trip of the pack, also of those [numberQuery] leaves out. */
+        numbers: GtfsPackNumbers.Builder? = null
+    ): StaticGtfsIndex {
         val index = StaticGtfsIndex(compactIndexLimits, itineraryCopies)
         // A copy of a train under another train's number is only told from the train itself next to the other trips
         // of the day: such a pack (a small one) is read whole even for one number.
@@ -501,7 +523,7 @@ class EmbeddedGtfsRouteAdapter(
                 "agency.txt" -> index.readAgencies(rows)
                 "stops.txt" -> index.readStops(rows)
                 "routes.txt" -> index.readRoutes(rows)
-                "trips.txt" -> index.readTrips(rows, tripFilter)
+                "trips.txt" -> index.readTrips(rows, tripFilter, numbers)
                 "calendar.txt" -> index.readCalendars(rows)
                 "calendar_dates.txt" -> index.readCalendarDates(rows)
             }
@@ -595,7 +617,7 @@ class EmbeddedGtfsRouteAdapter(
             }
         }
 
-        fun readTrips(rows: GtfsCsvRows, numberQuery: TrainNumberQuery? = null) {
+        fun readTrips(rows: GtfsCsvRows, numberQuery: TrainNumberQuery? = null, numbers: GtfsPackNumbers.Builder? = null) {
             val routeIndex = rows.header.indexOf("route_id")
             val serviceIndex = rows.header.indexOf("service_id")
             val tripIndex = rows.header.indexOf("trip_id")
@@ -614,7 +636,9 @@ class EmbeddedGtfsRouteAdapter(
                 val shortName = row.getOrNull(shortNameIndex)
                 // SNCF publishes the train number as trip_headsign; a destination name there is not a number.
                 val numericHeadsign = row.getOrNull(headsignIndex)?.trim()?.takeIf { it.isNotEmpty() && it.all(Char::isDigit) }
-                if (numberQuery != null && !numberQuery.matches(searchNumber(shortName, numericHeadsign, tripId))) return@forEachRow
+                val searched = searchNumber(shortName, numericHeadsign, tripId)
+                numbers?.add(searched)
+                if (numberQuery != null && !numberQuery.matches(searched)) return@forEachRow
                 val routeId = row.gtfsRawValue(routeIndex)
                 trips.configure(
                     tripId = tripId,

@@ -55,6 +55,42 @@ class EmbeddedGtfsRouteAdapterTest {
         assertEquals("Repeated lookup reuses both compact results", 2, reads)
     }
 
+    @Test fun `a pack already read for a number is opened again only when it has the number asked`() = runBlocking {
+        val packs = listOf(EmbeddedGtfsPack(SourceId("lombardia-trenord-gtfs"), "a"), EmbeddedGtfsPack(SourceId("ch-otd-gtfs"), "b"))
+        val feeds = mapOf("a" to feed(tripNumber = "RE_80 - 2581"), "b" to feed(tripNumber = "IC 9999"))
+        val opened = mutableListOf<String>()
+        val source = EmbeddedGtfsRouteAdapter(openAsset = { opened += it; ByteArrayInputStream(feeds.getValue(it)) }, packs = packs)
+        val date = LocalDate.of(2026, 9, 4)
+        suspend fun numbers(number: String) = source.searchByNumber(it.binario.app.data.repository.TrainNumberQuery(number, date)).map { it.service.number }
+        // The first lookup reads both packs and learns their numbers.
+        assertEquals(listOf("RE_80 - 2581"), numbers("2581"))
+        assertEquals(listOf("a", "b"), opened)
+        assertEquals(packs.map { it.sourceId }.toSet(), source.knownNumberPacksForTest())
+        // A number no pack has opens nothing; a number of the second pack opens that one only.
+        opened.clear()
+        assertTrue(numbers("1234").isEmpty())
+        assertTrue(opened.isEmpty())
+        assertEquals(listOf("IC 9999"), numbers("9999"))
+        assertEquals(listOf("b"), opened)
+        // Another spelling the search accepts still finds the train, again in its pack only.
+        opened.clear()
+        assertEquals(listOf("IC 9999"), numbers("ic 9999"))
+        assertEquals(listOf("RE_80 - 2581"), numbers("R 2581"))
+        assertEquals(listOf("b", "a"), opened)
+    }
+
+    @Test fun `the remembered numbers of a pack accept whatever the number search matches`() {
+        val date = LocalDate.of(2026, 9, 4)
+        val published = listOf("2581", "RE_11 - 2153", "S5 - 811A", "R1 - 10101", "EC 85", "REG 02581", "NJ 40235", "VE545", "IT::trip:77", "Italo 9939", "  9941 ")
+        val asked = published + listOf("2153", "811A", "10101", "85", "EC85", "ec 85", "02581", "40235", "545", "9939", "9941", "RE_11", "S5", "77", "258", "1", "FR 2581", "R 2153")
+        val numbers = GtfsPackNumbers.Builder().apply { published.forEach(::add) }.build(date)
+        for (number in asked) {
+            val query = it.binario.app.data.repository.TrainNumberQuery(number, date)
+            val matches = published.any(query::matches)
+            assertEquals("number '$number'", matches, numbers.mayContain(query))
+        }
+    }
+
     @Test fun `number lookup returns the complete run without a route or departure cutoff`() = runBlocking {
         val matches = adapter(feed()).searchByNumber(it.binario.app.data.repository.TrainNumberQuery("2581", LocalDate.of(2026, 9, 4)))
         val train = matches.single().service
