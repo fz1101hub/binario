@@ -25,7 +25,7 @@ L'helper verifica prima che la run sia un `workflow_dispatch` di `gtfs-assets-ci
 Cosa controllare prima del commit:
 
 1. **Tabella.** Le date devono andare avanti; un pack che perderebbe più di metà delle corse o dei passaggi in fermata, che terminerebbe prima di quello pubblicato, o la cui `lastServiceDate` cade più di un mese dopo l'ultimo giorno con almeno un quarto delle corse del giorno di punta (un feed che tiene viva una corsa al giorno per anni: EAV a novembre 2026) è `RIFIUTATO` e resta quello precedente: guardare la fonte e, solo se il cambiamento è reale (fine di un servizio, nuovo orario ridotto), rilanciare con `--accept <sourceId>`. `NON AGGIORNATO dal job` indica una fonte non raggiungibile o rifiutata dalla pipeline; `--skip <sourceId>` esclude un pack dall'applicazione.
-2. **Verifiche** tutte `ok`. Un `--check --min-valid-days 30` in errore vuol dire che un pack è sotto soglia: blocca le PR verso `stabilization/**`, `release-sign` e l'archivio iOS, non la CI ordinaria (che lo riporta come avviso).
+2. **Verifiche** tutte `ok`. Un `--check --min-valid-days 30` in errore vuol dire che un pack è sotto soglia: blocca le PR verso `stabilization/**`, `release-sign` e l'archivio iOS di una run avviata a mano, non la CI ordinaria (che lo riporta come avviso).
 3. **Test Android**: `EmbeddedGtfsAssetIntegrityTest` (date Kotlin), `EmbeddedGtfsJourneyRealPacksTest` ed `EmbeddedGtfsTransitPacksTest` (corse attese): aggiornare le attese solo se l'orario è davvero cambiato, mai per far passare un pack sospetto.
 4. **Commit** `data(gtfs): refresh timetables AAAA-MM-GG`, poi Android CI con le schermate di design (`-f 'inputs[capture_design_screens]=true'`) e Apple Watch CI se l'indice iOS è cambiato.
 

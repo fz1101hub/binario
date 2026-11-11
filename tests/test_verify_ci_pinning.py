@@ -238,7 +238,7 @@ class VerifyCiPinningTest(unittest.TestCase):
         gate = "      - name: Gate embedded GTFS freshness for at least 30 days\n"
         ungated = text.replace(gate + condition, gate, 1)
         self.assertNotEqual(text, ungated)
-        self.assertTrue(any("solo per le PR di stabilizzazione" in problem for problem in policy.workflow_problems(android, ungated, LOCK)))
+        self.assertTrue(any("android: il gate di freshness GTFS deve valere solo sui percorsi di release" in problem for problem in policy.workflow_problems(android, ungated, LOCK)))
         release_gate = gate + "        run: python3 tools/verify_embedded_assets.py --min-valid-days 30\n\n      - name: Decode"
         without_release_gate = text.replace(release_gate, "      - name: Decode", 1)
         self.assertNotEqual(text, without_release_gate)
@@ -253,6 +253,33 @@ class VerifyCiPinningTest(unittest.TestCase):
         )
         self.assertNotEqual(text, early)
         self.assertTrue(any("fuori dai percorsi di release" in problem for problem in policy.workflow_problems(gtfs, early, LOCK)))
+        # Second audit, ci-tests-build-1: the iPhone archive step applied the gate to every pull request and push, so
+        # from 30 days before the end of a timetable year the whole job would be red whatever the change.
+        apple = ROOT / ".github/workflows/apple-watch-ci.yml"
+        text = apple.read_text(encoding="utf-8")
+        gate = "      - name: Gate GTFS freshness of the iOS timetable index for at least 30 days\n"
+        condition = (
+            "        if: ${{ github.event_name == 'workflow_dispatch' || "
+            "(github.event_name == 'pull_request' && startsWith(github.base_ref, 'stabilization/')) }}\n"
+        )
+        self.assertEqual([], [problem for problem in policy.workflow_problems(apple, text, LOCK) if "freshness" in problem])
+        ungated = text.replace(gate + condition, gate, 1)
+        self.assertNotEqual(text, ungated)
+        self.assertTrue(any("ios: il gate di freshness GTFS deve valere solo sui percorsi di release" in problem for problem in policy.workflow_problems(apple, ungated, LOCK)))
+        inside_archive = text.replace(
+            '          test "$failures" -eq 0\n',
+            '          python3 ../tools/build_gtfs_packs.py --check --input-dir ../app/src/main/assets/gtfs --min-valid-days 30\n          test "$failures" -eq 0\n',
+            1,
+        )
+        self.assertNotEqual(text, inside_archive)
+        self.assertTrue(any("ios: il gate di freshness GTFS deve valere solo sui percorsi di release" in problem for problem in policy.workflow_problems(apple, inside_archive, LOCK)))
+        watch_job = text.replace(
+            "          python3 tools/verify_ci_pinning.py\n",
+            "          python3 tools/verify_ci_pinning.py\n          python3 tools/build_gtfs_packs.py --check --min-valid-days 30\n",
+            1,
+        )
+        self.assertNotEqual(text, watch_job)
+        self.assertTrue(any("watchos: gate di freshness GTFS fuori dai percorsi di release" in problem for problem in policy.workflow_problems(apple, watch_job, LOCK)))
 
     def test_permissions_run_expressions_credentials_and_push_policy_are_gated(self) -> None:
         # Audit A7-10 / proposal P4.
