@@ -3,7 +3,9 @@ package it.binario.app
 import android.content.Context
 import androidx.core.content.edit
 import it.binario.app.data.TrainService
+import it.binario.app.data.repository.TrainNumberQuery
 import java.text.Collator
+import java.time.LocalDate
 import java.time.LocalTime
 import java.util.Locale
 
@@ -156,7 +158,16 @@ object FavouriteTrainOrdering {
  */
 object FavouriteTrainMatcher {
     fun pick(services: List<TrainService>, monitor: ServiceMonitor): TrainService? {
-        val sameNumber = services.filter { it.number.equals(monitor.number, ignoreCase = true) }.ifEmpty { services }
+        val picked = among(services.filter { it.number.equals(monitor.number, ignoreCase = true) }.ifEmpty { services }, monitor)
+        if (picked == null || picked.operationalStatusVerified) return picked
+        // A favourite saved from a timetable row keeps the published label ("RE_11 - 2153") and a live source lists
+        // the same run as "2153": the live run of that number from the saved origin takes the place of the timetable row.
+        val query = TrainNumberQuery(monitor.number, LocalDate.MIN)
+        val live = services.filter { it.operationalStatusVerified && isFromOrigin(it, monitor) && query.matches(it.number) }
+        return among(live, monitor) ?: picked
+    }
+
+    private fun among(sameNumber: List<TrainService>, monitor: ServiceMonitor): TrainService? {
         if (sameNumber.size == 1) return sameNumber.single()
         val origin = normalize(monitor.origin)
         if (origin.isEmpty()) return null

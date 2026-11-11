@@ -107,6 +107,15 @@ internal suspend fun downloadItaloPublic(url: String, timeoutMillis: Long, openC
     ).get(url)
 
 /**
+ * What every Italo adapter of the app shares: the pause after a refusal of the Italo in Viaggio host (403, 429, 503
+ * with Retry-After). The station board and the number search ask the same host, so they stop together and a success
+ * of one cannot hide the pause of the other (audit fix-android-7).
+ */
+class ItaloRequests(clock: Clock = Clock.system(RailTime.defaultZone)) {
+    internal val refusals = PublicSourceRefusalGate(clock, "Italo")
+}
+
+/**
  * Tabellone pubblico Italo in Viaggio. Non utilizza area personale, vendita,
  * token BIG né endpoint delle app ufficiali. L'HTML dinamico è best-effort:
  * un risultato vuoto lascia che il repository prosegua con altri provider.
@@ -114,7 +123,8 @@ internal suspend fun downloadItaloPublic(url: String, timeoutMillis: Long, openC
 class ItaloPublicStationAdapter(
     private val fetcher: ItaloPublicStationFetcher = HttpItaloPublicStationFetcher(),
     private val clock: Clock = Clock.system(RailTime.defaultZone),
-    private val cacheTtlMillis: Long = 60_000L
+    private val cacheTtlMillis: Long = 60_000L,
+    requests: ItaloRequests = ItaloRequests(clock)
 ) : TrainDataSource, StationBoardProvider {
     override val descriptor = ProviderDescriptor(
         id = SourceId("italo-status"),
@@ -128,8 +138,9 @@ class ItaloPublicStationAdapter(
 
     private val mutex = Mutex()
     private val cache = mutableMapOf<String, CachedSnapshot>()
-    // A refusal (403, 429, 503 with Retry-After) pauses the source (audit android-data-5).
-    private val refusals = PublicSourceRefusalGate(clock, "Italo")
+    // A refusal (403, 429, 503 with Retry-After) pauses the host for every adapter that shares [ItaloRequests]
+    // (audit android-data-5, fix-android-7).
+    private val refusals = requests.refusals
 
     /** Catalogue and board parsing (Jsoup/JSON, up to a few MB) never run on the caller's thread, which can be Main. */
     override suspend fun getStationBoard(request: StationBoardRequest): ProviderResult<it.binario.app.data.core.StationBoard> =

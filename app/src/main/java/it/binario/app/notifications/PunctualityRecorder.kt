@@ -14,6 +14,7 @@ import it.binario.app.FavouriteTrainMatcher
 import it.binario.app.FavouriteTrainStore
 import it.binario.app.PunctualityHistory
 import it.binario.app.PunctualityHistoryStore
+import it.binario.app.PunctualityObservation
 import it.binario.app.ServiceMonitor
 import it.binario.app.data.RailTime
 import it.binario.app.data.TrainService
@@ -93,6 +94,14 @@ object PunctualityRecordingPlanner {
     /** True once the run has reached its last stop, or [AFTER_ARRIVAL] has passed since its scheduled arrival. */
     fun arrived(service: TrainService, scheduledArrival: Instant, now: Instant): Boolean =
         service.stops.lastOrNull()?.completed == true || !now.isBefore(scheduledArrival.plus(AFTER_ARRIVAL))
+
+    /**
+     * What the run [service] of the favourite [favouriteNumber] adds to the history for [date]: kept under the
+     * favourite's own number, where «I miei treni» reads it. The live source lists "2153" the train a timetable row,
+     * and the favourite saved from it, call "RE_11 - 2153".
+     */
+    fun observation(service: TrainService, favouriteNumber: String, date: LocalDate): PunctualityObservation? =
+        PunctualityHistory.observationOf(service, date)?.copy(trainNumber = PunctualityHistory.trainKey(favouriteNumber), serviceDate = date)
 }
 
 /** Per-train state of the recorder in local preferences (never in the backup: it is only a schedule). */
@@ -215,8 +224,8 @@ class PunctualityRecorderWorker(appContext: Context, params: WorkerParameters) :
                 store.save(if (learned != null && candidate.durationMinutes == null) updated.copy(attempts = 0, attemptDate = null, lastAttempt = null) else updated)
                 return@forEach
             }
-            PunctualityHistory.observationOf(service, date)?.let { observation ->
-                history.record(history.read(), listOf(observation.copy(serviceDate = date)))
+            PunctualityRecordingPlanner.observation(service, monitor.number, date)?.let { observation ->
+                history.record(history.read(), listOf(observation))
             }
             store.save(updated.copy(recordedOn = date))
         }
