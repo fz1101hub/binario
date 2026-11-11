@@ -260,15 +260,19 @@ class TrainViewModel @JvmOverloads constructor(
                     Log.e("BinarioCatalog", "Impossibile caricare il catalogo stazioni curato", error)
                 }
                 .getOrDefault(emptyList())
+            // The indexes of the whole catalogue are built here, off the main thread, and only assigned on it: built
+            // there, they froze the first screen right after it appeared at every cold start.
+            val built = if (imported.isNotEmpty()) StationIndexes.build(imported, customStationStore.stations()) else null
             withContext(Dispatchers.Main) {
                 val routeAtConstruction = activeRoute
-                if (imported.isNotEmpty()) {
-                    val legacyCustom = customStationStore.stations()
-                    val importedCanonicalizer = StationCanonicalizer(imported)
-                    val migratedCustom = legacyCustom.map(importedCanonicalizer::canonicalize)
-                    stations = imported + migratedCustom.filterNot { custom -> imported.any { it.id == custom.id } }
-                    stationAutocomplete = StationAutocompleteEngine(stations)
-                    stationCanonicalizer = StationCanonicalizer(stations)
+                if (built != null) {
+                    // A station remembered while they were being built (a search made at once) is rare: only then
+                    // are the indexes built again, here.
+                    val remembered = customStationStore.stations()
+                    val indexes = if (remembered == built.remembered) built else StationIndexes.build(imported, remembered)
+                    stations = indexes.stations
+                    stationAutocomplete = indexes.autocomplete
+                    stationCanonicalizer = indexes.canonicalizer
                     savedRoutes = pinnedFirst(routeStore.routes(stations).map(::canonicalRoute))
                     // Route widgets of the first versions saved only the route id: they take its stations now.
                     RouteWidgetProvider.migrateLegacyConfigurations(getApplication(), savedRoutes)
