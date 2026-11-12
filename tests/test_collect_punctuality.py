@@ -1119,7 +1119,7 @@ class EndToEndTest(Base):
         payload = stats.check_bytes(output_path.read_bytes())
         trains = {(train["n"], train["o"]): train for train in payload["trains"]}
         self.assertEqual({("2001", "S08235"), ("2003", "S08409"), ("2011", "S08409"), ("9558", "S08409")}, set(trains))
-        self.assertEqual({"n": "2003", "o": "S08409", "c": "REG", "d": 1, "x": 1, "s": []}, trains[("2003", "S08409")])
+        self.assertEqual({"n": "2003", "o": "S08409", "c": "REG", "d": 1, "x": 1, "l": 0, "s": []}, trains[("2003", "S08409")])
         self.assertEqual(["S08409", 1, 0.0, [1] * 8, 0, 0, 540, None, None], trains[("2011", "S08409")]["s"][0])
         self.assertEqual(["S08235", 1, 0.0, [1] * 8, 0, 0, 600, None, None], trains[("2011", "S08409")]["s"][1])  # 90 s early
         fr = trains[("9558", "S08409")]

@@ -9,11 +9,13 @@ number and origin::
 
     {"schema": "binario-punctuality-v1", "generatedAt": ..., "windowStart": ..., "windowEnd": ..., "windowDays": 30,
      "source": "ViaggiaTreno, elaborazione Binario (non ufficiale)", "buckets": [0, 2, 5, 10, 15, 20, 30, 60],
-     "trains": [{"n": "9558", "o": "S08409", "c": "FR", "d": 28, "x": 1,
+     "trains": [{"n": "9558", "o": "S08409", "c": "FR", "d": 28, "x": 1, "l": 0,
                  "s": [["S08409", 27, 0.8, [20, 24, 26, 27, 27, 27, 27, 27], 0, 7, 420, ["12", 20, 25],
                         [[4, 4, 4], [4, 4, 4], [4, 3, 4], [4, 4, 4], [4, 4, 4], [4, 4, 4], [3, 3, 3]]], ...]}]}
 
-``d`` days known, ``x`` of them fully cancelled; per stop (in run order, only stops with at least one sample):
+``d`` days known, ``x`` of them fully cancelled, ``l`` days from the most recent of them to ``windowEnd`` (0 = known
+on ``windowEnd``; a train no longer in the timetable keeps its statistics for the rest of the window, and ``l`` tells
+the readers so; optional, absent in files built before 12 November 2026); per stop (in run order, only stops with at least one sample):
 station code, samples (days the train ran and the stop was served with an actual time), mean delay in minutes with
 one decimal (early arrivals count as 0), cumulative counts of samples with delay <= each bucket (early arrivals are
 <= 0), days the stop was suppressed while the train ran, largest delay of the samples in whole minutes (early
@@ -85,6 +87,7 @@ RELEASE_MIN_COVERED_DAYS = 14
 RELEASE_MAX_AGE_DAYS = 14
 TOP_KEYS = frozenset({"schema", "generatedAt", "windowStart", "windowEnd", "windowDays", "source", "buckets", "trains"})
 TRAIN_KEYS = frozenset({"n", "o", "c", "d", "x", "s"})
+OPTIONAL_TRAIN_KEYS = frozenset({"l"})  # days from the train's most recent known day to windowEnd
 GENERATED_AT = re.compile(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z")
 ISO_DATE = re.compile(r"\d{4}-\d{2}-\d{2}")
 
@@ -132,8 +135,9 @@ def _negated_day(day: str) -> int:
     return -date.fromisoformat(day).toordinal()
 
 
-def aggregate(records: Iterable[Mapping[str, Any]]) -> list[dict[str, Any]]:
-    """One entry per train (number, origin) known on at least one day of ``records``."""
+def aggregate(records: Iterable[Mapping[str, Any]], window_end: date | None = None) -> list[dict[str, Any]]:
+    """One entry per train (number, origin) known on at least one day of ``records``; with ``window_end``, ``l`` is
+    the number of days from its most recent known day to ``window_end``."""
     groups: dict[tuple[str, str], dict[str, Mapping[str, Any]]] = {}
     for record in records:
         if record["st"] not in collector.KNOWN:
@@ -187,8 +191,11 @@ def aggregate(records: Iterable[Mapping[str, Any]]) -> list[dict[str, Any]]:
                                         max(0, max(delays)), minute, usual_platform(platforms.get(code, {})), by_weekday]))
         stops.sort(key=lambda item: (item[0], item[1]))
         category = min(categories, key=lambda name: (-categories[name], name))
-        trains.append({"n": number, "o": origin, "c": category, "d": len(days), "x": cancelled,
-                       "s": [stop for _, _, stop in stops]})
+        train = {"n": number, "o": origin, "c": category, "d": len(days), "x": cancelled,
+                 "s": [stop for _, _, stop in stops]}
+        if window_end is not None:
+            train["l"] = (window_end - date.fromisoformat(max(days))).days
+        trains.append(train)
     trains.sort(key=lambda train: (int(train["n"]), train["o"]))
     return trains
 
@@ -211,7 +218,7 @@ def build(state: Path, as_of: date, generated_at: datetime, counters: dict[str, 
         "windowDays": WINDOW_DAYS,
         "source": SOURCE,
         "buckets": list(BUCKETS),
-        "trains": aggregate(records),
+        "trains": aggregate(records, end),
     }
 
 
@@ -412,8 +419,8 @@ def check_payload(payload: object) -> list[str]:
     previous: tuple[int, str] | None = None
     for position, train in enumerate(trains):
         where = f"treno {position}"
-        if not isinstance(train, dict) or set(train) != TRAIN_KEYS:
-            problems.append(f"{where}: chiavi diverse da {sorted(TRAIN_KEYS)}")
+        if not isinstance(train, dict) or not TRAIN_KEYS <= set(train) <= TRAIN_KEYS | OPTIONAL_TRAIN_KEYS:
+            problems.append(f"{where}: chiavi diverse da {sorted(TRAIN_KEYS)} (più, facoltativa, {sorted(OPTIONAL_TRAIN_KEYS)})")
             continue
         number, origin, category = train["n"], train["o"], train["c"]
         if (
@@ -433,6 +440,9 @@ def check_payload(payload: object) -> list[str]:
         if not _is_int(known) or not 1 <= known <= days or not _is_int(cancelled) or not 0 <= cancelled <= known:
             problems.append(f"{where}: d o x fuori intervallo (1 <= d <= {days}, 0 <= x <= d)")
             continue
+        # Known on d distinct days of the window: the most recent is at most days - d before its end.
+        if "l" in train and (not _is_int(train["l"]) or not 0 <= train["l"] <= days - known):
+            problems.append(f"{where}: l fuori da 0..{days - known} (giorni dall'ultimo giorno noto a windowEnd)")
         stops = train["s"]
         if not isinstance(stops, list) or len(stops) > MAX_STOPS:
             problems.append(f"{where}: s non è un elenco di al più {MAX_STOPS} fermate")

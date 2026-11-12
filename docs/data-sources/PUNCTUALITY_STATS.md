@@ -71,14 +71,14 @@ Le osservazioni grezze (una riga JSON compatta per treno e giorno, per fermata `
 {"schema": "binario-punctuality-v1", "generatedAt": "2026-11-10T04:00:00Z",
  "windowStart": "2026-10-11", "windowEnd": "2026-11-09", "windowDays": 30,
  "source": "ViaggiaTreno, elaborazione Binario (non ufficiale)", "buckets": [0, 2, 5, 10, 15, 20, 30, 60],
- "trains": [{"n": "9558", "o": "S08409", "c": "FR", "d": 28, "x": 1,
+ "trains": [{"n": "9558", "o": "S08409", "c": "FR", "d": 28, "x": 1, "l": 0,
              "s": [["S08409", 27, 0.8, [20, 24, 26, 27, 27, 27, 27, 27], 0, 7, 420, ["12", 20, 25],
                     [[4, 4, 4], [4, 4, 4], [4, 3, 4], [4, 4, 4], [4, 4, 4], [4, 4, 4], [3, 3, 3]]],
                    ["S00219", 26, 4.6, [9, 14, 19, 23, 25, 26, 26, 26], 1, 18, 610, null,
                     [[4, 3, 4], [4, 3, 4], [4, 3, 4], [4, 3, 3], [4, 3, 4], [3, 2, 3], [3, 2, 3]]]]}]}
 ```
 
-- Un treno è identificato da numero `n` e origine `o` (stesso numero con origini diverse = treni diversi); i treni sono ordinati per numero e origine e compaiono se noti almeno un giorno. `c` è la categoria del pack, `d` i giorni noti (arrivato, cancellato o visto in viaggio e mai arrivato prima che ViaggiaTreno chiudesse il giorno), `x` quelli cancellati.
+- Un treno è identificato da numero `n` e origine `o` (stesso numero con origini diverse = treni diversi); i treni sono ordinati per numero e origine e compaiono se noti almeno un giorno. `c` è la categoria del pack, `d` i giorni noti (arrivato, cancellato o visto in viaggio e mai arrivato prima che ViaggiaTreno chiudesse il giorno), `x` quelli cancellati. `l` (dal 12 novembre 2026, facoltativo) è il numero di giorni fra l'ultimo giorno noto del treno e `windowEnd` (0 = noto proprio in quel giorno; al più `windowDays − d`): un treno tolto dall'orario conserva le statistiche per il resto della finestra, e `l` permette a chi legge di riconoscerlo (Alexa, alexa-3). Lo schema resta `binario-punctuality-v1`: Android, iPhone e Alexa ignorano le chiavi di treno che non conoscono, e un file senza `l` resta valido; `--check` accetta solo `l` oltre alle sei chiavi.
 - Per fermata, in ordine di corsa e solo con almeno un campione, `[codice, campioni, media, cumulati, soppressioni, ritardoMassimo, minutoProgrammato, binario, giorniSettimana]`:
   1. codice della stazione;
   2. campioni: giorni in cui il treno ha circolato e la fermata ha un orario reale;

@@ -185,6 +185,29 @@ class AggregateTest(unittest.TestCase):
                          [(train["n"], train["o"]) for train in trains])
         self.assertEqual("RV", trains[0]["c"])  # the category of most days
 
+    def test_each_train_says_how_long_before_the_window_end_it_was_last_known(self) -> None:
+        # alexa-3: a train dropped by a timetable change keeps 30 days of statistics; "l" (0 = known on windowEnd) lets
+        # a reader tell it apart from a train that still runs.
+        stops = [["S08409", 1, 0]]
+        records = [
+            record("2026-11-09", number="1", stops=stops), record("2026-11-01", number="1", stops=stops),
+            record("2026-11-02", number="2", stops=stops), record("2026-11-05", number="2", status="cancelled"),
+            record("2026-11-08", number="2", status="unknown"),  # not known: does not count
+            record("2026-10-11", number="3", status="partial", stops=stops),
+        ]
+        records[-1]["s"] = stops
+        trains = stats.aggregate(records, window_end=date(2026, 11, 9))
+        self.assertEqual({"1": 0, "2": 4, "3": 29}, {train["n"]: train["l"] for train in trains})
+        self.assertNotIn("l", stats.aggregate(records)[0])  # only with a window
+        temp = Path(tempfile.mkdtemp(prefix="punctuality-last-"))
+        self.addCleanup(shutil.rmtree, temp, ignore_errors=True)
+        state = collector.State(temp)
+        state.add(record("2026-11-07", stops=stops))
+        state.save(AS_OF)
+        payload = stats.build(temp, AS_OF, GENERATED)
+        self.assertEqual(2, payload["trains"][0]["l"])
+        self.assertEqual(payload, stats.check_bytes(stats.encode(payload)))
+
     def test_the_window_is_the_last_thirty_complete_days(self) -> None:
         self.assertEqual((date(2026, 10, 11), date(2026, 11, 9)), stats.window(AS_OF))
         temp = Path(tempfile.mkdtemp(prefix="punctuality-stats-"))
@@ -237,6 +260,22 @@ class EncodeAndCheckTest(unittest.TestCase):
         raw = gzip.decompress(data)
         self.assertTrue(raw.startswith(b'{"buckets":[0,2,5,10,15,20,30,60],"generatedAt":"2026-11-10T04:00:00Z"'))
         self.assertNotIn(b" ", raw.replace(stats.SOURCE.encode(), b""))
+
+    def test_check_accepts_the_optional_last_known_field_within_the_window(self) -> None:
+        for value in (0, 2):  # train 9558 is known on 28 days of 30: last known at most 2 days before windowEnd
+            payload = valid_payload()
+            payload["trains"][1]["l"] = value
+            self.assertEqual(payload, stats.check_bytes(stats.encode(payload)))
+        for value in (3, -1, 30, "0", True, None, 1.0):
+            with self.subTest(value=value):
+                payload = valid_payload()
+                payload["trains"][1]["l"] = value
+                with self.assertRaisesRegex(stats.CheckError, "l fuori"):
+                    stats.check_bytes(stats.encode(payload))
+        payload = valid_payload()
+        payload["trains"][1]["z"] = 0
+        with self.assertRaisesRegex(stats.CheckError, "chiavi diverse"):
+            stats.check_bytes(stats.encode(payload))
 
     def test_check_rejects_malformed_files(self) -> None:
         def mutate(change) -> bytes:
