@@ -211,6 +211,17 @@ internal object GpsArrivalAlarmPolicy {
         return age in 0..TIME_ALARM_RECENT_FIX_MILLIS
     }
 
+    /**
+     * Why a running alarm must end now, checked by the watchdog and when a location provider is switched off: expired,
+     * location permission lost, or location switched off (the time-based alarm stays). Null while it may go on.
+     */
+    fun runningEndReason(expired: Boolean, permissionHeld: Boolean, locationEnabled: Boolean): GpsArrivalAlarmEndReason? = when {
+        expired -> GpsArrivalAlarmEndReason.EXPIRED
+        !permissionHeld -> GpsArrivalAlarmEndReason.PERMISSION_REVOKED
+        !locationEnabled -> GpsArrivalAlarmEndReason.LOCATION_UNAVAILABLE
+        else -> null
+    }
+
     /** When the service must stop: two hours after the expected arrival, capped at eight hours from the start. */
     fun expiresAtEpochMillis(startedAtEpochMillis: Long, arrivalEpochMillis: Long): Long =
         min(arrivalEpochMillis + AFTER_ARRIVAL_MILLIS, startedAtEpochMillis + MAX_DURATION_MILLIS)

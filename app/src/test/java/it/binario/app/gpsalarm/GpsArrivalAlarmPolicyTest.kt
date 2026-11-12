@@ -283,4 +283,12 @@ class GpsArrivalAlarmPolicyTest {
         assertFalse(GpsArrivalAlarmPolicy.keepsRunningAfterTimeAlarm(now - 60_000L, 0.0, now))
         assertFalse(GpsArrivalAlarmPolicy.keepsRunningAfterTimeAlarm(now - 60_000L, Double.NaN, now))
     }
+
+    @Test
+    fun `location switched off on the way ends the gps alarm, after expiry and permission`() {
+        assertEquals(null, GpsArrivalAlarmPolicy.runningEndReason(expired = false, permissionHeld = true, locationEnabled = true))
+        assertEquals(GpsArrivalAlarmEndReason.LOCATION_UNAVAILABLE, GpsArrivalAlarmPolicy.runningEndReason(expired = false, permissionHeld = true, locationEnabled = false))
+        assertEquals(GpsArrivalAlarmEndReason.PERMISSION_REVOKED, GpsArrivalAlarmPolicy.runningEndReason(expired = false, permissionHeld = false, locationEnabled = false))
+        assertEquals(GpsArrivalAlarmEndReason.EXPIRED, GpsArrivalAlarmPolicy.runningEndReason(expired = true, permissionHeld = false, locationEnabled = false))
+    }
 }
