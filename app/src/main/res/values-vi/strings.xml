@@ -632,7 +632,7 @@
     <string name="stop_alarm_dialog_time">Báo thức sẽ reo khoảng năm phút trước giờ dự kiến %1$s.</string>
     <string name="action_set_stop_alarm">Đặt báo thức</string>
     <string name="gps_alarm_option">Cũng báo cho tôi theo vị trí</string>
-    <string name="gps_alarm_option_description">Reo khi bạn vào trong bán kính đã chọn quanh điểm dừng (reo ngay nếu bạn đã ở trong đó), kể cả khi tàu đến sớm hay trễ. Cảnh báo nào đến trước sẽ được tính.</string>
+    <string name="gps_alarm_option_description">Reo khi bạn vào trong bán kính đã chọn quanh điểm dừng (reo ngay nếu bạn đã ở trong đó), kể cả khi tàu đến sớm hay trễ. Nếu báo thức theo giờ reo khi vị trí của bạn cho thấy điểm dừng vẫn còn xa, báo thức GPS vẫn bật.</string>
     <string name="gps_alarm_radius_label">Bán kính cảnh báo</string>
     <plurals name="gps_alarm_radius_km">
         <item quantity="other">%d km</item>
@@ -663,7 +663,7 @@
     <string name="gps_alarm_ended_expired">Báo thức GPS cho %1$s đã kết thúc: đã hết thời gian tối đa.</string>
     <string name="gps_alarm_ended_permission">Báo thức GPS cho %1$s đã dừng: quyền vị trí không còn được cấp.</string>
     <string name="gps_alarm_ended_unavailable">Báo thức GPS cho %1$s đã dừng: không có nguồn vị trí nào trên điện thoại.</string>
-    <string name="gps_alarm_ended_time_alarm">Đã đóng báo thức GPS cho %1$s: báo thức theo giờ đã reo.</string>
+    <string name="gps_alarm_ended_time_alarm">Đã đóng báo thức GPS cho %1$s: báo thức theo giờ đã reo và không có vị trí gần đây.</string>
     <string name="gps_alarm_interrupted">Báo thức GPS cho %1$s đã bị gián đoạn, chẳng hạn sau khi khởi động lại điện thoại. Hãy bật lại nếu bạn vẫn đang trên đường.</string>
     <string name="action_gps_alarm_resume">Bật lại</string>
     <string name="action_gps_alarm_dismiss">Bỏ qua</string>

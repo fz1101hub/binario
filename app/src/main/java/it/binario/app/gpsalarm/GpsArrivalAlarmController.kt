@@ -36,9 +36,21 @@ internal object GpsArrivalAlarmRuntime {
     @Volatile
     private var pendingStopReason: GpsArrivalAlarmEndReason? = null
 
+    /** The last fix the running alarm accepted outside the radius: when, and how far from it (no position). */
+    @Volatile
+    private var lastFix: Pair<Long, Double>? = null
+
     fun markActive(target: GpsArrivalAlarmTarget, precise: Boolean) {
+        lastFix = null
         mutableState.value = GpsArrivalAlarmState.Active(target, precise)
     }
+
+    fun recordFix(atEpochMillis: Long, remainingMeters: Double) {
+        if (mutableState.value is GpsArrivalAlarmState.Active) lastFix = atEpochMillis to remainingMeters
+    }
+
+    /** When the running alarm last accepted a fix and how far outside the radius it was; null without one. */
+    fun lastFix(): Pair<Long, Double>? = lastFix.takeIf { mutableState.value is GpsArrivalAlarmState.Active }
 
     /** The latest progress of the running session; ignored once the session has ended. */
     fun updateTrack(track: GpsTrainTrack) {
@@ -50,6 +62,7 @@ internal object GpsArrivalAlarmRuntime {
     fun currentTrack(): GpsTrainTrack? = (mutableState.value as? GpsArrivalAlarmState.Active)?.track
 
     fun markEnded(target: GpsArrivalAlarmTarget?, reason: GpsArrivalAlarmEndReason) {
+        lastFix = null
         mutableState.value = GpsArrivalAlarmState.Ended(target, reason)
     }
 
@@ -147,15 +160,22 @@ internal object GpsArrivalAlarmController {
         context.stopService(Intent(context, GpsArrivalAlarmService::class.java))
     }
 
-    /** The time-based alarm for this stop rang first: the GPS part has nothing left to do. */
-    fun onTimeAlarmFired(context: Context, trainNumber: String, stopName: String) {
+    /**
+     * The time-based alarm for this stop rang first. It rings at the time read when it was set, so a recent fix still
+     * outside the radius (a late train) keeps the GPS alarm running, to ring near the stop; without one the GPS part
+     * stops. Both use the same notification, so the later ring replaces the earlier one.
+     */
+    fun onTimeAlarmFired(context: Context, trainNumber: String, stopName: String, nowEpochMillis: Long = System.currentTimeMillis()) {
         val active = (GpsArrivalAlarmRuntime.state.value as? GpsArrivalAlarmState.Active)?.target
         val store = GpsArrivalAlarmStore(context)
         val stored = store.activeTarget()
+        val fix = GpsArrivalAlarmRuntime.lastFix()
         when {
             // A position estimate is not an alarm: it goes on until shortly after the arrival, and
             // only an interrupted alarm stored for this stop is dropped.
             active?.isEstimate == true -> if (stored?.isFor(trainNumber, stopName) == true) store.clearActiveTarget()
+            active?.isFor(trainNumber, stopName) == true &&
+                GpsArrivalAlarmPolicy.keepsRunningAfterTimeAlarm(fix?.first, fix?.second, nowEpochMillis) -> Unit
             active?.isFor(trainNumber, stopName) == true || stored?.isFor(trainNumber, stopName) == true ->
                 stop(context, GpsArrivalAlarmEndReason.TIME_ALARM_FIRED)
         }

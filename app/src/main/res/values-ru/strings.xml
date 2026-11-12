@@ -663,7 +663,7 @@
     <string name="stop_alarm_dialog_time">Будильник сработает примерно за пять минут до ожидаемого времени %1$s.</string>
     <string name="action_set_stop_alarm">Установить будильник</string>
     <string name="gps_alarm_option">Также оповещать по местоположению</string>
-    <string name="gps_alarm_option_description">Срабатывает, когда вы оказываетесь в выбранном радиусе от остановки (сразу, если вы уже там), даже если поезд идёт с опережением или опаздывает. Действует оповещение, которое сработает первым.</string>
+    <string name="gps_alarm_option_description">Срабатывает, когда вы оказываетесь в выбранном радиусе от остановки (сразу, если вы уже там), даже если поезд идёт с опережением или опаздывает. Если будильник по времени сработает, когда по вашему положению остановка ещё далеко, GPS-будильник остаётся включённым.</string>
     <string name="gps_alarm_radius_label">Радиус оповещения</string>
     <plurals name="gps_alarm_radius_km">
         <item quantity="one">%d км</item>
@@ -700,7 +700,7 @@
     <string name="gps_alarm_ended_expired">GPS-будильник для %1$s завершён: истекло максимальное время.</string>
     <string name="gps_alarm_ended_permission">GPS-будильник для %1$s остановлен: доступ к местоположению больше не предоставлен.</string>
     <string name="gps_alarm_ended_unavailable">GPS-будильник для %1$s остановлен: на телефоне нет источника местоположения.</string>
-    <string name="gps_alarm_ended_time_alarm">GPS-будильник для %1$s закрыт: будильник по времени уже сработал.</string>
+    <string name="gps_alarm_ended_time_alarm">GPS-будильник для %1$s закрыт: сработал будильник по времени, а свежего местоположения не было.</string>
     <string name="gps_alarm_interrupted">GPS-будильник для %1$s прервался, например после перезагрузки телефона. Включите его снова, если вы ещё в пути.</string>
     <string name="action_gps_alarm_resume">Включить снова</string>
     <string name="action_gps_alarm_dismiss">Пропустить</string>

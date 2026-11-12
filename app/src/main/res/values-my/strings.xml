@@ -618,7 +618,7 @@
     <string name="stop_alarm_dialog_time">နှိုးစက်သည် ခန့်မှန်းချိန် %1$s မတိုင်မီ ငါးမိနစ်ခန့်တွင် မြည်မည်။</string>
     <string name="action_set_stop_alarm">နှိုးစက် သတ်မှတ်ရန်</string>
     <string name="gps_alarm_option">တည်နေရာအလိုက်လည်း သတိပေးရန်</string>
-    <string name="gps_alarm_option_description">ရထား စောရောက် သို့မဟုတ် နောက်ကျသည်ဖြစ်စေ သင် ရပ်နားဘူတာမှ ရွေးထားသော အချင်းဝက်အတွင်း ရောက်သည့်အခါ (ရောက်နေပြီဆိုလျှင် ချက်ချင်း) မြည်သည်။ ပထမဆုံး ရောက်လာသော သတိပေးချက်ကို အတည်ယူသည်။</string>
+    <string name="gps_alarm_option_description">ရထား စောရောက် သို့မဟုတ် နောက်ကျသည်ဖြစ်စေ သင် ရပ်နားဘူတာမှ ရွေးထားသော အချင်းဝက်အတွင်း ရောက်သည့်အခါ (ရောက်နေပြီဆိုလျှင် ချက်ချင်း) မြည်သည်။ အချိန်အလိုက် နှိုးစက် မြည်ချိန်တွင် သင့်တည်နေရာအရ ရပ်နားဘူတာ ဝေးနေသေးလျှင် GPS နှိုးစက် ဆက်ဖွင့်ထားသည်။</string>
     <string name="gps_alarm_radius_label">သတိပေး အချင်းဝက်</string>
     <plurals name="gps_alarm_radius_km">
         <item quantity="other">%d km</item>
@@ -649,7 +649,7 @@
     <string name="gps_alarm_ended_expired">%1$s အတွက် GPS နှိုးစက် ပြီးဆုံး- အများဆုံး အချိန် ကုန်သွားပြီ။</string>
     <string name="gps_alarm_ended_permission">%1$s အတွက် GPS နှိုးစက် ရပ်သွားသည်- တည်နေရာ ခွင့်ပြုချက် မရှိတော့ပါ။</string>
     <string name="gps_alarm_ended_unavailable">%1$s အတွက် GPS နှိုးစက် ရပ်သွားသည်- ဖုန်းပေါ်တွင် တည်နေရာ ရင်းမြစ် မရှိပါ။</string>
-    <string name="gps_alarm_ended_time_alarm">%1$s အတွက် GPS နှိုးစက် ပိတ်လိုက်သည်- အချိန်အလိုက် နှိုးစက် မြည်ပြီးပြီ။</string>
+    <string name="gps_alarm_ended_time_alarm">%1$s အတွက် GPS နှိုးစက် ပိတ်လိုက်သည်- အချိန်အလိုက် နှိုးစက် မြည်ပြီး လတ်တလော တည်နေရာ မရှိပါ။</string>
     <string name="gps_alarm_interrupted">%1$s အတွက် GPS နှိုးစက် ရပ်သွားသည် (ဥပမာ ဖုန်း ပြန်စပြီးနောက်)။ ခရီးသွားနေဆဲဖြစ်လျှင် ပြန်ဖွင့်ပါ။</string>
     <string name="action_gps_alarm_resume">ပြန်ဖွင့်ရန်</string>
     <string name="action_gps_alarm_dismiss">လျစ်လျူရှုရန်</string>

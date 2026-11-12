@@ -647,7 +647,7 @@
     <string name="stop_alarm_dialog_time">The alarm rings about five minutes before the expected time of %1$s.</string>
     <string name="action_set_stop_alarm">Set alarm</string>
     <string name="gps_alarm_option">Also alert me based on my location</string>
-    <string name="gps_alarm_option_description">Rings when you are within the chosen radius of the stop (straight away if you already are), even if the train is early or late. Whichever alert comes first counts.</string>
+    <string name="gps_alarm_option_description">Rings when you are within the chosen radius of the stop (straight away if you already are), even if the train is early or late. If the time-based alarm rings while your position shows the stop is still far away, the GPS alarm stays on.</string>
     <string name="gps_alarm_radius_label">Alert radius</string>
     <plurals name="gps_alarm_radius_km">
         <item quantity="one">%d km</item>
@@ -680,7 +680,7 @@
     <string name="gps_alarm_ended_expired">GPS alarm for %1$s ended: the maximum time has run out.</string>
     <string name="gps_alarm_ended_permission">GPS alarm for %1$s stopped: location permission is no longer granted.</string>
     <string name="gps_alarm_ended_unavailable">GPS alarm for %1$s stopped: no location source is available on the phone.</string>
-    <string name="gps_alarm_ended_time_alarm">GPS alarm for %1$s closed: the time-based alarm has already rung.</string>
+    <string name="gps_alarm_ended_time_alarm">GPS alarm for %1$s closed: the time-based alarm rang and no recent position was available.</string>
     <string name="gps_alarm_interrupted">The GPS alarm for %1$s was interrupted, for example by a phone restart. Turn it on again if you are still travelling.</string>
     <string name="action_gps_alarm_resume">Turn on again</string>
     <string name="action_gps_alarm_dismiss">Ignore</string>

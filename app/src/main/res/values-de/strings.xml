@@ -647,7 +647,7 @@
     <string name="stop_alarm_dialog_time">Der Wecker klingelt etwa fünf Minuten vor der voraussichtlichen Zeit %1$s.</string>
     <string name="action_set_stop_alarm">Wecker stellen</string>
     <string name="gps_alarm_option">Auch anhand meines Standorts warnen</string>
-    <string name="gps_alarm_option_description">Klingelt, sobald du im gewählten Umkreis des Halts bist (sofort, wenn du schon dort bist), auch wenn der Zug zu früh oder verspätet ist. Es zählt die Warnung, die zuerst kommt.</string>
+    <string name="gps_alarm_option_description">Klingelt, sobald du im gewählten Umkreis des Halts bist (sofort, wenn du schon dort bist), auch wenn der Zug zu früh oder verspätet ist. Klingelt der zeitbasierte Wecker, während deine Position zeigt, dass der Halt noch weit entfernt ist, bleibt der GPS-Wecker aktiv.</string>
     <string name="gps_alarm_radius_label">Warnradius</string>
     <plurals name="gps_alarm_radius_km">
         <item quantity="one">%d km</item>
@@ -680,7 +680,7 @@
     <string name="gps_alarm_ended_expired">GPS-Wecker für %1$s beendet: Die maximale Laufzeit ist abgelaufen.</string>
     <string name="gps_alarm_ended_permission">GPS-Wecker für %1$s gestoppt: Die Standortberechtigung ist nicht mehr erteilt.</string>
     <string name="gps_alarm_ended_unavailable">GPS-Wecker für %1$s gestoppt: Auf dem Telefon ist keine Standortquelle verfügbar.</string>
-    <string name="gps_alarm_ended_time_alarm">GPS-Wecker für %1$s beendet: Der zeitbasierte Wecker hat bereits geklingelt.</string>
+    <string name="gps_alarm_ended_time_alarm">GPS-Wecker für %1$s beendet: Der zeitbasierte Wecker hat geklingelt, und es gab keine aktuelle Position.</string>
     <string name="gps_alarm_interrupted">Der GPS-Wecker für %1$s wurde unterbrochen, zum Beispiel durch einen Neustart des Telefons. Aktiviere ihn erneut, wenn du noch unterwegs bist.</string>
     <string name="action_gps_alarm_resume">Erneut aktivieren</string>
     <string name="action_gps_alarm_dismiss">Ignorieren</string>

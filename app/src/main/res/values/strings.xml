@@ -662,7 +662,7 @@
     <string name="stop_alarm_dialog_time">La sveglia suona circa cinque minuti prima dell’orario previsto %1$s.</string>
     <string name="action_set_stop_alarm">Imposta sveglia</string>
     <string name="gps_alarm_option">Avvisami anche in base alla posizione</string>
-    <string name="gps_alarm_option_description">Suona quando sei entro il raggio scelto dalla fermata (subito, se ci sei già), anche se il treno è in anticipo o in ritardo. Vale l’avviso che arriva per primo.</string>
+    <string name="gps_alarm_option_description">Suona quando sei entro il raggio scelto dalla fermata (subito, se ci sei già), anche se il treno è in anticipo o in ritardo. Se la sveglia a orario suona mentre la posizione dice che la fermata è ancora lontana, la sveglia GPS resta attiva.</string>
     <string name="gps_alarm_radius_label">Raggio di avviso</string>
     <plurals name="gps_alarm_radius_km">
         <item quantity="one">%d km</item>
@@ -697,7 +697,7 @@
     <string name="gps_alarm_ended_expired">Sveglia GPS per %1$s terminata: è scaduto il tempo massimo.</string>
     <string name="gps_alarm_ended_permission">Sveglia GPS per %1$s interrotta: il permesso posizione non è più concesso.</string>
     <string name="gps_alarm_ended_unavailable">Sveglia GPS per %1$s interrotta: nessuna fonte di posizione disponibile sul telefono.</string>
-    <string name="gps_alarm_ended_time_alarm">Sveglia GPS per %1$s chiusa: è già suonata la sveglia a orario.</string>
+    <string name="gps_alarm_ended_time_alarm">Sveglia GPS per %1$s chiusa: è suonata la sveglia a orario e mancava una posizione recente.</string>
     <string name="gps_alarm_interrupted">La sveglia GPS per %1$s si è interrotta, per esempio dopo un riavvio del telefono. Riattivala se sei ancora in viaggio.</string>
     <string name="action_gps_alarm_resume">Riattiva</string>
     <string name="action_gps_alarm_dismiss">Ignora</string>

@@ -197,6 +197,7 @@ class GpsArrivalAlarmService : Service() {
             is GpsFixDecision.Approaching -> {
                 lastAcceptedFixAt = now
                 lastRemainingMeters = decision.remainingMeters
+                GpsArrivalAlarmRuntime.recordFix(now, decision.remainingMeters)
                 val low = wantsLowPower(current, decision.remainingMeters, now)
                 val maxInterval = if (low) GpsArrivalAlarmPolicy.LOW_POWER_MAX_INTERVAL_MILLIS else GpsArrivalAlarmPolicy.MAX_INTERVAL_MILLIS
                 val next = GpsArrivalAlarmPolicy.nextIntervalMillis(decision.remainingMeters, maxInterval)

@@ -633,7 +633,7 @@
     <string name="stop_alarm_dialog_time">अलार्म अनुमानित समय %1$s से लगभग पाँच मिनट पहले बजता है।</string>
     <string name="action_set_stop_alarm">अलार्म सेट करें</string>
     <string name="gps_alarm_option">लोकेशन के आधार पर भी सूचित करें</string>
-    <string name="gps_alarm_option_description">जब आप ठहराव से चुनी गई दूरी के भीतर होते हैं (पहले से हैं तो तुरंत), तब बजता है, चाहे ट्रेन जल्दी हो या देरी से। जो अलर्ट पहले आए, वही मान्य है।</string>
+    <string name="gps_alarm_option_description">जब आप ठहराव से चुनी गई दूरी के भीतर होते हैं (पहले से हैं तो तुरंत), तब बजता है, चाहे ट्रेन जल्दी हो या देरी से। अगर समय-आधारित अलार्म तब बजे जब आपकी स्थिति दिखाए कि ठहराव अभी दूर है, तो GPS अलार्म चालू रहता है।</string>
     <string name="gps_alarm_radius_label">अलर्ट की दूरी</string>
     <plurals name="gps_alarm_radius_km">
         <item quantity="one">%d किमी</item>
@@ -666,7 +666,7 @@
     <string name="gps_alarm_ended_expired">%1$s के लिए GPS अलार्म समाप्त: अधिकतम समय पूरा हो गया।</string>
     <string name="gps_alarm_ended_permission">%1$s के लिए GPS अलार्म रुका: लोकेशन की अनुमति अब नहीं है।</string>
     <string name="gps_alarm_ended_unavailable">%1$s के लिए GPS अलार्म रुका: फ़ोन पर कोई लोकेशन स्रोत उपलब्ध नहीं है।</string>
-    <string name="gps_alarm_ended_time_alarm">%1$s के लिए GPS अलार्म बंद: समय-आधारित अलार्म पहले ही बज चुका है।</string>
+    <string name="gps_alarm_ended_time_alarm">%1$s के लिए GPS अलार्म बंद: समय-आधारित अलार्म बज गया और कोई हाल की स्थिति उपलब्ध नहीं थी।</string>
     <string name="gps_alarm_interrupted">%1$s के लिए GPS अलार्म रुक गया, उदाहरण के लिए फ़ोन रीस्टार्ट होने पर। यदि आप अभी भी यात्रा में हैं तो फिर चालू करें।</string>
     <string name="action_gps_alarm_resume">फिर चालू करें</string>
     <string name="action_gps_alarm_dismiss">अनदेखा करें</string>

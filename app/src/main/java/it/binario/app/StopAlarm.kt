@@ -266,7 +266,7 @@ class StopAlarmReceiver : BroadcastReceiver() {
             station = station,
             expected = StopAlarmScheduler.expectedExtra(intent)
         )
-        // Whichever alarm rings first wins: the GPS alarm for the same stop stops here.
+        // The GPS alarm for the same stop stops here, unless a recent fix shows the stop still outside its radius.
         GpsArrivalAlarmController.onTimeAlarmFired(context, train, station)
     }
 }

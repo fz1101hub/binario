@@ -618,7 +618,7 @@
     <string name="stop_alarm_dialog_time">알람은 예상 시각 %1$s보다 약 5분 전에 울립니다.</string>
     <string name="action_set_stop_alarm">알람 설정</string>
     <string name="gps_alarm_option">위치 기반으로도 알림 받기</string>
-    <string name="gps_alarm_option_description">정차역에서 선택한 반경 안에 들어오면(이미 안에 있으면 즉시) 열차가 일찍 오거나 늦어도 울립니다. 먼저 울리는 알림이 적용됩니다.</string>
+    <string name="gps_alarm_option_description">정차역에서 선택한 반경 안에 들어오면(이미 안에 있으면 즉시) 열차가 일찍 오거나 늦어도 울립니다. 시간 기반 알람이 울릴 때 위치상 정차역이 아직 멀면 GPS 알람은 계속 켜져 있습니다.</string>
     <string name="gps_alarm_radius_label">알림 반경</string>
     <plurals name="gps_alarm_radius_km">
         <item quantity="other">%d km</item>
@@ -649,7 +649,7 @@
     <string name="gps_alarm_ended_expired">%1$s GPS 알람 종료: 최대 시간이 지났습니다.</string>
     <string name="gps_alarm_ended_permission">%1$s GPS 알람 중지: 위치 권한이 더 이상 허용되지 않습니다.</string>
     <string name="gps_alarm_ended_unavailable">%1$s GPS 알람 중지: 휴대전화에서 사용할 수 있는 위치 소스가 없습니다.</string>
-    <string name="gps_alarm_ended_time_alarm">%1$s GPS 알람 종료: 시간 기반 알람이 이미 울렸습니다.</string>
+    <string name="gps_alarm_ended_time_alarm">%1$s GPS 알람 종료: 시간 기반 알람이 울렸고 최근 위치가 없었습니다.</string>
     <string name="gps_alarm_interrupted">%1$s GPS 알람이 휴대전화 재시작 등으로 중단되었습니다. 아직 이동 중이라면 다시 켜세요.</string>
     <string name="action_gps_alarm_resume">다시 켜기</string>
     <string name="action_gps_alarm_dismiss">무시</string>

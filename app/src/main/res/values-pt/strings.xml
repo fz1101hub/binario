@@ -648,7 +648,7 @@
     <string name="stop_alarm_dialog_time">O alarme toca cerca de cinco minutos antes do horário previsto, %1$s.</string>
     <string name="action_set_stop_alarm">Definir alarme</string>
     <string name="gps_alarm_option">Avisar também pela localização</string>
-    <string name="gps_alarm_option_description">Toca quando você estiver dentro do raio escolhido em torno da parada (na hora, se já estiver), mesmo que o trem esteja adiantado ou atrasado. Vale o aviso que chegar primeiro.</string>
+    <string name="gps_alarm_option_description">Toca quando você estiver dentro do raio escolhido em torno da parada (na hora, se já estiver), mesmo que o trem esteja adiantado ou atrasado. Se o alarme por horário tocar enquanto sua posição indica que a parada ainda está longe, o alarme por GPS continua ativo.</string>
     <string name="gps_alarm_radius_label">Raio do aviso</string>
     <plurals name="gps_alarm_radius_km">
         <item quantity="one">%d km</item>
@@ -683,7 +683,7 @@
     <string name="gps_alarm_ended_expired">Alarme por GPS para %1$s encerrado: o tempo máximo acabou.</string>
     <string name="gps_alarm_ended_permission">Alarme por GPS para %1$s interrompido: a permissão de localização não está mais concedida.</string>
     <string name="gps_alarm_ended_unavailable">Alarme por GPS para %1$s interrompido: nenhuma fonte de localização disponível no celular.</string>
-    <string name="gps_alarm_ended_time_alarm">Alarme por GPS para %1$s fechado: o alarme por horário já tocou.</string>
+    <string name="gps_alarm_ended_time_alarm">Alarme por GPS para %1$s fechado: o alarme por horário tocou e não havia uma posição recente.</string>
     <string name="gps_alarm_interrupted">O alarme por GPS para %1$s foi interrompido, por exemplo após reiniciar o celular. Reative-o se ainda estiver viajando.</string>
     <string name="action_gps_alarm_resume">Reativar</string>
     <string name="action_gps_alarm_dismiss">Ignorar</string>

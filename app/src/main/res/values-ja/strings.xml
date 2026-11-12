@@ -618,7 +618,7 @@
     <string name="stop_alarm_dialog_time">アラームは見込み時刻 %1$s の約 5 分前に鳴ります。</string>
     <string name="action_set_stop_alarm">アラームを設定</string>
     <string name="gps_alarm_option">位置情報でも知らせる</string>
-    <string name="gps_alarm_option_description">停車駅から指定した範囲内に入ると鳴ります（すでに範囲内ならすぐに鳴ります）。列車が早着・遅延していても同様です。先に届いた通知が有効です。</string>
+    <string name="gps_alarm_option_description">停車駅から指定した範囲内に入ると鳴ります（すでに範囲内ならすぐに鳴ります）。列車が早着・遅延していても同様です。時刻によるアラームが鳴った時点で位置情報から停車駅がまだ遠いと分かる場合、GPS アラームは有効なままです。</string>
     <string name="gps_alarm_radius_label">通知する範囲</string>
     <plurals name="gps_alarm_radius_km">
         <item quantity="other">%d km</item>
@@ -649,7 +649,7 @@
     <string name="gps_alarm_ended_expired">%1$s の GPS アラームが終了しました。上限時間を過ぎました。</string>
     <string name="gps_alarm_ended_permission">%1$s の GPS アラームを停止しました。位置情報の権限がなくなりました。</string>
     <string name="gps_alarm_ended_unavailable">%1$s の GPS アラームを停止しました。スマートフォンで位置情報を取得できません。</string>
-    <string name="gps_alarm_ended_time_alarm">%1$s の GPS アラームを閉じました。時刻によるアラームがすでに鳴りました。</string>
+    <string name="gps_alarm_ended_time_alarm">%1$s の GPS アラームを閉じました。時刻によるアラームが鳴り、最新の位置情報がありませんでした。</string>
     <string name="gps_alarm_interrupted">%1$s の GPS アラームが中断されました（スマートフォンの再起動など）。乗車中の場合はもう一度有効にしてください。</string>
     <string name="action_gps_alarm_resume">再開</string>
     <string name="action_gps_alarm_dismiss">無視</string>

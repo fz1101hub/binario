@@ -662,7 +662,7 @@
     <string name="stop_alarm_dialog_time">L’alarme sonne environ cinq minutes avant l’heure prévue %1$s.</string>
     <string name="action_set_stop_alarm">Régler l’alarme</string>
     <string name="gps_alarm_option">M’avertir aussi selon ma position</string>
-    <string name="gps_alarm_option_description">Sonne lorsque vous êtes dans le rayon choisi autour de l’arrêt (tout de suite si vous y êtes déjà), même si le train est en avance ou en retard. C’est l’alerte qui arrive en premier qui compte.</string>
+    <string name="gps_alarm_option_description">Sonne lorsque vous êtes dans le rayon choisi autour de l’arrêt (tout de suite si vous y êtes déjà), même si le train est en avance ou en retard. Si l’alarme horaire sonne alors que votre position indique que l’arrêt est encore loin, l’alarme GPS reste active.</string>
     <string name="gps_alarm_radius_label">Rayon d’alerte</string>
     <plurals name="gps_alarm_radius_km">
         <item quantity="one">%d km</item>
@@ -697,7 +697,7 @@
     <string name="gps_alarm_ended_expired">Alarme GPS pour %1$s terminée : la durée maximale est écoulée.</string>
     <string name="gps_alarm_ended_permission">Alarme GPS pour %1$s interrompue : l’autorisation de localisation n’est plus accordée.</string>
     <string name="gps_alarm_ended_unavailable">Alarme GPS pour %1$s interrompue : aucune source de position n’est disponible sur le téléphone.</string>
-    <string name="gps_alarm_ended_time_alarm">Alarme GPS pour %1$s fermée : l’alarme horaire a déjà sonné.</string>
+    <string name="gps_alarm_ended_time_alarm">Alarme GPS pour %1$s fermée : l’alarme horaire a sonné et aucune position récente n’était disponible.</string>
     <string name="gps_alarm_interrupted">L’alarme GPS pour %1$s a été interrompue, par exemple par un redémarrage du téléphone. Réactivez-la si vous êtes encore en voyage.</string>
     <string name="action_gps_alarm_resume">Réactiver</string>
     <string name="action_gps_alarm_dismiss">Ignorer</string>

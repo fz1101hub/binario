@@ -632,7 +632,7 @@
     <string name="stop_alarm_dialog_time">นาฬิกาปลุกจะดังประมาณห้านาทีก่อนเวลาที่คาดไว้ %1$s</string>
     <string name="action_set_stop_alarm">ตั้งปลุก</string>
     <string name="gps_alarm_option">แจ้งเตือนตามตำแหน่งด้วย</string>
-    <string name="gps_alarm_option_description">จะดังเมื่อคุณเข้าใกล้จุดจอดในรัศมีที่เลือก (ดังทันทีหากอยู่ในรัศมีแล้ว) แม้ขบวนจะมาเร็วหรือล่าช้า การแจ้งเตือนที่มาก่อนจะมีผล</string>
+    <string name="gps_alarm_option_description">จะดังเมื่อคุณเข้าใกล้จุดจอดในรัศมีที่เลือก (ดังทันทีหากอยู่ในรัศมีแล้ว) แม้ขบวนจะมาเร็วหรือล่าช้า หากการปลุกตามเวลาดังขณะที่ตำแหน่งของคุณแสดงว่าจุดจอดยังอยู่ไกล การปลุกด้วย GPS จะยังทำงานต่อ</string>
     <string name="gps_alarm_radius_label">รัศมีการแจ้งเตือน</string>
     <plurals name="gps_alarm_radius_km">
         <item quantity="other">%d กม.</item>
@@ -663,7 +663,7 @@
     <string name="gps_alarm_ended_expired">การปลุกด้วย GPS สำหรับ %1$s สิ้นสุดแล้ว ครบเวลาสูงสุด</string>
     <string name="gps_alarm_ended_permission">การปลุกด้วย GPS สำหรับ %1$s หยุดแล้ว ไม่ได้รับสิทธิ์เข้าถึงตำแหน่งอีกต่อไป</string>
     <string name="gps_alarm_ended_unavailable">การปลุกด้วย GPS สำหรับ %1$s หยุดแล้ว ไม่มีแหล่งตำแหน่งในโทรศัพท์</string>
-    <string name="gps_alarm_ended_time_alarm">ปิดการปลุกด้วย GPS สำหรับ %1$s แล้ว การปลุกตามเวลาดังไปแล้ว</string>
+    <string name="gps_alarm_ended_time_alarm">ปิดการปลุกด้วย GPS สำหรับ %1$s แล้ว การปลุกตามเวลาดังขึ้นและไม่มีตำแหน่งล่าสุด</string>
     <string name="gps_alarm_interrupted">การปลุกด้วย GPS สำหรับ %1$s ถูกขัดจังหวะ เช่น หลังรีสตาร์ทโทรศัพท์ เปิดอีกครั้งหากคุณยังเดินทางอยู่</string>
     <string name="action_gps_alarm_resume">เปิดอีกครั้ง</string>
     <string name="action_gps_alarm_dismiss">ไม่สนใจ</string>

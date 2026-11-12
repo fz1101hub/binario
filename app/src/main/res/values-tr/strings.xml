@@ -647,7 +647,7 @@
     <string name="stop_alarm_dialog_time">Alarm, tahmini saatten (%1$s) yaklaşık beş dakika önce çalar.</string>
     <string name="action_set_stop_alarm">Alarm kur</string>
     <string name="gps_alarm_option">Konumuma göre de uyar</string>
-    <string name="gps_alarm_option_description">Duraktan seçilen yarıçap içine girdiğinizde çalar (zaten içindeyseniz hemen), tren erken ya da geç olsa bile. Hangi uyarı önce gelirse o geçerlidir.</string>
+    <string name="gps_alarm_option_description">Duraktan seçilen yarıçap içine girdiğinizde çalar (zaten içindeyseniz hemen), tren erken ya da geç olsa bile. Saate dayalı alarm, konumunuz durağın hâlâ uzakta olduğunu gösterirken çalarsa GPS alarmı açık kalır.</string>
     <string name="gps_alarm_radius_label">Uyarı yarıçapı</string>
     <plurals name="gps_alarm_radius_km">
         <item quantity="one">%d km</item>
@@ -680,7 +680,7 @@
     <string name="gps_alarm_ended_expired">%1$s için GPS alarmı sona erdi: azami süre doldu.</string>
     <string name="gps_alarm_ended_permission">%1$s için GPS alarmı durduruldu: konum izni artık verilmiyor.</string>
     <string name="gps_alarm_ended_unavailable">%1$s için GPS alarmı durduruldu: telefonda kullanılabilir konum kaynağı yok.</string>
-    <string name="gps_alarm_ended_time_alarm">%1$s için GPS alarmı kapatıldı: saate dayalı alarm zaten çaldı.</string>
+    <string name="gps_alarm_ended_time_alarm">%1$s için GPS alarmı kapatıldı: saate dayalı alarm çaldı ve yakın zamanlı bir konum yoktu.</string>
     <string name="gps_alarm_interrupted">%1$s için GPS alarmı kesildi; örneğin telefon yeniden başlatıldığı için. Hâlâ yolculuktaysanız yeniden açın.</string>
     <string name="action_gps_alarm_resume">Yeniden aç</string>
     <string name="action_gps_alarm_dismiss">Yok say</string>

@@ -693,7 +693,7 @@
     <string name="stop_alarm_dialog_time">يرنّ المنبّه قبل الموعد المتوقع %1$s بنحو خمس دقائق.</string>
     <string name="action_set_stop_alarm">ضبط المنبّه</string>
     <string name="gps_alarm_option">نبّهني أيضًا حسب الموقع</string>
-    <string name="gps_alarm_option_description">يرنّ عندما تكون ضمن النطاق المختار من المحطة (فورًا إذا كنت فيه بالفعل)، حتى لو كان القطار مبكرًا أو متأخرًا. يُعتمد التنبيه الذي يصل أولًا.</string>
+    <string name="gps_alarm_option_description">يرنّ عندما تكون ضمن النطاق المختار من المحطة (فورًا إذا كنت فيه بالفعل)، حتى لو كان القطار مبكرًا أو متأخرًا. إذا رنّ المنبّه حسب الوقت بينما يُظهر موقعك أن المحطة لا تزال بعيدة، يبقى منبّه GPS مفعّلًا.</string>
     <string name="gps_alarm_radius_label">نطاق التنبيه</string>
     <plurals name="gps_alarm_radius_km">
         <item quantity="zero">%d كم</item>
@@ -734,7 +734,7 @@
     <string name="gps_alarm_ended_expired">انتهى منبّه GPS لـ %1$s: انقضت المدة القصوى.</string>
     <string name="gps_alarm_ended_permission">توقف منبّه GPS لـ %1$s: لم يعد إذن الموقع ممنوحًا.</string>
     <string name="gps_alarm_ended_unavailable">توقف منبّه GPS لـ %1$s: لا يتوفر مصدر للموقع على الهاتف.</string>
-    <string name="gps_alarm_ended_time_alarm">أُغلق منبّه GPS لـ %1$s: رنّ المنبّه حسب الوقت بالفعل.</string>
+    <string name="gps_alarm_ended_time_alarm">أُغلق منبّه GPS لـ %1$s: رنّ المنبّه حسب الوقت ولم يتوفر موقع حديث.</string>
     <string name="gps_alarm_interrupted">توقف منبّه GPS لـ %1$s، مثلًا بعد إعادة تشغيل الهاتف. فعّله مجددًا إذا كنت لا تزال في الرحلة.</string>
     <string name="action_gps_alarm_resume">إعادة التفعيل</string>
     <string name="action_gps_alarm_dismiss">تجاهل</string>

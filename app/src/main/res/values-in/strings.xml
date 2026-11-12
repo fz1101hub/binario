@@ -618,7 +618,7 @@
     <string name="stop_alarm_dialog_time">Alarm berbunyi sekitar lima menit sebelum perkiraan %1$s.</string>
     <string name="action_set_stop_alarm">Setel alarm</string>
     <string name="gps_alarm_option">Ingatkan juga berdasarkan lokasi</string>
-    <string name="gps_alarm_option_description">Berbunyi saat Anda berada dalam radius yang dipilih dari pemberhentian (langsung, jika sudah berada di sana), meski kereta lebih awal atau terlambat. Peringatan yang datang lebih dulu yang berlaku.</string>
+    <string name="gps_alarm_option_description">Berbunyi saat Anda berada dalam radius yang dipilih dari pemberhentian (langsung, jika sudah berada di sana), meski kereta lebih awal atau terlambat. Jika alarm berbasis waktu berbunyi saat posisi Anda menunjukkan pemberhentian masih jauh, alarm GPS tetap aktif.</string>
     <string name="gps_alarm_radius_label">Radius peringatan</string>
     <plurals name="gps_alarm_radius_km">
         <item quantity="other">%d km</item>
@@ -649,7 +649,7 @@
     <string name="gps_alarm_ended_expired">Alarm GPS untuk %1$s berakhir: waktu maksimum telah habis.</string>
     <string name="gps_alarm_ended_permission">Alarm GPS untuk %1$s dihentikan: izin lokasi tidak lagi diberikan.</string>
     <string name="gps_alarm_ended_unavailable">Alarm GPS untuk %1$s dihentikan: tidak ada sumber lokasi yang tersedia di ponsel.</string>
-    <string name="gps_alarm_ended_time_alarm">Alarm GPS untuk %1$s ditutup: alarm berbasis waktu sudah berbunyi.</string>
+    <string name="gps_alarm_ended_time_alarm">Alarm GPS untuk %1$s ditutup: alarm berbasis waktu berbunyi dan tidak ada posisi terbaru.</string>
     <string name="gps_alarm_interrupted">Alarm GPS untuk %1$s terhenti, misalnya karena ponsel dimulai ulang. Aktifkan lagi jika Anda masih dalam perjalanan.</string>
     <string name="action_gps_alarm_resume">Aktifkan lagi</string>
     <string name="action_gps_alarm_dismiss">Abaikan</string>

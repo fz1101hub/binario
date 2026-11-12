@@ -269,4 +269,18 @@ class GpsArrivalAlarmPolicyTest {
         assertEquals(270_000L, GpsArrivalAlarmPolicy.nextIntervalMillis(45_000.0, GpsArrivalAlarmPolicy.LOW_POWER_MAX_INTERVAL_MILLIS))
         assertEquals(GpsArrivalAlarmPolicy.nextIntervalMillis(5_000.0), GpsArrivalAlarmPolicy.nextIntervalMillis(5_000.0, GpsArrivalAlarmPolicy.LOW_POWER_MAX_INTERVAL_MILLIS))
     }
+
+    @Test
+    fun `a recent fix outside the radius keeps the gps alarm when the time alarm rings`() {
+        val now = 10_000_000L
+        // A late train: two minutes ago the stop was still 40 km away.
+        assertTrue(GpsArrivalAlarmPolicy.keepsRunningAfterTimeAlarm(now - 2 * 60_000L, 40_000.0, now))
+        assertTrue(GpsArrivalAlarmPolicy.keepsRunningAfterTimeAlarm(now - GpsArrivalAlarmPolicy.TIME_ALARM_RECENT_FIX_MILLIS, 500.0, now))
+        // No usable fix, an old one or a clock gone backwards: the time-based alarm wins and the gps alarm stops.
+        assertFalse(GpsArrivalAlarmPolicy.keepsRunningAfterTimeAlarm(null, null, now))
+        assertFalse(GpsArrivalAlarmPolicy.keepsRunningAfterTimeAlarm(now - GpsArrivalAlarmPolicy.TIME_ALARM_RECENT_FIX_MILLIS - 1, 40_000.0, now))
+        assertFalse(GpsArrivalAlarmPolicy.keepsRunningAfterTimeAlarm(now + 60_000L, 40_000.0, now))
+        assertFalse(GpsArrivalAlarmPolicy.keepsRunningAfterTimeAlarm(now - 60_000L, 0.0, now))
+        assertFalse(GpsArrivalAlarmPolicy.keepsRunningAfterTimeAlarm(now - 60_000L, Double.NaN, now))
+    }
 }
