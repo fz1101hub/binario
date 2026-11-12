@@ -249,6 +249,9 @@ internal fun BinarioApp(
     // The planner search the results show, and the train number of the number results, for a recreated process.
     var restoredRouteSearch by rememberSaveable { mutableStateOf<String?>(null) }
     var restoredTrainNumber by rememberSaveable { mutableStateOf("") }
+    // The station of the board (id and kind), so that a recreated process opens it again.
+    var restoredBoardStationId by rememberSaveable { mutableStateOf<String?>(null) }
+    var restoredBoardKind by rememberSaveable { mutableStateOf("") }
     // "Modifica" of the results: the planner fills its form from the search on screen.
     var plannerEditRequestId by rememberSaveable { mutableIntStateOf(0) }
     // The state of every screen (the planner form, list positions) survives navigation and tab switches.
@@ -411,6 +414,9 @@ internal fun BinarioApp(
     LaunchedEffect(viewModel.trainNumberQuery) {
         if (viewModel.trainNumberQuery.isNotBlank()) restoredTrainNumber = viewModel.trainNumberQuery
     }
+    LaunchedEffect(viewModel.stationBoardStation, viewModel.stationBoardKind) {
+        viewModel.stationBoardStation?.let { restoredBoardStationId = it.id; restoredBoardKind = viewModel.stationBoardKind.name }
+    }
     val journeyState by journeyViewModel.state.collectAsState()
     // The journeys with changes are searched next to the direct trains whenever the route results are on screen
     // (alone, beside a detail, or under a detail opened from them), from any path that leads there: planner, recent
@@ -526,6 +532,11 @@ internal fun BinarioApp(
     }
     val plannerSearchMode = SearchMode.valueOf(plannerSearchModeName)
     val operationsSection = OperationsSection.valueOf(operationsSectionName)
+    // A recreated process lost the board: it comes back when its screen is shown, once the catalogue knows the station.
+    val boardToRestore = restoredBoardStationId?.takeIf {
+        viewModel.stationBoardStation == null && screen == AppScreen.DEPARTURES && operationsSection == OperationsSection.STATIONS
+    }
+    if (boardToRestore != null) LaunchedEffect(boardToRestore, viewModel.stations) { viewModel.restoreStationBoard(boardToRestore, restoredBoardKind) }
     val backTarget = if (screen == AppScreen.SETTINGS_SECTION) settingsReturnScreen else AppNavigation.back(screen, detailReturnScreen, resultsReturnScreen)
     val navigateBack: () -> Unit = { backTarget?.let(::showScreen) }
     BackHandler(enabled = backTarget != null, onBack = navigateBack)

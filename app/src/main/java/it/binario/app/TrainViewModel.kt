@@ -499,6 +499,16 @@ class TrainViewModel @JvmOverloads constructor(
 
     fun openStationBoard(station: Station, kind: BoardKind = BoardKind.DEPARTURES) = loadStationBoard(station, kind)
 
+    /**
+     * Opens again the board the saved state names after the process was recreated ([stationId], [kindName]): only
+     * while no board is open, and once the catalogue knows the station (called again when it has loaded).
+     */
+    fun restoreStationBoard(stationId: String, kindName: String) {
+        if (stationBoardStation != null) return
+        val station = stations.firstOrNull { it.id == stationId } ?: return
+        loadStationBoard(station, BoardKind.entries.firstOrNull { it.name == kindName } ?: BoardKind.DEPARTURES)
+    }
+
     private fun savedToday(epochMillis: Long): Boolean =
         java.time.Instant.ofEpochMilli(epochMillis).atZone(RailTime.defaultZone).toLocalDate() == java.time.LocalDate.now(RailTime.defaultZone)
 
