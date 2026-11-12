@@ -797,6 +797,7 @@ def _check_apple_paths(
         "app/src/main/assets/stations/curated_it_rail_stations.json",
         "app/src/main/assets/punctuality/**",
         "contracts/wear-snapshot/**",
+        "contracts/shared-rules/**",
         "tools/build_ios_gtfs_schedule.py",
         "tools/build_gtfs_packs.py",
         "tools/refresh_core_gtfs.py",
@@ -858,7 +859,8 @@ def _check_linux_trigger_budget(
     if branches != expected_push_branches:
         problems.append(f"{path.name}: push branches deve coincidere con la policy release nel lock")
     required_paths = {
-        "android-ci.yml": {"app/**", "wear/**", "contracts/wear-snapshot/**"},
+        # The three readers of contracts/shared-rules run when its vectors change.
+        "android-ci.yml": {"app/**", "wear/**", "contracts/wear-snapshot/**", "contracts/shared-rules/**"},
         # The document gates of the offline tests must run when their documents change (audit A7-11).
         "gtfs-assets-ci.yml": {
             "docs/**",
@@ -877,6 +879,7 @@ def _check_linux_trigger_budget(
             "alexa-companion/**",
             "app/src/main/assets/punctuality/**",
             "app/src/main/assets/stations/curated_it_rail_stations.json",
+            "contracts/shared-rules/**",
         },
         "companion-ci.yml": {
             "companion-expo/**",

@@ -7,6 +7,8 @@ on:
       # The build copies these two files into the skill (scripts/rail-data.mjs) and the station tests read them.
       - "app/src/main/assets/punctuality/**"
       - "app/src/main/assets/stations/curated_it_rail_stations.json"
+      # The number-key and statistics vectors shared with the Android and iPhone tests.
+      - "contracts/shared-rules/**"
       - ".github/workflows/alexa-companion-ci.yml"
   push:
     branches:
@@ -17,6 +19,8 @@ on:
       # The build copies these two files into the skill (scripts/rail-data.mjs) and the station tests read them.
       - "app/src/main/assets/punctuality/**"
       - "app/src/main/assets/stations/curated_it_rail_stations.json"
+      # The number-key and statistics vectors shared with the Android and iPhone tests.
+      - "contracts/shared-rules/**"
       - ".github/workflows/alexa-companion-ci.yml"
   workflow_dispatch:
 

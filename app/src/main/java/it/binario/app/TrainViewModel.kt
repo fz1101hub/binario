@@ -1686,6 +1686,7 @@ class TrainViewModel @JvmOverloads constructor(
 internal fun ProviderWarning.stationBoardWarningKey(): UiMessageKey = when (this) {
     ProviderWarning.SOURCE_CONFLICT -> UiMessageKey.STATION_BOARD_SOURCE_CONFLICT
     ProviderWarning.REALTIME_UNAVAILABLE -> UiMessageKey.STATION_BOARD_REALTIME_UNAVAILABLE
+    ProviderWarning.PROGRAMMED_ONLY -> UiMessageKey.STATION_BOARD_PROGRAMMED_ONLY
     ProviderWarning.STALE_SOURCE -> UiMessageKey.STATION_BOARD_STALE_SOURCE
     ProviderWarning.IDENTITY_AMBIGUOUS -> UiMessageKey.STATION_BOARD_IDENTITY_AMBIGUOUS
     ProviderWarning.REPLACEMENT_SERVICE -> UiMessageKey.STATION_BOARD_REPLACEMENT_SERVICE
