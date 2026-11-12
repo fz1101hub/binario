@@ -105,7 +105,7 @@
 "saved.agenda.export_calendar" = "캘린더로 내보내기(ICS)";
 "saved.agenda.import" = "가져오기";
 "saved.agenda.import_preview_title" = "JSON 가져오기 미리보기";
-"saved.agenda.import_preview_body" = "새 항목: %1$lld. 무시된 중복: %2$lld. ID 충돌: %3$lld. 이 iPhone에서 읽을 수 없음(여러 구간, 반복 또는 잘못된 데이터): %4$lld.";
+"saved.agenda.import_preview_body" = "새 항목: %1$lld. 무시된 중복: %2$lld. ID 충돌: %3$lld. 잘못되어 제외됨: %4$lld.";
 "saved.agenda.import_keep" = "기존 항목 유지";
 "saved.agenda.import_replace" = "충돌 항목 바꾸기";
 "saved.agenda.import_done" = "가져오기가 완료되었습니다.";
@@ -127,6 +127,10 @@
 "saved.agenda.text_import.confirm" = "선택한 여정 추가";
 "saved.agenda.text_import.added" = "일정에 추가된 여정: %lld개.";
 "saved.agenda.text_import.invalid" = "텍스트가 비어 있거나 4,000자를 넘습니다.";
+"saved.agenda.leg_title" = "구간 %1$lld/%2$lld";
+"saved.agenda.legs_count" = "구간 수: %lld";
+"saved.agenda.repeat" = "반복";
+"saved.agenda.repeat_total" = "전체 횟수: %lld";
 "settings.title" = "설정";
 "settings.data.title" = "데이터 및 출처";
 "settings.data.catalog" = "역 카탈로그";

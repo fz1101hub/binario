@@ -105,7 +105,7 @@
 "saved.agenda.export_calendar" = "Xuất sang lịch (ICS)";
 "saved.agenda.import" = "Nhập";
 "saved.agenda.import_preview_title" = "Xem trước nội dung nhập JSON";
-"saved.agenda.import_preview_body" = "Mới: %1$lld. Trùng lặp bị bỏ qua: %2$lld. Xung đột ID: %3$lld. Không đọc được trên iPhone này (nhiều chặng, lặp lại hoặc dữ liệu không hợp lệ): %4$lld.";
+"saved.agenda.import_preview_body" = "Mới: %1$lld. Trùng lặp bị bỏ qua: %2$lld. Xung đột ID: %3$lld. Không hợp lệ, bị bỏ qua: %4$lld.";
 "saved.agenda.import_keep" = "Giữ mục hiện có";
 "saved.agenda.import_replace" = "Thay thế mục xung đột";
 "saved.agenda.import_done" = "Đã nhập xong.";
@@ -127,6 +127,10 @@
 "saved.agenda.text_import.confirm" = "Thêm các hành trình đã chọn";
 "saved.agenda.text_import.added" = "Đã thêm vào Lịch trình: %lld hành trình.";
 "saved.agenda.text_import.invalid" = "Văn bản trống hoặc dài hơn 4.000 ký tự.";
+"saved.agenda.leg_title" = "Chặng %1$lld/%2$lld";
+"saved.agenda.legs_count" = "Số chặng: %lld";
+"saved.agenda.repeat" = "Lặp lại";
+"saved.agenda.repeat_total" = "Tổng số hành trình: %lld";
 "settings.title" = "Cài đặt";
 "settings.data.title" = "Dữ liệu và nguồn";
 "settings.data.catalog" = "Danh mục ga";

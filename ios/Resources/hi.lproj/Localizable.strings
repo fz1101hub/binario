@@ -105,7 +105,7 @@
 "saved.agenda.export_calendar" = "कैलेंडर में एक्सपोर्ट करें (ICS)";
 "saved.agenda.import" = "इंपोर्ट करें";
 "saved.agenda.import_preview_title" = "JSON इंपोर्ट का पूर्वावलोकन";
-"saved.agenda.import_preview_body" = "नई: %1$lld। अनदेखी की गई डुप्लिकेट: %2$lld। ID टकराव: %3$lld। इस iPhone पर न पढ़ी जा सकने वाली (कई हिस्से, दोहराव या अमान्य डेटा): %4$lld।";
+"saved.agenda.import_preview_body" = "नई: %1$lld। अनदेखी की गई डुप्लिकेट: %2$lld। ID टकराव: %3$lld। अमान्य, छोड़ी गई: %4$lld।";
 "saved.agenda.import_keep" = "मौजूदा रखें";
 "saved.agenda.import_replace" = "टकराव वाली बदलें";
 "saved.agenda.import_done" = "इंपोर्ट पूरा हुआ।";
@@ -127,6 +127,10 @@
 "saved.agenda.text_import.confirm" = "चुनी गई यात्राएँ जोड़ें";
 "saved.agenda.text_import.added" = "एजेंडा में जोड़ी गई यात्राएँ: %lld।";
 "saved.agenda.text_import.invalid" = "टेक्स्ट खाली है या 4,000 अक्षरों से लंबा है।";
+"saved.agenda.leg_title" = "%2$lld में से हिस्सा %1$lld";
+"saved.agenda.legs_count" = "हिस्से: %lld";
+"saved.agenda.repeat" = "पुनरावृत्ति";
+"saved.agenda.repeat_total" = "कुल यात्राएँ: %lld";
 "settings.title" = "सेटिंग्स";
 "settings.data.title" = "डेटा और स्रोत";
 "settings.data.catalog" = "स्टेशन कैटलॉग";

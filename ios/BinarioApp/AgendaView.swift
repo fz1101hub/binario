@@ -67,7 +67,7 @@ struct AgendaView: View {
                         NavigationLink {
                             AgendaJourneyView(journeyID: journey.id)
                         } label: {
-                            AgendaJourneyRow(journey: journey)
+                            AgendaJourneyRow(journey: journey, now: clock)
                         }
                     }
                 }
@@ -191,18 +191,35 @@ struct AgendaView: View {
     }
 }
 
-/// One journey of the list: the route, the stored Italian date and time, the label.
+/// One journey of the list: the first origin and the last destination, the stored date and time of
+/// its next departure (the last one once none is left), how many legs and how it repeats, the label.
 struct AgendaJourneyRow: View {
     let journey: PlannedJourney
+    var now = Date()
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(verbatim: AgendaText.route(journey))
                 .font(.headline)
                 .foregroundStyle(.primary)
-            Text(verbatim: AgendaText.departure(journey))
+            Text(verbatim: AgendaText.departure(journey.shownOccurrence(now: now).departure))
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
+            if journey.segments.count > 1 {
+                Text(verbatim: AgendaText.legCount(journey.segments.count))
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            }
+            if let recurrence = journey.recurrence {
+                Label {
+                    Text(verbatim: AgendaText.repetition(recurrence))
+                } icon: {
+                    Image(systemName: "repeat")
+                        .accessibilityHidden(true)
+                }
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+            }
             if !journey.label.isEmpty {
                 Text(verbatim: journey.label)
                     .font(.footnote)
@@ -251,18 +268,36 @@ struct AgendaJourneyView: View {
 
     private func content(_ journey: PlannedJourney) -> some View {
         let readOnly = model.agenda.isReadOnly
+        // A repeating journey shows its next departure (the last one once none is left).
+        let shown = journey.shownOccurrence(now: Date())
         return List {
             Section {
                 LabeledContent("planner.origin", value: journey.origin.displayName)
                 LabeledContent("planner.destination", value: journey.destination.displayName)
-                LabeledContent("planner.departure", value: AgendaText.departure(journey))
+                LabeledContent("planner.departure", value: AgendaText.departure(shown.departure))
+                if let recurrence = journey.recurrence {
+                    LabeledContent("saved.agenda.repeat", value: AgendaText.repetition(recurrence))
+                }
                 if !journey.label.isEmpty {
                     LabeledContent("saved.agenda.label", value: journey.label)
                 }
                 LabeledContent("saved.agenda.reminder", value: AgendaText.reminderChoice(journey.reminderMinutes))
             } footer: {
-                if AppModel.needsTimetableZoneCaption(at: journey.departure.instant) {
+                if AppModel.needsTimetableZoneCaption(at: shown.instant) {
                     Text("planner.departure.italian_time")
+                }
+            }
+
+            // Every leg of a journey of several, on the date shown above.
+            if shown.segments.count > 1 {
+                ForEach(Array(shown.segments.enumerated()), id: \.offset) { index, segment in
+                    Section {
+                        LabeledContent("planner.origin", value: segment.origin.displayName)
+                        LabeledContent("planner.destination", value: segment.destination.displayName)
+                        LabeledContent("planner.departure", value: AgendaText.departure(segment.departure))
+                    } header: {
+                        Text(verbatim: AgendaText.legTitle(index, of: shown.segments.count))
+                    }
                 }
             }
 
@@ -299,6 +334,7 @@ struct AgendaJourneyView: View {
             }
 
             // «Ritorno» and «Ripianifica» open the editor on a new journey: date and time are chosen anew.
+            // AGENDA-LEGS: one-leg journeys until the editor holds several legs.
             Section {
                 Button {
                     editor = .returnTrip(journey)
@@ -311,15 +347,19 @@ struct AgendaJourneyView: View {
                     Label("saved.agenda.replan", systemImage: "arrow.clockwise")
                 }
             }
-            .disabled(readOnly)
+            .disabled(readOnly || journey.segments.count > 1)
 
             Section {
                 if journey.status == .active {
-                    Button {
-                        editor = .edit(journey)
-                    } label: {
-                        Label("saved.agenda.edit", systemImage: "pencil")
+                    // AGENDA-EDIT: one-leg journeys departing once until the editor holds legs and repetitions.
+                    if journey.segments.count == 1, journey.recurrence == nil {
+                        Button {
+                            editor = .edit(journey)
+                        } label: {
+                            Label("saved.agenda.edit", systemImage: "pencil")
+                        }
                     }
+                    // On a repeating journey «Completa» marks its next departure done (Android's rule).
                     Button {
                         if let refusal = model.completeJourney(id: journey.id) {
                             report(refusal)
@@ -632,8 +672,38 @@ enum AgendaText {
 
     /// «gio 12 nov 2026 · 08:15»: the stored Italian date in the user's language and the stored
     /// Italian time as it was saved, never a conversion to the phone's zone.
-    static func departure(_ journey: PlannedJourney) -> String {
-        "\(date(journey.departure.date)) · \(journey.departure.time.hhmm)"
+    static func departure(_ departure: PlannedJourneyDateTime) -> String {
+        "\(date(departure.date)) · \(departure.time.hhmm)"
+    }
+
+    /// «Tratta 2 di 3».
+    static func legTitle(_ index: Int, of count: Int) -> String {
+        String.localizedStringWithFormat(NSLocalizedString("saved.agenda.leg_title", comment: ""), index + 1, count)
+    }
+
+    /// «Tratte: 3».
+    static func legCount(_ count: Int) -> String {
+        String.localizedStringWithFormat(NSLocalizedString("saved.agenda.legs_count", comment: ""), count)
+    }
+
+    /// «lun, gio · Viaggi in tutto: 4»: the weekdays from Monday, in the user's language.
+    static func repetition(_ recurrence: PlannedJourneyRecurrence) -> String {
+        weekdays(recurrence.weekdays) + " · "
+            + String.localizedStringWithFormat(NSLocalizedString("saved.agenda.repeat_total", comment: ""), recurrence.occurrenceLimit)
+    }
+
+    static func weekdays(_ days: [PlannedJourneyWeekday]) -> String {
+        days.sorted().map(weekdayName).joined(separator: ", ")
+    }
+
+    /// The short name of a weekday in the user's language.
+    static func weekdayName(_ day: PlannedJourneyWeekday) -> String {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.locale = Locale.current
+        let symbols = calendar.shortWeekdaySymbols
+        // The calendar's symbols start on Sunday.
+        let index = day.isoNumber % 7
+        return symbols.indices.contains(index) ? symbols[index] : day.rawValue
     }
 
     static func date(_ date: PlannedLocalDate) -> String {

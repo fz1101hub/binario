@@ -222,22 +222,29 @@ final class PlannedJourneyFilesTests: XCTestCase {
         XCTAssertEqual(defaults.data(forKey: PlannedJourneyStore.storageKey), Data("not json".utf8))
     }
 
-    func testJourneysTheIPhoneDoesNotKeepAreCountedAndTheOthersOffered() throws {
+    func testRepeatingJourneysAreOfferedAndOnlyInvalidRecordsAreCounted() throws {
         let valid = try journey("j-1", "2026-07-12", "09:00")
         var document = try XCTUnwrap(try JSONSerialization.jsonObject(
             with: PlannedJourneyTransfer.encode(PlannedJourneyCollection(validating: [valid]))
         ) as? [String: Any])
         var records = try XCTUnwrap(document["journeys"] as? [[String: Any]])
+        // 12 July 2026 is a Sunday: a repetition from that date is a journey the iPhone keeps.
         var recurring = records[0]
         recurring["id"] = "j-weekly"
-        recurring["recurrence"] = ["schemaVersion": 1, "weekdays": ["MONDAY"], "startsOn": "2026-07-13", "occurrenceLimit": 4]
+        recurring["recurrence"] = ["schemaVersion": 1, "weekdays": ["SUNDAY", "WEDNESDAY"], "startsOn": "2026-07-12", "occurrenceLimit": 4]
         records.append(recurring)
+        // One that does not start on the first departure's date is not valid (Android refuses it too).
+        var mismatched = records[0]
+        mismatched["id"] = "j-mismatched"
+        mismatched["recurrence"] = ["schemaVersion": 1, "weekdays": ["MONDAY"], "startsOn": "2026-07-13", "occurrenceLimit": 4]
+        records.append(mismatched)
         document["journeys"] = records
         let data = try JSONSerialization.data(withJSONObject: document)
         guard case let .journeys(preview)? = PlannedJourneyFileImport.preview(data, existing: []) else {
             return XCTFail("a document of the right kind is offered")
         }
-        XCTAssertEqual(preview.accepted.map(\.id), ["j-1"])
+        XCTAssertEqual(preview.accepted.map(\.id), ["j-1", "j-weekly"])
+        XCTAssertEqual(preview.accepted.last?.occurrences.map(\.date.iso), ["2026-07-12", "2026-07-15", "2026-07-19", "2026-07-22"])
         XCTAssertEqual(preview.unreadableRecords, 1)
     }
 

@@ -105,7 +105,7 @@
 "saved.agenda.export_calendar" = "Takvime aktar (ICS)";
 "saved.agenda.import" = "İçe aktar";
 "saved.agenda.import_preview_title" = "JSON içe aktarma önizlemesi";
-"saved.agenda.import_preview_body" = "Yeni: %1$lld. Yok sayılan kopyalar: %2$lld. Kimlik çakışmaları: %3$lld. Bu iPhone’da okunamayan (birden çok bölüm, tekrarlar veya geçersiz veriler): %4$lld.";
+"saved.agenda.import_preview_body" = "Yeni: %1$lld. Yok sayılan kopyalar: %2$lld. Kimlik çakışmaları: %3$lld. Geçersiz olduğu için dışarıda bırakılan: %4$lld.";
 "saved.agenda.import_keep" = "Mevcut olanları koru";
 "saved.agenda.import_replace" = "Çakışanları değiştir";
 "saved.agenda.import_done" = "İçe aktarma tamamlandı.";
@@ -127,6 +127,10 @@
 "saved.agenda.text_import.confirm" = "Seçilen yolculukları ekle";
 "saved.agenda.text_import.added" = "Ajanda’ya eklenen yolculuklar: %lld.";
 "saved.agenda.text_import.invalid" = "Metin boş veya 4.000 karakterden uzun.";
+"saved.agenda.leg_title" = "Bölüm %1$lld / %2$lld";
+"saved.agenda.legs_count" = "Bölüm sayısı: %lld";
+"saved.agenda.repeat" = "Tekrar";
+"saved.agenda.repeat_total" = "Toplam yolculuk: %lld";
 "settings.title" = "Ayarlar";
 "settings.data.title" = "Veriler ve kaynaklar";
 "settings.data.catalog" = "İstasyon kataloğu";

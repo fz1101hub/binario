@@ -421,7 +421,7 @@ class IOSProjectTests(unittest.TestCase):
         model = (IOS / "BinarioApp/AppModel.swift").read_text(encoding="utf-8")
         for action in ("func deleteJourney(id: String)", "func completeJourney(id: String"):
             body = model.split(action, 1)[1].split("\n    }\n", 1)[0]
-            self.assertLess(body.index("reminderScheduler?.cancel(journeyID: id)"), body.index("plannedJourneyStore."), action)
+            self.assertLess(body.index("reminderScheduler?.cancel(journeyID: id"), body.index("plannedJourneyStore."), action)
         self.assertIn("PlannedJourneyReminderTests", (IOS / "BinarioKit/Tests/BinarioKitTests/PlannedJourneyReminderTests.swift").read_text(encoding="utf-8"))
 
     def test_agenda_files_are_androids_formats_made_in_memory_and_read_in_place(self) -> None:

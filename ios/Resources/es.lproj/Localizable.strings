@@ -105,7 +105,7 @@
 "saved.agenda.export_calendar" = "Exportar al calendario (ICS)";
 "saved.agenda.import" = "Importar";
 "saved.agenda.import_preview_title" = "Vista previa de importación JSON";
-"saved.agenda.import_preview_body" = "Nuevos: %1$lld. Duplicados omitidos: %2$lld. Conflictos de ID: %3$lld. No legibles en este iPhone (varios tramos, repeticiones o datos no válidos): %4$lld.";
+"saved.agenda.import_preview_body" = "Nuevos: %1$lld. Duplicados omitidos: %2$lld. Conflictos de ID: %3$lld. No válidos, omitidos: %4$lld.";
 "saved.agenda.import_keep" = "Conservar los existentes";
 "saved.agenda.import_replace" = "Reemplazar conflictos";
 "saved.agenda.import_done" = "Importación completada.";
@@ -127,6 +127,10 @@
 "saved.agenda.text_import.confirm" = "Añadir los viajes seleccionados";
 "saved.agenda.text_import.added" = "Viajes añadidos a la Agenda: %lld.";
 "saved.agenda.text_import.invalid" = "El texto está vacío o supera los 4.000 caracteres.";
+"saved.agenda.leg_title" = "Tramo %1$lld de %2$lld";
+"saved.agenda.legs_count" = "Tramos: %lld";
+"saved.agenda.repeat" = "Recurrencia";
+"saved.agenda.repeat_total" = "Viajes en total: %lld";
 "settings.title" = "Ajustes";
 "settings.data.title" = "Datos y fuentes";
 "settings.data.catalog" = "Catálogo de estaciones";

@@ -105,7 +105,7 @@
 "saved.agenda.export_calendar" = "ပြက္ခဒိန်သို့ ထုတ်ယူရန် (ICS)";
 "saved.agenda.import" = "တင်သွင်းရန်";
 "saved.agenda.import_preview_title" = "JSON တင်သွင်းမှု အစမ်းကြည့်ရှုချက်";
-"saved.agenda.import_preview_body" = "အသစ်- %1$lld။ လျစ်လျူရှုထားသော ထပ်နေသည်များ- %2$lld။ ID ပဋိပက္ခ- %3$lld။ ဤ iPhone တွင် မဖတ်နိုင်သည်များ (အပိုင်းများစွာ၊ ထပ်ခါထပ်ခါ သို့မဟုတ် မမှန်ကန်သော ဒေတာ)- %4$lld။";
+"saved.agenda.import_preview_body" = "အသစ်- %1$lld။ လျစ်လျူရှုထားသော ထပ်နေသည်များ- %2$lld။ ID ပဋိပက္ခ- %3$lld။ မမှန်ကန်၍ ချန်လှပ်ထားသည်များ- %4$lld။";
 "saved.agenda.import_keep" = "ရှိပြီးသားကို ထားရန်";
 "saved.agenda.import_replace" = "ပဋိပက္ခရှိသည်များကို အစားထိုးရန်";
 "saved.agenda.import_done" = "တင်သွင်းမှု ပြီးဆုံးပါပြီ။";
@@ -127,6 +127,10 @@
 "saved.agenda.text_import.confirm" = "ရွေးထားသော ခရီးစဉ်များကို ထည့်ရန်";
 "saved.agenda.text_import.added" = "ခရီးစဉ်ဇယားသို့ ထည့်ပြီးသော ခရီးစဉ်- %lld။";
 "saved.agenda.text_import.invalid" = "စာသား ဗလာ ဖြစ်နေသည် သို့မဟုတ် စာလုံး 4,000 ထက် ရှည်သည်။";
+"saved.agenda.leg_title" = "အပိုင်း %1$lld / %2$lld";
+"saved.agenda.legs_count" = "အပိုင်း- %lld";
+"saved.agenda.repeat" = "ထပ်ခါထပ်ခါ";
+"saved.agenda.repeat_total" = "ခရီးစဉ် စုစုပေါင်း- %lld";
 "settings.title" = "ဆက်တင်များ";
 "settings.data.title" = "ဒေတာနှင့် ရင်းမြစ်များ";
 "settings.data.catalog" = "ဘူတာစာရင်း";

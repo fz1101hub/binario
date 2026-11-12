@@ -105,7 +105,7 @@
 "saved.agenda.export_calendar" = "التصدير إلى التقويم (ICS)";
 "saved.agenda.import" = "استيراد";
 "saved.agenda.import_preview_title" = "معاينة استيراد JSON";
-"saved.agenda.import_preview_body" = "جديدة: %1$lld. مكررة تم تجاهلها: %2$lld. تعارضات المعرّف: %3$lld. غير مقروءة على هذا الـiPhone (عدة مقاطع أو تكرارات أو بيانات غير صالحة): %4$lld.";
+"saved.agenda.import_preview_body" = "جديدة: %1$lld. مكررة تم تجاهلها: %2$lld. تعارضات المعرّف: %3$lld. غير صالحة، تم استبعادها: %4$lld.";
 "saved.agenda.import_keep" = "الإبقاء على الموجود";
 "saved.agenda.import_replace" = "استبدال المتعارض";
 "saved.agenda.import_done" = "اكتمل الاستيراد.";
@@ -127,6 +127,10 @@
 "saved.agenda.text_import.confirm" = "أضف الرحلات المحددة";
 "saved.agenda.text_import.added" = "رحلات أُضيفت إلى الأجندة: %lld.";
 "saved.agenda.text_import.invalid" = "النص فارغ أو يتجاوز 4000 حرف.";
+"saved.agenda.leg_title" = "الجزء %1$lld من %2$lld";
+"saved.agenda.legs_count" = "الأجزاء: %lld";
+"saved.agenda.repeat" = "التكرار";
+"saved.agenda.repeat_total" = "إجمالي الرحلات: %lld";
 "settings.title" = "الإعدادات";
 "settings.data.title" = "البيانات والمصادر";
 "settings.data.catalog" = "كتالوج المحطات";

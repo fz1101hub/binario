@@ -105,7 +105,7 @@
 "saved.agenda.export_calendar" = "ส่งออกไปยังปฏิทิน (ICS)";
 "saved.agenda.import" = "นำเข้า";
 "saved.agenda.import_preview_title" = "ตัวอย่างการนำเข้า JSON";
-"saved.agenda.import_preview_body" = "ใหม่: %1$lld รายการซ้ำที่ข้าม: %2$lld รหัสที่ขัดแย้ง: %3$lld อ่านไม่ได้บน iPhone นี้ (หลายช่วง การทำซ้ำ หรือข้อมูลไม่ถูกต้อง): %4$lld";
+"saved.agenda.import_preview_body" = "ใหม่: %1$lld รายการซ้ำที่ข้าม: %2$lld รหัสที่ขัดแย้ง: %3$lld ไม่ถูกต้อง ไม่ได้นำเข้า: %4$lld";
 "saved.agenda.import_keep" = "เก็บรายการเดิม";
 "saved.agenda.import_replace" = "แทนที่รายการที่ขัดแย้ง";
 "saved.agenda.import_done" = "นำเข้าเสร็จสิ้น";
@@ -127,6 +127,10 @@
 "saved.agenda.text_import.confirm" = "เพิ่มการเดินทางที่เลือก";
 "saved.agenda.text_import.added" = "การเดินทางที่เพิ่มลงในกำหนดการ: %lld";
 "saved.agenda.text_import.invalid" = "ข้อความว่างเปล่าหรือยาวเกิน 4,000 ตัวอักษร";
+"saved.agenda.leg_title" = "ช่วงที่ %1$lld จาก %2$lld";
+"saved.agenda.legs_count" = "จำนวนช่วง: %lld";
+"saved.agenda.repeat" = "การทำซ้ำ";
+"saved.agenda.repeat_total" = "การเดินทางทั้งหมด: %lld";
 "settings.title" = "การตั้งค่า";
 "settings.data.title" = "ข้อมูลและแหล่งที่มา";
 "settings.data.catalog" = "แค็ตตาล็อกสถานี";

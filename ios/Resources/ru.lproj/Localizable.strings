@@ -105,7 +105,7 @@
 "saved.agenda.export_calendar" = "Экспорт в календарь (ICS)";
 "saved.agenda.import" = "Импорт";
 "saved.agenda.import_preview_title" = "Предпросмотр импорта JSON";
-"saved.agenda.import_preview_body" = "Новых: %1$lld. Пропущено дубликатов: %2$lld. Конфликтов ID: %3$lld. Не читается на этом iPhone (несколько участков, повторы или неверные данные): %4$lld.";
+"saved.agenda.import_preview_body" = "Новых: %1$lld. Пропущено дубликатов: %2$lld. Конфликтов ID: %3$lld. Некорректных, не импортировано: %4$lld.";
 "saved.agenda.import_keep" = "Оставить существующие";
 "saved.agenda.import_replace" = "Заменить конфликтующие";
 "saved.agenda.import_done" = "Импорт завершён.";
@@ -127,6 +127,10 @@
 "saved.agenda.text_import.confirm" = "Добавить выбранные поездки";
 "saved.agenda.text_import.added" = "Поездок добавлено в ежедневник: %lld.";
 "saved.agenda.text_import.invalid" = "Текст пуст или длиннее 4000 символов.";
+"saved.agenda.leg_title" = "Участок %1$lld из %2$lld";
+"saved.agenda.legs_count" = "Участков: %lld";
+"saved.agenda.repeat" = "Повторение";
+"saved.agenda.repeat_total" = "Всего поездок: %lld";
 "settings.title" = "Настройки";
 "settings.data.title" = "Данные и источники";
 "settings.data.catalog" = "Каталог станций";

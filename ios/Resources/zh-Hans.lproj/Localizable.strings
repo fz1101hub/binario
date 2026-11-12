@@ -105,7 +105,7 @@
 "saved.agenda.export_calendar" = "导出到日历（ICS）";
 "saved.agenda.import" = "导入";
 "saved.agenda.import_preview_title" = "JSON 导入预览";
-"saved.agenda.import_preview_body" = "新增：%1$lld。已忽略的重复项：%2$lld。ID 冲突：%3$lld。此 iPhone 无法读取（多段行程、重复或无效数据）：%4$lld。";
+"saved.agenda.import_preview_body" = "新增：%1$lld。已忽略的重复项：%2$lld。ID 冲突：%3$lld。无效而未导入：%4$lld。";
 "saved.agenda.import_keep" = "保留现有项";
 "saved.agenda.import_replace" = "替换冲突项";
 "saved.agenda.import_done" = "导入完成。";
@@ -127,6 +127,10 @@
 "saved.agenda.text_import.confirm" = "添加所选行程";
 "saved.agenda.text_import.added" = "已添加到日程的行程：%lld 个。";
 "saved.agenda.text_import.invalid" = "文本为空或超过 4,000 个字符。";
+"saved.agenda.leg_title" = "第 %1$lld 段，共 %2$lld 段";
+"saved.agenda.legs_count" = "行程段数：%lld";
+"saved.agenda.repeat" = "重复";
+"saved.agenda.repeat_total" = "共计行程：%lld";
 "settings.title" = "设置";
 "settings.data.title" = "数据和来源";
 "settings.data.catalog" = "车站目录";

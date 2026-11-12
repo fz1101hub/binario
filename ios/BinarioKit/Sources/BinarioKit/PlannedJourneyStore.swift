@@ -104,6 +104,12 @@ public final class PlannedJourneyStore {
         transform(id: id) { try $0.completing(at: date) }
     }
 
+    /// «Completa» on one departure of a repeating journey: that date is marked done; the journey
+    /// goes to the archive once no departure is left.
+    public func completeOccurrence(id: String, on date: PlannedLocalDate) -> Result<PlannedJourneyAgendaState, PlannedJourneyRefusal> {
+        transform(id: id) { try $0.completingOccurrence(on: date) }
+    }
+
     /// One checklist line ticked or not.
     public func setChecklistItem(_ itemID: String, completed: Bool, journeyID: String) -> Result<PlannedJourneyAgendaState, PlannedJourneyRefusal> {
         transform(id: journeyID) { try $0.settingChecklistItem(id: itemID, completed: completed) }

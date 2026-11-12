@@ -232,6 +232,54 @@ final class PlannedJourneyReminderTests: XCTestCase {
         XCTAssertEqual(PlannedJourneyReminderScheduler.defaultMaximumPending, 64)
     }
 
+    func testARepeatingJourneyOfSeveralLegsHasOneReminderPerDepartureLeft() async throws {
+        let center = FakeNotificationCenter()
+        let scheduler = makeScheduler(center)
+        let station = { (value: (String, String)) in
+            try PlannedJourneyStation(canonicalId: value.0, displayName: value.1, railwayCode: value.0)
+        }
+        let monday = try XCTUnwrap(PlannedLocalDate(iso: "2026-11-16"))
+        let legs = try [
+            PlannedJourneySegment(
+                id: "segment-1", origin: station(roma), destination: station(firenze),
+                departure: PlannedJourneyDateTime(date: monday, time: XCTUnwrap(PlannedLocalTime(hhmm: "18:05")))
+            ),
+            PlannedJourneySegment(
+                id: "segment-2", origin: station(firenze), destination: station(milano),
+                departure: PlannedJourneyDateTime(date: monday, time: XCTUnwrap(PlannedLocalTime(hhmm: "19:40")))
+            ),
+        ]
+        let recurrence = try PlannedJourneyRecurrence(weekdays: [.monday, .thursday], startsOn: monday, occurrenceLimit: 4)
+        let weekly = try PlannedJourney(
+            id: "weekly", segments: legs, reminderMinutes: 10, recurrence: recurrence, createdAt: createdAt,
+            completedOccurrenceDates: [XCTUnwrap(PlannedLocalDate(iso: "2026-11-19"))]
+        )
+        let now = try utc("2026-11-16T12:00:00Z")
+
+        // Android's planner: the first leg's departure minus the lead, the date marked done left out.
+        let plans = PlannedJourneyReminderPlanner.plans(for: weekly, now: now)
+        XCTAssertEqual(plans.map(\.occurrenceDate.iso), ["2026-11-16", "2026-11-23", "2026-11-26"])
+        XCTAssertEqual(plans.map(\.fireDate), try ["2026-11-16T16:55:00Z", "2026-11-23T16:55:00Z", "2026-11-26T16:55:00Z"].map(utc))
+        XCTAssertEqual(Set(plans.map(\.identifier)).count, 3)
+        XCTAssertEqual(plans.first?.identifier, PlannedJourneyReminderPlanner.identifier(journeyID: "weekly", occurrenceDate: monday))
+        XCTAssertNotEqual(plans.first?.identifier, PlannedJourneyReminderPlanner.identifier(journeyID: "weekly"))
+        // The first origin, the last destination and the first leg's stored time.
+        XCTAssertEqual(plans.first?.origin, "Roma Termini")
+        XCTAssertEqual(plans.first?.destination, "Milano Centrale")
+        XCTAssertEqual(plans.first?.departureTime.hhmm, "18:05")
+        XCTAssertEqual(PlannedJourneyReminderPlanner.plan(for: weekly, now: now), plans.first)
+
+        let status = await scheduler.reconcile([weekly], now: now)
+        XCTAssertEqual(center.agendaRequests.count, 3)
+        XCTAssertEqual(status.state(of: weekly, now: now), .scheduled(minutes: 10))
+
+        // «Completa» on the next departure cancels its reminder only; deleting cancels them all.
+        scheduler.cancel(journeyID: "weekly", occurrenceDates: [monday])
+        XCTAssertEqual(center.agendaRequests.count, 2)
+        scheduler.cancel(journeyID: "weekly", occurrenceDates: recurrence.dates)
+        XCTAssertTrue(center.agendaRequests.isEmpty)
+    }
+
     // MARK: Helpers
 
     private func makeScheduler(_ center: FakeNotificationCenter) -> PlannedJourneyReminderScheduler {

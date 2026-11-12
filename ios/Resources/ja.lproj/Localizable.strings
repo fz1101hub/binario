@@ -105,7 +105,7 @@
 "saved.agenda.export_calendar" = "カレンダーへエクスポート（ICS）";
 "saved.agenda.import" = "インポート";
 "saved.agenda.import_preview_title" = "JSON インポートのプレビュー";
-"saved.agenda.import_preview_body" = "新規：%1$lld。無視した重複：%2$lld。ID の競合：%3$lld。この iPhone で読めないもの（複数区間、繰り返し、無効なデータ）：%4$lld。";
+"saved.agenda.import_preview_body" = "新規：%1$lld。無視した重複：%2$lld。ID の競合：%3$lld。無効なため除外：%4$lld。";
 "saved.agenda.import_keep" = "既存を残す";
 "saved.agenda.import_replace" = "競合を置き換える";
 "saved.agenda.import_done" = "インポートが完了しました。";
@@ -127,6 +127,10 @@
 "saved.agenda.text_import.confirm" = "選択した旅程を追加";
 "saved.agenda.text_import.added" = "予定に追加した旅程：%lld 件。";
 "saved.agenda.text_import.invalid" = "テキストが空か、4,000 文字を超えています。";
+"saved.agenda.leg_title" = "区間 %1$lld/%2$lld";
+"saved.agenda.legs_count" = "区間数：%lld";
+"saved.agenda.repeat" = "繰り返し";
+"saved.agenda.repeat_total" = "合計回数：%lld";
 "settings.title" = "設定";
 "settings.data.title" = "データと出典";
 "settings.data.catalog" = "駅カタログ";

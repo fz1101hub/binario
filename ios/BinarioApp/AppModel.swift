@@ -1548,19 +1548,26 @@ final class AppModel: ObservableObject {
         applyAgenda(isNew ? plannedJourneyStore.add(journey) : plannedJourneyStore.replace(journey))
     }
 
-    /// Its reminder is cancelled first, so a journey never goes with its notification still pending;
-    /// a refused change gets it back at the reconciliation that follows.
+    /// Its reminders (one per departure of a repeating journey) are cancelled first, so a journey
+    /// never goes with a notification still pending; a refused change gets them back at the
+    /// reconciliation that follows.
     func deleteJourney(id: String) -> PlannedJourneyRefusal? {
-        reminderScheduler?.cancel(journeyID: id)
+        reminderScheduler?.cancel(journeyID: id, occurrenceDates: agenda.journeys.first(where: { $0.id == id })?.recurrence?.dates ?? [])
         let refusal = applyAgenda(plannedJourneyStore.remove(id: id))
         refreshRemindersLater()
         return refusal
     }
 
-    /// «Completa»: the journey moves to the archive, and its reminder goes.
+    /// «Completa»: the journey moves to the archive, and its reminder goes. On a repeating journey
+    /// only its next departure is marked done, with its reminder (Android's rule); the journey goes
+    /// to the archive once no departure is left.
     func completeJourney(id: String, now: Date = Date()) -> PlannedJourneyRefusal? {
-        reminderScheduler?.cancel(journeyID: id)
-        let refusal = applyAgenda(plannedJourneyStore.complete(id: id, at: now))
+        let journey = agenda.journeys.first(where: { $0.id == id })
+        let occurrence = journey?.recurrence == nil ? nil : journey?.nextOccurrence(now: now)
+        reminderScheduler?.cancel(journeyID: id, occurrenceDates: occurrence.map { [$0.date] } ?? journey?.recurrence?.dates ?? [])
+        let result = occurrence.map { plannedJourneyStore.completeOccurrence(id: id, on: $0.date) }
+            ?? plannedJourneyStore.complete(id: id, at: now)
+        let refusal = applyAgenda(result)
         refreshRemindersLater()
         return refusal
     }

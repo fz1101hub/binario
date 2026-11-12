@@ -122,7 +122,7 @@ public struct PlannedJourneyForm: Equatable, Sendable {
         if let reminderMinutes, !PlannedJourneySchema.reminderMinutes.contains(reminderMinutes) { return .failure(.invalid) }
         do {
             let segment = try PlannedJourneySegment(
-                id: existing?.segment.id ?? PlannedJourneySegment.firstIdentifier,
+                id: existing?.segments[0].id ?? PlannedJourneySegment.firstIdentifier,
                 origin: PlannedJourneyStation(origin),
                 destination: PlannedJourneyStation(destination),
                 departure: PlannedJourneyDateTime(date: date, time: time)
@@ -133,11 +133,11 @@ public struct PlannedJourneyForm: Equatable, Sendable {
                     id: id, label: label, segment: segment, reminderMinutes: reminderMinutes, checklist: checklist, createdAt: now
                 ))
             }
-            return .success(try PlannedJourney(
+            return .success(existing.keepingInstantFractions(in: try PlannedJourney(
                 id: existing.id, label: label, segment: segment, reminderMinutes: reminderMinutes,
                 checklist: checklist, status: existing.status, createdAt: existing.createdAt,
                 completedAt: existing.completedAt, archivedAt: existing.archivedAt
-            ))
+            )))
         } catch let error as PlannedJourneyValidationError {
             return .failure(Self.issue(for: error))
         } catch {

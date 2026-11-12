@@ -105,7 +105,7 @@
 "saved.agenda.export_calendar" = "Ekspor ke kalender (ICS)";
 "saved.agenda.import" = "Impor";
 "saved.agenda.import_preview_title" = "Pratinjau impor JSON";
-"saved.agenda.import_preview_body" = "Baru: %1$lld. Duplikat diabaikan: %2$lld. Konflik ID: %3$lld. Tidak terbaca di iPhone ini (beberapa ruas, pengulangan, atau data tidak valid): %4$lld.";
+"saved.agenda.import_preview_body" = "Baru: %1$lld. Duplikat diabaikan: %2$lld. Konflik ID: %3$lld. Tidak valid, dilewati: %4$lld.";
 "saved.agenda.import_keep" = "Pertahankan yang ada";
 "saved.agenda.import_replace" = "Ganti yang konflik";
 "saved.agenda.import_done" = "Impor selesai.";
@@ -127,6 +127,10 @@
 "saved.agenda.text_import.confirm" = "Tambahkan perjalanan yang dipilih";
 "saved.agenda.text_import.added" = "Perjalanan ditambahkan ke Agenda: %lld.";
 "saved.agenda.text_import.invalid" = "Teks kosong atau lebih dari 4.000 karakter.";
+"saved.agenda.leg_title" = "Bagian %1$lld dari %2$lld";
+"saved.agenda.legs_count" = "Bagian: %lld";
+"saved.agenda.repeat" = "Pengulangan";
+"saved.agenda.repeat_total" = "Total perjalanan: %lld";
 "settings.title" = "Pengaturan";
 "settings.data.title" = "Data dan sumber";
 "settings.data.catalog" = "Katalog stasiun";

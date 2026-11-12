@@ -105,7 +105,7 @@
 "saved.agenda.export_calendar" = "In den Kalender exportieren (ICS)";
 "saved.agenda.import" = "Importieren";
 "saved.agenda.import_preview_title" = "Vorschau des JSON-Imports";
-"saved.agenda.import_preview_body" = "Neu: %1$lld. Ignorierte Duplikate: %2$lld. ID-Konflikte: %3$lld. Auf diesem iPhone nicht lesbar (mehrere Abschnitte, Wiederholungen oder ungültige Daten): %4$lld.";
+"saved.agenda.import_preview_body" = "Neu: %1$lld. Ignorierte Duplikate: %2$lld. ID-Konflikte: %3$lld. Ungültig, ausgelassen: %4$lld.";
 "saved.agenda.import_keep" = "Vorhandene beibehalten";
 "saved.agenda.import_replace" = "Konflikte ersetzen";
 "saved.agenda.import_done" = "Import abgeschlossen.";
@@ -127,6 +127,10 @@
 "saved.agenda.text_import.confirm" = "Ausgewählte Reisen hinzufügen";
 "saved.agenda.text_import.added" = "Zur Agenda hinzugefügte Reisen: %lld.";
 "saved.agenda.text_import.invalid" = "Der Text ist leer oder länger als 4.000 Zeichen.";
+"saved.agenda.leg_title" = "Etappe %1$lld von %2$lld";
+"saved.agenda.legs_count" = "Etappen: %lld";
+"saved.agenda.repeat" = "Wiederholung";
+"saved.agenda.repeat_total" = "Fahrten insgesamt: %lld";
 "settings.title" = "Einstellungen";
 "settings.data.title" = "Daten und Quellen";
 "settings.data.catalog" = "Bahnhofskatalog";

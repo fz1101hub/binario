@@ -40,12 +40,14 @@ public protocol PlannedJourneyNotificationCenter: AnyObject {
     func removeDeliveredNotifications(identifiers: [String])
 }
 
-/// The reminder of one journey: at its Italian departure minus the lead chosen, whatever the
-/// phone's zone. It carries the validated station names and the stored Italian time, never the
-/// free label.
+/// The reminder of one departure of a journey: at its first leg's departure minus the lead chosen,
+/// whatever the phone's zone. It carries the validated names of the first origin and the last
+/// destination and the stored time of the first leg, never the free label.
 public struct PlannedJourneyReminderPlan: Equatable, Sendable {
     public let identifier: String
     public let journeyID: String
+    /// The occurrence's date (the journey's own date when it does not repeat).
+    public let occurrenceDate: PlannedLocalDate
     public let fireDate: Date
     public let departure: Date
     public let minutesBefore: Int
@@ -66,8 +68,8 @@ public struct PlannedJourneyReminderContent: Equatable, Sendable {
     }
 }
 
-/// Which reminders the Agenda wants: Android's planner for one-leg journeys (active, a lead
-/// chosen, the time to fire still to come), the nearest first.
+/// Which reminders the Agenda wants: Android's planner (an active journey with a lead chosen, one
+/// reminder per departure not marked done, the time to fire still to come), the nearest first.
 public enum PlannedJourneyReminderPlanner {
     /// Every Agenda request starts with it; the app schedules no other local notification.
     public static let identifierPrefix = "it.binario.ios.agenda-reminder."
@@ -78,35 +80,54 @@ public enum PlannedJourneyReminderPlanner {
         identifierPrefix + String(BundledGTFSScheduleInstaller.sha256Hex(Data(journeyID.utf8)).prefix(32))
     }
 
+    /// One identifier per departure of a repeating journey, from "id|yyyy-MM-dd" (the input of the
+    /// calendar's UID); a journey that departs once keeps `identifier(journeyID:)`.
+    public static func identifier(journeyID: String, occurrenceDate: PlannedLocalDate?) -> String {
+        guard let occurrenceDate else { return identifier(journeyID: journeyID) }
+        let digest = BundledGTFSScheduleInstaller.sha256Hex(Data("\(journeyID)|\(occurrenceDate.iso)".utf8))
+        return identifierPrefix + String(digest.prefix(32))
+    }
+
     public static func isAgendaReminder(_ identifier: String) -> Bool {
         identifier.hasPrefix(identifierPrefix)
     }
 
-    /// The reminder of `journey` at `now`; nil without a lead, for a journey no longer active, or
-    /// when the time to fire has already come.
+    /// The next reminder of `journey` at `now`; nil without a lead, for a journey no longer active,
+    /// or when the time to fire of every departure has already come.
     public static func plan(for journey: PlannedJourney, now: Date) -> PlannedJourneyReminderPlan? {
+        plans(for: journey, now: now).first
+    }
+
+    /// Every reminder of `journey` still to fire at `now`, one per departure not marked done.
+    public static func plans(for journey: PlannedJourney, now: Date) -> [PlannedJourneyReminderPlan] {
         guard journey.status == .active, let minutes = journey.reminderMinutes,
               PlannedJourneySchema.reminderMinutes.contains(minutes)
-        else { return nil }
-        let departure = journey.departure.instant
-        let fireDate = departure.addingTimeInterval(-Double(minutes * 60))
-        guard fireDate > now, departure > now else { return nil }
-        return PlannedJourneyReminderPlan(
-            identifier: identifier(journeyID: journey.id),
-            journeyID: journey.id,
-            fireDate: fireDate,
-            departure: departure,
-            minutesBefore: minutes,
-            origin: journey.origin.displayName,
-            destination: journey.destination.displayName,
-            departureDate: journey.departure.date,
-            departureTime: journey.departure.time
-        )
+        else { return [] }
+        return journey.occurrences.compactMap { (occurrence: PlannedJourneyOccurrence) -> PlannedJourneyReminderPlan? in
+            guard !journey.completedOccurrenceDates.contains(occurrence.date) else { return nil }
+            let departure = occurrence.instant
+            let fireDate = departure.addingTimeInterval(-Double(minutes * 60))
+            guard fireDate > now, departure > now else { return nil }
+            let first = occurrence.segments[0]
+            let last = occurrence.segments[occurrence.segments.count - 1]
+            return PlannedJourneyReminderPlan(
+                identifier: identifier(journeyID: journey.id, occurrenceDate: journey.recurrence == nil ? nil : occurrence.date),
+                journeyID: journey.id,
+                occurrenceDate: occurrence.date,
+                fireDate: fireDate,
+                departure: departure,
+                minutesBefore: minutes,
+                origin: first.origin.displayName,
+                destination: last.destination.displayName,
+                departureDate: first.departure.date,
+                departureTime: first.departure.time
+            )
+        }
     }
 
     /// Every reminder to schedule at `now`, the first to fire first.
     public static func plans(_ journeys: [PlannedJourney], now: Date) -> [PlannedJourneyReminderPlan] {
-        journeys.compactMap { plan(for: $0, now: now) }.sorted { first, second in
+        journeys.flatMap { plans(for: $0, now: now) }.sorted { first, second in
             first.fireDate == second.fireDate ? first.identifier < second.identifier : first.fireDate < second.fireDate
         }
     }
@@ -219,11 +240,13 @@ public final class PlannedJourneyReminderScheduler {
         return (status.scheduledJourneyIDs.contains(journey.id) ? .scheduled : .failed, status)
     }
 
-    /// Before a journey is deleted or completed: its request and its notification go first.
-    public func cancel(journeyID: String) {
-        let identifier = PlannedJourneyReminderPlanner.identifier(journeyID: journeyID)
-        center.removePendingRequests(identifiers: [identifier])
-        center.removeDeliveredNotifications(identifiers: [identifier])
+    /// Before a journey is deleted or completed: its requests and its notifications go first, the
+    /// one of a journey that departs once and those of the `occurrenceDates` given.
+    public func cancel(journeyID: String, occurrenceDates: [PlannedLocalDate] = []) {
+        let identifiers = [PlannedJourneyReminderPlanner.identifier(journeyID: journeyID)]
+            + occurrenceDates.map { PlannedJourneyReminderPlanner.identifier(journeyID: journeyID, occurrenceDate: $0) }
+        center.removePendingRequests(identifiers: identifiers)
+        center.removeDeliveredNotifications(identifiers: identifiers)
     }
 
     private func performReconciliation(_ journeys: [PlannedJourney], now: Date) async -> PlannedJourneyReminderStatus {
