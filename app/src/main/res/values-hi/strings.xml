@@ -131,6 +131,17 @@
     <string name="planned_journey_filter_archived">संग्रहीत</string>
     <string name="planned_journey_filter_all">सभी</string>
     <string name="planned_journey_label">वैकल्पिक लेबल</string>
+    <string name="planned_journey_templates_title">यात्रा टेम्पलेट</string>
+    <string name="planned_journey_templates_description">रूट, समय और रिमाइंडर दोबारा उपयोग के लिए सहेजें। तारीख हमेशा चुननी होगी।</string>
+    <string name="planned_journey_template_name">यात्रा टेम्पलेट का नाम</string>
+    <string name="planned_journey_template_placeholder">जैसे घर-दफ़्तर</string>
+    <string name="planned_journey_template_save_a11y">मौजूदा यात्रा टेम्पलेट केवल डिवाइस पर सहेजें</string>
+    <string name="planned_journey_template_apply_a11y">टेम्पलेट %1$s लागू करें</string>
+    <string name="planned_journey_template_delete_a11y">टेम्पलेट %1$s हटाएँ</string>
+    <string name="planned_journey_template_invalid">टेम्पलेट सहेजने से पहले दो चुने हुए स्टेशन और समय पूरा करें।</string>
+    <string name="planned_journey_template_saved">टेम्पलेट केवल इस डिवाइस पर सहेजा गया। यात्रा सहेजने से पहले हमेशा तारीख चुनें।</string>
+    <string name="planned_journey_template_applied">टेम्पलेट “%1$s” लागू हुआ। तारीख चुनें और यात्रा की पुष्टि करें।</string>
+    <string name="planned_journey_template_deleted">स्थानीय टेम्पलेट हटाया गया।</string>
     <string name="planned_journey_origin">प्रस्थान</string>
     <string name="planned_journey_destination">आगमन</string>
     <string name="planned_journey_route">%1$s → %2$s</string>

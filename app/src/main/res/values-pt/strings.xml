@@ -131,6 +131,17 @@
     <string name="planned_journey_filter_archived">Arquivadas</string>
     <string name="planned_journey_filter_all">Todas</string>
     <string name="planned_journey_label">Rótulo opcional</string>
+    <string name="planned_journey_templates_title">Modelos de viagem</string>
+    <string name="planned_journey_templates_description">Salve trajeto, horário e lembrete para reutilizá-los. A data sempre precisa ser escolhida.</string>
+    <string name="planned_journey_template_name">Nome do modelo de viagem</string>
+    <string name="planned_journey_template_placeholder">Ex.: Casa-trabalho</string>
+    <string name="planned_journey_template_save_a11y">Salvar o modelo de viagem atual apenas no dispositivo</string>
+    <string name="planned_journey_template_apply_a11y">Aplicar o modelo %1$s</string>
+    <string name="planned_journey_template_delete_a11y">Apagar o modelo %1$s</string>
+    <string name="planned_journey_template_invalid">Preencha duas estações selecionadas e um horário antes de salvar um modelo.</string>
+    <string name="planned_journey_template_saved">Modelo salvo apenas neste dispositivo. Sempre escolha a data antes de salvar uma viagem.</string>
+    <string name="planned_journey_template_applied">Modelo “%1$s” aplicado. Escolha a data e confirme a viagem.</string>
+    <string name="planned_journey_template_deleted">Modelo local apagado.</string>
     <string name="planned_journey_origin">Origem</string>
     <string name="planned_journey_destination">Destino</string>
     <string name="planned_journey_route">%1$s → %2$s</string>

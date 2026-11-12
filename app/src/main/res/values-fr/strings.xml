@@ -134,6 +134,17 @@
     <string name="planned_journey_filter_archived">Archivés</string>
     <string name="planned_journey_filter_all">Tous</string>
     <string name="planned_journey_label">Libellé facultatif</string>
+    <string name="planned_journey_templates_title">Modèles de voyage</string>
+    <string name="planned_journey_templates_description">Enregistrez itinéraire, horaire et rappel pour les réutiliser. La date reste toujours à choisir.</string>
+    <string name="planned_journey_template_name">Nom du modèle de voyage</string>
+    <string name="planned_journey_template_placeholder">Ex. Domicile-travail</string>
+    <string name="planned_journey_template_save_a11y">Enregistrez le modèle de voyage actuel uniquement sur l\'appareil</string>
+    <string name="planned_journey_template_apply_a11y">Appliquer le modèle %1$s</string>
+    <string name="planned_journey_template_delete_a11y">Supprimer le modèle %1$s</string>
+    <string name="planned_journey_template_invalid">Complétez deux gares sélectionnées et un horaire avant d\'enregistrer un modèle.</string>
+    <string name="planned_journey_template_saved">Modèle enregistré uniquement sur cet appareil. Choisissez toujours la date avant d\'enregistrer un trajet.</string>
+    <string name="planned_journey_template_applied">Modèle «%1$s» appliqué. Choisissez la date et confirmez le trajet.</string>
+    <string name="planned_journey_template_deleted">Modèle local supprimé.</string>
     <string name="planned_journey_origin">Départ</string>
     <string name="planned_journey_destination">Arrivée</string>
     <string name="planned_journey_route">%1$s → %2$s</string>

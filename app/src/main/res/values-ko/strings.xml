@@ -131,6 +131,17 @@
     <string name="planned_journey_filter_archived">보관됨</string>
     <string name="planned_journey_filter_all">전체</string>
     <string name="planned_journey_label">라벨(선택 사항)</string>
+    <string name="planned_journey_templates_title">여정 템플릿</string>
+    <string name="planned_journey_templates_description">경로, 시간, 리마인더를 저장해 다시 사용하세요. 날짜는 항상 따로 선택합니다.</string>
+    <string name="planned_journey_template_name">여정 템플릿 이름</string>
+    <string name="planned_journey_template_placeholder">예: 집-회사</string>
+    <string name="planned_journey_template_save_a11y">현재 여정 템플릿을 기기에만 저장</string>
+    <string name="planned_journey_template_apply_a11y">%1$s 템플릿 적용</string>
+    <string name="planned_journey_template_delete_a11y">%1$s 템플릿 삭제</string>
+    <string name="planned_journey_template_invalid">템플릿을 저장하기 전에 선택한 두 역과 시간을 입력하세요.</string>
+    <string name="planned_journey_template_saved">템플릿을 이 기기에만 저장했습니다. 여정을 저장하기 전에 항상 날짜를 선택하세요.</string>
+    <string name="planned_journey_template_applied">“%1$s” 템플릿을 적용했습니다. 날짜를 선택하고 여정을 확인하세요.</string>
+    <string name="planned_journey_template_deleted">로컬 템플릿을 삭제했습니다.</string>
     <string name="planned_journey_origin">출발</string>
     <string name="planned_journey_destination">도착</string>
     <string name="planned_journey_route">%1$s → %2$s</string>

@@ -131,6 +131,17 @@
     <string name="planned_journey_filter_archived">アーカイブ済み</string>
     <string name="planned_journey_filter_all">すべて</string>
     <string name="planned_journey_label">ラベル（任意）</string>
+    <string name="planned_journey_templates_title">移動のテンプレート</string>
+    <string name="planned_journey_templates_description">ルート、時刻、リマインダーを保存して再利用できます。日付は毎回選びます。</string>
+    <string name="planned_journey_template_name">移動テンプレートの名前</string>
+    <string name="planned_journey_template_placeholder">例：自宅-職場</string>
+    <string name="planned_journey_template_save_a11y">現在の移動テンプレートをこの端末にだけ保存</string>
+    <string name="planned_journey_template_apply_a11y">テンプレート %1$s を適用</string>
+    <string name="planned_journey_template_delete_a11y">テンプレート %1$s を削除</string>
+    <string name="planned_journey_template_invalid">テンプレートを保存する前に、選択した2つの駅と時刻を入力してください。</string>
+    <string name="planned_journey_template_saved">テンプレートはこの端末にだけ保存しました。移動を保存する前に必ず日付を選んでください。</string>
+    <string name="planned_journey_template_applied">テンプレート「%1$s」を適用しました。日付を選んで移動を確定してください。</string>
+    <string name="planned_journey_template_deleted">端末内のテンプレートを削除しました。</string>
     <string name="planned_journey_origin">出発</string>
     <string name="planned_journey_destination">到着</string>
     <string name="planned_journey_route">%1$s → %2$s</string>

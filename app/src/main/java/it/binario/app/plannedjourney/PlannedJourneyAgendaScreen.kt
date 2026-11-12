@@ -18,6 +18,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Archive
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ContentPaste
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Edit
@@ -212,6 +213,10 @@ fun PlannedJourneyAgendaScreen(
         PlannedJourneyEditorDialog(
             editor = editor,
             stations = stations,
+            templates = viewModel.templates,
+            onApplyTemplate = viewModel::applyTemplate,
+            onDeleteTemplate = viewModel::deleteTemplate,
+            onSaveTemplate = { name -> viewModel.saveTemplate(name, stations) },
             favouriteStations = favouriteStations,
             locationCatalogue = locationCatalogue,
             onChange = viewModel::changeEditor,
@@ -380,6 +385,10 @@ private fun AgendaEntryCard(
 private fun PlannedJourneyEditorDialog(
     editor: PlannedJourneyEditorState,
     stations: List<PlannedJourneyStation>,
+    templates: List<PlannedJourneyTemplate>,
+    onApplyTemplate: (String) -> Unit,
+    onDeleteTemplate: (String) -> Unit,
+    onSaveTemplate: (String) -> Unit,
     favouriteStations: List<PlannedJourneyStation>,
     locationCatalogue: List<Station>,
     onChange: ((PlannedJourneyEditorState) -> PlannedJourneyEditorState) -> Unit,
@@ -421,6 +430,7 @@ private fun PlannedJourneyEditorDialog(
         text = {
             LazyColumn(modifier = Modifier.testTag("plannedJourneyEditor"), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 editor.notice?.let { notice -> item { AgendaMessage(notice.localized(), isError = false) } }
+                item { TemplateFields(templates, onApplyTemplate, onDeleteTemplate, onSaveTemplate) }
                 item {
                     OutlinedTextField(
                         value = editor.label,
@@ -507,6 +517,54 @@ private fun PlannedJourneyEditorDialog(
         confirmButton = { TextButton(onClick = onSave, modifier = Modifier.testTag("plannedJourneySave")) { Text(stringResource(R.string.planned_journey_save)) } },
         dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.planned_journey_cancel)) } }
     )
+}
+
+/** «Modelli di viaggio»: apply or delete a saved template, or save the form under a name (never its date). */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun TemplateFields(
+    templates: List<PlannedJourneyTemplate>,
+    onApply: (String) -> Unit,
+    onDelete: (String) -> Unit,
+    onSave: (String) -> Unit
+) {
+    var name by rememberSaveable { mutableStateOf("") }
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text(stringResource(R.string.planned_journey_templates_title), style = MaterialTheme.typography.labelLarge)
+        Text(stringResource(R.string.planned_journey_templates_description), style = MaterialTheme.typography.bodySmall)
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            templates.forEach { template ->
+                val apply = stringResource(R.string.planned_journey_template_apply_a11y, template.name)
+                val delete = stringResource(R.string.planned_journey_template_delete_a11y, template.name)
+                AssistChip(
+                    onClick = { onApply(template.id) },
+                    label = { Text(template.name) },
+                    modifier = Modifier.semantics { contentDescription = apply },
+                    trailingIcon = {
+                        IconButton(onClick = { onDelete(template.id) }, modifier = Modifier.semantics { contentDescription = delete }) {
+                            Icon(Icons.Default.Close, contentDescription = null)
+                        }
+                    }
+                )
+            }
+        }
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            OutlinedTextField(
+                value = name,
+                onValueChange = { name = it.take(PlannedJourneyTemplates.MAX_NAME_LENGTH) },
+                label = { Text(stringResource(R.string.planned_journey_template_name)) },
+                placeholder = { Text(stringResource(R.string.planned_journey_template_placeholder)) },
+                singleLine = true,
+                modifier = Modifier.weight(1f)
+            )
+            val saveDescription = stringResource(R.string.planned_journey_template_save_a11y)
+            TextButton(
+                onClick = { onSave(name) },
+                enabled = name.isNotBlank(),
+                modifier = Modifier.semantics { contentDescription = saveDescription }
+            ) { Text(stringResource(R.string.planned_journey_save)) }
+        }
+    }
 }
 
 @OptIn(ExperimentalLayoutApi::class)

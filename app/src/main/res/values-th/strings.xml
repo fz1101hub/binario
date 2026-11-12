@@ -134,6 +134,17 @@
     <string name="planned_journey_filter_archived">เก็บถาวรแล้ว</string>
     <string name="planned_journey_filter_all">ทั้งหมด</string>
     <string name="planned_journey_label">ป้ายกำกับ (ไม่บังคับ)</string>
+    <string name="planned_journey_templates_title">เทมเพลตการเดินทาง</string>
+    <string name="planned_journey_templates_description">บันทึกเส้นทาง เวลา และการเตือนไว้ใช้ซ้ำ วันที่ต้องเลือกใหม่ทุกครั้ง</string>
+    <string name="planned_journey_template_name">ชื่อเทมเพลตการเดินทาง</string>
+    <string name="planned_journey_template_placeholder">เช่น บ้าน-ที่ทำงาน</string>
+    <string name="planned_journey_template_save_a11y">บันทึกเทมเพลตการเดินทางปัจจุบันไว้ในอุปกรณ์เท่านั้น</string>
+    <string name="planned_journey_template_apply_a11y">ใช้เทมเพลต %1$s</string>
+    <string name="planned_journey_template_delete_a11y">ลบเทมเพลต %1$s</string>
+    <string name="planned_journey_template_invalid">กรอกสถานีที่เลือกสองแห่งและเวลาก่อนบันทึกเทมเพลต</string>
+    <string name="planned_journey_template_saved">บันทึกเทมเพลตไว้ในอุปกรณ์นี้เท่านั้น เลือกวันที่ทุกครั้งก่อนบันทึกการเดินทาง</string>
+    <string name="planned_journey_template_applied">ใช้เทมเพลต “%1$s” แล้ว เลือกวันที่และยืนยันการเดินทาง</string>
+    <string name="planned_journey_template_deleted">ลบเทมเพลตในเครื่องแล้ว</string>
     <string name="planned_journey_origin">ต้นทาง</string>
     <string name="planned_journey_destination">ปลายทาง</string>
     <string name="planned_journey_route">%1$s → %2$s</string>

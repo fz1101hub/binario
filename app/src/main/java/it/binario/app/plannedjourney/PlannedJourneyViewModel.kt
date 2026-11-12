@@ -87,7 +87,8 @@ class PlannedJourneyViewModel(
     private val zone: ZoneId = RailTime.defaultZone,
     private val newId: () -> String = { UUID.randomUUID().toString() },
     private val reminders: PlannedJourneyReminderController? = null,
-    private val preferences: PlannedJourneyPreferences? = null
+    private val preferences: PlannedJourneyPreferences? = null,
+    private val templateStore: PlannedJourneyTemplateStore? = null
 ) : ViewModel() {
     private val initialRead = repository.read()
     var snapshot by mutableStateOf(initialRead.snapshot)
@@ -192,6 +193,62 @@ class PlannedJourneyViewModel(
     /** The lead proposed to every new journey, return and replan; the editor can still change it. */
     var defaultReminder by mutableStateOf(runCatching { preferences?.defaultReminder() }.getOrNull())
         private set
+
+    /** Saved journey templates, newest first (at most [PlannedJourneyTemplates.MAX_TEMPLATES]). */
+    var templates by mutableStateOf(runCatching { PlannedJourneyTemplates.decode(templateStore?.read()) }.getOrDefault(emptyList()))
+        private set
+
+    /** Saves the editor's route, time, lead and checklist under [name]; the date is never part of a template. */
+    fun saveTemplate(name: String, stations: Iterable<PlannedJourneyStation>) {
+        val current = editor ?: return
+        val store = templateStore ?: return
+        val stationList = stations.toList()
+        val origin = resolveStation(current.originQuery, current.originStationId, stationList)
+        val destination = resolveStation(current.destinationQuery, current.destinationStationId, stationList)
+        val time = runCatching { LocalTime.parse(current.time.trim()) }.getOrNull()
+        val template = if (origin == null || destination == null || time == null) null else PlannedJourneyTemplates.validated(
+            PlannedJourneyTemplate(newId(), name, origin, destination, time, current.reminderMinutes, checklistLines(current.checklistText))
+        )
+        if (template == null) {
+            editor = current.copy(validationMessage = UiMessage(UiMessageKey.PLANNED_JOURNEY_TEMPLATE_INVALID))
+            return
+        }
+        val updated = PlannedJourneyTemplates.add(templates, template)
+        runCatching { store.write(PlannedJourneyTemplates.encode(updated)) }
+            .onSuccess {
+                templates = updated
+                editor = current.copy(notice = UiMessage(UiMessageKey.PLANNED_JOURNEY_TEMPLATE_SAVED), validationMessage = null)
+            }
+            .onFailure { editor = current.copy(validationMessage = UiMessage(UiMessageKey.PLANNED_JOURNEY_ACTION_REJECTED)) }
+    }
+
+    /** Fills the editor from a template: route, time, lead and checklist; the date must be chosen anew. */
+    fun applyTemplate(id: String) {
+        val current = editor ?: return
+        val template = templates.firstOrNull { it.id == id } ?: return
+        editor = current.copy(
+            originQuery = template.origin.displayName,
+            originStationId = template.origin.canonicalId,
+            destinationQuery = template.destination.displayName,
+            destinationStationId = template.destination.canonicalId,
+            date = "",
+            time = template.time.toString(),
+            reminderMinutes = template.reminder,
+            checklistText = template.checklist.joinToString("\n"),
+            notice = UiMessage(UiMessageKey.PLANNED_JOURNEY_TEMPLATE_APPLIED, template.name),
+            validationMessage = null,
+            pastDepartureConfirmed = false
+        )
+    }
+
+    fun deleteTemplate(id: String) {
+        val store = templateStore ?: return
+        val updated = templates.filterNot { it.id == id }
+        runCatching { store.write(if (updated.isEmpty()) null else PlannedJourneyTemplates.encode(updated)) }.onSuccess {
+            templates = updated
+            editor = editor?.copy(notice = UiMessage(UiMessageKey.PLANNED_JOURNEY_TEMPLATE_DELETED))
+        }
+    }
 
     fun selectDefaultReminder(value: PlannedJourneyReminderMinutes?) {
         val store = preferences ?: return
@@ -305,12 +362,8 @@ class PlannedJourneyViewModel(
             editor = current.copy(validationMessage = UiMessage(UiMessageKey.PLANNED_JOURNEY_EDITOR_INVALID))
             return
         }
-        val checklist = current.checklistText.lineSequence()
-            .map(String::trim)
-            .filter(String::isNotEmpty)
-            .take(PlannedJourneyPersistenceSchema.MAX_CHECKLIST_ITEMS)
+        val checklist = checklistLines(current.checklistText)
             .mapIndexed { index, label -> PlannedJourneyChecklistItem("check-${index + 1}", label) }
-            .toList()
         val recurrence = current.repeatCount.takeIf { it > 1 }?.let { count ->
             PlannedJourneyRecurrence(
                 weekdays = (current.repeatWeekdays + departure.date.dayOfWeek).sortedBy { it.value },
@@ -465,6 +518,12 @@ class PlannedJourneyViewModel(
         else -> UiMessageKey.PLANNED_JOURNEY_ACTION_REJECTED
     }
 
+    private fun checklistLines(text: String): List<String> = text.lineSequence()
+        .map(String::trim)
+        .filter(String::isNotEmpty)
+        .take(PlannedJourneyPersistenceSchema.MAX_CHECKLIST_ITEMS)
+        .toList()
+
     private fun resolveStation(query: String, selectedId: String?, stations: List<PlannedJourneyStation>): PlannedJourneyStation? {
         val normalized = query.trim()
         if (selectedId != null) return stations.singleOrNull {
@@ -484,7 +543,8 @@ class PlannedJourneyViewModel(
                     repository = PlannedJourneyRepository(SharedPreferencesPlannedJourneyStorage(context.applicationContext)),
                     savedStateHandle = createSavedStateHandle(),
                     reminders = AndroidPlannedJourneyReminders.controller(context.applicationContext),
-                    preferences = SharedPreferencesPlannedJourneyPreferences(context.applicationContext)
+                    preferences = SharedPreferencesPlannedJourneyPreferences(context.applicationContext),
+                    templateStore = SharedPreferencesPlannedJourneyTemplateStore(context.applicationContext)
                 )
             }
         }

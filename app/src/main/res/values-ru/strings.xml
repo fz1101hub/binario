@@ -131,6 +131,17 @@
     <string name="planned_journey_filter_archived">В архиве</string>
     <string name="planned_journey_filter_all">Все</string>
     <string name="planned_journey_label">Метка (необязательно)</string>
+    <string name="planned_journey_templates_title">Шаблоны поездок</string>
+    <string name="planned_journey_templates_description">Сохраните маршрут, время и напоминание для повторного использования. Дату всегда нужно выбрать.</string>
+    <string name="planned_journey_template_name">Название шаблона поездки</string>
+    <string name="planned_journey_template_placeholder">Напр. Дом-работа</string>
+    <string name="planned_journey_template_save_a11y">Сохранить текущий шаблон поездки только на устройстве</string>
+    <string name="planned_journey_template_apply_a11y">Применить шаблон «%1$s»</string>
+    <string name="planned_journey_template_delete_a11y">Удалить шаблон «%1$s»</string>
+    <string name="planned_journey_template_invalid">Перед сохранением шаблона укажите две выбранные станции и время.</string>
+    <string name="planned_journey_template_saved">Шаблон сохранён только на этом устройстве. Перед сохранением поездки всегда выбирайте дату.</string>
+    <string name="planned_journey_template_applied">Шаблон «%1$s» применён. Выберите дату и подтвердите поездку.</string>
+    <string name="planned_journey_template_deleted">Локальный шаблон удалён.</string>
     <string name="planned_journey_origin">Откуда</string>
     <string name="planned_journey_destination">Куда</string>
     <string name="planned_journey_route">%1$s → %2$s</string>

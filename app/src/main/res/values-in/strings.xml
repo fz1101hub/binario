@@ -131,6 +131,17 @@
     <string name="planned_journey_filter_archived">Diarsipkan</string>
     <string name="planned_journey_filter_all">Semua</string>
     <string name="planned_journey_label">Label opsional</string>
+    <string name="planned_journey_templates_title">Templat perjalanan</string>
+    <string name="planned_journey_templates_description">Simpan rute, waktu, dan pengingat untuk dipakai lagi. Tanggal selalu harus dipilih.</string>
+    <string name="planned_journey_template_name">Nama templat perjalanan</string>
+    <string name="planned_journey_template_placeholder">Mis. Rumah-kantor</string>
+    <string name="planned_journey_template_save_a11y">Simpan templat perjalanan saat ini hanya di perangkat</string>
+    <string name="planned_journey_template_apply_a11y">Terapkan templat %1$s</string>
+    <string name="planned_journey_template_delete_a11y">Hapus templat %1$s</string>
+    <string name="planned_journey_template_invalid">Lengkapi dua stasiun terpilih dan satu waktu sebelum menyimpan templat.</string>
+    <string name="planned_journey_template_saved">Templat hanya disimpan di perangkat ini. Selalu pilih tanggal sebelum menyimpan perjalanan.</string>
+    <string name="planned_journey_template_applied">Templat “%1$s” diterapkan. Pilih tanggal dan konfirmasi perjalanan.</string>
+    <string name="planned_journey_template_deleted">Templat lokal dihapus.</string>
     <string name="planned_journey_origin">Keberangkatan</string>
     <string name="planned_journey_destination">Kedatangan</string>
     <string name="planned_journey_route">%1$s → %2$s</string>

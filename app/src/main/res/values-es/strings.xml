@@ -134,6 +134,17 @@
     <string name="planned_journey_filter_archived">Archivados</string>
     <string name="planned_journey_filter_all">Todos</string>
     <string name="planned_journey_label">Etiqueta opcional</string>
+    <string name="planned_journey_templates_title">Plantillas de viaje</string>
+    <string name="planned_journey_templates_description">Guarda ruta, horario y recordatorio para reutilizarlos. La fecha queda siempre por elegir.</string>
+    <string name="planned_journey_template_name">Nombre de la plantilla de viaje</string>
+    <string name="planned_journey_template_placeholder">Ej. Casa-trabajo</string>
+    <string name="planned_journey_template_save_a11y">Guardar la plantilla de viaje actual solo en el dispositivo</string>
+    <string name="planned_journey_template_apply_a11y">Aplicar la plantilla %1$s</string>
+    <string name="planned_journey_template_delete_a11y">Eliminar la plantilla %1$s</string>
+    <string name="planned_journey_template_invalid">Completa dos estaciones seleccionadas y un horario antes de guardar una plantilla.</string>
+    <string name="planned_journey_template_saved">Plantilla guardada solo en este dispositivo. Elige siempre la fecha antes de guardar un trayecto.</string>
+    <string name="planned_journey_template_applied">Plantilla «%1$s» aplicada. Elige la fecha y confirma el trayecto.</string>
+    <string name="planned_journey_template_deleted">Plantilla local eliminada.</string>
     <string name="planned_journey_origin">Salida</string>
     <string name="planned_journey_destination">Llegada</string>
     <string name="planned_journey_route">%1$s → %2$s</string>

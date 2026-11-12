@@ -134,6 +134,17 @@
     <string name="planned_journey_filter_archived">Arşivlenen</string>
     <string name="planned_journey_filter_all">Tümü</string>
     <string name="planned_journey_label">İsteğe bağlı etiket</string>
+    <string name="planned_journey_templates_title">Yolculuk şablonları</string>
+    <string name="planned_journey_templates_description">Güzergâhı, saati ve hatırlatıcıyı yeniden kullanmak için kaydedin. Tarih her zaman ayrıca seçilir.</string>
+    <string name="planned_journey_template_name">Yolculuk şablonu adı</string>
+    <string name="planned_journey_template_placeholder">Örn. Ev-iş</string>
+    <string name="planned_journey_template_save_a11y">Geçerli yolculuk şablonunu yalnızca cihaza kaydet</string>
+    <string name="planned_journey_template_apply_a11y">%1$s şablonunu uygula</string>
+    <string name="planned_journey_template_delete_a11y">%1$s şablonunu sil</string>
+    <string name="planned_journey_template_invalid">Şablon kaydetmeden önce iki seçili istasyonu ve bir saati tamamlayın.</string>
+    <string name="planned_journey_template_saved">Şablon yalnızca bu cihaza kaydedildi. Yolculuk kaydetmeden önce her zaman tarihi seçin.</string>
+    <string name="planned_journey_template_applied">“%1$s” şablonu uygulandı. Tarihi seçin ve yolculuğu onaylayın.</string>
+    <string name="planned_journey_template_deleted">Yerel şablon silindi.</string>
     <string name="planned_journey_origin">Kalkış</string>
     <string name="planned_journey_destination">Varış</string>
     <string name="planned_journey_route">%1$s → %2$s</string>

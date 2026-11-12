@@ -134,6 +134,17 @@
     <string name="planned_journey_filter_archived">Archiviati</string>
     <string name="planned_journey_filter_all">Tutti</string>
     <string name="planned_journey_label">Etichetta facoltativa</string>
+    <string name="planned_journey_templates_title">Modelli di viaggio</string>
+    <string name="planned_journey_templates_description">Salva percorso, orario e promemoria per riutilizzarli. La data resta sempre da scegliere.</string>
+    <string name="planned_journey_template_name">Nome del modello di viaggio</string>
+    <string name="planned_journey_template_placeholder">Es. Casa-lavoro</string>
+    <string name="planned_journey_template_save_a11y">Salva il modello di viaggio corrente solo sul dispositivo</string>
+    <string name="planned_journey_template_apply_a11y">Applica il modello %1$s</string>
+    <string name="planned_journey_template_delete_a11y">Elimina il modello %1$s</string>
+    <string name="planned_journey_template_invalid">Completa due stazioni selezionate e un orario prima di salvare un modello.</string>
+    <string name="planned_journey_template_saved">Modello salvato solo su questo dispositivo. Scegli sempre la data prima di salvare una tratta.</string>
+    <string name="planned_journey_template_applied">Modello «%1$s» applicato. Scegli la data e conferma la tratta.</string>
+    <string name="planned_journey_template_deleted">Modello locale eliminato.</string>
     <string name="planned_journey_origin">Partenza</string>
     <string name="planned_journey_destination">Arrivo</string>
     <string name="planned_journey_route">%1$s → %2$s</string>

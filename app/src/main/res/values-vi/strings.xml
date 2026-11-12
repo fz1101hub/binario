@@ -134,6 +134,17 @@
     <string name="planned_journey_filter_archived">Đã lưu trữ</string>
     <string name="planned_journey_filter_all">Tất cả</string>
     <string name="planned_journey_label">Nhãn (không bắt buộc)</string>
+    <string name="planned_journey_templates_title">Mẫu hành trình</string>
+    <string name="planned_journey_templates_description">Lưu tuyến, giờ và lời nhắc để dùng lại. Ngày luôn phải chọn riêng.</string>
+    <string name="planned_journey_template_name">Tên mẫu hành trình</string>
+    <string name="planned_journey_template_placeholder">Ví dụ: Nhà-cơ quan</string>
+    <string name="planned_journey_template_save_a11y">Lưu mẫu hành trình hiện tại chỉ trên thiết bị</string>
+    <string name="planned_journey_template_apply_a11y">Áp dụng mẫu %1$s</string>
+    <string name="planned_journey_template_delete_a11y">Xóa mẫu %1$s</string>
+    <string name="planned_journey_template_invalid">Hãy điền hai ga đã chọn và một giờ trước khi lưu mẫu.</string>
+    <string name="planned_journey_template_saved">Đã lưu mẫu chỉ trên thiết bị này. Luôn chọn ngày trước khi lưu hành trình.</string>
+    <string name="planned_journey_template_applied">Đã áp dụng mẫu “%1$s”. Hãy chọn ngày và xác nhận hành trình.</string>
+    <string name="planned_journey_template_deleted">Đã xóa mẫu trên máy.</string>
     <string name="planned_journey_origin">Ga đi</string>
     <string name="planned_journey_destination">Ga đến</string>
     <string name="planned_journey_route">%1$s → %2$s</string>

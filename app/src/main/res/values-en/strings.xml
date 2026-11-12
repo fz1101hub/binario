@@ -134,6 +134,17 @@
     <string name="planned_journey_filter_archived">Archived</string>
     <string name="planned_journey_filter_all">All</string>
     <string name="planned_journey_label">Optional label</string>
+    <string name="planned_journey_templates_title">Travel templates</string>
+    <string name="planned_journey_templates_description">Save route, time and reminder to reuse them. The date always remains to be chosen.</string>
+    <string name="planned_journey_template_name">Travel template name</string>
+    <string name="planned_journey_template_placeholder">E.g. Home-work</string>
+    <string name="planned_journey_template_save_a11y">Save the current travel template only on the device</string>
+    <string name="planned_journey_template_apply_a11y">Apply the template %1$s</string>
+    <string name="planned_journey_template_delete_a11y">Delete the template %1$s</string>
+    <string name="planned_journey_template_invalid">Complete two selected stations and a time before saving a template.</string>
+    <string name="planned_journey_template_saved">Template saved only on this device. Always choose the date before saving a journey.</string>
+    <string name="planned_journey_template_applied">Template “%1$s” applied. Choose the date and confirm the journey.</string>
+    <string name="planned_journey_template_deleted">Local template deleted.</string>
     <string name="planned_journey_origin">Origin</string>
     <string name="planned_journey_destination">Destination</string>
     <string name="planned_journey_route">%1$s → %2$s</string>

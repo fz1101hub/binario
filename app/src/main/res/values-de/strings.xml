@@ -134,6 +134,17 @@
     <string name="planned_journey_filter_archived">Archiviert</string>
     <string name="planned_journey_filter_all">Alle</string>
     <string name="planned_journey_label">Optionale Bezeichnung</string>
+    <string name="planned_journey_templates_title">Reisevorlagen</string>
+    <string name="planned_journey_templates_description">Speichern Sie Strecke, Zeit und Erinnerung zur Wiederverwendung. Das Datum muss stets noch gewählt werden.</string>
+    <string name="planned_journey_template_name">Name der Reisevorlage</string>
+    <string name="planned_journey_template_placeholder">z. B. Zuhause‑Arbeit</string>
+    <string name="planned_journey_template_save_a11y">Aktuelle Reisevorlage nur auf dem Gerät speichern</string>
+    <string name="planned_journey_template_apply_a11y">Vorlage %1$s anwenden</string>
+    <string name="planned_journey_template_delete_a11y">Vorlage %1$s löschen</string>
+    <string name="planned_journey_template_invalid">Wählen Sie zwei Stationen und eine Uhrzeit, bevor Sie ein Template speichern.</string>
+    <string name="planned_journey_template_saved">Template nur auf diesem Gerät gespeichert. Wählen Sie vor dem Speichern einer Verbindung stets das Datum.</string>
+    <string name="planned_journey_template_applied">Template „%1$s“ angewendet. Wählen Sie das Datum und bestätigen Sie die Verbindung.</string>
+    <string name="planned_journey_template_deleted">Lokales Template gelöscht.</string>
     <string name="planned_journey_origin">Abfahrt</string>
     <string name="planned_journey_destination">Ankunft</string>
     <string name="planned_journey_route">%1$s → %2$s</string>
