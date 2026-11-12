@@ -342,24 +342,73 @@ export type RailClock = {
   minuteOfDay: number;
   /** ISO weekday of the local day: 1 Monday … 7 Sunday. */
   isoWeekday: number;
+  /** The local day, `YYYY-MM-DD`: on a national holiday the railways run their Sunday service. */
+  date: string;
 };
 
 const ISO_WEEKDAYS: Readonly<Record<string, number>> = { Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6, Sun: 7 };
 const railClockFormat = new Intl.DateTimeFormat("en-US", {
   timeZone: "Europe/Rome",
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
   weekday: "short",
   hour: "2-digit",
   minute: "2-digit",
   hourCycle: "h23",
 });
 
-/** The Europe/Rome minute of the day and weekday of `instant`, daylight saving included. */
+/** The Europe/Rome minute of the day, weekday and day of `instant`, daylight saving included. */
 export function railClock(instant: Date): RailClock {
   const parts = Object.fromEntries(railClockFormat.formatToParts(instant).map(part => [part.type, part.value]));
   return {
     minuteOfDay: (Number(parts.hour) % 24) * 60 + Number(parts.minute),
     isoWeekday: ISO_WEEKDAYS[parts.weekday] ?? 1,
+    date: `${parts.year}-${parts.month}-${parts.day}`,
   };
+}
+
+/** `date` (`YYYY-MM-DD`) moved by `days` calendar days. */
+function addDays(date: string, days: number): string {
+  const instant = new Date(`${date}T00:00:00Z`);
+  instant.setUTCDate(instant.getUTCDate() + days);
+  return instant.toISOString().slice(0, 10);
+}
+
+/** Easter Sunday of `year` in the Gregorian calendar (anonymous algorithm), `YYYY-MM-DD`. */
+function easterSunday(year: number): string {
+  const a = year % 19;
+  const b = Math.floor(year / 100);
+  const c = year % 100;
+  const d = Math.floor(b / 4);
+  const e = b % 4;
+  const f = Math.floor((b + 8) / 25);
+  const g = Math.floor((b - f + 1) / 3);
+  const h = (19 * a + b - d - g + 15) % 30;
+  const i = Math.floor(c / 4);
+  const k = c % 4;
+  const l = (32 + 2 * e + 2 * i - h - k) % 7;
+  const m = Math.floor((a + 11 * h + 22 * l) / 451);
+  const month = Math.floor((h + l - 7 * m + 114) / 31);
+  const day = ((h + l - 7 * m + 114) % 31) + 1;
+  return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+}
+
+const FIXED_HOLIDAYS: ReadonlySet<string> = new Set(["01-01", "01-06", "04-25", "05-01", "06-02", "08-15", "11-01", "12-08", "12-25", "12-26"]);
+
+/**
+ * Whether `date` (`YYYY-MM-DD`) is an Italian national holiday, on which the railways run their
+ * Sunday service: the same calendar as the Android app's `ItalianRailServiceCalendar` (fixed
+ * dates, Easter Sunday and Monday, and 4 October from 2026).
+ */
+export function isItalianHoliday(date: string): boolean {
+  const year = Number(date.slice(0, 4));
+  const monthDay = date.slice(5);
+  if (FIXED_HOLIDAYS.has(monthDay)) return true;
+  // San Francesco d'Assisi, national holiday again from 2026 (legge 151/2025).
+  if (year >= 2026 && monthDay === "10-04") return true;
+  const easter = easterSunday(year);
+  return date === easter || date === addDays(easter, 1);
 }
 
 /**
@@ -412,7 +461,7 @@ export type PunctualDeparture = {
  * `clock` (past midnight too) and that have at least {@link MIN_SAMPLES} arrivals at the
  * destination. A train without a scheduled minute there is left out, and so is one not known to run
  * on the day of that departure ({@link PunctualityStats.mayRunOn}: its weekdays at the origin or,
- * without them, its days observed there).
+ * without them, its days observed there; a national holiday counts as a Sunday, {@link isItalianHoliday}).
  *
  * Ranked by the share of observed days on which the train ran and arrived on time at the
  * destination against its own limit ({@link daysOnTime}, so a train often cancelled is not first
@@ -443,10 +492,10 @@ export function mostPunctualDepartures(
     const minutesUntil = (minuteOfDay - clock.minuteOfDay + MINUTES_PER_DAY) % MINUTES_PER_DAY;
     if (minutesUntil >= DEPARTURE_WINDOW_MINUTES) continue;
     // The weekdays are those of the run's departure day: a stop reached after midnight belongs to
-    // the run of the day before.
+    // the run of the day before. A national holiday runs the Sunday service.
     const daysAfterToday = clock.minuteOfDay + minutesUntil >= MINUTES_PER_DAY ? 1 : 0;
     const runDay = daysAfterToday - Math.floor(scheduled / MINUTES_PER_DAY);
-    const runWeekday = ((((clock.isoWeekday - 1 + runDay) % 7) + 7) % 7) + 1;
+    const runWeekday = isItalianHoliday(addDays(clock.date, runDay)) ? 7 : ((((clock.isoWeekday - 1 + runDay) % 7) + 7) % 7) + 1;
     if (!stats.mayRunOn(train, boarding, runWeekday)) continue;
     candidates.push({ train, alighting, minuteOfDay, minutesUntil });
   }

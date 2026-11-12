@@ -8,6 +8,7 @@ import {
   onTimeLimitMinutes,
   parsePunctualityStats,
   publicTrainNumber,
+  isItalianHoliday,
   railClock,
   routePunctuality,
   trainNumberKey,
@@ -262,18 +263,33 @@ describe("route punctuality", () => {
 });
 
 describe("most punctual departures", () => {
-  const clockAt = (hours: number, minutes: number, isoWeekday = 1): RailClock => ({ minuteOfDay: hours * 60 + minutes, isoWeekday });
+  // A day of the week of Monday 9 – Sunday 15 November 2026, which has no holiday.
+  const clockAt = (hours: number, minutes: number, isoWeekday = 1): RailClock => ({
+    minuteOfDay: hours * 60 + minutes,
+    isoWeekday,
+    date: `2026-11-${String(8 + isoWeekday).padStart(2, "0")}`,
+  });
   const numbers = (result: ReturnType<typeof mostPunctualDepartures>) => result?.map(train => train.number);
   const departures = () => parsePunctualityStats(departuresDocument())!;
 
   it("reads the Italian clock, winter and summer time, with the weekday", () => {
-    expect(railClock(new Date(MONDAY_MORNING))).toEqual({ minuteOfDay: 7 * 60 + 30, isoWeekday: 1 });
-    expect(railClock(new Date("2026-11-08T22:30:00Z"))).toEqual({ minuteOfDay: 23 * 60 + 30, isoWeekday: 7 });
-    expect(railClock(new Date("2026-07-05T21:45:00Z"))).toEqual({ minuteOfDay: 23 * 60 + 45, isoWeekday: 7 });
+    expect(railClock(new Date(MONDAY_MORNING))).toEqual({ minuteOfDay: 7 * 60 + 30, isoWeekday: 1, date: "2026-11-09" });
+    expect(railClock(new Date("2026-11-08T22:30:00Z"))).toEqual({ minuteOfDay: 23 * 60 + 30, isoWeekday: 7, date: "2026-11-08" });
+    expect(railClock(new Date("2026-07-05T21:45:00Z"))).toEqual({ minuteOfDay: 23 * 60 + 45, isoWeekday: 7, date: "2026-07-05" });
     // The night the clocks go forward: 01:30 CET, then 03:30 CEST an hour later.
     expect(railClock(new Date("2026-03-29T00:30:00Z")).minuteOfDay).toBe(90);
     expect(railClock(new Date("2026-03-29T01:30:00Z")).minuteOfDay).toBe(210);
-    expect(railClock(new Date("2026-11-09T23:00:00Z"))).toEqual({ minuteOfDay: 0, isoWeekday: 2 });
+    expect(railClock(new Date("2026-11-09T23:00:00Z"))).toEqual({ minuteOfDay: 0, isoWeekday: 2, date: "2026-11-10" });
+  });
+
+  it("knows the Italian national holidays, Easter Monday included", () => {
+    const holidays2026 = ["01-01", "01-06", "04-05", "04-06", "04-25", "05-01", "06-02", "08-15", "10-04", "11-01", "12-08", "12-25", "12-26"];
+    for (const day of holidays2026) expect(isItalianHoliday(`2026-${day}`), day).toBe(true);
+    for (const day of ["2026-04-07", "2026-12-07", "2026-12-24", "2026-11-02", "2027-04-05"]) expect(isItalianHoliday(day), day).toBe(false);
+    // Easter Monday 2027 and 2030; 4 October is a holiday again only from 2026.
+    expect(isItalianHoliday("2027-03-29")).toBe(true);
+    expect(isItalianHoliday("2030-04-22")).toBe(true);
+    expect(isItalianHoliday("2025-10-04")).toBe(false);
   });
 
   it("keeps the trains leaving the origin in the next three hours with five arrivals or more, best first, three at most", () => {
@@ -413,6 +429,30 @@ describe("most punctual departures", () => {
     // Sunday 00:10: still Saturday's run.
     expect(at(0, 10, 7)).toEqual(["night"]);
     expect(at(0, 10, 1)).toEqual([]);
+  });
+
+  it("treats a national holiday as a Sunday, so a train of the working days is not proposed", () => {
+    const stats = parsePunctualityStats(
+      statsDocument([
+        departure("working-days", "REG", 510, arrivals(20, 20), weekdaysOnTime([4, 4, 4, 4, 4, 0, 0])),
+        departure("sundays", "REG", 520, arrivals(16, 8), weekdaysOnTime([0, 0, 0, 0, 0, 0, 16])),
+        // Reached after midnight: the run of the day before the holiday, a working day.
+        departure("night", "REG", 1460, arrivals(16, 16), weekdaysOnTime([4, 4, 4, 4, 0, 0, 0])),
+      ])
+    )!;
+    const at = (clock: RailClock) => numbers(mostPunctualDepartures(stats, [ROMA_TERMINI], [TIVOLI], clock, 10));
+    // Tuesday 8 December 2026 (Immacolata) at 07:30, and Easter Monday 6 April 2026.
+    expect(at({ minuteOfDay: 450, isoWeekday: 2, date: "2026-12-08" })).toEqual(["sundays"]);
+    expect(at({ minuteOfDay: 450, isoWeekday: 1, date: "2026-04-06" })).toEqual(["sundays"]);
+    // The working day before: the working-days train.
+    expect(at({ minuteOfDay: 450, isoWeekday: 1, date: "2026-12-07" })).toEqual(["working-days"]);
+    // Tuesday 8 December at 00:10 is still Monday's run; Monday 7 at 23:30 leads to it as well.
+    expect(at({ minuteOfDay: 10, isoWeekday: 2, date: "2026-12-08" })).toEqual(["night"]);
+    expect(at({ minuteOfDay: 23 * 60 + 30, isoWeekday: 1, date: "2026-12-07" })).toEqual(["night"]);
+    // Tuesday 8 December at 23:30, and Wednesday 9 at 00:10: the 00:20 belongs to the holiday's run.
+    expect(at({ minuteOfDay: 23 * 60 + 30, isoWeekday: 2, date: "2026-12-08" })).toEqual([]);
+    expect(at({ minuteOfDay: 10, isoWeekday: 3, date: "2026-12-09" })).toEqual([]);
+    expect(at({ minuteOfDay: 10, isoWeekday: 4, date: "2026-12-10" })).toEqual(["night"]);
   });
 
   it("proposes a train whose weekdays the file leaves out only on a weekday its observed days show it runs", () => {
