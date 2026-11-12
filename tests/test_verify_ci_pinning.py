@@ -239,8 +239,8 @@ class VerifyCiPinningTest(unittest.TestCase):
         ungated = text.replace(gate + condition, gate, 1)
         self.assertNotEqual(text, ungated)
         self.assertTrue(any("android: il gate di freshness GTFS deve valere solo sui percorsi di release" in problem for problem in policy.workflow_problems(android, ungated, LOCK)))
-        release_gate = gate + "        run: python3 tools/verify_embedded_assets.py --min-valid-days 30\n\n      - name: Decode"
-        without_release_gate = text.replace(release_gate, "      - name: Decode", 1)
+        release_gate = gate + "        run: python3 tools/verify_embedded_assets.py --min-valid-days 30\n\n      - name: Gate punctuality statistics coverage for a release\n        run:"
+        without_release_gate = text.replace(release_gate, "      - name: Gate punctuality statistics coverage for a release\n        run:", 1)
         self.assertNotEqual(text, without_release_gate)
         problems = policy.workflow_problems(android, without_release_gate, LOCK)
         self.assertTrue(any("release-sign: gate di freshness GTFS a 30 giorni assente" in problem for problem in problems), problems)
@@ -280,6 +280,36 @@ class VerifyCiPinningTest(unittest.TestCase):
         )
         self.assertNotEqual(text, watch_job)
         self.assertTrue(any("watchos: gate di freshness GTFS fuori dai percorsi di release" in problem for problem in policy.workflow_problems(apple, watch_job, LOCK)))
+
+    def test_punctuality_release_gate_runs_on_every_release_path_and_nowhere_else(self) -> None:
+        # Second audit, tools-data-5: statistics covering 6 days of a declared 30 would have shipped.
+        command = "        run: python3 -I tools/build_punctuality_stats.py --release-check app/src/main/assets/punctuality/stats_v1.json.gz\n"
+        android = ROOT / ".github/workflows/android-ci.yml"
+        text = android.read_text(encoding="utf-8")
+        self.assertEqual([], policy.workflow_problems(android, text, LOCK))
+        signing = "      - name: Gate punctuality statistics coverage for a release\n" + command + "\n      - name: Decode"
+        without = text.replace(signing, "      - name: Decode", 1)
+        self.assertNotEqual(text, without)
+        self.assertTrue(any("release-sign: gate di rilascio delle statistiche di puntualità assente" in problem
+                            for problem in policy.workflow_problems(android, without, LOCK)))
+        condition = "        if: ${{ github.event_name == 'pull_request' && startsWith(github.base_ref, 'stabilization/') }}\n"
+        step = "      - name: Gate punctuality statistics coverage for a release\n"
+        ungated = text.replace(step + condition, step, 1)
+        self.assertNotEqual(text, ungated)
+        self.assertTrue(any("android: il gate di rilascio delle statistiche deve essere uno step a sé" in problem
+                            for problem in policy.workflow_problems(android, ungated, LOCK)))
+        gtfs = ROOT / ".github/workflows/gtfs-assets-ci.yml"
+        text = gtfs.read_text(encoding="utf-8")
+        added = text.replace(
+            "        run: python3 -I tools/acquire_transit_sources.py --print-dir",
+            "        run: python3 -I tools/build_punctuality_stats.py --release-check x && python3 -I tools/acquire_transit_sources.py --print-dir",
+            1,
+        )
+        self.assertNotEqual(text, added)
+        self.assertTrue(any("gate di rilascio delle statistiche fuori dai percorsi di release" in problem
+                            for problem in policy.workflow_problems(gtfs, added, LOCK)))
+        apple = ROOT / ".github/workflows/apple-watch-ci.yml"
+        self.assertEqual([], policy.workflow_problems(apple, apple.read_text(encoding="utf-8"), LOCK))
 
     def test_permissions_run_expressions_credentials_and_push_policy_are_gated(self) -> None:
         # Audit A7-10 / proposal P4.

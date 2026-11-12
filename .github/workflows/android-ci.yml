@@ -270,6 +270,12 @@ jobs:
         if: ${{ github.event_name == 'pull_request' && startsWith(github.base_ref, 'stabilization/') }}
         run: python3 tools/verify_embedded_assets.py --min-valid-days 30
 
+      # The same release paths need statistics worth shipping (second audit, tools-data-5): at least 14 covered days
+      # and a window that ended at most 14 days ago, or a release built with -Pbinario.punctualityStats=false.
+      - name: Gate punctuality statistics coverage for a release
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.base_ref, 'stabilization/') }}
+        run: python3 -I tools/build_punctuality_stats.py --release-check app/src/main/assets/punctuality/stats_v1.json.gz
+
   # Signs only a dispatch on a release branch (main or stabilization/*), through the protected environment "release":
   # the owner keeps the four signing secrets there, with a required reviewer and the same branch policy, so neither
   # another branch nor another workflow can read them (docs/RELEASE_BUILD.md).
@@ -308,6 +314,9 @@ jobs:
 
       - name: Gate embedded GTFS freshness for at least 30 days
         run: python3 tools/verify_embedded_assets.py --min-valid-days 30
+
+      - name: Gate punctuality statistics coverage for a release
+        run: python3 -I tools/build_punctuality_stats.py --release-check app/src/main/assets/punctuality/stats_v1.json.gz
 
       - name: Decode the upload keystore into RUNNER_TEMP
         env:

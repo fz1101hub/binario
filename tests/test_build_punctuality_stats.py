@@ -500,6 +500,63 @@ class EncodeAndCheckTest(unittest.TestCase):
         self.assertEqual(["S01700", 1, 7.0, [0, 0, 0, 1, 1, 1, 1, 1], 0, 7, 1450, ["21", 1, 1], None],
                          stats.check_bytes(first.read_bytes())["trains"][0]["s"][1])
 
+    def test_a_release_needs_enough_covered_days_and_a_recent_window(self) -> None:
+        # Second audit, tools-data-5: the shipped file declared 30 days and held 6; a release check refuses that, and a
+        # window older than two weeks, without touching the pull request and push checks.
+        temp = Path(tempfile.mkdtemp(prefix="punctuality-release-"))
+        self.addCleanup(shutil.rmtree, temp, ignore_errors=True)
+        path = temp / "stats_v1.json.gz"
+
+        def release(payload: dict[str, Any] | None, as_of: str, *extra: str) -> tuple[int, str]:
+            if payload is not None:
+                path.write_bytes(stats.encode(payload))
+            output = io.StringIO()
+            with contextlib.redirect_stdout(output), contextlib.redirect_stderr(output):
+                code = stats.main(["--release-check", str(path), "--as-of", as_of, *extra])
+            return code, output.getvalue()
+
+        code, output = release(valid_payload(), "2026-11-12")  # 28 days covered, window ended 3 days ago
+        self.assertEqual(0, code, output)
+        self.assertIn("28 giorni coperti", output)
+        thin = valid_payload()
+        del thin["trains"][1]  # the longest train known on 3 days
+        code, output = release(thin, "2026-11-12")
+        self.assertEqual(1, code)
+        self.assertIn("3 giorni coperti", output)
+        self.assertIn("-Pbinario.punctualityStats=false", output)
+        self.assertEqual(0, release(thin, "2026-11-12", "--min-covered-days", "3")[0])
+        code, output = release(valid_payload(), "2026-11-24")  # 15 days after windowEnd
+        self.assertEqual(1, code)
+        self.assertIn("15 giorni", output)
+        self.assertEqual(0, release(None, "2026-11-23")[0])  # 14 days: still accepted
+        self.assertTrue(any("windowEnd" in problem for problem in stats.release_problems(valid_payload(), date(2026, 12, 1))))
+        path.write_bytes(gzip.compress(b"{}"))
+        self.assertEqual(1, release(None, "2026-11-12")[0])
+        path.unlink()
+        code, output = release(None, "2026-11-12")
+        self.assertEqual(0, code, output)  # no file: the feature is hidden, nothing to gate
+        self.assertIn("assente", output)
+
+    def test_the_job_summary_shows_the_coverage_of_the_window(self) -> None:
+        temp = Path(tempfile.mkdtemp(prefix="punctuality-coverage-"))
+        self.addCleanup(shutil.rmtree, temp, ignore_errors=True)
+        state = collector.State(temp / "state")
+        for day, numbers in (("2026-11-08", ("100", "101", "102")), ("2026-11-09", ("100",))):
+            for number in numbers:
+                state.add(record(day, number=number, stops=[["S08409", 2, 0, 600, None, 0]]))
+        state.add(record("2026-11-09", number="103", status="missing"))
+        state.save(AS_OF)
+        summary = temp / "summary.md"
+        with contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(0, stats.main(["--state", str(temp / "state"), "--output", str(temp / "out.json.gz"),
+                                            "--as-of", "2026-11-10", "--generated-at", "2026-11-10T04:00:00Z",
+                                            "--summary", str(summary)]))
+        text = summary.read_text(encoding="utf-8")
+        self.assertIn("2 giorni su 30 con treni noti", text)
+        self.assertIn("da 1 a 3 treni noti al giorno", text)
+        self.assertIn("2026-11-09: 1", text)
+        self.assertIn("non superato", text)
+
 
 if __name__ == "__main__":
     unittest.main()

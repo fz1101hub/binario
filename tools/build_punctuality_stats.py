@@ -32,7 +32,11 @@ delay within the bucket the counts imply and between the mean and the sum, platf
 counts within the stop's counts, sorted unique entries; stops of 9 elements, or of 5 or 7 as in files built before
 the extensions) and is used by the tests, by the print step and by ``tools/apply_ci_punctuality.py``.
 ``--print FILE`` checks the file and prints it in the job log as a ``BINARIO_BEGIN``/``BINARIO_DONE`` frame
-(``tools/ci_log_frames.py``).
+(``tools/ci_log_frames.py``).  ``--release-check FILE`` is the release gate (pull requests into a stabilization branch,
+release signing, the iPhone release archive; never the other checks): beyond ``--check`` it needs at least
+``--min-covered-days`` days covered (the largest ``d``, as the apps count them) and a ``windowEnd`` at most
+``--max-age-days`` old; a missing file passes (the feature is hidden).  With ``--state``, ``--summary`` also reports
+the coverage of the window and whether the release gate would pass.
 
     python3 -I tools/build_punctuality_stats.py --state DIR --output stats_v1.json.gz
     python3 -I tools/build_punctuality_stats.py --check stats_v1.json.gz
@@ -76,6 +80,9 @@ STOP_LENGTHS = (5, 7, 9)
 # Weekday punctuality: [samples, delay <= 5, delay <= 15] per ISO weekday, only for stops with this many samples.
 WEEKDAY_MIN_SAMPLES = 14
 WEEKDAY_THRESHOLDS = (5, 15)
+# Release gate (second audit, tools-data-5): the asset built on 9 November 2026 declared 30 days and held 6.
+RELEASE_MIN_COVERED_DAYS = 14
+RELEASE_MAX_AGE_DAYS = 14
 TOP_KEYS = frozenset({"schema", "generatedAt", "windowStart", "windowEnd", "windowDays", "source", "buckets", "trains"})
 TRAIN_KEYS = frozenset({"n", "o", "c", "d", "x", "s"})
 GENERATED_AT = re.compile(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z")
@@ -186,9 +193,16 @@ def aggregate(records: Iterable[Mapping[str, Any]]) -> list[dict[str, Any]]:
     return trains
 
 
-def build(state: Path, as_of: date, generated_at: datetime, counters: dict[str, int] | None = None) -> dict[str, Any]:
+def build(state: Path, as_of: date, generated_at: datetime, counters: dict[str, int] | None = None,
+          known_per_day: dict[str, int] | None = None) -> dict[str, Any]:
+    """The statistics of the window before ``as_of``; ``known_per_day`` receives the trains known on each day."""
     start, end = window(as_of)
     counters = counters if counters is not None else {}
+    records = read_records(state, start, end, counters)
+    if known_per_day is not None:
+        for record in records:
+            if record["st"] in collector.KNOWN:
+                known_per_day[record["d"]] = known_per_day.get(record["d"], 0) + 1
     return {
         "schema": SCHEMA,
         "generatedAt": generated_at.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
@@ -197,7 +211,7 @@ def build(state: Path, as_of: date, generated_at: datetime, counters: dict[str, 
         "windowDays": WINDOW_DAYS,
         "source": SOURCE,
         "buckets": list(BUCKETS),
-        "trains": aggregate(read_records(state, start, end, counters)),
+        "trains": aggregate(records),
     }
 
 
@@ -455,6 +469,35 @@ def describe(payload: Mapping[str, Any], size: int) -> str:
             f"generato {payload['generatedAt']}, {size} byte")
 
 
+def covered_days(payload: Mapping[str, Any]) -> int:
+    """Days the statistics cover as the apps count them: the largest ``d``, at most the window."""
+    return min(payload["windowDays"], max((train["d"] for train in payload["trains"]), default=0))
+
+
+def release_problems(payload: Mapping[str, Any], as_of: date, *, min_covered_days: int = RELEASE_MIN_COVERED_DAYS,
+                     max_age_days: int = RELEASE_MAX_AGE_DAYS) -> list[str]:
+    """Why a valid statistics file should not ship in a release on ``as_of`` (empty when it may)."""
+    problems = []
+    covered = covered_days(payload)
+    if covered < min_covered_days:
+        problems.append(f"{covered} giorni coperti su {payload['windowDays']}: una release ne richiede almeno {min_covered_days}")
+    age = (as_of - date.fromisoformat(payload["windowEnd"])).days
+    if age > max_age_days:
+        problems.append(f"windowEnd {payload['windowEnd']} di {age} giorni fa: una release la richiede entro {max_age_days} giorni")
+    return problems
+
+
+def coverage_line(payload: Mapping[str, Any], known_per_day: Mapping[str, int], as_of: date) -> str:
+    """One summary line: days of the window with known trains, trains known per day, and the release gate."""
+    counts = [known_per_day[day] for day in sorted(known_per_day)]
+    spread = f"da {min(counts)} a {max(counts)} treni noti al giorno" if counts else "nessun treno noto"
+    problems = release_problems(payload, as_of)
+    gate = "superato" if not problems else "non superato (" + "; ".join(problems) + ")"
+    return (f"Copertura: {len(counts)} giorni su {payload['windowDays']} con treni noti, {spread}, "
+            f"ultimo giorno {payload['windowEnd']}: {known_per_day.get(payload['windowEnd'], 0)}; "
+            f"gate di rilascio: {gate}")
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     action = parser.add_mutually_exclusive_group(required=True)
@@ -462,12 +505,37 @@ def main(argv: Sequence[str] | None = None) -> int:
     action.add_argument("--check", type=Path, metavar="FILE", help="verifica un file stats_v1.json.gz")
     action.add_argument("--print", type=Path, metavar="FILE", dest="print_file",
                         help="verifica e stampa il file nel log come blocco BINARIO_BEGIN/BINARIO_DONE")
+    action.add_argument("--release-check", type=Path, metavar="FILE",
+                        help="gate di rilascio: --check più giorni coperti ed età di windowEnd (file assente: superato)")
     parser.add_argument("--output", type=Path, help="con --state: file da scrivere")
     parser.add_argument("--as-of", type=date.fromisoformat, help="giorno di riferimento (predefinito: oggi a Roma)")
     parser.add_argument("--generated-at", help="istante di generazione ISO 8601 (predefinito: adesso)")
     parser.add_argument("--summary", type=Path, help="file Markdown a cui aggiungere il riepilogo (GITHUB_STEP_SUMMARY)")
+    parser.add_argument("--min-covered-days", type=int, default=RELEASE_MIN_COVERED_DAYS,
+                        help=f"con --release-check: giorni coperti richiesti (predefinito {RELEASE_MIN_COVERED_DAYS})")
+    parser.add_argument("--max-age-days", type=int, default=RELEASE_MAX_AGE_DAYS,
+                        help=f"con --release-check: età massima di windowEnd in giorni (predefinito {RELEASE_MAX_AGE_DAYS})")
     args = parser.parse_args(argv)
     try:
+        if args.release_check:
+            as_of = args.as_of or collector.rome_date(datetime.now(timezone.utc).timestamp())
+            if not args.release_check.exists():
+                print(f"{args.release_check.name}: assente, statistiche nascoste nell'app: nulla da verificare")
+                return 0
+            data = args.release_check.read_bytes()
+            payload = check_bytes(data)
+            problems = release_problems(payload, as_of, min_covered_days=args.min_covered_days,
+                                        max_age_days=args.max_age_days)
+            for problem in problems:
+                print(f"ERRORE: {problem}", file=sys.stderr)
+            if problems:
+                print("ERRORE: aggiornare le statistiche (docs/data-sources/PUNCTUALITY_STATS.md, «Applicazione con "
+                      "l'aggiornamento settimanale») o costruire la release senza con -Pbinario.punctualityStats=false",
+                      file=sys.stderr)
+                return 1
+            print(f"{args.release_check.name}: pronto per una release, {covered_days(payload)} giorni coperti, "
+                  f"windowEnd {payload['windowEnd']}")
+            return 0
         if args.check or args.print_file:
             path = args.check or args.print_file
             data = path.read_bytes()
@@ -486,7 +554,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             parser.error("--generated-at deve indicare il fuso orario")
         as_of = args.as_of or collector.rome_date(generated_at.timestamp())
         counters: dict[str, int] = {}
-        payload = build(args.state, as_of, generated_at, counters)
+        known_per_day: dict[str, int] = {}
+        payload = build(args.state, as_of, generated_at, counters, known_per_day)
         data = encode(payload)
         check_bytes(data)
         args.output.parent.mkdir(parents=True, exist_ok=True)
@@ -497,7 +566,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(f"Scritto {args.output.name}: {line}")
         if args.summary:
             with args.summary.open("a", encoding="utf-8") as summary:
-                summary.write(f"### Puntualità: statistiche\n\n{line}\n")
+                summary.write(f"### Puntualità: statistiche\n\n{line}\n\n{coverage_line(payload, known_per_day, as_of)}\n")
     except CheckError as error:
         for message in str(error).split("\n"):
             print(f"ERRORE: {collector.log_safe(message)}", file=sys.stderr)

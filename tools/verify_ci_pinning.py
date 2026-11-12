@@ -143,6 +143,7 @@ def load_ci_lock(path: Path = LOCK_PATH) -> dict[str, Any]:
             "Build and test integrated iPhone and Watch app",
             "Archive Release build and check the App Store bundle layout",
             "Gate GTFS freshness of the iOS timetable index for at least 30 days",
+            "Gate punctuality statistics coverage of the iPhone app",
             "Report GTFS freshness without failing",
         },
     }
@@ -396,6 +397,40 @@ def _check_freshness_gates(path: Path, workflow: Mapping[str, Any], problems: li
     for key in FRESHNESS_GATES:
         if key[0] == path.name and key not in found:
             problems.append(f"{path.name}:{key[1]}: gate di freshness GTFS a 30 giorni assente")
+
+
+# The release gate of the punctuality statistics (second audit, tools-data-5) follows the same paths: every build that
+# may be signed and uploaded checks the covered days and the age of the window; no other run does.
+PUNCTUALITY_RELEASE_GATE = "tools/build_punctuality_stats.py --release-check"
+PUNCTUALITY_RELEASE_GATES: Mapping[tuple[str, str], str | None] = {
+    ("android-ci.yml", "android"): STABILIZATION_PULL_REQUEST,
+    ("android-ci.yml", "release-sign"): None,
+    ("apple-watch-ci.yml", "ios"): IOS_RELEASE_ARCHIVE,
+}
+
+
+def _check_punctuality_release_gates(path: Path, workflow: Mapping[str, Any], problems: list[str]) -> None:
+    """The punctuality release gate runs only on release paths, in a step of its own, and is on each of them."""
+    jobs = _mapping(workflow.get("jobs")) or {}
+    found: set[tuple[str, str]] = set()
+    for job_name, raw_job in jobs.items():
+        steps = (_mapping(raw_job) or {}).get("steps")
+        for raw_step in steps if isinstance(steps, list) else []:
+            step = _mapping(raw_step) or {}
+            command = _commands(step.get("run"))
+            if PUNCTUALITY_RELEASE_GATE not in command:
+                continue
+            key = (path.name, str(job_name))
+            if key not in PUNCTUALITY_RELEASE_GATES:
+                problems.append(f"{path.name}:{job_name}: gate di rilascio delle statistiche fuori dai percorsi di release")
+                continue
+            if step.get("if") != PUNCTUALITY_RELEASE_GATES[key] or "continue-on-error" in step or len(command.splitlines()) != 1:
+                problems.append(f"{path.name}:{job_name}: il gate di rilascio delle statistiche deve essere uno step a sé, "
+                                "solo sui percorsi di release e senza continue-on-error")
+            found.add(key)
+    for key in PUNCTUALITY_RELEASE_GATES:
+        if key[0] == path.name and key not in found:
+            problems.append(f"{path.name}:{key[1]}: gate di rilascio delle statistiche di puntualità assente")
 
 
 # Write scopes a workflow or job may hold after review: (workflow, job or "*" for the top level, scope). None today:
@@ -1214,6 +1249,7 @@ def workflow_problems(
 
     _check_linux_trigger_budget(path, root or {}, lock, problems)
     _check_freshness_gates(path, root or {}, problems)
+    _check_punctuality_release_gates(path, root or {}, problems)
     _check_permissions(path, root or {}, problems)
     _check_run_hygiene(path, root or {}, problems)
     _check_triggers_checkouts_and_secrets(path, root or {}, problems)

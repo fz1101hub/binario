@@ -290,6 +290,11 @@ jobs:
       - name: Gate GTFS freshness of the iOS timetable index for at least 30 days
         if: ${{ github.event_name == 'workflow_dispatch' || (github.event_name == 'pull_request' && startsWith(github.base_ref, 'stabilization/')) }}
         run: python3 tools/build_gtfs_packs.py --check --input-dir app/src/main/assets/gtfs --min-valid-days 30
+      # The iPhone app ships the same punctuality statistics: the archive that may reach App Store Connect needs them
+      # worth shipping too (tools-data-5).
+      - name: Gate punctuality statistics coverage of the iPhone app
+        if: ${{ github.event_name == 'workflow_dispatch' || (github.event_name == 'pull_request' && startsWith(github.base_ref, 'stabilization/')) }}
+        run: python3 -I tools/build_punctuality_stats.py --release-check app/src/main/assets/punctuality/stats_v1.json.gz
       - name: Report GTFS freshness without failing
         if: ${{ !(github.event_name == 'workflow_dispatch' || (github.event_name == 'pull_request' && startsWith(github.base_ref, 'stabilization/'))) }}
         run: >-

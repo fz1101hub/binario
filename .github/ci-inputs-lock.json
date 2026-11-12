@@ -179,6 +179,11 @@
       "if": "${{ github.event_name == 'workflow_dispatch' || (github.event_name == 'pull_request' && startsWith(github.base_ref, 'stabilization/')) }}"
     },
     {
+      "name": "Gate punctuality statistics coverage of the iPhone app",
+      "sha256": "e6be4e97cfec596f3abf5a67115df52b7244181dc7329a58e5b86951d477601f",
+      "if": "${{ github.event_name == 'workflow_dispatch' || (github.event_name == 'pull_request' && startsWith(github.base_ref, 'stabilization/')) }}"
+    },
+    {
       "name": "Report GTFS freshness without failing",
       "sha256": "678654937d7929c5dc5c43ab928d767b62c2068fcd55aa8f162e00ef771fd507",
       "if": "${{ !(github.event_name == 'workflow_dispatch' || (github.event_name == 'pull_request' && startsWith(github.base_ref, 'stabilization/'))) }}"

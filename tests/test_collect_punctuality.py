@@ -756,6 +756,17 @@ class CollectTest(Base):
         self.assertEqual(("partial", [25, 60, None]), (record["st"], [stop[1] for stop in record["s"]]))
         self.assertEqual(1, report.counters["chiusi_in_viaggio"])
 
+    def test_the_summary_compares_the_trains_known_with_the_trains_scheduled(self) -> None:
+        state, report = self.collect(Answers(lambda path: collector.FetchResult("missing", reason="http-204")
+                                             if "/2001/" in path else self.answer_all(path)))
+        # Departing on 4 November: 2001, 2003, 2005, 2007, 2011, 9558, 1963 (22:00) and 1965 (00:30 of the 3 November
+        # service day); known by 13:00: five of them (2001 is unknown to ViaggiaTreno, 2005 and 1963 not due yet).
+        line = collector.coverage_line(self.timetable, state, DAY)
+        self.assertEqual("Copertura del 2026-11-04: 5 treni noti su 8 in orario (62 %)", line)
+        report.coverage = line
+        self.assertIn(line, collector.render(report, markdown=True))
+        self.assertIn(line, collector.render(report, markdown=False))
+
     def test_unknown_trains_and_other_identities_are_recorded_and_not_asked_again(self) -> None:
         def respond(path: str) -> collector.FetchResult:
             if "/2001/" in path:

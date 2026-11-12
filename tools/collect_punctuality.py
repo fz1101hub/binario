@@ -1139,6 +1139,7 @@ class Report:
     failures: dict[str, int] = field(default_factory=dict)
     stop_reason: str = "completata"
     stopped_abnormally: bool = False  # a refusal or implausible answers: the job must fail (EXIT_STOPPED)
+    coverage: str = ""  # trains known against trains scheduled on the last complete day (coverage_line)
 
     def add(self, name: str, amount: int = 1) -> None:
         self.counters[name] = self.counters.get(name, 0) + amount
@@ -1332,16 +1333,30 @@ LABELS = (
 )
 
 
+def coverage_line(timetable: Timetable, state: State, day: date) -> str:
+    """How many of the trains scheduled to depart on ``day`` are known (arrived, cancelled or closed travelling), so
+    that a thin collection shows in the job summary."""
+    iso = day.isoformat()
+    scheduled = {key for service_day in (day - timedelta(days=1), day)
+                 for key in trains_on(timetable, service_day) if key[0] == iso}
+    known = sum(1 for (origin, number), record in state.records(iso).items()
+                if record["st"] in KNOWN and (iso, origin, number) in scheduled)
+    share = f" ({100 * known // len(scheduled)} %)" if scheduled else ""
+    return f"Copertura del {iso}: {known} treni noti su {len(scheduled)} in orario{share}"
+
+
 def render(report: Report, *, markdown: bool) -> str:
     rows = [(label, report.counters.get(key, 0)) for key, label in LABELS if report.counters.get(key, 0) or key in
             ("in_coda", "treni_chiesti", "richieste_http", "arrivati", "errori")]
     rows += [(f"Errore {log_safe(reason)}", count) for reason, count in sorted(report.failures.items())]
     if markdown:
-        lines = ["### Puntualità: raccolta ViaggiaTreno", "", f"Esito: {log_safe(report.stop_reason)}", "",
-                 "| Voce | Numero |", "|---|---|"]
+        lines = ["### Puntualità: raccolta ViaggiaTreno", "", f"Esito: {log_safe(report.stop_reason)}", ""]
+        lines += [report.coverage, ""] if report.coverage else []
+        lines += ["| Voce | Numero |", "|---|---|"]
         lines += [f"| {label} | {count} |" for label, count in rows]
         return "\n".join(lines) + "\n"
-    return "\n".join([f"Esito: {log_safe(report.stop_reason)}"] + [f"{label}: {count}" for label, count in rows])
+    return "\n".join([f"Esito: {log_safe(report.stop_reason)}"] + ([report.coverage] if report.coverage else [])
+                     + [f"{label}: {count}" for label, count in rows])
 
 
 def estimate(timetable: Timetable, days: Sequence[date]) -> str:
@@ -1397,6 +1412,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                          deadline=started + args.deadline_seconds, requests=lambda: fetcher.requests, anchor=anchor)
         report.counters["richieste_http"] = fetcher.requests
         state.save(rome_date(now.timestamp()))
+        report.coverage = coverage_line(timetable, state, rome_date(now.timestamp()) - timedelta(days=1))
         for name, amount in state.counters.items():
             report.add(name, amount)
     except CollectorError as error:
