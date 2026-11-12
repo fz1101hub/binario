@@ -16,6 +16,7 @@ struct AgendaView: View {
     /// The minute the lists are read at: a journey that departs moves to «Archiviati».
     @State private var clock = Date()
     @State private var importing = false
+    @State private var importingText = false
     /// A picked file, read and compared with the Agenda; nothing is written before a choice.
     @State private var filePreview: PlannedJourneyFilePreview?
     /// What the last export or import did, shown at the top of the list.
@@ -103,6 +104,13 @@ struct AgendaView: View {
                         Label("saved.agenda.import", systemImage: "square.and.arrow.down")
                     }
                     .disabled(model.agenda.isReadOnly)
+                    Button {
+                        fileMessage = nil
+                        importingText = true
+                    } label: {
+                        Label("saved.agenda.text_import", systemImage: "text.badge.plus")
+                    }
+                    .disabled(model.agenda.isReadOnly)
                 } label: {
                     Label("saved.agenda.files", systemImage: "arrow.up.arrow.down.circle")
                 }
@@ -110,6 +118,9 @@ struct AgendaView: View {
         }
         .sheet(item: $editor) { request in
             AgendaEditorView(request: request)
+        }
+        .sheet(isPresented: $importingText) {
+            AgendaTextImportView()
         }
         // Cancelling the picker is not an error: nothing is called then.
         .fileImporter(isPresented: $importing, allowedContentTypes: AgendaFiles.importTypes) { result in
@@ -596,12 +607,18 @@ enum AgendaAnnouncement {
     /// being said.
     @MainActor
     static func post(_ key: String, _ severity: PlannedJourneyFeedbackSeverity) {
+        post(text: NSLocalizedString(key, comment: ""), severity)
+    }
+
+    /// Says `text`, already written in the user's language.
+    @MainActor
+    static func post(text: String, _ severity: PlannedJourneyFeedbackSeverity) {
         #if canImport(UIKit)
-        let text = NSAttributedString(
-            string: NSLocalizedString(key, comment: ""),
+        let announcement = NSAttributedString(
+            string: text,
             attributes: [.accessibilitySpeechQueueAnnouncement: severity.queuesBehindCurrentSpeech]
         )
-        UIAccessibility.post(notification: .announcement, argument: text)
+        UIAccessibility.post(notification: .announcement, argument: announcement)
         #endif
     }
 }

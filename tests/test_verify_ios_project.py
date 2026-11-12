@@ -461,6 +461,20 @@ class IOSProjectTests(unittest.TestCase):
         journeys = (IOS / "BinarioKit/Sources/BinarioKit/PlannedJourneys.swift").read_text(encoding="utf-8")
         self.assertIn("maximumNestingDepth = 16", journeys)
 
+    def test_text_import_adds_reviewed_journeys_on_catalogue_stations_only(self) -> None:
+        """EXPO_PORT_PLAN F22 and §3.4: a pasted text becomes a preview on catalogue stations; journeys are added
+        only after «Ho verificato», never replacing one, at most the Agenda's free places."""
+        view = (IOS / "BinarioApp/AgendaTextImportView.swift").read_text(encoding="utf-8")
+        model = (IOS / "BinarioApp/AppModel.swift").read_text(encoding="utf-8")
+        kit = (IOS / "BinarioKit/Sources/BinarioKit/PlannedJourneyTextImport.swift").read_text(encoding="utf-8")
+        self.assertIn(".disabled(!reviewed || selected.isEmpty)", view)
+        self.assertIn("preview = nil\n                reviewed = false", view)
+        self.assertIn("PlannedJourneyStationResolver(catalog: catalog)", model)
+        self.assertIn("plannedJourneyStore.add(contentsOf: journeys)", model)
+        self.assertIn("maximumCharacters = 4_000", kit)
+        self.assertIn("let free = max(0, PlannedJourneySchema.maximumJourneys - existing.count)", kit)
+        self.assertIn("matches.count == 1", kit)
+
     def test_privacy_manifests_match_each_executable_userdefaults_scope(self) -> None:
         ios_privacy = privacy_manifest(IOS / "Resources/PrivacyInfo.xcprivacy")
         self.assertFalse(ios_privacy["NSPrivacyTracking"])

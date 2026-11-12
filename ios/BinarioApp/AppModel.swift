@@ -1579,6 +1579,33 @@ final class AppModel: ObservableObject {
         return refusal
     }
 
+    /// The journeys a pasted text describes, on the catalogue's stations, against the Agenda as
+    /// stored now; nil when the catalogue is not loaded or the text is refused. Nothing is written.
+    func previewTextImport(_ text: String, now: Date = Date()) -> PlannedJourneyTextPreview? {
+        guard case let .available(catalog) = catalogState else { return nil }
+        return PlannedJourneyTextImport.preview(
+            text,
+            resolver: PlannedJourneyStationResolver(catalog: catalog),
+            existing: plannedJourneyStore.load().journeys,
+            now: now
+        )
+    }
+
+    /// The journeys reviewed in the text import, added after the Agenda's: how many were added, or
+    /// why none was.
+    func addJourneys(_ journeys: [PlannedJourney]) -> Result<Int, PlannedJourneyRefusal> {
+        let before = plannedJourneyStore.load().journeys.count
+        switch plannedJourneyStore.add(contentsOf: journeys) {
+        case let .success(state):
+            agenda = state
+            refreshRemindersLater()
+            return .success(state.journeys.count - before)
+        case let .failure(refusal):
+            agenda = plannedJourneyStore.load()
+            return .failure(refusal)
+        }
+    }
+
     /// The system's reminders made those of the Agenda: at launch, back in the foreground, when the
     /// Agenda opens and after a change. It never asks for permission.
     func refreshReminders(now: Date = Date()) async {
