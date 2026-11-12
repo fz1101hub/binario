@@ -969,7 +969,12 @@
     <string name="agenda_editor_date_value">Tanggal: %1$s</string>
     <string name="agenda_editor_time_value">Jam: %1$s</string>
     <string name="agenda_editor_unset">belum dipilih</string>
-    <string name="agenda_editor_first_segment">Anda mengubah bagian pertama; bagian lainnya tetap sama.</string>
+    <string name="planned_journey_leg_title">Bagian %1$d dari %2$d</string>
+    <string name="planned_journey_add_leg">Tambah bagian</string>
+    <string name="planned_journey_remove_leg">Hapus bagian</string>
+    <string name="planned_journey_remove_leg_a11y">Hapus bagian %1$d dari %2$d</string>
+    <string name="planned_journey_legs_disconnected">Setiap bagian harus berangkat dari stasiun tujuan bagian sebelumnya.</string>
+    <string name="planned_journey_legs_not_chronological">Setiap bagian harus berangkat setelah bagian sebelumnya.</string>
     <string name="agenda_editor_station_hint">Cari dengan nama atau kode lalu pilih stasiun.</string>
     <string name="agenda_editor_select_station">Pilih %1$s, kode %2$s</string>
     <!-- New features (October 2026) -->

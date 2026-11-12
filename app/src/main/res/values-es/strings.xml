@@ -1036,7 +1036,12 @@
     <string name="agenda_editor_date_value">Fecha: %1$s</string>
     <string name="agenda_editor_time_value">Hora: %1$s</string>
     <string name="agenda_editor_unset">por elegir</string>
-    <string name="agenda_editor_first_segment">Estás editando el primer tramo; los demás no cambian.</string>
+    <string name="planned_journey_leg_title">Tramo %1$d de %2$d</string>
+    <string name="planned_journey_add_leg">Añadir tramo</string>
+    <string name="planned_journey_remove_leg">Quitar tramo</string>
+    <string name="planned_journey_remove_leg_a11y">Quitar el tramo %1$d de %2$d</string>
+    <string name="planned_journey_legs_disconnected">Cada tramo debe salir de la estación de llegada del tramo anterior.</string>
+    <string name="planned_journey_legs_not_chronological">Cada tramo debe salir después del tramo anterior.</string>
     <string name="agenda_editor_station_hint">Busca por nombre o código y selecciona una estación.</string>
     <string name="agenda_editor_select_station">Seleccionar %1$s, código %2$s</string>
     <!-- New features (October 2026) -->

@@ -1036,7 +1036,12 @@
     <string name="agenda_editor_date_value">Date : %1$s</string>
     <string name="agenda_editor_time_value">Heure : %1$s</string>
     <string name="agenda_editor_unset">à choisir</string>
-    <string name="agenda_editor_first_segment">Vous modifiez la première étape ; les autres restent inchangées.</string>
+    <string name="planned_journey_leg_title">Étape %1$d sur %2$d</string>
+    <string name="planned_journey_add_leg">Ajouter une étape</string>
+    <string name="planned_journey_remove_leg">Retirer l’étape</string>
+    <string name="planned_journey_remove_leg_a11y">Retirer l’étape %1$d sur %2$d</string>
+    <string name="planned_journey_legs_disconnected">Chaque étape doit partir de la gare d’arrivée de l’étape précédente.</string>
+    <string name="planned_journey_legs_not_chronological">Chaque étape doit partir après l’étape précédente.</string>
     <string name="agenda_editor_station_hint">Recherchez par nom ou code et sélectionnez une gare.</string>
     <string name="agenda_editor_select_station">Sélectionner %1$s, code %2$s</string>
     <!-- New features (October 2026) -->

@@ -1036,7 +1036,12 @@
     <string name="agenda_editor_date_value">Data: %1$s</string>
     <string name="agenda_editor_time_value">Ora: %1$s</string>
     <string name="agenda_editor_unset">da scegliere</string>
-    <string name="agenda_editor_first_segment">Modifichi la prima tratta; le altre restano invariate.</string>
+    <string name="planned_journey_leg_title">Tratta %1$d di %2$d</string>
+    <string name="planned_journey_add_leg">Aggiungi tratta</string>
+    <string name="planned_journey_remove_leg">Rimuovi tratta</string>
+    <string name="planned_journey_remove_leg_a11y">Rimuovi la tratta %1$d di %2$d</string>
+    <string name="planned_journey_legs_disconnected">Ogni tratta deve partire dalla stazione di arrivo della tratta precedente.</string>
+    <string name="planned_journey_legs_not_chronological">Ogni tratta deve partire dopo la tratta precedente.</string>
     <string name="agenda_editor_station_hint">Cerca per nome o codice e scegli una stazione.</string>
     <string name="agenda_editor_select_station">Seleziona %1$s, codice %2$s</string>
     <!-- New features (October 2026) -->

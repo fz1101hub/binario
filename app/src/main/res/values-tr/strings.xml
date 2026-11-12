@@ -1014,7 +1014,12 @@
     <string name="agenda_editor_date_value">Tarih: %1$s</string>
     <string name="agenda_editor_time_value">Saat: %1$s</string>
     <string name="agenda_editor_unset">seçilmedi</string>
-    <string name="agenda_editor_first_segment">İlk bölümü düzenliyorsunuz; diğer bölümler değişmez.</string>
+    <string name="planned_journey_leg_title">Bölüm %1$d / %2$d</string>
+    <string name="planned_journey_add_leg">Bölüm ekle</string>
+    <string name="planned_journey_remove_leg">Bölümü kaldır</string>
+    <string name="planned_journey_remove_leg_a11y">%2$d bölümden %1$d. bölümü kaldır</string>
+    <string name="planned_journey_legs_disconnected">Her bölüm, önceki bölümün varış istasyonundan başlamalıdır.</string>
+    <string name="planned_journey_legs_not_chronological">Her bölüm, önceki bölümden sonra kalkmalıdır.</string>
     <string name="agenda_editor_station_hint">Ada veya koda göre arayın ve bir istasyon seçin.</string>
     <string name="agenda_editor_select_station">Seç: %1$s, kod %2$s</string>
     <!-- New features (October 2026) -->

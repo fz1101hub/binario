@@ -991,7 +991,12 @@
     <string name="agenda_editor_date_value">तारीख: %1$s</string>
     <string name="agenda_editor_time_value">समय: %1$s</string>
     <string name="agenda_editor_unset">चुनना बाकी</string>
-    <string name="agenda_editor_first_segment">आप पहला हिस्सा बदल रहे हैं; बाकी हिस्से वैसे ही रहते हैं।</string>
+    <string name="planned_journey_leg_title">%2$d में से हिस्सा %1$d</string>
+    <string name="planned_journey_add_leg">हिस्सा जोड़ें</string>
+    <string name="planned_journey_remove_leg">हिस्सा हटाएँ</string>
+    <string name="planned_journey_remove_leg_a11y">%2$d में से हिस्सा %1$d हटाएँ</string>
+    <string name="planned_journey_legs_disconnected">हर हिस्सा पिछले हिस्से के पहुँचने वाले स्टेशन से शुरू होना चाहिए।</string>
+    <string name="planned_journey_legs_not_chronological">हर हिस्सा पिछले हिस्से के बाद रवाना होना चाहिए।</string>
     <string name="agenda_editor_station_hint">नाम या कोड से खोजें और एक स्टेशन चुनें।</string>
     <string name="agenda_editor_select_station">%1$s चुनें, कोड %2$s</string>
     <!-- New features (October 2026) -->

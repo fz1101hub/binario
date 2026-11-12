@@ -992,7 +992,12 @@
     <string name="agenda_editor_date_value">Ngày: %1$s</string>
     <string name="agenda_editor_time_value">Giờ: %1$s</string>
     <string name="agenda_editor_unset">chưa chọn</string>
-    <string name="agenda_editor_first_segment">Bạn đang sửa chặng đầu tiên; các chặng khác giữ nguyên.</string>
+    <string name="planned_journey_leg_title">Chặng %1$d/%2$d</string>
+    <string name="planned_journey_add_leg">Thêm chặng</string>
+    <string name="planned_journey_remove_leg">Xóa chặng</string>
+    <string name="planned_journey_remove_leg_a11y">Xóa chặng %1$d/%2$d</string>
+    <string name="planned_journey_legs_disconnected">Mỗi chặng phải xuất phát từ ga đến của chặng trước.</string>
+    <string name="planned_journey_legs_not_chronological">Mỗi chặng phải khởi hành sau chặng trước.</string>
     <string name="agenda_editor_station_hint">Tìm theo tên hoặc mã và chọn một ga.</string>
     <string name="agenda_editor_select_station">Chọn %1$s, mã %2$s</string>
     <!-- New features (October 2026) -->

@@ -412,21 +412,19 @@ private fun AgendaEntryCard(
                 }
             }
             if (entry.journey.status == PlannedJourneyStatus.ACTIVE) PlannedJourneyCalendarButton(entry, title)
-            // Return and replan keep the route only: one-leg journeys, whose new date and time the editor can take.
-            if (entry.journey.itinerary.segments.size == 1) {
-                val returnDescription = stringResource(R.string.planned_journey_return_a11y, title)
-                val replanDescription = stringResource(R.string.planned_journey_replan_a11y, title)
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                    TextButton(onClick = onReturn, modifier = Modifier.weight(1f).semantics { contentDescription = returnDescription }) {
-                        Icon(Icons.Default.SwapHoriz, contentDescription = null)
-                        Spacer(Modifier.width(4.dp))
-                        Text(stringResource(R.string.planned_journey_return))
-                    }
-                    TextButton(onClick = onReplan, modifier = Modifier.weight(1f).semantics { contentDescription = replanDescription }) {
-                        Icon(Icons.Default.Refresh, contentDescription = null)
-                        Spacer(Modifier.width(4.dp))
-                        Text(stringResource(R.string.planned_journey_replan))
-                    }
+            // Return and replan keep the legs only (reversed for the return): each leg's date and time are chosen anew.
+            val returnDescription = stringResource(R.string.planned_journey_return_a11y, title)
+            val replanDescription = stringResource(R.string.planned_journey_replan_a11y, title)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                TextButton(onClick = onReturn, modifier = Modifier.weight(1f).semantics { contentDescription = returnDescription }) {
+                    Icon(Icons.Default.SwapHoriz, contentDescription = null)
+                    Spacer(Modifier.width(4.dp))
+                    Text(stringResource(R.string.planned_journey_return))
+                }
+                TextButton(onClick = onReplan, modifier = Modifier.weight(1f).semantics { contentDescription = replanDescription }) {
+                    Icon(Icons.Default.Refresh, contentDescription = null)
+                    Spacer(Modifier.width(4.dp))
+                    Text(stringResource(R.string.planned_journey_replan))
                 }
             }
             TextButton(onClick = onDelete) { Text(stringResource(R.string.planned_journey_delete)) }
@@ -459,7 +457,7 @@ private fun PlannedJourneyEditorDialog(
     val resources = LocalResources.current
     var locationMessage by remember { mutableStateOf<String?>(null) }
     fun useOrigin(station: PlannedJourneyStation) {
-        onChange { it.copy(originQuery = station.displayName, originStationId = station.canonicalId) }
+        onChange { it.withLeg(0) { leg -> leg.copy(originQuery = station.displayName, originStationId = station.canonicalId) } }
         suggestionsFor = null
     }
     fun locateOrigin() {
@@ -484,7 +482,7 @@ private fun PlannedJourneyEditorDialog(
         text = {
             LazyColumn(modifier = Modifier.testTag("plannedJourneyEditor"), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 editor.notice?.let { notice -> item { AgendaMessage(notice.localized(), isError = false) } }
-                item { TemplateFields(templates, onApplyTemplate, onDeleteTemplate, onSaveTemplate) }
+                item { TemplateFields(templates, onApplyTemplate, onDeleteTemplate, onSaveTemplate, canSave = !editor.isMultiLeg) }
                 item {
                     OutlinedTextField(
                         value = editor.label,
@@ -494,53 +492,86 @@ private fun PlannedJourneyEditorDialog(
                         singleLine = true
                     )
                 }
-                item {
-                    StationField(
-                        value = editor.originQuery,
-                        label = stringResource(R.string.planned_journey_origin),
-                        search = search,
-                        showSuggestions = suggestionsFor == "origin",
-                        tag = "plannedJourneyOrigin",
-                        onFocus = { suggestionsFor = "origin" },
-                        onValueChange = { value -> onChange { it.copy(originQuery = value, originStationId = null) }; suggestionsFor = "origin" },
-                        onSuggestion = { station -> onChange { it.copy(originQuery = station.displayName, originStationId = station.canonicalId) }; suggestionsFor = null; focus.clearFocus() },
-                        trailingIcon = if (locationCatalogue.isEmpty()) null else {
-                            {
-                                IconButton(onClick = {
-                                    locationMessage = null
-                                    if (ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED) locateOrigin()
-                                    else locationPermission.launch(Manifest.permission.ACCESS_COARSE_LOCATION)
-                                }, modifier = Modifier.testTag("plannedJourneyOriginLocation")) {
-                                    Icon(Icons.Default.MyLocation, contentDescription = stringResource(R.string.planner_use_location))
+                val legs = editor.legs
+                legs.forEachIndexed { index, leg ->
+                    // The first leg keeps the tags it always had; the next ones carry their number.
+                    val number = index + 1
+                    val suffix = if (index == 0) "" else number.toString()
+                    val originKey = "origin$suffix"
+                    val destinationKey = "destination$suffix"
+                    fun changeLeg(transform: (PlannedJourneyEditorLeg) -> PlannedJourneyEditorLeg) = onChange { it.withLeg(index, transform) }
+                    if (legs.size > 1) item {
+                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                            Text(
+                                stringResource(R.string.planned_journey_leg_title, number, legs.size),
+                                style = MaterialTheme.typography.titleSmall,
+                                modifier = Modifier.weight(1f)
+                            )
+                            val removeDescription = stringResource(R.string.planned_journey_remove_leg_a11y, number, legs.size)
+                            TextButton(
+                                onClick = { onChange { it.removeLeg(index) }; suggestionsFor = null },
+                                modifier = Modifier.testTag("plannedJourneyRemoveLeg$number").semantics { contentDescription = removeDescription }
+                            ) { Text(stringResource(R.string.planned_journey_remove_leg)) }
+                        }
+                    }
+                    item {
+                        StationField(
+                            value = leg.originQuery,
+                            label = stringResource(R.string.planned_journey_origin),
+                            search = search,
+                            showSuggestions = suggestionsFor == originKey,
+                            tag = "plannedJourneyOrigin$suffix",
+                            onFocus = { suggestionsFor = originKey },
+                            onValueChange = { value -> changeLeg { it.copy(originQuery = value, originStationId = null) }; suggestionsFor = originKey },
+                            onSuggestion = { station -> changeLeg { it.copy(originQuery = station.displayName, originStationId = station.canonicalId) }; suggestionsFor = null; focus.clearFocus() },
+                            trailingIcon = if (index != 0 || locationCatalogue.isEmpty()) null else {
+                                {
+                                    IconButton(onClick = {
+                                        locationMessage = null
+                                        if (ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED) locateOrigin()
+                                        else locationPermission.launch(Manifest.permission.ACCESS_COARSE_LOCATION)
+                                    }, modifier = Modifier.testTag("plannedJourneyOriginLocation")) {
+                                        Icon(Icons.Default.MyLocation, contentDescription = stringResource(R.string.planner_use_location))
+                                    }
+                                }
+                            }
+                        )
+                        if (index == 0) locationMessage?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
+                    }
+                    if (index == 0 && favouriteStations.isNotEmpty()) item {
+                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Text(stringResource(R.string.station_board_favourites), style = MaterialTheme.typography.labelLarge)
+                            FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                favouriteStations.distinctBy { it.canonicalId }.take(MAX_FAVOURITE_CHIPS).forEach { station ->
+                                    AssistChip(onClick = { useOrigin(station) }, label = { Text(station.displayName) })
                                 }
                             }
                         }
-                    )
-                    locationMessage?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
+                    }
+                    item {
+                        StationField(
+                            value = leg.destinationQuery,
+                            label = stringResource(R.string.planned_journey_destination),
+                            search = search,
+                            showSuggestions = suggestionsFor == destinationKey,
+                            tag = "plannedJourneyDestination$suffix",
+                            onFocus = { suggestionsFor = destinationKey },
+                            onValueChange = { value -> changeLeg { it.copy(destinationQuery = value, destinationStationId = null) }; suggestionsFor = destinationKey },
+                            onSuggestion = { station -> changeLeg { it.copy(destinationQuery = station.displayName, destinationStationId = station.canonicalId) }; suggestionsFor = null; focus.clearFocus() }
+                        )
+                    }
+                    item { PlannedJourneyDateTimeFields(leg, suffix, ::changeLeg) }
                 }
-                if (favouriteStations.isNotEmpty()) item {
-                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Text(stringResource(R.string.station_board_favourites), style = MaterialTheme.typography.labelLarge)
-                        FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                            favouriteStations.distinctBy { it.canonicalId }.take(MAX_FAVOURITE_CHIPS).forEach { station ->
-                                AssistChip(onClick = { useOrigin(station) }, label = { Text(station.displayName) })
-                            }
-                        }
+                if (editor.canAddLeg) item {
+                    OutlinedButton(
+                        onClick = { onChange { it.addLeg() } },
+                        modifier = Modifier.fillMaxWidth().testTag("plannedJourneyAddLeg")
+                    ) {
+                        Icon(Icons.Default.Add, contentDescription = null)
+                        Spacer(Modifier.width(8.dp))
+                        Text(stringResource(R.string.planned_journey_add_leg))
                     }
                 }
-                item {
-                    StationField(
-                        value = editor.destinationQuery,
-                        label = stringResource(R.string.planned_journey_destination),
-                        search = search,
-                        showSuggestions = suggestionsFor == "destination",
-                        tag = "plannedJourneyDestination",
-                        onFocus = { suggestionsFor = "destination" },
-                        onValueChange = { value -> onChange { it.copy(destinationQuery = value, destinationStationId = null) }; suggestionsFor = "destination" },
-                        onSuggestion = { station -> onChange { it.copy(destinationQuery = station.displayName, destinationStationId = station.canonicalId) }; suggestionsFor = null; focus.clearFocus() }
-                    )
-                }
-                item { PlannedJourneyDateTimeFields(editor, onChange) }
                 item {
                     Text(stringResource(R.string.planned_journey_reminder), style = MaterialTheme.typography.labelLarge)
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -580,7 +611,9 @@ private fun TemplateFields(
     templates: List<PlannedJourneyTemplate>,
     onApply: (String) -> Unit,
     onDelete: (String) -> Unit,
-    onSave: (String) -> Unit
+    onSave: (String) -> Unit,
+    /** A template is one leg: a multi-leg journey offers only the saved templates. */
+    canSave: Boolean
 ) {
     var name by rememberSaveable { mutableStateOf("") }
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -602,7 +635,7 @@ private fun TemplateFields(
                 )
             }
         }
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        if (canSave) Row(verticalAlignment = Alignment.CenterVertically) {
             OutlinedTextField(
                 value = name,
                 onValueChange = { name = it.take(PlannedJourneyTemplates.MAX_NAME_LENGTH) },

@@ -1014,7 +1014,12 @@
     <string name="agenda_editor_date_value">Date: %1$s</string>
     <string name="agenda_editor_time_value">Time: %1$s</string>
     <string name="agenda_editor_unset">to be chosen</string>
-    <string name="agenda_editor_first_segment">You are editing the first leg; other legs stay unchanged.</string>
+    <string name="planned_journey_leg_title">Leg %1$d of %2$d</string>
+    <string name="planned_journey_add_leg">Add leg</string>
+    <string name="planned_journey_remove_leg">Remove leg</string>
+    <string name="planned_journey_remove_leg_a11y">Remove leg %1$d of %2$d</string>
+    <string name="planned_journey_legs_disconnected">Each leg must start from the arrival station of the previous leg.</string>
+    <string name="planned_journey_legs_not_chronological">Each leg must depart after the previous leg.</string>
     <string name="agenda_editor_station_hint">Search by name or code and select a station.</string>
     <string name="agenda_editor_select_station">Select %1$s, code %2$s</string>
     <!-- New features (October 2026) -->

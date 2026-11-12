@@ -23,6 +23,24 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
+/** One leg of the Agenda editor: its stations as typed or chosen, and its own departure. */
+data class PlannedJourneyEditorLeg(
+    val originQuery: String = "",
+    val destinationQuery: String = "",
+    val originStationId: String? = null,
+    val destinationStationId: String? = null,
+    val date: String = "",
+    val time: String = "",
+    val timeZoneId: String = RailTime.defaultZone.id,
+    /** The stored segment's id while a journey is edited; a new leg gets one when it is saved. */
+    val segmentId: String? = null
+)
+
+/**
+ * The Agenda editor. The top-level station, date and time fields are the first leg; [nextLegs] holds the legs after it
+ * (at most [PlannedJourneyPersistenceSchema.MAX_ITINERARY_SEGMENTS] in all). Their connection and chronology are
+ * checked by [PlannedJourneyFactory] on save, not here.
+ */
 data class PlannedJourneyEditorState(
     val journeyId: String? = null,
     val label: String = "",
@@ -30,10 +48,13 @@ data class PlannedJourneyEditorState(
     val destinationQuery: String = "",
     val originStationId: String? = null,
     val destinationStationId: String? = null,
-    val isMultiSegment: Boolean = false,
     val date: String = LocalDate.now(RailTime.defaultZone).toString(),
     val time: String = "09:00",
     val timeZoneId: String = RailTime.defaultZone.id,
+    /** The first stored segment's id while a journey is edited. */
+    val firstSegmentId: String? = null,
+    /** Legs 2…4, in order; empty for a one-leg journey. */
+    val nextLegs: List<PlannedJourneyEditorLeg> = emptyList(),
     val reminderMinutes: PlannedJourneyReminderMinutes? = null,
     val checklistText: String = "",
     val validationMessage: UiMessage? = null,
@@ -49,6 +70,72 @@ data class PlannedJourneyEditorState(
     val repeatEndsOn: LocalDate? = null
 ) {
     val isEditing: Boolean get() = journeyId != null
+
+    val isMultiLeg: Boolean get() = nextLegs.isNotEmpty()
+
+    val legs: List<PlannedJourneyEditorLeg>
+        get() = listOf(
+            PlannedJourneyEditorLeg(originQuery, destinationQuery, originStationId, destinationStationId, date, time, timeZoneId, firstSegmentId)
+        ) + nextLegs
+
+    val canAddLeg: Boolean get() = legs.size < PlannedJourneyPersistenceSchema.MAX_ITINERARY_SEGMENTS
+
+    /** Replaces every leg; the first one fills the top-level fields. An empty list changes nothing. */
+    fun withLegs(legs: List<PlannedJourneyEditorLeg>): PlannedJourneyEditorState {
+        val first = legs.firstOrNull() ?: return this
+        return copy(
+            originQuery = first.originQuery,
+            destinationQuery = first.destinationQuery,
+            originStationId = first.originStationId,
+            destinationStationId = first.destinationStationId,
+            date = first.date,
+            time = first.time,
+            timeZoneId = first.timeZoneId,
+            firstSegmentId = first.segmentId,
+            nextLegs = legs.drop(1)
+        )
+    }
+
+    /**
+     * Changes leg [index]. The next leg's origin follows a changed destination while it still showed that destination
+     * (it was prefilled from it), and the following legs with no date take a newly chosen date.
+     */
+    fun withLeg(index: Int, transform: (PlannedJourneyEditorLeg) -> PlannedJourneyEditorLeg): PlannedJourneyEditorState {
+        val updated = legs.toMutableList()
+        val before = updated.getOrNull(index) ?: return this
+        val after = transform(before)
+        updated[index] = after
+        updated.getOrNull(index + 1)?.let { next ->
+            if (next.originQuery == before.destinationQuery && next.originStationId == before.destinationStationId) {
+                updated[index + 1] = next.copy(originQuery = after.destinationQuery, originStationId = after.destinationStationId)
+            }
+        }
+        if (after.date != before.date) {
+            for (following in index + 1 until updated.size) {
+                if (updated[following].date.isNotBlank()) break
+                updated[following] = updated[following].copy(date = after.date)
+            }
+        }
+        return withLegs(updated)
+    }
+
+    /** «Aggiungi tratta»: the new leg starts where the last one arrives, on its date; its time is left to choose. */
+    fun addLeg(): PlannedJourneyEditorState {
+        if (!canAddLeg) return this
+        val last = legs.last()
+        return withLegs(
+            legs + PlannedJourneyEditorLeg(
+                originQuery = last.destinationQuery,
+                originStationId = last.destinationStationId,
+                date = last.date,
+                timeZoneId = last.timeZoneId
+            )
+        )
+    }
+
+    /** «Rimuovi tratta»: the only leg of a journey cannot be removed. */
+    fun removeLeg(index: Int): PlannedJourneyEditorState =
+        if (legs.size <= 1 || index !in legs.indices) this else withLegs(legs.filterIndexed { position, _ -> position != index })
 }
 
 sealed interface PlannedJourneyImportState {
@@ -205,6 +292,11 @@ class PlannedJourneyViewModel(
         val current = editor ?: return
         val store = templateStore ?: return
         val stationList = stations.toList()
+        // A template is one leg: a multi-leg journey cannot become one (the form hides the button).
+        if (current.isMultiLeg) {
+            editor = current.copy(validationMessage = UiMessage(UiMessageKey.PLANNED_JOURNEY_TEMPLATE_INVALID))
+            return
+        }
         val origin = resolveStation(current.originQuery, current.originStationId, stationList)
         val destination = resolveStation(current.destinationQuery, current.destinationStationId, stationList)
         val time = runCatching { LocalTime.parse(current.time.trim()) }.getOrNull()
@@ -224,7 +316,7 @@ class PlannedJourneyViewModel(
             .onFailure { editor = current.copy(validationMessage = UiMessage(UiMessageKey.PLANNED_JOURNEY_ACTION_REJECTED)) }
     }
 
-    /** Fills the editor from a template: route, time, lead and checklist; the date must be chosen anew. */
+    /** Fills the editor from a template: route, time, lead and checklist; the date must be chosen anew. A template is one leg. */
     fun applyTemplate(id: String) {
         val current = editor ?: return
         val template = templates.firstOrNull { it.id == id } ?: return
@@ -235,6 +327,7 @@ class PlannedJourneyViewModel(
             destinationStationId = template.destination.canonicalId,
             date = "",
             time = template.time.toString(),
+            nextLegs = emptyList(),
             reminderMinutes = template.reminder,
             checklistText = template.checklist.joinToString("\n"),
             notice = UiMessage(UiMessageKey.PLANNED_JOURNEY_TEMPLATE_APPLIED, template.name),
@@ -295,51 +388,57 @@ class PlannedJourneyViewModel(
         feedback = null
     }
 
+    /** Every leg of the journey is shown and saved again: editing never drops a leg. */
     fun beginEdit(journey: PlannedJourney) {
-        val segment = journey.itinerary.segments.first()
+        val legs = journey.itinerary.segments.map { segment ->
+            PlannedJourneyEditorLeg(
+                originQuery = segment.origin.displayName,
+                destinationQuery = segment.destination.displayName,
+                originStationId = segment.origin.canonicalId,
+                destinationStationId = segment.destination.canonicalId,
+                date = segment.departure.date.toString(),
+                time = segment.departure.time.toString(),
+                timeZoneId = segment.departure.timeZone.id,
+                segmentId = segment.id
+            )
+        }
         editor = PlannedJourneyEditorState(
             journeyId = journey.id,
             label = journey.label,
-            originQuery = segment.origin.displayName,
-            destinationQuery = segment.destination.displayName,
-            originStationId = segment.origin.canonicalId,
-            destinationStationId = segment.destination.canonicalId,
-            isMultiSegment = journey.itinerary.segments.size > 1,
-            date = segment.departure.date.toString(),
-            time = segment.departure.time.toString(),
-            timeZoneId = segment.departure.timeZone.id,
             reminderMinutes = journey.reminder?.minutesBeforeDeparture,
             checklistText = journey.checklist.joinToString("\n") { item -> item.label },
             repeatWeekdays = journey.recurrence?.weekdays?.toSet().orEmpty(),
             repeatCount = journey.recurrence?.occurrenceLimit ?: 1,
             repeatEndsOn = journey.recurrence?.endsOn
-        )
+        ).withLegs(legs)
         feedback = null
     }
 
-    /** The reverse route of a one-leg journey: date, time, reminder and checklist ticks are chosen anew. */
+    /** The reverse route, legs in reverse order with their stations swapped: dates, times, reminder and checklist ticks are chosen anew. */
     fun beginReturn(journey: PlannedJourney) =
         beginFromDraft(journey, PlannedJourneyDrafts.returnFrom(journey, DRAFT_ID, now()), UiMessageKey.PLANNED_JOURNEY_RETURN_PREPARED)
 
-    /** The same route of a one-leg journey on a new date and time. */
+    /** The same legs on a new date and time for each. */
     fun beginReplan(journey: PlannedJourney) =
         beginFromDraft(journey, PlannedJourneyDrafts.replanFrom(journey, DRAFT_ID, now()), UiMessageKey.PLANNED_JOURNEY_REPLAN_PREPARED)
 
     private fun beginFromDraft(source: PlannedJourney, draft: PlannedJourneyDraft, notice: UiMessageKey) {
-        val segment = draft.itinerary.segments.singleOrNull() ?: return
+        val legs = draft.itinerary.segments.map { segment ->
+            PlannedJourneyEditorLeg(
+                originQuery = segment.origin.displayName,
+                destinationQuery = segment.destination.displayName,
+                originStationId = segment.origin.canonicalId,
+                destinationStationId = segment.destination.canonicalId,
+                timeZoneId = zone.id
+            )
+        }
+        if (legs.isEmpty()) return
         editor = PlannedJourneyEditorState(
-            originQuery = segment.origin.displayName,
-            destinationQuery = segment.destination.displayName,
-            originStationId = segment.origin.canonicalId,
-            destinationStationId = segment.destination.canonicalId,
-            date = "",
-            time = "",
-            timeZoneId = zone.id,
             // The source's reminder is not inherited: the new journey gets the default lead. The labels come back unticked.
             reminderMinutes = defaultReminder,
             checklistText = source.checklist.joinToString("\n") { item -> item.label },
             notice = UiMessage(notice)
-        )
+        ).withLegs(legs)
         feedback = null
     }
 
@@ -351,19 +450,34 @@ class PlannedJourneyViewModel(
         editor = null
     }
 
-    /** Stations are supplied by the app catalog, so persisted plans retain canonical identities. */
+    /**
+     * Stations are supplied by the app catalog, so persisted plans retain canonical identities. Every leg goes through
+     * [PlannedJourneyFactory]: its connection and chronology checks give the message of a refused multi-leg journey.
+     */
     fun saveEditor(stations: Iterable<PlannedJourneyStation>) {
         val current = editor ?: return
         val stationList = stations.toList()
-        val origin = resolveStation(current.originQuery, current.originStationId, stationList)
-        val destination = resolveStation(current.destinationQuery, current.destinationStationId, stationList)
-        val departure = runCatching {
-            PlannedJourneyDateTime(LocalDate.parse(current.date.trim()), LocalTime.parse(current.time.trim()), ZoneId.of(current.timeZoneId))
-        }.getOrNull()
-        if (origin == null || destination == null || departure == null) {
-            editor = current.copy(validationMessage = UiMessage(UiMessageKey.PLANNED_JOURNEY_EDITOR_INVALID))
-            return
+        val existing = current.journeyId?.let { id -> snapshot.journeys.firstOrNull { it.id == id } }
+        // A leg still showing the stored station keeps it, even when the catalogue no longer lists it (imported journeys).
+        val storedStations = existing?.itinerary?.segments.orEmpty().flatMap { listOf(it.origin, it.destination) }
+        fun station(query: String, selectedId: String?): PlannedJourneyStation? = resolveStation(query, selectedId, stationList)
+            ?: selectedId?.let { id -> storedStations.firstOrNull { it.canonicalId == id && it.displayName.equals(query.trim(), ignoreCase = true) } }
+        val legs = current.legs
+        val usedSegmentIds = legs.mapNotNullTo(mutableSetOf()) { it.segmentId }
+        val segments = legs.map { leg ->
+            val origin = station(leg.originQuery, leg.originStationId)
+            val destination = station(leg.destinationQuery, leg.destinationStationId)
+            val departure = runCatching {
+                PlannedJourneyDateTime(LocalDate.parse(leg.date.trim()), LocalTime.parse(leg.time.trim()), ZoneId.of(leg.timeZoneId))
+            }.getOrNull()
+            if (origin == null || destination == null || departure == null) {
+                editor = current.copy(validationMessage = UiMessage(UiMessageKey.PLANNED_JOURNEY_EDITOR_INVALID))
+                return
+            }
+            val id = leg.segmentId ?: generateSequence(1) { it + 1 }.map { "segment-$it" }.first(usedSegmentIds::add)
+            PlannedJourneySegmentDraft(id, origin, destination, departure)
         }
+        val departure = requireNotNull(segments.first().departure)
         val checklist = checklistLines(current.checklistText)
             .mapIndexed { index, label -> PlannedJourneyChecklistItem("check-${index + 1}", label) }
         val recurrence = current.repeatCount.takeIf { it > 1 }?.let { count ->
@@ -374,7 +488,6 @@ class PlannedJourneyViewModel(
                 occurrenceLimit = count.coerceAtMost(PlannedJourneyPersistenceSchema.MAX_RECURRENCE_OCCURRENCES)
             )
         }
-        val existing = current.journeyId?.let { id -> snapshot.journeys.firstOrNull { it.id == id } }
         val departureChanged = existing == null || existing.itinerary.segments.first().departure != departure
         val departed = departure.isValidLocalTime() && departure.scheduledAt().toInstant().isBefore(now())
         if (departed && departureChanged && !current.pastDepartureConfirmed) {
@@ -382,43 +495,33 @@ class PlannedJourneyViewModel(
             editor = current.copy(validationMessage = UiMessage(UiMessageKey.PLANNED_JOURNEY_DEPARTURE_PAST), pastDepartureConfirmed = true)
             return
         }
-        val candidate = if (existing == null) {
-            PlannedJourneyFactory.create(
-                PlannedJourneyDraft(
-                    id = newId(),
-                    label = current.label,
-                    itinerary = PlannedJourneyItineraryDraft(
-                        listOf(PlannedJourneySegmentDraft("segment-1", origin, destination, departure))
-                    ),
-                    reminder = current.reminderMinutes?.let(::PlannedJourneyReminder),
-                    recurrence = recurrence,
-                    checklist = checklist,
-                    createdAt = now()
-                )
-            ).let { result ->
-                when (result) {
-                    is PlannedJourneyValidationResult.Valid -> result.value
-                    is PlannedJourneyValidationResult.Invalid -> {
-                        editor = current.copy(validationMessage = UiMessage(invalidDraftMessage(result.issues)))
-                        return
-                    }
-                }
-            }
-        } else {
-            existing.copy(
-                label = current.label.trim(),
-                itinerary = PlannedJourneyItinerary(
-                    listOf(existing.itinerary.segments.first().copy(origin = origin, destination = destination, departure = departure)) +
-                        existing.itinerary.segments.drop(1)
-                ),
+        val created = PlannedJourneyFactory.create(
+            PlannedJourneyDraft(
+                id = existing?.id ?: newId(),
+                label = current.label,
+                itinerary = PlannedJourneyItineraryDraft(segments),
                 reminder = current.reminderMinutes?.let(::PlannedJourneyReminder),
                 recurrence = recurrence,
-                // A completed occurrence stays only while the new recurrence still generates its date.
-                completedOccurrenceDates = recurrence?.let(PlannedJourneyOccurrences::dates).orEmpty()
-                    .let { dates -> existing.completedOccurrenceDates.filter { it in dates } },
-                checklist = checklist
+                checklist = checklist,
+                createdAt = existing?.createdAt ?: now()
             )
+        )
+        val journey = when (created) {
+            is PlannedJourneyValidationResult.Valid -> created.value
+            is PlannedJourneyValidationResult.Invalid -> {
+                editor = current.copy(validationMessage = UiMessage(invalidDraftMessage(created.issues)))
+                return
+            }
         }
+        val candidate = if (existing == null) journey else journey.copy(
+            id = existing.id,
+            status = existing.status,
+            completedAt = existing.completedAt,
+            archivedAt = existing.archivedAt,
+            // A completed occurrence stays only while the new recurrence still generates its date.
+            completedOccurrenceDates = recurrence?.let(PlannedJourneyOccurrences::dates).orEmpty()
+                .let { dates -> existing.completedOccurrenceDates.filter { it in dates } }
+        )
         persist(repository.save(candidate), UiMessageKey.PLANNED_JOURNEY_SAVE_SUCCESS, inEditor = true) { editor = null }
     }
 
@@ -555,6 +658,8 @@ class PlannedJourneyViewModel(
     /** The field the user can fix, when one issue names it; otherwise the generic refusal. */
     private fun invalidDraftMessage(issues: List<PlannedJourneyValidationIssue>): UiMessageKey = when {
         issues.any { it.code == PlannedJourneyValidationCode.SAME_ORIGIN_AND_DESTINATION } -> UiMessageKey.ROUTE_STATIONS_MUST_DIFFER
+        issues.any { it.code == PlannedJourneyValidationCode.DISCONNECTED_ITINERARY } -> UiMessageKey.PLANNED_JOURNEY_LEGS_DISCONNECTED
+        issues.any { it.code == PlannedJourneyValidationCode.NON_CHRONOLOGICAL_ITINERARY } -> UiMessageKey.PLANNED_JOURNEY_LEGS_NOT_CHRONOLOGICAL
         else -> UiMessageKey.PLANNED_JOURNEY_ACTION_REJECTED
     }
 
