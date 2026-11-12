@@ -146,6 +146,11 @@
     <string name="planned_journey_none">无</string>
     <string name="planned_journey_checklist">清单</string>
     <string name="planned_journey_checklist_hint">每行一项。请勿输入敏感数据。</string>
+    <string name="planned_journey_repeat_title">重复</string>
+    <string name="planned_journey_repeat_description">从设定的日期开始，在所选的日子于同一时间重复该行程。该日期所在的星期几始终包含在内。</string>
+    <plurals name="planned_journey_repeat_occurrences">
+        <item quantity="other">%1$d 次行程</item>
+    </plurals>
     <string name="planned_journey_checklist_item">清单：%1$s</string>
     <string name="planned_journey_preparation_title">出行准备</string>
     <string name="planned_journey_preparation_apply_a11y">将准备方案 %1$s 应用到行程</string>

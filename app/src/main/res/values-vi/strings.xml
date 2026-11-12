@@ -146,6 +146,11 @@
     <string name="planned_journey_none">Không</string>
     <string name="planned_journey_checklist">Danh sách kiểm tra</string>
     <string name="planned_journey_checklist_hint">Mỗi dòng một mục. Không nhập dữ liệu nhạy cảm.</string>
+    <string name="planned_journey_repeat_title">Lặp lại</string>
+    <string name="planned_journey_repeat_description">Lặp lại hành trình vào cùng giờ trong các ngày đã chọn, bắt đầu từ ngày đã đặt. Ngày của ngày đó luôn được bao gồm.</string>
+    <plurals name="planned_journey_repeat_occurrences">
+        <item quantity="other">%1$d hành trình</item>
+    </plurals>
     <string name="planned_journey_checklist_item">Danh sách kiểm tra: %1$s</string>
     <string name="planned_journey_preparation_title">Chuẩn bị hành trình</string>
     <string name="planned_journey_preparation_apply_a11y">Áp dụng phần chuẩn bị %1$s cho hành trình</string>

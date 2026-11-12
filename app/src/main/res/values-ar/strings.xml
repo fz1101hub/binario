@@ -148,6 +148,16 @@
     <string name="planned_journey_none">بلا</string>
     <string name="planned_journey_checklist">قائمة التحقق</string>
     <string name="planned_journey_checklist_hint">عنصر واحد في كل سطر. لا تُدخل بيانات حساسة.</string>
+    <string name="planned_journey_repeat_title">التكرار</string>
+    <string name="planned_journey_repeat_description">يكرر الرحلة في الوقت نفسه في الأيام المختارة بدءًا من التاريخ المحدد. يُضمَّن يوم ذلك التاريخ دائمًا.</string>
+    <plurals name="planned_journey_repeat_occurrences">
+        <item quantity="zero">%1$d رحلة</item>
+        <item quantity="one">رحلة واحدة (%1$d)</item>
+        <item quantity="two">رحلتان (%1$d)</item>
+        <item quantity="few">%1$d رحلات</item>
+        <item quantity="many">%1$d رحلة</item>
+        <item quantity="other">%1$d رحلة</item>
+    </plurals>
     <string name="planned_journey_checklist_item">قائمة التحقق: %1$s</string>
     <string name="planned_journey_preparation_title">التجهيز للسفر</string>
     <string name="planned_journey_preparation_apply_a11y">طبّق التجهيز %1$s على الرحلة</string>

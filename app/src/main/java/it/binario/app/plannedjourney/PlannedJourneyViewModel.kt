@@ -13,6 +13,7 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import it.binario.app.UiMessage
 import it.binario.app.UiMessageKey
 import it.binario.app.data.RailTime
+import java.time.DayOfWeek
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
@@ -39,7 +40,13 @@ data class PlannedJourneyEditorState(
     /** The user saw that the departure has already passed and tapped Save again. */
     val pastDepartureConfirmed: Boolean = false,
     /** Information shown at the top of the form, such as «Ritorno preparato». */
-    val notice: UiMessage? = null
+    val notice: UiMessage? = null,
+    /** Extra weekdays of a repeated journey; the weekday of [date] is always part of it. */
+    val repeatWeekdays: Set<DayOfWeek> = emptySet(),
+    /** How many journeys the recurrence generates in all; 1 is a single journey. */
+    val repeatCount: Int = 1,
+    /** An imported recurrence's last day, kept while it does not precede the first departure. */
+    val repeatEndsOn: LocalDate? = null
 ) {
     val isEditing: Boolean get() = journeyId != null
 }
@@ -243,7 +250,10 @@ class PlannedJourneyViewModel(
             time = segment.departure.time.toString(),
             timeZoneId = segment.departure.timeZone.id,
             reminderMinutes = journey.reminder?.minutesBeforeDeparture,
-            checklistText = journey.checklist.joinToString("\n") { item -> item.label }
+            checklistText = journey.checklist.joinToString("\n") { item -> item.label },
+            repeatWeekdays = journey.recurrence?.weekdays?.toSet().orEmpty(),
+            repeatCount = journey.recurrence?.occurrenceLimit ?: 1,
+            repeatEndsOn = journey.recurrence?.endsOn
         )
         feedback = null
     }
@@ -301,6 +311,14 @@ class PlannedJourneyViewModel(
             .take(PlannedJourneyPersistenceSchema.MAX_CHECKLIST_ITEMS)
             .mapIndexed { index, label -> PlannedJourneyChecklistItem("check-${index + 1}", label) }
             .toList()
+        val recurrence = current.repeatCount.takeIf { it > 1 }?.let { count ->
+            PlannedJourneyRecurrence(
+                weekdays = (current.repeatWeekdays + departure.date.dayOfWeek).sortedBy { it.value },
+                startsOn = departure.date,
+                endsOn = current.repeatEndsOn?.takeUnless { it.isBefore(departure.date) },
+                occurrenceLimit = count.coerceAtMost(PlannedJourneyPersistenceSchema.MAX_RECURRENCE_OCCURRENCES)
+            )
+        }
         val existing = current.journeyId?.let { id -> snapshot.journeys.firstOrNull { it.id == id } }
         val departureChanged = existing == null || existing.itinerary.segments.first().departure != departure
         val departed = departure.isValidLocalTime() && departure.scheduledAt().toInstant().isBefore(now())
@@ -318,6 +336,7 @@ class PlannedJourneyViewModel(
                         listOf(PlannedJourneySegmentDraft("segment-1", origin, destination, departure))
                     ),
                     reminder = current.reminderMinutes?.let(::PlannedJourneyReminder),
+                    recurrence = recurrence,
                     checklist = checklist,
                     createdAt = now()
                 )
@@ -338,6 +357,10 @@ class PlannedJourneyViewModel(
                         existing.itinerary.segments.drop(1)
                 ),
                 reminder = current.reminderMinutes?.let(::PlannedJourneyReminder),
+                recurrence = recurrence,
+                // A completed occurrence stays only while the new recurrence still generates its date.
+                completedOccurrenceDates = recurrence?.let(PlannedJourneyOccurrences::dates).orEmpty()
+                    .let { dates -> existing.completedOccurrenceDates.filter { it in dates } },
                 checklist = checklist
             )
         }

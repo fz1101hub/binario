@@ -143,6 +143,11 @@
     <string name="planned_journey_none">없음</string>
     <string name="planned_journey_checklist">체크리스트</string>
     <string name="planned_journey_checklist_hint">한 줄에 한 항목씩 입력하세요. 민감한 정보는 입력하지 마세요.</string>
+    <string name="planned_journey_repeat_title">반복</string>
+    <string name="planned_journey_repeat_description">지정한 날짜부터 선택한 요일의 같은 시간에 여정을 반복합니다. 그 날짜의 요일은 항상 포함됩니다.</string>
+    <plurals name="planned_journey_repeat_occurrences">
+        <item quantity="other">%1$d회</item>
+    </plurals>
     <string name="planned_journey_checklist_item">체크리스트: %1$s</string>
     <string name="planned_journey_preparation_title">여행 준비</string>
     <string name="planned_journey_preparation_apply_a11y">%1$s 준비를 여정에 적용</string>

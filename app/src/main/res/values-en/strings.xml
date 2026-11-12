@@ -147,6 +147,12 @@
     <string name="planned_journey_none">None</string>
     <string name="planned_journey_checklist">Checklist</string>
     <string name="planned_journey_checklist_hint">One item per line. Do not enter sensitive data.</string>
+    <string name="planned_journey_repeat_title">Recurrence</string>
+    <string name="planned_journey_repeat_description">Repeats the journey at the same time on the chosen days, starting from the date set. The day of that date is always included.</string>
+    <plurals name="planned_journey_repeat_occurrences">
+        <item quantity="one">%1$d journey</item>
+        <item quantity="other">%1$d journeys</item>
+    </plurals>
     <string name="planned_journey_checklist_item">Checklist: %1$s</string>
     <string name="planned_journey_preparation_title">Travel preparation</string>
     <string name="planned_journey_preparation_apply_a11y">Apply preparation %1$s to the journey</string>

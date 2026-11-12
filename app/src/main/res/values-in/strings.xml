@@ -143,6 +143,11 @@
     <string name="planned_journey_none">Tidak ada</string>
     <string name="planned_journey_checklist">Daftar periksa</string>
     <string name="planned_journey_checklist_hint">Satu item per baris. Jangan masukkan data sensitif.</string>
+    <string name="planned_journey_repeat_title">Pengulangan</string>
+    <string name="planned_journey_repeat_description">Mengulang perjalanan pada jam yang sama di hari yang dipilih, mulai dari tanggal yang ditetapkan. Hari dari tanggal itu selalu disertakan.</string>
+    <plurals name="planned_journey_repeat_occurrences">
+        <item quantity="other">%1$d perjalanan</item>
+    </plurals>
     <string name="planned_journey_checklist_item">Daftar periksa: %1$s</string>
     <string name="planned_journey_preparation_title">Persiapan perjalanan</string>
     <string name="planned_journey_preparation_apply_a11y">Terapkan persiapan %1$s ke perjalanan</string>

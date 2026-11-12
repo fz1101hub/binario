@@ -143,6 +143,11 @@
     <string name="planned_journey_none">မရှိ</string>
     <string name="planned_journey_checklist">စစ်ဆေးရန်စာရင်း</string>
     <string name="planned_journey_checklist_hint">တစ်ကြောင်းလျှင် တစ်ခု ရေးပါ။ အရေးကြီးသော ကိုယ်ရေးဒေတာ မထည့်ပါနှင့်။</string>
+    <string name="planned_journey_repeat_title">ထပ်ခါထပ်ခါ</string>
+    <string name="planned_journey_repeat_description">သတ်မှတ်ထားသော ရက်စွဲမှစ၍ ရွေးထားသော နေ့များတွင် တူညီသော အချိန်၌ ခရီးစဉ်ကို ထပ်လုပ်သည်။ ထိုရက်စွဲ၏ နေ့ကို အမြဲ ထည့်သွင်းသည်။</string>
+    <plurals name="planned_journey_repeat_occurrences">
+        <item quantity="other">ခရီးစဉ် %1$d ခု</item>
+    </plurals>
     <string name="planned_journey_checklist_item">စစ်ဆေးရန်စာရင်း- %1$s</string>
     <string name="planned_journey_preparation_title">ခရီးသွား ပြင်ဆင်မှု</string>
     <string name="planned_journey_preparation_apply_a11y">%1$s ပြင်ဆင်မှုကို ခရီးစဉ်တွင် အသုံးချရန်</string>

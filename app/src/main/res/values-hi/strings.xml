@@ -144,6 +144,12 @@
     <string name="planned_journey_none">कोई नहीं</string>
     <string name="planned_journey_checklist">चेकलिस्ट</string>
     <string name="planned_journey_checklist_hint">हर पंक्ति में एक आइटम। संवेदनशील जानकारी न डालें।</string>
+    <string name="planned_journey_repeat_title">पुनरावृत्ति</string>
+    <string name="planned_journey_repeat_description">चुने गए दिनों में उसी समय यात्रा दोहराता है, दी गई तारीख से शुरू करके। उस तारीख का दिन हमेशा शामिल रहता है।</string>
+    <plurals name="planned_journey_repeat_occurrences">
+        <item quantity="one">%1$d यात्रा</item>
+        <item quantity="other">%1$d यात्राएँ</item>
+    </plurals>
     <string name="planned_journey_checklist_item">चेकलिस्ट: %1$s</string>
     <string name="planned_journey_preparation_title">यात्रा की तैयारी</string>
     <string name="planned_journey_preparation_apply_a11y">यात्रा पर तैयारी %1$s लागू करें</string>

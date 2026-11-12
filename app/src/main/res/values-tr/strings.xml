@@ -147,6 +147,12 @@
     <string name="planned_journey_none">Yok</string>
     <string name="planned_journey_checklist">Kontrol listesi</string>
     <string name="planned_journey_checklist_hint">Her satıra bir madde. Hassas veri girmeyin.</string>
+    <string name="planned_journey_repeat_title">Tekrar</string>
+    <string name="planned_journey_repeat_description">Yolculuğu belirtilen tarihten başlayarak seçilen günlerde aynı saatte tekrarlar. O tarihin günü her zaman dahildir.</string>
+    <plurals name="planned_journey_repeat_occurrences">
+        <item quantity="one">%1$d yolculuk</item>
+        <item quantity="other">%1$d yolculuk</item>
+    </plurals>
     <string name="planned_journey_checklist_item">Kontrol listesi: %1$s</string>
     <string name="planned_journey_preparation_title">Yolculuk hazırlığı</string>
     <string name="planned_journey_preparation_apply_a11y">%1$s hazırlığını yolculuğa uygula</string>

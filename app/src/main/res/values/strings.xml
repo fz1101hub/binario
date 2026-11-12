@@ -148,6 +148,13 @@
     <string name="planned_journey_none">Nessuno</string>
     <string name="planned_journey_checklist">Checklist</string>
     <string name="planned_journey_checklist_hint">Una voce per riga. Non inserire dati sensibili.</string>
+    <string name="planned_journey_repeat_title">Ricorrenza</string>
+    <string name="planned_journey_repeat_description">Ripete il viaggio alla stessa ora nei giorni scelti, a partire dalla data indicata. Il giorno della data è sempre incluso.</string>
+    <plurals name="planned_journey_repeat_occurrences">
+        <item quantity="one">%1$d viaggio</item>
+        <item quantity="many">%1$d viaggi</item>
+        <item quantity="other">%1$d viaggi</item>
+    </plurals>
     <string name="planned_journey_checklist_item">Checklist: %1$s</string>
     <string name="planned_journey_preparation_title">Preparazione del viaggio</string>
     <string name="planned_journey_preparation_apply_a11y">Applica la preparazione %1$s alla tratta</string>

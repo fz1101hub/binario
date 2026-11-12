@@ -148,6 +148,13 @@
     <string name="planned_journey_none">Aucun</string>
     <string name="planned_journey_checklist">Liste de contrôle</string>
     <string name="planned_journey_checklist_hint">Une entrée par ligne. N’insérez pas de données sensibles.</string>
+    <string name="planned_journey_repeat_title">Récurrence</string>
+    <string name="planned_journey_repeat_description">Répète le trajet à la même heure les jours choisis, à partir de la date indiquée. Le jour de cette date est toujours inclus.</string>
+    <plurals name="planned_journey_repeat_occurrences">
+        <item quantity="one">%1$d trajet</item>
+        <item quantity="many">%1$d trajets</item>
+        <item quantity="other">%1$d trajets</item>
+    </plurals>
     <string name="planned_journey_checklist_item">Liste de contrôle : %1$s</string>
     <string name="planned_journey_preparation_title">Préparation du voyage</string>
     <string name="planned_journey_preparation_apply_a11y">Appliquer la préparation %1$s au trajet</string>

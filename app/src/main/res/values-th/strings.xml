@@ -146,6 +146,11 @@
     <string name="planned_journey_none">ไม่มี</string>
     <string name="planned_journey_checklist">รายการตรวจสอบ</string>
     <string name="planned_journey_checklist_hint">หนึ่งรายการต่อบรรทัด อย่าใส่ข้อมูลที่ละเอียดอ่อน</string>
+    <string name="planned_journey_repeat_title">การทำซ้ำ</string>
+    <string name="planned_journey_repeat_description">ทำซ้ำการเดินทางในเวลาเดียวกันในวันที่เลือก โดยเริ่มจากวันที่ที่กำหนด วันของวันที่นั้นจะรวมอยู่เสมอ</string>
+    <plurals name="planned_journey_repeat_occurrences">
+        <item quantity="other">%1$d การเดินทาง</item>
+    </plurals>
     <string name="planned_journey_checklist_item">รายการตรวจสอบ: %1$s</string>
     <string name="planned_journey_preparation_title">การเตรียมตัวเดินทาง</string>
     <string name="planned_journey_preparation_apply_a11y">ใช้การเตรียมตัว %1$s กับการเดินทาง</string>

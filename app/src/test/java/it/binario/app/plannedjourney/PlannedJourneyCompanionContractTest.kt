@@ -144,6 +144,41 @@ class PlannedJourneyCompanionContractTest {
         }
     }
 
+    @Test fun `a repeated journey always includes its start day, is stored once and the same recurrence is a duplicate`() {
+        val storage = FakeStorage()
+        var ids = 0
+        val model = PlannedJourneyViewModel(PlannedJourneyRepository(storage), now = { createdAt }, zone = italy, newId = { "r-${++ids}" })
+        repeat(2) {
+            model.beginCreate()
+            // 2026-10-06 is a Tuesday: Monday and Thursday are added, Tuesday comes with the date.
+            model.changeEditor { it.copy(originQuery = rome.displayName, destinationQuery = milan.displayName, date = "2026-10-06",
+                time = "07:10", repeatCount = 4, repeatWeekdays = setOf(java.time.DayOfWeek.MONDAY, java.time.DayOfWeek.THURSDAY)) }
+            model.saveEditor(listOf(rome, milan))
+        }
+        assertEquals(UiMessage(UiMessageKey.PLANNED_JOURNEY_DUPLICATE), model.editor?.validationMessage)
+        val saved = model.snapshot.journeys.single()
+        assertEquals(listOf(java.time.DayOfWeek.MONDAY, java.time.DayOfWeek.TUESDAY, java.time.DayOfWeek.THURSDAY), saved.recurrence?.weekdays)
+        assertEquals(
+            listOf("2026-10-06", "2026-10-08", "2026-10-12", "2026-10-13"),
+            PlannedJourneyAgenda.ordered(listOf(saved), PlannedJourneyAgendaFilter.UPCOMING, createdAt).map { it.occurrence.occurrenceDate.toString() }
+        )
+        assertEquals(emptyList<LocalDate>(), saved.completedOccurrenceDates)
+
+        model.dismissEditor()
+        model.complete(PlannedJourneyAgenda.ordered(listOf(saved), PlannedJourneyAgendaFilter.UPCOMING, createdAt)[2])
+        model.beginEdit(model.snapshot.journeys.single())
+        assertEquals(4, model.editor?.repeatCount)
+        model.changeEditor { it.copy(repeatCount = 2) }
+        model.saveEditor(listOf(rome, milan))
+        val edited = model.snapshot.journeys.single()
+        assertEquals(2, edited.recurrence?.occurrenceLimit)
+        assertEquals("a completed date the shorter recurrence no longer generates is dropped", emptyList<LocalDate>(), edited.completedOccurrenceDates)
+        model.beginEdit(edited)
+        model.changeEditor { it.copy(repeatCount = 1) }
+        model.saveEditor(listOf(rome, milan))
+        assertEquals(null, model.snapshot.journeys.single().recurrence)
+    }
+
     private class FakeStorage(var value: String? = null) : PlannedJourneyStorage {
         override fun read(): String? = value
         override fun write(value: String) { this.value = value }

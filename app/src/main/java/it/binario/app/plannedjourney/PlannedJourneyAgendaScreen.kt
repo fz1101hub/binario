@@ -61,6 +61,9 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import java.time.DayOfWeek
+import java.time.LocalDate
+import java.time.format.TextStyle
 import it.binario.app.R
 import it.binario.app.UiMessage
 import it.binario.app.localized
@@ -390,6 +393,7 @@ private fun PlannedJourneyEditorDialog(
                         }
                     }
                 }
+                item { RecurrenceFields(editor, onChange) }
                 item {
                     OutlinedTextField(
                         value = editor.checklistText,
@@ -407,6 +411,47 @@ private fun PlannedJourneyEditorDialog(
         confirmButton = { TextButton(onClick = onSave, modifier = Modifier.testTag("plannedJourneySave")) { Text(stringResource(R.string.planned_journey_save)) } },
         dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.planned_journey_cancel)) } }
     )
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun RecurrenceFields(
+    editor: PlannedJourneyEditorState,
+    onChange: ((PlannedJourneyEditorState) -> PlannedJourneyEditorState) -> Unit
+) {
+    val locale = LocalConfiguration.current.locales[0]
+    val startDay = runCatching { LocalDate.parse(editor.date).dayOfWeek }.getOrNull()
+    val counts = (listOf(1, 2, 4, 8, PlannedJourneyPersistenceSchema.MAX_RECURRENCE_OCCURRENCES) + editor.repeatCount).distinct().sorted()
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text(stringResource(R.string.planned_journey_repeat_title), style = MaterialTheme.typography.labelLarge)
+        Text(stringResource(R.string.planned_journey_repeat_description), style = MaterialTheme.typography.bodySmall)
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            counts.forEach { count ->
+                FilterChip(
+                    selected = editor.repeatCount == count,
+                    onClick = { onChange { it.copy(repeatCount = count) } },
+                    label = {
+                        Text(if (count == 1) stringResource(R.string.planned_journey_none)
+                        else pluralStringResource(R.plurals.planned_journey_repeat_occurrences, count, count))
+                    }
+                )
+            }
+        }
+        if (editor.repeatCount > 1) {
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                DayOfWeek.entries.forEach { day ->
+                    val name = day.getDisplayName(TextStyle.FULL, locale)
+                    FilterChip(
+                        selected = day == startDay || day in editor.repeatWeekdays,
+                        enabled = day != startDay,
+                        onClick = { onChange { it.copy(repeatWeekdays = if (day in it.repeatWeekdays) it.repeatWeekdays - day else it.repeatWeekdays + day) } },
+                        label = { Text(day.getDisplayName(TextStyle.SHORT, locale)) },
+                        modifier = Modifier.semantics { contentDescription = name }
+                    )
+                }
+            }
+        }
+    }
 }
 
 @OptIn(ExperimentalLayoutApi::class)

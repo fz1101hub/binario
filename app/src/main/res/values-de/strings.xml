@@ -147,6 +147,12 @@
     <string name="planned_journey_none">Keine</string>
     <string name="planned_journey_checklist">Checkliste</string>
     <string name="planned_journey_checklist_hint">Ein Eintrag pro Zeile. Keine sensiblen Daten eingeben.</string>
+    <string name="planned_journey_repeat_title">Wiederholung</string>
+    <string name="planned_journey_repeat_description">Wiederholt die Fahrt zur selben Uhrzeit an den gewählten Tagen ab dem angegebenen Datum. Der Wochentag dieses Datums ist immer dabei.</string>
+    <plurals name="planned_journey_repeat_occurrences">
+        <item quantity="one">%1$d Fahrt</item>
+        <item quantity="other">%1$d Fahrten</item>
+    </plurals>
     <string name="planned_journey_checklist_item">Checkliste: %1$s</string>
     <string name="planned_journey_preparation_title">Reisevorbereitung</string>
     <string name="planned_journey_preparation_apply_a11y">Vorbereitung %1$s auf die Verbindung anwenden</string>
