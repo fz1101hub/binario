@@ -219,6 +219,13 @@ class TrainViewModel @JvmOverloads constructor(
     private var servicePages by mutableStateOf(ServicePages.EMPTY)
     /** The request that reads again the open train of one of those windows. */
     private var pagedServiceJob: Job? = null
+    /**
+     * The route loads in flight (current direction, return leg, «Più presto» / «Più tardi»), each with what it asked
+     * for: a load another one supersedes is cancelled ([RouteStateRules.cancelsSupersededLoad]).
+     */
+    private var primaryLoad: RouteLoad? = null
+    private var returnLoad: RouteLoad? = null
+    private var servicePageLoad: RouteLoad? = null
 
     private val journeyQueryState = JourneyQueryState()
     private var returnJourneyQuery: JourneyQuery? = null
@@ -881,7 +888,7 @@ class TrainViewModel @JvmOverloads constructor(
             rebuildServicePresentations()
             operatorFilter = null
             if (hasActiveRoute) refresh() else {
-                refreshRequestId += 1
+                invalidatePrimaryLoad()
                 primarySnapshot = null
                 rebuildServicePresentations()
                 refreshState = RefreshState.IDLE
@@ -901,7 +908,7 @@ class TrainViewModel @JvmOverloads constructor(
             return
         }
         if (!hasActiveRoute) {
-            refreshRequestId += 1
+            invalidatePrimaryLoad()
             primarySnapshot = null
             rebuildServicePresentations()
             refreshState = RefreshState.ERROR
@@ -921,7 +928,10 @@ class TrainViewModel @JvmOverloads constructor(
         val publishesToWear = publishesCurrentDepartures && !activeRouteIsSearch
         val requestId = ++refreshRequestId
         routeRequestedAtMillis = refreshClock()
-        viewModelScope.launch {
+        val loadKey = servicePagingKey()
+        // «Più presto» / «Più tardi» of another search than this one are of no use any more.
+        servicePageLoad?.takeIf { RouteStateRules.cancelsSupersededLoad(it.key, loadKey) }?.let(::cancelServicePageLoad)
+        primaryLoad = replaceLoad(primaryLoad, loadKey) { viewModelScope.launch {
             val result = observeRouteShowingProgress(routeAtRequest, directionAtRequest, queryAtRequest, { requestId == refreshRequestId }) { early ->
                 primarySnapshot = early
                 primarySnapshotIsCurrent = publishesCurrentDepartures
@@ -996,7 +1006,7 @@ class TrainViewModel @JvmOverloads constructor(
                     refreshMessage = result.reason.uiMessage()
                 }
             }
-        }
+        } }
         if (returnJourneyQuery != null) refreshReturn()
     }
 
@@ -1061,7 +1071,7 @@ class TrainViewModel @JvmOverloads constructor(
         val routeAtRequest = activeRoute
         val requestId = ++returnRefreshRequestId
         returnRequestedAtMillis = refreshClock()
-        viewModelScope.launch {
+        returnLoad = replaceLoad(returnLoad, "${routeAtRequest.id}|$queryAtRequest") { viewModelScope.launch {
             val result = observeRouteShowingProgress(routeAtRequest, Direction.RETURN, queryAtRequest,
                 { requestId == returnRefreshRequestId && returnJourneyQuery == queryAtRequest }) { early ->
                 returnSnapshot = early
@@ -1088,6 +1098,36 @@ class TrainViewModel @JvmOverloads constructor(
                     returnRefreshMessage = result.reason.uiMessage()
                 }
             }
+        } }
+    }
+
+    /** No route to load: what the current direction's load in flight brings is thrown away, so it is cancelled. */
+    private fun invalidatePrimaryLoad() {
+        refreshRequestId += 1
+        primaryLoad?.job?.cancel()
+        primaryLoad = null
+    }
+
+    /**
+     * Starts the load [start] for [key] in place of [previous]. The previous one is cancelled when it asked for
+     * something else; one that asked for the same is left to run, so that the two share their requests in flight.
+     */
+    private fun replaceLoad(previous: RouteLoad?, key: String, start: () -> Job): RouteLoad {
+        val load = RouteLoad(key, start())
+        if (previous != null && RouteStateRules.cancelsSupersededLoad(previous.key, key)) previous.job.cancel()
+        return load
+    }
+
+    /** Cancels a «Più presto» / «Più tardi» load; its window is no longer shown as loading. */
+    private fun cancelServicePageLoad(load: RouteLoad) {
+        load.job.cancel()
+        if (servicePageLoad === load) servicePageLoad = null
+        val pages = servicePages
+        if (pages.key == load.key && (pages.earlier.loading || pages.later.loading)) {
+            servicePages = pages.copy(
+                earlier = pages.earlier.takeUnless { it.loading } ?: ResultsPageState(),
+                later = pages.later.takeUnless { it.loading } ?: ResultsPageState()
+            )
         }
     }
 
@@ -1307,7 +1347,7 @@ class TrainViewModel @JvmOverloads constructor(
         val routeAtRequest = activeRoute
         val directionAtRequest = direction
         servicePages = if (later) pages.copy(later = ResultsPageState.LOADING) else pages.copy(earlier = ResultsPageState.LOADING)
-        viewModelScope.launch {
+        servicePageLoad = replaceLoad(servicePageLoad, key) { viewModelScope.launch {
             var answered: RouteSnapshot? = null
             val load: suspend (java.time.LocalDateTime) -> List<TrainService>? = { from ->
                 routePage(routeAtRequest, directionAtRequest, from)?.also { answered = it }?.services?.map { service ->
@@ -1328,7 +1368,7 @@ class TrainViewModel @JvmOverloads constructor(
                 earlier = if (later) current.earlier else state,
                 later = if (later) state else current.later
             )
-        }
+        } }
     }
 
     /** The last answer of the route sources for [route] from [from], or null when they found nothing. */
@@ -1503,7 +1543,7 @@ class TrainViewModel @JvmOverloads constructor(
             backup.savedTimetables?.let { SavedTimetableStore.replace(getApplication(), it) }
             backup.travelPreferences?.let { TravelPreferencesRepository.update(getApplication(), it) }
             if (hasActiveRoute) refresh() else {
-                refreshRequestId += 1
+                invalidatePrimaryLoad()
                 primarySnapshot = null
                 rebuildServicePresentations()
                 refreshState = RefreshState.IDLE
@@ -1691,6 +1731,9 @@ internal fun pagesWithRefreshedService(pages: List<RouteSnapshot>, serviceId: St
     } + refreshed
 
 /** The windows «Più presto» / «Più tardi» loaded for the search [key]: their snapshots (new trains only) and states. */
+/** A route load in flight and what it asked for (route, direction, moment). */
+private class RouteLoad(val key: String, val job: Job)
+
 private data class ServicePages(
     val key: String,
     val snapshots: List<RouteSnapshot> = emptyList(),

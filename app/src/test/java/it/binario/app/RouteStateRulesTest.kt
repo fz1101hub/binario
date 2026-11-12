@@ -124,6 +124,15 @@ class RouteStateRulesTest {
         assertEquals(today, RouteStateRules.numberSearchDate(refresh = true, searchedDate = today.minusDays(2), today = today))
     }
 
+    @Test fun `only a load of something else is cancelled by a newer one`() {
+        // Another route, direction or moment: nobody reads the earlier answer, its requests stop.
+        assertEquals(true, RouteStateRules.cancelsSupersededLoad("home|OUTBOUND|now", "trip|OUTBOUND|now"))
+        assertEquals(true, RouteStateRules.cancelsSupersededLoad("home|OUTBOUND|now", "home|RETURN|now"))
+        assertEquals(true, RouteStateRules.cancelsSupersededLoad("home|OUTBOUND|now", "home|OUTBOUND|2026-11-13T07:00"))
+        // The same search asked again (the refresh button during a load) shares the requests in flight.
+        assertEquals(false, RouteStateRules.cancelsSupersededLoad("home|OUTBOUND|now", "home|OUTBOUND|now"))
+    }
+
     @Test fun `the saved copy of another day is not shown`() {
         val saved = savedAt("23:40", train("1", "23:50"), date = "2026-11-11")
         assertNull(RouteStateRules.savedRouteCopy(saved, instant("00:05"), rome))

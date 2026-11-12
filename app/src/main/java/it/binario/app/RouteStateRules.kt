@@ -79,4 +79,12 @@ internal object RouteStateRules {
      */
     fun numberSearchDate(refresh: Boolean, searchedDate: LocalDate, today: LocalDate): LocalDate =
         if (refresh && (searchedDate == today || searchedDate == today.minusDays(1))) searchedDate else today
+
+    /**
+     * Whether a route load still in flight is cancelled when a newer one starts. Its answer is thrown away either
+     * way; when it asked for another route, direction or moment ([previousKey] against [nextKey]) cancelling it stops
+     * requests to the public sources nobody will read. When it asked for the same, the two share their requests in
+     * flight, and cancelling the first could make the second ask them again: it is left to run.
+     */
+    fun cancelsSupersededLoad(previousKey: String, nextKey: String): Boolean = previousKey != nextKey
 }
