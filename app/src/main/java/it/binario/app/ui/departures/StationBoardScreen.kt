@@ -275,17 +275,27 @@ internal fun StationBoardScreen(
                         LinearProgressIndicator(Modifier.fillMaxWidth())
                     }
                     Text(stringResource(R.string.station_board_local_monitoring), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+                    // A monitored station shows (and edits) its saved mode, so «Smetti di monitorare» stops it (StationMonitorChips).
+                    val shownMonitorMode = StationMonitorChips.shown(viewModel.stationMonitors, station.id, StationMonitorMode.valueOf(monitorMode))
                     LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         items(StationMonitorMode.entries) { mode ->
                             FilterChip(
-                                selected = monitorMode == mode.name,
-                                onClick = { monitorMode = mode.name },
+                                selected = shownMonitorMode == mode,
+                                onClick = {
+                                    if (StationMonitorChips.changesSaved(viewModel.stationMonitors, station.id, mode)) {
+                                        viewModel.toggleStationMonitor(station, mode)
+                                    }
+                                    monitorMode = mode.name
+                                },
                                 label = { Text(mode.localizedLabel()) }
                             )
                         }
                     }
                     OutlinedButton(
-                        onClick = { viewModel.toggleStationMonitor(station, StationMonitorMode.valueOf(monitorMode)) },
+                        onClick = {
+                            monitorMode = shownMonitorMode.name
+                            viewModel.toggleStationMonitor(station, shownMonitorMode)
+                        },
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Text(stringResource(if (viewModel.isStationMonitored(station)) R.string.station_board_stop_monitoring else R.string.station_board_start_monitoring))
