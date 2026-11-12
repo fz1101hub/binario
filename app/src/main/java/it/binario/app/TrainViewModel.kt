@@ -198,9 +198,17 @@ class TrainViewModel @JvmOverloads constructor(
         private set
     var mobilityPreferences by mutableStateOf(mobilityPreferencesStore.read())
         private set
-    /** Local-only punctuality observations, newest first. */
-    var punctualityHistory by mutableStateOf(punctualityStore.read())
+    /**
+     * Local-only punctuality observations, newest first. Up to a few hundred KB of JSON: read, recorded and written
+     * off the main thread ([punctualityWork]), where a running train's refreshes made the screen stutter.
+     */
+    var punctualityHistory by mutableStateOf(emptyList<PunctualityObservation>())
         private set
+    private var punctualityHistoryLoaded = false
+    private val punctualityWork = SerialStoreWork(viewModelScope, Dispatchers.IO, read = { punctualityHistory }) {
+        punctualityHistory = it
+        punctualityHistoryLoaded = true
+    }.also { work -> work.submit { punctualityStore.read() } }
 
     private var primaryServicePresentation by mutableStateOf(ServicePresentation.empty())
     private var returnServicePresentation by mutableStateOf(ServicePresentation.empty())
@@ -1233,7 +1241,7 @@ class TrainViewModel @JvmOverloads constructor(
     fun punctualityStats(service: TrainService): PunctualityStats? = PunctualityHistory.stats(punctualityHistory, service.number)
 
     fun clearPunctualityHistory(trainNumber: String) {
-        punctualityHistory = punctualityStore.removeTrain(punctualityHistory, trainNumber)
+        punctualityWork.submit { punctualityStore.removeTrain(it, trainNumber) }
     }
 
     /**
@@ -1247,7 +1255,7 @@ class TrainViewModel @JvmOverloads constructor(
         val observations = services.mapNotNull { PunctualityHistory.observationOf(it, today) }
             .filterNot { it in punctualityHistory }
         if (observations.isEmpty()) return
-        punctualityHistory = punctualityStore.record(punctualityHistory, observations)
+        punctualityWork.submit { punctualityStore.record(it, observations) }
     }
 
     fun closeService() {
@@ -1442,7 +1450,8 @@ class TrainViewModel @JvmOverloads constructor(
                 stationMonitors = stationMonitors,
                 commuterAlerts = commuterAlerts,
                 mobilityPreferences = mobilityPreferences,
-                punctualityHistory = punctualityHistory,
+                // Right after start the history may still be on its way: the file never misses it.
+                punctualityHistory = if (punctualityHistoryLoaded) punctualityHistory else punctualityStore.read(),
                 savedTimetables = SavedTimetableStore.all(getApplication()),
                 travelPreferences = TravelPreferencesRepository.current(getApplication()),
                 stations = (
@@ -1482,7 +1491,7 @@ class TrainViewModel @JvmOverloads constructor(
             // The alarms of the reminders the file does not contain are cancelled with them.
             commuterAlerts = CommuterAlertScheduler.replaceAll(getApplication(), commuterAlertStore, backup.commuterAlerts)
             updateMobilityPreferences(backup.mobilityPreferences)
-            backup.punctualityHistory?.let { punctualityHistory = punctualityStore.replace(it) }
+            backup.punctualityHistory?.let { imported -> punctualityWork.submit { punctualityStore.replace(imported) } }
             backup.savedTimetables?.let { SavedTimetableStore.replace(getApplication(), it) }
             backup.travelPreferences?.let { TravelPreferencesRepository.update(getApplication(), it) }
             if (hasActiveRoute) refresh() else {
