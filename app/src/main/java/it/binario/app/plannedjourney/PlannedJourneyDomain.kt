@@ -492,33 +492,41 @@ data class PlannedJourneyAgendaEntry(
     val occurrence: PlannedJourneyOccurrence
 )
 
-/** Ordered local agenda; it is intentionally not a notification scheduler. */
+/**
+ * Ordered local agenda; it is intentionally not a notification scheduler. The archive holds what is behind the user:
+ * completed or archived journeys, and occurrences that have departed or were completed, newest first.
+ */
 object PlannedJourneyAgenda {
     fun ordered(
         journeys: Iterable<PlannedJourney>,
         filter: PlannedJourneyAgendaFilter = PlannedJourneyAgendaFilter.UPCOMING,
         now: Instant
     ): List<PlannedJourneyAgendaEntry> {
-        return journeys.asSequence()
+        val entries = journeys.asSequence()
             .filter { journey ->
                 when (filter) {
                     PlannedJourneyAgendaFilter.UPCOMING -> journey.status == PlannedJourneyStatus.ACTIVE
-                    PlannedJourneyAgendaFilter.ARCHIVED -> journey.status == PlannedJourneyStatus.ARCHIVED
                     PlannedJourneyAgendaFilter.REMINDERS -> journey.status == PlannedJourneyStatus.ACTIVE && journey.reminder != null
-                    PlannedJourneyAgendaFilter.ALL -> true
+                    PlannedJourneyAgendaFilter.ARCHIVED, PlannedJourneyAgendaFilter.ALL -> true
                 }
             }
             .flatMap { journey -> PlannedJourneyOccurrences.forJourney(journey).asSequence().map { occurrence -> PlannedJourneyAgendaEntry(journey, occurrence) } }
             .filter { entry ->
                 when (filter) {
-                    PlannedJourneyAgendaFilter.UPCOMING, PlannedJourneyAgendaFilter.REMINDERS ->
-                        !entry.occurrence.scheduledAt.isBefore(now) && entry.occurrence.occurrenceDate !in entry.journey.completedOccurrenceDates
-                    PlannedJourneyAgendaFilter.ARCHIVED, PlannedJourneyAgendaFilter.ALL -> true
+                    PlannedJourneyAgendaFilter.UPCOMING, PlannedJourneyAgendaFilter.REMINDERS -> isUpcoming(entry, now)
+                    PlannedJourneyAgendaFilter.ARCHIVED -> entry.journey.status != PlannedJourneyStatus.ACTIVE || !isUpcoming(entry, now)
+                    PlannedJourneyAgendaFilter.ALL -> true
                 }
             }
-            .sortedWith(compareBy<PlannedJourneyAgendaEntry> { it.occurrence.scheduledAt }.thenBy { it.journey.id })
+        val chronological = compareBy<PlannedJourneyAgendaEntry> { it.occurrence.scheduledAt }.thenBy { it.journey.id }
+        return entries
+            .sortedWith(if (filter == PlannedJourneyAgendaFilter.ARCHIVED) chronological.reversed() else chronological)
             .toList()
     }
+
+    /** Not departed yet and not completed: the "next journey" of every surface, whatever the phone's time zone. */
+    fun isUpcoming(entry: PlannedJourneyAgendaEntry, now: Instant): Boolean =
+        !entry.occurrence.scheduledAt.isBefore(now) && entry.occurrence.occurrenceDate !in entry.journey.completedOccurrenceDates
 }
 
 /** Canonical itinerary/schedule deduplication, preserving the first journey supplied. */
