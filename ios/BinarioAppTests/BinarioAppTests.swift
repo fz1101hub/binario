@@ -33,6 +33,11 @@ final class BinarioAppTests: XCTestCase {
             versionDisplay: "test"
         )
         XCTAssertEqual(model.agenda, .empty)
+        // The Home-screen quick action «Agenda» opens «Tratte» on its Agenda page.
+        XCTAssertFalse(model.showingAgenda)
+        model.openAgenda()
+        XCTAssertEqual(model.selectedTab, .saved)
+        XCTAssertTrue(model.showingAgenda)
         let form = PlannedJourneyForm(
             origin: StationIdentity(id: "S08409", name: "Roma Termini"),
             destination: StationIdentity(id: "S09218", name: "Napoli Centrale"),

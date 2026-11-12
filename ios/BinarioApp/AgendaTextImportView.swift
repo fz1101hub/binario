@@ -8,15 +8,27 @@ import BinarioKit
 struct AgendaTextImportView: View {
     @EnvironmentObject private var model: AppModel
     @Environment(\.dismiss) private var dismiss
+    /// The journeys a calendar of another app proposes (Android's foreign calendar import): the
+    /// review starts from them, with no text to type.
+    let calendarPreview: PlannedJourneyTextPreview?
     @State private var text = ""
     @State private var preview: PlannedJourneyTextPreview?
     @State private var selected: Set<String> = []
     @State private var reviewed = false
     @State private var messageKey: String?
 
+    init(calendarPreview: PlannedJourneyTextPreview? = nil) {
+        self.calendarPreview = calendarPreview
+    }
+
     var body: some View {
         NavigationStack {
             Form {
+                if calendarPreview != nil {
+                    Section {
+                        Text("saved.agenda.calendar_import_hint")
+                    }
+                } else {
                 Section {
                     TextField("saved.agenda.text_import.field", text: $text, axis: .vertical)
                         .lineLimit(4...12)
@@ -32,6 +44,7 @@ struct AgendaTextImportView: View {
                 Section {
                     Button("saved.agenda.text_import.preview", action: makePreview)
                         .disabled(text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                }
                 }
 
                 if let preview {
@@ -73,8 +86,13 @@ struct AgendaTextImportView: View {
                     }
                 }
             }
-            .navigationTitle("saved.agenda.text_import")
+            .navigationTitle(LocalizedStringKey(calendarPreview == nil ? "saved.agenda.text_import" : "saved.agenda.import"))
             .navigationBarTitleDisplayMode(.inline)
+            .onAppear {
+                guard let calendarPreview, preview == nil else { return }
+                preview = calendarPreview
+                selected = Set(calendarPreview.journeys.map(\.id))
+            }
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("saved.agenda.cancel") { dismiss() }

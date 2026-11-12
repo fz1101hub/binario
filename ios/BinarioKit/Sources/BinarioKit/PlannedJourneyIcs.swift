@@ -69,23 +69,23 @@ public struct PlannedJourneyIcsPreview: Equatable, Sendable {
 /// Android's RFC 5545 boundary (`PlannedJourneyIcs`): the export of the Agenda as events in UTC,
 /// and a bounded reading of a calendar Binario wrote.
 public enum PlannedJourneyIcs {
-    /// Every journey as one event, the first to leave first, at most `maximumEvents`: `DTSTART` in
-    /// UTC, no end time (Binario does not know the arrival), Binario's identifier fields and a
-    /// display alarm for a reminder. CRLF line ends, lines folded at 75 octets.
+    /// Every occurrence of every journey as one event (a repeating journey gives one per date), the
+    /// first to leave first, at most `maximumEvents`: `DTSTART` in UTC at the first leg's departure,
+    /// no end time (Binario does not know the arrival), each leg described on its own line,
+    /// Binario's identifier fields and a display alarm for a reminder. CRLF line ends, lines folded
+    /// at 75 octets.
     public static func export(
         _ journeys: [PlannedJourney],
         generatedAt: Date,
         text: PlannedJourneyIcsText = .italian
     ) throws -> String {
-        let events = journeys.sorted { first, second in
-            first.departure.instant == second.departure.instant
-                ? first.id < second.id
-                : first.departure.instant < second.departure.instant
+        let events = journeys.flatMap { journey in journey.occurrences.map { (journey, $0) } }.sorted { first, second in
+            first.1.instant == second.1.instant ? first.0.id < second.0.id : first.1.instant < second.1.instant
         }.prefix(PlannedJourneyIcsContract.maximumEvents)
         var logical = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:" + escape(PlannedJourneyIcsContract.productID),
                        "CALSCALE:GREGORIAN", "METHOD:PUBLISH"]
-        for journey in events {
-            logical += eventLines(journey, generatedAt: generatedAt, text: text)
+        for (journey, occurrence) in events {
+            logical += eventLines(journey, occurrence, generatedAt: generatedAt, text: text)
         }
         logical.append("END:VCALENDAR")
         let calendar = logical.flatMap(fold).joined(separator: "\r\n") + "\r\n"
@@ -118,18 +118,20 @@ public enum PlannedJourneyIcs {
         return .success(events)
     }
 
-    /// Android's preview: an event matches when its journey is in the Agenda with the same
-    /// departure and reminder, conflicts when the journey differs, and is unlinked otherwise.
+    /// Android's preview: an event matches when its journey has that occurrence in the Agenda with
+    /// the same departure and reminder, conflicts when it differs, and is unlinked otherwise.
     public static func preview(_ events: [PlannedJourneyCalendarEvent], against journeys: [PlannedJourney]) -> PlannedJourneyIcsPreview {
         var matching: [PlannedJourneyCalendarEvent] = []
         var conflicting: [PlannedJourneyCalendarEvent] = []
         var unlinked: [PlannedJourneyCalendarEvent] = []
         for event in events {
-            guard let journey = journeys.first(where: { $0.id == event.journeyID && $0.departure.date == event.occurrenceDate }) else {
+            guard let journey = journeys.first(where: { $0.id == event.journeyID }),
+                  let occurrence = journey.occurrences.first(where: { $0.date == event.occurrenceDate })
+            else {
                 unlinked.append(event)
                 continue
             }
-            if journey.departure.instant == event.startsAt, journey.reminderMinutes == event.reminderMinutes {
+            if occurrence.instant == event.startsAt, journey.reminderMinutes == event.reminderMinutes {
                 matching.append(event)
             } else {
                 conflicting.append(event)
@@ -146,19 +148,26 @@ public enum PlannedJourneyIcs {
 
     // MARK: Writing
 
-    private static func eventLines(_ journey: PlannedJourney, generatedAt: Date, text: PlannedJourneyIcsText) -> [String] {
+    private static func eventLines(
+        _ journey: PlannedJourney,
+        _ occurrence: PlannedJourneyOccurrence,
+        generatedAt: Date,
+        text: PlannedJourneyIcsText
+    ) -> [String] {
+        let first = occurrence.segments[0]
+        let last = occurrence.segments[occurrence.segments.count - 1]
         let summary = PlannedJourneyText.trimmed(journey.label).isEmpty
-            ? "\(journey.origin.displayName) → \(journey.destination.displayName)"
+            ? "\(first.origin.displayName) → \(last.destination.displayName)"
             : journey.label
         var lines = [
             "BEGIN:VEVENT",
-            "UID:" + uid(journeyID: journey.id, occurrenceDate: journey.departure.date),
+            "UID:" + uid(journeyID: journey.id, occurrenceDate: occurrence.date),
             "DTSTAMP:" + utc(generatedAt),
-            "DTSTART:" + utc(journey.departure.instant),
+            "DTSTART:" + utc(occurrence.instant),
             "SUMMARY:" + escape(summary),
-            "DESCRIPTION:" + escape(text.describe(journey.segment)),
+            "DESCRIPTION:" + escape(occurrence.segments.map(text.describe).joined(separator: "\n")),
             "X-BINARIO-JOURNEY-ID:" + escape(journey.id),
-            "X-BINARIO-OCCURRENCE-DATE:" + journey.departure.date.iso,
+            "X-BINARIO-OCCURRENCE-DATE:" + occurrence.date.iso,
         ]
         if let minutes = journey.reminderMinutes {
             lines += ["BEGIN:VALARM", "ACTION:DISPLAY", "TRIGGER:-PT\(minutes)M",

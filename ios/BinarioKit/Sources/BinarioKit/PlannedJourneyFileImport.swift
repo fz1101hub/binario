@@ -23,8 +23,8 @@ public struct PlannedJourneyImportPreview: Equatable, Sendable {
     public let duplicates: [PlannedJourney]
     /// The same identifier with another itinerary or schedule.
     public let conflicts: [PlannedJourneyImportConflict]
-    /// Records of the file this iPhone cannot read (several legs, a repetition, invalid data),
-    /// left out.
+    /// Records of the file that are not valid journeys (or repeat one already read, or exceed the
+    /// limit), left out; Android refuses such a file whole.
     public let unreadableRecords: Int
 
     /// Whether choosing «Importa» can change anything.
@@ -55,8 +55,8 @@ public enum PlannedJourneyFileImport {
         if let collection = PlannedJourneyTransfer.decode(data) {
             return .journeys(preview(collection.journeys, unreadableRecords: 0, existing: existing))
         }
-        // A document of the right kind and version, with journeys the iPhone does not keep: the
-        // readable ones are offered and the others counted.
+        // A document of the right kind and version with some invalid records: the valid journeys
+        // are offered and the others counted.
         guard let recovered = PlannedJourneyTransfer.recover(data) else { return nil }
         return .journeys(preview(recovered.journeys, unreadableRecords: recovered.unreadableRecords, existing: existing))
     }

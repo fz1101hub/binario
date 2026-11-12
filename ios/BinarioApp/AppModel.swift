@@ -122,6 +122,10 @@ final class AppModel: ObservableObject {
     @Published private(set) var agenda: PlannedJourneyAgendaState
     /// The Agenda's local reminders as the system holds them, read back after every reconciliation.
     @Published private(set) var reminderStatus: PlannedJourneyReminderStatus = .unknown
+    /// The Agenda's journey templates, newest first (at most 12), on this iPhone only.
+    @Published private(set) var agendaTemplates: [PlannedJourneyTemplate]
+    /// The reminder lead proposed for a new journey; nil proposes none (Android's default).
+    @Published private(set) var agendaDefaultReminder: Int?
     @Published private(set) var watchSharingEnabled: Bool
     @Published fileprivate(set) var watchSyncStatus: WatchSyncStatus
     @Published var searchState: SearchState = .idle
@@ -133,6 +137,8 @@ final class AppModel: ObservableObject {
     @Published private(set) var latestSnapshot: JourneySnapshot?
     @Published var persistenceMessageKey: String?
     @Published var selectedTab: Tab = .planner
+    /// The Agenda page of «Tratte» is open because the Home-screen quick action asked for it.
+    @Published var showingAgenda = false
     @Published private(set) var plannerRequest: PlannerRequest?
     /// The bundled network statistics; nil while reading, when the build carries no file or it
     /// cannot be read (the reliability lines, «Più affidabili» and the detail block are hidden).
@@ -207,6 +213,8 @@ final class AppModel: ObservableObject {
     private let savedRouteStore: SavedRouteStore
     private let favouriteTrainStore: FavouriteTrainStore
     private let plannedJourneyStore: PlannedJourneyStore
+    private let plannedJourneyTemplateStore: PlannedJourneyTemplateStore
+    private let agendaPreferences: PlannedJourneyAgendaPreferences
     /// Nil in tests and previews: no reminder is scheduled.
     private let reminderScheduler: PlannedJourneyReminderScheduler?
     private let boardStationStore: StationBoardStationStore
@@ -249,6 +257,8 @@ final class AppModel: ObservableObject {
         favouriteTrainStore: FavouriteTrainStore = FavouriteTrainStore(),
         plannedJourneyStore: PlannedJourneyStore = PlannedJourneyStore(),
         reminderCenter: (any PlannedJourneyNotificationCenter)? = nil,
+        plannedJourneyTemplateStore: PlannedJourneyTemplateStore = PlannedJourneyTemplateStore(),
+        agendaPreferences: PlannedJourneyAgendaPreferences = PlannedJourneyAgendaPreferences(),
         boardStationStore: StationBoardStationStore = StationBoardStationStore(),
         watchSharingStore: WatchSharingPreferenceStore,
         repository: any JourneyRepository,
@@ -266,6 +276,10 @@ final class AppModel: ObservableObject {
         self.savedRouteStore = savedRouteStore
         self.favouriteTrainStore = favouriteTrainStore
         self.plannedJourneyStore = plannedJourneyStore
+        self.plannedJourneyTemplateStore = plannedJourneyTemplateStore
+        self.agendaPreferences = agendaPreferences
+        self.agendaTemplates = plannedJourneyTemplateStore.load()
+        self.agendaDefaultReminder = agendaPreferences.defaultReminderMinutes
         if let reminderCenter {
             self.reminderScheduler = PlannedJourneyReminderScheduler(center: reminderCenter, content: AgendaReminderText.content)
         } else {
@@ -1537,6 +1551,12 @@ final class AppModel: ObservableObject {
 
     // MARK: Agenda
 
+    /// The Home-screen quick action «Agenda»: the «Tratte» tab, on its Agenda page.
+    func openAgenda() {
+        selectedTab = .saved
+        showingAgenda = true
+    }
+
     /// The Agenda as stored now (it is read again when its screen opens).
     func reloadAgenda() {
         agenda = plannedJourneyStore.load()
@@ -1548,21 +1568,56 @@ final class AppModel: ObservableObject {
         applyAgenda(isNew ? plannedJourneyStore.add(journey) : plannedJourneyStore.replace(journey))
     }
 
-    /// Its reminder is cancelled first, so a journey never goes with its notification still pending;
-    /// a refused change gets it back at the reconciliation that follows.
+    /// Its reminders (one per departure of a repeating journey) are cancelled first, so a journey
+    /// never goes with a notification still pending; a refused change gets them back at the
+    /// reconciliation that follows.
     func deleteJourney(id: String) -> PlannedJourneyRefusal? {
-        reminderScheduler?.cancel(journeyID: id)
+        reminderScheduler?.cancel(journeyID: id, occurrenceDates: agenda.journeys.first(where: { $0.id == id })?.recurrence?.dates ?? [])
         let refusal = applyAgenda(plannedJourneyStore.remove(id: id))
         refreshRemindersLater()
         return refusal
     }
 
-    /// «Completa»: the journey moves to the archive, and its reminder goes.
+    /// «Completa»: the journey moves to the archive, and its reminder goes. On a repeating journey
+    /// only its next departure is marked done, with its reminder (Android's rule); the journey goes
+    /// to the archive once no departure is left.
     func completeJourney(id: String, now: Date = Date()) -> PlannedJourneyRefusal? {
-        reminderScheduler?.cancel(journeyID: id)
-        let refusal = applyAgenda(plannedJourneyStore.complete(id: id, at: now))
+        let journey = agenda.journeys.first(where: { $0.id == id })
+        let occurrence = journey?.recurrence == nil ? nil : journey?.nextOccurrence(now: now)
+        reminderScheduler?.cancel(journeyID: id, occurrenceDates: occurrence.map { [$0.date] } ?? journey?.recurrence?.dates ?? [])
+        let result = occurrence.map { plannedJourneyStore.completeOccurrence(id: id, on: $0.date) }
+            ?? plannedJourneyStore.complete(id: id, at: now)
+        let refusal = applyAgenda(result)
         refreshRemindersLater()
         return refusal
+    }
+
+    /// «Svuota l'Agenda» (Android's rule): every reminder is cancelled first, then every stored
+    /// journey goes, readable or not (also the way out of a read-only Agenda), and every template;
+    /// the default lead stays. The reconciliation that follows removes any request left.
+    func clearAgenda() {
+        for journey in agenda.journeys {
+            reminderScheduler?.cancel(journeyID: journey.id, occurrenceDates: journey.recurrence?.dates ?? [])
+        }
+        agenda = plannedJourneyStore.clearAll()
+        plannedJourneyTemplateStore.clear()
+        agendaTemplates = []
+        refreshRemindersLater()
+    }
+
+    /// The lead proposed for new journeys; nil proposes none.
+    func setAgendaDefaultReminder(_ minutes: Int?) {
+        agendaPreferences.defaultReminderMinutes = minutes
+        agendaDefaultReminder = agendaPreferences.defaultReminderMinutes
+    }
+
+    /// «Salva come modello»: saved first, a template with the same name replaced, twelve at most.
+    func saveAgendaTemplate(_ template: PlannedJourneyTemplate) {
+        agendaTemplates = plannedJourneyTemplateStore.save(template)
+    }
+
+    func deleteAgendaTemplate(id: String) {
+        agendaTemplates = plannedJourneyTemplateStore.delete(id: id)
     }
 
     /// A file picked in «Importa», compared with the Agenda as stored now; nil when it is not an
@@ -1585,6 +1640,23 @@ final class AppModel: ObservableObject {
         guard case let .available(catalog) = catalogState else { return nil }
         return PlannedJourneyTextImport.preview(
             text,
+            resolver: PlannedJourneyStationResolver(catalog: catalog),
+            existing: plannedJourneyStore.load().journeys,
+            now: now
+        )
+    }
+
+    /// A calendar of another app (Android's foreign calendar import): the events whose title is a
+    /// route «A → B» on catalogue stations, as journeys to review, through the text import's rules
+    /// and free places; nil when it is not such a calendar or the catalogue is not loaded.
+    func previewForeignCalendar(_ data: Data, now: Date = Date()) -> PlannedJourneyTextPreview? {
+        guard case let .available(catalog) = catalogState,
+              let text = String(data: data, encoding: .utf8), PlannedJourneyForeignIcs.isForeign(text),
+              let calendar = PlannedJourneyForeignIcs.read(text)
+        else { return nil }
+        return PlannedJourneyTextImport.preview(
+            calendar.drafts,
+            skipped: calendar.skippedEvents,
             resolver: PlannedJourneyStationResolver(catalog: catalog),
             existing: plannedJourneyStore.load().journeys,
             now: now
