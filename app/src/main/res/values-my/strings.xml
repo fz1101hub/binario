@@ -692,6 +692,7 @@
     <string name="voice_feedback_confirmed">မှတ်သားပြီး ထည့်သွင်းပြီးပါပြီ။ မရှာမီ အကွက်များကို စစ်ဆေးပါ။</string>
     <string name="voice_feedback_ambiguous">အသံ ရှင်းလင်းမှု မရှိပါ (%1$s)။ အကွက်များကို မပြောင်းထားပါ- ကိုယ်တိုင် ရွေးပါ။</string>
     <string name="voice_feedback_incomplete">အသံ မပြည့်စုံပါ။ အကွက်များကို မပြောင်းထားပါ- ကိုယ်တိုင် ဖြည့် သို့မဟုတ် ပြင်ပါ။</string>
+    <string name="voice_feedback_date_time_only">မှတ်သားမိသော ရက်နှင့် အချိန်ကိုသာ ထည့်ထားသည်- ဘူတာများကို ရွေးပြီး မရှာမီ အကွက်များကို စစ်ဆေးပါ။</string>
     <string name="voice_feedback_unresolved_route">လမ်းကြောင်းကို မမှတ်သားနိုင်ပါ။ ဥပမာ- မနက်ဖြန် 18 နာရီ Roma Termini မှ Torino Porta Nuova သို့။</string>
     <string name="voice_feedback_unresolved_train">ရထားနံပါတ်ကို မမှတ်သားနိုင်ပါ။ ဥပမာ- ရထား 9512။</string>
     <string name="voice_feedback_unresolved_station">ဘူတာကို မမှတ်သားနိုင်ပါ။ ဥပမာ- Roma Termini ဘူတာ။</string>

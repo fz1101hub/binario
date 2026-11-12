@@ -706,6 +706,7 @@
     <string name="voice_feedback_confirmed">จดจำและกรอกข้อมูลแล้ว โปรดตรวจสอบช่องต่างๆ ก่อนค้นหา</string>
     <string name="voice_feedback_ambiguous">คำพูดไม่ชัดเจน (%1$s) ช่องต่างๆ ยังไม่ถูกเปลี่ยน โปรดเลือกเอง</string>
     <string name="voice_feedback_incomplete">คำพูดไม่ครบถ้วน ช่องต่างๆ ยังไม่ถูกเปลี่ยน โปรดกรอกหรือแก้ไขเอง</string>
+    <string name="voice_feedback_date_time_only">ใช้เฉพาะวันและเวลาที่จดจำได้ โปรดเลือกสถานีและตรวจสอบช่องต่างๆ ก่อนค้นหา</string>
     <string name="voice_feedback_unresolved_route">จดจำเส้นทางไม่ได้ ลองพูดว่า: จาก Roma Termini ไป Torino Porta Nuova พรุ่งนี้ 18 นาฬิกา</string>
     <string name="voice_feedback_unresolved_train">จดจำหมายเลขขบวนไม่ได้ ลองพูดว่า: ขบวน 9512</string>
     <string name="voice_feedback_unresolved_station">จดจำสถานีไม่ได้ ลองพูดว่า: สถานี Roma Termini</string>

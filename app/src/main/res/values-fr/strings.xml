@@ -740,6 +740,7 @@
     <string name="voice_feedback_confirmed">Reconnu et appliqué. Vérifiez les champs avant de rechercher.</string>
     <string name="voice_feedback_ambiguous">Dictée ambiguë (%1$s). Les champs n\'ont pas été modifiés : choisissez manuellement.</string>
     <string name="voice_feedback_incomplete">Dictée incomplète. Les champs n\'ont pas été modifiés : complétez-les ou corrigez-les manuellement.</string>
+    <string name="voice_feedback_date_time_only">Seuls le jour et l\'heure reconnus ont été appliqués : choisissez les gares et vérifiez les champs avant de rechercher.</string>
     <string name="voice_feedback_unresolved_route">Aucun trajet reconnu. Essayez : de Roma Termini à Torino Porta Nuova demain à 18 h.</string>
     <string name="voice_feedback_unresolved_train">Aucun numéro de train reconnu. Essayez : train 9512.</string>
     <string name="voice_feedback_unresolved_station">Aucune gare reconnue. Essayez : gare Roma Termini.</string>

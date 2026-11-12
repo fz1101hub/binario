@@ -6,6 +6,7 @@ import android.content.res.Resources
 internal fun PlannerVoiceFeedback.resolve(resources: Resources): String = when (this) {
     PlannerVoiceFeedback.Confirmed -> resources.getString(R.string.voice_feedback_confirmed)
     PlannerVoiceFeedback.Incomplete -> resources.getString(R.string.voice_feedback_incomplete)
+    PlannerVoiceFeedback.DateTimeOnly -> resources.getString(R.string.voice_feedback_date_time_only)
     is PlannerVoiceFeedback.Ambiguous -> {
         val separator = resources.getString(R.string.voice_feedback_alternative_separator)
         val groups = alternatives.joinToString("; ") { (role, names) ->

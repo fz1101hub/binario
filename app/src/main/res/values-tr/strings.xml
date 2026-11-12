@@ -723,6 +723,7 @@
     <string name="voice_feedback_confirmed">Tanındı ve uygulandı. Aramadan önce alanları kontrol edin.</string>
     <string name="voice_feedback_ambiguous">Belirsiz söyleyiş (%1$s). Alanlar değiştirilmedi: elle seçin.</string>
     <string name="voice_feedback_incomplete">Eksik söyleyiş. Alanlar değiştirilmedi: elle tamamlayın veya düzeltin.</string>
+    <string name="voice_feedback_date_time_only">Yalnızca tanınan gün ve saat uygulandı: istasyonları seçin ve aramadan önce alanları kontrol edin.</string>
     <string name="voice_feedback_unresolved_route">Güzergâh tanınmadı. Şunu deneyin: yarın saat 18\'de Roma Termini\'den Torino Porta Nuova\'ya.</string>
     <string name="voice_feedback_unresolved_train">Tren numarası tanınmadı. Şunu deneyin: tren 9512.</string>
     <string name="voice_feedback_unresolved_station">İstasyon tanınmadı. Şunu deneyin: Roma Termini istasyonu.</string>

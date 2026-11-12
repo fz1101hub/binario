@@ -692,6 +692,7 @@
     <string name="voice_feedback_confirmed">인식한 내용을 적용했습니다. 검색하기 전에 입력란을 확인하세요.</string>
     <string name="voice_feedback_ambiguous">음성 입력이 모호합니다(%1$s). 입력란을 변경하지 않았습니다. 직접 선택하세요.</string>
     <string name="voice_feedback_incomplete">음성 입력이 불완전합니다. 입력란을 변경하지 않았습니다. 직접 완성하거나 수정하세요.</string>
+    <string name="voice_feedback_date_time_only">인식한 날짜와 시간만 적용했습니다. 역을 선택하고 검색하기 전에 입력란을 확인하세요.</string>
     <string name="voice_feedback_unresolved_route">구간을 인식하지 못했습니다. 예: 내일 18시 Roma Termini에서 Torino Porta Nuova까지</string>
     <string name="voice_feedback_unresolved_train">열차 번호를 인식하지 못했습니다. 예: 열차 9512</string>
     <string name="voice_feedback_unresolved_station">역을 인식하지 못했습니다. 예: Roma Termini 역</string>

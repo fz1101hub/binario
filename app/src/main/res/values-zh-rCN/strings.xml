@@ -706,6 +706,7 @@
     <string name="voice_feedback_confirmed">已识别并填入。搜索前请检查各字段。</string>
     <string name="voice_feedback_ambiguous">语音输入有歧义（%1$s）。字段未更改：请手动选择。</string>
     <string name="voice_feedback_incomplete">语音输入不完整。字段未更改：请手动补全或更正。</string>
+    <string name="voice_feedback_date_time_only">仅应用了识别出的日期和时间：请选择车站，并在搜索前检查各字段。</string>
     <string name="voice_feedback_unresolved_route">未识别出路线。可以试试说：明天 18 点从 Roma Termini 到 Torino Porta Nuova。</string>
     <string name="voice_feedback_unresolved_train">未识别出车次号。可以试试说：车次 9512。</string>
     <string name="voice_feedback_unresolved_station">未识别出车站。可以试试说：Roma Termini 站。</string>

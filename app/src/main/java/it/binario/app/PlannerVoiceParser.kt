@@ -42,6 +42,11 @@ sealed interface PlannerVoiceFeedback {
     /** Station names the user must choose between, by role; the fields were not changed. */
     data class Ambiguous(val alternatives: List<Pair<DictatedStationRole, List<String>>>) : PlannerVoiceFeedback
     data object Incomplete : PlannerVoiceFeedback
+    /**
+     * A route whose stations were not found (a recognizer writes «ミラノ», «Милан», the timetable «Milano»): the
+     * station fields were not changed, the day and the time said were put in theirs.
+     */
+    data object DateTimeOnly : PlannerVoiceFeedback
     data class Unresolved(val target: DictationTarget) : PlannerVoiceFeedback
 }
 
@@ -51,7 +56,11 @@ internal fun PlannerVoiceReview.feedback(target: DictationTarget): PlannerVoiceF
         val alternatives = stationCandidates
             .filter { it.candidates.size > 1 }
             .map { group -> group.role to group.candidates.take(3).map { it.name } }
-        if (alternatives.isNotEmpty()) PlannerVoiceFeedback.Ambiguous(alternatives) else PlannerVoiceFeedback.Incomplete
+        when {
+            alternatives.isNotEmpty() -> PlannerVoiceFeedback.Ambiguous(alternatives)
+            target == DictationTarget.ROUTE && (input.date != null || input.time != null) -> PlannerVoiceFeedback.DateTimeOnly
+            else -> PlannerVoiceFeedback.Incomplete
+        }
     }
     DictationReviewStatus.UNRESOLVED -> PlannerVoiceFeedback.Unresolved(target)
 }
@@ -72,9 +81,10 @@ internal object PlannerVoiceParser {
 
     /**
      * Whether the microphone of [target] is offered when the app speaks [language] (the language code of its
-     * locale). A train number is digits everywhere. A station is matched by its name in Latin letters. A route
-     * also carries a day and a time: where their words are not known the day would be dropped and the search
-     * confirmed for today, so the route is not dictated there.
+     * locale). A train number is digits everywhere. A station is matched by its name in Latin letters, which a
+     * recognizer of another script does not write («ミラノ», «Милан»). A route also carries a day and a time: it
+     * is offered in every language whose words for them are known ([VoiceGrammars]); where the stations are not
+     * found, the day and the time are still offered ([PlannerVoiceFeedback.DateTimeOnly]).
      */
     fun offers(target: DictationTarget, language: String): Boolean = when (target) {
         DictationTarget.TRAIN -> true
