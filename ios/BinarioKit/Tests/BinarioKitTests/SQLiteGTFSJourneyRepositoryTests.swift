@@ -197,6 +197,9 @@ final class SQLiteGTFSJourneyRepositoryTests: XCTestCase {
         try FileManager.default.createDirectory(at: cacheURL, withIntermediateDirectories: true)
         let obsolete = cacheURL.appendingPathComponent("binario-gtfs-obsolete.sqlite")
         try Data("previous-cache".utf8).write(to: obsolete)
+        // A staged copy left by a launch killed before it was moved or removed.
+        let leftover = cacheURL.appendingPathComponent(".binario-gtfs-\(UUID().uuidString).sqlite")
+        try Data("staged".utf8).write(to: leftover)
 
         let installer = BundledGTFSScheduleInstaller()
         let installed = try installer.install(
@@ -205,6 +208,7 @@ final class SQLiteGTFSJourneyRepositoryTests: XCTestCase {
             cacheDirectory: cacheURL
         )
         XCTAssertFalse(FileManager.default.fileExists(atPath: obsolete.path))
+        XCTAssertFalse(FileManager.default.fileExists(atPath: leftover.path), "a leftover staged copy is removed")
         XCTAssertTrue(FileManager.default.fileExists(atPath: installed.path))
         XCTAssertEqual(try Data(contentsOf: installed), database)
 
