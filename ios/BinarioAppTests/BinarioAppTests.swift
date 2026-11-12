@@ -252,7 +252,17 @@ final class BinarioAppTests: XCTestCase {
         )
         await invalidProvider.run(query: query)
         XCTAssertEqual(invalidProvider.searchState, .unavailable(.providerInvalid))
-        XCTAssertEqual(invalidProvider.scheduleState, .unavailable)
+        // One failed read is the search's error: the planner is not switched off until the app is quit.
+        XCTAssertEqual(invalidProvider.scheduleState, .available)
+
+        let noProvider = makeModel(
+            defaults: defaults,
+            publisher: nil,
+            repository: StubJourneyRepository(result: .unavailable(.noAuthorizedProvider))
+        )
+        await noProvider.run(query: query)
+        XCTAssertEqual(noProvider.searchState, .unavailable(.noAuthorizedProvider))
+        XCTAssertEqual(noProvider.scheduleState, .unavailable, "no timetables installed at all")
     }
 
     func testCatalogStateIsLoadingThenAvailableOrUnavailable() async throws {

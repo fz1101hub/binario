@@ -181,6 +181,10 @@ final class AppModel: ObservableObject {
     /// The reading started by a station choice or by the timetables opening.
     private var boardLoad: Task<Void, Never>?
     private var searchRequestID = 0
+    /// Where the timetable index was opened from (`loadSchedule`), to open it again after a failed read.
+    private var scheduleInputs: ScheduleInputs?
+    /// The index has been opened again after a failed read in this launch: at most once.
+    private var scheduleReopenedAfterFailedRead = false
     /// The last search that was for now, whose route the Watch shows; nil once the input changes.
     private var watchRouteQuery: JourneyQuery?
     /// Bumped by every publication of the pinned route, so only the latest one reaches the Watch.
@@ -449,6 +453,9 @@ final class AppModel: ObservableObject {
     }
 
     func loadSchedule(compressedURL: URL, metadataURL: URL, sourcePolicyURL: URL? = nil, cacheDirectory: URL) async {
+        scheduleInputs = ScheduleInputs(
+            compressedURL: compressedURL, metadataURL: metadataURL, sourcePolicyURL: sourcePolicyURL, cacheDirectory: cacheDirectory
+        )
         scheduleState = .loading
         let installed = await Task.detached(priority: .utility) { () -> InstalledSchedule? in
             guard let installedURL = try? BundledGTFSScheduleInstaller().install(
@@ -534,11 +541,29 @@ final class AppModel: ObservableObject {
             searchState = .unavailable(reason)
             latestSnapshot = nil
             resultReliability = nil
-            if reason == .noAuthorizedProvider || reason == .providerInvalid {
+            if reason == .noAuthorizedProvider {
                 scheduleState = .unavailable
             }
             if isForNow { publishUnavailableSnapshot(for: query) }
+            // One failed read (an I/O error, a cache damaged while the app runs, a pair over a
+            // reader limit) is this search's error, not a planner switched off until the app is
+            // quit: the index is validated again, and reinstalled from the bundle when damaged.
+            if reason == .providerInvalid { await reopenScheduleAfterFailedRead() }
         }
+    }
+
+    /// Opens the timetable index again after a failed read, once per launch: `loadSchedule`
+    /// validates it and installs it again from the bundle when it is damaged; only if that fails
+    /// are the timetables unavailable.
+    private func reopenScheduleAfterFailedRead() async {
+        guard !scheduleReopenedAfterFailedRead, scheduleState == .available, let inputs = scheduleInputs else { return }
+        scheduleReopenedAfterFailedRead = true
+        await loadSchedule(
+            compressedURL: inputs.compressedURL,
+            metadataURL: inputs.metadataURL,
+            sourcePolicyURL: inputs.sourcePolicyURL,
+            cacheDirectory: inputs.cacheDirectory
+        )
     }
 
     func invalidateSearchResult() {
@@ -1681,6 +1706,14 @@ private struct InstalledSchedule: Sendable {
     let packs: [GTFSSourcePack]
     let coveredStationIDs: Set<String>
     let sourcePolicy: GTFSSourcePolicy?
+}
+
+/// The bundled index and its cache, as `AppModel.loadSchedule` opened them.
+private struct ScheduleInputs: Sendable {
+    let compressedURL: URL
+    let metadataURL: URL
+    let sourcePolicyURL: URL?
+    let cacheDirectory: URL
 }
 
 @MainActor
