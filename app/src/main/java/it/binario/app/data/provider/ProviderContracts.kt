@@ -121,6 +121,8 @@ sealed interface ProviderResult<out T> {
 
 enum class ProviderWarning {
     REALTIME_UNAVAILABLE,
+    /** A station board with only programmed rows: no live board answered with trains. */
+    PROGRAMMED_ONLY,
     SOURCE_CONFLICT,
     STALE_SOURCE,
     IDENTITY_AMBIGUOUS,
