@@ -1,5 +1,7 @@
 # Import massimo delle fonti ferroviarie
 
+> **Documento storico.** Descrive lo stato del progetto alla sua data e non viene aggiornato: lo stato attuale è in [AZIONI_TITOLARE.md](../AZIONI_TITOLARE.md) e nel [CHANGELOG](../../CHANGELOG.md).
+
 **Data:** 14 agosto 2026  
 **Obiettivo:** includere nell’APK il maggior numero possibile di feed statici ufficiali e verificati, senza token di app, endpoint interni o download automatici all’avvio.
 

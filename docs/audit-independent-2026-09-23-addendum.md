@@ -1,5 +1,7 @@
 # Addendum all'audit indipendente — passata finale e revisione del piano di stabilizzazione (23 settembre 2026)
 
+> **Documento storico.** Descrive lo stato del progetto alla sua data e non viene aggiornato: lo stato attuale è in [AZIONI_TITOLARE.md](AZIONI_TITOLARE.md) e nel [CHANGELOG](../CHANGELOG.md).
+
 Base: rapporto `docs/audit-independent-2026-09-23.md` (commit `05e962cf`), codice identico a `0b8f3c98487d24171053f318a86e538618218edb`. Piano esaminato: *Piano completo di stabilizzazione di Binario* (Manus AI, 23/09/2026, 263 righe, baseline `0b8f3c9`, audit `05e962cf`).
 
 Metodo: tre passate indipendenti mirate alle aree **non coperte in profondità** dalle passate precedenti — (A) UI, navigazione, widget, allarmi, backup e ricerca stazioni dell'app Android; (B) i punti del data layer lasciati "non ri-verificati"; (C) release-readiness (build release, permessi, policy, ops, governance). Ogni finding riportato è stato verificato sul codice; i claim più pesanti sono stati ri-verificati a campione (hash icone, scadenze GTFS calcolate dai `calendar*.txt`, handler Alexa, percorsi widget, shortcut). Nessuna esecuzione su dispositivo, Xcode o SDK Android (non disponibili); le verifiche Gradle restano coperte dai run CI verificati su `0b8f3c9`.

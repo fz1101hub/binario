@@ -1,5 +1,7 @@
 # Percorsi alternativi di import — fonti limitate
 
+> **Documento storico.** Descrive lo stato del progetto alla sua data e non viene aggiornato: lo stato attuale è in [AZIONI_TITOLARE.md](../AZIONI_TITOLARE.md) e nel [CHANGELOG](../../CHANGELOG.md).
+
 Le fonti seguenti sono state riesaminate il 14 agosto 2026 per massimizzare l’import senza token né endpoint non pubblici.
 
 | Fonte | Percorso ufficiale alternativo | Dato rilevante | Azione prevista |

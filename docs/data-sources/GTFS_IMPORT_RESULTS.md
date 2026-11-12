@@ -1,5 +1,7 @@
 # Esito dell’import GTFS di prova
 
+> **Documento storico.** Descrive lo stato del progetto alla sua data e non viene aggiornato: lo stato attuale è in [AZIONI_TITOLARE.md](../AZIONI_TITOLARE.md) e nel [CHANGELOG](../../CHANGELOG.md).
+
 Il test del 14 agosto 2026 ha processato gli otto feed GTFS con URL diretto. Gli archivi sono stati scaricati in una directory temporanea esterna al repository, aperti come ZIP e verificati per la presenza delle tabelle GTFS minime. Nessun file è stato eseguito.
 
 | Fonte | Esito | Metriche principali | Disposizione |

@@ -1,5 +1,7 @@
 # Copertura completa delle fonti ferroviarie utilizzabili
 
+> **Documento storico.** Descrive lo stato del progetto alla sua data e non viene aggiornato: lo stato attuale è in [AZIONI_TITOLARE.md](../AZIONI_TITOLARE.md) e nel [CHANGELOG](../../CHANGELOG.md).
+
 **Data di verifica:** 15 agosto 2026  
 **Baseline:** `feature/data-foundations`  
 **Criterio:** una fonte è considerata coperta solo quando l’app dispone di un adapter operativo, di un data pack GTFS verificato oppure di un fallback ufficiale che ne copre le corse sulle stazioni italiane. Le fonti senza feed pubblico strutturato non vengono rappresentate come realtime nativo.

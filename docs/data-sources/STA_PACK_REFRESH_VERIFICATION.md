@@ -1,5 +1,7 @@
 # Aggiornamento del data pack STA Alto Adige
 
+> **Documento storico.** Descrive lo stato del progetto alla sua data e non viene aggiornato: lo stato attuale è in [AZIONI_TITOLARE.md](../AZIONI_TITOLARE.md) e nel [CHANGELOG](../../CHANGELOG.md).
+
 ## Artefatto aggiornato
 
 Il data pack `alto-adige-sta-gtfs.zip` è stato rigenerato il **15 agosto 2026** dal raw endpoint ufficiale Open Data Hub/STA:

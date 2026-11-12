@@ -1,5 +1,7 @@
 # Audit indipendente — Binario (23 settembre 2026)
 
+> **Documento storico.** Descrive lo stato del progetto alla sua data e non viene aggiornato: lo stato attuale è in [AZIONI_TITOLARE.md](AZIONI_TITOLARE.md) e nel [CHANGELOG](../CHANGELOG.md).
+
 Ramo analizzato: `audit/official-rail-sources-20260904` al commit `0b8f3c98487d24171053f318a86e538618218edb` (HEAD verificato con checkout diretto; app v0.20.3, versionCode 34). Il ramo contiene `origin/main` come antenato più 320 commit; 18 commit separano `015b912` (base dell'audit del 5 settembre) da HEAD.
 
 Perimetro principale: `app/`, `wear/`, `companion-expo/`, `voice-bridge/`, `apple-watch/`, `.github/workflows/`, file Gradle, manifest, configurazioni, test e tooling. `surfaces/`, `archives/` e `artifacts/` sono valutati solo per governance e igiene del repository, non come codice corrente.

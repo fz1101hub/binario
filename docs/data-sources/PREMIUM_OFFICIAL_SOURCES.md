@@ -1,5 +1,7 @@
 # Fonti ufficiali ad alta qualità
 
+> **Documento storico.** Descrive lo stato del progetto alla sua data e non viene aggiornato: lo stato attuale è in [AZIONI_TITOLARE.md](../AZIONI_TITOLARE.md) e nel [CHANGELOG](../../CHANGELOG.md).
+
 La verifica del 14 agosto 2026 distingue le fonti che meritano un adapter di qualità da quelle che restano soltanto catalogo o gateway review.
 
 | Fonte | Dati | Modalità consigliata | Priorità |

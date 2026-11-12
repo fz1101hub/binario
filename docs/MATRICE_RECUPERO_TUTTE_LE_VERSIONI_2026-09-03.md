@@ -1,5 +1,7 @@
 # Binario — matrice di recupero di tutte le versioni disponibili
 
+> **Documento storico.** Descrive lo stato del progetto alla sua data e non viene aggiornato: lo stato attuale è in [AZIONI_TITOLARE.md](AZIONI_TITOLARE.md) e nel [CHANGELOG](../CHANGELOG.md).
+
 ## Regola di conservazione
 
 Il ramo `recovery/expo-companion-session-20260903` conserva le superfici Binario disponibili **senza fondere** i rispettivi sorgenti. Ogni directory è una snapshot: non rappresenta un merge, una migrazione o una dichiarazione di compatibilità fra versioni.

@@ -1,5 +1,7 @@
 # Verifica provider Italo
 
+> **Documento storico.** Descrive lo stato del progetto alla sua data e non viene aggiornato: lo stato attuale è in [AZIONI_TITOLARE.md](../AZIONI_TITOLARE.md) e nel [CHANGELOG](../../CHANGELOG.md).
+
 ## Esito tecnico
 
 Il provider `ItaloPublicStationAdapter` usa esclusivamente le pagine pubbliche di **Italo in Viaggio**. Il 15 agosto 2026 sono state verificate sette pagine di stazione: Roma Termini, Roma Tiburtina, Napoli Centrale, Firenze Santa Maria Novella, Milano Centrale, Torino Porta Nuova e Venezia Santa Lucia. Tutte hanno risposto HTTPS con stato 200, titolo coerente e marcatore di tabellone realtime.

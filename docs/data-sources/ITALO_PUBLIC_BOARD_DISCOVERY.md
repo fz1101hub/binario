@@ -1,5 +1,7 @@
 # Italo in Viaggio — verifica tabellone pubblico
 
+> **Documento storico.** Descrive lo stato del progetto alla sua data e non viene aggiornato: lo stato attuale è in [AZIONI_TITOLARE.md](../AZIONI_TITOLARE.md) e nel [CHANGELOG](../../CHANGELOG.md).
+
 Il 15 agosto 2026 è stata aperta la pagina pubblica:
 
 `https://italoinviaggio.italotreno.com/it/stazione/roma-termini`

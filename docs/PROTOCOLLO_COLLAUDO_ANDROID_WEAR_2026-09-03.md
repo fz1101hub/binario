@@ -1,5 +1,7 @@
 # Binario — protocollo di collaudo Android, TalkBack e Wear OS
 
+> **Stato del documento:** in uso per il collaudo su dispositivo ([AZIONI_TITOLARE.md](AZIONI_TITOLARE.md), «Verifiche su dispositivo»); scritto il 3 settembre 2026, non elenca le funzioni aggiunte dopo, che AZIONI_TITOLARE.md indica a parte.
+
 ## Scopo e limiti
 
 Questo protocollo serve a raccogliere evidenze manuali della build corrente su dispositivi reali. Il superamento dei casi elencati non equivale a certificazione WCAG, EAA o EN 301 549; verifica soltanto i flussi concreti di Binario con le tecnologie assistive e i componenti Wear disponibili.

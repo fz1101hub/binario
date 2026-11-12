@@ -1,5 +1,7 @@
 # Follow-up all'audit Claude Fable Extra
 
+> **Documento storico.** Descrive lo stato del progetto alla sua data e non viene aggiornato: lo stato attuale è in [AZIONI_TITOLARE.md](AZIONI_TITOLARE.md) e nel [CHANGELOG](../CHANGELOG.md).
+
 **Data:** 23 settembre 2026
 
 **Audit di origine:** branch `docs/audit-integration-20260923`, eseguito sul commit `97c24b450e00bc1b10662fa6ce9096394fd512d5`
