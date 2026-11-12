@@ -115,6 +115,13 @@ public final class PlannedJourneyStore {
         transform(id: journeyID) { try $0.settingChecklistItem(id: itemID, completed: completed) }
     }
 
+    /// «Svuota l'Agenda»: every stored journey goes, readable or not, so it is also the way out of
+    /// a read-only Agenda. The caller cancels the reminders first.
+    public func clearAll() -> PlannedJourneyAgendaState {
+        defaults.removeObject(forKey: Self.storageKey)
+        return .empty
+    }
+
     /// The whole Agenda written at once (an import that has already applied its own rules);
     /// refused like any change when the stored value is read-only.
     func replaceAll(_ journeys: [PlannedJourney]) -> Result<PlannedJourneyAgendaState, PlannedJourneyRefusal> {

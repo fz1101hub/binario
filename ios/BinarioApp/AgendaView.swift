@@ -21,6 +21,7 @@ struct AgendaView: View {
     @State private var filePreview: PlannedJourneyFilePreview?
     /// What the last export or import did, shown at the top of the list.
     @State private var fileMessage: (key: String, isError: Bool)?
+    @State private var confirmingClear = false
 
     enum AgendaFilter: Hashable {
         case upcoming
@@ -74,6 +75,9 @@ struct AgendaView: View {
             } footer: {
                 Text("saved.agenda.local_only")
             }
+
+            // The Agenda's own settings, on this iPhone only.
+            AgendaSettingsSection(confirmingClear: $confirmingClear)
         }
         .navigationTitle("saved.agenda.title")
         .toolbar {
@@ -118,6 +122,15 @@ struct AgendaView: View {
         }
         .sheet(item: $editor) { request in
             AgendaEditorView(request: request)
+        }
+        // «Svuota l'Agenda»: reminders first, then every journey (readable or not) and template.
+        .confirmationDialog("saved.agenda.clear_title", isPresented: $confirmingClear, titleVisibility: .visible) {
+            Button("saved.agenda.clear_confirm", role: .destructive) {
+                model.clearAgenda()
+                report("saved.agenda.cleared", isError: false)
+            }
+        } message: {
+            Text("saved.agenda.clear_body")
         }
         .sheet(isPresented: $importingText) {
             AgendaTextImportView()
@@ -187,6 +200,34 @@ struct AgendaView: View {
         while !Task.isCancelled {
             try? await Task.sleep(nanoseconds: 60 * 1_000_000_000)
             clock = Date()
+        }
+    }
+}
+
+/// The Agenda's settings: the lead proposed for new journeys (default «Nessuno», as Android) and
+/// «Svuota l'Agenda», also offered when the stored Agenda is read-only (it is the way out).
+struct AgendaSettingsSection: View {
+    @EnvironmentObject private var model: AppModel
+    @Binding var confirmingClear: Bool
+
+    var body: some View {
+        Section {
+            Picker("saved.agenda.default_reminder", selection: Binding(
+                get: { model.agendaDefaultReminder },
+                set: { minutes in model.setAgendaDefaultReminder(minutes) }
+            )) {
+                ForEach(PlannedJourneyForm.reminderChoices, id: \.self) { choice in
+                    Text(verbatim: AgendaText.reminderChoice(choice)).tag(choice)
+                }
+            }
+            Button(role: .destructive) {
+                confirmingClear = true
+            } label: {
+                Label("saved.agenda.clear", systemImage: "trash")
+            }
+            .disabled(model.agenda.journeys.isEmpty && !model.agenda.isReadOnly && model.agendaTemplates.isEmpty)
+        } footer: {
+            Text("saved.agenda.default_reminder_hint")
         }
     }
 }
@@ -446,6 +487,9 @@ struct AgendaEditorView: View {
     @State private var repeatCount = 1
     @State private var repeatWeekdays: Set<PlannedJourneyWeekday> = []
     @State private var repeatEndsOn: PlannedLocalDate?
+    @State private var templateName = ""
+    /// What the last template action did, under the templates.
+    @State private var templateMessage: String?
     @State private var messageKey: String?
     @State private var loaded = false
     /// The journey is saved and its reminder is being scheduled: «Salva» waits.
@@ -504,6 +548,17 @@ struct AgendaEditorView: View {
                     count: $repeatCount,
                     weekdays: $repeatWeekdays,
                     startDay: departure.flatMap { ItalianWallClock.date(of: $0) }.map { PlannedJourneyWeekday(of: $0) }
+                )
+
+                // Journey templates (Android's), one leg each.
+                AgendaEditorTemplates(
+                    templates: model.agendaTemplates,
+                    canSave: laterLegs.isEmpty,
+                    name: $templateName,
+                    message: templateMessage,
+                    apply: { applyTemplate($0) },
+                    save: { saveTemplate() },
+                    delete: { deleteTemplate($0) }
                 )
 
                 Section {
@@ -596,10 +651,11 @@ struct AgendaEditorView: View {
         loaded = true
         let form: PlannedJourneyForm
         switch request {
-        case .new: form = PlannedJourneyForm.new(now: Date())
+        // A new journey, a return and a replanned one propose the default lead (Android's rule).
+        case .new: form = PlannedJourneyForm.new(now: Date(), reminderMinutes: model.agendaDefaultReminder)
         case let .edit(journey): form = PlannedJourneyForm(editing: journey)
-        case let .returnTrip(journey): form = PlannedJourneyForm.returnTrip(from: journey)
-        case let .replan(journey): form = PlannedJourneyForm.replan(from: journey)
+        case let .returnTrip(journey): form = PlannedJourneyForm.returnTrip(from: journey, reminderMinutes: model.agendaDefaultReminder)
+        case let .replan(journey): form = PlannedJourneyForm.replan(from: journey, reminderMinutes: model.agendaDefaultReminder)
         }
         label = form.label
         origin = form.origin.map { Station(id: $0.id, name: $0.name, railwayCode: $0.railwayCode) }
@@ -614,7 +670,8 @@ struct AgendaEditorView: View {
         repeatEndsOn = form.repeatEndsOn
     }
 
-    private func save() {
+    /// What the editor holds, as the form saves it.
+    private func currentForm() -> PlannedJourneyForm {
         var form = PlannedJourneyForm(
             label: label,
             origin: origin.map { StationIdentity($0) },
@@ -631,6 +688,48 @@ struct AgendaEditorView: View {
             form.date = ItalianWallClock.date(of: departure)
             form.time = ItalianWallClock.time(of: departure)
         }
+        return form
+    }
+
+    /// A template fills the editor with its one leg, time, lead and checklist.
+    private func applyTemplate(_ template: PlannedJourneyTemplate) {
+        var form = currentForm()
+        form.apply(template, now: Date())
+        origin = form.origin.map { Station(id: $0.id, name: $0.name, railwayCode: $0.railwayCode) }
+        destination = form.destination.map { Station(id: $0.id, name: $0.name, railwayCode: $0.railwayCode) }
+        departure = form.departureInstant
+        laterLegs = []
+        reminderMinutes = form.reminderMinutes
+        checklistText = form.checklistText
+        repeatCount = form.repeatCount
+        repeatWeekdays = form.repeatWeekdays
+        repeatEndsOn = form.repeatEndsOn
+        tellTemplate(String.localizedStringWithFormat(NSLocalizedString("saved.agenda.template_applied", comment: ""), template.name))
+    }
+
+    /// «Salva come modello»: the one leg's stations and time, the lead and the checklist.
+    private func saveTemplate() {
+        guard let template = currentForm().template(id: UUID().uuidString, name: templateName) else {
+            tellTemplate(NSLocalizedString("saved.agenda.template_invalid", comment: ""))
+            return
+        }
+        model.saveAgendaTemplate(template)
+        templateName = ""
+        tellTemplate(NSLocalizedString("saved.agenda.template_saved", comment: ""))
+    }
+
+    private func deleteTemplate(_ template: PlannedJourneyTemplate) {
+        model.deleteAgendaTemplate(id: template.id)
+        tellTemplate(NSLocalizedString("saved.agenda.template_deleted", comment: ""))
+    }
+
+    private func tellTemplate(_ text: String) {
+        templateMessage = text
+        AgendaAnnouncement.post(text: text, .information)
+    }
+
+    private func save() {
+        let form = currentForm()
         let now = Date()
         let journey: PlannedJourney
         switch form.journey(id: UUID().uuidString, now: now, editing: existing) {
@@ -829,6 +928,57 @@ struct AgendaEditorRepetition: View {
             }
         } footer: {
             Text("saved.agenda.repeat_hint")
+        }
+    }
+}
+
+/// «Modelli di viaggio» in the editor (Android's templates, on this iPhone only): applying one fills
+/// the editor with its leg, time, lead and checklist; a one-leg journey can be saved as one, a
+/// template with the same name being replaced; swiping deletes one.
+struct AgendaEditorTemplates: View {
+    let templates: [PlannedJourneyTemplate]
+    /// False for a journey of several legs: a template is one leg.
+    let canSave: Bool
+    @Binding var name: String
+    let message: String?
+    let apply: @MainActor (PlannedJourneyTemplate) -> Void
+    let save: @MainActor () -> Void
+    let delete: @MainActor (PlannedJourneyTemplate) -> Void
+
+    var body: some View {
+        Section {
+            ForEach(templates) { template in
+                Button {
+                    apply(template)
+                } label: {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(verbatim: template.name)
+                        Text(verbatim: "\(template.origin.displayName) → \(template.destination.displayName) · \(template.time.hhmm)")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .swipeActions {
+                    Button(role: .destructive) {
+                        delete(template)
+                    } label: {
+                        Label("saved.agenda.template_delete", systemImage: "trash")
+                    }
+                }
+            }
+            if canSave {
+                TextField("saved.agenda.template_name", text: $name, prompt: Text("saved.agenda.template_placeholder"))
+                Button("saved.agenda.template_save") { save() }
+                    .disabled(name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            }
+            if let message {
+                Text(verbatim: message)
+                    .font(.footnote)
+            }
+        } header: {
+            Text("saved.agenda.templates")
+        } footer: {
+            Text("saved.agenda.templates_hint")
         }
     }
 }

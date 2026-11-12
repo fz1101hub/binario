@@ -193,13 +193,45 @@ public struct PlannedJourneyForm: Equatable, Sendable {
     /// The leads the editor offers: «Nessuno» first, then Android's values.
     public static let reminderChoices: [Int?] = [nil] + PlannedJourneySchema.reminderMinutes.sorted().map { Optional($0) }
 
-    /// A new journey: the next whole hour in Italy (today, or tomorrow after 23:00).
-    public static func new(now: Date) -> PlannedJourneyForm {
+    /// A new journey: the next whole hour in Italy (today, or tomorrow after 23:00), with the
+    /// default lead chosen in the Agenda (Android's: none until one is chosen).
+    public static func new(now: Date, reminderMinutes: Int? = nil) -> PlannedJourneyForm {
         let inAnHour = now.addingTimeInterval(3_600)
         return PlannedJourneyForm(
             date: ItalianWallClock.date(of: inAnHour),
-            time: ItalianWallClock.time(of: inAnHour).flatMap { PlannedLocalTime(hour: $0.hour, minute: 0) }
+            time: ItalianWallClock.time(of: inAnHour).flatMap { PlannedLocalTime(hour: $0.hour, minute: 0) },
+            reminderMinutes: reminderMinutes
         )
+    }
+
+    /// «Salva come modello»: the one leg's stations and time, the lead and the checklist lines;
+    /// nil for a journey of several legs or one not filled in (Android's rule: a template is one leg).
+    public func template(id: String, name: String) -> PlannedJourneyTemplate? {
+        guard laterLegs.isEmpty, let origin, let destination, let time,
+              let start = try? PlannedJourneyStation(origin), let end = try? PlannedJourneyStation(destination)
+        else { return nil }
+        return PlannedJourneyTemplate(
+            id: id, name: name, origin: start, destination: end, time: time,
+            reminderMinutes: reminderMinutes, checklist: checklistLabels
+        )
+    }
+
+    /// A template applied: its one leg, time, lead and checklist replace the form's; the date is the
+    /// next day in Italy when that time is still to come, to be checked (the iPhone picks date and
+    /// time together, where Android leaves the date blank).
+    public mutating func apply(_ template: PlannedJourneyTemplate, now: Date) {
+        var day = ItalianWallClock.date(of: now)
+        if let today = day, let instant = ItalianWallClock.instant(date: today, time: template.time), instant <= now {
+            day = today.adding(days: 1)
+        }
+        legs = [PlannedJourneyFormLeg(
+            origin: template.origin.identity, destination: template.destination.identity, date: day, time: template.time
+        )]
+        reminderMinutes = template.reminderMinutes
+        checklistText = template.checklist.joined(separator: "\n")
+        repeatCount = 1
+        repeatWeekdays = []
+        repeatEndsOn = nil
     }
 
     /// The editor on a saved journey: every leg with its identifier (editing never drops one), in
@@ -217,10 +249,13 @@ public struct PlannedJourneyForm: Equatable, Sendable {
     }
 
     /// «Ritorno»: a new journey back, the legs in reverse order with their stations swapped. Dates
-    /// and times are chosen anew, the label is empty, the checklist lines come back unticked and no
-    /// reminder is inherited (Android's `PlannedJourneyDrafts.returnFrom` and its editor).
-    public static func returnTrip(from journey: PlannedJourney) -> PlannedJourneyForm {
-        var form = PlannedJourneyForm(checklistText: journey.checklist.map(\.label).joined(separator: "\n"))
+    /// and times are chosen anew, the label is empty, the checklist lines come back unticked and the
+    /// reminder is the default lead, never the source's (Android's `PlannedJourneyDrafts.returnFrom`
+    /// and its editor).
+    public static func returnTrip(from journey: PlannedJourney, reminderMinutes: Int? = nil) -> PlannedJourneyForm {
+        var form = PlannedJourneyForm(
+            checklistText: journey.checklist.map(\.label).joined(separator: "\n"), reminderMinutes: reminderMinutes
+        )
         form.legs = journey.segments.reversed().map { segment in
             PlannedJourneyFormLeg(origin: segment.destination.identity, destination: segment.origin.identity)
         }
@@ -228,8 +263,10 @@ public struct PlannedJourneyForm: Equatable, Sendable {
     }
 
     /// «Ripianifica»: a new journey on the same legs, with the same rules as `returnTrip`.
-    public static func replan(from journey: PlannedJourney) -> PlannedJourneyForm {
-        var form = PlannedJourneyForm(checklistText: journey.checklist.map(\.label).joined(separator: "\n"))
+    public static func replan(from journey: PlannedJourney, reminderMinutes: Int? = nil) -> PlannedJourneyForm {
+        var form = PlannedJourneyForm(
+            checklistText: journey.checklist.map(\.label).joined(separator: "\n"), reminderMinutes: reminderMinutes
+        )
         form.legs = journey.segments.map { segment in
             PlannedJourneyFormLeg(origin: segment.origin.identity, destination: segment.destination.identity)
         }

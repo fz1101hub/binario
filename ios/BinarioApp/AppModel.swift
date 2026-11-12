@@ -122,6 +122,10 @@ final class AppModel: ObservableObject {
     @Published private(set) var agenda: PlannedJourneyAgendaState
     /// The Agenda's local reminders as the system holds them, read back after every reconciliation.
     @Published private(set) var reminderStatus: PlannedJourneyReminderStatus = .unknown
+    /// The Agenda's journey templates, newest first (at most 12), on this iPhone only.
+    @Published private(set) var agendaTemplates: [PlannedJourneyTemplate]
+    /// The reminder lead proposed for a new journey; nil proposes none (Android's default).
+    @Published private(set) var agendaDefaultReminder: Int?
     @Published private(set) var watchSharingEnabled: Bool
     @Published fileprivate(set) var watchSyncStatus: WatchSyncStatus
     @Published var searchState: SearchState = .idle
@@ -207,6 +211,8 @@ final class AppModel: ObservableObject {
     private let savedRouteStore: SavedRouteStore
     private let favouriteTrainStore: FavouriteTrainStore
     private let plannedJourneyStore: PlannedJourneyStore
+    private let plannedJourneyTemplateStore: PlannedJourneyTemplateStore
+    private let agendaPreferences: PlannedJourneyAgendaPreferences
     /// Nil in tests and previews: no reminder is scheduled.
     private let reminderScheduler: PlannedJourneyReminderScheduler?
     private let boardStationStore: StationBoardStationStore
@@ -249,6 +255,8 @@ final class AppModel: ObservableObject {
         favouriteTrainStore: FavouriteTrainStore = FavouriteTrainStore(),
         plannedJourneyStore: PlannedJourneyStore = PlannedJourneyStore(),
         reminderCenter: (any PlannedJourneyNotificationCenter)? = nil,
+        plannedJourneyTemplateStore: PlannedJourneyTemplateStore = PlannedJourneyTemplateStore(),
+        agendaPreferences: PlannedJourneyAgendaPreferences = PlannedJourneyAgendaPreferences(),
         boardStationStore: StationBoardStationStore = StationBoardStationStore(),
         watchSharingStore: WatchSharingPreferenceStore,
         repository: any JourneyRepository,
@@ -266,6 +274,10 @@ final class AppModel: ObservableObject {
         self.savedRouteStore = savedRouteStore
         self.favouriteTrainStore = favouriteTrainStore
         self.plannedJourneyStore = plannedJourneyStore
+        self.plannedJourneyTemplateStore = plannedJourneyTemplateStore
+        self.agendaPreferences = agendaPreferences
+        self.agendaTemplates = plannedJourneyTemplateStore.load()
+        self.agendaDefaultReminder = agendaPreferences.defaultReminderMinutes
         if let reminderCenter {
             self.reminderScheduler = PlannedJourneyReminderScheduler(center: reminderCenter, content: AgendaReminderText.content)
         } else {
@@ -1570,6 +1582,34 @@ final class AppModel: ObservableObject {
         let refusal = applyAgenda(result)
         refreshRemindersLater()
         return refusal
+    }
+
+    /// «Svuota l'Agenda» (Android's rule): every reminder is cancelled first, then every stored
+    /// journey goes, readable or not (also the way out of a read-only Agenda), and every template;
+    /// the default lead stays. The reconciliation that follows removes any request left.
+    func clearAgenda() {
+        for journey in agenda.journeys {
+            reminderScheduler?.cancel(journeyID: journey.id, occurrenceDates: journey.recurrence?.dates ?? [])
+        }
+        agenda = plannedJourneyStore.clearAll()
+        plannedJourneyTemplateStore.clear()
+        agendaTemplates = []
+        refreshRemindersLater()
+    }
+
+    /// The lead proposed for new journeys; nil proposes none.
+    func setAgendaDefaultReminder(_ minutes: Int?) {
+        agendaPreferences.defaultReminderMinutes = minutes
+        agendaDefaultReminder = agendaPreferences.defaultReminderMinutes
+    }
+
+    /// «Salva come modello»: saved first, a template with the same name replaced, twelve at most.
+    func saveAgendaTemplate(_ template: PlannedJourneyTemplate) {
+        agendaTemplates = plannedJourneyTemplateStore.save(template)
+    }
+
+    func deleteAgendaTemplate(id: String) {
+        agendaTemplates = plannedJourneyTemplateStore.delete(id: id)
     }
 
     /// A file picked in «Importa», compared with the Agenda as stored now; nil when it is not an
