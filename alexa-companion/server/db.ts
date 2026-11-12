@@ -1,5 +1,6 @@
 import { and, desc, eq, gt, isNull, ne, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
+import { createPool, type Pool } from "mysql2";
 import { randomUUID } from "node:crypto";
 import {
   alexaAccountLinks,
@@ -27,11 +28,31 @@ import {
 
 let _db: ReturnType<typeof drizzle> | null = null;
 
+/** Run on every new connection of the pool before any query of the service. */
+export const UTC_SESSION_STATEMENT = "SET time_zone = '+00:00'";
+
+/**
+ * The connection pool, with every session in UTC. drizzle writes a `Date` as a UTC wall-clock
+ * string and reads one back as UTC, so a session in the server's own zone (`SYSTEM`, Europe/Rome)
+ * would store instants shifted by the offset, read `DEFAULT now()` an hour or two off and, in strict
+ * mode, refuse every write that falls in the hour skipped when the clocks go forward. The statement
+ * is queued on the connection before the query that asked for it.
+ */
+export function createDatabasePool(url: string): Pool {
+  const pool = createPool({ uri: url });
+  pool.on("connection", connection => {
+    connection.query(UTC_SESSION_STATEMENT, error => {
+      if (error) console.warn("[Database] Unable to set the session time zone to UTC:", describeErrorForLog(error));
+    });
+  });
+  return pool;
+}
+
 // Lazily create the drizzle instance so local tooling can run without a DB.
 export async function getDb() {
   if (!_db && process.env.DATABASE_URL) {
     try {
-      _db = drizzle(process.env.DATABASE_URL);
+      _db = drizzle({ client: createDatabasePool(process.env.DATABASE_URL) });
     } catch (error) {
       console.warn("[Database] Failed to connect:", describeErrorForLog(error));
       _db = null;

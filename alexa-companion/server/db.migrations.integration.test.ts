@@ -356,6 +356,10 @@ describeDatabase("migrazioni MariaDB reali", () => {
           nextTokenExpiresAt: new Date(Date.now() + 60_000),
         })
       ).resolves.toBeNull();
+      // Every connection of the service's pool runs in UTC, as drizzle writes and reads its dates.
+      const service = await getDb();
+      const [zone] = (await service!.$client.promise().query("SELECT @@session.time_zone AS zone")) as unknown as [Array<{ zone: string }>];
+      expect(zone[0]?.zone).toBe("+00:00");
       const [legacyAfterReplay] = await connection.query<
         Rows<{ revokedAt: Date | null; credentialVersion: number }>
       >(
