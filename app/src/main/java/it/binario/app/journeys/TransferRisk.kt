@@ -59,8 +59,9 @@ data class TransferAssessment(
 )
 
 /**
- * Pure transfer-risk rules. Without a walk the change time is the planner's default change time (never more than the
- * scheduled wait, which the planner already respected) and the connection is lost only when the next train leaves
+ * Pure transfer-risk rules. Without a walk the change time is the one the planner required at that station
+ * ([JourneyLeg.changeMinutes]: ten minutes at a large hub), else the planner's default change time, and never more than
+ * the scheduled wait, which the planner already respected; the connection is lost only when the next train leaves
  * before the arrival. With a walk between the vehicles the planned walk is the change time (the planner's footpaths
  * already include margin and change time) and the connection is lost with less than half of it.
  */
@@ -72,10 +73,12 @@ object TransferRiskCalculator {
         live: JourneyLegLive?,
         scheduledDeparture: Instant,
         nextLive: JourneyLegLive?,
-        walk: Duration = Duration.ZERO
+        walk: Duration = Duration.ZERO,
+        /** The change time the planner required at the station, without a walk. */
+        changeMinutes: Long = DEFAULT_TRANSFER_MINUTES
     ): TransferAssessment {
         val planned = if (walk.isNegative) Duration.ZERO else walk
-        val transfer = if (planned.isZero) defaultTransfer(Duration.between(scheduledArrival, scheduledDeparture)) else planned
+        val transfer = if (planned.isZero) defaultTransfer(Duration.between(scheduledArrival, scheduledDeparture), changeMinutes) else planned
         val minimum = planned.dividedBy(2)
         val liveArrival = live?.expectedArrival
         val liveDeparture = nextLive?.expectedDeparture
@@ -94,8 +97,8 @@ object TransferRiskCalculator {
     }
 
     /** The change time for a scheduled wait, when no walk separates the two vehicles. */
-    fun defaultTransfer(scheduledWait: Duration): Duration {
-        val default = Duration.ofMinutes(DEFAULT_TRANSFER_MINUTES)
+    fun defaultTransfer(scheduledWait: Duration, changeMinutes: Long = DEFAULT_TRANSFER_MINUTES): Duration {
+        val default = Duration.ofMinutes(changeMinutes.coerceAtLeast(0))
         return when {
             scheduledWait.isNegative -> Duration.ZERO
             scheduledWait < default -> scheduledWait
@@ -125,7 +128,10 @@ object TransferRiskCalculator {
         val vehicle = legs[vehicleIndex]
         val walk = legs.subList(vehicleIndex + 1, leavingIndex).filter { it.mode == LegMode.WALK }
             .fold(Duration.ZERO) { total, step -> total.plus(Duration.between(step.scheduledDeparture, step.scheduledArrival)) }
-        return assess(vehicle.scheduledArrival.toInstant(), liveOf(vehicle, live), leaving.scheduledDeparture.toInstant(), liveOf(leaving, live), walk)
+        return assess(
+            vehicle.scheduledArrival.toInstant(), liveOf(vehicle, live), leaving.scheduledDeparture.toInstant(), liveOf(leaving, live), walk,
+            changeMinutes = leaving.changeMinutes?.toLong() ?: DEFAULT_TRANSFER_MINUTES
+        )
     }
 }
 

@@ -7,6 +7,7 @@ import it.binario.app.data.core.DataWarning
 import it.binario.app.data.core.JourneyOption
 import it.binario.app.data.core.SourceId
 import it.binario.app.data.core.StationId
+import it.binario.app.data.provider.ExpiredTimetable
 import it.binario.app.data.provider.JourneyEndpoint
 import it.binario.app.data.provider.JourneyPreferences
 import it.binario.app.data.provider.WheelchairDataAware
@@ -15,6 +16,7 @@ import it.binario.app.data.provider.JourneySearchRequest
 import it.binario.app.data.provider.ProviderErrorKind
 import it.binario.app.data.provider.ProviderResult
 import it.binario.app.data.provider.ProviderWarning
+import it.binario.app.data.provider.TimetableValidityAware
 import java.time.Clock
 import java.time.Instant
 import java.time.LocalDateTime
@@ -70,7 +72,13 @@ data class JourneySearchResult(
      * An "accessible only" search found nothing and the timetables have no wheelchair data around its two ends:
      * "Dati di accessibilità non disponibili per questa zona".
      */
-    val accessibilityDataUnavailable: Boolean = false
+    val accessibilityDataUnavailable: Boolean = false,
+    /**
+     * The answering source left out a timetable that ends before the searched day: the options are those of the other
+     * networks only. [expiredTimetables] names the missing ones when the source knows them.
+     */
+    val staleTimetables: Boolean = false,
+    val expiredTimetables: List<ExpiredTimetable> = emptyList()
 )
 
 /**
@@ -131,6 +139,17 @@ class JourneySearchService(
                     val options = if (result is ProviderResult.Success) result.value else (result as ProviderResult.Partial).value
                     val warnings = (result as? ProviderResult.Partial)?.warnings.orEmpty()
                     if (options.isNotEmpty()) {
+                        val stale = ProviderWarning.STALE_SOURCE in warnings
+                        val expiredTimetables = if (stale && provider is TimetableValidityAware) {
+                            try {
+                                withTimeoutOrNull(providerTimeoutMillis) { provider.expiredTimetables(request) }.orEmpty()
+                            } catch (error: CancellationException) {
+                                currentCoroutineContext().ensureActive()
+                                emptyList()
+                            } catch (_: RuntimeException) {
+                                emptyList()
+                            }
+                        } else emptyList()
                         return JourneySearchResult(
                             status = JourneySearchStatus.FOUND,
                             options = options.map { option ->
@@ -144,7 +163,9 @@ class JourneySearchService(
                             },
                             consultedSources = consulted.toList(),
                             incompleteCoverage = ProviderWarning.INCOMPLETE_COVERAGE in warnings,
-                            generatedAt = clock.instant()
+                            generatedAt = clock.instant(),
+                            staleTimetables = stale,
+                            expiredTimetables = expiredTimetables
                         )
                     }
                     if (ProviderWarning.STALE_SOURCE in warnings) expired = true else searchedWithoutResult = true

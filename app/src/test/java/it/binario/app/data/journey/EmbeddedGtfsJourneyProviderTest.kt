@@ -110,8 +110,11 @@ class EmbeddedGtfsJourneyProviderTest {
 
         val hub = provider(mapOf(pack() to feed(trips)), GtfsJourneyPlannerSettings(largeHubRailwayCodes = setOf(beta.railwayCode!!)))
         // Beta as a large hub needs 10 minutes: only the 09:00 can be reached.
-        assertEquals("200 Alfa 08:10-08:40 Beta | 700 Beta 09:00-09:30 Epsilon",
-            options(hub.searchJourneys(request(alfa, epsilon))).single().summary())
+        val atHub = options(hub.searchJourneys(request(alfa, epsilon))).single()
+        assertEquals("200 Alfa 08:10-08:40 Beta | 700 Beta 09:00-09:30 Epsilon", atHub.summary())
+        // Each leg says the change time of the station where it is boarded, for the live check of the change.
+        assertEquals(listOf(5, 10), atHub.legs.map { it.changeMinutes })
+        assertEquals(listOf(5, 5), options(ordinary.searchJourneys(request(alfa, epsilon))).single().legs.map { it.changeMinutes })
 
         val strict = provider(mapOf(pack() to feed(trips)), GtfsJourneyPlannerSettings(defaultTransferMinutes = 21, largeHubRailwayCodes = emptySet()))
         assertTrue(options(strict.searchJourneys(request(alfa, epsilon))).isEmpty())
@@ -328,6 +331,63 @@ class EmbeddedGtfsJourneyProviderTest {
         result as ProviderResult.Partial
         assertTrue(result.value.isEmpty())
         assertEquals(setOf(ProviderWarning.STALE_SOURCE), result.warnings)
+    }
+
+    @Test fun `an expired pack next to a current one is reported with the other pack's journeys`() = runBlocking {
+        // Italo's timetable ended the day before; Trenitalia's goes on and serves the same two stations.
+        val expired = pack("italo-gtfs", lastServiceDate = monday.minusDays(1))
+        val current = pack("trenitalia-gtfs", lastServiceDate = monday.plusDays(30))
+        val provider = provider(linkedMapOf(
+            expired to feed(listOf(Trip("I1", "9900", listOf("A" to "08:00", "D" to "09:00")))),
+            current to feed(listOf(Trip("T1", "100", listOf("A" to "08:10", "D" to "09:20"))))
+        ))
+        val result = provider.searchJourneys(request(alfa, delta))
+        assertTrue("$result", result is ProviderResult.Partial)
+        result as ProviderResult.Partial
+        assertEquals(setOf(ProviderWarning.STALE_SOURCE), result.warnings)
+        assertEquals(listOf("100 Alfa 08:10-09:20 Delta"), result.value.map { it.summary() })
+        assertEquals(
+            listOf(it.binario.app.data.provider.ExpiredTimetable(SourceId("italo-gtfs"), monday.minusDays(1))),
+            provider.expiredTimetables(request(alfa, delta))
+        )
+        // The day before, both timetables are valid: a plain success, and nothing expired.
+        val before = provider.searchJourneys(request(alfa, delta, date = monday.minusDays(1)))
+        assertTrue("$before", before is ProviderResult.Success)
+        assertTrue(provider.expiredTimetables(request(alfa, delta, date = monday.minusDays(1))).isEmpty())
+        // The current pack finds nothing that day (no train to Epsilon): the expired one is why, not "no solution".
+        val other = provider(linkedMapOf(
+            expired to feed(listOf(Trip("I1", "9900", listOf("A" to "08:00", "E" to "09:00")))),
+            current to feed(listOf(Trip("T1", "100", listOf("A" to "08:10", "D" to "09:20")), Trip("T2", "102", listOf("E" to "10:00", "Z" to "10:30"))))
+        ))
+        val none = other.searchJourneys(request(alfa, epsilon))
+        assertTrue("$none", none is ProviderResult.Partial && none.value.isEmpty() && ProviderWarning.STALE_SOURCE in none.warnings)
+        // An expired pack that serves neither end says nothing.
+        val elsewhere = provider(linkedMapOf(
+            expired to feed(listOf(Trip("I1", "9900", listOf("E" to "08:00", "Z" to "09:00"))), stopNames = mapOf("E" to "Epsilon", "Z" to "Zeta")),
+            current to feed(listOf(Trip("T1", "100", listOf("A" to "08:10", "D" to "09:20"))))
+        ))
+        assertTrue(elsewhere.searchJourneys(request(alfa, delta)) is ProviderResult.Success)
+    }
+
+    @Test fun `two stops with the same name far apart are two places joined by a walk`() = runBlocking {
+        // Two stops called "Corso" that the catalogue does not know: the first train ends at one, the second leaves the other.
+        fun search(metersApart: Double): List<JourneyOption> {
+            val names = mapOf("A" to "Alfa", "D" to "Delta", "X1" to "Corso", "X2" to "Corso")
+            val points = mapOf("X1" to (45.0 to 9.0), "X2" to (45.0 + metersApart / 111_195.0 to 9.0))
+            val provider = provider(mapOf(pack() to feed(
+                listOf(Trip("T1", "100", listOf("A" to "08:00", "X1" to "08:30")), Trip("T2", "200", listOf("X2" to "08:40", "D" to "09:10"))),
+                stopNames = names, stopPoints = points
+            )))
+            return options(runBlocking { provider.searchJourneys(request(alfa, delta)) })
+        }
+        // 100 m: one place, a plain change as before.
+        assertEquals(listOf(LegMode.TRAIN, LegMode.TRAIN), search(100.0).single().legs.map { it.mode })
+        // 300 m: two places, the change is a walk (4 minutes at 4.5 km/h, plus the margin).
+        val walked = search(300.0).single()
+        assertEquals(listOf(LegMode.TRAIN, LegMode.WALK, LegMode.TRAIN), walked.legs.map { it.mode })
+        assertEquals(6, java.time.Duration.between(walked.legs[1].scheduledDeparture, walked.legs[1].scheduledArrival).toMinutes())
+        // 780 m (Napoli's two "C.so V. Emanuele"): farther than a walk of the default preferences, no change there.
+        assertTrue(search(780.0).isEmpty())
     }
 
     @Test fun `the search window bounds departures`() = runBlocking {

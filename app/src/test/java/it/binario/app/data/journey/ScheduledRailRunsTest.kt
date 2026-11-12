@@ -96,6 +96,28 @@ class ScheduledRailRunsTest {
     }
 
     @Test
+    fun `a night train that arrives the next afternoon stays on the map until it ends`() = runBlocking {
+        // Milano 20:10 → Palermo 16:55 of the next day: 40:55 in the minutes of its service day.
+        val night = provider(
+            mapOf(pack() to feed(listOf(
+                Trip("N1", "1963", listOf("A" to "20:10", "D" to "23:00", "Z" to "40:55")),
+                Trip("D1", "200", listOf("A" to "07:00", "D" to "08:00"), service = "WEEKDAY")
+            ), stopPoints = mapOf("Z" to (47.0 to 11.0)))),
+            stations = stations
+        )
+        val tuesday = monday.plusDays(1)
+        suspend fun mondayRuns(time: String) = night.scheduledRailRuns(ScheduledRunRequest(at(time, tuesday), around(46.0, 10.0)))
+            .filter { it.serviceDate == monday }.map { it.publicNumber }
+        assertEquals(listOf("1963"), mondayRuns("09:00"))
+        // Past noon it is still between Delta and Zeta.
+        assertEquals(listOf("1963"), mondayRuns("15:00"))
+        // It arrived at 16:55: within the look-back (a late train) it is still listed, then no longer.
+        assertEquals(listOf("1963"), mondayRuns("19:00"))
+        assertTrue(mondayRuns("20:30").isEmpty())
+        assertTrue(mondayRuns("23:00").isEmpty())
+    }
+
+    @Test
     fun `a night train read from yesterday's evening keeps its true origin and departure`() = runBlocking {
         val tuesday = monday.plusDays(1)
         val runs = planner.scheduledRailRuns(ScheduledRunRequest(at("00:30", tuesday), around(46.0, 10.0)))

@@ -132,6 +132,27 @@ class JourneySearchServiceTest {
         assertTrue(result.incompleteCoverage)
     }
 
+    @Test fun `a timetable that ended before the searched day is passed on with the options and its networks`() = runBlocking {
+        class Aware : JourneyProvider, it.binario.app.data.provider.TimetableValidityAware {
+            private val fake = FakeProvider("p") { ProviderResult.Partial(listOf(option()), setOf(ProviderWarning.STALE_SOURCE), meta("p")) }
+            override val descriptor get() = fake.descriptor
+            override suspend fun searchJourneys(request: JourneySearchRequest) = fake.searchJourneys(request)
+            override suspend fun expiredTimetables(request: JourneySearchRequest) =
+                listOf(it.binario.app.data.provider.ExpiredTimetable(SourceId("italo-gtfs"), java.time.LocalDate.of(2026, 12, 12)))
+        }
+        val result = JourneySearchService(listOf(Aware()), clock = clock).search(query)
+        assertEquals(JourneySearchStatus.FOUND, result.status)
+        assertTrue(result.staleTimetables)
+        assertFalse(result.incompleteCoverage)
+        assertEquals(listOf(SourceId("italo-gtfs")), result.expiredTimetables.map { it.sourceId })
+        // A source that only warns still marks the result; a complete answer marks nothing.
+        val plain = FakeProvider("q") { ProviderResult.Partial(listOf(option()), setOf(ProviderWarning.STALE_SOURCE), meta("q")) }
+        val warned = JourneySearchService(listOf(plain), clock = clock).search(query)
+        assertTrue(warned.staleTimetables && warned.expiredTimetables.isEmpty())
+        val complete = JourneySearchService(listOf(FakeProvider("r") { success("r", option()) }), clock = clock).search(query)
+        assertFalse(complete.staleTimetables)
+    }
+
     @Test fun `the same station twice is never sent to a provider`() = runBlocking {
         val provider = FakeProvider("p") { success("p", option()) }
         val result = JourneySearchService(listOf(provider), clock = clock).search(query.copy(destination = origin))

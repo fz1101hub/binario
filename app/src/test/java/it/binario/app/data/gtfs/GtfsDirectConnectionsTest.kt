@@ -42,10 +42,11 @@ class GtfsDirectConnectionsTest {
         assertTrue(result.rail.size > 250)
         assertEquals(result.rail.sortedByDescending { it.runs }.map { it.runs }, result.rail.map { it.runs })
         assertTrue(result.rail.none { it.stationId == milano.id } && result.urban.none { it.stationId == milano.id })
-        // Frecciarossa and Italo, each train once: 81 a day from 05:10 to 20:40, the fastest in 2 h 50 min.
+        // Frecciarossa and Italo, each train once: 79 a day from 05:10 to 20:40, the fastest in 2 h 50 min. (They were
+        // 81 while the Italo 13:40 and 14:40 also counted under the number of an itinerary's first train.)
         with(result.rail("Roma Termini")) {
             assertEquals("curated:S08409", stationId)
-            assertEquals(81, runs)
+            assertEquals(79, runs)
             assertEquals(5 * 60 + 10, firstDepartureMinute)
             assertEquals(20 * 60 + 40, lastDepartureMinute)
             assertEquals(170, fastestMinutes)
@@ -71,7 +72,8 @@ class GtfsDirectConnectionsTest {
     @Test fun `Roma Termini reaches Naples and the airport, then the city lines`() = runBlocking {
         val result = provider.directConnections(StationId(station("Roma Termini").id), null, tuesday)
         with(result.rail("Napoli Centrale")) {
-            assertEquals(114, runs)
+            // 29 Italo trains, not the 43 rows the pack's itinerary copies made of them.
+            assertEquals(100, runs)
             assertEquals(68, fastestMinutes)
         }
         with(result.rail("Fiumicino Aeroporto")) {

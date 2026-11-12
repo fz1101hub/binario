@@ -12,6 +12,7 @@ import it.binario.app.data.repository.SourcedJourneyOption
 import it.binario.app.data.provider.JourneyPreferences
 import it.binario.app.data.provider.JourneyRanking
 import it.binario.app.data.provider.TravelMode
+import it.binario.app.data.sources.RailSourceCatalog
 import java.time.Duration
 import java.time.LocalDate
 import java.time.ZoneId
@@ -278,7 +279,14 @@ data class JourneyResultsPresentation(
      */
     val firstDepartureNextDay: String? = null,
     /** "Solo accessibili" found nothing and there is no wheelchair data around the two ends (`journey_accessibility_unavailable`). */
-    val accessibilityDataUnavailable: Boolean = false
+    val accessibilityDataUnavailable: Boolean = false,
+    /**
+     * Options are shown, but a timetable serving an end stops before the searched day: show
+     * `journey_empty_schedule_expired` above them, under the names of the missing networks ([expiredNetworks], which
+     * can be empty when the source does not name them).
+     */
+    val showExpiredNotice: Boolean = false,
+    val expiredNetworks: List<String> = emptyList()
 )
 
 /** Plain, resource-free presentation of a [JourneySearchResult] for the results screen. */
@@ -329,7 +337,13 @@ object JourneyResultsPresenter {
             showCoverageNotice = all.any { it.sourceLabel == JourneySourceLabel.OFFLINE_TIMETABLE },
             showIncompleteNotice = result.incompleteCoverage,
             firstDepartureNextDay = bounds?.firstNextDay?.departureTime,
-            accessibilityDataUnavailable = result.accessibilityDataUnavailable
+            accessibilityDataUnavailable = result.accessibilityDataUnavailable,
+            showExpiredNotice = result.staleTimetables && all.isNotEmpty(),
+            // "Italo — orario ufficiale (NAP, GTFS)" is the network "Italo".
+            expiredNetworks = result.expiredTimetables.map { expired ->
+                RailSourceCatalog.byId(expired.sourceId)?.displayName?.substringBefore(" — ")?.trim()?.takeIf(String::isNotEmpty)
+                    ?: expired.sourceId.value
+            }.distinct()
         )
     }
 
