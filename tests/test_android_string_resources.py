@@ -37,8 +37,6 @@ PLURAL_CATEGORIES = {
     "values-zh-rCN": {"other"},
 }
 LOCALES = tuple(name for name in PLURAL_CATEGORIES if name != BASE)
-# Quantities that may name the count in words instead of the number («un minuto», «دقيقتان»).
-QUANTITIES_WITHOUT_NUMBER = {"zero", "one", "two"}
 PLACEHOLDER = re.compile(r"%(?:(\d+)\$)?([-#+ 0,(]*)(\d+)?(?:\.\d+)?([a-zA-Z%])")
 
 
@@ -118,12 +116,21 @@ def problems(locale: str, base: Catalogue, translated: Catalogue) -> list[str]:
             continue
         if set(quantities) != categories:
             found.append(f"plurals {name}: quantities {sorted(quantities)} instead of {sorted(categories)}")
-        expected = set().union(*(set(placeholders(text)) for text in base.plurals[name].values()))
-        for quantity, text in sorted(quantities.items()):
-            used = set(placeholders(text))
-            if not used <= expected or (quantity not in QUANTITIES_WITHOUT_NUMBER and used != expected):
-                found.append(f"placeholders of {name}/{quantity}: {sorted(used)} instead of {sorted(expected)}")
+        found += plural_placeholder_problems(name, quantities, plural_placeholders(base.plurals[name]))
     return found
+
+
+def plural_placeholders(quantities: dict[str, str]) -> set[tuple[str, str]]:
+    return set().union(*(set(placeholders(text)) for text in quantities.values()))
+
+
+def plural_placeholder_problems(name: str, quantities: dict[str, str], expected: set[tuple[str, str]]) -> list[str]:
+    """Every quantity, `one`, `zero` and `two` included, keeps all the placeholders (docs/l10n/LOCALES.md)."""
+    return [
+        f"placeholders of {name}/{quantity}: {sorted(set(placeholders(text)))} instead of {sorted(expected)}"
+        for quantity, text in sorted(quantities.items())
+        if set(placeholders(text)) != expected
+    ]
 
 
 def base_problems(base: Catalogue) -> list[str]:
@@ -131,6 +138,7 @@ def base_problems(base: Catalogue) -> list[str]:
     for name, quantities in sorted(base.plurals.items()):
         if set(quantities) != PLURAL_CATEGORIES[BASE]:
             found.append(f"plurals {name}: quantities {sorted(quantities)} instead of {sorted(PLURAL_CATEGORIES[BASE])}")
+        found += plural_placeholder_problems(name, quantities, plural_placeholders(quantities))
     return found
 
 
@@ -174,17 +182,21 @@ class AndroidStringResourcesTest(unittest.TestCase):
         )
 
     def test_plural_quantities_follow_the_language(self) -> None:
-        base = catalogue(plurals={"minutes": {"one": "un minuto", "many": "%1$d di minuti", "other": "%1$d minuti"}})
+        base = catalogue(plurals={"minutes": {"one": "%1$d minuto", "many": "%1$d di minuti", "other": "%1$d minuti"}})
         russian = {"one": "%1$d минута", "few": "%1$d минуты", "other": "%1$d минуты"}
         self.assertEqual(
             ["plurals minutes: quantities ['few', 'one', 'other'] instead of ['few', 'many', 'one', 'other']"],
             problems("values-ru", base, catalogue(plurals={"minutes": russian})),
         )
-        # «one» may say the count in words; «few» may not drop the number.
-        self.assertEqual([], problems("values-ru", base, catalogue(plurals={"minutes": {**russian, "one": "минута", "many": "%1$d минут"}})))
+        self.assertEqual([], problems("values-ru", base, catalogue(plurals={"minutes": {**russian, "many": "%1$d минут"}})))
+        # No quantity drops the number, «one» included (docs/l10n/LOCALES.md).
         self.assertEqual(
-            ["placeholders of minutes/few: [] instead of [('1', 'd')]"],
-            problems("values-ru", base, catalogue(plurals={"minutes": {**russian, "few": "минуты", "many": "%1$d минут"}})),
+            ["placeholders of minutes/one: [] instead of [('1', 'd')]"],
+            problems("values-ru", base, catalogue(plurals={"minutes": {**russian, "one": "минута", "many": "%1$d минут"}})),
+        )
+        self.assertEqual(
+            ["placeholders of minutes/one: [] instead of [('1', 'd')]"],
+            base_problems(catalogue(plurals={"minutes": {**base.plurals["minutes"], "one": "un minuto"}})),
         )
 
 
