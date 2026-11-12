@@ -90,7 +90,6 @@ REQUIRED_INDICES = (
     "idx_stop_pack_external",
     "idx_stop_catalog_station",
     "idx_stop_time_stop_departure",
-    "idx_stop_time_trip_sequence",
 )
 
 SCHEMA_SQL = """
@@ -173,7 +172,6 @@ CREATE INDEX idx_trip_route_service ON trip(route_id, service_id);
 CREATE UNIQUE INDEX idx_stop_pack_external ON stop(pack_id, external_id);
 CREATE INDEX idx_stop_catalog_station ON stop(catalog_station_id) WHERE catalog_station_id IS NOT NULL;
 CREATE INDEX idx_stop_time_stop_departure ON stop_time(stop_id, departure_seconds, trip_id);
-CREATE INDEX idx_stop_time_trip_sequence ON stop_time(trip_id, stop_sequence);
 """
 
 class BuildError(RuntimeError):

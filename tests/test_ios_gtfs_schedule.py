@@ -504,6 +504,44 @@ class IosGtfsScheduleTest(unittest.TestCase):
         start, count, bits = builder.compute_service_bits("S", row, {date(2026, 1, 5): 2, date(2026, 1, 6): 1}, "test")
         self.assertEqual((20260105, 3, b"\x06"), (start, count, bits))
 
+class ReaderLimitsTest(unittest.TestCase):
+    """The verifier refuses an index the iPhone reader would reject (limitExceeded) or misdate."""
+
+    def setUp(self) -> None:
+        self.temp = Path(tempfile.mkdtemp(prefix="ios-gtfs-limits-"))
+        self.addCleanup(shutil.rmtree, self.temp, ignore_errors=True)
+
+    def build(self, **feed: object) -> tuple[Path, Path]:
+        root = Path(tempfile.mkdtemp(dir=self.temp))
+        manifest, catalog = write_inputs(root, **feed)
+        output, metadata = root / "out.zlib", root / "out.json"
+        builder.build_database(manifest, catalog, output, metadata, max_compressed_bytes=4 * 1024 * 1024)
+        return output, metadata
+
+    def verify(self, output: Path, metadata: Path) -> None:
+        verifier.verify(output, metadata, max_compressed_bytes=4 * 1024 * 1024, max_database_bytes=16 * 1024 * 1024)
+
+    def test_the_redundant_trip_sequence_index_is_gone(self) -> None:
+        # stop_time is WITHOUT ROWID with PRIMARY KEY(trip_id, stop_sequence): that key is the index.
+        self.assertNotIn("idx_stop_time_trip_sequence", builder.REQUIRED_INDICES)
+        self.assertEqual(set(builder.REQUIRED_INDICES), verifier.REQUIRED_INDICES)
+
+    def test_limits_of_the_reader(self) -> None:
+        output, metadata = self.build()
+        self.verify(output, metadata)
+        for name, message in (("MAX_CANDIDATE_ROWS", "boarding rows"), ("MAX_RESOLVED_STOPS", "stops, above"),
+                              ("MAX_TIME_ZONES", "agency time zones")):
+            with self.subTest(limit=name), mock.patch.object(verifier, name, 0), \
+                    self.assertRaisesRegex(verifier.VerificationError, message):
+                self.verify(output, metadata)
+
+    def test_every_agency_zone_keeps_romes_offset(self) -> None:
+        self.verify(*self.build(timezone="Europe/Zurich"))
+        output, metadata = self.build(timezone="Europe/London")
+        with self.assertRaisesRegex(verifier.VerificationError, "Europe/London differs from Europe/Rome"):
+            self.verify(output, metadata)
+
+
 class UncodedStationTest(unittest.TestCase):
     """Audit2 tools-data-4: in an Italian pack a stop may be the catalogue station without codes it is named after
     (EAV's Cumana), as on Android; a foreign pack stays with coded stations; a coded match always wins."""

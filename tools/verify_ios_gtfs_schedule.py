@@ -10,7 +10,7 @@ import sqlite3
 import sys
 import tempfile
 import zlib
-from datetime import date
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from typing import Sequence
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
@@ -43,8 +43,15 @@ REQUIRED_INDICES = {
     "idx_stop_pack_external",
     "idx_stop_catalog_station",
     "idx_stop_time_stop_departure",
-    "idx_stop_time_trip_sequence",
 }
+# The reader's limits (SQLiteGTFSJourneyRepository.swift): rows a board or planner query reads for one station and
+# agency time zone, stops bound to one catalogue station, agency time zones.  An index above them fails on the iPhone
+# with limitExceeded; the verifier refuses it first.
+MAX_CANDIDATE_ROWS = 4_096
+MAX_RESOLVED_STOPS = 128
+MAX_TIME_ZONES = 16
+# The reader computes every service day in the first agency time zone: all of them must keep Rome's UTC offset.
+REFERENCE_TIME_ZONE = "Europe/Rome"
 
 class VerificationError(RuntimeError):
     pass
@@ -58,6 +65,23 @@ def sha256_file(path: Path) -> str:
         while chunk := stream.read(1024 * 1024):
             digest.update(chunk)
     return digest.hexdigest()
+
+def verify_rome_offsets(zones: Sequence[ZoneInfo], first: int | None, last: int | None, last_days: int | None) -> None:
+    """Every agency zone has Rome's UTC offset at every hour of the index's service days (one day each side)."""
+    if first is None or last is None:
+        return
+    rome = ZoneInfo(REFERENCE_TIME_ZONE)
+    start = datetime(first // 10_000, first // 100 % 100, first % 100, tzinfo=timezone.utc) - timedelta(days=1)
+    end = datetime(last // 10_000, last // 100 % 100, last % 100, tzinfo=timezone.utc) + timedelta(days=(last_days or 0) + 1)
+    require(end - start <= timedelta(days=4_000), "service range too long to check time zones")
+    moment = start
+    while moment <= end:
+        reference = moment.astimezone(rome).utcoffset()
+        for zone in zones:
+            require(moment.astimezone(zone).utcoffset() == reference,
+                    f"agency time zone {zone.key} differs from {REFERENCE_TIME_ZONE} at {moment.isoformat()}")
+        moment += timedelta(hours=1)
+
 
 def require(condition: bool, message: str) -> None:
     if not condition:
@@ -228,11 +252,28 @@ def verify_database(path: Path, metadata: dict[str, object], input_fingerprint: 
         require(invalid_bikes == 0, "trip bikes_allowed outside 1, 2 or NULL")
         invalid_bits = connection.execute("SELECT count(*) FROM service WHERE length(active_days) != (day_count + 7) / 8").fetchone()[0]
         require(invalid_bits == 0, "service bitset length mismatch")
-        for (timezone,) in connection.execute("SELECT DISTINCT timezone FROM agency"):
+        zones: list[ZoneInfo] = []
+        for (timezone,) in connection.execute("SELECT DISTINCT timezone FROM agency ORDER BY timezone"):
             try:
-                ZoneInfo(str(timezone))
+                zones.append(ZoneInfo(str(timezone)))
             except (ZoneInfoNotFoundError, ValueError) as error:
                 raise VerificationError(f"invalid agency IANA timezone: {timezone!r}") from error
+        require(len(zones) <= MAX_TIME_ZONES, f"more than {MAX_TIME_ZONES} agency time zones")
+        first, last = connection.execute(
+            "SELECT min(start_date), max(start_date) FROM service"
+        ).fetchone()
+        last_days = connection.execute("SELECT max(day_count) FROM service").fetchone()[0]
+        verify_rome_offsets(zones, first, last, last_days)
+        busiest = connection.execute(
+            "SELECT max(rows) FROM (SELECT count(*) AS rows FROM stop_time AS st JOIN stop AS s ON s.id = st.stop_id "
+            "JOIN trip AS t ON t.id = st.trip_id JOIN route AS r ON r.id = t.route_id JOIN agency AS a ON a.id = r.agency_id "
+            "WHERE s.catalog_station_id IS NOT NULL AND st.pickup_type = 0 GROUP BY s.catalog_station_id, a.timezone)"
+        ).fetchone()[0] or 0
+        require(busiest <= MAX_CANDIDATE_ROWS, f"a station has {busiest} boarding rows in one time zone, above {MAX_CANDIDATE_ROWS}")
+        most_stops = connection.execute(
+            "SELECT max(stops) FROM (SELECT count(*) AS stops FROM stop WHERE catalog_station_id IS NOT NULL GROUP BY catalog_station_id)"
+        ).fetchone()[0] or 0
+        require(most_stops <= MAX_RESOLVED_STOPS, f"a station has {most_stops} stops, above {MAX_RESOLVED_STOPS}")
         invalid_same_stop = connection.execute(
             "SELECT count(*) FROM stop_time WHERE arrival_seconds IS NOT NULL "
             "AND (departure_seconds IS NULL OR departure_seconds < arrival_seconds)"
