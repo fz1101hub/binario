@@ -333,7 +333,8 @@ describe("most punctual departures", () => {
         departure("gone", "REG", 1300, arrivals(5, 5)),
       ])
     )!;
-    const result = mostPunctualDepartures(stats, [ROMA_TERMINI], [TIVOLI], clockAt(23, 0), 10);
+    // Sunday at 23:00: the five covered days (Thursday 5 – Monday 9 November) include Sunday and Monday.
+    const result = mostPunctualDepartures(stats, [ROMA_TERMINI], [TIVOLI], clockAt(23, 0, 7), 10);
     expect(result?.map(train => [train.number, train.minuteOfDay, train.minutesUntil])).toEqual([
       ["late", 1430, 50],
       ["after-midnight", 10, 70],
@@ -499,8 +500,22 @@ describe("most punctual departures", () => {
     )!;
     expect(stats.coveredDays).toBe(6);
     // The day «five-days» was not observed may be the only Sunday, Wednesday… of the window: it may not run then.
-    for (const weekday of [1, 3, 7])
+    for (const weekday of [3, 7])
       expect(numbers(mostPunctualDepartures(stats, [ROMA_TERMINI], [TIVOLI], clockAt(8, 0, weekday), 10)), String(weekday)).toEqual(["every-day"]);
+    // No Monday is covered yet: nothing shows that even «every-day» runs on Mondays.
+    expect(stats.coveredDaysOn(1)).toBe(0);
+    expect(numbers(mostPunctualDepartures(stats, [ROMA_TERMINI], [TIVOLI], clockAt(8, 0, 1), 10))).toEqual([]);
+  });
+
+  it("proposes on no weekday the window has not covered, as after a collection restarted on a Monday", () => {
+    // Monday 2 – Saturday 7 November 2026: a Monday-to-Saturday train is seen on all six days.
+    const stats = parsePunctualityStats(statsDocument([departure("mon-sat", "REG", 520, arrivals(6, 6))], { windowEnd: "2026-11-07" }))!;
+    expect(stats.coveredDays).toBe(6);
+    expect([1, 2, 3, 4, 5, 6, 7].map(weekday => stats.coveredDaysOn(weekday))).toEqual([1, 1, 1, 1, 1, 1, 0]);
+    expect(numbers(mostPunctualDepartures(stats, [ROMA_TERMINI], [TIVOLI], clockAt(8, 0, 6), 10))).toEqual(["mon-sat"]);
+    // Sunday, and a holiday, which runs the Sunday service: not proposed.
+    expect(numbers(mostPunctualDepartures(stats, [ROMA_TERMINI], [TIVOLI], clockAt(8, 0, 7), 10))).toEqual([]);
+    expect(numbers(mostPunctualDepartures(stats, [ROMA_TERMINI], [TIVOLI], { minuteOfDay: 480, isoWeekday: 2, date: "2026-12-08" }, 10))).toEqual([]);
   });
 
   it("matches the route as the route's punctuality does, and says nothing without codes", () => {

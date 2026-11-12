@@ -173,15 +173,16 @@ export class PunctualityStats {
    * pipeline leaves them out below 14 samples, so always for a train of the weekend or of the first
    * weeks of the collection) only when the days observed there prove it as the weekdays would: the
    * covered days missing (no sample at the stop and no cancellation) are fewer than the
-   * `isoWeekday`s among them, so at least one of its runs fell on that weekday, or none is missing.
-   * A weekend-only train (8 days of 30) is then never proposed on a Tuesday, and neither on a
-   * Saturday, since nothing tells which days it runs.
+   * `isoWeekday`s among them, so at least one of its runs fell on that weekday. A weekend-only
+   * train (8 days of 30) is then never proposed on a Tuesday, and neither on a Saturday, since
+   * nothing tells which days it runs; on a weekday the covered days do not include yet (a
+   * collection restarted on a Monday has no Sunday) no train is, not even one seen every day.
    */
   mayRunOn(train: PunctualityTrain, stop: number, isoWeekday: number): boolean {
     if (train.hasWeekdays(stop)) return train.mayRunOn(stop, isoWeekday);
     const known = Math.min(train.daysObserved, train.samples[stop] + train.daysCancelled);
-    const missing = this.coveredDays - known;
-    return missing <= 0 || missing < this.coveredDaysOn(isoWeekday);
+    const missing = Math.max(0, this.coveredDays - known);
+    return missing < this.coveredDaysOn(isoWeekday);
   }
 
   /** Every train published with the number; the same number from another origin is another train. */
