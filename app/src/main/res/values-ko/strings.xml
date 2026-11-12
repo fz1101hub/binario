@@ -135,6 +135,8 @@
     <string name="planned_journey_destination">도착</string>
     <string name="planned_journey_route">%1$s → %2$s</string>
     <string name="planned_journey_reminder">출발 전 알림</string>
+    <string name="planned_journey_default_reminder_title">출발 전 여유 시간</string>
+    <string name="planned_journey_default_reminder_description">여정을 계획할 때 제안할 여유 시간을 선택하세요. 이것만으로 리마인더가 켜지지는 않으며 언제든 다른 값이나 리마인더 없음을 선택할 수 있습니다.</string>
     <plurals name="planned_journey_reminder_value">
         <item quantity="other">%1$d분 전 알림</item>
     </plurals>

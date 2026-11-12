@@ -138,6 +138,8 @@
     <string name="planned_journey_destination">Arrivée</string>
     <string name="planned_journey_route">%1$s → %2$s</string>
     <string name="planned_journey_reminder">Rappel avant le départ</string>
+    <string name="planned_journey_default_reminder_title">Marge avant le départ</string>
+    <string name="planned_journey_default_reminder_description">Choisissez une avance à proposer lors de la planification d\'un trajet. N\'active pas les rappels seul et vous pouvez toujours choisir une valeur différente ou aucun rappel.</string>
     <plurals name="planned_journey_reminder_value">
         <item quantity="one">Rappel %1$d minute avant</item>
         <item quantity="many">Rappel %1$d minutes avant</item>

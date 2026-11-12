@@ -138,6 +138,8 @@
     <string name="planned_journey_destination">Arrivo</string>
     <string name="planned_journey_route">%1$s → %2$s</string>
     <string name="planned_journey_reminder">Promemoria prima della partenza</string>
+    <string name="planned_journey_default_reminder_title">Margine prima della partenza</string>
+    <string name="planned_journey_default_reminder_description">Scegli un anticipo da proporre quando pianifichi una tratta. Non attiva promemoria da solo e puoi sempre scegliere un valore diverso o nessun promemoria.</string>
     <plurals name="planned_journey_reminder_value">
         <item quantity="one">Promemoria %1$d minuto prima</item>
         <item quantity="many">Promemoria %1$d minuti prima</item>

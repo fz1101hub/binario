@@ -138,6 +138,8 @@
     <string name="planned_journey_destination">到达站</string>
     <string name="planned_journey_route">%1$s → %2$s</string>
     <string name="planned_journey_reminder">出发前提醒</string>
+    <string name="planned_journey_default_reminder_title">出发前提前量</string>
+    <string name="planned_journey_default_reminder_description">选择在规划行程时建议的提前量。它本身不会开启提醒，你随时可以选择其他数值或不设提醒。</string>
     <plurals name="planned_journey_reminder_value">
         <item quantity="other">提前 %1$d 分钟提醒</item>
     </plurals>

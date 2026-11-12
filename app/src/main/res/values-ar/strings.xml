@@ -135,6 +135,8 @@
     <string name="planned_journey_destination">الوصول</string>
     <string name="planned_journey_route">%1$s → %2$s</string>
     <string name="planned_journey_reminder">تذكير قبل المغادرة</string>
+    <string name="planned_journey_default_reminder_title">الوقت المسبق قبل المغادرة</string>
+    <string name="planned_journey_default_reminder_description">اختر وقتًا مسبقًا يُقترح عند التخطيط لرحلة. لا يفعّل التذكيرات بمفرده، ويمكنك دائمًا اختيار قيمة مختلفة أو عدم التذكير.</string>
     <plurals name="planned_journey_reminder_value">
         <item quantity="zero">تذكير قبل %1$d دقيقة</item>
         <item quantity="one">تذكير قبل %1$d دقيقة</item>

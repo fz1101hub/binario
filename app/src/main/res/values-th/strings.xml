@@ -138,6 +138,8 @@
     <string name="planned_journey_destination">ปลายทาง</string>
     <string name="planned_journey_route">%1$s → %2$s</string>
     <string name="planned_journey_reminder">เตือนก่อนออกเดินทาง</string>
+    <string name="planned_journey_default_reminder_title">เวลาเผื่อก่อนออกเดินทาง</string>
+    <string name="planned_journey_default_reminder_description">เลือกเวลาเผื่อที่จะเสนอเมื่อคุณวางแผนการเดินทาง การตั้งค่านี้ไม่เปิดการเตือนเอง และคุณเลือกค่าอื่นหรือไม่ตั้งการเตือนได้เสมอ</string>
     <plurals name="planned_journey_reminder_value">
         <item quantity="other">เตือนล่วงหน้า %1$d นาที</item>
     </plurals>

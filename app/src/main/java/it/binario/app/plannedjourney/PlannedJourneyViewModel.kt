@@ -63,7 +63,8 @@ class PlannedJourneyViewModel(
     private val now: () -> Instant = Instant::now,
     private val zone: ZoneId = RailTime.defaultZone,
     private val newId: () -> String = { UUID.randomUUID().toString() },
-    private val reminders: PlannedJourneyReminderController? = null
+    private val reminders: PlannedJourneyReminderController? = null,
+    private val preferences: PlannedJourneyPreferences? = null
 ) : ViewModel() {
     private val initialRead = repository.read()
     var snapshot by mutableStateOf(initialRead.snapshot)
@@ -91,6 +92,14 @@ class PlannedJourneyViewModel(
         private set
     var reminderStatus by mutableStateOf(PlannedJourneyReminderStatus())
         private set
+    /** The lead proposed to every new journey, return and replan; the editor can still change it. */
+    var defaultReminder by mutableStateOf(runCatching { preferences?.defaultReminder() }.getOrNull())
+        private set
+
+    fun selectDefaultReminder(value: PlannedJourneyReminderMinutes?) {
+        val store = preferences ?: return
+        runCatching { store.setDefaultReminder(value) }.onSuccess { defaultReminder = value }
+    }
     private var reminderRefreshGeneration = 0L
 
     fun refreshReminders() {
@@ -126,7 +135,7 @@ class PlannedJourneyViewModel(
     }
 
     fun beginCreate() {
-        editor = PlannedJourneyEditorState(date = LocalDate.now(zone).toString(), timeZoneId = zone.id)
+        editor = PlannedJourneyEditorState(date = LocalDate.now(zone).toString(), timeZoneId = zone.id, reminderMinutes = defaultReminder)
         feedback = null
     }
 
@@ -167,7 +176,8 @@ class PlannedJourneyViewModel(
             date = "",
             time = "",
             timeZoneId = zone.id,
-            // The labels come back unticked; the source's reminder is not inherited.
+            // The source's reminder is not inherited: the new journey gets the default lead. The labels come back unticked.
+            reminderMinutes = defaultReminder,
             checklistText = source.checklist.joinToString("\n") { item -> item.label },
             notice = UiMessage(notice)
         )
@@ -360,7 +370,8 @@ class PlannedJourneyViewModel(
                 PlannedJourneyViewModel(
                     repository = PlannedJourneyRepository(SharedPreferencesPlannedJourneyStorage(context.applicationContext)),
                     savedStateHandle = createSavedStateHandle(),
-                    reminders = AndroidPlannedJourneyReminders.controller(context.applicationContext)
+                    reminders = AndroidPlannedJourneyReminders.controller(context.applicationContext),
+                    preferences = SharedPreferencesPlannedJourneyPreferences(context.applicationContext)
                 )
             }
         }

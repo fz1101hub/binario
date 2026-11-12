@@ -95,6 +95,25 @@ class PlannedJourneyCompanionContractTest {
         }
     }
 
+    @Test fun `the default lead is proposed to new journeys and returns`() {
+        val preferences = object : PlannedJourneyPreferences {
+            var stored: PlannedJourneyReminderMinutes? = null
+            override fun defaultReminder() = stored
+            override fun setDefaultReminder(value: PlannedJourneyReminderMinutes?) { stored = value }
+        }
+        val repository = PlannedJourneyRepository(FakeStorage())
+        val model = PlannedJourneyViewModel(repository, now = { createdAt }, zone = italy, preferences = preferences)
+        model.beginCreate()
+        assertEquals(null, model.editor?.reminderMinutes)
+        model.selectDefaultReminder(PlannedJourneyReminderMinutes.FIFTEEN)
+        assertEquals(PlannedJourneyReminderMinutes.FIFTEEN, preferences.stored)
+        val restored = PlannedJourneyViewModel(repository, now = { createdAt }, zone = italy, preferences = preferences)
+        restored.beginCreate()
+        assertEquals(PlannedJourneyReminderMinutes.FIFTEEN, restored.editor?.reminderMinutes)
+        restored.beginReturn(journey("out", "2026-10-01", "08:00").copy(reminder = PlannedJourneyReminder(PlannedJourneyReminderMinutes.SIXTY)))
+        assertEquals(PlannedJourneyReminderMinutes.FIFTEEN, restored.editor?.reminderMinutes)
+    }
+
     private class FakeStorage(var value: String? = null) : PlannedJourneyStorage {
         override fun read(): String? = value
         override fun write(value: String) { this.value = value }

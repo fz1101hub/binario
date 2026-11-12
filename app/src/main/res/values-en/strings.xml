@@ -138,6 +138,8 @@
     <string name="planned_journey_destination">Destination</string>
     <string name="planned_journey_route">%1$s → %2$s</string>
     <string name="planned_journey_reminder">Reminder before departure</string>
+    <string name="planned_journey_default_reminder_title">Lead time before departure</string>
+    <string name="planned_journey_default_reminder_description">Choose a lead time to propose when you plan a journey. It does not activate reminders by itself and you can always choose a different value or no reminder.</string>
     <plurals name="planned_journey_reminder_value">
         <item quantity="one">Reminder %1$d minute before</item>
         <item quantity="other">Reminder %1$d minutes before</item>

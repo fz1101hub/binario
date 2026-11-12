@@ -138,6 +138,8 @@
     <string name="planned_journey_destination">Varış</string>
     <string name="planned_journey_route">%1$s → %2$s</string>
     <string name="planned_journey_reminder">Kalkıştan önce hatırlatma</string>
+    <string name="planned_journey_default_reminder_title">Kalkıştan önceki süre</string>
+    <string name="planned_journey_default_reminder_description">Bir yolculuk planlarken önerilecek süreyi seçin. Tek başına hatırlatıcı etkinleştirmez; her zaman farklı bir değer veya hatırlatıcısız seçeneği seçebilirsiniz.</string>
     <plurals name="planned_journey_reminder_value">
         <item quantity="one">%1$d dakika önce hatırlat</item>
         <item quantity="other">%1$d dakika önce hatırlat</item>

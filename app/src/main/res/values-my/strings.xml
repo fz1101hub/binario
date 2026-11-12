@@ -135,6 +135,8 @@
     <string name="planned_journey_destination">ခရီးဆုံး</string>
     <string name="planned_journey_route">%1$s → %2$s</string>
     <string name="planned_journey_reminder">မထွက်ခွာမီ သတိပေးချက်</string>
+    <string name="planned_journey_default_reminder_title">ထွက်ခွာချိန်မတိုင်မီ ကြိုတင်အချိန်</string>
+    <string name="planned_journey_default_reminder_description">ခရီးစဉ် စီစဉ်သည့်အခါ အကြံပြုမည့် ကြိုတင်အချိန်ကို ရွေးပါ။ ၎င်းတစ်ခုတည်းဖြင့် သတိပေးချက် မဖွင့်ပါ၊ အခြားတန်ဖိုး သို့မဟုတ် သတိပေးချက်မရှိခြင်းကို အမြဲ ရွေးနိုင်သည်။</string>
     <plurals name="planned_journey_reminder_value">
         <item quantity="other">%1$d မိနစ် ကြိုတင် သတိပေးမည်</item>
     </plurals>

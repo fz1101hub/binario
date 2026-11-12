@@ -367,7 +367,7 @@ private fun PlannedJourneyEditorDialog(
                 item {
                     Text(stringResource(R.string.planned_journey_reminder), style = MaterialTheme.typography.labelLarge)
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        listOf(null, PlannedJourneyReminderMinutes.TEN, PlannedJourneyReminderMinutes.THIRTY, PlannedJourneyReminderMinutes.SIXTY).forEach { option ->
+                        plannedJourneyReminderChoices.forEach { option ->
                             FilterChip(
                                 selected = editor.reminderMinutes == option,
                                 onClick = { onChange { it.copy(reminderMinutes = option) } },

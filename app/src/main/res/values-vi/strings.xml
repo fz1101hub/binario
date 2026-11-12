@@ -138,6 +138,8 @@
     <string name="planned_journey_destination">Ga đến</string>
     <string name="planned_journey_route">%1$s → %2$s</string>
     <string name="planned_journey_reminder">Nhắc trước giờ khởi hành</string>
+    <string name="planned_journey_default_reminder_title">Thời gian trước giờ khởi hành</string>
+    <string name="planned_journey_default_reminder_description">Chọn khoảng thời gian báo trước để đề xuất khi bạn lên kế hoạch hành trình. Tùy chọn này không tự bật lời nhắc và bạn luôn có thể chọn giá trị khác hoặc không nhắc.</string>
     <plurals name="planned_journey_reminder_value">
         <item quantity="other">Nhắc trước %1$d phút</item>
     </plurals>

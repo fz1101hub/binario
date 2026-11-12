@@ -135,6 +135,8 @@
     <string name="planned_journey_destination">Destino</string>
     <string name="planned_journey_route">%1$s → %2$s</string>
     <string name="planned_journey_reminder">Lembrete antes da partida</string>
+    <string name="planned_journey_default_reminder_title">Antecedência antes da partida</string>
+    <string name="planned_journey_default_reminder_description">Escolha uma antecedência para sugerir ao planejar uma viagem. Ela não ativa lembretes sozinha e você sempre pode escolher outro valor ou nenhum lembrete.</string>
     <plurals name="planned_journey_reminder_value">
         <item quantity="one">Lembrete %1$d minuto antes</item>
         <item quantity="many">Lembrete %1$d minutos antes</item>

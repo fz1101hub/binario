@@ -138,6 +138,8 @@
     <string name="planned_journey_destination">Ankunft</string>
     <string name="planned_journey_route">%1$s → %2$s</string>
     <string name="planned_journey_reminder">Erinnerung vor der Abfahrt</string>
+    <string name="planned_journey_default_reminder_title">Vorlauf vor der Abfahrt</string>
+    <string name="planned_journey_default_reminder_description">Wählen Sie eine Vorlaufzeit, die beim Planen einer Verbindung vorgeschlagen wird. Aktiviert keine Erinnerungen von selbst; Sie können jederzeit einen anderen Wert oder keine Erinnerung wählen.</string>
     <plurals name="planned_journey_reminder_value">
         <item quantity="one">Erinnerung %1$d Minute vorher</item>
         <item quantity="other">Erinnerung %1$d Minuten vorher</item>

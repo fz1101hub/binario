@@ -135,6 +135,8 @@
     <string name="planned_journey_destination">Куда</string>
     <string name="planned_journey_route">%1$s → %2$s</string>
     <string name="planned_journey_reminder">Напоминание до отправления</string>
+    <string name="planned_journey_default_reminder_title">Запас времени до отправления</string>
+    <string name="planned_journey_default_reminder_description">Выберите запас времени, который будет предлагаться при планировании поездки. Сам по себе он не включает напоминания, и всегда можно выбрать другое значение или обойтись без напоминания.</string>
     <plurals name="planned_journey_reminder_value">
         <item quantity="one">Напоминание за %1$d минуту</item>
         <item quantity="few">Напоминание за %1$d минуты</item>

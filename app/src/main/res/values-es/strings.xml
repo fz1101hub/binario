@@ -138,6 +138,8 @@
     <string name="planned_journey_destination">Llegada</string>
     <string name="planned_journey_route">%1$s → %2$s</string>
     <string name="planned_journey_reminder">Recordatorio antes de la salida</string>
+    <string name="planned_journey_default_reminder_title">Margen antes de la salida</string>
+    <string name="planned_journey_default_reminder_description">Elige una antelación para proponer al planificar un trayecto. No activa recordatorios por sí sola y siempre puedes escoger un valor distinto o ningún recordatorio.</string>
     <plurals name="planned_journey_reminder_value">
         <item quantity="one">Recordatorio %1$d minuto antes</item>
         <item quantity="many">Recordatorio %1$d minutos antes</item>

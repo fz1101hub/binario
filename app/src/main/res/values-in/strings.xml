@@ -135,6 +135,8 @@
     <string name="planned_journey_destination">Kedatangan</string>
     <string name="planned_journey_route">%1$s → %2$s</string>
     <string name="planned_journey_reminder">Pengingat sebelum berangkat</string>
+    <string name="planned_journey_default_reminder_title">Waktu sebelum keberangkatan</string>
+    <string name="planned_journey_default_reminder_description">Pilih jeda waktu yang diusulkan saat merencanakan perjalanan. Ini tidak mengaktifkan pengingat dengan sendirinya dan Anda selalu dapat memilih nilai lain atau tanpa pengingat.</string>
     <plurals name="planned_journey_reminder_value">
         <item quantity="other">Pengingat %1$d menit sebelumnya</item>
     </plurals>

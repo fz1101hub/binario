@@ -135,6 +135,8 @@
     <string name="planned_journey_destination">आगमन</string>
     <string name="planned_journey_route">%1$s → %2$s</string>
     <string name="planned_journey_reminder">प्रस्थान से पहले रिमाइंडर</string>
+    <string name="planned_journey_default_reminder_title">प्रस्थान से पहले का अग्रिम समय</string>
+    <string name="planned_journey_default_reminder_description">यात्रा की योजना बनाते समय सुझाने के लिए अग्रिम समय चुनें। यह अपने-आप रिमाइंडर चालू नहीं करता और आप हमेशा अलग मान या कोई रिमाइंडर न चुन सकते हैं।</string>
     <plurals name="planned_journey_reminder_value">
         <item quantity="one">%1$d मिनट पहले रिमाइंडर</item>
         <item quantity="other">%1$d मिनट पहले रिमाइंडर</item>
