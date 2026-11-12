@@ -556,6 +556,8 @@
     <string name="planned_journey_action_rejected">Action refusée : vérifiez les données du voyage.</string>
     <string name="planned_journey_stored_unreadable">L’Agenda enregistré contient des données que cette version ne sait pas lire : il reste en lecture seule pour ne pas les perdre. Seuls les trajets lisibles sont affichés ; vous pouvez les enregistrer avec « Exporter JSON ».</string>
     <string name="planned_journey_read_only">L’Agenda est en lecture seule : aucune modification n’a été enregistrée.</string>
+    <string name="planned_journey_full">Agenda plein (40 trajets). Aucun trajet n’a été remplacé : supprimez-en un avant d’en enregistrer un autre.</string>
+    <string name="planned_journey_duplicate">Ce trajet est déjà dans l’Agenda avec les mêmes gares, date et heure. Aucune donnée n’a été ajoutée.</string>
     <string name="planned_journey_export_failure_generic">Échec de l’exportation.</string>
     <string name="planned_journey_import_failure_generic">Échec de l’importation.</string>
     <string name="route_stations_must_differ">Choisissez deux gares différentes pour le trajet.</string>

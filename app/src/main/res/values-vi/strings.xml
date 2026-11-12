@@ -538,6 +538,8 @@
     <string name="planned_journey_action_rejected">Thao tác bị từ chối: hãy kiểm tra thông tin hành trình.</string>
     <string name="planned_journey_stored_unreadable">Lịch trình đã lưu chứa dữ liệu mà phiên bản này không đọc được, nên chỉ ở chế độ chỉ đọc để tránh mất dữ liệu. Chỉ các hành trình đọc được mới hiển thị; bạn có thể lưu chúng bằng “Xuất JSON”.</string>
     <string name="planned_journey_read_only">Lịch trình ở chế độ chỉ đọc: không có thay đổi nào được lưu.</string>
+    <string name="planned_journey_full">Lịch trình đã đầy (40 hành trình). Không có hành trình nào bị thay thế: hãy xóa một hành trình trước khi lưu hành trình khác.</string>
+    <string name="planned_journey_duplicate">Hành trình này đã có trong Lịch trình với cùng ga, ngày và giờ. Không có dữ liệu nào được thêm.</string>
     <string name="planned_journey_export_failure_generic">Xuất thất bại.</string>
     <string name="planned_journey_import_failure_generic">Nhập thất bại.</string>
     <string name="route_stations_must_differ">Hãy chọn hai ga khác nhau cho tuyến.</string>

@@ -189,7 +189,7 @@ class PlannedJourneyViewModel(
                 when (result) {
                     is PlannedJourneyValidationResult.Valid -> result.value
                     is PlannedJourneyValidationResult.Invalid -> {
-                        editor = current.copy(validationMessage = UiMessage(UiMessageKey.PLANNED_JOURNEY_ACTION_REJECTED))
+                        editor = current.copy(validationMessage = UiMessage(invalidDraftMessage(result.issues)))
                         return
                     }
                 }
@@ -295,7 +295,15 @@ class PlannedJourneyViewModel(
 
     private fun rejectionMessage(reason: PlannedJourneyRejection): UiMessageKey = when (reason) {
         PlannedJourneyRejection.READ_ONLY -> UiMessageKey.PLANNED_JOURNEY_READ_ONLY
+        PlannedJourneyRejection.FULL -> UiMessageKey.PLANNED_JOURNEY_FULL
+        PlannedJourneyRejection.DUPLICATE -> UiMessageKey.PLANNED_JOURNEY_DUPLICATE
         PlannedJourneyRejection.INVALID -> UiMessageKey.PLANNED_JOURNEY_ACTION_REJECTED
+    }
+
+    /** The field the user can fix, when one issue names it; otherwise the generic refusal. */
+    private fun invalidDraftMessage(issues: List<PlannedJourneyValidationIssue>): UiMessageKey = when {
+        issues.any { it.code == PlannedJourneyValidationCode.SAME_ORIGIN_AND_DESTINATION } -> UiMessageKey.ROUTE_STATIONS_MUST_DIFFER
+        else -> UiMessageKey.PLANNED_JOURNEY_ACTION_REJECTED
     }
 
     private fun resolveStation(query: String, selectedId: String?, stations: List<PlannedJourneyStation>): PlannedJourneyStation? {

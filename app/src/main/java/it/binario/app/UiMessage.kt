@@ -33,6 +33,8 @@ enum class UiMessageKey(val resourceName: String) {
     PLANNED_JOURNEY_ACTION_REJECTED("planned_journey_action_rejected"),
     PLANNED_JOURNEY_STORED_UNREADABLE("planned_journey_stored_unreadable"),
     PLANNED_JOURNEY_READ_ONLY("planned_journey_read_only"),
+    PLANNED_JOURNEY_FULL("planned_journey_full"),
+    PLANNED_JOURNEY_DUPLICATE("planned_journey_duplicate"),
     PLANNED_JOURNEY_EXPORT_SUCCESS("planned_journey_export_success"),
     PLANNED_JOURNEY_EXPORT_FAILURE("planned_journey_export_failure_generic"),
     PLANNED_JOURNEY_IMPORT_FAILURE("planned_journey_import_failure_generic"),

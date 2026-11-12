@@ -551,6 +551,8 @@
     <string name="planned_journey_action_rejected">Операция отклонена: проверьте данные поездки.</string>
     <string name="planned_journey_stored_unreadable">В сохранённом ежедневнике есть данные, которые эта версия не может прочитать, поэтому он доступен только для чтения, чтобы их не потерять. Показаны только читаемые поездки; их можно сохранить через «Экспорт JSON».</string>
     <string name="planned_journey_read_only">Ежедневник доступен только для чтения: изменения не сохранены.</string>
+    <string name="planned_journey_full">Ежедневник заполнен (40 поездок). Ни одна поездка не заменена: удалите одну, прежде чем сохранять другую.</string>
+    <string name="planned_journey_duplicate">Эта поездка уже есть в ежедневнике с теми же станциями, датой и временем. Ничего не добавлено.</string>
     <string name="planned_journey_export_failure_generic">Не удалось выполнить экспорт.</string>
     <string name="planned_journey_import_failure_generic">Не удалось выполнить импорт.</string>
     <string name="route_stations_must_differ">Выберите две разные станции для маршрута.</string>

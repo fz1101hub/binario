@@ -538,6 +538,8 @@
     <string name="planned_journey_action_rejected">操作被拒绝：请检查行程信息。</string>
     <string name="planned_journey_stored_unreadable">已保存的日程包含此版本无法读取的数据，为避免丢失，保持只读。只显示可读取的行程，可用“导出 JSON”保存。</string>
     <string name="planned_journey_read_only">日程为只读：未保存任何更改。</string>
+    <string name="planned_journey_full">日程已满（40 个行程）。没有替换任何行程：请先删除一个再保存新的行程。</string>
+    <string name="planned_journey_duplicate">此行程已以相同的车站、日期和时间存在于日程中。没有添加任何数据。</string>
     <string name="planned_journey_export_failure_generic">导出失败。</string>
     <string name="planned_journey_import_failure_generic">导入失败。</string>
     <string name="route_stations_must_differ">请为路线选择两个不同的车站。</string>

@@ -547,6 +547,8 @@
     <string name="planned_journey_action_rejected">Aktion abgelehnt: Prüfe die Reisedaten.</string>
     <string name="planned_journey_stored_unreadable">Die gespeicherte Agenda enthält Daten, die diese Version nicht lesen kann; sie bleibt daher schreibgeschützt, damit nichts verloren geht. Es werden nur die lesbaren Fahrten angezeigt; du kannst sie mit „JSON exportieren“ sichern.</string>
     <string name="planned_journey_read_only">Die Agenda ist schreibgeschützt: Es wurde keine Änderung gespeichert.</string>
+    <string name="planned_journey_full">Agenda voll (40 Fahrten). Keine Fahrt wurde ersetzt: Lösche eine, bevor du eine weitere speicherst.</string>
+    <string name="planned_journey_duplicate">Diese Fahrt ist mit denselben Bahnhöfen, demselben Datum und derselben Uhrzeit bereits in der Agenda. Es wurden keine Daten hinzugefügt.</string>
     <string name="planned_journey_export_failure_generic">Export fehlgeschlagen.</string>
     <string name="planned_journey_import_failure_generic">Import fehlgeschlagen.</string>
     <string name="route_stations_must_differ">Wähle zwei verschiedene Bahnhöfe für die Strecke.</string>

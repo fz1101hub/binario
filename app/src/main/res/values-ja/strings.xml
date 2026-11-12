@@ -524,6 +524,8 @@
     <string name="planned_journey_action_rejected">操作できませんでした。旅程の内容を確認してください。</string>
     <string name="planned_journey_stored_unreadable">保存された予定に、このバージョンでは読めないデータが含まれています。失わないように読み取り専用のままにします。読める移動だけを表示しています。「JSON をエクスポート」で保存できます。</string>
     <string name="planned_journey_read_only">予定は読み取り専用です。変更は保存されていません。</string>
+    <string name="planned_journey_full">予定がいっぱいです（40 件）。置き換えた移動はありません。保存する前に1件削除してください。</string>
+    <string name="planned_journey_duplicate">この移動は同じ駅・日付・時刻で既に予定にあります。データは追加されていません。</string>
     <string name="planned_journey_export_failure_generic">エクスポートに失敗しました。</string>
     <string name="planned_journey_import_failure_generic">インポートに失敗しました。</string>
     <string name="route_stations_must_differ">区間には異なる 2 つの駅を選んでください。</string>

@@ -524,6 +524,8 @@
     <string name="planned_journey_action_rejected">Tindakan ditolak: periksa detail perjalanan.</string>
     <string name="planned_journey_stored_unreadable">Agenda yang tersimpan berisi data yang tidak dapat dibaca versi ini, jadi tetap hanya-baca agar data itu tidak hilang. Hanya perjalanan yang terbaca yang ditampilkan; Anda dapat menyimpannya dengan “Ekspor JSON”.</string>
     <string name="planned_journey_read_only">Agenda hanya-baca: tidak ada perubahan yang disimpan.</string>
+    <string name="planned_journey_full">Agenda penuh (40 perjalanan). Tidak ada perjalanan yang diganti: hapus satu sebelum menyimpan yang lain.</string>
+    <string name="planned_journey_duplicate">Perjalanan ini sudah ada di Agenda dengan stasiun, tanggal, dan jam yang sama. Tidak ada data yang ditambahkan.</string>
     <string name="planned_journey_export_failure_generic">Ekspor gagal.</string>
     <string name="planned_journey_import_failure_generic">Impor gagal.</string>
     <string name="route_stations_must_differ">Pilih dua stasiun yang berbeda untuk rute.</string>

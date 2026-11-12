@@ -569,6 +569,8 @@
     <string name="planned_journey_action_rejected">رُفضت العملية: تحقّق من بيانات الرحلة.</string>
     <string name="planned_journey_stored_unreadable">تحتوي الأجندة المحفوظة على بيانات لا يستطيع هذا الإصدار قراءتها، لذلك تبقى للقراءة فقط حتى لا تضيع. تُعرض الرحلات المقروءة فقط، ويمكنك حفظها عبر «تصدير JSON».</string>
     <string name="planned_journey_read_only">الأجندة للقراءة فقط: لم يُحفظ أي تغيير.</string>
+    <string name="planned_journey_full">الأجندة ممتلئة (40 رحلة). لم تُستبدل أي رحلة: احذف رحلة قبل حفظ أخرى.</string>
+    <string name="planned_journey_duplicate">هذه الرحلة موجودة مسبقًا في الأجندة بالمحطات والتاريخ والوقت نفسها. لم تُضف أي بيانات.</string>
     <string name="planned_journey_export_failure_generic">تعذّر التصدير.</string>
     <string name="planned_journey_import_failure_generic">تعذّر الاستيراد.</string>
     <string name="route_stations_must_differ">اختر محطتين مختلفتين للمسار.</string>

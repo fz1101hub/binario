@@ -52,6 +52,10 @@ data class PlannedJourneyRepositoryRead(
 enum class PlannedJourneyRejection {
     /** The stored Agenda is not fully readable ([PlannedJourneyRepositoryRead.readOnly]). */
     READ_ONLY,
+    /** The Agenda already holds [PlannedJourneyPersistenceSchema.MAX_JOURNEYS] journeys; nothing was replaced. */
+    FULL,
+    /** The same stations, date, time and recurrence are already in the Agenda. */
+    DUPLICATE,
     INVALID
 }
 
@@ -159,7 +163,8 @@ class PlannedJourneyRepository(private val storage: PlannedJourneyStorage) {
         val current = writableSnapshot() ?: return readOnlyRejection()
         if (current.journeys.size + preview.accepted.size > PlannedJourneyPersistenceSchema.MAX_JOURNEYS) {
             return PlannedJourneyRepositorySaveResult.Rejected(
-                "L'importazione supera il limite locale di ${PlannedJourneyPersistenceSchema.MAX_JOURNEYS} viaggi."
+                "L'importazione supera il limite locale di ${PlannedJourneyPersistenceSchema.MAX_JOURNEYS} viaggi.",
+                PlannedJourneyRejection.FULL
             )
         }
         return writeValidated(PlannedJourneyTransfer.merge(current.journeys, preview, conflictPolicy))
@@ -208,7 +213,13 @@ class PlannedJourneyRepository(private val storage: PlannedJourneyStorage) {
     private fun writeValidated(snapshot: PlannedJourneyPersistenceSnapshot): PlannedJourneyRepositorySaveResult {
         val issues = PlannedJourneyValidator.validate(snapshot)
         if (issues.isNotEmpty()) {
-            return PlannedJourneyRepositorySaveResult.Rejected(issues.first().detail)
+            val codes = issues.map { it.code }.toSet()
+            val reason = when {
+                PlannedJourneyValidationCode.TOO_MANY_JOURNEYS in codes -> PlannedJourneyRejection.FULL
+                PlannedJourneyValidationCode.DUPLICATE_JOURNEY in codes -> PlannedJourneyRejection.DUPLICATE
+                else -> PlannedJourneyRejection.INVALID
+            }
+            return PlannedJourneyRepositorySaveResult.Rejected(issues.first().detail, reason)
         }
         return runCatching {
             // encode performs the bounded byte-size check before a preference write.

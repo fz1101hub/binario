@@ -97,6 +97,50 @@ class PlannedJourneyAgendaSafetyTest {
         assertEquals(storedWithBrokenMiddleRecord(), storage.value)
     }
 
+    @Test fun `a 41st journey is refused as full and the stored text stays byte-identical`() {
+        val storage = FakeStorage()
+        val repository = PlannedJourneyRepository(storage)
+        val start = LocalDate.parse("2026-10-01")
+        repeat(PlannedJourneyPersistenceSchema.MAX_JOURNEYS) { index ->
+            assertTrue(repository.save(journey("j$index", start.plusDays(index.toLong()).toString(), "08:00")) is PlannedJourneyRepositorySaveResult.Saved)
+        }
+        val stored = storage.value
+        listOf("2026-09-01", "2027-03-01").forEach { date ->
+            val result = repository.save(journey("extra-$date", date, "07:00"))
+            assertEquals(PlannedJourneyRejection.FULL, (result as PlannedJourneyRepositorySaveResult.Rejected).reason)
+        }
+        assertEquals(stored, storage.value)
+        val model = PlannedJourneyViewModel(repository, now = { createdAt }, zone = ZoneId.of("Europe/Rome"), newId = { "extra" })
+        model.beginCreate()
+        model.changeEditor { it.copy(originQuery = rome.displayName, destinationQuery = milan.displayName, date = "2027-04-01", time = "08:00") }
+        model.saveEditor(listOf(rome, milan))
+        assertEquals(UiMessage(UiMessageKey.PLANNED_JOURNEY_FULL), model.editor?.validationMessage)
+        assertEquals(stored, storage.value)
+    }
+
+    @Test fun `the same stations date and time are refused as a duplicate, not as a field error`() {
+        val storage = FakeStorage()
+        val repository = PlannedJourneyRepository(storage)
+        repository.save(journey("first", "2026-10-01", "08:00"))
+        val stored = storage.value
+        val result = repository.save(journey("second", "2026-10-01", "08:00"))
+        assertEquals(PlannedJourneyRejection.DUPLICATE, (result as PlannedJourneyRepositorySaveResult.Rejected).reason)
+        assertEquals(stored, storage.value)
+        val model = PlannedJourneyViewModel(repository, now = { createdAt }, zone = ZoneId.of("Europe/Rome"), newId = { "again" })
+        model.beginCreate()
+        model.changeEditor { it.copy(originQuery = rome.displayName, destinationQuery = milan.displayName, date = "2026-10-01", time = "08:00") }
+        model.saveEditor(listOf(rome, milan))
+        assertEquals(UiMessage(UiMessageKey.PLANNED_JOURNEY_DUPLICATE), model.editor?.validationMessage)
+    }
+
+    @Test fun `the same origin and destination name the station field`() {
+        val model = PlannedJourneyViewModel(PlannedJourneyRepository(FakeStorage()), now = { createdAt }, zone = ZoneId.of("Europe/Rome"))
+        model.beginCreate()
+        model.changeEditor { it.copy(originQuery = rome.displayName, destinationQuery = rome.displayName, date = "2026-10-01", time = "08:00") }
+        model.saveEditor(listOf(rome, milan))
+        assertEquals(UiMessage(UiMessageKey.ROUTE_STATIONS_MUST_DIFFER), model.editor?.validationMessage)
+    }
+
     private fun storedWithBrokenMiddleRecord(): String {
         val valid = JSONObject(PlannedJourneyTransfer.encode(PlannedJourneyPersistenceSnapshot(journeys = listOf(
             journey("first", "2026-10-01", "08:00"),
