@@ -99,6 +99,8 @@ class EmbeddedGtfsRouteAdapter(
      * later lookup opens only the packs that have the number, instead of reading all of them again.
      */
     private val packNumbers = HashMap<SourceId, GtfsPackNumbers>()
+    /** Held while a pack is read for a number before its numbers are known. */
+    private val numbersMutex = Mutex()
 
     /** Diagnostics for tests: the packs whose numbers are known. */
     internal fun knownNumberPacksForTest(): Set<SourceId> = synchronized(packNumbers) { packNumbers.keys.toSet() }
@@ -120,21 +122,27 @@ class EmbeddedGtfsRouteAdapter(
                 val source = RailSourceCatalog.byId(pack.sourceId) ?: continue
                 try {
                     val matches = numberCache.getOrLoad("${pack.sourceId.value}:${query.normalized}:${query.date}", cancelWhenUnused = true) {
-                        // A pack already read for another number says at once whether it has this one.
+                        // A pack already read for another number says at once whether it has this one. Lookups started
+                        // together (the trains of a results screen) read a pack one at a time while its numbers are
+                        // not known, so only the first of them reads the packs that have none of their numbers.
+                        suspend fun read(known: GtfsPackNumbers?): List<TrainNumberMatch> {
+                            if (known != null && !known.mayContain(query)) return emptyList()
+                            val bytes = assetBytes(pack.assetPath)
+                            val numbers = if (known == null) GtfsPackNumbers.Builder() else null
+                            val job = currentCoroutineContext().job
+                            val index = parse({ ByteArrayInputStream(bytes) }, query, pack.itineraryCopies, numbers) { job.ensureActive() }
+                            if (numbers != null) {
+                                val learnt = numbers.build(query.date)
+                                synchronized(packNumbers) { packNumbers.putIfAbsent(pack.sourceId, learnt) }
+                            }
+                            val now = clock()
+                            return index.servicesByNumber(pack.sourceId.value, query).map { service ->
+                                TrainNumberMatch.create(service, source.displayName, DataConfidence.STATIC_ONLY, now, now + 12 * 60 * 60_000)
+                            }
+                        }
                         val known = synchronized(packNumbers) { packNumbers[pack.sourceId] }
-                        if (known != null && !known.mayContain(query)) return@getOrLoad emptyList()
-                        val bytes = assetBytes(pack.assetPath)
-                        val numbers = if (known == null) GtfsPackNumbers.Builder() else null
-                        val job = currentCoroutineContext().job
-                        val index = parse({ ByteArrayInputStream(bytes) }, query, pack.itineraryCopies, numbers) { job.ensureActive() }
-                        if (numbers != null) {
-                            val learnt = numbers.build(query.date)
-                            synchronized(packNumbers) { packNumbers.putIfAbsent(pack.sourceId, learnt) }
-                        }
-                        val now = clock()
-                        index.servicesByNumber(pack.sourceId.value, query).map { service ->
-                            TrainNumberMatch.create(service, source.displayName, DataConfidence.STATIC_ONLY, now, now + 12 * 60 * 60_000)
-                        }
+                        if (known != null) read(known)
+                        else numbersMutex.withLock { read(synchronized(packNumbers) { packNumbers[pack.sourceId] }) }
                     }.value
                     addAll(matches)
                     if (matches.isNotEmpty()) onMatches(toList())

@@ -8,7 +8,11 @@ import it.binario.app.data.RouteFailureReason
 import it.binario.app.data.SavedRoute
 import it.binario.app.data.Station
 import it.binario.app.data.core.SourceId
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.asCoroutineDispatcher
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -77,6 +81,23 @@ class EmbeddedGtfsRouteAdapterTest {
         assertEquals(listOf("IC 9999"), numbers("ic 9999"))
         assertEquals(listOf("RE_80 - 2581"), numbers("R 2581"))
         assertEquals(listOf("b", "a"), opened)
+    }
+
+    @Test fun `lookups started together read a pack without their number once, not once each`() = runBlocking {
+        val packs = listOf(EmbeddedGtfsPack(SourceId("lombardia-trenord-gtfs"), "a"), EmbeddedGtfsPack(SourceId("ch-otd-gtfs"), "b"))
+        val feeds = mapOf("a" to feed(tripNumber = "2581"), "b" to feed(tripNumber = "9999"))
+        val opened = java.util.Collections.synchronizedList(mutableListOf<String>())
+        val source = EmbeddedGtfsRouteAdapter(openAsset = { opened += it; ByteArrayInputStream(feeds.getValue(it)) }, packs = packs)
+        val date = LocalDate.of(2026, 9, 4)
+        val found = coroutineScope {
+            listOf("1111", "2222", "2581", "3333").map { number ->
+                async(Dispatchers.Default) { source.searchByNumber(it.binario.app.data.repository.TrainNumberQuery(number, date)).size }
+            }.awaitAll()
+        }
+        assertEquals(listOf(0, 0, 1, 0), found)
+        // Each pack once to learn its numbers; the pack with 2581 at most once more, for the lookup that came second.
+        assertEquals(1, opened.count { it == "b" })
+        assertTrue("$opened", opened.count { it == "a" } in 1..2)
     }
 
     @Test fun `the remembered numbers of a pack accept whatever the number search matches`() {
