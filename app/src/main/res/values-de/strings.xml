@@ -724,6 +724,7 @@
     <string name="voice_feedback_confirmed">Erkannt und übernommen. Prüfe die Felder vor der Suche.</string>
     <string name="voice_feedback_ambiguous">Mehrdeutige Spracheingabe (%1$s). Die Felder wurden nicht geändert: Wähle manuell.</string>
     <string name="voice_feedback_incomplete">Unvollständige Spracheingabe. Die Felder wurden nicht geändert: Ergänze oder korrigiere sie manuell.</string>
+    <string name="voice_feedback_date_time_only">Nur der erkannte Tag und die Uhrzeit wurden übernommen: Wähle die Bahnhöfe und prüfe die Felder vor der Suche.</string>
     <string name="voice_feedback_unresolved_route">Keine Strecke erkannt. Versuche: von Roma Termini nach Torino Porta Nuova morgen um 18 Uhr.</string>
     <string name="voice_feedback_unresolved_train">Keine Zugnummer erkannt. Versuche: Zug 9512.</string>
     <string name="voice_feedback_unresolved_station">Kein Bahnhof erkannt. Versuche: Bahnhof Roma Termini.</string>

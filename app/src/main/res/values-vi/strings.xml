@@ -707,6 +707,7 @@
     <string name="voice_feedback_confirmed">Đã nhận dạng và điền. Hãy kiểm tra các trường trước khi tìm.</string>
     <string name="voice_feedback_ambiguous">Giọng nói chưa rõ ràng (%1$s). Các trường chưa được thay đổi: hãy tự chọn.</string>
     <string name="voice_feedback_incomplete">Giọng nói chưa đầy đủ. Các trường chưa được thay đổi: hãy tự bổ sung hoặc sửa.</string>
+    <string name="voice_feedback_date_time_only">Chỉ áp dụng ngày và giờ đã nhận dạng: hãy chọn ga và kiểm tra các trường trước khi tìm.</string>
     <string name="voice_feedback_unresolved_route">Không nhận dạng được tuyến. Hãy thử: từ Roma Termini đến Torino Porta Nuova lúc 18 giờ ngày mai.</string>
     <string name="voice_feedback_unresolved_train">Không nhận dạng được số hiệu tàu. Hãy thử: tàu 9512.</string>
     <string name="voice_feedback_unresolved_station">Không nhận dạng được ga. Hãy thử: ga Roma Termini.</string>

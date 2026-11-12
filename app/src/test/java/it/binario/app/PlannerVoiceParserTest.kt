@@ -87,7 +87,7 @@ class PlannerVoiceParserTest {
     }
 
     @Test
-    fun `marks partial route details as requiring review without changing fields`() {
+    fun `a route without stations needs review and offers only its day and time`() {
         val review = PlannerVoiceParser.review(
             "Domani alle 8",
             listOf(termini, torino),
@@ -99,6 +99,7 @@ class PlannerVoiceParserTest {
         assertFalse(review.canApply)
         assertEquals(LocalDate.of(2026, 8, 14), review.input.date)
         assertEquals(LocalTime.of(8, 0), review.input.time)
+        assertEquals(PlannerVoiceFeedback.DateTimeOnly, review.feedback(DictationTarget.ROUTE))
     }
 
     @Test

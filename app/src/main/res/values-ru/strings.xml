@@ -744,6 +744,7 @@
     <string name="voice_feedback_confirmed">Распознано и применено. Проверьте поля перед поиском.</string>
     <string name="voice_feedback_ambiguous">Неоднозначная диктовка (%1$s). Поля не изменены: выберите вручную.</string>
     <string name="voice_feedback_incomplete">Неполная диктовка. Поля не изменены: дополните или исправьте их вручную.</string>
+    <string name="voice_feedback_date_time_only">Применены только распознанные день и время: выберите станции и проверьте поля перед поиском.</string>
     <string name="voice_feedback_unresolved_route">Маршрут не распознан. Попробуйте: из Roma Termini в Torino Porta Nuova завтра в 18.</string>
     <string name="voice_feedback_unresolved_train">Номер поезда не распознан. Попробуйте: поезд 9512.</string>
     <string name="voice_feedback_unresolved_station">Станция не распознана. Попробуйте: станция Roma Termini.</string>

@@ -727,6 +727,7 @@
     <string name="voice_feedback_confirmed">Dados reconhecidos e aplicados. Verifique os campos antes de buscar.</string>
     <string name="voice_feedback_ambiguous">Ditado ambíguo (%1$s). Os campos não foram alterados: escolha manualmente.</string>
     <string name="voice_feedback_incomplete">Ditado incompleto. Os campos não foram alterados: complete ou corrija manualmente.</string>
+    <string name="voice_feedback_date_time_only">Só foram aplicados o dia e a hora reconhecidos: escolha as estações e verifique os campos antes de pesquisar.</string>
     <string name="voice_feedback_unresolved_route">Não reconheci um trajeto. Tente: de Roma Termini para Torino Porta Nuova amanhã às 18h.</string>
     <string name="voice_feedback_unresolved_train">Não reconheci um número de trem. Tente: trem 9512.</string>
     <string name="voice_feedback_unresolved_station">Não reconheci uma estação. Tente: estação Roma Termini.</string>

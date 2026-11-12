@@ -13,7 +13,8 @@ import org.junit.Test
 /**
  * The dictation in each of the 17 languages of the app, fed with the sentence the app itself suggests to say
  * («Prova: …» of voice_feedback_unresolved_*). Where the parser does not know the words for a day and a time
- * nothing may be guessed: no route is confirmed and the route microphone is not offered.
+ * (a language the app does not have) nothing may be guessed: no route is confirmed and the route microphone is
+ * not offered.
  */
 class PlannerVoiceLanguagesTest {
     private val termini = Station("roma-termini", "Roma Termini", "Roma")
@@ -21,7 +22,6 @@ class PlannerVoiceLanguagesTest {
     private val stations = listOf(termini, torino)
     private val today = LocalDate.of(2026, 11, 11)
 
-    private val routeLanguages = setOf("it", "en", "de", "fr", "es")
     private val otherScripts = setOf("ar", "hi", "ja", "ko", "my", "ru", "th", "zh")
 
     /** The language code the configuration reports for a tag of the app ("zh-CN" → "zh"). */
@@ -35,29 +35,54 @@ class PlannerVoiceLanguagesTest {
     }
 
     @Test
-    fun `the route hint of a language is understood whole, or the route is not dictated in that language`() {
+    fun `the route hint of every language is understood whole and the route microphone is offered`() {
         assertEquals(17, AppLocales.tags.size)
         AppLocales.tags.forEach { tag ->
             val spoken = example(tag, "voice_feedback_unresolved_route")
             assertTrue("$tag: $spoken", spoken.contains("Roma Termini") && spoken.contains("Torino Porta Nuova"))
             val review = PlannerVoiceParser.review(spoken, stations, DictationTarget.ROUTE, today, language(tag))
-            if (language(tag) in routeLanguages) {
-                assertTrue(tag, PlannerVoiceParser.offers(DictationTarget.ROUTE, language(tag)))
-                assertEquals("$tag: $spoken", DictationReviewStatus.CONFIRMED, review.status)
-                assertEquals(tag, termini, review.input.origin)
-                assertEquals(tag, torino, review.input.destination)
-                assertEquals("$tag: $spoken", today.plusDays(1), review.input.date)
-                assertEquals("$tag: $spoken", LocalTime.of(18, 0), review.input.time)
-            } else {
-                // «amanhã às 18h», «besok pukul 18», «明日 18 時»: the day and the hour are not known here.
-                assertFalse(tag, PlannerVoiceParser.offers(DictationTarget.ROUTE, language(tag)))
-                assertNotEquals("$tag: $spoken", DictationReviewStatus.CONFIRMED, review.status)
-                assertFalse(tag, review.canApply)
-                assertNull("$tag: $spoken", review.input.date)
-                assertNull("$tag: $spoken", review.input.time)
-                assertNull("$tag: $spoken", review.input.returnJourney)
-            }
+            assertTrue(tag, PlannerVoiceParser.offers(DictationTarget.ROUTE, language(tag)))
+            assertEquals("$tag: $spoken", DictationReviewStatus.CONFIRMED, review.status)
+            assertEquals(tag, termini, review.input.origin)
+            assertEquals(tag, torino, review.input.destination)
+            assertEquals("$tag: $spoken", today.plusDays(1), review.input.date)
+            assertEquals("$tag: $spoken", LocalTime.of(18, 0), review.input.time)
         }
+    }
+
+    @Test
+    fun `station names in another script leave the stations alone and offer the day and the time`() {
+        // The recognizer writes the names in its script; the timetable has none of them.
+        mapOf(
+            "ar" to "من روما إلى ميلانو غدًا الساعة 18",
+            "hi" to "रोम से मिलान कल 18 बजे",
+            "ja" to "明日 18 時 ローマ から ミラノ まで",
+            "ko" to "내일 18시 로마에서 밀라노까지",
+            "my" to "မနက်ဖြန် 18 နာရီ ရောမ မှ မီလန် သို့",
+            "ru" to "из Рима в Милан завтра в 18",
+            "th" to "จาก โรม ไป มิลาน พรุ่งนี้ 18 นาฬิกา",
+            "zh" to "明天 18 点从罗马到米兰"
+        ).forEach { (language, spoken) ->
+            val review = PlannerVoiceParser.review(spoken, stations, DictationTarget.ROUTE, today, language)
+            assertEquals("$language: $spoken", DictationReviewStatus.NEEDS_REVIEW, review.status)
+            assertFalse(language, review.canApply)
+            assertNull(language, review.input.origin)
+            assertNull(language, review.input.destination)
+            assertEquals("$language: $spoken", today.plusDays(1), review.input.date)
+            assertEquals("$language: $spoken", LocalTime.of(18, 0), review.input.time)
+            assertEquals(language, PlannerVoiceFeedback.DateTimeOnly, review.feedback(DictationTarget.ROUTE))
+        }
+        // Without a day or a time nothing was understood: the hint is shown. Ambiguous stations are chosen first.
+        assertEquals(
+            PlannerVoiceFeedback.Unresolved(DictationTarget.ROUTE),
+            PlannerVoiceParser.review("从罗马到米兰", stations, DictationTarget.ROUTE, today, "zh").feedback(DictationTarget.ROUTE)
+        )
+        val milano = Station("milano-c", "Milano Centrale", "Milano", aliases = listOf("Centrale"))
+        val verona = Station("verona-pn", "Verona Porta Nuova", "Verona", aliases = listOf("Centrale"))
+        val ambiguous = PlannerVoiceParser.review(
+            "Da Roma Termini a Centrale domani alle 9", listOf(termini, milano, verona), DictationTarget.ROUTE, today, "it"
+        )
+        assertTrue(ambiguous.feedback(DictationTarget.ROUTE) is PlannerVoiceFeedback.Ambiguous)
     }
 
     @Test
@@ -101,17 +126,26 @@ class PlannerVoiceLanguagesTest {
 
     @Test
     fun `a route said in a language without date and time words changes nothing`() {
-        // Portuguese at 20:00: the stations and «18h» were read, «amanhã» was not, and the search was confirmed for today.
+        // Portuguese at 20:00 once read the stations and «18h» but not «amanhã»: now its words are known.
         val portuguese = PlannerVoiceParser.review(
             "de Roma Termini para Torino Porta Nuova amanhã às 18h", stations, DictationTarget.ROUTE, today, "pt"
         )
-        assertEquals(DictationReviewStatus.NEEDS_REVIEW, portuguese.status)
-        assertEquals(PlannerVoiceFeedback.Incomplete, portuguese.feedback(DictationTarget.ROUTE))
-        // Indonesian is "in" on Android and "id" elsewhere; a language the app does not have behaves the same.
-        listOf("in", "id", "nl", "").forEach { language ->
+        assertEquals(DictationReviewStatus.CONFIRMED, portuguese.status)
+        assertEquals(today.plusDays(1), portuguese.input.date)
+        assertEquals(LocalTime.of(18, 0), portuguese.input.time)
+        // A language the app does not have: no day, no time, no confirmed route, no route microphone.
+        listOf("nl", "").forEach { language ->
+            val dutch = PlannerVoiceParser.review(
+                "van Roma Termini naar Torino Porta Nuova morgen om 18 uur", stations, DictationTarget.ROUTE, today, language
+            )
+            assertEquals(language, DictationReviewStatus.NEEDS_REVIEW, dutch.status)
+            assertNull(language, dutch.input.date)
+            assertNull(language, dutch.input.time)
             assertFalse(language, PlannerVoiceParser.offers(DictationTarget.ROUTE, language))
             assertTrue(language, PlannerVoiceParser.offers(DictationTarget.STATION, language))
         }
+        // Indonesian is "in" on Android and "id" elsewhere.
+        listOf("in", "id").forEach { language -> assertTrue(language, PlannerVoiceParser.offers(DictationTarget.ROUTE, language)) }
         assertTrue(PlannerVoiceParser.offers(DictationTarget.ROUTE, "IT"))
     }
 }
