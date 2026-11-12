@@ -73,6 +73,28 @@ class PlannedJourneyCompanionContractTest {
         assertEquals(UiMessage(UiMessageKey.PLANNED_JOURNEY_REPLAN_PREPARED), editor.notice)
     }
 
+    @Test fun `the bike preset adds time margin, documents, belongings and bike after the user's own lines, once`() {
+        val label: (PlannedJourneyChecklistLine) -> String = { it.name.lowercase() }
+        val once = PlannedJourneyChecklistPresets.apply("  Acqua \n\nbelongings", PlannedJourneyChecklistPreset.BIKE, label)
+        assertEquals("Acqua\nbelongings\ntime_margin\ndocuments\nbike", once)
+        assertEquals(once, PlannedJourneyChecklistPresets.apply(once, PlannedJourneyChecklistPreset.BIKE, label))
+        val full = (1..PlannedJourneyPersistenceSchema.MAX_CHECKLIST_ITEMS).joinToString("\n") { "voce $it" }
+        assertEquals(full, PlannedJourneyChecklistPresets.apply(full, PlannedJourneyChecklistPreset.ASSISTANCE, label))
+    }
+
+    @Test fun `every localized preset line is a valid checklist label in all 17 languages`() {
+        val folders = listOf(null, "en", "de", "es", "fr", "ar", "hi", "in", "ja", "ko", "my", "pt", "ru", "th", "tr", "vi", "zh-rCN")
+        val keys = listOf("time_margin", "documents", "belongings", "connection", "bike", "assistance").map { "planned_journey_check_$it" }
+        folders.forEach { folder ->
+            val strings = it.binario.app.TestStringCatalogue.of(folder)
+            val checklist = keys.mapIndexed { index, key ->
+                PlannedJourneyChecklistItem("check-$index", requireNotNull(strings[key]) { "$folder: $key" })
+            }
+            val issues = PlannedJourneyValidator.validate(journey("preset", "2026-10-01", "08:00").copy(checklist = checklist))
+            assertEquals("$folder: $issues", emptyList<PlannedJourneyValidationIssue>(), issues)
+        }
+    }
+
     private class FakeStorage(var value: String? = null) : PlannedJourneyStorage {
         override fun read(): String? = value
         override fun write(value: String) { this.value = value }

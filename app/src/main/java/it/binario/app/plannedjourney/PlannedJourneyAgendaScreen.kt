@@ -386,12 +386,49 @@ private fun PlannedJourneyEditorDialog(
                         minLines = 2
                     )
                 }
+                item { ChecklistPresets(onApply = { preset, label -> onChange { it.copy(checklistText = PlannedJourneyChecklistPresets.apply(it.checklistText, preset, label)) } }) }
                 editor.validationMessage?.let { message -> item { AgendaMessage(message.localized(), true) } }
             }
         },
         confirmButton = { TextButton(onClick = onSave, modifier = Modifier.testTag("plannedJourneySave")) { Text(stringResource(R.string.planned_journey_save)) } },
         dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.planned_journey_cancel)) } }
     )
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun ChecklistPresets(onApply: (PlannedJourneyChecklistPreset, (PlannedJourneyChecklistLine) -> String) -> Unit) {
+    val labels = PlannedJourneyChecklistLine.entries.associateWith { line -> stringResource(line.labelRes()) }
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text(stringResource(R.string.planned_journey_preparation_title), style = MaterialTheme.typography.labelLarge)
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            PlannedJourneyChecklistPreset.entries.forEach { preset ->
+                val name = stringResource(preset.labelRes())
+                val description = stringResource(R.string.planned_journey_preparation_apply_a11y, name)
+                AssistChip(
+                    onClick = { onApply(preset) { line -> labels.getValue(line) } },
+                    label = { Text(name) },
+                    modifier = Modifier.semantics { contentDescription = description }
+                )
+            }
+        }
+    }
+}
+
+private fun PlannedJourneyChecklistPreset.labelRes(): Int = when (this) {
+    PlannedJourneyChecklistPreset.COMMUTER -> R.string.planned_journey_preset_commuter
+    PlannedJourneyChecklistPreset.CONNECTION -> R.string.planned_journey_preset_connection
+    PlannedJourneyChecklistPreset.BIKE -> R.string.planned_journey_preset_bike
+    PlannedJourneyChecklistPreset.ASSISTANCE -> R.string.planned_journey_preset_assistance
+}
+
+private fun PlannedJourneyChecklistLine.labelRes(): Int = when (this) {
+    PlannedJourneyChecklistLine.TIME_MARGIN -> R.string.planned_journey_check_time_margin
+    PlannedJourneyChecklistLine.DOCUMENTS -> R.string.planned_journey_check_documents
+    PlannedJourneyChecklistLine.BELONGINGS -> R.string.planned_journey_check_belongings
+    PlannedJourneyChecklistLine.CONNECTION -> R.string.planned_journey_check_connection
+    PlannedJourneyChecklistLine.BIKE -> R.string.planned_journey_check_bike
+    PlannedJourneyChecklistLine.ASSISTANCE -> R.string.planned_journey_check_assistance
 }
 
 @Composable
