@@ -507,6 +507,27 @@ describe("most punctual departures", () => {
     expect(numbers(mostPunctualDepartures(stats, [ROMA_TERMINI], [TIVOLI], clockAt(8, 0, 1), 10))).toEqual([]);
   });
 
+  it("after a gap in the collection measures the days against those really collected", () => {
+    // 30-day window to Monday 9 November 2026 with five days not collected: the most observed train has 25 days.
+    const stats = parsePunctualityStats(
+      statsDocument([
+        departure("daily", "REG", 520, arrivals(25, 20)),
+        // Two of the 25 collected days without a sample: fewer than the three or four of any weekday.
+        departure("two-missing", "REG", 515, arrivals(23, 20)),
+        // Saturdays and Sundays of the collected days only.
+        departure("weekend", "REG", 510, arrivals(7, 7)),
+      ])
+    )!;
+    expect(stats.coveredDays).toBe(25);
+    for (const weekday of [1, 2, 3, 4, 5, 6, 7]) {
+      expect(stats.coveredDaysOn(weekday), String(weekday)).toBeGreaterThanOrEqual(3);
+      expect(numbers(mostPunctualDepartures(stats, [ROMA_TERMINI], [TIVOLI], clockAt(8, 0, weekday), 10)), String(weekday)).toEqual([
+        "two-missing",
+        "daily",
+      ]);
+    }
+  });
+
   it("proposes on no weekday the window has not covered, as after a collection restarted on a Monday", () => {
     // Monday 2 – Saturday 7 November 2026: a Monday-to-Saturday train is seen on all six days.
     const stats = parsePunctualityStats(statsDocument([departure("mon-sat", "REG", 520, arrivals(6, 6))], { windowEnd: "2026-11-07" }))!;
