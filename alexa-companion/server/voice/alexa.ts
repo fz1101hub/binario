@@ -108,7 +108,12 @@ function voiceMessages(input: HandlerInput) {
   return messagesForLocale(getAlexaLocale(input)).voice;
 }
 
-/** Resolves the Binario user behind an Alexa request; null when the link is missing or revoked. */
+/**
+ * Resolves the Binario user behind an Alexa request; null when the link is missing or revoked, or
+ * bound to another Alexa account. A link is bound to the Alexa account (the digest of its user id)
+ * of the first verified request after linking: an access token presented for another account,
+ * should one ever leak, is refused like an unlinked one and the user is asked to link again.
+ */
 export async function resolveLinkedUser(
   accessToken: string | undefined,
   alexaUserId: string | undefined
@@ -125,11 +130,11 @@ export async function resolveLinkedUser(
     link.credentialVersion !== principal.credentialVersion
   )
     return null;
-  if (alexaUserId)
-    await recordAlexaVerification(
-      principal.userId,
-      hashVoiceSecret(alexaUserId)
-    );
+  // Every Alexa request names its user; without one the binding cannot be checked.
+  if (!alexaUserId) return null;
+  const alexaUserHash = hashVoiceSecret(alexaUserId);
+  if (link.alexaUserHash && !secureStringEquals(link.alexaUserHash, alexaUserHash)) return null;
+  if (!(await recordAlexaVerification(principal.userId, alexaUserHash))) return null;
   return principal;
 }
 

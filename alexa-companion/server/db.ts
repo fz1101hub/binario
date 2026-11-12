@@ -384,10 +384,16 @@ function purgeFinishedOAuthArtifactsSometimes(now: Date) {
   );
 }
 
+/**
+ * Records a verified request of an Alexa account (the HMAC digest of its user id) on the user's
+ * link and binds the link to it: the first request after a link records the account, every later
+ * one must come from the same account. False, changing nothing, when the link is already bound to
+ * another Alexa account; a new link (exchangeAuthorizationCode) clears the binding.
+ */
 export async function recordAlexaVerification(
   userId: number,
   alexaUserHash: string
-) {
+): Promise<boolean> {
   const db = await getDb();
   if (!db) throw new Error("Archivio collegamenti vocali non disponibile");
   const now = new Date();
@@ -395,7 +401,14 @@ export async function recordAlexaVerification(
   // hash from anyone else first, so the unique index cannot make the upsert
   // resurrect a different user's (possibly revoked) row. A revocation is only
   // lifted by exchangeAuthorizationCode, never by a routine verification.
-  await db.transaction(async tx => {
+  return db.transaction(async tx => {
+    const [bound] = await tx
+      .select({ alexaUserHash: alexaAccountLinks.alexaUserHash })
+      .from(alexaAccountLinks)
+      .where(eq(alexaAccountLinks.userId, userId))
+      .limit(1)
+      .for("update");
+    if (bound?.alexaUserHash && bound.alexaUserHash !== alexaUserHash) return false;
     await tx
       .update(alexaAccountLinks)
       .set({
@@ -415,6 +428,7 @@ export async function recordAlexaVerification(
       .onDuplicateKeyUpdate({
         set: { alexaUserHash, lastVerifiedAt: now },
       });
+    return true;
   });
 }
 
@@ -478,6 +492,8 @@ export async function exchangeAuthorizationCode(input: {
           linkedAt: now,
           lastVerifiedAt: now,
           revokedAt: null,
+          // A new link binds to the Alexa account of its first verified request (recordAlexaVerification).
+          alexaUserHash: null,
           credentialVersion: sql`${alexaAccountLinks.credentialVersion} + 1`,
         },
       });

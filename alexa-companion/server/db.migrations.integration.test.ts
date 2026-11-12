@@ -15,6 +15,7 @@ import {
   listPersonalRoutes,
   listPersonalRoutesForAlexa,
   purgeFinishedOAuthArtifacts,
+  recordAlexaVerification,
   revokeAllVoiceCredentialsForUser,
   rotateRefreshToken,
   touchExistingUserSession,
@@ -417,6 +418,11 @@ describeDatabase("migrazioni MariaDB reali", () => {
         refreshTokenExpiresAt: new Date(Date.now() + 60_000),
       });
       expect(initialLink).toMatchObject({ userId, credentialVersion: 1 });
+      // The link binds to the first Alexa account that uses it and refuses another one.
+      await expect(recordAlexaVerification(userId, "1".repeat(64))).resolves.toBe(true);
+      await expect(recordAlexaVerification(userId, "1".repeat(64))).resolves.toBe(true);
+      await expect(recordAlexaVerification(userId, "2".repeat(64))).resolves.toBe(false);
+      expect((await getAlexaLinkStatus(userId))?.alexaUserHash).toBe("1".repeat(64));
       // The historical WebDev columns may still hold personal free text in an
       // adopted database: the dashboard never receives them.
       await connection.query(
@@ -455,6 +461,9 @@ describeDatabase("migrazioni MariaDB reali", () => {
       expect(secondLink?.credentialVersion).toBeGreaterThan(
         initialLink?.credentialVersion ?? 0
       );
+      // A new link clears the binding: the next Alexa account (a re-enabled skill) is recorded.
+      expect((await getAlexaLinkStatus(userId))?.alexaUserHash).toBeNull();
+      await expect(recordAlexaVerification(userId, "2".repeat(64))).resolves.toBe(true);
       await expect(
         rotateRefreshToken({
           currentTokenHash: "d".repeat(64),

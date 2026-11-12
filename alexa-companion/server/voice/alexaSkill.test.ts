@@ -23,7 +23,7 @@ vi.mock("../db", () => ({
   exchangeAuthorizationCode: vi.fn(),
   getAlexaLinkStatus: vi.fn(),
   listPersonalRoutesForAlexa: vi.fn(),
-  recordAlexaVerification: vi.fn(),
+  recordAlexaVerification: vi.fn(async () => true),
   rotateRefreshToken: vi.fn(),
 }));
 

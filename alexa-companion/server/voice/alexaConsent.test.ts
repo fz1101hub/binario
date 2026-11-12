@@ -37,7 +37,7 @@ import {
   readAuthorizationRequest,
   signAuthorizationRequest,
 } from "./consent";
-import { issueVoiceAccessToken } from "./crypto";
+import { hashVoiceSecret, issueVoiceAccessToken } from "./crypto";
 
 let server: Server | undefined;
 let baseUrl = "";
@@ -51,7 +51,7 @@ beforeEach(async () => {
     credentialVersion: 3,
     revokedAt: null,
   });
-  dbMocks.recordAlexaVerification.mockResolvedValue(undefined);
+  dbMocks.recordAlexaVerification.mockResolvedValue(true);
   const app = express();
   registerAlexaRoutes(app, { tokenRequestsPerClientPerMinute: 25 });
   server = app.listen(0);
@@ -553,6 +553,39 @@ describe("scambio del code e revoca del collegamento", () => {
       resolveLinkedUser(accessToken, "amzn1.ask.account.TEST")
     ).resolves.toBeNull();
     expect(dbMocks.recordAlexaVerification).not.toHaveBeenCalled();
+  });
+
+  it("lega il collegamento all'account Alexa della prima richiesta verificata", async () => {
+    const accessToken = await issueVoiceAccessToken(7, 3);
+    const linked = (alexaUserHash: string | null) =>
+      dbMocks.getAlexaLinkStatus.mockResolvedValue({ userId: 7, credentialVersion: 3, revokedAt: null, alexaUserHash });
+    const first = hashVoiceSecret("amzn1.ask.account.FIRST");
+    // First request after linking: no binding yet, the account is recorded.
+    linked(null);
+    expect(await resolveLinkedUser(accessToken, "amzn1.ask.account.FIRST")).toEqual({ userId: 7, credentialVersion: 3 });
+    expect(dbMocks.recordAlexaVerification).toHaveBeenLastCalledWith(7, first);
+    // The same account passes.
+    linked(first);
+    expect(await resolveLinkedUser(accessToken, "amzn1.ask.account.FIRST")).toEqual({ userId: 7, credentialVersion: 3 });
+    expect(dbMocks.recordAlexaVerification).toHaveBeenCalledTimes(2);
+    // Another Alexa account with the same token is refused, as an unlinked one, and nothing is recorded.
+    expect(await resolveLinkedUser(accessToken, "amzn1.ask.account.OTHER")).toBeNull();
+    expect(dbMocks.recordAlexaVerification).toHaveBeenCalledTimes(2);
+    // Two first requests racing: the database keeps the first binding and refuses the other.
+    linked(null);
+    dbMocks.recordAlexaVerification.mockResolvedValueOnce(false);
+    expect(await resolveLinkedUser(accessToken, "amzn1.ask.account.OTHER")).toBeNull();
+    // A request that names no Alexa user cannot be checked.
+    expect(await resolveLinkedUser(accessToken, undefined)).toBeNull();
+  });
+
+  it("un nuovo collegamento si lega di nuovo alla prima richiesta: lo scambio azzera il legame", async () => {
+    const accessToken = await issueVoiceAccessToken(7, 4);
+    // After the exchange of a new code the stored binding is NULL (db.exchangeAuthorizationCode):
+    // a new Alexa account, as after re-enabling the skill, is recorded instead of refused.
+    dbMocks.getAlexaLinkStatus.mockResolvedValue({ userId: 7, credentialVersion: 4, revokedAt: null, alexaUserHash: null });
+    expect(await resolveLinkedUser(accessToken, "amzn1.ask.account.NEW")).toEqual({ userId: 7, credentialVersion: 4 });
+    expect(dbMocks.recordAlexaVerification).toHaveBeenLastCalledWith(7, hashVoiceSecret("amzn1.ask.account.NEW"));
   });
 
   it("un token assente, manomesso o di un altro client non identifica alcun utente", async () => {
