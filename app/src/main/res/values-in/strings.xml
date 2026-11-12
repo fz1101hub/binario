@@ -338,7 +338,7 @@
     <string name="journey_leg_funicular">Funikular</string>
     <string name="journey_source_offline">Jadwal offline (data terbuka GTFS)</string>
     <string name="journey_scheduled_only_notice">Jadwal: keterlambatan, peron, dan pembatalan tidak diverifikasi. Periksa layar di stasiun.</string>
-    <string name="journey_coverage_notice">Dihitung di ponsel dengan jadwal yang disertakan dalam aplikasi, hanya untuk jaringan yang dicakupnya: Trenitalia (kereta dan bus), Italo (kereta dan ItaloBus), Lombardia, Tirol Selatan, Trentino, EAV, ARST, TFT, Swiss, Austria, Prancis, dan Kroasia, beberapa kereta regional, serta metro dan trem di beberapa kota. Kereta dan bus lain mungkin tidak muncul.</string>
+    <string name="journey_coverage_notice">Dihitung di ponsel dengan jadwal yang disertakan dalam aplikasi, hanya untuk jaringan yang dicakupnya: Trenitalia (kereta dan bus), Italo (kereta dan ItaloBus), Lombardia, Tirol Selatan, Trentino, EAV, ARST, TFT, Swiss, Austria, dan Prancis, beberapa kereta regional, serta metro dan trem di beberapa kota. Kereta dan bus lain mungkin tidak muncul.</string>
     <string name="journey_incomplete_notice">Beberapa jadwal offline tidak dapat dibaca: perjalanan mungkin tidak lengkap.</string>
     <string name="journey_empty_no_solution">Tidak ada perjalanan di jadwal offline pada rentang waktu yang dicari.</string>
     <string name="journey_empty_not_covered">Jadwal offline yang disertakan tidak mencakup salah satu atau kedua stasiun.</string>

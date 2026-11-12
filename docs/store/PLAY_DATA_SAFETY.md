@@ -165,7 +165,6 @@ La tabella copre ogni host `http(s)://` trovato in `app/src/main/java`, `wear/sr
 | `www.anm.it` | D | Provenienza del pack `napoli-anm-gtfs`, incluso solo nelle build personali; anche nel catalogo |
 | `www.arstspa.info` | D | URL finale (reindirizzamento) del download ARST registrato nel manifest `gtfs-transit/` per `arst-metro-gtfs` |
 | `www.dati.lombardia.it` | D | Provenienza del pack `lombardia-trenord-gtfs`; anche nel catalogo |
-| `www.hzpp.hr` | D | Provenienza del pack `hzpp-gtfs`; anche nel catalogo |
 | `www.trentinotrasporti.it` | D, F | Provenienza del pack `trentino-gtfs`; anche nel catalogo; sito e abbonamenti in Biglietti e assistenza (`links/OfficialLinks.kt`) |
 | `www.wimob.it` | D | Provenienza del pack `eav-gtfs`; anche nel catalogo |
 | `arenaways.it` | E | Catalogo fonti (`RailSourceCatalog.kt`) |

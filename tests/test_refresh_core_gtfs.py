@@ -133,7 +133,7 @@ class FakeDownloads:
 class SelectionTest(unittest.TestCase):
     def test_refresh_core_token_next_to_the_transit_tokens(self) -> None:
         self.assertEqual((False, [], []), acquire.selection_from("build=all refresh-core=all"))
-        self.assertEqual((True, None, ["sncf-gtfs", "hzpp-gtfs"]), acquire.selection_from("validate-netex refresh-core=sncf-gtfs,hzpp-gtfs"))
+        self.assertEqual((True, None, ["sncf-gtfs", "oebb-gtfs"]), acquire.selection_from("validate-netex refresh-core=sncf-gtfs,oebb-gtfs"))
         self.assertEqual((False, ["milano-atm-gtfs"], None), acquire.selection_from("build=milano-atm-gtfs"))
         for text in ("refresh-core=", "refresh-core=,", "refresh-core", "refresh=all"):
             with self.subTest(text=text), self.assertRaises(acquire.AcquisitionError):

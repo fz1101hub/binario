@@ -344,7 +344,7 @@
     <string name="journey_leg_funicular">Tàu leo núi</string>
     <string name="journey_source_offline">Lịch tàu ngoại tuyến theo kế hoạch (dữ liệu mở GTFS)</string>
     <string name="journey_scheduled_only_notice">Giờ theo lịch: mức trễ, sân ga và chuyến bị hủy chưa được kiểm tra. Hãy xem màn hình thông tin tại ga.</string>
-    <string name="journey_coverage_notice">Được tính trên điện thoại bằng lịch tàu có sẵn trong ứng dụng, chỉ cho các mạng lưới mà lịch này bao phủ: Trenitalia (tàu và xe buýt), Italo (tàu và ItaloBus), Lombardy, Nam Tyrol, Trentino, EAV, ARST, TFT, Thụy Sĩ, Áo, Pháp và Croatia, một số tuyến đường sắt khu vực, cùng tàu điện ngầm và tàu điện mặt đất của một số thành phố. Các tàu và xe buýt khác có thể không xuất hiện.</string>
+    <string name="journey_coverage_notice">Được tính trên điện thoại bằng lịch tàu có sẵn trong ứng dụng, chỉ cho các mạng lưới mà lịch này bao phủ: Trenitalia (tàu và xe buýt), Italo (tàu và ItaloBus), Lombardy, Nam Tyrol, Trentino, EAV, ARST, TFT, Thụy Sĩ, Áo và Pháp, một số tuyến đường sắt khu vực, cùng tàu điện ngầm và tàu điện mặt đất của một số thành phố. Các tàu và xe buýt khác có thể không xuất hiện.</string>
     <string name="journey_incomplete_notice">Không đọc được một số lịch tàu ngoại tuyến: các phương án có thể chưa đầy đủ.</string>
     <string name="journey_empty_no_solution">Không có phương án nào trong lịch tàu ngoại tuyến cho khung giờ đã tìm.</string>
     <string name="journey_empty_not_covered">Lịch tàu ngoại tuyến có sẵn không bao gồm một hoặc cả hai ga.</string>

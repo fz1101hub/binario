@@ -338,7 +338,7 @@
     <string name="journey_leg_funicular">ケーブルカー</string>
     <string name="journey_source_offline">オフラインの時刻表（GTFS オープンデータ）</string>
     <string name="journey_scheduled_only_notice">時刻表の時刻です。遅れ、番線、運休は確認されていません。駅の案内表示を確認してください。</string>
-    <string name="journey_coverage_notice">アプリに収録した時刻表を使ってスマートフォン上で計算しています。対象は収録している路線網のみです：Trenitalia（列車とバス）、Italo（列車と ItaloBus）、ロンバルディア、南チロル、トレンティーノ、EAV、ARST、TFT、スイス、オーストリア、フランス、クロアチア、一部の地方鉄道、一部都市の地下鉄と路面電車。その他の列車やバスは表示されない場合があります。</string>
+    <string name="journey_coverage_notice">アプリに収録した時刻表を使ってスマートフォン上で計算しています。対象は収録している路線網のみです：Trenitalia（列車とバス）、Italo（列車と ItaloBus）、ロンバルディア、南チロル、トレンティーノ、EAV、ARST、TFT、スイス、オーストリア、フランス、一部の地方鉄道、一部都市の地下鉄と路面電車。その他の列車やバスは表示されない場合があります。</string>
     <string name="journey_incomplete_notice">一部のオフライン時刻表を読み込めませんでした。経路が不完全な可能性があります。</string>
     <string name="journey_empty_no_solution">検索した時間帯のオフライン時刻表に経路はありません。</string>
     <string name="journey_empty_not_covered">収録しているオフライン時刻表は、一方または両方の駅に対応していません。</string>

@@ -108,7 +108,7 @@ ViaggiaTreno `soluzioniViaggioNew` è stato verificato dai runner il **2 novembr
 
 ### Ferrovie regionali, metropolitane e tram (novembre 2026)
 
-Pack aggiunti accanto ai dodici del primo rilascio, che restano invariati: le ferrovie regionali pubblicate sul National Access Point e le reti urbane di metropolitane, tram e funicolari. Ordine, priorità e gating delle fonti esistenti non cambiano; i nuovi pack entrano dopo quelli esistenti e solo nei calcoli offline (tratte e tabelloni per le ferrovie, viaggi con cambi per tutti).
+Pack aggiunti accanto a quelli del primo rilascio (undici dal novembre 2026, tolto il pack croato HŽPP), che restano invariati: le ferrovie regionali pubblicate sul National Access Point e le reti urbane di metropolitane, tram e funicolari. Ordine, priorità e gating delle fonti esistenti non cambiano; i nuovi pack entrano dopo quelli esistenti e solo nei calcoli offline (tratte e tabelloni per le ferrovie, viaggi con cambi per tutti).
 
 | Fonte | `SourceId` | Distribuzione | Licenza | Tipo | Pack | Corse / fermate | Fino al |
 |---|---|---|---|---|---|---|---|

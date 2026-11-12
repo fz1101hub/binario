@@ -18,7 +18,6 @@ Binario introdurrà un **adapter GTFS statico riutilizzabile** per tutti i feed 
 | Fonte | Stato di test al 14 agosto 2026 | Integrazione proposta |
 |---|---|---|
 | ARST GTFS | ZIP HTTPS 200, set minimo GTFS verificato | `GtfsStaticProvider`, data pack italiano |
-| HŽPP GTFS | ZIP HTTPS 200, set minimo GTFS verificato | `GtfsStaticProvider`, copertura internazionale da filtrare sul tratto italiano |
 | SNCF GTFS | ZIP HTTPS 200, set minimo GTFS verificato | `GtfsStaticProvider`, TGV/TER transfrontalieri |
 | SNCF GTFS-RT | protobuf HTTPS 200 per Trip Updates e Service Alerts | Adapter realtime futuro; fixture binarie e parser protobuf separati |
 | Trentino Trasporti GTFS | ZIP HTTPS 200 | `GtfsStaticProvider`, validazione contenuto prima di attivazione |
@@ -43,7 +42,6 @@ L’ispettore applica limiti su numero di entry, dimensione compressa e non comp
 
 [1]: https://gtfs.org/documentation/schedule/reference/ "GTFS Schedule Reference"
 [2]: https://www.arst.sardegna.it/open-data/ "ARST — Open Data"
-[3]: https://www.hzpp.hr/en/timetable "HŽ Putnički prijevoz — timetable e GTFS"
 [4]: https://ressources.data.sncf.com/pages/accueil/ "SNCF Open Data"
 [5]: https://data.oebb.at/de/datensaetze~soll-fahrplan-gtfs~ "ÖBB GTFS e CC BY 4.0"
 [6]: https://opentransportdata.swiss/en/terms-of-use/ "Open Data Platform Mobility Switzerland — condizioni d’uso"

@@ -71,7 +71,7 @@ def write_inputs(root: Path, **feed_options: object) -> tuple[Path, Path]:
     gtfs = root / "gtfs"
     gtfs.mkdir()
     packs = []
-    for index in range(10):
+    for index in range(builder.INDEXED_PACK_COUNT):
         archive = gtfs / f"pack-{index}.zip"
         options = dict(feed_options)
         options["unsafe"] = bool(feed_options.get("unsafe")) and index == 0
@@ -97,8 +97,8 @@ class IosGtfsScheduleTest(unittest.TestCase):
 
     def test_build_keeps_complete_trip_and_encodes_service_days(self) -> None:
         _, _, output, _, result = self.build()
-        self.assertEqual(10, result["rowCounts"]["trip"])
-        self.assertEqual(20, result["rowCounts"]["stop_time"])
+        self.assertEqual(builder.INDEXED_PACK_COUNT, result["rowCounts"]["trip"])
+        self.assertEqual(2 * builder.INDEXED_PACK_COUNT, result["rowCounts"]["stop_time"])
         raw = self.temp / "raw.sqlite"
         raw.write_bytes(zlib.decompress(output.read_bytes()))
         connection = sqlite3.connect(raw)
@@ -143,7 +143,7 @@ class IosGtfsScheduleTest(unittest.TestCase):
     def test_verifier_accepts_output_and_rejects_tampering(self) -> None:
         _, _, output, metadata, _ = self.build()
         checked = verifier.verify(output, metadata, max_compressed_bytes=4 * 1024 * 1024, max_database_bytes=16 * 1024 * 1024)
-        self.assertEqual(10, checked["rowCounts"]["pack"])
+        self.assertEqual(builder.INDEXED_PACK_COUNT, checked["rowCounts"]["pack"])
         output.write_bytes(output.read_bytes() + b"x")
         with self.assertRaises(verifier.VerificationError):
             verifier.verify(output, metadata, max_compressed_bytes=4 * 1024 * 1024, max_database_bytes=16 * 1024 * 1024)
@@ -288,12 +288,12 @@ class IosGtfsScheduleTest(unittest.TestCase):
         metadata = self.temp / "policy.metadata.json"
         options = {"source_policy_path": policy, "max_compressed_bytes": 4 * 1024 * 1024}
         policy.write_text(json.dumps({"schemaVersion": 1, "sources": sources}), encoding="utf-8")
-        with self.assertRaisesRegex(builder.BuildError, "differ from reviewed iOS policy|exactly 10 packs"):
+        with self.assertRaisesRegex(builder.BuildError, "differ from reviewed iOS policy|exactly 9 packs"):
             builder.build_database(manifest, catalog, output, metadata, **options)
         excluded = {"sourceId": "national-gtfs", "sourceUrl": "https://example.test/national.zip", "accessMode": "OPEN_DIRECT", "reason": "bus legs"}
         policy.write_text(json.dumps({"schemaVersion": 1, "sources": sources, "androidOnlySources": [excluded]}), encoding="utf-8")
         result = builder.build_database(manifest, catalog, output, metadata, **options)
-        self.assertEqual(10, result["rowCounts"]["pack"])
+        self.assertEqual(builder.INDEXED_PACK_COUNT, result["rowCounts"]["pack"])
         verifier.verify(output, metadata, source_policy_path=policy, max_compressed_bytes=4 * 1024 * 1024, max_database_bytes=16 * 1024 * 1024)
         # A drifted URL of the excluded pack still fails closed.
         policy.write_text(json.dumps({"schemaVersion": 1, "sources": sources, "androidOnlySources": [dict(excluded, sourceUrl="https://attacker.invalid/x.zip")]}), encoding="utf-8")

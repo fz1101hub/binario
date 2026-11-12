@@ -356,7 +356,7 @@
     <string name="journey_leg_funicular">Funiculaire</string>
     <string name="journey_source_offline">Horaire théorique hors ligne (open data GTFS)</string>
     <string name="journey_scheduled_only_notice">Horaires théoriques : retards, voies et suppressions ne sont pas vérifiés. Consultez les écrans en gare.</string>
-    <string name="journey_coverage_notice">Calculé sur le téléphone avec les horaires inclus dans l’app, uniquement pour les réseaux qu’ils couvrent : Trenitalia (trains et cars), Italo (trains et ItaloBus), Lombardie, Haut-Adige, Trentin, EAV, ARST, TFT, Suisse, Autriche, France et Croatie, quelques chemins de fer régionaux, et les métros et tramways de quelques villes. D’autres trains et cars peuvent manquer.</string>
+    <string name="journey_coverage_notice">Calculé sur le téléphone avec les horaires inclus dans l’app, uniquement pour les réseaux qu’ils couvrent : Trenitalia (trains et cars), Italo (trains et ItaloBus), Lombardie, Haut-Adige, Trentin, EAV, ARST, TFT, Suisse, Autriche et France, quelques chemins de fer régionaux, et les métros et tramways de quelques villes. D’autres trains et cars peuvent manquer.</string>
     <string name="journey_incomplete_notice">Certains horaires hors ligne n’ont pas pu être lus : les trajets peuvent être incomplets.</string>
     <string name="journey_empty_no_solution">Aucun trajet dans les horaires hors ligne pour la plage horaire recherchée.</string>
     <string name="journey_empty_not_covered">Les horaires hors ligne inclus ne couvrent pas l’une des gares ou les deux.</string>

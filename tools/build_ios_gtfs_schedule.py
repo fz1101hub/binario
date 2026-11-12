@@ -65,6 +65,9 @@ CO_LOCATED_DUPLICATE_KM = 1.0
 # A GTFS name that is only the leading part of a catalogue name ("Merano" for
 # "Merano Meran") must be this close to it.
 MAX_PREFIX_MATCH_DISTANCE_KM = 1.0
+# The packs of the Android core manifest the index reads (androidOnlySources aside): ten until the Croatian HŽPP pack
+# was removed in November 2026.
+INDEXED_PACK_COUNT = 9
 RAIL_ROUTE_TYPES = frozenset({2, *range(100, 200)})
 EXCLUSIVE_RAIL_ROUTE_IDS: Mapping[str, frozenset[str]] = {
     # TFT publishes its two railway lines as route_type=3 (bus).
@@ -650,7 +653,7 @@ def read_manifest(
         raise BuildError("GTFS manifest generatedAt is not a valid calendar date") from error
     packs = manifest.get("packs")
     if not isinstance(packs, list):
-        raise BuildError("GTFS manifest must contain exactly 10 packs")
+        raise BuildError(f"GTFS manifest must contain exactly {INDEXED_PACK_COUNT} packs")
     policy_by_id: dict[str, tuple[str, str]] | None = None
     android_only: dict[str, tuple[str, str]] = {}
     policy_bytes: bytes | None = None
@@ -661,8 +664,8 @@ def read_manifest(
         except (json.JSONDecodeError, UnicodeError) as error:
             raise BuildError(f"cannot read GTFS source policy: {error}") from error
         sources = policy.get("sources") if isinstance(policy, dict) else None
-        if not isinstance(policy, dict) or policy.get("schemaVersion") != 1 or not isinstance(sources, list) or len(sources) != 10:
-            raise BuildError("GTFS source policy must contain exactly 10 schema-v1 sources")
+        if not isinstance(policy, dict) or policy.get("schemaVersion") != 1 or not isinstance(sources, list) or len(sources) != INDEXED_PACK_COUNT:
+            raise BuildError(f"GTFS source policy must contain exactly {INDEXED_PACK_COUNT} schema-v1 sources")
         policy_by_id = {}
         for index, source in enumerate(sources):
             if not isinstance(source, dict) or set(source) != {"sourceId", "sourceUrl", "accessMode", "licence", "landingPage"}:
@@ -707,8 +710,8 @@ def read_manifest(
     if set(android_only) - {item.get("sourceId") for item in packs if isinstance(item, dict)}:
         raise BuildError("GTFS source policy androidOnlySources names packs absent from the manifest")
     packs = indexed_packs
-    if len(packs) != 10:
-        raise BuildError("GTFS manifest must contain exactly 10 packs")
+    if len(packs) != INDEXED_PACK_COUNT:
+        raise BuildError(f"GTFS manifest must contain exactly {INDEXED_PACK_COUNT} packs")
     inputs = [
         InputFile(manifest_path.as_posix(), len(manifest_bytes), hashlib.sha256(manifest_bytes).hexdigest()),
         InputFile(catalog_path.as_posix(), catalog_path.stat().st_size, sha256_file(catalog_path)),

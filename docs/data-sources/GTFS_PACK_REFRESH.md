@@ -50,7 +50,7 @@ python3 tools/build_gtfs_packs.py --only oebb-gtfs \
 
 Se il file ha un nuovo nome (un archivio per anno orario), aggiornare prima `sourceUrl` di `oebb-gtfs` nel manifest, nella policy iOS e in `RailSourceCatalog.kt`; poi la data in `EmbeddedGtfsPacks.kt`, i controlli e l'indice iOS come sopra.
 
-**Cambio orario del 13 dicembre 2026.** STA, Svizzera, ÖBB, Trenord, TFT, HŽPP, Italo e Mi.Co.Tra. terminano il 12 dicembre 2026: dal 13 novembre 2026 il gate a 30 giorni li blocca (ARST, EAV e gran parte delle reti urbane dal 2 dicembre); il controllo settimanale li segnala come avviso già 45 giorni prima. Ripetere il dispatch ogni settimana finché gli editori pubblicano l'orario 2027 e la tabella li mostra aggiornati. Il pack svizzero è registrato su un file datato (`gtfs_fp2026_2025-08-14.zip`): il job riscarica sempre lo stesso archivio, quindi per l'orario 2027 serve un nuovo URL rivisto (manifest, policy iOS e `RailSourceCatalog.kt`), come per ÖBB.
+**Cambio orario del 13 dicembre 2026.** STA, Svizzera, ÖBB, Trenord, TFT, Italo e Mi.Co.Tra. terminano il 12 dicembre 2026: dal 13 novembre 2026 il gate a 30 giorni li blocca (ARST, EAV e gran parte delle reti urbane dal 2 dicembre); il controllo settimanale li segnala come avviso già 45 giorni prima. Ripetere il dispatch ogni settimana finché gli editori pubblicano l'orario 2027 e la tabella li mostra aggiornati. Il pack svizzero è registrato su un file datato (`gtfs_fp2026_2025-08-14.zip`): il job riscarica sempre lo stesso archivio, quindi per l'orario 2027 serve un nuovo URL rivisto (manifest, policy iOS e `RailSourceCatalog.kt`), come per ÖBB.
 
 ## Cadenza e verifica
 
@@ -129,7 +129,7 @@ In alternativa `--refresh --source-id trenitalia-gtfs --only trenitalia-gtfs` sc
 
 ## Ferrovie regionali e reti urbane (`gtfs-transit/`, `gtfs-personal/`)
 
-Dal novembre 2026 le ferrovie regionali pubblicate sul National Access Point e le reti di metropolitane, tram e funicolari sono pack separati dai dodici del primo rilascio (`gtfs/`, job `core-packs`):
+Dal novembre 2026 le ferrovie regionali pubblicate sul National Access Point e le reti di metropolitane, tram e funicolari sono pack separati da quelli del primo rilascio (`gtfs/`, job `core-packs`; undici da quando, nel novembre 2026, è stato tolto il pack croato HŽPP, senza stazioni italiane):
 
 - `app/src/main/assets/gtfs-transit/`: dati aperti, in ogni build;
 - `app/src/personal/assets/gtfs-personal/`: licenza non commerciale o non dichiarata, solo nelle build personali (`-Pbinario.personalSources=true`; predefinito `true` per debug e `false` per release, vedi `SOURCE_POLICY.md`). Il job `transit-packs` li stampa nel log, che in questo repository pubblico è pubblico, solo con l'input `print_personal_packs=true` (predefinito no): senza, l'helper non li aggiorna (decisione del titolare in `SOURCE_POLICY.md`, audit A7-04).

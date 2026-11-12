@@ -45,13 +45,6 @@
     },
     {
       "accessMode": "OPEN_DIRECT",
-      "landingPage": "https://www.hzpp.hr/en/timetable",
-      "licence": null,
-      "sourceId": "hzpp-gtfs",
-      "sourceUrl": "https://www.hzpp.hr/GTFS_files.zip"
-    },
-    {
-      "accessMode": "OPEN_DIRECT",
       "landingPage": "https://www.dati.lombardia.it/Mobilit-e-trasporti/Orario-Ferroviario-Regionale-Gtfs/3z4k-mxz9",
       "licence": null,
       "sourceId": "lombardia-trenord-gtfs",

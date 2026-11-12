@@ -350,7 +350,7 @@
     <string name="journey_leg_funicular">Funicular</string>
     <string name="journey_source_offline">Horário programado offline (dados abertos GTFS)</string>
     <string name="journey_scheduled_only_notice">Horários programados: atrasos, plataformas e cancelamentos não são verificados. Confira os monitores na estação.</string>
-    <string name="journey_coverage_notice">Calculado no celular com os horários incluídos no app, apenas para as redes que eles cobrem: Trenitalia (trens e ônibus), Italo (trens e ItaloBus), Lombardia, Alto Ádige, Trentino, EAV, ARST, TFT, Suíça, Áustria, França e Croácia, algumas ferrovias regionais e metrôs e bondes de algumas cidades. Outros trens e ônibus podem não aparecer.</string>
+    <string name="journey_coverage_notice">Calculado no celular com os horários incluídos no app, apenas para as redes que eles cobrem: Trenitalia (trens e ônibus), Italo (trens e ItaloBus), Lombardia, Alto Ádige, Trentino, EAV, ARST, TFT, Suíça, Áustria e França, algumas ferrovias regionais e metrôs e bondes de algumas cidades. Outros trens e ônibus podem não aparecer.</string>
     <string name="journey_incomplete_notice">Alguns horários offline não puderam ser lidos: as opções podem estar incompletas.</string>
     <string name="journey_empty_no_solution">Nenhuma opção nos horários offline no intervalo de tempo buscado.</string>
     <string name="journey_empty_not_covered">Os horários offline incluídos não cobrem uma ou ambas as estações.</string>

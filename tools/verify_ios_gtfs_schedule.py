@@ -16,6 +16,8 @@ from typing import Sequence
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 APPLICATION_ID = int.from_bytes(b"BNGT", "big")
+# Packs in the index; the same value as build_ios_gtfs_schedule.INDEXED_PACK_COUNT.
+INDEXED_PACK_COUNT = 9
 USER_VERSION = 2
 METADATA_SCHEMA_VERSION = 1
 MAX_METADATA_BYTES = 4 * 1024 * 1024
@@ -79,12 +81,12 @@ def verify_input_fingerprint(
     files = inputs.get("files")
     expected_fingerprint = inputs.get("fingerprintSha256")
     base_path = inputs.get("basePath")
-    expected_count = 13 if source_policy_path is not None else 12
+    expected_count = INDEXED_PACK_COUNT + (3 if source_policy_path is not None else 2)
     require(
         isinstance(files, list) and len(files) == expected_count,
-        "metadata must describe manifest, catalog, reviewed source policy, and 10 archives"
+        f"metadata must describe manifest, catalog, reviewed source policy, and {INDEXED_PACK_COUNT} archives"
         if source_policy_path is not None
-        else "metadata must describe manifest, catalog, and 10 archives",
+        else f"metadata must describe manifest, catalog, and {INDEXED_PACK_COUNT} archives",
     )
     require(isinstance(expected_fingerprint, str) and len(expected_fingerprint) == 64, "invalid input fingerprint")
     require(isinstance(base_path, str) and base_path, "metadata input basePath is missing")
@@ -113,7 +115,7 @@ def verify_input_fingerprint(
         descriptors.append({"path": raw_path, "size": expected_size, "sha256": expected_hash})
     actual_fingerprint = hashlib.sha256(canonical_json(descriptors)).hexdigest()
     require(actual_fingerprint == expected_fingerprint, "input fingerprint mismatch")
-    require(inputs.get("packCount") == 10, "metadata pack count must be 10")
+    require(inputs.get("packCount") == INDEXED_PACK_COUNT, f"metadata pack count must be {INDEXED_PACK_COUNT}")
     if source_policy_path is not None:
         require(source_policy_path.resolve() in resolved_inputs, "reviewed GTFS source policy is absent from the input fingerprint")
     return actual_fingerprint
@@ -199,7 +201,7 @@ def verify_database(path: Path, metadata: dict[str, object], input_fingerprint: 
         require(actual_indices == REQUIRED_INDICES, f"index mismatch: {sorted(actual_indices)}")
         counts = {table: int(connection.execute(f"SELECT count(*) FROM {table}").fetchone()[0]) for table in REQUIRED_TABLE_COLUMNS if table != "metadata"}
         require(counts == expected_counts, f"row count mismatch: expected {expected_counts}, got {counts}")
-        require(counts["pack"] == 10, "database must contain exactly 10 packs")
+        require(counts["pack"] == INDEXED_PACK_COUNT, f"database must contain exactly {INDEXED_PACK_COUNT} packs")
         require(counts["trip"] > 0 and counts["stop_time"] > 0, "schedule is empty")
         embedded = dict(connection.execute("SELECT key,value FROM metadata"))
         require(embedded.get("input_fingerprint_sha256") == input_fingerprint, "embedded input fingerprint mismatch")

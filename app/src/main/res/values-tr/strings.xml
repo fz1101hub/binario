@@ -350,7 +350,7 @@
     <string name="journey_leg_funicular">Füniküler</string>
     <string name="journey_source_offline">Çevrimdışı planlanan tarife (GTFS açık verileri)</string>
     <string name="journey_scheduled_only_notice">Planlanan saatler: gecikmeler, peronlar ve iptaller doğrulanmamıştır. İstasyondaki ekranları kontrol edin.</string>
-    <string name="journey_coverage_notice">Telefonda, uygulamaya dahil tarifelerle ve yalnızca bunların kapsadığı ağlar için hesaplanır: Trenitalia (tren ve otobüs), Italo (tren ve ItaloBus), Lombardiya, Güney Tirol, Trentino, EAV, ARST, TFT, İsviçre, Avusturya, Fransa ve Hırvatistan, bazı bölgesel demiryolları ile bazı şehirlerin metro ve tramvayları. Diğer trenler ve otobüsler görünmeyebilir.</string>
+    <string name="journey_coverage_notice">Telefonda, uygulamaya dahil tarifelerle ve yalnızca bunların kapsadığı ağlar için hesaplanır: Trenitalia (tren ve otobüs), Italo (tren ve ItaloBus), Lombardiya, Güney Tirol, Trentino, EAV, ARST, TFT, İsviçre, Avusturya ve Fransa, bazı bölgesel demiryolları ile bazı şehirlerin metro ve tramvayları. Diğer trenler ve otobüsler görünmeyebilir.</string>
     <string name="journey_incomplete_notice">Bazı çevrimdışı tarifeler okunamadı: seçenekler eksik olabilir.</string>
     <string name="journey_empty_no_solution">Aranan saat aralığında çevrimdışı tarifelerde seçenek yok.</string>
     <string name="journey_empty_not_covered">Dahil edilen çevrimdışı tarifeler istasyonlardan birini veya ikisini kapsamıyor.</string>
