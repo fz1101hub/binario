@@ -17,6 +17,10 @@ struct DeparturesView: View {
     @Environment(\.scenePhase) private var scenePhase
     /// The minute the board is read at; the timetable-zone caption follows it.
     @State private var clock = Date()
+    /// The app went to the background since the board was read: it is read again from now when
+    /// the app comes back. Back from «inactive» only (Control Centre, a notification pulled down)
+    /// the list keeps its «Più tardi» pages and its scroll position; only the trains that left go.
+    @State private var returnsFromBackground = false
 
     var body: some View {
         Form {
@@ -65,10 +69,21 @@ struct DeparturesView: View {
         }
         .refreshable { await refresh() }
         .onChange(of: scenePhase) { _, phase in
-            guard phase == .active else { return }
-            // Back in the app: the board is read again from now (its live board by RootView).
-            clock = Date()
-            Task { await model.reloadBoard() }
+            switch phase {
+            case .background:
+                returnsFromBackground = true
+            case .active:
+                clock = Date()
+                if returnsFromBackground {
+                    returnsFromBackground = false
+                    // Back in the app: the board is read again from now (its live board by RootView).
+                    Task { await model.reloadBoard() }
+                } else {
+                    Task { await model.refreshBoardIfNeeded() }
+                }
+            default:
+                break
+            }
         }
         .onAppear { model.boardLiveDidAppear() }
         .onDisappear { model.boardLiveDidDisappear() }
