@@ -169,6 +169,35 @@ jobs:
           :app:lintVitalRelease :wear:lintVitalRelease
           :app:lintRelease :wear:lintRelease
 
+      # Tests that depend on the embedded data (a pack sample, a city network) end in an assumption when a refresh
+      # drops what they sample: green but silent. Each skip becomes a warning (second audit, ci-tests-build
+      # improvement 8); the live source checks skip by design here and report in live-sources.yml.
+      - name: Report skipped unit tests
+        if: always()
+        run: |
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+          import xml.etree.ElementTree as ET
+
+          def escape(text):
+              return text.replace('%', '%25').replace('\r', '%0D').replace('\n', '%0A')
+
+          skipped = []
+          for module in ('app', 'wear'):
+              for path in sorted(Path(module, 'build/test-results/testDebugUnitTest').glob('TEST-*.xml')):
+                  for case in ET.parse(path).getroot().iter('testcase'):
+                      name = f"{case.get('classname', '')}.{case.get('name', '')}"
+                      if case.find('skipped') is not None and 'LiveProviderNetworkTest' not in name:
+                          skipped.append(name)
+          for name in skipped:
+              print(f"::warning title=Test unitario saltato::{escape(name)}: presupposto non soddisfatto (dati inclusi cambiati?)")
+          summary = os.environ.get('GITHUB_STEP_SUMMARY')
+          if skipped and summary:
+              with open(summary, 'a', encoding='utf-8') as stream:
+                  stream.write(f"### Test unitari saltati: {len(skipped)}\n\n" + "".join(f"- `{name}`\n" for name in skipped))
+          PY
+
       - name: Verify unsigned Google Play bundles
         shell: bash
         run: |
