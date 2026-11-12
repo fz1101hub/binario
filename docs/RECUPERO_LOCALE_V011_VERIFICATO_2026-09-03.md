@@ -1,5 +1,7 @@
 # Binario v0.1.1 — recupero locale verificato
 
+> **Documento storico.** Descrive lo stato del progetto alla sua data e non viene aggiornato: lo stato attuale è in [AZIONI_TITOLARE.md](AZIONI_TITOLARE.md) e nel [CHANGELOG](../CHANGELOG.md).
+
 ## Perimetro controllato
 
 Questo controllo usa esclusivamente la cartella locale originaria `/home/ubuntu/binario-companion-native` e la sua copia già presente nel ramo `recovery/expo-companion-session-20260903`. Non utilizza archivio di sessione, versioni v0.20.x o codice del repository storico per stabilire provenienza o completezza.

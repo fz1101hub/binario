@@ -1,5 +1,7 @@
 # Handoff — livello dati operativo di Binario
 
+> **Documento storico.** Descrive lo stato del progetto alla sua data e non viene aggiornato: lo stato attuale è in [AZIONI_TITOLARE.md](../AZIONI_TITOLARE.md) e nel [CHANGELOG](../../CHANGELOG.md).
+
 **Ramo canonico di integrazione:** `feature/data-foundations`
 
 **Baseline iniziale:** `main` v0.15.0, commit `1345111e03f3ac17cb08d5605a3fb9f09950aa6f`

@@ -143,6 +143,7 @@ def load_ci_lock(path: Path = LOCK_PATH) -> dict[str, Any]:
             "Build and test integrated iPhone and Watch app",
             "Archive Release build and check the App Store bundle layout",
             "Gate GTFS freshness of the iOS timetable index for at least 30 days",
+            "Gate punctuality statistics coverage of the iPhone app",
             "Report GTFS freshness without failing",
         },
     }
@@ -396,6 +397,40 @@ def _check_freshness_gates(path: Path, workflow: Mapping[str, Any], problems: li
     for key in FRESHNESS_GATES:
         if key[0] == path.name and key not in found:
             problems.append(f"{path.name}:{key[1]}: gate di freshness GTFS a 30 giorni assente")
+
+
+# The release gate of the punctuality statistics (second audit, tools-data-5) follows the same paths: every build that
+# may be signed and uploaded checks the covered days and the age of the window; no other run does.
+PUNCTUALITY_RELEASE_GATE = "tools/build_punctuality_stats.py --release-check"
+PUNCTUALITY_RELEASE_GATES: Mapping[tuple[str, str], str | None] = {
+    ("android-ci.yml", "android"): STABILIZATION_PULL_REQUEST,
+    ("android-ci.yml", "release-sign"): None,
+    ("apple-watch-ci.yml", "ios"): IOS_RELEASE_ARCHIVE,
+}
+
+
+def _check_punctuality_release_gates(path: Path, workflow: Mapping[str, Any], problems: list[str]) -> None:
+    """The punctuality release gate runs only on release paths, in a step of its own, and is on each of them."""
+    jobs = _mapping(workflow.get("jobs")) or {}
+    found: set[tuple[str, str]] = set()
+    for job_name, raw_job in jobs.items():
+        steps = (_mapping(raw_job) or {}).get("steps")
+        for raw_step in steps if isinstance(steps, list) else []:
+            step = _mapping(raw_step) or {}
+            command = _commands(step.get("run"))
+            if PUNCTUALITY_RELEASE_GATE not in command:
+                continue
+            key = (path.name, str(job_name))
+            if key not in PUNCTUALITY_RELEASE_GATES:
+                problems.append(f"{path.name}:{job_name}: gate di rilascio delle statistiche fuori dai percorsi di release")
+                continue
+            if step.get("if") != PUNCTUALITY_RELEASE_GATES[key] or "continue-on-error" in step or len(command.splitlines()) != 1:
+                problems.append(f"{path.name}:{job_name}: il gate di rilascio delle statistiche deve essere uno step a sé, "
+                                "solo sui percorsi di release e senza continue-on-error")
+            found.add(key)
+    for key in PUNCTUALITY_RELEASE_GATES:
+        if key[0] == path.name and key not in found:
+            problems.append(f"{path.name}:{key[1]}: gate di rilascio delle statistiche di puntualità assente")
 
 
 # Write scopes a workflow or job may hold after review: (workflow, job or "*" for the top level, scope). None today:
@@ -760,8 +795,11 @@ def _check_apple_paths(
         "apple-watch/**",
         "app/src/main/assets/gtfs/**",
         "app/src/main/assets/stations/curated_it_rail_stations.json",
+        "app/src/main/assets/punctuality/**",
         "contracts/wear-snapshot/**",
         "tools/build_ios_gtfs_schedule.py",
+        "tools/build_gtfs_packs.py",
+        "tools/refresh_core_gtfs.py",
         "tools/verify_ios_gtfs_schedule.py",
         "tools/verify_ios_gtfs_rebuild.py",
         "tools/install_xcodegen.py",
@@ -823,12 +861,22 @@ def _check_linux_trigger_budget(
         "android-ci.yml": {"app/**", "wear/**", "contracts/wear-snapshot/**"},
         # The document gates of the offline tests must run when their documents change (audit A7-11).
         "gtfs-assets-ci.yml": {
-            "docs/store/**",
+            "docs/**",
             "docs/data-sources/SOURCE_POLICY.md",
             "PRIVACY.md",
             "app/src/main/res/xml/locale_config.xml",
             "tools/**",
             "tests/**",
+            # Read by the offline tests (second audit, ci-tests-build-6).
+            "store/**",
+            "ios/Resources/**",
+            "companion-expo/assets/brand/**",
+        },
+        # The skill bundles the punctuality statistics and the station catalogue (ci-tests-build-6).
+        "alexa-companion-ci.yml": {
+            "alexa-companion/**",
+            "app/src/main/assets/punctuality/**",
+            "app/src/main/assets/stations/curated_it_rail_stations.json",
         },
         "companion-ci.yml": {
             "companion-expo/**",
@@ -842,6 +890,13 @@ def _check_linux_trigger_budget(
         missing = required_paths - actual
         if missing:
             problems.append(f"{path.name}: {event_name}.paths non copre input condivisi: {sorted(missing)}")
+
+    if path.name == "android-ci.yml":
+        # A merge to main must not cancel a release-signing dispatch, nor a dispatch the post-merge run (ci-tests-build-9).
+        group = str((_mapping(workflow.get("concurrency")) or {}).get("group", ""))
+        if "github.event_name == 'workflow_dispatch' && github.run_id" not in group:
+            problems.append(f"{path.name}: il gruppo di concurrency deve separare i dispatch (github.run_id), "
+                            "o un merge annulla la firma di release")
 
     if path.name in {"android-ci.yml", "companion-ci.yml"}:
         workflow_dispatch = _mapping(triggers.get("workflow_dispatch")) or {}
@@ -1214,6 +1269,7 @@ def workflow_problems(
 
     _check_linux_trigger_budget(path, root or {}, lock, problems)
     _check_freshness_gates(path, root or {}, problems)
+    _check_punctuality_release_gates(path, root or {}, problems)
     _check_permissions(path, root or {}, problems)
     _check_run_hygiene(path, root or {}, problems)
     _check_triggers_checkouts_and_secrets(path, root or {}, problems)

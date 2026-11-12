@@ -1,5 +1,7 @@
 # Stato consolidato della stabilizzazione Binario
 
+> **Documento storico.** Descrive lo stato del progetto alla sua data e non viene aggiornato: lo stato attuale è in [AZIONI_TITOLARE.md](AZIONI_TITOLARE.md) e nel [CHANGELOG](../CHANGELOG.md).
+
 **Data:** 30 settembre 2026
 
 **Autore:** Manus AI

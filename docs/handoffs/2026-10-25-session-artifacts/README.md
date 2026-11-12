@@ -1,5 +1,7 @@
 # Materiale di lavoro della sessione del 25 ottobre 2026
 
+> **Documento storico.** Descrive lo stato del progetto alla sua data e non viene aggiornato: lo stato attuale è in [AZIONI_TITOLARE.md](../../AZIONI_TITOLARE.md) e nel [CHANGELOG](../../../CHANGELOG.md).
+
 Copia di tutto ciò che esisteva solo nel container della sessione di preparazione agli store e che sarebbe
 andato perso al suo riciclo. Il contesto e lo stato del lavoro sono in `../2026-10-25-STORE_READINESS_HANDOFF.md`.
 I percorsi assoluti sotto `/tmp/claude-0/...` citati nei file sono quelli del container originale.

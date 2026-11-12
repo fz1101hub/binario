@@ -4,6 +4,9 @@ on:
   pull_request:
     paths:
       - "alexa-companion/**"
+      # The build copies these two files into the skill (scripts/rail-data.mjs) and the station tests read them.
+      - "app/src/main/assets/punctuality/**"
+      - "app/src/main/assets/stations/curated_it_rail_stations.json"
       - ".github/workflows/alexa-companion-ci.yml"
   push:
     branches:
@@ -11,6 +14,9 @@ on:
       - "stabilization/**"
     paths:
       - "alexa-companion/**"
+      # The build copies these two files into the skill (scripts/rail-data.mjs) and the station tests read them.
+      - "app/src/main/assets/punctuality/**"
+      - "app/src/main/assets/stations/curated_it_rail_stations.json"
       - ".github/workflows/alexa-companion-ci.yml"
   workflow_dispatch:
 

@@ -1,5 +1,7 @@
 # Matrice del doppio ritardo
 
+> **Documento storico.** Descrive lo stato del progetto alla sua data e non viene aggiornato: lo stato attuale è in [AZIONI_TITOLARE.md](../AZIONI_TITOLARE.md) e nel [CHANGELOG](../../CHANGELOG.md).
+
 Binario conserva sempre il **ritardo ufficiale** comunicato dalla fonte e aggiunge il **ritardo alla rilevazione operativa** soltanto quando la fonte identifica lo stesso evento con località, orario programmato e orario effettivo. I due valori non sono intercambiabili.
 
 | Ecosistema | Ritardo ufficiale | Rilevazione calcolabile | Stato nell’app | Limite esplicito |

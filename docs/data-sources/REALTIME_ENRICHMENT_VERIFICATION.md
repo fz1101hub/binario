@@ -1,5 +1,7 @@
 # Verifica dell’arricchimento realtime
 
+> **Documento storico.** Descrive lo stato del progetto alla sua data e non viene aggiornato: lo stato attuale è in [AZIONI_TITOLARE.md](../AZIONI_TITOLARE.md) e nel [CHANGELOG](../../CHANGELOG.md).
+
 ## Fonti raggiungibili
 
 Il controllo read-only del 15 agosto 2026 ha confermato la raggiungibilità dei feed che alimentano l’arricchimento tipizzato.

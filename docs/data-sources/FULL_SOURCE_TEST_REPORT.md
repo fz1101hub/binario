@@ -1,5 +1,7 @@
 # Report completo dei test delle fonti
 
+> **Documento storico.** Descrive lo stato del progetto alla sua data e non viene aggiornato: lo stato attuale è in [AZIONI_TITOLARE.md](../AZIONI_TITOLARE.md) e nel [CHANGELOG](../../CHANGELOG.md).
+
 **Data di verifica:** 14 agosto 2026  
 **Fonti catalogate:** 31  
 **Esiti consolidati:** 22 PASS, 7 LIMITED, 2 FAIL.

@@ -1,5 +1,7 @@
 # Binario Wear OS — ripristino cache-first
 
+> **Documento storico.** Descrive lo stato del progetto alla sua data e non viene aggiornato: lo stato attuale è in [AZIONI_TITOLARE.md](../AZIONI_TITOLARE.md) e nel [CHANGELOG](../../CHANGELOG.md).
+
 ## Perimetro
 
 Il ramo Git storico dichiarava nel manifest un’app Wear, un Tile e una complication, ma non conteneva risorse, modello snapshot, store, Tile o data source della complication. I componenti sono stati ricostruiti come superfici derivate dell’app Android: il telefono resta l’unico soggetto che interroga il catalogo locale e che pubblica un payload ridotto sul Data Layer.

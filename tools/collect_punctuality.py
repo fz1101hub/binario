@@ -14,14 +14,18 @@ container cannot reach viaggiatreno.it).  Each run:
    than the last hours (trains already known are never asked again).  Number = ``trip_short_name``, category = suffix of ``route_short_name`` (``0083_REG`` -> ``REG``),
    origin = ViaggiaTreno code of the first stop, resolved from its ``stop_code`` (``830008409``) with the curated
    station catalogue as the app does (``GtfsStationCodeIndex``): the station with that ``trenitaliaLocationId``,
-   otherwise ``S`` + the last five digits of an ``8300xxxxx`` code, each confirmed by position or name;
+   otherwise ``S`` + the last five digits of an ``8300xxxxx`` code, each confirmed by position or name; a Trenord
+   ``stop_id`` shaped like a code is checked against the catalogue (``StationCodes.confirm``);
 2. asks ``andamentoTreno/{origin}/{number}/{midnight}`` once per train (midnight = local midnight of the departure
    day, epoch milliseconds), at most ``--rate`` requests per second (2 by default and at most), within
-   ``--max-requests`` and ``--deadline-seconds``, stopping after 20 consecutive failures or at once on a refusal
+   ``--max-requests`` and ``--deadline-seconds`` and before Rome's date changes (the rest waits for the next run,
+   which closes the day ViaggiaTreno has dropped without a request), stopping after 20 consecutive failures or at once on a refusal
    (HTTP 403/429, or 503 with ``Retry-After``: kept in ``refusal.json``, the following runs send nothing for 2 h, then
-   4, 8... up to 7 days, or the ``Retry-After`` when longer; the first answer ends the pause; exit status 3),
+   4, 8... up to 7 days, or the ``Retry-After`` when longer; exit status 3),
    and when more than 40 of the last 50 answers are unknown or of another identity (a changed path, a soft block, a
-   new day convention): those trains go back to pending unrecorded and the run exits with status 3;
+   new day convention): those trains go back to pending unrecorded, the same pause is kept with its own reason
+   (``risposte-sconosciute``) and the run exits with status 3; the first answer about a recognised train (arrived,
+   cancelled or travelling) ends either pause;
 3. keeps per stop the ViaggiaTreno station code, the delay in whole minutes (actual minus scheduled time, truncated
    towards zero as the app shows it: departure at the origin, arrival elsewhere; early arrivals are <= 0), whether
    the stop was suppressed (``actualFermataType`` 3), the scheduled time (same departure/arrival rule) as minutes
@@ -30,8 +34,9 @@ container cannot reach viaggiatreno.it).  Each run:
    stop; the programmed ``binarioProgrammato...Descrizione`` only when no actual one is published, marked as such;
    a short label of at most 12 characters, anything else dropped), and for the run
    whether it was cancelled (``provvedimento`` 1, ``tipoTreno`` ``ST`` or every stop suppressed).  A train with no
-   actual time at its last served stop (and not cancelled) stays pending and is asked again by later runs up to 8 h after its scheduled arrival, then dropped as
-   ``unknown``; a train left for a later run by the limits stays pending while ViaggiaTreno still answers about it; a train ViaggiaTreno does not know (HTTP 204/404, ``null``) or whose identity differs (number, origin,
+   actual time at its last served stop (and not cancelled) stays pending, with the stops it has passed, and is asked
+   again by later runs up to 8 h after its scheduled arrival; then it is recorded as ``partial`` (the stops it had
+   passed count) or, without any, dropped as ``unknown``; a delay above 720 minutes counts as 720; a train left for a later run by the limits stays pending while ViaggiaTreno still answers about it; a train ViaggiaTreno does not know (HTTP 204/404, ``null``) or whose identity differs (number, origin,
    day) is recorded as ``missing``/``mismatch`` and not asked again;
 4. writes the state directory (``--state``): ``obs-YYYY-MM-DD.jsonl.gz`` (one compact JSON line per train and
    departure day, deduplicated by day, origin and number) and ``pending.jsonl.gz``, gzip with a fixed header, the
@@ -112,21 +117,25 @@ MAX_BAD_ANSWERS = 40
 # state (with the trains put back and the refusal) is still saved by the workflow.
 EXIT_STOPPED = 3
 # A refusal (HTTP 403 or 429, or 503 with Retry-After) is kept in the state: the following runs send nothing for
-# BACKOFF_BASE, doubled at each refusal in a row (or the Retry-After when longer), at most MAX_PAUSE; an answer ends it.
+# BACKOFF_BASE, doubled at each refusal in a row (or the Retry-After when longer), at most MAX_PAUSE.  A tripped
+# breaker (possibly a soft block) is kept the same way under BREAKER_REASON.  Only an answer about a recognised train
+# ends it: a 204, null or foreign answer may be the block itself.
 BACKOFF_BASE = timedelta(hours=2)
 MAX_PAUSE = timedelta(days=7)
 REFUSAL_FILE = "refusal.json"
+BREAKER_REASON = "risposte-sconosciute"
 # The days with observations after the last save.  A state with fewer of them (still within the retention) than its
 # marker records, or one with no observations and no marker (a cache that was not restored), is refused: saving it
 # would replace observations ViaggiaTreno no longer has.  Only --bootstrap (first run, or a loss the owner accepts)
 # starts from it.
 MARKER_FILE = "state.json"
 MARKER_SCHEMA = "binario-punctuality-state-v1"
-REFUSAL_REASON = re.compile(r"http-(?:403|429|503)")
+REFUSAL_REASON = re.compile(r"http-(?:403|429|503)|" + BREAKER_REASON)
 MAX_RESPONSE_BYTES = 1024 * 1024
 MAX_REDIRECTS = 3
 MAX_STOPS = 400
-# Delays outside this range (minutes) are taken as a clock or data error, not as an observation.
+# An arrival more than MIN_DELAY minutes early is taken as a clock or data error, not as an observation; a delay
+# above MAX_DELAY is counted as MAX_DELAY (a train half a day late is real, and dropping it would flatter the stop).
 MIN_DELAY, MAX_DELAY = -60, 720
 MINUTES_PER_DAY = 1440
 # Scheduled times are kept as minutes since local midnight of the departure day, below two days (a stop reached
@@ -155,8 +164,11 @@ LINE = re.compile(r"([A-Z]{1,6})[0-9]{0,3}")  # a Trenord line: RE11, S9, R14
 LOCATION_ID = re.compile(r"[0-9]{9}")
 OBS_FILE = re.compile(r"obs-(\d{4}-\d{2}-\d{2})\.jsonl\.gz")
 PENDING_FILE = "pending.jsonl.gz"
-KNOWN = ("ok", "cancelled")
-STATUSES = frozenset({"ok", "cancelled", "unknown", "missing", "mismatch"})
+# Known runs: arrived, cancelled, or seen travelling and never seen arriving before ViaggiaTreno closed the day
+# ("partial": the stops it had passed count, the others have no sample).
+KNOWN = ("ok", "cancelled", "partial")
+SAMPLED = ("ok", "partial")
+STATUSES = frozenset({"ok", "cancelled", "partial", "unknown", "missing", "mismatch"})
 
 try:
     ROME = ZoneInfo("Europe/Rome")
@@ -233,16 +245,28 @@ class StationCodes:
     ``GtfsStationCodeIndex`` does: the station whose ``trenitaliaLocationId`` is the id, confirmed by its position
     (10 km) or, without coordinates, by a word of its name.  Otherwise the derived code is used; a wrong guess costs
     one request answered as unknown or with another origin, never a wrong observation (``interpret`` checks
-    ``idOrigine``)."""
+    ``idOrigine``).
+
+    A Trenord ``stop_id`` already shaped like a code (``S01066``) is not always the station's ViaggiaTreno code
+    (``confirm``): "Brescia" is ``S09999`` there, Piedimonte Matese in the catalogue."""
 
     MAX_LOCATION_ID_KM = 10.0
+    MAX_NAME_KM = 1.0
 
     def __init__(self, stations: Iterable[Mapping[str, Any]]):
         by_location: dict[str, list[Mapping[str, Any]]] = {}
+        self.by_code: dict[str, list[Mapping[str, Any]]] = {}
+        self.placed: list[tuple[float, float, str, Mapping[str, Any]]] = []  # coded stations with a position
         for station in stations:
             location = str(station.get("trenitaliaLocationId") or "").strip()
             if location:
                 by_location.setdefault(location, []).append(station)
+            railway = str(station.get("railwayCode") or "").strip()
+            if CODE.fullmatch(railway):
+                self.by_code.setdefault(railway, []).append(station)
+                lat, lon = station.get("latitude"), station.get("longitude")
+                if all(isinstance(value, (int, float)) and not isinstance(value, bool) for value in (lat, lon)):
+                    self.placed.append((float(lat), float(lon), railway, station))
         self.by_location = {key: value[0] for key, value in by_location.items() if len(value) == 1}
 
     @classmethod
@@ -264,6 +288,36 @@ class StationCodes:
         words = _tokens(name)
         labels = [str(station.get("name") or "")] + [str(alias) for alias in station.get("aliases") or []]
         return any(_tokens(label) & words for label in labels)
+
+    def _named_near(self, lat: float | None, lon: float | None, name: str) -> str | None:
+        """The code of the nearest coded station within MAX_NAME_KM whose name (or an alias) has every word of
+        ``name`` (Brescia, Bellinzona), ``None`` without a position or such a station."""
+        words = _tokens(name)
+        if lat is None or lon is None or not words:
+            return None
+        best: tuple[float, str] | None = None
+        for station_lat, station_lon, railway, station in self.placed:
+            distance = _distance_km(lat, lon, station_lat, station_lon)
+            if distance > self.MAX_NAME_KM or (best is not None and (distance, railway) >= best):
+                continue
+            labels = [str(station.get("name") or "")] + [str(alias) for alias in station.get("aliases") or []]
+            if any(words <= _tokens(label) for label in labels):
+                best = (distance, railway)
+        return best[1] if best is not None else None
+
+    def confirm(self, code: str, lat: float | None, lon: float | None, name: str) -> str | None:
+        """The ViaggiaTreno code of a stop whose ``stop_id`` looks like one (Trenord): ``code`` when the catalogue
+        has it within 10 km (or, without coordinates, with a word of the name); otherwise the coded station of that
+        name within MAX_NAME_KM (Brescia ``S09999`` is ``S01717``); otherwise ``None`` when the catalogue places
+        ``code`` elsewhere (a TILO stop on an RFI code: asking would cost a request a day, or record another train),
+        and ``code`` itself when the catalogue does not know it (``interpret`` still checks ``idOrigine``)."""
+        listed = self.by_code.get(code, [])
+        if any(self._corroborated(station, lat, lon, name, self.MAX_LOCATION_ID_KM) for station in listed):
+            return code
+        named = self._named_near(lat, lon, name)
+        if named is not None:
+            return named
+        return None if listed else code
 
     def resolve(self, stop_code: str, lat: float | None, lon: float | None, name: str) -> str | None:
         code = stop_code.strip()
@@ -402,11 +456,11 @@ def load_timetable(path: Path, stations: StationCodes, namespace: str = "") -> T
         coded = CODE.fullmatch(stop_id) is not None
         if stop_id not in origins:
             stop = stops.get(stop_id, {})
-            origins[stop_id] = stop_id if coded else stations.resolve(
-                stop.get("stop_code", ""), _float(stop.get("stop_lat")), _float(stop.get("stop_lon")), stop.get("stop_name", ""))
+            place = (_float(stop.get("stop_lat")), _float(stop.get("stop_lon")), stop.get("stop_name", ""))
+            origins[stop_id] = stations.confirm(stop_id, *place) if coded else stations.resolve(stop.get("stop_code", ""), *place)
         origin = origins[stop_id]
         if origin is None:
-            skip("origine senza codice ViaggiaTreno")
+            skip("origine Trenord smentita dal catalogo" if coded else "origine senza codice ViaggiaTreno")
             continue
         line = route.get("route_short_name", "").strip().rsplit("_", 1)[-1].upper()
         lettered = LINE.fullmatch(line)
@@ -534,22 +588,14 @@ def valid_platform(name: object) -> bool:
     return isinstance(name, str) and platform_name(name) == name
 
 
-def valid_record(record: object, day: str) -> bool:
-    """A stored observation line as this tool writes it.  A stop is ``[code, delay, suppressed, scheduledMinute,
-    platform, platformActual]`` (``platform`` ``null`` or a label, ``platformActual`` 1 for an actual platform, 0 for
-    a programmed one or none); lines written before the extensions of 4 November 2026 have ``[code, delay,
-    suppressed]`` or ``[code, delay, suppressed, scheduledMinute]`` and stay valid."""
-    if not isinstance(record, dict) or set(record) != {"d", "o", "n", "c", "st", "t", "s"}:
+def valid_stops(stops: object) -> bool:
+    """Stops as this tool keeps them: ``[code, delay, suppressed, scheduledMinute, platform, platformActual]``
+    (``platform`` ``null`` or a label, ``platformActual`` 1 for an actual platform, 0 for a programmed one or none);
+    lines written before the extensions of 4 November 2026 have ``[code, delay, suppressed]`` or ``[code, delay,
+    suppressed, scheduledMinute]`` and stay valid."""
+    if not isinstance(stops, list) or len(stops) > MAX_STOPS:
         return False
-    if record["d"] != day or not isinstance(record["o"], str) or not CODE.fullmatch(record["o"]):
-        return False
-    if not isinstance(record["n"], str) or not NUMBER.fullmatch(record["n"]):
-        return False
-    if not isinstance(record["c"], str) or not CATEGORY.fullmatch(record["c"]) or record["st"] not in STATUSES:
-        return False
-    if not _is_int(record["t"]) or not isinstance(record["s"], list) or len(record["s"]) > MAX_STOPS:
-        return False
-    for stop in record["s"]:
+    for stop in stops:
         if (
             not isinstance(stop, list) or len(stop) not in (3, 4, 6) or not isinstance(stop[0], str)
             or not CODE.fullmatch(stop[0])
@@ -562,9 +608,22 @@ def valid_record(record: object, day: str) -> bool:
             ))
         ):
             return False
-    if len({stop[0] for stop in record["s"]}) != len(record["s"]):
+    return len({stop[0] for stop in stops}) == len(stops)
+
+
+def valid_record(record: object, day: str) -> bool:
+    """A stored observation line as this tool writes it (stops as ``valid_stops``, only for a sampled status)."""
+    if not isinstance(record, dict) or set(record) != {"d", "o", "n", "c", "st", "t", "s"}:
         return False
-    return record["st"] == "ok" or not record["s"]
+    if record["d"] != day or not isinstance(record["o"], str) or not CODE.fullmatch(record["o"]):
+        return False
+    if not isinstance(record["n"], str) or not NUMBER.fullmatch(record["n"]):
+        return False
+    if not isinstance(record["c"], str) or not CATEGORY.fullmatch(record["c"]) or record["st"] not in STATUSES:
+        return False
+    if not _is_int(record["t"]) or not valid_stops(record["s"]):
+        return False
+    return record["st"] in SAMPLED or not record["s"]
 
 
 def _iso_day(value: object) -> bool:
@@ -577,9 +636,15 @@ def _iso_day(value: object) -> bool:
     return True
 
 
+PENDING_KEYS = frozenset({"d", "o", "n", "c", "a", "k"})
+
+
 def valid_pending(entry: object) -> bool:
+    """A pending train as this tool writes it; ``s`` (optional) holds the stops of the last answer that had a
+    sample, as ``valid_stops``."""
     return (
-        isinstance(entry, dict) and set(entry) == {"d", "o", "n", "c", "a", "k"} and _iso_day(entry["d"])
+        isinstance(entry, dict) and set(entry) in (PENDING_KEYS, PENDING_KEYS | {"s"}) and _iso_day(entry["d"])
+        and ("s" not in entry or (bool(entry["s"]) and valid_stops(entry["s"])))
         and isinstance(entry["o"], str) and CODE.fullmatch(entry["o"]) is not None
         and isinstance(entry["n"], str) and NUMBER.fullmatch(entry["n"]) is not None
         and isinstance(entry["c"], str) and CATEGORY.fullmatch(entry["c"]) is not None
@@ -1037,9 +1102,12 @@ def interpret(payload: Any, due: Due) -> Observation:
         delay = None
         if not suppressed and scheduled is not None and actual is not None:
             delay = _delay_minutes(scheduled, actual)
-            if not MIN_DELAY <= delay <= MAX_DELAY:
+            if delay < MIN_DELAY:
                 note("ritardi_non_plausibili")
                 delay = None
+            elif delay > MAX_DELAY:
+                note("ritardi_limitati")
+                delay = MAX_DELAY
         minute = None if scheduled is None else scheduled_minute(day, scheduled)
         name, actual_platform = (None, 0) if suppressed else platform(
             row, ORIGIN_PLATFORM_FIELDS if index == 0 else STOP_PLATFORM_FIELDS)
@@ -1058,7 +1126,7 @@ def interpret(payload: Any, due: Due) -> Observation:
     if not arrived and payload.get("arrivato") is True and served:
         arrived = True
     if not arrived:
-        return Observation("pending", [], notes)
+        return Observation("pending", stops, notes)  # the stops already passed have their delay
     return Observation("ok", stops, notes)
 
 
@@ -1071,13 +1139,21 @@ class Report:
     failures: dict[str, int] = field(default_factory=dict)
     stop_reason: str = "completata"
     stopped_abnormally: bool = False  # a refusal or implausible answers: the job must fail (EXIT_STOPPED)
+    coverage: str = ""  # trains known against trains scheduled on the last complete day (coverage_line)
 
     def add(self, name: str, amount: int = 1) -> None:
         self.counters[name] = self.counters.get(name, 0) + amount
 
 
-def pending_entry(due: Due, attempts: int) -> dict[str, Any]:
-    return {"d": due.day, "o": due.origin, "n": due.number, "c": due.category, "a": due.arrival, "k": attempts}
+def pending_entry(due: Due, attempts: int, stops: list[list[Any]] | None = None) -> dict[str, Any]:
+    entry = {"d": due.day, "o": due.origin, "n": due.number, "c": due.category, "a": due.arrival, "k": attempts}
+    if stops:
+        entry["s"] = stops
+    return entry
+
+
+def _samples(stops: Sequence[Sequence[Any]]) -> int:
+    return sum(1 for stop in stops if stop[1] is not None)
 
 
 def collect(
@@ -1090,17 +1166,33 @@ def collect(
     deadline: float,
     clock: Callable[[], float] = time.monotonic,
     requests: Callable[[], int] | None = None,
+    anchor: float | None = None,
 ) -> Report:
-    """One run: expire old pending trains, ask about the pending and newly due ones, record the answers."""
+    """One run: expire old pending trains, ask about the pending and newly due ones, record the answers.
+
+    ``anchor`` is the ``clock`` reading taken with ``now`` (the first one of the request loop without it): the run
+    follows the wall clock from there and, once Rome's date has changed (ViaggiaTreno has dropped the day the trains
+    were selected for), defers the rest to the next run, which closes them without a request."""
     report = Report()
     moment = int(now.timestamp())
+    run_day = rome_date(moment)
+    # The stops a pending train had passed when last asked (with a sample): kept through failures and deferrals.
+    passed: dict[tuple[str, str, str], list[list[Any]]] = {
+        key: entry["s"] for key, entry in state.pending.items() if "s" in entry}
     for key, entry in sorted(state.pending.items()):
         # Asked and not arrived yet: 8 h after the scheduled arrival.  Left over by the limits of a run, never asked:
-        # while ViaggiaTreno still answers about it.  Either way, never past ViaggiaTreno's day.
+        # while ViaggiaTreno still answers about it.  Either way, never past ViaggiaTreno's day.  A train seen
+        # travelling keeps the stops it had passed ("partial"), the others are unknown.
         closed = not answerable(entry["d"], entry["a"], moment, asked=entry["k"] > 0)
         if closed or (entry["k"] > 0 and moment > entry["a"] + PENDING_LIMIT.total_seconds()):
-            state.add({"d": key[0], "o": key[1], "n": key[2], "c": entry["c"], "st": "unknown", "t": moment, "s": []})
-            report.add("giorno_chiuso" if closed and entry["k"] == 0 else "scaduti_sconosciuti")
+            stops = passed.get(key, [])
+            state.add({"d": key[0], "o": key[1], "n": key[2], "c": entry["c"], "st": "partial" if stops else "unknown",
+                       "t": moment, "s": stops})
+            if stops:
+                report.add("chiusi_in_viaggio")
+                report.add("campioni", _samples(stops))
+            else:
+                report.add("giorno_chiuso" if closed and entry["k"] == 0 else "scaduti_sconosciuti")
     queue: list[tuple[Due, int]] = []
     for key, entry in sorted(state.pending.items(), key=lambda item: (item[1]["a"], item[0])):
         if state.known(key):  # answered by an earlier run whose pending list was not saved
@@ -1122,22 +1214,37 @@ def collect(
     recent: deque[tuple[Due, int, bool]] = deque(maxlen=BAD_ANSWER_WINDOW)  # (train, attempts, unknown or foreign)
     issued = requests or (lambda: report.counters.get("treni_chiesti", 0))
 
+    def keep(due: Due, attempts: int) -> None:
+        """Leave ``due`` pending with its attempts and the stops it had passed."""
+        state.pending[due.key] = pending_entry(due, attempts, passed.get(due.key))
+
     def defer(rest: Sequence[tuple[Due, int]], reason: str) -> None:
         """Stop the run: the trains not asked stay pending, with their attempts, for the next run."""
         report.stop_reason = reason
         for later, later_attempts in rest:
-            state.pending[later.key] = pending_entry(later, later_attempts)
+            keep(later, later_attempts)
         report.add("rimandati", len(rest))
 
     def failed(due: Due, attempts: int, reason: str) -> None:
         report.failures[reason] = report.failures.get(reason, 0) + 1
-        state.pending[due.key] = pending_entry(due, attempts + 1)
+        keep(due, attempts + 1)
         report.add("errori")
 
+    def pause(reason: str, retry_after: float | None = None) -> tuple[float, int]:
+        """Keep a back-off in the state (seconds, refusals in a row): the following runs send nothing until it ends."""
+        count = (state.refusal["count"] if state.refusal is not None else 0) + 1
+        seconds = min(MAX_PAUSE.total_seconds(),
+                      max(BACKOFF_BASE.total_seconds() * 2 ** min(count - 1, 20), retry_after or 0.0))
+        state.refusal = {"since": moment, "until": moment + int(seconds), "count": count, "reason": reason}
+        report.stopped_abnormally = True
+        return seconds, count
+
     if state.refusal is not None and moment < state.refusal["until"]:
-        # Refused by an earlier run: nothing is sent until the pause ends; the trains wait as pending.
+        # Refused, or answered implausibly, in an earlier run: nothing is sent until the pause ends; the trains wait.
         until = datetime.fromtimestamp(state.refusal["until"], timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
-        defer(queue, f"in pausa dopo un rifiuto ({state.refusal['reason']}) fino al {until}")
+        cause = ("risposte sconosciute o di altra identità" if state.refusal["reason"] == BREAKER_REASON
+                 else "un rifiuto")
+        defer(queue, f"in pausa dopo {cause} ({state.refusal['reason']}) fino al {until}")
         report.add("in_sospeso_dopo", len(state.pending))
         return report
 
@@ -1145,8 +1252,15 @@ def collect(
         if issued() >= max_requests:
             defer(queue[position:], "limite --max-requests")
             break
-        if clock() >= deadline:
+        tick = clock()
+        if anchor is None:
+            anchor = tick
+        if tick >= deadline:
             defer(queue[position:], "limite --deadline-seconds")
+            break
+        if rome_date(moment + tick - anchor) != run_day:
+            defer(queue[position:], "mezzanotte a Roma passata durante la run: ViaggiaTreno ha chiuso il giorno, "
+                                    "il resto alla run successiva")
             break
         if consecutive >= MAX_CONSECUTIVE_FAILURES:
             defer(queue[position:], f"{MAX_CONSECUTIVE_FAILURES} errori consecutivi")
@@ -1157,17 +1271,11 @@ def collect(
             consecutive += 1
             failed(due, attempts, result.reason)
             if result.kind == "refused":
-                count = (state.refusal["count"] if state.refusal is not None else 0) + 1
-                pause = min(MAX_PAUSE.total_seconds(),
-                            max(BACKOFF_BASE.total_seconds() * 2 ** min(count - 1, 20), result.retry_after or 0.0))
-                state.refusal = {"since": moment, "until": moment + int(pause), "count": count, "reason": result.reason}
-                report.stopped_abnormally = True
+                seconds, count = pause(result.reason, result.retry_after)
                 defer(queue[position + 1:], f"fonte che rifiuta le richieste ({result.reason}): pausa di "
-                                            f"{pause / 3600:.0f} h, rifiuto {count} di fila")
+                                            f"{seconds / 3600:.0f} h, rifiuto {count} di fila")
                 break
             continue
-        if result.kind in ("ok", "missing"):
-            state.refusal = None  # the source answers again: the back-off ends
         if result.kind == "missing":
             observation = Observation("missing")
         else:
@@ -1181,23 +1289,31 @@ def collect(
         for name, amount in observation.notes.items():
             report.add(name, amount)
         recent.append((due, attempts, observation.status in ("missing", "mismatch")))
+        if observation.status in ("ok", "cancelled", "pending"):
+            state.refusal = None  # the source answers about a recognised train again: the back-off ends
         if observation.status == "pending":
-            state.pending[due.key] = pending_entry(due, attempts + 1)
+            if _samples(observation.stops) and _samples(observation.stops) >= _samples(passed.get(due.key, [])):
+                passed[due.key] = observation.stops
+            keep(due, attempts + 1)
             report.add("non_ancora_arrivati")
             continue
-        state.add({"d": due.day, "o": due.origin, "n": due.number, "c": due.category, "st": observation.status,
-                   "t": moment, "s": observation.stops})
-        report.add({"ok": "arrivati", "cancelled": "cancellati"}.get(observation.status, observation.status))
-        report.add("campioni", sum(1 for stop in observation.stops if stop[1] is not None))
+        status, stops = observation.status, observation.stops
+        if status in ("missing", "mismatch") and due.key in passed:
+            status, stops = "partial", passed[due.key]  # forgotten after midnight, once seen travelling
+        state.add({"d": due.day, "o": due.origin, "n": due.number, "c": due.category, "st": status, "t": moment,
+                   "s": stops})
+        report.add({"ok": "arrivati", "cancelled": "cancellati", "partial": "chiusi_in_viaggio"}.get(status, status))
+        report.add("campioni", _samples(stops))
         bad = [(train, train_attempts) for train, train_attempts, unknown in recent if unknown]
         if len(bad) > MAX_BAD_ANSWERS:
             for train, train_attempts in bad:
                 state.retract(train.key)
-                state.pending[train.key] = pending_entry(train, train_attempts)
+                keep(train, train_attempts)
             report.add("rimessi_in_sospeso", len(bad))
-            report.stopped_abnormally = True
+            seconds, count = pause(BREAKER_REASON)
             defer(queue[position + 1:], f"{len(bad)} delle ultime {len(recent)} risposte sconosciute o con identità "
-                                        "diversa: fonte cambiata o che blocca")
+                                        f"diversa: fonte cambiata o che blocca; pausa di {seconds / 3600:.0f} h, "
+                                        f"interruzione {count} di fila")
             break
     report.add("in_sospeso_dopo", len(state.pending))
     return report
@@ -1209,11 +1325,24 @@ LABELS = (
     ("non_ancora_arrivati", "Non ancora arrivati (in sospeso)"), ("missing", "Sconosciuti a ViaggiaTreno"),
     ("mismatch", "Identità diversa"), ("rimessi_in_sospeso", "Sconosciuti o di altra identità rimessi in sospeso"),
     ("errori", "Errori"), ("rimandati", "Rimandati alla prossima run"),
-    ("scaduti_sconosciuti", "Scaduti dopo 8 h (sconosciuti)"), ("giorno_chiuso", "Mai chiesti, giorno chiuso da ViaggiaTreno"), ("in_sospeso_dopo", "In sospeso dopo la run"),
+    ("scaduti_sconosciuti", "Scaduti dopo 8 h (sconosciuti)"), ("giorno_chiuso", "Mai chiesti, giorno chiuso da ViaggiaTreno"),
+    ("chiusi_in_viaggio", "Chiusi in viaggio (contano le fermate già passate)"), ("in_sospeso_dopo", "In sospeso dopo la run"),
     ("campioni", "Campioni di ritardo"), ("fermate_straordinarie", "Fermate straordinarie ignorate"),
-    ("ritardi_non_plausibili", "Ritardi fuori intervallo scartati"), ("binari_non_validi", "Binari non validi scartati"), ("state_invalid_lines", "Righe di stato scartate"),
+    ("ritardi_limitati", "Ritardi oltre 720 min contati come 720"), ("ritardi_non_plausibili", "Anticipi oltre 60 min scartati"), ("binari_non_validi", "Binari non validi scartati"), ("state_invalid_lines", "Righe di stato scartate"),
     ("pruned_days", "Giorni eliminati (oltre 35)"), ("giorni_persi", "Giorni persi accettati con --bootstrap"),
 )
+
+
+def coverage_line(timetable: Timetable, state: State, day: date) -> str:
+    """How many of the trains scheduled to depart on ``day`` are known (arrived, cancelled or closed travelling), so
+    that a thin collection shows in the job summary."""
+    iso = day.isoformat()
+    scheduled = {key for service_day in (day - timedelta(days=1), day)
+                 for key in trains_on(timetable, service_day) if key[0] == iso}
+    known = sum(1 for (origin, number), record in state.records(iso).items()
+                if record["st"] in KNOWN and (iso, origin, number) in scheduled)
+    share = f" ({100 * known // len(scheduled)} %)" if scheduled else ""
+    return f"Copertura del {iso}: {known} treni noti su {len(scheduled)} in orario{share}"
 
 
 def render(report: Report, *, markdown: bool) -> str:
@@ -1221,11 +1350,13 @@ def render(report: Report, *, markdown: bool) -> str:
             ("in_coda", "treni_chiesti", "richieste_http", "arrivati", "errori")]
     rows += [(f"Errore {log_safe(reason)}", count) for reason, count in sorted(report.failures.items())]
     if markdown:
-        lines = ["### Puntualità: raccolta ViaggiaTreno", "", f"Esito: {log_safe(report.stop_reason)}", "",
-                 "| Voce | Numero |", "|---|---|"]
+        lines = ["### Puntualità: raccolta ViaggiaTreno", "", f"Esito: {log_safe(report.stop_reason)}", ""]
+        lines += [report.coverage, ""] if report.coverage else []
+        lines += ["| Voce | Numero |", "|---|---|"]
         lines += [f"| {label} | {count} |" for label, count in rows]
         return "\n".join(lines) + "\n"
-    return "\n".join([f"Esito: {log_safe(report.stop_reason)}"] + [f"{label}: {count}" for label, count in rows])
+    return "\n".join([f"Esito: {log_safe(report.stop_reason)}"] + ([report.coverage] if report.coverage else [])
+                     + [f"{label}: {count}" for label, count in rows])
 
 
 def estimate(timetable: Timetable, days: Sequence[date]) -> str:
@@ -1271,15 +1402,17 @@ def main(argv: Sequence[str] | None = None) -> int:
         if args.max_requests < 0 or args.deadline_seconds <= 0 or args.timeout <= 0:
             parser.error("--max-requests, --deadline-seconds e --timeout devono essere positivi")
         now = datetime.fromisoformat(args.now) if args.now else datetime.now(timezone.utc)
+        anchor = time.monotonic()  # the run follows the wall clock from ``now`` (midnight in Rome, ``collect``)
         if now.tzinfo is None:
             parser.error("--now deve indicare il fuso orario")
         fetcher = HttpFetcher(args.base_url, rate=args.rate, timeout=args.timeout)
         state = State(args.state)
         state.verify_retained(rome_date(now.timestamp()), bootstrap=args.bootstrap)
         report = collect(timetable, state, fetcher.fetch, now, max_requests=args.max_requests,
-                         deadline=started + args.deadline_seconds, requests=lambda: fetcher.requests)
+                         deadline=started + args.deadline_seconds, requests=lambda: fetcher.requests, anchor=anchor)
         report.counters["richieste_http"] = fetcher.requests
         state.save(rome_date(now.timestamp()))
+        report.coverage = coverage_line(timetable, state, rome_date(now.timestamp()) - timedelta(days=1))
         for name, amount in state.counters.items():
             report.add(name, amount)
     except CollectorError as error:

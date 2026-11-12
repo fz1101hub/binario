@@ -1,5 +1,7 @@
 # Copertura delle fonti e risultati dei test
 
+> **Documento storico.** Descrive lo stato del progetto alla sua data e non viene aggiornato: lo stato attuale è in [AZIONI_TITOLARE.md](../AZIONI_TITOLARE.md) e nel [CHANGELOG](../../CHANGELOG.md).
+
 **Data di verifica:** 14 agosto 2026  
 **Ramo:** `feature/data-foundations`  
 **Catalogo applicativo:** `RailSourceCatalog`

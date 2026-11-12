@@ -170,12 +170,17 @@
     },
     {
       "name": "Archive Release build and check the App Store bundle layout",
-      "sha256": "b106a7c5c3ec33a534e95c47adbde8340e32a698e2134e3ab0a6efa89e09409d",
+      "sha256": "ea4bbedf81cff36cf2acf3dcfe22afd8a05cae2da2233d4f7bece589bad81228",
       "workingDirectory": "ios"
     },
     {
       "name": "Gate GTFS freshness of the iOS timetable index for at least 30 days",
       "sha256": "7b9b17c0308be60dcded4770aaf6f8aadfa1b9e379cd0fd27642e6aeb5db45ec",
+      "if": "${{ github.event_name == 'workflow_dispatch' || (github.event_name == 'pull_request' && startsWith(github.base_ref, 'stabilization/')) }}"
+    },
+    {
+      "name": "Gate punctuality statistics coverage of the iPhone app",
+      "sha256": "e6be4e97cfec596f3abf5a67115df52b7244181dc7329a58e5b86951d477601f",
       "if": "${{ github.event_name == 'workflow_dispatch' || (github.event_name == 'pull_request' && startsWith(github.base_ref, 'stabilization/')) }}"
     },
     {

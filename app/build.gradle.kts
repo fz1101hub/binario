@@ -69,6 +69,15 @@ android {
         buildConfig = true
     }
 
+    // The in-app language picker offers the 17 languages of locale_config.xml (AppLanguages): a Play install must carry
+    // them all, not only the device's ones, or a language chosen in the app falls back to Italian until Play fetches it
+    // (never, offline). tools/verify_android_app_bundles.py checks the bundle (second audit, ci-tests-build-2).
+    bundle {
+        language {
+            enableSplit = false
+        }
+    }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17

@@ -150,6 +150,31 @@ class ApplyPunctualityTest(unittest.TestCase):
         self.assertEqual(0, code, output)
         self.assertEqual(stats.encode(older), self.target.read_bytes())
 
+    def test_a_file_that_shrank_by_more_than_thirty_percent_needs_a_flag(self) -> None:
+        # A file built after a bootstrap run or a lost cache holds a fraction of the trains: it must not replace the
+        # asset unnoticed.
+        self.target.parent.mkdir(parents=True)
+        self.target.write_bytes(self.data)
+        fewer_trains = valid_payload()
+        del fewer_trains["trains"][0]  # 1 train of 2
+        fewer_samples = valid_payload()
+        del fewer_samples["trains"][1]["s"][1]  # 30 samples of 56
+        for name, payload in (("treni", fewer_trains), ("campioni", fewer_samples)):
+            with self.subTest(name=name):
+                log = self.save(job_log(stats.encode(payload)), f"{name}.log")
+                code, output = self.run_main("--log", log)
+                self.assertEqual(1, code)
+                self.assertIn(f"{name}", output)
+                self.assertIn("--allow-shrink", output)
+                self.assertEqual(self.data, self.target.read_bytes())
+                code, output = self.run_main("--log", log, "--allow-shrink", "--dry-run")
+                self.assertEqual(0, code, output)
+        # Up to 30 % fewer is a normal week (holidays, a strike, a timetable change).
+        self.assertEqual((10, 700), apply.volume({"trains": [{"s": [["S1", 70]]}] * 10}))
+        apply.check_volume({"trains": [{"s": [["S1", 70]]}] * 10}, {"trains": [{"s": [["S1", 70]]}] * 7})
+        with self.assertRaises(apply.ApplyError):
+            apply.check_volume({"trains": [{"s": [["S1", 70]]}] * 10}, {"trains": [{"s": [["S1", 69]]}] * 7})
+
     @staticmethod
     def steps(print_conclusion: str = "success", collect: str = "success") -> list[dict[str, Any]]:
         names = [("Set up job", "success"), ("Collect ViaggiaTreno observations", collect),

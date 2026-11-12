@@ -1,5 +1,7 @@
 # Binario — registro di recupero del companion
 
+> **Documento storico.** Descrive lo stato del progetto alla sua data e non viene aggiornato: lo stato attuale è in [AZIONI_TITOLARE.md](AZIONI_TITOLARE.md) e nel [CHANGELOG](../CHANGELOG.md).
+
 ## Esito dell’audit
 
 Il repository Git `fz1101hub/binario` contiene una linea nativa Android/Wear precedente e un ramo di recupero creato il 3 settembre 2026. Non contiene una cronologia completa e lineare della successiva codebase Expo/companion descritta nelle sessioni storiche. In particolare, nello storico Git consultabile non è presente un modulo Wear che esegua l’acquisizione vocale dal polso.

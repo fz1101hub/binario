@@ -1,74 +1,84 @@
 version: 2
 
+# One grouped pull request per ecosystem and month (second audit, ci-tests-build-3): five open PRs per ecosystem had
+# filled the limit with updates that cannot pass CI on their own, and no new update was proposed.
+# - The Expo companion is frozen (owner, November 2026): no entry for companion-expo/. Its packages follow the Expo SDK
+#   (`expo install --fix`) and the Companion Gradle lock, so Dependabot's versions were wrong for it anyway.
+# - Gradle and GitHub Actions PRs are finished by hand: Dependabot does not update gradle/verification-metadata.xml
+#   (the refresh_dependency_metadata dispatch of android-ci.yml does) nor .github/ci-inputs-lock.json.
+# - The Android toolchain (AGP, Kotlin, the Gradle wrapper, compileSdk) moves in one planned migration, with the
+#   Compose and Wear versions that tests/test_wear_compose_gradle_dependency_suppressions.py pins: their majors, and
+#   those pinned artifacts, are not proposed.
 updates:
   - package-ecosystem: npm
     directory: /alexa-companion
     schedule:
-      interval: weekly
-      day: tuesday
+      interval: monthly
       time: "06:00"
       timezone: Europe/Rome
     versioning-strategy: increase-if-necessary
-    open-pull-requests-limit: 5
+    open-pull-requests-limit: 2
     groups:
-      non-major:
+      # Minor and patch updates pass on their own (#59 was green); a major is a migration (TypeScript 7 drops
+      # baseUrl, plugin-react 6 needs Vite 8): together in a second PR, to plan.
+      alexa-non-major:
+        patterns:
+          - "*"
         update-types:
           - minor
           - patch
-
-  - package-ecosystem: npm
-    directory: /companion-expo
-    schedule:
-      interval: weekly
-      day: tuesday
-      time: "06:15"
-      timezone: Europe/Rome
-    versioning-strategy: increase-if-necessary
-    open-pull-requests-limit: 5
-    groups:
-      non-major:
+      alexa-major:
+        patterns:
+          - "*"
         update-types:
-          - minor
-          - patch
+          - major
 
   - package-ecosystem: gradle
     directory: /
     schedule:
-      interval: weekly
-      day: tuesday
+      interval: monthly
       time: "06:30"
       timezone: Europe/Rome
-    open-pull-requests-limit: 5
-    groups:
-      non-major:
+    open-pull-requests-limit: 1
+    ignore:
+      - dependency-name: "com.android.application"
         update-types:
-          - minor
-          - patch
+          - version-update:semver-major
+      - dependency-name: "org.jetbrains.kotlin*"
+        update-types:
+          - version-update:semver-major
+      - dependency-name: "gradle-wrapper"
+        update-types:
+          - version-update:semver-major
+      - dependency-name: "androidx.compose:compose-bom"
+      - dependency-name: "androidx.wear.compose:*"
+      - dependency-name: "androidx.core:core-ktx"
+      - dependency-name: "androidx.lifecycle:lifecycle-runtime-ktx"
+    groups:
+      gradle:
+        patterns:
+          - "*"
 
   - package-ecosystem: github-actions
     directory: /
     schedule:
-      interval: weekly
-      day: tuesday
+      interval: monthly
       time: "06:45"
       timezone: Europe/Rome
-    open-pull-requests-limit: 5
+    open-pull-requests-limit: 1
     groups:
-      non-major:
-        update-types:
-          - minor
-          - patch
+      actions:
+        patterns:
+          - "*"
 
   - package-ecosystem: pip
     directory: /
     schedule:
-      interval: weekly
-      day: tuesday
+      interval: monthly
       time: "07:00"
       timezone: Europe/Rome
-    open-pull-requests-limit: 5
+    open-pull-requests-limit: 1
     groups:
-      non-major:
-        update-types:
-          - minor
-          - patch
+      python:
+        patterns:
+          - "*"

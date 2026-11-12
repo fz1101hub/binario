@@ -27,6 +27,7 @@ import zlib
 import zipfile
 from pathlib import Path, PurePosixPath
 from typing import Mapping
+from xml.etree import ElementTree
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_BUNDLES = {
@@ -60,6 +61,16 @@ PUNCTUALITY_PACKAGED_ASSET = "punctuality/stats_v1.json"
 # The app reads at most this much decompressed JSON (NetworkReliabilityParser.Limits.maxJsonBytes).
 PUNCTUALITY_MAX_JSON_BYTES = 64 * 1024 * 1024
 PUNCTUALITY_EXPECTATIONS = ("auto", "present", "absent")
+# The in-app language picker offers every language of locale_config.xml (AppLanguages, LocaleManager): a Play install
+# must carry them all, so the phone bundle disables the language split (bundle { language { enableSplit = false } }) and
+# its base module holds strings in each of them (second audit, ci-tests-build-2).
+LOCALE_CONFIG = ROOT / "app" / "src" / "main" / "res" / "xml" / "locale_config.xml"
+APP_RESOURCES = ROOT / "app" / "src" / "main" / "res"
+BUNDLE_CONFIG_PATH = "BundleConfig.pb"
+RESOURCE_TABLE_PATH = "base/resources.pb"
+MAX_BUNDLE_CONFIG_BYTES = 1024 * 1024
+MAX_RESOURCE_TABLE_BYTES = 64 * 1024 * 1024
+SPLIT_DIMENSION_LANGUAGE = 3  # bundletool config.proto, SplitDimension.Value.LANGUAGE
 BUNDLE_ASSET_PREFIX = "base/assets/"
 APK_ASSET_PREFIX = "assets/"
 SIGNATURE_SUFFIXES = (".RSA", ".DSA", ".EC", ".SF")
@@ -474,13 +485,111 @@ def verify_apk_punctuality(path: Path, expectation: str, tree_asset: Path | None
     return problems
 
 
+def normalized_locale(tag: str) -> str:
+    """One spelling for a locale as aapt2 or locale_config.xml writes it: lower case BCP-47 ("zh-cn" for zh-CN,
+    b+zh+CN and zh-rCN), Indonesian under its legacy code "in", "" for the default configuration."""
+    text = tag.strip()
+    if text.startswith("b+"):
+        text = text[2:].replace("+", "-")
+    text = re.sub(r"-r([A-Za-z]{2}|[0-9]{3})(?=-|$)", r"-\1", text).lower()
+    return "in" + text[2:] if text == "id" or text.startswith("id-") else text
+
+
+def app_languages(locale_config: Path = LOCALE_CONFIG, resources: Path = APP_RESOURCES) -> dict[str, str]:
+    """Each locale of locale_config.xml -> the locale its strings have in the resource table ("" for the one the
+    default values/ directory serves, which has no values-<locale> directory)."""
+    names = [
+        element.get(f"{{{ANDROID_NAMESPACE}}}name", "")
+        for element in ElementTree.parse(locale_config).getroot()
+        if element.tag == "locale"
+    ]
+    languages = {}
+    for name in names:
+        qualifier = re.sub(r"-([A-Z]{2})$", r"-r\1", name)
+        languages[name] = normalized_locale(name) if (resources / f"values-{qualifier}").is_dir() else ""
+    return languages
+
+
+def language_split_problems(data: bytes) -> list[str]:
+    """BundleConfig.pb must turn the language split off: a SplitDimension LANGUAGE with negate, none without."""
+    negated: list[bool] = []
+    for number, wire, optimizations in _protobuf_fields(data):
+        if number != 2 or wire != 2 or not isinstance(optimizations, bytes):
+            continue
+        for number, wire, splits in _protobuf_fields(optimizations):
+            if number != 1 or wire != 2 or not isinstance(splits, bytes):
+                continue
+            for number, wire, dimension in _protobuf_fields(splits):
+                if number != 1 or wire != 2 or not isinstance(dimension, bytes):
+                    continue
+                fields = _protobuf_fields(dimension)
+                value = next((item for field, kind, item in fields if field == 1 and kind == 0), 0)
+                if value == SPLIT_DIMENSION_LANGUAGE:
+                    negated.append(any(field == 2 and kind == 0 and item for field, kind, item in fields))
+    if not negated or not all(negated):
+        return ["divisione per lingua attiva nel bundle (BundleConfig.pb): un'installazione da Play porterebbe solo "
+                "le lingue del dispositivo, non quella scelta nell'app; serve bundle { language { enableSplit = false } }"]
+    return []
+
+
+def string_locales(data: bytes) -> set[str]:
+    """The locales (normalized) of the string resources of a resource table (aapt2 Resources.proto: package 2 >
+    type 3 named by 2 > entry 3 > config_value 6 > config 1 > locale 3)."""
+    locales: set[str] = set()
+    for number, wire, package in _protobuf_fields(data):
+        if number != 2 or wire != 2 or not isinstance(package, bytes):
+            continue
+        for number, wire, kind in _protobuf_fields(package):
+            if number != 3 or wire != 2 or not isinstance(kind, bytes):
+                continue
+            kind_fields = _protobuf_fields(kind)
+            if _optional_utf8(kind_fields, 2, "tipo di risorsa") != "string":
+                continue
+            for number, wire, entry in kind_fields:
+                if number != 3 or wire != 2 or not isinstance(entry, bytes):
+                    continue
+                for number, wire, config_value in _protobuf_fields(entry):
+                    if number != 6 or wire != 2 or not isinstance(config_value, bytes):
+                        continue
+                    configs = [item for field, kind_, item in _protobuf_fields(config_value) if field == 1 and kind_ == 2]
+                    config = configs[0] if configs and isinstance(configs[0], bytes) else b""
+                    locales.add(normalized_locale(_optional_utf8(_protobuf_fields(config), 3, "configurazione")))
+    return locales
+
+
+def language_problems(bundle: zipfile.ZipFile, names: set[str], languages: Mapping[str, str]) -> list[str]:
+    problems: list[str] = []
+    for path, limit in ((BUNDLE_CONFIG_PATH, MAX_BUNDLE_CONFIG_BYTES), (RESOURCE_TABLE_PATH, MAX_RESOURCE_TABLE_BYTES)):
+        if path not in names:
+            problems.append(f"{path} assente: lingue del modulo base non verificabili")
+        elif bundle.getinfo(path).file_size > limit:
+            problems.append(f"{path} oltre {limit} byte")
+    if problems:
+        return problems
+    try:
+        problems.extend(language_split_problems(bundle.read(BUNDLE_CONFIG_PATH)))
+    except ProtoError as error:
+        problems.append(f"{BUNDLE_CONFIG_PATH} non leggibile: {error}")
+    try:
+        present = string_locales(bundle.read(RESOURCE_TABLE_PATH))
+    except ProtoError as error:
+        return problems + [f"{RESOURCE_TABLE_PATH} non leggibile: {error}"]
+    missing = sorted(tag for tag, locale in languages.items() if locale not in present)
+    if missing:
+        problems.append(f"lingue di locale_config.xml assenti dalle stringhe del modulo base: {missing}")
+    return problems
+
+
 def verify_bundle(
     path: Path,
     expected_manifest: Mapping[str, str] | None = None,
     signed: bool = False,
     punctuality: str | None = None,
     tree_asset: Path | None = None,
+    languages: Mapping[str, str] | None = None,
 ) -> list[str]:
+    """Structure, identity, signature, native alignment, punctuality assets and, with ``languages``
+    (``app_languages``), the languages of the base module of an App Bundle."""
     problems: list[str] = []
     try:
         size = path.stat().st_size
@@ -541,6 +650,8 @@ def verify_bundle(
                 problems.extend(verify_native_libraries(bundle, native_libraries))
                 problems.extend(punctuality_problems(bundle, names, asset_prefix=BUNDLE_ASSET_PREFIX,
                                                      expectation=punctuality, tree_asset=tree_asset))
+                if languages is not None:
+                    problems.extend(language_problems(bundle, names, languages))
                 bad_member = bundle.testzip()
                 if bad_member:
                     problems.append(f"CRC ZIP non valido: {bad_member}")
@@ -604,6 +715,11 @@ def main(argv: list[str] | None = None) -> int:
     if args.profile != "root" and args.punctuality_stats is not None:
         parser.error("--punctuality-stats vale solo per il profilo root")
     punctuality = (args.punctuality_stats or "auto") if args.profile == "root" else None
+    try:
+        languages = app_languages() if args.profile == "root" else None
+    except (OSError, ElementTree.ParseError) as error:
+        print(f"Android App Bundle: FAIL: locale_config.xml non leggibile: {error}", file=sys.stderr)
+        return 1
     reference_problems = verify_reference_pair(args.reference_phone, args.reference_wear)
     if reference_problems:
         for problem in reference_problems:
@@ -621,7 +737,9 @@ def main(argv: list[str] | None = None) -> int:
         ("wear", args.wear or DEFAULT_BUNDLES[args.profile]["wear"], args.reference_wear),
     ):
         expectation = punctuality if label == "phone" else None
-        problems = verify_bundle(path, manifests[label], signed=args.signed, punctuality=expectation)
+        phone_languages = languages if label == "phone" else None
+        problems = verify_bundle(path, manifests[label], signed=args.signed, punctuality=expectation,
+                                 languages=phone_languages)
         if reference is not None:
             problems.extend(verify_reproducible(path, reference))
         if problems:
@@ -638,6 +756,8 @@ def main(argv: list[str] | None = None) -> int:
             details.append(f"ABI native: {', '.join(native_abis(path)) or 'nessuna'}")
             if punctuality_detail(expectation):
                 details.append(punctuality_detail(expectation))
+            if phone_languages is not None:
+                details.append(f"{len(phone_languages)} lingue nel modulo base, divisione per lingua disattivata")
             print(f"Android App Bundle ({label}): PASS ({', '.join(details)}).")
     return 1 if failed else 0
 

@@ -1,5 +1,7 @@
 # Passaggio di consegne: preparazione alla pubblicazione sugli store (25 ottobre 2026)
 
+> **Documento storico.** Descrive lo stato del progetto alla sua data e non viene aggiornato: lo stato attuale è in [AZIONI_TITOLARE.md](../AZIONI_TITOLARE.md) e nel [CHANGELOG](../../CHANGELOG.md).
+
 Stato del branch `claude/git-repo-audit-cdcsm6` al momento dell'interruzione del lavoro autonomo. Il file
 `2026-10-25-store-readiness-remaining.json` accanto a questo documento elenca in forma strutturata i pacchetti
 di correzioni non ancora integrati e le 222 segnalazioni degli audit precedenti ancora da ricontrollare.

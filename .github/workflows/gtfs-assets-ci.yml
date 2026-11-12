@@ -6,14 +6,19 @@ on:
       - "app/src/main/assets/**"
       - "app/src/personal/assets/**"
       - "app/src/main/java/it/binario/app/data/gtfs/GtfsPackCredits.kt"
-      # Documents the offline tests check (store listings, privacy and source policy) and the language list they read.
-      - "docs/store/**"
+      # Documents the offline tests check (store listings, privacy and source policy, the status line of every dated
+      # document) and the language list they read.
+      - "docs/**"
       - "docs/data-sources/SOURCE_POLICY.md"
       - "PRIVACY.md"
       # The iPhone and Watch sources: the offline tests check that PRIVACY.md discloses every host they name.
       - "ios/BinarioKit/Sources/**"
       - "ios/BinarioApp/**"
       - "apple-watch/**/*.swift"
+      # tests/test_build_store_assets.py and tests/test_app_store_docs.py: listing assets, iPhone resources, brand icon.
+      - "store/**"
+      - "ios/Resources/**"
+      - "companion-expo/assets/brand/**"
       - "app/src/main/res/xml/locale_config.xml"
       - "gradle/verification-metadata.xml"
       - "requirements-ci.txt"
@@ -29,14 +34,19 @@ on:
       - "app/src/main/assets/**"
       - "app/src/personal/assets/**"
       - "app/src/main/java/it/binario/app/data/gtfs/GtfsPackCredits.kt"
-      # Documents the offline tests check (store listings, privacy and source policy) and the language list they read.
-      - "docs/store/**"
+      # Documents the offline tests check (store listings, privacy and source policy, the status line of every dated
+      # document) and the language list they read.
+      - "docs/**"
       - "docs/data-sources/SOURCE_POLICY.md"
       - "PRIVACY.md"
       # The iPhone and Watch sources: the offline tests check that PRIVACY.md discloses every host they name.
       - "ios/BinarioKit/Sources/**"
       - "ios/BinarioApp/**"
       - "apple-watch/**/*.swift"
+      # tests/test_build_store_assets.py and tests/test_app_store_docs.py: listing assets, iPhone resources, brand icon.
+      - "store/**"
+      - "ios/Resources/**"
+      - "companion-expo/assets/brand/**"
       - "app/src/main/res/xml/locale_config.xml"
       - "gradle/verification-metadata.xml"
       - "requirements-ci.txt"
@@ -114,6 +124,7 @@ jobs:
           tests/test_play_store_docs.py
           tests/test_app_store_docs.py
           tests/test_build_android_gtfs_credits.py
+          tests/test_verify_docs_status.py
 
       - name: Verify immutable CI inputs
         run: |

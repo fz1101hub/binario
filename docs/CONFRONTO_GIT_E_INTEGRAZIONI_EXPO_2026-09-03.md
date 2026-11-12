@@ -1,5 +1,7 @@
 # Binario — confronto Git e integrazioni nella baseline Expo v0.1.1
 
+> **Documento storico.** Descrive lo stato del progetto alla sua data e non viene aggiornato: lo stato attuale è in [AZIONI_TITOLARE.md](AZIONI_TITOLARE.md) e nel [CHANGELOG](../CHANGELOG.md).
+
 ## Regola di integrazione
 
 La baseline primaria resta `companion-expo/`, ossia Binario Expo v0.1.1 recuperato dai file di sessione. La versione nativa precedente conservata in `surfaces/native-android-wear-apple/` è una fonte di confronto funzionale: nessun suo file viene copiato direttamente nell’app Expo.
