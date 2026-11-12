@@ -43,20 +43,43 @@ public struct SQLiteGTFSJourneyRepository: JourneyRepository, Sendable {
         self.databaseURL = databaseURL
     }
 
+    /// The installer's check: always the full validation, whose result the reads of this process
+    /// then reuse (`validatedOnce`).
     static func validatesDatabase(at url: URL, inputFingerprint: String) -> Bool {
         do {
             let metadata = try validate(SQLiteDatabase(readOnlyURL: url))
-            return metadata["input_fingerprint_sha256"] == inputFingerprint
+            guard metadata["input_fingerprint_sha256"] == inputFingerprint else {
+                validatedIndices.forget(url)
+                return false
+            }
+            validatedIndices.record(metadata, for: url)
+            return true
         } catch {
+            validatedIndices.forget(url)
             return false
         }
+    }
+
+    /// The installed databases validated in this process: every search, board page and «Più tardi»
+    /// opens the file again, and the schema checks and `quick_check` of the whole index (tens of
+    /// milliseconds or more on a phone) need not run each time for the read-only file the installer
+    /// has just validated. A file of another size is validated again; a failed read opens the index
+    /// again through the installer (`AppModel`), whose validation is always full.
+    private static let validatedIndices = ValidatedIndexCache()
+
+    /// `validate`, once per process for a file of the same path and size.
+    private static func validatedOnce(_ database: SQLiteDatabase, at url: URL) throws -> [String: String] {
+        if let metadata = validatedIndices.metadata(for: url) { return metadata }
+        let metadata = try validate(database)
+        validatedIndices.record(metadata, for: url)
+        return metadata
     }
 
     /// Every pack of the index with its attribution, last service day and the number of rail
     /// trips its filter retained (0 when a feed contributed nothing), in ingestion order.
     public func sourcePacks() throws -> [GTFSSourcePack] {
         let database = try SQLiteDatabase(readOnlyURL: databaseURL)
-        _ = try Self.validate(database)
+        _ = try Self.validatedOnce(database, at: databaseURL)
         let calendar = Self.serviceCalendar(timeZone: TimeZone(identifier: "Europe/Rome") ?? .current)
         let statement = try database.statement(
             """
@@ -89,7 +112,7 @@ public struct SQLiteGTFSJourneyRepository: JourneyRepository, Sendable {
     /// only stations for which a search can find trains at all.
     public func coveredCatalogStationIDs() throws -> Set<String> {
         let database = try SQLiteDatabase(readOnlyURL: databaseURL)
-        _ = try Self.validate(database)
+        _ = try Self.validatedOnce(database, at: databaseURL)
         let statement = try database.statement(
             "SELECT DISTINCT catalog_station_id FROM stop WHERE catalog_station_id IS NOT NULL LIMIT ?"
         )
@@ -117,7 +140,7 @@ public struct SQLiteGTFSJourneyRepository: JourneyRepository, Sendable {
 
     private static func load(databaseURL: URL, query: JourneyQuery) throws -> JourneySnapshot {
         let database = try SQLiteDatabase(readOnlyURL: databaseURL)
-        let metadata = try validate(database)
+        let metadata = try validatedOnce(database, at: databaseURL)
         guard let sourceGeneratedAt = metadata["source_generated_at"],
               let sourceObservedAt = parseSourceDate(sourceGeneratedAt)
         else { throw SQLiteGTFSFailure.invalidData }
@@ -564,7 +587,7 @@ extension SQLiteGTFSJourneyRepository: StationBoardProvider {
 
     private static func loadBoard(databaseURL: URL, query: StationBoardQuery) throws -> StationBoardPage {
         let database = try SQLiteDatabase(readOnlyURL: databaseURL)
-        _ = try validate(database)
+        _ = try validatedOnce(database, at: databaseURL)
         let timeZones = try agencyTimeZones(database)
         let referenceTimeZone = timeZones.first ?? TimeZone(identifier: "Europe/Rome") ?? .current
         // As for the planner: after the last day of every pack the board needs an app update.
@@ -883,6 +906,49 @@ extension SQLiteGTFSJourneyRepository: StationBoardProvider {
         try statement.bind(requestedDay, at: binding)
         guard try statement.step() else { return false }
         return statement.int(at: 0) > 0
+    }
+}
+
+/// The metadata of the databases validated in this process, by path and size
+/// (`SQLiteGTFSJourneyRepository.validatedOnce`). Process memory only.
+private final class ValidatedIndexCache: @unchecked Sendable {
+    private struct Entry {
+        let size: Int
+        let metadata: [String: String]
+    }
+
+    private let lock = NSLock()
+    private var entries: [String: Entry] = [:]
+
+    func metadata(for url: URL) -> [String: String]? {
+        guard let size = Self.size(of: url) else { return nil }
+        lock.lock()
+        defer { lock.unlock() }
+        guard let entry = entries[Self.key(url)], entry.size == size else { return nil }
+        return entry.metadata
+    }
+
+    func record(_ metadata: [String: String], for url: URL) {
+        guard let size = Self.size(of: url) else { return }
+        lock.lock()
+        entries[Self.key(url)] = Entry(size: size, metadata: metadata)
+        lock.unlock()
+    }
+
+    func forget(_ url: URL) {
+        lock.lock()
+        entries[Self.key(url)] = nil
+        lock.unlock()
+    }
+
+    private static func key(_ url: URL) -> String {
+        url.standardizedFileURL.path
+    }
+
+    /// Read from the file system each time: a URL keeps the resource values it read once.
+    private static func size(of url: URL) -> Int? {
+        guard let attributes = try? FileManager.default.attributesOfItem(atPath: url.path) else { return nil }
+        return (attributes[.size] as? NSNumber)?.intValue
     }
 }
 
