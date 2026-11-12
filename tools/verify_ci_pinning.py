@@ -861,7 +861,7 @@ def _check_linux_trigger_budget(
         "android-ci.yml": {"app/**", "wear/**", "contracts/wear-snapshot/**"},
         # The document gates of the offline tests must run when their documents change (audit A7-11).
         "gtfs-assets-ci.yml": {
-            "docs/store/**",
+            "docs/**",
             "docs/data-sources/SOURCE_POLICY.md",
             "PRIVACY.md",
             "app/src/main/res/xml/locale_config.xml",

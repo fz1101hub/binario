@@ -425,7 +425,7 @@ class VerifyCiPinningTest(unittest.TestCase):
         # Audit A7-11: store-doc tests and the SOURCE_POLICY privacy gate ran on no change to those documents.
         workflow_path = ROOT / ".github/workflows/gtfs-assets-ci.yml"
         original = workflow_path.read_text(encoding="utf-8")
-        for path in ('      - "docs/store/**"\n', '      - "docs/data-sources/SOURCE_POLICY.md"\n'):
+        for path in ('      - "docs/**"\n', '      - "docs/data-sources/SOURCE_POLICY.md"\n'):
             with self.subTest(path=path):
                 mutated = original.replace(path, "", 1)
                 self.assertNotEqual(original, mutated)

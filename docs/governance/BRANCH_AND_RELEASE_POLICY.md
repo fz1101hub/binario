@@ -40,6 +40,8 @@ I workflow fissano ogni GitHub Action a un commit SHA completo, ogni immagine di
 
 ## Documenti storici
 
+Ogni documento sotto `docs/` con una data nel percorso porta sotto il titolo una riga di stato: «> **Documento storico.** …» se descrive lo stato di quella data, «> **Stato del documento:** …» se è ancora in uso. `tools/verify_docs_status.py`, eseguito dai test offline di GTFS Asset Integrity (`tests/test_verify_docs_status.py`), rifiuta un documento datato senza.
+
 I report storici alla radice non vengono spostati automaticamente. I manifest di consegna sotto `archives/session-versions/manifests/` ne registrano i percorsi originali come contenuto storico. Spostarli senza rigenerare e verificare tali manifest romperebbe la corrispondenza tra una consegna archiviata e il suo inventario. Quando si pianificherà un archivio strutturale, il cambiamento dovrà aggiornare insieme i riferimenti, i manifest interessati e una tabella di reindirizzamento verificata; fino ad allora i percorsi vengono preservati deliberatamente.
 
 ## Verifiche locali
