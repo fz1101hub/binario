@@ -1,0 +1,60 @@
+{
+  "schema": "binario-shared-rules-v1",
+  "readers": {
+    "android": "app/src/test/java/it/binario/app/data/reliability/SharedRulesContractTest.kt",
+    "iphone": "ios/BinarioKit/Tests/BinarioKitTests/SharedRulesContractTests.swift",
+    "alexa": "alexa-companion/server/punctuality/sharedRules.test.ts"
+  },
+  "trainNumbers": [
+    {"published": "9558", "key": "9558", "query": "9558", "queryNumeric": "9558", "queryValid": true},
+    {"published": "FR 9558", "key": "9558", "query": "FR9558", "queryNumeric": "9558", "queryValid": true},
+    {"published": "09558", "key": "9558", "query": "09558", "queryNumeric": "9558", "queryValid": true},
+    {"published": " FR 09558 ", "key": "9558", "query": "FR09558", "queryNumeric": "9558", "queryValid": true},
+    {"published": "Frecciarossa 9558", "key": "9558", "query": "FRECCIAROSSA9558", "queryNumeric": "9558", "queryValid": true},
+    {"published": "REG 2041", "key": "2041", "query": "REG2041", "queryNumeric": "2041", "queryValid": true},
+    {"published": "RE_11 - 2153", "key": "2153", "query": "2153", "queryNumeric": "2153", "queryValid": true},
+    {"published": "S5 - 811A", "key": "811", "query": "811A", "queryNumeric": null, "queryValid": true},
+    {"published": "S5 - 811", "key": "811", "query": "811", "queryNumeric": "811", "queryValid": true},
+    {"published": "S5 - ", "key": "5", "query": "S5", "queryNumeric": "5", "queryValid": true},
+    {"published": "S5 - A", "key": "S5-A", "query": "A", "queryNumeric": null, "queryValid": false},
+    {"published": "A - B - 0123", "key": "123", "query": "0123", "queryNumeric": "123", "queryValid": true},
+    {"published": "VE545", "key": "545", "query": "VE545", "queryNumeric": null, "queryValid": true},
+    {"published": "0", "key": "0", "query": "0", "queryNumeric": "0", "queryValid": true},
+    {"published": "ic notte", "key": "ICNOTTE", "query": "ICNOTTE", "queryNumeric": null, "queryValid": false}
+  ],
+  "statistics": {
+    "document": "punctuality-stats-v1.json",
+    "minimumSamples": 5,
+    "onTimeLimitMinutes": [
+      {"category": "FR", "minutes": 5}, {"category": "FA", "minutes": 5}, {"category": "FB", "minutes": 5},
+      {"category": "EC", "minutes": 5}, {"category": "ES", "minutes": 5}, {"category": "ESC", "minutes": 5},
+      {"category": "EN", "minutes": 5}, {"category": "ITALO", "minutes": 5}, {"category": "Italo", "minutes": 5},
+      {"category": " fr ", "minutes": 5}, {"category": "REG", "minutes": 15}, {"category": "RV", "minutes": 15},
+      {"category": "IC", "minutes": 15}, {"category": "ICN", "minutes": 15}, {"category": "S", "minutes": 15},
+      {"category": "", "minutes": 15}
+    ],
+    "lastStopWithoutOrigin": [
+      {"number": "9558", "expected": {"samples": 29, "onTime": 22, "limitMinutes": 5, "daysObserved": 30, "daysCancelled": 1, "daysOnTime": {"part": 638, "whole": 870}}},
+      {"number": "FR 9558", "expected": {"samples": 29, "onTime": 22, "limitMinutes": 5, "daysObserved": 30, "daysCancelled": 1, "daysOnTime": {"part": 638, "whole": 870}}},
+      {"number": "09558", "expected": {"samples": 29, "onTime": 22, "limitMinutes": 5, "daysObserved": 30, "daysCancelled": 1, "daysOnTime": {"part": 638, "whole": 870}}},
+      {"number": "2041", "expected": {"samples": 23, "onTime": 18, "limitMinutes": 15, "daysObserved": 30, "daysCancelled": 6, "daysOnTime": {"part": 432, "whole": 690}}},
+      {"number": "REG 2041", "expected": {"samples": 23, "onTime": 18, "limitMinutes": 15, "daysObserved": 30, "daysCancelled": 6, "daysOnTime": {"part": 432, "whole": 690}}},
+      {"number": "101", "expected": {"samples": 5, "onTime": 4, "limitMinutes": 15, "daysObserved": 5, "daysCancelled": 0, "daysOnTime": {"part": 20, "whole": 25}}},
+      {"number": "100", "expected": null},
+      {"number": "811", "expected": {"samples": 28, "onTime": 26, "limitMinutes": 15, "daysObserved": 30, "daysCancelled": 0, "daysOnTime": {"part": 780, "whole": 840}}},
+      {"number": "S5 - 811A", "expected": {"samples": 28, "onTime": 26, "limitMinutes": 15, "daysObserved": 30, "daysCancelled": 0, "daysOnTime": {"part": 780, "whole": 840}}},
+      {"number": "S5 - 811", "expected": {"samples": 28, "onTime": 26, "limitMinutes": 15, "daysObserved": 30, "daysCancelled": 0, "daysOnTime": {"part": 780, "whole": 840}}},
+      {"number": "8110", "expected": null},
+      {"number": "2153", "expected": null},
+      {"number": "RE_11 - 2153", "expected": null},
+      {"number": "3001", "expected": {"samples": 20, "onTime": 19, "limitMinutes": 15, "daysObserved": 20, "daysCancelled": 0, "daysOnTime": {"part": 380, "whole": 400}}},
+      {"number": "  ", "expected": null},
+      {"number": "777", "divergent": "NEEDS-OWNER: two trains run with the number and only one has 5 samples at its last stop",
+       "app": null,
+       "alexa": {"samples": 12, "onTime": 11, "limitMinutes": 15, "daysObserved": 12, "daysCancelled": 0, "daysOnTime": {"part": 132, "whole": 144}}},
+      {"number": "888", "divergent": "NEEDS-OWNER: a train whose file lists only its origin",
+       "app": null,
+       "alexa": {"samples": 8, "onTime": 8, "limitMinutes": 15, "daysObserved": 8, "daysCancelled": 0, "daysOnTime": {"part": 64, "whole": 64}}}
+    ]
+  }
+}
