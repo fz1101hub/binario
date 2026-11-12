@@ -1,4 +1,4 @@
-<resources>
+<resources xmlns:tools="http://schemas.android.com/tools">
     <!-- New data sources (October 2026) -->
     <string name="notices_train_title">Bu trene ait duyurular</string>
     <string name="notices_loading">Duyurular aranıyor…</string>
@@ -201,7 +201,7 @@
     <string name="planned_journey_text_import_shared">Paylaşılan metin alındı. Önizlemeyi oluşturun ve verileri inceleyin: Binario otomatik olarak içe aktarmaz.</string>
     <string name="planned_journey_calendar_import_description">Eklenecek yolculukları seçin. İçe aktarma yalnızca ekler: telefondaki mevcut yolculukların üzerine yazmaz.</string>
     <string name="planned_journey_text_import_label">İçe aktarılacak yolculukların metni</string>
-    <string name="planned_journey_text_import_example">Roma Termini → Bologna Centrale · 12.09.2026 saat 08:30\nBologna Centrale → Milano Centrale · 12.09.2026 saat 11:05</string>
+    <string name="planned_journey_text_import_example" tools:ignore="TypographyDashes">Roma Termini → Bologna Centrale · 12.09.2026 saat 08:30\nBologna Centrale → Milano Centrale · 12.09.2026 saat 11:05</string>
     <string name="planned_journey_text_import_hint">Her satırda kalkış, varış, GG.AA.YYYY, DD/MM/YYYY veya YYYY-MM-DD biçiminde tarih ve SS:DD biçiminde saat gerekir. Metin, silene veya içe aktarmayı tamamlayana kadar burada kalır.</string>
     <string name="planned_journey_text_import_preview">Önizleme oluştur</string>
     <string name="planned_journey_text_import_review">Eklemeden önce inceleyin</string>

@@ -218,6 +218,18 @@ final class SQLiteGTFSJourneyRepositoryTests: XCTestCase {
         values.isExcludedFromBackup = false
         var mutableInstalled = installed
         try mutableInstalled.setResourceValues(values)
+        // Precondition of the reuse check below: the cleared flag must be visible on disk before the
+        // second install. On the macOS test host the cleared value has been seen landing after the
+        // installer had already written and read back the flag, so the reuse check failed although
+        // the installer had done its job. Wait (at most 3 s) until the clear is observable.
+        let clearDeadline = Date().addingTimeInterval(3)
+        while BundledGTFSScheduleInstaller.isExcludedFromBackupOnDisk(installed), Date() < clearDeadline {
+            Thread.sleep(forTimeInterval: 0.05)
+        }
+        XCTAssertFalse(
+            BundledGTFSScheduleInstaller.isExcludedFromBackupOnDisk(installed),
+            "precondition: the backup flag is cleared on disk before the reuse"
+        )
         #endif
 
         try Data("corrupt-source-after-install".utf8).write(to: compressedURL)

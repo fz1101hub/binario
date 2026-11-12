@@ -1,4 +1,4 @@
-<resources>
+<resources xmlns:tools="http://schemas.android.com/tools">
     <!-- New data sources (October 2026) -->
     <string name="notices_train_title">Объявления по этому поезду</string>
     <string name="notices_loading">Поиск объявлений…</string>
@@ -202,7 +202,7 @@
     <string name="planned_journey_text_import_shared">Получен текст. Создайте предпросмотр и проверьте данные: Binario не импортирует автоматически.</string>
     <string name="planned_journey_calendar_import_description">Выберите поездки для добавления. Импорт только добавляет: поездки на телефоне не перезаписываются.</string>
     <string name="planned_journey_text_import_label">Текст поездок для импорта</string>
-    <string name="planned_journey_text_import_example">Roma Termini → Bologna Centrale · 12.09.2026 в 08:30\nBologna Centrale → Milano Centrale · 12.09.2026 в 11:05</string>
+    <string name="planned_journey_text_import_example" tools:ignore="TypographyDashes">Roma Termini → Bologna Centrale · 12.09.2026 в 08:30\nBologna Centrale → Milano Centrale · 12.09.2026 в 11:05</string>
     <string name="planned_journey_text_import_hint">В каждой строке нужны отправление, назначение, дата ДД.ММ.ГГГГ, DD/MM/YYYY или YYYY-MM-DD и время ЧЧ:ММ. Текст остаётся здесь, пока вы его не удалите или не завершите импорт.</string>
     <string name="planned_journey_text_import_preview">Создать предпросмотр</string>
     <string name="planned_journey_text_import_review">Проверьте перед добавлением</string>
