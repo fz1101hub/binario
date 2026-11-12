@@ -60,8 +60,7 @@ import it.binario.app.data.provider.RatePolicy
 import it.binario.app.data.provider.TimetableValidityAware
 import it.binario.app.data.provider.TravelMode
 import it.binario.app.data.provider.WheelchairDataAware
-import it.binario.app.data.sources.RailInformationCategory
-import it.binario.app.data.sources.RailSourceSelectionPolicy
+import it.binario.app.data.sources.PlannedPackOrder
 import java.io.IOException
 import java.io.InputStream
 import java.time.Clock
@@ -546,17 +545,22 @@ class EmbeddedGtfsJourneyProvider internal constructor(
         // journeys (after 12 December 2026 a Milano – Roma search would otherwise list Trenitalia only, as if complete).
         val stale = expiredPacks(coverage, origin, destination, serviceDate).isNotEmpty()
 
-        // The pack the route search prefers for planned itineraries comes first, so that when two packs publish
-        // the same train its copy is the one kept.
-        val ranked = current.filterNot { it.pack.isUrban }.sortedByDescending {
-            RailSourceSelectionPolicy.score(RailInformationCategory.PLANNED_ITINERARY, it.pack.sourceId, null)
-        }
+        // The planned order of the packs ([PlannedPackOrder], as in the route search): when two packs publish the same
+        // train the copy of the first is kept, and the first take the bounded places below. The national packs come
+        // first, then the Italian regional and the foreign ones; when no national pack serves an end (Lugano, Merano),
+        // the packs serving it come first.
+        val ranked = PlannedPackOrder.ordered(
+            current.filterNot { it.pack.isUrban },
+            sourceId = { it.pack.sourceId },
+            coversOrigin = { it.coversOrigin },
+            coversDestination = { it.coversDestination }
+        )
         // The city networks of the two ends (metro, tram), next to the railway packs of every selection.
         val urban = current.filter { it.pack.isUrban }
             .sortedByDescending { (if (it.coversOrigin) 1 else 0) + (if (it.coversDestination) 1 else 0) }
             .take(settings.maxUrbanPacksPerSearch)
         // Every pack serving both ends takes part, however many they are: Milano Centrale – Verona Porta Nuova is in
-        // the Swiss, Trenord, Italo and Trenitalia packs, and the one ranked last (Trenitalia) has most of the trains.
+        // the Trenitalia, Italo, Trenord and Swiss packs, and the one ranked last has trains the others do not have.
         // [GtfsJourneyPlannerSettings.maxPacksPerSearch] only bounds the packs added for a change between packs; the
         // size of a search is bounded by its connections ([GtfsJourneyPlannerSettings.maxSearchConnections]).
         val primary = ranked.filter { it.coversOrigin && it.coversDestination }.take(MAX_SLICES / MAX_DAY_PARTS - urban.size)

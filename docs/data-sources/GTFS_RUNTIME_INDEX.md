@@ -25,7 +25,7 @@ Il pack Trenitalia è il più grande: 245 mila righe di `stop_times` (40 MB non 
 
 Le fermate dei pack che pubblicano codici di stazione (`EmbeddedGtfsPack.stopCodeScheme`) sono legate al catalogo dal codice prima che dal nome (`GtfsStationCodeIndex`), sia nel calcolo dei viaggi sia nella ricerca delle tratte, che riceve il catalogo solo per questo. Le linee bus dei pack con `busRoutesAreScheduledCoaches` diventano tratte `LegMode.BUS` e servizi `TrainService.scheduledBus`; negli altri pack un bus resta un bus sostitutivo.
 
-Una corsa pubblicata da due pack con lo stesso numero e almeno una connessione identica diventa una sola corsa della scansione: la copia del pack meglio classificato resta quella mostrata, le connessioni identiche dell'altra sono scartate e le restanti proseguono la stessa corsa.
+Una corsa pubblicata da due pack con lo stesso numero e almeno una connessione identica diventa una sola corsa della scansione: la copia del pack che viene prima nell'ordine dei pack programmati (`PlannedPackOrder`, vedi SOURCE_POLICY.md) resta quella mostrata, le connessioni identiche dell'altra sono scartate e le restanti proseguono la stessa corsa.
 
 ## Ferrovie regionali e reti urbane
 
