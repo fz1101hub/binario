@@ -1013,7 +1013,12 @@
     <string name="agenda_editor_date_value">Dia: %1$s</string>
     <string name="agenda_editor_time_value">Hora: %1$s</string>
     <string name="agenda_editor_unset">a escolher</string>
-    <string name="agenda_editor_first_segment">Você está editando o primeiro trecho; os outros não mudam.</string>
+    <string name="planned_journey_leg_title">Trecho %1$d de %2$d</string>
+    <string name="planned_journey_add_leg">Adicionar trecho</string>
+    <string name="planned_journey_remove_leg">Remover trecho</string>
+    <string name="planned_journey_remove_leg_a11y">Remover o trecho %1$d de %2$d</string>
+    <string name="planned_journey_legs_disconnected">Cada trecho deve partir da estação de chegada do trecho anterior.</string>
+    <string name="planned_journey_legs_not_chronological">Cada trecho deve partir depois do trecho anterior.</string>
     <string name="agenda_editor_station_hint">Busque pelo nome ou código e escolha uma estação.</string>
     <string name="agenda_editor_select_station">Selecionar %1$s, código %2$s</string>
     <!-- New features (October 2026) -->

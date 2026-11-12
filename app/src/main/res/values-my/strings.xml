@@ -969,7 +969,12 @@
     <string name="agenda_editor_date_value">ရက်စွဲ- %1$s</string>
     <string name="agenda_editor_time_value">အချိန်- %1$s</string>
     <string name="agenda_editor_unset">ရွေးရန် ကျန်</string>
-    <string name="agenda_editor_first_segment">ပထမ အပိုင်းကို ပြင်နေသည်၊ ကျန်အပိုင်းများ မပြောင်းပါ။</string>
+    <string name="planned_journey_leg_title">အပိုင်း %1$d / %2$d</string>
+    <string name="planned_journey_add_leg">အပိုင်း ထည့်ရန်</string>
+    <string name="planned_journey_remove_leg">အပိုင်း ဖယ်ရှားရန်</string>
+    <string name="planned_journey_remove_leg_a11y">အပိုင်း %1$d / %2$d ကို ဖယ်ရှားရန်</string>
+    <string name="planned_journey_legs_disconnected">အပိုင်းတိုင်းသည် ယခင်အပိုင်း၏ ဆိုက်ရောက်ဘူတာမှ စတင်ရမည်။</string>
+    <string name="planned_journey_legs_not_chronological">အပိုင်းတိုင်းသည် ယခင်အပိုင်းပြီးနောက် ထွက်ခွာရမည်။</string>
     <string name="agenda_editor_station_hint">အမည် သို့မဟုတ် ကုဒ်ဖြင့် ရှာပြီး ဘူတာတစ်ခု ရွေးပါ။</string>
     <string name="agenda_editor_select_station">%1$s ရွေးရန်၊ ကုဒ် %2$s</string>
     <!-- New features (October 2026) -->

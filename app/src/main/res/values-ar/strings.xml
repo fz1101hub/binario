@@ -1079,7 +1079,12 @@
     <string name="agenda_editor_date_value">التاريخ: %1$s</string>
     <string name="agenda_editor_time_value">الوقت: %1$s</string>
     <string name="agenda_editor_unset">لم يُحدَّد بعد</string>
-    <string name="agenda_editor_first_segment">أنت تعدّل الجزء الأول من الرحلة؛ تبقى الأجزاء الأخرى دون تغيير.</string>
+    <string name="planned_journey_leg_title">الجزء %1$d من %2$d</string>
+    <string name="planned_journey_add_leg">إضافة جزء</string>
+    <string name="planned_journey_remove_leg">إزالة الجزء</string>
+    <string name="planned_journey_remove_leg_a11y">إزالة الجزء %1$d من %2$d</string>
+    <string name="planned_journey_legs_disconnected">يجب أن يبدأ كل جزء من محطة وصول الجزء السابق.</string>
+    <string name="planned_journey_legs_not_chronological">يجب أن ينطلق كل جزء بعد الجزء السابق.</string>
     <string name="agenda_editor_station_hint">ابحث بالاسم أو الرمز واختر محطة.</string>
     <string name="agenda_editor_select_station">اختيار %1$s، الرمز %2$s</string>
     <!-- New features (October 2026) -->

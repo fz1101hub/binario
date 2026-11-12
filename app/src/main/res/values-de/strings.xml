@@ -1014,7 +1014,12 @@
     <string name="agenda_editor_date_value">Datum: %1$s</string>
     <string name="agenda_editor_time_value">Uhrzeit: %1$s</string>
     <string name="agenda_editor_unset">noch wählen</string>
-    <string name="agenda_editor_first_segment">Du bearbeitest die erste Etappe; die anderen bleiben unverändert.</string>
+    <string name="planned_journey_leg_title">Etappe %1$d von %2$d</string>
+    <string name="planned_journey_add_leg">Etappe hinzufügen</string>
+    <string name="planned_journey_remove_leg">Etappe entfernen</string>
+    <string name="planned_journey_remove_leg_a11y">Etappe %1$d von %2$d entfernen</string>
+    <string name="planned_journey_legs_disconnected">Jede Etappe muss am Ankunftsbahnhof der vorherigen Etappe beginnen.</string>
+    <string name="planned_journey_legs_not_chronological">Jede Etappe muss nach der vorherigen Etappe abfahren.</string>
     <string name="agenda_editor_station_hint">Nach Name oder Code suchen und einen Bahnhof auswählen.</string>
     <string name="agenda_editor_select_station">%1$s auswählen, Code %2$s</string>
     <!-- New features (October 2026) -->

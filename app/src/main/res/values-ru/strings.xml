@@ -1035,7 +1035,12 @@
     <string name="agenda_editor_date_value">Дата: %1$s</string>
     <string name="agenda_editor_time_value">Время: %1$s</string>
     <string name="agenda_editor_unset">не выбрано</string>
-    <string name="agenda_editor_first_segment">Вы изменяете первый участок; остальные участки не меняются.</string>
+    <string name="planned_journey_leg_title">Участок %1$d из %2$d</string>
+    <string name="planned_journey_add_leg">Добавить участок</string>
+    <string name="planned_journey_remove_leg">Удалить участок</string>
+    <string name="planned_journey_remove_leg_a11y">Удалить участок %1$d из %2$d</string>
+    <string name="planned_journey_legs_disconnected">Каждый участок должен начинаться на станции прибытия предыдущего участка.</string>
+    <string name="planned_journey_legs_not_chronological">Каждый участок должен отправляться позже предыдущего.</string>
     <string name="agenda_editor_station_hint">Найдите станцию по названию или коду и выберите её.</string>
     <string name="agenda_editor_select_station">Выбрать %1$s, код %2$s</string>
     <!-- New features (October 2026) -->

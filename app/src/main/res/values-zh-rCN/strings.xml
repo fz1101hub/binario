@@ -992,7 +992,12 @@
     <string name="agenda_editor_date_value">日期：%1$s</string>
     <string name="agenda_editor_time_value">时间：%1$s</string>
     <string name="agenda_editor_unset">待选择</string>
-    <string name="agenda_editor_first_segment">你正在编辑第一段行程；其他段保持不变。</string>
+    <string name="planned_journey_leg_title">第 %1$d 段，共 %2$d 段</string>
+    <string name="planned_journey_add_leg">添加一段行程</string>
+    <string name="planned_journey_remove_leg">删除此段</string>
+    <string name="planned_journey_remove_leg_a11y">删除第 %1$d 段（共 %2$d 段）</string>
+    <string name="planned_journey_legs_disconnected">每段行程必须从上一段的到达站出发。</string>
+    <string name="planned_journey_legs_not_chronological">每段行程的出发时间必须晚于上一段。</string>
     <string name="agenda_editor_station_hint">按名称或代码搜索并选择车站。</string>
     <string name="agenda_editor_select_station">选择 %1$s，代码 %2$s</string>
     <!-- New features (October 2026) -->

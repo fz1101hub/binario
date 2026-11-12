@@ -992,7 +992,12 @@
     <string name="agenda_editor_date_value">วันที่: %1$s</string>
     <string name="agenda_editor_time_value">เวลา: %1$s</string>
     <string name="agenda_editor_unset">ยังไม่ได้เลือก</string>
-    <string name="agenda_editor_first_segment">คุณกำลังแก้ไขช่วงแรก ช่วงอื่นจะไม่เปลี่ยนแปลง</string>
+    <string name="planned_journey_leg_title">ช่วงที่ %1$d จาก %2$d</string>
+    <string name="planned_journey_add_leg">เพิ่มช่วง</string>
+    <string name="planned_journey_remove_leg">ลบช่วง</string>
+    <string name="planned_journey_remove_leg_a11y">ลบช่วงที่ %1$d จาก %2$d</string>
+    <string name="planned_journey_legs_disconnected">แต่ละช่วงต้องออกจากสถานีปลายทางของช่วงก่อนหน้า</string>
+    <string name="planned_journey_legs_not_chronological">แต่ละช่วงต้องออกเดินทางหลังช่วงก่อนหน้า</string>
     <string name="agenda_editor_station_hint">ค้นหาตามชื่อหรือรหัส แล้วเลือกสถานี</string>
     <string name="agenda_editor_select_station">เลือก %1$s รหัส %2$s</string>
     <!-- New features (October 2026) -->
