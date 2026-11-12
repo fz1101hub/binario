@@ -467,7 +467,8 @@ class IOSProjectTests(unittest.TestCase):
         for language in sorted(LANGUAGES):
             folder = IOS / "Resources" / f"{language}.lproj"
             titles = read_strings(folder / "InfoPlist.strings")
-            self.assertEqual({"Agenda"}, set(titles), language)
+            # The quick action's title and the location permission text (I7) are the only Info.plist strings.
+            self.assertEqual({"Agenda", "NSLocationWhenInUseUsageDescription"}, set(titles), language)
             self.assertEqual(read_strings(folder / "Localizable.strings")["saved.agenda.title"], titles["Agenda"], language)
         app = (IOS / "BinarioApp/BinarioApp.swift").read_text(encoding="utf-8")
         self.assertIn('static let type = "it.binario.ios.agenda"', app)
@@ -492,6 +493,72 @@ class IOSProjectTests(unittest.TestCase):
         self.assertIn("maximumCharacters = 4_000", kit)
         self.assertIn("let free = max(0, PlannedJourneySchema.maximumJourneys - existing.count)", kit)
         self.assertIn("matches.count == 1", kit)
+
+    def test_dictation_reads_typed_text_without_a_microphone_or_speech_permission(self) -> None:
+        """EXPO_PORT_PLAN I6: the route is typed, or said with the keyboard's own dictation, and read on the iPhone with
+        Android's rules, checked by the cases both phones share (contracts/voice-input/v1). Binario asks for no microphone
+        or speech permission, records nothing and keeps the sentence in memory only."""
+        sources = [path for base in (IOS / "BinarioApp", IOS / "BinarioKit/Sources") for path in base.rglob("*.swift")]
+        code = "\n".join(path.read_text(encoding="utf-8") for path in sources)
+        for forbidden in (
+            "import Speech", "SFSpeechRecognizer", "AVAudioSession", "AVAudioRecorder", "AVAudioEngine",
+            "requestRecordPermission", "NSSpeechRecognitionUsageDescription", "NSMicrophoneUsageDescription",
+        ):
+            self.assertNotIn(forbidden, code)
+        settings = self.targets["Binario"]["settings"]["base"]
+        self.assertEqual([], [key for key in settings if "Microphone" in key or "SpeechRecognition" in key])
+        view = (IOS / "BinarioApp/RouteAssistSection.swift").read_text(encoding="utf-8")
+        for forbidden in ("@AppStorage", "@SceneStorage", "UserDefaults"):
+            self.assertNotIn(forbidden, view)
+        self.assertIn("model.reviewRouteDictation(sentence)", view)
+        for screen in ("PlannerView.swift", "AgendaView.swift"):
+            self.assertIn("RouteAssistSection(", (IOS / "BinarioApp" / screen).read_text(encoding="utf-8"), screen)
+        model = (IOS / "BinarioApp/AppModel.swift").read_text(encoding="utf-8")
+        self.assertIn("RouteDictation.review(text, stations: stations, target: .route", model)
+        contract = "contracts/voice-input/v1/dictation-cases.json"
+        self.assertIn(contract, (IOS / "BinarioKit/Tests/BinarioKitTests/RouteDictationTests.swift").read_text(encoding="utf-8"))
+        self.assertIn(contract, (ROOT / "app/src/test/java/it/binario/app/PlannerVoiceDictationFormsTest.kt").read_text(encoding="utf-8"))
+        self.assertTrue((ROOT / contract).is_file())
+
+    def test_nearest_station_is_one_when_in_use_position_used_on_the_iphone_only(self) -> None:
+        """EXPO_PORT_PLAN I7, F4, R20 and §3.9: «Stazione più vicina» asks for When-In-Use authorization on a tap
+        only, reads one position, and picks the nearest catalogue station on the phone; the position is neither
+        stored nor sent. Every language explains why in its InfoPlist.strings; no Always or background location."""
+        settings = self.targets["Binario"]["settings"]["base"]
+        italian = settings["INFOPLIST_KEY_NSLocationWhenInUseUsageDescription"]
+        forbidden_words = re.compile(r"android|wear\s*os|google\s*play|widget|companion", re.IGNORECASE)
+        for language in sorted(LANGUAGES):
+            values = read_strings(IOS / "Resources" / f"{language}.lproj" / "InfoPlist.strings")
+            self.assertEqual({"Agenda", "NSLocationWhenInUseUsageDescription"}, set(values), language)
+            text = values["NSLocationWhenInUseUsageDescription"]
+            self.assertTrue(text.strip(), language)
+            self.assertIn("Binario", text, language)
+            self.assertIsNone(forbidden_words.search(text), language)
+            self.assertIsNone(INVISIBLE.search(text), language)
+        self.assertEqual(italian, read_strings(IOS / "Resources/it.lproj/InfoPlist.strings")["NSLocationWhenInUseUsageDescription"])
+        self.assertEqual([], [key for key in settings if "LocationAlways" in key or "UIBackgroundModes" in key])
+
+        sources = [path for base in (IOS / "BinarioApp", IOS / "BinarioKit/Sources") for path in base.rglob("*.swift")]
+        importing = sorted(path.name for path in sources if "import CoreLocation" in path.read_text(encoding="utf-8"))
+        self.assertEqual(["NearestStation.swift"], importing)
+        locator = (IOS / "BinarioApp/NearestStation.swift").read_text(encoding="utf-8")
+        self.assertEqual(1, locator.count("requestWhenInUseAuthorization()"))
+        self.assertEqual(1, locator.count("manager.requestLocation()"))
+        for forbidden in (
+            "requestAlwaysAuthorization", "startUpdatingLocation", "allowsBackgroundLocationUpdates",
+            "startMonitoringSignificantLocationChanges", "startMonitoringVisits", "UserDefaults", "@AppStorage",
+        ):
+            self.assertNotIn(forbidden, locator)
+        # The coordinates go to the computation of the nearest station and nowhere else.
+        self.assertIn("model.nearestStation(latitude: latitude, longitude: longitude)", locator)
+        model = (IOS / "BinarioApp/AppModel.swift").read_text(encoding="utf-8")
+        self.assertIn("StationProximity.nearest(catalog.offeredStations, latitude: latitude, longitude: longitude)", model)
+        kit = (IOS / "BinarioKit/Sources/BinarioKit/StationProximity.swift").read_text(encoding="utf-8")
+        self.assertIn("defaultMaximumDistanceKilometres = 50.0", kit)
+        android = (ROOT / "app/src/main/java/it/binario/app/StationProximity.kt").read_text(encoding="utf-8")
+        self.assertIn("const val DEFAULT_MAX_DISTANCE_KM = 50.0", android)
+        self.assertIn("NearestStationButton(", (IOS / "BinarioApp/RouteAssistSection.swift").read_text(encoding="utf-8"))
+        self.assertIn("NearestStationButton(", (IOS / "BinarioApp/DeparturesView.swift").read_text(encoding="utf-8"))
 
     def test_privacy_manifests_match_each_executable_userdefaults_scope(self) -> None:
         ios_privacy = privacy_manifest(IOS / "Resources/PrivacyInfo.xcprivacy")
@@ -558,12 +625,23 @@ class IOSProjectTests(unittest.TestCase):
         text = "\n".join(path.read_text(encoding="utf-8") for path in paths)
         # NSAppTransportSecurity lives only in Configuration/Binario-Info.plist (pinned below).
         forbidden = [
-            "NSLocationWhenInUseUsageDescription", "NSMicrophoneUsageDescription",
+            "NSMicrophoneUsageDescription", "NSSpeechRecognitionUsageDescription",
+            "NSLocationAlwaysUsageDescription", "NSLocationAlwaysAndWhenInUseUsageDescription",
             "NSAppTransportSecurity", "NSAllowsArbitraryLoads", "CloudKit", "Firebase",
             "Mixpanel", "Amplitude", "BGTaskSchedulerPermittedIdentifiers",
         ]
         for value in forbidden:
             self.assertNotIn(value, text)
+        # The location purpose string («Stazione più vicina», EXPO_PORT_PLAN I7) only in the generated
+        # Info.plist settings and in each language's InfoPlist.strings.
+        declaring = sorted(
+            str(path.relative_to(IOS)) for path in paths
+            if "NSLocationWhenInUseUsageDescription" in path.read_text(encoding="utf-8")
+        )
+        self.assertEqual(
+            sorted(["project.yml"] + [f"Resources/{language}.lproj/InfoPlist.strings" for language in LANGUAGES]),
+            declaring,
+        )
         self.assertNotRegex(text, re.compile(r"AKIA[0-9A-Z]{16}"))
         # Live rail data (owner decision, November 2026): every request is HTTPS. The one cleartext
         # address allowed is Android's hop to www.viaggiatreno.it; only the HTTP client's tests spell

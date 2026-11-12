@@ -153,6 +153,16 @@ public struct CuratedStationCatalog: Decodable, Equatable, Sendable {
             .map(\.station)
     }
 
+    /// Every station the search can offer, in catalogue order: the co-located duplicate entries it
+    /// hides (`isShadowedDuplicate`) are left out, so dictation and the nearest station pick the
+    /// entry the timetable index binds, as the search does.
+    public var offeredStations: [Station] {
+        let byName = Dictionary(grouping: stations) { StationSearchNormalizer.normalize($0.name) }
+        return stations.filter { station in
+            !Self.isShadowedDuplicate(station, among: byName[StationSearchNormalizer.normalize(station.name)] ?? [])
+        }
+    }
+
     /// True when the search also offers another station with exactly this name, so a label made of
     /// station names alone would not tell the two apart. Co-located duplicate entries of one station
     /// are hidden by the search (isShadowedDuplicate) and are not namesakes.
