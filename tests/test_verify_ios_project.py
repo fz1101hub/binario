@@ -381,6 +381,100 @@ class IOSProjectTests(unittest.TestCase):
             for text in texts:
                 self.assertIsNone(forbidden.search(text), f"{language}: {text}")
 
+    def test_agenda_reminders_are_local_notifications_without_a_push_entitlement(self) -> None:
+        """EXPO_PORT_PLAN R25 and F30: the Agenda's reminders are local requests behind a protocol; no target
+        declares the push entitlement or a background mode, nothing registers for remote notifications, and the
+        permission is asked only when a journey with a reminder is saved, never by a reconciliation."""
+        paths = [
+            path for base in (IOS, ROOT / "apple-watch") for path in base.rglob("*")
+            if path.is_file() and ".build" not in path.parts
+            and path.suffix in {".swift", ".yml", ".plist", ".entitlements", ".xcprivacy"}
+        ]
+        for path in paths:
+            text = path.read_text(encoding="utf-8")
+            for forbidden in ("aps-environment", "registerForRemoteNotifications", "remote-notification", "UIBackgroundModes"):
+                self.assertNotIn(forbidden, text, path)
+        self.assertNotIn("entitlements", self.targets["Binario"])
+        for name, target in self.targets.items():
+            if "entitlements" in target:
+                with (IOS / target["entitlements"]["path"]).open("rb") as source:
+                    self.assertEqual({"com.apple.security.application-groups"}, set(plistlib.load(source)), name)
+
+        adapter = (IOS / "BinarioApp/AgendaReminders.swift").read_text(encoding="utf-8")
+        self.assertIn("final class SystemAgendaNotificationCenter: PlannedJourneyNotificationCenter", adapter)
+        self.assertIn("UNTimeIntervalNotificationTrigger", adapter)
+        # The words are the stored Italian time and the validated station names, never the free label.
+        self.assertIn("plan.departureTime.hhmm, plan.origin, plan.destination", adapter)
+        self.assertNotIn(".label", adapter)
+        sources = [
+            path for base in (IOS / "BinarioApp", IOS / "BinarioKit/Sources")
+            for path in base.rglob("*.swift")
+        ]
+        asking = sorted(path.name for path in sources if "requestAuthorization(" in path.read_text(encoding="utf-8"))
+        self.assertEqual(["AgendaReminders.swift"], asking)
+        scheduler = (IOS / "BinarioKit/Sources/BinarioKit/PlannedJourneyReminders.swift").read_text(encoding="utf-8")
+        self.assertEqual(1, scheduler.count("center.requestPermission()"))
+        self.assertLess(scheduler.index("func scheduleAfterSaving"), scheduler.index("center.requestPermission()"))
+        self.assertLess(scheduler.index("center.requestPermission()"), scheduler.index("func cancel(journeyID"))
+        root_view = (IOS / "BinarioApp/RootView.swift").read_text(encoding="utf-8")
+        self.assertIn("if phase == .active {\n                Task { await model.refreshReminders() }", root_view)
+        model = (IOS / "BinarioApp/AppModel.swift").read_text(encoding="utf-8")
+        for action in ("func deleteJourney(id: String)", "func completeJourney(id: String"):
+            body = model.split(action, 1)[1].split("\n    }\n", 1)[0]
+            self.assertLess(body.index("reminderScheduler?.cancel(journeyID: id)"), body.index("plannedJourneyStore."), action)
+        self.assertIn("PlannedJourneyReminderTests", (IOS / "BinarioKit/Tests/BinarioKitTests/PlannedJourneyReminderTests.swift").read_text(encoding="utf-8"))
+
+    def test_agenda_files_are_androids_formats_made_in_memory_and_read_in_place(self) -> None:
+        """EXPO_PORT_PLAN F24, F26, F28: the exports are Android's JSON transfer and ICS calendar, made in memory
+        when shared; a picked file is read in place through its security-scoped address with a byte bound; the
+        app writes no temporary file of its own."""
+        files = (IOS / "BinarioApp/AgendaFiles.swift").read_text(encoding="utf-8")
+        view = (IOS / "BinarioApp/AgendaView.swift").read_text(encoding="utf-8")
+        self.assertIn("DataRepresentation(exportedContentType: .json)", files)
+        self.assertIn("DataRepresentation(exportedContentType: AgendaFiles.calendarType)", files)
+        self.assertIn("PlannedJourneyTransfer.encode(PlannedJourneyCollection(validating: file.journeys))", files)
+        self.assertIn("PlannedJourneyIcs.export(file.journeys", files)
+        read = files.split("static func read(_ url: URL) -> Data? {", 1)[1].split("\n    }\n", 1)[0]
+        self.assertLess(read.index("startAccessingSecurityScopedResource()"), read.index("FileHandle(forReadingFrom: url)"))
+        self.assertIn("stopAccessingSecurityScopedResource()", read)
+        self.assertIn("read(upToCount: PlannedJourneySchema.maximumEncodedBytes + 1)", read)
+        for path in (IOS / "BinarioApp").glob("Agenda*.swift"):
+            text = path.read_text(encoding="utf-8")
+            for forbidden in ("temporaryDirectory", "NSTemporaryDirectory", "write(to:", "FileRepresentation", "asCopy"):
+                self.assertNotIn(forbidden, text, path.name)
+        self.assertIn(".fileImporter(isPresented: $importing, allowedContentTypes: AgendaFiles.importTypes)", view)
+        self.assertIn("ShareLink(item: AgendaCalendarFile(journeys: [journey])", view)
+        ics = (IOS / "BinarioKit/Sources/BinarioKit/PlannedJourneyIcs.swift").read_text(encoding="utf-8")
+        self.assertIn('productID = "-//Binario//Planned Journeys 1.0//IT"', ics)
+        self.assertIn('String(digest.prefix(32)) + "@binario.local"', ics)
+        self.assertIn('"X-BINARIO-JOURNEY-ID:"', ics)
+        self.assertIn('"X-BINARIO-OCCURRENCE-DATE:"', ics)
+        # The same limits as Android's PlannedJourneyIcsContract and PlannedJourneyTransferContract.
+        android_ics = (ROOT / "app/src/main/java/it/binario/app/plannedjourney/PlannedJourneyIcs.kt").read_text(encoding="utf-8")
+        self.assertIn("const val MAX_BYTES = 262_144", android_ics)
+        self.assertIn("const val MAX_EVENTS = 120", android_ics)
+        self.assertIn("maximumBytes = 262_144", ics)
+        self.assertIn("maximumEvents = 120", ics)
+        self.assertIn('PRODUCT_ID = "-//Binario//Planned Journeys 1.0//IT"', android_ics)
+        android_transfer = (ROOT / "app/src/main/java/it/binario/app/plannedjourney/PlannedJourneyTransfer.kt").read_text(encoding="utf-8")
+        self.assertIn("const val MAX_NESTING_DEPTH = 16", android_transfer)
+        journeys = (IOS / "BinarioKit/Sources/BinarioKit/PlannedJourneys.swift").read_text(encoding="utf-8")
+        self.assertIn("maximumNestingDepth = 16", journeys)
+
+    def test_text_import_adds_reviewed_journeys_on_catalogue_stations_only(self) -> None:
+        """EXPO_PORT_PLAN F22 and §3.4: a pasted text becomes a preview on catalogue stations; journeys are added
+        only after «Ho verificato», never replacing one, at most the Agenda's free places."""
+        view = (IOS / "BinarioApp/AgendaTextImportView.swift").read_text(encoding="utf-8")
+        model = (IOS / "BinarioApp/AppModel.swift").read_text(encoding="utf-8")
+        kit = (IOS / "BinarioKit/Sources/BinarioKit/PlannedJourneyTextImport.swift").read_text(encoding="utf-8")
+        self.assertIn(".disabled(!reviewed || selected.isEmpty)", view)
+        self.assertIn("preview = nil\n                reviewed = false", view)
+        self.assertIn("PlannedJourneyStationResolver(catalog: catalog)", model)
+        self.assertIn("plannedJourneyStore.add(contentsOf: journeys)", model)
+        self.assertIn("maximumCharacters = 4_000", kit)
+        self.assertIn("let free = max(0, PlannedJourneySchema.maximumJourneys - existing.count)", kit)
+        self.assertIn("matches.count == 1", kit)
+
     def test_privacy_manifests_match_each_executable_userdefaults_scope(self) -> None:
         ios_privacy = privacy_manifest(IOS / "Resources/PrivacyInfo.xcprivacy")
         self.assertFalse(ios_privacy["NSPrivacyTracking"])

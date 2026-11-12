@@ -120,6 +120,8 @@ final class AppModel: ObservableObject {
     @Published private(set) var favouriteTrains: [FavouriteTrain]
     /// «Agenda»: the planned journeys kept on this iPhone, as last read or written.
     @Published private(set) var agenda: PlannedJourneyAgendaState
+    /// The Agenda's local reminders as the system holds them, read back after every reconciliation.
+    @Published private(set) var reminderStatus: PlannedJourneyReminderStatus = .unknown
     @Published private(set) var watchSharingEnabled: Bool
     @Published fileprivate(set) var watchSyncStatus: WatchSyncStatus
     @Published var searchState: SearchState = .idle
@@ -205,6 +207,8 @@ final class AppModel: ObservableObject {
     private let savedRouteStore: SavedRouteStore
     private let favouriteTrainStore: FavouriteTrainStore
     private let plannedJourneyStore: PlannedJourneyStore
+    /// Nil in tests and previews: no reminder is scheduled.
+    private let reminderScheduler: PlannedJourneyReminderScheduler?
     private let boardStationStore: StationBoardStationStore
     private let watchSharingStore: WatchSharingPreferenceStore
     private let watchPublisher: WatchSnapshotPublisher?
@@ -244,6 +248,7 @@ final class AppModel: ObservableObject {
         savedRouteStore: SavedRouteStore,
         favouriteTrainStore: FavouriteTrainStore = FavouriteTrainStore(),
         plannedJourneyStore: PlannedJourneyStore = PlannedJourneyStore(),
+        reminderCenter: (any PlannedJourneyNotificationCenter)? = nil,
         boardStationStore: StationBoardStationStore = StationBoardStationStore(),
         watchSharingStore: WatchSharingPreferenceStore,
         repository: any JourneyRepository,
@@ -261,6 +266,11 @@ final class AppModel: ObservableObject {
         self.savedRouteStore = savedRouteStore
         self.favouriteTrainStore = favouriteTrainStore
         self.plannedJourneyStore = plannedJourneyStore
+        if let reminderCenter {
+            self.reminderScheduler = PlannedJourneyReminderScheduler(center: reminderCenter, content: AgendaReminderText.content)
+        } else {
+            self.reminderScheduler = nil
+        }
         self.boardStationStore = boardStationStore
         self.watchSharingStore = watchSharingStore
         self.repository = repository
@@ -334,6 +344,7 @@ final class AppModel: ObservableObject {
             savedRouteStore: SavedRouteStore(),
             favouriteTrainStore: FavouriteTrainStore(),
             plannedJourneyStore: PlannedJourneyStore(),
+            reminderCenter: Self.systemReminderCenter(),
             boardStationStore: StationBoardStationStore(),
             watchSharingStore: WatchSharingPreferenceStore(),
             repository: FailClosedJourneyRepository(),
@@ -346,6 +357,9 @@ final class AppModel: ObservableObject {
             liveDataStore: LiveDataPreferenceStore(),
             versionDisplay: versionFormatter.displayVersion(bundle: bundle)
         )
+
+        // The reminders of the Agenda as the system holds them; nothing is asked to the user here.
+        Task { await model.refreshReminders() }
 
         // The statistics are optional: a build without the file shows no reliability at all.
         let statisticsURL = bundle.url(
@@ -1534,13 +1548,92 @@ final class AppModel: ObservableObject {
         applyAgenda(isNew ? plannedJourneyStore.add(journey) : plannedJourneyStore.replace(journey))
     }
 
+    /// Its reminder is cancelled first, so a journey never goes with its notification still pending;
+    /// a refused change gets it back at the reconciliation that follows.
     func deleteJourney(id: String) -> PlannedJourneyRefusal? {
-        applyAgenda(plannedJourneyStore.remove(id: id))
+        reminderScheduler?.cancel(journeyID: id)
+        let refusal = applyAgenda(plannedJourneyStore.remove(id: id))
+        refreshRemindersLater()
+        return refusal
     }
 
-    /// «Completa»: the journey moves to the archive.
+    /// «Completa»: the journey moves to the archive, and its reminder goes.
     func completeJourney(id: String, now: Date = Date()) -> PlannedJourneyRefusal? {
-        applyAgenda(plannedJourneyStore.complete(id: id, at: now))
+        reminderScheduler?.cancel(journeyID: id)
+        let refusal = applyAgenda(plannedJourneyStore.complete(id: id, at: now))
+        refreshRemindersLater()
+        return refusal
+    }
+
+    /// A file picked in «Importa», compared with the Agenda as stored now; nil when it is not an
+    /// Agenda export or a calendar Binario wrote. Nothing is written.
+    func previewAgendaFile(_ data: Data) -> PlannedJourneyFilePreview? {
+        PlannedJourneyFileImport.preview(data, existing: plannedJourneyStore.load().journeys)
+    }
+
+    /// The journeys of a previewed file, with Android's conflict policy. Imported reminders are
+    /// scheduled only if notifications are already allowed: an import never asks.
+    func importJourneys(_ preview: PlannedJourneyImportPreview, policy: PlannedJourneyConflictPolicy) -> PlannedJourneyRefusal? {
+        let refusal = applyAgenda(plannedJourneyStore.applyImport(preview, policy: policy))
+        refreshRemindersLater()
+        return refusal
+    }
+
+    /// The journeys a pasted text describes, on the catalogue's stations, against the Agenda as
+    /// stored now; nil when the catalogue is not loaded or the text is refused. Nothing is written.
+    func previewTextImport(_ text: String, now: Date = Date()) -> PlannedJourneyTextPreview? {
+        guard case let .available(catalog) = catalogState else { return nil }
+        return PlannedJourneyTextImport.preview(
+            text,
+            resolver: PlannedJourneyStationResolver(catalog: catalog),
+            existing: plannedJourneyStore.load().journeys,
+            now: now
+        )
+    }
+
+    /// The journeys reviewed in the text import, added after the Agenda's: how many were added, or
+    /// why none was.
+    func addJourneys(_ journeys: [PlannedJourney]) -> Result<Int, PlannedJourneyRefusal> {
+        let before = plannedJourneyStore.load().journeys.count
+        switch plannedJourneyStore.add(contentsOf: journeys) {
+        case let .success(state):
+            agenda = state
+            refreshRemindersLater()
+            return .success(state.journeys.count - before)
+        case let .failure(refusal):
+            agenda = plannedJourneyStore.load()
+            return .failure(refusal)
+        }
+    }
+
+    /// The system's reminders made those of the Agenda: at launch, back in the foreground, when the
+    /// Agenda opens and after a change. It never asks for permission.
+    func refreshReminders(now: Date = Date()) async {
+        guard let reminderScheduler else { return }
+        reminderStatus = await reminderScheduler.reconcile(agenda.journeys, now: now)
+    }
+
+    /// After the editor saved `journey`: the first time a reminder is chosen the system asks for
+    /// permission (only here); then the reminder is scheduled and the outcome said. The journey
+    /// stays saved whatever the outcome.
+    func scheduleReminder(afterSaving journey: PlannedJourney, now: Date = Date()) async -> PlannedJourneyReminderOutcome {
+        guard let reminderScheduler else { return journey.reminderMinutes == nil ? .none : .failed }
+        let result = await reminderScheduler.scheduleAfterSaving(journey, journeys: agenda.journeys, now: now)
+        reminderStatus = result.status
+        return result.outcome
+    }
+
+    private func refreshRemindersLater() {
+        guard reminderScheduler != nil else { return }
+        Task { await self.refreshReminders() }
+    }
+
+    private static func systemReminderCenter() -> (any PlannedJourneyNotificationCenter)? {
+        #if canImport(UserNotifications)
+        return SystemAgendaNotificationCenter()
+        #else
+        return nil
+        #endif
     }
 
     func setChecklistItem(_ itemID: String, completed: Bool, journeyID: String) -> PlannedJourneyRefusal? {
