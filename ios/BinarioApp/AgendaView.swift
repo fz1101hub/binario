@@ -351,13 +351,10 @@ struct AgendaJourneyView: View {
 
             Section {
                 if journey.status == .active {
-                    // AGENDA-EDIT: journeys departing once until the editor holds repetitions.
-                    if journey.recurrence == nil {
-                        Button {
-                            editor = .edit(journey)
-                        } label: {
-                            Label("saved.agenda.edit", systemImage: "pencil")
-                        }
+                    Button {
+                        editor = .edit(journey)
+                    } label: {
+                        Label("saved.agenda.edit", systemImage: "pencil")
                     }
                     // On a repeating journey «Completa» marks its next departure done (Android's rule).
                     Button {
@@ -445,6 +442,10 @@ struct AgendaEditorView: View {
     @State private var firstSegmentID: String?
     /// Legs 2 to 4.
     @State private var laterLegs: [AgendaEditorLeg] = []
+    /// Journeys in all; 1 departs once.
+    @State private var repeatCount = 1
+    @State private var repeatWeekdays: Set<PlannedJourneyWeekday> = []
+    @State private var repeatEndsOn: PlannedLocalDate?
     @State private var messageKey: String?
     @State private var loaded = false
     /// The journey is saved and its reminder is being scheduled: «Salva» waits.
@@ -497,6 +498,13 @@ struct AgendaEditorView: View {
 
                 // Legs 2 to 4 (Android's multi-leg editor).
                 AgendaEditorLaterLegs(legs: $laterLegs, firstDestination: destination, firstDeparture: departure)
+
+                // Repeated on chosen weekdays (Android's recurrence editor).
+                AgendaEditorRepetition(
+                    count: $repeatCount,
+                    weekdays: $repeatWeekdays,
+                    startDay: departure.flatMap { ItalianWallClock.date(of: $0) }.map { PlannedJourneyWeekday(of: $0) }
+                )
 
                 Section {
                     TextField("saved.agenda.label", text: $label)
@@ -601,6 +609,9 @@ struct AgendaEditorView: View {
         reminderMinutes = form.reminderMinutes
         firstSegmentID = form.firstSegmentID
         laterLegs = form.laterLegs.map { AgendaEditorLeg($0) }
+        repeatCount = form.repeatCount
+        repeatWeekdays = form.repeatWeekdays
+        repeatEndsOn = form.repeatEndsOn
     }
 
     private func save() {
@@ -611,7 +622,10 @@ struct AgendaEditorView: View {
             checklistText: checklistText,
             reminderMinutes: reminderMinutes,
             firstSegmentID: firstSegmentID,
-            laterLegs: laterLegs.map(\.formLeg)
+            laterLegs: laterLegs.map(\.formLeg),
+            repeatCount: repeatCount,
+            repeatWeekdays: repeatWeekdays,
+            repeatEndsOn: repeatEndsOn
         )
         if let departure {
             form.date = ItalianWallClock.date(of: departure)
@@ -781,6 +795,44 @@ struct AgendaEditorLaterLegs: View {
     }
 }
 
+/// «Ricorrenza» in the editor (Android's rule): once, or 2, 4, 8 or 12 journeys in all on the
+/// first date's weekday, which is always included, and the other weekdays chosen.
+struct AgendaEditorRepetition: View {
+    @Binding var count: Int
+    @Binding var weekdays: Set<PlannedJourneyWeekday>
+    /// The first departure's weekday; nil until a date is chosen.
+    let startDay: PlannedJourneyWeekday?
+
+    var body: some View {
+        Section {
+            Picker("saved.agenda.repeat", selection: $count) {
+                ForEach(PlannedJourneyForm.repeatCounts(including: count), id: \.self) { choice in
+                    Text(verbatim: AgendaText.repeatCount(choice)).tag(choice)
+                }
+            }
+            if count > 1 {
+                ForEach(PlannedJourneyWeekday.allCases, id: \.self) { day in
+                    Toggle(isOn: Binding(
+                        get: { day == startDay || weekdays.contains(day) },
+                        set: { included in
+                            if included {
+                                weekdays.insert(day)
+                            } else {
+                                weekdays.remove(day)
+                            }
+                        }
+                    )) {
+                        Text(verbatim: AgendaText.weekdayName(day, full: true))
+                    }
+                    .disabled(day == startDay)
+                }
+            }
+        } footer: {
+            Text("saved.agenda.repeat_hint")
+        }
+    }
+}
+
 /// VoiceOver announcements of the Agenda.
 enum AgendaAnnouncement {
     /// Says the text of `key` when VoiceOver runs: an error at once, information after what is
@@ -833,14 +885,20 @@ enum AgendaText {
     }
 
     static func weekdays(_ days: [PlannedJourneyWeekday]) -> String {
-        days.sorted().map(weekdayName).joined(separator: ", ")
+        days.sorted().map { weekdayName($0) }.joined(separator: ", ")
     }
 
-    /// The short name of a weekday in the user's language.
-    static func weekdayName(_ day: PlannedJourneyWeekday) -> String {
+    /// «Una volta» or «Viaggi in tutto: 4».
+    static func repeatCount(_ count: Int) -> String {
+        guard count > 1 else { return NSLocalizedString("saved.agenda.repeat_once", comment: "") }
+        return String.localizedStringWithFormat(NSLocalizedString("saved.agenda.repeat_total", comment: ""), count)
+    }
+
+    /// The name of a weekday in the user's language, short or in full.
+    static func weekdayName(_ day: PlannedJourneyWeekday, full: Bool = false) -> String {
         var calendar = Calendar(identifier: .gregorian)
         calendar.locale = Locale.current
-        let symbols = calendar.shortWeekdaySymbols
+        let symbols = full ? calendar.weekdaySymbols : calendar.shortWeekdaySymbols
         // The calendar's symbols start on Sunday.
         let index = day.isoNumber % 7
         return symbols.indices.contains(index) ? symbols[index] : day.rawValue

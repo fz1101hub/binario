@@ -135,6 +135,8 @@
 "saved.agenda.remove_leg" = "ลบช่วง";
 "saved.agenda.legs_disconnected" = "แต่ละช่วงต้องออกจากสถานีปลายทางของช่วงก่อนหน้า";
 "saved.agenda.legs_not_chronological" = "แต่ละช่วงต้องออกเดินทางหลังช่วงก่อนหน้า";
+"saved.agenda.repeat_once" = "ครั้งเดียว";
+"saved.agenda.repeat_hint" = "ทำซ้ำการเดินทางในเวลาเดียวกันในวันที่เลือก โดยเริ่มจากวันที่ที่กำหนด วันของวันที่นั้นจะรวมอยู่เสมอ";
 "settings.title" = "การตั้งค่า";
 "settings.data.title" = "ข้อมูลและแหล่งที่มา";
 "settings.data.catalog" = "แค็ตตาล็อกสถานี";

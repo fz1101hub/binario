@@ -135,6 +135,8 @@
 "saved.agenda.remove_leg" = "Xóa chặng";
 "saved.agenda.legs_disconnected" = "Mỗi chặng phải xuất phát từ ga đến của chặng trước.";
 "saved.agenda.legs_not_chronological" = "Mỗi chặng phải khởi hành sau chặng trước.";
+"saved.agenda.repeat_once" = "Một lần";
+"saved.agenda.repeat_hint" = "Lặp lại hành trình vào cùng giờ trong các ngày đã chọn, bắt đầu từ ngày đã đặt. Ngày của ngày đó luôn được bao gồm.";
 "settings.title" = "Cài đặt";
 "settings.data.title" = "Dữ liệu và nguồn";
 "settings.data.catalog" = "Danh mục ga";

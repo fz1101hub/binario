@@ -135,6 +135,8 @@
 "saved.agenda.remove_leg" = "Quitar tramo";
 "saved.agenda.legs_disconnected" = "Cada tramo debe salir de la estación de llegada del tramo anterior.";
 "saved.agenda.legs_not_chronological" = "Cada tramo debe salir después del tramo anterior.";
+"saved.agenda.repeat_once" = "Una vez";
+"saved.agenda.repeat_hint" = "Repite el viaje a la misma hora en los días elegidos, a partir de la fecha indicada. El día de esa fecha siempre se incluye.";
 "settings.title" = "Ajustes";
 "settings.data.title" = "Datos y fuentes";
 "settings.data.catalog" = "Catálogo de estaciones";

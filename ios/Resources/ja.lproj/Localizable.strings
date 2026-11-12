@@ -135,6 +135,8 @@
 "saved.agenda.remove_leg" = "区間を削除";
 "saved.agenda.legs_disconnected" = "各区間は前の区間の到着駅から出発する必要があります。";
 "saved.agenda.legs_not_chronological" = "各区間は前の区間より後に出発する必要があります。";
+"saved.agenda.repeat_once" = "1回のみ";
+"saved.agenda.repeat_hint" = "指定した日付から、選んだ曜日の同じ時刻に移動を繰り返します。その日付の曜日は常に含まれます。";
 "settings.title" = "設定";
 "settings.data.title" = "データと出典";
 "settings.data.catalog" = "駅カタログ";

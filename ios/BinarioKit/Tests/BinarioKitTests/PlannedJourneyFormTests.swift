@@ -272,6 +272,69 @@ final class PlannedJourneyFormTests: XCTestCase {
         XCTAssertEqual(again.journey(id: "j-2", now: now, editing: nil), .failure(.invalidDeparture))
     }
 
+    // MARK: Repetition (Android's recurrence editor, EXPO_PORT_PLAN F17)
+
+    func testARepetitionAlwaysIncludesTheFirstDatesWeekdayAndCountsTheJourneysInAll() throws {
+        XCTAssertEqual(PlannedJourneyForm.repeatCounts(including: 1), [1, 2, 4, 8, 12])
+        XCTAssertEqual(PlannedJourneyForm.repeatCounts(including: 3), [1, 2, 3, 4, 8, 12], "a stored count stays offered")
+        XCTAssertEqual(PlannedJourneyForm.repeatCounts(including: 40), [1, 2, 4, 8, 12])
+
+        var form = try filled() // Tuesday 1 December 2026, 08:15
+        XCTAssertNil(try form.journey(id: "once", now: now, editing: nil).get().recurrence)
+        form.repeatCount = 4
+        form.repeatWeekdays = [.friday]
+        let weekly = try form.journey(id: "weekly", now: now, editing: nil).get()
+        let recurrence = try XCTUnwrap(weekly.recurrence)
+        XCTAssertEqual(recurrence.weekdays, [.tuesday, .friday], "the date's weekday, Monday first")
+        XCTAssertEqual(recurrence.startsOn.iso, "2026-12-01")
+        XCTAssertNil(recurrence.endsOn)
+        XCTAssertEqual(weekly.occurrences.map(\.date.iso), ["2026-12-01", "2026-12-04", "2026-12-08", "2026-12-11"])
+        XCTAssertTrue(weekly.occurrences.allSatisfy { $0.departure.time.hhmm == "08:15" })
+        // The same journey once and repeated are two journeys (Android's fingerprint).
+        XCTAssertNotEqual(weekly.fingerprint, try filled().journey(id: "once", now: now, editing: nil).get().fingerprint)
+
+        // Moving the date moves the start and its weekday with it.
+        form.date = PlannedLocalDate(iso: "2026-12-02")
+        let moved = try XCTUnwrap(try form.journey(id: "weekly", now: now, editing: nil).get().recurrence)
+        XCTAssertEqual(moved.weekdays, [.wednesday, .friday])
+        XCTAssertEqual(moved.startsOn.iso, "2026-12-02")
+    }
+
+    func testEditingARepetitionKeepsItsEndAndTheDoneDatesItStillMakes() throws {
+        var form = try filled()
+        form.repeatCount = 4
+        form.repeatWeekdays = [.thursday]
+        form.repeatEndsOn = PlannedLocalDate(iso: "2026-12-31")
+        let stored = try form.journey(id: "weekly", now: now, editing: nil).get()
+            .completingOccurrence(on: XCTUnwrap(PlannedLocalDate(iso: "2026-12-03")))
+            .completingOccurrence(on: XCTUnwrap(PlannedLocalDate(iso: "2026-12-10")))
+        XCTAssertEqual(stored.recurrence?.endsOn?.iso, "2026-12-31")
+
+        var editor = PlannedJourneyForm(editing: stored)
+        XCTAssertEqual(editor.repeatCount, 4)
+        XCTAssertEqual(editor.repeatWeekdays, [.tuesday, .thursday])
+        XCTAssertEqual(editor.repeatEndsOn?.iso, "2026-12-31")
+        XCTAssertEqual(try editor.journey(id: "ignored", now: now, editing: stored).get(), stored, "unchanged, it is saved as it was")
+
+        // Two journeys in all: Tuesday 1 and Thursday 3; the 10th is no longer one of them.
+        editor.repeatCount = 2
+        let shorter = try editor.journey(id: "ignored", now: now, editing: stored).get()
+        XCTAssertEqual(shorter.occurrences.map(\.date.iso), ["2026-12-01", "2026-12-03"])
+        XCTAssertEqual(shorter.completedOccurrenceDates.map(\.iso), ["2026-12-03"])
+        // Once: no repetition and no done dates.
+        editor.repeatCount = 1
+        let single = try editor.journey(id: "ignored", now: now, editing: stored).get()
+        XCTAssertNil(single.recurrence)
+        XCTAssertTrue(single.completedOccurrenceDates.isEmpty)
+        // An end before the new first date is dropped.
+        editor.repeatCount = 4
+        editor.date = PlannedLocalDate(iso: "2027-01-05")
+        XCTAssertNil(try editor.journey(id: "ignored", now: now, editing: stored).get().recurrence?.endsOn)
+        // Return and replan never repeat.
+        XCTAssertEqual(PlannedJourneyForm.returnTrip(from: stored).repeatCount, 1)
+        XCTAssertEqual(PlannedJourneyForm.replan(from: stored).repeatCount, 1)
+    }
+
     func testAnErrorIsSaidAtOnceAndInformationWaitsItsTurn() {
         XCTAssertFalse(PlannedJourneyFeedbackSeverity.error.queuesBehindCurrentSpeech)
         XCTAssertTrue(PlannedJourneyFeedbackSeverity.information.queuesBehindCurrentSpeech)

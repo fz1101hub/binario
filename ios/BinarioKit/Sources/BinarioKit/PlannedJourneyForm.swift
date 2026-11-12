@@ -76,6 +76,12 @@ public struct PlannedJourneyForm: Equatable, Sendable {
     public var firstSegmentID: String?
     /// Legs 2 to 4, in order; empty for a one-leg journey.
     public var laterLegs: [PlannedJourneyFormLeg]
+    /// How many journeys the repetition makes in all; 1 is a journey that departs once.
+    public var repeatCount: Int
+    /// The weekdays it repeats on besides the first date's, which is always one of them.
+    public var repeatWeekdays: Set<PlannedJourneyWeekday>
+    /// A stored repetition's last day, kept while it does not precede the first departure.
+    public var repeatEndsOn: PlannedLocalDate?
 
     public init(
         label: String = "",
@@ -86,7 +92,10 @@ public struct PlannedJourneyForm: Equatable, Sendable {
         checklistText: String = "",
         reminderMinutes: Int? = nil,
         firstSegmentID: String? = nil,
-        laterLegs: [PlannedJourneyFormLeg] = []
+        laterLegs: [PlannedJourneyFormLeg] = [],
+        repeatCount: Int = 1,
+        repeatWeekdays: Set<PlannedJourneyWeekday> = [],
+        repeatEndsOn: PlannedLocalDate? = nil
     ) {
         self.label = label
         self.origin = origin
@@ -97,6 +106,31 @@ public struct PlannedJourneyForm: Equatable, Sendable {
         self.reminderMinutes = reminderMinutes
         self.firstSegmentID = firstSegmentID
         self.laterLegs = laterLegs
+        self.repeatCount = repeatCount
+        self.repeatWeekdays = repeatWeekdays
+        self.repeatEndsOn = repeatEndsOn
+    }
+
+    /// The counts the editor offers (Android's): once, 2, 4, 8 or 12 journeys in all, and the
+    /// count of a stored repetition.
+    public static func repeatCounts(including current: Int) -> [Int] {
+        let choices = [1, 2, 4, 8, PlannedJourneySchema.maximumOccurrences]
+        let all = (1...PlannedJourneySchema.maximumOccurrences).contains(current) ? choices + [current] : choices
+        return Array(Set(all)).sorted()
+    }
+
+    /// Android's editor rule: from the first departure's date, on its weekday and the others
+    /// chosen, `repeatCount` journeys in all (at most twelve); nil for a journey that departs once.
+    public func recurrence(startingOn date: PlannedLocalDate) throws -> PlannedJourneyRecurrence? {
+        guard repeatCount > 1 else { return nil }
+        var weekdays = repeatWeekdays
+        weekdays.insert(PlannedJourneyWeekday(of: date))
+        return try PlannedJourneyRecurrence(
+            weekdays: weekdays.sorted(),
+            startsOn: date,
+            endsOn: repeatEndsOn.flatMap { $0 < date ? nil : $0 },
+            occurrenceLimit: min(repeatCount, PlannedJourneySchema.maximumOccurrences)
+        )
     }
 
     /// Every leg, the first one first.
@@ -174,7 +208,10 @@ public struct PlannedJourneyForm: Equatable, Sendable {
         self.init(
             label: journey.label,
             checklistText: journey.checklist.map(\.label).joined(separator: "\n"),
-            reminderMinutes: journey.reminderMinutes
+            reminderMinutes: journey.reminderMinutes,
+            repeatCount: journey.recurrence?.occurrenceLimit ?? 1,
+            repeatWeekdays: Set(journey.recurrence?.weekdays ?? []),
+            repeatEndsOn: journey.recurrence?.endsOn
         )
         legs = journey.segments.map { PlannedJourneyFormLeg($0) }
     }
@@ -256,15 +293,20 @@ public struct PlannedJourneyForm: Equatable, Sendable {
                 )
             }
             let checklist = try checklistItems(keepingTicksOf: existing?.checklist ?? [])
+            let recurrence = try self.recurrence(startingOn: segments[0].departure.date)
             guard let existing else {
                 return .success(try PlannedJourney(
-                    id: id, label: label, segments: segments, reminderMinutes: reminderMinutes, checklist: checklist, createdAt: now
+                    id: id, label: label, segments: segments, reminderMinutes: reminderMinutes, recurrence: recurrence,
+                    checklist: checklist, createdAt: now
                 ))
             }
+            // A date marked done stays only while the repetition still makes it (Android's rule).
+            let dates = Set(recurrence?.dates ?? [])
             return .success(existing.keepingInstantFractions(in: try PlannedJourney(
-                id: existing.id, label: label, segments: segments, reminderMinutes: reminderMinutes,
+                id: existing.id, label: label, segments: segments, reminderMinutes: reminderMinutes, recurrence: recurrence,
                 checklist: checklist, status: existing.status, createdAt: existing.createdAt,
-                completedAt: existing.completedAt, archivedAt: existing.archivedAt
+                completedAt: existing.completedAt, archivedAt: existing.archivedAt,
+                completedOccurrenceDates: existing.completedOccurrenceDates.filter { dates.contains($0) }
             )))
         } catch let error as PlannedJourneyValidationError {
             return .failure(Self.issue(for: error))

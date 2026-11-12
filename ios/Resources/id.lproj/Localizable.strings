@@ -135,6 +135,8 @@
 "saved.agenda.remove_leg" = "Hapus bagian";
 "saved.agenda.legs_disconnected" = "Setiap bagian harus berangkat dari stasiun tujuan bagian sebelumnya.";
 "saved.agenda.legs_not_chronological" = "Setiap bagian harus berangkat setelah bagian sebelumnya.";
+"saved.agenda.repeat_once" = "Sekali";
+"saved.agenda.repeat_hint" = "Mengulang perjalanan pada jam yang sama di hari yang dipilih, mulai dari tanggal yang ditetapkan. Hari dari tanggal itu selalu disertakan.";
 "settings.title" = "Pengaturan";
 "settings.data.title" = "Data dan sumber";
 "settings.data.catalog" = "Katalog stasiun";

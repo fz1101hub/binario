@@ -135,6 +135,8 @@
 "saved.agenda.remove_leg" = "删除此段";
 "saved.agenda.legs_disconnected" = "每段行程必须从上一段的到达站出发。";
 "saved.agenda.legs_not_chronological" = "每段行程的出发时间必须晚于上一段。";
+"saved.agenda.repeat_once" = "仅一次";
+"saved.agenda.repeat_hint" = "从设定的日期开始，在所选的日子于同一时间重复该行程。该日期所在的星期几始终包含在内。";
 "settings.title" = "设置";
 "settings.data.title" = "数据和来源";
 "settings.data.catalog" = "车站目录";

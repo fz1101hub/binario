@@ -135,6 +135,8 @@
 "saved.agenda.remove_leg" = "Удалить участок";
 "saved.agenda.legs_disconnected" = "Каждый участок должен начинаться на станции прибытия предыдущего участка.";
 "saved.agenda.legs_not_chronological" = "Каждый участок должен отправляться позже предыдущего.";
+"saved.agenda.repeat_once" = "Один раз";
+"saved.agenda.repeat_hint" = "Повторяет поездку в то же время в выбранные дни, начиная с указанной даты. День этой даты всегда включён.";
 "settings.title" = "Настройки";
 "settings.data.title" = "Данные и источники";
 "settings.data.catalog" = "Каталог станций";

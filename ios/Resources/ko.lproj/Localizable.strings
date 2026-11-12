@@ -135,6 +135,8 @@
 "saved.agenda.remove_leg" = "구간 삭제";
 "saved.agenda.legs_disconnected" = "각 구간은 이전 구간의 도착역에서 출발해야 합니다.";
 "saved.agenda.legs_not_chronological" = "각 구간은 이전 구간보다 늦게 출발해야 합니다.";
+"saved.agenda.repeat_once" = "한 번만";
+"saved.agenda.repeat_hint" = "지정한 날짜부터 선택한 요일의 같은 시간에 여정을 반복합니다. 그 날짜의 요일은 항상 포함됩니다.";
 "settings.title" = "설정";
 "settings.data.title" = "데이터 및 출처";
 "settings.data.catalog" = "역 카탈로그";

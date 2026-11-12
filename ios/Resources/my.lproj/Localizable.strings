@@ -135,6 +135,8 @@
 "saved.agenda.remove_leg" = "အပိုင်း ဖယ်ရှားရန်";
 "saved.agenda.legs_disconnected" = "အပိုင်းတိုင်းသည် ယခင်အပိုင်း၏ ဆိုက်ရောက်ဘူတာမှ စတင်ရမည်။";
 "saved.agenda.legs_not_chronological" = "အပိုင်းတိုင်းသည် ယခင်အပိုင်းပြီးနောက် ထွက်ခွာရမည်။";
+"saved.agenda.repeat_once" = "တစ်ကြိမ်သာ";
+"saved.agenda.repeat_hint" = "သတ်မှတ်ထားသော ရက်စွဲမှစ၍ ရွေးထားသော နေ့များတွင် တူညီသော အချိန်၌ ခရီးစဉ်ကို ထပ်လုပ်သည်။ ထိုရက်စွဲ၏ နေ့ကို အမြဲ ထည့်သွင်းသည်။";
 "settings.title" = "ဆက်တင်များ";
 "settings.data.title" = "ဒေတာနှင့် ရင်းမြစ်များ";
 "settings.data.catalog" = "ဘူတာစာရင်း";

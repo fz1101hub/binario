@@ -135,6 +135,8 @@
 "saved.agenda.remove_leg" = "Remover trecho";
 "saved.agenda.legs_disconnected" = "Cada trecho deve partir da estação de chegada do trecho anterior.";
 "saved.agenda.legs_not_chronological" = "Cada trecho deve partir depois do trecho anterior.";
+"saved.agenda.repeat_once" = "Uma vez";
+"saved.agenda.repeat_hint" = "Repete a viagem no mesmo horário nos dias escolhidos, a partir da data indicada. O dia dessa data é sempre incluído.";
 "settings.title" = "Ajustes";
 "settings.data.title" = "Dados e fontes";
 "settings.data.catalog" = "Catálogo de estações";

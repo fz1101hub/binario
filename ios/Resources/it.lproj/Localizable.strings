@@ -135,6 +135,8 @@
 "saved.agenda.remove_leg" = "Rimuovi tratta";
 "saved.agenda.legs_disconnected" = "Ogni tratta deve partire dalla stazione di arrivo della tratta precedente.";
 "saved.agenda.legs_not_chronological" = "Ogni tratta deve partire dopo la tratta precedente.";
+"saved.agenda.repeat_once" = "Una volta";
+"saved.agenda.repeat_hint" = "Ripete il viaggio alla stessa ora nei giorni scelti, a partire dalla data indicata. Il giorno della data è sempre incluso.";
 "settings.title" = "Impostazioni";
 "settings.data.title" = "Dati e fonti";
 "settings.data.catalog" = "Catalogo stazioni";

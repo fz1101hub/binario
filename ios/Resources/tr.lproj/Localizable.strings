@@ -135,6 +135,8 @@
 "saved.agenda.remove_leg" = "Bölümü kaldır";
 "saved.agenda.legs_disconnected" = "Her bölüm, önceki bölümün varış istasyonundan başlamalıdır.";
 "saved.agenda.legs_not_chronological" = "Her bölüm, önceki bölümden sonra kalkmalıdır.";
+"saved.agenda.repeat_once" = "Bir kez";
+"saved.agenda.repeat_hint" = "Yolculuğu belirtilen tarihten başlayarak seçilen günlerde aynı saatte tekrarlar. O tarihin günü her zaman dahildir.";
 "settings.title" = "Ayarlar";
 "settings.data.title" = "Veriler ve kaynaklar";
 "settings.data.catalog" = "İstasyon kataloğu";

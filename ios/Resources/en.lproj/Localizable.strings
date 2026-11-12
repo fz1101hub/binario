@@ -135,6 +135,8 @@
 "saved.agenda.remove_leg" = "Remove leg";
 "saved.agenda.legs_disconnected" = "Each leg must start from the arrival station of the previous leg.";
 "saved.agenda.legs_not_chronological" = "Each leg must depart after the previous leg.";
+"saved.agenda.repeat_once" = "Once";
+"saved.agenda.repeat_hint" = "Repeats the journey at the same time on the chosen days, starting from the date set. The day of that date is always included.";
 "settings.title" = "Settings";
 "settings.data.title" = "Data and sources";
 "settings.data.catalog" = "Station catalogue";

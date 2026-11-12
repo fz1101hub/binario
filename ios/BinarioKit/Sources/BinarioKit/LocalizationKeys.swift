@@ -76,6 +76,7 @@ public enum BinarioLocalizationKeys {
         "saved.agenda.leg_title", "saved.agenda.legs_count", "saved.agenda.repeat", "saved.agenda.repeat_total",
         "saved.agenda.add_leg", "saved.agenda.remove_leg", "saved.agenda.legs_disconnected",
         "saved.agenda.legs_not_chronological",
+        "saved.agenda.repeat_once", "saved.agenda.repeat_hint",
         "saved.watch.show", "saved.watch.stop", "saved.watch.pinned", "saved.watch.footer", "saved.watch.sharing_off",
         "saved.trains.title", "saved.trains.empty.title", "saved.trains.empty.body", "saved.trains.local_only",
         "saved.trains.storage_error", "saved.trains.limit_error",

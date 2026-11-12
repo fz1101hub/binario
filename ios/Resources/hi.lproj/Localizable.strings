@@ -135,6 +135,8 @@
 "saved.agenda.remove_leg" = "हिस्सा हटाएँ";
 "saved.agenda.legs_disconnected" = "हर हिस्सा पिछले हिस्से के पहुँचने वाले स्टेशन से शुरू होना चाहिए।";
 "saved.agenda.legs_not_chronological" = "हर हिस्सा पिछले हिस्से के बाद रवाना होना चाहिए।";
+"saved.agenda.repeat_once" = "एक बार";
+"saved.agenda.repeat_hint" = "चुने गए दिनों में उसी समय यात्रा दोहराता है, दी गई तारीख से शुरू करके। उस तारीख का दिन हमेशा शामिल रहता है।";
 "settings.title" = "सेटिंग्स";
 "settings.data.title" = "डेटा और स्रोत";
 "settings.data.catalog" = "स्टेशन कैटलॉग";
