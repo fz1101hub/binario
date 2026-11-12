@@ -28,12 +28,14 @@ import it.binario.app.data.repository.TrainNumberQuery
 import java.time.Instant
 import java.util.Locale
 import java.util.concurrent.TimeUnit
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.lastOrNull
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 
 /**
  * "I miei treni": the favourite trains saved with the heart of the train detail, each with its next
@@ -264,6 +266,7 @@ class TrainsWidgetProvider : AppWidgetProvider() {
  */
 internal object TrainsWidgetRefresher {
     private const val PARALLEL_LOOKUPS = 3
+    private const val LOOKUP_TIMEOUT_MILLIS = 45_000L
 
     suspend fun refresh(context: Context, widgetIds: Set<Int>?): Boolean {
         if (widgetIds == null) WidgetInstances.pruneOrphans(context)
@@ -290,7 +293,14 @@ internal object TrainsWidgetRefresher {
             coroutineScope {
                 chunk.map { (monitor, date, skipping) ->
                     async {
-                        val update = runCatching { search.search(TrainNumberQuery(monitor.number, date), skipping).lastOrNull() }.getOrNull()
+                        // A failed or slow lookup leaves the row stale; a cancelled refresh stops here.
+                        val update = try {
+                            withTimeoutOrNull(LOOKUP_TIMEOUT_MILLIS) { search.search(TrainNumberQuery(monitor.number, date), skipping).lastOrNull() }
+                        } catch (cancelled: CancellationException) {
+                            throw cancelled
+                        } catch (_: Exception) {
+                            null
+                        }
                         val matches = update?.matches.orEmpty()
                         val service = FavouriteTrainMatcher.pick(matches.map { it.service }, monitor)
                         val match = service?.let { picked -> matches.firstOrNull { it.service === picked } }
