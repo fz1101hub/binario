@@ -17,6 +17,50 @@ final class BinarioAppTests: XCTestCase {
         XCTAssertNotNil(defaults.data(forKey: SavedRouteStore.storageKey))
     }
 
+    func testTheAgendaIsChangedThroughTheModelAndARefusalLeavesItAsItWas() throws {
+        let defaults = try makeDefaults()
+        defer {
+            defaults.removeObject(forKey: PlannedJourneyStore.storageKey)
+            clear(defaults)
+        }
+        let model = AppModel(
+            catalogState: .loading,
+            savedRouteStore: SavedRouteStore(defaults: defaults),
+            plannedJourneyStore: PlannedJourneyStore(defaults: defaults),
+            watchSharingStore: WatchSharingPreferenceStore(defaults: defaults),
+            repository: FailClosedJourneyRepository(),
+            watchPublisher: nil,
+            versionDisplay: "test"
+        )
+        XCTAssertEqual(model.agenda, .empty)
+        let form = PlannedJourneyForm(
+            origin: StationIdentity(id: "S08409", name: "Roma Termini"),
+            destination: StationIdentity(id: "S09218", name: "Napoli Centrale"),
+            date: PlannedLocalDate(iso: "2030-05-02"),
+            time: PlannedLocalTime(hhmm: "08:15")
+        )
+        let journey = try form.journey(id: "j-1", now: Date(), editing: nil).get()
+        XCTAssertNil(model.saveJourney(journey, isNew: true))
+        XCTAssertEqual(model.agenda.journeys, [journey])
+        let copy = try form.journey(id: "j-2", now: Date(), editing: nil).get()
+        XCTAssertEqual(model.saveJourney(copy, isNew: true), .duplicate)
+        XCTAssertEqual(AgendaText.messageKey(PlannedJourneyRefusal.duplicate), "saved.agenda.duplicate")
+        XCTAssertEqual(model.agenda.journeys, [journey])
+
+        XCTAssertNil(model.completeJourney(id: "j-1"))
+        XCTAssertEqual(model.agenda.journeys.first?.status, .completed)
+        XCTAssertNil(model.deleteJourney(id: "j-1"))
+        XCTAssertEqual(model.agenda.journeys, [])
+
+        // A stored value this version cannot read is never written over.
+        defaults.set(Data("not json".utf8), forKey: PlannedJourneyStore.storageKey)
+        model.reloadAgenda()
+        XCTAssertTrue(model.agenda.isReadOnly)
+        XCTAssertEqual(model.saveJourney(journey, isNew: true), .readOnly)
+        XCTAssertEqual(AgendaText.messageKey(PlannedJourneyRefusal.readOnly), "saved.agenda.read_only")
+        XCTAssertEqual(defaults.data(forKey: PlannedJourneyStore.storageKey), Data("not json".utf8))
+    }
+
     func testMalformedAndCorruptValidJSONStorageFailClosedToEmpty() throws {
         let defaults = try makeDefaults()
         defer { clear(defaults) }

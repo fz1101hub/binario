@@ -365,6 +365,22 @@ class IOSProjectTests(unittest.TestCase):
         }
         self.assertEqual(set(), canonical - used - intentionally_dynamic)
 
+    def test_iphone_texts_never_name_another_platform_or_a_widget(self) -> None:
+        """App Review and the companion's rule (EXPO_PORT_PLAN R24, audit expo-6): no iPhone text names Android,
+        Wear OS, Google Play or a widget the app does not have, in any of the 17 languages."""
+        forbidden = re.compile(
+            r"android|wear\s*os|google\s*play|widget|ウィジェット|위젯|小组件|小部件|виджет|วิดเจ็ต|विजेट|ودجت|ويدجت",
+            re.IGNORECASE,
+        )
+        for language in sorted(LANGUAGES):
+            folder = IOS / "Resources" / f"{language}.lproj"
+            texts = list(read_strings(folder / "Localizable.strings").values())
+            with (folder / "Localizable.stringsdict").open("rb") as source:
+                for entry in plistlib.load(source).values():
+                    texts.extend(form for category, form in entry["count"].items() if not category.startswith("NSString"))
+            for text in texts:
+                self.assertIsNone(forbidden.search(text), f"{language}: {text}")
+
     def test_privacy_manifests_match_each_executable_userdefaults_scope(self) -> None:
         ios_privacy = privacy_manifest(IOS / "Resources/PrivacyInfo.xcprivacy")
         self.assertFalse(ios_privacy["NSPrivacyTracking"])

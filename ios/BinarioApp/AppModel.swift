@@ -118,6 +118,8 @@ final class AppModel: ObservableObject {
     @Published private(set) var savedRoutes: [SavedRoute]
     /// «I miei treni»: the trains saved with the star of the train detail, newest first.
     @Published private(set) var favouriteTrains: [FavouriteTrain]
+    /// «Agenda»: the planned journeys kept on this iPhone, as last read or written.
+    @Published private(set) var agenda: PlannedJourneyAgendaState
     @Published private(set) var watchSharingEnabled: Bool
     @Published fileprivate(set) var watchSyncStatus: WatchSyncStatus
     @Published var searchState: SearchState = .idle
@@ -202,6 +204,7 @@ final class AppModel: ObservableObject {
 
     private let savedRouteStore: SavedRouteStore
     private let favouriteTrainStore: FavouriteTrainStore
+    private let plannedJourneyStore: PlannedJourneyStore
     private let boardStationStore: StationBoardStationStore
     private let watchSharingStore: WatchSharingPreferenceStore
     private let watchPublisher: WatchSnapshotPublisher?
@@ -240,6 +243,7 @@ final class AppModel: ObservableObject {
         catalogState: CatalogState,
         savedRouteStore: SavedRouteStore,
         favouriteTrainStore: FavouriteTrainStore = FavouriteTrainStore(),
+        plannedJourneyStore: PlannedJourneyStore = PlannedJourneyStore(),
         boardStationStore: StationBoardStationStore = StationBoardStationStore(),
         watchSharingStore: WatchSharingPreferenceStore,
         repository: any JourneyRepository,
@@ -256,6 +260,7 @@ final class AppModel: ObservableObject {
         self.catalogState = catalogState
         self.savedRouteStore = savedRouteStore
         self.favouriteTrainStore = favouriteTrainStore
+        self.plannedJourneyStore = plannedJourneyStore
         self.boardStationStore = boardStationStore
         self.watchSharingStore = watchSharingStore
         self.repository = repository
@@ -279,6 +284,7 @@ final class AppModel: ObservableObject {
         let routes = savedRouteStore.load()
         self.savedRoutes = routes
         self.favouriteTrains = favouriteTrainStore.load().trains
+        self.agenda = plannedJourneyStore.load()
         self.boardStation = boardStationStore.load()
         let sharingEnabled = watchSharingStore.load()
         self.watchSharingEnabled = sharingEnabled
@@ -327,6 +333,7 @@ final class AppModel: ObservableObject {
             catalogState: .loading,
             savedRouteStore: SavedRouteStore(),
             favouriteTrainStore: FavouriteTrainStore(),
+            plannedJourneyStore: PlannedJourneyStore(),
             boardStationStore: StationBoardStationStore(),
             watchSharingStore: WatchSharingPreferenceStore(),
             repository: FailClosedJourneyRepository(),
@@ -1512,6 +1519,43 @@ final class AppModel: ObservableObject {
     /// Removes favourite trains from «I miei treni»; false when the list could not be written.
     func removeFavourites(ids: Set<String>) -> Bool {
         setFavourites(FavouriteTrainCollection.normalized(favouriteTrains).removing(ids: ids))
+    }
+
+    // MARK: Agenda
+
+    /// The Agenda as stored now (it is read again when its screen opens).
+    func reloadAgenda() {
+        agenda = plannedJourneyStore.load()
+    }
+
+    /// Saves a journey of the editor: a new one, or the edited one in place. Nil when saved,
+    /// otherwise why not; the stored Agenda is then unchanged.
+    func saveJourney(_ journey: PlannedJourney, isNew: Bool) -> PlannedJourneyRefusal? {
+        applyAgenda(isNew ? plannedJourneyStore.add(journey) : plannedJourneyStore.replace(journey))
+    }
+
+    func deleteJourney(id: String) -> PlannedJourneyRefusal? {
+        applyAgenda(plannedJourneyStore.remove(id: id))
+    }
+
+    /// «Completa»: the journey moves to the archive.
+    func completeJourney(id: String, now: Date = Date()) -> PlannedJourneyRefusal? {
+        applyAgenda(plannedJourneyStore.complete(id: id, at: now))
+    }
+
+    func setChecklistItem(_ itemID: String, completed: Bool, journeyID: String) -> PlannedJourneyRefusal? {
+        applyAgenda(plannedJourneyStore.setChecklistItem(itemID, completed: completed, journeyID: journeyID))
+    }
+
+    private func applyAgenda(_ result: Result<PlannedJourneyAgendaState, PlannedJourneyRefusal>) -> PlannedJourneyRefusal? {
+        switch result {
+        case let .success(state):
+            agenda = state
+            return nil
+        case let .failure(refusal):
+            agenda = plannedJourneyStore.load()
+            return refusal
+        }
     }
 
     private func setFavourites(_ collection: FavouriteTrainCollection) -> Bool {
