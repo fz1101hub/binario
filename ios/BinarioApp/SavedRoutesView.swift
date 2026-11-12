@@ -77,15 +77,7 @@ struct SavedRoutesView: View {
             }
         }
         .navigationTitle("saved.title")
-        .alert(
-            LocalizedStringKey(model.persistenceMessageKey ?? "saved.storage_error"),
-            isPresented: Binding(
-                get: { model.persistenceMessageKey != nil },
-                set: { if !$0 { model.persistenceMessageKey = nil } }
-            )
-        ) {
-            Button("action.ok", role: .cancel) { model.persistenceMessageKey = nil }
-        }
+        // The limit and storage errors are RootView's alert, shown on whichever tab caused them.
     }
 }
 

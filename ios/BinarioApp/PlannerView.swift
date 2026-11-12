@@ -94,10 +94,15 @@ struct PlannerView: View {
                     .buttonStyle(.borderedProminent)
                     .disabled(!canSearch)
 
+                    // A route already saved shows the filled star instead of a button that does nothing.
                     Button(action: save) {
-                        Label("planner.save", systemImage: "star")
+                        if isSaved {
+                            Label("accessibility.saved_route", systemImage: "star.fill")
+                        } else {
+                            Label("planner.save", systemImage: "star")
+                        }
                     }
-                    .disabled(origin == nil || destination == nil)
+                    .disabled(origin == nil || destination == nil || isSaved)
                 }
 
                 if let validationKey {
@@ -267,7 +272,16 @@ struct PlannerView: View {
     private func save() {
         guard let query = makeQuery() else { return }
         validationKey = nil
+        // A refusal (the limit, the storage) is the alert of RootView, on this tab too.
         model.save(query: query)
+        if isSaved { DeparturesTexts.announce(String(localized: "accessibility.saved_route")) }
+    }
+
+    /// The route of the form is among the saved routes.
+    private var isSaved: Bool {
+        guard let origin, let destination else { return false }
+        let id = SavedRoute.routeIdentifier(origin: StationIdentity(origin), destination: StationIdentity(destination))
+        return model.savedRoutes.contains { $0.id == id }
     }
 
     /// An airport link: fill the form and search it from now, as a saved route does.
