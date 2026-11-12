@@ -475,7 +475,8 @@ class IOSProjectTests(unittest.TestCase):
             'static let viaggiaTrenoHost = "www.viaggiatreno.it"', "URLSessionConfiguration.ephemeral",
             "configuration.httpCookieStorage = nil", "configuration.urlCredentialStorage = nil",
             "configuration.urlCache = nil", "completionHandler(nil)",
-            'public static let general = "Binario/0.1 (iOS; personal rail information client)"',
+            'public static let general = make(version: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String)',
+            'return "Binario/\\(cleaned.isEmpty ? "0" : cleaned) (iOS; rail timetable app)"',
         ]:
             self.assertIn(expected, live)
         sources = "\n".join(path.read_text(encoding="utf-8") for path in (IOS / "BinarioKit/Sources").rglob("*.swift"))

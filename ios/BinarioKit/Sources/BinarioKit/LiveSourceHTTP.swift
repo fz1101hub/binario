@@ -3,13 +3,21 @@ import Foundation
 import FoundationNetworking
 #endif
 
-/// The User-Agent of every live request: Binario, honestly, in the style of Android's
-/// `BINARIO_PUBLIC_SOURCE_USER_AGENT` («Binario/0.20 (personal rail information client)»), with the
+/// The User-Agent of every live request: Binario and the app's version, honestly, as Android's
+/// `BINARIO_PUBLIC_SOURCE_USER_AGENT` («Binario/0.20.4 (Android; rail timetable app)»), with the
 /// platform named. Never a browser's.
 public enum LiveSourceUserAgent {
-    public static let general = "Binario/0.1 (iOS; personal rail information client)"
-    /// ViaggiaTreno's realtime API, as Android's `HttpViaggiaTrenoRealtimeFetcher` names itself.
-    public static let viaggiaTrenoRealtime = "Binario/0.1 (iOS; personal realtime client)"
+    /// «Binario/0.1.0 (iOS; rail timetable app)»: the version of the app's bundle.
+    public static let general = make(version: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String)
+    /// ViaggiaTreno's realtime API: the same identity, as Android sends one User-Agent to every source.
+    public static let viaggiaTrenoRealtime = general
+
+    /// Only the characters of a version reach the header (ASCII letters and digits, «.-+_»), «0»
+    /// without any, as on Android.
+    static func make(version: String?) -> String {
+        let cleaned = String((version ?? "").filter { ($0.isASCII && ($0.isLetter || $0.isNumber)) || ".-+_".contains($0) })
+        return "Binario/\(cleaned.isEmpty ? "0" : cleaned) (iOS; rail timetable app)"
+    }
 }
 
 /// Why a request gave no body. A value, never an error thrown to the caller.

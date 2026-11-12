@@ -25,7 +25,13 @@ final class LiveSourceHTTPTests: XCTestCase {
         guard case let .body(body) = result else { return XCTFail("expected a body, got \(result)") }
         XCTAssertEqual(body.text, "[]")
         let request = try XCTUnwrap(transport.requests.first)
-        XCTAssertEqual(request.headers["User-Agent"], "Binario/0.1 (iOS; personal rail information client)")
+        XCTAssertEqual(request.headers["User-Agent"], LiveSourceUserAgent.general)
+        XCTAssertTrue(LiveSourceUserAgent.general.hasSuffix(" (iOS; rail timetable app)"))
+        // The app's version, honestly, and only the characters of a version.
+        XCTAssertEqual(LiveSourceUserAgent.make(version: "0.1.0"), "Binario/0.1.0 (iOS; rail timetable app)")
+        XCTAssertEqual(LiveSourceUserAgent.make(version: "1.2 (beta)\r\nX: y"), "Binario/1.2betaXy (iOS; rail timetable app)")
+        XCTAssertEqual(LiveSourceUserAgent.make(version: nil), "Binario/0 (iOS; rail timetable app)")
+        XCTAssertEqual(LiveSourceUserAgent.make(version: "è"), "Binario/0 (iOS; rail timetable app)")
         XCTAssertEqual(request.headers["Accept"], "text/html,application/xhtml+xml")
         XCTAssertEqual(request.headers["Cache-Control"], "no-cache")
         for agent in [LiveSourceUserAgent.general, LiveSourceUserAgent.viaggiaTrenoRealtime] {
