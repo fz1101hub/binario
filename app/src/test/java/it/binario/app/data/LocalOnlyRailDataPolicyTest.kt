@@ -1,11 +1,13 @@
 package it.binario.app.data
 
 import it.binario.app.BuildConfig
+import it.binario.app.data.live.ItaloPublicStationAdapter
 import it.binario.app.data.live.RfiInfomobilityRssAdapter
 import it.binario.app.data.live.SncfGtfsRealtimeAdapter
 import it.binario.app.data.live.StaRealtimeAdapter
 import it.binario.app.data.live.TrenitaliaInfomobilityNewsAdapter
 import it.binario.app.data.live.TrenordLineNoticesAdapter
+import it.binario.app.data.provider.KnownProviderIds
 import it.binario.app.data.provider.ProviderCapability
 import it.binario.app.data.repository.BinarioDataGraph
 import org.junit.Assert.assertEquals
@@ -31,14 +33,21 @@ class LocalOnlyRailDataPolicyTest {
                 "SwissOpenTransportStationBoardAdapter"), boardProviderNames)
             assertSame(LocalOnlyRailDataPolicy.liveRouteSources().single { it.descriptor.id.value == "viaggiatreno" }, LocalOnlyRailDataPolicy.stationBoardProviders().single { it.descriptor.id.value == "viaggiatreno" })
             assertEquals("viaggiatreno", LocalOnlyRailDataPolicy.liveRouteSources().first().descriptor.id.value)
+            // The Italo board lists Italo trains only: the aggregate service knows it by this id.
+            assertEquals(KnownProviderIds.ITALO_STATUS,
+                LocalOnlyRailDataPolicy.stationBoardProviders().single { it is ItaloPublicStationAdapter }.descriptor.id)
         } else {
             assertTrue(boardProviderNames.isEmpty())
             assertTrue(LocalOnlyRailDataPolicy.liveRouteSources().isEmpty())
         }
 
-        val displayBoards = LocalOnlyRailDataPolicy.stationBoardDisplayProviders()
-            .mapNotNull { it::class.simpleName }
-        assertEquals("RfiProgrammedStationBoardAdapter", displayBoards.first())
+        // Live first: the live boards in their order, then the RFI programmed board, which the aggregate service
+        // recognises by its source id as the fallback.
+        val display = LocalOnlyRailDataPolicy.stationBoardDisplayProviders()
+        val displayBoards = display.mapNotNull { it::class.simpleName }
+        assertEquals("RfiProgrammedStationBoardAdapter", displayBoards.last())
+        assertEquals(KnownProviderIds.RFI_PROGRAMMED, display.last().descriptor.id)
+        assertEquals(LocalOnlyRailDataPolicy.stationBoardProviders().map { it::class.simpleName }, displayBoards.dropLast(1))
         assertEquals(1 + boardProviderNames.size, displayBoards.size)
 
         val personalAlerts = if (BuildConfig.PERSONAL_REALTIME_SOURCES) setOf(TrenitaliaInfomobilityNewsAdapter.SOURCE_ID) else emptySet()
