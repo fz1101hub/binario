@@ -147,6 +147,9 @@ internal object LiveAcceptanceEvidence {
                 !observed.isBefore(fetched.minusSeconds(300)) && !observed.isAfter(fetched.plusSeconds(60))
         }
 
+    /** Rows a ViaggiaTreno `partenze` payload lists; none overnight, before the first train of the window. */
+    fun viaggiaTrenoBoardRows(body: String): Int = if (body.trim() == "null") 0 else JSONArray(body).length()
+
     /** Departures an Italo station board publishes (`ListaTreniPartenza`); none overnight, when Italo runs no train. */
     fun italoDepartureRows(body: String): Int = JSONObject(body).optJSONArray("ListaTreniPartenza")?.length() ?: 0
 

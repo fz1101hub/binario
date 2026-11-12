@@ -406,6 +406,10 @@ class LiveAcceptanceEvidenceTest {
         assertEquals(0, LiveAcceptanceEvidence.italoDepartureRows("""{"IsEmpty":true,"ListaTreniPartenza":[],"LastUpdate":"00:28"}"""))
         assertEquals(0, LiveAcceptanceEvidence.italoDepartureRows("""{"IsEmpty":true}"""))
         assertEquals(2, LiveAcceptanceEvidence.italoDepartureRows("""{"IsEmpty":false,"ListaTreniPartenza":[{"Numero":"9966"},{"Numero":"8924"}]}"""))
+        // ViaggiaTreno's overnight board is an empty array (or null): no departure to verify.
+        assertEquals(0, LiveAcceptanceEvidence.viaggiaTrenoBoardRows("[]"))
+        assertEquals(0, LiveAcceptanceEvidence.viaggiaTrenoBoardRows(" null "))
+        assertEquals(2, LiveAcceptanceEvidence.viaggiaTrenoBoardRows("""[{"numeroTreno":20183},{"numeroTreno":2153}]"""))
     }
 
     @Test fun `RFI accuracy is skipped only after every sampled board publishes no minutes and passes on the first that does`() {
