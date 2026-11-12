@@ -278,8 +278,8 @@
     <string name="run_status_scheduled">Programado</string>
     <string name="run_status_on_time">En hora</string>
     <string name="run_status_delayed">Con retraso</string>
-    <string name="run_status_cancelled">Cancelado</string>
-    <string name="run_status_partially_cancelled">Parcialmente cancelado</string>
+    <string name="run_status_cancelled">Suprimido</string>
+    <string name="run_status_partially_cancelled">Parcialmente suprimido</string>
     <string name="run_status_diverted">Desviado</string>
     <string name="run_status_added">Servicio añadido</string>
     <string name="run_status_bus_replacement">Sustituido por autobús</string>
@@ -355,7 +355,7 @@
     <string name="journey_leg_tram">Tranvía</string>
     <string name="journey_leg_funicular">Funicular</string>
     <string name="journey_source_offline">Horario programado sin conexión (datos abiertos GTFS)</string>
-    <string name="journey_scheduled_only_notice">Horarios programados: retrasos, andenes y cancelaciones no están verificados. Consulta las pantallas de la estación.</string>
+    <string name="journey_scheduled_only_notice">Horarios programados: retrasos, andenes y supresiones no están verificados. Consulta las pantallas de la estación.</string>
     <string name="journey_coverage_notice">Calculado en el teléfono con los horarios incluidos en la app, solo para las redes que cubren: Trenitalia (trenes y autobuses), Italo (trenes e ItaloBus), Lombardía, Alto Adigio, Trentino, EAV, ARST, TFT, Suiza, Austria, Francia y Croacia, algunos ferrocarriles regionales, y los metros y tranvías de algunas ciudades. Pueden faltar otros trenes y autobuses.</string>
     <string name="journey_incomplete_notice">No se han podido leer algunos horarios sin conexión: los viajes pueden estar incompletos.</string>
     <string name="journey_empty_no_solution">Ningún viaje en los horarios sin conexión para la franja horaria buscada.</string>
@@ -757,7 +757,7 @@
     <string name="accessibility_optional_message"> %1$s</string>
     <string name="platform_short">And. %1$s</string>
     <string name="service_status_scheduled_badge">Programado</string>
-    <string name="service_status_cancelled">Cancelado</string>
+    <string name="service_status_cancelled">Suprimido</string>
     <string name="service_status_scheduled_compact">Program.</string>
 
     <!-- Widget configuration and theme picker. -->
@@ -887,7 +887,7 @@
 
     <!-- Texts carried verbatim in the Wear payload. -->
     <string name="wear_payload_value_unavailable">No disponible</string>
-    <string name="wear_notice_cancelled">Cancelado: %1$s de las %2$s</string>
+    <string name="wear_notice_cancelled">Suprimido: %1$s de las %2$s</string>
     <string name="wear_operator_other">Otro operador</string>
 
     <plurals name="search_results_count">
@@ -923,7 +923,7 @@
     <string name="share_live_data">Datos en tiempo real: %1$s</string>
     <string name="share_status_on_time">En hora</string>
     <string name="share_status_delayed">Con retraso</string>
-    <string name="share_status_cancelled">Cancelado</string>
+    <string name="share_status_cancelled">Suprimido</string>
     <string name="share_category_regionale">Regional</string>
     <string name="share_category_regionale_veloce">Regional rápido</string>
     <string name="share_category_intercity">Intercity</string>
@@ -1530,19 +1530,19 @@
     </plurals>
     <string name="reliability_mean_delay">retraso medio %1$s</string>
     <plurals name="reliability_cancelled_count">
-        <item quantity="one">cancelado %1$d vez</item>
-        <item quantity="many">cancelado %1$d veces</item>
-        <item quantity="other">cancelado %1$d veces</item>
+        <item quantity="one">suprimido %1$d vez</item>
+        <item quantity="many">suprimido %1$d veces</item>
+        <item quantity="other">suprimido %1$d veces</item>
     </plurals>
     <plurals name="reliability_cancelled_share">
-        <item quantity="one">Cancelado %1$d vez de %2$d</item>
-        <item quantity="many">Cancelado %1$d veces de %2$d</item>
-        <item quantity="other">Cancelado %1$d veces de %2$d</item>
+        <item quantity="one">Suprimido %1$d vez de %2$d</item>
+        <item quantity="many">Suprimido %1$d veces de %2$d</item>
+        <item quantity="other">Suprimido %1$d veces de %2$d</item>
     </plurals>
     <plurals name="reliability_leg_cancelled_share">
-        <item quantity="one">%1$s cancelado %2$d vez de %3$d</item>
-        <item quantity="many">%1$s cancelado %2$d veces de %3$d</item>
-        <item quantity="other">%1$s cancelado %2$d veces de %3$d</item>
+        <item quantity="one">%1$s suprimido %2$d vez de %3$d</item>
+        <item quantity="many">%1$s suprimido %2$d veces de %3$d</item>
+        <item quantity="other">%1$s suprimido %2$d veces de %3$d</item>
     </plurals>
     <plurals name="reliability_connection_count">
         <item quantity="one">Transbordo en %1$s logrado %2$d vez de %3$d</item>
@@ -1561,7 +1561,7 @@
         <item quantity="many">Llegada a %1$s: puntual %2$d veces de %3$d</item>
         <item quantity="other">Llegada a %1$s: puntual %2$d veces de %3$d</item>
     </plurals>
-    <string name="reliability_detail_days">Días observados: %1$d · cancelaciones: %2$d</string>
+    <string name="reliability_detail_days">Días observados: %1$d · supresiones: %2$d</string>
     <string name="reliability_threshold_note">Cuenta como puntual una llegada con %1$s de retraso como máximo.</string>
     <string name="reliability_distribution_title">Distribución de los retrasos</string>
     <string name="reliability_band_no_delay">Sin retraso</string>
@@ -1666,7 +1666,7 @@
     <!-- Station board: direct connections from the station (embedded timetables) -->
     <string name="direct_connections_title">Conexiones directas</string>
     <string name="direct_connections_from">Desde %1$s, sin transbordos</string>
-    <string name="direct_connections_note">Según los horarios programados incluidos en la app, sin retrasos ni cancelaciones. Toca un destino para buscar trenes.</string>
+    <string name="direct_connections_note">Según los horarios programados incluidos en la app, sin retrasos ni supresiones. Toca un destino para buscar trenes.</string>
     <string name="direct_connections_filter">Filtrar destinos</string>
     <string name="direct_connections_loading">Leyendo los horarios…</string>
     <string name="direct_connections_empty">Los horarios incluidos no tienen conexiones directas desde esta estación en este día.</string>
