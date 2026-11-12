@@ -112,11 +112,13 @@ internal fun departureInstant(time: String, generatedAtEpochMillis: Long, zone: 
         .firstOrNull { candidate -> candidate.toEpochMilli() >= earliest }
 }
 
-/** The service a glance should show at [nowEpochMillis]: the first not yet gone, else the last one. */
+/**
+ * The service a glance should show at [nowEpochMillis]: the first not yet gone; null once every listed one has left
+ * (the glance then shows «Nessuna corsa da mostrare» with the data status, never a departed train as «Adesso»).
+ */
 internal fun upcomingService(snapshot: WearSnapshot, nowEpochMillis: Long): Pair<WearService, Instant?>? {
     val departures = snapshot.services.map { service -> service to departureInstant(service.expectedDeparture, snapshot.generatedAtEpochMillis) }
     return departures.firstOrNull { (_, departure) -> departure == null || departure.toEpochMilli() + DEPARTED_GRACE_MILLIS > nowEpochMillis }
-        ?: departures.lastOrNull()
 }
 
 /** A stretch of a snapshot's validity, [startEpochMillis] included and [endEpochMillis] excluded. */
@@ -124,8 +126,9 @@ internal data class GlanceSegment(val startEpochMillis: Long, val endEpochMillis
 
 /**
  * The stretches after [nowEpochMillis] in which the glance shows another service: each starts one
- * minute after a departure that hands over to the next service ([upcomingService]) and lasts until
- * the next hand-over or the snapshot deadline. Empty when the glance keeps its service until then.
+ * minute after a departure that hands over to the next service ([upcomingService]), or to none after
+ * the last one, and lasts until the next hand-over or the snapshot deadline. Empty when the glance
+ * keeps its service until then.
  * The Tile and the complication timelines switch on these instants without a new request.
  */
 internal fun laterGlanceSegments(snapshot: WearSnapshot, nowEpochMillis: Long): List<GlanceSegment> {
