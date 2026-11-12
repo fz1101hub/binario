@@ -79,18 +79,36 @@ public enum PlannedJourneyIcs {
         generatedAt: Date,
         text: PlannedJourneyIcsText = .italian
     ) throws -> String {
-        let events = journeys.flatMap { journey in journey.occurrences.map { (journey, $0) } }.sorted { first, second in
-            first.1.instant == second.1.instant ? first.0.id < second.0.id : first.1.instant < second.1.instant
-        }.prefix(PlannedJourneyIcsContract.maximumEvents)
-        var logical = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:" + escape(PlannedJourneyIcsContract.productID),
-                       "CALSCALE:GREGORIAN", "METHOD:PUBLISH"]
-        for (journey, occurrence) in events {
-            logical += eventLines(journey, occurrence, generatedAt: generatedAt, text: text)
+        // Spelled out with explicit types: the one-expression form did not type-check in reasonable time.
+        var events: [JourneyOccurrence] = []
+        for journey in journeys {
+            for occurrence in journey.occurrences {
+                events.append(JourneyOccurrence(journey: journey, occurrence: occurrence))
+            }
+        }
+        events.sort(by: JourneyOccurrence.leavesFirst)
+        var logical: [String] = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:" + escape(PlannedJourneyIcsContract.productID),
+                                 "CALSCALE:GREGORIAN", "METHOD:PUBLISH"]
+        for event in events.prefix(PlannedJourneyIcsContract.maximumEvents) {
+            logical += eventLines(event.journey, event.occurrence, generatedAt: generatedAt, text: text)
         }
         logical.append("END:VCALENDAR")
         let calendar = logical.flatMap(fold).joined(separator: "\r\n") + "\r\n"
         guard calendar.utf8.count <= PlannedJourneyIcsContract.maximumBytes else { throw PlannedJourneyIcsError.tooLarge }
         return calendar
+    }
+
+    /// One departure of one journey, ordered by departure and then by journey identifier.
+    private struct JourneyOccurrence {
+        let journey: PlannedJourney
+        let occurrence: PlannedJourneyOccurrence
+
+        static func leavesFirst(_ first: JourneyOccurrence, _ second: JourneyOccurrence) -> Bool {
+            let firstInstant: Date = first.occurrence.instant
+            let secondInstant: Date = second.occurrence.instant
+            if firstInstant != secondInstant { return firstInstant < secondInstant }
+            return first.journey.id < second.journey.id
+        }
     }
 
     /// The events of a calendar Binario wrote, refused whole when it is too large, holds too many

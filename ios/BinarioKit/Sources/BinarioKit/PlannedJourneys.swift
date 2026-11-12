@@ -676,17 +676,38 @@ public enum PlannedJourneyTransfer {
 public enum PlannedJourneyAgenda {
     /// «Prossimi»: journeys with a departure still to come at `now`, the next to leave first.
     public static func upcoming(_ journeys: [PlannedJourney], now: Date) -> [PlannedJourney] {
-        journeys.compactMap { journey in journey.nextOccurrence(now: now).map { (journey, $0.instant) } }
-            .sorted { first, second in first.1 == second.1 ? first.0.id < second.0.id : first.1 < second.1 }
-            .map(\.0)
+        // Spelled out with explicit types: the one-expression form did not type-check in reasonable time.
+        var rows: [Row] = []
+        for journey in journeys {
+            guard let next = journey.nextOccurrence(now: now) else { continue }
+            rows.append(Row(journey: journey, instant: next.instant))
+        }
+        rows.sort { first, second in Row.ordered(first, second, latestFirst: false) }
+        return rows.map { row in row.journey }
     }
 
     /// «Archiviati»: completed, archived or with every departure gone or done, the latest first.
     public static func archive(_ journeys: [PlannedJourney], now: Date) -> [PlannedJourney] {
-        journeys.filter { !$0.isUpcoming(now: now) }
-            .map { journey in (journey, journey.shownOccurrence(now: now).instant) }
-            .sorted { first, second in first.1 == second.1 ? first.0.id < second.0.id : first.1 > second.1 }
-            .map(\.0)
+        var rows: [Row] = []
+        for journey in journeys where !journey.isUpcoming(now: now) {
+            rows.append(Row(journey: journey, instant: journey.shownOccurrence(now: now).instant))
+        }
+        rows.sort { first, second in Row.ordered(first, second, latestFirst: true) }
+        return rows.map { row in row.journey }
+    }
+
+    /// A journey with the departure that places it in a list.
+    private struct Row {
+        let journey: PlannedJourney
+        let instant: Date
+
+        /// By departure (earliest or latest first), then by journey identifier.
+        static func ordered(_ first: Row, _ second: Row, latestFirst: Bool) -> Bool {
+            if first.instant != second.instant {
+                return latestFirst ? first.instant > second.instant : first.instant < second.instant
+            }
+            return first.journey.id < second.journey.id
+        }
     }
 
     /// The next journey: the earliest active one not departed.
