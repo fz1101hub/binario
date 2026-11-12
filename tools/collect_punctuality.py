@@ -17,7 +17,8 @@ container cannot reach viaggiatreno.it).  Each run:
    otherwise ``S`` + the last five digits of an ``8300xxxxx`` code, each confirmed by position or name;
 2. asks ``andamentoTreno/{origin}/{number}/{midnight}`` once per train (midnight = local midnight of the departure
    day, epoch milliseconds), at most ``--rate`` requests per second (2 by default and at most), within
-   ``--max-requests`` and ``--deadline-seconds``, stopping after 20 consecutive failures or at once on a refusal
+   ``--max-requests`` and ``--deadline-seconds`` and before Rome's date changes (the rest waits for the next run,
+   which closes the day ViaggiaTreno has dropped without a request), stopping after 20 consecutive failures or at once on a refusal
    (HTTP 403/429, or 503 with ``Retry-After``: kept in ``refusal.json``, the following runs send nothing for 2 h, then
    4, 8... up to 7 days, or the ``Retry-After`` when longer; exit status 3),
    and when more than 40 of the last 50 answers are unknown or of another identity (a changed path, a soft block, a
@@ -1095,10 +1096,16 @@ def collect(
     deadline: float,
     clock: Callable[[], float] = time.monotonic,
     requests: Callable[[], int] | None = None,
+    anchor: float | None = None,
 ) -> Report:
-    """One run: expire old pending trains, ask about the pending and newly due ones, record the answers."""
+    """One run: expire old pending trains, ask about the pending and newly due ones, record the answers.
+
+    ``anchor`` is the ``clock`` reading taken with ``now`` (the first one of the request loop without it): the run
+    follows the wall clock from there and, once Rome's date has changed (ViaggiaTreno has dropped the day the trains
+    were selected for), defers the rest to the next run, which closes them without a request."""
     report = Report()
     moment = int(now.timestamp())
+    run_day = rome_date(moment)
     for key, entry in sorted(state.pending.items()):
         # Asked and not arrived yet: 8 h after the scheduled arrival.  Left over by the limits of a run, never asked:
         # while ViaggiaTreno still answers about it.  Either way, never past ViaggiaTreno's day.
@@ -1161,8 +1168,15 @@ def collect(
         if issued() >= max_requests:
             defer(queue[position:], "limite --max-requests")
             break
-        if clock() >= deadline:
+        tick = clock()
+        if anchor is None:
+            anchor = tick
+        if tick >= deadline:
             defer(queue[position:], "limite --deadline-seconds")
+            break
+        if rome_date(moment + tick - anchor) != run_day:
+            defer(queue[position:], "mezzanotte a Roma passata durante la run: ViaggiaTreno ha chiuso il giorno, "
+                                    "il resto alla run successiva")
             break
         if consecutive >= MAX_CONSECUTIVE_FAILURES:
             defer(queue[position:], f"{MAX_CONSECUTIVE_FAILURES} errori consecutivi")
@@ -1284,13 +1298,14 @@ def main(argv: Sequence[str] | None = None) -> int:
         if args.max_requests < 0 or args.deadline_seconds <= 0 or args.timeout <= 0:
             parser.error("--max-requests, --deadline-seconds e --timeout devono essere positivi")
         now = datetime.fromisoformat(args.now) if args.now else datetime.now(timezone.utc)
+        anchor = time.monotonic()  # the run follows the wall clock from ``now`` (midnight in Rome, ``collect``)
         if now.tzinfo is None:
             parser.error("--now deve indicare il fuso orario")
         fetcher = HttpFetcher(args.base_url, rate=args.rate, timeout=args.timeout)
         state = State(args.state)
         state.verify_retained(rome_date(now.timestamp()), bootstrap=args.bootstrap)
         report = collect(timetable, state, fetcher.fetch, now, max_requests=args.max_requests,
-                         deadline=started + args.deadline_seconds, requests=lambda: fetcher.requests)
+                         deadline=started + args.deadline_seconds, requests=lambda: fetcher.requests, anchor=anchor)
         report.counters["richieste_http"] = fetcher.requests
         state.save(rome_date(now.timestamp()))
         for name, amount in state.counters.items():

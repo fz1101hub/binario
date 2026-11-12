@@ -829,6 +829,32 @@ class CollectTest(Base):
         self.assertEqual(3, len(answers.paths))  # earlier pending first, then one new train before the deadline
         self.assertEqual("limite --deadline-seconds", report.stop_reason)
 
+    def test_a_run_that_crosses_rome_midnight_stops_asking_about_the_closed_day(self) -> None:
+        # The 23:47 run with a backlog lasts past midnight, when ViaggiaTreno forgets the day: the rest is deferred
+        # (the next run closes it without a request) instead of 41 unknown answers tripping the breaker.
+        late = datetime(2026, 11, 4, 22, 50, tzinfo=timezone.utc)  # 23:50 in Rome
+        ticks = iter([0.0, 0.0, 300.0, 700.0])  # the fourth request would leave at 00:01:40
+        answers = Answers(self.answer_all)
+        state, report = self.collect(answers, late, clock=lambda: next(ticks, 999.0))
+        self.assertEqual(3, len(answers.paths))
+        self.assertIn("mezzanotte", report.stop_reason)
+        self.assertFalse(report.stopped_abnormally)
+        self.assertEqual(4, report.counters["rimandati"])
+        self.assertEqual(4, len(state.pending))
+        self.assertEqual({0}, {entry["k"] for entry in state.pending.values()})
+        after = Answers(self.answer_all)
+        state, report = self.collect(after, late + timedelta(minutes=20))
+        self.assertEqual([], after.paths)
+        self.assertEqual(4, report.counters["giorno_chiuso"])
+        # The clock reading taken with ``now`` counts too: a run that starts at 23:59:50 asks nothing after 00:00.
+        shutil.rmtree(self.temp / "state")
+        state = collector.State(self.temp / "state")
+        early = Answers(self.answer_all)
+        report = collector.collect(self.timetable, state, early, datetime(2026, 11, 4, 22, 59, 50, tzinfo=timezone.utc),
+                                   max_requests=100, deadline=float("inf"), clock=lambda: 15.0, anchor=0.0)
+        self.assertEqual([], early.paths)
+        self.assertEqual(7, len(state.pending))
+
     def test_trains_left_over_by_the_limits_wait_for_the_next_run_until_viaggiatreno_closes_the_day(self) -> None:
         state, report = self.collect(Answers(self.answer_all), max_requests=1)  # 2007, the oldest, is asked
         left = {key for key, entry in state.pending.items() if entry["k"] == 0}
