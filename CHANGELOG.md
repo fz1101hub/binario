@@ -122,6 +122,15 @@ Dodici revisori indipendenti, ognuno con un punto di vista diverso, hanno trovat
 - **iPhone, «Scrivi o detta la tratta» e «Stazione più vicina»** (importate dall'app compagna Expo):
   - **Dettatura**: nel pianificatore e nell'editor dell'Agenda si scrive o si detta con la tastiera la tratta («da Roma Termini a Torino Porta Nuova domani alle 18»). L'iPhone la legge con le stesse regole di Android nelle 17 lingue; i 264 casi sono in un file comune (`contracts/voice-input/v1`) controllato da entrambe le app. Binario non apre il microfono e non chiede permessi.
   - **Stazione più vicina**: per la partenza nel pianificatore e nell'Agenda, e in «Partenze». Il permesso di posizione viene chiesto solo al tocco, la posizione è letta una volta, usata sul telefono e mai salvata né inviata; nessuna stazione oltre 50 km.
+- **Companion Expo congelato** (decisione del titolare: «Importa tutto quello che puoi importare e poi congela»):
+  - **Funzioni portate**: le funzioni utili dell'app Expo sono ora nelle app Android e iPhone.
+    - L'Agenda: voci pronte della checklist, «Ritorno» e «Ripianifica», viaggi fino a 4 tratte, ripetizioni, modelli, promemoria predefinito, «Pronto per partire», ricerca e mese, «Svuota l'Agenda».
+    - L'importazione guidata da testo, i promemoria locali, i file ICS e JSON nello stesso formato sui due telefoni.
+    - La dettatura in 17 lingue e la stazione più vicina.
+  - **Stato di `companion-expo/`**: non è distribuito e non riceve nuove funzioni né aggiornamenti di dipendenze. La sua CI parte solo quando cambia il suo codice, o a mano.
+  - **Icone degli store**: si generano da `store/source/binario-icon.png`, copia identica del marchio; le icone generate sono identiche byte per byte.
+  - **Documentazione**: `companion-expo/README.md` dice dove si trova ogni funzione e che cosa non è stato portato, e perché. README, PRIVACY.md e la documentazione di release lo indicano come congelato.
+- **iPhone e Apple Watch, Xcode 26.3**: la CI compila e prova con Xcode 26.3 (SDK iOS e watchOS 26.2), richiesto da App Store Connect da aprile 2026 per caricare una build; prima era fissata a Xcode 16.4. Versioni minime invariate (iOS 17, watchOS 10).
 - **Ultime correzioni dell'audit**:
   - **iPhone, ricerca delle stazioni** più veloce: i nomi del catalogo si preparano una volta all'avvio invece che a ogni lettera; risultati identici, verificati su 30 ricerche.
   - **Android, «Partenze»**: quando nessun tabellone live risponde e resta l'orario programmato, l'avviso dice «Sono disponibili solo orari programmati»; «Realtime parzialmente non disponibile» resta per i casi davvero parziali.

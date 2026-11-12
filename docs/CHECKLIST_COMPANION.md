@@ -1,5 +1,7 @@
 # Checklist canonica — Companion Expo
 
+> **Companion Expo congelato dal 12 novembre 2026** e non distribuito ([companion-expo/README.md](../companion-expo/README.md)): nessuna nuova funzione né aggiornamento di dipendenze. Questa checklist serve solo se si modifica il codice congelato; non ci sono più release del Companion da preparare.
+
 Questa è la checklist operativa di riferimento per il Companion Expo. Sostituisce i TODO ad hoc nella radice di `companion-expo/`. Le caselle rappresentano **condizioni da verificare per la modifica o la release considerata**: non attestano attività svolte in una sessione precedente e vanno marcate solo con evidenza riproducibile nella pull request o nella documentazione di release.
 
 ## Controlli riproducibili

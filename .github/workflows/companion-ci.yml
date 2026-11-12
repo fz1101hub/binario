@@ -1,13 +1,11 @@
 name: Companion CI
 
+# The Expo companion is frozen (12 November 2026, companion-expo/README.md): the job runs only when its own code or
+# this workflow changes, or by hand. Shared contracts and tools no longer start it; their own products' CI checks them.
 on:
   pull_request:
     paths:
       - "companion-expo/**"
-      - "contracts/wear-snapshot/**"
-      - "tools/verify_android_app_bundles.py"
-      - "tests/test_verify_android_app_bundles.py"
-      - "tools/verify_gradle_dependency_metadata.py"
       - ".github/workflows/companion-ci.yml"
   push:
     branches:
@@ -15,10 +13,6 @@ on:
       - "stabilization/**"
     paths:
       - "companion-expo/**"
-      - "contracts/wear-snapshot/**"
-      - "tools/verify_android_app_bundles.py"
-      - "tests/test_verify_android_app_bundles.py"
-      - "tools/verify_gradle_dependency_metadata.py"
       - ".github/workflows/companion-ci.yml"
   workflow_dispatch:
     inputs:
