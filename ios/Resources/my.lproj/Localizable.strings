@@ -173,6 +173,7 @@
 "result.live.stops" = "ရပ်နားဘူတာများ";
 "result.live.passed" = "ဖြတ်ကျော်ပြီး ရပ်နားဘူတာ";
 "result.live.skipped" = "မရပ်ဘဲ ကျော်သွားသော ဘူတာ";
+"result.live.added" = "ထပ်ဆောင်း ရပ်နားသော ဘူတာ";
 "result.live.loading" = "အချိန်နှင့်တပြေးညီ ဒေတာကို အပ်ဒိတ်လုပ်နေသည်…";
 "result.live.from_sources" = "%1$@ မှ အချိန်နှင့်တပြေးညီ ဒေတာ";
 "result.live.platform_source" = "%1$@ အရ ပလက်ဖောင်း";

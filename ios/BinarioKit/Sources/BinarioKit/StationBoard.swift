@@ -146,19 +146,25 @@ public struct StationBoardPage: Equatable, Sendable {
     public let firstDepartureNextDay: StationBoardDeparture?
     /// The attribution of the feeds of the listed trains, each once, in order of appearance.
     public let attributions: [String]
+    /// The timetables of a feed serving the station end before the page's day while another's go
+    /// on: the page lists only the trains still covered, and «Orari scaduti» says why some are
+    /// missing (when every feed has ended the board is `scheduleExpired` instead).
+    public let someTimetablesEnded: Bool
 
     public init(
         query: StationBoardQuery,
         departures: [StationBoardDeparture],
         hasMore: Bool,
         firstDepartureNextDay: StationBoardDeparture?,
-        attributions: [String]
+        attributions: [String],
+        someTimetablesEnded: Bool = false
     ) {
         self.query = query
         self.departures = departures
         self.hasMore = hasMore
         self.firstDepartureNextDay = firstDepartureNextDay
         self.attributions = attributions
+        self.someTimetablesEnded = someTimetablesEnded
     }
 }
 

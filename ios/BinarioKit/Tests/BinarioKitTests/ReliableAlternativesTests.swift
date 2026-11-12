@@ -234,6 +234,39 @@ final class ReliableAlternativesTests: XCTestCase {
         XCTAssertFalse(ReliableAlternatives.stillToDepart(nil, now: at("07:00")))
     }
 
+    func testALiveSourceMovesTheDepartureOrCancelsTheTrain() {
+        let departure = at("08:12")
+        // Ten minutes late: still to be taken until a minute after 08:22.
+        XCTAssertTrue(ReliableAlternatives.stillToDepart(departure, live: liveStatus(delay: 10), now: at("08:22")))
+        XCTAssertFalse(ReliableAlternatives.stillToDepart(departure, live: liveStatus(delay: 10), now: at("08:23")))
+        // Cancelled: never, even before its time.
+        XCTAssertFalse(ReliableAlternatives.stillToDepart(departure, live: liveStatus(cancelled: true), now: at("07:00")))
+        // Early, or late without published minutes: the scheduled time.
+        XCTAssertFalse(ReliableAlternatives.stillToDepart(departure, live: liveStatus(delay: -3), now: at("08:13")))
+        XCTAssertFalse(ReliableAlternatives.stillToDepart(departure, live: liveStatus(lateWithoutMinutes: true), now: at("08:13")))
+        XCTAssertTrue(ReliableAlternatives.stillToDepart(departure, live: nil, now: at("08:12")))
+        XCTAssertFalse(ReliableAlternatives.stillToDepart(nil, live: liveStatus(delay: 10), now: at("07:00")))
+    }
+
+    func testTheListsLiveStateDecidesWhichTrainsCanStillBeTaken() throws {
+        let late = service("RE_11 - 2153", "08:00")
+        let services = [late, service("RE_11 - 2157", "08:12"), service("2165", "08:25")]
+        XCTAssertEqual(try alternatives(services, now: "07:30"), ["trenord:RE_11 - 2153": "RE_11 - 2157"])
+        // The 08:12 is cancelled today: the 08:25 instead, as its own row says «Soppresso».
+        XCTAssertEqual(
+            try alternatives(services, now: "07:30", live: ["trenord:RE_11 - 2157": liveStatus(cancelled: true)]),
+            ["trenord:RE_11 - 2153": "2165"]
+        )
+        // The late train runs 25 minutes late: at 08:10 it can still be taken and keeps its suggestion.
+        XCTAssertTrue(try alternatives(services, now: "08:10").isEmpty)
+        XCTAssertEqual(
+            try alternatives(services, now: "08:10", live: ["trenord:RE_11 - 2153": liveStatus(delay: 25)]),
+            ["trenord:RE_11 - 2153": "RE_11 - 2157"]
+        )
+        // A cancelled train gets no suggestion either.
+        XCTAssertTrue(try alternatives(services, now: "07:30", live: ["trenord:RE_11 - 2153": liveStatus(cancelled: true)]).isEmpty)
+    }
+
     func testListedTimesArePlacedFromTheQueryTimeOnAcrossMidnight() throws {
         let services = [service("1", "23:50"), service("2", "23:50"), service("3", "00:15"), service("4", "8:7x")]
         let evening = try makeSnapshot(services, from: "23:40")
@@ -335,12 +368,32 @@ final class ReliableAlternativesTests: XCTestCase {
         )
     }
 
-    /// The suggested train's number for each listed train that has one, at `now`.
-    private func alternatives(_ services: [TrainService], now: String, from start: String = "07:30") throws -> [String: String] {
+    /// The suggested train's number for each listed train that has one, at `now`, with what a live
+    /// source observed of the listed trains (`live`, by id).
+    private func alternatives(
+        _ services: [TrainService],
+        now: String,
+        from start: String = "07:30",
+        live: [String: StationBoardLiveStatus] = [:]
+    ) throws -> [String: String] {
         let result = try makeSnapshot(services, from: start)
         let stats = try trenordStats()
         let reliability = JourneyReliability.assess(result, stats: stats)
-        return ReliableAlternatives.find(in: result, reliability: reliability.byServiceID, now: at(now)).mapValues { $0.service.number }
+        return ReliableAlternatives.find(in: result, reliability: reliability.byServiceID, live: live, now: at(now))
+            .mapValues { $0.service.number }
+    }
+
+    /// What a live source observed of a listed train where the user boards.
+    private func liveStatus(delay: Int? = nil, cancelled: Bool = false, lateWithoutMinutes: Bool = false) -> StationBoardLiveStatus {
+        StationBoardLiveStatus(
+            expectedDeparture: nil,
+            delayMinutes: delay,
+            cancelled: cancelled,
+            platform: nil,
+            sourceLabel: "ViaggiaTreno",
+            observedAt: at("07:30"),
+            lateWithoutMinutes: lateWithoutMinutes
+        )
     }
 
     /// Trenord regionals from Milano Centrale to Pavia, and one cancelled on every day observed.

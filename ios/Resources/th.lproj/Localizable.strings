@@ -173,6 +173,7 @@
 "result.live.stops" = "จุดจอด";
 "result.live.passed" = "ผ่านจุดจอดแล้ว";
 "result.live.skipped" = "จุดจอดที่ข้าม";
+"result.live.added" = "จุดจอดพิเศษ";
 "result.live.loading" = "กำลังอัปเดตข้อมูลเรียลไทม์…";
 "result.live.from_sources" = "ข้อมูลเรียลไทม์จาก %1$@";
 "result.live.platform_source" = "ชานชาลาตาม %1$@";

@@ -298,16 +298,17 @@ public enum NetworkReliability {
     }
 
     /// "9558" for "9558", "FR 9558" and "09558"; a number without digits keeps its letters. A
-    /// Trenord number of the timetable ("RE_11 - 2153") is the train number after the line.
+    /// Trenord number of the timetable is the run after the line, whatever it holds: "2153" for
+    /// "RE_11 - 2153", "811" for "S5 - 811A" (Android's `NetworkReliabilityStats.numberKey`).
     public static func numberKey(_ number: String) -> String {
-        var published = number
+        var run = number
         if let separator = number.range(of: " - ", options: .backwards) {
             let tail = number[separator.upperBound...]
-            if !tail.isEmpty, tail.allSatisfy(\.isASCIIDigit) { published = String(tail) }
+            if !tail.allSatisfy(\.isWhitespace) { run = String(tail) }
         }
-        let digits = String(published.filter(\.isASCIIDigit).drop(while: { $0 == "0" }))
+        let digits = String(run.filter(\.isASCIIDigit).drop(while: { $0 == "0" }))
         if !digits.isEmpty { return digits }
-        return published.trimmingCharacters(in: .whitespacesAndNewlines).replacingOccurrences(of: " ", with: "").uppercased()
+        return number.trimmingCharacters(in: .whitespacesAndNewlines).replacingOccurrences(of: " ", with: "").uppercased()
     }
 
     /// A ViaggiaTreno station code: "S" and five digits ("S01700").

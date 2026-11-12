@@ -173,6 +173,7 @@
 "result.live.stops" = "Остановки";
 "result.live.passed" = "Остановка пройдена";
 "result.live.skipped" = "Пропущенная остановка";
+"result.live.added" = "Дополнительная остановка";
 "result.live.loading" = "Обновление данных в реальном времени…";
 "result.live.from_sources" = "Данные в реальном времени: %1$@";
 "result.live.platform_source" = "Путь по данным %1$@";

@@ -99,6 +99,7 @@ enum LiveTexts {
     static var unverified: String { NSLocalizedString("result.live.unverified", comment: "") }
     static var passed: String { NSLocalizedString("result.live.passed", comment: "") }
     static var skipped: String { NSLocalizedString("result.live.skipped", comment: "") }
+    static var added: String { NSLocalizedString("result.live.added", comment: "") }
 
     // MARK: A row of «Partenze» or of the planner
 
@@ -209,10 +210,12 @@ enum LiveTexts {
         return "\(name), \(clock(point.at))"
     }
 
-    /// A stop of the run: «Effettivo 10:17» or «prev. 10:17», «+5 min», «Bin. 3».
+    /// A stop of the run: «Fermata straordinaria» for a stop the timetable does not have, then
+    /// «Effettivo 10:17» or «prev. 10:17», «+5 min», «Bin. 3».
     static func stopParts(_ stop: LiveStopStatus) -> [String] {
         if stop.skipped { return [skipped] }
         var parts: [String] = []
+        if stop.added { parts.append(added) }
         if let actual = stop.actual {
             parts.append(actualTime(actual))
         } else if stop.operationalStatusVerified, stop.expected != stop.scheduled {
@@ -230,6 +233,7 @@ enum LiveTexts {
         if stop.skipped {
             parts.append(skipped)
         } else {
+            if stop.added { parts.append(added) }
             if let actual = stop.actual {
                 parts.append(actualTime(actual))
             } else if stop.operationalStatusVerified, stop.expected != stop.scheduled {

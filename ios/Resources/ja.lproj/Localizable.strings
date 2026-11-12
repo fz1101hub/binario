@@ -173,6 +173,7 @@
 "result.live.stops" = "停車駅";
 "result.live.passed" = "通過済みの駅";
 "result.live.skipped" = "通過した停車駅";
+"result.live.added" = "臨時停車駅";
 "result.live.loading" = "リアルタイムデータを更新中…";
 "result.live.from_sources" = "%1$@ のリアルタイムデータ";
 "result.live.platform_source" = "番線は %1$@ による";

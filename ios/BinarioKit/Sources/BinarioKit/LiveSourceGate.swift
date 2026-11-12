@@ -13,8 +13,30 @@ public final class LiveSourcePauses: @unchecked Sendable {
 
     private let lock = NSLock()
     private var pauses: [LiveSource: Date] = [:]
+    /// The gates sharing these pauses, for `cancelRequestsNobodyWaitsFor`.
+    private var gates: [WeakGate] = []
+
+    private struct WeakGate {
+        weak var gate: LiveSourceGate?
+    }
 
     public init() {}
+
+    func register(_ gate: LiveSourceGate) {
+        lock.lock()
+        gates.removeAll { $0.gate == nil }
+        gates.append(WeakGate(gate: gate))
+        lock.unlock()
+    }
+
+    /// The app goes to the background or live data is switched off: every request on its way that
+    /// no screen waits for any more is cancelled (`LiveSourceGate.cancelRequestsNobodyWaitsFor`).
+    public func cancelRequestsNobodyWaitsFor() {
+        lock.lock()
+        let current = gates.compactMap(\.gate)
+        lock.unlock()
+        for gate in current { gate.cancelRequestsNobodyWaitsFor() }
+    }
 
     func pause(_ source: LiveSource, until: Date) {
         lock.lock()
@@ -43,14 +65,19 @@ public final class LiveSourcePauses: @unchecked Sendable {
 /// - one request per resource and interval: concurrent callers share it, and its answer, failure
 ///   included, is reused until the interval has passed since the request started;
 /// - a refusal (HTTP 403 or 429) pauses the whole source at once, for the `Retry-After` it sent
-///   (at most an hour) or for a minute that doubles with every new pause, up to 15 minutes;
-/// - three failures in a row pause it the same way (a device without a connection is not the
-///   source's failure and never counts); after a pause one request is let through (the
+///   (at most an hour) or for 15 minutes, as Android's `PublicSourceRefusalGate`;
+/// - three failures in a row pause it for a minute that doubles with every new pause, up to 15
+///   minutes (a device without a connection is not the source's failure and never counts); after
+///   a pause one request is let through (the
 ///   others are refused as during the pause until it answers) and a single failure pauses it again;
 /// - only an answer to a request sent since the last pause ends it: one sent before says nothing of
 ///   the source after its refusal;
 /// - nothing is retried by itself: the next caller after the interval asks again.
-/// A caller that is cancelled returns at once; the request is cancelled when no caller waits for it.
+/// A caller that is cancelled returns at once, and a caller already cancelled sends nothing. A
+/// request its callers left goes on to its own time limits and its answer is kept like any other,
+/// so a screen that asks again at once (back in the foreground, a new search, a tab shown again)
+/// joins it or reuses its answer instead of sending the same request twice; only
+/// `cancelRequestsNobodyWaitsFor` (the app in the background, live data switched off) cancels it.
 final class LiveSourceGate: @unchecked Sendable {
     struct Configuration: Equatable, Sendable {
         var minimumInterval: TimeInterval
@@ -58,6 +85,8 @@ final class LiveSourceGate: @unchecked Sendable {
         var failureThreshold = 3
         var baseOpenDuration: TimeInterval = 60
         var maximumOpenDuration: TimeInterval = 900
+        /// The pause after a refusal without `Retry-After`, Android's `refusalPause`.
+        var refusalPause: TimeInterval = 900
         var maximumRetryAfter: TimeInterval = 3_600
     }
 
@@ -118,11 +147,14 @@ final class LiveSourceGate: @unchecked Sendable {
         self.configuration = configuration
         self.pauses = pauses
         self.now = now
+        pauses.register(self)
     }
 
     /// The answer for `key`: cached, shared with a request in flight, refused while the source is
     /// paused, or loaded now with `load`.
     func fetch(_ key: String, load: @escaping @Sendable () async -> LiveFetchResult) async -> LiveFetchResult {
+        // A caller already cancelled (a screen gone, the app in the background) sends nothing.
+        if Task.isCancelled { return .failure(.cancelled) }
         let flight: UInt64
         let caller: UInt64
         switch enter(key) {
@@ -236,19 +268,31 @@ final class LiveSourceGate: @unchecked Sendable {
         if continuation == nil, flight.registered.remove(caller) != nil {
             flight.cancelledEarly.insert(caller)
         }
-        var abandonedTask: Task<Void, Never>?
-        if flight.result == nil, flight.waiting.isEmpty, flight.registered.isEmpty, !flight.abandoned {
-            // Nobody waits for the request any more: it is cancelled, and the next caller starts afresh.
+        // Nobody may wait for the request any more: it still goes on, so that the next caller of
+        // the same resource joins it or reuses its answer rather than sending it again.
+        if flight.result != nil || flight.abandoned { settle(identifier) }
+        lock.unlock()
+        continuation?.resume(returning: .failure(.cancelled))
+    }
+
+    /// Cancels every request nobody waits for, and the next caller starts afresh: the app goes to
+    /// the background or live data is switched off. A request a caller still waits for goes on.
+    func cancelRequestsNobodyWaitsFor() {
+        lock.lock()
+        var tasks: [Task<Void, Never>] = []
+        let unwaited = flights.filter {
+            $0.value.result == nil && !$0.value.abandoned && $0.value.waiting.isEmpty && $0.value.registered.isEmpty
+        }
+        for (identifier, flight) in unwaited {
             flight.abandoned = true
             if activeFlights[flight.key] == identifier { activeFlights[flight.key] = nil }
             // An abandoned probe lets the next caller through instead.
             if probe == identifier { probe = nil }
-            abandonedTask = flight.task
+            if let task = flight.task { tasks.append(task) }
+            settle(identifier)
         }
-        if flight.result != nil || flight.abandoned { settle(identifier) }
         lock.unlock()
-        continuation?.resume(returning: .failure(.cancelled))
-        abandonedTask?.cancel()
+        for task in tasks { task.cancel() }
     }
 
     private func complete(flight identifier: UInt64, with result: LiveFetchResult) {
@@ -302,7 +346,9 @@ final class LiveSourceGate: @unchecked Sendable {
             consecutiveFailures = 0
         } else if failure.isRefusal || consecutiveFailures >= configuration.failureThreshold {
             let factor: Double = Double(1 << min(openings, 6))
-            let duration: TimeInterval = min(configuration.baseOpenDuration * factor, configuration.maximumOpenDuration)
+            let backOff: TimeInterval = min(configuration.baseOpenDuration * factor, configuration.maximumOpenDuration)
+            // A refusal is never paused for less than Android pauses it, from the first one on.
+            let duration: TimeInterval = failure.isRefusal ? max(backOff, configuration.refusalPause) : backOff
             openUntil = current.addingTimeInterval(duration)
             openings += 1
             pauseGeneration &+= 1
@@ -312,10 +358,12 @@ final class LiveSourceGate: @unchecked Sendable {
         return until
     }
 
+    /// A device without a connection (`offline`) asked nothing of the source: back in coverage, the
+    /// next caller asks at once instead of showing «non disponibili» for the rest of the interval.
     private static func isCacheable(_ result: LiveFetchResult) -> Bool {
         switch result {
         case .body: return true
-        case .failure(.cancelled), .failure(.paused), .failure(.invalidRequest): return false
+        case .failure(.cancelled), .failure(.paused), .failure(.invalidRequest), .failure(.offline): return false
         case .failure: return true
         }
     }

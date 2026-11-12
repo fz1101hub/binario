@@ -13,6 +13,11 @@ final class StationCatalogTests: XCTestCase {
         XCTAssertEqual(catalog.station(id: "S08328")?.name, "Appiano Proba Petronia")
         XCTAssertEqual(catalog.station(id: "NC001752")?.name, "Boscotrecase - Porta Di Accesso Al Cratere Del Vesuvio")
         XCTAssertEqual(catalog.station(id: "NC001477")?.name, "Morciano - Barbarano - Castrignano - Giuliano")
+        // A doubled space in the asset is read on single spaces, so every station can be searched.
+        XCTAssertEqual(catalog.station(id: "NC001521")?.name, "Ercolano - Miglio D'Oro")
+        for station in catalog.stations {
+            XCTAssertNoThrow(try JourneyModelValidator.identity(StationIdentity(station)), station.id)
+        }
     }
 
     func testNamesakesAreDistinctStationsWithTheSameNameNotHiddenDuplicates() throws {

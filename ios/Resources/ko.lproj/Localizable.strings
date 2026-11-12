@@ -173,6 +173,7 @@
 "result.live.stops" = "정차역";
 "result.live.passed" = "통과한 정차역";
 "result.live.skipped" = "무정차 통과역";
+"result.live.added" = "임시 정차역";
 "result.live.loading" = "실시간 데이터 업데이트 중…";
 "result.live.from_sources" = "%1$@ 실시간 데이터";
 "result.live.platform_source" = "승강장 정보: %1$@";

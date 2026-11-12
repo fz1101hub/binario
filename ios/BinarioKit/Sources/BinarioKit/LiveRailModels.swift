@@ -133,11 +133,14 @@ public struct LiveStopStatus: Equatable, Sendable {
     public let skipped: Bool
     /// `expected` is the source's (an actual time or a verified delay), not the timetable's.
     public let operationalStatusVerified: Bool
+    /// An extraordinary stop the timetable does not have (Android's `StopRouteChange.ADDED`): the
+    /// train calls there, it is never a cancelled stop.
+    public let added: Bool
 
     public init(
         stationCode: String?, stationName: String, scheduled: Date, scheduledDeparture: Date?, expected: Date,
         actual: Date?, actualDeparture: Date?, platform: String?, scheduledPlatform: String?, delayMinutes: Int,
-        passed: Bool, skipped: Bool, operationalStatusVerified: Bool
+        passed: Bool, skipped: Bool, operationalStatusVerified: Bool, added: Bool = false
     ) {
         self.stationCode = stationCode
         self.stationName = stationName
@@ -152,6 +155,7 @@ public struct LiveStopStatus: Equatable, Sendable {
         self.passed = passed
         self.skipped = skipped
         self.operationalStatusVerified = operationalStatusVerified
+        self.added = added
     }
 }
 

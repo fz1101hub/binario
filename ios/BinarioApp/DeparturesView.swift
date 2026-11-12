@@ -17,6 +17,10 @@ struct DeparturesView: View {
     @Environment(\.scenePhase) private var scenePhase
     /// The minute the board is read at; the timetable-zone caption follows it.
     @State private var clock = Date()
+    /// The app went to the background since the board was read: it is read again from now when
+    /// the app comes back. Back from «inactive» only (Control Centre, a notification pulled down)
+    /// the list keeps its «Più tardi» pages and its scroll position; only the trains that left go.
+    @State private var returnsFromBackground = false
 
     var body: some View {
         Form {
@@ -65,10 +69,21 @@ struct DeparturesView: View {
         }
         .refreshable { await refresh() }
         .onChange(of: scenePhase) { _, phase in
-            guard phase == .active else { return }
-            // Back in the app: the board is read again from now (its live board by RootView).
-            clock = Date()
-            Task { await model.reloadBoard() }
+            switch phase {
+            case .background:
+                returnsFromBackground = true
+            case .active:
+                clock = Date()
+                if returnsFromBackground {
+                    returnsFromBackground = false
+                    // Back in the app: the board is read again from now (its live board by RootView).
+                    Task { await model.reloadBoard() }
+                } else {
+                    Task { await model.refreshBoardIfNeeded() }
+                }
+            default:
+                break
+            }
         }
         .onAppear { model.boardLiveDidAppear() }
         .onDisappear { model.boardLiveDidDisappear() }
@@ -134,10 +149,15 @@ private struct BoardContent: View {
         } else {
             switch model.boardState {
             case let .unavailable(reason):
-                BoardUnavailableView(reason: reason)
+                // Live first: a live board answers even where the bundled timetable cannot.
+                if model.boardDepartures.isEmpty {
+                    BoardUnavailableView(reason: reason)
+                } else {
+                    DepartureListSection()
+                }
             case .available:
                 if model.boardDepartures.isEmpty {
-                    NoDeparturesView(firstTomorrow: model.boardFirstTomorrow)
+                    NoDeparturesView(firstTomorrow: model.boardFirstTomorrow, someTimetablesEnded: model.boardSomeTimetablesEnded)
                 } else {
                     DepartureListSection()
                 }
@@ -155,6 +175,9 @@ private struct DepartureListSection: View {
 
     var body: some View {
         Section {
+            if model.boardSomeTimetablesEnded {
+                ExpiredTimetablesNotice()
+            }
             ForEach(model.boardDepartures) { departure in
                 // As a planner row: the detail of the train, boarded at this station.
                 if let query = model.boardDetailQuery(for: departure) {
@@ -260,6 +283,7 @@ private struct DepartureRow: View {
 /// the next one when the timetable has it, as on Android.
 private struct NoDeparturesView: View {
     let firstTomorrow: StationBoardDeparture?
+    let someTimetablesEnded: Bool
 
     var body: some View {
         Section {
@@ -268,6 +292,9 @@ private struct NoDeparturesView: View {
                 systemImage: "moon.zzz",
                 description: Text(message)
             )
+            if someTimetablesEnded {
+                ExpiredTimetablesNotice()
+            }
             if firstTomorrow?.isScheduled == true {
                 Label("result.programmed.disclosure", systemImage: "clock")
                     .font(.footnote)
@@ -279,6 +306,21 @@ private struct NoDeparturesView: View {
     private var message: String {
         guard let firstTomorrow else { return String(localized: "departures.none.body") }
         return DeparturesTexts.noMoreToday(firstTomorrow.service.scheduledDeparture)
+    }
+}
+
+/// «Orari scaduti» over a list: the timetables of one feed of the station have ended while another's
+/// go on, so some of its trains are missing until the app is updated.
+private struct ExpiredTimetablesNotice: View {
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Label("result.expired.title", systemImage: "calendar.badge.exclamationmark")
+                .font(.subheadline.weight(.semibold))
+            Text("departures.expired.body")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+        }
+        .accessibilityElement(children: .combine)
     }
 }
 
