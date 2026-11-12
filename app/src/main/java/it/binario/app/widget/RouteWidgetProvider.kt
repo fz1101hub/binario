@@ -237,9 +237,11 @@ class RouteWidgetProvider : AppWidgetProvider() {
                     views.setViewVisibility(id, View.GONE)
                 } else {
                     val service = row.service
+                    // Old data: the timetable row only, without the old expected arrival or platform change.
                     val inTransitLabel = if (row.inTransit) {
-                        service.arrivalLabel?.let { context.getString(R.string.widget_in_transit_arrival, it) } ?: context.getString(R.string.widget_in_transit)
+                        service.shownArrival(!timetableOnly)?.let { context.getString(R.string.widget_in_transit_arrival, it) } ?: context.getString(R.string.widget_in_transit)
                     } else null
+                    val (platform, scheduledPlatform) = service.shownPlatform(!timetableOnly)
                     views.setViewVisibility(id, View.VISIBLE)
                     views.setTextViewText(timeIds[index], if (timetableOnly) service.scheduledDeparture else service.expectedDeparture)
                     views.setTextViewText(destinationIds[index], service.destination)
@@ -253,8 +255,8 @@ class RouteWidgetProvider : AppWidgetProvider() {
                     ).joinToString(" · ")
                     views.setTextViewText(trainIds[index], trainLine)
                     views.setViewVisibility(trainIds[index], if (trainLine.isBlank()) View.GONE else View.VISIBLE)
-                    views.setTextViewText(platformIds[index], widgetPlatformText(context, service.platform, service.scheduledPlatform))
-                    views.setTextColor(platformIds[index], widgetPlatformColor(context, service.platform, service.scheduledPlatform))
+                    views.setTextViewText(platformIds[index], widgetPlatformText(context, platform, scheduledPlatform))
+                    views.setTextColor(platformIds[index], widgetPlatformColor(context, platform, scheduledPlatform))
                     views.setViewVisibility(platformIds[index], if (settings.showPlatform) View.VISIBLE else View.GONE)
                     views.setTextViewText(
                         statusIds[index],
@@ -556,7 +558,17 @@ data class WidgetService(
         ServiceStatus.DELAYED -> strings.format(strings.statusDelayed, delayMinutes)
         ServiceStatus.CANCELLED -> strings.statusCancelled
     }
-    /** The spoken row; with [live] false (old data) it reads the timetable time and no operational state. */
+    /**
+     * The platform shown and the timetable one it replaced: with [live] false (old data) the timetable platform alone,
+     * never an old live change.
+     */
+    fun shownPlatform(live: Boolean): Pair<String?, String?> =
+        if (live) platform to scheduledPlatform else (scheduledPlatform ?: platform) to null
+
+    /** The arrival of a train in transit: with [live] false (old data) none, the old expected time is not shown. */
+    fun shownArrival(live: Boolean): String? = arrivalLabel.takeIf { live }
+
+    /** The spoken row; with [live] false (old data) it reads the timetable time and platform and no operational state. */
     fun accessibleLabel(strings: WidgetStrings, live: Boolean = true): String {
         val operational = when {
             !operationalStatusVerified || !live -> strings.scheduledUnverified
@@ -571,7 +583,7 @@ data class WidgetService(
             destination,
             if (live) expectedDeparture else scheduledDeparture,
             operational,
-            strings.platformSpoken(platform, scheduledPlatform)
+            shownPlatform(live).let { (shown, scheduled) -> strings.platformSpoken(shown, scheduled) }
         )
     }
 }
