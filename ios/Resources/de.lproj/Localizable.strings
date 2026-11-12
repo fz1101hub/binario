@@ -131,6 +131,10 @@
 "saved.agenda.legs_count" = "Etappen: %lld";
 "saved.agenda.repeat" = "Wiederholung";
 "saved.agenda.repeat_total" = "Fahrten insgesamt: %lld";
+"saved.agenda.add_leg" = "Etappe hinzufügen";
+"saved.agenda.remove_leg" = "Etappe entfernen";
+"saved.agenda.legs_disconnected" = "Jede Etappe muss am Ankunftsbahnhof der vorherigen Etappe beginnen.";
+"saved.agenda.legs_not_chronological" = "Jede Etappe muss nach der vorherigen Etappe abfahren.";
 "settings.title" = "Einstellungen";
 "settings.data.title" = "Daten und Quellen";
 "settings.data.catalog" = "Bahnhofskatalog";

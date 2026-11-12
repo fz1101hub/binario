@@ -131,6 +131,10 @@
 "saved.agenda.legs_count" = "Étapes : %lld";
 "saved.agenda.repeat" = "Récurrence";
 "saved.agenda.repeat_total" = "Trajets au total : %lld";
+"saved.agenda.add_leg" = "Ajouter une étape";
+"saved.agenda.remove_leg" = "Retirer l’étape";
+"saved.agenda.legs_disconnected" = "Chaque étape doit partir de la gare d’arrivée de l’étape précédente.";
+"saved.agenda.legs_not_chronological" = "Chaque étape doit partir après l’étape précédente.";
 "settings.title" = "Réglages";
 "settings.data.title" = "Données et sources";
 "settings.data.catalog" = "Catalogue des gares";

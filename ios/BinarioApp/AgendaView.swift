@@ -333,8 +333,8 @@ struct AgendaJourneyView: View {
                 }
             }
 
-            // «Ritorno» and «Ripianifica» open the editor on a new journey: date and time are chosen anew.
-            // AGENDA-LEGS: one-leg journeys until the editor holds several legs.
+            // «Ritorno» (legs reversed, stations swapped) and «Ripianifica» (the same legs) open the
+            // editor on a new journey: every date and time is chosen anew.
             Section {
                 Button {
                     editor = .returnTrip(journey)
@@ -347,12 +347,12 @@ struct AgendaJourneyView: View {
                     Label("saved.agenda.replan", systemImage: "arrow.clockwise")
                 }
             }
-            .disabled(readOnly || journey.segments.count > 1)
+            .disabled(readOnly)
 
             Section {
                 if journey.status == .active {
-                    // AGENDA-EDIT: one-leg journeys departing once until the editor holds legs and repetitions.
-                    if journey.segments.count == 1, journey.recurrence == nil {
+                    // AGENDA-EDIT: journeys departing once until the editor holds repetitions.
+                    if journey.recurrence == nil {
                         Button {
                             editor = .edit(journey)
                         } label: {
@@ -441,6 +441,10 @@ struct AgendaEditorView: View {
     @State private var departure: Date?
     @State private var checklistText = ""
     @State private var reminderMinutes: Int?
+    /// The first leg's stored identifier while a journey is edited.
+    @State private var firstSegmentID: String?
+    /// Legs 2 to 4.
+    @State private var laterLegs: [AgendaEditorLeg] = []
     @State private var messageKey: String?
     @State private var loaded = false
     /// The journey is saved and its reminder is being scheduled: «Salva» waits.
@@ -490,6 +494,9 @@ struct AgendaEditorView: View {
                         }
                     }
                 }
+
+                // Legs 2 to 4 (Android's multi-leg editor).
+                AgendaEditorLaterLegs(legs: $laterLegs, firstDestination: destination, firstDeparture: departure)
 
                 Section {
                     TextField("saved.agenda.label", text: $label)
@@ -548,6 +555,12 @@ struct AgendaEditorView: View {
             }
             .onAppear(perform: load)
             .onChange(of: departure) { _, _ in pastDepartureConfirmed = false }
+            // The second leg starts where the first arrives while it still showed that station.
+            .onChange(of: destination) { previous, current in
+                if !laterLegs.isEmpty, laterLegs[0].origin == previous {
+                    laterLegs[0].origin = current
+                }
+            }
             .alert(
                 LocalizedStringKey(savedNoticeKey ?? "saved.agenda.saved"),
                 isPresented: Binding(
@@ -586,6 +599,8 @@ struct AgendaEditorView: View {
         departure = form.departureInstant
         checklistText = form.checklistText
         reminderMinutes = form.reminderMinutes
+        firstSegmentID = form.firstSegmentID
+        laterLegs = form.laterLegs.map { AgendaEditorLeg($0) }
     }
 
     private func save() {
@@ -594,7 +609,9 @@ struct AgendaEditorView: View {
             origin: origin.map { StationIdentity($0) },
             destination: destination.map { StationIdentity($0) },
             checklistText: checklistText,
-            reminderMinutes: reminderMinutes
+            reminderMinutes: reminderMinutes,
+            firstSegmentID: firstSegmentID,
+            laterLegs: laterLegs.map(\.formLeg)
         )
         if let departure {
             form.date = ItalianWallClock.date(of: departure)
@@ -638,6 +655,129 @@ struct AgendaEditorView: View {
     private func show(_ key: String) {
         messageKey = key
         AgendaAnnouncement.post(key, .error)
+    }
+}
+
+/// A leg after the first in the editor; its departure is nil until chosen.
+struct AgendaEditorLeg: Identifiable {
+    let id = UUID()
+    var origin: Station?
+    var destination: Station?
+    var departure: Date?
+    var segmentID: String?
+
+    init(origin: Station? = nil, destination: Station? = nil, departure: Date? = nil, segmentID: String? = nil) {
+        self.origin = origin
+        self.destination = destination
+        self.departure = departure
+        self.segmentID = segmentID
+    }
+
+    init(_ leg: PlannedJourneyFormLeg) {
+        self.init(
+            origin: leg.origin.map { Station(id: $0.id, name: $0.name, railwayCode: $0.railwayCode) },
+            destination: leg.destination.map { Station(id: $0.id, name: $0.name, railwayCode: $0.railwayCode) },
+            departure: leg.departureInstant,
+            segmentID: leg.segmentID
+        )
+    }
+
+    /// The leg as the form saves it, in Italian time.
+    var formLeg: PlannedJourneyFormLeg {
+        PlannedJourneyFormLeg(
+            origin: origin.map { StationIdentity($0) },
+            destination: destination.map { StationIdentity($0) },
+            date: departure.flatMap { ItalianWallClock.date(of: $0) },
+            time: departure.flatMap { ItalianWallClock.time(of: $0) },
+            segmentID: segmentID
+        )
+    }
+}
+
+/// Legs 2 to 4 of the journey in the editor (Android's multi-leg editor): a new leg starts where
+/// the last one arrives, and a leg's origin follows the destination of the leg before it while it
+/// still showed that station; «Aggiungi tratta» adds one, up to four legs in all. Connection and
+/// chronology are checked when the journey is saved.
+struct AgendaEditorLaterLegs: View {
+    @Binding var legs: [AgendaEditorLeg]
+    /// The first leg's arrival and departure.
+    let firstDestination: Station?
+    let firstDeparture: Date?
+
+    var body: some View {
+        ForEach(Array(legs.enumerated()), id: \.element.id) { index, leg in
+            Section {
+                StationPickerField(titleKey: "planner.origin", selection: originSelection(leg.id))
+                StationPickerField(titleKey: "planner.destination", selection: destinationSelection(leg.id))
+                if let departure = leg.departure {
+                    DatePicker("planner.departure", selection: Binding(
+                        get: { legs.first(where: { $0.id == leg.id })?.departure ?? departure },
+                        set: { date in setDeparture(date, of: leg.id) }
+                    ))
+                    .environment(\.timeZone, ItalianWallClock.timeZone)
+                } else {
+                    // The time is chosen anew: an hour after the leg before it, to adjust.
+                    Button {
+                        setDeparture(proposedDeparture(before: index), of: leg.id)
+                    } label: {
+                        LabeledContent("planner.departure") {
+                            Text("saved.agenda.unset")
+                        }
+                    }
+                }
+                Button(role: .destructive) {
+                    legs.removeAll { $0.id == leg.id }
+                } label: {
+                    Label("saved.agenda.remove_leg", systemImage: "minus.circle")
+                }
+            } header: {
+                Text(verbatim: AgendaText.legTitle(index + 1, of: legs.count + 1))
+            }
+        }
+        if legs.count + 1 < PlannedJourneySchema.maximumSegments {
+            Section {
+                Button {
+                    legs.append(AgendaEditorLeg(origin: legs.last?.destination ?? firstDestination))
+                } label: {
+                    Label("saved.agenda.add_leg", systemImage: "plus.circle")
+                }
+            }
+        }
+    }
+
+    private func originSelection(_ id: UUID) -> Binding<Station?> {
+        Binding(
+            get: { legs.first(where: { $0.id == id })?.origin },
+            set: { station in
+                guard let index = legs.firstIndex(where: { $0.id == id }) else { return }
+                legs[index].origin = station
+            }
+        )
+    }
+
+    /// The next leg's origin follows while it still showed the previous destination.
+    private func destinationSelection(_ id: UUID) -> Binding<Station?> {
+        Binding(
+            get: { legs.first(where: { $0.id == id })?.destination },
+            set: { station in
+                guard let index = legs.firstIndex(where: { $0.id == id }) else { return }
+                let previous = legs[index].destination
+                legs[index].destination = station
+                if legs.indices.contains(index + 1), legs[index + 1].origin == previous {
+                    legs[index + 1].origin = station
+                }
+            }
+        )
+    }
+
+    private func setDeparture(_ date: Date?, of id: UUID) {
+        guard let index = legs.firstIndex(where: { $0.id == id }) else { return }
+        legs[index].departure = date
+    }
+
+    private func proposedDeparture(before index: Int) -> Date? {
+        let previous = index == 0 ? firstDeparture : legs[index - 1].departure
+        return previous.map { $0.addingTimeInterval(3_600) } ?? PlannedJourneyForm.new(now: Date()).departureInstant
     }
 }
 
@@ -839,6 +979,8 @@ enum AgendaText {
         case .missingStations: "planner.selection_required"
         case .sameStation: "planner.same_station"
         case .invalidDeparture, .invalid: "saved.agenda.invalid"
+        case .disconnectedLegs: "saved.agenda.legs_disconnected"
+        case .nonChronologicalLegs: "saved.agenda.legs_not_chronological"
         case .labelTooLong: "saved.agenda.label_too_long"
         case .checklistLineTooLong: "saved.agenda.checklist_too_long"
         case .sensitiveChecklist: "saved.agenda.checklist_sensitive"

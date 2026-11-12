@@ -131,6 +131,10 @@
 "saved.agenda.legs_count" = "Tratte: %lld";
 "saved.agenda.repeat" = "Ricorrenza";
 "saved.agenda.repeat_total" = "Viaggi in tutto: %lld";
+"saved.agenda.add_leg" = "Aggiungi tratta";
+"saved.agenda.remove_leg" = "Rimuovi tratta";
+"saved.agenda.legs_disconnected" = "Ogni tratta deve partire dalla stazione di arrivo della tratta precedente.";
+"saved.agenda.legs_not_chronological" = "Ogni tratta deve partire dopo la tratta precedente.";
 "settings.title" = "Impostazioni";
 "settings.data.title" = "Dati e fonti";
 "settings.data.catalog" = "Catalogo stazioni";

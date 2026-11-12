@@ -131,6 +131,10 @@
 "saved.agenda.legs_count" = "Bagian: %lld";
 "saved.agenda.repeat" = "Pengulangan";
 "saved.agenda.repeat_total" = "Total perjalanan: %lld";
+"saved.agenda.add_leg" = "Tambah bagian";
+"saved.agenda.remove_leg" = "Hapus bagian";
+"saved.agenda.legs_disconnected" = "Setiap bagian harus berangkat dari stasiun tujuan bagian sebelumnya.";
+"saved.agenda.legs_not_chronological" = "Setiap bagian harus berangkat setelah bagian sebelumnya.";
 "settings.title" = "Pengaturan";
 "settings.data.title" = "Data dan sumber";
 "settings.data.catalog" = "Katalog stasiun";

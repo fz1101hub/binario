@@ -131,6 +131,10 @@
 "saved.agenda.legs_count" = "အပိုင်း- %lld";
 "saved.agenda.repeat" = "ထပ်ခါထပ်ခါ";
 "saved.agenda.repeat_total" = "ခရီးစဉ် စုစုပေါင်း- %lld";
+"saved.agenda.add_leg" = "အပိုင်း ထည့်ရန်";
+"saved.agenda.remove_leg" = "အပိုင်း ဖယ်ရှားရန်";
+"saved.agenda.legs_disconnected" = "အပိုင်းတိုင်းသည် ယခင်အပိုင်း၏ ဆိုက်ရောက်ဘူတာမှ စတင်ရမည်။";
+"saved.agenda.legs_not_chronological" = "အပိုင်းတိုင်းသည် ယခင်အပိုင်းပြီးနောက် ထွက်ခွာရမည်။";
 "settings.title" = "ဆက်တင်များ";
 "settings.data.title" = "ဒေတာနှင့် ရင်းမြစ်များ";
 "settings.data.catalog" = "ဘူတာစာရင်း";

@@ -131,6 +131,10 @@
 "saved.agenda.legs_count" = "Số chặng: %lld";
 "saved.agenda.repeat" = "Lặp lại";
 "saved.agenda.repeat_total" = "Tổng số hành trình: %lld";
+"saved.agenda.add_leg" = "Thêm chặng";
+"saved.agenda.remove_leg" = "Xóa chặng";
+"saved.agenda.legs_disconnected" = "Mỗi chặng phải xuất phát từ ga đến của chặng trước.";
+"saved.agenda.legs_not_chronological" = "Mỗi chặng phải khởi hành sau chặng trước.";
 "settings.title" = "Cài đặt";
 "settings.data.title" = "Dữ liệu và nguồn";
 "settings.data.catalog" = "Danh mục ga";

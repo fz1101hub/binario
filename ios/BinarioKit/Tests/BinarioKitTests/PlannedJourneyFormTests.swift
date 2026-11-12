@@ -164,6 +164,114 @@ final class PlannedJourneyFormTests: XCTestCase {
         XCTAssertNil(PlannedJourneyForm.new(now: now).reminderMinutes)
     }
 
+    // MARK: Several legs (Android's multi-leg editor, EXPO_PORT_PLAN F19)
+
+    func testAddedLegsStartWhereTheLastArrivesAndFollowItsDestination() throws {
+        let firenze = StationIdentity(id: "S06421", name: "Firenze Santa Maria Novella", railwayCode: "S06421")
+        let bologna = StationIdentity(id: "S05043", name: "Bologna Centrale", railwayCode: "S05043")
+        var form = try filled()
+        form.destination = firenze
+        form.addLeg()
+        XCTAssertEqual(form.legs.count, 2)
+        XCTAssertEqual(form.laterLegs[0].origin, firenze, "the new leg leaves from the last arrival")
+        XCTAssertEqual(form.laterLegs[0].date?.iso, "2026-12-01", "on its date")
+        XCTAssertNil(form.laterLegs[0].time, "its time is chosen")
+
+        // The prefilled origin follows a changed destination; one the user changed does not.
+        var first = form.legs[0]
+        first.destination = bologna
+        form.setLeg(first, at: 0)
+        XCTAssertEqual(form.destination, bologna)
+        XCTAssertEqual(form.laterLegs[0].origin, bologna)
+        form.laterLegs[0].origin = roma
+        first.destination = firenze
+        form.setLeg(first, at: 0)
+        XCTAssertEqual(form.laterLegs[0].origin, roma)
+
+        // At most four legs; the only leg stays.
+        form.addLeg()
+        form.addLeg()
+        XCTAssertEqual(form.legs.count, 4)
+        XCTAssertFalse(form.canAddLeg)
+        form.addLeg()
+        XCTAssertEqual(form.legs.count, 4)
+        form.removeLeg(at: 1)
+        XCTAssertEqual(form.legs.count, 3)
+        var single = try filled()
+        single.removeLeg(at: 0)
+        XCTAssertEqual(single.legs.count, 1)
+    }
+
+    func testLegsAreSavedInOrderOrRefusedWithAndroidsMessages() throws {
+        let firenze = StationIdentity(id: "S06421", name: "Firenze Santa Maria Novella", railwayCode: "S06421")
+        var form = try filled() // Roma → Milano 08:15
+        form.destination = firenze
+        form.laterLegs = [PlannedJourneyFormLeg(
+            origin: firenze, destination: milano, date: PlannedLocalDate(iso: "2026-12-01"), time: PlannedLocalTime(hhmm: "10:05")
+        )]
+        let saved = try form.journey(id: "j-1", now: now, editing: nil).get()
+        XCTAssertEqual(saved.segments.map(\.id), ["segment-1", "segment-2"])
+        XCTAssertEqual(saved.origin, try PlannedJourneyStation(roma))
+        XCTAssertEqual(saved.destination, try PlannedJourneyStation(milano))
+
+        var disconnected = form
+        disconnected.laterLegs[0].origin = roma
+        disconnected.laterLegs[0].destination = milano
+        XCTAssertEqual(disconnected.journey(id: "j-1", now: now, editing: nil), .failure(.disconnectedLegs))
+        var early = form
+        early.laterLegs[0].time = PlannedLocalTime(hhmm: "08:00")
+        XCTAssertEqual(early.journey(id: "j-1", now: now, editing: nil), .failure(.nonChronologicalLegs))
+        var incomplete = form
+        incomplete.laterLegs[0].time = nil
+        XCTAssertEqual(incomplete.journey(id: "j-1", now: now, editing: nil), .failure(.invalidDeparture))
+        incomplete = form
+        incomplete.laterLegs[0].destination = nil
+        XCTAssertEqual(incomplete.journey(id: "j-1", now: now, editing: nil), .failure(.missingStations))
+    }
+
+    func testEditingKeepsEveryLegAndItsIdentifierAndANewLegTakesAFreeOne() throws {
+        let firenze = StationIdentity(id: "S06421", name: "Firenze Santa Maria Novella", railwayCode: "S06421")
+        let bologna = StationIdentity(id: "S05043", name: "Bologna Centrale", railwayCode: "S05043")
+        let stored = try PlannedJourney(
+            id: "android-multi",
+            segments: [
+                leg("segment-1", roma, firenze, "07:10"),
+                leg("segment-4", firenze, bologna, "08:55"),
+            ],
+            createdAt: now
+        )
+        var form = PlannedJourneyForm(editing: stored)
+        XCTAssertEqual(form.legs.map(\.segmentID), ["segment-1", "segment-4"])
+        XCTAssertEqual(form.laterLegs[0].time?.hhmm, "08:55")
+        form.addLeg()
+        form.laterLegs[1].destination = milano
+        form.laterLegs[1].time = PlannedLocalTime(hhmm: "10:05")
+        let edited = try form.journey(id: "ignored", now: now, editing: stored).get()
+        XCTAssertEqual(edited.id, "android-multi")
+        XCTAssertEqual(edited.segments.map(\.id), ["segment-1", "segment-4", "segment-2"])
+        XCTAssertEqual(edited.destination.canonicalId, "S01700")
+    }
+
+    func testReturnReversesTheLegsAndReplanKeepsThemBothWithNewDatesAndTimes() throws {
+        let firenze = StationIdentity(id: "S06421", name: "Firenze Santa Maria Novella", railwayCode: "S06421")
+        let source = try PlannedJourney(
+            id: "j-1",
+            segments: [leg("segment-1", roma, firenze, "07:10"), leg("segment-2", firenze, milano, "09:00")],
+            reminderMinutes: 15,
+            createdAt: now
+        )
+        let back = PlannedJourneyForm.returnTrip(from: source)
+        XCTAssertEqual(back.legs.map { $0.origin?.id }, ["S01700", "S06421"])
+        XCTAssertEqual(back.legs.map { $0.destination?.id }, ["S06421", "S08409"])
+        XCTAssertTrue(back.legs.allSatisfy { $0.date == nil && $0.time == nil && $0.segmentID == nil })
+        XCTAssertNil(back.reminderMinutes)
+        let again = PlannedJourneyForm.replan(from: source)
+        XCTAssertEqual(again.legs.map { $0.origin?.id }, ["S08409", "S06421"])
+        XCTAssertEqual(again.legs.map { $0.destination?.id }, ["S06421", "S01700"])
+        XCTAssertTrue(again.legs.allSatisfy { $0.date == nil && $0.time == nil })
+        XCTAssertEqual(again.journey(id: "j-2", now: now, editing: nil), .failure(.invalidDeparture))
+    }
+
     func testAnErrorIsSaidAtOnceAndInformationWaitsItsTurn() {
         XCTAssertFalse(PlannedJourneyFeedbackSeverity.error.queuesBehindCurrentSpeech)
         XCTAssertTrue(PlannedJourneyFeedbackSeverity.information.queuesBehindCurrentSpeech)
@@ -184,5 +292,15 @@ final class PlannedJourneyFormTests: XCTestCase {
 
     private func utc(_ text: String) throws -> Date {
         try XCTUnwrap(PlannedJourneyInstant.parse(text), text)
+    }
+
+    /// A leg on 1 December 2026, Italian time.
+    private func leg(_ id: String, _ origin: StationIdentity, _ destination: StationIdentity, _ time: String) throws -> PlannedJourneySegment {
+        try PlannedJourneySegment(
+            id: id,
+            origin: PlannedJourneyStation(origin),
+            destination: PlannedJourneyStation(destination),
+            departure: PlannedJourneyDateTime(date: XCTUnwrap(PlannedLocalDate(iso: "2026-12-01")), time: XCTUnwrap(PlannedLocalTime(hhmm: time)))
+        )
     }
 }

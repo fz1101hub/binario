@@ -131,6 +131,10 @@
 "saved.agenda.legs_count" = "Legs: %lld";
 "saved.agenda.repeat" = "Recurrence";
 "saved.agenda.repeat_total" = "Journeys in all: %lld";
+"saved.agenda.add_leg" = "Add leg";
+"saved.agenda.remove_leg" = "Remove leg";
+"saved.agenda.legs_disconnected" = "Each leg must start from the arrival station of the previous leg.";
+"saved.agenda.legs_not_chronological" = "Each leg must depart after the previous leg.";
 "settings.title" = "Settings";
 "settings.data.title" = "Data and sources";
 "settings.data.catalog" = "Station catalogue";

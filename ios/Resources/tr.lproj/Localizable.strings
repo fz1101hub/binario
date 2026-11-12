@@ -131,6 +131,10 @@
 "saved.agenda.legs_count" = "Bölüm sayısı: %lld";
 "saved.agenda.repeat" = "Tekrar";
 "saved.agenda.repeat_total" = "Toplam yolculuk: %lld";
+"saved.agenda.add_leg" = "Bölüm ekle";
+"saved.agenda.remove_leg" = "Bölümü kaldır";
+"saved.agenda.legs_disconnected" = "Her bölüm, önceki bölümün varış istasyonundan başlamalıdır.";
+"saved.agenda.legs_not_chronological" = "Her bölüm, önceki bölümden sonra kalkmalıdır.";
 "settings.title" = "Ayarlar";
 "settings.data.title" = "Veriler ve kaynaklar";
 "settings.data.catalog" = "İstasyon kataloğu";

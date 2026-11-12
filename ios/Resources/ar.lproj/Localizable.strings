@@ -131,6 +131,10 @@
 "saved.agenda.legs_count" = "الأجزاء: %lld";
 "saved.agenda.repeat" = "التكرار";
 "saved.agenda.repeat_total" = "إجمالي الرحلات: %lld";
+"saved.agenda.add_leg" = "إضافة جزء";
+"saved.agenda.remove_leg" = "إزالة الجزء";
+"saved.agenda.legs_disconnected" = "يجب أن يبدأ كل جزء من محطة وصول الجزء السابق.";
+"saved.agenda.legs_not_chronological" = "يجب أن ينطلق كل جزء بعد الجزء السابق.";
 "settings.title" = "الإعدادات";
 "settings.data.title" = "البيانات والمصادر";
 "settings.data.catalog" = "كتالوج المحطات";
