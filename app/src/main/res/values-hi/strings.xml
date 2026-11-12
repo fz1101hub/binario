@@ -1330,6 +1330,10 @@
         <item quantity="one">%d ट्रेन छिपाई गई</item>
         <item quantity="other">%d ट्रेनें छिपाई गईं</item>
     </plurals>
+    <plurals name="station_board_more_not_listed">
+        <item quantity="one">%1$d और ट्रेन सूची में नहीं है</item>
+        <item quantity="other">%1$d और ट्रेनें सूची में नहीं हैं</item>
+    </plurals>
     <plurals name="saved_timetable_solutions">
         <item quantity="one">%d विकल्प</item>
         <item quantity="other">%d विकल्प</item>

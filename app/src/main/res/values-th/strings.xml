@@ -1322,6 +1322,9 @@
     <plurals name="partenze_hidden_trains">
         <item quantity="other">ซ่อนอยู่ %d ขบวน</item>
     </plurals>
+    <plurals name="station_board_more_not_listed">
+        <item quantity="other">ยังมีอีก %1$d ขบวนที่ไม่ได้แสดง</item>
+    </plurals>
     <plurals name="saved_timetable_solutions">
         <item quantity="other">%d ตัวเลือก</item>
     </plurals>

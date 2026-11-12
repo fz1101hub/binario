@@ -1353,6 +1353,10 @@
         <item quantity="one">%d tren gizlendi</item>
         <item quantity="other">%d tren gizlendi</item>
     </plurals>
+    <plurals name="station_board_more_not_listed">
+        <item quantity="one">%1$d tren daha listelenmedi</item>
+        <item quantity="other">%1$d tren daha listelenmedi</item>
+    </plurals>
     <plurals name="saved_timetable_solutions">
         <item quantity="one">%d seçenek</item>
         <item quantity="other">%d seçenek</item>

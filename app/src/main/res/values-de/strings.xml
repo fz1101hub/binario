@@ -1353,6 +1353,10 @@
         <item quantity="one">%d Zug ausgeblendet</item>
         <item quantity="other">%d Züge ausgeblendet</item>
     </plurals>
+    <plurals name="station_board_more_not_listed">
+        <item quantity="one">%1$d weiterer Zug nicht aufgeführt</item>
+        <item quantity="other">%1$d weitere Züge nicht aufgeführt</item>
+    </plurals>
     <plurals name="saved_timetable_solutions">
         <item quantity="one">%d Verbindung</item>
         <item quantity="other">%d Verbindungen</item>

@@ -1299,6 +1299,9 @@
     <plurals name="partenze_hidden_trains">
         <item quantity="other">%d kereta disembunyikan</item>
     </plurals>
+    <plurals name="station_board_more_not_listed">
+        <item quantity="other">%1$d kereta lainnya tidak ditampilkan</item>
+    </plurals>
     <plurals name="saved_timetable_solutions">
         <item quantity="other">%d pilihan perjalanan</item>
     </plurals>

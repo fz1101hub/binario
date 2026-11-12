@@ -1299,6 +1299,9 @@
     <plurals name="partenze_hidden_trains">
         <item quantity="other">ဝှက်ထားသော ရထား %d စီး</item>
     </plurals>
+    <plurals name="station_board_more_not_listed">
+        <item quantity="other">မပြထားသော ရထား နောက်ထပ် %1$d စီး</item>
+    </plurals>
     <plurals name="saved_timetable_solutions">
         <item quantity="other">ခရီးစဉ် %d ခု</item>
     </plurals>

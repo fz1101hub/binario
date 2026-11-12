@@ -1454,6 +1454,14 @@
         <item quantity="many">%d قطارًا مخفيًا</item>
         <item quantity="other">%d قطار مخفي</item>
     </plurals>
+    <plurals name="station_board_more_not_listed">
+        <item quantity="zero">%1$d قطار آخر غير معروض</item>
+        <item quantity="one">%1$d قطار آخر غير معروض</item>
+        <item quantity="two">%1$d قطاران آخران غير معروضين</item>
+        <item quantity="few">%1$d قطارات أخرى غير معروضة</item>
+        <item quantity="many">%1$d قطارًا آخر غير معروض</item>
+        <item quantity="other">%1$d قطار آخر غير معروض</item>
+    </plurals>
     <plurals name="saved_timetable_solutions">
         <item quantity="zero">%d رحلة</item>
         <item quantity="one">%d رحلة</item>

@@ -54,6 +54,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
@@ -418,7 +419,7 @@ internal fun StationBoardScreen(
                         )
                     }
                     items(
-                        shownEntries.take(60),
+                        StationBoardListCap.shown(shownEntries),
                         key = { entry ->
                             listOf(
                                 entry.runId.value,
@@ -447,6 +448,20 @@ internal fun StationBoardScreen(
                                 lastOfDay = board.kind == BoardKind.DEPARTURES && LastOfDayMarks.isLast(
                                     staticDay, entry.publicNumber, entry.scheduledTime.withZoneSameInstant(BOARD_ZONE).toLocalDateTime()
                                 )
+                            )
+                        }
+                    }
+                    // The list stops at 60 rows: it says how many trains it leaves out instead of ending as if complete.
+                    val leftOut = StationBoardListCap.leftOut(shownEntries)
+                    if (leftOut > 0) {
+                        item(key = "board-left-out") {
+                            Text(
+                                pluralStringResource(R.plurals.station_board_more_not_listed, leftOut, leftOut),
+                                modifier = Modifier
+                                    .padding(horizontal = ScreenMargin, vertical = 8.dp)
+                                    .testTag("station-board-left-out"),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                     }
