@@ -255,8 +255,10 @@ class AppleWatchProjectTests(unittest.TestCase):
         departures = (APPLE_WATCH / "Shared" / "WatchDepartures.swift").read_text(encoding="utf-8")
         tests = (APPLE_WATCH / "BinarioWatchTests" / "WatchSnapshotTests.swift").read_text(encoding="utf-8")
         timeline = widget.split("func getTimeline(", 1)[1].split("struct BinarioWatchWidget:", 1)[0]
-        self.assertIn(".timeline(from: Date())", timeline)
-        self.assertIn("policy: .atEnd", timeline)
+        self.assertIn("WatchWidgetTimeline.plan(for: WatchSnapshotStorage.loadStored(), from: Date())", timeline)
+        self.assertIn("policy: plan.reloadsAtEnd ? .atEnd : .never", timeline)
+        self.assertIn("return (entries: stored.timeline(from: now), reloadsAtEnd: true)", departures)
+        self.assertIn("testWithoutASnapshotTheWidgetShowsUnavailableOnceAndWaitsForTheIPhone", tests)
         self.assertNotIn(".after(", widget)
         self.assertIn('Text("watch.countdown.departsIn \\(Text(departure, style: .relative))")', widget)
         self.assertIn('TimeZone(identifier: "Europe/Rome")', departures)

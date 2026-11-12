@@ -129,3 +129,20 @@ extension BinarioWatchSnapshot {
         )
     }
 }
+
+/// The widget's timeline for what the Watch holds (`WatchSnapshotStorage.loadStored`). With a
+/// snapshot: an entry at each change (`timeline(from:)`) and a new timeline asked at its end, in
+/// case a newer snapshot arrived while WidgetKit deferred its reload. Without one: the unavailable
+/// state alone and no reload, since only a snapshot from the iPhone changes it and its arrival
+/// reloads the timelines (`WatchSnapshotStore.accept`); asking every 15 minutes for nothing would
+/// spend the widget's daily budget.
+enum WatchWidgetTimeline {
+    static func plan(
+        for stored: BinarioWatchSnapshot?, from now: Date
+    ) -> (entries: [(date: Date, snapshot: BinarioWatchSnapshot)], reloadsAtEnd: Bool) {
+        guard let stored else {
+            return (entries: [(date: now, snapshot: BinarioWatchSnapshot.unavailable)], reloadsAtEnd: false)
+        }
+        return (entries: stored.timeline(from: now), reloadsAtEnd: true)
+    }
+}
