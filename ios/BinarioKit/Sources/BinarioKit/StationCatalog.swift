@@ -31,6 +31,26 @@ public struct Station: Codable, Equatable, Hashable, Identifiable, Sendable {
     }
 }
 
+extension Station {
+    /// The station with its name and aliases on single spaces, without spaces at either end.
+    var whitespaceNormalized: Station {
+        Station(
+            id: id,
+            name: Self.singleSpaced(name),
+            railwayCode: railwayCode,
+            trenitaliaLocationId: trenitaliaLocationId,
+            aliases: aliases.map { Self.singleSpaced($0) },
+            latitude: latitude,
+            longitude: longitude,
+            confidence: confidence
+        )
+    }
+
+    static func singleSpaced(_ value: String) -> String {
+        value.split(whereSeparator: { $0.isWhitespace }).joined(separator: " ")
+    }
+}
+
 public struct StationIdentity: Codable, Equatable, Hashable, Identifiable, Sendable {
     public let id: String
     public let name: String
@@ -68,10 +88,13 @@ public struct CuratedStationCatalog: Decodable, Equatable, Sendable {
     public let stationCount: Int
     public let operationalData: Bool
     public let notice: String
-    public let stations: [Station]
+    public private(set) var stations: [Station]
 
     public init(data: Data, decoder: JSONDecoder = JSONDecoder()) throws {
-        let decoded = try decoder.decode(Self.self, from: data)
+        var decoded = try decoder.decode(Self.self, from: data)
+        // Every query refuses a name that is not on single spaces (`JourneyModelValidator`): a
+        // slip of the catalogue («Ercolano -  Miglio D'Oro») must not make a station unusable.
+        decoded.stations = decoded.stations.map(\.whitespaceNormalized)
         try decoded.validate()
         self = decoded
     }
