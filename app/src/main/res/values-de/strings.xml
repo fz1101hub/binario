@@ -1,4 +1,4 @@
-<resources>
+<resources xmlns:tools="http://schemas.android.com/tools">
     <!-- New data sources (October 2026) -->
     <string name="notices_train_title">Hinweise zu diesem Zug</string>
     <string name="notices_loading">Hinweise werden gesucht…</string>
@@ -201,7 +201,7 @@
     <string name="planned_journey_text_import_shared">Geteilter Text empfangen. Erstellen Sie die Vorschau und überprüfen Sie die Daten: Binario importiert nicht automatisch.</string>
     <string name="planned_journey_calendar_import_description">Wählen Sie die hinzuzufügenden Verbindungen. Der Import ist additiv: er überschreibt nicht bereits vorhandene Verbindungen auf dem Telefon.</string>
     <string name="planned_journey_text_import_label">Text der zu importierenden Verbindungen</string>
-    <string name="planned_journey_text_import_example">Roma Termini → Bologna Centrale · 12.09.2026 um 08:30\nBologna Centrale → Milano Centrale · 12.09.2026 um 11:05</string>
+    <string name="planned_journey_text_import_example" tools:ignore="TypographyDashes">Roma Termini → Bologna Centrale · 12.09.2026 um 08:30\nBologna Centrale → Milano Centrale · 12.09.2026 um 11:05</string>
     <string name="planned_journey_text_import_hint">Jede Zeile benötigt Abfahrt, Ziel, Datum GG/MM/AAAA oder AAAA-MM-GG und Zeit HH:MM. Der Text bleibt hier, bis Sie ihn löschen oder den Import abschließen.</string>
     <string name="planned_journey_text_import_preview">Vorschau erstellen</string>
     <string name="planned_journey_text_import_review">Vor dem Hinzufügen prüfen</string>

@@ -1,4 +1,4 @@
-<resources>
+<resources xmlns:tools="http://schemas.android.com/tools">
     <!-- New data sources (October 2026) -->
     <string name="notices_train_title">Avisos para este tren</string>
     <string name="notices_loading">Buscando avisos…</string>
@@ -203,7 +203,7 @@
     <string name="planned_journey_text_import_shared">Texto compartido recibido. Crea la vista previa y revisa los datos: Binario no importa automáticamente.</string>
     <string name="planned_journey_calendar_import_description">Elige los trayectos a añadir. La importación es aditiva: no sobrescribe los trayectos ya en el teléfono.</string>
     <string name="planned_journey_text_import_label">Texto de los trayectos a importar</string>
-    <string name="planned_journey_text_import_example">Roma Termini → Bologna Centrale · 12/09/2026 a las 08:30\nBologna Centrale → Milano Centrale · 12/09/2026 a las 11:05</string>
+    <string name="planned_journey_text_import_example" tools:ignore="TypographyDashes">Roma Termini → Bologna Centrale · 12/09/2026 a las 08:30\nBologna Centrale → Milano Centrale · 12/09/2026 a las 11:05</string>
     <string name="planned_journey_text_import_hint">Cada renglón requiere origen, destino, fecha GG/MM/AAAA o AAAA-MM-GG y hora HH:MM. El texto permanece aquí hasta que lo borres o completes la importación.</string>
     <string name="planned_journey_text_import_preview">Crear vista previa</string>
     <string name="planned_journey_text_import_review">Revisar antes de añadir</string>

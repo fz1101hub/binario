@@ -1,4 +1,4 @@
-<resources>
+<resources xmlns:tools="http://schemas.android.com/tools">
     <!-- New data sources (October 2026) -->
     <string name="notices_train_title">ဤရထားအတွက် ကြေညာချက်များ</string>
     <string name="notices_loading">ကြေညာချက်များကို ရှာနေသည်…</string>
@@ -196,7 +196,7 @@
     <string name="planned_journey_text_import_shared">မျှဝေထားသော စာသား ရရှိပြီ။ အစမ်းကြည့်ရှုမှု ဖန်တီးပြီး ဒေတာကို စစ်ဆေးပါ- Binario သည် အလိုအလျောက် မတင်သွင်းပါ။</string>
     <string name="planned_journey_calendar_import_description">ထည့်မည့် ခရီးစဉ်များကို ရွေးပါ။ တင်သွင်းမှုသည် ထပ်ထည့်ခြင်းသာ ဖြစ်သည်- ဖုန်းပေါ်ရှိ ခရီးစဉ်များကို အစားမထိုးပါ။</string>
     <string name="planned_journey_text_import_label">တင်သွင်းမည့် ခရီးစဉ်များ၏ စာသား</string>
-    <string name="planned_journey_text_import_example">Roma Termini → Bologna Centrale · 12/09/2026 08:30\nBologna Centrale → Milano Centrale · 12/09/2026 11:05</string>
+    <string name="planned_journey_text_import_example" tools:ignore="TypographyDashes">Roma Termini → Bologna Centrale · 12/09/2026 08:30\nBologna Centrale → Milano Centrale · 12/09/2026 11:05</string>
     <string name="planned_journey_text_import_hint">စာကြောင်းတိုင်းတွင် ထွက်ခွာရာ၊ ဦးတည်ရာ၊ DD/MM/YYYY သို့မဟုတ် YYYY-MM-DD ရက်စွဲနှင့် HH:MM အချိန် လိုအပ်သည်။ သင်ဖျက်သည်အထိ သို့မဟုတ် တင်သွင်းမှု ပြီးသည်အထိ စာသား ဤနေရာတွင် ရှိနေမည်။</string>
     <string name="planned_journey_text_import_preview">အစမ်းကြည့်ရှုမှု ဖန်တီးရန်</string>
     <string name="planned_journey_text_import_review">မထည့်မီ စစ်ဆေးပါ</string>

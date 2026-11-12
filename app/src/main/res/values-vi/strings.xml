@@ -1,4 +1,4 @@
-<resources>
+<resources xmlns:tools="http://schemas.android.com/tools">
     <!-- New data sources (October 2026) -->
     <string name="notices_train_title">Thông báo về chuyến tàu này</string>
     <string name="notices_loading">Đang tìm thông báo…</string>
@@ -199,7 +199,7 @@
     <string name="planned_journey_text_import_shared">Đã nhận văn bản được chia sẻ. Hãy tạo bản xem trước và xem lại dữ liệu: Binario không tự động nhập.</string>
     <string name="planned_journey_calendar_import_description">Chọn các hành trình cần thêm. Việc nhập chỉ bổ sung: không ghi đè các hành trình đã có trên điện thoại.</string>
     <string name="planned_journey_text_import_label">Văn bản các hành trình cần nhập</string>
-    <string name="planned_journey_text_import_example">Roma Termini → Bologna Centrale · 12/09/2026 lúc 08:30\nBologna Centrale → Milano Centrale · 12/09/2026 lúc 11:05</string>
+    <string name="planned_journey_text_import_example" tools:ignore="TypographyDashes">Roma Termini → Bologna Centrale · 12/09/2026 lúc 08:30\nBologna Centrale → Milano Centrale · 12/09/2026 lúc 11:05</string>
     <string name="planned_journey_text_import_hint">Mỗi dòng cần có ga đi, ga đến, ngày dạng DD/MM/YYYY hoặc YYYY-MM-DD và giờ dạng HH:MM. Văn bản vẫn ở đây cho đến khi bạn xóa hoặc hoàn tất việc nhập.</string>
     <string name="planned_journey_text_import_preview">Tạo bản xem trước</string>
     <string name="planned_journey_text_import_review">Xem lại trước khi thêm</string>
