@@ -52,14 +52,12 @@ class SharedRulesContractTest {
         for (index in 0 until cases.length()) {
             val case = cases.getJSONObject(index)
             val number = case.getString("number")
-            // Android and iPhone share one rule; a case where Alexa differs carries both («divergent»).
-            val key = if (case.has("divergent")) "app" else "expected"
             val stop = ReliabilityMarks.favouriteStop(stats, number, null)
-            if (case.isNull(key)) {
+            if (case.isNull("expected")) {
                 assertNull("«$number»", stop)
                 continue
             }
-            val expected = case.getJSONObject(key)
+            val expected = case.getJSONObject("expected")
             val actual = requireNotNull(stop) { "«$number» has no figures" }
             assertEquals(number, expected.getInt("samples"), actual.samples)
             assertEquals(number, expected.getInt("onTime"), actual.onTime)

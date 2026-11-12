@@ -26,8 +26,7 @@ I workflow Android, Apple e Alexa partono quando cambia questa directory.
   (giorni × campioni); i giorni di fermata soppressa non sono campioni.
 - **Stesso numero, origini diverse**: senza origine nessuna cifra quando con quel numero circola più di un treno,
   quali che siano i loro campioni; un treno soppresso in tutti i giorni osservati non circola e non conta.
+- **Ultima fermata**: un treno con una sola fermata nel file (di solito l'origine, dove il ritardo è in partenza)
+  non ha una corsa da misurare ed è ignorato.
 
-## Casi divergenti
-
-Un caso con `divergent` porta l'atteso dell'app (`app`, Android e iPhone) e di Alexa (`alexa`): oggi le due regole
-differiscono e la scelta spetta al titolare. Quando la regola è decisa, il caso torna ad avere un solo `expected`.
+Ogni caso ha un solo atteso, uguale per le tre piattaforme.

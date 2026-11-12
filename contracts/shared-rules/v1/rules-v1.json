@@ -50,9 +50,7 @@
       {"number": "3001", "expected": {"samples": 20, "onTime": 19, "limitMinutes": 15, "daysObserved": 20, "daysCancelled": 0, "daysOnTime": {"part": 380, "whole": 400}}},
       {"number": "  ", "expected": null},
       {"number": "777", "expected": null},
-      {"number": "888", "divergent": "NEEDS-OWNER: a train whose file lists only its origin",
-       "app": null,
-       "alexa": {"samples": 8, "onTime": 8, "limitMinutes": 15, "daysObserved": 8, "daysCancelled": 0, "daysOnTime": {"part": 64, "whole": 64}}}
+      {"number": "888", "expected": null}
     ]
   }
 }

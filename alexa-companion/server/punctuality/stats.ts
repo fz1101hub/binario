@@ -241,12 +241,14 @@ function shownDelay(minutes: number) {
  * meant: as the app does without an origin, figures are given only when a single train with the
  * number runs, and none when several do, whatever their samples ({@link TrainPunctuality}
  * `sharedNumber`). A train cancelled on every day observed does not run: beside a running one it is
- * left out; alone, and on at least {@link MIN_SAMPLES} days, it says so.
+ * left out; alone, and on at least {@link MIN_SAMPLES} days, it says so. A train with a single stop in
+ * the file (usually its origin, whose delay is a departure) is ignored, as in the app: it has no run to
+ * a terminus to measure.
  */
 export function trainPunctuality(stats: PunctualityStats, number: string): TrainPunctuality {
-  const candidates = stats.trainsNumbered(number);
+  const candidates = stats.trainsNumbered(number).filter(train => train.stopCount !== 1);
   if (!candidates.length) return { kind: "unknown" };
-  const running = candidates.filter(train => train.stopCount > 0);
+  const running = candidates.filter(train => train.stopCount > 1);
   if (running.length > 1) return { kind: "sharedNumber" };
   const [train] = running;
   if (train) {

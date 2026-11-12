@@ -28,10 +28,8 @@ final class SharedRulesContractTests: XCTestCase {
         let document = try Data(contentsOf: contract.appendingPathComponent(statistics.document))
         let stats = try XCTUnwrap(NetworkReliabilityParser.parse(json: [UInt8](document)))
         for item in statistics.lastStopWithoutOrigin {
-            // Android and iPhone share one rule; a case where Alexa differs carries both («divergent»).
-            let figures = item.divergent == nil ? item.expected : item.app
             let stop = FavouriteTrainsReliability.lastStop(stats, number: item.number, originCode: nil)
-            guard let figures else {
+            guard let figures = item.expected else {
                 XCTAssertNil(stop, item.number)
                 continue
             }
@@ -76,9 +74,7 @@ final class SharedRulesContractTests: XCTestCase {
 
     private struct LastStopCase: Decodable {
         let number: String
-        let divergent: String?
         let expected: Figures?
-        let app: Figures?
     }
 
     private struct Figures: Decodable {

@@ -24,7 +24,7 @@ type Rules = {
     document: string;
     minimumSamples: number;
     onTimeLimitMinutes: { category: string; minutes: number }[];
-    lastStopWithoutOrigin: { number: string; divergent?: string; expected?: Figures | null; alexa?: Figures | null }[];
+    lastStopWithoutOrigin: { number: string; expected: Figures | null }[];
   };
 };
 
@@ -45,8 +45,7 @@ describe("shared rules contract", () => {
     const stats = parsePunctualityStats(readFileSync(path.join(contract, rules.statistics.document), "utf8"));
     if (!stats) throw new Error("the shared statistics fixture did not parse");
     for (const item of rules.statistics.lastStopWithoutOrigin) {
-      // A case where Alexa differs from the app carries both («divergent»).
-      const figures = (item.divergent === undefined ? item.expected : item.alexa) ?? null;
+      const figures = item.expected;
       const answer = trainPunctuality(stats, item.number);
       if (!figures) {
         expect(answer.kind, item.number).not.toBe("stats");
@@ -63,7 +62,7 @@ describe("shared rules contract", () => {
       // A cancelled day counts as a day not on time: the train answered, at its last stop.
       const train = stats
         .trainsNumbered(item.number)
-        .filter(candidate => candidate.stopCount > 0 && candidate.samples[candidate.stopCount - 1] === figures.samples)[0];
+        .filter(candidate => candidate.stopCount > 1 && candidate.samples[candidate.stopCount - 1] === figures.samples)[0];
       expect(train, item.number).toBeDefined();
       expect(daysOnTime(train, train.stopCount - 1), item.number).toEqual(figures.daysOnTime);
     }

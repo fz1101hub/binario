@@ -229,9 +229,19 @@ describe("train punctuality", () => {
     expect(trainPunctuality(cancelled, "9558")).toMatchObject({ kind: "stats", samples: 20 });
   });
 
+  it("ignores a train whose file lists only its origin: a departure delay is not an arrival", () => {
+    const originOnly = fixtureTrain("888", ROMA_TERMINI, "REG", 8, 0, [stopFromDelays(ROMA_TERMINI, Array(8).fill(0))]);
+    expect(trainPunctuality(parsePunctualityStats(statsDocument([originOnly]))!, "888")).toEqual({ kind: "unknown" });
+    // Beside a train that runs to its terminus it is not another train to choose from.
+    const running = fixtureTrain("888", TIVOLI, "REG", 6, 0, [stopFromDelays(TIVOLI, Array(6).fill(0)), stopFromDelays(ROMA_TERMINI, Array(6).fill(3))]);
+    expect(trainPunctuality(parsePunctualityStats(statsDocument([originOnly, running]))!, "888")).toMatchObject({ kind: "stats", samples: 6 });
+  });
+
   it("shows an early average as no delay", () => {
     const early = parsePunctualityStats(
-      statsDocument([fixtureTrain("300", ROMA_TERMINI, "REG", 5, 0, [[TIVOLI, 5, -1.4, [5, 5, 5, 5, 5, 5, 5, 5], 0]])])
+      statsDocument([
+        fixtureTrain("300", ROMA_TERMINI, "REG", 5, 0, [stopFromDelays(ROMA_TERMINI, Array(5).fill(0)), [TIVOLI, 5, -1.4, [5, 5, 5, 5, 5, 5, 5, 5], 0]]),
+      ])
     )!;
     expect(trainPunctuality(early, "300")).toMatchObject({ kind: "stats", percent: 100, meanDelayMinutes: 0 });
   });
