@@ -46,6 +46,21 @@ class WeeklyDigestTest {
         assertEquals(at(sunday.plusDays(7), 19), WeeklyDigestPlanner.nextRunAt(at(sunday.plusDays(1), 13), null))
     }
 
+    @Test fun `a run never loops, blocked notifications end the chain and a failed build still closes the week`() {
+        val evening = at(sunday, 20)
+        // Notifications blocked in Android: nothing handled, and no next run (the app start plans again).
+        assertNull(WeeklyDigestPlanner.handles(enabled = true, notificationsAllowed = false, now = evening, lastSentWeekEnd = null))
+        assertFalse(WeeklyDigestPlanner.continuesAfterRun(enabled = true, notificationsAllowed = false))
+        assertFalse(WeeklyDigestPlanner.continuesAfterRun(enabled = false, notificationsAllowed = true))
+        assertTrue(WeeklyDigestPlanner.continuesAfterRun(enabled = true, notificationsAllowed = true))
+        // Allowed: the open week is handled, and once it is marked (also when the build failed) the next run is next Sunday.
+        assertEquals(sunday, WeeklyDigestPlanner.handles(enabled = true, notificationsAllowed = true, now = evening, lastSentWeekEnd = null))
+        assertEquals(evening, WeeklyDigestPlanner.nextRunAt(evening, null))
+        assertEquals(at(sunday.plusDays(7), 19), WeeklyDigestPlanner.nextRunAt(evening, sunday))
+        assertNull(WeeklyDigestPlanner.handles(enabled = true, notificationsAllowed = true, now = evening, lastSentWeekEnd = sunday))
+        assertNull(WeeklyDigestPlanner.handles(enabled = true, notificationsAllowed = true, now = at(sunday, 23), lastSentWeekEnd = null))
+    }
+
     @Test fun `the Sunday after the end of summer time is still at 19 local time`() {
         val october = LocalDate.of(2026, 10, 25)
         assertEquals(at(october, 19), WeeklyDigestPlanner.nextRunAt(at(october.minusDays(2), 12), null))

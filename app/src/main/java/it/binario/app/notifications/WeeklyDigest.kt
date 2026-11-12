@@ -98,6 +98,20 @@ object WeeklyDigestPlanner {
 
     /** Monday of the week that ends on [weekEnd]. */
     fun weekStart(weekEnd: LocalDate): LocalDate = weekEnd.minusDays(6)
+
+    /**
+     * What a run does with the week it finds open ([weekEndAt]): the week ending on [weekEnd] is handled (notified, or
+     * given up for the week when the digest could not be built), so [nextRunAt] moves to next Sunday. A run with the
+     * setting off, notifications blocked or in the quiet hours handles nothing.
+     */
+    fun handles(enabled: Boolean, notificationsAllowed: Boolean, now: ZonedDateTime, lastSentWeekEnd: LocalDate?): LocalDate? =
+        weekEndAt(now)?.takeIf { enabled && notificationsAllowed && mayNotify(now) && it != lastSentWeekEnd }
+
+    /**
+     * Whether a run plans the next one: only with the setting on and notifications allowed. Otherwise [nextRunAt] would
+     * be «now» for the whole window, a run every minute; the app start plans the chain again.
+     */
+    fun continuesAfterRun(enabled: Boolean, notificationsAllowed: Boolean): Boolean = enabled && notificationsAllowed
 }
 
 /**
@@ -259,20 +273,23 @@ class WeeklyDigestWorker(appContext: Context, params: WorkerParameters) : Corout
         try {
             val now = ZonedDateTime.now(RailTime.defaultZone)
             val store = WeeklyDigestStore(context)
-            val weekEnd = WeeklyDigestPlanner.weekEndAt(now)
-            if (settings.weeklyDigestEnabled && LiveNotifications.allowed(context) && WeeklyDigestPlanner.mayNotify(now) && weekEnd != null &&
-                store.lastSentWeekEnd != weekEnd
-            ) {
-                notify(context, weekEnd)
-                // Also with nothing to say: the window is over for this week.
-                store.lastSentWeekEnd = weekEnd
+            WeeklyDigestPlanner.handles(settings.weeklyDigestEnabled, LiveNotifications.allowed(context), now, store.lastSentWeekEnd)?.let { weekEnd ->
+                try {
+                    notify(context, weekEnd)
+                } finally {
+                    // Also with nothing to say, or unreadable history or statistics: the week is over, next week's run
+                    // tries again (without this a failing build would run again every minute).
+                    store.lastSentWeekEnd = weekEnd
+                }
             }
         } catch (cancelled: CancellationException) {
             throw cancelled
         } catch (_: Exception) {
-            // Unreadable history or statistics: nothing is shown, next week's run tries again.
+            // Nothing is shown.
         } finally {
-            if (!isStopped && settings.weeklyDigestEnabled) WeeklyDigestScheduler.enqueue(context, ExistingWorkPolicy.APPEND_OR_REPLACE, fromWorker = true)
+            if (!isStopped && WeeklyDigestPlanner.continuesAfterRun(settings.weeklyDigestEnabled, LiveNotifications.allowed(context))) {
+                WeeklyDigestScheduler.enqueue(context, ExistingWorkPolicy.APPEND_OR_REPLACE, fromWorker = true)
+            }
         }
         Result.success()
     }
