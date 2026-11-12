@@ -1095,18 +1095,28 @@ final class AppModel: ObservableObject {
     }
 
     /// Each listed train's row on `board`, placed in time as the Watch places them (the "HH:mm" of
-    /// each train from the query's minute on, in order), with what is still live at `now`.
+    /// each train from the query's minute on, in order), with what is still live at `now`; a live
+    /// row goes to one listed train only (`LiveOverlay.departures(for:in:)`).
     static func liveValues(of journey: JourneySnapshot, board: LiveDepartureBoard, at now: Date) -> [String: StationBoardLiveStatus] {
         let calendar = timetableCalendar
         var cursor = journey.query.departure.addingTimeInterval(-60)
-        var live: [String: StationBoardLiveStatus] = [:]
+        var placed: [(service: TrainService, departure: Date)] = []
         for service in journey.services {
             guard let departure = nextOccurrence(of: service.scheduledDeparture, after: cursor, calendar: calendar) else { continue }
             cursor = departure.addingTimeInterval(-1)
-            guard service.hasTrainNumber,
-                  let row = LiveOverlay.departure(number: service.number, scheduled: departure, in: board.departures),
-                  let status = row.stationBoardLiveStatus(at: now, timetable: departure) else { continue }
-            live[service.id] = status
+            placed.append((service: service, departure: departure))
+        }
+        let planned: [LiveOverlay.PlannedTrain?] = placed.map { entry -> LiveOverlay.PlannedTrain? in
+            entry.service.hasTrainNumber
+                ? LiveOverlay.PlannedTrain(number: entry.service.number, scheduled: entry.departure, operatorName: entry.service.operatorName)
+                : nil
+        }
+        let matched = LiveOverlay.departures(for: planned, in: board.departures)
+        var live: [String: StationBoardLiveStatus] = [:]
+        for (index, entry) in placed.enumerated() {
+            guard let row = matched[index],
+                  let status = row.stationBoardLiveStatus(at: now, timetable: entry.departure) else { continue }
+            live[entry.service.id] = status
         }
         return live
     }

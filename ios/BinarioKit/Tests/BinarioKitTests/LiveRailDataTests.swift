@@ -315,7 +315,11 @@ final class LiveRailDataTests: XCTestCase {
                          scheduledDeparture: time, expectedDeparture: time, status: "PROGRAMMED", platform: nil, delayMinutes: 0)
         }
         XCTAssertEqual(LiveOverlay.departure(for: service("RE_11 - 2153", "10:05"), on: day, in: board), live)
-        XCTAssertNil(LiveOverlay.departure(for: service("RE_11 - 2153", "09:59"), on: day, in: board), "more than five minutes apart")
+        // A run the day's timetable moved (works, a change after the pack) is still the bundled
+        // train within three hours, as Android's LiveRunMerge reads it; further, another one.
+        XCTAssertEqual(LiveOverlay.departure(for: service("RE_11 - 2153", "09:51"), on: day, in: board), live, "fifteen minutes earlier")
+        XCTAssertEqual(LiveOverlay.departure(for: service("RE_11 - 2153", "13:06"), on: day, in: board), live, "three hours later")
+        XCTAssertNil(LiveOverlay.departure(for: service("RE_11 - 2153", "13:07"), on: day, in: board), "more than three hours apart")
         XCTAssertNil(LiveOverlay.departure(for: service("RE_11 - 2154", "10:05"), on: day, in: board), "another number")
         XCTAssertEqual(LiveOverlay.departure(for: service("2153", "24:10"), on: day, in: board), late, "past midnight is the next day")
         XCTAssertNil(LiveOverlay.departure(for: service("2153", "10:5"), on: day, in: board))
@@ -333,6 +337,53 @@ final class LiveRailDataTests: XCTestCase {
         XCTAssertEqual(LiveOverlay.stop(in: run, stationCode: "S01529", stationName: nil)?.stationCode, "S01529")
         XCTAssertEqual(LiveOverlay.stop(in: run, stationCode: nil, stationName: "s01700")?.stationCode, "S01700")
         XCTAssertNil(LiveOverlay.stop(in: run, stationCode: "S00000", stationName: nil))
+    }
+
+    func testALiveRowGoesToOneBundledTrainOfItsOperatorFamilyOnly() {
+        let day = LiveTestDates.rome(2026, 10, 16, 9, 0)
+        let scheduled = LiveTestDates.rome(2026, 10, 16, 10, 0)
+        let trenord = makeRow(.rfiStationBoard, number: "2153", scheduled: scheduled.addingTimeInterval(10 * 60), expectedMinutes: 2,
+                              platform: "2", status: .delayed, operatorID: "trenord")
+        let italo = makeRow(.italo, number: "8153", scheduled: scheduled, expectedMinutes: 0,
+                            platform: nil, status: .onTime, operatorID: "italo")
+        // ViaggiaTreno lists Trenord and Trenitalia under one identity: one family.
+        XCTAssertEqual(LiveOverlay.departure(number: "2153", scheduled: scheduled, operatorName: "Trenitalia", in: [trenord]), trenord)
+        XCTAssertEqual(LiveOverlay.departure(number: "2153", scheduled: scheduled, operatorName: "altoadigemobilità", in: [trenord]), trenord,
+                       "an operator outside the families matches any")
+        XCTAssertNil(LiveOverlay.departure(number: "8153", scheduled: scheduled, operatorName: "Trenord", in: [italo]), "Italo is another operator")
+        XCTAssertNil(LiveOverlay.operatorFamily(nil))
+        XCTAssertEqual(LiveOverlay.operatorFamily("italo"), "italo")
+
+        // Two bundled trains with the number of one live row: the closer one takes it, the other stays scheduled.
+        let planned: [LiveOverlay.PlannedTrain?] = [
+            LiveOverlay.PlannedTrain(number: "RE_11 - 2153", scheduled: scheduled, operatorName: "Trenord"),
+            nil,
+            LiveOverlay.PlannedTrain(number: "2153", scheduled: scheduled.addingTimeInterval(2 * 3_600), operatorName: "Trenord"),
+        ]
+        XCTAssertEqual(LiveOverlay.departures(for: planned, in: [trenord, italo]), [0: trenord])
+        // Equally close: none is guessed.
+        let tied: [LiveOverlay.PlannedTrain?] = [
+            LiveOverlay.PlannedTrain(number: "2153", scheduled: scheduled, operatorName: "Trenord"),
+            LiveOverlay.PlannedTrain(number: "2153", scheduled: scheduled.addingTimeInterval(20 * 60), operatorName: "Trenord"),
+        ]
+        XCTAssertEqual(LiveOverlay.departures(for: tied, in: [trenord]), [:])
+
+        let board = LiveDepartureBoard(
+            stationID: "S01700", from: day, to: day.addingTimeInterval(6 * 3_600), departures: [trenord],
+            sources: [.rfiStationBoard], unavailableSources: [:], warnings: [], fetchedAt: now
+        )
+        func row(_ time: Date) -> StationBoardDeparture {
+            StationBoardDeparture(
+                departure: time,
+                service: TrainService(id: "gtfs:2153:\(time.timeIntervalSince1970)", number: "RE_11 - 2153", operatorName: "Trenord",
+                                      category: "RE", destination: "Bergamo", scheduledDeparture: LiveRailTime.hhmm(time),
+                                      expectedDeparture: LiveRailTime.hhmm(time), status: "PROGRAMMED", platform: nil, delayMinutes: 0),
+                terminus: StationIdentity(id: "S01529", name: "Bergamo")
+            )
+        }
+        let rows = LiveOverlay.stationBoard([row(scheduled), row(scheduled.addingTimeInterval(2 * 3_600))], with: board, at: now)
+        XCTAssertEqual(rows[0].live?.delayMinutes, 12, "counted from the 10:00 the row prints")
+        XCTAssertTrue(rows[1].isScheduled)
     }
 
     func testLiveRowsBecomeThePartenzeLiveStatusWhileTheyAreLive() {

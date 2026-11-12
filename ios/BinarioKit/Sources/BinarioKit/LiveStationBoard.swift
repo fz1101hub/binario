@@ -26,11 +26,17 @@ extension LiveDeparture {
 
 extension LiveOverlay {
     /// The «Partenze» rows of the bundled timetable with what `board` observed of their trains
-    /// (same number key, scheduled within five minutes); every other row stays as it is.
+    /// (same number key and operator family, scheduled within `timetableTolerance`, each live row
+    /// given to one row: `departures(for:in:)`); every other row stays as it is.
     public static func stationBoard(_ rows: [StationBoardDeparture], with board: LiveDepartureBoard, at now: Date) -> [StationBoardDeparture] {
-        rows.map { row -> StationBoardDeparture in
-            guard row.service.hasTrainNumber,
-                  let live = departure(number: row.service.number, scheduled: row.departure, in: board.departures),
+        let planned: [PlannedTrain?] = rows.map { row -> PlannedTrain? in
+            row.service.hasTrainNumber
+                ? PlannedTrain(number: row.service.number, scheduled: row.departure, operatorName: row.service.operatorName) : nil
+        }
+        let matched = departures(for: planned, in: board.departures)
+        return rows.indices.map { index -> StationBoardDeparture in
+            let row = rows[index]
+            guard let live = matched[index],
                   let status = live.stationBoardLiveStatus(at: now, timetable: row.departure) else { return row }
             return StationBoardDeparture(departure: row.departure, service: row.service, terminus: row.terminus, live: status)
         }

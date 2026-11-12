@@ -1377,13 +1377,26 @@ class IOSProjectTests(unittest.TestCase):
         self.assertIn("val LOOKBACK: Duration = Duration.ofHours(3)", candidates)
         self.assertIn("val LOOKAHEAD: Duration = Duration.ofHours(3)", candidates)
         self.assertIn("val SAME_RUN_TOLERANCE: Duration = Duration.ofHours(2)", candidates)
+        # A live row and a bundled train: Android's LiveRunMerge window, the same number and family.
+        reconciler = (ROOT / "app/src/main/java/it/binario/app/data/repository/StationBoardRealtimeReconciler.kt").read_text(encoding="utf-8")
+        overlay = (IOS / "BinarioKit/Sources/BinarioKit/LiveRailData.swift").read_text(encoding="utf-8")
+        self.assertIn("private val RETIMING_WINDOW: Duration = Duration.ofHours(3)", reconciler)
+        self.assertIn("RailOperator.TRENORD -> \"trenitalia-trenord\"", reconciler)
+        for fragment in (
+            "public static let timetableTolerance: TimeInterval = 3 * 60 * 60",
+            "abs($0.scheduled.timeIntervalSince(scheduled)) <= timetableTolerance",
+            "&& sameFamily(family, operatorFamily($0.operatorID))",
+            'if folded.contains("trenitalia") || folded.contains("trenord") { return "trenitalia-trenord" }',
+        ):
+            with self.subTest(fragment=fragment):
+                self.assertIn(fragment, overlay)
         for fragment in (
             "static let liveLookback: TimeInterval = 3 * 3_600",
             "static let liveLookahead: TimeInterval = 3 * 3_600",
             "static let sameRunTolerance: TimeInterval = 2 * 3_600",
             "let number = NetworkReliability.numberKey(service.number)",
             "LiveOverlay.stationBoard(rows, with: live.board, at: live.at)",
-            "LiveOverlay.departure(number: service.number, scheduled: departure, in: board.departures)",
+            "let matched = LiveOverlay.departures(for: planned, in: board.departures)",
             "guard let run = candidates.run(for: request),",
         ):
             with self.subTest(fragment=fragment):
