@@ -21,6 +21,7 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.ContentPaste
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material.icons.filled.Upload
@@ -66,7 +67,16 @@ import androidx.compose.ui.unit.dp
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.format.TextStyle
+import android.Manifest
 import android.content.ActivityNotFoundException
+import android.content.pm.PackageManager
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.ui.platform.LocalResources
+import androidx.core.content.ContextCompat
+import it.binario.app.NearestStationPicker
+import it.binario.app.data.Station
+import it.binario.app.requestSingleLocationFix
 import it.binario.app.R
 import it.binario.app.insertIntent
 import it.binario.app.UiMessage
@@ -81,7 +91,11 @@ fun PlannedJourneyAgendaScreen(
     stations: List<PlannedJourneyStation>,
     onExportJson: () -> Unit,
     onExportIcs: () -> Unit,
-    onImportRequested: () -> Unit
+    onImportRequested: () -> Unit,
+    /** Offered as chips under the origin of the editor (the app's «Stazioni preferite»). */
+    favouriteStations: List<PlannedJourneyStation> = emptyList(),
+    /** The catalogue with coordinates, for «Usa la posizione per la partenza»; empty hides the button. */
+    locationCatalogue: List<Station> = emptyList()
 ) {
     var pendingDelete by rememberSaveable { mutableStateOf<String?>(null) }
     val entries = viewModel.agendaEntries()
@@ -198,6 +212,8 @@ fun PlannedJourneyAgendaScreen(
         PlannedJourneyEditorDialog(
             editor = editor,
             stations = stations,
+            favouriteStations = favouriteStations,
+            locationCatalogue = locationCatalogue,
             onChange = viewModel::changeEditor,
             onSave = { viewModel.saveEditor(stations) },
             onDismiss = viewModel::dismissEditor
@@ -225,6 +241,9 @@ fun PlannedJourneyAgendaScreen(
         )
     }
 }
+
+/** The companion offered at most 12 favourite stations; the app's own list is shown up to the same bound. */
+private const val MAX_FAVOURITE_CHIPS = 12
 
 @Composable
 private fun AgendaMessage(text: String, isError: Boolean) {
@@ -361,6 +380,8 @@ private fun AgendaEntryCard(
 private fun PlannedJourneyEditorDialog(
     editor: PlannedJourneyEditorState,
     stations: List<PlannedJourneyStation>,
+    favouriteStations: List<PlannedJourneyStation>,
+    locationCatalogue: List<Station>,
     onChange: ((PlannedJourneyEditorState) -> PlannedJourneyEditorState) -> Unit,
     onSave: () -> Unit,
     onDismiss: () -> Unit
@@ -369,6 +390,30 @@ private fun PlannedJourneyEditorDialog(
     val focus = LocalFocusManager.current
     val search by produceState<PlannedJourneyStationSearch?>(null, stations) {
         value = withContext(Dispatchers.Default) { PlannedJourneyStationSearch(stations) }
+    }
+    // «Usa la posizione per la partenza»: one approximate fix on request, the nearest catalogue station, nothing stored.
+    val context = LocalContext.current
+    val resources = LocalResources.current
+    var locationMessage by remember { mutableStateOf<String?>(null) }
+    fun useOrigin(station: PlannedJourneyStation) {
+        onChange { it.copy(originQuery = station.displayName, originStationId = station.canonicalId) }
+        suggestionsFor = null
+    }
+    fun locateOrigin() {
+        requestSingleLocationFix(context) { location ->
+            val nearest = location?.let { NearestStationPicker.pick(locationCatalogue, it.latitude, it.longitude) }
+            locationMessage = when {
+                location == null -> resources.getString(R.string.location_unavailable)
+                nearest == null -> resources.getString(R.string.planner_location_none)
+                else -> {
+                    useOrigin(PlannedJourneyStation(nearest.station.id, nearest.station.name, nearest.station.railwayCode))
+                    resources.getString(R.string.planner_location_origin, nearest.station.name)
+                }
+            }
+        }
+    }
+    val locationPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        if (granted) locateOrigin() else locationMessage = resources.getString(R.string.location_permission_denied)
     }
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -394,8 +439,30 @@ private fun PlannedJourneyEditorDialog(
                         tag = "plannedJourneyOrigin",
                         onFocus = { suggestionsFor = "origin" },
                         onValueChange = { value -> onChange { it.copy(originQuery = value, originStationId = null) }; suggestionsFor = "origin" },
-                        onSuggestion = { station -> onChange { it.copy(originQuery = station.displayName, originStationId = station.canonicalId) }; suggestionsFor = null; focus.clearFocus() }
+                        onSuggestion = { station -> onChange { it.copy(originQuery = station.displayName, originStationId = station.canonicalId) }; suggestionsFor = null; focus.clearFocus() },
+                        trailingIcon = if (locationCatalogue.isEmpty()) null else {
+                            {
+                                IconButton(onClick = {
+                                    locationMessage = null
+                                    if (ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED) locateOrigin()
+                                    else locationPermission.launch(Manifest.permission.ACCESS_COARSE_LOCATION)
+                                }, modifier = Modifier.testTag("plannedJourneyOriginLocation")) {
+                                    Icon(Icons.Default.MyLocation, contentDescription = stringResource(R.string.planner_use_location))
+                                }
+                            }
+                        }
                     )
+                    locationMessage?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
+                }
+                if (favouriteStations.isNotEmpty()) item {
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text(stringResource(R.string.station_board_favourites), style = MaterialTheme.typography.labelLarge)
+                        FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            favouriteStations.distinctBy { it.canonicalId }.take(MAX_FAVOURITE_CHIPS).forEach { station ->
+                                AssistChip(onClick = { useOrigin(station) }, label = { Text(station.displayName) })
+                            }
+                        }
+                    }
                 }
                 item {
                     StationField(
@@ -528,7 +595,8 @@ private fun StationField(
     tag: String,
     onFocus: () -> Unit,
     onValueChange: (String) -> Unit,
-    onSuggestion: (PlannedJourneyStation) -> Unit
+    onSuggestion: (PlannedJourneyStation) -> Unit,
+    trailingIcon: (@Composable () -> Unit)? = null
 ) {
     val query = value
     val suggestions by produceState(emptyList<PlannedJourneyStation>(), query, search, showSuggestions) {
@@ -537,7 +605,7 @@ private fun StationField(
         }
     }
     Column {
-        OutlinedTextField(value = value, onValueChange = onValueChange, label = { Text(label) },
+        OutlinedTextField(value = value, onValueChange = onValueChange, label = { Text(label) }, trailingIcon = trailingIcon,
             supportingText = { Text(stringResource(R.string.agenda_editor_station_hint)) },
             modifier = Modifier.fillMaxWidth().testTag(tag).onFocusChanged { if (it.isFocused) onFocus() }, singleLine = true)
         suggestions.forEach { station ->

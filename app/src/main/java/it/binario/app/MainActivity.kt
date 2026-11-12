@@ -700,7 +700,11 @@ internal fun BinarioApp(
                 },
                 onImportRequested = {
                     plannedJourneyImportLauncher.launch(arrayOf("application/json", "text/calendar", "text/plain"))
-                }
+                },
+                favouriteStations = viewModel.favouriteStations.map { station ->
+                    PlannedJourneyStation(station.id, station.name, station.railwayCode)
+                },
+                locationCatalogue = viewModel.stations
             ) }
             AppScreen.RESULTS -> when {
                 // A recreated process has a new view model: repeat the planner search instead of showing the saved
