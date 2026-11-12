@@ -30,6 +30,14 @@ const MINUTES_PER_DAY = 24 * 60;
 const MAX_SCHEDULED_MINUTE = 3 * MINUTES_PER_DAY;
 /** {@link PunctualityTrain.scheduledMinute} of a stop whose file gives no (valid) scheduled minute. */
 export const NO_SCHEDULED_MINUTE = -1;
+/** {@link PunctualityTrain.daysSinceSeen} of a train whose file gives no (valid) `l`. */
+export const NOT_DATED = -1;
+/**
+ * A train not observed for more than this many days before the window's end is not proposed as
+ * the most punctual: withdrawn, renumbered or retimed at a timetable change, its past record would
+ * still rank it.
+ */
+export const MAX_DAYS_SINCE_SEEN = 7;
 /** Bit set in {@link PunctualityTrain.weekdays} when the file lists the weekdays of the stop. */
 const WEEKDAYS_KNOWN = 0x80;
 
@@ -99,7 +107,12 @@ export class PunctualityTrain {
      * Weekdays (of the run's departure day) with at least one sample at the stop: bit 0 Monday …
      * bit 6 Sunday, plus {@link WEEKDAYS_KNOWN}; 0 where the file has no weekdays (below 14 samples).
      */
-    readonly weekdays: Uint8Array = new Uint8Array(codes.length)
+    readonly weekdays: Uint8Array = new Uint8Array(codes.length),
+    /**
+     * Days between the train's most recent observed day and the window's end (0: seen on the last
+     * day), the optional train field `l`; {@link NOT_DATED} in files without it.
+     */
+    readonly daysSinceSeen: number = NOT_DATED
   ) {}
 
   get stopCount() {
@@ -466,7 +479,8 @@ export type PunctualDeparture = {
  * of `originCodes` and later at one of `destinationCodes` (as {@link routePunctuality}), whose
  * scheduled minute at that origin (`% 1440`) falls in the {@link DEPARTURE_WINDOW_MINUTES} after
  * `clock` (past midnight too) and that have at least {@link MIN_SAMPLES} arrivals at the
- * destination. A train without a scheduled minute there is left out, and so is one not known to run
+ * destination. A train without a scheduled minute there is left out, so is one the file says was last
+ * seen more than {@link MAX_DAYS_SINCE_SEEN} days before the window's end, and so is one not known to run
  * on the day of that departure ({@link PunctualityStats.mayRunOn}: its weekdays at the origin or,
  * without them, its days observed there; a national holiday counts as a Sunday, {@link isItalianHoliday}).
  *
@@ -493,6 +507,8 @@ export function mostPunctualDepartures(
     if (!stops) continue;
     const [boarding, alighting] = stops;
     if (train.samples[alighting] < MIN_SAMPLES) continue;
+    // Only files that date the trains can tell a train that stopped running.
+    if (train.daysSinceSeen > MAX_DAYS_SINCE_SEEN) continue;
     const scheduled = train.scheduledMinute[boarding];
     if (scheduled < 0) continue;
     const minuteOfDay = scheduled % MINUTES_PER_DAY;
@@ -757,6 +773,9 @@ function compactTrain(
   const category = typeof value.c === "string" ? value.c.trim().toUpperCase() : "";
   const days = intIn(value.d, 0, limits.maxCount);
   const cancelled = value.x === undefined ? 0 : intIn(value.x, 0, limits.maxCount);
+  // Optional (files of the pipeline from its extension on): an absent, null or invalid value only
+  // leaves the train undated, it never costs the train.
+  const daysSinceSeen = intIn(value.l, 0, MAX_WINDOW_DAYS) ?? NOT_DATED;
   if (!number || !origin || category.length > MAX_TEXT || days === undefined || cancelled === undefined || cancelled > days) return null;
   if (!Array.isArray(value.s) || value.s.length > limits.maxStopsPerTrain) return null;
   // A train cancelled on every day observed has no stops; any other train needs at least one.
@@ -779,7 +798,8 @@ function compactTrain(
     Uint16Array.from(stops, stop => stop.onTime),
     Int16Array.from(stops, stop => stop.meanTenths),
     Int16Array.from(stops, stop => stop.scheduledMinute),
-    Uint8Array.from(stops, stop => stop.weekdays)
+    Uint8Array.from(stops, stop => stop.weekdays),
+    daysSinceSeen
   );
 }
 

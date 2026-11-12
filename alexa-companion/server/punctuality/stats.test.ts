@@ -507,6 +507,39 @@ describe("most punctual departures", () => {
     expect(numbers(mostPunctualDepartures(stats, [ROMA_TERMINI], [TIVOLI], clockAt(8, 0, 1), 10))).toEqual([]);
   });
 
+  it("leaves out a train the file says was last seen more than seven days before the window's end", () => {
+    const dated = (number: string, scheduled: number, onTime: number, l: unknown) => ({ ...departure(number, "REG", scheduled, arrivals(20, onTime)), l });
+    const stats = parsePunctualityStats(
+      statsDocument([
+        // Withdrawn at the timetable change: on time every day it ran, last seen 10 days ago.
+        dated("withdrawn", 500, 20, 10),
+        dated("week-ago", 510, 19, 7),
+        dated("today", 520, 18, 0),
+        // Files without the field, or with a value that is not a day count: undated, kept.
+        departure("undated", "REG", 530, arrivals(20, 17)),
+        dated("bad-l", 540, 16, -3),
+        dated("text-l", 550, 15, "10"),
+      ])
+    )!;
+    expect(Object.fromEntries(stats.trains.map(train => [train.number, train.daysSinceSeen]))).toEqual({
+      withdrawn: 10,
+      "week-ago": 7,
+      today: 0,
+      undated: -1,
+      "bad-l": -1,
+      "text-l": -1,
+    });
+    expect(numbers(mostPunctualDepartures(stats, [ROMA_TERMINI], [TIVOLI], clockAt(8, 0), 10))).toEqual([
+      "week-ago",
+      "today",
+      "undated",
+      "bad-l",
+      "text-l",
+    ]);
+    // The train's own figures are still answered when asked by number.
+    expect(trainPunctuality(stats, "withdrawn")).toMatchObject({ kind: "stats", samples: 20 });
+  });
+
   it("after a gap in the collection measures the days against those really collected", () => {
     // 30-day window to Monday 9 November 2026 with five days not collected: the most observed train has 25 days.
     const stats = parsePunctualityStats(
