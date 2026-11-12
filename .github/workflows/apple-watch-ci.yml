@@ -258,6 +258,7 @@ jobs:
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGN_IDENTITY="" \
+            CURRENT_PROJECT_VERSION="$GITHUB_RUN_NUMBER" \
             archive
           app="$RUNNER_TEMP/Binario.xcarchive/Products/Applications/Binario.app"
           watch="$app/Watch/BinarioWatch.app"
@@ -288,6 +289,12 @@ jobs:
           [ "$value" = "it" ] || fail "Binario.app: CFBundleDevelopmentRegion is $value, expected it"
           value="$(info "$watch" WKCompanionAppBundleIdentifier)"
           [ "$value" = "it.binario.ios" ] || fail "BinarioWatch.app: WKCompanionAppBundleIdentifier is $value, expected it.binario.ios"
+          # App Store Connect refuses a build number already uploaded: each archive takes the workflow run number, the
+          # same for the iPhone and Watch apps (ios/project.yml keeps 1 for local builds).
+          for bundle in "$app" "$watch"; do
+            value="$(info "$bundle" CFBundleVersion)"
+            [ "$value" = "$GITHUB_RUN_NUMBER" ] || fail "${bundle##*/}: CFBundleVersion is $value, expected the run number $GITHUB_RUN_NUMBER"
+          done
           test "$failures" -eq 0
       # Release freshness is a release gate, not a correctness check (audit A7-06): the archive of a dispatch or of a
       # pull request into a stabilization branch is the one that may reach App Store Connect, so the packs of its
