@@ -881,6 +881,8 @@ final class AppModel: ObservableObject {
         cancelResultLive()
         cancelDetailLive()
         cancelFavouritesLive()
+        // The requests the screens left keep going for the next screen; switched off, they stop.
+        livePauses.cancelRequestsNobodyWaitsFor()
         boardLive = nil
         boardLiveSources = []
         setBoardRows(boardScheduled)
@@ -919,6 +921,7 @@ final class AppModel: ObservableObject {
         cancelResultLive()
         cancelDetailLive()
         cancelFavouritesLive()
+        livePauses.cancelRequestsNobodyWaitsFor()
     }
 
     /// Every minute while the app is open, and when it comes back to the foreground: the live values

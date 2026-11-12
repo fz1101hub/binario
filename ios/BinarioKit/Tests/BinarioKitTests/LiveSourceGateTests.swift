@@ -186,11 +186,51 @@ final class LiveSourceGateTests: XCTestCase {
         XCTAssertEqual(gate.pausedUntil(), clock.now().addingTimeInterval(60))
     }
 
-    func testACancelledCallerReturnsAtOnceAndTheRequestStopsWhenNobodyWaits() async throws {
+    func testACancelledCallerReturnsAtOnceAndTheNextCallerJoinsTheRequestItLeft() async throws {
         let clock = LiveTestClock(LiveTestDates.viaggiaTrenoNow)
         let gate = makeGate(clock)
         let flags = LiveCounter()
+        let loads = LiveCounter()
         let load: @Sendable () async -> LiveFetchResult = {
+            loads.increment()
+            for _ in 0..<500 where !flags.marked("answer") { try? await Task.sleep(nanoseconds: 10_000_000) }
+            return .body(LiveBody(text: "board", fetchedAt: clock.now()))
+        }
+        let started = Date()
+        let leaving = Task { await gate.fetch("slow", load: load) }
+        try await Task.sleep(nanoseconds: 100_000_000)
+        leaving.cancel()
+        let left = await leaving.value
+        XCTAssertEqual(left, .failure(.cancelled))
+        XCTAssertLessThan(Date().timeIntervalSince(started), 10)
+        // The screen asks again at once (back in the foreground, a new search): it joins the request
+        // it left instead of sending the same one again.
+        let again = Task { await gate.fetch("slow", load: load) }
+        try await Task.sleep(nanoseconds: 100_000_000)
+        flags.mark("answer")
+        let joined = await again.value
+        XCTAssertEqual(joined, answered("board", clock))
+        XCTAssertEqual(loads.value, 1, "the same resource is sent once")
+        let reused = await gate.fetch("slow", load: load)
+        XCTAssertEqual(reused, answered("board", clock))
+        XCTAssertEqual(loads.value, 1, "and its answer is reused within the interval")
+        // A caller already cancelled sends nothing.
+        let late = Task { () async -> LiveFetchResult in
+            for _ in 0..<500 where !Task.isCancelled { try? await Task.sleep(nanoseconds: 10_000_000) }
+            return await gate.fetch("other", load: load)
+        }
+        late.cancel()
+        let refused = await late.value
+        XCTAssertEqual(refused, .failure(.cancelled))
+        XCTAssertEqual(loads.value, 1)
+    }
+
+    func testInTheBackgroundTheRequestsNobodyWaitsForStopAndTheNextCallerAsksAfresh() async throws {
+        let clock = LiveTestClock(LiveTestDates.viaggiaTrenoNow)
+        let pauses = LiveSourcePauses()
+        let gate = makeGate(clock, pauses: pauses)
+        let flags = LiveCounter()
+        let slow: @Sendable () async -> LiveFetchResult = {
             do {
                 try await Task.sleep(nanoseconds: 30_000_000_000)
             } catch {
@@ -199,15 +239,26 @@ final class LiveSourceGateTests: XCTestCase {
             }
             return .failure(.network)
         }
-        let started = Date()
-        let task = Task { await gate.fetch("slow", load: load) }
+        let kept = answered("kept", clock)
+        let leaving = Task { await gate.fetch("slow", load: slow) }
+        let staying = Task {
+            await gate.fetch("kept") {
+                for _ in 0..<500 where !flags.marked("answer") { try? await Task.sleep(nanoseconds: 10_000_000) }
+                return kept
+            }
+        }
         try await Task.sleep(nanoseconds: 100_000_000)
-        task.cancel()
-        let result = await task.value
-        XCTAssertEqual(result, .failure(.cancelled))
-        XCTAssertLessThan(Date().timeIntervalSince(started), 10)
+        leaving.cancel()
+        let left = await leaving.value
+        XCTAssertEqual(left, .failure(.cancelled))
+        try await Task.sleep(nanoseconds: 100_000_000)
+        XCTAssertFalse(flags.marked("load cancelled"), "a request its caller left goes on")
+        pauses.cancelRequestsNobodyWaitsFor()
         for _ in 0..<50 where !flags.marked("load cancelled") { try await Task.sleep(nanoseconds: 20_000_000) }
-        XCTAssertTrue(flags.marked("load cancelled"), "the request is cancelled when its only caller leaves")
+        XCTAssertTrue(flags.marked("load cancelled"), "the app in the background: nobody waits for it, it stops")
+        flags.mark("answer")
+        let stayed = await staying.value
+        XCTAssertEqual(stayed, kept, "a request a caller still waits for goes on")
         // A cancellation is not remembered: the next caller asks again.
         let loads = LiveCounter()
         let again = await gate.fetch("slow") {
