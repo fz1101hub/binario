@@ -94,6 +94,7 @@ import it.binario.app.gpsalarm.GpsArrivalAlarmFlow
 import it.binario.app.gpsalarm.GpsArrivalAlarmPanel
 import it.binario.app.localizedLabel
 import it.binario.app.openExternalLink
+import it.binario.app.openReplacingOutputStream
 import it.binario.app.resolve
 import it.binario.app.ui.common.BinarioCard
 import it.binario.app.ui.common.HeaderOverlapBox
@@ -352,7 +353,7 @@ private fun DataSettings(viewModel: TrainViewModel) {
     val createBackupDocument = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument(LocalDataBackupCodec.MIME_TYPE)) { uri ->
         if (uri == null) return@rememberLauncherForActivityResult
         backupFeedback = runCatching {
-            context.contentResolver.openOutputStream(uri)?.bufferedWriter()?.use { it.write(viewModel.exportLocalBackup()) }
+            context.contentResolver.openReplacingOutputStream(uri)?.bufferedWriter()?.use { it.write(viewModel.exportLocalBackup()) }
                 ?: error(resources.getString(R.string.backup_open_output_error))
             resources.getString(R.string.backup_export_success)
         }.getOrElse { resources.getString(R.string.backup_export_failure, it.message ?: resources.getString(R.string.backup_file_error)) }

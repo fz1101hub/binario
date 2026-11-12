@@ -315,7 +315,7 @@ internal fun BinarioApp(
                         reminderDescription = resources.getString(R.string.planned_journey_ics_reminder_description)
                     )
                 )
-                context.contentResolver.openOutputStream(uri)?.bufferedWriter()?.use { it.write(content) }
+                context.contentResolver.openReplacingOutputStream(uri)?.bufferedWriter()?.use { it.write(content) }
                     ?: error(resources.getString(R.string.backup_open_output_error))
             }.onSuccess {
                 plannedJourneyViewModel.note(UiMessage(UiMessageKey.PLANNED_JOURNEY_EXPORT_SUCCESS))
