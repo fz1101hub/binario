@@ -202,6 +202,8 @@ final class AppModel: ObservableObject {
     private var pendingWatchRefreshEnd: (@MainActor () -> Void)?
     /// The catalogue name of each ViaggiaTreno station code (the first station with that railway code).
     private var stationNamesByCode: [String: String] = [:]
+    /// The catalogue as dictation compares it (EXPO_PORT_PLAN I6), made on the first dictation.
+    private var dictationStations: DictationStations?
     let versionDisplay: String
 
     private let savedRouteStore: SavedRouteStore
@@ -405,6 +407,7 @@ final class AppModel: ObservableObject {
         catalogState = .loading
         catalogState = await StationCatalogLoader.load(data: data)
         stationNamesByCode = [:]
+        dictationStations = nil
         if case let .available(catalog) = catalogState {
             for station in catalog.stations {
                 guard let code = NetworkReliability.stationCode(StationIdentity(station)), stationNamesByCode[code] == nil else { continue }
@@ -473,6 +476,29 @@ final class AppModel: ObservableObject {
     /// the station.
     func hasTimetable(_ station: Station) -> Bool? {
         coveredStationIDs?.contains(station.id)
+    }
+
+    /// What a typed or dictated sentence says about a route (EXPO_PORT_PLAN I6), read on the iPhone
+    /// in the app's language against the stations the search offers; nil while the catalogue is not
+    /// loaded. The sentence is neither kept nor sent.
+    func reviewRouteDictation(_ text: String, now: Date = Date()) async -> DictationReview? {
+        guard case let .available(catalog) = catalogState, let today = RouteDictation.italianToday(now) else { return nil }
+        let stations: DictationStations
+        if let dictationStations {
+            stations = dictationStations
+        } else {
+            stations = await Task.detached(priority: .userInitiated) { DictationStations(catalog.offeredStations) }.value
+            dictationStations = stations
+        }
+        let language = Self.dictationLanguage
+        return await Task.detached(priority: .userInitiated) {
+            RouteDictation.review(text, stations: stations, target: .route, today: today, language: language)
+        }.value
+    }
+
+    /// The language of the app («pt-BR» is «pt»): a sentence is read with its words.
+    static var dictationLanguage: String {
+        RouteDictation.languageCode(forLocalization: Bundle.main.preferredLocalizations.first ?? "it")
     }
 
     func loadSchedule(compressedURL: URL, metadataURL: URL, sourcePolicyURL: URL? = nil, cacheDirectory: URL) async {

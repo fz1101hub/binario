@@ -46,6 +46,8 @@ struct PlannerView: View {
                     }
                 }
             case .available:
+                // A typed or dictated route fills the form (EXPO_PORT_PLAN I6).
+                RouteAssistSection(origin: originSelection, destination: destinationSelection, departure: assistedDeparture)
                 Section {
                     StationPickerField(titleKey: "planner.origin", selection: originSelection)
                     StationPickerField(titleKey: "planner.destination", selection: destinationSelection)
@@ -178,6 +180,16 @@ struct PlannerView: View {
                 departure = date
                 departureEdited = true
                 inputDidChange()
+            }
+        )
+    }
+
+    /// The departure a dictation sets, as if the user had picked it.
+    private var assistedDeparture: Binding<Date?> {
+        Binding(
+            get: { departure },
+            set: { date in
+                if let date { departureSelection.wrappedValue = date }
             }
         )
     }

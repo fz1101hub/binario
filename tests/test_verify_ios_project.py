@@ -475,6 +475,32 @@ class IOSProjectTests(unittest.TestCase):
         self.assertIn("let free = max(0, PlannedJourneySchema.maximumJourneys - existing.count)", kit)
         self.assertIn("matches.count == 1", kit)
 
+    def test_dictation_reads_typed_text_without_a_microphone_or_speech_permission(self) -> None:
+        """EXPO_PORT_PLAN I6: the route is typed, or said with the keyboard's own dictation, and read on the iPhone with
+        Android's rules, checked by the cases both phones share (contracts/voice-input/v1). Binario asks for no microphone
+        or speech permission, records nothing and keeps the sentence in memory only."""
+        sources = [path for base in (IOS / "BinarioApp", IOS / "BinarioKit/Sources") for path in base.rglob("*.swift")]
+        code = "\n".join(path.read_text(encoding="utf-8") for path in sources)
+        for forbidden in (
+            "import Speech", "SFSpeechRecognizer", "AVAudioSession", "AVAudioRecorder", "AVAudioEngine",
+            "requestRecordPermission", "NSSpeechRecognitionUsageDescription", "NSMicrophoneUsageDescription",
+        ):
+            self.assertNotIn(forbidden, code)
+        settings = self.targets["Binario"]["settings"]["base"]
+        self.assertEqual([], [key for key in settings if "Microphone" in key or "SpeechRecognition" in key])
+        view = (IOS / "BinarioApp/RouteAssistSection.swift").read_text(encoding="utf-8")
+        for forbidden in ("@AppStorage", "@SceneStorage", "UserDefaults"):
+            self.assertNotIn(forbidden, view)
+        self.assertIn("model.reviewRouteDictation(sentence)", view)
+        for screen in ("PlannerView.swift", "AgendaView.swift"):
+            self.assertIn("RouteAssistSection(", (IOS / "BinarioApp" / screen).read_text(encoding="utf-8"), screen)
+        model = (IOS / "BinarioApp/AppModel.swift").read_text(encoding="utf-8")
+        self.assertIn("RouteDictation.review(text, stations: stations, target: .route", model)
+        contract = "contracts/voice-input/v1/dictation-cases.json"
+        self.assertIn(contract, (IOS / "BinarioKit/Tests/BinarioKitTests/RouteDictationTests.swift").read_text(encoding="utf-8"))
+        self.assertIn(contract, (ROOT / "app/src/test/java/it/binario/app/PlannerVoiceDictationFormsTest.kt").read_text(encoding="utf-8"))
+        self.assertTrue((ROOT / contract).is_file())
+
     def test_privacy_manifests_match_each_executable_userdefaults_scope(self) -> None:
         ios_privacy = privacy_manifest(IOS / "Resources/PrivacyInfo.xcprivacy")
         self.assertFalse(ios_privacy["NSPrivacyTracking"])

@@ -424,6 +424,9 @@ struct AgendaEditorView: View {
                     }
                 }
 
+                // EXPO_PORT_PLAN I6: a typed or dictated route fills the first leg.
+                RouteAssistSection(origin: $origin, destination: $destination, departure: $departure)
+
                 Section {
                     StationPickerField(titleKey: "planner.origin", selection: $origin)
                     StationPickerField(titleKey: "planner.destination", selection: $destination)

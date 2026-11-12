@@ -73,6 +73,11 @@ final class StationCatalogTests: XCTestCase {
         let results = catalog.search("Varese Nord").map(\.id)
         XCTAssertTrue(results.contains("N00024"))
         XCTAssertFalse(results.contains("S01738"))
+        // Dictation and the nearest station choose among the same entries as the search.
+        let offered = Set(catalog.offeredStations.map(\.id))
+        XCTAssertTrue(offered.isSuperset(of: ["N00024", "N00018", "S08409", "S09215", "S09042"]))
+        XCTAssertTrue(offered.isDisjoint(with: ["S01738", "S01728"]))
+        XCTAssertEqual(catalog.offeredStations.map(\.id), catalog.stations.map(\.id).filter(offered.contains))
     }
 
     func testOperationalCatalogueFailsClosed() throws {
