@@ -27,6 +27,7 @@ internal fun UiMessageKey.resourceId(): Int = when (this) {
     UiMessageKey.PLANNED_JOURNEY_READ_ONLY -> R.string.planned_journey_read_only
     UiMessageKey.PLANNED_JOURNEY_FULL -> R.string.planned_journey_full
     UiMessageKey.PLANNED_JOURNEY_DUPLICATE -> R.string.planned_journey_duplicate
+    UiMessageKey.PLANNED_JOURNEY_DEPARTURE_PAST -> R.string.planned_journey_departure_past
     UiMessageKey.PLANNED_JOURNEY_EXPORT_SUCCESS -> R.string.planned_journey_export_success
     UiMessageKey.PLANNED_JOURNEY_EXPORT_FAILURE -> R.string.planned_journey_export_failure_generic
     UiMessageKey.PLANNED_JOURNEY_IMPORT_FAILURE -> R.string.planned_journey_import_failure_generic

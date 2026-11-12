@@ -558,6 +558,7 @@
     <string name="planned_journey_read_only">L’Agenda è in sola lettura: nessuna modifica è stata salvata.</string>
     <string name="planned_journey_full">Agenda piena (40 viaggi). Nessun viaggio è stato sostituito: eliminane uno prima di salvarne un altro.</string>
     <string name="planned_journey_duplicate">Questo viaggio è già nell’Agenda con le stesse stazioni, data e ora. Nessun dato è stato aggiunto.</string>
+    <string name="planned_journey_departure_past">Questa partenza è già passata: il viaggio andrà tra gli archiviati, senza promemoria. Tocca di nuovo «Salva» per salvarlo comunque.</string>
     <string name="planned_journey_export_failure_generic">Esportazione non riuscita.</string>
     <string name="planned_journey_import_failure_generic">Importazione non riuscita.</string>
     <string name="route_stations_must_differ">Scegli due stazioni diverse per la tratta.</string>

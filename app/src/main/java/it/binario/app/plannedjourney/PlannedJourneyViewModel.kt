@@ -35,7 +35,9 @@ data class PlannedJourneyEditorState(
     val timeZoneId: String = RailTime.defaultZone.id,
     val reminderMinutes: PlannedJourneyReminderMinutes? = null,
     val checklistText: String = "",
-    val validationMessage: UiMessage? = null
+    val validationMessage: UiMessage? = null,
+    /** The user saw that the departure has already passed and tapped Save again. */
+    val pastDepartureConfirmed: Boolean = false
 ) {
     val isEditing: Boolean get() = journeyId != null
 }
@@ -146,7 +148,7 @@ class PlannedJourneyViewModel(
     }
 
     fun changeEditor(transform: (PlannedJourneyEditorState) -> PlannedJourneyEditorState) {
-        editor?.let { editor = transform(it).copy(validationMessage = null) }
+        editor?.let { editor = transform(it).copy(validationMessage = null, pastDepartureConfirmed = false) }
     }
 
     fun dismissEditor() {
@@ -173,6 +175,13 @@ class PlannedJourneyViewModel(
             .mapIndexed { index, label -> PlannedJourneyChecklistItem("check-${index + 1}", label) }
             .toList()
         val existing = current.journeyId?.let { id -> snapshot.journeys.firstOrNull { it.id == id } }
+        val departureChanged = existing == null || existing.itinerary.segments.first().departure != departure
+        val departed = departure.isValidLocalTime() && departure.scheduledAt().toInstant().isBefore(now())
+        if (departed && departureChanged && !current.pastDepartureConfirmed) {
+            // A journey saved in the past goes straight to the archive with no reminder: say so once, save on the second tap.
+            editor = current.copy(validationMessage = UiMessage(UiMessageKey.PLANNED_JOURNEY_DEPARTURE_PAST), pastDepartureConfirmed = true)
+            return
+        }
         val candidate = if (existing == null) {
             PlannedJourneyFactory.create(
                 PlannedJourneyDraft(

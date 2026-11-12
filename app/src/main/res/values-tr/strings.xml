@@ -549,6 +549,7 @@
     <string name="planned_journey_read_only">Ajanda salt okunur: hiçbir değişiklik kaydedilmedi.</string>
     <string name="planned_journey_full">Ajanda dolu (40 yolculuk). Hiçbir yolculuk değiştirilmedi: başka birini kaydetmeden önce birini silin.</string>
     <string name="planned_journey_duplicate">Bu yolculuk aynı istasyonlar, tarih ve saatle Ajanda’da zaten var. Hiçbir veri eklenmedi.</string>
+    <string name="planned_journey_departure_past">Bu kalkış zamanı geçti: yolculuk hatırlatıcı olmadan arşive gidecek. Yine de kaydetmek için “Kaydet”e tekrar dokunun.</string>
     <string name="planned_journey_export_failure_generic">Dışa aktarma başarısız.</string>
     <string name="planned_journey_import_failure_generic">İçe aktarma başarısız.</string>
     <string name="route_stations_must_differ">Güzergâh için iki farklı istasyon seçin.</string>

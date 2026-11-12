@@ -141,6 +141,42 @@ class PlannedJourneyAgendaSafetyTest {
         assertEquals(UiMessage(UiMessageKey.ROUTE_STATIONS_MUST_DIFFER), model.editor?.validationMessage)
     }
 
+    @Test fun `a departure already past is saved only after a second tap and an edit asks again`() {
+        val repository = PlannedJourneyRepository(FakeStorage())
+        var ids = 0
+        val model = PlannedJourneyViewModel(repository, now = { Instant.parse("2026-10-02T06:00:00Z") }, zone = ZoneId.of("Europe/Rome"), newId = { "late-${++ids}" })
+        model.beginCreate()
+        model.changeEditor { it.copy(originQuery = rome.displayName, destinationQuery = milan.displayName, date = "2026-10-01", time = "08:00") }
+        model.saveEditor(listOf(rome, milan))
+        assertEquals(UiMessage(UiMessageKey.PLANNED_JOURNEY_DEPARTURE_PAST), model.editor?.validationMessage)
+        assertTrue(model.snapshot.journeys.isEmpty())
+        model.changeEditor { it.copy(time = "07:59") }
+        model.saveEditor(listOf(rome, milan))
+        assertTrue("a change asks again", model.snapshot.journeys.isEmpty())
+        model.saveEditor(listOf(rome, milan))
+        assertNull(model.editor)
+        assertEquals(LocalTime.of(7, 59), model.snapshot.journeys.single().itinerary.segments.single().departure.time)
+
+        // Italian wall clock: 08:30 in Rome is 06:30Z, still ahead of 06:00Z whatever the phone's zone.
+        model.beginCreate()
+        model.changeEditor { it.copy(originQuery = milan.displayName, destinationQuery = rome.displayName, date = "2026-10-02", time = "08:30") }
+        model.saveEditor(listOf(rome, milan))
+        assertNull(model.editor)
+        assertEquals(2, model.snapshot.journeys.size)
+    }
+
+    @Test fun `editing the label of a past journey does not warn again`() {
+        val repository = PlannedJourneyRepository(FakeStorage())
+        val past = journey("past", "2026-10-01", "08:00")
+        repository.save(past)
+        val model = PlannedJourneyViewModel(repository, now = { Instant.parse("2026-10-05T06:00:00Z") }, zone = ZoneId.of("Europe/Rome"))
+        model.beginEdit(past)
+        model.changeEditor { it.copy(label = "Rinominato") }
+        model.saveEditor(listOf(rome, milan))
+        assertNull(model.editor)
+        assertEquals("Rinominato", model.snapshot.journeys.single().label)
+    }
+
     private fun storedWithBrokenMiddleRecord(): String {
         val valid = JSONObject(PlannedJourneyTransfer.encode(PlannedJourneyPersistenceSnapshot(journeys = listOf(
             journey("first", "2026-10-01", "08:00"),

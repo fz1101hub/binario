@@ -549,6 +549,7 @@
     <string name="planned_journey_read_only">The Agenda is read-only: no change was saved.</string>
     <string name="planned_journey_full">Agenda full (40 journeys). No journey was replaced: delete one before saving another.</string>
     <string name="planned_journey_duplicate">This journey is already in the Agenda with the same stations, date and time. No data was added.</string>
+    <string name="planned_journey_departure_past">This departure has already passed: the journey will go to the archive, with no reminder. Tap “Save” again to save it anyway.</string>
     <string name="planned_journey_export_failure_generic">Export failed.</string>
     <string name="planned_journey_import_failure_generic">Import failed.</string>
     <string name="route_stations_must_differ">Choose two different stations for the route.</string>

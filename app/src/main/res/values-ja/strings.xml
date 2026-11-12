@@ -526,6 +526,7 @@
     <string name="planned_journey_read_only">予定は読み取り専用です。変更は保存されていません。</string>
     <string name="planned_journey_full">予定がいっぱいです（40 件）。置き換えた移動はありません。保存する前に1件削除してください。</string>
     <string name="planned_journey_duplicate">この移動は同じ駅・日付・時刻で既に予定にあります。データは追加されていません。</string>
+    <string name="planned_journey_departure_past">この出発時刻はすでに過ぎています。移動はリマインダーなしでアーカイブに入ります。それでも保存するには「保存」をもう一度タップしてください。</string>
     <string name="planned_journey_export_failure_generic">エクスポートに失敗しました。</string>
     <string name="planned_journey_import_failure_generic">インポートに失敗しました。</string>
     <string name="route_stations_must_differ">区間には異なる 2 つの駅を選んでください。</string>

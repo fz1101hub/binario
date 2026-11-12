@@ -544,6 +544,7 @@
     <string name="planned_journey_read_only">A Agenda está somente leitura: nenhuma alteração foi salva.</string>
     <string name="planned_journey_full">Agenda cheia (40 viagens). Nenhuma viagem foi substituída: apague uma antes de salvar outra.</string>
     <string name="planned_journey_duplicate">Esta viagem já está na Agenda com as mesmas estações, data e hora. Nenhum dado foi adicionado.</string>
+    <string name="planned_journey_departure_past">Esta partida já passou: a viagem irá para o arquivo, sem lembrete. Toque em “Salvar” de novo para salvá-la mesmo assim.</string>
     <string name="planned_journey_export_failure_generic">Falha na exportação.</string>
     <string name="planned_journey_import_failure_generic">Falha na importação.</string>
     <string name="route_stations_must_differ">Escolha duas estações diferentes para o trajeto.</string>

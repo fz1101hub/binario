@@ -535,6 +535,7 @@
     <string name="planned_journey_read_only">एजेंडा केवल-पढ़ने योग्य है: कोई बदलाव नहीं सहेजा गया।</string>
     <string name="planned_journey_full">एजेंडा भरा है (40 यात्राएँ)। कोई यात्रा बदली नहीं गई: दूसरी सहेजने से पहले एक हटाएँ।</string>
     <string name="planned_journey_duplicate">यह यात्रा उन्हीं स्टेशनों, तारीख और समय के साथ पहले से एजेंडा में है। कोई डेटा नहीं जोड़ा गया।</string>
+    <string name="planned_journey_departure_past">यह प्रस्थान पहले ही निकल चुका है: यात्रा बिना रिमाइंडर के संग्रह में जाएगी। फिर भी सहेजने के लिए “सहेजें” दोबारा टैप करें।</string>
     <string name="planned_journey_export_failure_generic">एक्सपोर्ट नहीं हो सका।</string>
     <string name="planned_journey_import_failure_generic">इंपोर्ट नहीं हो सका।</string>
     <string name="route_stations_must_differ">मार्ग के लिए दो अलग स्टेशन चुनें।</string>

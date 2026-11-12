@@ -540,6 +540,7 @@
     <string name="planned_journey_read_only">กำหนดการเป็นแบบอ่านอย่างเดียว: ไม่ได้บันทึกการเปลี่ยนแปลง</string>
     <string name="planned_journey_full">กำหนดการเต็มแล้ว (40 การเดินทาง) ไม่มีการเดินทางใดถูกแทนที่: ลบหนึ่งรายการก่อนบันทึกรายการใหม่</string>
     <string name="planned_journey_duplicate">การเดินทางนี้มีอยู่ในกำหนดการแล้วด้วยสถานี วันที่ และเวลาเดียวกัน ไม่ได้เพิ่มข้อมูล</string>
+    <string name="planned_journey_departure_past">เวลาออกเดินทางนี้ผ่านไปแล้ว: การเดินทางจะไปอยู่ในคลังโดยไม่มีการแจ้งเตือน แตะ “บันทึก” อีกครั้งเพื่อบันทึกต่อไป</string>
     <string name="planned_journey_export_failure_generic">ส่งออกไม่สำเร็จ</string>
     <string name="planned_journey_import_failure_generic">นำเข้าไม่สำเร็จ</string>
     <string name="route_stations_must_differ">เลือกสองสถานีที่ต่างกันสำหรับเส้นทาง</string>

@@ -526,6 +526,7 @@
     <string name="planned_journey_read_only">ခရီးစဉ်ဇယားသည် ဖတ်ရန်သာ ဖြစ်သည်- မည်သည့်ပြောင်းလဲမှုကိုမျှ မသိမ်းရသေးပါ။</string>
     <string name="planned_journey_full">ခရီးစဉ်ဇယား ပြည့်နေသည် (ခရီးစဉ် 40)။ မည်သည့်ခရီးစဉ်ကိုမျှ အစားမထိုးပါ- နောက်တစ်ခု မသိမ်းမီ တစ်ခုကို ဖျက်ပါ။</string>
     <string name="planned_journey_duplicate">ဤခရီးစဉ်သည် တူညီသော ဘူတာ၊ ရက်စွဲနှင့် အချိန်ဖြင့် ခရီးစဉ်ဇယားတွင် ရှိပြီးသား ဖြစ်သည်။ ဒေတာ မထည့်ရပါ။</string>
+    <string name="planned_journey_departure_past">ဤထွက်ခွာချိန် ကျော်လွန်သွားပြီ- ခရီးစဉ်သည် သတိပေးချက်မပါဘဲ မှတ်တမ်းထဲသို့ ရောက်သွားမည်။ မည်သို့ပင်ဖြစ်စေ သိမ်းရန် “သိမ်းရန်” ကို ထပ်နှိပ်ပါ။</string>
     <string name="planned_journey_export_failure_generic">ထုတ်ယူ၍ မရပါ။</string>
     <string name="planned_journey_import_failure_generic">တင်သွင်း၍ မရပါ။</string>
     <string name="route_stations_must_differ">လမ်းကြောင်းအတွက် မတူညီသော ဘူတာ နှစ်ခု ရွေးပါ။</string>

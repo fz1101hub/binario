@@ -526,6 +526,7 @@
     <string name="planned_journey_read_only">일정이 읽기 전용입니다. 변경 사항이 저장되지 않았습니다.</string>
     <string name="planned_journey_full">일정이 가득 찼습니다(여정 40개). 대체된 여정은 없습니다. 다른 여정을 저장하기 전에 하나를 삭제하세요.</string>
     <string name="planned_journey_duplicate">이 여정은 같은 역, 날짜, 시간으로 이미 일정에 있습니다. 추가된 데이터는 없습니다.</string>
+    <string name="planned_journey_departure_past">이 출발 시간은 이미 지났습니다. 여정은 알림 없이 보관함으로 이동합니다. 그래도 저장하려면 “저장”을 다시 누르세요.</string>
     <string name="planned_journey_export_failure_generic">내보내기에 실패했습니다.</string>
     <string name="planned_journey_import_failure_generic">가져오기에 실패했습니다.</string>
     <string name="route_stations_must_differ">구간에 서로 다른 두 역을 선택하세요.</string>
