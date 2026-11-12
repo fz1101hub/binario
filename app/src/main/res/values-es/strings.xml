@@ -201,6 +201,7 @@
     <string name="planned_journey_text_import">Importar desde texto</string>
     <string name="planned_journey_text_import_description">Pega uno o varios trayectos o usa Compartir texto hacia Binario. El texto se propone solo aquí: Binario no importa automáticamente y no lee mensajes, portapapeles o enlaces por su cuenta.</string>
     <string name="planned_journey_text_import_shared">Texto compartido recibido. Crea la vista previa y revisa los datos: Binario no importa automáticamente.</string>
+    <string name="planned_journey_calendar_import_description">Elige los trayectos a añadir. La importación es aditiva: no sobrescribe los trayectos ya en el teléfono.</string>
     <string name="planned_journey_text_import_label">Texto de los trayectos a importar</string>
     <string name="planned_journey_text_import_example">Roma Termini → Bologna Centrale · 12/09/2026 a las 08:30\nBologna Centrale → Milano Centrale · 12/09/2026 a las 11:05</string>
     <string name="planned_journey_text_import_hint">Cada renglón requiere origen, destino, fecha GG/MM/AAAA o AAAA-MM-GG y hora HH:MM. El texto permanece aquí hasta que lo borres o completes la importación.</string>

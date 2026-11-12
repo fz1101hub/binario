@@ -60,6 +60,15 @@ object PlannedJourneyTextImport {
         return parsed to skipped
     }
 
+    /** «A → B», «A -> B» or «Da A a B»: the two station names of a route, or null. */
+    fun parseRoute(routePart: String): Pair<String, String>? {
+        val route = arrowRoute.find(routePart.trim()) ?: wordRoute.find(routePart.trim()) ?: return null
+        val origin = route.groupValues[1].trim()
+        val destination = route.groupValues[2].trim()
+        if (origin.length < 2 || destination.length < 2 || fold(origin) == fold(destination)) return null
+        return origin to destination
+    }
+
     fun parseLine(raw: String): PlannedJourneyTextLine? {
         val value = raw.replace(Regex("\\s+"), " ").trim()
         if (value.length > MAX_LINE_CHARACTERS) return null
@@ -90,6 +99,19 @@ object PlannedJourneyTextImport {
         newId: () -> String
     ): PlannedJourneyTextImportPreview {
         val (lines, unreadable) = parse(text)
+        return previewLines(lines, unreadable, stations, existing, zone, createdAt, newId)
+    }
+
+    /** [preview] of lines already read (pasted text or calendar events); [unreadable] counts those that were not. */
+    fun previewLines(
+        lines: List<PlannedJourneyTextLine>,
+        unreadable: Int,
+        stations: List<PlannedJourneyStation>,
+        existing: List<PlannedJourney>,
+        zone: ZoneId,
+        createdAt: Instant,
+        newId: () -> String
+    ): PlannedJourneyTextImportPreview {
         val index = stations.distinctBy { it.canonicalId }.flatMap { station ->
             listOfNotNull(station.displayName, station.railwayCode, station.canonicalId).map { fold(it) to station }
         }.groupBy({ it.first }, { it.second }).mapValues { (_, matches) -> matches.distinctBy { it.canonicalId } }

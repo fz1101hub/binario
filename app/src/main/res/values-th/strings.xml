@@ -197,6 +197,7 @@
     <string name="planned_journey_text_import">นำเข้าจากข้อความ</string>
     <string name="planned_journey_text_import_description">วางการเดินทางหนึ่งรายการขึ้นไป หรือใช้แชร์ข้อความไปยัง Binario ข้อความจะถูกเสนอที่นี่เท่านั้น: Binario ไม่นำเข้าโดยอัตโนมัติ และไม่อ่านข้อความแชท คลิปบอร์ด หรือลิงก์เอง</string>
     <string name="planned_journey_text_import_shared">ได้รับข้อความที่แชร์แล้ว สร้างตัวอย่างและตรวจสอบข้อมูล: Binario ไม่นำเข้าโดยอัตโนมัติ</string>
+    <string name="planned_journey_calendar_import_description">เลือกการเดินทางที่จะเพิ่ม การนำเข้าเป็นการเพิ่มเท่านั้น: ไม่เขียนทับการเดินทางที่มีอยู่ในโทรศัพท์</string>
     <string name="planned_journey_text_import_label">ข้อความของการเดินทางที่จะนำเข้า</string>
     <string name="planned_journey_text_import_example">Roma Termini → Bologna Centrale · 12/09/2026 เวลา 08:30\nBologna Centrale → Milano Centrale · 12/09/2026 เวลา 11:05</string>
     <string name="planned_journey_text_import_hint">แต่ละบรรทัดต้องมีต้นทาง ปลายทาง วันที่แบบ DD/MM/YYYY หรือ YYYY-MM-DD และเวลาแบบ HH:MM ข้อความจะอยู่ที่นี่จนกว่าคุณจะลบหรือนำเข้าเสร็จ</string>

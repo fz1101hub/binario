@@ -71,7 +71,9 @@ data class PlannedJourneyTextImportState(
     val reviewed: Boolean = false,
     val message: UiMessage? = null,
     /** Received with «Condividi» from another app rather than typed here. */
-    val fromShare: Boolean = false
+    val fromShare: Boolean = false,
+    /** Read from another app's calendar file: there is no text to edit, only the events to choose. */
+    val fromCalendar: Boolean = false
 )
 
 /** UI-oriented state holder; all durable writes are delegated to [PlannedJourneyRepository]. */
@@ -451,7 +453,11 @@ class PlannedJourneyViewModel(
         persist(repository.updateChecklistItem(journeyId, item.id, !item.completed), UiMessageKey.PLANNED_JOURNEY_CHECKLIST_SUCCESS)
     }
 
-    fun previewImport(content: String, isIcs: Boolean) {
+    fun previewImport(content: String, isIcs: Boolean, stations: List<PlannedJourneyStation> = emptyList()) {
+        if (isIcs && PlannedJourneyForeignIcs.isForeign(content)) {
+            previewForeignCalendar(content, stations)
+            return
+        }
         importState = if (isIcs) {
             when (val result = repository.previewIcsImport(content)) {
                 is PlannedJourneyIcsImportResult.Preview -> PlannedJourneyImportState.Ics(result.preview)
@@ -463,6 +469,27 @@ class PlannedJourneyViewModel(
                 is PlannedJourneyJsonImportResult.Invalid -> PlannedJourneyImportState.Error(UiMessage(UiMessageKey.PLANNED_JOURNEY_IMPORT_INVALID))
             }
         }
+    }
+
+    /**
+     * Another app's calendar: its route events become the same reviewed, add-only proposal as a pasted text, never
+     * replacing a journey; Binario's own ICS export keeps its integrity preview.
+     */
+    private fun previewForeignCalendar(content: String, stations: List<PlannedJourneyStation>) {
+        val calendar = PlannedJourneyForeignIcs.read(content)
+        if (calendar == null) {
+            importState = PlannedJourneyImportState.Error(UiMessage(UiMessageKey.PLANNED_JOURNEY_IMPORT_INVALID))
+            return
+        }
+        val preview = PlannedJourneyTextImport.previewLines(calendar.lines, calendar.skipped, stations, snapshot.journeys, zone, now(), newId)
+        textImport = PlannedJourneyTextImportState(
+            candidates = preview.candidates.takeIf { it.isNotEmpty() },
+            selected = preview.candidates.mapTo(mutableSetOf()) { it.id },
+            skipped = preview.skipped,
+            message = if (preview.candidates.isEmpty()) UiMessage(UiMessageKey.PLANNED_JOURNEY_TEXT_IMPORT_NONE) else null,
+            fromCalendar = true
+        )
+        feedback = null
     }
 
     fun applyJsonImport(policy: PlannedJourneyConflictPolicy) {

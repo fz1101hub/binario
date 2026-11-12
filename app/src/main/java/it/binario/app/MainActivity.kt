@@ -364,7 +364,9 @@ internal fun BinarioApp(
             }.onSuccess { content ->
                 plannedJourneyViewModel.previewImport(
                     content = content,
-                    isIcs = content.trimStart().startsWith("BEGIN:VCALENDAR")
+                    isIcs = content.trimStart().startsWith("BEGIN:VCALENDAR"),
+                    // Another app's calendar resolves its route events against the station catalogue.
+                    stations = viewModel.stations.map { station -> PlannedJourneyStation(station.id, station.name, station.railwayCode) }
                 )
             }.onFailure {
                 plannedJourneyViewModel.note(UiMessage(UiMessageKey.PLANNED_JOURNEY_IMPORT_FAILURE))

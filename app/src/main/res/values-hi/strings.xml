@@ -196,6 +196,7 @@
     <string name="planned_journey_text_import">टेक्स्ट से आयात करें</string>
     <string name="planned_journey_text_import_description">एक या अधिक यात्राएँ पेस्ट करें या Binario के साथ “टेक्स्ट शेयर करें” का उपयोग करें। टेक्स्ट केवल यहाँ सुझाया जाता है: Binario अपने-आप आयात नहीं करता और खुद संदेश, क्लिपबोर्ड या लिंक नहीं पढ़ता।</string>
     <string name="planned_journey_text_import_shared">शेयर किया गया टेक्स्ट मिला। पूर्वावलोकन बनाएँ और डेटा जाँचें: Binario अपने-आप आयात नहीं करता।</string>
+    <string name="planned_journey_calendar_import_description">जोड़ने के लिए यात्राएँ चुनें। आयात केवल जोड़ता है: यह फ़ोन पर पहले से मौजूद यात्राओं को नहीं बदलता।</string>
     <string name="planned_journey_text_import_label">आयात की जाने वाली यात्राओं का टेक्स्ट</string>
     <string name="planned_journey_text_import_example">Roma Termini → Bologna Centrale · 12/09/2026 को 08:30\nBologna Centrale → Milano Centrale · 12/09/2026 को 11:05</string>
     <string name="planned_journey_text_import_hint">हर पंक्ति में प्रस्थान, गंतव्य, DD/MM/YYYY या YYYY-MM-DD में तारीख और HH:MM में समय चाहिए। टेक्स्ट तब तक यहाँ रहता है जब तक आप उसे हटा न दें या आयात पूरा न करें।</string>

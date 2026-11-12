@@ -194,6 +194,7 @@
     <string name="planned_journey_text_import">텍스트에서 가져오기</string>
     <string name="planned_journey_text_import_description">여정을 하나 이상 붙여넣거나 Binario로 텍스트를 공유하세요. 텍스트는 여기에서 제안될 뿐입니다. Binario는 자동으로 가져오지 않으며 메시지, 클립보드, 링크를 스스로 읽지 않습니다.</string>
     <string name="planned_journey_text_import_shared">공유된 텍스트를 받았습니다. 미리 보기를 만들고 데이터를 검토하세요. Binario는 자동으로 가져오지 않습니다.</string>
+    <string name="planned_journey_calendar_import_description">추가할 여정을 선택하세요. 가져오기는 추가만 하며 휴대전화에 있는 여정을 덮어쓰지 않습니다.</string>
     <string name="planned_journey_text_import_label">가져올 여정 텍스트</string>
     <string name="planned_journey_text_import_example">Roma Termini → Bologna Centrale · 2026-09-12 08:30\nBologna Centrale → Milano Centrale · 2026-09-12 11:05</string>
     <string name="planned_journey_text_import_hint">각 줄에는 출발지, 도착지, DD/MM/YYYY 또는 YYYY-MM-DD 형식의 날짜, HH:MM 형식의 시간이 필요합니다. 텍스트는 삭제하거나 가져오기를 마칠 때까지 여기에 남습니다.</string>

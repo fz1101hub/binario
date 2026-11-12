@@ -197,6 +197,7 @@
     <string name="planned_journey_text_import">Nhập từ văn bản</string>
     <string name="planned_journey_text_import_description">Dán một hoặc nhiều hành trình hoặc dùng Chia sẻ văn bản tới Binario. Văn bản chỉ được đề xuất tại đây: Binario không tự động nhập và không tự đọc tin nhắn, bộ nhớ tạm hay liên kết.</string>
     <string name="planned_journey_text_import_shared">Đã nhận văn bản được chia sẻ. Hãy tạo bản xem trước và xem lại dữ liệu: Binario không tự động nhập.</string>
+    <string name="planned_journey_calendar_import_description">Chọn các hành trình cần thêm. Việc nhập chỉ bổ sung: không ghi đè các hành trình đã có trên điện thoại.</string>
     <string name="planned_journey_text_import_label">Văn bản các hành trình cần nhập</string>
     <string name="planned_journey_text_import_example">Roma Termini → Bologna Centrale · 12/09/2026 lúc 08:30\nBologna Centrale → Milano Centrale · 12/09/2026 lúc 11:05</string>
     <string name="planned_journey_text_import_hint">Mỗi dòng cần có ga đi, ga đến, ngày dạng DD/MM/YYYY hoặc YYYY-MM-DD và giờ dạng HH:MM. Văn bản vẫn ở đây cho đến khi bạn xóa hoặc hoàn tất việc nhập.</string>

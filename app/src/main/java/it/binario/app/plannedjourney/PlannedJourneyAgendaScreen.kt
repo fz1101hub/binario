@@ -745,8 +745,12 @@ private fun TextImportDialog(
         text = {
             LazyColumn(modifier = Modifier.testTag("plannedJourneyTextImportDialog"), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 if (state.fromShare) item { AgendaMessage(stringResource(R.string.planned_journey_text_import_shared), isError = false) }
-                item { Text(stringResource(R.string.planned_journey_text_import_description), style = MaterialTheme.typography.bodySmall) }
-                item {
+                if (state.fromCalendar) {
+                    item { Text(stringResource(R.string.planned_journey_calendar_import_description), style = MaterialTheme.typography.bodySmall) }
+                } else {
+                    item { Text(stringResource(R.string.planned_journey_text_import_description), style = MaterialTheme.typography.bodySmall) }
+                }
+                if (!state.fromCalendar) item {
                     OutlinedTextField(
                         value = state.text,
                         onValueChange = viewModel::changeTextImport,
@@ -757,7 +761,7 @@ private fun TextImportDialog(
                         minLines = 3
                     )
                 }
-                item {
+                if (!state.fromCalendar) item {
                     OutlinedButton(onClick = { viewModel.previewTextImport(stations) }, modifier = Modifier.fillMaxWidth()) {
                         Text(stringResource(R.string.planned_journey_text_import_preview))
                     }
