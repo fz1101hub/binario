@@ -11,7 +11,9 @@ A ``workflow_dispatch`` of ``.github/workflows/punctuality.yml`` with ``print_st
    must lie inside that step's time window;
 2. requires exactly the one file ``punctuality/stats_v1.json.gz``, with its printed size and SHA-256, valid for
    ``tools/build_punctuality_stats.py --check`` and with at least one train; a window ending before the one already
-   in the repository is refused unless ``--allow-older``;
+   in the repository is refused unless ``--allow-older``, and more than 30 % fewer trains or samples (stop samples
+   of all trains) than the file in the repository unless ``--allow-shrink`` (a collection restarted with
+   ``bootstrap=true`` or a lost cache);
 3. writes ``app/src/main/assets/punctuality/stats_v1.json.gz`` and prints the old and new window, trains and size.
 
 Nothing is committed.  Exit status 1 when the print is refused.
@@ -36,6 +38,8 @@ import ci_log_frames as frames  # noqa: E402
 WORKFLOW_PATH = ".github/workflows/punctuality.yml"
 PRINT_STEPS: Mapping[str, str] = {"punctuality": "Print the punctuality statistics"}
 ApplyError = frames.ApplyError
+# A week with holidays, a strike or a timetable change has fewer trains; a restarted collection has far fewer.
+MAX_SHRINK_PERCENT = 30
 
 
 def fetch_logs(repo: str, run_id: str | None, job_ids: Sequence[str], *, git: frames.LocalGit,
@@ -57,7 +61,22 @@ def summary(payload: Mapping[str, Any] | None, data: bytes | None) -> str:
     return f"{stats.describe(payload, len(data))}, sha256 {hashlib.sha256(data).hexdigest()[:16]}"
 
 
-def apply(data: bytes, root: Path, *, allow_older: bool, dry_run: bool) -> str:
+def volume(payload: Mapping[str, Any]) -> tuple[int, int]:
+    """Trains and stop samples of a statistics file."""
+    trains = payload["trains"]
+    return len(trains), sum(stop[1] for train in trains for stop in train["s"])
+
+
+def check_volume(old: Mapping[str, Any], new: Mapping[str, Any]) -> None:
+    """Refuse ``new`` when it has more than MAX_SHRINK_PERCENT fewer trains or samples than ``old``."""
+    for label, before, after in zip(("treni", "campioni"), volume(old), volume(new)):
+        if after * 100 < before * (100 - MAX_SHRINK_PERCENT):
+            raise ApplyError(f"il file stampato ha {after} {label} contro {before} nel repository "
+                             f"(oltre il {MAX_SHRINK_PERCENT} % in meno: raccolta ripartita da zero o cache persa?); "
+                             "usare --allow-shrink dopo una verifica")
+
+
+def apply(data: bytes, root: Path, *, allow_older: bool, dry_run: bool, allow_shrink: bool = False) -> str:
     try:
         payload = stats.check_bytes(data)
     except stats.CheckError as error:
@@ -77,6 +96,11 @@ def apply(data: bytes, root: Path, *, allow_older: bool, dry_run: bool) -> str:
     if old_payload and payload["windowEnd"] < old_payload["windowEnd"] and not allow_older:
         raise ApplyError("\n".join(lines) + "\nla finestra stampata termina prima di quella nel repository "
                                             "(usare --allow-older dopo una verifica)")
+    if old_payload and not allow_shrink:
+        try:
+            check_volume(old_payload, payload)
+        except ApplyError as error:
+            raise ApplyError("\n".join(lines) + f"\n{error}") from error
     if old_data == data:
         lines.append("File identico: nessuna modifica.")
     elif dry_run:
@@ -96,6 +120,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     source.add_argument("--log", type=Path, help="log del job già salvato (senza i controlli su run e step)")
     parser.add_argument("--repo", help="OWNER/NOME (default: da git remote origin)")
     parser.add_argument("--allow-older", action="store_true", help="accetta una finestra che termina prima di quella attuale")
+    parser.add_argument("--allow-shrink", action="store_true",
+                        help=f"accetta oltre il {MAX_SHRINK_PERCENT} %% di treni o campioni in meno rispetto al file attuale")
     parser.add_argument("--dry-run", action="store_true", help="verifica e mostra il confronto senza scrivere")
     parser.add_argument("--save-log", type=Path, metavar="FILE", help="salva qui il log scaricato")
     parser.add_argument("--root", type=Path, default=ROOT, help=argparse.SUPPRESS)
@@ -110,7 +136,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             if args.save_log:
                 args.save_log.write_text("\n".join(text for _, text, _ in fetched), encoding="utf-8")
             logs = [(text, window) for _, text, window in fetched]
-        print(apply(printed_statistics(logs), root, allow_older=args.allow_older, dry_run=args.dry_run))
+        print(apply(printed_statistics(logs), root, allow_older=args.allow_older, dry_run=args.dry_run,
+                    allow_shrink=args.allow_shrink))
     except (ApplyError, OSError) as error:
         for line in str(error).split("\n"):
             print(f"ERRORE: {stats.collector.log_safe(line)}", file=sys.stderr)
