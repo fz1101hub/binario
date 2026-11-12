@@ -842,8 +842,9 @@ private fun JourneyChangeFilterBar(selected: JourneyChangeFilter, onSelected: (J
     }
 }
 
+/** Also the Agenda editor's microphone, so both dictations look and read the same. */
 @Composable
-private fun VoiceInputButton(onClick: () -> Unit, label: String) {
+internal fun VoiceInputButton(onClick: () -> Unit, label: String) {
     val accessibilityLabel = stringResource(R.string.accessibility_system_voice_input, label)
     TextButton(
         onClick = onClick,

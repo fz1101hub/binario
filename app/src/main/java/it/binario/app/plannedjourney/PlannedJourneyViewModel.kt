@@ -10,8 +10,12 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.createSavedStateHandle
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import it.binario.app.DictationTarget
+import it.binario.app.PlannerVoiceFeedback
+import it.binario.app.PlannerVoiceReview
 import it.binario.app.UiMessage
 import it.binario.app.UiMessageKey
+import it.binario.app.feedback
 import it.binario.app.data.RailTime
 import java.time.DayOfWeek
 import java.time.Instant
@@ -136,6 +140,33 @@ data class PlannedJourneyEditorState(
     /** «Rimuovi tratta»: the only leg of a journey cannot be removed. */
     fun removeLeg(index: Int): PlannedJourneyEditorState =
         if (legs.size <= 1 || index !in legs.indices) this else withLegs(legs.filterIndexed { position, _ -> position != index })
+
+    /**
+     * A route dictation reviewed by the planner's parser, put in leg [legIndex] (the leg whose microphone was tapped),
+     * as the planner applies it: a confirmed review gives the two stations and the day and time said; a route whose
+     * stations were not found gives only the day and the time. An ambiguous, incomplete or unread one changes nothing.
+     * «Andata e ritorno» is not read here: the Agenda's «Ritorno» prepares the way back.
+     */
+    fun withDictation(review: PlannerVoiceReview, legIndex: Int = 0): PlannedJourneyEditorState {
+        val withStations = when (review.feedback(DictationTarget.ROUTE)) {
+            PlannerVoiceFeedback.Confirmed -> true
+            PlannerVoiceFeedback.DateTimeOnly -> false
+            else -> return this
+        }
+        val input = review.input
+        val origin = input.origin?.takeIf { withStations }
+        val destination = input.destination?.takeIf { withStations }
+        return withLeg(legIndex) { leg ->
+            leg.copy(
+                originQuery = origin?.name ?: leg.originQuery,
+                originStationId = origin?.id ?: leg.originStationId,
+                destinationQuery = destination?.name ?: leg.destinationQuery,
+                destinationStationId = destination?.id ?: leg.destinationStationId,
+                date = input.date?.toString() ?: leg.date,
+                time = input.time?.toString() ?: leg.time
+            )
+        }
+    }
 }
 
 sealed interface PlannedJourneyImportState {

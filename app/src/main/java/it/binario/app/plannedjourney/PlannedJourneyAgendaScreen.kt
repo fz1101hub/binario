@@ -45,6 +45,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.produceState
@@ -72,13 +73,21 @@ import java.time.YearMonth
 import java.time.format.DateTimeFormatter
 import java.time.format.TextStyle
 import android.Manifest
+import android.app.Activity
 import android.content.ActivityNotFoundException
+import android.content.Intent
+import android.speech.RecognizerIntent
 import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.ui.platform.LocalResources
 import androidx.core.content.ContextCompat
+import it.binario.app.DictationTarget
 import it.binario.app.NearestStationPicker
+import it.binario.app.PlannerVoiceParser
+import it.binario.app.feedback
+import it.binario.app.resolve
+import it.binario.app.ui.planner.VoiceInputButton
 import it.binario.app.data.Station
 import it.binario.app.requestSingleLocationFix
 import it.binario.app.R
@@ -98,7 +107,10 @@ fun PlannedJourneyAgendaScreen(
     onImportRequested: () -> Unit,
     /** Offered as chips under the origin of the editor (the app's «Stazioni preferite»). */
     favouriteStations: List<PlannedJourneyStation> = emptyList(),
-    /** The catalogue with coordinates, for «Usa la posizione per la partenza»; empty hides the button. */
+    /**
+     * The catalogue with coordinates, for «Usa la posizione per la partenza» (empty hides the button), and with the
+     * aliases the dictation reads; without it the dictation reads the names of [stations].
+     */
     locationCatalogue: List<Station> = emptyList()
 ) {
     var pendingDelete by rememberSaveable { mutableStateOf<String?>(null) }
@@ -476,6 +488,36 @@ private fun PlannedJourneyEditorDialog(
     val locationPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         if (granted) locateOrigin() else locationMessage = resources.getString(R.string.location_permission_denied)
     }
+    // «Detta tratta»: the planner's recognizer launch and parser, offered where the planner offers it; the text stays
+    // in memory and fills the leg whose microphone was tapped.
+    val locale = LocalConfiguration.current.locales[0]
+    val offersDictation = PlannerVoiceParser.offers(DictationTarget.ROUTE, locale.language)
+    var dictationLeg by rememberSaveable { mutableIntStateOf(0) }
+    var dictationMessage by remember { mutableStateOf<String?>(null) }
+    val dictationStations = remember(stations, locationCatalogue) {
+        locationCatalogue.ifEmpty { stations.map { Station(it.canonicalId, it.displayName, "", railwayCode = it.railwayCode) } }
+    }
+    val dictationLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        val spoken = if (result.resultCode == Activity.RESULT_OK) {
+            result.data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)?.firstOrNull()
+        } else null
+        dictationMessage = if (spoken.isNullOrBlank()) resources.getString(R.string.voice_no_text) else {
+            val review = PlannerVoiceParser.review(spoken, dictationStations, DictationTarget.ROUTE, language = locale.language)
+            onChange { it.withDictation(review, dictationLeg) }
+            review.feedback(DictationTarget.ROUTE).resolve(resources)
+        }
+    }
+    fun dictate(legIndex: Int) {
+        dictationLeg = legIndex
+        dictationMessage = null
+        val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+            putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+            putExtra(RecognizerIntent.EXTRA_LANGUAGE, locale.toLanguageTag())
+            putExtra(RecognizerIntent.EXTRA_PROMPT, resources.getString(R.string.voice_prompt_route))
+        }
+        if (intent.resolveActivity(context.packageManager) == null) dictationMessage = resources.getString(R.string.voice_unavailable)
+        else dictationLauncher.launch(intent)
+    }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(if (editor.isEditing) R.string.planned_journey_edit else R.string.planned_journey_add)) },
@@ -509,10 +551,14 @@ private fun PlannedJourneyEditorDialog(
                             )
                             val removeDescription = stringResource(R.string.planned_journey_remove_leg_a11y, number, legs.size)
                             TextButton(
-                                onClick = { onChange { it.removeLeg(index) }; suggestionsFor = null },
+                                onClick = { onChange { it.removeLeg(index) }; suggestionsFor = null; dictationMessage = null },
                                 modifier = Modifier.testTag("plannedJourneyRemoveLeg$number").semantics { contentDescription = removeDescription }
                             ) { Text(stringResource(R.string.planned_journey_remove_leg)) }
                         }
+                    }
+                    if (offersDictation) item {
+                        VoiceInputButton(onClick = { dictate(index) }, label = stringResource(R.string.planner_voice_route))
+                        if (index == dictationLeg) dictationMessage?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
                     }
                     item {
                         StationField(
