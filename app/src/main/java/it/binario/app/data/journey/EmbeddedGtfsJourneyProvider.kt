@@ -582,7 +582,17 @@ class EmbeddedGtfsJourneyProvider internal constructor(
         val endAtCityStop = urban.any { coverage ->
             coverage.pack.sourceId.value == origin.gtfsStop?.first || coverage.pack.sourceId.value == destination.gtfsStop?.first
         }
+        // An end at a stop of a railway pack (Lido Centro on the Roma-Lido) in a city whose network takes part: the city
+        // lines may reach that line better than the railway packs (the metro B to Piramide for Porta San Paolo, not a
+        // train to Ostiense and a walk), and the railway packs alone would find their journey first. The railway packs
+        // are searched with the city lines first, alone only if that finds nothing: the same selections in another
+        // order, so no extra scan, only the city lines' connections in the first one.
+        val endAtRailStop = urban.isNotEmpty() && listOf(origin, destination).any { end ->
+            val source = end.gtfsStop?.first
+            source != null && packs.any { !it.isUrban && it.sourceId.value == source }
+        }
         val selections = buildList {
+            if (endAtRailStop && !endAtCityStop) railSelections.forEach { add(it + urban) }
             if (!endAtCityStop) railSelections.forEach { add(it) }
             // Both ends in a city network (Milano Centrale to Duomo): the city lines with the railway packs serving both.
             if (urban.any { it.coversOrigin } && urban.any { it.coversDestination }) add(primary + urban)

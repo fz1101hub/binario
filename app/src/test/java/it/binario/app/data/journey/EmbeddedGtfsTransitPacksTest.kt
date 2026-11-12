@@ -98,20 +98,18 @@ class EmbeddedGtfsTransitPacksTest {
         assertTrue(java.time.Duration.between(first.legs.first().scheduledDeparture, first.legs.last().scheduledArrival).toMinutes() <= 25)
     }
 
-    @Test fun `Roma Termini to the Lido di Ostia changes to the Roma-Lido railway at Porta San Paolo`() {
+    @Test fun `Roma Termini to the Lido di Ostia takes the metro and the Roma-Lido railway`() {
         val lido = stopOf("cotral-ferro-gtfs", "Lido Centro")
         val found = search(station("Roma Termini"), lido, "08:00")
         val first = found.first()
-        // The railway packs serving the two ends find a journey (a Trenitalia regional to Roma Ostiense, then a walk),
-        // so the city lines are not searched. Before the planned pack order the South Tyrol pack, ranked first, took one
-        // of the three places of this search instead of Trenitalia, the railway packs found nothing and the metro B to
-        // Piramide was the answer (08:12, Roma-Lido at 08:25, Lido Centro 08:55 instead of 09:15).
-        assertEquals(listOf(LegMode.TRAIN, LegMode.WALK, LegMode.TRAIN), first.legs.map { it.mode })
-        assertEquals(
-            listOf("trenitalia-gtfs", "cotral-ferro-gtfs"),
-            first.legs.filter { it.mode == LegMode.TRAIN }.map { it.runId!!.value.substringBefore(':') }
-        )
-        assertEquals("Porta San Paolo", first.legs.last().originLabel)
+        val modes = first.legs.map { it.mode }
+        assertTrue("modes $modes", LegMode.METRO in modes && LegMode.TRAIN in modes)
+        assertTrue(first.legs.filter { it.mode == LegMode.TRAIN }.all { it.runId!!.value.startsWith("cotral-ferro-gtfs:") })
+        // The end is a stop of a railway pack in a city whose network takes part: the city lines are searched with the
+        // railway packs from the start, so a Trenitalia train to Ostiense and a walk (Roma-Lido 08:45, Lido 09:15) does
+        // not hide the metro B to Piramide and the 08:25 Roma-Lido.
+        assertEquals(java.time.LocalTime.of(8, 55), first.legs.last().scheduledArrival.toLocalTime())
+        assertEquals(java.time.LocalTime.of(8, 55), found.minOf { it.arrival.toLocalTime() })
     }
 
     @Test fun `Firenze Santa Maria Novella to the airport on the T2 tram`() {
