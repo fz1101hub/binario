@@ -137,6 +137,8 @@ final class AppModel: ObservableObject {
     @Published private(set) var latestSnapshot: JourneySnapshot?
     @Published var persistenceMessageKey: String?
     @Published var selectedTab: Tab = .planner
+    /// The Agenda page of «Tratte» is open because the Home-screen quick action asked for it.
+    @Published var showingAgenda = false
     @Published private(set) var plannerRequest: PlannerRequest?
     /// The bundled network statistics; nil while reading, when the build carries no file or it
     /// cannot be read (the reliability lines, «Più affidabili» and the detail block are hidden).
@@ -1548,6 +1550,12 @@ final class AppModel: ObservableObject {
     }
 
     // MARK: Agenda
+
+    /// The Home-screen quick action «Agenda»: the «Tratte» tab, on its Agenda page.
+    func openAgenda() {
+        selectedTab = .saved
+        showingAgenda = true
+    }
 
     /// The Agenda as stored now (it is read again when its screen opens).
     func reloadAgenda() {

@@ -42,10 +42,11 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: it.binario.ios
         PRODUCT_NAME: Binario
         GENERATE_INFOPLIST_FILE: YES
-        # The keys INFOPLIST_KEY_ cannot express, merged with the generated ones: only App Transport
+        # The keys INFOPLIST_KEY_ cannot express, merged with the generated ones: App Transport
         # Security's exception for Android's single cleartext hop, an HTTPS request to
         # www.viaggiatreno.it redirected to the same resource over HTTP on that host (subdomains
-        # excluded), as in Android's network_security_config.xml. Every other request is HTTPS.
+        # excluded), as in Android's network_security_config.xml (every other request is HTTPS),
+        # and the static Home-screen quick action «Agenda» (title localized by InfoPlist.strings).
         INFOPLIST_FILE: Configuration/Binario-Info.plist
         INFOPLIST_KEY_CFBundleDisplayName: Binario
         INFOPLIST_KEY_CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"

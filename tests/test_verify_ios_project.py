@@ -461,6 +461,24 @@ class IOSProjectTests(unittest.TestCase):
         journeys = (IOS / "BinarioKit/Sources/BinarioKit/PlannedJourneys.swift").read_text(encoding="utf-8")
         self.assertIn("maximumNestingDepth = 16", journeys)
 
+    def test_home_screen_quick_action_opens_the_agenda_with_a_localized_title(self) -> None:
+        """EXPO_PORT_PLAN F45: one static quick action «Agenda» declared in Binario-Info.plist, its title localized
+        in every language by InfoPlist.strings with the Agenda's own name, handled at launch and later."""
+        for language in sorted(LANGUAGES):
+            folder = IOS / "Resources" / f"{language}.lproj"
+            titles = read_strings(folder / "InfoPlist.strings")
+            self.assertEqual({"Agenda"}, set(titles), language)
+            self.assertEqual(read_strings(folder / "Localizable.strings")["saved.agenda.title"], titles["Agenda"], language)
+        app = (IOS / "BinarioApp/BinarioApp.swift").read_text(encoding="utf-8")
+        self.assertIn('static let type = "it.binario.ios.agenda"', app)
+        self.assertIn("@UIApplicationDelegateAdaptor(BinarioAppDelegate.self)", app)
+        self.assertIn("options.shortcutItem", app)
+        self.assertIn("performActionFor shortcutItem: UIApplicationShortcutItem", app)
+        root = (IOS / "BinarioApp/RootView.swift").read_text(encoding="utf-8")
+        self.assertIn("NotificationCenter.default.publisher(for: AgendaQuickAction.notification)", root)
+        saved = (IOS / "BinarioApp/SavedRoutesView.swift").read_text(encoding="utf-8")
+        self.assertIn(".navigationDestination(isPresented: $model.showingAgenda)", saved)
+
     def test_text_import_adds_reviewed_journeys_on_catalogue_stations_only(self) -> None:
         """EXPO_PORT_PLAN F22 and §3.4: a pasted text becomes a preview on catalogue stations; journeys are added
         only after «Ho verificato», never replacing one, at most the Agenda's free places."""
@@ -564,7 +582,11 @@ class IOSProjectTests(unittest.TestCase):
         info = plistlib.loads((IOS / "Configuration/Binario-Info.plist").read_bytes())
         self.assertEqual({"NSAppTransportSecurity": {"NSExceptionDomains": {"www.viaggiatreno.it": {
             "NSExceptionAllowsInsecureHTTPLoads": True, "NSIncludesSubdomains": False,
-        }}}}, info)
+        }}}, "UIApplicationShortcutItems": [{
+            "UIApplicationShortcutItemType": "it.binario.ios.agenda",
+            "UIApplicationShortcutItemTitle": "Agenda",
+            "UIApplicationShortcutItemIconSymbolName": "calendar",
+        }]}, info)
         android = ElementTree.parse(ROOT / "app/src/main/res/xml/network_security_config.xml").getroot()
         self.assertEqual(
             [domain.text.strip() for domain in android.iter("domain") if domain.text],
