@@ -155,7 +155,7 @@ final class LiveSourceGateTests: XCTestCase {
         XCTAssertEqual(loads.value, 1)
     }
 
-    func testADeviceWithoutAConnectionNeverPausesTheSourceButIsNotAskedAgainAtOnce() async {
+    func testADeviceWithoutAConnectionNeverPausesTheSourceAndIsAskedAgainOnceBack() async {
         let clock = LiveTestClock(LiveTestDates.viaggiaTrenoNow)
         let pauses = LiveSourcePauses()
         let gate = makeGate(clock, pauses: pauses)
@@ -169,8 +169,8 @@ final class LiveSourceGateTests: XCTestCase {
             loads.increment()
             return .body(LiveBody(text: "ok", fetchedAt: clock.now()))
         }
-        XCTAssertEqual(again, .failure(.offline))
-        XCTAssertEqual(loads.value, 0, "the same resource is still asked once per interval")
+        XCTAssertEqual(again, .body(LiveBody(text: "ok", fetchedAt: clock.now())))
+        XCTAssertEqual(loads.value, 1, "nothing reached the source: out of the tunnel, a pull asks at once")
         // Back in coverage: the failures of the source count from zero.
         clock.advance(31)
         for key in ["f", "g"] {

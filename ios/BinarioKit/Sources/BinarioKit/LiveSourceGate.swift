@@ -358,10 +358,12 @@ final class LiveSourceGate: @unchecked Sendable {
         return until
     }
 
+    /// A device without a connection (`offline`) asked nothing of the source: back in coverage, the
+    /// next caller asks at once instead of showing «non disponibili» for the rest of the interval.
     private static func isCacheable(_ result: LiveFetchResult) -> Bool {
         switch result {
         case .body: return true
-        case .failure(.cancelled), .failure(.paused), .failure(.invalidRequest): return false
+        case .failure(.cancelled), .failure(.paused), .failure(.invalidRequest), .failure(.offline): return false
         case .failure: return true
         }
     }
