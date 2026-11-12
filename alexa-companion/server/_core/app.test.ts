@@ -52,6 +52,20 @@ describe("applicazione HTTP", () => {
     expect(response.headers.get("x-powered-by")).toBeNull();
   });
 
+  it("espone /readyz: 200 se il servizio può rispondere, 503 altrimenti, senza cache", async () => {
+    const app = await createApp({
+      serveClient: false,
+      readiness: async () => ({ ready: false, database: "unreachable", railData: "loaded" }),
+    });
+    server = app.listen(0);
+    await new Promise<void>(resolve => server!.once("listening", () => resolve()));
+    const baseUrl = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+    const response = await fetch(`${baseUrl}/readyz`);
+    expect(response.status).toBe(503);
+    expect(response.headers.get("cache-control")).toBe("no-store");
+    expect(await response.json()).toEqual({ ready: false, database: "unreachable", railData: "loaded" });
+  });
+
   it("limita per IP la pagina di consenso Alexa aperta dal browser", async () => {
     const baseUrl = await start();
     let lastStatus = 0;

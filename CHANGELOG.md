@@ -36,6 +36,35 @@ Dodici revisori indipendenti, ognuno con un punto di vista diverso, hanno trovat
   - le stazioni con un doppio spazio nel nome sono di nuovo utilizzabili;
   - un errore di lettura non spegne più il pianificatore fino alla chiusura dell'app;
   - il widget del Watch smette di aggiornarsi ogni 15 minuti quando non ha nulla da mostrare.
+- **«Partenze» su Android con i dati in tempo reale per primi** (decisione del titolare, anche nel widget della stazione): decidono i tabelloni live (monitor RFI, ViaggiaTreno, Svizzera); l'orario programmato RFI si mostra solo quando nessuno di loro risponde con treni, con l'avviso, e dopo l'ultimo treno live per arrivare a sei ore. Il tabellone di Italo, che elenca solo i treni Italo, si unisce sempre ma da solo non sostituisce quello della stazione. Nessuna richiesta in più; ordine delle fonti live e nome «Partenze» invariati.
+- **Android, stato dell'app**:
+  - i viaggi con cambio aggiornano i dati in tempo reale delle tratte e l'avviso «Coincidenza a rischio» (prima restavano quelli del momento della ricerca);
+  - tornando all'app i dati si aggiornano subito se hanno più di 30 secondi, invece di aspettare il ciclo successivo; mai più di una richiesta ogni 30 secondi per tipo di dato;
+  - le pagine «Più presto» e «Più tardi» scadute tornano «Programmato» invece di restare live per sempre;
+  - i dettagli delle corse del tabellone non spariscono più a ogni aggiornamento;
+  - un backup senza tratte salvate si importa se contiene altro; l'esportazione controlla il file prima di scriverlo e non crea più un file che l'importazione rifiuterebbe; il file esportato viene troncato se è più corto del precedente;
+  - dopo un'importazione all'avvio si apre la tratta giusta; l'importazione azzera data e ora pianificate come una nuova tratta;
+  - gli indici delle stazioni e lo storico della puntualità non lavorano più sul thread principale all'avvio;
+  - fissare una tratta non cancella più la ricerca non salvata; la direzione salvata non viene sovrascritta da una ricerca;
+  - la copia salvata mostrata dopo un aggiornamento fallito non elenca più treni partiti; la ricerca per numero dopo mezzanotte resta sul giorno cercato;
+  - un caricamento superato da una nuova ricerca viene annullato; i promemoria del pendolare si rileggono quando si torna all'app; il tabellone della stazione resta aperto anche se Android chiude l'app in background.
+- **Android, schermate**:
+  - sul tabellone di stazione TalkBack dice per primo che un treno è soppresso e legge le variazioni di percorso; «Soppresso», «Parzialmente soppresso», «Deviato» e «Bus sostitutivo» sono etichette in grassetto nel colore di errore;
+  - «In orario» non compare più accanto a «+0 min» o a un treno che una fonte dà in ritardo: una sola regola per righe, schede, distintivi e TalkBack;
+  - la dettatura non indovina più date e ore nelle lingue di cui non conosce le parole: lì il microfono della tratta è nascosto, quello del numero di treno resta, e le cifre di ogni alfabeto vengono lette;
+  - con caratteri grandi la destinazione va su due righe e il binario sotto; il tabellone dice quanti treni non sono in elenco oltre i 60;
+  - «Ultimo di oggi» e «primo domani» solo sul tabellone di oggi;
+  - «Smetti di monitorare» spegne davvero il monitoraggio della stazione (prima, su una stazione monitorata solo per le partenze, lo estendeva agli arrivi);
+  - lo spagnolo dice sempre «cancelado», come su iPhone;
+  - un controllo nella CI verifica chiavi, segnaposto e plurali delle 17 lingue.
+- **Alexa**:
+  - i festivi contano come domeniche in «il più puntuale»; un giorno della settimana senza dati non fa più proporre un treno;
+  - le frasi d'esempio e i messaggi di benvenuto propongono le domande sulla puntualità; le due domande in tempo reale aggiungono quello che la skill sa della puntualità;
+  - con più treni con lo stesso numero lo dice, invece di sceglierne uno;
+  - al massimo 32 tratte per account, nomi di stazione controllati al salvataggio, conferma prima di rimuovere una tratta; il cruscotto distingue caricamento, errore e dati;
+  - l'accesso è legato all'account Alexa che ha fatto il collegamento; codici e token scaduti o revocati si cancellano dopo 30 giorni;
+  - HSTS e Content-Security-Policy in produzione, endpoint di prontezza, spegnimento ordinato, fuso orario della sessione del database fissato; un errore di lettura delle statistiche si riprova dopo 60 secondi;
+  - tolto il codice inutilizzato del modello iniziale.
 - **Avvisi da fonti non cifrate**: un indirizzo costruito ad arte (schema annidato, barre codificate più volte) non diventa più un link toccabile. Il controllo sui siti ammessi vale nel punto in cui il link viene creato.
 - **CI iPhone** (#84): l'età degli orari blocca solo le release (run avviata a mano, PR verso un ramo di stabilizzazione). Nelle altre run è un avviso: dal 13 novembre il job sarebbe diventato rosso su ogni modifica.
 

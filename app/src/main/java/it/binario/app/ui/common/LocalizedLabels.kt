@@ -91,7 +91,8 @@ internal fun TrainService.localizedAccessibleSummary(): String {
     }
     val operationalLabel = if (operationalStatusVerified) {
         listOfNotNull(
-            status.localizedLabel(),
+            // «In ritardo, 6 minuti di ritardo», never «In orario, 6 minuti di ritardo» (ServiceRunLabel).
+            ServiceRunLabel.spokenStatus(this).localizedLabel(),
             if (delayMinutes > 0) pluralStringResource(R.plurals.operational_delay_minutes, delayMinutes, delayMinutes) else null
         ).joinToString(", ")
     } else {

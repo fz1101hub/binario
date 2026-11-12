@@ -209,6 +209,18 @@ class JourneyPlannerFeaturesPresentationTest {
         assertNull(LastOfDayMarks.firstNextDay(StaticDayDepartures(emptyList(), null), LocalDateTime.of(day, LocalTime.of(23, 0))))
     }
 
+    @Test fun `a board marks the last train of today only when it lists today's trains`() {
+        val today = LocalDate.of(2026, 11, 11)
+        // «Adesso», and a search of today from 18:00.
+        assertEquals(today, LastOfDayMarks.markedDay(today, followsCurrentTime = true, searchDate = today))
+        assertEquals(today, LastOfDayMarks.markedDay(today, followsCurrentTime = false, searchDate = today))
+        // At 23:50 a search planned for tomorrow 07:30 must not say «Non ci sono più treni oggi: primo domani alle 05:12».
+        assertNull(LastOfDayMarks.markedDay(today, followsCurrentTime = false, searchDate = today.plusDays(1)))
+        assertNull(LastOfDayMarks.markedDay(today, followsCurrentTime = false, searchDate = today.minusDays(1)))
+        // The stored date of a board that follows the clock may be yesterday's after midnight: the board is still of today.
+        assertEquals(today, LastOfDayMarks.markedDay(today, followsCurrentTime = true, searchDate = today.minusDays(1)))
+    }
+
     // --- Travel preferences in the results ---
 
     @Test fun `preferences open the matching chip, hide avoided direct trains and break ties`() {

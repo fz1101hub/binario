@@ -425,6 +425,7 @@
     <string name="backup_export_failure">Export failed: %1$s</string>
     <string name="backup_import_failure">Import failed: %1$s</string>
     <string name="backup_import_too_large">The backup is larger than the 1 MiB limit.</string>
+    <string name="backup_export_nothing">There is nothing to export yet.</string>
 
     <string name="personal_travel_title">Journey and monitoring</string>
     <string name="personal_travel_active">Active journey · Train %1$s</string>
@@ -1352,6 +1353,10 @@
     <plurals name="partenze_hidden_trains">
         <item quantity="one">%d train hidden</item>
         <item quantity="other">%d trains hidden</item>
+    </plurals>
+    <plurals name="station_board_more_not_listed">
+        <item quantity="one">%1$d more train not listed</item>
+        <item quantity="other">%1$d more trains not listed</item>
     </plurals>
     <plurals name="saved_timetable_solutions">
         <item quantity="one">%d option</item>

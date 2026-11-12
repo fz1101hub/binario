@@ -7,6 +7,17 @@ export type PersonalRouteDraft = {
   isPinned?: boolean;
 };
 
+/**
+ * Routes one account may keep (the owner's default): the dashboard
+ * refuses the next one, and the voice reads no more.
+ */
+export const MAX_PERSONAL_ROUTES = 32;
+
+/** The account already has {@link MAX_PERSONAL_ROUTES} routes. */
+export class RouteLimitError extends Error {
+  override name = "RouteLimitError";
+}
+
 /** Invalid user input: the API answers BAD_REQUEST, never an internal error. */
 export class RouteValidationError extends Error {
   override name = "RouteValidationError";

@@ -34,7 +34,16 @@ data class LocalDataBackup(
     val savedTimetables: List<SavedTimetable>? = null,
     /** "Preferenze di viaggio". Null when the file has none (older versions), so an import keeps this device's. */
     val travelPreferences: JourneyPreferences? = null
-)
+) {
+    /**
+     * Whether the backup carries anything an import applies besides its routes: favourite trains and stations,
+     * monitors, alerts, saved timetables, a punctuality history or preferences other than the defaults.
+     */
+    val carriesMoreThanRoutes: Boolean
+        get() = favouriteStationIds.isNotEmpty() || monitoredServices.isNotEmpty() || stationMonitors.isNotEmpty() ||
+            commuterAlerts.isNotEmpty() || !punctualityHistory.isNullOrEmpty() || !savedTimetables.isNullOrEmpty() ||
+            mobilityPreferences != MobilityPreferences() || (travelPreferences != null && travelPreferences != JourneyPreferences())
+}
 
 /** The file chosen for an import is larger than [LocalDataBackupCodec.MAX_BYTES]; the screen names it in the app language. */
 class BackupTooLargeException : IllegalArgumentException("backup larger than ${LocalDataBackupCodec.MAX_BYTES} bytes")
@@ -42,6 +51,17 @@ class BackupTooLargeException : IllegalArgumentException("backup larger than ${L
 sealed interface LocalBackupResult {
     data class Success(val backup: LocalDataBackup) : LocalBackupResult
     data class Failure(val message: String) : LocalBackupResult
+}
+
+/** What «Esporta» would write, checked with the import's own rules before any file is created. */
+sealed interface BackupExport {
+    data class Ready(val content: String) : BackupExport
+    /** No route and nothing else: the import would refuse the file. */
+    data object NothingToExport : BackupExport
+    /** Larger than [LocalDataBackupCodec.MAX_BYTES]: the import would refuse the file. */
+    data object TooLarge : BackupExport
+    /** The import would refuse the file for another reason (its diagnostic). */
+    data class Refused(val reason: String) : BackupExport
 }
 
 object LocalDataBackupCodec {
@@ -79,7 +99,30 @@ object LocalDataBackupCodec {
         // Optional, like "savedTimetables": older readers ignore it.
         backup.travelPreferences?.let { put("travel", TravelPreferencesCodec.toJson(it)) }
         put("mobility", JSONObject().apply { put("maxChanges", backup.mobilityPreferences.maxChanges); put("transferMarginMinutes", backup.mobilityPreferences.transferMarginMinutes); put("stepFreePreferred", backup.mobilityPreferences.stepFreePreferred); put("compactTimetablePreferred", backup.mobilityPreferences.compactTimetablePreferred) })
-    }.toString(2)
+        // Compact: indenting roughly doubled the file and brought a long history near the import's 1 MiB limit.
+    }.toString()
+
+    /**
+     * Encodes [backup] and reads it back with [decode], as an import on this device would ([stations] is the
+     * catalogue): a file the import would refuse is not written.
+     */
+    fun prepareExport(backup: LocalDataBackup, stations: List<Station>): BackupExport {
+        if (backup.routes.isEmpty() && !backup.carriesMoreThanRoutes) return BackupExport.NothingToExport
+        val content = encode(backup)
+        if (content.toByteArray(Charsets.UTF_8).size > MAX_BYTES) return BackupExport.TooLarge
+        return when (val readBack = decode(content, stations)) {
+            is LocalBackupResult.Success -> BackupExport.Ready(content)
+            is LocalBackupResult.Failure -> BackupExport.Refused(readBack.message)
+        }
+    }
+
+    /** Why «Esporta» writes nothing, in the app language where the reason is known; null when the file is ready. */
+    fun exportRefusalReason(export: BackupExport, text: (Int) -> String): String? = when (export) {
+        is BackupExport.Ready -> null
+        BackupExport.NothingToExport -> text(R.string.backup_export_nothing)
+        BackupExport.TooLarge -> text(R.string.backup_import_too_large)
+        is BackupExport.Refused -> export.reason
+    }
 
     /** Reads UTF-8 input with a hard limit before JSON parsing to bound memory use. */
     fun readBoundedUtf8(input: InputStream): String {
@@ -120,7 +163,8 @@ object LocalDataBackupCodec {
             // Stations outside the catalogue (free text, search index) only exist in the backup.
             return embeddedStations[stationId]?.also { restoredStations[it.id] = it }
         }
-        val routes = root.optJSONArray("routes").orEmpty().mapNotNull { item ->
+        val listedRoutes = root.optJSONArray("routes").orEmpty()
+        val routes = listedRoutes.mapNotNull { item ->
             val objectValue = item as? JSONObject ?: return@mapNotNull null
             require(!isReservedRouteId(objectValue.optString("id"))) { "Il backup contiene un identificativo di tratta riservato." }
             val origin = station(objectValue.optString("originId")) ?: return@mapNotNull null
@@ -138,9 +182,9 @@ object LocalDataBackupCodec {
                 it.name.isNotBlank() &&
                 it.outwardOrigin != it.outwardDestination
         }.distinctBy { it.id }.take(32)
-        // Schema v1/v2 has always required at least one valid personal route. Keep rejecting
-        // route-less files rather than silently applying a partial backup with ambiguous intent.
-        require(routes.isNotEmpty()) { "Il backup non contiene tratte valide." }
+        // A file that lists routes of which none is valid stays refused: applying it would erase the routes of this
+        // device for a reason the user cannot see. A file that lists none is judged below, by what else it carries.
+        require(routes.isNotEmpty() || listedRoutes.isEmpty()) { "Il backup non contiene tratte valide." }
         val favouriteIds = root.optJSONArray("favouriteStationIds").orEmpty()
             .mapNotNull { (it as? String)?.let(::station)?.id }
             .toSet()
@@ -169,10 +213,15 @@ object LocalDataBackupCodec {
         val punctuality = root.optJSONArray("punctualityHistory")?.let(PunctualityHistory::fromJson)
         val savedTimetables = root.optJSONArray("savedTimetables")?.let(SavedTimetableCodec::fromJson)
         val travel = root.optJSONObject("travel")?.let(TravelPreferencesCodec::fromJson)
-        LocalDataBackup(
+        val backup = LocalDataBackup(
             routes, favouriteIds, services, stationMonitors, alerts, mobility, restoredStations.values.filter { it.id in usedIds },
             punctuality, savedTimetables, travel
         )
+        // «Esporta» writes a file for everyone, also for who never saved a route and keeps favourite trains and
+        // stations, saved timetables, a punctuality history or their own preferences: that file is a backup too.
+        // Only a file that carries nothing at all is refused.
+        require(routes.isNotEmpty() || backup.carriesMoreThanRoutes) { "Il backup non contiene dati da importare." }
+        backup
     }.fold({ LocalBackupResult.Success(it) }, { LocalBackupResult.Failure(it.message ?: "Backup non leggibile.") })
 
     private fun encodeStation(station: Station): JSONObject = JSONObject().apply {

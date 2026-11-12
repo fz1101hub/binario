@@ -419,6 +419,7 @@
     <string name="backup_export_failure">एक्सपोर्ट नहीं हो सका: %1$s</string>
     <string name="backup_import_failure">इंपोर्ट नहीं हो सका: %1$s</string>
     <string name="backup_import_too_large">बैकअप 1 MiB की सीमा से बड़ा है।</string>
+    <string name="backup_export_nothing">अभी निर्यात करने के लिए कोई डेटा नहीं है।</string>
     <string name="personal_travel_title">यात्रा और निगरानी</string>
     <string name="personal_travel_active">सक्रिय यात्रा · ट्रेन %1$s</string>
     <string name="personal_travel_next_stop">अगला ठहराव: %1$s, अनुमानित %2$s</string>
@@ -1329,6 +1330,10 @@
     <plurals name="partenze_hidden_trains">
         <item quantity="one">%d ट्रेन छिपाई गई</item>
         <item quantity="other">%d ट्रेनें छिपाई गईं</item>
+    </plurals>
+    <plurals name="station_board_more_not_listed">
+        <item quantity="one">%1$d और ट्रेन सूची में नहीं है</item>
+        <item quantity="other">%1$d और ट्रेनें सूची में नहीं हैं</item>
     </plurals>
     <plurals name="saved_timetable_solutions">
         <item quantity="one">%d विकल्प</item>

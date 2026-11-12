@@ -8,7 +8,9 @@ import {
   defaultRailDataDir,
   loadPunctualityStats,
   MAX_STATS_JSON_BYTES,
+  preloadRailData,
   punctualityStats,
+  RAIL_DATA_RETRY_MS,
   railStationIndex,
   STATIONS_FILE,
   STATS_FILE,
@@ -45,6 +47,37 @@ describe("rail data files", () => {
     expect((await railStationIndex())?.codesFor("Roma Termini")).toEqual([ROMA_TERMINI]);
     expect(info).toHaveBeenCalledTimes(1);
     expect(info.mock.calls[0]).toEqual(["[Punctuality] statistics loaded", { trains: 8, windowEnd: "2026-11-09" }]);
+  });
+
+  it("tries a failed read again a minute later, not before, and keeps a good one", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    vi.spyOn(console, "info").mockImplementation(() => undefined);
+    useRailDataDir(scratch);
+    const start = 1_000_000;
+    expect(await punctualityStats(start)).toBeNull();
+    expect(await railStationIndex(start)).toBeNull();
+    // The files arrive (a deploy finishing): within the minute the null is kept, without reading again.
+    write(scratch, STATS_FILE, gzipSync(networkDocument()));
+    write(scratch, STATIONS_FILE, catalogDocument());
+    expect(await punctualityStats(start + RAIL_DATA_RETRY_MS - 1)).toBeNull();
+    expect(warn).toHaveBeenCalledTimes(2);
+    const loaded = await punctualityStats(start + RAIL_DATA_RETRY_MS);
+    expect(loaded?.trains.length).toBe(8);
+    expect((await railStationIndex(start + RAIL_DATA_RETRY_MS))?.codesFor("Roma Termini")).toEqual([ROMA_TERMINI]);
+    // Once read, kept: a later removal of the file changes nothing.
+    rmSync(path.join(scratch, STATS_FILE));
+    expect(await punctualityStats(start + 10 * RAIL_DATA_RETRY_MS)).toBe(loaded);
+  });
+
+  it("starts both reads at boot", async () => {
+    vi.spyOn(console, "info").mockImplementation(() => undefined);
+    write(scratch, STATS_FILE, gzipSync(networkDocument()));
+    write(scratch, STATIONS_FILE, catalogDocument());
+    useRailDataDir(scratch);
+    const boot = preloadRailData();
+    // The first question shares the read started at boot.
+    const [stats] = (await Promise.all([boot, punctualityStats()]))[0] as [unknown, unknown];
+    expect(stats).toBe(await punctualityStats());
   });
 
   it("says the statistics are absent, unreadable or invalid by file state only", async () => {

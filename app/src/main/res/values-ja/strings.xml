@@ -411,6 +411,7 @@
     <string name="backup_export_failure">エクスポートに失敗しました：%1$s</string>
     <string name="backup_import_failure">インポートに失敗しました：%1$s</string>
     <string name="backup_import_too_large">バックアップが上限の1 MiBを超えています。</string>
+    <string name="backup_export_nothing">エクスポートするデータはまだありません。</string>
     <string name="personal_travel_title">旅程とモニタリング</string>
     <string name="personal_travel_active">追跡中の旅程 · 列車 %1$s</string>
     <string name="personal_travel_next_stop">次の停車駅：%1$s、見込み %2$s</string>
@@ -1298,6 +1299,9 @@
     <string name="settings_credits_co2">CO₂ の推定：欧州環境機関（EEA）の乗客 1 人・1 km あたりの係数、%1$s：列車 %2$s g、車 %3$s g（乗車人数 1.5 人）、飛行機 %4$s g（1,000 km）〜 %5$s g（500 km）の CO₂ 換算値。駅間の直線距離を使用し、列車は ×1.2、車は ×1.25、飛行機は ×1.08。%6$s</string>
     <plurals name="partenze_hidden_trains">
         <item quantity="other">%d 本を非表示</item>
+    </plurals>
+    <plurals name="station_board_more_not_listed">
+        <item quantity="other">ほかに %1$d 本は表示されていません</item>
     </plurals>
     <plurals name="saved_timetable_solutions">
         <item quantity="other">%d 件の経路</item>

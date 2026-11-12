@@ -4,11 +4,13 @@ import it.binario.app.data.Station
 import it.binario.app.data.core.BoardKind
 import it.binario.app.data.core.RouteChangeKind
 import it.binario.app.data.core.ServiceKind
+import it.binario.app.data.core.SourceId
 import it.binario.app.data.core.SourceRef
 import it.binario.app.data.core.StationBoard
 import it.binario.app.data.core.StationBoardEntry
 import it.binario.app.data.core.StationId
 import it.binario.app.data.core.SourcedValue
+import it.binario.app.data.provider.KnownProviderIds
 import it.binario.app.data.provider.ProviderResult
 import it.binario.app.data.provider.ProviderWarning
 import it.binario.app.data.provider.StationBoardProvider
@@ -40,6 +42,13 @@ import kotlinx.coroutines.coroutineScope
  * train are clustered. Every operational field is selected with the same
  * category-aware source policy used by route reconciliation; provider list
  * order is never authoritative.
+ *
+ * Live first (owner decision): the station's live boards decide which trains
+ * the board lists. A board of [scheduledFallbackSources] (the RFI programmed
+ * board) is asked at the same time but is only the fallback: a train it alone
+ * lists is shown when no station live board answered with rows, or, with
+ * [programmedRowsAfterLiveSpan], after the last row of the live boards. Its
+ * rows never appear while a station live board may still answer.
  */
 class StationBoardAggregateService(
     private val providers: List<StationBoardProvider>,
@@ -57,7 +66,16 @@ class StationBoardAggregateService(
     /** A city board reads its pack's timetable on first use, which can take longer than a network board. */
     private val stopProviderTimeoutMillis: Long = 30_000L,
     /** How far back a late train may be scheduled and still be shown while its expected time is ahead. */
-    private val lateLookback: Duration = Duration.ofHours(2)
+    private val lateLookback: Duration = Duration.ofHours(2),
+    /** Boards that publish the timetable only: asked in parallel with the live boards, shown only as the fallback. */
+    private val scheduledFallbackSources: Set<SourceId> = setOf(KnownProviderIds.RFI_PROGRAMMED),
+    /**
+     * Live boards that list one operator's trains only (Italo in Viaggio). Their rows are always shown, but they do not
+     * stand for the station's live board: they neither end the fallback nor set the end of the live span.
+     */
+    private val operatorOnlySources: Set<SourceId> = setOf(KnownProviderIds.ITALO_STATUS),
+    /** See [PROGRAMMED_ROWS_AFTER_LIVE_SPAN]. */
+    private val programmedRowsAfterLiveSpan: Boolean = PROGRAMMED_ROWS_AFTER_LIVE_SPAN
 ) {
     val hasProviders: Boolean get() = providers.isNotEmpty()
 
@@ -67,7 +85,11 @@ class StationBoardAggregateService(
         from: Instant = clock.instant()
     ): StationBoardAggregateResult = observe(station, kind, from).last()
 
-    /** Publish useful rows immediately; optional/slow sources must not hold the board blank. */
+    /**
+     * Publish live rows as soon as a board answers; optional/slow sources must not hold the board blank. Programmed
+     * rows wait until no station live board can still answer (answered, failed or timed out), with no extra request.
+     * A partial board without rows is not published: the final result always is.
+     */
     fun observe(
         station: Station,
         kind: BoardKind = BoardKind.DEPARTURES,
@@ -89,46 +111,62 @@ class StationBoardAggregateService(
             lateSince = from.minus(lateLookback)
         )
         coroutineScope {
+            val roles = active.map(::roleOf)
             val completed = Channel<Pair<Int, ProviderAttempt>>(active.size)
             active.forEachIndexed { index, provider ->
-                launch(providerDispatcher) { completed.send(index to query(provider, request, timeoutMillis)) }
+                launch(providerDispatcher) { completed.send(index to query(provider, roles[index], request, timeoutMillis)) }
             }
             val attempts = arrayOfNulls<ProviderAttempt>(active.size)
             repeat(active.size) { completedCount ->
                 val (index, attempt) = completed.receive()
                 attempts[index] = attempt
-                val result = aggregate(station, request, attempts.filterNotNull())
+                val stationLiveMayAnswer = attempts.indices.any { attempts[it] == null && roles[it] == BoardRole.STATION_LIVE }
+                val result = aggregate(station, request, attempts.filterNotNull(), stationLiveMayAnswer)
                 val complete = completedCount == active.lastIndex
                 if (result is StationBoardAggregateResult.Success) {
-                    emit(result.copy(isComplete = complete))
+                    if (complete || result.board.entries.isNotEmpty()) emit(result.copy(isComplete = complete))
                 } else if (complete) emit(result)
             }
         }
     }.flowOn(providerDispatcher)
 
-    private suspend fun query(provider: StationBoardProvider, request: StationBoardRequest, timeoutMillis: Long): ProviderAttempt {
+    private fun roleOf(provider: StationBoardProvider): BoardRole = when (provider.descriptor.id) {
+        in scheduledFallbackSources -> BoardRole.PROGRAMMED
+        in operatorOnlySources -> BoardRole.OPERATOR_LIVE
+        else -> BoardRole.STATION_LIVE
+    }
+
+    private suspend fun query(
+        provider: StationBoardProvider,
+        role: BoardRole,
+        request: StationBoardRequest,
+        timeoutMillis: Long
+    ): ProviderAttempt {
+        val name = provider.descriptor.displayName
         return try {
             withTimeout(timeoutMillis) {
                 when (val result = provider.getStationBoard(request)) {
-                    is ProviderResult.Success -> ProviderAttempt.Board(provider.descriptor.displayName, result.value, emptySet())
-                    is ProviderResult.Partial -> ProviderAttempt.Board(provider.descriptor.displayName, result.value, result.warnings)
-                    is ProviderResult.Failure -> ProviderAttempt.Failure(provider.descriptor.displayName, result.error.safeMessage,
-                        unsupported = result.error.kind == it.binario.app.data.provider.ProviderErrorKind.NOT_SUPPORTED)
-                    is ProviderResult.NotModified -> ProviderAttempt.Failure(provider.descriptor.displayName, "La fonte non ha restituito un nuovo tabellone.")
+                    is ProviderResult.Success -> ProviderAttempt.Board(name, result.value, emptySet(), role)
+                    is ProviderResult.Partial -> ProviderAttempt.Board(name, result.value, result.warnings, role)
+                    is ProviderResult.Failure -> ProviderAttempt.Failure(name, result.error.safeMessage,
+                        unsupported = result.error.kind == it.binario.app.data.provider.ProviderErrorKind.NOT_SUPPORTED, role = role)
+                    is ProviderResult.NotModified -> ProviderAttempt.Failure(name, "La fonte non ha restituito un nuovo tabellone.", role = role)
                 }
             }
         } catch (_: TimeoutCancellationException) {
-            ProviderAttempt.Failure(provider.descriptor.displayName, "La fonte non ha risposto in tempo.")
+            ProviderAttempt.Failure(name, "La fonte non ha risposto in tempo.", role = role)
         } catch (error: CancellationException) { throw error }
         catch (_: Exception) {
-            ProviderAttempt.Failure(provider.descriptor.displayName, "La fonte non è momentaneamente disponibile.")
+            ProviderAttempt.Failure(name, "La fonte non è momentaneamente disponibile.", role = role)
         }
     }
 
+    /** [stationLiveMayAnswer]: a station live board has not answered yet, so no programmed-only row may be shown. */
     private fun aggregate(
         station: Station,
         request: StationBoardRequest,
-        attempts: List<ProviderAttempt>
+        attempts: List<ProviderAttempt>,
+        stationLiveMayAnswer: Boolean
     ): StationBoardAggregateResult {
         val returnedBoards = attempts.filterIsInstance<ProviderAttempt.Board>()
         val invalidBoards = returnedBoards.filter { attempt ->
@@ -159,12 +197,24 @@ class StationBoardAggregateService(
 
         val candidates = boards.flatMap { providerBoard ->
             providerBoard.board.entries.map { entry ->
-                EntryCandidate(providerBoard.providerName, providerBoard.board, entry)
+                EntryCandidate(providerBoard.providerName, providerBoard.board, entry, providerBoard)
             }
         }
 
-        val clusters = cluster(candidates)
-        val identityAmbiguous = hasAmbiguousIdentity(candidates)
+        // Live first: rows of the same run still merge field by field, but a train only the programmed board lists is
+        // shown when no station live board has rows (the fallback) or after the last of their rows.
+        val liveSpanEnd = candidates.filter { it.origin.role == BoardRole.STATION_LIVE }
+            .maxOfOrNull { it.entry.scheduledTime.toInstant() }
+        val clusters = cluster(candidates).filter { group ->
+            when {
+                group.any { it.origin.role != BoardRole.PROGRAMMED } -> true
+                stationLiveMayAnswer -> false
+                liveSpanEnd == null -> true
+                else -> programmedRowsAfterLiveSpan && group.all { it.entry.scheduledTime.toInstant().isAfter(liveSpanEnd) }
+            }
+        }
+        val shownCandidates = clusters.flatten()
+        val identityAmbiguous = hasAmbiguousIdentity(shownCandidates)
         var sourceConflict = false
         val entries = clusters.map { group ->
             if (hasConflict(group)) sourceConflict = true
@@ -174,11 +224,19 @@ class StationBoardAggregateService(
             .filter { request.keeps(it.scheduledTime.toInstant(), it.expectedTime?.value?.toInstant()) }
             .sortedBy { it.expectedTime?.value?.toInstant() ?: it.scheduledTime.toInstant() }
 
+        // The programmed board is named only when its rows are on the board, after the live boards.
+        val usedProgrammed = shownCandidates.filter { it.origin.role == BoardRole.PROGRAMMED }.map { it.origin }
+        val shownBoards = boards.filter { it.role != BoardRole.PROGRAMMED } +
+            boards.filter { board -> board.role == BoardRole.PROGRAMMED && usedProgrammed.any { it === board } }
+        val programmedFallback = liveSpanEnd == null && usedProgrammed.isNotEmpty()
+
         val warnings = buildSet {
-            boards.flatMapTo(this) { it.warnings }
-            if (attempts.filterIsInstance<ProviderAttempt.Failure>().any { !it.unsupported }) {
+            shownBoards.flatMapTo(this) { it.warnings }
+            if (attempts.filterIsInstance<ProviderAttempt.Failure>().any { !it.unsupported && it.role != BoardRole.PROGRAMMED }) {
                 add(ProviderWarning.REALTIME_UNAVAILABLE)
             }
+            // The station's live boards gave no rows: the board is the programmed one and says so.
+            if (programmedFallback) add(ProviderWarning.REALTIME_UNAVAILABLE)
             if (invalidBoards.isNotEmpty() || identityAmbiguous) add(ProviderWarning.IDENTITY_AMBIGUOUS)
             if (sourceConflict) add(ProviderWarning.SOURCE_CONFLICT)
             if (entries.any { it.routeChange?.value?.kind == RouteChangeKind.REPLACEMENT_SERVICE }) {
@@ -191,7 +249,7 @@ class StationBoardAggregateService(
                 station = station,
                 kind = request.kind,
                 entries = entries,
-                providerNames = boards.map { it.providerName }.distinct(),
+                providerNames = shownBoards.map { it.providerName }.distinct(),
                 warnings = warnings,
                 fetchedAt = clock.instant()
             )
@@ -397,6 +455,15 @@ class StationBoardAggregateService(
         .replace("ä", "ae")
         .replace("ü", "ue")
         .replace(Regex("[^a-z0-9]"), "")
+
+    companion object {
+        /**
+         * Owner default, to confirm: past the last row of the station's live boards (the RFI monitor lists about the
+         * next two hours, the programmed board six) the programmed rows follow, marked as programmed, so the board
+         * does not shrink to two hours. False ends the board with the live boards' span.
+         */
+        const val PROGRAMMED_ROWS_AFTER_LIVE_SPAN: Boolean = true
+    }
 }
 
 /** Catalogue coordinates as a validated point; a station without both values, or with invalid ones, has none. */
@@ -431,22 +498,35 @@ sealed interface StationBoardAggregateResult {
     data class Unavailable(val message: String, val allUnsupported: Boolean = false) : StationBoardAggregateResult
 }
 
+/** What a board stands for on the station board: see [StationBoardAggregateService]. */
+private enum class BoardRole {
+    /** A live board of every train at the station (RFI monitor, ViaggiaTreno, Swiss board): it decides the board. */
+    STATION_LIVE,
+    /** A live board of one operator's trains: shown, but it does not stand for the station's live board. */
+    OPERATOR_LIVE,
+    /** The timetable only (RFI programmed board): the fallback. */
+    PROGRAMMED
+}
+
 private sealed interface ProviderAttempt {
     data class Board(
         val providerName: String,
         val board: StationBoard,
-        val warnings: Set<ProviderWarning>
+        val warnings: Set<ProviderWarning>,
+        val role: BoardRole = BoardRole.STATION_LIVE
     ) : ProviderAttempt
 
     data class Failure(
         val providerName: String,
         val message: String,
-        val unsupported: Boolean = false
+        val unsupported: Boolean = false,
+        val role: BoardRole = BoardRole.STATION_LIVE
     ) : ProviderAttempt
 }
 
 private data class EntryCandidate(
     val providerName: String,
     val board: StationBoard,
-    val entry: StationBoardEntry
+    val entry: StationBoardEntry,
+    val origin: ProviderAttempt.Board
 )

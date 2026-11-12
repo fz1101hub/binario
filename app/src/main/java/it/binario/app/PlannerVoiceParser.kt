@@ -6,6 +6,7 @@ import it.binario.app.data.searchableValues
 import java.text.Normalizer
 import java.time.LocalDate
 import java.time.LocalTime
+import java.util.Locale
 
 data class DictatedPlannerInput(
     val origin: Station? = null,
@@ -57,13 +58,18 @@ internal fun PlannerVoiceReview.feedback(target: DictationTarget): PlannerVoiceF
 
 /** Interpreta localmente il testo già trascritto dal riconoscitore scelto dall’utente. */
 internal object PlannerVoiceParser {
-    // The system recognizer transcribes in the display language, so every app language is
-    // understood: Italian, English, German, French and Spanish.
+    // The system recognizer transcribes in the display language. The words for a day, a time and a return below
+    // are Italian, English, German, French and Spanish: the other twelve languages of the app have none ([offers]).
+    private val dateTimeLanguages = setOf("it", "en", "de", "fr", "es")
+    // Languages of the app written in another script: a recognizer writes the station names in that script too,
+    // and the timetable has them in Latin letters.
+    private val otherScriptLanguages = setOf("ar", "hi", "ja", "ko", "my", "ru", "th", "zh")
     private val trainPattern = Regex(
         "(?:^|\\s)(?:treno|numero|train|number|no|zug|nummer|nr|tren|frecciarossa|frecciargento|frecciabianca|" +
             "italo|intercity|eurocity|ic|ec|ice|tgv|railjet|rj)\\s+(\\d{1,6})(?=\\s|$)"
     )
     private val bareTrainNumberPattern = Regex("^(\\d{1,6})$")
+    private val numberPattern = Regex("\\d+")
     private const val MINUTES = "(\\d{2}|mezza|mezzo|media|demie|un quarto|quarto|cuarto|quart)"
     private const val MERIDIEM = "(?:\\s*(am|a m|pm|p m))?"
     private val keywordTimePattern = Regex(
@@ -117,23 +123,48 @@ internal object PlannerVoiceParser {
     )
 
     /**
+     * Whether the microphone of [target] is offered when the app speaks [language] (the language code of its
+     * locale). A train number is digits everywhere. A station is matched by its name in Latin letters. A route
+     * also carries a day and a time: where their words are not known («amanhã às 18h», «besok pukul 18») the day
+     * would be dropped and the search confirmed for today, so the route is not dictated there.
+     */
+    fun offers(target: DictationTarget, language: String): Boolean = when (target) {
+        DictationTarget.TRAIN -> true
+        DictationTarget.STATION -> language.lowercase(Locale.ROOT) !in otherScriptLanguages
+        DictationTarget.ROUTE -> knowsDateTimeWords(language)
+    }
+
+    private fun knowsDateTimeWords(language: String): Boolean = language.lowercase(Locale.ROOT) in dateTimeLanguages
+
+    /**
      * Compatibilità per i chiamanti esistenti: restituisce soltanto stazioni
      * risolte in modo univoco. I nuovi flussi UI devono usare [review].
      */
     fun parse(spoken: String, stations: List<Station>, today: LocalDate = LocalDate.now(RailTime.defaultZone)): DictatedPlannerInput =
-        analyze(spoken, stations, today).input
+        analyze(spoken, stations, today, dateTimeWords = true).input
 
     /**
      * Produce una decisione fail-closed. Una trascrizione ambigua non viene mai
      * applicata automaticamente: espone i candidati e richiede revisione.
+     * [language] è la lingua chiesta al riconoscitore: dove le parole per giorno e ora non sono note
+     * non si legge né l’uno né l’altra e una tratta non è mai confermata.
      */
     fun review(
         spoken: String,
         stations: List<Station>,
         target: DictationTarget,
-        today: LocalDate = LocalDate.now(RailTime.defaultZone)
+        today: LocalDate = LocalDate.now(RailTime.defaultZone),
+        /** The language code of the locale the recognizer was asked for; the screen always passes it. */
+        language: String = "it"
     ): PlannerVoiceReview {
-        val analysis = analyze(spoken, stations, today)
+        val dateTimeWords = knowsDateTimeWords(language)
+        val analysis = analyze(spoken, stations, today, dateTimeWords).let { read ->
+            // The train field takes a number and nothing else: the only number said is the train, whatever the
+            // language calls a train («trem 9512», «kereta 9512»).
+            if (target == DictationTarget.TRAIN && read.input.trainNumber == null) {
+                read.copy(input = read.input.copy(trainNumber = onlyNumber(spoken)))
+            } else read
+        }
         val groups = when (target) {
             DictationTarget.ROUTE -> analysis.mentions.take(2).mapIndexed { index, mention ->
                 DictatedStationCandidates(
@@ -165,6 +196,8 @@ internal object PlannerVoiceParser {
         val status = when {
             !hasRelevantValue -> DictationReviewStatus.UNRESOLVED
             hasAmbiguousStation || !isComplete -> DictationReviewStatus.NEEDS_REVIEW
+            // Two stations and words this parser cannot read: the day and the hour said with them are unknown.
+            target == DictationTarget.ROUTE && !dateTimeWords -> DictationReviewStatus.NEEDS_REVIEW
             else -> DictationReviewStatus.CONFIRMED
         }
         return PlannerVoiceReview(
@@ -175,15 +208,18 @@ internal object PlannerVoiceParser {
         )
     }
 
-    private fun analyze(spoken: String, stations: List<Station>, today: LocalDate): Analysis {
+    private fun analyze(spoken: String, stations: List<Station>, today: LocalDate, dateTimeWords: Boolean): Analysis {
         val normalized = normalize(spoken)
+        val raw = asciiDigits(spoken).lowercase()
         val mentions = findStationMentions(normalized, stations)
         val uniqueStations = mentions.map { mention -> mention.candidates.singleOrNull() }
-        val time = parseTime(normalized, spoken.lowercase())
-        val date = parseDate(normalized, spoken.lowercase(), today)
+        // Without the words of the language a number is not a time and a day is not said: nothing is guessed.
+        val time = if (dateTimeWords) parseTime(normalized, raw) else null
+        val date = if (dateTimeWords) parseDate(normalized, raw, today) else null
         val trainNumber = trainPattern.find(normalized)?.groupValues?.getOrNull(1)
             ?: bareTrainNumberPattern.find(normalized)?.groupValues?.getOrNull(1)
         val returnJourney = when {
+            !dateTimeWords -> null
             returnWords.any { containsWords(normalized, it) } -> true
             oneWayWords.any { containsWords(normalized, it) } -> false
             else -> null
@@ -287,7 +323,16 @@ internal object PlannerVoiceParser {
         return if (yearText.isBlank() && candidate.isBefore(today)) candidate.plusYears(1) else candidate
     }
 
-    private fun normalize(value: String): String = Normalizer.normalize(value.lowercase(), Normalizer.Form.NFD)
+    /** The number of a sentence that has exactly one, of at most six digits. */
+    private fun onlyNumber(spoken: String): String? =
+        numberPattern.findAll(asciiDigits(spoken)).map { it.value }.singleOrNull()?.takeIf { it.length <= 6 }
+
+    /** «٩٥١٢», «९५१२» and «９５１２» are 9512: recognizers write digits in the script of their language. */
+    private fun asciiDigits(value: String): String = buildString(value.length) {
+        value.forEach { char -> append(if (char.isDigit() && char !in '0'..'9') Character.forDigit(Character.digit(char, 10), 10) else char) }
+    }
+
+    private fun normalize(value: String): String = Normalizer.normalize(asciiDigits(value).lowercase(), Normalizer.Form.NFD)
         .replace("\\p{M}+".toRegex(), "")
         .replace("[^a-z0-9 ]".toRegex(), " ")
         .replace("\\s+".toRegex(), " ")

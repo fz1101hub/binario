@@ -116,6 +116,7 @@ def verify(read_file=read) -> None:
         ":app:lintRelease",
         ":wear:lintRelease",
         "python3 -m unittest tests.test_wear_compose_gradle_dependency_suppressions",
+        "python3 -m unittest tests.test_android_string_resources",
         section=lambda text: text.split("\n  dependency-metadata:\n", 1)[0],
     )
 

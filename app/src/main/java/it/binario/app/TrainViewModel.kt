@@ -134,6 +134,8 @@ class TrainViewModel @JvmOverloads constructor(
     private var stationBoardJob: Job? = null
     private var stationBoardRunJob: Job? = null
     private var stationBoardRunRequestId = 0L
+    /** When [stationBoardRunDetails] was read (wall clock), for the age of its live values. */
+    private var stationBoardRunLoadedAtMillis: Long? = null
 
     var savedRoutes by mutableStateOf(pinnedFirst(routeStore.routes(stations)))
         private set
@@ -196,9 +198,17 @@ class TrainViewModel @JvmOverloads constructor(
         private set
     var mobilityPreferences by mutableStateOf(mobilityPreferencesStore.read())
         private set
-    /** Local-only punctuality observations, newest first. */
-    var punctualityHistory by mutableStateOf(punctualityStore.read())
+    /**
+     * Local-only punctuality observations, newest first. Up to a few hundred KB of JSON: read, recorded and written
+     * off the main thread ([punctualityWork]), where a running train's refreshes made the screen stutter.
+     */
+    var punctualityHistory by mutableStateOf(emptyList<PunctualityObservation>())
         private set
+    private var punctualityHistoryLoaded = false
+    private val punctualityWork = SerialStoreWork(viewModelScope, Dispatchers.IO, read = { punctualityHistory }) {
+        punctualityHistory = it
+        punctualityHistoryLoaded = true
+    }.also { work -> work.submit { punctualityStore.read() } }
 
     private var primaryServicePresentation by mutableStateOf(ServicePresentation.empty())
     private var returnServicePresentation by mutableStateOf(ServicePresentation.empty())
@@ -207,6 +217,15 @@ class TrainViewModel @JvmOverloads constructor(
     private var availableOperatorNames by mutableStateOf<List<String>>(emptyList())
     /** «Più presto» / «Più tardi» of the route results: windows of direct trains loaded around the primary search. */
     private var servicePages by mutableStateOf(ServicePages.EMPTY)
+    /** The request that reads again the open train of one of those windows. */
+    private var pagedServiceJob: Job? = null
+    /**
+     * The route loads in flight (current direction, return leg, «Più presto» / «Più tardi»), each with what it asked
+     * for: a load another one supersedes is cancelled ([RouteStateRules.cancelsSupersededLoad]).
+     */
+    private var primaryLoad: RouteLoad? = null
+    private var returnLoad: RouteLoad? = null
+    private var servicePageLoad: RouteLoad? = null
 
     private val journeyQueryState = JourneyQueryState()
     private var returnJourneyQuery: JourneyQuery? = null
@@ -216,6 +235,17 @@ class TrainViewModel @JvmOverloads constructor(
     private var returnRefreshRequestId: Long = 0L
     /** Independent station-board token; changing station/kind invalidates older responses. */
     private var stationBoardRequestId: Long = 0L
+    /**
+     * When the last request of each kind of visible data started ([refreshClock]); null before the first. The periodic
+     * refresh asks again 30 seconds after these, not 30 seconds after the screen appeared ([refreshIfDue]).
+     */
+    private var routeRequestedAtMillis: Long? = null
+    private var returnRequestedAtMillis: Long? = null
+    private var trainNumberRequestedAtMillis: Long? = null
+    private var stationBoardRequestedAtMillis: Long? = null
+    /** The catalogue has been applied and the bootstrap refresh decided: the periodic refresh may ask for the route. */
+    private var bootstrapCompleted = false
+    private fun refreshClock(): Long = android.os.SystemClock.elapsedRealtime()
 
     init {
         if (enableStartupEffects) {
@@ -245,37 +275,50 @@ class TrainViewModel @JvmOverloads constructor(
                     Log.e("BinarioCatalog", "Impossibile caricare il catalogo stazioni curato", error)
                 }
                 .getOrDefault(emptyList())
+            // The indexes of the whole catalogue are built here, off the main thread, and only assigned on it: built
+            // there, they froze the first screen right after it appeared at every cold start.
+            val built = if (imported.isNotEmpty()) StationIndexes.build(imported, customStationStore.stations()) else null
             withContext(Dispatchers.Main) {
-                if (imported.isNotEmpty()) {
-                    val legacyCustom = customStationStore.stations()
-                    val importedCanonicalizer = StationCanonicalizer(imported)
-                    val migratedCustom = legacyCustom.map(importedCanonicalizer::canonicalize)
-                    stations = imported + migratedCustom.filterNot { custom -> imported.any { it.id == custom.id } }
-                    stationAutocomplete = StationAutocompleteEngine(stations)
-                    stationCanonicalizer = StationCanonicalizer(stations)
+                val routeAtConstruction = activeRoute
+                if (built != null) {
+                    // A station remembered while they were being built (a search made at once) is rare: only then
+                    // are the indexes built again, here.
+                    val remembered = customStationStore.stations()
+                    val indexes = if (remembered == built.remembered) built else StationIndexes.build(imported, remembered)
+                    stations = indexes.stations
+                    stationAutocomplete = indexes.autocomplete
+                    stationCanonicalizer = indexes.canonicalizer
                     savedRoutes = pinnedFirst(routeStore.routes(stations).map(::canonicalRoute))
                     // Route widgets of the first versions saved only the route id: they take its stations now.
                     RouteWidgetProvider.migrateLegacyConfigurations(getApplication(), savedRoutes)
                     recentRoutes = routeStore.recentRoutes(stations).map { recent ->
                         RecentRoute(canonicalStation(recent.origin), canonicalStation(recent.destination))
                     }
-                    // Canonicalize the route that is current *now*. Re-reading RouteStore here
-                    // could overwrite an ad-hoc route selected while the catalog was loading.
-                    activeRoute = savedRoutes.firstOrNull { it.id == activeRoute.id }
-                        ?: canonicalRoute(activeRoute)
-                    // Before the catalogue loads only remembered stations can decode the saved
-                    // routes, so the stored active route may not have resolved at construction.
-                    // Resolve it again unless the user already activated a route meanwhile.
-                    if (!hasActiveRoute && refreshRequestId == 0L) {
-                        activeRoute = routeStore.activeRoute(savedRoutes)
-                    }
+                    // Before the catalogue loads only remembered stations can decode the saved routes, so the
+                    // route taken at construction may not be the stored one (a route imported from a backup next
+                    // to one created here). The stored route is resolved again, unless the user chose a route
+                    // while the catalogue was loading: that one stays, canonicalized.
+                    activeRoute = RouteStateRules.activeRouteAfterCatalogue(
+                        current = activeRoute, routes = savedRoutes, storedId = routeStore.activeRouteId(),
+                        routeChosenInSession = routeChangedInSession, canonical = ::canonicalRoute
+                    )
                     favouriteStations = stationPreferences.favourites(stations)
                     stationMonitors = personalTravelStore.stationMonitors(stations)
                 }
 
+                // A refresh already started for the route taken at construction (the refresh button, pressed
+                // while the catalogue was loading) does not count when the stored route is another one: its
+                // rows are not this route's.
+                if (activeRoute.id != routeAtConstruction.id && !routeChangedInSession && refreshRequestId != 0L) {
+                    clearSelectedService()
+                    primarySnapshot = null
+                    rebuildServicePresentations()
+                    if (enableStartupEffects && hasActiveRoute) refresh()
+                }
                 // If no user-driven refresh started while the catalog was loading, perform
                 // the one bootstrap refresh now (also when the catalog load failed/was empty).
                 if (enableStartupEffects && refreshRequestId == 0L && hasActiveRoute) refresh()
+                bootstrapCompleted = true
             }
         }
     }
@@ -424,6 +467,7 @@ class TrainViewModel @JvmOverloads constructor(
         }
         stationBoardStation = canonical
         stationBoardKind = kind
+        stationBoardRequestedAtMillis = refreshClock()
         stationBoardRefreshState = RefreshState.LOADING
         stationBoardMessages = emptyList()
         stationBoardJob = viewModelScope.launch {
@@ -455,6 +499,16 @@ class TrainViewModel @JvmOverloads constructor(
 
     fun openStationBoard(station: Station, kind: BoardKind = BoardKind.DEPARTURES) = loadStationBoard(station, kind)
 
+    /**
+     * Opens again the board the saved state names after the process was recreated ([stationId], [kindName]): only
+     * while no board is open, and once the catalogue knows the station (called again when it has loaded).
+     */
+    fun restoreStationBoard(stationId: String, kindName: String) {
+        if (stationBoardStation != null) return
+        val station = stations.firstOrNull { it.id == stationId } ?: return
+        loadStationBoard(station, BoardKind.entries.firstOrNull { it.name == kindName } ?: BoardKind.DEPARTURES)
+    }
+
     private fun savedToday(epochMillis: Long): Boolean =
         java.time.Instant.ofEpochMilli(epochMillis).atZone(RailTime.defaultZone).toLocalDate() == java.time.LocalDate.now(RailTime.defaultZone)
 
@@ -474,6 +528,11 @@ class TrainViewModel @JvmOverloads constructor(
     }
 
     fun openStationBoardRun(entry: StationBoardEntry) {
+        // Another run: nothing of the previous one stays under its name.
+        if (selectedBoardEntry?.runId != entry.runId) {
+            stationBoardRunDetails = null
+            stationBoardRunLoadedAtMillis = null
+        }
         selectedBoardEntry = entry.withoutExpiredObservations(java.time.Instant.now())
         refreshStationBoardRun()
     }
@@ -485,12 +544,19 @@ class TrainViewModel @JvmOverloads constructor(
         selectedBoardEntry = entry.withoutExpiredObservations(java.time.Instant.now())
         val requestId = ++stationBoardRunRequestId
         stationBoardRunJob?.cancel()
-        stationBoardRunDetails = null
+        // The stops on screen stay while they are read again, and if that fails: the list is not emptied (and its
+        // scroll position lost) at every periodic refresh. Only their live claims go once they are too old.
+        stationBoardRunDetails = retainedRunDetails(stationBoardRunDetails, stationBoardRunLoadedAtMillis, System.currentTimeMillis())
         stationBoardRunRefreshState = RefreshState.LOADING
         stationBoardRunJob = viewModelScope.launch {
             val details = stationBoardDetailsService.load(station, kind, entry)
             if (requestId != stationBoardRunRequestId) return@launch
-            stationBoardRunDetails = details
+            if (details != null) {
+                stationBoardRunDetails = details
+                stationBoardRunLoadedAtMillis = System.currentTimeMillis()
+            } else {
+                stationBoardRunDetails = retainedRunDetails(stationBoardRunDetails, stationBoardRunLoadedAtMillis, System.currentTimeMillis())
+            }
             stationBoardRunRefreshState = if (details != null) RefreshState.SUCCESS else RefreshState.ERROR
         }
     }
@@ -510,6 +576,7 @@ class TrainViewModel @JvmOverloads constructor(
         stationBoardRunJob?.cancel()
         selectedBoardEntry = null
         stationBoardRunDetails = null
+        stationBoardRunLoadedAtMillis = null
         stationBoardRunRefreshState = RefreshState.IDLE
     }
 
@@ -586,7 +653,7 @@ class TrainViewModel @JvmOverloads constructor(
         } else {
             journeyQueryValue(serviceDate, departureTime).let { journeyQueryState.selectPlanned(it.serviceDate, it.departureTime) }
         }
-        routeStore.saveDirection(direction)
+        storeDirectionOfStoredRoute()
         recentRoutes = routeStore.recordRecent(rememberedOrigin, rememberedDestination, stations)
         clearSelectedService()
         primarySnapshot = null
@@ -629,12 +696,17 @@ class TrainViewModel @JvmOverloads constructor(
         routeChangedInSession = true
         routeSearchRecord = null
         direction = if (direction == Direction.OUTBOUND) Direction.RETURN else Direction.OUTBOUND
-        routeStore.saveDirection(direction)
+        storeDirectionOfStoredRoute()
         clearSelectedService()
         primarySnapshot = null
         rebuildServicePresentations()
         operatorFilter = null
         refresh()
+    }
+
+    /** The direction is stored only for the route the next start opens, never for a search ([RouteStateRules.storesDirection]). */
+    private fun storeDirectionOfStoredRoute() {
+        if (RouteStateRules.storesDirection(activeRoute, savedRoutes, routeStore.activeRouteId())) routeStore.saveDirection(direction)
     }
 
     /**
@@ -681,13 +753,15 @@ class TrainViewModel @JvmOverloads constructor(
         ++trainNumberSearchRequestId
         trainNumberSearchJob?.cancel()
         trainNumberMatches = emptyList()
+        // Another number: nothing on screen is of the earlier search's day any more.
+        trainNumberSearchDate = JourneyQuery.now().serviceDate
         trainNumberSearchState = RefreshState.IDLE
         trainNumberUnavailableSources = emptySet()
         if (selectedGlobalTrainId != null) clearSelectedService()
     }
 
     fun searchTrainNumber(refresh: Boolean = false) {
-        val query = TrainNumberQuery(trainNumberQuery, JourneyQuery.now().serviceDate)
+        val query = TrainNumberQuery(trainNumberQuery, RouteStateRules.numberSearchDate(refresh, trainNumberSearchDate, JourneyQuery.now().serviceDate))
         if (!query.valid) { trainNumberSearchState = RefreshState.ERROR; return }
         if (trainNumberSearchJob?.isActive == true && refresh) return
         val requestId = ++trainNumberSearchRequestId
@@ -704,6 +778,7 @@ class TrainViewModel @JvmOverloads constructor(
             }
         }
         trainNumberSearchDate = query.date
+        trainNumberRequestedAtMillis = refreshClock()
         val retainedMatches = trainNumberMatches
         trainNumberSearchState = RefreshState.LOADING
         trainNumberUnavailableSources = emptySet()
@@ -786,7 +861,7 @@ class TrainViewModel @JvmOverloads constructor(
         }
         savedRoutes = pinnedFirst(updated)
         routeStore.saveRoutes(savedRoutes)
-        activeRoute = savedRoutes.firstOrNull { it.id == activeRoute.id } ?: unconfiguredRoute()
+        activeRoute = RouteStateRules.activeRouteAfterPin(activeRoute, savedRoutes)
     }
 
     fun canMoveRoute(route: SavedRoute, delta: Int): Boolean =
@@ -823,7 +898,7 @@ class TrainViewModel @JvmOverloads constructor(
             rebuildServicePresentations()
             operatorFilter = null
             if (hasActiveRoute) refresh() else {
-                refreshRequestId += 1
+                invalidatePrimaryLoad()
                 primarySnapshot = null
                 rebuildServicePresentations()
                 refreshState = RefreshState.IDLE
@@ -843,7 +918,7 @@ class TrainViewModel @JvmOverloads constructor(
             return
         }
         if (!hasActiveRoute) {
-            refreshRequestId += 1
+            invalidatePrimaryLoad()
             primarySnapshot = null
             rebuildServicePresentations()
             refreshState = RefreshState.ERROR
@@ -852,6 +927,7 @@ class TrainViewModel @JvmOverloads constructor(
         }
         refreshState = RefreshState.LOADING
         refreshMessage = null
+        expireServicePages()
         val routeAtRequest = activeRoute
         val directionAtRequest = direction
         val queryAtRequest = journeyQueryState.value
@@ -861,7 +937,11 @@ class TrainViewModel @JvmOverloads constructor(
         val publishesCurrentDepartures = journeyQueryState.followsCurrentTime
         val publishesToWear = publishesCurrentDepartures && !activeRouteIsSearch
         val requestId = ++refreshRequestId
-        viewModelScope.launch {
+        routeRequestedAtMillis = refreshClock()
+        val loadKey = servicePagingKey()
+        // «Più presto» / «Più tardi» of another search than this one are of no use any more.
+        servicePageLoad?.takeIf { RouteStateRules.cancelsSupersededLoad(it.key, loadKey) }?.let(::cancelServicePageLoad)
+        primaryLoad = replaceLoad(primaryLoad, loadKey) { viewModelScope.launch {
             val result = observeRouteShowingProgress(routeAtRequest, directionAtRequest, queryAtRequest, { requestId == refreshRequestId }) { early ->
                 primarySnapshot = early
                 primarySnapshotIsCurrent = publishesCurrentDepartures
@@ -901,9 +981,10 @@ class TrainViewModel @JvmOverloads constructor(
                 }
                 is DataResult.Failure -> {
                     invalidateSelectedService(directionAtRequest, onlyIfExpired = true)
-                    // Nothing of this route on screen: today's last good result, marked as a saved copy (timetable only).
+                    // Nothing of this route on screen: today's last good result without the trains already gone,
+                    // marked as a saved copy (timetable only).
                     if (publishesCurrentDepartures && primarySnapshot?.let { it.route.id == routeAtRequest.id && it.direction == directionAtRequest } != true) {
-                        lastGood.route(routeAtRequest, directionAtRequest)?.takeIf { savedToday(it.retrievedAtEpochMillis) }?.let { saved ->
+                        lastGood.route(routeAtRequest, directionAtRequest)?.let { RouteStateRules.savedRouteCopy(it, java.time.Instant.now()) }?.let { saved ->
                             primarySnapshot = saved
                             primarySnapshotIsCurrent = false
                             rebuildServicePresentations()
@@ -935,7 +1016,7 @@ class TrainViewModel @JvmOverloads constructor(
                     refreshMessage = result.reason.uiMessage()
                 }
             }
-        }
+        } }
         if (returnJourneyQuery != null) refreshReturn()
     }
 
@@ -949,6 +1030,36 @@ class TrainViewModel @JvmOverloads constructor(
         } else if (refreshState != RefreshState.LOADING && returnRefreshState != RefreshState.LOADING && journeyQueryState.value.serviceDate == today) {
             refresh()
         }
+    }
+
+    /**
+     * The periodic refresh of the screen on show ([target]), run when the screen appears, when the app returns to the
+     * foreground and then at every wait it returns (milliseconds). The data is asked for again only when its last
+     * request started 30 seconds ago or more: a return after a long pause refreshes at once instead of showing old
+     * delays and platforms for 30 seconds, while moving between screens never asks more often than every 30 seconds.
+     */
+    internal fun refreshIfDue(target: PeriodicRefresh, nowMillis: Long = refreshClock()): Long {
+        val requestedAt = when (target) {
+            PeriodicRefresh.JOURNEY -> return LiveRefreshCadence.INTERVAL_MILLIS
+            PeriodicRefresh.STATION_BOARD -> stationBoardRequestedAtMillis
+            // Nothing was searched in this process yet (a restored screen searches by itself).
+            PeriodicRefresh.TRAIN_NUMBER -> trainNumberRequestedAtMillis ?: return LiveRefreshCadence.INTERVAL_MILLIS
+            PeriodicRefresh.ROUTE, PeriodicRefresh.ROUTE_AND_JOURNEYS -> when {
+                selectedGlobalTrainId != null -> trainNumberRequestedAtMillis
+                // The first request belongs to the bootstrap, after the catalogue has canonicalized the saved route.
+                !bootstrapCompleted -> return LiveRefreshCadence.INTERVAL_MILLIS
+                selectedServiceDirection == Direction.RETURN && returnJourneyQuery != null -> returnRequestedAtMillis
+                else -> routeRequestedAtMillis
+            }
+        }
+        if (!LiveRefreshCadence.isDue(requestedAt, nowMillis)) return LiveRefreshCadence.waitMillis(requestedAt, nowMillis)
+        when (target) {
+            PeriodicRefresh.STATION_BOARD -> refreshStationBoardIfIdle()
+            PeriodicRefresh.TRAIN_NUMBER -> searchTrainNumber(refresh = true)
+            PeriodicRefresh.ROUTE, PeriodicRefresh.ROUTE_AND_JOURNEYS -> refreshLiveIfIdle()
+            PeriodicRefresh.JOURNEY -> Unit
+        }
+        return LiveRefreshCadence.INTERVAL_MILLIS
     }
 
     fun refreshSelectedService() {
@@ -969,7 +1080,8 @@ class TrainViewModel @JvmOverloads constructor(
         returnRefreshMessage = null
         val routeAtRequest = activeRoute
         val requestId = ++returnRefreshRequestId
-        viewModelScope.launch {
+        returnRequestedAtMillis = refreshClock()
+        returnLoad = replaceLoad(returnLoad, "${routeAtRequest.id}|$queryAtRequest") { viewModelScope.launch {
             val result = observeRouteShowingProgress(routeAtRequest, Direction.RETURN, queryAtRequest,
                 { requestId == returnRefreshRequestId && returnJourneyQuery == queryAtRequest }) { early ->
                 returnSnapshot = early
@@ -996,6 +1108,36 @@ class TrainViewModel @JvmOverloads constructor(
                     returnRefreshMessage = result.reason.uiMessage()
                 }
             }
+        } }
+    }
+
+    /** No route to load: what the current direction's load in flight brings is thrown away, so it is cancelled. */
+    private fun invalidatePrimaryLoad() {
+        refreshRequestId += 1
+        primaryLoad?.job?.cancel()
+        primaryLoad = null
+    }
+
+    /**
+     * Starts the load [start] for [key] in place of [previous]. The previous one is cancelled when it asked for
+     * something else; one that asked for the same is left to run, so that the two share their requests in flight.
+     */
+    private fun replaceLoad(previous: RouteLoad?, key: String, start: () -> Job): RouteLoad {
+        val load = RouteLoad(key, start())
+        if (previous != null && RouteStateRules.cancelsSupersededLoad(previous.key, key)) previous.job.cancel()
+        return load
+    }
+
+    /** Cancels a «Più presto» / «Più tardi» load; its window is no longer shown as loading. */
+    private fun cancelServicePageLoad(load: RouteLoad) {
+        load.job.cancel()
+        if (servicePageLoad === load) servicePageLoad = null
+        val pages = servicePages
+        if (pages.key == load.key && (pages.earlier.loading || pages.later.loading)) {
+            servicePages = pages.copy(
+                earlier = pages.earlier.takeUnless { it.loading } ?: ResultsPageState(),
+                later = pages.later.takeUnless { it.loading } ?: ResultsPageState()
+            )
         }
     }
 
@@ -1030,6 +1172,7 @@ class TrainViewModel @JvmOverloads constructor(
     }
 
     private fun clearSelectedService() {
+        pagedServiceJob?.cancel()
         selectedGlobalTrainId = null
         selectedService = null
         selectedServiceDirection = null
@@ -1051,9 +1194,53 @@ class TrainViewModel @JvmOverloads constructor(
             selectedServiceSnapshot = updated
             notePunctuality(listOf(refreshed), updated)
         } ?: run {
-            // A train of «Più presto» / «Più tardi» keeps the page it came from: the primary search never held it.
-            if (servicePages.snapshots.any { it === selectedServiceSnapshot }) return
-            invalidateSelectedService(updatedDirection)
+            // A train of «Più presto» / «Più tardi»: the primary search never held it, so its own window is asked again.
+            if (isPagedService(selected)) refreshSelectedPagedService(updatedDirection)
+            else invalidateSelectedService(updatedDirection)
+        }
+    }
+
+    private fun isPagedService(service: TrainService): Boolean =
+        currentServicePages()?.snapshots.orEmpty().any { page -> page.services.any { it.id == service.id } }
+
+    /**
+     * The trains of «Più presto» / «Più tardi» are read once, when their window is loaded: at every refresh the windows
+     * past their expiry keep their trains as timetable rows, with no delay or platform shown as current.
+     */
+    private fun expireServicePages(nowMillis: Long = System.currentTimeMillis()) {
+        val pages = servicePages
+        val updated = pages.snapshots.map { pageWithoutExpiredObservations(it, nowMillis) }
+        if (updated.indices.any { updated[it] !== pages.snapshots[it] }) servicePages = pages.copy(snapshots = updated)
+    }
+
+    /**
+     * Reads again the open train of a «Più presto» / «Più tardi» window, from the same route sources and from its own
+     * departure: one request per refresh, only while that detail is open. The answer replaces the train in its window;
+     * without an answer the detail keeps what it had, with no live claim once that has expired.
+     */
+    private fun refreshSelectedPagedService(directionAtRequest: Direction) {
+        val selected = selectedService ?: return
+        val key = servicePagingKey()
+        val from = ResultsPaging.departureOf(selected, journeyQueryState.value.serviceDate) ?: return
+        val routeAtRequest = activeRoute
+        pagedServiceJob?.cancel()
+        pagedServiceJob = viewModelScope.launch {
+            val answer = routePage(routeAtRequest, directionAtRequest, from)
+            val open = selectedService
+            val pages = currentServicePages()?.takeIf { it.key == key }
+            if (open == null || pages == null || open.id != selected.id || selectedServiceDirection != directionAtRequest) return@launch
+            val refreshed = answer?.let { findRefreshedService(open, it.services) }
+            if (answer == null || refreshed == null) {
+                invalidateSelectedService(directionAtRequest, onlyIfExpired = true)
+                return@launch
+            }
+            // The train keeps the day of its window, so one of tomorrow morning stays after this evening's.
+            val train = if (refreshed.scheduledDepartureDateTime != null) refreshed else refreshed.copy(scheduledDepartureDateTime = from)
+            val page = answer.copy(services = listOf(train))
+            servicePages = pages.copy(snapshots = pagesWithRefreshedService(pages.snapshots, open.id, page))
+            selectedService = train
+            selectedServiceSnapshot = page
+            notePunctuality(listOf(train), page)
         }
     }
 
@@ -1096,13 +1283,15 @@ class TrainViewModel @JvmOverloads constructor(
             else -> primarySnapshot
         }
         notePunctuality(listOf(service), selectedServiceSnapshot)
+        // A window read a while ago: the detail asks for its train again instead of waiting for the next refresh.
+        if (page != null && (page.freshness == Freshness.STALE || page.isExpired)) refreshSelectedPagedService(resolvedDirection)
     }
 
     /** Statistics of the open train from the local history; null below two observations. */
     fun punctualityStats(service: TrainService): PunctualityStats? = PunctualityHistory.stats(punctualityHistory, service.number)
 
     fun clearPunctualityHistory(trainNumber: String) {
-        punctualityHistory = punctualityStore.removeTrain(punctualityHistory, trainNumber)
+        punctualityWork.submit { punctualityStore.removeTrain(it, trainNumber) }
     }
 
     /**
@@ -1116,7 +1305,7 @@ class TrainViewModel @JvmOverloads constructor(
         val observations = services.mapNotNull { PunctualityHistory.observationOf(it, today) }
             .filterNot { it in punctualityHistory }
         if (observations.isEmpty()) return
-        punctualityHistory = punctualityStore.record(punctualityHistory, observations)
+        punctualityWork.submit { punctualityStore.record(it, observations) }
     }
 
     fun closeService() {
@@ -1168,7 +1357,7 @@ class TrainViewModel @JvmOverloads constructor(
         val routeAtRequest = activeRoute
         val directionAtRequest = direction
         servicePages = if (later) pages.copy(later = ResultsPageState.LOADING) else pages.copy(earlier = ResultsPageState.LOADING)
-        viewModelScope.launch {
+        servicePageLoad = replaceLoad(servicePageLoad, key) { viewModelScope.launch {
             var answered: RouteSnapshot? = null
             val load: suspend (java.time.LocalDateTime) -> List<TrainService>? = { from ->
                 routePage(routeAtRequest, directionAtRequest, from)?.also { answered = it }?.services?.map { service ->
@@ -1189,7 +1378,7 @@ class TrainViewModel @JvmOverloads constructor(
                 earlier = if (later) current.earlier else state,
                 later = if (later) state else current.later
             )
-        }
+        } }
     }
 
     /** The last answer of the route sources for [route] from [from], or null when they found nothing. */
@@ -1279,6 +1468,15 @@ class TrainViewModel @JvmOverloads constructor(
         commuterAlerts = commuterAlertStore.remove(alert.id)
     }
 
+    /**
+     * Reads the reminders again from their store: a «una volta» reminder switches itself off there when it rings,
+     * also while the app is open, and must not stay listed (or be exported) as active.
+     */
+    fun reloadCommuterAlerts() {
+        val stored = commuterAlertStore.alerts()
+        if (stored != commuterAlerts) commuterAlerts = stored
+    }
+
     fun startActiveTrip(service: TrainService) {
         activeTrip = personalTravelStore.startTrip(service)
         // The ongoing notification follows one trip: another train ends the previous one.
@@ -1300,25 +1498,35 @@ class TrainViewModel @JvmOverloads constructor(
         mobilityPreferencesStore.save(value)
     }
 
-    fun exportLocalBackup(): String {
+    /**
+     * The backup «Esporta» writes, encoded and read back off the main thread with the import's own rules
+     * ([LocalDataBackupCodec.prepareExport]): a file the import would refuse is never written.
+     */
+    suspend fun prepareLocalBackupExport(): BackupExport {
+        val backup = localBackup()
+        val catalogue = stations
+        return withContext(Dispatchers.Default) { LocalDataBackupCodec.prepareExport(backup, catalogue) }
+    }
+
+    private fun localBackup(): LocalDataBackup {
         val favouriteIds = stationPreferences.favouriteIds()
         val monitoredStationIds = stationMonitors.mapTo(hashSetOf()) { it.stationId }
-        return LocalDataBackupCodec.encode(
-            LocalDataBackup(
-                routes = savedRoutes,
-                favouriteStationIds = favouriteIds,
-                monitoredServices = monitoredServices,
-                stationMonitors = stationMonitors,
-                commuterAlerts = commuterAlerts,
-                mobilityPreferences = mobilityPreferences,
-                punctualityHistory = punctualityHistory,
-                savedTimetables = SavedTimetableStore.all(getApplication()),
-                travelPreferences = TravelPreferencesRepository.current(getApplication()),
-                stations = (
-                    savedRoutes.flatMap { listOf(it.outwardOrigin, it.outwardDestination) } +
-                        stations.filter { it.id in favouriteIds || it.id in monitoredStationIds }
-                    ).distinctBy { it.id }
-            )
+        return LocalDataBackup(
+            routes = savedRoutes,
+            favouriteStationIds = favouriteIds,
+            monitoredServices = monitoredServices,
+            stationMonitors = stationMonitors,
+            // From the store: a «una volta» reminder that rang is off there, and an import must not arm it again.
+            commuterAlerts = commuterAlertStore.alerts(),
+            mobilityPreferences = mobilityPreferences,
+            // Right after start the history may still be on its way: the file never misses it.
+            punctualityHistory = if (punctualityHistoryLoaded) punctualityHistory else punctualityStore.read(),
+            savedTimetables = SavedTimetableStore.all(getApplication()),
+            travelPreferences = TravelPreferencesRepository.current(getApplication()),
+            stations = (
+                savedRoutes.flatMap { listOf(it.outwardOrigin, it.outwardDestination) } +
+                    stations.filter { it.id in favouriteIds || it.id in monitoredStationIds }
+                ).distinctBy { it.id }
         )
     }
 
@@ -1330,6 +1538,8 @@ class TrainViewModel @JvmOverloads constructor(
         is LocalBackupResult.Failure -> UiMessage(UiMessageKey.BACKUP_IMPORT_INVALID)
         is LocalBackupResult.Success -> {
             clearReturnJourneyState()
+            // Like any other change of active route: the next trains from now, and nothing of the earlier route listed.
+            journeyQueryState.resetForRouteActivation()
             val backup = result.backup
             restoreBackupStations(backup)
             savedRoutes = pinnedFirst(routeStore.replaceRoutes(backup.routes))
@@ -1339,6 +1549,7 @@ class TrainViewModel @JvmOverloads constructor(
             activeRoute = savedRoutes.firstOrNull() ?: unconfiguredRoute()
             clearSelectedService()
             primarySnapshot = null
+            rebuildServicePresentations()
             operatorFilter = null
             if (hasActiveRoute) routeStore.saveActiveRoute(activeRoute.id) else routeStore.clearActiveRoute()
             stationPreferences.replaceFavourites(backup.favouriteStationIds)
@@ -1348,12 +1559,13 @@ class TrainViewModel @JvmOverloads constructor(
             // The alarms of the reminders the file does not contain are cancelled with them.
             commuterAlerts = CommuterAlertScheduler.replaceAll(getApplication(), commuterAlertStore, backup.commuterAlerts)
             updateMobilityPreferences(backup.mobilityPreferences)
-            backup.punctualityHistory?.let { punctualityHistory = punctualityStore.replace(it) }
+            backup.punctualityHistory?.let { imported -> punctualityWork.submit { punctualityStore.replace(imported) } }
             backup.savedTimetables?.let { SavedTimetableStore.replace(getApplication(), it) }
             backup.travelPreferences?.let { TravelPreferencesRepository.update(getApplication(), it) }
             if (hasActiveRoute) refresh() else {
-                refreshRequestId += 1
+                invalidatePrimaryLoad()
                 primarySnapshot = null
+                rebuildServicePresentations()
                 refreshState = RefreshState.IDLE
                 refreshMessage = UiMessage(UiMessageKey.BACKUP_IMPORTED_WITHOUT_ROUTE)
                 revokeWearSnapshot()
@@ -1440,13 +1652,18 @@ class TrainViewModel @JvmOverloads constructor(
         return saved.firstOrNull { it.id == existing.id } ?: existing
     }
 
-    /** Stations only the backup knows must be remembered, or its routes vanish at the next start. */
+    /**
+     * Stations only the backup knows must be remembered, or its routes vanish at the next start. The catalogue
+     * stations of its routes are remembered too, like those of a route created here: the saved routes are decoded
+     * before the catalogue has loaded, and the active one must be among them.
+     */
     private fun restoreBackupStations(backup: LocalDataBackup) {
-        if (backup.stations.isEmpty()) return
-        val retained = retainedStationIds() +
-            backup.routes.flatMap { listOf(it.outwardOrigin.id, it.outwardDestination.id) } +
+        val routeStations = backup.routes.flatMap { listOf(it.outwardOrigin, it.outwardDestination) }
+        val remembered = (backup.stations + routeStations).distinctBy { it.id }
+        if (remembered.isEmpty()) return
+        val retained = retainedStationIds() + routeStations.map { it.id } +
             backup.favouriteStationIds + backup.stationMonitors.map { it.stationId }
-        addKnownStations(customStationStore.rememberAll(backup.stations, retained))
+        addKnownStations(customStationStore.rememberAll(remembered, retained))
     }
 
     private fun addKnownStations(candidates: List<Station>) {
@@ -1492,6 +1709,22 @@ internal fun findRefreshedService(selected: TrainService, services: List<TrainSe
                 it.destination == selected.destination
         }
 
+/** The stops of a board run keep their live values this long after they were read, when they cannot be read again. */
+internal const val STATION_RUN_DETAILS_MAX_AGE_MILLIS = 120_000L
+
+/**
+ * The details of a board run kept on screen while they are read again or after a reading failed: the same stops, so
+ * the list neither empties nor jumps. Read more than [STATION_RUN_DETAILS_MAX_AGE_MILLIS] ago (or at an unknown time)
+ * they lose their live claims: no stop is shown as verified and the entry drops its expired observations.
+ */
+internal fun retainedRunDetails(previous: StationBoardRunDetails?, loadedAtMillis: Long?, nowMillis: Long): StationBoardRunDetails? {
+    if (previous == null) return null
+    val entry = previous.entry.withoutExpiredObservations(java.time.Instant.ofEpochMilli(nowMillis))
+    val current = loadedAtMillis != null && nowMillis >= loadedAtMillis && nowMillis - loadedAtMillis <= STATION_RUN_DETAILS_MAX_AGE_MILLIS
+    return if (current) previous.copy(entry = entry)
+    else previous.copy(entry = entry, stops = previous.stops.map { it.copy(operationalStatusVerified = false) })
+}
+
 /** Retain the last known times for context without claiming a current zero-minute delay. */
 internal fun serviceWithoutCurrentObservation(service: TrainService): TrainService = service.copy(
     operationalStatusVerified = false,
@@ -1499,7 +1732,28 @@ internal fun serviceWithoutCurrentObservation(service: TrainService): TrainServi
     stops = service.stops.map { it.copy(operationalStatusVerified = false) }
 )
 
+/**
+ * A «Più presto» / «Più tardi» window at [nowMillis]: unchanged while its data is current; past its expiry its trains
+ * stay as timetable rows (no verified status, no official delay) and the window is marked stale.
+ */
+internal fun pageWithoutExpiredObservations(page: RouteSnapshot, nowMillis: Long): RouteSnapshot =
+    if (nowMillis <= page.expiresAtEpochMillis || page.freshness == Freshness.STALE) page
+    else page.copy(services = page.services.map(::serviceWithoutCurrentObservation), freshness = Freshness.STALE)
+
+/**
+ * The windows after the train [serviceId] was read again: it leaves the window that held it (a window left empty goes)
+ * and [refreshed], the new answer with that train alone, joins them. The other trains keep their own window and age.
+ */
+internal fun pagesWithRefreshedService(pages: List<RouteSnapshot>, serviceId: String, refreshed: RouteSnapshot): List<RouteSnapshot> =
+    pages.mapNotNull { page ->
+        if (page.services.none { it.id == serviceId }) page
+        else page.copy(services = page.services.filterNot { it.id == serviceId }).takeIf { it.services.isNotEmpty() }
+    } + refreshed
+
 /** The windows «Più presto» / «Più tardi» loaded for the search [key]: their snapshots (new trains only) and states. */
+/** A route load in flight and what it asked for (route, direction, moment). */
+private class RouteLoad(val key: String, val job: Job)
+
 private data class ServicePages(
     val key: String,
     val snapshots: List<RouteSnapshot> = emptyList(),
@@ -1561,10 +1815,9 @@ private class RouteStore(context: Context) {
         return stored.filterNot { route -> route.id.startsWith("default-") }
     }
 
-    fun activeRoute(routes: List<SavedRoute>): SavedRoute {
-        val activeId = preferences.getString(KEY_ACTIVE_ROUTE, null)
-        return routes.firstOrNull { it.id == activeId } ?: routes.firstOrNull() ?: unconfiguredRoute()
-    }
+    fun activeRouteId(): String? = preferences.getString(KEY_ACTIVE_ROUTE, null)
+
+    fun activeRoute(routes: List<SavedRoute>): SavedRoute = RouteStateRules.storedActiveRoute(routes, activeRouteId())
 
     fun direction(): Direction = runCatching {
         Direction.valueOf(preferences.getString(KEY_DIRECTION, Direction.OUTBOUND.name) ?: Direction.OUTBOUND.name)

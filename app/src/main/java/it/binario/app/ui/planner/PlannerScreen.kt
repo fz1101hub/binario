@@ -217,7 +217,7 @@ internal fun PlannerScreen(
                 SearchMode.TRAIN -> DictationTarget.TRAIN
                 SearchMode.STATION -> DictationTarget.STATION
             }
-            val review = PlannerVoiceParser.review(spoken, viewModel.stations, dictationTarget)
+            val review = PlannerVoiceParser.review(spoken, viewModel.stations, dictationTarget, language = locale.language)
             val dictated = review.input
             if (review.status == DictationReviewStatus.CONFIRMED) when (voiceTarget) {
                 SearchMode.ROUTE -> {
@@ -582,7 +582,10 @@ internal fun PlannerScreen(
                                     Spacer(Modifier.width(8.dp))
                                     Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null)
                                 }
-                                VoiceInputButton(onClick = { startVoiceInput(SearchMode.ROUTE) }, label = stringResource(R.string.planner_voice_route))
+                                // Offered where the parser knows the words for a day and a time (PlannerVoiceParser.offers).
+                                if (PlannerVoiceParser.offers(DictationTarget.ROUTE, locale.language)) {
+                                    VoiceInputButton(onClick = { startVoiceInput(SearchMode.ROUTE) }, label = stringResource(R.string.planner_voice_route))
+                                }
                                 speechMessage?.let { message -> StatusText(message) }
                             }
                             SearchMode.TRAIN -> {
@@ -615,7 +618,9 @@ internal fun PlannerScreen(
                                     Spacer(Modifier.width(8.dp))
                                     Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null)
                                 }
-                                VoiceInputButton(onClick = { startVoiceInput(SearchMode.STATION) }, label = stringResource(R.string.planner_voice_station))
+                                if (PlannerVoiceParser.offers(DictationTarget.STATION, locale.language)) {
+                                    VoiceInputButton(onClick = { startVoiceInput(SearchMode.STATION) }, label = stringResource(R.string.planner_voice_station))
+                                }
                                 speechMessage?.let { message -> StatusText(message) }
                             }
                         }

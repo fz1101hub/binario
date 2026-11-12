@@ -41,6 +41,8 @@ export function trainAnswer(
       return { sentences: [formatMessage(p.trainUnknown, { trainNumber: trainNumberText })], attributed: false };
     case "fewData":
       return { sentences: [formatMessage(p.trainFewData, { trainNumber: trainNumberText })], attributed: false };
+    case "sharedNumber":
+      return { sentences: [formatMessage(p.trainSharedNumber, { trainNumber: trainNumberText })], attributed: false };
     case "cancelledEveryDay":
       return {
         sentences: [

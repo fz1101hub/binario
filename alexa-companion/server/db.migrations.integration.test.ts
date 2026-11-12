@@ -7,16 +7,20 @@ import { migrate } from "drizzle-orm/mysql2/migrator";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
   createAuthorizationCode,
+  createPersonalRoute,
   deleteUserAccount,
   exchangeAuthorizationCode,
   getAlexaLinkStatus,
   getDb,
   listPersonalRoutes,
   listPersonalRoutesForAlexa,
+  purgeFinishedOAuthArtifacts,
+  recordAlexaVerification,
   revokeAllVoiceCredentialsForUser,
   rotateRefreshToken,
   touchExistingUserSession,
 } from "./db";
+import { MAX_PERSONAL_ROUTES, RouteLimitError } from "./routes/contract";
 import { checkTimestampSemantics, NULLABLE_TIMESTAMP_COLUMNS } from "./_core/dbEngine";
 
 /** mysql2 types SELECT results as RowDataPacket rows. */
@@ -356,6 +360,10 @@ describeDatabase("migrazioni MariaDB reali", () => {
           nextTokenExpiresAt: new Date(Date.now() + 60_000),
         })
       ).resolves.toBeNull();
+      // Every connection of the service's pool runs in UTC, as drizzle writes and reads its dates.
+      const service = await getDb();
+      const [zone] = (await service!.$client.promise().query("SELECT @@session.time_zone AS zone")) as unknown as [Array<{ zone: string }>];
+      expect(zone[0]?.zone).toBe("+00:00");
       const [legacyAfterReplay] = await connection.query<
         Rows<{ revokedAt: Date | null; credentialVersion: number }>
       >(
@@ -410,6 +418,11 @@ describeDatabase("migrazioni MariaDB reali", () => {
         refreshTokenExpiresAt: new Date(Date.now() + 60_000),
       });
       expect(initialLink).toMatchObject({ userId, credentialVersion: 1 });
+      // The link binds to the first Alexa account that uses it and refuses another one.
+      await expect(recordAlexaVerification(userId, "1".repeat(64))).resolves.toBe(true);
+      await expect(recordAlexaVerification(userId, "1".repeat(64))).resolves.toBe(true);
+      await expect(recordAlexaVerification(userId, "2".repeat(64))).resolves.toBe(false);
+      expect((await getAlexaLinkStatus(userId))?.alexaUserHash).toBe("1".repeat(64));
       // The historical WebDev columns may still hold personal free text in an
       // adopted database: the dashboard never receives them.
       await connection.query(
@@ -448,6 +461,9 @@ describeDatabase("migrazioni MariaDB reali", () => {
       expect(secondLink?.credentialVersion).toBeGreaterThan(
         initialLink?.credentialVersion ?? 0
       );
+      // A new link clears the binding: the next Alexa account (a re-enabled skill) is recorded.
+      expect((await getAlexaLinkStatus(userId))?.alexaUserHash).toBeNull();
+      await expect(recordAlexaVerification(userId, "2".repeat(64))).resolves.toBe(true);
       await expect(
         rotateRefreshToken({
           currentTokenHash: "d".repeat(64),
@@ -617,6 +633,39 @@ describeDatabase("migrazioni MariaDB reali", () => {
         [userId]
       );
       expect(links[0]?.revokedAt).not.toBeNull();
+
+      // Finished OAuth artefacts are deleted 30 days after they expired or were revoked, not before.
+      await connection.query(
+        "INSERT INTO oauth_refresh_tokens (`userId`, `clientId`, `tokenHash`, `familyId`, `expiresAt`, `revokedAt`) VALUES (?, 'alexa-client', ?, 'old-family', DATE_ADD(CURRENT_TIMESTAMP, INTERVAL 300 DAY), DATE_SUB(CURRENT_TIMESTAMP, INTERVAL 31 DAY))",
+        [userId, "9".repeat(64)]
+      );
+      await connection.query(
+        "INSERT INTO oauth_authorization_codes (`userId`, `codeHash`, `clientId`, `redirectUri`, `scope`, `expiresAt`) VALUES (?, ?, 'alexa-client', 'https://layla.amazon.com/api/skill/link/TEST', 'routes.read', DATE_SUB(CURRENT_TIMESTAMP, INTERVAL 31 DAY))",
+        [userId, "8".repeat(64)]
+      );
+      const [beforePurge] = await connection.query<Rows<{ count: number }>>(
+        "SELECT COUNT(*) AS count FROM oauth_refresh_tokens WHERE userId = ?",
+        [userId]
+      );
+      await purgeFinishedOAuthArtifacts();
+      const [oldRows] = await connection.query<Rows<{ count: number }>>(
+        "SELECT (SELECT COUNT(*) FROM oauth_refresh_tokens WHERE tokenHash = ?) + (SELECT COUNT(*) FROM oauth_authorization_codes WHERE codeHash = ?) AS count",
+        ["9".repeat(64), "8".repeat(64)]
+      );
+      expect(Number(oldRows[0]?.count)).toBe(0);
+      const [afterPurge] = await connection.query<Rows<{ count: number }>>(
+        "SELECT COUNT(*) AS count FROM oauth_refresh_tokens WHERE userId = ?",
+        [userId]
+      );
+      expect(Number(afterPurge[0]?.count)).toBe(Number(beforePurge[0]?.count) - 1);
+
+      // At most MAX_PERSONAL_ROUTES routes per account.
+      for (let saved = (await listPersonalRoutes(userId)).length; saved < MAX_PERSONAL_ROUTES; saved++)
+        await createPersonalRoute(userId, { origin: "Roma Termini", destination: `Tivoli ${saved}`, name: `Tratta ${saved}` });
+      await expect(createPersonalRoute(userId, { origin: "Roma Termini", destination: "Ostia", name: "Una di troppo" })).rejects.toBeInstanceOf(
+        RouteLimitError
+      );
+      expect(await listPersonalRoutes(userId)).toHaveLength(MAX_PERSONAL_ROUTES);
 
       await connection.query(
         "INSERT INTO station_preferences (`userId`, `stationName`, `stationCode`, `isFavorite`) VALUES (?, 'Roma Termini', 'RM', TRUE)",

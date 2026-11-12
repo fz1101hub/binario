@@ -1,5 +1,6 @@
-import { and, desc, eq, gt, isNull, ne, sql } from "drizzle-orm";
+import { and, count, desc, eq, gt, isNull, lt, ne, or, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
+import { createPool, type Pool } from "mysql2";
 import { randomUUID } from "node:crypto";
 import {
   alexaAccountLinks,
@@ -13,7 +14,9 @@ import {
 import { ENV } from "./_core/env";
 import { describeErrorForLog } from "./_core/logRedaction";
 import {
+  MAX_PERSONAL_ROUTES,
   normalizePersonalRouteDraft,
+  RouteLimitError,
   type PersonalRouteDraft,
 } from "./routes/contract";
 import {
@@ -27,11 +30,39 @@ import {
 
 let _db: ReturnType<typeof drizzle> | null = null;
 
+/** Run on every new connection of the pool before any query of the service. */
+export const UTC_SESSION_STATEMENT = "SET time_zone = '+00:00'";
+
+/**
+ * The connection pool, with every session in UTC. drizzle writes a `Date` as a UTC wall-clock
+ * string and reads one back as UTC, so a session in the server's own zone (`SYSTEM`, Europe/Rome)
+ * would store instants shifted by the offset, read `DEFAULT now()` an hour or two off and, in strict
+ * mode, refuse every write that falls in the hour skipped when the clocks go forward. The statement
+ * is queued on the connection before the query that asked for it.
+ */
+export function createDatabasePool(url: string): Pool {
+  const pool = createPool({ uri: url });
+  pool.on("connection", connection => {
+    connection.query(UTC_SESSION_STATEMENT, error => {
+      if (error) console.warn("[Database] Unable to set the session time zone to UTC:", describeErrorForLog(error));
+    });
+  });
+  return pool;
+}
+
+/** Ends the pool, if one was opened (graceful shutdown); a later use opens a new one. */
+export async function closeDb(): Promise<void> {
+  const db = _db;
+  _db = null;
+  if (!db) return;
+  await new Promise<void>((resolve, reject) => db.$client.end(error => (error ? reject(error) : resolve())));
+}
+
 // Lazily create the drizzle instance so local tooling can run without a DB.
 export async function getDb() {
   if (!_db && process.env.DATABASE_URL) {
     try {
-      _db = drizzle(process.env.DATABASE_URL);
+      _db = drizzle({ client: createDatabasePool(process.env.DATABASE_URL) });
     } catch (error) {
       console.warn("[Database] Failed to connect:", describeErrorForLog(error));
       _db = null;
@@ -153,9 +184,15 @@ export async function listPersonalRoutes(userId: number) {
     // adopted 0000-0011 lineage keeps `archivedAt`, and showing those rows
     // again would resurrect choices the user deliberately removed.
     .where(and(eq(railwayRoutes.userId, userId), isNull(railwayRoutes.archivedAt)))
-    .orderBy(desc(railwayRoutes.isPinned), desc(railwayRoutes.updatedAt));
+    .orderBy(desc(railwayRoutes.isPinned), desc(railwayRoutes.updatedAt))
+    .limit(MAX_PERSONAL_ROUTES);
 }
 
+/**
+ * Saves a route, refusing it with {@link RouteLimitError} when the account already keeps
+ * {@link MAX_PERSONAL_ROUTES} (archived legacy rows, which the user cannot see, are not counted).
+ * The user's row is locked while counting, so parallel requests cannot pass the limit together.
+ */
 export async function createPersonalRoute(
   userId: number,
   input: PersonalRouteDraft
@@ -164,8 +201,16 @@ export async function createPersonalRoute(
   if (!db) throw new Error("Archivio personale non disponibile");
 
   const values = { userId, ...normalizePersonalRouteDraft(input) };
-  const result = await db.insert(railwayRoutes).values(values);
-  const id = Number(result[0].insertId);
+  const id = await db.transaction(async tx => {
+    await tx.select({ id: users.id }).from(users).where(eq(users.id, userId)).limit(1).for("update");
+    const [saved] = await tx
+      .select({ routes: count() })
+      .from(railwayRoutes)
+      .where(and(eq(railwayRoutes.userId, userId), isNull(railwayRoutes.archivedAt)));
+    if (Number(saved?.routes ?? 0) >= MAX_PERSONAL_ROUTES) throw new RouteLimitError(`Al massimo ${MAX_PERSONAL_ROUTES} tratte`);
+    const result = await tx.insert(railwayRoutes).values(values);
+    return Number(result[0].insertId);
+  });
   const created = await db
     .select(personalRouteColumns)
     .from(railwayRoutes)
@@ -289,13 +334,66 @@ export async function listPersonalRoutesForAlexa(
       )
     )
     .where(and(eq(railwayRoutes.userId, userId), isNull(railwayRoutes.archivedAt)))
-    .orderBy(desc(railwayRoutes.isPinned), desc(railwayRoutes.updatedAt));
+    .orderBy(desc(railwayRoutes.isPinned), desc(railwayRoutes.updatedAt))
+    .limit(MAX_PERSONAL_ROUTES);
 }
 
+/**
+ * Authorization codes and refresh tokens are deleted this many days after they expired, were
+ * revoked or (codes) were consumed: until then a replayed old token is still recognised and revokes
+ * its family; afterwards it is simply unknown.
+ */
+export const OAUTH_RETENTION_DAYS = 30;
+const OAUTH_PURGE_INTERVAL_MS = 60 * 60 * 1000;
+let lastOAuthPurgeAt = Number.NEGATIVE_INFINITY;
+
+/** The instant before which a finished OAuth artefact is deleted. */
+export function oauthRetentionCutoff(now: Date): Date {
+  return new Date(now.getTime() - OAUTH_RETENTION_DAYS * 86_400_000);
+}
+
+/** Deletes the authorization codes and refresh tokens finished before {@link oauthRetentionCutoff}. */
+export async function purgeFinishedOAuthArtifacts(now: Date = new Date()) {
+  const db = await getDb();
+  if (!db) return;
+  const cutoff = oauthRetentionCutoff(now);
+  await db
+    .delete(oauthAuthorizationCodes)
+    .where(
+      or(
+        lt(oauthAuthorizationCodes.expiresAt, cutoff),
+        lt(oauthAuthorizationCodes.consumedAt, cutoff),
+        lt(oauthAuthorizationCodes.revokedAt, cutoff)
+      )
+    );
+  await db
+    .delete(oauthRefreshTokens)
+    .where(or(lt(oauthRefreshTokens.expiresAt, cutoff), lt(oauthRefreshTokens.revokedAt, cutoff)));
+}
+
+/**
+ * Runs {@link purgeFinishedOAuthArtifacts} in the background at most once an hour per process,
+ * after a token exchange or rotation has committed (every active link rotates hourly): a failure is
+ * logged by error class and never costs the exchange.
+ */
+function purgeFinishedOAuthArtifactsSometimes(now: Date) {
+  if (now.getTime() - lastOAuthPurgeAt < OAUTH_PURGE_INTERVAL_MS) return;
+  lastOAuthPurgeAt = now.getTime();
+  void purgeFinishedOAuthArtifacts(now).catch(error =>
+    console.warn("[Database] OAuth purge failed:", describeErrorForLog(error))
+  );
+}
+
+/**
+ * Records a verified request of an Alexa account (the HMAC digest of its user id) on the user's
+ * link and binds the link to it: the first request after a link records the account, every later
+ * one must come from the same account. False, changing nothing, when the link is already bound to
+ * another Alexa account; a new link (exchangeAuthorizationCode) clears the binding.
+ */
 export async function recordAlexaVerification(
   userId: number,
   alexaUserHash: string
-) {
+): Promise<boolean> {
   const db = await getDb();
   if (!db) throw new Error("Archivio collegamenti vocali non disponibile");
   const now = new Date();
@@ -303,7 +401,14 @@ export async function recordAlexaVerification(
   // hash from anyone else first, so the unique index cannot make the upsert
   // resurrect a different user's (possibly revoked) row. A revocation is only
   // lifted by exchangeAuthorizationCode, never by a routine verification.
-  await db.transaction(async tx => {
+  return db.transaction(async tx => {
+    const [bound] = await tx
+      .select({ alexaUserHash: alexaAccountLinks.alexaUserHash })
+      .from(alexaAccountLinks)
+      .where(eq(alexaAccountLinks.userId, userId))
+      .limit(1)
+      .for("update");
+    if (bound?.alexaUserHash && bound.alexaUserHash !== alexaUserHash) return false;
     await tx
       .update(alexaAccountLinks)
       .set({
@@ -323,6 +428,7 @@ export async function recordAlexaVerification(
       .onDuplicateKeyUpdate({
         set: { alexaUserHash, lastVerifiedAt: now },
       });
+    return true;
   });
 }
 
@@ -348,7 +454,7 @@ export async function exchangeAuthorizationCode(input: {
 }) {
   const db = await getDb();
   if (!db) throw new Error("Archivio collegamenti vocali non disponibile");
-  return db.transaction(async tx => {
+  const exchanged = await db.transaction(async tx => {
     const now = new Date();
     const codes = await tx
       .select()
@@ -386,6 +492,8 @@ export async function exchangeAuthorizationCode(input: {
           linkedAt: now,
           lastVerifiedAt: now,
           revokedAt: null,
+          // A new link binds to the Alexa account of its first verified request (recordAlexaVerification).
+          alexaUserHash: null,
           credentialVersion: sql`${alexaAccountLinks.credentialVersion} + 1`,
         },
       });
@@ -415,6 +523,9 @@ export async function exchangeAuthorizationCode(input: {
     });
     return { ...code, credentialVersion: link.credentialVersion };
   });
+  // After the transaction, never inside or beside it: the purge locks the rows it scans.
+  purgeFinishedOAuthArtifactsSometimes(new Date());
+  return exchanged;
 }
 
 /**
@@ -467,7 +578,7 @@ export async function rotateRefreshToken(input: {
     .limit(1);
   const initial = candidate[0];
   if (!initial) return null;
-  return db.transaction(async tx => {
+  const rotated = await db.transaction(async tx => {
     const now = new Date();
     const links = await tx
       .select()
@@ -586,6 +697,8 @@ export async function rotateRefreshToken(input: {
       credentialVersion: links[0].credentialVersion,
     };
   });
+  purgeFinishedOAuthArtifactsSometimes(new Date());
+  return rotated;
 }
 
 export async function revokeAllVoiceCredentialsForUser(userId: number) {

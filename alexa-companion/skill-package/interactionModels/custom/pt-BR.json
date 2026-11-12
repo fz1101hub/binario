@@ -78,7 +78,10 @@
             "pontualidade do trem {trainNumber}",
             "quão pontual é o trem {trainNumber}",
             "o trem {trainNumber} costuma chegar no horário",
-            "o trem {trainNumber} está no horário"
+            "o trem {trainNumber} está no horário",
+            "trem {trainNumber}",
+            "o trem {trainNumber}",
+            "o {trainNumber}"
           ]
         },
         {

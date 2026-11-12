@@ -417,6 +417,7 @@
     <string name="backup_export_failure">ส่งออกไม่สำเร็จ: %1$s</string>
     <string name="backup_import_failure">นำเข้าไม่สำเร็จ: %1$s</string>
     <string name="backup_import_too_large">ข้อมูลสำรองเกินขีดจำกัด 1 MiB</string>
+    <string name="backup_export_nothing">ยังไม่มีข้อมูลให้ส่งออก</string>
 
     <string name="personal_travel_title">การเดินทางและการติดตาม</string>
     <string name="personal_travel_active">การเดินทางปัจจุบัน · ขบวน %1$s</string>
@@ -1321,6 +1322,9 @@
     <string name="settings_credits_co2">การประมาณ CO₂: ค่าสัมประสิทธิ์ต่อผู้โดยสาร-กม. ของสำนักงานสิ่งแวดล้อมยุโรป (EEA), %1$s: รถไฟ %2$s ก. รถยนต์ %3$s ก. (ผู้โดยสาร 1.5 คน) เครื่องบินตั้งแต่ %4$s ก. (1,000 กม.) ถึง %5$s ก. (500 กม.) ของ CO₂ เทียบเท่า ใช้ระยะทางเป็นเส้นตรงระหว่างสถานี ×1.2 สำหรับรถไฟ ×1.25 สำหรับรถยนต์ ×1.08 สำหรับเครื่องบิน %6$s</string>
     <plurals name="partenze_hidden_trains">
         <item quantity="other">ซ่อนอยู่ %d ขบวน</item>
+    </plurals>
+    <plurals name="station_board_more_not_listed">
+        <item quantity="other">ยังมีอีก %1$d ขบวนที่ไม่ได้แสดง</item>
     </plurals>
     <plurals name="saved_timetable_solutions">
         <item quantity="other">%d ตัวเลือก</item>

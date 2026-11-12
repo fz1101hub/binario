@@ -85,28 +85,61 @@ export async function loadStationIndex(file: string): Promise<StationIndex | nul
   return index;
 }
 
-let dataDir = defaultRailDataDir();
-let stats: Promise<PunctualityStats | null> | undefined;
-let stations: Promise<StationIndex | null> | undefined;
+/** A failed read (file not there yet during a deploy, EMFILE…) is tried again after this long. */
+export const RAIL_DATA_RETRY_MS = 60_000;
 
 /**
- * The statistics, read once on first use and kept for the life of the process (the file changes
- * only with a deploy). Concurrent first requests share one read.
+ * A file read once and kept for the life of the process (it changes only with a deploy);
+ * concurrent first uses share one read. A read that gave null is kept for
+ * {@link RAIL_DATA_RETRY_MS} only, so one bad moment does not disable the answers until a restart.
  */
-export function punctualityStats(): Promise<PunctualityStats | null> {
-  stats ??= loadPunctualityStats(path.join(dataDir, STATS_FILE));
-  return stats;
+function cachedRead<T>(read: () => Promise<T | null>) {
+  let value: Promise<T | null> | undefined;
+  let retryAt: number | undefined;
+  return {
+    get(now: number): Promise<T | null> {
+      if (!value || (retryAt !== undefined && now >= retryAt)) {
+        retryAt = undefined;
+        const reading = read();
+        value = reading;
+        void reading.then(result => {
+          if (result === null && value === reading) retryAt = now + RAIL_DATA_RETRY_MS;
+        });
+      }
+      return value;
+    },
+    forget() {
+      value = undefined;
+      retryAt = undefined;
+    },
+  };
 }
 
-/** The station catalogue, read once on the first route question. */
-export function railStationIndex(): Promise<StationIndex | null> {
-  stations ??= loadStationIndex(path.join(dataDir, STATIONS_FILE));
-  return stations;
+let dataDir = defaultRailDataDir();
+const stats = cachedRead(() => loadPunctualityStats(path.join(dataDir, STATS_FILE)));
+const stations = cachedRead(() => loadStationIndex(path.join(dataDir, STATIONS_FILE)));
+
+/** The statistics, read on first use (or at boot, {@link preloadRailData}) and kept. */
+export function punctualityStats(now: number = Date.now()): Promise<PunctualityStats | null> {
+  return stats.get(now);
+}
+
+/** The station catalogue, read on the first route question (or at boot) and kept. */
+export function railStationIndex(now: number = Date.now()): Promise<StationIndex | null> {
+  return stations.get(now);
+}
+
+/**
+ * Starts both reads at server start, so the first question does not pay them (a few hundred
+ * milliseconds for the statistics) and a missing file shows in the log at once.
+ */
+export function preloadRailData(): Promise<unknown> {
+  return Promise.all([punctualityStats(), railStationIndex()]);
 }
 
 /** Points the readers at another data directory (tests), forgetting what was read. */
 export function useRailDataDir(directory: string = defaultRailDataDir()) {
   dataDir = directory;
-  stats = undefined;
-  stations = undefined;
+  stats.forget();
+  stations.forget();
 }

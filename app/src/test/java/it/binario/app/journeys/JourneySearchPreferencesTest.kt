@@ -9,27 +9,21 @@ import it.binario.app.data.repository.JourneySearchService
 import it.binario.app.data.repository.JourneySearchStatus
 import java.time.LocalDateTime
 import java.time.LocalTime
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.test.UnconfinedTestDispatcher
-import kotlinx.coroutines.test.resetMain
-import kotlinx.coroutines.test.setMain
 import kotlinx.coroutines.withTimeout
-import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
-import org.junit.Before
+import org.junit.Rule
 import org.junit.Test
 
 /** The travel preferences on their way from the settings to the offline planner and back to the results. */
 @OptIn(ExperimentalCoroutinesApi::class)
 class JourneySearchPreferencesTest {
-    @Before fun setUp() = Dispatchers.setMain(UnconfinedTestDispatcher())
-    @After fun tearDown() = Dispatchers.resetMain()
+    @get:Rule val main = ViewModelMainDispatcherRule()
 
     private val routes = "route_id,agency_id,route_short_name,route_long_name,route_type\nFR,T,FR,Frecciarossa,2\nR,T,REG,Regionale,2\n"
     private val offline = JourneyFixtures.provider(mapOf(JourneyFixtures.pack() to JourneyFixtures.feed(listOf(
@@ -39,7 +33,7 @@ class JourneySearchPreferencesTest {
 
     @Test fun `a change of the travel preferences searches the shown journeys again`() {
         val preferences = MutableStateFlow(JourneyPreferences())
-        val model = JourneySearchViewModel(JourneySearchService(listOf(offline)), preferences = preferences)
+        val model = main.track(JourneySearchViewModel(JourneySearchService(listOf(offline)), preferences = preferences))
         model.searchJourneys(JourneyFixtures.alfa, JourneyFixtures.delta, JourneyFixtures.monday, LocalTime.of(7, 55))
         val first = runBlocking { withTimeout(10_000) { model.state.first { !it.loading && it.result != null } } }
         assertEquals(listOf("08:00", "08:05"), first.presentation!!.rows.map { it.departureTime })

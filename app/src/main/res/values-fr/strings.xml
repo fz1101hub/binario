@@ -433,6 +433,7 @@
     <string name="backup_export_failure">Échec de l’exportation : %1$s</string>
     <string name="backup_import_failure">Échec de l’importation : %1$s</string>
     <string name="backup_import_too_large">Le backup dépasse la limite de 1 Mio.</string>
+    <string name="backup_export_nothing">Il n’y a encore aucune donnée à exporter.</string>
 
     <string name="personal_travel_title">Voyage et suivis</string>
     <string name="personal_travel_active">Voyage actif · Train %1$s</string>
@@ -1383,6 +1384,11 @@
         <item quantity="one">%d train masqué</item>
         <item quantity="many">%d trains masqués</item>
         <item quantity="other">%d trains masqués</item>
+    </plurals>
+    <plurals name="station_board_more_not_listed">
+        <item quantity="one">%1$d autre train non affiché</item>
+        <item quantity="many">%1$d d’autres trains non affichés</item>
+        <item quantity="other">%1$d autres trains non affichés</item>
     </plurals>
     <plurals name="saved_timetable_solutions">
         <item quantity="one">%d solution</item>

@@ -38,6 +38,8 @@ pnpm run build
 
 Il comando di build verifica anche che il bundle di produzione non contenga runtime o token di anteprima Manus, e che le copie in `dist/data/` delle statistiche di puntualità e del catalogo stazioni coincidano con i file di `app/src/main/assets/` (la build va quindi eseguita dal checkout completo del repository).
 
+In esecuzione `GET /healthz` dice soltanto che il processo risponde; `GET /readyz` risponde 200 se il database risponde entro 3 secondi e, con la skill configurata, statistiche e catalogo di `dist/data/` sono leggibili, altrimenti 503 con lo stato di ciascuno (`database`, `railData`), così il proxy o un monitor vedono un deploy difettoso. Su SIGTERM o SIGINT il server smette di accettare connessioni, lascia finire fino a 10 secondi le richieste in corso (risposte Alexa, scambi di token), chiude il pool del database ed esce.
+
 `pnpm run check` controlla i tipi sia del codice sia dei test (`tsconfig.test.json`): Vitest da solo non li controlla.
 
 Il database è **MariaDB** (verificato in CI) o **TiDB**; MySQL 8 non è supportato dalle migrazioni e `pnpm db:migrate` lo rifiuta prima di iniziare (vedi [`docs/DATABASE_MIGRATIONS.md`](docs/DATABASE_MIGRATIONS.md)).

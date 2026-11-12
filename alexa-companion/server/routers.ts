@@ -6,15 +6,15 @@ import { sdk } from "./_core/sdk";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import { createPersonalRoute, deleteUserAccount, getAlexaLinkStatus, listPersonalRoutes, removePersonalRoute, revokeAllVoiceCredentialsForUser, setPersonalRoutePinned } from "./db";
 import { createProfileRouter } from "./profile/router";
-import { personalRouteInput, RouteValidationError } from "./routes/contract";
+import { personalRouteInput, RouteLimitError, RouteValidationError } from "./routes/contract";
 import { isAlexaConfigured } from "./voice/config";
+import { railStationIndex } from "./punctuality/source";
 
 export const appRouter = router({
   auth: router({
     // The dashboard asks for `me` on every load: that is where a used session slides forward.
     me: publicProcedure.query(async ({ ctx }) => {
-      if (ctx.user && !(ctx.user as { isCron?: boolean }).isCron)
-        await sdk.renewSessionCookie(ctx.req, ctx.res);
+      if (ctx.user) await sdk.renewSessionCookie(ctx.req, ctx.res);
       return ctx.user;
     }),
     logout: publicProcedure.mutation(({ ctx }) => {
@@ -40,11 +40,20 @@ export const appRouter = router({
   routes: router({
     list: protectedProcedure.query(({ ctx }) => listPersonalRoutes(ctx.user.id)),
     create: protectedProcedure.input(personalRouteInput).mutation(async ({ ctx, input }) => {
+      // The skill matches origin and destination to the bundled station catalogue: a name it cannot
+      // match («Roma», «Milano») would only fail later, by voice. Routes saved before stay as they
+      // are; without a readable catalogue the check is skipped rather than refusing every route.
+      const stations = await railStationIndex();
+      if (stations && (!stations.codesFor(input.origin).length || !stations.codesFor(input.destination).length))
+        throw new TRPCError({ code: "UNPROCESSABLE_CONTENT", message: "Stazione non riconosciuta" });
       try {
         return await createPersonalRoute(ctx.user.id, input);
       } catch (error) {
         if (error instanceof RouteValidationError)
           throw new TRPCError({ code: "BAD_REQUEST", message: error.message, cause: error });
+        // The dashboard tells this refusal apart from invalid input.
+        if (error instanceof RouteLimitError)
+          throw new TRPCError({ code: "PRECONDITION_FAILED", message: error.message, cause: error });
         throw error;
       }
     }),

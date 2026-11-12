@@ -433,6 +433,7 @@
     <string name="backup_export_failure">Esportazione non riuscita: %1$s</string>
     <string name="backup_import_failure">Importazione non riuscita: %1$s</string>
     <string name="backup_import_too_large">Il backup supera il limite di 1 MiB.</string>
+    <string name="backup_export_nothing">Non ci sono ancora dati da esportare.</string>
 
     <string name="personal_travel_title">Viaggio e monitoraggi</string>
     <string name="personal_travel_active">Viaggio attivo · Treno %1$s</string>
@@ -1383,6 +1384,11 @@
         <item quantity="one">%d treno nascosto</item>
         <item quantity="many">%d treni nascosti</item>
         <item quantity="other">%d treni nascosti</item>
+    </plurals>
+    <plurals name="station_board_more_not_listed">
+        <item quantity="one">%1$d altro treno non è in elenco</item>
+        <item quantity="many">%1$d di altri treni non sono in elenco</item>
+        <item quantity="other">%1$d altri treni non sono in elenco</item>
     </plurals>
     <plurals name="saved_timetable_solutions">
         <item quantity="one">%d soluzione</item>

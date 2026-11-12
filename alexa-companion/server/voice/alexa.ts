@@ -108,7 +108,12 @@ function voiceMessages(input: HandlerInput) {
   return messagesForLocale(getAlexaLocale(input)).voice;
 }
 
-/** Resolves the Binario user behind an Alexa request; null when the link is missing or revoked. */
+/**
+ * Resolves the Binario user behind an Alexa request; null when the link is missing or revoked, or
+ * bound to another Alexa account. A link is bound to the Alexa account (the digest of its user id)
+ * of the first verified request after linking: an access token presented for another account,
+ * should one ever leak, is refused like an unlinked one and the user is asked to link again.
+ */
 export async function resolveLinkedUser(
   accessToken: string | undefined,
   alexaUserId: string | undefined
@@ -125,11 +130,11 @@ export async function resolveLinkedUser(
     link.credentialVersion !== principal.credentialVersion
   )
     return null;
-  if (alexaUserId)
-    await recordAlexaVerification(
-      principal.userId,
-      hashVoiceSecret(alexaUserId)
-    );
+  // Every Alexa request names its user; without one the binding cannot be checked.
+  if (!alexaUserId) return null;
+  const alexaUserHash = hashVoiceSecret(alexaUserId);
+  if (link.alexaUserHash && !secureStringEquals(link.alexaUserHash, alexaUserHash)) return null;
+  if (!(await recordAlexaVerification(principal.userId, alexaUserHash))) return null;
   return principal;
 }
 
@@ -231,7 +236,11 @@ function spokenRouteSelector(input: HandlerInput): RouteSelector {
   };
 }
 
-/** Speaks the live-data caveat for one saved route. Only reached after the account link has been verified. */
+/**
+ * Speaks the live-data caveat for one saved route, then the trains of the statistics that usually
+ * leave it in the next three hours, most punctual first, when there are any. Only reached after the
+ * account link has been verified.
+ */
 async function respondNextTrains(
   input: HandlerInput,
   select: RouteSelector,
@@ -244,15 +253,20 @@ async function respondNextTrains(
   const selected = await selectedRoute(input, principal, select, "nextTrains", onMissing);
   if ("response" in selected) return selected.response;
   const { route } = selected;
+  const known = await knownRoutePunctuality(input, route);
   // SSML needs escaped text; the companion-app card is plain text and must
   // show the route name as typed, not XML entities.
-  const speech = liveDataUnavailableSpeech(
-    locale,
-    formatMessage(messages.routeSubject, { routeName: escapeSsmlText(route.name) })
+  const speech = withKnownPunctuality(
+    input,
+    liveDataUnavailableSpeech(locale, formatMessage(messages.routeSubject, { routeName: escapeSsmlText(route.name) })),
+    known,
+    escapeSsmlText
   );
-  const card = liveDataUnavailableSpeech(
-    locale,
-    formatMessage(messages.routeSubject, { routeName: plainSpeechText(route.name) })
+  const card = withKnownPunctuality(
+    input,
+    liveDataUnavailableSpeech(locale, formatMessage(messages.routeSubject, { routeName: plainSpeechText(route.name) })),
+    known,
+    plainSpeechText
   );
   setScreen(input, { kind: "departures", routeName: route.name });
   return input.responseBuilder
@@ -335,7 +349,10 @@ const nextTrainsHandler: RequestHandler = {
   handle: input => respondNextTrains(input, spokenRouteSelector(input)),
 };
 
-/** Says only that live data is not available: nothing personal, so no linked account is needed. */
+/**
+ * Says that live data is not available, then how punctual the train usually is when the statistics
+ * have figures for it: nothing personal, so no linked account is needed.
+ */
 const trainStatusHandler: RequestHandler = {
   canHandle: input =>
     getRequestType(input.requestEnvelope) === "IntentRequest" &&
@@ -352,11 +369,12 @@ const trainStatusHandler: RequestHandler = {
     const cardSubject = trainNumber
       ? formatMessage(messages.trainSubject, { trainNumber: plainSpeechText(trainNumber) })
       : undefined;
-    const speech = liveDataUnavailableSpeech(locale, subject);
+    const known = trainNumber ? await knownTrainPunctuality(locale, trainNumber) : undefined;
+    const speech = withKnownPunctuality(input, liveDataUnavailableSpeech(locale, subject), known, escapeSsmlText);
     setScreen(input, { kind: "trainStatus", trainNumber });
     return input.responseBuilder
       .speak(speech)
-      .withSimpleCard(messages.cardTitle, liveDataUnavailableSpeech(locale, cardSubject))
+      .withSimpleCard(messages.cardTitle, withKnownPunctuality(input, liveDataUnavailableSpeech(locale, cardSubject), known, plainSpeechText))
       .withShouldEndSession(true)
       .getResponse();
   },
@@ -414,6 +432,61 @@ function withDataAge(answer: PunctualityAnswer, locale: SupportedLocale, windowE
   if (!Number.isFinite(ended) || now.getTime() - ended <= STALE_STATISTICS_DAYS * 86_400_000) return answer;
   const until = formatMessage(messagesForLocale(locale).punctuality.statisticsUntil, { date: formatRailDate(windowEnd, locale) });
   return { ...answer, sentences: [...answer.sentences, `${until}${SENTENCE_END[locale] ?? "."}`] };
+}
+
+/** What the statistics know about the subject of a live question: an answer with figures only. */
+type KnownPunctuality = { build: (text: (value: string) => string) => PunctualityAnswer; windowEnd: string };
+
+/**
+ * The live-data caveat first, then what the statistics know about the same train or route, with
+ * its attribution and, for an old file, until when it runs: the live data are missing, the usual
+ * punctuality is not. Without figures the caveat stays alone.
+ */
+function withKnownPunctuality(
+  input: HandlerInput,
+  caveat: string,
+  known: KnownPunctuality | undefined,
+  text: (value: string) => string
+): string {
+  if (!known) return caveat;
+  const locale = getAlexaLocale(input);
+  const answer = withDataAge(known.build(text), locale, known.windowEnd, requestTime(input));
+  return answerText(locale, { ...answer, sentences: [`${caveat}${SENTENCE_END[locale] ?? "."}`, ...answer.sentences] });
+}
+
+/**
+ * The punctuality of the train asked for live, when the statistics have figures for it. A failure
+ * here never costs the live answer: it is logged by error class only and the caveat stays alone.
+ */
+async function knownTrainPunctuality(locale: SupportedLocale, trainNumber: string): Promise<KnownPunctuality | undefined> {
+  try {
+    const stats = await punctualityStats();
+    if (!stats) return undefined;
+    const result = trainPunctuality(stats, trainNumber);
+    if (result.kind !== "stats" && result.kind !== "cancelledEveryDay") return undefined;
+    return { build: text => trainAnswer(locale, trainNumber, result, text), windowEnd: stats.windowEnd };
+  } catch (error) {
+    console.warn("[Alexa] punctuality not added", { error: describeErrorForLog(error) });
+    return undefined;
+  }
+}
+
+/** The most punctual trains of the next three hours on the route asked for live, when there are any. */
+async function knownRoutePunctuality(input: HandlerInput, route: PersonalRoute): Promise<KnownPunctuality | undefined> {
+  const locale = getAlexaLocale(input);
+  try {
+    const [stats, stations] = await Promise.all([punctualityStats(), railStationIndex()]);
+    if (!stats || !stations) return undefined;
+    const origins = stations.codesFor(route.origin);
+    const destinations = stations.codesFor(route.destination);
+    if (!origins.length || !destinations.length) return undefined;
+    const trains = mostPunctualDepartures(stats, origins, destinations, railClock(requestTime(input)));
+    if (!trains?.length) return undefined;
+    return { build: text => mostPunctualAnswer(locale, route.name, { kind: "trains", trains }, text), windowEnd: stats.windowEnd };
+  } catch (error) {
+    console.warn("[Alexa] punctuality not added", { error: describeErrorForLog(error) });
+    return undefined;
+  }
 }
 
 function punctualityResponse(

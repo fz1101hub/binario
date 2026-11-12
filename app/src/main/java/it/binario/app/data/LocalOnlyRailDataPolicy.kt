@@ -96,11 +96,12 @@ object LocalOnlyRailDataPolicy {
         }
 
     /**
-     * User-facing station board: always starts from the official RFI programmed
-     * departure board and overlays explicitly enabled operational providers.
+     * User-facing station board («Partenze» and the station widget): the explicitly enabled live boards first, then
+     * the official RFI programmed departure board as the fallback. All are asked in parallel; the aggregate service
+     * shows the programmed rows only when no live board answered with rows, and after the end of the live span.
      */
     fun stationBoardDisplayProviders(): List<StationBoardProvider> =
-        listOf(rfiProgrammedBoard) + stationBoardProviders()
+        stationBoardProviders() + rfiProgrammedBoard
 
     fun trainNumberSearchProviders(): List<TrainNumberSearchProvider> =
         if (BuildConfig.PERSONAL_REALTIME_SOURCES) listOf(viaggiaTrenoBoard, italoNumber) else emptyList()

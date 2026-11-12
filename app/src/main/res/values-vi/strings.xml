@@ -417,6 +417,7 @@
     <string name="backup_export_failure">Xuất thất bại: %1$s</string>
     <string name="backup_import_failure">Nhập thất bại: %1$s</string>
     <string name="backup_import_too_large">Bản sao lưu vượt quá giới hạn 1 MiB.</string>
+    <string name="backup_export_nothing">Chưa có dữ liệu để xuất.</string>
 
     <string name="personal_travel_title">Hành trình và theo dõi</string>
     <string name="personal_travel_active">Hành trình đang diễn ra · Tàu %1$s</string>
@@ -1321,6 +1322,9 @@
     <string name="settings_credits_co2">Ước tính CO₂: hệ số trên mỗi hành khách-km của Cơ quan Môi trường châu Âu (EEA), %1$s: tàu %2$s g, ô tô %3$s g (1,5 người), máy bay từ %4$s g (1.000 km) đến %5$s g (500 km) CO₂ tương đương. Khoảng cách đường chim bay giữa các ga, ×1,2 cho tàu, ×1,25 cho ô tô, ×1,08 cho máy bay. %6$s</string>
     <plurals name="partenze_hidden_trains">
         <item quantity="other">Đã ẩn %d tàu</item>
+    </plurals>
+    <plurals name="station_board_more_not_listed">
+        <item quantity="other">Còn %1$d tàu khác không hiển thị</item>
     </plurals>
     <plurals name="saved_timetable_solutions">
         <item quantity="other">%d phương án</item>

@@ -411,6 +411,7 @@
     <string name="backup_export_failure">내보내기 실패: %1$s</string>
     <string name="backup_import_failure">가져오기 실패: %1$s</string>
     <string name="backup_import_too_large">백업이 1 MiB 제한을 초과합니다.</string>
+    <string name="backup_export_nothing">아직 내보낼 데이터가 없습니다.</string>
     <string name="personal_travel_title">여정 및 모니터링</string>
     <string name="personal_travel_active">진행 중인 여정 · 열차 %1$s</string>
     <string name="personal_travel_next_stop">다음 정차역: %1$s, 예상 %2$s</string>
@@ -1298,6 +1299,9 @@
     <string name="settings_credits_co2">CO₂ 추정: 유럽환경청(EEA)의 승객-km당 계수, %1$s: 열차 %2$s g, 자동차 %3$s g(1.5명 탑승), 비행기 %4$s g(1,000 km)~%5$s g(500 km), CO₂ 환산량 기준. 역 간 직선 거리에 열차 ×1.2, 자동차 ×1.25, 비행기 ×1.08을 적용합니다. %6$s</string>
     <plurals name="partenze_hidden_trains">
         <item quantity="other">숨겨진 열차 %d대</item>
+    </plurals>
+    <plurals name="station_board_more_not_listed">
+        <item quantity="other">표시되지 않은 열차 %1$d대 더 있음</item>
     </plurals>
     <plurals name="saved_timetable_solutions">
         <item quantity="other">여정 %d개</item>

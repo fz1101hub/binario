@@ -411,6 +411,7 @@
     <string name="backup_export_failure">ထုတ်ယူ၍ မရပါ- %1$s</string>
     <string name="backup_import_failure">တင်သွင်း၍ မရပါ- %1$s</string>
     <string name="backup_import_too_large">အရန်သည် 1 MiB ကန့်သတ်ချက်ထက် ကျော်လွန်နေသည်။</string>
+    <string name="backup_export_nothing">ထုတ်ယူရန် ဒေတာ မရှိသေးပါ။</string>
     <string name="personal_travel_title">ခရီးစဉ်နှင့် စောင့်ကြည့်မှု</string>
     <string name="personal_travel_active">လက်ရှိ ခရီးစဉ် · ရထား %1$s</string>
     <string name="personal_travel_next_stop">နောက် ရပ်နားဘူတာ- %1$s၊ ခန့်မှန်း %2$s</string>
@@ -1298,6 +1299,9 @@
     <string name="settings_credits_co2">CO₂ ခန့်မှန်းချက်- ဥရောပ ပတ်ဝန်းကျင် အေဂျင်စီ (EEA) ၏ ခရီးသည်-ကီလိုမီတာ အလိုက် ကိန်းများ၊ %1$s- ရထား %2$s g၊ ကား %3$s g (စီးနင်းသူ 1.5 ဦး)၊ လေယာဉ် %4$s g (1,000 km) မှ %5$s g (500 km) အထိ CO₂ ညီမျှ။ ဘူတာများကြား မျဉ်းဖြောင့် အကွာအဝေး၊ ရထားအတွက် ×1.2၊ ကားအတွက် ×1.25၊ လေယာဉ်အတွက် ×1.08။ %6$s</string>
     <plurals name="partenze_hidden_trains">
         <item quantity="other">ဝှက်ထားသော ရထား %d စီး</item>
+    </plurals>
+    <plurals name="station_board_more_not_listed">
+        <item quantity="other">မပြထားသော ရထား နောက်ထပ် %1$d စီး</item>
     </plurals>
     <plurals name="saved_timetable_solutions">
         <item quantity="other">ခရီးစဉ် %d ခု</item>
