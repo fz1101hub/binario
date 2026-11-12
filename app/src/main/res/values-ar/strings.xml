@@ -451,6 +451,7 @@
     <string name="backup_export_failure">تعذّر التصدير: %1$s</string>
     <string name="backup_import_failure">تعذّر الاستيراد: %1$s</string>
     <string name="backup_import_too_large">تتجاوز النسخة الاحتياطية حد 1 MiB.</string>
+    <string name="backup_export_nothing">لا توجد بيانات للتصدير بعد.</string>
     <string name="personal_travel_title">الرحلة والمتابعات</string>
     <string name="personal_travel_active">رحلة نشطة · القطار %1$s</string>
     <string name="personal_travel_next_stop">المحطة التالية: %1$s، متوقع %2$s</string>

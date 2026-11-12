@@ -249,6 +249,9 @@ internal fun BinarioApp(
     // The planner search the results show, and the train number of the number results, for a recreated process.
     var restoredRouteSearch by rememberSaveable { mutableStateOf<String?>(null) }
     var restoredTrainNumber by rememberSaveable { mutableStateOf("") }
+    // The station of the board (id and kind), so that a recreated process opens it again.
+    var restoredBoardStationId by rememberSaveable { mutableStateOf<String?>(null) }
+    var restoredBoardKind by rememberSaveable { mutableStateOf("") }
     // "Modifica" of the results: the planner fills its form from the search on screen.
     var plannerEditRequestId by rememberSaveable { mutableIntStateOf(0) }
     // The state of every screen (the planner form, list positions) survives navigation and tab switches.
@@ -279,20 +282,19 @@ internal fun BinarioApp(
     var namingFavouriteTrain by rememberSaveable { mutableStateOf<String?>(null) }
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
-    LaunchedEffect(lifecycleOwner, screen, operationsSectionName) {
-        if (AppNavigation.refreshesPeriodically(screen)) {
-            lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                if (screen == AppScreen.DEPARTURES && operationsSectionName == OperationsSection.STATIONS.name) {
-                    viewModel.refreshStationBoardIfIdle()
-                }
-                while (true) {
-                    delay(30_000)
-                    if (screen == AppScreen.NUMBER_RESULTS) {
-                        viewModel.searchTrainNumber(refresh = true)
-                    } else if (screen == AppScreen.DEPARTURES && operationsSectionName == OperationsSection.STATIONS.name) {
-                        viewModel.refreshStationBoardIfIdle()
-                    } else viewModel.refreshLiveIfIdle()
-                }
+    // Keyed on what is refreshed, not on the screen: Partenze and a train detail share one loop. Each pass refreshes
+    // at once what was asked for 30 seconds ago or more (the app back in the foreground, another screen) and then
+    // waits for the rest of the interval; the source caches (30 seconds) bound the requests as before.
+    val periodicRefresh = AppNavigation.periodicRefreshOf(screen, operationsSectionName == OperationsSection.STATIONS.name)
+    LaunchedEffect(lifecycleOwner, periodicRefresh) {
+        val target = periodicRefresh ?: return@LaunchedEffect
+        lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            while (true) {
+                val wait = viewModel.refreshIfDue(target)
+                // The live legs of the journeys with changes, at most once a minute: all those listed, or the one open.
+                if (target == PeriodicRefresh.ROUTE_AND_JOURNEYS) journeyViewModel.refreshLive()
+                if (target == PeriodicRefresh.JOURNEY) journeyViewModel.refreshLive(selectedJourneyId)
+                delay(wait)
             }
         }
     }
@@ -316,7 +318,7 @@ internal fun BinarioApp(
                         reminderDescription = resources.getString(R.string.planned_journey_ics_reminder_description)
                     )
                 )
-                context.contentResolver.openOutputStream(uri)?.bufferedWriter()?.use { it.write(content) }
+                context.contentResolver.openReplacingOutputStream(uri)?.bufferedWriter()?.use { it.write(content) }
                     ?: error(resources.getString(R.string.backup_open_output_error))
             }.onSuccess {
                 plannedJourneyViewModel.note(UiMessage(UiMessageKey.PLANNED_JOURNEY_EXPORT_SUCCESS))
@@ -411,6 +413,9 @@ internal fun BinarioApp(
     }
     LaunchedEffect(viewModel.trainNumberQuery) {
         if (viewModel.trainNumberQuery.isNotBlank()) restoredTrainNumber = viewModel.trainNumberQuery
+    }
+    LaunchedEffect(viewModel.stationBoardStation, viewModel.stationBoardKind) {
+        viewModel.stationBoardStation?.let { restoredBoardStationId = it.id; restoredBoardKind = viewModel.stationBoardKind.name }
     }
     val journeyState by journeyViewModel.state.collectAsState()
     // The journeys with changes are searched next to the direct trains whenever the route results are on screen
@@ -527,6 +532,11 @@ internal fun BinarioApp(
     }
     val plannerSearchMode = SearchMode.valueOf(plannerSearchModeName)
     val operationsSection = OperationsSection.valueOf(operationsSectionName)
+    // A recreated process lost the board: it comes back when its screen is shown, once the catalogue knows the station.
+    val boardToRestore = restoredBoardStationId?.takeIf {
+        viewModel.stationBoardStation == null && screen == AppScreen.DEPARTURES && operationsSection == OperationsSection.STATIONS
+    }
+    if (boardToRestore != null) LaunchedEffect(boardToRestore, viewModel.stations) { viewModel.restoreStationBoard(boardToRestore, restoredBoardKind) }
     val backTarget = if (screen == AppScreen.SETTINGS_SECTION) settingsReturnScreen else AppNavigation.back(screen, detailReturnScreen, resultsReturnScreen)
     val navigateBack: () -> Unit = { backTarget?.let(::showScreen) }
     BackHandler(enabled = backTarget != null, onBack = navigateBack)
@@ -800,11 +810,17 @@ internal fun BinarioApp(
             AppScreen.FOR_YOU -> IconButton(onClick = { showScreen(AppScreen.SETTINGS) }, modifier = Modifier.testTag("top-bar-settings")) {
                 Icon(Icons.Default.Settings, contentDescription = stringResource(R.string.settings_title))
             }
-            AppScreen.DEPARTURES, AppScreen.RESULTS, AppScreen.NUMBER_RESULTS -> IconButton(onClick = {
+            AppScreen.DEPARTURES, AppScreen.RESULTS, AppScreen.NUMBER_RESULTS, AppScreen.JOURNEY_DETAIL -> IconButton(onClick = {
                 if (screen == AppScreen.NUMBER_RESULTS) viewModel.searchTrainNumber(refresh = true)
                 else if (screen == AppScreen.DEPARTURES && operationsSection == OperationsSection.STATIONS) {
                     viewModel.refreshStationBoardIfIdle()
-                } else viewModel.refresh()
+                } else if (screen == AppScreen.JOURNEY_DETAIL) {
+                    journeyViewModel.refreshLive(selectedJourneyId, force = true)
+                } else {
+                    viewModel.refresh()
+                    // The journeys with changes listed with the direct trains: their live legs too.
+                    if (screen == AppScreen.RESULTS) journeyViewModel.refreshLive(force = true)
+                }
             }) {
                 Icon(Icons.Default.Refresh, contentDescription = stringResource(R.string.action_refresh_rail_information))
             }
@@ -832,7 +848,7 @@ internal fun BinarioApp(
                     }
                 }
             }
-            AppScreen.AGENDA, AppScreen.SETTINGS, AppScreen.SETTINGS_SECTION, AppScreen.JOURNEY_DETAIL, AppScreen.SAVED_TIMETABLE -> Unit
+            AppScreen.AGENDA, AppScreen.SETTINGS, AppScreen.SETTINGS_SECTION, AppScreen.SAVED_TIMETABLE -> Unit
         }
     }
 

@@ -130,8 +130,54 @@ class LocalDataBackupCodecTest {
     }
 
     @Test
-    fun `route-less backup remains rejected by the versioned codec contract`() {
+    fun `a backup without saved routes is accepted when it carries anything else`() {
+        // Who only searches in Pianifica still has favourite trains, an alert, a history: «Esporta» writes this file.
         val raw = """{"schemaVersion":2,"kind":"binario-local-backup","routes":[],"commuterAlerts":[{"id":"alert","routeLabel":"Casa","stationName":"Roma","time":"08:00","leadMinutes":15,"repeat":"DAILY","quietHoursEnabled":false,"enabled":true}]}"""
+
+        val result = LocalDataBackupCodec.decode(raw, emptyList())
+
+        assertTrue(result is LocalBackupResult.Success)
+        val backup = (result as LocalBackupResult.Success).backup
+        assertTrue(backup.routes.isEmpty())
+        assertEquals("alert", backup.commuterAlerts.single().id)
+    }
+
+    @Test
+    fun `what the export writes for a user without routes can be imported again`() {
+        val roma = Station("roma", "Roma Termini", "Roma")
+        val exported = LocalDataBackupCodec.encode(
+            LocalDataBackup(
+                routes = emptyList(), favouriteStationIds = setOf("roma"),
+                monitoredServices = listOf(ServiceMonitor("9631", "FR 9631")), stationMonitors = emptyList(), commuterAlerts = emptyList(),
+                mobilityPreferences = MobilityPreferences(), stations = listOf(roma)
+            )
+        )
+
+        val result = LocalDataBackupCodec.decode(exported, listOf(roma))
+
+        assertTrue(result is LocalBackupResult.Success)
+        val backup = (result as LocalBackupResult.Success).backup
+        assertEquals(setOf("roma"), backup.favouriteStationIds)
+        assertEquals("9631", backup.monitoredServices.single().number)
+        // Preferences alone count too; the same file with nothing in it does not.
+        val preferencesOnly = LocalDataBackup(emptyList(), emptySet(), emptyList(), emptyList(), emptyList(), MobilityPreferences(maxChanges = 1))
+        assertTrue(LocalDataBackupCodec.decode(LocalDataBackupCodec.encode(preferencesOnly), emptyList()) is LocalBackupResult.Success)
+    }
+
+    @Test
+    fun `a backup that carries nothing is refused`() {
+        val empty = LocalDataBackup(emptyList(), emptySet(), emptyList(), emptyList(), emptyList(), MobilityPreferences(), punctualityHistory = emptyList(), savedTimetables = emptyList())
+
+        val result = LocalDataBackupCodec.decode(LocalDataBackupCodec.encode(empty), emptyList())
+
+        assertTrue(result is LocalBackupResult.Failure)
+        assertTrue((result as LocalBackupResult.Failure).message.contains("non contiene dati"))
+    }
+
+    @Test
+    fun `a backup whose listed routes are all invalid is still refused`() {
+        // The stations of its only route are unknown here: importing the rest would silently erase this device's routes.
+        val raw = """{"schemaVersion":2,"kind":"binario-local-backup","routes":[{"id":"route","name":"Casa","originId":"unknown-a","destinationId":"unknown-b","pinned":false}],"monitoredServices":[{"number":"9631","label":"FR 9631"}]}"""
 
         val result = LocalDataBackupCodec.decode(raw, emptyList())
 
@@ -202,5 +248,33 @@ class LocalDataBackupCodecTest {
             "curated:S12002",
             "curated:S12891",
         ).toSet()
+    }
+
+    @Test
+    fun `the export is checked with the import's rules before a file is written`() {
+        val roma = Station("roma", "Roma Termini", "Roma")
+        val torino = Station("torino", "Torino Porta Nuova", "Torino")
+        val text = { id: Int -> if (id == R.string.backup_export_nothing) "nothing" else if (id == R.string.backup_import_too_large) "too large" else "?" }
+        val nothing = LocalDataBackup(emptyList(), emptySet(), emptyList(), emptyList(), emptyList(), MobilityPreferences(), punctualityHistory = emptyList())
+        assertEquals(BackupExport.NothingToExport, LocalDataBackupCodec.prepareExport(nothing, emptyList()))
+        assertEquals("nothing", LocalDataBackupCodec.exportRefusalReason(BackupExport.NothingToExport, text))
+
+        val route = SavedRoute("route", "Casa – lavoro", roma, torino)
+        val ready = LocalDataBackupCodec.prepareExport(nothing.copy(routes = listOf(route), stations = listOf(roma, torino)), emptyList())
+        assertTrue(ready is BackupExport.Ready)
+        assertNull(LocalDataBackupCodec.exportRefusalReason(ready, text))
+        // Compact JSON, read back by the import as it is.
+        val content = (ready as BackupExport.Ready).content
+        assertTrue(!content.contains("\n"))
+        assertEquals("route", (LocalDataBackupCodec.decode(content, emptyList()) as LocalBackupResult.Success).backup.routes.single().id)
+
+        val huge = nothing.copy(monitoredServices = listOf(ServiceMonitor("9631", "x".repeat(LocalDataBackupCodec.MAX_BYTES))))
+        assertEquals(BackupExport.TooLarge, LocalDataBackupCodec.prepareExport(huge, emptyList()))
+        assertEquals("too large", LocalDataBackupCodec.exportRefusalReason(BackupExport.TooLarge, text))
+
+        // A route whose stations neither the catalogue nor the file can name: the import would refuse the file.
+        val refused = LocalDataBackupCodec.prepareExport(nothing.copy(routes = listOf(route)), emptyList())
+        assertTrue(refused is BackupExport.Refused)
+        assertEquals((refused as BackupExport.Refused).reason, LocalDataBackupCodec.exportRefusalReason(refused, text))
     }
 }

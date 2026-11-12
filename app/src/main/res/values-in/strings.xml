@@ -411,6 +411,7 @@
     <string name="backup_export_failure">Ekspor gagal: %1$s</string>
     <string name="backup_import_failure">Impor gagal: %1$s</string>
     <string name="backup_import_too_large">Cadangan melebihi batas 1 MiB.</string>
+    <string name="backup_export_nothing">Belum ada data untuk diekspor.</string>
     <string name="personal_travel_title">Perjalanan dan pemantauan</string>
     <string name="personal_travel_active">Perjalanan aktif · Kereta %1$s</string>
     <string name="personal_travel_next_stop">Pemberhentian berikutnya: %1$s, perkiraan %2$s</string>

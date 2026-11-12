@@ -417,6 +417,7 @@
     <string name="backup_export_failure">导出失败：%1$s</string>
     <string name="backup_import_failure">导入失败：%1$s</string>
     <string name="backup_import_too_large">备份超过 1 MiB 的上限。</string>
+    <string name="backup_export_nothing">还没有可导出的数据。</string>
 
     <string name="personal_travel_title">行程与关注</string>
     <string name="personal_travel_active">当前行程 · 车次 %1$s</string>

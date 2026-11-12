@@ -73,9 +73,12 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import it.binario.app.ActiveStopAlarmsPanel
 import it.binario.app.AlertRepeat
 import it.binario.app.AppThemeMode
+import it.binario.app.BackupExport
 import it.binario.app.BackgroundStatusPanel
 import it.binario.app.BuildConfig
 import it.binario.app.CommuterAlert
@@ -94,6 +97,7 @@ import it.binario.app.gpsalarm.GpsArrivalAlarmFlow
 import it.binario.app.gpsalarm.GpsArrivalAlarmPanel
 import it.binario.app.localizedLabel
 import it.binario.app.openExternalLink
+import it.binario.app.openReplacingOutputStream
 import it.binario.app.resolve
 import it.binario.app.ui.common.BinarioCard
 import it.binario.app.ui.common.HeaderOverlapBox
@@ -275,6 +279,8 @@ private fun AlertsSettings(viewModel: TrainViewModel, gpsArrivalAlarm: GpsArriva
         mutableStateOf<CommuterAlert?>(null)
     }
     var alertFeedback by rememberSaveable { mutableStateOf<String?>(null) }
+    // A «una volta» reminder that rang meanwhile switched itself off in its store: listed as it is stored.
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { viewModel.reloadCommuterAlerts() }
     val context = LocalContext.current
     val resources = LocalResources.current
     val notificationPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
@@ -351,11 +357,16 @@ private fun DataSettings(viewModel: TrainViewModel) {
     val coroutineScope = rememberCoroutineScope()
     val createBackupDocument = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument(LocalDataBackupCodec.MIME_TYPE)) { uri ->
         if (uri == null) return@rememberLauncherForActivityResult
-        backupFeedback = runCatching {
-            context.contentResolver.openOutputStream(uri)?.bufferedWriter()?.use { it.write(viewModel.exportLocalBackup()) }
-                ?: error(resources.getString(R.string.backup_open_output_error))
-            resources.getString(R.string.backup_export_success)
-        }.getOrElse { resources.getString(R.string.backup_export_failure, it.message ?: resources.getString(R.string.backup_file_error)) }
+        coroutineScope.launch {
+            backupFeedback = runCatching {
+                val export = viewModel.prepareLocalBackupExport()
+                LocalDataBackupCodec.exportRefusalReason(export, resources::getString)?.let { error(it) }
+                val content = (export as BackupExport.Ready).content
+                withContext(Dispatchers.IO) { context.contentResolver.openReplacingOutputStream(uri)?.bufferedWriter()?.use { it.write(content) } }
+                    ?: error(resources.getString(R.string.backup_open_output_error))
+                resources.getString(R.string.backup_export_success)
+            }.getOrElse { resources.getString(R.string.backup_export_failure, it.message ?: resources.getString(R.string.backup_file_error)) }
+        }
     }
     val openBackupDocument = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri == null) return@rememberLauncherForActivityResult
@@ -383,7 +394,14 @@ private fun DataSettings(viewModel: TrainViewModel) {
     }
     LocalBackupPanel(
         feedback = backupFeedback,
-        onExport = { createBackupDocument.launch("binario-backup.json") },
+        // A file the import would refuse is not even created: the reason is shown instead of the picker.
+        onExport = {
+            coroutineScope.launch {
+                LocalDataBackupCodec.exportRefusalReason(viewModel.prepareLocalBackupExport(), resources::getString)
+                    ?.let { backupFeedback = resources.getString(R.string.backup_export_failure, it) }
+                    ?: createBackupDocument.launch("binario-backup.json")
+            }
+        },
         onImport = { openBackupDocument.launch(arrayOf(LocalDataBackupCodec.MIME_TYPE, "text/plain")) }
     )
 }

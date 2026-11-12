@@ -425,6 +425,7 @@
     <string name="backup_export_failure">Dışa aktarma başarısız: %1$s</string>
     <string name="backup_import_failure">İçe aktarma başarısız: %1$s</string>
     <string name="backup_import_too_large">Yedek 1 MiB sınırını aşıyor.</string>
+    <string name="backup_export_nothing">Henüz dışa aktarılacak veri yok.</string>
 
     <string name="personal_travel_title">Yolculuk ve takip</string>
     <string name="personal_travel_active">Etkin yolculuk · Tren %1$s</string>
