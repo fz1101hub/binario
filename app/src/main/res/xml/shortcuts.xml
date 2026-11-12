@@ -21,4 +21,11 @@
             android:action="android.intent.action.VIEW"
             android:data="binario://train/search" />
     </shortcut>
+    <shortcut
+        android:shortcutId="agenda"
+        android:shortcutShortLabel="@string/screen_title_agenda">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:data="binario://agenda" />
+    </shortcut>
 </shortcuts>
