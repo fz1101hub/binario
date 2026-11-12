@@ -97,6 +97,10 @@ Dodici revisori indipendenti, ognuno con un punto di vista diverso, hanno trovat
   - **Promemoria**: notifiche locali da 5 a 60 minuti prima, chieste solo al salvataggio di un viaggio con promemoria; se il permesso manca o l'ora è passata il viaggio resta salvato e un avviso lo dice. La pagina del viaggio mostra il promemoria davvero programmato. Al massimo i 64 più vicini, come permette iOS.
   - **File**: esportazione nel calendario (.ics) e trasferimento dell'Agenda (.json) nello stesso formato di Android, dal foglio di condivisione; l'importazione mostra un'anteprima con viaggi nuovi, doppioni, in conflitto e non leggibili, e non supera mai i 40 viaggi. Binario non crea file propri.
   - **Importazione da testo**: un viaggio per riga, nelle 17 lingue; si aggiunge solo dopo «Ho verificato».
+  - **Come su Android**:
+    - Viaggi fino a 4 tratte e viaggi ripetuti (2, 4, 8 o 12 volte nei giorni scelti), con un file di trasferimento identico byte per byte a quello di Android, quindi un'Agenda passa fra i due telefoni senza perdite.
+    - Un promemoria per ogni partenza.
+    - Modelli di viaggio, promemoria predefinito, «Svuota l'Agenda», ricerca e filtro per mese, la scheda «Pronto per partire», l'importazione dal calendario di un'altra app e l'azione rapida «Agenda» sull'icona.
 - **Orari inclusi nell'app** (Android e iPhone):
   - **Italo**: spariscono i doppioni. Gli itinerari combinati e le copie di treni già presenti non compaiono più come corse in più: Milano Centrale → Verona Porta Nuova passa da 25 righe a 8 treni, Roma Termini → Caserta da 10 a 3. Dove una copia conservava una sosta, il treno ne prende l'orario (il 9939 parte da Roma Termini alle 17:30).
   - **Croazia tolta** (decisione del titolare): il pack HŽPP non serviva nessuna stazione italiana; l'app scende di circa 2 MB. I pack svizzero, austriaco e francese restano.
