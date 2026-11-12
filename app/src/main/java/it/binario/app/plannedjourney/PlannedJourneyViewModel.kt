@@ -62,7 +62,9 @@ data class PlannedJourneyTextImportState(
     val selected: Set<String> = emptySet(),
     val skipped: Int = 0,
     val reviewed: Boolean = false,
-    val message: UiMessage? = null
+    val message: UiMessage? = null,
+    /** Received with «Condividi» from another app rather than typed here. */
+    val fromShare: Boolean = false
 )
 
 /** UI-oriented state holder; all durable writes are delegated to [PlannedJourneyRepository]. */
@@ -112,10 +114,13 @@ class PlannedJourneyViewModel(
         private set
 
     /** Opens the text import, keeping a text typed earlier unless a new one is given (e.g. shared from another app). */
-    fun beginTextImport(text: String? = null) {
+    fun beginTextImport(text: String? = null, fromShare: Boolean = false) {
         val current = textImport
-        textImport = if (text != null || current == null) PlannedJourneyTextImportState(text = text.orEmpty())
-        else current.copy(visible = true)
+        textImport = if (text != null || current == null) {
+            PlannedJourneyTextImportState(text = text.orEmpty().take(PlannedJourneyTextImport.MAX_CHARACTERS), fromShare = fromShare)
+        } else {
+            current.copy(visible = true)
+        }
         feedback = null
     }
 

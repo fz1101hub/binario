@@ -170,6 +170,7 @@
     <string name="planned_journey_close">閉じる</string>
     <string name="planned_journey_text_import">テキストから読み込む</string>
     <string name="planned_journey_text_import_description">1件以上の移動を貼り付けるか、Binario にテキストを共有してください。テキストはここに表示されるだけです。Binario が自動で読み込んだり、メッセージ、クリップボード、リンクを勝手に読み取ったりすることはありません。</string>
+    <string name="planned_journey_text_import_shared">共有されたテキストを受け取りました。プレビューを作成してデータを確認してください。Binario が自動で読み込むことはありません。</string>
     <string name="planned_journey_text_import_label">読み込む移動のテキスト</string>
     <string name="planned_journey_text_import_example">Roma Termini → Bologna Centrale · 2026-09-12 08:30\nBologna Centrale → Milano Centrale · 2026-09-12 11:05</string>
     <string name="planned_journey_text_import_hint">各行には出発地、到着地、DD/MM/YYYY または YYYY-MM-DD 形式の日付、HH:MM 形式の時刻が必要です。テキストは削除するか読み込みを完了するまでここに残ります。</string>

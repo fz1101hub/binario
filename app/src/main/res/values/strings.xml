@@ -175,6 +175,7 @@
     <string name="planned_journey_close">Chiudi</string>
     <string name="planned_journey_text_import">Importa da testo</string>
     <string name="planned_journey_text_import_description">Incolla una o più tratte oppure usa Condividi testo verso Binario. Il testo viene solo proposto qui: Binario non importa automaticamente e non legge messaggi, appunti o link da solo.</string>
+    <string name="planned_journey_text_import_shared">Testo condiviso ricevuto. Crea l’anteprima e rivedi i dati: Binario non importa automaticamente.</string>
     <string name="planned_journey_text_import_label">Testo delle tratte da importare</string>
     <string name="planned_journey_text_import_example">Roma Termini → Bologna Centrale · 12/09/2026 alle 08:30\nBologna Centrale → Milano Centrale · 12/09/2026 alle 11:05</string>
     <string name="planned_journey_text_import_hint">Ogni riga richiede origine, destinazione, data GG/MM/AAAA o AAAA-MM-GG e ora HH:MM. Il testo resta qui finché lo cancelli o completi l’importazione.</string>

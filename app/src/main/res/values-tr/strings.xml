@@ -174,6 +174,7 @@
     <string name="planned_journey_close">Kapat</string>
     <string name="planned_journey_text_import">Metinden içe aktar</string>
     <string name="planned_journey_text_import_description">Bir veya daha fazla yolculuk yapıştırın ya da Binario ile metin paylaşın. Metin yalnızca burada önerilir: Binario otomatik içe aktarmaz ve mesajları, panoyu veya bağlantıları kendiliğinden okumaz.</string>
+    <string name="planned_journey_text_import_shared">Paylaşılan metin alındı. Önizlemeyi oluşturun ve verileri inceleyin: Binario otomatik olarak içe aktarmaz.</string>
     <string name="planned_journey_text_import_label">İçe aktarılacak yolculukların metni</string>
     <string name="planned_journey_text_import_example">Roma Termini → Bologna Centrale · 12.09.2026 saat 08:30\nBologna Centrale → Milano Centrale · 12.09.2026 saat 11:05</string>
     <string name="planned_journey_text_import_hint">Her satırda kalkış, varış, GG.AA.YYYY, DD/MM/YYYY veya YYYY-MM-DD biçiminde tarih ve SS:DD biçiminde saat gerekir. Metin, silene veya içe aktarmayı tamamlayana kadar burada kalır.</string>

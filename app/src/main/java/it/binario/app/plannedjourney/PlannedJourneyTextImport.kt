@@ -139,3 +139,19 @@ object PlannedJourneyTextImport {
         .replace(Regex("\\p{M}+"), "").lowercase(Locale.ROOT)
         .replace(Regex("[^\\p{L}\\p{N}]+"), " ").trim()
 }
+
+/**
+ * Text shared to Binario with Android's «Condividi»: only `ACTION_SEND` with `text/plain`, bounded and normalized like
+ * a paste. The text is handed to the import preview in memory and never stored; it becomes a journey only after review.
+ */
+object PlannedJourneySharedText {
+    const val ACTION_SEND = "android.intent.action.SEND"
+    const val MIME_TYPE = "text/plain"
+
+    fun accept(action: String?, mimeType: String?, text: CharSequence?): String? =
+        if (action == ACTION_SEND && mimeType?.substringBefore(';')?.trim()?.lowercase(Locale.ROOT) == MIME_TYPE) {
+            PlannedJourneyTextImport.normalize(text)
+        } else {
+            null
+        }
+}

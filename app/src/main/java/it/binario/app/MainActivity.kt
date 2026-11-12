@@ -86,6 +86,7 @@ import it.binario.app.journeys.JourneySearchViewModel
 import it.binario.app.maps.rememberOpenMapStationIndex
 import it.binario.app.plannedjourney.PlannedJourneyAgendaScreen
 import it.binario.app.plannedjourney.PlannedJourneyReadyCard
+import it.binario.app.plannedjourney.PlannedJourneySharedText
 import it.binario.app.plannedjourney.PlannedJourneyExportFormat
 import it.binario.app.plannedjourney.PlannedJourneyIcsContract
 import it.binario.app.plannedjourney.PlannedJourneyIcsText
@@ -156,6 +157,7 @@ private val stopAlarmPlanSaver = listSaver<StopAlarmPlan?, Any>(
 class MainActivity : ComponentActivity() {
     private val deepLinkDispatcher = DeepLinkRequestDispatcher()
     private var deepLinkRequest by mutableStateOf<DeepLinkRequest?>(null)
+    private var sharedText by mutableStateOf<String?>(null)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -182,6 +184,8 @@ class MainActivity : ComponentActivity() {
                     onThemeModeChange = themeSettings::selectMode,
                     deepLinkRequest = deepLinkRequest,
                     onDeepLinkConsumed = ::consumeDeepLink,
+                    sharedText = sharedText,
+                    onSharedTextConsumed = { sharedText = null },
                     onSystemBarsAppearance = ::applySystemBarsAppearance
                 )
             }
@@ -200,6 +204,10 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun receiveDeepLinkIntent(intent: Intent?) {
+        if (intent?.action == Intent.ACTION_SEND) {
+            receiveSharedText(intent)
+            return
+        }
         val widgetDeepLink = parseFavouriteTrainDeepLink(intent)
             ?: parseForYouDeepLink(intent)
             ?: RouteShortcuts.deepLink(intent, applicationContext)
@@ -209,6 +217,16 @@ class MainActivity : ComponentActivity() {
         } else {
             deepLinkDispatcher.receive(intent?.action, intent?.dataString)
         }
+    }
+
+    /**
+     * «Condividi» → Binario: the text, kept in memory only, opens the Agenda's import preview; it is dropped from the
+     * Intent at once, and a recreated Activity does not receive the launch Intent again (LaunchDeepLinkPolicy).
+     */
+    private fun receiveSharedText(intent: Intent) {
+        val text = runCatching { intent.getCharSequenceExtra(Intent.EXTRA_TEXT) }.getOrNull()
+        intent.removeExtra(Intent.EXTRA_TEXT)
+        sharedText = PlannedJourneySharedText.accept(intent.action, intent.type, text) ?: return
     }
 
     private fun consumeDeepLink(requestId: Long) {
@@ -236,6 +254,9 @@ internal fun BinarioApp(
     deepLinkRequest: DeepLinkRequest?,
     onDeepLinkConsumed: (Long) -> Unit,
     onSystemBarsAppearance: (lightStatusBar: Boolean, lightNavigationBar: Boolean) -> Unit,
+    /** Text received with «Condividi», handed once to the Agenda's guided import. */
+    sharedText: String? = null,
+    onSharedTextConsumed: () -> Unit = {},
     /** Journeys with changes, a separate search next to the direct trains of [viewModel]. */
     journeyViewModel: JourneySearchViewModel = viewModel(factory = JourneySearchViewModel.factory(LocalContext.current.applicationContext))
 ) {
@@ -444,6 +465,12 @@ internal fun BinarioApp(
     fun showDepartures(section: OperationsSection) {
         operationsSectionName = section.name
         showScreen(AppScreen.DEPARTURES)
+    }
+    LaunchedEffect(sharedText) {
+        val text = sharedText ?: return@LaunchedEffect
+        plannedJourneyViewModel.beginTextImport(text, fromShare = true)
+        onSharedTextConsumed()
+        showScreen(AppScreen.AGENDA)
     }
     LaunchedEffect(deepLinkRequest?.id) {
         val request = deepLinkRequest ?: return@LaunchedEffect

@@ -175,6 +175,7 @@
     <string name="planned_journey_close">Fermer</string>
     <string name="planned_journey_text_import">Importer depuis du texte</string>
     <string name="planned_journey_text_import_description">Collez un ou plusieurs trajets ou utilisez Partager le texte vers Binario. Le texte est seulement proposé ici: Binario n\'importe pas automatiquement et ne lit pas les messages, le presse-papiers ou les liens seul.</string>
+    <string name="planned_journey_text_import_shared">Texte partagé reçu. Créez l\'aperçu et vérifiez les données: Binario n\'importe pas automatiquement.</string>
     <string name="planned_journey_text_import_label">Texte des trajets à importer</string>
     <string name="planned_journey_text_import_example">Roma Termini → Bologna Centrale · 12/09/2026 à 08:30\nBologna Centrale → Milano Centrale · 12/09/2026 à 11:05</string>
     <string name="planned_journey_text_import_hint">Chaque ligne requiert origine, destination, date JJ/MM/YYYY ou YYYY-MM-JJ et heure HH:MM. Le texte reste ici tant que vous l\'effacez ou complétez l\'importation.</string>

@@ -135,6 +135,33 @@ class PlannedJourneyTextImportTest {
         assertTrue(model.textImport?.visible == true)
     }
 
+    @Test fun `only plain text sent with Condividi is accepted, bounded like a paste`() {
+        val send = PlannedJourneySharedText.ACTION_SEND
+        assertEquals("Roma → Napoli", PlannedJourneySharedText.accept(send, "text/plain", " Roma → Napoli\r\n"))
+        assertEquals("x", PlannedJourneySharedText.accept(send, "TEXT/PLAIN; charset=utf-8", "x"))
+        assertNull(PlannedJourneySharedText.accept(send, "text/html", "x"))
+        assertNull(PlannedJourneySharedText.accept(send, "image/png", "x"))
+        assertNull(PlannedJourneySharedText.accept(send, null, "x"))
+        assertNull(PlannedJourneySharedText.accept("android.intent.action.SEND_MULTIPLE", "text/plain", "x"))
+        assertNull(PlannedJourneySharedText.accept("android.intent.action.VIEW", "text/plain", "x"))
+        assertNull(PlannedJourneySharedText.accept(send, "text/plain", "a".repeat(4_001)))
+        assertNull(PlannedJourneySharedText.accept(send, "text/plain", null))
+    }
+
+    @Test fun `shared text replaces an earlier draft, opens the preview step and is never written`() {
+        val storage = FakeStorage()
+        val model = PlannedJourneyViewModel(PlannedJourneyRepository(storage), now = { createdAt }, zone = italy)
+        model.beginTextImport()
+        model.changeTextImport("bozza")
+        model.dismissTextImport()
+        model.beginTextImport("Roma Termini → Milano Centrale · 12/09/2026 alle 08:30", fromShare = true)
+        val state = requireNotNull(model.textImport)
+        assertTrue(state.fromShare && state.visible)
+        assertEquals("Roma Termini → Milano Centrale · 12/09/2026 alle 08:30", state.text)
+        assertNull(state.candidates)
+        assertNull(storage.value)
+    }
+
     private fun preview(text: String, existing: List<PlannedJourney> = emptyList()): PlannedJourneyTextImportPreview {
         var ids = 0
         return PlannedJourneyTextImport.preview(text, stations, existing, italy, createdAt) { "id-${++ids}" }

@@ -174,6 +174,7 @@
     <string name="planned_journey_close">Schließen</string>
     <string name="planned_journey_text_import">Aus Text importieren</string>
     <string name="planned_journey_text_import_description">Fügen Sie eine oder mehrere Verbindungen ein oder verwenden Sie ‚Text teilen‘ nach Binario. Der Text wird nur hier vorgeschlagen: Binario importiert nicht automatisch und liest keine Nachrichten, Zwischenablagen oder Links von allein.</string>
+    <string name="planned_journey_text_import_shared">Geteilter Text empfangen. Erstellen Sie die Vorschau und überprüfen Sie die Daten: Binario importiert nicht automatisch.</string>
     <string name="planned_journey_text_import_label">Text der zu importierenden Verbindungen</string>
     <string name="planned_journey_text_import_example">Roma Termini → Bologna Centrale · 12.09.2026 um 08:30\nBologna Centrale → Milano Centrale · 12.09.2026 um 11:05</string>
     <string name="planned_journey_text_import_hint">Jede Zeile benötigt Abfahrt, Ziel, Datum GG/MM/AAAA oder AAAA-MM-GG und Zeit HH:MM. Der Text bleibt hier, bis Sie ihn löschen oder den Import abschließen.</string>

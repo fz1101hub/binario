@@ -170,6 +170,7 @@
     <string name="planned_journey_close">Tutup</string>
     <string name="planned_journey_text_import">Impor dari teks</string>
     <string name="planned_journey_text_import_description">Tempel satu atau beberapa perjalanan atau gunakan Bagikan teks ke Binario. Teks hanya diusulkan di sini: Binario tidak mengimpor secara otomatis dan tidak membaca pesan, papan klip, atau tautan dengan sendirinya.</string>
+    <string name="planned_journey_text_import_shared">Teks yang dibagikan diterima. Buat pratinjau dan tinjau datanya: Binario tidak mengimpor secara otomatis.</string>
     <string name="planned_journey_text_import_label">Teks perjalanan yang akan diimpor</string>
     <string name="planned_journey_text_import_example">Roma Termini → Bologna Centrale · 12/09/2026 pukul 08:30\nBologna Centrale → Milano Centrale · 12/09/2026 pukul 11:05</string>
     <string name="planned_journey_text_import_hint">Setiap baris memerlukan asal, tujuan, tanggal DD/MM/YYYY atau YYYY-MM-DD, dan waktu HH:MM. Teks tetap di sini sampai Anda menghapusnya atau menyelesaikan impor.</string>

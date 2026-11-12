@@ -490,6 +490,7 @@ private fun TextImportDialog(
         title = { Text(stringResource(R.string.planned_journey_text_import)) },
         text = {
             LazyColumn(modifier = Modifier.testTag("plannedJourneyTextImportDialog"), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (state.fromShare) item { AgendaMessage(stringResource(R.string.planned_journey_text_import_shared), isError = false) }
                 item { Text(stringResource(R.string.planned_journey_text_import_description), style = MaterialTheme.typography.bodySmall) }
                 item {
                     OutlinedTextField(

@@ -174,6 +174,7 @@
     <string name="planned_journey_close">Close</string>
     <string name="planned_journey_text_import">Import from text</string>
     <string name="planned_journey_text_import_description">Paste one or more journeys or use Share text to Binario. The text is only proposed here: Binario does not import automatically and does not read messages, clipboard or links by itself.</string>
+    <string name="planned_journey_text_import_shared">Shared text received. Create the preview and review the data: Binario does not import automatically.</string>
     <string name="planned_journey_text_import_label">Text of journeys to import</string>
     <string name="planned_journey_text_import_example">Roma Termini → Bologna Centrale · 12/09/2026 at 08:30\nBologna Centrale → Milano Centrale · 12/09/2026 at 11:05</string>
     <string name="planned_journey_text_import_hint">Each line requires origin, destination, date DD/MM/YYYY or YYYY-MM-DD and time HH:MM. The text remains here until you delete it or complete the import.</string>
