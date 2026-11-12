@@ -189,6 +189,9 @@ class EmbeddedGtfsRouteAdapter(
             null
         }
 
+        // Whether a national pack lists each station, as a candidate or not: a border zone otherwise (plannedPackOrder).
+        var nationalAtOrigin = false
+        var nationalAtDestination = false
         val candidatePacks = withContext(parsingDispatcher) {
             buildList {
                 for (pack in packs) {
@@ -200,6 +203,10 @@ class EmbeddedGtfsRouteAdapter(
                         val byCode = codeNames(pack)
                         val origin = (byCode[originStation.id] ?: withoutSuffixes(originNames, pack)).firstOrNull { normalize(it) in stops }
                         val destination = (byCode[destinationStation.id] ?: withoutSuffixes(destinationNames, pack)).firstOrNull { normalize(it) in stops }
+                        if (pack.sourceId in PlannedPackOrder.nationalPacks) {
+                            nationalAtOrigin = nationalAtOrigin || origin != null
+                            nationalAtDestination = nationalAtDestination || destination != null
+                        }
                         when {
                             origin != null && destination != null -> add(CandidatePack(pack, origin, destination))
                             explicitSourceIds != null -> add(CandidatePack(pack, originStation.name, destinationStation.name))
@@ -256,7 +263,7 @@ class EmbeddedGtfsRouteAdapter(
             collected
                 .sortedWith(
                     compareBy<SourcedService> { it.service.scheduledDepartureDateTime }
-                        .then(plannedPackOrder)
+                        .then(plannedPackOrder(borderZone = !nationalAtOrigin || !nationalAtDestination))
                         .thenBy { it.service.number }
                 )
                 .distinctBy { item -> serviceIdentity(item.service) }
@@ -432,11 +439,11 @@ class EmbeddedGtfsRouteAdapter(
     /**
      * Which copy of a train two packs both list is kept: the planned order of the packs ([PlannedPackOrder], as in the
      * journey planner), with the operator of the service for the affinity within a class. Every candidate pack serves
-     * both stations (a pack matching only one is not read), so the planner's border exception (the packs serving an end
-     * that no national pack serves come first) would select every candidate and leave the default order unchanged.
+     * both stations (a pack matching only one is not read), so in a [borderZone] (no national pack lists one of the two
+     * stations: Lugano, Innsbruck) the planner's border exception applies to every candidate: foreign packs first.
      */
-    private val plannedPackOrder: Comparator<SourcedService> =
-        PlannedPackOrder.comparator(sourceId = { it.sourceId }, operatorHint = { it.service.operatorDisplayName })
+    private fun plannedPackOrder(borderZone: Boolean): Comparator<SourcedService> =
+        PlannedPackOrder.comparator(sourceId = { it.sourceId }, operatorHint = { it.service.operatorDisplayName }, first = { borderZone })
 
     private data class CandidatePack(val pack: EmbeddedGtfsPack, val originStopName: String, val destinationStopName: String)
 

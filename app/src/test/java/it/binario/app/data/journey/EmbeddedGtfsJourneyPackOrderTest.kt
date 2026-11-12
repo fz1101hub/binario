@@ -95,9 +95,8 @@ class EmbeddedGtfsJourneyPackOrderTest {
         val first = options(packs(trenordServesLugano = false).searchJourneys(request(alfa, epsilon))).first()
         assertEquals(listOf("ch-otd-gtfs:C25", "ch-otd-gtfs:C41"), first.trips())
 
-        // When Trenord serves Lugano too, the packs serving it keep the default order between them: the Italian
-        // regional pack before the foreign one.
+        // When Trenord serves Lugano too, the foreign pack still comes first among the packs serving it.
         val withTrenord = options(packs(trenordServesLugano = true).searchJourneys(request(alfa, epsilon))).first()
-        assertEquals(listOf("ch-otd-gtfs:C25", "lombardia-trenord-gtfs:L41"), withTrenord.trips())
+        assertEquals(listOf("ch-otd-gtfs:C25", "ch-otd-gtfs:C41"), withTrenord.trips())
     }
 }

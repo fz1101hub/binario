@@ -246,8 +246,8 @@ class EmbeddedGtfsRouteAdapterTest {
         assertTrue(result is DataResult.Success)
         val services = (result as DataResult.Success).snapshot.services
         assertEquals(1, services.size)
-        // Milano - Como: the Italian regional pack comes before the foreign one, so its copy is the one kept.
-        assertTrue(services.single().id.startsWith("lombardia-trenord-gtfs:"))
+        // No national pack lists the two stations here, as on a line across the border: the foreign pack comes first.
+        assertTrue(services.single().id.startsWith("ch-otd-gtfs:"))
     }
 
     @Test
@@ -272,6 +272,22 @@ class EmbeddedGtfsRouteAdapterTest {
         val services = (result as DataResult.Success).snapshot.services
         assertEquals(listOf("trenitalia-gtfs", "lombardia-trenord-gtfs", "italo-gtfs"), services.map { it.gtfsIdentity?.sourceId })
         assertEquals("TI37", services.first().gtfsIdentity?.tripId)
+
+        // As Milano - Lugano: the Trenitalia pack lists Milano but not the other station, so the Trenord and the Swiss
+        // copies of a train both list are in a border zone, where the foreign pack comes first.
+        val border = mapOf(
+            "lombardia-trenord-gtfs" to feed(tripId = "TN25", tripNumber = "25", departure = "08:05:00", agencyName = "Trenord"),
+            "ch-otd-gtfs" to feed(tripId = "CH25", tripNumber = "25", departure = "08:05:00", agencyName = "TILO"),
+            "trenitalia-gtfs" to feed(tripId = "TI1", tripNumber = "1", agencyName = "TRENITALIA", stopNames = Triple("Milano Centrale", "Monza", "Lecco"))
+        )
+        val borderServices = (
+            EmbeddedGtfsRouteAdapter(
+                openAsset = { path -> ByteArrayInputStream(requireNotNull(border[path.removePrefix("gtfs/").removeSuffix(".zip")])) },
+                packs = listOf("trenitalia-gtfs", "lombardia-trenord-gtfs", "ch-otd-gtfs").map { EmbeddedGtfsPack(SourceId(it), "gtfs/$it.zip") },
+                clock = { 1_000L }
+            ).loadRoute(route, Direction.OUTBOUND, JourneyQuery(LocalDate.of(2026, 9, 4), LocalTime.of(8, 0))) as DataResult.Success
+            ).snapshot.services
+        assertEquals(listOf("ch-otd-gtfs"), borderServices.map { it.gtfsIdentity?.sourceId })
     }
 
     /**

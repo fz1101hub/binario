@@ -74,16 +74,15 @@ class EmbeddedGtfsJourneyRealPacksTest {
         assertEquals(2, first.transfers)
     }
 
-    @Test fun `Merano to Innsbruck changes at the Brenner, on the South Tyrol copy of the Austrian train`() = runBlocking {
+    @Test fun `Merano to Innsbruck changes between the South Tyrol and the OeBB packs at the Brenner`() = runBlocking {
         val provider = EmbeddedGtfsJourneyProvider.create(openAsset)
         val first = options(provider.searchJourneys(request("Merano Meran", "Innsbruck Hbf.", "08:00"))).first()
         // 5211 Brennero - Innsbruck is in the South Tyrol and in the ÖBB packs. No national pack serves Innsbruck, so
-        // the packs serving it come first, and among them the Italian regional one before the foreign ones: the
-        // South Tyrol copy (REX 5211) is kept, not the ÖBB one (S3 S 5211), as it was before the planned pack order.
-        assertEquals("REG 17128 Merano Meran 08:16-10:22 Brennero Brenner | REX 5211 Brennero Brenner 10:33-11:11 Innsbruck Hbf.", first.summary())
+        // the packs serving it come first, the foreign ones before the Italian regional one: the ÖBB copy is kept.
+        assertEquals("REG 17128 Merano Meran 08:16-10:22 Brennero Brenner | S3 S 5211 Brennero Brenner 10:33-11:11 Innsbruck Hbf.", first.summary())
         assertEquals(StationId("curated:S02001"), first.legs[0].destination)
         assertEquals(
-            listOf("alto-adige-sta-gtfs", "alto-adige-sta-gtfs"),
+            listOf("alto-adige-sta-gtfs", "oebb-gtfs"),
             first.legs.map { it.runId!!.value.substringBefore(':') }
         )
     }

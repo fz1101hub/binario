@@ -89,10 +89,15 @@ class PlannedPackOrderTest {
             listOf("ch-otd-gtfs", "trenitalia-gtfs", "lombardia-trenord-gtfs"),
             order(Covered("trenitalia-gtfs", origin = false), Covered("lombardia-trenord-gtfs", origin = false), Covered("ch-otd-gtfs", destination = false))
         )
-        // Innsbruck as destination: the packs serving it keep the default order among themselves.
+        // Innsbruck as destination: among the packs serving it the foreign ones come first.
         assertEquals(
-            listOf("alto-adige-sta-gtfs", "oebb-gtfs", "trenitalia-gtfs"),
+            listOf("oebb-gtfs", "alto-adige-sta-gtfs", "trenitalia-gtfs"),
             order(Covered("oebb-gtfs", origin = false), Covered("trenitalia-gtfs", destination = false), Covered("alto-adige-sta-gtfs"))
+        )
+        // Lugano served by Trenord too: the Swiss pack first, then Trenord, then the national pack.
+        assertEquals(
+            listOf("ch-otd-gtfs", "lombardia-trenord-gtfs", "trenitalia-gtfs"),
+            order(Covered("trenitalia-gtfs", origin = false), Covered("lombardia-trenord-gtfs"), Covered("ch-otd-gtfs", destination = false))
         )
         // A national pack serving the end, even with another, leaves the default order.
         assertEquals(
