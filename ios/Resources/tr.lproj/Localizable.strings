@@ -139,6 +139,15 @@
 "planner.dictation.role_origin" = "kalkış";
 "planner.dictation.role_destination" = "varış";
 "planner.dictation.separator" = " veya ";
+"planner.nearest.origin" = "En yakın istasyondan kalkış";
+"planner.nearest.hint" = "Konumu yalnızca dokunduğunuzda, bir kez ister ve iPhone'da katalogdaki en yakın istasyonu seçer. Konum kaydedilmez veya gönderilmez.";
+"planner.nearest.locating" = "En yakın istasyon aranıyor…";
+"planner.nearest.found" = "En yakın istasyondan kalkış: %@. Konum kaydedilmedi.";
+"planner.nearest.none" = "Mevcut konumun yakınında istasyon yok.";
+"planner.nearest.unavailable" = "Konum kullanılamıyor. Cihaz konumunu açıp tekrar deneyin.";
+"planner.nearest.denied" = "Konum izni verilmedi. İstasyonları elle aramaya devam edebilirsiniz.";
+"departures.nearest" = "En yakın istasyon";
+"departures.nearest.found" = "En yakın istasyon: %@. Konum kaydedilmedi.";
 "settings.title" = "Ayarlar";
 "settings.data.title" = "Veriler ve kaynaklar";
 "settings.data.catalog" = "İstasyon kataloğu";

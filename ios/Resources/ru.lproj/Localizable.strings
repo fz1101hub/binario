@@ -139,6 +139,15 @@
 "planner.dictation.role_origin" = "отправление";
 "planner.dictation.role_destination" = "назначение";
 "planner.dictation.separator" = " или ";
+"planner.nearest.origin" = "Отправление с ближайшей станции";
+"planner.nearest.hint" = "Запрашивает местоположение только по нажатию, один раз, и выбирает на iPhone ближайшую станцию из каталога. Местоположение не сохраняется и не отправляется.";
+"planner.nearest.locating" = "Ищем ближайшую станцию…";
+"planner.nearest.found" = "Отправление с ближайшей станции: %@. Местоположение не сохранено.";
+"planner.nearest.none" = "Рядом с текущим местоположением нет станций.";
+"planner.nearest.unavailable" = "Местоположение недоступно. Включите геолокацию на устройстве и повторите попытку.";
+"planner.nearest.denied" = "Доступ к местоположению не предоставлен. Вы можете и дальше искать станции вручную.";
+"departures.nearest" = "Ближайшая станция";
+"departures.nearest.found" = "Ближайшая станция: %@. Местоположение не сохранено.";
 "settings.title" = "Настройки";
 "settings.data.title" = "Данные и источники";
 "settings.data.catalog" = "Каталог станций";

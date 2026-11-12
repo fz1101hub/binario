@@ -496,6 +496,16 @@ final class AppModel: ObservableObject {
         }.value
     }
 
+    /// The nearest station the search offers to one position (EXPO_PORT_PLAN I7), computed on the
+    /// iPhone; nil while the catalogue is not loaded or when none lies within 50 km. The position is
+    /// used for this computation only and kept nowhere.
+    func nearestStation(latitude: Double, longitude: Double) async -> NearbyStation? {
+        guard case let .available(catalog) = catalogState else { return nil }
+        return await Task.detached(priority: .userInitiated) {
+            StationProximity.nearest(catalog.offeredStations, latitude: latitude, longitude: longitude)
+        }.value
+    }
+
     /// The language of the app («pt-BR» is «pt»): a sentence is read with its words.
     static var dictationLanguage: String {
         RouteDictation.languageCode(forLocalization: Bundle.main.preferredLocalizations.first ?? "it")

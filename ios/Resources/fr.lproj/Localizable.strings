@@ -139,6 +139,15 @@
 "planner.dictation.role_origin" = "départ";
 "planner.dictation.role_destination" = "arrivée";
 "planner.dictation.separator" = " ou ";
+"planner.nearest.origin" = "Départ de la gare la plus proche";
+"planner.nearest.hint" = "Demande la position uniquement lorsque vous touchez, une seule fois, et choisit sur l’iPhone la gare du catalogue la plus proche. La position n’est ni enregistrée ni envoyée.";
+"planner.nearest.locating" = "Recherche de la gare la plus proche…";
+"planner.nearest.found" = "Départ de la gare la plus proche : %@. La position n’a pas été enregistrée.";
+"planner.nearest.none" = "Aucune gare près de la position actuelle.";
+"planner.nearest.unavailable" = "Position non disponible. Activez la localisation de l’appareil et réessayez.";
+"planner.nearest.denied" = "Autorisation de localisation non accordée. Vous pouvez continuer à rechercher les gares manuellement.";
+"departures.nearest" = "Gare la plus proche";
+"departures.nearest.found" = "Gare la plus proche : %@. La position n’a pas été enregistrée.";
 "settings.title" = "Réglages";
 "settings.data.title" = "Données et sources";
 "settings.data.catalog" = "Catalogue des gares";

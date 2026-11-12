@@ -139,6 +139,15 @@
 "planner.dictation.role_origin" = "asal";
 "planner.dictation.role_destination" = "tujuan";
 "planner.dictation.separator" = " atau ";
+"planner.nearest.origin" = "Berangkat dari stasiun terdekat";
+"planner.nearest.hint" = "Meminta lokasi hanya saat Anda mengetuk, sekali saja, lalu memilih stasiun katalog terdekat di iPhone. Lokasi tidak disimpan atau dikirim.";
+"planner.nearest.locating" = "Mencari stasiun terdekat…";
+"planner.nearest.found" = "Berangkat dari stasiun terdekat: %@. Lokasi tidak disimpan.";
+"planner.nearest.none" = "Tidak ada stasiun di dekat lokasi saat ini.";
+"planner.nearest.unavailable" = "Lokasi tidak tersedia. Aktifkan lokasi perangkat dan coba lagi.";
+"planner.nearest.denied" = "Izin lokasi tidak diberikan. Anda dapat terus mencari stasiun secara manual.";
+"departures.nearest" = "Stasiun terdekat";
+"departures.nearest.found" = "Stasiun terdekat: %@. Lokasi tidak disimpan.";
 "settings.title" = "Pengaturan";
 "settings.data.title" = "Data dan sumber";
 "settings.data.catalog" = "Katalog stasiun";

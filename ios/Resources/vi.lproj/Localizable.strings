@@ -139,6 +139,15 @@
 "planner.dictation.role_origin" = "ga đi";
 "planner.dictation.role_destination" = "ga đến";
 "planner.dictation.separator" = " hoặc ";
+"planner.nearest.origin" = "Đi từ ga gần nhất";
+"planner.nearest.hint" = "Chỉ yêu cầu vị trí khi bạn chạm, một lần, và chọn ga gần nhất trong danh mục ngay trên iPhone. Vị trí không được lưu hay gửi đi.";
+"planner.nearest.locating" = "Đang tìm ga gần nhất…";
+"planner.nearest.found" = "Đi từ ga gần nhất: %@. Vị trí không được lưu.";
+"planner.nearest.none" = "Không có ga nào gần vị trí hiện tại.";
+"planner.nearest.unavailable" = "Không xác định được vị trí. Hãy bật định vị trên thiết bị rồi thử lại.";
+"planner.nearest.denied" = "Chưa cấp quyền vị trí. Bạn vẫn có thể tự tìm ga.";
+"departures.nearest" = "Ga gần nhất";
+"departures.nearest.found" = "Ga gần nhất: %@. Vị trí không được lưu.";
 "settings.title" = "Cài đặt";
 "settings.data.title" = "Dữ liệu và nguồn";
 "settings.data.catalog" = "Danh mục ga";

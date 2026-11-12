@@ -1,10 +1,10 @@
 import SwiftUI
 import BinarioKit
 
-/// «Scrivi o detta la tratta» (EXPO_PORT_PLAN I6), above the station pickers of the planner and of
-/// the Agenda editor's first leg. The user types a sentence, or says it with the keyboard's own
-/// dictation key: Binario never records audio and asks for no microphone or speech permission. On
-/// «Applica» the sentence is read on the iPhone with Android's dictation rules, in the language of
+/// «Scrivi o detta la tratta» (EXPO_PORT_PLAN I6) and «Partenza dalla stazione più vicina» (I7, see
+/// `NearestStationButton`), above the station pickers of the planner and of the Agenda editor's
+/// first leg. The user types a sentence, or says it with the keyboard's own dictation key: Binario
+/// never records audio and asks for no microphone or speech permission. On «Applica» the sentence is read on the iPhone with Android's dictation rules, in the language of
 /// the app, against the catalogue, and kept nowhere. A confirmed route fills both stations and the
 /// day and time said; stations not found leave them alone and bring only the day and time; an
 /// ambiguous or incomplete sentence changes nothing. The line under the field is Android's feedback.
@@ -20,8 +20,9 @@ struct RouteAssistSection: View {
     @State private var reading = false
 
     var body: some View {
-        if RouteDictation.offers(.route, language: AppModel.dictationLanguage) {
-            Section {
+        let dictation = RouteDictation.offers(.route, language: AppModel.dictationLanguage)
+        Section {
+            if dictation {
                 TextField("planner.dictation.field", text: $text)
                     .submitLabel(.done)
                     .onSubmit(read)
@@ -34,8 +35,15 @@ struct RouteAssistSection: View {
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }
-            } footer: {
-                Text(RouteAssistText.footer)
+            }
+            // EXPO_PORT_PLAN I7: one position, on a tap, for the origin.
+            NearestStationButton(titleKey: "planner.nearest.origin", foundKey: "planner.nearest.found", selection: $origin)
+        } footer: {
+            VStack(alignment: .leading, spacing: 4) {
+                if dictation {
+                    Text(RouteAssistText.footer)
+                }
+                Text("planner.nearest.hint")
             }
         }
     }

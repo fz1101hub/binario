@@ -139,6 +139,15 @@
 "planner.dictation.role_origin" = "出发站";
 "planner.dictation.role_destination" = "到达站";
 "planner.dictation.separator" = " 或 ";
+"planner.nearest.origin" = "从最近的车站出发";
+"planner.nearest.hint" = "仅在你点按时请求一次位置，并在 iPhone 上从目录中选出最近的车站。位置不会被保存或发送。";
+"planner.nearest.locating" = "正在查找最近的车站…";
+"planner.nearest.found" = "从最近的车站出发：%@。未保存位置。";
+"planner.nearest.none" = "当前位置附近没有车站。";
+"planner.nearest.unavailable" = "无法获取位置。请开启设备定位后重试。";
+"planner.nearest.denied" = "未授予位置权限。你可以继续手动搜索车站。";
+"departures.nearest" = "最近的车站";
+"departures.nearest.found" = "最近的车站：%@。未保存位置。";
 "settings.title" = "设置";
 "settings.data.title" = "数据和来源";
 "settings.data.catalog" = "车站目录";

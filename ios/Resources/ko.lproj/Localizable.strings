@@ -139,6 +139,15 @@
 "planner.dictation.role_origin" = "출발지";
 "planner.dictation.role_destination" = "도착지";
 "planner.dictation.separator" = " 또는 ";
+"planner.nearest.origin" = "가장 가까운 역에서 출발";
+"planner.nearest.hint" = "탭할 때 한 번만 위치를 요청하고 iPhone에서 카탈로그의 가장 가까운 역을 고릅니다. 위치는 저장되거나 전송되지 않습니다.";
+"planner.nearest.locating" = "가장 가까운 역을 찾는 중…";
+"planner.nearest.found" = "가장 가까운 역에서 출발: %@. 위치는 저장되지 않았습니다.";
+"planner.nearest.none" = "현재 위치 근처에 역이 없습니다.";
+"planner.nearest.unavailable" = "위치를 이용할 수 없습니다. 기기의 위치 기능을 켜고 다시 시도하세요.";
+"planner.nearest.denied" = "위치 권한이 허용되지 않았습니다. 역은 계속 직접 검색할 수 있습니다.";
+"departures.nearest" = "가장 가까운 역";
+"departures.nearest.found" = "가장 가까운 역: %@. 위치는 저장되지 않았습니다.";
 "settings.title" = "설정";
 "settings.data.title" = "데이터 및 출처";
 "settings.data.catalog" = "역 카탈로그";

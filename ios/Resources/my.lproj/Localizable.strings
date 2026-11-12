@@ -139,6 +139,15 @@
 "planner.dictation.role_origin" = "စထွက်မည့်နေရာ";
 "planner.dictation.role_destination" = "ခရီးဆုံး";
 "planner.dictation.separator" = " သို့မဟုတ် ";
+"planner.nearest.origin" = "အနီးဆုံးဘူတာမှ ထွက်ခွာမည်";
+"planner.nearest.hint" = "နှိပ်သည့်အခါ တစ်ကြိမ်သာ တည်နေရာ တောင်းပြီး iPhone ပေါ်တွင် စာရင်းမှ အနီးဆုံး ဘူတာကို ရွေးသည်။ တည်နေရာကို မသိမ်းဆည်းပါ၊ မပို့ပါ။";
+"planner.nearest.locating" = "အနီးဆုံး ဘူတာကို ရှာနေသည်…";
+"planner.nearest.found" = "အနီးဆုံးဘူတာမှ ထွက်ခွာမည်- %@။ တည်နေရာကို မသိမ်းထားပါ။";
+"planner.nearest.none" = "လက်ရှိတည်နေရာအနီးတွင် ဘူတာ မရှိပါ။";
+"planner.nearest.unavailable" = "တည်နေရာ မရနိုင်ပါ။ စက်၏ တည်နေရာကို ဖွင့်ပြီး ထပ်စမ်းကြည့်ပါ။";
+"planner.nearest.denied" = "တည်နေရာ ခွင့်ပြုချက် မရပါ။ ဘူတာများကို ကိုယ်တိုင် ဆက်ရှာနိုင်ပါသည်။";
+"departures.nearest" = "အနီးဆုံး ဘူတာ";
+"departures.nearest.found" = "အနီးဆုံး ဘူတာ- %@။ တည်နေရာကို မသိမ်းထားပါ။";
 "settings.title" = "ဆက်တင်များ";
 "settings.data.title" = "ဒေတာနှင့် ရင်းမြစ်များ";
 "settings.data.catalog" = "ဘူတာစာရင်း";

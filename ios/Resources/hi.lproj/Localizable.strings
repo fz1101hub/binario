@@ -139,6 +139,15 @@
 "planner.dictation.role_origin" = "प्रस्थान";
 "planner.dictation.role_destination" = "गंतव्य";
 "planner.dictation.separator" = " या ";
+"planner.nearest.origin" = "सबसे पास के स्टेशन से प्रस्थान";
+"planner.nearest.hint" = "टैप करने पर ही, केवल एक बार लोकेशन माँगता है और iPhone पर कैटलॉग का सबसे पास का स्टेशन चुनता है। लोकेशन न सहेजी जाती है, न भेजी जाती है।";
+"planner.nearest.locating" = "सबसे पास का स्टेशन खोजा जा रहा है…";
+"planner.nearest.found" = "सबसे पास के स्टेशन से प्रस्थान: %@. स्थान सहेजा नहीं गया।";
+"planner.nearest.none" = "मौजूदा स्थान के पास कोई स्टेशन नहीं।";
+"planner.nearest.unavailable" = "लोकेशन उपलब्ध नहीं। डिवाइस की लोकेशन चालू करें और फिर कोशिश करें।";
+"planner.nearest.denied" = "लोकेशन की अनुमति नहीं मिली। आप स्टेशन हाथ से खोजना जारी रख सकते हैं।";
+"departures.nearest" = "सबसे पास का स्टेशन";
+"departures.nearest.found" = "सबसे पास का स्टेशन: %@. स्थान सहेजा नहीं गया।";
 "settings.title" = "सेटिंग्स";
 "settings.data.title" = "डेटा और स्रोत";
 "settings.data.catalog" = "स्टेशन कैटलॉग";

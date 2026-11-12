@@ -139,6 +139,15 @@
 "planner.dictation.role_origin" = "Abfahrt";
 "planner.dictation.role_destination" = "Ziel";
 "planner.dictation.separator" = " oder ";
+"planner.nearest.origin" = "Abfahrt vom nächstgelegenen Bahnhof";
+"planner.nearest.hint" = "Fragt den Standort nur beim Tippen und nur einmal ab und wählt auf dem iPhone den nächstgelegenen Bahnhof des Katalogs. Der Standort wird weder gespeichert noch gesendet.";
+"planner.nearest.locating" = "Suche den nächsten Bahnhof …";
+"planner.nearest.found" = "Abfahrt vom nächstgelegenen Bahnhof: %@. Der Standort wurde nicht gespeichert.";
+"planner.nearest.none" = "Kein Bahnhof in der Nähe des aktuellen Standorts.";
+"planner.nearest.unavailable" = "Standort nicht verfügbar. Aktiviere die Standortbestimmung des Geräts und versuche es erneut.";
+"planner.nearest.denied" = "Standortberechtigung nicht erteilt. Du kannst weiter manuell nach Bahnhöfen suchen.";
+"departures.nearest" = "Nächster Bahnhof";
+"departures.nearest.found" = "Nächster Bahnhof: %@. Der Standort wurde nicht gespeichert.";
 "settings.title" = "Einstellungen";
 "settings.data.title" = "Daten und Quellen";
 "settings.data.catalog" = "Bahnhofskatalog";

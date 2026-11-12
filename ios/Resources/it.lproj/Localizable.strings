@@ -139,6 +139,15 @@
 "planner.dictation.role_origin" = "partenza";
 "planner.dictation.role_destination" = "arrivo";
 "planner.dictation.separator" = " oppure ";
+"planner.nearest.origin" = "Partenza dalla stazione più vicina";
+"planner.nearest.hint" = "Chiede la posizione solo quando tocchi, una sola volta, e sceglie sull’iPhone la stazione più vicina del catalogo. La posizione non viene salvata né inviata.";
+"planner.nearest.locating" = "Cerco la stazione più vicina…";
+"planner.nearest.found" = "Partenza dalla stazione più vicina: %@. La posizione non è stata salvata.";
+"planner.nearest.none" = "Nessuna stazione vicina alla posizione attuale.";
+"planner.nearest.unavailable" = "Posizione non disponibile. Attiva la localizzazione del dispositivo e riprova.";
+"planner.nearest.denied" = "Permesso posizione non concesso. Puoi continuare a cercare manualmente le stazioni.";
+"departures.nearest" = "Stazione più vicina";
+"departures.nearest.found" = "Stazione più vicina: %@. La posizione non è stata salvata.";
 "settings.title" = "Impostazioni";
 "settings.data.title" = "Dati e fonti";
 "settings.data.catalog" = "Catalogo stazioni";

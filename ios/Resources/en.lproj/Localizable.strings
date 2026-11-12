@@ -139,6 +139,15 @@
 "planner.dictation.role_origin" = "origin";
 "planner.dictation.role_destination" = "destination";
 "planner.dictation.separator" = " or ";
+"planner.nearest.origin" = "Departure from the nearest station";
+"planner.nearest.hint" = "Asks for your location only when you tap, once, and picks the nearest catalogue station on the iPhone. Your location is not saved or sent.";
+"planner.nearest.locating" = "Looking for the nearest station…";
+"planner.nearest.found" = "Departure from the nearest station: %@. The location was not saved.";
+"planner.nearest.none" = "No station near the current location.";
+"planner.nearest.unavailable" = "Location unavailable. Enable device location and try again.";
+"planner.nearest.denied" = "Location permission not granted. You can continue to search for stations manually.";
+"departures.nearest" = "Nearest station";
+"departures.nearest.found" = "Nearest station: %@. The location was not saved.";
 "settings.title" = "Settings";
 "settings.data.title" = "Data and sources";
 "settings.data.catalog" = "Station catalogue";

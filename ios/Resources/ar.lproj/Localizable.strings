@@ -139,6 +139,15 @@
 "planner.dictation.role_origin" = "المغادرة";
 "planner.dictation.role_destination" = "الوصول";
 "planner.dictation.separator" = " أو ";
+"planner.nearest.origin" = "المغادرة من أقرب محطة";
+"planner.nearest.hint" = "يطلب الموقع فقط عند النقر، مرة واحدة، ويختار على iPhone أقرب محطة من الكتالوج. لا يُحفَظ الموقع ولا يُرسَل.";
+"planner.nearest.locating" = "أبحث عن أقرب محطة…";
+"planner.nearest.found" = "المغادرة من أقرب محطة: %@. لم يُحفظ الموقع.";
+"planner.nearest.none" = "لا توجد محطة قريبة من الموقع الحالي.";
+"planner.nearest.unavailable" = "الموقع غير متاح. فعّل خدمة الموقع في الجهاز وأعد المحاولة.";
+"planner.nearest.denied" = "لم يُمنح إذن الموقع. يمكنك مواصلة البحث عن المحطات يدويًا.";
+"departures.nearest" = "أقرب محطة";
+"departures.nearest.found" = "أقرب محطة: %@. لم يُحفظ الموقع.";
 "settings.title" = "الإعدادات";
 "settings.data.title" = "البيانات والمصادر";
 "settings.data.catalog" = "كتالوج المحطات";

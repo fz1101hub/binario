@@ -60,6 +60,11 @@ targets:
         # integrity: export-compliance exempt. Without the key App Store Connect holds every build
         # as "Missing Compliance".
         INFOPLIST_KEY_ITSAppUsesNonExemptEncryption: NO
+        # «Stazione più vicina» (EXPO_PORT_PLAN I7): When-In-Use only, asked on a tap, one position used
+        # on the iPhone and kept nowhere. The text is the Italian one (the development language); each
+        # of the 17 languages has it in Resources/<language>.lproj/InfoPlist.strings. No microphone,
+        # speech or Always key.
+        INFOPLIST_KEY_NSLocationWhenInUseUsageDescription: "Binario usa la tua posizione una sola volta, quando chiedi la stazione più vicina, per trovarla nell’elenco delle stazioni salvato sul telefono. La posizione non viene salvata né inviata."
         TARGETED_DEVICE_FAMILY: "1"
         SUPPORTS_MACCATALYST: NO
         # Watch Connectivity is unsupported on Apple silicon Macs and Apple Vision, and the

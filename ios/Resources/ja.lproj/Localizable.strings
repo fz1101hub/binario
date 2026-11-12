@@ -139,6 +139,15 @@
 "planner.dictation.role_origin" = "出発駅";
 "planner.dictation.role_destination" = "到着駅";
 "planner.dictation.separator" = " または ";
+"planner.nearest.origin" = "最寄り駅から出発";
+"planner.nearest.hint" = "タップしたときに一度だけ位置情報を求め、iPhone 上でカタログから最寄り駅を選びます。位置情報は保存も送信もされません。";
+"planner.nearest.locating" = "最寄り駅を探しています…";
+"planner.nearest.found" = "最寄り駅から出発: %@。位置情報は保存されていません。";
+"planner.nearest.none" = "現在地の近くに駅がありません。";
+"planner.nearest.unavailable" = "位置情報を取得できません。端末の位置情報をオンにして、もう一度お試しください。";
+"planner.nearest.denied" = "位置情報の権限が許可されていません。駅は引き続き手動で検索できます。";
+"departures.nearest" = "最寄り駅";
+"departures.nearest.found" = "最寄り駅: %@。位置情報は保存されていません。";
 "settings.title" = "設定";
 "settings.data.title" = "データと出典";
 "settings.data.catalog" = "駅カタログ";

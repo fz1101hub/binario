@@ -139,6 +139,15 @@
 "planner.dictation.role_origin" = "ต้นทาง";
 "planner.dictation.role_destination" = "ปลายทาง";
 "planner.dictation.separator" = " หรือ ";
+"planner.nearest.origin" = "ออกจากสถานีที่ใกล้ที่สุด";
+"planner.nearest.hint" = "ขอตำแหน่งเฉพาะเมื่อคุณแตะ เพียงครั้งเดียว และเลือกสถานีที่ใกล้ที่สุดจากแค็ตตาล็อกบน iPhone ตำแหน่งจะไม่ถูกบันทึกหรือส่งออกไป";
+"planner.nearest.locating" = "กำลังค้นหาสถานีที่ใกล้ที่สุด…";
+"planner.nearest.found" = "ออกจากสถานีที่ใกล้ที่สุด: %@ ไม่ได้บันทึกตำแหน่ง";
+"planner.nearest.none" = "ไม่มีสถานีใกล้ตำแหน่งปัจจุบัน";
+"planner.nearest.unavailable" = "ไม่ทราบตำแหน่ง โปรดเปิดตำแหน่งของอุปกรณ์แล้วลองอีกครั้ง";
+"planner.nearest.denied" = "ไม่ได้รับสิทธิ์เข้าถึงตำแหน่ง คุณยังค้นหาสถานีเองได้";
+"departures.nearest" = "สถานีที่ใกล้ที่สุด";
+"departures.nearest.found" = "สถานีที่ใกล้ที่สุด: %@ ไม่ได้บันทึกตำแหน่ง";
 "settings.title" = "การตั้งค่า";
 "settings.data.title" = "ข้อมูลและแหล่งที่มา";
 "settings.data.catalog" = "แค็ตตาล็อกสถานี";
