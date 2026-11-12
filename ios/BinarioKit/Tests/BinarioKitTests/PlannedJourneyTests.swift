@@ -195,6 +195,8 @@ final class PlannedJourneyTests: XCTestCase {
         XCTAssertEqual(read.reminderMinutes, 15)
         XCTAssertEqual(read.status, .completed)
         XCTAssertEqual(read.createdAt, try utc("2026-11-12T13:17:46Z"))
+        // Written back as Android wrote it, milliseconds included.
+        XCTAssertEqual(String(decoding: try PlannedJourneyTransfer.encode(collection), as: UTF8.self), android)
     }
 
     func testWhatTheIPhoneCannotReadOrAndroidWouldRefuseIsRefused() throws {
@@ -217,14 +219,14 @@ final class PlannedJourneyTests: XCTestCase {
         try refused({ $0["reminderMinutes"] = 0 }, "a lead Android does not know")
         try refused({ $0["completedOccurrenceDates"] = ["2026-11-12"] }, "occurrences without recurrence")
         try refused({ _ = $0.removeValue(forKey: "completedOccurrenceDates") }, "a required list")
-        try refused({ $0["recurrence"] = ["weekdays": ["THURSDAY"]] }, "recurring journeys are not read yet")
+        try refused({ $0["recurrence"] = ["weekdays": ["THURSDAY"]] }, "an incomplete recurrence")
         try refused({ $0["createdAt"] = "yesterday" }, "an instant")
         try refused({ record in
             var itinerary = record["itinerary"] as? [String: Any] ?? [:]
             let segments = itinerary["segments"] as? [Any] ?? []
             itinerary["segments"] = segments + segments
             record["itinerary"] = itinerary
-        }, "a journey of several legs")
+        }, "two legs with one identifier")
         try refused({ record in
             var itinerary = record["itinerary"] as? [String: Any] ?? [:]
             var segment = (itinerary["segments"] as? [[String: Any]])?.first ?? [:]

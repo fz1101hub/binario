@@ -43,9 +43,9 @@ private struct StationSearchView: View {
     @Binding var selection: Station?
     @State private var query = ""
 
-    private var suggestions: [Station] { model.suggestions(for: query) }
-
     var body: some View {
+        // Searched once per keystroke: the empty check and the list read the same results.
+        let suggestions = model.suggestions(for: query)
         NavigationStack {
             Group {
                 if query.isEmpty {

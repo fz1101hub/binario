@@ -15,5 +15,16 @@
 			</dict>
 		</dict>
 	</dict>
+	<key>UIApplicationShortcutItems</key>
+	<array>
+		<dict>
+			<key>UIApplicationShortcutItemType</key>
+			<string>it.binario.ios.agenda</string>
+			<key>UIApplicationShortcutItemTitle</key>
+			<string>Agenda</string>
+			<key>UIApplicationShortcutItemIconSymbolName</key>
+			<string>calendar</string>
+		</dict>
+	</array>
 </dict>
 </plist>

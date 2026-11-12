@@ -42,10 +42,11 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: it.binario.ios
         PRODUCT_NAME: Binario
         GENERATE_INFOPLIST_FILE: YES
-        # The keys INFOPLIST_KEY_ cannot express, merged with the generated ones: only App Transport
+        # The keys INFOPLIST_KEY_ cannot express, merged with the generated ones: App Transport
         # Security's exception for Android's single cleartext hop, an HTTPS request to
         # www.viaggiatreno.it redirected to the same resource over HTTP on that host (subdomains
-        # excluded), as in Android's network_security_config.xml. Every other request is HTTPS.
+        # excluded), as in Android's network_security_config.xml (every other request is HTTPS),
+        # and the static Home-screen quick action «Agenda» (title localized by InfoPlist.strings).
         INFOPLIST_FILE: Configuration/Binario-Info.plist
         INFOPLIST_KEY_CFBundleDisplayName: Binario
         INFOPLIST_KEY_CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
@@ -60,6 +61,11 @@ targets:
         # integrity: export-compliance exempt. Without the key App Store Connect holds every build
         # as "Missing Compliance".
         INFOPLIST_KEY_ITSAppUsesNonExemptEncryption: NO
+        # «Stazione più vicina» (EXPO_PORT_PLAN I7): When-In-Use only, asked on a tap, one position used
+        # on the iPhone and kept nowhere. The text is the Italian one (the development language); each
+        # of the 17 languages has it in Resources/<language>.lproj/InfoPlist.strings. No microphone,
+        # speech or Always key.
+        INFOPLIST_KEY_NSLocationWhenInUseUsageDescription: "Binario usa la tua posizione una sola volta, quando chiedi la stazione più vicina, per trovarla nell’elenco delle stazioni salvato sul telefono. La posizione non viene salvata né inviata."
         TARGETED_DEVICE_FAMILY: "1"
         SUPPORTS_MACCATALYST: NO
         # Watch Connectivity is unsupported on Apple silicon Macs and Apple Vision, and the

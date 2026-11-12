@@ -229,6 +229,8 @@ class StationBoardAggregateService(
         val shownBoards = boards.filter { it.role != BoardRole.PROGRAMMED } +
             boards.filter { board -> board.role == BoardRole.PROGRAMMED && usedProgrammed.any { it === board } }
         val programmedFallback = liveSpanEnd == null && usedProgrammed.isNotEmpty()
+        // Nothing on the board is live (an operator-only board such as Italo's may still add live rows to a fallback).
+        val programmedOnly = programmedFallback && shownCandidates.all { it.origin.role == BoardRole.PROGRAMMED }
 
         val warnings = buildSet {
             shownBoards.flatMapTo(this) { it.warnings }
@@ -241,6 +243,11 @@ class StationBoardAggregateService(
             if (sourceConflict) add(ProviderWarning.SOURCE_CONFLICT)
             if (entries.any { it.routeChange?.value?.kind == RouteChangeKind.REPLACEMENT_SERVICE }) {
                 add(ProviderWarning.REPLACEMENT_SERVICE)
+            }
+            // «Sono disponibili solo orari programmati», not «Realtime parzialmente non disponibile».
+            if (programmedOnly) {
+                remove(ProviderWarning.REALTIME_UNAVAILABLE)
+                add(ProviderWarning.PROGRAMMED_ONLY)
             }
         }
 

@@ -381,6 +381,185 @@ class IOSProjectTests(unittest.TestCase):
             for text in texts:
                 self.assertIsNone(forbidden.search(text), f"{language}: {text}")
 
+    def test_agenda_reminders_are_local_notifications_without_a_push_entitlement(self) -> None:
+        """EXPO_PORT_PLAN R25 and F30: the Agenda's reminders are local requests behind a protocol; no target
+        declares the push entitlement or a background mode, nothing registers for remote notifications, and the
+        permission is asked only when a journey with a reminder is saved, never by a reconciliation."""
+        paths = [
+            path for base in (IOS, ROOT / "apple-watch") for path in base.rglob("*")
+            if path.is_file() and ".build" not in path.parts
+            and path.suffix in {".swift", ".yml", ".plist", ".entitlements", ".xcprivacy"}
+        ]
+        for path in paths:
+            text = path.read_text(encoding="utf-8")
+            for forbidden in ("aps-environment", "registerForRemoteNotifications", "remote-notification", "UIBackgroundModes"):
+                self.assertNotIn(forbidden, text, path)
+        self.assertNotIn("entitlements", self.targets["Binario"])
+        for name, target in self.targets.items():
+            if "entitlements" in target:
+                with (IOS / target["entitlements"]["path"]).open("rb") as source:
+                    self.assertEqual({"com.apple.security.application-groups"}, set(plistlib.load(source)), name)
+
+        adapter = (IOS / "BinarioApp/AgendaReminders.swift").read_text(encoding="utf-8")
+        self.assertIn("final class SystemAgendaNotificationCenter: PlannedJourneyNotificationCenter", adapter)
+        self.assertIn("UNTimeIntervalNotificationTrigger", adapter)
+        # The words are the stored Italian time and the validated station names, never the free label.
+        self.assertIn("plan.departureTime.hhmm, plan.origin, plan.destination", adapter)
+        self.assertNotIn(".label", adapter)
+        sources = [
+            path for base in (IOS / "BinarioApp", IOS / "BinarioKit/Sources")
+            for path in base.rglob("*.swift")
+        ]
+        asking = sorted(path.name for path in sources if "requestAuthorization(" in path.read_text(encoding="utf-8"))
+        self.assertEqual(["AgendaReminders.swift"], asking)
+        scheduler = (IOS / "BinarioKit/Sources/BinarioKit/PlannedJourneyReminders.swift").read_text(encoding="utf-8")
+        self.assertEqual(1, scheduler.count("center.requestPermission()"))
+        self.assertLess(scheduler.index("func scheduleAfterSaving"), scheduler.index("center.requestPermission()"))
+        self.assertLess(scheduler.index("center.requestPermission()"), scheduler.index("func cancel(journeyID"))
+        root_view = (IOS / "BinarioApp/RootView.swift").read_text(encoding="utf-8")
+        self.assertIn("if phase == .active {\n                Task { await model.refreshReminders() }", root_view)
+        model = (IOS / "BinarioApp/AppModel.swift").read_text(encoding="utf-8")
+        for action in ("func deleteJourney(id: String)", "func completeJourney(id: String"):
+            body = model.split(action, 1)[1].split("\n    }\n", 1)[0]
+            self.assertLess(body.index("reminderScheduler?.cancel(journeyID: id"), body.index("plannedJourneyStore."), action)
+        self.assertIn("PlannedJourneyReminderTests", (IOS / "BinarioKit/Tests/BinarioKitTests/PlannedJourneyReminderTests.swift").read_text(encoding="utf-8"))
+
+    def test_agenda_files_are_androids_formats_made_in_memory_and_read_in_place(self) -> None:
+        """EXPO_PORT_PLAN F24, F26, F28: the exports are Android's JSON transfer and ICS calendar, made in memory
+        when shared; a picked file is read in place through its security-scoped address with a byte bound; the
+        app writes no temporary file of its own."""
+        files = (IOS / "BinarioApp/AgendaFiles.swift").read_text(encoding="utf-8")
+        view = (IOS / "BinarioApp/AgendaView.swift").read_text(encoding="utf-8")
+        self.assertIn("DataRepresentation(exportedContentType: .json)", files)
+        self.assertIn("DataRepresentation(exportedContentType: AgendaFiles.calendarType)", files)
+        self.assertIn("PlannedJourneyTransfer.encode(PlannedJourneyCollection(validating: file.journeys))", files)
+        self.assertIn("PlannedJourneyIcs.export(file.journeys", files)
+        read = files.split("static func read(_ url: URL) -> Data? {", 1)[1].split("\n    }\n", 1)[0]
+        self.assertLess(read.index("startAccessingSecurityScopedResource()"), read.index("FileHandle(forReadingFrom: url)"))
+        self.assertIn("stopAccessingSecurityScopedResource()", read)
+        self.assertIn("read(upToCount: PlannedJourneySchema.maximumEncodedBytes + 1)", read)
+        for path in (IOS / "BinarioApp").glob("Agenda*.swift"):
+            text = path.read_text(encoding="utf-8")
+            for forbidden in ("temporaryDirectory", "NSTemporaryDirectory", "write(to:", "FileRepresentation", "asCopy"):
+                self.assertNotIn(forbidden, text, path.name)
+        self.assertIn(".fileImporter(isPresented: $importing, allowedContentTypes: AgendaFiles.importTypes)", view)
+        self.assertIn("ShareLink(item: AgendaCalendarFile(journeys: [journey])", view)
+        ics = (IOS / "BinarioKit/Sources/BinarioKit/PlannedJourneyIcs.swift").read_text(encoding="utf-8")
+        self.assertIn('productID = "-//Binario//Planned Journeys 1.0//IT"', ics)
+        self.assertIn('String(digest.prefix(32)) + "@binario.local"', ics)
+        self.assertIn('"X-BINARIO-JOURNEY-ID:"', ics)
+        self.assertIn('"X-BINARIO-OCCURRENCE-DATE:"', ics)
+        # The same limits as Android's PlannedJourneyIcsContract and PlannedJourneyTransferContract.
+        android_ics = (ROOT / "app/src/main/java/it/binario/app/plannedjourney/PlannedJourneyIcs.kt").read_text(encoding="utf-8")
+        self.assertIn("const val MAX_BYTES = 262_144", android_ics)
+        self.assertIn("const val MAX_EVENTS = 120", android_ics)
+        self.assertIn("maximumBytes = 262_144", ics)
+        self.assertIn("maximumEvents = 120", ics)
+        self.assertIn('PRODUCT_ID = "-//Binario//Planned Journeys 1.0//IT"', android_ics)
+        android_transfer = (ROOT / "app/src/main/java/it/binario/app/plannedjourney/PlannedJourneyTransfer.kt").read_text(encoding="utf-8")
+        self.assertIn("const val MAX_NESTING_DEPTH = 16", android_transfer)
+        journeys = (IOS / "BinarioKit/Sources/BinarioKit/PlannedJourneys.swift").read_text(encoding="utf-8")
+        self.assertIn("maximumNestingDepth = 16", journeys)
+
+    def test_home_screen_quick_action_opens_the_agenda_with_a_localized_title(self) -> None:
+        """EXPO_PORT_PLAN F45: one static quick action «Agenda» declared in Binario-Info.plist, its title localized
+        in every language by InfoPlist.strings with the Agenda's own name, handled at launch and later."""
+        for language in sorted(LANGUAGES):
+            folder = IOS / "Resources" / f"{language}.lproj"
+            titles = read_strings(folder / "InfoPlist.strings")
+            # The quick action's title and the location permission text (I7) are the only Info.plist strings.
+            self.assertEqual({"Agenda", "NSLocationWhenInUseUsageDescription"}, set(titles), language)
+            self.assertEqual(read_strings(folder / "Localizable.strings")["saved.agenda.title"], titles["Agenda"], language)
+        app = (IOS / "BinarioApp/BinarioApp.swift").read_text(encoding="utf-8")
+        self.assertIn('static let type = "it.binario.ios.agenda"', app)
+        self.assertIn("@UIApplicationDelegateAdaptor(BinarioAppDelegate.self)", app)
+        self.assertIn("options.shortcutItem", app)
+        self.assertIn("performActionFor shortcutItem: UIApplicationShortcutItem", app)
+        root = (IOS / "BinarioApp/RootView.swift").read_text(encoding="utf-8")
+        self.assertIn("NotificationCenter.default.publisher(for: AgendaQuickAction.notification)", root)
+        saved = (IOS / "BinarioApp/SavedRoutesView.swift").read_text(encoding="utf-8")
+        self.assertIn(".navigationDestination(isPresented: $model.showingAgenda)", saved)
+
+    def test_text_import_adds_reviewed_journeys_on_catalogue_stations_only(self) -> None:
+        """EXPO_PORT_PLAN F22 and §3.4: a pasted text becomes a preview on catalogue stations; journeys are added
+        only after «Ho verificato», never replacing one, at most the Agenda's free places."""
+        view = (IOS / "BinarioApp/AgendaTextImportView.swift").read_text(encoding="utf-8")
+        model = (IOS / "BinarioApp/AppModel.swift").read_text(encoding="utf-8")
+        kit = (IOS / "BinarioKit/Sources/BinarioKit/PlannedJourneyTextImport.swift").read_text(encoding="utf-8")
+        self.assertIn(".disabled(!reviewed || selected.isEmpty)", view)
+        self.assertIn("preview = nil\n                reviewed = false", view)
+        self.assertIn("PlannedJourneyStationResolver(catalog: catalog)", model)
+        self.assertIn("plannedJourneyStore.add(contentsOf: journeys)", model)
+        self.assertIn("maximumCharacters = 4_000", kit)
+        self.assertIn("let free = max(0, PlannedJourneySchema.maximumJourneys - existing.count)", kit)
+        self.assertIn("matches.count == 1", kit)
+
+    def test_dictation_reads_typed_text_without_a_microphone_or_speech_permission(self) -> None:
+        """EXPO_PORT_PLAN I6: the route is typed, or said with the keyboard's own dictation, and read on the iPhone with
+        Android's rules, checked by the cases both phones share (contracts/voice-input/v1). Binario asks for no microphone
+        or speech permission, records nothing and keeps the sentence in memory only."""
+        sources = [path for base in (IOS / "BinarioApp", IOS / "BinarioKit/Sources") for path in base.rglob("*.swift")]
+        code = "\n".join(path.read_text(encoding="utf-8") for path in sources)
+        for forbidden in (
+            "import Speech", "SFSpeechRecognizer", "AVAudioSession", "AVAudioRecorder", "AVAudioEngine",
+            "requestRecordPermission", "NSSpeechRecognitionUsageDescription", "NSMicrophoneUsageDescription",
+        ):
+            self.assertNotIn(forbidden, code)
+        settings = self.targets["Binario"]["settings"]["base"]
+        self.assertEqual([], [key for key in settings if "Microphone" in key or "SpeechRecognition" in key])
+        view = (IOS / "BinarioApp/RouteAssistSection.swift").read_text(encoding="utf-8")
+        for forbidden in ("@AppStorage", "@SceneStorage", "UserDefaults"):
+            self.assertNotIn(forbidden, view)
+        self.assertIn("model.reviewRouteDictation(sentence)", view)
+        for screen in ("PlannerView.swift", "AgendaView.swift"):
+            self.assertIn("RouteAssistSection(", (IOS / "BinarioApp" / screen).read_text(encoding="utf-8"), screen)
+        model = (IOS / "BinarioApp/AppModel.swift").read_text(encoding="utf-8")
+        self.assertIn("RouteDictation.review(text, stations: stations, target: .route", model)
+        contract = "contracts/voice-input/v1/dictation-cases.json"
+        self.assertIn(contract, (IOS / "BinarioKit/Tests/BinarioKitTests/RouteDictationTests.swift").read_text(encoding="utf-8"))
+        self.assertIn(contract, (ROOT / "app/src/test/java/it/binario/app/PlannerVoiceDictationFormsTest.kt").read_text(encoding="utf-8"))
+        self.assertTrue((ROOT / contract).is_file())
+
+    def test_nearest_station_is_one_when_in_use_position_used_on_the_iphone_only(self) -> None:
+        """EXPO_PORT_PLAN I7, F4, R20 and §3.9: «Stazione più vicina» asks for When-In-Use authorization on a tap
+        only, reads one position, and picks the nearest catalogue station on the phone; the position is neither
+        stored nor sent. Every language explains why in its InfoPlist.strings; no Always or background location."""
+        settings = self.targets["Binario"]["settings"]["base"]
+        italian = settings["INFOPLIST_KEY_NSLocationWhenInUseUsageDescription"]
+        forbidden_words = re.compile(r"android|wear\s*os|google\s*play|widget|companion", re.IGNORECASE)
+        for language in sorted(LANGUAGES):
+            values = read_strings(IOS / "Resources" / f"{language}.lproj" / "InfoPlist.strings")
+            self.assertEqual({"Agenda", "NSLocationWhenInUseUsageDescription"}, set(values), language)
+            text = values["NSLocationWhenInUseUsageDescription"]
+            self.assertTrue(text.strip(), language)
+            self.assertIn("Binario", text, language)
+            self.assertIsNone(forbidden_words.search(text), language)
+            self.assertIsNone(INVISIBLE.search(text), language)
+        self.assertEqual(italian, read_strings(IOS / "Resources/it.lproj/InfoPlist.strings")["NSLocationWhenInUseUsageDescription"])
+        self.assertEqual([], [key for key in settings if "LocationAlways" in key or "UIBackgroundModes" in key])
+
+        sources = [path for base in (IOS / "BinarioApp", IOS / "BinarioKit/Sources") for path in base.rglob("*.swift")]
+        importing = sorted(path.name for path in sources if "import CoreLocation" in path.read_text(encoding="utf-8"))
+        self.assertEqual(["NearestStation.swift"], importing)
+        locator = (IOS / "BinarioApp/NearestStation.swift").read_text(encoding="utf-8")
+        self.assertEqual(1, locator.count("requestWhenInUseAuthorization()"))
+        self.assertEqual(1, locator.count("manager.requestLocation()"))
+        for forbidden in (
+            "requestAlwaysAuthorization", "startUpdatingLocation", "allowsBackgroundLocationUpdates",
+            "startMonitoringSignificantLocationChanges", "startMonitoringVisits", "UserDefaults", "@AppStorage",
+        ):
+            self.assertNotIn(forbidden, locator)
+        # The coordinates go to the computation of the nearest station and nowhere else.
+        self.assertIn("model.nearestStation(latitude: latitude, longitude: longitude)", locator)
+        model = (IOS / "BinarioApp/AppModel.swift").read_text(encoding="utf-8")
+        self.assertIn("StationProximity.nearest(catalog.offeredStations, latitude: latitude, longitude: longitude)", model)
+        kit = (IOS / "BinarioKit/Sources/BinarioKit/StationProximity.swift").read_text(encoding="utf-8")
+        self.assertIn("defaultMaximumDistanceKilometres = 50.0", kit)
+        android = (ROOT / "app/src/main/java/it/binario/app/StationProximity.kt").read_text(encoding="utf-8")
+        self.assertIn("const val DEFAULT_MAX_DISTANCE_KM = 50.0", android)
+        self.assertIn("NearestStationButton(", (IOS / "BinarioApp/RouteAssistSection.swift").read_text(encoding="utf-8"))
+        self.assertIn("NearestStationButton(", (IOS / "BinarioApp/DeparturesView.swift").read_text(encoding="utf-8"))
+
     def test_privacy_manifests_match_each_executable_userdefaults_scope(self) -> None:
         ios_privacy = privacy_manifest(IOS / "Resources/PrivacyInfo.xcprivacy")
         self.assertFalse(ios_privacy["NSPrivacyTracking"])
@@ -446,12 +625,23 @@ class IOSProjectTests(unittest.TestCase):
         text = "\n".join(path.read_text(encoding="utf-8") for path in paths)
         # NSAppTransportSecurity lives only in Configuration/Binario-Info.plist (pinned below).
         forbidden = [
-            "NSLocationWhenInUseUsageDescription", "NSMicrophoneUsageDescription",
+            "NSMicrophoneUsageDescription", "NSSpeechRecognitionUsageDescription",
+            "NSLocationAlwaysUsageDescription", "NSLocationAlwaysAndWhenInUseUsageDescription",
             "NSAppTransportSecurity", "NSAllowsArbitraryLoads", "CloudKit", "Firebase",
             "Mixpanel", "Amplitude", "BGTaskSchedulerPermittedIdentifiers",
         ]
         for value in forbidden:
             self.assertNotIn(value, text)
+        # The location purpose string («Stazione più vicina», EXPO_PORT_PLAN I7) only in the generated
+        # Info.plist settings and in each language's InfoPlist.strings.
+        declaring = sorted(
+            str(path.relative_to(IOS)) for path in paths
+            if "NSLocationWhenInUseUsageDescription" in path.read_text(encoding="utf-8")
+        )
+        self.assertEqual(
+            sorted(["project.yml"] + [f"Resources/{language}.lproj/InfoPlist.strings" for language in LANGUAGES]),
+            declaring,
+        )
         self.assertNotRegex(text, re.compile(r"AKIA[0-9A-Z]{16}"))
         # Live rail data (owner decision, November 2026): every request is HTTPS. The one cleartext
         # address allowed is Android's hop to www.viaggiatreno.it; only the HTTP client's tests spell
@@ -470,7 +660,11 @@ class IOSProjectTests(unittest.TestCase):
         info = plistlib.loads((IOS / "Configuration/Binario-Info.plist").read_bytes())
         self.assertEqual({"NSAppTransportSecurity": {"NSExceptionDomains": {"www.viaggiatreno.it": {
             "NSExceptionAllowsInsecureHTTPLoads": True, "NSIncludesSubdomains": False,
-        }}}}, info)
+        }}}, "UIApplicationShortcutItems": [{
+            "UIApplicationShortcutItemType": "it.binario.ios.agenda",
+            "UIApplicationShortcutItemTitle": "Agenda",
+            "UIApplicationShortcutItemIconSymbolName": "calendar",
+        }]}, info)
         android = ElementTree.parse(ROOT / "app/src/main/res/xml/network_security_config.xml").getroot()
         self.assertEqual(
             [domain.text.strip() for domain in android.iter("domain") if domain.text],

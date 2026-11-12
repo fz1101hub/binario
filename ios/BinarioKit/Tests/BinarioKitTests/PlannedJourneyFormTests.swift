@@ -147,6 +147,194 @@ final class PlannedJourneyFormTests: XCTestCase {
         XCTAssertTrue(edit.needsPastDepartureWarning(now: now, editing: departed))
     }
 
+    func testTheReminderIsTheOneChosenInTheEditorAmongAndroidsLeads() throws {
+        XCTAssertEqual(PlannedJourneyForm.reminderChoices, [nil, 5, 10, 15, 20, 30, 45, 60])
+        var form = try filled()
+        form.reminderMinutes = 30
+        let saved = try form.journey(id: "j-1", now: now, editing: nil).get()
+        XCTAssertEqual(saved.reminderMinutes, 30)
+
+        var editor = PlannedJourneyForm(editing: saved)
+        XCTAssertEqual(editor.reminderMinutes, 30)
+        editor.reminderMinutes = nil
+        XCTAssertNil(try editor.journey(id: "ignored", now: now, editing: saved).get().reminderMinutes, "«Nessuno» removes it")
+        editor.reminderMinutes = 7
+        XCTAssertEqual(editor.journey(id: "ignored", now: now, editing: saved), .failure(.invalid))
+        XCTAssertNil(PlannedJourneyForm.returnTrip(from: saved).reminderMinutes, "a return trip inherits no reminder")
+        XCTAssertNil(PlannedJourneyForm.new(now: now).reminderMinutes)
+    }
+
+    // MARK: Several legs (Android's multi-leg editor, EXPO_PORT_PLAN F19)
+
+    func testAddedLegsStartWhereTheLastArrivesAndFollowItsDestination() throws {
+        let firenze = StationIdentity(id: "S06421", name: "Firenze Santa Maria Novella", railwayCode: "S06421")
+        let bologna = StationIdentity(id: "S05043", name: "Bologna Centrale", railwayCode: "S05043")
+        var form = try filled()
+        form.destination = firenze
+        form.addLeg()
+        XCTAssertEqual(form.legs.count, 2)
+        XCTAssertEqual(form.laterLegs[0].origin, firenze, "the new leg leaves from the last arrival")
+        XCTAssertEqual(form.laterLegs[0].date?.iso, "2026-12-01", "on its date")
+        XCTAssertNil(form.laterLegs[0].time, "its time is chosen")
+
+        // The prefilled origin follows a changed destination; one the user changed does not.
+        var first = form.legs[0]
+        first.destination = bologna
+        form.setLeg(first, at: 0)
+        XCTAssertEqual(form.destination, bologna)
+        XCTAssertEqual(form.laterLegs[0].origin, bologna)
+        form.laterLegs[0].origin = roma
+        first.destination = firenze
+        form.setLeg(first, at: 0)
+        XCTAssertEqual(form.laterLegs[0].origin, roma)
+
+        // At most four legs; the only leg stays.
+        form.addLeg()
+        form.addLeg()
+        XCTAssertEqual(form.legs.count, 4)
+        XCTAssertFalse(form.canAddLeg)
+        form.addLeg()
+        XCTAssertEqual(form.legs.count, 4)
+        form.removeLeg(at: 1)
+        XCTAssertEqual(form.legs.count, 3)
+        var single = try filled()
+        single.removeLeg(at: 0)
+        XCTAssertEqual(single.legs.count, 1)
+    }
+
+    func testLegsAreSavedInOrderOrRefusedWithAndroidsMessages() throws {
+        let firenze = StationIdentity(id: "S06421", name: "Firenze Santa Maria Novella", railwayCode: "S06421")
+        var form = try filled() // Roma → Milano 08:15
+        form.destination = firenze
+        form.laterLegs = [PlannedJourneyFormLeg(
+            origin: firenze, destination: milano, date: PlannedLocalDate(iso: "2026-12-01"), time: PlannedLocalTime(hhmm: "10:05")
+        )]
+        let saved = try form.journey(id: "j-1", now: now, editing: nil).get()
+        XCTAssertEqual(saved.segments.map(\.id), ["segment-1", "segment-2"])
+        XCTAssertEqual(saved.origin, try PlannedJourneyStation(roma))
+        XCTAssertEqual(saved.destination, try PlannedJourneyStation(milano))
+
+        var disconnected = form
+        disconnected.laterLegs[0].origin = roma
+        disconnected.laterLegs[0].destination = milano
+        XCTAssertEqual(disconnected.journey(id: "j-1", now: now, editing: nil), .failure(.disconnectedLegs))
+        var early = form
+        early.laterLegs[0].time = PlannedLocalTime(hhmm: "08:00")
+        XCTAssertEqual(early.journey(id: "j-1", now: now, editing: nil), .failure(.nonChronologicalLegs))
+        var incomplete = form
+        incomplete.laterLegs[0].time = nil
+        XCTAssertEqual(incomplete.journey(id: "j-1", now: now, editing: nil), .failure(.invalidDeparture))
+        incomplete = form
+        incomplete.laterLegs[0].destination = nil
+        XCTAssertEqual(incomplete.journey(id: "j-1", now: now, editing: nil), .failure(.missingStations))
+    }
+
+    func testEditingKeepsEveryLegAndItsIdentifierAndANewLegTakesAFreeOne() throws {
+        let firenze = StationIdentity(id: "S06421", name: "Firenze Santa Maria Novella", railwayCode: "S06421")
+        let bologna = StationIdentity(id: "S05043", name: "Bologna Centrale", railwayCode: "S05043")
+        let stored = try PlannedJourney(
+            id: "android-multi",
+            segments: [
+                leg("segment-1", roma, firenze, "07:10"),
+                leg("segment-4", firenze, bologna, "08:55"),
+            ],
+            createdAt: now
+        )
+        var form = PlannedJourneyForm(editing: stored)
+        XCTAssertEqual(form.legs.map(\.segmentID), ["segment-1", "segment-4"])
+        XCTAssertEqual(form.laterLegs[0].time?.hhmm, "08:55")
+        form.addLeg()
+        form.laterLegs[1].destination = milano
+        form.laterLegs[1].time = PlannedLocalTime(hhmm: "10:05")
+        let edited = try form.journey(id: "ignored", now: now, editing: stored).get()
+        XCTAssertEqual(edited.id, "android-multi")
+        XCTAssertEqual(edited.segments.map(\.id), ["segment-1", "segment-4", "segment-2"])
+        XCTAssertEqual(edited.destination.canonicalId, "S01700")
+    }
+
+    func testReturnReversesTheLegsAndReplanKeepsThemBothWithNewDatesAndTimes() throws {
+        let firenze = StationIdentity(id: "S06421", name: "Firenze Santa Maria Novella", railwayCode: "S06421")
+        let source = try PlannedJourney(
+            id: "j-1",
+            segments: [leg("segment-1", roma, firenze, "07:10"), leg("segment-2", firenze, milano, "09:00")],
+            reminderMinutes: 15,
+            createdAt: now
+        )
+        let back = PlannedJourneyForm.returnTrip(from: source)
+        XCTAssertEqual(back.legs.map { $0.origin?.id }, ["S01700", "S06421"])
+        XCTAssertEqual(back.legs.map { $0.destination?.id }, ["S06421", "S08409"])
+        XCTAssertTrue(back.legs.allSatisfy { $0.date == nil && $0.time == nil && $0.segmentID == nil })
+        XCTAssertNil(back.reminderMinutes)
+        let again = PlannedJourneyForm.replan(from: source)
+        XCTAssertEqual(again.legs.map { $0.origin?.id }, ["S08409", "S06421"])
+        XCTAssertEqual(again.legs.map { $0.destination?.id }, ["S06421", "S01700"])
+        XCTAssertTrue(again.legs.allSatisfy { $0.date == nil && $0.time == nil })
+        XCTAssertEqual(again.journey(id: "j-2", now: now, editing: nil), .failure(.invalidDeparture))
+    }
+
+    // MARK: Repetition (Android's recurrence editor, EXPO_PORT_PLAN F17)
+
+    func testARepetitionAlwaysIncludesTheFirstDatesWeekdayAndCountsTheJourneysInAll() throws {
+        XCTAssertEqual(PlannedJourneyForm.repeatCounts(including: 1), [1, 2, 4, 8, 12])
+        XCTAssertEqual(PlannedJourneyForm.repeatCounts(including: 3), [1, 2, 3, 4, 8, 12], "a stored count stays offered")
+        XCTAssertEqual(PlannedJourneyForm.repeatCounts(including: 40), [1, 2, 4, 8, 12])
+
+        var form = try filled() // Tuesday 1 December 2026, 08:15
+        XCTAssertNil(try form.journey(id: "once", now: now, editing: nil).get().recurrence)
+        form.repeatCount = 4
+        form.repeatWeekdays = [.friday]
+        let weekly = try form.journey(id: "weekly", now: now, editing: nil).get()
+        let recurrence = try XCTUnwrap(weekly.recurrence)
+        XCTAssertEqual(recurrence.weekdays, [.tuesday, .friday], "the date's weekday, Monday first")
+        XCTAssertEqual(recurrence.startsOn.iso, "2026-12-01")
+        XCTAssertNil(recurrence.endsOn)
+        XCTAssertEqual(weekly.occurrences.map(\.date.iso), ["2026-12-01", "2026-12-04", "2026-12-08", "2026-12-11"])
+        XCTAssertTrue(weekly.occurrences.allSatisfy { $0.departure.time.hhmm == "08:15" })
+        // The same journey once and repeated are two journeys (Android's fingerprint).
+        XCTAssertNotEqual(weekly.fingerprint, try filled().journey(id: "once", now: now, editing: nil).get().fingerprint)
+
+        // Moving the date moves the start and its weekday with it.
+        form.date = PlannedLocalDate(iso: "2026-12-02")
+        let moved = try XCTUnwrap(try form.journey(id: "weekly", now: now, editing: nil).get().recurrence)
+        XCTAssertEqual(moved.weekdays, [.wednesday, .friday])
+        XCTAssertEqual(moved.startsOn.iso, "2026-12-02")
+    }
+
+    func testEditingARepetitionKeepsItsEndAndTheDoneDatesItStillMakes() throws {
+        var form = try filled()
+        form.repeatCount = 4
+        form.repeatWeekdays = [.thursday]
+        form.repeatEndsOn = PlannedLocalDate(iso: "2026-12-31")
+        let stored = try form.journey(id: "weekly", now: now, editing: nil).get()
+            .completingOccurrence(on: XCTUnwrap(PlannedLocalDate(iso: "2026-12-03")))
+            .completingOccurrence(on: XCTUnwrap(PlannedLocalDate(iso: "2026-12-10")))
+        XCTAssertEqual(stored.recurrence?.endsOn?.iso, "2026-12-31")
+
+        var editor = PlannedJourneyForm(editing: stored)
+        XCTAssertEqual(editor.repeatCount, 4)
+        XCTAssertEqual(editor.repeatWeekdays, [.tuesday, .thursday])
+        XCTAssertEqual(editor.repeatEndsOn?.iso, "2026-12-31")
+        XCTAssertEqual(try editor.journey(id: "ignored", now: now, editing: stored).get(), stored, "unchanged, it is saved as it was")
+
+        // Two journeys in all: Tuesday 1 and Thursday 3; the 10th is no longer one of them.
+        editor.repeatCount = 2
+        let shorter = try editor.journey(id: "ignored", now: now, editing: stored).get()
+        XCTAssertEqual(shorter.occurrences.map(\.date.iso), ["2026-12-01", "2026-12-03"])
+        XCTAssertEqual(shorter.completedOccurrenceDates.map(\.iso), ["2026-12-03"])
+        // Once: no repetition and no done dates.
+        editor.repeatCount = 1
+        let single = try editor.journey(id: "ignored", now: now, editing: stored).get()
+        XCTAssertNil(single.recurrence)
+        XCTAssertTrue(single.completedOccurrenceDates.isEmpty)
+        // An end before the new first date is dropped.
+        editor.repeatCount = 4
+        editor.date = PlannedLocalDate(iso: "2027-01-05")
+        XCTAssertNil(try editor.journey(id: "ignored", now: now, editing: stored).get().recurrence?.endsOn)
+        // Return and replan never repeat.
+        XCTAssertEqual(PlannedJourneyForm.returnTrip(from: stored).repeatCount, 1)
+        XCTAssertEqual(PlannedJourneyForm.replan(from: stored).repeatCount, 1)
+    }
+
     func testAnErrorIsSaidAtOnceAndInformationWaitsItsTurn() {
         XCTAssertFalse(PlannedJourneyFeedbackSeverity.error.queuesBehindCurrentSpeech)
         XCTAssertTrue(PlannedJourneyFeedbackSeverity.information.queuesBehindCurrentSpeech)
@@ -167,5 +355,15 @@ final class PlannedJourneyFormTests: XCTestCase {
 
     private func utc(_ text: String) throws -> Date {
         try XCTUnwrap(PlannedJourneyInstant.parse(text), text)
+    }
+
+    /// A leg on 1 December 2026, Italian time.
+    private func leg(_ id: String, _ origin: StationIdentity, _ destination: StationIdentity, _ time: String) throws -> PlannedJourneySegment {
+        try PlannedJourneySegment(
+            id: id,
+            origin: PlannedJourneyStation(origin),
+            destination: PlannedJourneyStation(destination),
+            departure: PlannedJourneyDateTime(date: XCTUnwrap(PlannedLocalDate(iso: "2026-12-01")), time: XCTUnwrap(PlannedLocalTime(hhmm: time)))
+        )
     }
 }

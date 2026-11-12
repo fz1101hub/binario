@@ -211,7 +211,7 @@ export class PunctualityStats {
 export type TrainPunctuality =
   | { kind: "unknown" }
   | { kind: "fewData" }
-  /** Several trains with the number, from different origins, each with figures: nothing tells which one is meant. */
+  /** Several trains with the number, from different origins: nothing tells which one is meant. */
   | { kind: "sharedNumber" }
   | { kind: "cancelledEveryDay"; days: number }
   | {
@@ -237,40 +237,40 @@ function shownDelay(minutes: number) {
 
 /**
  * How the train numbered `number` arrives at its terminus (the last stop of the file). The same
- * number from different origins is another train: when only one of them has {@link MIN_SAMPLES}
- * samples at its terminus it is that one (the others say nothing anyway); when several have, no
- * figure is given rather than another train's ({@link TrainPunctuality} `sharedNumber`), as the app
- * gives none without an origin to tell them apart. A train cancelled on every one of at least
- * {@link MIN_SAMPLES} days says so.
+ * number from different origins is another train, and nothing in the question tells which one is
+ * meant: as the app does without an origin, figures are given only when a single train with the
+ * number runs, and none when several do, whatever their samples ({@link TrainPunctuality}
+ * `sharedNumber`). A train cancelled on every day observed does not run: beside a running one it is
+ * left out; alone, and on at least {@link MIN_SAMPLES} days, it says so. A train with a single stop in
+ * the file (usually its origin, whose delay is a departure) is ignored, as in the app: it has no run to
+ * a terminus to measure.
  */
 export function trainPunctuality(stats: PunctualityStats, number: string): TrainPunctuality {
-  const candidates = stats.trainsNumbered(number);
+  const candidates = stats.trainsNumbered(number).filter(train => train.stopCount !== 1);
   if (!candidates.length) return { kind: "unknown" };
-  const terminusSamples = (train: PunctualityTrain) => train.samples[train.stopCount - 1] ?? 0;
-  const running = candidates
-    .filter(train => train.stopCount > 0)
-    .sort((left, right) => terminusSamples(right) - terminusSamples(left) || left.originCode.localeCompare(right.originCode));
-  const best = running[0];
-  if (running.filter(train => terminusSamples(train) >= MIN_SAMPLES).length > 1) return { kind: "sharedNumber" };
-  if (best && terminusSamples(best) >= MIN_SAMPLES) {
-    const last = best.stopCount - 1;
-    const samples = best.samples[last];
-    const onTime = best.onTime[last];
+  const running = candidates.filter(train => train.stopCount > 1);
+  if (running.length > 1) return { kind: "sharedNumber" };
+  const [train] = running;
+  if (train) {
+    const last = train.stopCount - 1;
+    const samples = train.samples[last];
+    if (samples < MIN_SAMPLES) return { kind: "fewData" };
+    const onTime = train.onTime[last];
     return {
       kind: "stats",
       samples,
       onTime,
       percent: percentOf(onTime, samples),
-      limitMinutes: best.onTimeLimitMinutes,
-      meanDelayMinutes: shownDelay(best.meanDelayMinutes(last)),
-      days: best.daysObserved,
-      cancelledDays: best.daysCancelled,
+      limitMinutes: train.onTimeLimitMinutes,
+      meanDelayMinutes: shownDelay(train.meanDelayMinutes(last)),
+      days: train.daysObserved,
+      cancelledDays: train.daysCancelled,
     };
   }
-  const cancelled = candidates
-    .filter(train => train.stopCount === 0 && train.daysObserved >= MIN_SAMPLES)
-    .sort((left, right) => right.daysObserved - left.daysObserved)[0];
-  if (cancelled) return { kind: "cancelledEveryDay", days: cancelled.daysObserved };
+  // Only trains cancelled on every day observed (no stops in the file).
+  if (candidates.length > 1) return { kind: "sharedNumber" };
+  const [cancelled] = candidates;
+  if (cancelled.daysObserved >= MIN_SAMPLES) return { kind: "cancelledEveryDay", days: cancelled.daysObserved };
   return { kind: "fewData" };
 }
 
