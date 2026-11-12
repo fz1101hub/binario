@@ -1,6 +1,6 @@
 # Azioni e decisioni del titolare
 
-Stato al 3 novembre 2026, dopo l'audit indipendente finale. Il codice di tutte le piattaforme è su `main` (pull request #45); ogni modifica successiva arriva con una pull request; qui restano solo le cose che il repository non può fare da sé. Le checklist complete per gli store restano in [PLAY_SUBMISSION.md](store/PLAY_SUBMISSION.md) e [APP_STORE_SUBMISSION.md](store/APP_STORE_SUBMISSION.md).
+Stato al 12 novembre 2026, dopo il secondo audit indipendente (11 novembre). Il codice di tutte le piattaforme è su `main` (pull request #45); ogni modifica successiva arriva con una pull request; qui restano solo le cose che il repository non può fare da sé. Le checklist complete per gli store restano in [PLAY_SUBMISSION.md](store/PLAY_SUBMISSION.md) e [APP_STORE_SUBMISSION.md](store/APP_STORE_SUBMISSION.md).
 
 ## 1. Decisioni aperte
 
@@ -11,7 +11,7 @@ Stato al 3 novembre 2026, dopo l'audit indipendente finale. Il codice di tutte l
 | D3 | **Licenze di cinque pack principali**: `ch-otd-gtfs`, `hzpp-gtfs`, `lombardia-trenord-gtfs`, `sncf-gtfs`, `trentino-gtfs`. | `verify_embedded_assets.py` le segnala come avviso. Dopo la conferma registrare ciascuna licenza in `app/src/main/assets/gtfs/manifest.json` e in `ios/Resources/binario_gtfs_source_policy_v1.json` (cinque voci `null`, le stesse cinque), poi rigenerare i crediti Android (`tools/build_android_gtfs_credits.py`) e l'indice iOS (`tools/build_ios_gtfs_schedule.py`). | [PLAY_SUBMISSION.md](store/PLAY_SUBMISSION.md) §0 |
 | D4 | **Fonti in tempo reale personali nella build store** (oggi `true`, fissato in `release-sign`). | Passare a `false` richiede di riscrivere insieme `PLAY_DATA_SAFETY.md` e il listing. | `tools/verify_android_release_config.py` |
 | D5 | **Licenze delle reti urbane in tempo reale** (Roma, ANM, ACTV, Cotral, GTT). | Restano solo nelle build personali finché non c'è una licenza utilizzabile. | [SOURCE_POLICY.md](data-sources/SOURCE_POLICY.md) |
-| D6 | **Soglie del pianificatore** scelte nell'audit: attesa lunga 120 min, aggancio delle fermate entro 150 m, 5 min di tolleranza fra le copie dello stesso treno in pack diversi. Facoltativo: paginazione «Più tardi / Più presto» e il messaggio «nessun treno fino alle HH:mm». | Valori ragionevoli, modificabili in `data/journey/`. | `CHANGELOG.md`, voce dell'audit |
+| D6 | **Soglie del pianificatore** scelte nell'audit: attesa lunga 120 min, aggancio delle fermate entro 150 m, 5 min di tolleranza fra le copie dello stesso treno in pack diversi (la paginazione «Più tardi / Più presto» e il messaggio «Nessun treno fino alle HH:mm» sono già nell'app). | Valori ragionevoli, modificabili in `data/journey/`. | `CHANGELOG.md`, voce dell'audit |
 | D7 | **Invocazione italiana Alexa**: «binario treni» (attuale) oppure «binario» con prova del marchio. | Amazon accetta un'invocazione di una sola parola solo per un marchio. | `alexa-companion/docs/ALEXA_SETUP.md` |
 | D8 | **Locale Alexa aggiuntivi** `en-CA`, `en-AU`, `es-MX`, `fr-CA`. | Richiedono i paesi di distribuzione CA, AU e MX. | [APPLE_ALEXA_LOCALES.md](l10n/APPLE_ALEXA_LOCALES.md) |
 
