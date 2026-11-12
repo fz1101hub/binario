@@ -31,6 +31,9 @@ public struct SQLiteGTFSJourneyRepository: JourneyRepository, Sendable {
     private static let maximumCandidateRows = 4_096
     private static let maximumGTFSSeconds = 168 * 60 * 60 - 1
     private static let maximumServiceDayLookback = maximumGTFSSeconds / (24 * 60 * 60)
+    /// «Partenze» reads the next service day only this far after the page's time: the trains just
+    /// after midnight of a feed whose service day starts at 00:00 (Trenord, the Swiss pack).
+    static let boardNextServiceDayHorizon: TimeInterval = 4 * 60 * 60
     private static let maximumServiceDays: Int64 = 3_660
     private static let maximumSourceLabelLength = 96
 
@@ -538,9 +541,11 @@ extension SQLiteGTFSJourneyRepository: StationBoardProvider {
     /// The trains leaving `query.station` from `query.from`, read from the index as the planner
     /// reads its results: the station's stops, boarding allowed there (`pickup_type = 0`), the
     /// service days the trips run on, the planner's naming and bikes, nothing live. A page holds the
-    /// trains of today's service day of each agency time zone and the runs of earlier service days
-    /// still to leave (yesterday's after midnight, GTFS times from 24:00), never the next service
-    /// day's: that one gives only `firstDepartureNextDay`, on a first page without any train left.
+    /// trains of today's service day of each agency time zone, the runs of earlier service days
+    /// still to leave (yesterday's after midnight, GTFS times from 24:00) and the trains of the next
+    /// service day leaving within `boardNextServiceDayHorizon` of `query.from` (a feed whose day
+    /// starts at midnight lists its night trains there); a first page without any of them gives
+    /// `firstDepartureNextDay`, the next service day's first train.
     /// A trip whose last stop is the station itself (it only arrives there) is no departure, and a
     /// trip calling twice is listed once, at its first departure from `query.from`. Coaches and
     /// replacement buses follow the planner's rule: the index keeps only the rail routes of the
@@ -574,8 +579,9 @@ extension SQLiteGTFSJourneyRepository: StationBoardProvider {
         for timeZone in timeZones {
             let calendar = serviceCalendar(timeZone: timeZone)
             let today = calendar.startOfDay(for: query.from)
-            // Today's service day, then the earlier ones, whose runs past 24:00 can still leave.
-            for offset in 0...maximumServiceDayLookback {
+            // The first hours of the next service day, today's, then the earlier ones, whose runs
+            // past 24:00 can still leave.
+            for offset in -1...maximumServiceDayLookback {
                 guard let serviceDay = calendar.date(byAdding: .day, value: -offset, to: today) else {
                     throw SQLiteGTFSFailure.invalidData
                 }
@@ -586,7 +592,8 @@ extension SQLiteGTFSJourneyRepository: StationBoardProvider {
                     agencyTimeZone: timeZone.identifier,
                     serviceDay: serviceDay,
                     calendar: calendar,
-                    wanted: wanted
+                    wanted: wanted,
+                    latest: offset < 0 ? query.from.addingTimeInterval(boardNextServiceDayHorizon) : nil
                 )
             }
         }
@@ -653,7 +660,8 @@ extension SQLiteGTFSJourneyRepository: StationBoardProvider {
     /// The trains of `serviceDay` leaving the station's stops from `query.from`, and after its
     /// cursor, in departure order: at least `wanted` of them when the day has as many, with every
     /// train of the same second as the last one, so that the first trains of all the service days
-    /// merged are exact. At most `maximumCandidateRows` rows are read, as by the planner.
+    /// merged are exact. At most `maximumCandidateRows` rows are read, as by the planner. With
+    /// `latest`, only the trains leaving at or before it.
     private static func boardCandidates(
         database: SQLiteDatabase,
         query: StationBoardQuery,
@@ -661,13 +669,20 @@ extension SQLiteGTFSJourneyRepository: StationBoardProvider {
         agencyTimeZone: String,
         serviceDay: Date,
         calendar: Calendar,
-        wanted: Int
+        wanted: Int,
+        latest: Date? = nil
     ) throws -> [StationBoardCandidate] {
         // The GTFS second of `query.from` on this service day: earlier runs have left.
         let base = try gtfsDate(serviceDay: serviceDay, seconds: 0, calendar: calendar)
         let earliest: Double = query.from.timeIntervalSince(base).rounded(.up)
         guard earliest <= Double(maximumGTFSSeconds) else { return [] }
         let lowerSeconds: Int64 = earliest <= 0 ? 0 : Int64(earliest)
+        var upperSeconds = Int64(maximumGTFSSeconds)
+        if let latest {
+            let last: Double = latest.timeIntervalSince(base).rounded(.down)
+            guard last >= Double(lowerSeconds) else { return [] }
+            upperSeconds = min(upperSeconds, Int64(min(last, Double(maximumGTFSSeconds))))
+        }
         let placeholders = Array(repeating: "?", count: stopIDs.count).joined(separator: ",")
         // The builder stores arrival and departure both or neither, so departure_seconds is the
         // planner's COALESCE and the (stop_id, departure_seconds) index bounds the read.
@@ -697,7 +712,7 @@ extension SQLiteGTFSJourneyRepository: StationBoardProvider {
         for id in stopIDs { try statement.bind(id, at: binding); binding += 1 }
         try statement.bind(agencyTimeZone, at: binding); binding += 1
         try statement.bind(lowerSeconds, at: binding); binding += 1
-        try statement.bind(Int64(maximumGTFSSeconds), at: binding); binding += 1
+        try statement.bind(upperSeconds, at: binding); binding += 1
         try statement.bind(Int64(maximumCandidateRows + 1), at: binding)
 
         let boardStops = Set(stopIDs)

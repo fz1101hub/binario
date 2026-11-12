@@ -1161,11 +1161,13 @@ class IOSProjectTests(unittest.TestCase):
             with self.subTest(fragment=fragment):
                 self.assertIn(fragment, board)
         self.assertNotIn("URLSession", board)
+        self.assertIn("static let boardNextServiceDayHorizon: TimeInterval = 4 * 60 * 60", gtfs)
         query = gtfs.split("// MARK: - «Partenze»", 1)[1]
         for fragment in (
             "extension SQLiteGTFSJourneyRepository: StationBoardProvider {",
             "if try indexEnded(before: query.from, timeZone: referenceTimeZone, database: database) {",
-            "for offset in 0...maximumServiceDayLookback {",
+            "for offset in -1...maximumServiceDayLookback {",
+            "latest: offset < 0 ? query.from.addingTimeInterval(boardNextServiceDayHorizon) : nil",
             "AND board_time.pickup_type = 0",
             "AND board_time.departure_seconds BETWEEN ? AND ?",
             "try statement.bind(Int64(maximumCandidateRows + 1), at: binding)",
@@ -1239,7 +1241,8 @@ class IOSProjectTests(unittest.TestCase):
             "testPagesFollowTheLastListedTrainWithoutGapsOrRepeats",
             "testYesterdaysRunsStillToLeaveAfterMidnightJoinTodaysServiceDay",
             "testTheServiceDayFollowsTheTimetableCalendarAcrossRomeDST",
-            "testOnlyTodaysServiceDayIsListedAndTheFirstTrainOfTomorrowWhenNoneIsLeft",
+            "testTomorrowsTrainsAfterTheNightAreNotListedAndTheFirstOneIsGivenWhenNoneIsLeft",
+            "testTheFirstHoursOfTomorrowsServiceDayFollowTonightsLastTrains",
             "testUnservedStationsEndedTimetablesAndInvalidIndexesFailClosed",
             "testQueriesAreBoundedAndInvalidStationsAreRefused",
             "testARowIsScheduledUnlessALiveSourceObservedItAndLeavesAMinuteAfterItsDeparture",

@@ -168,6 +168,51 @@ final class StationBoardTests: XCTestCase {
         XCTAssertEqual(afterTheNightRun.departures.map(\.service.number), ["2403", "2404"])
     }
 
+    func testTheFirstHoursOfTomorrowsServiceDayFollowTonightsLastTrains() async throws {
+        let fixture = try BoardFixture()
+        // Monday's service day (1 April) ends at 23:53; Tuesday's (2 April) starts at 00:02, as a
+        // feed whose service day starts at midnight (Trenord, the Swiss pack) publishes its night trains.
+        try fixture.insertTrip(id: 1, externalID: "last-tonight", number: "797", service: 1, calls: [
+            BoardCall(stop: 1, seconds: 23 * 3_600 + 53 * 60), BoardCall(stop: 2, seconds: 24 * 3_600 + 20 * 60),
+        ])
+        try fixture.insertTrip(id: 2, externalID: "after-midnight", number: "801", service: 3, calls: [
+            BoardCall(stop: 1, seconds: 2 * 60), BoardCall(stop: 2, seconds: 30 * 60),
+        ])
+        try fixture.insertTrip(id: 3, externalID: "night", number: "701", service: 3, calls: [
+            BoardCall(stop: 1, seconds: 23 * 60), BoardCall(stop: 2, seconds: 50 * 60),
+        ])
+        // Too far into Tuesday for Monday night's board.
+        try fixture.insertTrip(id: 4, externalID: "dawn", number: "2503", service: 3, calls: [
+            BoardCall(stop: 1, seconds: 5 * 3_600), BoardCall(stop: 2, seconds: 6 * 3_600),
+        ])
+
+        let evening = try availablePage(await fixture.repository.departures(for: try boardQuery("2024-04-01 23:40")))
+        XCTAssertEqual(evening.departures.map(\.service.number), ["797", "801", "701"])
+        XCTAssertEqual(evening.departures.map(\.service.scheduledDeparture), ["23:53", "00:02", "00:23"])
+        XCTAssertTrue(evening.departures[1].id.contains(":20240402:"), "tomorrow's service day")
+        let tuesday = try XCTUnwrap(romeCalendar.date(from: DateComponents(year: 2024, month: 4, day: 2, hour: 0, minute: 2)))
+        XCTAssertEqual(evening.departures[1].departure, tuesday)
+        XCTAssertFalse(evening.hasMore, "05:00 is beyond the next service day's first hours")
+        XCTAssertNil(evening.firstDepartureNextDay)
+
+        // «Più tardi» goes on after midnight without a gap or a repeat.
+        let first = try availablePage(await fixture.repository.departures(for: try boardQuery("2024-04-01 23:40", limit: 2)))
+        XCTAssertEqual(first.departures.map(\.service.number), ["797", "801"])
+        XCTAssertTrue(first.hasMore)
+        let last = try XCTUnwrap(first.departures.last)
+        let second = try availablePage(await fixture.repository.departures(for: try StationBoardQuery(
+            station: station, from: last.departure, limit: 2, after: last.cursor
+        )))
+        XCTAssertEqual(second.departures.map(\.service.number), ["701", "2503"])
+        XCTAssertFalse(second.hasMore)
+
+        // Earlier in the evening the night trains are too far ahead: tonight's train alone.
+        let early = try availablePage(await fixture.repository.departures(for: try boardQuery("2024-04-01 19:00")))
+        XCTAssertEqual(early.departures.map(\.service.number), ["797"])
+        XCTAssertFalse(early.hasMore)
+        XCTAssertEqual(SQLiteGTFSJourneyRepository.boardNextServiceDayHorizon, 4 * 60 * 60)
+    }
+
     func testTheServiceDayFollowsTheTimetableCalendarAcrossRomeDST() async throws {
         let fixture = try BoardFixture()
         // Saturday 30 March 26:30 is 03:30 on the Sunday clocks go forward.
@@ -181,7 +226,7 @@ final class StationBoardTests: XCTestCase {
         XCTAssertEqual(page.departures.map(\.service.scheduledDeparture), ["03:30"])
     }
 
-    func testOnlyTodaysServiceDayIsListedAndTheFirstTrainOfTomorrowWhenNoneIsLeft() async throws {
+    func testTomorrowsTrainsAfterTheNightAreNotListedAndTheFirstOneIsGivenWhenNoneIsLeft() async throws {
         let fixture = try BoardFixture()
         try fixture.insertTrip(id: 1, externalID: "today", number: "2501", service: 1, calls: [
             BoardCall(stop: 1, seconds: 8 * 3_600), BoardCall(stop: 2, seconds: 9 * 3_600),
