@@ -1268,5 +1268,54 @@ class FullServiceTest(unittest.TestCase):
         # Trenitalia's calendar runs to December 2027; its full timetable ends with the change of December 2026.
         self.assertEqual("2026-12-12", packs["trenitalia-gtfs"]["fullServiceUntil"])
 
+
+class ExpiredTripsTest(unittest.TestCase):
+    """Audit2 tools-data improvement 1: trips whose service can never run again are not shipped."""
+
+    def setUp(self) -> None:
+        self.temp = Path(tempfile.mkdtemp(prefix="gtfs-expired-test-"))
+        self.addCleanup(shutil.rmtree, self.temp, ignore_errors=True)
+
+    def build(self, output: Path) -> dict[str, object]:
+        source = self.temp / "rail-source.zip"
+        write_trip_feed(source, [
+            ("SUMMER", "1", "OLD", [("X", "08:00", "08:00"), ("Y", "09:00", "09:00")]),
+            ("LATE", "2", "OLD", [("X", "23:30", "23:30"), ("Z", "24:40", "24:40")]),
+            ("WINTER", "3", "NEW", [("X", "10:00", "10:00"), ("Y", "11:00", "11:00")]),
+        ], calendar="OLD,1,1,1,1,1,1,1,20260601,20261031\nNEW,1,1,1,1,1,1,1,20261102,20261213\nEVE,1,1,1,1,1,1,1,20260601,20261107\n")
+        registry = self.temp / "registry.json"
+        registry.write_text(json.dumps({"generatedAt": "2026-11-09", "packs": [{
+            "sourceId": "rail-gtfs", "asset": "gtfs/rail-gtfs.zip", "sourceUrl": "https://example.test/rail.zip",
+            "accessMode": "OPEN_DIRECT"}]}), encoding="utf-8")
+        return builder.build_packs(self.temp, output, manifest_path=registry, generated_at="2026-11-09",
+                                   input_overrides={"rail-gtfs": source})
+
+    def test_a_trip_that_never_runs_again_is_dropped_and_the_check_holds_it(self) -> None:
+        output = self.temp / "out"
+        self.build(output)
+        with zipfile.ZipFile(output / "rail-gtfs.zip") as archive:
+            self.assertEqual(["WINTER"], [row["trip_id"] for row in table(archive, "trips.txt")])
+            self.assertEqual({"WINTER"}, {row["trip_id"] for row in table(archive, "stop_times.txt")})
+            self.assertEqual(["NEW"], [row["service_id"] for row in table(archive, "calendar.txt")])
+            self.assertEqual({"X", "Y"}, {row["stop_id"] for row in table(archive, "stops.txt")})
+            metadata = json.loads(archive.read(builder.FILTER_MANIFEST_MEMBER))
+        # generatedAt 2026-11-09 minus the two days of grace: a run of the 7th after midnight is still kept.
+        self.assertEqual("2026-11-07", metadata["tripsRunFrom"])
+        builder.verify_assets(output, as_of=None, min_valid_days=None)
+        published = (output / "rail-gtfs.zip").read_bytes()
+        builder.build_packs(output, output, generated_at="2026-11-09")
+        self.assertEqual(published, (output / "rail-gtfs.zip").read_bytes())
+        # A pack declaring the day but still carrying an expired trip is refused.
+        stale = self.temp / "stale"
+        with mock.patch.object(builder, "expired_trips", lambda *_: set()):
+            self.build(stale)
+        with self.assertRaisesRegex(builder.BuildError, "2 trip non circolano più dal 2026-11-07"):
+            builder.verify_assets(stale, as_of=None, min_valid_days=None)
+
+    def test_the_shipped_core_packs_declare_the_day(self) -> None:
+        for path in sorted(ASSETS.glob("*.zip")):
+            with self.subTest(pack=path.name), zipfile.ZipFile(path) as archive:
+                self.assertIn("tripsRunFrom", json.loads(archive.read(builder.FILTER_MANIFEST_MEMBER)))
+
 if __name__ == "__main__":
     unittest.main()

@@ -82,7 +82,7 @@ python3 tools/build_gtfs_packs.py --check --input-dir /tmp/binario-gtfs \
   --as-of "$(date --utc +%F)" --min-valid-days 30
 ```
 
-Per la revisione, il tool conserva nel pack filtrato il checksum dell'archivio completo sorgente (`sourceArchiveSha256`) e scrive il criterio, i conteggi e `lastServiceDate` in `binario_filter_manifest.json`.
+Per la revisione, il tool conserva nel pack filtrato il checksum dell'archivio completo sorgente (`sourceArchiveSha256`) e scrive il criterio, i conteggi e `lastServiceDate` in `binario_filter_manifest.json`. Dal novembre 2026 (audit2) il filtro inoltre: toglie le corse il cui servizio non circola più da `generatedAt` meno due giorni (`tripsRunFrom` nel manifest del filtro; una corsa della sera prima può essere ancora in viaggio dopo mezzanotte); nel pack Italo tiene una corsa per treno e giorno, senza le copie degli itinerari combinati né gli itinerari pubblicati come una corsa (`tripRules: ["itinerary-copies"]`); riscrive il `route_type` delle linee ferroviarie TFT pubblicate come bus (`routeTypeOverrides` nel filtro); espande `frequencies.txt` in una corsa per partenza. `--check` verifica ciascuna regola sul pack pubblicato; rifiltrare un pack pubblicato con lo stesso `generatedAt` dà gli stessi byte.
 
 ## Download diretto consentito
 

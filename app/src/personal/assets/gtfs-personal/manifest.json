@@ -34,7 +34,7 @@
         "finalUrl": "https://romamobilita.it/wp-content/uploads/shared/rome_static_gtfs.zip"
       },
       "minValidDays": 14,
-      "sha256": "10ea93982ad1c5315e904648bff5802a62c049050b44508f2b8864b0da8698db",
+      "sha256": "0ba517ff43a21f0134835b790ab65e7a34cc0a9973118663b2b40f6d5ab52fed",
       "lastServiceDate": "2026-12-09",
       "fullServiceUntil": "2026-12-09",
       "filter": {
@@ -470,7 +470,7 @@
         "downloadBytes": 20422729,
         "finalUrl": "https://files.mobilitydatabase.org/mdb-2687/latest.zip"
       },
-      "sha256": "81ffcac1793947434065ca1120e8aba4e672e23d382d3871a26bc48fe13efc6f",
+      "sha256": "7c9501f980b9af8b1f2eb10031b2f91780d548efee371df07ceb87a90556ceba",
       "lastServiceDate": "2026-12-31",
       "fullServiceUntil": "2026-12-31",
       "filter": {
@@ -886,7 +886,7 @@
         ]
       },
       "sourceArchiveSha256": "e3b2fc8d4e71c8db69ff33c382209285b280e79a667184b1be662abfb916c954",
-      "contentSha256": "6608e7ad74c3450763415829f366b461dd2c7b1d3b6e61edff7f07c40f8a51de"
+      "contentSha256": "d20d5d9f4ed7a876cbcd80555524dc749ad55b428b9b0a5b5ce43af7aafb77c2"
     },
     {
       "sourceId": "venezia-actv-gtfs",
@@ -907,7 +907,7 @@
         "finalUrl": "https://actv.avmspa.it/sites/default/files/attachments/opendata/automobilistico/actv_aut.zip"
       },
       "minValidDays": 14,
-      "sha256": "1bc482d342476a43d7c1571b8f979e8ed98b11ec6d2727ae4e97351cc4c66c36",
+      "sha256": "9a697e45694ead1cc9082d4b1fa3568e2667dadea8789373043091767697d36c",
       "lastServiceDate": "2026-12-23",
       "fullServiceUntil": "2026-12-23",
       "filter": {
@@ -1323,7 +1323,7 @@
         ]
       },
       "sourceArchiveSha256": "53e6f79542be24f309d545d1e2f409a94b40af8b57a9cf5194a790e2e67a222e",
-      "contentSha256": "e5b5a9a37b9d438e50d53d197e4321cbba073f9eebfbe65f95d34bf32a59774b"
+      "contentSha256": "2f1eac91569840a72703c99c6ce603808092e7338aeee250a3180d231ae7d7e3"
     },
     {
       "sourceId": "napoli-anm-gtfs",
@@ -1344,7 +1344,7 @@
         "finalUrl": "https://anmspa.file.force.com/sfc/dist/version/download/?oid=00D7Q000003PMpH&ids=068R200000oArCmIAK&d=%2Fa%2FR200000FqJPJ%2FfSMjpS5ZBreOt4GJnv_6y4BxQaYFy5PXt1vS5NeabHw&operationContext=DELIVERY&viewId=05HR200000UykrVMAR&dpt="
       },
       "minValidDays": 14,
-      "sha256": "0cb09f60ffa5ba8d60d8a0923fa3675e5fd5c689fd5cde80c0bd75e476fc21f1",
+      "sha256": "345229da889012b1b38a3c69291105de8aed3b0e0fa5d48bb088ab5416464201",
       "lastServiceDate": "2026-12-31",
       "fullServiceUntil": "2026-12-31",
       "filter": {
@@ -1784,7 +1784,7 @@
         "finalUrl": "http://travel.mob.cotralspa.it:7777/GTFS/GTFS_FERRO.zip",
         "httpReason": "Cotral pubblica GTFS_FERRO solo in HTTP (porta 7777); la porta HTTPS 4443 presenta un certificato non valido per travel.mob.cotralspa.it e non esiste una copia HTTPS indipendente."
       },
-      "sha256": "f7df4c448bbb2234251a90d2e99e85193e941748a1b5da587ded339fd6e5fb30",
+      "sha256": "8f4be983ac1f3c10cbc5e792efee826b03ec77b8334c83b9fd4fea02dc25273f",
       "lastServiceDate": "2026-12-13",
       "fullServiceUntil": "2026-12-13",
       "filter": {
@@ -1895,7 +1895,7 @@
         ]
       },
       "sourceArchiveSha256": "860147609281fe7da412a9af1eebb5ac679c4835806efa70603efd354b004bab",
-      "contentSha256": "4a2b085bd39b92255f15eeb9d1e23edc226c1713d6fb187d5500258bdf4f5afa"
+      "contentSha256": "044dea0be601e5300061b496ee0cce8581bc18a9e799e75551d738be9decd41b"
     }
   ]
 }

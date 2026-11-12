@@ -95,6 +95,12 @@ MIN_COVERAGE_SPAN_DAYS = 7
 # only moves the end when it is the last day.
 FULL_SERVICE_SHARE = 0.8
 FULL_SERVICE_REFERENCE_DAYS = 28
+# A build keeps the trips running on a day from its generatedAt minus this many days (a run of the evening before can
+# still be under way after midnight, and the apps read yesterday's runs); a trip whose service can never run again is
+# dropped (audit2 tools-data improvement 1: 90 % of HŽPP, 82 % of STA, 58 % of Trenord, 41 % of ÖBB).  The day is
+# recorded in the pack's filter manifest (tripsRunFrom).
+EXPIRED_TRIP_GRACE_DAYS = 2
+TRIPS_RUN_FROM_FIELD = "tripsRunFrom"
 FILTER_MANIFEST_MEMBER = "binario_filter_manifest.json"
 MEMBER_DIGEST_FIELD = "memberSha256"
 
@@ -693,14 +699,17 @@ def full_service_until(
     calendar_dates: CsvTable,
     source_id: str,
     last: date,
+    runs_from: date | None = None,
 ) -> date:
     """The last day, up to ``last``, with at least FULL_SERVICE_SHARE of the median trips of its weekday over the first
-    FULL_SERVICE_REFERENCE_DAYS days of the pack (its first day with a trip; days past its last are not counted)."""
+    FULL_SERVICE_REFERENCE_DAYS days of the pack (its first day with a trip, from ``runs_from``, the pack's tripsRunFrom,
+    when given: the days before it lost their expired trips; days past its last are not counted)."""
     counts = trips_by_day(trip_rows, service_days(calendar, calendar_dates, source_id))
     running = sorted(day for day, trips in counts.items() if trips > 0)
     if not running:
         return last
-    start, end = running[0], running[-1]
+    end = running[-1]
+    start = next((day for day in running if runs_from is None or day >= runs_from), running[0])
     reference = [start + timedelta(days=offset) for offset in range(FULL_SERVICE_REFERENCE_DAYS)]
     medians = {
         weekday: statistics.median([counts.get(day, 0) for day in reference if day <= end and day.weekday() == weekday] or [0])
@@ -711,6 +720,12 @@ def full_service_until(
         if day <= last and medians[day.weekday()] > 0 and counts[day] >= FULL_SERVICE_SHARE * medians[day.weekday()]
     ]
     return max(full) if full else min(start, last)
+
+
+def expired_trips(trip_rows: Iterable[Mapping[str, str]], days_by_service: Mapping[str, set[date]], runs_from: date) -> set[str]:
+    """The trips whose service runs on no day from ``runs_from`` on: they can never run again."""
+    alive = {service_id for service_id, days in days_by_service.items() if days and max(days) >= runs_from}
+    return {row.get("trip_id", "") for row in trip_rows if row.get("service_id", "") not in alive}
 
 
 def selected_routes(source_id: str, routes: CsvTable) -> tuple[tuple[dict[str, str], ...], dict[str, Any]]:
@@ -1185,11 +1200,13 @@ def filter_archive(
     source_id: str,
     *,
     published_entries: Iterable[Mapping[str, Any] | None] = (),
+    trips_run_from: date | None = None,
 ) -> FilterResult:
     """Filter one complete GTFS archive and write a deterministic ZIP.
 
     ``published_entries`` are the release-manifest entries of this source the input may be a byte-identical copy of
-    (see :func:`published_provenance`); without a match the input's own SHA-256 is its provenance.
+    (see :func:`published_provenance`); without a match the input's own SHA-256 is its provenance.  With
+    ``trips_run_from`` the trips that can never run again from that day are dropped (:func:`expired_trips`).
     """
     if not source.is_file() or not zipfile.is_zipfile(source):
         raise BuildError(f"{source_id}: archivio ZIP GTFS non valido: {source}")
@@ -1274,6 +1291,17 @@ def filter_archive(
             trip_ids = {row["trip_id"] for row in kept_trips if row.get("trip_id")}
             service_ids = {row["service_id"] for row in kept_trips if row.get("service_id")}
 
+        run_metadata: dict[str, str] = {}
+        if trips_run_from is not None:
+            expired = expired_trips(kept_trips, service_days(calendar, calendar_dates, source_id), trips_run_from)
+            if expired:
+                print(f"{source_id}: {len(expired)} trip che non circolano più dal {trips_run_from} rimossi", file=sys.stderr)
+                kept_trips = tuple(row for row in kept_trips if row.get("trip_id", "") not in expired)
+                kept_stop_times = tuple(row for row in kept_stop_times if row.get("trip_id", "") not in expired)
+                trip_ids = {row["trip_id"] for row in kept_trips if row.get("trip_id")}
+                service_ids = {row["service_id"] for row in kept_trips if row.get("service_id")}
+            run_metadata[TRIPS_RUN_FROM_FIELD] = trips_run_from.isoformat()
+
         stop_ids = {row["stop_id"] for row in kept_stop_times if row.get("stop_id")}
         if not stop_ids:
             raise BuildError(f"{source_id}: i trip filtrati non hanno stop_times")
@@ -1320,7 +1348,9 @@ def filter_archive(
         filtered_calendar = CsvTable(calendar.header, kept_calendar)
         filtered_calendar_dates = CsvTable(calendar_dates.header, kept_calendar_dates)
         coverage_end = last_service_date(filtered_calendar, filtered_calendar_dates, source_id)
-        full_end = full_service_until(kept_trips, filtered_calendar, filtered_calendar_dates, source_id, coverage_end)
+        full_end = full_service_until(
+            kept_trips, filtered_calendar, filtered_calendar_dates, source_id, coverage_end, trips_run_from,
+        )
 
         tables: dict[str, CsvTable] = {
             "agency.txt": CsvTable(agency.header, kept_agency),
@@ -1389,6 +1419,7 @@ def filter_archive(
         "lastServiceDate": coverage_end.isoformat(),
         "omittedOptionalTables": ["shapes.txt"],
         **({"tripRules": trip_rules} if trip_rules else {}),
+        **run_metadata,
         MEMBER_DIGEST_FIELD: {name: canonical_csv_sha256(table) for name, table in sorted(tables.items())},
     }
     write_deterministic_zip(destination, tables, metadata)
@@ -1601,6 +1632,7 @@ def _build_packs_locked(
             # input keeps their recorded upstream digest (A7-01).
             results[source_id] = filter_archive(
                 source, staging / name, source_id, published_entries=(pack, published_by_id.get(source_id)),
+                trips_run_from=date.fromisoformat(generated_at) - timedelta(days=EXPIRED_TRIP_GRACE_DAYS),
             )
         output_manifest = manifest_for_build(source_manifest, results, generated_at, kept_entries)
         for pack in output_manifest["packs"]:
@@ -1678,7 +1710,22 @@ def full_service_end_from_asset(path: Path, source_id: str) -> date:
         calendar_dates = read_table(archive, "calendar_dates.txt") or empty_calendar_dates()
         trips = read_table(archive, "trips.txt", required=True)
         assert trips is not None
-    return full_service_until(trips.rows, calendar, calendar_dates, source_id, last_service_date(calendar, calendar_dates, source_id))
+        runs_from = trips_run_from_asset(archive, source_id)
+    return full_service_until(
+        trips.rows, calendar, calendar_dates, source_id, last_service_date(calendar, calendar_dates, source_id), runs_from,
+    )
+
+
+def trips_run_from_asset(archive: zipfile.ZipFile, source_id: str) -> date | None:
+    """The tripsRunFrom a built pack declares in its filter manifest, or None (built before the rule)."""
+    entry = filter_manifest_entry(archive)
+    if entry is None:
+        return None
+    try:
+        value = json.loads(archive.read(entry).decode("utf-8")).get(TRIPS_RUN_FROM_FIELD)
+        return None if value is None else date.fromisoformat(str(value))
+    except (UnicodeDecodeError, json.JSONDecodeError, AttributeError, ValueError) as error:
+        raise BuildError(f"{source_id}: {TRIPS_RUN_FROM_FIELD} non valido") from error
 
 
 def release_end(pack: Mapping[str, Any]) -> date:
@@ -1750,6 +1797,13 @@ def verify_filter_from_asset(path: Path, source_id: str) -> str:
                     f"{source_id}: {len(left)} trip ripetono la corsa di un altro treno in ogni giorno di servizio "
                     f"(copie di itinerario), es. {log_safe(sorted(left)[0])}"
                 )
+        runs_from = trips_run_from_asset(archive, source_id)
+        if runs_from is not None:
+            calendar = read_table(archive, "calendar.txt") or empty_calendar()
+            calendar_dates = read_table(archive, "calendar_dates.txt") or empty_calendar_dates()
+            expired = expired_trips(tables["trips.txt"].rows, service_days(calendar, calendar_dates, source_id), runs_from)
+            if expired:
+                raise BuildError(f"{source_id}: {len(expired)} trip non circolano più dal {runs_from} ({TRIPS_RUN_FROM_FIELD})")
         return canonical_content_sha256(declared_digests)
 
 
