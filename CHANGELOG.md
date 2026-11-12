@@ -37,6 +37,17 @@ Dodici revisori indipendenti, ognuno con un punto di vista diverso, hanno trovat
   - un errore di lettura non spegne più il pianificatore fino alla chiusura dell'app;
   - il widget del Watch smette di aggiornarsi ogni 15 minuti quando non ha nulla da mostrare.
 - **«Partenze» su Android con i dati in tempo reale per primi** (decisione del titolare, anche nel widget della stazione): decidono i tabelloni live (monitor RFI, ViaggiaTreno, Svizzera); l'orario programmato RFI si mostra solo quando nessuno di loro risponde con treni, con l'avviso, e dopo l'ultimo treno live per arrivare a sei ore. Il tabellone di Italo, che elenca solo i treni Italo, si unisce sempre ma da solo non sostituisce quello della stazione. Nessuna richiesta in più; ordine delle fonti live e nome «Partenze» invariati.
+- **Android, stato dell'app**:
+  - i viaggi con cambio aggiornano i dati in tempo reale delle tratte e l'avviso «Coincidenza a rischio» (prima restavano quelli del momento della ricerca);
+  - tornando all'app i dati si aggiornano subito se hanno più di 30 secondi, invece di aspettare il ciclo successivo; mai più di una richiesta ogni 30 secondi per tipo di dato;
+  - le pagine «Più presto» e «Più tardi» scadute tornano «Programmato» invece di restare live per sempre;
+  - i dettagli delle corse del tabellone non spariscono più a ogni aggiornamento;
+  - un backup senza tratte salvate si importa se contiene altro; l'esportazione controlla il file prima di scriverlo e non crea più un file che l'importazione rifiuterebbe; il file esportato viene troncato se è più corto del precedente;
+  - dopo un'importazione all'avvio si apre la tratta giusta; l'importazione azzera data e ora pianificate come una nuova tratta;
+  - gli indici delle stazioni e lo storico della puntualità non lavorano più sul thread principale all'avvio;
+  - fissare una tratta non cancella più la ricerca non salvata; la direzione salvata non viene sovrascritta da una ricerca;
+  - la copia salvata mostrata dopo un aggiornamento fallito non elenca più treni partiti; la ricerca per numero dopo mezzanotte resta sul giorno cercato;
+  - un caricamento superato da una nuova ricerca viene annullato; i promemoria del pendolare si rileggono quando si torna all'app; il tabellone della stazione resta aperto anche se Android chiude l'app in background.
 - **Android, schermate**:
   - sul tabellone di stazione TalkBack dice per primo che un treno è soppresso e legge le variazioni di percorso; «Soppresso», «Parzialmente soppresso», «Deviato» e «Bus sostitutivo» sono etichette in grassetto nel colore di errore;
   - «In orario» non compare più accanto a «+0 min» o a un treno che una fonte dà in ritardo: una sola regola per righe, schede, distintivi e TalkBack;
