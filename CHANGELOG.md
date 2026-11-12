@@ -115,6 +115,13 @@ Dodici revisori indipendenti, ognuno con un punto di vista diverso, hanno trovat
   - **Viaggi con più tratte**: l'editor ne gestisce fino a 4 («Aggiungi tratta», «Rimuovi tratta»; la partenza della tratta successiva è l'arrivo della precedente), modificarne uno non perde più le tratte dopo la prima, e «Ritorno» e «Ripianifica» valgono anche per loro. L'iPhone per ora importa solo i viaggi di una tratta senza ripetizioni.
   - **Dettatura** di una tratta nell'editor, con le stesse regole e lingue del pianificatore.
   - **Privacy**: tutto resta sul telefono (PRIVACY.md).
+- **Ultime correzioni dell'audit**:
+  - **iPhone, ricerca delle stazioni** più veloce: i nomi del catalogo si preparano una volta all'avvio invece che a ogni lettera; risultati identici, verificati su 30 ricerche.
+  - **Android, «Partenze»**: quando nessun tabellone live risponde e resta l'orario programmato, l'avviso dice «Sono disponibili solo orari programmati»; «Realtime parzialmente non disponibile» resta per i casi davvero parziali.
+  - **Alexa, puntualità di un treno**:
+    - Senza stazione di partenza, Alexa risponde solo se circola un solo treno con quel numero, come l'app; prima ne sceglieva uno.
+    - Un treno registrato solo alla prima fermata non viene più detto «in orario al capolinea».
+  - **Regole comuni**: un solo file di casi (`contracts/shared-rules/v1`) controlla che Android, iPhone e Alexa calcolino allo stesso modo il numero del treno e le statistiche di puntualità.
 - **Avvisi da fonti non cifrate**: un indirizzo costruito ad arte (schema annidato, barre codificate più volte) non diventa più un link toccabile. Il controllo sui siti ammessi vale nel punto in cui il link viene creato.
 - **CI iPhone** (#84): l'età degli orari blocca solo le release (run avviata a mano, PR verso un ramo di stabilizzazione). Nelle altre run è un avviso: dal 13 novembre il job sarebbe diventato rosso su ogni modifica.
 
