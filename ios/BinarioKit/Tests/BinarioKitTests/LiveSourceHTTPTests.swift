@@ -174,11 +174,13 @@ final class LiveSourceHTTPTests: XCTestCase {
             LiveDataTaskDelegate.failure(for: NSError(domain: NSURLErrorDomain, code: code))
         }
         for code in [
-            NSURLErrorNotConnectedToInternet, NSURLErrorNetworkConnectionLost, NSURLErrorDataNotAllowed,
+            NSURLErrorNotConnectedToInternet, NSURLErrorDataNotAllowed,
             NSURLErrorInternationalRoamingOff, NSURLErrorCallIsActive, NSURLErrorCannotFindHost, NSURLErrorDNSLookupFailed,
         ] {
             XCTAssertEqual(failure(code), .offline, "\(code)")
         }
+        // A connection the server accepted and then dropped is the source's failure, never the device's.
+        XCTAssertEqual(failure(NSURLErrorNetworkConnectionLost), .network)
         XCTAssertEqual(failure(NSURLErrorTimedOut), .timedOut, "a source that stops answering still counts")
         XCTAssertEqual(failure(NSURLErrorCancelled), .cancelled)
         XCTAssertEqual(failure(NSURLErrorSecureConnectionFailed), .network)

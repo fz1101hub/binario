@@ -293,7 +293,9 @@ final class LiveDataTaskDelegate: NSObject, URLSessionDataDelegate, @unchecked S
 
     /// What a failed task means: the caller's cancellation; the device without a usable connection
     /// (`offline`, never held against the source); a time-out (held against the source: one that
-    /// stops answering is paused like one that fails); any other failure of the network or the source.
+    /// stops answering is paused like one that fails); any other failure of the network or the source,
+    /// a connection the server accepted and then dropped included (a common way of refusing a
+    /// client, and the usual face of an overloaded origin: three in a row pause the source).
     static func failure(for error: any Error) -> LiveFetchFailure {
         let nsError = error as NSError
         guard nsError.domain == NSURLErrorDomain else { return .network }
@@ -302,7 +304,7 @@ final class LiveDataTaskDelegate: NSObject, URLSessionDataDelegate, @unchecked S
             return .cancelled
         case NSURLErrorTimedOut:
             return .timedOut
-        case NSURLErrorNotConnectedToInternet, NSURLErrorNetworkConnectionLost, NSURLErrorDataNotAllowed,
+        case NSURLErrorNotConnectedToInternet, NSURLErrorDataNotAllowed,
              NSURLErrorInternationalRoamingOff, NSURLErrorCallIsActive, NSURLErrorCannotFindHost, NSURLErrorDNSLookupFailed:
             return .offline
         default:

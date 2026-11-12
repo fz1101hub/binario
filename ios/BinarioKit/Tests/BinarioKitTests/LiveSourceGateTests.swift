@@ -189,6 +189,12 @@ final class LiveSourceGateTests: XCTestCase {
         }
         _ = await gate.fetch("c") { .failure(.http(status: 500, retryAfter: nil)) }
         XCTAssertEqual(gate.pausedUntil(), clock.now().addingTimeInterval(60))
+        // Connections the server drops count as failures of the source.
+        let dropping = makeGate(clock)
+        for key in ["a", "b", "c"] {
+            _ = await dropping.fetch(key) { LiveFetchResult.failure(LiveDataTaskDelegate.failure(for: NSError(domain: NSURLErrorDomain, code: NSURLErrorNetworkConnectionLost))) }
+        }
+        XCTAssertEqual(dropping.pausedUntil(), clock.now().addingTimeInterval(60))
     }
 
     func testACancelledCallerReturnsAtOnceAndTheNextCallerJoinsTheRequestItLeft() async throws {
