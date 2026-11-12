@@ -893,8 +893,15 @@
     <string name="planned_journey_delete">ခရီးစဉ် ဖျက်ရန်</string>
     <string name="planned_journey_delete_confirmation">ဤခရီးစဉ်နှင့် ၎င်း၏ သတိပေးချက်များကို ဤစက်မှ ဖျက်မလား။</string>
     <string name="planned_journey_delete_success">ခရီးစဉ်နှင့် ၎င်း၏ သတိပေးချက်များကို ဖျက်ပြီးပါပြီ။</string>
+    <string name="planned_journey_return">အပြန်</string>
+    <string name="planned_journey_replan">ပြန်စီစဉ်ရန်</string>
+    <string name="planned_journey_return_a11y">%1$s အတွက် အပြန်ခရီး စီစဉ်ရန်</string>
+    <string name="planned_journey_replan_a11y">%1$s ကို ပြန်စီစဉ်ရန်</string>
+    <string name="planned_journey_return_prepared">အပြန်ခရီး အသင့်ဖြစ်ပြီ။ မသိမ်းမီ ရက်စွဲနှင့် အချိန်အသစ် ရွေးပါ။</string>
+    <string name="planned_journey_replan_prepared">ခရီးစဉ်ကို ပြန်စီစဉ်ပြီး။ မသိမ်းမီ ရက်စွဲနှင့် အချိန်အသစ် ရွေးပါ။</string>
     <string name="agenda_editor_date_value">ရက်စွဲ- %1$s</string>
     <string name="agenda_editor_time_value">အချိန်- %1$s</string>
+    <string name="agenda_editor_unset">ရွေးရန် ကျန်</string>
     <string name="agenda_editor_first_segment">ပထမ အပိုင်းကို ပြင်နေသည်၊ ကျန်အပိုင်းများ မပြောင်းပါ။</string>
     <string name="agenda_editor_station_hint">အမည် သို့မဟုတ် ကုဒ်ဖြင့် ရှာပြီး ဘူတာတစ်ခု ရွေးပါ။</string>
     <string name="agenda_editor_select_station">%1$s ရွေးရန်၊ ကုဒ် %2$s</string>

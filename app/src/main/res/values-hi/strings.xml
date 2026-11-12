@@ -912,8 +912,15 @@
     <string name="planned_journey_delete">यात्रा हटाएँ</string>
     <string name="planned_journey_delete_confirmation">इस यात्रा और इसके रिमाइंडर को इस डिवाइस से हटाएँ?</string>
     <string name="planned_journey_delete_success">यात्रा और इसके रिमाइंडर हटाए गए।</string>
+    <string name="planned_journey_return">वापसी</string>
+    <string name="planned_journey_replan">दोबारा निर्धारित करें</string>
+    <string name="planned_journey_return_a11y">%1$s की वापसी की योजना बनाएँ</string>
+    <string name="planned_journey_replan_a11y">%1$s दोबारा निर्धारित करें</string>
+    <string name="planned_journey_return_prepared">वापसी तैयार है। सहेजने से पहले नई तारीख और समय चुनें।</string>
+    <string name="planned_journey_replan_prepared">यात्रा दोबारा निर्धारित हुई। सहेजने से पहले नई तारीख और समय चुनें।</string>
     <string name="agenda_editor_date_value">तारीख: %1$s</string>
     <string name="agenda_editor_time_value">समय: %1$s</string>
+    <string name="agenda_editor_unset">चुनना बाकी</string>
     <string name="agenda_editor_first_segment">आप पहला हिस्सा बदल रहे हैं; बाकी हिस्से वैसे ही रहते हैं।</string>
     <string name="agenda_editor_station_hint">नाम या कोड से खोजें और एक स्टेशन चुनें।</string>
     <string name="agenda_editor_select_station">%1$s चुनें, कोड %2$s</string>

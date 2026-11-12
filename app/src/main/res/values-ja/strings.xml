@@ -893,8 +893,15 @@
     <string name="planned_journey_delete">旅程を削除</string>
     <string name="planned_journey_delete_confirmation">この旅程とリマインダーをこの端末から削除しますか？</string>
     <string name="planned_journey_delete_success">旅程とリマインダーを削除しました。</string>
+    <string name="planned_journey_return">復路</string>
+    <string name="planned_journey_replan">計画し直す</string>
+    <string name="planned_journey_return_a11y">%1$s の復路を計画</string>
+    <string name="planned_journey_replan_a11y">%1$s を計画し直す</string>
+    <string name="planned_journey_return_prepared">復路を用意しました。保存する前に新しい日時を選んでください。</string>
+    <string name="planned_journey_replan_prepared">移動を計画し直しました。保存する前に新しい日時を選んでください。</string>
     <string name="agenda_editor_date_value">日付：%1$s</string>
     <string name="agenda_editor_time_value">時刻：%1$s</string>
+    <string name="agenda_editor_unset">未選択</string>
     <string name="agenda_editor_first_segment">最初の区間を編集しています。ほかの区間は変わりません。</string>
     <string name="agenda_editor_station_hint">駅名またはコードで検索して駅を選んでください。</string>
     <string name="agenda_editor_select_station">%1$s を選択、コード %2$s</string>

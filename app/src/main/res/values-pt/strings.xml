@@ -931,8 +931,15 @@
     <string name="planned_journey_delete">Excluir viagem</string>
     <string name="planned_journey_delete_confirmation">Excluir esta viagem e os lembretes dela deste dispositivo?</string>
     <string name="planned_journey_delete_success">Viagem e lembretes excluídos.</string>
+    <string name="planned_journey_return">Volta</string>
+    <string name="planned_journey_replan">Reprogramar</string>
+    <string name="planned_journey_return_a11y">Planejar a volta de %1$s</string>
+    <string name="planned_journey_replan_a11y">Reprogramar %1$s</string>
+    <string name="planned_journey_return_prepared">Volta preparada. Escolha uma nova data e hora antes de salvar.</string>
+    <string name="planned_journey_replan_prepared">Viagem reprogramada. Escolha uma nova data e hora antes de salvar.</string>
     <string name="agenda_editor_date_value">Dia: %1$s</string>
     <string name="agenda_editor_time_value">Hora: %1$s</string>
+    <string name="agenda_editor_unset">a escolher</string>
     <string name="agenda_editor_first_segment">Você está editando o primeiro trecho; os outros não mudam.</string>
     <string name="agenda_editor_station_hint">Busque pelo nome ou código e escolha uma estação.</string>
     <string name="agenda_editor_select_station">Selecionar %1$s, código %2$s</string>

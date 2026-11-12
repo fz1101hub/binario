@@ -19,6 +19,8 @@ import androidx.compose.material.icons.filled.Archive
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material.icons.filled.Upload
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
@@ -163,6 +165,8 @@ fun PlannedJourneyAgendaScreen(
                 AgendaEntryCard(
                     entry = entry,
                     onEdit = { viewModel.beginEdit(entry.journey) },
+                    onReturn = { viewModel.beginReturn(entry.journey) },
+                    onReplan = { viewModel.beginReplan(entry.journey) },
                     onComplete = { viewModel.complete(entry) },
                     onArchive = { viewModel.archive(entry.journey.id) },
                     onDelete = { pendingDelete = entry.journey.id },
@@ -215,6 +219,8 @@ private fun AgendaMessage(text: String, isError: Boolean) {
 private fun AgendaEntryCard(
     entry: PlannedJourneyAgendaEntry,
     onEdit: () -> Unit,
+    onReturn: () -> Unit,
+    onReplan: () -> Unit,
     onComplete: () -> Unit,
     onArchive: () -> Unit,
     onDelete: () -> Unit,
@@ -282,6 +288,23 @@ private fun AgendaEntryCard(
                     }
                 }
             }
+            // Return and replan keep the route only: one-leg journeys, whose new date and time the editor can take.
+            if (entry.journey.itinerary.segments.size == 1) {
+                val returnDescription = stringResource(R.string.planned_journey_return_a11y, title)
+                val replanDescription = stringResource(R.string.planned_journey_replan_a11y, title)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                    TextButton(onClick = onReturn, modifier = Modifier.weight(1f).semantics { contentDescription = returnDescription }) {
+                        Icon(Icons.Default.SwapHoriz, contentDescription = null)
+                        Spacer(Modifier.width(4.dp))
+                        Text(stringResource(R.string.planned_journey_return))
+                    }
+                    TextButton(onClick = onReplan, modifier = Modifier.weight(1f).semantics { contentDescription = replanDescription }) {
+                        Icon(Icons.Default.Refresh, contentDescription = null)
+                        Spacer(Modifier.width(4.dp))
+                        Text(stringResource(R.string.planned_journey_replan))
+                    }
+                }
+            }
             TextButton(onClick = onDelete) { Text(stringResource(R.string.planned_journey_delete)) }
         }
     }
@@ -306,6 +329,7 @@ private fun PlannedJourneyEditorDialog(
         title = { Text(stringResource(if (editor.isEditing) R.string.planned_journey_edit else R.string.planned_journey_add)) },
         text = {
             LazyColumn(modifier = Modifier.testTag("plannedJourneyEditor"), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                editor.notice?.let { notice -> item { AgendaMessage(notice.localized(), isError = false) } }
                 item {
                     OutlinedTextField(
                         value = editor.label,

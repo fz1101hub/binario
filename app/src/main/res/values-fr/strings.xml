@@ -954,8 +954,15 @@
     <string name="planned_journey_delete">Supprimer le voyage</string>
     <string name="planned_journey_delete_confirmation">Supprimer ce voyage et ses rappels de cet appareil ?</string>
     <string name="planned_journey_delete_success">Voyage et rappels associés supprimés.</string>
+    <string name="planned_journey_return">Retour</string>
+    <string name="planned_journey_replan">Replanifier</string>
+    <string name="planned_journey_return_a11y">Planifier le retour pour %1$s</string>
+    <string name="planned_journey_replan_a11y">Replanifier %1$s</string>
+    <string name="planned_journey_return_prepared">Retour préparé. Choisissez une nouvelle date et heure avant d\'enregistrer.</string>
+    <string name="planned_journey_replan_prepared">Trajet replanifié. Choisissez une nouvelle date et heure avant d\'enregistrer.</string>
     <string name="agenda_editor_date_value">Date : %1$s</string>
     <string name="agenda_editor_time_value">Heure : %1$s</string>
+    <string name="agenda_editor_unset">à choisir</string>
     <string name="agenda_editor_first_segment">Vous modifiez la première étape ; les autres restent inchangées.</string>
     <string name="agenda_editor_station_hint">Recherchez par nom ou code et sélectionnez une gare.</string>
     <string name="agenda_editor_select_station">Sélectionner %1$s, code %2$s</string>

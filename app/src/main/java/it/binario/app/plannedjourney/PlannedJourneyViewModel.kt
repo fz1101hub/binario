@@ -37,7 +37,9 @@ data class PlannedJourneyEditorState(
     val checklistText: String = "",
     val validationMessage: UiMessage? = null,
     /** The user saw that the departure has already passed and tapped Save again. */
-    val pastDepartureConfirmed: Boolean = false
+    val pastDepartureConfirmed: Boolean = false,
+    /** Information shown at the top of the form, such as «Ritorno preparato». */
+    val notice: UiMessage? = null
 ) {
     val isEditing: Boolean get() = journeyId != null
 }
@@ -143,6 +145,31 @@ class PlannedJourneyViewModel(
             timeZoneId = segment.departure.timeZone.id,
             reminderMinutes = journey.reminder?.minutesBeforeDeparture,
             checklistText = journey.checklist.joinToString("\n") { item -> item.label }
+        )
+        feedback = null
+    }
+
+    /** The reverse route of a one-leg journey: date, time, reminder and checklist ticks are chosen anew. */
+    fun beginReturn(journey: PlannedJourney) =
+        beginFromDraft(journey, PlannedJourneyDrafts.returnFrom(journey, DRAFT_ID, now()), UiMessageKey.PLANNED_JOURNEY_RETURN_PREPARED)
+
+    /** The same route of a one-leg journey on a new date and time. */
+    fun beginReplan(journey: PlannedJourney) =
+        beginFromDraft(journey, PlannedJourneyDrafts.replanFrom(journey, DRAFT_ID, now()), UiMessageKey.PLANNED_JOURNEY_REPLAN_PREPARED)
+
+    private fun beginFromDraft(source: PlannedJourney, draft: PlannedJourneyDraft, notice: UiMessageKey) {
+        val segment = draft.itinerary.segments.singleOrNull() ?: return
+        editor = PlannedJourneyEditorState(
+            originQuery = segment.origin.displayName,
+            destinationQuery = segment.destination.displayName,
+            originStationId = segment.origin.canonicalId,
+            destinationStationId = segment.destination.canonicalId,
+            date = "",
+            time = "",
+            timeZoneId = zone.id,
+            // The labels come back unticked; the source's reminder is not inherited.
+            checklistText = source.checklist.joinToString("\n") { item -> item.label },
+            notice = UiMessage(notice)
         )
         feedback = null
     }
@@ -326,6 +353,8 @@ class PlannedJourneyViewModel(
     companion object {
         internal const val AGENDA_FILTER_KEY = "plannedJourney.agendaFilter"
         internal const val PENDING_EXPORT_KEY = "plannedJourney.pendingExport"
+        /** The id of a return or replan draft is never stored: the saved journey gets a new one. */
+        private const val DRAFT_ID = "draft"
         fun factory(context: Context) = viewModelFactory {
             initializer {
                 PlannedJourneyViewModel(

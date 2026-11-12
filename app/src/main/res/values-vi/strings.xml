@@ -916,8 +916,15 @@
     <string name="planned_journey_delete">Xóa hành trình</string>
     <string name="planned_journey_delete_confirmation">Xóa hành trình này và các lời nhắc của nó khỏi thiết bị?</string>
     <string name="planned_journey_delete_success">Đã xóa hành trình và các lời nhắc.</string>
+    <string name="planned_journey_return">Chiều về</string>
+    <string name="planned_journey_replan">Lên lịch lại</string>
+    <string name="planned_journey_return_a11y">Lên kế hoạch chiều về cho %1$s</string>
+    <string name="planned_journey_replan_a11y">Lên lịch lại %1$s</string>
+    <string name="planned_journey_return_prepared">Đã chuẩn bị chiều về. Hãy chọn ngày giờ mới trước khi lưu.</string>
+    <string name="planned_journey_replan_prepared">Đã lên lịch lại hành trình. Hãy chọn ngày giờ mới trước khi lưu.</string>
     <string name="agenda_editor_date_value">Ngày: %1$s</string>
     <string name="agenda_editor_time_value">Giờ: %1$s</string>
+    <string name="agenda_editor_unset">chưa chọn</string>
     <string name="agenda_editor_first_segment">Bạn đang sửa chặng đầu tiên; các chặng khác giữ nguyên.</string>
     <string name="agenda_editor_station_hint">Tìm theo tên hoặc mã và chọn một ga.</string>
     <string name="agenda_editor_select_station">Chọn %1$s, mã %2$s</string>

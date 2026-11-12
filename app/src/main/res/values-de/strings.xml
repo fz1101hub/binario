@@ -935,8 +935,15 @@
     <string name="planned_journey_delete">Reise löschen</string>
     <string name="planned_journey_delete_confirmation">Diese Reise und ihre Erinnerungen von diesem Gerät löschen?</string>
     <string name="planned_journey_delete_success">Reise und zugehörige Erinnerungen gelöscht.</string>
+    <string name="planned_journey_return">Rückfahrt</string>
+    <string name="planned_journey_replan">Neu planen</string>
+    <string name="planned_journey_return_a11y">Rückfahrt für %1$s planen</string>
+    <string name="planned_journey_replan_a11y">%1$s neu planen</string>
+    <string name="planned_journey_return_prepared">Rückfahrt vorbereitet. Wählen Sie vor dem Speichern ein neues Datum und eine neue Uhrzeit.</string>
+    <string name="planned_journey_replan_prepared">Verbindung neu geplant. Wählen Sie vor dem Speichern ein neues Datum und eine neue Uhrzeit.</string>
     <string name="agenda_editor_date_value">Datum: %1$s</string>
     <string name="agenda_editor_time_value">Uhrzeit: %1$s</string>
+    <string name="agenda_editor_unset">noch wählen</string>
     <string name="agenda_editor_first_segment">Du bearbeitest die erste Etappe; die anderen bleiben unverändert.</string>
     <string name="agenda_editor_station_hint">Nach Name oder Code suchen und einen Bahnhof auswählen.</string>
     <string name="agenda_editor_select_station">%1$s auswählen, Code %2$s</string>

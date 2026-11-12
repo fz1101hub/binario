@@ -893,8 +893,15 @@
     <string name="planned_journey_delete">Hapus perjalanan</string>
     <string name="planned_journey_delete_confirmation">Hapus perjalanan ini dan pengingatnya dari perangkat ini?</string>
     <string name="planned_journey_delete_success">Perjalanan dan pengingatnya dihapus.</string>
+    <string name="planned_journey_return">Pulang</string>
+    <string name="planned_journey_replan">Jadwalkan ulang</string>
+    <string name="planned_journey_return_a11y">Rencanakan perjalanan pulang untuk %1$s</string>
+    <string name="planned_journey_replan_a11y">Jadwalkan ulang %1$s</string>
+    <string name="planned_journey_return_prepared">Perjalanan pulang disiapkan. Pilih tanggal dan waktu baru sebelum menyimpan.</string>
+    <string name="planned_journey_replan_prepared">Perjalanan dijadwalkan ulang. Pilih tanggal dan waktu baru sebelum menyimpan.</string>
     <string name="agenda_editor_date_value">Tanggal: %1$s</string>
     <string name="agenda_editor_time_value">Jam: %1$s</string>
+    <string name="agenda_editor_unset">belum dipilih</string>
     <string name="agenda_editor_first_segment">Anda mengubah bagian pertama; bagian lainnya tetap sama.</string>
     <string name="agenda_editor_station_hint">Cari dengan nama atau kode lalu pilih stasiun.</string>
     <string name="agenda_editor_select_station">Pilih %1$s, kode %2$s</string>

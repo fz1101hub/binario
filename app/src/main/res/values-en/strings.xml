@@ -935,8 +935,15 @@
     <string name="planned_journey_delete">Delete journey</string>
     <string name="planned_journey_delete_confirmation">Delete this journey and its reminders from this device?</string>
     <string name="planned_journey_delete_success">Journey and its reminders deleted.</string>
+    <string name="planned_journey_return">Return</string>
+    <string name="planned_journey_replan">Reschedule</string>
+    <string name="planned_journey_return_a11y">Plan the return for %1$s</string>
+    <string name="planned_journey_replan_a11y">Reschedule %1$s</string>
+    <string name="planned_journey_return_prepared">Return prepared. Choose a new date and time before saving.</string>
+    <string name="planned_journey_replan_prepared">Journey rescheduled. Choose a new date and time before saving.</string>
     <string name="agenda_editor_date_value">Date: %1$s</string>
     <string name="agenda_editor_time_value">Time: %1$s</string>
+    <string name="agenda_editor_unset">to be chosen</string>
     <string name="agenda_editor_first_segment">You are editing the first leg; other legs stay unchanged.</string>
     <string name="agenda_editor_station_hint">Search by name or code and select a station.</string>
     <string name="agenda_editor_select_station">Select %1$s, code %2$s</string>

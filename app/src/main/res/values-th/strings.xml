@@ -916,8 +916,15 @@
     <string name="planned_journey_delete">ลบการเดินทาง</string>
     <string name="planned_journey_delete_confirmation">ลบการเดินทางนี้และการเตือนที่เกี่ยวข้องออกจากอุปกรณ์นี้ใช่ไหม</string>
     <string name="planned_journey_delete_success">ลบการเดินทางและการเตือนที่เกี่ยวข้องแล้ว</string>
+    <string name="planned_journey_return">ขากลับ</string>
+    <string name="planned_journey_replan">วางแผนใหม่</string>
+    <string name="planned_journey_return_a11y">วางแผนขากลับของ %1$s</string>
+    <string name="planned_journey_replan_a11y">วางแผน %1$s ใหม่</string>
+    <string name="planned_journey_return_prepared">เตรียมขากลับแล้ว เลือกวันที่และเวลาใหม่ก่อนบันทึก</string>
+    <string name="planned_journey_replan_prepared">วางแผนการเดินทางใหม่แล้ว เลือกวันที่และเวลาใหม่ก่อนบันทึก</string>
     <string name="agenda_editor_date_value">วันที่: %1$s</string>
     <string name="agenda_editor_time_value">เวลา: %1$s</string>
+    <string name="agenda_editor_unset">ยังไม่ได้เลือก</string>
     <string name="agenda_editor_first_segment">คุณกำลังแก้ไขช่วงแรก ช่วงอื่นจะไม่เปลี่ยนแปลง</string>
     <string name="agenda_editor_station_hint">ค้นหาตามชื่อหรือรหัส แล้วเลือกสถานี</string>
     <string name="agenda_editor_select_station">เลือก %1$s รหัส %2$s</string>

@@ -1,5 +1,7 @@
 package it.binario.app.plannedjourney
 
+import it.binario.app.UiMessage
+import it.binario.app.UiMessageKey
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
@@ -28,6 +30,52 @@ class PlannedJourneyCompanionContractTest {
             listOf("c", "a"),
             PlannedJourneyAgenda.ordered(listOf(journeys[0], journeys[1], completed), PlannedJourneyAgendaFilter.ARCHIVED, now).map { it.journey.id }
         )
+    }
+
+    @Test fun `return swaps the stations, blanks date and time, unticks the checklist and drops the reminder`() {
+        val repository = PlannedJourneyRepository(FakeStorage())
+        val source = journey("out", "2026-10-01", "08:00").copy(
+            reminder = PlannedJourneyReminder(PlannedJourneyReminderMinutes.THIRTY),
+            checklist = listOf(PlannedJourneyChecklistItem("check-1", "Biglietto", completed = true))
+        )
+        repository.save(source)
+        var ids = 0
+        val model = PlannedJourneyViewModel(repository, now = { createdAt }, zone = italy, newId = { "new-${++ids}" })
+
+        model.beginReturn(source)
+        val editor = requireNotNull(model.editor)
+        assertEquals(milan.canonicalId, editor.originStationId)
+        assertEquals(rome.canonicalId, editor.destinationStationId)
+        assertEquals("", editor.date)
+        assertEquals("", editor.time)
+        assertEquals(null, editor.reminderMinutes)
+        assertEquals(UiMessage(UiMessageKey.PLANNED_JOURNEY_RETURN_PREPARED), editor.notice)
+        assertEquals(null, editor.journeyId)
+
+        model.saveEditor(listOf(rome, milan))
+        assertEquals("the planner refuses until a date and time are chosen", 1, model.snapshot.journeys.size)
+        model.changeEditor { it.copy(date = "2026-10-01", time = "18:30") }
+        model.saveEditor(listOf(rome, milan))
+        val back = model.snapshot.journeys.single { it.id != "out" }
+        assertEquals(milan, back.itinerary.segments.single().origin)
+        assertEquals(listOf(PlannedJourneyChecklistItem("check-1", "Biglietto", completed = false)), back.checklist)
+        assertEquals(null, back.reminder)
+    }
+
+    @Test fun `replan keeps the stations and asks for a new date and time`() {
+        val source = journey("out", "2026-10-01", "08:00")
+        val model = PlannedJourneyViewModel(PlannedJourneyRepository(FakeStorage()), now = { createdAt }, zone = italy)
+        model.beginReplan(source)
+        val editor = requireNotNull(model.editor)
+        assertEquals(rome.canonicalId, editor.originStationId)
+        assertEquals(milan.canonicalId, editor.destinationStationId)
+        assertEquals("" to "", editor.date to editor.time)
+        assertEquals(UiMessage(UiMessageKey.PLANNED_JOURNEY_REPLAN_PREPARED), editor.notice)
+    }
+
+    private class FakeStorage(var value: String? = null) : PlannedJourneyStorage {
+        override fun read(): String? = value
+        override fun write(value: String) { this.value = value }
     }
 
     private fun journey(id: String, date: String, time: String) = PlannedJourney(

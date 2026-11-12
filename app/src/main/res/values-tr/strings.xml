@@ -935,8 +935,15 @@
     <string name="planned_journey_delete">Yolculuğu sil</string>
     <string name="planned_journey_delete_confirmation">Bu yolculuk ve hatırlatmaları bu cihazdan silinsin mi?</string>
     <string name="planned_journey_delete_success">Yolculuk ve hatırlatmaları silindi.</string>
+    <string name="planned_journey_return">Dönüş</string>
+    <string name="planned_journey_replan">Yeniden planla</string>
+    <string name="planned_journey_return_a11y">%1$s için dönüşü planla</string>
+    <string name="planned_journey_replan_a11y">%1$s yolculuğunu yeniden planla</string>
+    <string name="planned_journey_return_prepared">Dönüş hazırlandı. Kaydetmeden önce yeni bir tarih ve saat seçin.</string>
+    <string name="planned_journey_replan_prepared">Yolculuk yeniden planlandı. Kaydetmeden önce yeni bir tarih ve saat seçin.</string>
     <string name="agenda_editor_date_value">Tarih: %1$s</string>
     <string name="agenda_editor_time_value">Saat: %1$s</string>
+    <string name="agenda_editor_unset">seçilmedi</string>
     <string name="agenda_editor_first_segment">İlk bölümü düzenliyorsunuz; diğer bölümler değişmez.</string>
     <string name="agenda_editor_station_hint">Ada veya koda göre arayın ve bir istasyon seçin.</string>
     <string name="agenda_editor_select_station">Seç: %1$s, kod %2$s</string>

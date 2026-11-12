@@ -954,8 +954,15 @@
     <string name="planned_journey_delete">Eliminar viaje</string>
     <string name="planned_journey_delete_confirmation">¿Eliminar este viaje y sus recordatorios de este dispositivo?</string>
     <string name="planned_journey_delete_success">Viaje y recordatorios asociados eliminados.</string>
+    <string name="planned_journey_return">Regreso</string>
+    <string name="planned_journey_replan">Replanificar</string>
+    <string name="planned_journey_return_a11y">Planifica el regreso para %1$s</string>
+    <string name="planned_journey_replan_a11y">Replanificar %1$s</string>
+    <string name="planned_journey_return_prepared">Regreso preparado. Elige una nueva fecha y hora antes de guardar.</string>
+    <string name="planned_journey_replan_prepared">Trayecto replanificado. Elige una nueva fecha y hora antes de guardar.</string>
     <string name="agenda_editor_date_value">Fecha: %1$s</string>
     <string name="agenda_editor_time_value">Hora: %1$s</string>
+    <string name="agenda_editor_unset">por elegir</string>
     <string name="agenda_editor_first_segment">Estás editando el primer tramo; los demás no cambian.</string>
     <string name="agenda_editor_station_hint">Busca por nombre o código y selecciona una estación.</string>
     <string name="agenda_editor_select_station">Seleccionar %1$s, código %2$s</string>
