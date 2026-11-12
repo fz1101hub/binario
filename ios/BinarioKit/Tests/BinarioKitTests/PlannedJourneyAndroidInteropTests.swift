@@ -35,8 +35,7 @@ final class PlannedJourneyAndroidInteropTests: XCTestCase {
             #"icalId":"S01700","displayName":"Milano Centrale","railwayCode":"S01700"},"id":"segment-1","departure"#,
             #"":{"date":"2026-12-24","timeZone":"Europe/Rome","time":"07:05"}}]},"checklist":[],"id":"android-once"#,
             #"","label":"","completedOccurrenceDates":[],"status":"ARCHIVED"}],"schemaVersion":1,"kind":"binario_p"#,
-            #"lanned_journeys"}
-"#
+            #"lanned_journeys"}"#
     ].joined()
 
     /// The same journeys as an Android phone writes them: its org.json keeps the order of `put`
