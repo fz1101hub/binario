@@ -77,6 +77,7 @@
 "saved.agenda.unreadable" = "Agenda yang tersimpan berisi data yang tidak dapat dibaca versi ini, jadi tetap hanya-baca agar data itu tidak hilang. Hanya perjalanan yang terbaca yang ditampilkan.";
 "saved.agenda.storage_error" = "Agenda tidak dapat diperbarui.";
 "saved.agenda.invalid" = "Pilih stasiun dari katalog dan masukkan tanggal serta jam yang valid.";
+"saved.agenda.departure_past" = "Keberangkatan ini sudah lewat: perjalanan akan masuk ke arsip, tanpa pengingat. Ketuk “Simpan” lagi untuk tetap menyimpannya.";
 "saved.agenda.label_too_long" = "Label maksimal 96 karakter.";
 "saved.agenda.checklist_too_long" = "Setiap item daftar periksa maksimal 160 karakter.";
 "saved.agenda.checklist_sensitive" = "Daftar periksa tidak boleh berisi kata sandi, PIN, data pembayaran, nomor pajak, atau kontak: hapus item tersebut.";

@@ -77,6 +77,7 @@
 "saved.agenda.unreadable" = "已保存的日程包含此版本无法读取的数据，为避免丢失，保持只读。只显示可读取的行程。";
 "saved.agenda.storage_error" = "无法更新日程。";
 "saved.agenda.invalid" = "请选择目录中的车站，并输入有效的日期和时间。";
+"saved.agenda.departure_past" = "此出发时间已过：行程将进入归档，且没有提醒。若仍要保存，请再次点按“保存”。";
 "saved.agenda.label_too_long" = "标签最多 96 个字符。";
 "saved.agenda.checklist_too_long" = "清单每项最多 160 个字符。";
 "saved.agenda.checklist_sensitive" = "清单不能包含密码、PIN、付款信息、税号或联系方式：请删除该项。";

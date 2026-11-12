@@ -77,6 +77,7 @@
 "saved.agenda.unreadable" = "Kayıtlı Ajanda bu sürümün okuyamadığı veriler içeriyor; kaybolmaması için salt okunur kalıyor. Yalnızca okunabilen yolculuklar gösteriliyor.";
 "saved.agenda.storage_error" = "Ajanda güncellenemedi.";
 "saved.agenda.invalid" = "Katalogdan istasyon seçin ve geçerli bir tarih ve saat girin.";
+"saved.agenda.departure_past" = "Bu kalkış zamanı geçti: yolculuk hatırlatıcı olmadan arşive gidecek. Yine de kaydetmek için “Kaydet”e tekrar dokunun.";
 "saved.agenda.label_too_long" = "Etiket en fazla 96 karakter olabilir.";
 "saved.agenda.checklist_too_long" = "Kontrol listesindeki her madde en fazla 160 karakter olabilir.";
 "saved.agenda.checklist_sensitive" = "Kontrol listesi parola, PIN, ödeme bilgisi, vergi numarası veya kişi bilgisi içeremez: o maddeyi kaldırın.";

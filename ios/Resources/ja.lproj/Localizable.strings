@@ -77,6 +77,7 @@
 "saved.agenda.unreadable" = "保存された予定に、このバージョンでは読めないデータが含まれています。失わないように読み取り専用のままにします。読める旅程だけを表示しています。";
 "saved.agenda.storage_error" = "予定を更新できませんでした。";
 "saved.agenda.invalid" = "カタログから駅を選び、正しい日付と時刻を入力してください。";
+"saved.agenda.departure_past" = "この出発時刻はすでに過ぎています。旅程はリマインダーなしでアーカイブに入ります。それでも保存するには「保存」をもう一度タップしてください。";
 "saved.agenda.label_too_long" = "ラベルは96文字以内にしてください。";
 "saved.agenda.checklist_too_long" = "チェックリストの各項目は160文字以内にしてください。";
 "saved.agenda.checklist_sensitive" = "チェックリストにはパスワード、PIN、支払い情報、税番号、連絡先を入れられません。その項目を削除してください。";

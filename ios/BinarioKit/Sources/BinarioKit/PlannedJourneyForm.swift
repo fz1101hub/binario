@@ -86,6 +86,16 @@ public struct PlannedJourneyForm: Equatable, Sendable {
         return ItalianWallClock.instant(date: date, time: time)
     }
 
+    /// Whether saving must first warn that the departure has already passed at `now` (the journey
+    /// would go straight to the archive): a new journey, or an edit that moves the departure. An
+    /// edit that keeps a past departure does not warn again (Android's rule).
+    public func needsPastDepartureWarning(now: Date, editing existing: PlannedJourney?) -> Bool {
+        guard let departure = departureInstant, departure < now else { return false }
+        guard let existing else { return true }
+        return existing.departure.date != date || existing.departure.time != time
+            || existing.departure.timeZone != ItalianWallClock.zoneIdentifier
+    }
+
     /// The checklist lines: trimmed, without empty ones, at most
     /// `PlannedJourneySchema.maximumChecklistItems` (Android takes the first 24 the same way).
     public var checklistLabels: [String] {

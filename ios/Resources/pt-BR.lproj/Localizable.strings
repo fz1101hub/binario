@@ -77,6 +77,7 @@
 "saved.agenda.unreadable" = "A Agenda salva contém dados que esta versão não consegue ler, por isso fica somente leitura para não perdê-los. Só as viagens legíveis são mostradas.";
 "saved.agenda.storage_error" = "Não foi possível atualizar a Agenda.";
 "saved.agenda.invalid" = "Escolha estações do catálogo e informe data e horário válidos.";
+"saved.agenda.departure_past" = "Esta partida já passou: a viagem irá para o arquivo, sem lembrete. Toque em “Salvar” de novo para salvá-la mesmo assim.";
 "saved.agenda.label_too_long" = "O rótulo pode ter no máximo 96 caracteres.";
 "saved.agenda.checklist_too_long" = "Cada item do checklist pode ter no máximo 160 caracteres.";
 "saved.agenda.checklist_sensitive" = "O checklist não pode conter senhas, PINs, dados de pagamento, números fiscais ou contatos: remova esse item.";

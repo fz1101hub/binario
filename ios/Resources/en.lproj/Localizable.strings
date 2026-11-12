@@ -77,6 +77,7 @@
 "saved.agenda.unreadable" = "The saved Agenda contains data this version cannot read, so it stays read-only to avoid losing it. Only the readable journeys are shown.";
 "saved.agenda.storage_error" = "The Agenda could not be updated.";
 "saved.agenda.invalid" = "Choose catalogue stations and enter a valid date and time.";
+"saved.agenda.departure_past" = "This departure has already passed: the journey will go to the archive, with no reminder. Tap “Save” again to save it anyway.";
 "saved.agenda.label_too_long" = "The label can have at most 96 characters.";
 "saved.agenda.checklist_too_long" = "Each checklist item can have at most 160 characters.";
 "saved.agenda.checklist_sensitive" = "The checklist cannot hold passwords, PINs, payment data, tax codes or contacts: remove that item.";

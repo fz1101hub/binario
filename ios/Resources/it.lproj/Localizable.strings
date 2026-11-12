@@ -77,6 +77,7 @@
 "saved.agenda.unreadable" = "L’Agenda salvata contiene dati che questa versione non sa leggere: resta in sola lettura per non perderli. Sono mostrati solo i viaggi leggibili.";
 "saved.agenda.storage_error" = "Impossibile aggiornare l’Agenda.";
 "saved.agenda.invalid" = "Scegli stazioni del catalogo e inserisci data e orario validi.";
+"saved.agenda.departure_past" = "Questa partenza è già passata: il viaggio andrà tra gli archiviati, senza promemoria. Tocca di nuovo «Salva» per salvarlo comunque.";
 "saved.agenda.label_too_long" = "L’etichetta può avere al massimo 96 caratteri.";
 "saved.agenda.checklist_too_long" = "Ogni voce della checklist può avere al massimo 160 caratteri.";
 "saved.agenda.checklist_sensitive" = "La checklist non può contenere password, PIN, dati di pagamento, codici fiscali o contatti: togli quella voce.";

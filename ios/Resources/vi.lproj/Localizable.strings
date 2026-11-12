@@ -77,6 +77,7 @@
 "saved.agenda.unreadable" = "Lịch trình đã lưu chứa dữ liệu mà phiên bản này không đọc được, nên chỉ ở chế độ chỉ đọc để tránh mất dữ liệu. Chỉ các hành trình đọc được mới hiển thị.";
 "saved.agenda.storage_error" = "Không thể cập nhật Lịch trình.";
 "saved.agenda.invalid" = "Hãy chọn ga trong danh mục và nhập ngày giờ hợp lệ.";
+"saved.agenda.departure_past" = "Giờ khởi hành này đã qua: hành trình sẽ vào kho lưu trữ, không có nhắc nhở. Chạm lại “Lưu” để vẫn lưu.";
 "saved.agenda.label_too_long" = "Nhãn có tối đa 96 ký tự.";
 "saved.agenda.checklist_too_long" = "Mỗi mục trong danh sách kiểm tra có tối đa 160 ký tự.";
 "saved.agenda.checklist_sensitive" = "Danh sách kiểm tra không được chứa mật khẩu, mã PIN, dữ liệu thanh toán, mã số thuế hoặc thông tin liên hệ: hãy xóa mục đó.";

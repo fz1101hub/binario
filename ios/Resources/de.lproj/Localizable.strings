@@ -77,6 +77,7 @@
 "saved.agenda.unreadable" = "Die gespeicherte Agenda enthält Daten, die diese Version nicht lesen kann; sie bleibt daher schreibgeschützt, damit nichts verloren geht. Es werden nur die lesbaren Reisen angezeigt.";
 "saved.agenda.storage_error" = "Die Agenda konnte nicht aktualisiert werden.";
 "saved.agenda.invalid" = "Wählen Sie Bahnhöfe aus dem Katalog und geben Sie ein gültiges Datum und eine gültige Uhrzeit ein.";
+"saved.agenda.departure_past" = "Diese Abfahrt liegt bereits in der Vergangenheit: Die Reise kommt ins Archiv, ohne Erinnerung. Tippen Sie erneut auf „Speichern“, um sie trotzdem zu speichern.";
 "saved.agenda.label_too_long" = "Die Bezeichnung darf höchstens 96 Zeichen haben.";
 "saved.agenda.checklist_too_long" = "Jeder Eintrag der Checkliste darf höchstens 160 Zeichen haben.";
 "saved.agenda.checklist_sensitive" = "Die Checkliste darf keine Passwörter, PINs, Zahlungsdaten, Steuernummern oder Kontakte enthalten: Entfernen Sie diesen Eintrag.";

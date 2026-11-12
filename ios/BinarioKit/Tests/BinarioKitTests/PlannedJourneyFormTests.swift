@@ -129,6 +129,24 @@ final class PlannedJourneyFormTests: XCTestCase {
         XCTAssertEqual(again.label, "")
     }
 
+    func testADepartureAlreadyPassedIsSavedOnlyAfterAWarning() throws {
+        let now = try utc("2026-12-01T08:00:00Z") // 09:00 in Italy
+        var form = try filled() // 2026-12-01 08:15 in Italy
+        XCTAssertTrue(form.needsPastDepartureWarning(now: now, editing: nil))
+        form.time = PlannedLocalTime(hhmm: "09:30")
+        XCTAssertFalse(form.needsPastDepartureWarning(now: now, editing: nil))
+        form.time = nil
+        XCTAssertFalse(form.needsPastDepartureWarning(now: now, editing: nil))
+
+        // Editing a journey that has already left, without moving it, does not warn again.
+        let departed = try filled().journey(id: "j-1", now: self.now, editing: nil).get()
+        var edit = PlannedJourneyForm(editing: departed)
+        edit.label = "Nuovo nome"
+        XCTAssertFalse(edit.needsPastDepartureWarning(now: now, editing: departed))
+        edit.time = PlannedLocalTime(hhmm: "08:45")
+        XCTAssertTrue(edit.needsPastDepartureWarning(now: now, editing: departed))
+    }
+
     // MARK: Helpers
 
     private func filled(label: String = "", checklist: String = "") throws -> PlannedJourneyForm {

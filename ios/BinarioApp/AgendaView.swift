@@ -280,6 +280,8 @@ struct AgendaEditorView: View {
     @State private var checklistText = ""
     @State private var messageKey: String?
     @State private var loaded = false
+    /// The past-departure warning was shown: a second «Salva» saves (Android's rule).
+    @State private var pastDepartureConfirmed = false
 
     private var existing: PlannedJourney? {
         if case let .edit(journey) = request { return journey }
@@ -365,6 +367,7 @@ struct AgendaEditorView: View {
                 }
             }
             .onAppear(perform: load)
+            .onChange(of: departure) { _, _ in pastDepartureConfirmed = false }
         }
     }
 
@@ -396,7 +399,14 @@ struct AgendaEditorView: View {
             form.date = ItalianWallClock.date(of: departure)
             form.time = ItalianWallClock.time(of: departure)
         }
-        switch form.journey(id: UUID().uuidString, now: Date(), editing: existing) {
+        let now = Date()
+        if form.needsPastDepartureWarning(now: now, editing: existing), !pastDepartureConfirmed {
+            // Said once; the next «Salva» saves the journey, which goes straight to the archive.
+            messageKey = "saved.agenda.departure_past"
+            pastDepartureConfirmed = true
+            return
+        }
+        switch form.journey(id: UUID().uuidString, now: now, editing: existing) {
         case let .failure(issue):
             messageKey = AgendaText.messageKey(issue)
         case let .success(journey):

@@ -55,7 +55,7 @@ public enum BinarioLocalizationKeys {
         "saved.agenda.save", "saved.agenda.cancel",
         "saved.agenda.complete", "saved.agenda.delete", "saved.agenda.delete_confirmation", "saved.agenda.full",
         "saved.agenda.duplicate", "saved.agenda.read_only", "saved.agenda.unreadable", "saved.agenda.storage_error",
-        "saved.agenda.invalid", "saved.agenda.label_too_long", "saved.agenda.checklist_too_long",
+        "saved.agenda.invalid", "saved.agenda.departure_past", "saved.agenda.label_too_long", "saved.agenda.checklist_too_long",
         "saved.agenda.checklist_sensitive",
         "saved.watch.show", "saved.watch.stop", "saved.watch.pinned", "saved.watch.footer", "saved.watch.sharing_off",
         "saved.trains.title", "saved.trains.empty.title", "saved.trains.empty.body", "saved.trains.local_only",
