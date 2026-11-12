@@ -144,6 +144,7 @@ export const ko: LocaleMessages = {
     unavailable: "Binario의 정시성 통계는 아직 제공되지 않습니다.",
     trainUnknown: "{trainNumber} 열차의 정시성 통계가 없습니다.",
     trainFewData: "{trainNumber} 열차는 아직 관측 데이터가 충분하지 않습니다.",
+    trainSharedNumber: "{trainNumber} 열차는 출발역이 다른 여러 열차가 있어 어느 열차를 말씀하시는지 알 수 없습니다.",
     trainMissing: "어느 열차의 정시성을 알고 싶으신가요? 예를 들어 how punctual is train 9558 이라고 말해 보세요.",
     routeFewData: "{routeName} 경로는 아직 관측 데이터가 충분하지 않습니다.",
     routeStationsUnknown: "{routeName} 경로의 역을 알 수 없습니다. Binario 대시보드에서 출발지와 목적지를 Roma Termini처럼 역 이름으로 입력하세요.",

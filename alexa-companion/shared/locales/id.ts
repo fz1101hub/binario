@@ -144,6 +144,7 @@ export const id: LocaleMessages = {
     unavailable: "Statistik ketepatan waktu Binario belum tersedia.",
     trainUnknown: "Saya tidak punya statistik ketepatan waktu untuk kereta {trainNumber}.",
     trainFewData: "Belum ada cukup pengamatan untuk kereta {trainNumber}.",
+    trainSharedNumber: "Beberapa kereta berjalan dengan nomor {trainNumber} dari stasiun asal yang berbeda, jadi saya tidak tahu kereta mana yang Anda maksud.",
     trainMissing: "Kereta mana yang ingin Anda ketahui ketepatan waktunya? Misalnya, ucapkan: how punctual is train 9558.",
     routeFewData: "Belum ada cukup pengamatan untuk rute {routeName}.",
     routeStationsUnknown: "Saya tidak mengenali stasiun rute {routeName}: di dasbor Binario, isi asal dan tujuan dengan nama stasiun, misalnya Roma Termini.",

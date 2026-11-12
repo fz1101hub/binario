@@ -144,6 +144,7 @@ export const ru: LocaleMessages = {
     unavailable: "Статистика пунктуальности Binario пока недоступна.",
     trainUnknown: "У меня нет статистики пунктуальности поезда {trainNumber}.",
     trainFewData: "По поезду {trainNumber} пока недостаточно наблюдений.",
+    trainSharedNumber: "Под номером {trainNumber} ходят несколько поездов с разных начальных станций, поэтому я не знаю, какой из них вы имеете в виду.",
     trainMissing: "Пунктуальность какого поезда вы хотите узнать? Скажите, например: how punctual is train 9558.",
     routeFewData: "По маршруту {routeName} пока недостаточно наблюдений.",
     routeStationsUnknown: "Я не узнаю станции маршрута {routeName}: в панели Binario укажите пункты отправления и назначения названиями станций, например Roma Termini.",

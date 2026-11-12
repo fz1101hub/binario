@@ -144,6 +144,7 @@ export const my: LocaleMessages = {
     unavailable: "Binario ၏ အချိန်မှန်မှု စာရင်းအင်းများ မရရှိနိုင်သေးပါ။",
     trainUnknown: "ရထား {trainNumber} အတွက် အချိန်မှန်မှု စာရင်းအင်း မရှိပါ။",
     trainFewData: "ရထား {trainNumber} အတွက် စောင့်ကြည့်မှု မလုံလောက်သေးပါ။",
+    trainSharedNumber: "နံပါတ် {trainNumber} ဖြင့် မူလဘူတာ မတူသော ရထားများစွာ ပြေးဆွဲသောကြောင့် မည်သည့်ရထားကို ဆိုလိုသည်ကို မသိနိုင်ပါ။",
     trainMissing: "မည်သည့်ရထား၏ အချိန်မှန်မှုကို သိလိုပါသလဲ။ ဥပမာ how punctual is train 9558 ဟု ပြောပါ။",
     routeFewData: "{routeName} လမ်းကြောင်းအတွက် စောင့်ကြည့်မှု မလုံလောက်သေးပါ။",
     routeStationsUnknown: "{routeName} လမ်းကြောင်း၏ ဘူတာများကို မသိရှိပါ။ Binario ဒက်ရှ်ဘုတ်တွင် စတင်ရာနှင့် ခရီးဆုံးကို Roma Termini ကဲ့သို့ ဘူတာအမည်ဖြင့် ထည့်ပါ။",

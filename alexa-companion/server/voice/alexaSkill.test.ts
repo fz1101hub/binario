@@ -36,7 +36,18 @@ vi.mock("../punctuality/source", () => railData);
 import { getAlexaLinkStatus, listPersonalRoutesForAlexa } from "../db";
 import { parseStationCatalog } from "../punctuality/stations";
 import { parsePunctualityStats } from "../punctuality/stats";
-import { catalogDocument, departuresDocument, MONDAY_MORNING, networkDocument } from "../punctuality/testFixtures";
+import {
+  catalogDocument,
+  departuresDocument,
+  FIRENZE_SMN,
+  fixtureTrain,
+  MILANO_CENTRALE,
+  MONDAY_MORNING,
+  networkDocument,
+  ROMA_TERMINI,
+  statsDocument,
+  stopFromDelays,
+} from "../punctuality/testFixtures";
 import { createAlexaSkill, HANDLED_INTENTS } from "./alexa";
 import { issueVoiceAccessToken } from "./crypto";
 
@@ -955,6 +966,20 @@ describe("punctuality intents", () => {
     expect(await answer("1234")).toBe("Per il treno 1234 non ci sono ancora abbastanza osservazioni.");
     expect(await answer("7777")).toBe(
       "Il treno 7777 è stato soppresso in ognuno dei 7 giorni osservati. Sono statistiche non ufficiali di Binario su dati ViaggiaTreno."
+    );
+  });
+
+  it("gives no figure, live or not, when several trains of the number from different origins have figures", async () => {
+    const sameNumber = (origin: string) =>
+      fixtureTrain("9558", origin, "FR", 10, 0, [stopFromDelays(origin, Array(10).fill(0)), stopFromDelays(MILANO_CENTRALE, Array(10).fill(1))]);
+    railData.punctualityStats.mockResolvedValue(parsePunctualityStats(statsDocument([sameNumber(ROMA_TERMINI), sameNumber(FIRENZE_SMN)])));
+    const response = await createAlexaSkill().invoke(intent("TrainPunctualityIntent", "it-IT", { trainNumber: "9558" }));
+    expect(card(response)).toBe("Con il numero 9558 circolano più treni, da origini diverse, quindi non so di quale chiedi.");
+    expect(card(await createAlexaSkill().invoke(intent("TrainPunctualityIntent", "en-US", { trainNumber: "9558" })))).toBe(
+      "Several trains run with the number 9558, from different origins, so I can't tell which one you mean."
+    );
+    expect(card(await createAlexaSkill().invoke(intent("TrainStatusIntent", "it-IT", { trainNumber: "9558" })))).toBe(
+      "Per il treno 9558: dati non disponibili in tempo reale"
     );
   });
 

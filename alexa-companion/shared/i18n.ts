@@ -212,6 +212,8 @@ export type LocaleMessages = {
     unavailable: string;
     trainUnknown: string;
     trainFewData: string;
+    /** Several trains with the number, from different origins, have figures: none is given. */
+    trainSharedNumber: string;
     /** Asks which train, naming one inside a TrainPunctualityIntent sample of the locale. */
     trainMissing: string;
     routeFewData: string;
@@ -393,6 +395,7 @@ const it: LocaleMessages = {
     unavailable: "Le statistiche di puntualità di Binario non sono ancora disponibili.",
     trainUnknown: "Non ho statistiche di puntualità per il treno {trainNumber}.",
     trainFewData: "Per il treno {trainNumber} non ci sono ancora abbastanza osservazioni.",
+    trainSharedNumber: "Con il numero {trainNumber} circolano più treni, da origini diverse, quindi non so di quale chiedi.",
     trainMissing: "Di quale treno vuoi sapere la puntualità? Puoi dire, per esempio: quanto è puntuale il treno 9558.",
     routeFewData: "Per la tratta {routeName} non ci sono ancora abbastanza osservazioni.",
     routeStationsUnknown: "Non riconosco le stazioni della tratta {routeName}: nella dashboard Binario indica origine e destinazione con il nome della stazione, per esempio Roma Termini.",
@@ -444,6 +447,7 @@ const en: LocaleMessages = {
     unavailable: "Binario's punctuality statistics are not available yet.",
     trainUnknown: "I have no punctuality statistics for train {trainNumber}.",
     trainFewData: "There are not enough observations for train {trainNumber} yet.",
+    trainSharedNumber: "Several trains run with the number {trainNumber}, from different origins, so I can't tell which one you mean.",
     trainMissing: "Which train would you like to know about? You can say, for example: how punctual is train 9558.",
     routeFewData: "There are not enough observations for the route {routeName} yet.",
     routeStationsUnknown: "I can't identify the stations of the route {routeName}: in the Binario dashboard, enter the origin and destination by station name, for example Roma Termini.",
@@ -494,6 +498,7 @@ const de: LocaleMessages = {
     unavailable: "Die Pünktlichkeitsstatistiken von Binario sind noch nicht verfügbar.",
     trainUnknown: "Für Zug {trainNumber} habe ich keine Pünktlichkeitsstatistik.",
     trainFewData: "Für Zug {trainNumber} gibt es noch nicht genug Beobachtungen.",
+    trainSharedNumber: "Unter der Nummer {trainNumber} fahren mehrere Züge mit verschiedenen Startbahnhöfen, daher weiß ich nicht, welchen Sie meinen.",
     trainMissing: "Für welchen Zug möchten Sie die Pünktlichkeit wissen? Sagen Sie zum Beispiel: wie pünktlich ist Zug 9558.",
     routeFewData: "Für die Strecke {routeName} gibt es noch nicht genug Beobachtungen.",
     routeStationsUnknown: "Ich erkenne die Bahnhöfe der Strecke {routeName} nicht: Geben Sie im Binario-Dashboard Start und Ziel mit dem Bahnhofsnamen an, zum Beispiel Roma Termini.",
@@ -544,6 +549,7 @@ const fr: LocaleMessages = {
     unavailable: "Les statistiques de ponctualité de Binario ne sont pas encore disponibles.",
     trainUnknown: "Je n’ai pas de statistiques de ponctualité pour le train {trainNumber}.",
     trainFewData: "Il n’y a pas encore assez d’observations pour le train {trainNumber}.",
+    trainSharedNumber: "Plusieurs trains circulent sous le numéro {trainNumber}, depuis des origines différentes : je ne sais donc pas lequel vous voulez dire.",
     trainMissing: "De quel train voulez-vous connaître la ponctualité ? Vous pouvez dire, par exemple : ponctualité du train 9558.",
     routeFewData: "Il n’y a pas encore assez d’observations pour le trajet {routeName}.",
     routeStationsUnknown: "Je ne reconnais pas les gares du trajet {routeName} : dans le tableau de bord Binario, indiquez le départ et la destination par le nom de la gare, par exemple Roma Termini.",
@@ -594,6 +600,7 @@ const es: LocaleMessages = {
     unavailable: "Las estadísticas de puntualidad de Binario aún no están disponibles.",
     trainUnknown: "No tengo estadísticas de puntualidad del tren {trainNumber}.",
     trainFewData: "Todavía no hay suficientes observaciones del tren {trainNumber}.",
+    trainSharedNumber: "Varios trenes circulan con el número {trainNumber}, desde orígenes distintos, así que no sé a cuál te refieres.",
     trainMissing: "¿De qué tren quieres saber la puntualidad? Puedes decir, por ejemplo: puntualidad del tren 9558.",
     routeFewData: "Todavía no hay suficientes observaciones de la ruta {routeName}.",
     routeStationsUnknown: "No reconozco las estaciones de la ruta {routeName}: en el panel de Binario, indica el origen y el destino con el nombre de la estación, por ejemplo Roma Termini.",

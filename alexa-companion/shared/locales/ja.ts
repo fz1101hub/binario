@@ -144,6 +144,7 @@ export const ja: LocaleMessages = {
     unavailable: "ビナリオの定時運行率の統計はまだ利用できません。",
     trainUnknown: "{trainNumber} 号の定時運行率の統計はありません。",
     trainFewData: "{trainNumber} 号は、まだ十分な観測データがありません。",
+    trainSharedNumber: "{trainNumber} 号は始発駅の異なる複数の列車があるため、どの列車のことかわかりません。",
     trainMissing: "どの列車の定時運行率を知りたいですか？たとえば「9558号の定時運行率を教えて」と言ってください。",
     routeFewData: "{routeName} は、まだ十分な観測データがありません。",
     routeStationsUnknown: "{routeName} の駅がわかりません。ビナリオのダッシュボードで、出発地と目的地を Roma Termini のような駅名で入力してください。",

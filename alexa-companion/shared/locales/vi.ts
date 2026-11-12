@@ -144,6 +144,7 @@ export const vi: LocaleMessages = {
     unavailable: "Thống kê đúng giờ của Binario chưa có.",
     trainUnknown: "Tôi không có thống kê đúng giờ cho tàu {trainNumber}.",
     trainFewData: "Chưa có đủ dữ liệu quan sát cho tàu {trainNumber}.",
+    trainSharedNumber: "Có nhiều chuyến tàu chạy với số hiệu {trainNumber} từ các ga xuất phát khác nhau, nên tôi không biết bạn hỏi chuyến nào.",
     trainMissing: "Bạn muốn biết mức đúng giờ của tàu nào? Ví dụ, hãy nói: how punctual is train 9558.",
     routeFewData: "Chưa có đủ dữ liệu quan sát cho tuyến {routeName}.",
     routeStationsUnknown: "Tôi không nhận ra các ga của tuyến {routeName}: trong bảng điều khiển Binario, hãy nhập điểm đi và điểm đến bằng tên ga, ví dụ Roma Termini.",

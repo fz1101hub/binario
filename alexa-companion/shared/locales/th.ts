@@ -144,6 +144,7 @@ export const th: LocaleMessages = {
     unavailable: "สถิติความตรงเวลาของ Binario ยังไม่พร้อมใช้งาน",
     trainUnknown: "ไม่มีสถิติความตรงเวลาของรถไฟ {trainNumber}",
     trainFewData: "รถไฟ {trainNumber} ยังมีข้อมูลการสังเกตไม่เพียงพอ",
+    trainSharedNumber: "มีรถไฟหลายขบวนที่ใช้หมายเลข {trainNumber} จากสถานีต้นทางต่างกัน จึงไม่ทราบว่าคุณหมายถึงขบวนใด",
     trainMissing: "คุณอยากทราบความตรงเวลาของรถไฟขบวนใด ตัวอย่างเช่น พูดว่า how punctual is train 9558",
     routeFewData: "เส้นทาง {routeName} ยังมีข้อมูลการสังเกตไม่เพียงพอ",
     routeStationsUnknown: "ไม่รู้จักสถานีของเส้นทาง {routeName} ในแดชบอร์ด Binario ให้ระบุต้นทางและปลายทางด้วยชื่อสถานี เช่น Roma Termini",

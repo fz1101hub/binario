@@ -190,7 +190,7 @@ describe("statistics reader", () => {
 });
 
 describe("train punctuality", () => {
-  it("measures the train at its terminus, taking the origin with the most samples there", () => {
+  it("measures the train at its terminus, the only one of its number with five samples there", () => {
     expect(trainPunctuality(network(), "9558")).toEqual({
       kind: "stats",
       samples: 27,
@@ -208,6 +208,20 @@ describe("train punctuality", () => {
     expect(trainPunctuality(stats, "4242")).toEqual({ kind: "unknown" });
     expect(trainPunctuality(stats, "7777")).toEqual({ kind: "cancelledEveryDay", days: 7 });
     expect(trainPunctuality(stats, "1234")).toEqual({ kind: "fewData" });
+  });
+
+  it("gives no figure when several trains of the number, from different origins, have five samples or more", () => {
+    const sameNumber = (origin: string, delays: number[]) =>
+      fixtureTrain("9558", origin, "FR", delays.length, 0, [stopFromDelays(origin, Array(delays.length).fill(0)), stopFromDelays(MILANO_CENTRALE, delays)]);
+    const shared = parsePunctualityStats(statsDocument([sameNumber(ROMA_TERMINI, Array(20).fill(0)), sameNumber(FIRENZE_SMN, Array(5).fill(30))]))!;
+    expect(trainPunctuality(shared, "9558")).toEqual({ kind: "sharedNumber" });
+    expect(trainPunctuality(shared, "FR 9558")).toEqual({ kind: "sharedNumber" });
+    // Four samples from Firenze say nothing: the train from Roma is the only one with figures.
+    const single = parsePunctualityStats(statsDocument([sameNumber(ROMA_TERMINI, Array(20).fill(0)), sameNumber(FIRENZE_SMN, Array(4).fill(30))]))!;
+    expect(trainPunctuality(single, "9558")).toMatchObject({ kind: "stats", samples: 20, percent: 100 });
+    // Nor does a train cancelled every day beside one with figures.
+    const cancelled = parsePunctualityStats(statsDocument([sameNumber(ROMA_TERMINI, Array(20).fill(0)), fixtureTrain("9558", FIRENZE_SMN, "FR", 9, 9, [])]))!;
+    expect(trainPunctuality(cancelled, "9558")).toMatchObject({ kind: "stats", samples: 20 });
   });
 
   it("shows an early average as no delay", () => {
@@ -235,7 +249,7 @@ describe("route punctuality", () => {
     const stats = network();
     expect(routePunctuality(stats, [TIVOLI], [ROMA_TERMINI])).toBeNull();
     expect(routePunctuality(stats, [GUIDONIA], [TIVOLI])).toBeNull();
-    expect(routePunctuality(stats, [FIRENZE_SMN], [MILANO_CENTRALE])).toMatchObject({ trains: 2, samples: 33, onTime: 22, limits: [5] });
+    expect(routePunctuality(stats, [FIRENZE_SMN], [MILANO_CENTRALE])).toMatchObject({ trains: 2, samples: 31, onTime: 22, limits: [5] });
     expect(routePunctuality(stats, [ROMA_TERMINI], [ROMA_TERMINI])).toBeNull();
     expect(routePunctuality(stats, [], [TIVOLI])).toBeNull();
     expect(routePunctuality(stats, ["not a code"], [TIVOLI])).toBeNull();

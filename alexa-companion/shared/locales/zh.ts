@@ -144,6 +144,7 @@ export const zh: LocaleMessages = {
     unavailable: "Binario 的准点统计尚不可用。",
     trainUnknown: "我没有 {trainNumber} 次列车的准点统计。",
     trainFewData: "{trainNumber} 次列车的观测数据还不够。",
+    trainSharedNumber: "有多趟 {trainNumber} 次列车从不同的始发站出发，所以我无法确定你问的是哪一趟。",
     trainMissing: "你想了解哪趟列车的准点情况？例如，你可以说：how punctual is train 9558。",
     routeFewData: "路线 {routeName} 的观测数据还不够。",
     routeStationsUnknown: "我无法识别路线 {routeName} 的车站：请在 Binario 控制台中用车站名称填写出发地和目的地，例如 Roma Termini。",

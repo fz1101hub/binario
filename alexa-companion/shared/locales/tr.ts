@@ -144,6 +144,7 @@ export const tr: LocaleMessages = {
     unavailable: "Binario dakiklik istatistikleri henüz kullanılamıyor.",
     trainUnknown: "{trainNumber} numaralı tren için dakiklik istatistiğim yok.",
     trainFewData: "{trainNumber} numaralı tren için henüz yeterli gözlem yok.",
+    trainSharedNumber: "{trainNumber} numarasıyla farklı kalkış istasyonlarından birden fazla tren çalışıyor, bu yüzden hangisini kastettiğinizi bilemiyorum.",
     trainMissing: "Hangi trenin dakikliğini öğrenmek istiyorsunuz? Örneğin şöyle diyebilirsiniz: how punctual is train 9558.",
     routeFewData: "{routeName} güzergâhı için henüz yeterli gözlem yok.",
     routeStationsUnknown: "{routeName} güzergâhının istasyonlarını tanıyamıyorum: Binario panelinde kalkış ve varış noktasını istasyon adıyla girin, örneğin Roma Termini.",

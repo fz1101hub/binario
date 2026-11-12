@@ -144,6 +144,7 @@ export const pt: LocaleMessages = {
     unavailable: "As estatísticas de pontualidade do Binario ainda não estão disponíveis.",
     trainUnknown: "Não tenho estatísticas de pontualidade do trem {trainNumber}.",
     trainFewData: "Ainda não há observações suficientes do trem {trainNumber}.",
+    trainSharedNumber: "Vários trens circulam com o número {trainNumber}, de origens diferentes, então não sei de qual você está falando.",
     trainMissing: "De qual trem você quer saber a pontualidade? Você pode dizer, por exemplo: pontualidade do trem 9558.",
     routeFewData: "Ainda não há observações suficientes do trajeto {routeName}.",
     routeStationsUnknown: "Não reconheço as estações do trajeto {routeName}: no painel do Binario, indique a origem e o destino pelo nome da estação, por exemplo Roma Termini.",

@@ -144,6 +144,7 @@ export const ar: LocaleMessages = {
     unavailable: "إحصاءات دقة المواعيد من بيناريو غير متاحة بعد.",
     trainUnknown: "ليست لدي إحصاءات عن دقة مواعيد القطار {trainNumber}.",
     trainFewData: "لا توجد بعد ملاحظات كافية عن القطار {trainNumber}.",
+    trainSharedNumber: "تسير عدة قطارات بالرقم {trainNumber} من محطات انطلاق مختلفة، لذلك لا أعرف أيها تقصد.",
     trainMissing: "أي قطار تريد أن تعرف دقة مواعيده؟ يمكنك أن تقول مثلًا: دقة مواعيد القطار 9558.",
     routeFewData: "لا توجد بعد ملاحظات كافية عن المسار {routeName}.",
     routeStationsUnknown: "لا أتعرف على محطات المسار {routeName}: في لوحة معلومات بيناريو، اكتب نقطة الانطلاق والوجهة باسم المحطة، مثل Roma Termini.",
