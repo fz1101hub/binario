@@ -1,10 +1,17 @@
 package it.binario.app
 
+import it.binario.app.data.RailTime
+import it.binario.app.data.RouteSnapshot
 import it.binario.app.data.SavedRoute
+import java.time.Duration
+import java.time.Instant
+import java.time.LocalTime
+import java.time.ZoneId
 
 /**
- * The rules of [TrainViewModel] about which route is active, kept free of Android so that they can be tested on the
- * JVM: the view model only applies them to its stores and state.
+ * The rules of [TrainViewModel] about the route it shows (which route is active, what is stored, what a saved copy
+ * keeps), kept free of Android so that they can be tested on the JVM: the view model only applies them to its stores
+ * and state.
  */
 internal object RouteStateRules {
     /** The route the stored identifier names among [routes]; without it the first one; without routes the placeholder. */
@@ -42,4 +49,24 @@ internal object RouteStateRules {
      */
     fun storesDirection(active: SavedRoute, routes: List<SavedRoute>, storedId: String?): Boolean =
         active.id != UNCONFIGURED_ROUTE_ID && storedActiveRoute(routes, storedId).id == active.id
+
+    /**
+     * The saved copy of a route shown after a failed refresh, like the saved copy of a station board: only when it was
+     * saved today, and without the trains that left more than ten minutes ago. Null when none is left, so that the
+     * morning's trains are never listed in the evening as the next departures. A train whose departure cannot be read
+     * stays: nothing says it has left.
+     */
+    fun savedRouteCopy(saved: RouteSnapshot, now: Instant, zone: ZoneId = RailTime.defaultZone): RouteSnapshot? {
+        val savedOn = Instant.ofEpochMilli(saved.retrievedAtEpochMillis).atZone(zone).toLocalDate()
+        if (savedOn != now.atZone(zone).toLocalDate()) return null
+        val from = now.minus(SAVED_COPY_DEPARTED_GRACE)
+        val services = saved.services.filter { service ->
+            val departure = service.scheduledDepartureDateTime
+                ?: runCatching { savedOn.atTime(LocalTime.parse(service.scheduledDeparture)) }.getOrNull()
+            departure == null || !departure.atZone(zone).toInstant().isBefore(from)
+        }
+        return if (services.isEmpty()) null else saved.copy(services = services)
+    }
+
+    private val SAVED_COPY_DEPARTED_GRACE: Duration = Duration.ofMinutes(10)
 }

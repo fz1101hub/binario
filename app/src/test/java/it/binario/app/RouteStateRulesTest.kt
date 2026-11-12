@@ -1,8 +1,18 @@
 package it.binario.app
 
+import it.binario.app.data.Direction
+import it.binario.app.data.Freshness
+import it.binario.app.data.RailOperator
+import it.binario.app.data.RouteSnapshot
 import it.binario.app.data.SavedRoute
+import it.binario.app.data.ServiceStatus
 import it.binario.app.data.Station
+import it.binario.app.data.TrainCategory
+import it.binario.app.data.TrainService
+import java.time.LocalDateTime
+import java.time.ZoneId
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertSame
 import org.junit.Test
 
@@ -73,5 +83,37 @@ class RouteStateRulesTest {
         assertEquals(true, RouteStateRules.storesDirection(home, routes, storedId = null))
         assertEquals(false, RouteStateRules.storesDirection(trip, routes, storedId = null))
         assertEquals(false, RouteStateRules.storesDirection(unconfiguredRoute(), emptyList(), storedId = null))
+    }
+
+    private val rome: ZoneId = ZoneId.of("Europe/Rome")
+    private fun at(time: String, date: String = "2026-11-12") = LocalDateTime.parse("${date}T$time")
+    private fun instant(time: String, date: String = "2026-11-12") = at(time, date).atZone(rome).toInstant()
+    private fun train(number: String, departure: String, dated: Boolean = true) = TrainService(
+        id = number, number = number, operator = RailOperator.TRENITALIA_REGIONALE, trainCategory = TrainCategory.REGIONALE,
+        origin = "Casa", destination = "Lavoro", scheduledDeparture = departure, expectedDeparture = departure, platform = null,
+        delayMinutes = 0, status = ServiceStatus.ON_TIME, stops = emptyList(),
+        scheduledDepartureDateTime = if (dated) at(departure) else null
+    )
+    private fun savedAt(time: String, vararg services: TrainService, date: String = "2026-11-12") = RouteSnapshot(
+        route = imported, direction = Direction.OUTBOUND, services = services.toList(), providerName = "Test",
+        retrievedAtEpochMillis = instant(time, date).toEpochMilli(), expiresAtEpochMillis = instant(time, date).toEpochMilli() + 60_000,
+        freshness = Freshness.FRESH
+    )
+
+    @Test fun `the saved copy of a route lists only the trains still to leave`() {
+        // Saved at 07:40; at 08:00 the 07:45 train left fifteen minutes ago, the 07:52 one eight minutes ago.
+        val saved = savedAt("07:40", train("1", "07:45"), train("2", "07:52"), train("3", "08:15"), train("4", "08:30", dated = false))
+        val copy = RouteStateRules.savedRouteCopy(saved, instant("08:00"), rome)
+        assertEquals(listOf("2", "3", "4"), copy?.services?.map { it.number })
+        // In the evening nothing of the morning is left: no saved copy rather than the morning's trains.
+        assertNull(RouteStateRules.savedRouteCopy(saved, instant("18:00"), rome))
+        // A train whose time cannot be read stays.
+        val unreadable = savedAt("07:40", train("5", "--:--", dated = false))
+        assertEquals(listOf("5"), RouteStateRules.savedRouteCopy(unreadable, instant("18:00"), rome)?.services?.map { it.number })
+    }
+
+    @Test fun `the saved copy of another day is not shown`() {
+        val saved = savedAt("23:40", train("1", "23:50"), date = "2026-11-11")
+        assertNull(RouteStateRules.savedRouteCopy(saved, instant("00:05"), rome))
     }
 }

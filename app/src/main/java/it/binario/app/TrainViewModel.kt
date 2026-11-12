@@ -951,9 +951,10 @@ class TrainViewModel @JvmOverloads constructor(
                 }
                 is DataResult.Failure -> {
                     invalidateSelectedService(directionAtRequest, onlyIfExpired = true)
-                    // Nothing of this route on screen: today's last good result, marked as a saved copy (timetable only).
+                    // Nothing of this route on screen: today's last good result without the trains already gone,
+                    // marked as a saved copy (timetable only).
                     if (publishesCurrentDepartures && primarySnapshot?.let { it.route.id == routeAtRequest.id && it.direction == directionAtRequest } != true) {
-                        lastGood.route(routeAtRequest, directionAtRequest)?.takeIf { savedToday(it.retrievedAtEpochMillis) }?.let { saved ->
+                        lastGood.route(routeAtRequest, directionAtRequest)?.let { RouteStateRules.savedRouteCopy(it, java.time.Instant.now()) }?.let { saved ->
                             primarySnapshot = saved
                             primarySnapshotIsCurrent = false
                             rebuildServicePresentations()
