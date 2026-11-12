@@ -14,6 +14,10 @@ on:
       - "ios/BinarioKit/Sources/**"
       - "ios/BinarioApp/**"
       - "apple-watch/**/*.swift"
+      # tests/test_build_store_assets.py and tests/test_app_store_docs.py: listing assets, iPhone resources, brand icon.
+      - "store/**"
+      - "ios/Resources/**"
+      - "companion-expo/assets/brand/**"
       - "app/src/main/res/xml/locale_config.xml"
       - "gradle/verification-metadata.xml"
       - "requirements-ci.txt"
@@ -37,6 +41,10 @@ on:
       - "ios/BinarioKit/Sources/**"
       - "ios/BinarioApp/**"
       - "apple-watch/**/*.swift"
+      # tests/test_build_store_assets.py and tests/test_app_store_docs.py: listing assets, iPhone resources, brand icon.
+      - "store/**"
+      - "ios/Resources/**"
+      - "companion-expo/assets/brand/**"
       - "app/src/main/res/xml/locale_config.xml"
       - "gradle/verification-metadata.xml"
       - "requirements-ci.txt"

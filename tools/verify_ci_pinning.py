@@ -795,8 +795,11 @@ def _check_apple_paths(
         "apple-watch/**",
         "app/src/main/assets/gtfs/**",
         "app/src/main/assets/stations/curated_it_rail_stations.json",
+        "app/src/main/assets/punctuality/**",
         "contracts/wear-snapshot/**",
         "tools/build_ios_gtfs_schedule.py",
+        "tools/build_gtfs_packs.py",
+        "tools/refresh_core_gtfs.py",
         "tools/verify_ios_gtfs_schedule.py",
         "tools/verify_ios_gtfs_rebuild.py",
         "tools/install_xcodegen.py",
@@ -864,6 +867,16 @@ def _check_linux_trigger_budget(
             "app/src/main/res/xml/locale_config.xml",
             "tools/**",
             "tests/**",
+            # Read by the offline tests (second audit, ci-tests-build-6).
+            "store/**",
+            "ios/Resources/**",
+            "companion-expo/assets/brand/**",
+        },
+        # The skill bundles the punctuality statistics and the station catalogue (ci-tests-build-6).
+        "alexa-companion-ci.yml": {
+            "alexa-companion/**",
+            "app/src/main/assets/punctuality/**",
+            "app/src/main/assets/stations/curated_it_rail_stations.json",
         },
         "companion-ci.yml": {
             "companion-expo/**",
