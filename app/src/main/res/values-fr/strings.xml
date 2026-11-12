@@ -663,7 +663,7 @@
     <string name="stop_alarm_dialog_time">L’alarme sonne environ cinq minutes avant l’heure prévue %1$s.</string>
     <string name="action_set_stop_alarm">Régler l’alarme</string>
     <string name="gps_alarm_option">M’avertir aussi selon ma position</string>
-    <string name="gps_alarm_option_description">Sonne lorsque vous êtes dans le rayon choisi autour de l’arrêt (tout de suite si vous y êtes déjà), même si le train est en avance ou en retard. C’est l’alerte qui arrive en premier qui compte.</string>
+    <string name="gps_alarm_option_description">Sonne lorsque vous êtes dans le rayon choisi autour de l’arrêt (tout de suite si vous y êtes déjà), même si le train est en avance ou en retard. Si l’alarme horaire sonne alors que votre position indique que l’arrêt est encore loin, l’alarme GPS reste active.</string>
     <string name="gps_alarm_radius_label">Rayon d’alerte</string>
     <plurals name="gps_alarm_radius_km">
         <item quantity="one">%d km</item>
@@ -698,7 +698,7 @@
     <string name="gps_alarm_ended_expired">Alarme GPS pour %1$s terminée : la durée maximale est écoulée.</string>
     <string name="gps_alarm_ended_permission">Alarme GPS pour %1$s interrompue : l’autorisation de localisation n’est plus accordée.</string>
     <string name="gps_alarm_ended_unavailable">Alarme GPS pour %1$s interrompue : aucune source de position n’est disponible sur le téléphone.</string>
-    <string name="gps_alarm_ended_time_alarm">Alarme GPS pour %1$s fermée : l’alarme horaire a déjà sonné.</string>
+    <string name="gps_alarm_ended_time_alarm">Alarme GPS pour %1$s fermée : l’alarme horaire a sonné et aucune position récente n’était disponible.</string>
     <string name="gps_alarm_interrupted">L’alarme GPS pour %1$s a été interrompue, par exemple par un redémarrage du téléphone. Réactivez-la si vous êtes encore en voyage.</string>
     <string name="action_gps_alarm_resume">Réactiver</string>
     <string name="action_gps_alarm_dismiss">Ignorer</string>
@@ -706,12 +706,13 @@
     <string name="stop_alarm_unavailable">Impossible de planifier l’alarme : l’heure prévue de l’arrêt est déjà passée ou n’est pas disponible.</string>
     <string name="stop_alarm_exact">Alarme réglée à %1$s, cinq minutes avant l’heure prévue %2$s.</string>
     <string name="stop_alarm_inexact">Alarme réglée à %1$s, mais Android peut la déclencher en retard car les alarmes exactes ne sont pas autorisées.</string>
+    <string name="stop_alarm_not_shown">Android n’affiche pas les alarmes d’arrêt de Binario (notifications ou leur catégorie désactivées) : cette alarme n’apparaîtra pas.</string>
     <string name="commuter_alert_scheduled">Alerte enregistrée et planifiée sur l’appareil.</string>
     <string name="commuter_alert_scheduled_inexact">Alerte enregistrée et planifiée en mode approximatif : Android peut la déclencher en retard car les alarmes exactes ne sont pas autorisées.</string>
     <string name="stop_alarms_active_title">Alarmes d’arrêt actives</string>
     <string name="stop_alarm_active_row">%1$s · train %2$s · arrivée prévue %3$s</string>
     <string name="accessibility_cancel_stop_alarm">Annuler l’alarme pour %1$s</string>
-    <string name="exact_alarm_note">Android n’autorise pas Binario à régler des alarmes exactes : les alarmes d’arrêt et les alertes de navetteur peuvent arriver en retard.</string>
+    <string name="exact_alarm_note">Android n’autorise pas Binario à régler des alarmes exactes : les alarmes d’arrêt, les alertes de navetteur, les alertes d’approche et les rappels de l’Agenda peuvent arriver en retard.</string>
     <string name="exact_alarm_action">Autoriser les alarmes exactes</string>
     <string name="background_status_title">Activité en arrière-plan</string>
     <string name="background_status_notifications_on">Notifications autorisées</string>
@@ -1428,6 +1429,7 @@
     <string name="accessibility_approach_alert_station">Changer la gare de l’alerte, actuellement %1$s</string>
     <string name="approach_alert_lead">Combien de temps avant</string>
     <string name="approach_alert_summary">Vous prévient %1$s avant son arrivée à %2$s.</string>
+    <string name="approach_alert_quiet_note">Aucune alerte n’est envoyée entre 22 h et 7 h : pour cet arrêt, l’alerte peut arriver plus tard ou ne pas arriver.</string>
     <string name="approach_alert_title">%1$s arrive à %2$s dans ~%3$s</string>
     <string name="approach_alert_title_now">%1$s arrive à %2$s</string>
     <string name="approach_alert_channel_name">Trains à l’approche</string>
@@ -1529,6 +1531,8 @@
         <item quantity="many">À l’heure %1$d fois sur %2$d</item>
         <item quantity="other">À l’heure %1$d fois sur %2$d</item>
     </plurals>
+    <!-- The on-time limit after a count: «In orario 8 volte su 10 (entro 5 min)» -->
+    <string name="reliability_within_limit">%1$s (à %2$s près)</string>
     <plurals name="reliability_leg_on_time_count">
         <item quantity="one">%1$s à l’heure %2$d fois sur %3$d</item>
         <item quantity="many">%1$s à l’heure %2$d fois sur %3$d</item>

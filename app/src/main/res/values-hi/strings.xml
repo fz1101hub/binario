@@ -634,7 +634,7 @@
     <string name="stop_alarm_dialog_time">अलार्म अनुमानित समय %1$s से लगभग पाँच मिनट पहले बजता है।</string>
     <string name="action_set_stop_alarm">अलार्म सेट करें</string>
     <string name="gps_alarm_option">लोकेशन के आधार पर भी सूचित करें</string>
-    <string name="gps_alarm_option_description">जब आप ठहराव से चुनी गई दूरी के भीतर होते हैं (पहले से हैं तो तुरंत), तब बजता है, चाहे ट्रेन जल्दी हो या देरी से। जो अलर्ट पहले आए, वही मान्य है।</string>
+    <string name="gps_alarm_option_description">जब आप ठहराव से चुनी गई दूरी के भीतर होते हैं (पहले से हैं तो तुरंत), तब बजता है, चाहे ट्रेन जल्दी हो या देरी से। अगर समय-आधारित अलार्म तब बजे जब आपकी स्थिति दिखाए कि ठहराव अभी दूर है, तो GPS अलार्म चालू रहता है।</string>
     <string name="gps_alarm_radius_label">अलर्ट की दूरी</string>
     <plurals name="gps_alarm_radius_km">
         <item quantity="one">%d किमी</item>
@@ -667,7 +667,7 @@
     <string name="gps_alarm_ended_expired">%1$s के लिए GPS अलार्म समाप्त: अधिकतम समय पूरा हो गया।</string>
     <string name="gps_alarm_ended_permission">%1$s के लिए GPS अलार्म रुका: लोकेशन की अनुमति अब नहीं है।</string>
     <string name="gps_alarm_ended_unavailable">%1$s के लिए GPS अलार्म रुका: फ़ोन पर कोई लोकेशन स्रोत उपलब्ध नहीं है।</string>
-    <string name="gps_alarm_ended_time_alarm">%1$s के लिए GPS अलार्म बंद: समय-आधारित अलार्म पहले ही बज चुका है।</string>
+    <string name="gps_alarm_ended_time_alarm">%1$s के लिए GPS अलार्म बंद: समय-आधारित अलार्म बज गया और कोई हाल की स्थिति उपलब्ध नहीं थी।</string>
     <string name="gps_alarm_interrupted">%1$s के लिए GPS अलार्म रुक गया, उदाहरण के लिए फ़ोन रीस्टार्ट होने पर। यदि आप अभी भी यात्रा में हैं तो फिर चालू करें।</string>
     <string name="action_gps_alarm_resume">फिर चालू करें</string>
     <string name="action_gps_alarm_dismiss">अनदेखा करें</string>
@@ -675,12 +675,13 @@
     <string name="stop_alarm_unavailable">अलार्म शेड्यूल नहीं हो सकता: ठहराव का अनुमानित समय निकल चुका है या उपलब्ध नहीं है।</string>
     <string name="stop_alarm_exact">%1$s के लिए अलार्म सेट, अनुमानित समय %2$s से पाँच मिनट पहले।</string>
     <string name="stop_alarm_inexact">%1$s के लिए अलार्म सेट, लेकिन सटीक अलार्म की अनुमति न होने से Android इसे देर से दे सकता है।</string>
+    <string name="stop_alarm_not_shown">Android, Binario के ठहराव अलार्म नहीं दिखाता (सूचनाएँ या उनकी श्रेणी बंद है): यह अलार्म नहीं दिखेगा।</string>
     <string name="commuter_alert_scheduled">अलर्ट सहेजा गया और डिवाइस पर शेड्यूल किया गया।</string>
     <string name="commuter_alert_scheduled_inexact">अलर्ट सहेजा गया और अनुमानित मोड में शेड्यूल किया गया: सटीक अलार्म की अनुमति न होने से Android इसे देर से दे सकता है।</string>
     <string name="stop_alarms_active_title">सक्रिय ठहराव अलार्म</string>
     <string name="stop_alarm_active_row">%1$s · ट्रेन %2$s · अनुमानित आगमन %3$s</string>
     <string name="accessibility_cancel_stop_alarm">%1$s का अलार्म रद्द करें</string>
-    <string name="exact_alarm_note">Android, Binario को सटीक अलार्म की अनुमति नहीं देता: ठहराव अलार्म और दैनिक यात्री अलर्ट देर से आ सकते हैं।</string>
+    <string name="exact_alarm_note">Android, Binario को सटीक अलार्म की अनुमति नहीं देता: ठहराव अलार्म, दैनिक यात्री अलर्ट, आगमन अलर्ट और एजेंडा रिमाइंडर देर से आ सकते हैं।</string>
     <string name="exact_alarm_action">सटीक अलार्म की अनुमति दें</string>
     <string name="background_status_title">बैकग्राउंड गतिविधि</string>
     <string name="background_status_notifications_on">सूचनाओं की अनुमति है</string>
@@ -1371,6 +1372,7 @@
     <string name="accessibility_approach_alert_station">सूचना का स्टेशन बदलें, अभी %1$s</string>
     <string name="approach_alert_lead">कितना पहले</string>
     <string name="approach_alert_summary">%2$s पहुँचने से %1$s पहले बताता है।</string>
+    <string name="approach_alert_quiet_note">रात 22 से सुबह 7 बजे के बीच अलर्ट नहीं भेजे जाते: इस ठहराव के लिए अलर्ट देर से आ सकता है या नहीं भी आ सकता।</string>
     <string name="approach_alert_title">%1$s ~%3$s में %2$s पहुँचेगी</string>
     <string name="approach_alert_title_now">%1$s %2$s पहुँच रही है</string>
     <string name="approach_alert_channel_name">आने वाली ट्रेनें</string>
@@ -1469,6 +1471,8 @@
         <item quantity="one">%2$d में से %1$d बार समय पर</item>
         <item quantity="other">%2$d में से %1$d बार समय पर</item>
     </plurals>
+    <!-- The on-time limit after a count: «In orario 8 volte su 10 (entro 5 min)» -->
+    <string name="reliability_within_limit">%1$s (%2$s के भीतर)</string>
     <plurals name="reliability_leg_on_time_count">
         <item quantity="one">%1$s %3$d में से %2$d बार समय पर</item>
         <item quantity="other">%1$s %3$d में से %2$d बार समय पर</item>

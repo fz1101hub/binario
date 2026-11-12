@@ -664,7 +664,7 @@
     <string name="stop_alarm_dialog_time">Будильник сработает примерно за пять минут до ожидаемого времени %1$s.</string>
     <string name="action_set_stop_alarm">Установить будильник</string>
     <string name="gps_alarm_option">Также оповещать по местоположению</string>
-    <string name="gps_alarm_option_description">Срабатывает, когда вы оказываетесь в выбранном радиусе от остановки (сразу, если вы уже там), даже если поезд идёт с опережением или опаздывает. Действует оповещение, которое сработает первым.</string>
+    <string name="gps_alarm_option_description">Срабатывает, когда вы оказываетесь в выбранном радиусе от остановки (сразу, если вы уже там), даже если поезд идёт с опережением или опаздывает. Если будильник по времени сработает, когда по вашему положению остановка ещё далеко, GPS-будильник остаётся включённым.</string>
     <string name="gps_alarm_radius_label">Радиус оповещения</string>
     <plurals name="gps_alarm_radius_km">
         <item quantity="one">%d км</item>
@@ -701,7 +701,7 @@
     <string name="gps_alarm_ended_expired">GPS-будильник для %1$s завершён: истекло максимальное время.</string>
     <string name="gps_alarm_ended_permission">GPS-будильник для %1$s остановлен: доступ к местоположению больше не предоставлен.</string>
     <string name="gps_alarm_ended_unavailable">GPS-будильник для %1$s остановлен: на телефоне нет источника местоположения.</string>
-    <string name="gps_alarm_ended_time_alarm">GPS-будильник для %1$s закрыт: будильник по времени уже сработал.</string>
+    <string name="gps_alarm_ended_time_alarm">GPS-будильник для %1$s закрыт: сработал будильник по времени, а свежего местоположения не было.</string>
     <string name="gps_alarm_interrupted">GPS-будильник для %1$s прервался, например после перезагрузки телефона. Включите его снова, если вы ещё в пути.</string>
     <string name="action_gps_alarm_resume">Включить снова</string>
     <string name="action_gps_alarm_dismiss">Пропустить</string>
@@ -709,12 +709,13 @@
     <string name="stop_alarm_unavailable">Не удаётся запланировать будильник: ожидаемое время остановки уже прошло или неизвестно.</string>
     <string name="stop_alarm_exact">Будильник установлен для %1$s за пять минут до ожидаемого времени %2$s.</string>
     <string name="stop_alarm_inexact">Будильник установлен для %1$s, но Android может сработать с задержкой, поскольку точные будильники не разрешены.</string>
+    <string name="stop_alarm_not_shown">Android не показывает будильники на остановку Binario (уведомления или их категория отключены): этот будильник не появится.</string>
     <string name="commuter_alert_scheduled">Оповещение сохранено и запланировано на устройстве.</string>
     <string name="commuter_alert_scheduled_inexact">Оповещение сохранено и запланировано в приблизительном режиме: Android может доставить его с задержкой, поскольку точные будильники не разрешены.</string>
     <string name="stop_alarms_active_title">Активные будильники на остановку</string>
     <string name="stop_alarm_active_row">%1$s · поезд %2$s · ожидаемое прибытие %3$s</string>
     <string name="accessibility_cancel_stop_alarm">Отменить будильник для %1$s</string>
-    <string name="exact_alarm_note">Android не разрешает Binario точные будильники: будильники на остановку и оповещения о поездках могут приходить с задержкой.</string>
+    <string name="exact_alarm_note">Android не разрешает Binario точные будильники: будильники на остановку, оповещения о поездках, оповещения о прибытии и напоминания ежедневника могут приходить с задержкой.</string>
     <string name="exact_alarm_action">Разрешить точные будильники</string>
     <string name="background_status_title">Фоновая активность</string>
     <string name="background_status_notifications_on">Уведомления разрешены</string>
@@ -1439,6 +1440,7 @@
     <string name="accessibility_approach_alert_station">Изменить станцию оповещения, сейчас %1$s</string>
     <string name="approach_alert_lead">За сколько</string>
     <string name="approach_alert_summary">Сообщит за %1$s до прибытия на станцию %2$s.</string>
+    <string name="approach_alert_quiet_note">С 22:00 до 7:00 оповещения не отправляются: для этой остановки оповещение может прийти позже или не прийти.</string>
     <string name="approach_alert_title">%1$s прибудет на %2$s через ~%3$s</string>
     <string name="approach_alert_title_now">%1$s прибывает на %2$s</string>
     <string name="approach_alert_channel_name">Прибывающие поезда</string>
@@ -1543,6 +1545,8 @@
         <item quantity="many">Вовремя %1$d раз из %2$d</item>
         <item quantity="other">Вовремя %1$d раза из %2$d</item>
     </plurals>
+    <!-- The on-time limit after a count: «In orario 8 volte su 10 (entro 5 min)» -->
+    <string name="reliability_within_limit">%1$s (до %2$s)</string>
     <plurals name="reliability_leg_on_time_count">
         <item quantity="one">%1$s вовремя %2$d раз из %3$d</item>
         <item quantity="few">%1$s вовремя %2$d раза из %3$d</item>

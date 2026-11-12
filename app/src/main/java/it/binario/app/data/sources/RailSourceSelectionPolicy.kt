@@ -40,13 +40,12 @@ object RailSourceSelectionPolicy {
         pref("sncf-gtfs", RailInformationCategory.PLANNED_ITINERARY, 140, "GTFS ufficiale SNCF per TGV/TER/Intercités."),
         pref("lombardia-trenord-gtfs", RailInformationCategory.PLANNED_ITINERARY, 137, "GTFS ferroviario ufficiale Regione Lombardia/Trenord."),
         pref("alto-adige-sta-gtfs", RailInformationCategory.PLANNED_ITINERARY, 135, "Open Data Hub/STA ufficiale, utile anche per servizi transfrontalieri."),
-        // Added after the packs above and below all of them: when a run is in an existing pack too, that pack's copy
-        // stays the one shown, so these packs only add the trains and buses no other pack has.
+        // Which offline pack's copy of a train is shown (route search, journeys) is decided by PlannedPackOrder: the
+        // national packs below come first there, and these scores only order the packs within its classes.
         pref("trenitalia-gtfs", RailInformationCategory.PLANNED_ITINERARY, 130, "Orario ufficiale Trenitalia dal NAP (NeTEx, conversione GTFS CC BY 4.0), treni e bus."),
         pref("italo-gtfs", RailInformationCategory.PLANNED_ITINERARY, 130, "Orario ufficiale Italo dal NAP (NeTEx, conversione GTFS CC BY 4.0), treni e ItaloBus."),
-        // Regional railways added with the transit packs (gtfs-transit/, gtfs-personal/), below every pack above: a
-        // run that a national or core pack also carries (a Mi.Co.Tra. train in the ÖBB pack) keeps that pack's copy;
-        // these packs add the lines no other pack has.
+        // Regional railways added with the transit packs (gtfs-transit/, gtfs-personal/), below the Italian packs above
+        // within PlannedPackOrder's class of the Italian regional packs.
         pref("fal-basilicata-puglia", RailInformationCategory.PLANNED_ITINERARY, 120, "Orario ufficiale FAL dal NAP (NeTEx, conversione Binario)."),
         pref("ferrotramviaria-bari-barletta", RailInformationCategory.PLANNED_ITINERARY, 120, "Orario ufficiale Ferrotramviaria dal NAP (NeTEx, conversione Binario)."),
         pref("fdg-gargano", RailInformationCategory.PLANNED_ITINERARY, 120, "Orario ufficiale Ferrovie del Gargano dal NAP (NeTEx, conversione Binario)."),

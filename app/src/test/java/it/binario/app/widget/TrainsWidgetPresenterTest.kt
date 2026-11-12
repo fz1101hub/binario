@@ -124,19 +124,29 @@ class TrainsWidgetPresenterTest {
 
     @Test
     fun `the run of an earlier day never shows its live values the next day`() {
-        // The last refresh saw the run of 2 November cancelled; on the 3rd, before any refresh, the row is that day's timetable.
+        // The last refresh saw the run of 2 November cancelled; on the 3rd, before any refresh (or on a day the train
+        // does not run), the row shows only its timetable departure, dated, and claims nothing about today.
         val cancelled = status.copy(cancelled = true, delayMinutes = null)
         val nextDay = day.plusDays(1)
         val row = TrainsWidgetPresenter.row(ServiceMonitor("2153", ""), cancelled, TrainsWidgetSettings(), millisOn(nextDay, 7, 0), strings)
 
-        assertEquals("PROGRAM.", row.status)
-        assertEquals(TrainsRowEmphasis.NORMAL, row.emphasis)
-        assertEquals("Partenza 07:42 da Roma Termini", row.detail)
+        assertEquals("—", row.status)
+        assertEquals(TrainsRowEmphasis.MUTED, row.emphasis)
+        assertEquals("Ultimo dato 2 nov 08:00 · Partenza 07:42 da Roma Termini", row.detail)
         assertFalse(row.accessibility.contains("soppresso"))
-        // The "only running trains" filter judges that day's run by its timetable, not by the old cancellation.
+        assertFalse(row.accessibility.contains("In orario"))
+        // Never counted as running: today's run is unknown.
         assertFalse(TrainsWidgetPresenter.isRunning(cancelled, millisOn(nextDay, 7, 0)))
-        assertTrue(TrainsWidgetPresenter.isRunning(cancelled, millisOn(nextDay, 8, 0)))
+        assertFalse(TrainsWidgetPresenter.isRunning(cancelled, millisOn(nextDay, 8, 0)))
         assertFalse(TrainsWidgetPresenter.isRunning(cancelled, millisOn(nextDay, 9, 0)))
+        // The same after a refresh that found no run (marked stale), and times are never moved to today.
+        val shown = TrainsWidgetPresenter.forToday(cancelled.copy(stale = true), millisOn(nextDay, 8, 0), zone)
+        assertEquals(millis(7, 42), shown.scheduledDepartureEpochMillis)
+        assertFalse(shown.operationalVerified)
+        assertFalse(TrainsWidgetPresenter.isRunning(cancelled.copy(stale = true), millisOn(nextDay, 8, 0)))
+        // A run of yesterday that arrived just after midnight is over too.
+        val lateNight = status.copy(scheduledDepartureEpochMillis = millis(23, 0), arrivalEpochMillis = millisOn(nextDay, 0, 5), arrived = true)
+        assertFalse(TrainsWidgetPresenter.isRunning(lateNight, millisOn(nextDay, 0, 8)))
     }
 
     @Test
@@ -192,6 +202,44 @@ class TrainsWidgetPresenterTest {
     }
 
     @Test
+    fun `an automatic refresh asks only for the trains near their run`() {
+        val monitor = ServiceMonitor("2153", "", scheduledDeparture = "07:42")
+        fun at(date: LocalDate, hour: Int, minute: Int) = ZonedDateTime.of(date, LocalTime.of(hour, minute), zone).toInstant()
+        fun automatic(instant: java.time.Instant, last: FavouriteTrainStatus? = status) =
+            TrainsWidgetLookupPlanner.lookupDate(monitor, last, instant, automatic = true, zone = zone)
+        val next = day.plusDays(1)
+        // From one hour before the departure to 30 minutes after the arrival of the last known run (08:40).
+        assertNull(automatic(at(next, 3, 0)))
+        assertNull(automatic(at(next, 6, 41)))
+        assertEquals(next, automatic(at(next, 6, 42)))
+        assertEquals(next, automatic(at(next, 9, 10)))
+        assertNull(automatic(at(next, 9, 11)))
+        assertNull(automatic(at(next, 18, 0)))
+        // Never looked up: three hours after the saved departure, then the same 30 minutes.
+        assertEquals(next, automatic(at(next, 11, 12), last = null))
+        assertNull(automatic(at(next, 11, 13), last = null))
+        // The user's refresh asks for every train; a train without a known departure is always asked.
+        assertEquals(next, TrainsWidgetLookupPlanner.lookupDate(monitor, status, at(next, 3, 0), automatic = false, zone = zone))
+        assertEquals(next, TrainsWidgetLookupPlanner.lookupDate(ServiceMonitor("777", ""), null, at(next, 3, 0), automatic = true, zone = zone))
+        // A night train: yesterday's run is asked after midnight, tomorrow's just before it.
+        val night = ServiceMonitor("1234", "", scheduledDeparture = "23:00")
+        val nightStatus = status.copy(scheduledDeparture = "23:00", scheduledDepartureEpochMillis = millis(23, 0), arrivalEpochMillis = millisOn(next, 1, 40))
+        assertEquals(day, TrainsWidgetLookupPlanner.lookupDate(night, nightStatus, at(next, 1, 0), automatic = true, zone = zone))
+        val early = ServiceMonitor("1235", "", scheduledDeparture = "00:10")
+        assertEquals(next, TrainsWidgetLookupPlanner.lookupDate(early, null, at(day, 23, 30), automatic = true, zone = zone))
+    }
+
+    @Test
+    fun `italo is asked only for a train that may be one`() {
+        assertFalse(TrainsWidgetLookupPlanner.mayBeItalo(status))
+        assertFalse(TrainsWidgetLookupPlanner.mayBeItalo(status.copy(category = TrainCategory.FRECCE)))
+        assertTrue(TrainsWidgetLookupPlanner.mayBeItalo(status.copy(category = TrainCategory.AV_ITALO)))
+        assertTrue(TrainsWidgetLookupPlanner.mayBeItalo(status.copy(category = TrainCategory.OTHER)))
+        assertTrue(TrainsWidgetLookupPlanner.mayBeItalo(status.copy(category = null)))
+        assertTrue(TrainsWidgetLookupPlanner.mayBeItalo(null))
+    }
+
+    @Test
     fun `status codec round trips and rejects damaged records`() {
         val full = status.copy(operator = "Trenitalia", providerName = "ViaggiaTreno", stale = true, variation = true)
         val sparse = FavouriteTrainStatus("9541", 5L)
@@ -232,5 +280,9 @@ class TrainsWidgetPresenterTest {
         assertTrue(mapped.variation)
         assertFalse(mapped.cancelled)
         assertEquals("ViaggiaTreno", mapped.providerName)
+        // A favourite saved from a timetable row ("RE_11 - 2153") keeps the status of the live run "2153" under its own number.
+        val labelled = FavouriteTrainStatusMapper.forFavourite(ServiceMonitor("RE_11 - 2153", ""), service, "ViaggiaTreno", millis(8, 3))
+        assertEquals("RE_11 - 2153", labelled.number)
+        assertEquals(mapped.copy(number = "RE_11 - 2153"), labelled)
     }
 }

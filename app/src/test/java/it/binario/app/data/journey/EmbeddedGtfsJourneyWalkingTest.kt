@@ -247,6 +247,34 @@ class EmbeddedGtfsJourneyWalkingTest {
         assertFalse(metroPack.assetPath in opened)
     }
 
+    @Test fun `an end at a stop of a regional railway searches the city lines with the railway packs`() = runBlocking {
+        // As Roma Termini to Lido Centro: the regional line starts at Porta (200 m north of the metro's Duomo) and runs
+        // to Lido. By railway alone, a train to Città Nord (200 m north of Porta) and a walk miss the 08:25 and take the
+        // 08:55 (Lido 09:25); by metro the 08:25 is reached (Lido 08:55).
+        val regionalPack = EmbeddedGtfsPack(SourceId("amt-genova-casella-gtfs"), "gtfs-transit/regional.zip")
+        val regionalFeed = feed(
+            stops = listOf(Stop("PO", "Porta", 45.0198, 9.0), Stop("LI", "Lido", 45.2, 9.0)),
+            routes = listOf(Triple("RL", "RL", 2)),
+            trips = listOf(
+                Trip("L1", "RL", listOf("PO" to "08:25", "LI" to "08:55"), number = "25"),
+                Trip("L2", "RL", listOf("PO" to "08:55", "LI" to "09:25"), number = "55")
+            )
+        )
+        val railToNord = feed(
+            stops = listOf(Stop("CC", "Città Centrale", 45.0, 9.0), Stop("NO", "Città Nord", 45.0216, 9.0)),
+            routes = listOf(Triple("R", "R2", 2)),
+            trips = listOf(Trip("T3", "R", listOf("CC" to "08:05", "NO" to "08:22"), number = "2003"))
+        )
+        val lido = request(citta.id, "gtfs:amt-genova-casella-gtfs:LI", time = "08:00", destinationName = "Lido")
+
+        val railwayOnly = options(provider(mapOf(railPack to railToNord, regionalPack to regionalFeed)).searchJourneys(lido)).first()
+        assertEquals(LocalTime.of(9, 25), railwayOnly.arrival.toLocalTime())
+
+        val first = options(provider(mapOf(railPack to railToNord, regionalPack to regionalFeed, metroPack to metroFeed)).searchJourneys(lido)).first()
+        assertEquals(listOf(LegMode.WALK, LegMode.METRO, LegMode.WALK, LegMode.TRAIN), first.legs.map { it.mode })
+        assertEquals(LocalTime.of(8, 55), first.arrival.toLocalTime())
+    }
+
     @Test fun `a city stop the packs do not serve is not covered`() = runBlocking {
         val provider = provider(mapOf(railPack to railFeed, metroPack to metroFeed))
         val result = provider.searchJourneys(request(paese.id, "gtfs:test-city-metro:NOPE", destinationName = "Nowhere"))

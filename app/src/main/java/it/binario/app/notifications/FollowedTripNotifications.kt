@@ -232,7 +232,10 @@ class FollowedTripWorker(appContext: Context, params: WorkerParameters) : Corout
                 FollowedTripPlanner.Step.Finish -> FollowedTripScheduler.stop(context)
                 is FollowedTripPlanner.Step.WaitUntil -> FollowedTripScheduler.enqueue(context, step.at, ExistingWorkPolicy.APPEND_OR_REPLACE)
                 is FollowedTripPlanner.Step.Refresh -> {
-                    val result = if (LiveNotifications.allowed(context)) refresh(context, store, trip) else RefreshResult(store.lastDelayMinutes, null)
+                    // Nothing to ask the sources for when no notification of the trip can show: both channels blocked and no stop alarm to move.
+                    val shows = LiveNotifications.allowed(context, LiveChannel.FOLLOWED_TRIP, LiveChannel.FOLLOWED_TRIP_ALERTS) ||
+                        (LiveNotifications.allowed(context) && StopAlarmScheduler.active(context).isNotEmpty())
+                    val result = if (shows) refresh(context, store, trip) else RefreshResult(store.lastDelayMinutes, null)
                     val now = Instant.now()
                     val next = FollowedTripPlanner.step(trip, now, result.delayMinutes)
                     if (!isStopped && FollowedTripStore(context).trip()?.id == trip.id) {

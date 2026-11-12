@@ -619,7 +619,7 @@
     <string name="stop_alarm_dialog_time">알람은 예상 시각 %1$s보다 약 5분 전에 울립니다.</string>
     <string name="action_set_stop_alarm">알람 설정</string>
     <string name="gps_alarm_option">위치 기반으로도 알림 받기</string>
-    <string name="gps_alarm_option_description">정차역에서 선택한 반경 안에 들어오면(이미 안에 있으면 즉시) 열차가 일찍 오거나 늦어도 울립니다. 먼저 울리는 알림이 적용됩니다.</string>
+    <string name="gps_alarm_option_description">정차역에서 선택한 반경 안에 들어오면(이미 안에 있으면 즉시) 열차가 일찍 오거나 늦어도 울립니다. 시간 기반 알람이 울릴 때 위치상 정차역이 아직 멀면 GPS 알람은 계속 켜져 있습니다.</string>
     <string name="gps_alarm_radius_label">알림 반경</string>
     <plurals name="gps_alarm_radius_km">
         <item quantity="other">%d km</item>
@@ -650,7 +650,7 @@
     <string name="gps_alarm_ended_expired">%1$s GPS 알람 종료: 최대 시간이 지났습니다.</string>
     <string name="gps_alarm_ended_permission">%1$s GPS 알람 중지: 위치 권한이 더 이상 허용되지 않습니다.</string>
     <string name="gps_alarm_ended_unavailable">%1$s GPS 알람 중지: 휴대전화에서 사용할 수 있는 위치 소스가 없습니다.</string>
-    <string name="gps_alarm_ended_time_alarm">%1$s GPS 알람 종료: 시간 기반 알람이 이미 울렸습니다.</string>
+    <string name="gps_alarm_ended_time_alarm">%1$s GPS 알람 종료: 시간 기반 알람이 울렸고 최근 위치가 없었습니다.</string>
     <string name="gps_alarm_interrupted">%1$s GPS 알람이 휴대전화 재시작 등으로 중단되었습니다. 아직 이동 중이라면 다시 켜세요.</string>
     <string name="action_gps_alarm_resume">다시 켜기</string>
     <string name="action_gps_alarm_dismiss">무시</string>
@@ -658,12 +658,13 @@
     <string name="stop_alarm_unavailable">알람을 예약할 수 없습니다. 정차역의 예상 시각이 이미 지났거나 정보가 없습니다.</string>
     <string name="stop_alarm_exact">%1$s 알람을 설정했습니다. 예상 시각 %2$s 5분 전에 울립니다.</string>
     <string name="stop_alarm_inexact">%1$s 알람을 설정했지만, 정확한 알람이 허용되지 않아 Android가 늦게 울릴 수 있습니다.</string>
+    <string name="stop_alarm_not_shown">Android가 Binario의 정차역 알람을 표시하지 않습니다(알림 또는 해당 카테고리가 꺼져 있음). 이 알람은 표시되지 않습니다.</string>
     <string name="commuter_alert_scheduled">알림이 저장되어 기기에 예약되었습니다.</string>
     <string name="commuter_alert_scheduled_inexact">알림이 저장되어 대략적인 시각으로 예약되었습니다. 정확한 알람이 허용되지 않아 Android가 늦게 전달할 수 있습니다.</string>
     <string name="stop_alarms_active_title">설정된 정차역 알람</string>
     <string name="stop_alarm_active_row">%1$s · 열차 %2$s · 예상 도착 %3$s</string>
     <string name="accessibility_cancel_stop_alarm">%1$s 알람 취소</string>
-    <string name="exact_alarm_note">Android가 Binario의 정확한 알람을 허용하지 않아 정차역 알람과 통근 알림이 늦게 울릴 수 있습니다.</string>
+    <string name="exact_alarm_note">Android가 Binario의 정확한 알람을 허용하지 않아 정차역 알람, 통근 알림, 도착 알림, 일정 알림이 늦게 울릴 수 있습니다.</string>
     <string name="exact_alarm_action">정확한 알람 허용</string>
     <string name="background_status_title">백그라운드 활동</string>
     <string name="background_status_notifications_on">알림 허용됨</string>
@@ -1337,6 +1338,7 @@
     <string name="accessibility_approach_alert_station">알림 역 변경, 현재 %1$s</string>
     <string name="approach_alert_lead">얼마나 미리</string>
     <string name="approach_alert_summary">%2$s 도착 %1$s 전에 알려 줍니다.</string>
+    <string name="approach_alert_quiet_note">22시부터 7시까지는 알림을 보내지 않습니다. 이 정차역의 알림은 늦게 오거나 오지 않을 수 있습니다.</string>
     <string name="approach_alert_title">%1$s, ~%3$s 후 %2$s 도착</string>
     <string name="approach_alert_title_now">%1$s, 곧 %2$s 도착</string>
     <string name="approach_alert_channel_name">도착 예정 열차</string>
@@ -1432,6 +1434,8 @@
     <plurals name="reliability_on_time_count">
         <item quantity="other">%2$d회 중 %1$d회 정시</item>
     </plurals>
+    <!-- The on-time limit after a count: «In orario 8 volte su 10 (entro 5 min)» -->
+    <string name="reliability_within_limit">%1$s(%2$s 이내)</string>
     <plurals name="reliability_leg_on_time_count">
         <item quantity="other">%1$s %3$d회 중 %2$d회 정시</item>
     </plurals>

@@ -633,7 +633,7 @@
     <string name="stop_alarm_dialog_time">นาฬิกาปลุกจะดังประมาณห้านาทีก่อนเวลาที่คาดไว้ %1$s</string>
     <string name="action_set_stop_alarm">ตั้งปลุก</string>
     <string name="gps_alarm_option">แจ้งเตือนตามตำแหน่งด้วย</string>
-    <string name="gps_alarm_option_description">จะดังเมื่อคุณเข้าใกล้จุดจอดในรัศมีที่เลือก (ดังทันทีหากอยู่ในรัศมีแล้ว) แม้ขบวนจะมาเร็วหรือล่าช้า การแจ้งเตือนที่มาก่อนจะมีผล</string>
+    <string name="gps_alarm_option_description">จะดังเมื่อคุณเข้าใกล้จุดจอดในรัศมีที่เลือก (ดังทันทีหากอยู่ในรัศมีแล้ว) แม้ขบวนจะมาเร็วหรือล่าช้า หากการปลุกตามเวลาดังขณะที่ตำแหน่งของคุณแสดงว่าจุดจอดยังอยู่ไกล การปลุกด้วย GPS จะยังทำงานต่อ</string>
     <string name="gps_alarm_radius_label">รัศมีการแจ้งเตือน</string>
     <plurals name="gps_alarm_radius_km">
         <item quantity="other">%d กม.</item>
@@ -664,7 +664,7 @@
     <string name="gps_alarm_ended_expired">การปลุกด้วย GPS สำหรับ %1$s สิ้นสุดแล้ว ครบเวลาสูงสุด</string>
     <string name="gps_alarm_ended_permission">การปลุกด้วย GPS สำหรับ %1$s หยุดแล้ว ไม่ได้รับสิทธิ์เข้าถึงตำแหน่งอีกต่อไป</string>
     <string name="gps_alarm_ended_unavailable">การปลุกด้วย GPS สำหรับ %1$s หยุดแล้ว ไม่มีแหล่งตำแหน่งในโทรศัพท์</string>
-    <string name="gps_alarm_ended_time_alarm">ปิดการปลุกด้วย GPS สำหรับ %1$s แล้ว การปลุกตามเวลาดังไปแล้ว</string>
+    <string name="gps_alarm_ended_time_alarm">ปิดการปลุกด้วย GPS สำหรับ %1$s แล้ว การปลุกตามเวลาดังขึ้นและไม่มีตำแหน่งล่าสุด</string>
     <string name="gps_alarm_interrupted">การปลุกด้วย GPS สำหรับ %1$s ถูกขัดจังหวะ เช่น หลังรีสตาร์ทโทรศัพท์ เปิดอีกครั้งหากคุณยังเดินทางอยู่</string>
     <string name="action_gps_alarm_resume">เปิดอีกครั้ง</string>
     <string name="action_gps_alarm_dismiss">ไม่สนใจ</string>
@@ -672,12 +672,13 @@
     <string name="stop_alarm_unavailable">ตั้งปลุกไม่ได้ เวลาที่คาดไว้ของจุดจอดผ่านไปแล้วหรือไม่มีข้อมูล</string>
     <string name="stop_alarm_exact">ตั้งปลุกสำหรับ %1$s แล้ว ห้านาทีก่อนเวลาที่คาดไว้ %2$s</string>
     <string name="stop_alarm_inexact">ตั้งปลุกสำหรับ %1$s แล้ว แต่ Android อาจแจ้งช้าเพราะไม่อนุญาตการปลุกแบบตรงเวลา</string>
+    <string name="stop_alarm_not_shown">Android ไม่แสดงการปลุกที่จุดจอดของ Binario (ปิดการแจ้งเตือนหรือหมวดหมู่ของการแจ้งเตือนไว้) การปลุกนี้จะไม่ปรากฏ</string>
     <string name="commuter_alert_scheduled">บันทึกและตั้งเวลาการแจ้งเตือนในอุปกรณ์แล้ว</string>
     <string name="commuter_alert_scheduled_inexact">บันทึกและตั้งเวลาการแจ้งเตือนแบบโดยประมาณแล้ว Android อาจแจ้งช้าเพราะไม่อนุญาตการปลุกแบบตรงเวลา</string>
     <string name="stop_alarms_active_title">การปลุกที่จุดจอดที่ตั้งไว้</string>
     <string name="stop_alarm_active_row">%1$s · รถไฟ %2$s · คาดว่าถึง %3$s</string>
     <string name="accessibility_cancel_stop_alarm">ยกเลิกการปลุกสำหรับ %1$s</string>
-    <string name="exact_alarm_note">Android ไม่อนุญาตให้ Binario ตั้งปลุกแบบตรงเวลา การปลุกที่จุดจอดและการแจ้งเตือนเดินทางประจำจึงอาจมาช้า</string>
+    <string name="exact_alarm_note">Android ไม่อนุญาตให้ Binario ตั้งปลุกแบบตรงเวลา การปลุกที่จุดจอด การแจ้งเตือนเดินทางประจำ การแจ้งเตือนขบวนใกล้ถึง และการเตือนในกำหนดการจึงอาจมาช้า</string>
     <string name="exact_alarm_action">อนุญาตการปลุกแบบตรงเวลา</string>
     <string name="background_status_title">กิจกรรมเบื้องหลัง</string>
     <string name="background_status_notifications_on">อนุญาตการแจ้งเตือนแล้ว</string>
@@ -1360,6 +1361,7 @@
     <string name="accessibility_approach_alert_station">เปลี่ยนสถานีของการแจ้งเตือน ขณะนี้คือ %1$s</string>
     <string name="approach_alert_lead">ล่วงหน้าเท่าใด</string>
     <string name="approach_alert_summary">แจ้งเตือนคุณ %1$s ก่อนถึง %2$s</string>
+    <string name="approach_alert_quiet_note">ไม่มีการแจ้งเตือนระหว่าง 22:00 ถึง 07:00 สำหรับจุดจอดนี้ การแจ้งเตือนอาจมาช้าหรือไม่มาเลย</string>
     <string name="approach_alert_title">%1$s จะถึง %2$s ในอีก ~%3$s</string>
     <string name="approach_alert_title_now">%1$s กำลังจะถึง %2$s</string>
     <string name="approach_alert_channel_name">ขบวนที่ใกล้ถึง</string>
@@ -1455,6 +1457,8 @@
     <plurals name="reliability_on_time_count">
         <item quantity="other">ตรงเวลา %1$d จาก %2$d ครั้ง</item>
     </plurals>
+    <!-- The on-time limit after a count: «In orario 8 volte su 10 (entro 5 min)» -->
+    <string name="reliability_within_limit">%1$s (ภายใน %2$s)</string>
     <plurals name="reliability_leg_on_time_count">
         <item quantity="other">%1$s ตรงเวลา %2$d จาก %3$d ครั้ง</item>
     </plurals>

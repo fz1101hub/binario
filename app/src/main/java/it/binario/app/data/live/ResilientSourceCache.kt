@@ -100,6 +100,22 @@ internal class SourceCircuitBreaker(
         openUntil?.takeIf { now.isBefore(it) }?.let { until -> pauseLabel?.let { SourcePauses.pause(it, until) } }
     }
 
+    /**
+     * A pause kept from an earlier process ([PublicSourceRefusalGate]): open until [until], at most [maxRetryAfter]
+     * from now, as right after that refusal. A pause already over changes nothing.
+     */
+    @Synchronized
+    fun restore(until: Instant) {
+        val now = clock.instant()
+        if (!now.isBefore(until)) return
+        val capped = minOf(until, now.plus(maxRetryAfter))
+        val open = maxOf(openUntil ?: capped, capped)
+        openUntil = open
+        openings += 1
+        consecutiveFailures = 0
+        pauseLabel?.let { SourcePauses.pause(it, open) }
+    }
+
     @Synchronized
     fun isOpen(): Boolean = openUntil?.let { clock.instant().isBefore(it) } ?: false
 

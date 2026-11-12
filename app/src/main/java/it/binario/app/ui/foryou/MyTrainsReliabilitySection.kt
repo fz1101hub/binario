@@ -40,6 +40,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import it.binario.app.FavouriteTrainPunctuality
 import it.binario.app.FavouriteTrainReliability
+import it.binario.app.PunctualityHistory
 import it.binario.app.PunctualityHistoryStore
 import it.binario.app.PunctualityObservation
 import it.binario.app.R
@@ -76,7 +77,9 @@ class MyTrainsReliabilityStrings(
     /** «In miglioramento». */
     val better: String,
     /** «Ancora nessun dato». */
-    val noData: String
+    val noData: String,
+    /** «In orario 8 volte su 10 (entro 5 min)»: [text] with the on-time limit it counts against. */
+    val within: (text: String, limitMinutes: Int) -> String
 )
 
 /** The lines of one row and the sentence TalkBack reads for them after the train's name. */
@@ -97,10 +100,20 @@ data class MyTrainReliabilityText(
 /** The texts of a [FavouriteTrainReliability] row. */
 object MyTrainsReliabilityLines {
     fun text(row: FavouriteTrainReliability, strings: MyTrainsReliabilityStrings): MyTrainReliabilityText {
-        val network = row.network?.let { NetworkReliabilityLines.train(it, strings.network) }
+        // The two lines count against different limits (a regional train is on time within 15 minutes on the network,
+        // every run recorded on this phone within 5): each says its own.
+        val network = row.network?.let { stop ->
+            NetworkReliabilityLines.train(stop, strings.network).let { line ->
+                if (stop.cancelledEveryDay) line
+                else line.copy(parts = listOf(strings.within(line.parts.first(), stop.onTimeLimitMinutes)) + line.parts.drop(1))
+            }
+        }
         val personal = row.personal?.let { runs ->
             NetworkReliabilityLine(
-                listOfNotNull(strings.personal(runs.onTime, runs.runs), runs.cancelled.takeIf { it > 0 }?.let(strings.network.cancelled))
+                listOfNotNull(
+                    strings.within(strings.personal(runs.onTime, runs.runs), PunctualityHistory.ON_TIME_MINUTES),
+                    runs.cancelled.takeIf { it > 0 }?.let(strings.network.cancelled)
+                )
             )
         }
         val trend = row.trend?.let { if (it.better) strings.better else strings.worse }
@@ -120,7 +133,10 @@ internal fun rememberMyTrainsReliabilityStrings(): MyTrainsReliabilityStrings {
             personal = { onTime, runs -> resources.getQuantityString(R.plurals.my_trains_reliability_personal, onTime, onTime, runs) },
             worse = resources.getString(R.string.my_trains_reliability_worse),
             better = resources.getString(R.string.my_trains_reliability_better),
-            noData = resources.getString(R.string.my_trains_reliability_no_data)
+            noData = resources.getString(R.string.my_trains_reliability_no_data),
+            within = { text, minutes ->
+                resources.getString(R.string.reliability_within_limit, text, resources.getQuantityString(R.plurals.minutes_short, minutes, minutes))
+            }
         )
     }
 }

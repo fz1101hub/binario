@@ -619,7 +619,7 @@
     <string name="stop_alarm_dialog_time">Alarm berbunyi sekitar lima menit sebelum perkiraan %1$s.</string>
     <string name="action_set_stop_alarm">Setel alarm</string>
     <string name="gps_alarm_option">Ingatkan juga berdasarkan lokasi</string>
-    <string name="gps_alarm_option_description">Berbunyi saat Anda berada dalam radius yang dipilih dari pemberhentian (langsung, jika sudah berada di sana), meski kereta lebih awal atau terlambat. Peringatan yang datang lebih dulu yang berlaku.</string>
+    <string name="gps_alarm_option_description">Berbunyi saat Anda berada dalam radius yang dipilih dari pemberhentian (langsung, jika sudah berada di sana), meski kereta lebih awal atau terlambat. Jika alarm berbasis waktu berbunyi saat posisi Anda menunjukkan pemberhentian masih jauh, alarm GPS tetap aktif.</string>
     <string name="gps_alarm_radius_label">Radius peringatan</string>
     <plurals name="gps_alarm_radius_km">
         <item quantity="other">%d km</item>
@@ -650,7 +650,7 @@
     <string name="gps_alarm_ended_expired">Alarm GPS untuk %1$s berakhir: waktu maksimum telah habis.</string>
     <string name="gps_alarm_ended_permission">Alarm GPS untuk %1$s dihentikan: izin lokasi tidak lagi diberikan.</string>
     <string name="gps_alarm_ended_unavailable">Alarm GPS untuk %1$s dihentikan: tidak ada sumber lokasi yang tersedia di ponsel.</string>
-    <string name="gps_alarm_ended_time_alarm">Alarm GPS untuk %1$s ditutup: alarm berbasis waktu sudah berbunyi.</string>
+    <string name="gps_alarm_ended_time_alarm">Alarm GPS untuk %1$s ditutup: alarm berbasis waktu berbunyi dan tidak ada posisi terbaru.</string>
     <string name="gps_alarm_interrupted">Alarm GPS untuk %1$s terhenti, misalnya karena ponsel dimulai ulang. Aktifkan lagi jika Anda masih dalam perjalanan.</string>
     <string name="action_gps_alarm_resume">Aktifkan lagi</string>
     <string name="action_gps_alarm_dismiss">Abaikan</string>
@@ -658,12 +658,13 @@
     <string name="stop_alarm_unavailable">Tidak dapat menjadwalkan alarm: perkiraan waktu pemberhentian sudah lewat atau tidak tersedia.</string>
     <string name="stop_alarm_exact">Alarm disetel untuk %1$s, lima menit sebelum perkiraan %2$s.</string>
     <string name="stop_alarm_inexact">Alarm disetel untuk %1$s, tetapi Android mungkin terlambat menyampaikannya karena alarm tepat tidak diizinkan.</string>
+    <string name="stop_alarm_not_shown">Android tidak menampilkan alarm pemberhentian Binario (notifikasi atau kategorinya dimatikan): alarm ini tidak akan muncul.</string>
     <string name="commuter_alert_scheduled">Peringatan disimpan dan dijadwalkan di perangkat.</string>
     <string name="commuter_alert_scheduled_inexact">Peringatan disimpan dan dijadwalkan dalam mode perkiraan: Android mungkin terlambat menyampaikannya karena alarm tepat tidak diizinkan.</string>
     <string name="stop_alarms_active_title">Alarm pemberhentian aktif</string>
     <string name="stop_alarm_active_row">%1$s · kereta %2$s · perkiraan tiba %3$s</string>
     <string name="accessibility_cancel_stop_alarm">Batalkan alarm untuk %1$s</string>
-    <string name="exact_alarm_note">Android tidak mengizinkan Binario memakai alarm tepat: alarm pemberhentian dan peringatan komuter bisa terlambat.</string>
+    <string name="exact_alarm_note">Android tidak mengizinkan Binario memakai alarm tepat: alarm pemberhentian, peringatan komuter, peringatan kedatangan, dan pengingat Agenda bisa terlambat.</string>
     <string name="exact_alarm_action">Izinkan alarm tepat</string>
     <string name="background_status_title">Aktivitas latar belakang</string>
     <string name="background_status_notifications_on">Notifikasi diizinkan</string>
@@ -1337,6 +1338,7 @@
     <string name="accessibility_approach_alert_station">Ubah stasiun peringatan, saat ini %1$s</string>
     <string name="approach_alert_lead">Berapa lama sebelumnya</string>
     <string name="approach_alert_summary">Memberi tahu Anda %1$s sebelum tiba di %2$s.</string>
+    <string name="approach_alert_quiet_note">Tidak ada peringatan antara pukul 22 dan 7: untuk pemberhentian ini, peringatan bisa datang lebih lambat atau tidak datang.</string>
     <string name="approach_alert_title">%1$s tiba di %2$s dalam ~%3$s</string>
     <string name="approach_alert_title_now">%1$s sedang tiba di %2$s</string>
     <string name="approach_alert_channel_name">Kereta yang akan tiba</string>
@@ -1432,6 +1434,8 @@
     <plurals name="reliability_on_time_count">
         <item quantity="other">Tepat waktu %1$d dari %2$d kali</item>
     </plurals>
+    <!-- The on-time limit after a count: «In orario 8 volte su 10 (entro 5 min)» -->
+    <string name="reliability_within_limit">%1$s (dalam %2$s)</string>
     <plurals name="reliability_leg_on_time_count">
         <item quantity="other">%1$s tepat waktu %2$d dari %3$d kali</item>
     </plurals>
