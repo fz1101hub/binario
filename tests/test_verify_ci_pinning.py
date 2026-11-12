@@ -91,10 +91,11 @@ class VerifyCiPinningTest(unittest.TestCase):
         workflow_path = ROOT / ".github/workflows/companion-ci.yml"
         original = workflow_path.read_text(encoding="utf-8")
         without_pull_paths = original.replace(
-            '  pull_request:\n    paths:\n      - "companion-expo/**"\n      - "contracts/wear-snapshot/**"\n      - "tools/verify_android_app_bundles.py"\n      - "tests/test_verify_android_app_bundles.py"\n      - "tools/verify_gradle_dependency_metadata.py"\n      - ".github/workflows/companion-ci.yml"\n',
+            '  pull_request:\n    paths:\n      - "companion-expo/**"\n      - ".github/workflows/companion-ci.yml"\n',
             "  pull_request:\n",
             1,
         )
+        self.assertNotEqual(original, without_pull_paths)
         problems = policy.workflow_problems(workflow_path, without_pull_paths, LOCK)
         self.assertTrue(any("pull_request deve avere filtri paths" in problem for problem in problems))
 
@@ -139,6 +140,31 @@ class VerifyCiPinningTest(unittest.TestCase):
         )
         problems = policy.workflow_problems(alexa_path, alexa_without_drift_gate, LOCK)
         self.assertTrue(any("gate drift Drizzle" in problem for problem in problems))
+
+    def test_frozen_companion_ci_runs_only_for_its_own_code(self) -> None:
+        # The Expo companion is frozen (companion-expo/README.md): a shared contract or tool must not start its
+        # 90-minute job, and its own code and workflow must still start it.
+        workflow_path = ROOT / ".github/workflows/companion-ci.yml"
+        original = workflow_path.read_text(encoding="utf-8")
+        self.assertEqual([], policy.workflow_problems(workflow_path, original, LOCK))
+        for event_name, anchor in (
+            ("pull_request", '  pull_request:\n    paths:\n      - "companion-expo/**"\n'),
+            ("push", '      - "stabilization/**"\n    paths:\n      - "companion-expo/**"\n'),
+        ):
+            with self.subTest(event_name=event_name):
+                self.assertEqual(1, original.count(anchor))
+                shared = original.replace(anchor, anchor + '      - "contracts/wear-snapshot/**"\n', 1)
+                problems = policy.workflow_problems(workflow_path, shared, LOCK)
+                self.assertTrue(
+                    any(f"{event_name}.paths: il Companion Expo è congelato" in problem and "contracts/wear-snapshot/**" in problem
+                        for problem in problems),
+                    problems,
+                )
+        for required in ('      - "companion-expo/**"\n', '      - ".github/workflows/companion-ci.yml"\n'):
+            with self.subTest(required=required):
+                self.assertEqual(2, original.count(required))
+                problems = policy.workflow_problems(workflow_path, original.replace(required, "", 1), LOCK)
+                self.assertTrue(any("pull_request.paths non copre input condivisi" in problem for problem in problems))
 
     def test_reproducibility_gate_is_release_or_manual_and_fail_closed(self) -> None:
         for workflow_name in ("android-ci.yml", "companion-ci.yml"):

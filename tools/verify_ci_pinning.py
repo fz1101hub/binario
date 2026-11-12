@@ -20,6 +20,8 @@ OCI_DIGEST = re.compile(r"^[^\s@]+@sha256:[0-9a-f]{64}$")
 HEX_64 = re.compile(r"^[0-9a-f]{64}$")
 APPROVED_GITHUB_RUNNERS = {"ubuntu-24.04", "macos-15"}
 MAX_ARTIFACT_RETENTION_DAYS = 14
+# The only path filters of companion-ci.yml: the Expo companion is frozen (12 November 2026, companion-expo/README.md).
+FROZEN_COMPANION_PATHS = frozenset({"companion-expo/**", ".github/workflows/companion-ci.yml"})
 
 
 class WorkflowLoader(yaml.SafeLoader):
@@ -884,18 +886,19 @@ def _check_linux_trigger_budget(
             "app/src/main/assets/stations/curated_it_rail_stations.json",
             "contracts/shared-rules/**",
         },
-        "companion-ci.yml": {
-            "companion-expo/**",
-            "contracts/wear-snapshot/**",
-            "tools/verify_android_app_bundles.py",
-            "tests/test_verify_android_app_bundles.py",
-        },
+        # The Expo companion is frozen (companion-expo/README.md): its own code and this workflow, nothing shared.
+        "companion-ci.yml": FROZEN_COMPANION_PATHS,
     }.get(path.name, set())
     for event_name, paths in (("pull_request", pull_paths), ("push", push_paths)):
         actual = {value for value in paths if isinstance(value, str)} if isinstance(paths, list) else set()
         missing = required_paths - actual
         if missing:
             problems.append(f"{path.name}: {event_name}.paths non copre input condivisi: {sorted(missing)}")
+        if path.name == "companion-ci.yml" and actual - FROZEN_COMPANION_PATHS:
+            problems.append(
+                f"{path.name}: {event_name}.paths: il Companion Expo è congelato, la CI parte solo per "
+                f"companion-expo/** e il workflow, non per {sorted(actual - FROZEN_COMPANION_PATHS)}"
+            )
 
     if path.name == "android-ci.yml":
         # A merge to main must not cancel a release-signing dispatch, nor a dispatch the post-merge run (ci-tests-build-9).
