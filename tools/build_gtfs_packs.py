@@ -49,6 +49,7 @@ import io
 import json
 import os
 import shutil
+import statistics
 import sys
 import tempfile
 import urllib.parse
@@ -88,6 +89,18 @@ WEEKDAY_COLUMNS = ("monday", "tuesday", "wednesday", "thursday", "friday", "satu
 # is not coverage the app can promise.
 MAX_SERVICE_GAP_DAYS = 7
 MIN_COVERAGE_SPAN_DAYS = 7
+# The end of full coverage (fullServiceUntil): the last day running at least this share of the median trips of the same
+# weekday in the first four weeks of the pack.  Trenitalia's feed reaches December 2027 but holds about 60 % of
+# today's trains after the timetable change of 13 December 2026 (audit2 tools-data-2); a holiday's thinner service
+# only moves the end when it is the last day.
+FULL_SERVICE_SHARE = 0.8
+FULL_SERVICE_REFERENCE_DAYS = 28
+# A build keeps the trips running on a day from its generatedAt minus this many days (a run of the evening before can
+# still be under way after midnight, and the apps read yesterday's runs); a trip whose service can never run again is
+# dropped (audit2 tools-data improvement 1: 90 % of HŽPP, 82 % of STA, 58 % of Trenord, 41 % of ÖBB).  The day is
+# recorded in the pack's filter manifest (tripsRunFrom).
+EXPIRED_TRIP_GRACE_DAYS = 2
+TRIPS_RUN_FROM_FIELD = "tripsRunFrom"
 FILTER_MANIFEST_MEMBER = "binario_filter_manifest.json"
 MEMBER_DIGEST_FIELD = "memberSha256"
 
@@ -120,13 +133,27 @@ RAIL_ROUTE_TYPES = frozenset({"2", *(str(value) for value in range(100, 200))})
 SCHEDULED_COACH_ROUTE_TYPES = frozenset({"3"})
 SCHEDULED_COACH_SOURCES = frozenset({"trenitalia-gtfs", "italo-gtfs"})
 
+# Feeds that also publish the operator's combined itineraries as trips (Italo's NeTEx products, converted by
+# deryclem/italo-gtfs): train A, a change, train B becomes a trip per leg under train A's number ("…A-B…_rail2" runs
+# train B), or one trip for the whole itinerary.  The build keeps one trip per physical run of a service day, the
+# train under its own number (see drop_itinerary_copies).  Never applied to feeds whose trips at the same minutes are
+# coupled portions, each a train of its own (Trenord, SNCF, ÖBB, the Swiss feed).
+ITINERARY_COPY_SOURCES = frozenset({"italo-gtfs"})
+# A copy may have kept a dwell its train lost (or the other way round): departures may differ by this much.
+MAX_DWELL_SKEW_MINUTES = 20
+
 # Exceptional source-specific selectors are reviewed identifiers, not fuzzy
 # keywords.  A changed upstream ID fails the build and requires review.
 EXCLUSIVE_ROUTE_IDS: Mapping[str, frozenset[str]] = {
     # Genova Manin - Casella; AMT renumbered the route from FGC-164 to FGC-191 (reviewed 2 November 2026).
     "amt-genova-casella-gtfs": frozenset({"FGC-191"}),
-    # TFT labels its two railway lines as route_type=3 (bus).
+    # TFT labels its two railway lines as route_type=3 (bus): see ROUTE_TYPE_OVERRIDES.
     "toscana-tft-gtfs": frozenset({"1028056267", "2272465657"}),
+}
+# route_type corrected at build for reviewed route ids: TFT publishes its railway lines Arezzo - Stia and Arezzo -
+# Sinalunga as buses (3), which the apps would show as rail replacement buses and leave out of the train searches.
+ROUTE_TYPE_OVERRIDES: Mapping[str, Mapping[str, str]] = {
+    "toscana-tft-gtfs": {"1028056267": "2", "2272465657": "2"},
 }
 
 # City networks (assets under gtfs-transit/ and gtfs-personal/): metro (1, 400-499), tram (0, 900-999), funiculars,
@@ -240,6 +267,7 @@ class CsvTable:
 class FilterResult:
     source_id: str
     last_service_date: date
+    full_service_until: date
     filter_metadata: dict[str, Any]
     source_archive_sha256: str
     content_sha256: str
@@ -593,8 +621,8 @@ def parse_gtfs_date(value: str, context: str) -> date:
         raise BuildError(f"data GTFS non valida ({context!r}): {value!r}") from error
 
 
-def service_dates(calendar: CsvTable, calendar_dates: CsvTable, source_id: str) -> set[date]:
-    """Every date on which at least one service runs, after weekday flags and exceptions."""
+def service_days(calendar: CsvTable, calendar_dates: CsvTable, source_id: str) -> dict[str, set[date]]:
+    """The dates each service_id runs on, after weekday flags and exceptions."""
     require_columns(calendar, "calendar.txt", "service_id", "start_date", "end_date", *WEEKDAY_COLUMNS)
     require_columns(calendar_dates, "calendar_dates.txt", "service_id", "date", "exception_type")
     added: dict[str, set[date]] = {}
@@ -605,7 +633,7 @@ def service_dates(calendar: CsvTable, calendar_dates: CsvTable, source_id: str) 
             continue
         exceptions = added if row.get("exception_type", "").strip() == "1" else removed
         exceptions.setdefault(row.get("service_id", ""), set()).add(parse_gtfs_date(value, f"{source_id}:calendar_dates.txt"))
-    active: set[date] = set()
+    days: dict[str, set[date]] = {}
     for row in calendar.rows:
         start_value = row.get("start_date", "").strip()
         end_value = row.get("end_date", "").strip()
@@ -614,12 +642,22 @@ def service_dates(calendar: CsvTable, calendar_dates: CsvTable, source_id: str) 
         current = parse_gtfs_date(start_value, f"{source_id}:calendar.txt")
         end = parse_gtfs_date(end_value, f"{source_id}:calendar.txt")
         runs = tuple(row.get(column, "").strip() == "1" for column in WEEKDAY_COLUMNS)
-        skipped = removed.get(row.get("service_id", ""), set())
+        service_id = row.get("service_id", "")
+        skipped = removed.get(service_id, set())
+        active = days.setdefault(service_id, set())
         while current <= end:
             if runs[current.weekday()] and current not in skipped:
                 active.add(current)
             current += timedelta(days=1)
-    for dates in added.values():
+    for service_id, dates in added.items():
+        days.setdefault(service_id, set()).update(dates)
+    return days
+
+
+def service_dates(calendar: CsvTable, calendar_dates: CsvTable, source_id: str) -> set[date]:
+    """Every date on which at least one service runs, after weekday flags and exceptions."""
+    active: set[date] = set()
+    for dates in service_days(calendar, calendar_dates, source_id).values():
         active.update(dates)
     return active
 
@@ -642,6 +680,54 @@ def last_service_date(calendar: CsvTable, calendar_dates: CsvTable, source_id: s
     return dates[-1]
 
 
+def trips_by_day(trip_rows: Iterable[Mapping[str, str]], days_by_service: Mapping[str, set[date]]) -> dict[date, int]:
+    """How many trips run on each day."""
+    per_service: dict[str, int] = {}
+    for row in trip_rows:
+        service_id = row.get("service_id", "")
+        per_service[service_id] = per_service.get(service_id, 0) + 1
+    counts: dict[date, int] = {}
+    for service_id, trips in per_service.items():
+        for day in days_by_service.get(service_id, ()):
+            counts[day] = counts.get(day, 0) + trips
+    return counts
+
+
+def full_service_until(
+    trip_rows: Iterable[Mapping[str, str]],
+    calendar: CsvTable,
+    calendar_dates: CsvTable,
+    source_id: str,
+    last: date,
+    runs_from: date | None = None,
+) -> date:
+    """The last day, up to ``last``, with at least FULL_SERVICE_SHARE of the median trips of its weekday over the first
+    FULL_SERVICE_REFERENCE_DAYS days of the pack (its first day with a trip, from ``runs_from``, the pack's tripsRunFrom,
+    when given: the days before it lost their expired trips; days past its last are not counted)."""
+    counts = trips_by_day(trip_rows, service_days(calendar, calendar_dates, source_id))
+    running = sorted(day for day, trips in counts.items() if trips > 0)
+    if not running:
+        return last
+    end = running[-1]
+    start = next((day for day in running if runs_from is None or day >= runs_from), running[0])
+    reference = [start + timedelta(days=offset) for offset in range(FULL_SERVICE_REFERENCE_DAYS)]
+    medians = {
+        weekday: statistics.median([counts.get(day, 0) for day in reference if day <= end and day.weekday() == weekday] or [0])
+        for weekday in range(7)
+    }
+    full = [
+        day for day in running
+        if day <= last and medians[day.weekday()] > 0 and counts[day] >= FULL_SERVICE_SHARE * medians[day.weekday()]
+    ]
+    return max(full) if full else min(start, last)
+
+
+def expired_trips(trip_rows: Iterable[Mapping[str, str]], days_by_service: Mapping[str, set[date]], runs_from: date) -> set[str]:
+    """The trips whose service runs on no day from ``runs_from`` on: they can never run again."""
+    alive = {service_id for service_id, days in days_by_service.items() if days and max(days) >= runs_from}
+    return {row.get("trip_id", "") for row in trip_rows if row.get("service_id", "") not in alive}
+
+
 def selected_routes(source_id: str, routes: CsvTable) -> tuple[tuple[dict[str, str], ...], dict[str, Any]]:
     require_columns(routes, "routes.txt", "route_id", "route_type")
     explicit = EXCLUSIVE_ROUTE_IDS.get(source_id)
@@ -656,6 +742,14 @@ def selected_routes(source_id: str, routes: CsvTable) -> tuple[tuple[dict[str, s
             "description": "Selettore revisionato specifico della fonte; nessun matching per nome.",
             "routeIds": sorted(explicit),
         }
+        overrides = ROUTE_TYPE_OVERRIDES.get(source_id, {})
+        if overrides:
+            # The published route_type of these reviewed routes is wrong (a railway line published as a bus).
+            selected = tuple(
+                {**row, "route_type": overrides[row.get("route_id", "")]} if row.get("route_id", "") in overrides else row
+                for row in selected
+            )
+            metadata["routeTypeOverrides"] = dict(sorted(overrides.items()))
     elif source_id in URBAN_SOURCES:
         excluded = URBAN_SOURCES[source_id]
         selected = tuple(
@@ -692,6 +786,346 @@ def selected_routes(source_id: str, routes: CsvTable) -> tuple[tuple[dict[str, s
     if not selected:
         raise BuildError(f"{source_id}: nessuna route ammessa dal filtro")
     return selected, metadata
+
+
+def gtfs_minutes(value: str) -> int | None:
+    """Minutes of an ``H:MM:SS`` GTFS time (past 24:00 for a run after midnight), or ``None`` when empty or malformed."""
+    parts = value.strip().split(":")
+    if len(parts) != 3 or not all(part.isdigit() for part in parts):
+        return None
+    return int(parts[0]) * 60 + int(parts[1])
+
+
+@dataclass
+class TripRun:
+    """One train trip in stop order (:func:`drop_itinerary_copies`); ``rows`` index its stop_times rows."""
+
+    trip_id: str
+    order: int
+    number: str
+    service_id: str
+    rows: list[int]
+    stops: list[str]
+    arrivals: list[int]
+    departures: list[int]
+    own: bool = False
+
+    def start(self) -> tuple[int, str]:
+        return self.departures[0], self.stops[0]
+
+    def reach(self, first: int, other: "TripRun", offset: int) -> int:
+        """The last stop of this trip, from ``first``, that ``other`` runs from ``offset`` on: the same stops in the
+        same order, reached at the same minutes after ``first``, each left within MAX_DWELL_SKEW_MINUTES of the other
+        trip but the last (a copy may have lost a dwell, or kept one its train lost).  ``first`` when none.  At a stop
+        inside this trip (``first`` > 0, the change of an itinerary) the departure is not compared: an itinerary
+        published as one trip keeps the first train's time there."""
+        last = first
+        while (
+            last + 1 < len(self.stops)
+            and offset + last + 1 - first < len(other.stops)
+            and self.stops[last + 1] == other.stops[offset + last + 1 - first]
+            and self.arrivals[last + 1] == other.arrivals[offset + last + 1 - first]
+            and (
+                (last == first and first > 0)
+                or abs(self.departures[last] - other.departures[offset + last - first]) <= MAX_DWELL_SKEW_MINUTES
+            )
+        ):
+            last += 1
+        return last
+
+
+# One piece of a trip found in another trip: (that trip, first and last position of the piece, offset there).
+CopyPiece = tuple[TripRun, int, int, int]
+
+
+def train_route_ids(routes: Iterable[Mapping[str, str]]) -> set[str]:
+    return {row.get("route_id", "") for row in routes if row.get("route_type", "").strip() in RAIL_ROUTE_TYPES}
+
+
+def trip_runs(
+    trip_rows: Sequence[Mapping[str, str]],
+    stop_time_rows: Sequence[Mapping[str, str]],
+    train_route_ids: set[str],
+) -> list[TripRun]:
+    """The train trips with two timed stops at least, in trips.txt order; a trip with an untimed stop is left out."""
+    rows_by_trip: dict[str, list[int]] = {}
+    for index, row in enumerate(stop_time_rows):
+        rows_by_trip.setdefault(row.get("trip_id", ""), []).append(index)
+    runs: list[TripRun] = []
+    for order, trip in enumerate(trip_rows):
+        trip_id = trip.get("trip_id", "")
+        if trip.get("route_id", "") not in train_route_ids:
+            continue
+        indices = rows_by_trip.get(trip_id, [])
+        try:
+            indices = sorted(indices, key=lambda index: int(stop_time_rows[index].get("stop_sequence", "").strip()))
+        except ValueError:
+            continue
+        arrivals: list[int] = []
+        departures: list[int] = []
+        for index in indices:
+            row = stop_time_rows[index]
+            arrival = gtfs_minutes(row.get("arrival_time", ""))
+            departure = gtfs_minutes(row.get("departure_time", ""))
+            arrival = departure if arrival is None else arrival
+            departure = arrival if departure is None else departure
+            if arrival is None or departure is None:
+                break
+            arrivals.append(arrival)
+            departures.append(departure)
+        if len(arrivals) != len(indices) or len(indices) < 2:
+            continue
+        runs.append(TripRun(
+            trip_id, order, trip.get("trip_short_name", "").strip(), trip.get("service_id", ""), indices,
+            [stop_time_rows[index].get("stop_id", "") for index in indices], arrivals, departures,
+        ))
+    return runs
+
+
+def copies_of_day(runs: Sequence[TripRun]) -> dict[str, list[CopyPiece]]:
+    """The trips of one service day that repeat another train's run, each with the pieces of it found in the trips
+    kept: a copy lies whole inside a trip kept before it; a combined itinerary (train A, a change, train B) is covered
+    by two or more trains, one after the other.  Kept before: the trip starting where the first train of its number
+    starts that day (the train under its own number), then the longer one, then the one named after its own train
+    alone (:func:`named_trains`), then the one listed first; two trains that both start their own number are coupled
+    portions and never merged."""
+    first_start: dict[str, tuple[int, str]] = {}
+    for run in runs:
+        start = run.start()
+        if run.number not in first_start or start < first_start[run.number]:
+            first_start[run.number] = start
+    for run in runs:
+        run.own = first_start[run.number] == run.start()
+
+    def kept_before(kept: TripRun, copy: TripRun) -> bool:
+        if kept.own != copy.own:
+            return kept.own
+        if kept.own and kept.number != copy.number:
+            return False
+        if len(kept.stops) != len(copy.stops):
+            return len(kept.stops) > len(copy.stops)
+        # The same run under two numbers, neither starting its own: the trip named after its own train alone.
+        alone = (named_trains(kept.trip_id) == [kept.number], named_trains(copy.trip_id) == [copy.number])
+        if alone[0] != alone[1]:
+            return alone[0]
+        return kept.order < copy.order
+
+    hops: dict[tuple[str, str, int], list[tuple[int, int]]] = {}
+    for index, run in enumerate(runs):
+        for position in range(1, len(run.stops)):
+            hops.setdefault((run.stops[position - 1], run.stops[position], run.arrivals[position]), []).append((index, position - 1))
+
+    def sharing(run: TripRun, position: int) -> list[tuple[int, int]]:
+        return hops.get((run.stops[position], run.stops[position + 1], run.arrivals[position + 1]), [])
+
+    copies: dict[int, list[CopyPiece]] = {}
+    # An itinerary published as one trip: two or more trains under their own numbers run it piece after piece, and
+    # two numbers at least are involved (its own and theirs).  Found first, so that a train inside it (the first train, up to the change) is not taken
+    # for a copy of the longer itinerary under the same number.
+    for index, run in enumerate(runs):
+        pieces: list[CopyPiece] = []
+        first = 0
+        last = len(run.stops) - 1
+        while first < last:
+            best: CopyPiece | None = None
+            for other_index, offset in sharing(run, first):
+                other = runs[other_index]
+                if other_index == index or not other.own:
+                    continue
+                reached = run.reach(first, other, offset)
+                if reached > first and (best is None or reached > best[2]):
+                    best = (other, first, reached, offset)
+            if best is None:
+                break
+            pieces.append(best)
+            first = best[2]
+        if first == last and len(pieces) >= 2 and len({piece[0].number for piece in pieces} | {run.number}) >= 2:
+            copies[index] = pieces
+    for index, run in enumerate(runs):
+        if index in copies:
+            continue
+        last = len(run.stops) - 1
+        for other_index, offset in sharing(run, 0):
+            other = runs[other_index]
+            if (
+                other_index != index and other_index not in copies and kept_before(other, run)
+                and run.reach(0, other, offset) == last
+            ):
+                copies[index] = [(other, 0, last, offset)]
+                break
+    return {runs[index].trip_id: pieces for index, pieces in sorted(copies.items())}
+
+
+def drop_itinerary_copies(
+    trip_rows: Sequence[Mapping[str, str]],
+    stop_time_rows: Sequence[Mapping[str, str]],
+    train_route_ids: set[str],
+    days_by_service: Mapping[str, set[date]],
+) -> tuple[set[str], tuple[dict[str, str], ...], dict[str, int]]:
+    """The trips that repeat another train's run on every day they run (:func:`copies_of_day`), the stop_times with
+    the departures they carry, and counts for the filter manifest.
+
+    A copy often keeps a dwell its train lost (Italo's 9939 leaves Roma Termini at 17:30, as the itineraries boarding it
+    there say, while its own trip says 17:19, its arrival): before a copy goes, the train kept takes the latest
+    departure of the two at each stop they share, when it still leaves before its next arrival.  A trip that is a copy
+    on some of its days only stays (the app keeps one trip per run of each day).  Repeated until nothing changes, so
+    a check of the published pack finds no copy left."""
+    rows = [dict(row) for row in stop_time_rows]
+    # The itineraries published as one trip go first: the converter lists only some stops of the second train, so no
+    # train runs them piece after piece, and an itinerary is not a train (its number is the first train's).  Left in,
+    # it would also seem to run the piece of a train it contains.
+    itineraries = {
+        trip.get("trip_id", "") for trip in trip_rows
+        if trip.get("route_id", "") in train_route_ids
+        and is_combined_itinerary(trip.get("trip_id", ""), trip.get("trip_short_name", ""))
+    }
+    dropped: set[str] = set(itineraries)
+    departures_taken = 0
+    partial = 0
+    for _ in range(8):
+        runs = [run for run in trip_runs(trip_rows, rows, train_route_ids) if run.trip_id not in dropped]
+        runs_by_day: dict[date, list[TripRun]] = {}
+        for run in runs:
+            for day in days_by_service.get(run.service_id, ()):
+                runs_by_day.setdefault(day, []).append(run)
+        # Days with the same trips are one analysis.
+        found_by_set: dict[tuple[str, ...], dict[str, list[CopyPiece]]] = {}
+        copy_days: dict[str, int] = {}
+        pieces_by_trip: dict[str, list[CopyPiece]] = {}
+        for day in sorted(runs_by_day):
+            key = tuple(run.trip_id for run in runs_by_day[day])
+            if key not in found_by_set:
+                found_by_set[key] = copies_of_day(runs_by_day[day])
+            for trip_id, pieces in found_by_set[key].items():
+                copy_days[trip_id] = copy_days.get(trip_id, 0) + 1
+                pieces_by_trip.setdefault(trip_id, []).extend(pieces)
+        newly = {
+            run.trip_id for run in runs
+            if copy_days.get(run.trip_id, 0) and copy_days[run.trip_id] == len(days_by_service.get(run.service_id, ()))
+        }
+        partial = sum(1 for trip_id in copy_days if trip_id not in newly)
+        if not newly:
+            break
+        by_id = {run.trip_id: run for run in runs}
+        for trip_id in sorted(newly):
+            copy = by_id[trip_id]
+            for kept, first, last, offset in pieces_by_trip[trip_id]:
+                if kept.trip_id in newly:
+                    continue
+                # At the change of an itinerary the departure is the first train's, not this one's.
+                for position in range(first + (1 if first > 0 else 0), last):
+                    at = offset + position - first
+                    if copy.departures[position] <= kept.departures[at] or copy.departures[position] > kept.arrivals[at + 1]:
+                        continue
+                    source = rows[copy.rows[position]]
+                    rows[kept.rows[at]]["departure_time"] = source.get("departure_time", "").strip() or source.get("arrival_time", "")
+                    kept.departures[at] = copy.departures[position]
+                    departures_taken += 1
+        dropped |= newly
+    else:
+        raise BuildError("copie di itinerario: nessun punto fisso dopo 8 passaggi")
+    kept_rows = tuple(row for row in rows if row.get("trip_id", "") not in dropped)
+    return dropped, kept_rows, {
+        "droppedCopies": len(dropped) - len(itineraries),
+        "droppedItineraries": len(itineraries),
+        "departuresTaken": departures_taken,
+        "partialCopiesKept": partial,
+    }
+
+
+def named_trains(trip_id: str) -> list[str]:
+    """The train numbers a trip id names.  deryclem/italo-gtfs names each trip after its NeTEx product:
+    ``IT::ServiceJourney:<train>-<counters>`` for a train, ``<A>-<B>-<counters>`` for an itinerary of train A then
+    train B, with ``_rail1``, ``_rail2``… or ``_bus`` for one leg of it; counters have fewer than four digits."""
+    numbers: list[str] = []
+    for group in trip_id.rsplit(":", 1)[-1].split("_", 1)[0].split("-"):
+        if len(group) < 4 or not group.isdigit():
+            break
+        numbers.append(group)
+    return numbers
+
+
+def is_combined_itinerary(trip_id: str, number: str) -> bool:
+    """A whole itinerary in one trip (:func:`named_trains`): two train numbers at least, the first one its
+    trip_short_name, and no leg suffix."""
+    numbers = named_trains(trip_id)
+    return "_" not in trip_id.rsplit(":", 1)[-1] and len(numbers) >= 2 and numbers[0] == number.strip()
+
+
+def gtfs_seconds(value: str) -> int | None:
+    """Seconds of an ``H:MM:SS`` GTFS time, or ``None`` when empty or malformed."""
+    parts = value.strip().split(":")
+    if len(parts) != 3 or not all(part.isdigit() for part in parts):
+        return None
+    return int(parts[0]) * 3600 + int(parts[1]) * 60 + int(parts[2])
+
+
+def gtfs_time(seconds: int) -> str:
+    return f"{seconds // 3600:02d}:{seconds // 60 % 60:02d}:{seconds % 60:02d}"
+
+
+# frequencies.txt runs a trip every headway_secs; Genova's lift every 60 s from 06:10 to 21:30 is 920 runs a direction.
+MAX_FREQUENCY_RUNS = 5_000
+
+
+def expand_frequencies(
+    trip_rows: Sequence[Mapping[str, str]],
+    stop_time_rows: Sequence[Mapping[str, str]],
+    frequency_rows: Sequence[Mapping[str, str]],
+    source_id: str,
+) -> tuple[tuple[dict[str, str], ...], tuple[dict[str, str], ...], int]:
+    """Each run of a frequency-based trip as a trip of its own (``<trip_id>@HHMMSS``, its first departure), its stop
+    times shifted by the run's start; the template trip goes.  Runs start at start_time, every headway_secs, before
+    end_time (GTFS).  A run is not a vehicle working, so its block_id is left empty."""
+    calls: dict[str, list[Mapping[str, str]]] = {}
+    for row in stop_time_rows:
+        calls.setdefault(row.get("trip_id", ""), []).append(row)
+    starts: dict[str, list[int]] = {}
+    for row in frequency_rows:
+        trip_id = row.get("trip_id", "")
+        start, end = gtfs_seconds(row.get("start_time", "")), gtfs_seconds(row.get("end_time", ""))
+        headway = row.get("headway_secs", "").strip()
+        if start is None or end is None or not headway.isdigit() or int(headway) <= 0 or end < start:
+            raise BuildError(f"{source_id}: frequencies.txt non valido per {log_safe(trip_id)}")
+        starts.setdefault(trip_id, []).extend(range(start, end, int(headway)))
+    if sum(len(values) for values in starts.values()) > MAX_FREQUENCY_RUNS:
+        raise BuildError(f"{source_id}: frequencies.txt oltre {MAX_FREQUENCY_RUNS} corse")
+    trips: list[dict[str, str]] = []
+    expanded: dict[str, list[dict[str, str]]] = {}
+    for trip in trip_rows:
+        trip_id = trip.get("trip_id", "")
+        if trip_id not in starts:
+            trips.append(dict(trip))
+            continue
+        template = sorted(calls.get(trip_id, []), key=lambda row: int(row.get("stop_sequence", "0").strip() or 0))
+        times = [
+            (gtfs_seconds(row.get("arrival_time", "")), gtfs_seconds(row.get("departure_time", "")))
+            for row in template
+        ]
+        origin = times[0][1] if times and times[0][1] is not None else (times[0][0] if times else None)
+        if origin is None or any(arrival is None and departure is None for arrival, departure in times):
+            raise BuildError(f"{source_id}: trip a frequenza senza orari: {log_safe(trip_id)}")
+        for start in sorted(set(starts[trip_id])):
+            run_id = f"{trip_id}@{gtfs_time(start).replace(':', '')}"
+            trips.append({**trip, "trip_id": run_id, **({"block_id": ""} if "block_id" in trip else {})})
+            shift = start - origin
+            expanded.setdefault(trip_id, []).extend(
+                {
+                    **row,
+                    "trip_id": run_id,
+                    "arrival_time": gtfs_time(arrival + shift) if arrival is not None else "",
+                    "departure_time": gtfs_time(departure + shift) if departure is not None else "",
+                }
+                for row, (arrival, departure) in zip(template, times)
+            )
+    stop_times: list[dict[str, str]] = []
+    for row in stop_time_rows:
+        trip_id = row.get("trip_id", "")
+        if trip_id not in starts:
+            stop_times.append(dict(row))
+        elif trip_id in expanded:
+            stop_times.extend(expanded.pop(trip_id))
+    return tuple(trips), tuple(stop_times), sum(len(set(values)) for values in starts.values())
 
 
 def stop_modes_table(
@@ -766,11 +1200,13 @@ def filter_archive(
     source_id: str,
     *,
     published_entries: Iterable[Mapping[str, Any] | None] = (),
+    trips_run_from: date | None = None,
 ) -> FilterResult:
     """Filter one complete GTFS archive and write a deterministic ZIP.
 
     ``published_entries`` are the release-manifest entries of this source the input may be a byte-identical copy of
-    (see :func:`published_provenance`); without a match the input's own SHA-256 is its provenance.
+    (see :func:`published_provenance`); without a match the input's own SHA-256 is its provenance.  With
+    ``trips_run_from`` the trips that can never run again from that day are dropped (:func:`expired_trips`).
     """
     if not source.is_file() or not zipfile.is_zipfile(source):
         raise BuildError(f"{source_id}: archivio ZIP GTFS non valido: {source}")
@@ -810,12 +1246,26 @@ def filter_archive(
         assert stop_times
         require_columns(stop_times, "stop_times.txt", "trip_id", "stop_id")
         kept_stop_times = stop_times.rows
-        stop_ids = {row["stop_id"] for row in kept_stop_times if row.get("stop_id")}
-        if not stop_ids:
-            raise BuildError(f"{source_id}: i trip filtrati non hanno stop_times")
 
-        stops = read_table(archive, "stops.txt", required=True, budget=budget)
-        agency = read_table(archive, "agency.txt", required=True, budget=budget)
+        # Rules that drop or change trips are named in the filter manifest; their counts go to the log, so that filtering
+        # a published pack again gives the same bytes.
+        trip_rules: list[str] = []
+        frequencies = read_table(
+            archive,
+            "frequencies.txt",
+            predicate=lambda row: row.get("trip_id", "") in trip_ids,
+            budget=budget,
+        )
+        if frequencies is not None:
+            require_columns(frequencies, "frequencies.txt", "trip_id", "start_time", "end_time", "headway_secs")
+        if frequencies is not None and frequencies.rows:
+            # No reader of the packs knows frequencies.txt: each run becomes a trip of its own.  Not named in tripRules:
+            # the expanded pack has no frequencies.txt left, and filtering it again must give the same bytes.
+            kept_trips, kept_stop_times, runs = expand_frequencies(kept_trips, kept_stop_times, frequencies.rows, source_id)
+            print(f"{source_id}: frequencies.txt espanso in {runs} corse", file=sys.stderr)
+            trip_ids = {row["trip_id"] for row in kept_trips if row.get("trip_id")}
+            frequencies = None
+
         calendar = read_table(
             archive,
             "calendar.txt",
@@ -828,11 +1278,39 @@ def filter_archive(
             predicate=lambda row: row.get("service_id", "") in service_ids,
             budget=budget,
         ) or empty_calendar_dates()
+        require_columns(calendar, "calendar.txt", "service_id", "end_date")
+        require_columns(calendar_dates, "calendar_dates.txt", "service_id", "date", "exception_type")
+
+        if source_id in ITINERARY_COPY_SOURCES:
+            dropped, kept_stop_times, counts = drop_itinerary_copies(
+                kept_trips, kept_stop_times, train_route_ids(kept_routes), service_days(calendar, calendar_dates, source_id),
+            )
+            trip_rules.append("itinerary-copies")
+            print(f"{source_id}: copie di itinerario {log_safe(json.dumps(counts, sort_keys=True))}", file=sys.stderr)
+            kept_trips = tuple(row for row in kept_trips if row.get("trip_id", "") not in dropped)
+            trip_ids = {row["trip_id"] for row in kept_trips if row.get("trip_id")}
+            service_ids = {row["service_id"] for row in kept_trips if row.get("service_id")}
+
+        run_metadata: dict[str, str] = {}
+        if trips_run_from is not None:
+            expired = expired_trips(kept_trips, service_days(calendar, calendar_dates, source_id), trips_run_from)
+            if expired:
+                print(f"{source_id}: {len(expired)} trip che non circolano più dal {trips_run_from} rimossi", file=sys.stderr)
+                kept_trips = tuple(row for row in kept_trips if row.get("trip_id", "") not in expired)
+                kept_stop_times = tuple(row for row in kept_stop_times if row.get("trip_id", "") not in expired)
+                trip_ids = {row["trip_id"] for row in kept_trips if row.get("trip_id")}
+                service_ids = {row["service_id"] for row in kept_trips if row.get("service_id")}
+            run_metadata[TRIPS_RUN_FROM_FIELD] = trips_run_from.isoformat()
+
+        stop_ids = {row["stop_id"] for row in kept_stop_times if row.get("stop_id")}
+        if not stop_ids:
+            raise BuildError(f"{source_id}: i trip filtrati non hanno stop_times")
+
+        stops = read_table(archive, "stops.txt", required=True, budget=budget)
+        agency = read_table(archive, "agency.txt", required=True, budget=budget)
         assert agency and stops
         require_columns(agency, "agency.txt", "agency_name")
         require_columns(stops, "stops.txt", "stop_id")
-        require_columns(calendar, "calendar.txt", "service_id", "end_date")
-        require_columns(calendar_dates, "calendar_dates.txt", "service_id", "date", "exception_type")
 
         # Retain all parent stations of a referenced platform so stop hierarchy
         # remains valid after filtering.
@@ -870,6 +1348,9 @@ def filter_archive(
         filtered_calendar = CsvTable(calendar.header, kept_calendar)
         filtered_calendar_dates = CsvTable(calendar_dates.header, kept_calendar_dates)
         coverage_end = last_service_date(filtered_calendar, filtered_calendar_dates, source_id)
+        full_end = full_service_until(
+            kept_trips, filtered_calendar, filtered_calendar_dates, source_id, coverage_end, trips_run_from,
+        )
 
         tables: dict[str, CsvTable] = {
             "agency.txt": CsvTable(agency.header, kept_agency),
@@ -884,14 +1365,8 @@ def filter_archive(
             "calendar_dates.txt": filtered_calendar_dates,
         }
 
-        frequencies = read_table(
-            archive,
-            "frequencies.txt",
-            predicate=lambda row: row.get("trip_id", "") in trip_ids,
-            budget=budget,
-        )
         if frequencies is not None:
-            require_columns(frequencies, "frequencies.txt", "trip_id")
+            # A feed's empty frequencies.txt (a header only) is kept as published.
             tables["frequencies.txt"] = frequencies
 
         # The app resolves schedules and stop coordinates, not route geometry.
@@ -943,12 +1418,15 @@ def filter_archive(
         "counts": counts,
         "lastServiceDate": coverage_end.isoformat(),
         "omittedOptionalTables": ["shapes.txt"],
+        **({"tripRules": trip_rules} if trip_rules else {}),
+        **run_metadata,
         MEMBER_DIGEST_FIELD: {name: canonical_csv_sha256(table) for name, table in sorted(tables.items())},
     }
     write_deterministic_zip(destination, tables, metadata)
     return FilterResult(
         source_id,
         coverage_end,
+        full_end,
         metadata,
         source_hash,
         canonical_content_sha256(metadata[MEMBER_DIGEST_FIELD]),
@@ -1013,6 +1491,14 @@ def manifest_for_build(
         name = safe_asset_name(pack["asset"])
         pack["sha256"] = result.source_archive_sha256  # overwritten after ZIP write below
         pack["lastServiceDate"] = result.last_service_date.isoformat()
+        # Right after lastServiceDate in the manifest (an older entry has no such key yet).
+        ordered: dict[str, Any] = {}
+        for key, value in pack.items():
+            if key != "fullServiceUntil":
+                ordered[key] = value
+            if key == "lastServiceDate":
+                ordered["fullServiceUntil"] = result.full_service_until.isoformat()
+        pack = ordered
         pack["filter"] = result.filter_metadata["policy"]
         pack["sourceArchiveSha256"] = result.source_archive_sha256
         pack["contentSha256"] = result.content_sha256
@@ -1146,6 +1632,7 @@ def _build_packs_locked(
             # input keeps their recorded upstream digest (A7-01).
             results[source_id] = filter_archive(
                 source, staging / name, source_id, published_entries=(pack, published_by_id.get(source_id)),
+                trips_run_from=date.fromisoformat(generated_at) - timedelta(days=EXPIRED_TRIP_GRACE_DAYS),
             )
         output_manifest = manifest_for_build(source_manifest, results, generated_at, kept_entries)
         for pack in output_manifest["packs"]:
@@ -1213,6 +1700,42 @@ def service_end_from_asset(path: Path, source_id: str) -> date:
     return last_service_date(calendar, calendar_dates, source_id)
 
 
+def full_service_end_from_asset(path: Path, source_id: str) -> date:
+    """fullServiceUntil derived from a built pack, as the build derives it (see :func:`full_service_until`)."""
+    if not zipfile.is_zipfile(path):
+        raise BuildError(f"asset non ZIP: {path.name}")
+    with zipfile.ZipFile(path) as archive:
+        validate_archive_limits(archive)
+        calendar = read_table(archive, "calendar.txt") or empty_calendar()
+        calendar_dates = read_table(archive, "calendar_dates.txt") or empty_calendar_dates()
+        trips = read_table(archive, "trips.txt", required=True)
+        assert trips is not None
+        runs_from = trips_run_from_asset(archive, source_id)
+    return full_service_until(
+        trips.rows, calendar, calendar_dates, source_id, last_service_date(calendar, calendar_dates, source_id), runs_from,
+    )
+
+
+def trips_run_from_asset(archive: zipfile.ZipFile, source_id: str) -> date | None:
+    """The tripsRunFrom a built pack declares in its filter manifest, or None (built before the rule)."""
+    entry = filter_manifest_entry(archive)
+    if entry is None:
+        return None
+    try:
+        value = json.loads(archive.read(entry).decode("utf-8")).get(TRIPS_RUN_FROM_FIELD)
+        return None if value is None else date.fromisoformat(str(value))
+    except (UnicodeDecodeError, json.JSONDecodeError, AttributeError, ValueError) as error:
+        raise BuildError(f"{source_id}: {TRIPS_RUN_FROM_FIELD} non valido") from error
+
+
+def release_end(pack: Mapping[str, Any]) -> date:
+    """The day a pack's release freshness is judged on: its fullServiceUntil when declared (never after its
+    lastServiceDate), else its lastServiceDate."""
+    last = date.fromisoformat(str(pack["lastServiceDate"]))
+    full = pack.get("fullServiceUntil")
+    return min(last, date.fromisoformat(str(full))) if full is not None else last
+
+
 def verify_filter_from_asset(path: Path, source_id: str) -> str:
     """Require a release ZIP to prove filter policy and canonical content identity."""
     with zipfile.ZipFile(path) as archive:
@@ -1242,14 +1765,45 @@ def verify_filter_from_asset(path: Path, source_id: str) -> str:
         expected_ids = {row.get("route_id", "") for row in selected}
         if actual_ids != expected_ids or metadata.get("policy") != policy:
             raise BuildError(f"{source_id}: route o criterio filtro incoerente")
+        overrides = ROUTE_TYPE_OVERRIDES.get(source_id, {})
+        wrong_types = sorted(
+            row.get("route_id", "") for row in routes.rows
+            if row.get("route_id", "") in overrides and row.get("route_type", "").strip() != overrides[row.get("route_id", "")]
+        )
+        if wrong_types:
+            raise BuildError(f"{source_id}: route_type non corretto per {', '.join(log_safe(route) for route in wrong_types)}")
         expected_counts = metadata.get("counts")
         if not isinstance(expected_counts, dict) or expected_counts.get("routes") != len(routes.rows):
             raise BuildError(f"{source_id}: conteggi filtro incoerenti")
+        frequencies = read_table(archive, "frequencies.txt")
+        if frequencies is not None and frequencies.rows:
+            raise BuildError(f"{source_id}: frequencies.txt con corse non espanse (nessun lettore dei pack lo legge)")
+        tables: dict[str, CsvTable] = {}
         for table_name, count_key in (("trips.txt", "trips"), ("stop_times.txt", "stopTimes"), ("stops.txt", "stops")):
             table = read_table(archive, table_name, required=True)
             assert table is not None
             if expected_counts.get(count_key) != len(table.rows):
                 raise BuildError(f"{source_id}: conteggio {count_key} incoerente")
+            tables[table_name] = table
+        if source_id in ITINERARY_COPY_SOURCES:
+            calendar = read_table(archive, "calendar.txt") or empty_calendar()
+            calendar_dates = read_table(archive, "calendar_dates.txt") or empty_calendar_dates()
+            left, _, _ = drop_itinerary_copies(
+                tables["trips.txt"].rows, tables["stop_times.txt"].rows, train_route_ids(routes.rows),
+                service_days(calendar, calendar_dates, source_id),
+            )
+            if left:
+                raise BuildError(
+                    f"{source_id}: {len(left)} trip ripetono la corsa di un altro treno in ogni giorno di servizio "
+                    f"(copie di itinerario), es. {log_safe(sorted(left)[0])}"
+                )
+        runs_from = trips_run_from_asset(archive, source_id)
+        if runs_from is not None:
+            calendar = read_table(archive, "calendar.txt") or empty_calendar()
+            calendar_dates = read_table(archive, "calendar_dates.txt") or empty_calendar_dates()
+            expired = expired_trips(tables["trips.txt"].rows, service_days(calendar, calendar_dates, source_id), runs_from)
+            if expired:
+                raise BuildError(f"{source_id}: {len(expired)} trip non circolano più dal {runs_from} ({TRIPS_RUN_FROM_FIELD})")
         return canonical_content_sha256(declared_digests)
 
 
@@ -1321,6 +1875,7 @@ def verify_assets(
             continue
         try:
             actual_end = service_end_from_asset(path, source_id)
+            actual_full_end = full_service_end_from_asset(path, source_id)
         except BuildError as error:
             problems.append(str(error))
             continue
@@ -1336,14 +1891,19 @@ def verify_assets(
                 )
         if declared_end != actual_end:
             problems.append(f"lastServiceDate incoerente per {name}: {declared_end} != {actual_end}")
+        if pack.get("fullServiceUntil") != actual_full_end.isoformat():
+            problems.append(f"fullServiceUntil incoerente per {name}: {pack.get('fullServiceUntil')} != {actual_full_end}")
         if as_of is not None and min_valid_days is not None:
             # A city feed published a few weeks ahead declares its own shorter release threshold (minValidDays,
             # documented in GTFS_PACK_REFRESH.md with its weekly refresh); no pack can ask for a longer one here.
+            # Judged on the end of full coverage: a thin tail of trips is not a timetable the app can promise.
             days = pack_min_valid_days(pack, min_valid_days)
-            if not is_release_fresh(actual_end, as_of, days):
+            release = min(actual_end, actual_full_end)
+            if not is_release_fresh(release, as_of, days):
                 problems.append(
                     f"pack scaduto o in scadenza entro {days} giorni: "
-                    f"{source_id} termina {actual_end} (richiesto almeno fino al {release_freshness_cutoff(as_of, days)})"
+                    f"{source_id} termina {actual_end}, copertura piena fino al {actual_full_end} "
+                    f"(richiesto almeno fino al {release_freshness_cutoff(as_of, days)})"
                 )
     if problems:
         raise BuildError("\n".join(problems))

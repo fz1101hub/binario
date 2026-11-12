@@ -35,7 +35,6 @@ class PlannedPackOrderTest {
                 "amt-genova-casella-gtfs" to ITALIAN_REGIONAL,
                 "cotral-ferro-gtfs" to ITALIAN_REGIONAL,
                 "ch-otd-gtfs" to FOREIGN,
-                "hzpp-gtfs" to FOREIGN,
                 "oebb-gtfs" to FOREIGN,
                 "sncf-gtfs" to FOREIGN
             ),

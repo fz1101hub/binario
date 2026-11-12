@@ -1,4 +1,4 @@
-<resources>
+<resources xmlns:tools="http://schemas.android.com/tools">
     <!-- New data sources (October 2026) -->
     <string name="notices_train_title">この列車のお知らせ</string>
     <string name="notices_loading">お知らせを検索しています…</string>
@@ -130,18 +130,55 @@
     <string name="planned_journey_filter_reminders">リマインダー</string>
     <string name="planned_journey_filter_archived">アーカイブ済み</string>
     <string name="planned_journey_filter_all">すべて</string>
+    <string name="planned_journey_search">駅、日付、時刻を検索</string>
+    <string name="planned_journey_all_months">すべての月</string>
     <string name="planned_journey_label">ラベル（任意）</string>
+    <string name="planned_journey_templates_title">移動のテンプレート</string>
+    <string name="planned_journey_templates_description">ルート、時刻、リマインダーを保存して再利用できます。日付は毎回選びます。</string>
+    <string name="planned_journey_template_name">移動テンプレートの名前</string>
+    <string name="planned_journey_template_placeholder">例：自宅-職場</string>
+    <string name="planned_journey_template_save_a11y">現在の移動テンプレートをこの端末にだけ保存</string>
+    <string name="planned_journey_template_apply_a11y">テンプレート %1$s を適用</string>
+    <string name="planned_journey_template_delete_a11y">テンプレート %1$s を削除</string>
+    <string name="planned_journey_template_invalid">テンプレートを保存する前に、選択した2つの駅と時刻を入力してください。</string>
+    <string name="planned_journey_template_saved">テンプレートはこの端末にだけ保存しました。移動を保存する前に必ず日付を選んでください。</string>
+    <string name="planned_journey_template_applied">テンプレート「%1$s」を適用しました。日付を選んで移動を確定してください。</string>
+    <string name="planned_journey_template_deleted">端末内のテンプレートを削除しました。</string>
+    <string name="planned_journey_clear">予定を空にする</string>
+    <string name="planned_journey_clear_title">予定を空にしますか？</string>
+    <string name="planned_journey_clear_body">この端末のすべての予定した移動（読めないものを含む）、そのリマインダー、移動テンプレートが削除されます。残したい移動は先に JSON にエクスポートしてください。既定の余裕時間は変わりません。</string>
+    <string name="planned_journey_clear_confirm">空にする</string>
+    <string name="planned_journey_cleared">予定を空にしました。移動、リマインダー、テンプレートをこの端末から削除しました。</string>
     <string name="planned_journey_origin">出発</string>
     <string name="planned_journey_destination">到着</string>
     <string name="planned_journey_route">%1$s → %2$s</string>
     <string name="planned_journey_reminder">出発前のリマインダー</string>
+    <string name="planned_journey_default_reminder_title">出発前の余裕時間</string>
+    <string name="planned_journey_default_reminder_description">移動を計画するときに提案する余裕時間を選びます。これだけでリマインダーが有効になることはなく、いつでも別の値やリマインダーなしを選べます。</string>
     <plurals name="planned_journey_reminder_value">
         <item quantity="other">%1$d 分前にリマインダー</item>
     </plurals>
     <string name="planned_journey_none">なし</string>
     <string name="planned_journey_checklist">チェックリスト</string>
     <string name="planned_journey_checklist_hint">1 行に 1 項目。個人情報などは入力しないでください。</string>
+    <string name="planned_journey_repeat_title">繰り返し</string>
+    <string name="planned_journey_repeat_description">指定した日付から、選んだ曜日の同じ時刻に移動を繰り返します。その日付の曜日は常に含まれます。</string>
+    <plurals name="planned_journey_repeat_occurrences">
+        <item quantity="other">%1$d 回</item>
+    </plurals>
     <string name="planned_journey_checklist_item">チェックリスト：%1$s</string>
+    <string name="planned_journey_preparation_title">移動の準備</string>
+    <string name="planned_journey_preparation_apply_a11y">準備 %1$s を移動に適用</string>
+    <string name="planned_journey_preset_commuter">通勤・通学</string>
+    <string name="planned_journey_preset_connection">乗り換え</string>
+    <string name="planned_journey_preset_bike">自転車の持ち込み</string>
+    <string name="planned_journey_preset_assistance">駅での介助</string>
+    <string name="planned_journey_check_time_margin">出発前の余裕時間を確認</string>
+    <string name="planned_journey_check_documents">乗車券と身分証明書を用意</string>
+    <string name="planned_journey_check_belongings">持ち物を確認</string>
+    <string name="planned_journey_check_connection">乗り換え時間を確認</string>
+    <string name="planned_journey_check_bike">自転車の状態と準備を確認</string>
+    <string name="planned_journey_check_assistance">駅で依頼した介助を確認</string>
     <string name="planned_journey_save">保存</string>
     <string name="planned_journey_cancel">キャンセル</string>
     <string name="planned_journey_complete">完了</string>
@@ -154,6 +191,17 @@
     <string name="planned_journey_keep_existing">既存を残す</string>
     <string name="planned_journey_replace_existing">競合を置き換える</string>
     <string name="planned_journey_close">閉じる</string>
+    <string name="planned_journey_text_import">テキストから読み込む</string>
+    <string name="planned_journey_text_import_description">1件以上の移動を貼り付けるか、Binario にテキストを共有してください。テキストはここに表示されるだけです。Binario が自動で読み込んだり、メッセージ、クリップボード、リンクを勝手に読み取ったりすることはありません。</string>
+    <string name="planned_journey_text_import_shared">共有されたテキストを受け取りました。プレビューを作成してデータを確認してください。Binario が自動で読み込むことはありません。</string>
+    <string name="planned_journey_calendar_import_description">追加する移動を選んでください。読み込みは追加のみで、スマートフォンにある移動は上書きしません。</string>
+    <string name="planned_journey_text_import_label">読み込む移動のテキスト</string>
+    <string name="planned_journey_text_import_example" tools:ignore="TypographyDashes">Roma Termini → Bologna Centrale · 2026-09-12 08:30\nBologna Centrale → Milano Centrale · 2026-09-12 11:05</string>
+    <string name="planned_journey_text_import_hint">各行には出発地、到着地、DD/MM/YYYY または YYYY-MM-DD 形式の日付、HH:MM 形式の時刻が必要です。テキストは削除するか読み込みを完了するまでここに残ります。</string>
+    <string name="planned_journey_text_import_preview">プレビューを作成</string>
+    <string name="planned_journey_text_import_review">追加する前に確認</string>
+    <string name="planned_journey_text_import_reviewed">駅、日付、時刻を確認しました。これは計画データで、リアルタイムではありません。</string>
+    <string name="planned_journey_text_import_apply">選択した移動を読み込む</string>
     <!-- Data provenance and operational-state announcements. -->
     <string name="data_status_demo">ローカルのデモ用カタログ — リアルタイムではありません</string>
     <string name="data_status_live">リアルタイムデータ：%1$s</string>
@@ -338,7 +386,7 @@
     <string name="journey_leg_funicular">ケーブルカー</string>
     <string name="journey_source_offline">オフラインの時刻表（GTFS オープンデータ）</string>
     <string name="journey_scheduled_only_notice">時刻表の時刻です。遅れ、番線、運休は確認されていません。駅の案内表示を確認してください。</string>
-    <string name="journey_coverage_notice">アプリに収録した時刻表を使ってスマートフォン上で計算しています。対象は収録している路線網のみです：Trenitalia（列車とバス）、Italo（列車と ItaloBus）、ロンバルディア、南チロル、トレンティーノ、EAV、ARST、TFT、スイス、オーストリア、フランス、クロアチア、一部の地方鉄道、一部都市の地下鉄と路面電車。その他の列車やバスは表示されない場合があります。</string>
+    <string name="journey_coverage_notice">アプリに収録した時刻表を使ってスマートフォン上で計算しています。対象は収録している路線網のみです：Trenitalia（列車とバス）、Italo（列車と ItaloBus）、ロンバルディア、南チロル、トレンティーノ、EAV、ARST、TFT、スイス、オーストリア、フランス、一部の地方鉄道、一部都市の地下鉄と路面電車。その他の列車やバスは表示されない場合があります。</string>
     <string name="journey_incomplete_notice">一部のオフライン時刻表を読み込めませんでした。経路が不完全な可能性があります。</string>
     <string name="journey_empty_no_solution">検索した時間帯のオフライン時刻表に経路はありません。</string>
     <string name="journey_empty_not_covered">収録しているオフライン時刻表は、一方または両方の駅に対応していません。</string>
@@ -523,9 +571,18 @@
     <string name="planned_journey_import_success">インポートが完了しました。</string>
     <string name="planned_journey_import_invalid">このドキュメントは有効な Binario のエクスポートではありません。</string>
     <string name="planned_journey_action_rejected">操作できませんでした。旅程の内容を確認してください。</string>
-    <string name="planned_journey_stored_unreadable">保存された旅程を読み込めなかったため、表示していません。</string>
+    <string name="planned_journey_stored_unreadable">保存された予定に、このバージョンでは読めないデータが含まれています。失わないように読み取り専用のままにします。読める移動だけを表示しています。「JSON をエクスポート」で保存できます。</string>
+    <string name="planned_journey_read_only">予定は読み取り専用です。変更は保存されていません。</string>
+    <string name="planned_journey_full">予定がいっぱいです（40 件）。置き換えた移動はありません。保存する前に1件削除してください。</string>
+    <string name="planned_journey_duplicate">この移動は同じ駅・日付・時刻で既に予定にあります。データは追加されていません。</string>
+    <string name="planned_journey_departure_past">この出発時刻はすでに過ぎています。移動はリマインダーなしでアーカイブに入ります。それでも保存するには「保存」をもう一度タップしてください。</string>
     <string name="planned_journey_export_failure_generic">エクスポートに失敗しました。</string>
     <string name="planned_journey_import_failure_generic">インポートに失敗しました。</string>
+    <string name="planned_journey_text_import_none">新しい完全な移動は見つかりませんでした。出発地、到着地、日付、時刻を入力してください。何も保存されていません。</string>
+    <string name="planned_journey_text_import_confirm_needed">移動を1件以上選び、確認したことを示してください。データは保存されていません。</string>
+    <plurals name="planned_journey_text_import_skipped">
+        <item quantity="other">%1$d 行は提案されませんでした：不完全、駅がカタログにない、すでに予定にある、または 40 件を超えています。</item>
+    </plurals>
     <string name="route_stations_must_differ">区間には異なる 2 つの駅を選んでください。</string>
     <string name="round_trip_return_must_follow_departure">復路は往路の出発より後にしてください。</string>
     <string name="route_required_to_start">表示を始めるには区間を入力してください。</string>
@@ -892,9 +949,32 @@
     <string name="planned_journey_delete">旅程を削除</string>
     <string name="planned_journey_delete_confirmation">この旅程とリマインダーをこの端末から削除しますか？</string>
     <string name="planned_journey_delete_success">旅程とリマインダーを削除しました。</string>
+    <string name="planned_journey_return">復路</string>
+    <string name="planned_journey_replan">計画し直す</string>
+    <string name="planned_journey_return_a11y">%1$s の復路を計画</string>
+    <string name="planned_journey_replan_a11y">%1$s を計画し直す</string>
+    <string name="planned_journey_return_prepared">復路を用意しました。保存する前に新しい日時を選んでください。</string>
+    <string name="planned_journey_replan_prepared">移動を計画し直しました。保存する前に新しい日時を選んでください。</string>
+    <string name="planned_journey_ready_title">出発の準備完了</string>
+    <string name="planned_journey_ready_local_note">この概要は保存した計画だけを使います。遅延、番線、運休は確認しません。</string>
+    <string name="planned_journey_ready_no_reminder">この移動にはリマインダーが設定されていません。</string>
+    <string name="planned_journey_ready_checklist_done">端末内のチェックリストが完了しました。</string>
+    <string name="planned_journey_ready_open_agenda">予定とチェックリストを開く</string>
+    <string name="planned_journey_countdown_minutes">あと %1$d 分</string>
+    <string name="planned_journey_countdown_hours">あと %1$d 時間</string>
+    <string name="planned_journey_countdown_hours_minutes">あと %1$d 時間 %2$d 分</string>
+    <plurals name="planned_journey_ready_checklist_left">
+        <item quantity="other">端末内のチェックリストに準備する項目が %1$d 件あります。</item>
+    </plurals>
     <string name="agenda_editor_date_value">日付：%1$s</string>
     <string name="agenda_editor_time_value">時刻：%1$s</string>
-    <string name="agenda_editor_first_segment">最初の区間を編集しています。ほかの区間は変わりません。</string>
+    <string name="agenda_editor_unset">未選択</string>
+    <string name="planned_journey_leg_title">区間 %1$d/%2$d</string>
+    <string name="planned_journey_add_leg">区間を追加</string>
+    <string name="planned_journey_remove_leg">区間を削除</string>
+    <string name="planned_journey_remove_leg_a11y">区間 %1$d/%2$d を削除</string>
+    <string name="planned_journey_legs_disconnected">各区間は前の区間の到着駅から出発する必要があります。</string>
+    <string name="planned_journey_legs_not_chronological">各区間は前の区間より後に出発する必要があります。</string>
     <string name="agenda_editor_station_hint">駅名またはコードで検索して駅を選んでください。</string>
     <string name="agenda_editor_select_station">%1$s を選択、コード %2$s</string>
     <!-- New features (October 2026) -->

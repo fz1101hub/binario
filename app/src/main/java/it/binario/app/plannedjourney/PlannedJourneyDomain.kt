@@ -492,33 +492,41 @@ data class PlannedJourneyAgendaEntry(
     val occurrence: PlannedJourneyOccurrence
 )
 
-/** Ordered local agenda; it is intentionally not a notification scheduler. */
+/**
+ * Ordered local agenda; it is intentionally not a notification scheduler. The archive holds what is behind the user:
+ * completed or archived journeys, and occurrences that have departed or were completed, newest first.
+ */
 object PlannedJourneyAgenda {
     fun ordered(
         journeys: Iterable<PlannedJourney>,
         filter: PlannedJourneyAgendaFilter = PlannedJourneyAgendaFilter.UPCOMING,
         now: Instant
     ): List<PlannedJourneyAgendaEntry> {
-        return journeys.asSequence()
+        val entries = journeys.asSequence()
             .filter { journey ->
                 when (filter) {
                     PlannedJourneyAgendaFilter.UPCOMING -> journey.status == PlannedJourneyStatus.ACTIVE
-                    PlannedJourneyAgendaFilter.ARCHIVED -> journey.status == PlannedJourneyStatus.ARCHIVED
                     PlannedJourneyAgendaFilter.REMINDERS -> journey.status == PlannedJourneyStatus.ACTIVE && journey.reminder != null
-                    PlannedJourneyAgendaFilter.ALL -> true
+                    PlannedJourneyAgendaFilter.ARCHIVED, PlannedJourneyAgendaFilter.ALL -> true
                 }
             }
             .flatMap { journey -> PlannedJourneyOccurrences.forJourney(journey).asSequence().map { occurrence -> PlannedJourneyAgendaEntry(journey, occurrence) } }
             .filter { entry ->
                 when (filter) {
-                    PlannedJourneyAgendaFilter.UPCOMING, PlannedJourneyAgendaFilter.REMINDERS ->
-                        !entry.occurrence.scheduledAt.isBefore(now) && entry.occurrence.occurrenceDate !in entry.journey.completedOccurrenceDates
-                    PlannedJourneyAgendaFilter.ARCHIVED, PlannedJourneyAgendaFilter.ALL -> true
+                    PlannedJourneyAgendaFilter.UPCOMING, PlannedJourneyAgendaFilter.REMINDERS -> isUpcoming(entry, now)
+                    PlannedJourneyAgendaFilter.ARCHIVED -> entry.journey.status != PlannedJourneyStatus.ACTIVE || !isUpcoming(entry, now)
+                    PlannedJourneyAgendaFilter.ALL -> true
                 }
             }
-            .sortedWith(compareBy<PlannedJourneyAgendaEntry> { it.occurrence.scheduledAt }.thenBy { it.journey.id })
+        val chronological = compareBy<PlannedJourneyAgendaEntry> { it.occurrence.scheduledAt }.thenBy { it.journey.id }
+        return entries
+            .sortedWith(if (filter == PlannedJourneyAgendaFilter.ARCHIVED) chronological.reversed() else chronological)
             .toList()
     }
+
+    /** Not departed yet and not completed: the "next journey" of every surface, whatever the phone's time zone. */
+    fun isUpcoming(entry: PlannedJourneyAgendaEntry, now: Instant): Boolean =
+        !entry.occurrence.scheduledAt.isBefore(now) && entry.occurrence.occurrenceDate !in entry.journey.completedOccurrenceDates
 }
 
 /** Canonical itinerary/schedule deduplication, preserving the first journey supplied. */
@@ -602,4 +610,42 @@ object PlannedJourneyDrafts {
         }),
         createdAt = createdAt
     )
+}
+
+/** The Agenda's search and month filter, applied to the entries of the chosen filter; nothing leaves the device. */
+object PlannedJourneyAgendaSearch {
+    private val italianDate = java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy", Locale.ROOT)
+
+    /** Every word of [query] must appear in the label, a station name or code, the date or the time (case and accents ignored). */
+    fun matches(entry: PlannedJourneyAgendaEntry, query: String): Boolean {
+        val terms = fold(query).split(' ').filter(String::isNotEmpty)
+        if (terms.isEmpty()) return true
+        val segments = entry.occurrence.itinerary.segments
+        val haystack = fold(buildList {
+            add(entry.journey.label)
+            segments.forEach { segment ->
+                add(segment.origin.displayName)
+                add(segment.destination.displayName)
+                segment.origin.railwayCode?.let(::add)
+                segment.destination.railwayCode?.let(::add)
+                add(segment.departure.date.toString())
+                add(segment.departure.date.format(italianDate))
+                add(segment.departure.time.toString())
+            }
+        }.joinToString(" "))
+        return terms.all { it in haystack }
+    }
+
+    /** The months of [entries] in their order, each once: the month chips. */
+    fun months(entries: List<PlannedJourneyAgendaEntry>): List<java.time.YearMonth> =
+        entries.map { java.time.YearMonth.from(it.occurrence.occurrenceDate) }.distinct()
+
+    fun filter(entries: List<PlannedJourneyAgendaEntry>, query: String, month: java.time.YearMonth?): List<PlannedJourneyAgendaEntry> =
+        entries.filter { entry ->
+            (month == null || java.time.YearMonth.from(entry.occurrence.occurrenceDate) == month) && matches(entry, query)
+        }
+
+    private fun fold(value: String): String = java.text.Normalizer.normalize(value, java.text.Normalizer.Form.NFD)
+        .replace(Regex("\\p{M}+"), "").lowercase(Locale.ROOT)
+        .replace(Regex("[^\\p{L}\\p{N}:/-]+"), " ").trim()
 }

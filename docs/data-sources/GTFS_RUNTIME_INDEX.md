@@ -29,7 +29,7 @@ Una corsa pubblicata da due pack con lo stesso numero e almeno una connessione i
 
 ## Ferrovie regionali e reti urbane
 
-I pack di `gtfs-transit/` e, nelle build personali, di `gtfs-personal/` usano lo stesso indice. `EmbeddedGtfsPacks.all` elenca i pack ferroviari (i dodici del primo rilascio, nello stesso ordine, poi le ferrovie regionali), `EmbeddedGtfsPacks.urban` le reti urbane (`EmbeddedGtfsPackKind.URBAN`), lette solo dal calcolo dei viaggi con cambi e dalla ricerca delle fermate.
+I pack di `gtfs-transit/` e, nelle build personali, di `gtfs-personal/` usano lo stesso indice. `EmbeddedGtfsPacks.all` elenca i pack ferroviari (gli undici del primo rilascio, nello stesso ordine, poi le ferrovie regionali), `EmbeddedGtfsPacks.urban` le reti urbane (`EmbeddedGtfsPackKind.URBAN`), lette solo dal calcolo dei viaggi con cambi e dalla ricerca delle fermate.
 
 - **Tipi di tratta.** `route_type` 1 e 400–499 sono `LegMode.METRO`, 0 e 900–999 `TRAM`, 5, 6, 7 e 1300–1499 `FUNICULAR` (funicolari, cremagliere, ascensori pubblici); le corse urbane non hanno un numero pubblico, solo la linea («M3», «T2», «14»; Milano pubblica le metro come «1»…«5» e Roma come «MEA», normalizzate in «M1» e «A»).
 - **Fermate urbane.** Restano fermate del proprio pack (`gtfs:<pack>:<stop>`), mai risolte a una stazione del catalogo per nome. Il pack porta `binario_stop_modes.txt` (lettere M, T, F per fermata e stazione madre, scritto da `tools/build_gtfs_packs.py`) per i badge della ricerca; `EmbeddedUrbanStopIndex` legge solo `stops.txt` e quel file, al primo uso.

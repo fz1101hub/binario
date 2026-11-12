@@ -24,6 +24,21 @@ internal fun UiMessageKey.resourceId(): Int = when (this) {
     UiMessageKey.PLANNED_JOURNEY_IMPORT_INVALID -> R.string.planned_journey_import_invalid
     UiMessageKey.PLANNED_JOURNEY_ACTION_REJECTED -> R.string.planned_journey_action_rejected
     UiMessageKey.PLANNED_JOURNEY_STORED_UNREADABLE -> R.string.planned_journey_stored_unreadable
+    UiMessageKey.PLANNED_JOURNEY_READ_ONLY -> R.string.planned_journey_read_only
+    UiMessageKey.PLANNED_JOURNEY_FULL -> R.string.planned_journey_full
+    UiMessageKey.PLANNED_JOURNEY_DUPLICATE -> R.string.planned_journey_duplicate
+    UiMessageKey.PLANNED_JOURNEY_DEPARTURE_PAST -> R.string.planned_journey_departure_past
+    UiMessageKey.PLANNED_JOURNEY_RETURN_PREPARED -> R.string.planned_journey_return_prepared
+    UiMessageKey.PLANNED_JOURNEY_REPLAN_PREPARED -> R.string.planned_journey_replan_prepared
+    UiMessageKey.PLANNED_JOURNEY_LEGS_DISCONNECTED -> R.string.planned_journey_legs_disconnected
+    UiMessageKey.PLANNED_JOURNEY_LEGS_NOT_CHRONOLOGICAL -> R.string.planned_journey_legs_not_chronological
+    UiMessageKey.PLANNED_JOURNEY_TEXT_IMPORT_NONE -> R.string.planned_journey_text_import_none
+    UiMessageKey.PLANNED_JOURNEY_TEXT_IMPORT_CONFIRM_NEEDED -> R.string.planned_journey_text_import_confirm_needed
+    UiMessageKey.PLANNED_JOURNEY_TEMPLATE_INVALID -> R.string.planned_journey_template_invalid
+    UiMessageKey.PLANNED_JOURNEY_TEMPLATE_SAVED -> R.string.planned_journey_template_saved
+    UiMessageKey.PLANNED_JOURNEY_TEMPLATE_APPLIED -> R.string.planned_journey_template_applied
+    UiMessageKey.PLANNED_JOURNEY_TEMPLATE_DELETED -> R.string.planned_journey_template_deleted
+    UiMessageKey.PLANNED_JOURNEY_CLEARED -> R.string.planned_journey_cleared
     UiMessageKey.PLANNED_JOURNEY_EXPORT_SUCCESS -> R.string.planned_journey_export_success
     UiMessageKey.PLANNED_JOURNEY_EXPORT_FAILURE -> R.string.planned_journey_export_failure_generic
     UiMessageKey.PLANNED_JOURNEY_IMPORT_FAILURE -> R.string.planned_journey_import_failure_generic

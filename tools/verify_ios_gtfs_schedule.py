@@ -10,12 +10,16 @@ import sqlite3
 import sys
 import tempfile
 import zlib
-from datetime import date
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from typing import Sequence
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 APPLICATION_ID = int.from_bytes(b"BNGT", "big")
+# Packs in the index; the same value as build_ios_gtfs_schedule.INDEXED_PACK_COUNT.
+INDEXED_PACK_COUNT = 9
+# Packs whose trips must touch a catalogue station with codes; build_ios_gtfs_schedule.FOREIGN_PACKS.
+FOREIGN_PACKS = ("ch-otd-gtfs", "oebb-gtfs", "sncf-gtfs")
 USER_VERSION = 2
 METADATA_SCHEMA_VERSION = 1
 MAX_METADATA_BYTES = 4 * 1024 * 1024
@@ -39,8 +43,15 @@ REQUIRED_INDICES = {
     "idx_stop_pack_external",
     "idx_stop_catalog_station",
     "idx_stop_time_stop_departure",
-    "idx_stop_time_trip_sequence",
 }
+# The reader's limits (SQLiteGTFSJourneyRepository.swift): rows a board or planner query reads for one station and
+# agency time zone, stops bound to one catalogue station, agency time zones.  An index above them fails on the iPhone
+# with limitExceeded; the verifier refuses it first.
+MAX_CANDIDATE_ROWS = 4_096
+MAX_RESOLVED_STOPS = 128
+MAX_TIME_ZONES = 16
+# The reader computes every service day in the first agency time zone: all of them must keep Rome's UTC offset.
+REFERENCE_TIME_ZONE = "Europe/Rome"
 
 class VerificationError(RuntimeError):
     pass
@@ -54,6 +65,23 @@ def sha256_file(path: Path) -> str:
         while chunk := stream.read(1024 * 1024):
             digest.update(chunk)
     return digest.hexdigest()
+
+def verify_rome_offsets(zones: Sequence[ZoneInfo], first: int | None, last: int | None, last_days: int | None) -> None:
+    """Every agency zone has Rome's UTC offset at every hour of the index's service days (one day each side)."""
+    if first is None or last is None:
+        return
+    rome = ZoneInfo(REFERENCE_TIME_ZONE)
+    start = datetime(first // 10_000, first // 100 % 100, first % 100, tzinfo=timezone.utc) - timedelta(days=1)
+    end = datetime(last // 10_000, last // 100 % 100, last % 100, tzinfo=timezone.utc) + timedelta(days=(last_days or 0) + 1)
+    require(end - start <= timedelta(days=4_000), "service range too long to check time zones")
+    moment = start
+    while moment <= end:
+        reference = moment.astimezone(rome).utcoffset()
+        for zone in zones:
+            require(moment.astimezone(zone).utcoffset() == reference,
+                    f"agency time zone {zone.key} differs from {REFERENCE_TIME_ZONE} at {moment.isoformat()}")
+        moment += timedelta(hours=1)
+
 
 def require(condition: bool, message: str) -> None:
     if not condition:
@@ -79,12 +107,12 @@ def verify_input_fingerprint(
     files = inputs.get("files")
     expected_fingerprint = inputs.get("fingerprintSha256")
     base_path = inputs.get("basePath")
-    expected_count = 13 if source_policy_path is not None else 12
+    expected_count = INDEXED_PACK_COUNT + (3 if source_policy_path is not None else 2)
     require(
         isinstance(files, list) and len(files) == expected_count,
-        "metadata must describe manifest, catalog, reviewed source policy, and 10 archives"
+        f"metadata must describe manifest, catalog, reviewed source policy, and {INDEXED_PACK_COUNT} archives"
         if source_policy_path is not None
-        else "metadata must describe manifest, catalog, and 10 archives",
+        else f"metadata must describe manifest, catalog, and {INDEXED_PACK_COUNT} archives",
     )
     require(isinstance(expected_fingerprint, str) and len(expected_fingerprint) == 64, "invalid input fingerprint")
     require(isinstance(base_path, str) and base_path, "metadata input basePath is missing")
@@ -113,7 +141,7 @@ def verify_input_fingerprint(
         descriptors.append({"path": raw_path, "size": expected_size, "sha256": expected_hash})
     actual_fingerprint = hashlib.sha256(canonical_json(descriptors)).hexdigest()
     require(actual_fingerprint == expected_fingerprint, "input fingerprint mismatch")
-    require(inputs.get("packCount") == 10, "metadata pack count must be 10")
+    require(inputs.get("packCount") == INDEXED_PACK_COUNT, f"metadata pack count must be {INDEXED_PACK_COUNT}")
     if source_policy_path is not None:
         require(source_policy_path.resolve() in resolved_inputs, "reviewed GTFS source policy is absent from the input fingerprint")
     return actual_fingerprint
@@ -199,7 +227,7 @@ def verify_database(path: Path, metadata: dict[str, object], input_fingerprint: 
         require(actual_indices == REQUIRED_INDICES, f"index mismatch: {sorted(actual_indices)}")
         counts = {table: int(connection.execute(f"SELECT count(*) FROM {table}").fetchone()[0]) for table in REQUIRED_TABLE_COLUMNS if table != "metadata"}
         require(counts == expected_counts, f"row count mismatch: expected {expected_counts}, got {counts}")
-        require(counts["pack"] == 10, "database must contain exactly 10 packs")
+        require(counts["pack"] == INDEXED_PACK_COUNT, f"database must contain exactly {INDEXED_PACK_COUNT} packs")
         require(counts["trip"] > 0 and counts["stop_time"] > 0, "schedule is empty")
         embedded = dict(connection.execute("SELECT key,value FROM metadata"))
         require(embedded.get("input_fingerprint_sha256") == input_fingerprint, "embedded input fingerprint mismatch")
@@ -208,31 +236,44 @@ def verify_database(path: Path, metadata: dict[str, object], input_fingerprint: 
         require(json.loads(embedded.get("row_counts_json", "null")) == counts, "embedded row counts mismatch")
         incomplete = connection.execute("SELECT count(*) FROM trip t WHERE NOT EXISTS (SELECT 1 FROM stop_time st WHERE st.trip_id=t.id)").fetchone()[0]
         require(incomplete == 0, "trip without stop_times found")
-        unverified = connection.execute("SELECT count(*) FROM trip t WHERE NOT EXISTS (SELECT 1 FROM stop_time st JOIN stop s ON s.id=st.stop_id WHERE st.trip_id=t.id AND s.catalog_station_id IS NOT NULL AND (s.railway_code IS NOT NULL OR s.trenitalia_location_id IS NOT NULL))").fetchone()[0]
+        # A trip touches a catalogue station; in a foreign operator's pack, one with codes (FOREIGN_PACKS).
+        unverified = connection.execute(
+            "SELECT count(*) FROM trip t JOIN pack p ON p.id=t.pack_id WHERE NOT EXISTS ("
+            "SELECT 1 FROM stop_time st JOIN stop s ON s.id=st.stop_id WHERE st.trip_id=t.id AND s.catalog_station_id IS NOT NULL "
+            f"AND (p.source_id NOT IN ({','.join('?' for _ in FOREIGN_PACKS)}) OR s.railway_code IS NOT NULL OR s.trenitalia_location_id IS NOT NULL))",
+            sorted(FOREIGN_PACKS),
+        ).fetchone()[0]
         require(unverified == 0, "trip not touching a verified catalog station found")
         non_rail = connection.execute(
-            """
-            SELECT count(*)
-            FROM route r JOIN pack p ON p.id=r.pack_id
-            WHERE r.route_type != 2
-              AND NOT (r.route_type BETWEEN 100 AND 199)
-              AND NOT (
-                p.source_id='toscana-tft-gtfs'
-                AND r.route_type=3
-                AND r.external_id IN ('1028056267','2272465657')
-              )
-            """
+            "SELECT count(*) FROM route WHERE route_type != 2 AND NOT (route_type BETWEEN 100 AND 199)"
         ).fetchone()[0]
         require(non_rail == 0, "non-rail route found")
         invalid_bikes = connection.execute("SELECT count(*) FROM trip WHERE bikes_allowed IS NOT NULL AND bikes_allowed NOT IN (1, 2)").fetchone()[0]
         require(invalid_bikes == 0, "trip bikes_allowed outside 1, 2 or NULL")
         invalid_bits = connection.execute("SELECT count(*) FROM service WHERE length(active_days) != (day_count + 7) / 8").fetchone()[0]
         require(invalid_bits == 0, "service bitset length mismatch")
-        for (timezone,) in connection.execute("SELECT DISTINCT timezone FROM agency"):
+        zones: list[ZoneInfo] = []
+        for (timezone,) in connection.execute("SELECT DISTINCT timezone FROM agency ORDER BY timezone"):
             try:
-                ZoneInfo(str(timezone))
+                zones.append(ZoneInfo(str(timezone)))
             except (ZoneInfoNotFoundError, ValueError) as error:
                 raise VerificationError(f"invalid agency IANA timezone: {timezone!r}") from error
+        require(len(zones) <= MAX_TIME_ZONES, f"more than {MAX_TIME_ZONES} agency time zones")
+        first, last = connection.execute(
+            "SELECT min(start_date), max(start_date) FROM service"
+        ).fetchone()
+        last_days = connection.execute("SELECT max(day_count) FROM service").fetchone()[0]
+        verify_rome_offsets(zones, first, last, last_days)
+        busiest = connection.execute(
+            "SELECT max(rows) FROM (SELECT count(*) AS rows FROM stop_time AS st JOIN stop AS s ON s.id = st.stop_id "
+            "JOIN trip AS t ON t.id = st.trip_id JOIN route AS r ON r.id = t.route_id JOIN agency AS a ON a.id = r.agency_id "
+            "WHERE s.catalog_station_id IS NOT NULL AND st.pickup_type = 0 GROUP BY s.catalog_station_id, a.timezone)"
+        ).fetchone()[0] or 0
+        require(busiest <= MAX_CANDIDATE_ROWS, f"a station has {busiest} boarding rows in one time zone, above {MAX_CANDIDATE_ROWS}")
+        most_stops = connection.execute(
+            "SELECT max(stops) FROM (SELECT count(*) AS stops FROM stop WHERE catalog_station_id IS NOT NULL GROUP BY catalog_station_id)"
+        ).fetchone()[0] or 0
+        require(most_stops <= MAX_RESOLVED_STOPS, f"a station has {most_stops} stops, above {MAX_RESOLVED_STOPS}")
         invalid_same_stop = connection.execute(
             "SELECT count(*) FROM stop_time WHERE arrival_seconds IS NOT NULL "
             "AND (departure_seconds IS NULL OR departure_seconds < arrival_seconds)"

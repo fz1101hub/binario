@@ -1,4 +1,4 @@
-<resources>
+<resources xmlns:tools="http://schemas.android.com/tools">
     <!-- New data sources (October 2026) -->
     <string name="notices_train_title">Avis pour ce train</string>
     <string name="notices_loading">Recherche des avis en cours…</string>
@@ -133,11 +133,31 @@
     <string name="planned_journey_filter_reminders">Rappels</string>
     <string name="planned_journey_filter_archived">Archivés</string>
     <string name="planned_journey_filter_all">Tous</string>
+    <string name="planned_journey_search">Rechercher gare, date ou heure</string>
+    <string name="planned_journey_all_months">Tous les mois</string>
     <string name="planned_journey_label">Libellé facultatif</string>
+    <string name="planned_journey_templates_title">Modèles de voyage</string>
+    <string name="planned_journey_templates_description">Enregistrez itinéraire, horaire et rappel pour les réutiliser. La date reste toujours à choisir.</string>
+    <string name="planned_journey_template_name">Nom du modèle de voyage</string>
+    <string name="planned_journey_template_placeholder">Ex. Domicile-travail</string>
+    <string name="planned_journey_template_save_a11y">Enregistrez le modèle de voyage actuel uniquement sur l\'appareil</string>
+    <string name="planned_journey_template_apply_a11y">Appliquer le modèle %1$s</string>
+    <string name="planned_journey_template_delete_a11y">Supprimer le modèle %1$s</string>
+    <string name="planned_journey_template_invalid">Complétez deux gares sélectionnées et un horaire avant d\'enregistrer un modèle.</string>
+    <string name="planned_journey_template_saved">Modèle enregistré uniquement sur cet appareil. Choisissez toujours la date avant d\'enregistrer un trajet.</string>
+    <string name="planned_journey_template_applied">Modèle «%1$s» appliqué. Choisissez la date et confirmez le trajet.</string>
+    <string name="planned_journey_template_deleted">Modèle local supprimé.</string>
+    <string name="planned_journey_clear">Vider l’Agenda</string>
+    <string name="planned_journey_clear_title">Vider l’Agenda ?</string>
+    <string name="planned_journey_clear_body">Tous les trajets planifiés de cet appareil, y compris ceux illisibles, leurs rappels et les modèles de trajet seront supprimés. Exportez d’abord en JSON les trajets à conserver. L’avance par défaut reste inchangée.</string>
+    <string name="planned_journey_clear_confirm">Vider</string>
+    <string name="planned_journey_cleared">Agenda vidé : trajets, rappels et modèles supprimés de cet appareil.</string>
     <string name="planned_journey_origin">Départ</string>
     <string name="planned_journey_destination">Arrivée</string>
     <string name="planned_journey_route">%1$s → %2$s</string>
     <string name="planned_journey_reminder">Rappel avant le départ</string>
+    <string name="planned_journey_default_reminder_title">Marge avant le départ</string>
+    <string name="planned_journey_default_reminder_description">Choisissez une avance à proposer lors de la planification d\'un trajet. N\'active pas les rappels seul et vous pouvez toujours choisir une valeur différente ou aucun rappel.</string>
     <plurals name="planned_journey_reminder_value">
         <item quantity="one">Rappel %1$d minute avant</item>
         <item quantity="many">Rappel %1$d minutes avant</item>
@@ -146,7 +166,26 @@
     <string name="planned_journey_none">Aucun</string>
     <string name="planned_journey_checklist">Liste de contrôle</string>
     <string name="planned_journey_checklist_hint">Une entrée par ligne. N’insérez pas de données sensibles.</string>
+    <string name="planned_journey_repeat_title">Récurrence</string>
+    <string name="planned_journey_repeat_description">Répète le trajet à la même heure les jours choisis, à partir de la date indiquée. Le jour de cette date est toujours inclus.</string>
+    <plurals name="planned_journey_repeat_occurrences">
+        <item quantity="one">%1$d trajet</item>
+        <item quantity="many">%1$d trajets</item>
+        <item quantity="other">%1$d trajets</item>
+    </plurals>
     <string name="planned_journey_checklist_item">Liste de contrôle : %1$s</string>
+    <string name="planned_journey_preparation_title">Préparation du voyage</string>
+    <string name="planned_journey_preparation_apply_a11y">Appliquer la préparation %1$s au trajet</string>
+    <string name="planned_journey_preset_commuter">Pendulaire</string>
+    <string name="planned_journey_preset_connection">Correspondance</string>
+    <string name="planned_journey_preset_bike">Vélo dans le train</string>
+    <string name="planned_journey_preset_assistance">Assistance en gare</string>
+    <string name="planned_journey_check_time_margin">Vérifiez le temps d\'avance</string>
+    <string name="planned_journey_check_documents">Préparez le titre de transport et les documents</string>
+    <string name="planned_journey_check_belongings">Contrôlez vos effets personnels</string>
+    <string name="planned_journey_check_connection">Vérifiez le temps pour la correspondance</string>
+    <string name="planned_journey_check_bike">Vérifiez l\'état et la préparation du vélo</string>
+    <string name="planned_journey_check_assistance">Confirmez l\'assistance demandée en gare</string>
     <string name="planned_journey_save">Enregistrer</string>
     <string name="planned_journey_cancel">Annuler</string>
     <string name="planned_journey_complete">Terminer</string>
@@ -159,6 +198,17 @@
     <string name="planned_journey_keep_existing">Conserver les éléments existants</string>
     <string name="planned_journey_replace_existing">Remplacer les conflits</string>
     <string name="planned_journey_close">Fermer</string>
+    <string name="planned_journey_text_import">Importer depuis du texte</string>
+    <string name="planned_journey_text_import_description">Collez un ou plusieurs trajets ou utilisez Partager le texte vers Binario. Le texte est seulement proposé ici: Binario n\'importe pas automatiquement et ne lit pas les messages, le presse-papiers ou les liens seul.</string>
+    <string name="planned_journey_text_import_shared">Texte partagé reçu. Créez l\'aperçu et vérifiez les données: Binario n\'importe pas automatiquement.</string>
+    <string name="planned_journey_calendar_import_description">Choisissez les trajets à ajouter. L\'importation est additive : elle n\'écrase pas les trajets déjà sur le téléphone.</string>
+    <string name="planned_journey_text_import_label">Texte des trajets à importer</string>
+    <string name="planned_journey_text_import_example" tools:ignore="TypographyDashes">Roma Termini → Bologna Centrale · 12/09/2026 à 08:30\nBologna Centrale → Milano Centrale · 12/09/2026 à 11:05</string>
+    <string name="planned_journey_text_import_hint">Chaque ligne requiert origine, destination, date JJ/MM/YYYY ou YYYY-MM-JJ et heure HH:MM. Le texte reste ici tant que vous l\'effacez ou complétez l\'importation.</string>
+    <string name="planned_journey_text_import_preview">Créer l\'aperçu</string>
+    <string name="planned_journey_text_import_review">Vérifier avant d\'ajouter</string>
+    <string name="planned_journey_text_import_reviewed">J\'ai vérifié gares, date et heure: ce sont des données planifiées, pas en temps réel.</string>
+    <string name="planned_journey_text_import_apply">Importer les sélectionnées</string>
 
     <!-- Data provenance and operational-state announcements. -->
     <string name="data_status_demo">Catalogue de démonstration local — non en direct</string>
@@ -356,7 +406,7 @@
     <string name="journey_leg_funicular">Funiculaire</string>
     <string name="journey_source_offline">Horaire théorique hors ligne (open data GTFS)</string>
     <string name="journey_scheduled_only_notice">Horaires théoriques : retards, voies et suppressions ne sont pas vérifiés. Consultez les écrans en gare.</string>
-    <string name="journey_coverage_notice">Calculé sur le téléphone avec les horaires inclus dans l’app, uniquement pour les réseaux qu’ils couvrent : Trenitalia (trains et cars), Italo (trains et ItaloBus), Lombardie, Haut-Adige, Trentin, EAV, ARST, TFT, Suisse, Autriche, France et Croatie, quelques chemins de fer régionaux, et les métros et tramways de quelques villes. D’autres trains et cars peuvent manquer.</string>
+    <string name="journey_coverage_notice">Calculé sur le téléphone avec les horaires inclus dans l’app, uniquement pour les réseaux qu’ils couvrent : Trenitalia (trains et cars), Italo (trains et ItaloBus), Lombardie, Haut-Adige, Trentin, EAV, ARST, TFT, Suisse, Autriche et France, quelques chemins de fer régionaux, et les métros et tramways de quelques villes. D’autres trains et cars peuvent manquer.</string>
     <string name="journey_incomplete_notice">Certains horaires hors ligne n’ont pas pu être lus : les trajets peuvent être incomplets.</string>
     <string name="journey_empty_no_solution">Aucun trajet dans les horaires hors ligne pour la plage horaire recherchée.</string>
     <string name="journey_empty_not_covered">Les horaires hors ligne inclus ne couvrent pas l’une des gares ou les deux.</string>
@@ -555,9 +605,20 @@
     <string name="planned_journey_import_success">Importation terminée.</string>
     <string name="planned_journey_import_invalid">Le document n’est pas une exportation Binario valide.</string>
     <string name="planned_journey_action_rejected">Action refusée : vérifiez les données du voyage.</string>
-    <string name="planned_journey_stored_unreadable">Les voyages planifiés enregistrés sont illisibles et n’ont pas été chargés.</string>
+    <string name="planned_journey_stored_unreadable">L’Agenda enregistré contient des données que cette version ne sait pas lire : il reste en lecture seule pour ne pas les perdre. Seuls les trajets lisibles sont affichés ; vous pouvez les enregistrer avec « Exporter JSON ».</string>
+    <string name="planned_journey_read_only">L’Agenda est en lecture seule : aucune modification n’a été enregistrée.</string>
+    <string name="planned_journey_full">Agenda plein (40 trajets). Aucun trajet n’a été remplacé : supprimez-en un avant d’en enregistrer un autre.</string>
+    <string name="planned_journey_duplicate">Ce trajet est déjà dans l’Agenda avec les mêmes gares, date et heure. Aucune donnée n’a été ajoutée.</string>
+    <string name="planned_journey_departure_past">Ce départ est déjà passé : le trajet ira dans les archives, sans rappel. Touchez à nouveau « Enregistrer » pour l’enregistrer quand même.</string>
     <string name="planned_journey_export_failure_generic">Échec de l’exportation.</string>
     <string name="planned_journey_import_failure_generic">Échec de l’importation.</string>
+    <string name="planned_journey_text_import_none">Aucun nouveau trajet complet trouvé. Saisissez origine, destination, date et heure: rien n\'a été enregistré.</string>
+    <string name="planned_journey_text_import_confirm_needed">Sélectionnez au moins un trajet et confirmez que vous l\'avez vérifié. Aucune donnée n\'a été enregistrée.</string>
+    <plurals name="planned_journey_text_import_skipped">
+        <item quantity="one">%1$d ligne non proposée : incomplète, avec des gares absentes du catalogue, déjà dans l’Agenda ou au-delà de 40 trajets.</item>
+        <item quantity="many">%1$d lignes non proposées : incomplètes, avec des gares absentes du catalogue, déjà dans l’Agenda ou au-delà de 40 trajets.</item>
+        <item quantity="other">%1$d lignes non proposées : incomplètes, avec des gares absentes du catalogue, déjà dans l’Agenda ou au-delà de 40 trajets.</item>
+    </plurals>
     <string name="route_stations_must_differ">Choisissez deux gares différentes pour le trajet.</string>
     <string name="round_trip_return_must_follow_departure">Le retour doit avoir lieu après le départ de l’aller.</string>
     <string name="route_required_to_start">Saisissez un trajet pour commencer la consultation.</string>
@@ -953,9 +1014,34 @@
     <string name="planned_journey_delete">Supprimer le voyage</string>
     <string name="planned_journey_delete_confirmation">Supprimer ce voyage et ses rappels de cet appareil ?</string>
     <string name="planned_journey_delete_success">Voyage et rappels associés supprimés.</string>
+    <string name="planned_journey_return">Retour</string>
+    <string name="planned_journey_replan">Replanifier</string>
+    <string name="planned_journey_return_a11y">Planifier le retour pour %1$s</string>
+    <string name="planned_journey_replan_a11y">Replanifier %1$s</string>
+    <string name="planned_journey_return_prepared">Retour préparé. Choisissez une nouvelle date et heure avant d\'enregistrer.</string>
+    <string name="planned_journey_replan_prepared">Trajet replanifié. Choisissez une nouvelle date et heure avant d\'enregistrer.</string>
+    <string name="planned_journey_ready_title">Prêt à partir</string>
+    <string name="planned_journey_ready_local_note">Ce résumé utilise uniquement le plan enregistré : il ne vérifie pas les retards, les quais ou les annulations.</string>
+    <string name="planned_journey_ready_no_reminder">Aucun rappel défini pour ce trajet.</string>
+    <string name="planned_journey_ready_checklist_done">Checklist locale complétée.</string>
+    <string name="planned_journey_ready_open_agenda">Ouvrir l\'agenda et la checklist</string>
+    <string name="planned_journey_countdown_minutes">Dans %1$d min</string>
+    <string name="planned_journey_countdown_hours">Dans %1$d h</string>
+    <string name="planned_journey_countdown_hours_minutes">Dans %1$d h %2$d min</string>
+    <plurals name="planned_journey_ready_checklist_left">
+        <item quantity="one">%1$d élément à préparer dans la checklist locale.</item>
+        <item quantity="many">%1$d éléments à préparer dans la checklist locale.</item>
+        <item quantity="other">%1$d éléments à préparer dans la checklist locale.</item>
+    </plurals>
     <string name="agenda_editor_date_value">Date : %1$s</string>
     <string name="agenda_editor_time_value">Heure : %1$s</string>
-    <string name="agenda_editor_first_segment">Vous modifiez la première étape ; les autres restent inchangées.</string>
+    <string name="agenda_editor_unset">à choisir</string>
+    <string name="planned_journey_leg_title">Étape %1$d sur %2$d</string>
+    <string name="planned_journey_add_leg">Ajouter une étape</string>
+    <string name="planned_journey_remove_leg">Retirer l’étape</string>
+    <string name="planned_journey_remove_leg_a11y">Retirer l’étape %1$d sur %2$d</string>
+    <string name="planned_journey_legs_disconnected">Chaque étape doit partir de la gare d’arrivée de l’étape précédente.</string>
+    <string name="planned_journey_legs_not_chronological">Chaque étape doit partir après l’étape précédente.</string>
     <string name="agenda_editor_station_hint">Recherchez par nom ou code et sélectionnez une gare.</string>
     <string name="agenda_editor_select_station">Sélectionner %1$s, code %2$s</string>
     <!-- New features (October 2026) -->

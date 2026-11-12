@@ -22,7 +22,7 @@ public struct SQLiteGTFSJourneyRepository: JourneyRepository, Sendable {
     private static let expectedIndices: Set<String> = [
         "idx_route_pack_external", "idx_service_pack_external", "idx_trip_pack_external",
         "idx_trip_route_service", "idx_stop_pack_external", "idx_stop_catalog_station",
-        "idx_stop_time_stop_departure", "idx_stop_time_trip_sequence",
+        "idx_stop_time_stop_departure",
     ]
     private static let maximumResolvedStops = 128
     private static let maximumTimeZones = 16

@@ -429,10 +429,12 @@ def freshness_rows(directories: Sequence[Path], as_of: date, default_min_valid_d
         manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
         for pack in manifest.get("packs", []):
             last = date.fromisoformat(str(pack["lastServiceDate"]))
+            # The release gate judges the end of full coverage (fullServiceUntil), as build_gtfs_packs.py --check does.
+            end = builder.release_end(pack)
             threshold = builder.pack_min_valid_days(pack, default_min_valid_days)
-            days_left = (last - as_of).days
+            days_left = (end - as_of).days
             source_id = pack["sourceId"]
-            fresh = builder.is_release_fresh(last, as_of, threshold)
+            fresh = builder.is_release_fresh(end, as_of, threshold)
             if source_id in MANUAL_SOURCES:
                 state = "manuale" + ("" if fresh else " - SOTTO SOGLIA")
             elif days_left < 0:
@@ -444,7 +446,7 @@ def freshness_rows(directories: Sequence[Path], as_of: date, default_min_valid_d
             rows[str(pack["asset"])] = {
                 "sourceId": source_id,
                 "asset": pack["asset"],
-                "lastServiceDate": last.isoformat(),
+                "lastServiceDate": last.isoformat() if end == last else f"{last.isoformat()} (piena fino al {end.isoformat()})",
                 "daysLeft": days_left,
                 "minValidDays": threshold,
                 "state": state,

@@ -11,7 +11,7 @@
 | URL pubblico dell'informativa privacy con titolare e recapito | **Blocco aperto** dichiarato in `PRIVACY.md` | Pubblicare il contenuto di `PRIVACY.md` a un URL stabile, con titolare e recapito, e collegarlo nell'app e nella Console. |
 | Keystore di upload e iscrizione a Play App Signing | Procedura in `RELEASE_BUILD.md` | Generare il keystore, caricare i quattro secret nell'environment protetto `release` (non nel repository), eseguire il dispatch con `sign_release=true` su `main` o `stabilization/*` e approvarlo. |
 | `versionCode` mai riusati | Garantito da `tools/verify_android_release_config.py` | Incrementare `BINARIO_APP_VERSION_CODE` a ogni upload; Wear deriva automaticamente `1000000 + codice telefono`. |
-| Licenze dei pack orari confermate | Ogni voce di `app/src/main/assets/gtfs/manifest.json` e `gtfs-transit/manifest.json` registra `attribution`, `licence` e `licenceEvidence`; `tools/verify_embedded_assets.py` fallisce se mancano o se una licenza non dichiarata esce da `gtfs-personal/`, e avvisa per i pack ancora «Da confermare dal titolare» (oggi `ch-otd-gtfs`, `hzpp-gtfs`, `lombardia-trenord-gtfs`, `sncf-gtfs`, `trentino-gtfs`). Impostazioni › Info mostra per ogni pack della build licenziante, licenza e pagina della fonte, generati da questi campi (`GtfsPackCredits.kt`) | **OWNER ACTION**: per ogni pack confermare che la licenza consenta la redistribuzione in un'app pubblicata su Google Play e i suoi obblighi di attribuzione (CC BY 4.0 §3(a), IODL), registrarla nel manifest con l'evidenza, poi eseguire `python3 tools/build_android_gtfs_credits.py` e ricostruire l'indice iOS (`tools/build_ios_gtfs_schedule.py`). Un pack la cui licenza non si può confermare va escluso dal bundle prima dell'invio. |
+| Licenze dei pack orari confermate | Ogni voce di `app/src/main/assets/gtfs/manifest.json` e `gtfs-transit/manifest.json` registra `attribution`, `licence` e `licenceEvidence`; `tools/verify_embedded_assets.py` fallisce se mancano o se una licenza non dichiarata esce da `gtfs-personal/`, e avvisa per i pack ancora «Da confermare dal titolare» (oggi `ch-otd-gtfs`, `lombardia-trenord-gtfs`, `sncf-gtfs`, `trentino-gtfs`). Impostazioni › Info mostra per ogni pack della build licenziante, licenza e pagina della fonte, generati da questi campi (`GtfsPackCredits.kt`) | **OWNER ACTION**: per ogni pack confermare che la licenza consenta la redistribuzione in un'app pubblicata su Google Play e i suoi obblighi di attribuzione (CC BY 4.0 §3(a), IODL), registrarla nel manifest con l'evidenza, poi eseguire `python3 tools/build_android_gtfs_credits.py` e ricostruire l'indice iOS (`tools/build_ios_gtfs_schedule.py`). Un pack la cui licenza non si può confermare va escluso dal bundle prima dell'invio. |
 | Risposte Sicurezza dei dati coerenti con il codice | `PLAY_DATA_SAFETY.md`, verificato da `tools/verify_privacy_policy.py` | Trascrivere le risposte nella Console e confermarle. |
 | Dichiarazione del servizio in primo piano di tipo `location` (sveglia GPS e «Stima dalla tua posizione») | Manifest: `ACCESS_FINE_LOCATION`, `FOREGROUND_SERVICE_LOCATION`, servizio non esportato di tipo `location`; nessuna posizione in background | **OWNER ACTION**: compilare *Autorizzazioni dei servizi in primo piano* con la descrizione e un video dimostrativo come indicato in `PLAY_DATA_SAFETY.md`; senza la dichiarazione la Console non accetta il bundle. |
 
@@ -109,7 +109,7 @@ PIANIFICA
 • Dettatura della ricerca tramite il riconoscitore vocale di sistema.
 
 CONSULTA
-• Quadri orario programmati RFI per le stazioni hub coperte e orari GTFS ufficiali inclusi nell'app per 21 reti: Trenitalia e Italo in tutta Italia, 15 ferrovie regionali e transfrontaliere, metro e tram di Milano, Genova, Firenze e Cagliari.
+• Quadri orario programmati RFI per le stazioni hub coperte e orari GTFS ufficiali inclusi nell'app per 20 reti: Trenitalia e Italo in tutta Italia, 14 ferrovie regionali e transfrontaliere, metro e tram di Milano, Genova, Firenze e Cagliari.
 • Dettaglio corsa con operatore, categoria, orari programmati e fermate.
 • Tratte salvate, preferiti e monitoraggio locale di un numero treno.
 • Sveglia fermata e avvisi pendolare come notifiche locali; la sveglia può anche avvisarti in base alla posizione, che resta sul telefono.
@@ -143,7 +143,7 @@ PLAN
 • Dictate a search through the system speech recogniser.
 
 BROWSE
-• RFI scheduled departure boards for the covered hub stations and official GTFS timetables bundled in the app for 21 networks: Trenitalia and Italo across Italy, 15 regional and cross-border railways, and the metro and tram lines of Milan, Genoa, Florence and Cagliari.
+• RFI scheduled departure boards for the covered hub stations and official GTFS timetables bundled in the app for 20 networks: Trenitalia and Italo across Italy, 14 regional and cross-border railways, and the metro and tram lines of Milan, Genoa, Florence and Cagliari.
 • Service details with operator, category, scheduled times and all stops.
 • Saved routes, favourites and local monitoring of a train number.
 • Stop alarm and commuter alerts as local notifications; the alarm can also alert you based on your location, which stays on the phone.
@@ -177,7 +177,7 @@ PLANEN
 • Suche per Diktat über die Spracherkennung des Systems.
 
 ANSEHEN
-• Planmäßige RFI-Abfahrtstafeln für die abgedeckten Knotenbahnhöfe und offizielle GTFS-Fahrpläne in der App für 21 Netze: Trenitalia und Italo in ganz Italien, 15 regionale und grenzüberschreitende Bahnen sowie U-Bahn und Tram in Mailand, Genua, Florenz und Cagliari.
+• Planmäßige RFI-Abfahrtstafeln für die abgedeckten Knotenbahnhöfe und offizielle GTFS-Fahrpläne in der App für 20 Netze: Trenitalia und Italo in ganz Italien, 14 regionale und grenzüberschreitende Bahnen sowie U-Bahn und Tram in Mailand, Genua, Florenz und Cagliari.
 • Verbindungsdetails mit Betreiber, Kategorie, Planzeiten und allen Halten.
 • Gespeicherte Strecken, Favoriten und lokale Überwachung einer Zugnummer.
 • Haltwecker und Pendlerwarnungen als lokale Benachrichtigungen; der Wecker kann dich auch anhand deines Standorts warnen, der auf dem Telefon bleibt.
@@ -211,7 +211,7 @@ PLANIFIER
 • Dictée de la recherche via la reconnaissance vocale du système.
 
 CONSULTER
-• Tableaux des départs programmés RFI pour les gares principales couvertes et horaires GTFS officiels intégrés à l'application pour 21 réseaux : Trenitalia et Italo dans toute l'Italie, 15 lignes ferroviaires régionales et transfrontalières, métro et tram de Milan, Gênes, Florence et Cagliari.
+• Tableaux des départs programmés RFI pour les gares principales couvertes et horaires GTFS officiels intégrés à l'application pour 20 réseaux : Trenitalia et Italo dans toute l'Italie, 14 lignes ferroviaires régionales et transfrontalières, métro et tram de Milan, Gênes, Florence et Cagliari.
 • Détail du train avec opérateur, catégorie, horaires programmés et tous les arrêts.
 • Trajets enregistrés, favoris et suivi local d'un numéro de train.
 • Réveil à l'arrêt et alertes pendulaires sous forme de notifications locales ; le réveil peut aussi vous avertir selon votre position, qui reste sur le téléphone.
@@ -245,7 +245,7 @@ PLANIFICAR
 • Dictado de la búsqueda mediante el reconocimiento de voz del sistema.
 
 CONSULTAR
-• Cuadros de salidas programadas de RFI para las estaciones principales cubiertas y horarios GTFS oficiales incluidos en la app para 21 redes: Trenitalia e Italo en toda Italia, 15 ferrocarriles regionales y transfronterizos, y metro y tranvía de Milán, Génova, Florencia y Cagliari.
+• Cuadros de salidas programadas de RFI para las estaciones principales cubiertas y horarios GTFS oficiales incluidos en la app para 20 redes: Trenitalia e Italo en toda Italia, 14 ferrocarriles regionales y transfronterizos, y metro y tranvía de Milán, Génova, Florencia y Cagliari.
 • Detalle del tren con operador, categoría, horarios programados y todas las paradas.
 • Rutas guardadas, favoritos y seguimiento local de un número de tren.
 • Alarma de parada y avisos para viajeros habituales como notificaciones locales; la alarma también puede avisarte según tu ubicación, que se queda en el teléfono.

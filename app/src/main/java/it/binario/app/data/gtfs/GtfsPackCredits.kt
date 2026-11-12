@@ -18,7 +18,6 @@ object GtfsPackCredits {
         GtfsPackCredit("arst-gtfs", "ARST S.p.A. — CC BY 4.0"),
         GtfsPackCredit("ch-otd-gtfs", "Open Data Platform Mobility Switzerland / SBB Infrastructure"),
         GtfsPackCredit("eav-gtfs", "Ente Autonomo Volturno S.r.l. — Italian Open Data License (IODL)"),
-        GtfsPackCredit("hzpp-gtfs", "HŽ Putnički prijevoz"),
         GtfsPackCredit("italo-gtfs", "Italo S.p.A. (NTV) via NAP CCISS (CAD art. 52, Reg. UE 2017/1926) — conversione GTFS © Clément Desouche, CC BY 4.0 — Dati aperti NAP CCISS (art. 52 c. 2 CAD, Reg. UE 2017/1926); conversione GTFS CC BY 4.0"),
         GtfsPackCredit("lombardia-trenord-gtfs", "Regione Lombardia / Trenord"),
         GtfsPackCredit("oebb-gtfs", "ÖBB Personenverkehr AG — CC BY 4.0"),

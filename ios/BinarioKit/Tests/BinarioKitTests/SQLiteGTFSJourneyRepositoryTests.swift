@@ -218,6 +218,18 @@ final class SQLiteGTFSJourneyRepositoryTests: XCTestCase {
         values.isExcludedFromBackup = false
         var mutableInstalled = installed
         try mutableInstalled.setResourceValues(values)
+        // Precondition of the reuse check below: the cleared flag must be visible on disk before the
+        // second install. On the macOS test host the cleared value has been seen landing after the
+        // installer had already written and read back the flag, so the reuse check failed although
+        // the installer had done its job. Wait (at most 3 s) until the clear is observable.
+        let clearDeadline = Date().addingTimeInterval(3)
+        while BundledGTFSScheduleInstaller.isExcludedFromBackupOnDisk(installed), Date() < clearDeadline {
+            Thread.sleep(forTimeInterval: 0.05)
+        }
+        XCTAssertFalse(
+            BundledGTFSScheduleInstaller.isExcludedFromBackupOnDisk(installed),
+            "precondition: the backup flag is cleared on disk before the reuse"
+        )
         #endif
 
         try Data("corrupt-source-after-install".utf8).write(to: compressedURL)
@@ -474,7 +486,6 @@ final class SQLiteGTFSJourneyRepositoryTests: XCTestCase {
             CREATE UNIQUE INDEX idx_stop_pack_external ON stop(pack_id, external_id);
             CREATE INDEX idx_stop_catalog_station ON stop(catalog_station_id) WHERE catalog_station_id IS NOT NULL;
             CREATE INDEX idx_stop_time_stop_departure ON stop_time(stop_id, departure_seconds, trip_id);
-            CREATE INDEX idx_stop_time_trip_sequence ON stop_time(trip_id, stop_sequence);
             """
     }
 
