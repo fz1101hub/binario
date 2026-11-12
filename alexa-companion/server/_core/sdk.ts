@@ -19,8 +19,6 @@ import type {
   ExchangeTokenRequest,
   ExchangeTokenResponse,
   GetUserInfoResponse,
-  GetUserInfoWithJwtRequest,
-  GetUserInfoWithJwtResponse,
 } from "./types/manusTypes";
 // Utility function
 const isNonEmptyString = (value: unknown): value is string =>
@@ -46,7 +44,6 @@ const SESSION_CLOCK_SKEW_MS = 5 * 60 * 1000;
 
 const EXCHANGE_TOKEN_PATH = `/webdev.v1.WebDevAuthPublicService/ExchangeToken`;
 const GET_USER_INFO_PATH = `/webdev.v1.WebDevAuthPublicService/GetUserInfo`;
-const GET_USER_INFO_WITH_JWT_PATH = `/webdev.v1.WebDevAuthPublicService/GetUserInfoWithJwt`;
 
 class OAuthService {
   constructor(private client: ReturnType<typeof axios.create>) {
@@ -229,14 +226,13 @@ class SDKServer {
 
   /**
    * A fresh token for a session last renewed more than SESSION_RENEW_AFTER_MS ago, keeping the
-   * original login time; null when no renewal is due or allowed (cron or pre-policy sessions).
+   * original login time; null when no renewal is due or allowed (pre-policy sessions).
    */
   async renewSession(
     cookieValue: string | undefined | null
   ): Promise<{ token: string; maxAgeMs: number } | null> {
     const claims = await this.verifySessionClaims(cookieValue);
     if (!claims || claims.issuedAtMs === undefined || claims.authTimeMs === undefined) return null;
-    if (claims.openId.startsWith(CRON_OPEN_ID_PREFIX)) return null;
     const now = Date.now();
     if (now - claims.issuedAtMs < SESSION_RENEW_AFTER_MS) return null;
     const remaining = claims.authTimeMs + SESSION_MAX_LIFETIME_MS - now;
@@ -282,19 +278,18 @@ class SDKServer {
         return null;
       }
 
-      if (!openId.startsWith(CRON_OPEN_ID_PREFIX)) {
-        // Cookies minted under a longer lifetime (the former 30 days) end at this policy.
-        if (typeof exp !== "number" || exp * 1000 - Date.now() > SESSION_TTL_MS + SESSION_CLOCK_SKEW_MS) {
-          console.warn("[Auth] Session lifetime exceeds the session policy");
-          return null;
-        }
-        if (
-          authTime !== undefined &&
-          (typeof authTime !== "number" || Date.now() - authTime * 1000 > SESSION_MAX_LIFETIME_MS)
-        ) {
-          console.warn("[Auth] Session older than its absolute lifetime");
-          return null;
-        }
+      // Every session follows the policy (the template's exempt «cron_» sessions are gone).
+      // Cookies minted under a longer lifetime (the former 30 days) end at this policy.
+      if (typeof exp !== "number" || exp * 1000 - Date.now() > SESSION_TTL_MS + SESSION_CLOCK_SKEW_MS) {
+        console.warn("[Auth] Session lifetime exceeds the session policy");
+        return null;
+      }
+      if (
+        authTime !== undefined &&
+        (typeof authTime !== "number" || Date.now() - authTime * 1000 > SESSION_MAX_LIFETIME_MS)
+      ) {
+        console.warn("[Auth] Session older than its absolute lifetime");
+        return null;
       }
 
       // Several apps may share one signing secret: a session minted for another
@@ -319,31 +314,7 @@ class SDKServer {
     }
   }
 
-  async getUserInfoWithJwt(
-    jwtToken: string
-  ): Promise<GetUserInfoWithJwtResponse> {
-    const payload: GetUserInfoWithJwtRequest = {
-      jwtToken,
-      projectId: ENV.appId,
-    };
-
-    const { data } = await this.client.post<GetUserInfoWithJwtResponse>(
-      GET_USER_INFO_WITH_JWT_PATH,
-      payload
-    );
-
-    const loginMethod = this.deriveLoginMethod(
-      (data as any)?.platforms,
-      (data as any)?.platform ?? data.platform ?? null
-    );
-    return {
-      ...(data as any),
-      platform: loginMethod,
-      loginMethod,
-    } as GetUserInfoWithJwtResponse;
-  }
-
-  async authenticateRequest(req: Request): Promise<AuthenticatedUser> {
+  async authenticateRequest(req: Request): Promise<User> {
     // The session lives only in the HttpOnly cookie: a token readable by
     // scripts (headers, storage) would widen what an XSS or a framing page
     // can do with it.
@@ -354,15 +325,6 @@ class SDKServer {
 
     if (!session) {
       throw ForbiddenError("Invalid session cookie");
-    }
-
-    if (session.openId.startsWith(CRON_OPEN_ID_PREFIX)) {
-      const userInfo = await this.getUserInfoWithJwt(sessionToken ?? "");
-      const taskUid = userInfo.taskUid ?? null;
-      if (!taskUid) {
-        throw ForbiddenError("Cron session missing task_uid");
-      }
-      return buildCronUser(userInfo);
     }
 
     const sessionUserId = session.openId;
@@ -380,33 +342,6 @@ class SDKServer {
 
     return user;
   }
-}
-
-const CRON_OPEN_ID_PREFIX = "cron_";
-
-/** Result of `sdk.authenticateRequest`. Cron callbacks set `isCron=true` and `taskUid`; see `/home/ubuntu/skills/webdev-periodic-updates/SKILL.md`. */
-export type AuthenticatedUser = User & {
-  taskUid?: string;
-  isCron?: boolean;
-};
-
-function buildCronUser(
-  userInfo: GetUserInfoWithJwtResponse
-): AuthenticatedUser {
-  const now = new Date();
-  return {
-    id: -1,
-    openId: userInfo.openId,
-    name: userInfo.name || "Manus Scheduled Task",
-    email: null,
-    loginMethod: null,
-    role: "user",
-    createdAt: now,
-    updatedAt: now,
-    lastSignedIn: now,
-    taskUid: userInfo.taskUid ?? undefined,
-    isCron: true,
-  } as AuthenticatedUser;
 }
 
 export const sdk = new SDKServer();

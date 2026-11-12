@@ -13,8 +13,7 @@ export const appRouter = router({
   auth: router({
     // The dashboard asks for `me` on every load: that is where a used session slides forward.
     me: publicProcedure.query(async ({ ctx }) => {
-      if (ctx.user && !(ctx.user as { isCron?: boolean }).isCron)
-        await sdk.renewSessionCookie(ctx.req, ctx.res);
+      if (ctx.user) await sdk.renewSessionCookie(ctx.req, ctx.res);
       return ctx.user;
     }),
     logout: publicProcedure.mutation(({ ctx }) => {

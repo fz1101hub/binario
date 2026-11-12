@@ -105,16 +105,22 @@ describe("sessioni dashboard", () => {
   it("una sessione precedente all'erasure non ricrea automaticamente l'utente", async () => {
     const token = await sdk.createSessionToken("deleted-user", { name: "Utente" });
     const userLookup = vi.spyOn(db, "getUserByOpenId").mockResolvedValueOnce(undefined);
-    const upstreamLookup = vi.spyOn(sdk, "getUserInfoWithJwt");
     const request = {
       headers: { cookie: `${COOKIE_NAME}=${token}` },
     } as Request;
 
     await expect(sdk.authenticateRequest(request)).rejects.toThrow("User not found");
     expect(userLookup).toHaveBeenCalledWith("deleted-user");
-    expect(upstreamLookup).not.toHaveBeenCalled();
     userLookup.mockRestore();
-    upstreamLookup.mockRestore();
+  });
+
+  it("una sessione «cron_» del template è una sessione come le altre: nessun utente sintetico", async () => {
+    const token = await sdk.createSessionToken("cron_task", { name: "Manus Scheduled Task" });
+    const userLookup = vi.spyOn(db, "getUserByOpenId").mockResolvedValueOnce(undefined);
+    const request = { headers: { cookie: `${COOKIE_NAME}=${token}` } } as Request;
+    await expect(sdk.authenticateRequest(request)).rejects.toThrow("User not found");
+    expect(userLookup).toHaveBeenCalledWith("cron_task");
+    userLookup.mockRestore();
   });
 
   it("fallisce chiuso se l'account viene eliminato fra lookup e touch sessione", async () => {
