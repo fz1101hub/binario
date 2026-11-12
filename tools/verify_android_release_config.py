@@ -80,6 +80,10 @@ def verify(read_file=read) -> None:
         )
 
     require("app/build.gradle.kts", 'applicationId = "it.binario.app"')
+    # Every language of the in-app picker in a Play install (ci-tests-build-2): no language split in the phone bundle.
+    if not re.search(r"\bbundle\s*\{\s*language\s*\{\s*enableSplit\s*=\s*false\s*\}", read_file("app/build.gradle.kts")):
+        raise AssertionError("app/build.gradle.kts must keep every language in the Play bundle: "
+                             "bundle { language { enableSplit = false } }")
     require("wear/build.gradle.kts", 'applicationId = "it.binario.app"')
     require(
         "wear/src/main/AndroidManifest.xml",

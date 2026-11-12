@@ -68,6 +68,32 @@ def manifest_proto(
     return proto_string(1, element)
 
 
+def proto_varint(field_number: int, value: int) -> bytes:
+    return encode_varint(field_number << 3) + encode_varint(value)
+
+
+def bundle_config(*dimensions: tuple[int, bool]) -> bytes:
+    """BundleConfig.pb (bundletool config.proto): optimizations (2) > splits_config (1) > split_dimension (1) with
+    value (1) and negate (2); AGP writes ABI 1, SCREEN_DENSITY 2, LANGUAGE 3 and TEXTURE_COMPRESSION_FORMAT 4."""
+    splits = b"".join(
+        proto_string(1, proto_varint(1, value) + (proto_varint(2, 1) if negate else b"")) for value, negate in dimensions)
+    return proto_string(1, proto_string(1, "1.17.2")) + proto_string(2, proto_string(1, splits))
+
+
+LANGUAGES_OFF = bundle_config((1, False), (2, False), (3, True), (4, True))
+APP_LOCALES = ("", "en", "de", "fr", "es", "ar", "hi", "in", "ja", "ko", "my", "pt", "ru", "th", "tr", "vi", "zh-CN")
+
+
+def resource_table(locales: tuple[str, ...] = APP_LOCALES, type_name: str = "string") -> bytes:
+    """base/resources.pb (aapt2 Resources.proto): package (2) > type (3, name 2) > entry (3) > config_value (6) >
+    config (1) > locale (3)."""
+    configs = b"".join(proto_string(6, proto_string(1, proto_string(3, locale) if locale else b"")) for locale in locales)
+    entry = proto_string(2, "app_name") + configs
+    kind = proto_string(2, type_name) + proto_string(3, entry)
+    other = proto_string(2, "drawable") + proto_string(3, proto_string(2, "ic") + proto_string(6, proto_string(1, b"")))
+    return proto_string(2, proto_string(2, "it.binario.app") + proto_string(3, other) + proto_string(3, kind))
+
+
 def elf_shared_object(
     load_alignments: tuple[int, ...],
     elf_class: int = 2,
@@ -121,6 +147,43 @@ class VerifyAndroidAppBundlesTest(unittest.TestCase):
         }
         self.assertEqual([], POLICY.verify_bundle(self.path, expected))
         self.assertEqual(64, len(POLICY.sha256_file(self.path)))
+
+    def test_the_phone_bundle_keeps_every_app_language_in_the_base_module(self) -> None:
+        # Second audit, ci-tests-build-2: with Play's language splits a Play install carries only the device's
+        # languages, so the in-app picker (17 languages) shows Italian for a language the device does not list.
+        languages = POLICY.app_languages()
+        self.assertEqual(17, len(languages))
+        self.assertEqual("", languages["it"])  # Italian is the default values/
+        self.assertEqual({POLICY.normalized_locale(locale) for locale in APP_LOCALES}, set(languages.values()))
+        entries = self.valid_entries()
+        entries.update({"BundleConfig.pb": LANGUAGES_OFF, "base/resources.pb": resource_table()})
+        self.write_bundle(entries)
+        self.assertEqual([], POLICY.verify_bundle(self.path, languages=languages))
+        cases = {
+            "divisione per lingua attiva": {"BundleConfig.pb": bundle_config((1, False), (3, False))},
+            "divisione per lingua attiva ": {"BundleConfig.pb": bundle_config((1, False))},  # bundletool splits by default
+            "BundleConfig.pb non leggibile": {"BundleConfig.pb": b"\xff"},
+            "assenti dalle stringhe del modulo base: ['th', 'zh-CN']": {
+                "base/resources.pb": resource_table(tuple(locale for locale in APP_LOCALES if locale not in ("th", "zh-CN")))},
+            "assenti dalle stringhe del modulo base: ['ar', 'de', ": {"base/resources.pb": resource_table(type_name="plurals")},
+            "base/resources.pb assente": {"base/resources.pb": None},
+        }
+        for expected, change in cases.items():
+            with self.subTest(expected=expected):
+                mutated = dict(entries)
+                for name, content in change.items():
+                    if content is None:
+                        del mutated[name]
+                    else:
+                        mutated[name] = content
+                self.write_bundle(mutated)
+                problems = POLICY.verify_bundle(self.path, languages=languages)
+                self.assertTrue(any(expected.strip() in problem for problem in problems), problems)
+        # aapt2 spellings of the same locales are accepted: b+ tags, -r regions, the modern code of Indonesian.
+        alternate = tuple({"zh-CN": "b+zh+CN", "in": "id"}.get(locale, locale) for locale in APP_LOCALES)
+        entries["base/resources.pb"] = resource_table(alternate)
+        self.write_bundle(entries)
+        self.assertEqual([], POLICY.verify_bundle(self.path, languages=languages))
 
     def test_root_profile_moves_wear_version_code_into_its_own_range(self) -> None:
         expected = POLICY.expected_manifests("root")
@@ -332,7 +395,8 @@ class VerifyAndroidAppBundlesTest(unittest.TestCase):
         # The default (auto) applies to the phone bundle of the root profile only, never to Wear.
         phone, wear = Path(self.temp.name) / "phone.aab", Path(self.temp.name) / "wear.aab"
         expected = POLICY.expected_manifests("root")
-        for path, label, extra in ((phone, "phone", {}), (wear, "wear", {"base/assets/punctuality/x.txt": b"x"})):
+        phone_extra = {"BundleConfig.pb": LANGUAGES_OFF, "base/resources.pb": resource_table()}
+        for path, label, extra in ((phone, "phone", phone_extra), (wear, "wear", {"base/assets/punctuality/x.txt": b"x"})):
             entries = self.valid_entries(manifest_proto(**{
                 "version_code": expected[label]["versionCode"], "version_name": expected[label]["versionName"]}))
             entries.update(extra)
@@ -350,6 +414,7 @@ class VerifyAndroidAppBundlesTest(unittest.TestCase):
         self.assertNotIn("(wear): FAIL", errors.getvalue())
         self.assertIn("Android App Bundle (phone): PASS (", output.getvalue())
         self.assertIn("statistiche di puntualità assenti come richiesto", output.getvalue())
+        self.assertIn("17 lingue nel modulo base", output.getvalue())
 
     def test_rejects_jar_signature_in_unsigned_bundle(self) -> None:
         entries = self.valid_entries()
