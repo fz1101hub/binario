@@ -78,7 +78,9 @@
             "{trainNumber}号の定時運行率を教えて",
             "{trainNumber}号はどれくらい定刻に着く",
             "{trainNumber}号の定時率",
-            "{trainNumber}号は時間通り"
+            "{trainNumber}号は時間通り",
+            "{trainNumber}号",
+            "{trainNumber}号です"
           ]
         },
         {

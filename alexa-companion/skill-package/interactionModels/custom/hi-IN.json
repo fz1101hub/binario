@@ -75,7 +75,9 @@
             "ट्रेन {trainNumber} कितनी बार समय पर पहुँचती है",
             "क्या ट्रेन {trainNumber} आम तौर पर समय पर रहती है",
             "ट्रेन {trainNumber} कितनी पंक्चुअल है",
-            "क्या ट्रेन {trainNumber} समय पर है"
+            "क्या ट्रेन {trainNumber} समय पर है",
+            "ट्रेन {trainNumber}",
+            "ट्रेन नंबर {trainNumber}"
           ]
         },
         {

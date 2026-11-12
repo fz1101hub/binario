@@ -41,7 +41,7 @@ L’adapter Express precedente è stato rimosso perché trascinava `node-forge` 
 | `NextTrainsIntent`  | “quali sono i prossimi treni”, “prossimi treni per {routeName}” (dice che i dati in tempo reale non sono disponibili e poi, se ce ne sono, i treni più puntuali delle prossime tre ore, come `MostPunctualTrainIntent`) | `routeName` facoltativo   |
 | `TrainStatusIntent` | “stato del treno {trainNumber}”, “ritardo del treno {trainNumber}” (senza collegamento: dice che i dati in tempo reale non sono disponibili e poi, se le statistiche hanno dati sul treno, quanto è puntuale di solito, come `TrainPunctualityIntent`) | `trainNumber` facoltativo |
 | `MyRoutesIntent`    | “le mie tratte”, “elenca le tratte salvate”                          | nessuno                   |
-| `TrainPunctualityIntent` | “quanto è puntuale il treno {trainNumber}”, “puntualità del treno {trainNumber}”, “il treno {trainNumber} è puntuale” | `trainNumber` (`AMAZON.NUMBER`) |
+| `TrainPunctualityIntent` | “quanto è puntuale il treno {trainNumber}”, “puntualità del treno {trainNumber}”, “il treno {trainNumber} è puntuale”; come risposta breve alla domanda «Di quale treno…?» anche “treno {trainNumber}”, “il treno {trainNumber}”, “il {trainNumber}” (instradamento da verificare nel simulatore) | `trainNumber` (`AMAZON.NUMBER`) |
 | `RoutePunctualityIntent` | “quanto è puntuale la mia tratta {routeName}”, “quanto è puntuale la mia tratta” | `routeName` (`AMAZON.SearchQuery`) facoltativo |
 | `MostPunctualTrainIntent` | “qual è il treno più puntuale per {routeName}”, “qual è il treno più puntuale” | `routeName` (`AMAZON.SearchQuery`) facoltativo |
 

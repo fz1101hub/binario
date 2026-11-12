@@ -768,6 +768,34 @@ describe("versioned interaction models", () => {
     expect(problems).toEqual([]);
   });
 
+  /** Answers to «Di quale treno vuoi sapere la puntualità?» that name the train without repeating the question. */
+  const BARE_TRAIN_ANSWERS: Record<(typeof LOCALES)[number], string[]> = {
+    "it-IT": ["treno 9558", "il treno 9558", "il 9558"],
+    "en-US": ["train 9558", "the train 9558", "number 9558"],
+    "en-GB": ["train 9558", "the train 9558", "number 9558"],
+    "en-IN": ["train 9558", "the train 9558", "number 9558"],
+    "de-DE": ["zug 9558", "der zug 9558", "nummer 9558"],
+    "fr-FR": ["train 9558", "le train 9558", "le 9558"],
+    "es-ES": ["tren 9558", "el tren 9558", "el 9558"],
+    "es-US": ["tren 9558", "el tren 9558", "el 9558"],
+    "ar-SA": ["قطار 9558", "القطار رقم 9558"],
+    "hi-IN": ["ट्रेन 9558", "ट्रेन नंबर 9558"],
+    "ja-JP": ["9558号", "9558号です"],
+    "pt-BR": ["trem 9558", "o trem 9558", "o 9558"],
+  };
+
+  it("takes a bare answer to the which-train question to the train's punctuality, and to no other intent", () => {
+    const problems: string[] = [];
+    for (const locale of LOCALES) {
+      const intents = model(locale).interactionModel.languageModel.intents.filter(item => !item.name.startsWith("AMAZON."));
+      for (const answer of BARE_TRAIN_ANSWERS[locale]) {
+        const reached = intents.filter(item => item.samples.some(sample => sampleMatches(locale, sample, plain(locale, answer)))).map(item => item.name);
+        if (reached.join() !== "TrainPunctualityIntent") problems.push(`${locale}: "${answer}" reaches ${reached.join(", ") || "nothing"}`);
+      }
+    }
+    expect(problems).toEqual([]);
+  });
+
   it("never uses one sample for two intents", () => {
     for (const locale of LOCALES) {
       const samples = model(locale).interactionModel.languageModel.intents.flatMap(item => item.samples.map(sample => plain(locale, sample)));

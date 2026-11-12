@@ -78,7 +78,10 @@
             "quanto è affidabile il treno {trainNumber}",
             "il treno {trainNumber} di solito è in orario",
             "quanto ritarda di solito il treno {trainNumber}",
-            "il treno {trainNumber} è puntuale"
+            "il treno {trainNumber} è puntuale",
+            "treno {trainNumber}",
+            "il treno {trainNumber}",
+            "il {trainNumber}"
           ]
         },
         {

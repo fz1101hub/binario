@@ -75,7 +75,9 @@
             "ما مدى دقة مواعيد القطار {trainNumber}",
             "هل يصل القطار {trainNumber} عادة في موعده",
             "مدى التزام القطار {trainNumber} بالمواعيد",
-            "هل القطار {trainNumber} في موعده"
+            "هل القطار {trainNumber} في موعده",
+            "قطار {trainNumber}",
+            "القطار رقم {trainNumber}"
           ]
         },
         {
