@@ -238,12 +238,17 @@ jobs:
           done
           xcodebuild -project Binario.xcodeproj -scheme Binario -showdestinations
           xcrun simctl list pairs
-          xcodebuild \
+          if ! xcodebuild \
             -project Binario.xcodeproj \
             -scheme Binario \
             -destination "id=${{ steps.ios-simulator.outputs.udid }}" \
             CODE_SIGNING_ALLOWED=NO \
-            test
+            test; then
+            # A crash of the test host leaves no stack in this log: print the simulator's crash reports.
+            find "$HOME/Library/Logs/DiagnosticReports" -name 'Binario*' -newer Binario.xcodeproj \
+              -exec echo "--- {}" \; -exec head -c 60000 {} \; || true
+            exit 1
+          fi
           xcodebuild \
             -project Binario.xcodeproj \
             -scheme BinarioWatch \
