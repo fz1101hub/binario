@@ -122,11 +122,13 @@ Il job decodifica il keystore in `RUNNER_TEMP`, esporta le quattro variabili `BI
 ```sh
 gh workflow run android-ci.yml \
   --repo fz1101hub/binario \
-  --ref stabilization/v0.20.4 \
+  --ref main \
   -f verify_reproducibility=true \
   -f sign_release=true
 gh run download --repo fz1101hub/binario --name binario-play-bundles-signed
 ```
+
+Il dispatch firma il workflow e il codice **del ramo indicato**: `--ref main` firma la revisione approvata di `main`. Per firmare da `stabilization/<versione>`, quel ramo va prima portato alla revisione approvata di `main` (avanzamento rapido, `git push origin main:stabilization/<versione>` se non ha commit propri). `stabilization/v0.20.4` è fermo al 23 settembre 2026 e il suo `android-ci.yml` non ha l'input `sign_release` (GitHub rifiuterebbe il dispatch con «Unexpected inputs»): se lo si aggiornasse solo nel workflow, firmerebbe il codice di settembre con la stessa identità 0.20.4 / 35.
 
 ### Environment `release` (impostazione del titolare)
 
