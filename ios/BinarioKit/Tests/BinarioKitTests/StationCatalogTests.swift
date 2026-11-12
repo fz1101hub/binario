@@ -75,6 +75,43 @@ final class StationCatalogTests: XCTestCase {
         XCTAssertFalse(results.contains("S01738"))
     }
 
+    func testSearchKeysFoldedAtLoadRankExactlyAsFoldingOnEveryKeystroke() throws {
+        let data = try Data(contentsOf: repositoryRoot
+            .appendingPathComponent("app/src/main/assets/stations/curated_it_rail_stations.json"))
+        let catalog = try CuratedStationCatalog(data: data)
+        // Decoded without `init(data:)`: no keys folded at load, so the search folds them itself.
+        let decodedOnly = try JSONDecoder().decode(CuratedStationCatalog.self, from: data)
+        let queries = [
+            "Roma", "roma", "  roma---términi ", "s. ambrogio", "S. Ambrogio", "Sant'Ambrogio",
+            "sant ambrogio", "Forlì", "forli", "Cefalù", "cefalu", "Città", "Ciriè", "Reggio nell’Emilia",
+            "Abano Terme", "Alexandria", "S08409", "s084", "830008409", "8300", "NC001752", "N000",
+            "Varese Nord", "Bergamo", "Acerra", "Abbiate Guazzone", "a", "milano c", "", "---",
+        ]
+
+        for query in queries {
+            // 0 and 200 are clamped to 1 and 50, as before.
+            for limit in [0, 12, 200] {
+                XCTAssertEqual(
+                    catalog.search(query, limit: limit).map(\.id),
+                    Self.searchFoldingOnEveryKeystroke(catalog.stations, query, limit: limit).map(\.id),
+                    "\(query) limit \(limit)"
+                )
+            }
+        }
+        for query in ["Roma", "s. ambrogio", "S08409"] {
+            XCTAssertEqual(
+                decodedOnly.search(query).map(\.id),
+                Self.searchFoldingOnEveryKeystroke(decodedOnly.stations, query, limit: 12).map(\.id),
+                "decoded \(query)"
+            )
+        }
+        // The comparison is not between two empty lists.
+        XCTAssertEqual(catalog.search("S08409").first?.name, "Roma Termini")
+        XCTAssertEqual(catalog.search("s. ambrogio").first?.name, "S. Ambrogio")
+        XCTAssertTrue(catalog.search("cefalu").map(\.name).contains("Cefalù Ospedale"))
+        XCTAssertGreaterThan(catalog.search("Roma", limit: 50).count, 12)
+    }
+
     func testOperationalCatalogueFailsClosed() throws {
         let invalid = """
         {"schemaVersion":1,"kind":"curated-rail-station-catalog","source":"x","sourceDatabaseName":"x","sourceDatabaseSha256":"x","stationCount":0,"operationalData":true,"notice":"x","stations":[]}
@@ -83,6 +120,59 @@ final class StationCatalogTests: XCTestCase {
         XCTAssertThrowsError(try CuratedStationCatalog(data: Data(invalid.utf8))) { error in
             XCTAssertEqual(error as? StationCatalogError, .containsOperationalData)
         }
+    }
+
+    /// The search as it was before the keys were folded at load: every name, alias and code folded
+    /// again for every query. Kept verbatim as the reference the faster search must match.
+    private static func searchFoldingOnEveryKeystroke(_ stations: [Station], _ query: String, limit requestedLimit: Int) -> [Station] {
+        let needle = StationSearchNormalizer.normalize(query)
+        guard !needle.isEmpty else { return [] }
+        let limit = min(max(requestedLimit, 1), 50)
+
+        var stationsByName: [String: [Station]] = [:]
+        let ranked = stations.compactMap { station -> (station: Station, score: Int, normalizedName: String)? in
+            let name = StationSearchNormalizer.normalize(station.name)
+            stationsByName[name, default: []].append(station)
+            var best = referenceMatchScore(candidate: name, needle: needle)
+
+            for alias in station.aliases {
+                if let score = referenceMatchScore(
+                    candidate: StationSearchNormalizer.normalize(alias),
+                    needle: needle
+                ) {
+                    best = min(best ?? Int.max, score + 1)
+                }
+            }
+
+            for code in [station.id, station.railwayCode, station.trenitaliaLocationId].compactMap({ $0 }) {
+                let normalizedCode = StationSearchNormalizer.normalize(code)
+                if normalizedCode == needle {
+                    best = min(best ?? Int.max, 0)
+                } else if normalizedCode.hasPrefix(needle) {
+                    best = min(best ?? Int.max, 4)
+                }
+            }
+
+            guard let score = best else { return nil }
+            return (station: station, score: score, normalizedName: name)
+        }
+        return ranked
+            .filter { !CuratedStationCatalog.isShadowedDuplicate($0.station, among: stationsByName[$0.normalizedName] ?? []) }
+            .sorted {
+                if $0.score != $1.score { return $0.score < $1.score }
+                if $0.normalizedName != $1.normalizedName { return $0.normalizedName < $1.normalizedName }
+                return $0.station.id < $1.station.id
+            }
+            .prefix(limit)
+            .map(\.station)
+    }
+
+    private static func referenceMatchScore(candidate: String, needle: String) -> Int? {
+        if candidate == needle { return 0 }
+        if candidate.hasPrefix(needle) { return 1 }
+        if candidate.split(separator: " ").contains(where: { $0.hasPrefix(needle) }) { return 2 }
+        if candidate.contains(needle) { return 3 }
+        return nil
     }
 
     private func fixtureCatalog() throws -> CuratedStationCatalog {
