@@ -15,6 +15,8 @@ import it.binario.app.data.TrainService
 import it.binario.app.ui.common.LocalizedDates
 import java.time.Duration
 import java.time.Instant
+import java.time.LocalDate
+import java.time.LocalTime
 import java.time.ZoneId
 import java.time.temporal.ChronoUnit
 import java.time.format.DateTimeFormatter
@@ -369,6 +371,48 @@ object TrainsWidgetPresenter {
                 shownReliability?.spoken
             ).joinToString(". ")
         )
+    }
+}
+
+/**
+ * Which favourites a refresh of «I miei treni» asks the sources for, and for which service day. An automatic refresh
+ * asks only for the trains near their run: from [BEFORE_DEPARTURE] before the saved departure to [AFTER_ARRIVAL] after
+ * the arrival of the last known run ([DEFAULT_DURATION] after the departure when none is known); the other rows keep
+ * their last status. A train without a known departure is asked, since only a lookup can teach it. A refresh the user
+ * asked for asks for every favourite. Italo is asked only for a train that may be one.
+ */
+internal object TrainsWidgetLookupPlanner {
+    val BEFORE_DEPARTURE: Duration = Duration.ofHours(1)
+    val AFTER_ARRIVAL: Duration = Duration.ofMinutes(30)
+    val DEFAULT_DURATION: Duration = Duration.ofHours(3)
+    private val MAX_DURATION: Duration = Duration.ofHours(36)
+
+    /** The service day to ask for [monitor] at [now]; null when an automatic refresh leaves the train alone. */
+    fun lookupDate(monitor: ServiceMonitor, status: FavouriteTrainStatus?, now: Instant, automatic: Boolean, zone: ZoneId = RailTime.defaultZone): LocalDate? {
+        val today = now.atZone(zone).toLocalDate()
+        val departure = departureOf(monitor, status) ?: return today
+        val duration = durationOf(status) ?: DEFAULT_DURATION
+        // Yesterday's run may still travel after midnight; tomorrow's may leave just after it.
+        val inWindow = listOf(today.minusDays(1), today, today.plusDays(1)).firstOrNull { day ->
+            val start = day.atTime(departure).atZone(zone).toInstant()
+            !now.isBefore(start.minus(BEFORE_DEPARTURE)) && !now.isAfter(start.plus(duration).plus(AFTER_ARRIVAL))
+        }
+        return inWindow ?: today.takeIf { !automatic }
+    }
+
+    /** False when the last status names a category of another operator: Italo is then not asked for that number. */
+    fun mayBeItalo(status: FavouriteTrainStatus?): Boolean =
+        status?.category.let { it == null || it == TrainCategory.AV_ITALO || it == TrainCategory.OTHER }
+
+    private fun departureOf(monitor: ServiceMonitor, status: FavouriteTrainStatus?): LocalTime? =
+        listOf(monitor.scheduledDeparture, status?.scheduledDeparture.orEmpty()).firstNotNullOfOrNull { value ->
+            value.trim().takeIf { it.isNotEmpty() }?.let { runCatching { LocalTime.parse(it) }.getOrNull() }
+        }
+
+    private fun durationOf(status: FavouriteTrainStatus?): Duration? {
+        val departure = status?.scheduledDepartureEpochMillis ?: return null
+        val arrival = status.arrivalEpochMillis ?: return null
+        return Duration.ofMillis(arrival - departure).takeIf { !it.isNegative && !it.isZero && it <= MAX_DURATION }
     }
 }
 

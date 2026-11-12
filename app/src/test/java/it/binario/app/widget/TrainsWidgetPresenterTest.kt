@@ -192,6 +192,44 @@ class TrainsWidgetPresenterTest {
     }
 
     @Test
+    fun `an automatic refresh asks only for the trains near their run`() {
+        val monitor = ServiceMonitor("2153", "", scheduledDeparture = "07:42")
+        fun at(date: LocalDate, hour: Int, minute: Int) = ZonedDateTime.of(date, LocalTime.of(hour, minute), zone).toInstant()
+        fun automatic(instant: java.time.Instant, last: FavouriteTrainStatus? = status) =
+            TrainsWidgetLookupPlanner.lookupDate(monitor, last, instant, automatic = true, zone = zone)
+        val next = day.plusDays(1)
+        // From one hour before the departure to 30 minutes after the arrival of the last known run (08:40).
+        assertNull(automatic(at(next, 3, 0)))
+        assertNull(automatic(at(next, 6, 41)))
+        assertEquals(next, automatic(at(next, 6, 42)))
+        assertEquals(next, automatic(at(next, 9, 10)))
+        assertNull(automatic(at(next, 9, 11)))
+        assertNull(automatic(at(next, 18, 0)))
+        // Never looked up: three hours after the saved departure, then the same 30 minutes.
+        assertEquals(next, automatic(at(next, 11, 12), last = null))
+        assertNull(automatic(at(next, 11, 13), last = null))
+        // The user's refresh asks for every train; a train without a known departure is always asked.
+        assertEquals(next, TrainsWidgetLookupPlanner.lookupDate(monitor, status, at(next, 3, 0), automatic = false, zone = zone))
+        assertEquals(next, TrainsWidgetLookupPlanner.lookupDate(ServiceMonitor("777", ""), null, at(next, 3, 0), automatic = true, zone = zone))
+        // A night train: yesterday's run is asked after midnight, tomorrow's just before it.
+        val night = ServiceMonitor("1234", "", scheduledDeparture = "23:00")
+        val nightStatus = status.copy(scheduledDeparture = "23:00", scheduledDepartureEpochMillis = millis(23, 0), arrivalEpochMillis = millisOn(next, 1, 40))
+        assertEquals(day, TrainsWidgetLookupPlanner.lookupDate(night, nightStatus, at(next, 1, 0), automatic = true, zone = zone))
+        val early = ServiceMonitor("1235", "", scheduledDeparture = "00:10")
+        assertEquals(next, TrainsWidgetLookupPlanner.lookupDate(early, null, at(day, 23, 30), automatic = true, zone = zone))
+    }
+
+    @Test
+    fun `italo is asked only for a train that may be one`() {
+        assertFalse(TrainsWidgetLookupPlanner.mayBeItalo(status))
+        assertFalse(TrainsWidgetLookupPlanner.mayBeItalo(status.copy(category = TrainCategory.FRECCE)))
+        assertTrue(TrainsWidgetLookupPlanner.mayBeItalo(status.copy(category = TrainCategory.AV_ITALO)))
+        assertTrue(TrainsWidgetLookupPlanner.mayBeItalo(status.copy(category = TrainCategory.OTHER)))
+        assertTrue(TrainsWidgetLookupPlanner.mayBeItalo(status.copy(category = null)))
+        assertTrue(TrainsWidgetLookupPlanner.mayBeItalo(null))
+    }
+
+    @Test
     fun `status codec round trips and rejects damaged records`() {
         val full = status.copy(operator = "Trenitalia", providerName = "ViaggiaTreno", stale = true, variation = true)
         val sparse = FavouriteTrainStatus("9541", 5L)

@@ -230,12 +230,17 @@ class StationWidgetProvider : AppWidgetProvider() {
     }
 }
 
-/** Loads the board once per configured station; widgets showing the same station share the request. */
+/**
+ * Loads the board once per configured station; widgets showing the same station share the request, also when only
+ * one of them is due: the board is saved to all of them, so none asks for it again before its own interval.
+ */
 internal object StationWidgetRefresher {
     /** Refreshes the station widgets in [widgetIds], all of them when null. Returns the widgets a retry may help. */
     suspend fun refresh(context: Context, widgetIds: Set<Int>?): Set<Int> {
         if (widgetIds == null) WidgetInstances.pruneOrphans(context)
-        val widgets = StationWidgetConfigurationStore(context).all().filter { (widgetId, _) -> widgetIds == null || widgetId in widgetIds }
+        val configured = StationWidgetConfigurationStore(context).all()
+        val stations = configured.filter { (widgetId, _) -> widgetIds == null || widgetId in widgetIds }.mapTo(hashSetOf()) { it.second.station.id }
+        val widgets = configured.filter { (_, configuration) -> configuration.station.id in stations }
         if (widgets.isEmpty()) return emptySet()
         val service = StationBoardAggregateService(BinarioDataGraph.stationBoardDisplayProviders())
         val attemptAt = System.currentTimeMillis()

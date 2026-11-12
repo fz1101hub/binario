@@ -21,9 +21,11 @@ import it.binario.app.FavouriteTrainMatcher
 import it.binario.app.FavouriteTrainStore
 import it.binario.app.MainActivity
 import it.binario.app.R
-import it.binario.app.data.JourneyQuery
+import it.binario.app.data.core.SourceId
+import it.binario.app.data.provider.KnownProviderIds
 import it.binario.app.data.repository.BinarioDataGraph
 import it.binario.app.data.repository.TrainNumberQuery
+import java.time.Instant
 import java.util.Locale
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.Dispatchers
@@ -256,31 +258,39 @@ class TrainsWidgetProvider : AppWidgetProvider() {
 }
 
 /**
- * Looks up today's run of every favourite train with the app's train-number search (its sources
- * and their order unchanged), a few trains at a time. The statuses are shared by all trains widgets.
+ * Looks up the runs of the favourite trains with the app's train-number search (its sources and their order unchanged),
+ * a few trains at a time. The statuses are shared by all trains widgets, so one refresh counts for every instance. An
+ * automatic refresh ([widgetIds] given) asks only for the trains near their run, as [TrainsWidgetLookupPlanner] says.
  */
 internal object TrainsWidgetRefresher {
     private const val PARALLEL_LOOKUPS = 3
 
     suspend fun refresh(context: Context, widgetIds: Set<Int>?): Boolean {
         if (widgetIds == null) WidgetInstances.pruneOrphans(context)
-        val widgets = TrainsWidgetConfigurationStore(context).all().filter { (widgetId, _) -> widgetIds == null || widgetId in widgetIds }
-        if (widgets.isEmpty()) return true
+        val widgets = TrainsWidgetConfigurationStore(context).all()
+        if (widgets.none { (widgetId, _) -> widgetIds == null || widgetId in widgetIds }) return true
         val attemptAt = System.currentTimeMillis()
         widgets.forEach { (widgetId, _) -> WidgetAutoRefreshStore.recordAttempt(context, WidgetKind.TRAINS, widgetId, attemptAt) }
         val monitors = FavouriteTrainStore(context).all()
         FavouriteTrainStatusStore.retainOnly(context, monitors.map { it.number })
-        if (monitors.isEmpty()) {
+        val statuses = FavouriteTrainStatusStore.all(context, monitors.map { it.number })
+        val now = Instant.ofEpochMilli(attemptAt)
+        val lookups = monitors.mapNotNull { monitor ->
+            val status = statuses[monitor.number.uppercase(Locale.ROOT)]
+            TrainsWidgetLookupPlanner.lookupDate(monitor, status, now, automatic = widgetIds != null)?.let { date ->
+                Triple(monitor, date, if (TrainsWidgetLookupPlanner.mayBeItalo(status)) emptySet<SourceId>() else setOf(KnownProviderIds.ITALO_STATUS))
+            }
+        }
+        if (lookups.isEmpty()) {
             TrainsWidgetProvider.refreshAll(context)
             return true
         }
         val search = BinarioDataGraph.trainNumberSearchService(context)
-        val today = JourneyQuery.now().serviceDate
-        val results = monitors.chunked(PARALLEL_LOOKUPS).flatMap { chunk ->
+        val results = lookups.chunked(PARALLEL_LOOKUPS).flatMap { chunk ->
             coroutineScope {
-                chunk.map { monitor ->
+                chunk.map { (monitor, date, skipping) ->
                     async {
-                        val update = runCatching { search.search(TrainNumberQuery(monitor.number, today)).lastOrNull() }.getOrNull()
+                        val update = runCatching { search.search(TrainNumberQuery(monitor.number, date), skipping).lastOrNull() }.getOrNull()
                         val matches = update?.matches.orEmpty()
                         val service = FavouriteTrainMatcher.pick(matches.map { it.service }, monitor)
                         val match = service?.let { picked -> matches.firstOrNull { it.service === picked } }
