@@ -55,7 +55,7 @@ export const FIRENZE_SMN = "S06421";
 export const FR_9558_TERMINUS_DELAYS = [0, 0, 0, 1, 1, 2, 2, 2, 3, 3, 3, 4, 4, 4, 5, 5, 5, 5, 5, 5, 5, 5, 7, 9, 12, 20, 40];
 
 /**
- * A small network: FR 9558 Roma Termini → Milano (and a rarer 9558 from Firenze, below five samples), three regional
+ * A small network: FR 9558 Roma Termini → Milano (and a rarer FR 9560 from Firenze, below five samples), three regional
  * trains Roma Termini → Tivoli (30 arrivals at Tivoli, 28 within 15 minutes, mean 4.8), one in the
  * other direction, a train cancelled every day and one with too few days (to Guidonia).
  */
@@ -67,7 +67,7 @@ export function networkDocument(fields: Record<string, unknown> = {}) {
         stopFromDelays(FIRENZE_SMN, Array(27).fill(2), [0, 2, 515, null, null]),
         stopFromDelays(MILANO_CENTRALE, FR_9558_TERMINUS_DELAYS, [1, 40, 610, ["21", 15, 25], null]),
       ]),
-      fixtureTrain("9558", FIRENZE_SMN, "FR", 4, 0, [
+      fixtureTrain("9560", FIRENZE_SMN, "FR", 4, 0, [
         stopFromDelays(FIRENZE_SMN, [0, 0, 0, 0]),
         stopFromDelays(MILANO_CENTRALE, [30, 30, 30, 30]),
       ]),

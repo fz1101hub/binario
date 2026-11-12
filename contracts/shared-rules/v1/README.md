@@ -24,8 +24,8 @@ I workflow Android, Apple e Alexa partono quando cambia questa directory.
 - **Campioni minimi**: nessuna cifra sotto 5 campioni alla fermata misurata.
 - **Giorni in orario**: un giorno cancellato conta come giorno non in orario, (giorni − cancellati) × in orario ÷
   (giorni × campioni); i giorni di fermata soppressa non sono campioni.
-- **Stesso numero, origini diverse**: senza origine nessuna cifra quando più treni con quel numero hanno almeno 5
-  campioni all'ultima fermata.
+- **Stesso numero, origini diverse**: senza origine nessuna cifra quando con quel numero circola più di un treno,
+  quali che siano i loro campioni; un treno soppresso in tutti i giorni osservati non circola e non conta.
 
 ## Casi divergenti
 

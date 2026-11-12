@@ -84,7 +84,7 @@ describe("statistics reader", () => {
     expect(trainNumberKey("FR 9558")).toBe("9558");
     expect(trainNumberKey("09558")).toBe("9558");
     expect(trainNumberKey(" ab c ")).toBe("ABC");
-    expect(network().trainsNumbered("FR 9558")).toHaveLength(2);
+    expect(network().trainsNumbered("FR 9558").map(train => train.originCode)).toEqual([ROMA_TERMINI]);
   });
 
   it("knows a Trenord train by the run after its line, as the app does", () => {
@@ -190,7 +190,7 @@ describe("statistics reader", () => {
 });
 
 describe("train punctuality", () => {
-  it("measures the train at its terminus, the only one of its number with five samples there", () => {
+  it("measures the train at its terminus, the only one with its number", () => {
     expect(trainPunctuality(network(), "9558")).toEqual({
       kind: "stats",
       samples: 27,
@@ -210,16 +210,21 @@ describe("train punctuality", () => {
     expect(trainPunctuality(stats, "1234")).toEqual({ kind: "fewData" });
   });
 
-  it("gives no figure when several trains of the number, from different origins, have five samples or more", () => {
+  it("gives no figure when several trains of the number, from different origins, run, whatever their samples", () => {
     const sameNumber = (origin: string, delays: number[]) =>
       fixtureTrain("9558", origin, "FR", delays.length, 0, [stopFromDelays(origin, Array(delays.length).fill(0)), stopFromDelays(MILANO_CENTRALE, delays)]);
     const shared = parsePunctualityStats(statsDocument([sameNumber(ROMA_TERMINI, Array(20).fill(0)), sameNumber(FIRENZE_SMN, Array(5).fill(30))]))!;
     expect(trainPunctuality(shared, "9558")).toEqual({ kind: "sharedNumber" });
     expect(trainPunctuality(shared, "FR 9558")).toEqual({ kind: "sharedNumber" });
-    // Four samples from Firenze say nothing: the train from Roma is the only one with figures.
-    const single = parsePunctualityStats(statsDocument([sameNumber(ROMA_TERMINI, Array(20).fill(0)), sameNumber(FIRENZE_SMN, Array(4).fill(30))]))!;
-    expect(trainPunctuality(single, "9558")).toMatchObject({ kind: "stats", samples: 20, percent: 100 });
-    // Nor does a train cancelled every day beside one with figures.
+    // Four samples from Firenze are still another train: no guess that the one from Roma is meant, as in the app.
+    const fewer = parsePunctualityStats(statsDocument([sameNumber(ROMA_TERMINI, Array(20).fill(0)), sameNumber(FIRENZE_SMN, Array(4).fill(30))]))!;
+    expect(trainPunctuality(fewer, "9558")).toEqual({ kind: "sharedNumber" });
+    // Two trains cancelled every day from different origins: neither is chosen.
+    const twoCancelled = parsePunctualityStats(
+      statsDocument([fixtureTrain("9558", ROMA_TERMINI, "FR", 9, 9, []), fixtureTrain("9558", FIRENZE_SMN, "FR", 7, 7, [])])
+    )!;
+    expect(trainPunctuality(twoCancelled, "9558")).toEqual({ kind: "sharedNumber" });
+    // A train cancelled every day does not run: beside one with figures, those figures are given.
     const cancelled = parsePunctualityStats(statsDocument([sameNumber(ROMA_TERMINI, Array(20).fill(0)), fixtureTrain("9558", FIRENZE_SMN, "FR", 9, 9, [])]))!;
     expect(trainPunctuality(cancelled, "9558")).toMatchObject({ kind: "stats", samples: 20 });
   });
