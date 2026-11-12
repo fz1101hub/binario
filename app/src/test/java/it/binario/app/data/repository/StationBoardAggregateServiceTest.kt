@@ -1,5 +1,6 @@
 package it.binario.app.data.repository
 
+import it.binario.app.UiMessageKey
 import it.binario.app.data.Station
 import it.binario.app.data.core.BoardKind
 import it.binario.app.data.core.Completeness
@@ -22,12 +23,15 @@ import it.binario.app.data.provider.AccessMode
 import it.binario.app.data.provider.CoverageDescriptor
 import it.binario.app.data.provider.ProviderCapability
 import it.binario.app.data.provider.ProviderDescriptor
+import it.binario.app.data.provider.ProviderError
+import it.binario.app.data.provider.ProviderErrorKind
 import it.binario.app.data.provider.ProviderResponseMeta
 import it.binario.app.data.provider.ProviderResult
 import it.binario.app.data.provider.ProviderWarning
 import it.binario.app.data.provider.RatePolicy
 import it.binario.app.data.provider.StationBoardProvider
 import it.binario.app.data.provider.StationBoardRequest
+import it.binario.app.stationBoardWarningKey
 import java.time.Clock
 import java.time.Duration
 import java.time.Instant
@@ -35,6 +39,7 @@ import java.time.ZoneId
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -305,6 +310,199 @@ class StationBoardAggregateServiceTest {
 
         assertTrue((uncovered as StationBoardAggregateResult.Unavailable).allUnsupported)
         assertTrue(!(mixed as StationBoardAggregateResult.Unavailable).allUnsupported)
+    }
+
+    // Live first: the live boards decide the board, the RFI programmed board is the fallback.
+
+    private val clock = Clock.fixed(now, ZoneId.of("UTC"))
+    private val programmedSource = source("rfi-programmed", Confidence.INFRASTRUCTURE_PRIMARY)
+    private val rfiSource = source("rfi-station-board", Confidence.INFRASTRUCTURE_PRIMARY)
+
+    private fun programmed(vararg trains: Pair<String, Long>) =
+        provider("rfi-programmed", "RFI programmato", rows(programmedSource, live = false, *trains))
+
+    private fun rfiMonitor(vararg trains: Pair<String, Long>) =
+        provider("rfi-station-board", "RFI", rows(rfiSource, live = true, *trains))
+
+    private fun numbers(result: StationBoardAggregateResult): List<String?> =
+        (result as StationBoardAggregateResult.Success).board.entries.map { it.publicNumber }
+
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    @Test
+    fun `live rows decide the board and programmed rows only follow the end of the live span`() = kotlinx.coroutines.test.runTest {
+        // 200 is listed by the programmed board alone inside the live span (up to +110 min); 400 and 500 come after it.
+        val timetable = programmed("100" to 10, "200" to 30, "300" to 60, "400" to 180, "500" to 300)
+        val monitor = rfiMonitor("100" to 10, "300" to 60, "600" to 110)
+        fun StationBoardProvider.answeringAfter(millis: Long) = object : StationBoardProvider by this {
+            override suspend fun getStationBoard(request: StationBoardRequest): ProviderResult<StationBoard> {
+                kotlinx.coroutines.delay(millis)
+                return this@answeringAfter.getStationBoard(request)
+            }
+        }
+        val dispatcher = kotlinx.coroutines.test.StandardTestDispatcher(testScheduler)
+
+        // The programmed board answers first: nothing is shown until the live board has answered.
+        val programmedFirst = mutableListOf<StationBoardAggregateResult>()
+        launch {
+            StationBoardAggregateService(listOf(monitor.answeringAfter(1_000), timetable), clock, providerDispatcher = dispatcher)
+                .observe(station).collect { programmedFirst += it }
+        }
+        runCurrent()
+        assertTrue(programmedFirst.isEmpty())
+        advanceUntilIdle()
+
+        // The live board answers first: its rows at once, the programmed rows after its span when the timetable arrives.
+        val liveFirst = mutableListOf<StationBoardAggregateResult>()
+        launch {
+            StationBoardAggregateService(listOf(monitor, timetable.answeringAfter(1_000)), clock, providerDispatcher = dispatcher)
+                .observe(station).collect { liveFirst += it }
+        }
+        runCurrent()
+        assertEquals(listOf(listOf("100", "300", "600")), liveFirst.map(::numbers))
+        advanceUntilIdle()
+
+        for (updates in listOf(programmedFirst, liveFirst)) {
+            updates.forEach { assertTrue("200" !in numbers(it)) }
+            val final = updates.last() as StationBoardAggregateResult.Success
+            assertTrue(final.isComplete)
+            assertEquals(listOf("100", "300", "600", "400", "500"), numbers(final))
+            // A run both boards list keeps the live fields; the rows after the live span are marked programmed.
+            assertEquals("2", final.board.entries.first().platform?.value)
+            final.board.entries.filter { it.publicNumber in setOf("400", "500") }.forEach {
+                assertEquals(null, it.expectedTime)
+                assertEquals(null, it.status)
+                assertEquals(null, it.platform)
+            }
+            assertTrue(ProviderWarning.REALTIME_UNAVAILABLE !in final.board.warnings)
+            assertEquals(listOf("RFI", "RFI programmato"), final.board.providerNames)
+        }
+
+        // Switched off, the board ends with the live span; the timetable still fills in the runs both boards list.
+        val liveOnly = StationBoardAggregateService(listOf(timetable, monitor), clock, providerDispatcher = dispatcher,
+            programmedRowsAfterLiveSpan = false).load(station) as StationBoardAggregateResult.Success
+        assertEquals(listOf("100", "300", "600"), numbers(liveOnly))
+        assertEquals(listOf("RFI", "RFI programmato"), liveOnly.board.providerNames)
+    }
+
+    @Test
+    fun `when every live board fails or is empty the programmed rows are shown with the unavailable notice`() = kotlinx.coroutines.runBlocking {
+        val timetable = programmed("100" to 10, "200" to 30)
+        val down = failing("rfi-station-board", ProviderErrorKind.NETWORK)
+        val notCovered = failing("ch-transport-opendata", ProviderErrorKind.NOT_SUPPORTED)
+        // At night: the live board answers, without trains in its span.
+        val empty = provider("viaggiatreno", "VT", rows(source("viaggiatreno", Confidence.OPERATOR_PRIMARY), live = true))
+        for (live in listOf(listOf(down, notCovered), listOf(empty), listOf(down, empty), listOf(notCovered), emptyList())) {
+            val result = StationBoardAggregateService(live + timetable, clock).load(station) as StationBoardAggregateResult.Success
+            assertEquals(listOf("100", "200"), numbers(result))
+            assertTrue(result.board.entries.all { it.expectedTime == null && it.status == null })
+            assertTrue(ProviderWarning.REALTIME_UNAVAILABLE in result.board.warnings)
+            assertEquals("RFI programmato", result.board.providerNames.last())
+        }
+        // The screen shows that warning as its "realtime unavailable" notice.
+        assertEquals(UiMessageKey.STATION_BOARD_REALTIME_UNAVAILABLE, ProviderWarning.REALTIME_UNAVAILABLE.stationBoardWarningKey())
+    }
+
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    @Test
+    fun `a live board timing out after the programmed answer shows the programmed rows only when it ends`() = kotlinx.coroutines.test.runTest {
+        val monitor = rfiMonitor("100" to 10)
+        val hanging = object : StationBoardProvider by monitor {
+            override suspend fun getStationBoard(request: StationBoardRequest): ProviderResult<StationBoard> = kotlinx.coroutines.awaitCancellation()
+        }
+        val updates = mutableListOf<Pair<Long, StationBoardAggregateResult>>()
+        launch {
+            StationBoardAggregateService(listOf(hanging, programmed("100" to 10, "200" to 30)), clock, providerTimeoutMillis = 1_000,
+                providerDispatcher = kotlinx.coroutines.test.StandardTestDispatcher(testScheduler))
+                .observe(station).collect { updates += testScheduler.currentTime to it }
+        }
+        runCurrent()
+        testScheduler.advanceTimeBy(999)
+        runCurrent()
+        assertTrue(updates.isEmpty())
+        advanceUntilIdle()
+        val (shownAt, result) = updates.single()
+        assertEquals(1_000L, shownAt)
+        assertTrue((result as StationBoardAggregateResult.Success).isComplete)
+        assertEquals(listOf("100", "200"), numbers(result))
+        assertTrue(ProviderWarning.REALTIME_UNAVAILABLE in result.board.warnings)
+    }
+
+    @Test
+    fun `an operator only live board does not stand for the station live board`() = kotlinx.coroutines.runBlocking {
+        // RFI and ViaggiaTreno are down, Italo answers for its own train: the board falls back to the timetable.
+        val italo = provider("italo-status", "Italo", rows(source("italo-status", Confidence.OPERATOR_PRIMARY), live = true, "9920" to 120))
+        val timetable = programmed("100" to 10, "200" to 70, "9920" to 120)
+        val result = StationBoardAggregateService(
+            listOf(failing("rfi-station-board", ProviderErrorKind.NETWORK), italo, timetable), clock
+        ).load(station) as StationBoardAggregateResult.Success
+        assertEquals(listOf("100", "200", "9920"), numbers(result))
+        assertEquals(SourceId("italo-status"), result.board.entries.last().expectedTime?.source?.sourceId)
+        assertTrue(ProviderWarning.REALTIME_UNAVAILABLE in result.board.warnings)
+
+        // With the station live board up (span to +10 min), Italo's later row does not stretch the span over 200.
+        val withMonitor = StationBoardAggregateService(listOf(rfiMonitor("100" to 10), italo, timetable), clock)
+            .load(station) as StationBoardAggregateResult.Success
+        assertEquals(listOf("100", "200", "9920"), numbers(withMonitor))
+        assertEquals(null, withMonitor.board.entries[1].expectedTime)
+        assertTrue(ProviderWarning.REALTIME_UNAVAILABLE !in withMonitor.board.warnings)
+    }
+
+    @Test
+    fun `the station widget reads the same board as the screen and keeps programmed rows without live claims`() = kotlinx.coroutines.runBlocking {
+        val timetable = programmed("100" to 10, "200" to 30, "400" to 180)
+        val cases = listOf(
+            listOf(rfiMonitor("100" to 10, "600" to 110), timetable) to listOf("100", "600", "400"),
+            listOf(failing("rfi-station-board", ProviderErrorKind.NETWORK), timetable) to listOf("100", "200", "400")
+        )
+        for ((providers, expected) in cases) {
+            val service = StationBoardAggregateService(providers, clock)
+            val screen = service.observe(station).toList().last() as StationBoardAggregateResult.Success
+            // StationWidgetRefresher: service.load, then StationWidgetSnapshot.fromBoard.
+            val widget = service.load(station) as StationBoardAggregateResult.Success
+            assertEquals(screen.board, widget.board)
+            assertEquals(expected, numbers(widget))
+            val snapshot = it.binario.app.widget.StationWidgetSnapshot.fromBoard(widget.board, now)
+            assertEquals(expected, snapshot.departures.map { it.number })
+            val live = widget.board.entries.filter { it.expectedTime != null }.map { it.publicNumber }.toSet()
+            snapshot.departures.forEach { assertEquals(it.number in live, it.hasObservation) }
+        }
+    }
+
+    /** One row per (number, minutes from now) to Roma Termini; live rows carry an expected time, platform and status. */
+    private fun rows(source: SourceRef, live: Boolean, vararg trains: Pair<String, Long>): StationBoard {
+        val entries = trains.map { (number, minutes) ->
+            val time = now.plus(Duration.ofMinutes(minutes)).atZone(zone)
+            StationBoardEntry(
+                runId = TrainRunId("${source.sourceId.value}:$number"),
+                scheduledTime = time,
+                expectedTime = if (live) SourcedValue(time.plusMinutes(3), source, Precision.MINUTE) else null,
+                destinationOrOrigin = StationId("roma-termini"),
+                destinationOrOriginLabel = "Roma Termini",
+                publicNumber = number,
+                platform = if (live) SourcedValue("2", source) else null,
+                status = if (live) SourcedValue(RunStatus.DELAYED, source) else null
+            )
+        }
+        return StationBoard(
+            stationId = StationId(station.id),
+            kind = BoardKind.DEPARTURES,
+            from = now,
+            to = now.plus(Duration.ofHours(6)),
+            entries = entries,
+            snapshot = SnapshotMeta(
+                schemaVersion = 1,
+                generatedAt = now,
+                validUntil = now.plus(Duration.ofMinutes(2)),
+                freshness = Freshness.FRESH,
+                completeness = if (live) Completeness.PARTIAL else Completeness.STATIC_ONLY,
+                contributingSources = setOf(source)
+            )
+        )
+    }
+
+    private fun failing(id: String, kind: ProviderErrorKind): StationBoardProvider = object : StationBoardProvider by provider(id, id, rows(source(id, Confidence.OPERATOR_PRIMARY), live = true)) {
+        override suspend fun getStationBoard(request: StationBoardRequest): ProviderResult<StationBoard> =
+            ProviderResult.Failure(ProviderError(kind, "test"))
     }
 
     private fun board(

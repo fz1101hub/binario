@@ -41,8 +41,9 @@ import kotlinx.coroutines.sync.withLock
  * Official planned station board backed by RFI's public "Quadro orario".
  *
  * It intentionally exposes only scheduled departures. Expected times, live
- * platform and operational status remain null and can be overlaid by higher
- * authority realtime providers in StationBoardAggregateService.
+ * platform and operational status remain null. On the station board it is the
+ * fallback of the live boards: StationBoardAggregateService shows its rows only
+ * when no live board answered with rows, or after the end of the live span.
  */
 class RfiProgrammedStationBoardAdapter(
     private val fetcher: RfiProgrammedTimetableFetcher = HttpRfiProgrammedTimetableFetcher(),
