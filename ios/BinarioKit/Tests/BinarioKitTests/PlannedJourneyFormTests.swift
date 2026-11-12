@@ -147,6 +147,11 @@ final class PlannedJourneyFormTests: XCTestCase {
         XCTAssertTrue(edit.needsPastDepartureWarning(now: now, editing: departed))
     }
 
+    func testAnErrorIsSaidAtOnceAndInformationWaitsItsTurn() {
+        XCTAssertFalse(PlannedJourneyFeedbackSeverity.error.queuesBehindCurrentSpeech)
+        XCTAssertTrue(PlannedJourneyFeedbackSeverity.information.queuesBehindCurrentSpeech)
+    }
+
     // MARK: Helpers
 
     private func filled(label: String = "", checklist: String = "") throws -> PlannedJourneyForm {

@@ -71,6 +71,9 @@
 "saved.agenda.complete" = "Tamamla";
 "saved.agenda.delete" = "Yolculuğu sil";
 "saved.agenda.delete_confirmation" = "Bu yolculuk bu iPhone'dan silinsin mi?";
+"saved.agenda.saved" = "Planlı yolculuk kaydedildi.";
+"saved.agenda.completed" = "Yolculuk tamamlandı.";
+"saved.agenda.deleted" = "Yolculuk silindi.";
 "saved.agenda.full" = "Ajanda dolu (40 yolculuk). Hiçbir yolculuk değiştirilmedi: başka birini kaydetmeden önce birini silin.";
 "saved.agenda.duplicate" = "Bu yolculuk aynı istasyonlar, tarih ve saatle Ajanda’da zaten var. Hiçbir veri eklenmedi.";
 "saved.agenda.read_only" = "Ajanda salt okunur: hiçbir değişiklik kaydedilmedi.";

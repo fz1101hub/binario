@@ -71,6 +71,9 @@
 "saved.agenda.complete" = "Selesaikan";
 "saved.agenda.delete" = "Hapus perjalanan";
 "saved.agenda.delete_confirmation" = "Hapus perjalanan ini dari iPhone ini?";
+"saved.agenda.saved" = "Perjalanan terencana disimpan.";
+"saved.agenda.completed" = "Perjalanan selesai.";
+"saved.agenda.deleted" = "Perjalanan dihapus.";
 "saved.agenda.full" = "Agenda penuh (40 perjalanan). Tidak ada perjalanan yang diganti: hapus satu sebelum menyimpan yang lain.";
 "saved.agenda.duplicate" = "Perjalanan ini sudah ada di Agenda dengan stasiun, tanggal, dan jam yang sama. Tidak ada data yang ditambahkan.";
 "saved.agenda.read_only" = "Agenda hanya-baca: tidak ada perubahan yang disimpan.";

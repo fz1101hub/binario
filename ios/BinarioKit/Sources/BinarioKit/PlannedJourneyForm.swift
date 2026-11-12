@@ -160,3 +160,16 @@ public struct PlannedJourneyForm: Equatable, Sendable {
         }
     }
 }
+
+/// How VoiceOver says an Agenda message (the companion's rule): every message is announced
+/// explicitly, since one shown in a form or after a sheet closes is not read otherwise; an error
+/// interrupts what is being said (assertive), information waits its turn (polite).
+public enum PlannedJourneyFeedbackSeverity: Equatable, Sendable {
+    case information
+    case error
+
+    /// Whether the announcement waits for the current speech to end.
+    public var queuesBehindCurrentSpeech: Bool {
+        self == .information
+    }
+}

@@ -71,6 +71,9 @@
 "saved.agenda.complete" = "Hoàn tất";
 "saved.agenda.delete" = "Xóa hành trình";
 "saved.agenda.delete_confirmation" = "Xóa hành trình này khỏi iPhone này?";
+"saved.agenda.saved" = "Đã lưu hành trình.";
+"saved.agenda.completed" = "Đã hoàn tất hành trình.";
+"saved.agenda.deleted" = "Đã xóa hành trình.";
 "saved.agenda.full" = "Lịch trình đã đầy (40 hành trình). Không có hành trình nào bị thay thế: hãy xóa một hành trình trước khi lưu hành trình khác.";
 "saved.agenda.duplicate" = "Hành trình này đã có trong Lịch trình với cùng ga, ngày và giờ. Không có dữ liệu nào được thêm.";
 "saved.agenda.read_only" = "Lịch trình ở chế độ chỉ đọc: không có thay đổi nào được lưu.";

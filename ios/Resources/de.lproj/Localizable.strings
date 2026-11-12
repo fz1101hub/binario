@@ -71,6 +71,9 @@
 "saved.agenda.complete" = "Abschließen";
 "saved.agenda.delete" = "Reise löschen";
 "saved.agenda.delete_confirmation" = "Diese Reise von diesem iPhone löschen?";
+"saved.agenda.saved" = "Geplante Reise gespeichert.";
+"saved.agenda.completed" = "Reise abgeschlossen.";
+"saved.agenda.deleted" = "Reise gelöscht.";
 "saved.agenda.full" = "Agenda voll (40 Reisen). Keine Reise wurde ersetzt: Löschen Sie eine, bevor Sie eine weitere speichern.";
 "saved.agenda.duplicate" = "Diese Reise ist mit denselben Bahnhöfen, demselben Datum und derselben Uhrzeit bereits in der Agenda. Es wurden keine Daten hinzugefügt.";
 "saved.agenda.read_only" = "Die Agenda ist schreibgeschützt: Es wurde keine Änderung gespeichert.";

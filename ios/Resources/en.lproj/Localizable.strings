@@ -71,6 +71,9 @@
 "saved.agenda.complete" = "Complete";
 "saved.agenda.delete" = "Delete journey";
 "saved.agenda.delete_confirmation" = "Delete this journey from this iPhone?";
+"saved.agenda.saved" = "Planned journey saved.";
+"saved.agenda.completed" = "Journey completed.";
+"saved.agenda.deleted" = "Journey deleted.";
 "saved.agenda.full" = "Agenda full (40 journeys). No journey was replaced: delete one before saving another.";
 "saved.agenda.duplicate" = "This journey is already in the Agenda with the same stations, date and time. No data was added.";
 "saved.agenda.read_only" = "The Agenda is read-only: no change was saved.";

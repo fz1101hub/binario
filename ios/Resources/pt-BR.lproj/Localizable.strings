@@ -71,6 +71,9 @@
 "saved.agenda.complete" = "Concluir";
 "saved.agenda.delete" = "Excluir viagem";
 "saved.agenda.delete_confirmation" = "Excluir esta viagem deste iPhone?";
+"saved.agenda.saved" = "Viagem planejada salva.";
+"saved.agenda.completed" = "Viagem concluída.";
+"saved.agenda.deleted" = "Viagem excluída.";
 "saved.agenda.full" = "Agenda cheia (40 viagens). Nenhuma viagem foi substituída: apague uma antes de salvar outra.";
 "saved.agenda.duplicate" = "Esta viagem já está na Agenda com as mesmas estações, data e hora. Nenhum dado foi adicionado.";
 "saved.agenda.read_only" = "A Agenda está somente leitura: nenhuma alteração foi salva.";

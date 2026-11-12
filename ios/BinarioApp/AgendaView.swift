@@ -1,5 +1,8 @@
 import SwiftUI
 import BinarioKit
+#if canImport(UIKit)
+import UIKit
+#endif
 
 /// «Agenda» (in «Tratte»): the journeys planned on this iPhone only, «Prossimi» (the first to
 /// leave first) or «Archiviati» (completed or departed, the latest first), on the Italian clock.
@@ -205,7 +208,11 @@ struct AgendaJourneyView: View {
                         Label("saved.agenda.edit", systemImage: "pencil")
                     }
                     Button {
-                        report(model.completeJourney(id: journey.id))
+                        if let refusal = model.completeJourney(id: journey.id) {
+                            report(refusal)
+                        } else {
+                            AgendaAnnouncement.post("saved.agenda.completed", .information)
+                        }
                     } label: {
                         Label("saved.agenda.complete", systemImage: "checkmark.circle")
                     }
@@ -220,6 +227,7 @@ struct AgendaJourneyView: View {
                         if let refusal = model.deleteJourney(id: journey.id) {
                             report(refusal)
                         } else {
+                            AgendaAnnouncement.post("saved.agenda.deleted", .information)
                             dismiss()
                         }
                     }
@@ -400,22 +408,48 @@ struct AgendaEditorView: View {
             form.time = ItalianWallClock.time(of: departure)
         }
         let now = Date()
+        let journey: PlannedJourney
+        switch form.journey(id: UUID().uuidString, now: now, editing: existing) {
+        case let .failure(issue):
+            show(AgendaText.messageKey(issue))
+            return
+        case let .success(built):
+            journey = built
+        }
         if form.needsPastDepartureWarning(now: now, editing: existing), !pastDepartureConfirmed {
             // Said once; the next «Salva» saves the journey, which goes straight to the archive.
-            messageKey = "saved.agenda.departure_past"
+            show("saved.agenda.departure_past")
             pastDepartureConfirmed = true
             return
         }
-        switch form.journey(id: UUID().uuidString, now: now, editing: existing) {
-        case let .failure(issue):
-            messageKey = AgendaText.messageKey(issue)
-        case let .success(journey):
-            if let refusal = model.saveJourney(journey, isNew: existing == nil) {
-                messageKey = AgendaText.messageKey(refusal)
-            } else {
-                dismiss()
-            }
+        if let refusal = model.saveJourney(journey, isNew: existing == nil) {
+            show(AgendaText.messageKey(refusal))
+        } else {
+            AgendaAnnouncement.post("saved.agenda.saved", .information)
+            dismiss()
         }
+    }
+
+    /// A message under the form, also said by VoiceOver at once.
+    private func show(_ key: String) {
+        messageKey = key
+        AgendaAnnouncement.post(key, .error)
+    }
+}
+
+/// VoiceOver announcements of the Agenda.
+enum AgendaAnnouncement {
+    /// Says the text of `key` when VoiceOver runs: an error at once, information after what is
+    /// being said.
+    @MainActor
+    static func post(_ key: String, _ severity: PlannedJourneyFeedbackSeverity) {
+        #if canImport(UIKit)
+        let text = NSAttributedString(
+            string: NSLocalizedString(key, comment: ""),
+            attributes: [.accessibilitySpeechQueueAnnouncement: severity.queuesBehindCurrentSpeech]
+        )
+        UIAccessibility.post(notification: .announcement, argument: text)
+        #endif
     }
 }
 

@@ -71,6 +71,9 @@
 "saved.agenda.complete" = "Terminer";
 "saved.agenda.delete" = "Supprimer le voyage";
 "saved.agenda.delete_confirmation" = "Supprimer ce voyage de cet iPhone ?";
+"saved.agenda.saved" = "Voyage planifié enregistré.";
+"saved.agenda.completed" = "Voyage terminé.";
+"saved.agenda.deleted" = "Voyage supprimé.";
 "saved.agenda.full" = "Agenda plein (40 voyages). Aucun voyage n’a été remplacé : supprimez-en un avant d’en enregistrer un autre.";
 "saved.agenda.duplicate" = "Ce voyage est déjà dans l’Agenda avec les mêmes gares, date et heure. Aucune donnée n’a été ajoutée.";
 "saved.agenda.read_only" = "L’Agenda est en lecture seule : aucune modification n’a été enregistrée.";

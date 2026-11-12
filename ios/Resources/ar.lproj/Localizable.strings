@@ -71,6 +71,9 @@
 "saved.agenda.complete" = "إكمال";
 "saved.agenda.delete" = "حذف الرحلة";
 "saved.agenda.delete_confirmation" = "هل تريد حذف هذه الرحلة من هذا الـ iPhone؟";
+"saved.agenda.saved" = "حُفظت الرحلة المخطّطة.";
+"saved.agenda.completed" = "اكتملت الرحلة.";
+"saved.agenda.deleted" = "حُذفت الرحلة.";
 "saved.agenda.full" = "الأجندة ممتلئة (40 رحلة). لم تُستبدل أي رحلة: احذف رحلة قبل حفظ أخرى.";
 "saved.agenda.duplicate" = "هذه الرحلة موجودة مسبقًا في الأجندة بالمحطات والتاريخ والوقت نفسها. لم تُضف أي بيانات.";
 "saved.agenda.read_only" = "الأجندة للقراءة فقط: لم يُحفظ أي تغيير.";

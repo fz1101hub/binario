@@ -71,6 +71,9 @@
 "saved.agenda.complete" = "완료";
 "saved.agenda.delete" = "여정 삭제";
 "saved.agenda.delete_confirmation" = "이 iPhone에서 이 여정을 삭제할까요?";
+"saved.agenda.saved" = "계획된 여정이 저장되었습니다.";
+"saved.agenda.completed" = "여정을 완료했습니다.";
+"saved.agenda.deleted" = "여정을 삭제했습니다.";
 "saved.agenda.full" = "일정이 가득 찼습니다(여정 40개). 대체된 여정은 없습니다. 다른 여정을 저장하기 전에 하나를 삭제하세요.";
 "saved.agenda.duplicate" = "이 여정은 같은 역, 날짜, 시간으로 이미 일정에 있습니다. 추가된 데이터는 없습니다.";
 "saved.agenda.read_only" = "일정이 읽기 전용입니다. 변경 사항이 저장되지 않았습니다.";

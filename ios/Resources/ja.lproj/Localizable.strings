@@ -71,6 +71,9 @@
 "saved.agenda.complete" = "完了";
 "saved.agenda.delete" = "旅程を削除";
 "saved.agenda.delete_confirmation" = "この旅程をこの iPhone から削除しますか？";
+"saved.agenda.saved" = "旅程を保存しました。";
+"saved.agenda.completed" = "旅程を完了しました。";
+"saved.agenda.deleted" = "旅程を削除しました。";
 "saved.agenda.full" = "予定がいっぱいです（40 件）。置き換えた旅程はありません。保存する前に1件削除してください。";
 "saved.agenda.duplicate" = "この旅程は同じ駅・日付・時刻で既に予定にあります。データは追加されていません。";
 "saved.agenda.read_only" = "予定は読み取り専用です。変更は保存されていません。";
