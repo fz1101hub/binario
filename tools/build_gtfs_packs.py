@@ -990,6 +990,82 @@ def is_combined_itinerary(trip_id: str, number: str) -> bool:
     return "_" not in trip_id.rsplit(":", 1)[-1] and len(numbers) >= 2 and numbers[0] == number.strip()
 
 
+def gtfs_seconds(value: str) -> int | None:
+    """Seconds of an ``H:MM:SS`` GTFS time, or ``None`` when empty or malformed."""
+    parts = value.strip().split(":")
+    if len(parts) != 3 or not all(part.isdigit() for part in parts):
+        return None
+    return int(parts[0]) * 3600 + int(parts[1]) * 60 + int(parts[2])
+
+
+def gtfs_time(seconds: int) -> str:
+    return f"{seconds // 3600:02d}:{seconds // 60 % 60:02d}:{seconds % 60:02d}"
+
+
+# frequencies.txt runs a trip every headway_secs; Genova's lift every 60 s from 06:10 to 21:30 is 920 runs a direction.
+MAX_FREQUENCY_RUNS = 5_000
+
+
+def expand_frequencies(
+    trip_rows: Sequence[Mapping[str, str]],
+    stop_time_rows: Sequence[Mapping[str, str]],
+    frequency_rows: Sequence[Mapping[str, str]],
+    source_id: str,
+) -> tuple[tuple[dict[str, str], ...], tuple[dict[str, str], ...], int]:
+    """Each run of a frequency-based trip as a trip of its own (``<trip_id>@HHMMSS``, its first departure), its stop
+    times shifted by the run's start; the template trip goes.  Runs start at start_time, every headway_secs, before
+    end_time (GTFS).  A run is not a vehicle working, so its block_id is left empty."""
+    calls: dict[str, list[Mapping[str, str]]] = {}
+    for row in stop_time_rows:
+        calls.setdefault(row.get("trip_id", ""), []).append(row)
+    starts: dict[str, list[int]] = {}
+    for row in frequency_rows:
+        trip_id = row.get("trip_id", "")
+        start, end = gtfs_seconds(row.get("start_time", "")), gtfs_seconds(row.get("end_time", ""))
+        headway = row.get("headway_secs", "").strip()
+        if start is None or end is None or not headway.isdigit() or int(headway) <= 0 or end < start:
+            raise BuildError(f"{source_id}: frequencies.txt non valido per {log_safe(trip_id)}")
+        starts.setdefault(trip_id, []).extend(range(start, end, int(headway)))
+    if sum(len(values) for values in starts.values()) > MAX_FREQUENCY_RUNS:
+        raise BuildError(f"{source_id}: frequencies.txt oltre {MAX_FREQUENCY_RUNS} corse")
+    trips: list[dict[str, str]] = []
+    expanded: dict[str, list[dict[str, str]]] = {}
+    for trip in trip_rows:
+        trip_id = trip.get("trip_id", "")
+        if trip_id not in starts:
+            trips.append(dict(trip))
+            continue
+        template = sorted(calls.get(trip_id, []), key=lambda row: int(row.get("stop_sequence", "0").strip() or 0))
+        times = [
+            (gtfs_seconds(row.get("arrival_time", "")), gtfs_seconds(row.get("departure_time", "")))
+            for row in template
+        ]
+        origin = times[0][1] if times and times[0][1] is not None else (times[0][0] if times else None)
+        if origin is None or any(arrival is None and departure is None for arrival, departure in times):
+            raise BuildError(f"{source_id}: trip a frequenza senza orari: {log_safe(trip_id)}")
+        for start in sorted(set(starts[trip_id])):
+            run_id = f"{trip_id}@{gtfs_time(start).replace(':', '')}"
+            trips.append({**trip, "trip_id": run_id, **({"block_id": ""} if "block_id" in trip else {})})
+            shift = start - origin
+            expanded.setdefault(trip_id, []).extend(
+                {
+                    **row,
+                    "trip_id": run_id,
+                    "arrival_time": gtfs_time(arrival + shift) if arrival is not None else "",
+                    "departure_time": gtfs_time(departure + shift) if departure is not None else "",
+                }
+                for row, (arrival, departure) in zip(template, times)
+            )
+    stop_times: list[dict[str, str]] = []
+    for row in stop_time_rows:
+        trip_id = row.get("trip_id", "")
+        if trip_id not in starts:
+            stop_times.append(dict(row))
+        elif trip_id in expanded:
+            stop_times.extend(expanded.pop(trip_id))
+    return tuple(trips), tuple(stop_times), sum(len(set(values)) for values in starts.values())
+
+
 def stop_modes_table(
     routes: Sequence[Mapping[str, str]],
     trips: Sequence[Mapping[str, str]],
@@ -1110,6 +1186,21 @@ def filter_archive(
         # Rules that drop or change trips are named in the filter manifest; their counts go to the log, so that filtering
         # a published pack again gives the same bytes.
         trip_rules: list[str] = []
+        frequencies = read_table(
+            archive,
+            "frequencies.txt",
+            predicate=lambda row: row.get("trip_id", "") in trip_ids,
+            budget=budget,
+        )
+        if frequencies is not None:
+            require_columns(frequencies, "frequencies.txt", "trip_id", "start_time", "end_time", "headway_secs")
+        if frequencies is not None and frequencies.rows:
+            # No reader of the packs knows frequencies.txt: each run becomes a trip of its own.  Not named in tripRules:
+            # the expanded pack has no frequencies.txt left, and filtering it again must give the same bytes.
+            kept_trips, kept_stop_times, runs = expand_frequencies(kept_trips, kept_stop_times, frequencies.rows, source_id)
+            print(f"{source_id}: frequencies.txt espanso in {runs} corse", file=sys.stderr)
+            trip_ids = {row["trip_id"] for row in kept_trips if row.get("trip_id")}
+            frequencies = None
 
         calendar = read_table(
             archive,
@@ -1196,14 +1287,8 @@ def filter_archive(
             "calendar_dates.txt": filtered_calendar_dates,
         }
 
-        frequencies = read_table(
-            archive,
-            "frequencies.txt",
-            predicate=lambda row: row.get("trip_id", "") in trip_ids,
-            budget=budget,
-        )
         if frequencies is not None:
-            require_columns(frequencies, "frequencies.txt", "trip_id")
+            # A feed's empty frequencies.txt (a header only) is kept as published.
             tables["frequencies.txt"] = frequencies
 
         # The app resolves schedules and stop coordinates, not route geometry.
@@ -1565,6 +1650,9 @@ def verify_filter_from_asset(path: Path, source_id: str) -> str:
         expected_counts = metadata.get("counts")
         if not isinstance(expected_counts, dict) or expected_counts.get("routes") != len(routes.rows):
             raise BuildError(f"{source_id}: conteggi filtro incoerenti")
+        frequencies = read_table(archive, "frequencies.txt")
+        if frequencies is not None and frequencies.rows:
+            raise BuildError(f"{source_id}: frequencies.txt con corse non espanse (nessun lettore dei pack lo legge)")
         tables: dict[str, CsvTable] = {}
         for table_name, count_key in (("trips.txt", "trips"), ("stop_times.txt", "stopTimes"), ("stops.txt", "stops")):
             table = read_table(archive, table_name, required=True)

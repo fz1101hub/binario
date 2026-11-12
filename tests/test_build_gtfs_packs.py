@@ -205,13 +205,21 @@ class BuildGtfsPacksTest(unittest.TestCase):
             routes = builder.read_table(archive, "routes.txt", required=True)
             trips = builder.read_table(archive, "trips.txt", required=True)
             stops = builder.read_table(archive, "stops.txt", required=True)
-            frequencies = builder.read_table(archive, "frequencies.txt", required=True)
-            assert routes and trips and stops and frequencies
+            stop_times = builder.read_table(archive, "stop_times.txt", required=True)
+            assert routes and trips and stops and stop_times
             self.assertEqual(["FGC-191"], [row["route_id"] for row in routes.rows])
-            self.assertEqual(["rail-trip"], [row["trip_id"] for row in trips.rows])
+            # Audit2 android-planner-8: the trip runs every 30 minutes from 08:00 to 09:00 (frequencies.txt, which no
+            # reader of the packs knows): two trips, the second shifted by 30 minutes, and no frequencies.txt left.
+            self.assertEqual(["rail-trip@080000", "rail-trip@083000"], [row["trip_id"] for row in trips.rows])
+            self.assertEqual(
+                [("rail-trip@080000", "08:00:00", "PARENT"), ("rail-trip@080000", "08:30:00", "A"),
+                 ("rail-trip@083000", "08:30:00", "PARENT"), ("rail-trip@083000", "09:00:00", "A")],
+                [(row["trip_id"], row["departure_time"], row["stop_id"]) for row in stop_times.rows],
+            )
             self.assertEqual({"PARENT", "A"}, {row["stop_id"] for row in stops.rows})
-            self.assertEqual(["rail-trip"], [row["trip_id"] for row in frequencies.rows])
+            self.assertNotIn("frequencies.txt", archive.namelist())
             filter_manifest = json.loads(archive.read("binario_filter_manifest.json"))
+            self.assertNotIn("tripRules", filter_manifest)
             self.assertEqual("explicit-route-ids", filter_manifest["policy"]["kind"])
             self.assertEqual(
                 builder.canonical_member_digests(archive, "binario_filter_manifest.json"),
@@ -1149,6 +1157,43 @@ class RouteTypeOverrideTest(unittest.TestCase):
         with zipfile.ZipFile(ASSETS / "toscana-tft-gtfs.zip") as archive:
             self.assertEqual({"2"}, {row["route_type"] for row in table(archive, "routes.txt")})
 
+
+class FrequenciesTest(unittest.TestCase):
+    """Audit2 android-planner-8: frequency-based trips (Genova's lift) become one trip per run."""
+
+    def setUp(self) -> None:
+        self.temp = Path(tempfile.mkdtemp(prefix="gtfs-frequencies-test-"))
+        self.addCleanup(shutil.rmtree, self.temp, ignore_errors=True)
+
+    def test_each_run_is_a_trip_without_block_id_also_past_midnight(self) -> None:
+        trips = [{"trip_id": "LIFT", "route_id": "R", "service_id": "S", "block_id": "8"}, {"trip_id": "X", "route_id": "R", "block_id": "9"}]
+        stop_times = [
+            {"trip_id": "LIFT", "arrival_time": "23:59:00", "departure_time": "23:59:30", "stop_id": "A", "stop_sequence": "1"},
+            {"trip_id": "LIFT", "arrival_time": "24:00:30", "departure_time": "24:00:30", "stop_id": "B", "stop_sequence": "2"},
+            {"trip_id": "X", "arrival_time": "10:00:00", "departure_time": "10:00:00", "stop_id": "A", "stop_sequence": "1"},
+        ]
+        frequencies = [{"trip_id": "LIFT", "start_time": "23:58:00", "end_time": "24:01:00", "headway_secs": "60"}]
+        kept_trips, kept_times, runs = builder.expand_frequencies(trips, stop_times, frequencies, "fixture")
+        self.assertEqual(3, runs)
+        self.assertEqual(["LIFT@235800", "LIFT@235900", "LIFT@240000", "X"], [row["trip_id"] for row in kept_trips])
+        self.assertEqual(["", "", "", "9"], [row["block_id"] for row in kept_trips])
+        self.assertEqual(
+            # The first departure of each run is its start; the times keep the template's spacing.
+            [("23:57:30", "23:58:00"), ("23:59:00", "23:59:00"), ("23:58:30", "23:59:00"), ("24:00:00", "24:00:00"),
+             ("23:59:30", "24:00:00"), ("24:01:00", "24:01:00"), ("10:00:00", "10:00:00")],
+            [(row["arrival_time"], row["departure_time"]) for row in kept_times],
+        )
+        with self.assertRaisesRegex(builder.BuildError, "oltre"), mock.patch.object(builder, "MAX_FREQUENCY_RUNS", 2):
+            builder.expand_frequencies(trips, stop_times, frequencies, "fixture")
+        with self.assertRaisesRegex(builder.BuildError, "frequencies.txt non valido"):
+            builder.expand_frequencies(trips, stop_times, [dict(frequencies[0], headway_secs="0")], "fixture")
+
+    def test_the_shipped_packs_carry_no_frequency_table_with_runs(self) -> None:
+        for directory in (ASSETS, ROOT / "app/src/main/assets/gtfs-transit", ROOT / "app/src/personal/assets/gtfs-personal"):
+            for path in sorted(directory.glob("*.zip")):
+                with self.subTest(pack=path.name), zipfile.ZipFile(path) as archive:
+                    if "frequencies.txt" in archive.namelist():
+                        self.assertEqual([], table(archive, "frequencies.txt"))
 
 if __name__ == "__main__":
     unittest.main()

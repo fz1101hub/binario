@@ -632,7 +632,7 @@
         }
       },
       "minValidDays": 14,
-      "sha256": "3a19c0d8229e0d1fd359d0111357c4febcaa49de7f171d42865bfc5727e50c7e",
+      "sha256": "54eff717b637efc48cb5051022d272d08134b4be0c006b841aaef938ca6a0b14",
       "lastServiceDate": "2026-12-24",
       "filter": {
         "kind": "gtfs-urban-route-types",
@@ -1047,7 +1047,7 @@
         ]
       },
       "sourceArchiveSha256": "952ff25fc2590e8a0eaa715d397a64fbe442aa869cd77b12b516ef8da0faea98",
-      "contentSha256": "2392f9e143098f29a89c63de2df170413f7033d802ce53f9114c0ec3f74a69cc"
+      "contentSha256": "aadae72cabf14902f5b5c074735182afa7314fb9520432e4db1b0aecad7066b5"
     },
     {
       "sourceId": "milano-atm-gtfs",
