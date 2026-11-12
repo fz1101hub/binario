@@ -18,6 +18,8 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 APPLICATION_ID = int.from_bytes(b"BNGT", "big")
 # Packs in the index; the same value as build_ios_gtfs_schedule.INDEXED_PACK_COUNT.
 INDEXED_PACK_COUNT = 9
+# Packs whose trips must touch a catalogue station with codes; build_ios_gtfs_schedule.FOREIGN_PACKS.
+FOREIGN_PACKS = ("ch-otd-gtfs", "oebb-gtfs", "sncf-gtfs")
 USER_VERSION = 2
 METADATA_SCHEMA_VERSION = 1
 MAX_METADATA_BYTES = 4 * 1024 * 1024
@@ -210,7 +212,13 @@ def verify_database(path: Path, metadata: dict[str, object], input_fingerprint: 
         require(json.loads(embedded.get("row_counts_json", "null")) == counts, "embedded row counts mismatch")
         incomplete = connection.execute("SELECT count(*) FROM trip t WHERE NOT EXISTS (SELECT 1 FROM stop_time st WHERE st.trip_id=t.id)").fetchone()[0]
         require(incomplete == 0, "trip without stop_times found")
-        unverified = connection.execute("SELECT count(*) FROM trip t WHERE NOT EXISTS (SELECT 1 FROM stop_time st JOIN stop s ON s.id=st.stop_id WHERE st.trip_id=t.id AND s.catalog_station_id IS NOT NULL AND (s.railway_code IS NOT NULL OR s.trenitalia_location_id IS NOT NULL))").fetchone()[0]
+        # A trip touches a catalogue station; in a foreign operator's pack, one with codes (FOREIGN_PACKS).
+        unverified = connection.execute(
+            "SELECT count(*) FROM trip t JOIN pack p ON p.id=t.pack_id WHERE NOT EXISTS ("
+            "SELECT 1 FROM stop_time st JOIN stop s ON s.id=st.stop_id WHERE st.trip_id=t.id AND s.catalog_station_id IS NOT NULL "
+            f"AND (p.source_id NOT IN ({','.join('?' for _ in FOREIGN_PACKS)}) OR s.railway_code IS NOT NULL OR s.trenitalia_location_id IS NOT NULL))",
+            sorted(FOREIGN_PACKS),
+        ).fetchone()[0]
         require(unverified == 0, "trip not touching a verified catalog station found")
         non_rail = connection.execute(
             "SELECT count(*) FROM route WHERE route_type != 2 AND NOT (route_type BETWEEN 100 AND 199)"

@@ -5,9 +5,12 @@ The builder intentionally uses only the Python standard library. It treats every
 input as untrusted, validates referential integrity before publication, and only
 keeps complete trips which touch a catalog station having a railwayCode or
 trenitaliaLocationId, matched by normalized name (or the leading part of a
-bilingual name such as "Merano Meran") and verified by distance. Catalogue
-entries describing one physical station collapse onto a single preferred entry;
-homonyms that geography cannot separate stay unmatched (fail closed).
+bilingual name such as "Merano Meran") and verified by distance. In the Italian
+packs a stop matching no coded station may match a catalogue station without
+codes the same way (EAV's Cumana and Circumflegrea, the Renon railway, Trento -
+Mezzolombardo), as Android's name match does. Catalogue entries describing one
+physical station collapse onto a single preferred entry with codes; homonyms that
+geography cannot separate stay unmatched (fail closed).
 """
 from __future__ import annotations
 
@@ -68,6 +71,9 @@ MAX_PREFIX_MATCH_DISTANCE_KM = 1.0
 # The packs of the Android core manifest the index reads (androidOnlySources aside): ten until the Croatian HŽPP pack
 # was removed in November 2026.
 INDEXED_PACK_COUNT = 9
+# Packs of foreign operators: their stops match only catalogue stations with codes, so the index keeps their trips
+# into Italy and not the French, Swiss or Austrian networks around a station the catalogue lists without codes (Paris).
+FOREIGN_PACKS = frozenset({"ch-otd-gtfs", "oebb-gtfs", "sncf-gtfs"})
 RAIL_ROUTE_TYPES = frozenset({2, *range(100, 200)})
 # Packs whose bikes_allowed is stored as unknown, as on Android (GtfsDayTimetable.kt): the Italo
 # pack publishes 1 on every trip, but Italo admits only folding bikes carried in a bag, so "bikes
@@ -181,6 +187,10 @@ class CatalogIdentity:
     latitude: float
     longitude: float
 
+    @property
+    def coded(self) -> bool:
+        return bool(self.railway_code or self.trenitalia_location_id)
+
 @dataclass(frozen=True)
 class CatalogNameMatch:
     identity: CatalogIdentity
@@ -227,7 +237,9 @@ class CatalogStationMatcher:
                     <= CO_LOCATED_DUPLICATE_KM
                 ]
                 best = min(nearby, key=identity_preference)
-                if best.station_id != identity.station_id:
+                # Only an entry with codes shadows another, as in the iOS station search (isShadowedDuplicate):
+                # two entries without codes both stay offered, so neither may lose its stops to the other.
+                if best.station_id != identity.station_id and best.coded:
                     better[identity.station_id] = best
         resolved: dict[str, CatalogIdentity] = {}
         for station_id, target in better.items():
@@ -249,16 +261,25 @@ class CatalogStationMatcher:
             if len({self.preferred(match.identity).station_id for match in matches}) == 1
         )
 
-    def match(self, row: Mapping[str, str], context: str) -> CatalogIdentity | None:
+    def match(self, row: Mapping[str, str], context: str, *, uncoded: bool = False) -> CatalogIdentity | None:
+        """The one catalogue station with codes this stop is; with ``uncoded`` (an Italian pack), when none, the one
+        station without codes it is, by the same rules.  A stop matched today keeps its station."""
         latitude = parse_optional_float(row.get("stop_lat"), f"{context}:lat", -90, 90)
         longitude = parse_optional_float(row.get("stop_lon"), f"{context}:lon", -180, 180)
         if latitude is None or longitude is None:
             return None
         name = normalize_station_name(row["stop_name"])
+        identity = self._match(name, latitude, longitude, coded=True)
+        if identity is None and uncoded:
+            identity = self._match(name, latitude, longitude, coded=False)
+        return identity
+
+    def _match(self, name: str, latitude: float, longitude: float, *, coded: bool) -> CatalogIdentity | None:
         verified = {
             self.preferred(match.identity).station_id: self.preferred(match.identity)
             for match in self._by_name.get(name, ())
-            if distance_kilometres(latitude, longitude, match.identity.latitude, match.identity.longitude)
+            if match.identity.coded == coded
+            and distance_kilometres(latitude, longitude, match.identity.latitude, match.identity.longitude)
             <= (10.0 if match.canonical else 1.0)
         }
         if not verified and name and not self._names_another_catalog_station(name, latitude, longitude):
@@ -266,7 +287,8 @@ class CatalogStationMatcher:
             verified = {
                 self.preferred(identity).station_id: self.preferred(identity)
                 for candidate_tokens, identity in self._prefix_candidates.get(tokens[0], ())
-                if len(candidate_tokens) > len(tokens)
+                if identity.coded == coded
+                and len(candidate_tokens) > len(tokens)
                 and candidate_tokens[: len(tokens)] == tokens
                 and distance_kilometres(latitude, longitude, identity.latitude, identity.longitude)
                 <= MAX_PREFIX_MATCH_DISTANCE_KM
@@ -404,8 +426,6 @@ def load_catalog(path: Path) -> tuple[CatalogStationMatcher, int]:
         railway = station.get("railwayCode")
         location = station.get("trenitaliaLocationId")
         record_name_positions(station, all_name_positions)
-        if not railway and not location:
-            continue
         station_id = station.get("id")
         name = station.get("name")
         aliases = station.get("aliases", [])
@@ -418,8 +438,8 @@ def load_catalog(path: Path) -> tuple[CatalogStationMatcher, int]:
             continue
         if not -90 <= latitude <= 90 or not -180 <= longitude <= 180:
             raise BuildError(f"catalog station {station_id}: invalid coordinates")
-        identity = CatalogIdentity(station_id, railway, location, float(latitude), float(longitude))
-        eligible += 1
+        identity = CatalogIdentity(station_id, railway or None, location or None, float(latitude), float(longitude))
+        eligible += identity.coded
         canonical_name = normalize_station_name(name)
         if canonical_name:
             canonical.append((tuple(canonical_name.split(" ")), identity))
@@ -799,7 +819,7 @@ def ingest_pack(
         stop_identity: dict[str, CatalogIdentity] = {}
         # Direct name matching first, verified by distance.
         for stop_id, row in stops.items():
-            identity = catalog.match(row, f"{source_id}:stop:{stop_id}")
+            identity = catalog.match(row, f"{source_id}:stop:{stop_id}", uncoded=source_id not in FOREIGN_PACKS)
             if identity is not None:
                 stop_identity[stop_id] = identity
         # A platform/boarding area inherits only an unambiguous verified parent identity.
@@ -1111,7 +1131,8 @@ def build_database(
                 "unambiguousNormalizedNameCount": catalog.unambiguous_name_count,
             },
             "filter": {
-                "keepsCompleteTripWhen": "at least one stop matches, by normalized name/alias or bilingual-name prefix verified by distance, a single catalog station with railwayCode or trenitaliaLocationId after co-located duplicates collapse onto the preferred entry",
+                "keepsCompleteTripWhen": "at least one stop matches, by normalized name/alias or bilingual-name prefix verified by distance, a single catalog station with railwayCode or trenitaliaLocationId after co-located duplicates collapse onto the preferred entry; in a pack not listed in codedStationsOnly, a stop matching none may match a single catalog station without codes the same way",
+                "codedStationsOnly": sorted(FOREIGN_PACKS),
                 "parentIdentityInheritance": True,
                 "parentIdentityMaximumChildDistanceKm": MAX_PARENT_INHERITANCE_DISTANCE_KM,
             },

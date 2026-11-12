@@ -83,10 +83,19 @@ def write_inputs(root: Path, **feed_options: object) -> tuple[Path, Path]:
     catalog.write_text(json.dumps({"schemaVersion": 1, "stations": [{"id": "S1", "name": "Città-Alta", "aliases": ["CITTA ALTA"], "railwayCode": "S1", "trenitaliaLocationId": None, "latitude": 45.0, "longitude": 9.0}, {"id": "N1", "name": "Nowhere", "aliases": [], "railwayCode": None, "trenitaliaLocationId": None, "latitude": 46.0, "longitude": 10.0}]}), encoding="utf-8")
     return manifest, catalog
 
+FIXTURE_PACKS = frozenset(f"pack-{index}" for index in range(builder.INDEXED_PACK_COUNT))
+
+
 class IosGtfsScheduleTest(unittest.TestCase):
+    """The fixture packs match catalogue stations with codes only (as a foreign operator's pack): the catalogue's
+    uncoded "Nowhere" (N1) is the station a stop must not be bound to here; see UncodedStationTest."""
+
     def setUp(self) -> None:
         self.temp = Path(tempfile.mkdtemp(prefix="ios-gtfs-test-"))
         self.addCleanup(shutil.rmtree, self.temp, ignore_errors=True)
+        patcher = mock.patch.object(builder, "FOREIGN_PACKS", FIXTURE_PACKS)
+        patcher.start()
+        self.addCleanup(patcher.stop)
 
     def build(self):
         manifest, catalog = write_inputs(self.temp)
@@ -494,6 +503,53 @@ class IosGtfsScheduleTest(unittest.TestCase):
         row = {"start_date": "20260105", "end_date": "20260107", "monday": "1", "tuesday": "0", "wednesday": "1", "thursday": "0", "friday": "0", "saturday": "0", "sunday": "0"}
         start, count, bits = builder.compute_service_bits("S", row, {date(2026, 1, 5): 2, date(2026, 1, 6): 1}, "test")
         self.assertEqual((20260105, 3, b"\x06"), (start, count, bits))
+
+class UncodedStationTest(unittest.TestCase):
+    """Audit2 tools-data-4: in an Italian pack a stop may be the catalogue station without codes it is named after
+    (EAV's Cumana), as on Android; a foreign pack stays with coded stations; a coded match always wins."""
+
+    def setUp(self) -> None:
+        self.temp = Path(tempfile.mkdtemp(prefix="ios-gtfs-uncoded-"))
+        self.addCleanup(shutil.rmtree, self.temp, ignore_errors=True)
+
+    def bound(self, edit=lambda stations: None, foreign: frozenset[str] = frozenset()) -> list[list[str | None]]:
+        root = Path(tempfile.mkdtemp(dir=self.temp))
+        manifest, catalog = write_inputs(root)
+        payload = json.loads(catalog.read_text(encoding="utf-8"))
+        edit(payload["stations"])
+        catalog.write_text(json.dumps(payload), encoding="utf-8")
+        output, metadata = root / "out.zlib", root / "out.json"
+        with mock.patch.object(builder, "FOREIGN_PACKS", foreign):
+            builder.build_database(manifest, catalog, output, metadata, max_compressed_bytes=4 * 1024 * 1024)
+        verifier.verify(output, metadata, max_compressed_bytes=4 * 1024 * 1024, max_database_bytes=16 * 1024 * 1024)
+        raw = root / "out.sqlite"
+        raw.write_bytes(zlib.decompress(output.read_bytes()))
+        connection = sqlite3.connect(raw)
+        self.addCleanup(connection.close)
+        return [[row[0] for row in connection.execute(
+            "SELECT catalog_station_id FROM stop WHERE pack_id=? ORDER BY external_id", (pack,))] for pack in (1, 2)]
+
+    def test_an_italian_pack_binds_the_uncoded_station_and_a_foreign_pack_does_not(self) -> None:
+        # The kept trip calls at PL (platform of Citta Alta, S1) and X (Nowhere); N1 "Nowhere" has no codes.
+        self.assertEqual([["S1", "N1"], ["S1", "N1"]], self.bound())
+        self.assertEqual([["S1", None], ["S1", "N1"]], self.bound(foreign=frozenset({"pack-0"})))
+
+    def test_builder_and_verifier_name_the_same_foreign_packs(self) -> None:
+        self.assertEqual(sorted(builder.FOREIGN_PACKS), list(verifier.FOREIGN_PACKS))
+
+    def test_a_coded_station_keeps_its_stops_and_uncoded_namesakes_stay_apart(self) -> None:
+        # A coded "Nowhere" 5 km away: the stop stays bound to it, as before.
+        coded = {"id": "S9", "name": "Nowhere", "aliases": [], "railwayCode": "S9", "trenitaliaLocationId": None,
+                 "latitude": 46.045, "longitude": 10.0}
+        self.assertEqual("S9", self.bound(lambda stations: stations.append(coded))[0][1])
+        # A second uncoded "Nowhere" next to N1: the iPhone search offers both, so neither takes the stop.
+        twin = {"id": "N2", "name": "Nowhere", "aliases": [], "railwayCode": None, "trenitaliaLocationId": None,
+                "latitude": 46.001, "longitude": 10.0}
+        self.assertIsNone(self.bound(lambda stations: stations.append(twin))[0][1])
+        # A coded entry at the same place shadows the uncoded one (as the search hides it).
+        shadow = dict(coded, latitude=46.001)
+        self.assertEqual("S9", self.bound(lambda stations: stations.append(shadow))[0][1])
+
 
 if __name__ == "__main__":
     unittest.main()
