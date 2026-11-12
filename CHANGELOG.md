@@ -36,6 +36,7 @@ Dodici revisori indipendenti, ognuno con un punto di vista diverso, hanno trovat
   - le stazioni con un doppio spazio nel nome sono di nuovo utilizzabili;
   - un errore di lettura non spegne più il pianificatore fino alla chiusura dell'app;
   - il widget del Watch smette di aggiornarsi ogni 15 minuti quando non ha nulla da mostrare.
+- **«Partenze» su Android con i dati in tempo reale per primi** (decisione del titolare, anche nel widget della stazione): decidono i tabelloni live (monitor RFI, ViaggiaTreno, Svizzera); l'orario programmato RFI si mostra solo quando nessuno di loro risponde con treni, con l'avviso, e dopo l'ultimo treno live per arrivare a sei ore. Il tabellone di Italo, che elenca solo i treni Italo, si unisce sempre ma da solo non sostituisce quello della stazione. Nessuna richiesta in più; ordine delle fonti live e nome «Partenze» invariati.
 - **Android, schermate**:
   - sul tabellone di stazione TalkBack dice per primo che un treno è soppresso e legge le variazioni di percorso; «Soppresso», «Parzialmente soppresso», «Deviato» e «Bus sostitutivo» sono etichette in grassetto nel colore di errore;
   - «In orario» non compare più accanto a «+0 min» o a un treno che una fonte dà in ritardo: una sola regola per righe, schede, distintivi e TalkBack;
