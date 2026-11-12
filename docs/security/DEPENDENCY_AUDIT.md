@@ -14,6 +14,8 @@ L’adapter `ask-sdk-express-adapter` è stato rimosso per eliminare `node-forge
 
 ## Companion Expo
 
+> Il Companion Expo è congelato dal 12 novembre 2026 e non è distribuito ([companion-expo/README.md](../../companion-expo/README.md)): le sue dipendenze non si aggiornano più e questo audit gira solo quando cambia il suo codice o con un avvio manuale di `companion-ci.yml`.
+
 `companion-expo/` esegue `pnpm run verify:dependency-audit`. Il verificatore rifiuta ogni advisory high o critical. Le advisory con una versione corretta pubblicata vengono risolte con override pnpm in `companion-expo/pnpm-workspace.yaml` (oggi: `brace-expansion` per le tre major, `compression` 1.8.2, `image-size` 2.0.3, `postcss`, `source-map-js` 1.2.2, `tinypool` 2.1.2, `undici`, `vite`).
 
 Restano ammesse soltanto le advisory per cui il registro **non dichiara alcuna versione corretta** e che arrivano esclusivamente dalla toolchain Expo di build o sviluppo, non dal bundle React Native installato sui dispositivi:
@@ -31,7 +33,7 @@ Ogni eccezione va rimossa appena il registro pubblica una versione corretta comp
 
 ## Monitoraggio continuo
 
-`.github/dependabot.yml` diventa operativo soltanto quando viene promosso sul default branch `main`: GitHub valuta la configurazione Dependabot del default branch, quindi la presenza del file in un branch feature, `integration/**` o `stabilization/**` non abilita Dependabot. Questa modifica non dichiara né simula un'attivazione da un feature branch. Dopo la promozione su `main`, il file controlla ogni settimana i due workspace pnpm mantenuti, Gradle, GitHub Actions e i requisiti Python root. Gli aggiornamenti minor e patch sono raggruppati per ridurre il rumore; gli aggiornamenti major restano separati, così una migrazione di piattaforma come Expo o React Native non viene confusa con una patch ordinaria. Non è configurato alcun auto-merge: ogni proposta deve superare i gate del componente interessato ed essere revisionata prima dell'integrazione.
+`.github/dependabot.yml` diventa operativo soltanto quando viene promosso sul default branch `main`: GitHub valuta la configurazione Dependabot del default branch, quindi la presenza del file in un branch feature, `integration/**` o `stabilization/**` non abilita Dependabot. Questa modifica non dichiara né simula un'attivazione da un feature branch. Dopo la promozione su `main`, il file controlla ogni mese il workspace pnpm di `alexa-companion/`, Gradle, GitHub Actions e i requisiti Python root; il Companion Expo, congelato, non ha più una voce. Gli aggiornamenti minor e patch sono raggruppati per ridurre il rumore; gli aggiornamenti major di Alexa restano separati, così una migrazione non viene confusa con una patch ordinaria. Non è configurato alcun auto-merge: ogni proposta deve superare i gate del componente interessato ed essere revisionata prima dell'integrazione.
 
 La baseline storica registrata sul **default branch** è di 155 alert aperti: 4 critical, 59 high, 81 moderate e 11 low. Descrive `main` prima dell'integrazione della PR 26 e non costituisce né un risultato di scansione del relativo head né prova dell'attivazione di questo file. La baseline va ricampionata nel [cruscotto Dependabot](https://github.com/fz1101hub/binario/security/dependabot) soltanto dopo la promozione controllata dell'integrazione su `main`; fino ad allora non viene dichiarata né aggiornata né azzerata.
 

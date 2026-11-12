@@ -25,6 +25,8 @@ Il modulo Wear usa lo stesso package dell'app telefono, dichiara `android.hardwa
 
 ### AAB del Companion separato
 
+> Il Companion Expo è congelato dal 12 novembre 2026 e non è distribuito ([companion-expo/README.md](../companion-expo/README.md)): i suoi AAB non si firmano né si caricano. Questa procedura resta per verificare una modifica al codice congelato.
+
 `companion-expo/` non sostituisce l'app smartphone principale. Mantiene una propria identità release in `native/android/release-identity.json`: telefono e Wear Companion condividono `im.binario.companion` e `versionName`, ma usano `versionCode` distinti. Il prebuild applica questa identità sia alla configurazione Expo sia al modulo Wear generato. Il workflow Companion produce i due AAB unsigned e verifica il loro manifest compilato con un profilo dedicato:
 
 ```sh
@@ -73,6 +75,7 @@ gh workflow run android-ci.yml \
   --ref integration/stabilization-complete-v0204 \
   -f verify_reproducibility=true
 
+# Companion Expo congelato: solo per verificare una modifica al suo codice.
 gh workflow run companion-ci.yml \
   --repo fz1101hub/binario \
   --ref integration/stabilization-complete-v0204 \

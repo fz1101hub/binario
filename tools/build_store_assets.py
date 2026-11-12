@@ -18,7 +18,10 @@ import zlib
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-SOURCE_ICON = ROOT / "companion-expo" / "assets" / "brand" / "binario-companion-icon.png"
+# The brand mark (1024 px, the same sign as ic_binario): a copy of
+# companion-expo/assets/brand/binario-companion-icon.png, which stays there for the frozen Expo app, so that the
+# store assets no longer read the frozen directory.
+SOURCE_ICON = ROOT / "store" / "source" / "binario-icon.png"
 OUTPUT_DIR = ROOT / "store" / "play"
 ICON_SIZE = 512
 APPLE_ICON_SIZE = 1024
@@ -37,7 +40,7 @@ Cartella generata da `python3 tools/build_store_assets.py`: non modificare a man
 
 | Asset | Requisito Play | Stato |
 |---|---|---|
-| `icon-512.png` | Icona app: PNG 512×512 a 32 bit, max 1024 KB, quadrato pieno senza angoli arrotondati (Play applica la maschera) | Generata dal marchio `companion-expo/assets/brand/binario-companion-icon.png` (1024 px, lo stesso segno di `ic_binario`) con box filter 2×2; PNG RGBA a 32 bit con canale alfa interamente opaco, nessuna trasparenza |
+| `icon-512.png` | Icona app: PNG 512×512 a 32 bit, max 1024 KB, quadrato pieno senza angoli arrotondati (Play applica la maschera) | Generata dal marchio `store/source/binario-icon.png` (1024 px, lo stesso segno di `ic_binario`) con box filter 2×2; PNG RGBA a 32 bit con canale alfa interamente opaco, nessuna trasparenza |
 | Grafica in evidenza | 1024×500 px, PNG o JPEG, max 15 MB; niente testo essenziale ai bordi, nessuna cornice di dispositivo | Da progettare dal titolare |
 | Screenshot telefono | Da 2 a 8, PNG o JPEG, rapporto 16:9 o 9:16, lato minore ≥ 320 px, lato maggiore ≤ 3840 px | Da catturare: pianificatore, Consulta, dettaglio corsa, widget, impostazioni privacy |
 | Screenshot tablet 7" e 10" | Facoltativi finché il listing non dichiara il supporto tablet; stessi vincoli di formato | Da decidere |
@@ -52,7 +55,7 @@ Icone generate da `python3 tools/build_store_assets.py`: non modificare a mano i
 
 | Asset | Requisito App Store Connect | Stato |
 |---|---|---|
-| `ios/Resources/Assets.xcassets/AppIcon.appiconset/AppIcon-1024.png` | Icona app iPhone: PNG 1024×1024 a 8 bit, senza canale alfa né angoli arrotondati (iOS applica la maschera); Xcode deriva le altre dimensioni dal catalogo | Generata dal marchio `companion-expo/assets/brand/binario-companion-icon.png` (1024 px, lo stesso segno di `ic_binario`), ricodificata in RGB senza trasparenza |
+| `ios/Resources/Assets.xcassets/AppIcon.appiconset/AppIcon-1024.png` | Icona app iPhone: PNG 1024×1024 a 8 bit, senza canale alfa né angoli arrotondati (iOS applica la maschera); Xcode deriva le altre dimensioni dal catalogo | Generata dal marchio `store/source/binario-icon.png` (1024 px, lo stesso segno di `ic_binario`), ricodificata in RGB senza trasparenza |
 | `apple-watch/BinarioWatch/Assets.xcassets/AppIcon.appiconset/AppIcon-1024.png` | Icona app Apple Watch: PNG 1024×1024 senza alfa nel catalogo `platform: watchos`; obbligatoria per l'app Watch incorporata, altrimenti il caricamento fallisce con ITMS-90713 (`CFBundleIconName` assente in `it.binario.ios.watchkitapp`) | Generata dallo stesso marchio: pixel identici all'icona iPhone |
 | Screenshot iPhone 6,9" | Da 1 a 10, PNG o JPEG, verticali 1320×2868 o 1290×2796 px; senza cornice del dispositivo e senza testo che prometta dati in tempo reale | Da catturare: pianificatore con stazioni coperte, risultato con riga fonte, tratte salvate, impostazioni privacy, fonti dati |
 | Screenshot iPhone 6,5" | Da 1 a 10, verticali 1284×2778 o 1242×2688 px | Facoltativi se App Store Connect riusa i 6,9"; stesse schermate |
