@@ -133,6 +133,8 @@
     <string name="planned_journey_filter_reminders">Promemoria</string>
     <string name="planned_journey_filter_archived">Archiviati</string>
     <string name="planned_journey_filter_all">Tutti</string>
+    <string name="planned_journey_search">Cerca stazione, data o ora</string>
+    <string name="planned_journey_all_months">Tutti i mesi</string>
     <string name="planned_journey_label">Etichetta facoltativa</string>
     <string name="planned_journey_templates_title">Modelli di viaggio</string>
     <string name="planned_journey_templates_description">Salva percorso, orario e promemoria per riutilizzarli. La data resta sempre da scegliere.</string>

@@ -23,6 +23,7 @@ import androidx.compose.material.icons.filled.ContentPaste
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.MyLocation
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material.icons.filled.Upload
@@ -67,6 +68,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import java.time.DayOfWeek
 import java.time.LocalDate
+import java.time.YearMonth
+import java.time.format.DateTimeFormatter
 import java.time.format.TextStyle
 import android.Manifest
 import android.content.ActivityNotFoundException
@@ -100,7 +103,14 @@ fun PlannedJourneyAgendaScreen(
 ) {
     var pendingDelete by rememberSaveable { mutableStateOf<String?>(null) }
     var confirmClear by rememberSaveable { mutableStateOf(false) }
-    val entries = viewModel.agendaEntries()
+    // «Cerca stazione, data o ora» and the month chips narrow the chosen filter; both stay on this screen only.
+    var query by rememberSaveable { mutableStateOf("") }
+    var monthText by rememberSaveable { mutableStateOf<String?>(null) }
+    val filtered = viewModel.agendaEntries()
+    val months = remember(filtered) { PlannedJourneyAgendaSearch.months(filtered) }
+    val month = monthText?.let { runCatching { YearMonth.parse(it) }.getOrNull() }?.takeIf { it in months }
+    val entries = PlannedJourneyAgendaSearch.filter(filtered, query, month)
+    val locale = LocalConfiguration.current.locales[0]
     val filters = listOf(
         PlannedJourneyAgendaFilter.UPCOMING,
         PlannedJourneyAgendaFilter.REMINDERS,
@@ -130,6 +140,29 @@ fun PlannedJourneyAgendaScreen(
                         onClick = { viewModel.selectFilter(filter) },
                         label = { Text(filter.label()) }
                     )
+                }
+            }
+        }
+        item {
+            OutlinedTextField(
+                value = query,
+                onValueChange = { query = it.take(80) },
+                label = { Text(stringResource(R.string.planned_journey_search)) },
+                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth().testTag("plannedJourneySearch")
+            )
+        }
+        if (months.size > 1) {
+            item {
+                val monthFormat = remember(locale) { DateTimeFormatter.ofPattern("LLLL yyyy", locale) }
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                    FilterChip(selected = month == null, onClick = { monthText = null },
+                        label = { Text(stringResource(R.string.planned_journey_all_months)) })
+                    months.forEach { candidate ->
+                        FilterChip(selected = month == candidate, onClick = { monthText = candidate.toString() },
+                            label = { Text(monthFormat.format(candidate)) })
+                    }
                 }
             }
         }

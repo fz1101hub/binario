@@ -133,6 +133,8 @@
     <string name="planned_journey_filter_reminders">Hatırlatmalar</string>
     <string name="planned_journey_filter_archived">Arşivlenen</string>
     <string name="planned_journey_filter_all">Tümü</string>
+    <string name="planned_journey_search">İstasyon, tarih veya saat ara</string>
+    <string name="planned_journey_all_months">Tüm aylar</string>
     <string name="planned_journey_label">İsteğe bağlı etiket</string>
     <string name="planned_journey_templates_title">Yolculuk şablonları</string>
     <string name="planned_journey_templates_description">Güzergâhı, saati ve hatırlatıcıyı yeniden kullanmak için kaydedin. Tarih her zaman ayrıca seçilir.</string>

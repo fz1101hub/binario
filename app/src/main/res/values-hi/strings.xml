@@ -130,6 +130,8 @@
     <string name="planned_journey_filter_reminders">रिमाइंडर</string>
     <string name="planned_journey_filter_archived">संग्रहीत</string>
     <string name="planned_journey_filter_all">सभी</string>
+    <string name="planned_journey_search">स्टेशन, तारीख या समय खोजें</string>
+    <string name="planned_journey_all_months">सभी महीने</string>
     <string name="planned_journey_label">वैकल्पिक लेबल</string>
     <string name="planned_journey_templates_title">यात्रा टेम्पलेट</string>
     <string name="planned_journey_templates_description">रूट, समय और रिमाइंडर दोबारा उपयोग के लिए सहेजें। तारीख हमेशा चुननी होगी।</string>

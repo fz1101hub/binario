@@ -133,6 +133,8 @@
     <string name="planned_journey_filter_reminders">提醒</string>
     <string name="planned_journey_filter_archived">已归档</string>
     <string name="planned_journey_filter_all">全部</string>
+    <string name="planned_journey_search">搜索车站、日期或时间</string>
+    <string name="planned_journey_all_months">所有月份</string>
     <string name="planned_journey_label">标签（可选）</string>
     <string name="planned_journey_templates_title">行程模板</string>
     <string name="planned_journey_templates_description">保存路线、时间和提醒以便重复使用。日期始终需要另行选择。</string>

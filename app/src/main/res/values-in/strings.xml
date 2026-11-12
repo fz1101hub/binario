@@ -130,6 +130,8 @@
     <string name="planned_journey_filter_reminders">Pengingat</string>
     <string name="planned_journey_filter_archived">Diarsipkan</string>
     <string name="planned_journey_filter_all">Semua</string>
+    <string name="planned_journey_search">Cari stasiun, tanggal, atau waktu</string>
+    <string name="planned_journey_all_months">Semua bulan</string>
     <string name="planned_journey_label">Label opsional</string>
     <string name="planned_journey_templates_title">Templat perjalanan</string>
     <string name="planned_journey_templates_description">Simpan rute, waktu, dan pengingat untuk dipakai lagi. Tanggal selalu harus dipilih.</string>

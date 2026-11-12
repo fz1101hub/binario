@@ -133,6 +133,8 @@
     <string name="planned_journey_filter_reminders">การเตือน</string>
     <string name="planned_journey_filter_archived">เก็บถาวรแล้ว</string>
     <string name="planned_journey_filter_all">ทั้งหมด</string>
+    <string name="planned_journey_search">ค้นหาสถานี วันที่ หรือเวลา</string>
+    <string name="planned_journey_all_months">ทุกเดือน</string>
     <string name="planned_journey_label">ป้ายกำกับ (ไม่บังคับ)</string>
     <string name="planned_journey_templates_title">เทมเพลตการเดินทาง</string>
     <string name="planned_journey_templates_description">บันทึกเส้นทาง เวลา และการเตือนไว้ใช้ซ้ำ วันที่ต้องเลือกใหม่ทุกครั้ง</string>

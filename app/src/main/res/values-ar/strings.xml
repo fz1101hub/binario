@@ -130,6 +130,8 @@
     <string name="planned_journey_filter_reminders">التذكيرات</string>
     <string name="planned_journey_filter_archived">المؤرشفة</string>
     <string name="planned_journey_filter_all">الكل</string>
+    <string name="planned_journey_search">ابحث عن محطة أو تاريخ أو وقت</string>
+    <string name="planned_journey_all_months">كل الأشهر</string>
     <string name="planned_journey_label">تسمية اختيارية</string>
     <string name="planned_journey_templates_title">قوالب السفر</string>
     <string name="planned_journey_templates_description">احفظ المسار والوقت والتذكير لإعادة استخدامها. يبقى التاريخ دائمًا للاختيار.</string>

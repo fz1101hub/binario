@@ -133,6 +133,8 @@
     <string name="planned_journey_filter_reminders">Rappels</string>
     <string name="planned_journey_filter_archived">Archivés</string>
     <string name="planned_journey_filter_all">Tous</string>
+    <string name="planned_journey_search">Rechercher gare, date ou heure</string>
+    <string name="planned_journey_all_months">Tous les mois</string>
     <string name="planned_journey_label">Libellé facultatif</string>
     <string name="planned_journey_templates_title">Modèles de voyage</string>
     <string name="planned_journey_templates_description">Enregistrez itinéraire, horaire et rappel pour les réutiliser. La date reste toujours à choisir.</string>

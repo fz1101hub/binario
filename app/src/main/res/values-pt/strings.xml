@@ -130,6 +130,8 @@
     <string name="planned_journey_filter_reminders">Lembretes</string>
     <string name="planned_journey_filter_archived">Arquivadas</string>
     <string name="planned_journey_filter_all">Todas</string>
+    <string name="planned_journey_search">Buscar estação, data ou hora</string>
+    <string name="planned_journey_all_months">Todos os meses</string>
     <string name="planned_journey_label">Rótulo opcional</string>
     <string name="planned_journey_templates_title">Modelos de viagem</string>
     <string name="planned_journey_templates_description">Salve trajeto, horário e lembrete para reutilizá-los. A data sempre precisa ser escolhida.</string>

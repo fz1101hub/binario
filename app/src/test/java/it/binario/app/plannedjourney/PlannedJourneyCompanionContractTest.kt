@@ -197,6 +197,24 @@ class PlannedJourneyCompanionContractTest {
         }
     }
 
+    @Test fun `search matches stations, label, date and time ignoring accents, and months narrow the list`() {
+        val now = Instant.parse("2026-09-15T00:00:00Z")
+        val entries = PlannedJourneyAgenda.ordered(listOf(
+            journey("a", "2026-09-20", "08:30").copy(label = "Riunione Città"),
+            journey("b", "2026-10-02", "17:05")
+        ), PlannedJourneyAgendaFilter.UPCOMING, now)
+        fun ids(query: String, month: java.time.YearMonth? = null) = PlannedJourneyAgendaSearch.filter(entries, query, month).map { it.journey.id }
+        assertEquals(listOf("a", "b"), ids("  "))
+        assertEquals(listOf("a"), ids("citta"))
+        assertEquals(listOf("a", "b"), ids("milano termini"))
+        assertEquals(listOf("b"), ids("02/10/2026"))
+        assertEquals(listOf("b"), ids("17:05"))
+        assertEquals(listOf("a"), ids("MICT 2026-09"))
+        assertEquals(emptyList<String>(), ids("napoli"))
+        assertEquals(listOf(java.time.YearMonth.of(2026, 9), java.time.YearMonth.of(2026, 10)), PlannedJourneyAgendaSearch.months(entries))
+        assertEquals(listOf("b"), ids("", java.time.YearMonth.of(2026, 10)))
+    }
+
     private class FakeStorage(var value: String? = null) : PlannedJourneyStorage {
         override fun read(): String? = value
         override fun write(value: String) { this.value = value }

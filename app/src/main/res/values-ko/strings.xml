@@ -130,6 +130,8 @@
     <string name="planned_journey_filter_reminders">알림</string>
     <string name="planned_journey_filter_archived">보관됨</string>
     <string name="planned_journey_filter_all">전체</string>
+    <string name="planned_journey_search">역, 날짜, 시간 검색</string>
+    <string name="planned_journey_all_months">모든 월</string>
     <string name="planned_journey_label">라벨(선택 사항)</string>
     <string name="planned_journey_templates_title">여정 템플릿</string>
     <string name="planned_journey_templates_description">경로, 시간, 리마인더를 저장해 다시 사용하세요. 날짜는 항상 따로 선택합니다.</string>

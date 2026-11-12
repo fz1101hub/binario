@@ -130,6 +130,8 @@
     <string name="planned_journey_filter_reminders">Напоминания</string>
     <string name="planned_journey_filter_archived">В архиве</string>
     <string name="planned_journey_filter_all">Все</string>
+    <string name="planned_journey_search">Станция, дата или время</string>
+    <string name="planned_journey_all_months">Все месяцы</string>
     <string name="planned_journey_label">Метка (необязательно)</string>
     <string name="planned_journey_templates_title">Шаблоны поездок</string>
     <string name="planned_journey_templates_description">Сохраните маршрут, время и напоминание для повторного использования. Дату всегда нужно выбрать.</string>

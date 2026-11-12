@@ -133,6 +133,8 @@
     <string name="planned_journey_filter_reminders">Reminders</string>
     <string name="planned_journey_filter_archived">Archived</string>
     <string name="planned_journey_filter_all">All</string>
+    <string name="planned_journey_search">Search station, date or time</string>
+    <string name="planned_journey_all_months">All months</string>
     <string name="planned_journey_label">Optional label</string>
     <string name="planned_journey_templates_title">Travel templates</string>
     <string name="planned_journey_templates_description">Save route, time and reminder to reuse them. The date always remains to be chosen.</string>

@@ -130,6 +130,8 @@
     <string name="planned_journey_filter_reminders">သတိပေးချက်များ</string>
     <string name="planned_journey_filter_archived">သိမ်းဆည်းပြီး</string>
     <string name="planned_journey_filter_all">အားလုံး</string>
+    <string name="planned_journey_search">ဘူတာ၊ ရက်စွဲ သို့မဟုတ် အချိန် ရှာရန်</string>
+    <string name="planned_journey_all_months">လအားလုံး</string>
     <string name="planned_journey_label">အညွှန်း (မထည့်လည်း ရ)</string>
     <string name="planned_journey_templates_title">ခရီးသွား ပုံစံခွက်များ</string>
     <string name="planned_journey_templates_description">လမ်းကြောင်း၊ အချိန်နှင့် သတိပေးချက်ကို ပြန်သုံးရန် သိမ်းပါ။ ရက်စွဲကို အမြဲ ရွေးရမည်။</string>

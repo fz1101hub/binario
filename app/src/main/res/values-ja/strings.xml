@@ -130,6 +130,8 @@
     <string name="planned_journey_filter_reminders">リマインダー</string>
     <string name="planned_journey_filter_archived">アーカイブ済み</string>
     <string name="planned_journey_filter_all">すべて</string>
+    <string name="planned_journey_search">駅、日付、時刻を検索</string>
+    <string name="planned_journey_all_months">すべての月</string>
     <string name="planned_journey_label">ラベル（任意）</string>
     <string name="planned_journey_templates_title">移動のテンプレート</string>
     <string name="planned_journey_templates_description">ルート、時刻、リマインダーを保存して再利用できます。日付は毎回選びます。</string>

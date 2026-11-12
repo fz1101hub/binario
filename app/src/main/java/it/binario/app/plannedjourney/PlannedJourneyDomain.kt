@@ -611,3 +611,41 @@ object PlannedJourneyDrafts {
         createdAt = createdAt
     )
 }
+
+/** The Agenda's search and month filter, applied to the entries of the chosen filter; nothing leaves the device. */
+object PlannedJourneyAgendaSearch {
+    private val italianDate = java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy", Locale.ROOT)
+
+    /** Every word of [query] must appear in the label, a station name or code, the date or the time (case and accents ignored). */
+    fun matches(entry: PlannedJourneyAgendaEntry, query: String): Boolean {
+        val terms = fold(query).split(' ').filter(String::isNotEmpty)
+        if (terms.isEmpty()) return true
+        val segments = entry.occurrence.itinerary.segments
+        val haystack = fold(buildList {
+            add(entry.journey.label)
+            segments.forEach { segment ->
+                add(segment.origin.displayName)
+                add(segment.destination.displayName)
+                segment.origin.railwayCode?.let(::add)
+                segment.destination.railwayCode?.let(::add)
+                add(segment.departure.date.toString())
+                add(segment.departure.date.format(italianDate))
+                add(segment.departure.time.toString())
+            }
+        }.joinToString(" "))
+        return terms.all { it in haystack }
+    }
+
+    /** The months of [entries] in their order, each once: the month chips. */
+    fun months(entries: List<PlannedJourneyAgendaEntry>): List<java.time.YearMonth> =
+        entries.map { java.time.YearMonth.from(it.occurrence.occurrenceDate) }.distinct()
+
+    fun filter(entries: List<PlannedJourneyAgendaEntry>, query: String, month: java.time.YearMonth?): List<PlannedJourneyAgendaEntry> =
+        entries.filter { entry ->
+            (month == null || java.time.YearMonth.from(entry.occurrence.occurrenceDate) == month) && matches(entry, query)
+        }
+
+    private fun fold(value: String): String = java.text.Normalizer.normalize(value, java.text.Normalizer.Form.NFD)
+        .replace(Regex("\\p{M}+"), "").lowercase(Locale.ROOT)
+        .replace(Regex("[^\\p{L}\\p{N}:/-]+"), " ").trim()
+}

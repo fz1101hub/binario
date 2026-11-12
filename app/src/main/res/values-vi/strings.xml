@@ -133,6 +133,8 @@
     <string name="planned_journey_filter_reminders">Lời nhắc</string>
     <string name="planned_journey_filter_archived">Đã lưu trữ</string>
     <string name="planned_journey_filter_all">Tất cả</string>
+    <string name="planned_journey_search">Tìm ga, ngày hoặc giờ</string>
+    <string name="planned_journey_all_months">Tất cả các tháng</string>
     <string name="planned_journey_label">Nhãn (không bắt buộc)</string>
     <string name="planned_journey_templates_title">Mẫu hành trình</string>
     <string name="planned_journey_templates_description">Lưu tuyến, giờ và lời nhắc để dùng lại. Ngày luôn phải chọn riêng.</string>

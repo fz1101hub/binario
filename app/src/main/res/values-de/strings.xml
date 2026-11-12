@@ -133,6 +133,8 @@
     <string name="planned_journey_filter_reminders">Erinnerungen</string>
     <string name="planned_journey_filter_archived">Archiviert</string>
     <string name="planned_journey_filter_all">Alle</string>
+    <string name="planned_journey_search">Station, Datum oder Uhrzeit suchen</string>
+    <string name="planned_journey_all_months">Alle Monate</string>
     <string name="planned_journey_label">Optionale Bezeichnung</string>
     <string name="planned_journey_templates_title">Reisevorlagen</string>
     <string name="planned_journey_templates_description">Speichern Sie Strecke, Zeit und Erinnerung zur Wiederverwendung. Das Datum muss stets noch gewählt werden.</string>
