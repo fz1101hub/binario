@@ -109,6 +109,13 @@ public final class PlannedJourneyStore {
         transform(id: journeyID) { try $0.settingChecklistItem(id: itemID, completed: completed) }
     }
 
+    /// The whole Agenda written at once (an import that has already applied its own rules);
+    /// refused like any change when the stored value is read-only.
+    func replaceAll(_ journeys: [PlannedJourney]) -> Result<PlannedJourneyAgendaState, PlannedJourneyRefusal> {
+        guard !load().isReadOnly else { return .failure(.readOnly) }
+        return write(journeys)
+    }
+
     private func transform(
         id: String,
         _ change: (PlannedJourney) throws -> PlannedJourney

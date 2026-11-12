@@ -424,6 +424,43 @@ class IOSProjectTests(unittest.TestCase):
             self.assertLess(body.index("reminderScheduler?.cancel(journeyID: id)"), body.index("plannedJourneyStore."), action)
         self.assertIn("PlannedJourneyReminderTests", (IOS / "BinarioKit/Tests/BinarioKitTests/PlannedJourneyReminderTests.swift").read_text(encoding="utf-8"))
 
+    def test_agenda_files_are_androids_formats_made_in_memory_and_read_in_place(self) -> None:
+        """EXPO_PORT_PLAN F24, F26, F28: the exports are Android's JSON transfer and ICS calendar, made in memory
+        when shared; a picked file is read in place through its security-scoped address with a byte bound; the
+        app writes no temporary file of its own."""
+        files = (IOS / "BinarioApp/AgendaFiles.swift").read_text(encoding="utf-8")
+        view = (IOS / "BinarioApp/AgendaView.swift").read_text(encoding="utf-8")
+        self.assertIn("DataRepresentation(exportedContentType: .json)", files)
+        self.assertIn("DataRepresentation(exportedContentType: AgendaFiles.calendarType)", files)
+        self.assertIn("PlannedJourneyTransfer.encode(PlannedJourneyCollection(validating: file.journeys))", files)
+        self.assertIn("PlannedJourneyIcs.export(file.journeys", files)
+        read = files.split("static func read(_ url: URL) -> Data? {", 1)[1].split("\n    }\n", 1)[0]
+        self.assertLess(read.index("startAccessingSecurityScopedResource()"), read.index("FileHandle(forReadingFrom: url)"))
+        self.assertIn("stopAccessingSecurityScopedResource()", read)
+        self.assertIn("read(upToCount: PlannedJourneySchema.maximumEncodedBytes + 1)", read)
+        for path in (IOS / "BinarioApp").glob("Agenda*.swift"):
+            text = path.read_text(encoding="utf-8")
+            for forbidden in ("temporaryDirectory", "NSTemporaryDirectory", "write(to:", "FileRepresentation", "asCopy"):
+                self.assertNotIn(forbidden, text, path.name)
+        self.assertIn(".fileImporter(isPresented: $importing, allowedContentTypes: AgendaFiles.importTypes)", view)
+        self.assertIn("ShareLink(item: AgendaCalendarFile(journeys: [journey])", view)
+        ics = (IOS / "BinarioKit/Sources/BinarioKit/PlannedJourneyIcs.swift").read_text(encoding="utf-8")
+        self.assertIn('productID = "-//Binario//Planned Journeys 1.0//IT"', ics)
+        self.assertIn('String(digest.prefix(32)) + "@binario.local"', ics)
+        self.assertIn('"X-BINARIO-JOURNEY-ID:"', ics)
+        self.assertIn('"X-BINARIO-OCCURRENCE-DATE:"', ics)
+        # The same limits as Android's PlannedJourneyIcsContract and PlannedJourneyTransferContract.
+        android_ics = (ROOT / "app/src/main/java/it/binario/app/plannedjourney/PlannedJourneyIcs.kt").read_text(encoding="utf-8")
+        self.assertIn("const val MAX_BYTES = 262_144", android_ics)
+        self.assertIn("const val MAX_EVENTS = 120", android_ics)
+        self.assertIn("maximumBytes = 262_144", ics)
+        self.assertIn("maximumEvents = 120", ics)
+        self.assertIn('PRODUCT_ID = "-//Binario//Planned Journeys 1.0//IT"', android_ics)
+        android_transfer = (ROOT / "app/src/main/java/it/binario/app/plannedjourney/PlannedJourneyTransfer.kt").read_text(encoding="utf-8")
+        self.assertIn("const val MAX_NESTING_DEPTH = 16", android_transfer)
+        journeys = (IOS / "BinarioKit/Sources/BinarioKit/PlannedJourneys.swift").read_text(encoding="utf-8")
+        self.assertIn("maximumNestingDepth = 16", journeys)
+
     def test_privacy_manifests_match_each_executable_userdefaults_scope(self) -> None:
         ios_privacy = privacy_manifest(IOS / "Resources/PrivacyInfo.xcprivacy")
         self.assertFalse(ios_privacy["NSPrivacyTracking"])

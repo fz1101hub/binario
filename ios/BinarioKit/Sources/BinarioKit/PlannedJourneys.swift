@@ -15,6 +15,8 @@ public enum PlannedJourneySchema {
     public static let maximumIdentifierLength = 120
     /// As Android's `PlannedJourneyTransferContract.MAX_BYTES`.
     public static let maximumEncodedBytes = 262_144
+    /// As Android's `MAX_NESTING_DEPTH`: the document nests seven levels; deeper is refused unread.
+    public static let maximumNestingDepth = 16
     /// Android's `PlannedJourneyReminderMinutes`.
     public static let reminderMinutes: Set<Int> = [5, 10, 15, 20, 30, 45, 60]
 }
@@ -330,6 +332,7 @@ public enum PlannedJourneyTransfer {
     /// The whole document, or nil when any part of it is refused.
     public static func decode(_ data: Data) -> PlannedJourneyCollection? {
         guard !data.isEmpty, data.count <= PlannedJourneySchema.maximumEncodedBytes,
+              nestingDepth(data) <= PlannedJourneySchema.maximumNestingDepth,
               let document = try? JSONDecoder().decode(PlannedJourneyDocument.self, from: data)
         else { return nil }
         return try? PlannedJourneyCollection(validating: document.journeys)
@@ -340,6 +343,7 @@ public enum PlannedJourneyTransfer {
     /// Nil when the document itself cannot be read: too large, not JSON, another kind or version.
     public static func recover(_ data: Data) -> PlannedJourneyRecovery? {
         guard !data.isEmpty, data.count <= PlannedJourneySchema.maximumEncodedBytes,
+              nestingDepth(data) <= PlannedJourneySchema.maximumNestingDepth,
               let document = try? JSONDecoder().decode(PlannedJourneyRecoverableDocument.self, from: data)
         else { return nil }
         var kept: [PlannedJourney] = []
@@ -359,6 +363,40 @@ public enum PlannedJourneyTransfer {
             fingerprints.insert(journey.fingerprint)
         }
         return PlannedJourneyRecovery(journeys: kept, unreadableRecords: unreadable)
+    }
+
+    /// Android's `nestingDepth`: the deepest array or object outside strings, counted on the bytes
+    /// before any parsing, stopping as soon as the limit is passed.
+    static func nestingDepth(_ data: Data) -> Int {
+        var depth = 0
+        var deepest = 0
+        var inString = false
+        var escaped = false
+        for byte in data {
+            if inString {
+                if escaped {
+                    escaped = false
+                } else if byte == UInt8(ascii: "\\") {
+                    escaped = true
+                } else if byte == UInt8(ascii: "\"") {
+                    inString = false
+                }
+                continue
+            }
+            switch byte {
+            case UInt8(ascii: "\""):
+                inString = true
+            case UInt8(ascii: "["), UInt8(ascii: "{"):
+                depth += 1
+                deepest = max(deepest, depth)
+                if deepest > PlannedJourneySchema.maximumNestingDepth { return deepest }
+            case UInt8(ascii: "]"), UInt8(ascii: "}"):
+                depth -= 1
+            default:
+                break
+            }
+        }
+        return deepest
     }
 }
 

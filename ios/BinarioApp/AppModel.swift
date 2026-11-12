@@ -1565,6 +1565,20 @@ final class AppModel: ObservableObject {
         return refusal
     }
 
+    /// A file picked in «Importa», compared with the Agenda as stored now; nil when it is not an
+    /// Agenda export or a calendar Binario wrote. Nothing is written.
+    func previewAgendaFile(_ data: Data) -> PlannedJourneyFilePreview? {
+        PlannedJourneyFileImport.preview(data, existing: plannedJourneyStore.load().journeys)
+    }
+
+    /// The journeys of a previewed file, with Android's conflict policy. Imported reminders are
+    /// scheduled only if notifications are already allowed: an import never asks.
+    func importJourneys(_ preview: PlannedJourneyImportPreview, policy: PlannedJourneyConflictPolicy) -> PlannedJourneyRefusal? {
+        let refusal = applyAgenda(plannedJourneyStore.applyImport(preview, policy: policy))
+        refreshRemindersLater()
+        return refusal
+    }
+
     /// The system's reminders made those of the Agenda: at launch, back in the foreground, when the
     /// Agenda opens and after a change. It never asks for permission.
     func refreshReminders(now: Date = Date()) async {

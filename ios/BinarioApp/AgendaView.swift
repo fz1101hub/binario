@@ -15,6 +15,11 @@ struct AgendaView: View {
     @State private var editor: AgendaEditorRequest?
     /// The minute the lists are read at: a journey that departs moves to «Archiviati».
     @State private var clock = Date()
+    @State private var importing = false
+    /// A picked file, read and compared with the Agenda; nothing is written before a choice.
+    @State private var filePreview: PlannedJourneyFilePreview?
+    /// What the last export or import did, shown at the top of the list.
+    @State private var fileMessage: (key: String, isError: Bool)?
 
     enum AgendaFilter: Hashable {
         case upcoming
@@ -34,6 +39,13 @@ struct AgendaView: View {
                 Section {
                     Label("saved.agenda.unreadable", systemImage: "exclamationmark.triangle")
                         .foregroundStyle(BinarioPalette.statusError)
+                }
+            }
+
+            if let fileMessage {
+                Section {
+                    Label(LocalizedStringKey(fileMessage.key), systemImage: fileMessage.isError ? "exclamationmark.triangle" : "checkmark.circle")
+                        .foregroundStyle(fileMessage.isError ? BinarioPalette.statusError : Color.primary)
                 }
             }
 
@@ -72,9 +84,64 @@ struct AgendaView: View {
                 }
                 .disabled(model.agenda.isReadOnly)
             }
+            // Android's formats: the JSON document restores editable journeys, the calendar is a
+            // copy for other apps. Readable journeys can be exported also from a read-only Agenda.
+            ToolbarItem(placement: .topBarTrailing) {
+                Menu {
+                    ShareLink(item: AgendaJSONFile(journeys: model.agenda.journeys), preview: SharePreview("saved.agenda.export_json")) {
+                        Label("saved.agenda.export_json", systemImage: "square.and.arrow.up")
+                    }
+                    .disabled(model.agenda.journeys.isEmpty)
+                    ShareLink(item: AgendaCalendarFile(journeys: model.agenda.journeys), preview: SharePreview("saved.agenda.export_ics")) {
+                        Label("saved.agenda.export_ics", systemImage: "calendar")
+                    }
+                    .disabled(model.agenda.journeys.isEmpty)
+                    Button {
+                        fileMessage = nil
+                        importing = true
+                    } label: {
+                        Label("saved.agenda.import", systemImage: "square.and.arrow.down")
+                    }
+                    .disabled(model.agenda.isReadOnly)
+                } label: {
+                    Label("saved.agenda.files", systemImage: "arrow.up.arrow.down.circle")
+                }
+            }
         }
         .sheet(item: $editor) { request in
             AgendaEditorView(request: request)
+        }
+        // Cancelling the picker is not an error: nothing is called then.
+        .fileImporter(isPresented: $importing, allowedContentTypes: AgendaFiles.importTypes) { result in
+            guard case let .success(url) = result, let data = AgendaFiles.read(url),
+                  let preview = model.previewAgendaFile(data)
+            else {
+                report("saved.agenda.import_invalid", isError: true)
+                return
+            }
+            filePreview = preview
+        }
+        .alert(
+            Text(LocalizedStringKey(AgendaText.filePreviewTitleKey(filePreview))),
+            isPresented: Binding(
+                get: { filePreview != nil },
+                set: { if !$0 { filePreview = nil } }
+            ),
+            presenting: filePreview
+        ) { preview in
+            if case let .journeys(journeys) = preview, journeys.hasChanges {
+                if journeys.conflicts.isEmpty {
+                    Button("saved.agenda.import") { apply(journeys, .keepExisting) }
+                } else {
+                    Button("saved.agenda.import_keep") { apply(journeys, .keepExisting) }
+                    Button("saved.agenda.import_replace", role: .destructive) { apply(journeys, .replaceExisting) }
+                }
+                Button("saved.agenda.cancel", role: .cancel) {}
+            } else {
+                Button("action.ok", role: .cancel) {}
+            }
+        } message: { preview in
+            Text(verbatim: AgendaText.filePreviewMessage(preview))
         }
         .onAppear {
             model.reloadAgenda()
@@ -88,6 +155,20 @@ struct AgendaView: View {
             }
         }
         .task { await followTheClock() }
+    }
+
+    private func apply(_ preview: PlannedJourneyImportPreview, _ policy: PlannedJourneyConflictPolicy) {
+        if let refusal = model.importJourneys(preview, policy: policy) {
+            report(AgendaText.importMessageKey(refusal), isError: true)
+        } else {
+            report("saved.agenda.import_done", isError: false)
+        }
+    }
+
+    /// Shown at the top of the list and said by VoiceOver.
+    private func report(_ key: String, isError: Bool) {
+        fileMessage = (key, isError)
+        AgendaAnnouncement.post(key, isError ? .error : .information)
     }
 
     /// Every minute while the Agenda is open; nothing is asked anywhere.
@@ -197,6 +278,13 @@ struct AgendaJourneyView: View {
                     }
                 }
                 .disabled(readOnly)
+            }
+
+            // One event in Android's calendar format, through the system's share sheet.
+            Section {
+                ShareLink(item: AgendaCalendarFile(journeys: [journey]), preview: SharePreview("saved.agenda.export_calendar")) {
+                    Label("saved.agenda.export_calendar", systemImage: "calendar.badge.plus")
+                }
             }
 
             // «Ritorno» and «Ripianifica» open the editor on a new journey: date and time are chosen anew.
@@ -586,6 +674,35 @@ enum AgendaText {
         #else
         nil
         #endif
+    }
+
+    static func filePreviewTitleKey(_ preview: PlannedJourneyFilePreview?) -> String {
+        if case .calendar = preview { return "saved.agenda.ics_preview_title" }
+        return "saved.agenda.import_preview_title"
+    }
+
+    /// The counts of a picked file, in Android's words.
+    static func filePreviewMessage(_ preview: PlannedJourneyFilePreview) -> String {
+        switch preview {
+        case let .journeys(journeys):
+            String.localizedStringWithFormat(
+                NSLocalizedString("saved.agenda.import_preview_body", comment: ""),
+                journeys.accepted.count, journeys.duplicates.count, journeys.conflicts.count, journeys.unreadableRecords
+            )
+        case let .calendar(calendar):
+            String.localizedStringWithFormat(
+                NSLocalizedString("saved.agenda.ics_preview_body", comment: ""),
+                calendar.matching.count, calendar.conflicting.count, calendar.unlinked.count
+            )
+        }
+    }
+
+    static func importMessageKey(_ refusal: PlannedJourneyRefusal) -> String {
+        switch refusal {
+        case .full: "saved.agenda.import_full"
+        case .readOnly: "saved.agenda.read_only"
+        case .duplicate, .notFound, .invalid, .storageFailure: "saved.agenda.storage_error"
+        }
     }
 
     static func presetKey(_ preset: PlannedJourneyChecklistPreset) -> String {
