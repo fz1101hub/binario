@@ -301,6 +301,17 @@ class VerifyCiPinningTest(unittest.TestCase):
                 self.assertNotEqual(text, mutated)
                 self.assertTrue(any(expected in problem for problem in policy.workflow_problems(path, mutated, LOCK)))
 
+    def test_a_dispatch_of_android_ci_has_its_own_concurrency_group(self) -> None:
+        # Second audit, ci-tests-build-9: push and dispatch on main shared one group with cancel-in-progress, so a merge
+        # cancelled a release-signing run.
+        android = ROOT / ".github/workflows/android-ci.yml"
+        text = android.read_text(encoding="utf-8")
+        self.assertEqual([], policy.workflow_problems(android, text, LOCK))
+        shared = text.replace("-${{ github.event_name == 'workflow_dispatch' && github.run_id || 'checks' }}\n", "\n", 1)
+        self.assertNotEqual(text, shared)
+        self.assertTrue(any("concurrency deve separare i dispatch" in problem
+                            for problem in policy.workflow_problems(android, shared, LOCK)))
+
     def test_punctuality_release_gate_runs_on_every_release_path_and_nowhere_else(self) -> None:
         # Second audit, tools-data-5: statistics covering 6 days of a declared 30 would have shipped.
         command = "        run: python3 -I tools/build_punctuality_stats.py --release-check app/src/main/assets/punctuality/stats_v1.json.gz\n"

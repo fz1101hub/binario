@@ -89,8 +89,10 @@ on:
         type: boolean
         default: false
 
+# A dispatch (release signing, reproducibility, live checks) has a group of its own: a merge to main must not cancel
+# it, nor may it cancel the post-merge run that uploads the unsigned bundles (second audit, ci-tests-build-9).
 concurrency:
-  group: android-ci-${{ github.event.pull_request.number || github.ref }}
+  group: android-ci-${{ github.event.pull_request.number || github.ref }}-${{ github.event_name == 'workflow_dispatch' && github.run_id || 'checks' }}
   cancel-in-progress: true
 
 permissions:

@@ -891,6 +891,13 @@ def _check_linux_trigger_budget(
         if missing:
             problems.append(f"{path.name}: {event_name}.paths non copre input condivisi: {sorted(missing)}")
 
+    if path.name == "android-ci.yml":
+        # A merge to main must not cancel a release-signing dispatch, nor a dispatch the post-merge run (ci-tests-build-9).
+        group = str((_mapping(workflow.get("concurrency")) or {}).get("group", ""))
+        if "github.event_name == 'workflow_dispatch' && github.run_id" not in group:
+            problems.append(f"{path.name}: il gruppo di concurrency deve separare i dispatch (github.run_id), "
+                            "o un merge annulla la firma di release")
+
     if path.name in {"android-ci.yml", "companion-ci.yml"}:
         workflow_dispatch = _mapping(triggers.get("workflow_dispatch")) or {}
         dispatch_inputs = _mapping(workflow_dispatch.get("inputs")) or {}
