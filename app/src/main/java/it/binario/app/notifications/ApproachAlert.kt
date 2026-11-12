@@ -90,6 +90,9 @@ object ApproachAlertPlanner {
     val EARLY_TOLERANCE: Duration = Duration.ofMinutes(1)
     val LATE_TOLERANCE: Duration = Duration.ofMinutes(2)
     val MIN_DELAY_BETWEEN_RUNS: Duration = Duration.ofMinutes(1)
+
+    /** The notification leaves the shade this long after the train's expected time at the station. */
+    val NOTIFICATION_TIMEOUT: Duration = Duration.ofMinutes(15)
     const val MAX_ALERTS = 12
 
     fun lead(alert: ApproachAlert): Duration = Duration.ofMinutes(alert.leadMinutes.coerceIn(LEAD_OPTIONS.first(), LEAD_OPTIONS.last()).toLong())

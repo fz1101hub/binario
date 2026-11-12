@@ -247,6 +247,8 @@ internal object ApproachAlertDelivery {
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setCategory(NotificationCompat.CATEGORY_REMINDER)
             .setAutoCancel(true)
+            // «Arriva tra ~10 min» means nothing once the train has gone: off the shade a while after its expected time.
+            .setTimeoutAfter(ApproachAlertPlanner.NOTIFICATION_TIMEOUT.plusMinutes(minutes.toLong().coerceAtLeast(0)).toMillis())
             .setContentIntent(LiveNotifications.openApp(context, alert.key.hashCode()))
             .build()
         LiveNotifications.post(context, NOTIFICATION_BASE + (alert.key.hashCode() and 0xFFFF), notification)

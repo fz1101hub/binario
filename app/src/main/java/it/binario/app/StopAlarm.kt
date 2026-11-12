@@ -155,6 +155,8 @@ object StopAlarmScheduler {
             .setStyle(NotificationCompat.BigTextStyle().bigText(context.getString(bigText, train, destination, station, expected)))
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setAutoCancel(true)
+            // The stop is behind the traveller long before: the alarm does not stay in the shade for hours.
+            .setTimeoutAfter(StopAlarmPlanner.NOTIFICATION_TIMEOUT_MILLIS)
             .setContentIntent(contentIntent(context, train, station))
             .build()
         // Same id for both triggers and for every expected time: if the other alarm still rings later, or the alarm
