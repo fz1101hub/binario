@@ -93,13 +93,15 @@ private const val DEPARTED_GRACE_MILLIS = 60_000L
 /**
  * A listed departure up to this long before the snapshot's generation is one that has just left;
  * any other clock time is its next occurrence. The phone lists departures from the time of the
- * request and, after the day's last train, the next morning's first ones up to a day ahead.
+ * request (never one expected before it) and, after the day's last train, the next morning's first
+ * ones up to a day ahead: a once-a-day train just missed, listed for tomorrow 23 hours ahead, must
+ * not resolve to today. Thirty minutes cover the clock skew between phone and watch.
  */
-private const val LISTED_DEPARTURE_LOOKBACK_MILLIS = 2 * 60 * 60 * 1_000L
+private const val LISTED_DEPARTURE_LOOKBACK_MILLIS = 30 * 60 * 1_000L
 
 /**
  * The instant of an "HH:mm" departure: the first occurrence, on the day before, the same day or the
- * day after the snapshot's generation, that is not more than two hours before the generation. A
+ * day after the snapshot's generation, that is not more than 30 minutes before the generation. A
  * 00:10 train listed at 23:50 is the next day's, a 23:58 one listed at 00:05 the previous day's, a
  * 05:50 one listed at 17:30 the next morning's. Null for a time that does not parse.
  */

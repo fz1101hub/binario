@@ -65,7 +65,7 @@ class BinarioComplicationDataTest {
     }
 
     @Test
-    fun `a departure is the first occurrence of its clock time from two hours before the snapshot generation`() {
+    fun `a departure is the first occurrence of its clock time from 30 minutes before the snapshot generation`() {
         val lateEvening = Instant.parse("2030-01-01T22:50:00Z").toEpochMilli() // 23:50 in Rome
         val afterMidnight = Instant.parse("2030-01-01T23:05:00Z").toEpochMilli() // 00:05 in Rome
 
@@ -85,8 +85,11 @@ class BinarioComplicationDataTest {
         assertEquals(Instant.parse("2026-11-11T05:20:00Z"), departureInstant("06:20", evening))
         // Exactly twelve hours ahead is the next occurrence, not the one twelve hours ago.
         assertEquals(Instant.parse("2026-11-11T04:30:00Z"), departureInstant("05:30", evening))
-        // A train that left within the last two hours stays in the past, so the glance skips it.
-        assertEquals(Instant.parse("2026-11-10T15:45:00Z"), departureInstant("16:45", evening))
+        // A train that left within the last 30 minutes stays in the past, so the glance skips it.
+        assertEquals(Instant.parse("2026-11-10T16:10:00Z"), departureInstant("17:10", evening))
+        // The phone never lists a departure before its request: 16:45 listed at 17:30 is tomorrow's once-a-day train,
+        // not today's that left 45 minutes ago (which the glance would count down as «Adesso»).
+        assertEquals(Instant.parse("2026-11-11T15:45:00Z"), departureInstant("16:45", evening))
 
         val nextMorning = snapshot(services = listOf(service.copy(scheduledDeparture = "05:50", expectedDeparture = "05:50")))
             .copy(generatedAtEpochMillis = evening)
