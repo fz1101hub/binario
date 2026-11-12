@@ -31,26 +31,20 @@ import java.time.Instant
 import java.time.LocalTime
 import java.util.concurrent.CopyOnWriteArrayList
 import kotlinx.coroutines.CompletableDeferred
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.test.UnconfinedTestDispatcher
-import kotlinx.coroutines.test.resetMain
-import kotlinx.coroutines.test.setMain
 import kotlinx.coroutines.withTimeout
-import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
-import org.junit.Before
+import org.junit.Rule
 import org.junit.Test
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class JourneySearchViewModelTest {
-    @Before fun setUp() = Dispatchers.setMain(UnconfinedTestDispatcher())
-    @After fun tearDown() = Dispatchers.resetMain()
+    @get:Rule val main = ViewModelMainDispatcherRule()
 
     private val offline = JourneyFixtures.provider(mapOf(JourneyFixtures.pack() to JourneyFixtures.feed(listOf(
         Trip("D1", "1", listOf("A" to "08:00", "D" to "10:00")),
@@ -58,7 +52,7 @@ class JourneySearchViewModelTest {
         Trip("C2", "3", listOf("B" to "08:55", "D" to "09:40"))
     ))))
 
-    private fun model(providers: List<JourneyProvider> = listOf(offline)) = JourneySearchViewModel(JourneySearchService(providers))
+    private fun model(providers: List<JourneyProvider> = listOf(offline)) = main.track(JourneySearchViewModel(JourneySearchService(providers)))
 
     private fun JourneySearchViewModel.awaitIdle() = runBlocking {
         withTimeout(10_000) { state.first { !it.loading && it.result != null } }
@@ -151,11 +145,11 @@ class JourneySearchViewModelTest {
         }
     }
 
-    private fun liveModel() = JourneySearchViewModel(
+    private fun liveModel() = main.track(JourneySearchViewModel(
         JourneySearchService(listOf(offline)),
         JourneyLiveLookup(TrainNumberSearchService(listOf(liveSource)), now = { clock }, zone = zone),
         now = { clock }
-    )
+    ))
 
     private fun JourneySearchViewModel.awaitChange(expected: TransferRiskLevel?) = runBlocking {
         withTimeout(10_000) {
