@@ -257,10 +257,9 @@ class SDKServer {
   private async verifySessionClaims(
     cookieValue: string | undefined | null
   ): Promise<SessionClaims | null> {
-    if (!cookieValue) {
-      console.warn("[Auth] Missing session cookie");
-      return null;
-    }
+    // No cookie is the ordinary anonymous request (every first page load, every crawler): not
+    // logged, so that the warnings below stay readable.
+    if (!cookieValue) return null;
 
     try {
       const secretKey = this.getSessionSecret();

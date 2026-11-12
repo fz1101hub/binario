@@ -114,6 +114,13 @@ describe("sessioni dashboard", () => {
     userLookup.mockRestore();
   });
 
+  it("una richiesta anonima, senza cookie, è rifiutata senza riempire il log", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    await expect(sdk.authenticateRequest({ headers: {} } as Request)).rejects.toThrow("Invalid session cookie");
+    expect(warn).not.toHaveBeenCalled();
+    warn.mockRestore();
+  });
+
   it("una sessione «cron_» del template è una sessione come le altre: nessun utente sintetico", async () => {
     const token = await sdk.createSessionToken("cron_task", { name: "Manus Scheduled Task" });
     const userLookup = vi.spyOn(db, "getUserByOpenId").mockResolvedValueOnce(undefined);
