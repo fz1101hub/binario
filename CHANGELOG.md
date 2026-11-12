@@ -14,6 +14,15 @@ Dodici revisori indipendenti, ognuno con un punto di vista diverso, hanno trovat
   - la pausa vale per il sito, non per il singolo adattatore: le due richieste a Italo la condividono, e così gli avvisi di ViaggiaTreno e le notizie di Trenitalia, che ora si fermano al primo 403;
   - lo scaricamento di riserva degli orari segue i reindirizzamenti solo sullo stesso sito e si ferma a un rifiuto, per il Retry-After o 15 minuti;
   - un solo User-Agent per tutte le richieste dell'app Android, con la versione della build: «Binario/0.20.4 (Android; rail timetable app)».
+- **Android, pianificatore e orari offline**:
+  - dove quattro reti servono la stessa coppia di stazioni (Milano Centrale – Verona Porta Nuova) il pianificatore le legge tutte: prima ne leggeva tre e lasciava fuori Trenitalia, che ha la maggior parte dei treni. Lo stesso vale per la mappa dei treni in movimento della tratta;
+  - Italo: lo stesso treno non compare più con due, tre o quattro numeri. Il pack pubblica anche gli itinerari combinati come corse a sé; ora si tiene una corsa per treno reale, con il suo numero (Milano Centrale → Verona Porta Nuova: 8 treni invece di 21 righe);
+  - un orario scaduto non viene più tolto in silenzio quando un'altra rete serve ancora la tratta: i risultati dicono quali reti mancano;
+  - la ricerca per numero apre solo i pack che contengono quel numero, e le ricerche lanciate insieme non rileggono tutte gli stessi pack;
+  - i treni notturni partiti ieri restano sulla mappa fino all'arrivo, anche dopo mezzogiorno;
+  - il controllo live di un cambio usa lo stesso tempo minimo di cambio del calcolo (10 minuti nelle grandi stazioni, non 5);
+  - fermate con lo stesso nome ma a più di 150 metri di distanza sono due luoghi diversi;
+  - una ricerca annullata smette di leggere il pack.
 - **Avvisi da fonti non cifrate**: un indirizzo costruito ad arte (schema annidato, barre codificate più volte) non diventa più un link toccabile. Il controllo sui siti ammessi vale nel punto in cui il link viene creato.
 - **CI iPhone** (#84): l'età degli orari blocca solo le release (run avviata a mano, PR verso un ramo di stabilizzazione). Nelle altre run è un avviso: dal 13 novembre il job sarebbe diventato rosso su ogni modifica.
 
