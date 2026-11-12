@@ -290,6 +290,18 @@ struct AgendaEditorView: View {
                     Text("saved.agenda.checklist_hint")
                 }
 
+                // «Preparazione del viaggio»: ready-made lines added after the user's own.
+                Section("saved.agenda.preparation") {
+                    ForEach(PlannedJourneyChecklistPreset.allCases, id: \.self) { preset in
+                        Button {
+                            checklistText = preset.applying(to: checklistText) { AgendaText.checklistLine($0) }
+                        } label: {
+                            Label(LocalizedStringKey(AgendaText.presetKey(preset)), systemImage: AgendaText.presetSymbol(preset))
+                        }
+                        .accessibilityHint(Text("saved.agenda.preparation_hint"))
+                    }
+                }
+
                 if let messageKey {
                     Section {
                         Text(LocalizedStringKey(messageKey))
@@ -371,6 +383,38 @@ enum AgendaText {
         var style = Date.FormatStyle.dateTime.weekday(.abbreviated).day().month(.abbreviated).year()
         style.timeZone = ItalianWallClock.timeZone
         return instant.formatted(style)
+    }
+
+    static func presetKey(_ preset: PlannedJourneyChecklistPreset) -> String {
+        switch preset {
+        case .commuter: "saved.agenda.preset.commuter"
+        case .connection: "saved.agenda.preset.connection"
+        case .bike: "saved.agenda.preset.bike"
+        case .assistance: "saved.agenda.preset.assistance"
+        }
+    }
+
+    static func presetSymbol(_ preset: PlannedJourneyChecklistPreset) -> String {
+        switch preset {
+        case .commuter: "briefcase"
+        case .connection: "arrow.triangle.branch"
+        case .bike: "bicycle"
+        case .assistance: "figure.roll"
+        }
+    }
+
+    /// A preset line in the user's language, stored as typed.
+    static func checklistLine(_ line: PlannedJourneyChecklistLine) -> String {
+        let key: String
+        switch line {
+        case .timeMargin: key = "saved.agenda.check.time_margin"
+        case .documents: key = "saved.agenda.check.documents"
+        case .belongings: key = "saved.agenda.check.belongings"
+        case .connection: key = "saved.agenda.check.connection"
+        case .bike: key = "saved.agenda.check.bike"
+        case .assistance: key = "saved.agenda.check.assistance"
+        }
+        return NSLocalizedString(key, comment: "")
     }
 
     static func messageKey(_ refusal: PlannedJourneyRefusal) -> String {
