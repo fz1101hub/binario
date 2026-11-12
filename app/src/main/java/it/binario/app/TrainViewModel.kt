@@ -1461,6 +1461,8 @@ class TrainViewModel @JvmOverloads constructor(
         is LocalBackupResult.Failure -> UiMessage(UiMessageKey.BACKUP_IMPORT_INVALID)
         is LocalBackupResult.Success -> {
             clearReturnJourneyState()
+            // Like any other change of active route: the next trains from now, and nothing of the earlier route listed.
+            journeyQueryState.resetForRouteActivation()
             val backup = result.backup
             restoreBackupStations(backup)
             savedRoutes = pinnedFirst(routeStore.replaceRoutes(backup.routes))
@@ -1470,6 +1472,7 @@ class TrainViewModel @JvmOverloads constructor(
             activeRoute = savedRoutes.firstOrNull() ?: unconfiguredRoute()
             clearSelectedService()
             primarySnapshot = null
+            rebuildServicePresentations()
             operatorFilter = null
             if (hasActiveRoute) routeStore.saveActiveRoute(activeRoute.id) else routeStore.clearActiveRoute()
             stationPreferences.replaceFavourites(backup.favouriteStationIds)
@@ -1485,6 +1488,7 @@ class TrainViewModel @JvmOverloads constructor(
             if (hasActiveRoute) refresh() else {
                 refreshRequestId += 1
                 primarySnapshot = null
+                rebuildServicePresentations()
                 refreshState = RefreshState.IDLE
                 refreshMessage = UiMessage(UiMessageKey.BACKUP_IMPORTED_WITHOUT_ROUTE)
                 revokeWearSnapshot()
