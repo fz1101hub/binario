@@ -657,6 +657,7 @@
     <string name="stop_alarm_unavailable">アラームを設定できません。停車駅の見込み時刻を過ぎたか、時刻がわかりません。</string>
     <string name="stop_alarm_exact">%1$s にアラームを設定しました（見込み時刻 %2$s の 5 分前）。</string>
     <string name="stop_alarm_inexact">%1$s にアラームを設定しましたが、正確なアラームが許可されていないため、Android の通知が遅れることがあります。</string>
+    <string name="stop_alarm_not_shown">Android が Binario の停車駅アラームを表示しません（通知またはそのカテゴリがオフです）。このアラームは表示されません。</string>
     <string name="commuter_alert_scheduled">通知を保存し、端末で予定しました。</string>
     <string name="commuter_alert_scheduled_inexact">通知を保存し、おおよその時刻で予定しました。正確なアラームが許可されていないため、Android の通知が遅れることがあります。</string>
     <string name="stop_alarms_active_title">設定中の停車駅アラーム</string>

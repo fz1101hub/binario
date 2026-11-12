@@ -674,6 +674,7 @@
     <string name="stop_alarm_unavailable">अलार्म शेड्यूल नहीं हो सकता: ठहराव का अनुमानित समय निकल चुका है या उपलब्ध नहीं है।</string>
     <string name="stop_alarm_exact">%1$s के लिए अलार्म सेट, अनुमानित समय %2$s से पाँच मिनट पहले।</string>
     <string name="stop_alarm_inexact">%1$s के लिए अलार्म सेट, लेकिन सटीक अलार्म की अनुमति न होने से Android इसे देर से दे सकता है।</string>
+    <string name="stop_alarm_not_shown">Android, Binario के ठहराव अलार्म नहीं दिखाता (सूचनाएँ या उनकी श्रेणी बंद है): यह अलार्म नहीं दिखेगा।</string>
     <string name="commuter_alert_scheduled">अलर्ट सहेजा गया और डिवाइस पर शेड्यूल किया गया।</string>
     <string name="commuter_alert_scheduled_inexact">अलर्ट सहेजा गया और अनुमानित मोड में शेड्यूल किया गया: सटीक अलार्म की अनुमति न होने से Android इसे देर से दे सकता है।</string>
     <string name="stop_alarms_active_title">सक्रिय ठहराव अलार्म</string>

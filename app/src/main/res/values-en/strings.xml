@@ -688,6 +688,7 @@
     <string name="stop_alarm_unavailable">Unable to schedule the alarm: the expected time for the stop has already passed or is unavailable.</string>
     <string name="stop_alarm_exact">Alarm set for %1$s, five minutes before the expected time of %2$s.</string>
     <string name="stop_alarm_inexact">Alarm set for %1$s, but Android may deliver it late because exact alarms are not allowed.</string>
+    <string name="stop_alarm_not_shown">Android does not show Binario’s stop alarms (notifications or their category turned off): this alarm will not appear.</string>
     <string name="commuter_alert_scheduled">Alert saved and scheduled on the device.</string>
     <string name="commuter_alert_scheduled_inexact">Alert saved and scheduled in inexact mode: Android may deliver it late because exact alarms are not allowed.</string>
     <string name="stop_alarms_active_title">Active stop alarms</string>

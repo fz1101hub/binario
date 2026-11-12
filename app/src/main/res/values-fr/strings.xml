@@ -705,6 +705,7 @@
     <string name="stop_alarm_unavailable">Impossible de planifier l’alarme : l’heure prévue de l’arrêt est déjà passée ou n’est pas disponible.</string>
     <string name="stop_alarm_exact">Alarme réglée à %1$s, cinq minutes avant l’heure prévue %2$s.</string>
     <string name="stop_alarm_inexact">Alarme réglée à %1$s, mais Android peut la déclencher en retard car les alarmes exactes ne sont pas autorisées.</string>
+    <string name="stop_alarm_not_shown">Android n’affiche pas les alarmes d’arrêt de Binario (notifications ou leur catégorie désactivées) : cette alarme n’apparaîtra pas.</string>
     <string name="commuter_alert_scheduled">Alerte enregistrée et planifiée sur l’appareil.</string>
     <string name="commuter_alert_scheduled_inexact">Alerte enregistrée et planifiée en mode approximatif : Android peut la déclencher en retard car les alarmes exactes ne sont pas autorisées.</string>
     <string name="stop_alarms_active_title">Alarmes d’arrêt actives</string>

@@ -97,7 +97,7 @@ object TrainAlertScheduler {
         val (subscriptions, followed) = watched(context)
         val now = Instant.now()
         // Nothing runs while notifications are not allowed: the next app start plans again.
-        val next = if (LiveNotificationSettings(context).trainAlertsEnabled && LiveNotifications.allowed(context)) {
+        val next = if (LiveNotificationSettings(context).trainAlertsEnabled && LiveNotifications.allowed(context, LiveChannel.TRAIN_ALERTS)) {
             TrainAlertWatch.nextRun(subscriptions, followed, now, RailTime.defaultZone, TrainAlertStore(context).lastCheckAt())
         } else null
         if (next == null) {
@@ -124,7 +124,7 @@ class TrainAlertWorker(appContext: Context, params: WorkerParameters) : Coroutin
     override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
         val context = applicationContext
         try {
-            if (LiveNotificationSettings(context).trainAlertsEnabled && LiveNotifications.allowed(context)) check(context)
+            if (LiveNotificationSettings(context).trainAlertsEnabled && LiveNotifications.allowed(context, LiveChannel.TRAIN_ALERTS)) check(context)
         } catch (cancelled: CancellationException) {
             throw cancelled
         } catch (_: Exception) {

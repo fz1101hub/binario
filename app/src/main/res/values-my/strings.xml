@@ -657,6 +657,7 @@
     <string name="stop_alarm_unavailable">နှိုးစက် သတ်မှတ်၍ မရပါ- ရပ်နားဘူတာ၏ ခန့်မှန်းချိန် ကျော်သွားပြီ သို့မဟုတ် မသိရပါ။</string>
     <string name="stop_alarm_exact">%1$s အတွက် နှိုးစက်ကို ခန့်မှန်းချိန် %2$s မတိုင်မီ ငါးမိနစ်တွင် သတ်မှတ်ထားသည်။</string>
     <string name="stop_alarm_inexact">%1$s အတွက် နှိုးစက် သတ်မှတ်ထားသော်လည်း အချိန်တိကျ နှိုးစက်များကို ခွင့်မပြုထားသဖြင့် Android က နောက်ကျ၍ မြည်နိုင်သည်။</string>
+    <string name="stop_alarm_not_shown">Android သည် Binario ၏ ရပ်နားဘူတာ နှိုးစက်များကို မပြပါ (အသိပေးချက် သို့မဟုတ် ၎င်း၏ အမျိုးအစား ပိတ်ထားသည်)- ဤနှိုးစက် ပေါ်လာမည် မဟုတ်ပါ။</string>
     <string name="commuter_alert_scheduled">သတိပေးချက်ကို သိမ်းပြီး စက်ပေါ်တွင် အချိန်သတ်မှတ်ထားသည်။</string>
     <string name="commuter_alert_scheduled_inexact">သတိပေးချက်ကို သိမ်းပြီး ခန့်မှန်းအချိန်ဖြင့် သတ်မှတ်ထားသည်- အချိန်တိကျ နှိုးစက်များကို ခွင့်မပြုထားသဖြင့် Android က နောက်ကျ၍ ပို့နိုင်သည်။</string>
     <string name="stop_alarms_active_title">ဖွင့်ထားသော ရပ်နားဘူတာ နှိုးစက်များ</string>

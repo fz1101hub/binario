@@ -657,6 +657,7 @@
     <string name="stop_alarm_unavailable">Tidak dapat menjadwalkan alarm: perkiraan waktu pemberhentian sudah lewat atau tidak tersedia.</string>
     <string name="stop_alarm_exact">Alarm disetel untuk %1$s, lima menit sebelum perkiraan %2$s.</string>
     <string name="stop_alarm_inexact">Alarm disetel untuk %1$s, tetapi Android mungkin terlambat menyampaikannya karena alarm tepat tidak diizinkan.</string>
+    <string name="stop_alarm_not_shown">Android tidak menampilkan alarm pemberhentian Binario (notifikasi atau kategorinya dimatikan): alarm ini tidak akan muncul.</string>
     <string name="commuter_alert_scheduled">Peringatan disimpan dan dijadwalkan di perangkat.</string>
     <string name="commuter_alert_scheduled_inexact">Peringatan disimpan dan dijadwalkan dalam mode perkiraan: Android mungkin terlambat menyampaikannya karena alarm tepat tidak diizinkan.</string>
     <string name="stop_alarms_active_title">Alarm pemberhentian aktif</string>

@@ -671,6 +671,7 @@
     <string name="stop_alarm_unavailable">无法设置闹钟：停靠站的预计时刻已过或不可用。</string>
     <string name="stop_alarm_exact">已为 %1$s 设置闹钟，将在预计时刻 %2$s 前五分钟响起。</string>
     <string name="stop_alarm_inexact">已为 %1$s 设置闹钟，但由于未允许精确闹钟，Android 可能会延迟提醒。</string>
+    <string name="stop_alarm_not_shown">Android 不显示 Binario 的到站闹钟（通知或其类别已关闭）：此闹钟不会出现。</string>
     <string name="commuter_alert_scheduled">提醒已保存，并已在设备上安排。</string>
     <string name="commuter_alert_scheduled_inexact">提醒已保存，并以非精确模式安排：由于未允许精确闹钟，Android 可能会延迟提醒。</string>
     <string name="stop_alarms_active_title">已设置的到站闹钟</string>

@@ -688,6 +688,7 @@
     <string name="stop_alarm_unavailable">Der Wecker kann nicht geplant werden: Die voraussichtliche Zeit des Halts liegt bereits zurück oder ist nicht verfügbar.</string>
     <string name="stop_alarm_exact">Wecker für %1$s eingestellt, fünf Minuten vor der voraussichtlichen Zeit %2$s.</string>
     <string name="stop_alarm_inexact">Wecker für %1$s eingestellt, aber Android kann ihn verspätet ausliefern, da exakte Wecker nicht erlaubt sind.</string>
+    <string name="stop_alarm_not_shown">Android zeigt die Haltwecker von Binario nicht an (Benachrichtigungen oder ihre Kategorie deaktiviert): Dieser Wecker wird nicht erscheinen.</string>
     <string name="commuter_alert_scheduled">Warnung gespeichert und auf dem Gerät geplant.</string>
     <string name="commuter_alert_scheduled_inexact">Warnung gespeichert und ungenau geplant: Android kann sie verspätet ausliefern, da exakte Wecker nicht erlaubt sind.</string>
     <string name="stop_alarms_active_title">Aktive Haltwecker</string>

@@ -671,6 +671,7 @@
     <string name="stop_alarm_unavailable">Không thể đặt báo thức: giờ dự kiến của điểm dừng đã qua hoặc không có.</string>
     <string name="stop_alarm_exact">Đã đặt báo thức cho %1$s, năm phút trước giờ dự kiến %2$s.</string>
     <string name="stop_alarm_inexact">Đã đặt báo thức cho %1$s, nhưng Android có thể báo trễ vì báo thức chính xác không được phép.</string>
+    <string name="stop_alarm_not_shown">Android không hiển thị báo thức điểm dừng của Binario (đã tắt thông báo hoặc danh mục của chúng): báo thức này sẽ không xuất hiện.</string>
     <string name="commuter_alert_scheduled">Đã lưu và lên lịch cảnh báo trên thiết bị.</string>
     <string name="commuter_alert_scheduled_inexact">Đã lưu và lên lịch cảnh báo ở chế độ gần đúng: Android có thể báo trễ vì báo thức chính xác không được phép.</string>
     <string name="stop_alarms_active_title">Báo thức điểm dừng đang bật</string>

@@ -671,6 +671,7 @@
     <string name="stop_alarm_unavailable">ตั้งปลุกไม่ได้ เวลาที่คาดไว้ของจุดจอดผ่านไปแล้วหรือไม่มีข้อมูล</string>
     <string name="stop_alarm_exact">ตั้งปลุกสำหรับ %1$s แล้ว ห้านาทีก่อนเวลาที่คาดไว้ %2$s</string>
     <string name="stop_alarm_inexact">ตั้งปลุกสำหรับ %1$s แล้ว แต่ Android อาจแจ้งช้าเพราะไม่อนุญาตการปลุกแบบตรงเวลา</string>
+    <string name="stop_alarm_not_shown">Android ไม่แสดงการปลุกที่จุดจอดของ Binario (ปิดการแจ้งเตือนหรือหมวดหมู่ของการแจ้งเตือนไว้) การปลุกนี้จะไม่ปรากฏ</string>
     <string name="commuter_alert_scheduled">บันทึกและตั้งเวลาการแจ้งเตือนในอุปกรณ์แล้ว</string>
     <string name="commuter_alert_scheduled_inexact">บันทึกและตั้งเวลาการแจ้งเตือนแบบโดยประมาณแล้ว Android อาจแจ้งช้าเพราะไม่อนุญาตการปลุกแบบตรงเวลา</string>
     <string name="stop_alarms_active_title">การปลุกที่จุดจอดที่ตั้งไว้</string>

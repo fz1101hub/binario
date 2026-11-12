@@ -1,6 +1,8 @@
 package it.binario.app.notifications
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class NotificationPermissionFlowTest {
@@ -23,5 +25,13 @@ class NotificationPermissionFlowTest {
         NotificationPermissionFlow.onResult(granted = true, pendingKey = "works", actions = recreated) { denied++ }
         assertEquals(listOf("digest (new screen)"), ran)
         assertEquals(1, denied)
+    }
+
+    @Test
+    fun `a channel the user blocked shows nothing, one not created yet is not blocked`() {
+        assertFalse(LiveNotifications.channelShows(android.app.NotificationManager.IMPORTANCE_NONE))
+        assertTrue(LiveNotifications.channelShows(android.app.NotificationManager.IMPORTANCE_HIGH))
+        assertTrue(LiveNotifications.channelShows(android.app.NotificationManager.IMPORTANCE_LOW))
+        assertTrue(LiveNotifications.channelShows(null))
     }
 }

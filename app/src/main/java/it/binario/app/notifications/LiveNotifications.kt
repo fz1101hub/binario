@@ -73,6 +73,16 @@ internal object LiveNotifications {
         return NotificationManagerCompat.from(context).areNotificationsEnabled()
     }
 
+    /** A channel the user blocked (importance NONE) shows nothing; one not created yet (null) is not blocked. */
+    fun channelShows(importance: Int?): Boolean = importance != NotificationManager.IMPORTANCE_NONE
+
+    /** Whether [channelId] can show anything now: [allowed] and the channel not blocked in Android's settings. */
+    fun channelAllowed(context: Context, channelId: String): Boolean =
+        allowed(context) && channelShows(context.getSystemService(NotificationManager::class.java)?.getNotificationChannel(channelId)?.importance)
+
+    /** [allowed] for a live feature: at least one of its [channels] is not blocked. */
+    fun allowed(context: Context, vararg channels: LiveChannel): Boolean = channels.any { channelAllowed(context, it.id) }
+
     /** Posts [notification] only with the notification permission; false when it was not shown. */
     fun post(context: Context, id: Int, notification: Notification): Boolean {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&

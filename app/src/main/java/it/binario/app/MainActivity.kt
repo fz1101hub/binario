@@ -359,7 +359,7 @@ internal fun BinarioApp(
         val plan = pendingStopAlarm
         pendingStopAlarm = null
         if (granted && plan != null) {
-            noteStopAlarm(plan.trainNumber, stopAlarmScheduleFeedback(resources, StopAlarmScheduler.schedule(context, plan), plan))
+            noteStopAlarm(plan.trainNumber, stopAlarmScheduleFeedback(resources, StopAlarmScheduler.schedule(context, plan), plan, StopAlarmScheduler.canShow(context)))
             gpsArrivalAlarm.onTimeAlarmScheduled(plan)
         } else {
             gpsArrivalAlarm.onTimeAlarmRefused()
@@ -371,7 +371,7 @@ internal fun BinarioApp(
             pendingStopAlarm = plan
             notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
         } else {
-            noteStopAlarm(plan.trainNumber, stopAlarmScheduleFeedback(resources, StopAlarmScheduler.schedule(context, plan), plan))
+            noteStopAlarm(plan.trainNumber, stopAlarmScheduleFeedback(resources, StopAlarmScheduler.schedule(context, plan), plan, StopAlarmScheduler.canShow(context)))
             gpsArrivalAlarm.onTimeAlarmScheduled(plan)
         }
     }
@@ -953,12 +953,16 @@ private fun readBoundedPlannedJourneyDocument(input: java.io.InputStream, tooLar
     return output.toString(Charsets.UTF_8.name())
 }
 
-private fun stopAlarmScheduleFeedback(resources: android.content.res.Resources, result: DeviceAlarmScheduleResult, plan: StopAlarmPlan): String =
-    if (result.isExact) {
-        resources.getString(R.string.stop_alarm_exact, plan.station, plan.expectedTime)
-    } else {
-        resources.getString(R.string.stop_alarm_inexact, plan.station)
-    }
+private fun stopAlarmScheduleFeedback(resources: android.content.res.Resources, result: DeviceAlarmScheduleResult, plan: StopAlarmPlan, shown: Boolean): String =
+    listOfNotNull(
+        if (result.isExact) {
+            resources.getString(R.string.stop_alarm_exact, plan.station, plan.expectedTime)
+        } else {
+            resources.getString(R.string.stop_alarm_inexact, plan.station)
+        },
+        // Notifications off, or the stop alarm channel blocked in Android's settings: say so when the alarm is set.
+        resources.getString(R.string.stop_alarm_not_shown).takeUnless { shown }
+    ).joinToString(" ")
 
 private const val FAVOURITE_SEPARATOR = "\u001F"
 

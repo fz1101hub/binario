@@ -742,6 +742,7 @@
     <string name="stop_alarm_unavailable">لا يمكن جدولة المنبّه: الموعد المتوقع للمحطة قد مضى أو غير متاح.</string>
     <string name="stop_alarm_exact">ضُبط المنبّه على %1$s، قبل خمس دقائق من الموعد المتوقع %2$s.</string>
     <string name="stop_alarm_inexact">ضُبط المنبّه على %1$s، لكن قد يؤخره Android لأن المنبّهات الدقيقة غير مسموح بها.</string>
+    <string name="stop_alarm_not_shown">لا يعرض Android منبّهات المحطات في Binario (الإشعارات أو فئتها معطّلة): لن يظهر هذا المنبّه.</string>
     <string name="commuter_alert_scheduled">حُفظ التنبيه وجُدول على الجهاز.</string>
     <string name="commuter_alert_scheduled_inexact">حُفظ التنبيه وجُدول بوضع تقريبي: قد يؤخره Android لأن المنبّهات الدقيقة غير مسموح بها.</string>
     <string name="stop_alarms_active_title">منبّهات المحطات النشطة</string>

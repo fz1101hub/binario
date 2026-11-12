@@ -691,6 +691,7 @@
     <string name="stop_alarm_unavailable">Não é possível programar o alarme: o horário previsto da parada já passou ou não está disponível.</string>
     <string name="stop_alarm_exact">Alarme definido para %1$s, cinco minutos antes do horário previsto, %2$s.</string>
     <string name="stop_alarm_inexact">Alarme definido para %1$s, mas o Android pode entregá-lo com atraso porque alarmes exatos não são permitidos.</string>
+    <string name="stop_alarm_not_shown">O Android não mostra os alarmes de parada do Binario (notificações ou a categoria delas desativadas): este alarme não vai aparecer.</string>
     <string name="commuter_alert_scheduled">Alerta salvo e programado no dispositivo.</string>
     <string name="commuter_alert_scheduled_inexact">Alerta salvo e programado em modo aproximado: o Android pode entregá-lo com atraso porque alarmes exatos não são permitidos.</string>
     <string name="stop_alarms_active_title">Alarmes de parada ativos</string>

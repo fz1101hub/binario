@@ -657,6 +657,7 @@
     <string name="stop_alarm_unavailable">알람을 예약할 수 없습니다. 정차역의 예상 시각이 이미 지났거나 정보가 없습니다.</string>
     <string name="stop_alarm_exact">%1$s 알람을 설정했습니다. 예상 시각 %2$s 5분 전에 울립니다.</string>
     <string name="stop_alarm_inexact">%1$s 알람을 설정했지만, 정확한 알람이 허용되지 않아 Android가 늦게 울릴 수 있습니다.</string>
+    <string name="stop_alarm_not_shown">Android가 Binario의 정차역 알람을 표시하지 않습니다(알림 또는 해당 카테고리가 꺼져 있음). 이 알람은 표시되지 않습니다.</string>
     <string name="commuter_alert_scheduled">알림이 저장되어 기기에 예약되었습니다.</string>
     <string name="commuter_alert_scheduled_inexact">알림이 저장되어 대략적인 시각으로 예약되었습니다. 정확한 알람이 허용되지 않아 Android가 늦게 전달할 수 있습니다.</string>
     <string name="stop_alarms_active_title">설정된 정차역 알람</string>

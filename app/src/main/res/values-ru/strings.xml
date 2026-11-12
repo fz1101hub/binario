@@ -708,6 +708,7 @@
     <string name="stop_alarm_unavailable">Не удаётся запланировать будильник: ожидаемое время остановки уже прошло или неизвестно.</string>
     <string name="stop_alarm_exact">Будильник установлен для %1$s за пять минут до ожидаемого времени %2$s.</string>
     <string name="stop_alarm_inexact">Будильник установлен для %1$s, но Android может сработать с задержкой, поскольку точные будильники не разрешены.</string>
+    <string name="stop_alarm_not_shown">Android не показывает будильники на остановку Binario (уведомления или их категория отключены): этот будильник не появится.</string>
     <string name="commuter_alert_scheduled">Оповещение сохранено и запланировано на устройстве.</string>
     <string name="commuter_alert_scheduled_inexact">Оповещение сохранено и запланировано в приблизительном режиме: Android может доставить его с задержкой, поскольку точные будильники не разрешены.</string>
     <string name="stop_alarms_active_title">Активные будильники на остановку</string>
