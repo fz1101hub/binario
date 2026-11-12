@@ -69,10 +69,6 @@ MAX_PREFIX_MATCH_DISTANCE_KM = 1.0
 # was removed in November 2026.
 INDEXED_PACK_COUNT = 9
 RAIL_ROUTE_TYPES = frozenset({2, *range(100, 200)})
-EXCLUSIVE_RAIL_ROUTE_IDS: Mapping[str, frozenset[str]] = {
-    # TFT publishes its two railway lines as route_type=3 (bus).
-    "toscana-tft-gtfs": frozenset({"1028056267", "2272465657"}),
-}
 # Packs whose bikes_allowed is stored as unknown, as on Android (GtfsDayTimetable.kt): the Italo
 # pack publishes 1 on every trip, but Italo admits only folding bikes carried in a bag, so "bikes
 # allowed" would mislead. The pack is Android-only today (binario_gtfs_source_policy_v1.json);
@@ -933,8 +929,8 @@ def ingest_pack(
         for external_id in sorted(used_route_ids):
             row = routes[external_id]
             route_type = parse_int(required(row, "route_type", f"{source_id}:route:{external_id}"), f"{source_id}:route:{external_id}", minimum=0, maximum=9999)
-            exceptional_rail_route = route_type == 3 and external_id in EXCLUSIVE_RAIL_ROUTE_IDS.get(source_id, frozenset())
-            if route_type not in RAIL_ROUTE_TYPES and not exceptional_rail_route:
+            # TFT's railway lines, published as buses, are type 2 in the Android pack (build_gtfs_packs.ROUTE_TYPE_OVERRIDES).
+            if route_type not in RAIL_ROUTE_TYPES:
                 raise BuildError(f"{source_id}: route {external_id!r} is not an authorised railway route")
             database_id = allocator.next("route")
             route_ids[external_id] = database_id

@@ -1099,5 +1099,56 @@ class ItineraryCopiesTest(unittest.TestCase):
         self.assertFalse([trip["trip_id"] for trip in trips if builder.is_combined_itinerary(trip["trip_id"], trip["trip_short_name"])])
 
 
+
+class RouteTypeOverrideTest(unittest.TestCase):
+    """Audit2 android-planner-4: TFT's railway lines are published as buses (route_type 3)."""
+
+    def setUp(self) -> None:
+        self.temp = Path(tempfile.mkdtemp(prefix="gtfs-route-type-test-"))
+        self.addCleanup(shutil.rmtree, self.temp, ignore_errors=True)
+
+    def write_tft(self, target: Path) -> None:
+        with zipfile.ZipFile(target, "w", zipfile.ZIP_DEFLATED) as archive:
+            archive.writestr("agency.txt", "agency_id,agency_name,agency_url,agency_timezone\nT,TFT,https://x.invalid,Europe/Rome\n")
+            archive.writestr("stops.txt", "stop_id,stop_name,stop_lat,stop_lon\nA,Arezzo,43.4,11.8\nS,Stia,43.8,11.7\n")
+            archive.writestr("routes.txt", "route_id,agency_id,route_short_name,route_type\n"
+                             "1028056267,T,Arezzo-Stia,3\n2272465657,T,Arezzo-Sinalunga,3\nBUS,T,Bus,3\n")
+            archive.writestr("trips.txt", "route_id,service_id,trip_id\n1028056267,S,T1\n2272465657,S,T2\nBUS,S,T3\n")
+            archive.writestr("stop_times.txt", "trip_id,arrival_time,departure_time,stop_id,stop_sequence\n" + "".join(
+                f"{trip},08:00:00,08:00:00,A,1\n{trip},09:00:00,09:00:00,S,2\n" for trip in ("T1", "T2", "T3")))
+            archive.writestr("calendar.txt", CALENDAR_HEADER + "S,1,1,1,1,1,1,1,20261102,20261213\n")
+
+    def build(self, output: Path) -> None:
+        source = self.temp / "tft-source.zip"
+        self.write_tft(source)
+        registry = self.temp / "registry.json"
+        registry.write_text(json.dumps({"generatedAt": "2026-11-02", "packs": [{
+            "sourceId": "toscana-tft-gtfs", "asset": "gtfs/toscana-tft-gtfs.zip", "sourceUrl": "https://example.test/tft.zip",
+            "accessMode": "OPEN_DIRECT"}]}), encoding="utf-8")
+        builder.build_packs(self.temp, output, manifest_path=registry, generated_at="2026-11-02",
+                            input_overrides={"toscana-tft-gtfs": source})
+
+    def test_tft_railway_lines_are_published_as_trains_and_the_check_holds_it(self) -> None:
+        output = self.temp / "out"
+        self.build(output)
+        with zipfile.ZipFile(output / "toscana-tft-gtfs.zip") as archive:
+            routes = {row["route_id"]: row["route_type"] for row in table(archive, "routes.txt")}
+            self.assertEqual(["T1", "T2"], sorted(row["trip_id"] for row in table(archive, "trips.txt")))
+        self.assertEqual({"1028056267": "2", "2272465657": "2"}, routes)
+        manifest = json.loads((output / "manifest.json").read_text(encoding="utf-8"))
+        self.assertEqual({"1028056267": "2", "2272465657": "2"}, manifest["packs"][0]["filter"]["routeTypeOverrides"])
+        builder.verify_assets(output, as_of=None, min_valid_days=None)
+        # A pack built without the correction (an older build) fails the check.
+        stale = self.temp / "stale"
+        with mock.patch.object(builder, "ROUTE_TYPE_OVERRIDES", {}):
+            self.build(stale)
+        with self.assertRaisesRegex(builder.BuildError, "route o criterio filtro incoerente"):
+            builder.verify_assets(stale, as_of=None, min_valid_days=None)
+
+    def test_the_shipped_tft_pack_runs_trains(self) -> None:
+        with zipfile.ZipFile(ASSETS / "toscana-tft-gtfs.zip") as archive:
+            self.assertEqual({"2"}, {row["route_type"] for row in table(archive, "routes.txt")})
+
+
 if __name__ == "__main__":
     unittest.main()

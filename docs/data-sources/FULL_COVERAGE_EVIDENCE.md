@@ -23,7 +23,7 @@
 
 L’APK includeva dodici archivi GTFS con manifest, impronte SHA-256 e verifica dello schema (undici dal novembre 2026: il pack croato HŽPP, senza stazioni italiane, è stato tolto). Il controllo del 15 agosto ha prodotto **12/12 impronte valide** e **12/12 set di tabelle GTFS obbligatorie presenti**. I feed contengono, tra l’altro, 594 route ferroviarie SNCF, 407 svizzere, 259 ÖBB, 161 STA Alto Adige, 136 HŽPP e 60 Lombardia/Trenord.
 
-> Il feed TFT mantiene due linee ferroviarie note ma le codifica con `route_type=3`; l’app conserva il data pack e lo identifica come eccezione semantica. Non viene usato il valore GTFS errato per presentare la linea come servizio autobus.
+> Il feed TFT pubblica le due linee ferroviarie (Arezzo–Stia, Arezzo–Sinalunga) con `route_type=3` (autobus). Dal novembre 2026 `tools/build_gtfs_packs.py` le riscrive come treni (`route_type=2`, `ROUTE_TYPE_OVERRIDES`, dichiarato nel filtro del manifest e controllato da `--check`): l’app non le presenta come bus sostitutivi.
 
 ## Riconciliazione e qualità
 

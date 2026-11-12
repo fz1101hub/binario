@@ -134,8 +134,13 @@ MAX_DWELL_SKEW_MINUTES = 20
 EXCLUSIVE_ROUTE_IDS: Mapping[str, frozenset[str]] = {
     # Genova Manin - Casella; AMT renumbered the route from FGC-164 to FGC-191 (reviewed 2 November 2026).
     "amt-genova-casella-gtfs": frozenset({"FGC-191"}),
-    # TFT labels its two railway lines as route_type=3 (bus).
+    # TFT labels its two railway lines as route_type=3 (bus): see ROUTE_TYPE_OVERRIDES.
     "toscana-tft-gtfs": frozenset({"1028056267", "2272465657"}),
+}
+# route_type corrected at build for reviewed route ids: TFT publishes its railway lines Arezzo - Stia and Arezzo -
+# Sinalunga as buses (3), which the apps would show as rail replacement buses and leave out of the train searches.
+ROUTE_TYPE_OVERRIDES: Mapping[str, Mapping[str, str]] = {
+    "toscana-tft-gtfs": {"1028056267": "2", "2272465657": "2"},
 }
 
 # City networks (assets under gtfs-transit/ and gtfs-personal/): metro (1, 400-499), tram (0, 900-999), funiculars,
@@ -675,6 +680,14 @@ def selected_routes(source_id: str, routes: CsvTable) -> tuple[tuple[dict[str, s
             "description": "Selettore revisionato specifico della fonte; nessun matching per nome.",
             "routeIds": sorted(explicit),
         }
+        overrides = ROUTE_TYPE_OVERRIDES.get(source_id, {})
+        if overrides:
+            # The published route_type of these reviewed routes is wrong (a railway line published as a bus).
+            selected = tuple(
+                {**row, "route_type": overrides[row.get("route_id", "")]} if row.get("route_id", "") in overrides else row
+                for row in selected
+            )
+            metadata["routeTypeOverrides"] = dict(sorted(overrides.items()))
     elif source_id in URBAN_SOURCES:
         excluded = URBAN_SOURCES[source_id]
         selected = tuple(
@@ -1094,6 +1107,10 @@ def filter_archive(
         require_columns(stop_times, "stop_times.txt", "trip_id", "stop_id")
         kept_stop_times = stop_times.rows
 
+        # Rules that drop or change trips are named in the filter manifest; their counts go to the log, so that filtering
+        # a published pack again gives the same bytes.
+        trip_rules: list[str] = []
+
         calendar = read_table(
             archive,
             "calendar.txt",
@@ -1109,9 +1126,6 @@ def filter_archive(
         require_columns(calendar, "calendar.txt", "service_id", "end_date")
         require_columns(calendar_dates, "calendar_dates.txt", "service_id", "date", "exception_type")
 
-        # Rules that drop or change trips are named in the filter manifest; their counts go to the log, so that filtering
-        # a published pack again gives the same bytes.
-        trip_rules: list[str] = []
         if source_id in ITINERARY_COPY_SOURCES:
             dropped, kept_stop_times, counts = drop_itinerary_copies(
                 kept_trips, kept_stop_times, train_route_ids(kept_routes), service_days(calendar, calendar_dates, source_id),
@@ -1541,6 +1555,13 @@ def verify_filter_from_asset(path: Path, source_id: str) -> str:
         expected_ids = {row.get("route_id", "") for row in selected}
         if actual_ids != expected_ids or metadata.get("policy") != policy:
             raise BuildError(f"{source_id}: route o criterio filtro incoerente")
+        overrides = ROUTE_TYPE_OVERRIDES.get(source_id, {})
+        wrong_types = sorted(
+            row.get("route_id", "") for row in routes.rows
+            if row.get("route_id", "") in overrides and row.get("route_type", "").strip() != overrides[row.get("route_id", "")]
+        )
+        if wrong_types:
+            raise BuildError(f"{source_id}: route_type non corretto per {', '.join(log_safe(route) for route in wrong_types)}")
         expected_counts = metadata.get("counts")
         if not isinstance(expected_counts, dict) or expected_counts.get("routes") != len(routes.rows):
             raise BuildError(f"{source_id}: conteggi filtro incoerenti")

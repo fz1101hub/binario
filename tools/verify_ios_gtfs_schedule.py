@@ -213,17 +213,7 @@ def verify_database(path: Path, metadata: dict[str, object], input_fingerprint: 
         unverified = connection.execute("SELECT count(*) FROM trip t WHERE NOT EXISTS (SELECT 1 FROM stop_time st JOIN stop s ON s.id=st.stop_id WHERE st.trip_id=t.id AND s.catalog_station_id IS NOT NULL AND (s.railway_code IS NOT NULL OR s.trenitalia_location_id IS NOT NULL))").fetchone()[0]
         require(unverified == 0, "trip not touching a verified catalog station found")
         non_rail = connection.execute(
-            """
-            SELECT count(*)
-            FROM route r JOIN pack p ON p.id=r.pack_id
-            WHERE r.route_type != 2
-              AND NOT (r.route_type BETWEEN 100 AND 199)
-              AND NOT (
-                p.source_id='toscana-tft-gtfs'
-                AND r.route_type=3
-                AND r.external_id IN ('1028056267','2272465657')
-              )
-            """
+            "SELECT count(*) FROM route WHERE route_type != 2 AND NOT (route_type BETWEEN 100 AND 199)"
         ).fetchone()[0]
         require(non_rail == 0, "non-rail route found")
         invalid_bikes = connection.execute("SELECT count(*) FROM trip WHERE bikes_allowed IS NOT NULL AND bikes_allowed NOT IN (1, 2)").fetchone()[0]
