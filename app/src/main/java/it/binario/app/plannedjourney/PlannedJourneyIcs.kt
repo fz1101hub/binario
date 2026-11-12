@@ -232,3 +232,16 @@ object PlannedJourneyIcs {
         firstOrNull { it.startsWith("$name:") }?.substringAfter(':')
             ?: throw IllegalArgumentException("Missing $name")
 }
+
+/**
+ * One Agenda occurrence as a prefilled event for the calendar app the user picks (no calendar permission): the
+ * scheduled departure only, with no invented end, the origin as place and each leg described as in the ICS export.
+ */
+internal fun PlannedJourneyAgendaEntry.calendarEvent(text: PlannedJourneyIcsText, title: String): it.binario.app.TrainCalendarEvent =
+    it.binario.app.TrainCalendarEvent(
+        title = title,
+        beginEpochMillis = occurrence.scheduledAt.toEpochMilli(),
+        endEpochMillis = null,
+        location = occurrence.itinerary.segments.first().origin.displayName,
+        description = occurrence.itinerary.segments.joinToString("\n") { segment -> text.describe(segment) }
+    )

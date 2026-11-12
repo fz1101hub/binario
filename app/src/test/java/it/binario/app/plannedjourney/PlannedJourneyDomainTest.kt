@@ -240,7 +240,12 @@ class PlannedJourneyDomainTest {
         assertEquals(listOf("2026-09-09", "2026-09-21"), upcoming.map { it.occurrence.occurrenceDate.toString() })
 
         assertEquals(listOf("reminder"), PlannedJourneyAgenda.ordered(listOf(recurring, reminder), PlannedJourneyAgendaFilter.REMINDERS, now).map { it.journey.id })
-        assertEquals(listOf("archived"), PlannedJourneyAgenda.ordered(listOf(archived, completed), PlannedJourneyAgendaFilter.ARCHIVED, now).map { it.journey.id })
+        // The archive also holds completed journeys and departed or completed occurrences, newest first.
+        assertEquals(listOf("archived", "completed"), PlannedJourneyAgenda.ordered(listOf(archived, completed), PlannedJourneyAgendaFilter.ARCHIVED, now).map { it.journey.id })
+        assertEquals(
+            listOf("2026-09-14", "2026-09-07"),
+            PlannedJourneyAgenda.ordered(listOf(recurring, reminder), PlannedJourneyAgendaFilter.ARCHIVED, now).map { it.occurrence.occurrenceDate.toString() }
+        )
         assertEquals(6, PlannedJourneyAgenda.ordered(listOf(archived, completed, recurring, reminder), PlannedJourneyAgendaFilter.ALL, now).size)
     }
 
