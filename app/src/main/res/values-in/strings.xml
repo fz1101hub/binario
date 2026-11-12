@@ -694,6 +694,7 @@
     <string name="voice_feedback_confirmed">Dikenali dan diterapkan. Periksa kolom sebelum mencari.</string>
     <string name="voice_feedback_ambiguous">Dikte ambigu (%1$s). Kolom tidak diubah: pilih secara manual.</string>
     <string name="voice_feedback_incomplete">Dikte tidak lengkap. Kolom tidak diubah: lengkapi atau perbaiki secara manual.</string>
+    <string name="voice_feedback_date_time_only">Hanya hari dan waktu yang dikenali yang diterapkan: pilih stasiun dan periksa kolom sebelum mencari.</string>
     <string name="voice_feedback_unresolved_route">Tidak ada rute yang dikenali. Coba: dari Roma Termini ke Torino Porta Nuova besok pukul 18.</string>
     <string name="voice_feedback_unresolved_train">Tidak ada nomor kereta yang dikenali. Coba: kereta 9512.</string>
     <string name="voice_feedback_unresolved_station">Tidak ada stasiun yang dikenali. Coba: stasiun Roma Termini.</string>

@@ -7,77 +7,96 @@ struct SavedRoutesView: View {
     @State private var confirmingDeleteAll = false
 
     var body: some View {
-        Group {
+        List {
+            // «Agenda»: the planned journeys, a page of this tab rather than a sixth tab.
+            Section {
+                NavigationLink {
+                    AgendaView()
+                } label: {
+                    Label {
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text("saved.agenda.title")
+                                .foregroundStyle(.primary)
+                            Text("saved.agenda.subtitle")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    } icon: {
+                        Image(systemName: "calendar")
+                    }
+                }
+            }
+
             if model.savedRoutes.isEmpty {
-                ContentUnavailableView(
-                    "saved.empty.title",
-                    systemImage: "star",
-                    description: Text("saved.empty.body")
-                )
+                Section {
+                    ContentUnavailableView(
+                        "saved.empty.title",
+                        systemImage: "star",
+                        description: Text("saved.empty.body")
+                    )
+                }
             } else {
-                List {
-                    Section {
-                        ForEach(model.savedRoutes) { route in
-                            let pinned = model.pinnedWatchRouteID == route.id
-                            // One tap opens the planner on this route and searches it from now.
-                            Button {
-                                model.openPlanner(for: route)
-                            } label: {
-                                VStack(alignment: .leading, spacing: 4) {
-                                    Text(route.name)
-                                        .font(.headline)
-                                        .foregroundStyle(.primary)
-                                    Text("\(route.origin.name) → \(route.destination.name)")
-                                        .font(.subheadline)
+                Section {
+                    ForEach(model.savedRoutes) { route in
+                        let pinned = model.pinnedWatchRouteID == route.id
+                        // One tap opens the planner on this route and searches it from now.
+                        Button {
+                            model.openPlanner(for: route)
+                        } label: {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(route.name)
+                                    .font(.headline)
+                                    .foregroundStyle(.primary)
+                                Text("\(route.origin.name) → \(route.destination.name)")
+                                    .font(.subheadline)
+                                    .foregroundStyle(.secondary)
+                                if pinned {
+                                    Label("saved.watch.pinned", systemImage: "applewatch")
+                                        .font(.caption)
                                         .foregroundStyle(.secondary)
-                                    if pinned {
-                                        Label("saved.watch.pinned", systemImage: "applewatch")
-                                            .font(.caption)
-                                            .foregroundStyle(.secondary)
-                                    }
-                                }
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .contentShape(Rectangle())
-                            }
-                            // A button is one element already; the label replaces its two lines.
-                            .accessibilityLabel(Text("\(String(localized: "accessibility.saved_route")): \(route.name)"))
-                            .accessibilityHint(Text("accessibility.open_saved_route"))
-                            .accessibilityAction(named: Text("accessibility.delete_route")) {
-                                if let index = model.savedRoutes.firstIndex(where: { $0.id == route.id }) {
-                                    model.deleteRoutes(at: IndexSet(integer: index))
                                 }
                             }
-                            // «Mostra su Watch»: one pinned route, sent to the Watch when the iPhone has
-                            // no search for now to show (sharing on).
-                            .accessibilityAction(named: Text(LocalizedStringKey(pinned ? "saved.watch.stop" : "saved.watch.show"))) {
-                                model.setWatchPin(route, pinned: !pinned)
-                            }
-                            .swipeActions(edge: .leading) {
-                                WatchPinButton(pinned: pinned) { model.setWatchPin(route, pinned: !pinned) }
-                            }
-                            .contextMenu {
-                                WatchPinButton(pinned: pinned) { model.setWatchPin(route, pinned: !pinned) }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .contentShape(Rectangle())
+                        }
+                        // A button is one element already; the label replaces its two lines.
+                        .accessibilityLabel(Text("\(String(localized: "accessibility.saved_route")): \(route.name)"))
+                        .accessibilityHint(Text("accessibility.open_saved_route"))
+                        .accessibilityAction(named: Text("accessibility.delete_route")) {
+                            if let index = model.savedRoutes.firstIndex(where: { $0.id == route.id }) {
+                                model.deleteRoutes(at: IndexSet(integer: index))
                             }
                         }
-                        .onDelete(perform: model.deleteRoutes)
-                    } footer: {
-                        VStack(alignment: .leading, spacing: 6) {
-                            Text("saved.local_only")
-                            Text("saved.watch.footer")
-                            if model.pinnedWatchRouteID != nil, !model.watchSharingEnabled {
-                                Text("saved.watch.sharing_off")
-                            }
+                        // «Mostra su Watch»: one pinned route, sent to the Watch when the iPhone has
+                        // no search for now to show (sharing on).
+                        .accessibilityAction(named: Text(LocalizedStringKey(pinned ? "saved.watch.stop" : "saved.watch.show"))) {
+                            model.setWatchPin(route, pinned: !pinned)
+                        }
+                        .swipeActions(edge: .leading) {
+                            WatchPinButton(pinned: pinned) { model.setWatchPin(route, pinned: !pinned) }
+                        }
+                        .contextMenu {
+                            WatchPinButton(pinned: pinned) { model.setWatchPin(route, pinned: !pinned) }
                         }
                     }
-
-                    Section {
-                        Button("saved.delete_all", role: .destructive) {
-                            confirmingDeleteAll = true
+                    .onDelete(perform: model.deleteRoutes)
+                } footer: {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("saved.local_only")
+                        Text("saved.watch.footer")
+                        if model.pinnedWatchRouteID != nil, !model.watchSharingEnabled {
+                            Text("saved.watch.sharing_off")
                         }
-                        .confirmationDialog("saved.delete_all", isPresented: $confirmingDeleteAll, titleVisibility: .visible) {
-                            Button("saved.delete_all", role: .destructive) {
-                                model.deleteAllRoutes()
-                            }
+                    }
+                }
+
+                Section {
+                    Button("saved.delete_all", role: .destructive) {
+                        confirmingDeleteAll = true
+                    }
+                    .confirmationDialog("saved.delete_all", isPresented: $confirmingDeleteAll, titleVisibility: .visible) {
+                        Button("saved.delete_all", role: .destructive) {
+                            model.deleteAllRoutes()
                         }
                     }
                 }

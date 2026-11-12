@@ -92,6 +92,7 @@ import it.binario.app.DictationTarget
 import it.binario.app.JourneyChangeFilter
 import it.binario.app.NearestStationPicker
 import it.binario.app.PlannerDateTime
+import it.binario.app.PlannerVoiceFeedback
 import it.binario.app.PlannerVoiceParser
 import it.binario.app.R
 import it.binario.app.TrainNumberSearchForm
@@ -219,6 +220,12 @@ internal fun PlannerScreen(
             }
             val review = PlannerVoiceParser.review(spoken, viewModel.stations, dictationTarget, language = locale.language)
             val dictated = review.input
+            val feedback = review.feedback(dictationTarget)
+            if (feedback == PlannerVoiceFeedback.DateTimeOnly) {
+                // The stations were not found: their fields stay as they are, the day and the time said are offered.
+                dictated.date?.let { travelDate = it.toString(); dateChosen = true }
+                dictated.time?.let { travelTime = it.toString(); timeChosen = true }
+            }
             if (review.status == DictationReviewStatus.CONFIRMED) when (voiceTarget) {
                 SearchMode.ROUTE -> {
                     dictated.origin?.let { originText = it.name }
@@ -246,7 +253,7 @@ internal fun PlannerScreen(
                     (dictated.station ?: dictated.origin)?.let { stationText = it.name }
                 }
             }
-            speechMessage = review.feedback(dictationTarget).resolve(resources)
+            speechMessage = feedback.resolve(resources)
         }
     }
     fun startVoiceInput(target: SearchMode) {
@@ -582,7 +589,7 @@ internal fun PlannerScreen(
                                     Spacer(Modifier.width(8.dp))
                                     Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null)
                                 }
-                                // Offered where the parser knows the words for a day and a time (PlannerVoiceParser.offers).
+                                // Offered where the parser knows the words for a day and a time (PlannerVoiceParser.offers): all 17.
                                 if (PlannerVoiceParser.offers(DictationTarget.ROUTE, locale.language)) {
                                     VoiceInputButton(onClick = { startVoiceInput(SearchMode.ROUTE) }, label = stringResource(R.string.planner_voice_route))
                                 }
