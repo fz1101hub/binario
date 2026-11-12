@@ -8,6 +8,7 @@ import { createPersonalRoute, deleteUserAccount, getAlexaLinkStatus, listPersona
 import { createProfileRouter } from "./profile/router";
 import { personalRouteInput, RouteLimitError, RouteValidationError } from "./routes/contract";
 import { isAlexaConfigured } from "./voice/config";
+import { railStationIndex } from "./punctuality/source";
 
 export const appRouter = router({
   auth: router({
@@ -39,6 +40,12 @@ export const appRouter = router({
   routes: router({
     list: protectedProcedure.query(({ ctx }) => listPersonalRoutes(ctx.user.id)),
     create: protectedProcedure.input(personalRouteInput).mutation(async ({ ctx, input }) => {
+      // The skill matches origin and destination to the bundled station catalogue: a name it cannot
+      // match («Roma», «Milano») would only fail later, by voice. Routes saved before stay as they
+      // are; without a readable catalogue the check is skipped rather than refusing every route.
+      const stations = await railStationIndex();
+      if (stations && (!stations.codesFor(input.origin).length || !stations.codesFor(input.destination).length))
+        throw new TRPCError({ code: "UNPROCESSABLE_CONTENT", message: "Stazione non riconosciuta" });
       try {
         return await createPersonalRoute(ctx.user.id, input);
       } catch (error) {

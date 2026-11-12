@@ -59,6 +59,7 @@ export const vi: LocaleMessages = {
     deleteFailed: "Xóa không thành công. Không có dữ liệu nào bị đánh dấu là đã xóa: hãy thử lại.",
     routeInvalid: "Chưa lưu tuyến: tên, ga đi và ga đến phải có ít nhất 2 ký tự, và ga đi phải khác ga đến.",
     routeLimitReached: "Chưa lưu tuyến: bạn đã có số tuyến tối đa. Hãy xóa một tuyến để thêm tuyến khác.",
+    routeStationsUnknown: "Chưa lưu tuyến: điểm đi và điểm đến phải là tên ga đầy đủ, như Roma Termini hoặc Milano Centrale (không chỉ Roma hoặc Milano).",
     routeSaveFailed: "Không lưu được. Hãy thử lại.",
     actionFailed: "Không thay đổi được: chưa có gì thay đổi. Hãy thử lại.",
     notFoundTitle: "Không tìm thấy trang",

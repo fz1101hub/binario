@@ -59,6 +59,7 @@ export const id: LocaleMessages = {
     deleteFailed: "Penghapusan gagal. Tidak ada data yang ditandai terhapus: coba lagi.",
     routeInvalid: "Rute tidak disimpan: nama, asal, dan tujuan harus minimal 2 karakter, dan asal harus berbeda dari tujuan.",
     routeLimitReached: "Rute tidak disimpan: Anda sudah memiliki jumlah rute maksimum. Hapus satu untuk menambahkan yang lain.",
+    routeStationsUnknown: "Rute tidak disimpan: asal dan tujuan harus berupa nama stasiun lengkap, seperti Roma Termini atau Milano Centrale (bukan hanya Roma atau Milano).",
     routeSaveFailed: "Gagal menyimpan. Coba lagi.",
     actionFailed: "Perubahan gagal: tidak ada yang berubah. Coba lagi.",
     notFoundTitle: "Halaman tidak ditemukan",

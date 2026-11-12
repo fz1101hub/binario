@@ -59,6 +59,7 @@ export const ja: LocaleMessages = {
     deleteFailed: "削除できませんでした。削除済みとしてマークされたデータはありません。もう一度お試しください。",
     routeInvalid: "ルートは保存されていません。名前、出発、到着は2文字以上で、出発と到着は別の駅にしてください。",
     routeLimitReached: "ルートを保存できませんでした。保存できるルートの上限に達しています。追加するには 1 件削除してください。",
+    routeStationsUnknown: "ルートを保存できませんでした。出発地と目的地は Roma Termini や Milano Centrale のように駅の正式名称で入力してください（Roma や Milano だけでは保存できません）。",
     routeSaveFailed: "保存できませんでした。もう一度お試しください。",
     actionFailed: "変更できませんでした。何も変更されていません。もう一度お試しください。",
     notFoundTitle: "ページが見つかりません",

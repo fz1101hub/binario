@@ -59,6 +59,7 @@ export const tr: LocaleMessages = {
     deleteFailed: "Silme başarısız. Hiçbir veri silinmiş olarak işaretlenmedi: tekrar deneyin.",
     routeInvalid: "Güzergâh kaydedilmedi: ad, kalkış ve varış en az 2 karakter olmalı, kalkış ile varış farklı olmalıdır.",
     routeLimitReached: "Güzergâh kaydedilmedi: zaten en fazla sayıda güzergâhınız var. Yenisini eklemek için birini kaldırın.",
+    routeStationsUnknown: "Güzergâh kaydedilmedi: kalkış ve varış, Roma Termini veya Milano Centrale gibi tam istasyon adları olmalıdır (yalnızca Roma veya Milano değil).",
     routeSaveFailed: "Kaydedilemedi. Tekrar deneyin.",
     actionFailed: "Değişiklik yapılamadı: hiçbir şey değişmedi. Tekrar deneyin.",
     notFoundTitle: "Sayfa bulunamadı",
