@@ -971,5 +971,133 @@ class NationalPackTest(unittest.TestCase):
             self.assertEqual(pack["sourceArchiveSha256"], metadata["sourceArchiveSha256"])
             self.assertEqual(pack["lastServiceDate"], metadata["lastServiceDate"])
 
+CALENDAR_HEADER = "service_id,monday,tuesday,wednesday,thursday,friday,saturday,sunday,start_date,end_date\n"
+
+
+def write_trip_feed(
+    target: Path,
+    trips: list[tuple[str, str, str, list[tuple[str, str, str]]]],
+    *,
+    calendar: str = "WEEK,1,1,1,1,1,1,1,20261102,20261213\nMON,1,0,0,0,0,0,0,20261102,20261213\n",
+) -> None:
+    """A small railway feed: ``trips`` are (trip_id, number, service_id, [(stop, arrival, departure), ...])."""
+    stops = sorted({stop for _, _, _, calls in trips for stop, _, _ in calls})
+    with zipfile.ZipFile(target, "w", zipfile.ZIP_DEFLATED) as archive:
+        archive.writestr("agency.txt", "agency_id,agency_name,agency_url,agency_timezone\nI,Rail,https://x.invalid,Europe/Rome\n")
+        archive.writestr("stops.txt", "stop_id,stop_name,stop_lat,stop_lon\n" + "".join(
+            f"{stop},{stop},45.{index},9.{index}\n" for index, stop in enumerate(stops)))
+        archive.writestr("routes.txt", "route_id,agency_id,route_short_name,route_type\nR,I,IT,2\nB,I,BUS,3\n")
+        archive.writestr("trips.txt", "route_id,service_id,trip_id,trip_short_name\n" + "".join(
+            f"{'B' if trip_id.endswith('_bus') else 'R'},{service},{trip_id},{number}\n" for trip_id, number, service, _ in trips))
+        archive.writestr("stop_times.txt", "trip_id,arrival_time,departure_time,stop_id,stop_sequence\n" + "".join(
+            f"{trip_id},{arrival}:00,{departure}:00,{stop},{sequence}\n"
+            for trip_id, _, _, calls in trips for sequence, (stop, arrival, departure) in enumerate(calls, 1)))
+        archive.writestr("calendar.txt", CALENDAR_HEADER + calendar)
+        archive.writestr("calendar_dates.txt", "service_id,date,exception_type\n")
+
+
+def filtered(source: Path, output: Path, source_id: str) -> tuple[dict[str, list[dict[str, str]]], dict[str, object]]:
+    builder.filter_archive(source, output, source_id)
+    with zipfile.ZipFile(output) as archive:
+        times: dict[str, list[dict[str, str]]] = {}
+        for row in table(archive, "stop_times.txt"):
+            times.setdefault(row["trip_id"], []).append(row)
+        return times, json.loads(archive.read(builder.FILTER_MANIFEST_MEMBER))
+
+
+class ItineraryCopiesTest(unittest.TestCase):
+    """Audit2 tools-data-1 / android-planner-1: Italo's combined itineraries published as trips."""
+
+    # Train 8987 Alfa → Delta; its own trip lost the dwell at Beta (arrival = departure), which the copies keep.
+    TRAIN = ("IT::ServiceJourney:8987-1-9-1", "8987", "WEEK",
+             [("ALFA", "14:35", "14:35"), ("BETA", "15:10", "15:10"), ("GAMMA", "15:47", "15:49"), ("DELTA", "16:15", "16:15")])
+    # Train 9939 Omega → Alfa, then its passengers change to 8987: the itinerary's second leg runs 8987 under 9939.
+    FEEDER = ("IT::ServiceJourney:9939-1-1-1", "9939", "WEEK", [("OMEGA", "13:00", "13:00"), ("ALFA", "14:20", "14:20")])
+    LEG_ONE = ("IT::ServiceJourney:9939-8987-1-12-1_rail1", "9939", "WEEK", [("OMEGA", "13:00", "13:00"), ("ALFA", "14:20", "14:20")])
+    LEG_TWO = ("IT::ServiceJourney:9939-8987-1-12-1_rail2", "9939", "WEEK",
+               [("ALFA", "14:35", "14:35"), ("BETA", "15:10", "15:17"), ("GAMMA", "15:47", "15:49"), ("DELTA", "16:15", "16:15")])
+    # An itinerary boarding 8987 at Beta, under the number of train 9920 (which runs elsewhere earlier that day).
+    PARTIAL = ("IT::ServiceJourney:9920-8987-1-1-1_rail2", "9920", "WEEK", [("BETA", "15:10", "15:17"), ("GAMMA", "15:47", "15:49")])
+    OTHER = ("IT::ServiceJourney:9920-1-1-1", "9920", "WEEK", [("SIGMA", "12:00", "12:00"), ("BETA", "14:50", "14:50")])
+    # The whole itinerary 9939 + 8987 in one trip: the change at Alfa keeps the feeder's time.
+    WHOLE = ("IT::ServiceJourney:9939-8987-1-1-1", "9939", "WEEK",
+             [("OMEGA", "13:00", "13:00"), ("ALFA", "14:20", "14:20"), ("GAMMA", "15:47", "15:49"), ("DELTA", "16:15", "16:15")])
+
+    def setUp(self) -> None:
+        self.temp = Path(tempfile.mkdtemp(prefix="gtfs-copies-test-"))
+        self.addCleanup(shutil.rmtree, self.temp, ignore_errors=True)
+
+    def build(self, trips: list[tuple[str, str, str, list[tuple[str, str, str]]]], source_id: str = "italo-gtfs", **feed: str):
+        source = self.temp / f"{source_id}-source.zip"
+        write_trip_feed(source, trips, **feed)
+        return filtered(source, self.temp / f"{source_id}.zip", source_id)
+
+    def test_copies_and_itineraries_go_and_the_train_keeps_its_number_and_the_dwell(self) -> None:
+        times, metadata = self.build([self.LEG_ONE, self.LEG_TWO, self.PARTIAL, self.WHOLE, self.TRAIN, self.FEEDER, self.OTHER])
+        self.assertEqual({self.TRAIN[0], self.FEEDER[0], self.OTHER[0]}, set(times))
+        # The real train leaves Beta at 15:17, as the itineraries boarding it there say.
+        self.assertEqual(["14:35:00", "15:17:00", "15:49:00", "16:15:00"], [row["departure_time"] for row in times[self.TRAIN[0]]])
+        self.assertEqual(["14:35:00", "15:10:00", "15:47:00", "16:15:00"], [row["arrival_time"] for row in times[self.TRAIN[0]]])
+        self.assertEqual(["itinerary-copies"], metadata["tripRules"])
+        stderr = io.StringIO()
+        with mock.patch.object(sys, "stderr", stderr):
+            self.build([self.LEG_ONE, self.LEG_TWO, self.PARTIAL, self.WHOLE, self.TRAIN, self.FEEDER, self.OTHER])
+        self.assertIn('{"departuresTaken": 1, "droppedCopies": 3, "droppedItineraries": 1, "partialCopiesKept": 0}', stderr.getvalue())
+        # Filtering the filtered pack again changes nothing, byte for byte.
+        again = self.temp / "again.zip"
+        builder.filter_archive(self.temp / "italo-gtfs.zip", again, "italo-gtfs")
+        self.assertEqual(json.loads(zipfile.ZipFile(again).read(builder.FILTER_MANIFEST_MEMBER))["memberSha256"], metadata["memberSha256"])
+
+    def test_an_itinerary_found_only_in_the_data_goes_and_the_train_inside_it_stays(self) -> None:
+        # One trip under 9939 runs the whole of 9939 and then the whole of 8987; nothing in its id says so.
+        itinerary = ("X", "9939", "WEEK", self.FEEDER[3] + self.TRAIN[3][1:])
+        times, _ = self.build([itinerary, self.FEEDER, self.TRAIN])
+        self.assertEqual({self.TRAIN[0], self.FEEDER[0]}, set(times))
+
+    def test_a_copy_that_also_runs_on_days_without_its_train_stays(self) -> None:
+        # 8987 runs on Mondays only; the copy every day: on the other days it is the only record of the run.
+        train = (self.TRAIN[0], self.TRAIN[1], "MON", self.TRAIN[3])
+        times, _ = self.build([self.LEG_TWO, train, self.FEEDER])
+        self.assertEqual({self.LEG_TWO[0], self.TRAIN[0], self.FEEDER[0]}, set(times))
+
+    def test_coupled_trains_and_other_packs_are_left_alone(self) -> None:
+        # Two trains starting their own numbers at the same minutes are coupled portions, never merged.
+        coupled = ("IT::ServiceJourney:8990-1-1-1", "8990", "WEEK", self.TRAIN[3])
+        times, _ = self.build([self.TRAIN, coupled])
+        self.assertEqual({self.TRAIN[0], coupled[0]}, set(times))
+        # The rule is Italo's: the same trips in another pack are kept as published.
+        times, metadata = self.build([self.LEG_TWO, self.PARTIAL, self.WHOLE, self.TRAIN, self.FEEDER], "lombardia-trenord-gtfs")
+        self.assertEqual(5, len(times))
+        self.assertNotIn("tripRules", metadata)
+
+    def test_the_check_refuses_an_italo_pack_with_copies_left(self) -> None:
+        registry, archives = self.temp / "registry.json", {"italo-gtfs": self.temp / "upstream.zip"}
+        write_trip_feed(archives["italo-gtfs"], [self.LEG_TWO, self.TRAIN, self.FEEDER])
+        entry = registry_entry("italo-gtfs", builder.sha256_file(archives["italo-gtfs"]))
+        registry.write_text(json.dumps({"generatedAt": "2026-11-02", "packs": [entry]}), encoding="utf-8")
+        output = self.temp / "out"
+        with mock.patch.object(builder, "ITINERARY_COPY_SOURCES", frozenset()):
+            builder.build_packs(self.temp, output, manifest_path=registry, generated_at="2026-11-02", input_overrides=archives)
+        with self.assertRaisesRegex(builder.BuildError, "1 trip ripetono la corsa di un altro treno"):
+            builder.verify_assets(output, as_of=None, min_valid_days=None)
+        builder.build_packs(self.temp, output, manifest_path=registry, generated_at="2026-11-02", input_overrides=archives)
+        builder.verify_assets(output, as_of=None, min_valid_days=None)
+
+    def test_named_trains_reads_the_converter_ids(self) -> None:
+        self.assertEqual(["9928"], builder.named_trains("IT::ServiceJourney:9928-1-1-1"))
+        self.assertEqual(["9907", "8111"], builder.named_trains("IT::ServiceJourney:9907-8111--3-1-7-1"))
+        self.assertEqual(["8158", "9962"], builder.named_trains("IT::ServiceJourney:8158-9962--1-1-5-1_rail2"))
+        self.assertTrue(builder.is_combined_itinerary("IT::ServiceJourney:9928-8918-1-1-1", "9928"))
+        self.assertFalse(builder.is_combined_itinerary("IT::ServiceJourney:9928-8918-1-1-1_rail1", "9928"))
+        self.assertFalse(builder.is_combined_itinerary("IT::ServiceJourney:1077-9939-1-1-1", "9939"))
+
+    def test_the_shipped_italo_pack_has_one_trip_per_run(self) -> None:
+        with zipfile.ZipFile(ASSETS / "italo-gtfs.zip") as archive:
+            metadata = json.loads(archive.read(builder.FILTER_MANIFEST_MEMBER))
+            trips = table(archive, "trips.txt")
+        self.assertIn("itinerary-copies", metadata["tripRules"])
+        self.assertFalse([trip["trip_id"] for trip in trips if builder.is_combined_itinerary(trip["trip_id"], trip["trip_short_name"])])
+
+
 if __name__ == "__main__":
     unittest.main()

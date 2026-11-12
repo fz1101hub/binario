@@ -120,6 +120,15 @@ RAIL_ROUTE_TYPES = frozenset({"2", *(str(value) for value in range(100, 200))})
 SCHEDULED_COACH_ROUTE_TYPES = frozenset({"3"})
 SCHEDULED_COACH_SOURCES = frozenset({"trenitalia-gtfs", "italo-gtfs"})
 
+# Feeds that also publish the operator's combined itineraries as trips (Italo's NeTEx products, converted by
+# deryclem/italo-gtfs): train A, a change, train B becomes a trip per leg under train A's number ("…A-B…_rail2" runs
+# train B), or one trip for the whole itinerary.  The build keeps one trip per physical run of a service day, the
+# train under its own number (see drop_itinerary_copies).  Never applied to feeds whose trips at the same minutes are
+# coupled portions, each a train of its own (Trenord, SNCF, ÖBB, the Swiss feed).
+ITINERARY_COPY_SOURCES = frozenset({"italo-gtfs"})
+# A copy may have kept a dwell its train lost (or the other way round): departures may differ by this much.
+MAX_DWELL_SKEW_MINUTES = 20
+
 # Exceptional source-specific selectors are reviewed identifiers, not fuzzy
 # keywords.  A changed upstream ID fails the build and requires review.
 EXCLUSIVE_ROUTE_IDS: Mapping[str, frozenset[str]] = {
@@ -593,8 +602,8 @@ def parse_gtfs_date(value: str, context: str) -> date:
         raise BuildError(f"data GTFS non valida ({context!r}): {value!r}") from error
 
 
-def service_dates(calendar: CsvTable, calendar_dates: CsvTable, source_id: str) -> set[date]:
-    """Every date on which at least one service runs, after weekday flags and exceptions."""
+def service_days(calendar: CsvTable, calendar_dates: CsvTable, source_id: str) -> dict[str, set[date]]:
+    """The dates each service_id runs on, after weekday flags and exceptions."""
     require_columns(calendar, "calendar.txt", "service_id", "start_date", "end_date", *WEEKDAY_COLUMNS)
     require_columns(calendar_dates, "calendar_dates.txt", "service_id", "date", "exception_type")
     added: dict[str, set[date]] = {}
@@ -605,7 +614,7 @@ def service_dates(calendar: CsvTable, calendar_dates: CsvTable, source_id: str) 
             continue
         exceptions = added if row.get("exception_type", "").strip() == "1" else removed
         exceptions.setdefault(row.get("service_id", ""), set()).add(parse_gtfs_date(value, f"{source_id}:calendar_dates.txt"))
-    active: set[date] = set()
+    days: dict[str, set[date]] = {}
     for row in calendar.rows:
         start_value = row.get("start_date", "").strip()
         end_value = row.get("end_date", "").strip()
@@ -614,12 +623,22 @@ def service_dates(calendar: CsvTable, calendar_dates: CsvTable, source_id: str) 
         current = parse_gtfs_date(start_value, f"{source_id}:calendar.txt")
         end = parse_gtfs_date(end_value, f"{source_id}:calendar.txt")
         runs = tuple(row.get(column, "").strip() == "1" for column in WEEKDAY_COLUMNS)
-        skipped = removed.get(row.get("service_id", ""), set())
+        service_id = row.get("service_id", "")
+        skipped = removed.get(service_id, set())
+        active = days.setdefault(service_id, set())
         while current <= end:
             if runs[current.weekday()] and current not in skipped:
                 active.add(current)
             current += timedelta(days=1)
-    for dates in added.values():
+    for service_id, dates in added.items():
+        days.setdefault(service_id, set()).update(dates)
+    return days
+
+
+def service_dates(calendar: CsvTable, calendar_dates: CsvTable, source_id: str) -> set[date]:
+    """Every date on which at least one service runs, after weekday flags and exceptions."""
+    active: set[date] = set()
+    for dates in service_days(calendar, calendar_dates, source_id).values():
         active.update(dates)
     return active
 
@@ -692,6 +711,270 @@ def selected_routes(source_id: str, routes: CsvTable) -> tuple[tuple[dict[str, s
     if not selected:
         raise BuildError(f"{source_id}: nessuna route ammessa dal filtro")
     return selected, metadata
+
+
+def gtfs_minutes(value: str) -> int | None:
+    """Minutes of an ``H:MM:SS`` GTFS time (past 24:00 for a run after midnight), or ``None`` when empty or malformed."""
+    parts = value.strip().split(":")
+    if len(parts) != 3 or not all(part.isdigit() for part in parts):
+        return None
+    return int(parts[0]) * 60 + int(parts[1])
+
+
+@dataclass
+class TripRun:
+    """One train trip in stop order (:func:`drop_itinerary_copies`); ``rows`` index its stop_times rows."""
+
+    trip_id: str
+    order: int
+    number: str
+    service_id: str
+    rows: list[int]
+    stops: list[str]
+    arrivals: list[int]
+    departures: list[int]
+    own: bool = False
+
+    def start(self) -> tuple[int, str]:
+        return self.departures[0], self.stops[0]
+
+    def reach(self, first: int, other: "TripRun", offset: int) -> int:
+        """The last stop of this trip, from ``first``, that ``other`` runs from ``offset`` on: the same stops in the
+        same order, reached at the same minutes after ``first``, each left within MAX_DWELL_SKEW_MINUTES of the other
+        trip but the last (a copy may have lost a dwell, or kept one its train lost).  ``first`` when none.  At a stop
+        inside this trip (``first`` > 0, the change of an itinerary) the departure is not compared: an itinerary
+        published as one trip keeps the first train's time there."""
+        last = first
+        while (
+            last + 1 < len(self.stops)
+            and offset + last + 1 - first < len(other.stops)
+            and self.stops[last + 1] == other.stops[offset + last + 1 - first]
+            and self.arrivals[last + 1] == other.arrivals[offset + last + 1 - first]
+            and (
+                (last == first and first > 0)
+                or abs(self.departures[last] - other.departures[offset + last - first]) <= MAX_DWELL_SKEW_MINUTES
+            )
+        ):
+            last += 1
+        return last
+
+
+# One piece of a trip found in another trip: (that trip, first and last position of the piece, offset there).
+CopyPiece = tuple[TripRun, int, int, int]
+
+
+def train_route_ids(routes: Iterable[Mapping[str, str]]) -> set[str]:
+    return {row.get("route_id", "") for row in routes if row.get("route_type", "").strip() in RAIL_ROUTE_TYPES}
+
+
+def trip_runs(
+    trip_rows: Sequence[Mapping[str, str]],
+    stop_time_rows: Sequence[Mapping[str, str]],
+    train_route_ids: set[str],
+) -> list[TripRun]:
+    """The train trips with two timed stops at least, in trips.txt order; a trip with an untimed stop is left out."""
+    rows_by_trip: dict[str, list[int]] = {}
+    for index, row in enumerate(stop_time_rows):
+        rows_by_trip.setdefault(row.get("trip_id", ""), []).append(index)
+    runs: list[TripRun] = []
+    for order, trip in enumerate(trip_rows):
+        trip_id = trip.get("trip_id", "")
+        if trip.get("route_id", "") not in train_route_ids:
+            continue
+        indices = rows_by_trip.get(trip_id, [])
+        try:
+            indices = sorted(indices, key=lambda index: int(stop_time_rows[index].get("stop_sequence", "").strip()))
+        except ValueError:
+            continue
+        arrivals: list[int] = []
+        departures: list[int] = []
+        for index in indices:
+            row = stop_time_rows[index]
+            arrival = gtfs_minutes(row.get("arrival_time", ""))
+            departure = gtfs_minutes(row.get("departure_time", ""))
+            arrival = departure if arrival is None else arrival
+            departure = arrival if departure is None else departure
+            if arrival is None or departure is None:
+                break
+            arrivals.append(arrival)
+            departures.append(departure)
+        if len(arrivals) != len(indices) or len(indices) < 2:
+            continue
+        runs.append(TripRun(
+            trip_id, order, trip.get("trip_short_name", "").strip(), trip.get("service_id", ""), indices,
+            [stop_time_rows[index].get("stop_id", "") for index in indices], arrivals, departures,
+        ))
+    return runs
+
+
+def copies_of_day(runs: Sequence[TripRun]) -> dict[str, list[CopyPiece]]:
+    """The trips of one service day that repeat another train's run, each with the pieces of it found in the trips
+    kept: a copy lies whole inside a trip kept before it; a combined itinerary (train A, a change, train B) is covered
+    by two or more trains, one after the other.  Kept before: the trip starting where the first train of its number
+    starts that day (the train under its own number), then the longer one, then the one named after its own train
+    alone (:func:`named_trains`), then the one listed first; two trains that both start their own number are coupled
+    portions and never merged."""
+    first_start: dict[str, tuple[int, str]] = {}
+    for run in runs:
+        start = run.start()
+        if run.number not in first_start or start < first_start[run.number]:
+            first_start[run.number] = start
+    for run in runs:
+        run.own = first_start[run.number] == run.start()
+
+    def kept_before(kept: TripRun, copy: TripRun) -> bool:
+        if kept.own != copy.own:
+            return kept.own
+        if kept.own and kept.number != copy.number:
+            return False
+        if len(kept.stops) != len(copy.stops):
+            return len(kept.stops) > len(copy.stops)
+        # The same run under two numbers, neither starting its own: the trip named after its own train alone.
+        alone = (named_trains(kept.trip_id) == [kept.number], named_trains(copy.trip_id) == [copy.number])
+        if alone[0] != alone[1]:
+            return alone[0]
+        return kept.order < copy.order
+
+    hops: dict[tuple[str, str, int], list[tuple[int, int]]] = {}
+    for index, run in enumerate(runs):
+        for position in range(1, len(run.stops)):
+            hops.setdefault((run.stops[position - 1], run.stops[position], run.arrivals[position]), []).append((index, position - 1))
+
+    def sharing(run: TripRun, position: int) -> list[tuple[int, int]]:
+        return hops.get((run.stops[position], run.stops[position + 1], run.arrivals[position + 1]), [])
+
+    copies: dict[int, list[CopyPiece]] = {}
+    # An itinerary published as one trip: two or more trains under their own numbers run it piece after piece, and
+    # two numbers at least are involved (its own and theirs).  Found first, so that a train inside it (the first train, up to the change) is not taken
+    # for a copy of the longer itinerary under the same number.
+    for index, run in enumerate(runs):
+        pieces: list[CopyPiece] = []
+        first = 0
+        last = len(run.stops) - 1
+        while first < last:
+            best: CopyPiece | None = None
+            for other_index, offset in sharing(run, first):
+                other = runs[other_index]
+                if other_index == index or not other.own:
+                    continue
+                reached = run.reach(first, other, offset)
+                if reached > first and (best is None or reached > best[2]):
+                    best = (other, first, reached, offset)
+            if best is None:
+                break
+            pieces.append(best)
+            first = best[2]
+        if first == last and len(pieces) >= 2 and len({piece[0].number for piece in pieces} | {run.number}) >= 2:
+            copies[index] = pieces
+    for index, run in enumerate(runs):
+        if index in copies:
+            continue
+        last = len(run.stops) - 1
+        for other_index, offset in sharing(run, 0):
+            other = runs[other_index]
+            if (
+                other_index != index and other_index not in copies and kept_before(other, run)
+                and run.reach(0, other, offset) == last
+            ):
+                copies[index] = [(other, 0, last, offset)]
+                break
+    return {runs[index].trip_id: pieces for index, pieces in sorted(copies.items())}
+
+
+def drop_itinerary_copies(
+    trip_rows: Sequence[Mapping[str, str]],
+    stop_time_rows: Sequence[Mapping[str, str]],
+    train_route_ids: set[str],
+    days_by_service: Mapping[str, set[date]],
+) -> tuple[set[str], tuple[dict[str, str], ...], dict[str, int]]:
+    """The trips that repeat another train's run on every day they run (:func:`copies_of_day`), the stop_times with
+    the departures they carry, and counts for the filter manifest.
+
+    A copy often keeps a dwell its train lost (Italo's 9939 leaves Roma Termini at 17:30, as the itineraries boarding it
+    there say, while its own trip says 17:19, its arrival): before a copy goes, the train kept takes the latest
+    departure of the two at each stop they share, when it still leaves before its next arrival.  A trip that is a copy
+    on some of its days only stays (the app keeps one trip per run of each day).  Repeated until nothing changes, so
+    a check of the published pack finds no copy left."""
+    rows = [dict(row) for row in stop_time_rows]
+    # The itineraries published as one trip go first: the converter lists only some stops of the second train, so no
+    # train runs them piece after piece, and an itinerary is not a train (its number is the first train's).  Left in,
+    # it would also seem to run the piece of a train it contains.
+    itineraries = {
+        trip.get("trip_id", "") for trip in trip_rows
+        if trip.get("route_id", "") in train_route_ids
+        and is_combined_itinerary(trip.get("trip_id", ""), trip.get("trip_short_name", ""))
+    }
+    dropped: set[str] = set(itineraries)
+    departures_taken = 0
+    partial = 0
+    for _ in range(8):
+        runs = [run for run in trip_runs(trip_rows, rows, train_route_ids) if run.trip_id not in dropped]
+        runs_by_day: dict[date, list[TripRun]] = {}
+        for run in runs:
+            for day in days_by_service.get(run.service_id, ()):
+                runs_by_day.setdefault(day, []).append(run)
+        # Days with the same trips are one analysis.
+        found_by_set: dict[tuple[str, ...], dict[str, list[CopyPiece]]] = {}
+        copy_days: dict[str, int] = {}
+        pieces_by_trip: dict[str, list[CopyPiece]] = {}
+        for day in sorted(runs_by_day):
+            key = tuple(run.trip_id for run in runs_by_day[day])
+            if key not in found_by_set:
+                found_by_set[key] = copies_of_day(runs_by_day[day])
+            for trip_id, pieces in found_by_set[key].items():
+                copy_days[trip_id] = copy_days.get(trip_id, 0) + 1
+                pieces_by_trip.setdefault(trip_id, []).extend(pieces)
+        newly = {
+            run.trip_id for run in runs
+            if copy_days.get(run.trip_id, 0) and copy_days[run.trip_id] == len(days_by_service.get(run.service_id, ()))
+        }
+        partial = sum(1 for trip_id in copy_days if trip_id not in newly)
+        if not newly:
+            break
+        by_id = {run.trip_id: run for run in runs}
+        for trip_id in sorted(newly):
+            copy = by_id[trip_id]
+            for kept, first, last, offset in pieces_by_trip[trip_id]:
+                if kept.trip_id in newly:
+                    continue
+                # At the change of an itinerary the departure is the first train's, not this one's.
+                for position in range(first + (1 if first > 0 else 0), last):
+                    at = offset + position - first
+                    if copy.departures[position] <= kept.departures[at] or copy.departures[position] > kept.arrivals[at + 1]:
+                        continue
+                    source = rows[copy.rows[position]]
+                    rows[kept.rows[at]]["departure_time"] = source.get("departure_time", "").strip() or source.get("arrival_time", "")
+                    kept.departures[at] = copy.departures[position]
+                    departures_taken += 1
+        dropped |= newly
+    else:
+        raise BuildError("copie di itinerario: nessun punto fisso dopo 8 passaggi")
+    kept_rows = tuple(row for row in rows if row.get("trip_id", "") not in dropped)
+    return dropped, kept_rows, {
+        "droppedCopies": len(dropped) - len(itineraries),
+        "droppedItineraries": len(itineraries),
+        "departuresTaken": departures_taken,
+        "partialCopiesKept": partial,
+    }
+
+
+def named_trains(trip_id: str) -> list[str]:
+    """The train numbers a trip id names.  deryclem/italo-gtfs names each trip after its NeTEx product:
+    ``IT::ServiceJourney:<train>-<counters>`` for a train, ``<A>-<B>-<counters>`` for an itinerary of train A then
+    train B, with ``_rail1``, ``_rail2``… or ``_bus`` for one leg of it; counters have fewer than four digits."""
+    numbers: list[str] = []
+    for group in trip_id.rsplit(":", 1)[-1].split("_", 1)[0].split("-"):
+        if len(group) < 4 or not group.isdigit():
+            break
+        numbers.append(group)
+    return numbers
+
+
+def is_combined_itinerary(trip_id: str, number: str) -> bool:
+    """A whole itinerary in one trip (:func:`named_trains`): two train numbers at least, the first one its
+    trip_short_name, and no leg suffix."""
+    numbers = named_trains(trip_id)
+    return "_" not in trip_id.rsplit(":", 1)[-1] and len(numbers) >= 2 and numbers[0] == number.strip()
 
 
 def stop_modes_table(
@@ -810,12 +1093,7 @@ def filter_archive(
         assert stop_times
         require_columns(stop_times, "stop_times.txt", "trip_id", "stop_id")
         kept_stop_times = stop_times.rows
-        stop_ids = {row["stop_id"] for row in kept_stop_times if row.get("stop_id")}
-        if not stop_ids:
-            raise BuildError(f"{source_id}: i trip filtrati non hanno stop_times")
 
-        stops = read_table(archive, "stops.txt", required=True, budget=budget)
-        agency = read_table(archive, "agency.txt", required=True, budget=budget)
         calendar = read_table(
             archive,
             "calendar.txt",
@@ -828,11 +1106,31 @@ def filter_archive(
             predicate=lambda row: row.get("service_id", "") in service_ids,
             budget=budget,
         ) or empty_calendar_dates()
+        require_columns(calendar, "calendar.txt", "service_id", "end_date")
+        require_columns(calendar_dates, "calendar_dates.txt", "service_id", "date", "exception_type")
+
+        # Rules that drop or change trips are named in the filter manifest; their counts go to the log, so that filtering
+        # a published pack again gives the same bytes.
+        trip_rules: list[str] = []
+        if source_id in ITINERARY_COPY_SOURCES:
+            dropped, kept_stop_times, counts = drop_itinerary_copies(
+                kept_trips, kept_stop_times, train_route_ids(kept_routes), service_days(calendar, calendar_dates, source_id),
+            )
+            trip_rules.append("itinerary-copies")
+            print(f"{source_id}: copie di itinerario {log_safe(json.dumps(counts, sort_keys=True))}", file=sys.stderr)
+            kept_trips = tuple(row for row in kept_trips if row.get("trip_id", "") not in dropped)
+            trip_ids = {row["trip_id"] for row in kept_trips if row.get("trip_id")}
+            service_ids = {row["service_id"] for row in kept_trips if row.get("service_id")}
+
+        stop_ids = {row["stop_id"] for row in kept_stop_times if row.get("stop_id")}
+        if not stop_ids:
+            raise BuildError(f"{source_id}: i trip filtrati non hanno stop_times")
+
+        stops = read_table(archive, "stops.txt", required=True, budget=budget)
+        agency = read_table(archive, "agency.txt", required=True, budget=budget)
         assert agency and stops
         require_columns(agency, "agency.txt", "agency_name")
         require_columns(stops, "stops.txt", "stop_id")
-        require_columns(calendar, "calendar.txt", "service_id", "end_date")
-        require_columns(calendar_dates, "calendar_dates.txt", "service_id", "date", "exception_type")
 
         # Retain all parent stations of a referenced platform so stop hierarchy
         # remains valid after filtering.
@@ -943,6 +1241,7 @@ def filter_archive(
         "counts": counts,
         "lastServiceDate": coverage_end.isoformat(),
         "omittedOptionalTables": ["shapes.txt"],
+        **({"tripRules": trip_rules} if trip_rules else {}),
         MEMBER_DIGEST_FIELD: {name: canonical_csv_sha256(table) for name, table in sorted(tables.items())},
     }
     write_deterministic_zip(destination, tables, metadata)
@@ -1245,11 +1544,25 @@ def verify_filter_from_asset(path: Path, source_id: str) -> str:
         expected_counts = metadata.get("counts")
         if not isinstance(expected_counts, dict) or expected_counts.get("routes") != len(routes.rows):
             raise BuildError(f"{source_id}: conteggi filtro incoerenti")
+        tables: dict[str, CsvTable] = {}
         for table_name, count_key in (("trips.txt", "trips"), ("stop_times.txt", "stopTimes"), ("stops.txt", "stops")):
             table = read_table(archive, table_name, required=True)
             assert table is not None
             if expected_counts.get(count_key) != len(table.rows):
                 raise BuildError(f"{source_id}: conteggio {count_key} incoerente")
+            tables[table_name] = table
+        if source_id in ITINERARY_COPY_SOURCES:
+            calendar = read_table(archive, "calendar.txt") or empty_calendar()
+            calendar_dates = read_table(archive, "calendar_dates.txt") or empty_calendar_dates()
+            left, _, _ = drop_itinerary_copies(
+                tables["trips.txt"].rows, tables["stop_times.txt"].rows, train_route_ids(routes.rows),
+                service_days(calendar, calendar_dates, source_id),
+            )
+            if left:
+                raise BuildError(
+                    f"{source_id}: {len(left)} trip ripetono la corsa di un altro treno in ogni giorno di servizio "
+                    f"(copie di itinerario), es. {log_safe(sorted(left)[0])}"
+                )
         return canonical_content_sha256(declared_digests)
 
 

@@ -628,7 +628,7 @@
       "attribution": "Italo S.p.A. (NTV) via NAP CCISS (CAD art. 52, Reg. UE 2017/1926) — conversione GTFS © Clément Desouche, CC BY 4.0",
       "licence": "Dati aperti NAP CCISS (art. 52 c. 2 CAD, Reg. UE 2017/1926); conversione GTFS CC BY 4.0",
       "licenceEvidence": "https://www.cciss.it/nap/mmtis/public/en/catalog/Dataset/1814124 (dataset ufficiale); conversione https://github.com/deryclem/italo-gtfs, CC BY 4.0 (upstream.licence)",
-      "sha256": "806390a846abeaa2c97813849449c40a143ab8df7b72018e983b2230ebaa8bdc",
+      "sha256": "a2b46cd608cd8274169c61630412f41c83ba95ad2310d721c44e348daa36b444",
       "lastServiceDate": "2026-12-12",
       "notes": "Official Italo NeTEx timetable published on Italy's National Access Point (CCISS dataset 1814124), converted to GTFS weekly by deryclem/italo-gtfs (CC BY 4.0). Pinned to the upstream commit of 2026-11-09. Italo trains and ItaloBus (route_type 3) are kept; shapes.txt, derived from OpenStreetMap (ODbL), is never shipped. Scheduled times only; the calendar ends with the timetable change of December 2026.",
       "upstream": {
@@ -749,7 +749,7 @@
         ]
       },
       "sourceArchiveSha256": "e5ae7e46f47d64ae87e5b0222a6fbb50ede683fd9b295fabc1fa0307ba952a15",
-      "contentSha256": "d81bacca6eccf9cba7fb920675d5cf7a553bf96e6715a3e551e147511411cad1"
+      "contentSha256": "7f1b2d11400422593c54d2d36d8f09b075b59e466efcb95e48cf723dc119616d"
     },
     {
       "sourceId": "lombardia-trenord-gtfs",
