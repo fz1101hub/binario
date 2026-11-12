@@ -1389,6 +1389,7 @@
     <string name="accessibility_approach_alert_station">Change the station of the alert, now %1$s</string>
     <string name="approach_alert_lead">How early</string>
     <string name="approach_alert_summary">Alerts you %1$s before it reaches %2$s.</string>
+    <string name="approach_alert_quiet_note">No alerts are sent between 22:00 and 07:00: for this stop the alert may come later or not at all.</string>
     <string name="approach_alert_title">%1$s reaches %2$s in ~%3$s</string>
     <string name="approach_alert_title_now">%1$s is arriving at %2$s</string>
     <string name="approach_alert_channel_name">Trains arriving</string>

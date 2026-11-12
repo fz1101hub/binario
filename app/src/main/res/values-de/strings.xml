@@ -1389,6 +1389,7 @@
     <string name="accessibility_approach_alert_station">Bahnhof der Benachrichtigung ändern, derzeit %1$s</string>
     <string name="approach_alert_lead">Wie früh</string>
     <string name="approach_alert_summary">Benachrichtigt dich %1$s vor der Ankunft in %2$s.</string>
+    <string name="approach_alert_quiet_note">Zwischen 22 und 7 Uhr kommen keine Warnungen: Für diesen Halt kann die Warnung später oder gar nicht kommen.</string>
     <string name="approach_alert_title">%1$s erreicht %2$s in ~%3$s</string>
     <string name="approach_alert_title_now">%1$s fährt gleich in %2$s ein</string>
     <string name="approach_alert_channel_name">Ankommende Züge</string>

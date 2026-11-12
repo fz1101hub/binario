@@ -1333,6 +1333,7 @@
     <string name="accessibility_approach_alert_station">Ubah stasiun peringatan, saat ini %1$s</string>
     <string name="approach_alert_lead">Berapa lama sebelumnya</string>
     <string name="approach_alert_summary">Memberi tahu Anda %1$s sebelum tiba di %2$s.</string>
+    <string name="approach_alert_quiet_note">Tidak ada peringatan antara pukul 22 dan 7: untuk pemberhentian ini, peringatan bisa datang lebih lambat atau tidak datang.</string>
     <string name="approach_alert_title">%1$s tiba di %2$s dalam ~%3$s</string>
     <string name="approach_alert_title_now">%1$s sedang tiba di %2$s</string>
     <string name="approach_alert_channel_name">Kereta yang akan tiba</string>

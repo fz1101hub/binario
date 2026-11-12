@@ -101,6 +101,25 @@ class ApproachAlertPlannerTest {
         assertEquals(ApproachDecision.Done, ApproachAlertPlanner.decide(evening, today, observation("22:20", 40), at("22:10"), false, zone))
     }
 
+    @Test fun `no check runs when the quiet hours leave nothing to show, and the app says so`() {
+        // Monza at 06:48, lead 10: a punctual train has passed before 07:00, so there is no 07:00 lookup every day.
+        val dawn = alert.copy(stationTime = "06:48", departure = "06:20")
+        assertNull(ApproachAlertPlanner.window(dawn, today, zone))
+        assertEquals(at("07:00", today.plusDays(3)), ApproachAlertPlanner.nextRun(dawn.copy(stationTime = "07:05"), today.plusDays(2), null, null, at("12:00", today.plusDays(2)), zone))
+        assertNull(ApproachAlertPlanner.nextRun(dawn, null, null, null, at("12:00"), zone))
+        assertTrue(ApproachAlertPlanner.quietOnTimetable(dawn))
+        // 07:05 with lead 10: notified at 07:00, later than chosen; the note says so.
+        val early = alert.copy(stationTime = "07:05", departure = "06:50")
+        assertEquals(at("07:00"), ApproachAlertPlanner.window(early, today, zone)!!.start)
+        assertTrue(ApproachAlertPlanner.quietOnTimetable(early))
+        // 22:05 with lead 5: the moment is 22:00 even on time, and a delay only moves it later.
+        val evening = alert.copy(stationTime = "22:05", departure = "21:30", leadMinutes = 5)
+        assertNull(ApproachAlertPlanner.window(evening, today, zone))
+        assertTrue(ApproachAlertPlanner.quietOnTimetable(evening))
+        assertFalse(ApproachAlertPlanner.quietOnTimetable(alert))
+        assertFalse(ApproachAlertPlanner.quietOnTimetable(alert.copy(stationTime = "21:59", leadMinutes = 15)))
+    }
+
     @Test fun `a station after midnight belongs to the next calendar day of the run`() {
         val late = alert.copy(stationTime = "00:20", departure = "23:40")
         assertEquals(at("00:20", today.plusDays(1)), ApproachAlertPlanner.scheduledAt(late, today, zone))

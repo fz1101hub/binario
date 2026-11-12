@@ -1498,6 +1498,7 @@
     <string name="accessibility_approach_alert_station">تغيير محطة التنبيه، الحالية %1$s</string>
     <string name="approach_alert_lead">قبل كم من الوقت</string>
     <string name="approach_alert_summary">ينبّهك قبل %1$s من وصوله إلى %2$s.</string>
+    <string name="approach_alert_quiet_note">لا تُرسل تنبيهات بين الساعة 22 والساعة 7: قد يصل تنبيه هذه المحطة متأخرًا أو لا يصل.</string>
     <string name="approach_alert_title">%1$s يصل إلى %2$s بعد ~%3$s</string>
     <string name="approach_alert_title_now">%1$s يصل الآن إلى %2$s</string>
     <string name="approach_alert_channel_name">قطارات تقترب</string>

@@ -1366,6 +1366,7 @@
     <string name="accessibility_approach_alert_station">सूचना का स्टेशन बदलें, अभी %1$s</string>
     <string name="approach_alert_lead">कितना पहले</string>
     <string name="approach_alert_summary">%2$s पहुँचने से %1$s पहले बताता है।</string>
+    <string name="approach_alert_quiet_note">रात 22 से सुबह 7 बजे के बीच अलर्ट नहीं भेजे जाते: इस ठहराव के लिए अलर्ट देर से आ सकता है या नहीं भी आ सकता।</string>
     <string name="approach_alert_title">%1$s ~%3$s में %2$s पहुँचेगी</string>
     <string name="approach_alert_title_now">%1$s %2$s पहुँच रही है</string>
     <string name="approach_alert_channel_name">आने वाली ट्रेनें</string>

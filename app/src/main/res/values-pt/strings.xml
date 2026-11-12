@@ -1399,6 +1399,7 @@
     <string name="accessibility_approach_alert_station">Mudar a estação do aviso, agora %1$s</string>
     <string name="approach_alert_lead">Com quanta antecedência</string>
     <string name="approach_alert_summary">Avisa você %1$s antes da chegada a %2$s.</string>
+    <string name="approach_alert_quiet_note">Entre as 22h e as 7h não são enviados avisos: para esta parada, o aviso pode chegar mais tarde ou não chegar.</string>
     <string name="approach_alert_title">%1$s chega a %2$s em ~%3$s</string>
     <string name="approach_alert_title_now">%1$s está chegando a %2$s</string>
     <string name="approach_alert_channel_name">Trens chegando</string>

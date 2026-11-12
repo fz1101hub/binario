@@ -1356,6 +1356,7 @@
     <string name="accessibility_approach_alert_station">เปลี่ยนสถานีของการแจ้งเตือน ขณะนี้คือ %1$s</string>
     <string name="approach_alert_lead">ล่วงหน้าเท่าใด</string>
     <string name="approach_alert_summary">แจ้งเตือนคุณ %1$s ก่อนถึง %2$s</string>
+    <string name="approach_alert_quiet_note">ไม่มีการแจ้งเตือนระหว่าง 22:00 ถึง 07:00 สำหรับจุดจอดนี้ การแจ้งเตือนอาจมาช้าหรือไม่มาเลย</string>
     <string name="approach_alert_title">%1$s จะถึง %2$s ในอีก ~%3$s</string>
     <string name="approach_alert_title_now">%1$s กำลังจะถึง %2$s</string>
     <string name="approach_alert_channel_name">ขบวนที่ใกล้ถึง</string>

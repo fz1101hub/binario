@@ -1333,6 +1333,7 @@
     <string name="accessibility_approach_alert_station">通知する駅を変更（現在 %1$s）</string>
     <string name="approach_alert_lead">何分前</string>
     <string name="approach_alert_summary">%2$s に着く %1$s 前に通知します。</string>
+    <string name="approach_alert_quiet_note">22時から7時までは通知を送りません。この停車駅の通知は遅れて届くか、届かないことがあります。</string>
     <string name="approach_alert_title">%1$s は ~%3$s で %2$s に到着</string>
     <string name="approach_alert_title_now">%1$s がまもなく %2$s に到着</string>
     <string name="approach_alert_channel_name">到着が近い列車</string>

@@ -1356,6 +1356,7 @@
     <string name="accessibility_approach_alert_station">更改提醒车站，当前为 %1$s</string>
     <string name="approach_alert_lead">提前多久</string>
     <string name="approach_alert_summary">在到达%2$s前 %1$s 提醒你。</string>
+    <string name="approach_alert_quiet_note">22:00 至 7:00 不发送提醒：此停靠站的提醒可能延后或不会送达。</string>
     <string name="approach_alert_title">%1$s ~%3$s 后到达 %2$s</string>
     <string name="approach_alert_title_now">%1$s 即将到达 %2$s</string>
     <string name="approach_alert_channel_name">即将到站的列车</string>

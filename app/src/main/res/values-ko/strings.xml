@@ -1333,6 +1333,7 @@
     <string name="accessibility_approach_alert_station">알림 역 변경, 현재 %1$s</string>
     <string name="approach_alert_lead">얼마나 미리</string>
     <string name="approach_alert_summary">%2$s 도착 %1$s 전에 알려 줍니다.</string>
+    <string name="approach_alert_quiet_note">22시부터 7시까지는 알림을 보내지 않습니다. 이 정차역의 알림은 늦게 오거나 오지 않을 수 있습니다.</string>
     <string name="approach_alert_title">%1$s, ~%3$s 후 %2$s 도착</string>
     <string name="approach_alert_title_now">%1$s, 곧 %2$s 도착</string>
     <string name="approach_alert_channel_name">도착 예정 열차</string>

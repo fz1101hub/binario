@@ -1,5 +1,6 @@
 package it.binario.app.notifications
 
+import it.binario.app.CommuterAlertPlanner
 import it.binario.app.FavouriteTrainMatcher
 import it.binario.app.ServiceMonitor
 import it.binario.app.data.RailTime
@@ -110,13 +111,29 @@ object ApproachAlertPlanner {
         return if (arrival.atZone(zone).toLocalDate().isAfter(day)) day.minusDays(1) else day
     }
 
-    /** When the checks of [date] run: around the scheduled time, inside 07:00 – 22:00 of the day the train gets there. */
+    /**
+     * When the checks of [date] run: around the scheduled time, inside 07:00 – 22:00 of the day the train gets there.
+     * None when nothing could be shown: a punctual train has passed the station before the quiet hours end, or even a
+     * punctual train's moment to notify falls after they begin (a delay only moves it later).
+     */
     fun window(alert: ApproachAlert, date: LocalDate, zone: ZoneId = RailTime.defaultZone): ClosedRange<Instant>? {
         val scheduled = scheduledAt(alert, date, zone) ?: return null
         val day = scheduled.atZone(zone).toLocalDate()
-        val start = maxOf(scheduled.minus(lead(alert)).minus(FIRST_CHECK_BEFORE), day.atTime(TrainAlertWatch.QUIET_END).atZone(zone).toInstant())
-        val end = minOf(scheduled.plus(MAX_DELAY), day.atTime(TrainAlertWatch.QUIET_START).atZone(zone).toInstant())
+        val quietEnd = day.atTime(TrainAlertWatch.QUIET_END).atZone(zone).toInstant()
+        val quietStart = day.atTime(TrainAlertWatch.QUIET_START).atZone(zone).toInstant()
+        if (scheduled.plus(LATE_TOLERANCE).isBefore(quietEnd) || !scheduled.minus(lead(alert)).isBefore(quietStart)) return null
+        val start = maxOf(scheduled.minus(lead(alert)).minus(FIRST_CHECK_BEFORE), quietEnd)
+        val end = minOf(scheduled.plus(MAX_DELAY), quietStart)
         return if (start < end) start..end else null
+    }
+
+    /**
+     * True when the timetable moment to notify falls in the quiet hours (22:00 to 07:00): the alert then comes later
+     * than chosen, or not at all. The app says so under the alert.
+     */
+    fun quietOnTimetable(alert: ApproachAlert): Boolean {
+        val time = LiveStopTimes.parse(alert.stationTime) ?: return false
+        return CommuterAlertPlanner.isQuiet(time.minus(lead(alert)))
     }
 
     /** The moment to notify: [lead] before the expected time. */

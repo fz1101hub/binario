@@ -1422,6 +1422,7 @@
     <string name="accessibility_approach_alert_station">Changer la gare de l’alerte, actuellement %1$s</string>
     <string name="approach_alert_lead">Combien de temps avant</string>
     <string name="approach_alert_summary">Vous prévient %1$s avant son arrivée à %2$s.</string>
+    <string name="approach_alert_quiet_note">Aucune alerte n’est envoyée entre 22 h et 7 h : pour cet arrêt, l’alerte peut arriver plus tard ou ne pas arriver.</string>
     <string name="approach_alert_title">%1$s arrive à %2$s dans ~%3$s</string>
     <string name="approach_alert_title_now">%1$s arrive à %2$s</string>
     <string name="approach_alert_channel_name">Trains à l’approche</string>

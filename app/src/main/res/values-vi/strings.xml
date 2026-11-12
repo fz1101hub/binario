@@ -1356,6 +1356,7 @@
     <string name="accessibility_approach_alert_station">Đổi ga của cảnh báo, hiện là %1$s</string>
     <string name="approach_alert_lead">Báo trước bao lâu</string>
     <string name="approach_alert_summary">Báo cho bạn %1$s trước khi tàu đến %2$s.</string>
+    <string name="approach_alert_quiet_note">Không gửi cảnh báo từ 22 giờ đến 7 giờ: với điểm dừng này, cảnh báo có thể đến muộn hơn hoặc không đến.</string>
     <string name="approach_alert_title">%1$s đến %2$s sau ~%3$s</string>
     <string name="approach_alert_title_now">%1$s đang đến %2$s</string>
     <string name="approach_alert_channel_name">Tàu sắp đến</string>

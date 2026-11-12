@@ -1333,6 +1333,7 @@
     <string name="accessibility_approach_alert_station">သတိပေးချက် ဘူတာကို ပြောင်းရန်၊ လက်ရှိ %1$s</string>
     <string name="approach_alert_lead">မည်မျှ စောစော</string>
     <string name="approach_alert_summary">%2$s သို့ မရောက်မီ %1$s အလိုတွင် အသိပေးမည်။</string>
+    <string name="approach_alert_quiet_note">၂၂ နာရီမှ ၇ နာရီအထိ သတိပေးချက် မပို့ပါ- ဤရပ်နားဘူတာအတွက် သတိပေးချက် နောက်ကျ၍ ရောက်နိုင်သည် သို့မဟုတ် မရောက်နိုင်ပါ။</string>
     <string name="approach_alert_title">%1$s သည် ~%3$s အတွင်း %2$s သို့ ရောက်မည်</string>
     <string name="approach_alert_title_now">%1$s သည် %2$s သို့ ဆိုက်ရောက်နေပြီ</string>
     <string name="approach_alert_channel_name">ဆိုက်ရောက်လာမည့် ရထားများ</string>

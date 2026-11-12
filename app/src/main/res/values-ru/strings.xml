@@ -1432,6 +1432,7 @@
     <string name="accessibility_approach_alert_station">Изменить станцию оповещения, сейчас %1$s</string>
     <string name="approach_alert_lead">За сколько</string>
     <string name="approach_alert_summary">Сообщит за %1$s до прибытия на станцию %2$s.</string>
+    <string name="approach_alert_quiet_note">С 22:00 до 7:00 оповещения не отправляются: для этой остановки оповещение может прийти позже или не прийти.</string>
     <string name="approach_alert_title">%1$s прибудет на %2$s через ~%3$s</string>
     <string name="approach_alert_title_now">%1$s прибывает на %2$s</string>
     <string name="approach_alert_channel_name">Прибывающие поезда</string>
