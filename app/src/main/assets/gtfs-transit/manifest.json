@@ -45,6 +45,7 @@
       },
       "sha256": "7c26ff3da939f7a97bb093d6040707599e72efa39714870ba47dde4d14474800",
       "lastServiceDate": "2026-12-31",
+      "fullServiceUntil": "2026-12-31",
       "filter": {
         "kind": "gtfs-rail-route-types",
         "description": "route_type GTFS ferroviari standard ed estesi (2, 100-199).",
@@ -185,6 +186,7 @@
       },
       "sha256": "7c76d995b72775eddd94a2d6cacd4905ab9040ca993367bbe422a3216c7cfe1c",
       "lastServiceDate": "2026-12-31",
+      "fullServiceUntil": "2026-12-31",
       "filter": {
         "kind": "gtfs-rail-route-types",
         "description": "route_type GTFS ferroviari standard ed estesi (2, 100-199).",
@@ -325,6 +327,7 @@
       },
       "sha256": "60810401152b3a4fc227f7302c13adf425e6e801b58c20aa5745b15a07ca48e6",
       "lastServiceDate": "2026-12-31",
+      "fullServiceUntil": "2026-12-12",
       "filter": {
         "kind": "gtfs-rail-route-types",
         "description": "route_type GTFS ferroviari standard ed estesi (2, 100-199).",
@@ -465,6 +468,7 @@
       },
       "sha256": "cf907bc25cd1b4aea9adcc2b5414a00282c4b74525f577a1851037d36dea202d",
       "lastServiceDate": "2026-12-12",
+      "fullServiceUntil": "2026-12-12",
       "filter": {
         "kind": "gtfs-rail-route-types",
         "description": "route_type GTFS ferroviari standard ed estesi (2, 100-199).",
@@ -599,6 +603,7 @@
       },
       "sha256": "e9ca4187a5a466c57ca51316289e193bf56ea8842a921edb85b6448bb6b313d1",
       "lastServiceDate": "2026-12-25",
+      "fullServiceUntil": "2026-12-24",
       "filter": {
         "kind": "explicit-route-ids",
         "description": "Selettore revisionato specifico della fonte; nessun matching per nome.",
@@ -634,6 +639,7 @@
       "minValidDays": 14,
       "sha256": "54eff717b637efc48cb5051022d272d08134b4be0c006b841aaef938ca6a0b14",
       "lastServiceDate": "2026-12-24",
+      "fullServiceUntil": "2026-12-20",
       "filter": {
         "kind": "gtfs-urban-route-types",
         "description": "Rete urbana: metropolitana (1, 400-499), tram (0, 900-999), funicolari, cremagliere e ascensori (5, 6, 7, 1300-1499) e monorotaia (12); mai autobus.",
@@ -1070,6 +1076,7 @@
       "minValidDays": 14,
       "sha256": "18a07f59bd1cd24c7ccc6f74603f20e9e980278b843c5c5ac9e31b4282bee0e1",
       "lastServiceDate": "2026-11-30",
+      "fullServiceUntil": "2026-11-30",
       "filter": {
         "kind": "gtfs-urban-route-types",
         "description": "Rete urbana: metropolitana (1, 400-499), tram (0, 900-999), funicolari, cremagliere e ascensori (5, 6, 7, 1300-1499) e monorotaia (12); mai autobus.",
@@ -1506,6 +1513,7 @@
       "minValidDays": 14,
       "sha256": "a07a56a14608e93909d3a2919a955f7b9cc4fc7bfa9cb48395492e6dc4f851dc",
       "lastServiceDate": "2026-12-30",
+      "fullServiceUntil": "2026-12-30",
       "filter": {
         "kind": "gtfs-urban-route-types",
         "description": "Rete urbana: metropolitana (1, 400-499), tram (0, 900-999), funicolari, cremagliere e ascensori (5, 6, 7, 1300-1499) e monorotaia (12); mai autobus.",
@@ -1941,6 +1949,7 @@
       },
       "sha256": "1a8cde40f9a5bd0ebe4659bed66cf9145b865fcf54d71ca7efaeff413ecb03fa",
       "lastServiceDate": "2026-12-31",
+      "fullServiceUntil": "2026-12-31",
       "filter": {
         "kind": "gtfs-urban-route-types",
         "description": "Rete urbana: metropolitana (1, 400-499), tram (0, 900-999), funicolari, cremagliere e ascensori (5, 6, 7, 1300-1499) e monorotaia (12); mai autobus.",

@@ -173,6 +173,7 @@ def verify_gtfs_directory(
             window = minimum_valid_days
         cutoff = builder.release_freshness_cutoff(today, window)
         derived_end: date | None = None
+        derived_full_end: date | None = None
         expected_hash = pack.get("sha256")
         if not isinstance(expected_hash, str) or len(expected_hash) != 64:
             failures.append(f"GTFS pack {source_id} has no valid sha256")
@@ -199,6 +200,7 @@ def verify_gtfs_directory(
                     # Freshness is judged on the service end derived from the calendar, as build_gtfs_packs.py does.
                     try:
                         derived_end = builder.service_end_from_asset(asset, str(source_id))
+                        derived_full_end = builder.full_service_end_from_asset(asset, str(source_id))
                     except builder.BuildError as exc:
                         failures.append(f"GTFS pack {source_id}: service end not derivable: {builder.log_safe(exc)}")
 
@@ -215,7 +217,13 @@ def verify_gtfs_directory(
                 f"GTFS pack {source_id} declares lastServiceDate {last_service_date.isoformat()} "
                 f"but its calendar ends {derived_end.isoformat()}"
             )
-        end = derived_end or last_service_date
+        if derived_full_end is not None and pack.get("fullServiceUntil") != derived_full_end.isoformat():
+            failures.append(
+                f"GTFS pack {source_id} declares fullServiceUntil {builder.log_safe(pack.get('fullServiceUntil'))} "
+                f"but its trips run the full timetable until {derived_full_end.isoformat()}"
+            )
+        # Freshness is judged on the end of full coverage (audit2 tools-data-2): a thin tail of trips is not a timetable.
+        end = min(derived_end or last_service_date, derived_full_end or last_service_date)
         if not builder.is_release_fresh(end, today, window):
             expiring_or_expired += 1
             if enforce_freshness:

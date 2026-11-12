@@ -36,6 +36,7 @@
       "minValidDays": 14,
       "sha256": "10ea93982ad1c5315e904648bff5802a62c049050b44508f2b8864b0da8698db",
       "lastServiceDate": "2026-12-09",
+      "fullServiceUntil": "2026-12-09",
       "filter": {
         "kind": "gtfs-urban-route-types",
         "description": "Rete urbana: metropolitana (1, 400-499), tram (0, 900-999), funicolari, cremagliere e ascensori (5, 6, 7, 1300-1499) e monorotaia (12); mai autobus.",
@@ -471,6 +472,7 @@
       },
       "sha256": "81ffcac1793947434065ca1120e8aba4e672e23d382d3871a26bc48fe13efc6f",
       "lastServiceDate": "2026-12-31",
+      "fullServiceUntil": "2026-12-31",
       "filter": {
         "kind": "gtfs-urban-route-types",
         "description": "Rete urbana: metropolitana (1, 400-499), tram (0, 900-999), funicolari, cremagliere e ascensori (5, 6, 7, 1300-1499) e monorotaia (12); mai autobus.",
@@ -907,6 +909,7 @@
       "minValidDays": 14,
       "sha256": "1bc482d342476a43d7c1571b8f979e8ed98b11ec6d2727ae4e97351cc4c66c36",
       "lastServiceDate": "2026-12-23",
+      "fullServiceUntil": "2026-12-23",
       "filter": {
         "kind": "gtfs-urban-route-types",
         "description": "Rete urbana: metropolitana (1, 400-499), tram (0, 900-999), funicolari, cremagliere e ascensori (5, 6, 7, 1300-1499) e monorotaia (12); mai autobus.",
@@ -1343,6 +1346,7 @@
       "minValidDays": 14,
       "sha256": "0cb09f60ffa5ba8d60d8a0923fa3675e5fd5c689fd5cde80c0bd75e476fc21f1",
       "lastServiceDate": "2026-12-31",
+      "fullServiceUntil": "2026-12-31",
       "filter": {
         "kind": "gtfs-urban-route-types",
         "description": "Rete urbana: metropolitana (1, 400-499), tram (0, 900-999), funicolari, cremagliere e ascensori (5, 6, 7, 1300-1499) e monorotaia (12); mai autobus.",
@@ -1782,6 +1786,7 @@
       },
       "sha256": "f7df4c448bbb2234251a90d2e99e85193e941748a1b5da587ded339fd6e5fb30",
       "lastServiceDate": "2026-12-13",
+      "fullServiceUntil": "2026-12-13",
       "filter": {
         "kind": "gtfs-rail-route-types",
         "description": "route_type GTFS ferroviari standard ed estesi (2, 100-199).",

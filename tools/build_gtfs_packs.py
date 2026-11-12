@@ -49,6 +49,7 @@ import io
 import json
 import os
 import shutil
+import statistics
 import sys
 import tempfile
 import urllib.parse
@@ -88,6 +89,12 @@ WEEKDAY_COLUMNS = ("monday", "tuesday", "wednesday", "thursday", "friday", "satu
 # is not coverage the app can promise.
 MAX_SERVICE_GAP_DAYS = 7
 MIN_COVERAGE_SPAN_DAYS = 7
+# The end of full coverage (fullServiceUntil): the last day running at least this share of the median trips of the same
+# weekday in the first four weeks of the pack.  Trenitalia's feed reaches December 2027 but holds about 60 % of
+# today's trains after the timetable change of 13 December 2026 (audit2 tools-data-2); a holiday's thinner service
+# only moves the end when it is the last day.
+FULL_SERVICE_SHARE = 0.8
+FULL_SERVICE_REFERENCE_DAYS = 28
 FILTER_MANIFEST_MEMBER = "binario_filter_manifest.json"
 MEMBER_DIGEST_FIELD = "memberSha256"
 
@@ -254,6 +261,7 @@ class CsvTable:
 class FilterResult:
     source_id: str
     last_service_date: date
+    full_service_until: date
     filter_metadata: dict[str, Any]
     source_archive_sha256: str
     content_sha256: str
@@ -664,6 +672,45 @@ def last_service_date(calendar: CsvTable, calendar_dates: CsvTable, source_id: s
         if (end - start).days + 1 >= MIN_COVERAGE_SPAN_DAYS:
             return end
     return dates[-1]
+
+
+def trips_by_day(trip_rows: Iterable[Mapping[str, str]], days_by_service: Mapping[str, set[date]]) -> dict[date, int]:
+    """How many trips run on each day."""
+    per_service: dict[str, int] = {}
+    for row in trip_rows:
+        service_id = row.get("service_id", "")
+        per_service[service_id] = per_service.get(service_id, 0) + 1
+    counts: dict[date, int] = {}
+    for service_id, trips in per_service.items():
+        for day in days_by_service.get(service_id, ()):
+            counts[day] = counts.get(day, 0) + trips
+    return counts
+
+
+def full_service_until(
+    trip_rows: Iterable[Mapping[str, str]],
+    calendar: CsvTable,
+    calendar_dates: CsvTable,
+    source_id: str,
+    last: date,
+) -> date:
+    """The last day, up to ``last``, with at least FULL_SERVICE_SHARE of the median trips of its weekday over the first
+    FULL_SERVICE_REFERENCE_DAYS days of the pack (its first day with a trip; days past its last are not counted)."""
+    counts = trips_by_day(trip_rows, service_days(calendar, calendar_dates, source_id))
+    running = sorted(day for day, trips in counts.items() if trips > 0)
+    if not running:
+        return last
+    start, end = running[0], running[-1]
+    reference = [start + timedelta(days=offset) for offset in range(FULL_SERVICE_REFERENCE_DAYS)]
+    medians = {
+        weekday: statistics.median([counts.get(day, 0) for day in reference if day <= end and day.weekday() == weekday] or [0])
+        for weekday in range(7)
+    }
+    full = [
+        day for day in running
+        if day <= last and medians[day.weekday()] > 0 and counts[day] >= FULL_SERVICE_SHARE * medians[day.weekday()]
+    ]
+    return max(full) if full else min(start, last)
 
 
 def selected_routes(source_id: str, routes: CsvTable) -> tuple[tuple[dict[str, str], ...], dict[str, Any]]:
@@ -1273,6 +1320,7 @@ def filter_archive(
         filtered_calendar = CsvTable(calendar.header, kept_calendar)
         filtered_calendar_dates = CsvTable(calendar_dates.header, kept_calendar_dates)
         coverage_end = last_service_date(filtered_calendar, filtered_calendar_dates, source_id)
+        full_end = full_service_until(kept_trips, filtered_calendar, filtered_calendar_dates, source_id, coverage_end)
 
         tables: dict[str, CsvTable] = {
             "agency.txt": CsvTable(agency.header, kept_agency),
@@ -1347,6 +1395,7 @@ def filter_archive(
     return FilterResult(
         source_id,
         coverage_end,
+        full_end,
         metadata,
         source_hash,
         canonical_content_sha256(metadata[MEMBER_DIGEST_FIELD]),
@@ -1411,6 +1460,14 @@ def manifest_for_build(
         name = safe_asset_name(pack["asset"])
         pack["sha256"] = result.source_archive_sha256  # overwritten after ZIP write below
         pack["lastServiceDate"] = result.last_service_date.isoformat()
+        # Right after lastServiceDate in the manifest (an older entry has no such key yet).
+        ordered: dict[str, Any] = {}
+        for key, value in pack.items():
+            if key != "fullServiceUntil":
+                ordered[key] = value
+            if key == "lastServiceDate":
+                ordered["fullServiceUntil"] = result.full_service_until.isoformat()
+        pack = ordered
         pack["filter"] = result.filter_metadata["policy"]
         pack["sourceArchiveSha256"] = result.source_archive_sha256
         pack["contentSha256"] = result.content_sha256
@@ -1611,6 +1668,27 @@ def service_end_from_asset(path: Path, source_id: str) -> date:
     return last_service_date(calendar, calendar_dates, source_id)
 
 
+def full_service_end_from_asset(path: Path, source_id: str) -> date:
+    """fullServiceUntil derived from a built pack, as the build derives it (see :func:`full_service_until`)."""
+    if not zipfile.is_zipfile(path):
+        raise BuildError(f"asset non ZIP: {path.name}")
+    with zipfile.ZipFile(path) as archive:
+        validate_archive_limits(archive)
+        calendar = read_table(archive, "calendar.txt") or empty_calendar()
+        calendar_dates = read_table(archive, "calendar_dates.txt") or empty_calendar_dates()
+        trips = read_table(archive, "trips.txt", required=True)
+        assert trips is not None
+    return full_service_until(trips.rows, calendar, calendar_dates, source_id, last_service_date(calendar, calendar_dates, source_id))
+
+
+def release_end(pack: Mapping[str, Any]) -> date:
+    """The day a pack's release freshness is judged on: its fullServiceUntil when declared (never after its
+    lastServiceDate), else its lastServiceDate."""
+    last = date.fromisoformat(str(pack["lastServiceDate"]))
+    full = pack.get("fullServiceUntil")
+    return min(last, date.fromisoformat(str(full))) if full is not None else last
+
+
 def verify_filter_from_asset(path: Path, source_id: str) -> str:
     """Require a release ZIP to prove filter policy and canonical content identity."""
     with zipfile.ZipFile(path) as archive:
@@ -1743,6 +1821,7 @@ def verify_assets(
             continue
         try:
             actual_end = service_end_from_asset(path, source_id)
+            actual_full_end = full_service_end_from_asset(path, source_id)
         except BuildError as error:
             problems.append(str(error))
             continue
@@ -1758,14 +1837,19 @@ def verify_assets(
                 )
         if declared_end != actual_end:
             problems.append(f"lastServiceDate incoerente per {name}: {declared_end} != {actual_end}")
+        if pack.get("fullServiceUntil") != actual_full_end.isoformat():
+            problems.append(f"fullServiceUntil incoerente per {name}: {pack.get('fullServiceUntil')} != {actual_full_end}")
         if as_of is not None and min_valid_days is not None:
             # A city feed published a few weeks ahead declares its own shorter release threshold (minValidDays,
             # documented in GTFS_PACK_REFRESH.md with its weekly refresh); no pack can ask for a longer one here.
+            # Judged on the end of full coverage: a thin tail of trips is not a timetable the app can promise.
             days = pack_min_valid_days(pack, min_valid_days)
-            if not is_release_fresh(actual_end, as_of, days):
+            release = min(actual_end, actual_full_end)
+            if not is_release_fresh(release, as_of, days):
                 problems.append(
                     f"pack scaduto o in scadenza entro {days} giorni: "
-                    f"{source_id} termina {actual_end} (richiesto almeno fino al {release_freshness_cutoff(as_of, days)})"
+                    f"{source_id} termina {actual_end}, copertura piena fino al {actual_full_end} "
+                    f"(richiesto almeno fino al {release_freshness_cutoff(as_of, days)})"
                 )
     if problems:
         raise BuildError("\n".join(problems))

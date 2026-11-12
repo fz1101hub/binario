@@ -1195,5 +1195,78 @@ class FrequenciesTest(unittest.TestCase):
                     if "frequencies.txt" in archive.namelist():
                         self.assertEqual([], table(archive, "frequencies.txt"))
 
+
+class FullServiceTest(unittest.TestCase):
+    """Audit2 tools-data-2: a pack whose calendar runs on with a fraction of its trains is not current."""
+
+    HEADER = ("service_id", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday", "start_date", "end_date")
+
+    def setUp(self) -> None:
+        self.temp = Path(tempfile.mkdtemp(prefix="gtfs-full-service-test-"))
+        self.addCleanup(shutil.rmtree, self.temp, ignore_errors=True)
+
+    def calendar(self, *rows: tuple[str, str, str]) -> builder.CsvTable:
+        return builder.CsvTable(self.HEADER, tuple(dict(zip(self.HEADER, (service, *"1111111", start, end))) for service, start, end in rows))
+
+    def trips(self, **services: int) -> list[dict[str, str]]:
+        return [{"trip_id": f"{service}{index}", "service_id": service} for service, count in services.items() for index in range(count)]
+
+    def test_the_end_of_full_coverage_is_the_last_day_with_most_of_the_trains(self) -> None:
+        # Ten trains a day until the timetable change of 12 December, then six of them for a year (Trenitalia's 2027).
+        calendar = self.calendar(("OLD", "20261102", "20261212"), ("NEW", "20261102", "20271211"))
+        exceptions = builder.empty_calendar_dates()
+        trips = self.trips(OLD=4, NEW=6)
+        last = builder.last_service_date(calendar, exceptions, "fixture")
+        self.assertEqual(date(2027, 12, 11), last)
+        self.assertEqual(date(2026, 12, 12), builder.full_service_until(trips, calendar, exceptions, "fixture", last))
+        # A holiday with a thinner service is not the end; on the last day it is.
+        holiday = builder.CsvTable(("service_id", "date", "exception_type"), (
+            {"service_id": "OLD", "date": "20261208", "exception_type": "2"},
+            {"service_id": "OLD", "date": "20261212", "exception_type": "2"},
+        ))
+        self.assertEqual(date(2026, 12, 11), builder.full_service_until(trips, calendar, holiday, "fixture", last))
+        # A pack running the same trains to its end is fully covered to its last day.
+        self.assertEqual(last, builder.full_service_until(self.trips(NEW=6), calendar, exceptions, "fixture", last))
+
+    def test_the_check_publishes_and_applies_it(self) -> None:
+        source = self.temp / "rail-source.zip"
+        write_trip_feed(source, [
+            ("A", "1", "OLD", [("X", "08:00", "08:00"), ("Y", "09:00", "09:00")]),
+            ("B", "2", "OLD", [("X", "10:00", "10:00"), ("Y", "11:00", "11:00")]),
+            ("C", "3", "NEW", [("X", "12:00", "12:00"), ("Y", "13:00", "13:00")]),
+        ], calendar="OLD,1,1,1,1,1,1,1,20261102,20261212\nNEW,1,1,1,1,1,1,1,20261102,20271211\n")
+        registry = self.temp / "registry.json"
+        registry.write_text(json.dumps({"generatedAt": "2026-11-02", "packs": [{
+            "sourceId": "rail-gtfs", "asset": "gtfs/rail-gtfs.zip", "sourceUrl": "https://example.test/rail.zip",
+            "accessMode": "OPEN_DIRECT", "sha256": "0" * 64, "lastServiceDate": "2026-01-01", "notes": "fixture"}]}), encoding="utf-8")
+        output = self.temp / "out"
+        manifest = builder.build_packs(self.temp, output, manifest_path=registry, generated_at="2026-11-02",
+                                       input_overrides={"rail-gtfs": source})
+        pack = manifest["packs"][0]
+        self.assertEqual(("2027-12-11", "2026-12-12"), (pack["lastServiceDate"], pack["fullServiceUntil"]))
+        self.assertEqual(["lastServiceDate", "fullServiceUntil"], [key for key in pack if key in ("lastServiceDate", "fullServiceUntil")])
+        self.assertEqual(date(2026, 12, 12), builder.release_end(pack))
+        builder.verify_assets(output, as_of=date(2026, 11, 12), min_valid_days=30)
+        with self.assertRaisesRegex(builder.BuildError, "copertura piena fino al 2026-12-12"):
+            builder.verify_assets(output, as_of=date(2026, 11, 13), min_valid_days=30)
+        # A manifest that drops or moves the date is refused.
+        published = json.loads((output / "manifest.json").read_text(encoding="utf-8"))
+        for value in (None, "2027-12-11"):
+            entry = dict(published["packs"][0])
+            if value is None:
+                del entry["fullServiceUntil"]
+            else:
+                entry["fullServiceUntil"] = value
+            (output / "manifest.json").write_text(json.dumps(dict(published, packs=[entry])), encoding="utf-8")
+            with self.subTest(value=value), self.assertRaisesRegex(builder.BuildError, "fullServiceUntil incoerente"):
+                builder.verify_assets(output, as_of=None, min_valid_days=None)
+
+    def test_the_shipped_packs_declare_it(self) -> None:
+        manifest = builder.read_manifest(ASSETS / "manifest.json")
+        packs = {pack["sourceId"]: pack for pack in manifest["packs"]}
+        self.assertTrue(all("fullServiceUntil" in pack for pack in packs.values()))
+        # Trenitalia's calendar runs to December 2027; its full timetable ends with the change of December 2026.
+        self.assertEqual("2026-12-12", packs["trenitalia-gtfs"]["fullServiceUntil"])
+
 if __name__ == "__main__":
     unittest.main()
