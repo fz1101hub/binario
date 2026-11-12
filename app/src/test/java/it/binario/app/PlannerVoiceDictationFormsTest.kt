@@ -134,6 +134,105 @@ class PlannerVoiceDictationFormsTest {
         assertEquals(centrale, turkish("Roma'ya Milano'dan yarın saat 9").input.origin)
     }
 
+    private val otherScriptPhrases = mapOf(
+        "ar" to "من Roma Ostiense إلى Roma San Pietro غدًا الساعة {h}:{m}",
+        "hi" to "Roma Ostiense से Roma San Pietro कल {h}:{m} बजे",
+        "ja" to "Roma Ostiense から Roma San Pietro まで 明日 {h}時{m}分",
+        "ko" to "Roma Ostiense에서 Roma San Pietro까지 내일 {h}시 {m}분",
+        "my" to "Roma Ostiense မှ Roma San Pietro သို့ မနက်ဖြန် {h}:{m}",
+        "th" to "จาก Roma Ostiense ไป Roma San Pietro พรุ่งนี้ เวลา {h}:{m}",
+        "zh" to "从 Roma Ostiense 到 Roma San Pietro 明天 {h}点{m}分"
+    )
+
+    private val otherScriptPrefix = mapOf(
+        "ar" to "من Roma Termini إلى Milano Centrale غدًا",
+        "hi" to "Roma Termini से Milano Centrale कल",
+        "ja" to "Roma Termini から Milano Centrale まで 明日",
+        "ko" to "Roma Termini에서 Milano Centrale까지 내일",
+        "my" to "Roma Termini မှ Milano Centrale သို့ မနက်ဖြန်",
+        "th" to "จาก Roma Termini ไป Milano Centrale พรุ่งนี้",
+        "zh" to "从 Roma Termini 到 Milano Centrale 明天"
+    )
+
+    private fun otherScript(language: String, words: String) = route("${otherScriptPrefix.getValue(language)} $words", language)
+
+    @Test
+    fun `Arabic, Hindi, Japanese, Korean, Burmese, Thai and Chinese read the companion sentences and the evening hours`() {
+        assertTemplates(otherScriptPhrases)
+        // The interface examples of the companion app write the hour with a colon.
+        assertOstienseToSanPietro("Roma Ostiense から Roma San Pietro まで 明日 09:35", "ja")
+        assertOstienseToSanPietro("Roma Ostiense에서 Roma San Pietro까지 내일 09:35", "ko")
+        assertOstienseToSanPietro("从 Roma Ostiense 到 Roma San Pietro 明天 09:35", "zh")
+    }
+
+    @Test
+    fun `afternoon markers, half hours and native digits`() {
+        assertEquals(LocalTime.of(20, 0), otherScript("ja", "午後8時").input.time)
+        assertEquals(LocalTime.of(20, 0), otherScript("ko", "오후 8시").input.time)
+        assertEquals(LocalTime.of(20, 0), otherScript("zh", "下午8点").input.time)
+        assertEquals(LocalTime.of(8, 30), otherScript("ja", "8時半").input.time)
+        assertEquals(LocalTime.of(8, 30), otherScript("zh", "8点半").input.time)
+        assertEquals(LocalTime.of(8, 30), otherScript("ko", "8시 반").input.time)
+        assertEquals(LocalTime.of(20, 15), otherScript("ar", "الساعة ٢٠:١٥").input.time)
+        assertEquals(LocalTime.of(20, 15), otherScript("hi", "२०:१५ बजे").input.time)
+        assertEquals(LocalTime.of(20, 15), otherScript("my", "၂၀:၁၅").input.time)
+        assertEquals(LocalTime.of(20, 15), otherScript("th", "๒๐:๑๕").input.time)
+        assertEquals(LocalTime.of(9, 30), otherScript("ar", "الساعة 9 والنصف").input.time)
+        assertEquals(LocalTime.of(9, 30), otherScript("hi", "साढ़े 9 बजे").input.time)
+        assertEquals(LocalTime.of(8, 45), otherScript("hi", "पौने 9 बजे").input.time)
+        assertEquals(LocalTime.of(18, 30), otherScript("hi", "शाम साढ़े 6 बजे").input.time)
+        assertEquals(LocalTime.of(18, 0), otherScript("th", "6 โมงเย็น").input.time)
+        assertEquals(LocalTime.of(14, 0), otherScript("th", "บ่าย 2 โมง").input.time)
+        assertEquals(LocalTime.of(9, 30), otherScript("my", "9 နာရီခွဲ").input.time)
+        // Before-the-hour forms the grammar does not read leave the time empty.
+        assertNull(otherScript("ja", "9時5分前").input.time)
+        assertNull(otherScript("ko", "9시 5분 전").input.time)
+    }
+
+    @Test
+    fun `dates and words that must not fire inside other words, other scripts`() {
+        fun day(language: String, words: String) =
+            route(otherScriptPrefix.getValue(language).substringBeforeLast(' ') + " " + words, language).input.date
+        assertEquals(LocalDate.of(2030, 11, 12), day("ja", "11月12日 9時"))
+        assertEquals(LocalDate.of(2030, 11, 12), day("ko", "11월 12일 9시"))
+        assertEquals(LocalDate.of(2030, 11, 12), day("zh", "11月12日 9点"))
+        assertEquals(LocalDate.of(2030, 11, 12), day("hi", "12 नवंबर 9 बजे"))
+        assertEquals(LocalDate.of(2030, 11, 12), day("ar", "12 نوفمبر الساعة 9"))
+        // The Thai year counts from 543 BCE.
+        assertEquals(LocalDate.of(2030, 11, 12), day("th", "12/11/2573"))
+        assertEquals(LocalDate.of(2030, 11, 12), day("th", "12 พฤศจิกายน"))
+        // Japanese, Korean and Chinese write the month first: «12/11» is not read.
+        assertNull(day("ja", "12/11"))
+        assertEquals(today.plusDays(2), day("ja", "明後日"))
+        assertEquals(today.plusDays(2), day("ko", "모레"))
+        assertEquals(today.plusDays(2), day("zh", "后天"))
+        assertEquals(today.plusDays(2), day("ar", "بعد غد"))
+        assertEquals(today.plusDays(2), day("hi", "परसों"))
+        assertEquals(today.plusDays(2), day("th", "มะรืนนี้"))
+        // «الغداء» is lunch, «कलकत्ता» Calcutta, «明日香» a name, «大后天» three days on.
+        assertNull(day("ar", "بعد الغداء"))
+        assertNull(day("hi", "कलकत्ता"))
+        assertNull(day("ja", "明日香"))
+        assertNull(day("zh", "大后天"))
+        // «2時間», «2시간», «2小时», «2 ชั่วโมง», «2 နာရီကြာ» are durations.
+        assertNull(otherScript("ja", "2時間").input.time)
+        assertNull(otherScript("ko", "2시간").input.time)
+        assertNull(otherScript("zh", "2小时").input.time)
+        assertNull(otherScript("th", "ใช้เวลา 2 ชั่วโมง").input.time)
+        assertNull(otherScript("my", "၂ နာရီကြာ").input.time)
+    }
+
+    @Test
+    fun `postpositions and prepositions of the other scripts say which station is the origin`() {
+        assertEquals(termini, route("Milano Centrale まで Roma Termini から 明日 9時", "ja").input.origin)
+        assertEquals(termini, route("Milano Centrale까지 Roma Termini에서 내일 9시", "ko").input.origin)
+        assertEquals(termini, route("到 Milano Centrale 从 Roma Termini 明天 9点", "zh").input.origin)
+        assertEquals(termini, route("إلى Milano Centrale من Roma Termini غدًا الساعة 9", "ar").input.origin)
+        assertEquals(termini, route("Milano Centrale तक Roma Termini से कल 9 बजे", "hi").input.origin)
+        assertEquals(termini, route("Milano Centrale သို့ Roma Termini မှ မနက်ဖြန် 9:00", "my").input.origin)
+        assertEquals(termini, route("ไป Milano Centrale จาก Roma Termini พรุ่งนี้ 9 นาฬิกา", "th").input.origin)
+    }
+
     @Test
     fun `edge times are a time or nothing, never a shortened hour`() {
         assertEquals(LocalTime.of(21, 0), time("Da Roma Termini a Milano Centrale domani alle 21", "it"))

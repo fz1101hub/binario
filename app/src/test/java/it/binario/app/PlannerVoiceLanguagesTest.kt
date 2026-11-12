@@ -21,7 +21,7 @@ class PlannerVoiceLanguagesTest {
     private val stations = listOf(termini, torino)
     private val today = LocalDate.of(2026, 11, 11)
 
-    private val routeLanguages = setOf("it", "en", "de", "fr", "es", "pt", "tr", "vi", "id", "in", "ru")
+    private val routeLanguages = setOf("it", "en", "de", "fr", "es", "pt", "tr", "vi", "id", "in", "ru", "ar", "hi", "ja", "ko", "my", "th", "zh")
     private val otherScripts = setOf("ar", "hi", "ja", "ko", "my", "ru", "th", "zh")
 
     /** The language code the configuration reports for a tag of the app ("zh-CN" → "zh"). */

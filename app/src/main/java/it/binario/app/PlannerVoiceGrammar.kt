@@ -137,7 +137,8 @@ internal class VoiceGrammar(
 
     private fun words(list: List<String>) = list.map(::text).filter { it.isNotEmpty() }.distinct()
     private fun stationWords(list: List<String>) = list.map { VoiceText.normalize(it) }.filter { it.isNotEmpty() }.distinct()
-    private fun pattern(source: String) = Regex(Normalizer.normalize(source, Normalizer.Form.NFC))
+    // NFKC like the text: Thai «ำ», for one, is compared as «ํา».
+    private fun pattern(source: String) = Regex(Normalizer.normalize(source, Normalizer.Form.NFKC))
 
     val today = words(today)
     val tomorrow = words(tomorrow)
@@ -396,6 +397,159 @@ internal object VoiceGrammars {
         toBefore = listOf("в", "до", "на")
     )
 
+    private val arabic = VoiceGrammar(
+        today = listOf("اليوم", "الليلة", "هذا المساء"),
+        tomorrow = listOf("غدًا", "غدا", "بكرة", "بكرا"),
+        dayAfterTomorrow = listOf("بعد غد", "بعد غدا", "بعد بكرة"),
+        afternoon = listOf("مساءً", "مساءا", "مساء", "بعد الظهر", "الليلة", "هذا المساء"),
+        returnTrip = listOf("ذهاب وعودة", "ذهاب وإياب", "ذهابا وإيابا"),
+        oneWay = listOf("ذهاب فقط", "اتجاه واحد"),
+        months = mapOf(
+            "يناير" to 1, "فبراير" to 2, "مارس" to 3, "أبريل" to 4, "مايو" to 5, "يونيو" to 6,
+            "يوليو" to 7, "أغسطس" to 8, "سبتمبر" to 9, "أكتوبر" to 10, "نوفمبر" to 11, "ديسمبر" to 12
+        ),
+        // «الساعة 9:35», «الساعة 18», «الساعة 9 والنصف», «الساعة 9 و35 دقيقة».
+        times = listOf(
+            "(?:^|\\s)الساعة\\s(\\d{1,2})(?:\\s(?:و\\s?)?(\\d{2}|\\d(?=\\s?دقيق)|النصف|نصف|الربع|ربع)" +
+                "(?:\\s?(?:دقيقة|دقائق))?)?(?=\\s|$)"
+        ),
+        dates = listOf(DatePattern("(?:^|\\s)(\\d{1,2})\\s({M})(?:\\s(\\d{4}))?(?=\\s|$)")),
+        minuteWords = mapOf("النصف" to 30, "نصف" to 30, "الربع" to 15, "ربع" to 15),
+        // «التاسعة إلا ربع» is 8:45.
+        continuations = listOf("إلا"),
+        fromBefore = listOf("من"),
+        toBefore = listOf("إلى", "حتى")
+    )
+
+    private val hindi = VoiceGrammar(
+        today = listOf("आज"),
+        tomorrow = listOf("कल"),
+        dayAfterTomorrow = listOf("परसों"),
+        afternoon = listOf("शाम", "दोपहर"),
+        returnTrip = listOf("आना जाना", "राउंड ट्रिप", "वापसी सहित"),
+        oneWay = listOf("एक तरफ़ा", "एक तरफा", "वन वे"),
+        months = mapOf(
+            "जनवरी" to 1, "फ़रवरी" to 2, "फरवरी" to 2, "मार्च" to 3, "अप्रैल" to 4, "मई" to 5, "जून" to 6,
+            "जुलाई" to 7, "अगस्त" to 8, "सितंबर" to 9, "सितम्बर" to 9, "अक्टूबर" to 10, "नवंबर" to 11,
+            "नवम्बर" to 11, "दिसंबर" to 12, "दिसम्बर" to 12
+        ),
+        // «9:35 बजे», «18 बजे», «9 बजकर 35 मिनट».
+        times = listOf(
+            "(?:^|\\s)(\\d{1,2})(?:\\s(\\d{2}))?\\s?बजे(?=\\s|$)",
+            "(?:^|\\s)(\\d{1,2})\\s?बजकर\\s(\\d{1,2})\\s?मिनट(?=\\s|$)"
+        ),
+        dates = listOf(DatePattern("(?:^|\\s)(\\d{1,2})\\s({M})(?:\\s(\\d{4}))?(?=\\s|$)")),
+        // «साढ़े 9 बजे» 9:30, «सवा 9 बजे» 9:15, «पौने 9 बजे» 8:45.
+        hourModifiers = mapOf("साढ़े" to 30, "सवा" to 15, "पौने" to -15),
+        fromAfter = listOf("से"),
+        toAfter = listOf("तक", "के लिए", "को")
+    )
+
+    private val japanese = VoiceGrammar(
+        spaced = false,
+        today = listOf("今日", "きょう", "本日", "今夜", "今晩"),
+        tomorrow = listOf("明日", "あした"),
+        dayAfterTomorrow = listOf("明後日", "あさって"),
+        notDays = listOf("明日香"),
+        afternoon = listOf("午後", "夕方", "今夜", "今晩"),
+        returnTrip = listOf("往復"),
+        oneWay = listOf("片道"),
+        // «9時35分», «18 時», «8時半»; «2時間» is two hours.
+        times = listOf("(?<!\\d)(\\d{1,2}) ?時(?!間)(?: ?(\\d{1,2}(?= ?分)|半)(?: ?分)?)?"),
+        dates = listOf(DatePattern("(?<!\\d)(\\d{1,2}) ?月 ?(\\d{1,2}) ?日", monthFirst = true)),
+        minuteWords = mapOf("半" to 30),
+        // «9時5分前» is 8:55.
+        continuations = listOf("前"),
+        readsSlashDates = false,
+        fromAfter = listOf("から", "発"),
+        toAfter = listOf("まで", "行き", "へ", "着")
+    )
+
+    private val korean = VoiceGrammar(
+        // Words carry their particles («내일은», «9시에»): a word is found inside the text.
+        spaced = false,
+        today = listOf("오늘"),
+        tomorrow = listOf("내일"),
+        dayAfterTomorrow = listOf("모레", "내일모레"),
+        afternoon = listOf("오후", "저녁"),
+        returnTrip = listOf("왕복"),
+        oneWay = listOf("편도"),
+        // «9시 35분», «18시», «8시 반»; «2시간» is two hours.
+        times = listOf("(?<!\\d)(\\d{1,2}) ?시(?!간)(?: ?(\\d{1,2}(?= ?분)|반)(?: ?분)?)?"),
+        dates = listOf(DatePattern("(?<!\\d)(\\d{1,2}) ?월 ?(\\d{1,2}) ?일", monthFirst = true)),
+        minuteWords = mapOf("반" to 30),
+        // «9시 5분 전» is 8:55.
+        continuations = listOf("전"),
+        readsSlashDates = false,
+        fromAfter = listOf("에서", "출발"),
+        toAfter = listOf("까지", "으로", "로", "행")
+    )
+
+    private val chinese = VoiceGrammar(
+        spaced = false,
+        today = listOf("今天", "今晚", "今日"),
+        tomorrow = listOf("明天", "明日", "明早", "明晚"),
+        dayAfterTomorrow = listOf("后天", "後天"),
+        notDays = listOf("大后天", "大後天"),
+        afternoon = listOf("下午", "晚上", "今晚", "傍晚", "明晚"),
+        returnTrip = listOf("往返", "来回"),
+        oneWay = listOf("单程"),
+        // «9点35分», «18 点», «8点半», «8点一刻»; «2小时» is two hours.
+        times = listOf("(?<!\\d)(\\d{1,2}) ?(?:点|點|时)(?: ?(\\d{2}|\\d(?= ?分)|半|一刻|三刻)(?: ?分)?)?"),
+        dates = listOf(DatePattern("(?<!\\d)(\\d{1,2}) ?月 ?(\\d{1,2}) ?(?:日|号|號)", monthFirst = true)),
+        minuteWords = mapOf("半" to 30, "一刻" to 15, "三刻" to 45),
+        // «9点差5分» is 8:55.
+        continuations = listOf("差", "前"),
+        readsSlashDates = false,
+        fromBefore = listOf("从", "從", "由"),
+        toBefore = listOf("到", "去", "至", "往")
+    )
+
+    private val thai = VoiceGrammar(
+        spaced = false,
+        today = listOf("วันนี้", "คืนนี้"),
+        tomorrow = listOf("พรุ่งนี้"),
+        dayAfterTomorrow = listOf("มะรืนนี้", "มะรืน"),
+        afternoon = listOf("บ่าย", "เย็น", "ค่ำ", "คืนนี้"),
+        returnTrip = listOf("ไปกลับ", "ไป-กลับ"),
+        oneWay = listOf("เที่ยวเดียว"),
+        months = mapOf(
+            "มกราคม" to 1, "กุมภาพันธ์" to 2, "มีนาคม" to 3, "เมษายน" to 4, "พฤษภาคม" to 5, "มิถุนายน" to 6,
+            "กรกฎาคม" to 7, "สิงหาคม" to 8, "กันยายน" to 9, "ตุลาคม" to 10, "พฤศจิกายน" to 11, "ธันวาคม" to 12
+        ),
+        eraOffset = 543,
+        // «18 นาฬิกา», «6 โมงเย็น», «บ่าย 2 โมง», «เวลา 9:35», «18.00 น.».
+        times = listOf(
+            "(?<!\\d)(\\d{1,2}) ?นาฬิกา(?: ?(\\d{2}|\\d(?= ?นาที)|ครึ่ง)(?: ?นาที)?)?",
+            "(?<!\\d)(\\d{1,2}) ?โมง(?: ?(\\d{2}|\\d(?= ?นาที)|ครึ่ง)(?: ?นาที)?)?",
+            "เวลา ?(\\d{1,2})(?: (\\d{2}))?(?!\\d)",
+            "(?<!\\d)(\\d{1,2}) (\\d{2}) ?น(?!า)"
+        ),
+        dates = listOf(DatePattern("(?<!\\d)(\\d{1,2}) ?({M})(?: ?(\\d{4}))?")),
+        minuteWords = mapOf("ครึ่ง" to 30),
+        // «ใช้เวลา 2 ชั่วโมง» takes two hours.
+        continuations = listOf("ชั่วโมง", "นาที"),
+        fromBefore = listOf("จาก"),
+        toBefore = listOf("ไป", "ถึง", "ไปยัง", "ไปที่")
+    )
+
+    private val burmese = VoiceGrammar(
+        spaced = false,
+        today = listOf("ယနေ့", "ဒီနေ့"),
+        tomorrow = listOf("မနက်ဖြန်", "နက်ဖြန်"),
+        dayAfterTomorrow = listOf("သန်ဘက်ခါ"),
+        afternoon = listOf("ညနေ"),
+        returnTrip = listOf("အသွားအပြန်"),
+        oneWay = listOf("အသွားသာ"),
+        // «9:35», «18 နာရီ», «9 နာရီ 35 မိနစ်», «9 နာရီခွဲ».
+        times = listOf("(?<!\\d)(\\d{1,2}) ?နာရီ(?: ?(\\d{2}|\\d(?= ?မိနစ်)|ခွဲ)(?: ?မိနစ်)?)?"),
+        minuteWords = mapOf("ခွဲ" to 30),
+        // «2 နာရီကြာ» takes two hours.
+        continuations = listOf("ကြာ", "ထိုး"),
+        fromAfter = listOf("မှ", "ကနေ"),
+        toAfter = listOf("သို့", "ကို", "အထိ")
+    )
+
     /** The grammar of a language code ("in" is Indonesian on Android), or null where the app knows no words. */
     fun forLanguage(language: String): VoiceGrammar? = when (language.lowercase(Locale.ROOT)) {
         "it", "en", "de", "fr", "es" -> western
@@ -404,6 +558,13 @@ internal object VoiceGrammars {
         "vi" -> vietnamese
         "in", "id" -> indonesian
         "ru" -> russian
+        "ar" -> arabic
+        "hi" -> hindi
+        "ja" -> japanese
+        "ko" -> korean
+        "my" -> burmese
+        "th" -> thai
+        "zh" -> chinese
         else -> null
     }
 
