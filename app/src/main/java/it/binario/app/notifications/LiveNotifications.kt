@@ -164,7 +164,8 @@ object LiveNotificationScheduling {
         runCatching { TrainAlertScheduler.reschedule(app, keepPending = true) }
         runCatching { StrikeReminderScheduler.reschedule(app, keepPending = true) }
         runCatching { RouteWorksAlertScheduler.reschedule(app, keepPending = true) }
-        runCatching { PunctualityRecorderScheduler.reschedule(app) }
+        // A run that already counted its attempt is not cancelled by opening the app.
+        runCatching { PunctualityRecorderScheduler.reschedule(app, keepPending = true) }
         runCatching { ApproachAlertScheduler.reschedule(app) }
         runCatching { WeeklyDigestScheduler.reschedule(app, keepPending = true) }
     }

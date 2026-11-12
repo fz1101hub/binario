@@ -153,9 +153,10 @@ object PunctualityRecorderScheduler {
     internal const val WORK = "binario-punctuality-recorder"
     private val networkConnected = Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build()
 
-    fun reschedule(context: Context) = schedule(context, fromWorker = false)
+    /** [keepPending] (app start): a planned or running work stays, as for the other chains; a change replaces it. */
+    fun reschedule(context: Context, keepPending: Boolean = false) = schedule(context, fromWorker = false, keepPending = keepPending)
 
-    internal fun schedule(context: Context, fromWorker: Boolean) {
+    internal fun schedule(context: Context, fromWorker: Boolean, keepPending: Boolean = false) {
         val workManager = WorkManager.getInstance(context)
         val favourites = FavouriteTrainStore(context).all()
         val store = PunctualityRecorderStore(context)
@@ -174,7 +175,12 @@ object PunctualityRecorderScheduler {
             .setInitialDelay(delay.toMillis(), TimeUnit.MILLISECONDS)
             .addTag(WORK)
             .build()
-        workManager.enqueueUniqueWork(WORK, if (fromWorker) ExistingWorkPolicy.APPEND_OR_REPLACE else ExistingWorkPolicy.REPLACE, request)
+        val policy = when {
+            fromWorker -> ExistingWorkPolicy.APPEND_OR_REPLACE
+            keepPending -> ExistingWorkPolicy.KEEP
+            else -> ExistingWorkPolicy.REPLACE
+        }
+        workManager.enqueueUniqueWork(WORK, policy, request)
     }
 }
 
