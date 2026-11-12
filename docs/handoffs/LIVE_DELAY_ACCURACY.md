@@ -1,5 +1,7 @@
 # Precisione dei ritardi live
 
+> **Documento storico.** Descrive lo stato del progetto alla sua data e non viene aggiornato: lo stato attuale è in [AZIONI_TITOLARE.md](../AZIONI_TITOLARE.md) e nel [CHANGELOG](../../CHANGELOG.md).
+
 Segnalazione del 16 ottobre 2026: treno 23263 ad Appiano, app a 0 minuti rispetto a 6 minuti osservati dall’utente. L’utente ha indicato OnTheRails come riferimento, presumibilmente basato su ViaggiaTreno; l’istante esatto di quel confronto non è documentato.
 
 ## Difetti riprodotti e correzioni

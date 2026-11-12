@@ -1,5 +1,7 @@
 # Verifica del doppio ritardo
 
+> **Documento storico.** Descrive lo stato del progetto alla sua data e non viene aggiornato: lo stato attuale è in [AZIONI_TITOLARE.md](../AZIONI_TITOLARE.md) e nel [CHANGELOG](../../CHANGELOG.md).
+
 ## Esito tecnico
 
 La baseline conserva ora il ritardo pubblicato dalla fonte in `officialDelayMinutes` e può aggiungere un secondo valore `detectionDelayMinutes` soltanto tramite `OperationalDetection`: località, orario programmato e timestamp effettivo del medesimo evento.

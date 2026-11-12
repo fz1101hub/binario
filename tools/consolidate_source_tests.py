@@ -65,6 +65,8 @@ def main() -> None:
     lines = [
         "# Report completo dei test delle fonti",
         "",
+        "> **Documento storico.** Descrive lo stato del progetto alla sua data e non viene aggiornato: lo stato attuale è in [AZIONI_TITOLARE.md](../AZIONI_TITOLARE.md) e nel [CHANGELOG](../../CHANGELOG.md).",
+        "",
         "**Data di verifica:** 14 agosto 2026  ",
         "**Fonti catalogate:** 31  ",
         f"**Esiti consolidati:** {counts['PASS']} PASS, {counts['LIMITED']} LIMITED, {counts['FAIL']} FAIL.",

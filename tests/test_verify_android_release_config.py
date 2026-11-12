@@ -74,6 +74,10 @@ class VerifyAndroidReleaseConfigTest(unittest.TestCase):
         with self.assertRaisesRegex(AssertionError, "below the Wear range"):
             POLICY.verify(phone_code_inside_wear_range)
 
+    def test_the_play_bundle_must_keep_every_language(self) -> None:
+        with self.assertRaisesRegex(AssertionError, "enableSplit = false"):
+            POLICY.verify(replacing("app/build.gradle.kts", "enableSplit = false", "enableSplit = true"))
+
     def test_ci_must_lint_both_release_variants(self) -> None:
         without_wear_lint = replacing(
             ".github/workflows/android-ci.yml",

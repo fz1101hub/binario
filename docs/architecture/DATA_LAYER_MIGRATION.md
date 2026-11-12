@@ -1,5 +1,7 @@
 # Migrazione del livello dati
 
+> **Documento storico.** Descrive lo stato del progetto alla sua data e non viene aggiornato: lo stato attuale è in [AZIONI_TITOLARE.md](../AZIONI_TITOLARE.md) e nel [CHANGELOG](../../CHANGELOG.md).
+
 ## Punto di partenza
 
 La baseline v0.15.0 espone ancora il contratto UI `TrainDataSource`, il catalogo locale dimostrativo e oggetti orientati alla presentazione (`TrainService`, `TrainStop`, `RouteSnapshot`). Le fondamenta introdotte nel ramo dati aggiungono un dominio canonico parallelo, senza cambiare schermate, widget o Wear.

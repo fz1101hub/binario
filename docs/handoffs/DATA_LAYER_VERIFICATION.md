@@ -1,5 +1,7 @@
 # Verifica — Fondamenta livello dati
 
+> **Documento storico.** Descrive lo stato del progetto alla sua data e non viene aggiornato: lo stato attuale è in [AZIONI_TITOLARE.md](../AZIONI_TITOLARE.md) e nel [CHANGELOG](../../CHANGELOG.md).
+
 **Ramo verificato:** `feature/data-foundations`  
 **Baseline:** `main` v0.15.0, commit `1345111e03f3ac17cb08d5605a3fb9f09950aa6f`  
 **Data:** 14 agosto 2026

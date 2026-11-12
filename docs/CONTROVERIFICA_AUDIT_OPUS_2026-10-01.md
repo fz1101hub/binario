@@ -1,5 +1,7 @@
 # Controverifica dell’audit Claude Opus 5.5 — 1 ottobre 2026
 
+> **Documento storico.** Descrive lo stato del progetto alla sua data e non viene aggiornato: lo stato attuale è in [AZIONI_TITOLARE.md](AZIONI_TITOLARE.md) e nel [CHANGELOG](../CHANGELOG.md).
+
 **Perimetro:** audit indipendente `docs/audit-independent-2026-09-30-intero-progetto.md` sul branch documentale `docs/audit-integration-20260930`, relativo allo SHA `1d3cdee7b48d342dff5ec3713df6451cb4411e43` (cima della pila #33 → #34 → #32). Questa controverifica ha esaminato separatamente **i sette High nuovi**, non ha riclassificato individualmente i 30 Medium né i Low. La branch di correzione è stacked sopra la Draft PR #32; le PR precedenti non vengono riscritte, fuse o promosse.
 
 ## Giudizio sui finding prioritari

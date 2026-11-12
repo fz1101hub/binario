@@ -1,5 +1,7 @@
 # Ritardi live su tutte le tratte coperte dalle fonti
 
+> **Documento storico.** Descrive lo stato del progetto alla sua data e non viene aggiornato: lo stato attuale è in [AZIONI_TITOLARE.md](../AZIONI_TITOLARE.md) e nel [CHANGELOG](../../CHANGELOG.md).
+
 Le build personali debug e release abilitano `PERSONAL_REALTIME_SOURCES` per impostazione predefinita. La precedente build di test ereditava il valore `false` e non soddisfaceva il caso d’uso dei ritardi. `-PBINARIO_PERSONAL_REALTIME_SOURCES=false` resta disponibile. Le fonti che richiedono credenziali non sono abilitate né contengono segreti nel client.
 
 Per oggi il graph prova prima la riconciliazione diretta dei due tabelloni RFI e poi ViaggiaTreno: partenze per codice stazione, quindi dettagli per origine della corsa, numero e giorno. Appiano S08328 → Ostiense S08406 viene riconosciuta fra le fermate anche quando il capolinea è Tiburtina. Il risultato contiene soltanto gli orari pubblicati delle fermate e le previsioni calcolate dal ritardo pubblicato. Un ritardo è operativo solo con rilevazione recente (massimo cinque minuti, tolleranza futura un minuto) e treno partito, oppure cancellazione esplicita. Mancanze e dati vecchi non diventano zero minuti live. Il fallback programmato resta disponibile; le date future non interrogano il realtime diretto.

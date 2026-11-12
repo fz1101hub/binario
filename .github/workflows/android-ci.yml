@@ -91,8 +91,10 @@ on:
         type: boolean
         default: false
 
+# A dispatch (release signing, reproducibility, live checks) has a group of its own: a merge to main must not cancel
+# it, nor may it cancel the post-merge run that uploads the unsigned bundles (second audit, ci-tests-build-9).
 concurrency:
-  group: android-ci-${{ github.event.pull_request.number || github.ref }}
+  group: android-ci-${{ github.event.pull_request.number || github.ref }}-${{ github.event_name == 'workflow_dispatch' && github.run_id || 'checks' }}
   cancel-in-progress: true
 
 permissions:
@@ -172,6 +174,35 @@ jobs:
           :app:bundleRelease :wear:bundleRelease
           :app:lintVitalRelease :wear:lintVitalRelease
           :app:lintRelease :wear:lintRelease
+
+      # Tests that depend on the embedded data (a pack sample, a city network) end in an assumption when a refresh
+      # drops what they sample: green but silent. Each skip becomes a warning (second audit, ci-tests-build
+      # improvement 8); the live source checks skip by design here and report in live-sources.yml.
+      - name: Report skipped unit tests
+        if: always()
+        run: |
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+          import xml.etree.ElementTree as ET
+
+          def escape(text):
+              return text.replace('%', '%25').replace('\r', '%0D').replace('\n', '%0A')
+
+          skipped = []
+          for module in ('app', 'wear'):
+              for path in sorted(Path(module, 'build/test-results/testDebugUnitTest').glob('TEST-*.xml')):
+                  for case in ET.parse(path).getroot().iter('testcase'):
+                      name = f"{case.get('classname', '')}.{case.get('name', '')}"
+                      if case.find('skipped') is not None and 'LiveProviderNetworkTest' not in name:
+                          skipped.append(name)
+          for name in skipped:
+              print(f"::warning title=Test unitario saltato::{escape(name)}: presupposto non soddisfatto (dati inclusi cambiati?)")
+          summary = os.environ.get('GITHUB_STEP_SUMMARY')
+          if skipped and summary:
+              with open(summary, 'a', encoding='utf-8') as stream:
+                  stream.write(f"### Test unitari saltati: {len(skipped)}\n\n" + "".join(f"- `{name}`\n" for name in skipped))
+          PY
 
       - name: Verify unsigned Google Play bundles
         shell: bash
@@ -276,6 +307,12 @@ jobs:
         if: ${{ github.event_name == 'pull_request' && startsWith(github.base_ref, 'stabilization/') }}
         run: python3 tools/verify_embedded_assets.py --min-valid-days 30
 
+      # The same release paths need statistics worth shipping (second audit, tools-data-5): at least 14 covered days
+      # and a window that ended at most 14 days ago, or a release built with -Pbinario.punctualityStats=false.
+      - name: Gate punctuality statistics coverage for a release
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.base_ref, 'stabilization/') }}
+        run: python3 -I tools/build_punctuality_stats.py --release-check app/src/main/assets/punctuality/stats_v1.json.gz
+
   # Signs only a dispatch on a release branch (main or stabilization/*), through the protected environment "release":
   # the owner keeps the four signing secrets there, with a required reviewer and the same branch policy, so neither
   # another branch nor another workflow can read them (docs/RELEASE_BUILD.md).
@@ -314,6 +351,9 @@ jobs:
 
       - name: Gate embedded GTFS freshness for at least 30 days
         run: python3 tools/verify_embedded_assets.py --min-valid-days 30
+
+      - name: Gate punctuality statistics coverage for a release
+        run: python3 -I tools/build_punctuality_stats.py --release-check app/src/main/assets/punctuality/stats_v1.json.gz
 
       - name: Decode the upload keystore into RUNNER_TEMP
         env:

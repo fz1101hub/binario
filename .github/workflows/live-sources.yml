@@ -54,23 +54,49 @@ jobs:
           -Pkotlin.compiler.execution.strategy=in-process
           "-PBINARIO_LIVE_SOURCE_ACCEPTANCE=$LIVE_SOURCES"
           :app:testDebugUnitTest --tests it.binario.app.data.live.LiveProviderNetworkTest
-      - name: Report provider failures
+      # A check whose source publishes nothing at this moment (night, no trains) is skipped, and a skipped test is
+      # green: each skip is a warning and the summary says how many checks really ran (second audit, ci-tests-build-8).
+      - name: Report provider failures and skipped checks
         if: always()
         run: |
           python3 - <<'PY'
+          import os
           from pathlib import Path
           import xml.etree.ElementTree as ET
-          for path in Path('app/build/test-results/testDebugUnitTest').glob('*LiveProviderNetworkTest*.xml'):
+
+          def escape(text):
+              return text.replace('%', '%25').replace('\r', '%0D').replace('\n', '%0A')
+
+          def title(text):
+              return escape(text).replace(':', '%3A').replace(',', '%2C')
+
+          total = skipped = failed = 0
+          for path in sorted(Path('app/build/test-results/testDebugUnitTest').glob('*LiveProviderNetworkTest*.xml')):
               root = ET.parse(path).getroot()
               for output in root.iter('system-out'):
                   for line in (output.text or '').splitlines():
                       if line.startswith('LIVE_ACCEPTANCE '):
                           print(line)
               for case in root.iter('testcase'):
+                  total += 1
+                  name = case.get('name', '')
                   failure = case.find('failure')
+                  if failure is None:
+                      failure = case.find('error')
+                  skip = case.find('skipped')
                   if failure is not None:
-                      message = failure.get('message', '').replace('%', '%25').replace('\r', '%0D').replace('\n', '%0A')
-                      print(f"::error title=Live {case.get('name')}::{message[:1800]}")
+                      failed += 1
+                      print(f"::error title=Live {title(name)}::{escape(failure.get('message', ''))[:1800]}")
+                  elif skip is not None:
+                      skipped += 1
+                      reason = skip.get('message') or 'presupposto non soddisfatto: la fonte non pubblica dati in questo momento?'
+                      print(f"::warning title=Live {title(name)} non verificato::{escape(reason)[:1800]}")
+          line = f"Verificati {total - skipped - failed} di {total} controlli delle fonti ({skipped} saltati, {failed} falliti)"
+          print(f"::{'warning' if skipped or not total else 'notice'} title=Live source acceptance::{line}")
+          summary = os.environ.get('GITHUB_STEP_SUMMARY')
+          if summary:
+              with open(summary, 'a', encoding='utf-8') as stream:
+                  stream.write(f"### Live source acceptance\n\n{line}\n")
           PY
       - name: Source acceptance reports
         if: always()

@@ -1,5 +1,7 @@
 # Binario — brief UI/UX originale
 
+> **Documento storico.** Descrive lo stato del progetto alla sua data e non viene aggiornato: lo stato attuale è in [AZIONI_TITOLARE.md](AZIONI_TITOLARE.md) e nel [CHANGELOG](../CHANGELOG.md).
+
 ## Materiale osservato
 
 I riferimenti utente della Home chiara e del tabellone chiaro mostrano una gerarchia operativa: brand compatto, stato dei dati subito leggibile, una sola azione primaria, accessi rapidi alle stazioni e un vuoto informativo dichiarato senza fingere realtime. Questi principi sono pertinenti a Binario, ma la composizione, il linguaggio dei controlli e le proporzioni non devono essere replicati.

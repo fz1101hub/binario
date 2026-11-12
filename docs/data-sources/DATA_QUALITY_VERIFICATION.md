@@ -1,5 +1,7 @@
 # Verifica della baseline di qualità dati
 
+> **Documento storico.** Descrive lo stato del progetto alla sua data e non viene aggiornato: lo stato attuale è in [AZIONI_TITOLARE.md](../AZIONI_TITOLARE.md) e nel [CHANGELOG](../../CHANGELOG.md).
+
 **Data:** 14 agosto 2026
 
 | Controllo | Esito |

@@ -1,5 +1,7 @@
 # Binario Companion Expo — baseline recuperata
 
+> **Documento storico.** Descrive lo stato del progetto alla sua data e non viene aggiornato: lo stato attuale è in [AZIONI_TITOLARE.md](../docs/AZIONI_TITOLARE.md) e nel [CHANGELOG](../CHANGELOG.md).
+
 Questa directory conserva il lavoro companion recuperato dalla cartella di sessione priva di metadati Git. È stata importata senza unire, sostituire o cancellare la base Android/Wear nativa storica collocata alla radice del repository.
 
 | Proprietà | Valore |

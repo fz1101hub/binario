@@ -1,5 +1,7 @@
 # Ricerca Appiano → Roma Ostiense
 
+> **Documento storico.** Descrive lo stato del progetto alla sua data e non viene aggiornato: lo stato attuale è in [AZIONI_TITOLARE.md](../AZIONI_TITOLARE.md) e nel [CHANGELOG](../../CHANGELOG.md).
+
 La presenza di una stazione nel catalogo non garantiva la copertura degli orari.
 Appiano Proba Petronia (`S08328`, alias `APPIANO`) era ricercabile, ma non aveva
 un ID PRM RFI mappato. Il datasource consultava soltanto le partenze dall'origine;

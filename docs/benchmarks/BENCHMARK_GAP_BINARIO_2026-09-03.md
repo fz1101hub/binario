@@ -1,5 +1,7 @@
 # Binario — gap analysis benchmark e base Git
 
+> **Documento storico.** Descrive lo stato del progetto alla sua data e non viene aggiornato: lo stato attuale è in [AZIONI_TITOLARE.md](../AZIONI_TITOLARE.md) e nel [CHANGELOG](../../CHANGELOG.md).
+
 ## Criterio di lettura
 
 Questa analisi mette a confronto le sintesi dei report, delle matrici, delle verifiche UX/accessibilità e delle dieci analisi applicative disponibili nel task storico con il ramo Git `feature/data-foundations` di Binario. Non tratta i benchmark come sorgenti da importare: ogni riferimento è usato solo per ricavare requisiti, casi limite e criteri di qualità.

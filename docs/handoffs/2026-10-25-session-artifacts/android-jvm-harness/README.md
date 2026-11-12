@@ -1,5 +1,7 @@
 # SDK-free verification harness for the Binario Android modules (`app`, `wear`)
 
+> **Documento storico.** Descrive lo stato del progetto alla sua data e non viene aggiornato: lo stato attuale è in [AZIONI_TITOLARE.md](../../../AZIONI_TITOLARE.md) e nel [CHANGELOG](../../../../CHANGELOG.md).
+
 Compiles the Kotlin/Compose sources of `app/` and `wear/` and runs their JVM unit tests **without an Android
 SDK, without Gradle and without network access to dl.google.com**. Everything lives in this directory
 (`<kt>` below); the repository is never modified.

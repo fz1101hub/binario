@@ -1,5 +1,7 @@
 # Binario — direzioni UI/UX dopo revisione completa del benchmark
 
+> **Documento storico.** Descrive lo stato del progetto alla sua data e non viene aggiornato: lo stato attuale è in [AZIONI_TITOLARE.md](AZIONI_TITOLARE.md) e nel [CHANGELOG](../CHANGELOG.md).
+
 ## Principi estratti dal benchmark completo
 
 Il benchmark converge su pochi principi che Binario deve mantenere: una tratta personale riconoscibile al primo sguardo; pianificazione con origine, destinazione, data e ora sempre esplicite; separazione fra tabellone di stazione, dettaglio e agenda; righe ferroviarie dense per gli orari; stati dati comprensibili senza affidarsi al colore; azioni principali raggiungibili con una mano; preferenze e metadati personali locali. Le fonti analizzate non giustificano invece duplicazione di servizi live, ticketing, geofencing o interfacce sovraccariche.

@@ -26,9 +26,6 @@ public struct BundledGTFSScheduleInstaller: Sendable {
     ) throws -> URL {
         Self.installationLock.lock()
         defer { Self.installationLock.unlock() }
-        // A launch killed between a staged write and its removal leaves a hidden copy of the
-        // whole index behind; under the lock no staged write of this process is in progress.
-        Self.removeStagedDatabases(in: cacheDirectory)
         let metadata = try Self.loadMetadata(from: metadataURL)
         let destination = cacheDirectory
             .appendingPathComponent("binario-gtfs-\(metadata.database.sha256.prefix(16)).sqlite", isDirectory: false)
@@ -45,8 +42,14 @@ public struct BundledGTFSScheduleInstaller: Sendable {
                inputFingerprint: metadata.inputs.fingerprintSha256
            ) {
             try Self.excludeFromBackup(destination)
+            // A launch killed between a staged write and its removal leaves a hidden copy of the
+            // whole index behind; under the lock no staged write of this process is in progress.
+            // Listed only after the backup flag is written: see `removeStagedDatabases`.
+            Self.removeStagedDatabases(in: cacheDirectory)
             return Self.withoutCachedResourceValues(destination)
         }
+
+        Self.removeStagedDatabases(in: cacheDirectory)
 
         do {
             try FileManager.default.createDirectory(
@@ -173,10 +176,13 @@ public struct BundledGTFSScheduleInstaller: Sendable {
 
     /// The hidden staged copies (`.binario-gtfs-<UUID>.sqlite`) that `removeSupersededDatabases`
     /// never sees: it skips hidden files and matches the visible prefix only.
+    /// No resource value is prefetched (`[]`, not `nil`): listing the cache with the default keys
+    /// right before the fast path rewrites the backup flag of the cached index made that flag
+    /// read back as cleared on CI (`testBundledInstallerVerifiesAndReusesAValidDatabase`).
     private static func removeStagedDatabases(in directory: URL) {
         let urls = (try? FileManager.default.contentsOfDirectory(
             at: directory,
-            includingPropertiesForKeys: nil,
+            includingPropertiesForKeys: [],
             options: []
         )) ?? []
         for url in urls where url.lastPathComponent.hasPrefix(".binario-gtfs-") && url.pathExtension == "sqlite" {
@@ -217,15 +223,17 @@ public struct BundledGTFSScheduleInstaller: Sendable {
         // Write through a fresh URL with an empty cache: a cached "already excluded" value
         // from an earlier read must not let the flag be skipped after someone cleared it.
         // The flag is then read back from disk through another fresh URL and written again
-        // if it did not stick (seen on CI right after the flag had been cleared).
-        for attempt in 0..<3 {
+        // if it did not stick (seen on CI right after the flag had been cleared), waiting a little
+        // longer each time: at most about 1.5 s in all, and only when the flag does not stick.
+        let pauses: [TimeInterval] = [0.05, 0.1, 0.2, 0.4, 0.8]
+        for attempt in 0...pauses.count {
             var mutableURL = URL(fileURLWithPath: url.path, isDirectory: false)
             mutableURL.removeAllCachedResourceValues()
             var values = URLResourceValues()
             values.isExcludedFromBackup = true
             try mutableURL.setResourceValues(values)
             if isExcludedFromBackupOnDisk(url) { return }
-            if attempt < 2 { Thread.sleep(forTimeInterval: 0.05) }
+            if attempt < pauses.count { Thread.sleep(forTimeInterval: pauses[attempt]) }
         }
         #endif
     }
