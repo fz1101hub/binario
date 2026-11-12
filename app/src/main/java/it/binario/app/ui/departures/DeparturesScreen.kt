@@ -104,6 +104,7 @@ import it.binario.app.ui.common.ScreenHeader
 import it.binario.app.ui.common.ScreenMargin
 import it.binario.app.ui.common.SectionTitle
 import it.binario.app.ui.common.ServiceGroup
+import it.binario.app.ui.common.ServiceRunLabel
 import it.binario.app.ui.common.ServiceStatusBadge
 import it.binario.app.ui.common.TonalButton
 import it.binario.app.ui.common.DataState
@@ -447,7 +448,7 @@ internal fun HeroDepartureCard(
     val savedCopy = listState == DataState.SAVED_COPY && !shown.operationalStatusVerified
     val heading = heading ?: stringResource(R.string.departures_next_departure)
     val serviceState = if (shown.operationalStatusVerified) {
-        stringResource(R.string.service_state_live, shown.status.localizedLabel())
+        stringResource(R.string.service_state_live, ServiceRunLabel.spokenStatus(shown).localizedLabel())
     } else {
         stringResource(R.string.service_state_scheduled)
     }

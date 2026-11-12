@@ -235,7 +235,7 @@ internal fun DepartureListRow(
     val shown = if (isDemonstration) service.presentedAsDemonstration() else service
     val savedCopy = listState == DataState.SAVED_COPY && !shown.operationalStatusVerified
     val serviceState = if (shown.operationalStatusVerified) {
-        stringResource(R.string.service_state_live, shown.status.localizedLabel())
+        stringResource(R.string.service_state_live, ServiceRunLabel.spokenStatus(shown).localizedLabel())
     } else {
         stringResource(R.string.service_state_scheduled)
     }
@@ -269,15 +269,17 @@ internal fun DepartureListRow(
     ) {
         Column(Modifier.widthIn(min = TIME_COLUMN).padding(end = 10.dp)) {
             Text(shown.scheduledDeparture, style = MaterialTheme.typography.titleMedium.copy(fontFeatureSettings = TabularFigures), fontWeight = FontWeight.Bold)
-            when {
-                savedCopy -> Text(stringResource(R.string.data_chip_saved_copy), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.tertiary)
-                // «RITARDO» on the board without minutes: late, with no number to show.
-                !shown.operationalStatusVerified && shown.delayMinutesUnpublished ->
+            // The same rule as the compact status and the badge (ServiceRunLabel): never «in orario» beside «+0 min».
+            if (savedCopy) {
+                Text(stringResource(R.string.data_chip_saved_copy), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.tertiary)
+            } else when (val run = ServiceRunLabel.of(shown)) {
+                // «RITARDO» on the board without minutes, or a late status with no minutes: late, with no number to show.
+                ServiceRunLabel.LateMinutesUnpublished, ServiceRunLabel.Late ->
                     Text(stringResource(R.string.run_status_delayed), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.tertiary, fontWeight = FontWeight.Bold)
-                !shown.operationalStatusVerified -> Text(stringResource(R.string.service_scheduled_lowercase), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                shown.status == ServiceStatus.CANCELLED -> Text(stringResource(R.string.service_status_cancelled), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold)
-                shown.delayMinutes > 0 -> Text(stringResource(R.string.delay_minutes, shown.delayMinutes), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.tertiary, fontWeight = FontWeight.Bold)
-                else -> Text(stringResource(R.string.service_on_time_lowercase), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
+                ServiceRunLabel.Scheduled -> Text(stringResource(R.string.service_scheduled_lowercase), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                ServiceRunLabel.Cancelled -> Text(stringResource(R.string.service_status_cancelled), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold)
+                is ServiceRunLabel.LateBy -> Text(stringResource(R.string.delay_minutes, run.minutes), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.tertiary, fontWeight = FontWeight.Bold)
+                ServiceRunLabel.OnTime -> Text(stringResource(R.string.service_on_time_lowercase), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
             }
             if (shown.operationalStatusVerified && shown.expectedDeparture != shown.scheduledDeparture) {
                 Text(stringResource(R.string.expected_time_short, shown.expectedDeparture), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -348,7 +350,7 @@ internal fun ResultCard(
     val arrival = JourneyTimes.arrival(shown)
     val duration = JourneyTimes.durationMinutes(shown)
     val serviceState = if (shown.operationalStatusVerified) {
-        stringResource(R.string.service_state_live, shown.status.localizedLabel())
+        stringResource(R.string.service_state_live, ServiceRunLabel.spokenStatus(shown).localizedLabel())
     } else {
         stringResource(R.string.service_state_scheduled)
     }
@@ -405,7 +407,7 @@ internal fun ResultCard(
                     // Unverified runs say "Programmato": a timetable card never looks like a live on-time one.
                     dataState?.let { DataStateChip(it, Modifier.padding(start = 8.dp)) }
                 }
-                if (shown.operationalStatusVerified && shown.status != ServiceStatus.ON_TIME) {
+                if (shown.operationalStatusVerified && ServiceRunLabel.of(shown) != ServiceRunLabel.OnTime) {
                     Text(
                         compactStatusLabel(shown),
                         style = MaterialTheme.typography.labelLarge,
@@ -585,23 +587,22 @@ internal fun ServiceStatusBadge(service: TrainService) {
         Triple(MaterialTheme.colorScheme.tertiaryContainer, MaterialTheme.colorScheme.onTertiaryContainer, lateWithoutMinutes)
     } else if (!service.operationalStatusVerified) {
         Triple(MaterialTheme.colorScheme.secondaryContainer, MaterialTheme.colorScheme.onSecondaryContainer, stringResource(R.string.service_status_scheduled_badge))
-    } else when (service.status) {
-        ServiceStatus.ON_TIME -> Triple(MaterialTheme.colorScheme.secondaryContainer, MaterialTheme.colorScheme.onSecondaryContainer, stringResource(R.string.operational_on_time))
-        ServiceStatus.DELAYED -> Triple(MaterialTheme.colorScheme.tertiaryContainer, MaterialTheme.colorScheme.onTertiaryContainer, stringResource(R.string.delay_minutes, service.delayMinutes))
-        ServiceStatus.CANCELLED -> Triple(MaterialTheme.colorScheme.errorContainer, MaterialTheme.colorScheme.onErrorContainer, stringResource(R.string.service_status_cancelled))
+    } else when (val run = ServiceRunLabel.of(service)) {
+        is ServiceRunLabel.LateBy -> Triple(MaterialTheme.colorScheme.tertiaryContainer, MaterialTheme.colorScheme.onTertiaryContainer, stringResource(R.string.delay_minutes, run.minutes))
+        ServiceRunLabel.Late -> Triple(MaterialTheme.colorScheme.tertiaryContainer, MaterialTheme.colorScheme.onTertiaryContainer, stringResource(R.string.run_status_delayed))
+        ServiceRunLabel.Cancelled -> Triple(MaterialTheme.colorScheme.errorContainer, MaterialTheme.colorScheme.onErrorContainer, stringResource(R.string.service_status_cancelled))
+        else -> Triple(MaterialTheme.colorScheme.secondaryContainer, MaterialTheme.colorScheme.onSecondaryContainer, stringResource(R.string.operational_on_time))
     }
     Pill(text, container = container, content = foreground)
 }
 
 @Composable
-internal fun compactStatusLabel(service: TrainService): String {
-    if (!service.operationalStatusVerified && service.delayMinutesUnpublished) return stringResource(R.string.run_status_delayed)
-    if (!service.operationalStatusVerified) return stringResource(R.string.service_status_scheduled_compact)
-    return when (service.status) {
-        ServiceStatus.ON_TIME -> stringResource(R.string.operational_on_time)
-        ServiceStatus.DELAYED -> stringResource(R.string.delay_minutes, service.delayMinutes)
-        ServiceStatus.CANCELLED -> stringResource(R.string.service_status_cancelled)
-    }
+internal fun compactStatusLabel(service: TrainService): String = when (val run = ServiceRunLabel.of(service)) {
+    ServiceRunLabel.LateMinutesUnpublished, ServiceRunLabel.Late -> stringResource(R.string.run_status_delayed)
+    ServiceRunLabel.Scheduled -> stringResource(R.string.service_status_scheduled_compact)
+    ServiceRunLabel.OnTime -> stringResource(R.string.operational_on_time)
+    is ServiceRunLabel.LateBy -> stringResource(R.string.delay_minutes, run.minutes)
+    ServiceRunLabel.Cancelled -> stringResource(R.string.service_status_cancelled)
 }
 
 /** The "M" / "T" / "F" mark of a city stop in the station suggestions, read as "Fermata della metropolitana". */
