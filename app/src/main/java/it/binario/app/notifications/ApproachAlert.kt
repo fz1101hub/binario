@@ -226,6 +226,21 @@ object ApproachAlertPlanner {
         )
     }
 
+    /**
+     * When a wake-up alarm delivers the alert of the run reaching the station today: at its moment to notify, once a
+     * check of the day stored an [observation] (the alarm posts from it, with no request), in the future, before the
+     * window ends and outside the quiet hours. Null when there is nothing to deliver. A WorkManager run planned for the
+     * same moment can be deferred by Doze past it, and a run too late drops the day.
+     */
+    fun alarmAt(alert: ApproachAlert, doneOn: LocalDate?, notifiedOn: LocalDate?, observation: ApproachObservation?, now: Instant, zone: ZoneId = RailTime.defaultZone): Instant? {
+        if (observation == null || observation.passed || observation.cancelled) return null
+        val date = serviceDate(alert, now.atZone(zone).toLocalDate(), zone)
+        if (doneOn == date || notifiedOn == date) return null
+        val window = window(alert, date, zone) ?: return null
+        val at = notifyAt(alert, observation.expectedAt)
+        return at.takeIf { it.isAfter(now) && !it.isAfter(window.endInclusive) && !TrainAlertWatch.isQuiet(it, zone) }
+    }
+
     /** Only the alerts of trains still among the favourites are checked. */
     fun active(alerts: List<ApproachAlert>, favouriteNumbers: Collection<String>): List<ApproachAlert> {
         val keys = favouriteNumbers.mapTo(hashSetOf(), TrainAlertWatch::key)

@@ -52,6 +52,23 @@ class ApproachAlertPlannerTest {
         assertEquals(ApproachDecision.Notify(10), ApproachAlertPlanner.decide(alert, today, null, at("08:32"), false, zone))
     }
 
+    @Test fun `a wake-up alarm delivers the moment to notify once a check of the day stored an observation`() {
+        // Expected 08:52 (ten minutes late), lead 10: the alarm is set for 08:42, whatever Doze does to the work.
+        assertEquals(at("08:42"), ApproachAlertPlanner.alarmAt(alert, null, null, observation("08:52", 10), at("08:32"), zone))
+        // No check yet, the day finished or notified, the train passed or cancelled, the moment gone: no alarm.
+        assertNull(ApproachAlertPlanner.alarmAt(alert, null, null, null, at("08:32"), zone))
+        assertNull(ApproachAlertPlanner.alarmAt(alert, today, null, observation("08:52", 10), at("08:32"), zone))
+        assertNull(ApproachAlertPlanner.alarmAt(alert, null, today, observation("08:52", 10), at("08:32"), zone))
+        assertNull(ApproachAlertPlanner.alarmAt(alert, null, null, observation("08:52", 10, passed = true), at("08:32"), zone))
+        assertNull(ApproachAlertPlanner.alarmAt(alert, null, null, observation("08:52", 10, cancelled = true), at("08:32"), zone))
+        assertNull(ApproachAlertPlanner.alarmAt(alert, null, null, observation("08:52", 10), at("08:42"), zone))
+        // Never in the quiet hours: an evening train three hours late reaches the station after 22:00.
+        val evening = alert.copy(stationTime = "21:20", departure = "21:00")
+        assertNull(ApproachAlertPlanner.alarmAt(evening, null, null, observation("22:20", 60), at("21:50"), zone))
+        // What the alarm then decides from the stored observation: notify at the moment.
+        assertEquals(ApproachDecision.Notify(10), ApproachAlertPlanner.decide(alert, today, observation("08:52", 10), at("08:42"), false, zone))
+    }
+
     @Test fun `lead times of 5 and 15 minutes and the minute count`() {
         val five = alert.copy(leadMinutes = 5)
         val fifteen = alert.copy(leadMinutes = 15)

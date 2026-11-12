@@ -147,6 +147,10 @@
         <receiver
             android:name=".StopAlarmReceiver"
             android:exported="false" />
+        <!-- The approach alert's wake-up alarm at its moment to notify; app-internal only. -->
+        <receiver
+            android:name=".notifications.ApproachAlertReceiver"
+            android:exported="false" />
 
         <service
             android:name=".gpsalarm.GpsArrivalAlarmService"

@@ -1,6 +1,10 @@
 package it.binario.app.notifications
 
+import android.app.AlarmManager
+import android.app.PendingIntent
+import android.content.BroadcastReceiver
 import android.content.Context
+import android.content.Intent
 import androidx.core.app.NotificationCompat
 import androidx.core.content.edit
 import androidx.work.CoroutineWorker
@@ -17,6 +21,7 @@ import it.binario.app.ServiceMonitor
 import it.binario.app.data.RailTime
 import it.binario.app.data.repository.BinarioDataGraph
 import it.binario.app.data.repository.TrainNumberQuery
+import it.binario.app.scheduleWakeupAlarm
 import java.time.Duration
 import java.time.Instant
 import java.time.LocalDate
@@ -73,8 +78,9 @@ internal class ApproachAlertStore(context: Context) {
 
 /**
  * The approach alerts' chain of one-time works: a check every 15 minutes in each alert's window, and a one-shot run at
- * the moment to notify when it comes before the next check (WorkManager, inexact like the other live notifications; no
- * exact alarm). No network constraint: the run at the moment to notify uses the last observation when offline.
+ * the moment to notify when it comes before the next check. No network constraint: the run at the moment to notify
+ * uses the last observation when offline. Doze can defer those runs past the moment, so a wake-up alarm
+ * ([ApproachAlertAlarms], exact when Android allows it) also delivers it from the last observation of the day.
  */
 object ApproachAlertScheduler {
     internal const val WORK = "binario-approach-alerts"
@@ -96,11 +102,15 @@ object ApproachAlertScheduler {
         val now = Instant.now()
         val today = now.atZone(RailTime.defaultZone).toLocalDate()
         // Without the permission to notify the checks could show nothing: no lookup runs, the next app start plans again.
-        val next = if (!LiveNotifications.allowed(context)) null else alerts.mapNotNull { alert ->
+        val allowed = LiveNotifications.allowed(context)
+        val next = if (!allowed) null else alerts.mapNotNull { alert ->
             val state = store.state(alert.key)
             val date = ApproachAlertPlanner.serviceDate(alert, today)
-            ApproachAlertPlanner.nextRun(alert, state.doneOn, state.notifiedOn, state.observation.takeIf { state.date == date }, now)
+            val observation = state.observation.takeIf { state.date == date }
+            ApproachAlertAlarms.set(context, alert.key, ApproachAlertPlanner.alarmAt(alert, state.doneOn, state.notifiedOn, observation, now))
+            ApproachAlertPlanner.nextRun(alert, state.doneOn, state.notifiedOn, observation, now)
         }.minOrNull()
+        if (!allowed) alerts.forEach { ApproachAlertAlarms.set(context, it.key, null) }
         if (next == null) {
             if (!fromWorker) workManager.cancelUniqueWork(WORK)
             return
@@ -151,13 +161,18 @@ class ApproachAlertWorker(appContext: Context, params: WorkerParameters) : Corou
             // say the train does not run, or does not call at the station, is over.
             val lookup = lookUp(context, monitor, alert, date)
             val observation = ApproachAlertPlanner.observationAfter(lookup, state.observation)
-            when (val decision = ApproachAlertPlanner.decide(alert, date, lookup, state.observation, now, zone)) {
-                is ApproachDecision.Notify -> {
-                    if (LiveNotifications.allowed(context)) notify(context, alert, monitor, observation, decision.minutesLeft)
-                    store.saveState(alert.key, state.copy(notifiedOn = date, observation = observation))
+            val decided = Instant.now()
+            synchronized(ApproachAlertDelivery.lock) {
+                // The wake-up alarm may have notified while the sources were asked.
+                if (store.state(alert.key).notifiedOn == date) return@forEach
+                when (val decision = ApproachAlertPlanner.decide(alert, date, lookup, state.observation, decided, zone)) {
+                    is ApproachDecision.Notify -> {
+                        if (LiveNotifications.allowed(context)) ApproachAlertDelivery.notify(context, alert, monitor, observation, decision.minutesLeft)
+                        store.saveState(alert.key, state.copy(notifiedOn = date, observation = observation))
+                    }
+                    ApproachDecision.Done -> store.saveState(alert.key, state.copy(doneOn = date, observation = observation))
+                    is ApproachDecision.WaitUntil -> store.saveState(alert.key, state.copy(observation = observation))
                 }
-                ApproachDecision.Done -> store.saveState(alert.key, state.copy(doneOn = date, observation = observation))
-                is ApproachDecision.WaitUntil -> store.saveState(alert.key, state.copy(observation = observation))
             }
         }
     }
@@ -176,7 +191,42 @@ class ApproachAlertWorker(appContext: Context, params: WorkerParameters) : Corou
         return ApproachAlertPlanner.lookupOf(update, monitor, alert, date)
     }
 
-    private fun notify(context: Context, alert: ApproachAlert, monitor: ServiceMonitor, observation: ApproachObservation?, minutes: Int) {
+    private companion object {
+        const val LOOKUP_TIMEOUT_MILLIS = 30_000L
+    }
+}
+
+/** Posts an approach alert; shared by the checks and the wake-up alarm, which never notify the same day twice. */
+internal object ApproachAlertDelivery {
+    /** Guards «read the day state, notify, save it» between a check and the alarm (both run in the app process). */
+    val lock = Any()
+    private const val NOTIFICATION_BASE = 0x5EC00000
+
+    /**
+     * The wake-up alarm of [key] rang at [now]: notifies from the observation the last check of the day stored, when
+     * the rules still say so (no request: the check that planned the alarm asked the sources). A day already
+     * notified or finished, or an alarm early or late beyond the tolerances, is left to the checks.
+     */
+    fun atAlarm(context: Context, key: String, now: Instant) {
+        if (!LiveNotifications.allowed(context)) return
+        val (alerts, favourites) = ApproachAlertScheduler.active(context)
+        val alert = alerts.firstOrNull { it.key == key } ?: return
+        val monitor = favourites.firstOrNull { TrainAlertWatch.key(it.number) == key } ?: return
+        val zone = RailTime.defaultZone
+        val date = ApproachAlertPlanner.serviceDate(alert, now.atZone(zone).toLocalDate(), zone)
+        val store = ApproachAlertStore(context)
+        synchronized(lock) {
+            val state = store.state(key)
+            if (state.date != date || state.doneOn == date || state.notifiedOn == date) return
+            val decision = ApproachAlertPlanner.decide(alert, date, state.observation, now, notified = false, zone)
+            if (decision is ApproachDecision.Notify) {
+                notify(context, alert, monitor, state.observation, decision.minutesLeft)
+                store.saveState(key, state.copy(notifiedOn = date))
+            }
+        }
+    }
+
+    fun notify(context: Context, alert: ApproachAlert, monitor: ServiceMonitor, observation: ApproachObservation?, minutes: Int) {
         val label = monitor.displayName ?: alert.label.ifBlank { alert.number }
         val title = if (minutes <= 0) {
             context.getString(R.string.approach_alert_title_now, label, alert.station)
@@ -201,9 +251,32 @@ class ApproachAlertWorker(appContext: Context, params: WorkerParameters) : Corou
             .build()
         LiveNotifications.post(context, NOTIFICATION_BASE + (alert.key.hashCode() and 0xFFFF), notification)
     }
+}
 
-    private companion object {
-        const val NOTIFICATION_BASE = 0x5EC00000
-        const val LOOKUP_TIMEOUT_MILLIS = 30_000L
+/** The wake-up alarm of each approach alert at its moment to notify (one per alert; a new moment replaces the old). */
+internal object ApproachAlertAlarms {
+    private const val ACTION = "it.binario.app.action.APPROACH_ALERT"
+    private const val EXTRA_KEY = "it.binario.app.extra.APPROACH_ALERT_KEY"
+
+    /** Sets the alarm of [key] at [at], or cancels it when null. */
+    fun set(context: Context, key: String, at: Instant?) {
+        val alarmManager = context.getSystemService(AlarmManager::class.java) ?: return
+        val pending = PendingIntent.getBroadcast(
+            context,
+            "approach-alert|$key".hashCode(),
+            Intent(context, ApproachAlertReceiver::class.java).setAction(ACTION).putExtra(EXTRA_KEY, key),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        if (at == null) alarmManager.cancel(pending) else scheduleWakeupAlarm(context, alarmManager, at.toEpochMilli(), pending)
+    }
+
+    fun key(intent: Intent): String? = intent.getStringExtra(EXTRA_KEY)?.takeIf { intent.action == ACTION }
+}
+
+/** The approach alert's wake-up alarm: delivers the notification from the stored observation, no request. */
+class ApproachAlertReceiver : BroadcastReceiver() {
+    override fun onReceive(context: Context, intent: Intent) {
+        val key = ApproachAlertAlarms.key(intent) ?: return
+        ApproachAlertDelivery.atAlarm(context.applicationContext, key, Instant.now())
     }
 }
