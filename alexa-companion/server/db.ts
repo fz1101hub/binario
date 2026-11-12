@@ -50,6 +50,14 @@ export function createDatabasePool(url: string): Pool {
   return pool;
 }
 
+/** Ends the pool, if one was opened (graceful shutdown); a later use opens a new one. */
+export async function closeDb(): Promise<void> {
+  const db = _db;
+  _db = null;
+  if (!db) return;
+  await new Promise<void>((resolve, reject) => db.$client.end(error => (error ? reject(error) : resolve())));
+}
+
 // Lazily create the drizzle instance so local tooling can run without a DB.
 export async function getDb() {
   if (!_db && process.env.DATABASE_URL) {

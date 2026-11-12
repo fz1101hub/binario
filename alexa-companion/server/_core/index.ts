@@ -7,6 +7,8 @@ import { assertRuntimeEnvironment } from "./envCheck";
 import { startupTimestampProblem } from "./dbEngine";
 import { preloadRailData } from "../punctuality/source";
 import { isAlexaConfigured } from "../voice/config";
+import { closeDb } from "../db";
+import { installGracefulShutdown } from "./shutdown";
 import { createConnection } from "mysql2/promise";
 
 function isPortAvailable(port: number): Promise<boolean> {
@@ -72,6 +74,7 @@ async function startServer() {
   server.listen(port, () => {
     console.log(`Server running on http://localhost:${port}/`);
   });
+  installGracefulShutdown(server, { closeDatabase: closeDb, exit: code => process.exit(code), signals: process });
   // The skill reads the statistics and the catalogue: read them now rather than on the first question.
   if (isAlexaConfigured()) void preloadRailData();
 }
