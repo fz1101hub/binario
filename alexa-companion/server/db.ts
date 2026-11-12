@@ -1,4 +1,4 @@
-import { and, desc, eq, gt, isNull, ne, sql } from "drizzle-orm";
+import { and, count, desc, eq, gt, isNull, lt, ne, or, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import { createPool, type Pool } from "mysql2";
 import { randomUUID } from "node:crypto";
@@ -14,7 +14,9 @@ import {
 import { ENV } from "./_core/env";
 import { describeErrorForLog } from "./_core/logRedaction";
 import {
+  MAX_PERSONAL_ROUTES,
   normalizePersonalRouteDraft,
+  RouteLimitError,
   type PersonalRouteDraft,
 } from "./routes/contract";
 import {
@@ -174,9 +176,15 @@ export async function listPersonalRoutes(userId: number) {
     // adopted 0000-0011 lineage keeps `archivedAt`, and showing those rows
     // again would resurrect choices the user deliberately removed.
     .where(and(eq(railwayRoutes.userId, userId), isNull(railwayRoutes.archivedAt)))
-    .orderBy(desc(railwayRoutes.isPinned), desc(railwayRoutes.updatedAt));
+    .orderBy(desc(railwayRoutes.isPinned), desc(railwayRoutes.updatedAt))
+    .limit(MAX_PERSONAL_ROUTES);
 }
 
+/**
+ * Saves a route, refusing it with {@link RouteLimitError} when the account already keeps
+ * {@link MAX_PERSONAL_ROUTES} (archived legacy rows, which the user cannot see, are not counted).
+ * The user's row is locked while counting, so parallel requests cannot pass the limit together.
+ */
 export async function createPersonalRoute(
   userId: number,
   input: PersonalRouteDraft
@@ -185,8 +193,16 @@ export async function createPersonalRoute(
   if (!db) throw new Error("Archivio personale non disponibile");
 
   const values = { userId, ...normalizePersonalRouteDraft(input) };
-  const result = await db.insert(railwayRoutes).values(values);
-  const id = Number(result[0].insertId);
+  const id = await db.transaction(async tx => {
+    await tx.select({ id: users.id }).from(users).where(eq(users.id, userId)).limit(1).for("update");
+    const [saved] = await tx
+      .select({ routes: count() })
+      .from(railwayRoutes)
+      .where(and(eq(railwayRoutes.userId, userId), isNull(railwayRoutes.archivedAt)));
+    if (Number(saved?.routes ?? 0) >= MAX_PERSONAL_ROUTES) throw new RouteLimitError(`Al massimo ${MAX_PERSONAL_ROUTES} tratte`);
+    const result = await tx.insert(railwayRoutes).values(values);
+    return Number(result[0].insertId);
+  });
   const created = await db
     .select(personalRouteColumns)
     .from(railwayRoutes)
@@ -310,7 +326,54 @@ export async function listPersonalRoutesForAlexa(
       )
     )
     .where(and(eq(railwayRoutes.userId, userId), isNull(railwayRoutes.archivedAt)))
-    .orderBy(desc(railwayRoutes.isPinned), desc(railwayRoutes.updatedAt));
+    .orderBy(desc(railwayRoutes.isPinned), desc(railwayRoutes.updatedAt))
+    .limit(MAX_PERSONAL_ROUTES);
+}
+
+/**
+ * Authorization codes and refresh tokens are deleted this many days after they expired, were
+ * revoked or (codes) were consumed: until then a replayed old token is still recognised and revokes
+ * its family; afterwards it is simply unknown.
+ */
+export const OAUTH_RETENTION_DAYS = 30;
+const OAUTH_PURGE_INTERVAL_MS = 60 * 60 * 1000;
+let lastOAuthPurgeAt = Number.NEGATIVE_INFINITY;
+
+/** The instant before which a finished OAuth artefact is deleted. */
+export function oauthRetentionCutoff(now: Date): Date {
+  return new Date(now.getTime() - OAUTH_RETENTION_DAYS * 86_400_000);
+}
+
+/** Deletes the authorization codes and refresh tokens finished before {@link oauthRetentionCutoff}. */
+export async function purgeFinishedOAuthArtifacts(now: Date = new Date()) {
+  const db = await getDb();
+  if (!db) return;
+  const cutoff = oauthRetentionCutoff(now);
+  await db
+    .delete(oauthAuthorizationCodes)
+    .where(
+      or(
+        lt(oauthAuthorizationCodes.expiresAt, cutoff),
+        lt(oauthAuthorizationCodes.consumedAt, cutoff),
+        lt(oauthAuthorizationCodes.revokedAt, cutoff)
+      )
+    );
+  await db
+    .delete(oauthRefreshTokens)
+    .where(or(lt(oauthRefreshTokens.expiresAt, cutoff), lt(oauthRefreshTokens.revokedAt, cutoff)));
+}
+
+/**
+ * Runs {@link purgeFinishedOAuthArtifacts} in the background at most once an hour per process,
+ * after a token exchange or rotation has committed (every active link rotates hourly): a failure is
+ * logged by error class and never costs the exchange.
+ */
+function purgeFinishedOAuthArtifactsSometimes(now: Date) {
+  if (now.getTime() - lastOAuthPurgeAt < OAUTH_PURGE_INTERVAL_MS) return;
+  lastOAuthPurgeAt = now.getTime();
+  void purgeFinishedOAuthArtifacts(now).catch(error =>
+    console.warn("[Database] OAuth purge failed:", describeErrorForLog(error))
+  );
 }
 
 export async function recordAlexaVerification(
@@ -369,7 +432,7 @@ export async function exchangeAuthorizationCode(input: {
 }) {
   const db = await getDb();
   if (!db) throw new Error("Archivio collegamenti vocali non disponibile");
-  return db.transaction(async tx => {
+  const exchanged = await db.transaction(async tx => {
     const now = new Date();
     const codes = await tx
       .select()
@@ -436,6 +499,9 @@ export async function exchangeAuthorizationCode(input: {
     });
     return { ...code, credentialVersion: link.credentialVersion };
   });
+  // After the transaction, never inside or beside it: the purge locks the rows it scans.
+  purgeFinishedOAuthArtifactsSometimes(new Date());
+  return exchanged;
 }
 
 /**
@@ -488,7 +554,7 @@ export async function rotateRefreshToken(input: {
     .limit(1);
   const initial = candidate[0];
   if (!initial) return null;
-  return db.transaction(async tx => {
+  const rotated = await db.transaction(async tx => {
     const now = new Date();
     const links = await tx
       .select()
@@ -607,6 +673,8 @@ export async function rotateRefreshToken(input: {
       credentialVersion: links[0].credentialVersion,
     };
   });
+  purgeFinishedOAuthArtifactsSometimes(new Date());
+  return rotated;
 }
 
 export async function revokeAllVoiceCredentialsForUser(userId: number) {

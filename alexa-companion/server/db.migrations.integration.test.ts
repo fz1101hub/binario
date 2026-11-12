@@ -7,16 +7,19 @@ import { migrate } from "drizzle-orm/mysql2/migrator";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
   createAuthorizationCode,
+  createPersonalRoute,
   deleteUserAccount,
   exchangeAuthorizationCode,
   getAlexaLinkStatus,
   getDb,
   listPersonalRoutes,
   listPersonalRoutesForAlexa,
+  purgeFinishedOAuthArtifacts,
   revokeAllVoiceCredentialsForUser,
   rotateRefreshToken,
   touchExistingUserSession,
 } from "./db";
+import { MAX_PERSONAL_ROUTES, RouteLimitError } from "./routes/contract";
 import { checkTimestampSemantics, NULLABLE_TIMESTAMP_COLUMNS } from "./_core/dbEngine";
 
 /** mysql2 types SELECT results as RowDataPacket rows. */
@@ -621,6 +624,39 @@ describeDatabase("migrazioni MariaDB reali", () => {
         [userId]
       );
       expect(links[0]?.revokedAt).not.toBeNull();
+
+      // Finished OAuth artefacts are deleted 30 days after they expired or were revoked, not before.
+      await connection.query(
+        "INSERT INTO oauth_refresh_tokens (`userId`, `clientId`, `tokenHash`, `familyId`, `expiresAt`, `revokedAt`) VALUES (?, 'alexa-client', ?, 'old-family', DATE_ADD(CURRENT_TIMESTAMP, INTERVAL 300 DAY), DATE_SUB(CURRENT_TIMESTAMP, INTERVAL 31 DAY))",
+        [userId, "9".repeat(64)]
+      );
+      await connection.query(
+        "INSERT INTO oauth_authorization_codes (`userId`, `codeHash`, `clientId`, `redirectUri`, `scope`, `expiresAt`) VALUES (?, ?, 'alexa-client', 'https://layla.amazon.com/api/skill/link/TEST', 'routes.read', DATE_SUB(CURRENT_TIMESTAMP, INTERVAL 31 DAY))",
+        [userId, "8".repeat(64)]
+      );
+      const [beforePurge] = await connection.query<Rows<{ count: number }>>(
+        "SELECT COUNT(*) AS count FROM oauth_refresh_tokens WHERE userId = ?",
+        [userId]
+      );
+      await purgeFinishedOAuthArtifacts();
+      const [oldRows] = await connection.query<Rows<{ count: number }>>(
+        "SELECT (SELECT COUNT(*) FROM oauth_refresh_tokens WHERE tokenHash = ?) + (SELECT COUNT(*) FROM oauth_authorization_codes WHERE codeHash = ?) AS count",
+        ["9".repeat(64), "8".repeat(64)]
+      );
+      expect(Number(oldRows[0]?.count)).toBe(0);
+      const [afterPurge] = await connection.query<Rows<{ count: number }>>(
+        "SELECT COUNT(*) AS count FROM oauth_refresh_tokens WHERE userId = ?",
+        [userId]
+      );
+      expect(Number(afterPurge[0]?.count)).toBe(Number(beforePurge[0]?.count) - 1);
+
+      // At most MAX_PERSONAL_ROUTES routes per account.
+      for (let saved = (await listPersonalRoutes(userId)).length; saved < MAX_PERSONAL_ROUTES; saved++)
+        await createPersonalRoute(userId, { origin: "Roma Termini", destination: `Tivoli ${saved}`, name: `Tratta ${saved}` });
+      await expect(createPersonalRoute(userId, { origin: "Roma Termini", destination: "Ostia", name: "Una di troppo" })).rejects.toBeInstanceOf(
+        RouteLimitError
+      );
+      expect(await listPersonalRoutes(userId)).toHaveLength(MAX_PERSONAL_ROUTES);
 
       await connection.query(
         "INSERT INTO station_preferences (`userId`, `stationName`, `stationCode`, `isFavorite`) VALUES (?, 'Roma Termini', 'RM', TRUE)",

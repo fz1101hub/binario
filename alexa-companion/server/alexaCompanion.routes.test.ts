@@ -14,7 +14,7 @@ const dbMocks = vi.hoisted(() => ({
 vi.mock("./db", () => dbMocks);
 
 import { appRouter } from "./routers";
-import { RouteValidationError } from "./routes/contract";
+import { RouteLimitError, RouteValidationError } from "./routes/contract";
 import type { TrpcContext } from "./_core/context";
 
 function authenticatedContext(): TrpcContext {
@@ -66,6 +66,14 @@ describe("procedure protette Binario Alexa Companion", () => {
     const caller = appRouter.createCaller(authenticatedContext());
     await expect(caller.routes.create(input)).rejects.toMatchObject({ code: "BAD_REQUEST" });
     expect(dbMocks.createPersonalRoute).not.toHaveBeenCalledWith(7, expect.objectContaining(input));
+  });
+
+  it("rifiuta la tratta oltre il limite dell’account con un codice distinto dall’input non valido", async () => {
+    dbMocks.createPersonalRoute.mockRejectedValueOnce(new RouteLimitError("Al massimo 32 tratte"));
+    const caller = appRouter.createCaller(authenticatedContext());
+    await expect(caller.routes.create({ origin: "Roma", destination: "Tivoli", name: "Casa" })).rejects.toMatchObject({
+      code: "PRECONDITION_FAILED",
+    });
   });
 
   it("salva le etichette ripulite dagli spazi e mappa una validazione dell’archivio su BAD_REQUEST", async () => {

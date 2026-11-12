@@ -58,6 +58,7 @@ export const vi: LocaleMessages = {
     deletePermanently: "Xóa vĩnh viễn",
     deleteFailed: "Xóa không thành công. Không có dữ liệu nào bị đánh dấu là đã xóa: hãy thử lại.",
     routeInvalid: "Chưa lưu tuyến: tên, ga đi và ga đến phải có ít nhất 2 ký tự, và ga đi phải khác ga đến.",
+    routeLimitReached: "Chưa lưu tuyến: bạn đã có số tuyến tối đa. Hãy xóa một tuyến để thêm tuyến khác.",
     routeSaveFailed: "Không lưu được. Hãy thử lại.",
     actionFailed: "Không thay đổi được: chưa có gì thay đổi. Hãy thử lại.",
     notFoundTitle: "Không tìm thấy trang",

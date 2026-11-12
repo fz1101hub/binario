@@ -11,7 +11,7 @@ vi.mock("mysql2", async importOriginal => ({
   },
 }));
 
-import { createDatabasePool, UTC_SESSION_STATEMENT } from "./db";
+import { createDatabasePool, OAUTH_RETENTION_DAYS, oauthRetentionCutoff, UTC_SESSION_STATEMENT } from "./db";
 
 describe("database session time zone", () => {
   it("sets every new pool connection to UTC before its first query", () => {
@@ -32,5 +32,12 @@ describe("database session time zone", () => {
     expect(warnings).toHaveBeenCalledTimes(1);
     expect(JSON.stringify(warnings.mock.calls)).not.toContain("secret");
     warnings.mockRestore();
+  });
+});
+
+describe("OAuth retention", () => {
+  it("keeps finished codes and refresh tokens for 30 days", () => {
+    expect(OAUTH_RETENTION_DAYS).toBe(30);
+    expect(oauthRetentionCutoff(new Date("2026-11-12T10:00:00Z")).toISOString()).toBe("2026-10-13T10:00:00.000Z");
   });
 });

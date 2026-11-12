@@ -58,6 +58,7 @@ export const pt: LocaleMessages = {
     deletePermanently: "Excluir definitivamente",
     deleteFailed: "Falha na exclusão. Nenhum dado foi marcado como excluído: tente novamente.",
     routeInvalid: "Trajeto não salvo: nome, origem e destino precisam de pelo menos 2 caracteres, e origem e destino devem ser diferentes.",
+    routeLimitReached: "Trajeto não salvo: você já tem o número máximo de trajetos. Remova um para adicionar outro.",
     routeSaveFailed: "Não foi possível salvar. Tente novamente.",
     actionFailed: "A alteração não foi aplicada: nada mudou. Tente novamente.",
     notFoundTitle: "Página não encontrada",

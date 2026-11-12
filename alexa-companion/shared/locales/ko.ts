@@ -58,6 +58,7 @@ export const ko: LocaleMessages = {
     deletePermanently: "영구 삭제",
     deleteFailed: "삭제하지 못했습니다. 삭제된 것으로 표시된 데이터는 없습니다. 다시 시도하세요.",
     routeInvalid: "경로가 저장되지 않았습니다. 이름, 출발, 도착은 2자 이상이어야 하며 출발과 도착은 달라야 합니다.",
+    routeLimitReached: "경로를 저장하지 못했습니다. 저장할 수 있는 경로 수가 최대입니다. 새 경로를 추가하려면 하나를 삭제하세요.",
     routeSaveFailed: "저장하지 못했습니다. 다시 시도하세요.",
     actionFailed: "변경하지 못했습니다. 바뀐 내용은 없습니다. 다시 시도하세요.",
     notFoundTitle: "페이지를 찾을 수 없음",

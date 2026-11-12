@@ -58,6 +58,7 @@ export const id: LocaleMessages = {
     deletePermanently: "Hapus permanen",
     deleteFailed: "Penghapusan gagal. Tidak ada data yang ditandai terhapus: coba lagi.",
     routeInvalid: "Rute tidak disimpan: nama, asal, dan tujuan harus minimal 2 karakter, dan asal harus berbeda dari tujuan.",
+    routeLimitReached: "Rute tidak disimpan: Anda sudah memiliki jumlah rute maksimum. Hapus satu untuk menambahkan yang lain.",
     routeSaveFailed: "Gagal menyimpan. Coba lagi.",
     actionFailed: "Perubahan gagal: tidak ada yang berubah. Coba lagi.",
     notFoundTitle: "Halaman tidak ditemukan",

@@ -6,7 +6,7 @@ import { sdk } from "./_core/sdk";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import { createPersonalRoute, deleteUserAccount, getAlexaLinkStatus, listPersonalRoutes, removePersonalRoute, revokeAllVoiceCredentialsForUser, setPersonalRoutePinned } from "./db";
 import { createProfileRouter } from "./profile/router";
-import { personalRouteInput, RouteValidationError } from "./routes/contract";
+import { personalRouteInput, RouteLimitError, RouteValidationError } from "./routes/contract";
 import { isAlexaConfigured } from "./voice/config";
 
 export const appRouter = router({
@@ -45,6 +45,9 @@ export const appRouter = router({
       } catch (error) {
         if (error instanceof RouteValidationError)
           throw new TRPCError({ code: "BAD_REQUEST", message: error.message, cause: error });
+        // The dashboard tells this refusal apart from invalid input.
+        if (error instanceof RouteLimitError)
+          throw new TRPCError({ code: "PRECONDITION_FAILED", message: error.message, cause: error });
         throw error;
       }
     }),
