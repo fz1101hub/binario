@@ -295,7 +295,12 @@ data class JourneyLeg(
     /** Bikes on board as the timetable publishes them (GTFS bikes_allowed); null when unknown. Never assumed. */
     val bikesAllowed: Boolean? = null,
     /** The same vehicle going on under another number or line: no change, the traveller stays on board. */
-    val continuations: List<InSeatContinuation> = emptyList()
+    val continuations: List<InSeatContinuation> = emptyList(),
+    /**
+     * The minimum change time the planner required at the station where this leg is boarded, for a change without a
+     * walk (ten minutes at a large hub, three at a city stop); null when the source does not say.
+     */
+    val changeMinutes: Int? = null
 )
 
 /**

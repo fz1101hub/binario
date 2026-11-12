@@ -126,6 +126,22 @@ class JourneyResultsPresenterTest {
         assertTrue(JourneyResultsPresenter.present(result(oneChange, incomplete = true), zone = zone).showIncompleteNotice)
     }
 
+    @Test fun `options found without an expired timetable say which networks are missing`() {
+        val expired = listOf(
+            it.binario.app.data.provider.ExpiredTimetable(it.binario.app.data.core.SourceId("italo-gtfs"), java.time.LocalDate.of(2026, 12, 12)),
+            it.binario.app.data.provider.ExpiredTimetable(it.binario.app.data.core.SourceId("lombardia-trenord-gtfs"), java.time.LocalDate.of(2026, 12, 12)),
+            it.binario.app.data.provider.ExpiredTimetable(it.binario.app.data.core.SourceId("unknown-pack"), java.time.LocalDate.of(2026, 12, 12))
+        )
+        val stale = result(oneChange).copy(staleTimetables = true, expiredTimetables = expired)
+        val presentation = JourneyResultsPresenter.present(stale, zone = zone)
+        assertTrue(presentation.showExpiredNotice)
+        assertEquals(listOf("Italo", "Regione Lombardia", "unknown-pack"), presentation.expiredNetworks)
+        // Without options the empty state already says it; a complete result shows no notice.
+        val empty = result(status = JourneySearchStatus.SCHEDULE_EXPIRED).copy(staleTimetables = true)
+        assertFalse(JourneyResultsPresenter.present(empty, zone = zone).showExpiredNotice)
+        assertFalse(JourneyResultsPresenter.present(result(oneChange), zone = zone).showExpiredNotice)
+    }
+
     @Test fun `an arrival after midnight is flagged as next day and a replacement bus is no train category`() {
         val night = option("n",
             leg("901", "RE11", "Alfa", "Beta", "23:50", "00:20", nextDay = true),

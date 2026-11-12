@@ -3,6 +3,8 @@ package it.binario.app.data.provider
 import it.binario.app.data.TrainCategory
 import it.binario.app.data.core.LegMode
 import it.binario.app.data.core.ServiceKind
+import it.binario.app.data.core.SourceId
+import java.time.LocalDate
 import java.util.Locale
 
 /** Walking speed of the walks of a journey (to the metro, between two stations). */
@@ -126,4 +128,15 @@ enum class ModeChoice { ANY, PREFER, AVOID }
  */
 interface WheelchairDataAware {
     suspend fun hasWheelchairData(request: JourneySearchRequest): Boolean
+}
+
+/** A timetable of a journey provider that ends on [lastServiceDate], before the day of a search. */
+data class ExpiredTimetable(val sourceId: SourceId, val lastServiceDate: LocalDate)
+
+/**
+ * A journey provider that knows which of its timetables serving an end of a search end before the searched day: its
+ * answer then carries [ProviderWarning.STALE_SOURCE], and the results can name the networks that are missing.
+ */
+interface TimetableValidityAware {
+    suspend fun expiredTimetables(request: JourneySearchRequest): List<ExpiredTimetable>
 }

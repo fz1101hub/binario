@@ -42,6 +42,7 @@ import it.binario.app.data.planned.RfiProgrammedStationIds
 import it.binario.app.data.planned.SupplementalRfiProgrammedStationIds
 import it.binario.app.data.provider.AccessMode
 import it.binario.app.data.provider.CoverageDescriptor
+import it.binario.app.data.provider.ExpiredTimetable
 import it.binario.app.data.provider.JourneyEndpoint
 import it.binario.app.data.provider.JourneyProvider
 import it.binario.app.data.provider.JourneyPreferences
@@ -56,6 +57,7 @@ import it.binario.app.data.provider.ProviderResponseMeta
 import it.binario.app.data.provider.ProviderResult
 import it.binario.app.data.provider.ProviderWarning
 import it.binario.app.data.provider.RatePolicy
+import it.binario.app.data.provider.TimetableValidityAware
 import it.binario.app.data.provider.TravelMode
 import it.binario.app.data.provider.WheelchairDataAware
 import it.binario.app.data.sources.RailInformationCategory
@@ -97,13 +99,17 @@ data class GtfsJourneyPlannerSettings(
      * window. A vehicle boarded by then is followed to its end, however late (Milano → Palermo by night train).
      */
     val journeyHorizonMinutes: Int = 10 * 60,
+    /**
+     * Railway packs of one search besides those serving both ends, which always take part: the packs a change between
+     * packs needs, or those of one end when a city network reaches the other.
+     */
     val maxPacksPerSearch: Int = 3,
     val maxIterations: Int = 32,
     /** Bound on the connections of one search window (they are copied into the scan arrays). */
     val maxSearchConnections: Int = 400_000,
     /**
      * Bound on the cached per-pack, per-service-day connection arrays (the Swiss pack's day is about 5 MB, the
-     * Trenitalia one 2.5 MB): room for the requested and the next day of the three packs of one search.
+     * Trenitalia one 2.5 MB): room for the requested and the next day of the packs of one search.
      */
     val maxCachedDays: Int = 16,
     val maxCachedBytes: Long = 24L * 1024L * 1024L,
@@ -172,7 +178,7 @@ class EmbeddedGtfsJourneyProvider internal constructor(
     private val settings: GtfsJourneyPlannerSettings = GtfsJourneyPlannerSettings(),
     private val clock: Clock = Clock.system(RailTime.defaultZone),
     private val dispatcher: CoroutineDispatcher = Dispatchers.Default
-) : JourneyProvider, WheelchairDataAware {
+) : JourneyProvider, WheelchairDataAware, TimetableValidityAware {
     override val descriptor: ProviderDescriptor = DESCRIPTOR
 
     private val zone = RailTime.defaultZone
@@ -185,6 +191,11 @@ class EmbeddedGtfsJourneyProvider internal constructor(
     private val packStopsMutex = Mutex()
     private val packStops = HashMap<SourceId, PackStops>()
     private val dayMutex = Mutex()
+    /**
+     * When the last run of a pack's evening part ends (pack, service day and first minute of the part → minute of that
+     * service day), so the map of trains stops reading yesterday once nothing of it is still on the move.
+     */
+    private val eveningEnd = HashMap<String, Int>()
     private val dayCache = LinkedHashMap<String, GtfsDayTimetable>(16, 0.75f, true)
 
     override suspend fun searchJourneys(request: JourneySearchRequest): ProviderResult<List<JourneyOption>> =
@@ -227,6 +238,29 @@ class EmbeddedGtfsJourneyProvider internal constructor(
             throw error
         } catch (_: IOException) {
             false
+        }
+    }
+
+    /**
+     * The packs serving an end of [request] whose timetable ends before its day (see [expiredPacks]): the networks the
+     * results of that day miss. Empty when every pack covers the day, or when the stations or a pack cannot be read.
+     */
+    override suspend fun expiredTimetables(request: JourneySearchRequest): List<ExpiredTimetable> = withContext(dispatcher) {
+        try {
+            val resolver = resolver()
+            val origin = endpoint(request.origin, request.originEndpoint, resolver) ?: return@withContext emptyList()
+            val destination = endpoint(request.destination, request.destinationEndpoint, resolver) ?: return@withContext emptyList()
+            locateStop(origin, resolver)
+            locateStop(destination, resolver)
+            val serviceDate = request.departureAt.withZoneSameInstant(zone).toLocalDate()
+            val (coverage, _) = packCoverage(origin, destination, plannerSettings(request.preferences), resolver)
+            expiredPacks(coverage, origin, destination, serviceDate).mapNotNull { covered ->
+                covered.pack.lastServiceDate?.let { ExpiredTimetable(covered.pack.sourceId, it) }
+            }
+        } catch (error: CancellationException) {
+            throw error
+        } catch (_: IOException) {
+            emptyList()
         }
     }
 
@@ -338,9 +372,9 @@ class EmbeddedGtfsJourneyProvider internal constructor(
 
     /**
      * The train runs of the railway packs that can be on the move around [request]'s time, for the map of trains in
-     * motion: the runs of the route (the packs serving both ends) or of the packs with the most stops inside the area,
-     * at most [MAX_RUN_PACKS] packs. Read from the same cached service days as the searches (today's whole day, and the
-     * evening of yesterday's service day in the morning); empty when no pack serves the scope or a pack is unreadable.
+     * motion: the runs of the route (every pack serving both ends) or of the packs with the most stops inside the area
+     * (at most [MAX_RUN_PACKS] packs). Read from the same cached service days as the searches (today's whole day, and the
+     * evening of yesterday's service day until its last run ends); empty when no pack serves the scope or a pack is unreadable.
      */
     internal suspend fun scheduledRailRuns(request: ScheduledRunRequest): List<ScheduledRailRun> = withContext(dispatcher) {
         try {
@@ -378,19 +412,28 @@ class EmbeddedGtfsJourneyProvider internal constructor(
         }
         val minuteOfToday = ChronoUnit.MINUTES.between(today.atStartOfDay(), request.at).toInt()
         val result = ArrayList<ScheduledRailRun>()
-        for ((pack, stops, _) in candidates.sortedByDescending { it.third }.take(MAX_RUN_PACKS)) {
+        // A route reads every pack serving both ends (the fourth one of Milano – Verona is Trenitalia); an area the
+        // packs with the most stops inside.
+        val runPacks = if (scope is ScheduledRunScope.Route) candidates.size else MAX_RUN_PACKS
+        for ((pack, stops, _) in candidates.sortedByDescending { it.third }.take(runPacks)) {
             val originNodes = ends?.let { stops.nodesFor(it.first) }.orEmpty()
             val destinationNodes = ends?.let { stops.nodesFor(it.second) }.orEmpty()
+            // Runs of yesterday's service day still on the move (night trains): its evening only, for as long as its
+            // last run has not ended. Milano 20:10 → Palermo 16:55 is on the map until the afternoon of the next day.
+            val evening = DayPart(today.minusDays(1), (MINUTES_PER_DAY - request.lookBackMinutes - RUN_SEGMENT_MARGIN_MINUTES).coerceAtLeast(0), Int.MAX_VALUE)
+            val eveningKey = "${pack.sourceId.value}|${evening.date}|${evening.fromMinute}"
+            val eveningEnds = synchronized(eveningEnd) { eveningEnd[eveningKey] }
             val parts = buildList {
-                // Runs of yesterday's service day still on the move this morning (night trains): its evening only.
-                if (minuteOfToday < YESTERDAY_RUNS_UNTIL_MINUTE) {
-                    add(DayPart(today.minusDays(1), (MINUTES_PER_DAY - request.lookBackMinutes - RUN_SEGMENT_MARGIN_MINUTES).coerceAtLeast(0), Int.MAX_VALUE) to MINUTES_PER_DAY)
-                }
+                if (eveningEnds == null || eveningEnds >= minuteOfToday + MINUTES_PER_DAY - request.lookBackMinutes) add(evening to MINUTES_PER_DAY)
                 // Today whole, as the searches and "Ultimo di oggi" cache it.
                 add(DayPart(today, 0, Int.MAX_VALUE) to 0)
             }
             for ((part, offset) in parts) {
                 val day = day(pack, part)
+                if (part === evening && eveningEnds == null) synchronized(eveningEnd) {
+                    if (eveningEnd.size >= MAX_EVENING_ENDS) eveningEnd.clear()
+                    eveningEnd[eveningKey] = day.lastArrivalMinute
+                }
                 val nodeOfStop = Array(day.stopIds.size) { stops.nodeKey(day.stopIds[it]) }
                 val names = arrayOfNulls<String>(day.stopIds.size)
                 val minute = minuteOfToday + offset
@@ -492,29 +535,16 @@ class EmbeddedGtfsJourneyProvider internal constructor(
         val startMinute = departure.hour * 60 + departure.minute
         val endMinute = startMinute + settings.searchWindowMinutes
 
-        var incomplete = false
-        val coverage = ArrayList<PackCoverage>()
-        for (pack in packs) {
-            currentCoroutineContext().ensureActive()
-            // A city network is read only for a search with an end in its city (or at one of its stops).
-            if (pack.isUrban && !urbanCandidate(pack, origin, destination)) continue
-            val stops = try {
-                packStops(pack, resolver)
-            } catch (_: GtfsCompactIndexLimitException) {
-                incomplete = true
-                continue
-            }
-            val originNodes = stops.accessFor(origin, planner)
-            val destinationNodes = stops.accessFor(destination, planner)
-            if (originNodes.isNotEmpty() || destinationNodes.isNotEmpty()) {
-                coverage += PackCoverage(pack, stops, originNodes, destinationNodes)
-            }
-        }
+        val (coverage, unreadable) = packCoverage(origin, destination, planner, resolver)
+        var incomplete = unreadable
         if (coverage.none { it.coversOrigin } || coverage.none { it.coversDestination }) return notCovered()
         val current = coverage.filter { it.pack.lastServiceDate?.isBefore(serviceDate) != true }
         if (current.none { it.coversOrigin } || current.none { it.coversDestination }) {
             return ProviderResult.Partial(emptyList(), setOf(ProviderWarning.STALE_SOURCE), meta)
         }
+        // A pack that ended before the searched day is left out: the answer says so even when the other packs find
+        // journeys (after 12 December 2026 a Milano – Roma search would otherwise list Trenitalia only, as if complete).
+        val stale = expiredPacks(coverage, origin, destination, serviceDate).isNotEmpty()
 
         // The pack the route search prefers for planned itineraries comes first, so that when two packs publish
         // the same train its copy is the one kept.
@@ -525,18 +555,23 @@ class EmbeddedGtfsJourneyProvider internal constructor(
         val urban = current.filter { it.pack.isUrban }
             .sortedByDescending { (if (it.coversOrigin) 1 else 0) + (if (it.coversDestination) 1 else 0) }
             .take(settings.maxUrbanPacksPerSearch)
-        val primary = ranked.filter { it.coversOrigin && it.coversDestination }
+        // Every pack serving both ends takes part, however many they are: Milano Centrale – Verona Porta Nuova is in
+        // the Swiss, Trenord, Italo and Trenitalia packs, and the one ranked last (Trenitalia) has most of the trains.
+        // [GtfsJourneyPlannerSettings.maxPacksPerSearch] only bounds the packs added for a change between packs; the
+        // size of a search is bounded by its connections ([GtfsJourneyPlannerSettings.maxSearchConnections]).
+        val primary = ranked.filter { it.coversOrigin && it.coversDestination }.take(MAX_SLICES / MAX_DAY_PARTS - urban.size)
         val railSelections = if (ranked.any { it.coversOrigin } && ranked.any { it.coversDestination }) {
-            val union = unionForChanges(ranked, origin, destination, resolver)
+            val union = unionForChanges(ranked, origin, destination, resolver).take(settings.maxPacksPerSearch)
             // A national pack (Trenitalia) serves both ends of most Italian searches: the free places of the first
             // selection go to the packs the change pairing chose, so a regional network that only serves one end
             // (the South Tyrol trains to Merano) still takes part when the national pack alone would find a journey.
-            val primaryWithChanges = (primary.take(settings.maxPacksPerSearch) + union).distinctBy { it.pack.sourceId }
+            val primaryWithChanges = (primary + union).distinctBy { it.pack.sourceId }
+                .take(maxOf(primary.size, settings.maxPacksPerSearch))
             listOf(primaryWithChanges, union)
         } else {
             // One end is reached only by a city network: the railway packs of the other end.
-            listOf(ranked.filter { it.coversOrigin || it.coversDestination })
-        }.filter(List<PackCoverage>::isNotEmpty).map { selection -> selection.take(settings.maxPacksPerSearch).sortedBy(ranked::indexOf) }
+            listOf(ranked.filter { it.coversOrigin || it.coversDestination }.take(settings.maxPacksPerSearch))
+        }.filter(List<PackCoverage>::isNotEmpty).map { selection -> selection.sortedBy(ranked::indexOf) }
         // A journey to or from a city stop (Duomo, Peretola Aeroporto) takes the city lines from the start. Between two
         // railway stations the railway packs are searched as before and the city lines of the two ends only join when
         // they find nothing: a long-distance search through Milan does not read the Milan metro and trams.
@@ -546,7 +581,7 @@ class EmbeddedGtfsJourneyProvider internal constructor(
         val selections = buildList {
             if (!endAtCityStop) railSelections.forEach { add(it) }
             // Both ends in a city network (Milano Centrale to Duomo): the city lines with the railway packs serving both.
-            if (urban.any { it.coversOrigin } && urban.any { it.coversDestination }) add(primary.take(settings.maxPacksPerSearch) + urban)
+            if (urban.any { it.coversOrigin } && urban.any { it.coversDestination }) add(primary + urban)
             if (urban.isNotEmpty()) railSelections.forEach { add(it + urban) }
         }.filter(List<PackCoverage>::isNotEmpty).distinctBy { selection -> selection.map { it.pack.sourceId } }
 
@@ -559,9 +594,59 @@ class EmbeddedGtfsJourneyProvider internal constructor(
             // that allows a change between packs.
             if (options.isNotEmpty()) break
         }
-        return if (incomplete) ProviderResult.Partial(options, setOf(ProviderWarning.INCOMPLETE_COVERAGE), meta)
-        else ProviderResult.Success(options, meta)
+        val warnings = buildSet {
+            if (incomplete) add(ProviderWarning.INCOMPLETE_COVERAGE)
+            if (stale) add(ProviderWarning.STALE_SOURCE)
+        }
+        return if (warnings.isEmpty()) ProviderResult.Success(options, meta) else ProviderResult.Partial(options, warnings, meta)
     }
+
+    /**
+     * The packs that know [origin] or [destination] (their own stops, or stops a short walk away), in registry order,
+     * and whether a pack over its reading limits had to be left out.
+     */
+    private suspend fun packCoverage(
+        origin: Endpoint,
+        destination: Endpoint,
+        planner: GtfsJourneyPlannerSettings,
+        resolver: GtfsStopStationResolver
+    ): Pair<List<PackCoverage>, Boolean> {
+        var unreadable = false
+        val coverage = ArrayList<PackCoverage>()
+        for (pack in packs) {
+            currentCoroutineContext().ensureActive()
+            // A city network is read only for a search with an end in its city (or at one of its stops).
+            if (pack.isUrban && !urbanCandidate(pack, origin, destination)) continue
+            val stops = try {
+                packStops(pack, resolver)
+            } catch (_: GtfsCompactIndexLimitException) {
+                unreadable = true
+                continue
+            }
+            val originNodes = stops.accessFor(origin, planner)
+            val destinationNodes = stops.accessFor(destination, planner)
+            if (originNodes.isNotEmpty() || destinationNodes.isNotEmpty()) {
+                coverage += PackCoverage(pack, stops, originNodes, destinationNodes)
+            }
+        }
+        return coverage to unreadable
+    }
+
+    /**
+     * The packs of [coverage] that end before [serviceDate] and whose trains a journey of that day would miss: a
+     * railway pack with a stop of its own at either end (not one that is only a walk away), and a city network when an
+     * end is one of its stops.
+     */
+    private fun expiredPacks(coverage: List<PackCoverage>, origin: Endpoint, destination: Endpoint, serviceDate: LocalDate): List<PackCoverage> =
+        coverage.filter { covered ->
+            if (covered.pack.lastServiceDate?.isBefore(serviceDate) != true) return@filter false
+            if (covered.pack.isUrban) {
+                val id = covered.pack.sourceId.value
+                origin.gtfsStop?.first == id || destination.gtfsStop?.first == id
+            } else {
+                covered.originNodes.containsValue(0) || covered.destinationNodes.containsValue(0)
+            }
+        }
 
     /**
      * Packs for a journey that changes between packs. A pack serving the origin and one serving the destination
@@ -1477,7 +1562,9 @@ class EmbeddedGtfsJourneyProvider internal constructor(
                 serviceDate = day.serviceDate,
                 wheelchair = wheelchair,
                 bikesAllowed = bikesOnBoard(bikes),
-                continuations = continuations
+                continuations = continuations,
+                // What the scan asked for a change at the boarding point, so the live check of the change asks the same.
+                changeMinutes = graph.timetable.transferMinutes[graph.timetable.departureNode[leg.boardConnection]]
             )
         }
         fun walk(from: Pair<StationId, String>, to: Pair<StationId, String>, startMinute: Int, minutes: Int, fromAccessible: Boolean, toAccessible: Boolean) = JourneyLeg(
@@ -1787,6 +1874,8 @@ class EmbeddedGtfsJourneyProvider internal constructor(
         companion object {
             /** About 550 m of latitude: the nearby search reads the 3 x 5 cells around a point. */
             private const val GRID_DEGREES = 0.005
+            /** Stops of one pack with the same name and no parent station are one transfer point up to this distance. */
+            private const val SAME_PLACE_METERS = 150.0
 
             private fun key(row: Long, column: Long): Long = (row shl 32) xor (column and 0xFFFFFFFFL)
 
@@ -1798,7 +1887,7 @@ class EmbeddedGtfsJourneyProvider internal constructor(
              * publishes, if any, else by name, else by its coordinates and name: [GtfsStopStationResolver.nearbyStation],
              * so that STA's "Verona" is Verona Porta Nuova, with its change time and no walk between two names of one
              * station); the platforms of one parent_station share the station any of them resolves to (when they agree). Stops the catalogue does not know stay points of their own pack:
-             * grouped by parent_station, or by identical name when they have none. The stops of a city network
+             * grouped by parent_station, or by identical name when they have none and are at most [SAME_PLACE_METERS] apart. The stops of a city network
              * ([EmbeddedGtfsPack.isUrban]) never resolve to a catalogue station: they reach stations by walking.
              */
             fun build(pack: EmbeddedGtfsPack, directory: GtfsStopDirectory, resolver: GtfsStopStationResolver): PackStops {
@@ -1833,6 +1922,26 @@ class EmbeddedGtfsJourneyProvider internal constructor(
                         resolved[index] != null -> resolved[index]!!.id
                         grouped -> "${sourceId.value}:group:$group"
                         else -> "${sourceId.value}:name:${GtfsStopStationResolver.normalize(directory.names[index])}"
+                    }
+                }
+                // Two stops with one name are one place only when they are close: Napoli's two funicular stations
+                // "C.so V. Emanuele" are 780 m apart, and a change between them is a walk, not a three-minute change.
+                val sameName = HashMap<String, MutableList<Int>>()
+                val namePrefix = "${sourceId.value}:name:"
+                for (index in 0 until size) if (nodeKeys[index].startsWith(namePrefix)) sameName.getOrPut(nodeKeys[index]) { ArrayList(2) } += index
+                for ((key, members) in sameName) {
+                    if (members.size < 2) continue
+                    // The first stop of each place; a stop without coordinates stays with the first one.
+                    val anchors = ArrayList<Int>(2)
+                    for (index in members) {
+                        val latitude = directory.latitude(index) ?: continue
+                        val longitude = directory.longitude(index) ?: continue
+                        val place = anchors.indexOfFirst { anchor ->
+                            GtfsStationCodeIndex.distanceKm(directory.latitude(anchor)!!, directory.longitude(anchor)!!, latitude, longitude) * 1000.0 <= SAME_PLACE_METERS
+                        }
+                        if (place < 0) anchors += index
+                        val number = if (place < 0) anchors.size else place + 1
+                        if (number > 1) nodeKeys[index] = "$key#$number"
                     }
                 }
                 val indexById = HashMap<String, Int>(size * 2)
@@ -2047,10 +2156,10 @@ class EmbeddedGtfsJourneyProvider internal constructor(
 
         private val URBAN_MODES = setOf(LegMode.METRO, LegMode.TRAM, LegMode.FUNICULAR)
         private const val MINUTES_PER_DAY = 24 * 60
-        /** Packs read for one map of trains in motion, like the railway packs of one search. */
+        /** Packs read for the map of trains in motion of an area. */
         private const val MAX_RUN_PACKS = 3
-        /** Until this minute of the day (noon) the runs of yesterday's service day can still be on the move. */
-        private const val YESTERDAY_RUNS_UNTIL_MINUTE = 12 * 60
+        /** Bound on the remembered ends of yesterday's evening parts (one per pack and day). */
+        private const val MAX_EVENING_ENDS = 64
         /** Yesterday's evening is read from this long before the look-back, so a run between two stops keeps both. */
         private const val RUN_SEGMENT_MARGIN_MINUTES = 60
         /** Longest stop of a vehicle between two trips the traveller can stay on board through. */
@@ -2082,6 +2191,8 @@ class EmbeddedGtfsJourneyProvider internal constructor(
             return number to line
         }
         private const val MAX_SLICES = 63
+        /** Service days read per pack in one search: the previous, the requested and the next one. */
+        private const val MAX_DAY_PARTS = 3
         private const val MAX_ENCODED_DURATION = 0x3FFF
 
         /**

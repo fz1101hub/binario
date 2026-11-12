@@ -8,7 +8,6 @@ import it.binario.app.data.catalog.EmbeddedCuratedRailStationCatalog
 import it.binario.app.data.gtfs.EmbeddedGtfsRealtimeScheduleResolver
 import it.binario.app.data.gtfs.EmbeddedGtfsPacks
 import it.binario.app.data.gtfs.EmbeddedGtfsRouteAdapter
-import it.binario.app.data.gtfs.EmbeddedGtfsStationSearchIndex
 import it.binario.app.data.gtfs.EmbeddedUrbanStopIndex
 import it.binario.app.data.journey.EmbeddedGtfsJourneyProvider
 import it.binario.app.data.provider.JourneyProvider
@@ -47,7 +46,6 @@ object BinarioDataGraph {
     private val routeSourcesByPackage = mutableMapOf<String, TrainDataSource>()
     private val realtimeResolversByPackage = mutableMapOf<String, EmbeddedGtfsRealtimeScheduleResolver>()
     private val numberSearchByPackage = mutableMapOf<String, TrainNumberSearchService>()
-    private val stationIndexesByPackage = mutableMapOf<String, EmbeddedGtfsStationSearchIndex>()
     private val journeySearchByPackage = mutableMapOf<String, JourneySearchService>()
     private val offlinePlannersByPackage = mutableMapOf<String, EmbeddedGtfsJourneyProvider>()
     private val urbanStopIndexesByPackage = mutableMapOf<String, EmbeddedUrbanStopIndex>()
@@ -175,18 +173,6 @@ object BinarioDataGraph {
                     networkName = RailSourceCatalog.byId(pack.sourceId)?.displayName ?: pack.sourceId.value
                 )
             }
-        }
-    }
-
-    fun stationSearchIndex(context: Context): EmbeddedGtfsStationSearchIndex = synchronized(stationIndexesByPackage) {
-        val applicationContext = context.applicationContext
-        stationIndexesByPackage.getOrPut(applicationContext.packageName) {
-            val activeCatalogSources = defaultRegistry.activeFor(ProviderCapability.STATION_CATALOG)
-                .mapTo(linkedSetOf()) { it.descriptor.id }
-            EmbeddedGtfsStationSearchIndex(
-                openAsset = { assetPath -> applicationContext.assets.open(assetPath) },
-                activeSourceIds = activeCatalogSources
-            )
         }
     }
 

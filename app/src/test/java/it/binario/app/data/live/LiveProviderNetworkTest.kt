@@ -247,7 +247,14 @@ class LiveProviderNetworkTest {
             from = now.minusSeconds(3600), to = now.plusSeconds(20 * 3600), kind = BoardKind.DEPARTURES))
         if (result !is ProviderResult.Success) fail("viaggiatreno $name: $result")
         val entries = (result as ProviderResult.Success).value.entries
-        assertTrue("viaggiatreno $name: no parseable departures", entries.isNotEmpty())
+        // Overnight the board itself lists no departure (02:08 on 12 November at Roma Termini and Milano Centrale):
+        // nothing to verify, so the check is skipped. Rows the adapter cannot read still fail it.
+        val rows = bodies.sumOf { LiveAcceptanceEvidence.viaggiaTrenoBoardRows(it) }
+        if (rows == 0 && entries.isEmpty()) {
+            println("LIVE_ACCEPTANCE viaggiatreno $name: the board publishes no departure at this moment")
+            return false
+        }
+        assertTrue("viaggiatreno $name: no parseable departures among $rows published rows", entries.isNotEmpty())
         val operational = entries.count { it.expectedTime != null || it.status != null }
         val published = bodies.sumOf { LiveAcceptanceEvidence.viaggiaTrenoBoardObservations(it, now) }
         println("LIVE_ACCEPTANCE viaggiatreno $name: departures=${entries.size}, operational=$operational, publishedObservations=$published")
@@ -581,6 +588,9 @@ class LiveProviderNetworkTest {
         if (result !is ProviderResult.Success) fail("$id: $result")
         val updates = (result as ProviderResult.Success).value
         val fresh = updates.filter { !it.observedAt.isBefore(now.minusSeconds(300)) && !it.observedAt.isAfter(now.plusSeconds(60)) }
+        // A feed with no fresh update at all is a network asleep (South Tyrol at 03:00): nothing to verify, the check is
+        // skipped. Fresh updates without any timing still fail it.
+        assumeTrue("$id: the feed publishes no fresh update at this moment (${updates.size} in total)", fresh.isNotEmpty())
         assertTrue("$id: no fresh updates with published timing", fresh.any { it.officialDelay != null || it.predictedAt != null })
         val assets by lazy { listOf(File("src/main/assets"), File("app/src/main/assets")).first { it.isDirectory } }
         val pack = LiveAcceptanceEvidence.GtfsPackIdentity.read(customPack ?: File(assets, "gtfs/$staticSource.zip").readBytes())

@@ -661,6 +661,14 @@ private fun JourneyNotices(
     if (presentation.showIncompleteNotice) {
         InfoNoticeCard(text = stringResource(R.string.journey_incomplete_notice))
     }
+    if (optionsShown && presentation.showExpiredNotice) {
+        // The networks whose included timetable stops before the chosen day, then the usual "update the app".
+        InfoNoticeCard(
+            title = presentation.expiredNetworks.joinToString(", ").ifEmpty { null },
+            text = stringResource(R.string.journey_empty_schedule_expired),
+            modifier = Modifier.testTag("journeys-expired")
+        )
+    }
     if (presentation.accessibilityDataUnavailable) {
         InfoNoticeCard(text = stringResource(R.string.journey_accessibility_unavailable), modifier = Modifier.testTag("journeys-accessibility-unavailable"))
     }
