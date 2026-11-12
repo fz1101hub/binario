@@ -119,6 +119,9 @@ Dodici revisori indipendenti, ognuno con un punto di vista diverso, hanno trovat
   - **Viaggi con più tratte**: l'editor ne gestisce fino a 4 («Aggiungi tratta», «Rimuovi tratta»; la partenza della tratta successiva è l'arrivo della precedente), modificarne uno non perde più le tratte dopo la prima, e «Ritorno» e «Ripianifica» valgono anche per loro. L'iPhone per ora importa solo i viaggi di una tratta senza ripetizioni.
   - **Dettatura** di una tratta nell'editor, con le stesse regole e lingue del pianificatore.
   - **Privacy**: tutto resta sul telefono (PRIVACY.md).
+- **iPhone, «Scrivi o detta la tratta» e «Stazione più vicina»** (importate dall'app compagna Expo):
+  - **Dettatura**: nel pianificatore e nell'editor dell'Agenda si scrive o si detta con la tastiera la tratta («da Roma Termini a Torino Porta Nuova domani alle 18»). L'iPhone la legge con le stesse regole di Android nelle 17 lingue; i 264 casi sono in un file comune (`contracts/voice-input/v1`) controllato da entrambe le app. Binario non apre il microfono e non chiede permessi.
+  - **Stazione più vicina**: per la partenza nel pianificatore e nell'Agenda, e in «Partenze». Il permesso di posizione viene chiesto solo al tocco, la posizione è letta una volta, usata sul telefono e mai salvata né inviata; nessuna stazione oltre 50 km.
 - **Ultime correzioni dell'audit**:
   - **iPhone, ricerca delle stazioni** più veloce: i nomi del catalogo si preparano una volta all'avvio invece che a ogni lettera; risultati identici, verificati su 30 ricerche.
   - **Android, «Partenze»**: quando nessun tabellone live risponde e resta l'orario programmato, l'avviso dice «Sono disponibili solo orari programmati»; «Realtime parzialmente non disponibile» resta per i casi davvero parziali.
