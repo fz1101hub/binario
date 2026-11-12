@@ -124,19 +124,29 @@ class TrainsWidgetPresenterTest {
 
     @Test
     fun `the run of an earlier day never shows its live values the next day`() {
-        // The last refresh saw the run of 2 November cancelled; on the 3rd, before any refresh, the row is that day's timetable.
+        // The last refresh saw the run of 2 November cancelled; on the 3rd, before any refresh (or on a day the train
+        // does not run), the row shows only its timetable departure, dated, and claims nothing about today.
         val cancelled = status.copy(cancelled = true, delayMinutes = null)
         val nextDay = day.plusDays(1)
         val row = TrainsWidgetPresenter.row(ServiceMonitor("2153", ""), cancelled, TrainsWidgetSettings(), millisOn(nextDay, 7, 0), strings)
 
-        assertEquals("PROGRAM.", row.status)
-        assertEquals(TrainsRowEmphasis.NORMAL, row.emphasis)
-        assertEquals("Partenza 07:42 da Roma Termini", row.detail)
+        assertEquals("—", row.status)
+        assertEquals(TrainsRowEmphasis.MUTED, row.emphasis)
+        assertEquals("Ultimo dato 2 nov 08:00 · Partenza 07:42 da Roma Termini", row.detail)
         assertFalse(row.accessibility.contains("soppresso"))
-        // The "only running trains" filter judges that day's run by its timetable, not by the old cancellation.
+        assertFalse(row.accessibility.contains("In orario"))
+        // Never counted as running: today's run is unknown.
         assertFalse(TrainsWidgetPresenter.isRunning(cancelled, millisOn(nextDay, 7, 0)))
-        assertTrue(TrainsWidgetPresenter.isRunning(cancelled, millisOn(nextDay, 8, 0)))
+        assertFalse(TrainsWidgetPresenter.isRunning(cancelled, millisOn(nextDay, 8, 0)))
         assertFalse(TrainsWidgetPresenter.isRunning(cancelled, millisOn(nextDay, 9, 0)))
+        // The same after a refresh that found no run (marked stale), and times are never moved to today.
+        val shown = TrainsWidgetPresenter.forToday(cancelled.copy(stale = true), millisOn(nextDay, 8, 0), zone)
+        assertEquals(millis(7, 42), shown.scheduledDepartureEpochMillis)
+        assertFalse(shown.operationalVerified)
+        assertFalse(TrainsWidgetPresenter.isRunning(cancelled.copy(stale = true), millisOn(nextDay, 8, 0)))
+        // A run of yesterday that arrived just after midnight is over too.
+        val lateNight = status.copy(scheduledDepartureEpochMillis = millis(23, 0), arrivalEpochMillis = millisOn(nextDay, 0, 5), arrived = true)
+        assertFalse(TrainsWidgetPresenter.isRunning(lateNight, millisOn(nextDay, 0, 8)))
     }
 
     @Test
