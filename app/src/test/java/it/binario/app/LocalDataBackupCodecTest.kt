@@ -249,4 +249,32 @@ class LocalDataBackupCodecTest {
             "curated:S12891",
         ).toSet()
     }
+
+    @Test
+    fun `the export is checked with the import's rules before a file is written`() {
+        val roma = Station("roma", "Roma Termini", "Roma")
+        val torino = Station("torino", "Torino Porta Nuova", "Torino")
+        val text = { id: Int -> if (id == R.string.backup_export_nothing) "nothing" else if (id == R.string.backup_import_too_large) "too large" else "?" }
+        val nothing = LocalDataBackup(emptyList(), emptySet(), emptyList(), emptyList(), emptyList(), MobilityPreferences(), punctualityHistory = emptyList())
+        assertEquals(BackupExport.NothingToExport, LocalDataBackupCodec.prepareExport(nothing, emptyList()))
+        assertEquals("nothing", LocalDataBackupCodec.exportRefusalReason(BackupExport.NothingToExport, text))
+
+        val route = SavedRoute("route", "Casa – lavoro", roma, torino)
+        val ready = LocalDataBackupCodec.prepareExport(nothing.copy(routes = listOf(route), stations = listOf(roma, torino)), emptyList())
+        assertTrue(ready is BackupExport.Ready)
+        assertNull(LocalDataBackupCodec.exportRefusalReason(ready, text))
+        // Compact JSON, read back by the import as it is.
+        val content = (ready as BackupExport.Ready).content
+        assertTrue(!content.contains("\n"))
+        assertEquals("route", (LocalDataBackupCodec.decode(content, emptyList()) as LocalBackupResult.Success).backup.routes.single().id)
+
+        val huge = nothing.copy(monitoredServices = listOf(ServiceMonitor("9631", "x".repeat(LocalDataBackupCodec.MAX_BYTES))))
+        assertEquals(BackupExport.TooLarge, LocalDataBackupCodec.prepareExport(huge, emptyList()))
+        assertEquals("too large", LocalDataBackupCodec.exportRefusalReason(BackupExport.TooLarge, text))
+
+        // A route whose stations neither the catalogue nor the file can name: the import would refuse the file.
+        val refused = LocalDataBackupCodec.prepareExport(nothing.copy(routes = listOf(route)), emptyList())
+        assertTrue(refused is BackupExport.Refused)
+        assertEquals((refused as BackupExport.Refused).reason, LocalDataBackupCodec.exportRefusalReason(refused, text))
+    }
 }

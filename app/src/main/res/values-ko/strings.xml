@@ -411,6 +411,7 @@
     <string name="backup_export_failure">내보내기 실패: %1$s</string>
     <string name="backup_import_failure">가져오기 실패: %1$s</string>
     <string name="backup_import_too_large">백업이 1 MiB 제한을 초과합니다.</string>
+    <string name="backup_export_nothing">아직 내보낼 데이터가 없습니다.</string>
     <string name="personal_travel_title">여정 및 모니터링</string>
     <string name="personal_travel_active">진행 중인 여정 · 열차 %1$s</string>
     <string name="personal_travel_next_stop">다음 정차역: %1$s, 예상 %2$s</string>

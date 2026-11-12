@@ -433,6 +433,7 @@
     <string name="backup_export_failure">Error al exportar: %1$s</string>
     <string name="backup_import_failure">Error al importar: %1$s</string>
     <string name="backup_import_too_large">El backup supera el límite de 1 MiB.</string>
+    <string name="backup_export_nothing">Todavía no hay datos para exportar.</string>
 
     <string name="personal_travel_title">Viaje y seguimientos</string>
     <string name="personal_travel_active">Viaje activo · Tren %1$s</string>

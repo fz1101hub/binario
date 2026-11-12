@@ -76,6 +76,7 @@ import androidx.core.content.ContextCompat
 import it.binario.app.ActiveStopAlarmsPanel
 import it.binario.app.AlertRepeat
 import it.binario.app.AppThemeMode
+import it.binario.app.BackupExport
 import it.binario.app.BackgroundStatusPanel
 import it.binario.app.BuildConfig
 import it.binario.app.CommuterAlert
@@ -352,11 +353,16 @@ private fun DataSettings(viewModel: TrainViewModel) {
     val coroutineScope = rememberCoroutineScope()
     val createBackupDocument = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument(LocalDataBackupCodec.MIME_TYPE)) { uri ->
         if (uri == null) return@rememberLauncherForActivityResult
-        backupFeedback = runCatching {
-            context.contentResolver.openReplacingOutputStream(uri)?.bufferedWriter()?.use { it.write(viewModel.exportLocalBackup()) }
-                ?: error(resources.getString(R.string.backup_open_output_error))
-            resources.getString(R.string.backup_export_success)
-        }.getOrElse { resources.getString(R.string.backup_export_failure, it.message ?: resources.getString(R.string.backup_file_error)) }
+        coroutineScope.launch {
+            backupFeedback = runCatching {
+                val export = viewModel.prepareLocalBackupExport()
+                LocalDataBackupCodec.exportRefusalReason(export, resources::getString)?.let { error(it) }
+                val content = (export as BackupExport.Ready).content
+                withContext(Dispatchers.IO) { context.contentResolver.openReplacingOutputStream(uri)?.bufferedWriter()?.use { it.write(content) } }
+                    ?: error(resources.getString(R.string.backup_open_output_error))
+                resources.getString(R.string.backup_export_success)
+            }.getOrElse { resources.getString(R.string.backup_export_failure, it.message ?: resources.getString(R.string.backup_file_error)) }
+        }
     }
     val openBackupDocument = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri == null) return@rememberLauncherForActivityResult
@@ -384,7 +390,14 @@ private fun DataSettings(viewModel: TrainViewModel) {
     }
     LocalBackupPanel(
         feedback = backupFeedback,
-        onExport = { createBackupDocument.launch("binario-backup.json") },
+        // A file the import would refuse is not even created: the reason is shown instead of the picker.
+        onExport = {
+            coroutineScope.launch {
+                LocalDataBackupCodec.exportRefusalReason(viewModel.prepareLocalBackupExport(), resources::getString)
+                    ?.let { backupFeedback = resources.getString(R.string.backup_export_failure, it) }
+                    ?: createBackupDocument.launch("binario-backup.json")
+            }
+        },
         onImport = { openBackupDocument.launch(arrayOf(LocalDataBackupCodec.MIME_TYPE, "text/plain")) }
     )
 }

@@ -417,6 +417,7 @@
     <string name="backup_export_failure">Xuất thất bại: %1$s</string>
     <string name="backup_import_failure">Nhập thất bại: %1$s</string>
     <string name="backup_import_too_large">Bản sao lưu vượt quá giới hạn 1 MiB.</string>
+    <string name="backup_export_nothing">Chưa có dữ liệu để xuất.</string>
 
     <string name="personal_travel_title">Hành trình và theo dõi</string>
     <string name="personal_travel_active">Hành trình đang diễn ra · Tàu %1$s</string>

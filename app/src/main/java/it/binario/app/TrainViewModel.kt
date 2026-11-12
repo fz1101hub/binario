@@ -1439,26 +1439,34 @@ class TrainViewModel @JvmOverloads constructor(
         mobilityPreferencesStore.save(value)
     }
 
-    fun exportLocalBackup(): String {
+    /**
+     * The backup «Esporta» writes, encoded and read back off the main thread with the import's own rules
+     * ([LocalDataBackupCodec.prepareExport]): a file the import would refuse is never written.
+     */
+    suspend fun prepareLocalBackupExport(): BackupExport {
+        val backup = localBackup()
+        val catalogue = stations
+        return withContext(Dispatchers.Default) { LocalDataBackupCodec.prepareExport(backup, catalogue) }
+    }
+
+    private fun localBackup(): LocalDataBackup {
         val favouriteIds = stationPreferences.favouriteIds()
         val monitoredStationIds = stationMonitors.mapTo(hashSetOf()) { it.stationId }
-        return LocalDataBackupCodec.encode(
-            LocalDataBackup(
-                routes = savedRoutes,
-                favouriteStationIds = favouriteIds,
-                monitoredServices = monitoredServices,
-                stationMonitors = stationMonitors,
-                commuterAlerts = commuterAlerts,
-                mobilityPreferences = mobilityPreferences,
-                // Right after start the history may still be on its way: the file never misses it.
-                punctualityHistory = if (punctualityHistoryLoaded) punctualityHistory else punctualityStore.read(),
-                savedTimetables = SavedTimetableStore.all(getApplication()),
-                travelPreferences = TravelPreferencesRepository.current(getApplication()),
-                stations = (
-                    savedRoutes.flatMap { listOf(it.outwardOrigin, it.outwardDestination) } +
-                        stations.filter { it.id in favouriteIds || it.id in monitoredStationIds }
-                    ).distinctBy { it.id }
-            )
+        return LocalDataBackup(
+            routes = savedRoutes,
+            favouriteStationIds = favouriteIds,
+            monitoredServices = monitoredServices,
+            stationMonitors = stationMonitors,
+            commuterAlerts = commuterAlerts,
+            mobilityPreferences = mobilityPreferences,
+            // Right after start the history may still be on its way: the file never misses it.
+            punctualityHistory = if (punctualityHistoryLoaded) punctualityHistory else punctualityStore.read(),
+            savedTimetables = SavedTimetableStore.all(getApplication()),
+            travelPreferences = TravelPreferencesRepository.current(getApplication()),
+            stations = (
+                savedRoutes.flatMap { listOf(it.outwardOrigin, it.outwardDestination) } +
+                    stations.filter { it.id in favouriteIds || it.id in monitoredStationIds }
+                ).distinctBy { it.id }
         )
     }
 
