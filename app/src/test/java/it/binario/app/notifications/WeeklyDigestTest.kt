@@ -118,7 +118,8 @@ class WeeklyDigestTest {
             noRuns = catalogue.getValue("weekly_digest_no_runs"),
             network = { days, percent -> "ultimi $days giorni sulla rete: $percent% in orario" },
             worse = catalogue.getValue("weekly_digest_worse"),
-            attribution = catalogue.getValue("reliability_attribution")
+            attribution = catalogue.getValue("reliability_attribution"),
+            within = { text, minutes -> String.format(Locale.ROOT, catalogue.getValue("reliability_within_limit"), text, "$minutes min") }
         )
     }
 
@@ -130,20 +131,20 @@ class WeeklyDigestTest {
         assertEquals(
             listOf(
                 "Peggiorato: Treno 2153, 25% in orario questa settimana (di solito 83%)",
-                "Treno 2153: In orario 1 volta su 4 · soppresso 1 volta · ultimi 30 giorni sulla rete: 83% in orario",
-                "Il Freccia del lunedì: nessuna corsa registrata · ultimi 30 giorni sulla rete: 90% in orario",
+                "Treno 2153: In orario 1 volta su 4 (entro 5 min) · soppresso 1 volta · ultimi 30 giorni sulla rete: 83% in orario (entro 15 min)",
+                "Il Freccia del lunedì: nessuna corsa registrata · ultimi 30 giorni sulla rete: 90% in orario (entro 5 min)",
                 "Statistiche non ufficiali di Binario su dati ViaggiaTreno, aggiornate al 9 nov 2026"
             ),
             WeeklyDigestText.lines(digest, strings, LocalDate.of(2026, 11, 9))
         )
         assertEquals("Peggiorato: Treno 2153, 25% in orario questa settimana (di solito 83%)", WeeklyDigestText.summary(digest, strings))
         val calm = digest.copy(worse = null)
-        assertEquals("In orario 1 volta su 4", WeeklyDigestText.summary(calm, strings))
+        assertEquals("In orario 1 volta su 4 (entro 5 min)", WeeklyDigestText.summary(calm, strings))
         // Without network shares (or without the statistics) there is nothing to attribute.
         val local = WeeklyDigest(sunday, listOf(regionalTrain.copy(network = null)), null)
-        assertEquals(listOf("Treno 2153: In orario 1 volta su 4 · soppresso 1 volta"), WeeklyDigestText.lines(local, strings, LocalDate.of(2026, 11, 9)))
-        assertEquals(listOf("Il Freccia del lunedì: nessuna corsa registrata · ultimi 30 giorni sulla rete: 90% in orario"), WeeklyDigestText.lines(WeeklyDigest(sunday, listOf(freccia), null), strings, null))
-        assertEquals("Il Freccia del lunedì: nessuna corsa registrata · ultimi 30 giorni sulla rete: 90% in orario", WeeklyDigestText.summary(WeeklyDigest(sunday, listOf(freccia), null), strings))
+        assertEquals(listOf("Treno 2153: In orario 1 volta su 4 (entro 5 min) · soppresso 1 volta"), WeeklyDigestText.lines(local, strings, LocalDate.of(2026, 11, 9)))
+        assertEquals(listOf("Il Freccia del lunedì: nessuna corsa registrata · ultimi 30 giorni sulla rete: 90% in orario (entro 5 min)"), WeeklyDigestText.lines(WeeklyDigest(sunday, listOf(freccia), null), strings, null))
+        assertEquals("Il Freccia del lunedì: nessuna corsa registrata · ultimi 30 giorni sulla rete: 90% in orario (entro 5 min)", WeeklyDigestText.summary(WeeklyDigest(sunday, listOf(freccia), null), strings))
     }
 
     @Test fun `the digest work has its own name and the setting is off by default in the panel order`() {

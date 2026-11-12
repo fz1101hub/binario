@@ -1465,6 +1465,8 @@
         <item quantity="one">%2$d में से %1$d बार समय पर</item>
         <item quantity="other">%2$d में से %1$d बार समय पर</item>
     </plurals>
+    <!-- The on-time limit after a count: «In orario 8 volte su 10 (entro 5 min)» -->
+    <string name="reliability_within_limit">%1$s (%2$s के भीतर)</string>
     <plurals name="reliability_leg_on_time_count">
         <item quantity="one">%1$s %3$d में से %2$d बार समय पर</item>
         <item quantity="other">%1$s %3$d में से %2$d बार समय पर</item>

@@ -1429,6 +1429,8 @@
     <plurals name="reliability_on_time_count">
         <item quantity="other">%2$d회 중 %1$d회 정시</item>
     </plurals>
+    <!-- The on-time limit after a count: «In orario 8 volte su 10 (entro 5 min)» -->
+    <string name="reliability_within_limit">%1$s(%2$s 이내)</string>
     <plurals name="reliability_leg_on_time_count">
         <item quantity="other">%1$s %3$d회 중 %2$d회 정시</item>
     </plurals>

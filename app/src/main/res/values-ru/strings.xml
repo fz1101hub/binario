@@ -1537,6 +1537,8 @@
         <item quantity="many">Вовремя %1$d раз из %2$d</item>
         <item quantity="other">Вовремя %1$d раза из %2$d</item>
     </plurals>
+    <!-- The on-time limit after a count: «In orario 8 volte su 10 (entro 5 min)» -->
+    <string name="reliability_within_limit">%1$s (до %2$s)</string>
     <plurals name="reliability_leg_on_time_count">
         <item quantity="one">%1$s вовремя %2$d раз из %3$d</item>
         <item quantity="few">%1$s вовремя %2$d раза из %3$d</item>

@@ -1452,6 +1452,8 @@
     <plurals name="reliability_on_time_count">
         <item quantity="other">Đúng giờ %1$d trên %2$d lần</item>
     </plurals>
+    <!-- The on-time limit after a count: «In orario 8 volte su 10 (entro 5 min)» -->
+    <string name="reliability_within_limit">%1$s (trong vòng %2$s)</string>
     <plurals name="reliability_leg_on_time_count">
         <item quantity="other">%1$s đúng giờ %2$d trên %3$d lần</item>
     </plurals>

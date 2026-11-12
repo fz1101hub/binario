@@ -1609,6 +1609,8 @@
         <item quantity="many">في الموعد %1$d مرة من أصل %2$d</item>
         <item quantity="other">في الموعد %1$d مرة من أصل %2$d</item>
     </plurals>
+    <!-- The on-time limit after a count: «In orario 8 volte su 10 (entro 5 min)» -->
+    <string name="reliability_within_limit">%1$s (خلال %2$s)</string>
     <plurals name="reliability_leg_on_time_count">
         <item quantity="zero">%1$s في الموعد %2$d مرة من أصل %3$d</item>
         <item quantity="one">%1$s في الموعد %2$d مرة من أصل %3$d</item>

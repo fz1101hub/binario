@@ -1524,6 +1524,8 @@
         <item quantity="many">À l’heure %1$d fois sur %2$d</item>
         <item quantity="other">À l’heure %1$d fois sur %2$d</item>
     </plurals>
+    <!-- The on-time limit after a count: «In orario 8 volte su 10 (entro 5 min)» -->
+    <string name="reliability_within_limit">%1$s (à %2$s près)</string>
     <plurals name="reliability_leg_on_time_count">
         <item quantity="one">%1$s à l’heure %2$d fois sur %3$d</item>
         <item quantity="many">%1$s à l’heure %2$d fois sur %3$d</item>

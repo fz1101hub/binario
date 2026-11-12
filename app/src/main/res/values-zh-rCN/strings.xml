@@ -1452,6 +1452,8 @@
     <plurals name="reliability_on_time_count">
         <item quantity="other">%2$d 次中准点 %1$d 次</item>
     </plurals>
+    <!-- The on-time limit after a count: «In orario 8 volte su 10 (entro 5 min)» -->
+    <string name="reliability_within_limit">%1$s（%2$s 以内）</string>
     <plurals name="reliability_leg_on_time_count">
         <item quantity="other">%1$s %3$d 次中准点 %2$d 次</item>
     </plurals>
