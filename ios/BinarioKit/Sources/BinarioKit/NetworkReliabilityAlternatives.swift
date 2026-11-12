@@ -49,8 +49,8 @@ public enum ReliableAlternatives {
     public static let minimumGapPoints = 20
     /// …leaving at most this many minutes before or after it.
     public static let windowMinutes = 30
-    /// The results list scheduled timetable data: a train counts as gone this long after its
-    /// scheduled departure.
+    /// A train counts as gone this long after its departure: the scheduled one, or the one a live
+    /// source moved it to (`stillToDepart(_:live:now:)`).
     public static let departedGraceSeconds: TimeInterval = 60
 
     /// The alternative of every train of `candidates` that has one, by the train's key. A train
@@ -76,9 +76,16 @@ public enum ReliableAlternatives {
     /// The alternative of each listed train of `snapshot` that has one, by the id of the train it
     /// is suggested for. `reliability` measures the trains at the searched destination
     /// (`JourneyReliability.byServiceID`): nothing without it. Every listed train is a direct
-    /// train of the bundled timetables; it can be taken until `departedGraceSeconds` after its
-    /// scheduled departure (`stillToDepart`).
-    public static func find(in snapshot: JourneySnapshot, reliability: [String: StopReliability], now: Date) -> [String: ResultAlternative] {
+    /// train of the bundled timetables; `live` is what a live source observed of it where the user
+    /// boards, by the same id (`AppModel.resultLive`), as the list shows it: a train cancelled
+    /// there is never weighed, and a delay the source publishes moves its departure
+    /// (`stillToDepart(_:live:now:)`), as on Android.
+    public static func find(
+        in snapshot: JourneySnapshot,
+        reliability: [String: StopReliability],
+        live: [String: StationBoardLiveStatus] = [:],
+        now: Date
+    ) -> [String: ResultAlternative] {
         guard !reliability.isEmpty else { return [:] }
         let departures = scheduledDepartures(in: snapshot)
         var servicesByID: [String: TrainService] = [:]
@@ -90,7 +97,7 @@ public enum ReliableAlternatives {
                 key: service.id,
                 departure: departure,
                 stop: reliability[service.id],
-                stillToDepart: stillToDepart(departure, now: now)
+                stillToDepart: stillToDepart(departure, live: live[service.id], now: now)
             ))
         }
         var found: [String: ResultAlternative] = [:]
@@ -104,8 +111,19 @@ public enum ReliableAlternatives {
     /// The train can still be taken where the user boards: `now` is before its scheduled
     /// departure plus `departedGraceSeconds`. False without a departure.
     public static func stillToDepart(_ departure: Date?, now: Date) -> Bool {
+        stillToDepart(departure, live: nil, now: now)
+    }
+
+    /// The train can still be taken where the user boards, with what a live source observed of it
+    /// there (Android's `ResultsAlternatives.stillToDepart`): not cancelled, and `now` before its
+    /// scheduled departure plus the delay the source publishes (never earlier) plus
+    /// `departedGraceSeconds`. A train late by unpublished minutes (a bare «RITARDO») counts as
+    /// gone once it is due. False without a departure.
+    public static func stillToDepart(_ departure: Date?, live: StationBoardLiveStatus?, now: Date) -> Bool {
+        if live?.cancelled == true { return false }
         guard let departure else { return false }
-        return now < departure.addingTimeInterval(departedGraceSeconds)
+        let delaySeconds = TimeInterval(max(live?.delayMinutes ?? 0, 0) * 60)
+        return now < departure.addingTimeInterval(delaySeconds + departedGraceSeconds)
     }
 
     /// The scheduled departure of each listed train, by its id: its "HH:mm" in the timetable zone

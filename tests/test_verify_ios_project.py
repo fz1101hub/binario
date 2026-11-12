@@ -907,7 +907,8 @@ class IOSProjectTests(unittest.TestCase):
     def test_more_punctual_alternative_is_the_android_rule_under_the_result_row(self) -> None:
         # «Più puntuale» (app/.../data/reliability/ReliableAlternatives.kt): the same thresholds,
         # shares compared exactly in integers, every listed train a candidate, gone a minute after
-        # its scheduled departure (the bundled timetables have no live data).
+        # its departure, never cancelled, a live delay of the list moving the departure (Android's
+        # ResultsAlternatives.stillToDepart).
         rule = (IOS / "BinarioKit/Sources/BinarioKit/NetworkReliabilityAlternatives.swift").read_text(encoding="utf-8")
         android = (ROOT / "app/src/main/java/it/binario/app/data/reliability/ReliableAlternatives.kt").read_text(encoding="utf-8")
         for android_fragment, fragment in (
@@ -937,7 +938,10 @@ class IOSProjectTests(unittest.TestCase):
             "otherStop.onTimeLimitMinutes == stop.onTimeLimitMinutes",
             "clearlyMoreReliable(otherStop, than: stop)",
             "return gap >= Int64(minimumGapPoints) * betterDenominator * worseDenominator",
-            "return now < departure.addingTimeInterval(departedGraceSeconds)",
+            "if live?.cancelled == true { return false }",
+            "let delaySeconds = TimeInterval(max(live?.delayMinutes ?? 0, 0) * 60)",
+            "return now < departure.addingTimeInterval(delaySeconds + departedGraceSeconds)",
+            "stillToDepart: stillToDepart(departure, live: live[service.id], now: now)",
             "let calendar = NetworkReliabilityDay.romeCalendar",
         ):
             with self.subTest(fragment=fragment):
@@ -957,6 +961,8 @@ class IOSProjectTests(unittest.TestCase):
             "testATrenordRegionalOftenLateAtPaviaGetsTheNextOneByItsPublishedNumber",
             "testTheClosestTrainStillToDepartIsSuggestedNeverOneAlreadyGoneOrNeverRunning",
             "testATrainIsGoneAMinuteAfterItsScheduledDeparture",
+            "testALiveSourceMovesTheDepartureOrCancelsTheTrain",
+            "testTheListsLiveStateDecidesWhichTrainsCanStillBeTaken",
             "testListedTimesArePlacedFromTheQueryTimeOnAcrossMidnight",
             "testTheWindowIs30MinutesAndATrainAsLateGivesNothing",
         ):
@@ -969,7 +975,7 @@ class IOSProjectTests(unittest.TestCase):
         planner = (IOS / "BinarioApp/PlannerView.swift").read_text(encoding="utf-8")
         texts = (IOS / "BinarioApp/ReliabilityTexts.swift").read_text(encoding="utf-8")
         for fragment in (
-            "ReliableAlternatives.find(in: snapshot, reliability: measuredTrains, now: now)",
+            "ReliableAlternatives.find(in: snapshot, reliability: measuredTrains, live: model.resultLive, now: now)",
             "TrainDetailView(service: alternative.service, query: snapshot.query)",
             "ReliableAlternativeLine(alternative: alternative)",
             ".accessibilityHint(Text(ReliabilityTexts.alternativeOpen(alternative)))",

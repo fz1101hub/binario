@@ -320,7 +320,8 @@ private enum ResultOrder: Hashable {
 private struct AvailableResultView: View {
     @EnvironmentObject private var model: AppModel
     let snapshot: JourneySnapshot
-    /// The current minute: a listed train is gone a minute after its scheduled departure.
+    /// The current minute: a listed train is gone a minute after its departure (scheduled, or
+    /// delayed by the minutes a live source publishes).
     let now: Date
     @State private var order: ResultOrder = .departure
 
@@ -329,8 +330,9 @@ private struct AvailableResultView: View {
         let reliability = model.resultReliability
         let measuredTrains = reliability?.byServiceID ?? [:]
         // «Più puntuale: …» under a train often late at the destination: another listed train
-        // leaving within 30 minutes, still to be taken, clearly more often on time there.
-        let alternatives = ReliableAlternatives.find(in: snapshot, reliability: measuredTrains, now: now)
+        // leaving within 30 minutes, still to be taken (not cancelled, its live delay counted),
+        // clearly more often on time there.
+        let alternatives = ReliableAlternatives.find(in: snapshot, reliability: measuredTrains, live: model.resultLive, now: now)
         Section("result.title") {
             if let route = reliability?.route {
                 RoutePunctualityView(route: route)
