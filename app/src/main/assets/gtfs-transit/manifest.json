@@ -43,8 +43,9 @@
           "calendarDates": 26
         }
       },
-      "sha256": "7c26ff3da939f7a97bb093d6040707599e72efa39714870ba47dde4d14474800",
+      "sha256": "923e580507ca272ab4b36b1a5f78eed3ab6fe9ab01b48b311ae08cb100319807",
       "lastServiceDate": "2026-12-31",
+      "fullServiceUntil": "2026-12-31",
       "filter": {
         "kind": "gtfs-rail-route-types",
         "description": "route_type GTFS ferroviari standard ed estesi (2, 100-199).",
@@ -183,8 +184,9 @@
           "calendarDates": 3
         }
       },
-      "sha256": "7c76d995b72775eddd94a2d6cacd4905ab9040ca993367bbe422a3216c7cfe1c",
+      "sha256": "45ab5ec4f665ec96d7108d48e08641ed717b02493e573be6811e231ed0752d5c",
       "lastServiceDate": "2026-12-31",
+      "fullServiceUntil": "2026-12-31",
       "filter": {
         "kind": "gtfs-rail-route-types",
         "description": "route_type GTFS ferroviari standard ed estesi (2, 100-199).",
@@ -323,8 +325,9 @@
           "calendarDates": 6
         }
       },
-      "sha256": "60810401152b3a4fc227f7302c13adf425e6e801b58c20aa5745b15a07ca48e6",
+      "sha256": "b35f68feef6a8e7c1ff814e5d0cb95add2b8c88da37938ab079e911b2cd03d24",
       "lastServiceDate": "2026-12-31",
+      "fullServiceUntil": "2026-12-12",
       "filter": {
         "kind": "gtfs-rail-route-types",
         "description": "route_type GTFS ferroviari standard ed estesi (2, 100-199).",
@@ -463,8 +466,9 @@
           "calendarDates": 16
         }
       },
-      "sha256": "cf907bc25cd1b4aea9adcc2b5414a00282c4b74525f577a1851037d36dea202d",
+      "sha256": "1dc264b948fe703b2a2b0bf80d0ac8722e0e590c19439954fb157994a730ab3b",
       "lastServiceDate": "2026-12-12",
+      "fullServiceUntil": "2026-12-12",
       "filter": {
         "kind": "gtfs-rail-route-types",
         "description": "route_type GTFS ferroviari standard ed estesi (2, 100-199).",
@@ -597,8 +601,9 @@
           "sha256": "952ff25fc2590e8a0eaa715d397a64fbe442aa869cd77b12b516ef8da0faea98"
         }
       },
-      "sha256": "e9ca4187a5a466c57ca51316289e193bf56ea8842a921edb85b6448bb6b313d1",
+      "sha256": "8345f9bdd0203b2ca0346f989c8f0a5a633ba88834a747f12e52b93c5099981d",
       "lastServiceDate": "2026-12-25",
+      "fullServiceUntil": "2026-12-24",
       "filter": {
         "kind": "explicit-route-ids",
         "description": "Selettore revisionato specifico della fonte; nessun matching per nome.",
@@ -632,8 +637,9 @@
         }
       },
       "minValidDays": 14,
-      "sha256": "3a19c0d8229e0d1fd359d0111357c4febcaa49de7f171d42865bfc5727e50c7e",
+      "sha256": "10358f0aeb73c154a3529cde76bfb04dbfc14ac6d66642c0662bcce345edc725",
       "lastServiceDate": "2026-12-24",
+      "fullServiceUntil": "2026-12-20",
       "filter": {
         "kind": "gtfs-urban-route-types",
         "description": "Rete urbana: metropolitana (1, 400-499), tram (0, 900-999), funicolari, cremagliere e ascensori (5, 6, 7, 1300-1499) e monorotaia (12); mai autobus.",
@@ -1047,7 +1053,7 @@
         ]
       },
       "sourceArchiveSha256": "952ff25fc2590e8a0eaa715d397a64fbe442aa869cd77b12b516ef8da0faea98",
-      "contentSha256": "2392f9e143098f29a89c63de2df170413f7033d802ce53f9114c0ec3f74a69cc"
+      "contentSha256": "aadae72cabf14902f5b5c074735182afa7314fb9520432e4db1b0aecad7066b5"
     },
     {
       "sourceId": "milano-atm-gtfs",
@@ -1068,8 +1074,9 @@
         "finalUrl": "https://dati.comune.milano.it/dataset/ae3f3db9-de61-45b7-94e7-9395c0e3ef53/resource/6251f156-4c74-4a0b-904e-01bcb701a686/download/gtfs.zip"
       },
       "minValidDays": 14,
-      "sha256": "18a07f59bd1cd24c7ccc6f74603f20e9e980278b843c5c5ac9e31b4282bee0e1",
+      "sha256": "9db697636061966b4d126797f22c6442c3c922e552b9c1bc113a2b58adc5feaa",
       "lastServiceDate": "2026-11-30",
+      "fullServiceUntil": "2026-11-30",
       "filter": {
         "kind": "gtfs-urban-route-types",
         "description": "Rete urbana: metropolitana (1, 400-499), tram (0, 900-999), funicolari, cremagliere e ascensori (5, 6, 7, 1300-1499) e monorotaia (12); mai autobus.",
@@ -1504,8 +1511,9 @@
         "finalUrl": "https://dati.toscana.it/dataset/8bb8f8fe-fe7d-41d0-90dc-49f2456180d1/resource/1f62d551-65f4-49f8-9a99-e19b02077be3/download/gest.gtfs"
       },
       "minValidDays": 14,
-      "sha256": "a07a56a14608e93909d3a2919a955f7b9cc4fc7bfa9cb48395492e6dc4f851dc",
+      "sha256": "a1640a1b68d5f432a78b9a40777cbe2108836c318a59d1b3cbaac07363076cb0",
       "lastServiceDate": "2026-12-30",
+      "fullServiceUntil": "2026-12-30",
       "filter": {
         "kind": "gtfs-urban-route-types",
         "description": "Rete urbana: metropolitana (1, 400-499), tram (0, 900-999), funicolari, cremagliere e ascensori (5, 6, 7, 1300-1499) e monorotaia (12); mai autobus.",
@@ -1919,7 +1927,7 @@
         ]
       },
       "sourceArchiveSha256": "97d18a9d9eae546fd21526244106b56891bef6dbb7db0846b20c0f9f6bd5ad13",
-      "contentSha256": "8e9ab564f9662dc34fa58f9d7946e75c653fe998c51fac7570cff02069d9bb9d"
+      "contentSha256": "c7e7a955041c368b13c2a28885ac916be203859c766f59c7ab827a6856fb4e42"
     },
     {
       "sourceId": "arst-metro-gtfs",
@@ -1939,8 +1947,9 @@
         "downloadBytes": 18563585,
         "finalUrl": "https://www.arstspa.info/arst-cagliari-it.zip"
       },
-      "sha256": "1a8cde40f9a5bd0ebe4659bed66cf9145b865fcf54d71ca7efaeff413ecb03fa",
+      "sha256": "05a52f2a14cd7c8a27fe3e6a1dfac43b0cd557e4bca8cd2bb1e5d9a0aae94b0c",
       "lastServiceDate": "2026-12-31",
+      "fullServiceUntil": "2026-12-31",
       "filter": {
         "kind": "gtfs-urban-route-types",
         "description": "Rete urbana: metropolitana (1, 400-499), tram (0, 900-999), funicolari, cremagliere e ascensori (5, 6, 7, 1300-1499) e monorotaia (12); mai autobus.",

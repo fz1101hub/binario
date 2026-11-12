@@ -99,6 +99,49 @@ class GateAgreementTest(unittest.TestCase):
         self.assertTrue(any("expire" in failure for failure in failures), failures)
 
 
+class StationCatalogPositionsTest(unittest.TestCase):
+    """Audit2 tools-data-3: positions in the served area, location ids at their Trenitalia stop, manifest counts."""
+
+    def station(self, station_id: str, latitude: float | None, longitude: float | None, location: str | None = None,
+                code: str | None = None) -> dict[str, object]:
+        return {"id": station_id, "name": station_id, "railwayCode": code, "trenitaliaLocationId": location,
+                "aliases": [], "latitude": latitude, "longitude": longitude, "confidence": "Alta"}
+
+    def test_wrong_positions_codes_and_counts_are_reported(self) -> None:
+        stops = {"830002049": [(45.760075, 10.996781)], "830008014": [(41.941186, 12.517655)]}
+        stations = [
+            self.station("ALA", 45.759017, 10.996775, "830002049", "S02049"),       # 0.1 km from its stop
+            self.station("ROMA", 41.941331, 12.517532, "830008014", "S08014"),
+            self.station("UNKNOWN", None, None),                                     # unknown stays unknown
+            self.station("PARIS", 48.844722, 2.373611),                               # a city its trains reach
+        ]
+        counts = {"stationCount": 4, "railwayCodes": 2, "uniqueTrenitaliaLocationIds": 2}
+        self.assertEqual([], VERIFIER.catalog_problems("c", stations, counts, stops))
+        wrong = [
+            self.station("FINLAND", 63.103787, 27.820372),
+            self.station("SEA", 32.22576, 15.51398),
+            self.station("FAR", 45.759017, 10.996775, "830008014", "S02049"),         # Rome's id on the Brennero line
+            self.station("TWICE", 41.941331, 12.517532, "830008014"),
+            self.station("HALF", 45.0, None),
+        ]
+        problems = VERIFIER.catalog_problems("c", wrong, {"stationCount": 4, "railwayCodes": 1, "uniqueTrenitaliaLocationIds": 2}, stops)
+        self.assertEqual(7, len(problems), problems)
+        for fragment in ("FINLAND lies outside the served area", "SEA lies outside the served area",
+                         "FAR is 442 km from the Trenitalia stop with its location id 830008014",
+                         "TWICE repeats the location id 830008014 of FAR", "HALF has an invalid position",
+                         "uniqueTrenitaliaLocationIds mismatch: manifest=2, asset=1", "stationCount"):
+            self.assertTrue(any(fragment in problem for problem in problems), (fragment, problems))
+
+    def test_the_shipped_catalogue_passes(self) -> None:
+        catalog = json.loads((ROOT / "app/src/main/assets/stations/curated_it_rail_stations.json").read_text(encoding="utf-8"))
+        manifest = json.loads((ROOT / "app/src/main/assets/stations/manifest.json").read_text(encoding="utf-8"))["catalogs"][0]
+        stops = VERIFIER.trenitalia_stop_positions(ROOT / "app/src/main/assets/gtfs/trenitalia-gtfs.zip")
+        self.assertEqual([], VERIFIER.catalog_problems("v4", catalog["stations"], manifest, stops))
+        stations = {station["id"]: station for station in catalog["stations"]}
+        self.assertEqual(("Ala", "830002049"), (stations["S02049"]["name"], stations["S02049"]["trenitaliaLocationId"]))
+        self.assertEqual("Ercolano - Miglio D'Oro", stations["NC001521"]["name"])
+
+
 class LicenceFieldsTest(unittest.TestCase):
     """Audit A7-03 / P3: every pack carries licensor, licence and evidence; undeclared ones stay personal."""
 

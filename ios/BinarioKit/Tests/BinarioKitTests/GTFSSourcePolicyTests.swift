@@ -8,7 +8,7 @@ final class GTFSSourcePolicyTests: XCTestCase {
             .appendingPathComponent("ios/Resources/binario_gtfs_source_policy_v1.json"))
         let policy = try GTFSSourcePolicy(data: data)
 
-        XCTAssertEqual(policy.sources.count, 10)
+        XCTAssertEqual(policy.sources.count, 9)
         XCTAssertTrue(policy.sources.allSatisfy { $0.sourceURL.scheme == "https" && $0.accessMode == "OPEN_DIRECT" })
         XCTAssertEqual(policy.source(id: "oebb-gtfs")?.licence, "CC BY 4.0")
         XCTAssertEqual(policy.source(id: "alto-adige-sta-gtfs")?.licence, "CC0 1.0")

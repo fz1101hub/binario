@@ -368,7 +368,7 @@
     <string name="journey_leg_funicular">قطار جبلي</string>
     <string name="journey_source_offline">جدول مواعيد مجدول دون اتصال (بيانات GTFS مفتوحة)</string>
     <string name="journey_scheduled_only_notice">مواعيد مجدولة: التأخيرات والأرصفة والإلغاءات غير مؤكّدة. راجع شاشات المحطة.</string>
-    <string name="journey_coverage_notice">محسوب على الهاتف بجداول المواعيد المضمّنة في التطبيق، للشبكات التي تغطيها فقط: Trenitalia (قطارات وحافلات)، وItalo (قطارات وItaloBus)، ولومبارديا، وألتو أديجي، وترينتينو، وEAV، وARST، وTFT، وسويسرا، والنمسا، وفرنسا، وكرواتيا، وبعض السكك الحديدية الإقليمية، ومترو وترام بعض المدن. قد لا تظهر قطارات وحافلات أخرى.</string>
+    <string name="journey_coverage_notice">محسوب على الهاتف بجداول المواعيد المضمّنة في التطبيق، للشبكات التي تغطيها فقط: Trenitalia (قطارات وحافلات)، وItalo (قطارات وItaloBus)، ولومبارديا، وألتو أديجي، وترينتينو، وEAV، وARST، وTFT، وسويسرا، والنمسا، وفرنسا، وبعض السكك الحديدية الإقليمية، ومترو وترام بعض المدن. قد لا تظهر قطارات وحافلات أخرى.</string>
     <string name="journey_incomplete_notice">تعذّرت قراءة بعض الجداول دون اتصال: قد تكون الرحلات ناقصة.</string>
     <string name="journey_empty_no_solution">لا توجد رحلات في الجداول دون اتصال ضمن الفترة الزمنية المطلوبة.</string>
     <string name="journey_empty_not_covered">لا تغطي الجداول المضمّنة دون اتصال إحدى المحطتين أو كلتيهما.</string>

@@ -718,7 +718,7 @@ class IOSProjectTests(unittest.TestCase):
                     self.assertTrue(source["licence"] == expected or expected.endswith(f"({source['licence']})"),
                                     f"{source['licence']!r} is not {expected!r}")
                 self.assertEqual(pages.get(source_id), source["landingPage"])
-        self.assertEqual(5, sum(source["licence"] is None for source in policy["sources"]))
+        self.assertEqual(4, sum(source["licence"] is None for source in policy["sources"]))
 
     def test_bundled_schedule_fast_path_validates_the_cache_without_rehashing_it(self) -> None:
         installer = (IOS / "BinarioKit/Sources/BinarioKit/BundledGTFSScheduleInstaller.swift").read_text(encoding="utf-8")

@@ -7,8 +7,11 @@ metadata committed to the repository. It does not fetch feeds or alter reports.
 from __future__ import annotations
 
 import argparse
+import csv
 import hashlib
+import io
 import json
+import math
 import sys
 import zipfile
 from datetime import date, datetime, timedelta, timezone
@@ -40,6 +43,15 @@ OWNER_TO_CONFIRM = "da confermare dal titolare"
 UNDECLARED_LICENCE_PREFIXES = ("non dichiarata", "non verificabile", "nessuna licenza", "sconosciuta")
 PERSONAL_DIRECTORY = "gtfs-personal"
 DEFAULT_MIN_VALID_DAYS = builder.DEFAULT_MIN_VALID_DAYS
+# Station catalogue positions (audit2 tools-data-3: a Palermo station in Finland, one at sea off Libya, stations tens or
+# hundreds of km from the stop with their own code): Italy and the European cities its trains reach (Paris, Lyon,
+# Marseille, Amsterdam, Berlin, Vienna...); Sicily's southern tip is at 36.7 N.
+SERVED_LATITUDES = (35.0, 55.0)
+SERVED_LONGITUDES = (-10.0, 25.0)
+# A catalogue station and the Trenitalia stop with its location id are the same place (the app's guard,
+# GtfsStationCodeIndex, uses the same distance).
+MAX_CODE_DISTANCE_KM = 10.0
+TRENITALIA_PACK = "trenitalia-gtfs.zip"
 
 
 def sha256(path: Path) -> str:
@@ -173,6 +185,7 @@ def verify_gtfs_directory(
             window = minimum_valid_days
         cutoff = builder.release_freshness_cutoff(today, window)
         derived_end: date | None = None
+        derived_full_end: date | None = None
         expected_hash = pack.get("sha256")
         if not isinstance(expected_hash, str) or len(expected_hash) != 64:
             failures.append(f"GTFS pack {source_id} has no valid sha256")
@@ -199,6 +212,7 @@ def verify_gtfs_directory(
                     # Freshness is judged on the service end derived from the calendar, as build_gtfs_packs.py does.
                     try:
                         derived_end = builder.service_end_from_asset(asset, str(source_id))
+                        derived_full_end = builder.full_service_end_from_asset(asset, str(source_id))
                     except builder.BuildError as exc:
                         failures.append(f"GTFS pack {source_id}: service end not derivable: {builder.log_safe(exc)}")
 
@@ -215,7 +229,13 @@ def verify_gtfs_directory(
                 f"GTFS pack {source_id} declares lastServiceDate {last_service_date.isoformat()} "
                 f"but its calendar ends {derived_end.isoformat()}"
             )
-        end = derived_end or last_service_date
+        if derived_full_end is not None and pack.get("fullServiceUntil") != derived_full_end.isoformat():
+            failures.append(
+                f"GTFS pack {source_id} declares fullServiceUntil {builder.log_safe(pack.get('fullServiceUntil'))} "
+                f"but its trips run the full timetable until {derived_full_end.isoformat()}"
+            )
+        # Freshness is judged on the end of full coverage (audit2 tools-data-2): a thin tail of trips is not a timetable.
+        end = min(derived_end or last_service_date, derived_full_end or last_service_date)
         if not builder.is_release_fresh(end, today, window):
             expiring_or_expired += 1
             if enforce_freshness:
@@ -244,6 +264,76 @@ def verify_gtfs_directory(
             failures.append(f"SHA256SUMS mismatch for {name}")
 
     return {"gtfs_packs": len(packs), "gtfs_expiring_or_expired": expiring_or_expired}
+
+
+def distance_km(latitude: float, longitude: float, other_latitude: float, other_longitude: float) -> float:
+    first, second = math.radians(latitude), math.radians(other_latitude)
+    half = (math.sin((second - first) / 2) ** 2
+            + math.cos(first) * math.cos(second) * math.sin(math.radians(other_longitude - longitude) / 2) ** 2)
+    return 2 * 6371.0 * math.asin(math.sqrt(half))
+
+
+def trenitalia_stop_positions(pack: Path) -> dict[str, list[tuple[float, float]]]:
+    """Positions of the Trenitalia pack's stops by stop_code (the location id the catalogue records)."""
+    positions: dict[str, list[tuple[float, float]]] = {}
+    with zipfile.ZipFile(pack) as archive:
+        with archive.open("stops.txt") as raw:
+            for row in csv.DictReader(io.TextIOWrapper(raw, encoding="utf-8-sig")):
+                try:
+                    position = (float(row.get("stop_lat") or ""), float(row.get("stop_lon") or ""))
+                except ValueError:
+                    continue
+                code = (row.get("stop_code") or "").strip()
+                if code:
+                    positions.setdefault(code, []).append(position)
+    return positions
+
+
+def catalog_problems(
+    catalog_id: str,
+    stations: list[Any],
+    manifest_entry: dict[str, Any],
+    stops_by_code: dict[str, list[tuple[float, float]]],
+) -> list[str]:
+    """Positions inside the served area, each location id once and within MAX_CODE_DISTANCE_KM of the Trenitalia stop
+    with that code, and the manifest's counts equal to the file's."""
+    problems: list[str] = []
+    location_ids: dict[str, str] = {}
+    for station in stations:
+        if not isinstance(station, dict):
+            problems.append(f"Station catalog {catalog_id} has a station that is not an object")
+            continue
+        label = f"Station catalog {catalog_id} station {builder.log_safe(station.get('id'))}"
+        latitude, longitude = station.get("latitude"), station.get("longitude")
+        located = False
+        if latitude is None and longitude is None:
+            pass  # an unknown position stays unknown
+        elif not all(isinstance(value, (int, float)) and not isinstance(value, bool) for value in (latitude, longitude)):
+            problems.append(f"{label} has an invalid position")
+        elif not (SERVED_LATITUDES[0] <= latitude <= SERVED_LATITUDES[1] and SERVED_LONGITUDES[0] <= longitude <= SERVED_LONGITUDES[1]):
+            problems.append(f"{label} lies outside the served area: {latitude}, {longitude}")
+        else:
+            located = True
+        location_id = station.get("trenitaliaLocationId")
+        if location_id is None:
+            continue
+        if location_id in location_ids:
+            problems.append(f"{label} repeats the location id {builder.log_safe(location_id)} of {builder.log_safe(location_ids[location_id])}")
+        location_ids[location_id] = str(station.get("id"))
+        stops = stops_by_code.get(location_id, [])
+        if located and stops:
+            nearest = min(distance_km(latitude, longitude, *stop) for stop in stops)
+            if nearest > MAX_CODE_DISTANCE_KM:
+                problems.append(f"{label} is {nearest:.0f} km from the Trenitalia stop with its location id {builder.log_safe(location_id)}")
+    counts = {
+        "stationCount": len(stations),
+        "railwayCodes": sum(1 for station in stations if isinstance(station, dict) and station.get("railwayCode")),
+        "uniqueTrenitaliaLocationIds": len(location_ids),
+    }
+    for field, actual in counts.items():
+        if manifest_entry.get(field) != actual:
+            problems.append(f"Station catalog {catalog_id} {field} mismatch: manifest={manifest_entry.get(field)}, asset={actual}")
+    return problems
 
 
 def verify_stations(failures: list[str], warnings: list[str] | None = None) -> dict[str, int]:
@@ -275,10 +365,8 @@ def verify_stations(failures: list[str], warnings: list[str] | None = None) -> d
         expected_count = catalog.get("stationCount")
         if not isinstance(stations, list):
             failures.append(f"Station catalog {catalog_id} has no stations array")
-        elif not isinstance(expected_count, int) or len(stations) != expected_count:
-            failures.append(
-                f"Station catalog {catalog_id} stationCount mismatch: manifest={expected_count}, asset={len(stations)}"
-            )
+        else:
+            failures.extend(catalog_problems(catalog_id, stations, catalog, trenitalia_stop_positions(GTFS_ROOT / TRENITALIA_PACK)))
         # Origin and licence of the catalogue (audit A7-09): required fields; "da confermare dal titolare" is a warning
         # until the owner records them, since the in-app credit and the store content-rights answers depend on them.
         for field in ("provenance", "licence"):

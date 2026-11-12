@@ -344,7 +344,7 @@
     <string name="journey_leg_funicular">缆索铁路</string>
     <string name="journey_source_offline">离线计划时刻表（GTFS 开放数据）</string>
     <string name="journey_scheduled_only_notice">计划时刻：晚点、站台和停运信息未经核实。请查看车站显示屏。</string>
-    <string name="journey_coverage_notice">在手机上根据应用内置的时刻表计算，仅限其覆盖的网络：Trenitalia（列车和巴士）、Italo（列车和 ItaloBus）、伦巴第、南蒂罗尔、特伦蒂诺、EAV、ARST、TFT、瑞士、奥地利、法国和克罗地亚、部分地区铁路，以及部分城市的地铁和有轨电车。其他列车和巴士可能不会显示。</string>
+    <string name="journey_coverage_notice">在手机上根据应用内置的时刻表计算，仅限其覆盖的网络：Trenitalia（列车和巴士）、Italo（列车和 ItaloBus）、伦巴第、南蒂罗尔、特伦蒂诺、EAV、ARST、TFT、瑞士、奥地利和法国、部分地区铁路，以及部分城市的地铁和有轨电车。其他列车和巴士可能不会显示。</string>
     <string name="journey_incomplete_notice">部分离线时刻表未能读取：方案可能不完整。</string>
     <string name="journey_empty_no_solution">在所搜索的时段内，离线时刻表中没有方案。</string>
     <string name="journey_empty_not_covered">内置的离线时刻表未覆盖其中一个或两个车站。</string>

@@ -338,7 +338,7 @@
     <string name="journey_leg_funicular">푸니쿨라</string>
     <string name="journey_source_offline">오프라인 시간표(GTFS 공개 데이터)</string>
     <string name="journey_scheduled_only_notice">예정 시각입니다. 지연, 승강장, 운행 취소는 확인되지 않았습니다. 역의 안내 화면을 확인하세요.</string>
-    <string name="journey_coverage_notice">앱에 포함된 시간표로 휴대전화에서 계산하며, 시간표가 포함하는 교통망만 대상입니다: Trenitalia(열차 및 버스), Italo(열차 및 ItaloBus), 롬바르디아, 알토아디제, 트렌티노, EAV, ARST, TFT, 스위스, 오스트리아, 프랑스, 크로아티아, 일부 지역 철도, 일부 도시의 지하철과 트램. 다른 열차와 버스는 표시되지 않을 수 있습니다.</string>
+    <string name="journey_coverage_notice">앱에 포함된 시간표로 휴대전화에서 계산하며, 시간표가 포함하는 교통망만 대상입니다: Trenitalia(열차 및 버스), Italo(열차 및 ItaloBus), 롬바르디아, 알토아디제, 트렌티노, EAV, ARST, TFT, 스위스, 오스트리아, 프랑스, 일부 지역 철도, 일부 도시의 지하철과 트램. 다른 열차와 버스는 표시되지 않을 수 있습니다.</string>
     <string name="journey_incomplete_notice">일부 오프라인 시간표를 읽지 못했습니다. 여정이 불완전할 수 있습니다.</string>
     <string name="journey_empty_no_solution">검색한 시간대의 오프라인 시간표에 여정이 없습니다.</string>
     <string name="journey_empty_not_covered">포함된 오프라인 시간표가 한쪽 또는 양쪽 역을 포함하지 않습니다.</string>
