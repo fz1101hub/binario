@@ -65,9 +65,10 @@ public final class LiveSourcePauses: @unchecked Sendable {
 /// - one request per resource and interval: concurrent callers share it, and its answer, failure
 ///   included, is reused until the interval has passed since the request started;
 /// - a refusal (HTTP 403 or 429) pauses the whole source at once, for the `Retry-After` it sent
-///   (at most an hour) or for a minute that doubles with every new pause, up to 15 minutes;
-/// - three failures in a row pause it the same way (a device without a connection is not the
-///   source's failure and never counts); after a pause one request is let through (the
+///   (at most an hour) or for 15 minutes, as Android's `PublicSourceRefusalGate`;
+/// - three failures in a row pause it for a minute that doubles with every new pause, up to 15
+///   minutes (a device without a connection is not the source's failure and never counts); after
+///   a pause one request is let through (the
 ///   others are refused as during the pause until it answers) and a single failure pauses it again;
 /// - only an answer to a request sent since the last pause ends it: one sent before says nothing of
 ///   the source after its refusal;
@@ -84,6 +85,8 @@ final class LiveSourceGate: @unchecked Sendable {
         var failureThreshold = 3
         var baseOpenDuration: TimeInterval = 60
         var maximumOpenDuration: TimeInterval = 900
+        /// The pause after a refusal without `Retry-After`, Android's `refusalPause`.
+        var refusalPause: TimeInterval = 900
         var maximumRetryAfter: TimeInterval = 3_600
     }
 
@@ -343,7 +346,9 @@ final class LiveSourceGate: @unchecked Sendable {
             consecutiveFailures = 0
         } else if failure.isRefusal || consecutiveFailures >= configuration.failureThreshold {
             let factor: Double = Double(1 << min(openings, 6))
-            let duration: TimeInterval = min(configuration.baseOpenDuration * factor, configuration.maximumOpenDuration)
+            let backOff: TimeInterval = min(configuration.baseOpenDuration * factor, configuration.maximumOpenDuration)
+            // A refusal is never paused for less than Android pauses it, from the first one on.
+            let duration: TimeInterval = failure.isRefusal ? max(backOff, configuration.refusalPause) : backOff
             openUntil = current.addingTimeInterval(duration)
             openings += 1
             pauseGeneration &+= 1

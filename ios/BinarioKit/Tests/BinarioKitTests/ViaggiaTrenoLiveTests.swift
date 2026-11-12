@@ -244,7 +244,7 @@ final class ViaggiaTrenoLiveTests: XCTestCase {
         let refused = await refusedSource.runs(for: LiveTrainStatusRequest(number: "12345", serviceDate: now))
         XCTAssertEqual(refused, .unavailable(.refused))
         let paused = await refusedSource.runs(for: LiveTrainStatusRequest(number: "54321", serviceDate: now))
-        XCTAssertEqual(paused, .unavailable(.paused(until: now.addingTimeInterval(60))))
+        XCTAssertEqual(paused, .unavailable(.paused(until: now.addingTimeInterval(900))))
         XCTAssertEqual(refusing.requests.count, 1, "nothing is asked after the refusal")
 
         let detail = try LiveFixtures.text("viaggiatreno-andamentoTreno-12345.json")

@@ -63,7 +63,8 @@ final class LiveSourceGateTests: XCTestCase {
             return .failure(.http(status: 429, retryAfter: nil))
         }
         XCTAssertEqual(refused, .failure(.http(status: 429, retryAfter: nil)))
-        let until = LiveTestDates.viaggiaTrenoNow.addingTimeInterval(60)
+        // Fifteen minutes from the first refusal, as on Android.
+        let until = LiveTestDates.viaggiaTrenoNow.addingTimeInterval(900)
         let next = await gate.fetch("cercaNumeroTrenoTrenoAutocomplete/2") {
             loads.increment()
             return .failure(.network)
@@ -74,14 +75,18 @@ final class LiveSourceGateTests: XCTestCase {
         XCTAssertEqual(pauses.active(at: clock.now()), [LiveSourcePause(source: .viaggiaTreno, until: until)])
         XCTAssertEqual(pauses.active(at: until), [], "an expired pause is dropped")
 
-        // After the pause one request goes through; a new refusal pauses for twice as long.
-        clock.advance(61)
+        // After the pause one request goes through; a new refusal pauses for fifteen minutes again.
+        clock.advance(901)
         _ = await gate.fetch("cercaNumeroTrenoTrenoAutocomplete/3") {
             loads.increment()
             return .failure(.http(status: 403, retryAfter: nil))
         }
         XCTAssertEqual(loads.value, 2)
-        XCTAssertEqual(gate.pausedUntil(), clock.now().addingTimeInterval(120))
+        XCTAssertEqual(gate.pausedUntil(), clock.now().addingTimeInterval(900))
+        // A Retry-After the source sends is honoured as it is, even when shorter.
+        let polite = makeGate(clock)
+        _ = await polite.fetch("a") { .failure(.http(status: 429, retryAfter: 120)) }
+        XCTAssertEqual(polite.pausedUntil(), clock.now().addingTimeInterval(120))
     }
 
     func testRetryAfterIsHonouredUpToAnHourAndASuccessEndsThePause() async {
