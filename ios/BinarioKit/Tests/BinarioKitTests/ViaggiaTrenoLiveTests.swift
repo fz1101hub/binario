@@ -227,6 +227,11 @@ final class ViaggiaTrenoLiveTests: XCTestCase {
         XCTAssertTrue(LiveTrainNumberQuery("9558").matches("FR 9558"))
         XCTAssertTrue(LiveTrainNumberQuery("2153").matches("RE_11 - 2153"))
         XCTAssertFalse(LiveTrainNumberQuery("215").matches("2153"))
+        // A Trenord number of the timetables asks the run after its line, as Android does.
+        XCTAssertEqual(LiveTrainNumberQuery("RE_11 - 2153").numeric, "2153")
+        XCTAssertEqual(LiveTrainNumberQuery("S5 - 811A").normalized, "811A")
+        XCTAssertTrue(LiveTrainNumberQuery("S5 - 811A").matches("811A"))
+        XCTAssertFalse(LiveTrainNumberQuery("S5 - 811A").matches("5811"))
         XCTAssertFalse(LiveTrainNumberQuery("").isValid)
         XCTAssertFalse(LiveTrainNumberQuery("FR").isValid)
         XCTAssertTrue(LiveTrainNumberQuery("FR 9558").isValid)

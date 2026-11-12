@@ -120,6 +120,10 @@ final class NetworkReliabilityTests: XCTestCase {
         XCTAssertEqual(NetworkReliability.numberKey("09558"), "9558")
         // The Trenord timetables publish the line before the train number.
         XCTAssertEqual(NetworkReliability.numberKey("RE_11 - 2153"), "2153")
+        // The run after the line, whatever it holds, as Kotlin and the Alexa backend read it.
+        XCTAssertEqual(NetworkReliability.numberKey("S5 - 811A"), "811")
+        XCTAssertEqual(NetworkReliability.numberKey("S5 - ABC"), "S5-ABC")
+        XCTAssertEqual(NetworkReliability.numberKey("S5 - "), "5")
         XCTAssertEqual(NetworkReliability.numberKey("TER"), "TER")
         XCTAssertTrue(NetworkReliability.isStationCode("S01700"))
         XCTAssertFalse(NetworkReliability.isStationCode("S1700"))

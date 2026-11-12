@@ -8,7 +8,10 @@ struct LiveTrainNumberQuery: Equatable, Sendable {
     let numeric: String?
 
     init(_ number: String) {
-        normalized = Self.normalize(number)
+        // The run after a line ("S5 - 811A" asks 811A), as Android's `TrainNumberQuery`.
+        let trimmed = number.trimmingCharacters(in: .whitespacesAndNewlines)
+        let run = trimmed.range(of: " - ", options: .backwards).map { String(trimmed[$0.upperBound...]) } ?? trimmed
+        normalized = Self.normalize(run)
         numeric = Self.numeric(normalized)
     }
 
