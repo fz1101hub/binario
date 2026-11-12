@@ -619,7 +619,7 @@
     <string name="stop_alarm_dialog_time">နှိုးစက်သည် ခန့်မှန်းချိန် %1$s မတိုင်မီ ငါးမိနစ်ခန့်တွင် မြည်မည်။</string>
     <string name="action_set_stop_alarm">နှိုးစက် သတ်မှတ်ရန်</string>
     <string name="gps_alarm_option">တည်နေရာအလိုက်လည်း သတိပေးရန်</string>
-    <string name="gps_alarm_option_description">ရထား စောရောက် သို့မဟုတ် နောက်ကျသည်ဖြစ်စေ သင် ရပ်နားဘူတာမှ ရွေးထားသော အချင်းဝက်အတွင်း ရောက်သည့်အခါ (ရောက်နေပြီဆိုလျှင် ချက်ချင်း) မြည်သည်။ ပထမဆုံး ရောက်လာသော သတိပေးချက်ကို အတည်ယူသည်။</string>
+    <string name="gps_alarm_option_description">ရထား စောရောက် သို့မဟုတ် နောက်ကျသည်ဖြစ်စေ သင် ရပ်နားဘူတာမှ ရွေးထားသော အချင်းဝက်အတွင်း ရောက်သည့်အခါ (ရောက်နေပြီဆိုလျှင် ချက်ချင်း) မြည်သည်။ အချိန်အလိုက် နှိုးစက် မြည်ချိန်တွင် သင့်တည်နေရာအရ ရပ်နားဘူတာ ဝေးနေသေးလျှင် GPS နှိုးစက် ဆက်ဖွင့်ထားသည်။</string>
     <string name="gps_alarm_radius_label">သတိပေး အချင်းဝက်</string>
     <plurals name="gps_alarm_radius_km">
         <item quantity="other">%d km</item>
@@ -650,7 +650,7 @@
     <string name="gps_alarm_ended_expired">%1$s အတွက် GPS နှိုးစက် ပြီးဆုံး- အများဆုံး အချိန် ကုန်သွားပြီ။</string>
     <string name="gps_alarm_ended_permission">%1$s အတွက် GPS နှိုးစက် ရပ်သွားသည်- တည်နေရာ ခွင့်ပြုချက် မရှိတော့ပါ။</string>
     <string name="gps_alarm_ended_unavailable">%1$s အတွက် GPS နှိုးစက် ရပ်သွားသည်- ဖုန်းပေါ်တွင် တည်နေရာ ရင်းမြစ် မရှိပါ။</string>
-    <string name="gps_alarm_ended_time_alarm">%1$s အတွက် GPS နှိုးစက် ပိတ်လိုက်သည်- အချိန်အလိုက် နှိုးစက် မြည်ပြီးပြီ။</string>
+    <string name="gps_alarm_ended_time_alarm">%1$s အတွက် GPS နှိုးစက် ပိတ်လိုက်သည်- အချိန်အလိုက် နှိုးစက် မြည်ပြီး လတ်တလော တည်နေရာ မရှိပါ။</string>
     <string name="gps_alarm_interrupted">%1$s အတွက် GPS နှိုးစက် ရပ်သွားသည် (ဥပမာ ဖုန်း ပြန်စပြီးနောက်)။ ခရီးသွားနေဆဲဖြစ်လျှင် ပြန်ဖွင့်ပါ။</string>
     <string name="action_gps_alarm_resume">ပြန်ဖွင့်ရန်</string>
     <string name="action_gps_alarm_dismiss">လျစ်လျူရှုရန်</string>
@@ -658,12 +658,13 @@
     <string name="stop_alarm_unavailable">နှိုးစက် သတ်မှတ်၍ မရပါ- ရပ်နားဘူတာ၏ ခန့်မှန်းချိန် ကျော်သွားပြီ သို့မဟုတ် မသိရပါ။</string>
     <string name="stop_alarm_exact">%1$s အတွက် နှိုးစက်ကို ခန့်မှန်းချိန် %2$s မတိုင်မီ ငါးမိနစ်တွင် သတ်မှတ်ထားသည်။</string>
     <string name="stop_alarm_inexact">%1$s အတွက် နှိုးစက် သတ်မှတ်ထားသော်လည်း အချိန်တိကျ နှိုးစက်များကို ခွင့်မပြုထားသဖြင့် Android က နောက်ကျ၍ မြည်နိုင်သည်။</string>
+    <string name="stop_alarm_not_shown">Android သည် Binario ၏ ရပ်နားဘူတာ နှိုးစက်များကို မပြပါ (အသိပေးချက် သို့မဟုတ် ၎င်း၏ အမျိုးအစား ပိတ်ထားသည်)- ဤနှိုးစက် ပေါ်လာမည် မဟုတ်ပါ။</string>
     <string name="commuter_alert_scheduled">သတိပေးချက်ကို သိမ်းပြီး စက်ပေါ်တွင် အချိန်သတ်မှတ်ထားသည်။</string>
     <string name="commuter_alert_scheduled_inexact">သတိပေးချက်ကို သိမ်းပြီး ခန့်မှန်းအချိန်ဖြင့် သတ်မှတ်ထားသည်- အချိန်တိကျ နှိုးစက်များကို ခွင့်မပြုထားသဖြင့် Android က နောက်ကျ၍ ပို့နိုင်သည်။</string>
     <string name="stop_alarms_active_title">ဖွင့်ထားသော ရပ်နားဘူတာ နှိုးစက်များ</string>
     <string name="stop_alarm_active_row">%1$s · ရထား %2$s · ခန့်မှန်းရောက်ချိန် %3$s</string>
     <string name="accessibility_cancel_stop_alarm">%1$s အတွက် နှိုးစက်ကို ပယ်ဖျက်ရန်</string>
-    <string name="exact_alarm_note">Android က Binario ကို အချိန်တိကျ နှိုးစက်များ ခွင့်မပြုထားသဖြင့် ရပ်နားဘူတာ နှိုးစက်နှင့် နေ့စဉ်ခရီး သတိပေးချက်များ နောက်ကျနိုင်သည်။</string>
+    <string name="exact_alarm_note">Android က Binario ကို အချိန်တိကျ နှိုးစက်များ ခွင့်မပြုထားသဖြင့် ရပ်နားဘူတာ နှိုးစက်၊ နေ့စဉ်ခရီး သတိပေးချက်၊ ဆိုက်ရောက်မှု သတိပေးချက်နှင့် ခရီးစဉ်ဇယား သတိပေးချက်များ နောက်ကျနိုင်သည်။</string>
     <string name="exact_alarm_action">အချိန်တိကျ နှိုးစက်များ ခွင့်ပြုရန်</string>
     <string name="background_status_title">နောက်ခံ လုပ်ဆောင်ချက်</string>
     <string name="background_status_notifications_on">အသိပေးချက်များ ခွင့်ပြုထားသည်</string>
@@ -1337,6 +1338,7 @@
     <string name="accessibility_approach_alert_station">သတိပေးချက် ဘူတာကို ပြောင်းရန်၊ လက်ရှိ %1$s</string>
     <string name="approach_alert_lead">မည်မျှ စောစော</string>
     <string name="approach_alert_summary">%2$s သို့ မရောက်မီ %1$s အလိုတွင် အသိပေးမည်။</string>
+    <string name="approach_alert_quiet_note">၂၂ နာရီမှ ၇ နာရီအထိ သတိပေးချက် မပို့ပါ- ဤရပ်နားဘူတာအတွက် သတိပေးချက် နောက်ကျ၍ ရောက်နိုင်သည် သို့မဟုတ် မရောက်နိုင်ပါ။</string>
     <string name="approach_alert_title">%1$s သည် ~%3$s အတွင်း %2$s သို့ ရောက်မည်</string>
     <string name="approach_alert_title_now">%1$s သည် %2$s သို့ ဆိုက်ရောက်နေပြီ</string>
     <string name="approach_alert_channel_name">ဆိုက်ရောက်လာမည့် ရထားများ</string>
@@ -1432,6 +1434,8 @@
     <plurals name="reliability_on_time_count">
         <item quantity="other">%2$d ကြိမ်တွင် %1$d ကြိမ် အချိန်မှန်</item>
     </plurals>
+    <!-- The on-time limit after a count: «In orario 8 volte su 10 (entro 5 min)» -->
+    <string name="reliability_within_limit">%1$s (%2$s အတွင်း)</string>
     <plurals name="reliability_leg_on_time_count">
         <item quantity="other">%1$s - %3$d ကြိမ်တွင် %2$d ကြိမ် အချိန်မှန်</item>
     </plurals>

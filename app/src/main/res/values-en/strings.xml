@@ -648,7 +648,7 @@
     <string name="stop_alarm_dialog_time">The alarm rings about five minutes before the expected time of %1$s.</string>
     <string name="action_set_stop_alarm">Set alarm</string>
     <string name="gps_alarm_option">Also alert me based on my location</string>
-    <string name="gps_alarm_option_description">Rings when you are within the chosen radius of the stop (straight away if you already are), even if the train is early or late. Whichever alert comes first counts.</string>
+    <string name="gps_alarm_option_description">Rings when you are within the chosen radius of the stop (straight away if you already are), even if the train is early or late. If the time-based alarm rings while your position shows the stop is still far away, the GPS alarm stays on.</string>
     <string name="gps_alarm_radius_label">Alert radius</string>
     <plurals name="gps_alarm_radius_km">
         <item quantity="one">%d km</item>
@@ -681,7 +681,7 @@
     <string name="gps_alarm_ended_expired">GPS alarm for %1$s ended: the maximum time has run out.</string>
     <string name="gps_alarm_ended_permission">GPS alarm for %1$s stopped: location permission is no longer granted.</string>
     <string name="gps_alarm_ended_unavailable">GPS alarm for %1$s stopped: no location source is available on the phone.</string>
-    <string name="gps_alarm_ended_time_alarm">GPS alarm for %1$s closed: the time-based alarm has already rung.</string>
+    <string name="gps_alarm_ended_time_alarm">GPS alarm for %1$s closed: the time-based alarm rang and no recent position was available.</string>
     <string name="gps_alarm_interrupted">The GPS alarm for %1$s was interrupted, for example by a phone restart. Turn it on again if you are still travelling.</string>
     <string name="action_gps_alarm_resume">Turn on again</string>
     <string name="action_gps_alarm_dismiss">Ignore</string>
@@ -689,12 +689,13 @@
     <string name="stop_alarm_unavailable">Unable to schedule the alarm: the expected time for the stop has already passed or is unavailable.</string>
     <string name="stop_alarm_exact">Alarm set for %1$s, five minutes before the expected time of %2$s.</string>
     <string name="stop_alarm_inexact">Alarm set for %1$s, but Android may deliver it late because exact alarms are not allowed.</string>
+    <string name="stop_alarm_not_shown">Android does not show Binario’s stop alarms (notifications or their category turned off): this alarm will not appear.</string>
     <string name="commuter_alert_scheduled">Alert saved and scheduled on the device.</string>
     <string name="commuter_alert_scheduled_inexact">Alert saved and scheduled in inexact mode: Android may deliver it late because exact alarms are not allowed.</string>
     <string name="stop_alarms_active_title">Active stop alarms</string>
     <string name="stop_alarm_active_row">%1$s · train %2$s · expected arrival %3$s</string>
     <string name="accessibility_cancel_stop_alarm">Cancel the alarm for %1$s</string>
-    <string name="exact_alarm_note">Android does not allow Binario to set exact alarms: stop alarms and commuter alerts may arrive late.</string>
+    <string name="exact_alarm_note">Android does not allow Binario to set exact alarms: stop alarms, commuter alerts, arrival alerts and Agenda reminders may arrive late.</string>
     <string name="exact_alarm_action">Allow exact alarms</string>
     <string name="background_status_title">Background activity</string>
     <string name="background_status_notifications_on">Notifications allowed</string>
@@ -1394,6 +1395,7 @@
     <string name="accessibility_approach_alert_station">Change the station of the alert, now %1$s</string>
     <string name="approach_alert_lead">How early</string>
     <string name="approach_alert_summary">Alerts you %1$s before it reaches %2$s.</string>
+    <string name="approach_alert_quiet_note">No alerts are sent between 22:00 and 07:00: for this stop the alert may come later or not at all.</string>
     <string name="approach_alert_title">%1$s reaches %2$s in ~%3$s</string>
     <string name="approach_alert_title_now">%1$s is arriving at %2$s</string>
     <string name="approach_alert_channel_name">Trains arriving</string>
@@ -1492,6 +1494,8 @@
         <item quantity="one">On time %1$d time out of %2$d</item>
         <item quantity="other">On time %1$d times out of %2$d</item>
     </plurals>
+    <!-- The on-time limit after a count: «In orario 8 volte su 10 (entro 5 min)» -->
+    <string name="reliability_within_limit">%1$s (within %2$s)</string>
     <plurals name="reliability_leg_on_time_count">
         <item quantity="one">%1$s on time %2$d time out of %3$d</item>
         <item quantity="other">%1$s on time %2$d times out of %3$d</item>

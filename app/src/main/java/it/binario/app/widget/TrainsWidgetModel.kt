@@ -15,8 +15,9 @@ import it.binario.app.data.TrainService
 import it.binario.app.ui.common.LocalizedDates
 import java.time.Duration
 import java.time.Instant
+import java.time.LocalDate
+import java.time.LocalTime
 import java.time.ZoneId
-import java.time.temporal.ChronoUnit
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
@@ -58,6 +59,14 @@ data class FavouriteTrainStatus(
 
 object FavouriteTrainStatusMapper {
     private val timeFormatter = DateTimeFormatter.ofPattern("HH:mm")
+
+    /**
+     * The status of [monitor] from its run [service], kept under the favourite's own number: a favourite saved from a
+     * timetable row is called "RE_11 - 2153" while the live run that takes its place is "2153", and the widget reads
+     * (and keeps) only the favourites' numbers.
+     */
+    fun forFavourite(monitor: ServiceMonitor, service: TrainService, providerName: String, retrievedAt: Long, zone: ZoneId = RailTime.defaultZone): FavouriteTrainStatus =
+        fromService(service, providerName, retrievedAt, zone).copy(number = monitor.number)
 
     fun fromService(service: TrainService, providerName: String, retrievedAt: Long, zone: ZoneId = RailTime.defaultZone): FavouriteTrainStatus {
         val verified = service.operationalStatusVerified
@@ -197,30 +206,36 @@ data class TrainsWidgetStrings(
  * Rows of the "I miei treni" widget: ordering, the "only running trains" filter and the texts of
  * each row. Live values count only while the status is fresh (under fifteen minutes) and was not
  * left over by a failed lookup; otherwise the row keeps them, marked with the time (and, when it is
- * not today's, the date) of the data. The run of an earlier day that is over shows today's timetable.
+ * not today's, the date) of the data. The run of an earlier day that is over shows only its timetable departure,
+ * with the date of the data, and is never counted as running.
  */
 object TrainsWidgetPresenter {
     private val arrivalGrace: Duration = Duration.ofMinutes(10)
     private val timeFormatter = DateTimeFormatter.ofPattern("HH:mm").withZone(RailTime.defaultZone)
 
     /**
-     * [status] as it may be shown at [nowEpochMillis]. The run of an earlier service day that is over (arrived, or past
-     * its arrival) says nothing about today's train: it becomes today's timetable, with the same departure and arrival
-     * times moved to today and without delay, cancellation, variation, detections or observations. Anything else is
-     * returned unchanged, including a run of yesterday still travelling after midnight.
+     * True when [status] is the run of an earlier service day that is over (arrived, or past its arrival) at
+     * [nowEpochMillis]: it says nothing about today's train, which may not even run today. A run of yesterday still
+     * travelling after midnight is not over.
      */
-    fun forToday(status: FavouriteTrainStatus, nowEpochMillis: Long, zone: ZoneId = RailTime.defaultZone): FavouriteTrainStatus {
-        val departure = status.scheduledDepartureEpochMillis ?: return status
+    fun isEarlierRunOver(status: FavouriteTrainStatus, nowEpochMillis: Long, zone: ZoneId = RailTime.defaultZone): Boolean {
+        val departure = status.scheduledDepartureEpochMillis ?: return false
         val today = Instant.ofEpochMilli(nowEpochMillis).atZone(zone).toLocalDate()
         val serviceDay = Instant.ofEpochMilli(departure).atZone(zone).toLocalDate()
-        if (!serviceDay.isBefore(today)) return status
+        if (!serviceDay.isBefore(today)) return false
         val end = status.arrivalEpochMillis ?: departure
-        if (status.arrived != true && nowEpochMillis <= end + arrivalGrace.toMillis()) return status
-        val days = ChronoUnit.DAYS.between(serviceDay, today)
-        fun moved(epochMillis: Long) = Instant.ofEpochMilli(epochMillis).atZone(zone).plusDays(days).toInstant().toEpochMilli()
+        return status.arrived == true || nowEpochMillis > end + arrivalGrace.toMillis()
+    }
+
+    /**
+     * [status] as it may be shown at [nowEpochMillis]. The run of an earlier service day that is over
+     * ([isEarlierRunOver]) keeps its own times and loses delay, cancellation, variation, detections and observations:
+     * the row shows only its timetable departure, marked with the date of the data, and never counts as running.
+     * Anything else is returned unchanged.
+     */
+    fun forToday(status: FavouriteTrainStatus, nowEpochMillis: Long, zone: ZoneId = RailTime.defaultZone): FavouriteTrainStatus {
+        if (!isEarlierRunOver(status, nowEpochMillis, zone)) return status
         return status.copy(
-            scheduledDepartureEpochMillis = moved(departure),
-            arrivalEpochMillis = status.arrivalEpochMillis?.let(::moved),
             delayMinutes = null,
             cancelled = false,
             variation = false,
@@ -233,7 +248,7 @@ object TrainsWidgetPresenter {
             departed = null,
             arrived = null,
             operationalVerified = false,
-            stale = false
+            stale = true
         )
     }
 
@@ -251,7 +266,8 @@ object TrainsWidgetPresenter {
      * Without times it counts as running: an unknown state never hides a train.
      */
     fun isRunning(lastKnown: FavouriteTrainStatus?, nowEpochMillis: Long): Boolean {
-        val status = lastKnown?.let { forToday(it, nowEpochMillis) } ?: return true
+        val status = lastKnown ?: return true
+        if (isEarlierRunOver(status, nowEpochMillis)) return false
         if (status.cancelled) return false
         val departure = status.scheduledDepartureEpochMillis
         val notLeftYet = status.departed != true && departure != null && nowEpochMillis < departure
@@ -296,6 +312,7 @@ object TrainsWidgetPresenter {
         strings: TrainsWidgetStrings,
         reliability: WidgetReliabilityText? = null
     ): TrainsWidgetRow {
+        val earlierRun = lastKnown?.let { isEarlierRunOver(it, nowEpochMillis) } == true
         val status = lastKnown?.let { forToday(it, nowEpochMillis) }
         val trainLabel = status?.category?.let { strings.format(strings.categoryNumber, strings.categoryLabels.getValue(it), monitor.number) }
             ?: strings.format(strings.trainNumber, monitor.number)
@@ -320,9 +337,11 @@ object TrainsWidgetPresenter {
             TrainsWidgetInfo.LAST_DETECTION -> status.lastDetectionStation?.let { strings.format(strings.lastDetection, it, status.lastDetectionTime.orEmpty()).trim() }
                 ?: strings.noDetection.takeIf { status.operationalVerified }
         } ?: status.scheduledDeparture.takeIf { it.isNotBlank() }?.let { strings.format(strings.departureFrom, it, status.origin) }
-        val staleMarker = if (live || !status.operationalVerified) null
+        val staleMarker = if (live || (!status.operationalVerified && !earlierRun)) null
         else strings.format(strings.staleData, dataTime(status.retrievedAt, nowEpochMillis, strings.locale))
         val (statusLabel, emphasis, statusAccessibility) = when {
+            // Nothing is known of today's run: no timetable claim either.
+            earlierRun -> Triple("—", TrainsRowEmphasis.MUTED, strings.scheduledAccessibility)
             !status.operationalVerified -> Triple(strings.scheduled, TrainsRowEmphasis.NORMAL, strings.scheduledAccessibility)
             status.cancelled -> Triple(strings.cancelled, if (live) TrainsRowEmphasis.ERROR else TrainsRowEmphasis.MUTED, strings.cancelledAccessibility)
             status.variation -> Triple(strings.variation, if (live) TrainsRowEmphasis.WARNING else TrainsRowEmphasis.MUTED, strings.variationAccessibility)
@@ -369,6 +388,48 @@ object TrainsWidgetPresenter {
                 shownReliability?.spoken
             ).joinToString(". ")
         )
+    }
+}
+
+/**
+ * Which favourites a refresh of «I miei treni» asks the sources for, and for which service day. An automatic refresh
+ * asks only for the trains near their run: from [BEFORE_DEPARTURE] before the saved departure to [AFTER_ARRIVAL] after
+ * the arrival of the last known run ([DEFAULT_DURATION] after the departure when none is known); the other rows keep
+ * their last status. A train without a known departure is asked, since only a lookup can teach it. A refresh the user
+ * asked for asks for every favourite. Italo is asked only for a train that may be one.
+ */
+internal object TrainsWidgetLookupPlanner {
+    val BEFORE_DEPARTURE: Duration = Duration.ofHours(1)
+    val AFTER_ARRIVAL: Duration = Duration.ofMinutes(30)
+    val DEFAULT_DURATION: Duration = Duration.ofHours(3)
+    private val MAX_DURATION: Duration = Duration.ofHours(36)
+
+    /** The service day to ask for [monitor] at [now]; null when an automatic refresh leaves the train alone. */
+    fun lookupDate(monitor: ServiceMonitor, status: FavouriteTrainStatus?, now: Instant, automatic: Boolean, zone: ZoneId = RailTime.defaultZone): LocalDate? {
+        val today = now.atZone(zone).toLocalDate()
+        val departure = departureOf(monitor, status) ?: return today
+        val duration = durationOf(status) ?: DEFAULT_DURATION
+        // Yesterday's run may still travel after midnight; tomorrow's may leave just after it.
+        val inWindow = listOf(today.minusDays(1), today, today.plusDays(1)).firstOrNull { day ->
+            val start = day.atTime(departure).atZone(zone).toInstant()
+            !now.isBefore(start.minus(BEFORE_DEPARTURE)) && !now.isAfter(start.plus(duration).plus(AFTER_ARRIVAL))
+        }
+        return inWindow ?: today.takeIf { !automatic }
+    }
+
+    /** False when the last status names a category of another operator: Italo is then not asked for that number. */
+    fun mayBeItalo(status: FavouriteTrainStatus?): Boolean =
+        status?.category.let { it == null || it == TrainCategory.AV_ITALO || it == TrainCategory.OTHER }
+
+    private fun departureOf(monitor: ServiceMonitor, status: FavouriteTrainStatus?): LocalTime? =
+        listOf(monitor.scheduledDeparture, status?.scheduledDeparture.orEmpty()).firstNotNullOfOrNull { value ->
+            value.trim().takeIf { it.isNotEmpty() }?.let { runCatching { LocalTime.parse(it) }.getOrNull() }
+        }
+
+    private fun durationOf(status: FavouriteTrainStatus?): Duration? {
+        val departure = status?.scheduledDepartureEpochMillis ?: return null
+        val arrival = status.arrivalEpochMillis ?: return null
+        return Duration.ofMillis(arrival - departure).takeIf { !it.isNegative && !it.isZero && it <= MAX_DURATION }
     }
 }
 

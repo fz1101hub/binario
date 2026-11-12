@@ -1,5 +1,6 @@
 package it.binario.app.notifications
 
+import it.binario.app.CommuterAlertPlanner
 import it.binario.app.FavouriteTrainMatcher
 import it.binario.app.ServiceMonitor
 import it.binario.app.data.RailTime
@@ -89,6 +90,9 @@ object ApproachAlertPlanner {
     val EARLY_TOLERANCE: Duration = Duration.ofMinutes(1)
     val LATE_TOLERANCE: Duration = Duration.ofMinutes(2)
     val MIN_DELAY_BETWEEN_RUNS: Duration = Duration.ofMinutes(1)
+
+    /** The notification leaves the shade this long after the train's expected time at the station. */
+    val NOTIFICATION_TIMEOUT: Duration = Duration.ofMinutes(15)
     const val MAX_ALERTS = 12
 
     fun lead(alert: ApproachAlert): Duration = Duration.ofMinutes(alert.leadMinutes.coerceIn(LEAD_OPTIONS.first(), LEAD_OPTIONS.last()).toLong())
@@ -110,13 +114,29 @@ object ApproachAlertPlanner {
         return if (arrival.atZone(zone).toLocalDate().isAfter(day)) day.minusDays(1) else day
     }
 
-    /** When the checks of [date] run: around the scheduled time, inside 07:00 – 22:00 of the day the train gets there. */
+    /**
+     * When the checks of [date] run: around the scheduled time, inside 07:00 – 22:00 of the day the train gets there.
+     * None when nothing could be shown: a punctual train has passed the station before the quiet hours end, or even a
+     * punctual train's moment to notify falls after they begin (a delay only moves it later).
+     */
     fun window(alert: ApproachAlert, date: LocalDate, zone: ZoneId = RailTime.defaultZone): ClosedRange<Instant>? {
         val scheduled = scheduledAt(alert, date, zone) ?: return null
         val day = scheduled.atZone(zone).toLocalDate()
-        val start = maxOf(scheduled.minus(lead(alert)).minus(FIRST_CHECK_BEFORE), day.atTime(TrainAlertWatch.QUIET_END).atZone(zone).toInstant())
-        val end = minOf(scheduled.plus(MAX_DELAY), day.atTime(TrainAlertWatch.QUIET_START).atZone(zone).toInstant())
+        val quietEnd = day.atTime(TrainAlertWatch.QUIET_END).atZone(zone).toInstant()
+        val quietStart = day.atTime(TrainAlertWatch.QUIET_START).atZone(zone).toInstant()
+        if (scheduled.plus(LATE_TOLERANCE).isBefore(quietEnd) || !scheduled.minus(lead(alert)).isBefore(quietStart)) return null
+        val start = maxOf(scheduled.minus(lead(alert)).minus(FIRST_CHECK_BEFORE), quietEnd)
+        val end = minOf(scheduled.plus(MAX_DELAY), quietStart)
         return if (start < end) start..end else null
+    }
+
+    /**
+     * True when the timetable moment to notify falls in the quiet hours (22:00 to 07:00): the alert then comes later
+     * than chosen, or not at all. The app says so under the alert.
+     */
+    fun quietOnTimetable(alert: ApproachAlert): Boolean {
+        val time = LiveStopTimes.parse(alert.stationTime) ?: return false
+        return CommuterAlertPlanner.isQuiet(time.minus(lead(alert)))
     }
 
     /** The moment to notify: [lead] before the expected time. */
@@ -224,6 +244,21 @@ object ApproachAlertPlanner {
             passed = verified && stop.completed,
             cancelled = (service.operationalStatusVerified && service.status == ServiceStatus.CANCELLED) || stop.routeChange == StopRouteChange.SKIPPED
         )
+    }
+
+    /**
+     * When a wake-up alarm delivers the alert of the run reaching the station today: at its moment to notify, once a
+     * check of the day stored an [observation] (the alarm posts from it, with no request), in the future, before the
+     * window ends and outside the quiet hours. Null when there is nothing to deliver. A WorkManager run planned for the
+     * same moment can be deferred by Doze past it, and a run too late drops the day.
+     */
+    fun alarmAt(alert: ApproachAlert, doneOn: LocalDate?, notifiedOn: LocalDate?, observation: ApproachObservation?, now: Instant, zone: ZoneId = RailTime.defaultZone): Instant? {
+        if (observation == null || observation.passed || observation.cancelled) return null
+        val date = serviceDate(alert, now.atZone(zone).toLocalDate(), zone)
+        if (doneOn == date || notifiedOn == date) return null
+        val window = window(alert, date, zone) ?: return null
+        val at = notifyAt(alert, observation.expectedAt)
+        return at.takeIf { it.isAfter(now) && !it.isAfter(window.endInclusive) && !TrainAlertWatch.isQuiet(it, zone) }
     }
 
     /** Only the alerts of trains still among the favourites are checked. */

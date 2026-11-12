@@ -694,7 +694,7 @@
     <string name="stop_alarm_dialog_time">يرنّ المنبّه قبل الموعد المتوقع %1$s بنحو خمس دقائق.</string>
     <string name="action_set_stop_alarm">ضبط المنبّه</string>
     <string name="gps_alarm_option">نبّهني أيضًا حسب الموقع</string>
-    <string name="gps_alarm_option_description">يرنّ عندما تكون ضمن النطاق المختار من المحطة (فورًا إذا كنت فيه بالفعل)، حتى لو كان القطار مبكرًا أو متأخرًا. يُعتمد التنبيه الذي يصل أولًا.</string>
+    <string name="gps_alarm_option_description">يرنّ عندما تكون ضمن النطاق المختار من المحطة (فورًا إذا كنت فيه بالفعل)، حتى لو كان القطار مبكرًا أو متأخرًا. إذا رنّ المنبّه حسب الوقت بينما يُظهر موقعك أن المحطة لا تزال بعيدة، يبقى منبّه GPS مفعّلًا.</string>
     <string name="gps_alarm_radius_label">نطاق التنبيه</string>
     <plurals name="gps_alarm_radius_km">
         <item quantity="zero">%d كم</item>
@@ -735,7 +735,7 @@
     <string name="gps_alarm_ended_expired">انتهى منبّه GPS لـ %1$s: انقضت المدة القصوى.</string>
     <string name="gps_alarm_ended_permission">توقف منبّه GPS لـ %1$s: لم يعد إذن الموقع ممنوحًا.</string>
     <string name="gps_alarm_ended_unavailable">توقف منبّه GPS لـ %1$s: لا يتوفر مصدر للموقع على الهاتف.</string>
-    <string name="gps_alarm_ended_time_alarm">أُغلق منبّه GPS لـ %1$s: رنّ المنبّه حسب الوقت بالفعل.</string>
+    <string name="gps_alarm_ended_time_alarm">أُغلق منبّه GPS لـ %1$s: رنّ المنبّه حسب الوقت ولم يتوفر موقع حديث.</string>
     <string name="gps_alarm_interrupted">توقف منبّه GPS لـ %1$s، مثلًا بعد إعادة تشغيل الهاتف. فعّله مجددًا إذا كنت لا تزال في الرحلة.</string>
     <string name="action_gps_alarm_resume">إعادة التفعيل</string>
     <string name="action_gps_alarm_dismiss">تجاهل</string>
@@ -743,12 +743,13 @@
     <string name="stop_alarm_unavailable">لا يمكن جدولة المنبّه: الموعد المتوقع للمحطة قد مضى أو غير متاح.</string>
     <string name="stop_alarm_exact">ضُبط المنبّه على %1$s، قبل خمس دقائق من الموعد المتوقع %2$s.</string>
     <string name="stop_alarm_inexact">ضُبط المنبّه على %1$s، لكن قد يؤخره Android لأن المنبّهات الدقيقة غير مسموح بها.</string>
+    <string name="stop_alarm_not_shown">لا يعرض Android منبّهات المحطات في Binario (الإشعارات أو فئتها معطّلة): لن يظهر هذا المنبّه.</string>
     <string name="commuter_alert_scheduled">حُفظ التنبيه وجُدول على الجهاز.</string>
     <string name="commuter_alert_scheduled_inexact">حُفظ التنبيه وجُدول بوضع تقريبي: قد يؤخره Android لأن المنبّهات الدقيقة غير مسموح بها.</string>
     <string name="stop_alarms_active_title">منبّهات المحطات النشطة</string>
     <string name="stop_alarm_active_row">%1$s · القطار %2$s · الوصول المتوقع %3$s</string>
     <string name="accessibility_cancel_stop_alarm">إلغاء منبّه %1$s</string>
-    <string name="exact_alarm_note">لا يسمح Android لتطبيق Binario بالمنبّهات الدقيقة: قد تصل منبّهات المحطات وتنبيهات التنقل اليومي متأخرة.</string>
+    <string name="exact_alarm_note">لا يسمح Android لتطبيق Binario بالمنبّهات الدقيقة: قد تصل منبّهات المحطات وتنبيهات التنقل اليومي وتنبيهات الوصول وتذكيرات الأجندة متأخرة.</string>
     <string name="exact_alarm_action">السماح بالمنبّهات الدقيقة</string>
     <string name="background_status_title">النشاط في الخلفية</string>
     <string name="background_status_notifications_on">الإشعارات مسموح بها</string>
@@ -1507,6 +1508,7 @@
     <string name="accessibility_approach_alert_station">تغيير محطة التنبيه، الحالية %1$s</string>
     <string name="approach_alert_lead">قبل كم من الوقت</string>
     <string name="approach_alert_summary">ينبّهك قبل %1$s من وصوله إلى %2$s.</string>
+    <string name="approach_alert_quiet_note">لا تُرسل تنبيهات بين الساعة 22 والساعة 7: قد يصل تنبيه هذه المحطة متأخرًا أو لا يصل.</string>
     <string name="approach_alert_title">%1$s يصل إلى %2$s بعد ~%3$s</string>
     <string name="approach_alert_title_now">%1$s يصل الآن إلى %2$s</string>
     <string name="approach_alert_channel_name">قطارات تقترب</string>
@@ -1617,6 +1619,8 @@
         <item quantity="many">في الموعد %1$d مرة من أصل %2$d</item>
         <item quantity="other">في الموعد %1$d مرة من أصل %2$d</item>
     </plurals>
+    <!-- The on-time limit after a count: «In orario 8 volte su 10 (entro 5 min)» -->
+    <string name="reliability_within_limit">%1$s (خلال %2$s)</string>
     <plurals name="reliability_leg_on_time_count">
         <item quantity="zero">%1$s في الموعد %2$d مرة من أصل %3$d</item>
         <item quantity="one">%1$s في الموعد %2$d مرة من أصل %3$d</item>

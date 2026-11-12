@@ -45,4 +45,18 @@ class GpsArrivalAlarmRuntimeTest {
         assertEquals(GpsArrivalAlarmEndReason.TIME_ALARM_FIRED, GpsArrivalAlarmRuntime.takeStopReason())
         assertNull(GpsArrivalAlarmRuntime.takeStopReason())
     }
+
+    @Test
+    fun `the last fix belongs to the running session only`() {
+        GpsArrivalAlarmRuntime.recordFix(1_000L, 3_000.0)
+        assertNull("no session, no fix", GpsArrivalAlarmRuntime.lastFix())
+        GpsArrivalAlarmRuntime.markActive(target, precise = true)
+        assertNull(GpsArrivalAlarmRuntime.lastFix())
+        GpsArrivalAlarmRuntime.recordFix(1_500_000L, 12_000.0)
+        assertEquals(1_500_000L to 12_000.0, GpsArrivalAlarmRuntime.lastFix())
+        GpsArrivalAlarmRuntime.markEnded(target, GpsArrivalAlarmEndReason.TRIGGERED)
+        assertNull(GpsArrivalAlarmRuntime.lastFix())
+        GpsArrivalAlarmRuntime.markActive(target, precise = true)
+        assertNull("a new session starts without the old fix", GpsArrivalAlarmRuntime.lastFix())
+    }
 }

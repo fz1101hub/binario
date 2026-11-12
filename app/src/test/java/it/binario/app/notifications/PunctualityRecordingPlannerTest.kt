@@ -6,6 +6,7 @@ import it.binario.app.data.ServiceStatus
 import it.binario.app.data.TrainCategory
 import it.binario.app.data.TrainService
 import it.binario.app.data.TrainStop
+import it.binario.app.data.repository.TrainNumberSearchUpdate
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -59,6 +60,21 @@ class PunctualityRecordingPlannerTest {
         val afterMidnight = at("01:00", today.plusDays(1))
         assertEquals(listOf(night to today), PunctualityRecordingPlanner.due(listOf(night), afterMidnight, zone))
         assertNull(PunctualityRecordingPlanner.nextRun(emptyList(), at("10:00"), zone))
+        // A train leaving at 23:00 and taking 160 minutes: its run of the 2nd is due at 02:00 of the 3rd. Planned at
+        // 00:30 of the 3rd (the app opened), the next run is that one, not 02:00 of the 4th.
+        val late = RecordingCandidate("1998", LocalTime.of(23, 0), 160)
+        assertEquals(at("02:00", today.plusDays(1)), PunctualityRecordingPlanner.nextRun(listOf(late), at("00:30", today.plusDays(1)), zone))
+        assertEquals(listOf(late to today), PunctualityRecordingPlanner.due(listOf(late), at("02:00", today.plusDays(1)), zone))
+    }
+
+    @Test fun `a complete answer without the train ends the day, a failed or partial one is retried`() {
+        assertTrue(PunctualityRecordingPlanner.runsNot(TrainNumberSearchUpdate(emptyList(), complete = true, unavailableSources = emptySet())))
+        assertFalse(PunctualityRecordingPlanner.runsNot(null))
+        assertFalse(PunctualityRecordingPlanner.runsNot(TrainNumberSearchUpdate(emptyList(), complete = false, unavailableSources = emptySet())))
+        assertFalse(PunctualityRecordingPlanner.runsNot(TrainNumberSearchUpdate(emptyList(), complete = true, unavailableSources = setOf("ViaggiaTreno"))))
+        // A day marked done is not due again: one lookup on a day the train does not run, not three.
+        val weekday = RecordingCandidate("2153", LocalTime.of(8, 30), 65, recordedOn = today, attemptDate = today, attempts = 1, lastAttempt = at("09:55"))
+        assertNull(PunctualityRecordingPlanner.dueAt(weekday, today, zone))
     }
 
     @Test fun `a run counts as arrived at its last stop or twenty minutes after the scheduled arrival`() {

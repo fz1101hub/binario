@@ -20,6 +20,7 @@ import it.binario.app.data.RailTime
 import it.binario.app.data.TrainService
 import it.binario.app.data.repository.BinarioDataGraph
 import it.binario.app.data.repository.TrainNumberQuery
+import it.binario.app.data.repository.TrainNumberSearchUpdate
 import java.time.Duration
 import java.time.Instant
 import java.time.LocalDate
@@ -83,13 +84,21 @@ object PunctualityRecordingPlanner {
         }
     }
 
+    /** The next run: now when one is due, else the next due instant of yesterday's (a night run), today's or tomorrow's run. */
     fun nextRun(candidates: List<RecordingCandidate>, now: Instant, zone: ZoneId = RailTime.defaultZone): Instant? {
         if (due(candidates, now, zone).isNotEmpty()) return now
         val today = now.atZone(zone).toLocalDate()
-        return candidates.flatMap { candidate -> listOf(today, today.plusDays(1)).mapNotNull { dueAt(candidate, it, zone) } }
+        return candidates.flatMap { candidate -> listOf(today.minusDays(1), today, today.plusDays(1)).mapNotNull { dueAt(candidate, it, zone) } }
             .filter { it.isAfter(now) }
             .minOrNull()
     }
+
+    /**
+     * True when the last answer of the search ([update], null when it failed or timed out) says the train has no run that
+     * day: complete, every source answered, no match. That is final, as for the approach alert, and is not retried.
+     */
+    fun runsNot(update: TrainNumberSearchUpdate?): Boolean =
+        update != null && update.complete && update.unavailableSources.isEmpty() && update.matches.isEmpty()
 
     /** True once the run has reached its last stop, or [AFTER_ARRIVAL] has passed since its scheduled arrival. */
     fun arrived(service: TrainService, scheduledArrival: Instant, now: Instant): Boolean =
@@ -144,9 +153,10 @@ object PunctualityRecorderScheduler {
     internal const val WORK = "binario-punctuality-recorder"
     private val networkConnected = Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build()
 
-    fun reschedule(context: Context) = schedule(context, fromWorker = false)
+    /** [keepPending] (app start): a planned or running work stays, as for the other chains; a change replaces it. */
+    fun reschedule(context: Context, keepPending: Boolean = false) = schedule(context, fromWorker = false, keepPending = keepPending)
 
-    internal fun schedule(context: Context, fromWorker: Boolean) {
+    internal fun schedule(context: Context, fromWorker: Boolean, keepPending: Boolean = false) {
         val workManager = WorkManager.getInstance(context)
         val favourites = FavouriteTrainStore(context).all()
         val store = PunctualityRecorderStore(context)
@@ -165,7 +175,12 @@ object PunctualityRecorderScheduler {
             .setInitialDelay(delay.toMillis(), TimeUnit.MILLISECONDS)
             .addTag(WORK)
             .build()
-        workManager.enqueueUniqueWork(WORK, if (fromWorker) ExistingWorkPolicy.APPEND_OR_REPLACE else ExistingWorkPolicy.REPLACE, request)
+        val policy = when {
+            fromWorker -> ExistingWorkPolicy.APPEND_OR_REPLACE
+            keepPending -> ExistingWorkPolicy.KEEP
+            else -> ExistingWorkPolicy.REPLACE
+        }
+        workManager.enqueueUniqueWork(WORK, policy, request)
     }
 }
 
@@ -203,16 +218,19 @@ class PunctualityRecorderWorker(appContext: Context, params: WorkerParameters) :
                 lastAttempt = now
             )
             store.save(attempted)
-            val service = try {
-                withTimeoutOrNull(LOOKUP_TIMEOUT_MILLIS) {
-                    val matches = search.search(TrainNumberQuery(monitor.number, date)).lastOrNull()?.matches.orEmpty()
-                    FavouriteTrainMatcher.pick(matches.map { it.service }, monitor)
-                }
+            val update = try {
+                withTimeoutOrNull(LOOKUP_TIMEOUT_MILLIS) { search.search(TrainNumberQuery(monitor.number, date)).lastOrNull() }
             } catch (error: CancellationException) {
                 throw error
             } catch (_: Exception) {
                 null
-            } ?: return@forEach
+            }
+            val service = update?.let { FavouriteTrainMatcher.pick(it.matches.map { match -> match.service }, monitor) }
+            if (service == null) {
+                // A day the train does not run is done after one lookup; only a failed or ambiguous answer is retried.
+                if (PunctualityRecordingPlanner.runsNot(update)) store.save(attempted.copy(recordedOn = date))
+                return@forEach
+            }
             val departure = candidate.departure ?: runCatching { LocalTime.parse(service.scheduledDeparture.trim()) }.getOrNull()
             val arrival = service.stops.lastOrNull()?.let { ConnectionRiskClassifier.arrival(service, it, date, zone)?.scheduled }
             val learned = if (departure != null && arrival != null) {
@@ -220,8 +238,9 @@ class PunctualityRecorderWorker(appContext: Context, params: WorkerParameters) :
             } else null
             val updated = attempted.copy(durationMinutes = learned ?: attempted.durationMinutes)
             if (arrival == null || !service.operationalStatusVerified || !PunctualityRecordingPlanner.arrived(service, arrival, now)) {
-                // Not arrived yet (or no live data): the learned arrival moves the next attempt after it.
-                store.save(if (learned != null && candidate.durationMinutes == null) updated.copy(attempts = 0, attemptDate = null, lastAttempt = null) else updated)
+                // Not arrived yet (or no live data): the learned arrival moves the next attempt after it, within the same
+                // daily limit of attempts.
+                store.save(updated)
                 return@forEach
             }
             PunctualityRecordingPlanner.observation(service, monitor.number, date)?.let { observation ->

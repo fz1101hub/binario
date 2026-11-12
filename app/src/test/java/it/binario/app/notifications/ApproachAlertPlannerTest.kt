@@ -52,6 +52,23 @@ class ApproachAlertPlannerTest {
         assertEquals(ApproachDecision.Notify(10), ApproachAlertPlanner.decide(alert, today, null, at("08:32"), false, zone))
     }
 
+    @Test fun `a wake-up alarm delivers the moment to notify once a check of the day stored an observation`() {
+        // Expected 08:52 (ten minutes late), lead 10: the alarm is set for 08:42, whatever Doze does to the work.
+        assertEquals(at("08:42"), ApproachAlertPlanner.alarmAt(alert, null, null, observation("08:52", 10), at("08:32"), zone))
+        // No check yet, the day finished or notified, the train passed or cancelled, the moment gone: no alarm.
+        assertNull(ApproachAlertPlanner.alarmAt(alert, null, null, null, at("08:32"), zone))
+        assertNull(ApproachAlertPlanner.alarmAt(alert, today, null, observation("08:52", 10), at("08:32"), zone))
+        assertNull(ApproachAlertPlanner.alarmAt(alert, null, today, observation("08:52", 10), at("08:32"), zone))
+        assertNull(ApproachAlertPlanner.alarmAt(alert, null, null, observation("08:52", 10, passed = true), at("08:32"), zone))
+        assertNull(ApproachAlertPlanner.alarmAt(alert, null, null, observation("08:52", 10, cancelled = true), at("08:32"), zone))
+        assertNull(ApproachAlertPlanner.alarmAt(alert, null, null, observation("08:52", 10), at("08:42"), zone))
+        // Never in the quiet hours: an evening train three hours late reaches the station after 22:00.
+        val evening = alert.copy(stationTime = "21:20", departure = "21:00")
+        assertNull(ApproachAlertPlanner.alarmAt(evening, null, null, observation("22:20", 60), at("21:50"), zone))
+        // What the alarm then decides from the stored observation: notify at the moment.
+        assertEquals(ApproachDecision.Notify(10), ApproachAlertPlanner.decide(alert, today, observation("08:52", 10), at("08:42"), false, zone))
+    }
+
     @Test fun `lead times of 5 and 15 minutes and the minute count`() {
         val five = alert.copy(leadMinutes = 5)
         val fifteen = alert.copy(leadMinutes = 15)
@@ -82,6 +99,25 @@ class ApproachAlertPlannerTest {
         val evening = alert.copy(stationTime = "21:40", departure = "21:00")
         assertEquals(at("22:00"), ApproachAlertPlanner.window(evening, today, zone)!!.endInclusive)
         assertEquals(ApproachDecision.Done, ApproachAlertPlanner.decide(evening, today, observation("22:20", 40), at("22:10"), false, zone))
+    }
+
+    @Test fun `no check runs when the quiet hours leave nothing to show, and the app says so`() {
+        // Monza at 06:48, lead 10: a punctual train has passed before 07:00, so there is no 07:00 lookup every day.
+        val dawn = alert.copy(stationTime = "06:48", departure = "06:20")
+        assertNull(ApproachAlertPlanner.window(dawn, today, zone))
+        assertEquals(at("07:00", today.plusDays(3)), ApproachAlertPlanner.nextRun(dawn.copy(stationTime = "07:05"), today.plusDays(2), null, null, at("12:00", today.plusDays(2)), zone))
+        assertNull(ApproachAlertPlanner.nextRun(dawn, null, null, null, at("12:00"), zone))
+        assertTrue(ApproachAlertPlanner.quietOnTimetable(dawn))
+        // 07:05 with lead 10: notified at 07:00, later than chosen; the note says so.
+        val early = alert.copy(stationTime = "07:05", departure = "06:50")
+        assertEquals(at("07:00"), ApproachAlertPlanner.window(early, today, zone)!!.start)
+        assertTrue(ApproachAlertPlanner.quietOnTimetable(early))
+        // 22:05 with lead 5: the moment is 22:00 even on time, and a delay only moves it later.
+        val evening = alert.copy(stationTime = "22:05", departure = "21:30", leadMinutes = 5)
+        assertNull(ApproachAlertPlanner.window(evening, today, zone))
+        assertTrue(ApproachAlertPlanner.quietOnTimetable(evening))
+        assertFalse(ApproachAlertPlanner.quietOnTimetable(alert))
+        assertFalse(ApproachAlertPlanner.quietOnTimetable(alert.copy(stationTime = "21:59", leadMinutes = 15)))
     }
 
     @Test fun `a station after midnight belongs to the next calendar day of the run`() {

@@ -33,23 +33,23 @@ class MyTrainsReliabilityLinesTest {
     @Test fun `a row reads the network line as the results do, then the runs recorded on this phone and the trend`() {
         val italian = strings("it")
         val text = MyTrainsReliabilityLines.text(FavouriteTrainReliability(monitor, network, LocalPunctuality(10, 8, 0), worse), italian)
-        assertEquals("In orario 20 volte su 30 · ritardo medio 6 min · soppresso 1 volta", text.network?.text)
-        assertEquals("Registrato su questo telefono: in orario 8 volte su 10", text.personal?.text)
+        assertEquals("In orario 20 volte su 30 (entro 5 min) · ritardo medio 6 min · soppresso 1 volta", text.network?.text)
+        assertEquals("Registrato su questo telefono: in orario 8 volte su 10 (entro 5 min)", text.personal?.text)
         assertEquals("In peggioramento", text.trend)
         assertNull(text.noData)
         assertEquals(
-            "In orario 20 volte su 30, ritardo medio 6 min, soppresso 1 volta (statistiche non ufficiali). Registrato su questo telefono: in orario 8 volte su 10. In peggioramento",
+            "In orario 20 volte su 30 (entro 5 min), ritardo medio 6 min, soppresso 1 volta (statistiche non ufficiali). Registrato su questo telefono: in orario 8 volte su 10 (entro 5 min). In peggioramento",
             text.spoken
         )
         // A regional train within 15 minutes, a cancelled run of the user's own, a better trend.
         val regional = StopReliability("S01860", 28, 26, 15, 4.0, 28, 0)
         val mixed = MyTrainsReliabilityLines.text(FavouriteTrainReliability(monitor.copy(number = "RE_11 - 2153"), regional, LocalPunctuality(4, 1, 1), better), italian)
-        assertEquals("In orario 26 volte su 28 · ritardo medio 4 min", mixed.network?.text)
-        assertEquals("Registrato su questo telefono: in orario 1 volta su 4 · soppresso 1 volta", mixed.personal?.text)
+        assertEquals("In orario 26 volte su 28 (entro 15 min) · ritardo medio 4 min", mixed.network?.text)
+        assertEquals("Registrato su questo telefono: in orario 1 volta su 4 (entro 5 min) · soppresso 1 volta", mixed.personal?.text)
         assertEquals("In miglioramento", mixed.trend)
         val english = MyTrainsReliabilityLines.text(FavouriteTrainReliability(monitor, network, LocalPunctuality(10, 8, 0), worse), strings("en"))
-        assertEquals("On time 20 times out of 30 · average delay 6 min · cancelled 1 time", english.network?.text)
-        assertEquals("Recorded on this phone: on time 8 times out of 10", english.personal?.text)
+        assertEquals("On time 20 times out of 30 (within 5 min) · average delay 6 min · cancelled 1 time", english.network?.text)
+        assertEquals("Recorded on this phone: on time 8 times out of 10 (within 5 min)", english.personal?.text)
         assertEquals("Getting worse", english.trend)
     }
 
@@ -58,11 +58,11 @@ class MyTrainsReliabilityLinesTest {
         val networkOnly = MyTrainsReliabilityLines.text(FavouriteTrainReliability(monitor, network, null, null), italian)
         assertNull(networkOnly.personal)
         assertNull(networkOnly.trend)
-        assertEquals("In orario 20 volte su 30, ritardo medio 6 min, soppresso 1 volta (statistiche non ufficiali)", networkOnly.spoken)
+        assertEquals("In orario 20 volte su 30 (entro 5 min), ritardo medio 6 min, soppresso 1 volta (statistiche non ufficiali)", networkOnly.spoken)
         // The build without statistics: the runs recorded on this phone only, never said to be unofficial.
         val personalOnly = MyTrainsReliabilityLines.text(FavouriteTrainReliability(monitor, null, LocalPunctuality(1, 1, 0), null), italian)
         assertNull(personalOnly.network)
-        assertEquals("Registrato su questo telefono: in orario 1 volta su 1", personalOnly.spoken)
+        assertEquals("Registrato su questo telefono: in orario 1 volta su 1 (entro 5 min)", personalOnly.spoken)
         val nothing = MyTrainsReliabilityLines.text(FavouriteTrainReliability(monitor, null, null, null), italian)
         assertNull(nothing.network)
         assertNull(nothing.personal)
@@ -162,7 +162,8 @@ class MyTrainsReliabilityLinesTest {
             personal = { onTime, runs -> plural("my_trains_reliability_personal", onTime, onTime, runs) },
             worse = string("my_trains_reliability_worse"),
             better = string("my_trains_reliability_better"),
-            noData = string("my_trains_reliability_no_data")
+            noData = string("my_trains_reliability_no_data"),
+            within = { text, minutes -> string("reliability_within_limit", text, plural("minutes_short", minutes, minutes)) }
         )
     }
 

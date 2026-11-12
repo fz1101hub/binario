@@ -354,6 +354,9 @@ internal fun ApproachAlertControl(service: TrainService, eligible: Boolean, modi
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
+            if (ApproachAlertPlanner.quietOnTimetable(current)) {
+                Text(stringResource(R.string.approach_alert_quiet_note), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
         }
         feedback?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
     }

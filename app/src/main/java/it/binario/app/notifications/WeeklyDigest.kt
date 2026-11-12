@@ -11,6 +11,7 @@ import androidx.work.WorkerParameters
 import it.binario.app.FavouriteTrainPunctuality
 import it.binario.app.FavouriteTrainStore
 import it.binario.app.LocalPunctuality
+import it.binario.app.PunctualityHistory
 import it.binario.app.PunctualityHistoryStore
 import it.binario.app.PunctualityObservation
 import it.binario.app.R
@@ -97,6 +98,20 @@ object WeeklyDigestPlanner {
 
     /** Monday of the week that ends on [weekEnd]. */
     fun weekStart(weekEnd: LocalDate): LocalDate = weekEnd.minusDays(6)
+
+    /**
+     * What a run does with the week it finds open ([weekEndAt]): the week ending on [weekEnd] is handled (notified, or
+     * given up for the week when the digest could not be built), so [nextRunAt] moves to next Sunday. A run with the
+     * setting off, notifications blocked or in the quiet hours handles nothing.
+     */
+    fun handles(enabled: Boolean, notificationsAllowed: Boolean, now: ZonedDateTime, lastSentWeekEnd: LocalDate?): LocalDate? =
+        weekEndAt(now)?.takeIf { enabled && notificationsAllowed && mayNotify(now) && it != lastSentWeekEnd }
+
+    /**
+     * Whether a run plans the next one: only with the setting on and notifications allowed. Otherwise [nextRunAt] would
+     * be «now» for the whole window, a run every minute; the app start plans the chain again.
+     */
+    fun continuesAfterRun(enabled: Boolean, notificationsAllowed: Boolean): Boolean = enabled && notificationsAllowed
 }
 
 /**
@@ -168,7 +183,9 @@ class WeeklyDigestStrings(
     /** «Peggiorato: %1$s, in orario %2$d%% questa settimana (di solito %3$d%%)». */
     val worse: String,
     /** «Statistiche non ufficiali di Binario su dati ViaggiaTreno, aggiornate al %1$s». */
-    val attribution: String
+    val attribution: String,
+    /** «%1$s (entro %2$s)»: a count or share with the on-time limit it counts against. */
+    val within: (text: String, limitMinutes: Int) -> String
 )
 
 /** The notification texts of a [WeeklyDigest]: a summary line and one line per train. */
@@ -180,10 +197,11 @@ object WeeklyDigestText {
         val parts = buildList {
             val week = train.week
             if (week == null) add(strings.noRuns) else {
-                add(strings.onTimeCount(week.onTime, week.runs))
+                add(strings.within(strings.onTimeCount(week.onTime, week.runs), PunctualityHistory.ON_TIME_MINUTES))
                 if (week.cancelled > 0) add(strings.cancelled(week.cancelled))
             }
-            train.network?.let { add(strings.network(it.days, it.percent)) }
+            // The network share counts against the train's own limit (15 minutes for a regional train), the week within 5.
+            train.network?.let { add(strings.within(strings.network(it.days, it.percent), it.limitMinutes)) }
         }
         return String.format(strings.locale, strings.trainLine, title(train, strings), parts.joinToString(" · "))
     }
@@ -194,7 +212,7 @@ object WeeklyDigestText {
     /** The collapsed line: the train that got worse, else the week's total, else the first train's line. */
     fun summary(digest: WeeklyDigest, strings: WeeklyDigestStrings): String = when {
         digest.worse != null -> worse(digest.worse, strings)
-        digest.runs > 0 -> strings.onTimeCount(digest.onTime, digest.runs)
+        digest.runs > 0 -> strings.within(strings.onTimeCount(digest.onTime, digest.runs), PunctualityHistory.ON_TIME_MINUTES)
         else -> line(digest.trains.first(), strings)
     }
 
@@ -255,20 +273,23 @@ class WeeklyDigestWorker(appContext: Context, params: WorkerParameters) : Corout
         try {
             val now = ZonedDateTime.now(RailTime.defaultZone)
             val store = WeeklyDigestStore(context)
-            val weekEnd = WeeklyDigestPlanner.weekEndAt(now)
-            if (settings.weeklyDigestEnabled && LiveNotifications.allowed(context) && WeeklyDigestPlanner.mayNotify(now) && weekEnd != null &&
-                store.lastSentWeekEnd != weekEnd
-            ) {
-                notify(context, weekEnd)
-                // Also with nothing to say: the window is over for this week.
-                store.lastSentWeekEnd = weekEnd
+            WeeklyDigestPlanner.handles(settings.weeklyDigestEnabled, LiveNotifications.allowed(context), now, store.lastSentWeekEnd)?.let { weekEnd ->
+                try {
+                    notify(context, weekEnd)
+                } finally {
+                    // Also with nothing to say, or unreadable history or statistics: the week is over, next week's run
+                    // tries again (without this a failing build would run again every minute).
+                    store.lastSentWeekEnd = weekEnd
+                }
             }
         } catch (cancelled: CancellationException) {
             throw cancelled
         } catch (_: Exception) {
-            // Unreadable history or statistics: nothing is shown, next week's run tries again.
+            // Nothing is shown.
         } finally {
-            if (!isStopped && settings.weeklyDigestEnabled) WeeklyDigestScheduler.enqueue(context, ExistingWorkPolicy.APPEND_OR_REPLACE, fromWorker = true)
+            if (!isStopped && WeeklyDigestPlanner.continuesAfterRun(settings.weeklyDigestEnabled, LiveNotifications.allowed(context))) {
+                WeeklyDigestScheduler.enqueue(context, ExistingWorkPolicy.APPEND_OR_REPLACE, fromWorker = true)
+            }
         }
         Result.success()
     }
@@ -292,7 +313,10 @@ class WeeklyDigestWorker(appContext: Context, params: WorkerParameters) : Corout
             noRuns = resources.getString(R.string.weekly_digest_no_runs),
             network = { days, percent -> resources.getQuantityString(R.plurals.weekly_digest_network, days, days, percent) },
             worse = resources.getString(R.string.weekly_digest_worse),
-            attribution = resources.getString(R.string.reliability_attribution)
+            attribution = resources.getString(R.string.reliability_attribution),
+            within = { text, minutes ->
+                resources.getString(R.string.reliability_within_limit, text, resources.getQuantityString(R.plurals.minutes_short, minutes, minutes))
+            }
         )
         val lines = WeeklyDigestText.lines(digest, strings, stats?.windowEnd)
         val notification = NotificationCompat.Builder(context, LiveChannel.WEEKLY_DIGEST.ensure(context))

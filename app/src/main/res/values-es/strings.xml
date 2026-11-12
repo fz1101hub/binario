@@ -663,7 +663,7 @@
     <string name="stop_alarm_dialog_time">La alarma suena unos cinco minutos antes de la hora prevista %1$s.</string>
     <string name="action_set_stop_alarm">Poner alarma</string>
     <string name="gps_alarm_option">Avisarme también según mi ubicación</string>
-    <string name="gps_alarm_option_description">Suena cuando estás dentro del radio elegido alrededor de la parada (enseguida si ya estás dentro), aunque el tren vaya adelantado o con retraso. Cuenta el aviso que llegue primero.</string>
+    <string name="gps_alarm_option_description">Suena cuando estás dentro del radio elegido alrededor de la parada (enseguida si ya estás dentro), aunque el tren vaya adelantado o con retraso. Si la alarma por horario suena cuando tu posición indica que la parada aún está lejos, la alarma GPS sigue activa.</string>
     <string name="gps_alarm_radius_label">Radio de aviso</string>
     <plurals name="gps_alarm_radius_km">
         <item quantity="one">%d km</item>
@@ -698,7 +698,7 @@
     <string name="gps_alarm_ended_expired">Alarma GPS para %1$s terminada: se ha agotado el tiempo máximo.</string>
     <string name="gps_alarm_ended_permission">Alarma GPS para %1$s interrumpida: el permiso de ubicación ya no está concedido.</string>
     <string name="gps_alarm_ended_unavailable">Alarma GPS para %1$s interrumpida: no hay ninguna fuente de ubicación disponible en el teléfono.</string>
-    <string name="gps_alarm_ended_time_alarm">Alarma GPS para %1$s cerrada: la alarma por horario ya ha sonado.</string>
+    <string name="gps_alarm_ended_time_alarm">Alarma GPS para %1$s cerrada: la alarma por horario ha sonado y no había una posición reciente.</string>
     <string name="gps_alarm_interrupted">La alarma GPS para %1$s se ha interrumpido, por ejemplo por un reinicio del teléfono. Vuelve a activarla si sigues de viaje.</string>
     <string name="action_gps_alarm_resume">Reactivar</string>
     <string name="action_gps_alarm_dismiss">Ignorar</string>
@@ -706,12 +706,13 @@
     <string name="stop_alarm_unavailable">No se puede programar la alarma: la hora prevista de la parada ya ha pasado o no está disponible.</string>
     <string name="stop_alarm_exact">Alarma configurada para %1$s, cinco minutos antes de la hora prevista %2$s.</string>
     <string name="stop_alarm_inexact">Alarma configurada para %1$s, pero Android puede entregarla con retraso porque no se permiten las alarmas exactas.</string>
+    <string name="stop_alarm_not_shown">Android no muestra las alarmas de parada de Binario (notificaciones o su categoría desactivadas): esta alarma no aparecerá.</string>
     <string name="commuter_alert_scheduled">Alerta guardada y programada en el dispositivo.</string>
     <string name="commuter_alert_scheduled_inexact">Alerta guardada y programada de forma aproximada: Android puede entregarla con retraso porque no se permiten las alarmas exactas.</string>
     <string name="stop_alarms_active_title">Alarmas de parada activas</string>
     <string name="stop_alarm_active_row">%1$s · tren %2$s · llegada prevista %3$s</string>
     <string name="accessibility_cancel_stop_alarm">Cancelar la alarma de %1$s</string>
-    <string name="exact_alarm_note">Android no permite a Binario usar alarmas exactas: las alarmas de parada y las alertas de viajeros pueden llegar con retraso.</string>
+    <string name="exact_alarm_note">Android no permite a Binario usar alarmas exactas: las alarmas de parada, las alertas de viajeros, los avisos de llegada y los recordatorios de la Agenda pueden llegar con retraso.</string>
     <string name="exact_alarm_action">Permitir alarmas exactas</string>
     <string name="background_status_title">Actividad en segundo plano</string>
     <string name="background_status_notifications_on">Notificaciones permitidas</string>
@@ -1428,6 +1429,7 @@
     <string name="accessibility_approach_alert_station">Cambiar la estación del aviso, ahora %1$s</string>
     <string name="approach_alert_lead">Con cuánta antelación</string>
     <string name="approach_alert_summary">Te avisa %1$s antes de su llegada a %2$s.</string>
+    <string name="approach_alert_quiet_note">Entre las 22 y las 7 no se envían avisos: para esta parada el aviso puede llegar más tarde o no llegar.</string>
     <string name="approach_alert_title">%1$s llega a %2$s en ~%3$s</string>
     <string name="approach_alert_title_now">%1$s está llegando a %2$s</string>
     <string name="approach_alert_channel_name">Trenes llegando</string>
@@ -1529,6 +1531,8 @@
         <item quantity="many">Puntual %1$d veces de %2$d</item>
         <item quantity="other">Puntual %1$d veces de %2$d</item>
     </plurals>
+    <!-- The on-time limit after a count: «In orario 8 volte su 10 (entro 5 min)» -->
+    <string name="reliability_within_limit">%1$s (hasta %2$s)</string>
     <plurals name="reliability_leg_on_time_count">
         <item quantity="one">%1$s puntual %2$d vez de %3$d</item>
         <item quantity="many">%1$s puntual %2$d veces de %3$d</item>
