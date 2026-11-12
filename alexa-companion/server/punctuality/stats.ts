@@ -30,6 +30,14 @@ const MINUTES_PER_DAY = 24 * 60;
 const MAX_SCHEDULED_MINUTE = 3 * MINUTES_PER_DAY;
 /** {@link PunctualityTrain.scheduledMinute} of a stop whose file gives no (valid) scheduled minute. */
 export const NO_SCHEDULED_MINUTE = -1;
+/** {@link PunctualityTrain.daysSinceSeen} of a train whose file gives no (valid) `l`. */
+export const NOT_DATED = -1;
+/**
+ * A train not observed for more than this many days before the window's end is not proposed as
+ * the most punctual: withdrawn, renumbered or retimed at a timetable change, its past record would
+ * still rank it.
+ */
+export const MAX_DAYS_SINCE_SEEN = 7;
 /** Bit set in {@link PunctualityTrain.weekdays} when the file lists the weekdays of the stop. */
 const WEEKDAYS_KNOWN = 0x80;
 
@@ -99,7 +107,12 @@ export class PunctualityTrain {
      * Weekdays (of the run's departure day) with at least one sample at the stop: bit 0 Monday …
      * bit 6 Sunday, plus {@link WEEKDAYS_KNOWN}; 0 where the file has no weekdays (below 14 samples).
      */
-    readonly weekdays: Uint8Array = new Uint8Array(codes.length)
+    readonly weekdays: Uint8Array = new Uint8Array(codes.length),
+    /**
+     * Days between the train's most recent observed day and the window's end (0: seen on the last
+     * day), the optional train field `l`; {@link NOT_DATED} in files without it.
+     */
+    readonly daysSinceSeen: number = NOT_DATED
   ) {}
 
   get stopCount() {
@@ -173,15 +186,16 @@ export class PunctualityStats {
    * pipeline leaves them out below 14 samples, so always for a train of the weekend or of the first
    * weeks of the collection) only when the days observed there prove it as the weekdays would: the
    * covered days missing (no sample at the stop and no cancellation) are fewer than the
-   * `isoWeekday`s among them, so at least one of its runs fell on that weekday, or none is missing.
-   * A weekend-only train (8 days of 30) is then never proposed on a Tuesday, and neither on a
-   * Saturday, since nothing tells which days it runs.
+   * `isoWeekday`s among them, so at least one of its runs fell on that weekday. A weekend-only
+   * train (8 days of 30) is then never proposed on a Tuesday, and neither on a Saturday, since
+   * nothing tells which days it runs; on a weekday the covered days do not include yet (a
+   * collection restarted on a Monday has no Sunday) no train is, not even one seen every day.
    */
   mayRunOn(train: PunctualityTrain, stop: number, isoWeekday: number): boolean {
     if (train.hasWeekdays(stop)) return train.mayRunOn(stop, isoWeekday);
     const known = Math.min(train.daysObserved, train.samples[stop] + train.daysCancelled);
-    const missing = this.coveredDays - known;
-    return missing <= 0 || missing < this.coveredDaysOn(isoWeekday);
+    const missing = Math.max(0, this.coveredDays - known);
+    return missing < this.coveredDaysOn(isoWeekday);
   }
 
   /** Every train published with the number; the same number from another origin is another train. */
@@ -197,6 +211,8 @@ export class PunctualityStats {
 export type TrainPunctuality =
   | { kind: "unknown" }
   | { kind: "fewData" }
+  /** Several trains with the number, from different origins, each with figures: nothing tells which one is meant. */
+  | { kind: "sharedNumber" }
   | { kind: "cancelledEveryDay"; days: number }
   | {
       kind: "stats";
@@ -220,9 +236,12 @@ function shownDelay(minutes: number) {
 }
 
 /**
- * How the train numbered `number` arrives at its terminus (the last stop of the file). Among
- * trains with the same number from different origins the one with the most samples at its
- * terminus is taken; a train cancelled on every one of at least {@link MIN_SAMPLES} days says so.
+ * How the train numbered `number` arrives at its terminus (the last stop of the file). The same
+ * number from different origins is another train: when only one of them has {@link MIN_SAMPLES}
+ * samples at its terminus it is that one (the others say nothing anyway); when several have, no
+ * figure is given rather than another train's ({@link TrainPunctuality} `sharedNumber`), as the app
+ * gives none without an origin to tell them apart. A train cancelled on every one of at least
+ * {@link MIN_SAMPLES} days says so.
  */
 export function trainPunctuality(stats: PunctualityStats, number: string): TrainPunctuality {
   const candidates = stats.trainsNumbered(number);
@@ -232,6 +251,7 @@ export function trainPunctuality(stats: PunctualityStats, number: string): Train
     .filter(train => train.stopCount > 0)
     .sort((left, right) => terminusSamples(right) - terminusSamples(left) || left.originCode.localeCompare(right.originCode));
   const best = running[0];
+  if (running.filter(train => terminusSamples(train) >= MIN_SAMPLES).length > 1) return { kind: "sharedNumber" };
   if (best && terminusSamples(best) >= MIN_SAMPLES) {
     const last = best.stopCount - 1;
     const samples = best.samples[last];
@@ -342,24 +362,73 @@ export type RailClock = {
   minuteOfDay: number;
   /** ISO weekday of the local day: 1 Monday … 7 Sunday. */
   isoWeekday: number;
+  /** The local day, `YYYY-MM-DD`: on a national holiday the railways run their Sunday service. */
+  date: string;
 };
 
 const ISO_WEEKDAYS: Readonly<Record<string, number>> = { Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6, Sun: 7 };
 const railClockFormat = new Intl.DateTimeFormat("en-US", {
   timeZone: "Europe/Rome",
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
   weekday: "short",
   hour: "2-digit",
   minute: "2-digit",
   hourCycle: "h23",
 });
 
-/** The Europe/Rome minute of the day and weekday of `instant`, daylight saving included. */
+/** The Europe/Rome minute of the day, weekday and day of `instant`, daylight saving included. */
 export function railClock(instant: Date): RailClock {
   const parts = Object.fromEntries(railClockFormat.formatToParts(instant).map(part => [part.type, part.value]));
   return {
     minuteOfDay: (Number(parts.hour) % 24) * 60 + Number(parts.minute),
     isoWeekday: ISO_WEEKDAYS[parts.weekday] ?? 1,
+    date: `${parts.year}-${parts.month}-${parts.day}`,
   };
+}
+
+/** `date` (`YYYY-MM-DD`) moved by `days` calendar days. */
+function addDays(date: string, days: number): string {
+  const instant = new Date(`${date}T00:00:00Z`);
+  instant.setUTCDate(instant.getUTCDate() + days);
+  return instant.toISOString().slice(0, 10);
+}
+
+/** Easter Sunday of `year` in the Gregorian calendar (anonymous algorithm), `YYYY-MM-DD`. */
+function easterSunday(year: number): string {
+  const a = year % 19;
+  const b = Math.floor(year / 100);
+  const c = year % 100;
+  const d = Math.floor(b / 4);
+  const e = b % 4;
+  const f = Math.floor((b + 8) / 25);
+  const g = Math.floor((b - f + 1) / 3);
+  const h = (19 * a + b - d - g + 15) % 30;
+  const i = Math.floor(c / 4);
+  const k = c % 4;
+  const l = (32 + 2 * e + 2 * i - h - k) % 7;
+  const m = Math.floor((a + 11 * h + 22 * l) / 451);
+  const month = Math.floor((h + l - 7 * m + 114) / 31);
+  const day = ((h + l - 7 * m + 114) % 31) + 1;
+  return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+}
+
+const FIXED_HOLIDAYS: ReadonlySet<string> = new Set(["01-01", "01-06", "04-25", "05-01", "06-02", "08-15", "11-01", "12-08", "12-25", "12-26"]);
+
+/**
+ * Whether `date` (`YYYY-MM-DD`) is an Italian national holiday, on which the railways run their
+ * Sunday service: the same calendar as the Android app's `ItalianRailServiceCalendar` (fixed
+ * dates, Easter Sunday and Monday, and 4 October from 2026).
+ */
+export function isItalianHoliday(date: string): boolean {
+  const year = Number(date.slice(0, 4));
+  const monthDay = date.slice(5);
+  if (FIXED_HOLIDAYS.has(monthDay)) return true;
+  // San Francesco d'Assisi, national holiday again from 2026 (legge 151/2025).
+  if (year >= 2026 && monthDay === "10-04") return true;
+  const easter = easterSunday(year);
+  return date === easter || date === addDays(easter, 1);
 }
 
 /**
@@ -410,9 +479,10 @@ export type PunctualDeparture = {
  * of `originCodes` and later at one of `destinationCodes` (as {@link routePunctuality}), whose
  * scheduled minute at that origin (`% 1440`) falls in the {@link DEPARTURE_WINDOW_MINUTES} after
  * `clock` (past midnight too) and that have at least {@link MIN_SAMPLES} arrivals at the
- * destination. A train without a scheduled minute there is left out, and so is one not known to run
+ * destination. A train without a scheduled minute there is left out, so is one the file says was last
+ * seen more than {@link MAX_DAYS_SINCE_SEEN} days before the window's end, and so is one not known to run
  * on the day of that departure ({@link PunctualityStats.mayRunOn}: its weekdays at the origin or,
- * without them, its days observed there).
+ * without them, its days observed there; a national holiday counts as a Sunday, {@link isItalianHoliday}).
  *
  * Ranked by the share of observed days on which the train ran and arrived on time at the
  * destination against its own limit ({@link daysOnTime}, so a train often cancelled is not first
@@ -437,16 +507,18 @@ export function mostPunctualDepartures(
     if (!stops) continue;
     const [boarding, alighting] = stops;
     if (train.samples[alighting] < MIN_SAMPLES) continue;
+    // Only files that date the trains can tell a train that stopped running.
+    if (train.daysSinceSeen > MAX_DAYS_SINCE_SEEN) continue;
     const scheduled = train.scheduledMinute[boarding];
     if (scheduled < 0) continue;
     const minuteOfDay = scheduled % MINUTES_PER_DAY;
     const minutesUntil = (minuteOfDay - clock.minuteOfDay + MINUTES_PER_DAY) % MINUTES_PER_DAY;
     if (minutesUntil >= DEPARTURE_WINDOW_MINUTES) continue;
     // The weekdays are those of the run's departure day: a stop reached after midnight belongs to
-    // the run of the day before.
+    // the run of the day before. A national holiday runs the Sunday service.
     const daysAfterToday = clock.minuteOfDay + minutesUntil >= MINUTES_PER_DAY ? 1 : 0;
     const runDay = daysAfterToday - Math.floor(scheduled / MINUTES_PER_DAY);
-    const runWeekday = ((((clock.isoWeekday - 1 + runDay) % 7) + 7) % 7) + 1;
+    const runWeekday = isItalianHoliday(addDays(clock.date, runDay)) ? 7 : ((((clock.isoWeekday - 1 + runDay) % 7) + 7) % 7) + 1;
     if (!stats.mayRunOn(train, boarding, runWeekday)) continue;
     candidates.push({ train, alighting, minuteOfDay, minutesUntil });
   }
@@ -701,6 +773,9 @@ function compactTrain(
   const category = typeof value.c === "string" ? value.c.trim().toUpperCase() : "";
   const days = intIn(value.d, 0, limits.maxCount);
   const cancelled = value.x === undefined ? 0 : intIn(value.x, 0, limits.maxCount);
+  // Optional (files of the pipeline from its extension on): an absent, null or invalid value only
+  // leaves the train undated, it never costs the train.
+  const daysSinceSeen = intIn(value.l, 0, MAX_WINDOW_DAYS) ?? NOT_DATED;
   if (!number || !origin || category.length > MAX_TEXT || days === undefined || cancelled === undefined || cancelled > days) return null;
   if (!Array.isArray(value.s) || value.s.length > limits.maxStopsPerTrain) return null;
   // A train cancelled on every day observed has no stops; any other train needs at least one.
@@ -723,7 +798,8 @@ function compactTrain(
     Uint16Array.from(stops, stop => stop.onTime),
     Int16Array.from(stops, stop => stop.meanTenths),
     Int16Array.from(stops, stop => stop.scheduledMinute),
-    Uint8Array.from(stops, stop => stop.weekdays)
+    Uint8Array.from(stops, stop => stop.weekdays),
+    daysSinceSeen
   );
 }
 

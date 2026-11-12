@@ -37,31 +37,43 @@ export const NULLABLE_TIMESTAMP_COLUMNS = [
 ] as const;
 
 /**
+ * The problem of `@@explicit_defaults_for_timestamp` (1, "1" or "ON" is right), or null. The variable
+ * decides how a migration creates a bare `timestamp` column; a column already declared NULL keeps
+ * NULL whatever its value, so it matters to `db:migrate`, not to a server on migrated tables.
+ */
+export function explicitDefaultsProblem(explicitDefaults: unknown): string | null {
+  if (explicitDefaults === 1 || explicitDefaults === "1" || String(explicitDefaults).toUpperCase() === "ON") return null;
+  return (
+    `@@explicit_defaults_for_timestamp = ${String(explicitDefaults)}: le migrazioni creerebbero le date facoltative come NOT NULL ` +
+    "e il server salverebbe l'ora corrente al posto di NULL. Impostare explicit_defaults_for_timestamp=ON nella configurazione " +
+    "del server (predefinito da MariaDB 10.10) prima di migrare."
+  );
+}
+
+/** The problem of the {@link NULLABLE_TIMESTAMP_COLUMNS} the database has as NOT NULL («table.column»), or null. */
+export function notNullColumnsProblem(notNullColumns: readonly string[]): string | null {
+  if (!notNullColumns.length) return null;
+  return (
+    `Colonne che devono ammettere NULL ma sono NOT NULL (database migrato con explicit_defaults_for_timestamp=OFF): ${notNullColumns.join(", ")}. ` +
+    "Ripararle a mano con ALTER TABLE … MODIFY <colonna> timestamp NULL DEFAULT NULL e riportare a NULL i valori senza significato, " +
+    "come descritto in docs/DATABASE_MIGRATIONS.md."
+  );
+}
+
+/**
  * Null when timestamps behave as the migrations expect: `explicitDefaults` is the value of
- * `@@explicit_defaults_for_timestamp` (1, "1" or "ON") and `notNullColumns` («table.column») lists
- * the {@link NULLABLE_TIMESTAMP_COLUMNS} the database already has as NOT NULL.
+ * `@@explicit_defaults_for_timestamp` ({@link explicitDefaultsProblem}) and `notNullColumns`
+ * («table.column») lists the {@link NULLABLE_TIMESTAMP_COLUMNS} the database already has as NOT NULL.
  */
 export function timestampSemanticsProblem(explicitDefaults: unknown, notNullColumns: readonly string[]): string | null {
-  const problems: string[] = [];
-  if (!(explicitDefaults === 1 || explicitDefaults === "1" || String(explicitDefaults).toUpperCase() === "ON"))
-    problems.push(
-      `@@explicit_defaults_for_timestamp = ${String(explicitDefaults)}: le migrazioni creerebbero le date facoltative come NOT NULL ` +
-        "e il server salverebbe l'ora corrente al posto di NULL. Impostare explicit_defaults_for_timestamp=ON nella configurazione " +
-        "del server (predefinito da MariaDB 10.10) prima di migrare."
-    );
-  if (notNullColumns.length)
-    problems.push(
-      `Colonne che devono ammettere NULL ma sono NOT NULL (database migrato con explicit_defaults_for_timestamp=OFF): ${notNullColumns.join(", ")}. ` +
-        "Ripararle a mano con ALTER TABLE … MODIFY <colonna> timestamp NULL DEFAULT NULL e riportare a NULL i valori senza significato, " +
-        "come descritto in docs/DATABASE_MIGRATIONS.md."
-    );
+  const problems = [explicitDefaultsProblem(explicitDefaults), notNullColumnsProblem(notNullColumns)].filter(problem => problem !== null);
   return problems.length ? problems.join(" ") : null;
 }
 
 type Queryable = { query: (sql: string) => Promise<unknown> };
 
-/** Reads the variable and the columns of {@link NULLABLE_TIMESTAMP_COLUMNS} and applies {@link timestampSemanticsProblem}. */
-export async function checkTimestampSemantics(connection: Queryable): Promise<string | null> {
+/** The two halves of {@link timestampSemanticsProblem} read from the database: the variable and the columns. */
+export async function readTimestampSemantics(connection: Queryable): Promise<{ variable: string | null; columns: string | null }> {
   const [variables] = (await connection.query("SELECT @@explicit_defaults_for_timestamp AS explicitDefaults")) as [Array<{ explicitDefaults?: unknown }>];
   const [columns] = (await connection.query(
     "SELECT TABLE_NAME AS tableName, COLUMN_NAME AS columnName FROM information_schema.COLUMNS " +
@@ -69,5 +81,23 @@ export async function checkTimestampSemantics(connection: Queryable): Promise<st
   )) as [Array<{ tableName: string; columnName: string }>];
   const expected = new Set(NULLABLE_TIMESTAMP_COLUMNS.map(([table, column]) => `${table}.${column}`));
   const notNull = columns.map(row => `${row.tableName}.${row.columnName}`).filter(name => expected.has(name)).sort();
-  return timestampSemanticsProblem(variables[0]?.explicitDefaults, notNull);
+  return { variable: explicitDefaultsProblem(variables[0]?.explicitDefaults), columns: notNullColumnsProblem(notNull) };
+}
+
+/** Reads the variable and the columns of {@link NULLABLE_TIMESTAMP_COLUMNS}: both must be right before a migration. */
+export async function checkTimestampSemantics(connection: Queryable): Promise<string | null> {
+  const { variable, columns } = await readTimestampSemantics(connection);
+  const problems = [variable, columns].filter(problem => problem !== null);
+  return problems.length ? problems.join(" ") : null;
+}
+
+/**
+ * What the server does at start with {@link readTimestampSemantics}: it refuses NOT NULL columns,
+ * which break linking and routes now, and only warns about the variable, which breaks the next
+ * migration (refused by `db:migrate`) but nothing on tables already migrated with nullable dates.
+ */
+export async function startupTimestampProblem(connection: Queryable, warn: (message: string) => void = console.warn): Promise<string | null> {
+  const { variable, columns } = await readTimestampSemantics(connection);
+  if (variable) warn(`[Database] ${variable}`);
+  return columns;
 }

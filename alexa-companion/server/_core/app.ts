@@ -9,6 +9,7 @@ import { registerAlexaRoutes } from "../voice/alexa";
 import { registerAndroidDeepLinks } from "../voice/deepLinks";
 import { registerLegalPages } from "../legal/pages";
 import { securityHeaders } from "./securityHeaders";
+import { checkReadiness, type Readiness } from "./readiness";
 import { failedWith, perIpFailureLimiter, perIpLimiter } from "./rateLimit";
 import { ENV } from "./env";
 import { TRPC_MAX_BATCH_SIZE } from "@shared/const";
@@ -83,8 +84,9 @@ export const trpcMutationCsrfGate: RequestHandler = (req, res, next) => {
 };
 
 export async function createApp(
-  options: { server?: Server; serveClient?: boolean } = {}
+  appOptions: { server?: Server; serveClient?: boolean; readiness?: () => Promise<Readiness> } = {}
 ): Promise<Express> {
+  const options = { readiness: () => checkReadiness(), ...appOptions };
   const app = express();
   app.set("trust proxy", trustProxySetting(ENV.trustProxy));
   app.disable("x-powered-by");
@@ -92,6 +94,12 @@ export async function createApp(
   app.get("/healthz", (_req, res) => {
     res.setHeader("Cache-Control", "no-store");
     res.json({ status: "ok" });
+  });
+  // Asks the database, so it is limited like the API.
+  app.get("/readyz", perIpLimiter(API_REQUESTS_PER_MINUTE), async (_req, res) => {
+    res.setHeader("Cache-Control", "no-store");
+    const readiness = await options.readiness();
+    res.status(readiness.ready ? 200 : 503).json(readiness);
   });
   app.use("/api/alexa/oauth/authorize", perIpLimiter(OAUTH_REQUESTS_PER_MINUTE));
   app.use(

@@ -4,7 +4,11 @@ import net from "net";
 import { createApp } from "./app";
 import { ENV } from "./env";
 import { assertRuntimeEnvironment } from "./envCheck";
-import { checkTimestampSemantics } from "./dbEngine";
+import { startupTimestampProblem } from "./dbEngine";
+import { preloadRailData } from "../punctuality/source";
+import { isAlexaConfigured } from "../voice/config";
+import { closeDb } from "../db";
+import { installGracefulShutdown } from "./shutdown";
 import { createConnection } from "mysql2/promise";
 
 function isPortAvailable(port: number): Promise<boolean> {
@@ -27,9 +31,10 @@ async function findAvailablePort(startPort: number = 3000): Promise<number> {
 }
 
 /**
- * Refuses to start on a database whose nullable dates would not stay NULL (explicit_defaults_for_timestamp
- * OFF, or tables already migrated that way): linking and routes would fail silently. A database that
- * cannot be reached now is left to the usual lazy connection.
+ * Refuses to start on a database whose nullable dates would not stay NULL (tables migrated with
+ * explicit_defaults_for_timestamp OFF): linking and routes would fail silently. The variable itself
+ * only matters to the next migration, which `db:migrate` refuses: here it is a warning. A database
+ * that cannot be reached now is left to the usual lazy connection.
  */
 async function assertDatabaseTimestamps() {
   if (!process.env.DATABASE_URL) return;
@@ -41,7 +46,7 @@ async function assertDatabaseTimestamps() {
     return;
   }
   try {
-    const problem = await checkTimestampSemantics(connection);
+    const problem = await startupTimestampProblem(connection);
     if (problem) throw new Error(`[Database] ${problem}`);
   } finally {
     await connection.end();
@@ -69,6 +74,9 @@ async function startServer() {
   server.listen(port, () => {
     console.log(`Server running on http://localhost:${port}/`);
   });
+  installGracefulShutdown(server, { closeDatabase: closeDb, exit: code => process.exit(code), signals: process });
+  // The skill reads the statistics and the catalogue: read them now rather than on the first question.
+  if (isAlexaConfigured()) void preloadRailData();
 }
 
 startServer().catch(error => {

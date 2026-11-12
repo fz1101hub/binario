@@ -8,7 +8,7 @@ import { escapeSsmlText } from "./speech";
 const plain = (value: string) => value;
 /** Monday at 07:30: the 2157 at 8:12 (9 of 10), the 2161 at 9:12 (8 of 10), the 2165 at 10:12 (7 of 10). */
 function mondayMorning(): PunctualDeparture[] {
-  return mostPunctualDepartures(parsePunctualityStats(departuresDocument())!, [ROMA_TERMINI], [TIVOLI], { minuteOfDay: 450, isoWeekday: 1 })!;
+  return mostPunctualDepartures(parsePunctualityStats(departuresDocument())!, [ROMA_TERMINI], [TIVOLI], { minuteOfDay: 450, isoWeekday: 1, date: "2026-11-09" })!;
 }
 
 describe("most punctual train answer", () => {

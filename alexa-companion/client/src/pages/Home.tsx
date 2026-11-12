@@ -14,6 +14,7 @@ import { ACCOUNT_DELETION_CONFIRMATION } from "@shared/const";
 import { Bot, ChevronRight, CircleAlert, Link2Off, MapPin, Pin, Plus, Radio, Trash2, TrainFront } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { FormEvent, useState } from "react";
+import { queryView } from "./homeState";
 
 export default function Home() {
   const { format, messages } = useLocale();
@@ -35,6 +36,18 @@ export default function Home() {
   const setPinned = trpc.routes.setPinned.useMutation({ onSuccess: () => utils.routes.list.invalidate() });
   const removeRoute = trpc.routes.remove.useMutation({ onSuccess: () => utils.routes.list.invalidate() });
   const unlink = trpc.voice.unlink.useMutation({ onSuccess: () => voice.refetch() });
+  const routesView = queryView(routes);
+  const voiceView = queryView(voice);
+  // One error line under the list says the last change failed; a new change clears it.
+  const routeChangeFailed = setPinned.isError || removeRoute.isError;
+  function pinRoute(id: number, pinned: boolean) {
+    removeRoute.reset();
+    setPinned.mutate({ id, isPinned: pinned });
+  }
+  function deleteRoute(id: number) {
+    setPinned.reset();
+    removeRoute.mutate({ id });
+  }
   const deleteAccount = trpc.account.delete.useMutation({
     onSuccess: () => {
       forgetPersonalData(queryClient);
@@ -88,15 +101,29 @@ export default function Home() {
                 <div className="space-y-1.5"><Label htmlFor="route-origin">{t.origin}</Label><Input id="route-origin" value={origin} onChange={event => setOrigin(event.target.value)} placeholder={t.originPlaceholder} maxLength={120} required /></div>
                 <div className="space-y-1.5"><Label htmlFor="route-destination">{t.destination}</Label><Input id="route-destination" value={destination} onChange={event => setDestination(event.target.value)} placeholder={t.destinationPlaceholder} maxLength={120} required /></div>
                 <div className="flex items-end justify-between gap-3"><Label htmlFor="route-pin" className="flex cursor-pointer items-center gap-2 pb-2 text-sm font-normal"><Switch id="route-pin" checked={isPinned} onCheckedChange={setIsPinned} /> {t.pinRoute}</Label><Button type="submit" disabled={createRoute.isPending}><Plus className="mr-2 h-4 w-4" />{t.save}</Button></div>
-                {createRoute.error ? <p role="alert" className="text-sm text-red-800 sm:col-span-2">{createRoute.error.data?.code === "BAD_REQUEST" ? t.routeInvalid : t.routeSaveFailed}</p> : null}
+                {createRoute.error ? <p role="alert" className="text-sm text-red-800 sm:col-span-2">{createRoute.error.data?.code === "BAD_REQUEST" ? t.routeInvalid : createRoute.error.data?.code === "PRECONDITION_FAILED" ? t.routeLimitReached : createRoute.error.data?.code === "UNPROCESSABLE_CONTENT" ? t.routeStationsUnknown : t.routeSaveFailed}</p> : null}
               </form>
               <div className="space-y-2" aria-live="polite">
                 {routes.isLoading ? <p className="text-sm text-muted-foreground">{t.loadingRoutes}</p> : null}
+                {routesView.state === "error" ? <p role="alert" className="rounded-xl bg-red-50 p-4 text-sm text-red-800">{t.loadFailed}</p> : null}
+                {routeChangeFailed ? <p role="alert" className="text-sm text-red-800">{t.actionFailed}</p> : null}
                 {routes.data?.length === 0 ? <p className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground">{t.noRoutes}</p> : null}
                 {routes.data?.map(route => <div key={route.id} className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-3">
-                  <button onClick={() => setPinned.mutate({ id: route.id, isPinned: !route.isPinned })} className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 focus-visible:ring-2 focus-visible:ring-ring" aria-label={format(route.isPinned ? t.unpinRoute : t.pinNamedRoute, { routeName: route.name })}><Pin className={`h-4 w-4 ${route.isPinned ? "fill-primary text-primary" : ""}`} /></button>
+                  <button onClick={() => pinRoute(route.id, !route.isPinned)} className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 focus-visible:ring-2 focus-visible:ring-ring" aria-label={format(route.isPinned ? t.unpinRoute : t.pinNamedRoute, { routeName: route.name })}><Pin className={`h-4 w-4 ${route.isPinned ? "fill-primary text-primary" : ""}`} /></button>
                   <div className="min-w-0 flex-1"><p className="font-medium text-slate-900">{route.name}</p><p className="truncate text-sm text-muted-foreground">{route.origin} <span aria-hidden="true">→</span> {route.destination}</p></div>
-                  <Button variant="ghost" size="icon" onClick={() => removeRoute.mutate({ id: route.id })} aria-label={format(t.removeRoute, { routeName: route.name })}><Trash2 className="h-4 w-4 text-slate-500" /></Button>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild><Button variant="ghost" size="icon" disabled={removeRoute.isPending} aria-label={format(t.removeRoute, { routeName: route.name })}><Trash2 className="h-4 w-4 text-slate-500" /></Button></AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>{format(t.removeRouteConfirmTitle, { routeName: route.name })}</AlertDialogTitle>
+                        <AlertDialogDescription>{t.removeRouteConfirmDescription}</AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>{t.cancel}</AlertDialogCancel>
+                        <AlertDialogAction className="bg-red-700 text-white hover:bg-red-800" onClick={() => deleteRoute(route.id)}>{format(t.removeRoute, { routeName: route.name })}</AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
                 </div>)}
               </div>
             </CardContent>
@@ -105,10 +132,16 @@ export default function Home() {
           <div className="space-y-6">
             <Card className="border-slate-200 shadow-sm">
               <CardHeader className="pb-3"><div className="flex items-center justify-between"><div><CardTitle>{t.alexa}</CardTitle><CardDescription className="mt-1">{t.alexaDescription}</CardDescription></div><Radio className="h-5 w-5 text-primary" /></div></CardHeader>
-              <CardContent className="space-y-4">
-                {voice.data?.configured ? <div className="rounded-xl bg-brand-container p-3 text-sm text-brand-on-container"><strong>{t.alexaConfigured}</strong></div> : <div className="rounded-xl bg-amber-50 p-3 text-sm text-amber-950"><strong>{t.alexaNotConfigured}</strong></div>}
-                <div className="rounded-xl border border-slate-200 p-3 text-sm"><p className="font-medium text-slate-900">{t.accountStatus}</p><p className="mt-1 text-muted-foreground">{voice.data?.linked ? t.accountLinked : t.accountNotLinked}</p></div>
-                {voice.data?.linked ? <Button variant="outline" className="w-full" onClick={() => unlink.mutate()} disabled={unlink.isPending}><Link2Off className="mr-2 h-4 w-4" />{t.unlinkAlexa}</Button> : <p className="text-xs leading-5 text-muted-foreground">{t.linkingInstructions}</p>}
+              <CardContent className="space-y-4" aria-live="polite">
+                {/* Loading, failed or known: never «not linked» for a status the server has not sent. */}
+                {voiceView.state === "loading" ? <p className="text-sm text-muted-foreground">{messages.accessibility.loading}</p> : null}
+                {voiceView.state === "error" ? <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-800">{t.loadFailed}</p> : null}
+                {voiceView.state === "ready" ? <>
+                  {voiceView.data.configured ? <div className="rounded-xl bg-brand-container p-3 text-sm text-brand-on-container"><strong>{t.alexaConfigured}</strong></div> : <div className="rounded-xl bg-amber-50 p-3 text-sm text-amber-950"><strong>{t.alexaNotConfigured}</strong></div>}
+                  <div className="rounded-xl border border-slate-200 p-3 text-sm"><p className="font-medium text-slate-900">{t.accountStatus}</p><p className="mt-1 text-muted-foreground">{voiceView.data.linked ? t.accountLinked : t.accountNotLinked}</p></div>
+                  {voiceView.data.linked ? <Button variant="outline" className="w-full" onClick={() => unlink.mutate()} disabled={unlink.isPending}><Link2Off className="mr-2 h-4 w-4" />{t.unlinkAlexa}</Button> : <p className="text-xs leading-5 text-muted-foreground">{t.linkingInstructions}</p>}
+                  {unlink.isError ? <p role="alert" className="text-sm text-red-800">{t.actionFailed}</p> : null}
+                </> : null}
               </CardContent>
             </Card>
 

@@ -221,6 +221,7 @@ ${pageStyles()}
 <body>
 <h1>${messages.title}</h1>
 <p>${description}</p>
+<p><strong>${messages.ownRequestOnly}</strong></p>
 <form method="post" action="/api/alexa/oauth/authorize">
 ${hidden("response_type", "code")}
 ${hidden("client_id", input.clientId)}
