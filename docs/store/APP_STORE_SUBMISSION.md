@@ -14,7 +14,7 @@
 | URL di supporto ed email di contatto | Esterni al repository | Una pagina pubblica di supporto è obbligatoria; l'email serve per la revisione. |
 | Orari inclusi non scaduti | Cinque pack su nove (STA, CH, Trenord, ÖBB, TFT) terminano il 2026-12-12 (`lastServiceDate` in `app/src/main/assets/gtfs/manifest.json`) | Prima della build di invio aggiornare i pack, eseguire `python3 tools/build_ios_gtfs_schedule.py` e `python3 tools/verify_ios_gtfs_schedule.py` e committare artefatto e metadata. |
 | Licenze dei feed confermate | `ios/Resources/binario_gtfs_source_policy_v1.json` registra le licenze del manifest Android: CC0 1.0 (STA), CC BY 4.0 (ÖBB e ARST), CC BY (TFT) e Italian Open Data License (EAV, versione da confermare); le altre cinque voci sono `null`, come le cinque «Da confermare dal titolare» del manifest (D3 di [AZIONI_TITOLARE.md](../AZIONI_TITOLARE.md)); `tests/test_verify_ios_project.py` verifica che i due file concordino | Confermare che ogni licenza consenta la redistribuzione nell'app, registrarla nel manifest e nel file (rigenerando l'artefatto) e rispondere di conseguenza alla dichiarazione sui diritti dei contenuti. |
-| macOS con Xcode 16.4 e XcodeGen 2.46.0 | Versioni fissate in `.github/ci-inputs-lock.json`; `tools/install_xcodegen.py` installa il binario verificato | Usare le stesse versioni della CI per archivio e caricamento. |
+| macOS con Xcode 26.3 (SDK iOS e watchOS 26.2) e XcodeGen 2.46.0 | Versioni fissate in `.github/ci-inputs-lock.json`; `tools/install_xcodegen.py` installa il binario verificato | Usare le stesse versioni della CI per archivio e caricamento. |
 
 ## 1. Creazione del record in App Store Connect
 

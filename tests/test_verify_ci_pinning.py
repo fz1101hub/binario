@@ -462,8 +462,8 @@ class VerifyCiPinningTest(unittest.TestCase):
         workflow_path = ROOT / ".github/workflows/apple-watch-ci.yml"
         original = workflow_path.read_text(encoding="utf-8")
         with_bash_env = original.replace(
-            '      XCODE_VERSION: "16.4"\n',
-            '      XCODE_VERSION: "16.4"\n      BASH_ENV: /tmp/noop.sh\n',
+            '      XCODE_VERSION: "26.3"\n',
+            '      XCODE_VERSION: "26.3"\n      BASH_ENV: /tmp/noop.sh\n',
             1,
         )
         problems = policy.workflow_problems(workflow_path, with_bash_env, LOCK)
@@ -750,8 +750,8 @@ class VerifyCiPinningTest(unittest.TestCase):
           watchos:
             runs-on: macos-15
             env:
-              XCODE_VERSION: "16.4"
-              XCODE_BUILD: "16F6"
+              XCODE_VERSION: "26.3"
+              XCODE_BUILD: "17C529"
               XCODEGEN_VERSION: "2.46.0"
               XCODEGEN_URL: "https://github.com/yonaskolb/XcodeGen/releases/download/2.46.0/xcodegen.zip"
               XCODEGEN_SHA256: "4d9e34b62172d645eed6457cac13fc222569974098ef4ee9c3368bedf0196806"
