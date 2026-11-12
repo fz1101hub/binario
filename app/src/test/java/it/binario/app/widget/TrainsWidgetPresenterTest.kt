@@ -270,5 +270,9 @@ class TrainsWidgetPresenterTest {
         assertTrue(mapped.variation)
         assertFalse(mapped.cancelled)
         assertEquals("ViaggiaTreno", mapped.providerName)
+        // A favourite saved from a timetable row ("RE_11 - 2153") keeps the status of the live run "2153" under its own number.
+        val labelled = FavouriteTrainStatusMapper.forFavourite(ServiceMonitor("RE_11 - 2153", ""), service, "ViaggiaTreno", millis(8, 3))
+        assertEquals("RE_11 - 2153", labelled.number)
+        assertEquals(mapped.copy(number = "RE_11 - 2153"), labelled)
     }
 }

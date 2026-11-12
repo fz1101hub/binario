@@ -304,7 +304,7 @@ internal object TrainsWidgetRefresher {
             if (match != null) {
                 FavouriteTrainStatusStore.save(
                     context,
-                    FavouriteTrainStatusMapper.fromService(match.service, match.snapshot.providerName, match.snapshot.retrievedAtEpochMillis)
+                    FavouriteTrainStatusMapper.forFavourite(monitor, match.service, match.snapshot.providerName, match.snapshot.retrievedAtEpochMillis)
                 )
             } else {
                 failed = true

@@ -61,6 +61,14 @@ data class FavouriteTrainStatus(
 object FavouriteTrainStatusMapper {
     private val timeFormatter = DateTimeFormatter.ofPattern("HH:mm")
 
+    /**
+     * The status of [monitor] from its run [service], kept under the favourite's own number: a favourite saved from a
+     * timetable row is called "RE_11 - 2153" while the live run that takes its place is "2153", and the widget reads
+     * (and keeps) only the favourites' numbers.
+     */
+    fun forFavourite(monitor: ServiceMonitor, service: TrainService, providerName: String, retrievedAt: Long, zone: ZoneId = RailTime.defaultZone): FavouriteTrainStatus =
+        fromService(service, providerName, retrievedAt, zone).copy(number = monitor.number)
+
     fun fromService(service: TrainService, providerName: String, retrievedAt: Long, zone: ZoneId = RailTime.defaultZone): FavouriteTrainStatus {
         val verified = service.operationalStatusVerified
         val scheduledDepartureEpoch = service.scheduledDepartureDateTime?.atZone(zone)?.toInstant()?.toEpochMilli()
