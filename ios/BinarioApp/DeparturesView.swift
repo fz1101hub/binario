@@ -149,7 +149,12 @@ private struct BoardContent: View {
         } else {
             switch model.boardState {
             case let .unavailable(reason):
-                BoardUnavailableView(reason: reason)
+                // Live first: a live board answers even where the bundled timetable cannot.
+                if model.boardDepartures.isEmpty {
+                    BoardUnavailableView(reason: reason)
+                } else {
+                    DepartureListSection()
+                }
             case .available:
                 if model.boardDepartures.isEmpty {
                     NoDeparturesView(firstTomorrow: model.boardFirstTomorrow, someTimetablesEnded: model.boardSomeTimetablesEnded)

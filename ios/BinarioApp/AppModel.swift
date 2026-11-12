@@ -1007,9 +1007,9 @@ final class AppModel: ObservableObject {
         await boardLiveLoad?.value
     }
 
-    /// The live board of the chosen station, merged from RFI, Italo and ViaggiaTreno, over its
-    /// timetable rows (`LiveOverlay.stationBoard`): asked only while «Partenze» is on screen with
-    /// «Dati in tempo reale» on. When every source fails the rows stay the timetable's.
+    /// The live board of the chosen station, merged from RFI, Italo and ViaggiaTreno, put before
+    /// its timetable rows (`LiveOverlay.stationBoard`): asked only while «Partenze» is on screen with
+    /// «Dati in tempo reale» on. When every source fails the rows are the timetable's.
     func refreshBoardLive(now: Date = Date()) async {
         guard isForeground else { return }
         guard boardLiveVisible, liveDataEnabled, let liveData, let identity = boardStation else { return }
@@ -1056,8 +1056,9 @@ final class AppModel: ObservableObject {
         if boardLiveState == .loading { boardLiveState = boardLiveRestingState }
     }
 
-    /// The rows of «Partenze»: the bundled timetable's, with the values of the last live board of
-    /// the same station on the trains it lists; every other row stays «orario programmato».
+    /// The rows of «Partenze», live first (`LiveOverlay.stationBoard`): with a usable live board of
+    /// the same station, its rows (each on its bundled train when it has one), then the bundled
+    /// rows after the last of them, «orario programmato»; without one, the bundled timetable's rows.
     private func setBoardRows(_ rows: [StationBoardDeparture]) {
         boardScheduled = rows
         guard liveDataEnabled, let live = boardLive, live.stationID == boardStation?.id else {
