@@ -99,6 +99,7 @@ fun PlannedJourneyAgendaScreen(
     locationCatalogue: List<Station> = emptyList()
 ) {
     var pendingDelete by rememberSaveable { mutableStateOf<String?>(null) }
+    var confirmClear by rememberSaveable { mutableStateOf(false) }
     val entries = viewModel.agendaEntries()
     val filters = listOf(
         PlannedJourneyAgendaFilter.UPCOMING,
@@ -207,7 +208,27 @@ fun PlannedJourneyAgendaScreen(
                 )
             }
         }
+        if (viewModel.snapshot.journeys.isNotEmpty() || viewModel.readOnly || viewModel.templates.isNotEmpty()) {
+            item {
+                TextButton(onClick = { confirmClear = true }, modifier = Modifier.testTag("plannedJourneyClear")) {
+                    Text(stringResource(R.string.planned_journey_clear), color = MaterialTheme.colorScheme.error)
+                }
+            }
+        }
         item { Spacer(Modifier.height(16.dp)) }
+    }
+    if (confirmClear) {
+        AlertDialog(
+            onDismissRequest = { confirmClear = false },
+            title = { Text(stringResource(R.string.planned_journey_clear_title)) },
+            text = { Text(stringResource(R.string.planned_journey_clear_body)) },
+            confirmButton = { TextButton(onClick = { viewModel.clearAll(); confirmClear = false }) {
+                Text(stringResource(R.string.planned_journey_clear_confirm))
+            } },
+            dismissButton = { TextButton(onClick = { confirmClear = false }) {
+                Text(stringResource(android.R.string.cancel))
+            } }
+        )
     }
     viewModel.editor?.let { editor ->
         PlannedJourneyEditorDialog(

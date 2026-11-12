@@ -145,6 +145,11 @@
     <string name="planned_journey_template_saved">Template nur auf diesem Gerät gespeichert. Wählen Sie vor dem Speichern einer Verbindung stets das Datum.</string>
     <string name="planned_journey_template_applied">Template „%1$s“ angewendet. Wählen Sie das Datum und bestätigen Sie die Verbindung.</string>
     <string name="planned_journey_template_deleted">Lokales Template gelöscht.</string>
+    <string name="planned_journey_clear">Agenda leeren</string>
+    <string name="planned_journey_clear_title">Agenda leeren?</string>
+    <string name="planned_journey_clear_body">Alle geplanten Fahrten auf diesem Gerät, auch nicht lesbare, ihre Erinnerungen und die Reisevorlagen werden gelöscht. Exportiere zuerst die Fahrten, die du behalten möchtest, als JSON. Der Standard-Vorlauf bleibt unverändert.</string>
+    <string name="planned_journey_clear_confirm">Leeren</string>
+    <string name="planned_journey_cleared">Agenda geleert: Fahrten, Erinnerungen und Vorlagen von diesem Gerät entfernt.</string>
     <string name="planned_journey_origin">Abfahrt</string>
     <string name="planned_journey_destination">Ankunft</string>
     <string name="planned_journey_route">%1$s → %2$s</string>

@@ -177,6 +177,45 @@ class PlannedJourneyAgendaSafetyTest {
         assertEquals("Rinominato", model.snapshot.journeys.single().label)
     }
 
+    @Test fun `clearing the Agenda removes every journey, readable or not, their reminder plans and the templates`() {
+        val storage = FakeStorage(storedWithBrokenMiddleRecord())
+        var templates: String? = PlannedJourneyTemplates.encode(listOf(PlannedJourneyTemplate("t", "Casa", rome, milan, LocalTime.of(8, 0))))
+        var lead: PlannedJourneyReminderMinutes? = PlannedJourneyReminderMinutes.TEN
+        val model = PlannedJourneyViewModel(
+            PlannedJourneyRepository(storage), now = { createdAt }, zone = ZoneId.of("Europe/Rome"),
+            preferences = object : PlannedJourneyPreferences {
+                override fun defaultReminder() = lead
+                override fun setDefaultReminder(value: PlannedJourneyReminderMinutes?) { lead = value }
+            },
+            templateStore = object : PlannedJourneyTemplateStore {
+                override fun read() = templates
+                override fun write(value: String?) { templates = value }
+            }
+        )
+        assertTrue(model.readOnly)
+        assertEquals(1, model.templates.size)
+        model.clearAll()
+        assertEquals(UiMessage(UiMessageKey.PLANNED_JOURNEY_CLEARED), model.feedback)
+        assertFalse(model.readOnly)
+        assertNull(model.warning)
+        assertTrue(model.snapshot.journeys.isEmpty() && model.templates.isEmpty())
+        assertNull(templates)
+        assertEquals("the default lead is a preference, not Agenda data", PlannedJourneyReminderMinutes.TEN, lead)
+        val reread = PlannedJourneyRepository(storage).read()
+        assertFalse(reread.readOnly)
+        assertTrue(PlannedJourneyReminderPlanner.plans(reread.snapshot).isEmpty())
+        assertTrue("the Agenda is writable again", PlannedJourneyRepository(storage).save(journey("new", "2026-10-03", "10:00")) is PlannedJourneyRepositorySaveResult.Saved)
+    }
+
+    @Test fun `deleting a journey that is not there writes nothing, so no reminder is reconciled`() {
+        val storage = FakeStorage()
+        val repository = PlannedJourneyRepository(storage)
+        repository.save(journey("first", "2026-10-01", "08:00"))
+        val writes = storage.writes
+        assertTrue(repository.remove("missing") is PlannedJourneyRepositorySaveResult.Rejected)
+        assertEquals(writes, storage.writes)
+    }
+
     private fun storedWithBrokenMiddleRecord(): String {
         val valid = JSONObject(PlannedJourneyTransfer.encode(PlannedJourneyPersistenceSnapshot(journeys = listOf(
             journey("first", "2026-10-01", "08:00"),

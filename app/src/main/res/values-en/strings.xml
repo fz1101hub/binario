@@ -145,6 +145,11 @@
     <string name="planned_journey_template_saved">Template saved only on this device. Always choose the date before saving a journey.</string>
     <string name="planned_journey_template_applied">Template “%1$s” applied. Choose the date and confirm the journey.</string>
     <string name="planned_journey_template_deleted">Local template deleted.</string>
+    <string name="planned_journey_clear">Clear the Agenda</string>
+    <string name="planned_journey_clear_title">Clear the Agenda?</string>
+    <string name="planned_journey_clear_body">All planned journeys on this device, including unreadable ones, their reminders and the travel templates will be deleted. Export the journeys you want to keep to JSON first. The default lead time stays unchanged.</string>
+    <string name="planned_journey_clear_confirm">Clear</string>
+    <string name="planned_journey_cleared">Agenda cleared: journeys, reminders and templates removed from this device.</string>
     <string name="planned_journey_origin">Origin</string>
     <string name="planned_journey_destination">Destination</string>
     <string name="planned_journey_route">%1$s → %2$s</string>

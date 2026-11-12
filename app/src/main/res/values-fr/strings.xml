@@ -145,6 +145,11 @@
     <string name="planned_journey_template_saved">Modèle enregistré uniquement sur cet appareil. Choisissez toujours la date avant d\'enregistrer un trajet.</string>
     <string name="planned_journey_template_applied">Modèle «%1$s» appliqué. Choisissez la date et confirmez le trajet.</string>
     <string name="planned_journey_template_deleted">Modèle local supprimé.</string>
+    <string name="planned_journey_clear">Vider l’Agenda</string>
+    <string name="planned_journey_clear_title">Vider l’Agenda ?</string>
+    <string name="planned_journey_clear_body">Tous les trajets planifiés de cet appareil, y compris ceux illisibles, leurs rappels et les modèles de trajet seront supprimés. Exportez d’abord en JSON les trajets à conserver. L’avance par défaut reste inchangée.</string>
+    <string name="planned_journey_clear_confirm">Vider</string>
+    <string name="planned_journey_cleared">Agenda vidé : trajets, rappels et modèles supprimés de cet appareil.</string>
     <string name="planned_journey_origin">Départ</string>
     <string name="planned_journey_destination">Arrivée</string>
     <string name="planned_journey_route">%1$s → %2$s</string>

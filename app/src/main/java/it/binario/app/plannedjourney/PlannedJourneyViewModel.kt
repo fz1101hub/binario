@@ -420,6 +420,19 @@ class PlannedJourneyViewModel(
         persist(repository.save(candidate), UiMessageKey.PLANNED_JOURNEY_SAVE_SUCCESS, inEditor = true) { editor = null }
     }
 
+    /** Removes every journey (readable or not), their reminders and the templates; the default lead stays. */
+    fun clearAll() {
+        val result = repository.clearAll()
+        if (result is PlannedJourneyRepositorySaveResult.Saved) {
+            runCatching { templateStore?.write(null) }.onSuccess { templates = emptyList() }
+            readOnly = false
+            editor = null
+            textImport = null
+            importState = PlannedJourneyImportState.Idle
+        }
+        persist(result, UiMessageKey.PLANNED_JOURNEY_CLEARED)
+    }
+
     fun complete(entry: PlannedJourneyAgendaEntry) {
         val result = if (entry.journey.recurrence == null) repository.complete(entry.journey.id, now())
         else repository.completeOccurrence(entry.journey.id, entry.occurrence.occurrenceDate)

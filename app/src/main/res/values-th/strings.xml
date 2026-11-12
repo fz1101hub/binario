@@ -145,6 +145,11 @@
     <string name="planned_journey_template_saved">บันทึกเทมเพลตไว้ในอุปกรณ์นี้เท่านั้น เลือกวันที่ทุกครั้งก่อนบันทึกการเดินทาง</string>
     <string name="planned_journey_template_applied">ใช้เทมเพลต “%1$s” แล้ว เลือกวันที่และยืนยันการเดินทาง</string>
     <string name="planned_journey_template_deleted">ลบเทมเพลตในเครื่องแล้ว</string>
+    <string name="planned_journey_clear">ล้างกำหนดการ</string>
+    <string name="planned_journey_clear_title">ล้างกำหนดการหรือไม่</string>
+    <string name="planned_journey_clear_body">การเดินทางที่วางแผนไว้ทั้งหมดในอุปกรณ์นี้ รวมถึงรายการที่อ่านไม่ได้ การแจ้งเตือน และเทมเพลตการเดินทางจะถูกลบ ส่งออกการเดินทางที่ต้องการเก็บเป็น JSON ก่อน เวลาเผื่อเริ่มต้นจะไม่เปลี่ยน</string>
+    <string name="planned_journey_clear_confirm">ล้าง</string>
+    <string name="planned_journey_cleared">ล้างกำหนดการแล้ว: นำการเดินทาง การแจ้งเตือน และเทมเพลตออกจากอุปกรณ์นี้แล้ว</string>
     <string name="planned_journey_origin">ต้นทาง</string>
     <string name="planned_journey_destination">ปลายทาง</string>
     <string name="planned_journey_route">%1$s → %2$s</string>

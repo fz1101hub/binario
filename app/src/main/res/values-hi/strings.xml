@@ -142,6 +142,11 @@
     <string name="planned_journey_template_saved">टेम्पलेट केवल इस डिवाइस पर सहेजा गया। यात्रा सहेजने से पहले हमेशा तारीख चुनें।</string>
     <string name="planned_journey_template_applied">टेम्पलेट “%1$s” लागू हुआ। तारीख चुनें और यात्रा की पुष्टि करें।</string>
     <string name="planned_journey_template_deleted">स्थानीय टेम्पलेट हटाया गया।</string>
+    <string name="planned_journey_clear">एजेंडा खाली करें</string>
+    <string name="planned_journey_clear_title">एजेंडा खाली करें?</string>
+    <string name="planned_journey_clear_body">इस डिवाइस की सभी नियोजित यात्राएँ, न पढ़ी जा सकने वाली भी, उनके रिमाइंडर और यात्रा टेम्पलेट हटा दिए जाएँगे। जिन यात्राओं को रखना है उन्हें पहले JSON में एक्सपोर्ट करें। डिफ़ॉल्ट अग्रिम समय नहीं बदलेगा।</string>
+    <string name="planned_journey_clear_confirm">खाली करें</string>
+    <string name="planned_journey_cleared">एजेंडा खाली किया गया: यात्राएँ, रिमाइंडर और टेम्पलेट इस डिवाइस से हटाए गए।</string>
     <string name="planned_journey_origin">प्रस्थान</string>
     <string name="planned_journey_destination">आगमन</string>
     <string name="planned_journey_route">%1$s → %2$s</string>

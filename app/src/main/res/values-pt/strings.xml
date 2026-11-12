@@ -142,6 +142,11 @@
     <string name="planned_journey_template_saved">Modelo salvo apenas neste dispositivo. Sempre escolha a data antes de salvar uma viagem.</string>
     <string name="planned_journey_template_applied">Modelo “%1$s” aplicado. Escolha a data e confirme a viagem.</string>
     <string name="planned_journey_template_deleted">Modelo local apagado.</string>
+    <string name="planned_journey_clear">Esvaziar a Agenda</string>
+    <string name="planned_journey_clear_title">Esvaziar a Agenda?</string>
+    <string name="planned_journey_clear_body">Todas as viagens planejadas deste dispositivo, inclusive as ilegíveis, seus lembretes e os modelos de viagem serão apagados. Exporte antes para JSON as viagens que deseja manter. A antecedência padrão não muda.</string>
+    <string name="planned_journey_clear_confirm">Esvaziar</string>
+    <string name="planned_journey_cleared">Agenda esvaziada: viagens, lembretes e modelos removidos deste dispositivo.</string>
     <string name="planned_journey_origin">Origem</string>
     <string name="planned_journey_destination">Destino</string>
     <string name="planned_journey_route">%1$s → %2$s</string>

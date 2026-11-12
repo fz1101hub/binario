@@ -142,6 +142,11 @@
     <string name="planned_journey_template_saved">テンプレートはこの端末にだけ保存しました。移動を保存する前に必ず日付を選んでください。</string>
     <string name="planned_journey_template_applied">テンプレート「%1$s」を適用しました。日付を選んで移動を確定してください。</string>
     <string name="planned_journey_template_deleted">端末内のテンプレートを削除しました。</string>
+    <string name="planned_journey_clear">予定を空にする</string>
+    <string name="planned_journey_clear_title">予定を空にしますか？</string>
+    <string name="planned_journey_clear_body">この端末のすべての予定した移動（読めないものを含む）、そのリマインダー、移動テンプレートが削除されます。残したい移動は先に JSON にエクスポートしてください。既定の余裕時間は変わりません。</string>
+    <string name="planned_journey_clear_confirm">空にする</string>
+    <string name="planned_journey_cleared">予定を空にしました。移動、リマインダー、テンプレートをこの端末から削除しました。</string>
     <string name="planned_journey_origin">出発</string>
     <string name="planned_journey_destination">到着</string>
     <string name="planned_journey_route">%1$s → %2$s</string>

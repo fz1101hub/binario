@@ -145,6 +145,11 @@
     <string name="planned_journey_template_saved">模板仅保存在此设备上。保存行程前请务必选择日期。</string>
     <string name="planned_journey_template_applied">已应用模板“%1$s”。请选择日期并确认行程。</string>
     <string name="planned_journey_template_deleted">已删除本机模板。</string>
+    <string name="planned_journey_clear">清空日程</string>
+    <string name="planned_journey_clear_title">要清空日程吗？</string>
+    <string name="planned_journey_clear_body">将删除此设备上的所有计划行程（包括无法读取的）、其提醒和行程模板。请先将要保留的行程导出为 JSON。默认提前量保持不变。</string>
+    <string name="planned_journey_clear_confirm">清空</string>
+    <string name="planned_journey_cleared">日程已清空：已从此设备删除行程、提醒和模板。</string>
     <string name="planned_journey_origin">出发站</string>
     <string name="planned_journey_destination">到达站</string>
     <string name="planned_journey_route">%1$s → %2$s</string>

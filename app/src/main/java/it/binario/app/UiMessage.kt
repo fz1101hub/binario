@@ -44,6 +44,7 @@ enum class UiMessageKey(val resourceName: String) {
     PLANNED_JOURNEY_TEMPLATE_SAVED("planned_journey_template_saved"),
     PLANNED_JOURNEY_TEMPLATE_APPLIED("planned_journey_template_applied"),
     PLANNED_JOURNEY_TEMPLATE_DELETED("planned_journey_template_deleted"),
+    PLANNED_JOURNEY_CLEARED("planned_journey_cleared"),
     PLANNED_JOURNEY_EXPORT_SUCCESS("planned_journey_export_success"),
     PLANNED_JOURNEY_EXPORT_FAILURE("planned_journey_export_failure_generic"),
     PLANNED_JOURNEY_IMPORT_FAILURE("planned_journey_import_failure_generic"),

@@ -145,6 +145,11 @@
     <string name="planned_journey_template_saved">Đã lưu mẫu chỉ trên thiết bị này. Luôn chọn ngày trước khi lưu hành trình.</string>
     <string name="planned_journey_template_applied">Đã áp dụng mẫu “%1$s”. Hãy chọn ngày và xác nhận hành trình.</string>
     <string name="planned_journey_template_deleted">Đã xóa mẫu trên máy.</string>
+    <string name="planned_journey_clear">Xóa sạch Lịch trình</string>
+    <string name="planned_journey_clear_title">Xóa sạch Lịch trình?</string>
+    <string name="planned_journey_clear_body">Tất cả hành trình đã lên kế hoạch trên thiết bị này, kể cả các hành trình không đọc được, lời nhắc của chúng và các mẫu hành trình sẽ bị xóa. Hãy xuất trước sang JSON các hành trình muốn giữ. Thời gian báo trước mặc định không thay đổi.</string>
+    <string name="planned_journey_clear_confirm">Xóa sạch</string>
+    <string name="planned_journey_cleared">Đã xóa sạch Lịch trình: hành trình, lời nhắc và mẫu đã bị xóa khỏi thiết bị này.</string>
     <string name="planned_journey_origin">Ga đi</string>
     <string name="planned_journey_destination">Ga đến</string>
     <string name="planned_journey_route">%1$s → %2$s</string>

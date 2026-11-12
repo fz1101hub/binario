@@ -142,6 +142,21 @@ class PlannedJourneyRepository(private val storage: PlannedJourneyStorage) {
         return writeValidated(current.copy(journeys = current.journeys.filterNot { it.id == journeyId }))
     }
 
+    /**
+     * «Svuota l’Agenda»: the user's explicit way out, also of a read-only Agenda. The empty snapshot replaces every
+     * stored journey, readable or not; the storage write reconciles the reminders, which cancels every alarm and
+     * notification of the removed journeys.
+     */
+    fun clearAll(): PlannedJourneyRepositorySaveResult {
+        val empty = emptySnapshot()
+        return runCatching {
+            storage.write(PlannedJourneyTransfer.encode(empty))
+            PlannedJourneyRepositorySaveResult.Saved(empty)
+        }.getOrElse { error ->
+            PlannedJourneyRepositorySaveResult.Rejected(error.message ?: "Impossibile svuotare l'Agenda.")
+        }
+    }
+
     fun exportJson(): String = PlannedJourneyTransfer.encode(read().snapshot)
 
     fun exportIcs(

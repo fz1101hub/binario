@@ -145,6 +145,11 @@
     <string name="planned_journey_template_saved">Modello salvato solo su questo dispositivo. Scegli sempre la data prima di salvare una tratta.</string>
     <string name="planned_journey_template_applied">Modello «%1$s» applicato. Scegli la data e conferma la tratta.</string>
     <string name="planned_journey_template_deleted">Modello locale eliminato.</string>
+    <string name="planned_journey_clear">Svuota l’Agenda</string>
+    <string name="planned_journey_clear_title">Svuotare l’Agenda?</string>
+    <string name="planned_journey_clear_body">Saranno eliminati da questo dispositivo tutti i viaggi pianificati, anche quelli non leggibili, i loro promemoria e i modelli di viaggio. Esporta prima in JSON i viaggi da conservare. L’anticipo predefinito resta invariato.</string>
+    <string name="planned_journey_clear_confirm">Svuota</string>
+    <string name="planned_journey_cleared">Agenda svuotata: viaggi, promemoria e modelli rimossi da questo dispositivo.</string>
     <string name="planned_journey_origin">Partenza</string>
     <string name="planned_journey_destination">Arrivo</string>
     <string name="planned_journey_route">%1$s → %2$s</string>

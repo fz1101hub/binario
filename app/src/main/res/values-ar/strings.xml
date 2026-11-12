@@ -142,6 +142,11 @@
     <string name="planned_journey_template_saved">حُفظ القالب على هذا الجهاز فقط. اختر التاريخ دائمًا قبل حفظ رحلة.</string>
     <string name="planned_journey_template_applied">طُبّق القالب «%1$s». اختر التاريخ وأكّد الرحلة.</string>
     <string name="planned_journey_template_deleted">حُذف القالب المحلي.</string>
+    <string name="planned_journey_clear">إفراغ الأجندة</string>
+    <string name="planned_journey_clear_title">هل تريد إفراغ الأجندة؟</string>
+    <string name="planned_journey_clear_body">سيتم حذف جميع الرحلات المخططة على هذا الجهاز، بما فيها غير المقروءة، وتذكيراتها وقوالب الرحلات. صدّر أولًا إلى JSON الرحلات التي تريد الاحتفاظ بها. يبقى الوقت المسبق الافتراضي دون تغيير.</string>
+    <string name="planned_journey_clear_confirm">إفراغ</string>
+    <string name="planned_journey_cleared">أُفرغت الأجندة: أُزيلت الرحلات والتذكيرات والقوالب من هذا الجهاز.</string>
     <string name="planned_journey_origin">المغادرة</string>
     <string name="planned_journey_destination">الوصول</string>
     <string name="planned_journey_route">%1$s → %2$s</string>

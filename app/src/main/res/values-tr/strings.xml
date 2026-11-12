@@ -145,6 +145,11 @@
     <string name="planned_journey_template_saved">Şablon yalnızca bu cihaza kaydedildi. Yolculuk kaydetmeden önce her zaman tarihi seçin.</string>
     <string name="planned_journey_template_applied">“%1$s” şablonu uygulandı. Tarihi seçin ve yolculuğu onaylayın.</string>
     <string name="planned_journey_template_deleted">Yerel şablon silindi.</string>
+    <string name="planned_journey_clear">Ajandayı boşalt</string>
+    <string name="planned_journey_clear_title">Ajanda boşaltılsın mı?</string>
+    <string name="planned_journey_clear_body">Bu cihazdaki tüm planlanmış yolculuklar, okunamayanlar dahil, hatırlatıcıları ve yolculuk şablonları silinecek. Saklamak istediğiniz yolculukları önce JSON olarak dışa aktarın. Varsayılan süre değişmez.</string>
+    <string name="planned_journey_clear_confirm">Boşalt</string>
+    <string name="planned_journey_cleared">Ajanda boşaltıldı: yolculuklar, hatırlatıcılar ve şablonlar bu cihazdan kaldırıldı.</string>
     <string name="planned_journey_origin">Kalkış</string>
     <string name="planned_journey_destination">Varış</string>
     <string name="planned_journey_route">%1$s → %2$s</string>

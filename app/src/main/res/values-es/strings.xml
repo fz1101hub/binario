@@ -145,6 +145,11 @@
     <string name="planned_journey_template_saved">Plantilla guardada solo en este dispositivo. Elige siempre la fecha antes de guardar un trayecto.</string>
     <string name="planned_journey_template_applied">Plantilla «%1$s» aplicada. Elige la fecha y confirma el trayecto.</string>
     <string name="planned_journey_template_deleted">Plantilla local eliminada.</string>
+    <string name="planned_journey_clear">Vaciar la Agenda</string>
+    <string name="planned_journey_clear_title">¿Vaciar la Agenda?</string>
+    <string name="planned_journey_clear_body">Se eliminarán de este dispositivo todos los viajes planificados, incluidos los no legibles, sus recordatorios y las plantillas de viaje. Exporta antes a JSON los viajes que quieras conservar. La antelación predeterminada no cambia.</string>
+    <string name="planned_journey_clear_confirm">Vaciar</string>
+    <string name="planned_journey_cleared">Agenda vaciada: viajes, recordatorios y plantillas eliminados de este dispositivo.</string>
     <string name="planned_journey_origin">Salida</string>
     <string name="planned_journey_destination">Llegada</string>
     <string name="planned_journey_route">%1$s → %2$s</string>

@@ -142,6 +142,11 @@
     <string name="planned_journey_template_saved">Templat hanya disimpan di perangkat ini. Selalu pilih tanggal sebelum menyimpan perjalanan.</string>
     <string name="planned_journey_template_applied">Templat “%1$s” diterapkan. Pilih tanggal dan konfirmasi perjalanan.</string>
     <string name="planned_journey_template_deleted">Templat lokal dihapus.</string>
+    <string name="planned_journey_clear">Kosongkan Agenda</string>
+    <string name="planned_journey_clear_title">Kosongkan Agenda?</string>
+    <string name="planned_journey_clear_body">Semua perjalanan terencana di perangkat ini, termasuk yang tidak terbaca, pengingatnya, dan templat perjalanan akan dihapus. Ekspor dulu ke JSON perjalanan yang ingin disimpan. Waktu pengingat bawaan tidak berubah.</string>
+    <string name="planned_journey_clear_confirm">Kosongkan</string>
+    <string name="planned_journey_cleared">Agenda dikosongkan: perjalanan, pengingat, dan templat dihapus dari perangkat ini.</string>
     <string name="planned_journey_origin">Keberangkatan</string>
     <string name="planned_journey_destination">Kedatangan</string>
     <string name="planned_journey_route">%1$s → %2$s</string>

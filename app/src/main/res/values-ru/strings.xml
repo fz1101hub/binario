@@ -142,6 +142,11 @@
     <string name="planned_journey_template_saved">Шаблон сохранён только на этом устройстве. Перед сохранением поездки всегда выбирайте дату.</string>
     <string name="planned_journey_template_applied">Шаблон «%1$s» применён. Выберите дату и подтвердите поездку.</string>
     <string name="planned_journey_template_deleted">Локальный шаблон удалён.</string>
+    <string name="planned_journey_clear">Очистить ежедневник</string>
+    <string name="planned_journey_clear_title">Очистить ежедневник?</string>
+    <string name="planned_journey_clear_body">Будут удалены все запланированные поездки на этом устройстве, включая нечитаемые, их напоминания и шаблоны поездок. Сначала экспортируйте в JSON поездки, которые хотите сохранить. Запас времени по умолчанию не изменится.</string>
+    <string name="planned_journey_clear_confirm">Очистить</string>
+    <string name="planned_journey_cleared">Ежедневник очищен: поездки, напоминания и шаблоны удалены с этого устройства.</string>
     <string name="planned_journey_origin">Откуда</string>
     <string name="planned_journey_destination">Куда</string>
     <string name="planned_journey_route">%1$s → %2$s</string>
