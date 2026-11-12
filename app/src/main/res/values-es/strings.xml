@@ -173,6 +173,15 @@
     <string name="planned_journey_keep_existing">Conservar los existentes</string>
     <string name="planned_journey_replace_existing">Reemplazar conflictos</string>
     <string name="planned_journey_close">Cerrar</string>
+    <string name="planned_journey_text_import">Importar desde texto</string>
+    <string name="planned_journey_text_import_description">Pega uno o varios trayectos o usa Compartir texto hacia Binario. El texto se propone solo aquí: Binario no importa automáticamente y no lee mensajes, portapapeles o enlaces por su cuenta.</string>
+    <string name="planned_journey_text_import_label">Texto de los trayectos a importar</string>
+    <string name="planned_journey_text_import_example">Roma Termini → Bologna Centrale · 12/09/2026 a las 08:30\nBologna Centrale → Milano Centrale · 12/09/2026 a las 11:05</string>
+    <string name="planned_journey_text_import_hint">Cada renglón requiere origen, destino, fecha GG/MM/AAAA o AAAA-MM-GG y hora HH:MM. El texto permanece aquí hasta que lo borres o completes la importación.</string>
+    <string name="planned_journey_text_import_preview">Crear vista previa</string>
+    <string name="planned_journey_text_import_review">Revisar antes de añadir</string>
+    <string name="planned_journey_text_import_reviewed">He verificado estaciones, fecha y hora: son datos planificados, no en tiempo real.</string>
+    <string name="planned_journey_text_import_apply">Importar seleccionadas</string>
 
     <!-- Data provenance and operational-state announcements. -->
     <string name="data_status_demo">Catálogo de demostración local — no en tiempo real</string>
@@ -575,6 +584,13 @@
     <string name="planned_journey_departure_past">Esta salida ya ha pasado: el viaje irá a los archivados, sin recordatorio. Toca de nuevo «Guardar» para guardarlo de todos modos.</string>
     <string name="planned_journey_export_failure_generic">Error al exportar.</string>
     <string name="planned_journey_import_failure_generic">Error al importar.</string>
+    <string name="planned_journey_text_import_none">No se ha encontrado ningún trayecto completo nuevo. Introduce origen, destino, fecha y hora: no se ha guardado nada.</string>
+    <string name="planned_journey_text_import_confirm_needed">Selecciona al menos un trayecto y confirma que lo has verificado. Ningún dato ha sido guardado.</string>
+    <plurals name="planned_journey_text_import_skipped">
+        <item quantity="one">%1$d línea no propuesta: incompleta, con estaciones que no están en el catálogo, ya en la Agenda o más allá de 40 viajes.</item>
+        <item quantity="many">%1$d líneas no propuestas: incompletas, con estaciones que no están en el catálogo, ya en la Agenda o más allá de 40 viajes.</item>
+        <item quantity="other">%1$d líneas no propuestas: incompletas, con estaciones que no están en el catálogo, ya en la Agenda o más allá de 40 viajes.</item>
+    </plurals>
     <string name="route_stations_must_differ">Elige dos estaciones diferentes para la ruta.</string>
     <string name="round_trip_return_must_follow_departure">El regreso debe ser posterior a la salida de ida.</string>
     <string name="route_required_to_start">Introduce una ruta para iniciar la consulta.</string>

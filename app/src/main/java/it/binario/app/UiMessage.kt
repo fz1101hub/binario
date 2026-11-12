@@ -38,6 +38,8 @@ enum class UiMessageKey(val resourceName: String) {
     PLANNED_JOURNEY_DEPARTURE_PAST("planned_journey_departure_past"),
     PLANNED_JOURNEY_RETURN_PREPARED("planned_journey_return_prepared"),
     PLANNED_JOURNEY_REPLAN_PREPARED("planned_journey_replan_prepared"),
+    PLANNED_JOURNEY_TEXT_IMPORT_NONE("planned_journey_text_import_none"),
+    PLANNED_JOURNEY_TEXT_IMPORT_CONFIRM_NEEDED("planned_journey_text_import_confirm_needed"),
     PLANNED_JOURNEY_EXPORT_SUCCESS("planned_journey_export_success"),
     PLANNED_JOURNEY_EXPORT_FAILURE("planned_journey_export_failure_generic"),
     PLANNED_JOURNEY_IMPORT_FAILURE("planned_journey_import_failure_generic"),

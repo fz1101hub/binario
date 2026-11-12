@@ -51,6 +51,20 @@ sealed interface PlannedJourneyImportState {
     data class Error(val message: UiMessage) : PlannedJourneyImportState
 }
 
+/**
+ * The guided text import: the text stays in memory only (never in preferences or saved state) until the import is
+ * completed; [candidates] is null until «Crea anteprima».
+ */
+data class PlannedJourneyTextImportState(
+    val text: String = "",
+    val visible: Boolean = true,
+    val candidates: List<PlannedJourney>? = null,
+    val selected: Set<String> = emptySet(),
+    val skipped: Int = 0,
+    val reviewed: Boolean = false,
+    val message: UiMessage? = null
+)
+
 /** UI-oriented state holder; all durable writes are delegated to [PlannedJourneyRepository]. */
 enum class PlannedJourneyExportFormat(val suggestedName: String) {
     JSON("binario-viaggi-pianificati.json"),
@@ -94,6 +108,68 @@ class PlannedJourneyViewModel(
         private set
     var feedback by mutableStateOf<UiMessage?>(null)
         private set
+    var textImport by mutableStateOf<PlannedJourneyTextImportState?>(null)
+        private set
+
+    /** Opens the text import, keeping a text typed earlier unless a new one is given (e.g. shared from another app). */
+    fun beginTextImport(text: String? = null) {
+        val current = textImport
+        textImport = if (text != null || current == null) PlannedJourneyTextImportState(text = text.orEmpty())
+        else current.copy(visible = true)
+        feedback = null
+    }
+
+    fun changeTextImport(text: String) {
+        textImport = textImport?.copy(text = text.take(PlannedJourneyTextImport.MAX_CHARACTERS), candidates = null,
+            selected = emptySet(), skipped = 0, reviewed = false, message = null)
+    }
+
+    fun previewTextImport(stations: Iterable<PlannedJourneyStation>) {
+        val current = textImport ?: return
+        val text = PlannedJourneyTextImport.normalize(current.text)
+        val preview = text?.let {
+            PlannedJourneyTextImport.preview(it, stations.toList(), snapshot.journeys, zone, now(), newId)
+        }
+        textImport = if (preview == null || preview.candidates.isEmpty()) {
+            current.copy(candidates = null, selected = emptySet(), skipped = preview?.skipped ?: 0, reviewed = false,
+                message = UiMessage(UiMessageKey.PLANNED_JOURNEY_TEXT_IMPORT_NONE))
+        } else {
+            current.copy(candidates = preview.candidates, selected = preview.candidates.mapTo(mutableSetOf()) { it.id },
+                skipped = preview.skipped, reviewed = false, message = null)
+        }
+    }
+
+    fun toggleTextImportCandidate(id: String) {
+        val current = textImport ?: return
+        textImport = current.copy(selected = if (id in current.selected) current.selected - id else current.selected + id, message = null)
+    }
+
+    fun setTextImportReviewed(reviewed: Boolean) {
+        textImport = textImport?.copy(reviewed = reviewed, message = null)
+    }
+
+    /** Adds the selected journeys only after the explicit «Ho verificato»; never replaces a journey. */
+    fun applyTextImport() {
+        val current = textImport ?: return
+        val chosen = current.candidates.orEmpty().filter { it.id in current.selected }
+        if (!current.reviewed || chosen.isEmpty()) {
+            textImport = current.copy(message = UiMessage(UiMessageKey.PLANNED_JOURNEY_TEXT_IMPORT_CONFIRM_NEEDED))
+            return
+        }
+        val result = repository.applyJsonPreview(
+            PlannedJourneyImportPreview(accepted = chosen, duplicates = emptyList(), conflicts = emptyList()),
+            PlannedJourneyConflictPolicy.KEEP_EXISTING
+        )
+        when (result) {
+            is PlannedJourneyRepositorySaveResult.Saved -> persist(result, UiMessageKey.PLANNED_JOURNEY_IMPORT_SUCCESS) { textImport = null }
+            is PlannedJourneyRepositorySaveResult.Rejected -> textImport = current.copy(message = UiMessage(rejectionMessage(result.reason)))
+        }
+    }
+
+    /** Hides the import; the text stays in memory until the import is completed or the text is deleted. */
+    fun dismissTextImport() {
+        textImport = textImport?.copy(visible = false)
+    }
     var pendingExport by mutableStateOf(
         savedStateHandle.get<String>(PENDING_EXPORT_KEY)
             ?.let { runCatching { PlannedJourneyExportFormat.valueOf(it) }.getOrNull() }

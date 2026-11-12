@@ -172,6 +172,15 @@
     <string name="planned_journey_keep_existing">Vorhandene beibehalten</string>
     <string name="planned_journey_replace_existing">Konflikte ersetzen</string>
     <string name="planned_journey_close">Schließen</string>
+    <string name="planned_journey_text_import">Aus Text importieren</string>
+    <string name="planned_journey_text_import_description">Fügen Sie eine oder mehrere Verbindungen ein oder verwenden Sie ‚Text teilen‘ nach Binario. Der Text wird nur hier vorgeschlagen: Binario importiert nicht automatisch und liest keine Nachrichten, Zwischenablagen oder Links von allein.</string>
+    <string name="planned_journey_text_import_label">Text der zu importierenden Verbindungen</string>
+    <string name="planned_journey_text_import_example">Roma Termini → Bologna Centrale · 12.09.2026 um 08:30\nBologna Centrale → Milano Centrale · 12.09.2026 um 11:05</string>
+    <string name="planned_journey_text_import_hint">Jede Zeile benötigt Abfahrt, Ziel, Datum GG/MM/AAAA oder AAAA-MM-GG und Zeit HH:MM. Der Text bleibt hier, bis Sie ihn löschen oder den Import abschließen.</string>
+    <string name="planned_journey_text_import_preview">Vorschau erstellen</string>
+    <string name="planned_journey_text_import_review">Vor dem Hinzufügen prüfen</string>
+    <string name="planned_journey_text_import_reviewed">Ich habe Stationen, Datum und Uhrzeit überprüft: es sind geplante Daten, nicht in Echtzeit.</string>
+    <string name="planned_journey_text_import_apply">Ausgewählte importieren</string>
 
     <!-- Data provenance and operational-state announcements. -->
     <string name="data_status_demo">Lokaler Demokatalog — nicht live</string>
@@ -566,6 +575,12 @@
     <string name="planned_journey_departure_past">Diese Abfahrt liegt bereits in der Vergangenheit: Die Fahrt kommt ins Archiv, ohne Erinnerung. Tippe erneut auf „Speichern“, um sie trotzdem zu speichern.</string>
     <string name="planned_journey_export_failure_generic">Export fehlgeschlagen.</string>
     <string name="planned_journey_import_failure_generic">Import fehlgeschlagen.</string>
+    <string name="planned_journey_text_import_none">Keine neue vollständige Verbindung gefunden. Geben Sie Abfahrt, Ziel, Datum und Uhrzeit ein: Es wurde nichts gespeichert.</string>
+    <string name="planned_journey_text_import_confirm_needed">Wählen Sie mindestens eine Verbindung aus und bestätigen Sie, dass Sie sie überprüft haben. Es wurden keine Daten gespeichert.</string>
+    <plurals name="planned_journey_text_import_skipped">
+        <item quantity="one">%1$d Zeile nicht vorgeschlagen: unvollständig, mit Bahnhöfen, die nicht im Katalog sind, schon in der Agenda oder über 40 Fahrten hinaus.</item>
+        <item quantity="other">%1$d Zeilen nicht vorgeschlagen: unvollständig, mit Bahnhöfen, die nicht im Katalog sind, schon in der Agenda oder über 40 Fahrten hinaus.</item>
+    </plurals>
     <string name="route_stations_must_differ">Wähle zwei verschiedene Bahnhöfe für die Strecke.</string>
     <string name="round_trip_return_must_follow_departure">Die Rückfahrt muss nach der Abfahrt der Hinfahrt liegen.</string>
     <string name="route_required_to_start">Gib eine Strecke ein, um die Abfrage zu starten.</string>

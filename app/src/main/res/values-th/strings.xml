@@ -171,6 +171,15 @@
     <string name="planned_journey_keep_existing">เก็บรายการเดิม</string>
     <string name="planned_journey_replace_existing">แทนที่รายการที่ขัดแย้ง</string>
     <string name="planned_journey_close">ปิด</string>
+    <string name="planned_journey_text_import">นำเข้าจากข้อความ</string>
+    <string name="planned_journey_text_import_description">วางการเดินทางหนึ่งรายการขึ้นไป หรือใช้แชร์ข้อความไปยัง Binario ข้อความจะถูกเสนอที่นี่เท่านั้น: Binario ไม่นำเข้าโดยอัตโนมัติ และไม่อ่านข้อความแชท คลิปบอร์ด หรือลิงก์เอง</string>
+    <string name="planned_journey_text_import_label">ข้อความของการเดินทางที่จะนำเข้า</string>
+    <string name="planned_journey_text_import_example">Roma Termini → Bologna Centrale · 12/09/2026 เวลา 08:30\nBologna Centrale → Milano Centrale · 12/09/2026 เวลา 11:05</string>
+    <string name="planned_journey_text_import_hint">แต่ละบรรทัดต้องมีต้นทาง ปลายทาง วันที่แบบ DD/MM/YYYY หรือ YYYY-MM-DD และเวลาแบบ HH:MM ข้อความจะอยู่ที่นี่จนกว่าคุณจะลบหรือนำเข้าเสร็จ</string>
+    <string name="planned_journey_text_import_preview">สร้างตัวอย่าง</string>
+    <string name="planned_journey_text_import_review">ตรวจสอบก่อนเพิ่ม</string>
+    <string name="planned_journey_text_import_reviewed">ฉันตรวจสอบสถานี วันที่ และเวลาแล้ว: นี่คือข้อมูลตามแผน ไม่ใช่เรียลไทม์</string>
+    <string name="planned_journey_text_import_apply">นำเข้ารายการที่เลือก</string>
 
     <!-- Data provenance and operational-state announcements. -->
     <string name="data_status_demo">แคตตาล็อกตัวอย่างในเครื่อง — ไม่ใช่ข้อมูลเรียลไทม์</string>
@@ -557,6 +566,11 @@
     <string name="planned_journey_departure_past">เวลาออกเดินทางนี้ผ่านไปแล้ว: การเดินทางจะไปอยู่ในคลังโดยไม่มีการแจ้งเตือน แตะ “บันทึก” อีกครั้งเพื่อบันทึกต่อไป</string>
     <string name="planned_journey_export_failure_generic">ส่งออกไม่สำเร็จ</string>
     <string name="planned_journey_import_failure_generic">นำเข้าไม่สำเร็จ</string>
+    <string name="planned_journey_text_import_none">ไม่พบการเดินทางใหม่ที่สมบูรณ์ ป้อนต้นทาง ปลายทาง วันที่ และเวลา: ยังไม่ได้บันทึกสิ่งใด</string>
+    <string name="planned_journey_text_import_confirm_needed">เลือกการเดินทางอย่างน้อยหนึ่งรายการและยืนยันว่าคุณตรวจสอบแล้ว ยังไม่ได้บันทึกข้อมูล</string>
+    <plurals name="planned_journey_text_import_skipped">
+        <item quantity="other">ไม่ได้เสนอ %1$d บรรทัด: ไม่ครบถ้วน มีสถานีที่ไม่อยู่ในแคตตาล็อก มีอยู่ในกำหนดการแล้ว หรือเกิน 40 การเดินทาง</item>
+    </plurals>
     <string name="route_stations_must_differ">เลือกสองสถานีที่ต่างกันสำหรับเส้นทาง</string>
     <string name="round_trip_return_must_follow_departure">ขากลับต้องอยู่หลังเวลาออกเดินทางของขาไป</string>
     <string name="route_required_to_start">ป้อนเส้นทางเพื่อเริ่มดูข้อมูล</string>

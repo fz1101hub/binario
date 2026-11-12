@@ -17,6 +17,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Archive
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.ContentPaste
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Refresh
@@ -131,6 +132,16 @@ fun PlannedJourneyAgendaScreen(
             }
         }
         item {
+            OutlinedButton(
+                onClick = { viewModel.beginTextImport() },
+                modifier = Modifier.fillMaxWidth().testTag("plannedJourneyTextImport")
+            ) {
+                Icon(Icons.Default.ContentPaste, contentDescription = null)
+                Spacer(Modifier.width(8.dp))
+                Text(stringResource(R.string.planned_journey_text_import))
+            }
+        }
+        item {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
                 OutlinedButton(onClick = onExportJson, modifier = Modifier.weight(1f)) {
                     Icon(Icons.Default.Download, contentDescription = null)
@@ -184,6 +195,9 @@ fun PlannedJourneyAgendaScreen(
             onSave = { viewModel.saveEditor(stations) },
             onDismiss = viewModel::dismissEditor
         )
+    }
+    viewModel.textImport?.takeIf { it.visible }?.let { state ->
+        TextImportDialog(state = state, viewModel = viewModel, stations = stations)
     }
     ImportPreviewDialog(
         state = viewModel.importState,
@@ -461,6 +475,86 @@ private fun StationField(
             }
         }
     }
+}
+
+@Composable
+private fun TextImportDialog(
+    state: PlannedJourneyTextImportState,
+    viewModel: PlannedJourneyViewModel,
+    stations: List<PlannedJourneyStation>
+) {
+    val locale = LocalConfiguration.current.locales[0]
+    val candidates = state.candidates
+    AlertDialog(
+        onDismissRequest = viewModel::dismissTextImport,
+        title = { Text(stringResource(R.string.planned_journey_text_import)) },
+        text = {
+            LazyColumn(modifier = Modifier.testTag("plannedJourneyTextImportDialog"), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                item { Text(stringResource(R.string.planned_journey_text_import_description), style = MaterialTheme.typography.bodySmall) }
+                item {
+                    OutlinedTextField(
+                        value = state.text,
+                        onValueChange = viewModel::changeTextImport,
+                        label = { Text(stringResource(R.string.planned_journey_text_import_label)) },
+                        placeholder = { Text(stringResource(R.string.planned_journey_text_import_example)) },
+                        supportingText = { Text(stringResource(R.string.planned_journey_text_import_hint)) },
+                        modifier = Modifier.fillMaxWidth().testTag("plannedJourneyTextImportInput"),
+                        minLines = 3
+                    )
+                }
+                item {
+                    OutlinedButton(onClick = { viewModel.previewTextImport(stations) }, modifier = Modifier.fillMaxWidth()) {
+                        Text(stringResource(R.string.planned_journey_text_import_preview))
+                    }
+                }
+                if (candidates != null) {
+                    item { Text(stringResource(R.string.planned_journey_text_import_review), style = MaterialTheme.typography.titleSmall) }
+                    items(candidates, key = { it.id }) { journey ->
+                        val segment = journey.itinerary.segments.single()
+                        val route = stringResource(R.string.planned_journey_route, segment.origin.displayName, segment.destination.displayName)
+                        val schedule = LocalizedDates.weekdayDayMonthTime(locale).format(segment.departure.localDateTime())
+                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                            Checkbox(
+                                checked = journey.id in state.selected,
+                                onCheckedChange = { viewModel.toggleTextImportCandidate(journey.id) },
+                                modifier = Modifier.semantics { contentDescription = "$route, $schedule" }
+                            )
+                            Column(Modifier.weight(1f)) {
+                                Text(route, style = MaterialTheme.typography.bodyMedium)
+                                Text(schedule, style = MaterialTheme.typography.bodySmall)
+                            }
+                        }
+                    }
+                    item {
+                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                            val reviewed = stringResource(R.string.planned_journey_text_import_reviewed)
+                            Checkbox(
+                                checked = state.reviewed,
+                                onCheckedChange = viewModel::setTextImportReviewed,
+                                modifier = Modifier.semantics { contentDescription = reviewed }.testTag("plannedJourneyTextImportReviewed")
+                            )
+                            Text(reviewed, style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
+                        }
+                    }
+                }
+                if (state.skipped > 0) {
+                    item {
+                        Text(
+                            pluralStringResource(R.plurals.planned_journey_text_import_skipped, state.skipped, state.skipped),
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+                }
+                state.message?.let { message -> item { AgendaMessage(message.localized(), isError = true) } }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = viewModel::applyTextImport, enabled = candidates != null) {
+                Text(stringResource(R.string.planned_journey_text_import_apply))
+            }
+        },
+        dismissButton = { TextButton(onClick = viewModel::dismissTextImport) { Text(stringResource(R.string.planned_journey_close)) } }
+    )
 }
 
 @Composable

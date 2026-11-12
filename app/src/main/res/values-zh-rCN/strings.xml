@@ -171,6 +171,15 @@
     <string name="planned_journey_keep_existing">保留现有项</string>
     <string name="planned_journey_replace_existing">替换冲突项</string>
     <string name="planned_journey_close">关闭</string>
+    <string name="planned_journey_text_import">从文本导入</string>
+    <string name="planned_journey_text_import_description">粘贴一个或多个行程，或将文本共享给 Binario。文本只会在这里提供：Binario 不会自动导入，也不会自行读取消息、剪贴板或链接。</string>
+    <string name="planned_journey_text_import_label">要导入的行程文本</string>
+    <string name="planned_journey_text_import_example">Roma Termini → Bologna Centrale · 2026-09-12 08:30\nBologna Centrale → Milano Centrale · 2026-09-12 11:05</string>
+    <string name="planned_journey_text_import_hint">每行需要包含出发地、目的地、DD/MM/YYYY 或 YYYY-MM-DD 格式的日期以及 HH:MM 格式的时间。文本会保留在这里，直到你删除它或完成导入。</string>
+    <string name="planned_journey_text_import_preview">创建预览</string>
+    <string name="planned_journey_text_import_review">添加前检查</string>
+    <string name="planned_journey_text_import_reviewed">我已核对车站、日期和时间：这些是计划数据，非实时。</string>
+    <string name="planned_journey_text_import_apply">导入所选</string>
 
     <!-- Data provenance and operational-state announcements. -->
     <string name="data_status_demo">本地演示目录 — 非实时</string>
@@ -557,6 +566,11 @@
     <string name="planned_journey_departure_past">此出发时间已过：行程将进入归档，且没有提醒。若仍要保存，请再次点按“保存”。</string>
     <string name="planned_journey_export_failure_generic">导出失败。</string>
     <string name="planned_journey_import_failure_generic">导入失败。</string>
+    <string name="planned_journey_text_import_none">未找到新的完整行程。请输入出发地、目的地、日期和时间：没有保存任何内容。</string>
+    <string name="planned_journey_text_import_confirm_needed">请至少选择一个行程，并确认你已核对。没有保存任何数据。</string>
+    <plurals name="planned_journey_text_import_skipped">
+        <item quantity="other">%1$d 行未提议：内容不完整、车站不在目录中、已在日程中或超过 40 个行程。</item>
+    </plurals>
     <string name="route_stations_must_differ">请为路线选择两个不同的车站。</string>
     <string name="round_trip_return_must_follow_departure">返程必须晚于去程出发时间。</string>
     <string name="route_required_to_start">请输入路线以开始查询。</string>

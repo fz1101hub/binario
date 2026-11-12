@@ -173,6 +173,15 @@
     <string name="planned_journey_keep_existing">Conserver les éléments existants</string>
     <string name="planned_journey_replace_existing">Remplacer les conflits</string>
     <string name="planned_journey_close">Fermer</string>
+    <string name="planned_journey_text_import">Importer depuis du texte</string>
+    <string name="planned_journey_text_import_description">Collez un ou plusieurs trajets ou utilisez Partager le texte vers Binario. Le texte est seulement proposé ici: Binario n\'importe pas automatiquement et ne lit pas les messages, le presse-papiers ou les liens seul.</string>
+    <string name="planned_journey_text_import_label">Texte des trajets à importer</string>
+    <string name="planned_journey_text_import_example">Roma Termini → Bologna Centrale · 12/09/2026 à 08:30\nBologna Centrale → Milano Centrale · 12/09/2026 à 11:05</string>
+    <string name="planned_journey_text_import_hint">Chaque ligne requiert origine, destination, date JJ/MM/YYYY ou YYYY-MM-JJ et heure HH:MM. Le texte reste ici tant que vous l\'effacez ou complétez l\'importation.</string>
+    <string name="planned_journey_text_import_preview">Créer l\'aperçu</string>
+    <string name="planned_journey_text_import_review">Vérifier avant d\'ajouter</string>
+    <string name="planned_journey_text_import_reviewed">J\'ai vérifié gares, date et heure: ce sont des données planifiées, pas en temps réel.</string>
+    <string name="planned_journey_text_import_apply">Importer les sélectionnées</string>
 
     <!-- Data provenance and operational-state announcements. -->
     <string name="data_status_demo">Catalogue de démonstration local — non en direct</string>
@@ -575,6 +584,13 @@
     <string name="planned_journey_departure_past">Ce départ est déjà passé : le trajet ira dans les archives, sans rappel. Touchez à nouveau « Enregistrer » pour l’enregistrer quand même.</string>
     <string name="planned_journey_export_failure_generic">Échec de l’exportation.</string>
     <string name="planned_journey_import_failure_generic">Échec de l’importation.</string>
+    <string name="planned_journey_text_import_none">Aucun nouveau trajet complet trouvé. Saisissez origine, destination, date et heure: rien n\'a été enregistré.</string>
+    <string name="planned_journey_text_import_confirm_needed">Sélectionnez au moins un trajet et confirmez que vous l\'avez vérifié. Aucune donnée n\'a été enregistrée.</string>
+    <plurals name="planned_journey_text_import_skipped">
+        <item quantity="one">%1$d ligne non proposée : incomplète, avec des gares absentes du catalogue, déjà dans l’Agenda ou au-delà de 40 trajets.</item>
+        <item quantity="many">%1$d lignes non proposées : incomplètes, avec des gares absentes du catalogue, déjà dans l’Agenda ou au-delà de 40 trajets.</item>
+        <item quantity="other">%1$d lignes non proposées : incomplètes, avec des gares absentes du catalogue, déjà dans l’Agenda ou au-delà de 40 trajets.</item>
+    </plurals>
     <string name="route_stations_must_differ">Choisissez deux gares différentes pour le trajet.</string>
     <string name="round_trip_return_must_follow_departure">Le retour doit avoir lieu après le départ de l’aller.</string>
     <string name="route_required_to_start">Saisissez un trajet pour commencer la consultation.</string>

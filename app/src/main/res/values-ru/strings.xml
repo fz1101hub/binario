@@ -171,6 +171,15 @@
     <string name="planned_journey_keep_existing">Оставить существующие</string>
     <string name="planned_journey_replace_existing">Заменить конфликтующие</string>
     <string name="planned_journey_close">Закрыть</string>
+    <string name="planned_journey_text_import">Импорт из текста</string>
+    <string name="planned_journey_text_import_description">Вставьте одну или несколько поездок или поделитесь текстом с Binario. Текст здесь только предлагается: Binario не импортирует автоматически и сам не читает сообщения, буфер обмена или ссылки.</string>
+    <string name="planned_journey_text_import_label">Текст поездок для импорта</string>
+    <string name="planned_journey_text_import_example">Roma Termini → Bologna Centrale · 12.09.2026 в 08:30\nBologna Centrale → Milano Centrale · 12.09.2026 в 11:05</string>
+    <string name="planned_journey_text_import_hint">В каждой строке нужны отправление, назначение, дата ДД.ММ.ГГГГ, DD/MM/YYYY или YYYY-MM-DD и время ЧЧ:ММ. Текст остаётся здесь, пока вы его не удалите или не завершите импорт.</string>
+    <string name="planned_journey_text_import_preview">Создать предпросмотр</string>
+    <string name="planned_journey_text_import_review">Проверьте перед добавлением</string>
+    <string name="planned_journey_text_import_reviewed">Я проверил станции, дату и время: это плановые данные, а не данные в реальном времени.</string>
+    <string name="planned_journey_text_import_apply">Импортировать выбранные</string>
     <!-- Data provenance and operational-state announcements. -->
     <string name="data_status_demo">Локальный демонстрационный каталог — не в реальном времени</string>
     <string name="data_status_live">Данные в реальном времени: %1$s</string>
@@ -570,6 +579,14 @@
     <string name="planned_journey_departure_past">Это отправление уже прошло: поездка попадёт в архив без напоминания. Нажмите «Сохранить» ещё раз, чтобы всё равно сохранить её.</string>
     <string name="planned_journey_export_failure_generic">Не удалось выполнить экспорт.</string>
     <string name="planned_journey_import_failure_generic">Не удалось выполнить импорт.</string>
+    <string name="planned_journey_text_import_none">Новых полных поездок не найдено. Укажите отправление, назначение, дату и время: ничего не сохранено.</string>
+    <string name="planned_journey_text_import_confirm_needed">Выберите хотя бы одну поездку и подтвердите, что проверили её. Данные не сохранены.</string>
+    <plurals name="planned_journey_text_import_skipped">
+        <item quantity="one">Не предложена %1$d строка: неполная, со станциями не из каталога, уже в ежедневнике или сверх 40 поездок.</item>
+        <item quantity="few">Не предложены %1$d строки: неполные, со станциями не из каталога, уже в ежедневнике или сверх 40 поездок.</item>
+        <item quantity="many">Не предложено %1$d строк: неполные, со станциями не из каталога, уже в ежедневнике или сверх 40 поездок.</item>
+        <item quantity="other">Не предложено %1$d строки: неполные, со станциями не из каталога, уже в ежедневнике или сверх 40 поездок.</item>
+    </plurals>
     <string name="route_stations_must_differ">Выберите две разные станции для маршрута.</string>
     <string name="round_trip_return_must_follow_departure">Обратная поездка должна быть позже отправления туда.</string>
     <string name="route_required_to_start">Укажите маршрут, чтобы начать просмотр.</string>

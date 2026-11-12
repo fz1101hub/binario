@@ -169,6 +169,15 @@
     <string name="planned_journey_keep_existing">मौजूदा रखें</string>
     <string name="planned_journey_replace_existing">टकराव वाली बदलें</string>
     <string name="planned_journey_close">बंद करें</string>
+    <string name="planned_journey_text_import">टेक्स्ट से आयात करें</string>
+    <string name="planned_journey_text_import_description">एक या अधिक यात्राएँ पेस्ट करें या Binario के साथ “टेक्स्ट शेयर करें” का उपयोग करें। टेक्स्ट केवल यहाँ सुझाया जाता है: Binario अपने-आप आयात नहीं करता और खुद संदेश, क्लिपबोर्ड या लिंक नहीं पढ़ता।</string>
+    <string name="planned_journey_text_import_label">आयात की जाने वाली यात्राओं का टेक्स्ट</string>
+    <string name="planned_journey_text_import_example">Roma Termini → Bologna Centrale · 12/09/2026 को 08:30\nBologna Centrale → Milano Centrale · 12/09/2026 को 11:05</string>
+    <string name="planned_journey_text_import_hint">हर पंक्ति में प्रस्थान, गंतव्य, DD/MM/YYYY या YYYY-MM-DD में तारीख और HH:MM में समय चाहिए। टेक्स्ट तब तक यहाँ रहता है जब तक आप उसे हटा न दें या आयात पूरा न करें।</string>
+    <string name="planned_journey_text_import_preview">पूर्वावलोकन बनाएँ</string>
+    <string name="planned_journey_text_import_review">जोड़ने से पहले समीक्षा करें</string>
+    <string name="planned_journey_text_import_reviewed">मैंने स्टेशन, तारीख और समय जाँच लिए हैं: यह निर्धारित डेटा है, रीयल-टाइम नहीं।</string>
+    <string name="planned_journey_text_import_apply">चुनी गई आयात करें</string>
     <!-- Data provenance and operational-state announcements. -->
     <string name="data_status_demo">स्थानीय डेमो कैटलॉग — लाइव नहीं</string>
     <string name="data_status_live">लाइव डेटा: %1$s</string>
@@ -552,6 +561,12 @@
     <string name="planned_journey_departure_past">यह प्रस्थान पहले ही निकल चुका है: यात्रा बिना रिमाइंडर के संग्रह में जाएगी। फिर भी सहेजने के लिए “सहेजें” दोबारा टैप करें।</string>
     <string name="planned_journey_export_failure_generic">एक्सपोर्ट नहीं हो सका।</string>
     <string name="planned_journey_import_failure_generic">इंपोर्ट नहीं हो सका।</string>
+    <string name="planned_journey_text_import_none">कोई नई पूरी यात्रा नहीं मिली। प्रस्थान, गंतव्य, तारीख और समय दर्ज करें: कुछ भी सहेजा नहीं गया।</string>
+    <string name="planned_journey_text_import_confirm_needed">कम से कम एक यात्रा चुनें और पुष्टि करें कि आपने उसे जाँच लिया है। कोई डेटा सहेजा नहीं गया।</string>
+    <plurals name="planned_journey_text_import_skipped">
+        <item quantity="one">%1$d पंक्ति प्रस्तावित नहीं: अधूरी, कैटलॉग में न मिले स्टेशनों वाली, पहले से एजेंडा में या 40 यात्राओं से अधिक।</item>
+        <item quantity="other">%1$d पंक्तियाँ प्रस्तावित नहीं: अधूरी, कैटलॉग में न मिले स्टेशनों वाली, पहले से एजेंडा में या 40 यात्राओं से अधिक।</item>
+    </plurals>
     <string name="route_stations_must_differ">मार्ग के लिए दो अलग स्टेशन चुनें।</string>
     <string name="round_trip_return_must_follow_departure">वापसी, जाने के प्रस्थान के बाद होनी चाहिए।</string>
     <string name="route_required_to_start">देखना शुरू करने के लिए एक मार्ग डालें।</string>

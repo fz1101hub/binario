@@ -168,6 +168,15 @@
     <string name="planned_journey_keep_existing">기존 항목 유지</string>
     <string name="planned_journey_replace_existing">충돌 항목 바꾸기</string>
     <string name="planned_journey_close">닫기</string>
+    <string name="planned_journey_text_import">텍스트에서 가져오기</string>
+    <string name="planned_journey_text_import_description">여정을 하나 이상 붙여넣거나 Binario로 텍스트를 공유하세요. 텍스트는 여기에서 제안될 뿐입니다. Binario는 자동으로 가져오지 않으며 메시지, 클립보드, 링크를 스스로 읽지 않습니다.</string>
+    <string name="planned_journey_text_import_label">가져올 여정 텍스트</string>
+    <string name="planned_journey_text_import_example">Roma Termini → Bologna Centrale · 2026-09-12 08:30\nBologna Centrale → Milano Centrale · 2026-09-12 11:05</string>
+    <string name="planned_journey_text_import_hint">각 줄에는 출발지, 도착지, DD/MM/YYYY 또는 YYYY-MM-DD 형식의 날짜, HH:MM 형식의 시간이 필요합니다. 텍스트는 삭제하거나 가져오기를 마칠 때까지 여기에 남습니다.</string>
+    <string name="planned_journey_text_import_preview">미리 보기 만들기</string>
+    <string name="planned_journey_text_import_review">추가하기 전에 검토</string>
+    <string name="planned_journey_text_import_reviewed">역, 날짜, 시간을 확인했습니다. 계획 데이터이며 실시간이 아닙니다.</string>
+    <string name="planned_journey_text_import_apply">선택 항목 가져오기</string>
     <!-- Data provenance and operational-state announcements. -->
     <string name="data_status_demo">로컬 데모 카탈로그 — 실시간 아님</string>
     <string name="data_status_live">실시간 데이터: %1$s</string>
@@ -543,6 +552,11 @@
     <string name="planned_journey_departure_past">이 출발 시간은 이미 지났습니다. 여정은 알림 없이 보관함으로 이동합니다. 그래도 저장하려면 “저장”을 다시 누르세요.</string>
     <string name="planned_journey_export_failure_generic">내보내기에 실패했습니다.</string>
     <string name="planned_journey_import_failure_generic">가져오기에 실패했습니다.</string>
+    <string name="planned_journey_text_import_none">새로운 완전한 여정을 찾지 못했습니다. 출발지, 도착지, 날짜, 시간을 입력하세요. 저장된 것은 없습니다.</string>
+    <string name="planned_journey_text_import_confirm_needed">여정을 하나 이상 선택하고 확인했음을 표시하세요. 저장된 데이터는 없습니다.</string>
+    <plurals name="planned_journey_text_import_skipped">
+        <item quantity="other">%1$d줄은 제안되지 않았습니다: 불완전하거나, 카탈로그에 없는 역이 있거나, 이미 일정에 있거나, 40개 여정을 넘습니다.</item>
+    </plurals>
     <string name="route_stations_must_differ">구간에 서로 다른 두 역을 선택하세요.</string>
     <string name="round_trip_return_must_follow_departure">오는 편은 가는 편 출발 이후여야 합니다.</string>
     <string name="route_required_to_start">조회를 시작하려면 구간을 입력하세요.</string>
