@@ -36,6 +36,23 @@ Dodici revisori indipendenti, ognuno con un punto di vista diverso, hanno trovat
   - le stazioni con un doppio spazio nel nome sono di nuovo utilizzabili;
   - un errore di lettura non spegne più il pianificatore fino alla chiusura dell'app;
   - il widget del Watch smette di aggiornarsi ogni 15 minuti quando non ha nulla da mostrare.
+- **Android, schermate**:
+  - sul tabellone di stazione TalkBack dice per primo che un treno è soppresso e legge le variazioni di percorso; «Soppresso», «Parzialmente soppresso», «Deviato» e «Bus sostitutivo» sono etichette in grassetto nel colore di errore;
+  - «In orario» non compare più accanto a «+0 min» o a un treno che una fonte dà in ritardo: una sola regola per righe, schede, distintivi e TalkBack;
+  - la dettatura non indovina più date e ore nelle lingue di cui non conosce le parole: lì il microfono della tratta è nascosto, quello del numero di treno resta, e le cifre di ogni alfabeto vengono lette;
+  - con caratteri grandi la destinazione va su due righe e il binario sotto; il tabellone dice quanti treni non sono in elenco oltre i 60;
+  - «Ultimo di oggi» e «primo domani» solo sul tabellone di oggi;
+  - «Smetti di monitorare» spegne davvero il monitoraggio della stazione (prima, su una stazione monitorata solo per le partenze, lo estendeva agli arrivi);
+  - lo spagnolo dice sempre «cancelado», come su iPhone;
+  - un controllo nella CI verifica chiavi, segnaposto e plurali delle 17 lingue.
+- **Alexa**:
+  - i festivi contano come domeniche in «il più puntuale»; un giorno della settimana senza dati non fa più proporre un treno;
+  - le frasi d'esempio e i messaggi di benvenuto propongono le domande sulla puntualità; le due domande in tempo reale aggiungono quello che la skill sa della puntualità;
+  - con più treni con lo stesso numero lo dice, invece di sceglierne uno;
+  - al massimo 32 tratte per account, nomi di stazione controllati al salvataggio, conferma prima di rimuovere una tratta; il cruscotto distingue caricamento, errore e dati;
+  - l'accesso è legato all'account Alexa che ha fatto il collegamento; codici e token scaduti o revocati si cancellano dopo 30 giorni;
+  - HSTS e Content-Security-Policy in produzione, endpoint di prontezza, spegnimento ordinato, fuso orario della sessione del database fissato; un errore di lettura delle statistiche si riprova dopo 60 secondi;
+  - tolto il codice inutilizzato del modello iniziale.
 - **Avvisi da fonti non cifrate**: un indirizzo costruito ad arte (schema annidato, barre codificate più volte) non diventa più un link toccabile. Il controllo sui siti ammessi vale nel punto in cui il link viene creato.
 - **CI iPhone** (#84): l'età degli orari blocca solo le release (run avviata a mano, PR verso un ramo di stabilizzazione). Nelle altre run è un avviso: dal 13 novembre il job sarebbe diventato rosso su ogni modifica.
 
