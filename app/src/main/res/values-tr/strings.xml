@@ -693,7 +693,7 @@
     <string name="stop_alarms_active_title">Etkin durak alarmları</string>
     <string name="stop_alarm_active_row">%1$s · tren %2$s · tahmini varış %3$s</string>
     <string name="accessibility_cancel_stop_alarm">%1$s alarmını iptal et</string>
-    <string name="exact_alarm_note">Android, Binario için tam zamanlı alarmlara izin vermiyor: durak alarmları ve düzenli yolculuk uyarıları geç gelebilir.</string>
+    <string name="exact_alarm_note">Android, Binario için tam zamanlı alarmlara izin vermiyor: durak alarmları, düzenli yolculuk uyarıları, varış uyarıları ve Ajanda hatırlatıcıları geç gelebilir.</string>
     <string name="exact_alarm_action">Tam zamanlı alarmlara izin ver</string>
     <string name="background_status_title">Arka plan etkinliği</string>
     <string name="background_status_notifications_on">Bildirimlere izin verildi</string>

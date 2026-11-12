@@ -662,7 +662,7 @@
     <string name="stop_alarms_active_title">ဖွင့်ထားသော ရပ်နားဘူတာ နှိုးစက်များ</string>
     <string name="stop_alarm_active_row">%1$s · ရထား %2$s · ခန့်မှန်းရောက်ချိန် %3$s</string>
     <string name="accessibility_cancel_stop_alarm">%1$s အတွက် နှိုးစက်ကို ပယ်ဖျက်ရန်</string>
-    <string name="exact_alarm_note">Android က Binario ကို အချိန်တိကျ နှိုးစက်များ ခွင့်မပြုထားသဖြင့် ရပ်နားဘူတာ နှိုးစက်နှင့် နေ့စဉ်ခရီး သတိပေးချက်များ နောက်ကျနိုင်သည်။</string>
+    <string name="exact_alarm_note">Android က Binario ကို အချိန်တိကျ နှိုးစက်များ ခွင့်မပြုထားသဖြင့် ရပ်နားဘူတာ နှိုးစက်၊ နေ့စဉ်ခရီး သတိပေးချက်၊ ဆိုက်ရောက်မှု သတိပေးချက်နှင့် ခရီးစဉ်ဇယား သတိပေးချက်များ နောက်ကျနိုင်သည်။</string>
     <string name="exact_alarm_action">အချိန်တိကျ နှိုးစက်များ ခွင့်ပြုရန်</string>
     <string name="background_status_title">နောက်ခံ လုပ်ဆောင်ချက်</string>
     <string name="background_status_notifications_on">အသိပေးချက်များ ခွင့်ပြုထားသည်</string>

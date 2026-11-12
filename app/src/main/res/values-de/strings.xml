@@ -693,7 +693,7 @@
     <string name="stop_alarms_active_title">Aktive Haltwecker</string>
     <string name="stop_alarm_active_row">%1$s · Zug %2$s · erwartete Ankunft %3$s</string>
     <string name="accessibility_cancel_stop_alarm">Wecker für %1$s abbrechen</string>
-    <string name="exact_alarm_note">Android erlaubt Binario keine exakten Wecker: Haltwecker und Pendlerwarnungen können verspätet kommen.</string>
+    <string name="exact_alarm_note">Android erlaubt Binario keine exakten Wecker: Haltwecker, Pendlerwarnungen, Ankunftswarnungen und Erinnerungen der Agenda können verspätet kommen.</string>
     <string name="exact_alarm_action">Exakte Wecker erlauben</string>
     <string name="background_status_title">Hintergrundaktivität</string>
     <string name="background_status_notifications_on">Benachrichtigungen erlaubt</string>

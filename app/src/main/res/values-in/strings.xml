@@ -662,7 +662,7 @@
     <string name="stop_alarms_active_title">Alarm pemberhentian aktif</string>
     <string name="stop_alarm_active_row">%1$s · kereta %2$s · perkiraan tiba %3$s</string>
     <string name="accessibility_cancel_stop_alarm">Batalkan alarm untuk %1$s</string>
-    <string name="exact_alarm_note">Android tidak mengizinkan Binario memakai alarm tepat: alarm pemberhentian dan peringatan komuter bisa terlambat.</string>
+    <string name="exact_alarm_note">Android tidak mengizinkan Binario memakai alarm tepat: alarm pemberhentian, peringatan komuter, peringatan kedatangan, dan pengingat Agenda bisa terlambat.</string>
     <string name="exact_alarm_action">Izinkan alarm tepat</string>
     <string name="background_status_title">Aktivitas latar belakang</string>
     <string name="background_status_notifications_on">Notifikasi diizinkan</string>

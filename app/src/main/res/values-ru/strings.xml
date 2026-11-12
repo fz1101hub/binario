@@ -713,7 +713,7 @@
     <string name="stop_alarms_active_title">Активные будильники на остановку</string>
     <string name="stop_alarm_active_row">%1$s · поезд %2$s · ожидаемое прибытие %3$s</string>
     <string name="accessibility_cancel_stop_alarm">Отменить будильник для %1$s</string>
-    <string name="exact_alarm_note">Android не разрешает Binario точные будильники: будильники на остановку и оповещения о поездках могут приходить с задержкой.</string>
+    <string name="exact_alarm_note">Android не разрешает Binario точные будильники: будильники на остановку, оповещения о поездках, оповещения о прибытии и напоминания ежедневника могут приходить с задержкой.</string>
     <string name="exact_alarm_action">Разрешить точные будильники</string>
     <string name="background_status_title">Фоновая активность</string>
     <string name="background_status_notifications_on">Уведомления разрешены</string>

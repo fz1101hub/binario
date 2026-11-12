@@ -710,7 +710,7 @@
     <string name="stop_alarms_active_title">Alarmes d’arrêt actives</string>
     <string name="stop_alarm_active_row">%1$s · train %2$s · arrivée prévue %3$s</string>
     <string name="accessibility_cancel_stop_alarm">Annuler l’alarme pour %1$s</string>
-    <string name="exact_alarm_note">Android n’autorise pas Binario à régler des alarmes exactes : les alarmes d’arrêt et les alertes de navetteur peuvent arriver en retard.</string>
+    <string name="exact_alarm_note">Android n’autorise pas Binario à régler des alarmes exactes : les alarmes d’arrêt, les alertes de navetteur, les alertes d’approche et les rappels de l’Agenda peuvent arriver en retard.</string>
     <string name="exact_alarm_action">Autoriser les alarmes exactes</string>
     <string name="background_status_title">Activité en arrière-plan</string>
     <string name="background_status_notifications_on">Notifications autorisées</string>

@@ -662,7 +662,7 @@
     <string name="stop_alarms_active_title">설정된 정차역 알람</string>
     <string name="stop_alarm_active_row">%1$s · 열차 %2$s · 예상 도착 %3$s</string>
     <string name="accessibility_cancel_stop_alarm">%1$s 알람 취소</string>
-    <string name="exact_alarm_note">Android가 Binario의 정확한 알람을 허용하지 않아 정차역 알람과 통근 알림이 늦게 울릴 수 있습니다.</string>
+    <string name="exact_alarm_note">Android가 Binario의 정확한 알람을 허용하지 않아 정차역 알람, 통근 알림, 도착 알림, 일정 알림이 늦게 울릴 수 있습니다.</string>
     <string name="exact_alarm_action">정확한 알람 허용</string>
     <string name="background_status_title">백그라운드 활동</string>
     <string name="background_status_notifications_on">알림 허용됨</string>

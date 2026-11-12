@@ -696,7 +696,7 @@
     <string name="stop_alarms_active_title">Alarmes de parada ativos</string>
     <string name="stop_alarm_active_row">%1$s · trem %2$s · chegada prevista %3$s</string>
     <string name="accessibility_cancel_stop_alarm">Cancelar o alarme de %1$s</string>
-    <string name="exact_alarm_note">O Android não permite que o Binario use alarmes exatos: alarmes de parada e alertas de trajeto diário podem chegar com atraso.</string>
+    <string name="exact_alarm_note">O Android não permite que o Binario use alarmes exatos: alarmes de parada, alertas de trajeto diário, avisos de chegada e lembretes da Agenda podem chegar com atraso.</string>
     <string name="exact_alarm_action">Permitir alarmes exatos</string>
     <string name="background_status_title">Atividade em segundo plano</string>
     <string name="background_status_notifications_on">Notificações permitidas</string>

@@ -662,7 +662,7 @@
     <string name="stop_alarms_active_title">設定中の停車駅アラーム</string>
     <string name="stop_alarm_active_row">%1$s · 列車 %2$s · 到着見込み %3$s</string>
     <string name="accessibility_cancel_stop_alarm">%1$s のアラームをキャンセル</string>
-    <string name="exact_alarm_note">Android が Binario に正確なアラームを許可していないため、停車駅アラームと通勤通知が遅れることがあります。</string>
+    <string name="exact_alarm_note">Android が Binario に正確なアラームを許可していないため、停車駅アラーム、通勤通知、到着通知、予定のリマインダーが遅れることがあります。</string>
     <string name="exact_alarm_action">正確なアラームを許可</string>
     <string name="background_status_title">バックグラウンドの動作</string>
     <string name="background_status_notifications_on">通知は許可されています</string>

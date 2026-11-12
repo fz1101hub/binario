@@ -676,7 +676,7 @@
     <string name="stop_alarms_active_title">已设置的到站闹钟</string>
     <string name="stop_alarm_active_row">%1$s · 列车 %2$s · 预计到达 %3$s</string>
     <string name="accessibility_cancel_stop_alarm">取消 %1$s 的闹钟</string>
-    <string name="exact_alarm_note">Android 未允许 Binario 使用精确闹钟：到站闹钟和通勤提醒可能会延迟。</string>
+    <string name="exact_alarm_note">Android 未允许 Binario 使用精确闹钟：到站闹钟、通勤提醒、到达提醒和日程提醒可能会延迟。</string>
     <string name="exact_alarm_action">允许精确闹钟</string>
     <string name="background_status_title">后台活动</string>
     <string name="background_status_notifications_on">已允许通知</string>
