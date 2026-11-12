@@ -2156,9 +2156,9 @@ class EmbeddedGtfsJourneyProvider internal constructor(
             displayName = "Viaggi con cambi — calcolo offline sugli orari GTFS inclusi",
             capabilities = setOf(ProviderCapability.JOURNEY_SEARCH),
             coverage = CoverageDescriptor(
-                countryCodes = setOf("IT", "CH", "AT", "FR", "HR"),
+                countryCodes = setOf("IT", "CH", "AT", "FR"),
                 description = "Solo le reti dei data pack GTFS inclusi nell'app (Trenitalia con i suoi bus, Italo con " +
-                    "ItaloBus, Trenord, Alto Adige, Trentino, EAV, ARST, TFT, Svizzera, ÖBB, SNCF, HŽPP; le ferrovie " +
+                    "ItaloBus, Trenord, Alto Adige, Trentino, EAV, ARST, TFT, Svizzera, ÖBB, SNCF; le ferrovie " +
                     "regionali di gtfs-transit/ e gtfs-personal/; metropolitane, tram e funicolari delle città incluse, con " +
                     "brevi tratti a piedi): i treni fuori da questi feed non ci sono. Orari programmati, senza ritardi, " +
                     "binari né soppressioni."

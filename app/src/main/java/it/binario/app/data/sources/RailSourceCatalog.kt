@@ -236,21 +236,6 @@ object RailSourceCatalog {
                 "dell'archivio; solo orario programmato; shapes (derivati da OpenStreetMap, ODbL) esclusi."
         ),
         RailSourceDefinition(
-            id = SourceId("hzpp-gtfs"),
-            displayName = "HŽ Putnički prijevoz — GTFS",
-            operatorOrAuthority = "HŽPP",
-            formats = setOf(SourceFormat.GTFS_ZIP),
-            capabilities = staticCapabilities,
-            accessMode = AccessMode.OPEN_DIRECT,
-            readiness = SourceReadiness.READY_FOR_GTFS_PACK,
-            countryCodes = setOf("HR"),
-            coverage = "Rete croata; il data pack verificato non contiene fermate italiane. Eventuali future estensioni verso l'Italia vanno ri-verificate prima di dichiarare copertura IT.",
-            landingPage = uri("https://www.hzpp.hr/en/timetable"),
-            downloadOrProbeUri = uri("https://www.hzpp.hr/GTFS_files.zip"),
-            attribution = "HŽ Putnički prijevoz",
-            notes = "ZIP HTTPS e set minimo GTFS verificati; nessuna fermata italiana va presunta senza controllo del data pack."
-        ),
-        RailSourceDefinition(
             id = SourceId("sncf-gtfs"),
             displayName = "SNCF — GTFS statico",
             operatorOrAuthority = "SNCF Voyageurs",

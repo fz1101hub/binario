@@ -9,10 +9,13 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Card
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -34,6 +37,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import it.binario.app.R
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun PlannedJourneyReminderControls(viewModel: PlannedJourneyViewModel) {
     val context = LocalContext.current
@@ -74,6 +78,17 @@ internal fun PlannedJourneyReminderControls(viewModel: PlannedJourneyViewModel) 
                 }) { Text(stringResource(R.string.agenda_reminder_settings)) }
             }
             if (status.failed) Text(stringResource(R.string.agenda_reminder_failed), color = MaterialTheme.colorScheme.error)
+            Text(stringResource(R.string.planned_journey_default_reminder_title), style = MaterialTheme.typography.titleSmall)
+            Text(stringResource(R.string.planned_journey_default_reminder_description), style = MaterialTheme.typography.bodySmall)
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                plannedJourneyReminderChoices.forEach { option ->
+                    FilterChip(
+                        selected = viewModel.defaultReminder == option,
+                        onClick = { viewModel.selectDefaultReminder(option) },
+                        label = { Text(option?.minutes?.toString() ?: stringResource(R.string.planned_journey_none)) }
+                    )
+                }
+            }
         }
     }
 }

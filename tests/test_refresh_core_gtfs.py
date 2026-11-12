@@ -133,7 +133,7 @@ class FakeDownloads:
 class SelectionTest(unittest.TestCase):
     def test_refresh_core_token_next_to_the_transit_tokens(self) -> None:
         self.assertEqual((False, [], []), acquire.selection_from("build=all refresh-core=all"))
-        self.assertEqual((True, None, ["sncf-gtfs", "hzpp-gtfs"]), acquire.selection_from("validate-netex refresh-core=sncf-gtfs,hzpp-gtfs"))
+        self.assertEqual((True, None, ["sncf-gtfs", "oebb-gtfs"]), acquire.selection_from("validate-netex refresh-core=sncf-gtfs,oebb-gtfs"))
         self.assertEqual((False, ["milano-atm-gtfs"], None), acquire.selection_from("build=milano-atm-gtfs"))
         for text in ("refresh-core=", "refresh-core=,", "refresh-core", "refresh=all"):
             with self.subTest(text=text), self.assertRaises(acquire.AcquisitionError):
@@ -299,6 +299,13 @@ class FreshnessTest(unittest.TestCase):
         markdown = refresh.freshness_markdown(list(rows.values()), date(2026, 11, 3))
         self.assertIn("| city | gtfs-transit | 2026-11-10 | 7 | 14 | SOTTO SOGLIA |", markdown)
         self.assertIn("Sotto soglia o scaduti: city.", markdown)
+        # Audit2 tools-data-2: a calendar running on with a fraction of the trains is judged on its full coverage.
+        thin = temp / "thin"
+        thin.mkdir()
+        (thin / "manifest.json").write_text(json.dumps({"packs": [{"sourceId": "t", "asset": "gtfs/t.zip",
+            "lastServiceDate": "2027-12-11", "fullServiceUntil": "2026-12-12"}]}), encoding="utf-8")
+        row = refresh.freshness_rows([thin], date(2026, 11, 13))[0]
+        self.assertEqual(("2027-12-11 (piena fino al 2026-12-12)", 29, "SOTTO SOGLIA"), (row["lastServiceDate"], row["daysLeft"], row["state"]))
 
     def test_the_weekly_watch_warns_within_its_window_and_never_fails(self) -> None:
         temp = Path(tempfile.mkdtemp(prefix="freshness-watch-"))

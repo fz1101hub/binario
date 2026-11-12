@@ -48,6 +48,12 @@ data class PlannedJourneyImportPreview(
 
 enum class PlannedJourneyConflictPolicy { KEEP_EXISTING, REPLACE_EXISTING }
 
+/** The readable part of a refused stored payload; [unreadableRecords] journeys were left out. */
+data class PlannedJourneyTransferRecovery(
+    val snapshot: PlannedJourneyPersistenceSnapshot,
+    val unreadableRecords: Int
+)
+
 /**
  * Portable JSON boundary for planned journeys only. It never serializes SavedRoute,
  * realtime state, credentials, location, tickets, notes, or notification identifiers.
@@ -104,6 +110,47 @@ object PlannedJourneyTransfer {
             )
         } catch (error: RuntimeException) {
             invalid(PlannedJourneyTransferErrorCode.MALFORMED_DOCUMENT, error.message ?: "Malformed transfer")
+        }
+    }
+
+    /**
+     * Per-record reading of a stored payload that [decode] refuses as a whole: the journeys that parse and validate on
+     * their own are kept (the first of equal ids or itineraries, at most [PlannedJourneyPersistenceSchema.MAX_JOURNEYS]),
+     * the rest are counted. Null when the document itself is unreadable: too large, too deep, not JSON, another kind or
+     * another version, whose records this version cannot interpret.
+     */
+    fun recover(encoded: String): PlannedJourneyTransferRecovery? {
+        if (encoded.toByteArray(StandardCharsets.UTF_8).size > PlannedJourneyTransferContract.MAX_BYTES) return null
+        if (nestingDepth(encoded) > PlannedJourneyTransferContract.MAX_NESTING_DEPTH) return null
+        return try {
+            val root = JSONObject(encoded)
+            if (root.requireString("kind") != PlannedJourneyTransferContract.KIND) return null
+            if (root.requireInt("schemaVersion") != PlannedJourneyTransferContract.VERSION) return null
+            val array = root.requireArray("journeys")
+            val kept = mutableListOf<PlannedJourney>()
+            val ids = mutableSetOf<String>()
+            val fingerprints = mutableSetOf<String>()
+            var unreadable = 0
+            for (index in 0 until array.length()) {
+                val journey = try {
+                    parseJourney(array.requireObject(index))
+                } catch (error: RuntimeException) {
+                    null
+                }
+                val usable = journey != null && kept.size < PlannedJourneyPersistenceSchema.MAX_JOURNEYS &&
+                    PlannedJourneyValidator.validate(journey).isEmpty() &&
+                    journey.id.trim() !in ids && PlannedJourneyDeduplication.fingerprint(journey) !in fingerprints
+                if (usable && journey != null) {
+                    kept += journey
+                    ids += journey.id.trim()
+                    fingerprints += PlannedJourneyDeduplication.fingerprint(journey)
+                } else {
+                    unreadable++
+                }
+            }
+            PlannedJourneyTransferRecovery(PlannedJourneyPersistenceSnapshot(journeys = kept), unreadable)
+        } catch (error: RuntimeException) {
+            null
         }
     }
 

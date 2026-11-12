@@ -26,7 +26,6 @@ SOURCES = (
     SourceProbe("arst-gtfs", "https://arstspa.info/arst-cagliari-it.zip", ("application/zip",)),
     SourceProbe("trentino-gtfs", "https://www.trentinotrasporti.it/opendata/google_transit_extraurbano_tte.zip", ("application/zip",)),
     SourceProbe("alto-adige-sta-gtfs", "https://gtfs.api.opendatahub.com/v1/dataset/sta-time-tables/raw", ("application/zip",)),
-    SourceProbe("hzpp-gtfs", "https://www.hzpp.hr/GTFS_files.zip", ("application/zip",)),
     SourceProbe("sncf-gtfs", "https://eu.ftp.opendatasoft.com/sncf/plandata/Export_OpenData_SNCF_GTFS_NewTripId.zip", ("application/zip",)),
     SourceProbe("sncf-gtfs-rt-trip-updates", "https://proxy.transport.data.gouv.fr/resource/sncf-gtfs-rt-trip-updates", ("application/x-protobuf", "application/octet-stream")),
     SourceProbe("sncf-gtfs-rt-alerts", "https://proxy.transport.data.gouv.fr/resource/sncf-gtfs-rt-service-alerts", ("application/x-protobuf", "application/octet-stream")),

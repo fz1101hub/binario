@@ -68,9 +68,8 @@ class RailSourceSelectionPolicyTest {
     }
 
     @Test
-    fun `HZPP resta disponibile come copertura croata anche senza presumere fermate italiane`() {
-        val hzpp = RailSourceCatalog.byId(SourceId("hzpp-gtfs"))
-        assertEquals(SourceReadiness.READY_FOR_GTFS_PACK, hzpp?.readiness)
-        assertTrue("HR" in hzpp!!.countryCodes)
+    fun `il pack croato HZPP non e piu nel catalogo`() {
+        // Removed in November 2026 by the owner's decision: no Italian station, nothing on iPhone.
+        assertEquals(null, RailSourceCatalog.byId(SourceId("hzpp-gtfs")))
     }
 }

@@ -60,7 +60,8 @@ class ProviderRegistryTest {
         assertTrue(registry.isEnabled(SourceId("ch-otd-gtfs")))
         assertTrue(registry.isEnabled(SourceId("oebb-gtfs")))
         assertTrue(registry.isEnabled(SourceId("alto-adige-sta-gtfs")))
-        assertTrue(registry.isEnabled(SourceId("hzpp-gtfs")))
+        // The Croatian HŽPP pack was removed in November 2026 (no Italian station): no source left to enable.
+        assertTrue(registry.policy(SourceId("hzpp-gtfs")) == null)
         assertTrue(registry.policy(SourceId("amt-genova-casella-gtfs")) != null)
         assertTrue(registry.policy(SourceId("cotral-ferro-gtfs")) != null)
         // Offline packs again since November 2026: Genova-Casella in every build, Cotral in personal builds only.

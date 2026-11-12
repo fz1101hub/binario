@@ -15,12 +15,12 @@ import java.util.zip.ZipOutputStream
 class EmbeddedGtfsPackLoaderTest {
     @Test
     fun `carica un data pack embedded con la fonte catalogata`() {
-        val pack = EmbeddedGtfsPack(SourceId("hzpp-gtfs"), "gtfs/hzpp-gtfs.zip")
+        val pack = EmbeddedGtfsPack(SourceId("arst-gtfs"), "gtfs/arst-gtfs.zip")
         val loader = EmbeddedGtfsPackLoader(openAsset = { ByteArrayInputStream(validGtfs()) })
 
         val summary = loader.load(pack, Instant.parse("2026-08-14T00:00:00Z"))
 
-        assertEquals("hzpp-gtfs", summary.sourceId.value)
+        assertEquals("arst-gtfs", summary.sourceId.value)
         assertEquals(1, summary.stations.size)
         assertTrue(summary.agencyNames.isNotEmpty())
     }
@@ -29,8 +29,8 @@ class EmbeddedGtfsPackLoaderTest {
     fun `tutti i data pack embedded appartengono al catalogo`() {
         // The railway packs of the first release come first, in their reviewed order; the transit packs follow.
         val core = EmbeddedGtfsPacks.all.filter { it.assetPath.startsWith("gtfs/") }
-        assertEquals(12, core.size)
-        assertEquals(core, EmbeddedGtfsPacks.all.take(12))
+        assertEquals(11, core.size)
+        assertEquals(core, EmbeddedGtfsPacks.all.take(11))
         assertEquals(EmbeddedGtfsPacks.all.size, EmbeddedGtfsPacks.all.map { it.sourceId }.distinct().size)
         (EmbeddedGtfsPacks.all + EmbeddedGtfsPacks.urban).forEach { pack ->
             assertTrue("fonte assente: ${pack.sourceId.value}", RailSourceCatalog.byId(pack.sourceId) != null)

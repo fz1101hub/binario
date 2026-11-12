@@ -71,7 +71,7 @@ def write_inputs(root: Path, **feed_options: object) -> tuple[Path, Path]:
     gtfs = root / "gtfs"
     gtfs.mkdir()
     packs = []
-    for index in range(10):
+    for index in range(builder.INDEXED_PACK_COUNT):
         archive = gtfs / f"pack-{index}.zip"
         options = dict(feed_options)
         options["unsafe"] = bool(feed_options.get("unsafe")) and index == 0
@@ -83,10 +83,19 @@ def write_inputs(root: Path, **feed_options: object) -> tuple[Path, Path]:
     catalog.write_text(json.dumps({"schemaVersion": 1, "stations": [{"id": "S1", "name": "Città-Alta", "aliases": ["CITTA ALTA"], "railwayCode": "S1", "trenitaliaLocationId": None, "latitude": 45.0, "longitude": 9.0}, {"id": "N1", "name": "Nowhere", "aliases": [], "railwayCode": None, "trenitaliaLocationId": None, "latitude": 46.0, "longitude": 10.0}]}), encoding="utf-8")
     return manifest, catalog
 
+FIXTURE_PACKS = frozenset(f"pack-{index}" for index in range(builder.INDEXED_PACK_COUNT))
+
+
 class IosGtfsScheduleTest(unittest.TestCase):
+    """The fixture packs match catalogue stations with codes only (as a foreign operator's pack): the catalogue's
+    uncoded "Nowhere" (N1) is the station a stop must not be bound to here; see UncodedStationTest."""
+
     def setUp(self) -> None:
         self.temp = Path(tempfile.mkdtemp(prefix="ios-gtfs-test-"))
         self.addCleanup(shutil.rmtree, self.temp, ignore_errors=True)
+        patcher = mock.patch.object(builder, "FOREIGN_PACKS", FIXTURE_PACKS)
+        patcher.start()
+        self.addCleanup(patcher.stop)
 
     def build(self):
         manifest, catalog = write_inputs(self.temp)
@@ -97,8 +106,8 @@ class IosGtfsScheduleTest(unittest.TestCase):
 
     def test_build_keeps_complete_trip_and_encodes_service_days(self) -> None:
         _, _, output, _, result = self.build()
-        self.assertEqual(10, result["rowCounts"]["trip"])
-        self.assertEqual(20, result["rowCounts"]["stop_time"])
+        self.assertEqual(builder.INDEXED_PACK_COUNT, result["rowCounts"]["trip"])
+        self.assertEqual(2 * builder.INDEXED_PACK_COUNT, result["rowCounts"]["stop_time"])
         raw = self.temp / "raw.sqlite"
         raw.write_bytes(zlib.decompress(output.read_bytes()))
         connection = sqlite3.connect(raw)
@@ -143,7 +152,7 @@ class IosGtfsScheduleTest(unittest.TestCase):
     def test_verifier_accepts_output_and_rejects_tampering(self) -> None:
         _, _, output, metadata, _ = self.build()
         checked = verifier.verify(output, metadata, max_compressed_bytes=4 * 1024 * 1024, max_database_bytes=16 * 1024 * 1024)
-        self.assertEqual(10, checked["rowCounts"]["pack"])
+        self.assertEqual(builder.INDEXED_PACK_COUNT, checked["rowCounts"]["pack"])
         output.write_bytes(output.read_bytes() + b"x")
         with self.assertRaises(verifier.VerificationError):
             verifier.verify(output, metadata, max_compressed_bytes=4 * 1024 * 1024, max_database_bytes=16 * 1024 * 1024)
@@ -288,12 +297,12 @@ class IosGtfsScheduleTest(unittest.TestCase):
         metadata = self.temp / "policy.metadata.json"
         options = {"source_policy_path": policy, "max_compressed_bytes": 4 * 1024 * 1024}
         policy.write_text(json.dumps({"schemaVersion": 1, "sources": sources}), encoding="utf-8")
-        with self.assertRaisesRegex(builder.BuildError, "differ from reviewed iOS policy|exactly 10 packs"):
+        with self.assertRaisesRegex(builder.BuildError, "differ from reviewed iOS policy|exactly 9 packs"):
             builder.build_database(manifest, catalog, output, metadata, **options)
         excluded = {"sourceId": "national-gtfs", "sourceUrl": "https://example.test/national.zip", "accessMode": "OPEN_DIRECT", "reason": "bus legs"}
         policy.write_text(json.dumps({"schemaVersion": 1, "sources": sources, "androidOnlySources": [excluded]}), encoding="utf-8")
         result = builder.build_database(manifest, catalog, output, metadata, **options)
-        self.assertEqual(10, result["rowCounts"]["pack"])
+        self.assertEqual(builder.INDEXED_PACK_COUNT, result["rowCounts"]["pack"])
         verifier.verify(output, metadata, source_policy_path=policy, max_compressed_bytes=4 * 1024 * 1024, max_database_bytes=16 * 1024 * 1024)
         # A drifted URL of the excluded pack still fails closed.
         policy.write_text(json.dumps({"schemaVersion": 1, "sources": sources, "androidOnlySources": [dict(excluded, sourceUrl="https://attacker.invalid/x.zip")]}), encoding="utf-8")
@@ -494,6 +503,91 @@ class IosGtfsScheduleTest(unittest.TestCase):
         row = {"start_date": "20260105", "end_date": "20260107", "monday": "1", "tuesday": "0", "wednesday": "1", "thursday": "0", "friday": "0", "saturday": "0", "sunday": "0"}
         start, count, bits = builder.compute_service_bits("S", row, {date(2026, 1, 5): 2, date(2026, 1, 6): 1}, "test")
         self.assertEqual((20260105, 3, b"\x06"), (start, count, bits))
+
+class ReaderLimitsTest(unittest.TestCase):
+    """The verifier refuses an index the iPhone reader would reject (limitExceeded) or misdate."""
+
+    def setUp(self) -> None:
+        self.temp = Path(tempfile.mkdtemp(prefix="ios-gtfs-limits-"))
+        self.addCleanup(shutil.rmtree, self.temp, ignore_errors=True)
+
+    def build(self, **feed: object) -> tuple[Path, Path]:
+        root = Path(tempfile.mkdtemp(dir=self.temp))
+        manifest, catalog = write_inputs(root, **feed)
+        output, metadata = root / "out.zlib", root / "out.json"
+        builder.build_database(manifest, catalog, output, metadata, max_compressed_bytes=4 * 1024 * 1024)
+        return output, metadata
+
+    def verify(self, output: Path, metadata: Path) -> None:
+        verifier.verify(output, metadata, max_compressed_bytes=4 * 1024 * 1024, max_database_bytes=16 * 1024 * 1024)
+
+    def test_the_redundant_trip_sequence_index_is_gone(self) -> None:
+        # stop_time is WITHOUT ROWID with PRIMARY KEY(trip_id, stop_sequence): that key is the index.
+        self.assertNotIn("idx_stop_time_trip_sequence", builder.REQUIRED_INDICES)
+        self.assertEqual(set(builder.REQUIRED_INDICES), verifier.REQUIRED_INDICES)
+
+    def test_limits_of_the_reader(self) -> None:
+        output, metadata = self.build()
+        self.verify(output, metadata)
+        for name, message in (("MAX_CANDIDATE_ROWS", "boarding rows"), ("MAX_RESOLVED_STOPS", "stops, above"),
+                              ("MAX_TIME_ZONES", "agency time zones")):
+            with self.subTest(limit=name), mock.patch.object(verifier, name, 0), \
+                    self.assertRaisesRegex(verifier.VerificationError, message):
+                self.verify(output, metadata)
+
+    def test_every_agency_zone_keeps_romes_offset(self) -> None:
+        self.verify(*self.build(timezone="Europe/Zurich"))
+        output, metadata = self.build(timezone="Europe/London")
+        with self.assertRaisesRegex(verifier.VerificationError, "Europe/London differs from Europe/Rome"):
+            self.verify(output, metadata)
+
+
+class UncodedStationTest(unittest.TestCase):
+    """Audit2 tools-data-4: in an Italian pack a stop may be the catalogue station without codes it is named after
+    (EAV's Cumana), as on Android; a foreign pack stays with coded stations; a coded match always wins."""
+
+    def setUp(self) -> None:
+        self.temp = Path(tempfile.mkdtemp(prefix="ios-gtfs-uncoded-"))
+        self.addCleanup(shutil.rmtree, self.temp, ignore_errors=True)
+
+    def bound(self, edit=lambda stations: None, foreign: frozenset[str] = frozenset()) -> list[list[str | None]]:
+        root = Path(tempfile.mkdtemp(dir=self.temp))
+        manifest, catalog = write_inputs(root)
+        payload = json.loads(catalog.read_text(encoding="utf-8"))
+        edit(payload["stations"])
+        catalog.write_text(json.dumps(payload), encoding="utf-8")
+        output, metadata = root / "out.zlib", root / "out.json"
+        with mock.patch.object(builder, "FOREIGN_PACKS", foreign):
+            builder.build_database(manifest, catalog, output, metadata, max_compressed_bytes=4 * 1024 * 1024)
+        verifier.verify(output, metadata, max_compressed_bytes=4 * 1024 * 1024, max_database_bytes=16 * 1024 * 1024)
+        raw = root / "out.sqlite"
+        raw.write_bytes(zlib.decompress(output.read_bytes()))
+        connection = sqlite3.connect(raw)
+        self.addCleanup(connection.close)
+        return [[row[0] for row in connection.execute(
+            "SELECT catalog_station_id FROM stop WHERE pack_id=? ORDER BY external_id", (pack,))] for pack in (1, 2)]
+
+    def test_an_italian_pack_binds_the_uncoded_station_and_a_foreign_pack_does_not(self) -> None:
+        # The kept trip calls at PL (platform of Citta Alta, S1) and X (Nowhere); N1 "Nowhere" has no codes.
+        self.assertEqual([["S1", "N1"], ["S1", "N1"]], self.bound())
+        self.assertEqual([["S1", None], ["S1", "N1"]], self.bound(foreign=frozenset({"pack-0"})))
+
+    def test_builder_and_verifier_name_the_same_foreign_packs(self) -> None:
+        self.assertEqual(sorted(builder.FOREIGN_PACKS), list(verifier.FOREIGN_PACKS))
+
+    def test_a_coded_station_keeps_its_stops_and_uncoded_namesakes_stay_apart(self) -> None:
+        # A coded "Nowhere" 5 km away: the stop stays bound to it, as before.
+        coded = {"id": "S9", "name": "Nowhere", "aliases": [], "railwayCode": "S9", "trenitaliaLocationId": None,
+                 "latitude": 46.045, "longitude": 10.0}
+        self.assertEqual("S9", self.bound(lambda stations: stations.append(coded))[0][1])
+        # A second uncoded "Nowhere" next to N1: the iPhone search offers both, so neither takes the stop.
+        twin = {"id": "N2", "name": "Nowhere", "aliases": [], "railwayCode": None, "trenitaliaLocationId": None,
+                "latitude": 46.001, "longitude": 10.0}
+        self.assertIsNone(self.bound(lambda stations: stations.append(twin))[0][1])
+        # A coded entry at the same place shadows the uncoded one (as the search hides it).
+        shadow = dict(coded, latitude=46.001)
+        self.assertEqual("S9", self.bound(lambda stations: stations.append(shadow))[0][1])
+
 
 if __name__ == "__main__":
     unittest.main()
