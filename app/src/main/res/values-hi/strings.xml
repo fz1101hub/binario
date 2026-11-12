@@ -531,7 +531,8 @@
     <string name="planned_journey_import_success">इंपोर्ट पूरा हुआ।</string>
     <string name="planned_journey_import_invalid">दस्तावेज़ Binario का मान्य एक्सपोर्ट नहीं है।</string>
     <string name="planned_journey_action_rejected">कार्रवाई अस्वीकृत: यात्रा का विवरण जाँचें।</string>
-    <string name="planned_journey_stored_unreadable">सहेजी गई योजनाबद्ध यात्राएँ पढ़ी नहीं जा सकीं और लोड नहीं हुईं।</string>
+    <string name="planned_journey_stored_unreadable">सहेजे गए एजेंडा में ऐसा डेटा है जिसे यह संस्करण नहीं पढ़ सकता, इसलिए उसे खोने से बचाने के लिए यह केवल-पढ़ने योग्य रहता है। केवल पढ़ी जा सकने वाली यात्राएँ दिखाई जाती हैं; आप उन्हें “JSON एक्सपोर्ट करें” से सहेज सकते हैं।</string>
+    <string name="planned_journey_read_only">एजेंडा केवल-पढ़ने योग्य है: कोई बदलाव नहीं सहेजा गया।</string>
     <string name="planned_journey_export_failure_generic">एक्सपोर्ट नहीं हो सका।</string>
     <string name="planned_journey_import_failure_generic">इंपोर्ट नहीं हो सका।</string>
     <string name="route_stations_must_differ">मार्ग के लिए दो अलग स्टेशन चुनें।</string>

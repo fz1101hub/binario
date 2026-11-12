@@ -536,7 +536,8 @@
     <string name="planned_journey_import_success">นำเข้าเสร็จสิ้น</string>
     <string name="planned_journey_import_invalid">เอกสารนี้ไม่ใช่ไฟล์ส่งออกของ Binario ที่ถูกต้อง</string>
     <string name="planned_journey_action_rejected">การดำเนินการถูกปฏิเสธ โปรดตรวจสอบรายละเอียดการเดินทาง</string>
-    <string name="planned_journey_stored_unreadable">อ่านการเดินทางที่บันทึกไว้ไม่ได้ จึงไม่ได้โหลด</string>
+    <string name="planned_journey_stored_unreadable">กำหนดการที่บันทึกไว้มีข้อมูลที่เวอร์ชันนี้อ่านไม่ได้ จึงเป็นแบบอ่านอย่างเดียวเพื่อไม่ให้ข้อมูลสูญหาย แสดงเฉพาะการเดินทางที่อ่านได้ และบันทึกได้ด้วย “ส่งออก JSON”</string>
+    <string name="planned_journey_read_only">กำหนดการเป็นแบบอ่านอย่างเดียว: ไม่ได้บันทึกการเปลี่ยนแปลง</string>
     <string name="planned_journey_export_failure_generic">ส่งออกไม่สำเร็จ</string>
     <string name="planned_journey_import_failure_generic">นำเข้าไม่สำเร็จ</string>
     <string name="route_stations_must_differ">เลือกสองสถานีที่ต่างกันสำหรับเส้นทาง</string>

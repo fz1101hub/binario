@@ -549,7 +549,8 @@
     <string name="planned_journey_import_success">Импорт завершён.</string>
     <string name="planned_journey_import_invalid">Документ не является корректным экспортом Binario.</string>
     <string name="planned_journey_action_rejected">Операция отклонена: проверьте данные поездки.</string>
-    <string name="planned_journey_stored_unreadable">Сохранённые запланированные поездки не удалось прочитать, и они не были загружены.</string>
+    <string name="planned_journey_stored_unreadable">В сохранённом ежедневнике есть данные, которые эта версия не может прочитать, поэтому он доступен только для чтения, чтобы их не потерять. Показаны только читаемые поездки; их можно сохранить через «Экспорт JSON».</string>
+    <string name="planned_journey_read_only">Ежедневник доступен только для чтения: изменения не сохранены.</string>
     <string name="planned_journey_export_failure_generic">Не удалось выполнить экспорт.</string>
     <string name="planned_journey_import_failure_generic">Не удалось выполнить импорт.</string>
     <string name="route_stations_must_differ">Выберите две разные станции для маршрута.</string>

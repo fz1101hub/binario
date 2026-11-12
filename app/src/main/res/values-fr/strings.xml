@@ -554,7 +554,8 @@
     <string name="planned_journey_import_success">Importation terminée.</string>
     <string name="planned_journey_import_invalid">Le document n’est pas une exportation Binario valide.</string>
     <string name="planned_journey_action_rejected">Action refusée : vérifiez les données du voyage.</string>
-    <string name="planned_journey_stored_unreadable">Les voyages planifiés enregistrés sont illisibles et n’ont pas été chargés.</string>
+    <string name="planned_journey_stored_unreadable">L’Agenda enregistré contient des données que cette version ne sait pas lire : il reste en lecture seule pour ne pas les perdre. Seuls les trajets lisibles sont affichés ; vous pouvez les enregistrer avec « Exporter JSON ».</string>
+    <string name="planned_journey_read_only">L’Agenda est en lecture seule : aucune modification n’a été enregistrée.</string>
     <string name="planned_journey_export_failure_generic">Échec de l’exportation.</string>
     <string name="planned_journey_import_failure_generic">Échec de l’importation.</string>
     <string name="route_stations_must_differ">Choisissez deux gares différentes pour le trajet.</string>

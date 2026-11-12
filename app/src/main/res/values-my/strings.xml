@@ -522,7 +522,8 @@
     <string name="planned_journey_import_success">တင်သွင်းမှု ပြီးဆုံးပါပြီ။</string>
     <string name="planned_journey_import_invalid">ဤစာရွက်စာတမ်းသည် မှန်ကန်သော Binario ထုတ်ယူဖိုင် မဟုတ်ပါ။</string>
     <string name="planned_journey_action_rejected">လုပ်ဆောင်ချက်ကို ငြင်းပယ်လိုက်သည်- ခရီးစဉ် အချက်အလက်ကို စစ်ဆေးပါ။</string>
-    <string name="planned_journey_stored_unreadable">သိမ်းထားသော စီစဉ်ထားသည့် ခရီးစဉ်များကို ဖတ်၍ မရသဖြင့် မဖွင့်ခဲ့ပါ။</string>
+    <string name="planned_journey_stored_unreadable">သိမ်းထားသော ခရီးစဉ်ဇယားတွင် ဤဗားရှင်း မဖတ်နိုင်သော ဒေတာ ပါဝင်နေသဖြင့် ၎င်းမပျောက်စေရန် ဖတ်ရန်သာ အဖြစ် ထားပါသည်။ ဖတ်နိုင်သော ခရီးစဉ်များကိုသာ ပြသပြီး “JSON ထုတ်ယူရန်” ဖြင့် သိမ်းနိုင်သည်။</string>
+    <string name="planned_journey_read_only">ခရီးစဉ်ဇယားသည် ဖတ်ရန်သာ ဖြစ်သည်- မည်သည့်ပြောင်းလဲမှုကိုမျှ မသိမ်းရသေးပါ။</string>
     <string name="planned_journey_export_failure_generic">ထုတ်ယူ၍ မရပါ။</string>
     <string name="planned_journey_import_failure_generic">တင်သွင်း၍ မရပါ။</string>
     <string name="route_stations_must_differ">လမ်းကြောင်းအတွက် မတူညီသော ဘူတာ နှစ်ခု ရွေးပါ။</string>

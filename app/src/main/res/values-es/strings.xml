@@ -554,7 +554,8 @@
     <string name="planned_journey_import_success">Importación completada.</string>
     <string name="planned_journey_import_invalid">El documento no es una exportación válida de Binario.</string>
     <string name="planned_journey_action_rejected">Acción rechazada: comprueba los datos del viaje.</string>
-    <string name="planned_journey_stored_unreadable">Los viajes planificados guardados no se pueden leer y no se han cargado.</string>
+    <string name="planned_journey_stored_unreadable">La Agenda guardada contiene datos que esta versión no puede leer, así que queda en solo lectura para no perderlos. Solo se muestran los viajes legibles; puedes guardarlos con «Exportar JSON».</string>
+    <string name="planned_journey_read_only">La Agenda está en solo lectura: no se ha guardado ningún cambio.</string>
     <string name="planned_journey_export_failure_generic">Error al exportar.</string>
     <string name="planned_journey_import_failure_generic">Error al importar.</string>
     <string name="route_stations_must_differ">Elige dos estaciones diferentes para la ruta.</string>

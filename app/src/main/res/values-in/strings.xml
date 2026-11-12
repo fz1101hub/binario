@@ -522,7 +522,8 @@
     <string name="planned_journey_import_success">Impor selesai.</string>
     <string name="planned_journey_import_invalid">Dokumen ini bukan ekspor Binario yang valid.</string>
     <string name="planned_journey_action_rejected">Tindakan ditolak: periksa detail perjalanan.</string>
-    <string name="planned_journey_stored_unreadable">Perjalanan terencana yang tersimpan tidak dapat dibaca dan tidak dimuat.</string>
+    <string name="planned_journey_stored_unreadable">Agenda yang tersimpan berisi data yang tidak dapat dibaca versi ini, jadi tetap hanya-baca agar data itu tidak hilang. Hanya perjalanan yang terbaca yang ditampilkan; Anda dapat menyimpannya dengan “Ekspor JSON”.</string>
+    <string name="planned_journey_read_only">Agenda hanya-baca: tidak ada perubahan yang disimpan.</string>
     <string name="planned_journey_export_failure_generic">Ekspor gagal.</string>
     <string name="planned_journey_import_failure_generic">Impor gagal.</string>
     <string name="route_stations_must_differ">Pilih dua stasiun yang berbeda untuk rute.</string>

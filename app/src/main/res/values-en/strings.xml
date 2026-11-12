@@ -545,7 +545,8 @@
     <string name="planned_journey_import_success">Import completed.</string>
     <string name="planned_journey_import_invalid">The document is not a valid Binario export.</string>
     <string name="planned_journey_action_rejected">Action rejected: check the journey details.</string>
-    <string name="planned_journey_stored_unreadable">Saved planned journeys are unreadable and were not loaded.</string>
+    <string name="planned_journey_stored_unreadable">The saved Agenda contains data this version cannot read, so it stays read-only to avoid losing it. Only the readable journeys are shown; you can save them with “Export JSON”.</string>
+    <string name="planned_journey_read_only">The Agenda is read-only: no change was saved.</string>
     <string name="planned_journey_export_failure_generic">Export failed.</string>
     <string name="planned_journey_import_failure_generic">Import failed.</string>
     <string name="route_stations_must_differ">Choose two different stations for the route.</string>

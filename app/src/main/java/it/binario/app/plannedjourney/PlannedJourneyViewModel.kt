@@ -66,6 +66,8 @@ class PlannedJourneyViewModel(
         private set
     var warning by mutableStateOf(initialRead.warning?.let { UiMessage(UiMessageKey.PLANNED_JOURNEY_STORED_UNREADABLE) })
         private set
+    /** The stored Agenda is not fully readable: [snapshot] holds the recovered journeys and every write is refused. */
+    val readOnly: Boolean = initialRead.readOnly
     var filter by mutableStateOf(
         savedStateHandle.get<String>(AGENDA_FILTER_KEY)
             ?.let { runCatching { PlannedJourneyAgendaFilter.valueOf(it) }.getOrNull() }
@@ -203,7 +205,7 @@ class PlannedJourneyViewModel(
                 checklist = checklist
             )
         }
-        persist(repository.save(candidate), UiMessageKey.PLANNED_JOURNEY_SAVE_SUCCESS) { editor = null }
+        persist(repository.save(candidate), UiMessageKey.PLANNED_JOURNEY_SAVE_SUCCESS, inEditor = true) { editor = null }
     }
 
     fun complete(entry: PlannedJourneyAgendaEntry) {
@@ -270,6 +272,8 @@ class PlannedJourneyViewModel(
     private fun persist(
         result: PlannedJourneyRepositorySaveResult,
         success: UiMessageKey,
+        /** A refusal is shown inside the open editor, not behind it. */
+        inEditor: Boolean = false,
         afterSuccess: () -> Unit = {}
     ) {
         when (result) {
@@ -280,8 +284,18 @@ class PlannedJourneyViewModel(
                 afterSuccess()
                 refreshReminders()
             }
-            is PlannedJourneyRepositorySaveResult.Rejected -> feedback = UiMessage(UiMessageKey.PLANNED_JOURNEY_ACTION_REJECTED)
+            is PlannedJourneyRepositorySaveResult.Rejected -> {
+                val message = UiMessage(rejectionMessage(result.reason))
+                val openEditor = editor
+                if (inEditor && openEditor != null) editor = openEditor.copy(validationMessage = message)
+                else feedback = message
+            }
         }
+    }
+
+    private fun rejectionMessage(reason: PlannedJourneyRejection): UiMessageKey = when (reason) {
+        PlannedJourneyRejection.READ_ONLY -> UiMessageKey.PLANNED_JOURNEY_READ_ONLY
+        PlannedJourneyRejection.INVALID -> UiMessageKey.PLANNED_JOURNEY_ACTION_REJECTED
     }
 
     private fun resolveStation(query: String, selectedId: String?, stations: List<PlannedJourneyStation>): PlannedJourneyStation? {

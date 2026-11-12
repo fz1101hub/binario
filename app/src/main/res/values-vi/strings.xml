@@ -536,7 +536,8 @@
     <string name="planned_journey_import_success">Đã nhập xong.</string>
     <string name="planned_journey_import_invalid">Tài liệu này không phải bản xuất hợp lệ của Binario.</string>
     <string name="planned_journey_action_rejected">Thao tác bị từ chối: hãy kiểm tra thông tin hành trình.</string>
-    <string name="planned_journey_stored_unreadable">Không đọc được các hành trình đã lưu nên chưa tải được.</string>
+    <string name="planned_journey_stored_unreadable">Lịch trình đã lưu chứa dữ liệu mà phiên bản này không đọc được, nên chỉ ở chế độ chỉ đọc để tránh mất dữ liệu. Chỉ các hành trình đọc được mới hiển thị; bạn có thể lưu chúng bằng “Xuất JSON”.</string>
+    <string name="planned_journey_read_only">Lịch trình ở chế độ chỉ đọc: không có thay đổi nào được lưu.</string>
     <string name="planned_journey_export_failure_generic">Xuất thất bại.</string>
     <string name="planned_journey_import_failure_generic">Nhập thất bại.</string>
     <string name="route_stations_must_differ">Hãy chọn hai ga khác nhau cho tuyến.</string>

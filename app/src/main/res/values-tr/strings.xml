@@ -545,7 +545,8 @@
     <string name="planned_journey_import_success">İçe aktarma tamamlandı.</string>
     <string name="planned_journey_import_invalid">Belge geçerli bir Binario dışa aktarımı değil.</string>
     <string name="planned_journey_action_rejected">İşlem reddedildi: yolculuk bilgilerini kontrol edin.</string>
-    <string name="planned_journey_stored_unreadable">Kayıtlı planlı yolculuklar okunamıyor ve yüklenmedi.</string>
+    <string name="planned_journey_stored_unreadable">Kayıtlı Ajanda bu sürümün okuyamadığı veriler içeriyor; kaybolmaması için salt okunur kalıyor. Yalnızca okunabilen yolculuklar gösteriliyor; bunları “JSON olarak dışa aktar” ile kaydedebilirsiniz.</string>
+    <string name="planned_journey_read_only">Ajanda salt okunur: hiçbir değişiklik kaydedilmedi.</string>
     <string name="planned_journey_export_failure_generic">Dışa aktarma başarısız.</string>
     <string name="planned_journey_import_failure_generic">İçe aktarma başarısız.</string>
     <string name="route_stations_must_differ">Güzergâh için iki farklı istasyon seçin.</string>

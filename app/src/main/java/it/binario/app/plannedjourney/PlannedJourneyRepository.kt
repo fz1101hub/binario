@@ -35,14 +35,32 @@ class SharedPreferencesPlannedJourneyStorage(context: Context) : PlannedJourneyS
 }
 
 data class PlannedJourneyRepositoryRead(
+    /** Everything readable: the whole payload, or only the journeys recovered one by one from a refused payload. */
     val snapshot: PlannedJourneyPersistenceSnapshot,
     /** A corrupt or unsupported local payload is left untouched; the user may still export/import safely. */
-    val warning: String? = null
+    val warning: String? = null,
+    /**
+     * The stored payload is not fully readable: every write is refused, so the next save cannot overwrite the
+     * journeys this version could not read. The readable ones can still be shown and exported.
+     */
+    val readOnly: Boolean = false,
+    /** Stored journeys left out of [snapshot] (0 when the whole document is unreadable or the payload is valid). */
+    val unreadableRecords: Int = 0
 )
+
+/** Why a write was refused; the stored payload is untouched in every case. */
+enum class PlannedJourneyRejection {
+    /** The stored Agenda is not fully readable ([PlannedJourneyRepositoryRead.readOnly]). */
+    READ_ONLY,
+    INVALID
+}
 
 sealed interface PlannedJourneyRepositorySaveResult {
     data class Saved(val snapshot: PlannedJourneyPersistenceSnapshot) : PlannedJourneyRepositorySaveResult
-    data class Rejected(val detail: String) : PlannedJourneyRepositorySaveResult
+    data class Rejected(
+        val detail: String,
+        val reason: PlannedJourneyRejection = PlannedJourneyRejection.INVALID
+    ) : PlannedJourneyRepositorySaveResult
 }
 
 sealed interface PlannedJourneyJsonImportResult {
@@ -67,15 +85,20 @@ class PlannedJourneyRepository(private val storage: PlannedJourneyStorage) {
         if (encoded.isBlank()) return PlannedJourneyRepositoryRead(emptySnapshot())
         return when (val decoded = PlannedJourneyTransfer.decode(encoded)) {
             is PlannedJourneyTransferDecodeResult.Valid -> PlannedJourneyRepositoryRead(decoded.snapshot)
-            is PlannedJourneyTransferDecodeResult.Invalid -> PlannedJourneyRepositoryRead(
-                snapshot = emptySnapshot(),
-                warning = "I viaggi pianificati salvati sul dispositivo non sono leggibili: ${decoded.errors.first().detail}"
-            )
+            is PlannedJourneyTransferDecodeResult.Invalid -> {
+                val recovered = PlannedJourneyTransfer.recover(encoded)
+                PlannedJourneyRepositoryRead(
+                    snapshot = recovered?.snapshot ?: emptySnapshot(),
+                    warning = "I viaggi pianificati salvati sul dispositivo non sono leggibili: ${decoded.errors.first().detail}",
+                    readOnly = true,
+                    unreadableRecords = recovered?.unreadableRecords ?: 0
+                )
+            }
         }
     }
 
     fun save(journey: PlannedJourney): PlannedJourneyRepositorySaveResult {
-        val current = read().snapshot
+        val current = writableSnapshot() ?: return readOnlyRejection()
         if (PlannedJourneyValidator.validate(journey).isNotEmpty()) {
             return PlannedJourneyRepositorySaveResult.Rejected("Il viaggio non rispetta le regole di pianificazione.")
         }
@@ -86,7 +109,7 @@ class PlannedJourneyRepository(private val storage: PlannedJourneyStorage) {
     }
 
     fun updateChecklistItem(journeyId: String, itemId: String, completed: Boolean): PlannedJourneyRepositorySaveResult {
-        val current = read().snapshot
+        val current = writableSnapshot() ?: return readOnlyRejection()
         val journey = current.journeys.firstOrNull { it.id == journeyId }
             ?: return PlannedJourneyRepositorySaveResult.Rejected("Viaggio pianificato non trovato.")
         val item = journey.checklist.firstOrNull { it.id == itemId }
@@ -110,7 +133,7 @@ class PlannedJourneyRepository(private val storage: PlannedJourneyStorage) {
     }
 
     fun remove(journeyId: String): PlannedJourneyRepositorySaveResult {
-        val current = read().snapshot
+        val current = writableSnapshot() ?: return readOnlyRejection()
         if (current.journeys.none { it.id == journeyId }) return PlannedJourneyRepositorySaveResult.Rejected("Viaggio pianificato non trovato.")
         return writeValidated(current.copy(journeys = current.journeys.filterNot { it.id == journeyId }))
     }
@@ -133,7 +156,7 @@ class PlannedJourneyRepository(private val storage: PlannedJourneyStorage) {
         preview: PlannedJourneyImportPreview,
         conflictPolicy: PlannedJourneyConflictPolicy
     ): PlannedJourneyRepositorySaveResult {
-        val current = read().snapshot
+        val current = writableSnapshot() ?: return readOnlyRejection()
         if (current.journeys.size + preview.accepted.size > PlannedJourneyPersistenceSchema.MAX_JOURNEYS) {
             return PlannedJourneyRepositorySaveResult.Rejected(
                 "L'importazione supera il limite locale di ${PlannedJourneyPersistenceSchema.MAX_JOURNEYS} viaggi."
@@ -175,7 +198,8 @@ class PlannedJourneyRepository(private val storage: PlannedJourneyStorage) {
         journeyId: String,
         operation: (PlannedJourney) -> PlannedJourney
     ): PlannedJourneyRepositorySaveResult {
-        val journey = read().snapshot.journeys.firstOrNull { it.id == journeyId }
+        val current = writableSnapshot() ?: return readOnlyRejection()
+        val journey = current.journeys.firstOrNull { it.id == journeyId }
             ?: return PlannedJourneyRepositorySaveResult.Rejected("Viaggio pianificato non trovato.")
         return runCatching { operation(journey) }
             .fold(onSuccess = ::save, onFailure = { PlannedJourneyRepositorySaveResult.Rejected(it.message ?: "Operazione non disponibile.") })
@@ -194,6 +218,14 @@ class PlannedJourneyRepository(private val storage: PlannedJourneyStorage) {
             PlannedJourneyRepositorySaveResult.Rejected(error.message ?: "Impossibile salvare i viaggi pianificati.")
         }
     }
+
+    /** The current snapshot when it may be written, null while the stored payload is read-only. */
+    private fun writableSnapshot(): PlannedJourneyPersistenceSnapshot? = read().takeUnless { it.readOnly }?.snapshot
+
+    private fun readOnlyRejection() = PlannedJourneyRepositorySaveResult.Rejected(
+        "I viaggi salvati non sono tutti leggibili: l'Agenda è in sola lettura.",
+        PlannedJourneyRejection.READ_ONLY
+    )
 
     private fun emptySnapshot() = PlannedJourneyPersistenceSnapshot(journeys = emptyList())
 }
