@@ -250,6 +250,23 @@ final class StationBoardTests: XCTestCase {
         XCTAssertEqual(evening.attributions, ["Synthetic official feed"])
     }
 
+    func testAFeedEndedWhileAnotherGoesOnListsTheRestWithTheExpiredNotice() async throws {
+        let fixture = try BoardFixture()
+        try fixture.insertTrip(id: 1, externalID: "still-running", number: "2701", calls: [
+            BoardCall(stop: 1, seconds: 10 * 3_600), BoardCall(stop: 2, seconds: 11 * 3_600),
+        ])
+        let alone = try availablePage(await fixture.repository.departures(for: try boardQuery("2024-04-01 09:00")))
+        XCTAssertFalse(alone.someTimetablesEnded, "every feed of the station goes on")
+
+        // The pack that ended on 31 March also served the board's station.
+        try fixture.execute("INSERT INTO stop VALUES (7, 2, 'board-old', 'Milano Centrale', NULL, NULL, 'catalog-board', 'S01700', NULL);")
+        let page = try availablePage(await fixture.repository.departures(for: try boardQuery("2024-04-01 09:00")))
+        XCTAssertEqual(page.departures.map(\.service.number), ["2701"], "the trains still covered are listed")
+        XCTAssertTrue(page.someTimetablesEnded, "and «Orari scaduti» says why others are missing")
+        let before = try availablePage(await fixture.repository.departures(for: try boardQuery("2024-03-31 09:00")))
+        XCTAssertFalse(before.someTimetablesEnded, "on its last day the pack still runs")
+    }
+
     func testUnservedStationsEndedTimetablesAndInvalidIndexesFailClosed() async throws {
         let fixture = try BoardFixture()
         try fixture.insertTrip(id: 1, externalID: "direct", number: "2601", calls: [

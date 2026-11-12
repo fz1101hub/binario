@@ -137,7 +137,7 @@ private struct BoardContent: View {
                 BoardUnavailableView(reason: reason)
             case .available:
                 if model.boardDepartures.isEmpty {
-                    NoDeparturesView(firstTomorrow: model.boardFirstTomorrow)
+                    NoDeparturesView(firstTomorrow: model.boardFirstTomorrow, someTimetablesEnded: model.boardSomeTimetablesEnded)
                 } else {
                     DepartureListSection()
                 }
@@ -155,6 +155,9 @@ private struct DepartureListSection: View {
 
     var body: some View {
         Section {
+            if model.boardSomeTimetablesEnded {
+                ExpiredTimetablesNotice()
+            }
             ForEach(model.boardDepartures) { departure in
                 // As a planner row: the detail of the train, boarded at this station.
                 if let query = model.boardDetailQuery(for: departure) {
@@ -260,6 +263,7 @@ private struct DepartureRow: View {
 /// the next one when the timetable has it, as on Android.
 private struct NoDeparturesView: View {
     let firstTomorrow: StationBoardDeparture?
+    let someTimetablesEnded: Bool
 
     var body: some View {
         Section {
@@ -268,6 +272,9 @@ private struct NoDeparturesView: View {
                 systemImage: "moon.zzz",
                 description: Text(message)
             )
+            if someTimetablesEnded {
+                ExpiredTimetablesNotice()
+            }
             if firstTomorrow?.isScheduled == true {
                 Label("result.programmed.disclosure", systemImage: "clock")
                     .font(.footnote)
@@ -279,6 +286,21 @@ private struct NoDeparturesView: View {
     private var message: String {
         guard let firstTomorrow else { return String(localized: "departures.none.body") }
         return DeparturesTexts.noMoreToday(firstTomorrow.service.scheduledDeparture)
+    }
+}
+
+/// «Orari scaduti» over a list: the timetables of one feed of the station have ended while another's
+/// go on, so some of its trains are missing until the app is updated.
+private struct ExpiredTimetablesNotice: View {
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Label("result.expired.title", systemImage: "calendar.badge.exclamationmark")
+                .font(.subheadline.weight(.semibold))
+            Text("departures.expired.body")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+        }
+        .accessibilityElement(children: .combine)
     }
 }
 

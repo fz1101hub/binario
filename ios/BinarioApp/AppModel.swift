@@ -150,6 +150,8 @@ final class AppModel: ObservableObject {
     @Published private(set) var boardFirstTomorrow: StationBoardDeparture? = nil
     /// The feeds of the listed trains, for the board footer.
     @Published private(set) var boardAttributions: [String] = []
+    /// «Orari scaduti» over the list: a feed of the station has ended while another goes on.
+    @Published private(set) var boardSomeTimetablesEnded = false
     /// «Dati in tempo reale» (Settings, `LiveDataPreferenceStore`): on unless the user turned it off.
     @Published private(set) var liveDataEnabled: Bool
     /// The sources not asked again before a time, for «ViaggiaTreno in pausa fino alle 10:42».
@@ -715,6 +717,7 @@ final class AppModel: ObservableObject {
         boardHasMore = false
         boardFirstTomorrow = nil
         boardAttributions = []
+        boardSomeTimetablesEnded = false
         boardState = .loading
         scheduleBoardReload()
         restartBoardLive()
@@ -758,6 +761,7 @@ final class AppModel: ObservableObject {
             boardHasMore = page.hasMore
             boardFirstTomorrow = page.firstDepartureNextDay
             boardAttributions = page.attributions
+            boardSomeTimetablesEnded = page.someTimetablesEnded
             boardDay = Self.boardDay(now)
             boardState = .available
         case let .unavailable(reason):
@@ -770,6 +774,7 @@ final class AppModel: ObservableObject {
         boardHasMore = false
         boardFirstTomorrow = nil
         boardAttributions = []
+        boardSomeTimetablesEnded = false
         boardDay = day
         boardState = .unavailable(reason)
     }

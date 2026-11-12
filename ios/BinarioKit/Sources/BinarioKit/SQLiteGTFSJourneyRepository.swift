@@ -618,12 +618,15 @@ extension SQLiteGTFSJourneyRepository: StationBoardProvider {
             }
         }
         let shown: [StationBoardCandidate] = listed + (firstNextDay.map { [$0] } ?? [])
+        // Decided per feed: one ended while another goes on still says why trains are missing.
+        let someEnded = try stationPackEnded(before: query.from, stopIDs: stopIDs, timeZone: referenceTimeZone, database: database)
         return StationBoardPage(
             query: query,
             departures: listed.map(\.entry),
             hasMore: ordered.count > query.limit,
             firstDepartureNextDay: firstNextDay?.entry,
-            attributions: shown.map(\.attribution).uniqued().map { String($0.prefix(96)) }
+            attributions: shown.map(\.attribution).uniqued().map { String($0.prefix(96)) },
+            someTimetablesEnded: someEnded
         )
     }
 
@@ -856,6 +859,30 @@ extension SQLiteGTFSJourneyRepository: StationBoardProvider {
         guard lastServiceDate > 0 else { return false }
         let requestedDay = Int64(encodedDate(date, calendar: serviceCalendar(timeZone: timeZone)))
         return lastServiceDate < requestedDay
+    }
+
+    /// True when at least one pack with a stop of the station has its last service day before
+    /// the requested day (`stationPacksEnded` asks whether all have).
+    private static func stationPackEnded(
+        before date: Date,
+        stopIDs: [Int64],
+        timeZone: TimeZone,
+        database: SQLiteDatabase
+    ) throws -> Bool {
+        let placeholders = Array(repeating: "?", count: stopIDs.count).joined(separator: ",")
+        let statement = try database.statement(
+            """
+            SELECT COUNT(*) FROM pack AS p
+            WHERE p.id IN (SELECT pack_id FROM stop WHERE id IN (\(placeholders)))
+              AND p.last_service_date > 0 AND p.last_service_date < ?
+            """
+        )
+        let requestedDay = Int64(encodedDate(date, calendar: serviceCalendar(timeZone: timeZone)))
+        var binding: Int32 = 1
+        for id in stopIDs { try statement.bind(id, at: binding); binding += 1 }
+        try statement.bind(requestedDay, at: binding)
+        guard try statement.step() else { return false }
+        return statement.int(at: 0) > 0
     }
 }
 
