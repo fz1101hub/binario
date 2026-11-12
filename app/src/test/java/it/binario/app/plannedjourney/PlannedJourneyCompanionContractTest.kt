@@ -179,6 +179,24 @@ class PlannedJourneyCompanionContractTest {
         assertEquals(null, model.snapshot.journeys.single().recurrence)
     }
 
+    @Test fun `a calendar event of one occurrence starts at the Italian departure and invents no end`() {
+        val original = java.util.TimeZone.getDefault()
+        try {
+            listOf("UTC", "America/New_York").forEach { phone ->
+                java.util.TimeZone.setDefault(java.util.TimeZone.getTimeZone(phone))
+                val entry = requireNotNull(nextPlannedJourney(listOf(journey("late", "2026-07-12", "23:30")), Instant.parse("2026-07-01T00:00:00Z")))
+                val event = entry.calendarEvent(PlannedJourneyIcsText.ITALIAN, "Milano; binario, da verificare")
+                assertEquals(phone, Instant.parse("2026-07-12T21:30:00Z").toEpochMilli(), event.beginEpochMillis)
+                assertEquals(null, event.endEpochMillis)
+                assertEquals("Roma Termini", event.location)
+                assertEquals("Viaggio: Roma Termini → Milano Centrale, partenza 2026-07-12 alle 23:30 (Europe/Rome)", event.description)
+                assertEquals("Milano; binario, da verificare", event.title)
+            }
+        } finally {
+            java.util.TimeZone.setDefault(original)
+        }
+    }
+
     private class FakeStorage(var value: String? = null) : PlannedJourneyStorage {
         override fun read(): String? = value
         override fun write(value: String) { this.value = value }

@@ -16,6 +16,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Archive
+import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.ContentPaste
 import androidx.compose.material.icons.filled.Download
@@ -46,6 +47,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.produceState
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -64,7 +66,9 @@ import androidx.compose.ui.unit.dp
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.format.TextStyle
+import android.content.ActivityNotFoundException
 import it.binario.app.R
+import it.binario.app.insertIntent
 import it.binario.app.UiMessage
 import it.binario.app.localized
 import it.binario.app.ui.common.LocalizedDates
@@ -232,6 +236,30 @@ private fun AgendaMessage(text: String, isError: Boolean) {
     )
 }
 
+/** «Aggiungi al calendario» for one occurrence: the calendar app receives a prefilled event, Binario writes nothing. */
+@Composable
+private fun PlannedJourneyCalendarButton(entry: PlannedJourneyAgendaEntry, title: String) {
+    val context = LocalContext.current
+    var noCalendarApp by remember(entry.journey.id, entry.occurrence.occurrenceDate) { mutableStateOf(false) }
+    val text = PlannedJourneyIcsText(
+        eventDescription = stringResource(R.string.planned_journey_ics_event_description),
+        reminderDescription = stringResource(R.string.planned_journey_ics_reminder_description)
+    )
+    TextButton(onClick = {
+        noCalendarApp = try {
+            context.startActivity(entry.calendarEvent(text, title).insertIntent())
+            false
+        } catch (_: ActivityNotFoundException) {
+            true
+        }
+    }) {
+        Icon(Icons.Default.CalendarMonth, contentDescription = null)
+        Spacer(Modifier.width(4.dp))
+        Text(stringResource(R.string.calendar_add))
+    }
+    if (noCalendarApp) AgendaMessage(stringResource(R.string.calendar_no_app), isError = true)
+}
+
 @Composable
 private fun AgendaEntryCard(
     entry: PlannedJourneyAgendaEntry,
@@ -305,6 +333,7 @@ private fun AgendaEntryCard(
                     }
                 }
             }
+            if (entry.journey.status == PlannedJourneyStatus.ACTIVE) PlannedJourneyCalendarButton(entry, title)
             // Return and replan keep the route only: one-leg journeys, whose new date and time the editor can take.
             if (entry.journey.itinerary.segments.size == 1) {
                 val returnDescription = stringResource(R.string.planned_journey_return_a11y, title)
