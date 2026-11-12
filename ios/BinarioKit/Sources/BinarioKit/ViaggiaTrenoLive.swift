@@ -60,6 +60,10 @@ enum ViaggiaTrenoParser {
     static let delayRange = -1_440...1_440
     /// How long a ViaggiaTreno value stays live (Android: 30 seconds).
     static let timeToLive: TimeInterval = 30
+    /// `actualFermataType` of a cancelled stop (Android's `SUPPRESSED_STOP_TYPE`).
+    static let suppressedStopType = 3
+    /// `actualFermataType` of an extraordinary stop (Android's `EXTRAORDINARY_STOP_TYPE`).
+    static let extraordinaryStopType = 2
 
     /// The runs of `cercaNumeroTrenoTrenoAutocomplete`: «12345 - VITERBO|12345-S08001-1760565600000».
     static func references(_ text: String, query: LiveTrainNumberQuery) -> [ViaggiaTrenoRunReference] {
@@ -171,6 +175,9 @@ enum ViaggiaTrenoParser {
         }
         let platformKey = index == 0 ? "binarioEffettivoPartenzaDescrizione" : "binarioEffettivoArrivoDescrizione"
         let scheduledPlatformKey = index == 0 ? "binarioProgrammatoPartenzaDescrizione" : "binarioProgrammatoArrivoDescrizione"
+        // ViaggiaTreno's actualFermataType as the punctuality pipeline and Android read it: 3 a
+        // cancelled stop, 2 an extraordinary stop the timetable does not have (Trenitalia does not
+        // document 2), so only 3 makes the run partly cancelled.
         let stopType = row.int("actualFermataType")
         return LiveStopStatus(
             stationCode: row.text("id").flatMap { NetworkReliability.isStationCode($0) ? $0 : nil },
@@ -178,8 +185,8 @@ enum ViaggiaTrenoParser {
             actualDeparture: index == 0 ? nil : time(row, "partenzaReale", near: scheduled),
             platform: LiveText.bounded(row.text(platformKey), maximumLength: maximumPlatformLength),
             scheduledPlatform: LiveText.bounded(row.text(scheduledPlatformKey), maximumLength: maximumPlatformLength),
-            delayMinutes: delayMinutes, passed: actual != nil, skipped: stopType == 2 || stopType == 3,
-            operationalStatusVerified: stopVerified
+            delayMinutes: delayMinutes, passed: actual != nil, skipped: stopType == suppressedStopType,
+            operationalStatusVerified: stopVerified, added: stopType == extraordinaryStopType
         )
     }
 

@@ -198,7 +198,7 @@ private struct LiveStopRow: View {
     var body: some View {
         let parts = LiveTexts.stopParts(stop)
         HStack(alignment: .firstTextBaseline, spacing: 10) {
-            Image(systemName: stop.skipped ? "xmark.circle" : (stop.passed ? "checkmark.circle.fill" : "circle"))
+            Image(systemName: stop.skipped ? "xmark.circle" : (stop.passed ? "checkmark.circle.fill" : (stop.added ? "plus.circle" : "circle")))
                 .foregroundStyle(stop.skipped ? BinarioPalette.statusError : Color.secondary)
             VStack(alignment: .leading, spacing: 2) {
                 Text(verbatim: stop.stationName)

@@ -34,7 +34,7 @@ public enum BinarioLocalizationKeys {
         "result.live.delay_short", "result.live.delay", "result.live.on_time", "result.live.cancelled",
         "result.live.partially_cancelled", "result.live.late_unpublished", "result.live.unverified",
         "result.live.expected_departure", "result.live.platform", "result.live.last_observation",
-        "result.live.stops", "result.live.passed", "result.live.skipped",
+        "result.live.stops", "result.live.passed", "result.live.skipped", "result.live.added",
         "departures.title", "departures.station", "departures.empty.body", "departures.local_only",
         "departures.list.title", "departures.loading", "departures.none.title", "departures.none.body",
         "departures.no_more_today", "departures.not_covered.body", "departures.expired.body",

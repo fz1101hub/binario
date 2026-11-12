@@ -1059,6 +1059,19 @@ final class BinarioAppTests: XCTestCase {
         XCTAssertNil(model.liveTrainKey(for: route, query: query, now: now))
     }
 
+    func testAnExtraordinaryStopIsShownAsSuchNeverAsASkippedOne() {
+        let scheduled = Date(timeIntervalSince1970: 1_793_778_000)
+        let added = LiveStopStatus(
+            stationCode: "S05043", stationName: "BOLOGNA CENTRALE", scheduled: scheduled, scheduledDeparture: nil,
+            expected: scheduled, actual: nil, actualDeparture: nil, platform: "3", scheduledPlatform: nil, delayMinutes: 0,
+            passed: false, skipped: false, operationalStatusVerified: false, added: true
+        )
+        XCTAssertEqual(LiveTexts.stopParts(added), [LiveTexts.added, DeparturesTexts.platform("3")])
+        XCTAssertTrue(LiveTexts.spokenStop(added).contains(LiveTexts.added))
+        XCTAssertFalse(LiveTexts.spokenStop(added).contains(LiveTexts.skipped))
+        XCTAssertNotEqual(LiveTexts.added, LiveTexts.skipped)
+    }
+
     func testMyTrainsAsksTheFirstEightFavouritesOnlyWhileOnScreen() async throws {
         let defaults = try makeDefaults()
         defer { clear(defaults) }

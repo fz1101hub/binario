@@ -173,6 +173,7 @@
 "result.live.stops" = "Điểm dừng";
 "result.live.passed" = "Đã qua điểm dừng";
 "result.live.skipped" = "Điểm dừng bị bỏ qua";
+"result.live.added" = "Điểm dừng bổ sung";
 "result.live.loading" = "Đang cập nhật dữ liệu thời gian thực…";
 "result.live.from_sources" = "Dữ liệu thời gian thực từ %1$@";
 "result.live.platform_source" = "Sân ga theo %1$@";

@@ -54,6 +54,7 @@ final class ViaggiaTrenoLiveTests: XCTestCase {
 
         XCTAssertEqual(run.stops.map(\.stationCode), ["S08409", "S08217", "S06421", "S05043", "S01700"])
         XCTAssertEqual(run.stops.map(\.skipped), [false, false, false, true, false])
+        XCTAssertEqual(run.stops.map(\.added), [false, false, false, false, false])
         XCTAssertTrue(run.stops.allSatisfy(\.passed))
         let firenze = run.stops[2]
         XCTAssertEqual(firenze.scheduled, Date(timeIntervalSince1970: 1_793_778_000))
@@ -65,6 +66,26 @@ final class ViaggiaTrenoLiveTests: XCTestCase {
         XCTAssertEqual(milano.actual, Date(timeIntervalSince1970: 1_793_783_945))
         XCTAssertEqual(milano.delayMinutes, 9)
         XCTAssertEqual(NetworkReliability.numberKey(run.number), run.numberKey)
+    }
+
+    func testAnExtraordinaryStopIsAnAddedStopAndTheRunIsNotPartlyCancelled() throws {
+        // actualFermataType 2, read as the punctuality pipeline and Android read it: a stop the
+        // timetable does not have (Trenitalia does not document it). Only 3 is a cancelled stop.
+        let text = try LiveFixtures.text("viaggiatreno-andamentoTreno-9558-arrivato.json")
+            .replacingOccurrences(of: "\"actualFermataType\": 3", with: "\"actualFermataType\": 2")
+        let root = try XCTUnwrap(LiveJSONObject(LiveJSON.parse(text)))
+        let reference = try makeReference("S08409", number: "9558", date: 1_793_746_800_000)
+        let fetched = Date(timeIntervalSince1970: 1_793_783_960)
+        let run = try XCTUnwrap(ViaggiaTrenoParser.run(root, reference: reference, serviceDay: fetched, fetchedAt: fetched))
+        XCTAssertEqual(run.stops.map(\.skipped), [false, false, false, false, false])
+        XCTAssertEqual(run.stops.map(\.added), [false, false, false, true, false])
+        XCTAssertEqual(run.cancellation, .none, "an added stop is not a partial cancellation")
+        // The train calls there, unlike the run whose stop is cancelled: a favourite asked at
+        // Bologna Centrale finds this run.
+        let recorded = try LiveFixtures.json("viaggiatreno-andamentoTreno-9558-arrivato.json")
+        let skipping = try XCTUnwrap(ViaggiaTrenoParser.run(recorded, reference: reference, serviceDay: fetched, fetchedAt: fetched))
+        let lookup = LiveTrainStatusLookup(runs: [skipping, run], unavailableSources: [:], isComplete: true)
+        XCTAssertEqual(lookup.run(for: LiveTrainStatusRequest(number: "9558", serviceDate: fetched, stationCode: "S05043")), run)
     }
 
     func testAnOldObservationKeepsTheDelayUnverifiedButKeepsTheActualTimes() throws {

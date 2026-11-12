@@ -173,6 +173,7 @@
 "result.live.stops" = "Duraklar";
 "result.live.passed" = "Durak geçildi";
 "result.live.skipped" = "Atlanan durak";
+"result.live.added" = "Ek durak";
 "result.live.loading" = "Gerçek zamanlı veriler güncelleniyor…";
 "result.live.from_sources" = "%1$@ gerçek zamanlı verileri";
 "result.live.platform_source" = "Peron bilgisi: %1$@";

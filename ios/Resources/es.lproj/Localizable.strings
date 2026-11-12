@@ -173,6 +173,7 @@
 "result.live.stops" = "Paradas";
 "result.live.passed" = "Parada superada";
 "result.live.skipped" = "Parada omitida";
+"result.live.added" = "Parada extraordinaria";
 "result.live.loading" = "Actualizando los datos en tiempo real…";
 "result.live.from_sources" = "Datos en tiempo real de %1$@";
 "result.live.platform_source" = "Andén según %1$@";

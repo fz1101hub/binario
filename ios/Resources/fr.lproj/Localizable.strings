@@ -173,6 +173,7 @@
 "result.live.stops" = "Arrêts";
 "result.live.passed" = "Arrêt passé";
 "result.live.skipped" = "Arrêt supprimé";
+"result.live.added" = "Arrêt supplémentaire";
 "result.live.loading" = "Mise à jour des données en temps réel…";
 "result.live.from_sources" = "Données en temps réel de %1$@";
 "result.live.platform_source" = "Voie selon %1$@";

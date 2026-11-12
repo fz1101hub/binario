@@ -173,6 +173,7 @@
 "result.live.stops" = "停靠站";
 "result.live.passed" = "已过站";
 "result.live.skipped" = "跳过的停靠站";
+"result.live.added" = "临时停靠站";
 "result.live.loading" = "正在更新实时数据…";
 "result.live.from_sources" = "实时数据来自 %1$@";
 "result.live.platform_source" = "站台信息来自 %1$@";
