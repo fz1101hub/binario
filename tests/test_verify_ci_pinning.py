@@ -91,10 +91,11 @@ class VerifyCiPinningTest(unittest.TestCase):
         workflow_path = ROOT / ".github/workflows/companion-ci.yml"
         original = workflow_path.read_text(encoding="utf-8")
         without_pull_paths = original.replace(
-            '  pull_request:\n    paths:\n      - "companion-expo/**"\n      - "contracts/wear-snapshot/**"\n      - "tools/verify_android_app_bundles.py"\n      - "tests/test_verify_android_app_bundles.py"\n      - "tools/verify_gradle_dependency_metadata.py"\n      - ".github/workflows/companion-ci.yml"\n',
+            '  pull_request:\n    paths:\n      - "companion-expo/**"\n      - ".github/workflows/companion-ci.yml"\n',
             "  pull_request:\n",
             1,
         )
+        self.assertNotEqual(original, without_pull_paths)
         problems = policy.workflow_problems(workflow_path, without_pull_paths, LOCK)
         self.assertTrue(any("pull_request deve avere filtri paths" in problem for problem in problems))
 
@@ -139,6 +140,31 @@ class VerifyCiPinningTest(unittest.TestCase):
         )
         problems = policy.workflow_problems(alexa_path, alexa_without_drift_gate, LOCK)
         self.assertTrue(any("gate drift Drizzle" in problem for problem in problems))
+
+    def test_frozen_companion_ci_runs_only_for_its_own_code(self) -> None:
+        # The Expo companion is frozen (companion-expo/README.md): a shared contract or tool must not start its
+        # 90-minute job, and its own code and workflow must still start it.
+        workflow_path = ROOT / ".github/workflows/companion-ci.yml"
+        original = workflow_path.read_text(encoding="utf-8")
+        self.assertEqual([], policy.workflow_problems(workflow_path, original, LOCK))
+        for event_name, anchor in (
+            ("pull_request", '  pull_request:\n    paths:\n      - "companion-expo/**"\n'),
+            ("push", '      - "stabilization/**"\n    paths:\n      - "companion-expo/**"\n'),
+        ):
+            with self.subTest(event_name=event_name):
+                self.assertEqual(1, original.count(anchor))
+                shared = original.replace(anchor, anchor + '      - "contracts/wear-snapshot/**"\n', 1)
+                problems = policy.workflow_problems(workflow_path, shared, LOCK)
+                self.assertTrue(
+                    any(f"{event_name}.paths: il Companion Expo è congelato" in problem and "contracts/wear-snapshot/**" in problem
+                        for problem in problems),
+                    problems,
+                )
+        for required in ('      - "companion-expo/**"\n', '      - ".github/workflows/companion-ci.yml"\n'):
+            with self.subTest(required=required):
+                self.assertEqual(2, original.count(required))
+                problems = policy.workflow_problems(workflow_path, original.replace(required, "", 1), LOCK)
+                self.assertTrue(any("pull_request.paths non copre input condivisi" in problem for problem in problems))
 
     def test_reproducibility_gate_is_release_or_manual_and_fail_closed(self) -> None:
         for workflow_name in ("android-ci.yml", "companion-ci.yml"):
@@ -436,8 +462,8 @@ class VerifyCiPinningTest(unittest.TestCase):
         workflow_path = ROOT / ".github/workflows/apple-watch-ci.yml"
         original = workflow_path.read_text(encoding="utf-8")
         with_bash_env = original.replace(
-            '      XCODE_VERSION: "16.4"\n',
-            '      XCODE_VERSION: "16.4"\n      BASH_ENV: /tmp/noop.sh\n',
+            '      XCODE_VERSION: "26.3"\n',
+            '      XCODE_VERSION: "26.3"\n      BASH_ENV: /tmp/noop.sh\n',
             1,
         )
         problems = policy.workflow_problems(workflow_path, with_bash_env, LOCK)
@@ -724,8 +750,8 @@ class VerifyCiPinningTest(unittest.TestCase):
           watchos:
             runs-on: macos-15
             env:
-              XCODE_VERSION: "16.4"
-              XCODE_BUILD: "16F6"
+              XCODE_VERSION: "26.3"
+              XCODE_BUILD: "17C529"
               XCODEGEN_VERSION: "2.46.0"
               XCODEGEN_URL: "https://github.com/yonaskolb/XcodeGen/releases/download/2.46.0/xcodegen.zip"
               XCODEGEN_SHA256: "4d9e34b62172d645eed6457cac13fc222569974098ef4ee9c3368bedf0196806"

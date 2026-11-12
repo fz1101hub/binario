@@ -80,7 +80,7 @@ cd ios/BinarioKit
 swift test
 ```
 
-On macOS with the repository-pinned Xcode 16.4 and XcodeGen 2.46.0, install XcodeGen through `tools/install_xcodegen.py`, then run:
+On macOS with the repository-pinned Xcode 26.3 (iOS and watchOS 26.2 SDKs, required by App Store Connect since April 2026) and XcodeGen 2.46.0, install XcodeGen through `tools/install_xcodegen.py`, then run:
 
 ```bash
 cd ios

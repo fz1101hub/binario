@@ -91,9 +91,9 @@
   "tools": [
     {
       "name": "Xcode",
-      "version": "16.4",
-      "build": "16F6",
-      "source": "https://github.com/actions/runner-images/blob/main/images/macos/macos-15-Readme.md"
+      "version": "26.3",
+      "build": "17C529",
+      "source": "https://github.com/actions/runner-images/blob/main/images/macos/macos-15-arm64-Readme.md"
     },
     {
       "name": "XcodeGen",

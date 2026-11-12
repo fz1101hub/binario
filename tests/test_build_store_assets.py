@@ -134,6 +134,14 @@ class BuildStoreAssetsTest(unittest.TestCase):
                 self.assertEqual((1024, 1024, 3), (width, height, channels))
                 self.assertEqual(bytes([0, 90, 82]), pixels[:3])
 
+    def test_brand_source_is_outside_the_frozen_expo_app(self) -> None:
+        # companion-expo/ is frozen (companion-expo/README.md): the store icons are generated from the copy under
+        # store/, which the offline tests' CI path filter (store/**) covers.
+        relative = BUILDER.SOURCE_ICON.relative_to(ROOT)
+        self.assertEqual("store", relative.parts[0])
+        self.assertNotIn("companion-expo", relative.parts)
+        self.assertTrue(BUILDER.SOURCE_ICON.is_file())
+
     def test_committed_play_icon_and_readme_match_the_generator(self) -> None:
         with tempfile.TemporaryDirectory(prefix="store-play-") as temporary:
             output_dir = Path(temporary)
