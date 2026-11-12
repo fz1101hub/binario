@@ -1458,6 +1458,15 @@ class TrainViewModel @JvmOverloads constructor(
         commuterAlerts = commuterAlertStore.remove(alert.id)
     }
 
+    /**
+     * Reads the reminders again from their store: a «una volta» reminder switches itself off there when it rings,
+     * also while the app is open, and must not stay listed (or be exported) as active.
+     */
+    fun reloadCommuterAlerts() {
+        val stored = commuterAlertStore.alerts()
+        if (stored != commuterAlerts) commuterAlerts = stored
+    }
+
     fun startActiveTrip(service: TrainService) {
         activeTrip = personalTravelStore.startTrip(service)
         // The ongoing notification follows one trip: another train ends the previous one.
@@ -1497,7 +1506,8 @@ class TrainViewModel @JvmOverloads constructor(
             favouriteStationIds = favouriteIds,
             monitoredServices = monitoredServices,
             stationMonitors = stationMonitors,
-            commuterAlerts = commuterAlerts,
+            // From the store: a «una volta» reminder that rang is off there, and an import must not arm it again.
+            commuterAlerts = commuterAlertStore.alerts(),
             mobilityPreferences = mobilityPreferences,
             // Right after start the history may still be on its way: the file never misses it.
             punctualityHistory = if (punctualityHistoryLoaded) punctualityHistory else punctualityStore.read(),

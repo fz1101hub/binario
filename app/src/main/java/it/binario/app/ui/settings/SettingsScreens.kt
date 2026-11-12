@@ -73,6 +73,8 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import it.binario.app.ActiveStopAlarmsPanel
 import it.binario.app.AlertRepeat
 import it.binario.app.AppThemeMode
@@ -277,6 +279,8 @@ private fun AlertsSettings(viewModel: TrainViewModel, gpsArrivalAlarm: GpsArriva
         mutableStateOf<CommuterAlert?>(null)
     }
     var alertFeedback by rememberSaveable { mutableStateOf<String?>(null) }
+    // A «una volta» reminder that rang meanwhile switched itself off in its store: listed as it is stored.
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { viewModel.reloadCommuterAlerts() }
     val context = LocalContext.current
     val resources = LocalResources.current
     val notificationPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
