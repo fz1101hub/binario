@@ -14,7 +14,8 @@ container cannot reach viaggiatreno.it).  Each run:
    than the last hours (trains already known are never asked again).  Number = ``trip_short_name``, category = suffix of ``route_short_name`` (``0083_REG`` -> ``REG``),
    origin = ViaggiaTreno code of the first stop, resolved from its ``stop_code`` (``830008409``) with the curated
    station catalogue as the app does (``GtfsStationCodeIndex``): the station with that ``trenitaliaLocationId``,
-   otherwise ``S`` + the last five digits of an ``8300xxxxx`` code, each confirmed by position or name;
+   otherwise ``S`` + the last five digits of an ``8300xxxxx`` code, each confirmed by position or name; a Trenord
+   ``stop_id`` shaped like a code is checked against the catalogue (``StationCodes.confirm``);
 2. asks ``andamentoTreno/{origin}/{number}/{midnight}`` once per train (midnight = local midnight of the departure
    day, epoch milliseconds), at most ``--rate`` requests per second (2 by default and at most), within
    ``--max-requests`` and ``--deadline-seconds`` and before Rome's date changes (the rest waits for the next run,
@@ -239,16 +240,28 @@ class StationCodes:
     ``GtfsStationCodeIndex`` does: the station whose ``trenitaliaLocationId`` is the id, confirmed by its position
     (10 km) or, without coordinates, by a word of its name.  Otherwise the derived code is used; a wrong guess costs
     one request answered as unknown or with another origin, never a wrong observation (``interpret`` checks
-    ``idOrigine``)."""
+    ``idOrigine``).
+
+    A Trenord ``stop_id`` already shaped like a code (``S01066``) is not always the station's ViaggiaTreno code
+    (``confirm``): "Brescia" is ``S09999`` there, Piedimonte Matese in the catalogue."""
 
     MAX_LOCATION_ID_KM = 10.0
+    MAX_NAME_KM = 1.0
 
     def __init__(self, stations: Iterable[Mapping[str, Any]]):
         by_location: dict[str, list[Mapping[str, Any]]] = {}
+        self.by_code: dict[str, list[Mapping[str, Any]]] = {}
+        self.placed: list[tuple[float, float, str, Mapping[str, Any]]] = []  # coded stations with a position
         for station in stations:
             location = str(station.get("trenitaliaLocationId") or "").strip()
             if location:
                 by_location.setdefault(location, []).append(station)
+            railway = str(station.get("railwayCode") or "").strip()
+            if CODE.fullmatch(railway):
+                self.by_code.setdefault(railway, []).append(station)
+                lat, lon = station.get("latitude"), station.get("longitude")
+                if all(isinstance(value, (int, float)) and not isinstance(value, bool) for value in (lat, lon)):
+                    self.placed.append((float(lat), float(lon), railway, station))
         self.by_location = {key: value[0] for key, value in by_location.items() if len(value) == 1}
 
     @classmethod
@@ -270,6 +283,36 @@ class StationCodes:
         words = _tokens(name)
         labels = [str(station.get("name") or "")] + [str(alias) for alias in station.get("aliases") or []]
         return any(_tokens(label) & words for label in labels)
+
+    def _named_near(self, lat: float | None, lon: float | None, name: str) -> str | None:
+        """The code of the nearest coded station within MAX_NAME_KM whose name (or an alias) has every word of
+        ``name`` (Brescia, Bellinzona), ``None`` without a position or such a station."""
+        words = _tokens(name)
+        if lat is None or lon is None or not words:
+            return None
+        best: tuple[float, str] | None = None
+        for station_lat, station_lon, railway, station in self.placed:
+            distance = _distance_km(lat, lon, station_lat, station_lon)
+            if distance > self.MAX_NAME_KM or (best is not None and (distance, railway) >= best):
+                continue
+            labels = [str(station.get("name") or "")] + [str(alias) for alias in station.get("aliases") or []]
+            if any(words <= _tokens(label) for label in labels):
+                best = (distance, railway)
+        return best[1] if best is not None else None
+
+    def confirm(self, code: str, lat: float | None, lon: float | None, name: str) -> str | None:
+        """The ViaggiaTreno code of a stop whose ``stop_id`` looks like one (Trenord): ``code`` when the catalogue
+        has it within 10 km (or, without coordinates, with a word of the name); otherwise the coded station of that
+        name within MAX_NAME_KM (Brescia ``S09999`` is ``S01717``); otherwise ``None`` when the catalogue places
+        ``code`` elsewhere (a TILO stop on an RFI code: asking would cost a request a day, or record another train),
+        and ``code`` itself when the catalogue does not know it (``interpret`` still checks ``idOrigine``)."""
+        listed = self.by_code.get(code, [])
+        if any(self._corroborated(station, lat, lon, name, self.MAX_LOCATION_ID_KM) for station in listed):
+            return code
+        named = self._named_near(lat, lon, name)
+        if named is not None:
+            return named
+        return None if listed else code
 
     def resolve(self, stop_code: str, lat: float | None, lon: float | None, name: str) -> str | None:
         code = stop_code.strip()
@@ -408,11 +451,11 @@ def load_timetable(path: Path, stations: StationCodes, namespace: str = "") -> T
         coded = CODE.fullmatch(stop_id) is not None
         if stop_id not in origins:
             stop = stops.get(stop_id, {})
-            origins[stop_id] = stop_id if coded else stations.resolve(
-                stop.get("stop_code", ""), _float(stop.get("stop_lat")), _float(stop.get("stop_lon")), stop.get("stop_name", ""))
+            place = (_float(stop.get("stop_lat")), _float(stop.get("stop_lon")), stop.get("stop_name", ""))
+            origins[stop_id] = stations.confirm(stop_id, *place) if coded else stations.resolve(stop.get("stop_code", ""), *place)
         origin = origins[stop_id]
         if origin is None:
-            skip("origine senza codice ViaggiaTreno")
+            skip("origine Trenord smentita dal catalogo" if coded else "origine senza codice ViaggiaTreno")
             continue
         line = route.get("route_short_name", "").strip().rsplit("_", 1)[-1].upper()
         lettered = LINE.fullmatch(line)

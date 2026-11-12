@@ -236,6 +236,48 @@ class StationAndTimetableTest(Base):
         self.assertEqual("andamentoTreno/S01066/24901/" + str(collector.midnight_millis(date(2026, 11, 7))),
                          collector.run_path(saturday[("2026-11-07", "S01066", "24901")]))
 
+    def test_trenord_origin_codes_are_checked_against_the_catalogue(self) -> None:
+        # Trenord stop ids are not always ViaggiaTreno codes: "Brescia" is S09999 (Piedimonte Matese in the catalogue,
+        # 573 km away) and the Swiss TILO stops use codes of RFI stations elsewhere (S05301 is Buttapietra).
+        stations = {"stations": STATIONS["stations"] + [
+            {"id": "S01717", "name": "Brescia", "railwayCode": "S01717", "latitude": 45.532315, "longitude": 10.212828},
+            {"id": "S05301", "name": "Buttapietra", "railwayCode": "S05301", "latitude": 45.338787, "longitude": 10.988059},
+            {"id": "S00300", "name": "Bellinzona", "railwayCode": "S00300", "latitude": 46.1956, "longitude": 9.0293},
+            {"id": "S01073", "name": "Garbagnate parco delle Groane", "railwayCode": "S01073",
+             "latitude": 45.5912, "longitude": 9.0752},
+            {"id": "X1", "name": "Garbagnate Milanese", "latitude": 45.5797, "longitude": 9.0798},
+        ]}
+        self.stations_path.write_text(json.dumps(stations), encoding="utf-8")
+        codes = collector.StationCodes.load(self.stations_path)
+        pack_stops = [
+            ("S09999", "Brescia", 45.53252, 10.21297),  # contradicted, resolved by name and position
+            ("S05301", "Lugano Paradiso", 45.98884, 8.94600),  # contradicted, nothing of that name nearby: skipped
+            ("S05213", "Bellinzona", 46.19560, 9.02990),  # absent, the catalogue's Bellinzona is here: S00300
+            ("S01074", "Garbagnate Milanese", 45.57970, 9.07980),  # absent, nothing coded of that name: kept
+            ("S01700", "Milano Centrale", 45.48600, 9.20400),  # confirmed within 10 km: kept
+            ("S08409", "Roma", 45.50000, 9.30000),  # the catalogue's S08409 is in Rome, no "Roma" here: skipped
+        ]
+        trenord = self.temp / "lombardia-trenord-gtfs.zip"
+        with zipfile.ZipFile(trenord, "w") as archive:
+            archive.writestr("routes.txt", csv_text("route_id,agency_id,route_short_name,route_long_name,route_type",
+                                                    [("R", "1", "R", "Regionale", 2)]))
+            archive.writestr("stops.txt", csv_text("stop_id,stop_name,stop_lat,stop_lon", pack_stops))
+            archive.writestr("trips.txt", csv_text("route_id,service_id,trip_id,trip_short_name", [
+                ("R", "DAILY", f"t{index}", f"R - {100 + index}") for index in range(len(pack_stops))]))
+            archive.writestr("stop_times.txt", csv_text("trip_id,arrival_time,departure_time,stop_id,stop_sequence", [
+                row for index, stop_row in enumerate(pack_stops) for row in (
+                    (f"t{index}", "07:00:00", "07:00:00", stop_row[0], 1), (f"t{index}", "08:00:00", "08:00:00", "S01700", 2))]))
+            archive.writestr("calendar.txt", csv_text(
+                "service_id,monday,tuesday,wednesday,thursday,friday,saturday,sunday,start_date,end_date",
+                [("DAILY", 1, 1, 1, 1, 1, 1, 1, 20261001, 20261231)]))
+        timetable = collector.load_timetable(trenord, codes)
+        self.assertEqual({"100": "S01717", "102": "S00300", "103": "S01074", "104": "S01700"},
+                         {trip.number: trip.origin for trip in timetable.trips})
+        self.assertEqual({"origine Trenord smentita dal catalogo": 2}, timetable.skipped)
+        # Without coordinates a code is confirmed by a word of its name, as for Trenitalia.
+        self.assertEqual("S01700", codes.confirm("S01700", None, None, "MILANO CENTRALE"))
+        self.assertIsNone(codes.confirm("S09999", None, None, "Brescia"))
+
     def test_bus_routes_foreign_origins_and_alphanumeric_numbers_are_left_out(self) -> None:
         self.assertEqual({"non ferroviaria": 1, "origine senza codice ViaggiaTreno": 1}, self.timetable.skipped)
         numbers = {trip.number for trip in self.timetable.trips}
