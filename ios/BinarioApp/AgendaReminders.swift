@@ -7,6 +7,10 @@ import UserNotifications
 /// `UNUserNotificationCenter` for the Agenda's reminders: local requests only, each with a time
 /// interval trigger (an instant, so the phone's zone does not move it). Nothing is registered for
 /// push and no entitlement is needed; the request holds the station names and the Italian time.
+///
+/// The completion handlers are `@Sendable`: UserNotifications calls them on its own queue, and a
+/// closure written in this main-actor class would otherwise be main-actor isolated, so Swift 6's
+/// runtime check would stop the app the first time one is called (the reconciliation at launch).
 @MainActor
 final class SystemAgendaNotificationCenter: PlannedJourneyNotificationCenter {
     /// Shows a reminder that fires while Binario is open; the centre keeps its delegate weakly.
@@ -22,7 +26,7 @@ final class SystemAgendaNotificationCenter: PlannedJourneyNotificationCenter {
     func permission() async -> PlannedJourneyNotificationPermission {
         let center = self.center
         let status: UNAuthorizationStatus = await withCheckedContinuation { continuation in
-            center.getNotificationSettings { settings in
+            center.getNotificationSettings { @Sendable settings in
                 continuation.resume(returning: settings.authorizationStatus)
             }
         }
@@ -37,7 +41,7 @@ final class SystemAgendaNotificationCenter: PlannedJourneyNotificationCenter {
     func requestPermission() async -> Bool {
         let center = self.center
         return await withCheckedContinuation { continuation in
-            center.requestAuthorization(options: [.alert, .sound]) { granted, _ in
+            center.requestAuthorization(options: [.alert, .sound]) { @Sendable granted, _ in
                 continuation.resume(returning: granted)
             }
         }
@@ -46,7 +50,7 @@ final class SystemAgendaNotificationCenter: PlannedJourneyNotificationCenter {
     func pendingRequests() async -> [PlannedJourneyNotificationRequest] {
         let center = self.center
         return await withCheckedContinuation { continuation in
-            center.getPendingNotificationRequests { requests in
+            center.getPendingNotificationRequests { @Sendable requests in
                 let pending = requests.map { request in
                     PlannedJourneyNotificationRequest(
                         identifier: request.identifier,
@@ -74,7 +78,7 @@ final class SystemAgendaNotificationCenter: PlannedJourneyNotificationCenter {
         let notification = UNNotificationRequest(identifier: request.identifier, content: content, trigger: trigger)
         let center = self.center
         try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, any Error>) in
-            center.add(notification) { error in
+            center.add(notification) { @Sendable error in
                 if let error {
                     continuation.resume(throwing: error)
                 } else {
