@@ -278,9 +278,132 @@ internal object VoiceGrammars {
         )
     )
 
+    // The languages below follow the example sentences of the companion app (planner.dictationDescription) and the
+    // hints of this app (voice_feedback_unresolved_route), with the forms its audit found misread.
+
+    private val portuguese = VoiceGrammar(
+        today = listOf("hoje", "esta noite", "esta tarde"),
+        tomorrow = listOf("amanhã"),
+        dayAfterTomorrow = listOf("depois de amanhã"),
+        afternoon = listOf("da tarde", "da noite", "à tarde", "à noite", "de tarde", "de noite", "esta tarde", "esta noite"),
+        returnTrip = listOf("ida e volta"),
+        oneWay = listOf("só ida", "somente ida", "apenas ida"),
+        months = mapOf(
+            "janeiro" to 1, "fevereiro" to 2, "março" to 3, "abril" to 4, "maio" to 5, "junho" to 6,
+            "julho" to 7, "agosto" to 8, "setembro" to 9, "outubro" to 10, "novembro" to 11, "dezembro" to 12
+        ),
+        // «às 9:35», «às 21h30», «às 18h», «às 8 e meia».
+        times = listOf(
+            "(?:^|\\s)(?:as|a|pelas|por volta das)\\s(\\d{1,2})(?:\\s?(?:horas|hora|hs|h))?" +
+                "(?:\\s(?:e\\s)?(\\d{2}|meia)(?:\\s(?:minutos|min))?)?(?=\\s|$)",
+            "(?:^|\\s)(\\d{1,2})\\s?(?:horas|h)(?:\\s(?:e\\s)?(\\d{2}|meia))?(?=\\s|$)"
+        ),
+        dates = listOf(DatePattern("(?:^|\\s)(?:dia\\s)?(\\d{1,2})\\s(?:de\\s)?({M})(?:\\s(?:de\\s)?(\\d{4}))?(?=\\s|$)")),
+        minuteWords = mapOf("meia" to 30),
+        continuations = listOf("e", "menos"),
+        fromBefore = listOf("de", "do", "da", "desde"),
+        toBefore = listOf("para", "pra", "até", "ao", "a")
+    )
+
+    private val turkish = VoiceGrammar(
+        today = listOf("bugün", "bu akşam"),
+        tomorrow = listOf("yarın"),
+        dayAfterTomorrow = listOf("yarından sonra", "öbür gün"),
+        afternoon = listOf("akşam", "öğleden sonra"),
+        returnTrip = listOf("gidiş dönüş"),
+        oneWay = listOf("tek yön", "tek gidiş"),
+        months = mapOf(
+            "ocak" to 1, "şubat" to 2, "mart" to 3, "nisan" to 4, "mayıs" to 5, "haziran" to 6,
+            "temmuz" to 7, "ağustos" to 8, "eylül" to 9, "ekim" to 10, "kasım" to 11, "aralık" to 12
+        ),
+        // «saat 9:35», «saat 18'de», «saat 8 buçukta», «akşam 8'de»; the case ending after the hour is read too.
+        times = listOf(
+            "(?:^|\\s)(?:saat|aksam|sabah|ogleden sonra)\\s(\\d{1,2})(?:\\s(\\d{2}|bucuk))?(?:\\s?(?:de|da|te|ta))?(?=\\s|$)"
+        ),
+        dates = listOf(DatePattern("(?:^|\\s)(\\d{1,2})\\s({M})(?:\\s(\\d{4}))?(?=\\s|$)")),
+        minuteWords = mapOf("buçuk" to 30),
+        // «saat 9'u çeyrek geçe», «saat 9'a 10 kala»: the quarter-past and to-the-hour forms are not read.
+        continuations = listOf("çeyrek", "geçe", "kala", "u", "ü", "i", "ı", "yi", "a", "e", "ya", "ye"),
+        fromAfter = listOf("dan", "den", "tan", "ten", "ndan", "nden"),
+        toAfter = listOf("ya", "ye", "a", "e", "na", "ne"),
+        stationEndings = listOf(
+            "dan", "den", "tan", "ten", "ndan", "nden", "ya", "ye", "na", "ne", "a", "e", "da", "de", "ta", "te"
+        )
+    )
+
+    private val vietnamese = VoiceGrammar(
+        keepsLatinMarks = true,
+        today = listOf("hôm nay", "tối nay", "chiều nay", "sáng nay"),
+        tomorrow = listOf("ngày mai", "sáng mai", "chiều mai", "tối mai"),
+        dayAfterTomorrow = listOf("ngày kia", "ngày mốt"),
+        afternoon = listOf("chiều", "tối"),
+        notAfternoon = listOf("một chiều", "chiều dài"),
+        returnTrip = listOf("khứ hồi"),
+        oneWay = listOf("một chiều"),
+        // «lúc 9:35», «lúc 18 giờ», «lúc 9 giờ 35 phút», «lúc 8 giờ rưỡi», «9h35».
+        times = listOf(
+            "(?:^|\\s)(?:lúc|vào)\\s(\\d{1,2})(?:\\s?(?:giờ|h))?(?:\\s(\\d{2}|\\d(?=\\s?phút)|rưỡi)(?:\\s?phút)?)?(?=\\s|$)",
+            "(?:^|\\s)(\\d{1,2})\\s?(?:giờ|h)(?:\\s(\\d{2}|\\d(?=\\s?phút)|rưỡi)(?:\\s?phút)?)?(?=\\s|$)"
+        ),
+        dates = listOf(DatePattern("(?:^|\\s)(?:ngày\\s)?(\\d{1,2})\\stháng\\s(\\d{1,2})(?:\\snăm\\s(\\d{4}))?(?=\\s|$)")),
+        minuteWords = mapOf("rưỡi" to 30),
+        // «9 giờ kém 15» is 8:45, «9 giờ lẻ 5» 9:05.
+        continuations = listOf("kém", "lẻ"),
+        fromBefore = listOf("từ"),
+        toBefore = listOf("đến", "tới", "về")
+    )
+
+    private val indonesian = VoiceGrammar(
+        today = listOf("hari ini", "malam ini", "sore ini", "nanti malam"),
+        tomorrow = listOf("besok", "esok"),
+        dayAfterTomorrow = listOf("lusa", "besok lusa"),
+        afternoon = listOf("sore", "malam"),
+        returnTrip = listOf("pulang pergi"),
+        oneWay = listOf("sekali jalan", "satu arah"),
+        months = mapOf(
+            "januari" to 1, "februari" to 2, "maret" to 3, "april" to 4, "mei" to 5, "juni" to 6,
+            "juli" to 7, "agustus" to 8, "september" to 9, "oktober" to 10, "november" to 11, "desember" to 12
+        ),
+        // «pukul 9.35», «pukul 18», «jam 18:00».
+        times = listOf("(?:^|\\s)(?:pukul|jam)\\s(\\d{1,2})(?:\\s(\\d{2}))?(?=\\s|$)"),
+        dates = listOf(DatePattern("(?:^|\\s)(?:tanggal\\s)?(\\d{1,2})\\s({M})(?:\\s(\\d{4}))?(?=\\s|$)")),
+        // «jam 9 lewat 15», «jam 9 kurang 15».
+        continuations = listOf("lewat", "kurang", "lebih"),
+        fromBefore = listOf("dari"),
+        toBefore = listOf("ke", "menuju", "sampai")
+    )
+
+    private val russian = VoiceGrammar(
+        today = listOf("сегодня"),
+        tomorrow = listOf("завтра"),
+        dayAfterTomorrow = listOf("послезавтра"),
+        afternoon = listOf("вечера", "вечером", "дня"),
+        returnTrip = listOf("туда и обратно", "туда обратно"),
+        oneWay = listOf("в одну сторону", "только туда"),
+        months = mapOf(
+            "января" to 1, "февраля" to 2, "марта" to 3, "апреля" to 4, "мая" to 5, "июня" to 6,
+            "июля" to 7, "августа" to 8, "сентября" to 9, "октября" to 10, "ноября" to 11, "декабря" to 12
+        ),
+        // «в 9:35», «в 18», «в 8 вечера», «в 9 часов 35 минут».
+        times = listOf(
+            "(?:^|\\s)(?:в|к|около)\\s(\\d{1,2})(?:\\s?(?:часов|часа|час|ч))?" +
+                "(?:\\s(\\d{2}|\\d(?=\\s?мин))(?:\\s?(?:минут|минуты|минута|мин))?)?(?=\\s|$)",
+            "(?:^|\\s)(\\d{1,2})\\s?(?:часов|часа|час|ч)(?:\\s(\\d{2}|\\d(?=\\s?мин))(?:\\s?(?:минут|минуты|минута|мин))?)?(?=\\s|$)"
+        ),
+        dates = listOf(DatePattern("(?:^|\\s)(\\d{1,2})\\s({M})(?:\\s(\\d{4}))?(?=\\s|$)")),
+        continuations = listOf("без"),
+        fromBefore = listOf("из", "от", "с"),
+        toBefore = listOf("в", "до", "на")
+    )
+
     /** The grammar of a language code ("in" is Indonesian on Android), or null where the app knows no words. */
     fun forLanguage(language: String): VoiceGrammar? = when (language.lowercase(Locale.ROOT)) {
         "it", "en", "de", "fr", "es" -> western
+        "pt" -> portuguese
+        "tr" -> turkish
+        "vi" -> vietnamese
+        "in", "id" -> indonesian
+        "ru" -> russian
         else -> null
     }
 

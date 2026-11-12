@@ -21,7 +21,7 @@ class PlannerVoiceLanguagesTest {
     private val stations = listOf(termini, torino)
     private val today = LocalDate.of(2026, 11, 11)
 
-    private val routeLanguages = setOf("it", "en", "de", "fr", "es")
+    private val routeLanguages = setOf("it", "en", "de", "fr", "es", "pt", "tr", "vi", "id", "in", "ru")
     private val otherScripts = setOf("ar", "hi", "ja", "ko", "my", "ru", "th", "zh")
 
     /** The language code the configuration reports for a tag of the app ("zh-CN" → "zh"). */
@@ -49,7 +49,7 @@ class PlannerVoiceLanguagesTest {
                 assertEquals("$tag: $spoken", today.plusDays(1), review.input.date)
                 assertEquals("$tag: $spoken", LocalTime.of(18, 0), review.input.time)
             } else {
-                // «amanhã às 18h», «besok pukul 18», «明日 18 時»: the day and the hour are not known here.
+                // «明日 18 時», «내일 18시»: the day and the hour are not known here.
                 assertFalse(tag, PlannerVoiceParser.offers(DictationTarget.ROUTE, language(tag)))
                 assertNotEquals("$tag: $spoken", DictationReviewStatus.CONFIRMED, review.status)
                 assertFalse(tag, review.canApply)
@@ -101,17 +101,26 @@ class PlannerVoiceLanguagesTest {
 
     @Test
     fun `a route said in a language without date and time words changes nothing`() {
-        // Portuguese at 20:00: the stations and «18h» were read, «amanhã» was not, and the search was confirmed for today.
+        // Portuguese at 20:00 once read the stations and «18h» but not «amanhã»: now its words are known.
         val portuguese = PlannerVoiceParser.review(
             "de Roma Termini para Torino Porta Nuova amanhã às 18h", stations, DictationTarget.ROUTE, today, "pt"
         )
-        assertEquals(DictationReviewStatus.NEEDS_REVIEW, portuguese.status)
-        assertEquals(PlannerVoiceFeedback.Incomplete, portuguese.feedback(DictationTarget.ROUTE))
-        // Indonesian is "in" on Android and "id" elsewhere; a language the app does not have behaves the same.
-        listOf("in", "id", "nl", "").forEach { language ->
+        assertEquals(DictationReviewStatus.CONFIRMED, portuguese.status)
+        assertEquals(today.plusDays(1), portuguese.input.date)
+        assertEquals(LocalTime.of(18, 0), portuguese.input.time)
+        // A language the app does not have: no day, no time, no confirmed route, no route microphone.
+        listOf("nl", "").forEach { language ->
+            val dutch = PlannerVoiceParser.review(
+                "van Roma Termini naar Torino Porta Nuova morgen om 18 uur", stations, DictationTarget.ROUTE, today, language
+            )
+            assertEquals(language, DictationReviewStatus.NEEDS_REVIEW, dutch.status)
+            assertNull(language, dutch.input.date)
+            assertNull(language, dutch.input.time)
             assertFalse(language, PlannerVoiceParser.offers(DictationTarget.ROUTE, language))
             assertTrue(language, PlannerVoiceParser.offers(DictationTarget.STATION, language))
         }
+        // Indonesian is "in" on Android and "id" elsewhere.
+        listOf("in", "id").forEach { language -> assertTrue(language, PlannerVoiceParser.offers(DictationTarget.ROUTE, language)) }
         assertTrue(PlannerVoiceParser.offers(DictationTarget.ROUTE, "IT"))
     }
 }

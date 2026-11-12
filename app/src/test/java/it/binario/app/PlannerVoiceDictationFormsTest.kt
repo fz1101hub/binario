@@ -60,6 +60,80 @@ class PlannerVoiceDictationFormsTest {
         assertTemplates(westernPhrases)
     }
 
+    private val latinAndCyrillicPhrases = mapOf(
+        "pt" to "De Roma Ostiense para Roma San Pietro amanhã às {h}:{m}",
+        "ru" to "От Roma Ostiense до Roma San Pietro завтра в {h}:{m}",
+        "tr" to "Roma Ostiense'den Roma San Pietro'ya yarın saat {h}:{m}",
+        "vi" to "Từ Roma Ostiense đến Roma San Pietro ngày mai lúc {h}:{m}",
+        "in" to "Dari Roma Ostiense ke Roma San Pietro besok pukul {h}.{m}"
+    )
+
+    @Test
+    fun `Portuguese, Russian, Turkish, Vietnamese and Indonesian read the companion sentences and the evening hours`() {
+        assertTemplates(latinAndCyrillicPhrases)
+        // The companion app's own spelling of Indonesian is "id".
+        assertOstienseToSanPietro("Dari Roma Ostiense ke Roma San Pietro besok pukul 9.35", "id")
+        assertEquals(LocalTime.of(21, 30), time("De Roma Termini para Milano Centrale amanhã às 21h30", "pt"))
+        assertEquals(LocalTime.of(8, 30), time("De Roma Termini para Milano Centrale amanhã às 8 e meia", "pt"))
+        assertEquals(LocalTime.of(20, 0), time("Из Roma Termini в Milano Centrale завтра в 8 вечера", "ru"))
+        assertEquals(LocalTime.of(20, 0), time("Roma Termini'den Milano Centrale'ye yarın akşam 8'de", "tr"))
+        assertEquals(LocalTime.of(8, 30), time("Roma Termini'den Milano Centrale'ye yarın saat 8 buçukta", "tr"))
+        assertEquals(LocalTime.of(20, 30), time("Từ Roma Termini đến Milano Centrale lúc 8 giờ rưỡi tối", "vi"))
+        assertEquals(LocalTime.of(20, 0), time("Dari Roma Termini ke Milano Centrale pukul 8 malam", "in"))
+    }
+
+    @Test
+    fun `day words of the new languages, and words that must not fire inside other words`() {
+        val prefix = mapOf(
+            "pt" to "De Roma Termini para Milano Centrale",
+            "ru" to "Из Roma Termini в Milano Centrale",
+            "tr" to "Roma Termini'den Milano Centrale'ye",
+            "vi" to "Từ Roma Termini đến Milano Centrale",
+            "in" to "Dari Roma Termini ke Milano Centrale"
+        )
+        fun day(language: String, words: String) = route("${prefix.getValue(language)} $words", language).input.date
+        assertEquals(today.plusDays(2), day("pt", "depois de amanhã às 9"))
+        assertEquals(today, day("pt", "hoje às 9"))
+        assertEquals(today.plusDays(2), day("ru", "послезавтра в 9"))
+        assertNull(day("ru", "после завтрака"))
+        assertEquals(today.plusDays(2), day("tr", "öbür gün saat 9"))
+        assertNull(day("tr", "bugünlerde"))
+        assertEquals(today.plusDays(2), day("vi", "ngày kia lúc 9 giờ"))
+        assertEquals(today.plusDays(2), day("in", "lusa pukul 9"))
+        assertEquals(LocalDate.of(2030, 11, 12), day("pt", "dia 12 de novembro"))
+        assertEquals(LocalDate.of(2030, 11, 12), day("tr", "12 Kasım'da"))
+        assertEquals(LocalDate.of(2030, 11, 12), day("vi", "ngày 12 tháng 11"))
+        assertEquals(LocalDate.of(2030, 11, 12), day("ru", "12 ноября"))
+        // «2 saatlik» is two hours long; «lục» (six) is not «lúc» (at); «semalam» (last night) is not «malam».
+        assertNull(time("${prefix.getValue("tr")} 2 saatlik yolculuk", "tr"))
+        assertNull(time("${prefix.getValue("vi")} lục 9", "vi"))
+        assertEquals(LocalTime.of(8, 0), time("${prefix.getValue("in")} pukul 8 semalam", "in"))
+        // «một chiều» is one way, not an afternoon.
+        val oneWay = route("${prefix.getValue("vi")} lúc 8 giờ một chiều", "vi")
+        assertEquals(LocalTime.of(8, 0), oneWay.input.time)
+        assertEquals(false, oneWay.input.returnJourney)
+        assertEquals(true, route("${prefix.getValue("tr")} gidiş dönüş", "tr").input.returnJourney)
+        // Quarter-to forms are not read: no time rather than a wrong one.
+        assertNull(time("${prefix.getValue("tr")} saat 9'a 10 kala", "tr"))
+        assertNull(time("${prefix.getValue("vi")} lúc 9 giờ kém 15", "vi"))
+        assertNull(time("${prefix.getValue("in")} jam 9 kurang 15", "in"))
+    }
+
+    @Test
+    fun `Turkish case endings on station names`() {
+        val two = listOf(centrale, termini)
+        fun turkish(spoken: String) = PlannerVoiceParser.review(spoken, two, DictationTarget.ROUTE, today, "tr")
+        val apostrophe = turkish("Milano'dan Roma'ya yarın saat 9")
+        assertEquals(DictationReviewStatus.CONFIRMED, apostrophe.status)
+        assertEquals(centrale, apostrophe.input.origin)
+        assertEquals(termini, apostrophe.input.destination)
+        val glued = turkish("Milanodan Romaya yarın saat 9")
+        assertEquals(centrale, glued.input.origin)
+        assertEquals(termini, glued.input.destination)
+        // The endings, not the order, say the origin.
+        assertEquals(centrale, turkish("Roma'ya Milano'dan yarın saat 9").input.origin)
+    }
+
     @Test
     fun `edge times are a time or nothing, never a shortened hour`() {
         assertEquals(LocalTime.of(21, 0), time("Da Roma Termini a Milano Centrale domani alle 21", "it"))
