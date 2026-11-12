@@ -439,6 +439,9 @@ class InterpretTest(unittest.TestCase):
     def test_trains_still_running_stay_pending(self) -> None:
         running = run(stops=[stop("S08235", 540, 60, first=True), stop("S08409", 580, None)])
         self.assertEqual("pending", collector.interpret(running, due()).status)
+        # The stops already passed are kept, so that a train never seen arriving still counts where it was seen.
+        self.assertEqual([["S08235", 1, 0, 540, None, 0], ["S08409", None, 0, 580, None, 0]],
+                         collector.interpret(running, due()).stops)
         self.assertEqual("pending", collector.interpret(run(stops=[]), due()).status)
         self.assertEqual("ok", collector.interpret(dict(running, arrivato=True), due()).status)
         self.assertEqual("pending", collector.interpret(dict(running, arrivato="true"), due()).status)
@@ -447,12 +450,14 @@ class InterpretTest(unittest.TestCase):
         stops = [
             stop("S08235", 540, 60, first=True), stop("S08217", 550, 30, kind=2), stop("S08409", 570, 99_999),
             stop("S08409", 575, 60), {"id": "08406", "arrivoReale": 1}, "not a stop", stop("S08406", 580, 0),
+            stop("S08404", 600, -3_660),
         ]
         observation = collector.interpret(run(stops=stops), due())
-        self.assertEqual([["S08235", 1, 0, 540, None, 0], ["S08409", None, 0, 570, None, 0], ["S08406", 0, 0, 580, None, 0]],
-                         observation.stops)
-        self.assertEqual({"fermate_straordinarie": 1, "ritardi_non_plausibili": 1, "fermate_ripetute": 1,
-                          "fermate_senza_codice": 1, "fermate_non_valide": 1}, observation.notes)
+        # 1,666 minutes late is counted as the largest delay kept (720), not dropped; 61 minutes early is an error.
+        self.assertEqual([["S08235", 1, 0, 540, None, 0], ["S08409", collector.MAX_DELAY, 0, 570, None, 0],
+                          ["S08406", 0, 0, 580, None, 0], ["S08404", None, 0, 600, None, 0]], observation.stops)
+        self.assertEqual({"fermate_straordinarie": 1, "ritardi_limitati": 1, "ritardi_non_plausibili": 1,
+                          "fermate_ripetute": 1, "fermate_senza_codice": 1, "fermate_non_valide": 1}, observation.notes)
         out_of_day = [stop("S08235", 540, 60, first=True), dict(stop("S08409", 580), arrivoReale=10 ** 15)]
         self.assertEqual("pending", collector.interpret(run(stops=out_of_day), due()).status)  # actual time ignored
         booleans = [dict(stop("S08235", 540, first=True), partenzaReale=True), stop("S08409", 580, 0)]
@@ -569,7 +574,9 @@ class StateTest(Base):
         (directory / "pending.jsonl.gz").write_bytes(b"not gzip")
         good_pending = {"d": "2026-11-04", "o": "S08409", "n": "2003", "c": "REG", "a": 1, "k": 0}
         self.assertTrue(collector.valid_pending(good_pending))
-        for change in ({"d": "2026-13-45"}, {"k": True}, {"o": "../x"}, {"n": "0123"}, {"extra": 1}):
+        self.assertTrue(collector.valid_pending(dict(good_pending, s=[["S08409", 3, 0, 600, None, 0], ["S01700", None, 0, 700, None, 0]])))
+        for change in ({"d": "2026-13-45"}, {"k": True}, {"o": "../x"}, {"n": "0123"}, {"extra": 1}, {"s": []},
+                       {"s": [["S08409", 3, 0], ["S08409", 4, 0]]}, {"s": [["S08409", "3", 0]]}, {"s": "S08409"}):
             with self.subTest(change=change):
                 self.assertFalse(collector.valid_pending(dict(good_pending, **change)))
         counters: dict[str, int] = {}
@@ -700,11 +707,54 @@ class CollectTest(Base):
         self.assertEqual(3, state.pending[("2026-11-04", "S08409", "2005")]["k"])  # asked by three runs
         last = Answers(lambda path: self.answer_all(path, arrived=False))
         state, report = self.collect(last, NOW + timedelta(hours=7, minutes=42))
-        self.assertEqual(1, report.counters["scaduti_sconosciuti"])
         self.assertEqual([], last.paths)
         record = collector.load_observations(self.temp / "state", "2026-11-04", {})[("S08409", "2005")]
-        self.assertEqual(("unknown", []), (record["st"], record["s"]))
+        # Never seen arriving, but seen leaving one minute late: that stop counts, the last one does not.
+        self.assertEqual("partial", record["st"])
+        self.assertEqual([1, None], [stop[1] for stop in record["s"]])
+        self.assertEqual(1, report.counters["chiusi_in_viaggio"])
         self.assertEqual({}, state.pending)
+
+    def test_a_late_train_keeps_the_stops_it_passed_until_viaggiatreno_closes_its_day(self) -> None:
+        # Asked at 22:47 while 60 minutes late, then never reached again before ViaggiaTreno's midnight: the stops it
+        # had passed enter the statistics instead of the whole day being dropped as unknown.
+        self.timetable.trips = [collector.TripPlan("3001", "REG", "S08409", 20 * 3600, 22 * 3600 + 10 * 60, "DAILY")]
+        evening = datetime(2026, 11, 4, 21, 47, tzinfo=timezone.utc)  # 22:47 in Rome
+
+        def travelling(path: str) -> collector.FetchResult:
+            midnight = int(path.split("/")[3])
+            return ok({"numeroTreno": 3001, "idOrigine": "S08409", "dataPartenzaTreno": midnight, "fermate": [
+                {"id": "S08409", "actualFermataType": 1, "partenza_teorica": midnight + 20 * 3_600_000,
+                 "partenzaReale": midnight + 20 * 3_600_000 + 25 * MINUTE},
+                {"id": "S08217", "actualFermataType": 1, "arrivo_teorico": midnight + 21 * 3_600_000,
+                 "arrivoReale": midnight + 21 * 3_600_000 + 60 * MINUTE},
+                {"id": "S01700", "actualFermataType": 1, "arrivo_teorico": midnight + 22 * 3_600_000 + 10 * MINUTE}]})
+
+        state, _ = self.collect(Answers(travelling), evening)
+        self.assertEqual([25, 60, None], [stop[1] for stop in state.pending[("2026-11-04", "S08409", "3001")]["s"]])
+        # A failed retry and a run left over by its limits keep them.
+        state, _ = self.collect(Answers(lambda _: collector.FetchResult("failure", reason="timeout")), evening + timedelta(minutes=30))
+        self.assertEqual([25, 60, None], [stop[1] for stop in state.pending[("2026-11-04", "S08409", "3001")]["s"]])
+        state, _ = self.collect(Answers(travelling), evening + timedelta(minutes=40), max_requests=0)
+        self.assertEqual(2, state.pending[("2026-11-04", "S08409", "3001")]["k"])
+        self.assertIn("s", state.pending[("2026-11-04", "S08409", "3001")])
+        # After midnight the train is closed without a request, with the stops it passed.
+        after = Answers(travelling)
+        state, report = self.collect(after, datetime(2026, 11, 5, 2, 30, tzinfo=timezone.utc))
+        self.assertEqual([], after.paths)
+        record = collector.load_observations(self.temp / "state", "2026-11-04", {})[("S08409", "3001")]
+        self.assertEqual(("partial", [25, 60, None]), (record["st"], [stop[1] for stop in record["s"]]))
+        train = stats.build(self.temp / "state", date(2026, 11, 5), datetime(2026, 11, 5, 4, tzinfo=timezone.utc))["trains"][0]
+        self.assertEqual((1, 0), (train["d"], train["x"]))
+        self.assertEqual([("S08409", 1, 25.0), ("S08217", 1, 60.0)], [(stop[0], stop[1], stop[2]) for stop in train["s"]])
+        # Asked again within the three hours after midnight and forgotten by then (204): the same stops count.
+        shutil.rmtree(self.temp / "state")
+        self.collect(Answers(travelling), evening)
+        _, report = self.collect(Answers(lambda _: collector.FetchResult("missing", reason="http-204")),
+                                 datetime(2026, 11, 4, 23, 20, tzinfo=timezone.utc))
+        record = collector.load_observations(self.temp / "state", "2026-11-04", {})[("S08409", "3001")]
+        self.assertEqual(("partial", [25, 60, None]), (record["st"], [stop[1] for stop in record["s"]]))
+        self.assertEqual(1, report.counters["chiusi_in_viaggio"])
 
     def test_unknown_trains_and_other_identities_are_recorded_and_not_asked_again(self) -> None:
         def respond(path: str) -> collector.FetchResult:

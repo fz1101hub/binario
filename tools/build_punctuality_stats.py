@@ -3,8 +3,9 @@
 
 Reads the state directory of ``tools/collect_punctuality.py`` (``obs-YYYY-MM-DD.jsonl.gz``) and writes
 ``stats_v1.json.gz``: the gzip (fixed header, no name or time) of one canonical UTF-8 JSON object (sorted keys, no
-spaces) holding, for the last 30 complete departure days, every train known on at least one day (arrived or
-cancelled), sorted by number and origin::
+spaces) holding, for the last 30 complete departure days, every train known on at least one day (arrived,
+cancelled, or seen travelling and closed before arriving: only the stops it had passed have a sample), sorted by
+number and origin::
 
     {"schema": "binario-punctuality-v1", "generatedAt": ..., "windowStart": ..., "windowEnd": ..., "windowDays": 30,
      "source": "ViaggiaTreno, elaborazione Binario (non ufficiale)", "buckets": [0, 2, 5, 10, 15, 20, 30, 60],
