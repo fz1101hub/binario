@@ -648,7 +648,7 @@
     <string name="stop_alarm_dialog_time">Der Wecker klingelt etwa fünf Minuten vor der voraussichtlichen Zeit %1$s.</string>
     <string name="action_set_stop_alarm">Wecker stellen</string>
     <string name="gps_alarm_option">Auch anhand meines Standorts warnen</string>
-    <string name="gps_alarm_option_description">Klingelt, sobald du im gewählten Umkreis des Halts bist (sofort, wenn du schon dort bist), auch wenn der Zug zu früh oder verspätet ist. Es zählt die Warnung, die zuerst kommt.</string>
+    <string name="gps_alarm_option_description">Klingelt, sobald du im gewählten Umkreis des Halts bist (sofort, wenn du schon dort bist), auch wenn der Zug zu früh oder verspätet ist. Klingelt der zeitbasierte Wecker, während deine Position zeigt, dass der Halt noch weit entfernt ist, bleibt der GPS-Wecker aktiv.</string>
     <string name="gps_alarm_radius_label">Warnradius</string>
     <plurals name="gps_alarm_radius_km">
         <item quantity="one">%d km</item>
@@ -681,7 +681,7 @@
     <string name="gps_alarm_ended_expired">GPS-Wecker für %1$s beendet: Die maximale Laufzeit ist abgelaufen.</string>
     <string name="gps_alarm_ended_permission">GPS-Wecker für %1$s gestoppt: Die Standortberechtigung ist nicht mehr erteilt.</string>
     <string name="gps_alarm_ended_unavailable">GPS-Wecker für %1$s gestoppt: Auf dem Telefon ist keine Standortquelle verfügbar.</string>
-    <string name="gps_alarm_ended_time_alarm">GPS-Wecker für %1$s beendet: Der zeitbasierte Wecker hat bereits geklingelt.</string>
+    <string name="gps_alarm_ended_time_alarm">GPS-Wecker für %1$s beendet: Der zeitbasierte Wecker hat geklingelt, und es gab keine aktuelle Position.</string>
     <string name="gps_alarm_interrupted">Der GPS-Wecker für %1$s wurde unterbrochen, zum Beispiel durch einen Neustart des Telefons. Aktiviere ihn erneut, wenn du noch unterwegs bist.</string>
     <string name="action_gps_alarm_resume">Erneut aktivieren</string>
     <string name="action_gps_alarm_dismiss">Ignorieren</string>
@@ -689,12 +689,13 @@
     <string name="stop_alarm_unavailable">Der Wecker kann nicht geplant werden: Die voraussichtliche Zeit des Halts liegt bereits zurück oder ist nicht verfügbar.</string>
     <string name="stop_alarm_exact">Wecker für %1$s eingestellt, fünf Minuten vor der voraussichtlichen Zeit %2$s.</string>
     <string name="stop_alarm_inexact">Wecker für %1$s eingestellt, aber Android kann ihn verspätet ausliefern, da exakte Wecker nicht erlaubt sind.</string>
+    <string name="stop_alarm_not_shown">Android zeigt die Haltwecker von Binario nicht an (Benachrichtigungen oder ihre Kategorie deaktiviert): Dieser Wecker wird nicht erscheinen.</string>
     <string name="commuter_alert_scheduled">Warnung gespeichert und auf dem Gerät geplant.</string>
     <string name="commuter_alert_scheduled_inexact">Warnung gespeichert und ungenau geplant: Android kann sie verspätet ausliefern, da exakte Wecker nicht erlaubt sind.</string>
     <string name="stop_alarms_active_title">Aktive Haltwecker</string>
     <string name="stop_alarm_active_row">%1$s · Zug %2$s · erwartete Ankunft %3$s</string>
     <string name="accessibility_cancel_stop_alarm">Wecker für %1$s abbrechen</string>
-    <string name="exact_alarm_note">Android erlaubt Binario keine exakten Wecker: Haltwecker und Pendlerwarnungen können verspätet kommen.</string>
+    <string name="exact_alarm_note">Android erlaubt Binario keine exakten Wecker: Haltwecker, Pendlerwarnungen, Ankunftswarnungen und Erinnerungen der Agenda können verspätet kommen.</string>
     <string name="exact_alarm_action">Exakte Wecker erlauben</string>
     <string name="background_status_title">Hintergrundaktivität</string>
     <string name="background_status_notifications_on">Benachrichtigungen erlaubt</string>
@@ -1394,6 +1395,7 @@
     <string name="accessibility_approach_alert_station">Bahnhof der Benachrichtigung ändern, derzeit %1$s</string>
     <string name="approach_alert_lead">Wie früh</string>
     <string name="approach_alert_summary">Benachrichtigt dich %1$s vor der Ankunft in %2$s.</string>
+    <string name="approach_alert_quiet_note">Zwischen 22 und 7 Uhr kommen keine Warnungen: Für diesen Halt kann die Warnung später oder gar nicht kommen.</string>
     <string name="approach_alert_title">%1$s erreicht %2$s in ~%3$s</string>
     <string name="approach_alert_title_now">%1$s fährt gleich in %2$s ein</string>
     <string name="approach_alert_channel_name">Ankommende Züge</string>
@@ -1492,6 +1494,8 @@
         <item quantity="one">%1$d von %2$d Mal pünktlich</item>
         <item quantity="other">%1$d von %2$d Mal pünktlich</item>
     </plurals>
+    <!-- The on-time limit after a count: «In orario 8 volte su 10 (entro 5 min)» -->
+    <string name="reliability_within_limit">%1$s (bis %2$s)</string>
     <plurals name="reliability_leg_on_time_count">
         <item quantity="one">%1$s %2$d von %3$d Mal pünktlich</item>
         <item quantity="other">%1$s %2$d von %3$d Mal pünktlich</item>

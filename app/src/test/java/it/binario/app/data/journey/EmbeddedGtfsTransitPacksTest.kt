@@ -105,6 +105,11 @@ class EmbeddedGtfsTransitPacksTest {
         val modes = first.legs.map { it.mode }
         assertTrue("modes $modes", LegMode.METRO in modes && LegMode.TRAIN in modes)
         assertTrue(first.legs.filter { it.mode == LegMode.TRAIN }.all { it.runId!!.value.startsWith("cotral-ferro-gtfs:") })
+        // The end is a stop of a railway pack in a city whose network takes part: the city lines are searched with the
+        // railway packs from the start, so a Trenitalia train to Ostiense and a walk (Roma-Lido 08:45, Lido 09:15) does
+        // not hide the metro B to Piramide and the 08:25 Roma-Lido.
+        assertEquals(java.time.LocalTime.of(8, 55), first.legs.last().scheduledArrival.toLocalTime())
+        assertEquals(java.time.LocalTime.of(8, 55), found.minOf { it.arrival.toLocalTime() })
     }
 
     @Test fun `Firenze Santa Maria Novella to the airport on the T2 tram`() {

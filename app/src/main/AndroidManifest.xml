@@ -24,6 +24,7 @@
     </queries>
 
     <application
+        android:name=".BinarioApplication"
         android:allowBackup="false"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
@@ -146,6 +147,10 @@
 
         <receiver
             android:name=".StopAlarmReceiver"
+            android:exported="false" />
+        <!-- The approach alert's wake-up alarm at its moment to notify; app-internal only. -->
+        <receiver
+            android:name=".notifications.ApproachAlertReceiver"
             android:exported="false" />
 
         <service

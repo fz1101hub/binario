@@ -70,14 +70,19 @@ class TrainNumberSearchService(
     private val dispatcher: CoroutineDispatcher = Dispatchers.IO,
     private val providerTimeoutMillis: Long = 15_000L
 ) {
-    fun search(query: TrainNumberQuery): Flow<TrainNumberSearchUpdate> = flow {
-        if (!query.valid || providers.isEmpty()) {
-            emit(TrainNumberSearchUpdate(emptyList(), true, providers.map { it.descriptor.displayName }.toSet()))
+    /**
+     * [skipping]: sources not asked for this search (the trains widget leaves Italo out for a favourite it knows is not
+     * an Italo train). They are not reported as unavailable: they were not asked.
+     */
+    fun search(query: TrainNumberQuery, skipping: Set<it.binario.app.data.core.SourceId> = emptySet()): Flow<TrainNumberSearchUpdate> = flow {
+        val asked = if (skipping.isEmpty()) providers else providers.filter { it.descriptor.id !in skipping }
+        if (!query.valid || asked.isEmpty()) {
+            emit(TrainNumberSearchUpdate(emptyList(), true, asked.map { it.descriptor.displayName }.toSet()))
             return@flow
         }
         coroutineScope {
             val completed = Channel<Pair<Int, ProviderResult<List<TrainNumberMatch>>?>>(Channel.BUFFERED)
-            providers.forEachIndexed { index, provider ->
+            asked.forEachIndexed { index, provider ->
                 launch {
                     try {
                         val timeout = if (it.binario.app.data.provider.ProviderCapability.TRAIN_RUN_STATIC in provider.descriptor.capabilities) 45_000L else providerTimeoutMillis
@@ -94,17 +99,17 @@ class TrainNumberSearchService(
             val byProvider = mutableMapOf<Int, List<TrainNumberMatch>>()
             val errors = linkedSetOf<String>()
             var finished = 0
-            while (finished < providers.size) {
+            while (finished < asked.size) {
                 val (index, result) = completed.receive()
                 when (result) {
                     is ProviderResult.Success -> byProvider[index] = result.value
-                    is ProviderResult.Partial -> { byProvider[index] = result.value; errors += providers[index].descriptor.displayName }
+                    is ProviderResult.Partial -> { byProvider[index] = result.value; errors += asked[index].descriptor.displayName }
                     null -> finished++
-                    else -> errors += providers[index].descriptor.displayName
+                    else -> errors += asked[index].descriptor.displayName
                 }
                 val matches = byProvider.toSortedMap().values.flatten().filter { query.matches(it.service.number) }
                     .groupBy { it.id }.values.map { group -> group.maxWith(compareBy<TrainNumberMatch> { it.service.operationalStatusVerified }.thenBy { it.service.operationalObservedAtEpochMillis ?: 0L }) }.sortedWith(compareBy<TrainNumberMatch> { it.service.scheduledDepartureDateTime }.thenBy { it.service.origin }.thenBy { it.snapshot.providerName })
-                emit(TrainNumberSearchUpdate(matches, finished == providers.size, errors.toSet()))
+                emit(TrainNumberSearchUpdate(matches, finished == asked.size, errors.toSet()))
             }
         }
     }.flowOn(dispatcher)

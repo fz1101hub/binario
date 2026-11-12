@@ -65,7 +65,7 @@ class BinarioComplicationDataTest {
     }
 
     @Test
-    fun `a departure is the first occurrence of its clock time from two hours before the snapshot generation`() {
+    fun `a departure is the first occurrence of its clock time from 30 minutes before the snapshot generation`() {
         val lateEvening = Instant.parse("2030-01-01T22:50:00Z").toEpochMilli() // 23:50 in Rome
         val afterMidnight = Instant.parse("2030-01-01T23:05:00Z").toEpochMilli() // 00:05 in Rome
 
@@ -85,8 +85,11 @@ class BinarioComplicationDataTest {
         assertEquals(Instant.parse("2026-11-11T05:20:00Z"), departureInstant("06:20", evening))
         // Exactly twelve hours ahead is the next occurrence, not the one twelve hours ago.
         assertEquals(Instant.parse("2026-11-11T04:30:00Z"), departureInstant("05:30", evening))
-        // A train that left within the last two hours stays in the past, so the glance skips it.
-        assertEquals(Instant.parse("2026-11-10T15:45:00Z"), departureInstant("16:45", evening))
+        // A train that left within the last 30 minutes stays in the past, so the glance skips it.
+        assertEquals(Instant.parse("2026-11-10T16:10:00Z"), departureInstant("17:10", evening))
+        // The phone never lists a departure before its request: 16:45 listed at 17:30 is tomorrow's once-a-day train,
+        // not today's that left 45 minutes ago (which the glance would count down as «Adesso»).
+        assertEquals(Instant.parse("2026-11-11T15:45:00Z"), departureInstant("16:45", evening))
 
         val nextMorning = snapshot(services = listOf(service.copy(scheduledDeparture = "05:50", expectedDeparture = "05:50")))
             .copy(generatedAtEpochMillis = evening)
@@ -102,7 +105,9 @@ class BinarioComplicationDataTest {
 
         assertEquals("RV 2345", upcomingService(snapshot, departure + 59_000L)?.first?.number)
         assertEquals("RV 2347", upcomingService(snapshot, departure + 60_000L)?.first?.number)
-        assertEquals("RV 2347", upcomingService(snapshot, departure + 3_600_000L)?.first?.number)
+        assertEquals("RV 2347", upcomingService(snapshot, departure + 20 * 60_000L)?.first?.number)
+        // Both gone (08:35 left an hour later): no service, not the last one as «Adesso».
+        assertNull(upcomingService(snapshot, departure + 3_600_000L))
         assertNull(upcomingService(snapshot(services = emptyList()), now))
     }
 
@@ -111,14 +116,20 @@ class BinarioComplicationDataTest {
         val next = service.copy(number = "RV 2347", scheduledDeparture = "08:42", expectedDeparture = "08:42")
         val snapshot = snapshot(expiresAt = now + 3_600_000L, services = listOf(service, next))
         val handOver = Instant.parse("2030-01-01T07:16:00Z").toEpochMilli()
+        val lastGoneAt = Instant.parse("2030-01-01T07:43:00Z").toEpochMilli()
 
         // Requested at 08:00: the watch face itself moves to the 08:42 at 08:16, until the snapshot deadline.
-        assertEquals(listOf(GlanceSegment(handOver, now + 3_600_000L)), laterGlanceSegments(snapshot, now))
+        assertEquals(listOf(GlanceSegment(handOver, lastGoneAt), GlanceSegment(lastGoneAt, now + 3_600_000L)), laterGlanceSegments(snapshot, now))
         assertEquals("RV 2345", upcomingService(snapshot, handOver - 1)?.first?.number)
         assertEquals("08:42", shortTextComplicationTexts(snapshot, ResourceNameStrings, handOver).title)
         assertEquals(Instant.parse("2030-01-01T07:42:00Z"), shortTextComplicationTexts(snapshot, ResourceNameStrings, handOver).countdownTo)
-        // The last service stays until the deadline: no switch after it leaves, none after the deadline or before now.
-        assertEquals(emptyList<GlanceSegment>(), laterGlanceSegments(snapshot, handOver))
+        // A minute after the last service leaves the glance shows no service (the data status), never the departed
+        // train as «Adesso»; no switch after the deadline or before now.
+        val lastGone = Instant.parse("2030-01-01T07:43:00Z").toEpochMilli()
+        assertEquals(listOf(GlanceSegment(lastGone, now + 3_600_000L)), laterGlanceSegments(snapshot, handOver))
+        assertNull(upcomingService(snapshot, lastGone))
+        assertEquals("app_name", shortTextComplicationTexts(snapshot, ResourceNameStrings, lastGone).text)
+        assertNull(shortTextComplicationTexts(snapshot, ResourceNameStrings, lastGone).countdownTo)
         assertEquals(emptyList<GlanceSegment>(), laterGlanceSegments(snapshot(expiresAt = handOver, services = listOf(service, next)), now))
         assertEquals(emptyList<GlanceSegment>(), laterGlanceSegments(snapshot(services = listOf(service)), now))
     }

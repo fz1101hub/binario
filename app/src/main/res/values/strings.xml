@@ -663,7 +663,7 @@
     <string name="stop_alarm_dialog_time">La sveglia suona circa cinque minuti prima dell’orario previsto %1$s.</string>
     <string name="action_set_stop_alarm">Imposta sveglia</string>
     <string name="gps_alarm_option">Avvisami anche in base alla posizione</string>
-    <string name="gps_alarm_option_description">Suona quando sei entro il raggio scelto dalla fermata (subito, se ci sei già), anche se il treno è in anticipo o in ritardo. Vale l’avviso che arriva per primo.</string>
+    <string name="gps_alarm_option_description">Suona quando sei entro il raggio scelto dalla fermata (subito, se ci sei già), anche se il treno è in anticipo o in ritardo. Se la sveglia a orario suona mentre la posizione dice che la fermata è ancora lontana, la sveglia GPS resta attiva.</string>
     <string name="gps_alarm_radius_label">Raggio di avviso</string>
     <plurals name="gps_alarm_radius_km">
         <item quantity="one">%d km</item>
@@ -698,7 +698,7 @@
     <string name="gps_alarm_ended_expired">Sveglia GPS per %1$s terminata: è scaduto il tempo massimo.</string>
     <string name="gps_alarm_ended_permission">Sveglia GPS per %1$s interrotta: il permesso posizione non è più concesso.</string>
     <string name="gps_alarm_ended_unavailable">Sveglia GPS per %1$s interrotta: nessuna fonte di posizione disponibile sul telefono.</string>
-    <string name="gps_alarm_ended_time_alarm">Sveglia GPS per %1$s chiusa: è già suonata la sveglia a orario.</string>
+    <string name="gps_alarm_ended_time_alarm">Sveglia GPS per %1$s chiusa: è suonata la sveglia a orario e mancava una posizione recente.</string>
     <string name="gps_alarm_interrupted">La sveglia GPS per %1$s si è interrotta, per esempio dopo un riavvio del telefono. Riattivala se sei ancora in viaggio.</string>
     <string name="action_gps_alarm_resume">Riattiva</string>
     <string name="action_gps_alarm_dismiss">Ignora</string>
@@ -706,12 +706,13 @@
     <string name="stop_alarm_unavailable">Non posso pianificare la sveglia: l’orario previsto della fermata è già passato o non è disponibile.</string>
     <string name="stop_alarm_exact">Sveglia impostata per %1$s, cinque minuti prima dell’orario previsto %2$s.</string>
     <string name="stop_alarm_inexact">Sveglia impostata per %1$s, ma Android può consegnarla in ritardo perché gli allarmi esatti non sono consentiti.</string>
+    <string name="stop_alarm_not_shown">Android non mostra le sveglie fermata di Binario (notifiche o loro categoria disattivate): questa sveglia non comparirà.</string>
     <string name="commuter_alert_scheduled">Avviso salvato e pianificato sul dispositivo.</string>
     <string name="commuter_alert_scheduled_inexact">Avviso salvato e pianificato in modalità approssimata: Android può consegnarlo in ritardo perché gli allarmi esatti non sono consentiti.</string>
     <string name="stop_alarms_active_title">Sveglie fermata attive</string>
     <string name="stop_alarm_active_row">%1$s · treno %2$s · arrivo previsto %3$s</string>
     <string name="accessibility_cancel_stop_alarm">Annulla la sveglia per %1$s</string>
-    <string name="exact_alarm_note">Android non consente a Binario le sveglie esatte: sveglie fermata e avvisi pendolare possono arrivare in ritardo.</string>
+    <string name="exact_alarm_note">Android non consente a Binario le sveglie esatte: sveglie fermata, avvisi pendolare, avvisi di arrivo e promemoria dell’Agenda possono arrivare in ritardo.</string>
     <string name="exact_alarm_action">Consenti sveglie esatte</string>
     <string name="background_status_title">Attività in background</string>
     <string name="background_status_notifications_on">Notifiche consentite</string>
@@ -1428,6 +1429,7 @@
     <string name="accessibility_approach_alert_station">Cambia la stazione dell’avviso, ora %1$s</string>
     <string name="approach_alert_lead">Quanto prima</string>
     <string name="approach_alert_summary">Ti avvisa %1$s prima dell’arrivo a %2$s.</string>
+    <string name="approach_alert_quiet_note">Tra le 22 e le 7 non arrivano avvisi: per questa fermata l’avviso può arrivare più tardi o non arrivare.</string>
     <string name="approach_alert_title">%1$s arriva a %2$s tra ~%3$s</string>
     <string name="approach_alert_title_now">%1$s sta arrivando a %2$s</string>
     <string name="approach_alert_channel_name">Treni in arrivo</string>
@@ -1529,6 +1531,8 @@
         <item quantity="many">In orario %1$d volte su %2$d</item>
         <item quantity="other">In orario %1$d volte su %2$d</item>
     </plurals>
+    <!-- The on-time limit after a count: «In orario 8 volte su 10 (entro 5 min)» -->
+    <string name="reliability_within_limit">%1$s (entro %2$s)</string>
     <plurals name="reliability_leg_on_time_count">
         <item quantity="one">%1$s in orario %2$d volta su %3$d</item>
         <item quantity="many">%1$s in orario %2$d volte su %3$d</item>

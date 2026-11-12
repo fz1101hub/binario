@@ -194,6 +194,34 @@ internal object GpsArrivalAlarmPolicy {
         else -> false
     }
 
+    /**
+     * A fix accepted outside the radius at most this long before the time-based alarm rings outweighs it: the train
+     * is late (or the time was set long ago) and the GPS alarm goes on, to ring near the stop.
+     */
+    const val TIME_ALARM_RECENT_FIX_MILLIS = 5 * 60_000L
+
+    /**
+     * Whether the GPS alarm keeps running when the time-based alarm of the same stop rings at [nowEpochMillis]: only
+     * with a recent accepted fix ([lastFixAtEpochMillis]) that was still [remainingMeters] outside the radius. Without
+     * a usable fix the time-based alarm is the only one that can be trusted, and the GPS alarm stops.
+     */
+    fun keepsRunningAfterTimeAlarm(lastFixAtEpochMillis: Long?, remainingMeters: Double?, nowEpochMillis: Long): Boolean {
+        if (lastFixAtEpochMillis == null || remainingMeters == null || remainingMeters.isNaN() || remainingMeters <= 0.0) return false
+        val age = nowEpochMillis - lastFixAtEpochMillis
+        return age in 0..TIME_ALARM_RECENT_FIX_MILLIS
+    }
+
+    /**
+     * Why a running alarm must end now, checked by the watchdog and when a location provider is switched off: expired,
+     * location permission lost, or location switched off (the time-based alarm stays). Null while it may go on.
+     */
+    fun runningEndReason(expired: Boolean, permissionHeld: Boolean, locationEnabled: Boolean): GpsArrivalAlarmEndReason? = when {
+        expired -> GpsArrivalAlarmEndReason.EXPIRED
+        !permissionHeld -> GpsArrivalAlarmEndReason.PERMISSION_REVOKED
+        !locationEnabled -> GpsArrivalAlarmEndReason.LOCATION_UNAVAILABLE
+        else -> null
+    }
+
     /** When the service must stop: two hours after the expected arrival, capped at eight hours from the start. */
     fun expiresAtEpochMillis(startedAtEpochMillis: Long, arrivalEpochMillis: Long): Long =
         min(arrivalEpochMillis + AFTER_ARRIVAL_MILLIS, startedAtEpochMillis + MAX_DURATION_MILLIS)

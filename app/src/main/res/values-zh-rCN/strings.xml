@@ -633,7 +633,7 @@
     <string name="stop_alarm_dialog_time">闹钟会在预计时刻 %1$s 前约五分钟响起。</string>
     <string name="action_set_stop_alarm">设置闹钟</string>
     <string name="gps_alarm_option">同时根据位置提醒我</string>
-    <string name="gps_alarm_option_description">当你进入距停靠站的所选半径范围内时响铃（如果已在范围内则立即响铃），无论列车早到还是晚点。以先触发的提醒为准。</string>
+    <string name="gps_alarm_option_description">当你进入距停靠站的所选半径范围内时响铃（如果已在范围内则立即响铃），无论列车早到还是晚点。如果按时间的闹钟响起时你的位置显示停靠站仍然很远，GPS 闹钟会保持开启。</string>
     <string name="gps_alarm_radius_label">提醒半径</string>
     <plurals name="gps_alarm_radius_km">
         <item quantity="other">%d 公里</item>
@@ -664,7 +664,7 @@
     <string name="gps_alarm_ended_expired">%1$s 的 GPS 闹钟已结束：已达到最长时间。</string>
     <string name="gps_alarm_ended_permission">%1$s 的 GPS 闹钟已中断：位置权限已被撤销。</string>
     <string name="gps_alarm_ended_unavailable">%1$s 的 GPS 闹钟已中断：手机上没有可用的位置来源。</string>
-    <string name="gps_alarm_ended_time_alarm">%1$s 的 GPS 闹钟已关闭：按时间的闹钟已经响过。</string>
+    <string name="gps_alarm_ended_time_alarm">%1$s 的 GPS 闹钟已关闭：按时间的闹钟已响，且没有最近的位置。</string>
     <string name="gps_alarm_interrupted">%1$s 的 GPS 闹钟已中断，例如因为手机重启。如果你仍在旅途中，请重新开启。</string>
     <string name="action_gps_alarm_resume">重新开启</string>
     <string name="action_gps_alarm_dismiss">忽略</string>
@@ -672,12 +672,13 @@
     <string name="stop_alarm_unavailable">无法设置闹钟：停靠站的预计时刻已过或不可用。</string>
     <string name="stop_alarm_exact">已为 %1$s 设置闹钟，将在预计时刻 %2$s 前五分钟响起。</string>
     <string name="stop_alarm_inexact">已为 %1$s 设置闹钟，但由于未允许精确闹钟，Android 可能会延迟提醒。</string>
+    <string name="stop_alarm_not_shown">Android 不显示 Binario 的到站闹钟（通知或其类别已关闭）：此闹钟不会出现。</string>
     <string name="commuter_alert_scheduled">提醒已保存，并已在设备上安排。</string>
     <string name="commuter_alert_scheduled_inexact">提醒已保存，并以非精确模式安排：由于未允许精确闹钟，Android 可能会延迟提醒。</string>
     <string name="stop_alarms_active_title">已设置的到站闹钟</string>
     <string name="stop_alarm_active_row">%1$s · 列车 %2$s · 预计到达 %3$s</string>
     <string name="accessibility_cancel_stop_alarm">取消 %1$s 的闹钟</string>
-    <string name="exact_alarm_note">Android 未允许 Binario 使用精确闹钟：到站闹钟和通勤提醒可能会延迟。</string>
+    <string name="exact_alarm_note">Android 未允许 Binario 使用精确闹钟：到站闹钟、通勤提醒、到达提醒和日程提醒可能会延迟。</string>
     <string name="exact_alarm_action">允许精确闹钟</string>
     <string name="background_status_title">后台活动</string>
     <string name="background_status_notifications_on">已允许通知</string>
@@ -1360,6 +1361,7 @@
     <string name="accessibility_approach_alert_station">更改提醒车站，当前为 %1$s</string>
     <string name="approach_alert_lead">提前多久</string>
     <string name="approach_alert_summary">在到达%2$s前 %1$s 提醒你。</string>
+    <string name="approach_alert_quiet_note">22:00 至 7:00 不发送提醒：此停靠站的提醒可能延后或不会送达。</string>
     <string name="approach_alert_title">%1$s ~%3$s 后到达 %2$s</string>
     <string name="approach_alert_title_now">%1$s 即将到达 %2$s</string>
     <string name="approach_alert_channel_name">即将到站的列车</string>
@@ -1455,6 +1457,8 @@
     <plurals name="reliability_on_time_count">
         <item quantity="other">%2$d 次中准点 %1$d 次</item>
     </plurals>
+    <!-- The on-time limit after a count: «In orario 8 volte su 10 (entro 5 min)» -->
+    <string name="reliability_within_limit">%1$s（%2$s 以内）</string>
     <plurals name="reliability_leg_on_time_count">
         <item quantity="other">%1$s %3$d 次中准点 %2$d 次</item>
     </plurals>

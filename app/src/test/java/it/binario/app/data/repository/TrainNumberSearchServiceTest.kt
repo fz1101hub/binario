@@ -119,6 +119,16 @@ class TrainNumberSearchServiceTest {
         val source = TrainNumberSearchService(listOf(provider("static") { result(match("same")) }, provider("live") { result(match("same", true)) }))
         assertTrue(source.search(query).last().matches.single().service.operationalStatusVerified)
     }
+    @Test fun `a skipped source is not asked and not reported as unavailable`() = runBlocking {
+        var italoAsked = false
+        val source = TrainNumberSearchService(listOf(provider("vt") { result(match("vt", true)) }, provider("italo-status") { italoAsked = true; result(match("italo")) }))
+        val update = source.search(query, skipping = setOf(SourceId("italo-status"))).last()
+        assertFalse(italoAsked)
+        assertTrue(update.complete)
+        assertEquals("vt", update.matches.single().id)
+        assertTrue(update.unavailableSources.isEmpty())
+        assertEquals(setOf("vt", "italo"), source.search(query).last().matches.map { it.id }.toSet())
+    }
     @Test fun `unrelated results never leak from a source into the search`() = runBlocking {
         val wrong = match("wrong").let { it.copy(service = it.service.copy(number = "232630")) }
         val source = TrainNumberSearchService(listOf(provider("a") { result(wrong) }))

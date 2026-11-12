@@ -43,7 +43,12 @@ import it.binario.app.notifications.TripLiveText
  */
 class GpsArrivalAlarmService : Service() {
     private val handler = Handler(Looper.getMainLooper())
-    private val listener = LocationListenerCompat(::onLocation)
+    private val listener = object : LocationListenerCompat {
+        override fun onLocationChanged(location: Location) = onLocation(location)
+
+        // Location switched off while running (by the user or a battery saver): no fix would ever come again.
+        override fun onProviderDisabled(provider: String) = checkStillAllowed()
+    }
     private val watchdog = object : Runnable {
         override fun run() {
             checkStillAllowed()
@@ -197,12 +202,15 @@ class GpsArrivalAlarmService : Service() {
             is GpsFixDecision.Approaching -> {
                 lastAcceptedFixAt = now
                 lastRemainingMeters = decision.remainingMeters
+                GpsArrivalAlarmRuntime.recordFix(now, decision.remainingMeters)
                 val low = wantsLowPower(current, decision.remainingMeters, now)
                 val maxInterval = if (low) GpsArrivalAlarmPolicy.LOW_POWER_MAX_INTERVAL_MILLIS else GpsArrivalAlarmPolicy.MAX_INTERVAL_MILLIS
                 val next = GpsArrivalAlarmPolicy.nextIntervalMillis(decision.remainingMeters, maxInterval)
                 if (next != intervalMillis || low != lowPower) requestUpdates(next, low)
             }
-            is GpsFixDecision.Rejected -> Unit
+            // A rejected fix (a cell fix above 5 km, common in low power) is a wake-up too: the way back to GPS must not
+            // wait for the watchdog, whose timer does not run while the phone sleeps.
+            is GpsFixDecision.Rejected -> checkPowerMode(now)
         }
     }
 
@@ -276,14 +284,15 @@ class GpsArrivalAlarmService : Service() {
     private fun checkStillAllowed() {
         val current = target ?: return
         followed = isFollowed(current)
-        when {
-            finished -> Unit
-            GpsArrivalAlarmPolicy.isExpired(System.currentTimeMillis(), current) -> finish(GpsArrivalAlarmEndReason.EXPIRED)
+        if (finished) return
+        val locationManager = getSystemService(LocationManager::class.java)
+        GpsArrivalAlarmPolicy.runningEndReason(
+            expired = GpsArrivalAlarmPolicy.isExpired(System.currentTimeMillis(), current),
             // Revoked, or precise access downgraded to approximate, while running. Android
             // normally kills the process on revocation; this covers the cases where it does not.
-            !granted(if (precise) Manifest.permission.ACCESS_FINE_LOCATION else Manifest.permission.ACCESS_COARSE_LOCATION) ->
-                finish(GpsArrivalAlarmEndReason.PERMISSION_REVOKED)
-        }
+            permissionHeld = granted(if (precise) Manifest.permission.ACCESS_FINE_LOCATION else Manifest.permission.ACCESS_COARSE_LOCATION),
+            locationEnabled = locationManager != null && LocationManagerCompat.isLocationEnabled(locationManager)
+        )?.let(::finish)
     }
 
     private fun requestUpdates(nextIntervalMillis: Long, lowPower: Boolean = this.lowPower) {

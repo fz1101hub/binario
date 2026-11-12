@@ -16,6 +16,7 @@ import androidx.core.content.ContextCompat
 import androidx.core.content.edit
 import it.binario.app.data.TrainService
 import it.binario.app.gpsalarm.GpsArrivalAlarmController
+import it.binario.app.notifications.LiveNotifications
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -117,6 +118,9 @@ object StopAlarmScheduler {
         return scheduleWakeupAlarm(context, alarmManager, triggerAtEpochMillis, pendingIntent)
     }
 
+    /** Whether a stop alarm can appear: notifications allowed and its channel not blocked by the user. */
+    fun canShow(context: Context): Boolean = LiveNotifications.channelAllowed(context, CHANNEL_ID)
+
     /** Posts the stop alarm notification; false when Android does not let the app notify. */
     fun notify(
         context: Context,
@@ -138,6 +142,8 @@ object StopAlarmScheduler {
                 NotificationManager.IMPORTANCE_HIGH
             ).apply { description = context.getString(R.string.stop_alarm_channel_description) }
         )
+        // A channel the user blocked shows nothing: not delivered, so the GPS alarm keeps the time-based one.
+        if (!LiveNotifications.channelShows(manager.getNotificationChannel(CHANNEL_ID)?.importance)) return false
         val byLocation = trigger == StopAlarmTrigger.LOCATION
         val title = if (byLocation) R.string.gps_alarm_triggered_title else R.string.stop_alarm_notification_title
         val text = if (byLocation) R.string.gps_alarm_triggered_text else R.string.stop_alarm_notification_text
@@ -149,6 +155,8 @@ object StopAlarmScheduler {
             .setStyle(NotificationCompat.BigTextStyle().bigText(context.getString(bigText, train, destination, station, expected)))
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setAutoCancel(true)
+            // The stop is behind the traveller long before: the alarm does not stay in the shade for hours.
+            .setTimeoutAfter(StopAlarmPlanner.NOTIFICATION_TIMEOUT_MILLIS)
             .setContentIntent(contentIntent(context, train, station))
             .build()
         // Same id for both triggers and for every expected time: if the other alarm still rings later, or the alarm
@@ -266,7 +274,7 @@ class StopAlarmReceiver : BroadcastReceiver() {
             station = station,
             expected = StopAlarmScheduler.expectedExtra(intent)
         )
-        // Whichever alarm rings first wins: the GPS alarm for the same stop stops here.
+        // The GPS alarm for the same stop stops here, unless a recent fix shows the stop still outside its radius.
         GpsArrivalAlarmController.onTimeAlarmFired(context, train, station)
     }
 }

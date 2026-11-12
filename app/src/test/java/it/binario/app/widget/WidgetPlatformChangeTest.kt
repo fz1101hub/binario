@@ -38,6 +38,25 @@ class WidgetPlatformChangeTest {
         assertTrue(older!!.accessibleLabel(widget).contains("Binario 7"))
     }
 
+    @Test fun `a stale route row shows and reads the timetable platform and no old expected arrival`() {
+        val service = WidgetService(
+            number = "2153", operator = RailOperator.TRENITALIA_REGIONALE, category = TrainCategory.REGIONALE,
+            destination = "Milano Centrale", expectedDeparture = "09:12", status = ServiceStatus.DELAYED, delayMinutes = 7,
+            platform = "7", operationalStatusVerified = true, scheduledDeparture = "09:05", departureEpochMillis = now,
+            arrivalLabel = "10:02", scheduledPlatform = "5"
+        )
+        assertEquals("7" to "5", service.shownPlatform(live = true))
+        assertEquals("10:02", service.shownArrival(live = true))
+        // Old data: the row is the timetable, «in viaggio» without the old arrival and the platform of the timetable.
+        assertEquals("5" to null, service.shownPlatform(live = false))
+        assertNull(service.shownArrival(live = false))
+        val spoken = service.accessibleLabel(widget, live = false)
+        assertTrue(spoken, spoken.contains("Binario 5"))
+        assertFalse(spoken, spoken.contains("Binario cambiato"))
+        // Without a change the shown platform stays.
+        assertEquals("7" to null, service.copy(scheduledPlatform = null).shownPlatform(live = false))
+    }
+
     @Test fun `station widget shows BIN 7 era 5 in the attention colour flag and reads it`() {
         val strings = StationWidgetStrings(
             widget = widget, statusLate = "RIT.", statusChanged = "VAR.", platformShort = catalogue.getValue("widget_platform_short"),

@@ -24,6 +24,9 @@ data class StopAlarmPlan(
 
 object StopAlarmPlanner {
     private const val LEAD_MINUTES = 5L
+
+    /** The rung alarm (time or GPS) leaves the notification shade after an hour: the stop is long behind by then. */
+    const val NOTIFICATION_TIMEOUT_MILLIS = 60 * 60_000L
     private val timeFormatter = DateTimeFormatter.ofPattern("H:mm")
 
     fun plan(

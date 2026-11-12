@@ -648,7 +648,7 @@
     <string name="stop_alarm_dialog_time">Alarm, tahmini saatten (%1$s) yaklaşık beş dakika önce çalar.</string>
     <string name="action_set_stop_alarm">Alarm kur</string>
     <string name="gps_alarm_option">Konumuma göre de uyar</string>
-    <string name="gps_alarm_option_description">Duraktan seçilen yarıçap içine girdiğinizde çalar (zaten içindeyseniz hemen), tren erken ya da geç olsa bile. Hangi uyarı önce gelirse o geçerlidir.</string>
+    <string name="gps_alarm_option_description">Duraktan seçilen yarıçap içine girdiğinizde çalar (zaten içindeyseniz hemen), tren erken ya da geç olsa bile. Saate dayalı alarm, konumunuz durağın hâlâ uzakta olduğunu gösterirken çalarsa GPS alarmı açık kalır.</string>
     <string name="gps_alarm_radius_label">Uyarı yarıçapı</string>
     <plurals name="gps_alarm_radius_km">
         <item quantity="one">%d km</item>
@@ -681,7 +681,7 @@
     <string name="gps_alarm_ended_expired">%1$s için GPS alarmı sona erdi: azami süre doldu.</string>
     <string name="gps_alarm_ended_permission">%1$s için GPS alarmı durduruldu: konum izni artık verilmiyor.</string>
     <string name="gps_alarm_ended_unavailable">%1$s için GPS alarmı durduruldu: telefonda kullanılabilir konum kaynağı yok.</string>
-    <string name="gps_alarm_ended_time_alarm">%1$s için GPS alarmı kapatıldı: saate dayalı alarm zaten çaldı.</string>
+    <string name="gps_alarm_ended_time_alarm">%1$s için GPS alarmı kapatıldı: saate dayalı alarm çaldı ve yakın zamanlı bir konum yoktu.</string>
     <string name="gps_alarm_interrupted">%1$s için GPS alarmı kesildi; örneğin telefon yeniden başlatıldığı için. Hâlâ yolculuktaysanız yeniden açın.</string>
     <string name="action_gps_alarm_resume">Yeniden aç</string>
     <string name="action_gps_alarm_dismiss">Yok say</string>
@@ -689,12 +689,13 @@
     <string name="stop_alarm_unavailable">Alarm kurulamıyor: durağın tahmini saati geçti veya bilinmiyor.</string>
     <string name="stop_alarm_exact">%1$s için alarm kuruldu; tahmini saatten (%2$s) beş dakika önce çalacak.</string>
     <string name="stop_alarm_inexact">%1$s için alarm kuruldu, ancak tam zamanlı alarmlara izin verilmediğinden Android alarmı geç iletebilir.</string>
+    <string name="stop_alarm_not_shown">Android, Binario’nun durak alarmlarını göstermiyor (bildirimler veya kategorileri kapalı): bu alarm görünmeyecek.</string>
     <string name="commuter_alert_scheduled">Uyarı kaydedildi ve cihazda zamanlandı.</string>
     <string name="commuter_alert_scheduled_inexact">Uyarı kaydedildi ve yaklaşık modda zamanlandı: tam zamanlı alarmlara izin verilmediğinden Android uyarıyı geç iletebilir.</string>
     <string name="stop_alarms_active_title">Etkin durak alarmları</string>
     <string name="stop_alarm_active_row">%1$s · tren %2$s · tahmini varış %3$s</string>
     <string name="accessibility_cancel_stop_alarm">%1$s alarmını iptal et</string>
-    <string name="exact_alarm_note">Android, Binario için tam zamanlı alarmlara izin vermiyor: durak alarmları ve düzenli yolculuk uyarıları geç gelebilir.</string>
+    <string name="exact_alarm_note">Android, Binario için tam zamanlı alarmlara izin vermiyor: durak alarmları, düzenli yolculuk uyarıları, varış uyarıları ve Ajanda hatırlatıcıları geç gelebilir.</string>
     <string name="exact_alarm_action">Tam zamanlı alarmlara izin ver</string>
     <string name="background_status_title">Arka plan etkinliği</string>
     <string name="background_status_notifications_on">Bildirimlere izin verildi</string>
@@ -1394,6 +1395,7 @@
     <string name="accessibility_approach_alert_station">Uyarının istasyonunu değiştir, şu an %1$s</string>
     <string name="approach_alert_lead">Ne kadar önce</string>
     <string name="approach_alert_summary">%2$s varışından %1$s önce bildirir.</string>
+    <string name="approach_alert_quiet_note">22.00 ile 07.00 arasında uyarı gönderilmez: bu durak için uyarı daha geç gelebilir ya da hiç gelmeyebilir.</string>
     <string name="approach_alert_title">%1$s ~%3$s içinde %2$s istasyonuna varıyor</string>
     <string name="approach_alert_title_now">%1$s %2$s istasyonuna varmak üzere</string>
     <string name="approach_alert_channel_name">Yaklaşan trenler</string>
@@ -1492,6 +1494,8 @@
         <item quantity="one">%2$d seferin %1$d tanesinde zamanında</item>
         <item quantity="other">%2$d seferin %1$d tanesinde zamanında</item>
     </plurals>
+    <!-- The on-time limit after a count: «In orario 8 volte su 10 (entro 5 min)» -->
+    <string name="reliability_within_limit">%1$s (%2$s içinde)</string>
     <plurals name="reliability_leg_on_time_count">
         <item quantity="one">%1$s, %3$d seferin %2$d tanesinde zamanında</item>
         <item quantity="other">%1$s, %3$d seferin %2$d tanesinde zamanında</item>

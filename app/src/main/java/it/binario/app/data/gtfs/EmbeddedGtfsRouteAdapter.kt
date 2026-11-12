@@ -21,9 +21,8 @@ import it.binario.app.data.core.SourceId
 import it.binario.app.data.repository.TrainNumberQuery
 import it.binario.app.data.repository.TrainNumberMatch
 import it.binario.app.data.planned.BoundedSingleFlightCache
-import it.binario.app.data.sources.RailInformationCategory
+import it.binario.app.data.sources.PlannedPackOrder
 import it.binario.app.data.sources.RailSourceCatalog
-import it.binario.app.data.sources.RailSourceSelectionPolicy
 import java.io.ByteArrayInputStream
 import java.io.InputStream
 import java.text.Normalizer
@@ -190,6 +189,9 @@ class EmbeddedGtfsRouteAdapter(
             null
         }
 
+        // Whether a national pack lists each station, as a candidate or not: a border zone otherwise (plannedPackOrder).
+        var nationalAtOrigin = false
+        var nationalAtDestination = false
         val candidatePacks = withContext(parsingDispatcher) {
             buildList {
                 for (pack in packs) {
@@ -201,6 +203,10 @@ class EmbeddedGtfsRouteAdapter(
                         val byCode = codeNames(pack)
                         val origin = (byCode[originStation.id] ?: withoutSuffixes(originNames, pack)).firstOrNull { normalize(it) in stops }
                         val destination = (byCode[destinationStation.id] ?: withoutSuffixes(destinationNames, pack)).firstOrNull { normalize(it) in stops }
+                        if (pack.sourceId in PlannedPackOrder.nationalPacks) {
+                            nationalAtOrigin = nationalAtOrigin || origin != null
+                            nationalAtDestination = nationalAtDestination || destination != null
+                        }
                         when {
                             origin != null && destination != null -> add(CandidatePack(pack, origin, destination))
                             explicitSourceIds != null -> add(CandidatePack(pack, originStation.name, destinationStation.name))
@@ -257,7 +263,7 @@ class EmbeddedGtfsRouteAdapter(
             collected
                 .sortedWith(
                     compareBy<SourcedService> { it.service.scheduledDepartureDateTime }
-                        .thenByDescending { sourcePreference(it.sourceId, it.service.operatorDisplayName) }
+                        .then(plannedPackOrder(borderZone = !nationalAtOrigin || !nationalAtDestination))
                         .thenBy { it.service.number }
                 )
                 .distinctBy { item -> serviceIdentity(item.service) }
@@ -430,12 +436,14 @@ class EmbeddedGtfsRouteAdapter(
     private fun coreTrainNumber(value: String): String? =
         Regex("[0-9]+").findAll(value.substringAfterLast(" - ")).lastOrNull()?.value?.trimStart('0')?.takeIf(String::isNotEmpty)
 
-    private fun sourcePreference(sourceId: SourceId, operatorName: String?): Int =
-        RailSourceSelectionPolicy.score(
-            RailInformationCategory.PLANNED_ITINERARY,
-            sourceId,
-            operatorName
-        )
+    /**
+     * Which copy of a train two packs both list is kept: the planned order of the packs ([PlannedPackOrder], as in the
+     * journey planner), with the operator of the service for the affinity within a class. Every candidate pack serves
+     * both stations (a pack matching only one is not read), so in a [borderZone] (no national pack lists one of the two
+     * stations: Lugano, Innsbruck) the planner's border exception applies to every candidate: foreign packs first.
+     */
+    private fun plannedPackOrder(borderZone: Boolean): Comparator<SourcedService> =
+        PlannedPackOrder.comparator(sourceId = { it.sourceId }, operatorHint = { it.service.operatorDisplayName }, first = { borderZone })
 
     private data class CandidatePack(val pack: EmbeddedGtfsPack, val originStopName: String, val destinationStopName: String)
 

@@ -82,6 +82,16 @@ Dodici revisori indipendenti, ognuno con un punto di vista diverso, hanno trovat
   - l'archivio iPhone usa il numero dell'esecuzione come numero di build;
   - 41 documenti storici hanno l'avviso «Documento storico»; un controllo verifica la riga di stato dei documenti datati;
   - `AZIONI_TITOLARE.md` elenca i passi su GitHub che spettano al titolare (protezione dei rami, PR vecchie, licenza, archivio di APK).
+- **Android, ordine degli orari offline** (decisione del titolare): nel pianificatore e nella ricerca dei treni diretti, quando due reti pubblicano lo stesso treno vince prima Trenitalia o Italo, poi le reti regionali italiane, poi quelle estere. Dove una stazione non è servita né da Trenitalia né da Italo (Innsbruck, Lugano, Merano) vengono prima le reti che la servono, quelle estere prima delle regionali. Il pianificatore prova per prime metro e tram quando un capo della ricerca è in una città con la rete urbana inclusa: Roma Termini → Lido Centro torna alle 8:55 con metro B e Roma–Lido. Ordine delle fonti in tempo reale invariato.
+- **Android, notifiche, widget e orologio**:
+  - il widget «I miei treni» in modalità «Sempre» chiede solo i treni vicini alla loro corsa (da un'ora prima della partenza a mezz'ora dopo l'arrivo), una volta per tutti i widget, e non chiede più a Italo i treni di altre imprese: sparisce la gran parte delle circa 2.300 richieste al giorno;
+  - un preferito con numero composto («RE_11 - 2153») non resta più «In attesa del primo aggiornamento» nel widget; una corsa di un giorno precedente non viene più spostata a oggi né contata come in viaggio;
+  - la sveglia di fermata a orario non spegne più la sveglia GPS quando il GPS ha una posizione recente; se la posizione viene spenta durante il viaggio la sveglia GPS lo nota; un canale di notifica bloccato viene riconosciuto;
+  - l'avviso di avvicinamento arriva al momento giusto anche in risparmio energetico (sveglia esatta quando è permessa); se cade tra le 22 e le 7 l'app lo dice al salvataggio, e nei giorni in cui non potrebbe suonare non fa la richiesta;
+  - le righe di affidabilità dicono la soglia («entro 5 min», «entro 15 min»);
+  - il riepilogo settimanale non riprova più ogni minuto con le notifiche spente; il registratore della puntualità non riprova nei giorni in cui il treno non circola e conta il giorno di servizio di ieri;
+  - le notifiche a tempo scadono da sole; la pausa dopo un rifiuto 403/429 resta anche se Android chiude l'app (al massimo un'ora);
+  - sull'orologio un treno già partito non resta «Adesso» e la tile dice «Nessuna corsa da mostrare»; il widget della tratta con dati vecchi non mostra più un arrivo o un binario superati.
 - **Avvisi da fonti non cifrate**: un indirizzo costruito ad arte (schema annidato, barre codificate più volte) non diventa più un link toccabile. Il controllo sui siti ammessi vale nel punto in cui il link viene creato.
 - **CI iPhone** (#84): l'età degli orari blocca solo le release (run avviata a mano, PR verso un ramo di stabilizzazione). Nelle altre run è un avviso: dal 13 novembre il job sarebbe diventato rosso su ogni modifica.
 
