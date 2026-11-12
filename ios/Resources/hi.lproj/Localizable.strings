@@ -154,6 +154,17 @@
 "saved.agenda.clear_body" = "इस डिवाइस की सभी नियोजित यात्राएँ, न पढ़ी जा सकने वाली भी, उनके रिमाइंडर और यात्रा टेम्पलेट हटा दिए जाएँगे। जिन यात्राओं को रखना है उन्हें पहले JSON में एक्सपोर्ट करें। डिफ़ॉल्ट अग्रिम समय नहीं बदलेगा।";
 "saved.agenda.clear_confirm" = "खाली करें";
 "saved.agenda.cleared" = "एजेंडा खाली किया गया: यात्राएँ, रिमाइंडर और टेम्पलेट इस डिवाइस से हटाए गए।";
+"saved.agenda.search" = "स्टेशन, तारीख या समय खोजें";
+"saved.agenda.month" = "महीना";
+"saved.agenda.all_months" = "सभी महीने";
+"saved.agenda.ready_title" = "यात्रा के लिए तैयार";
+"saved.agenda.countdown_minutes" = "%1$lld मिनट में";
+"saved.agenda.countdown_hours" = "%1$lld घंटे में";
+"saved.agenda.countdown_hours_minutes" = "%1$lld घं %2$lld मि में";
+"saved.agenda.ready_no_reminder" = "इस यात्रा के लिए कोई रिमाइंडर सेट नहीं है।";
+"saved.agenda.ready_checklist_done" = "स्थानीय चेकलिस्ट पूरी हुई।";
+"saved.agenda.ready_checklist_left" = "चेकलिस्ट में बाकी आइटम: %lld";
+"saved.agenda.ready_local_note" = "यह सारांश केवल सहेजी गई योजना का उपयोग करता है: यह देरी, प्लेटफ़ॉर्म या रद्दीकरण नहीं जाँचता।";
 "settings.title" = "सेटिंग्स";
 "settings.data.title" = "डेटा और स्रोत";
 "settings.data.catalog" = "स्टेशन कैटलॉग";

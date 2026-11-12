@@ -154,6 +154,17 @@
 "saved.agenda.clear_body" = "将删除此设备上的所有计划行程（包括无法读取的）、其提醒和行程模板。请先将要保留的行程导出为 JSON。默认提前量保持不变。";
 "saved.agenda.clear_confirm" = "清空";
 "saved.agenda.cleared" = "日程已清空：已从此设备删除行程、提醒和模板。";
+"saved.agenda.search" = "搜索车站、日期或时间";
+"saved.agenda.month" = "月份";
+"saved.agenda.all_months" = "所有月份";
+"saved.agenda.ready_title" = "准备出发";
+"saved.agenda.countdown_minutes" = "%1$lld 分钟后";
+"saved.agenda.countdown_hours" = "%1$lld 小时后";
+"saved.agenda.countdown_hours_minutes" = "%1$lld 小时 %2$lld 分钟后";
+"saved.agenda.ready_no_reminder" = "此行程未设置提醒。";
+"saved.agenda.ready_checklist_done" = "本机清单已完成。";
+"saved.agenda.ready_checklist_left" = "清单剩余项目：%lld";
+"saved.agenda.ready_local_note" = "此摘要只使用已保存的计划：不会检查晚点、站台或停运。";
 "settings.title" = "设置";
 "settings.data.title" = "数据和来源";
 "settings.data.catalog" = "车站目录";

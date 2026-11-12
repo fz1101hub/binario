@@ -154,6 +154,17 @@
 "saved.agenda.clear_body" = "Tất cả hành trình đã lên kế hoạch trên thiết bị này, kể cả các hành trình không đọc được, lời nhắc của chúng và các mẫu hành trình sẽ bị xóa. Hãy xuất trước sang JSON các hành trình muốn giữ. Thời gian báo trước mặc định không thay đổi.";
 "saved.agenda.clear_confirm" = "Xóa sạch";
 "saved.agenda.cleared" = "Đã xóa sạch Lịch trình: hành trình, lời nhắc và mẫu đã bị xóa khỏi thiết bị này.";
+"saved.agenda.search" = "Tìm ga, ngày hoặc giờ";
+"saved.agenda.month" = "Tháng";
+"saved.agenda.all_months" = "Tất cả các tháng";
+"saved.agenda.ready_title" = "Sẵn sàng khởi hành";
+"saved.agenda.countdown_minutes" = "Còn %1$lld phút";
+"saved.agenda.countdown_hours" = "Còn %1$lld giờ";
+"saved.agenda.countdown_hours_minutes" = "Còn %1$lld giờ %2$lld phút";
+"saved.agenda.ready_no_reminder" = "Chưa đặt lời nhắc cho hành trình này.";
+"saved.agenda.ready_checklist_done" = "Đã hoàn thành danh sách kiểm tra trên máy.";
+"saved.agenda.ready_checklist_left" = "Mục danh sách kiểm tra còn lại: %lld";
+"saved.agenda.ready_local_note" = "Bản tóm tắt này chỉ dùng kế hoạch đã lưu: không kiểm tra độ trễ, sân ga hay chuyến bị hủy.";
 "settings.title" = "Cài đặt";
 "settings.data.title" = "Dữ liệu và nguồn";
 "settings.data.catalog" = "Danh mục ga";

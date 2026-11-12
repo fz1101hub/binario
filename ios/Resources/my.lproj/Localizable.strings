@@ -154,6 +154,17 @@
 "saved.agenda.clear_body" = "ဤစက်ရှိ စီစဉ်ထားသော ခရီးစဉ်အားလုံး၊ မဖတ်နိုင်သည်များ အပါအဝင်၊ ၎င်းတို့၏ သတိပေးချက်များနှင့် ခရီးစဉ်ပုံစံများကို ဖျက်ပါမည်။ သိမ်းထားလိုသော ခရီးစဉ်များကို JSON သို့ အရင် ထုတ်ယူပါ။ မူလ ကြိုတင်အချိန် မပြောင်းပါ။";
 "saved.agenda.clear_confirm" = "ရှင်းလင်းရန်";
 "saved.agenda.cleared" = "ခရီးစဉ်ဇယားကို ရှင်းလင်းပြီး- ခရီးစဉ်၊ သတိပေးချက်နှင့် ပုံစံများကို ဤစက်မှ ဖယ်ရှားပြီး။";
+"saved.agenda.search" = "ဘူတာ၊ ရက်စွဲ သို့မဟုတ် အချိန် ရှာရန်";
+"saved.agenda.month" = "လ";
+"saved.agenda.all_months" = "လအားလုံး";
+"saved.agenda.ready_title" = "ခရီးထွက်ရန် အသင့်";
+"saved.agenda.countdown_minutes" = "%1$lld မိနစ်အတွင်း";
+"saved.agenda.countdown_hours" = "%1$lld နာရီအတွင်း";
+"saved.agenda.countdown_hours_minutes" = "%1$lld နာရီ %2$lld မိနစ်အတွင်း";
+"saved.agenda.ready_no_reminder" = "ဤခရီးစဉ်အတွက် သတိပေးချက် မသတ်မှတ်ရသေးပါ။";
+"saved.agenda.ready_checklist_done" = "စက်တွင်း စစ်ဆေးစာရင်း ပြီးဆုံးပါပြီ။";
+"saved.agenda.ready_checklist_left" = "ကျန်ရှိသော စစ်ဆေးစာရင်း အချက်များ- %lld";
+"saved.agenda.ready_local_note" = "ဤအကျဉ်းချုပ်သည် သိမ်းထားသော အစီအစဉ်ကိုသာ သုံးသည်- နောက်ကျမှု၊ စင်္ကြံ သို့မဟုတ် ဖျက်သိမ်းမှုကို မစစ်ဆေးပါ။";
 "settings.title" = "ဆက်တင်များ";
 "settings.data.title" = "ဒေတာနှင့် ရင်းမြစ်များ";
 "settings.data.catalog" = "ဘူတာစာရင်း";

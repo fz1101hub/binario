@@ -154,6 +154,17 @@
 "saved.agenda.clear_body" = "Alle geplanten Fahrten auf diesem Gerät, auch nicht lesbare, ihre Erinnerungen und die Reisevorlagen werden gelöscht. Exportiere zuerst die Fahrten, die du behalten möchtest, als JSON. Der Standard-Vorlauf bleibt unverändert.";
 "saved.agenda.clear_confirm" = "Leeren";
 "saved.agenda.cleared" = "Agenda geleert: Fahrten, Erinnerungen und Vorlagen von diesem Gerät entfernt.";
+"saved.agenda.search" = "Station, Datum oder Uhrzeit suchen";
+"saved.agenda.month" = "Monat";
+"saved.agenda.all_months" = "Alle Monate";
+"saved.agenda.ready_title" = "Bereit zur Abfahrt";
+"saved.agenda.countdown_minutes" = "In %1$lld Min.";
+"saved.agenda.countdown_hours" = "In %1$lld Std.";
+"saved.agenda.countdown_hours_minutes" = "In %1$lld Std. %2$lld Min.";
+"saved.agenda.ready_no_reminder" = "Für diese Verbindung ist keine Erinnerung eingestellt.";
+"saved.agenda.ready_checklist_done" = "Lokale Checkliste abgeschlossen.";
+"saved.agenda.ready_checklist_left" = "Offene Punkte der Checkliste: %lld";
+"saved.agenda.ready_local_note" = "Diese Zusammenfassung verwendet nur den gespeicherten Plan: überprüft keine Verspätungen, Gleise oder Ausfälle.";
 "settings.title" = "Einstellungen";
 "settings.data.title" = "Daten und Quellen";
 "settings.data.catalog" = "Bahnhofskatalog";

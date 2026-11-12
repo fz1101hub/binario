@@ -154,6 +154,17 @@
 "saved.agenda.clear_body" = "การเดินทางที่วางแผนไว้ทั้งหมดในอุปกรณ์นี้ รวมถึงรายการที่อ่านไม่ได้ การแจ้งเตือน และเทมเพลตการเดินทางจะถูกลบ ส่งออกการเดินทางที่ต้องการเก็บเป็น JSON ก่อน เวลาเผื่อเริ่มต้นจะไม่เปลี่ยน";
 "saved.agenda.clear_confirm" = "ล้าง";
 "saved.agenda.cleared" = "ล้างกำหนดการแล้ว: นำการเดินทาง การแจ้งเตือน และเทมเพลตออกจากอุปกรณ์นี้แล้ว";
+"saved.agenda.search" = "ค้นหาสถานี วันที่ หรือเวลา";
+"saved.agenda.month" = "เดือน";
+"saved.agenda.all_months" = "ทุกเดือน";
+"saved.agenda.ready_title" = "พร้อมออกเดินทาง";
+"saved.agenda.countdown_minutes" = "อีก %1$lld นาที";
+"saved.agenda.countdown_hours" = "อีก %1$lld ชม.";
+"saved.agenda.countdown_hours_minutes" = "อีก %1$lld ชม. %2$lld นาที";
+"saved.agenda.ready_no_reminder" = "ยังไม่ได้ตั้งการเตือนสำหรับการเดินทางนี้";
+"saved.agenda.ready_checklist_done" = "เช็กลิสต์ในเครื่องเสร็จแล้ว";
+"saved.agenda.ready_checklist_left" = "รายการตรวจสอบที่เหลือ: %lld";
+"saved.agenda.ready_local_note" = "สรุปนี้ใช้เฉพาะแผนที่บันทึกไว้: ไม่ตรวจสอบความล่าช้า ชานชาลา หรือการยกเลิก";
 "settings.title" = "การตั้งค่า";
 "settings.data.title" = "ข้อมูลและแหล่งที่มา";
 "settings.data.catalog" = "แค็ตตาล็อกสถานี";

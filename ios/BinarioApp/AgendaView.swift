@@ -22,17 +22,31 @@ struct AgendaView: View {
     /// What the last export or import did, shown at the top of the list.
     @State private var fileMessage: (key: String, isError: Bool)?
     @State private var confirmingClear = false
+    /// The search and month filter (Android's): on this iPhone, never sent.
+    @State private var query = ""
+    @State private var month: PlannedJourneyMonth?
 
     enum AgendaFilter: Hashable {
         case upcoming
         case archive
     }
 
-    private var journeys: [PlannedJourney] {
+    /// The journeys of the list chosen, before the search.
+    private var listed: [PlannedJourney] {
         switch filter {
         case .upcoming: PlannedJourneyAgenda.upcoming(model.agenda.journeys, now: clock)
         case .archive: PlannedJourneyAgenda.archive(model.agenda.journeys, now: clock)
         }
+    }
+
+    private var months: [PlannedJourneyMonth] {
+        PlannedJourneyAgendaSearch.months(listed, now: clock)
+    }
+
+    private var journeys: [PlannedJourney] {
+        // A month no longer in the list shows every month.
+        let shownMonth = month.flatMap { months.contains($0) ? $0 : nil }
+        return PlannedJourneyAgendaSearch.filter(listed, now: clock, query: query, month: shownMonth)
     }
 
     var body: some View {
@@ -51,12 +65,34 @@ struct AgendaView: View {
                 }
             }
 
+            // «Pronto per partire»: the next journey, ticking with the Agenda's clock.
+            if let next = PlannedJourneyAgenda.next(model.agenda.journeys, now: clock) {
+                Section {
+                    NavigationLink {
+                        AgendaJourneyView(journeyID: next.id)
+                    } label: {
+                        AgendaReadyCard(journey: next, now: clock)
+                    }
+                } header: {
+                    Text("saved.agenda.ready_title")
+                }
+            }
+
             Section {
                 Picker("saved.agenda.title", selection: $filter) {
                     Text("saved.agenda.upcoming").tag(AgendaFilter.upcoming)
                     Text("saved.agenda.archive").tag(AgendaFilter.archive)
                 }
                 .pickerStyle(.segmented)
+                if months.count > 1 {
+                    Picker("saved.agenda.month", selection: $month) {
+                        Text("saved.agenda.all_months").tag(PlannedJourneyMonth?.none)
+                        ForEach(months, id: \.self) { choice in
+                            Text(verbatim: AgendaText.month(choice)).tag(PlannedJourneyMonth?.some(choice))
+                        }
+                    }
+                    .pickerStyle(.menu)
+                }
             }
 
             Section {
@@ -80,6 +116,7 @@ struct AgendaView: View {
             AgendaSettingsSection(confirmingClear: $confirmingClear)
         }
         .navigationTitle("saved.agenda.title")
+        .searchable(text: $query, prompt: Text("saved.agenda.search"))
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 Button {
@@ -201,6 +238,42 @@ struct AgendaView: View {
             try? await Task.sleep(nanoseconds: 60 * 1_000_000_000)
             clock = Date()
         }
+    }
+}
+
+/// «Pronto per partire» (Android's card): the next journey, its stored date and time, a countdown
+/// that follows the Agenda's clock, the reminder the system really holds, the checklist left and a
+/// reminder that this is the saved plan only.
+struct AgendaReadyCard: View {
+    @EnvironmentObject private var model: AppModel
+    let journey: PlannedJourney
+    let now: Date
+
+    var body: some View {
+        let occurrence = journey.shownOccurrence(now: now)
+        let left = journey.checklist.filter { !$0.completed }.count
+        VStack(alignment: .leading, spacing: 4) {
+            Text(verbatim: journey.label.isEmpty ? AgendaText.route(journey) : journey.label)
+                .font(.headline)
+            if !journey.label.isEmpty {
+                Text(verbatim: AgendaText.route(journey))
+                    .font(.subheadline)
+            }
+            Text(verbatim: AgendaText.departure(occurrence.departure))
+                .font(.subheadline)
+            Text(verbatim: AgendaText.countdown(PlannedJourneyCountdown.between(now: now, departure: occurrence.instant)))
+                .font(.subheadline.weight(.semibold))
+            Text(verbatim: AgendaText.readyReminder(model.reminderStatus.state(of: journey, now: now)))
+                .font(.footnote)
+            if !journey.checklist.isEmpty {
+                Text(verbatim: AgendaText.checklistLeft(left))
+                    .font(.footnote)
+            }
+            Text("saved.agenda.ready_local_note")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+        .accessibilityElement(children: .combine)
     }
 }
 
@@ -1036,6 +1109,40 @@ enum AgendaText {
 
     static func weekdays(_ days: [PlannedJourneyWeekday]) -> String {
         days.sorted().map { weekdayName($0) }.joined(separator: ", ")
+    }
+
+    /// «Tra 1 h 10 min», «Tra 2 h» or «Tra 25 min».
+    static func countdown(_ countdown: PlannedJourneyCountdown) -> String {
+        if countdown.hours == 0 {
+            return String.localizedStringWithFormat(NSLocalizedString("saved.agenda.countdown_minutes", comment: ""), countdown.minutes)
+        }
+        if countdown.minutes == 0 {
+            return String.localizedStringWithFormat(NSLocalizedString("saved.agenda.countdown_hours", comment: ""), countdown.hours)
+        }
+        return String.localizedStringWithFormat(
+            NSLocalizedString("saved.agenda.countdown_hours_minutes", comment: ""), countdown.hours, countdown.minutes
+        )
+    }
+
+    /// The card's reminder line: the lead only when the system holds the reminder.
+    static func readyReminder(_ state: PlannedJourneyReminderState) -> String {
+        if case let .scheduled(minutes) = state { return reminderChoice(minutes) }
+        return NSLocalizedString("saved.agenda.ready_no_reminder", comment: "")
+    }
+
+    static func checklistLeft(_ count: Int) -> String {
+        guard count > 0 else { return NSLocalizedString("saved.agenda.ready_checklist_done", comment: "") }
+        return String.localizedStringWithFormat(NSLocalizedString("saved.agenda.ready_checklist_left", comment: ""), count)
+    }
+
+    /// «novembre 2026», in the user's language.
+    static func month(_ month: PlannedJourneyMonth) -> String {
+        guard let first = month.firstDay, let midday = PlannedLocalTime(hour: 12, minute: 0),
+              let instant = ItalianWallClock.instant(date: first, time: midday)
+        else { return "\(month.year)-\(month.month)" }
+        var style = Date.FormatStyle.dateTime.month(.wide).year()
+        style.timeZone = ItalianWallClock.timeZone
+        return instant.formatted(style)
     }
 
     /// «Una volta» or «Viaggi in tutto: 4».

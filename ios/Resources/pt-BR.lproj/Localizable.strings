@@ -154,6 +154,17 @@
 "saved.agenda.clear_body" = "Todas as viagens planejadas deste dispositivo, inclusive as ilegíveis, seus lembretes e os modelos de viagem serão apagados. Exporte antes para JSON as viagens que deseja manter. A antecedência padrão não muda.";
 "saved.agenda.clear_confirm" = "Esvaziar";
 "saved.agenda.cleared" = "Agenda esvaziada: viagens, lembretes e modelos removidos deste dispositivo.";
+"saved.agenda.search" = "Buscar estação, data ou hora";
+"saved.agenda.month" = "Mês";
+"saved.agenda.all_months" = "Todos os meses";
+"saved.agenda.ready_title" = "Pronto para viajar";
+"saved.agenda.countdown_minutes" = "Em %1$lld min";
+"saved.agenda.countdown_hours" = "Em %1$lld h";
+"saved.agenda.countdown_hours_minutes" = "Em %1$lld h %2$lld min";
+"saved.agenda.ready_no_reminder" = "Nenhum lembrete definido para esta viagem.";
+"saved.agenda.ready_checklist_done" = "Checklist local concluída.";
+"saved.agenda.ready_checklist_left" = "Itens da lista pendentes: %lld";
+"saved.agenda.ready_local_note" = "Este resumo usa apenas o plano salvo: não verifica atrasos, plataformas nem cancelamentos.";
 "settings.title" = "Ajustes";
 "settings.data.title" = "Dados e fontes";
 "settings.data.catalog" = "Catálogo de estações";

@@ -154,6 +154,17 @@
 "saved.agenda.clear_body" = "سيتم حذف جميع الرحلات المخططة على هذا الجهاز، بما فيها غير المقروءة، وتذكيراتها وقوالب الرحلات. صدّر أولًا إلى JSON الرحلات التي تريد الاحتفاظ بها. يبقى الوقت المسبق الافتراضي دون تغيير.";
 "saved.agenda.clear_confirm" = "إفراغ";
 "saved.agenda.cleared" = "أُفرغت الأجندة: أُزيلت الرحلات والتذكيرات والقوالب من هذا الجهاز.";
+"saved.agenda.search" = "ابحث عن محطة أو تاريخ أو وقت";
+"saved.agenda.month" = "الشهر";
+"saved.agenda.all_months" = "كل الأشهر";
+"saved.agenda.ready_title" = "جاهز للسفر";
+"saved.agenda.countdown_minutes" = "بعد %1$lld د";
+"saved.agenda.countdown_hours" = "بعد %1$lld س";
+"saved.agenda.countdown_hours_minutes" = "بعد %1$lld س %2$lld د";
+"saved.agenda.ready_no_reminder" = "لا يوجد تذكير لهذه الرحلة.";
+"saved.agenda.ready_checklist_done" = "اكتملت قائمة التحقق المحلية.";
+"saved.agenda.ready_checklist_left" = "عناصر قائمة التحقق المتبقية: %lld";
+"saved.agenda.ready_local_note" = "يستخدم هذا الملخص الخطة المحفوظة فقط: لا يتحقق من التأخيرات أو الأرصفة أو الإلغاءات.";
 "settings.title" = "الإعدادات";
 "settings.data.title" = "البيانات والمصادر";
 "settings.data.catalog" = "كتالوج المحطات";

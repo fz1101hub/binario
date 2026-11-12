@@ -154,6 +154,17 @@
 "saved.agenda.clear_body" = "この端末のすべての予定した移動（読めないものを含む）、そのリマインダー、移動テンプレートが削除されます。残したい移動は先に JSON にエクスポートしてください。既定の余裕時間は変わりません。";
 "saved.agenda.clear_confirm" = "空にする";
 "saved.agenda.cleared" = "予定を空にしました。移動、リマインダー、テンプレートをこの端末から削除しました。";
+"saved.agenda.search" = "駅、日付、時刻を検索";
+"saved.agenda.month" = "月";
+"saved.agenda.all_months" = "すべての月";
+"saved.agenda.ready_title" = "出発の準備完了";
+"saved.agenda.countdown_minutes" = "あと %1$lld 分";
+"saved.agenda.countdown_hours" = "あと %1$lld 時間";
+"saved.agenda.countdown_hours_minutes" = "あと %1$lld 時間 %2$lld 分";
+"saved.agenda.ready_no_reminder" = "この移動にはリマインダーが設定されていません。";
+"saved.agenda.ready_checklist_done" = "端末内のチェックリストが完了しました。";
+"saved.agenda.ready_checklist_left" = "チェックリストの残り：%lld";
+"saved.agenda.ready_local_note" = "この概要は保存した計画だけを使います。遅延、番線、運休は確認しません。";
 "settings.title" = "設定";
 "settings.data.title" = "データと出典";
 "settings.data.catalog" = "駅カタログ";

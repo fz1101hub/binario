@@ -154,6 +154,17 @@
 "saved.agenda.clear_body" = "All planned journeys on this device, including unreadable ones, their reminders and the travel templates will be deleted. Export the journeys you want to keep to JSON first. The default lead time stays unchanged.";
 "saved.agenda.clear_confirm" = "Clear";
 "saved.agenda.cleared" = "Agenda cleared: journeys, reminders and templates removed from this device.";
+"saved.agenda.search" = "Search station, date or time";
+"saved.agenda.month" = "Month";
+"saved.agenda.all_months" = "All months";
+"saved.agenda.ready_title" = "Ready to travel";
+"saved.agenda.countdown_minutes" = "In %1$lld min";
+"saved.agenda.countdown_hours" = "In %1$lld h";
+"saved.agenda.countdown_hours_minutes" = "In %1$lld h %2$lld min";
+"saved.agenda.ready_no_reminder" = "No reminder set for this journey.";
+"saved.agenda.ready_checklist_done" = "Local checklist completed.";
+"saved.agenda.ready_checklist_left" = "Checklist items left: %lld";
+"saved.agenda.ready_local_note" = "This summary uses only the saved plan: it does not check delays, platforms or cancellations.";
 "settings.title" = "Settings";
 "settings.data.title" = "Data and sources";
 "settings.data.catalog" = "Station catalogue";

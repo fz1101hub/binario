@@ -154,6 +154,17 @@
 "saved.agenda.clear_body" = "Bu cihazdaki tüm planlanmış yolculuklar, okunamayanlar dahil, hatırlatıcıları ve yolculuk şablonları silinecek. Saklamak istediğiniz yolculukları önce JSON olarak dışa aktarın. Varsayılan süre değişmez.";
 "saved.agenda.clear_confirm" = "Boşalt";
 "saved.agenda.cleared" = "Ajanda boşaltıldı: yolculuklar, hatırlatıcılar ve şablonlar bu cihazdan kaldırıldı.";
+"saved.agenda.search" = "İstasyon, tarih veya saat ara";
+"saved.agenda.month" = "Ay";
+"saved.agenda.all_months" = "Tüm aylar";
+"saved.agenda.ready_title" = "Yolculuğa hazır";
+"saved.agenda.countdown_minutes" = "%1$lld dk sonra";
+"saved.agenda.countdown_hours" = "%1$lld sa sonra";
+"saved.agenda.countdown_hours_minutes" = "%1$lld sa %2$lld dk sonra";
+"saved.agenda.ready_no_reminder" = "Bu yolculuk için hatırlatıcı ayarlanmadı.";
+"saved.agenda.ready_checklist_done" = "Yerel kontrol listesi tamamlandı.";
+"saved.agenda.ready_checklist_left" = "Kalan kontrol listesi öğeleri: %lld";
+"saved.agenda.ready_local_note" = "Bu özet yalnızca kayıtlı planı kullanır: gecikmeleri, peronları veya iptalleri kontrol etmez.";
 "settings.title" = "Ayarlar";
 "settings.data.title" = "Veriler ve kaynaklar";
 "settings.data.catalog" = "İstasyon kataloğu";

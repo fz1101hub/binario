@@ -154,6 +154,17 @@
 "saved.agenda.clear_body" = "Saranno eliminati da questo dispositivo tutti i viaggi pianificati, anche quelli non leggibili, i loro promemoria e i modelli di viaggio. Esporta prima in JSON i viaggi da conservare. L’anticipo predefinito resta invariato.";
 "saved.agenda.clear_confirm" = "Svuota";
 "saved.agenda.cleared" = "Agenda svuotata: viaggi, promemoria e modelli rimossi da questo dispositivo.";
+"saved.agenda.search" = "Cerca stazione, data o ora";
+"saved.agenda.month" = "Mese";
+"saved.agenda.all_months" = "Tutti i mesi";
+"saved.agenda.ready_title" = "Pronto per partire";
+"saved.agenda.countdown_minutes" = "Tra %1$lld min";
+"saved.agenda.countdown_hours" = "Tra %1$lld h";
+"saved.agenda.countdown_hours_minutes" = "Tra %1$lld h %2$lld min";
+"saved.agenda.ready_no_reminder" = "Nessun promemoria impostato per questa tratta.";
+"saved.agenda.ready_checklist_done" = "Checklist locale completata.";
+"saved.agenda.ready_checklist_left" = "Voci della checklist da completare: %lld";
+"saved.agenda.ready_local_note" = "Questo riepilogo usa solo il piano salvato: non verifica ritardi, binari o cancellazioni.";
 "settings.title" = "Impostazioni";
 "settings.data.title" = "Dati e fonti";
 "settings.data.catalog" = "Catalogo stazioni";

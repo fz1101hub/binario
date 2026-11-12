@@ -154,6 +154,17 @@
 "saved.agenda.clear_body" = "이 기기의 모든 계획된 여정(읽을 수 없는 것 포함), 그 알림, 여정 템플릿이 삭제됩니다. 보관할 여정은 먼저 JSON으로 내보내세요. 기본 여유 시간은 바뀌지 않습니다.";
 "saved.agenda.clear_confirm" = "비우기";
 "saved.agenda.cleared" = "일정을 비웠습니다. 여정, 알림, 템플릿이 이 기기에서 삭제되었습니다.";
+"saved.agenda.search" = "역, 날짜, 시간 검색";
+"saved.agenda.month" = "월";
+"saved.agenda.all_months" = "모든 월";
+"saved.agenda.ready_title" = "출발 준비 완료";
+"saved.agenda.countdown_minutes" = "%1$lld분 후";
+"saved.agenda.countdown_hours" = "%1$lld시간 후";
+"saved.agenda.countdown_hours_minutes" = "%1$lld시간 %2$lld분 후";
+"saved.agenda.ready_no_reminder" = "이 여정에 설정된 리마인더가 없습니다.";
+"saved.agenda.ready_checklist_done" = "로컬 체크리스트를 완료했습니다.";
+"saved.agenda.ready_checklist_left" = "남은 체크리스트 항목: %lld";
+"saved.agenda.ready_local_note" = "이 요약은 저장된 계획만 사용하며 지연, 승강장, 운행 취소는 확인하지 않습니다.";
 "settings.title" = "설정";
 "settings.data.title" = "데이터 및 출처";
 "settings.data.catalog" = "역 카탈로그";

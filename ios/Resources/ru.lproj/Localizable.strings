@@ -154,6 +154,17 @@
 "saved.agenda.clear_body" = "Будут удалены все запланированные поездки на этом устройстве, включая нечитаемые, их напоминания и шаблоны поездок. Сначала экспортируйте в JSON поездки, которые хотите сохранить. Запас времени по умолчанию не изменится.";
 "saved.agenda.clear_confirm" = "Очистить";
 "saved.agenda.cleared" = "Ежедневник очищен: поездки, напоминания и шаблоны удалены с этого устройства.";
+"saved.agenda.search" = "Станция, дата или время";
+"saved.agenda.month" = "Месяц";
+"saved.agenda.all_months" = "Все месяцы";
+"saved.agenda.ready_title" = "Готово к поездке";
+"saved.agenda.countdown_minutes" = "Через %1$lld мин";
+"saved.agenda.countdown_hours" = "Через %1$lld ч";
+"saved.agenda.countdown_hours_minutes" = "Через %1$lld ч %2$lld мин";
+"saved.agenda.ready_no_reminder" = "Для этой поездки напоминание не задано.";
+"saved.agenda.ready_checklist_done" = "Локальный чек-лист выполнен.";
+"saved.agenda.ready_checklist_left" = "Осталось пунктов чек-листа: %lld";
+"saved.agenda.ready_local_note" = "Эта сводка использует только сохранённый план: она не проверяет задержки, платформы или отмены.";
 "settings.title" = "Настройки";
 "settings.data.title" = "Данные и источники";
 "settings.data.catalog" = "Каталог станций";
