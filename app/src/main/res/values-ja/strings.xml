@@ -694,6 +694,7 @@
     <string name="voice_feedback_confirmed">認識した内容を入力しました。検索する前に確認してください。</string>
     <string name="voice_feedback_ambiguous">音声入力があいまいです（%1$s）。入力欄は変更していません。手動で選んでください。</string>
     <string name="voice_feedback_incomplete">音声入力が不完全です。入力欄は変更していません。手動で入力または修正してください。</string>
+    <string name="voice_feedback_date_time_only">認識した日付と時刻だけを入力しました。駅を選び、検索する前に入力欄を確認してください。</string>
     <string name="voice_feedback_unresolved_route">区間を認識できませんでした。例：明日 18 時 Roma Termini から Torino Porta Nuova まで。</string>
     <string name="voice_feedback_unresolved_train">列車番号を認識できませんでした。例：9512。</string>
     <string name="voice_feedback_unresolved_station">駅を認識できませんでした。例：Roma Termini 駅。</string>

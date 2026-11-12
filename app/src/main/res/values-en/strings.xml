@@ -725,6 +725,7 @@
     <string name="voice_feedback_confirmed">Recognised and applied. Check the fields before searching.</string>
     <string name="voice_feedback_ambiguous">Ambiguous dictation (%1$s). The fields were not changed: choose manually.</string>
     <string name="voice_feedback_incomplete">Incomplete dictation. The fields were not changed: complete or correct them manually.</string>
+    <string name="voice_feedback_date_time_only">Only the recognised day and time were applied: choose the stations and check the fields before searching.</string>
     <string name="voice_feedback_unresolved_route">No route recognised. Try: from Roma Termini to Torino Porta Nuova tomorrow at 6 pm.</string>
     <string name="voice_feedback_unresolved_train">No train number recognised. Try: train 9512.</string>
     <string name="voice_feedback_unresolved_station">No station recognised. Try: Roma Termini station.</string>

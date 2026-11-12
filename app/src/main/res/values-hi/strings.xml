@@ -711,6 +711,7 @@
     <string name="voice_feedback_confirmed">पहचान कर लागू किया गया। खोजने से पहले फ़ील्ड जाँचें।</string>
     <string name="voice_feedback_ambiguous">अस्पष्ट बोला गया (%1$s)। फ़ील्ड नहीं बदले गए: हाथ से चुनें।</string>
     <string name="voice_feedback_incomplete">अधूरा बोला गया। फ़ील्ड नहीं बदले गए: हाथ से पूरा करें या ठीक करें।</string>
+    <string name="voice_feedback_date_time_only">केवल पहचाने गए दिन और समय लागू किए गए: स्टेशन चुनें और खोजने से पहले फ़ील्ड जाँचें।</string>
     <string name="voice_feedback_unresolved_route">कोई मार्ग पहचाना नहीं गया। आज़माएँ: Roma Termini से Torino Porta Nuova, कल 18 बजे।</string>
     <string name="voice_feedback_unresolved_train">कोई ट्रेन नंबर पहचाना नहीं गया। आज़माएँ: ट्रेन 9512।</string>
     <string name="voice_feedback_unresolved_station">कोई स्टेशन पहचाना नहीं गया। आज़माएँ: स्टेशन Roma Termini।</string>

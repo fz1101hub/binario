@@ -742,6 +742,7 @@
     <string name="voice_feedback_confirmed">Dati riconosciuti e applicati. Verifica i campi prima di cercare.</string>
     <string name="voice_feedback_ambiguous">Dettatura ambigua (%1$s). I campi non sono stati modificati: scegli manualmente.</string>
     <string name="voice_feedback_incomplete">Dettatura incompleta. I campi non sono stati modificati: completa o correggi manualmente.</string>
+    <string name="voice_feedback_date_time_only">Applicati solo giorno e ora riconosciuti: scegli le stazioni e verifica i campi prima di cercare.</string>
     <string name="voice_feedback_unresolved_route">Non ho riconosciuto una tratta. Prova: da Roma Termini a Torino Porta Nuova domani alle 18.</string>
     <string name="voice_feedback_unresolved_train">Non ho riconosciuto un numero treno. Prova: treno 9512.</string>
     <string name="voice_feedback_unresolved_station">Non ho riconosciuto una stazione. Prova: stazione Roma Termini.</string>
