@@ -268,8 +268,9 @@ class EmbeddedGtfsJourneyProviderTest {
     }
 
     @Test fun `the same run in two packs is scanned once and staying on board across both copies is no change`() = runBlocking {
-        // The ÖBB pack (preferred) publishes EC 85 Alfa-Beta-Gamma, the Trenitalia pack Beta-Gamma-Delta: Beta-Gamma
-        // is the same connection, so Alfa to Delta is one train, boarded in one pack and left in the other.
+        // The ÖBB pack publishes EC 85 Alfa-Beta-Gamma, the Trenitalia pack (preferred: a national pack serves both
+        // ends) Beta-Gamma-Delta: Beta-Gamma is the same connection, so Alfa to Delta is one train, boarded in one pack
+        // and left in the other.
         val provider = provider(mapOf(
             pack("trenitalia-gtfs") to feed(listOf(
                 Trip("TI85", "85", listOf("B" to "09:00", "C" to "09:30", "D" to "10:00")),
@@ -287,7 +288,7 @@ class EmbeddedGtfsJourneyProviderTest {
 
         // Between two stations both copies serve, the run is one option, the preferred pack's.
         val shared = options(provider.searchJourneys(request(beta, gamma)))
-        assertEquals(listOf("oebb-gtfs"), shared.map { it.legs.single().runId!!.value.substringBefore(':') })
+        assertEquals(listOf("trenitalia-gtfs"), shared.map { it.legs.single().runId!!.value.substringBefore(':') })
     }
 
     @Test fun `runs of two packs with the same number but other times stay two trains`() = runBlocking {

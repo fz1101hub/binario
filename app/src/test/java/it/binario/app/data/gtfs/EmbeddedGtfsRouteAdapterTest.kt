@@ -246,7 +246,48 @@ class EmbeddedGtfsRouteAdapterTest {
         assertTrue(result is DataResult.Success)
         val services = (result as DataResult.Success).snapshot.services
         assertEquals(1, services.size)
+        // No national pack lists the two stations here, as on a line across the border: the foreign pack comes first.
         assertTrue(services.single().id.startsWith("ch-otd-gtfs:"))
+    }
+
+    @Test
+    fun `fra i pack che servono le due stazioni la copia tenuta e quella del pack nazionale`() = runBlocking {
+        // As Milano Centrale - Verona Porta Nuova: the Swiss, Trenord, Italo and Trenitalia packs all serve the route,
+        // and the Swiss and the Trenitalia pack publish the same EuroCity. The national pack's copy is kept.
+        val ids = listOf("ch-otd-gtfs", "lombardia-trenord-gtfs", "italo-gtfs", "trenitalia-gtfs")
+        val feeds = mapOf(
+            "ch-otd-gtfs" to feed(tripId = "CH37", tripNumber = "EC 37", departure = "08:05:00", agencyName = "Schweizerische Bundesbahnen SBB"),
+            "lombardia-trenord-gtfs" to feed(tripId = "TN2611", tripNumber = "2611", departure = "08:10:00", agencyName = "Trenord"),
+            "italo-gtfs" to feed(tripId = "IT8977", tripNumber = "8977", departure = "08:15:00", agencyName = "Italo"),
+            "trenitalia-gtfs" to feed(tripId = "TI37", tripNumber = "EC 37", departure = "08:05:00", agencyName = "TRENITALIA")
+        )
+        val adapter = EmbeddedGtfsRouteAdapter(
+            openAsset = { path -> ByteArrayInputStream(requireNotNull(feeds[path.removePrefix("gtfs/").removeSuffix(".zip")])) },
+            packs = ids.map { EmbeddedGtfsPack(SourceId(it), "gtfs/$it.zip") },
+            clock = { 1_000L }
+        )
+
+        val result = adapter.loadRoute(route, Direction.OUTBOUND, JourneyQuery(LocalDate.of(2026, 9, 4), LocalTime.of(8, 0)))
+
+        val services = (result as DataResult.Success).snapshot.services
+        assertEquals(listOf("trenitalia-gtfs", "lombardia-trenord-gtfs", "italo-gtfs"), services.map { it.gtfsIdentity?.sourceId })
+        assertEquals("TI37", services.first().gtfsIdentity?.tripId)
+
+        // As Milano - Lugano: the Trenitalia pack lists Milano but not the other station, so the Trenord and the Swiss
+        // copies of a train both list are in a border zone, where the foreign pack comes first.
+        val border = mapOf(
+            "lombardia-trenord-gtfs" to feed(tripId = "TN25", tripNumber = "25", departure = "08:05:00", agencyName = "Trenord"),
+            "ch-otd-gtfs" to feed(tripId = "CH25", tripNumber = "25", departure = "08:05:00", agencyName = "TILO"),
+            "trenitalia-gtfs" to feed(tripId = "TI1", tripNumber = "1", agencyName = "TRENITALIA", stopNames = Triple("Milano Centrale", "Monza", "Lecco"))
+        )
+        val borderServices = (
+            EmbeddedGtfsRouteAdapter(
+                openAsset = { path -> ByteArrayInputStream(requireNotNull(border[path.removePrefix("gtfs/").removeSuffix(".zip")])) },
+                packs = listOf("trenitalia-gtfs", "lombardia-trenord-gtfs", "ch-otd-gtfs").map { EmbeddedGtfsPack(SourceId(it), "gtfs/$it.zip") },
+                clock = { 1_000L }
+            ).loadRoute(route, Direction.OUTBOUND, JourneyQuery(LocalDate.of(2026, 9, 4), LocalTime.of(8, 0))) as DataResult.Success
+            ).snapshot.services
+        assertEquals(listOf("ch-otd-gtfs"), borderServices.map { it.gtfsIdentity?.sourceId })
     }
 
     /**

@@ -77,6 +77,8 @@ class EmbeddedGtfsJourneyRealPacksTest {
     @Test fun `Merano to Innsbruck changes between the South Tyrol and the OeBB packs at the Brenner`() = runBlocking {
         val provider = EmbeddedGtfsJourneyProvider.create(openAsset)
         val first = options(provider.searchJourneys(request("Merano Meran", "Innsbruck Hbf.", "08:00"))).first()
+        // 5211 Brennero - Innsbruck is in the South Tyrol and in the ÖBB packs. No national pack serves Innsbruck, so
+        // the packs serving it come first, the foreign ones before the Italian regional one: the ÖBB copy is kept.
         assertEquals("REG 17128 Merano Meran 08:16-10:22 Brennero Brenner | S3 S 5211 Brennero Brenner 10:33-11:11 Innsbruck Hbf.", first.summary())
         assertEquals(StationId("curated:S02001"), first.legs[0].destination)
         assertEquals(
@@ -92,9 +94,10 @@ class EmbeddedGtfsJourneyRealPacksTest {
             found[0].summary()
         )
         assertEquals("EC 41 Domodossola 08:17-09:50 Milano Centrale", found[1].summary())
-        // EC 41 is in the Swiss and in the Trenitalia pack: one option, from the preferred Swiss pack.
+        // EC 41 is in the Swiss and in the Trenitalia pack: one option, from the Trenitalia pack (a national pack serves
+        // both Domodossola and Milano, so the national packs come first).
         assertEquals(1, found.count { option -> option.legs.any { it.publicNumber == "41" } })
-        assertEquals("ch-otd-gtfs", found[1].legs.single().runId!!.value.substringBefore(':'))
+        assertEquals("trenitalia-gtfs", found[1].legs.single().runId!!.value.substringBefore(':'))
         assertTrue(found.flatMap { it.legs }.any { it.runId!!.value.startsWith("trenitalia-gtfs:") })
         assertEquals(found.map { it.id }.distinct(), found.map { it.id })
     }
@@ -102,7 +105,7 @@ class EmbeddedGtfsJourneyRealPacksTest {
     @Test fun `Merano to Roma combines the South Tyrol, Trenitalia and Italo packs`() = runBlocking {
         val found = options(EmbeddedGtfsJourneyProvider.create(openAsset).searchJourneys(request("Merano Meran", "Roma Termini", "07:00")))
         assertEquals(
-            "REG 17106 Merano Meran 07:46-08:26 Bolzano Bozen | AV 9721 Bolzano Bozen 08:45-11:45 Milano Centrale | " +
+            "REG 17106 Merano Meran 07:46-08:26 Bolzano Bozen | FR 9721 Bolzano Bozen 08:45-11:45 Milano Centrale | " +
                 "FR 9627 Milano Centrale 11:58-15:10 Roma Termini",
             found[0].summary()
         )
