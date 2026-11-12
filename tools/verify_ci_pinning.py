@@ -875,9 +875,9 @@ def _check_linux_trigger_budget(
             "tools/**",
             "tests/**",
             # Read by the offline tests (second audit, ci-tests-build-6).
+            # The listing assets and the brand icon they are generated from (store/source/).
             "store/**",
             "ios/Resources/**",
-            "companion-expo/assets/brand/**",
         },
         # The skill bundles the punctuality statistics and the station catalogue (ci-tests-build-6).
         "alexa-companion-ci.yml": {

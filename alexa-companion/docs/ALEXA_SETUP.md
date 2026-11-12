@@ -97,7 +97,7 @@ Amazon richiede pagine HTTPS di privacy policy e termini e account linking confo
 
 - `/privacy` riprende la sezione «Alexa Companion» di `PRIVACY.md` con i valori correnti del servizio (refresh token di un anno, sessione di 24 ore, finestra di 60 secondi), più un riassunto in inglese; un riquadro segnala ciò che manca: identità e recapito del titolare, conservazione di log e backup. Il test `server/skillManifestAssets.test.ts` verifica che la pagina segua le sezioni di `PRIVACY.md`: chi modifica l'una aggiorna anche l'altra (`server/legal/pages.ts`).
 - `/terms` è una **bozza da far rivedere al titolare**, dichiarata tale nella pagina, con le parti legali fra parentesi quadre.
-- Le icone `alexa/icon-108.png` e `alexa/icon-512.png` stanno in `client/public/alexa/` e Vite le pubblica in `dist/public/alexa/` (controllato da `pnpm run build`). La 512 è identica a `store/play/icon-512.png`; la 108 è ricavata dal marchio `companion-expo/assets/brand/binario-companion-icon.png` con `convert … -filter Lanczos -resize 108x108 -strip PNG32:icon-108.png` (ImageMagick 6.9).
+- Le icone `alexa/icon-108.png` e `alexa/icon-512.png` stanno in `client/public/alexa/` e Vite le pubblica in `dist/public/alexa/` (controllato da `pnpm run build`). La 512 è identica a `store/play/icon-512.png`; la 108 è ricavata dal marchio `store/source/binario-icon.png` (copia identica di `companion-expo/assets/brand/binario-companion-icon.png`) con `convert … -filter Lanczos -resize 108x108 -strip PNG32:icon-108.png` (ImageMagick 6.9).
 - Un percorso sconosciuto risponde 404 (la dashboard mostra comunque la sua pagina «non trovata»); un percorso `/api` sconosciuto risponde `404 {"error":"not_found"}`.
 
 ### Account del revisore Amazon — azione del titolare
