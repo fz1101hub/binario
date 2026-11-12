@@ -728,13 +728,15 @@ class TrainViewModel @JvmOverloads constructor(
         ++trainNumberSearchRequestId
         trainNumberSearchJob?.cancel()
         trainNumberMatches = emptyList()
+        // Another number: nothing on screen is of the earlier search's day any more.
+        trainNumberSearchDate = JourneyQuery.now().serviceDate
         trainNumberSearchState = RefreshState.IDLE
         trainNumberUnavailableSources = emptySet()
         if (selectedGlobalTrainId != null) clearSelectedService()
     }
 
     fun searchTrainNumber(refresh: Boolean = false) {
-        val query = TrainNumberQuery(trainNumberQuery, JourneyQuery.now().serviceDate)
+        val query = TrainNumberQuery(trainNumberQuery, RouteStateRules.numberSearchDate(refresh, trainNumberSearchDate, JourneyQuery.now().serviceDate))
         if (!query.valid) { trainNumberSearchState = RefreshState.ERROR; return }
         if (trainNumberSearchJob?.isActive == true && refresh) return
         val requestId = ++trainNumberSearchRequestId

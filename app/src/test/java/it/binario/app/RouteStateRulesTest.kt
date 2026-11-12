@@ -9,6 +9,7 @@ import it.binario.app.data.ServiceStatus
 import it.binario.app.data.Station
 import it.binario.app.data.TrainCategory
 import it.binario.app.data.TrainService
+import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.ZoneId
 import org.junit.Assert.assertEquals
@@ -110,6 +111,17 @@ class RouteStateRulesTest {
         // A train whose time cannot be read stays.
         val unreadable = savedAt("07:40", train("5", "--:--", dated = false))
         assertEquals(listOf("5"), RouteStateRules.savedRouteCopy(unreadable, instant("18:00"), rome)?.services?.map { it.number })
+    }
+
+    @Test fun `a number search keeps its day across midnight while it is refreshed`() {
+        val yesterday = LocalDate.parse("2026-11-11")
+        val today = LocalDate.parse("2026-11-12")
+        // Train 2658 opened at 23:20, followed past midnight: the refresh still asks for the run of the day before.
+        assertEquals(yesterday, RouteStateRules.numberSearchDate(refresh = true, searchedDate = yesterday, today = today))
+        assertEquals(today, RouteStateRules.numberSearchDate(refresh = true, searchedDate = today, today = today))
+        // A new search asks for today; a search older than yesterday is asked again for today.
+        assertEquals(today, RouteStateRules.numberSearchDate(refresh = false, searchedDate = yesterday, today = today))
+        assertEquals(today, RouteStateRules.numberSearchDate(refresh = true, searchedDate = today.minusDays(2), today = today))
     }
 
     @Test fun `the saved copy of another day is not shown`() {

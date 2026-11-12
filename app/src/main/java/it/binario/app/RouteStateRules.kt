@@ -5,6 +5,7 @@ import it.binario.app.data.RouteSnapshot
 import it.binario.app.data.SavedRoute
 import java.time.Duration
 import java.time.Instant
+import java.time.LocalDate
 import java.time.LocalTime
 import java.time.ZoneId
 
@@ -69,4 +70,13 @@ internal object RouteStateRules {
     }
 
     private val SAVED_COPY_DEPARTED_GRACE: Duration = Duration.ofMinutes(10)
+
+    /**
+     * The service day a search by train number asks for. A new search asks for [today]. Its refreshes keep the day the
+     * results on screen are for ([searchedDate]) while a train of that day may still run: the 22:30 train followed
+     * past midnight is still the run of the day before, and asking for the new day would lose it. A search older than
+     * yesterday is asked again for today.
+     */
+    fun numberSearchDate(refresh: Boolean, searchedDate: LocalDate, today: LocalDate): LocalDate =
+        if (refresh && (searchedDate == today || searchedDate == today.minusDays(1))) searchedDate else today
 }
