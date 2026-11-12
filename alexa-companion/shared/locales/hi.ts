@@ -86,6 +86,7 @@ export const hi: LocaleMessages = {
     title: "Alexa को Binario से लिंक करें",
     signedInAs: " <strong>{userName}</strong> के रूप में",
     description: "आप Amazon Alexa को अपने Binario खाते{signedInAs} से लिंक करने वाले हैं। Alexa आपके सहेजे गए रूट के नाम पढ़ सकेगी। कोई रीयल-टाइम डेटा साझा नहीं किया जाता।",
+    ownRequestOnly: "केवल तभी आगे बढ़ें जब आपने अभी-अभी अपने Alexa ऐप से यह लिंकिंग खुद शुरू की हो; नहीं तो रद्द करें।",
     allow: "लिंक करें",
     deny: "रद्द करें",
     loginRequired: "पहले Binario डैशबोर्ड में साइन इन करें, फिर Alexa लिंकिंग दोहराएँ।",

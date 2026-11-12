@@ -86,6 +86,7 @@ export const my: LocaleMessages = {
     title: "Alexa ကို Binario နှင့် ချိတ်ဆက်ရန်",
     signedInAs: " (<strong>{userName}</strong> အဖြစ်)",
     description: "သင်သည် Amazon Alexa ကို သင့် Binario အကောင့်{signedInAs} နှင့် ချိတ်ဆက်တော့မည်။ Alexa သည် သင်သိမ်းထားသော လမ်းကြောင်းအမည်များကို ဖတ်နိုင်မည်။ အချိန်နှင့်တပြေးညီ ဒေတာ မမျှဝေပါ။",
+    ownRequestOnly: "ဤချိတ်ဆက်မှုကို သင်ကိုယ်တိုင် သင့် Alexa အက်ပ်မှ ယခုလေးတင် စတင်ခဲ့မှသာ ဆက်လုပ်ပါ။ မဟုတ်ပါက ပယ်ဖျက်ပါ။",
     allow: "ချိတ်ဆက်ရန်",
     deny: "မလုပ်တော့ပါ",
     loginRequired: "Binario ဒက်ရှ်ဘုတ်သို့ အရင်ဝင်ပြီး Alexa ချိတ်ဆက်မှုကို ပြန်လုပ်ပါ။",

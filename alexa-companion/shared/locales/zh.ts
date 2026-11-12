@@ -86,6 +86,7 @@ export const zh: LocaleMessages = {
     title: "将 Alexa 关联到 Binario",
     signedInAs: "（当前登录：<strong>{userName}</strong>）",
     description: "你即将把 Amazon Alexa 关联到你的 Binario 账户{signedInAs}。Alexa 将能够读取你保存的路线名称。不会共享任何实时数据。",
+    ownRequestOnly: "仅当你刚刚在自己的 Alexa 应用中发起此关联时才继续；否则请取消。",
     allow: "关联",
     deny: "取消",
     loginRequired: "请先登录 Binario 控制台，然后重新进行 Alexa 关联。",

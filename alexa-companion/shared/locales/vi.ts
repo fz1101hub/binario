@@ -86,6 +86,7 @@ export const vi: LocaleMessages = {
     title: "Liên kết Alexa với Binario",
     signedInAs: " với tên <strong>{userName}</strong>",
     description: "Bạn sắp liên kết Amazon Alexa với tài khoản Binario của mình{signedInAs}. Alexa sẽ có thể đọc tên các tuyến bạn đã lưu. Không chia sẻ dữ liệu thời gian thực nào.",
+    ownRequestOnly: "Chỉ tiếp tục nếu chính bạn vừa bắt đầu liên kết này từ ứng dụng Alexa của mình; nếu không, hãy hủy.",
     allow: "Liên kết",
     deny: "Hủy",
     loginRequired: "Hãy đăng nhập bảng điều khiển Binario trước, rồi thực hiện lại việc liên kết Alexa.",

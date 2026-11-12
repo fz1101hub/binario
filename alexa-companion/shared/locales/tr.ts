@@ -86,6 +86,7 @@ export const tr: LocaleMessages = {
     title: "Alexa'yı Binario'ya bağla",
     signedInAs: " (<strong>{userName}</strong> olarak)",
     description: "Amazon Alexa'yı Binario hesabınıza{signedInAs} bağlamak üzeresiniz. Alexa kaydettiğiniz güzergâhların adlarını okuyabilecek. Gerçek zamanlı veri paylaşılmaz.",
+    ownRequestOnly: "Yalnızca bu bağlantıyı az önce kendi Alexa uygulamanızdan siz başlattıysanız devam edin; aksi hâlde iptal edin.",
     allow: "Bağla",
     deny: "İptal",
     loginRequired: "Önce Binario paneline giriş yapın, ardından Alexa bağlamasını tekrarlayın.",

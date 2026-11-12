@@ -86,6 +86,7 @@ export const ko: LocaleMessages = {
     title: "Alexa를 Binario에 연결",
     signedInAs: "(<strong>{userName}</strong>(으)로 로그인됨)",
     description: "Amazon Alexa를 Binario 계정{signedInAs}에 연결하려고 합니다. Alexa는 저장된 경로의 이름을 읽을 수 있게 됩니다. 실시간 데이터는 공유되지 않습니다.",
+    ownRequestOnly: "방금 본인의 Alexa 앱에서 이 연결을 시작한 경우에만 계속하세요. 그렇지 않으면 취소하세요.",
     allow: "연결",
     deny: "취소",
     loginRequired: "먼저 Binario 대시보드에 로그인한 후 Alexa 연결을 다시 진행하세요.",

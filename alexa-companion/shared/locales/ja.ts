@@ -86,6 +86,7 @@ export const ja: LocaleMessages = {
     title: "Alexa を Binario にリンク",
     signedInAs: "（<strong>{userName}</strong> としてサインイン中）",
     description: "Amazon Alexa を Binario アカウント{signedInAs}にリンクしようとしています。Alexa は保存したルートの名前を読み上げられるようになります。リアルタイムデータは共有されません。",
+    ownRequestOnly: "このリンクをたった今ご自身の Alexa アプリから開始した場合にのみ続行してください。そうでない場合はキャンセルしてください。",
     allow: "リンク",
     deny: "キャンセル",
     loginRequired: "まず Binario ダッシュボードにサインインしてから、Alexa のリンクをやり直してください。",

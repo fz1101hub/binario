@@ -86,6 +86,7 @@ export const ru: LocaleMessages = {
     title: "Связать Alexa с Binario",
     signedInAs: " (вы вошли как <strong>{userName}</strong>)",
     description: "Вы собираетесь связать Amazon Alexa со своим аккаунтом Binario{signedInAs}. Alexa сможет читать названия сохранённых вами маршрутов. Данные в реальном времени не передаются.",
+    ownRequestOnly: "Продолжайте, только если вы сами только что начали эту привязку в своём приложении Alexa; иначе отмените.",
     allow: "Связать",
     deny: "Отмена",
     loginRequired: "Сначала войдите в панель Binario, затем повторите привязку Alexa.",

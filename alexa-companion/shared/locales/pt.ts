@@ -86,6 +86,7 @@ export const pt: LocaleMessages = {
     title: "Conectar a Alexa ao Binario",
     signedInAs: " como <strong>{userName}</strong>",
     description: "Você está prestes a vincular a Amazon Alexa à sua conta Binario{signedInAs}. A Alexa poderá ler os nomes dos trajetos que você salvou. Nenhum dado em tempo real é compartilhado.",
+    ownRequestOnly: "Continue somente se você acabou de iniciar esta vinculação no seu app Alexa; caso contrário, cancele.",
     allow: "Vincular",
     deny: "Cancelar",
     loginRequired: "Entre primeiro no painel do Binario e repita a vinculação da Alexa.",

@@ -86,6 +86,7 @@ export const id: LocaleMessages = {
     title: "Hubungkan Alexa ke Binario",
     signedInAs: " sebagai <strong>{userName}</strong>",
     description: "Anda akan menautkan Amazon Alexa ke akun Binario Anda{signedInAs}. Alexa dapat membaca nama rute yang Anda simpan. Tidak ada data waktu nyata yang dibagikan.",
+    ownRequestOnly: "Lanjutkan hanya jika Anda sendiri baru saja memulai penautan ini dari aplikasi Alexa Anda; jika tidak, batalkan.",
     allow: "Tautkan",
     deny: "Batal",
     loginRequired: "Masuk dulu ke dasbor Binario, lalu ulangi penautan Alexa.",

@@ -133,6 +133,8 @@ describe("authorize Alexa con consenso esplicito", () => {
     expect(response.status).toBe(200);
     expect(response.headers.get("content-type")).toContain("text/html");
     expect(html).toContain("Collega Alexa a Binario");
+    // The authorize URL is not secret: the page says to go on only for one's own, just started, request.
+    expect(html).toContain("Continua solo se hai avviato tu questo collegamento dall’app Alexa poco fa; altrimenti annulla.");
     expect(nonce).not.toBe("");
     expect(token).toMatch(/^[0-9a-f]{64}$/);
     expect(dbMocks.createAuthorizationCode).not.toHaveBeenCalled();

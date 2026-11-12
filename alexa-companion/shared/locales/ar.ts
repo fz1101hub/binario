@@ -86,6 +86,7 @@ export const ar: LocaleMessages = {
     title: "ربط Alexa بـ Binario",
     signedInAs: " باسم <strong>{userName}</strong>",
     description: "أنت على وشك ربط Amazon Alexa بحسابك في Binario{signedInAs}. ستتمكن Alexa من قراءة أسماء المسارات التي حفظتها. لا تُشارَك أي بيانات في الوقت الفعلي.",
+    ownRequestOnly: "تابع فقط إذا كنت قد بدأت هذا الربط بنفسك من تطبيق Alexa الخاص بك قبل قليل؛ وإلا فألغِ العملية.",
     allow: "ربط",
     deny: "إلغاء",
     loginRequired: "سجّل الدخول أولًا إلى لوحة معلومات Binario، ثم كرّر ربط Alexa.",

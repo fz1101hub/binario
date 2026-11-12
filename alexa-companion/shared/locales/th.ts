@@ -86,6 +86,7 @@ export const th: LocaleMessages = {
     title: "เชื่อมต่อ Alexa กับ Binario",
     signedInAs: " ในชื่อ <strong>{userName}</strong>",
     description: "คุณกำลังจะเชื่อมโยง Amazon Alexa กับบัญชี Binario ของคุณ{signedInAs} Alexa จะอ่านชื่อเส้นทางที่คุณบันทึกไว้ได้ ไม่มีการแชร์ข้อมูลเรียลไทม์",
+    ownRequestOnly: "ดำเนินการต่อเฉพาะเมื่อคุณเพิ่งเริ่มการเชื่อมโยงนี้ด้วยตนเองจากแอป Alexa ของคุณ หากไม่ใช่ โปรดยกเลิก",
     allow: "เชื่อมโยง",
     deny: "ยกเลิก",
     loginRequired: "ลงชื่อเข้าใช้แดชบอร์ด Binario ก่อน แล้วเชื่อมโยง Alexa อีกครั้ง",
