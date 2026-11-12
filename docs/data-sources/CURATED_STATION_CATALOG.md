@@ -12,10 +12,14 @@ Il file utente `stazioni_ferroviarie_curato_v4.sqlite` è l’unica sorgente del
 | Hash SHA-256 origine | `2db59242ec45816a73a37c4748dc400dafaba762b6df3105673f63a44c882efe` |
 | Stazioni | 5.239 |
 | Codici ferroviari | 3.430 |
-| Location ID Trenitalia univoci | 3.086 |
+| Location ID Trenitalia univoci | 3.047 |
 | Location ID Trenitalia ambigui | 40, esclusi automaticamente dal mapping operativo |
 | Asset app | `app/src/main/assets/stations/curated_it_rail_stations.json` |
-| Hash SHA-256 asset | `58b441886c5fe8b731f69000c010c860b28424158fcab4ef1124434874b5712a` |
+| Hash SHA-256 asset | `7a309d97494f0ff85c1fe5bd57059848f6c87c900139cd9a3ce4d65bf509ed7f` |
+
+## Correzioni dell'asset (novembre 2026, audit2 tools-data-3)
+
+L'asset diverge dal database `v4` in dodici voci, corrette solo con valori del pack Trenitalia incluso (nome e posizione della fermata con lo stesso codice); dove il pack non dà il valore giusto, il valore errato è stato tolto: S02049 è «Ala» con location ID 830002049 (aveva nome e ID di Roma Val d'Ala, che torna a S08014); S00213 è «S. Ambrogio» (830000213) e l'ID 830002055 passa a Domegliara (S02055); S12137 Palermo Fiera ha 830012137 (aveva quello di Fiera di Roma); S12075 Palermo Libertà (era in Finlandia), S00822 S. Vittoria e S09022 S. Marco d'Alunzio-Torrenova hanno la posizione della loro fermata, S12075 anche l'ID 830012075; Ansedonia (NC000010) e Brianco (NC000062) non hanno più gli ID di Guidonia e Agognate, Palmi Tonnara (NC001070) non ha più la posizione in mare; NC001521 è «Ercolano - Miglio D'Oro». `tools/verify_embedded_assets.py` controlla che ogni posizione cada nell'area servita (35–55 N, 10 O–25 E: Italia e le città europee raggiunte dai treni), che ogni location ID compaia una volta e disti al massimo 10 km dalla fermata Trenitalia con lo stesso `stop_code`, e che i conteggi del manifest corrispondano al file. Il codice ferroviario `S…` non è confrontato: i suoi numeri coincidono con location ID di altre stazioni (24 casi) e Trenord usa codici `S…` propri (tools-data-6).
 
 ## Regole di utilizzo
 

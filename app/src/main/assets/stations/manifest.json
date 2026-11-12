@@ -12,9 +12,9 @@
       "sourceCreatedAtUtc": "2026-08-16T01:21:36.343197+00:00",
       "stationCount": 5239,
       "railwayCodes": 3430,
-      "uniqueTrenitaliaLocationIds": 3086,
+      "uniqueTrenitaliaLocationIds": 3047,
       "ambiguousTrenitaliaLocationIdsExcluded": 40,
-      "assetSha256": "58b441886c5fe8b731f69000c010c860b28424158fcab4ef1124434874b5712a",
+      "assetSha256": "7a309d97494f0ff85c1fe5bd57059848f6c87c900139cd9a3ce4d65bf509ed7f",
       "operationalData": false,
       "notes": "Catalogo canonico unico per ricerca, tratte, preferiti, widget, stazioni vicine e riconciliazione di identità. I codici Trenitalia ambigui sono esclusi dal mapping automatico; l’asset non abilita né determina dati live."
     }
