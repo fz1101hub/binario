@@ -913,6 +913,17 @@
     <string name="planned_journey_replan_a11y">%1$s ကို ပြန်စီစဉ်ရန်</string>
     <string name="planned_journey_return_prepared">အပြန်ခရီး အသင့်ဖြစ်ပြီ။ မသိမ်းမီ ရက်စွဲနှင့် အချိန်အသစ် ရွေးပါ။</string>
     <string name="planned_journey_replan_prepared">ခရီးစဉ်ကို ပြန်စီစဉ်ပြီး။ မသိမ်းမီ ရက်စွဲနှင့် အချိန်အသစ် ရွေးပါ။</string>
+    <string name="planned_journey_ready_title">ခရီးထွက်ရန် အသင့်</string>
+    <string name="planned_journey_ready_local_note">ဤအကျဉ်းချုပ်သည် သိမ်းထားသော အစီအစဉ်ကိုသာ သုံးသည်- နောက်ကျမှု၊ စင်္ကြံ သို့မဟုတ် ဖျက်သိမ်းမှုကို မစစ်ဆေးပါ။</string>
+    <string name="planned_journey_ready_no_reminder">ဤခရီးစဉ်အတွက် သတိပေးချက် မသတ်မှတ်ရသေးပါ။</string>
+    <string name="planned_journey_ready_checklist_done">စက်တွင်း စစ်ဆေးစာရင်း ပြီးဆုံးပါပြီ။</string>
+    <string name="planned_journey_ready_open_agenda">အစီအစဉ်နှင့် စစ်ဆေးစာရင်း ဖွင့်ရန်</string>
+    <string name="planned_journey_countdown_minutes">%1$d မိနစ်အတွင်း</string>
+    <string name="planned_journey_countdown_hours">%1$d နာရီအတွင်း</string>
+    <string name="planned_journey_countdown_hours_minutes">%1$d နာရီ %2$d မိနစ်အတွင်း</string>
+    <plurals name="planned_journey_ready_checklist_left">
+        <item quantity="other">စက်တွင်း စစ်ဆေးစာရင်းတွင် ပြင်ဆင်ရန် အချက် %1$d ခု ကျန်သည်။</item>
+    </plurals>
     <string name="agenda_editor_date_value">ရက်စွဲ- %1$s</string>
     <string name="agenda_editor_time_value">အချိန်- %1$s</string>
     <string name="agenda_editor_unset">ရွေးရန် ကျန်</string>

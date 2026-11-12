@@ -955,6 +955,18 @@
     <string name="planned_journey_replan_a11y">Reschedule %1$s</string>
     <string name="planned_journey_return_prepared">Return prepared. Choose a new date and time before saving.</string>
     <string name="planned_journey_replan_prepared">Journey rescheduled. Choose a new date and time before saving.</string>
+    <string name="planned_journey_ready_title">Ready to travel</string>
+    <string name="planned_journey_ready_local_note">This summary uses only the saved plan: it does not check delays, platforms or cancellations.</string>
+    <string name="planned_journey_ready_no_reminder">No reminder set for this journey.</string>
+    <string name="planned_journey_ready_checklist_done">Local checklist completed.</string>
+    <string name="planned_journey_ready_open_agenda">Open agenda and checklist</string>
+    <string name="planned_journey_countdown_minutes">In %1$d min</string>
+    <string name="planned_journey_countdown_hours">In %1$d h</string>
+    <string name="planned_journey_countdown_hours_minutes">In %1$d h %2$d min</string>
+    <plurals name="planned_journey_ready_checklist_left">
+        <item quantity="one">%1$d item to prepare in the local checklist.</item>
+        <item quantity="other">%1$d items to prepare in the local checklist.</item>
+    </plurals>
     <string name="agenda_editor_date_value">Date: %1$s</string>
     <string name="agenda_editor_time_value">Time: %1$s</string>
     <string name="agenda_editor_unset">to be chosen</string>

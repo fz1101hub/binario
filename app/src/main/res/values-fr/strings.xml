@@ -974,6 +974,19 @@
     <string name="planned_journey_replan_a11y">Replanifier %1$s</string>
     <string name="planned_journey_return_prepared">Retour préparé. Choisissez une nouvelle date et heure avant d\'enregistrer.</string>
     <string name="planned_journey_replan_prepared">Trajet replanifié. Choisissez une nouvelle date et heure avant d\'enregistrer.</string>
+    <string name="planned_journey_ready_title">Prêt à partir</string>
+    <string name="planned_journey_ready_local_note">Ce résumé utilise uniquement le plan enregistré : il ne vérifie pas les retards, les quais ou les annulations.</string>
+    <string name="planned_journey_ready_no_reminder">Aucun rappel défini pour ce trajet.</string>
+    <string name="planned_journey_ready_checklist_done">Checklist locale complétée.</string>
+    <string name="planned_journey_ready_open_agenda">Ouvrir l\'agenda et la checklist</string>
+    <string name="planned_journey_countdown_minutes">Dans %1$d min</string>
+    <string name="planned_journey_countdown_hours">Dans %1$d h</string>
+    <string name="planned_journey_countdown_hours_minutes">Dans %1$d h %2$d min</string>
+    <plurals name="planned_journey_ready_checklist_left">
+        <item quantity="one">%1$d élément à préparer dans la checklist locale.</item>
+        <item quantity="many">%1$d éléments à préparer dans la checklist locale.</item>
+        <item quantity="other">%1$d éléments à préparer dans la checklist locale.</item>
+    </plurals>
     <string name="agenda_editor_date_value">Date : %1$s</string>
     <string name="agenda_editor_time_value">Heure : %1$s</string>
     <string name="agenda_editor_unset">à choisir</string>

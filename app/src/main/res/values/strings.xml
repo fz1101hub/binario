@@ -974,6 +974,19 @@
     <string name="planned_journey_replan_a11y">Ripianifica %1$s</string>
     <string name="planned_journey_return_prepared">Ritorno preparato. Scegli una nuova data e ora prima di salvare.</string>
     <string name="planned_journey_replan_prepared">Tratta ripianificata. Scegli una nuova data e ora prima di salvare.</string>
+    <string name="planned_journey_ready_title">Pronto per partire</string>
+    <string name="planned_journey_ready_local_note">Questo riepilogo usa solo il piano salvato: non verifica ritardi, binari o cancellazioni.</string>
+    <string name="planned_journey_ready_no_reminder">Nessun promemoria impostato per questa tratta.</string>
+    <string name="planned_journey_ready_checklist_done">Checklist locale completata.</string>
+    <string name="planned_journey_ready_open_agenda">Apri agenda e checklist</string>
+    <string name="planned_journey_countdown_minutes">Tra %1$d min</string>
+    <string name="planned_journey_countdown_hours">Tra %1$d h</string>
+    <string name="planned_journey_countdown_hours_minutes">Tra %1$d h %2$d min</string>
+    <plurals name="planned_journey_ready_checklist_left">
+        <item quantity="one">%1$d voce da preparare nella checklist locale.</item>
+        <item quantity="many">%1$d voci da preparare nella checklist locale.</item>
+        <item quantity="other">%1$d voci da preparare nella checklist locale.</item>
+    </plurals>
     <string name="agenda_editor_date_value">Data: %1$s</string>
     <string name="agenda_editor_time_value">Ora: %1$s</string>
     <string name="agenda_editor_unset">da scegliere</string>

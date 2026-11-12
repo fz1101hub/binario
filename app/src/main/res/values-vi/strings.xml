@@ -936,6 +936,17 @@
     <string name="planned_journey_replan_a11y">Lên lịch lại %1$s</string>
     <string name="planned_journey_return_prepared">Đã chuẩn bị chiều về. Hãy chọn ngày giờ mới trước khi lưu.</string>
     <string name="planned_journey_replan_prepared">Đã lên lịch lại hành trình. Hãy chọn ngày giờ mới trước khi lưu.</string>
+    <string name="planned_journey_ready_title">Sẵn sàng khởi hành</string>
+    <string name="planned_journey_ready_local_note">Bản tóm tắt này chỉ dùng kế hoạch đã lưu: không kiểm tra độ trễ, sân ga hay chuyến bị hủy.</string>
+    <string name="planned_journey_ready_no_reminder">Chưa đặt lời nhắc cho hành trình này.</string>
+    <string name="planned_journey_ready_checklist_done">Đã hoàn thành danh sách kiểm tra trên máy.</string>
+    <string name="planned_journey_ready_open_agenda">Mở lịch trình và danh sách kiểm tra</string>
+    <string name="planned_journey_countdown_minutes">Còn %1$d phút</string>
+    <string name="planned_journey_countdown_hours">Còn %1$d giờ</string>
+    <string name="planned_journey_countdown_hours_minutes">Còn %1$d giờ %2$d phút</string>
+    <plurals name="planned_journey_ready_checklist_left">
+        <item quantity="other">Còn %1$d mục cần chuẩn bị trong danh sách kiểm tra trên máy.</item>
+    </plurals>
     <string name="agenda_editor_date_value">Ngày: %1$s</string>
     <string name="agenda_editor_time_value">Giờ: %1$s</string>
     <string name="agenda_editor_unset">chưa chọn</string>

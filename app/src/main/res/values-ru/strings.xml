@@ -970,6 +970,20 @@
     <string name="planned_journey_replan_a11y">Перепланировать «%1$s»</string>
     <string name="planned_journey_return_prepared">Обратная поездка подготовлена. Перед сохранением выберите новые дату и время.</string>
     <string name="planned_journey_replan_prepared">Поездка перепланирована. Перед сохранением выберите новые дату и время.</string>
+    <string name="planned_journey_ready_title">Готово к поездке</string>
+    <string name="planned_journey_ready_local_note">Эта сводка использует только сохранённый план: она не проверяет задержки, платформы или отмены.</string>
+    <string name="planned_journey_ready_no_reminder">Для этой поездки напоминание не задано.</string>
+    <string name="planned_journey_ready_checklist_done">Локальный чек-лист выполнен.</string>
+    <string name="planned_journey_ready_open_agenda">Открыть план и чек-лист</string>
+    <string name="planned_journey_countdown_minutes">Через %1$d мин</string>
+    <string name="planned_journey_countdown_hours">Через %1$d ч</string>
+    <string name="planned_journey_countdown_hours_minutes">Через %1$d ч %2$d мин</string>
+    <plurals name="planned_journey_ready_checklist_left">
+        <item quantity="one">В локальном чек-листе осталось подготовить: %1$d пункт.</item>
+        <item quantity="few">В локальном чек-листе осталось подготовить: %1$d пункта.</item>
+        <item quantity="many">В локальном чек-листе осталось подготовить: %1$d пунктов.</item>
+        <item quantity="other">В локальном чек-листе осталось подготовить: %1$d пункта.</item>
+    </plurals>
     <string name="agenda_editor_date_value">Дата: %1$s</string>
     <string name="agenda_editor_time_value">Время: %1$s</string>
     <string name="agenda_editor_unset">не выбрано</string>

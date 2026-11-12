@@ -955,6 +955,18 @@
     <string name="planned_journey_replan_a11y">%1$s neu planen</string>
     <string name="planned_journey_return_prepared">Rückfahrt vorbereitet. Wählen Sie vor dem Speichern ein neues Datum und eine neue Uhrzeit.</string>
     <string name="planned_journey_replan_prepared">Verbindung neu geplant. Wählen Sie vor dem Speichern ein neues Datum und eine neue Uhrzeit.</string>
+    <string name="planned_journey_ready_title">Bereit zur Abfahrt</string>
+    <string name="planned_journey_ready_local_note">Diese Zusammenfassung verwendet nur den gespeicherten Plan: überprüft keine Verspätungen, Gleise oder Ausfälle.</string>
+    <string name="planned_journey_ready_no_reminder">Für diese Verbindung ist keine Erinnerung eingestellt.</string>
+    <string name="planned_journey_ready_checklist_done">Lokale Checkliste abgeschlossen.</string>
+    <string name="planned_journey_ready_open_agenda">Agenda und Checkliste öffnen</string>
+    <string name="planned_journey_countdown_minutes">In %1$d Min.</string>
+    <string name="planned_journey_countdown_hours">In %1$d Std.</string>
+    <string name="planned_journey_countdown_hours_minutes">In %1$d Std. %2$d Min.</string>
+    <plurals name="planned_journey_ready_checklist_left">
+        <item quantity="one">%1$d Eintrag in der lokalen Checkliste vorzubereiten.</item>
+        <item quantity="other">%1$d Einträge in der lokalen Checkliste vorzubereiten.</item>
+    </plurals>
     <string name="agenda_editor_date_value">Datum: %1$s</string>
     <string name="agenda_editor_time_value">Uhrzeit: %1$s</string>
     <string name="agenda_editor_unset">noch wählen</string>

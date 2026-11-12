@@ -936,6 +936,17 @@
     <string name="planned_journey_replan_a11y">วางแผน %1$s ใหม่</string>
     <string name="planned_journey_return_prepared">เตรียมขากลับแล้ว เลือกวันที่และเวลาใหม่ก่อนบันทึก</string>
     <string name="planned_journey_replan_prepared">วางแผนการเดินทางใหม่แล้ว เลือกวันที่และเวลาใหม่ก่อนบันทึก</string>
+    <string name="planned_journey_ready_title">พร้อมออกเดินทาง</string>
+    <string name="planned_journey_ready_local_note">สรุปนี้ใช้เฉพาะแผนที่บันทึกไว้: ไม่ตรวจสอบความล่าช้า ชานชาลา หรือการยกเลิก</string>
+    <string name="planned_journey_ready_no_reminder">ยังไม่ได้ตั้งการเตือนสำหรับการเดินทางนี้</string>
+    <string name="planned_journey_ready_checklist_done">เช็กลิสต์ในเครื่องเสร็จแล้ว</string>
+    <string name="planned_journey_ready_open_agenda">เปิดกำหนดการและเช็กลิสต์</string>
+    <string name="planned_journey_countdown_minutes">อีก %1$d นาที</string>
+    <string name="planned_journey_countdown_hours">อีก %1$d ชม.</string>
+    <string name="planned_journey_countdown_hours_minutes">อีก %1$d ชม. %2$d นาที</string>
+    <plurals name="planned_journey_ready_checklist_left">
+        <item quantity="other">รายการที่ต้องเตรียมในเช็กลิสต์ในเครื่อง %1$d รายการ</item>
+    </plurals>
     <string name="agenda_editor_date_value">วันที่: %1$s</string>
     <string name="agenda_editor_time_value">เวลา: %1$s</string>
     <string name="agenda_editor_unset">ยังไม่ได้เลือก</string>

@@ -913,6 +913,17 @@
     <string name="planned_journey_replan_a11y">Jadwalkan ulang %1$s</string>
     <string name="planned_journey_return_prepared">Perjalanan pulang disiapkan. Pilih tanggal dan waktu baru sebelum menyimpan.</string>
     <string name="planned_journey_replan_prepared">Perjalanan dijadwalkan ulang. Pilih tanggal dan waktu baru sebelum menyimpan.</string>
+    <string name="planned_journey_ready_title">Siap berangkat</string>
+    <string name="planned_journey_ready_local_note">Ringkasan ini hanya memakai rencana yang disimpan: tidak memeriksa keterlambatan, peron, atau pembatalan.</string>
+    <string name="planned_journey_ready_no_reminder">Tidak ada pengingat untuk perjalanan ini.</string>
+    <string name="planned_journey_ready_checklist_done">Daftar periksa lokal selesai.</string>
+    <string name="planned_journey_ready_open_agenda">Buka agenda dan daftar periksa</string>
+    <string name="planned_journey_countdown_minutes">Dalam %1$d mnt</string>
+    <string name="planned_journey_countdown_hours">Dalam %1$d jam</string>
+    <string name="planned_journey_countdown_hours_minutes">Dalam %1$d jam %2$d mnt</string>
+    <plurals name="planned_journey_ready_checklist_left">
+        <item quantity="other">%1$d item perlu disiapkan di daftar periksa lokal.</item>
+    </plurals>
     <string name="agenda_editor_date_value">Tanggal: %1$s</string>
     <string name="agenda_editor_time_value">Jam: %1$s</string>
     <string name="agenda_editor_unset">belum dipilih</string>

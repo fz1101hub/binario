@@ -932,6 +932,18 @@
     <string name="planned_journey_replan_a11y">%1$s दोबारा निर्धारित करें</string>
     <string name="planned_journey_return_prepared">वापसी तैयार है। सहेजने से पहले नई तारीख और समय चुनें।</string>
     <string name="planned_journey_replan_prepared">यात्रा दोबारा निर्धारित हुई। सहेजने से पहले नई तारीख और समय चुनें।</string>
+    <string name="planned_journey_ready_title">यात्रा के लिए तैयार</string>
+    <string name="planned_journey_ready_local_note">यह सारांश केवल सहेजी गई योजना का उपयोग करता है: यह देरी, प्लेटफ़ॉर्म या रद्दीकरण नहीं जाँचता।</string>
+    <string name="planned_journey_ready_no_reminder">इस यात्रा के लिए कोई रिमाइंडर सेट नहीं है।</string>
+    <string name="planned_journey_ready_checklist_done">स्थानीय चेकलिस्ट पूरी हुई।</string>
+    <string name="planned_journey_ready_open_agenda">एजेंडा और चेकलिस्ट खोलें</string>
+    <string name="planned_journey_countdown_minutes">%1$d मिनट में</string>
+    <string name="planned_journey_countdown_hours">%1$d घंटे में</string>
+    <string name="planned_journey_countdown_hours_minutes">%1$d घं %2$d मि में</string>
+    <plurals name="planned_journey_ready_checklist_left">
+        <item quantity="one">स्थानीय चेकलिस्ट में तैयार करने के लिए %1$d आइटम बाकी है।</item>
+        <item quantity="other">स्थानीय चेकलिस्ट में तैयार करने के लिए %1$d आइटम बाकी हैं।</item>
+    </plurals>
     <string name="agenda_editor_date_value">तारीख: %1$s</string>
     <string name="agenda_editor_time_value">समय: %1$s</string>
     <string name="agenda_editor_unset">चुनना बाकी</string>

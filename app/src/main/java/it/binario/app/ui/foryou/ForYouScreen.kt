@@ -101,7 +101,9 @@ internal fun ForYouScreen(
     openStationBoard: (Station) -> Unit,
     openSettings: () -> Unit,
     openFavouriteTrain: (ServiceMonitor) -> Unit = {},
-    openSavedTimetable: (SavedTimetable) -> Unit = {}
+    openSavedTimetable: (SavedTimetable) -> Unit = {},
+    /** «Pronto per partire»: the next planned journey of the Agenda, shown above the Agenda row. */
+    nextPlannedJourney: @Composable (Modifier) -> Unit = {}
 ) {
     var showComposer by rememberSaveable { mutableStateOf(false) }
     var tabName by rememberSaveable { mutableStateOf(RoutesTab.FAVOURITES.name) }
@@ -199,6 +201,7 @@ internal fun ForYouScreen(
                 modifier = Modifier.padding(top = 12.dp)
             )
         }
+        item(key = "ready-to-go") { nextPlannedJourney(Modifier.padding(horizontal = ScreenMargin).padding(top = 12.dp)) }
         item {
             BinarioCard(Modifier.padding(horizontal = ScreenMargin, vertical = 12.dp)) {
                 NavigationRow(

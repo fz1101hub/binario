@@ -1008,6 +1008,22 @@
     <string name="planned_journey_replan_a11y">أعد جدولة %1$s</string>
     <string name="planned_journey_return_prepared">رحلة العودة جاهزة. اختر تاريخًا ووقتًا جديدين قبل الحفظ.</string>
     <string name="planned_journey_replan_prepared">أعيدت جدولة الرحلة. اختر تاريخًا ووقتًا جديدين قبل الحفظ.</string>
+    <string name="planned_journey_ready_title">جاهز للسفر</string>
+    <string name="planned_journey_ready_local_note">يستخدم هذا الملخص الخطة المحفوظة فقط: لا يتحقق من التأخيرات أو الأرصفة أو الإلغاءات.</string>
+    <string name="planned_journey_ready_no_reminder">لا يوجد تذكير لهذه الرحلة.</string>
+    <string name="planned_journey_ready_checklist_done">اكتملت قائمة التحقق المحلية.</string>
+    <string name="planned_journey_ready_open_agenda">افتح الأجندة وقائمة التحقق</string>
+    <string name="planned_journey_countdown_minutes">بعد %1$d د</string>
+    <string name="planned_journey_countdown_hours">بعد %1$d س</string>
+    <string name="planned_journey_countdown_hours_minutes">بعد %1$d س %2$d د</string>
+    <plurals name="planned_journey_ready_checklist_left">
+        <item quantity="zero">%1$d عنصر للتجهيز في قائمة التحقق المحلية.</item>
+        <item quantity="one">%1$d عنصر للتجهيز في قائمة التحقق المحلية.</item>
+        <item quantity="two">%1$d عنصر للتجهيز في قائمة التحقق المحلية.</item>
+        <item quantity="few">%1$d عناصر للتجهيز في قائمة التحقق المحلية.</item>
+        <item quantity="many">%1$d عنصرًا للتجهيز في قائمة التحقق المحلية.</item>
+        <item quantity="other">%1$d عنصر للتجهيز في قائمة التحقق المحلية.</item>
+    </plurals>
     <string name="agenda_editor_date_value">التاريخ: %1$s</string>
     <string name="agenda_editor_time_value">الوقت: %1$s</string>
     <string name="agenda_editor_unset">لم يُحدَّد بعد</string>

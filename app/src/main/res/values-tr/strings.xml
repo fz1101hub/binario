@@ -955,6 +955,18 @@
     <string name="planned_journey_replan_a11y">%1$s yolculuğunu yeniden planla</string>
     <string name="planned_journey_return_prepared">Dönüş hazırlandı. Kaydetmeden önce yeni bir tarih ve saat seçin.</string>
     <string name="planned_journey_replan_prepared">Yolculuk yeniden planlandı. Kaydetmeden önce yeni bir tarih ve saat seçin.</string>
+    <string name="planned_journey_ready_title">Yolculuğa hazır</string>
+    <string name="planned_journey_ready_local_note">Bu özet yalnızca kayıtlı planı kullanır: gecikmeleri, peronları veya iptalleri kontrol etmez.</string>
+    <string name="planned_journey_ready_no_reminder">Bu yolculuk için hatırlatıcı ayarlanmadı.</string>
+    <string name="planned_journey_ready_checklist_done">Yerel kontrol listesi tamamlandı.</string>
+    <string name="planned_journey_ready_open_agenda">Ajandayı ve kontrol listesini aç</string>
+    <string name="planned_journey_countdown_minutes">%1$d dk sonra</string>
+    <string name="planned_journey_countdown_hours">%1$d sa sonra</string>
+    <string name="planned_journey_countdown_hours_minutes">%1$d sa %2$d dk sonra</string>
+    <plurals name="planned_journey_ready_checklist_left">
+        <item quantity="one">Yerel kontrol listesinde hazırlanacak %1$d öğe var.</item>
+        <item quantity="other">Yerel kontrol listesinde hazırlanacak %1$d öğe var.</item>
+    </plurals>
     <string name="agenda_editor_date_value">Tarih: %1$s</string>
     <string name="agenda_editor_time_value">Saat: %1$s</string>
     <string name="agenda_editor_unset">seçilmedi</string>

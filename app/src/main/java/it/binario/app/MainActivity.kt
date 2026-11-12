@@ -85,6 +85,7 @@ import it.binario.app.journeys.JourneyResultsPresenter
 import it.binario.app.journeys.JourneySearchViewModel
 import it.binario.app.maps.rememberOpenMapStationIndex
 import it.binario.app.plannedjourney.PlannedJourneyAgendaScreen
+import it.binario.app.plannedjourney.PlannedJourneyReadyCard
 import it.binario.app.plannedjourney.PlannedJourneyExportFormat
 import it.binario.app.plannedjourney.PlannedJourneyIcsContract
 import it.binario.app.plannedjourney.PlannedJourneyIcsText
@@ -618,6 +619,9 @@ internal fun BinarioApp(
                 },
                 openRecent = { recent -> if (viewModel.useRecentRoute(recent)) showResults(AppScreen.RESULTS, AppScreen.FOR_YOU) },
                 openAgenda = { showScreen(AppScreen.AGENDA) },
+                nextPlannedJourney = { cardModifier ->
+                    PlannedJourneyReadyCard(plannedJourneyViewModel, onOpenAgenda = { showScreen(AppScreen.AGENDA) }, modifier = cardModifier)
+                },
                 openStationBoard = { station ->
                     viewModel.openStationBoard(station)
                     showDepartures(OperationsSection.STATIONS)

@@ -72,7 +72,16 @@ class PlannedJourneyViewModel(
     var warning by mutableStateOf(initialRead.warning?.let { UiMessage(UiMessageKey.PLANNED_JOURNEY_STORED_UNREADABLE) })
         private set
     /** The stored Agenda is not fully readable: [snapshot] holds the recovered journeys and every write is refused. */
-    val readOnly: Boolean = initialRead.readOnly
+    var readOnly by mutableStateOf(initialRead.readOnly)
+        private set
+
+    /** Reads the stored Agenda again, when a screen showing it returns to the foreground. */
+    fun reload() {
+        val read = repository.read()
+        snapshot = read.snapshot
+        readOnly = read.readOnly
+        warning = read.warning?.let { UiMessage(UiMessageKey.PLANNED_JOURNEY_STORED_UNREADABLE) }
+    }
     var filter by mutableStateOf(
         savedStateHandle.get<String>(AGENDA_FILTER_KEY)
             ?.let { runCatching { PlannedJourneyAgendaFilter.valueOf(it) }.getOrNull() }

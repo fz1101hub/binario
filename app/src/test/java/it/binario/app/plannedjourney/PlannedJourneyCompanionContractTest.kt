@@ -114,6 +114,36 @@ class PlannedJourneyCompanionContractTest {
         assertEquals(PlannedJourneyReminderMinutes.FIFTEEN, restored.editor?.reminderMinutes)
     }
 
+    @Test fun `next journey skips the departed one and counts down in rounded-up minutes`() {
+        val now = LocalDate.parse("2026-10-02").atTime(8, 20).atZone(italy).toInstant()
+        val early = journey("early", "2026-10-02", "08:15")
+        val later = journey("later", "2026-10-02", "09:30")
+        val next = requireNotNull(nextPlannedJourney(listOf(early, later), now))
+        assertEquals("later", next.journey.id)
+        assertEquals(PlannedJourneyCountdown(1, 10), PlannedJourneyCountdown.between(now, next.occurrence.scheduledAt))
+        assertEquals(null, nextPlannedJourney(listOf(early), now))
+        assertEquals(PlannedJourneyCountdown(0, 1), PlannedJourneyCountdown.between(now, now.plusSeconds(1)))
+        assertEquals(PlannedJourneyCountdown(2, 0), PlannedJourneyCountdown.between(now, now.plusSeconds(7_200)))
+        assertEquals(PlannedJourneyCountdown(0, 0), PlannedJourneyCountdown.between(now, now.minusSeconds(60)))
+        val completed = PlannedJourneyLifecycle.complete(later, createdAt)
+        assertEquals(null, nextPlannedJourney(listOf(early, completed), now))
+    }
+
+    @Test fun `the countdown follows the Italian departure whatever the phone's zone`() {
+        val original = java.util.TimeZone.getDefault()
+        try {
+            listOf("Europe/London", "America/New_York", "Asia/Tokyo").forEach { phone ->
+                java.util.TimeZone.setDefault(java.util.TimeZone.getTimeZone(phone))
+                val train = journey("summer", "2026-07-12", "09:00")
+                val next = requireNotNull(nextPlannedJourney(listOf(train), Instant.parse("2026-07-12T06:30:00Z")))
+                assertEquals(phone, PlannedJourneyCountdown(0, 30), PlannedJourneyCountdown.between(Instant.parse("2026-07-12T06:30:00Z"), next.occurrence.scheduledAt))
+                assertEquals(phone, null, nextPlannedJourney(listOf(train), Instant.parse("2026-07-12T07:30:00Z")))
+            }
+        } finally {
+            java.util.TimeZone.setDefault(original)
+        }
+    }
+
     private class FakeStorage(var value: String? = null) : PlannedJourneyStorage {
         override fun read(): String? = value
         override fun write(value: String) { this.value = value }

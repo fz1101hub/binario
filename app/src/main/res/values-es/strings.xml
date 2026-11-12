@@ -974,6 +974,19 @@
     <string name="planned_journey_replan_a11y">Replanificar %1$s</string>
     <string name="planned_journey_return_prepared">Regreso preparado. Elige una nueva fecha y hora antes de guardar.</string>
     <string name="planned_journey_replan_prepared">Trayecto replanificado. Elige una nueva fecha y hora antes de guardar.</string>
+    <string name="planned_journey_ready_title">Listo para salir</string>
+    <string name="planned_journey_ready_local_note">Este resumen usa solo el plan guardado: no verifica retrasos, andenes o cancelaciones.</string>
+    <string name="planned_journey_ready_no_reminder">Ningún recordatorio establecido para este trayecto.</string>
+    <string name="planned_journey_ready_checklist_done">Checklist local completada.</string>
+    <string name="planned_journey_ready_open_agenda">Abrir agenda y checklist</string>
+    <string name="planned_journey_countdown_minutes">En %1$d min</string>
+    <string name="planned_journey_countdown_hours">En %1$d h</string>
+    <string name="planned_journey_countdown_hours_minutes">En %1$d h %2$d min</string>
+    <plurals name="planned_journey_ready_checklist_left">
+        <item quantity="one">%1$d elemento por preparar en la checklist local.</item>
+        <item quantity="many">%1$d elementos por preparar en la checklist local.</item>
+        <item quantity="other">%1$d elementos por preparar en la checklist local.</item>
+    </plurals>
     <string name="agenda_editor_date_value">Fecha: %1$s</string>
     <string name="agenda_editor_time_value">Hora: %1$s</string>
     <string name="agenda_editor_unset">por elegir</string>
