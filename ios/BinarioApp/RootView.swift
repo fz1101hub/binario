@@ -39,6 +39,17 @@ struct RootView: View {
             }
         }
         .task { await expireLiveValues() }
+        // Saving or deleting a route can fail on any tab (the planner's «Salva tratta», «Tratte»):
+        // the alert is shown where it happened, not when «Tratte» is opened later.
+        .alert(
+            LocalizedStringKey(model.persistenceMessageKey ?? "saved.storage_error"),
+            isPresented: Binding(
+                get: { model.persistenceMessageKey != nil },
+                set: { if !$0 { model.persistenceMessageKey = nil } }
+            )
+        ) {
+            Button("action.ok", role: .cancel) { model.persistenceMessageKey = nil }
+        }
     }
 
     /// Every minute while the app is open: live values older than `AppModel.liveDisplaySeconds`

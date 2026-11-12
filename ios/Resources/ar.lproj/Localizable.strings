@@ -173,6 +173,7 @@
 "result.live.stops" = "المحطات";
 "result.live.passed" = "تجاوز المحطة";
 "result.live.skipped" = "محطة متجاوَزة";
+"result.live.added" = "محطة إضافية";
 "result.live.loading" = "جارٍ تحديث البيانات المباشرة…";
 "result.live.from_sources" = "بيانات مباشرة من %1$@";
 "result.live.platform_source" = "الرصيف حسب %1$@";

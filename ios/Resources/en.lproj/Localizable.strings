@@ -173,6 +173,7 @@
 "result.live.stops" = "Stops";
 "result.live.passed" = "Stop passed";
 "result.live.skipped" = "Skipped stop";
+"result.live.added" = "Extra stop";
 "result.live.loading" = "Updating real-time data…";
 "result.live.from_sources" = "Real-time data from %1$@";
 "result.live.platform_source" = "Platform from %1$@";

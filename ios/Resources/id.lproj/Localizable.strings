@@ -173,6 +173,7 @@
 "result.live.stops" = "Pemberhentian";
 "result.live.passed" = "Pemberhentian terlewati";
 "result.live.skipped" = "Pemberhentian dilewati";
+"result.live.added" = "Pemberhentian tambahan";
 "result.live.loading" = "Memperbarui data real-time…";
 "result.live.from_sources" = "Data real-time dari %1$@";
 "result.live.platform_source" = "Peron menurut %1$@";

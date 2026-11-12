@@ -3,6 +3,8 @@ import BinarioKit
 
 struct SavedRoutesView: View {
     @EnvironmentObject private var model: AppModel
+    /// «Elimina tutte le tratte» asks first: one tap would delete up to 32 routes and the Watch pin.
+    @State private var confirmingDeleteAll = false
 
     var body: some View {
         Group {
@@ -70,22 +72,19 @@ struct SavedRoutesView: View {
 
                     Section {
                         Button("saved.delete_all", role: .destructive) {
-                            model.deleteAllRoutes()
+                            confirmingDeleteAll = true
+                        }
+                        .confirmationDialog("saved.delete_all", isPresented: $confirmingDeleteAll, titleVisibility: .visible) {
+                            Button("saved.delete_all", role: .destructive) {
+                                model.deleteAllRoutes()
+                            }
                         }
                     }
                 }
             }
         }
         .navigationTitle("saved.title")
-        .alert(
-            LocalizedStringKey(model.persistenceMessageKey ?? "saved.storage_error"),
-            isPresented: Binding(
-                get: { model.persistenceMessageKey != nil },
-                set: { if !$0 { model.persistenceMessageKey = nil } }
-            )
-        ) {
-            Button("action.ok", role: .cancel) { model.persistenceMessageKey = nil }
-        }
+        // The limit and storage errors are RootView's alert, shown on whichever tab caused them.
     }
 }
 

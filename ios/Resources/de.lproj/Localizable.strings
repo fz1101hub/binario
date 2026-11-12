@@ -173,6 +173,7 @@
 "result.live.stops" = "Halte";
 "result.live.passed" = "Halt passiert";
 "result.live.skipped" = "Ausgelassener Halt";
+"result.live.added" = "Zusätzlicher Halt";
 "result.live.loading" = "Echtzeitdaten werden aktualisiert…";
 "result.live.from_sources" = "Echtzeitdaten von %1$@";
 "result.live.platform_source" = "Gleis laut %1$@";

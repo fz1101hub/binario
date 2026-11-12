@@ -173,6 +173,7 @@
 "result.live.stops" = "Fermate";
 "result.live.passed" = "Fermata superata";
 "result.live.skipped" = "Fermata saltata";
+"result.live.added" = "Fermata straordinaria";
 "result.live.loading" = "Aggiornamento dei dati in tempo reale…";
 "result.live.from_sources" = "Dati in tempo reale da %1$@";
 "result.live.platform_source" = "Binario da %1$@";

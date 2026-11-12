@@ -252,7 +252,17 @@ final class BinarioAppTests: XCTestCase {
         )
         await invalidProvider.run(query: query)
         XCTAssertEqual(invalidProvider.searchState, .unavailable(.providerInvalid))
-        XCTAssertEqual(invalidProvider.scheduleState, .unavailable)
+        // One failed read is the search's error: the planner is not switched off until the app is quit.
+        XCTAssertEqual(invalidProvider.scheduleState, .available)
+
+        let noProvider = makeModel(
+            defaults: defaults,
+            publisher: nil,
+            repository: StubJourneyRepository(result: .unavailable(.noAuthorizedProvider))
+        )
+        await noProvider.run(query: query)
+        XCTAssertEqual(noProvider.searchState, .unavailable(.noAuthorizedProvider))
+        XCTAssertEqual(noProvider.scheduleState, .unavailable, "no timetables installed at all")
     }
 
     func testCatalogStateIsLoadingThenAvailableOrUnavailable() async throws {
@@ -1057,6 +1067,19 @@ final class BinarioAppTests: XCTestCase {
             platform: nil, delayMinutes: 0, hasTrainNumber: false
         )
         XCTAssertNil(model.liveTrainKey(for: route, query: query, now: now))
+    }
+
+    func testAnExtraordinaryStopIsShownAsSuchNeverAsASkippedOne() {
+        let scheduled = Date(timeIntervalSince1970: 1_793_778_000)
+        let added = LiveStopStatus(
+            stationCode: "S05043", stationName: "BOLOGNA CENTRALE", scheduled: scheduled, scheduledDeparture: nil,
+            expected: scheduled, actual: nil, actualDeparture: nil, platform: "3", scheduledPlatform: nil, delayMinutes: 0,
+            passed: false, skipped: false, operationalStatusVerified: false, added: true
+        )
+        XCTAssertEqual(LiveTexts.stopParts(added), [LiveTexts.added, DeparturesTexts.platform("3")])
+        XCTAssertTrue(LiveTexts.spokenStop(added).contains(LiveTexts.added))
+        XCTAssertFalse(LiveTexts.spokenStop(added).contains(LiveTexts.skipped))
+        XCTAssertNotEqual(LiveTexts.added, LiveTexts.skipped)
     }
 
     func testMyTrainsAsksTheFirstEightFavouritesOnlyWhileOnScreen() async throws {

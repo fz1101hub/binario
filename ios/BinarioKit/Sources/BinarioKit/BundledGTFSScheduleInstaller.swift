@@ -26,6 +26,9 @@ public struct BundledGTFSScheduleInstaller: Sendable {
     ) throws -> URL {
         Self.installationLock.lock()
         defer { Self.installationLock.unlock() }
+        // A launch killed between a staged write and its removal leaves a hidden copy of the
+        // whole index behind; under the lock no staged write of this process is in progress.
+        Self.removeStagedDatabases(in: cacheDirectory)
         let metadata = try Self.loadMetadata(from: metadataURL)
         let destination = cacheDirectory
             .appendingPathComponent("binario-gtfs-\(metadata.database.sha256.prefix(16)).sqlite", isDirectory: false)
@@ -165,6 +168,19 @@ public struct BundledGTFSScheduleInstaller: Sendable {
     private static func isSHA256(_ value: String) -> Bool {
         value.count == 64 && value.utf8.allSatisfy { byte in
             (48...57).contains(byte) || (97...102).contains(byte)
+        }
+    }
+
+    /// The hidden staged copies (`.binario-gtfs-<UUID>.sqlite`) that `removeSupersededDatabases`
+    /// never sees: it skips hidden files and matches the visible prefix only.
+    private static func removeStagedDatabases(in directory: URL) {
+        let urls = (try? FileManager.default.contentsOfDirectory(
+            at: directory,
+            includingPropertiesForKeys: nil,
+            options: []
+        )) ?? []
+        for url in urls where url.lastPathComponent.hasPrefix(".binario-gtfs-") && url.pathExtension == "sqlite" {
+            try? FileManager.default.removeItem(at: url)
         }
     }
 

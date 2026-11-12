@@ -197,6 +197,9 @@ final class SQLiteGTFSJourneyRepositoryTests: XCTestCase {
         try FileManager.default.createDirectory(at: cacheURL, withIntermediateDirectories: true)
         let obsolete = cacheURL.appendingPathComponent("binario-gtfs-obsolete.sqlite")
         try Data("previous-cache".utf8).write(to: obsolete)
+        // A staged copy left by a launch killed before it was moved or removed.
+        let leftover = cacheURL.appendingPathComponent(".binario-gtfs-\(UUID().uuidString).sqlite")
+        try Data("staged".utf8).write(to: leftover)
 
         let installer = BundledGTFSScheduleInstaller()
         let installed = try installer.install(
@@ -205,6 +208,7 @@ final class SQLiteGTFSJourneyRepositoryTests: XCTestCase {
             cacheDirectory: cacheURL
         )
         XCTAssertFalse(FileManager.default.fileExists(atPath: obsolete.path))
+        XCTAssertFalse(FileManager.default.fileExists(atPath: leftover.path), "a leftover staged copy is removed")
         XCTAssertTrue(FileManager.default.fileExists(atPath: installed.path))
         XCTAssertEqual(try Data(contentsOf: installed), database)
 
@@ -237,6 +241,20 @@ final class SQLiteGTFSJourneyRepositoryTests: XCTestCase {
         )
         XCTAssertEqual(replaced, installed)
         XCTAssertEqual(try Data(contentsOf: replaced), database)
+    }
+
+    func testTheIndexIsValidatedOncePerFileAndAgainWhenTheFileChanges() async throws {
+        let fixture = try Fixture()
+        try fixture.insertTrip(id: 1, externalID: "direct", seconds: 10 * 3_600)
+        let first = await fixture.repository.journeys(for: try query("2024-04-01 09:00"))
+        guard case let .available(firstSnapshot) = first else { return XCTFail("Expected the direct train, got \(first)") }
+        let again = await fixture.repository.journeys(for: try query("2024-04-01 09:00"))
+        guard case let .available(againSnapshot) = again else { return XCTFail("Expected the direct train, got \(again)") }
+        XCTAssertEqual(againSnapshot.services, firstSnapshot.services)
+        // Another file at the same path is never served on the strength of the first validation.
+        try Data("not sqlite".utf8).write(to: fixture.url)
+        let replaced = await fixture.repository.journeys(for: try query("2024-04-01 09:00"))
+        XCTAssertEqual(replaced, .unavailable(.providerInvalid))
     }
 
     func testBundledInstallerFastPathDoesNotTrustASameSizeCorruptCache() throws {

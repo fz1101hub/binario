@@ -5,11 +5,13 @@ enum WatchSnapshotStorage {
     private static let snapshotKey = "binario_watch_snapshot_v1"
 
     static func load() -> BinarioWatchSnapshot {
-        guard let data = UserDefaults(suiteName: appGroup)?.data(forKey: snapshotKey),
-              let snapshot = BinarioWatchSnapshot.decodeContract(data) else {
-            return .unavailable
-        }
-        return snapshot
+        loadStored() ?? .unavailable
+    }
+
+    /// The snapshot the iPhone sent, nil when there is none or it is no longer valid.
+    static func loadStored() -> BinarioWatchSnapshot? {
+        guard let data = UserDefaults(suiteName: appGroup)?.data(forKey: snapshotKey) else { return nil }
+        return BinarioWatchSnapshot.decodeContract(data)
     }
 
     static func save(_ snapshot: BinarioWatchSnapshot) throws {

@@ -25,13 +25,13 @@ struct BinarioTimelineProvider: TimelineProvider {
     }
 
     /// One entry now, one at each listed departure (the next train takes over) and one at the
-    /// expiry (unavailable); WidgetKit asks again once the last entry is reached. A new snapshot
-    /// from the iPhone reloads the timeline straight away (WatchSnapshotStore.accept).
+    /// expiry (unavailable); WidgetKit asks again once the last entry is reached. Without a valid
+    /// snapshot, the unavailable state and no reload (`WatchWidgetTimeline`). A new snapshot from
+    /// the iPhone reloads the timeline straight away (WatchSnapshotStore.accept).
     func getTimeline(in context: Context, completion: @escaping (Timeline<BinarioTimelineEntry>) -> Void) {
-        let entries = WatchSnapshotStorage.load()
-            .timeline(from: Date())
-            .map { BinarioTimelineEntry(date: $0.date, snapshot: $0.snapshot) }
-        completion(Timeline(entries: entries, policy: .atEnd))
+        let plan = WatchWidgetTimeline.plan(for: WatchSnapshotStorage.loadStored(), from: Date())
+        let entries = plan.entries.map { BinarioTimelineEntry(date: $0.date, snapshot: $0.snapshot) }
+        completion(Timeline(entries: entries, policy: plan.reloadsAtEnd ? .atEnd : .never))
     }
 }
 

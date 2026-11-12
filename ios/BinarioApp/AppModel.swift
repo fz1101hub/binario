@@ -150,6 +150,8 @@ final class AppModel: ObservableObject {
     @Published private(set) var boardFirstTomorrow: StationBoardDeparture? = nil
     /// The feeds of the listed trains, for the board footer.
     @Published private(set) var boardAttributions: [String] = []
+    /// «Orari scaduti» over the list: a feed of the station has ended while another goes on.
+    @Published private(set) var boardSomeTimetablesEnded = false
     /// «Dati in tempo reale» (Settings, `LiveDataPreferenceStore`): on unless the user turned it off.
     @Published private(set) var liveDataEnabled: Bool
     /// The sources not asked again before a time, for «ViaggiaTreno in pausa fino alle 10:42».
@@ -181,6 +183,10 @@ final class AppModel: ObservableObject {
     /// The reading started by a station choice or by the timetables opening.
     private var boardLoad: Task<Void, Never>?
     private var searchRequestID = 0
+    /// Where the timetable index was opened from (`loadSchedule`), to open it again after a failed read.
+    private var scheduleInputs: ScheduleInputs?
+    /// The index has been opened again after a failed read in this launch: at most once.
+    private var scheduleReopenedAfterFailedRead = false
     /// The last search that was for now, whose route the Watch shows; nil once the input changes.
     private var watchRouteQuery: JourneyQuery?
     /// Bumped by every publication of the pinned route, so only the latest one reaches the Watch.
@@ -449,6 +455,9 @@ final class AppModel: ObservableObject {
     }
 
     func loadSchedule(compressedURL: URL, metadataURL: URL, sourcePolicyURL: URL? = nil, cacheDirectory: URL) async {
+        scheduleInputs = ScheduleInputs(
+            compressedURL: compressedURL, metadataURL: metadataURL, sourcePolicyURL: sourcePolicyURL, cacheDirectory: cacheDirectory
+        )
         scheduleState = .loading
         let installed = await Task.detached(priority: .utility) { () -> InstalledSchedule? in
             guard let installedURL = try? BundledGTFSScheduleInstaller().install(
@@ -534,11 +543,29 @@ final class AppModel: ObservableObject {
             searchState = .unavailable(reason)
             latestSnapshot = nil
             resultReliability = nil
-            if reason == .noAuthorizedProvider || reason == .providerInvalid {
+            if reason == .noAuthorizedProvider {
                 scheduleState = .unavailable
             }
             if isForNow { publishUnavailableSnapshot(for: query) }
+            // One failed read (an I/O error, a cache damaged while the app runs, a pair over a
+            // reader limit) is this search's error, not a planner switched off until the app is
+            // quit: the index is validated again, and reinstalled from the bundle when damaged.
+            if reason == .providerInvalid { await reopenScheduleAfterFailedRead() }
         }
+    }
+
+    /// Opens the timetable index again after a failed read, once per launch: `loadSchedule`
+    /// validates it and installs it again from the bundle when it is damaged; only if that fails
+    /// are the timetables unavailable.
+    private func reopenScheduleAfterFailedRead() async {
+        guard !scheduleReopenedAfterFailedRead, scheduleState == .available, let inputs = scheduleInputs else { return }
+        scheduleReopenedAfterFailedRead = true
+        await loadSchedule(
+            compressedURL: inputs.compressedURL,
+            metadataURL: inputs.metadataURL,
+            sourcePolicyURL: inputs.sourcePolicyURL,
+            cacheDirectory: inputs.cacheDirectory
+        )
     }
 
     func invalidateSearchResult() {
@@ -690,6 +717,7 @@ final class AppModel: ObservableObject {
         boardHasMore = false
         boardFirstTomorrow = nil
         boardAttributions = []
+        boardSomeTimetablesEnded = false
         boardState = .loading
         scheduleBoardReload()
         restartBoardLive()
@@ -733,6 +761,7 @@ final class AppModel: ObservableObject {
             boardHasMore = page.hasMore
             boardFirstTomorrow = page.firstDepartureNextDay
             boardAttributions = page.attributions
+            boardSomeTimetablesEnded = page.someTimetablesEnded
             boardDay = Self.boardDay(now)
             boardState = .available
         case let .unavailable(reason):
@@ -745,6 +774,7 @@ final class AppModel: ObservableObject {
         boardHasMore = false
         boardFirstTomorrow = nil
         boardAttributions = []
+        boardSomeTimetablesEnded = false
         boardDay = day
         boardState = .unavailable(reason)
     }
@@ -881,6 +911,8 @@ final class AppModel: ObservableObject {
         cancelResultLive()
         cancelDetailLive()
         cancelFavouritesLive()
+        // The requests the screens left keep going for the next screen; switched off, they stop.
+        livePauses.cancelRequestsNobodyWaitsFor()
         boardLive = nil
         boardLiveSources = []
         setBoardRows(boardScheduled)
@@ -919,6 +951,7 @@ final class AppModel: ObservableObject {
         cancelResultLive()
         cancelDetailLive()
         cancelFavouritesLive()
+        livePauses.cancelRequestsNobodyWaitsFor()
     }
 
     /// Every minute while the app is open, and when it comes back to the foreground: the live values
@@ -974,9 +1007,9 @@ final class AppModel: ObservableObject {
         await boardLiveLoad?.value
     }
 
-    /// The live board of the chosen station, merged from RFI, Italo and ViaggiaTreno, over its
-    /// timetable rows (`LiveOverlay.stationBoard`): asked only while «Partenze» is on screen with
-    /// «Dati in tempo reale» on. When every source fails the rows stay the timetable's.
+    /// The live board of the chosen station, merged from RFI, Italo and ViaggiaTreno, put before
+    /// its timetable rows (`LiveOverlay.stationBoard`): asked only while «Partenze» is on screen with
+    /// «Dati in tempo reale» on. When every source fails the rows are the timetable's.
     func refreshBoardLive(now: Date = Date()) async {
         guard isForeground else { return }
         guard boardLiveVisible, liveDataEnabled, let liveData, let identity = boardStation else { return }
@@ -1023,8 +1056,9 @@ final class AppModel: ObservableObject {
         if boardLiveState == .loading { boardLiveState = boardLiveRestingState }
     }
 
-    /// The rows of «Partenze»: the bundled timetable's, with the values of the last live board of
-    /// the same station on the trains it lists; every other row stays «orario programmato».
+    /// The rows of «Partenze», live first (`LiveOverlay.stationBoard`): with a usable live board of
+    /// the same station, its rows (each on its bundled train when it has one), then the bundled
+    /// rows after the last of them, «orario programmato»; without one, the bundled timetable's rows.
     private func setBoardRows(_ rows: [StationBoardDeparture]) {
         boardScheduled = rows
         guard liveDataEnabled, let live = boardLive, live.stationID == boardStation?.id else {
@@ -1092,18 +1126,28 @@ final class AppModel: ObservableObject {
     }
 
     /// Each listed train's row on `board`, placed in time as the Watch places them (the "HH:mm" of
-    /// each train from the query's minute on, in order), with what is still live at `now`.
+    /// each train from the query's minute on, in order), with what is still live at `now`; a live
+    /// row goes to one listed train only (`LiveOverlay.departures(for:in:)`).
     static func liveValues(of journey: JourneySnapshot, board: LiveDepartureBoard, at now: Date) -> [String: StationBoardLiveStatus] {
         let calendar = timetableCalendar
         var cursor = journey.query.departure.addingTimeInterval(-60)
-        var live: [String: StationBoardLiveStatus] = [:]
+        var placed: [(service: TrainService, departure: Date)] = []
         for service in journey.services {
             guard let departure = nextOccurrence(of: service.scheduledDeparture, after: cursor, calendar: calendar) else { continue }
             cursor = departure.addingTimeInterval(-1)
-            guard service.hasTrainNumber,
-                  let row = LiveOverlay.departure(number: service.number, scheduled: departure, in: board.departures),
-                  let status = row.stationBoardLiveStatus(at: now, timetable: departure) else { continue }
-            live[service.id] = status
+            placed.append((service: service, departure: departure))
+        }
+        let planned: [LiveOverlay.PlannedTrain?] = placed.map { entry -> LiveOverlay.PlannedTrain? in
+            entry.service.hasTrainNumber
+                ? LiveOverlay.PlannedTrain(number: entry.service.number, scheduled: entry.departure, operatorName: entry.service.operatorName)
+                : nil
+        }
+        let matched = LiveOverlay.departures(for: planned, in: board.departures)
+        var live: [String: StationBoardLiveStatus] = [:]
+        for (index, entry) in placed.enumerated() {
+            guard let row = matched[index],
+                  let status = row.stationBoardLiveStatus(at: now, timetable: entry.departure) else { continue }
+            live[entry.service.id] = status
         }
         return live
     }
@@ -1668,6 +1712,14 @@ private struct InstalledSchedule: Sendable {
     let packs: [GTFSSourcePack]
     let coveredStationIDs: Set<String>
     let sourcePolicy: GTFSSourcePolicy?
+}
+
+/// The bundled index and its cache, as `AppModel.loadSchedule` opened them.
+private struct ScheduleInputs: Sendable {
+    let compressedURL: URL
+    let metadataURL: URL
+    let sourcePolicyURL: URL?
+    let cacheDirectory: URL
 }
 
 @MainActor

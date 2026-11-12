@@ -349,22 +349,89 @@ extension LiveTrainStatusLookup {
 public enum LiveOverlay {
     /// Android's identity tolerance between two boards' rows of one train.
     public static let identityTolerance: TimeInterval = 300
+    /// Between a bundled timetable train and a live row, Android's `LiveRunMerge.RETIMING_WINDOW`:
+    /// on one day at one station a train number is one train, so a run the day's timetable moved
+    /// (works, a change after the pack was built) is still the bundled train; the next day's run,
+    /// about 24 hours away, stays apart.
+    public static let timetableTolerance: TimeInterval = 3 * 60 * 60
+
+    /// A bundled timetable train to find on a live board: its number (any form), its scheduled
+    /// departure and its operator as the timetable names it.
+    public struct PlannedTrain: Equatable, Sendable {
+        public let number: String
+        public let scheduled: Date
+        public let operatorName: String?
+
+        public init(number: String, scheduled: Date, operatorName: String? = nil) {
+            self.number = number
+            self.scheduled = scheduled
+            self.operatorName = operatorName
+        }
+    }
 
     /// The live row of the train numbered `number` (any form: "RE_11 - 2153", "FR 9558") leaving
-    /// at `scheduled`: the same number key, scheduled within five minutes; the closer one when
-    /// two are. Rows equally close are one train only when the board could not merge them (other
-    /// sources, the same scheduled time: a destination spelt differently): the row of the board's
-    /// best source then. Nil when none is close, or two equally close rows may be two trains.
-    public static func departure(number: String, scheduled: Date, in departures: [LiveDeparture]) -> LiveDeparture? {
+    /// at `scheduled`: the same number key and operator family (`operatorFamily`; an unknown
+    /// operator matches any), scheduled within `timetableTolerance`; the closer one when two are.
+    /// Rows equally close are one train only when the board could not merge them (other sources,
+    /// the same scheduled time: a destination spelt differently): the row of the board's best
+    /// source then. Nil when none is close, or two equally close rows may be two trains.
+    public static func departure(
+        number: String, scheduled: Date, operatorName: String? = nil, in departures: [LiveDeparture]
+    ) -> LiveDeparture? {
         let key = NetworkReliability.numberKey(number)
+        let family = operatorFamily(operatorName)
         let near = departures.filter {
-            $0.numberKey == key && abs($0.scheduled.timeIntervalSince(scheduled)) <= identityTolerance
+            $0.numberKey == key && abs($0.scheduled.timeIntervalSince(scheduled)) <= timetableTolerance
+                && sameFamily(family, operatorFamily($0.operatorID))
         }.sorted { abs($0.scheduled.timeIntervalSince(scheduled)) < abs($1.scheduled.timeIntervalSince(scheduled)) }
         guard let closest = near.first else { return nil }
         let distance = abs(closest.scheduled.timeIntervalSince(scheduled))
         let tied = near.filter { abs($0.scheduled.timeIntervalSince(scheduled)) == distance }
         guard tied.count > 1 else { return closest }
         return bestRowOfOneTrain(tied)
+    }
+
+    /// The live row of each train of `planned` that has one (`departure(number:scheduled:operatorName:in:)`),
+    /// by its index; nil entries are trains without a number of their own. A live row goes to one
+    /// train only, the closest to it (none on a tie), as Android's `LiveRunMerge` pairs each run once.
+    public static func departures(for planned: [PlannedTrain?], in departures: [LiveDeparture]) -> [Int: LiveDeparture] {
+        var matched: [Int: LiveDeparture] = [:]
+        var claims: [String: [Int]] = [:]
+        for (index, entry) in planned.enumerated() {
+            guard let train = entry,
+                  let row = departure(number: train.number, scheduled: train.scheduled, operatorName: train.operatorName, in: departures)
+            else { continue }
+            matched[index] = row
+            claims["\(row.id)|\(row.scheduled.timeIntervalSince1970)", default: []].append(index)
+        }
+        for indices in claims.values where indices.count > 1 {
+            guard let row = matched[indices[0]] else { continue }
+            let distance: (Int) -> TimeInterval = { index in
+                planned[index].map { abs($0.scheduled.timeIntervalSince(row.scheduled)) } ?? .infinity
+            }
+            let best = indices.map(distance).min() ?? .infinity
+            let closest = indices.filter { distance($0) == best }
+            for index in indices where closest.count > 1 || index != closest[0] {
+                matched[index] = nil
+            }
+        }
+        return matched
+    }
+
+    /// Android's `LiveRunMerge.operatorFamily`: ViaggiaTreno publishes Trenitalia and Trenord runs
+    /// under one identity, so the two are one family, Italo another; nil for any other or unknown
+    /// operator, which matches every family.
+    static func operatorFamily(_ value: String?) -> String? {
+        guard let value else { return nil }
+        let folded = value.lowercased()
+        if folded.contains("trenitalia") || folded.contains("trenord") { return "trenitalia-trenord" }
+        if folded.contains("italo") { return "italo" }
+        return nil
+    }
+
+    private static func sameFamily(_ first: String?, _ second: String?) -> Bool {
+        guard let first, let second else { return true }
+        return first == second
     }
 
     /// Rows of one train that sources listed apart: all at the same scheduled time and no source
@@ -390,7 +457,7 @@ public enum LiveOverlay {
     /// "24:10" and later are past midnight).
     public static func departure(for service: TrainService, on day: Date, in board: LiveDepartureBoard) -> LiveDeparture? {
         guard service.hasTrainNumber, let scheduled = scheduledDate(service.scheduledDeparture, on: day) else { return nil }
-        return departure(number: service.number, scheduled: scheduled, in: board.departures)
+        return departure(number: service.number, scheduled: scheduled, operatorName: service.operatorName, in: board.departures)
     }
 
     /// The stop of `run` at a station: by its railway code, else the only stop with its name.

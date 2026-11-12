@@ -475,7 +475,8 @@ class IOSProjectTests(unittest.TestCase):
             'static let viaggiaTrenoHost = "www.viaggiatreno.it"', "URLSessionConfiguration.ephemeral",
             "configuration.httpCookieStorage = nil", "configuration.urlCredentialStorage = nil",
             "configuration.urlCache = nil", "completionHandler(nil)",
-            'public static let general = "Binario/0.1 (iOS; personal rail information client)"',
+            'public static let general = make(version: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String)',
+            'return "Binario/\\(cleaned.isEmpty ? "0" : cleaned) (iOS; rail timetable app)"',
         ]:
             self.assertIn(expected, live)
         sources = "\n".join(path.read_text(encoding="utf-8") for path in (IOS / "BinarioKit/Sources").rglob("*.swift"))
@@ -907,7 +908,8 @@ class IOSProjectTests(unittest.TestCase):
     def test_more_punctual_alternative_is_the_android_rule_under_the_result_row(self) -> None:
         # «Più puntuale» (app/.../data/reliability/ReliableAlternatives.kt): the same thresholds,
         # shares compared exactly in integers, every listed train a candidate, gone a minute after
-        # its scheduled departure (the bundled timetables have no live data).
+        # its departure, never cancelled, a live delay of the list moving the departure (Android's
+        # ResultsAlternatives.stillToDepart).
         rule = (IOS / "BinarioKit/Sources/BinarioKit/NetworkReliabilityAlternatives.swift").read_text(encoding="utf-8")
         android = (ROOT / "app/src/main/java/it/binario/app/data/reliability/ReliableAlternatives.kt").read_text(encoding="utf-8")
         for android_fragment, fragment in (
@@ -937,7 +939,10 @@ class IOSProjectTests(unittest.TestCase):
             "otherStop.onTimeLimitMinutes == stop.onTimeLimitMinutes",
             "clearlyMoreReliable(otherStop, than: stop)",
             "return gap >= Int64(minimumGapPoints) * betterDenominator * worseDenominator",
-            "return now < departure.addingTimeInterval(departedGraceSeconds)",
+            "if live?.cancelled == true { return false }",
+            "let delaySeconds = TimeInterval(max(live?.delayMinutes ?? 0, 0) * 60)",
+            "return now < departure.addingTimeInterval(delaySeconds + departedGraceSeconds)",
+            "stillToDepart: stillToDepart(departure, live: live[service.id], now: now)",
             "let calendar = NetworkReliabilityDay.romeCalendar",
         ):
             with self.subTest(fragment=fragment):
@@ -957,6 +962,8 @@ class IOSProjectTests(unittest.TestCase):
             "testATrenordRegionalOftenLateAtPaviaGetsTheNextOneByItsPublishedNumber",
             "testTheClosestTrainStillToDepartIsSuggestedNeverOneAlreadyGoneOrNeverRunning",
             "testATrainIsGoneAMinuteAfterItsScheduledDeparture",
+            "testALiveSourceMovesTheDepartureOrCancelsTheTrain",
+            "testTheListsLiveStateDecidesWhichTrainsCanStillBeTaken",
             "testListedTimesArePlacedFromTheQueryTimeOnAcrossMidnight",
             "testTheWindowIs30MinutesAndATrainAsLateGivesNothing",
         ):
@@ -969,7 +976,7 @@ class IOSProjectTests(unittest.TestCase):
         planner = (IOS / "BinarioApp/PlannerView.swift").read_text(encoding="utf-8")
         texts = (IOS / "BinarioApp/ReliabilityTexts.swift").read_text(encoding="utf-8")
         for fragment in (
-            "ReliableAlternatives.find(in: snapshot, reliability: measuredTrains, now: now)",
+            "ReliableAlternatives.find(in: snapshot, reliability: measuredTrains, live: model.resultLive, now: now)",
             "TrainDetailView(service: alternative.service, query: snapshot.query)",
             "ReliableAlternativeLine(alternative: alternative)",
             ".accessibilityHint(Text(ReliabilityTexts.alternativeOpen(alternative)))",
@@ -1155,11 +1162,13 @@ class IOSProjectTests(unittest.TestCase):
             with self.subTest(fragment=fragment):
                 self.assertIn(fragment, board)
         self.assertNotIn("URLSession", board)
+        self.assertIn("static let boardNextServiceDayHorizon: TimeInterval = 4 * 60 * 60", gtfs)
         query = gtfs.split("// MARK: - «Partenze»", 1)[1]
         for fragment in (
             "extension SQLiteGTFSJourneyRepository: StationBoardProvider {",
             "if try indexEnded(before: query.from, timeZone: referenceTimeZone, database: database) {",
-            "for offset in 0...maximumServiceDayLookback {",
+            "for offset in -1...maximumServiceDayLookback {",
+            "latest: offset < 0 ? query.from.addingTimeInterval(boardNextServiceDayHorizon) : nil",
             "AND board_time.pickup_type = 0",
             "AND board_time.departure_seconds BETWEEN ? AND ?",
             "try statement.bind(Int64(maximumCandidateRows + 1), at: binding)",
@@ -1233,7 +1242,8 @@ class IOSProjectTests(unittest.TestCase):
             "testPagesFollowTheLastListedTrainWithoutGapsOrRepeats",
             "testYesterdaysRunsStillToLeaveAfterMidnightJoinTodaysServiceDay",
             "testTheServiceDayFollowsTheTimetableCalendarAcrossRomeDST",
-            "testOnlyTodaysServiceDayIsListedAndTheFirstTrainOfTomorrowWhenNoneIsLeft",
+            "testTomorrowsTrainsAfterTheNightAreNotListedAndTheFirstOneIsGivenWhenNoneIsLeft",
+            "testTheFirstHoursOfTomorrowsServiceDayFollowTonightsLastTrains",
             "testUnservedStationsEndedTimetablesAndInvalidIndexesFailClosed",
             "testQueriesAreBoundedAndInvalidStationsAreRefused",
             "testARowIsScheduledUnlessALiveSourceObservedItAndLeavesAMinuteAfterItsDeparture",
@@ -1368,13 +1378,26 @@ class IOSProjectTests(unittest.TestCase):
         self.assertIn("val LOOKBACK: Duration = Duration.ofHours(3)", candidates)
         self.assertIn("val LOOKAHEAD: Duration = Duration.ofHours(3)", candidates)
         self.assertIn("val SAME_RUN_TOLERANCE: Duration = Duration.ofHours(2)", candidates)
+        # A live row and a bundled train: Android's LiveRunMerge window, the same number and family.
+        reconciler = (ROOT / "app/src/main/java/it/binario/app/data/repository/StationBoardRealtimeReconciler.kt").read_text(encoding="utf-8")
+        overlay = (IOS / "BinarioKit/Sources/BinarioKit/LiveRailData.swift").read_text(encoding="utf-8")
+        self.assertIn("private val RETIMING_WINDOW: Duration = Duration.ofHours(3)", reconciler)
+        self.assertIn("RailOperator.TRENORD -> \"trenitalia-trenord\"", reconciler)
+        for fragment in (
+            "public static let timetableTolerance: TimeInterval = 3 * 60 * 60",
+            "abs($0.scheduled.timeIntervalSince(scheduled)) <= timetableTolerance",
+            "&& sameFamily(family, operatorFamily($0.operatorID))",
+            'if folded.contains("trenitalia") || folded.contains("trenord") { return "trenitalia-trenord" }',
+        ):
+            with self.subTest(fragment=fragment):
+                self.assertIn(fragment, overlay)
         for fragment in (
             "static let liveLookback: TimeInterval = 3 * 3_600",
             "static let liveLookahead: TimeInterval = 3 * 3_600",
             "static let sameRunTolerance: TimeInterval = 2 * 3_600",
             "let number = NetworkReliability.numberKey(service.number)",
             "LiveOverlay.stationBoard(rows, with: live.board, at: live.at)",
-            "LiveOverlay.departure(number: service.number, scheduled: departure, in: board.departures)",
+            "let matched = LiveOverlay.departures(for: planned, in: board.departures)",
             "guard let run = candidates.run(for: request),",
         ):
             with self.subTest(fragment=fragment):

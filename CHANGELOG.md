@@ -23,6 +23,19 @@ Dodici revisori indipendenti, ognuno con un punto di vista diverso, hanno trovat
   - il controllo live di un cambio usa lo stesso tempo minimo di cambio del calcolo (10 minuti nelle grandi stazioni, non 5);
   - fermate con lo stesso nome ma a più di 150 metri di distanza sono due luoghi diversi;
   - una ricerca annullata smette di leggere il pack.
+- **iPhone e Apple Watch**:
+  - «Partenze» mette prima i dati in tempo reale (decisione del titolare): con una fonte live che risponde, il tabellone sono i treni live, ognuno con numero, destinazione e orario dell'orario incluso nell'app; dopo l'ultimo treno live seguono i treni programmati. Senza dati live resta l'orario incluso nell'app, con l'avviso;
+  - di sera «Partenze» mostra anche i treni subito dopo mezzanotte (Trenord, Svizzera), e dice quando l'orario di una rete della stazione è scaduto;
+  - «Più puntuale» esclude i treni soppressi e conta il ritardo pubblicato dalla fonte live;
+  - una fermata straordinaria si legge «Fermata straordinaria», non più come fermata saltata;
+  - dopo un rifiuto 403 o 429 la fonte resta ferma almeno 15 minuti, come su Android; una connessione persa conta come errore di rete;
+  - una richiesta lasciata da una schermata continua e la sua risposta viene riusata: la stessa pagina non viene chiesta due volte;
+  - un treno con l'orario spostato si abbina all'orario entro tre ore, come su Android; «S5 - 811A» ha lo stesso numero che su Android;
+  - un solo User-Agent con la versione dell'app: «Binario/<versione> (iOS; rail timetable app)»;
+  - «Salva tratta» conferma il salvataggio, l'errore compare nella scheda giusta; «Elimina tutte» chiede conferma;
+  - le stazioni con un doppio spazio nel nome sono di nuovo utilizzabili;
+  - un errore di lettura non spegne più il pianificatore fino alla chiusura dell'app;
+  - il widget del Watch smette di aggiornarsi ogni 15 minuti quando non ha nulla da mostrare.
 - **Avvisi da fonti non cifrate**: un indirizzo costruito ad arte (schema annidato, barre codificate più volte) non diventa più un link toccabile. Il controllo sui siti ammessi vale nel punto in cui il link viene creato.
 - **CI iPhone** (#84): l'età degli orari blocca solo le release (run avviata a mano, PR verso un ramo di stabilizzazione). Nelle altre run è un avviso: dal 13 novembre il job sarebbe diventato rosso su ogni modifica.
 

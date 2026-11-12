@@ -213,6 +213,19 @@ final class WatchSnapshotTests: XCTestCase {
         XCTAssertNil(snapshot.nextChange(after: expiredNow))
     }
 
+    func testWithoutASnapshotTheWidgetShowsUnavailableOnceAndWaitsForTheIPhone() throws {
+        let now = try rome(2026, 10, 6, 23, 45)
+        let empty = WatchWidgetTimeline.plan(for: nil, from: now)
+        XCTAssertEqual(empty.entries.map { $0.date }, [now])
+        XCTAssertEqual(empty.entries.first?.snapshot.operationalState, .unavailable)
+        XCTAssertFalse(empty.reloadsAtEnd, "no reload every 15 minutes for nothing: a new snapshot reloads the timeline")
+
+        let snapshot = try programmedSnapshot(times: ["23:50", "00:10"])
+        let planned = WatchWidgetTimeline.plan(for: snapshot, from: now)
+        XCTAssertEqual(planned.entries.map { $0.date }, snapshot.timeline(from: now).map { $0.date })
+        XCTAssertTrue(planned.reloadsAtEnd)
+    }
+
     @MainActor
     func testStoreRevalidatesTheCachedSnapshotAgainstTheClock() throws {
         let clock = TestClock(now: try rome(2026, 10, 6, 23, 45))

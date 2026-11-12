@@ -173,6 +173,7 @@
 "result.live.stops" = "ठहराव";
 "result.live.passed" = "ठहराव निकल गया";
 "result.live.skipped" = "छोड़ा गया ठहराव";
+"result.live.added" = "अतिरिक्त ठहराव";
 "result.live.loading" = "रीयल-टाइम डेटा अपडेट हो रहा है…";
 "result.live.from_sources" = "%1$@ से रीयल-टाइम डेटा";
 "result.live.platform_source" = "प्लेटफ़ॉर्म %1$@ के अनुसार";

@@ -31,6 +31,9 @@ public struct SQLiteGTFSJourneyRepository: JourneyRepository, Sendable {
     private static let maximumCandidateRows = 4_096
     private static let maximumGTFSSeconds = 168 * 60 * 60 - 1
     private static let maximumServiceDayLookback = maximumGTFSSeconds / (24 * 60 * 60)
+    /// «Partenze» reads the next service day only this far after the page's time: the trains just
+    /// after midnight of a feed whose service day starts at 00:00 (Trenord, the Swiss pack).
+    static let boardNextServiceDayHorizon: TimeInterval = 4 * 60 * 60
     private static let maximumServiceDays: Int64 = 3_660
     private static let maximumSourceLabelLength = 96
 
@@ -40,20 +43,43 @@ public struct SQLiteGTFSJourneyRepository: JourneyRepository, Sendable {
         self.databaseURL = databaseURL
     }
 
+    /// The installer's check: always the full validation, whose result the reads of this process
+    /// then reuse (`validatedOnce`).
     static func validatesDatabase(at url: URL, inputFingerprint: String) -> Bool {
         do {
             let metadata = try validate(SQLiteDatabase(readOnlyURL: url))
-            return metadata["input_fingerprint_sha256"] == inputFingerprint
+            guard metadata["input_fingerprint_sha256"] == inputFingerprint else {
+                validatedIndices.forget(url)
+                return false
+            }
+            validatedIndices.record(metadata, for: url)
+            return true
         } catch {
+            validatedIndices.forget(url)
             return false
         }
+    }
+
+    /// The installed databases validated in this process: every search, board page and «Più tardi»
+    /// opens the file again, and the schema checks and `quick_check` of the whole index (tens of
+    /// milliseconds or more on a phone) need not run each time for the read-only file the installer
+    /// has just validated. A file of another size is validated again; a failed read opens the index
+    /// again through the installer (`AppModel`), whose validation is always full.
+    private static let validatedIndices = ValidatedIndexCache()
+
+    /// `validate`, once per process for a file of the same path and size.
+    private static func validatedOnce(_ database: SQLiteDatabase, at url: URL) throws -> [String: String] {
+        if let metadata = validatedIndices.metadata(for: url) { return metadata }
+        let metadata = try validate(database)
+        validatedIndices.record(metadata, for: url)
+        return metadata
     }
 
     /// Every pack of the index with its attribution, last service day and the number of rail
     /// trips its filter retained (0 when a feed contributed nothing), in ingestion order.
     public func sourcePacks() throws -> [GTFSSourcePack] {
         let database = try SQLiteDatabase(readOnlyURL: databaseURL)
-        _ = try Self.validate(database)
+        _ = try Self.validatedOnce(database, at: databaseURL)
         let calendar = Self.serviceCalendar(timeZone: TimeZone(identifier: "Europe/Rome") ?? .current)
         let statement = try database.statement(
             """
@@ -86,7 +112,7 @@ public struct SQLiteGTFSJourneyRepository: JourneyRepository, Sendable {
     /// only stations for which a search can find trains at all.
     public func coveredCatalogStationIDs() throws -> Set<String> {
         let database = try SQLiteDatabase(readOnlyURL: databaseURL)
-        _ = try Self.validate(database)
+        _ = try Self.validatedOnce(database, at: databaseURL)
         let statement = try database.statement(
             "SELECT DISTINCT catalog_station_id FROM stop WHERE catalog_station_id IS NOT NULL LIMIT ?"
         )
@@ -114,7 +140,7 @@ public struct SQLiteGTFSJourneyRepository: JourneyRepository, Sendable {
 
     private static func load(databaseURL: URL, query: JourneyQuery) throws -> JourneySnapshot {
         let database = try SQLiteDatabase(readOnlyURL: databaseURL)
-        let metadata = try validate(database)
+        let metadata = try validatedOnce(database, at: databaseURL)
         guard let sourceGeneratedAt = metadata["source_generated_at"],
               let sourceObservedAt = parseSourceDate(sourceGeneratedAt)
         else { throw SQLiteGTFSFailure.invalidData }
@@ -538,9 +564,11 @@ extension SQLiteGTFSJourneyRepository: StationBoardProvider {
     /// The trains leaving `query.station` from `query.from`, read from the index as the planner
     /// reads its results: the station's stops, boarding allowed there (`pickup_type = 0`), the
     /// service days the trips run on, the planner's naming and bikes, nothing live. A page holds the
-    /// trains of today's service day of each agency time zone and the runs of earlier service days
-    /// still to leave (yesterday's after midnight, GTFS times from 24:00), never the next service
-    /// day's: that one gives only `firstDepartureNextDay`, on a first page without any train left.
+    /// trains of today's service day of each agency time zone, the runs of earlier service days
+    /// still to leave (yesterday's after midnight, GTFS times from 24:00) and the trains of the next
+    /// service day leaving within `boardNextServiceDayHorizon` of `query.from` (a feed whose day
+    /// starts at midnight lists its night trains there); a first page without any of them gives
+    /// `firstDepartureNextDay`, the next service day's first train.
     /// A trip whose last stop is the station itself (it only arrives there) is no departure, and a
     /// trip calling twice is listed once, at its first departure from `query.from`. Coaches and
     /// replacement buses follow the planner's rule: the index keeps only the rail routes of the
@@ -559,7 +587,7 @@ extension SQLiteGTFSJourneyRepository: StationBoardProvider {
 
     private static func loadBoard(databaseURL: URL, query: StationBoardQuery) throws -> StationBoardPage {
         let database = try SQLiteDatabase(readOnlyURL: databaseURL)
-        _ = try validate(database)
+        _ = try validatedOnce(database, at: databaseURL)
         let timeZones = try agencyTimeZones(database)
         let referenceTimeZone = timeZones.first ?? TimeZone(identifier: "Europe/Rome") ?? .current
         // As for the planner: after the last day of every pack the board needs an app update.
@@ -574,8 +602,9 @@ extension SQLiteGTFSJourneyRepository: StationBoardProvider {
         for timeZone in timeZones {
             let calendar = serviceCalendar(timeZone: timeZone)
             let today = calendar.startOfDay(for: query.from)
-            // Today's service day, then the earlier ones, whose runs past 24:00 can still leave.
-            for offset in 0...maximumServiceDayLookback {
+            // The first hours of the next service day, today's, then the earlier ones, whose runs
+            // past 24:00 can still leave.
+            for offset in -1...maximumServiceDayLookback {
                 guard let serviceDay = calendar.date(byAdding: .day, value: -offset, to: today) else {
                     throw SQLiteGTFSFailure.invalidData
                 }
@@ -586,7 +615,8 @@ extension SQLiteGTFSJourneyRepository: StationBoardProvider {
                     agencyTimeZone: timeZone.identifier,
                     serviceDay: serviceDay,
                     calendar: calendar,
-                    wanted: wanted
+                    wanted: wanted,
+                    latest: offset < 0 ? query.from.addingTimeInterval(boardNextServiceDayHorizon) : nil
                 )
             }
         }
@@ -611,12 +641,15 @@ extension SQLiteGTFSJourneyRepository: StationBoardProvider {
             }
         }
         let shown: [StationBoardCandidate] = listed + (firstNextDay.map { [$0] } ?? [])
+        // Decided per feed: one ended while another goes on still says why trains are missing.
+        let someEnded = try stationPackEnded(before: query.from, stopIDs: stopIDs, timeZone: referenceTimeZone, database: database)
         return StationBoardPage(
             query: query,
             departures: listed.map(\.entry),
             hasMore: ordered.count > query.limit,
             firstDepartureNextDay: firstNextDay?.entry,
-            attributions: shown.map(\.attribution).uniqued().map { String($0.prefix(96)) }
+            attributions: shown.map(\.attribution).uniqued().map { String($0.prefix(96)) },
+            someTimetablesEnded: someEnded
         )
     }
 
@@ -653,7 +686,8 @@ extension SQLiteGTFSJourneyRepository: StationBoardProvider {
     /// The trains of `serviceDay` leaving the station's stops from `query.from`, and after its
     /// cursor, in departure order: at least `wanted` of them when the day has as many, with every
     /// train of the same second as the last one, so that the first trains of all the service days
-    /// merged are exact. At most `maximumCandidateRows` rows are read, as by the planner.
+    /// merged are exact. At most `maximumCandidateRows` rows are read, as by the planner. With
+    /// `latest`, only the trains leaving at or before it.
     private static func boardCandidates(
         database: SQLiteDatabase,
         query: StationBoardQuery,
@@ -661,13 +695,20 @@ extension SQLiteGTFSJourneyRepository: StationBoardProvider {
         agencyTimeZone: String,
         serviceDay: Date,
         calendar: Calendar,
-        wanted: Int
+        wanted: Int,
+        latest: Date? = nil
     ) throws -> [StationBoardCandidate] {
         // The GTFS second of `query.from` on this service day: earlier runs have left.
         let base = try gtfsDate(serviceDay: serviceDay, seconds: 0, calendar: calendar)
         let earliest: Double = query.from.timeIntervalSince(base).rounded(.up)
         guard earliest <= Double(maximumGTFSSeconds) else { return [] }
         let lowerSeconds: Int64 = earliest <= 0 ? 0 : Int64(earliest)
+        var upperSeconds = Int64(maximumGTFSSeconds)
+        if let latest {
+            let last: Double = latest.timeIntervalSince(base).rounded(.down)
+            guard last >= Double(lowerSeconds) else { return [] }
+            upperSeconds = min(upperSeconds, Int64(min(last, Double(maximumGTFSSeconds))))
+        }
         let placeholders = Array(repeating: "?", count: stopIDs.count).joined(separator: ",")
         // The builder stores arrival and departure both or neither, so departure_seconds is the
         // planner's COALESCE and the (stop_id, departure_seconds) index bounds the read.
@@ -697,7 +738,7 @@ extension SQLiteGTFSJourneyRepository: StationBoardProvider {
         for id in stopIDs { try statement.bind(id, at: binding); binding += 1 }
         try statement.bind(agencyTimeZone, at: binding); binding += 1
         try statement.bind(lowerSeconds, at: binding); binding += 1
-        try statement.bind(Int64(maximumGTFSSeconds), at: binding); binding += 1
+        try statement.bind(upperSeconds, at: binding); binding += 1
         try statement.bind(Int64(maximumCandidateRows + 1), at: binding)
 
         let boardStops = Set(stopIDs)
@@ -841,6 +882,73 @@ extension SQLiteGTFSJourneyRepository: StationBoardProvider {
         guard lastServiceDate > 0 else { return false }
         let requestedDay = Int64(encodedDate(date, calendar: serviceCalendar(timeZone: timeZone)))
         return lastServiceDate < requestedDay
+    }
+
+    /// True when at least one pack with a stop of the station has its last service day before
+    /// the requested day (`stationPacksEnded` asks whether all have).
+    private static func stationPackEnded(
+        before date: Date,
+        stopIDs: [Int64],
+        timeZone: TimeZone,
+        database: SQLiteDatabase
+    ) throws -> Bool {
+        let placeholders = Array(repeating: "?", count: stopIDs.count).joined(separator: ",")
+        let statement = try database.statement(
+            """
+            SELECT COUNT(*) FROM pack AS p
+            WHERE p.id IN (SELECT pack_id FROM stop WHERE id IN (\(placeholders)))
+              AND p.last_service_date > 0 AND p.last_service_date < ?
+            """
+        )
+        let requestedDay = Int64(encodedDate(date, calendar: serviceCalendar(timeZone: timeZone)))
+        var binding: Int32 = 1
+        for id in stopIDs { try statement.bind(id, at: binding); binding += 1 }
+        try statement.bind(requestedDay, at: binding)
+        guard try statement.step() else { return false }
+        return statement.int(at: 0) > 0
+    }
+}
+
+/// The metadata of the databases validated in this process, by path and size
+/// (`SQLiteGTFSJourneyRepository.validatedOnce`). Process memory only.
+private final class ValidatedIndexCache: @unchecked Sendable {
+    private struct Entry {
+        let size: Int
+        let metadata: [String: String]
+    }
+
+    private let lock = NSLock()
+    private var entries: [String: Entry] = [:]
+
+    func metadata(for url: URL) -> [String: String]? {
+        guard let size = Self.size(of: url) else { return nil }
+        lock.lock()
+        defer { lock.unlock() }
+        guard let entry = entries[Self.key(url)], entry.size == size else { return nil }
+        return entry.metadata
+    }
+
+    func record(_ metadata: [String: String], for url: URL) {
+        guard let size = Self.size(of: url) else { return }
+        lock.lock()
+        entries[Self.key(url)] = Entry(size: size, metadata: metadata)
+        lock.unlock()
+    }
+
+    func forget(_ url: URL) {
+        lock.lock()
+        entries[Self.key(url)] = nil
+        lock.unlock()
+    }
+
+    private static func key(_ url: URL) -> String {
+        url.standardizedFileURL.path
+    }
+
+    /// Read from the file system each time: a URL keeps the resource values it read once.
+    private static func size(of url: URL) -> Int? {
+        guard let attributes = try? FileManager.default.attributesOfItem(atPath: url.path) else { return nil }
+        return (attributes[.size] as? NSNumber)?.intValue
     }
 }
 
