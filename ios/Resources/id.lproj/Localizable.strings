@@ -43,6 +43,11 @@
 "saved.agenda.local_only" = "Perjalanan hanya disimpan di iPhone ini, tanpa sinkronisasi; cadangan sistem Apple dapat menyertakannya. Tanggal dan jam dalam waktu Italia.";
 "saved.agenda.add" = "Perjalanan baru";
 "saved.agenda.edit" = "Ubah perjalanan";
+"saved.agenda.return" = "Pulang";
+"saved.agenda.replan" = "Jadwalkan ulang";
+"saved.agenda.return_prepared" = "Perjalanan pulang disiapkan. Pilih tanggal dan waktu baru sebelum menyimpan.";
+"saved.agenda.replan_prepared" = "Perjalanan dijadwalkan ulang. Pilih tanggal dan waktu baru sebelum menyimpan.";
+"saved.agenda.unset" = "belum dipilih";
 "saved.agenda.upcoming" = "Mendatang";
 "saved.agenda.archive" = "Diarsipkan";
 "saved.agenda.empty" = "Tidak ada perjalanan di daftar ini. Gunakan “Perjalanan baru” untuk merencanakannya.";

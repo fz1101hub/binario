@@ -43,6 +43,11 @@
 "saved.agenda.local_only" = "Journeys saved on this iPhone only, never synced; Apple system backups may include them. Dates and times are in Italian time.";
 "saved.agenda.add" = "New journey";
 "saved.agenda.edit" = "Edit journey";
+"saved.agenda.return" = "Return";
+"saved.agenda.replan" = "Reschedule";
+"saved.agenda.return_prepared" = "Return prepared. Choose a new date and time before saving.";
+"saved.agenda.replan_prepared" = "Journey rescheduled. Choose a new date and time before saving.";
+"saved.agenda.unset" = "to be chosen";
 "saved.agenda.upcoming" = "Upcoming";
 "saved.agenda.archive" = "Archived";
 "saved.agenda.empty" = "No journeys in this list. Use “New journey” to plan one.";

@@ -43,6 +43,11 @@
 "saved.agenda.local_only" = "यात्राएँ सिर्फ़ इस iPhone पर सहेजी जाती हैं, कोई सिंक नहीं; Apple के सिस्टम बैकअप में ये शामिल हो सकती हैं। तारीख और समय इतालवी समय में हैं।";
 "saved.agenda.add" = "नई यात्रा";
 "saved.agenda.edit" = "यात्रा बदलें";
+"saved.agenda.return" = "वापसी";
+"saved.agenda.replan" = "दोबारा निर्धारित करें";
+"saved.agenda.return_prepared" = "वापसी तैयार है। सहेजने से पहले नई तारीख और समय चुनें।";
+"saved.agenda.replan_prepared" = "यात्रा दोबारा निर्धारित हुई। सहेजने से पहले नई तारीख और समय चुनें।";
+"saved.agenda.unset" = "चुनना बाकी";
 "saved.agenda.upcoming" = "आगामी";
 "saved.agenda.archive" = "संग्रहीत";
 "saved.agenda.empty" = "इस सूची में कोई यात्रा नहीं है। यात्रा की योजना बनाने के लिए “नई यात्रा” का उपयोग करें।";

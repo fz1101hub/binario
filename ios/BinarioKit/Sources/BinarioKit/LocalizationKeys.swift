@@ -44,6 +44,8 @@ public enum BinarioLocalizationKeys {
         "saved.title", "saved.empty.title", "saved.empty.body", "saved.local_only",
         "saved.delete_all", "saved.storage_error", "saved.limit_error",
         "saved.agenda.title", "saved.agenda.subtitle", "saved.agenda.local_only", "saved.agenda.add", "saved.agenda.edit",
+        "saved.agenda.return", "saved.agenda.replan", "saved.agenda.return_prepared", "saved.agenda.replan_prepared",
+        "saved.agenda.unset",
         "saved.agenda.upcoming", "saved.agenda.archive", "saved.agenda.empty", "saved.agenda.label",
         "saved.agenda.checklist", "saved.agenda.checklist_hint",
         "saved.agenda.preparation", "saved.agenda.preparation_hint", "saved.agenda.preset.commuter",

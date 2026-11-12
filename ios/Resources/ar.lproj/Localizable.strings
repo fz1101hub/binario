@@ -43,6 +43,11 @@
 "saved.agenda.local_only" = "الرحلات محفوظة على هذا الـ iPhone فقط دون مزامنة؛ قد تتضمنها النسخ الاحتياطية لنظام Apple. التواريخ والأوقات بالتوقيت الإيطالي.";
 "saved.agenda.add" = "رحلة جديدة";
 "saved.agenda.edit" = "تعديل الرحلة";
+"saved.agenda.return" = "العودة";
+"saved.agenda.replan" = "إعادة الجدولة";
+"saved.agenda.return_prepared" = "رحلة العودة جاهزة. اختر تاريخًا ووقتًا جديدين قبل الحفظ.";
+"saved.agenda.replan_prepared" = "أعيدت جدولة الرحلة. اختر تاريخًا ووقتًا جديدين قبل الحفظ.";
+"saved.agenda.unset" = "لم يُحدَّد بعد";
 "saved.agenda.upcoming" = "القادمة";
 "saved.agenda.archive" = "المؤرشفة";
 "saved.agenda.empty" = "لا توجد رحلات في هذه القائمة. استخدم «رحلة جديدة» لتخطيط رحلة.";

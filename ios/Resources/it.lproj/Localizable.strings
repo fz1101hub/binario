@@ -43,6 +43,11 @@
 "saved.agenda.local_only" = "Viaggi salvati solo su questo iPhone, senza sincronizzazione; i backup di sistema Apple possono includerli. Date e orari sono in ora italiana.";
 "saved.agenda.add" = "Nuovo viaggio";
 "saved.agenda.edit" = "Modifica viaggio";
+"saved.agenda.return" = "Ritorno";
+"saved.agenda.replan" = "Ripianifica";
+"saved.agenda.return_prepared" = "Ritorno preparato. Scegli una nuova data e ora prima di salvare.";
+"saved.agenda.replan_prepared" = "Viaggio ripianificato. Scegli una nuova data e ora prima di salvare.";
+"saved.agenda.unset" = "da scegliere";
 "saved.agenda.upcoming" = "Prossimi";
 "saved.agenda.archive" = "Archiviati";
 "saved.agenda.empty" = "Nessun viaggio in questo elenco. Usa «Nuovo viaggio» per pianificarne uno.";

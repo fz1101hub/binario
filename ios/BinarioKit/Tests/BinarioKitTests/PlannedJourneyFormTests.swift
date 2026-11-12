@@ -81,6 +81,54 @@ final class PlannedJourneyFormTests: XCTestCase {
         XCTAssertEqual(edited.checklist.map(\.completed), [true, false])
     }
 
+    func testReturnAndReplanKeepOnlyTheRouteAndAskForANewDateAndTime() throws {
+        let source = try PlannedJourney(
+            id: "j-1",
+            label: "Lavoro",
+            segment: PlannedJourneySegment(
+                origin: PlannedJourneyStation(canonicalId: "S08409", displayName: "Roma Termini", railwayCode: "S08409"),
+                destination: PlannedJourneyStation(canonicalId: "S01700", displayName: "Milano Centrale", railwayCode: "S01700"),
+                departure: PlannedJourneyDateTime(
+                    date: XCTUnwrap(PlannedLocalDate(iso: "2026-12-01")),
+                    time: XCTUnwrap(PlannedLocalTime(hhmm: "08:15"))
+                )
+            ),
+            reminderMinutes: 15,
+            checklist: [
+                PlannedJourneyChecklistItem(id: "check-1", label: "Biglietto", completed: true),
+                PlannedJourneyChecklistItem(id: "check-2", label: "Ombrello"),
+            ],
+            createdAt: now
+        ).completing(at: now)
+
+        let back = PlannedJourneyForm.returnTrip(from: source)
+        XCTAssertEqual(back.origin, StationIdentity(id: "S01700", name: "Milano Centrale", railwayCode: "S01700"))
+        XCTAssertEqual(back.destination, StationIdentity(id: "S08409", name: "Roma Termini", railwayCode: "S08409"))
+        XCTAssertNil(back.date)
+        XCTAssertNil(back.time)
+        XCTAssertEqual(back.label, "")
+        XCTAssertEqual(back.checklistText, "Biglietto\nOmbrello")
+        // Until a date and time are chosen there is nothing to save.
+        XCTAssertEqual(back.journey(id: "j-2", now: now, editing: nil), .failure(.invalidDeparture))
+
+        var chosen = back
+        chosen.date = PlannedLocalDate(iso: "2026-12-01")
+        chosen.time = PlannedLocalTime(hhmm: "18:40")
+        let saved = try chosen.journey(id: "j-2", now: now, editing: nil).get()
+        XCTAssertEqual(saved.id, "j-2")
+        XCTAssertEqual(saved.status, .active)
+        XCTAssertNil(saved.reminderMinutes)
+        XCTAssertEqual(saved.checklist.map(\.completed), [false, false])
+        XCTAssertEqual(saved.origin.canonicalId, "S01700")
+
+        let again = PlannedJourneyForm.replan(from: source)
+        XCTAssertEqual(again.origin?.id, "S08409")
+        XCTAssertEqual(again.destination?.id, "S01700")
+        XCTAssertNil(again.date)
+        XCTAssertNil(again.time)
+        XCTAssertEqual(again.label, "")
+    }
+
     // MARK: Helpers
 
     private func filled(label: String = "", checklist: String = "") throws -> PlannedJourneyForm {

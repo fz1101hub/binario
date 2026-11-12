@@ -43,6 +43,11 @@
 "saved.agenda.local_only" = "การเดินทางบันทึกไว้ใน iPhone เครื่องนี้เท่านั้น ไม่มีการซิงค์ ข้อมูลสำรองของระบบ Apple อาจรวมไว้ด้วย วันที่และเวลาเป็นเวลาอิตาลี";
 "saved.agenda.add" = "การเดินทางใหม่";
 "saved.agenda.edit" = "แก้ไขการเดินทาง";
+"saved.agenda.return" = "ขากลับ";
+"saved.agenda.replan" = "วางแผนใหม่";
+"saved.agenda.return_prepared" = "เตรียมขากลับแล้ว เลือกวันที่และเวลาใหม่ก่อนบันทึก";
+"saved.agenda.replan_prepared" = "วางแผนการเดินทางใหม่แล้ว เลือกวันที่และเวลาใหม่ก่อนบันทึก";
+"saved.agenda.unset" = "ยังไม่ได้เลือก";
 "saved.agenda.upcoming" = "กำลังจะมาถึง";
 "saved.agenda.archive" = "เก็บถาวรแล้ว";
 "saved.agenda.empty" = "ไม่มีการเดินทางในรายการนี้ ใช้ “การเดินทางใหม่” เพื่อวางแผน";

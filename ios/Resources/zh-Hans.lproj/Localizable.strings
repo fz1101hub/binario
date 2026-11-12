@@ -43,6 +43,11 @@
 "saved.agenda.local_only" = "行程仅保存在这台 iPhone 上，不会同步；Apple 系统备份可能包含这些行程。日期和时间均为意大利时间。";
 "saved.agenda.add" = "新建行程";
 "saved.agenda.edit" = "编辑行程";
+"saved.agenda.return" = "返程";
+"saved.agenda.replan" = "重新安排";
+"saved.agenda.return_prepared" = "返程已准备好。保存前请选择新的日期和时间。";
+"saved.agenda.replan_prepared" = "行程已重新安排。保存前请选择新的日期和时间。";
+"saved.agenda.unset" = "待选择";
 "saved.agenda.upcoming" = "即将到来";
 "saved.agenda.archive" = "已归档";
 "saved.agenda.empty" = "此列表中没有行程。使用“新建行程”来规划一个。";

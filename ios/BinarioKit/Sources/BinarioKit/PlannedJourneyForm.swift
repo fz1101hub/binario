@@ -60,6 +60,26 @@ public struct PlannedJourneyForm: Equatable, Sendable {
         )
     }
 
+    /// «Ritorno»: a new journey with the stations swapped. Date and time are chosen anew, the
+    /// label is empty, the checklist lines come back unticked and no reminder is inherited
+    /// (Android's `PlannedJourneyDrafts.returnFrom` and its editor).
+    public static func returnTrip(from journey: PlannedJourney) -> PlannedJourneyForm {
+        PlannedJourneyForm(
+            origin: journey.destination.identity,
+            destination: journey.origin.identity,
+            checklistText: journey.checklist.map(\.label).joined(separator: "\n")
+        )
+    }
+
+    /// «Ripianifica»: a new journey on the same stations, with the same rules as `returnTrip`.
+    public static func replan(from journey: PlannedJourney) -> PlannedJourneyForm {
+        PlannedJourneyForm(
+            origin: journey.origin.identity,
+            destination: journey.destination.identity,
+            checklistText: journey.checklist.map(\.label).joined(separator: "\n")
+        )
+    }
+
     /// The departure chosen, as an instant on the Italian clock; nil when not chosen or skipped.
     public var departureInstant: Date? {
         guard let date, let time else { return nil }

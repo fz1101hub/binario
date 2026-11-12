@@ -43,6 +43,11 @@
 "saved.agenda.local_only" = "Reisen werden nur auf diesem iPhone gespeichert, ohne Synchronisierung; Apple-Systembackups können sie enthalten. Datum und Uhrzeit sind italienische Zeit.";
 "saved.agenda.add" = "Neue Reise";
 "saved.agenda.edit" = "Reise bearbeiten";
+"saved.agenda.return" = "Rückfahrt";
+"saved.agenda.replan" = "Neu planen";
+"saved.agenda.return_prepared" = "Rückfahrt vorbereitet. Wählen Sie vor dem Speichern ein neues Datum und eine neue Uhrzeit.";
+"saved.agenda.replan_prepared" = "Reise neu geplant. Wählen Sie vor dem Speichern ein neues Datum und eine neue Uhrzeit.";
+"saved.agenda.unset" = "noch wählen";
 "saved.agenda.upcoming" = "Bevorstehend";
 "saved.agenda.archive" = "Archiviert";
 "saved.agenda.empty" = "Keine Reisen in dieser Liste. Mit „Neue Reise“ planen Sie eine.";

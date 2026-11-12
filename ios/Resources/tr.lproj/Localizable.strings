@@ -43,6 +43,11 @@
 "saved.agenda.local_only" = "Yolculuklar yalnızca bu iPhone'da kaydedilir, senkronize edilmez; Apple sistem yedekleri bunları içerebilir. Tarih ve saatler İtalya saatidir.";
 "saved.agenda.add" = "Yeni yolculuk";
 "saved.agenda.edit" = "Yolculuğu düzenle";
+"saved.agenda.return" = "Dönüş";
+"saved.agenda.replan" = "Yeniden planla";
+"saved.agenda.return_prepared" = "Dönüş hazırlandı. Kaydetmeden önce yeni bir tarih ve saat seçin.";
+"saved.agenda.replan_prepared" = "Yolculuk yeniden planlandı. Kaydetmeden önce yeni bir tarih ve saat seçin.";
+"saved.agenda.unset" = "seçilmedi";
 "saved.agenda.upcoming" = "Yaklaşan";
 "saved.agenda.archive" = "Arşivlenen";
 "saved.agenda.empty" = "Bu listede yolculuk yok. Planlamak için “Yeni yolculuk” düğmesini kullanın.";

@@ -43,6 +43,11 @@
 "saved.agenda.local_only" = "Hành trình chỉ được lưu trên iPhone này, không đồng bộ; bản sao lưu hệ thống của Apple có thể bao gồm chúng. Ngày giờ theo giờ Ý.";
 "saved.agenda.add" = "Hành trình mới";
 "saved.agenda.edit" = "Sửa hành trình";
+"saved.agenda.return" = "Chiều về";
+"saved.agenda.replan" = "Lên lịch lại";
+"saved.agenda.return_prepared" = "Đã chuẩn bị chiều về. Hãy chọn ngày giờ mới trước khi lưu.";
+"saved.agenda.replan_prepared" = "Đã lên lịch lại hành trình. Hãy chọn ngày giờ mới trước khi lưu.";
+"saved.agenda.unset" = "chưa chọn";
 "saved.agenda.upcoming" = "Sắp tới";
 "saved.agenda.archive" = "Đã lưu trữ";
 "saved.agenda.empty" = "Không có hành trình nào trong danh sách này. Dùng “Hành trình mới” để lên kế hoạch.";

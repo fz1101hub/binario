@@ -182,6 +182,21 @@ struct AgendaJourneyView: View {
                 .disabled(readOnly)
             }
 
+            // «Ritorno» and «Ripianifica» open the editor on a new journey: date and time are chosen anew.
+            Section {
+                Button {
+                    editor = .returnTrip(journey)
+                } label: {
+                    Label("saved.agenda.return", systemImage: "arrow.uturn.backward")
+                }
+                Button {
+                    editor = .replan(journey)
+                } label: {
+                    Label("saved.agenda.replan", systemImage: "arrow.clockwise")
+                }
+            }
+            .disabled(readOnly)
+
             Section {
                 if journey.status == .active {
                     Button {
@@ -226,11 +241,26 @@ struct AgendaJourneyView: View {
 enum AgendaEditorRequest: Identifiable {
     case new
     case edit(PlannedJourney)
+    /// «Ritorno»: the stations swapped, on a date and time chosen anew.
+    case returnTrip(PlannedJourney)
+    /// «Ripianifica»: the same stations, on a date and time chosen anew.
+    case replan(PlannedJourney)
 
     var id: String {
         switch self {
         case .new: "new"
         case let .edit(journey): "edit:\(journey.id)"
+        case let .returnTrip(journey): "return:\(journey.id)"
+        case let .replan(journey): "replan:\(journey.id)"
+        }
+    }
+
+    /// What the editor says first, for a journey prepared from another.
+    var noticeKey: String? {
+        switch self {
+        case .new, .edit: nil
+        case .returnTrip: "saved.agenda.return_prepared"
+        case .replan: "saved.agenda.replan_prepared"
         }
     }
 }
@@ -259,6 +289,12 @@ struct AgendaEditorView: View {
     var body: some View {
         NavigationStack {
             Form {
+                if let noticeKey = request.noticeKey {
+                    Section {
+                        Label(LocalizedStringKey(noticeKey), systemImage: "info.circle")
+                    }
+                }
+
                 Section {
                     StationPickerField(titleKey: "planner.origin", selection: $origin)
                     StationPickerField(titleKey: "planner.destination", selection: $destination)
@@ -273,6 +309,15 @@ struct AgendaEditorView: View {
                             Text("planner.departure.italian_time")
                                 .font(.footnote)
                                 .foregroundStyle(.secondary)
+                        }
+                    } else {
+                        // A return or a replanned journey: the date and time are chosen anew.
+                        Button {
+                            departure = PlannedJourneyForm.new(now: Date()).departureInstant
+                        } label: {
+                            LabeledContent("planner.departure") {
+                                Text("saved.agenda.unset")
+                            }
                         }
                     }
                 }
@@ -330,6 +375,8 @@ struct AgendaEditorView: View {
         switch request {
         case .new: form = PlannedJourneyForm.new(now: Date())
         case let .edit(journey): form = PlannedJourneyForm(editing: journey)
+        case let .returnTrip(journey): form = PlannedJourneyForm.returnTrip(from: journey)
+        case let .replan(journey): form = PlannedJourneyForm.replan(from: journey)
         }
         label = form.label
         origin = form.origin.map { Station(id: $0.id, name: $0.name, railwayCode: $0.railwayCode) }

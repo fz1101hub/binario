@@ -43,6 +43,11 @@
 "saved.agenda.local_only" = "旅程はこの iPhone にのみ保存され、同期はしません。Apple のシステムバックアップに含まれる場合があります。日付と時刻はイタリア時間です。";
 "saved.agenda.add" = "新しい旅程";
 "saved.agenda.edit" = "旅程を編集";
+"saved.agenda.return" = "復路";
+"saved.agenda.replan" = "計画し直す";
+"saved.agenda.return_prepared" = "復路を用意しました。保存する前に新しい日時を選んでください。";
+"saved.agenda.replan_prepared" = "旅程を計画し直しました。保存する前に新しい日時を選んでください。";
+"saved.agenda.unset" = "未選択";
 "saved.agenda.upcoming" = "今後";
 "saved.agenda.archive" = "アーカイブ済み";
 "saved.agenda.empty" = "この一覧に旅程はありません。「新しい旅程」で登録できます。";
