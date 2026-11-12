@@ -7,7 +7,6 @@ import java.util.Locale
 internal object VoiceText {
     private val notAWord = Regex("[^\\p{L}\\p{M}\\p{N}]+")
     private val spaces = Regex("\\s+")
-    private val spaceBetweenNativeLetters = Regex("(?<=[\\p{L}\\p{M}&&[^\\p{IsLatin}]]) (?=[\\p{L}&&[^\\p{IsLatin}]])")
     private const val TATWEEL = 0x0640
     private val latinLetterFolds = mapOf(
         'ı'.code to "i", 'đ'.code to "d", 'ð'.code to "d", 'ø'.code to "o", 'ł'.code to "l", 'ß'.code to "ss",
@@ -46,7 +45,17 @@ internal object VoiceText {
     }
 
     /** Chinese, Japanese, Thai and Burmese do not separate their words: a space inside their text means nothing. */
-    fun joinNativeWords(text: String): String = text.replace(spaceBetweenNativeLetters, "")
+    fun joinNativeWords(text: String): String = buildString(text.length) {
+        // Plain code (no script classes in a regex): Android's regex engine and the JVM's spell those differently.
+        text.forEachIndexed { index, char ->
+            val joins = char == ' ' && index > 0 && index < text.lastIndex &&
+                isNativeLetter(text[index - 1]) && isNativeLetter(text[index + 1])
+            if (!joins) append(char)
+        }
+    }
+
+    private fun isNativeLetter(char: Char): Boolean =
+        (char.isLetter() || isMark(char.code)) && Character.UnicodeScript.of(char.code) != Character.UnicodeScript.LATIN
 
     /** Digits of any script in ASCII and full-width forms folded, in lower case; punctuation kept («9:35», «12/11»). */
     fun raw(value: String): String = asciiDigits(Normalizer.normalize(value, Normalizer.Form.NFKC)).lowercase(Locale.ROOT)
