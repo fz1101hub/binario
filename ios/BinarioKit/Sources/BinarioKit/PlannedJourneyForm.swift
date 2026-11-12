@@ -22,6 +22,8 @@ public struct PlannedJourneyForm: Equatable, Sendable {
     public var date: PlannedLocalDate?
     public var time: PlannedLocalTime?
     public var checklistText: String
+    /// Minutes before departure of the local reminder; nil is «Nessuno».
+    public var reminderMinutes: Int?
 
     public init(
         label: String = "",
@@ -29,7 +31,8 @@ public struct PlannedJourneyForm: Equatable, Sendable {
         destination: StationIdentity? = nil,
         date: PlannedLocalDate? = nil,
         time: PlannedLocalTime? = nil,
-        checklistText: String = ""
+        checklistText: String = "",
+        reminderMinutes: Int? = nil
     ) {
         self.label = label
         self.origin = origin
@@ -37,7 +40,11 @@ public struct PlannedJourneyForm: Equatable, Sendable {
         self.date = date
         self.time = time
         self.checklistText = checklistText
+        self.reminderMinutes = reminderMinutes
     }
+
+    /// The leads the editor offers: «Nessuno» first, then Android's values.
+    public static let reminderChoices: [Int?] = [nil] + PlannedJourneySchema.reminderMinutes.sorted().map { Optional($0) }
 
     /// A new journey: the next whole hour in Italy (today, or tomorrow after 23:00).
     public static func new(now: Date) -> PlannedJourneyForm {
@@ -56,7 +63,8 @@ public struct PlannedJourneyForm: Equatable, Sendable {
             destination: journey.destination.identity,
             date: journey.departure.date,
             time: journey.departure.time,
-            checklistText: journey.checklist.map(\.label).joined(separator: "\n")
+            checklistText: journey.checklist.map(\.label).joined(separator: "\n"),
+            reminderMinutes: journey.reminderMinutes
         )
     }
 
@@ -105,12 +113,13 @@ public struct PlannedJourneyForm: Equatable, Sendable {
 
     /// The journey to save: `existing` with the editor's values, or a new journey identified by
     /// `id` and created at `now`. Every journey the iPhone writes is in Italian time. A line kept
-    /// with the same text keeps its tick.
+    /// with the same text keeps its tick; the reminder is the one chosen in the editor.
     public func journey(id: String, now: Date, editing existing: PlannedJourney?) -> Result<PlannedJourney, PlannedJourneyFormIssue> {
         guard let origin, let destination else { return .failure(.missingStations) }
         guard let date, let time else { return .failure(.invalidDeparture) }
         let label = PlannedJourneyText.trimmed(self.label)
         guard PlannedJourneyText.length(label) <= PlannedJourneySchema.maximumLabelLength else { return .failure(.labelTooLong) }
+        if let reminderMinutes, !PlannedJourneySchema.reminderMinutes.contains(reminderMinutes) { return .failure(.invalid) }
         do {
             let segment = try PlannedJourneySegment(
                 id: existing?.segment.id ?? PlannedJourneySegment.firstIdentifier,
@@ -120,10 +129,12 @@ public struct PlannedJourneyForm: Equatable, Sendable {
             )
             let checklist = try checklistItems(keepingTicksOf: existing?.checklist ?? [])
             guard let existing else {
-                return .success(try PlannedJourney(id: id, label: label, segment: segment, checklist: checklist, createdAt: now))
+                return .success(try PlannedJourney(
+                    id: id, label: label, segment: segment, reminderMinutes: reminderMinutes, checklist: checklist, createdAt: now
+                ))
             }
             return .success(try PlannedJourney(
-                id: existing.id, label: label, segment: segment, reminderMinutes: existing.reminderMinutes,
+                id: existing.id, label: label, segment: segment, reminderMinutes: reminderMinutes,
                 checklist: checklist, status: existing.status, createdAt: existing.createdAt,
                 completedAt: existing.completedAt, archivedAt: existing.archivedAt
             ))

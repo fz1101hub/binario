@@ -188,7 +188,7 @@ public struct PlannedJourney: Equatable, Identifiable, Sendable {
     public let id: String
     public let label: String
     public let segment: PlannedJourneySegment
-    /// Kept as Android stores it; the iPhone schedules no reminder yet.
+    /// Minutes before departure of the local reminder (Android's values); nil is none.
     public let reminderMinutes: Int?
     public let checklist: [PlannedJourneyChecklistItem]
     public let status: PlannedJourneyStatus

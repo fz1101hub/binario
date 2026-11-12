@@ -147,6 +147,23 @@ final class PlannedJourneyFormTests: XCTestCase {
         XCTAssertTrue(edit.needsPastDepartureWarning(now: now, editing: departed))
     }
 
+    func testTheReminderIsTheOneChosenInTheEditorAmongAndroidsLeads() throws {
+        XCTAssertEqual(PlannedJourneyForm.reminderChoices, [nil, 5, 10, 15, 20, 30, 45, 60])
+        var form = try filled()
+        form.reminderMinutes = 30
+        let saved = try form.journey(id: "j-1", now: now, editing: nil).get()
+        XCTAssertEqual(saved.reminderMinutes, 30)
+
+        var editor = PlannedJourneyForm(editing: saved)
+        XCTAssertEqual(editor.reminderMinutes, 30)
+        editor.reminderMinutes = nil
+        XCTAssertNil(try editor.journey(id: "ignored", now: now, editing: saved).get().reminderMinutes, "«Nessuno» removes it")
+        editor.reminderMinutes = 7
+        XCTAssertEqual(editor.journey(id: "ignored", now: now, editing: saved), .failure(.invalid))
+        XCTAssertNil(PlannedJourneyForm.returnTrip(from: saved).reminderMinutes, "a return trip inherits no reminder")
+        XCTAssertNil(PlannedJourneyForm.new(now: now).reminderMinutes)
+    }
+
     func testAnErrorIsSaidAtOnceAndInformationWaitsItsTurn() {
         XCTAssertFalse(PlannedJourneyFeedbackSeverity.error.queuesBehindCurrentSpeech)
         XCTAssertTrue(PlannedJourneyFeedbackSeverity.information.queuesBehindCurrentSpeech)

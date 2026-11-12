@@ -79,6 +79,7 @@ struct AgendaView: View {
         .onAppear {
             model.reloadAgenda()
             clock = Date()
+            Task { await model.refreshReminders() }
         }
         .onChange(of: scenePhase) { _, phase in
             if phase == .active {
@@ -124,6 +125,7 @@ struct AgendaJourneyRow: View {
 struct AgendaJourneyView: View {
     @EnvironmentObject private var model: AppModel
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.openURL) private var openURL
     let journeyID: String
     @State private var editor: AgendaEditorRequest?
     @State private var confirmingDelete = false
@@ -165,9 +167,21 @@ struct AgendaJourneyView: View {
                 if !journey.label.isEmpty {
                     LabeledContent("saved.agenda.label", value: journey.label)
                 }
+                LabeledContent("saved.agenda.reminder", value: AgendaText.reminderChoice(journey.reminderMinutes))
             } footer: {
                 if AppModel.needsTimetableZoneCaption(at: journey.departure.instant) {
                     Text("planner.departure.italian_time")
+                }
+            }
+
+            // What the system really holds, not only the lead chosen.
+            let reminder = model.reminderStatus.state(of: journey, now: Date())
+            if let key = AgendaText.reminderStateKey(reminder) {
+                Section {
+                    Label(LocalizedStringKey(key), systemImage: AgendaText.reminderSymbol(reminder))
+                    if case .notAllowed = reminder, let url = AgendaText.notificationSettingsURL {
+                        Button("saved.agenda.reminder.settings") { openURL(url) }
+                    }
                 }
             }
 
@@ -278,6 +292,7 @@ enum AgendaEditorRequest: Identifiable {
 struct AgendaEditorView: View {
     @EnvironmentObject private var model: AppModel
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.openURL) private var openURL
     let request: AgendaEditorRequest
 
     @State private var label = ""
@@ -286,8 +301,13 @@ struct AgendaEditorView: View {
     /// Nil until chosen.
     @State private var departure: Date?
     @State private var checklistText = ""
+    @State private var reminderMinutes: Int?
     @State private var messageKey: String?
     @State private var loaded = false
+    /// The journey is saved and its reminder is being scheduled: «Salva» waits.
+    @State private var saving = false
+    /// Saved, but its reminder could not be scheduled: said before the editor closes.
+    @State private var savedNoticeKey: String?
     /// The past-departure warning was shown: a second «Salva» saves (Android's rule).
     @State private var pastDepartureConfirmed = false
 
@@ -345,6 +365,18 @@ struct AgendaEditorView: View {
                     Text("saved.agenda.checklist_hint")
                 }
 
+                // A local notification at the Italian departure minus the lead; the permission is
+                // asked only when a journey with a reminder is saved.
+                Section {
+                    Picker("saved.agenda.reminder", selection: $reminderMinutes) {
+                        ForEach(PlannedJourneyForm.reminderChoices, id: \.self) { choice in
+                            Text(verbatim: AgendaText.reminderChoice(choice)).tag(choice)
+                        }
+                    }
+                } footer: {
+                    Text("saved.agenda.reminder.hint")
+                }
+
                 // «Preparazione del viaggio»: ready-made lines added after the user's own.
                 Section("saved.agenda.preparation") {
                     ForEach(PlannedJourneyChecklistPreset.allCases, id: \.self) { preset in
@@ -372,10 +404,30 @@ struct AgendaEditorView: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("saved.agenda.save", action: save)
+                        .disabled(saving)
                 }
             }
             .onAppear(perform: load)
             .onChange(of: departure) { _, _ in pastDepartureConfirmed = false }
+            .alert(
+                LocalizedStringKey(savedNoticeKey ?? "saved.agenda.saved"),
+                isPresented: Binding(
+                    get: { savedNoticeKey != nil },
+                    set: { if !$0 { savedNoticeKey = nil } }
+                )
+            ) {
+                if savedNoticeKey == "saved.agenda.saved_reminder_denied", let url = AgendaText.notificationSettingsURL {
+                    Button("saved.agenda.reminder.settings") {
+                        savedNoticeKey = nil
+                        openURL(url)
+                        dismiss()
+                    }
+                }
+                Button("action.ok", role: .cancel) {
+                    savedNoticeKey = nil
+                    dismiss()
+                }
+            }
         }
     }
 
@@ -394,6 +446,7 @@ struct AgendaEditorView: View {
         destination = form.destination.map { Station(id: $0.id, name: $0.name, railwayCode: $0.railwayCode) }
         departure = form.departureInstant
         checklistText = form.checklistText
+        reminderMinutes = form.reminderMinutes
     }
 
     private func save() {
@@ -401,7 +454,8 @@ struct AgendaEditorView: View {
             label: label,
             origin: origin.map { StationIdentity($0) },
             destination: destination.map { StationIdentity($0) },
-            checklistText: checklistText
+            checklistText: checklistText,
+            reminderMinutes: reminderMinutes
         )
         if let departure {
             form.date = ItalianWallClock.date(of: departure)
@@ -424,9 +478,20 @@ struct AgendaEditorView: View {
         }
         if let refusal = model.saveJourney(journey, isNew: existing == nil) {
             show(AgendaText.messageKey(refusal))
-        } else {
-            AgendaAnnouncement.post("saved.agenda.saved", .information)
-            dismiss()
+            return
+        }
+        saving = true
+        Task {
+            let outcome = await model.scheduleReminder(afterSaving: journey)
+            saving = false
+            switch outcome {
+            case .none, .scheduled:
+                AgendaAnnouncement.post(AgendaText.savedMessageKey(outcome), .information)
+                dismiss()
+            case .notAllowed, .tooLate, .failed:
+                // The journey is saved: the alert says why its reminder is not, then closes the editor.
+                savedNoticeKey = AgendaText.savedMessageKey(outcome)
+            }
         }
     }
 
@@ -474,6 +539,53 @@ enum AgendaText {
         var style = Date.FormatStyle.dateTime.weekday(.abbreviated).day().month(.abbreviated).year()
         style.timeZone = ItalianWallClock.timeZone
         return instant.formatted(style)
+    }
+
+    /// «Nessuno» or «15 min prima», the minutes written by the system in the user's language.
+    static func reminderChoice(_ minutes: Int?) -> String {
+        guard let minutes else { return NSLocalizedString("saved.agenda.reminder.none", comment: "") }
+        let formatter = DateComponentsFormatter()
+        formatter.allowedUnits = [.minute]
+        formatter.unitsStyle = .short
+        let duration = formatter.string(from: TimeInterval(minutes * 60)) ?? "\(minutes)"
+        return String.localizedStringWithFormat(NSLocalizedString("saved.agenda.reminder.before", comment: ""), duration)
+    }
+
+    /// The line under a journey with a reminder; nil for «Nessuno».
+    static func reminderStateKey(_ state: PlannedJourneyReminderState) -> String? {
+        switch state {
+        case .none: nil
+        case .scheduled: "saved.agenda.reminder.scheduled"
+        case .notAllowed: "saved.agenda.reminder.not_allowed"
+        case .tooLate: "saved.agenda.reminder.too_late"
+        case .notScheduled: "saved.agenda.reminder.not_scheduled"
+        }
+    }
+
+    static func reminderSymbol(_ state: PlannedJourneyReminderState) -> String {
+        if case .scheduled = state { return "bell" }
+        return "bell.slash"
+    }
+
+    /// What is said once a journey is saved, by what became of its reminder.
+    static func savedMessageKey(_ outcome: PlannedJourneyReminderOutcome) -> String {
+        switch outcome {
+        case .none: "saved.agenda.saved"
+        case .scheduled: "saved.agenda.saved_with_reminder"
+        case .notAllowed: "saved.agenda.saved_reminder_denied"
+        case .tooLate: "saved.agenda.saved_reminder_too_late"
+        case .failed: "saved.agenda.saved_reminder_failed"
+        }
+    }
+
+    /// The app's page in the iPhone's settings, where notifications are allowed again.
+    @MainActor
+    static var notificationSettingsURL: URL? {
+        #if canImport(UIKit)
+        URL(string: UIApplication.openNotificationSettingsURLString)
+        #else
+        nil
+        #endif
     }
 
     static func presetKey(_ preset: PlannedJourneyChecklistPreset) -> String {

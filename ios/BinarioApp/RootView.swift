@@ -38,6 +38,13 @@ struct RootView: View {
             default: break
             }
         }
+        // The Agenda's reminders again: some fired, journeys departed or the permission changed
+        // while the app was away. Nothing is asked to the user here.
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active {
+                Task { await model.refreshReminders() }
+            }
+        }
         .task { await expireLiveValues() }
         // Saving or deleting a route can fail on any tab (the planner's «Salva tratta», «Tratte»):
         // the alert is shown where it happened, not when «Tratte» is opened later.

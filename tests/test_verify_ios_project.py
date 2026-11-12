@@ -381,6 +381,49 @@ class IOSProjectTests(unittest.TestCase):
             for text in texts:
                 self.assertIsNone(forbidden.search(text), f"{language}: {text}")
 
+    def test_agenda_reminders_are_local_notifications_without_a_push_entitlement(self) -> None:
+        """EXPO_PORT_PLAN R25 and F30: the Agenda's reminders are local requests behind a protocol; no target
+        declares the push entitlement or a background mode, nothing registers for remote notifications, and the
+        permission is asked only when a journey with a reminder is saved, never by a reconciliation."""
+        paths = [
+            path for base in (IOS, ROOT / "apple-watch") for path in base.rglob("*")
+            if path.is_file() and ".build" not in path.parts
+            and path.suffix in {".swift", ".yml", ".plist", ".entitlements", ".xcprivacy"}
+        ]
+        for path in paths:
+            text = path.read_text(encoding="utf-8")
+            for forbidden in ("aps-environment", "registerForRemoteNotifications", "remote-notification", "UIBackgroundModes"):
+                self.assertNotIn(forbidden, text, path)
+        self.assertNotIn("entitlements", self.targets["Binario"])
+        for name, target in self.targets.items():
+            if "entitlements" in target:
+                with (IOS / target["entitlements"]["path"]).open("rb") as source:
+                    self.assertEqual({"com.apple.security.application-groups"}, set(plistlib.load(source)), name)
+
+        adapter = (IOS / "BinarioApp/AgendaReminders.swift").read_text(encoding="utf-8")
+        self.assertIn("final class SystemAgendaNotificationCenter: PlannedJourneyNotificationCenter", adapter)
+        self.assertIn("UNTimeIntervalNotificationTrigger", adapter)
+        # The words are the stored Italian time and the validated station names, never the free label.
+        self.assertIn("plan.departureTime.hhmm, plan.origin, plan.destination", adapter)
+        self.assertNotIn(".label", adapter)
+        sources = [
+            path for base in (IOS / "BinarioApp", IOS / "BinarioKit/Sources")
+            for path in base.rglob("*.swift")
+        ]
+        asking = sorted(path.name for path in sources if "requestAuthorization(" in path.read_text(encoding="utf-8"))
+        self.assertEqual(["AgendaReminders.swift"], asking)
+        scheduler = (IOS / "BinarioKit/Sources/BinarioKit/PlannedJourneyReminders.swift").read_text(encoding="utf-8")
+        self.assertEqual(1, scheduler.count("center.requestPermission()"))
+        self.assertLess(scheduler.index("func scheduleAfterSaving"), scheduler.index("center.requestPermission()"))
+        self.assertLess(scheduler.index("center.requestPermission()"), scheduler.index("func cancel(journeyID"))
+        root_view = (IOS / "BinarioApp/RootView.swift").read_text(encoding="utf-8")
+        self.assertIn("if phase == .active {\n                Task { await model.refreshReminders() }", root_view)
+        model = (IOS / "BinarioApp/AppModel.swift").read_text(encoding="utf-8")
+        for action in ("func deleteJourney(id: String)", "func completeJourney(id: String"):
+            body = model.split(action, 1)[1].split("\n    }\n", 1)[0]
+            self.assertLess(body.index("reminderScheduler?.cancel(journeyID: id)"), body.index("plannedJourneyStore."), action)
+        self.assertIn("PlannedJourneyReminderTests", (IOS / "BinarioKit/Tests/BinarioKitTests/PlannedJourneyReminderTests.swift").read_text(encoding="utf-8"))
+
     def test_privacy_manifests_match_each_executable_userdefaults_scope(self) -> None:
         ios_privacy = privacy_manifest(IOS / "Resources/PrivacyInfo.xcprivacy")
         self.assertFalse(ios_privacy["NSPrivacyTracking"])
