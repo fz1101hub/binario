@@ -5,6 +5,8 @@ import { createApp } from "./app";
 import { ENV } from "./env";
 import { assertRuntimeEnvironment } from "./envCheck";
 import { startupTimestampProblem } from "./dbEngine";
+import { preloadRailData } from "../punctuality/source";
+import { isAlexaConfigured } from "../voice/config";
 import { createConnection } from "mysql2/promise";
 
 function isPortAvailable(port: number): Promise<boolean> {
@@ -70,6 +72,8 @@ async function startServer() {
   server.listen(port, () => {
     console.log(`Server running on http://localhost:${port}/`);
   });
+  // The skill reads the statistics and the catalogue: read them now rather than on the first question.
+  if (isAlexaConfigured()) void preloadRailData();
 }
 
 startServer().catch(error => {
