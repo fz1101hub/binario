@@ -24,6 +24,7 @@ on:
       - "tools/verify_gradle_dependency_metadata.py"
       - "tools/verify_privacy_policy.py"
       - "tests/test_wear_compose_gradle_dependency_suppressions.py"
+      - "tests/test_android_string_resources.py"
       - "tools/run_android_ui_tests.sh"
       - ".github/ci-inputs-lock.json"
       - ".github/workflows/android-ci.yml"
@@ -53,6 +54,7 @@ on:
       - "tools/verify_gradle_dependency_metadata.py"
       - "tools/verify_privacy_policy.py"
       - "tests/test_wear_compose_gradle_dependency_suppressions.py"
+      - "tests/test_android_string_resources.py"
       - "tools/run_android_ui_tests.sh"
       - ".github/ci-inputs-lock.json"
       - ".github/workflows/android-ci.yml"
@@ -147,6 +149,10 @@ jobs:
           python3 tools/verify_android_release_config.py
           python3 tools/verify_gradle_dependency_metadata.py
           python3 -m unittest tests.test_wear_compose_gradle_dependency_suppressions
+
+      - name: Verify the string resources of the 17 locales
+        # Keys, placeholders and CLDR plural quantities of every translation of app and wear against the base.
+        run: python3 -m unittest tests.test_android_string_resources
 
       - name: Android UI and notification tests on API 35
         timeout-minutes: 25

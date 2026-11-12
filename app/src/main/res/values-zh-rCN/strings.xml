@@ -1322,6 +1322,9 @@
     <plurals name="partenze_hidden_trains">
         <item quantity="other">已隐藏 %d 趟列车</item>
     </plurals>
+    <plurals name="station_board_more_not_listed">
+        <item quantity="other">另有 %1$d 趟列车未列出</item>
+    </plurals>
     <plurals name="saved_timetable_solutions">
         <item quantity="other">%d 个方案</item>
     </plurals>

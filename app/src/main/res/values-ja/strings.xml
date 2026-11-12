@@ -1299,6 +1299,9 @@
     <plurals name="partenze_hidden_trains">
         <item quantity="other">%d 本を非表示</item>
     </plurals>
+    <plurals name="station_board_more_not_listed">
+        <item quantity="other">ほかに %1$d 本は表示されていません</item>
+    </plurals>
     <plurals name="saved_timetable_solutions">
         <item quantity="other">%d 件の経路</item>
     </plurals>

@@ -1353,6 +1353,10 @@
         <item quantity="one">%d train hidden</item>
         <item quantity="other">%d trains hidden</item>
     </plurals>
+    <plurals name="station_board_more_not_listed">
+        <item quantity="one">%1$d more train not listed</item>
+        <item quantity="other">%1$d more trains not listed</item>
+    </plurals>
     <plurals name="saved_timetable_solutions">
         <item quantity="one">%d option</item>
         <item quantity="other">%d options</item>

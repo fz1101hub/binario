@@ -39,6 +39,14 @@ class VerifyAndroidReleaseConfigTest(unittest.TestCase):
         with self.assertRaisesRegex(AssertionError, "test_wear_compose_gradle_dependency_suppressions"):
             POLICY.verify(without_test)
 
+    def test_ci_must_run_the_string_resource_test(self) -> None:
+        without_test = replacing(
+            ".github/workflows/android-ci.yml",
+            "        run: python3 -m unittest tests.test_android_string_resources\n",
+        )
+        with self.assertRaisesRegex(AssertionError, "test_android_string_resources"):
+            POLICY.verify(without_test)
+
     def test_wear_version_code_is_derived_from_the_phone_code_in_a_disjoint_range(self) -> None:
         # Read the current line instead of hard-coding the number: every release bumps it.
         current = re.search(r"^BINARIO_APP_VERSION_CODE=\d+\n", POLICY.read("gradle.properties"), re.MULTILINE).group(0)

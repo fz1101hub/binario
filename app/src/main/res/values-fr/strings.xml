@@ -1384,6 +1384,11 @@
         <item quantity="many">%d trains masqués</item>
         <item quantity="other">%d trains masqués</item>
     </plurals>
+    <plurals name="station_board_more_not_listed">
+        <item quantity="one">%1$d autre train non affiché</item>
+        <item quantity="many">%1$d d’autres trains non affichés</item>
+        <item quantity="other">%1$d autres trains non affichés</item>
+    </plurals>
     <plurals name="saved_timetable_solutions">
         <item quantity="one">%d solution</item>
         <item quantity="many">%d solutions</item>

@@ -1322,6 +1322,9 @@
     <plurals name="partenze_hidden_trains">
         <item quantity="other">Đã ẩn %d tàu</item>
     </plurals>
+    <plurals name="station_board_more_not_listed">
+        <item quantity="other">Còn %1$d tàu khác không hiển thị</item>
+    </plurals>
     <plurals name="saved_timetable_solutions">
         <item quantity="other">%d phương án</item>
     </plurals>

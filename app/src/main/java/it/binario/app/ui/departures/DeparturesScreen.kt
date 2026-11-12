@@ -104,6 +104,7 @@ import it.binario.app.ui.common.ScreenHeader
 import it.binario.app.ui.common.ScreenMargin
 import it.binario.app.ui.common.SectionTitle
 import it.binario.app.ui.common.ServiceGroup
+import it.binario.app.ui.common.ServiceRunLabel
 import it.binario.app.ui.common.ServiceStatusBadge
 import it.binario.app.ui.common.TonalButton
 import it.binario.app.ui.common.DataState
@@ -247,9 +248,12 @@ private fun RouteBoard(
     val group = groupName?.let { name -> ServiceGroup.entries.firstOrNull { it.name == name } }?.takeIf { it in groups }
     val shownLater = JourneyTimes.filtered(laterServices, group)
     // "Ultimo di oggi" and "Non ci sono più treni oggi" from the static timetable of the packs, never from live data.
+    // Only on a board of today: a search planned for another day shows that day, not «oggi» (LastOfDayMarks.markedDay).
     val today = LocalDate.now(RailTime.defaultZone)
+    val markedDay = LastOfDayMarks.markedDay(today, viewModel.journeyFollowsCurrentTime, viewModel.journeyQuery.serviceDate)
     val boardDestination = viewModel.activeRoute.destination(viewModel.direction).takeIf { viewModel.hasActiveRoute }
-    val staticDay by rememberStaticDayDepartures(boardStation, boardDestination, today)
+    val loadedDay by rememberStaticDayDepartures(boardStation.takeIf { markedDay != null }, boardDestination, today)
+    val staticDay = loadedDay.takeIf { markedDay != null }
     fun lastOfDay(service: TrainService): Boolean = LastOfDayMarks.isLast(
         staticDay, service.number,
         service.scheduledDepartureDateTime ?: runCatching { LocalDateTime.of(today, LocalTime.parse(service.scheduledDeparture.trim())) }.getOrNull()
@@ -444,7 +448,7 @@ internal fun HeroDepartureCard(
     val savedCopy = listState == DataState.SAVED_COPY && !shown.operationalStatusVerified
     val heading = heading ?: stringResource(R.string.departures_next_departure)
     val serviceState = if (shown.operationalStatusVerified) {
-        stringResource(R.string.service_state_live, shown.status.localizedLabel())
+        stringResource(R.string.service_state_live, ServiceRunLabel.spokenStatus(shown).localizedLabel())
     } else {
         stringResource(R.string.service_state_scheduled)
     }

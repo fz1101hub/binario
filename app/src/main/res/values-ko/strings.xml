@@ -1299,6 +1299,9 @@
     <plurals name="partenze_hidden_trains">
         <item quantity="other">숨겨진 열차 %d대</item>
     </plurals>
+    <plurals name="station_board_more_not_listed">
+        <item quantity="other">표시되지 않은 열차 %1$d대 더 있음</item>
+    </plurals>
     <plurals name="saved_timetable_solutions">
         <item quantity="other">여정 %d개</item>
     </plurals>

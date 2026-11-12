@@ -1392,6 +1392,12 @@
         <item quantity="many">%d поездов скрыто</item>
         <item quantity="other">%d поезда скрыто</item>
     </plurals>
+    <plurals name="station_board_more_not_listed">
+        <item quantity="one">Ещё %1$d поезд не показан</item>
+        <item quantity="few">Ещё %1$d поезда не показаны</item>
+        <item quantity="many">Ещё %1$d поездов не показано</item>
+        <item quantity="other">Ещё %1$d поезда не показано</item>
+    </plurals>
     <plurals name="saved_timetable_solutions">
         <item quantity="one">%d вариант</item>
         <item quantity="few">%d варианта</item>

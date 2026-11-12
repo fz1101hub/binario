@@ -296,7 +296,7 @@
     <string name="settings_personal_journeys_description">Las rutas fijadas siguen disponibles también en el widget. Toca una ruta para activarla.</string>
     <string name="train_number_label">Tren %1$s</string>
     <string name="settings_privacy_title">Privacidad y datos</string>
-    <string name="settings_privacy_local_data">Las rutas, favoritos, seguimientos, alertas, widgets y el historial de puntualidad permanecen en el dispositivo. El historial de puntualidad guarda, solo en el teléfono y durante 90 días como máximo, la fecha, el número, el operador, el retraso y la supresión de los trenes abiertos con datos operativos o seguidos. El historial de un tren se borra desde su tarjeta de Puntualidad, visible a partir de la segunda observación; borrar los datos de la aplicación elimina todo el historial. Se excluyen la copia de seguridad y la transferencia de Android; el archivo JSON se exporta solo si lo eliges. La ubicación sirve únicamente para ordenar las estaciones cercanas (también cuando tocas “Más cercana” en el widget del panel de estación, que solo guarda la estación elegida) y, si activas la alarma GPS, para saber cuándo estás cerca de la parada: se procesa solo en memoria y no se conserva ni se envía a las fuentes ferroviarias ni a nadie más.</string>
+    <string name="settings_privacy_local_data">Las rutas, favoritos, seguimientos, alertas, widgets y el historial de puntualidad permanecen en el dispositivo. El historial de puntualidad guarda, solo en el teléfono y durante 90 días como máximo, la fecha, el número, el operador, el retraso y la cancelación de los trenes abiertos con datos operativos o seguidos. El historial de un tren se borra desde su tarjeta de Puntualidad, visible a partir de la segunda observación; borrar los datos de la aplicación elimina todo el historial. Se excluyen la copia de seguridad y la transferencia de Android; el archivo JSON se exporta solo si lo eliges. La ubicación sirve únicamente para ordenar las estaciones cercanas (también cuando tocas “Más cercana” en el widget del panel de estación, que solo guarda la estación elegida) y, si activas la alarma GPS, para saber cuándo estás cerca de la parada: se procesa solo en memoria y no se conserva ni se envía a las fuentes ferroviarias ni a nadie más.</string>
     <string name="settings_privacy_notifications_voice">Las notificaciones son recordatorios locales. El dictado usa el reconocedor del sistema: Binario no graba audio y usa solo el texto devuelto. Las búsquedas de RFI envían a la fuente el identificador público de la estación de salida; las fuentes personales opcionales pueden recibir un identificador o el nombre de la estación. Sin una fuente autorizada: datos en tiempo real no disponibles. ViaggiaTreno usa HTTP para su API pública: las consultas de estación, hora y tren no están cifradas. Las demás fuentes usan HTTPS.</string>
     <string name="settings_privacy_wear">Si activas el smartwatch, recibe un resumen de la ruta y hasta dos servicios. Desactivar el uso compartido elimina el DataItem y la caché local del reloj al recibir la revocación. La información completa está en PRIVACY.md del repositorio. Antes de una distribución pública faltan una URL verificada y un contacto de privacidad: aún no existe un enlace público en la aplicación.</string>
     <!-- Binario 2.0 UX (October 2026) -->
@@ -960,7 +960,7 @@
     <string name="connections_subtitle">En %1$s, salidas hasta 90 minutos después de la llegada</string>
     <string name="connections_state_expanded">Sección abierta</string>
     <string name="connections_state_collapsed">Sección cerrada</string>
-    <string name="connections_train_cancelled">El tren figura como suprimido: no se pueden calcular las conexiones.</string>
+    <string name="connections_train_cancelled">El tren figura como cancelado: no se pueden calcular las conexiones.</string>
     <string name="connections_arrival_unavailable">La hora de llegada a %1$s no está disponible: no se pueden calcular las conexiones.</string>
     <string name="connections_arrival_live">Llegada prevista a las %1$s según los datos operativos.</string>
     <string name="connections_arrival_scheduled">Llegada programada a las %1$s. El estado del tren no está verificado: los márgenes usan la hora programada.</string>
@@ -1096,7 +1096,7 @@
         <item quantity="other">%d minutos de adelanto</item>
     </plurals>
     <string name="trains_widget_on_time_accessibility">Puntual</string>
-    <string name="trains_widget_cancelled_accessibility">Tren suprimido</string>
+    <string name="trains_widget_cancelled_accessibility">Tren cancelado</string>
     <string name="trains_widget_variation_accessibility">Cambio de recorrido o de paradas</string>
     <string name="trains_widget_empty">No hay trenes guardados. En la app, abre un tren y toca el corazón para añadirlo.</string>
     <string name="trains_widget_none_running">Ninguno de tus trenes está en viaje ahora.</string>
@@ -1153,8 +1153,8 @@
     <string name="punctuality_title">Puntualidad</string>
     <string name="punctuality_on_time_share">Puntual (hasta 5 minutos): %1$d%%</string>
     <string name="punctuality_average_delay">Retraso medio: %1$s</string>
-    <string name="punctuality_average_delay_unavailable">Retraso medio no disponible: todas las circulaciones observadas se suprimieron.</string>
-    <string name="punctuality_cancelled_count">Supresiones: %1$d</string>
+    <string name="punctuality_average_delay_unavailable">Retraso medio no disponible: todas las circulaciones observadas se cancelaron.</string>
+    <string name="punctuality_cancelled_count">Cancelaciones: %1$d</string>
     <string name="punctuality_recent_title">Últimas observaciones</string>
     <string name="punctuality_local_note">Registrado solo en este teléfono cuando abres un tren con datos operativos y, para los trenes favoritos, una vez al día después de la llegada prevista: una observación por día, durante 365 días como máximo.</string>
     <string name="punctuality_clear">Borrar el historial de este tren</string>
@@ -1167,14 +1167,14 @@
     <string name="followed_trip_channel_name">Viaje seguido</string>
     <string name="followed_trip_channel_description">Estado en tiempo real del viaje que sigues: retraso, próxima parada y vía, sin sonido.</string>
     <string name="followed_trip_alerts_channel_name">Cambios del viaje seguido</string>
-    <string name="followed_trip_alerts_channel_description">Un aviso con sonido cuando el tren seguido se suprime, cambia de vía de salida o el enlace está en riesgo. Entre las 22 y las 7 llega sin sonido.</string>
+    <string name="followed_trip_alerts_channel_description">Un aviso con sonido cuando el tren seguido se cancela, cambia de vía de salida o el enlace está en riesgo. Entre las 22 y las 7 llega sin sonido.</string>
     <string name="followed_trip_notification_toggle">Notificación con el estado del viaje</string>
     <string name="followed_trip_notification_toggle_description">Desde 30 minutos antes de la salida hasta 30 minutos después de la llegada: retraso, próxima parada y vía, actualizados cada 15 minutos. Se cierra sola al final.</string>
     <string name="followed_trip_notification_pending">La notificación aparecerá a las %1$s.</string>
     <string name="followed_trip_notification_unavailable">Notificación no disponible: el viaje ya terminó o faltan los horarios.</string>
     <string name="followed_trip_title_delay">%1$s · retraso de %2$s</string>
     <string name="followed_trip_title_on_time">%1$s · puntual</string>
-    <string name="followed_trip_title_cancelled">%1$s · suprimido</string>
+    <string name="followed_trip_title_cancelled">%1$s · cancelado</string>
     <string name="followed_trip_title_unknown">%1$s · estado no disponible</string>
     <string name="followed_trip_title_scheduled">%1$s · solo horario programado</string>
     <string name="followed_trip_transfer">Transbordo en %1$s al %2$s</string>
@@ -1191,7 +1191,7 @@
     <string name="settings_train_alerts_description">Notifica los nuevos avisos de ViaggiaTreno de los trenes con la campana activada en el detalle: cada 15 minutos el día del viaje, nunca entre las 22 y las 7. El número del tren se envía a ViaggiaTreno.</string>
     <string name="commuter_alert_status_unavailable">estado no disponible</string>
     <string name="commuter_alert_status_on_time">puntual</string>
-    <string name="commuter_alert_status_cancelled">tren suprimido</string>
+    <string name="commuter_alert_status_cancelled">tren cancelado</string>
     <string name="commuter_alert_status_platform">%1$s, vía %2$s</string>
     <string name="commuter_alert_notification_status">Estado actual: %1$s.</string>
     <string name="commuter_alert_notification_big_text_live">%1$s: la parada %2$s está prevista a las %3$s.</string>
@@ -1216,7 +1216,7 @@
     <string name="punctuality_bucket_up_to_15">De 6 a 15 min</string>
     <string name="punctuality_bucket_up_to_30">De 16 a 30 min</string>
     <string name="punctuality_bucket_over_30">Más de 30 min</string>
-    <string name="punctuality_bucket_cancelled">Suprimidos</string>
+    <string name="punctuality_bucket_cancelled">Cancelados</string>
     <string name="punctuality_history_show_all">Mostrar todas las fechas</string>
     <string name="settings_punctuality_recording_title">Puntualidad de los trenes favoritos</string>
     <string name="settings_punctuality_recording_description">Una vez al día, después de la llegada prevista, consulta el estado del tren y registra solo en este teléfono el retraso final y el de las paradas, durante 365 días como máximo.</string>
@@ -1383,6 +1383,11 @@
         <item quantity="one">%d tren oculto</item>
         <item quantity="many">%d trenes ocultos</item>
         <item quantity="other">%d trenes ocultos</item>
+    </plurals>
+    <plurals name="station_board_more_not_listed">
+        <item quantity="one">%1$d tren más no aparece en la lista</item>
+        <item quantity="many">%1$d de trenes más no aparecen en la lista</item>
+        <item quantity="other">%1$d trenes más no aparecen en la lista</item>
     </plurals>
     <plurals name="saved_timetable_solutions">
         <item quantity="one">%d opción</item>

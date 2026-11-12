@@ -1384,6 +1384,11 @@
         <item quantity="many">%d treni nascosti</item>
         <item quantity="other">%d treni nascosti</item>
     </plurals>
+    <plurals name="station_board_more_not_listed">
+        <item quantity="one">%1$d altro treno non è in elenco</item>
+        <item quantity="many">%1$d di altri treni non sono in elenco</item>
+        <item quantity="other">%1$d altri treni non sono in elenco</item>
+    </plurals>
     <plurals name="saved_timetable_solutions">
         <item quantity="one">%d soluzione</item>
         <item quantity="many">%d soluzioni</item>

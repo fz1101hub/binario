@@ -51,8 +51,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
@@ -106,6 +108,7 @@ import it.binario.app.journeys.LastOfDayMarks
 import it.binario.app.ui.common.InfoNoticeCard
 import it.binario.app.ui.common.OperatorNames
 import it.binario.app.ui.common.LastOfDayChip
+import it.binario.app.ui.common.ListRowLayout
 import it.binario.app.ui.common.StationPunctualityCard
 import it.binario.app.ui.common.WheelchairMark
 import it.binario.app.ui.common.rememberNetworkReliability
@@ -272,17 +275,27 @@ internal fun StationBoardScreen(
                         LinearProgressIndicator(Modifier.fillMaxWidth())
                     }
                     Text(stringResource(R.string.station_board_local_monitoring), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+                    // A monitored station shows (and edits) its saved mode, so «Smetti di monitorare» stops it (StationMonitorChips).
+                    val shownMonitorMode = StationMonitorChips.shown(viewModel.stationMonitors, station.id, StationMonitorMode.valueOf(monitorMode))
                     LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         items(StationMonitorMode.entries) { mode ->
                             FilterChip(
-                                selected = monitorMode == mode.name,
-                                onClick = { monitorMode = mode.name },
+                                selected = shownMonitorMode == mode,
+                                onClick = {
+                                    if (StationMonitorChips.changesSaved(viewModel.stationMonitors, station.id, mode)) {
+                                        viewModel.toggleStationMonitor(station, mode)
+                                    }
+                                    monitorMode = mode.name
+                                },
                                 label = { Text(mode.localizedLabel()) }
                             )
                         }
                     }
                     OutlinedButton(
-                        onClick = { viewModel.toggleStationMonitor(station, StationMonitorMode.valueOf(monitorMode)) },
+                        onClick = {
+                            monitorMode = shownMonitorMode.name
+                            viewModel.toggleStationMonitor(station, shownMonitorMode)
+                        },
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Text(stringResource(if (viewModel.isStationMonitored(station)) R.string.station_board_stop_monitoring else R.string.station_board_start_monitoring))
@@ -416,7 +429,7 @@ internal fun StationBoardScreen(
                         )
                     }
                     items(
-                        shownEntries.take(60),
+                        StationBoardListCap.shown(shownEntries),
                         key = { entry ->
                             listOf(
                                 entry.runId.value,
@@ -445,6 +458,20 @@ internal fun StationBoardScreen(
                                 lastOfDay = board.kind == BoardKind.DEPARTURES && LastOfDayMarks.isLast(
                                     staticDay, entry.publicNumber, entry.scheduledTime.withZoneSameInstant(BOARD_ZONE).toLocalDateTime()
                                 )
+                            )
+                        }
+                    }
+                    // The list stops at 60 rows: it says how many trains it leaves out instead of ending as if complete.
+                    val leftOut = StationBoardListCap.leftOut(shownEntries)
+                    if (leftOut > 0) {
+                        item(key = "board-left-out") {
+                            Text(
+                                pluralStringResource(R.plurals.station_board_more_not_listed, leftOut, leftOut),
+                                modifier = Modifier
+                                    .padding(horizontal = ScreenMargin, vertical = 8.dp)
+                                    .testTag("station-board-left-out"),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                     }
@@ -517,7 +544,8 @@ internal fun StationBoardEntryRow(
     lastOfDay: Boolean = false
 ) {
     val scheduled = entry.scheduledTime.withZoneSameInstant(BOARD_ZONE)
-    val expected = entry.expectedTime?.value?.withZoneSameInstant(BOARD_ZONE)
+    // A cancelled train has no expected time, whatever the source filled in (StationBoardEntrySpeech.expectedTime).
+    val expected = StationBoardEntrySpeech.expectedTime(entry)?.withZoneSameInstant(BOARD_ZONE)
     val delayedMinutes = expected?.let {
         java.time.Duration.between(scheduled, it).toMinutes().coerceAtLeast(0)
     } ?: 0L
@@ -529,26 +557,15 @@ internal fun StationBoardEntryRow(
         else R.string.station_board_arrival_from,
         endpoint
     )
-    val scheduledLabel = stringResource(
-        R.string.station_board_scheduled_time,
-        scheduled.format(BOARD_TIME_FORMATTER)
-    )
-    val statusLabel = stationBoardStatusAnnouncement(entry)
     val platformChange = PlatformChange.of(platform, entry.scheduledPlatform?.value)
-    val platformLabel = platformChange?.let { stringResource(R.string.platform_changed_accessible, it.actual, it.scheduled) }
-        ?: platform?.let { stringResource(R.string.station_board_platform_accessible, it) }
-        ?: stringResource(R.string.station_board_platform_unavailable)
-    val trainLabel = entry.publicNumber?.takeIf(String::isNotBlank)
-        ?.let { stringResource(R.string.station_board_train_number, it) }
-        .orEmpty()
-    val accessibilityDescription = stringResource(
-        R.string.station_board_entry_accessibility,
-        directionLabel,
-        scheduledLabel,
-        statusLabel,
-        platformLabel,
-        trainLabel
-    ) + if (lastOfDay) ". " + stringResource(R.string.journey_last_of_day) else ""
+    // Cancelled, cut short, diverted or replaced by a bus: a label of its own, and the first thing TalkBack says.
+    val disruption = StationBoardEntrySpeech.disruption(entry)
+    // With large text, or with the long «Bin. 7 (era 5)», the platform goes under the destination instead of beside it.
+    val platformBelow = ListRowLayout.stacksSideColumn(LocalDensity.current.fontScale, wideSide = platformChange != null)
+    val resources = LocalResources.current
+    val accessibilityDescription = remember(entry, kind, lastOfDay, resources) {
+        StationBoardEntrySpeech.description(entry, kind, lastOfDay) { id, arguments -> resources.getString(id, *arguments) }
+    }
     val selectedState = if (selected) stringResource(R.string.accessibility_row_selected) else null
 
     Row(
@@ -582,15 +599,24 @@ internal fun StationBoardEntryRow(
                 directionLabel,
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.Bold,
-                maxLines = 1,
+                // Two lines, as the route rows: «Per Milano Porta G…» is both Garibaldi and Genova.
+                maxLines = 2,
                 overflow = TextOverflow.Ellipsis
             )
+            disruption?.let { status ->
+                Text(
+                    status.stationBoardLabel(),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.error,
+                    fontWeight = FontWeight.Bold
+                )
+            }
             Text(
                 listOfNotNull(
                     entry.lineLabel?.takeIf(String::isNotBlank),
                     entry.publicNumber?.takeIf(String::isNotBlank)?.let { stringResource(R.string.station_board_train_number, it) },
                     entry.operatorId?.value?.let(OperatorNames::displayName),
-                    entry.status?.value?.stationBoardLabel()
+                    entry.status?.value?.takeIf { disruption == null }?.stationBoardLabel()
                 ).joinToString(" · "),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -606,25 +632,29 @@ internal fun StationBoardEntryRow(
                     color = MaterialTheme.colorScheme.error
                 )
             }
+            if (platformBelow) platform?.let { BoardPlatformPill(it, platformChange) }
         }
-        platform?.let {
-            // A platform the source moved: "Bin. 7 (era 5)" in the attention colour, never the colour alone.
-            Surface(
-                shape = RoundedCornerShape(10.dp),
-                color = if (platformChange != null) MaterialTheme.colorScheme.tertiaryContainer else MaterialTheme.colorScheme.secondaryContainer,
-                contentColor = if (platformChange != null) MaterialTheme.colorScheme.onTertiaryContainer else MaterialTheme.colorScheme.onSecondaryContainer
-            ) {
-                Text(
-                    platformChange?.let { change -> stringResource(R.string.platform_changed_short, change.actual, change.scheduled) }
-                        ?: stringResource(R.string.station_board_platform, it),
-                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp),
-                    fontWeight = FontWeight.Bold
-                )
-            }
-        }
+        if (!platformBelow) platform?.let { BoardPlatformPill(it, platformChange) }
         if (onOpen != null) {
             Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
         }
+    }
+}
+
+/** The platform of a board row; a platform the source moved reads "Bin. 7 (era 5)" in the attention colour, never the colour alone. */
+@Composable
+private fun BoardPlatformPill(platform: String, change: PlatformChange?) {
+    Surface(
+        shape = RoundedCornerShape(10.dp),
+        color = if (change != null) MaterialTheme.colorScheme.tertiaryContainer else MaterialTheme.colorScheme.secondaryContainer,
+        contentColor = if (change != null) MaterialTheme.colorScheme.onTertiaryContainer else MaterialTheme.colorScheme.onSecondaryContainer
+    ) {
+        Text(
+            change?.let { stringResource(R.string.platform_changed_short, it.actual, it.scheduled) }
+                ?: stringResource(R.string.station_board_platform, platform),
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp),
+            fontWeight = FontWeight.Bold
+        )
     }
 }
 
@@ -725,33 +755,7 @@ private fun StationBoardRunDetailsContent(
 }
 
 @Composable
-private fun stationBoardStatusAnnouncement(entry: StationBoardEntry): String {
-    val runStatus = entry.status?.value
-    return when {
-        entry.expectedTime != null -> stringResource(
-            R.string.station_board_status_live_prediction,
-            entry.expectedTime.value.withZoneSameInstant(BOARD_ZONE).format(BOARD_TIME_FORMATTER)
-        )
-        runStatus != null && runStatus != RunStatus.SCHEDULED && runStatus != RunStatus.UNKNOWN ->
-            stringResource(R.string.station_board_status_live, runStatus.stationBoardLabel())
-        runStatus == RunStatus.UNKNOWN -> stringResource(R.string.station_board_status_unavailable)
-        else -> stringResource(R.string.station_board_status_planned)
-    }
-}
-
-@Composable
-internal fun RunStatus.stationBoardLabel(): String = when (this) {
-    RunStatus.SCHEDULED -> stringResource(R.string.run_status_scheduled)
-    RunStatus.ON_TIME -> stringResource(R.string.run_status_on_time)
-    RunStatus.DELAYED -> stringResource(R.string.run_status_delayed)
-    RunStatus.CANCELLED -> stringResource(R.string.run_status_cancelled)
-    RunStatus.PARTIALLY_CANCELLED -> stringResource(R.string.run_status_partially_cancelled)
-    RunStatus.DIVERTED -> stringResource(R.string.run_status_diverted)
-    RunStatus.ADDED -> stringResource(R.string.run_status_added)
-    RunStatus.REPLACED_BY_BUS -> stringResource(R.string.run_status_bus_replacement)
-    RunStatus.COMPLETED -> stringResource(R.string.run_status_completed)
-    RunStatus.UNKNOWN -> stringResource(R.string.run_status_unknown)
-}
+internal fun RunStatus.stationBoardLabel(): String = stringResource(StationBoardEntrySpeech.label(this))
 
 private val BOARD_ZONE: ZoneId = ZoneId.of("Europe/Rome")
 
