@@ -165,6 +165,7 @@
 "saved.agenda.ready_checklist_done" = "Local checklist completed.";
 "saved.agenda.ready_checklist_left" = "Checklist items left: %lld";
 "saved.agenda.ready_local_note" = "This summary uses only the saved plan: it does not check delays, platforms or cancellations.";
+"saved.agenda.calendar_import_hint" = "Choose the journeys to add. Import is additive: it does not overwrite journeys already on the phone.";
 "settings.title" = "Settings";
 "settings.data.title" = "Data and sources";
 "settings.data.catalog" = "Station catalogue";

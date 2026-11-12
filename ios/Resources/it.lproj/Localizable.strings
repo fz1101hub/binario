@@ -165,6 +165,7 @@
 "saved.agenda.ready_checklist_done" = "Checklist locale completata.";
 "saved.agenda.ready_checklist_left" = "Voci della checklist da completare: %lld";
 "saved.agenda.ready_local_note" = "Questo riepilogo usa solo il piano salvato: non verifica ritardi, binari o cancellazioni.";
+"saved.agenda.calendar_import_hint" = "Scegli le tratte da aggiungere. L’importazione è additiva: non sovrascrive le tratte già sul telefono.";
 "settings.title" = "Impostazioni";
 "settings.data.title" = "Dati e fonti";
 "settings.data.catalog" = "Catalogo stazioni";

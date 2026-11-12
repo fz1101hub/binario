@@ -17,6 +17,8 @@ struct AgendaView: View {
     @State private var clock = Date()
     @State private var importing = false
     @State private var importingText = false
+    /// The journeys a calendar of another app proposes, to review before anything is added.
+    @State private var calendarPreview: PlannedJourneyTextPreview?
     /// A picked file, read and compared with the Agenda; nothing is written before a choice.
     @State private var filePreview: PlannedJourneyFilePreview?
     /// What the last export or import did, shown at the top of the list.
@@ -172,15 +174,26 @@ struct AgendaView: View {
         .sheet(isPresented: $importingText) {
             AgendaTextImportView()
         }
+        .sheet(isPresented: Binding(
+            get: { calendarPreview != nil },
+            set: { if !$0 { calendarPreview = nil } }
+        )) {
+            AgendaTextImportView(calendarPreview: calendarPreview)
+        }
         // Cancelling the picker is not an error: nothing is called then.
         .fileImporter(isPresented: $importing, allowedContentTypes: AgendaFiles.importTypes) { result in
-            guard case let .success(url) = result, let data = AgendaFiles.read(url),
-                  let preview = model.previewAgendaFile(data)
-            else {
+            guard case let .success(url) = result, let data = AgendaFiles.read(url) else {
                 report("saved.agenda.import_invalid", isError: true)
                 return
             }
-            filePreview = preview
+            if let preview = model.previewAgendaFile(data) {
+                filePreview = preview
+            } else if let proposed = model.previewForeignCalendar(data) {
+                // Another app's calendar: its journeys go through the text import's review.
+                calendarPreview = proposed
+            } else {
+                report("saved.agenda.import_invalid", isError: true)
+            }
         }
         .alert(
             Text(LocalizedStringKey(AgendaText.filePreviewTitleKey(filePreview))),

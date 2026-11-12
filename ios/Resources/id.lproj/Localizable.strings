@@ -165,6 +165,7 @@
 "saved.agenda.ready_checklist_done" = "Daftar periksa lokal selesai.";
 "saved.agenda.ready_checklist_left" = "Item daftar periksa tersisa: %lld";
 "saved.agenda.ready_local_note" = "Ringkasan ini hanya memakai rencana yang disimpan: tidak memeriksa keterlambatan, peron, atau pembatalan.";
+"saved.agenda.calendar_import_hint" = "Pilih perjalanan yang akan ditambahkan. Impor bersifat menambah: tidak menimpa perjalanan yang sudah ada di ponsel.";
 "settings.title" = "Pengaturan";
 "settings.data.title" = "Data dan sumber";
 "settings.data.catalog" = "Katalog stasiun";

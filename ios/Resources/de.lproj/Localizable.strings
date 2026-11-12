@@ -165,6 +165,7 @@
 "saved.agenda.ready_checklist_done" = "Lokale Checkliste abgeschlossen.";
 "saved.agenda.ready_checklist_left" = "Offene Punkte der Checkliste: %lld";
 "saved.agenda.ready_local_note" = "Diese Zusammenfassung verwendet nur den gespeicherten Plan: überprüft keine Verspätungen, Gleise oder Ausfälle.";
+"saved.agenda.calendar_import_hint" = "Wählen Sie die hinzuzufügenden Verbindungen. Der Import ist additiv: er überschreibt nicht bereits vorhandene Verbindungen auf dem Telefon.";
 "settings.title" = "Einstellungen";
 "settings.data.title" = "Daten und Quellen";
 "settings.data.catalog" = "Bahnhofskatalog";

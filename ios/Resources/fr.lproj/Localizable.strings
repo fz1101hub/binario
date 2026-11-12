@@ -165,6 +165,7 @@
 "saved.agenda.ready_checklist_done" = "Checklist locale complétée.";
 "saved.agenda.ready_checklist_left" = "Éléments de la liste à cocher : %lld";
 "saved.agenda.ready_local_note" = "Ce résumé utilise uniquement le plan enregistré : il ne vérifie pas les retards, les quais ou les annulations.";
+"saved.agenda.calendar_import_hint" = "Choisissez les trajets à ajouter. L'importation est additive : elle n'écrase pas les trajets déjà sur le téléphone.";
 "settings.title" = "Réglages";
 "settings.data.title" = "Données et sources";
 "settings.data.catalog" = "Catalogue des gares";

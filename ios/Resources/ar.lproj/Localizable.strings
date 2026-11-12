@@ -165,6 +165,7 @@
 "saved.agenda.ready_checklist_done" = "اكتملت قائمة التحقق المحلية.";
 "saved.agenda.ready_checklist_left" = "عناصر قائمة التحقق المتبقية: %lld";
 "saved.agenda.ready_local_note" = "يستخدم هذا الملخص الخطة المحفوظة فقط: لا يتحقق من التأخيرات أو الأرصفة أو الإلغاءات.";
+"saved.agenda.calendar_import_hint" = "اختر الرحلات المطلوب إضافتها. الاستيراد إضافي: لا يستبدل الرحلات الموجودة على الهاتف.";
 "settings.title" = "الإعدادات";
 "settings.data.title" = "البيانات والمصادر";
 "settings.data.catalog" = "كتالوج المحطات";

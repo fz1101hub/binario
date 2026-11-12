@@ -165,6 +165,7 @@
 "saved.agenda.ready_checklist_done" = "Yerel kontrol listesi tamamlandı.";
 "saved.agenda.ready_checklist_left" = "Kalan kontrol listesi öğeleri: %lld";
 "saved.agenda.ready_local_note" = "Bu özet yalnızca kayıtlı planı kullanır: gecikmeleri, peronları veya iptalleri kontrol etmez.";
+"saved.agenda.calendar_import_hint" = "Eklenecek yolculukları seçin. İçe aktarma yalnızca ekler: telefondaki mevcut yolculukların üzerine yazmaz.";
 "settings.title" = "Ayarlar";
 "settings.data.title" = "Veriler ve kaynaklar";
 "settings.data.catalog" = "İstasyon kataloğu";

@@ -87,6 +87,7 @@ public enum BinarioLocalizationKeys {
         "saved.agenda.countdown_minutes", "saved.agenda.countdown_hours", "saved.agenda.countdown_hours_minutes",
         "saved.agenda.ready_no_reminder", "saved.agenda.ready_checklist_done", "saved.agenda.ready_checklist_left",
         "saved.agenda.ready_local_note",
+        "saved.agenda.calendar_import_hint",
         "saved.watch.show", "saved.watch.stop", "saved.watch.pinned", "saved.watch.footer", "saved.watch.sharing_off",
         "saved.trains.title", "saved.trains.empty.title", "saved.trains.empty.body", "saved.trains.local_only",
         "saved.trains.storage_error", "saved.trains.limit_error",

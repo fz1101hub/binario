@@ -165,6 +165,7 @@
 "saved.agenda.ready_checklist_done" = "Checklist local completada.";
 "saved.agenda.ready_checklist_left" = "Elementos de la lista pendientes: %lld";
 "saved.agenda.ready_local_note" = "Este resumen usa solo el plan guardado: no verifica retrasos, andenes o cancelaciones.";
+"saved.agenda.calendar_import_hint" = "Elige los trayectos a añadir. La importación es aditiva: no sobrescribe los trayectos ya en el teléfono.";
 "settings.title" = "Ajustes";
 "settings.data.title" = "Datos y fuentes";
 "settings.data.catalog" = "Catálogo de estaciones";

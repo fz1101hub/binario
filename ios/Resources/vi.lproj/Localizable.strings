@@ -165,6 +165,7 @@
 "saved.agenda.ready_checklist_done" = "Đã hoàn thành danh sách kiểm tra trên máy.";
 "saved.agenda.ready_checklist_left" = "Mục danh sách kiểm tra còn lại: %lld";
 "saved.agenda.ready_local_note" = "Bản tóm tắt này chỉ dùng kế hoạch đã lưu: không kiểm tra độ trễ, sân ga hay chuyến bị hủy.";
+"saved.agenda.calendar_import_hint" = "Chọn các hành trình cần thêm. Việc nhập chỉ bổ sung: không ghi đè các hành trình đã có trên điện thoại.";
 "settings.title" = "Cài đặt";
 "settings.data.title" = "Dữ liệu và nguồn";
 "settings.data.catalog" = "Danh mục ga";

@@ -165,6 +165,7 @@
 "saved.agenda.ready_checklist_done" = "स्थानीय चेकलिस्ट पूरी हुई।";
 "saved.agenda.ready_checklist_left" = "चेकलिस्ट में बाकी आइटम: %lld";
 "saved.agenda.ready_local_note" = "यह सारांश केवल सहेजी गई योजना का उपयोग करता है: यह देरी, प्लेटफ़ॉर्म या रद्दीकरण नहीं जाँचता।";
+"saved.agenda.calendar_import_hint" = "जोड़ने के लिए यात्राएँ चुनें। आयात केवल जोड़ता है: यह फ़ोन पर पहले से मौजूद यात्राओं को नहीं बदलता।";
 "settings.title" = "सेटिंग्स";
 "settings.data.title" = "डेटा और स्रोत";
 "settings.data.catalog" = "स्टेशन कैटलॉग";

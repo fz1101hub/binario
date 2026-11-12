@@ -96,7 +96,14 @@ public enum PlannedJourneyTextImport {
            let tail = Range(trailing.range, in: route) {
             route.removeSubrange(tail)
         }
-        route = PlannedJourneyText.trimmed(route)
+        guard let stations = self.route(route) else { return nil }
+        return PlannedJourneyTextDraft(origin: stations.origin, destination: stations.destination, date: date, time: time)
+    }
+
+    /// «A → B», «A -> B» or «Da A a B»: two station names of at least two characters that differ
+    /// (Android's `parseRoute`); nil otherwise.
+    public static func route(_ text: String) -> (origin: String, destination: String)? {
+        let route = PlannedJourneyText.trimmed(clean(text))
         let routeRange = NSRange(route.startIndex..., in: route)
         guard let match = arrowPattern?.firstMatch(in: route, range: routeRange)
                 ?? fromToPattern?.firstMatch(in: route, range: routeRange),
@@ -108,7 +115,7 @@ public enum PlannedJourneyTextImport {
         guard origin.count >= 2, destination.count >= 2,
               StationSearchNormalizer.normalize(origin) != StationSearchNormalizer.normalize(destination)
         else { return nil }
-        return PlannedJourneyTextDraft(origin: origin, destination: destination, date: date, time: time)
+        return (origin, destination)
     }
 
     /// The journeys of `text` that can be added to an Agenda holding `existing`, built at `now` with
@@ -122,12 +129,27 @@ public enum PlannedJourneyTextImport {
         makeID: () -> String = { UUID().uuidString }
     ) -> PlannedJourneyTextPreview? {
         guard let normalized = normalize(text) else { return nil }
+        return preview(
+            lines(normalized).map(draft), skipped: 0, resolver: resolver, existing: existing, now: now, makeID: makeID
+        )
+    }
+
+    /// The journeys of `drafts` (nil for a line that is not one) that can be added to an Agenda
+    /// holding `existing`, on the same rules as a pasted text; `skipped` lines were already left out.
+    public static func preview(
+        _ drafts: [PlannedJourneyTextDraft?],
+        skipped alreadySkipped: Int,
+        resolver: PlannedJourneyStationResolver,
+        existing: [PlannedJourney],
+        now: Date,
+        makeID: () -> String = { UUID().uuidString }
+    ) -> PlannedJourneyTextPreview {
         let free = max(0, PlannedJourneySchema.maximumJourneys - existing.count)
         var fingerprints = Set(existing.map(\.fingerprint))
         var journeys: [PlannedJourney] = []
-        var skipped = 0
-        for line in lines(normalized) {
-            guard let draft = draft(line),
+        var skipped = alreadySkipped
+        for candidate in drafts {
+            guard let draft = candidate,
                   let origin = resolver.station(named: draft.origin),
                   let destination = resolver.station(named: draft.destination),
                   case let .success(journey) = PlannedJourneyForm(

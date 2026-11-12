@@ -1638,6 +1638,23 @@ final class AppModel: ObservableObject {
         )
     }
 
+    /// A calendar of another app (Android's foreign calendar import): the events whose title is a
+    /// route «A → B» on catalogue stations, as journeys to review, through the text import's rules
+    /// and free places; nil when it is not such a calendar or the catalogue is not loaded.
+    func previewForeignCalendar(_ data: Data, now: Date = Date()) -> PlannedJourneyTextPreview? {
+        guard case let .available(catalog) = catalogState,
+              let text = String(data: data, encoding: .utf8), PlannedJourneyForeignIcs.isForeign(text),
+              let calendar = PlannedJourneyForeignIcs.read(text)
+        else { return nil }
+        return PlannedJourneyTextImport.preview(
+            calendar.drafts,
+            skipped: calendar.skippedEvents,
+            resolver: PlannedJourneyStationResolver(catalog: catalog),
+            existing: plannedJourneyStore.load().journeys,
+            now: now
+        )
+    }
+
     /// The journeys reviewed in the text import, added after the Agenda's: how many were added, or
     /// why none was.
     func addJourneys(_ journeys: [PlannedJourney]) -> Result<Int, PlannedJourneyRefusal> {

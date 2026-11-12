@@ -165,6 +165,7 @@
 "saved.agenda.ready_checklist_done" = "Локальный чек-лист выполнен.";
 "saved.agenda.ready_checklist_left" = "Осталось пунктов чек-листа: %lld";
 "saved.agenda.ready_local_note" = "Эта сводка использует только сохранённый план: она не проверяет задержки, платформы или отмены.";
+"saved.agenda.calendar_import_hint" = "Выберите поездки для добавления. Импорт только добавляет: поездки на телефоне не перезаписываются.";
 "settings.title" = "Настройки";
 "settings.data.title" = "Данные и источники";
 "settings.data.catalog" = "Каталог станций";
