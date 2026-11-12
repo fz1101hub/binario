@@ -65,6 +65,23 @@ Dodici revisori indipendenti, ognuno con un punto di vista diverso, hanno trovat
   - l'accesso è legato all'account Alexa che ha fatto il collegamento; codici e token scaduti o revocati si cancellano dopo 30 giorni;
   - HSTS e Content-Security-Policy in produzione, endpoint di prontezza, spegnimento ordinato, fuso orario della sessione del database fissato; un errore di lettura delle statistiche si riprova dopo 60 secondi;
   - tolto il codice inutilizzato del modello iniziale.
+- **Raccolta della puntualità**:
+  - dopo un blocco «morbido» (troppe risposte senza dati) la raccolta si ferma come dopo un 403/429: da 2 ore fino a 7 giorni, e riparte solo con una risposta su un treno riconosciuto;
+  - un'esecuzione a cavallo della mezzanotte di Roma rimanda il resto della coda invece di chiedere un giorno ormai chiuso;
+  - i codici d'origine Trenord che non sono codici ViaggiaTreno (per esempio «Brescia» S09999) sono confermati con il catalogo delle stazioni, oppure la corsa è saltata;
+  - un treno in ritardo osservato solo in viaggio conserva le fermate già passate; i ritardi oltre 720 minuti contano come 720;
+  - un file di statistiche con oltre il 30% di treni o campioni in meno viene rifiutato;
+  - ogni treno porta i giorni dall'ultima osservazione (`l`): Alexa non propone più un treno non visto da oltre una settimana;
+  - le statistiche bloccano una release finché non coprono almeno 14 giorni e non hanno più di 14 giorni.
+- **CI, build e documenti**:
+  - il bundle Play contiene tutte le 17 lingue (decisione del titolare) e un controllo lo verifica;
+  - i file condivisi (statistiche, catalogo, icone, risorse iOS) fanno partire la CI dei prodotti che li usano;
+  - una firma di release avviata a mano non viene più annullata da un merge su main;
+  - il controllo delle fonti live dice quanti controlli ha verificato e quali ha saltato; i test saltati dopo un aggiornamento dei dati diventano avvisi;
+  - Dependabot apre una PR raggruppata al mese per ecosistema e ignora gli aggiornamenti legati all'SDK Expo e le versioni maggiori della toolchain Android;
+  - l'archivio iPhone usa il numero dell'esecuzione come numero di build;
+  - 41 documenti storici hanno l'avviso «Documento storico»; un controllo verifica la riga di stato dei documenti datati;
+  - `AZIONI_TITOLARE.md` elenca i passi su GitHub che spettano al titolare (protezione dei rami, PR vecchie, licenza, archivio di APK).
 - **Avvisi da fonti non cifrate**: un indirizzo costruito ad arte (schema annidato, barre codificate più volte) non diventa più un link toccabile. Il controllo sui siti ammessi vale nel punto in cui il link viene creato.
 - **CI iPhone** (#84): l'età degli orari blocca solo le release (run avviata a mano, PR verso un ramo di stabilizzazione). Nelle altre run è un avviso: dal 13 novembre il job sarebbe diventato rosso su ogni modifica.
 
