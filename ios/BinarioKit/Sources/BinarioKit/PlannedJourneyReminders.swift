@@ -169,7 +169,7 @@ public enum PlannedJourneyReminderOutcome: Equatable, Sendable {
 @MainActor
 public final class PlannedJourneyReminderScheduler {
     /// iOS keeps the 64 nearest local notifications of an app; the Agenda is the only sender.
-    public static let defaultMaximumPending = 64
+    public nonisolated static let defaultMaximumPending = 64
 
     private let center: any PlannedJourneyNotificationCenter
     private let content: @MainActor (PlannedJourneyReminderPlan) -> PlannedJourneyReminderContent
