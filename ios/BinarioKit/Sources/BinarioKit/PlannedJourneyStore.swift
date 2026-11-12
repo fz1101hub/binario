@@ -104,9 +104,29 @@ public final class PlannedJourneyStore {
         transform(id: id) { try $0.completing(at: date) }
     }
 
+    /// «Completa» on one departure of a repeating journey: that date is marked done; the journey
+    /// goes to the archive once no departure is left.
+    public func completeOccurrence(id: String, on date: PlannedLocalDate) -> Result<PlannedJourneyAgendaState, PlannedJourneyRefusal> {
+        transform(id: id) { try $0.completingOccurrence(on: date) }
+    }
+
     /// One checklist line ticked or not.
     public func setChecklistItem(_ itemID: String, completed: Bool, journeyID: String) -> Result<PlannedJourneyAgendaState, PlannedJourneyRefusal> {
         transform(id: journeyID) { try $0.settingChecklistItem(id: itemID, completed: completed) }
+    }
+
+    /// «Svuota l'Agenda»: every stored journey goes, readable or not, so it is also the way out of
+    /// a read-only Agenda. The caller cancels the reminders first.
+    public func clearAll() -> PlannedJourneyAgendaState {
+        defaults.removeObject(forKey: Self.storageKey)
+        return .empty
+    }
+
+    /// The whole Agenda written at once (an import that has already applied its own rules);
+    /// refused like any change when the stored value is read-only.
+    func replaceAll(_ journeys: [PlannedJourney]) -> Result<PlannedJourneyAgendaState, PlannedJourneyRefusal> {
+        guard !load().isReadOnly else { return .failure(.readOnly) }
+        return write(journeys)
     }
 
     private func transform(

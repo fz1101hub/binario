@@ -58,6 +58,7 @@ internal fun UiMessageKey.resourceId(): Int = when (this) {
     UiMessageKey.STATION_BOARD_SAVED_COPY -> R.string.data_status_cached
     UiMessageKey.STATION_BOARD_SOURCE_CONFLICT -> R.string.station_board_warning_source_conflict
     UiMessageKey.STATION_BOARD_REALTIME_UNAVAILABLE -> R.string.station_board_warning_realtime_unavailable
+    UiMessageKey.STATION_BOARD_PROGRAMMED_ONLY -> R.string.snapshot_warning_static_only
     UiMessageKey.STATION_BOARD_STALE_SOURCE -> R.string.station_board_warning_stale_source
     UiMessageKey.STATION_BOARD_IDENTITY_AMBIGUOUS -> R.string.station_board_warning_identity_ambiguous
     UiMessageKey.STATION_BOARD_REPLACEMENT_SERVICE -> R.string.station_board_warning_replacement_service

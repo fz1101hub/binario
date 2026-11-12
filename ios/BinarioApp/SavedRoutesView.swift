@@ -103,6 +103,10 @@ struct SavedRoutesView: View {
             }
         }
         .navigationTitle("saved.title")
+        // The Home-screen quick action «Agenda» opens the page as the row does.
+        .navigationDestination(isPresented: $model.showingAgenda) {
+            AgendaView()
+        }
         // The limit and storage errors are RootView's alert, shown on whichever tab caused them.
     }
 }

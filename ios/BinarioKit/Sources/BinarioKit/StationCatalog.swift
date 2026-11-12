@@ -89,6 +89,14 @@ public struct CuratedStationCatalog: Decodable, Equatable, Sendable {
     public let operationalData: Bool
     public let notice: String
     public private(set) var stations: [Station]
+    /// The search keys of `stations`, in the same order, folded once when the catalogue is read
+    /// instead of on every keystroke of the station search.
+    private var searchKeys: [StationSearchKeys] = []
+
+    private enum CodingKeys: String, CodingKey {
+        case schemaVersion, kind, source, sourceDatabaseName, sourceDatabaseSha256
+        case stationCount, operationalData, notice, stations
+    }
 
     public init(data: Data, decoder: JSONDecoder = JSONDecoder()) throws {
         var decoded = try decoder.decode(Self.self, from: data)
@@ -96,6 +104,7 @@ public struct CuratedStationCatalog: Decodable, Equatable, Sendable {
         // slip of the catalogue («Ercolano -  Miglio D'Oro») must not make a station unusable.
         decoded.stations = decoded.stations.map(\.whitespaceNormalized)
         try decoded.validate()
+        decoded.searchKeys = StationSearchKeys.of(decoded.stations)
         self = decoded
     }
 
@@ -107,24 +116,23 @@ public struct CuratedStationCatalog: Decodable, Equatable, Sendable {
         let needle = StationSearchNormalizer.normalize(query)
         guard !needle.isEmpty else { return [] }
         let limit = min(max(requestedLimit, 1), 50)
+        // A catalogue decoded without `init(data:)` has no keys yet: they are folded here instead.
+        let keys = searchKeys.count == stations.count ? searchKeys : StationSearchKeys.of(stations)
 
-        var stationsByName: [String: [Station]] = [:]
-        let ranked = stations.compactMap { station -> RankedStation? in
-            let name = StationSearchNormalizer.normalize(station.name)
-            stationsByName[name, default: []].append(station)
-            var best = Self.matchScore(candidate: name, needle: needle)
+        let ranked = stations.indices.compactMap { index -> RankedStation? in
+            let station = stations[index]
+            let key = keys[index]
+            // Shadowed co-located duplicates are never offered, whatever the query.
+            guard !key.isShadowedDuplicate else { return nil }
+            var best = Self.matchScore(candidate: key.name, needle: needle)
 
-            for alias in station.aliases {
-                if let score = Self.matchScore(
-                    candidate: StationSearchNormalizer.normalize(alias),
-                    needle: needle
-                ) {
+            for alias in key.aliases {
+                if let score = Self.matchScore(candidate: alias, needle: needle) {
                     best = min(best ?? Int.max, score + 1)
                 }
             }
 
-            for code in [station.id, station.railwayCode, station.trenitaliaLocationId].compactMap({ $0 }) {
-                let normalizedCode = StationSearchNormalizer.normalize(code)
+            for normalizedCode in key.codes {
                 if normalizedCode == needle {
                     best = min(best ?? Int.max, 0)
                 } else if normalizedCode.hasPrefix(needle) {
@@ -133,10 +141,9 @@ public struct CuratedStationCatalog: Decodable, Equatable, Sendable {
             }
 
             guard let score = best else { return nil }
-            return RankedStation(station: station, score: score, normalizedName: name)
+            return RankedStation(station: station, score: score, normalizedName: key.name)
         }
         return ranked
-            .filter { !Self.isShadowedDuplicate($0.station, among: stationsByName[$0.normalizedName] ?? []) }
             .sorted {
                 if $0.score != $1.score { return $0.score < $1.score }
                 if $0.normalizedName != $1.normalizedName { return $0.normalizedName < $1.normalizedName }
@@ -144,6 +151,16 @@ public struct CuratedStationCatalog: Decodable, Equatable, Sendable {
             }
             .prefix(limit)
             .map(\.station)
+    }
+
+    /// Every station the search can offer, in catalogue order: the co-located duplicate entries it
+    /// hides (`isShadowedDuplicate`) are left out, so dictation and the nearest station pick the
+    /// entry the timetable index binds, as the search does.
+    public var offeredStations: [Station] {
+        let byName = Dictionary(grouping: stations) { StationSearchNormalizer.normalize($0.name) }
+        return stations.filter { station in
+            !Self.isShadowedDuplicate(station, among: byName[StationSearchNormalizer.normalize(station.name)] ?? [])
+        }
     }
 
     /// True when the search also offers another station with exactly this name, so a label made of
@@ -205,6 +222,39 @@ public struct CuratedStationCatalog: Decodable, Equatable, Sendable {
         let station: Station
         let score: Int
         let normalizedName: String
+    }
+}
+
+/// What the station search compares a query with, for one station: its name, aliases and codes
+/// as `StationSearchNormalizer` folds them, and whether the search hides it as a co-located
+/// duplicate. None of this depends on the query, so it is computed once per catalogue.
+struct StationSearchKeys: Equatable, Sendable {
+    let name: String
+    let aliases: [String]
+    let codes: [String]
+    let isShadowedDuplicate: Bool
+
+    static func of(_ stations: [Station]) -> [StationSearchKeys] {
+        let names = stations.map { StationSearchNormalizer.normalize($0.name) }
+        var stationsByName: [String: [Station]] = [:]
+        for (station, name) in zip(stations, names) {
+            stationsByName[name, default: []].append(station)
+        }
+        return stations.indices.map { index -> StationSearchKeys in
+            let station = stations[index]
+            let name = names[index]
+            return StationSearchKeys(
+                name: name,
+                aliases: station.aliases.map { StationSearchNormalizer.normalize($0) },
+                codes: [station.id, station.railwayCode, station.trenitaliaLocationId]
+                    .compactMap { $0 }
+                    .map { StationSearchNormalizer.normalize($0) },
+                isShadowedDuplicate: CuratedStationCatalog.isShadowedDuplicate(
+                    station,
+                    among: stationsByName[name] ?? []
+                )
+            )
+        }
     }
 }
 

@@ -385,7 +385,7 @@ class StationBoardAggregateServiceTest {
     }
 
     @Test
-    fun `when every live board fails or is empty the programmed rows are shown with the unavailable notice`() = kotlinx.coroutines.runBlocking {
+    fun `when every live board fails or is empty the programmed rows are shown with the programmed only notice`() = kotlinx.coroutines.runBlocking {
         val timetable = programmed("100" to 10, "200" to 30)
         val down = failing("rfi-station-board", ProviderErrorKind.NETWORK)
         val notCovered = failing("ch-transport-opendata", ProviderErrorKind.NOT_SUPPORTED)
@@ -395,10 +395,23 @@ class StationBoardAggregateServiceTest {
             val result = StationBoardAggregateService(live + timetable, clock).load(station) as StationBoardAggregateResult.Success
             assertEquals(listOf("100", "200"), numbers(result))
             assertTrue(result.board.entries.all { it.expectedTime == null && it.status == null })
-            assertTrue(ProviderWarning.REALTIME_UNAVAILABLE in result.board.warnings)
+            // Nothing on the board is live: «only programmed times», not «realtime partly unavailable».
+            assertTrue(ProviderWarning.PROGRAMMED_ONLY in result.board.warnings)
+            assertTrue(ProviderWarning.REALTIME_UNAVAILABLE !in result.board.warnings)
             assertEquals("RFI programmato", result.board.providerNames.last())
         }
-        // The screen shows that warning as its "realtime unavailable" notice.
+        assertEquals(UiMessageKey.STATION_BOARD_PROGRAMMED_ONLY, ProviderWarning.PROGRAMMED_ONLY.stationBoardWarningKey())
+        assertEquals("snapshot_warning_static_only", UiMessageKey.STATION_BOARD_PROGRAMMED_ONLY.resourceName)
+        // A real partial case keeps «parzialmente»: one live board fails, another answers with its rows.
+        val partial = StationBoardAggregateService(
+            listOf(
+                failing("rfi-station-board", ProviderErrorKind.NETWORK),
+                provider("viaggiatreno", "VT", rows(source("viaggiatreno", Confidence.OPERATOR_PRIMARY), live = true, "100" to 10)),
+                timetable
+            ), clock
+        ).load(station) as StationBoardAggregateResult.Success
+        assertTrue(ProviderWarning.REALTIME_UNAVAILABLE in partial.board.warnings)
+        assertTrue(ProviderWarning.PROGRAMMED_ONLY !in partial.board.warnings)
         assertEquals(UiMessageKey.STATION_BOARD_REALTIME_UNAVAILABLE, ProviderWarning.REALTIME_UNAVAILABLE.stationBoardWarningKey())
     }
 
@@ -424,7 +437,7 @@ class StationBoardAggregateServiceTest {
         assertEquals(1_000L, shownAt)
         assertTrue((result as StationBoardAggregateResult.Success).isComplete)
         assertEquals(listOf("100", "200"), numbers(result))
-        assertTrue(ProviderWarning.REALTIME_UNAVAILABLE in result.board.warnings)
+        assertTrue(ProviderWarning.PROGRAMMED_ONLY in result.board.warnings)
     }
 
     @Test
@@ -437,7 +450,9 @@ class StationBoardAggregateServiceTest {
         ).load(station) as StationBoardAggregateResult.Success
         assertEquals(listOf("100", "200", "9920"), numbers(result))
         assertEquals(SourceId("italo-status"), result.board.entries.last().expectedTime?.source?.sourceId)
+        // Italo's row is live, so the board is partly live: the notice stays «parzialmente».
         assertTrue(ProviderWarning.REALTIME_UNAVAILABLE in result.board.warnings)
+        assertTrue(ProviderWarning.PROGRAMMED_ONLY !in result.board.warnings)
 
         // With the station live board up (span to +10 min), Italo's later row does not stretch the span over 200.
         val withMonitor = StationBoardAggregateService(listOf(rfiMonitor("100" to 10), italo, timetable), clock)

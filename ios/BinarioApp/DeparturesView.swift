@@ -35,6 +35,8 @@ struct DeparturesView: View {
             case .available:
                 Section {
                     StationPickerField(titleKey: "departures.station", selection: stationSelection)
+                    // EXPO_PORT_PLAN I7: the board of the nearest station, from one position on a tap.
+                    NearestStationButton(titleKey: "departures.nearest", foundKey: "departures.nearest.found", selection: stationSelection)
                     // The board lists times in the timetable zone, as the planner does.
                     if AppModel.needsTimetableZoneCaption(at: clock) {
                         Text("planner.departure.italian_time")

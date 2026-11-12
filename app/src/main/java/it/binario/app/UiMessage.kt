@@ -67,6 +67,8 @@ enum class UiMessageKey(val resourceName: String) {
     STATION_BOARD_SAVED_COPY("data_status_cached"),
     STATION_BOARD_SOURCE_CONFLICT("station_board_warning_source_conflict"),
     STATION_BOARD_REALTIME_UNAVAILABLE("station_board_warning_realtime_unavailable"),
+    /** A board falling back to the programmed timetable: «Sono disponibili solo orari programmati». */
+    STATION_BOARD_PROGRAMMED_ONLY("snapshot_warning_static_only"),
     STATION_BOARD_STALE_SOURCE("station_board_warning_stale_source"),
     STATION_BOARD_IDENTITY_AMBIGUOUS("station_board_warning_identity_ambiguous"),
     STATION_BOARD_REPLACEMENT_SERVICE("station_board_warning_replacement_service"),
