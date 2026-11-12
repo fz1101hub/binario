@@ -19,9 +19,11 @@ container cannot reach viaggiatreno.it).  Each run:
    day, epoch milliseconds), at most ``--rate`` requests per second (2 by default and at most), within
    ``--max-requests`` and ``--deadline-seconds``, stopping after 20 consecutive failures or at once on a refusal
    (HTTP 403/429, or 503 with ``Retry-After``: kept in ``refusal.json``, the following runs send nothing for 2 h, then
-   4, 8... up to 7 days, or the ``Retry-After`` when longer; the first answer ends the pause; exit status 3),
+   4, 8... up to 7 days, or the ``Retry-After`` when longer; exit status 3),
    and when more than 40 of the last 50 answers are unknown or of another identity (a changed path, a soft block, a
-   new day convention): those trains go back to pending unrecorded and the run exits with status 3;
+   new day convention): those trains go back to pending unrecorded, the same pause is kept with its own reason
+   (``risposte-sconosciute``) and the run exits with status 3; the first answer about a recognised train (arrived,
+   cancelled or travelling) ends either pause;
 3. keeps per stop the ViaggiaTreno station code, the delay in whole minutes (actual minus scheduled time, truncated
    towards zero as the app shows it: departure at the origin, arrival elsewhere; early arrivals are <= 0), whether
    the stop was suppressed (``actualFermataType`` 3), the scheduled time (same departure/arrival rule) as minutes
@@ -112,17 +114,20 @@ MAX_BAD_ANSWERS = 40
 # state (with the trains put back and the refusal) is still saved by the workflow.
 EXIT_STOPPED = 3
 # A refusal (HTTP 403 or 429, or 503 with Retry-After) is kept in the state: the following runs send nothing for
-# BACKOFF_BASE, doubled at each refusal in a row (or the Retry-After when longer), at most MAX_PAUSE; an answer ends it.
+# BACKOFF_BASE, doubled at each refusal in a row (or the Retry-After when longer), at most MAX_PAUSE.  A tripped
+# breaker (possibly a soft block) is kept the same way under BREAKER_REASON.  Only an answer about a recognised train
+# ends it: a 204, null or foreign answer may be the block itself.
 BACKOFF_BASE = timedelta(hours=2)
 MAX_PAUSE = timedelta(days=7)
 REFUSAL_FILE = "refusal.json"
+BREAKER_REASON = "risposte-sconosciute"
 # The days with observations after the last save.  A state with fewer of them (still within the retention) than its
 # marker records, or one with no observations and no marker (a cache that was not restored), is refused: saving it
 # would replace observations ViaggiaTreno no longer has.  Only --bootstrap (first run, or a loss the owner accepts)
 # starts from it.
 MARKER_FILE = "state.json"
 MARKER_SCHEMA = "binario-punctuality-state-v1"
-REFUSAL_REASON = re.compile(r"http-(?:403|429|503)")
+REFUSAL_REASON = re.compile(r"http-(?:403|429|503)|" + BREAKER_REASON)
 MAX_RESPONSE_BYTES = 1024 * 1024
 MAX_REDIRECTS = 3
 MAX_STOPS = 400
@@ -1134,10 +1139,21 @@ def collect(
         state.pending[due.key] = pending_entry(due, attempts + 1)
         report.add("errori")
 
+    def pause(reason: str, retry_after: float | None = None) -> tuple[float, int]:
+        """Keep a back-off in the state (seconds, refusals in a row): the following runs send nothing until it ends."""
+        count = (state.refusal["count"] if state.refusal is not None else 0) + 1
+        seconds = min(MAX_PAUSE.total_seconds(),
+                      max(BACKOFF_BASE.total_seconds() * 2 ** min(count - 1, 20), retry_after or 0.0))
+        state.refusal = {"since": moment, "until": moment + int(seconds), "count": count, "reason": reason}
+        report.stopped_abnormally = True
+        return seconds, count
+
     if state.refusal is not None and moment < state.refusal["until"]:
-        # Refused by an earlier run: nothing is sent until the pause ends; the trains wait as pending.
+        # Refused, or answered implausibly, in an earlier run: nothing is sent until the pause ends; the trains wait.
         until = datetime.fromtimestamp(state.refusal["until"], timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
-        defer(queue, f"in pausa dopo un rifiuto ({state.refusal['reason']}) fino al {until}")
+        cause = ("risposte sconosciute o di altra identità" if state.refusal["reason"] == BREAKER_REASON
+                 else "un rifiuto")
+        defer(queue, f"in pausa dopo {cause} ({state.refusal['reason']}) fino al {until}")
         report.add("in_sospeso_dopo", len(state.pending))
         return report
 
@@ -1157,17 +1173,11 @@ def collect(
             consecutive += 1
             failed(due, attempts, result.reason)
             if result.kind == "refused":
-                count = (state.refusal["count"] if state.refusal is not None else 0) + 1
-                pause = min(MAX_PAUSE.total_seconds(),
-                            max(BACKOFF_BASE.total_seconds() * 2 ** min(count - 1, 20), result.retry_after or 0.0))
-                state.refusal = {"since": moment, "until": moment + int(pause), "count": count, "reason": result.reason}
-                report.stopped_abnormally = True
+                seconds, count = pause(result.reason, result.retry_after)
                 defer(queue[position + 1:], f"fonte che rifiuta le richieste ({result.reason}): pausa di "
-                                            f"{pause / 3600:.0f} h, rifiuto {count} di fila")
+                                            f"{seconds / 3600:.0f} h, rifiuto {count} di fila")
                 break
             continue
-        if result.kind in ("ok", "missing"):
-            state.refusal = None  # the source answers again: the back-off ends
         if result.kind == "missing":
             observation = Observation("missing")
         else:
@@ -1181,6 +1191,8 @@ def collect(
         for name, amount in observation.notes.items():
             report.add(name, amount)
         recent.append((due, attempts, observation.status in ("missing", "mismatch")))
+        if observation.status in ("ok", "cancelled", "pending"):
+            state.refusal = None  # the source answers about a recognised train again: the back-off ends
         if observation.status == "pending":
             state.pending[due.key] = pending_entry(due, attempts + 1)
             report.add("non_ancora_arrivati")
@@ -1195,9 +1207,10 @@ def collect(
                 state.retract(train.key)
                 state.pending[train.key] = pending_entry(train, train_attempts)
             report.add("rimessi_in_sospeso", len(bad))
-            report.stopped_abnormally = True
+            seconds, count = pause(BREAKER_REASON)
             defer(queue[position + 1:], f"{len(bad)} delle ultime {len(recent)} risposte sconosciute o con identità "
-                                        "diversa: fonte cambiata o che blocca")
+                                        f"diversa: fonte cambiata o che blocca; pausa di {seconds / 3600:.0f} h, "
+                                        f"interruzione {count} di fila")
             break
     report.add("in_sospeso_dopo", len(state.pending))
     return report

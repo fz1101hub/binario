@@ -773,6 +773,40 @@ class CollectTest(Base):
         self.assertIsNone(collector.State(self.temp / "state").refusal)
         self.assertFalse((self.temp / "state" / collector.REFUSAL_FILE).exists())
 
+    def test_a_tripped_breaker_pauses_the_following_runs_until_a_recognised_answer(self) -> None:
+        # A soft block (204 or null to this client) trips the breaker: the following runs must not send the same 41
+        # requests again every hour, as after an HTTP refusal; the pause has its own reason label.
+        hour = 3600
+        start = int(NOW.timestamp())
+        self.timetable.trips = [collector.TripPlan(str(3000 + index), "REG", "S08409", 9 * 3600, 10 * 3600, "DAILY")
+                                for index in range(60)]
+        blocked = Answers(lambda _: collector.FetchResult("missing", reason="http-204"))
+        state, report = self.collect(blocked)
+        self.assertEqual(collector.MAX_BAD_ANSWERS + 1, len(blocked.paths))
+        self.assertTrue(report.stopped_abnormally)
+        self.assertEqual({"since": start, "until": start + 2 * hour, "count": 1, "reason": collector.BREAKER_REASON},
+                         collector.State(self.temp / "state").refusal)
+        paused = Answers(self.answer_all)
+        state, report = self.collect(paused, NOW + timedelta(hours=1))
+        self.assertEqual([], paused.paths)
+        self.assertIn("in pausa", report.stop_reason)
+        self.assertIn("sconosciute", report.stop_reason)
+        self.assertFalse(report.stopped_abnormally)
+        self.assertEqual(60, len(state.pending))
+        # After the pause the source still answers 204: unknown answers do not end the back-off, which doubles.
+        again = Answers(lambda _: collector.FetchResult("missing", reason="http-204"))
+        self.collect(again, NOW + timedelta(hours=2))
+        self.assertEqual(collector.MAX_BAD_ANSWERS + 1, len(again.paths))
+        refusal = collector.State(self.temp / "state").refusal
+        self.assertEqual((2, start + 2 * hour + 4 * hour), (refusal["count"], refusal["until"]))
+        # The first recognised answer ends it; a 204 before it does not.
+        answers = iter([collector.FetchResult("missing", reason="http-204")] * 3)
+        recovered = Answers(lambda path: next(answers, None) or self.answer_all(path))
+        self.collect(recovered, NOW + timedelta(hours=6, minutes=1))
+        self.assertGreater(len(recovered.paths), 3)
+        self.assertIsNone(collector.State(self.temp / "state").refusal)
+        self.assertFalse((self.temp / "state" / collector.REFUSAL_FILE).exists())
+
     def test_a_damaged_refusal_record_stops_the_collector_before_any_request(self) -> None:
         directory = self.temp / "state"
         directory.mkdir()
