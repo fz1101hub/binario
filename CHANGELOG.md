@@ -1,5 +1,17 @@
 # Changelog
 
+## In sviluppo — Aggiornamento del 21 novembre
+
+- **Orari**:
+  - Trenitalia (orario completo ora fino al 22 dicembre) e Italo aggiornati, con licenza e attribuzione invariate.
+  - Nuove versioni per STA, ARST, SNCF (fino al 30 aprile 2027), Genova AMT e Genova–Casella (fino all'8 gennaio 2027) e la metro di Cagliari; indice iPhone ricostruito.
+  - EAV resta quello di prima: il nuovo feed tiene viva una corsa al giorno fino al 2030 e il controllo lo rifiuta.
+  - Trenord resta quello di prima: il portale della Lombardia non ha risposto.
+- **Statistiche di puntualità**:
+  - 10.856 treni sulla finestra 22 ottobre – 20 novembre (erano 6.641); bastano per una release (17 giorni coperti).
+  - Dal 15 novembre la costruzione del file falliva: il controllo confrontava la media con i ritardi in virgola mobile, e una media arrotondata esattamente al limite (0,75 → 0,8 su 12 giorni) risultava fuori di un miliardesimo. Il confronto è ora in decimi interi; una media davvero incompatibile è ancora rifiutata.
+  - Le osservazioni raccolte in quei giorni non sono andate perse.
+
 ## In sviluppo — Secondo audit dell'11 novembre: correzioni
 
 Dodici revisori indipendenti, ognuno con un punto di vista diverso, hanno trovato 115 problemi e proposto circa 80 miglioramenti. Ogni rilievo è prima verificato o confutato, poi riprodotto con un test e corretto con un commit a parte. Le correzioni arrivano per area.

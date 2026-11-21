@@ -1,6 +1,6 @@
 {
   "schemaVersion": 4,
-  "generatedAt": "2026-11-09",
+  "generatedAt": "2026-11-21",
   "purpose": "Offline GTFS data packs validated in Binario source test",
   "refreshCadence": "every-timetable-change",
   "filteringVersion": 2,
@@ -23,7 +23,7 @@
       "attribution": "Open Data Hub Alto Adige / STA — CC0",
       "licence": "CC0 1.0",
       "licenceEvidence": "https://gtfs.api.opendatahub.com/v1/dataset/sta-time-tables (Open Data Hub Alto Adige); CC0 nell'attribuzione del manifest e CC0 1.0 nella policy iOS (ios/Resources/binario_gtfs_source_policy_v1.json)",
-      "sha256": "7a9f68fa47c9cdb3e0eb2c122ba4da0801c92f202eb1d8f6063dc280f546062e",
+      "sha256": "99bdf787daa6d39984ca67d12ab971adc452492f2d17eed025ba4c7475e80950",
       "lastServiceDate": "2026-12-12",
       "fullServiceUntil": "2026-12-12",
       "notes": "Refreshed from the official STA raw endpoint on 2026-08-15 and filtered offline to standard and extended railway route types. Includes 161 rail routes, 3,791 trips and 277 referenced stops. The current realtime sample contained only non-rail entities, so no rail trip match was expected in that snapshot.",
@@ -134,8 +134,8 @@
           "199"
         ]
       },
-      "sourceArchiveSha256": "a2eb548c236c908a3fceb056e25a6c2e33e7ee1a8359c71a6be50841f9c04342",
-      "contentSha256": "aa797b717eb11cc999bc4fe8bda1560615778e5d621ceb58753ac6243d7f6009"
+      "sourceArchiveSha256": "03872b255aa8077e652f47961902a8cfc31765cbb7dd66795951207112eca70a",
+      "contentSha256": "6248421c83b2a54a245552182e44dfa7a76be48a8a32c844c36cf64d2c002439"
     },
     {
       "sourceId": "arst-gtfs",
@@ -145,7 +145,7 @@
       "attribution": "ARST S.p.A.",
       "licence": "CC BY 4.0",
       "licenceEvidence": "https://www.sardegnamobilita.it/open-data (dati ARST, CC BY 4.0), evidenza registrata per arst-metro-gtfs in tools/transit_packs.json, che legge lo stesso GTFS https://arstspa.info/arst-cagliari-it.zip",
-      "sha256": "45fd64f94537dbbd8cb2ad8ea7dfedbd33027f1223062a27f104a16879a78269",
+      "sha256": "9d122bb3a25aaaccfab1e946d24ca0cae8870d9f868cf2402aceced13a5dea98",
       "lastServiceDate": "2026-12-31",
       "fullServiceUntil": "2026-12-31",
       "notes": "Multimodal feed with four route_type=2 rail routes; only rail-relevant records must be surfaced.",
@@ -256,8 +256,8 @@
           "199"
         ]
       },
-      "sourceArchiveSha256": "2a10d17cca9cbace8205e00740b3c55300ea0fdf7245ab55a4a61bb34ae1bde8",
-      "contentSha256": "3bc5f0996a8ea6acab94228d8dacfe0843534a810c1fbac7a5a35924073cf241"
+      "sourceArchiveSha256": "e1bc6af9ebdc8a442d952e33d44d6eaad228f718067b0331054e6fb0f7e4b4a4",
+      "contentSha256": "e0f5821c5049231a4e1fffaad568a84718655df7914d643b6a2e93377a6372f0"
     },
     {
       "sourceId": "ch-otd-gtfs",
@@ -506,21 +506,21 @@
     {
       "sourceId": "italo-gtfs",
       "asset": "gtfs/italo-gtfs.zip",
-      "sourceUrl": "https://raw.githubusercontent.com/deryclem/italo-gtfs/faa1b3c273dbcc45a41c29325450f82c3bfd1db1/gtfs-italo.zip",
+      "sourceUrl": "https://raw.githubusercontent.com/deryclem/italo-gtfs/a9d3f90c82448692e6ca3edb17e5473ccaad2c75/gtfs-italo.zip",
       "accessMode": "OPEN_DIRECT",
       "attribution": "Italo S.p.A. (NTV) via NAP CCISS (CAD art. 52, Reg. UE 2017/1926) — conversione GTFS © Clément Desouche, CC BY 4.0",
       "licence": "Dati aperti NAP CCISS (art. 52 c. 2 CAD, Reg. UE 2017/1926); conversione GTFS CC BY 4.0",
       "licenceEvidence": "https://www.cciss.it/nap/mmtis/public/en/catalog/Dataset/1814124 (dataset ufficiale); conversione https://github.com/deryclem/italo-gtfs, CC BY 4.0 (upstream.licence)",
-      "sha256": "cabaf74dca27b1d77dde78201311171060161fad222304ad8581ac7f3ce7f238",
+      "sha256": "652472ff98b0e41bb8113a84315b9444986e09c04b0120ae3a63ecd5212326f4",
       "lastServiceDate": "2026-12-12",
       "fullServiceUntil": "2026-12-12",
-      "notes": "Official Italo NeTEx timetable published on Italy's National Access Point (CCISS dataset 1814124), converted to GTFS weekly by deryclem/italo-gtfs (CC BY 4.0). Pinned to the upstream commit of 2026-11-09. Italo trains and ItaloBus (route_type 3) are kept; shapes.txt, derived from OpenStreetMap (ODbL), is never shipped. Scheduled times only; the calendar ends with the timetable change of December 2026.",
+      "notes": "Official Italo NeTEx timetable published on Italy's National Access Point (CCISS dataset 1814124), converted to GTFS weekly by deryclem/italo-gtfs (CC BY 4.0). Pinned to the upstream commit of 2026-11-16. Italo trains and ItaloBus (route_type 3) are kept; shapes.txt, derived from OpenStreetMap (ODbL), is never shipped. Scheduled times only; the calendar ends with the timetable change of December 2026.",
       "upstream": {
         "kind": "github-commit",
         "repository": "https://github.com/deryclem/italo-gtfs",
-        "commit": "faa1b3c273dbcc45a41c29325450f82c3bfd1db1",
+        "commit": "a9d3f90c82448692e6ca3edb17e5473ccaad2c75",
         "path": "gtfs-italo.zip",
-        "archiveSha256": "e5ae7e46f47d64ae87e5b0222a6fbb50ede683fd9b295fabc1fa0307ba952a15",
+        "archiveSha256": "75634fb86a4b02405582c0f8e40aadea611743d66fd669be2cd00a87b13133ec",
         "licence": "CC BY 4.0",
         "officialDataset": "https://www.cciss.it/nap/mmtis/public/en/catalog/Dataset/1814124"
       },
@@ -632,8 +632,8 @@
           "199"
         ]
       },
-      "sourceArchiveSha256": "e5ae7e46f47d64ae87e5b0222a6fbb50ede683fd9b295fabc1fa0307ba952a15",
-      "contentSha256": "7f1b2d11400422593c54d2d36d8f09b075b59e466efcb95e48cf723dc119616d"
+      "sourceArchiveSha256": "75634fb86a4b02405582c0f8e40aadea611743d66fd669be2cd00a87b13133ec",
+      "contentSha256": "d3be192cd750730da2965ad0244a9bbe0af7f845f2f68de500532133c9b04089"
     },
     {
       "sourceId": "lombardia-trenord-gtfs",
@@ -887,9 +887,9 @@
       "attribution": "SNCF Open Data",
       "licence": "Da confermare dal titolare",
       "licenceEvidence": "https://ressources.data.sncf.com/pages/accueil/: la licenza del dataset SNCF Open Data non è registrata nel repository; licenza null nella policy iOS",
-      "sha256": "f7750d6b7397c1e0c9394f1174bbb62ae94f0abc06d3de784fade1db868baf86",
+      "sha256": "6b521d98904b8c3092c6f05dd87cc5f0ce08197c032be581bb4161af24831495",
       "lastServiceDate": "2027-04-30",
-      "fullServiceUntil": "2027-04-25",
+      "fullServiceUntil": "2027-04-30",
       "notes": "Static timetable pack; filter to services with Italian legs before showing to users.",
       "filter": {
         "kind": "gtfs-rail-route-types",
@@ -998,8 +998,8 @@
           "199"
         ]
       },
-      "sourceArchiveSha256": "2acbd5380bbae4a9d1d93dd86310051fb2514fb834c1aa9ef3ea18957370f317",
-      "contentSha256": "d116eaaf5bb5e232e96897989372aac13b803b1730fb8eb34863f55ad2846017"
+      "sourceArchiveSha256": "04fbfab569ca370204854ada3c075d3f1572986a97edd5d43340e743f1d0a8d1",
+      "contentSha256": "13670355414f2586d416b8803e93b3add9b0a9e0b9d5c83cb258c76f1b9e20d5"
     },
     {
       "sourceId": "toscana-tft-gtfs",
@@ -1031,21 +1031,21 @@
     {
       "sourceId": "trenitalia-gtfs",
       "asset": "gtfs/trenitalia-gtfs.zip",
-      "sourceUrl": "https://raw.githubusercontent.com/deryclem/trenitalia-gtfs/0e62b3ebe98654ab37b3bd0b2d39864c4c155abc/gtfs-trenitalia.zip",
+      "sourceUrl": "https://raw.githubusercontent.com/deryclem/trenitalia-gtfs/6c500b619cd10ed4e96ea6181a8d0eb4293a79d8/gtfs-trenitalia.zip",
       "accessMode": "OPEN_DIRECT",
       "attribution": "Trenitalia S.p.A. via NAP CCISS (CAD art. 52, Reg. UE 2017/1926) — conversione GTFS © Clément Desouche, CC BY 4.0",
       "licence": "Dati aperti NAP CCISS (art. 52 c. 2 CAD, Reg. UE 2017/1926); conversione GTFS CC BY 4.0",
       "licenceEvidence": "https://www.cciss.it/nap/mmtis/public/en/catalog/Dataset/1077621 (dataset ufficiale); conversione https://github.com/deryclem/trenitalia-gtfs, CC BY 4.0 (upstream.licence)",
-      "sha256": "6058eb333624c9cdd337ad89565cc1836dd92c44b0af73ecbd454b98cf6d3c26",
+      "sha256": "3c0e276722bcd5bff4a283df856e921085b774598b0cc790eef6df0a1084e1f5",
       "lastServiceDate": "2027-12-11",
-      "fullServiceUntil": "2026-12-12",
-      "notes": "Official Trenitalia NeTEx timetable published on Italy's National Access Point (CCISS dataset 1077621), converted to GTFS weekly by deryclem/trenitalia-gtfs (CC BY 4.0). Pinned to the upstream commit of 2026-11-09. Rail routes and Trenitalia's own scheduled buses (route_type 3) are kept; shapes.txt is never shipped. Scheduled times only.",
+      "fullServiceUntil": "2026-12-22",
+      "notes": "Official Trenitalia NeTEx timetable published on Italy's National Access Point (CCISS dataset 1077621), converted to GTFS weekly by deryclem/trenitalia-gtfs (CC BY 4.0). Pinned to the upstream commit of 2026-11-16. Rail routes and Trenitalia's own scheduled buses (route_type 3) are kept; shapes.txt is never shipped. Scheduled times only.",
       "upstream": {
         "kind": "github-commit",
         "repository": "https://github.com/deryclem/trenitalia-gtfs",
-        "commit": "0e62b3ebe98654ab37b3bd0b2d39864c4c155abc",
+        "commit": "6c500b619cd10ed4e96ea6181a8d0eb4293a79d8",
         "path": "gtfs-trenitalia.zip",
-        "archiveSha256": "f270e79fb71a48c9a165e043efaac3ed55a074da0c7acc7abe4da1ddd2279455",
+        "archiveSha256": "84f1cfae13840593aac8f71a7a20dbce3e590b85abd6ad0748412f18f980c05b",
         "licence": "CC BY 4.0",
         "officialDataset": "https://www.cciss.it/nap/mmtis/public/en/catalog/Dataset/1077621"
       },
@@ -1157,8 +1157,8 @@
           "199"
         ]
       },
-      "sourceArchiveSha256": "f270e79fb71a48c9a165e043efaac3ed55a074da0c7acc7abe4da1ddd2279455",
-      "contentSha256": "1a276402c8913bff244f4916a7acc702e35b543b155c8e0ed7ace2073791bca7"
+      "sourceArchiveSha256": "84f1cfae13840593aac8f71a7a20dbce3e590b85abd6ad0748412f18f980c05b",
+      "contentSha256": "990af72ed2078e28d4e8de475dfde1bd40da0c670e4465ec5a6a7fc66c36e07c"
     },
     {
       "sourceId": "trentino-gtfs",

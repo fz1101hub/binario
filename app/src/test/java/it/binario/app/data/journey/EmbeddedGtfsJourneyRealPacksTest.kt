@@ -30,7 +30,7 @@ class EmbeddedGtfsJourneyRealPacksTest {
     private val stations: List<Station> by lazy { EmbeddedCuratedRailStationCatalog(openAsset).load() }
     private val zone = ZoneId.of("Europe/Rome")
     /** A Tuesday inside the validity of every bundled pack. */
-    private val tuesday = LocalDate.of(2026, 11, 10)
+    private val tuesday = LocalDate.of(2026, 11, 24)
 
     private fun station(name: String): Station = stations.single { it.name == name }
 

@@ -261,6 +261,25 @@ class EncodeAndCheckTest(unittest.TestCase):
         self.assertTrue(raw.startswith(b'{"buckets":[0,2,5,10,15,20,30,60],"generatedAt":"2026-11-10T04:00:00Z"'))
         self.assertNotIn(b" ", raw.replace(stats.SOURCE.encode(), b""))
 
+    def test_a_mean_rounded_up_to_the_edge_of_its_buckets_is_accepted(self) -> None:
+        # Seen on 21 November 2026: 9 on time, 2 at 2 minutes and 1 at 5 (9 minutes, mean 0.75 -> 0.8), or 11 on
+        # time and 1 at 15 (mean 1.25 -> 1.3). 0.8 * 12 is 9.600000000000001 in floating point, just over the
+        # 9 + 0.05 * 12 the buckets allow, and the whole file was refused.
+        for delays in ([0] * 9 + [2, 2, 5], [0] * 11 + [15], [-3] * 9 + [2, 2, 5]):
+            with self.subTest(delays=delays):
+                records = [record(day, stops=[["S01700", 0, False], ["S05014", delay, False]])
+                           for day, delay in zip(days_back(len(delays)), delays)]
+                train = stats.aggregate(records)[0]
+                stop = train["s"][-1]
+                self.assertEqual(len(delays), stop[1])
+                problems: list[str] = []
+                stats._check_stop(stop, "treno", len(delays), problems)
+                self.assertEqual([], problems)
+        # A mean beyond what the buckets allow is still refused.
+        problems = []
+        stats._check_stop(["S05014", 12, 0.9, [9, 11, 12, 12, 12, 12, 12, 12], 0], "treno", 12, problems)
+        self.assertTrue(any("media incompatibile con i cumulati" in problem for problem in problems), problems)
+
     def test_check_accepts_the_optional_last_known_field_within_the_window(self) -> None:
         for value in (0, 2):  # train 9558 is known on 28 days of 30: last known at most 2 days before windowEnd
             payload = valid_payload()

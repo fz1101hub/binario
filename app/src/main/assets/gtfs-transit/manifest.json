@@ -1,6 +1,6 @@
 {
   "schemaVersion": 4,
-  "generatedAt": "2026-11-09",
+  "generatedAt": "2026-11-21",
   "purpose": "Offline timetable packs of regional railways and city networks",
   "refreshCadence": "every-timetable-change",
   "filteringVersion": 2,
@@ -593,17 +593,17 @@
       "acquisition": {
         "format": "gtfs",
         "transport": "http",
-        "downloadSha256": "952ff25fc2590e8a0eaa715d397a64fbe442aa869cd77b12b516ef8da0faea98",
-        "downloadBytes": 5488585,
+        "downloadSha256": "864eb1049ba32179a5e35ec23f7449e3fe12f76034933bf309febf96ac8b696c",
+        "downloadBytes": 7073283,
         "finalUrl": "http://opendatagoogletransit.comune.genova.it/downloads/google_transit.zip",
         "corroboratedBy": {
           "url": "https://files.mobilitydatabase.org/tld-958/latest.zip",
-          "sha256": "952ff25fc2590e8a0eaa715d397a64fbe442aa869cd77b12b516ef8da0faea98"
+          "sha256": "864eb1049ba32179a5e35ec23f7449e3fe12f76034933bf309febf96ac8b696c"
         }
       },
-      "sha256": "8345f9bdd0203b2ca0346f989c8f0a5a633ba88834a747f12e52b93c5099981d",
-      "lastServiceDate": "2026-12-25",
-      "fullServiceUntil": "2026-12-24",
+      "sha256": "40860055d0962a712fadab92d6516b9490a759374fd0425156b3dadc7f16bb6d",
+      "lastServiceDate": "2027-01-08",
+      "fullServiceUntil": "2027-01-08",
       "filter": {
         "kind": "explicit-route-ids",
         "description": "Selettore revisionato specifico della fonte; nessun matching per nome.",
@@ -611,8 +611,8 @@
           "FGC-191"
         ]
       },
-      "sourceArchiveSha256": "952ff25fc2590e8a0eaa715d397a64fbe442aa869cd77b12b516ef8da0faea98",
-      "contentSha256": "62b3611ffabc4ce9d46a37efbd0459b7d19929a59270c184e27b8d35dc925166"
+      "sourceArchiveSha256": "864eb1049ba32179a5e35ec23f7449e3fe12f76034933bf309febf96ac8b696c",
+      "contentSha256": "364ac3edd29c9dfaf6f2889302178e2531c560ac38f63af9f8fe201a356d2e7b"
     },
     {
       "sourceId": "genova-amt-gtfs",
@@ -628,17 +628,17 @@
       "acquisition": {
         "format": "gtfs",
         "transport": "http",
-        "downloadSha256": "952ff25fc2590e8a0eaa715d397a64fbe442aa869cd77b12b516ef8da0faea98",
-        "downloadBytes": 5488585,
+        "downloadSha256": "864eb1049ba32179a5e35ec23f7449e3fe12f76034933bf309febf96ac8b696c",
+        "downloadBytes": 7073283,
         "finalUrl": "http://opendatagoogletransit.comune.genova.it/downloads/google_transit.zip",
         "corroboratedBy": {
           "url": "https://files.mobilitydatabase.org/tld-958/latest.zip",
-          "sha256": "952ff25fc2590e8a0eaa715d397a64fbe442aa869cd77b12b516ef8da0faea98"
+          "sha256": "864eb1049ba32179a5e35ec23f7449e3fe12f76034933bf309febf96ac8b696c"
         }
       },
       "minValidDays": 14,
-      "sha256": "10358f0aeb73c154a3529cde76bfb04dbfc14ac6d66642c0662bcce345edc725",
-      "lastServiceDate": "2026-12-24",
+      "sha256": "5ec0c936a77ba5e1c6ff9fa0501a6d3920eac028f08caf0054c927037c27e212",
+      "lastServiceDate": "2027-01-08",
       "fullServiceUntil": "2026-12-20",
       "filter": {
         "kind": "gtfs-urban-route-types",
@@ -1052,8 +1052,8 @@
           "1499"
         ]
       },
-      "sourceArchiveSha256": "952ff25fc2590e8a0eaa715d397a64fbe442aa869cd77b12b516ef8da0faea98",
-      "contentSha256": "aadae72cabf14902f5b5c074735182afa7314fb9520432e4db1b0aecad7066b5"
+      "sourceArchiveSha256": "864eb1049ba32179a5e35ec23f7449e3fe12f76034933bf309febf96ac8b696c",
+      "contentSha256": "922729e4e6dd2aa4d4c96f93ace82b445abfecacee8262a973b32557b1d1c17c"
     },
     {
       "sourceId": "milano-atm-gtfs",
@@ -1943,11 +1943,11 @@
       "acquisition": {
         "format": "gtfs",
         "transport": "https",
-        "downloadSha256": "2a10d17cca9cbace8205e00740b3c55300ea0fdf7245ab55a4a61bb34ae1bde8",
-        "downloadBytes": 18563585,
+        "downloadSha256": "e1bc6af9ebdc8a442d952e33d44d6eaad228f718067b0331054e6fb0f7e4b4a4",
+        "downloadBytes": 15286022,
         "finalUrl": "https://www.arstspa.info/arst-cagliari-it.zip"
       },
-      "sha256": "05a52f2a14cd7c8a27fe3e6a1dfac43b0cd557e4bca8cd2bb1e5d9a0aae94b0c",
+      "sha256": "a85c180146fa32cda028a6a328895818ee4c1f9f55f8e0ddabf91c03164340de",
       "lastServiceDate": "2026-12-31",
       "fullServiceUntil": "2026-12-31",
       "filter": {
@@ -2362,8 +2362,8 @@
           "1499"
         ]
       },
-      "sourceArchiveSha256": "2a10d17cca9cbace8205e00740b3c55300ea0fdf7245ab55a4a61bb34ae1bde8",
-      "contentSha256": "5f88ec0f26c620314b1521a716ef8ec115dbadd2ba5ede5f90c76e6982f6a126"
+      "sourceArchiveSha256": "e1bc6af9ebdc8a442d952e33d44d6eaad228f718067b0331054e6fb0f7e4b4a4",
+      "contentSha256": "ea81074dcf80d198a417487f9315785d4275a50d0ad23e225259c0685564ad05"
     }
   ]
 }
