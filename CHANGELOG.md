@@ -9,7 +9,7 @@
   - Trenord resta quello di prima: il portale della Lombardia non ha risposto.
 - **Statistiche di puntualità**:
   - 10.856 treni sulla finestra 22 ottobre – 20 novembre (erano 6.641); bastano per una release (17 giorni coperti).
-  - Dal 20 novembre la costruzione del file falliva: il controllo confrontava la media con i ritardi in virgola mobile, e una media arrotondata esattamente al limite (0,75 → 0,8 su 12 giorni) risultava fuori di un miliardesimo. Il confronto è ora in decimi interi; una media davvero incompatibile è ancora rifiutata.
+  - Dal 15 novembre la costruzione del file falliva: il controllo confrontava la media con i ritardi in virgola mobile, e una media arrotondata esattamente al limite (0,75 → 0,8 su 12 giorni) risultava fuori di un miliardesimo. Il confronto è ora in decimi interi; una media davvero incompatibile è ancora rifiutata.
   - Le osservazioni raccolte in quei giorni non sono andate perse.
 
 ## In sviluppo — Secondo audit dell'11 novembre: correzioni
