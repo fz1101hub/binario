@@ -1265,8 +1265,10 @@ class FullServiceTest(unittest.TestCase):
         manifest = builder.read_manifest(ASSETS / "manifest.json")
         packs = {pack["sourceId"]: pack for pack in manifest["packs"]}
         self.assertTrue(all("fullServiceUntil" in pack for pack in packs.values()))
-        # Trenitalia's calendar runs to December 2027; its full timetable ends with the change of December 2026.
-        self.assertEqual("2026-12-12", packs["trenitalia-gtfs"]["fullServiceUntil"])
+        # Trenitalia's calendar runs to December 2027 while only part of the next timetable is published: its full
+        # timetable ends well before the calendar. The date moves with each weekly refresh, so it is not pinned here.
+        trenitalia = packs["trenitalia-gtfs"]
+        self.assertLess(trenitalia["fullServiceUntil"], trenitalia["lastServiceDate"])
 
 
 class ExpiredTripsTest(unittest.TestCase):
