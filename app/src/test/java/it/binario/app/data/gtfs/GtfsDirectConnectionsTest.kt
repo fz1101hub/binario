@@ -28,7 +28,7 @@ import org.junit.Test
 class GtfsDirectConnectionsTest {
     private val openAsset = { path: String -> TestAssets.open(path) }
     private val stations: List<Station> by lazy { EmbeddedCuratedRailStationCatalog(openAsset).load() }
-    private val tuesday = LocalDate.of(2026, 11, 10)
+    private val tuesday = LocalDate.of(2026, 11, 24)
     private val provider by lazy { EmbeddedGtfsJourneyProvider.create(openAsset) }
 
     private fun station(name: String): Station = stations.single { it.name == name }
@@ -72,13 +72,14 @@ class GtfsDirectConnectionsTest {
     @Test fun `Roma Termini reaches Naples and the airport, then the city lines`() = runBlocking {
         val result = provider.directConnections(StationId(station("Roma Termini").id), null, tuesday)
         with(result.rail("Napoli Centrale")) {
-            // 29 Italo trains, not the 43 rows the pack's itinerary copies made of them.
-            assertEquals(100, runs)
+            // 29 Italo trains, not the 43 rows the pack's itinerary copies made of them, and 69 Trenitalia trains on
+            // Tuesday 24 November (72 on the 10th, the day used before the refresh of 21 November dropped it).
+            assertEquals(97, runs)
             assertEquals(68, fastestMinutes)
         }
         with(result.rail("Fiumicino Aeroporto")) {
-            assertEquals(67, runs)
-            assertEquals(31, fastestMinutes)
+            assertEquals(68, runs) // 67 on 10 November
+            assertEquals(32, fastestMinutes) // 31 on 10 November
         }
         assertEquals(result.rail("Milano Centrale").firstDepartureMinute, 5 * 60 + 10)
         // The Rome metro is a personal-build pack; the JVM tests run the personal (debug) build.
