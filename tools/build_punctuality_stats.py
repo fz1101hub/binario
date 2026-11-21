@@ -382,7 +382,10 @@ def _check_stop(stop: object, where: str, runs: int, problems: list[str]) -> str
         lower = sum(count * BUCKETS[index] for index, count in enumerate(between)) + beyond * BUCKETS[-1]
         upper = sum(count * BUCKETS[index + 1] for index, count in enumerate(between)) + beyond * MAX_MEAN
         if not lower - 0.05 * samples <= mean * samples <= upper + 0.05 * samples:
-            problems.append(f"{where}: media incompatibile con i cumulati")
+            problems.append(
+                f"{where}: media incompatibile con i cumulati (media {mean}, campioni {samples}, cumulati {cumulative}, "
+                f"somma ammessa {lower - 0.05 * samples:.1f}..{upper + 0.05 * samples:.1f})"
+            )
     return code
 
 
