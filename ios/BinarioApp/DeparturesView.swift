@@ -46,6 +46,11 @@ struct DeparturesView: View {
                 } footer: {
                     Text("departures.local_only")
                 }
+                // A station a full foreign timetable not on this iPhone serves outside its border
+                // zone: one line with «Scarica»; the live sources keep their order and names.
+                if let offer = model.boardForeignOffer {
+                    ForeignOfferSection(offer: offer)
+                }
                 BoardContent()
             case .unavailable:
                 ContentUnavailableView(
