@@ -60,6 +60,28 @@ public struct SQLiteGTFSJourneyRepository: JourneyRepository, Sendable {
         }
     }
 
+    /// `validatesDatabase`, and the index holds exactly one pack, `sourceID`: a downloaded per-country
+    /// timetable (`BundledGTFSScheduleInstaller.installVerified`, `ForeignScheduleStore`).
+    static func validatesDatabase(at url: URL, inputFingerprint: String, onlySourceID sourceID: String) -> Bool {
+        guard validatesDatabase(at: url, inputFingerprint: inputFingerprint) else { return false }
+        do {
+            let database = try SQLiteDatabase(readOnlyURL: url)
+            let statement = try database.statement("SELECT source_id FROM pack ORDER BY id LIMIT 2")
+            var sources: [String] = []
+            while try statement.step() {
+                sources.append(statement.text(at: 0) ?? "")
+            }
+            guard sources == [sourceID] else {
+                validatedIndices.forget(url)
+                return false
+            }
+            return true
+        } catch {
+            validatedIndices.forget(url)
+            return false
+        }
+    }
+
     /// The installed databases validated in this process: every search, board page and «Più tardi»
     /// opens the file again, and the schema checks and `quick_check` of the whole index (tens of
     /// milliseconds or more on a phone) need not run each time for the read-only file the installer

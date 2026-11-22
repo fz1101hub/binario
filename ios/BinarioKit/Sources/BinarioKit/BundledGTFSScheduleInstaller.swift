@@ -72,36 +72,107 @@ public struct BundledGTFSScheduleInstaller: Sendable {
             guard Self.sha256Hex(database) == metadata.database.sha256 else {
                 throw BundledGTFSScheduleError.invalidDatabase
             }
-
-            let staged = cacheDirectory.appendingPathComponent(".binario-gtfs-\(UUID().uuidString).sqlite")
-            defer { try? FileManager.default.removeItem(at: staged) }
-            try database.write(to: staged, options: .atomic)
-            try Self.excludeFromBackup(staged)
-            guard SQLiteGTFSJourneyRepository.validatesDatabase(
-                at: staged,
-                inputFingerprint: metadata.inputs.fingerprintSha256
-            ) else {
-                throw BundledGTFSScheduleError.invalidDatabase
-            }
-
-            if FileManager.default.fileExists(atPath: destination.path) {
-                _ = try FileManager.default.replaceItemAt(
-                    destination,
-                    withItemAt: staged,
-                    backupItemName: nil,
-                    options: []
-                )
-            } else {
-                try FileManager.default.moveItem(at: staged, to: destination)
-            }
-            try Self.excludeFromBackup(destination)
+            let installed = try Self.publishVerified(
+                database: database,
+                inputFingerprint: metadata.inputs.fingerprintSha256,
+                onlySourceID: nil,
+                stagedPrefix: ".binario-gtfs-",
+                destination: destination
+            )
             Self.removeSupersededDatabases(in: cacheDirectory, keeping: destination)
-            return Self.withoutCachedResourceValues(destination)
+            return installed
         } catch let error as BundledGTFSScheduleError {
             throw error
         } catch {
             throw BundledGTFSScheduleError.fileSystemFailure
         }
+    }
+
+    /// Installs a downloaded per-country index (`ForeignScheduleStore`) at `destination`, with the
+    /// checks of the bundled one: the compressed file of the pinned size and SHA-256, a bounded
+    /// inflate to the pinned database size and SHA-256, the schema, `quick_check` and input
+    /// fingerprint of `validatesDatabase`, and exactly one pack, `sourceID`. The database is staged
+    /// beside `destination` (`.binario-foreign-<UUID>.sqlite`, removed on every path), excluded from
+    /// backup, then moved into place. Nothing is written when a check fails.
+    public func installVerified(
+        compressed: Data,
+        expected: ForeignSchedulePins.Artifact,
+        sourceID: String,
+        into destination: URL
+    ) throws -> URL {
+        Self.installationLock.lock()
+        defer { Self.installationLock.unlock() }
+        guard destination.isFileURL,
+              compressed.count == expected.sizeBytes,
+              compressed.count <= Self.maximumCompressedBytes,
+              Self.sha256Hex(compressed) == expected.sha256
+        else { throw BundledGTFSScheduleError.invalidCompressedArtifact }
+        do {
+            try FileManager.default.createDirectory(
+                at: destination.deletingLastPathComponent(),
+                withIntermediateDirectories: true,
+                attributes: nil
+            )
+            let database = try Self.decompress(compressed, expectedBytes: expected.databaseSizeBytes)
+            guard Self.sha256Hex(database) == expected.databaseSHA256 else {
+                throw BundledGTFSScheduleError.invalidDatabase
+            }
+            return try Self.publishVerified(
+                database: database,
+                inputFingerprint: expected.inputFingerprintSHA256,
+                onlySourceID: sourceID,
+                stagedPrefix: Self.foreignStagedPrefix,
+                destination: destination
+            )
+        } catch let error as BundledGTFSScheduleError {
+            throw error
+        } catch {
+            throw BundledGTFSScheduleError.fileSystemFailure
+        }
+    }
+
+    /// The hidden staged copy of a downloaded index, before it is moved into place.
+    static let foreignStagedPrefix = ".binario-foreign-"
+
+    /// Writes a database whose digest was checked to a staged copy excluded from backup, checks its
+    /// schema and fingerprint (and its single pack when `onlySourceID` is given), and moves it to
+    /// `destination`. Called under `installationLock`.
+    private static func publishVerified(
+        database: Data,
+        inputFingerprint: String,
+        onlySourceID: String?,
+        stagedPrefix: String,
+        destination: URL
+    ) throws -> URL {
+        let staged = destination.deletingLastPathComponent()
+            .appendingPathComponent("\(stagedPrefix)\(UUID().uuidString).sqlite", isDirectory: false)
+        defer { try? FileManager.default.removeItem(at: staged) }
+        try database.write(to: staged, options: .atomic)
+        try excludeFromBackup(staged)
+        let valid: Bool
+        if let onlySourceID {
+            valid = SQLiteGTFSJourneyRepository.validatesDatabase(
+                at: staged,
+                inputFingerprint: inputFingerprint,
+                onlySourceID: onlySourceID
+            )
+        } else {
+            valid = SQLiteGTFSJourneyRepository.validatesDatabase(at: staged, inputFingerprint: inputFingerprint)
+        }
+        guard valid else { throw BundledGTFSScheduleError.invalidDatabase }
+
+        if FileManager.default.fileExists(atPath: destination.path) {
+            _ = try FileManager.default.replaceItemAt(
+                destination,
+                withItemAt: staged,
+                backupItemName: nil,
+                options: []
+            )
+        } else {
+            try FileManager.default.moveItem(at: staged, to: destination)
+        }
+        try excludeFromBackup(destination)
+        return withoutCachedResourceValues(destination)
     }
 
     private static func loadMetadata(from url: URL) throws -> Metadata {
@@ -206,7 +277,7 @@ public struct BundledGTFSScheduleInstaller: Sendable {
     /// `destination` caches the resource values read while checking the size of an existing
     /// cache, including the backup flag as it was before `excludeFromBackup`. Callers get a copy
     /// without that cache, so they read the flag that is now on disk.
-    private static func withoutCachedResourceValues(_ url: URL) -> URL {
+    static func withoutCachedResourceValues(_ url: URL) -> URL {
         // A new URL instance for the same path: copies of `url` share its underlying
         // reference and therefore its resource value cache.
         var fresh = URL(fileURLWithPath: url.path, isDirectory: false)
@@ -216,7 +287,7 @@ public struct BundledGTFSScheduleInstaller: Sendable {
         return fresh
     }
 
-    private static func excludeFromBackup(_ url: URL) throws {
+    static func excludeFromBackup(_ url: URL) throws {
         #if os(iOS) || os(macOS) || os(watchOS) || os(tvOS) || os(visionOS)
         // Write through a fresh URL with an empty cache: a cached "already excluded" value
         // from an earlier read must not let the flag be skipped after someone cleared it.
