@@ -27,6 +27,10 @@ targets:
     deploymentTarget: "17.0"
     sources:
       - path: BinarioApp
+      # Resources carries the generated timetable index and, once the tools write it, the pins
+      # of the full foreign timetables (binario_gtfs_foreign_packs_v1.json, the Android asset
+      # gtfs/foreign_packs.json byte for byte); the app reads the pins when present and behaves
+      # as before without them.
       - path: Resources
         buildPhase: resources
       - path: ../app/src/main/assets/stations/curated_it_rail_stations.json

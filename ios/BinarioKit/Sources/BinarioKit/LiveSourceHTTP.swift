@@ -75,6 +75,18 @@ enum LiveFetchResult: Equatable, Sendable {
     case failure(LiveFetchFailure)
 }
 
+/// The bytes of a binary file, never decoded as text (`LiveSourceClient.getData`).
+enum LiveDataFetchResult: Equatable, Sendable {
+    case body(Data)
+    case failure(LiveFetchFailure)
+}
+
+/// What one call received after its redirects: the final status and body, or why there is none.
+enum LiveExchangeResult: Equatable, Sendable {
+    case received(status: Int, body: Data)
+    case failure(LiveFetchFailure)
+}
+
 /// The limits of one GET, Android's `PublicSourceRequestPolicy` and the adapters' own fetchers.
 struct LiveRequestPolicy: Equatable, Sendable {
     var accept: String
@@ -93,12 +105,30 @@ struct LiveRequestPolicy: Equatable, Sendable {
     /// The ViaggiaTreno realtime client's HTTPS variants: the same resource on viaggiatreno.it, and
     /// a cleartext redirect elsewhere on www.viaggiatreno.it asked again over HTTPS on viaggiatreno.it.
     var allowsViaggiaTrenoAlternateHost = false
+    /// A pinned GitHub release asset (`ForeignScheduleStore`): asked on github.com and redirected only
+    /// to GitHub's release-download hosts, over HTTPS on port 443, whatever the path and query
+    /// (GitHub's redirect changes both). No other redirect is followed under this policy.
+    var followsGitHubReleaseAssetRedirects = false
 
     static let redirectStatuses: Set<Int> = [301, 302, 303, 307, 308]
+
+    /// One download of a pinned release asset, after a tap: at most its pinned size, the honest
+    /// User-Agent and the ephemeral session of every live request, two redirects at most, no retry.
+    static func githubReleaseAsset(maximumBytes: Int) -> LiveRequestPolicy {
+        LiveRequestPolicy(
+            accept: "application/octet-stream",
+            requestTimeout: 30,
+            totalTimeout: 300,
+            maximumBytes: maximumBytes,
+            maximumRequests: 3,
+            followsGitHubReleaseAssetRedirects: true
+        )
+    }
 }
 
 /// The redirect rule of Android's public-source clients: the same resource, over HTTPS, on the
-/// same host; the one ViaggiaTreno cleartext hop when the policy allows it. Everything else is refused.
+/// same host; the one ViaggiaTreno cleartext hop when the policy allows it. A pinned GitHub release
+/// asset follows its own exact host allowlist instead. Everything else is refused.
 enum LiveRedirect {
     static let viaggiaTrenoHost = "www.viaggiatreno.it"
     static let viaggiaTrenoApexHost = "viaggiatreno.it"
@@ -119,6 +149,16 @@ enum LiveRedirect {
         let currentHost = from.host?.lowercased() ?? ""
         let withoutCredentials = target.user == nil && target.password == nil
         let viaggiaTrenoHosts: Set<String> = [viaggiaTrenoHost, viaggiaTrenoApexHost]
+
+        // A release asset: GitHub's download hosts only, HTTPS on port 443, no credentials.
+        if policy.followsGitHubReleaseAssetRedirects {
+            let releaseHosts: Set<String> = [
+                ForeignSchedulePins.githubReleaseDownloadHost, ForeignSchedulePins.githubLegacyReleaseDownloadHost,
+            ]
+            guard scheme == "https", releaseHosts.contains(host), defaultPort(target, 443),
+                  withoutCredentials, target.fragment == nil else { return nil }
+            return resolved
+        }
 
         // `HttpViaggiaTrenoRealtimeFetcher`: a cleartext redirect from www.viaggiatreno.it to another
         // resource on it (its home page) is not followed; the same resource is asked over HTTPS on
@@ -378,6 +418,26 @@ struct LiveSourceClient: Sendable {
     let now: @Sendable () -> Date
 
     func get(_ url: URL, policy: LiveRequestPolicy) async -> LiveFetchResult {
+        switch await exchange(url, policy: policy) {
+        case let .failure(failure):
+            return .failure(failure)
+        case let .received(status, body):
+            return .body(LiveBody(text: status == 204 ? "" : String(decoding: body, as: UTF8.self), fetchedAt: now()))
+        }
+    }
+
+    /// The raw bytes of `url` (a pinned release asset), with the same rules as `get`.
+    func getData(_ url: URL, policy: LiveRequestPolicy) async -> LiveDataFetchResult {
+        switch await exchange(url, policy: policy) {
+        case let .failure(failure):
+            return .failure(failure)
+        case let .received(_, body):
+            return .body(body)
+        }
+    }
+
+    /// The HTTPS GET, the allowed redirects, the byte and time limits; the body of a 2xx answer.
+    private func exchange(_ url: URL, policy: LiveRequestPolicy) async -> LiveExchangeResult {
         guard let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
               components.scheme?.lowercased() == "https", components.user == nil, components.password == nil,
               components.host?.isEmpty == false else { return .failure(.invalidRequest) }
@@ -412,7 +472,7 @@ struct LiveSourceClient: Sendable {
                 }
                 guard body.count <= policy.maximumBytes else { return .failure(.tooLarge) }
                 if Task.isCancelled { return .failure(.cancelled) }
-                return .body(LiveBody(text: status == 204 ? "" : String(decoding: body, as: UTF8.self), fetchedAt: now()))
+                return .received(status: status, body: body)
             }
         }
         return .failure(.tooManyRedirects)

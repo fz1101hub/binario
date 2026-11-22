@@ -140,6 +140,59 @@ final class LiveSourceHTTPTests: XCTestCase {
         )
     }
 
+    func testAReleaseAssetIsRedirectedOnlyToGitHubsDownloadHostsOverHTTPS() async throws {
+        let policy = LiveRequestPolicy.githubReleaseAsset(maximumBytes: 2_048)
+        XCTAssertEqual(policy.maximumBytes, 2_048, "the cap is the pinned size")
+        XCTAssertEqual(policy.userAgent, LiveSourceUserAgent.general)
+        XCTAssertEqual(policy.maximumRequests, 3)
+        XCTAssertFalse(policy.allowsViaggiaTrenoCleartextHop)
+        XCTAssertFalse(policy.allowsViaggiaTrenoAlternateHost)
+        let requested = try XCTUnwrap(URL(string: "https://github.com/fz1101hub/binario/releases/download/gtfs-ios-oebb-gtfs-8e7ed242109b/oebb-gtfs.sqlite.zlib"))
+        for location in [
+            "https://release-assets.githubusercontent.com/github-production-release-asset/1/2?sp=r&sig=x",
+            "https://objects.githubusercontent.com/github-production-release-asset-2e65be/3?X-Amz-Signature=y",
+            "https://release-assets.githubusercontent.com:443/asset",
+        ] {
+            XCTAssertEqual(
+                LiveRedirect.next(requested: requested, current: requested, location: location, policy: policy)?.absoluteString,
+                location
+            )
+        }
+        for location in [
+            "http://release-assets.githubusercontent.com/asset",
+            "http://objects.githubusercontent.com/asset",
+            "https://release-assets.githubusercontent.com:8443/asset",
+            "https://user:secret@release-assets.githubusercontent.com/asset",
+            "https://release-assets.githubusercontent.com/asset#fragment",
+            "https://release-assets.githubusercontent.com.example.org/asset",
+            "https://raw.githubusercontent.com/fz1101hub/binario/main/asset",
+            "https://github.com/fz1101hub/binario/releases/download/other/asset",
+            "https://example.org/asset",
+        ] {
+            XCTAssertNil(LiveRedirect.next(requested: requested, current: requested, location: location, policy: policy), location)
+        }
+        // Other sources never get GitHub's redirect.
+        XCTAssertNil(LiveRedirect.next(
+            requested: requested, current: requested,
+            location: "https://release-assets.githubusercontent.com/asset", policy: publicPolicy
+        ))
+
+        // The bytes come back as they are, never decoded as text.
+        let bytes = Data([0x78, 0xda, 0x00, 0xff, 0xfe])
+        let transport = FakeLiveTransport { request in
+            request.url.host == "github.com"
+                ? FakeLiveTransport.redirect("https://release-assets.githubusercontent.com/asset?sig=x", status: 302)
+                : .response(status: 200, headers: [:], body: bytes)
+        }
+        let result = await client(transport).getData(requested, policy: policy)
+        XCTAssertEqual(result, .body(bytes))
+        XCTAssertEqual(transport.requests.count, 2)
+        let cleartext = FakeLiveTransport { _ in FakeLiveTransport.redirect("http://release-assets.githubusercontent.com/asset") }
+        let refused = await client(cleartext).getData(requested, policy: policy)
+        XCTAssertEqual(refused, .failure(.redirectRefused))
+        XCTAssertEqual(cleartext.requests.count, 1)
+    }
+
     func testARedirectLoopIsBoundedAndNeverReadAsAnEmptyBoard() async throws {
         let requested = try XCTUnwrap(URL(string: realtimePath))
         let transport = FakeLiveTransport { request in FakeLiveTransport.redirect(request.url.absoluteString) }

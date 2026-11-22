@@ -134,6 +134,19 @@ final class AppModel: ObservableObject {
     @Published private(set) var sourcePolicy: GTFSSourcePolicy?
     /// Nil until the timetable index has been read.
     @Published private(set) var coveredStationIDs: Set<String>?
+    /// «Orari dei paesi confinanti» in Settings: every pack whose full timetable can be downloaded
+    /// and what this iPhone holds of it; empty without pins or without a pinned pack (the section
+    /// is then hidden and the app behaves as before).
+    @Published private(set) var foreignPacks: [ForeignPackRow] = []
+    /// The planner's offer of a full foreign timetable after the last search, nil without one.
+    @Published private(set) var plannerForeignOffer: ForeignScheduleOffer?
+    /// The pack the dialog asks about after a search that found nothing; nil when none is asked.
+    @Published private(set) var foreignDialogPack: ForeignSchedulePins.Pack?
+    /// The download started by a tap on «Scarica», or how the last one failed.
+    @Published private(set) var foreignDownload: ForeignDownloadState = .idle
+    /// Bumped whenever the timetables are opened again with another set of full foreign
+    /// timetables: the planner then searches its route again.
+    @Published private(set) var timetablesGeneration = 0
     @Published private(set) var latestSnapshot: JourneySnapshot?
     @Published var persistenceMessageKey: String?
     @Published var selectedTab: Tab = .planner
@@ -197,6 +210,15 @@ final class AppModel: ObservableObject {
     private var scheduleInputs: ScheduleInputs?
     /// The index has been opened again after a failed read in this launch: at most once.
     private var scheduleReopenedAfterFailedRead = false
+    /// The pins of the full foreign timetables and their store; nil in a build without pins.
+    private var foreignTimetables: ForeignTimetables?
+    /// The installed base index, opened again beside the full foreign timetables installed.
+    private var baseScheduleURL: URL?
+    /// The full foreign timetables the repository reads now, by source.
+    private var installedForeignFiles: [String: URL] = [:]
+    /// The packs the user answered «Non ora» to in this launch: no dialog for them again.
+    private var declinedForeignPacks: Set<String> = []
+    private var foreignDownloadTask: Task<Void, Never>?
     /// The last search that was for now, whose route the Watch shows; nil once the input changes.
     private var watchRouteQuery: JourneyQuery?
     /// Bumped by every publication of the pinned route, so only the latest one reaches the Watch.
@@ -406,12 +428,21 @@ final class AppModel: ObservableObject {
         let cacheDirectory = applicationSupport
             .appendingPathComponent("Binario", isDirectory: true)
             .appendingPathComponent("GTFS", isDirectory: true)
+        // The full foreign timetables (design §4.4): optional pins in the bundle, downloads in their
+        // own folder, excluded from backup.
+        let foreignPinsURL = bundle.url(
+            forResource: ForeignSchedulePins.resourceName,
+            withExtension: ForeignSchedulePins.resourceExtension
+        )
+        let foreignDirectory = applicationSupport.appendingPathComponent(ForeignScheduleStore.directoryName, isDirectory: true)
         Task {
             await model.loadSchedule(
                 compressedURL: compressedURL,
                 metadataURL: metadataURL,
                 sourcePolicyURL: sourcePolicyURL,
-                cacheDirectory: cacheDirectory
+                cacheDirectory: cacheDirectory,
+                foreignPinsURL: foreignPinsURL,
+                foreignDirectory: foreignDirectory
             )
         }
         return model
@@ -525,31 +556,41 @@ final class AppModel: ObservableObject {
         RouteDictation.languageCode(forLocalization: Bundle.main.preferredLocalizations.first ?? "it")
     }
 
-    func loadSchedule(compressedURL: URL, metadataURL: URL, sourcePolicyURL: URL? = nil, cacheDirectory: URL) async {
+    func loadSchedule(
+        compressedURL: URL,
+        metadataURL: URL,
+        sourcePolicyURL: URL? = nil,
+        cacheDirectory: URL,
+        foreignPinsURL: URL? = nil,
+        foreignDirectory: URL? = nil
+    ) async {
         scheduleInputs = ScheduleInputs(
-            compressedURL: compressedURL, metadataURL: metadataURL, sourcePolicyURL: sourcePolicyURL, cacheDirectory: cacheDirectory
+            compressedURL: compressedURL, metadataURL: metadataURL, sourcePolicyURL: sourcePolicyURL, cacheDirectory: cacheDirectory,
+            foreignPinsURL: foreignPinsURL, foreignDirectory: foreignDirectory
         )
         scheduleState = .loading
-        let installed = await Task.detached(priority: .utility) { () -> InstalledSchedule? in
+        let existingForeign = foreignTimetables
+        let installed = await Task.detached(priority: .utility) { () async -> InstalledSchedule? in
             guard let installedURL = try? BundledGTFSScheduleInstaller().install(
                 compressedURL: compressedURL,
                 metadataURL: metadataURL,
                 cacheDirectory: cacheDirectory
             ) else { return nil }
-            let repository = SQLiteGTFSJourneyRepository(databaseURL: installedURL)
-            // The source list and the covered stations are read from the same validated index
-            // as the journeys: an index that cannot describe itself is not served either.
-            guard let packs = try? repository.sourcePacks(),
-                  let coveredStationIDs = try? repository.coveredCatalogStationIDs()
-            else { return nil }
+            // The full foreign timetables downloaded on this iPhone that still match their pin; a
+            // file of an earlier pin is deleted here and its pack reads «aggiornamento disponibile».
+            let foreign = existingForeign ?? Self.makeForeignTimetables(pinsURL: foreignPinsURL, directory: foreignDirectory)
+            let foreignFiles: [String: URL] = await foreign?.store.reconcile() ?? [:]
+            guard let opened = Self.openSchedule(base: installedURL, foreign: foreignFiles) else { return nil }
             let policy = sourcePolicyURL.flatMap { url in
                 (try? Data(contentsOf: url)).flatMap { try? GTFSSourcePolicy(data: $0) }
             }
             return InstalledSchedule(
-                repository: repository,
-                packs: packs,
-                coveredStationIDs: coveredStationIDs,
-                sourcePolicy: policy
+                repository: opened.repository,
+                packs: opened.packs,
+                coveredStationIDs: opened.coveredStationIDs,
+                sourcePolicy: policy,
+                baseURL: installedURL,
+                foreign: foreign
             )
         }.value
         guard let installed else {
@@ -569,6 +610,9 @@ final class AppModel: ObservableObject {
         schedulePacks = installed.packs
         coveredStationIDs = installed.coveredStationIDs
         sourcePolicy = installed.sourcePolicy
+        baseScheduleURL = installed.baseURL
+        foreignTimetables = installed.foreign
+        installedForeignFiles = installed.repository.foreignDatabaseURLs
         scheduleState = .available
         updateAirportLinks()
         // A station remembered from the last time «Partenze» was open is read now.
@@ -576,6 +620,34 @@ final class AppModel: ObservableObject {
         // At launch the Watch gets the pinned route; a refresh it asked for meanwhile is answered.
         await refreshWatchSnapshot()
         endPendingWatchRefresh()
+        await refreshForeignPacks()
+    }
+
+    /// The pins of this build and their store, or nil without valid pins: whatever a build with
+    /// pins downloaded before is then removed, never read.
+    nonisolated private static func makeForeignTimetables(pinsURL: URL?, directory: URL?) -> ForeignTimetables? {
+        guard let directory else { return nil }
+        guard let pins = ForeignSchedulePins.load(url: pinsURL) else {
+            try? FileManager.default.removeItem(at: directory)
+            return nil
+        }
+        return ForeignTimetables(pins: pins, store: ForeignScheduleStore(directory: directory, pins: pins))
+    }
+
+    /// The base index with the full foreign timetables `foreign` beside it. A foreign file that
+    /// cannot describe itself is left out: the base index alone is then served, as before.
+    nonisolated private static func openSchedule(base: URL, foreign: [String: URL]) -> OpenedSchedule? {
+        var repository = SQLiteGTFSJourneyRepository(databaseURL: base, foreignDatabaseURLs: foreign)
+        if !foreign.isEmpty,
+           (try? repository.coveredCatalogStationIDs()) == nil || (try? repository.sourcePacks()) == nil {
+            repository = SQLiteGTFSJourneyRepository(databaseURL: base)
+        }
+        // The source list and the covered stations are read from the same validated index
+        // as the journeys: an index that cannot describe itself is not served either.
+        guard let packs = try? repository.sourcePacks(),
+              let coveredStationIDs = try? repository.coveredCatalogStationIDs()
+        else { return nil }
+        return OpenedSchedule(repository: repository, packs: packs, coveredStationIDs: coveredStationIDs)
     }
 
     /// The packs whose filter retained at least one rail trip: the feeds that can answer a search.
@@ -594,6 +666,156 @@ final class AppModel: ObservableObject {
         includedPacks.map(\.attribution).joined(separator: ", ")
     }
 
+    // MARK: - Full foreign timetables (design §4.4)
+
+    /// The status of every pinned pack, for Settings.
+    private func refreshForeignPacks() async {
+        guard let foreign = foreignTimetables else {
+            foreignPacks = []
+            return
+        }
+        let statuses = await foreign.store.statuses()
+        var rows: [ForeignPackRow] = []
+        for pack in foreign.pins.downloadablePacks where ForeignTexts.supports(pack) {
+            rows.append(ForeignPackRow(pack: pack, status: statuses[pack.sourceID] ?? .borderOnly))
+        }
+        foreignPacks = rows
+    }
+
+    /// The offer after a search (owner decision Q3): the dialog when nothing was found, once per
+    /// pack and launch; one line when trains were found but both ends lie outside the zone;
+    /// nothing for an ended or unreadable timetable (`foundTrains` nil).
+    private func updatePlannerForeignOffer(for query: JourneyQuery, foundTrains: Bool?) {
+        guard let foreign = foreignTimetables, let foundTrains else {
+            plannerForeignOffer = nil
+            foreignDialogPack = nil
+            return
+        }
+        let advisor = ForeignScheduleAdvisor(
+            pins: foreign.pins,
+            installed: Set(installedForeignFiles.keys),
+            declined: declinedForeignPacks
+        )
+        let offer = advisor.offer(
+            origin: query.origin.id,
+            destination: query.destination.id,
+            foundTrains: foundTrains,
+            today: ForeignSchedulePins.romeDay(Date())
+        )
+        plannerForeignOffer = offer
+        if let offer, offer.kind == .dialog, foreignDownloadTask == nil {
+            foreignDialogPack = offer.packs.first { ForeignTexts.supports($0) }
+        } else {
+            foreignDialogPack = nil
+        }
+    }
+
+    /// «Partenze»: the line of a station that a full timetable not installed serves outside its
+    /// border zone; nil without one.
+    var boardForeignOffer: ForeignScheduleOffer? {
+        guard let foreign = foreignTimetables, let station = boardStation, scheduleState == .available else { return nil }
+        let advisor = ForeignScheduleAdvisor(pins: foreign.pins, installed: Set(installedForeignFiles.keys))
+        return advisor.boardOffer(station: station.id, today: ForeignSchedulePins.romeDay(Date()))
+    }
+
+    /// What the «Scarica» of a pack shows now.
+    func foreignDownloadState(for sourceID: String) -> ForeignPackDownloadState {
+        switch foreignDownload {
+        case let .downloading(downloading) where downloading == sourceID:
+            return .downloading
+        case let .failed(failed, failure) where failed == sourceID:
+            return .failed(failure)
+        default:
+            return .idle
+        }
+    }
+
+    /// One download at a time: every other «Scarica» waits.
+    var isDownloadingForeignPack: Bool {
+        if case .downloading = foreignDownload { return true }
+        return false
+    }
+
+    /// «Scarica», after a tap only: downloads the pinned full timetable of `sourceID`. Once it is
+    /// installed the timetables are opened again, and the search and the board on screen are read
+    /// again. Nothing is retried by itself.
+    func downloadForeignPack(_ sourceID: String) {
+        guard let foreign = foreignTimetables, foreignDownloadTask == nil else { return }
+        foreignDialogPack = nil
+        foreignDownload = .downloading(sourceID: sourceID)
+        foreignDownloadTask = Task { [weak self] in
+            let outcome = await foreign.store.download(sourceID)
+            await self?.finishForeignDownload(sourceID, outcome: outcome)
+        }
+    }
+
+    /// «Annulla»: the transfer stops and nothing is kept.
+    func cancelForeignDownload() {
+        foreignDownloadTask?.cancel()
+    }
+
+    /// «Non ora»: the dialog is not shown for this pack again in this launch.
+    func declineForeignPack(_ sourceID: String) {
+        declinedForeignPacks.insert(sourceID)
+        foreignDialogPack = nil
+    }
+
+    /// The dialog closed (its binding): nothing else changes.
+    func dismissForeignDialog() {
+        foreignDialogPack = nil
+    }
+
+    private func finishForeignDownload(_ sourceID: String, outcome: ForeignScheduleDownloadOutcome) async {
+        foreignDownloadTask = nil
+        switch outcome {
+        case .installed:
+            foreignDownload = .idle
+            await reopenForeignTimetables(files: nil)
+        case .failed(.cancelled), .failed(.busy):
+            foreignDownload = .idle
+        case let .failed(failure):
+            foreignDownload = .failed(sourceID: sourceID, failure: failure)
+        }
+        await refreshForeignPacks()
+    }
+
+    /// «Elimina» in Settings: the readers leave the file first (a read already running finishes on
+    /// it), then it is deleted; the bundled border zone serves the pack again at once.
+    func deleteForeignPack(_ sourceID: String) async {
+        guard let foreign = foreignTimetables, foreignDownloadTask == nil else { return }
+        var remaining = installedForeignFiles
+        remaining[sourceID] = nil
+        await reopenForeignTimetables(files: remaining)
+        await foreign.store.delete(sourceID)
+        foreignDownload = .idle
+        await refreshForeignPacks()
+    }
+
+    /// Opens the timetables again beside the full foreign timetables `files` (nil: those the store
+    /// holds now), then reads the board on screen again; the planner searches again when it sees
+    /// `timetablesGeneration` change.
+    private func reopenForeignTimetables(files: [String: URL]?) async {
+        guard let foreign = foreignTimetables, let baseURL = baseScheduleURL, scheduleState == .available else { return }
+        let opened = await Task.detached(priority: .userInitiated) { () async -> OpenedSchedule? in
+            let current: [String: URL]
+            if let files {
+                current = files
+            } else {
+                current = await foreign.store.reconcile()
+            }
+            return Self.openSchedule(base: baseURL, foreign: current)
+        }.value
+        guard let opened, scheduleState == .available else { return }
+        repository = opened.repository
+        boardProvider = opened.repository
+        schedulePacks = opened.packs
+        coveredStationIDs = opened.coveredStationIDs
+        installedForeignFiles = opened.repository.foreignDatabaseURLs
+        timetablesGeneration &+= 1
+        updateAirportLinks()
+        scheduleBoardReload()
+    }
+
     func run(query: JourneyQuery) async {
         searchRequestID &+= 1
         let requestID = searchRequestID
@@ -608,12 +830,15 @@ final class AppModel: ObservableObject {
             searchState = .idle
             latestSnapshot = snapshot
             resultReliability = reliabilityStats.map { JourneyReliability.assess(snapshot, stats: $0) }
+            updatePlannerForeignOffer(for: query, foundTrains: true)
             if isForNow { publishAvailableSnapshot(snapshot) }
             restartResultLive()
         case let .unavailable(reason):
             searchState = .unavailable(reason)
             latestSnapshot = nil
             resultReliability = nil
+            // Only «no train» can be a missing full timetable; an ended or unreadable one cannot.
+            updatePlannerForeignOffer(for: query, foundTrains: reason == .noJourney ? false : nil)
             if reason == .noAuthorizedProvider {
                 scheduleState = .unavailable
             }
@@ -635,7 +860,9 @@ final class AppModel: ObservableObject {
             compressedURL: inputs.compressedURL,
             metadataURL: inputs.metadataURL,
             sourcePolicyURL: inputs.sourcePolicyURL,
-            cacheDirectory: inputs.cacheDirectory
+            cacheDirectory: inputs.cacheDirectory,
+            foreignPinsURL: inputs.foreignPinsURL,
+            foreignDirectory: inputs.foreignDirectory
         )
     }
 
@@ -644,6 +871,8 @@ final class AppModel: ObservableObject {
         searchState = .idle
         latestSnapshot = nil
         resultReliability = nil
+        plannerForeignOffer = nil
+        foreignDialogPack = nil
         clearResultLive()
         watchRouteQuery = nil
         guard watchSharingEnabled else { return }
@@ -1957,6 +2186,42 @@ private struct InstalledSchedule: Sendable {
     let packs: [GTFSSourcePack]
     let coveredStationIDs: Set<String>
     let sourcePolicy: GTFSSourcePolicy?
+    /// The installed base index, for opening it again beside other foreign files.
+    let baseURL: URL
+    let foreign: ForeignTimetables?
+}
+
+/// The timetables opened from the base index and the full foreign timetables installed.
+private struct OpenedSchedule: Sendable {
+    let repository: SQLiteGTFSJourneyRepository
+    let packs: [GTFSSourcePack]
+    let coveredStationIDs: Set<String>
+}
+
+/// The pins of the full foreign timetables of this build and the store of their downloads.
+private struct ForeignTimetables: Sendable {
+    let pins: ForeignSchedulePins
+    let store: ForeignScheduleStore
+}
+
+/// One pack of «Orari dei paesi confinanti» in Settings.
+struct ForeignPackRow: Equatable, Sendable {
+    let pack: ForeignSchedulePins.Pack
+    let status: ForeignScheduleStatus
+}
+
+/// The download started by a tap on «Scarica».
+enum ForeignDownloadState: Equatable, Sendable {
+    case idle
+    case downloading(sourceID: String)
+    case failed(sourceID: String, failure: ForeignScheduleDownloadFailure)
+}
+
+/// What a pack's «Scarica» shows: the button, the progress with «Annulla», or the last failure.
+enum ForeignPackDownloadState: Equatable, Sendable {
+    case idle
+    case downloading
+    case failed(ForeignScheduleDownloadFailure)
 }
 
 /// The bundled index and its cache, as `AppModel.loadSchedule` opened them.
@@ -1965,6 +2230,8 @@ private struct ScheduleInputs: Sendable {
     let metadataURL: URL
     let sourcePolicyURL: URL?
     let cacheDirectory: URL
+    let foreignPinsURL: URL?
+    let foreignDirectory: URL?
 }
 
 @MainActor

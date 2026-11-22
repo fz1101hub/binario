@@ -38,9 +38,25 @@ public struct SQLiteGTFSJourneyRepository: JourneyRepository, Sendable {
     private static let maximumSourceLabelLength = 96
 
     public let databaseURL: URL
+    /// The full foreign timetables installed on this iPhone (`ForeignScheduleStore`), by source:
+    /// each is read through its own read-only connection with the same queries, and the base
+    /// index no longer reads the trips of these packs (its border subset), so no train is listed
+    /// twice. The files are never attached to one connection: their row identifiers overlap.
+    public let foreignDatabaseURLs: [String: URL]
 
-    public init(databaseURL: URL) {
+    public init(databaseURL: URL, foreignDatabaseURLs: [String: URL] = [:]) {
         self.databaseURL = databaseURL
+        self.foreignDatabaseURLs = foreignDatabaseURLs
+    }
+
+    /// The installed foreign indexes in a fixed order, by source.
+    private var foreignFiles: [ForeignFile] {
+        var files: [ForeignFile] = []
+        for sourceID in foreignDatabaseURLs.keys.sorted() {
+            guard let url = foreignDatabaseURLs[sourceID] else { continue }
+            files.append(ForeignFile(sourceID: sourceID, url: url))
+        }
+        return files
     }
 
     /// The installer's check: always the full validation, whose result the reads of this process
@@ -53,6 +69,28 @@ public struct SQLiteGTFSJourneyRepository: JourneyRepository, Sendable {
                 return false
             }
             validatedIndices.record(metadata, for: url)
+            return true
+        } catch {
+            validatedIndices.forget(url)
+            return false
+        }
+    }
+
+    /// `validatesDatabase`, and the index holds exactly one pack, `sourceID`: a downloaded per-country
+    /// timetable (`BundledGTFSScheduleInstaller.installVerified`, `ForeignScheduleStore`).
+    static func validatesDatabase(at url: URL, inputFingerprint: String, onlySourceID sourceID: String) -> Bool {
+        guard validatesDatabase(at: url, inputFingerprint: inputFingerprint) else { return false }
+        do {
+            let database = try SQLiteDatabase(readOnlyURL: url)
+            let statement = try database.statement("SELECT source_id FROM pack ORDER BY id LIMIT 2")
+            var sources: [String] = []
+            while try statement.step() {
+                sources.append(statement.text(at: 0) ?? "")
+            }
+            guard sources == [sourceID] else {
+                validatedIndices.forget(url)
+                return false
+            }
             return true
         } catch {
             validatedIndices.forget(url)
@@ -77,7 +115,26 @@ public struct SQLiteGTFSJourneyRepository: JourneyRepository, Sendable {
 
     /// Every pack of the index with its attribution, last service day and the number of rail
     /// trips its filter retained (0 when a feed contributed nothing), in ingestion order.
+    /// A full foreign timetable installed takes the place of its border subset, with its own
+    /// attribution, validity and trip count.
     public func sourcePacks() throws -> [GTFSSourcePack] {
+        var packs = try Self.sourcePacks(in: databaseURL)
+        for file in foreignFiles {
+            let foreign = try Self.sourcePacks(in: file.url)
+            guard foreign.count == 1, let replacement = foreign.first, replacement.sourceID == file.sourceID else {
+                throw SQLiteGTFSFailure.invalidData
+            }
+            if let index = packs.firstIndex(where: { $0.sourceID == file.sourceID }) {
+                packs[index] = replacement
+            } else {
+                guard packs.count < Self.maximumPacks else { throw SQLiteGTFSFailure.limitExceeded }
+                packs.append(replacement)
+            }
+        }
+        return packs
+    }
+
+    private static func sourcePacks(in databaseURL: URL) throws -> [GTFSSourcePack] {
         let database = try SQLiteDatabase(readOnlyURL: databaseURL)
         _ = try Self.validatedOnce(database, at: databaseURL)
         let calendar = Self.serviceCalendar(timeZone: TimeZone(identifier: "Europe/Rome") ?? .current)
@@ -111,6 +168,15 @@ public struct SQLiteGTFSJourneyRepository: JourneyRepository, Sendable {
     /// The catalogue station identities that at least one stop of the index is bound to: the
     /// only stations for which a search can find trains at all.
     public func coveredCatalogStationIDs() throws -> Set<String> {
+        var identifiers = try Self.coveredCatalogStationIDs(in: databaseURL)
+        for file in foreignFiles {
+            identifiers.formUnion(try Self.coveredCatalogStationIDs(in: file.url))
+            guard identifiers.count <= Self.maximumCoveredStations else { throw SQLiteGTFSFailure.limitExceeded }
+        }
+        return identifiers
+    }
+
+    private static func coveredCatalogStationIDs(in databaseURL: URL) throws -> Set<String> {
         let database = try SQLiteDatabase(readOnlyURL: databaseURL)
         _ = try Self.validatedOnce(database, at: databaseURL)
         let statement = try database.statement(
@@ -128,7 +194,7 @@ public struct SQLiteGTFSJourneyRepository: JourneyRepository, Sendable {
 
     public func journeys(for query: JourneyQuery) async -> JourneyResult {
         do {
-            return .available(try Self.load(databaseURL: databaseURL, query: query))
+            return .available(try Self.loadAll(databaseURL: databaseURL, foreignFiles: foreignFiles, query: query))
         } catch SQLiteGTFSFailure.noRoute {
             return .unavailable(.noJourney)
         } catch SQLiteGTFSFailure.scheduleExpired {
@@ -138,8 +204,97 @@ public struct SQLiteGTFSJourneyRepository: JourneyRepository, Sendable {
         }
     }
 
-    private static func load(databaseURL: URL, query: JourneyQuery) throws -> JourneySnapshot {
+    /// The first trains of the base index and of every installed foreign index, merged by time
+    /// and bounded at `maximumResults`. Only the base index alone fails as it always did; with
+    /// foreign files, a file that cannot answer is left out while another gives trains, and the
+    /// search fails only when none does: a damaged file first, then an ended timetable, else no train.
+    private static func loadAll(databaseURL: URL, foreignFiles: [ForeignFile], query: JourneyQuery) throws -> JourneySnapshot {
+        var selections: [JourneySelection] = []
+        var failures: [any Error] = []
+        do {
+            selections.append(try load(databaseURL: databaseURL, query: query, excluded: foreignFiles.map(\.sourceID)))
+        } catch {
+            guard !foreignFiles.isEmpty else { throw error }
+            failures.append(error)
+        }
+        for file in foreignFiles {
+            do {
+                selections.append(try load(databaseURL: file.url, query: query, excluded: []))
+            } catch {
+                failures.append(error)
+            }
+        }
+        var candidates: [Candidate] = []
+        var observedAt: Date?
+        for selection in selections {
+            candidates += selection.candidates
+            observedAt = min(observedAt ?? selection.observedAt, selection.observedAt)
+        }
+        let selected = firstResults(candidates)
+        guard !selected.isEmpty, let sourceObservedAt = observedAt else { throw combinedFailure(failures) }
+
+        let sourceLabel = boundedSourceLabel(selected.map(\.attribution).uniqued())
+        guard !sourceLabel.isEmpty else { throw SQLiteGTFSFailure.invalidData }
+        let generatedAt = Date()
+        return JourneySnapshot(
+            query: query,
+            generatedAt: generatedAt,
+            expiresAt: generatedAt.addingTimeInterval(12 * 60 * 60),
+            operationalState: .programmed,
+            provenance: DataProvenance(
+                producer: .iosApp,
+                nature: .programmed,
+                sourceLabel: sourceLabel,
+                observedAt: sourceObservedAt,
+                freshness: .unknown,
+                confidence: .staticOnly
+            ),
+            services: selected.map(\.service)
+        )
+    }
+
+    /// Why no file gave a train: a damaged or unreadable file (the index is opened again), then
+    /// an ended timetable, else no train.
+    private static func combinedFailure(_ failures: [any Error]) -> any Error {
+        var expired = false
+        for failure in failures {
+            guard let known = failure as? SQLiteGTFSFailure else { return failure }
+            switch known {
+            case .noRoute:
+                continue
+            case .scheduleExpired:
+                expired = true
+            case .invalidDatabase, .invalidSchema, .invalidData, .limitExceeded:
+                return known
+            }
+        }
+        return expired ? SQLiteGTFSFailure.scheduleExpired : SQLiteGTFSFailure.noRoute
+    }
+
+    /// The departure order of the results, then the number, then the identifier.
+    private static func precedes(_ first: Candidate, _ second: Candidate) -> Bool {
+        if first.departure != second.departure { return first.departure < second.departure }
+        if first.number != second.number { return first.number < second.number }
+        return first.id < second.id
+    }
+
+    /// The first `maximumResults` trains in departure order, each once.
+    private static func firstResults(_ candidates: [Candidate]) -> [Candidate] {
+        let sorted = candidates.sorted(by: precedes)
+        var result: [Candidate] = []
+        for candidate in sorted {
+            guard result.count < maximumResults else { break }
+            guard !result.contains(where: { $0.id == candidate.id }) else { continue }
+            result.append(candidate)
+        }
+        return result
+    }
+
+    /// The first trains of one file, with the day its source was generated. `excluded`: the packs
+    /// whose trips another file answers for (the base index with full foreign timetables installed).
+    private static func load(databaseURL: URL, query: JourneyQuery, excluded: [String]) throws -> JourneySelection {
         let database = try SQLiteDatabase(readOnlyURL: databaseURL)
+        database.excludedSourceIDs = excluded
         let metadata = try validatedOnce(database, at: databaseURL)
         guard let sourceGeneratedAt = metadata["source_generated_at"],
               let sourceObservedAt = parseSourceDate(sourceGeneratedAt)
@@ -175,18 +330,11 @@ public struct SQLiteGTFSJourneyRepository: JourneyRepository, Sendable {
         }
 
         let upperBound = query.departure.addingTimeInterval(24 * 60 * 60)
-        let selected = candidates
-            .filter { $0.departure >= query.departure && $0.departure <= upperBound }
-            .sorted {
-                if $0.departure != $1.departure { return $0.departure < $1.departure }
-                if $0.number != $1.number { return $0.number < $1.number }
-                return $0.id < $1.id
-            }
-            .reduce(into: [Candidate]()) { result, candidate in
-                guard result.count < maximumResults else { return }
-                guard !result.contains(where: { $0.id == candidate.id }) else { return }
-                result.append(candidate)
-            }
+        var inWindow: [Candidate] = []
+        for candidate in candidates where candidate.departure >= query.departure && candidate.departure <= upperBound {
+            inWindow.append(candidate)
+        }
+        let selected = firstResults(inWindow)
         guard !selected.isEmpty else {
             if try packsEnded(
                 before: query.departure,
@@ -199,25 +347,7 @@ public struct SQLiteGTFSJourneyRepository: JourneyRepository, Sendable {
             }
             throw SQLiteGTFSFailure.noRoute
         }
-
-        let sourceLabel = boundedSourceLabel(selected.map(\.attribution).uniqued())
-        guard !sourceLabel.isEmpty else { throw SQLiteGTFSFailure.invalidData }
-        let generatedAt = Date()
-        return JourneySnapshot(
-            query: query,
-            generatedAt: generatedAt,
-            expiresAt: generatedAt.addingTimeInterval(12 * 60 * 60),
-            operationalState: .programmed,
-            provenance: DataProvenance(
-                producer: .iosApp,
-                nature: .programmed,
-                sourceLabel: sourceLabel,
-                observedAt: sourceObservedAt,
-                freshness: .unknown,
-                confidence: .staticOnly
-            ),
-            services: selected.map(\.service)
-        )
+        return JourneySelection(candidates: selected, observedAt: sourceObservedAt)
     }
 
     private static func validate(_ database: SQLiteDatabase) throws -> [String: String] {
@@ -300,9 +430,11 @@ public struct SQLiteGTFSJourneyRepository: JourneyRepository, Sendable {
         let statement = try database.statement(
             """
             SELECT COALESCE(MAX(p.last_service_date), 0) FROM pack AS p
-            WHERE EXISTS (SELECT 1 FROM trip AS t WHERE t.pack_id = p.id)
+            WHERE EXISTS (SELECT 1 FROM trip AS t WHERE t.pack_id = p.id)\(database.excludedPacksClause("p.source_id"))
             """
         )
+        var binding: Int32 = 1
+        try database.bindExcludedPacks(statement, from: &binding)
         guard try statement.step() else { return false }
         let lastServiceDate = statement.int(at: 0)
         guard lastServiceDate > 0 else { return false }
@@ -325,12 +457,13 @@ public struct SQLiteGTFSJourneyRepository: JourneyRepository, Sendable {
             """
             SELECT COALESCE(MAX(p.last_service_date), 0) FROM pack AS p
             WHERE p.id IN (SELECT pack_id FROM stop WHERE id IN (\(originPlaceholders)))
-              AND p.id IN (SELECT pack_id FROM stop WHERE id IN (\(destinationPlaceholders)))
+              AND p.id IN (SELECT pack_id FROM stop WHERE id IN (\(destinationPlaceholders)))\(database.excludedPacksClause("p.source_id"))
             """
         )
         var binding: Int32 = 1
         for id in originIDs { try statement.bind(id, at: binding); binding += 1 }
         for id in destinationIDs { try statement.bind(id, at: binding); binding += 1 }
+        try database.bindExcludedPacks(statement, from: &binding)
         guard try statement.step() else { return false }
         let lastServiceDate = statement.int(at: 0)
         guard lastServiceDate > 0 else { return false }
@@ -370,7 +503,7 @@ public struct SQLiteGTFSJourneyRepository: JourneyRepository, Sendable {
               AND origin_time.pickup_type = 0
               AND destination_time.drop_off_type = 0
               AND a.timezone = ?
-              AND COALESCE(origin_time.departure_seconds, origin_time.arrival_seconds) BETWEEN 0 AND ?
+              AND COALESCE(origin_time.departure_seconds, origin_time.arrival_seconds) BETWEEN 0 AND ?\(database.excludedPacksClause("p.source_id"))
             ORDER BY COALESCE(origin_time.departure_seconds, origin_time.arrival_seconds), t.id,
                      destination_time.stop_sequence
             LIMIT ?
@@ -381,6 +514,7 @@ public struct SQLiteGTFSJourneyRepository: JourneyRepository, Sendable {
         for id in destinationIDs { try statement.bind(id, at: binding); binding += 1 }
         try statement.bind(agencyTimeZone, at: binding); binding += 1
         try statement.bind(Int64(maximumGTFSSeconds), at: binding); binding += 1
+        try database.bindExcludedPacks(statement, from: &binding)
         try statement.bind(Int64(maximumCandidateRows + 1), at: binding)
 
         var candidates: [Candidate] = []
@@ -555,6 +689,12 @@ public struct SQLiteGTFSJourneyRepository: JourneyRepository, Sendable {
         let attribution: String
         let service: TrainService
     }
+
+    /// The first trains of one file and the day its source was generated.
+    private struct JourneySelection {
+        let candidates: [Candidate]
+        let observedAt: Date
+    }
 }
 
 // MARK: - «Partenze»
@@ -575,7 +715,7 @@ extension SQLiteGTFSJourneyRepository: StationBoardProvider {
     /// packs (tools/build_ios_gtfs_schedule.py, RAIL_ROUTE_TYPES), as the feeds publish them.
     public func departures(for query: StationBoardQuery) async -> StationBoardResult {
         do {
-            return .available(try Self.loadBoard(databaseURL: databaseURL, query: query))
+            return .available(try Self.loadBoards(databaseURL: databaseURL, foreignFiles: foreignFiles, query: query))
         } catch SQLiteGTFSFailure.noRoute {
             return .unavailable(.noJourney)
         } catch SQLiteGTFSFailure.scheduleExpired {
@@ -585,8 +725,70 @@ extension SQLiteGTFSJourneyRepository: StationBoardProvider {
         }
     }
 
-    private static func loadBoard(databaseURL: URL, query: StationBoardQuery) throws -> StationBoardPage {
+    /// The board of the base index and of every installed foreign index, merged by departure:
+    /// the first `query.limit` trains, «primo domani» only when none is listed, the feeds of the
+    /// trains shown. As for the planner, only the base index alone fails as it always did; with
+    /// foreign files a file that cannot answer is left out while another answers (one whose
+    /// timetables of the station have ended then says so with `someTimetablesEnded`).
+    private static func loadBoards(databaseURL: URL, foreignFiles: [ForeignFile], query: StationBoardQuery) throws -> StationBoardPage {
+        var selections: [BoardSelection] = []
+        var failures: [any Error] = []
+        do {
+            selections.append(try loadBoard(databaseURL: databaseURL, query: query, excluded: foreignFiles.map(\.sourceID)))
+        } catch {
+            guard !foreignFiles.isEmpty else { throw error }
+            failures.append(error)
+        }
+        for file in foreignFiles {
+            do {
+                selections.append(try loadBoard(databaseURL: file.url, query: query, excluded: []))
+            } catch {
+                failures.append(error)
+            }
+        }
+        guard !selections.isEmpty else { throw combinedFailure(failures) }
+
+        var candidates: [StationBoardCandidate] = []
+        var someEnded = false
+        for selection in selections {
+            candidates += selection.ordered
+            if selection.someEnded { someEnded = true }
+        }
+        for failure in failures where (failure as? SQLiteGTFSFailure) == .scheduleExpired {
+            someEnded = true
+        }
+        let sorted = candidates.sorted { $0.entry.cursor < $1.entry.cursor }
+        var seen = Set<String>()
+        var ordered: [StationBoardCandidate] = []
+        for candidate in sorted where seen.insert(candidate.entry.id).inserted {
+            ordered.append(candidate)
+        }
+        let listed = Array(ordered.prefix(query.limit))
+        var firstNextDay: StationBoardCandidate?
+        if listed.isEmpty {
+            for selection in selections {
+                guard let candidate = selection.firstNextDay else { continue }
+                if firstNextDay.map({ candidate.entry.cursor < $0.entry.cursor }) ?? true {
+                    firstNextDay = candidate
+                }
+            }
+        }
+        let shown: [StationBoardCandidate] = listed + (firstNextDay.map { [$0] } ?? [])
+        return StationBoardPage(
+            query: query,
+            departures: listed.map(\.entry),
+            hasMore: ordered.count > query.limit,
+            firstDepartureNextDay: firstNextDay?.entry,
+            attributions: shown.map(\.attribution).uniqued().map { String($0.prefix(96)) },
+            someTimetablesEnded: someEnded
+        )
+    }
+
+    /// The trains of one file from `query.from`, in departure order, each once; its first train of
+    /// the next service day when none is left today; whether a feed of the station has ended.
+    private static func loadBoard(databaseURL: URL, query: StationBoardQuery, excluded: [String]) throws -> BoardSelection {
         let database = try SQLiteDatabase(readOnlyURL: databaseURL)
+        database.excludedSourceIDs = excluded
         _ = try validatedOnce(database, at: databaseURL)
         let timeZones = try agencyTimeZones(database)
         let referenceTimeZone = timeZones.first ?? TimeZone(identifier: "Europe/Rome") ?? .current
@@ -640,17 +842,9 @@ extension SQLiteGTFSJourneyRepository: StationBoardProvider {
                 )
             }
         }
-        let shown: [StationBoardCandidate] = listed + (firstNextDay.map { [$0] } ?? [])
         // Decided per feed: one ended while another goes on still says why trains are missing.
         let someEnded = try stationPackEnded(before: query.from, stopIDs: stopIDs, timeZone: referenceTimeZone, database: database)
-        return StationBoardPage(
-            query: query,
-            departures: listed.map(\.entry),
-            hasMore: ordered.count > query.limit,
-            firstDepartureNextDay: firstNextDay?.entry,
-            attributions: shown.map(\.attribution).uniqued().map { String($0.prefix(96)) },
-            someTimetablesEnded: someEnded
-        )
+        return BoardSelection(ordered: ordered, firstNextDay: firstNextDay, someEnded: someEnded)
     }
 
     /// «Primo domani alle …»: the first train of the service day after today's, over every agency
@@ -729,7 +923,7 @@ extension SQLiteGTFSJourneyRepository: StationBoardProvider {
             WHERE board_time.stop_id IN (\(placeholders))
               AND board_time.pickup_type = 0
               AND a.timezone = ?
-              AND board_time.departure_seconds BETWEEN ? AND ?
+              AND board_time.departure_seconds BETWEEN ? AND ?\(database.excludedPacksClause("p.source_id"))
             ORDER BY board_time.departure_seconds, t.id, board_time.stop_sequence
             LIMIT ?
             """
@@ -739,6 +933,7 @@ extension SQLiteGTFSJourneyRepository: StationBoardProvider {
         try statement.bind(agencyTimeZone, at: binding); binding += 1
         try statement.bind(lowerSeconds, at: binding); binding += 1
         try statement.bind(upperSeconds, at: binding); binding += 1
+        try database.bindExcludedPacks(statement, from: &binding)
         try statement.bind(Int64(maximumCandidateRows + 1), at: binding)
 
         let boardStops = Set(stopIDs)
@@ -872,11 +1067,12 @@ extension SQLiteGTFSJourneyRepository: StationBoardProvider {
         let statement = try database.statement(
             """
             SELECT COALESCE(MAX(p.last_service_date), 0) FROM pack AS p
-            WHERE p.id IN (SELECT pack_id FROM stop WHERE id IN (\(placeholders)))
+            WHERE p.id IN (SELECT pack_id FROM stop WHERE id IN (\(placeholders)))\(database.excludedPacksClause("p.source_id"))
             """
         )
         var binding: Int32 = 1
         for id in stopIDs { try statement.bind(id, at: binding); binding += 1 }
+        try database.bindExcludedPacks(statement, from: &binding)
         guard try statement.step() else { return false }
         let lastServiceDate = statement.int(at: 0)
         guard lastServiceDate > 0 else { return false }
@@ -897,13 +1093,14 @@ extension SQLiteGTFSJourneyRepository: StationBoardProvider {
             """
             SELECT COUNT(*) FROM pack AS p
             WHERE p.id IN (SELECT pack_id FROM stop WHERE id IN (\(placeholders)))
-              AND p.last_service_date > 0 AND p.last_service_date < ?
+              AND p.last_service_date > 0 AND p.last_service_date < ?\(database.excludedPacksClause("p.source_id"))
             """
         )
         let requestedDay = Int64(encodedDate(date, calendar: serviceCalendar(timeZone: timeZone)))
         var binding: Int32 = 1
         for id in stopIDs { try statement.bind(id, at: binding); binding += 1 }
-        try statement.bind(requestedDay, at: binding)
+        try statement.bind(requestedDay, at: binding); binding += 1
+        try database.bindExcludedPacks(statement, from: &binding)
         guard try statement.step() else { return false }
         return statement.int(at: 0) > 0
     }
@@ -952,6 +1149,19 @@ private final class ValidatedIndexCache: @unchecked Sendable {
     }
 }
 
+/// An installed full foreign timetable: its source and its file.
+private struct ForeignFile: Sendable {
+    let sourceID: String
+    let url: URL
+}
+
+/// The board of one file before the files are merged.
+private struct BoardSelection {
+    let ordered: [StationBoardCandidate]
+    let firstNextDay: StationBoardCandidate?
+    let someEnded: Bool
+}
+
 /// A train of a service day read for «Partenze», with its GTFS second and its feed.
 private struct StationBoardCandidate {
     let entry: StationBoardDeparture
@@ -991,6 +1201,9 @@ private enum SQLiteGTFSFailure: Error {
 
 private final class SQLiteDatabase {
     private var handle: OpaquePointer?
+    /// The packs another file answers for (`foreignDatabaseURLs`): the queries of the planner and
+    /// of «Partenze» skip them. Empty for every file but the base index with foreign files installed.
+    var excludedSourceIDs: [String] = []
 
     init(readOnlyURL: URL) throws {
         guard readOnlyURL.isFileURL else { throw SQLiteGTFSFailure.invalidDatabase }
@@ -1016,6 +1229,22 @@ private final class SQLiteDatabase {
     func statement(_ sql: String) throws -> SQLiteStatement {
         guard let handle else { throw SQLiteGTFSFailure.invalidDatabase }
         return try SQLiteStatement(database: handle, sql: sql)
+    }
+
+    /// « AND <column> NOT IN (?, …)» for `excludedSourceIDs`, or nothing: without foreign files
+    /// every query is the one it always was.
+    func excludedPacksClause(_ column: String) -> String {
+        guard !excludedSourceIDs.isEmpty else { return "" }
+        let placeholders = Array(repeating: "?", count: excludedSourceIDs.count).joined(separator: ",")
+        return "\n              AND \(column) NOT IN (\(placeholders))"
+    }
+
+    /// Binds `excludedSourceIDs` from `binding` on, in the order of `excludedPacksClause`.
+    func bindExcludedPacks(_ statement: SQLiteStatement, from binding: inout Int32) throws {
+        for sourceID in excludedSourceIDs {
+            try statement.bind(sourceID, at: binding)
+            binding += 1
+        }
     }
 
     func scalarInt(_ sql: String) throws -> Int64 {

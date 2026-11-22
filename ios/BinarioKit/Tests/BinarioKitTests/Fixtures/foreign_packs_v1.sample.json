@@ -1,0 +1,93 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-11-22",
+  "repository": "fz1101hub/binario",
+  "borderZone": {
+    "radiusKm": 35,
+    "distance": "haversine-6371.0088km-stop-or-parent",
+    "anchors": "catalogue trenitaliaLocationId ^83 with coordinates",
+    "anchorCount": 2949,
+    "catalogueSha256": "68462bf3991f1299ae6d17471d75090e7cf50d6bec40f1072e349773c0b3fc35",
+    "tripRule": "whole-trips-touching-zone"
+  },
+  "packs": [
+    {
+      "sourceId": "ch-otd-gtfs",
+      "country": "CH",
+      "lastServiceDate": "2026-12-12",
+      "fullServiceUntil": "2026-12-12",
+      "sourceArchiveSha256": "8b00501114882e82f246bc89eeced19b5af3f1a2c50622750d3b458bebf070d7",
+      "servedStationIds": [
+        "TEST-DOMODOSSOLA",
+        "TEST-BRIG",
+        "TEST-BERN"
+      ],
+      "zoneStationIds": [
+        "TEST-DOMODOSSOLA",
+        "TEST-BRIG",
+        "TEST-BERN"
+      ],
+      "borderOnly": false,
+      "android": null,
+      "ios": null
+    },
+    {
+      "sourceId": "oebb-gtfs",
+      "country": "AT",
+      "lastServiceDate": "2026-12-12",
+      "fullServiceUntil": "2026-12-12",
+      "sourceArchiveSha256": "9cf9f892ecabda082ce0b8ae39186ca5db23175939f69012e15c437ab3fd2328",
+      "servedStationIds": [
+        "TEST-BRENNERO",
+        "TEST-INNSBRUCK",
+        "TEST-SALZBURG",
+        "TEST-WIEN"
+      ],
+      "zoneStationIds": [
+        "TEST-BRENNERO",
+        "TEST-INNSBRUCK"
+      ],
+      "borderOnly": true,
+      "android": {
+        "tag": "gtfs-full-oebb-gtfs-2a052357482a",
+        "asset": "oebb-gtfs.zip",
+        "url": "https://github.com/fz1101hub/binario/releases/download/gtfs-full-oebb-gtfs-2a052357482a/oebb-gtfs.zip",
+        "sizeBytes": 1409875,
+        "sha256": "2a052357482a6fd9cd1f98ad0ab827aa5aea17dac055bb7eb766c1d441b02762",
+        "contentSha256": "ed7002b439e9ac845f22357d822bac1444730fbdb6016d3ec9432297b9ec9f73"
+      },
+      "ios": {
+        "tag": "gtfs-ios-oebb-gtfs-8e7ed242109b",
+        "asset": "oebb-gtfs.sqlite.zlib",
+        "url": "https://github.com/fz1101hub/binario/releases/download/gtfs-ios-oebb-gtfs-8e7ed242109b/oebb-gtfs.sqlite.zlib",
+        "sizeBytes": 1400000,
+        "sha256": "8e7ed242109be3ff9301d59428df697b1d3d8657a32659fe86fbb8ef95b5865e",
+        "database": {
+          "sha256": "fe14f89f7a96b635b46be15b86482c95ec6a2cc92201db7fd1333c6843217a56",
+          "sizeBytes": 5000000,
+          "userVersion": 2,
+          "applicationId": 1112426324
+        },
+        "inputFingerprintSha256": "31fc74b8b61777bee8b537aea02b5b3f597848e470a9e66dd79a7606ce675409"
+      }
+    },
+    {
+      "sourceId": "sncf-gtfs",
+      "country": "FR",
+      "lastServiceDate": "2026-12-12",
+      "fullServiceUntil": "2026-12-12",
+      "sourceArchiveSha256": "17ebf4011a8085b1c4c49b7a0298b36341d555f0810c44c93734dc2ca62e9ebc",
+      "servedStationIds": [
+        "TEST-VENTIMIGLIA",
+        "TEST-NICE"
+      ],
+      "zoneStationIds": [
+        "TEST-VENTIMIGLIA",
+        "TEST-NICE"
+      ],
+      "borderOnly": false,
+      "android": null,
+      "ios": null
+    }
+  ]
+}
