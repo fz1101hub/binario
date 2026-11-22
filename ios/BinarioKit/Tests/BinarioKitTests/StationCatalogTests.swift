@@ -8,13 +8,18 @@ final class StationCatalogTests: XCTestCase {
             .appendingPathComponent("app/src/main/assets/stations/curated_it_rail_stations.json"))
         let catalog = try CuratedStationCatalog(data: data)
 
-        XCTAssertEqual(catalog.stationCount, 5_239)
+        XCTAssertEqual(catalog.stationCount, 5_249)
         XCTAssertFalse(catalog.operationalData)
         XCTAssertEqual(catalog.station(id: "S08328")?.name, "Appiano Proba Petronia")
         XCTAssertEqual(catalog.station(id: "NC001752")?.name, "Boscotrecase - Porta Di Accesso Al Cratere Del Vesuvio")
         XCTAssertEqual(catalog.station(id: "NC001477")?.name, "Morciano - Barbarano - Castrignano - Giuliano")
         // A doubled space in the asset is read on single spaces, so every station can be searched.
         XCTAssertEqual(catalog.station(id: "NC001521")?.name, "Ercolano - Miglio D'Oro")
+        // The Renon railway: stations without codes, named as the bundled STA pack names them.
+        XCTAssertEqual(catalog.station(id: "NC001811")?.name, "Soprabolzano")
+        XCTAssertEqual(catalog.station(id: "NC001819")?.name, "Collalbo")
+        XCTAssertEqual(catalog.search("soprabolzano").first?.id, "NC001811")
+        XCTAssertEqual(catalog.search("Collalbo").first?.id, "NC001819")
         for station in catalog.stations {
             XCTAssertNoThrow(try JourneyModelValidator.identity(StationIdentity(station)), station.id)
         }
@@ -41,7 +46,7 @@ final class StationCatalogTests: XCTestCase {
         guard case let .available(catalog) = state else {
             return XCTFail("Expected available catalog")
         }
-        XCTAssertEqual(catalog.stationCount, 5_239)
+        XCTAssertEqual(catalog.stationCount, 5_249)
     }
 
     func testAsyncLoaderFailsClosedForInvalidData() async {

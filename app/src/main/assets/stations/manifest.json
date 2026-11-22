@@ -6,15 +6,15 @@
       "assetPath": "stations/curated_it_rail_stations.json",
       "kind": "curated-rail-station-catalog",
       "source": "Database curato fornito dall’utente",
-      "provenance": "Da confermare dal titolare: il repository non registra da quali fonti derivano nomi, alias e coordinate di stazioni_ferroviarie_curato_v4 (l'asset OpenStreetMap usato in precedenza è stato rimosso nel commit 9268bb3; audit A7-09)",
+      "provenance": "Da confermare dal titolare: il repository non registra da quali fonti derivano nomi, alias e coordinate di stazioni_ferroviarie_curato_v4 (l'asset OpenStreetMap usato in precedenza è stato rimosso nel commit 9268bb3; audit A7-09). Le dieci fermate della ferrovia del Renon (NC001810–NC001819) sono aggiunte all'asset con nome e posizione del pack STA incluso (alto-adige-sta-gtfs, CC0 1.0)",
       "licence": "Da confermare dal titolare",
       "sourceDatabaseSha256": "2db59242ec45816a73a37c4748dc400dafaba762b6df3105673f63a44c882efe",
       "sourceCreatedAtUtc": "2026-08-16T01:21:36.343197+00:00",
-      "stationCount": 5239,
+      "stationCount": 5249,
       "railwayCodes": 3430,
       "uniqueTrenitaliaLocationIds": 3047,
       "ambiguousTrenitaliaLocationIdsExcluded": 40,
-      "assetSha256": "7a309d97494f0ff85c1fe5bd57059848f6c87c900139cd9a3ce4d65bf509ed7f",
+      "assetSha256": "8ff7dfa1bf2985b349ce24a1b105b315e24a51d72a29001af13382ceedf67328",
       "operationalData": false,
       "notes": "Catalogo canonico unico per ricerca, tratte, preferiti, widget, stazioni vicine e riconciliazione di identità. I codici Trenitalia ambigui sono esclusi dal mapping automatico; l’asset non abilita né determina dati live."
     }
