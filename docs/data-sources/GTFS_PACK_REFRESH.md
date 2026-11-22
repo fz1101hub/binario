@@ -140,7 +140,8 @@ Per cambiare il raggio: una riga in `tools/foreign_pack_rules.py`, poi il comand
 **Registro.** `published.json` si può solo estendere. Il job `gtfs-assets` lo confronta con il commit padre (la base di una pull request) con `build_foreign_packs.py --check --ledger-base`, e ogni voce aggiunta deve essere un pin attuale, perché il workflow pubblica solo i pin del commit spinto. Se sul ramo una seconda rigenerazione ha sostituito un pin, rigenerare indicando il registro della base:
 
 ```sh
-git show origin/main:data/gtfs-foreign/published.json > /tmp/published-base.json
+git show origin/main:data/gtfs-foreign/published.json > /tmp/published-base.json \
+  || printf '{"schemaVersion": 1, "repository": "fz1101hub/binario", "artifacts": []}\n' > /tmp/published-base.json
 python3 -I tools/build_foreign_packs.py --ledger-base /tmp/published-base.json
 ```
 
