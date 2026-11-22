@@ -101,7 +101,7 @@ object EmbeddedGtfsPacks {
         EmbeddedGtfsPack(SourceId("alto-adige-sta-gtfs"), "gtfs/alto-adige-sta-gtfs.zip", LocalDate.of(2026, 12, 12)),
         EmbeddedGtfsPack(SourceId("arst-gtfs"), "gtfs/arst-gtfs.zip", LocalDate.of(2026, 12, 31)),
         EmbeddedGtfsPack(SourceId("ch-otd-gtfs"), "gtfs/ch-otd-gtfs.zip", LocalDate.of(2026, 12, 12)),
-        EmbeddedGtfsPack(SourceId("eav-gtfs"), "gtfs/eav-gtfs.zip", LocalDate.of(2026, 12, 31)),
+        EmbeddedGtfsPack(SourceId("eav-gtfs"), "gtfs/eav-gtfs.zip", LocalDate.of(2027, 12, 31)),
         EmbeddedGtfsPack(
             SourceId("italo-gtfs"), "gtfs/italo-gtfs.zip", LocalDate.of(2026, 12, 12),
             stopCodeScheme = GtfsStopCodeScheme.ITALO_STATION_CODE, busRoutesAreScheduledCoaches = true, itineraryCopies = true

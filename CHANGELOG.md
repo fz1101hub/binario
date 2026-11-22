@@ -1,5 +1,13 @@
 # Changelog
 
+## In sviluppo — EAV con l'orario 2027 e dipendenze Alexa
+
+- **EAV** (Circumvesuviana e le altre linee EAV): l'orario incluso arriva ora al 31 dicembre 2027 invece del 31 dicembre 2026 (718 corse).
+  - Il nuovo file dell'editore teneva viva una corsa al giorno fino al 2030, e il controllo del refresh lo rifiutava.
+  - Per EAV soltanto, la costruzione del pack taglia ora quella coda all'ultimo giorno con l'orario completo e lo dichiara nel pack (`serviceClippedAfter`, verificato da `--check`).
+  - La regola del taglio è una sola, condivisa dalla costruzione e dal refresh; per tutti gli altri pack nulla cambia.
+- **Alexa**: `qs` 6.16.1, `ip-address` 10.7.4 e Vitest 4.1.12 chiudono le 4 advisory moderate del backend (#99).
+
 ## In sviluppo — Aggiornamento del 21 novembre
 
 - **Orari**:
