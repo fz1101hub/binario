@@ -228,8 +228,10 @@ class EmbeddedGtfsJourneyProvider internal constructor(
                 currentCoroutineContext().ensureActive()
                 if (pack.isUrban && !urbanCandidate(pack, origin, destination)) continue
                 val stops = try { packStops(pack, resolver) } catch (_: GtfsCompactIndexLimitException) { continue }
-                if (!originKnown) originKnown = stops.wheelchairKnown(stops.accessFor(origin, planner).keys)
-                if (!destinationKnown) destinationKnown = stops.wheelchairKnown(stops.accessFor(destination, planner).keys)
+                if (!originKnown && pack.coversEnd(origin.catalogueId)) originKnown = stops.wheelchairKnown(stops.accessFor(origin, planner).keys)
+                if (!destinationKnown && pack.coversEnd(destination.catalogueId)) {
+                    destinationKnown = stops.wheelchairKnown(stops.accessFor(destination, planner).keys)
+                }
                 if (originKnown && destinationKnown) return@withContext true
             }
             false
@@ -324,6 +326,8 @@ class EmbeddedGtfsJourneyProvider internal constructor(
             currentCoroutineContext().ensureActive()
             if (pack.isUrban) continue
             if (pack.lastServiceDate?.isBefore(date) == true) continue
+            // A border subset says nothing complete about a station outside its zone ("Ultimo di oggi" there).
+            if (!pack.coversEnd(origin.catalogueId) || (destination != null && !pack.coversEnd(destination.catalogueId))) continue
             val stops = packStops(pack, resolver)
             val originNodes = stops.nodesFor(origin)
             if (originNodes.isEmpty()) continue
@@ -493,6 +497,7 @@ class EmbeddedGtfsJourneyProvider internal constructor(
             if (pack.isUrban && from.gtfsStop?.first != pack.sourceId.value &&
                 (urbanWalkMeters <= 0 || !urbanCandidate(pack, from, to ?: from))
             ) continue
+            if (!pack.coversEnd(from.catalogueId) || (to != null && !pack.coversEnd(to.catalogueId))) continue
             try {
                 val stops = packStops(pack, resolver)
                 val originNodes = if (pack.isUrban) stops.accessFor(from, walks) else stops.nodesFor(from).associateWith { 0 }
@@ -508,6 +513,11 @@ class EmbeddedGtfsJourneyProvider internal constructor(
                 continue
             }
         }
+    }
+
+    /** Diagnostics for tests: the catalogue stations (app ids) among the transfer points of pack [sourceId]. */
+    internal suspend fun catalogueStationsForTest(sourceId: SourceId): Set<String> = withContext(dispatcher) {
+        packStops(packs.first { it.sourceId == sourceId }, resolver()).catalogueStations
     }
 
     /** Diagnostics for tests: cached service days and their approximate size. */
@@ -617,7 +627,8 @@ class EmbeddedGtfsJourneyProvider internal constructor(
 
     /**
      * The packs that know [origin] or [destination] (their own stops, or stops a short walk away), in registry order,
-     * and whether a pack over its reading limits had to be left out.
+     * and whether a pack over its reading limits had to be left out. A foreign pack read as its border subset
+     * ([EmbeddedGtfsPack.borderZone]) covers an end only at one of its zone stations: elsewhere its trains are partial.
      */
     private suspend fun packCoverage(
         origin: Endpoint,
@@ -637,8 +648,8 @@ class EmbeddedGtfsJourneyProvider internal constructor(
                 unreadable = true
                 continue
             }
-            val originNodes = stops.accessFor(origin, planner)
-            val destinationNodes = stops.accessFor(destination, planner)
+            val originNodes = if (pack.coversEnd(origin.catalogueId)) stops.accessFor(origin, planner) else emptyMap()
+            val destinationNodes = if (pack.coversEnd(destination.catalogueId)) stops.accessFor(destination, planner) else emptyMap()
             if (originNodes.isNotEmpty() || destinationNodes.isNotEmpty()) {
                 coverage += PackCoverage(pack, stops, originNodes, destinationNodes)
             }
