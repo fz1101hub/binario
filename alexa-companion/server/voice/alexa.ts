@@ -1,5 +1,5 @@
 import express, { type Express, type NextFunction, type Request, type Response } from "express";
-import { parse as parseCookieHeader } from "cookie";
+import { parseCookie as parseCookieHeader } from "cookie";
 import { createAlexaWebhookHandler } from "./alexaWebhook";
 import {
   getAccountLinkingAccessToken,
