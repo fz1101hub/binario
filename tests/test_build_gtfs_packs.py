@@ -987,6 +987,7 @@ def write_trip_feed(
     trips: list[tuple[str, str, str, list[tuple[str, str, str]]]],
     *,
     calendar: str = "WEEK,1,1,1,1,1,1,1,20261102,20261213\nMON,1,0,0,0,0,0,0,20261102,20261213\n",
+    calendar_dates: str = "",
 ) -> None:
     """A small railway feed: ``trips`` are (trip_id, number, service_id, [(stop, arrival, departure), ...])."""
     stops = sorted({stop for _, _, _, calls in trips for stop, _, _ in calls})
@@ -1001,7 +1002,7 @@ def write_trip_feed(
             f"{trip_id},{arrival}:00,{departure}:00,{stop},{sequence}\n"
             for trip_id, _, _, calls in trips for sequence, (stop, arrival, departure) in enumerate(calls, 1)))
         archive.writestr("calendar.txt", CALENDAR_HEADER + calendar)
-        archive.writestr("calendar_dates.txt", "service_id,date,exception_type\n")
+        archive.writestr("calendar_dates.txt", "service_id,date,exception_type\n" + calendar_dates)
 
 
 def filtered(source: Path, output: Path, source_id: str) -> tuple[dict[str, list[dict[str, str]]], dict[str, object]]:
@@ -1318,6 +1319,132 @@ class ExpiredTripsTest(unittest.TestCase):
         for path in sorted(ASSETS.glob("*.zip")):
             with self.subTest(pack=path.name), zipfile.ZipFile(path) as archive:
                 self.assertIn("tripsRunFrom", json.loads(archive.read(builder.FILTER_MANIFEST_MEMBER)))
+
+
+class ThinTailClipTest(unittest.TestCase):
+    """EAV, November 2026: full timetable to the end of 2027, then one trip a day to 2030; the weekly refresh refused
+    the pack (``thin_tail`` of tools/apply_ci_gtfs_refresh.py).  The reviewed sources are clipped at their last full
+    day instead."""
+
+    FULL = [(f"F{index}", str(index), "FULL", [("X", "08:00", "08:00"), ("Y", "09:00", "09:00")]) for index in range(1, 9)]
+    TAIL = [
+        ("T1", "90", "TAIL", [("X", "12:00", "12:00"), ("Y", "13:00", "13:00")]),
+        ("L1", "91", "LATE", [("X", "14:00", "14:00"), ("W", "15:00", "15:00")]),
+    ]
+    CALENDAR = "FULL,1,1,1,1,1,1,1,20261102,20271231\n"
+    TAIL_CALENDAR = "TAIL,1,1,1,1,1,1,1,20261102,20301231\nLATE,1,1,1,1,1,1,1,20280101,20301231\n"
+    CALENDAR_DATES = "FULL,20270101,2\nTAIL,20290101,2\n"
+
+    def setUp(self) -> None:
+        self.temp = Path(tempfile.mkdtemp(prefix="gtfs-thin-tail-test-"))
+        self.addCleanup(shutil.rmtree, self.temp, ignore_errors=True)
+
+    def source(self, *, tail: bool = True) -> Path:
+        source = self.temp / ("tail-source.zip" if tail else "plain-source.zip")
+        write_trip_feed(source, self.FULL + (self.TAIL if tail else []),
+                        calendar=self.CALENDAR + (self.TAIL_CALENDAR if tail else ""), calendar_dates=self.CALENDAR_DATES)
+        return source
+
+    def build(self, output: Path, source_id: str = "eav-gtfs", *, tail: bool = True, generated_at: str = "2026-11-09") -> dict:
+        source = self.source(tail=tail)
+        registry = self.temp / "registry.json"
+        registry.write_text(json.dumps({"generatedAt": generated_at, "packs": [{
+            "sourceId": source_id, "asset": f"gtfs/{source_id}.zip", "sourceUrl": "https://example.test/feed.zip",
+            "accessMode": "OPEN_DIRECT"}]}), encoding="utf-8")
+        return builder.build_packs(self.temp, output, manifest_path=registry, generated_at=generated_at,
+                                   input_overrides={source_id: source})["packs"][0]
+
+    @staticmethod
+    def apply_thin_tail(pack: Path, last_service_date: str) -> str | None:
+        sys.path.insert(0, str(ROOT / "tools"))
+        try:
+            import apply_ci_gtfs_refresh as apply
+        finally:
+            sys.path.remove(str(ROOT / "tools"))
+        return apply.thin_tail(pack.read_bytes(), last_service_date)
+
+    def test_a_reviewed_source_is_clipped_at_its_last_full_day_and_the_check_holds_it(self) -> None:
+        output = self.temp / "out"
+        pack = self.build(output)
+        self.assertEqual(("2027-12-31", "2027-12-31"), (pack["lastServiceDate"], pack["fullServiceUntil"]))
+        with zipfile.ZipFile(output / "eav-gtfs.zip") as archive:
+            trips = sorted(row["trip_id"] for row in table(archive, "trips.txt"))
+            self.assertEqual(sorted([f"F{index}" for index in range(1, 9)] + ["T1"]), trips)
+            self.assertEqual(set(trips), {row["trip_id"] for row in table(archive, "stop_times.txt")})
+            self.assertEqual({"X", "Y"}, {row["stop_id"] for row in table(archive, "stops.txt")})
+            self.assertEqual([("FULL", "20261102", "20271231"), ("TAIL", "20261102", "20271231")],
+                             [(row["service_id"], row["start_date"], row["end_date"]) for row in table(archive, "calendar.txt")])
+            self.assertEqual([("FULL", "20270101", "2")],
+                             [(row["service_id"], row["date"], row["exception_type"]) for row in table(archive, "calendar_dates.txt")])
+            metadata = json.loads(archive.read(builder.FILTER_MANIFEST_MEMBER))
+        self.assertEqual("2027-12-31", metadata["serviceClippedAfter"])
+        self.assertEqual("2026-11-07", metadata["tripsRunFrom"])
+        self.assertEqual(9, metadata["counts"]["trips"])
+        self.assertIsNone(self.apply_thin_tail(output / "eav-gtfs.zip", pack["lastServiceDate"]))
+        builder.verify_assets(output, as_of=None, min_valid_days=None)
+        # Filtering the published pack again with the same generatedAt gives the same bytes (the clip is carried).
+        published = (output / "eav-gtfs.zip").read_bytes()
+        builder.build_packs(output, output, generated_at="2026-11-09")
+        self.assertEqual(published, (output / "eav-gtfs.zip").read_bytes())
+
+    def test_a_pack_cannot_claim_a_clip_it_did_not_make(self) -> None:
+        # A build that records the clip without making it fails its own check, and so does its ZIP.
+        stale = self.temp / "stale.zip"
+        refusal = "eav-gtfs: serviceClippedAfter 2027-12-31 ma il calendario prosegue dopo"
+        with mock.patch.object(builder, "clip_service_after", lambda calendar, calendar_dates, *_: (calendar, calendar_dates)):
+            with self.assertRaisesRegex(builder.BuildError, refusal):
+                self.build(self.temp / "stale-out")
+            builder.filter_archive(self.source(), stale, "eav-gtfs", trips_run_from=date(2026, 11, 7))
+        with self.assertRaisesRegex(builder.BuildError, refusal):
+            builder.verify_filter_from_asset(stale, "eav-gtfs")
+        # Nor can a source outside the reviewed list carry one.
+        output = self.temp / "out"
+        self.build(output)
+        with mock.patch.object(builder, "THIN_TAIL_CLIP_SOURCES", frozenset()), \
+                self.assertRaisesRegex(builder.BuildError, "eav-gtfs: serviceClippedAfter su una fonte non rivista"):
+            builder.verify_assets(output, as_of=None, min_valid_days=None)
+
+    def test_other_sources_keep_the_tail_and_the_refresh_still_refuses_them(self) -> None:
+        output = self.temp / "out"
+        pack = self.build(output, "rail-gtfs")
+        self.assertEqual("2030-12-31", pack["lastServiceDate"])
+        with zipfile.ZipFile(output / "rail-gtfs.zip") as archive:
+            self.assertIn("L1", {row["trip_id"] for row in table(archive, "trips.txt")})
+            self.assertNotIn("serviceClippedAfter", json.loads(archive.read(builder.FILTER_MANIFEST_MEMBER)))
+        reason = self.apply_thin_tail(output / "rail-gtfs.zip", pack["lastServiceDate"])
+        self.assertIn("orario completo fino al 2027-12-31 (picco 9 corse al giorno), poi non più di 2 al giorno fino al 2030-12-31", reason)
+
+    def test_a_feed_without_a_thin_tail_builds_byte_identically(self) -> None:
+        clipped = self.temp / "rule"
+        pack = self.build(clipped, tail=False)
+        self.assertEqual("2027-12-31", pack["lastServiceDate"])
+        today = self.temp / "today"
+        with mock.patch.object(builder, "THIN_TAIL_CLIP_SOURCES", frozenset()):
+            self.build(today, tail=False)
+        for name in ("eav-gtfs.zip", "manifest.json", "SHA256SUMS"):
+            self.assertEqual((today / name).read_bytes(), (clipped / name).read_bytes(), name)
+        # The shipped EAV pack, filtered again, is unchanged by the rule as well.
+        rule, without = self.temp / "shipped-rule.zip", self.temp / "shipped-today.zip"
+        builder.filter_archive(ASSETS / "eav-gtfs.zip", rule, "eav-gtfs", trips_run_from=date(2026, 11, 19))
+        with mock.patch.object(builder, "THIN_TAIL_CLIP_SOURCES", frozenset()):
+            builder.filter_archive(ASSETS / "eav-gtfs.zip", without, "eav-gtfs", trips_run_from=date(2026, 11, 19))
+        self.assertEqual(without.read_bytes(), rule.read_bytes())
+
+    def test_a_full_timetable_already_over_is_an_error_not_an_empty_pack(self) -> None:
+        # Eight trains to the end of 2027, each kept alive by one more day in 2029, and one trip a day to 2030: built in
+        # 2028 the clip would leave nothing that still runs.
+        source = self.temp / "over-source.zip"
+        write_trip_feed(
+            source,
+            [(f"S{index}", str(index), f"S{index}", [("X", "08:00", "08:00"), ("Y", "09:00", "09:00")]) for index in range(1, 9)]
+            + self.TAIL[:1],
+            calendar="".join(f"S{index},1,1,1,1,1,1,1,20261102,20271231\n" for index in range(1, 9))
+            + "TAIL,1,1,1,1,1,1,1,20261102,20301231\n",
+            calendar_dates="".join(f"S{index},2029010{index},1\n" for index in range(1, 9)),
+        )
+        with self.assertRaisesRegex(builder.BuildError, "eav-gtfs: orario completo fino al 2027-12-31, prima del 2028-02-28"):
+            builder.filter_archive(source, self.temp / "over.zip", "eav-gtfs", trips_run_from=date(2028, 2, 28))
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -155,6 +155,15 @@ EXCLUSIVE_ROUTE_IDS: Mapping[str, frozenset[str]] = {
 ROUTE_TYPE_OVERRIDES: Mapping[str, Mapping[str, str]] = {
     "toscana-tft-gtfs": {"1028056267": "2", "2272465657": "2"},
 }
+# A thin tail: a calendar kept alive by a trickle of trips long after the timetable's last full day, the last day running
+# at least THIN_TAIL_FULL_SHARE of the busiest day's trips (:func:`thin_tail`).  Running more than THIN_TAIL_DAYS past it,
+# the pack overstates its validity: the weekly refresh refuses it (tools/apply_ci_gtfs_refresh.py).  The reviewed sources
+# below are clipped at that day by the build instead, recorded in the filter manifest (serviceClippedAfter): EAV's feed of
+# November 2026 runs its full timetable to 31 December 2027, then at most one trip a day to 31 December 2030.
+THIN_TAIL_FULL_SHARE = 0.25
+THIN_TAIL_DAYS = 31
+THIN_TAIL_CLIP_SOURCES = frozenset({"eav-gtfs"})
+SERVICE_CLIPPED_AFTER_FIELD = "serviceClippedAfter"
 
 # City networks (assets under gtfs-transit/ and gtfs-personal/): metro (1, 400-499), tram (0, 900-999), funiculars,
 # cable cars and lifts (5, 6, 7, 1300-1499) and monorail (12). Never a bus: a city feed is mostly buses, which
@@ -728,6 +737,130 @@ def expired_trips(trip_rows: Iterable[Mapping[str, str]], days_by_service: Mappi
     return {row.get("trip_id", "") for row in trip_rows if row.get("service_id", "") not in alive}
 
 
+def daily_trip_counts(trip_rows: Iterable[Mapping[str, str]], calendar: CsvTable, calendar_dates: CsvTable) -> dict[date, int]:
+    """Trips running on each service day (calendar.txt by weekday, then calendar_dates.txt exceptions): the measure of
+    :func:`thin_tail`, shared by the build's clip and the weekly refresh's check."""
+    per_service: dict[str, int] = {}
+    for trip in trip_rows:
+        per_service[trip.get("service_id", "")] = per_service.get(trip.get("service_id", ""), 0) + 1
+    patterns: dict[str, tuple[date, date, tuple[bool, ...]]] = {}
+    grouped: dict[tuple[date, date, tuple[bool, ...]], int] = {}
+    for row in calendar.rows:
+        service = row.get("service_id", "")
+        pattern = (
+            parse_gtfs_date(row.get("start_date", ""), service),
+            parse_gtfs_date(row.get("end_date", ""), service),
+            tuple(row.get(column, "0").strip() == "1" for column in WEEKDAY_COLUMNS),
+        )
+        patterns[service] = pattern
+        grouped[pattern] = grouped.get(pattern, 0) + per_service.get(service, 0)
+    days: dict[date, int] = {}
+    for (start, end, weekdays), count in grouped.items():
+        day = start
+        while count and day <= end:
+            if weekdays[day.weekday()]:
+                days[day] = days.get(day, 0) + count
+            day += timedelta(days=1)
+    for row in calendar_dates.rows:
+        service = row.get("service_id", "")
+        count = per_service.get(service, 0)
+        if not count:
+            continue
+        day = parse_gtfs_date(row.get("date", ""), service)
+        pattern = patterns.get(service)
+        scheduled = pattern is not None and pattern[0] <= day <= pattern[1] and pattern[2][day.weekday()]
+        if row.get("exception_type", "").strip() == "1" and not scheduled:
+            days[day] = days.get(day, 0) + count
+        elif row.get("exception_type", "").strip() == "2" and scheduled:
+            days[day] = days.get(day, 0) - count
+    return {day: count for day, count in days.items() if count > 0}
+
+
+@dataclass(frozen=True)
+class ThinTail:
+    full_end: date  # the last day with at least THIN_TAIL_FULL_SHARE of the peak
+    peak: int
+    tail: int  # the most trips of a day after full_end
+    last: date
+
+
+def thin_tail(days: Mapping[date, int], last: date) -> ThinTail | None:
+    """The thin tail of a pack whose trips per day (:func:`daily_trip_counts`) run to ``last``, its lastServiceDate:
+    more than THIN_TAIL_DAYS after the last day with at least THIN_TAIL_FULL_SHARE of the busiest day's trips; else
+    None.  One definition for the build's clip (THIN_TAIL_CLIP_SOURCES) and the weekly refresh's refusal."""
+    running = {day: count for day, count in days.items() if day <= last}
+    if not running:
+        return None
+    peak = max(running.values())
+    full_end = max(day for day, count in running.items() if count >= peak * THIN_TAIL_FULL_SHARE)
+    if (last - full_end).days <= THIN_TAIL_DAYS:
+        return None
+    return ThinTail(full_end, peak, max((count for day, count in running.items() if day > full_end), default=0), last)
+
+
+def clip_service_after(calendar: CsvTable, calendar_dates: CsvTable, cut: date, source_id: str) -> tuple[CsvTable, CsvTable]:
+    """calendar.txt ending on ``cut`` at the latest (a row starting after it goes) and calendar_dates.txt without the
+    days after it."""
+    end = cut.strftime("%Y%m%d")
+    rows = []
+    for row in calendar.rows:
+        if parse_gtfs_date(row.get("start_date", "").strip(), f"{source_id}:calendar.txt") > cut:
+            continue
+        runs_after = parse_gtfs_date(row.get("end_date", "").strip(), f"{source_id}:calendar.txt") > cut
+        rows.append({**row, "end_date": end} if runs_after else row)
+    dates = tuple(
+        row for row in calendar_dates.rows
+        if parse_gtfs_date(row.get("date", "").strip(), f"{source_id}:calendar_dates.txt") <= cut
+    )
+    return CsvTable(calendar.header, tuple(rows)), CsvTable(calendar_dates.header, dates)
+
+
+def published_service_clip(archive: zipfile.ZipFile, source_id: str, provenance: str | None) -> date | None:
+    """The serviceClippedAfter of the published pack the input *is* (``provenance``, see :func:`published_provenance`),
+    so that filtering it again keeps the clip; None for any other input."""
+    entry = filter_manifest_entry(archive) if provenance is not None else None
+    if entry is None:
+        return None
+    try:
+        value = json.loads(archive.read(entry).decode("utf-8")).get(SERVICE_CLIPPED_AFTER_FIELD)
+        return None if value is None else date.fromisoformat(str(value))
+    except (UnicodeDecodeError, json.JSONDecodeError, AttributeError, ValueError) as error:
+        raise BuildError(f"{source_id}: {SERVICE_CLIPPED_AFTER_FIELD} non valido") from error
+
+
+def verify_service_clip(
+    source_id: str,
+    value: object,
+    trip_rows: Sequence[Mapping[str, str]],
+    calendar: CsvTable,
+    calendar_dates: CsvTable,
+    runs_from: date | None,
+) -> None:
+    """A pack declaring serviceClippedAfter is a reviewed source with no service day after it, every trip still runs
+    (from its tripsRunFrom) and the day is a full one (:func:`thin_tail`)."""
+    if source_id not in THIN_TAIL_CLIP_SOURCES:
+        raise BuildError(f"{source_id}: {SERVICE_CLIPPED_AFTER_FIELD} su una fonte non rivista (THIN_TAIL_CLIP_SOURCES)")
+    try:
+        cut = date.fromisoformat(str(value))
+    except ValueError as error:
+        raise BuildError(f"{source_id}: {SERVICE_CLIPPED_AFTER_FIELD} non valido") from error
+    later = [
+        row.get("service_id", "") for row in calendar.rows
+        if parse_gtfs_date(row.get("end_date", "").strip(), f"{source_id}:calendar.txt") > cut
+    ] + [
+        row.get("service_id", "") for row in calendar_dates.rows
+        if parse_gtfs_date(row.get("date", "").strip(), f"{source_id}:calendar_dates.txt") > cut
+    ]
+    if later:
+        raise BuildError(f"{source_id}: {SERVICE_CLIPPED_AFTER_FIELD} {cut} ma il calendario prosegue dopo (servizio {log_safe(later[0])})")
+    dead = expired_trips(trip_rows, service_days(calendar, calendar_dates, source_id), runs_from or date.min)
+    if dead:
+        raise BuildError(f"{source_id}: {SERVICE_CLIPPED_AFTER_FIELD} {cut} con {len(dead)} trip che non circolano più")
+    days = daily_trip_counts(trip_rows, calendar, calendar_dates)
+    if not days or days.get(cut, 0) < max(days.values()) * THIN_TAIL_FULL_SHARE:
+        raise BuildError(f"{source_id}: {SERVICE_CLIPPED_AFTER_FIELD} {cut} non è un giorno di orario completo")
+
+
 def selected_routes(source_id: str, routes: CsvTable) -> tuple[tuple[dict[str, str], ...], dict[str, Any]]:
     require_columns(routes, "routes.txt", "route_id", "route_type")
     explicit = EXCLUSIVE_ROUTE_IDS.get(source_id)
@@ -1213,9 +1346,8 @@ def filter_archive(
     input_hash = sha256_file(source)
     with zipfile.ZipFile(source) as archive:
         validate_archive_limits(archive, omit_geometry=True)
-        source_hash = original_archive_sha256(
-            archive, source_id, input_hash, published_provenance(published_entries, input_hash)
-        )
+        provenance = published_provenance(published_entries, input_hash)
+        source_hash = original_archive_sha256(archive, source_id, input_hash, provenance)
         budget = RetentionBudget()
         routes = read_table(archive, "routes.txt", required=True, budget=budget)
         assert routes
@@ -1301,6 +1433,42 @@ def filter_archive(
                 trip_ids = {row["trip_id"] for row in kept_trips if row.get("trip_id")}
                 service_ids = {row["service_id"] for row in kept_trips if row.get("service_id")}
             run_metadata[TRIPS_RUN_FROM_FIELD] = trips_run_from.isoformat()
+
+        if source_id in THIN_TAIL_CLIP_SOURCES:
+            # Measured on what the pack would publish (the calendar of the kept trips), as the weekly refresh measures it.
+            kept_days = CsvTable(calendar.header, tuple(row for row in calendar.rows if row.get("service_id", "") in service_ids))
+            kept_exceptions = CsvTable(
+                calendar_dates.header, tuple(row for row in calendar_dates.rows if row.get("service_id", "") in service_ids),
+            )
+            tail = thin_tail(
+                daily_trip_counts(kept_trips, kept_days, kept_exceptions),
+                last_service_date(kept_days, kept_exceptions, source_id),
+            )
+            cut = tail.full_end if tail is not None else published_service_clip(archive, source_id, provenance)
+            if cut is not None:
+                if trips_run_from is not None and cut < trips_run_from:
+                    raise BuildError(
+                        f"{source_id}: orario completo fino al {cut}, prima del {trips_run_from} ({TRIPS_RUN_FROM_FIELD}): "
+                        "tagliata la coda sottile non resterebbe nessuna corsa"
+                    )
+                calendar, calendar_dates = clip_service_after(calendar, calendar_dates, cut, source_id)
+                clipped = expired_trips(kept_trips, service_days(calendar, calendar_dates, source_id), trips_run_from or date.min)
+                if tail is not None:
+                    print(
+                        f"{source_id}: orario completo fino al {cut} (picco {tail.peak} corse al giorno), poi non più di "
+                        f"{tail.tail} al giorno fino al {tail.last}: servizio tagliato, {len(clipped)} trip rimossi",
+                        file=sys.stderr,
+                    )
+                if clipped:
+                    kept_trips = tuple(row for row in kept_trips if row.get("trip_id", "") not in clipped)
+                    kept_stop_times = tuple(row for row in kept_stop_times if row.get("trip_id", "") not in clipped)
+                    if frequencies is not None:
+                        frequencies = CsvTable(
+                            frequencies.header, tuple(row for row in frequencies.rows if row.get("trip_id", "") not in clipped),
+                        )
+                    trip_ids = {row["trip_id"] for row in kept_trips if row.get("trip_id")}
+                    service_ids = {row["service_id"] for row in kept_trips if row.get("service_id")}
+                run_metadata[SERVICE_CLIPPED_AFTER_FIELD] = cut.isoformat()
 
         stop_ids = {row["stop_id"] for row in kept_stop_times if row.get("stop_id")}
         if not stop_ids:
@@ -1804,6 +1972,12 @@ def verify_filter_from_asset(path: Path, source_id: str) -> str:
             expired = expired_trips(tables["trips.txt"].rows, service_days(calendar, calendar_dates, source_id), runs_from)
             if expired:
                 raise BuildError(f"{source_id}: {len(expired)} trip non circolano più dal {runs_from} ({TRIPS_RUN_FROM_FIELD})")
+        if metadata.get(SERVICE_CLIPPED_AFTER_FIELD) is not None:
+            verify_service_clip(
+                source_id, metadata[SERVICE_CLIPPED_AFTER_FIELD], tables["trips.txt"].rows,
+                read_table(archive, "calendar.txt") or empty_calendar(),
+                read_table(archive, "calendar_dates.txt") or empty_calendar_dates(), runs_from,
+            )
         return canonical_content_sha256(declared_digests)
 
 

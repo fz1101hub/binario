@@ -42,7 +42,7 @@ import sys
 import tempfile
 import zipfile
 from dataclasses import dataclass, field
-from datetime import date, timedelta
+from datetime import date
 from pathlib import Path
 from typing import Any, Callable, Mapping, Sequence
 
@@ -78,10 +78,9 @@ KOTLIN_PACK = re.compile(
     r'(SourceId\("(?P<id>[^"]+)"\),\s*"(?P<asset>[^"]+)",\s*LocalDate\.of\()(?P<y>\d+), (?P<m>\d+), (?P<d>\d+)(\))'
 )
 SHRINK_LIMIT = 0.5
-# Coverage is "full" on a day running at least this share of the busiest day's trips; a pack whose lastServiceDate lies
-# more than THIN_TAIL_DAYS after its last full day (a feed keeping one trip a day for years) overstates its validity.
-FULL_SERVICE_SHARE = 0.25
-THIN_TAIL_DAYS = 31
+# A pack whose lastServiceDate lies more than a month after its last full day (a feed keeping one trip a day for years)
+# overstates its validity: the definition and its constants are build_gtfs_packs.thin_tail, shared with the build, which
+# clips the reviewed sources at that day instead (THIN_TAIL_CLIP_SOURCES).
 # Entry fields naming where the archive comes from: a change is a new pack even when the timetable is identical.
 SOURCE_FIELDS = ("sourceUrl", "accessMode", "upstream")
 # Reviewed registry text (tools/transit_packs.json) carried into the manifest even when the timetable is identical.
@@ -190,46 +189,13 @@ def zip_metadata(data: bytes) -> dict[str, Any]:
 
 
 def daily_trips(data: bytes) -> dict[date, int]:
-    """Trips running on each service day of a pack (calendar.txt by weekday, then calendar_dates.txt exceptions)."""
+    """Trips running on each service day of a pack (build_gtfs_packs.daily_trip_counts)."""
     with zipfile.ZipFile(io.BytesIO(data)) as archive:
         calendar = builder.read_table(archive, "calendar.txt") or builder.empty_calendar()
         exceptions = builder.read_table(archive, "calendar_dates.txt") or builder.empty_calendar_dates()
         trips = builder.read_table(archive, "trips.txt", required=True)
     assert trips is not None
-    per_service: dict[str, int] = {}
-    for trip in trips.rows:
-        per_service[trip.get("service_id", "")] = per_service.get(trip.get("service_id", ""), 0) + 1
-    patterns: dict[str, tuple[date, date, tuple[bool, ...]]] = {}
-    grouped: dict[tuple[date, date, tuple[bool, ...]], int] = {}
-    for row in calendar.rows:
-        service = row.get("service_id", "")
-        pattern = (
-            builder.parse_gtfs_date(row.get("start_date", ""), service),
-            builder.parse_gtfs_date(row.get("end_date", ""), service),
-            tuple(row.get(column, "0").strip() == "1" for column in builder.WEEKDAY_COLUMNS),
-        )
-        patterns[service] = pattern
-        grouped[pattern] = grouped.get(pattern, 0) + per_service.get(service, 0)
-    days: dict[date, int] = {}
-    for (start, end, weekdays), count in grouped.items():
-        day = start
-        while count and day <= end:
-            if weekdays[day.weekday()]:
-                days[day] = days.get(day, 0) + count
-            day += timedelta(days=1)
-    for row in exceptions.rows:
-        service = row.get("service_id", "")
-        count = per_service.get(service, 0)
-        if not count:
-            continue
-        day = builder.parse_gtfs_date(row.get("date", ""), service)
-        pattern = patterns.get(service)
-        scheduled = pattern is not None and pattern[0] <= day <= pattern[1] and pattern[2][day.weekday()]
-        if row.get("exception_type", "").strip() == "1" and not scheduled:
-            days[day] = days.get(day, 0) + count
-        elif row.get("exception_type", "").strip() == "2" and scheduled:
-            days[day] = days.get(day, 0) - count
-    return {day: count for day, count in days.items() if count > 0}
+    return builder.daily_trip_counts(trips.rows, calendar, exceptions)
 
 
 def thin_tail(data: bytes, last_service_date: object) -> str | None:
@@ -238,16 +204,11 @@ def thin_tail(data: bytes, last_service_date: object) -> str | None:
         last = date.fromisoformat(str(last_service_date))
     except ValueError:
         return None
-    days = {day: count for day, count in daily_trips(data).items() if day <= last}
-    if not days:
+    tail = builder.thin_tail(daily_trips(data), last)
+    if tail is None:
         return None
-    peak = max(days.values())
-    full_end = max(day for day, count in days.items() if count >= peak * FULL_SERVICE_SHARE)
-    if (last - full_end).days <= THIN_TAIL_DAYS:
-        return None
-    tail = max(count for day, count in days.items() if day > full_end)
-    return (f"copertura gonfiata: orario completo fino al {full_end.isoformat()} (picco {peak} corse al giorno), "
-            f"poi non più di {tail} al giorno fino al {last.isoformat()}")
+    return (f"copertura gonfiata: orario completo fino al {tail.full_end.isoformat()} (picco {tail.peak} corse al giorno), "
+            f"poi non più di {tail.tail} al giorno fino al {last.isoformat()}")
 
 
 def suspicious(
