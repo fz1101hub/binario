@@ -589,6 +589,73 @@ class UncodedStationTest(unittest.TestCase):
         self.assertEqual("S9", self.bound(lambda stations: stations.append(shadow))[0][1])
 
 
+class StopNameVariantTest(unittest.TestCase):
+    """The stop-name forms of Android's GtfsStopStationResolver (design §4.2), each matched against a small catalogue."""
+
+    STATIONS = [
+        {"id": "S01003", "name": "Domodossola", "railwayCode": "S01003", "trenitaliaLocationId": "830001003", "latitude": 46.115429, "longitude": 8.296684},
+        {"id": "S02001", "name": "Brennero Brenner", "aliases": ["BRENNERO"], "railwayCode": "S02001", "trenitaliaLocationId": "830002001", "latitude": 47.00256, "longitude": 11.505346},
+        {"id": "NC000544", "name": "Innsbruck Hbf.", "latitude": 47.26385, "longitude": 11.4009},
+        {"id": "NC000927", "name": "Lienz", "latitude": 46.8283, "longitude": 12.7713},
+        {"id": "NC000514", "name": "Wien Hauptbahnhof", "trenitaliaLocationId": "810001003", "latitude": 48.185, "longitude": 16.3765},
+        {"id": "S07000", "name": "Linz Centrale", "railwayCode": "S07000", "latitude": 45.5, "longitude": 9.5},
+        {"id": "S07001", "name": "Borgo Bahnhof", "railwayCode": "S07001", "latitude": 45.0, "longitude": 10.0},
+        {"id": "S07002", "name": "Borgo", "railwayCode": "S07002", "latitude": 45.0005, "longitude": 10.0},
+    ]
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        with tempfile.TemporaryDirectory(prefix="ios-variants-") as folder:
+            path = Path(folder) / "catalog.json"
+            stations = [{"aliases": [], "railwayCode": None, "trenitaliaLocationId": None, **station} for station in cls.STATIONS]
+            path.write_text(json.dumps({"schemaVersion": 1, "stations": stations}), encoding="utf-8")
+            cls.catalog, _ = builder.load_catalog(path)
+
+    def matched(self, name: str, latitude: float, longitude: float, *, uncoded: bool = False) -> str | None:
+        row = {"stop_name": name, "stop_lat": str(latitude), "stop_lon": str(longitude)}
+        identity = self.catalog.match(row, "test", uncoded=uncoded)
+        return identity.station_id if identity else None
+
+    def test_country_suffix(self) -> None:
+        self.assertEqual(["Domodossola (I)", "Domodossola"], builder.name_variants("Domodossola (I)"))
+        self.assertEqual("S01003", self.matched("Domodossola (I)", 46.11529, 8.29624))
+        self.assertEqual(["Chiasso"], builder.name_variants("Chiasso"))
+
+    def test_station_of(self) -> None:
+        self.assertEqual(
+            ["Brennero, Stazione di Brennero", "Brennero", "Stazione di Brennero"],
+            builder.name_variants("Brennero, Stazione di Brennero"),
+        )
+        self.assertEqual("S02001", self.matched("Brennero, Stazione di Brennero", 47.00268, 11.50557))
+
+    def test_trailing_station_word(self) -> None:
+        for name in ("Lienz Bahnhof", "Lienz Bhf", "Lienz stazione"):
+            with self.subTest(name=name):
+                self.assertEqual(name.rsplit(" ", 1)[0], builder.name_variants(name)[1])
+                self.assertEqual("NC000927", self.matched(name, 46.8284, 12.7713, uncoded=True))
+        # A station without codes is only for packs that may match one.
+        self.assertIsNone(self.matched("Lienz Bahnhof", 46.8284, 12.7713))
+        self.assertEqual(["Brig Bahnhofplatz"], builder.name_variants("Brig Bahnhofplatz"))
+
+    def test_hbf_is_the_hauptbahnhof(self) -> None:
+        self.assertEqual(["Innsbruck Hbf.", "Innsbruck Hauptbahnhof"], builder.name_variants("Innsbruck Hbf."))
+        self.assertEqual("NC000544", self.matched("Innsbruck Hauptbahnhof", 47.2632, 11.4008, uncoded=True))
+        self.assertEqual("NC000514", self.matched("Wien Hbf", 48.1851, 16.3766))
+
+    def test_trailing_platform_number(self) -> None:
+        self.assertEqual(["Linz Centrale 1", "Linz Centrale"], builder.name_variants("Linz Centrale 1"))
+        self.assertEqual(["Linz Centrale 12b", "Linz Centrale"], builder.name_variants("Linz Centrale 12b"))
+        self.assertEqual("S07000", self.matched("Linz Centrale 1", 45.5, 9.5))
+        self.assertEqual(["Linz Centrale 123"], builder.name_variants("Linz Centrale 123"))
+
+    def test_a_stop_matched_by_its_published_name_keeps_that_station(self) -> None:
+        self.assertEqual("S07001", self.matched("Borgo Bahnhof", 45.0, 10.0))
+        self.assertEqual("S07002", self.matched("Borgo", 45.0, 10.0))
+
+    def test_variants_are_still_verified_by_distance(self) -> None:
+        self.assertIsNone(self.matched("Domodossola (I)", 45.5, 8.29624))
+
+
 class RenonRailwayTest(unittest.TestCase):
     """The Renon railway (route 160 of the bundled STA pack): its stations are catalogue entries without codes taken
     from the pack, and the shipped iPhone index keeps every trip of the line on them."""

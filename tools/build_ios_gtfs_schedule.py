@@ -74,6 +74,13 @@ INDEXED_PACK_COUNT = 9
 # Packs of foreign operators: their stops match only catalogue stations with codes, so the index keeps their trips
 # into Italy and not the French, Swiss or Austrian networks around a station the catalogue lists without codes (Paris).
 FOREIGN_PACKS = frozenset({"ch-otd-gtfs", "oebb-gtfs", "sncf-gtfs"})
+# How a pack's stops may match the catalogue: an Italian pack falls back to stations without codes; a foreign pack
+# bundled whole matches stations with codes only; a border subset matches its zone stations with or without codes
+# (design §4.2, the list computed from its full pack); a per-country index (--foreign-full) every station.
+STATION_MODE_ITALIAN = "italian"
+STATION_MODE_CODED = "coded"
+STATION_MODE_ZONE = "zone"
+STATION_MODE_FULL = "full"
 RAIL_ROUTE_TYPES = frozenset({2, *range(100, 200)})
 # Packs whose bikes_allowed is stored as unknown, as on Android (GtfsDayTimetable.kt): the Italo
 # pack publishes 1 on every trip, but Italo admits only folding bikes carried in a bag, so "bikes
@@ -270,7 +277,18 @@ class CatalogStationMatcher:
         identity = self._match(name, latitude, longitude, coded=True)
         if identity is None and uncoded:
             identity = self._match(name, latitude, longitude, coded=False)
-        return identity
+        if identity is not None:
+            return identity
+        # Only a stop the published name leaves unmatched tries its variants (name_variants), stations with codes
+        # first, so a stop matched before keeps its station.
+        names = [normalized for variant in name_variants(row["stop_name"])[1:]
+                 if (normalized := normalize_station_name(variant)) and normalized != name]
+        for coded in (True, False) if uncoded else (True,):
+            for variant in dict.fromkeys(names):
+                identity = self._match(variant, latitude, longitude, coded=coded)
+                if identity is not None:
+                    return identity
+        return None
 
     def _match(self, name: str, latitude: float, longitude: float, *, coded: bool) -> CatalogIdentity | None:
         verified = {
@@ -347,6 +365,40 @@ def normalize_station_name(value: str) -> str:
     # whitespace and case, but does not make risky geographic/fuzzy inferences.
     ascii_value = unicodedata.normalize("NFKD", value).encode("ascii", "ignore").decode("ascii").casefold()
     return " ".join(re.findall(r"[a-z0-9]+", ascii_value))
+
+# Stop-name variants, ported from Android's GtfsStopStationResolver (same patterns, ASCII classes as in Java):
+# "Brennero, Stazione di Brennero" -> "Brennero"; "Linz Centrale 1" -> "Linz Centrale"; "Domodossola (I)" ->
+# "Domodossola"; "Lienz Bahnhof" -> "Lienz"; "Innsbruck Hbf." and "Innsbruck Hauptbahnhof" are one name.
+STATION_OF = re.compile(r"\bstazione(?:\s+di)?\s+(.+)$", re.IGNORECASE | re.ASCII)
+TRAILING_PLATFORM = re.compile(r"\s+[0-9]{1,2}[A-Za-z]?$", re.ASCII)
+COUNTRY_SUFFIX = re.compile(r"\s*\((?:I|IT|CH|A|AT|F|FR|D|DE|SLO|HR)\)$", re.IGNORECASE | re.ASCII)
+STATION_SUFFIX = re.compile(r"\s+(?:stazione|bahnhof|bhf)$", re.IGNORECASE | re.ASCII)
+MAIN_STATION_ABBREVIATION = re.compile(r"\bHbf\b\.?", re.IGNORECASE | re.ASCII)
+
+def expand_abbreviations(value: str) -> str:
+    """"Innsbruck Hbf." -> "Innsbruck Hauptbahnhof" (Android: GtfsStopStationResolver.expandAbbreviations)."""
+    return MAIN_STATION_ABBREVIATION.sub("Hauptbahnhof", value)
+
+def name_variants(stop_name: str) -> list[str]:
+    """The published name, then the forms Android's GtfsStopStationResolver.variants tries, in its order: the part
+    after "Stazione di", the part after "Town, ", each without a platform number, a country suffix or a trailing
+    "stazione"/"Bahnhof"/"Bhf", and with "Hbf" written out."""
+    trimmed = stop_name.strip()
+    if not trimmed:
+        return []
+    base = [trimmed]
+    station_of = STATION_OF.search(trimmed)
+    if station_of and station_of.group(1).strip():
+        base.append(station_of.group(1).strip())
+    if "," in trimmed and trimmed.split(",", 1)[1].strip():
+        base.append(trimmed.split(",", 1)[1].strip())
+    variants: list[str] = []
+    for value in base:
+        cleaned = STATION_SUFFIX.sub("", COUNTRY_SUFFIX.sub("", TRAILING_PLATFORM.sub("", value))).strip()
+        for candidate in (value, cleaned, expand_abbreviations(cleaned)):
+            if candidate and candidate not in variants:
+                variants.append(candidate)
+    return variants
 
 def required(row: Mapping[str, str], field: str, context: str) -> str:
     value = row.get(field, "")
@@ -444,8 +496,10 @@ def load_catalog(path: Path) -> tuple[CatalogStationMatcher, int]:
         for candidate_index, candidate in enumerate((name, *aliases)):
             if not isinstance(candidate, str):
                 raise BuildError(f"catalog station {station_id}: non-string alias")
-            normalized = normalize_station_name(candidate)
-            if normalized:
+            # "Innsbruck Hbf." is also known as "Innsbruck Hauptbahnhof", the name the ÖBB pack publishes.
+            for normalized in dict.fromkeys((normalize_station_name(candidate), normalize_station_name(expand_abbreviations(candidate)))):
+                if not normalized:
+                    continue
                 current = by_name[normalized].get(station_id)
                 by_name[normalized][station_id] = CatalogNameMatch(
                     identity=identity,
@@ -467,8 +521,11 @@ def record_name_positions(station: Mapping[str, object], positions: dict[str, li
     )
     aliases = station.get("aliases")
     for candidate in (station.get("name"), *(aliases if isinstance(aliases, list) else ())):
-        if isinstance(candidate, str) and (normalized := normalize_station_name(candidate)):
-            positions[normalized].append(position)
+        if not isinstance(candidate, str):
+            continue
+        for normalized in dict.fromkeys((normalize_station_name(candidate), normalize_station_name(expand_abbreviations(candidate)))):
+            if normalized:
+                positions[normalized].append(position)
 
 def distance_kilometres(first_latitude: float, first_longitude: float, second_latitude: float, second_longitude: float) -> float:
     earth_radius_km = 6_371.0
@@ -780,6 +837,84 @@ def read_manifest(
     fingerprint = hashlib.sha256(canonical_json(descriptor)).hexdigest()
     return normalized, input_root, inputs, fingerprint, generated_at
 
+def stop_identities(
+    stops: Mapping[str, Mapping[str, str]],
+    catalog: CatalogStationMatcher,
+    source_id: str,
+    *,
+    uncoded: bool,
+) -> dict[str, CatalogIdentity]:
+    """The catalogue station of every stop that has one: by its name verified by distance, else inherited from its
+    parent station (only an unambiguous verified identity, geographically coherent with the child's coordinates)."""
+    stop_identity: dict[str, CatalogIdentity] = {}
+    for stop_id, row in stops.items():
+        identity = catalog.match(row, f"{source_id}:stop:{stop_id}", uncoded=uncoded)
+        if identity is not None:
+            stop_identity[stop_id] = identity
+    for stop_id, row in stops.items():
+        parent = row.get("parent_station", "")
+        child_type = row.get("location_type", "") or "0"
+        parent_type = stops.get(parent, {}).get("location_type", "")
+        if stop_id not in stop_identity and parent in stop_identity and child_type in {"0", "4"} and parent_type == "1":
+            inherited = geographically_verified_parent_identity(row, stop_identity[parent], f"{source_id}:stop:{stop_id}")
+            if inherited is not None:
+                stop_identity[stop_id] = inherited
+    return stop_identity
+
+def archive_station_trips(
+    archive_path: Path,
+    catalog: CatalogStationMatcher,
+    source_id: str,
+) -> tuple[dict[str, dict[str, str]], dict[str, CatalogIdentity], dict[str, set[str]]]:
+    """A foreign pack read for its station lists: stops, their catalogue stations (with or without codes, as in a
+    full per-country index) and, per trip, the stops it calls at."""
+    with BoundedGtfsArchive(archive_path) as archive:
+        stops = unique_rows(archive.rows("stops.txt", ("stop_id", "stop_name")), "stop_id", f"{source_id}:stops.txt")
+        identities = stop_identities(stops, catalog, source_id, uncoded=True)
+        calls: dict[str, set[str]] = defaultdict(set)
+        for line, row in enumerate(archive.rows("stop_times.txt", ("trip_id", "stop_id", "stop_sequence")), start=2):
+            stop_id = required(row, "stop_id", f"{source_id}:stop_times.txt:{line}")
+            if stop_id not in stops:
+                raise BuildError(f"{source_id}:stop_times.txt:{line}: unknown stop_id {stop_id!r}")
+            calls[required(row, "trip_id", f"{source_id}:stop_times.txt:{line}")].add(stop_id)
+    return stops, identities, dict(calls)
+
+def foreign_station_coverage(
+    archive_path: Path,
+    catalog: CatalogStationMatcher,
+    source_id: str,
+    zone_stops: set[str],
+) -> tuple[set[str], set[str]]:
+    """``(served, zone)`` catalogue ids of a full foreign pack (design §1.1, rule 5): served stations are matched to
+    a stop some trip calls at; a zone station has every such stop inside the border zone."""
+    _, identities, calls = archive_station_trips(archive_path, catalog, source_id)
+    served: set[str] = set()
+    outside: set[str] = set()
+    for stop_id in set().union(*calls.values()) if calls else set():
+        identity = identities.get(stop_id)
+        if identity is None:
+            continue
+        served.add(identity.station_id)
+        if stop_id not in zone_stops:
+            outside.add(identity.station_id)
+    return served, served - outside
+
+def pair_trip_counts(
+    archive_path: Path,
+    catalog: CatalogStationMatcher,
+    source_id: str,
+    pairs: Iterable[tuple[str, str]],
+) -> dict[tuple[str, str], int]:
+    """Trips of a pack calling at both catalogue stations of each pair (in either order)."""
+    _, identities, calls = archive_station_trips(archive_path, catalog, source_id)
+    stations_by_trip = [
+        {identities[stop_id].station_id for stop_id in stop_ids if stop_id in identities} for stop_ids in calls.values()
+    ]
+    return {
+        (first, second): sum(1 for stations in stations_by_trip if first in stations and second in stations)
+        for first, second in pairs
+    }
+
 def ingest_pack(
     connection: sqlite3.Connection,
     pack_id: int,
@@ -789,6 +924,7 @@ def ingest_pack(
 ) -> dict[str, int]:
     source_id = str(pack["source_id"])
     archive_path = Path(pack["archive"])
+    mode = str(pack.get("station_mode") or (STATION_MODE_CODED if source_id in FOREIGN_PACKS else STATION_MODE_ITALIAN))
     counts = defaultdict(int)
     connection.execute(
         "INSERT INTO pack(id,source_id,attribution,last_service_date) VALUES(?,?,?,?)",
@@ -814,26 +950,12 @@ def ingest_pack(
         trips = unique_rows(archive.rows("trips.txt", ("route_id", "service_id", "trip_id")), "trip_id", f"{source_id}:trips.txt")
         stops = unique_rows(archive.rows("stops.txt", ("stop_id", "stop_name")), "stop_id", f"{source_id}:stops.txt")
 
-        stop_identity: dict[str, CatalogIdentity] = {}
-        # Direct name matching first, verified by distance.
-        for stop_id, row in stops.items():
-            identity = catalog.match(row, f"{source_id}:stop:{stop_id}", uncoded=source_id not in FOREIGN_PACKS)
-            if identity is not None:
-                stop_identity[stop_id] = identity
-        # A platform/boarding area inherits only an unambiguous verified parent identity.
-        # Explicit child coordinates must remain geographically coherent with that identity.
-        for stop_id, row in stops.items():
-            parent = row.get("parent_station", "")
-            child_type = row.get("location_type", "") or "0"
-            parent_type = stops.get(parent, {}).get("location_type", "")
-            if stop_id not in stop_identity and parent in stop_identity and child_type in {"0", "4"} and parent_type == "1":
-                inherited = geographically_verified_parent_identity(
-                    row,
-                    stop_identity[parent],
-                    f"{source_id}:stop:{stop_id}",
-                )
-                if inherited is not None:
-                    stop_identity[stop_id] = inherited
+        stop_identity = stop_identities(stops, catalog, source_id, uncoded=mode != STATION_MODE_CODED)
+        if mode == STATION_MODE_ZONE:
+            # A border subset names only its zone stations (design §4.2): a stop of any other station keeps no
+            # catalogue id, so the iPhone never offers it as a journey end, while trips still list it.
+            allowed = pack["zone_station_ids"]
+            stop_identity = {stop_id: identity for stop_id, identity in stop_identity.items() if identity.station_id in allowed}
 
         connection.executescript("""
             DROP TABLE IF EXISTS temp.ios_gtfs_staged_stop_time;
