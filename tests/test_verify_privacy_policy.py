@@ -314,6 +314,9 @@ class VerifyPrivacyPolicyTest(unittest.TestCase):
             POLICY.DATA_SAFETY_PATH: (
                 "### Orari completi dei paesi confinanti: perché la risposta resta «nessun dato raccolto»",
             ),
+            "docs/store/APP_STORE_SUBMISSION.md": (
+                "La seconda è il download degli **orari completi di un paese confinante**",
+            ),
         }
         labels = {relative: label for label, relative, _ in POLICY.REQUIRED_DISCLOSURES}
         for relative, fragments in cases.items():

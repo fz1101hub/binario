@@ -119,6 +119,11 @@ REQUIRED_DISCLOSURES: tuple[tuple[str, str, tuple[str, ...]], ...] = (
             "### Orari completi dei paesi confinanti: perché la risposta resta «nessun dato raccolto»",
         ),
     ),
+    (
+        "App Store privacy answer",
+        "docs/store/APP_STORE_SUBMISSION.md",
+        ("La seconda è il download degli **orari completi di un paese confinante**",),
+    ),
     ("README.md", "README.md", ("[PRIVACY.md](PRIVACY.md)",)),
     ("CHANGELOG.md", "CHANGELOG.md", ("[l'informativa privacy verificabile](PRIVACY.md)",)),
     (
