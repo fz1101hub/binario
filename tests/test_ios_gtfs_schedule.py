@@ -589,5 +589,66 @@ class UncodedStationTest(unittest.TestCase):
         self.assertEqual("S9", self.bound(lambda stations: stations.append(shadow))[0][1])
 
 
+class RenonRailwayTest(unittest.TestCase):
+    """The Renon railway (route 160 of the bundled STA pack): its stations are catalogue entries without codes taken
+    from the pack, and the shipped iPhone index keeps every trip of the line on them."""
+
+    PACK = ROOT / "app/src/main/assets/gtfs/alto-adige-sta-gtfs.zip"
+    CATALOG = ROOT / "app/src/main/assets/stations/curated_it_rail_stations.json"
+    INDEX = ROOT / "ios/Resources/binario_gtfs_schedule_v1.sqlite.zlib"
+    IDS = [f"NC00{number}" for number in range(1810, 1820)]
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        with zipfile.ZipFile(cls.PACK) as pack:
+            def rows(name: str) -> list[dict[str, str]]:
+                return list(csv.DictReader(io.TextIOWrapper(pack.open(name), encoding="utf-8-sig")))
+            routes = {row["route_id"]: row for row in rows("routes.txt") if row["route_short_name"] == "160"}
+            cls.route_types = {row["route_type"] for row in routes.values()}
+            cls.trips = {row["trip_id"] for row in rows("trips.txt") if row["route_id"] in routes}
+            cls.stops = {row["stop_id"]: row for row in rows("stops.txt")}
+            cls.line_stops = {row["stop_id"] for row in rows("stop_times.txt") if row["trip_id"] in cls.trips}
+        stations = json.loads(cls.CATALOG.read_text(encoding="utf-8"))["stations"]
+        cls.renon = {station["id"]: station for station in stations if station["id"] in cls.IDS}
+
+    def test_catalogue_entries_are_the_stations_of_the_pack(self) -> None:
+        self.assertEqual({"2"}, self.route_types)
+        self.assertEqual(10, len(self.line_stops))
+        expected = {}
+        for stop_id in self.line_stops:
+            stop = self.stops[stop_id]
+            # One entry per station: the parent_station when the platform has one.
+            place = self.stops[stop["parent_station"]] if stop["parent_station"] else stop
+            expected[place["stop_name"]] = (round(float(place["stop_lat"]), 6), round(float(place["stop_lon"]), 6))
+        self.assertEqual(sorted(self.IDS), sorted(self.renon))
+        self.assertEqual(expected, {s["name"]: (s["latitude"], s["longitude"]) for s in self.renon.values()})
+        for station in self.renon.values():
+            self.assertIsNone(station["railwayCode"])
+            self.assertIsNone(station["trenitaliaLocationId"])
+
+    def test_the_shipped_index_keeps_every_trip_of_the_line_on_its_stations(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="ios-renon-") as temporary:
+            database = Path(temporary) / "schedule.sqlite"
+            database.write_bytes(zlib.decompress(self.INDEX.read_bytes()))
+            connection = sqlite3.connect(f"file:{database}?mode=ro&immutable=1", uri=True)
+            try:
+                bound = dict(connection.execute(
+                    "SELECT s.external_id, s.catalog_station_id FROM stop s JOIN pack p ON p.id = s.pack_id "
+                    "WHERE p.source_id = 'alto-adige-sta-gtfs' AND s.catalog_station_id IN (%s)" % ",".join("?" * len(self.IDS)),
+                    self.IDS,
+                ).fetchall())
+                trips = {row[0] for row in connection.execute(
+                    "SELECT DISTINCT t.external_id FROM trip t JOIN stop_time st ON st.trip_id = t.id "
+                    "JOIN stop s ON s.id = st.stop_id WHERE s.catalog_station_id IN (%s)" % ",".join("?" * len(self.IDS)),
+                    self.IDS,
+                )}
+            finally:
+                connection.close()
+        self.assertEqual(self.line_stops, set(bound))
+        self.assertEqual(set(self.IDS), set(bound.values()))
+        self.assertGreater(len(self.trips), 0)
+        self.assertEqual(self.trips, trips)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -251,7 +251,7 @@ class IOSProjectTests(unittest.TestCase):
         self.assertTrue((IOS / "Resources/binario_gtfs_schedule_v1.metadata.json").is_file())
 
         catalog = json.loads(CATALOG.read_text(encoding="utf-8"))
-        self.assertEqual(5_239, catalog["stationCount"])
+        self.assertEqual(5_249, catalog["stationCount"])
         self.assertFalse(catalog["operationalData"])
 
     def test_authoritative_catalog_matches_its_checked_in_manifest(self) -> None:
