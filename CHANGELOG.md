@@ -1,5 +1,14 @@
 # Changelog
 
+## In sviluppo — Ferrovia del Renon
+
+- **Ferrovia del Renon** (STA, linea 160): le sue 10 fermate, da L'Assunta e Soprabolzano a Collalbo, entrano nel catalogo delle stazioni (5.249 stazioni).
+  - Nomi e posizioni vengono dal pack STA incluso; come le altre stazioni senza codice ferroviario, non hanno dati in tempo reale.
+  - Si trovano nella ricerca stazioni di Android e iPhone e nel pianificatore (per esempio Soprabolzano → Collalbo).
+  - L'indice orario dell'iPhone tiene ora anche le 86 corse della linea (+13 KB).
+  - Nessun'altra fermata cambia stazione.
+  - I nomi tedeschi (Oberbozen, Klobenstein…) non ci sono: il pack STA pubblica solo i nomi italiani.
+
 ## In sviluppo — EAV con l'orario 2027 e dipendenze Alexa
 
 - **EAV** (Circumvesuviana e le altre linee EAV): l'orario incluso arriva ora al 31 dicembre 2027 invece del 31 dicembre 2026 (718 corse).
