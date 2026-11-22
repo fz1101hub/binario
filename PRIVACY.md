@@ -65,7 +65,7 @@ La sezione **«Bici in condivisione vicino a …»** del tabellone di una stazio
 
 ### Orari completi dei paesi confinanti (download su richiesta)
 
-Per i paesi i cui orari completi non sono inclusi nell'app, l'app include soltanto i treni della zona di confine con l'Italia e permette di scaricare, su richiesta, l'orario completo del paese. Quali paesi, con indirizzo, dimensione e impronta del file, è fissato in ogni versione dell'app (`app/src/main/assets/gtfs/foreign_packs.json`); gli orari dei paesi già inclusi per intero non si scaricano.
+Per i paesi i cui orari completi non sono inclusi nell'app, l'app include soltanto i treni della zona di confine con l'Italia e permette di scaricare, su richiesta, l'orario completo del paese. L'elenco dei paesi, con indirizzo, dimensione e impronta di ciascun file, è fissato in ogni versione dell'app (`app/src/main/assets/gtfs/foreign_packs.json`); gli orari dei paesi già inclusi per intero non si scaricano.
 
 - **Quando.** Il download parte **solo dopo il tocco su «Scarica»**, nel messaggio che l'app mostra quando una ricerca o un tabellone avrebbero bisogno dell'orario completo di un paese non ancora scaricato, oppure in Impostazioni › Orari dei paesi confinanti. «Non ora» non scarica nulla. L'app non scarica mai in background né a intervalli e non ripete da sola un download fallito: ogni tentativo richiede un nuovo tocco.
 - **Cosa parte.** Una sola richiesta HTTPS `GET` all'indirizzo del file fissato nell'app, su `github.com` (release del progetto), che GitHub reindirizza al proprio host dei file `release-assets.githubusercontent.com` (o `objects.githubusercontent.com`); l'app segue il reindirizzamento solo verso questi due host, in HTTPS. La richiesta porta il `User-Agent` di Binario («Binario/<versione> (Android; rail timetable app)») e nessun cookie, account, token, identificativo del dispositivo, posizione, stazione, tratta o ricerca.
@@ -215,7 +215,7 @@ Disattivare la condivisione, togliere «Mostra su Watch» dalla tratta mostrata 
 
 ### Orari completi dei paesi confinanti sull'iPhone
 
-Come su Android, per i paesi i cui orari completi non sono inclusi nell'app l'indice incluso contiene soltanto i treni della zona di confine, e l'orario completo del paese si scarica su richiesta. Quali paesi, con indirizzo, dimensione e impronta del file, è fissato in ogni versione dell'app (`binario_gtfs_foreign_packs_v1.json`, uguale byte per byte al file di Android).
+Come su Android, per i paesi i cui orari completi non sono inclusi nell'app l'indice incluso contiene soltanto i treni della zona di confine, e l'orario completo del paese si scarica su richiesta. L'elenco dei paesi, con indirizzo, dimensione e impronta di ciascun file, è fissato in ogni versione dell'app (`binario_gtfs_foreign_packs_v1.json`, uguale byte per byte al file di Android).
 
 - **Quando.** Solo dopo il tocco su «Scarica», nel messaggio che l'app mostra quando una ricerca o le **Partenze** avrebbero bisogno dell'orario completo di un paese non ancora scaricato, oppure nelle impostazioni. Mai in background, a intervalli o da una notifica, e mai ripetuto da solo dopo un errore.
 - **Cosa parte.** Una sola richiesta HTTPS `GET` all'indirizzo fissato su `github.com`, reindirizzata soltanto a `release-assets.githubusercontent.com` o `objects.githubusercontent.com` (HTTPS, porta 443), con una sessione effimera senza cookie, credenziali o cache e con il `User-Agent` «Binario/<versione> (iOS; rail timetable app)»; nessun identificativo, account, posizione, stazione, tratta o ricerca.
@@ -224,7 +224,7 @@ Come su Android, per i paesi i cui orari completi non sono inclusi nell'app l'in
 - **Conservazione.** L'indice resta in Application Support, in un file escluso dai backup di iCloud e del computer, ed è letto offline accanto all'indice incluso; non viene inviato al Watch. Si elimina dalle impostazioni dell'app o disinstallandola.
 - **Aggiornamenti.** Nessun aggiornamento automatico: dopo un aggiornamento dell'app che fissa un file diverso, quello scaricato prima viene eliminato, le impostazioni mostrano «Aggiornamento disponibile» e l'app chiede di nuovo alla prossima ricerca che ne ha bisogno; con gli orari fissati ormai scaduti il download non è più offerto.
 
-Il download non cambia la risposta al questionario App Privacy (**Dati non raccolti**): la richiesta non contiene dati dell'utente, l'indirizzo IP e i metadati servono a GitHub solo per consegnare un file pubblico identico per tutti, e né Binario né il progetto possono collegarli a una persona (GitHub espone al progetto soltanto un contatore aggregato dei download di ogni file).
+Il download non cambia la risposta al questionario App Privacy (**Dati non raccolti**): la richiesta non contiene dati dell'utente, l'indirizzo IP e i metadati arrivano a GitHub perché consegni un file pubblico identico per tutti (GitHub li tratta secondo la propria informativa), e né Binario né il progetto possono collegarli a una persona (GitHub espone al progetto soltanto un contatore aggregato dei download di ogni file).
 
 ### English summary (iPhone and Apple Watch)
 
