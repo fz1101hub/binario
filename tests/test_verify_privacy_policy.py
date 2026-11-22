@@ -317,6 +317,10 @@ class VerifyPrivacyPolicyTest(unittest.TestCase):
             "docs/store/APP_STORE_SUBMISSION.md": (
                 "La seconda è il download degli **orari completi di un paese confinante**",
             ),
+            "docs/data-sources/SOURCE_POLICY.md": (
+                "solo se la sua `licence` nel manifest è confermata",
+                "«Dati di terzi, non un prodotto ufficiale di Trenitalia, RFI, Italo, SBB, ÖBB o SNCF»",
+            ),
         }
         labels = {relative: label for label, relative, _ in POLICY.REQUIRED_DISCLOSURES}
         for relative, fragments in cases.items():

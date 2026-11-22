@@ -1,6 +1,6 @@
 # Refresh dei pack GTFS embedded
 
-I pack GTFS sono **artefatti di release offline**: l'app non scarica mai dati di orario. Il comando `tools/build_gtfs_packs.py` acquisisce solo le URL registrate in `manifest.json`, applica un limite di byte anche alle risposte chunked, filtra ogni feed, e pubblica ZIP, manifest e checksum con un singolo replace atomico della directory di output. Nessun download incompleto, feed inventato o precedente asset viene presentato come aggiornamento riuscito.
+I pack GTFS sono **artefatti di release offline**: l'app non li scarica dalle fonti e non li aggiorna dalla rete. Fa eccezione solo, per i paesi i cui orari completi non sono inclusi nell'app, l'orario completo che il progetto pubblica come release di GitHub e che prende il posto del pack ridotto alla zona di confine: scaricato solo dopo il tocco dell'utente su «Scarica» e accettato solo con l'impronta SHA-256 fissata nella versione dell'app (licenza e redistribuzione in [SOURCE_POLICY.md](SOURCE_POLICY.md), dati visibili a GitHub in [PRIVACY.md](../../PRIVACY.md)). Il comando `tools/build_gtfs_packs.py` acquisisce solo le URL registrate in `manifest.json`, applica un limite di byte anche alle risposte chunked, filtra ogni feed, e pubblica ZIP, manifest e checksum con un singolo replace atomico della directory di output. Nessun download incompleto, feed inventato o precedente asset viene presentato come aggiornamento riuscito.
 
 ## Aggiornamento settimanale
 

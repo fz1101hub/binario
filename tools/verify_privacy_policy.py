@@ -100,6 +100,16 @@ REQUIRED_DISCLOSURES: tuple[tuple[str, str, tuple[str, ...]], ...] = (
         ),
     ),
     (
+        "Foreign full-timetable data-source policy",
+        "docs/data-sources/SOURCE_POLICY.md",
+        (
+            "### Orari completi dei paesi confinanti: redistribuzione su GitHub Releases",
+            "solo se la sua `licence` nel manifest è confermata",
+            "«Dati di terzi, non un prodotto ufficiale di Trenitalia, RFI, Italo, SBB, ÖBB o SNCF»",
+            "`release-assets.githubusercontent.com` o `objects.githubusercontent.com`",
+        ),
+    ),
+    (
         "Play Data safety answers",
         DATA_SAFETY_PATH,
         (
