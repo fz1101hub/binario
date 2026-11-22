@@ -9,7 +9,10 @@ import java.time.LocalDate
 /**
  * Data pack statici validati e inclusi nell’APK. L’app non li aggiorna dalla
  * rete: l’aggiornamento avviene solo sostituendo asset, manifest e impronte
- * in una nuova release verificata.
+ * in una nuova release verificata. L’unica eccezione sono i pack esteri
+ * inclusi come zona di confine ([borderZone]): il pack completo della stessa
+ * versione si scarica solo dopo un tocco esplicito, con l’impronta fissata nel
+ * file dei pin (`gtfs/foreign_packs.json`, vedi [ForeignPackPins]).
  *
  * La copertura segue il principio best-available: una fonte meno completa può
  * restare attiva in un territorio se è l'unica disponibile, mentre le fonti
@@ -54,9 +57,22 @@ data class EmbeddedGtfsPack(
      * one trip per run of a service day, the train under its own number (EmbeddedGtfsRouteAdapter, `copiesOn`). Off for
      * the packs whose trips at the same minutes are coupled portions, each a train of its own (Trenord, SNCF, ÖBB).
      */
-    val itineraryCopies: Boolean = false
+    val itineraryCopies: Boolean = false,
+    /**
+     * Set while only the border subset of a foreign pack is read ([EmbeddedGtfsPacks.forStore]): its trains are complete
+     * at the zone stations only, so the searches offer just those as ends it covers. Null for a pack read whole.
+     */
+    val borderZone: GtfsBorderZone? = null
 ) {
     val isUrban: Boolean get() = kind == EmbeddedGtfsPackKind.URBAN
+
+    /** True unless this pack is a border subset and [stationId] (an app station id) is not one of its zone stations. */
+    fun coversEnd(stationId: String?): Boolean = borderZone?.contains(stationId) ?: true
+}
+
+/** The zone stations (catalogue ids) of a foreign pack read as its border subset: every train calling there is in it. */
+data class GtfsBorderZone(val zoneStationIds: Set<String>) {
+    fun contains(stationId: String?): Boolean = stationId != null && ForeignPackEntry.catalogueId(stationId) in zoneStationIds
 }
 
 /** What a pack holds. */
@@ -139,6 +155,21 @@ object EmbeddedGtfsPacks {
 
     /** True for the id of a city-pack stop (`gtfs:<city pack>:<stop>`), whatever the build. */
     fun isUrbanStopId(id: String): Boolean = urbanStopPrefixes.any { id.startsWith(it) && id.length > it.length }
+
+    /**
+     * [packs] as the readers must see them with [pins] and the full packs [installed]: a foreign pack bundled as its
+     * border subset covers only its zone stations ([EmbeddedGtfsPack.borderZone]); once its full pack is installed it is
+     * read whole, with the pin's last service day. Without pins (or with no pack bundled as a subset) nothing changes.
+     */
+    fun forStore(packs: List<EmbeddedGtfsPack>, pins: ForeignPackPins, installed: Set<SourceId>): List<EmbeddedGtfsPack> =
+        packs.map { pack ->
+            val entry = pins.entry(pack.sourceId)?.takeIf(ForeignPackEntry::borderOnly) ?: return@map pack
+            if (pack.sourceId in installed && entry.android != null) {
+                pack.copy(lastServiceDate = entry.lastServiceDate, borderZone = null)
+            } else {
+                pack.copy(borderZone = GtfsBorderZone(entry.zoneStationIds))
+            }
+        }
 
     /** Every pack of this build, railway then urban: what the registry enables. */
     val sourceIds: Set<SourceId> = included.mapTo(linkedSetOf()) { it.sourceId }

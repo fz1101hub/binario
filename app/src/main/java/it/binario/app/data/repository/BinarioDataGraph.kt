@@ -5,8 +5,13 @@ import it.binario.app.data.LocalOnlyRailDataPolicy
 import it.binario.app.data.RailDataRepository
 import it.binario.app.data.TrainDataSource
 import it.binario.app.data.catalog.EmbeddedCuratedRailStationCatalog
+import it.binario.app.data.gtfs.EmbeddedGtfsPack
 import it.binario.app.data.gtfs.EmbeddedGtfsRealtimeScheduleResolver
 import it.binario.app.data.gtfs.EmbeddedGtfsPacks
+import it.binario.app.data.gtfs.ForeignPackPins
+import it.binario.app.data.gtfs.ForeignPackSnapshot
+import it.binario.app.data.gtfs.ForeignPackStore
+import it.binario.app.data.gtfs.GtfsPackOpener
 import it.binario.app.data.gtfs.EmbeddedGtfsRouteAdapter
 import it.binario.app.data.gtfs.EmbeddedUrbanStopIndex
 import it.binario.app.data.journey.EmbeddedGtfsJourneyProvider
@@ -28,6 +33,8 @@ import it.binario.app.data.urban.UrbanGtfsRealtimeAdapter
 import it.binario.app.data.urban.UrbanPackRoutes
 import it.binario.app.data.urban.UrbanRealtimeFeeds
 import it.binario.app.data.urban.UrbanStopBoardAdapter
+import it.binario.app.tile.NextTrainTileStore
+import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -51,14 +58,85 @@ object BinarioDataGraph {
     private val urbanStopIndexesByPackage = mutableMapOf<String, EmbeddedUrbanStopIndex>()
     private val urbanRealtimeByPackage = mutableMapOf<String, Map<SourceId, UrbanGtfsRealtimeAdapter>>()
     private val urbanBoardsByPackage = mutableMapOf<String, List<StopScopedBoardProvider>>()
+    private val timetablesLock = Any()
+    @Volatile private var foreignStore: ForeignPackStore? = null
+    private var timetables: EmbeddedTimetables? = null
 
-    fun routeDataSource(context: Context): TrainDataSource = synchronized(routeSourcesByPackage) {
+    /**
+     * The embedded packs as one generation of readers sees them: the railway packs (a foreign pack as its border subset,
+     * or whole once its full pack is installed) and the opener that reads each from the APK or the installed file.
+     */
+    class EmbeddedTimetables internal constructor(val snapshot: ForeignPackSnapshot, val openPack: GtfsPackOpener) {
+        val railPacks: List<EmbeddedGtfsPack> = snapshot.packs(EmbeddedGtfsPacks.all)
+        val generation: Long get() = snapshot.generation
+    }
+
+    /**
+     * The full foreign packs downloaded on request, with the pins of this version; created once per process, when its
+     * startup cleaning also removes the files of a pin that changed with an update.
+     */
+    fun foreignPackStore(context: Context): ForeignPackStore {
+        foreignStore?.let { return it }
+        val app = context.applicationContext
+        return synchronized(timetablesLock) {
+            foreignStore ?: ForeignPackStore(
+                File(app.noBackupFilesDir, FOREIGN_PACK_DIRECTORY),
+                ForeignPackPins.load { path -> app.assets.open(path) }
+            ).also { store ->
+                if (store.cleanUp()) NextTrainTileStore(app).clearTimetable()
+                foreignStore = store
+            }
+        }
+    }
+
+    /**
+     * The packs and opener of the current generation. An install or a delete starts a new one: the readers cached for
+     * the previous generation are dropped ([timetablesChanged]) and built again on the next call.
+     */
+    fun embeddedTimetables(context: Context): EmbeddedTimetables {
+        val app = context.applicationContext
+        val store = foreignPackStore(app)
+        var changed = false
+        val current = synchronized(timetablesLock) {
+            timetables?.takeIf { it.generation == store.generation.value } ?: run {
+                changed = timetables != null
+                val snapshot = store.snapshot()
+                EmbeddedTimetables(
+                    snapshot,
+                    GtfsPackOpener({ path -> app.assets.open(path) }, snapshot, EmbeddedGtfsPacks.all, store::verifyOnce)
+                ).also { timetables = it }
+            }
+        }
+        // Outside the lock: a cache key carries its generation, so a reader of the old one is never handed out again.
+        if (changed) clearTimetableReaders()
+        return current
+    }
+
+    /** Drops the readers built on the embedded packs; the next call builds them on the current generation. */
+    fun timetablesChanged() {
+        synchronized(timetablesLock) { timetables = null }
+        clearTimetableReaders()
+    }
+
+    private fun clearTimetableReaders() {
+        synchronized(routeSourcesByPackage) { routeSourcesByPackage.clear() }
+        synchronized(numberSearchByPackage) { numberSearchByPackage.clear() }
+        synchronized(journeySearchByPackage) { journeySearchByPackage.clear() }
+        synchronized(offlinePlannersByPackage) { offlinePlannersByPackage.clear() }
+        synchronized(realtimeResolversByPackage) { realtimeResolversByPackage.clear() }
+    }
+
+    private fun key(context: Context, timetables: EmbeddedTimetables): String = "${context.packageName}#${timetables.generation}"
+
+    fun routeDataSource(context: Context): TrainDataSource {
         val applicationContext = context.applicationContext
-        routeSourcesByPackage.getOrPut(applicationContext.packageName) {
-            val openAsset = { assetPath: String -> applicationContext.assets.open(assetPath) }
+        val timetables = embeddedTimetables(applicationContext)
+        return synchronized(routeSourcesByPackage) { routeSourcesByPackage.getOrPut(key(applicationContext, timetables)) {
+            val openAsset = timetables.openPack
             // The catalogue is read only for the packs that publish station codes (Trenitalia, Italo).
             val embedded = EmbeddedGtfsRouteAdapter(
                 openAsset = openAsset,
+                packs = timetables.railPacks,
                 stationCatalog = { withContext(Dispatchers.IO) { EmbeddedCuratedRailStationCatalog(openAsset).load() } }
             )
             val officialPlannedSource = RailDataRepository(
@@ -81,20 +159,21 @@ object BinarioDataGraph {
                 ),
                 providerRegistry = defaultRegistry
             )
-        }
+        } }
     }
 
-    fun trainNumberSearchService(context: Context): TrainNumberSearchService = synchronized(numberSearchByPackage) {
+    fun trainNumberSearchService(context: Context): TrainNumberSearchService {
         val app = context.applicationContext
-        numberSearchByPackage.getOrPut(app.packageName) {
-            val static = EmbeddedGtfsRouteAdapter(openAsset = { app.assets.open(it) },
-                packs = EmbeddedGtfsPacks.all.filter { defaultRegistry.isEnabled(it.sourceId) })
+        val timetables = embeddedTimetables(app)
+        return synchronized(numberSearchByPackage) { numberSearchByPackage.getOrPut(key(app, timetables)) {
+            val static = EmbeddedGtfsRouteAdapter(openAsset = timetables.openPack,
+                packs = timetables.railPacks.filter { defaultRegistry.isEnabled(it.sourceId) })
             val source = EmbeddedTrainNumberSearchSource(static, GtfsRealtimeEnrichedTrainDataSource(static, realtimeEnrichmentService(app)))
             TrainNumberSearchService(
                 localOnlyPolicy.trainNumberSearchProviders().filter { defaultRegistry.isEnabled(it.descriptor.id) } +
                     listOf(source.provider(true))
             )
-        }
+        } }
     }
 
     /**
@@ -102,25 +181,27 @@ object BinarioDataGraph {
      * and gating. The registry decides which journey providers take part and in which order; today only the offline
      * planner on the registry-enabled embedded packs, which sends nothing over the network.
      */
-    fun journeySearchService(context: Context): JourneySearchService = synchronized(journeySearchByPackage) {
+    fun journeySearchService(context: Context): JourneySearchService {
         val app = context.applicationContext
-        journeySearchByPackage.getOrPut(app.packageName) {
+        val timetables = embeddedTimetables(app)
+        return synchronized(journeySearchByPackage) { journeySearchByPackage.getOrPut(key(app, timetables)) {
             JourneySearchService(activeProviders(listOf<JourneyProvider>(offlineJourneyPlanner(app)), ProviderCapability.JOURNEY_SEARCH))
-        }
+        } }
     }
 
     /**
      * The offline planner on the registry-enabled embedded packs (railway packs, then this build's city networks), shared
      * by the journey search and the static timetable questions of the screens ("Ultimo di oggi", wheelchair marks).
      */
-    fun offlineJourneyPlanner(context: Context): EmbeddedGtfsJourneyProvider = synchronized(offlinePlannersByPackage) {
+    fun offlineJourneyPlanner(context: Context): EmbeddedGtfsJourneyProvider {
         val app = context.applicationContext
-        offlinePlannersByPackage.getOrPut(app.packageName) {
+        val timetables = embeddedTimetables(app)
+        return synchronized(offlinePlannersByPackage) { offlinePlannersByPackage.getOrPut(key(app, timetables)) {
             EmbeddedGtfsJourneyProvider.create(
-                openAsset = { assetPath -> app.assets.open(assetPath) },
-                packs = (EmbeddedGtfsPacks.all + EmbeddedGtfsPacks.urban).filter { defaultRegistry.isEnabled(it.sourceId) }
+                openAsset = timetables.openPack,
+                packs = (timetables.railPacks + EmbeddedGtfsPacks.urban).filter { defaultRegistry.isEnabled(it.sourceId) }
             )
-        }
+        } }
     }
 
     fun providerRegistry(): ProviderRegistry = defaultRegistry
@@ -129,8 +210,9 @@ object BinarioDataGraph {
     fun urbanStopIndex(context: Context): EmbeddedUrbanStopIndex = synchronized(urbanStopIndexesByPackage) {
         val app = context.applicationContext
         urbanStopIndexesByPackage.getOrPut(app.packageName) {
+            // City packs are never foreign: the opener reads them from the APK.
             EmbeddedUrbanStopIndex(
-                openAsset = { assetPath -> app.assets.open(assetPath) },
+                openAsset = embeddedTimetables(app).openPack,
                 packs = EmbeddedGtfsPacks.urban.filter { defaultRegistry.isEnabled(it.sourceId) }
             )
         }
@@ -151,7 +233,7 @@ object BinarioDataGraph {
                     val pack = packs.first { it.sourceId == feed.staticSourceId }
                     feed.staticSourceId to UrbanGtfsRealtimeAdapter(
                         feed = feed,
-                        packRoutes = { withContext(Dispatchers.IO) { UrbanPackRoutes.read(app.assets.open(pack.assetPath)) } }
+                        packRoutes = { withContext(Dispatchers.IO) { UrbanPackRoutes.read(embeddedTimetables(app).openPack(pack.assetPath)) } }
                     )
                 }
         }
@@ -163,7 +245,7 @@ object BinarioDataGraph {
         urbanBoardsByPackage.getOrPut(app.packageName) {
             val packs = EmbeddedGtfsPacks.urban.filter { defaultRegistry.isEnabled(it.sourceId) }
             if (packs.isEmpty()) return@getOrPut emptyList()
-            val adapter = EmbeddedGtfsRouteAdapter(openAsset = { app.assets.open(it) }, packs = packs, indexCacheCapacity = 1)
+            val adapter = EmbeddedGtfsRouteAdapter(openAsset = embeddedTimetables(app).openPack, packs = packs, indexCacheCapacity = 1)
             val realtime = urbanRealtimeFeeds(app)
             packs.map { pack ->
                 UrbanStopBoardAdapter(
@@ -240,15 +322,19 @@ object BinarioDataGraph {
     fun tripUpdateProviders(): List<TripUpdateProvider> =
         activeProviders(localOnlyPolicy.tripUpdateProviders(), ProviderCapability.TRAIN_RUN_REALTIME)
 
-    fun realtimeScheduleResolver(context: Context): EmbeddedGtfsRealtimeScheduleResolver = synchronized(realtimeResolversByPackage) {
+    fun realtimeScheduleResolver(context: Context): EmbeddedGtfsRealtimeScheduleResolver {
         val applicationContext = context.applicationContext
-        realtimeResolversByPackage.getOrPut(applicationContext.packageName) {
-            EmbeddedGtfsRealtimeScheduleResolver(openAsset = { assetPath: String -> applicationContext.assets.open(assetPath) })
-        }
+        val timetables = embeddedTimetables(applicationContext)
+        return synchronized(realtimeResolversByPackage) { realtimeResolversByPackage.getOrPut(key(applicationContext, timetables)) {
+            EmbeddedGtfsRealtimeScheduleResolver(openAsset = timetables.openPack, packs = timetables.railPacks)
+        } }
     }
 
     fun realtimeEnrichmentService(context: Context): RealtimeEnrichmentService =
         RealtimeEnrichmentService(tripUpdateProviders(), realtimeScheduleResolver(context))
+
+    /** `noBackupFilesDir/gtfs-full/`: the system never backs it up. */
+    private const val FOREIGN_PACK_DIRECTORY = "gtfs-full"
 
     private fun <T : RailProvider> activeProviders(
         candidates: List<T>,
