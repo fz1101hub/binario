@@ -8,6 +8,8 @@ on:
       - "contracts/wear-snapshot/**"
       - "contracts/shared-rules/**"
       - "contracts/voice-input/**"
+      # Full foreign packs: the JVM tests read them for the trains beyond the border zone of the bundled subsets.
+      - "data/gtfs-foreign/android/**"
       - "gradle/**"
       - "gradlew"
       - "gradlew.bat"
@@ -40,6 +42,8 @@ on:
       - "contracts/wear-snapshot/**"
       - "contracts/shared-rules/**"
       - "contracts/voice-input/**"
+      # Full foreign packs: the JVM tests read them for the trains beyond the border zone of the bundled subsets.
+      - "data/gtfs-foreign/android/**"
       - "gradle/**"
       - "gradlew"
       - "gradlew.bat"
