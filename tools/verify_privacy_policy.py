@@ -10,6 +10,9 @@ DATA_SAFETY_PATH = "docs/store/PLAY_DATA_SAFETY.md"
 HOST_SOURCE_GLOBS = ("app/src/main/java/**/*.kt", "wear/src/main/java/**/*.kt")
 HOST_SOURCE_FILES = (
     "app/src/main/assets/gtfs/manifest.json",
+    # Pins of the neighbouring countries' full timetables: the download URLs on github.com that the signed app reads
+    # at runtime.  Generated in every build, also when no pack is pinned (then it names no URL).
+    "app/src/main/assets/gtfs/foreign_packs.json",
     "app/src/main/assets/stations/manifest.json",
 )
 # Manifests of the regional-railway and city-network packs (every build) and of the personal-build packs: read when
@@ -71,6 +74,17 @@ REQUIRED_DISCLOSURES: tuple[tuple[str, str, tuple[str, ...]], ...] = (
             "### Avvisi, tabelloni svizzeri e meteo a destinazione",
             "coordinate della stazione di arrivo arrotondate a due decimali",
             "Anche le richieste di avvisi a ViaggiaTreno passano in HTTP non cifrato",
+            # The on-request download of a neighbouring country's full timetable (Android, iPhone, English summary).
+            "### Orari completi dei paesi confinanti (download su richiesta)",
+            "### Orari completi dei paesi confinanti sull'iPhone",
+            "solo dopo il tocco su «Scarica»",
+            "`release-assets.githubusercontent.com`",
+            "`objects.githubusercontent.com`",
+            "**quale paese**",
+            "impronta SHA-256 coincide con quella fissata nella versione dell'app",
+            "Nessun aggiornamento automatico",
+            "| Non scaricare gli orari completi dei paesi confinanti |",
+            "GitHub sees the IP address, time, User-Agent and which country is downloaded",
         ),
     ),
     (
@@ -101,6 +115,8 @@ REQUIRED_DISCLOSURES: tuple[tuple[str, str, tuple[str, ...]], ...] = (
             "URL pubblico",
             "tranne `www.viaggiatreno.it` (senza sottodomini)",
             "valore predefinito anche in release",
+            "11. **`github.com`, `release-assets.githubusercontent.com` e `objects.githubusercontent.com` — orari completi dei paesi confinanti.**",
+            "### Orari completi dei paesi confinanti: perché la risposta resta «nessun dato raccolto»",
         ),
     ),
     ("README.md", "README.md", ("[PRIVACY.md](PRIVACY.md)",)),
@@ -141,6 +157,17 @@ REQUIRED_DISCLOSURES: tuple[tuple[str, str, tuple[str, ...]], ...] = (
     ),
 )
 
+# In-app lines that must say something precise in their own string resource, not just somewhere in the file
+# (another string, such as the download dialog's, may share words with them): (label, file, string name, fragments).
+REQUIRED_STRING_DISCLOSURES: tuple[tuple[str, str, str, tuple[str, ...]], ...] = (
+    (
+        "Android in-app disclosure",
+        "app/src/main/res/values/strings.xml",
+        "settings_privacy_foreign_packs",
+        ("GitHub vede l’indirizzo IP e quale paese scarichi",),
+    ),
+)
+
 
 def read(relative: str) -> str:
     return (ROOT / relative).read_text(encoding="utf-8")
@@ -148,6 +175,23 @@ def read(relative: str) -> str:
 
 def require_all(label: str, text: str, fragments: tuple[str, ...]) -> list[str]:
     return [f"{label}: missing {fragment!r}" for fragment in fragments if fragment not in text]
+
+
+def string_resource(text: str, name: str) -> str | None:
+    """The text of the Android ``<string name="name">`` in ``text``, or None when there is no such string."""
+    match = re.search(r'<string\s+name="' + re.escape(name) + r'"[^>]*>(.*?)</string>', text, re.DOTALL)
+    return match.group(1) if match else None
+
+
+def string_disclosure_errors(read_file=read) -> list[str]:
+    errors: list[str] = []
+    for label, relative_path, name, fragments in REQUIRED_STRING_DISCLOSURES:
+        value = string_resource(read_file(relative_path), name)
+        if value is None:
+            errors.append(f"{label}: missing string {name!r}")
+            continue
+        errors += [f"{label}: {name} missing {fragment!r}" for fragment in fragments if fragment not in value]
+    return errors
 
 
 def hosts_in(text: str) -> set[str]:
@@ -161,11 +205,17 @@ def hosts_in(text: str) -> set[str]:
     return hosts
 
 
+def missing_host_sources(root: Path = ROOT) -> list[str]:
+    """A required host source that is absent: its hosts would silently drop out of the inventory."""
+    return [f"{relative}: required host source file missing" for relative in HOST_SOURCE_FILES
+            if not (root / relative).is_file()]
+
+
 def code_hosts(root: Path = ROOT) -> set[str]:
-    """Every network host referenced by the Android sources and asset manifests."""
+    """Every network host referenced by the Android sources and asset manifests (a missing required file is
+    reported by ``missing_host_sources``)."""
     paths = [path for pattern in HOST_SOURCE_GLOBS for path in root.glob(pattern)]
-    paths += [root / relative for relative in HOST_SOURCE_FILES]
-    paths += [root / relative for relative in OPTIONAL_HOST_SOURCE_FILES if (root / relative).is_file()]
+    paths += [root / relative for relative in HOST_SOURCE_FILES + OPTIONAL_HOST_SOURCE_FILES if (root / relative).is_file()]
     hosts: set[str] = set()
     for path in paths:
         hosts |= hosts_in(path.read_text(encoding="utf-8"))
@@ -198,7 +248,11 @@ def verification_errors(read_file=read, hosts: set[str] | None = None, ios_hosts
     errors: list[str] = []
     for label, relative_path, fragments in REQUIRED_DISCLOSURES:
         errors += require_all(label, read_file(relative_path), fragments)
-    errors += host_inventory_errors(read_file(DATA_SAFETY_PATH), code_hosts() if hosts is None else hosts)
+    errors += string_disclosure_errors(read_file)
+    if hosts is None:
+        errors += missing_host_sources()
+        hosts = code_hosts()
+    errors += host_inventory_errors(read_file(DATA_SAFETY_PATH), hosts)
     errors += ios_host_errors(read_file("PRIVACY.md"), ios_code_hosts() if ios_hosts is None else ios_hosts)
     return errors
 

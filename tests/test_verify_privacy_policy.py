@@ -2,6 +2,9 @@
 from __future__ import annotations
 
 import importlib.util
+import json
+import re
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -13,6 +16,75 @@ SPEC = importlib.util.spec_from_file_location(
 assert SPEC and SPEC.loader
 POLICY = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(POLICY)
+
+# Neighbouring countries' full timetables (foreign packs).  The pins asset, the Kotlin and Swift host constants and
+# the in-app line come from the other work packages, so these tests build them as fixtures.
+PINS = "app/src/main/assets/gtfs/foreign_packs.json"
+STRINGS = "app/src/main/res/values/strings.xml"
+RELEASE_PREFIX = "https://github.com/fz1101hub/binario/releases/download/"
+FOREIGN_DOWNLOAD_HOSTS = {"github.com", "release-assets.githubusercontent.com", "objects.githubusercontent.com"}
+FOREIGN_PRIVACY_FRAGMENT = "GitHub vede l’indirizzo IP e quale paese scarichi"
+FOREIGN_PRIVACY_TEXT = (
+    "Orari completi dei paesi confinanti: si scaricano solo se tocchi «Scarica». "
+    f"{FOREIGN_PRIVACY_FRAGMENT}; il file resta sul telefono, fuori dal backup, e si elimina da Impostazioni."
+)
+FOREIGN_PRIVACY_ELEMENT = re.compile(r'\s*<string name="settings_privacy_foreign_packs"[^>]*>.*?</string>', re.DOTALL)
+
+
+def with_settings_line(text: str, value: str | None) -> str:
+    """``text`` (strings.xml) with the in-app line replaced by ``value``, or removed when ``value`` is None."""
+    text = FOREIGN_PRIVACY_ELEMENT.sub("", text)
+    if value is None:
+        return text
+    return text.replace("</resources>", f'    <string name="settings_privacy_foreign_packs">{value}</string>\n</resources>', 1)
+
+
+def sample_pins(pinned: tuple[str, ...] = ("oebb-gtfs",)) -> dict:
+    """A pins file after the licence gate: every pack listed, only the ``pinned`` ones with download pins."""
+    packs = []
+    for source_id, country in (("ch-otd-gtfs", "CH"), ("oebb-gtfs", "AT"), ("sncf-gtfs", "FR")):
+        android = ios = None
+        if source_id in pinned:
+            digest = "0123456789ab" + "c" * 52
+            full_tag, ios_tag = f"gtfs-full-{source_id}-{digest[:12]}", f"gtfs-ios-{source_id}-{digest[:12]}"
+            android = {"tag": full_tag, "asset": f"{source_id}.zip", "url": f"{RELEASE_PREFIX}{full_tag}/{source_id}.zip",
+                       "sizeBytes": 1024, "sha256": digest, "contentSha256": digest}
+            ios = {"tag": ios_tag, "asset": f"{source_id}.sqlite.zlib",
+                   "url": f"{RELEASE_PREFIX}{ios_tag}/{source_id}.sqlite.zlib", "sizeBytes": 2048, "sha256": digest}
+        packs.append({"sourceId": source_id, "country": country, "borderOnly": source_id in pinned,
+                      "servedStationIds": [], "zoneStationIds": [], "android": android, "ios": ios})
+    return {"schemaVersion": 1, "repository": "fz1101hub/binario", "borderZone": {"radiusKm": 35}, "packs": packs}
+
+
+def android_fixture_tree(root: Path, pins: dict | None) -> Path:
+    """The required host sources plus the downloader's host constants.  The Kotlin file has no github.com URL on
+    purpose: there, the host can only come from the pins asset."""
+    files = {
+        "app/src/main/java/it/binario/app/data/gtfs/ForeignPackPins.kt": (
+            'const val GITHUB_RELEASE_DOWNLOAD_HOST = "release-assets.githubusercontent.com"\n'
+            'const val GITHUB_LEGACY_RELEASE_DOWNLOAD_HOST = "objects.githubusercontent.com"\n'
+        ),
+        "app/src/main/assets/gtfs/manifest.json": '{"packs": []}\n',
+        "app/src/main/assets/stations/manifest.json": "{}\n",
+    }
+    if pins is not None:
+        files[PINS] = json.dumps(pins, indent=2) + "\n"
+    for relative, text in files.items():
+        (root / relative).parent.mkdir(parents=True, exist_ok=True)
+        (root / relative).write_text(text, encoding="utf-8")
+    return root
+
+
+def repository_text(relative: str) -> str:
+    return (ROOT / relative).read_text(encoding="utf-8")
+
+
+def with_foreign_privacy_line(relative: str) -> str:
+    """The repository, with the in-app line the Android work writes when this tree does not have it yet."""
+    text = repository_text(relative)
+    if relative == STRINGS and POLICY.string_resource(text, "settings_privacy_foreign_packs") is None:
+        return with_settings_line(text, FOREIGN_PRIVACY_TEXT)
+    return text
 
 
 class VerifyPrivacyPolicyTest(unittest.TestCase):
@@ -162,6 +234,97 @@ class VerifyPrivacyPolicyTest(unittest.TestCase):
             f"Expo Italian privacy catalog: missing {catalog_fragment!r}",
             errors,
         )
+
+    def test_foreign_pack_pins_are_a_required_host_source(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="privacy-hosts-") as temporary:
+            root = android_fixture_tree(Path(temporary), sample_pins())
+            self.assertEqual(FOREIGN_DOWNLOAD_HOSTS, POLICY.code_hosts(root))
+            self.assertEqual([], POLICY.missing_host_sources(root))
+
+        # Licence gate with no pack pinned: the file names no URL and is still present.
+        with tempfile.TemporaryDirectory(prefix="privacy-hosts-") as temporary:
+            root = android_fixture_tree(Path(temporary), sample_pins(pinned=()))
+            self.assertEqual(FOREIGN_DOWNLOAD_HOSTS - {"github.com"}, POLICY.code_hosts(root))
+            self.assertEqual([], POLICY.missing_host_sources(root))
+
+        # A missing pins file is an error, not a crash and not a silently smaller inventory.
+        with tempfile.TemporaryDirectory(prefix="privacy-hosts-") as temporary:
+            root = android_fixture_tree(Path(temporary), None)
+            self.assertEqual(FOREIGN_DOWNLOAD_HOSTS - {"github.com"}, POLICY.code_hosts(root))
+            self.assertEqual([f"{PINS}: required host source file missing"], POLICY.missing_host_sources(root))
+
+    def test_foreign_download_hosts_are_classified_in_the_data_safety_table(self) -> None:
+        # With the downloader's constants in the app code (as after the Android work is merged) the table matches.
+        data_safety = repository_text(POLICY.DATA_SAFETY_PATH)
+        self.assertEqual([], POLICY.host_inventory_errors(data_safety, POLICY.code_hosts() | FOREIGN_DOWNLOAD_HOSTS))
+        for row in ("| `github.com` | A, E, F |", "| `release-assets.githubusercontent.com` | A |",
+                    "| `objects.githubusercontent.com` | A |"):
+            with self.subTest(row=row):
+                self.assertIn(row, data_safety)
+
+    def test_foreign_download_hosts_named_by_the_iphone_are_disclosed(self) -> None:
+        swift = (
+            f'static let releaseDownloadPrefix = "{RELEASE_PREFIX}"\n'
+            'static let releaseAssetsHost = "release-assets.githubusercontent.com"\n'
+            'static let legacyReleaseAssetsHost = "objects.githubusercontent.com"\n'
+        )
+        hosts = POLICY.hosts_in(swift)
+        self.assertEqual(FOREIGN_DOWNLOAD_HOSTS, hosts)
+        self.assertEqual([], POLICY.ios_host_errors(repository_text("PRIVACY.md"), hosts))
+
+    def test_foreign_pack_in_app_line_is_checked_inside_its_own_string(self) -> None:
+        self.assertEqual([], POLICY.string_disclosure_errors(with_foreign_privacy_line))
+        self.assertFalse(any(error.startswith("Android in-app disclosure")
+                             for error in POLICY.verification_errors(with_foreign_privacy_line)))
+
+        def without_line(relative: str) -> str:
+            text = repository_text(relative)
+            return with_settings_line(text, None) if relative == STRINGS else text
+
+        missing = "Android in-app disclosure: missing string 'settings_privacy_foreign_packs'"
+        self.assertEqual([missing], POLICY.string_disclosure_errors(without_line))
+        self.assertIn(missing, POLICY.verification_errors(without_line))
+
+        # The same words in another string (such as the download dialog's) do not count for the settings line.
+        def words_in_another_string(relative: str) -> str:
+            text = repository_text(relative)
+            if relative != STRINGS:
+                return text
+            text = with_settings_line(text, "Orari completi dei paesi confinanti: si scaricano solo se tocchi «Scarica».")
+            return text.replace(
+                "</resources>", f'    <string name="fixture_other_string">{FOREIGN_PRIVACY_FRAGMENT}.</string>\n</resources>', 1)
+
+        self.assertEqual(
+            [f"Android in-app disclosure: settings_privacy_foreign_packs missing {FOREIGN_PRIVACY_FRAGMENT!r}"],
+            POLICY.string_disclosure_errors(words_in_another_string),
+        )
+
+    def test_foreign_pack_document_disclosures_are_checked(self) -> None:
+        cases = {
+            "PRIVACY.md": (
+                "### Orari completi dei paesi confinanti (download su richiesta)",
+                "### Orari completi dei paesi confinanti sull'iPhone",
+                "solo dopo il tocco su «Scarica»",
+                "`release-assets.githubusercontent.com`",
+                "**quale paese**",
+                "impronta SHA-256 coincide con quella fissata nella versione dell'app",
+                "Nessun aggiornamento automatico",
+                "GitHub sees the IP address, time, User-Agent and which country is downloaded",
+            ),
+            POLICY.DATA_SAFETY_PATH: (
+                "### Orari completi dei paesi confinanti: perché la risposta resta «nessun dato raccolto»",
+            ),
+        }
+        labels = {relative: label for label, relative, _ in POLICY.REQUIRED_DISCLOSURES}
+        for relative, fragments in cases.items():
+            for fragment in fragments:
+                with self.subTest(file=relative, fragment=fragment):
+                    def without_fragment(path: str, relative: str = relative, fragment: str = fragment) -> str:
+                        text = repository_text(path)
+                        return text.replace(fragment, "") if path == relative else text
+
+                    self.assertIn(fragment, repository_text(relative))
+                    self.assertIn(f"{labels[relative]}: missing {fragment!r}", POLICY.verification_errors(without_fragment))
 
 
 if __name__ == "__main__":
