@@ -63,7 +63,14 @@ from pathlib import Path
 from typing import Any, BinaryIO, Callable, Iterable, Mapping, Sequence
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "tools"))
+import foreign_pack_rules as foreign  # noqa: E402  (border radius, licence gate: one place for every tool)
+
 DEFAULT_ASSET_DIR = ROOT / "app/src/main/assets/gtfs"
+# Full packs of the foreign packs bundled as their border subset (licence confirmed): not shipped in the app,
+# published as GitHub pre-releases and downloaded on request (docs/data-sources/GTFS_PACK_REFRESH.md).
+DEFAULT_FULL_PACK_DIR = ROOT / foreign.FULL_PACK_DIR
+DEFAULT_CATALOGUE = ROOT / foreign.CATALOGUE_PATH
 DEFAULT_MAX_DOWNLOAD_BYTES = 200 * 1024 * 1024
 DOWNLOAD_CHUNK_SIZE = 64 * 1024
 MAX_ARCHIVE_ENTRIES = 128
@@ -1740,6 +1747,8 @@ def _build_packs_locked(
     generated_at: str | None = None,
     input_overrides: Mapping[str, Path] | None = None,
     only: Iterable[str] | None = None,
+    full_pack_dir: Path | None = None,
+    catalogue_path: Path | None = None,
 ) -> dict[str, Any]:
     """Build the registered packs and atomically replace ``output_dir``.
 
@@ -1748,7 +1757,13 @@ def _build_packs_locked(
     every other pack must already be published in ``output_dir`` and is copied
     with its manifest entry unchanged, so adding a source never rewrites the bytes
     of the others.
+
+    A foreign pack whose licence is confirmed (:func:`foreign_pack_rules.is_border_pack`) is filtered from its full
+    pack in ``full_pack_dir`` (or an override, or a whole pack in ``input_dir``) into ``full_pack_dir``, and
+    ``output_dir`` receives its border subset (:func:`derive_border_subset`).
     """
+    full_pack_dir = full_pack_dir or DEFAULT_FULL_PACK_DIR
+    catalogue_path = catalogue_path or DEFAULT_CATALOGUE
     manifest_path = manifest_path or input_dir / "manifest.json"
     source_manifest = read_manifest(manifest_path)
     generated_at = generated_at or source_manifest.get("generatedAt")
@@ -1784,38 +1799,89 @@ def _build_packs_locked(
             kept_entries[source_id] = entry
     output_dir.parent.mkdir(parents=True, exist_ok=True)
     staging = Path(tempfile.mkdtemp(prefix=".gtfs-build-", dir=output_dir.parent))
+    border_ids = {pack["sourceId"] for pack in source_manifest["packs"] if foreign.is_border_pack(pack)}
+    staging_full: Path | None = None
+    if border_ids:
+        full_pack_dir.parent.mkdir(parents=True, exist_ok=True)
+        staging_full = Path(tempfile.mkdtemp(prefix=".gtfs-full-build-", dir=full_pack_dir.parent))
+    rebuilt_full: set[str] = set()
     try:
+        # The pin file of the foreign packs lives next to the packs; tools/build_foreign_packs.py regenerates it.
+        pins = output_dir / Path(foreign.ANDROID_PINS_PATH).name
+        if pins.is_file():
+            shutil.copyfile(pins, staging / pins.name)
         results: dict[str, FilterResult] = {}
         for pack in source_manifest["packs"]:
             source_id = pack["sourceId"]
             name = safe_asset_name(pack["asset"])
+            border = source_id in border_ids
             if source_id in kept_entries:
                 shutil.copyfile(output_dir / name, staging / name)
+                if border and staging_full is not None and (full_pack_dir / name).is_file():
+                    shutil.copyfile(full_pack_dir / name, staging_full / name)
                 continue
             # A source named by --only is rebuilt from its --source-archive or from --input-dir, never from the pack
             # already published in output_dir: that would report a refresh while ignoring the new archive.
             published = None if source_id in selected else published_assets.get(source_id)
-            source = overrides.get(source_id) or published or input_dir / name
+            entries: list[Mapping[str, Any] | None] = [pack, published_by_id.get(source_id)]
+            if border:
+                # Never from a published subset: from the full pack kept next to the assets (its fullPack digest names
+                # its bytes), else from a whole pack (a pack whose licence was just confirmed).
+                for entry in (pack, published_by_id.get(source_id)):
+                    full = entry.get(FULL_PACK_FIELD) if isinstance(entry, Mapping) else None
+                    if isinstance(full, Mapping):
+                        entries.append({"sha256": full.get("sha256"), "sourceArchiveSha256": entry.get("sourceArchiveSha256")})
+                candidates = [overrides.get(source_id), full_pack_dir / name, published, input_dir / name]
+                source = next(
+                    (candidate for candidate in candidates
+                     if candidate is not None and candidate.is_file() and (candidate == overrides.get(source_id) or asset_border_zone(candidate) is None)),
+                    None,
+                )
+                if source is None:
+                    raise BuildError(f"{source_id}: nessun pack completo da cui derivare il sottoinsieme di confine")
+            else:
+                source = overrides.get(source_id) or published or input_dir / name
             # The registry entry and the published entry name the bytes of a published pack; only a byte-identical
             # input keeps their recorded upstream digest (A7-01).
+            target = staging_full / name if border and staging_full is not None else staging / name
             results[source_id] = filter_archive(
-                source, staging / name, source_id, published_entries=(pack, published_by_id.get(source_id)),
+                source, target, source_id, published_entries=entries,
                 trips_run_from=date.fromisoformat(generated_at) - timedelta(days=EXPIRED_TRIP_GRACE_DAYS),
             )
+            if border:
+                rebuilt_full.add(name)
         output_manifest = manifest_for_build(source_manifest, results, generated_at, kept_entries)
-        for pack in output_manifest["packs"]:
+        anchors = foreign.load_anchors(catalogue_path) if rebuilt_full else None
+        for index, pack in enumerate(output_manifest["packs"]):
             if pack["sourceId"] in kept_entries:
                 continue
             name = safe_asset_name(pack["asset"])
+            if name in rebuilt_full and staging_full is not None and anchors is not None:
+                derive_border_subset(staging_full / name, staging / name, pack["sourceId"], anchors)
+                output_manifest["packs"][index] = border_manifest_entry(pack, staging / name, staging_full / name)
+                continue
+            output_manifest["packs"][index] = pack = whole_manifest_entry(pack)
             pack["sha256"] = sha256_file(staging / name)
         write_json(staging / "manifest.json", output_manifest)
         write_sha256sums(staging / "SHA256SUMS", output_manifest, staging)
-        verify_assets(staging, as_of=None, min_valid_days=None)
+        if staging_full is not None:
+            write_full_pack_sums(staging_full, output_manifest)
+        verify_assets(staging, as_of=None, min_valid_days=None, full_pack_dir=staging_full, catalogue_path=catalogue_path)
         _atomic_replace_directory_locked(staging, output_dir)
+        if staging_full is not None:
+            # The full packs are not part of the app: they follow the published assets (a failure here leaves the
+            # previous full pack, which --check then reports against the new manifest).
+            full_pack_dir.mkdir(parents=True, exist_ok=True)
+            for name in sorted(rebuilt_full):
+                os.replace(staging_full / name, full_pack_dir / name)
+            write_full_pack_sums(full_pack_dir, output_manifest)
         return output_manifest
     except BaseException:
         shutil.rmtree(staging, ignore_errors=True)
         raise
+    finally:
+        if staging_full is not None:
+            shutil.rmtree(staging_full, ignore_errors=True)
 
 
 def build_packs(
@@ -1826,6 +1892,8 @@ def build_packs(
     generated_at: str | None = None,
     input_overrides: Mapping[str, Path] | None = None,
     only: Iterable[str] | None = None,
+    full_pack_dir: Path | None = None,
+    catalogue_path: Path | None = None,
 ) -> dict[str, Any]:
     """Serialize the complete base-read/build/publish transaction for ``output_dir``."""
     with publication_lock(output_dir):
@@ -1836,7 +1904,101 @@ def build_packs(
             generated_at=generated_at,
             input_overrides=input_overrides,
             only=only,
+            full_pack_dir=full_pack_dir,
+            catalogue_path=catalogue_path,
         )
+
+
+def apply_border_zones(
+    asset_dir: Path,
+    *,
+    full_pack_dir: Path | None = None,
+    catalogue_path: Path | None = None,
+) -> list[dict[str, Any]]:
+    """Bring the foreign packs of ``asset_dir`` in line with the licence gate, in place and atomically.
+
+    A foreign pack whose licence is confirmed is bundled as the border subset of its full pack in ``full_pack_dir``
+    (the first time, its whole pack moves there); a subset whose content is already the derived one keeps its bytes.
+    A foreign pack whose licence is not confirmed is bundled whole again.  Returns one row per foreign pack for the
+    report (sizes, trips kept).  Other packs and their manifest entries are untouched.
+    """
+    full_pack_dir = full_pack_dir or DEFAULT_FULL_PACK_DIR
+    catalogue_path = catalogue_path or DEFAULT_CATALOGUE
+    report: list[dict[str, Any]] = []
+    with publication_lock(asset_dir):
+        manifest = read_manifest(asset_dir / "manifest.json")
+        anchors = foreign.load_anchors(catalogue_path)
+        staging = Path(tempfile.mkdtemp(prefix=".gtfs-border-", dir=asset_dir.parent))
+        full_pack_dir.mkdir(parents=True, exist_ok=True)
+        staging_full = Path(tempfile.mkdtemp(prefix=".gtfs-full-", dir=full_pack_dir.parent))
+        moved: set[str] = set()
+        restored: set[str] = set()
+        try:
+            for item in asset_dir.iterdir():
+                if item.is_file():
+                    shutil.copyfile(item, staging / item.name)
+            for index, entry in enumerate(manifest["packs"]):
+                source_id = str(entry["sourceId"])
+                if source_id not in foreign.FOREIGN_PACK_COUNTRIES:
+                    continue
+                name = safe_asset_name(str(entry["asset"]))
+                asset, full = staging / name, full_pack_dir / name
+                if foreign.is_border_pack(entry):
+                    if full.is_file():
+                        shutil.copyfile(full, staging_full / name)
+                    elif asset.is_file() and asset_border_zone(asset) is None:
+                        shutil.copyfile(asset, staging_full / name)
+                        moved.add(name)
+                    else:
+                        raise BuildError(f"{source_id}: pack completo assente in {full_pack_dir}")
+                    derived = staging / f".{name}.derived"
+                    derive_border_subset(staging_full / name, derived, source_id, anchors)
+                    if asset.is_file() and archive_member_bytes(asset) == archive_member_bytes(derived):
+                        derived.unlink()
+                    else:
+                        os.replace(derived, asset)
+                    manifest["packs"][index] = border_manifest_entry(entry, asset, staging_full / name)
+                    zone = asset_border_zone(asset)
+                    report.append({
+                        "sourceId": source_id, "borderOnly": True, "fullBytes": (staging_full / name).stat().st_size,
+                        "zoneBytes": asset.stat().st_size, "tripsKept": zone["tripsKept"], "tripsInFull": zone["tripsInFull"],
+                    })
+                else:
+                    if FULL_PACK_FIELD in entry or asset_border_zone(asset) is not None:
+                        if not full.is_file():
+                            raise BuildError(f"{source_id}: pack completo assente in {full_pack_dir}: impossibile rimetterlo intero")
+                        shutil.copyfile(full, asset)
+                        restored.add(name)
+                    whole = whole_manifest_entry(entry)
+                    whole.update(
+                        sha256=sha256_file(asset),
+                        lastServiceDate=service_end_from_asset(asset, source_id).isoformat(),
+                        fullServiceUntil=full_service_end_from_asset(asset, source_id).isoformat(),
+                        contentSha256=verify_filter_from_asset(asset, source_id),
+                    )
+                    manifest["packs"][index] = {key: whole[key] for key in entry if key in whole} | {
+                        key: value for key, value in whole.items() if key not in entry
+                    }
+                    report.append({"sourceId": source_id, "borderOnly": False, "fullBytes": asset.stat().st_size,
+                                   "zoneBytes": None, "tripsKept": None, "tripsInFull": None})
+            write_json(staging / "manifest.json", manifest)
+            write_sha256sums(staging / "SHA256SUMS", manifest, staging)
+            write_full_pack_sums(staging_full, manifest)
+            verify_assets(staging, as_of=None, min_valid_days=None, full_pack_dir=staging_full, catalogue_path=catalogue_path)
+            _atomic_replace_directory_locked(staging, asset_dir)
+            for name in sorted(moved):
+                os.replace(staging_full / name, full_pack_dir / name)
+            for name in sorted(restored):
+                (full_pack_dir / name).unlink(missing_ok=True)
+            write_full_pack_sums(full_pack_dir, manifest)
+            if not any(full_pack_dir.iterdir()):
+                full_pack_dir.rmdir()
+        except BaseException:
+            shutil.rmtree(staging, ignore_errors=True)
+            raise
+        finally:
+            shutil.rmtree(staging_full, ignore_errors=True)
+    return report
 
 
 def parse_sha256sums(path: Path) -> dict[str, str]:
@@ -1981,6 +2143,283 @@ def verify_filter_from_asset(path: Path, source_id: str) -> str:
         return canonical_content_sha256(declared_digests)
 
 
+BORDER_ZONE_FIELD = "borderZone"
+FULL_PACK_FIELD = "fullPack"
+FULL_PACK_KEYS = frozenset({"path", "sha256", "sizeBytes", "contentSha256", "lastServiceDate", "fullServiceUntil"})
+# Members a border subset derives from its full pack (design §1.1, rule 4); any other member fails closed.
+BORDER_SUBSET_TABLES = frozenset({
+    "agency.txt", "stops.txt", "routes.txt", "trips.txt", "stop_times.txt", "calendar.txt", "calendar_dates.txt",
+    "transfers.txt", "pathways.txt", *COPY_METADATA_TABLES,
+})
+
+
+@dataclass(frozen=True)
+class BorderSubset:
+    metadata: dict[str, Any]
+    content_sha256: str
+
+
+def _column_values(rows: Iterable[Mapping[str, str]], column: str) -> set[str]:
+    return {row.get(column, "") for row in rows}
+
+
+def derive_border_subset(
+    full_pack: Path,
+    destination: Path,
+    source_id: str,
+    anchors: foreign.Anchors,
+    *,
+    radius_km: float = foreign.BORDER_ZONE_RADIUS_KM,
+) -> BorderSubset:
+    """Write the border subset of a filtered foreign pack (design §1.1).
+
+    A stop is in the zone when its coordinates, or else its parent station's, lie within ``radius_km`` (haversine)
+    of an anchor, a catalogue station whose trenitaliaLocationId starts with 83.  Every trip calling at least once
+    at a zone stop is kept whole, with every stop_times row; the other tables keep the rows those trips reference
+    (stops with their parents, transfers and pathways between kept stops); feed metadata is copied.  The writer is
+    the deterministic one of the build, and the filter manifest records the rule and its inputs in ``borderZone``.
+    """
+    if not full_pack.is_file() or not zipfile.is_zipfile(full_pack):
+        raise BuildError(f"{source_id}: pack completo assente o non ZIP: {full_pack}")
+    full_sha256 = sha256_file(full_pack)
+    full_content_sha256 = verify_filter_from_asset(full_pack, source_id)
+    with zipfile.ZipFile(full_pack) as archive:
+        validate_archive_limits(archive)
+        entry = filter_manifest_entry(archive)
+        assert entry is not None  # verify_filter_from_asset requires it
+        full_metadata = json.loads(archive.read(entry).decode("utf-8"))
+        if BORDER_ZONE_FIELD in full_metadata:
+            raise BuildError(f"{source_id}: {full_pack.name} è già un sottoinsieme di confine, non il pack completo")
+        members = sorted(info.filename for info in archive.infolist() if not info.is_dir() and info.filename != entry)
+        unknown = sorted(set(members) - BORDER_SUBSET_TABLES)
+        if unknown:
+            raise BuildError(f"{source_id}: tabelle non previste per il sottoinsieme di confine: {', '.join(map(log_safe, unknown))}")
+        stops = read_table(archive, "stops.txt", required=True)
+        assert stops is not None
+        require_columns(stops, "stops.txt", "stop_id")
+        zone = foreign.zone_stop_ids(stops.rows, anchors, radius_km)
+        trips_in_full: set[str] = set()
+        kept_trip_ids: set[str] = set()
+
+        def scan(row: Mapping[str, str]) -> bool:
+            trips_in_full.add(row.get("trip_id", ""))
+            if row.get("stop_id", "") in zone:
+                kept_trip_ids.add(row.get("trip_id", ""))
+            return False  # nothing retained: the kept rows are read below
+
+        read_table(archive, "stop_times.txt", required=True, predicate=scan)
+        if not kept_trip_ids:
+            raise BuildError(f"{source_id}: nessuna corsa ferma nella zona di confine di {radius_km} km")
+        tables: dict[str, CsvTable] = {}
+        trips = read_table(archive, "trips.txt", required=True, predicate=lambda row: row.get("trip_id", "") in kept_trip_ids)
+        stop_times = read_table(archive, "stop_times.txt", required=True, predicate=lambda row: row.get("trip_id", "") in kept_trip_ids)
+        assert trips is not None and stop_times is not None
+        route_ids = _column_values(trips.rows, "route_id")
+        service_ids = _column_values(trips.rows, "service_id")
+        routes = read_table(archive, "routes.txt", required=True, predicate=lambda row: row.get("route_id", "") in route_ids)
+        agency = read_table(archive, "agency.txt", required=True)
+        assert routes is not None and agency is not None
+        if "agency_id" in routes.header and "agency_id" in agency.header:
+            agency_ids = _column_values(routes.rows, "agency_id")
+            agency = CsvTable(agency.header, tuple(row for row in agency.rows if row.get("agency_id", "") in agency_ids))
+        by_stop = {row.get("stop_id", ""): row for row in stops.rows}
+        kept_stops = _column_values(stop_times.rows, "stop_id")
+        pending = list(kept_stops)
+        while pending:  # platforms keep their station, boarding areas their platform
+            parent = by_stop.get(pending.pop(), {}).get("parent_station", "")
+            if parent and parent not in kept_stops:
+                kept_stops.add(parent)
+                pending.append(parent)
+        tables.update({
+            "agency.txt": agency,
+            "routes.txt": routes,
+            "trips.txt": trips,
+            "stop_times.txt": stop_times,
+            "stops.txt": CsvTable(stops.header, tuple(row for row in stops.rows if row.get("stop_id", "") in kept_stops)),
+        })
+        for name in ("calendar.txt", "calendar_dates.txt"):
+            table = read_table(archive, name, predicate=lambda row: row.get("service_id", "") in service_ids)
+            if table is not None:
+                tables[name] = table
+
+        def between_kept(row: Mapping[str, str]) -> bool:
+            return (
+                row.get("from_stop_id", "") in kept_stops and row.get("to_stop_id", "") in kept_stops
+                and all(not row.get(key) or row[key] in kept_trip_ids for key in ("from_trip_id", "to_trip_id"))
+                and all(not row.get(key) or row[key] in route_ids for key in ("from_route_id", "to_route_id"))
+            )
+
+        for name in ("transfers.txt", "pathways.txt"):
+            table = read_table(archive, name, predicate=between_kept)
+            if table is not None:
+                tables[name] = table
+        for name in COPY_METADATA_TABLES:
+            table = read_table(archive, name)
+            if table is not None:
+                tables[name] = table
+    calendar = tables.get("calendar.txt") or empty_calendar()
+    calendar_dates = tables.get("calendar_dates.txt") or empty_calendar_dates()
+    metadata = dict(full_metadata)
+    metadata["counts"] = {
+        "agency": len(tables["agency.txt"].rows),
+        "routes": len(tables["routes.txt"].rows),
+        "trips": len(tables["trips.txt"].rows),
+        "stopTimes": len(tables["stop_times.txt"].rows),
+        "stops": len(tables["stops.txt"].rows),
+    }
+    metadata["lastServiceDate"] = last_service_date(calendar, calendar_dates, source_id).isoformat()
+    metadata[BORDER_ZONE_FIELD] = {
+        "radiusKm": radius_km,
+        "distance": foreign.DISTANCE_RULE,
+        "anchorRule": foreign.ANCHOR_RULE,
+        "anchorCount": anchors.count,
+        "catalogueSha256": anchors.catalogue_sha256,
+        "fullPackSha256": full_sha256,
+        "fullContentSha256": full_content_sha256,
+        "zoneStops": len(zone),
+        "tripsKept": len(tables["trips.txt"].rows),
+        "tripsInFull": len(trips_in_full),
+        "tripRule": foreign.TRIP_RULE,
+    }
+    metadata[MEMBER_DIGEST_FIELD] = {name: canonical_csv_sha256(table) for name, table in sorted(tables.items())}
+    write_deterministic_zip(destination, tables, metadata)
+    return BorderSubset(metadata, canonical_content_sha256(metadata[MEMBER_DIGEST_FIELD]))
+
+
+def archive_member_bytes(path: Path) -> dict[str, bytes]:
+    """Uncompressed members of a ZIP: the content two ZIPs with different DEFLATE bytes share."""
+    with zipfile.ZipFile(path) as archive:
+        validate_archive_limits(archive)
+        return {info.filename: archive.read(info) for info in archive.infolist() if not info.is_dir()}
+
+
+def full_pack_entry(full_pack: Path, source_id: str) -> dict[str, Any]:
+    """The ``fullPack`` manifest field of a border pack, derived from its full ZIP."""
+    return {
+        "path": f"{foreign.FULL_PACK_DIR}/{full_pack.name}",
+        "sha256": sha256_file(full_pack),
+        "sizeBytes": full_pack.stat().st_size,
+        "contentSha256": verify_filter_from_asset(full_pack, source_id),
+        "lastServiceDate": service_end_from_asset(full_pack, source_id).isoformat(),
+        "fullServiceUntil": full_service_end_from_asset(full_pack, source_id).isoformat(),
+    }
+
+
+def border_manifest_entry(entry: Mapping[str, Any], subset: Path, full_pack: Path) -> dict[str, Any]:
+    """A manifest entry for a border pack: ``sha256``, ``contentSha256`` and dates of the bundled subset, plus
+    ``fullPack`` and ``filter.borderZone`` (design §1.5)."""
+    source_id = str(entry["sourceId"])
+    updated: dict[str, Any] = {}
+    for key, value in entry.items():
+        if key == FULL_PACK_FIELD:
+            continue
+        updated[key] = value
+    updated["sha256"] = sha256_file(subset)
+    updated["lastServiceDate"] = service_end_from_asset(subset, source_id).isoformat()
+    updated["fullServiceUntil"] = full_service_end_from_asset(subset, source_id).isoformat()
+    updated["contentSha256"] = verify_filter_from_asset(subset, source_id)
+    policy = {key: value for key, value in dict(entry.get("filter") or {}).items() if key != BORDER_ZONE_FIELD}
+    updated["filter"] = {**policy, BORDER_ZONE_FIELD: {"radiusKm": foreign.BORDER_ZONE_RADIUS_KM}}
+    updated[FULL_PACK_FIELD] = full_pack_entry(full_pack, source_id)
+    return updated
+
+
+def whole_manifest_entry(entry: Mapping[str, Any]) -> dict[str, Any]:
+    """A manifest entry without the border-subset fields (a pack bundled whole)."""
+    updated = {key: value for key, value in entry.items() if key != FULL_PACK_FIELD}
+    if isinstance(updated.get("filter"), Mapping):
+        updated["filter"] = {key: value for key, value in updated["filter"].items() if key != BORDER_ZONE_FIELD}
+    return updated
+
+
+def write_full_pack_sums(full_pack_dir: Path, manifest: Mapping[str, Any]) -> None:
+    names = sorted(
+        (safe_asset_name(pack["asset"]), pack[FULL_PACK_FIELD]["sha256"])
+        for pack in manifest["packs"] if isinstance(pack.get(FULL_PACK_FIELD), Mapping)
+    )
+    if names:
+        full_pack_dir.mkdir(parents=True, exist_ok=True)
+        (full_pack_dir / "SHA256SUMS").write_text("".join(f"{sha}  {name}\n" for name, sha in names), encoding="utf-8")
+    elif (full_pack_dir / "SHA256SUMS").exists():
+        (full_pack_dir / "SHA256SUMS").unlink()
+
+
+def border_pair_problems(source_id: str, subset: Path, full_pack: Path, catalogue_path: Path) -> list[str]:
+    """The required journeys of a border pack keep, in the subset, every trip of the full pack (catalogue ids)."""
+    pairs = foreign.REQUIRED_BORDER_PAIRS.get(source_id, ())
+    if not pairs:
+        return []
+    import build_ios_gtfs_schedule as ios  # the one catalogue matcher (design §1.1, rule 5)
+
+    try:
+        matcher, _ = ios.load_catalog(catalogue_path)
+        ids = [(first, second) for first, second, _ in pairs]
+        in_full = ios.pair_trip_counts(full_pack, matcher, source_id, ids)
+        in_subset = ios.pair_trip_counts(subset, matcher, source_id, ids)
+    except ios.BuildError as error:
+        return [f"{source_id}: coppie obbligatorie non verificabili: {log_safe(error)}"]
+    problems = []
+    for first, second, label in pairs:
+        full_count, subset_count = in_full[(first, second)], in_subset[(first, second)]
+        if full_count == 0 or subset_count != full_count:
+            problems.append(f"{source_id}: {label} ({first}–{second}) ha {subset_count} corse nel sottoinsieme "
+                            f"e {full_count} nel pack completo")
+    return problems
+
+
+def verify_border_pack(
+    pack: Mapping[str, Any],
+    asset: Path,
+    *,
+    full_pack_dir: Path,
+    anchors: foreign.Anchors | None,
+    catalogue_path: Path,
+    as_of: date | None,
+    min_valid_days: int | None,
+) -> list[str]:
+    """``--check`` of a border pack: its full pack, the re-derived subset, the required pairs (design §2.5)."""
+    source_id = str(pack["sourceId"])
+    name = safe_asset_name(str(pack["asset"]))
+    full = pack.get(FULL_PACK_FIELD)
+    if not isinstance(full, Mapping) or set(full) != FULL_PACK_KEYS:
+        return [f"{source_id}: {FULL_PACK_FIELD} deve avere le chiavi {sorted(FULL_PACK_KEYS)}"]
+    problems: list[str] = []
+    if full["path"] != f"{foreign.FULL_PACK_DIR}/{name}":
+        problems.append(f"{source_id}: {FULL_PACK_FIELD}.path {full['path']!r} diverso da {foreign.FULL_PACK_DIR}/{name}")
+    if (pack.get("filter") or {}).get(BORDER_ZONE_FIELD) != {"radiusKm": foreign.BORDER_ZONE_RADIUS_KM}:
+        problems.append(f"{source_id}: filter.{BORDER_ZONE_FIELD} diverso da radiusKm {foreign.BORDER_ZONE_RADIUS_KM} (rigenerare)")
+    full_pack = full_pack_dir / name
+    if not full_pack.is_file():
+        return problems + [f"{source_id}: pack completo assente: {full_pack}"]
+    try:
+        actual = full_pack_entry(full_pack, source_id)
+    except BuildError as error:
+        return problems + [str(error)]
+    for key in sorted(FULL_PACK_KEYS - {"path"}):
+        if full.get(key) != actual[key]:
+            problems.append(f"{source_id}: {FULL_PACK_FIELD}.{key} {full.get(key)} diverso dal pack completo {actual[key]}")
+    if as_of is not None and min_valid_days is not None:
+        days = pack_min_valid_days(pack, min_valid_days)
+        end = min(date.fromisoformat(actual["lastServiceDate"]), date.fromisoformat(actual["fullServiceUntil"]))
+        if not is_release_fresh(end, as_of, days):
+            problems.append(f"pack completo scaduto o in scadenza entro {days} giorni: {source_id} termina {end}")
+    if anchors is None:
+        return problems + [f"{source_id}: catalogo stazioni non leggibile, sottoinsieme non verificabile"]
+    with tempfile.TemporaryDirectory(prefix=".border-check-") as folder:
+        derived = Path(folder) / name
+        try:
+            derive_border_subset(full_pack, derived, source_id, anchors)
+            if archive_member_bytes(derived) != archive_member_bytes(asset):
+                problems.append(
+                    f"{source_id}: {name} non è il sottoinsieme derivato da {foreign.FULL_PACK_DIR}/{name} con raggio "
+                    f"{foreign.BORDER_ZONE_RADIUS_KM} km e il catalogo attuale (rigenerare: tools/build_foreign_packs.py)"
+                )
+        except BuildError as error:
+            problems.append(str(error))
+    problems += border_pair_problems(source_id, asset, full_pack, catalogue_path)
+    return problems
+
+
 DEFAULT_MIN_VALID_DAYS = 30
 
 
@@ -2007,15 +2446,44 @@ def is_release_fresh(last_service_date: date, as_of: date, window_days: int) -> 
     return last_service_date >= release_freshness_cutoff(as_of, window_days)
 
 
+def asset_border_zone(path: Path) -> Any:
+    """The ``borderZone`` of a pack's filter manifest (None for a pack bundled whole)."""
+    with zipfile.ZipFile(path) as archive:
+        entry = filter_manifest_entry(archive)
+        if entry is None:
+            return None
+        try:
+            return json.loads(archive.read(entry).decode("utf-8")).get(BORDER_ZONE_FIELD)
+        except (UnicodeDecodeError, json.JSONDecodeError, AttributeError):
+            return None
+
+
 def verify_assets(
     asset_dir: Path,
     *,
     as_of: date | None,
     min_valid_days: int | None,
+    full_pack_dir: Path | None = None,
+    catalogue_path: Path | None = None,
 ) -> None:
-    """Check digest, manifest date derivation, and optional release freshness."""
+    """Check digest, manifest date derivation, and optional release freshness.
+
+    A foreign pack whose licence is confirmed is bundled as its border subset (``fullPack`` in the manifest): its
+    full pack in ``full_pack_dir`` must match ``fullPack``, the subset must be the one derived from it with the
+    catalogue at ``catalogue_path``, and the required journeys must keep every trip (:func:`verify_border_pack`).
+    """
+    full_pack_dir = full_pack_dir or DEFAULT_FULL_PACK_DIR
+    catalogue_path = catalogue_path or DEFAULT_CATALOGUE
     manifest = read_manifest(asset_dir / "manifest.json")
     packs = manifest["packs"]
+    anchors: foreign.Anchors | None = None
+    if any(FULL_PACK_FIELD in pack for pack in packs):
+        try:
+            anchors = foreign.load_anchors(catalogue_path)
+        except (OSError, ValueError, UnicodeDecodeError) as error:
+            print_error_lines("ERRORE GTFS: ", f"catalogo stazioni non leggibile: {error}")
+    border_sums: dict[str, str] = {}
+    subset_bytes = 0
     expected_names = {safe_asset_name(pack["asset"]) for pack in packs}
     actual_names = {path.name for path in asset_dir.glob("*.zip") if path.is_file()}
     problems: list[str] = []
@@ -2067,6 +2535,25 @@ def verify_assets(
             problems.append(f"lastServiceDate incoerente per {name}: {declared_end} != {actual_end}")
         if pack.get("fullServiceUntil") != actual_full_end.isoformat():
             problems.append(f"fullServiceUntil incoerente per {name}: {pack.get('fullServiceUntil')} != {actual_full_end}")
+        # Licence gate (D2): a foreign pack is reduced to its border subset exactly when its licence is confirmed.
+        if source_id in foreign.FOREIGN_PACK_COUNTRIES and foreign.is_border_pack(pack) != (FULL_PACK_FIELD in pack):
+            problems.append(
+                f"{source_id}: licenza {'confermata' if foreign.licence_confirmed(pack) else 'da confermare'} ma "
+                f"{'senza' if FULL_PACK_FIELD not in pack else 'con'} {FULL_PACK_FIELD}: rigenerare con tools/build_foreign_packs.py"
+            )
+        elif FULL_PACK_FIELD in pack and source_id not in foreign.FOREIGN_PACK_COUNTRIES:
+            problems.append(f"{source_id}: {FULL_PACK_FIELD} ammesso solo per i pack esteri")
+        if (asset_border_zone(path) is not None) != (FULL_PACK_FIELD in pack):
+            problems.append(f"{source_id}: {name} {'è' if FULL_PACK_FIELD not in pack else 'non è'} un sottoinsieme di confine "
+                            f"ma il manifest {'non ha' if FULL_PACK_FIELD not in pack else 'ha'} {FULL_PACK_FIELD}")
+        if FULL_PACK_FIELD in pack:
+            subset_bytes += path.stat().st_size
+            if isinstance(pack[FULL_PACK_FIELD], Mapping):
+                border_sums[name] = str(pack[FULL_PACK_FIELD].get("sha256"))
+            problems += verify_border_pack(
+                pack, path, full_pack_dir=full_pack_dir, anchors=anchors, catalogue_path=catalogue_path,
+                as_of=as_of, min_valid_days=min_valid_days,
+            )
         if as_of is not None and min_valid_days is not None:
             # A city feed published a few weeks ahead declares its own shorter release threshold (minValidDays,
             # documented in GTFS_PACK_REFRESH.md with its weekly refresh); no pack can ask for a longer one here.
@@ -2079,6 +2566,16 @@ def verify_assets(
                     f"{source_id} termina {actual_end}, copertura piena fino al {actual_full_end} "
                     f"(richiesto almeno fino al {release_freshness_cutoff(as_of, days)})"
                 )
+    if border_sums:
+        if subset_bytes > foreign.SUBSET_SIZE_BUDGET_BYTES:
+            problems.append(f"sottoinsiemi di confine oltre il budget: {subset_bytes} > {foreign.SUBSET_SIZE_BUDGET_BYTES} byte")
+        try:
+            full_sums = parse_sha256sums(full_pack_dir / "SHA256SUMS")
+        except BuildError as error:
+            problems.append(f"{foreign.FULL_PACK_DIR}: {error}")
+        else:
+            if full_sums != border_sums:
+                problems.append(f"{foreign.FULL_PACK_DIR}/SHA256SUMS diverso dai fullPack del manifest")
     if problems:
         raise BuildError("\n".join(problems))
 
@@ -2235,6 +2732,23 @@ def main(argv: Sequence[str] | None = None) -> int:
         help="con --check verifica struttura, filtri, hash e date dichiarate senza applicare la soglia freshness release",
     )
     parser.add_argument("--probe", action="store_true", help="HEAD read-only delle URL registrate, senza download")
+    parser.add_argument(
+        "--border-zones",
+        action="store_true",
+        help="applica la regola di licenza ai pack esteri di --output-dir: sottoinsieme di confine o pack intero",
+    )
+    parser.add_argument(
+        "--full-pack-dir",
+        type=Path,
+        default=DEFAULT_FULL_PACK_DIR,
+        help=f"pack completi dei pack esteri ridotti alla zona di confine (default: {foreign.FULL_PACK_DIR})",
+    )
+    parser.add_argument(
+        "--catalogue",
+        type=Path,
+        default=DEFAULT_CATALOGUE,
+        help=f"catalogo stazioni delle ancore della zona di confine (default: {foreign.CATALOGUE_PATH})",
+    )
     args = parser.parse_args(argv)
 
     if args.min_valid_days < 0:
@@ -2253,11 +2767,19 @@ def main(argv: Sequence[str] | None = None) -> int:
             for row in probe_sources(manifest):
                 print("\t".join((row["sourceId"], row["status"], row["detail"], row["url"])))
             return 0
+        if args.border_zones:
+            if args.refresh or args.check or args.only or args.source_archive:
+                parser.error("--border-zones non si combina con build, --check o --refresh")
+            for row in apply_border_zones(args.output_dir, full_pack_dir=args.full_pack_dir, catalogue_path=args.catalogue):
+                print(json.dumps(row, ensure_ascii=False, sort_keys=True))
+            return 0
         if args.check:
             verify_assets(
                 args.input_dir,
                 as_of=None if args.integrity_only else args.as_of,
                 min_valid_days=None if args.integrity_only else args.min_valid_days,
+                full_pack_dir=args.full_pack_dir,
+                catalogue_path=args.catalogue,
             )
             print(f"GTFS asset verification passed: {args.input_dir}")
             return 0
@@ -2285,6 +2807,8 @@ def main(argv: Sequence[str] | None = None) -> int:
                 generated_at=args.generated_at,
                 input_overrides=overrides,
                 only=args.only,
+                full_pack_dir=args.full_pack_dir,
+                catalogue_path=args.catalogue,
             )
         finally:
             if download_dir is not None:

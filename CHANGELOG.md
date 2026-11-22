@@ -1,5 +1,28 @@
 # Changelog
 
+## In sviluppo — Orari dei paesi confinanti: zona di confine inclusa, orario completo a richiesta
+
+Decisione del titolare del 22 novembre («proposta ibrida»), su Android e iPhone.
+- **Nell'app resta la zona di confine**:
+  - le corse che fermano almeno una volta entro 35 km da una stazione italiana, tenute intere, con la loro vera destinazione;
+  - su Android Brennero–Innsbruck, Domodossola–Briga, Como–Lugano e Ventimiglia–Nizza funzionano senza rete, come prima (tutte le corse del pack completo restano).
+- **L'orario completo di un paese si scarica su richiesta**:
+  - l'app lo propone solo quando una ricerca non trova nulla perché un capolinea è fuori dalla zona (per esempio Milano → Vienna), oppure con una riga nei risultati e in «Partenze»;
+  - parte solo dopo il tocco su «Scarica»: una sola richiesta HTTPS a GitHub, che vede l'indirizzo IP e quale paese viene scaricato, e nient'altro;
+  - il file è un allegato di una release del repository, la sua impronta SHA-256 è fissata nella versione dell'app e controllata prima dell'uso;
+  - resta sul telefono, non entra nei backup, si elimina da Impostazioni › «Orari dei paesi confinanti»;
+  - nessun aggiornamento automatico: dopo un aggiornamento dell'app che cambia il file, Impostazioni mostra «Aggiornamento disponibile».
+- **Per ora solo l'Austria (ÖBB, CC BY 4.0)**: Svizzera e Francia restano intere nell'app come oggi finché il titolare non conferma le loro licenze; il meccanismo vale per qualsiasi combinazione dei tre paesi.
+  - Pack ÖBB nell'app: 1,41 MB → 0,21 MB (1.180 corse su 8.731).
+  - iPhone: indice orario 4,47 → 4,42 MB; indice completo dell'Austria scaricabile (1,16 MB).
+- **iPhone, ricerca più precisa**: l'indice riconosce ora Innsbruck Hbf, Brennero (ÖBB) e «Domodossola (I)», con le stesse regole sui nomi delle fermate di Android; Brennero–Innsbruck e Domodossola–Briga diventano cercabili su iPhone. Ventimiglia–Nizza resta non cercabile su iPhone finché il pack SNCF non passa alla zona di confine (Nizza non ha codici ferroviari nel catalogo).
+- **Pubblicazione**:
+  - un nuovo workflow pubblica i file fissati come pre-release immutabili con tag basati sull'impronta (`gtfs-full-…`, `gtfs-ios-…`), mai modificate né cancellate;
+  - un registro (`data/gtfs-foreign/published.json`) che si può solo allungare;
+  - la firma Android e l'archivio iPhone si bloccano se un file fissato non si scarica con l'impronta esatta.
+- **Privacy**: PRIVACY.md, la scheda Play sulla sicurezza dei dati e la nota per l'App Store descrivono il nuovo scaricamento; le risposte restano «nessun dato raccolto».
+- I testi nuovi nelle 17 lingue sono traduzioni automatiche da far rileggere.
+
 ## In sviluppo — Aggiornamenti delle dipendenze (Dependabot #91–#93)
 
 Ogni aggiornamento proposto da Dependabot è stato provato da solo; entrano quelli che passano tutti i controlli.

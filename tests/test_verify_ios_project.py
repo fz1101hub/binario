@@ -927,6 +927,74 @@ class IOSProjectTests(unittest.TestCase):
         self.assertIn("sha256Hex(database) == metadata.database.sha256", installer)
         self.assertIn("testBundledInstallerFastPathDoesNotTrustASameSizeCorruptCache", tests)
 
+    def test_foreign_timetable_pins_are_the_android_asset_and_downloads_need_a_tap(self) -> None:
+        # Foreign packs hybrid (design §4.4): the pins are the Android asset byte for byte, bundled
+        # through Resources; without them the app behaves as before (no offer, no download).
+        android_pins = ROOT / "app/src/main/assets/gtfs/foreign_packs.json"
+        ios_pins = IOS / "Resources/binario_gtfs_foreign_packs_v1.json"
+        self.assertEqual(android_pins.is_file(), ios_pins.is_file(), "the iOS pins and the Android asset go together")
+        if ios_pins.is_file():
+            self.assertEqual(android_pins.read_bytes(), ios_pins.read_bytes(), "regenerate the iOS pins copy with the tools")
+            pins = json.loads(ios_pins.read_text(encoding="utf-8"))
+            self.assertEqual(1, pins["schemaVersion"])
+            for pack in pins["packs"]:
+                self.assertEqual(pack["borderOnly"], pack["ios"] is not None, pack["sourceId"])
+                if pack["ios"] is not None:
+                    tag = f"gtfs-ios-{pack['sourceId']}-{pack['ios']['sha256'][:12]}"
+                    self.assertEqual(tag, pack["ios"]["tag"])
+                    self.assertEqual(
+                        f"https://github.com/fz1101hub/binario/releases/download/{tag}/{pack['ios']['asset']}",
+                        pack["ios"]["url"],
+                    )
+        resources = [entry["path"] for entry in self.targets["Binario"]["sources"] if isinstance(entry, dict)]
+        self.assertIn("Resources", resources)
+        kit = IOS / "BinarioKit/Sources/BinarioKit"
+        pins_source = (kit / "ForeignSchedulePins.swift").read_text(encoding="utf-8")
+        live = (kit / "LiveSourceHTTP.swift").read_text(encoding="utf-8")
+        store = (kit / "ForeignScheduleStore.swift").read_text(encoding="utf-8")
+        installer = (kit / "BundledGTFSScheduleInstaller.swift").read_text(encoding="utf-8")
+        gtfs = (kit / "SQLiteGTFSJourneyRepository.swift").read_text(encoding="utf-8")
+        model = (IOS / "BinarioApp/AppModel.swift").read_text(encoding="utf-8")
+        for source, fragment in (
+            (pins_source, 'public static let resourceName = "binario_gtfs_foreign_packs_v1"'),
+            (pins_source, 'public static let releaseDownloadPrefix = "https://github.com/fz1101hub/binario/releases/download/"'),
+            (pins_source, 'public static let githubReleaseDownloadHost = "release-assets.githubusercontent.com"'),
+            (pins_source, 'public static let githubLegacyReleaseDownloadHost = "objects.githubusercontent.com"'),
+            (pins_source, "guard entry.borderOnly == (entry.ios != nil)"),
+            (live, "if policy.followsGitHubReleaseAssetRedirects {"),
+            (live, 'guard scheme == "https", releaseHosts.contains(host), defaultPort(target, 443),'),
+            (store, 'public static let directoryName = "ForeignSchedules"'),
+            (store, ".githubReleaseAsset(maximumBytes: artifact.sizeBytes)"),
+            (installer, "public func installVerified("),
+            (installer, "onlySourceID: sourceID"),
+            (gtfs, "public init(databaseURL: URL, foreignDatabaseURLs: [String: URL] = [:])"),
+            (gtfs, 'return "\\n              AND \\(column) NOT IN (\\(placeholders))"'),
+            (model, "applicationSupport.appendingPathComponent(ForeignScheduleStore.directoryName, isDirectory: true)"),
+        ):
+            with self.subTest(fragment=fragment):
+                self.assertIn(fragment, source)
+        self.assertNotIn("URLSession.shared", store)
+        # A download starts only from a tap on «Scarica»: nothing in the model calls it by itself.
+        self.assertEqual(1, model.count("downloadForeignPack("))
+        for path in sorted((IOS / "BinarioApp").glob("*.swift")):
+            for line in path.read_text(encoding="utf-8").splitlines():
+                if "model.downloadForeignPack(" in line:
+                    self.assertIn("Button(", line, f"{path.name}: {line.strip()}")
+        kit_tests = "\n".join(path.read_text(encoding="utf-8") for path in (IOS / "BinarioKit/Tests/BinarioKitTests").glob("*.swift"))
+        for name in (
+            "testTheSampleDecodesWithOnlyThePinnedPackDownloadable",
+            "testARedirectOutsideGitHubsDownloadHostsIsNeverAsked",
+            "testTheBodyIsCappedAtThePinnedSize",
+            "testAFileThatIsNotThePinnedOneIsNeverInstalled",
+            "testARefusalStopsAtOnceAndPausesTheHostWithoutRetry",
+            "testAFailureIsNeverRetriedByItself",
+            "testAnInstalledFullTimetableIsMergedByTimeAndReplacesItsSubset",
+            "testTheMergedResultsAreBoundedAtEight",
+            "testANoResultSearchWithAnEndOutsideTheZoneAsksForThePack",
+            "testAReleaseAssetIsRedirectedOnlyToGitHubsDownloadHostsOverHTTPS",
+        ):
+            self.assertIn(f"func {name}()", kit_tests)
+
     def test_binario_2_colour_tokens_are_catalogue_backed_and_tint_the_apps(self) -> None:
         # design/BINARIO_2_DESIGN_SYSTEM.md: one definition per target, light and dark on iPhone.
         catalog = IOS / "Resources/Assets.xcassets"

@@ -1,0 +1,49 @@
+name: GTFS Foreign Pack Release
+
+# Publishes the full timetables of the foreign packs bundled as their border subset (and their iPhone indexes) as
+# immutable GitHub pre-releases, one per pinned file, under content-addressed tags gtfs-full-<id>-<sha12> and
+# gtfs-ios-<id>-<sha12> (docs/data-sources/GTFS_PACK_REFRESH.md, «Paesi confinanti»). Only a push to a release branch
+# or the owner's dispatch publishes: no pull_request trigger, so a pull request branch never does. A release that
+# already exists must hold the same bytes and is never edited, replaced or deleted.
+on:
+  push:
+    branches:
+      - main
+      - "stabilization/**"
+    paths:
+      - "data/gtfs-foreign/**"
+      - "app/src/main/assets/gtfs/foreign_packs.json"
+  workflow_dispatch:
+
+# One publication at a time, never cancelled half-way.
+concurrency:
+  group: gtfs-foreign-release
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    # The only write scope of the repository's workflows (tools/verify_ci_pinning.py REVIEWED_WRITE_SCOPES).
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - name: Verify the pins against the committed files
+        run: python3 -I tools/verify_foreign_packs.py
+
+      - name: Publish the missing pre-releases
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 -I tools/publish_foreign_packs.py --target "$GITHUB_SHA"
+
+      # Anonymous, without the job token: what an installed app will see.
+      - name: Verify every pin downloads anonymously
+        run: python3 -I tools/verify_foreign_pack_releases.py --online --pins

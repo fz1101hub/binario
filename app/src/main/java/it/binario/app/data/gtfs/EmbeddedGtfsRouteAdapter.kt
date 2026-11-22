@@ -196,6 +196,8 @@ class EmbeddedGtfsRouteAdapter(
             buildList {
                 for (pack in packs) {
                     if (explicitSourceIds != null && pack.sourceId !in explicitSourceIds) continue
+                    // A foreign pack read as its border subset serves a route only between two of its zone stations.
+                    if (!pack.coversEnd(originStation.id) || !pack.coversEnd(destinationStation.id)) continue
                     try {
                         val stops = stopNames(pack)
                         // A pack that publishes station codes is matched by code first: its own spelling of the

@@ -64,6 +64,7 @@ import it.binario.app.BinarioTheme
 import it.binario.app.JourneyChangeFilter
 import it.binario.app.R
 import it.binario.app.RefreshState
+import it.binario.app.data.gtfs.ForeignPackOffer
 import it.binario.app.TrainViewModel
 import it.binario.app.TravelPreferencesRepository
 import it.binario.app.data.provider.JourneyPreferences
@@ -85,6 +86,10 @@ import it.binario.app.timetables.SavedTimetable
 import it.binario.app.timetables.SavedTimetableStore
 import it.binario.app.timetables.TimetableShareFormatter
 import it.binario.app.ui.common.DataStatusLine
+import it.binario.app.ui.common.ForeignPackLine
+import it.binario.app.ui.common.ForeignPackPromptHost
+import it.binario.app.ui.common.ForeignPackPromptRules
+import it.binario.app.ui.common.foreignPackSize
 import it.binario.app.ui.common.HeaderSheetTop
 import it.binario.app.ui.common.InfoNoticeCard
 import it.binario.app.ui.common.ResultCard
@@ -328,6 +333,19 @@ internal fun RouteResultsScreen(
         empty = stringResource(R.string.search_return_empty_title) to stringResource(R.string.search_return_empty_message),
         noDirect = stringResource(R.string.journey_empty_no_direct)
     )
+    // The full foreign packs (design §3.3): once the direct trains and the journeys have answered, a dialog when neither
+    // found anything and an end needs a full pack, a line when both ends lie outside the border zone of the same pack.
+    val foreignDeclined by viewModel.foreignPackDeclined.collectAsState()
+    val foreignOffer = ForeignPackPromptRules.visible(
+        ForeignPackPromptRules.forResults(
+            route = viewModel.routeForeignPackOffer,
+            routeAnswered = viewModel.refreshState == RefreshState.SUCCESS || viewModel.refreshState == RefreshState.ERROR,
+            journeys = journeys.foreignPackOffer.takeIf { journeysMatch },
+            journeysAnswered = journeysMatch && !journeys.loading && journeys.result != null
+        ),
+        foreignDeclined
+    )
+    ForeignPackPromptHost(viewModel, foreignOffer)
     LazyColumn(modifier = modifier.fillMaxSize().testTag("route-results"), state = scrollState) {
         item {
             ScreenHeader(
@@ -370,6 +388,15 @@ internal fun RouteResultsScreen(
                     hiddenTrains = hiddenTrains,
                     onOpen = openTravelPreferences
                 )
+                foreignOffer?.takeIf { it.style == ForeignPackOffer.Style.BANNER }?.packs?.forEach { choice ->
+                    ForeignPackPromptRules.country(choice.country)?.let { texts ->
+                        ForeignPackLine(
+                            stringResource(texts.banner, foreignPackSize(choice.sizeBytes)),
+                            onClick = { viewModel.openForeignPackRequest(listOf(choice)) },
+                            modifier = Modifier.testTag("results-foreign-pack-banner")
+                        )
+                    }
+                }
                 routePunctualityText?.let { text ->
                     RoutePunctualityLines(
                         text,

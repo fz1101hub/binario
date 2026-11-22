@@ -8,6 +8,8 @@ on:
       - "contracts/wear-snapshot/**"
       - "contracts/shared-rules/**"
       - "contracts/voice-input/**"
+      # Full foreign packs: the JVM tests read them for the trains beyond the border zone of the bundled subsets.
+      - "data/gtfs-foreign/android/**"
       - "gradle/**"
       - "gradlew"
       - "gradlew.bat"
@@ -40,6 +42,8 @@ on:
       - "contracts/wear-snapshot/**"
       - "contracts/shared-rules/**"
       - "contracts/voice-input/**"
+      # Full foreign packs: the JVM tests read them for the trains beyond the border zone of the bundled subsets.
+      - "data/gtfs-foreign/android/**"
       - "gradle/**"
       - "gradlew"
       - "gradlew.bat"
@@ -352,6 +356,11 @@ jobs:
 
       - name: Enable Gradle wrapper
         run: chmod +x gradlew
+
+      # The foreign packs the app may download (app/src/main/assets/gtfs/foreign_packs.json) must already be public
+      # GitHub releases with the pinned bytes: a build whose pins are not public is never signed.
+      - name: Gate public foreign-pack releases before signing
+        run: python3 -I tools/verify_foreign_pack_releases.py --online --pins
 
       - name: Gate embedded GTFS freshness for at least 30 days
         run: python3 tools/verify_embedded_assets.py --min-valid-days 30

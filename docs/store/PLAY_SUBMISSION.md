@@ -110,6 +110,7 @@ PIANIFICA
 
 CONSULTA
 • Quadri orario programmati RFI per le stazioni hub coperte e orari GTFS ufficiali inclusi nell'app per 20 reti: Trenitalia e Italo in tutta Italia, 14 ferrovie regionali e transfrontaliere, metro e tram di Milano, Genova, Firenze e Cagliari.
+• Svizzera, Austria e Francia: la zona di confine è sempre inclusa; dove l'orario completo di un paese non è incluso, lo scarichi su richiesta e poi funziona offline.
 • Dettaglio corsa con operatore, categoria, orari programmati e fermate.
 • Tratte salvate, preferiti e monitoraggio locale di un numero treno.
 • Sveglia fermata e avvisi pendolare come notifiche locali; la sveglia può anche avvisarti in base alla posizione, che resta sul telefono.
@@ -127,6 +128,7 @@ PRIVACY
 • Tratte, preferiti e impostazioni restano sul dispositivo; il backup è un file JSON esportato solo su tua scelta.
 • Ricerche, tabelloni e avvisi interrogano le fonti pubbliche (RFI, ViaggiaTreno, Italo, Trenord, MIT e altre) inviando solo i dati della richiesta: codici delle stazioni, data e ora, numero del treno. Le richieste a ViaggiaTreno viaggiano in HTTP non cifrato quando la fonte lo impone.
 • Meteo a destinazione (disattivabile): a Open-Meteo vanno le coordinate arrotondate della stazione di arrivo. Le mappe scaricano da OpenFreeMap le tessere della zona mostrata, per le stazioni vicine l'area intorno a te; le coordinate del dispositivo restano sul telefono.
+• Orari completi dei paesi confinanti: si scaricano da GitHub solo quando tocchi «Scarica»; GitHub vede l'indirizzo IP e il paese scelto, il file resta sul telefono e si elimina dalle impostazioni.
 
 Disponibile in 17 lingue: italiano, inglese, tedesco, francese, spagnolo, arabo, hindi, indonesiano, giapponese, coreano, birmano, portoghese, russo, thai, turco, vietnamita e cinese semplificato. Richiede Android 8.0 o successivo; il companion richiede Wear OS 3 (Android 11) o successivo e l'app installata sul telefono.
 ```
@@ -144,6 +146,7 @@ PLAN
 
 BROWSE
 • RFI scheduled departure boards for the covered hub stations and official GTFS timetables bundled in the app for 20 networks: Trenitalia and Italo across Italy, 14 regional and cross-border railways, and the metro and tram lines of Milan, Genoa, Florence and Cagliari.
+• Switzerland, Austria and France: the border zone is always included; where a country's full timetable is not included, you can download it on request, and it then works offline.
 • Service details with operator, category, scheduled times and all stops.
 • Saved routes, favourites and local monitoring of a train number.
 • Stop alarm and commuter alerts as local notifications; the alarm can also alert you based on your location, which stays on the phone.
@@ -161,6 +164,7 @@ PRIVACY
 • Routes, favourites and settings stay on the device; the backup is a JSON file exported only when you choose to.
 • Searches, departure boards and alerts query the public sources (RFI, ViaggiaTreno, Italo, Trenord, MIT and others) with only what the request needs: station codes, date and time, train number. Requests to ViaggiaTreno travel over unencrypted HTTP when the source requires it.
 • Weather at destination (can be turned off): Open-Meteo receives the rounded coordinates of the arrival station. Maps download from OpenFreeMap the tiles of the area shown, for nearby stations the area around you; the device's coordinates stay on the phone.
+• Full timetables of neighbouring countries are downloaded from GitHub only when you ask for them with a tap; GitHub sees your IP address and the chosen country, and the file stays on the phone until you delete it in Settings.
 
 Available in 17 languages: Italian, English, German, French, Spanish, Arabic, Hindi, Indonesian, Japanese, Korean, Burmese, Portuguese, Russian, Thai, Turkish, Vietnamese and Simplified Chinese. Requires Android 8.0 or later; the companion requires Wear OS 3 (Android 11) or later and the app installed on the phone.
 ```
@@ -178,6 +182,7 @@ PLANEN
 
 ANSEHEN
 • Planmäßige RFI-Abfahrtstafeln für die abgedeckten Knotenbahnhöfe und offizielle GTFS-Fahrpläne in der App für 20 Netze: Trenitalia und Italo in ganz Italien, 14 regionale und grenzüberschreitende Bahnen sowie U-Bahn und Tram in Mailand, Genua, Florenz und Cagliari.
+• Schweiz, Österreich und Frankreich: Die Grenzregion ist immer enthalten; wo der vollständige Fahrplan eines Landes nicht enthalten ist, lädst du ihn auf Wunsch herunter, danach funktioniert er offline.
 • Verbindungsdetails mit Betreiber, Kategorie, Planzeiten und allen Halten.
 • Gespeicherte Strecken, Favoriten und lokale Überwachung einer Zugnummer.
 • Haltwecker und Pendlerwarnungen als lokale Benachrichtigungen; der Wecker kann dich auch anhand deines Standorts warnen, der auf dem Telefon bleibt.
@@ -195,6 +200,7 @@ DATENSCHUTZ
 • Strecken, Favoriten und Einstellungen bleiben auf dem Gerät; das Backup ist eine JSON-Datei, die nur auf deinen Wunsch exportiert wird.
 • Suchen, Abfahrtstafeln und Warnungen fragen die öffentlichen Quellen ab (RFI, ViaggiaTreno, Italo, Trenord, MIT und andere) und senden nur, was die Anfrage braucht: Bahnhofscodes, Datum und Uhrzeit, Zugnummer. Anfragen an ViaggiaTreno laufen unverschlüsselt über HTTP, wenn die Quelle es verlangt.
 • Wetter am Ziel (abschaltbar): Open-Meteo erhält die gerundeten Koordinaten des Zielbahnhofs. Karten laden bei OpenFreeMap die Kacheln des gezeigten Gebiets, bei Bahnhöfen in der Nähe die Umgebung deines Standorts; die Koordinaten des Geräts bleiben auf dem Telefon.
+• Vollständige Fahrpläne der Nachbarländer werden nur nach deinem Tippen von GitHub geladen; GitHub sieht die IP-Adresse und das gewählte Land, die Datei bleibt auf dem Telefon und lässt sich in den Einstellungen löschen.
 
 Verfügbar in 17 Sprachen: Italienisch, Englisch, Deutsch, Französisch, Spanisch, Arabisch, Hindi, Indonesisch, Japanisch, Koreanisch, Birmanisch, Portugiesisch, Russisch, Thai, Türkisch, Vietnamesisch und vereinfachtes Chinesisch. Erfordert Android 8.0 oder neuer; der Begleiter erfordert Wear OS 3 (Android 11) oder neuer und die auf dem Telefon installierte App.
 ```
@@ -212,6 +218,7 @@ PLANIFIER
 
 CONSULTER
 • Tableaux des départs programmés RFI pour les gares principales couvertes et horaires GTFS officiels intégrés à l'application pour 20 réseaux : Trenitalia et Italo dans toute l'Italie, 14 lignes ferroviaires régionales et transfrontalières, métro et tram de Milan, Gênes, Florence et Cagliari.
+• Suisse, Autriche et France : la zone frontalière est toujours incluse ; lorsque l'horaire complet d'un pays n'est pas inclus, vous pouvez le télécharger à la demande, puis il fonctionne hors ligne.
 • Détail du train avec opérateur, catégorie, horaires programmés et tous les arrêts.
 • Trajets enregistrés, favoris et suivi local d'un numéro de train.
 • Réveil à l'arrêt et alertes pendulaires sous forme de notifications locales ; le réveil peut aussi vous avertir selon votre position, qui reste sur le téléphone.
@@ -229,6 +236,7 @@ CONFIDENTIALITÉ
 • Trajets, favoris et réglages restent sur l'appareil ; la sauvegarde est un fichier JSON exporté uniquement à votre demande.
 • Recherches, tableaux et alertes interrogent les sources publiques (RFI, ViaggiaTreno, Italo, Trenord, MIT et d'autres) en n'envoyant que les données de la demande : codes des gares, date et heure, numéro de train. Les requêtes vers ViaggiaTreno passent en HTTP non chiffré quand la source l'impose.
 • Météo à destination (désactivable) : Open-Meteo reçoit les coordonnées arrondies de la gare d'arrivée. Les cartes téléchargent depuis OpenFreeMap les tuiles de la zone affichée, pour les gares proches la zone autour de vous ; les coordonnées de l'appareil restent sur le téléphone.
+• Les horaires complets des pays voisins ne sont téléchargés depuis GitHub que lorsque vous le demandez d'un toucher ; GitHub voit l'adresse IP et le pays choisi, et le fichier reste sur le téléphone jusqu'à ce que vous le supprimiez dans les réglages.
 
 Disponible en 17 langues : italien, anglais, allemand, français, espagnol, arabe, hindi, indonésien, japonais, coréen, birman, portugais, russe, thaï, turc, vietnamien et chinois simplifié. Nécessite Android 8.0 ou version ultérieure ; le compagnon nécessite Wear OS 3 (Android 11) ou version ultérieure et l'application installée sur le téléphone.
 ```
@@ -246,6 +254,7 @@ PLANIFICAR
 
 CONSULTAR
 • Cuadros de salidas programadas de RFI para las estaciones principales cubiertas y horarios GTFS oficiales incluidos en la app para 20 redes: Trenitalia e Italo en toda Italia, 14 ferrocarriles regionales y transfronterizos, y metro y tranvía de Milán, Génova, Florencia y Cagliari.
+• Suiza, Austria y Francia: la zona fronteriza siempre está incluida; cuando el horario completo de un país no está incluido, lo descargas a petición y luego funciona sin conexión.
 • Detalle del tren con operador, categoría, horarios programados y todas las paradas.
 • Rutas guardadas, favoritos y seguimiento local de un número de tren.
 • Alarma de parada y avisos para viajeros habituales como notificaciones locales; la alarma también puede avisarte según tu ubicación, que se queda en el teléfono.
@@ -263,6 +272,7 @@ PRIVACIDAD
 • Rutas, favoritos y ajustes permanecen en el dispositivo; la copia de seguridad es un archivo JSON que se exporta solo si tú lo decides.
 • Búsquedas, paneles y avisos consultan las fuentes públicas (RFI, ViaggiaTreno, Italo, Trenord, MIT y otras) enviando solo los datos de la petición: códigos de estación, fecha y hora, número de tren. Las peticiones a ViaggiaTreno van por HTTP sin cifrar cuando la fuente lo exige.
 • Tiempo en el destino (desactivable): Open-Meteo recibe las coordenadas redondeadas de la estación de llegada. Los mapas descargan de OpenFreeMap las teselas de la zona mostrada, para las estaciones cercanas la zona a tu alrededor; las coordenadas del dispositivo se quedan en el teléfono.
+• Los horarios completos de los países vecinos se descargan de GitHub solo cuando los pides con un toque; GitHub ve la dirección IP y el país elegido, y el archivo se queda en el teléfono hasta que lo borras en los ajustes.
 
 Disponible en 17 idiomas: italiano, inglés, alemán, francés, español, árabe, hindi, indonesio, japonés, coreano, birmano, portugués, ruso, tailandés, turco, vietnamita y chino simplificado. Requiere Android 8.0 o posterior; el complemento requiere Wear OS 3 (Android 11) o posterior y la app instalada en el teléfono.
 ```

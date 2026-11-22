@@ -5,6 +5,8 @@ on:
     paths:
       - "app/src/main/assets/**"
       - "app/src/personal/assets/**"
+      # Full packs of the foreign packs bundled as their border subset, their iPhone indexes and the release ledger.
+      - "data/gtfs-foreign/**"
       - "app/src/main/java/it/binario/app/data/gtfs/GtfsPackCredits.kt"
       # Documents the offline tests check (store listings, privacy and source policy, the status line of every dated
       # document) and the language list they read.
@@ -33,6 +35,8 @@ on:
     paths:
       - "app/src/main/assets/**"
       - "app/src/personal/assets/**"
+      # Full packs of the foreign packs bundled as their border subset, their iPhone indexes and the release ledger.
+      - "data/gtfs-foreign/**"
       - "app/src/main/java/it/binario/app/data/gtfs/GtfsPackCredits.kt"
       # Documents the offline tests check (store listings, privacy and source policy, the status line of every dated
       # document) and the language list they read.
@@ -91,6 +95,9 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          # The parent commit too (the base branch of a pull request): the release ledger is append-only.
+          fetch-depth: 2
 
       - name: Python 3
         uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
@@ -105,6 +112,8 @@ jobs:
           python3 -m unittest -v
           tests/test_verify_android_app_bundles.py
           tests/test_build_gtfs_packs.py
+          tests/test_foreign_packs.py
+          tests/test_verify_foreign_pack_releases.py
           tests/test_netex_to_gtfs.py
           tests/test_transit_source_discovery.py
           tests/test_refresh_core_gtfs.py
@@ -142,6 +151,19 @@ jobs:
               python3 tools/build_gtfs_packs.py --check --integrity-only --input-dir "$directory"
             fi
           done
+
+      # Foreign packs (docs/data-sources/GTFS_PACK_REFRESH.md, «Paesi confinanti»): subsets, pins, iPhone indexes and
+      # ledger as tools/build_foreign_packs.py generates them; the ledger keeps every entry of the parent commit (the
+      # base branch of a pull request) and adds only current pins.
+      - name: Verify foreign-pack pins and the append-only release ledger
+        run: |
+          base="$RUNNER_TEMP/published-base.json"
+          if git cat-file -e HEAD^1:data/gtfs-foreign/published.json 2>/dev/null; then
+            git show HEAD^1:data/gtfs-foreign/published.json > "$base"
+          else
+            printf '{"schemaVersion": 1, "repository": "fz1101hub/binario", "artifacts": []}\n' > "$base"
+          fi
+          python3 -I tools/build_foreign_packs.py --check --ledger-base "$base"
 
       # Release freshness is a release gate, not a correctness check (audit A7-06): it blocks pull requests into a
       # stabilization branch (and release-sign in android-ci.yml, the archive in apple-watch-ci.yml). Every pack uses
@@ -201,6 +223,12 @@ jobs:
           echo "::$marker::"
           # One ::warning line per change, its text escaped by the tool as workflow-command data (%, CR, LF).
           cat "$RUNNER_TEMP/nap-watch-annotations.txt"
+
+      # Every foreign-pack file ever pinned stays public and byte-identical, since an installed app keeps its pin:
+      # anonymous downloads, stopping at the first 403 or 429. Unlike the warnings above, a missing or changed
+      # release fails the run.
+      - name: Verify every published foreign-pack file
+        run: python3 -I tools/verify_foreign_pack_releases.py --online --ledger
 
   # Manual, read-only discovery of public timetable sources (GTFS, NeTEx on the Italian National Access Point).
   # The development container cannot reach most open-data hosts; the runner can. Everything downloaded is

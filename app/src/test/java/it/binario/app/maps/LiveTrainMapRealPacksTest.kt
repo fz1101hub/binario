@@ -16,7 +16,8 @@ import org.junit.Test
 
 /** The map of trains in motion on the bundled packs: how many trains a busy area has, and what reading them costs. */
 class LiveTrainMapRealPacksTest {
-    private val openAsset = { path: String -> TestAssets.open(path) }
+    // Foreign packs read whole (the full ZIP once the APK bundles their border subset): trains beyond the zone stay.
+    private val openAsset = { path: String -> TestAssets.openFull(path) }
     private val stations: List<Station> by lazy { EmbeddedCuratedRailStationCatalog(openAsset).load() }
 
     /** A Tuesday inside the validity of every bundled pack. */

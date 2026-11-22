@@ -1,0 +1,86 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-11-22",
+  "repository": "fz1101hub/binario",
+  "borderZone": {
+    "radiusKm": 35,
+    "distance": "haversine-6371.0088km-stop-or-parent",
+    "anchors": "catalogue trenitaliaLocationId ^83 with coordinates",
+    "anchorCount": 2945,
+    "catalogueSha256": "ff3861edc9662bc58f2a29e76b800ce1b44338cf7db562bde05d6568693e8937",
+    "tripRule": "whole-trips-touching-zone"
+  },
+  "packs": [
+    {
+      "sourceId": "ch-otd-gtfs",
+      "country": "CH",
+      "borderOnly": false,
+      "lastServiceDate": "2026-12-12",
+      "fullServiceUntil": "2026-12-12",
+      "sourceArchiveSha256": "08f6251fe8adb491024e445863966a234e2a8af24a0e4939ff65122e119fd6f8",
+      "servedStationIds": [],
+      "zoneStationIds": [],
+      "android": null,
+      "ios": null
+    },
+    {
+      "sourceId": "oebb-gtfs",
+      "country": "AT",
+      "borderOnly": true,
+      "lastServiceDate": "2026-12-12",
+      "fullServiceUntil": "2026-12-12",
+      "sourceArchiveSha256": "425f7e6da89e2f285b0e4185f156f7d2118a0880acc6db20161b45861077161a",
+      "servedStationIds": [
+        "NC000205",
+        "NC000406",
+        "NC000503",
+        "NC000514",
+        "NC000544",
+        "NC000927",
+        "S02001",
+        "S03015"
+      ],
+      "zoneStationIds": [
+        "NC000503",
+        "NC000544",
+        "NC000927",
+        "S02001",
+        "S03015"
+      ],
+      "android": {
+        "tag": "gtfs-full-oebb-gtfs-64764fcb68ec",
+        "asset": "oebb-gtfs.zip",
+        "url": "https://github.com/fz1101hub/binario/releases/download/gtfs-full-oebb-gtfs-64764fcb68ec/oebb-gtfs.zip",
+        "sizeBytes": 1409875,
+        "sha256": "64764fcb68ec7f9eeb0ff1280d99e9261ddab928e701f30dd2b46b8ad9561caa",
+        "contentSha256": "211b7240bb6cd037a012fa1b521d2aa5e14fd1e9f1874d3a1411f8f6c39caab4"
+      },
+      "ios": {
+        "tag": "gtfs-ios-oebb-gtfs-39d51d6d13bc",
+        "asset": "oebb-gtfs.sqlite.zlib",
+        "url": "https://github.com/fz1101hub/binario/releases/download/gtfs-ios-oebb-gtfs-39d51d6d13bc/oebb-gtfs.sqlite.zlib",
+        "sizeBytes": 1376256,
+        "sha256": "39d51d6d13bcd48722a3b8209d02d16c0091c9edd23752ebe9cf891fb1492d02",
+        "database": {
+          "sha256": "8acbe0b50f0440fa6b9b35f6eb06ae3c1c9866f7d02e642410042e17e55d7deb",
+          "sizeBytes": 4718592,
+          "userVersion": 2,
+          "applicationId": 1112426324
+        },
+        "inputFingerprintSha256": "6cb1ec3dfa2b98a53ead731c1e3115252464e0c4edceec3cf1450d9444d5f414"
+      }
+    },
+    {
+      "sourceId": "sncf-gtfs",
+      "country": "FR",
+      "borderOnly": false,
+      "lastServiceDate": "2027-04-30",
+      "fullServiceUntil": "2027-04-30",
+      "sourceArchiveSha256": "04fbfab569ca370204854ada3c075d3f1572986a97edd5d43340e743f1d0a8d1",
+      "servedStationIds": [],
+      "zoneStationIds": [],
+      "android": null,
+      "ios": null
+    }
+  ]
+}

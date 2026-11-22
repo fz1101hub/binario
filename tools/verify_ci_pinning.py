@@ -260,6 +260,16 @@ RELEASE_SIGN_CONDITION = (
 RELEASE_SIGN_ENVIRONMENT = "release"
 
 
+# The foreign packs the apps download must be public releases before a build that may reach a store is produced:
+# release-sign runs this step before decoding the keystore, the iPhone archive of a dispatch before xcodebuild.
+FOREIGN_RELEASE_GATE = "python3 -I tools/verify_foreign_pack_releases.py --online --pins"
+IOS_FOREIGN_RELEASE_GATE = (
+    'if [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ]; then',
+    "python3 -I ../tools/verify_foreign_pack_releases.py --online --pins",
+    "fi",
+)
+
+
 def _check_release_signing(
     path: Path,
     workflow: Mapping[str, Any],
@@ -301,6 +311,12 @@ def _check_release_signing(
         if "secrets." in str(step.get("run", "")):
             problems.append(f"{path.name}: release-sign step {index} interpola un secret nello script invece di env")
     commands = "\n".join(_commands(step.get("run")) for step in step_list)
+    gate = next((index for index, step in enumerate(step_list) if _commands(step.get("run")).strip() == FOREIGN_RELEASE_GATE), None)
+    keystore = next((index for index, step in enumerate(step_list)
+                     if 'base64 --decode > "$RUNNER_TEMP/' in _commands(step.get("run"))), len(step_list))
+    if gate is None or gate > keystore or "if" in step_list[gate]:
+        problems.append(f"{path.name}: release-sign deve verificare le release pubbliche dei pack esteri "
+                        f"({FOREIGN_RELEASE_GATE}) prima della firma")
     if 'base64 --decode > "$RUNNER_TEMP/' not in commands:
         problems.append(f"{path.name}: keystore di upload non decodificato in RUNNER_TEMP")
     if "python3 tools/verify_android_app_bundles.py --signed" not in commands:
@@ -435,9 +451,11 @@ def _check_punctuality_release_gates(path: Path, workflow: Mapping[str, Any], pr
             problems.append(f"{path.name}:{key[1]}: gate di rilascio delle statistiche di puntualità assente")
 
 
-# Write scopes a workflow or job may hold after review: (workflow, job or "*" for the top level, scope). None today:
-# no workflow pushes, comments or publishes (audit A7-10, proposal P4).
-REVIEWED_WRITE_SCOPES: frozenset[tuple[str, str, str]] = frozenset()
+# Write scopes a workflow or job may hold after review: (workflow, job or "*" for the top level, scope). Only the job
+# that publishes the foreign-pack pre-releases (audit A7-10, proposal P4; docs/data-sources/GTFS_PACK_REFRESH.md);
+# no workflow pushes or comments.
+FOREIGN_RELEASE_WORKFLOW = "gtfs-foreign-release.yml"
+REVIEWED_WRITE_SCOPES: frozenset[tuple[str, str, str]] = frozenset({(FOREIGN_RELEASE_WORKFLOW, "publish", "contents")})
 # Expressions a run: script may interpolate. Anything an outsider can shape (dispatch inputs, event payloads, step
 # outputs, the head ref) goes through env: instead; the Apple jobs interpolate simulator UDIDs the runner reports.
 UNTRUSTED_RUN_EXPRESSION = re.compile(r"\b(?:inputs\.|github\.event\.|github\.head_ref\b|steps\.[\w-]+\.outputs\.|needs\.[\w-]+\.outputs\.)")
@@ -655,6 +673,74 @@ def _workflow_commands(jobs: Mapping[str, Any]) -> str:
         for raw_step in steps if isinstance(steps, list) else []:
             commands.append(_commands((_mapping(raw_step) or {}).get("run")))
     return "\n".join(commands)
+
+
+FOREIGN_RELEASE_PATHS = ["data/gtfs-foreign/**", "app/src/main/assets/gtfs/foreign_packs.json"]
+FOREIGN_RELEASE_PUBLISH = 'python3 -I tools/publish_foreign_packs.py --target "$GITHUB_SHA"'
+FOREIGN_RELEASE_COMMANDS = ("python3 -I tools/verify_foreign_packs.py", FOREIGN_RELEASE_PUBLISH, FOREIGN_RELEASE_GATE)
+JOB_TOKEN = "${{ github.token }}"
+JOB_TOKEN_EXPRESSION = re.compile(r"\$\{\{(?:(?!\}\}).)*\bgithub\.token\b", re.DOTALL)
+
+
+def _check_job_token(path: Path, workflow: Mapping[str, Any], problems: list[str]) -> None:
+    """In the one workflow with a write scope, the job token appears only as GH_TOKEN of the publish step (elsewhere
+    the token is read-only: no other workflow may hold a write scope)."""
+    publish = _mapping((_mapping(workflow.get("jobs")) or {}).get("publish")) or {}
+    publish_steps = [_mapping(raw) or {} for raw in (publish.get("steps") if isinstance(publish.get("steps"), list) else [])]
+
+    def visit(node: object, where: tuple[str, ...]) -> None:
+        if isinstance(node, Mapping):
+            for key, value in node.items():
+                visit(value, where + (str(key),))
+        elif isinstance(node, list):
+            for index, item in enumerate(node):
+                visit(item, where + (str(index),))
+        elif isinstance(node, str) and JOB_TOKEN_EXPRESSION.search(node):
+            reviewed = (
+                len(where) == 6 and where[:3] == ("jobs", "publish", "steps")
+                and where[4:] == ("env", "GH_TOKEN") and node.strip() == JOB_TOKEN
+                and _commands(publish_steps[int(where[3])].get("run")).strip() == FOREIGN_RELEASE_PUBLISH
+            )
+            if not reviewed:
+                problems.append(f"{path.name}: github.token fuori dallo step di pubblicazione revisionato ({'.'.join(where)})")
+
+    visit(workflow, ())
+
+
+def _check_foreign_release(path: Path, workflow: Mapping[str, Any], problems: list[str]) -> None:
+    """The one workflow that writes: a release-branch push touching the pins, or the owner's dispatch, publishes the
+    foreign-pack pre-releases with gh and the job token; nothing else runs with that scope."""
+    triggers = _mapping(workflow.get("on")) or {}
+    if set(triggers) != {"push", "workflow_dispatch"} or triggers.get("workflow_dispatch") not in (None, {}):
+        problems.append(f"{path.name}: trigger ammessi solo push e workflow_dispatch senza input (mai pull_request)")
+    push = _mapping(triggers.get("push")) or {}
+    if set(push) != {"branches", "paths"} or push.get("paths") != FOREIGN_RELEASE_PATHS:
+        problems.append(f"{path.name}: push.paths deve essere esattamente {FOREIGN_RELEASE_PATHS}")
+    if dict(_mapping(workflow.get("concurrency")) or {}) != {"group": "gtfs-foreign-release", "cancel-in-progress": False}:
+        problems.append(f"{path.name}: concurrency deve essere il gruppo gtfs-foreign-release senza cancel-in-progress")
+    if workflow.get("permissions") != {"contents": "read"} or "env" in workflow or "defaults" in workflow:
+        problems.append(f"{path.name}: permissions di primo livello solo contents: read, senza env o defaults globali")
+    jobs = _mapping(workflow.get("jobs")) or {}
+    job = _mapping(jobs.get("publish")) or {}
+    if list(jobs) != ["publish"]:
+        problems.append(f"{path.name}: un solo job, publish")
+    if job.get("permissions") != {"contents": "write"} or set(job) - {"runs-on", "timeout-minutes", "permissions", "steps"}:
+        problems.append(f"{path.name}: publish deve avere solo contents: write e nessuna chiave non revisionata")
+    steps = [step for raw in (job.get("steps") if isinstance(job.get("steps"), list) else []) for step in [_mapping(raw)] if step]
+    actions = [step for step in steps if "uses" in step]
+    if (
+        len(actions) != 1 or actions[0] is not (steps[0] if steps else None)
+        or _action_name(str(actions[0].get("uses"))) != "actions/checkout"
+        or _mapping(actions[0].get("with")) != {"persist-credentials": False}
+    ):
+        problems.append(f"{path.name}: solo actions/checkout, per primo e con persist-credentials: false (nessuna action di terzi)")
+    runs = [step for step in steps if "run" in step]
+    if tuple(_commands(step.get("run")).strip() for step in runs) != FOREIGN_RELEASE_COMMANDS:
+        problems.append(f"{path.name}: step diversi dalla sequenza revisionata {list(FOREIGN_RELEASE_COMMANDS)}")
+    for index, step in enumerate(steps):
+        expected_env = {"GH_TOKEN": JOB_TOKEN} if _commands(step.get("run")).strip() == FOREIGN_RELEASE_PUBLISH else None
+        if step.get("env") != expected_env or set(step) - {"name", "uses", "with", "run", "env"}:
+            problems.append(f"{path.name}: step {index}: GH_TOKEN solo nello step di pubblicazione, nessuna chiave non revisionata")
 
 
 def _check_punctuality(path: Path, workflow: Mapping[str, Any], problems: list[str]) -> None:
@@ -1186,6 +1272,9 @@ def _check_apple_toolchain(
             # Each check records a failure instead of exiting, so the step must end on the tally.
             if any(marker not in archive for marker in archive_markers) or not archive.rstrip().endswith('test "$failures" -eq 0'):
                 problems.append(f"{path.name}: archivio Release non firmato con verifica del bundle App Store assente")
+            # The archive of a dispatch may be signed and uploaded: its foreign-pack pins are checked online first.
+            if tuple(line.strip() for line in archive.splitlines() if line.strip())[:3] != IOS_FOREIGN_RELEASE_GATE:
+                problems.append(f"{path.name}: l'archivio di un dispatch deve prima verificare le release pubbliche dei pack esteri")
 
 
 def workflow_problems(
@@ -1295,6 +1384,11 @@ def workflow_problems(
     if path.name == "apple-watch-ci.yml":
         _check_apple_paths(path, root or {}, lock, problems)
         _check_apple_toolchain(path, jobs, lock, problems)
+    if path.name == FOREIGN_RELEASE_WORKFLOW:
+        _check_job_token(path, root or {}, problems)
+        _check_foreign_release(path, root or {}, problems)
+    elif "tools/publish_foreign_packs.py" in _workflow_commands(jobs):
+        problems.append(f"{path.name}: le release dei pack esteri si pubblicano solo da {FOREIGN_RELEASE_WORKFLOW}")
     return problems
 
 

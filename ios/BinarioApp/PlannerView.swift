@@ -115,6 +115,11 @@ struct PlannerView: View {
                     AirportLinksSection(links: model.airportLinks, search: searchAirport)
                 }
 
+                // A full foreign timetable not on this iPhone would serve the search (design §4.4).
+                if let offer = model.plannerForeignOffer {
+                    ForeignOfferSection(offer: offer)
+                }
+
                 if let snapshot = model.latestSnapshot {
                     AvailableResultView(snapshot: snapshot, now: clock)
                 } else if case let .unavailable(reason) = model.searchState {
@@ -137,11 +142,36 @@ struct PlannerView: View {
             searchWhenScheduleIsReady = false
             if canSearch { search() }
         }
+        // A full foreign timetable installed or deleted: the route on screen is searched again.
+        .onChange(of: model.timetablesGeneration) { _, _ in
+            guard model.latestSnapshot != nil || model.searchState != .idle, canSearch else { return }
+            search()
+        }
+        // Only after a search found nothing (owner decision Q3); «Non ora» holds for this launch.
+        .alert(
+            Text(verbatim: model.foreignDialogPack.flatMap { ForeignTexts.prompt($0) } ?? ""),
+            isPresented: foreignDialogShown,
+            presenting: model.foreignDialogPack
+        ) { pack in
+            Button("schedule.foreign.download") { model.downloadForeignPack(pack.sourceID) }
+            Button("schedule.foreign.not_now", role: .cancel) { model.declineForeignPack(pack.sourceID) }
+        } message: { _ in
+            Text("schedule.foreign.prompt_detail")
+        }
         .task(id: model.plannerRequest?.id) { applyPlannerRequest() }
         .task { await followTheClock() }
         // The live values of the results are asked only while the planner is on screen.
         .onAppear { model.plannerLiveDidAppear() }
         .onDisappear { model.plannerLiveDidDisappear() }
+    }
+
+    private var foreignDialogShown: Binding<Bool> {
+        Binding(
+            get: { model.foreignDialogPack != nil },
+            set: { shown in
+                if !shown { model.dismissForeignDialog() }
+            }
+        )
     }
 
     private var canSearch: Bool {
