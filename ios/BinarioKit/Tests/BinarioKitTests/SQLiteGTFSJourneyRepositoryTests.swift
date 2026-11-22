@@ -214,21 +214,16 @@ final class SQLiteGTFSJourneyRepositoryTests: XCTestCase {
 
         #if os(iOS) || os(macOS) || os(watchOS) || os(tvOS) || os(visionOS)
         XCTAssertTrue(BundledGTFSScheduleInstaller.isExcludedFromBackupOnDisk(installed))
-        var values = URLResourceValues()
-        values.isExcludedFromBackup = false
-        var mutableInstalled = installed
-        try mutableInstalled.setResourceValues(values)
-        // Precondition of the reuse check below: the cleared flag must be visible on disk before the
-        // second install. On the macOS test host the cleared value has been seen landing after the
-        // installer had already written and read back the flag, so the reuse check failed although
-        // the installer had done its job. Wait (at most 3 s) until the clear is observable.
-        let clearDeadline = Date().addingTimeInterval(3)
-        while BundledGTFSScheduleInstaller.isExcludedFromBackupOnDisk(installed), Date() < clearDeadline {
-            Thread.sleep(forTimeInterval: 0.05)
-        }
+        // A valid cached copy without the backup flag, which the reuse below must flag again. It is a
+        // new file with the same bytes rather than the installed one with its flag cleared through
+        // URLResourceValues: on the macOS test host that clear has been seen landing after the
+        // installer had already written and read back the flag, so the reuse check failed now and
+        // then although the installer had done its job. A new file never carried the flag.
+        try FileManager.default.removeItem(at: installed)
+        try database.write(to: installed)
         XCTAssertFalse(
             BundledGTFSScheduleInstaller.isExcludedFromBackupOnDisk(installed),
-            "precondition: the backup flag is cleared on disk before the reuse"
+            "precondition: the rewritten cache copy has no backup flag"
         )
         #endif
 

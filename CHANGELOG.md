@@ -1,5 +1,17 @@
 # Changelog
 
+## In sviluppo — Aggiornamenti delle dipendenze (Dependabot #91–#93)
+
+Ogni aggiornamento proposto da Dependabot è stato provato da solo; entrano quelli che passano tutti i controlli.
+- **Controlli automatici (#91)**: le cinque azioni di configurazione (pnpm, Node, Java, Python, verifica del wrapper Gradle) alle versioni nuove, fissate per commit e verificate contro i tag ufficiali.
+- **Android (#92)**:
+  - entrano jsoup 1.24.1 e gtfs-realtime-bindings 0.2.0 (con protobuf-java 4.34.0), con le impronte prese da Maven Central;
+  - restano indietro Kotlin 2.4, maplibre 13.7, kotlinx-coroutines-test 1.11 e WorkManager 2.12, che richiedono il passaggio a Kotlin ≥ 2.2 previsto con l'aggiornamento degli strumenti, e AGP 8.13.2, le cui impronte vanno generate dalla CI.
+- **Alexa (#93)**:
+  - entrano Express 5, TypeScript 7, Vite 8, Vitest 5, cookie 2, dotenv 18, nanoid 6, superjson 2, asn1js 4 / PKIjs 4, lucide-react 1, react-day-picker 10, framer-motion 14, @hookform/resolvers 7 e @types/node 26;
+  - piccoli adattamenti: `parseCookie` al posto di `parse`, i percorsi «tutto il resto» senza `*` per Express 5, `baseUrl` tolto per TypeScript 7;
+  - resta indietro react-resizable-panels 4: cambia l'intera API di un componente che non usiamo.
+
 ## In sviluppo — Ferrovia del Renon
 
 - **Ferrovia del Renon** (STA, linea 160): le sue 10 fermate, da L'Assunta e Soprabolzano a Collalbo, entrano nel catalogo delle stazioni (5.249 stazioni).

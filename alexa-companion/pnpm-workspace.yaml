@@ -8,13 +8,9 @@ patchedDependencies:
   wouter@3.7.1: patches/wouter@3.7.1.patch
 
 overrides:
-  "@babel/core": 7.29.6
-  body-parser@1: 1.20.9
   browserslist: 4.29.0
   esbuild@<0.25.0: 0.25.12
-  path-to-regexp@0.1.12: 0.1.13
   picomatch: 4.0.7
-  rollup: 4.63.4
   tailwindcss>nanoid: 3.3.18
   tar: 7.5.22
   postcss: 8.5.23
@@ -25,5 +21,5 @@ overrides:
   source-map-js: 1.2.2
   tinypool: 2.1.2
   follow-redirects: 1.16.2
-  vite: 7.3.7
+  vite: 8.3.8
   zod: 4.6.6
