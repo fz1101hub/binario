@@ -1446,5 +1446,248 @@ class ThinTailClipTest(unittest.TestCase):
             builder.filter_archive(source, self.temp / "over.zip", "eav-gtfs", trips_run_from=date(2028, 2, 28))
 
 
+def csv_text(header: list[str], rows: list[list[str]]) -> str:
+    stream = io.StringIO()
+    writer = csv.writer(stream, lineterminator="\n")
+    writer.writerow(header)
+    writer.writerows(rows)
+    return stream.getvalue()
+
+
+BORDER_CATALOGUE = {"schemaVersion": 1, "stations": [
+    {"id": "S1", "name": "Confine", "aliases": [], "railwayCode": "S1", "trenitaliaLocationId": "830000001", "latitude": 46.0, "longitude": 11.0},
+    {"id": "S9", "name": "Svizzera", "aliases": [], "railwayCode": None, "trenitaliaLocationId": "850000009", "latitude": 46.0, "longitude": 9.0},
+    {"id": "NC1", "name": "Lontano", "aliases": [], "railwayCode": None, "trenitaliaLocationId": None, "latitude": 47.0, "longitude": 11.0},
+    {"id": "NC2", "name": "Valico", "aliases": [], "railwayCode": None, "trenitaliaLocationId": None, "latitude": 46.29, "longitude": 11.0},
+    {"id": "NC3", "name": "Remoto", "aliases": [], "railwayCode": None, "trenitaliaLocationId": None, "latitude": 47.5, "longitude": 11.0},
+]}
+
+
+def write_raw_foreign_feed(target: Path) -> None:
+    """Z1 is the anchor itself; PZ1, without coordinates, has its parent PZ 32.2 km away (inside 35, outside 30);
+    T1 calls once in the zone, T2 never, T3 only at PZ1."""
+    members = {
+        "agency.txt": csv_text(["agency_id", "agency_name", "agency_url", "agency_timezone"],
+                               [["A1", "Rail", "https://example.test", "Europe/Vienna"], ["A2", "Other", "https://example.test", "Europe/Vienna"]]),
+        "routes.txt": csv_text(["route_id", "agency_id", "route_short_name", "route_type"], [["R1", "A1", "EC", "2"], ["R2", "A2", "R", "2"]]),
+        "trips.txt": csv_text(["route_id", "service_id", "trip_id"], [["R1", "W1", "T1"], ["R2", "W2", "T2"], ["R1", "W1", "T3"]]),
+        "stops.txt": csv_text(["stop_id", "stop_name", "stop_lat", "stop_lon", "location_type", "parent_station"], [
+            ["Z1", "Confine", "46.0", "11.0", "0", ""],
+            ["PZ", "Valico", "46.29", "11.0", "1", ""],
+            ["PZ1", "Valico", "", "", "0", "PZ"],
+            ["F1", "Lontano", "47.0", "11.0", "0", ""],
+            ["F2", "Remoto", "47.5", "11.0", "0", ""],
+            ["F3", "Altrove", "48.0", "11.0", "0", ""],
+        ]),
+        "stop_times.txt": csv_text(["trip_id", "arrival_time", "departure_time", "stop_id", "stop_sequence"], [
+            ["T1", "08:00:00", "08:00:00", "Z1", "1"], ["T1", "09:00:00", "09:00:00", "F1", "2"],
+            ["T2", "10:00:00", "10:00:00", "F1", "1"], ["T2", "11:00:00", "11:00:00", "F3", "2"],
+            ["T3", "12:00:00", "12:00:00", "PZ1", "1"], ["T3", "13:00:00", "13:00:00", "F2", "2"],
+        ]),
+        "calendar.txt": csv_text(["service_id", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday", "start_date", "end_date"],
+                                 [["W1", "1", "1", "1", "1", "1", "1", "1", "20260101", "20260331"],
+                                  ["W2", "1", "1", "1", "1", "1", "1", "1", "20260101", "20260331"]]),
+        "transfers.txt": csv_text(["from_stop_id", "to_stop_id", "transfer_type"], [["Z1", "F1", "2"], ["F1", "F3", "2"]]),
+        "feed_info.txt": csv_text(["feed_publisher_name", "feed_publisher_url", "feed_lang"], [["Fixture", "https://example.test", "de"]]),
+    }
+    with zipfile.ZipFile(target, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+        for name, text in members.items():
+            archive.writestr(name, text)
+
+
+def read_rows(path: Path, member: str) -> list[dict[str, str]]:
+    with zipfile.ZipFile(path) as archive:
+        return list(csv.DictReader(io.TextIOWrapper(archive.open(member), encoding="utf-8")))
+
+
+class BorderSubsetTest(unittest.TestCase):
+    """Design §1 and §6: the border subset of a foreign pack whose licence is confirmed (D2)."""
+
+    PAIRS = {"oebb-gtfs": (("S1", "NC1", "Confine – Lontano"), ("NC2", "NC3", "Valico – Remoto"))}
+
+    def setUp(self) -> None:
+        self.temp = Path(tempfile.mkdtemp(prefix="border-subset-"))
+        self.addCleanup(shutil.rmtree, self.temp, ignore_errors=True)
+        self.catalogue = self.temp / "catalogue.json"
+        self.catalogue.write_text(json.dumps(BORDER_CATALOGUE), encoding="utf-8")
+        self.anchors = builder.foreign.load_anchors(self.catalogue)
+        self.full_dir = self.temp / "full"
+        for patcher in (mock.patch.dict(builder.foreign.REQUIRED_BORDER_PAIRS, self.PAIRS, clear=True),):
+            patcher.start()
+            self.addCleanup(patcher.stop)
+
+    def full_pack(self) -> Path:
+        raw = self.temp / "raw.zip"
+        write_raw_foreign_feed(raw)
+        full = self.temp / "oebb-gtfs.zip"
+        builder.filter_archive(raw, full, "oebb-gtfs", trips_run_from=date(2026, 1, 1))
+        return full
+
+    def registry(self, licence: str = "CC BY 4.0") -> Path:
+        input_dir = self.temp / "input"
+        input_dir.mkdir(exist_ok=True)
+        write_raw_foreign_feed(input_dir / "oebb-gtfs.zip")
+        (input_dir / "manifest.json").write_text(json.dumps({"schemaVersion": 4, "generatedAt": "2026-01-01", "packs": [{
+            "sourceId": "oebb-gtfs", "asset": "gtfs/oebb-gtfs.zip", "sourceUrl": "https://example.test/oebb.zip",
+            "accessMode": "OPEN_DIRECT", "attribution": "Fixture", "licence": licence, "licenceEvidence": "fixture",
+            "sha256": "0" * 64, "lastServiceDate": "2026-03-31", "notes": "fixture",
+        }]}), encoding="utf-8")
+        return input_dir
+
+    def build(self, licence: str = "CC BY 4.0") -> Path:
+        output = self.temp / "gtfs"
+        builder.build_packs(self.registry(licence), output, generated_at="2026-01-01",
+                            full_pack_dir=self.full_dir, catalogue_path=self.catalogue)
+        return output
+
+    def verify(self, output: Path) -> None:
+        builder.verify_assets(output, as_of=None, min_valid_days=None, full_pack_dir=self.full_dir, catalogue_path=self.catalogue)
+
+    def assertCheckFails(self, output: Path, fragment: str) -> None:
+        with self.assertRaises(builder.BuildError) as raised:
+            self.verify(output)
+        self.assertIn(fragment, str(raised.exception))
+
+    def republish(self, output: Path, name: str = "oebb-gtfs.zip") -> None:
+        """Make the distribution hashes follow a tampered asset, so only the content checks can catch it."""
+        manifest = json.loads((output / "manifest.json").read_text(encoding="utf-8"))
+        manifest["packs"][0]["sha256"] = hashlib.sha256((output / name).read_bytes()).hexdigest()
+        manifest["packs"][0]["contentSha256"] = builder.verify_filter_from_asset(output / name, "oebb-gtfs")
+        builder.write_json(output / "manifest.json", manifest)
+        builder.write_sha256sums(output / "SHA256SUMS", manifest, output)
+
+    def test_whole_trips_touching_the_zone_are_kept_with_their_rows(self) -> None:
+        full = self.full_pack()
+        subset = self.temp / "subset.zip"
+        result = builder.derive_border_subset(full, subset, "oebb-gtfs", self.anchors, radius_km=35)
+        self.assertEqual({"T1", "T3"}, {row["trip_id"] for row in read_rows(subset, "trips.txt")})
+        kept_rows = [row for row in read_rows(full, "stop_times.txt") if row["trip_id"] in {"T1", "T3"}]
+        self.assertEqual(kept_rows, read_rows(subset, "stop_times.txt"))
+        self.assertEqual({"Z1", "PZ", "PZ1", "F1", "F2"}, {row["stop_id"] for row in read_rows(subset, "stops.txt")})
+        self.assertEqual(["R1"], [row["route_id"] for row in read_rows(subset, "routes.txt")])
+        self.assertEqual(["A1"], [row["agency_id"] for row in read_rows(subset, "agency.txt")])
+        self.assertEqual(["W1"], [row["service_id"] for row in read_rows(subset, "calendar.txt")])
+        self.assertEqual([("Z1", "F1")], [(row["from_stop_id"], row["to_stop_id"]) for row in read_rows(subset, "transfers.txt")])
+        self.assertEqual(read_rows(full, "feed_info.txt"), read_rows(subset, "feed_info.txt"))
+        zone = result.metadata["borderZone"]
+        self.assertEqual((35, 2, 3, 1), (zone["radiusKm"], zone["tripsKept"], zone["tripsInFull"], zone["anchorCount"]))
+        self.assertEqual(hashlib.sha256(full.read_bytes()).hexdigest(), zone["fullPackSha256"])
+        self.assertEqual(3, zone["zoneStops"])  # Z1, PZ and PZ1 (parent coordinates)
+        self.assertEqual({"agency": 1, "routes": 1, "trips": 2, "stopTimes": 4, "stops": 5}, result.metadata["counts"])
+        self.assertEqual(result.content_sha256, builder.verify_filter_from_asset(subset, "oebb-gtfs"))
+        # At 30 km the platform whose parent is 32.2 km away is outside.
+        builder.derive_border_subset(full, subset, "oebb-gtfs", self.anchors, radius_km=30)
+        self.assertEqual({"T1"}, {row["trip_id"] for row in read_rows(subset, "trips.txt")})
+
+    def test_subset_is_deterministic_and_refuses_a_subset_as_full_pack(self) -> None:
+        full = self.full_pack()
+        first, second = self.temp / "one.zip", self.temp / "two.zip"
+        builder.derive_border_subset(full, first, "oebb-gtfs", self.anchors)
+        builder.derive_border_subset(full, second, "oebb-gtfs", self.anchors)
+        self.assertEqual(first.read_bytes(), second.read_bytes())
+        with self.assertRaisesRegex(builder.BuildError, "già un sottoinsieme"):
+            builder.derive_border_subset(first, self.temp / "three.zip", "oebb-gtfs", self.anchors)
+
+    def test_build_bundles_the_subset_and_keeps_the_full_pack_outside_the_assets(self) -> None:
+        output = self.build()
+        manifest = json.loads((output / "manifest.json").read_text(encoding="utf-8"))
+        entry = manifest["packs"][0]
+        full = self.full_dir / "oebb-gtfs.zip"
+        self.assertEqual({"radiusKm": 35}, entry["filter"]["borderZone"])
+        self.assertEqual("data/gtfs-foreign/android/oebb-gtfs.zip", entry["fullPack"]["path"])
+        self.assertEqual(hashlib.sha256(full.read_bytes()).hexdigest(), entry["fullPack"]["sha256"])
+        self.assertEqual(full.stat().st_size, entry["fullPack"]["sizeBytes"])
+        self.assertEqual(hashlib.sha256((output / "oebb-gtfs.zip").read_bytes()).hexdigest(), entry["sha256"])
+        self.assertEqual(f"{entry['fullPack']['sha256']}  oebb-gtfs.zip\n", (self.full_dir / "SHA256SUMS").read_text(encoding="utf-8"))
+        self.assertEqual({"T1", "T3"}, {row["trip_id"] for row in read_rows(output / "oebb-gtfs.zip", "trips.txt")})
+        self.assertEqual({"T1", "T2", "T3"}, {row["trip_id"] for row in read_rows(full, "trips.txt")})
+        self.verify(output)
+        # Rebuilding from the published directory reads the full pack, never the subset.
+        again = self.temp / "again"
+        builder.build_packs(output, again, generated_at="2026-01-01", full_pack_dir=self.full_dir, catalogue_path=self.catalogue)
+        self.assertEqual(builder.archive_member_bytes(output / "oebb-gtfs.zip"), builder.archive_member_bytes(again / "oebb-gtfs.zip"))
+        self.assertEqual(manifest["packs"][0]["fullPack"], json.loads((again / "manifest.json").read_text())["packs"][0]["fullPack"])
+
+    def test_an_unconfirmed_licence_keeps_the_pack_whole(self) -> None:
+        output = self.build("Da confermare dal titolare")
+        entry = json.loads((output / "manifest.json").read_text(encoding="utf-8"))["packs"][0]
+        self.assertNotIn("fullPack", entry)
+        self.assertNotIn("borderZone", entry["filter"])
+        self.assertEqual({"T1", "T2", "T3"}, {row["trip_id"] for row in read_rows(output / "oebb-gtfs.zip", "trips.txt")})
+        self.assertFalse((self.full_dir / "oebb-gtfs.zip").exists())
+        self.verify(output)
+
+    def test_check_catches_removed_or_extra_trips(self) -> None:
+        output = self.build()
+        for radius in (30, 200):
+            with self.subTest(radius=radius):
+                builder.derive_border_subset(self.full_dir / "oebb-gtfs.zip", output / "oebb-gtfs.zip", "oebb-gtfs", self.anchors, radius_km=radius)
+                self.republish(output)
+                self.assertCheckFails(output, "non è il sottoinsieme derivato")
+
+    def test_check_catches_a_changed_radius_and_a_wrong_full_pack(self) -> None:
+        output = self.build()
+        manifest = json.loads((output / "manifest.json").read_text(encoding="utf-8"))
+        manifest["packs"][0]["filter"]["borderZone"]["radiusKm"] = 30
+        builder.write_json(output / "manifest.json", manifest)
+        self.assertCheckFails(output, "radiusKm")
+        shutil.rmtree(output)
+        shutil.rmtree(self.full_dir)
+        output = self.build()
+        manifest = json.loads((output / "manifest.json").read_text(encoding="utf-8"))
+        manifest["packs"][0]["fullPack"]["sha256"] = "1" * 64
+        builder.write_json(output / "manifest.json", manifest)
+        self.assertCheckFails(output, "fullPack.sha256")
+        with mock.patch.object(builder.foreign, "BORDER_ZONE_RADIUS_KM", 30):
+            self.assertCheckFails(output, "radiusKm")
+
+    def test_check_catches_the_licence_gate_and_the_size_budget(self) -> None:
+        output = self.build()
+        manifest = json.loads((output / "manifest.json").read_text(encoding="utf-8"))
+        manifest["packs"][0]["licence"] = "Da confermare dal titolare"
+        builder.write_json(output / "manifest.json", manifest)
+        self.assertCheckFails(output, "licenza da confermare ma con fullPack")
+        output = self.build()
+        with mock.patch.object(builder.foreign, "SUBSET_SIZE_BUDGET_BYTES", 10):
+            self.assertCheckFails(output, "budget")
+        (self.full_dir / "SHA256SUMS").write_text("", encoding="utf-8")
+        self.assertCheckFails(output, "SHA256SUMS")
+
+    def test_required_pairs_keep_every_trip_of_the_full_pack(self) -> None:
+        full = self.full_pack()
+        subset = self.temp / "subset.zip"
+        builder.derive_border_subset(full, subset, "oebb-gtfs", self.anchors, radius_km=35)
+        self.assertEqual([], builder.border_pair_problems("oebb-gtfs", subset, full, self.catalogue))
+        builder.derive_border_subset(full, subset, "oebb-gtfs", self.anchors, radius_km=30)
+        problems = builder.border_pair_problems("oebb-gtfs", subset, full, self.catalogue)
+        self.assertEqual(1, len(problems))
+        self.assertIn("Valico – Remoto (NC2–NC3) ha 0 corse nel sottoinsieme e 1 nel pack completo", problems[0])
+
+    def test_apply_border_zones_moves_the_whole_pack_out_and_back(self) -> None:
+        output = self.build("Da confermare dal titolare")
+        whole = (output / "oebb-gtfs.zip").read_bytes()
+        (output / "foreign_packs.json").write_text("{}\n", encoding="utf-8")
+        manifest = json.loads((output / "manifest.json").read_text(encoding="utf-8"))
+        manifest["packs"][0]["licence"] = "CC BY 4.0"
+        builder.write_json(output / "manifest.json", manifest)
+        report = builder.apply_border_zones(output, full_pack_dir=self.full_dir, catalogue_path=self.catalogue)
+        self.assertEqual([{"sourceId": "oebb-gtfs", "borderOnly": True, "fullBytes": len(whole),
+                           "zoneBytes": (output / "oebb-gtfs.zip").stat().st_size, "tripsKept": 2, "tripsInFull": 3}], report)
+        self.assertEqual(whole, (self.full_dir / "oebb-gtfs.zip").read_bytes())
+        self.assertTrue((output / "foreign_packs.json").is_file())
+        self.verify(output)
+        subset = (output / "oebb-gtfs.zip").read_bytes()
+        builder.apply_border_zones(output, full_pack_dir=self.full_dir, catalogue_path=self.catalogue)
+        self.assertEqual(subset, (output / "oebb-gtfs.zip").read_bytes())
+        manifest = json.loads((output / "manifest.json").read_text(encoding="utf-8"))
+        manifest["packs"][0]["licence"] = "Da confermare dal titolare"
+        builder.write_json(output / "manifest.json", manifest)
+        builder.apply_border_zones(output, full_pack_dir=self.full_dir, catalogue_path=self.catalogue)
+        self.assertEqual(whole, (output / "oebb-gtfs.zip").read_bytes())
+        self.assertFalse(self.full_dir.exists())
+        self.assertNotIn("fullPack", json.loads((output / "manifest.json").read_text(encoding="utf-8"))["packs"][0])
+        self.verify(output)
+
+
 if __name__ == "__main__":
     unittest.main()

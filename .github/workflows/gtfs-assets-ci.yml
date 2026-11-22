@@ -5,6 +5,8 @@ on:
     paths:
       - "app/src/main/assets/**"
       - "app/src/personal/assets/**"
+      # Full packs of the foreign packs bundled as their border subset, their iPhone indexes and the release ledger.
+      - "data/gtfs-foreign/**"
       - "app/src/main/java/it/binario/app/data/gtfs/GtfsPackCredits.kt"
       # Documents the offline tests check (store listings, privacy and source policy, the status line of every dated
       # document) and the language list they read.
@@ -33,6 +35,8 @@ on:
     paths:
       - "app/src/main/assets/**"
       - "app/src/personal/assets/**"
+      # Full packs of the foreign packs bundled as their border subset, their iPhone indexes and the release ledger.
+      - "data/gtfs-foreign/**"
       - "app/src/main/java/it/binario/app/data/gtfs/GtfsPackCredits.kt"
       # Documents the offline tests check (store listings, privacy and source policy, the status line of every dated
       # document) and the language list they read.
@@ -105,6 +109,7 @@ jobs:
           python3 -m unittest -v
           tests/test_verify_android_app_bundles.py
           tests/test_build_gtfs_packs.py
+          tests/test_foreign_packs.py
           tests/test_netex_to_gtfs.py
           tests/test_transit_source_discovery.py
           tests/test_refresh_core_gtfs.py
