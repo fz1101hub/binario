@@ -35,6 +35,10 @@ from pathlib import Path, PurePosixPath
 from typing import Iterable, Iterator, Mapping, Sequence
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "tools"))
+import foreign_pack_rules as foreign_rules  # noqa: E402  (border zone: the one rule of every tool)
+
 APPLICATION_ID = int.from_bytes(b"BNGT", "big")
 # 2: trip.bikes_allowed (GTFS bikes_allowed: 1 allowed, 2 not allowed, NULL unknown).
 USER_VERSION = 2
@@ -81,6 +85,10 @@ STATION_MODE_ITALIAN = "italian"
 STATION_MODE_CODED = "coded"
 STATION_MODE_ZONE = "zone"
 STATION_MODE_FULL = "full"
+# Version of the per-country index (--foreign-full) builder, part of its input fingerprint: raise it when a change of
+# this file changes the content of those indexes, so the apps see a new pin.
+FOREIGN_FULL_BUILDER_VERSION = 1
+FOREIGN_FULL_KIND = "foreign-full"
 RAIL_ROUTE_TYPES = frozenset({2, *range(100, 200)})
 # Packs whose bikes_allowed is stored as unknown, as on Android (GtfsDayTimetable.kt): the Italo
 # pack publishes 1 on every trip, but Italo admits only folding bikes carried in a bag, so "bikes
@@ -709,6 +717,7 @@ def read_manifest(
     gtfs_root: Path,
     catalog_path: Path,
     source_policy_path: Path | None = None,
+    full_pack_dir: Path | None = None,
 ) -> tuple[list[dict[str, object]], Path, list[InputFile], str, str]:
     try:
         manifest_bytes = read_bounded(manifest_path, MAX_MANIFEST_BYTES, "GTFS manifest")
@@ -821,12 +830,25 @@ def read_manifest(
         if actual_hash != expected_hash:
             raise BuildError(f"{source_id}: archive SHA-256 does not match manifest")
         inputs.append(InputFile(archive_path.as_posix(), archive_path.stat().st_size, actual_hash))
-        normalized.append({
+        pack_entry: dict[str, object] = {
             "source_id": source_id,
             "attribution": attribution,
             "last_service_date": date_int(last_date),
             "archive": archive_path,
-        })
+        }
+        full = item.get("fullPack")
+        if full is not None:
+            # A border subset (licence-confirmed foreign pack): its zone stations come from its full pack, an input.
+            radius = ((item.get("filter") or {}).get("borderZone") or {}).get("radiusKm") if isinstance(item.get("filter"), dict) else None
+            if source_id not in FOREIGN_PACKS or not isinstance(full, dict) or not isinstance(full.get("path"), str) \
+                    or not isinstance(full.get("sha256"), str) or isinstance(radius, bool) or not isinstance(radius, (int, float)) or radius <= 0:
+                raise BuildError(f"{source_id}: invalid fullPack/borderZone in the manifest")
+            full_archive = (full_pack_dir or ROOT / foreign_rules.FULL_PACK_DIR) / PurePosixPath(full["path"]).name
+            if not full_archive.is_file() or sha256_file(full_archive) != full["sha256"]:
+                raise BuildError(f"{source_id}: full pack missing or different from manifest fullPack: {full_archive}")
+            inputs.append(InputFile(full_archive.as_posix(), full_archive.stat().st_size, full["sha256"]))
+            pack_entry.update(station_mode=STATION_MODE_ZONE, full_archive=full_archive, radius_km=float(radius))
+        normalized.append(pack_entry)
     if policy_by_id is not None and source_ids != set(policy_by_id):
         raise BuildError("GTFS manifest source IDs differ from reviewed iOS policy")
     input_root = Path(os.path.commonpath([item.path for item in inputs]))
@@ -883,11 +905,13 @@ def foreign_station_coverage(
     archive_path: Path,
     catalog: CatalogStationMatcher,
     source_id: str,
-    zone_stops: set[str],
+    anchors: "foreign_rules.Anchors",
+    radius_km: float,
 ) -> tuple[set[str], set[str]]:
     """``(served, zone)`` catalogue ids of a full foreign pack (design §1.1, rule 5): served stations are matched to
     a stop some trip calls at; a zone station has every such stop inside the border zone."""
-    _, identities, calls = archive_station_trips(archive_path, catalog, source_id)
+    stops, identities, calls = archive_station_trips(archive_path, catalog, source_id)
+    zone_stops = foreign_rules.zone_stop_ids(stops.values(), anchors, radius_km)
     served: set[str] = set()
     outside: set[str] = set()
     for stop_id in set().union(*calls.values()) if calls else set():
@@ -1158,6 +1182,14 @@ def fsync_path(path: Path) -> None:
     with path.open("rb") as stream:
         os.fsync(stream.fileno())
 
+def border_zone_station_ids(pack: Mapping[str, object], catalog: CatalogStationMatcher, catalog_path: Path) -> set[str]:
+    """The zone stations of a border subset, computed on its full pack (design §1.1, rule 5)."""
+    anchors = foreign_rules.load_anchors(catalog_path)
+    _, zone = foreign_station_coverage(
+        Path(str(pack["full_archive"])), catalog, str(pack["source_id"]), anchors, float(pack["radius_km"]),  # type: ignore[arg-type]
+    )
+    return zone
+
 def build_database(
     manifest_path: Path,
     catalog_path: Path,
@@ -1166,6 +1198,7 @@ def build_database(
     *,
     source_policy_path: Path | None = None,
     max_compressed_bytes: int = DEFAULT_MAX_COMPRESSED_BYTES,
+    full_pack_dir: Path | None = None,
 ) -> dict[str, object]:
     gtfs_root = manifest_path.parent
     packs, input_root, input_files, input_fingerprint, source_generated_at = read_manifest(
@@ -1173,8 +1206,117 @@ def build_database(
         gtfs_root,
         catalog_path,
         source_policy_path,
+        full_pack_dir,
     )
     catalog, eligible_catalog_stations = load_catalog(catalog_path)
+    border = sorted(str(pack["source_id"]) for pack in packs if pack.get("station_mode") == STATION_MODE_ZONE)
+    for pack in packs:
+        if pack.get("station_mode") == STATION_MODE_ZONE:
+            pack["zone_station_ids"] = border_zone_station_ids(pack, catalog, catalog_path)
+    filter_metadata: dict[str, object] = {
+        "keepsCompleteTripWhen": "at least one stop matches, by normalized name/alias, a stop-name variant (part after 'Stazione di', without a country suffix, a trailing station word or a platform number, Hbf written out) or bilingual-name prefix verified by distance, a single catalog station with railwayCode or trenitaliaLocationId after co-located duplicates collapse onto the preferred entry; in a pack not listed in codedStationsOnly, a stop matching none may match a single catalog station without codes the same way; in a pack listed in borderSubsets only the zone stations of its full pack keep their catalog id",
+        "codedStationsOnly": sorted(FOREIGN_PACKS - set(border)),
+        "borderSubsets": border,
+        "parentIdentityInheritance": True,
+        "parentIdentityMaximumChildDistanceKm": MAX_PARENT_INHERITANCE_DISTANCE_KM,
+    }
+    return write_schedule(
+        packs, catalog, eligible_catalog_stations, input_root, input_files, input_fingerprint, source_generated_at,
+        output_path, metadata_path, max_compressed_bytes=max_compressed_bytes, filter_metadata=filter_metadata,
+    )
+
+def foreign_full_fingerprint(source_id: str, descriptor: Sequence[Mapping[str, object]]) -> str:
+    """Input fingerprint of a per-country index: its full pack and the catalogue (paths, sizes, digests), the kind,
+    the pack and the builder version.  The manifest and the source policy are left out on purpose: they change every
+    week with other packs, and a new fingerprint would publish a new iPhone file for unchanged timetables."""
+    return hashlib.sha256(canonical_json({
+        "builderVersion": FOREIGN_FULL_BUILDER_VERSION, "kind": FOREIGN_FULL_KIND, "sourceId": source_id, "files": list(descriptor),
+    })).hexdigest()
+
+def build_foreign_full_database(
+    manifest_path: Path,
+    catalog_path: Path,
+    source_id: str,
+    output_path: Path,
+    metadata_path: Path,
+    *,
+    source_policy_path: Path | None = None,
+    max_compressed_bytes: int = DEFAULT_MAX_COMPRESSED_BYTES,
+    full_pack_dir: Path | None = None,
+) -> dict[str, object]:
+    """``--foreign-full``: the index of one full foreign pack, downloaded on request by the iPhone (design §4.3).
+    Same schema, application id and user version as the base index; every stop may match a catalogue station with
+    or without codes; trips are kept when they touch one."""
+    try:
+        manifest = json.loads(read_bounded(manifest_path, MAX_MANIFEST_BYTES, "GTFS manifest"))
+    except (json.JSONDecodeError, UnicodeError) as error:
+        raise BuildError(f"cannot read GTFS manifest: {error}") from error
+    entry = next((item for item in manifest.get("packs", []) if isinstance(item, dict) and item.get("sourceId") == source_id), None)
+    full = entry.get("fullPack") if entry else None
+    if entry is None or source_id not in FOREIGN_PACKS or not isinstance(full, dict):
+        raise BuildError(f"{source_id}: not a foreign pack bundled as its border subset (no fullPack in the manifest)")
+    attribution, last = entry.get("attribution"), full.get("lastServiceDate")
+    if not isinstance(attribution, str) or not attribution or not isinstance(last, str) or not re.fullmatch(r"\d{4}-\d{2}-\d{2}", last):
+        raise BuildError(f"{source_id}: manifest lacks attribution or fullPack.lastServiceDate")
+    if source_policy_path is not None:
+        policy = json.loads(read_bounded(source_policy_path, MAX_MANIFEST_BYTES, "GTFS source policy"))
+        reviewed = {(item.get("sourceId"), item.get("sourceUrl"), item.get("accessMode")) for item in policy.get("sources", []) if isinstance(item, dict)}
+        if (source_id, entry.get("sourceUrl"), entry.get("accessMode")) not in reviewed:
+            raise BuildError(f"{source_id}: manifest source URL/access mode differs from reviewed iOS policy")
+    full_archive = (full_pack_dir or ROOT / foreign_rules.FULL_PACK_DIR) / PurePosixPath(str(full.get("path"))).name
+    if not full_archive.is_file() or sha256_file(full_archive) != full.get("sha256"):
+        raise BuildError(f"{source_id}: full pack missing or different from manifest fullPack: {full_archive}")
+    inputs = [
+        InputFile(full_archive.as_posix(), full_archive.stat().st_size, str(full["sha256"])),
+        InputFile(catalog_path.as_posix(), catalog_path.stat().st_size, sha256_file(catalog_path)),
+    ]
+    input_root = Path(os.path.commonpath([item.path for item in inputs]))
+    inputs = [InputFile(Path(item.path).relative_to(input_root).as_posix(), item.size, item.sha256) for item in inputs]
+    fingerprint = foreign_full_fingerprint(source_id, [{"path": item.path, "size": item.size, "sha256": item.sha256} for item in inputs])
+    # The day the full pack was filtered (its tripsRunFrom plus the build's grace of two days): stable while the
+    # timetable does not change, unlike the manifest's generatedAt.
+    generated_at = str(manifest.get("generatedAt"))
+    with zipfile.ZipFile(full_archive) as archive:
+        if "binario_filter_manifest.json" in archive.namelist():
+            runs_from = json.loads(archive.read("binario_filter_manifest.json").decode("utf-8")).get("tripsRunFrom")
+            if isinstance(runs_from, str):
+                generated_at = (date.fromisoformat(runs_from) + timedelta(days=2)).isoformat()
+    catalog, eligible_catalog_stations = load_catalog(catalog_path)
+    packs = [{
+        "source_id": source_id,
+        "attribution": attribution,
+        "last_service_date": date_int(date.fromisoformat(last)),
+        "archive": full_archive,
+        "station_mode": STATION_MODE_FULL,
+    }]
+    filter_metadata: dict[str, object] = {
+        "keepsCompleteTripWhen": "at least one stop matches, by normalized name/alias, a stop-name variant or bilingual-name prefix verified by distance, a single catalog station with or without codes after co-located duplicates collapse onto the preferred entry",
+        "codedStationsOnly": [],
+        "borderSubsets": [],
+        "parentIdentityInheritance": True,
+        "parentIdentityMaximumChildDistanceKm": MAX_PARENT_INHERITANCE_DISTANCE_KM,
+    }
+    return write_schedule(
+        packs, catalog, eligible_catalog_stations, input_root, inputs, fingerprint, generated_at,
+        output_path, metadata_path, max_compressed_bytes=max_compressed_bytes, filter_metadata=filter_metadata,
+        extra_metadata={"kind": FOREIGN_FULL_KIND, "sourceId": source_id, "builderVersion": FOREIGN_FULL_BUILDER_VERSION},
+    )
+
+def write_schedule(
+    packs: Sequence[dict[str, object]],
+    catalog: CatalogStationMatcher,
+    eligible_catalog_stations: int,
+    input_root: Path,
+    input_files: Sequence[InputFile],
+    input_fingerprint: str,
+    source_generated_at: str,
+    output_path: Path,
+    metadata_path: Path,
+    *,
+    max_compressed_bytes: int,
+    filter_metadata: Mapping[str, object],
+    extra_metadata: Mapping[str, object] | None = None,
+) -> dict[str, object]:
     output_path.parent.mkdir(parents=True, exist_ok=True)
     metadata_path.parent.mkdir(parents=True, exist_ok=True)
     if output_path.parent.resolve() != metadata_path.parent.resolve():
@@ -1250,15 +1392,11 @@ def build_database(
                 "eligibleCatalogStationCount": eligible_catalog_stations,
                 "unambiguousNormalizedNameCount": catalog.unambiguous_name_count,
             },
-            "filter": {
-                "keepsCompleteTripWhen": "at least one stop matches, by normalized name/alias or bilingual-name prefix verified by distance, a single catalog station with railwayCode or trenitaliaLocationId after co-located duplicates collapse onto the preferred entry; in a pack not listed in codedStationsOnly, a stop matching none may match a single catalog station without codes the same way",
-                "codedStationsOnly": sorted(FOREIGN_PACKS),
-                "parentIdentityInheritance": True,
-                "parentIdentityMaximumChildDistanceKm": MAX_PARENT_INHERITANCE_DISTANCE_KM,
-            },
+            "filter": dict(filter_metadata),
             "rowCounts": totals,
             "packRowCounts": per_pack,
             "maximumCompressedSizeBytes": max_compressed_bytes,
+            **(extra_metadata or {}),
         }
         with staged_metadata.open("wb") as target:
             target.write(canonical_json(metadata))
@@ -1285,6 +1423,10 @@ def build_database(
             child.unlink(missing_ok=True)
         temp_dir.rmdir()
 
+def foreign_full_paths(root: Path, source_id: str) -> tuple[Path, Path]:
+    directory = root / foreign_rules.IOS_FULL_DIR
+    return directory / f"{source_id}.sqlite.zlib", directory / f"{source_id}.metadata.json"
+
 def default_paths(root: Path) -> tuple[Path, Path, Path, Path, Path]:
     return (
         root / "app/src/main/assets/gtfs/manifest.json",
@@ -1301,22 +1443,44 @@ def parse_args(argv: Sequence[str]) -> argparse.Namespace:
     parser.add_argument("--manifest", type=Path, default=manifest)
     parser.add_argument("--catalog", type=Path, default=catalog)
     parser.add_argument("--source-policy", type=Path, default=source_policy)
-    parser.add_argument("--output", type=Path, default=output)
-    parser.add_argument("--metadata", type=Path, default=metadata)
+    parser.add_argument("--output", type=Path, help=f"default {output.relative_to(root)} (per-country: data/gtfs-foreign/ios/<id>.sqlite.zlib)")
+    parser.add_argument("--metadata", type=Path, help=f"default {metadata.relative_to(root)} (per-country: data/gtfs-foreign/ios/<id>.metadata.json)")
     parser.add_argument("--max-compressed-bytes", type=int, default=DEFAULT_MAX_COMPRESSED_BYTES)
-    return parser.parse_args(argv)
+    parser.add_argument("--full-pack-dir", type=Path, default=root / foreign_rules.FULL_PACK_DIR,
+                        help="full packs of the foreign packs bundled as their border subset")
+    parser.add_argument("--foreign-full", metavar="SOURCE_ID",
+                        help="build the per-country index of this full foreign pack (default output in data/gtfs-foreign/ios/)")
+    args = parser.parse_args(argv)
+    if args.foreign_full:
+        output, metadata = foreign_full_paths(root, args.foreign_full)
+    args.output = args.output or output
+    args.metadata = args.metadata or metadata
+    return args
 
 def main(argv: Sequence[str] | None = None) -> int:
     args = parse_args(sys.argv[1:] if argv is None else argv)
     try:
-        metadata = build_database(
-            args.manifest,
-            args.catalog,
-            args.output,
-            args.metadata,
-            source_policy_path=args.source_policy,
-            max_compressed_bytes=args.max_compressed_bytes,
-        )
+        if args.foreign_full:
+            metadata = build_foreign_full_database(
+                args.manifest,
+                args.catalog,
+                args.foreign_full,
+                args.output,
+                args.metadata,
+                source_policy_path=args.source_policy,
+                max_compressed_bytes=args.max_compressed_bytes,
+                full_pack_dir=args.full_pack_dir,
+            )
+        else:
+            metadata = build_database(
+                args.manifest,
+                args.catalog,
+                args.output,
+                args.metadata,
+                source_policy_path=args.source_policy,
+                max_compressed_bytes=args.max_compressed_bytes,
+                full_pack_dir=args.full_pack_dir,
+            )
     except BuildError as error:
         print(f"error: {error}", file=sys.stderr)
         return 1

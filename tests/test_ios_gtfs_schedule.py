@@ -656,6 +656,143 @@ class StopNameVariantTest(unittest.TestCase):
         self.assertIsNone(self.matched("Domodossola (I)", 45.5, 8.29624))
 
 
+def write_border_feed(path: Path) -> None:
+    """Citta Alta (coded anchor) and Vicino (11 km, no codes) are in the border zone; Nowhere (136 km) is not."""
+    members = {
+        "agency.txt": csv_bytes(["agency_id", "agency_name", "agency_url", "agency_timezone"], [["A", "Rail", "https://example.test", "Europe/Rome"]]),
+        "routes.txt": csv_bytes(["route_id", "agency_id", "route_short_name", "route_long_name", "route_type"], [["R", "A", "EC", "Test", "2"]]),
+        "trips.txt": csv_bytes(["route_id", "service_id", "trip_id"], [["R", "WK", "KEEP"], ["R", "WK", "NEAR"], ["R", "WK", "FAR"]]),
+        "stops.txt": csv_bytes(["stop_id", "stop_name", "stop_lat", "stop_lon", "location_type", "parent_station"], [
+            ["P", "Citta Alta", "45", "9", "1", ""], ["PL", "Citta Alta 1", "45", "9", "0", "P"],
+            ["V", "Vicino Bahnhof", "45.1", "9", "0", ""], ["X", "Nowhere", "46", "10", "0", ""], ["Y", "Elsewhere", "47", "11", "0", ""],
+        ]),
+        "stop_times.txt": csv_bytes(["trip_id", "arrival_time", "departure_time", "stop_id", "stop_sequence"], [
+            ["KEEP", "08:00:00", "08:00:00", "X", "1"], ["KEEP", "09:00:00", "09:00:00", "PL", "2"],
+            ["NEAR", "10:00:00", "10:00:00", "V", "1"], ["NEAR", "11:00:00", "11:00:00", "X", "2"],
+            ["FAR", "12:00:00", "12:00:00", "X", "1"], ["FAR", "13:00:00", "13:00:00", "Y", "2"],
+        ]),
+        "calendar.txt": csv_bytes(["service_id", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday", "start_date", "end_date"],
+                                  [["WK", "1", "1", "1", "1", "1", "0", "0", "20260105", "20260109"]]),
+    }
+    with zipfile.ZipFile(path, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+        for name, content in members.items():
+            archive.writestr(name, content)
+
+
+class BorderSubsetIndexTest(unittest.TestCase):
+    """Design §4.2-§4.3: a border subset names its zone stations only (with or without codes); the per-country index
+    of its full pack names every station; a foreign pack bundled whole keeps the coded-only rule."""
+
+    def setUp(self) -> None:
+        self.temp = Path(tempfile.mkdtemp(prefix="ios-gtfs-border-"))
+        self.addCleanup(shutil.rmtree, self.temp, ignore_errors=True)
+        self.manifest, self.catalog = write_inputs(self.temp)
+        catalog = json.loads(self.catalog.read_text(encoding="utf-8"))
+        catalog["stations"][0]["trenitaliaLocationId"] = "830000001"  # the anchor of the zone
+        catalog["stations"].append({"id": "N2", "name": "Vicino", "aliases": [], "railwayCode": None, "trenitaliaLocationId": None, "latitude": 45.1, "longitude": 9.0})
+        self.catalog.write_text(json.dumps(catalog), encoding="utf-8")
+        subset = self.temp / "gtfs/pack-0.zip"
+        write_border_feed(subset)
+        self.full_dir = self.temp / "full"
+        self.full_dir.mkdir()
+        shutil.copyfile(subset, self.full_dir / "pack-0.zip")
+        manifest = json.loads(self.manifest.read_text(encoding="utf-8"))
+        digest = hashlib.sha256(subset.read_bytes()).hexdigest()
+        manifest["packs"][0].update(sha256=digest, filter={"borderZone": {"radiusKm": 35}}, fullPack={
+            "path": "data/gtfs-foreign/android/pack-0.zip", "sha256": digest, "lastServiceDate": "2026-01-09",
+        })
+        self.manifest.write_text(json.dumps(manifest), encoding="utf-8")
+        for patcher in (mock.patch.object(builder, "FOREIGN_PACKS", frozenset({"pack-0", "pack-1"})),
+                        mock.patch.object(verifier, "FOREIGN_PACKS", ("pack-0", "pack-1"))):
+            patcher.start()
+            self.addCleanup(patcher.stop)
+
+    def stops(self, output: Path, pack: str) -> dict[str, str | None]:
+        raw = output.with_suffix(".sqlite")
+        raw.write_bytes(zlib.decompress(output.read_bytes()))
+        connection = sqlite3.connect(raw)
+        self.addCleanup(connection.close)
+        return dict(connection.execute(
+            "SELECT s.external_id, s.catalog_station_id FROM stop s JOIN pack p ON p.id=s.pack_id WHERE p.source_id=?", (pack,)))
+
+    def build_base(self) -> tuple[Path, Path, dict]:
+        output, metadata = self.temp / "base.zlib", self.temp / "base.json"
+        result = builder.build_database(self.manifest, self.catalog, output, metadata, max_compressed_bytes=4 * 1024 * 1024,
+                                        full_pack_dir=self.full_dir)
+        return output, metadata, result
+
+    def test_zone_stations_match_with_or_without_codes_and_out_of_zone_stops_stay_unnamed(self) -> None:
+        output, metadata, result = self.build_base()
+        self.assertEqual({"PL": "S1", "V": "N2", "X": None}, self.stops(output, "pack-0"))
+        # A foreign pack bundled whole (pack-1) matches stations with codes only, an Italian pack (pack-2) any.
+        self.assertEqual({"PL": "S1", "X": None}, self.stops(output, "pack-1"))
+        self.assertEqual({"PL": "S1", "X": "N1"}, self.stops(output, "pack-2"))
+        self.assertEqual(["pack-0"], result["filter"]["borderSubsets"])
+        self.assertEqual(["pack-1"], result["filter"]["codedStationsOnly"])
+        self.assertEqual(builder.INDEXED_PACK_COUNT + 3, len(result["inputs"]["files"]))
+        self.assertEqual(2, result["packRowCounts"]["pack-0"]["trip"])  # FAR touches no zone station
+        verifier.verify(output, metadata, max_compressed_bytes=4 * 1024 * 1024, max_database_bytes=16 * 1024 * 1024)
+
+    def test_verifier_rejects_a_catalogue_id_outside_the_zone(self) -> None:
+        output, metadata, _ = self.build_base()
+        raw = self.temp / "tampered.sqlite"
+        raw.write_bytes(zlib.decompress(output.read_bytes()))
+        with sqlite3.connect(raw) as database:
+            database.execute("UPDATE stop SET catalog_station_id='N1' WHERE external_id='X' AND pack_id=1")
+        compressed = zlib.compress(raw.read_bytes(), 9)
+        output.write_bytes(compressed)
+        payload = json.loads(metadata.read_text(encoding="utf-8"))
+        payload["compression"].update(sha256=hashlib.sha256(compressed).hexdigest(), sizeBytes=len(compressed))
+        payload["database"].update(sha256=hashlib.sha256(raw.read_bytes()).hexdigest(), sizeBytes=raw.stat().st_size)
+        metadata.write_text(json.dumps(payload), encoding="utf-8")
+        with self.assertRaisesRegex(verifier.VerificationError, "outside the 35 km border zone"):
+            verifier.verify(output, metadata, max_compressed_bytes=4 * 1024 * 1024, max_database_bytes=16 * 1024 * 1024)
+
+    def test_full_pack_must_match_the_manifest(self) -> None:
+        (self.full_dir / "pack-0.zip").write_bytes(b"other")
+        with self.assertRaisesRegex(builder.BuildError, "full pack missing or different"):
+            self.build_base()
+
+    def test_served_and_zone_lists(self) -> None:
+        anchors = builder.foreign_rules.load_anchors(self.catalog)
+        catalog, _ = builder.load_catalog(self.catalog)
+        served, zone = builder.foreign_station_coverage(self.full_dir / "pack-0.zip", catalog, "pack-0", anchors, 35)
+        self.assertEqual(({"S1", "N1", "N2"}, {"S1", "N2"}), (served, zone))
+        _, zone = builder.foreign_station_coverage(self.full_dir / "pack-0.zip", catalog, "pack-0", anchors, 5)
+        self.assertEqual({"S1"}, zone)
+
+    def test_foreign_full_index_has_one_pack_and_every_station(self) -> None:
+        output, metadata = self.temp / "full.zlib", self.temp / "full.json"
+        result = builder.build_foreign_full_database(self.manifest, self.catalog, "pack-0", output, metadata,
+                                                     max_compressed_bytes=4 * 1024 * 1024, full_pack_dir=self.full_dir)
+        self.assertEqual(("foreign-full", "pack-0", 1), (result["kind"], result["sourceId"], result["inputs"]["packCount"]))
+        self.assertEqual({"PL": "S1", "V": "N2", "X": "N1", "Y": None}, self.stops(output, "pack-0"))
+        self.assertEqual(3, result["rowCounts"]["trip"])
+        options = {"max_compressed_bytes": 4 * 1024 * 1024, "max_database_bytes": 16 * 1024 * 1024}
+        checked = verifier.verify(output, metadata, foreign_full="pack-0", **options)
+        self.assertEqual(result["inputs"]["fingerprintSha256"], checked["inputFingerprintSha256"])
+        with self.assertRaisesRegex(verifier.VerificationError, "not the base index"):
+            verifier.verify(output, metadata, **options)
+        with self.assertRaisesRegex(verifier.VerificationError, "per-country index of pack-1"):
+            verifier.verify(output, metadata, foreign_full="pack-1", **options)
+        base_output, base_metadata, _ = self.build_base()
+        with self.assertRaisesRegex(verifier.VerificationError, "per-country index"):
+            verifier.verify(base_output, base_metadata, foreign_full="pack-0", **options)
+        # The fingerprint leaves out the manifest: another manifest date does not make a new iPhone file.
+        manifest = json.loads(self.manifest.read_text(encoding="utf-8"))
+        manifest["generatedAt"] = "2026-01-05"
+        self.manifest.write_text(json.dumps(manifest), encoding="utf-8")
+        again = builder.build_foreign_full_database(self.manifest, self.catalog, "pack-0", self.temp / "again.zlib", self.temp / "again.json",
+                                                    max_compressed_bytes=4 * 1024 * 1024, full_pack_dir=self.full_dir)
+        self.assertEqual(result["inputs"]["fingerprintSha256"], again["inputs"]["fingerprintSha256"])
+        with self.assertRaisesRegex(builder.BuildError, "not a foreign pack bundled as its border subset"):
+            builder.build_foreign_full_database(self.manifest, self.catalog, "pack-2", output, metadata, full_pack_dir=self.full_dir)
+
+    def test_builder_and_verifier_share_the_per_country_version(self) -> None:
+        self.assertEqual(builder.FOREIGN_FULL_BUILDER_VERSION, verifier.FOREIGN_FULL_BUILDER_VERSION)
+        self.assertEqual(builder.FOREIGN_FULL_KIND, verifier.FOREIGN_FULL_KIND)
+
+
 class RenonRailwayTest(unittest.TestCase):
     """The Renon railway (route 160 of the bundled STA pack): its stations are catalogue entries without codes taken
     from the pack, and the shipped iPhone index keeps every trip of the line on them."""

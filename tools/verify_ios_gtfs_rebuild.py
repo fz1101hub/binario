@@ -10,7 +10,8 @@ import tempfile
 from pathlib import Path
 from typing import Sequence
 
-from verify_ios_gtfs_schedule import (
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from verify_ios_gtfs_schedule import (  # noqa: E402
     DEFAULT_MAX_COMPRESSED_BYTES,
     DEFAULT_MAX_DATABASE_BYTES,
     REQUIRED_TABLE_COLUMNS,
@@ -42,15 +43,18 @@ def compare_rebuild(
     source_policy_path: Path | None = None,
     max_compressed_bytes: int = DEFAULT_MAX_COMPRESSED_BYTES,
     max_database_bytes: int = DEFAULT_MAX_DATABASE_BYTES,
+    foreign_full: str | None = None,
 ) -> dict[str, object]:
     original = verify(canonical, canonical_metadata,
                       max_compressed_bytes=max_compressed_bytes,
                       max_database_bytes=max_database_bytes,
-                      source_policy_path=source_policy_path)
+                      source_policy_path=source_policy_path,
+                      foreign_full=foreign_full)
     candidate = verify(rebuilt, rebuilt_metadata,
                        max_compressed_bytes=max_compressed_bytes,
                        max_database_bytes=max_database_bytes,
-                       source_policy_path=source_policy_path)
+                       source_policy_path=source_policy_path,
+                       foreign_full=foreign_full)
     require(comparable_metadata(canonical_metadata) == comparable_metadata(rebuilt_metadata),
             "rebuild metadata differs beyond platform-dependent binary digests and lengths")
     require(original["inputFingerprintSha256"] == candidate["inputFingerprintSha256"],
@@ -87,15 +91,23 @@ def compare_rebuild(
 def main(argv: Sequence[str] | None = None) -> int:
     root = Path(__file__).resolve().parents[1]
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--canonical", type=Path, default=root / "ios/Resources/binario_gtfs_schedule_v1.sqlite.zlib")
-    parser.add_argument("--canonical-metadata", type=Path, default=root / "ios/Resources/binario_gtfs_schedule_v1.metadata.json")
+    parser.add_argument("--canonical", type=Path, help="default: the base index, or data/gtfs-foreign/ios/<id>.sqlite.zlib")
+    parser.add_argument("--canonical-metadata", type=Path, help="default: its metadata")
     parser.add_argument("--rebuild", type=Path, required=True)
     parser.add_argument("--rebuild-metadata", type=Path, required=True)
     parser.add_argument("--source-policy", type=Path, default=root / "ios/Resources/binario_gtfs_source_policy_v1.json")
+    parser.add_argument("--foreign-full", metavar="SOURCE_ID", help="compare the per-country index of this foreign pack")
     args = parser.parse_args(sys.argv[1:] if argv is None else argv)
+    if args.foreign_full:
+        canonical = root / "data/gtfs-foreign/ios" / f"{args.foreign_full}.sqlite.zlib"
+        canonical_metadata = root / "data/gtfs-foreign/ios" / f"{args.foreign_full}.metadata.json"
+    else:
+        canonical = root / "ios/Resources/binario_gtfs_schedule_v1.sqlite.zlib"
+        canonical_metadata = root / "ios/Resources/binario_gtfs_schedule_v1.metadata.json"
     try:
-        result = compare_rebuild(args.canonical, args.canonical_metadata, args.rebuild, args.rebuild_metadata,
-                                 source_policy_path=args.source_policy)
+        result = compare_rebuild(args.canonical or canonical, args.canonical_metadata or canonical_metadata,
+                                 args.rebuild, args.rebuild_metadata, source_policy_path=args.source_policy,
+                                 foreign_full=args.foreign_full)
     except (VerificationError, KeyError, TypeError) as error:
         print(f"error: {error}", file=sys.stderr)
         return 1
