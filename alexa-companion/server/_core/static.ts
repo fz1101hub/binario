@@ -33,7 +33,7 @@ export function serveStatic(
   });
 
   // Fall through to index.html for client routes; other paths get it with a 404 status.
-  app.use("*", (req, res) => {
+  app.use((req, res) => {
     res.status(clientFallbackStatus(req.originalUrl)).sendFile(path.resolve(distPath, "index.html"));
   });
 }

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 3,
-  "verifiedAt": "2026-11-03",
+  "verifiedAt": "2026-11-22",
   "workflowTriggerPolicy": {
     "pushBranches": [
       "main",
@@ -13,24 +13,24 @@
       "release": "v7"
     },
     {
-      "reference": "actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961",
-      "release": "v5"
+      "reference": "actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78",
+      "release": "v6.2.0"
     },
     {
-      "reference": "actions/setup-node@820762786026740c76f36085b0efc47a31fe5020",
-      "release": "v7"
+      "reference": "actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1",
+      "release": "v7.1.0"
     },
     {
-      "reference": "actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1",
-      "release": "v6"
+      "reference": "actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+      "release": "v7.1.0"
     },
     {
-      "reference": "gradle/actions/wrapper-validation@ed408507eac070d1f99cc633dbcf757c94c7933a",
-      "release": "v4"
+      "reference": "gradle/actions/wrapper-validation@8da46b539cd8fe6ab27ca75128919a18d757604c",
+      "release": "v6.4.1"
     },
     {
-      "reference": "pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86",
-      "release": "v6"
+      "reference": "pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115",
+      "release": "v6.1.1"
     },
     {
       "reference": "actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
