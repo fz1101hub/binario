@@ -8,6 +8,8 @@ import it.binario.app.data.catalog.EmbeddedCuratedRailStationCatalog
 import it.binario.app.data.gtfs.EmbeddedGtfsPack
 import it.binario.app.data.gtfs.EmbeddedGtfsRealtimeScheduleResolver
 import it.binario.app.data.gtfs.EmbeddedGtfsPacks
+import it.binario.app.data.gtfs.ForeignPackDownloader
+import it.binario.app.data.gtfs.ForeignPackOffers
 import it.binario.app.data.gtfs.ForeignPackPins
 import it.binario.app.data.gtfs.ForeignPackSnapshot
 import it.binario.app.data.gtfs.ForeignPackStore
@@ -35,7 +37,12 @@ import it.binario.app.data.urban.UrbanRealtimeFeeds
 import it.binario.app.data.urban.UrbanStopBoardAdapter
 import it.binario.app.tile.NextTrainTileStore
 import java.io.File
+import java.time.LocalDate
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /**
@@ -60,6 +67,7 @@ object BinarioDataGraph {
     private val urbanBoardsByPackage = mutableMapOf<String, List<StopScopedBoardProvider>>()
     private val timetablesLock = Any()
     @Volatile private var foreignStore: ForeignPackStore? = null
+    @Volatile private var foreignOffers: ForeignPackOffers? = null
     private var timetables: EmbeddedTimetables? = null
 
     /**
@@ -85,6 +93,36 @@ object BinarioDataGraph {
             ).also { store ->
                 if (store.cleanUp()) NextTrainTileStore(app).clearTimetable()
                 foreignStore = store
+            }
+        }
+    }
+
+    /**
+     * The offers, declines and the one download of the full foreign packs, shared by every screen of the process. A
+     * download runs only after a tap, in this process, and stops when cancelled; an install or a delete bumps the
+     * store's generation, so the readers are rebuilt and the Quick Settings tile reads the new files at its next update.
+     */
+    fun foreignPackOffers(context: Context): ForeignPackOffers {
+        foreignOffers?.let { return it }
+        val app = context.applicationContext
+        val store = foreignPackStore(app)
+        return synchronized(timetablesLock) {
+            foreignOffers ?: run {
+                val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+                val downloader = ForeignPackDownloader(store)
+                ForeignPackOffers(
+                    pins = store.pins,
+                    generation = store.generation,
+                    installed = { sourceId -> embeddedTimetables(app).snapshot.isInstalled(sourceId) },
+                    status = store::status,
+                    download = { sourceId, onProgress -> downloader.download(sourceId, onProgress) },
+                    remove = store::delete,
+                    scope = scope,
+                    today = { LocalDate.now(it.binario.app.data.RailTime.defaultZone) }
+                ).also { offers ->
+                    foreignOffers = offers
+                    scope.launch { store.generation.drop(1).collect { NextTrainTileStore(app).clearTimetable() } }
+                }
             }
         }
     }

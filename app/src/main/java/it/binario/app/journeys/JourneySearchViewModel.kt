@@ -10,6 +10,8 @@ import it.binario.app.UiMessage
 import it.binario.app.UiMessageKey
 import it.binario.app.data.RailTime
 import it.binario.app.data.Station
+import it.binario.app.data.gtfs.ForeignPackOffer
+import it.binario.app.data.gtfs.ForeignPackOffers
 import it.binario.app.data.provider.JourneyPreferences
 import it.binario.app.data.repository.BinarioDataGraph
 import it.binario.app.data.repository.JourneySearchQuery
@@ -45,7 +47,12 @@ data class JourneySearchUiState(
     val liveLegs: Map<String, JourneyLegLive> = emptyMap(),
     /** «Più presto» and «Più tardi»: their windows are merged into [result], which keeps answering [query]. */
     val earlier: ResultsPageState = ResultsPageState(),
-    val later: ResultsPageState = ResultsPageState()
+    val later: ResultsPageState = ResultsPageState(),
+    /**
+     * After the search answered: the full foreign pack an end needs (a dialog when nothing was found, a banner when both
+     * ends lie outside the border zone of the same pack), or null (design §3.3).
+     */
+    val foreignPackOffer: ForeignPackOffer? = null
 )
 
 /**
@@ -88,7 +95,11 @@ class JourneySearchViewModel(
     private val urbanLiveLookup: UrbanJourneyLiveLookup? = null,
     /** "Preferenze di viaggio" sent with every search; a change searches the shown journeys again. Null: none. */
     private val preferences: StateFlow<JourneyPreferences>? = null,
-    private val now: () -> Instant = Instant::now
+    private val now: () -> Instant = Instant::now,
+    /** The full foreign packs: asked after each search; an install or a delete searches the shown journeys again. */
+    private val foreignPacks: ForeignPackOffers? = null,
+    /** The service of the current timetable files ([service] when null): the one to use after an install or a delete. */
+    private val currentService: (() -> JourneySearchService)? = null
 ) : ViewModel() {
     private val mutableState = MutableStateFlow(JourneySearchUiState())
     val state: StateFlow<JourneySearchUiState> = mutableState.asStateFlow()
@@ -104,6 +115,11 @@ class JourneySearchViewModel(
     private val zone = RailTime.defaultZone
 
     init {
+        foreignPacks?.let { offers ->
+            viewModelScope.launch {
+                offers.generation.drop(1).collect { state.value.query?.let(::start) }
+            }
+        }
         preferences?.let { flow ->
             viewModelScope.launch {
                 flow.drop(1).collect { changed ->
@@ -269,9 +285,11 @@ class JourneySearchViewModel(
 
     /** One window of [query] from [from]; null when no source could answer it. */
     private suspend fun searchPage(query: JourneySearchQuery, from: LocalDateTime, maxResults: Int): List<SourcedJourneyOption>? {
-        val page = service.search(query.copy(departure = from.withSecond(0).withNano(0), maxResults = maxResults.coerceIn(1, 20)))
+        val page = service().search(query.copy(departure = from.withSecond(0).withNano(0), maxResults = maxResults.coerceIn(1, 20)))
         return if (page.status == JourneySearchStatus.FOUND || page.status == JourneySearchStatus.NO_SOLUTION) page.options else null
     }
+
+    private fun service(): JourneySearchService = currentService?.invoke() ?: service
 
     private fun start(query: JourneySearchQuery) {
         searchJob?.cancel()
@@ -283,14 +301,18 @@ class JourneySearchViewModel(
         mutableState.update {
             it.copy(
                 loading = true, query = query, result = null, presentation = null, validationMessage = null, liveLegs = emptyMap(),
-                earlier = ResultsPageState(), later = ResultsPageState()
+                earlier = ResultsPageState(), later = ResultsPageState(), foreignPackOffer = null
             )
         }
         searchJob = viewModelScope.launch {
-            val result = service.search(query)
+            val result = service().search(query)
             if (generation != searchGeneration) return@launch
+            val offer = foreignPacks?.afterSearch(query.origin.id, query.destination.id, found = result.options.isNotEmpty())
             mutableState.update { current ->
-                current.copy(loading = false, result = result, presentation = JourneyResultsPresenter.present(result, current.filter))
+                current.copy(
+                    loading = false, result = result, presentation = JourneyResultsPresenter.present(result, current.filter),
+                    foreignPackOffer = offer
+                )
             }
             // The scheduled results are shown first; the live check of the changes follows when it answers. The metro
             // and tram legs of the city networks with an open realtime feed are checked at the same time.
@@ -310,7 +332,9 @@ class JourneySearchViewModel(
                     BinarioDataGraph.journeySearchService(app),
                     JourneyLiveLookup(BinarioDataGraph.trainNumberSearchService(app)),
                     urbanLiveLookup = BinarioDataGraph.urbanRealtimeFeeds(app).takeIf { it.isNotEmpty() }?.let(::UrbanJourneyLiveLookup),
-                    preferences = TravelPreferencesRepository.state(app)
+                    preferences = TravelPreferencesRepository.state(app),
+                    foreignPacks = BinarioDataGraph.foreignPackOffers(app),
+                    currentService = { BinarioDataGraph.journeySearchService(app) }
                 )
             }
         }
