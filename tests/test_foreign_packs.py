@@ -29,11 +29,14 @@ def load_module(name: str, path: Path):
     return module
 
 
-rules = load_module("foreign_pack_rules", ROOT / "tools/foreign_pack_rules.py")
+# The rules module the already loaded build_gtfs_packs uses (a full test run imports it from earlier modules): a
+# second copy would make the patches of REQUIRED_BORDER_PAIRS below miss the builder.
+rules = sys.modules.get("foreign_pack_rules") or load_module("foreign_pack_rules", ROOT / "tools/foreign_pack_rules.py")
 verifier = load_module("verify_foreign_packs", ROOT / "tools/verify_foreign_packs.py")
 generator = load_module("build_foreign_packs", ROOT / "tools/build_foreign_packs.py")
 packs = sys.modules["build_gtfs_packs"]
 ios_builder = sys.modules["build_ios_gtfs_schedule"]
+assert packs.foreign is rules and generator.rules is rules and verifier.rules is rules
 
 
 def sample() -> dict:
