@@ -185,7 +185,9 @@ class AndroidStringResourceParityTest {
             "expected_time_short", "theme_system_label", "settings_theme", "settings_section_widgets",
             "journey_leg_metro", "journey_leg_tram", "journey_leg_funicular", "journey_leg_bus_trenitalia",
             // The hour symbol of the compact durations ("4h"), shared with English.
-            "duration_hours"
+            "duration_hours",
+            // Country names ("Austria" in English, Spanish and Indonesian, "Francia" in Spanish).
+            "settings_foreign_pack_country_at", "settings_foreign_pack_country_fr"
         )
         private val LATIN_SCRIPT_LOCALES = setOf("en", "de", "fr", "es", "id", "pt", "tr", "vi")
         private val IDENTICAL_PLURAL_KEYS = setOf("minutes_short", "gps_alarm_radius_km")

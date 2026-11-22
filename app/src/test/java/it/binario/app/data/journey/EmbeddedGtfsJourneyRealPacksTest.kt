@@ -26,7 +26,8 @@ import org.junit.Test
  * them, never the structure checked here.
  */
 class EmbeddedGtfsJourneyRealPacksTest {
-    private val openAsset = { path: String -> TestAssets.open(path) }
+    // Foreign packs read whole (the full ZIP once the APK bundles their border subset): trains beyond the zone stay.
+    private val openAsset = { path: String -> TestAssets.openFull(path) }
     private val stations: List<Station> by lazy { EmbeddedCuratedRailStationCatalog(openAsset).load() }
     private val zone = ZoneId.of("Europe/Rome")
     /** A Tuesday inside the validity of every bundled pack. */

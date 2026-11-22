@@ -11,6 +11,7 @@ import it.binario.app.data.TrainCategory
 import it.binario.app.data.TrainService
 import it.binario.app.data.catalog.EmbeddedCuratedRailStationCatalog
 import it.binario.app.data.gtfs.EmbeddedGtfsRouteAdapter
+import it.binario.app.data.repository.BinarioDataGraph
 import it.binario.app.shortcuts.SavedRouteCodec
 import java.time.Duration
 import java.time.Instant
@@ -185,6 +186,9 @@ class NextTrainTileStore(context: Context) {
 
     fun saveTimetable(timetable: TileTimetable) = preferences.edit { putString(KEY_TIMETABLE, NextTrainTileCodec.encodeTimetable(timetable)) }
 
+    /** Forgets the computed departures (a full foreign pack was installed or deleted): the next refresh reads the packs again. */
+    fun clearTimetable() = preferences.edit { remove(KEY_TIMETABLE) }
+
     private companion object {
         const val KEY_ROUTE = "active_route"
         const val KEY_TIMETABLE = "timetable"
@@ -203,9 +207,12 @@ object NextTrainTimetable {
         val store = NextTrainTileStore(context)
         store.timetable()?.takeIf { !NextTrainTilePlanner.needsRefresh(it, route.key, now) }?.let { return@withLock it }
         val app = context.applicationContext
-        val openAsset = { path: String -> app.assets.open(path) }
+        // The packs of the current generation: an installed full foreign pack instead of its border zone.
+        val timetables = BinarioDataGraph.embeddedTimetables(app)
+        val openAsset = timetables.openPack
         val adapter = EmbeddedGtfsRouteAdapter(
             openAsset = openAsset,
+            packs = timetables.railPacks,
             indexCacheCapacity = 1,
             stationCatalog = { withContext(Dispatchers.IO) { EmbeddedCuratedRailStationCatalog(openAsset).load() } }
         )

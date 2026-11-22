@@ -26,7 +26,8 @@ import org.junit.Test
  * change the counts, never the structure checked here.
  */
 class GtfsDirectConnectionsTest {
-    private val openAsset = { path: String -> TestAssets.open(path) }
+    // Foreign packs read whole (the full ZIP once the APK bundles their border subset): trains beyond the zone stay.
+    private val openAsset = { path: String -> TestAssets.openFull(path) }
     private val stations: List<Station> by lazy { EmbeddedCuratedRailStationCatalog(openAsset).load() }
     private val tuesday = LocalDate.of(2026, 11, 24)
     private val provider by lazy { EmbeddedGtfsJourneyProvider.create(openAsset) }

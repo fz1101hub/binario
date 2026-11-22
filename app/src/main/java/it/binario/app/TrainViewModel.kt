@@ -24,6 +24,12 @@ import it.binario.app.data.Station
 import it.binario.app.data.StationAutocompleteEngine
 import it.binario.app.data.StationCanonicalizer
 import it.binario.app.data.TrainDataSource
+import it.binario.app.data.core.SourceId
+import it.binario.app.data.gtfs.ForeignPackChoice
+import it.binario.app.data.gtfs.ForeignPackDownloadState
+import it.binario.app.data.gtfs.ForeignPackOffer
+import it.binario.app.data.gtfs.ForeignPackOffers
+import it.binario.app.data.gtfs.ForeignPackSettingsRow
 import it.binario.app.data.repository.BinarioDataGraph
 import it.binario.app.data.repository.StationBoardAggregate
 import it.binario.app.data.repository.StationBoardAggregateResult
@@ -52,6 +58,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.withContext
 import java.util.UUID
 import java.util.Locale
@@ -74,7 +82,8 @@ class TrainViewModel @JvmOverloads constructor(
         stopProviders = BinarioDataGraph.urbanStopBoardProviders(application)
     ),
     private val stationBoardDetailsService: StationBoardRunDetailService = BinarioDataGraph.stationBoardRunDetailService(),
-    private val trainNumberSearchService: TrainNumberSearchService = BinarioDataGraph.trainNumberSearchService(application),
+    /** Train-number search; null uses the data graph's for the current timetable files (a downloaded foreign pack included). */
+    private val trainNumberSearchService: TrainNumberSearchService? = null,
     /** Route source; null uses the application data graph. Instrumented tests pass a fixed local catalogue. */
     routeDataSource: TrainDataSource? = null
 ) : AndroidViewModel(application) {
@@ -97,7 +106,12 @@ class TrainViewModel @JvmOverloads constructor(
     private val urbanStopIndex = BinarioDataGraph.urbanStopIndex(application)
     private val sourcesSettingsStore = SourcesSettingsStore(application)
     private val punctualityStore = PunctualityHistoryStore(application)
-    private val dataSource: TrainDataSource = routeDataSource ?: BinarioDataGraph.routeDataSource(application)
+    private val fixedRouteSource: TrainDataSource? = routeDataSource
+    /** The route source of the current timetable files: after a foreign pack is installed or deleted, the new one. */
+    private val dataSource: TrainDataSource
+        get() = fixedRouteSource ?: BinarioDataGraph.routeDataSource(getApplication())
+    /** The full foreign packs of the process: offers, declines, the one download, Settings' rows. */
+    private val foreignPacks: ForeignPackOffers by lazy { BinarioDataGraph.foreignPackOffers(application) }
     private val curatedStationCatalog = EmbeddedCuratedRailStationCatalog(
         openAsset = { assetPath -> application.assets.open(assetPath) }
     )
@@ -123,6 +137,18 @@ class TrainViewModel @JvmOverloads constructor(
     var stationBoardRefreshState by mutableStateOf(RefreshState.IDLE)
         private set
     var stationBoardMessages by mutableStateOf<List<UiMessage>>(emptyList())
+        private set
+    /**
+     * «Orari completi della … non scaricati · Scarica»: the full foreign packs that would serve the board's station
+     * where the bundled border zone does not. The live sources of the board, their order and naming are unchanged.
+     */
+    var stationForeignPacks by mutableStateOf<List<ForeignPackChoice>>(emptyList())
+        private set
+    /** The download dialog opened by a tap on a board line or a results banner; null when closed. */
+    var foreignPackRequest by mutableStateOf<ForeignPackOffer?>(null)
+        private set
+    /** Settings › «Orari dei paesi confinanti»; empty until [loadForeignPackRows]. */
+    var foreignPackRows by mutableStateOf<List<ForeignPackSettingsRow>>(emptyList())
         private set
 
     var selectedBoardEntry by mutableStateOf<StationBoardEntry?>(null)
@@ -249,6 +275,7 @@ class TrainViewModel @JvmOverloads constructor(
 
     init {
         if (enableStartupEffects) {
+            viewModelScope.launch { foreignPacks.generation.drop(1).collect { foreignPacksChanged() } }
             if (!integrationSettings.wearSnapshotSharingEnabled) {
                 WearSnapshotPublisher.persistRevocationIntent(getApplication())
             }
@@ -467,6 +494,7 @@ class TrainViewModel @JvmOverloads constructor(
         }
         stationBoardStation = canonical
         stationBoardKind = kind
+        stationForeignPacks = foreignPacks.forStation(canonical.id)
         stationBoardRequestedAtMillis = refreshClock()
         stationBoardRefreshState = RefreshState.LOADING
         stationBoardMessages = emptyList()
@@ -498,6 +526,68 @@ class TrainViewModel @JvmOverloads constructor(
     }
 
     fun openStationBoard(station: Station, kind: BoardKind = BoardKind.DEPARTURES) = loadStationBoard(station, kind)
+
+    /**
+     * «Ricerca tratta»: once the direct trains of the active route have answered, the full foreign pack an end needs
+     * (design §3.3); null while they load. The results screen combines it with the journeys' offer.
+     */
+    val routeForeignPackOffer: ForeignPackOffer?
+        get() {
+            if (!hasActiveRoute || (refreshState != RefreshState.SUCCESS && refreshState != RefreshState.ERROR)) return null
+            return foreignPacks.afterSearch(activeRoute.origin(direction).id, activeRoute.destination(direction).id, found = currentServices().isNotEmpty())
+        }
+
+    val foreignPackDownload: StateFlow<ForeignPackDownloadState> get() = foreignPacks.downloadState
+
+    /** The packs answered «Non ora» in this process: their dialog is not shown again. */
+    val foreignPackDeclined: StateFlow<Set<SourceId>> get() = foreignPacks.declined
+
+    /** «Scarica» (always a tap): one download at a time, no retries. */
+    fun downloadForeignPack(sourceId: SourceId) = foreignPacks.start(sourceId)
+
+    fun cancelForeignPackDownload() = foreignPacks.cancel()
+
+    /** «Non ora» in the dialog after a search: no more dialogs for its packs until the app restarts. */
+    fun declineForeignPacks(offer: ForeignPackOffer) {
+        foreignPacks.decline(offer)
+        foreignPacks.clearError()
+    }
+
+    /** A tap on the board line or on a results banner: the dialog with those countries. */
+    fun openForeignPackRequest(packs: List<ForeignPackChoice>) {
+        if (packs.isNotEmpty()) foreignPackRequest = ForeignPackOffer(ForeignPackOffer.Style.DIALOG, packs)
+    }
+
+    fun closeForeignPackRequest() {
+        foreignPackRequest = null
+        foreignPacks.clearError()
+    }
+
+    fun clearForeignPackError() = foreignPacks.clearError()
+
+    /** Settings' rows, read off the main thread (the store checks its files). */
+    fun loadForeignPackRows() {
+        viewModelScope.launch { foreignPackRows = withContext(Dispatchers.IO) { foreignPacks.settingsRows() } }
+    }
+
+    /** Settings › «Elimina»: effective at once; the shown searches run again on the border zone. */
+    fun deleteForeignPack(sourceId: SourceId) {
+        viewModelScope.launch {
+            withContext(Dispatchers.IO) { foreignPacks.delete(sourceId) }
+            loadForeignPackRows()
+        }
+    }
+
+    /** An install or a delete: the open dialog closes and what is on screen is read again from the new files. */
+    private fun foreignPacksChanged() {
+        foreignPackRequest = null
+        stationForeignPacks = foreignPacks.forStation(stationBoardStation?.id)
+        if (foreignPackRows.isNotEmpty()) loadForeignPackRows()
+        // «Ricerca tratta»: the shown search again, only when one of its ends is a station of a foreign pack.
+        if (hasActiveRoute && refreshState != RefreshState.IDLE &&
+            foreignPacks.touches(activeRoute.origin(direction).id, activeRoute.destination(direction).id)
+        ) refresh()
+    }
 
     /**
      * Opens again the board the saved state names after the process was recreated ([stationId], [kindName]): only
@@ -783,7 +873,7 @@ class TrainViewModel @JvmOverloads constructor(
         trainNumberSearchState = RefreshState.LOADING
         trainNumberUnavailableSources = emptySet()
         trainNumberSearchJob = viewModelScope.launch {
-            trainNumberSearchService.search(query).collect { update ->
+            (trainNumberSearchService ?: BinarioDataGraph.trainNumberSearchService(getApplication())).search(query).collect { update ->
                 if (requestId != trainNumberSearchRequestId) return@collect
                 trainNumberMatches = if (refresh && !update.complete) {
                     (retainedMatches.associateBy { it.id } + update.matches.associateBy { it.id }).values.toList()

@@ -1,7 +1,5 @@
 package it.binario.app.data.gtfs
 
-import it.binario.app.data.live.SourceCircuitBreaker
-import it.binario.app.data.live.retryAfterOf
 import it.binario.app.data.provider.AccessMode
 import it.binario.app.data.sources.RailSourceDefinition
 import it.binario.app.data.sources.SourceFormat
@@ -9,14 +7,20 @@ import it.binario.app.data.sources.SourceReadiness
 import java.io.Closeable
 import java.io.InputStream
 import java.net.HttpURLConnection
-import java.net.MalformedURLException
 import java.net.URL
 import java.net.URLConnection
 import java.time.Clock
 import java.time.Duration
-import java.util.Locale
 
-class GtfsDownloadException(message: String) : IllegalStateException(message)
+/**
+ * A download that did not complete; [refused] when the host refused it (403, 429, 503 with Retry-After) or is paused,
+ * [oversized] when the announced or received bytes exceed the limit.
+ */
+class GtfsDownloadException(
+    message: String,
+    val refused: Boolean = false,
+    val oversized: Boolean = false
+) : IllegalStateException(message)
 
 /** Boundary for GTFS artifact acquisition; production HTTP and tests share the same policy contract. */
 fun interface GtfsArtifactSource {
@@ -31,28 +35,28 @@ fun interface GtfsArtifactSource {
  * A redirect is followed only on the host that was asked (HTTPS, default port): the archive never comes from, and the
  * user's address never reaches, a host the privacy documents do not name. A refusal (403, 429, or 503 with
  * Retry-After) pauses that host for the Retry-After it sent or [refusalPause], as the other public-source clients do;
- * while paused no request is sent (audit2 security-privacy-2).
+ * while paused no request is sent (audit2 security-privacy-2). The request loop is [HttpsArchiveFetch].
  *
  * Le fonti BEST_EFFORT_FALLBACK richiedono opt-in esplicito: possono colmare
  * una tratta scoperta ma non diventano accidentalmente equivalenti ai feed
  * ufficiali READY_FOR_GTFS_PACK.
  */
 class GtfsArtifactDownloader(
-    private val connectTimeoutMillis: Int = 15_000,
-    private val readTimeoutMillis: Int = 45_000,
+    connectTimeoutMillis: Int = 15_000,
+    readTimeoutMillis: Int = 45_000,
     private val maxContentLengthBytes: Long = 256L * 1024L * 1024L,
-    private val maxRedirects: Int = 5,
-    private val connectionFactory: (URL) -> URLConnection = { url -> url.openConnection() },
-    private val clock: Clock = Clock.systemUTC(),
-    private val refusalPause: Duration = Duration.ofMinutes(15)
+    maxRedirects: Int = 5,
+    connectionFactory: (URL) -> URLConnection = { url -> url.openConnection() },
+    clock: Clock = Clock.systemUTC(),
+    refusalPause: Duration = Duration.ofMinutes(15)
 ) : GtfsArtifactSource {
-    private val refusals = HashMap<String, SourceCircuitBreaker>()
-
     init {
         require(connectTimeoutMillis > 0 && readTimeoutMillis > 0)
         require(maxContentLengthBytes > 0)
         require(maxRedirects >= 0)
     }
+
+    private val fetch = HttpsArchiveFetch(connectTimeoutMillis, readTimeoutMillis, maxRedirects, connectionFactory, clock, refusalPause)
 
     /** Backward-compatible strict download: best-effort sources require explicit opt-in. */
     fun open(source: RailSourceDefinition): GtfsDownloadSession = openBlocking(source, false)
@@ -68,79 +72,9 @@ class GtfsArtifactDownloader(
     ): GtfsDownloadSession {
         validate(source, allowBestEffortFallback)
         val requested = source.downloadOrProbeUri!!.toURL()
-        val host = requested.host.orEmpty().lowercase(Locale.ROOT)
-        val refusal = synchronized(refusals) { refusals.getOrPut(host) { SourceCircuitBreaker(clock, pauseLabel = source.displayName) } }
-        if (!refusal.allowRequest()) {
-            throw GtfsDownloadException("Download GTFS in pausa dopo il rifiuto della fonte")
-        }
-        var url = requested
-        val visited = mutableSetOf<String>()
-        var redirects = 0
-        while (true) {
-            if (url.protocol != "https") {
-                throw GtfsDownloadException("Binario accetta soltanto data pack GTFS su HTTPS")
-            }
-            if (!visited.add(url.toExternalForm())) {
-                throw GtfsDownloadException("Il download GTFS contiene un ciclo di redirect")
-            }
-            val connection = (connectionFactory(url) as? HttpURLConnection)
-            ?: throw GtfsDownloadException("La fonte non usa HTTP(S)")
-            connection.instanceFollowRedirects = false
-            connection.connectTimeout = connectTimeoutMillis
-            connection.readTimeout = readTimeoutMillis
-            connection.requestMethod = "GET"
-            connection.setRequestProperty("Accept", "application/zip, application/octet-stream;q=0.9")
-            connection.setRequestProperty("User-Agent", it.binario.app.data.live.BINARIO_PUBLIC_SOURCE_USER_AGENT)
-            connection.connect()
-
-            val responseCode = connection.responseCode
-            if (responseCode in REDIRECT_STATUS_CODES) {
-                val location = connection.getHeaderField("Location")
-                connection.disconnect()
-                if (location.isNullOrBlank()) {
-                    throw GtfsDownloadException("Redirect GTFS privo di destinazione")
-                }
-                if (redirects >= maxRedirects) {
-                    throw GtfsDownloadException("Il download GTFS supera il limite di redirect")
-                }
-                val target = try {
-                    URL(url, location)
-                } catch (_: MalformedURLException) {
-                    throw GtfsDownloadException("Redirect GTFS non valido")
-                } catch (_: IllegalArgumentException) {
-                    throw GtfsDownloadException("Redirect GTFS non valido")
-                }
-                if (target.protocol != "https") {
-                    throw GtfsDownloadException("Binario accetta soltanto data pack GTFS su HTTPS")
-                }
-                if (!target.host.equals(requested.host, ignoreCase = true) || target.port !in setOf(-1, 443) || target.userInfo != null) {
-                    throw GtfsDownloadException("Redirect GTFS verso un altro host non consentito")
-                }
-                url = target
-                redirects += 1
-                continue
-            }
-            if (responseCode !in 200..299) {
-                val retryAfter = retryAfterOf(connection.getHeaderField("Retry-After"), clock)
-                connection.disconnect()
-                when {
-                    responseCode == 403 || responseCode == 429 -> refusal.recordFailure(retryAfter ?: refusalPause)
-                    responseCode == 503 && retryAfter != null -> refusal.recordFailure(retryAfter)
-                }
-                throw GtfsDownloadException("Download GTFS non disponibile: HTTP $responseCode")
-            }
-            refusal.recordSuccess()
-            val length = connection.contentLengthLong
-            if (length > maxContentLengthBytes) {
-                connection.disconnect()
-                throw GtfsDownloadException("Il data pack supera il limite configurato")
-            }
-            val contentType = connection.contentType.orEmpty().lowercase()
-            if (contentType.isNotBlank() && "zip" !in contentType && "octet-stream" !in contentType) {
-                connection.disconnect()
-                throw GtfsDownloadException("Il server non ha restituito un archivio GTFS ZIP")
-            }
-            return GtfsDownloadSession(BoundedGtfsInputStream(connection.inputStream, maxContentLengthBytes), connection)
+        // Same host only, HTTPS on the default port, no user info.
+        return fetch.open(requested, source.displayName, maxContentLengthBytes) { asked, target ->
+            target.host.equals(asked.host, ignoreCase = true) && target.port in setOf(-1, 443) && target.userInfo == null
         }
     }
 
@@ -162,14 +96,13 @@ class GtfsArtifactDownloader(
         }
     }
 
-    private companion object {
-        val REDIRECT_STATUS_CODES = setOf(301, 302, 303, 307, 308)
-    }
 }
 
 class GtfsDownloadSession internal constructor(
     val input: InputStream,
-    private val connection: HttpURLConnection? = null
+    private val connection: HttpURLConnection? = null,
+    /** The Content-Length the server announced, -1 when it sent none. */
+    val contentLength: Long = -1L
 ) : Closeable {
     override fun close() {
         input.close()
@@ -205,6 +138,6 @@ internal class BoundedGtfsInputStream(
 
     private fun register(bytes: Long) {
         consumed += bytes
-        if (consumed > maxBytes) throw GtfsDownloadException("Il data pack supera il limite configurato durante il download")
+        if (consumed > maxBytes) throw GtfsDownloadException("Il data pack supera il limite configurato durante il download", oversized = true)
     }
 }
