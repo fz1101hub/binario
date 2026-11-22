@@ -23,7 +23,10 @@ repository's standard-library code; nothing fetched is executed.
 Outputs under ``--out``:
 
 * ``staging/gtfs/``: the complete refreshed directory (verified with ``build_gtfs_packs.py --check``);
-* ``publish/gtfs/``: ``manifest.json``, ``SHA256SUMS`` and only the changed ZIPs (empty when nothing changed);
+* ``staging/gtfs-foreign-android/``: the full packs of the foreign packs bundled as their border subset;
+* ``publish/gtfs/``: ``manifest.json``, ``SHA256SUMS`` and only the changed ZIPs (empty when nothing changed); for a
+  border pack the FULL pack is printed instead, in ``publish/gtfs-foreign-android/``: the subset is derived again
+  where the refresh is applied (``apply_ci_gtfs_refresh.py``);
 * ``publish/core-refresh.json``: per-pack outcome, proposed upstream pins and their metadata.
 
 ``publish/`` is printed in the job log with ``acquire_transit_sources.py --print-dir`` and applied locally with
@@ -58,6 +61,8 @@ import acquire_transit_sources as acquire  # noqa: E402
 import build_gtfs_packs as builder  # noqa: E402
 
 CORE_DIR = ROOT / "app/src/main/assets/gtfs"
+# Printed directory of the full packs of border packs (tools/apply_ci_gtfs_refresh.py writes them to data/gtfs-foreign/android).
+FULL_PRINT_DIR = "gtfs-foreign-android"
 TRANSIT_DIR = ROOT / "app/src/main/assets/gtfs-transit"
 PERSONAL_DIR = ROOT / "app/src/personal/assets/gtfs-personal"
 REPORT_NAME = "core-refresh.json"
@@ -217,23 +222,29 @@ def build_one(
     generated_at: str,
     proposed: Mapping[str, Any] | None,
     work: Path,
+    full_pack_dir: Path | None = None,
 ) -> tuple[str, dict[str, Any]]:
-    """Rebuild one pack in ``staging``; returns ("changed" | "content-unchanged", new entry)."""
+    """Rebuild one pack in ``staging``; returns ("changed" | "content-unchanged", new entry).  The full pack of a
+    border pack is rebuilt in ``full_pack_dir`` (a staging copy of data/gtfs-foreign/android)."""
     manifest = json.loads((staging / "manifest.json").read_text(encoding="utf-8"))
     previous = next(pack for pack in manifest["packs"] if pack["sourceId"] == source_id)
     name = builder.safe_asset_name(previous["asset"])
-    snapshot = {item: (staging / item).read_bytes() for item in ("manifest.json", "SHA256SUMS", name)}
+    snapshot = {staging / item: (staging / item).read_bytes() for item in ("manifest.json", "SHA256SUMS", name)}
+    if full_pack_dir is not None:
+        snapshot.update({full_pack_dir / item: (full_pack_dir / item).read_bytes()
+                         for item in (name, "SHA256SUMS") if (full_pack_dir / item).is_file()})
     source_manifest = work / f"{source_id}.manifest.json"
     builder.write_json(source_manifest, proposed_source_manifest(manifest, source_id, proposed))
     output = builder.build_packs(
         staging, staging, manifest_path=source_manifest, generated_at=generated_at,
-        input_overrides={source_id: archive}, only=[source_id],
+        input_overrides={source_id: archive}, only=[source_id], full_pack_dir=full_pack_dir,
     )
     rebuilt = next(pack for pack in output["packs"] if pack["sourceId"] == source_id)
-    if rebuilt.get("contentSha256") == previous.get("contentSha256") and rebuilt.get("filter") == previous.get("filter"):
+    same_full = (rebuilt.get("fullPack") or {}).get("contentSha256") == (previous.get("fullPack") or {}).get("contentSha256")
+    if rebuilt.get("contentSha256") == previous.get("contentSha256") and rebuilt.get("filter") == previous.get("filter") and same_full:
         # Same filtered timetable (a change upstream outside the kept rows): keep the published bytes and entry.
-        for item, data in snapshot.items():
-            (staging / item).write_bytes(data)
+        for path, data in snapshot.items():
+            path.write_bytes(data)
         return "content-unchanged", previous
     return "changed", rebuilt
 
@@ -246,6 +257,7 @@ def refresh(
     *,
     fetch: Fetch | None = None,
     resolve: Resolve | None = None,
+    full_pack_dir: Path | None = None,
 ) -> dict[str, Any]:
     """Refresh the selected core packs (empty selection: all) into ``out``; never raises for a single source."""
     fetch = fetch or (lambda url, target: acquire.download(url, target))
@@ -264,6 +276,14 @@ def refresh(
         shutil.rmtree(staging)
     staging.parent.mkdir(parents=True, exist_ok=True)
     shutil.copytree(asset_dir, staging)
+    staging_full = out / "staging" / FULL_PRINT_DIR
+    if staging_full.exists():
+        shutil.rmtree(staging_full)
+    source_full = full_pack_dir or builder.DEFAULT_FULL_PACK_DIR
+    if source_full.is_dir():
+        shutil.copytree(source_full, staging_full)
+    else:
+        staging_full.mkdir(parents=True)
     for directory in (downloads, work):
         directory.mkdir(parents=True, exist_ok=True)
     report: dict[str, Any] = {
@@ -318,7 +338,7 @@ def refresh(
                 entry["status"] = "unchanged"
                 print(f"  {source_id}: archivio identico a quello pubblicato", flush=True)
                 continue
-            status, rebuilt = build_one(staging, source_id, target, generated_at, proposed, work)
+            status, rebuilt = build_one(staging, source_id, target, generated_at, proposed, work, staging_full)
             entry["status"] = status
             entry["new"] = entry_summary(rebuilt, staging)
             print(f"  {source_id}: {status} lastServiceDate {pack.get('lastServiceDate')} -> {rebuilt.get('lastServiceDate')}", flush=True)
@@ -328,7 +348,7 @@ def refresh(
             print(f"  {source_id}: NON aggiornato ({builder.log_safe(entry['error'])})", flush=True)
         finally:
             (downloads / f"{source_id}.zip").unlink(missing_ok=True)
-    builder.verify_assets(staging, as_of=None, min_valid_days=None)
+    builder.verify_assets(staging, as_of=None, min_valid_days=None, full_pack_dir=staging_full)
     if publish.exists():
         shutil.rmtree(publish)
     (publish / asset_dir.name).mkdir(parents=True)
@@ -338,7 +358,12 @@ def refresh(
         for pack in final["packs"]:
             if pack["sourceId"] in changed:
                 name = builder.safe_asset_name(pack["asset"])
-                shutil.copyfile(staging / name, publish / asset_dir.name / name)
+                if isinstance(pack.get(builder.FULL_PACK_FIELD), dict):
+                    # The full pack; the border subset is derived again where the refresh is applied.
+                    (publish / FULL_PRINT_DIR).mkdir(exist_ok=True)
+                    shutil.copyfile(staging_full / name, publish / FULL_PRINT_DIR / name)
+                else:
+                    shutil.copyfile(staging / name, publish / asset_dir.name / name)
         for item in ("manifest.json", "SHA256SUMS"):
             shutil.copyfile(staging / item, publish / asset_dir.name / item)
     report["changed"] = changed

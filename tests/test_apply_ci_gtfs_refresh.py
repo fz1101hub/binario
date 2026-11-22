@@ -13,6 +13,7 @@ import unittest
 import zipfile
 from pathlib import Path
 from typing import Any
+from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools"))
@@ -21,6 +22,7 @@ sys.path.insert(0, str(ROOT / "tests"))
 import acquire_transit_sources as acquire  # noqa: E402
 import apply_ci_gtfs_refresh as apply  # noqa: E402
 import build_gtfs_packs as builder  # noqa: E402
+import foreign_pack_rules as foreign  # noqa: E402
 import refresh_core_gtfs as refresh  # noqa: E402
 from test_refresh_core_gtfs import NEW_COMMIT, OLD_COMMIT, FakeDownloads, core_directory, gtfs_zip, pinned_url  # noqa: E402
 
@@ -206,7 +208,7 @@ class ApplyTest(unittest.TestCase):
         catalog.write_text(f'val uri = uri("{pinned_url(OLD_COMMIT)}")\n', encoding="utf-8")
         self.before = {path.name: path.read_bytes() for path in self.assets.iterdir()}
 
-    def job(self, plain_trips: int = 4) -> Path:
+    def job(self, plain_trips: int = 4, full_pack_dir: Path | None = None) -> Path:
         """Run the core refresh as the job does and save its printed log."""
         sources = self.temp / "upstream"
         sources.mkdir(exist_ok=True)
@@ -217,7 +219,8 @@ class ApplyTest(unittest.TestCase):
         out = self.temp / "out"
         with contextlib.redirect_stdout(io.StringIO()):
             refresh.refresh([], self.assets, out, "2026-11-03", fetch=FakeDownloads(payloads, {"https://example.test/broken-gtfs.zip"}),
-                            resolve=lambda upstream: {"commit": NEW_COMMIT, "commitDate": "2026-11-02", "resolvedBy": "github-api"})
+                            resolve=lambda upstream: {"commit": NEW_COMMIT, "commitDate": "2026-11-02", "resolvedBy": "github-api"},
+                            full_pack_dir=full_pack_dir or self.temp / "no-full-packs")
         log = self.temp / "core-packs.log"
         log.write_text(job_log(out / "publish"), encoding="utf-8")
         return log
@@ -341,11 +344,67 @@ class ApplyTest(unittest.TestCase):
         self.assertTrue(all(ok for _, ok, _ in results))
         scripts = [command[1] for command in commands]
         self.assertEqual(2, scripts.count("tools/build_gtfs_packs.py"))  # only gtfs/ exists in this copy
-        self.assertEqual(["tools/build_ios_gtfs_schedule.py", "tools/verify_ios_gtfs_schedule.py",
-                          "tools/build_ios_gtfs_schedule.py", "tools/verify_ios_gtfs_rebuild.py"], scripts[-4:])
+        # The foreign-pack generator rebuilds the iPhone indexes, pins and ledger first; the checks follow.
+        self.assertEqual("tools/build_foreign_packs.py", scripts[0])
+        self.assertEqual(["tools/verify_ios_gtfs_schedule.py", "tools/build_ios_gtfs_schedule.py",
+                          "tools/verify_ios_gtfs_rebuild.py"], scripts[-3:])
         self.assertIn("ios/Resources/.apply-rebuild.sqlite.zlib", commands[-1])
         apply.run_checks(self.root, ios=False, runner=runner)
-        self.assertNotIn("tools/build_ios_gtfs_schedule.py", [command[1] for command in commands[len(scripts):]])
+        later = [command[1] for command in commands[len(scripts):]]
+        self.assertNotIn("tools/build_ios_gtfs_schedule.py", later)
+        self.assertNotIn("tools/build_foreign_packs.py", later)
+
+    def test_a_border_pack_prints_its_full_pack_and_the_subset_is_derived_here(self) -> None:
+        """Design §2.4: a foreign pack bundled as its border subset is printed whole; its full pack goes to
+        data/gtfs-foreign/android and the subset is derived again where the refresh is applied."""
+        full_dir = self.root / foreign.FULL_PACK_DIR
+        catalogue = self.root / foreign.CATALOGUE_PATH
+        catalogue.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(ROOT / foreign.CATALOGUE_PATH, catalogue)
+        with mock.patch.dict(foreign.FOREIGN_PACK_COUNTRIES, {"plain-gtfs": "XX"}), \
+                mock.patch.dict(foreign.REQUIRED_BORDER_PAIRS, {}, clear=True):
+            manifest = json.loads((self.assets / "manifest.json").read_text(encoding="utf-8"))
+            next(pack for pack in manifest["packs"] if pack["sourceId"] == "plain-gtfs")["licence"] = "CC BY 4.0"
+            builder.write_json(self.assets / "manifest.json", manifest)
+            builder.apply_border_zones(self.assets, full_pack_dir=full_dir, catalogue_path=catalogue)
+            log = self.job(full_pack_dir=full_dir)
+            text = log.read_text(encoding="utf-8")
+            self.assertIn("BINARIO_FILE gtfs-foreign-android/plain-gtfs.zip", text)
+            self.assertNotIn("BINARIO_FILE gtfs/plain-gtfs.zip", text)
+            # Without the printed full pack the border pack is refused and stays as it was.
+            files = apply.merge_printed([(text, None)])
+            files.pop("gtfs-foreign-android/plain-gtfs.zip")
+            directories, _ = apply.split_by_directory(files)
+            work = self.temp / "work"
+            work.mkdir()
+            merged = apply.merge_directory("gtfs", directories["gtfs"], self.assets, work, skip=set(), accept=set(),
+                                           job_status={}, full_printed={}, full_dir=full_dir, catalogue_path=catalogue)
+            row = next(row for row in merged.rows if row.source_id == "plain-gtfs")
+            self.assertIn("pack completo non stampato", row.failure or "")
+            code, output = self.apply("--log", str(log))
+            self.assertEqual(0, code, output)
+            printed_full = self.temp / "out/staging/gtfs-foreign-android/plain-gtfs.zip"
+            self.assertEqual(printed_full.read_bytes(), (full_dir / "plain-gtfs.zip").read_bytes())
+            self.assertIsNotNone(builder.asset_border_zone(self.assets / "plain-gtfs.zip"))
+            entry = next(pack for pack in json.loads((self.assets / "manifest.json").read_text())["packs"] if pack["sourceId"] == "plain-gtfs")
+            self.assertEqual(hashlib.sha256(printed_full.read_bytes()).hexdigest(), entry["fullPack"]["sha256"])
+            self.assertEqual("data/gtfs-foreign/android/plain-gtfs.zip", entry["fullPack"]["path"])
+            builder.verify_assets(self.assets, as_of=None, min_valid_days=None, full_pack_dir=full_dir, catalogue_path=catalogue)
+            self.assertRegex(output, r"plain-gtfs\s+2027-12-31 -> 2028-12-31\s+4\s+sì\s+\d+\.\d\d\s+\d+\.\d\d\s+4/4")
+            self.assertEqual([], [path.name for path in self.assets.iterdir() if path.name.startswith(("full", "subset"))])
+            # Applied again, the same log changes nothing and the border pack still shows its sizes.
+            before = {path: path.read_bytes() for path in (*self.assets.iterdir(), *full_dir.iterdir())}
+            code, output = self.apply("--log", str(log))
+            self.assertEqual(0, code, output)
+            self.assertRegex(output, r"plain-gtfs\s+2028-12-31\s+4\s+no\s+\d+\.\d\d\s+\d+\.\d\d\s+4/4")
+            self.assertEqual(before, {path: path.read_bytes() for path in (*self.assets.iterdir(), *full_dir.iterdir())})
+            # A full pack printed for a pack the printed manifest does not bundle as a subset is a malformed print.
+            files = apply.merge_printed([(text, None)])
+            directories, _ = apply.split_by_directory(files)
+            with self.assertRaisesRegex(apply.ApplyError, "pinned-gtfs.zip"):
+                apply.merge_directory("gtfs", directories["gtfs"], self.assets, self.temp / "work-stray", skip=set(), accept=set(),
+                                      job_status={}, full_printed={**directories[apply.FULL_PRINT_DIR], "pinned-gtfs.zip": b"PK"},
+                                      full_dir=full_dir, catalogue_path=catalogue)
 
     def test_the_shipped_kotlin_registries_match_the_manifests(self) -> None:
         self.assertEqual({}, apply.planned_edits(ROOT, [], []))

@@ -12,16 +12,20 @@ container).  This helper:
    current branch whose ``head_sha`` is ``HEAD`` or one of its ancestors, every step up to the print step must have
    succeeded, and the frame must lie inside the print step's time window (audit A7-02, P1);
 2. merges each printed directory into ``app/src/main/assets/gtfs/``, ``gtfs-transit/`` or
-   ``app/src/personal/assets/gtfs-personal/``: a pack whose canonical content (``contentSha256``) is unchanged keeps
+   ``app/src/personal/assets/gtfs-personal/``; the printed full pack of a foreign pack bundled as its border subset
+   (``gtfs-foreign-android/``) goes to ``data/gtfs-foreign/android/`` and its subset is derived again here
+   (``build_gtfs_packs.derive_border_subset``); a pack whose canonical content (``contentSha256``) is unchanged keeps
    its published bytes and entry, a pack missing from the print (partial build) stays as it is, and a pack that would
    shrink by more than half (trips or stop times), end earlier than before, or claim a lastServiceDate more than a
    month after its last full-service day (a trickle of trips kept for years) is refused unless ``--accept ID``;
 3. carries the reviewed Trenitalia/Italo pins (``core-refresh.json``) into the iOS source policy and
    ``RailSourceCatalog.kt``, and aligns ``lastServiceDate`` in ``EmbeddedGtfsPacks.kt`` and ``TransitGtfsPacks.kt``;
 4. runs ``build_gtfs_packs.py --check`` (integrity and the 30-day release gate) for each directory,
-   ``verify_embedded_assets.py`` and, when the main manifest or the iOS policy changed, rebuilds the iOS schedule and
-   runs ``verify_ios_gtfs_schedule.py`` and ``verify_ios_gtfs_rebuild.py``;
-5. prints a table: pack, lastServiceDate old -> new, trips, changed, notes and failures.
+   ``verify_embedded_assets.py`` and, when the main manifest or the iOS policy changed, ``build_foreign_packs.py``
+   (iPhone base and per-country indexes, foreign-pack pins, ledger and their checks), ``verify_ios_gtfs_schedule.py``
+   and ``verify_ios_gtfs_rebuild.py``;
+5. prints a table: pack, lastServiceDate old -> new, trips, changed, full and zone size and trips kept of a border
+   pack, notes and failures.
 
 Nothing is committed.  Exit status 1 when a pack was refused or a check failed.
 
@@ -52,6 +56,7 @@ sys.path.insert(0, str(ROOT / "tools"))
 import build_android_gtfs_credits as android_credits  # noqa: E402
 import build_gtfs_packs as builder  # noqa: E402
 import ci_log_frames as frames  # noqa: E402
+import foreign_pack_rules as foreign  # noqa: E402
 
 DESTINATIONS: Mapping[str, Path] = {
     "gtfs": Path("app/src/main/assets/gtfs"),
@@ -59,6 +64,8 @@ DESTINATIONS: Mapping[str, Path] = {
     "gtfs-personal": Path("app/src/personal/assets/gtfs-personal"),
 }
 REPORTS = ("acquisition.json", "core-refresh.json")
+# Printed full packs of the foreign packs bundled as their border subset (tools/refresh_core_gtfs.py FULL_PRINT_DIR).
+FULL_PRINT_DIR = "gtfs-foreign-android"
 KOTLIN_PACK_FILES = (
     Path("app/src/main/java/it/binario/app/data/gtfs/EmbeddedGtfsPacks.kt"),
     Path("app/src/main/java/it/binario/app/data/gtfs/TransitGtfsPacks.kt"),
@@ -109,6 +116,9 @@ class Row:
     notes: list[str] = field(default_factory=list)
     failure: str | None = None  # refused here: the previous pack stays
     job_failure: str | None = None  # the CI job could not refresh the source: the previous pack stays
+    full_bytes: int | None = None  # border pack: size of the full pack, of the bundled subset, trips kept / full
+    zone_bytes: int | None = None
+    trips_kept: str | None = None
 
 
 # --- Logs (shared with tools/apply_ci_punctuality.py in tools/ci_log_frames.py) ---------------------------------
@@ -136,6 +146,9 @@ def split_by_directory(files: Mapping[str, bytes]) -> tuple[dict[str, dict[str, 
                 raise ApplyError(f"{path}: JSON non valido") from error
             continue
         parts = path.split("/")
+        if len(parts) == 2 and parts[0] == FULL_PRINT_DIR and ASSET_FILE.fullmatch(parts[1]):
+            directories.setdefault(FULL_PRINT_DIR, {})[parts[1]] = data
+            continue
         if (
             len(parts) != 2
             or parts[0] not in DESTINATIONS
@@ -144,7 +157,7 @@ def split_by_directory(files: Mapping[str, bytes]) -> tuple[dict[str, dict[str, 
             raise ApplyError(f"percorso stampato non ammesso: {path!r}")
         directories.setdefault(parts[0], {})[parts[1]] = data
     for directory, contents in directories.items():
-        if "manifest.json" not in contents:
+        if directory != FULL_PRINT_DIR and "manifest.json" not in contents:
             raise ApplyError(f"{directory}/: file stampati senza manifest.json")
     return directories, reports
 
@@ -244,6 +257,8 @@ class MergedDirectory:
     staged: Path | None  # None: nothing changes in this directory
     old_manifest: dict[str, Any]
     new_manifest: dict[str, Any]
+    staged_full: Path | None = None  # data/gtfs-foreign/android as it will be (border packs), None: unchanged
+    full_target: Path | None = None
 
 
 def merge_directory(
@@ -255,8 +270,18 @@ def merge_directory(
     skip: set[str],
     accept: set[str],
     job_status: Mapping[str, Mapping[str, Any]],
+    full_printed: Mapping[str, bytes] | None = None,
+    full_dir: Path | None = None,
+    catalogue_path: Path | None = None,
 ) -> MergedDirectory:
-    """Merge one printed directory into its published copy, staged under ``work`` and verified."""
+    """Merge one printed directory into its published copy, staged under ``work`` and verified.
+
+    A printed entry with ``fullPack`` (a foreign pack bundled as its border subset) comes with its full pack in
+    ``full_printed``: the full pack is checked against ``fullPack``, compared with the previous full pack in
+    ``full_dir``, and the subset is derived again here; its content must be the one the job derived."""
+    full_printed = full_printed or {}
+    full_dir = full_dir or builder.DEFAULT_FULL_PACK_DIR
+    catalogue_path = catalogue_path or builder.DEFAULT_CATALOGUE
     old_manifest = json.loads((target / "manifest.json").read_text(encoding="utf-8"))
     try:
         new_manifest = json.loads(printed["manifest.json"].decode("utf-8"))
@@ -268,9 +293,17 @@ def merge_directory(
     rows: dict[str, Row] = {}
     for pack in old_manifest["packs"]:
         row = Row(name, pack["sourceId"], pack.get("lastServiceDate"), pack.get("lastServiceDate"))
-        row.old_trips = row.new_trips = zip_metadata((target / builder.safe_asset_name(pack["asset"])).read_bytes()).get("counts", {}).get("trips")
+        bundled = target / builder.safe_asset_name(pack["asset"])
+        row.old_trips = row.new_trips = zip_metadata(bundled.read_bytes()).get("counts", {}).get("trips")
+        if isinstance(pack.get(builder.FULL_PACK_FIELD), Mapping):
+            # A border pack left as it is still shows its sizes and the trips its subset keeps.
+            zone = builder.asset_border_zone(bundled) or {}
+            row.full_bytes, row.zone_bytes = pack[builder.FULL_PACK_FIELD].get("sizeBytes"), bundled.stat().st_size
+            if "tripsKept" in zone and "tripsInFull" in zone:
+                row.trips_kept = f"{zone['tripsKept']}/{zone['tripsInFull']}"
         rows[pack["sourceId"]] = row
     replacements: dict[str, bytes] = {}
+    full_replacements: dict[str, bytes] = {}
     manifest_changed = False
     printed_ids: set[str] = set()
     for pack in new_manifest.get("packs", []):
@@ -286,7 +319,8 @@ def merge_directory(
             row.failure = f"asset diverso: {old.get('asset')} -> {pack.get('asset')}"
             continue
         same_source = all(pack.get(key) == old.get(key) for key in SOURCE_FIELDS)
-        if same_source and pack.get("contentSha256") == old.get("contentSha256") and pack.get("filter") == old.get("filter"):
+        same_full = (pack.get("fullPack") or {}).get("contentSha256") == (old.get("fullPack") or {}).get("contentSha256")
+        if same_source and pack.get("contentSha256") == old.get("contentSha256") and pack.get("filter") == old.get("filter") and same_full:
             # Same timetable: the published ZIP and its digests stay byte for byte; only reviewed registry text moves.
             entry = dict(old)
             for key in DESCRIPTIVE_FIELDS:
@@ -305,29 +339,75 @@ def merge_directory(
             row.notes.append("escluso con --skip")
             continue
         asset = builder.safe_asset_name(old["asset"])
-        data = printed.get(asset)
-        if data is None:
-            row.failure = "ZIP non stampato nel log"
-            continue
-        if hashlib.sha256(data).hexdigest() != pack.get("sha256"):
-            row.failure = "SHA-256 dello ZIP diverso dal manifest stampato"
-            continue
+        full = pack.get(builder.FULL_PACK_FIELD)
+        if isinstance(full, Mapping):
+            # A border pack: the job printed its full pack, the subset is derived again here.
+            data = full_printed.get(asset)
+            if data is None:
+                row.failure = f"pack completo non stampato nel log ({FULL_PRINT_DIR}/{asset})"
+                continue
+            if hashlib.sha256(data).hexdigest() != full.get("sha256"):
+                row.failure = "SHA-256 del pack completo diverso da fullPack del manifest stampato"
+                continue
+            previous_full = full_dir / asset
+            old_meta = zip_metadata(previous_full.read_bytes() if previous_full.is_file() else (target / asset).read_bytes())
+            old_end = (old.get("fullPack") or old).get("lastServiceDate")
+            new_end = full.get("lastServiceDate")
+        else:
+            data = printed.get(asset)
+            if data is None:
+                row.failure = "ZIP non stampato nel log"
+                continue
+            if hashlib.sha256(data).hexdigest() != pack.get("sha256"):
+                row.failure = "SHA-256 dello ZIP diverso dal manifest stampato"
+                continue
+            old_meta = zip_metadata((target / asset).read_bytes())
+            old_end, new_end = old.get("lastServiceDate"), pack.get("lastServiceDate")
         new_meta = zip_metadata(data)
-        old_meta = zip_metadata((target / asset).read_bytes())
         row.new_trips = new_meta.get("counts", {}).get("trips")
-        reasons = suspicious(
-            old_meta.get("counts", {}), new_meta.get("counts", {}), old.get("lastServiceDate"), pack.get("lastServiceDate"), data
-        )
+        reasons = suspicious(old_meta.get("counts", {}), new_meta.get("counts", {}), old_end, new_end, data)
         if reasons and source_id not in accept:
             row.failure = f"sospetto, non applicato (rivedere e rilanciare con --accept {source_id}): " + "; ".join(reasons)
             row.new_trips = row.old_trips
             continue
         if reasons:
             row.notes.append("accettato con --accept: " + "; ".join(reasons))
-        merged[index[source_id]] = dict(pack)
+        entry = dict(pack)
+        if isinstance(full, Mapping):
+            # Full pack and subset under their published names: fullPack.path names data/gtfs-foreign/android/<asset>.
+            derive_dir = work / f"{name}-border-{source_id}"
+            full_copy, subset_path = derive_dir / "full" / asset, derive_dir / "subset" / asset
+            for directory in (full_copy.parent, subset_path.parent):
+                directory.mkdir(parents=True, exist_ok=True)
+            full_copy.write_bytes(data)
+            try:
+                derived = builder.derive_border_subset(full_copy, subset_path, source_id, foreign.load_anchors(catalogue_path))
+                entry = builder.border_manifest_entry(pack, subset_path, full_copy)
+            except (builder.BuildError, OSError, ValueError, zipfile.BadZipFile) as error:
+                row.failure = f"sottoinsieme di confine non derivabile: {builder.log_safe(error)}"
+                continue
+            if derived.content_sha256 != pack.get("contentSha256"):
+                row.failure = "sottoinsieme di confine derivato qui diverso da quello del job (catalogo o raggio diversi?)"
+                continue
+            if entry[builder.FULL_PACK_FIELD] != dict(full):
+                row.failure = "fullPack del manifest stampato diverso dal pack completo stampato"
+                continue
+            full_replacements[asset] = data
+            subset = subset_path.read_bytes()
+            border = derived.metadata[builder.BORDER_ZONE_FIELD]
+            row.full_bytes, row.zone_bytes = len(data), len(subset)
+            row.trips_kept = f"{border['tripsKept']}/{border['tripsInFull']}"
+            row.new_trips = border["tripsKept"]
+            data = subset
+        merged[index[source_id]] = entry
         replacements[asset] = data
-        row.new_date = pack.get("lastServiceDate")
+        row.new_date = entry.get("lastServiceDate")
         row.changed = True
+    border_assets = {builder.safe_asset_name(pack["asset"]) for pack in new_manifest.get("packs", [])
+                     if isinstance(pack.get(builder.FULL_PACK_FIELD), Mapping)}
+    unexpected = sorted(set(full_printed) - border_assets)
+    if unexpected:
+        raise ApplyError(f"{FULL_PRINT_DIR}/: pack completi stampati senza fullPack nel manifest stampato: {', '.join(unexpected)}")
     for source_id, row in rows.items():
         status = job_status.get(source_id, {}).get("status")
         if status == "failed":
@@ -348,11 +428,21 @@ def merge_directory(
         (staged / asset).write_bytes(data)
     builder.write_json(staged / "manifest.json", result)
     builder.write_sha256sums(staged / "SHA256SUMS", result, staged)
+    staged_full = None
+    if any(isinstance(pack.get(builder.FULL_PACK_FIELD), Mapping) for pack in result["packs"]):
+        staged_full = work / f"{name}-{FULL_PRINT_DIR}"
+        if full_dir.is_dir():
+            shutil.copytree(full_dir, staged_full)
+        staged_full.mkdir(parents=True, exist_ok=True)
+        for asset, data in full_replacements.items():
+            (staged_full / asset).write_bytes(data)
+        builder.write_full_pack_sums(staged_full, result)
     try:
-        builder.verify_assets(staged, as_of=None, min_valid_days=None)
+        builder.verify_assets(staged, as_of=None, min_valid_days=None, full_pack_dir=staged_full, catalogue_path=catalogue_path)
     except builder.BuildError as error:
         raise ApplyError(f"{name}/: la directory unita non supera il controllo di integrità:\n{error}") from error
-    return MergedDirectory(name, target, ordered, staged, old_manifest, result)
+    return MergedDirectory(name, target, ordered, staged, old_manifest, result,
+                           staged_full if full_replacements else None, full_dir)
 
 
 def pin_updates(merged: MergedDirectory, report: Mapping[str, Any] | None) -> list[tuple[str, str, str]]:
@@ -455,13 +545,16 @@ def run_checks(root: Path, *, ios: bool, runner: Callable[..., Any] = subprocess
             commands.append([python, "tools/build_gtfs_packs.py", "--check", "--integrity-only", "--input-dir", str(relative)])
             commands.append([python, "tools/build_gtfs_packs.py", "--check", "--min-valid-days", "30", "--input-dir", str(relative)])
     commands.append([python, "tools/verify_embedded_assets.py"])
+    if ios:
+        # Everything derived from the foreign packs and the main manifest, in one command: iPhone base and
+        # per-country indexes (committed bytes kept when unchanged), pins (both copies), ledger, offline checks.
+        commands.insert(0, [python, "tools/build_foreign_packs.py"])
     # The second build sits next to the canonical index, as in Apple Watch CI: its metadata records the input paths
     # relative to the output, so a rebuild elsewhere could never compare equal.
     rebuild_zlib = Path("ios/Resources/.apply-rebuild.sqlite.zlib")
     rebuild_metadata = Path("ios/Resources/.apply-rebuild.metadata.json")
     if ios:
         commands += [
-            [python, "tools/build_ios_gtfs_schedule.py"],
             [python, "tools/verify_ios_gtfs_schedule.py"],
             [python, "tools/build_ios_gtfs_schedule.py", "--output", str(rebuild_zlib), "--metadata", str(rebuild_metadata)],
             [python, "tools/verify_ios_gtfs_rebuild.py", "--rebuild", str(rebuild_zlib), "--rebuild-metadata", str(rebuild_metadata)],
@@ -472,7 +565,7 @@ def run_checks(root: Path, *, ios: bool, runner: Callable[..., Any] = subprocess
             completed = runner(command, cwd=root, capture_output=True, text=True, check=False)
             output = ((completed.stdout or "") + (completed.stderr or "")).strip()
             results.append((" ".join(command[1:]), completed.returncode == 0, output[-600:]))
-            if ios and command[1] == "tools/build_ios_gtfs_schedule.py" and completed.returncode != 0:
+            if ios and command[1] in ("tools/build_foreign_packs.py", "tools/build_ios_gtfs_schedule.py") and completed.returncode != 0:
                 break
     finally:
         for path in (rebuild_zlib, rebuild_metadata):
@@ -484,7 +577,7 @@ def run_checks(root: Path, *, ios: bool, runner: Callable[..., Any] = subprocess
 
 
 def table(rows: Sequence[Row]) -> str:
-    header = ("Directory", "Pack", "lastServiceDate", "Viaggi", "Cambiato", "Note / errori")
+    header = ("Directory", "Pack", "lastServiceDate", "Viaggi", "Cambiato", "Completo MB", "Zona MB", "Corse tenute", "Note / errori")
     lines = [header]
     for row in rows:
         dates = str(row.old_date) if row.old_date == row.new_date else f"{row.old_date} -> {row.new_date}"
@@ -494,7 +587,8 @@ def table(rows: Sequence[Row]) -> str:
             notes = f"NON AGGIORNATO dal job: {row.job_failure}" + (f"; {notes}" if notes else "")
         if row.failure:
             notes = f"RIFIUTATO: {row.failure}" + (f"; {notes}" if notes else "")
-        lines.append((row.directory, row.source_id, dates, trips, "sì" if row.changed else "no", notes))
+        megabytes = [f"{value / 1_000_000:.2f}" if value is not None else "-" for value in (row.full_bytes, row.zone_bytes)]
+        lines.append((row.directory, row.source_id, dates, trips, "sì" if row.changed else "no", *megabytes, row.trips_kept or "-", notes))
     widths = [max(len(line[column]) for line in lines) for column in range(len(header) - 1)]
     rendered = []
     for number, line in enumerate(lines):
@@ -553,6 +647,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                     (args.save_logs / f"job-{job}.log").write_text(text, encoding="utf-8")
         files = merge_printed((text, window) for _, text, window in logs)
         directories, reports = split_by_directory(files)
+        full_printed = directories.pop(FULL_PRINT_DIR, {})
         if not directories and not reports:
             raise ApplyError("nessun file BINARIO_FILE nei log indicati")
         core_report = reports.get("core-refresh.json")
@@ -565,6 +660,8 @@ def main(argv: Sequence[str] | None = None) -> int:
                     merged.append(merge_directory(
                         name, directories[name], root / DESTINATIONS[name], work,
                         skip=set(args.skip), accept=set(args.accept), job_status=job_status if name == "gtfs" else {},
+                        full_printed=full_printed if name == "gtfs" else None, full_dir=root / foreign.FULL_PACK_DIR,
+                        catalogue_path=root / foreign.CATALOGUE_PATH,
                     ))
                 elif name == "gtfs" and core_report:
                     # The core job changed nothing: its outcome per pack is still reported.
@@ -598,6 +695,13 @@ def main(argv: Sequence[str] | None = None) -> int:
                     destination = item.target / path.name
                     if not destination.is_file() or destination.read_bytes() != path.read_bytes():
                         shutil.copyfile(path, destination)
+                if item.staged_full is not None and item.full_target is not None:
+                    # Full packs go to data/gtfs-foreign/android, never to the app assets.
+                    item.full_target.mkdir(parents=True, exist_ok=True)
+                    for path in sorted(item.staged_full.iterdir()):
+                        destination = item.full_target / path.name
+                        if not destination.is_file() or destination.read_bytes() != path.read_bytes():
+                            shutil.copyfile(path, destination)
             for path, text in edits.items():
                 path.write_text(text, encoding="utf-8")
         finally:

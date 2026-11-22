@@ -1,0 +1,8 @@
+{
+  "schemaVersion": 1,
+  "repository": "fz1101hub/binario",
+  "artifacts": [
+    {"asset": "oebb-gtfs.zip", "firstPinnedOn": "2026-11-22", "platform": "android", "sha256": "64764fcb68ec7f9eeb0ff1280d99e9261ddab928e701f30dd2b46b8ad9561caa", "sizeBytes": 1409875, "sourceId": "oebb-gtfs", "tag": "gtfs-full-oebb-gtfs-64764fcb68ec", "url": "https://github.com/fz1101hub/binario/releases/download/gtfs-full-oebb-gtfs-64764fcb68ec/oebb-gtfs.zip"},
+    {"asset": "oebb-gtfs.sqlite.zlib", "firstPinnedOn": "2026-11-22", "platform": "ios", "sha256": "fa44dee8b0999dc4f70d9fdb4ec0d12361df7ab8acddb1a260bc25399ab5193a", "sizeBytes": 1157545, "sourceId": "oebb-gtfs", "tag": "gtfs-ios-oebb-gtfs-fa44dee8b099", "url": "https://github.com/fz1101hub/binario/releases/download/gtfs-ios-oebb-gtfs-fa44dee8b099/oebb-gtfs.sqlite.zlib"}
+  ]
+}
