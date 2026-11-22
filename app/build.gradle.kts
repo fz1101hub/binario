@@ -169,7 +169,7 @@ dependencies {
     implementation("androidx.activity:activity-compose:1.10.0")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.7")
     implementation("androidx.work:work-runtime-ktx:2.10.0")
-    implementation("org.jsoup:jsoup:1.18.3")
+    implementation("org.jsoup:jsoup:1.24.1")
     implementation("org.mobilitydata:gtfs-realtime-bindings:0.0.8")
     implementation("com.google.android.gms:play-services-wearable:20.0.1")
     // Open maps (MapLibre Native, BSD-2-Clause) on OpenFreeMap tiles. 13.0.2 is the newest release whose

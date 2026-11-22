@@ -29,7 +29,7 @@ REQUIRED_COMPONENTS = {
     ("com.android.tools.build", "gradle", "8.13.0"),
     ("org.jetbrains.kotlin", "kotlin-gradle-plugin", "2.0.21"),
     ("com.google.android.gms", "play-services-wearable", "20.0.1"),
-    ("org.jsoup", "jsoup", "1.18.3"),
+    ("org.jsoup", "jsoup", "1.24.1"),
     ("org.mobilitydata", "gtfs-realtime-bindings", "0.0.8"),
 }
 COMPANION_REQUIRED_COMPONENTS = {
