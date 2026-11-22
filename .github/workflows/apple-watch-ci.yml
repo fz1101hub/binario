@@ -258,6 +258,11 @@ jobs:
       - name: Archive Release build and check the App Store bundle layout
         working-directory: ios
         run: |
+          # The archive of a dispatch is the one the owner may sign and upload: every foreign pack it pins must already
+          # be a public GitHub release with the pinned bytes, or the iPhone would offer a download that fails.
+          if [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ]; then
+            python3 -I ../tools/verify_foreign_pack_releases.py --online --pins
+          fi
           xcodebuild \
             -project Binario.xcodeproj \
             -scheme Binario \

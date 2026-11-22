@@ -133,6 +133,21 @@ Per cambiare il raggio: una riga in `tools/foreign_pack_rules.py`, poi il comand
 
 **Aggiornamento settimanale.** Per un pack di confine il job `core-packs` stampa il pack **completo** in `gtfs-foreign-android/<id>.zip` (non il sottoinsieme) con il manifest. `apply_ci_gtfs_refresh.py` lo confronta con `fullPack`, applica le regole di sospetto al pack completo, lo scrive in `data/gtfs-foreign/android/`, ricava di nuovo il sottoinsieme negli asset (il suo contenuto deve essere quello ricavato dal job) e tra le verifiche esegue `build_foreign_packs.py`. Un pack completo stampato senza `fullPack` nel manifest stampato fa fallire l'applicazione.
 
+**Pubblicazione.** Il workflow `gtfs-foreign-release.yml` parte con un push su `main` o `stabilization/**` che tocca `data/gtfs-foreign/**` o `foreign_packs.json`, oppure con un dispatch del titolare; mai da una pull request. Il suo unico job, `publish`, è l'unico del repository con `contents: write` (`REVIEWED_WRITE_SCOPES` in `verify_ci_pinning.py`) e usa solo `gh` con il token del job: `verify_foreign_packs.py`; `publish_foreign_packs.py --target "$GITHUB_SHA"`, che crea le pre-release mancanti (mai *latest*) con fonte, attribuzione, licenza, SHA-256 e commit nelle note, mentre una release già esistente deve avere gli stessi byte, altrimenti il job fallisce e la release non viene mai modificata; infine `verify_foreign_pack_releases.py --online --pins`, un download anonimo di ogni pin che segue i redirect solo verso `release-assets.githubusercontent.com` e `objects.githubusercontent.com`, confronta dimensione e SHA-256 e si ferma al primo 403 o 429. I tag dipendono dal contenuto: un pack invariato tiene tag e release.
+
+**Prima di una build per gli store.** `release-sign` (`android-ci.yml`) e l'archivio iPhone di un dispatch (`apple-watch-ci.yml`) eseguono `verify_foreign_pack_releases.py --online --pins` prima della firma o di `xcodebuild`: una build con pin non ancora pubblici non si produce. L'ordine è quindi push su `main` o `stabilization/**`, pubblicazione, firma.
+
+**Registro.** `published.json` si può solo estendere. Il job `gtfs-assets` lo confronta con il commit padre (la base di una pull request) con `build_foreign_packs.py --check --ledger-base`, e ogni voce aggiunta deve essere un pin attuale, perché il workflow pubblica solo i pin del commit spinto. Se sul ramo una seconda rigenerazione ha sostituito un pin, rigenerare indicando il registro della base:
+
+```sh
+git show origin/main:data/gtfs-foreign/published.json > /tmp/published-base.json
+python3 -I tools/build_foreign_packs.py --ledger-base /tmp/published-base.json
+```
+
+Il lunedì `freshness-watch` scarica di nuovo ogni voce del registro (`verify_foreign_pack_releases.py --online --ledger`) e fallisce se una release manca o è cambiata: un'app installata tiene il suo pin per sempre.
+
+**Una volta, nelle impostazioni del repository (titolare).** Attivare *release immutability* e una regola sui tag che vieti aggiornamento e cancellazione di `gtfs-full-*` e `gtfs-ios-*`.
+
 ## Pack nazionali Trenitalia e Italo (fissati a un commit)
 
 `trenitalia-gtfs` e `italo-gtfs` derivano dagli orari ufficiali NeTEx pubblicati sul National Access Point italiano (CCISS, dataset [1077621](https://www.cciss.it/nap/mmtis/public/en/catalog/Dataset/1077621) e [1814124](https://www.cciss.it/nap/mmtis/public/en/catalog/Dataset/1814124)), convertiti in GTFS ogni settimana da [deryclem/trenitalia-gtfs](https://github.com/deryclem/trenitalia-gtfs) e [deryclem/italo-gtfs](https://github.com/deryclem/italo-gtfs) (CC BY 4.0). Nel manifest ogni pack porta `upstream` con repository, commit, percorso e `archiveSha256`; `sourceUrl` è l'URL raw di quel commit. La build rifiuta qualsiasi archivio con un digest diverso, quindi un aggiornamento è sempre una scelta esplicita e rivista. Il digest confrontato è lo SHA-256 dei byte dell'archivio indicato: un `binario_filter_manifest.json` contenuto nell'archivio conta solo quando l'archivio è, byte per byte, il pack già pubblicato (ricostruzione dagli asset), e solo al primo livello dello ZIP (`tests/test_build_gtfs_packs.py`, archivio contraffatto dell'audit A7-01).

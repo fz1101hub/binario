@@ -1,6 +1,6 @@
 {
   "schemaVersion": 3,
-  "verifiedAt": "2026-11-03",
+  "verifiedAt": "2026-11-22",
   "workflowTriggerPolicy": {
     "pushBranches": [
       "main",
@@ -170,7 +170,7 @@
     },
     {
       "name": "Archive Release build and check the App Store bundle layout",
-      "sha256": "ea4bbedf81cff36cf2acf3dcfe22afd8a05cae2da2233d4f7bece589bad81228",
+      "sha256": "ab6d1b209cfb40b6905ca239d26332f4d6d0e898e770ce40c290c6fae4320438",
       "workingDirectory": "ios"
     },
     {
