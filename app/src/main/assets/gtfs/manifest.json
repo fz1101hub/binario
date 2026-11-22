@@ -1,6 +1,6 @@
 {
   "schemaVersion": 4,
-  "generatedAt": "2026-11-21",
+  "generatedAt": "2026-11-22",
   "purpose": "Offline GTFS data packs validated in Binario source test",
   "refreshCadence": "every-timetable-change",
   "filteringVersion": 2,
@@ -389,9 +389,9 @@
       "attribution": "Ente Autonomo Volturno S.r.l.",
       "licence": "Italian Open Data License (IODL)",
       "licenceEvidence": "https://www.eavsrl.it/open-data/ (RailSourceCatalog.kt: «EAV S.r.l. — Italia Open Data Licence», pagina open data con licenza aperta); versione della licenza non registrata nel repository; licenza null nella policy iOS: il titolare conferma la versione",
-      "sha256": "cd3c44d34f78e557d613899e33df554b2622a17e113121b84d064e03f328db70",
-      "lastServiceDate": "2026-12-31",
-      "fullServiceUntil": "2026-12-31",
+      "sha256": "3553a3516da0ef0490864ba53be958b17aa40de963a39d96e590cad86ced154b",
+      "lastServiceDate": "2027-12-31",
+      "fullServiceUntil": "2027-12-31",
       "notes": "GTFS publicized by the EAV open-data page. The imported version contains 16 route_type=2 railway routes; filter the multimodal feed before display.",
       "filter": {
         "kind": "gtfs-rail-route-types",
@@ -500,8 +500,8 @@
           "199"
         ]
       },
-      "sourceArchiveSha256": "355e2d128bd36677e22ff5c35a02b18e33795edb34421decc0f5c945c8a0a59f",
-      "contentSha256": "224ad83ecc7506baae3836e58c54d08a3ba0879f5be1232040c0601ec7d30445"
+      "sourceArchiveSha256": "a99f5210e8a2a3984571296bccb4595fb919ec27ee1beb7192535f529913fe21",
+      "contentSha256": "af7b3798ea35360e9a454211666c0e9c9920db5c0de721c1688c516ae3f48943"
     },
     {
       "sourceId": "italo-gtfs",
