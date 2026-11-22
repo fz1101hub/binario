@@ -14,7 +14,8 @@ In order (docs/data-sources/GTFS_PACK_REFRESH.md, «Paesi confinanti»):
    keeps the committed bytes, so an unchanged pack keeps its pin;
 3. the pin file ``app/src/main/assets/gtfs/foreign_packs.json`` and its byte-identical iPhone copy
    ``ios/Resources/binario_gtfs_foreign_packs_v1.json``;
-4. the append-only ledger ``data/gtfs-foreign/published.json``: every new pin is added, nothing is removed;
+4. the append-only ledger ``data/gtfs-foreign/published.json``: every new pin is added, nothing is removed (with
+   ``--ledger-base <ledger of the base branch>``, entries added on this branch and no longer pinned are dropped);
 5. ``build_gtfs_packs.py --check --integrity-only``, ``verify_foreign_packs.py``, ``verify_ios_gtfs_schedule.py``
    (base and per-country).
 
@@ -196,9 +197,19 @@ def pins_payload(root: Path) -> dict[str, Any]:
     }
 
 
-def updated_ledger(ledger: Mapping[str, Any] | None, pins: Mapping[str, Any]) -> dict[str, Any]:
-    """The ledger with every pin not yet recorded appended (first pinned on the pins' generatedAt)."""
+def updated_ledger(
+    ledger: Mapping[str, Any] | None, pins: Mapping[str, Any], base: Mapping[str, Any] | None = None
+) -> dict[str, Any]:
+    """The ledger with every pin not yet recorded appended (first pinned on the pins' generatedAt).
+
+    With ``base`` (the ledger of the base branch), the entries added after it that are no longer pinned are dropped
+    first: they were pinned only on this branch, so no release workflow ever publishes them."""
     artifacts = list((ledger or {}).get("artifacts", []))
+    base_artifacts = list((base or {}).get("artifacts", []))
+    if base is not None and artifacts[: len(base_artifacts)] == base_artifacts:
+        pinned = {release["tag"] for _, _, release in pins_verifier.pinned_releases(pins)}
+        artifacts = base_artifacts + [entry for entry in artifacts[len(base_artifacts):]
+                                      if isinstance(entry, Mapping) and entry.get("tag") in pinned]
     known = {entry.get("tag") for entry in artifacts if isinstance(entry, Mapping)}
     for platform, source_id, pinned in pins_verifier.pinned_releases(pins):
         if pinned["tag"] not in known:
@@ -241,15 +252,25 @@ def write_if_changed(path: Path, data: bytes) -> bool:
     return True
 
 
-def write_pins_and_ledger(root: Path) -> list[str]:
+def read_ledger_base(path: Path | None) -> dict[str, Any] | None:
+    if path is None:
+        return None
+    base = json.loads(path.read_text(encoding="utf-8"))
+    problems = pins_verifier.ledger_problems(base)
+    if problems:
+        raise GenerationError("registro di base non valido: " + "; ".join(problems))
+    return base
+
+
+def write_pins_and_ledger(root: Path, *, ledger_base: Path | None = None) -> list[str]:
     pins = pins_payload(root)
     problems = pins_verifier.pins_problems(pins)
     if problems:
         raise GenerationError("pin generati non validi: " + "; ".join(problems))
     data = rules.canonical_json_bytes(pins)
     changed = [relative for relative in (rules.ANDROID_PINS_PATH, rules.IOS_PINS_PATH) if write_if_changed(root / relative, data)]
-    ledger = updated_ledger(read_ledger(root), pins)
-    if ledger["artifacts"] and write_if_changed(root / rules.LEDGER_PATH, ledger_bytes(ledger)):
+    ledger = updated_ledger(read_ledger(root), pins, read_ledger_base(ledger_base))
+    if (ledger["artifacts"] or (root / rules.LEDGER_PATH).is_file()) and write_if_changed(root / rules.LEDGER_PATH, ledger_bytes(ledger)):
         changed.append(rules.LEDGER_PATH)
     return changed
 
@@ -293,24 +314,25 @@ def check(root: Path, *, ledger_base: Path | None = None) -> list[str]:
     return problems
 
 
-def regenerate(root: Path) -> dict[str, Any]:
+def regenerate(root: Path, *, ledger_base: Path | None = None) -> dict[str, Any]:
     border = packs.apply_border_zones(root / ASSET_DIR, full_pack_dir=root / rules.FULL_PACK_DIR,
                                       catalogue_path=root / rules.CATALOGUE_PATH)
     changed = rebuild_ios_indexes(root)
-    changed += write_pins_and_ledger(root)
+    changed += write_pins_and_ledger(root, ledger_base=ledger_base)
     return {"packs": border, "changed": changed}
 
 
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--check", action="store_true", help="verifica soltanto che i file generati siano aggiornati")
-    parser.add_argument("--ledger-base", type=Path, help="registro del ramo di base (append-only)")
+    parser.add_argument("--ledger-base", type=Path,
+                        help="registro del ramo di base: append-only; rigenerando, toglie le voci aggiunte nel ramo e non più fissate")
     parser.add_argument("--root", type=Path, default=ROOT, help=argparse.SUPPRESS)
     args = parser.parse_args(argv)
     root = args.root.resolve()
     try:
         if not args.check:
-            summary = regenerate(root)
+            summary = regenerate(root, ledger_base=args.ledger_base)
             header = ("Pack", "Solo zona", "Completo (B)", "Zona (B)", "Corse tenute")
             print("  ".join(header))
             for row in summary["packs"]:

@@ -12,7 +12,7 @@ Checks (docs/data-sources/GTFS_PACK_REFRESH.md, «Paesi confinanti»):
   archive digest equal the manifest, ``zoneStationIds`` is a subset of ``servedStationIds`` and both equal the
   catalogue ids of the iPhone indexes;
 * every pin is recorded in ``data/gtfs-foreign/published.json``, and with ``--ledger-base`` no earlier entry was removed
-  or changed.
+  or changed and every added entry is a current pin.
 
 Usage::
 
@@ -217,8 +217,12 @@ def ledger_problems(payload: object) -> list[str]:
     return problems
 
 
-def ledger_append_only_problems(base: object, current: object) -> list[str]:
-    """Every entry of the base ledger is still there, unchanged and in the same place (append-only)."""
+def ledger_append_only_problems(base: object, current: object, pins: Mapping[str, Any] | None = None) -> list[str]:
+    """Every entry of the base ledger is still there, unchanged and in the same place (append-only).
+
+    With ``pins``, every entry added after the base must be a current pin: the release workflow publishes the pins
+    of the pushed commit only, so an entry added on a branch and no longer pinned would never be published (and the
+    weekly online check of the ledger would report it missing)."""
     base_artifacts = base.get("artifacts") if isinstance(base, Mapping) else None
     current_artifacts = current.get("artifacts") if isinstance(current, Mapping) else None
     if not isinstance(base_artifacts, list) or not isinstance(current_artifacts, list):
@@ -228,6 +232,13 @@ def ledger_append_only_problems(base: object, current: object) -> list[str]:
                    if isinstance(entry, Mapping) and entry not in current_artifacts]
         return [f"registro: voci tolte o modificate rispetto alla base ({', '.join(map(str, removed)) or 'ordine'}); "
                 "il registro si può solo estendere"]
+    if pins is not None:
+        pinned = {release.get("tag") for _, _, release in pinned_releases(pins)}
+        stale = [str(entry.get("tag")) for entry in current_artifacts[len(base_artifacts):]
+                 if isinstance(entry, Mapping) and entry.get("tag") not in pinned]
+        if stale:
+            return [f"registro: voci aggiunte rispetto alla base ma non più fissate ({', '.join(stale)}): non saranno mai "
+                    "pubblicate; rigenerare con tools/build_foreign_packs.py --ledger-base <registro della base>"]
     return []
 
 
@@ -414,7 +425,7 @@ def repository_problems(root: Path = ROOT, *, ledger_base: Path | None = None) -
     if ledger_base is not None:
         base = load_json(ledger_base, "registro di base", problems, 16 * MAX_PINS_BYTES)
         if base is not None:
-            problems += ledger_append_only_problems(base, ledger)
+            problems += ledger_append_only_problems(base, ledger, pins)
     return problems
 
 

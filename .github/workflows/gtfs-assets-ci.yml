@@ -110,6 +110,7 @@ jobs:
           tests/test_verify_android_app_bundles.py
           tests/test_build_gtfs_packs.py
           tests/test_foreign_packs.py
+          tests/test_verify_foreign_pack_releases.py
           tests/test_netex_to_gtfs.py
           tests/test_transit_source_discovery.py
           tests/test_refresh_core_gtfs.py

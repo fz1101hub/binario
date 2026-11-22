@@ -205,6 +205,26 @@ class LedgerTest(unittest.TestCase):
         ledger["artifacts"].pop()
         self.assertTrue(verifier.ledger_coverage_problems(payload, ledger))
 
+    def test_entries_added_on_a_branch_must_still_be_pinned(self) -> None:
+        """The release workflow publishes the pins of the pushed commit only: an entry a branch added and then
+        replaced would never be published, so the pull-request check refuses it and --ledger-base drops it."""
+        payload = sample()
+        base = {"schemaVersion": 1, "repository": rules.REPOSITORY, "artifacts": []}
+        ledger = self.ledger(payload)
+        self.assertEqual([], verifier.ledger_append_only_problems(base, ledger, payload))
+        stale = dict(ledger["artifacts"][0], sha256="2" * 64)
+        stale["tag"] = rules.tag_for("android", "oebb-gtfs", stale["sha256"])
+        stale["url"] = rules.url_for(stale["tag"], stale["asset"])
+        branch = {**ledger, "artifacts": [stale, *ledger["artifacts"]]}
+        problems = verifier.ledger_append_only_problems(base, branch, payload)
+        self.assertTrue(any(stale["tag"] in problem and "non più fissate" in problem for problem in problems), problems)
+        # An entry of the base stays although no longer pinned: an installed app keeps its pin.
+        self.assertEqual([], verifier.ledger_append_only_problems({**base, "artifacts": [stale]}, branch, payload))
+        # Regenerating with the base drops the branch entry no longer pinned; without it nothing is ever removed.
+        self.assertEqual(ledger["artifacts"], generator.updated_ledger(branch, payload, base)["artifacts"])
+        self.assertEqual(branch["artifacts"], generator.updated_ledger(branch, payload)["artifacts"])
+        self.assertEqual(branch["artifacts"], generator.updated_ledger(branch, payload, {**base, "artifacts": [stale]})["artifacts"])
+
     def test_ledger_entries_follow_the_tag_rules_and_are_unique(self) -> None:
         ledger = self.ledger(sample())
         ledger["artifacts"].append(copy.deepcopy(ledger["artifacts"][0]))
