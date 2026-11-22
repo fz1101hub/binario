@@ -765,7 +765,7 @@
       "attribution": "ÖBB Personenverkehr AG — CC BY 4.0",
       "licence": "CC BY 4.0",
       "licenceEvidence": "https://data.oebb.at/de/datensaetze~soll-fahrplan-gtfs~ (catalogo ÖBB: CC BY 4.0, docs/data-sources/OEBB_GTFS_ACCESS.md; RailSourceCatalog.kt e policy iOS: CC BY 4.0)",
-      "sha256": "64764fcb68ec7f9eeb0ff1280d99e9261ddab928e701f30dd2b46b8ad9561caa",
+      "sha256": "d30ec90329736aa9914fea9e02733cb77b50155318410828d25df34b83effe4b",
       "lastServiceDate": "2026-12-12",
       "fullServiceUntil": "2026-12-12",
       "notes": "Downloaded after user-authorized acceptance of the official terms and filtered offline to rail route types. Includes 259 rail routes, 14,690 trips and 2,169 referenced stops.",
@@ -874,10 +874,21 @@
           "197",
           "198",
           "199"
-        ]
+        ],
+        "borderZone": {
+          "radiusKm": 35
+        }
       },
       "sourceArchiveSha256": "425f7e6da89e2f285b0e4185f156f7d2118a0880acc6db20161b45861077161a",
-      "contentSha256": "211b7240bb6cd037a012fa1b521d2aa5e14fd1e9f1874d3a1411f8f6c39caab4"
+      "contentSha256": "53073ce8eac94698784a5710269e2e809b9ac889829a38db411e5f1de4d3a47f",
+      "fullPack": {
+        "path": "data/gtfs-foreign/android/oebb-gtfs.zip",
+        "sha256": "64764fcb68ec7f9eeb0ff1280d99e9261ddab928e701f30dd2b46b8ad9561caa",
+        "sizeBytes": 1409875,
+        "contentSha256": "211b7240bb6cd037a012fa1b521d2aa5e14fd1e9f1874d3a1411f8f6c39caab4",
+        "lastServiceDate": "2026-12-12",
+        "fullServiceUntil": "2026-12-12"
+      }
     },
     {
       "sourceId": "sncf-gtfs",

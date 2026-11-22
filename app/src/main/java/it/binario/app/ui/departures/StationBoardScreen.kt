@@ -106,6 +106,10 @@ import it.binario.app.ui.detail.StopTimelineRow
 import it.binario.app.updateTimeMessage
 import it.binario.app.journeys.LastOfDayMarks
 import it.binario.app.ui.common.InfoNoticeCard
+import it.binario.app.ui.common.ForeignPackLine
+import it.binario.app.ui.common.ForeignPackPromptHost
+import it.binario.app.ui.common.ForeignPackPromptRules
+import it.binario.app.ui.common.foreignPackSize
 import it.binario.app.ui.common.OperatorNames
 import it.binario.app.ui.common.LastOfDayChip
 import it.binario.app.ui.common.ListRowLayout
@@ -136,6 +140,8 @@ internal fun StationBoardScreen(
     openRouteResults: () -> Unit = {}
 ) {
     LaunchedEffect(Unit) { viewModel.refreshStationBoardIfIdle() }
+    // The dialog opened by the «Orari completi … · Scarica» line below.
+    ForeignPackPromptHost(viewModel, searchOffer = null)
     // From 840 dp the run details sit in the side pane instead (StationBoardRunDetailsPane).
     if (runDetailsInSheet) viewModel.selectedBoardEntry?.let { selected ->
         StationBoardRunDetailsSheet(
@@ -349,6 +355,18 @@ internal fun StationBoardScreen(
             if (reliabilityStats != null && stationPunctuality != null) {
                 item(key = "station-punctuality-${station.id}") {
                     StationPunctualityCard(stationPunctuality, reliabilityStats.windowEnd, originName = reliabilityStations::name)
+                }
+            }
+            // A station that only a full foreign timetable not on the phone serves: one line, and the live sources of
+            // the board keep their order and names.
+            ForeignPackPromptRules.supported(viewModel.stationForeignPacks).forEach { choice ->
+                val texts = ForeignPackPromptRules.country(choice.country) ?: return@forEach
+                item(key = "foreign-pack-${station.id}-${choice.sourceId.value}") {
+                    ForeignPackLine(
+                        stringResource(texts.board, foreignPackSize(choice.sizeBytes)),
+                        onClick = { viewModel.openForeignPackRequest(listOf(choice)) },
+                        modifier = Modifier.testTag("station-board-foreign-pack")
+                    )
                 }
             }
         }

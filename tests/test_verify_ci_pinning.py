@@ -246,6 +246,12 @@ class VerifyCiPinningTest(unittest.TestCase):
                 "      - name: Signed Google Play bundles\n        continue-on-error: true\n",
                 1,
             ),
+            # A build whose foreign-pack pins are not public releases is never signed.
+            "verificare le release pubbliche dei pack esteri": original.replace(
+                "        run: python3 -I tools/verify_foreign_pack_releases.py --online --pins\n", "        run: echo skipped\n", 1),
+            "pubbliche dei pack esteri (": original.replace(
+                "      - name: Gate public foreign-pack releases before signing\n",
+                "      - name: Gate public foreign-pack releases before signing\n        if: ${{ inputs.sign_release }}\n", 1),
             "artifact deve scadere entro 14 giorni": original.replace("          retention-days: 14\n", "          retention-days: 90\n", 1),
             "upload artifact deve fallire senza file": original.replace("          if-no-files-found: error\n", "", 1),
             "deve sovrascrivere l'artifact omonimo": original.replace("          overwrite: true\n", "          overwrite: false\n", 1),
@@ -405,6 +411,50 @@ class VerifyCiPinningTest(unittest.TestCase):
         apple = ROOT / ".github/workflows/apple-watch-ci.yml"
         self.assertEqual([], policy.workflow_problems(apple, apple.read_text(encoding="utf-8"), LOCK))
 
+    def test_the_foreign_pack_release_workflow_is_the_only_writer(self) -> None:
+        path = ROOT / ".github/workflows/gtfs-foreign-release.yml"
+        original = path.read_text(encoding="utf-8")
+        self.assertEqual([], policy.workflow_problems(path, original, LOCK))
+        self.assertEqual({("gtfs-foreign-release.yml", "publish", "contents")}, set(policy.REVIEWED_WRITE_SCOPES))
+        verify_online = "        run: python3 -I tools/verify_foreign_pack_releases.py --online --pins\n"
+        token = "        env:\n          GH_TOKEN: ${{ github.token }}\n"
+        mutations = {
+            "mai pull_request": original.replace("  workflow_dispatch:\n", "  workflow_dispatch:\n  pull_request:\n", 1),
+            "push branches": original.replace('      - "stabilization/**"\n', '      - "stabilization/**"\n      - "feature/**"\n', 1),
+            "push.paths": original.replace('      - "app/src/main/assets/gtfs/foreign_packs.json"\n', "", 1),
+            "senza cancel-in-progress": original.replace("cancel-in-progress: false", "cancel-in-progress: true", 1),
+            "permesso contents: 'write' non revisionato": original.replace(
+                "permissions:\n  contents: read\n", "permissions:\n  contents: write\n", 1),
+            "permesso packages: 'write' non revisionato": original.replace(
+                "      contents: write\n", "      contents: write\n      packages: write\n", 1),
+            "secret fuori dagli step revisionati": original.replace("${{ github.token }}", "${{ secrets.GITHUB_TOKEN }}", 1),
+            "github.token fuori dallo step di pubblicazione": original.replace(verify_online, token + verify_online, 1),
+            "GH_TOKEN solo nello step di pubblicazione": original.replace(verify_online, token + verify_online, 1),
+            "persist-credentials: false": original.replace("        with:\n          persist-credentials: false\n", "", 1),
+            "nessuna action di terzi": original.replace(
+                "      - name: Verify the pins against the committed files\n",
+                "      - name: Python\n        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6\n"
+                '        with:\n          python-version: "3.12.10"\n\n      - name: Verify the pins against the committed files\n', 1),
+            "sequenza revisionata": original.replace(verify_online, "        run: echo skipped\n", 1),
+            "action non fissata a SHA": original.replace("actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1", "actions/checkout@v7", 1),
+        }
+        for expected, mutated in mutations.items():
+            with self.subTest(expected=expected):
+                self.assertNotEqual(original, mutated)
+                problems = policy.workflow_problems(path, mutated, LOCK)
+                self.assertTrue(any(expected in problem for problem in problems), problems)
+        # The write scope and the publishing tool stay in that one workflow.
+        android = ROOT / ".github/workflows/android-ci.yml"
+        text = android.read_text(encoding="utf-8")
+        elsewhere = text.replace("        run: chmod +x gradlew\n",
+                                 '        run: |\n          chmod +x gradlew\n          python3 -I tools/publish_foreign_packs.py --target "$GITHUB_SHA"\n', 1)
+        self.assertNotEqual(text, elsewhere)
+        self.assertTrue(any("si pubblicano solo da gtfs-foreign-release.yml" in problem
+                            for problem in policy.workflow_problems(android, elsewhere, LOCK)))
+        renamed = ROOT / ".github/workflows/other-release.yml"
+        self.assertTrue(any("permesso contents: 'write' non revisionato" in problem
+                            for problem in policy.workflow_problems(renamed, original, LOCK)))
+
     def test_untrusted_triggers_head_checkouts_and_secrets_outside_release_sign_are_rejected(self) -> None:
         # Audit ci-docs-9: the classic fork pull request secret leak passed the guard with no problem at all.
         leak = (
@@ -492,6 +542,13 @@ class VerifyCiPinningTest(unittest.TestCase):
         problems = policy.workflow_problems(workflow_path, debug_archive, LOCK)
         self.assertTrue(any(":ios: contenuto step run diverso" in problem for problem in problems))
         self.assertTrue(any("archivio Release" in problem for problem in problems))
+
+        ungated = original.replace(
+            '          if [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ]; then\n'
+            '            python3 -I ../tools/verify_foreign_pack_releases.py --online --pins\n          fi\n', "", 1)
+        self.assertNotEqual(original, ungated)
+        problems = policy.workflow_problems(workflow_path, ungated, LOCK)
+        self.assertTrue(any("deve prima verificare le release pubbliche dei pack esteri" in problem for problem in problems), problems)
 
         unchecked_icon = original.replace(
             '            [ "$value" = "AppIcon" ] || { plutil -p "$bundle/Info.plist" | grep -i icon || true; fail "${bundle##*/}: CFBundleIconName is $value, expected AppIcon"; }\n', "", 1

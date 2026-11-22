@@ -26,7 +26,8 @@ import org.junit.Test
  * stations where every option must be physically possible. A pack refresh may change the trains, never these rules.
  */
 class EmbeddedGtfsJourneyPlausibilityTest {
-    private val openAsset = { path: String -> TestAssets.open(path) }
+    // Foreign packs read whole (the full ZIP once the APK bundles their border subset): trains beyond the zone stay.
+    private val openAsset = { path: String -> TestAssets.openFull(path) }
     private val stations: List<Station> by lazy { EmbeddedCuratedRailStationCatalog(openAsset).load() }
     private val byId: Map<String, Station> by lazy { stations.associateBy(Station::id) }
     private val zone = ZoneId.of("Europe/Rome")

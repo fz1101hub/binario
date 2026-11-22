@@ -57,6 +57,14 @@ data class RailSourceDefinition(
 object RailSourceCatalog {
     private fun uri(value: String): URI = URI.create(value)
 
+    /**
+     * How a foreign pack reaches the phone (owner decision D2), true in both states: whole in the APK while the pins file
+     * has no download pin for it; with a pin, only the border zone in the APK and the full pack on request.
+     */
+    private const val FOREIGN_PACK_DELIVERY = " Incluso intero nell’APK finché `gtfs/foreign_packs.json` non ha un pin di download per " +
+        "questa fonte; con il pin l’APK include solo la zona di confine e l’orario completo si scarica su richiesta da " +
+        "GitHub Releases, con dimensione e SHA-256 fissati nella versione dell’app."
+
     private val staticCapabilities = setOf(
         ProviderCapability.STATION_CATALOG,
         ProviderCapability.JOURNEY_SEARCH,
@@ -248,7 +256,7 @@ object RailSourceCatalog {
             landingPage = uri("https://ressources.data.sncf.com/pages/accueil/"),
             downloadOrProbeUri = uri("https://eu.ftp.opendatasoft.com/sncf/plandata/Export_OpenData_SNCF_GTFS_NewTripId.zip"),
             attribution = "SNCF Open Data",
-            notes = "ZIP HTTPS e set minimo GTFS verificati; filtrare i servizi rilevanti all'Italia nella pipeline."
+            notes = "ZIP HTTPS e set minimo GTFS verificati; filtrare i servizi rilevanti all'Italia nella pipeline." + FOREIGN_PACK_DELIVERY
         ),
         RailSourceDefinition(
             id = SourceId("sncf-gtfs-rt-trip-updates"),
@@ -293,7 +301,7 @@ object RailSourceCatalog {
             landingPage = uri("https://data.opentransportdata.swiss/dataset/timetable-2026-gtfs2020"),
             downloadOrProbeUri = uri("https://data.opentransportdata.swiss/dataset/3d2c18f9-9ef1-463f-a249-5c67604efd74/resource/32c2dfb4-8953-45b5-b271-211a2fa3aa18/download/gtfs_fp2026_2025-08-14.zip"),
             attribution = "opentransportdata.swiss",
-            notes = "Data pack ferroviario filtrato e verificato incluso nell’APK; aggiornare con manifest e attribuzione a ogni release."
+            notes = "Data pack ferroviario filtrato e verificato; aggiornare con manifest e attribuzione a ogni release." + FOREIGN_PACK_DELIVERY
         ),
         RailSourceDefinition(
             id = SourceId("ch-otd-gtfs-rt"),
@@ -322,7 +330,8 @@ object RailSourceCatalog {
             landingPage = uri("https://data.oebb.at/de/datensaetze~soll-fahrplan-gtfs~"),
             downloadOrProbeUri = uri("https://static.web.oebb.at/open-data/soll-fahrplan-gtfs/GTFS_Fahrplan_2026.zip"),
             attribution = "ÖBB Personenverkehr AG — CC BY 4.0",
-            notes = "Data pack ferroviario filtrato e verificato incluso nell’APK dopo accettazione autorizzata delle condizioni del portale; aggiornare annualmente."
+            notes = "Data pack ferroviario filtrato e verificato dopo accettazione autorizzata delle condizioni del portale; aggiornare annualmente." +
+                FOREIGN_PACK_DELIVERY
         ),
         RailSourceDefinition(
             id = SourceId("viaggiatreno"),

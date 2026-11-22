@@ -1,6 +1,6 @@
 # Refresh dei pack GTFS embedded
 
-I pack GTFS sono **artefatti di release offline**: l'app non scarica mai dati di orario. Il comando `tools/build_gtfs_packs.py` acquisisce solo le URL registrate in `manifest.json`, applica un limite di byte anche alle risposte chunked, filtra ogni feed, e pubblica ZIP, manifest e checksum con un singolo replace atomico della directory di output. Nessun download incompleto, feed inventato o precedente asset viene presentato come aggiornamento riuscito.
+I pack GTFS sono **artefatti di release offline**: l'app non li scarica dalle fonti e non li aggiorna dalla rete. Fa eccezione solo, per i paesi i cui orari completi non sono inclusi nell'app, l'orario completo che il progetto pubblica come release di GitHub e che prende il posto del pack ridotto alla zona di confine: scaricato solo dopo il tocco dell'utente su «Scarica» e accettato solo con l'impronta SHA-256 fissata nella versione dell'app (licenza e redistribuzione in [SOURCE_POLICY.md](SOURCE_POLICY.md), dati visibili a GitHub in [PRIVACY.md](../../PRIVACY.md)). Il comando `tools/build_gtfs_packs.py` acquisisce solo le URL registrate in `manifest.json`, applica un limite di byte anche alle risposte chunked, filtra ogni feed, e pubblica ZIP, manifest e checksum con un singolo replace atomico della directory di output. Nessun download incompleto, feed inventato o precedente asset viene presentato come aggiornamento riuscito.
 
 ## Aggiornamento settimanale
 
@@ -20,7 +20,7 @@ Poi, in locale, sullo stesso ramo:
 python3 tools/apply_ci_gtfs_refresh.py --run <run_id>     # --dry-run per vedere solo la tabella
 ```
 
-L'helper verifica prima che la run sia un `workflow_dispatch` di `gtfs-assets-ci.yml` sullo stesso ramo locale, con `head_sha` uguale a `HEAD` o a un suo antenato, e che ogni step fino a quello di stampa sia riuscito; legge solo l'unico blocco `BINARIO_BEGIN <nonce>` … `BINARIO_DONE <nonce> <file>` stampato da quello step (nella sua finestra oraria) e rifiuta il log se trova un secondo blocco o righe `BINARIO_*` fuori dal blocco: il testo dei feed stampato da step precedenti non può aggiungere o sostituire file (audit A7-02). Con `--log` (log salvati) restano solo i controlli sul blocco. Poi ricostruisce i file verificandone dimensione e SHA-256, li copia in `app/src/main/assets/gtfs/`, `gtfs-transit/` e `app/src/personal/assets/gtfs-personal/` lasciando byte per byte i pack con orario invariato, aggiorna i pin Trenitalia/Italo (manifest, `ios/Resources/binario_gtfs_source_policy_v1.json`, `RailSourceCatalog.kt`) e `lastServiceDate` in `EmbeddedGtfsPacks.kt` e `TransitGtfsPacks.kt`, esegue i due `--check` per directory, `verify_embedded_assets.py` e, se il manifest principale è cambiato, ricostruisce l'indice iOS e lo verifica (`verify_ios_gtfs_schedule.py`, `verify_ios_gtfs_rebuild.py`). Stampa una tabella: pack, `lastServiceDate` vecchia → nuova, viaggi, cambiato sì/no, note ed errori. Non esegue commit.
+L'helper verifica prima che la run sia un `workflow_dispatch` di `gtfs-assets-ci.yml` sullo stesso ramo locale, con `head_sha` uguale a `HEAD` o a un suo antenato, e che ogni step fino a quello di stampa sia riuscito; legge solo l'unico blocco `BINARIO_BEGIN <nonce>` … `BINARIO_DONE <nonce> <file>` stampato da quello step (nella sua finestra oraria) e rifiuta il log se trova un secondo blocco o righe `BINARIO_*` fuori dal blocco: il testo dei feed stampato da step precedenti non può aggiungere o sostituire file (audit A7-02). Con `--log` (log salvati) restano solo i controlli sul blocco. Poi ricostruisce i file verificandone dimensione e SHA-256, li copia in `app/src/main/assets/gtfs/`, `gtfs-transit/` e `app/src/personal/assets/gtfs-personal/` lasciando byte per byte i pack con orario invariato, aggiorna i pin Trenitalia/Italo (manifest, `ios/Resources/binario_gtfs_source_policy_v1.json`, `RailSourceCatalog.kt`) e `lastServiceDate` in `EmbeddedGtfsPacks.kt` e `TransitGtfsPacks.kt`, esegue i due `--check` per directory, `verify_embedded_assets.py` e, se il manifest principale è cambiato, rigenera con `build_foreign_packs.py` l'indice iOS, gli indici per paese, i pin dei pack esteri e il registro e li verifica (`verify_ios_gtfs_schedule.py`, `verify_ios_gtfs_rebuild.py`; vedi [Paesi confinanti](#paesi-confinanti-zona-di-confine-e-pack-completi)). Stampa una tabella: pack, `lastServiceDate` vecchia → nuova, viaggi, cambiato sì/no, per un pack di confine MB del pack completo, MB del sottoinsieme e corse tenute / corse del pack completo, note ed errori. Non esegue commit.
 
 Cosa controllare prima del commit:
 
@@ -48,7 +48,7 @@ python3 tools/build_gtfs_packs.py --only oebb-gtfs \
   --source-archive oebb-gtfs=/percorso/GTFS_Fahrplan_2027.zip --generated-at "$(date --utc +%F)"
 ```
 
-Se il file ha un nuovo nome (un archivio per anno orario), aggiornare prima `sourceUrl` di `oebb-gtfs` nel manifest, nella policy iOS e in `RailSourceCatalog.kt`; poi la data in `EmbeddedGtfsPacks.kt`, i controlli e l'indice iOS come sopra.
+Il pack completo va in `data/gtfs-foreign/android/oebb-gtfs.zip`, il sottoinsieme di confine negli asset; poi `python3 -I tools/build_foreign_packs.py` (indici iOS, pin, registro). Se il file ha un nuovo nome (un archivio per anno orario), aggiornare prima `sourceUrl` di `oebb-gtfs` nel manifest, nella policy iOS e in `RailSourceCatalog.kt`; poi la data in `EmbeddedGtfsPacks.kt` e i controlli come sopra.
 
 **Cambio orario del 13 dicembre 2026.** STA, Svizzera, ÖBB, Trenord, TFT, Italo e Mi.Co.Tra. terminano il 12 dicembre 2026: dal 13 novembre 2026 il gate a 30 giorni li blocca (ARST, EAV e gran parte delle reti urbane dal 2 dicembre); il controllo settimanale li segnala come avviso già 45 giorni prima. Ripetere il dispatch ogni settimana finché gli editori pubblicano l'orario 2027 e la tabella li mostra aggiornati. Il pack svizzero è registrato su un file datato (`gtfs_fp2026_2025-08-14.zip`): il job riscarica sempre lo stesso archivio, quindi per l'orario 2027 serve un nuovo URL rivisto (manifest, policy iOS e `RailSourceCatalog.kt`), come per ÖBB.
 
@@ -105,6 +105,49 @@ Le sorgenti `GATEWAY_ONLY` non sono scaricate da `build_gtfs_packs.py --refresh`
 - ogni altro pack `OPEN_DIRECT` è scaricato dal suo `sourceUrl` HTTPS con lo stesso downloader della pipeline `transit-packs` (limite di 400 MiB, ripresa con `Range`, nuovi tentativi sui 5xx) e deve essere uno ZIP.
 
 Un archivio identico a quello registrato (`sourceArchiveSha256`) non è ricostruito. Ogni archivio nuovo è filtrato da solo con `build_gtfs_packs.py --only <id>` su una copia della directory: se il download o la build falliscono, il pack e la sua voce di manifest restano quelli precedenti e il report registra l'errore; se l'orario filtrato non cambia (`contentSha256` uguale, per esempio quando cambiano solo gli autobus), il pack pubblicato è rimesso byte per byte. La directory risultante supera `--check --integrity-only`; nel log sono stampati solo `manifest.json`, `SHA256SUMS`, gli ZIP cambiati e `core-refresh.json` (esito per pack, conteggi, pin proposti con `feed_info.txt` e `attributions.txt`). Il testo letto dagli archivi è stampato con i comandi del workflow sospesi (`::stop-commands::`). Il job fallisce, dopo aver stampato i pack riusciti, se una fonte non è stata aggiornata.
+
+## Paesi confinanti: zona di confine e pack completi
+
+Parte tecnica; le regole generali dei pack esteri sono in `SOURCE_POLICY.md`.
+
+**Regola della licenza.** I tre pack esteri (`ch-otd-gtfs`, `oebb-gtfs`, `sncf-gtfs`) sono inclusi come *sottoinsieme di confine* solo se il campo `licence` del manifest è confermato (non «Da confermare dal titolare»); oggi solo ÖBB (CC BY 4.0). Gli altri restano inclusi interi come prima: nessun sottoinsieme, nessun pin, nessun file pubblicato. Tool e test gestiscono qualsiasi combinazione.
+
+**Sottoinsieme.** Le corse intere che fermano almeno una volta entro `BORDER_ZONE_RADIUS_KM` (35 km, l'unico valore, in `tools/foreign_pack_rules.py`) da una stazione del catalogo con `trenitaliaLocationId` che inizia per `83` e coordinate (distanza haversine dalla fermata o dalla sua stazione madre); le tabelle collegate sono ridotte alle righe usate. Il `--check` ricava di nuovo ogni sottoinsieme dal pack completo e dal catalogo e richiede lo stesso contenuto, controlla `fullPack` e i due `SHA256SUMS`, che le coppie obbligatorie del pack (Brennero–Innsbruck Hbf; Domodossola–Brig e Como S. Giovanni–Lugano per la Svizzera, Ventimiglia–Nice-Ville per la Francia, per id di catalogo) abbiano tutte le corse del pack completo e che i sottoinsiemi insieme restino entro 1,2 MB.
+
+| File | Contenuto | Nell'app |
+|---|---|---|
+| `data/gtfs-foreign/android/<id>.zip`, `SHA256SUMS` | pack completi filtrati come prima | no |
+| `data/gtfs-foreign/ios/<id>.sqlite.zlib`, `<id>.metadata.json` | indice iPhone per paese (stesso schema di `binario_gtfs_schedule_v1`) | no |
+| `data/gtfs-foreign/published.json` | registro append-only di ogni file mai fissato (tag, asset, SHA-256, dimensione, `firstPinnedOn`) | no |
+| `app/src/main/assets/gtfs/<id>.zip` | sottoinsieme di confine; nel manifest `fullPack` e `filter.borderZone.radiusKm` | sì |
+| `app/src/main/assets/gtfs/foreign_packs.json`, `ios/Resources/binario_gtfs_foreign_packs_v1.json` | pin (schema 1, stessi byte): tag `gtfs-full-<id>-<sha12>` / `gtfs-ios-<id>-<sha12>`, URL `https://github.com/fz1101hub/binario/releases/download/<tag>/<asset>`, stazioni servite e di zona | sì |
+
+**Un solo comando** rigenera tutto ciò che deriva dai pack esteri e dal manifest principale (circa 100 s): regola della licenza, sottoinsiemi, indice iPhone di base e indici per paese (i byte committati restano se il contenuto non cambia, quindi un pack invariato tiene il suo pin), i due file di pin, il registro e tutte le verifiche offline:
+
+```sh
+python3 -I tools/build_foreign_packs.py            # rigenera e verifica
+python3 -I tools/build_foreign_packs.py --check    # verifica soltanto
+```
+
+Per cambiare il raggio: una riga in `tools/foreign_pack_rules.py`, poi il comando. I file generati non si modificano mai a mano e vanno in un commit separato dal codice.
+
+**Aggiornamento settimanale.** Per un pack di confine il job `core-packs` stampa il pack **completo** in `gtfs-foreign-android/<id>.zip` (non il sottoinsieme) con il manifest. `apply_ci_gtfs_refresh.py` lo confronta con `fullPack`, applica le regole di sospetto al pack completo, lo scrive in `data/gtfs-foreign/android/`, ricava di nuovo il sottoinsieme negli asset (il suo contenuto deve essere quello ricavato dal job) e tra le verifiche esegue `build_foreign_packs.py`. Un pack completo stampato senza `fullPack` nel manifest stampato fa fallire l'applicazione.
+
+**Pubblicazione.** Il workflow `gtfs-foreign-release.yml` parte con un push su `main` o `stabilization/**` che tocca `data/gtfs-foreign/**` o `foreign_packs.json`, oppure con un dispatch del titolare; mai da una pull request. Il suo unico job, `publish`, è l'unico del repository con `contents: write` (`REVIEWED_WRITE_SCOPES` in `verify_ci_pinning.py`) e usa solo `gh` con il token del job: `verify_foreign_packs.py`; `publish_foreign_packs.py --target "$GITHUB_SHA"`, che crea le pre-release mancanti (mai *latest*) con fonte, attribuzione, licenza, SHA-256 e commit nelle note, mentre una release già esistente deve avere gli stessi byte, altrimenti il job fallisce e la release non viene mai modificata; infine `verify_foreign_pack_releases.py --online --pins`, un download anonimo di ogni pin che segue i redirect solo verso `release-assets.githubusercontent.com` e `objects.githubusercontent.com`, confronta dimensione e SHA-256 e si ferma al primo 403 o 429. I tag dipendono dal contenuto: un pack invariato tiene tag e release.
+
+**Prima di una build per gli store.** `release-sign` (`android-ci.yml`) e l'archivio iPhone di un dispatch (`apple-watch-ci.yml`) eseguono `verify_foreign_pack_releases.py --online --pins` prima della firma o di `xcodebuild`: una build con pin non ancora pubblici non si produce. L'ordine è quindi push su `main` o `stabilization/**`, pubblicazione, firma.
+
+**Registro.** `published.json` si può solo estendere. Il job `gtfs-assets` lo confronta con il commit padre (la base di una pull request) con `build_foreign_packs.py --check --ledger-base`, e ogni voce aggiunta deve essere un pin attuale, perché il workflow pubblica solo i pin del commit spinto. Se sul ramo una seconda rigenerazione ha sostituito un pin, rigenerare indicando il registro della base:
+
+```sh
+git show origin/main:data/gtfs-foreign/published.json > /tmp/published-base.json \
+  || printf '{"schemaVersion": 1, "repository": "fz1101hub/binario", "artifacts": []}\n' > /tmp/published-base.json
+python3 -I tools/build_foreign_packs.py --ledger-base /tmp/published-base.json
+```
+
+Il lunedì `freshness-watch` scarica di nuovo ogni voce del registro (`verify_foreign_pack_releases.py --online --ledger`) e fallisce se una release manca o è cambiata: un'app installata tiene il suo pin per sempre.
+
+**Una volta, nelle impostazioni del repository (titolare).** Attivare *release immutability* e una regola sui tag che vieti aggiornamento e cancellazione di `gtfs-full-*` e `gtfs-ios-*`.
 
 ## Pack nazionali Trenitalia e Italo (fissati a un commit)
 

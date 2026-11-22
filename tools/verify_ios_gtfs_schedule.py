@@ -12,14 +12,21 @@ import tempfile
 import zlib
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
-from typing import Sequence
+from typing import Mapping, Sequence
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "tools"))
+import foreign_pack_rules as foreign_rules  # noqa: E402  (border zone rule shared with the builders)
 
 APPLICATION_ID = int.from_bytes(b"BNGT", "big")
 # Packs in the index; the same value as build_ios_gtfs_schedule.INDEXED_PACK_COUNT.
 INDEXED_PACK_COUNT = 9
 # Packs whose trips must touch a catalogue station with codes; build_ios_gtfs_schedule.FOREIGN_PACKS.
 FOREIGN_PACKS = ("ch-otd-gtfs", "oebb-gtfs", "sncf-gtfs")
+# Per-country index (build_ios_gtfs_schedule.py --foreign-full): kind and builder version of its metadata.
+FOREIGN_FULL_KIND = "foreign-full"
+FOREIGN_FULL_BUILDER_VERSION = 1
 USER_VERSION = 2
 METADATA_SCHEMA_VERSION = 1
 MAX_METADATA_BYTES = 4 * 1024 * 1024
@@ -97,23 +104,45 @@ def load_metadata(path: Path) -> dict[str, object]:
     require(isinstance(value, dict), "metadata root must be an object")
     return value
 
+def border_subset_packs(metadata: dict[str, object]) -> list[str]:
+    """Foreign packs indexed from their border subset (their full pack is an input too)."""
+    border = (metadata.get("filter") or {}).get("borderSubsets", []) if isinstance(metadata.get("filter"), dict) else None
+    require(isinstance(border, list) and all(item in FOREIGN_PACKS for item in border) and border == sorted(set(border)),
+            "metadata filter.borderSubsets is invalid")
+    return border
+
 def verify_input_fingerprint(
     metadata: dict[str, object],
     metadata_path: Path,
     source_policy_path: Path | None = None,
+    foreign_full: str | None = None,
 ) -> str:
+    return verify_inputs(metadata, metadata_path, source_policy_path, foreign_full)[0]
+
+def verify_inputs(
+    metadata: dict[str, object],
+    metadata_path: Path,
+    source_policy_path: Path | None = None,
+    foreign_full: str | None = None,
+) -> tuple[str, dict[str, Path]]:
+    """The input fingerprint, recomputed from the files, and the verified input paths by their recorded path."""
     inputs = metadata.get("inputs")
     require(isinstance(inputs, dict), "metadata.inputs is missing")
     files = inputs.get("files")
     expected_fingerprint = inputs.get("fingerprintSha256")
     base_path = inputs.get("basePath")
-    expected_count = INDEXED_PACK_COUNT + (3 if source_policy_path is not None else 2)
-    require(
-        isinstance(files, list) and len(files) == expected_count,
-        f"metadata must describe manifest, catalog, reviewed source policy, and {INDEXED_PACK_COUNT} archives"
-        if source_policy_path is not None
-        else f"metadata must describe manifest, catalog, and {INDEXED_PACK_COUNT} archives",
-    )
+    if foreign_full is not None:
+        require(isinstance(files, list) and len(files) == 2, "per-country metadata must describe its full pack and the catalog")
+    else:
+        border = border_subset_packs(metadata)
+        expected_count = INDEXED_PACK_COUNT + (3 if source_policy_path is not None else 2) + len(border)
+        require(
+            isinstance(files, list) and len(files) == expected_count,
+            f"metadata must describe manifest, catalog, reviewed source policy, {INDEXED_PACK_COUNT} archives and "
+            f"{len(border)} full packs of border subsets"
+            if source_policy_path is not None
+            else f"metadata must describe manifest, catalog, and {INDEXED_PACK_COUNT} archives",
+        )
     require(isinstance(expected_fingerprint, str) and len(expected_fingerprint) == 64, "invalid input fingerprint")
     require(isinstance(base_path, str) and base_path, "metadata input basePath is missing")
     source_generated_at = inputs.get("sourceGeneratedAt")
@@ -125,6 +154,7 @@ def verify_input_fingerprint(
     input_root = (metadata_path.parent / base_path).resolve()
     descriptors: list[dict[str, object]] = []
     resolved_inputs: set[Path] = set()
+    paths: dict[str, Path] = {}
     for index, item in enumerate(files):
         require(isinstance(item, dict), f"input descriptor {index} is invalid")
         raw_path, expected_size, expected_hash = item.get("path"), item.get("sizeBytes"), item.get("sha256")
@@ -135,16 +165,48 @@ def verify_input_fingerprint(
         require(not relative.is_absolute() and ".." not in relative.parts, f"unsafe input path: {relative}")
         path = input_root / relative
         resolved_inputs.add(path.resolve())
+        paths[raw_path] = path
         require(path.is_file(), f"input file is missing: {path}")
         require(path.stat().st_size == expected_size, f"input size changed: {path}")
         require(sha256_file(path) == expected_hash, f"input hash changed: {path}")
         descriptors.append({"path": raw_path, "size": expected_size, "sha256": expected_hash})
-    actual_fingerprint = hashlib.sha256(canonical_json(descriptors)).hexdigest()
+    if foreign_full is not None:
+        require(metadata.get("builderVersion") == FOREIGN_FULL_BUILDER_VERSION, "per-country builder version mismatch")
+        actual_fingerprint = hashlib.sha256(canonical_json({
+            "builderVersion": FOREIGN_FULL_BUILDER_VERSION, "kind": FOREIGN_FULL_KIND, "sourceId": foreign_full, "files": descriptors,
+        })).hexdigest()
+    else:
+        actual_fingerprint = hashlib.sha256(canonical_json(descriptors)).hexdigest()
     require(actual_fingerprint == expected_fingerprint, "input fingerprint mismatch")
-    require(inputs.get("packCount") == INDEXED_PACK_COUNT, f"metadata pack count must be {INDEXED_PACK_COUNT}")
-    if source_policy_path is not None:
+    expected_packs = 1 if foreign_full is not None else INDEXED_PACK_COUNT
+    require(inputs.get("packCount") == expected_packs, f"metadata pack count must be {expected_packs}")
+    if source_policy_path is not None and foreign_full is None:
         require(source_policy_path.resolve() in resolved_inputs, "reviewed GTFS source policy is absent from the input fingerprint")
-    return actual_fingerprint
+    return actual_fingerprint, paths
+
+def border_zone_rules(metadata: dict[str, object], inputs: Mapping[str, Path]) -> tuple[dict[str, float], "foreign_rules.Anchors | None"]:
+    """Radius of each border subset (manifest filter.borderZone, the hash-verified manifest input) and the anchors of
+    the hash-verified catalogue input."""
+    border = border_subset_packs(metadata)
+    if not border:
+        return {}, None
+    # The builder lists the manifest first and the catalogue second (build_ios_gtfs_schedule.read_manifest).
+    ordered = list(inputs.values())
+    require(len(ordered) >= 2, "border subsets need the manifest and catalogue inputs")
+    manifest_path, catalogue_path = ordered[0], ordered[1]
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    radius: dict[str, float] = {}
+    for entry in manifest.get("packs", []):
+        if isinstance(entry, dict) and "fullPack" in entry:
+            value = ((entry.get("filter") or {}).get("borderZone") or {}).get("radiusKm")
+            require(isinstance(value, (int, float)) and not isinstance(value, bool) and value > 0, f"{entry.get('sourceId')}: invalid borderZone radius")
+            radius[str(entry.get("sourceId"))] = float(value)
+    require(sorted(radius) == border, f"border subsets {border} differ from the manifest fullPack entries {sorted(radius)}")
+    try:
+        anchors = foreign_rules.load_anchors(catalogue_path)
+    except (OSError, ValueError) as error:
+        raise VerificationError(f"cannot read the catalogue anchors: {error}") from error
+    return radius, anchors
 
 def verify_source_policy(source_policy_path: Path, pack_source_ids: set[str]) -> None:
     """The reviewed policy must describe exactly the packs of the index, each with a licence entry."""
@@ -166,6 +228,16 @@ def verify_source_policy(source_policy_path: Path, pack_source_ids: set[str]) ->
                 f"GTFS source policy entry {source_id!r} has an invalid landing page")
         policy_ids.add(source_id)
     require(policy_ids == pack_source_ids, f"GTFS source policy ids {sorted(policy_ids)} differ from the index packs {sorted(pack_source_ids)}")
+
+def verify_source_policy_lists(source_policy_path: Path, source_id: str) -> None:
+    """A per-country index is of a source the reviewed policy lists."""
+    try:
+        policy = json.loads(source_policy_path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, json.JSONDecodeError) as error:
+        raise VerificationError(f"cannot parse GTFS source policy: {error}") from error
+    sources = policy.get("sources") if isinstance(policy, dict) else None
+    require(isinstance(sources, list) and any(isinstance(item, dict) and item.get("sourceId") == source_id for item in sources),
+            f"{source_id} is not a reviewed source of the GTFS source policy")
 
 def pack_source_ids(path: Path) -> set[str]:
     try:
@@ -203,7 +275,16 @@ def decompress_bounded(source_path: Path, destination: Path, maximum: int) -> tu
     require(not decompressor.unused_data, "trailing data after zlib stream")
     return digest.hexdigest(), size
 
-def verify_database(path: Path, metadata: dict[str, object], input_fingerprint: str) -> dict[str, int]:
+def verify_database(
+    path: Path,
+    metadata: dict[str, object],
+    input_fingerprint: str,
+    *,
+    foreign_full: str | None = None,
+    border_radius: Mapping[str, float] | None = None,
+    anchors: "foreign_rules.Anchors | None" = None,
+) -> dict[str, int]:
+    border_radius = border_radius or {}
     database = metadata.get("database")
     expected_counts = metadata.get("rowCounts")
     require(isinstance(database, dict), "metadata.database is missing")
@@ -227,7 +308,11 @@ def verify_database(path: Path, metadata: dict[str, object], input_fingerprint: 
         require(actual_indices == REQUIRED_INDICES, f"index mismatch: {sorted(actual_indices)}")
         counts = {table: int(connection.execute(f"SELECT count(*) FROM {table}").fetchone()[0]) for table in REQUIRED_TABLE_COLUMNS if table != "metadata"}
         require(counts == expected_counts, f"row count mismatch: expected {expected_counts}, got {counts}")
-        require(counts["pack"] == INDEXED_PACK_COUNT, f"database must contain exactly {INDEXED_PACK_COUNT} packs")
+        if foreign_full is not None:
+            packs = [str(row[0]) for row in connection.execute("SELECT source_id FROM pack")]
+            require(packs == [foreign_full], f"per-country database must contain only {foreign_full}, not {packs}")
+        else:
+            require(counts["pack"] == INDEXED_PACK_COUNT, f"database must contain exactly {INDEXED_PACK_COUNT} packs")
         require(counts["trip"] > 0 and counts["stop_time"] > 0, "schedule is empty")
         embedded = dict(connection.execute("SELECT key,value FROM metadata"))
         require(embedded.get("input_fingerprint_sha256") == input_fingerprint, "embedded input fingerprint mismatch")
@@ -236,14 +321,25 @@ def verify_database(path: Path, metadata: dict[str, object], input_fingerprint: 
         require(json.loads(embedded.get("row_counts_json", "null")) == counts, "embedded row counts mismatch")
         incomplete = connection.execute("SELECT count(*) FROM trip t WHERE NOT EXISTS (SELECT 1 FROM stop_time st WHERE st.trip_id=t.id)").fetchone()[0]
         require(incomplete == 0, "trip without stop_times found")
-        # A trip touches a catalogue station; in a foreign operator's pack, one with codes (FOREIGN_PACKS).
+        # A trip touches a catalogue station; in a foreign operator's pack bundled whole, one with codes (FOREIGN_PACKS
+        # but borderSubsets); a border subset or a per-country index may touch one without codes.
+        coded_only = [] if foreign_full is not None else sorted(set(FOREIGN_PACKS) - set(border_radius))
         unverified = connection.execute(
             "SELECT count(*) FROM trip t JOIN pack p ON p.id=t.pack_id WHERE NOT EXISTS ("
             "SELECT 1 FROM stop_time st JOIN stop s ON s.id=st.stop_id WHERE st.trip_id=t.id AND s.catalog_station_id IS NOT NULL "
-            f"AND (p.source_id NOT IN ({','.join('?' for _ in FOREIGN_PACKS)}) OR s.railway_code IS NOT NULL OR s.trenitalia_location_id IS NOT NULL))",
-            sorted(FOREIGN_PACKS),
+            f"AND (p.source_id NOT IN ({','.join('?' for _ in coded_only) or ''}) OR s.railway_code IS NOT NULL OR s.trenitalia_location_id IS NOT NULL))",
+            coded_only,
         ).fetchone()[0]
         require(unverified == 0, "trip not touching a verified catalog station found")
+        # A border subset names only zone stations: no stop outside the border zone carries a catalogue id (design §4.2).
+        for source_id, radius in sorted(border_radius.items()):
+            require(anchors is not None, "border subsets need the catalogue anchors")
+            for external_id, latitude, longitude in connection.execute(
+                "SELECT s.external_id, s.latitude, s.longitude FROM stop s JOIN pack p ON p.id=s.pack_id "
+                "WHERE p.source_id=? AND s.catalog_station_id IS NOT NULL", (source_id,),
+            ):
+                require(latitude is not None and longitude is not None and anchors.within(float(latitude), float(longitude), radius),
+                        f"{source_id}: stop {external_id} outside the {radius:g} km border zone carries a catalogue id")
         non_rail = connection.execute(
             "SELECT count(*) FROM route WHERE route_type != 2 AND NOT (route_type BETWEEN 100 AND 199)"
         ).fetchone()[0]
@@ -310,9 +406,16 @@ def verify(
     max_compressed_bytes: int,
     max_database_bytes: int,
     source_policy_path: Path | None = None,
+    foreign_full: str | None = None,
 ) -> dict[str, object]:
     metadata = load_metadata(metadata_path)
     require(metadata.get("schemaVersion") == METADATA_SCHEMA_VERSION, "unsupported metadata schemaVersion")
+    if foreign_full is not None:
+        require(foreign_full in FOREIGN_PACKS, f"{foreign_full} is not a foreign pack")
+        require(metadata.get("kind") == FOREIGN_FULL_KIND and metadata.get("sourceId") == foreign_full,
+                f"metadata is not the per-country index of {foreign_full}")
+    else:
+        require("kind" not in metadata, "a per-country index is not the base index")
     require(output_path.is_file(), f"compressed database is missing: {output_path}")
     compressed_size = output_path.stat().st_size
     require(compressed_size <= max_compressed_bytes, f"compressed database exceeds {max_compressed_bytes} bytes")
@@ -324,7 +427,8 @@ def verify(
     compressed_hash = sha256_file(output_path)
     require(compression.get("sha256") == compressed_hash, "compressed SHA-256 mismatch")
     require(metadata.get("maximumCompressedSizeBytes") == max_compressed_bytes, "configured maximum size differs from build metadata")
-    input_fingerprint = verify_input_fingerprint(metadata, metadata_path, source_policy_path)
+    input_fingerprint, inputs = verify_inputs(metadata, metadata_path, source_policy_path, foreign_full)
+    border_radius, anchors = border_zone_rules(metadata, inputs) if foreign_full is None else ({}, None)
     fd, raw_name = tempfile.mkstemp(prefix="binario-verify-", suffix=".sqlite")
     os.close(fd)
     raw_path = Path(raw_name)
@@ -332,9 +436,12 @@ def verify(
         database_hash, database_size = decompress_bounded(output_path, raw_path, max_database_bytes)
         require(database.get("sizeBytes") == database_size, "decompressed size metadata mismatch")
         require(database.get("sha256") == database_hash, "decompressed SHA-256 mismatch")
-        counts = verify_database(raw_path, metadata, input_fingerprint)
-        if source_policy_path is not None:
+        counts = verify_database(raw_path, metadata, input_fingerprint, foreign_full=foreign_full,
+                                 border_radius=border_radius, anchors=anchors)
+        if source_policy_path is not None and foreign_full is None:
             verify_source_policy(source_policy_path, pack_source_ids(raw_path))
+        elif source_policy_path is not None:
+            verify_source_policy_lists(source_policy_path, foreign_full)
     finally:
         raw_path.unlink(missing_ok=True)
     return {"compressedSizeBytes": compressed_size, "databaseSizeBytes": database_size, "compressedSha256": compressed_hash, "databaseSha256": database_hash, "inputFingerprintSha256": input_fingerprint, "rowCounts": counts}
@@ -342,12 +449,20 @@ def verify(
 def parse_args(argv: Sequence[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     root = Path(__file__).resolve().parents[1]
-    parser.add_argument("--input", type=Path, default=root / "ios/Resources/binario_gtfs_schedule_v1.sqlite.zlib")
-    parser.add_argument("--metadata", type=Path, default=root / "ios/Resources/binario_gtfs_schedule_v1.metadata.json")
+    parser.add_argument("--input", type=Path, help="default: the base index, or data/gtfs-foreign/ios/<id>.sqlite.zlib")
+    parser.add_argument("--metadata", type=Path, help="default: the base index metadata, or data/gtfs-foreign/ios/<id>.metadata.json")
     parser.add_argument("--source-policy", type=Path, default=root / "ios/Resources/binario_gtfs_source_policy_v1.json")
     parser.add_argument("--max-compressed-bytes", type=int, default=DEFAULT_MAX_COMPRESSED_BYTES)
     parser.add_argument("--max-database-bytes", type=int, default=DEFAULT_MAX_DATABASE_BYTES)
-    return parser.parse_args(argv)
+    parser.add_argument("--foreign-full", metavar="SOURCE_ID", help="verify the per-country index of this foreign pack")
+    args = parser.parse_args(argv)
+    if args.foreign_full:
+        directory = root / foreign_rules.IOS_FULL_DIR
+        args.input = args.input or directory / f"{args.foreign_full}.sqlite.zlib"
+        args.metadata = args.metadata or directory / f"{args.foreign_full}.metadata.json"
+    args.input = args.input or root / "ios/Resources/binario_gtfs_schedule_v1.sqlite.zlib"
+    args.metadata = args.metadata or root / "ios/Resources/binario_gtfs_schedule_v1.metadata.json"
+    return args
 
 def main(argv: Sequence[str] | None = None) -> int:
     args = parse_args(sys.argv[1:] if argv is None else argv)
@@ -358,6 +473,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             max_compressed_bytes=args.max_compressed_bytes,
             max_database_bytes=args.max_database_bytes,
             source_policy_path=args.source_policy,
+            foreign_full=args.foreign_full,
         )
     except VerificationError as error:
         print(f"error: {error}", file=sys.stderr)

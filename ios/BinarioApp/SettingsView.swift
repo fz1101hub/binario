@@ -39,6 +39,10 @@ struct SettingsView: View {
                 }
             }
 
+            // The full timetables of the neighbouring countries, downloaded only after a tap
+            // (design §4.4); hidden when this build pins none.
+            ForeignPacksSettingsSection()
+
             // Android has no switch for its live sources; the iPhone has one, on by default, and
             // says what each source receives (PRIVACY.md, «Dati in tempo reale»).
             Section("settings.live.sources_title") {
