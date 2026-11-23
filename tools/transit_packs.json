@@ -223,6 +223,30 @@
           }
         ]
       }
+    },
+    {
+      "sourceId": "palermo-amat-tram-gtfs",
+      "candidate": true,
+      "directory": "gtfs-personal",
+      "distribution": "personal",
+      "kind": "urban",
+      "format": "gtfs",
+      "operator": "AMAT Palermo",
+      "sourceUrl": "https://opendata.comune.palermo.it/js/server/uploads/dataset/gtfs/amat_gtfs.zip",
+      "licence": "CC BY 4.0 (Transitous/Transitland), da confermare sul portale",
+      "licenceEvidence": "Elenco fonti Transitous (CC0): CC-BY-4.0; la nota Binario del 2 novembre 2026 riportava «feed scaduto e dati CC BY-SA»; licenza da leggere sul portale open data del Comune di Palermo (transit_discovery)",
+      "attribution": "AMAT Palermo / Comune di Palermo",
+      "notes": "Tram AMAT di Palermo dal GTFS del portale open data del Comune; filtro urbano, autobus esclusi. Candidato: il 2 novembre 2026 il feed risultava scaduto; se la build CI non trova corse da oggi in poi non si aggiunge e resta fuori da build=all. Solo build personali finché la licenza non è letta sul portale.",
+      "android": {
+        "areas": [
+          {
+            "name": "Palermo",
+            "latitude": 38.109187,
+            "longitude": 13.367515,
+            "radiusKm": 12.0
+          }
+        ]
+      }
     }
   ]
 }

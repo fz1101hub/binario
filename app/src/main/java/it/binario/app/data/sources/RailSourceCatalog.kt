@@ -811,6 +811,23 @@ object RailSourceCatalog {
                 "fino ad allora pack solo nelle build personali (gtfs-personal/)."
         ),
         RailSourceDefinition(
+            id = SourceId("palermo-amat-tram-gtfs"),
+            displayName = "Tram di Palermo AMAT — GTFS",
+            operatorOrAuthority = "AMAT Palermo / Comune di Palermo",
+            formats = setOf(SourceFormat.GTFS_ZIP),
+            capabilities = setOf(ProviderCapability.STATION_CATALOG, ProviderCapability.JOURNEY_SEARCH),
+            accessMode = AccessMode.PUBLIC_BEST_EFFORT,
+            readiness = SourceReadiness.PERSONAL_GTFS_PACK,
+            countryCodes = setOf("IT"),
+            coverage = "Tram AMAT di Palermo; autobus esclusi.",
+            landingPage = uri("https://opendata.comune.palermo.it/"),
+            downloadOrProbeUri = uri("https://opendata.comune.palermo.it/js/server/uploads/dataset/gtfs/amat_gtfs.zip"),
+            attribution = "AMAT Palermo / Comune di Palermo",
+            notes = "Candidato di tools/transit_packs.json: il 2 novembre 2026 il feed risultava scaduto; licenza CC BY 4.0 " +
+                "secondo Transitous e Transitland, CC BY-SA secondo una nota precedente, da leggere sul portale del Comune. " +
+                "Fino ad allora pack solo nelle build personali (gtfs-personal/), e solo se il CI vi trova corse in corso."
+        ),
+        RailSourceDefinition(
             id = SourceId("roma-mobilita-gtfs-rt"),
             displayName = "Roma Servizi per la Mobilità — GTFS-Realtime Trip Updates",
             operatorOrAuthority = "Roma Servizi per la Mobilità / ATAC",

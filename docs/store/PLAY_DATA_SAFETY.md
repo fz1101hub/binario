@@ -190,6 +190,7 @@ La tabella copre ogni host `http(s)://` trovato in `app/src/main/java`, `wear/sr
 | `dati.comune.genova.it` | E | Catalogo fonti (`RailSourceCatalog.kt`) e evidenza di licenza (CC BY 4.0) nel manifest `gtfs-transit/` |
 | `developer-docs.deutschebahn.com` | E | Catalogo fonti (`InternationalSourceCatalog.kt`) |
 | `developers.deutschebahn.com` | E | Catalogo fonti (`InternationalSourceCatalog.kt`) |
+| `opendata.comune.palermo.it` | E | Catalogo fonti (`RailSourceCatalog.kt`): portale open data e GTFS AMAT dei tram di Palermo (`palermo-amat-tram-gtfs`, candidato di `tools/transit_packs.json`, letto solo dal CI); nessun traffico |
 | `opendata.swiss` | E | Evidenza di licenza del pack `ch-otd-gtfs` nel manifest GTFS (condizioni d'uso «terms_by»); nessun traffico |
 | `opentransportdata.swiss` | E | Catalogo fonti (`RailSourceCatalog.kt`) |
 | `potniski.sz.si` | E | Catalogo fonti (`RailSourceCatalog.kt`) |
