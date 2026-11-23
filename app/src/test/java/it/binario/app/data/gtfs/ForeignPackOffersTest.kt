@@ -127,9 +127,11 @@ class ForeignPackOffersTest {
 
     @Test
     fun `cancel stops the download and keeps nothing`() {
+        val started = CompletableDeferred<Unit>()
         val cancelled = CompletableDeferred<Unit>()
         val offers = offers(download = { _, _ ->
             try {
+                started.complete(Unit)
                 CompletableDeferred<Unit>().await()
                 ForeignPackDownloadResult.Installed
             } finally {
@@ -139,6 +141,9 @@ class ForeignPackOffersTest {
 
         offers.start(swiss)
         offers.awaitState { it is ForeignPackDownloadState.Running }
+        // start() shows Running before its coroutine runs: wait for the download itself, or a cancel that lands first
+        // never enters it and the finally above never runs.
+        runBlocking { withTimeout(10_000) { started.await() } }
         offers.cancel()
 
         assertEquals(ForeignPackDownloadState.Idle, offers.downloadState.value)
