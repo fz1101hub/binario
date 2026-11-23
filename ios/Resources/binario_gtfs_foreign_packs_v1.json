@@ -433,7 +433,7 @@
       "borderOnly": true,
       "lastServiceDate": "2027-04-30",
       "fullServiceUntil": "2027-04-30",
-      "sourceArchiveSha256": "04fbfab569ca370204854ada3c075d3f1572986a97edd5d43340e743f1d0a8d1",
+      "sourceArchiveSha256": "0abd6918c870c6495a722406bc0c477f8d49ad4639dd9f4513b3d5f9331eaa73",
       "servedStationIds": [
         "NC000004",
         "NC000011",
@@ -496,26 +496,26 @@
         "S75648"
       ],
       "android": {
-        "tag": "gtfs-full-sncf-gtfs-6b521d98904b",
+        "tag": "gtfs-full-sncf-gtfs-64cdb633906e",
         "asset": "sncf-gtfs.zip",
-        "url": "https://github.com/fz1101hub/binario/releases/download/gtfs-full-sncf-gtfs-6b521d98904b/sncf-gtfs.zip",
-        "sizeBytes": 5263020,
-        "sha256": "6b521d98904b8c3092c6f05dd87cc5f0ce08197c032be581bb4161af24831495",
-        "contentSha256": "13670355414f2586d416b8803e93b3add9b0a9e0b9d5c83cb258c76f1b9e20d5"
+        "url": "https://github.com/fz1101hub/binario/releases/download/gtfs-full-sncf-gtfs-64cdb633906e/sncf-gtfs.zip",
+        "sizeBytes": 5179893,
+        "sha256": "64cdb633906e7c7581b7cf0aa4253c4396226d19bbdaf8e59143b0a946fbedd1",
+        "contentSha256": "7d484a6fecd875416ae34d5889a28d22abb8b00d81be48a4705a72ce7cb42614"
       },
       "ios": {
-        "tag": "gtfs-ios-sncf-gtfs-180fdefa0c6a",
+        "tag": "gtfs-ios-sncf-gtfs-0802056bdbf4",
         "asset": "sncf-gtfs.sqlite.zlib",
-        "url": "https://github.com/fz1101hub/binario/releases/download/gtfs-ios-sncf-gtfs-180fdefa0c6a/sncf-gtfs.sqlite.zlib",
-        "sizeBytes": 2514644,
-        "sha256": "180fdefa0c6acf5fce8786035206ccaf7fe8ce521c96f5f80b9aef76b6d1b20e",
+        "url": "https://github.com/fz1101hub/binario/releases/download/gtfs-ios-sncf-gtfs-0802056bdbf4/sncf-gtfs.sqlite.zlib",
+        "sizeBytes": 2486062,
+        "sha256": "0802056bdbf42034a7cecc0c0dd285b284a76086f86df19e03ab0bbef1b14cca",
         "database": {
-          "sha256": "51db4fc637d1fe6dfe724ea10d835a05c78d51595ae682a38dc14d28d8f3cd70",
-          "sizeBytes": 12161024,
+          "sha256": "83a023a29f5d53e397b2711b6a93c3cd37ee64208c3bd4e2cb52a585f67d0a75",
+          "sizeBytes": 12001280,
           "userVersion": 2,
           "applicationId": 1112426324
         },
-        "inputFingerprintSha256": "b400c1d594ff0b79dcfc18b618e2763e76b256dabe64da91ec02e42378a8dbea"
+        "inputFingerprintSha256": "42dae086129ff1aca314625ecdb30b9abf40fa40a2a2fa22b8d0fda20ff045aa"
       }
     }
   ]
