@@ -23,6 +23,7 @@ object GtfsPackCredits {
         GtfsPackCredit("oebb-gtfs", "ÖBB Personenverkehr AG — CC BY 4.0"),
         GtfsPackCredit("sncf-gtfs", "SNCF Open Data — licenza con attribuzione (data.gouv.fr: «Other (Attribution)»)"),
         GtfsPackCredit("toscana-tft-gtfs", "Regione Toscana / T.F.T. S.p.A. — Creative Commons Attribution (CC BY)"),
+        GtfsPackCredit("trenitalia-france-gtfs", "Trenitalia France — dati del 2026-11-23 — Licence Ouverte / Open Licence 2.0 (Etalab, etalab-2.0): riuso e ridistribuzione liberi, anche commerciali, citando la fonte «Trenitalia France» e la data dell'ultimo aggiornamento"),
         GtfsPackCredit("trenitalia-gtfs", "Trenitalia S.p.A. via NAP CCISS (CAD art. 52, Reg. UE 2017/1926) — conversione GTFS © Clément Desouche, CC BY 4.0 — Dati aperti NAP CCISS (art. 52 c. 2 CAD, Reg. UE 2017/1926); conversione GTFS CC BY 4.0"),
         GtfsPackCredit("trentino-gtfs", "Trentino Trasporti — CC BY 4.0"),
         GtfsPackCredit("fal-basilicata-puglia", "Ferrovie Appulo Lucane via RAP Puglia / NAP CCISS (NeTEx, conversione Binario) — NAP CCISS: no licence - no contract (dati aperti per default, art. 52 c. 2 CAD; Reg. UE 2017/1926)"),
