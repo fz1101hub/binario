@@ -23,7 +23,7 @@
       "attribution": "Open Data Hub Alto Adige / STA — CC0",
       "licence": "CC0 1.0",
       "licenceEvidence": "https://gtfs.api.opendatahub.com/v1/dataset/sta-time-tables (Open Data Hub Alto Adige); CC0 nell'attribuzione del manifest e CC0 1.0 nella policy iOS (ios/Resources/binario_gtfs_source_policy_v1.json)",
-      "sha256": "99bdf787daa6d39984ca67d12ab971adc452492f2d17eed025ba4c7475e80950",
+      "sha256": "2c503cbc4ba1bdf2ac6360dbee2a7d3de684738f928d7bfef16b5c789a6260be",
       "lastServiceDate": "2026-12-12",
       "fullServiceUntil": "2026-12-12",
       "notes": "Refreshed from the official STA raw endpoint on 2026-08-15 and filtered offline to standard and extended railway route types. Includes 161 rail routes, 3,791 trips and 277 referenced stops. The current realtime sample contained only non-rail entities, so no rail trip match was expected in that snapshot.",
@@ -134,8 +134,8 @@
           "199"
         ]
       },
-      "sourceArchiveSha256": "03872b255aa8077e652f47961902a8cfc31765cbb7dd66795951207112eca70a",
-      "contentSha256": "6248421c83b2a54a245552182e44dfa7a76be48a8a32c844c36cf64d2c002439"
+      "sourceArchiveSha256": "7604baaf0ea2fdee47d66e1414c66e7e7727204011945f3c250f7bb71b077125",
+      "contentSha256": "d315af0f31f67134aab88d64f7e67062c9e65ff76c9188c68695b18f3cba8935"
     },
     {
       "sourceId": "arst-gtfs",
@@ -914,7 +914,7 @@
       "attribution": "SNCF Open Data",
       "licence": "SNCF Open Data — licenza con attribuzione (data.gouv.fr: «Other (Attribution)»)",
       "licenceEvidence": "https://www.data.gouv.fr/datasets/horaires-sncf e https://transport.data.gouv.fr/resources/83582 (risorsa «Réseau SNCF TGV, Intercités et TER»); ridistribuzione confermata dal titolare il 22 novembre 2026; testo integrale delle condizioni non leggibile dall'ambiente di sviluppo",
-      "sha256": "2ac249af40e0cfdb457fe81fdd48c06e114168bba06c6fbe402bd66286888555",
+      "sha256": "2865bfdaf1f3f4de344d2da5ed2c668daf12c8cd4326eaac87f206c76f976831",
       "lastServiceDate": "2027-04-30",
       "fullServiceUntil": "2027-04-30",
       "notes": "Static timetable pack; filter to services with Italian legs before showing to users.",
@@ -1028,13 +1028,13 @@
           "rule": "frontalieri-corridors-v1"
         }
       },
-      "sourceArchiveSha256": "04fbfab569ca370204854ada3c075d3f1572986a97edd5d43340e743f1d0a8d1",
-      "contentSha256": "081c4b5eeef4ccde928834d13dc713c402ed93dd85864ebf1e9d13296fc54b9c",
+      "sourceArchiveSha256": "0abd6918c870c6495a722406bc0c477f8d49ad4639dd9f4513b3d5f9331eaa73",
+      "contentSha256": "6858454db99ad3d95038a4be517e9a97f007e1523f9be88dd6f14170f2db31b2",
       "fullPack": {
         "path": "data/gtfs-foreign/android/sncf-gtfs.zip",
-        "sha256": "6b521d98904b8c3092c6f05dd87cc5f0ce08197c032be581bb4161af24831495",
-        "sizeBytes": 5263020,
-        "contentSha256": "13670355414f2586d416b8803e93b3add9b0a9e0b9d5c83cb258c76f1b9e20d5",
+        "sha256": "64cdb633906e7c7581b7cf0aa4253c4396226d19bbdaf8e59143b0a946fbedd1",
+        "sizeBytes": 5179893,
+        "contentSha256": "7d484a6fecd875416ae34d5889a28d22abb8b00d81be48a4705a72ce7cb42614",
         "lastServiceDate": "2027-04-30",
         "fullServiceUntil": "2027-04-30"
       }
@@ -1076,7 +1076,7 @@
       "licence": "Licence Ouverte / Open Licence 2.0 (Etalab, etalab-2.0): riuso e ridistribuzione liberi, anche commerciali, citando la fonte «Trenitalia France» e la data dell'ultimo aggiornamento",
       "licenceEvidence": "https://transport.data.gouv.fr/datasets/horaires-des-trains-trenitalia-france (licenza etalab-2.0 indicata per il dataset, anche nell'elenco dei feed di Transitous consultato nel novembre 2026; la scheda non è raggiungibile dall'ambiente di sviluppo); testo della licenza https://www.etalab.gouv.fr/licence-ouverte-open-licence/",
       "notes": "Orario statico pubblicato da Trenitalia France sul punto di accesso nazionale francese: Frecciarossa Parigi – Lione – Chambéry – Modane – Torino – Milano e, se presenti, Parigi – Lione – Marsiglia; filtrato ai route_type ferroviari e incluso intero. Le stesse corse sono anche nel pack trenitalia-gtfs (NAP italiano, 76 corse con fermate francesi nel novembre 2026): la copia del pack nazionale viene prima (PlannedPackOrder) e le copie uguali sono unite.",
-      "sha256": "73c401209b5c8a80dcd1816cf8ad81e081f59904110852c5b3bde8e3c9572e6e",
+      "sha256": "a6ee18b7f3bc25eb9f997d8d267b58b4dc06b1a5a30ea6609711ec375dd8bad2",
       "lastServiceDate": "2026-12-11",
       "fullServiceUntil": "2026-12-11",
       "filter": {
@@ -1187,7 +1187,7 @@
         ]
       },
       "sourceArchiveSha256": "cc2404c45f1ce93a54c0c84bbdbf8ed347cda0f2a3de499e7a0f0b1d6e0a179a",
-      "contentSha256": "6e579713ed231e5162253cc28aee0fd8ddfd5351baa2c485d2d61cb1b15b6b0f"
+      "contentSha256": "88199fe8c394c33e45b8469c9eb00fd03b4595b59649967be8fefc3fa937c57e"
     },
     {
       "sourceId": "trenitalia-gtfs",
