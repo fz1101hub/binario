@@ -60,6 +60,7 @@ object RailSourceSelectionPolicy {
         pref("db-ris-journeys", RailInformationCategory.TRAIN_REALTIME, 148, "RIS::Journeys ufficiale DB: percorso corsa completo e informazioni operative strutturate."),
         pref("sncf-gtfs-rt", RailInformationCategory.TRAIN_REALTIME, 145, "Provider runtime SNCF GTFS-RT; usa Trip Updates per lo stato corsa."),
         pref("sncf-gtfs-rt-trip-updates", RailInformationCategory.TRAIN_REALTIME, 145, "Endpoint canonico GTFS-RT ufficiale SNCF Trip Updates."),
+        pref("trenitalia-france-gtfs-rt", RailInformationCategory.TRAIN_REALTIME, 140, "Trip Updates GTFS-RT ufficiali di Trenitalia France, raccordati al solo pack trenitalia-france-gtfs."),
         pref("ch-otd-gtfs-rt", RailInformationCategory.TRAIN_REALTIME, 145, "GTFS-RT ufficiale svizzero coordinato con GTFS statico; richiede API key."),
         pref("db-ris-boards", RailInformationCategory.TRAIN_REALTIME, 143, "RIS::Boards ufficiale DB: tempi previsionali, binari e fermate modificate."),
         pref("db-timetables", RailInformationCategory.TRAIN_REALTIME, 135, "Timetables API DB: Sollfahrplan e scostamenti, semplice fallback autorizzato."),
@@ -124,7 +125,7 @@ object RailSourceSelectionPolicy {
                 if (op.containsAny("sbb", "tilo", "bls", "rhb", "rhatischebahn", "rhaetischebahn", "fart", "ssif")) 20 else 0
             "oebb-gtfs" -> if (op.containsAny("oebb", "obb", "osterreichischebundesbahnen")) 20 else 0
             "sncf-gtfs", "sncf-gtfs-rt", "sncf-gtfs-rt-trip-updates", "sncf-gtfs-rt-alerts" -> if (op.contains("sncf")) 20 else 0
-            "trenitalia-france-gtfs" -> if (op.contains("trenitalia")) 20 else 0
+            "trenitalia-france-gtfs", "trenitalia-france-gtfs-rt" -> if (op.contains("trenitalia")) 20 else 0
             "lombardia-trenord-gtfs" -> if (op.contains("trenord")) 20 else 0
             "delfi-gtfs", "delfi-gtfs-community", "db-timetables", "db-ris-boards", "db-ris-journeys", "db-ris-disruptions" ->
                 if (op.containsAny("db", "deutschebahn", "dbfernverkehr")) 20 else 0

@@ -39,6 +39,78 @@ class GtfsRealtimeEnrichedTrainDataSourceTest {
         assertFalse(SnapshotWarning.STATIC_ONLY in result.qualityWarnings)
     }
 
+    /**
+     * A train two packs publish is shown once, as the copy of one pack, with the other copy's identity kept
+     * (TrainService.alternateGtfsIdentities): the other pack's feed reaches it through that identity, only when the
+     * kept copy's own feed has nothing for it, and the two feeds are never mixed on one train.
+     */
+    @Test fun `il feed della copia scartata raggiunge il treno tenuto solo se il suo feed non ha nulla`() = runBlocking {
+        val stopTimes = DEFAULT_STOP_TIMES + "S9,12:00:00,12:00:00,A,10\nS9,12:30:00,12:30:00,B,20\n"
+        val copy = GtfsServiceIdentity("sncf-gtfs", "S9", date, listOf(GtfsStopIdentity("A", 10), GtfsStopIdentity("B", 20)))
+        val kept = service().copy(alternateGtfsIdentities = listOf(copy))
+        fun copyUpdate(seconds: Long, stop: String = "A", sequence: Int = 10) = update(sncf, seconds, stop, sequence).copy(sourceTripId = "S9")
+
+        val throughCopy = load(listOf(kept), listOf(provider(sta, emptyList()), provider(sncf, listOf(copyUpdate(240), copyUpdate(360, "B", 20)))),
+            stopTimes = stopTimes).services.single()
+        assertTrue(throughCopy.operationalStatusVerified)
+        assertEquals(4, throughCopy.delayMinutes)
+        assertEquals(listOf("12:04", "12:36"), throughCopy.stops.map { it.expected })
+        assertEquals(setOf(sncf), throughCopy.operationalSourceIds)
+
+        // Both feeds have the train: the kept copy's own (STA) gives every stop, the copy's (SNCF) none, even where
+        // STA says nothing (B).
+        val both = load(listOf(kept), listOf(provider(sta, listOf(update(sta, 420))), provider(sncf, listOf(copyUpdate(240), copyUpdate(360, "B", 20)))),
+            stopTimes = stopTimes).services.single()
+        assertEquals(7, both.delayMinutes)
+        assertEquals(listOf("12:07", "12:30"), both.stops.map { it.expected })
+        assertEquals(listOf(7, 0), both.stops.map { it.delayMinutes })
+        assertEquals(setOf(sta), both.operationalSourceIds)
+
+        // An own update without a time or a delay does not count: the copy's feed is used.
+        val untimed = update(sta, 0).copy(officialDelay = null)
+        assertEquals(4, load(listOf(kept), listOf(provider(sta, listOf(untimed)), provider(sncf, listOf(copyUpdate(240)))),
+            stopTimes = stopTimes).services.single().delayMinutes)
+
+        // A stop the copy does not list at the same minute (null) gets nothing from the copy's feed.
+        val partial = service().copy(alternateGtfsIdentities = listOf(copy.copy(stops = listOf(GtfsStopIdentity("A", 10), null))))
+        val onlyFirst = load(listOf(partial), listOf(provider(sncf, listOf(copyUpdate(240), copyUpdate(360, "B", 20)))),
+            stopTimes = stopTimes).services.single()
+        assertEquals(listOf("12:04", "12:30"), onlyFirst.stops.map { it.expected })
+        assertEquals(listOf(4, 0), onlyFirst.stops.map { it.delayMinutes })
+
+        // The copy's update is joined by its own trip, stop and sequence only: the kept copy's trip id in the other
+        // feed, or another stop sequence, attaches nothing.
+        listOf(update(sncf, 240), copyUpdate(240, sequence = 11)).forEach { stray ->
+            assertFalse(load(listOf(kept), listOf(provider(sncf, listOf(stray))), stopTimes = stopTimes).services.single().operationalStatusVerified)
+        }
+    }
+
+    /**
+     * The Paris–Lyon Frecciarossa shown as the national Trenitalia copy carries the Trenitalia France identity: the
+     * Trenitalia France feed (its own trip_ids, stops and sequences) reaches it; the feed is never asked for a search
+     * without a service or a copy of that pack.
+     */
+    @Test fun `Trenitalia France raggiunge il Frecciarossa mostrato con la copia del pack nazionale`() = runBlocking {
+        val france = "trenitalia-france-gtfs-rt"
+        val stopTimes = DEFAULT_STOP_TIMES + "70458,12:00:00,12:00:00,10009,0\n70458,12:30:00,12:30:00,10007,62\n"
+        val packs = listOf("trenitalia-gtfs", "trenitalia-france-gtfs")
+        val shown = service("trenitalia-gtfs").copy(alternateGtfsIdentities = listOf(GtfsServiceIdentity("trenitalia-france-gtfs", "70458", date,
+            listOf(GtfsStopIdentity("10009", 0), GtfsStopIdentity("10007", 62)))))
+        val updates = listOf(update(france, 300, "10009", 0), update(france, 360, "10007", 62)).map { it.copy(sourceTripId = "70458") }
+        val result = load(listOf(shown), listOf(provider(sta, emptyList()), provider(sncf, emptyList()), provider(france, updates)),
+            stopTimes = stopTimes, packs = packs)
+        val train = result.services.single()
+        assertEquals(5, train.delayMinutes)
+        assertEquals(listOf("12:05", "12:36"), train.stops.map { it.expected })
+        assertEquals(setOf(france), train.operationalSourceIds)
+        assertTrue(result.notice.orEmpty(), result.notice.orEmpty().contains("Ritardi aggiornati da Trenitalia France."))
+        assertEquals(1, calls)
+
+        calls = 0
+        load(listOf(service("trenitalia-gtfs")), listOf(provider(france, updates)), stopTimes = stopTimes, packs = packs)
+        assertEquals(0, calls)
+    }
+
     @Test fun `zero esplicito e un dato live ma un evento privo di tempi resta sconosciuto`() = runBlocking {
         assertTrue(load(listOf(service()), listOf(provider(sta, listOf(update(sta, 0))))).services.single().operationalStatusVerified)
         val unknown = update(sta, 0).copy(officialDelay = null)
@@ -211,7 +283,8 @@ class GtfsRealtimeEnrichedTrainDataSourceTest {
         services: List<TrainService>,
         providers: List<TripUpdateProvider>,
         requested: JourneyQuery = query,
-        stopTimes: String = DEFAULT_STOP_TIMES
+        stopTimes: String = DEFAULT_STOP_TIMES,
+        packs: List<String> = listOf("alto-adige-sta-gtfs", "sncf-gtfs")
     ): RouteSnapshot {
         val snapshot = RouteSnapshot(route, Direction.OUTBOUND, services, "GTFS", now.toEpochMilli(),
             now.plusSeconds(3600).toEpochMilli(), it.binario.app.data.Freshness.AGING, confidence = DataConfidence.STATIC_ONLY,
@@ -219,8 +292,7 @@ class GtfsRealtimeEnrichedTrainDataSourceTest {
         val planned = object : TrainDataSource {
             override suspend fun loadRoute(route: SavedRoute, direction: Direction): DataResult = DataResult.Success(snapshot)
         }
-        val packs = listOf("alto-adige-sta-gtfs", "sncf-gtfs").map { EmbeddedGtfsPack(SourceId(it), it) }
-        val resolver = EmbeddedGtfsRealtimeScheduleResolver({ ByteArrayInputStream(feed(stopTimes)) }, packs)
+        val resolver = EmbeddedGtfsRealtimeScheduleResolver({ ByteArrayInputStream(feed(stopTimes)) }, packs.map { EmbeddedGtfsPack(SourceId(it), it) })
         val enriched = GtfsRealtimeEnrichedTrainDataSource(planned, RealtimeEnrichmentService(providers, resolver), clock, zone)
         return (LegacyTrainDataSourceFacade(enriched, KnownProviders.defaultRegistry(), clock::millis)
             .loadRoute(route, Direction.OUTBOUND, requested) as DataResult.Success).snapshot

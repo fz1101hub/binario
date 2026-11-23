@@ -48,6 +48,7 @@ import http.client
 import io
 import json
 import os
+import re
 import shutil
 import statistics
 import sys
@@ -59,9 +60,10 @@ import zipfile
 from collections import defaultdict
 from contextlib import contextmanager
 from dataclasses import dataclass
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Any, BinaryIO, Callable, Iterable, Mapping, Sequence
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools"))
@@ -172,6 +174,26 @@ THIN_TAIL_FULL_SHARE = 0.25
 THIN_TAIL_DAYS = 31
 THIN_TAIL_CLIP_SOURCES = frozenset({"eav-gtfs"})
 SERVICE_CLIPPED_AFTER_FIELD = "serviceClippedAfter"
+
+# The apps read every pack's times as local times in APP_TIMEZONE (Android and iPhone alike), so every agency_timezone
+# of a pack must have its UTC offset on every day of the pack's calendar (checked by --check).  The reviewed sources below
+# publish their times in another zone: the build moves each trip's stop times into APP_TIMEZONE by the offset difference of
+# its service days and writes APP_TIMEZONE (:func:`to_app_time_zone`), named in tripRules (LOCAL_TIMES_RULE) with the zone
+# of the source (LOCAL_TIMES_FROM_FIELD).  Trenitalia France's GTFS of November 2026 declares agency_timezone=UTC and its
+# times are UTC (train 6656 leaves Lyon Perrache at 16:08 there, 17:08 in Italian and French time).
+APP_TIMEZONE = "Europe/Rome"
+LOCAL_TIME_SOURCES = frozenset({"trenitalia-france-gtfs"})
+LOCAL_TIMES_RULE = "local-times"
+LOCAL_TIMES_FROM_FIELD = "localTimesFrom"
+# A moved time stays a GTFS time the apps index: from 00:00:00 to before 48:00:00 of the service day.
+MAX_LOCAL_TIME_SECONDS = 48 * 3600
+# Reviewed sources that publish each train as a route of its own whose route_id is the train number, with no
+# trip_short_name (Trenitalia France: route 6656 is the Frecciarossa 6656, the number of the national pack and of the
+# realtime feed): the build copies a plain number (digits only, at most six) into an empty trip_short_name, named in
+# tripRules (TRAIN_NUMBERS_RULE).  Anything else stays as published.
+TRAIN_NUMBER_ROUTE_ID_SOURCES = frozenset({"trenitalia-france-gtfs"})
+TRAIN_NUMBERS_RULE = "train-numbers-from-route-id"
+PLAIN_TRAIN_NUMBER = re.compile(r"[0-9]{1,6}")
 
 # City networks (assets under gtfs-transit/ and gtfs-personal/): metro (1, 400-499), tram (0, 900-999), funiculars,
 # cable cars and lifts (5, 6, 7, 1300-1499) and monorail (12). Never a bus: a city feed is mostly buses, which
@@ -885,6 +907,19 @@ def published_service_clip(archive: zipfile.ZipFile, source_id: str, provenance:
         raise BuildError(f"{source_id}: {SERVICE_CLIPPED_AFTER_FIELD} non valido") from error
 
 
+def published_local_times_from(archive: zipfile.ZipFile, source_id: str, provenance: str | None) -> str | None:
+    """The localTimesFrom of the published pack the input *is* (``provenance``), so that filtering it again keeps the
+    zone the source was in; None for any other input."""
+    entry = filter_manifest_entry(archive) if provenance is not None else None
+    if entry is None:
+        return None
+    try:
+        value = json.loads(archive.read(entry).decode("utf-8")).get(LOCAL_TIMES_FROM_FIELD)
+    except (UnicodeDecodeError, json.JSONDecodeError, AttributeError) as error:
+        raise BuildError(f"{source_id}: {LOCAL_TIMES_FROM_FIELD} non valido") from error
+    return value if isinstance(value, str) and value else None
+
+
 def verify_service_clip(
     source_id: str,
     value: object,
@@ -916,6 +951,167 @@ def verify_service_clip(
     days = daily_trip_counts(trip_rows, calendar, calendar_dates)
     if not days or days.get(cut, 0) < max(days.values()) * THIN_TAIL_FULL_SHARE:
         raise BuildError(f"{source_id}: {SERVICE_CLIPPED_AFTER_FIELD} {cut} non è un giorno di orario completo")
+
+
+def agency_zone(source_id: str, agency_rows: Iterable[Mapping[str, str]]) -> tuple[str, ZoneInfo] | None:
+    """The one agency_timezone of a pack (GTFS requires the same zone for every agency); None when none is given."""
+    names = {row.get("agency_timezone", "").strip() for row in agency_rows} - {""}
+    if not names:
+        return None
+    if len(names) > 1:
+        raise BuildError(f"{source_id}: agency_timezone diversi in agency.txt: {', '.join(log_safe(name) for name in sorted(names))}")
+    name = names.pop()
+    try:
+        return name, ZoneInfo(name)
+    except (ZoneInfoNotFoundError, ValueError) as error:
+        raise BuildError(f"{source_id}: agency_timezone non valido: {log_safe(name)}") from error
+
+
+def noon_offset_minutes(zone: ZoneInfo, day: date) -> int:
+    """The UTC offset of ``zone`` at noon of ``day``: GTFS times count from noon minus twelve hours of the service day."""
+    offset = datetime(day.year, day.month, day.day, 12, tzinfo=zone).utcoffset()
+    assert offset is not None
+    return int(offset.total_seconds()) // 60
+
+
+def to_app_time_zone(
+    source_id: str,
+    agency_rows: Sequence[Mapping[str, str]],
+    trip_rows: Sequence[Mapping[str, str]],
+    stop_time_rows: Sequence[Mapping[str, str]],
+    days_by_service: Mapping[str, set[date]],
+) -> tuple[tuple[dict[str, str], ...], tuple[Mapping[str, str], ...], str, dict[str, int]]:
+    """Agency and stop times of a LOCAL_TIME_SOURCES pack moved into APP_TIMEZONE, the zone it was in, and counts.
+
+    A time on service day D in zone Z is APP_TIMEZONE's time plus (offset of APP_TIMEZONE - offset of Z) at noon of D,
+    whatever the time: so every trip moves by one amount, that of its service days.  Refused: a pack without
+    agency_timezone, a trip whose service days have different amounts (a calendar across a change of summer time), and
+    a moved time outside 00:00:00 to 48:00:00.  Moving a pack already in APP_TIMEZONE changes nothing.
+    """
+    found = agency_zone(source_id, agency_rows)
+    if found is None:
+        raise BuildError(f"{source_id}: agency_timezone mancante: il fuso degli orari non è noto")
+    name, zone = found
+    app = ZoneInfo(APP_TIMEZONE)
+    shift_by_trip: dict[str, int] = {}
+    for row in trip_rows:
+        trip_id = row.get("trip_id", "")
+        shifts = {noon_offset_minutes(app, day) - noon_offset_minutes(zone, day) for day in days_by_service.get(row.get("service_id", ""), ())}
+        if len(shifts) > 1:
+            raise BuildError(
+                f"{source_id}: il trip {log_safe(trip_id)} circola in giorni con scarti diversi fra {log_safe(name)} e "
+                f"{APP_TIMEZONE} ({', '.join(f'{shift:+d} min' for shift in sorted(shifts))}): orari non convertibili"
+            )
+        shift_by_trip[trip_id] = shifts.pop() if shifts else 0
+    moved: list[Mapping[str, str]] = []
+    for row in stop_time_rows:
+        shift = shift_by_trip.get(row.get("trip_id", ""), 0)
+        if shift == 0:
+            moved.append(row)
+            continue
+        updated = dict(row)
+        for column in ("arrival_time", "departure_time"):
+            value = row.get(column, "")
+            if not value.strip():
+                continue
+            seconds = gtfs_seconds(value)
+            if seconds is None:
+                raise BuildError(f"{source_id}: {column} non leggibile nel trip {log_safe(row.get('trip_id', ''))}")
+            local = seconds + shift * 60
+            if not 0 <= local < MAX_LOCAL_TIME_SECONDS:
+                raise BuildError(
+                    f"{source_id}: {column} {log_safe(value)} del trip {log_safe(row.get('trip_id', ''))} in {APP_TIMEZONE} "
+                    f"({shift:+d} min) uscirebbe dal giorno di servizio GTFS"
+                )
+            updated[column] = gtfs_time(local)
+        moved.append(updated)
+    counts: dict[str, int] = {}
+    for shift in shift_by_trip.values():
+        counts[f"{shift:+d}"] = counts.get(f"{shift:+d}", 0) + 1
+    agency = tuple({**row, "agency_timezone": APP_TIMEZONE} for row in agency_rows)
+    return agency, tuple(moved), name, counts
+
+
+def train_numbers_from_route_ids(trip_rows: Sequence[Mapping[str, str]]) -> tuple[tuple[Mapping[str, str], ...], int]:
+    """Trips of a TRAIN_NUMBER_ROUTE_ID_SOURCES pack with their route_id as trip_short_name where that is empty and the
+    route_id is a plain train number (:data:`PLAIN_TRAIN_NUMBER`); how many were filled."""
+    filled = 0
+    rows: list[Mapping[str, str]] = []
+    for row in trip_rows:
+        route_id = row.get("route_id", "").strip()
+        if not row.get("trip_short_name", "").strip() and PLAIN_TRAIN_NUMBER.fullmatch(route_id):
+            rows.append({**row, "trip_short_name": route_id})
+            filled += 1
+        else:
+            rows.append(row)
+    return tuple(rows), filled
+
+
+def calendar_span(calendar: CsvTable, calendar_dates: CsvTable, source_id: str) -> tuple[date, date] | None:
+    """First and last day named by calendar.txt (start_date to end_date) and calendar_dates.txt; None without any."""
+    days: list[date] = []
+    for row in calendar.rows:
+        for column in ("start_date", "end_date"):
+            value = row.get(column, "").strip()
+            if value:
+                days.append(parse_gtfs_date(value, f"{source_id}:calendar.txt"))
+    days.extend(parse_gtfs_date(row.get("date", "").strip(), f"{source_id}:calendar_dates.txt") for row in calendar_dates.rows)
+    return (min(days), max(days)) if days else None
+
+
+def verify_local_times(
+    source_id: str,
+    metadata: Mapping[str, Any],
+    agency_rows: Sequence[Mapping[str, str]],
+    calendar: CsvTable,
+    calendar_dates: CsvTable,
+) -> None:
+    """Every agency_timezone of a pack has APP_TIMEZONE's offset on each day of its calendar (the apps read the times
+    as local); a LOCAL_TIME_SOURCES pack declares the move (LOCAL_TIMES_RULE, LOCAL_TIMES_FROM_FIELD) and APP_TIMEZONE."""
+    rules = metadata.get("tripRules") or []
+    declared = LOCAL_TIMES_RULE in rules or LOCAL_TIMES_FROM_FIELD in metadata
+    if declared and source_id not in LOCAL_TIME_SOURCES:
+        raise BuildError(f"{source_id}: {LOCAL_TIMES_RULE} su una fonte non rivista (LOCAL_TIME_SOURCES)")
+    found = agency_zone(source_id, agency_rows)
+    if source_id in LOCAL_TIME_SOURCES:
+        origin = metadata.get(LOCAL_TIMES_FROM_FIELD)
+        if LOCAL_TIMES_RULE not in rules or not isinstance(origin, str) or not origin:
+            raise BuildError(
+                f"{source_id}: orari non portati in {APP_TIMEZONE} ({LOCAL_TIMES_RULE} e {LOCAL_TIMES_FROM_FIELD} mancanti): "
+                "ricostruire il pack"
+            )
+        if found is None or found[0] != APP_TIMEZONE:
+            raise BuildError(f"{source_id}: agency_timezone non è {APP_TIMEZONE} dopo {LOCAL_TIMES_RULE}")
+    if found is None:
+        return
+    name, zone = found
+    span = calendar_span(calendar, calendar_dates, source_id)
+    if span is None:
+        return
+    app = ZoneInfo(APP_TIMEZONE)
+    day = span[0]
+    while day <= span[1]:
+        if noon_offset_minutes(zone, day) != noon_offset_minutes(app, day):
+            raise BuildError(
+                f"{source_id}: agency_timezone {log_safe(name)} il {day} non ha lo scarto da UTC di {APP_TIMEZONE}: "
+                "le app leggono gli orari come ora italiana (vedi LOCAL_TIME_SOURCES)"
+            )
+        day += timedelta(days=1)
+
+
+def verify_train_numbers(source_id: str, metadata: Mapping[str, Any], trip_rows: Sequence[Mapping[str, str]]) -> None:
+    """A TRAIN_NUMBER_ROUTE_ID_SOURCES pack declares TRAIN_NUMBERS_RULE and has no trip left with an empty
+    trip_short_name and a plain-number route_id; no other pack declares it."""
+    declared = TRAIN_NUMBERS_RULE in (metadata.get("tripRules") or [])
+    if source_id not in TRAIN_NUMBER_ROUTE_ID_SOURCES:
+        if declared:
+            raise BuildError(f"{source_id}: {TRAIN_NUMBERS_RULE} su una fonte non rivista (TRAIN_NUMBER_ROUTE_ID_SOURCES)")
+        return
+    if not declared:
+        raise BuildError(f"{source_id}: numeri treno non ricavati dal route_id ({TRAIN_NUMBERS_RULE} mancante): ricostruire il pack")
+    _, filled = train_numbers_from_route_ids(trip_rows)
+    if filled:
+        raise BuildError(f"{source_id}: {filled} trip senza trip_short_name con un route_id numero treno")
 
 
 def selected_routes(source_id: str, routes: CsvTable) -> tuple[tuple[dict[str, str], ...], dict[str, Any]]:
@@ -1568,6 +1764,23 @@ def filter_archive(
         if not kept_agency:
             raise BuildError(f"{source_id}: nessuna agenzia dopo filtro")
 
+        trips_header = tuple(key for key in trips.header if key != "shape_id")
+        if source_id in LOCAL_TIME_SOURCES:
+            kept_agency, kept_stop_times, zone_name, shifts = to_app_time_zone(
+                source_id, kept_agency, kept_trips, kept_stop_times, service_days(calendar, calendar_dates, source_id),
+            )
+            trip_rules.append(LOCAL_TIMES_RULE)
+            # Filtering the published pack again (already in APP_TIMEZONE) keeps the zone the source was in.
+            run_metadata[LOCAL_TIMES_FROM_FIELD] = published_local_times_from(archive, source_id, provenance) or zone_name
+            print(f"{source_id}: orari da {log_safe(zone_name)} a {APP_TIMEZONE}, trip per scarto in minuti "
+                  f"{log_safe(json.dumps(shifts, sort_keys=True))}", file=sys.stderr)
+        if source_id in TRAIN_NUMBER_ROUTE_ID_SOURCES:
+            kept_trips, filled = train_numbers_from_route_ids(kept_trips)
+            if "trip_short_name" not in trips_header:
+                trips_header = (*trips_header, "trip_short_name")
+            trip_rules.append(TRAIN_NUMBERS_RULE)
+            print(f"{source_id}: {filled} trip_short_name ricavati dal route_id", file=sys.stderr)
+
         kept_calendar = tuple(row for row in calendar.rows if row.get("service_id", "") in service_ids)
         kept_calendar_dates = tuple(row for row in calendar_dates.rows if row.get("service_id", "") in service_ids)
         filtered_calendar = CsvTable(calendar.header, kept_calendar)
@@ -1582,7 +1795,7 @@ def filter_archive(
             "stops.txt": CsvTable(stops.header, kept_stops),
             "routes.txt": CsvTable(routes.header, kept_routes),
             "trips.txt": CsvTable(
-                tuple(key for key in trips.header if key != "shape_id"),
+                trips_header,
                 tuple({key: value for key, value in row.items() if key != "shape_id"} for row in kept_trips),
             ),
             "stop_times.txt": CsvTable(stop_times.header, kept_stop_times),
@@ -2184,6 +2397,12 @@ def verify_filter_from_asset(path: Path, source_id: str) -> str:
             expired = expired_trips(tables["trips.txt"].rows, service_days(calendar, calendar_dates, source_id), runs_from)
             if expired:
                 raise BuildError(f"{source_id}: {len(expired)} trip non circolano più dal {runs_from} ({TRIPS_RUN_FROM_FIELD})")
+        calendar = read_table(archive, "calendar.txt") or empty_calendar()
+        calendar_dates = read_table(archive, "calendar_dates.txt") or empty_calendar_dates()
+        agency = read_table(archive, "agency.txt", required=True)
+        assert agency is not None
+        verify_local_times(source_id, metadata, agency.rows, calendar, calendar_dates)
+        verify_train_numbers(source_id, metadata, tables["trips.txt"].rows)
         if metadata.get(SERVICE_CLIPPED_AFTER_FIELD) is not None:
             verify_service_clip(
                 source_id, metadata[SERVICE_CLIPPED_AFTER_FIELD], tables["trips.txt"].rows,

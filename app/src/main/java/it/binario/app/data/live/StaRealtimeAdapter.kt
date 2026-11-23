@@ -57,6 +57,9 @@ class StaRealtimeAdapter(
     private val clock: Clock = Clock.systemUTC(),
     private val cacheTtl: Duration = Duration.ofSeconds(90)
 ) : TripUpdateProvider {
+    /** The first refusal of the host (403, 429, 503 with Retry-After) pauses the feed: no further request until then. */
+    private val refusals = PublicSourceRefusalGate(clock, "Open Data Hub Alto Adige")
+
     override val descriptor = ProviderDescriptor(
         id = SOURCE_ID,
         displayName = "Open Data Hub Alto Adige — GTFS-Realtime",
@@ -79,7 +82,7 @@ class StaRealtimeAdapter(
         }
         tripUpdateGuard.blocked()?.let { return@withLock it }
         try {
-            val json = fetcher.fetch(StaRealtimeFeed.TRIP_UPDATES)
+            val json = refusals.call { fetcher.fetch(StaRealtimeFeed.TRIP_UPDATES) }
             val (observed, updates) = withContext(Dispatchers.Default) { observedAt(json, now).let { it to parseTripUpdates(json, it) } }
             val expiresAt = now.plus(cacheTtl)
             tripUpdateCache = CachedTripUpdates(updates, observed, expiresAt)

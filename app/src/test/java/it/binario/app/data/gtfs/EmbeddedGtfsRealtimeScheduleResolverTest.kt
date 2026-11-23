@@ -54,6 +54,24 @@ class EmbeddedGtfsRealtimeScheduleResolverTest {
         assertEquals("08:23", resolved?.scheduledAt?.toLocalTime()?.toString()?.take(5))
     }
 
+    /**
+     * The app reads a pack's times as local times. A pack whose agency_timezone has another offset that day (the
+     * Trenitalia France GTFS of November 2026 publishes its times in UTC) joins no update: its scheduled time would be
+     * an hour off. A zone with the same offset (Europe/Paris), or no agency_timezone, changes nothing.
+     */
+    @Test
+    fun `un pack con orari in un altro fuso non raccorda aggiornamenti`() {
+        val update = RealtimeStopUpdate(TrainRunId("lombardia-trenord-gtfs:T1"), "T1", "MO", 2, observedAt = observedAt, source = source)
+        fun resolved(timezone: String) = EmbeddedGtfsRealtimeScheduleResolver(
+            openAsset = { ByteArrayInputStream(feed(agencyTimezone = timezone)) },
+            packs = listOf(pack)
+        ).resolve(sourceId, update, LocalDate.of(2026, 8, 15), ZoneId.of("Europe/Rome"))
+        assertNull(resolved("UTC"))
+        assertEquals("08:23", resolved("Europe/Paris")?.scheduledAt?.toLocalTime()?.toString()?.take(5))
+        assertEquals("08:23", resolved("Europe/Rome")?.scheduledAt?.toLocalTime()?.toString()?.take(5))
+        assertEquals("08:23", resolved("not a zone")?.scheduledAt?.toLocalTime()?.toString()?.take(5))
+    }
+
     @Test
     fun `gestisce correttamente orari GTFS oltre mezzanotte`() {
         val resolver = EmbeddedGtfsRealtimeScheduleResolver(
@@ -161,8 +179,10 @@ class EmbeddedGtfsRealtimeScheduleResolverTest {
             source = source
         )
 
-    private fun feed(): ByteArray {
-        val content = mapOf(
+    private fun feed(agencyTimezone: String? = null): ByteArray {
+        val content = listOfNotNull(
+            agencyTimezone?.let { "agency.txt" to "agency_id,agency_name,agency_url,agency_timezone\nA,Test,https://example.test,$it\n" }
+        ).toMap() + mapOf(
             "stops.txt" to "stop_id,stop_name\nMI,Milano Centrale\nMO,Monza\nCO,Como S. Giovanni\n",
             "stop_times.txt" to "trip_id,arrival_time,departure_time,stop_id,stop_sequence\nT1,08:05:00,08:05:00,MI,1\nT1,08:22:00,08:23:00,MO,2\nT1,08:50:00,08:50:00,CO,3\nN1,25:10:00,25:10:00,CO,1\nD1,02:30:00,02:30:00,MI,1\nEMPTY,,,MI,1\nTEXT,nope,nope,MI,1\nHOURS,100:00:00,100:00:00,MI,1\nMINUTES,08:60:00,08:60:00,MI,1\nSECONDS,08:00:60,08:00:60,MI,1\nCOMPONENTS,08:00:00:00,08:00:00:00,MI,1\nNEGATIVE,-1:00:00,-1:00:00,MI,1\n"
         )

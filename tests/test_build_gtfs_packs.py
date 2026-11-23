@@ -1014,6 +1014,167 @@ def filtered(source: Path, output: Path, source_id: str) -> tuple[dict[str, list
         return times, json.loads(archive.read(builder.FILTER_MANIFEST_MEMBER))
 
 
+def write_france_feed(
+    target: Path,
+    trips: list[tuple[str, str, str, list[tuple[str, str, str]]]],
+    calendar_dates: dict[str, list[str]],
+    *,
+    timezone: str = "UTC",
+    with_short_names: dict[str, str] | None = None,
+) -> None:
+    """A feed shaped like Trenitalia France's: one route per train whose route_id is the number, no trip_short_name,
+    times in ``timezone``; ``trips`` are (trip_id, route_id, service_id, [(stop, arrival, departure), ...]), and
+    ``calendar_dates`` the days of each service."""
+    stops = sorted({stop for _, _, _, calls in trips for stop, _, _ in calls})
+    routes = sorted({route for _, route, _, _ in trips})
+    short = with_short_names or {}
+    with zipfile.ZipFile(target, "w", zipfile.ZIP_DEFLATED) as archive:
+        archive.writestr("agency.txt", f"agency_id,agency_name,agency_url,agency_timezone\nTI,Trenitalia,https://x.invalid,{timezone}\n")
+        archive.writestr("stops.txt", "stop_id,stop_name,stop_lat,stop_lon\n" + "".join(
+            f"{stop},{stop},45.{index},5.{index}\n" for index, stop in enumerate(stops)))
+        archive.writestr("routes.txt", "route_id,agency_id,route_short_name,route_long_name,route_type\n" + "".join(
+            f"{route},TI,Paris/Lyon,Paris/Lyon,2\n" for route in routes))
+        if short:
+            archive.writestr("trips.txt", "route_id,service_id,trip_id,trip_short_name\n" + "".join(
+                f"{route},{service},{trip_id},{short.get(trip_id, '')}\n" for trip_id, route, service, _ in trips))
+        else:
+            archive.writestr("trips.txt", "route_id,service_id,trip_id\n" + "".join(
+                f"{route},{service},{trip_id}\n" for trip_id, route, service, _ in trips))
+        archive.writestr("stop_times.txt", "trip_id,arrival_time,departure_time,stop_id,stop_sequence\n" + "".join(
+            f"{trip_id},{arrival},{departure},{stop},{sequence * 8}\n"
+            for trip_id, _, _, calls in trips for sequence, (stop, arrival, departure) in enumerate(calls)))
+        archive.writestr("calendar_dates.txt", "service_id,date,exception_type\n" + "".join(
+            f"{service},{day},1\n" for service, days in calendar_dates.items() for day in days))
+
+
+class LocalTimesTest(unittest.TestCase):
+    """Trenitalia France publishes UTC times and the train number only as route_id: the build moves the times into
+    Europe/Rome per service day and copies the number into trip_short_name; --check refuses a pack in another offset."""
+
+    SOURCE = "trenitalia-france-gtfs"
+    LYON = [("PERRACHE", "16:08:00", "16:08:00"), ("PARTDIEU", "16:16:00", "16:22:00"), ("PARIS", "18:18:00", "18:18:00")]
+
+    def setUp(self) -> None:
+        self.temp = Path(tempfile.mkdtemp(prefix="gtfs-local-times-test-"))
+        self.addCleanup(shutil.rmtree, self.temp, ignore_errors=True)
+
+    def build(self, trips, days, source_id: str = SOURCE, **feed):
+        source = self.temp / f"{source_id}-source.zip"
+        write_france_feed(source, trips, days, **feed)
+        output = self.temp / f"{source_id}.zip"
+        with mock.patch.object(sys, "stderr", io.StringIO()):
+            builder.filter_archive(source, output, source_id)
+        with zipfile.ZipFile(output) as archive:
+            times: dict[str, list[dict[str, str]]] = {}
+            for row in table(archive, "stop_times.txt"):
+                times.setdefault(row["trip_id"], []).append(row)
+            return output, times, table(archive, "trips.txt"), table(archive, "agency.txt"), json.loads(
+                archive.read(builder.FILTER_MANIFEST_MEMBER))
+
+    def test_times_move_by_the_offset_of_each_trip_service_day(self) -> None:
+        trips = [
+            ("70458", "6656", "NOV", self.LYON),                              # 24 Nov 2026: CET, +60
+            ("70300", "6656", "OCT", self.LYON),                              # 20 Oct 2026: CEST, +120
+            ("70310", "6656", "DST", self.LYON),                              # 25 Oct 2026, the change: noon is CET, +60
+            ("70900", "6662", "DEC", self.LYON),                              # 12-14 Dec 2026, the timetable change: +60
+            ("70950", "9283", "NOV", [("PARIS", "22:30:00", "22:30:00"), ("TORINO", "23:59:00", "24:05:00"), ("MILANO", "25:00:00", "25:00:00")]),
+        ]
+        days = {"NOV": ["20261124"], "OCT": ["20261020"], "DST": ["20261025"], "DEC": ["20261212", "20261213", "20261214"]}
+        output, times, trip_rows, agency, metadata = self.build(trips, days)
+        departures = {trip: [row["departure_time"] for row in rows] for trip, rows in times.items()}
+        self.assertEqual(["17:08:00", "17:22:00", "19:18:00"], departures["70458"])
+        self.assertEqual(["18:08:00", "18:22:00", "20:18:00"], departures["70300"])
+        self.assertEqual(["17:08:00", "17:22:00", "19:18:00"], departures["70310"])
+        self.assertEqual(["17:08:00", "17:22:00", "19:18:00"], departures["70900"])
+        # After midnight the times go on past 24:00 on the same service day, as GTFS counts them.
+        self.assertEqual(["23:30:00", "25:05:00", "26:00:00"], departures["70950"])
+        self.assertEqual("17:16:00", times["70458"][1]["arrival_time"])
+        self.assertEqual([builder.APP_TIMEZONE], [row["agency_timezone"] for row in agency])
+        self.assertEqual({"70458": "6656", "70300": "6656", "70310": "6656", "70900": "6662", "70950": "9283"},
+                         {row["trip_id"]: row["trip_short_name"] for row in trip_rows})
+        self.assertEqual([builder.LOCAL_TIMES_RULE, builder.TRAIN_NUMBERS_RULE], metadata["tripRules"])
+        self.assertEqual("UTC", metadata[builder.LOCAL_TIMES_FROM_FIELD])
+        builder.verify_filter_from_asset(output, self.SOURCE)
+
+        # Filtering the pack again (now in Europe/Rome) changes no member, and the published pack keeps where it came from.
+        again = self.temp / "again.zip"
+        with mock.patch.object(sys, "stderr", io.StringIO()):
+            builder.filter_archive(output, again, self.SOURCE, published_entries=[
+                {"sha256": builder.sha256_file(output), "sourceArchiveSha256": metadata["sourceArchiveSha256"]}])
+        with zipfile.ZipFile(again) as archive:
+            refiltered = json.loads(archive.read(builder.FILTER_MANIFEST_MEMBER))
+        self.assertEqual(metadata["memberSha256"], refiltered["memberSha256"])
+        self.assertEqual("UTC", refiltered[builder.LOCAL_TIMES_FROM_FIELD])
+        self.assertEqual(output.read_bytes(), again.read_bytes())
+
+    def test_a_trip_across_a_change_of_summer_time_is_refused(self) -> None:
+        with self.assertRaisesRegex(builder.BuildError, r"scarti diversi.*\+60 min, \+120 min"):
+            self.build([("70458", "6656", "BOTH", self.LYON)], {"BOTH": ["20261024", "20261026"]})
+
+    def test_a_time_that_would_leave_the_service_day_is_refused(self) -> None:
+        late = [("PARIS", "46:30:00", "46:30:00"), ("MILANO", "47:10:00", "47:10:00")]
+        with self.assertRaisesRegex(builder.BuildError, r"uscirebbe dal giorno di servizio"):
+            self.build([("70999", "9283", "NOV", late)], {"NOV": ["20261124"]})
+        # A zone ahead of Italy would move a time before midnight of the service day.
+        early = [("PARIS", "00:30:00", "00:30:00"), ("LYON", "02:00:00", "02:00:00")]
+        with self.assertRaisesRegex(builder.BuildError, r"uscirebbe dal giorno di servizio"):
+            self.build([("70998", "9283", "NOV", early)], {"NOV": ["20261124"]}, timezone="Europe/Athens")
+
+    def test_a_pack_without_agency_timezone_is_refused(self) -> None:
+        with self.assertRaisesRegex(builder.BuildError, r"agency_timezone mancante"):
+            self.build([("70458", "6656", "NOV", self.LYON)], {"NOV": ["20261124"]}, timezone="")
+
+    def test_only_a_plain_number_becomes_the_train_number(self) -> None:
+        trips = [("A", "6656", "NOV", self.LYON), ("B", "R-12", "NOV", self.LYON), ("C", "1234567", "NOV", self.LYON),
+                 ("D", "6658", "NOV", self.LYON)]
+        _, _, trip_rows, _, _ = self.build(trips, {"NOV": ["20261124"]}, timezone="Europe/Paris", with_short_names={"D": "FR 6658"})
+        self.assertEqual({"A": "6656", "B": "", "C": "", "D": "FR 6658"}, {row["trip_id"]: row["trip_short_name"] for row in trip_rows})
+
+    def test_check_refuses_the_published_utc_pack_and_any_pack_in_another_offset(self) -> None:
+        # The Trenitalia France pack of November 2026 as applied: UTC times, no rule recorded.
+        published = self.temp / "published"
+        published.mkdir()
+        write_france_feed(published / "raw.zip", [("70458", "6656", "NOV", self.LYON)], {"NOV": ["20261124"]})
+        with mock.patch.object(sys, "stderr", io.StringIO()):
+            builder.filter_archive(published / "raw.zip", published / "plain.zip", "some-rail-gtfs")
+        # The same bytes declared as the Trenitalia France pack, the way the pack applied in November 2026 was built.
+        with zipfile.ZipFile(published / "plain.zip") as archive:
+            members = {name: archive.read(name) for name in archive.namelist()}
+        metadata = json.loads(members[builder.FILTER_MANIFEST_MEMBER])
+        metadata["sourceId"] = self.SOURCE
+        members[builder.FILTER_MANIFEST_MEMBER] = json.dumps(metadata).encode()
+        utc_pack = published / "trenitalia-france-gtfs.zip"
+        with zipfile.ZipFile(utc_pack, "w") as archive:
+            for name, data in members.items():
+                archive.writestr(name, data)
+        with self.assertRaisesRegex(builder.BuildError, r"orari non portati in Europe/Rome"):
+            builder.verify_filter_from_asset(utc_pack, self.SOURCE)
+        # Any other source in an offset that is not Italy's on a day of its calendar fails too.
+        with self.assertRaisesRegex(builder.BuildError, r"agency_timezone UTC il 2026-11-24"):
+            builder.verify_filter_from_asset(published / "plain.zip", "some-rail-gtfs")
+        # Europe/Paris has Italy's offset every day: nothing to move, nothing refused.
+        write_france_feed(published / "paris.zip", [("70458", "6656", "NOV", self.LYON)], {"NOV": ["20261124"]}, timezone="Europe/Paris")
+        with mock.patch.object(sys, "stderr", io.StringIO()):
+            builder.filter_archive(published / "paris.zip", published / "paris-out.zip", "some-rail-gtfs")
+        builder.verify_filter_from_asset(published / "paris-out.zip", "some-rail-gtfs")
+
+    def test_the_rules_belong_to_the_reviewed_sources_only(self) -> None:
+        output, _, _, _, _ = self.build([("70458", "6656", "NOV", self.LYON)], {"NOV": ["20261124"]})
+        with self.assertRaisesRegex(builder.BuildError, r"metadati filtro non corrispondenti|fonte non rivista"):
+            builder.verify_filter_from_asset(output, "some-rail-gtfs")
+        with mock.patch.object(builder, "LOCAL_TIME_SOURCES", frozenset()):
+            with self.assertRaisesRegex(builder.BuildError, r"local-times su una fonte non rivista"):
+                builder.verify_local_times(self.SOURCE, {"tripRules": [builder.LOCAL_TIMES_RULE]}, [], builder.empty_calendar(),
+                                           builder.empty_calendar_dates())
+        with mock.patch.object(builder, "TRAIN_NUMBER_ROUTE_ID_SOURCES", frozenset()):
+            with self.assertRaisesRegex(builder.BuildError, r"train-numbers-from-route-id su una fonte non rivista"):
+                builder.verify_train_numbers(self.SOURCE, {"tripRules": [builder.TRAIN_NUMBERS_RULE]}, [])
+        # A pack that kept a trip without its number is refused.
+        with self.assertRaisesRegex(builder.BuildError, r"1 trip senza trip_short_name"):
+            builder.verify_train_numbers(self.SOURCE, {"tripRules": [builder.TRAIN_NUMBERS_RULE]},
+                                         [{"trip_id": "X", "route_id": "6656", "trip_short_name": ""}])
+
+
 class ItineraryCopiesTest(unittest.TestCase):
     """Audit2 tools-data-1 / android-planner-1: Italo's combined itineraries published as trips."""
 
