@@ -479,7 +479,8 @@ final class AppModel: ObservableObject {
     /// The «Affidabilità ultimi N giorni» block of a listed train: boarded at the query's origin
     /// and measured at its destination; nil without statistics or enough samples.
     func reliabilityDetail(for service: TrainService, query: JourneyQuery) -> NetworkReliabilityDetail? {
-        guard let reliabilityStats else { return nil }
+        // A bus of the timetable has no train statistics (as on Android).
+        guard let reliabilityStats, !service.isBus else { return nil }
         return NetworkReliabilityDetail.of(
             reliabilityStats,
             number: service.number,

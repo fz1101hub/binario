@@ -45,7 +45,51 @@ final class SharedRulesContractTests: XCTestCase {
         }
     }
 
+    /// journey-leg-vehicles-v1.json: what a leg of the timetable travels on and the label it shows,
+    /// as Android's `journeyLegMode` and `JourneyLegVehicle.of` say (JourneyLegVehiclesContractTest.kt).
+    func testEverySharedLegHasTheSharedModeVehicleAndLabel() throws {
+        let rules = try JSONDecoder().decode(
+            LegVehicleRules.self, from: Data(contentsOf: contract.appendingPathComponent("journey-leg-vehicles-v1.json"))
+        )
+        XCTAssertEqual(Set(rules.scheduledCoachPacks), TimetableLegMode.scheduledCoachPacks)
+        XCTAssertFalse(rules.legVehicles.isEmpty)
+        for item in rules.legVehicles {
+            let label = "\(item.routeType) \(item.pack) \(item.operatorName ?? "-") \(item.line ?? "-"): \(item.why)"
+            let routeType = try XCTUnwrap(Int64(item.routeType), label)
+            let mode = TimetableLegMode.of(routeType: routeType, sourceID: item.pack)
+            XCTAssertEqual(mode?.rawValue, item.mode, label)
+            guard let mode else {
+                XCTAssertNil(item.vehicle, label)
+                continue
+            }
+            let vehicle = TimetableVehicle.of(mode: mode, operatorName: item.operatorName, lineLabel: item.line)
+            XCTAssertEqual(vehicle.rawValue, item.vehicle, label)
+            XCTAssertEqual(vehicle.labelKey, item.iosLabel, label)
+            XCTAssertEqual(vehicle.isBus, item.iosLabel != nil, label)
+        }
+    }
+
     // MARK: - The contract file
+
+    private struct LegVehicleRules: Decodable {
+        let scheduledCoachPacks: [String]
+        let legVehicles: [LegVehicleCase]
+    }
+
+    private struct LegVehicleCase: Decodable {
+        let routeType: String
+        let pack: String
+        let operatorName: String?
+        let line: String?
+        let mode: String?
+        let vehicle: String?
+        let iosLabel: String?
+        let why: String
+
+        enum CodingKeys: String, CodingKey {
+            case routeType, pack, operatorName = "operator", line, mode, vehicle, iosLabel, why
+        }
+    }
 
     private struct Rules: Decodable {
         let trainNumbers: [TrainNumberCase]

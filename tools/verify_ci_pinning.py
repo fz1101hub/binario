@@ -882,13 +882,20 @@ def _check_apple_paths(
         "ios/**",
         "apple-watch/**",
         "app/src/main/assets/gtfs/**",
+        # The railway packs of gtfs-transit/ are in the iPhone index too.
+        "app/src/main/assets/gtfs-transit/**",
         "app/src/main/assets/stations/curated_it_rail_stations.json",
         "app/src/main/assets/punctuality/**",
         "contracts/wear-snapshot/**",
         "contracts/shared-rules/**",
+        # The Italo station-code table the index builder reads.
+        "contracts/shared-data/**",
         # The dictation cases shared with Android (RouteDictationTests).
         "contracts/voice-input/**",
         "tools/build_ios_gtfs_schedule.py",
+        "tools/android_station_codes.py",
+        "tools/android_stop_matcher.py",
+        "tools/foreign_pack_rules.py",
         "tools/build_gtfs_packs.py",
         "tools/refresh_core_gtfs.py",
         "tools/verify_ios_gtfs_schedule.py",
@@ -951,7 +958,8 @@ def _check_linux_trigger_budget(
     required_paths = {
         # The three readers of contracts/shared-rules run when its vectors change;
         # contracts/voice-input: the dictation cases shared with the iPhone (PlannerVoiceDictationFormsTest).
-        "android-ci.yml": {"app/**", "wear/**", "contracts/wear-snapshot/**", "contracts/shared-rules/**", "contracts/voice-input/**"},
+        "android-ci.yml": {"app/**", "wear/**", "contracts/wear-snapshot/**", "contracts/shared-rules/**", "contracts/shared-data/**",
+                           "contracts/voice-input/**"},
         # The document gates of the offline tests must run when their documents change (audit A7-11).
         "gtfs-assets-ci.yml": {
             "docs/**",
@@ -964,6 +972,9 @@ def _check_linux_trigger_budget(
             # The listing assets and the brand icon they are generated from (store/source/).
             "store/**",
             "ios/Resources/**",
+            # The shared cases and tables read by the offline tests (test_ios_gtfs_schedule.py).
+            "contracts/shared-rules/**",
+            "contracts/shared-data/**",
         },
         # The skill bundles the punctuality statistics and the station catalogue (ci-tests-build-6).
         "alexa-companion-ci.yml": {

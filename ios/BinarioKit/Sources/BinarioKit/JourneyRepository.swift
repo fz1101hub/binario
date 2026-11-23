@@ -84,6 +84,11 @@ public struct TrainService: Codable, Equatable, Identifiable, Sendable {
     /// «R35»): that names a line, not a train, so it is never asked to the live sources, matched
     /// with their rows or saved in «I miei treni», where every train of the line would be one.
     public let hasTrainNumber: Bool
+    /// The bus a timetable service is (a Trenitalia bus, ItaloBus, a replacement bus: the route
+    /// types 3 and 700–799 of the bundled timetable, `TimetableVehicle`), shown with a bus icon and
+    /// its label; nil for a train and for every live row. Optional, so a service saved before it
+    /// existed still decodes.
+    public let vehicle: TimetableVehicle?
 
     public init(
         id: String,
@@ -97,7 +102,8 @@ public struct TrainService: Codable, Equatable, Identifiable, Sendable {
         platform: String?,
         delayMinutes: Int,
         bikesAllowed: Bool? = nil,
-        hasTrainNumber: Bool = true
+        hasTrainNumber: Bool = true,
+        vehicle: TimetableVehicle? = nil
     ) {
         self.id = id
         self.number = number
@@ -111,7 +117,11 @@ public struct TrainService: Codable, Equatable, Identifiable, Sendable {
         self.delayMinutes = delayMinutes
         self.bikesAllowed = bikesAllowed
         self.hasTrainNumber = hasTrainNumber
+        self.vehicle = vehicle?.isBus == true ? vehicle : nil
     }
+
+    /// True for a bus of the timetable (`vehicle`): no train statistics, no train icon.
+    public var isBus: Bool { vehicle?.isBus == true }
 }
 
 public struct JourneySnapshot: Codable, Equatable, Sendable {

@@ -1,18 +1,5 @@
 {
-  "androidOnlySources": [
-    {
-      "accessMode": "OPEN_DIRECT",
-      "reason": "Android-only for now: the iOS index keeps rail route types only and the iOS app has no scheduled-bus leg mode yet; the pack also needs the station-code identity used on Android. Review before adding it to sources.",
-      "sourceId": "italo-gtfs",
-      "sourceUrl": "https://raw.githubusercontent.com/deryclem/italo-gtfs/a9d3f90c82448692e6ca3edb17e5473ccaad2c75/gtfs-italo.zip"
-    },
-    {
-      "accessMode": "OPEN_DIRECT",
-      "reason": "Android-only for now: the iOS index keeps rail route types only and the iOS app has no scheduled-bus leg mode yet; the pack also needs the station-code identity used on Android. Review before adding it to sources.",
-      "sourceId": "trenitalia-gtfs",
-      "sourceUrl": "https://raw.githubusercontent.com/deryclem/trenitalia-gtfs/6c500b619cd10ed4e96ea6181a8d0eb4293a79d8/gtfs-trenitalia.zip"
-    }
-  ],
+  "androidOnlySources": [],
   "schemaVersion": 1,
   "sources": [
     {
@@ -21,6 +8,13 @@
       "licence": "CC0 1.0",
       "sourceId": "alto-adige-sta-gtfs",
       "sourceUrl": "https://gtfs.api.opendatahub.com/v1/dataset/sta-time-tables/raw"
+    },
+    {
+      "accessMode": "GATEWAY_ONLY",
+      "landingPage": "https://dati.comune.genova.it/",
+      "licence": "CC BY 4.0",
+      "sourceId": "amt-genova-casella-gtfs",
+      "sourceUrl": "http://opendatagoogletransit.comune.genova.it/downloads/google_transit.zip"
     },
     {
       "accessMode": "OPEN_DIRECT",
@@ -45,10 +39,45 @@
     },
     {
       "accessMode": "OPEN_DIRECT",
+      "landingPage": "https://www.cciss.it/nap/mmtis/public/it/catalog/Dataset/1860",
+      "licence": "NAP CCISS: no licence - no contract (dati aperti per default, art. 52 c. 2 CAD; Reg. UE 2017/1926)",
+      "sourceId": "fal-basilicata-puglia",
+      "sourceUrl": "https://www.cciss.it/nap/mmtis/public/api/v1/download/blob/Asset/305982/checkedResource"
+    },
+    {
+      "accessMode": "OPEN_DIRECT",
+      "landingPage": "https://www.cciss.it/nap/mmtis/public/it/catalog/Dataset/1860",
+      "licence": "NAP CCISS: no licence - no contract (dati aperti per default, art. 52 c. 2 CAD; Reg. UE 2017/1926)",
+      "sourceId": "fdg-gargano",
+      "sourceUrl": "https://www.cciss.it/nap/mmtis/public/api/v1/download/blob/Asset/307477/checkedResource"
+    },
+    {
+      "accessMode": "OPEN_DIRECT",
+      "landingPage": "https://www.cciss.it/nap/mmtis/public/it/catalog/Dataset/1860",
+      "licence": "NAP CCISS: no licence - no contract (dati aperti per default, art. 52 c. 2 CAD; Reg. UE 2017/1926)",
+      "sourceId": "ferrotramviaria-bari-barletta",
+      "sourceUrl": "https://www.cciss.it/nap/mmtis/public/api/v1/download/blob/Asset/477050/checkedResource"
+    },
+    {
+      "accessMode": "OPEN_DIRECT",
+      "landingPage": "https://www.cciss.it/nap/mmtis/public/en/catalog/Dataset/1814124",
+      "licence": "Dati aperti NAP CCISS (art. 52 c. 2 CAD, Reg. UE 2017/1926); conversione GTFS CC BY 4.0",
+      "sourceId": "italo-gtfs",
+      "sourceUrl": "https://raw.githubusercontent.com/deryclem/italo-gtfs/a9d3f90c82448692e6ca3edb17e5473ccaad2c75/gtfs-italo.zip"
+    },
+    {
+      "accessMode": "OPEN_DIRECT",
       "landingPage": "https://www.dati.lombardia.it/Mobilit-e-trasporti/Orario-Ferroviario-Regionale-Gtfs/3z4k-mxz9",
       "licence": "CC BY 4.0",
       "sourceId": "lombardia-trenord-gtfs",
       "sourceUrl": "https://www.dati.lombardia.it/download/3z4k-mxz9/application/zip"
+    },
+    {
+      "accessMode": "OPEN_DIRECT",
+      "landingPage": "https://www.cciss.it/nap/mmtis/public/it/catalog/Dataset/204008",
+      "licence": "NAP CCISS: no licence - no contract (dati aperti per default, art. 52 c. 2 CAD; Reg. UE 2017/1926)",
+      "sourceId": "micotra-udine-villach",
+      "sourceUrl": "https://www.cciss.it/nap/mmtis/public/api/v1/download/blob/Asset/204098/checkedResource"
     },
     {
       "accessMode": "OPEN_DIRECT",
@@ -67,7 +96,7 @@
     {
       "accessMode": "OPEN_DIRECT",
       "landingPage": "https://dati.toscana.it/dataset/rt-oraritb",
-      "licence": "CC BY",
+      "licence": "Creative Commons Attribution (CC BY)",
       "sourceId": "toscana-tft-gtfs",
       "sourceUrl": "https://dati.toscana.it/dataset/8bb8f8fe-fe7d-41d0-90dc-49f2456180d1/resource/59aeacbc-99ee-410b-ac1e-622b5574a666/download/tft.gtfs"
     },
@@ -77,6 +106,13 @@
       "licence": "Licence Ouverte / Open Licence 2.0 (Etalab, etalab-2.0): riuso e ridistribuzione liberi, anche commerciali, citando la fonte «Trenitalia France» e la data dell'ultimo aggiornamento",
       "sourceId": "trenitalia-france-gtfs",
       "sourceUrl": "https://www.data.gouv.fr/api/1/datasets/r/bdecea2c-ebc9-4f22-812d-927e4a2e4bad"
+    },
+    {
+      "accessMode": "OPEN_DIRECT",
+      "landingPage": "https://www.cciss.it/nap/mmtis/public/en/catalog/Dataset/1077621",
+      "licence": "Dati aperti NAP CCISS (art. 52 c. 2 CAD, Reg. UE 2017/1926); conversione GTFS CC BY 4.0",
+      "sourceId": "trenitalia-gtfs",
+      "sourceUrl": "https://raw.githubusercontent.com/deryclem/trenitalia-gtfs/6c500b619cd10ed4e96ea6181a8d0eb4293a79d8/gtfs-trenitalia.zip"
     },
     {
       "accessMode": "OPEN_DIRECT",

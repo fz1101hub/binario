@@ -3,7 +3,7 @@
 "tab.settings" = "Pengaturan";
 "planner.title" = "Rencanakan";
 "planner.intro.title" = "Cari rute";
-"planner.intro.body" = "Pilih stasiun asal dan tujuan dari katalog kurasi. Jadwal yang disertakan adalah jadwal terencana dan hanya mencakup jaringan regional dan lintas batas yang tercantum di bawah: Trenitalia (kecuali Trenitalia France) dan Italo tidak disertakan, dan stasiun tanpa jadwal ditandai dalam pencarian.";
+"planner.intro.body" = "Pilih stasiun asal dan tujuan dari katalog kurasi. Jadwal yang disertakan adalah jadwal terencana dan mencakup jaringan yang tercantum di bawah: Trenitalia, Italo, kereta regional, dan kereta lintas batas, termasuk bus Trenitalia dan Italo; metro dan trem tidak disertakan, dan stasiun tanpa jadwal ditandai dalam pencarian.";
 "planner.origin" = "Asal";
 "planner.destination" = "Tujuan";
 "planner.departure" = "Tanggal dan waktu";
@@ -265,6 +265,11 @@
 "result.route.hour_band" = "%1$lld–%2$lld";
 "result.bikes.allowed" = "Sepeda diizinkan";
 "result.bikes.not_allowed" = "Sepeda tidak diizinkan";
+"result.vehicle.bus_trenitalia" = "Bus Trenitalia";
+"result.vehicle.freccialink" = "FrecciaLink";
+"result.vehicle.italobus" = "ItaloBus";
+"result.vehicle.bus" = "Bus";
+"result.vehicle.replacement_bus" = "Bus pengganti";
 "result.detail.mean_delay" = "Rata-rata keterlambatan: %1$lld mnt";
 "result.detail.days" = "Hari diamati: %1$lld · pembatalan: %2$lld";
 "result.detail.distribution_title" = "Sebaran keterlambatan";
@@ -327,6 +332,7 @@
 "departures.row.spoken" = "%1$@, kereta %2$@ ke %3$@, %4$@";
 "departures.row.platform_spoken" = "peron %1$@";
 "departures.row.platform_unknown" = "peron tidak tersedia";
+"departures.row.spoken_vehicle" = "%1$@, %2$@ ke %3$@, %4$@";
 "departures.later.loaded" = "%1$lld kereta lagi";
 "action.refresh" = "Perbarui";
 "result.live.title" = "Langsung";
