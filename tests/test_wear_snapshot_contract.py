@@ -21,7 +21,7 @@ BASE_KEYS = {
 }
 SERVICE_KEYS = ("Number", "Operator", "Category", "Destination", "Scheduled", "Expected", "Status", "Platform", "DelayMinutes")
 VEHICLES = {"TRAIN", "BUS_TRENITALIA", "FRECCIALINK", "ITALOBUS", "BUS", "REPLACEMENT_BUS"}
-CAPABILITIES = {"binario_wear_reliability_v1", "binario_wear_vehicle_v1"}
+CAPABILITIES = {"binario_wear_reliability_v1", "binario_wear_vehicle_v1", "binario_wear_programmed_fallback_v1"}
 # Where each fixture is read: the encoder that recreates it and the decoders that accept it.
 READERS = {
     "android-to-wear-v1.json": ["app/src/test/java/it/binario/app/wear/AndroidWearSnapshotContractTest.kt",
