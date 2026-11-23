@@ -1,5 +1,11 @@
 # Changelog
 
+## In sviluppo — setup-java 6.3.0 (Dependabot #103)
+
+- `actions/setup-java` passa da 6.2.0 a 6.3.0 (commit `d1374f8`, tag verificato con `git ls-remote`) nei tre job Android e nel controllo delle fonti live; aggiornato anche `.github/ci-inputs-lock.json`.
+  - Novità della versione: le annotazioni del compilatore Java nelle PR diventano opzionali e sono spente per impostazione predefinita. Gli errori di compilazione restano nei log e fanno comunque fallire la build.
+  - Il JDK resta Temurin 17.0.20+101, fissato come prima.
+
 ## In sviluppo — Ritardi Trenitalia France e orari francesi in ora italiana
 
 - **Correzione:** il pack Trenitalia France aggiunto con la PR #111 aveva gli orari in UTC, mentre l'app li legge in ora italiana. I suoi treni comparivano un'ora prima, accanto alle copie del pack nazionale.
