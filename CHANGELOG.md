@@ -1,10 +1,32 @@
 # Changelog
 
+## In sviluppo — Corridoi dei frontalieri; Svizzera e Francia a richiesta
+
+Decisioni del titolare del 22 novembre: «più che un raggio in km, un limite ragionato sulle tratte estere più usate, specie dai frontalieri», e «procedi per tutte le nazioni».
+- **Corridoi invece del raggio di 35 km.** Nell'app restano, intere, le corse che passano per uno di questi corridoi o che fermano in Italia. Ogni corridoio ha il suo motivo scritto in `tools/foreign_pack_rules.py` e in SOURCE_POLICY.md:
+  - **Svizzera**:
+    - Como – Chiasso – Lugano – Bellinzona – Biasca/Locarno;
+    - Varese – Stabio – Mendrisio;
+    - Luino – Cadenazzo;
+    - Tirano – Poschiavo – St. Moritz (Bernina);
+    - Domodossola – Re – Locarno (Vigezzina-Centovalli);
+    - Domodossola – Iselle – Briga – Visp (Sempione).
+  - **Austria**: Brennero – Innsbruck; San Candido – Lienz; Tarvisio – Villach – Klagenfurt.
+  - **Francia**: Ventimiglia – Mentone – Monaco – Nizza; Oulx – Modane (Fréjus).
+  - Nei pack ogni coppia di un corridoio conserva tutte le corse del pack completo, e `--check` lo verifica a ogni aggiornamento.
+- **Svizzera e Francia diventano come l'Austria**: zona di confine nell'app e orario completo scaricabile su richiesta.
+  - Le licenze sono registrate con le evidenze dei cataloghi e la conferma del titolare: per la Svizzera, uso libero di opendata.swiss con citazione della fonte; per SNCF Open Data, licenza con attribuzione.
+  - Pack esteri nell'app: da 9,3 MB a 0,73 MB in tutto. Svizzera 2,66 → 0,23 MB, Francia 5,26 → 0,27 MB, Austria 0,23 MB.
+  - Indice orario dell'iPhone: 4,42 → 2,23 MB. Indici completi scaricabili: Svizzera 2,64 MB, Francia 2,51 MB, Austria 1,16 MB.
+- **iPhone**: Ventimiglia–Nizza è ora cercabile (484 corse).
+- **Android, stazioni con lo stesso nome**: le stazioni della zona ora tengono conto di come Android abbina le fermate. Per esempio i due Maccagno del catalogo trovano entrambi i treni TILO da Cadenazzo.
+  - Due controlli severi garantiscono che una stazione con corse mancanti non sembri mai completa e chieda lo scaricamento.
+
 ## In sviluppo — Orari dei paesi confinanti: zona di confine inclusa, orario completo a richiesta
 
 Decisione del titolare del 22 novembre («proposta ibrida»), su Android e iPhone.
 - **Nell'app resta la zona di confine**:
-  - le corse che fermano almeno una volta entro 35 km da una stazione italiana, tenute intere, con la loro vera destinazione;
+  - le corse che fermano almeno una volta entro 35 km da una stazione italiana, tenute intere, con la loro vera destinazione (poi sostituito dai corridoi dei frontalieri, voce sopra);
   - su Android Brennero–Innsbruck, Domodossola–Briga, Como–Lugano e Ventimiglia–Nizza funzionano senza rete, come prima (tutte le corse del pack completo restano).
 - **L'orario completo di un paese si scarica su richiesta**:
   - l'app lo propone solo quando una ricerca non trova nulla perché un capolinea è fuori dalla zona (per esempio Milano → Vienna), oppure con una riga nei risultati e in «Partenze»;
@@ -12,7 +34,7 @@ Decisione del titolare del 22 novembre («proposta ibrida»), su Android e iPhon
   - il file è un allegato di una release del repository, la sua impronta SHA-256 è fissata nella versione dell'app e controllata prima dell'uso;
   - resta sul telefono, non entra nei backup, si elimina da Impostazioni › «Orari dei paesi confinanti»;
   - nessun aggiornamento automatico: dopo un aggiornamento dell'app che cambia il file, Impostazioni mostra «Aggiornamento disponibile».
-- **Per ora solo l'Austria (ÖBB, CC BY 4.0)**: Svizzera e Francia restano intere nell'app come oggi finché il titolare non conferma le loro licenze; il meccanismo vale per qualsiasi combinazione dei tre paesi.
+- **All'inizio solo l'Austria (ÖBB, CC BY 4.0)**: Svizzera e Francia sono rimaste intere finché il titolare non ha confermato le licenze (voce sopra); il meccanismo vale per qualsiasi combinazione dei tre paesi.
   - Pack ÖBB nell'app: 1,41 MB → 0,21 MB (1.180 corse su 8.731).
   - iPhone: indice orario 4,47 → 4,42 MB; indice completo dell'Austria scaricabile (1,16 MB).
 - **iPhone, ricerca più precisa**: l'indice riconosce ora Innsbruck Hbf, Brennero (ÖBB) e «Domodossola (I)», con le stesse regole sui nomi delle fermate di Android; Brennero–Innsbruck e Domodossola–Briga diventano cercabili su iPhone. Ventimiglia–Nizza resta non cercabile su iPhone finché il pack SNCF non passa alla zona di confine (Nizza non ha codici ferroviari nel catalogo).
