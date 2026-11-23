@@ -24,6 +24,7 @@ import it.binario.wear.WearStringProvider
 import it.binario.wear.accessibleLabel
 import it.binario.wear.RAIL_TIME_ZONE
 import it.binario.wear.dataStatus
+import it.binario.wear.glanceNumber
 import it.binario.wear.string
 import it.binario.wear.model.WearService
 import it.binario.wear.model.WearSnapshot
@@ -161,7 +162,7 @@ internal fun longTextComplicationTexts(snapshot: WearSnapshot, strings: WearStri
     val title = snapshot.routeLabel.take(48)
     val (service, departure) = upcomingService(snapshot, nowEpochMillis)
         ?: return WearComplicationTexts(strings.string(snapshot.dataStatus()), title, strings.string(snapshot.dataStatus()))
-    val label = strings.string(R.string.service_time_number, service.expectedDeparture, service.number)
+    val label = strings.string(R.string.service_time_number, service.expectedDeparture, service.glanceNumber)
     // Same " · " separator as service_time_number in every language.
     return if (departure == null) WearComplicationTexts(label, title, service.accessibleLabel(strings))
     else WearComplicationTexts("$label · $COUNTDOWN", title, service.accessibleLabel(strings), departure)

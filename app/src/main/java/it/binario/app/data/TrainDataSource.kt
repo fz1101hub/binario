@@ -207,7 +207,12 @@ data class TrainService(
      * pubblicati)». Not a verified status: [operationalStatusVerified], [status] and the delays keep what is known, so
      * nothing reads it as on time and no minutes are invented.
      */
-    val delayMinutesUnpublished: Boolean = false
+    val delayMinutesUnpublished: Boolean = false,
+    /**
+     * The published line of a [scheduledBus] ("FL" for a FrecciaLink, "BUS"), which names its vehicle
+     * (`JourneyLegVehicle.of`) for the watch; null for every train.
+     */
+    val busLine: String? = null
 ) {
     val displayOperator: String get() = operatorDisplayName?.takeIf(String::isNotBlank) ?: operator.shortLabel
     val accessibleOperator: String get() = operatorDisplayName?.takeIf(String::isNotBlank) ?: operator.accessibleLabel
