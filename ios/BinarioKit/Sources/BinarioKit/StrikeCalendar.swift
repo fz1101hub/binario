@@ -99,7 +99,7 @@ extension NoticeRules {
         }
         guard !found.isEmpty else { return (nil, nil) }
         let ordered = found.enumerated().sorted { ($0.element.position, $0.offset) < ($1.element.position, $1.offset) }.map(\.element)
-        let window = table.strikes.labelWindow
+        let window = NoticeTable.strikes.labelWindow
         func prefix(_ item: Found) -> String {
             let from = max(0, item.position - window)
             return value.substring(with: NSRange(location: from, length: item.position - from))
@@ -116,15 +116,15 @@ extension NoticeRules {
     }
 
     private func inferredYear(month: Int, reference: PlannedLocalDate) -> Int {
-        month < reference.month - table.strikes.inferNextYearMonthsBack ? reference.year + 1 : reference.year
+        month < reference.month - NoticeTable.strikes.inferNextYearMonthsBack ? reference.year + 1 : reference.year
     }
 
     /// The rail items with their dates; markup in titles and descriptions is reduced to plain text.
     func strikes(_ items: [RssItem], fetchedOn: PlannedLocalDate) -> [StrikeNotice] {
         var seen: Set<String> = []
         return items.filter { isRail($0) }.compactMap { item -> StrikeNotice? in
-            let title = NoticeText.fromHtml(item.title, maximumLength: table.strikes.titleLength, rules: self) ?? item.title
-            let description = NoticeText.fromHtml(item.description, maximumLength: table.strikes.descriptionLength, rules: self)
+            let title = NoticeText.fromHtml(item.title, maximumLength: NoticeTable.strikes.titleLength, rules: self) ?? item.title
+            let description = NoticeText.fromHtml(item.description, maximumLength: NoticeTable.strikes.descriptionLength, rules: self)
             let reference = item.pubDate.flatMap { ItalianWallClock.date(of: $0) } ?? fetchedOn
             var dates = strikeDates(title, reference: reference)
             if dates.start == nil { dates = strikeDates(description ?? "", reference: reference) }
@@ -152,14 +152,14 @@ extension NoticeRules {
             if a.title != b.title { return a.title < b.title }
             return first.offset < second.offset
         }.map(\.element)
-        let recent = now.addingTimeInterval(-TimeInterval(table.strikes.undatedRecentDays) * 86_400)
+        let recent = now.addingTimeInterval(-TimeInterval(NoticeTable.strikes.undatedRecentDays) * 86_400)
         let undated = strikes.enumerated().filter { _, strike in
             strike.startDate == nil && (strike.publishedAt.map { $0 > recent } ?? false)
         }.sorted { first, second in
             let a = first.element.publishedAt ?? .distantPast, b = second.element.publishedAt ?? .distantPast
             return a == b ? first.offset < second.offset : a > b
         }.map(\.element)
-        return Array((dated + undated).prefix(table.strikes.upcomingShown))
+        return Array((dated + undated).prefix(NoticeTable.strikes.upcomingShown))
     }
 
     /// The strikes that start on the day after `today` (the subject of Android's 18:00 reminder).

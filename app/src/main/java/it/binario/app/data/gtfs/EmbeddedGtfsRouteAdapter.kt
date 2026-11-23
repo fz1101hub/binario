@@ -1613,7 +1613,7 @@ class EmbeddedGtfsRouteAdapter(
          * data shows: the Swiss, French and Austrian national feeds (TILO trains of Trenord, SNCF/SBB border runs, ÖBB
          * trains into South Tyrol) and South Tyrol's multi-operator feed (Trenitalia, ÖBB, Italo and Trenord runs).
          */
-        private val CROSS_PUBLISHING_PACKS = setOf("ch-otd-gtfs", "sncf-gtfs", "oebb-gtfs", "alto-adige-sta-gtfs")
+        private val CROSS_PUBLISHING_PACKS = it.binario.app.shared.SharedData.PackRoles.CROSS_PUBLISHING_PACKS
         private val RAIL_ROUTE_TYPES = setOf("2", "100", "101", "102", "103", "104", "105", "106", "107", "108", "109")
         /** Trenitalia's route_short_name: its company code 0083, then the category ("0083_REG", "0083_BUS"). */
         private val TRENITALIA_LINE = Regex("0083_([A-Za-z]{1,4})")

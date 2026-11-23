@@ -10,8 +10,9 @@ public enum TimetableLegMode: String, Codable, Equatable, Sendable {
 
     /// The packs whose bus routes are the operator's own scheduled coaches (Android's
     /// `EmbeddedGtfsPack.busRoutesAreScheduledCoaches`; SCHEDULED_COACH_PACKS of the index builder):
-    /// Trenitalia's buses and ItaloBus. A bus of any other pack replaces a train.
-    public static let scheduledCoachPacks: Set<String> = ["trenitalia-gtfs", "italo-gtfs"]
+    /// Trenitalia's buses and ItaloBus. A bus of any other pack replaces a train. The shared table
+    /// contracts/shared-data/v1/pack-roles-v1.json (`SharedData.PackRoles`).
+    public static let scheduledCoachPacks: Set<String> = SharedData.PackRoles.scheduledCoachPacks
 
     /// The mode of a GTFS route type of the index: rail (2, 100–199) or bus (3, 700–799), nil for
     /// any other type, which is no leg of a rail journey.

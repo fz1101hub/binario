@@ -2,6 +2,7 @@ package it.binario.app.data.gtfs
 
 import it.binario.app.data.RailStopNameMatcher
 import it.binario.app.data.Station
+import it.binario.app.shared.SharedData
 
 /**
  * The catalogue station a stop of a national operator pack stands for, from the code the pack publishes as
@@ -80,81 +81,15 @@ internal class GtfsStationCodeIndex(stations: List<Station>) {
 
 /**
  * Italo's station codes (stop_code of the italo-gtfs pack) and the catalogue station each one is, reviewed by name
- * and position on 2 November 2026 against the 64 stations of the feed. The passenger-facing codes match
- * [it.binario.app.data.live.ItaloPublicStationFallbacks] where both exist (Villa San Giovanni is "SGM" here, "VSG"
- * on the public board). Not mapped, so they stay stops of the pack: "LUX", the seasonal Lucca Comics coach stop
- * about a kilometre from Lucca station. "TRX" (Treviso Centrale) is mapped by name: the feed places it 5 km east of
- * the station.
+ * and position on 2 November 2026 against the 64 stations of the feed ([SharedData.ItaloGtfsStationCodes], where the
+ * review notes are). Not mapped, so they stay stops of the pack: "LUX", the seasonal Lucca Comics coach stop.
  */
 internal object ItaloGtfsStationCodes {
-    private val catalogueIds: Map<String, String> = mapOf(
-        "AGR" to "S11705", // Agropoli-Castellabate
-        "AVR" to "S09006", // Aversa
-        "BAC" to "S11119", // Bari Centrale (catalogue: "Bari ( Tutte Le Stazioni )", alias Bari Centrale)
-        "BLT" to "S11108", // Barletta
-        "BEN" to "S09311", // Benevento
-        "BIG" to "S11113", // Bisceglie
-        "BC_" to "S05043", // Bologna Centrale
-        "BLZ" to "S02026", // Bolzano Bozen
-        "BSC" to "S01717", // Brescia
-        "CEA" to "S09211", // Caserta
-        "CON" to "S02706", // Conegliano
-        "CDZ" to "S02999", // Cortina d'Ampezzo (coach stop)
-        "DSG" to "S02084", // Desenzano del Garda-Sirmione
-        "F__" to "S05712", // Ferrara
-        "SMN" to "S06421", // Firenze S. M. Novella
-        "FG_" to "S11100", // Foggia
-        "GB_" to "S04702", // Genova Brignole
-        "G__" to "S04700", // Genova Piazza Principe
-        "LON" to "S11749", // Lamezia Terme Centrale
-        "LTL" to "S03202", // Latisana-Lignano-Bibione
-        "LGZ" to "S02556", // Longarone-Zoldo
-        "MRT" to "S11723", // Maratea
-        "MC_" to "S01700", // Milano Centrale
-        "RRO" to "S01039", // Rho-Fiera Milano
-        "RG_" to "S01820", // Milano Rogoredo
-        "ML_" to "S11114", // Molfetta
-        "MNF" to "S03310", // Monfalcone
-        "NAF" to "S09988", // Napoli Afragola
-        "NAC" to "S09218", // Napoli Centrale
-        "PD_" to "S02581", // Padova ("Padua" in the feed)
-        "PAR" to "S11739", // Paola
-        "P3_" to "S01860", // Pavia
-        "PSY" to "S02088", // Peschiera del Garda
-        "PNE" to "S02701", // Pordenone
-        "PGR" to "S03200", // Portogruaro-Caorle
-        "RCE" to "S11781", // Reggio di Calabria Centrale
-        "AAV" to "S05254", // Reggio Emilia AV Mediopadana
-        "RMT" to "S08409", // Roma Termini
-        "RTB" to "S08217", // Roma Tiburtina
-        "RUT" to "S11765", // Rosarno
-        "RVR" to "S02044", // Rovereto
-        "R__" to "S05706", // Rovigo
-        "SAL" to "S09818", // Salerno
-        "SDP" to "S02666", // San Donà di Piave-Jesolo
-        "SDX" to "NC001202", // San Vito di Cadore (coach stop)
-        "SRI" to "S11721", // Sapri
-        "SDC" to "S11727", // Scalea-S. Domenica Talao
-        "TDX" to "NC001285", // Tai di Cadore (coach stop)
-        "TOP" to "S00219", // Torino Porta Nuova
-        "OUE" to "S00035", // Torino Porta Susa
-        "TR_" to "S11112", // Trani
-        "TCN" to "S02038", // Trento
-        "TRX" to "S02712", // Treviso Centrale
-        "RHA" to "S03213", // Trieste Airport
-        "TSC" to "S03317", // Trieste Centrale
-        "UDN" to "S03026", // Udine
-        "VLH" to "S11709", // Vallo della Lucania-Castelnuovo
-        "VEM" to "S02589", // Venezia Mestre
-        "VSL" to "S02593", // Venezia S. Lucia
-        "VPN" to "S02430", // Verona Porta Nuova
-        "VIP" to "S11789", // Vibo Valentia-Pizzo
-        "VIC" to "S02446", // Vicenza
-        "SGM" to "S11774" // Villa S. Giovanni
-    )
+    /** The shared table contracts/shared-data/v1/italo-gtfs-station-codes.json, also read by the iPhone index builder. */
+    private val catalogueIds: Map<String, String> = SharedData.ItaloGtfsStationCodes.CODES.associate { it.code to it.catalogueId }
 
     /** Codes reviewed and deliberately left to the pack ("LUX"). */
-    val unmapped: Set<String> = setOf("LUX")
+    val unmapped: Set<String> = SharedData.ItaloGtfsStationCodes.UNMAPPED.mapTo(LinkedHashSet()) { it.code }
 
     /** The catalogue station id ("curated:S01700") of an Italo code, or null. */
     fun catalogueId(code: String): String? = catalogueIds[code.trim()]?.let { "curated:$it" }

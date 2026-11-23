@@ -1,0 +1,8 @@
+{
+  "schema": "binario-shared-data-v1",
+  "description": "Roles of the offline timetable packs that Android, the iPhone and the iPhone index builder share: the national operators' packs (their copy of a train first), the foreign operators' packs (last, first at a station no national pack serves; their stops match catalogue stations with codes only), the packs that republish partner operators' trains under their own numbers, and those whose bus routes are the operator's own scheduled coaches (a bus of any other pack replaces a train).",
+  "nationalPacks": ["trenitalia-gtfs", "italo-gtfs"],
+  "foreignPacks": ["ch-otd-gtfs", "oebb-gtfs", "sncf-gtfs", "trenitalia-france-gtfs"],
+  "crossPublishingPacks": ["ch-otd-gtfs", "sncf-gtfs", "oebb-gtfs", "alto-adige-sta-gtfs"],
+  "scheduledCoachPacks": ["trenitalia-gtfs", "italo-gtfs"]
+}

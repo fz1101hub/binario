@@ -2,10 +2,14 @@
 // `python3 tools/generate_shared_code.py` (contracts/shared-data/README.md). Sources:
 //   contracts/shared-data/v1/airport-routes-v1.json
 //   contracts/shared-data/v1/italian-holidays-v1.json
+//   contracts/shared-data/v1/italo-gtfs-station-codes.json
 //   contracts/shared-data/v1/italo-stations-v1.json
+//   contracts/shared-data/v1/notices-sources-v1.json
+//   contracts/shared-data/v1/pack-roles-v1.json
 //   contracts/shared-data/v1/planned-journeys-v1.json
 //   contracts/shared-data/v1/punctuality-v1.json
 //   contracts/shared-data/v1/rfi-place-ids-v1.json
+//   contracts/shared-data/v1/source-manners-v1.json
 //   contracts/shared-data/v1/source-scores-v1.json
 //   contracts/shared-data/v1/train-number-prefixes-v1.json
 
@@ -78,6 +82,152 @@ internal object SharedData {
             Holiday(month = 12, day = 26, fromYear = null)
         )
         val EASTER_OFFSETS_DAYS: List<Int> = listOf(0, 1)
+    }
+
+    /**
+     * contracts/shared-data/v1/italo-gtfs-station-codes.json: Italo's station codes (stop_code of the italo-gtfs pack)
+     * and the catalogue station each one is, reviewed by name and position on 2 November 2026 against the 64 stations
+     * of the feed. The passenger-facing codes match ItaloPublicStationFallbacks where both exist (Villa San Giovanni is
+     * "SGM" here, "VSG" on the public board). Not mapped, so they stay stops of the pack: "LUX", the seasonal Lucca
+     * Comics coach stop about a kilometre from Lucca station. "TRX" (Treviso Centrale) is mapped by name: the feed
+     * places it 5 km east of the station.
+     */
+    object ItaloGtfsStationCodes {
+        data class StationCode(val code: String, val catalogueId: String)
+        data class UnmappedCode(val code: String)
+
+        val CODES: List<StationCode> = listOf(
+            // Agropoli-Castellabate
+            StationCode(code = "AGR", catalogueId = "S11705"),
+            // Aversa
+            StationCode(code = "AVR", catalogueId = "S09006"),
+            // Bari Centrale (catalogue: "Bari ( Tutte Le Stazioni )", alias Bari Centrale)
+            StationCode(code = "BAC", catalogueId = "S11119"),
+            // Barletta
+            StationCode(code = "BLT", catalogueId = "S11108"),
+            // Benevento
+            StationCode(code = "BEN", catalogueId = "S09311"),
+            // Bisceglie
+            StationCode(code = "BIG", catalogueId = "S11113"),
+            // Bologna Centrale
+            StationCode(code = "BC_", catalogueId = "S05043"),
+            // Bolzano Bozen
+            StationCode(code = "BLZ", catalogueId = "S02026"),
+            // Brescia
+            StationCode(code = "BSC", catalogueId = "S01717"),
+            // Caserta
+            StationCode(code = "CEA", catalogueId = "S09211"),
+            // Conegliano
+            StationCode(code = "CON", catalogueId = "S02706"),
+            // Cortina d'Ampezzo (coach stop)
+            StationCode(code = "CDZ", catalogueId = "S02999"),
+            // Desenzano del Garda-Sirmione
+            StationCode(code = "DSG", catalogueId = "S02084"),
+            // Ferrara
+            StationCode(code = "F__", catalogueId = "S05712"),
+            // Firenze S. M. Novella
+            StationCode(code = "SMN", catalogueId = "S06421"),
+            // Foggia
+            StationCode(code = "FG_", catalogueId = "S11100"),
+            // Genova Brignole
+            StationCode(code = "GB_", catalogueId = "S04702"),
+            // Genova Piazza Principe
+            StationCode(code = "G__", catalogueId = "S04700"),
+            // Lamezia Terme Centrale
+            StationCode(code = "LON", catalogueId = "S11749"),
+            // Latisana-Lignano-Bibione
+            StationCode(code = "LTL", catalogueId = "S03202"),
+            // Longarone-Zoldo
+            StationCode(code = "LGZ", catalogueId = "S02556"),
+            // Maratea
+            StationCode(code = "MRT", catalogueId = "S11723"),
+            // Milano Centrale
+            StationCode(code = "MC_", catalogueId = "S01700"),
+            // Rho-Fiera Milano
+            StationCode(code = "RRO", catalogueId = "S01039"),
+            // Milano Rogoredo
+            StationCode(code = "RG_", catalogueId = "S01820"),
+            // Molfetta
+            StationCode(code = "ML_", catalogueId = "S11114"),
+            // Monfalcone
+            StationCode(code = "MNF", catalogueId = "S03310"),
+            // Napoli Afragola
+            StationCode(code = "NAF", catalogueId = "S09988"),
+            // Napoli Centrale
+            StationCode(code = "NAC", catalogueId = "S09218"),
+            // Padova ("Padua" in the feed)
+            StationCode(code = "PD_", catalogueId = "S02581"),
+            // Paola
+            StationCode(code = "PAR", catalogueId = "S11739"),
+            // Pavia
+            StationCode(code = "P3_", catalogueId = "S01860"),
+            // Peschiera del Garda
+            StationCode(code = "PSY", catalogueId = "S02088"),
+            // Pordenone
+            StationCode(code = "PNE", catalogueId = "S02701"),
+            // Portogruaro-Caorle
+            StationCode(code = "PGR", catalogueId = "S03200"),
+            // Reggio di Calabria Centrale
+            StationCode(code = "RCE", catalogueId = "S11781"),
+            // Reggio Emilia AV Mediopadana
+            StationCode(code = "AAV", catalogueId = "S05254"),
+            // Roma Termini
+            StationCode(code = "RMT", catalogueId = "S08409"),
+            // Roma Tiburtina
+            StationCode(code = "RTB", catalogueId = "S08217"),
+            // Rosarno
+            StationCode(code = "RUT", catalogueId = "S11765"),
+            // Rovereto
+            StationCode(code = "RVR", catalogueId = "S02044"),
+            // Rovigo
+            StationCode(code = "R__", catalogueId = "S05706"),
+            // Salerno
+            StationCode(code = "SAL", catalogueId = "S09818"),
+            // San Donà di Piave-Jesolo
+            StationCode(code = "SDP", catalogueId = "S02666"),
+            // San Vito di Cadore (coach stop)
+            StationCode(code = "SDX", catalogueId = "NC001202"),
+            // Sapri
+            StationCode(code = "SRI", catalogueId = "S11721"),
+            // Scalea-S. Domenica Talao
+            StationCode(code = "SDC", catalogueId = "S11727"),
+            // Tai di Cadore (coach stop)
+            StationCode(code = "TDX", catalogueId = "NC001285"),
+            // Torino Porta Nuova
+            StationCode(code = "TOP", catalogueId = "S00219"),
+            // Torino Porta Susa
+            StationCode(code = "OUE", catalogueId = "S00035"),
+            // Trani
+            StationCode(code = "TR_", catalogueId = "S11112"),
+            // Trento
+            StationCode(code = "TCN", catalogueId = "S02038"),
+            // Treviso Centrale
+            StationCode(code = "TRX", catalogueId = "S02712"),
+            // Trieste Airport
+            StationCode(code = "RHA", catalogueId = "S03213"),
+            // Trieste Centrale
+            StationCode(code = "TSC", catalogueId = "S03317"),
+            // Udine
+            StationCode(code = "UDN", catalogueId = "S03026"),
+            // Vallo della Lucania-Castelnuovo
+            StationCode(code = "VLH", catalogueId = "S11709"),
+            // Venezia Mestre
+            StationCode(code = "VEM", catalogueId = "S02589"),
+            // Venezia S. Lucia
+            StationCode(code = "VSL", catalogueId = "S02593"),
+            // Verona Porta Nuova
+            StationCode(code = "VPN", catalogueId = "S02430"),
+            // Vibo Valentia-Pizzo
+            StationCode(code = "VIP", catalogueId = "S11789"),
+            // Vicenza
+            StationCode(code = "VIC", catalogueId = "S02446"),
+            // Villa S. Giovanni
+            StationCode(code = "SGM", catalogueId = "S11774")
+        )
+        val UNMAPPED: List<UnmappedCode> = listOf(
+            // Codes reviewed and deliberately left to the pack: the seasonal Lucca Comics coach stop
+            UnmappedCode(code = "LUX")
+        )
     }
 
     /**
@@ -158,6 +308,182 @@ internal object SharedData {
     }
 
     /**
+     * contracts/shared-data/v1/notices-sources-v1.json: The rail notice feeds and the tables that read them, the same
+     * on Android and on the iPhone: each feed's address, gate (every build or only with the personal live sources),
+     * limits, rate, cache and redirect rule, the pages opened on a tap, and the limits, words and patterns of the
+     * readers. The patterns are the ones Kotlin compiles; the iPhone compiles them with NSRegularExpression
+     * (contracts/shared-rules/v1/notices-v1.json holds the cases both read). How every source is asked (User-Agent,
+     * refusals, breaker) is source-manners-v1.json.
+     */
+    object NoticesSources {
+        data class Service(val sourceTimeoutSeconds: Int, val reloadAfterSeconds: Int)
+        data class Source(
+            val id: String,
+            val publisher: String?,
+            val gate: String,
+            val url: String,
+            val accept: String,
+            val connectTimeoutSeconds: Int,
+            val readTimeoutSeconds: Int,
+            val totalTimeoutSeconds: Int,
+            val maximumBytes: Int,
+            val maximumRequests: Int,
+            val redirects: String,
+            val viaggiaTrenoCleartextHop: Boolean,
+            val minimumIntervalSeconds: Int,
+            val timeToLiveSeconds: Int,
+            val maximumStaleSeconds: Int,
+            val retryDelayMillis: Int?,
+            val pauseLabel: String?
+        )
+        data class Links(val mitStrikeCalendar: String, val fsNews: String, val guaranteedTrains: Map<String, String>)
+        data class TextRules(
+            val maximumInput: Int,
+            val noticeTitleLength: Int,
+            val noticeBodyLength: Int,
+            val strikeWordPattern: String,
+            val urlPattern: String,
+            val urlTrailing: String,
+            val minimumUrlLength: Int,
+            val cleartextOfficialDomains: List<String>
+        )
+        data class Rss(val maximumItems: Int, val maximumText: Int)
+        data class Strikes(
+            val railWordsPattern: String,
+            val titleLength: Int,
+            val descriptionLength: Int,
+            val upcomingShown: Int,
+            val undatedRecentDays: Int,
+            val startLabelPattern: String,
+            val endLabelPattern: String,
+            val labelWindow: Int,
+            val inferNextYearMonthsBack: Int
+        )
+        data class TrenitaliaRules(
+            val maximumItems: Int,
+            val titleLength: Int,
+            val descriptionLength: Int,
+            val linkLength: Int,
+            val maximumTrainTags: Int,
+            val trainTagPattern: String
+        )
+        data class TrenordArea(
+            val minimumLatitude: Double,
+            val maximumLatitude: Double,
+            val minimumLongitude: Double,
+            val maximumLongitude: Double
+        )
+        data class TrenordRules(
+            val maximumLines: Int,
+            val maximumNewsPerLine: Int,
+            val textLength: Int,
+            val titleLength: Int,
+            val lineCodeLength: Int,
+            val lineCodePattern: String,
+            val lineDescriptionLength: Int,
+            val operationalPattern: String,
+            val stationTokenSeparators: List<String>,
+            val minimumTokenLength: Int,
+            val hubLineCount: Int,
+            val networkWideMinimumLines: Int,
+            val area: TrenordArea,
+            val gtfsStationPrefix: String
+        )
+        data class RouteWorksRules(
+            val maximumRoutes: Int,
+            val minimumNameLength: Int,
+            val worksPattern: String,
+            val linePattern: String,
+            val commonWords: List<String>
+        )
+        data class Display(
+            val networkCollapsed: Int,
+            val bodyCollapsedLines: Int,
+            val bodyCollapsedCharacters: Int,
+            val maximumLineCodes: Int,
+            val worksCollapsed: Int
+        )
+
+        val SERVICE: Service = Service(sourceTimeoutSeconds = 20, reloadAfterSeconds = 120)
+        val SOURCES: List<Source> = listOf(
+            Source(id = "mit-strikes-rss", publisher = null, gate = "all-builds", url = "https://scioperi.mit.gov.it/mit2/public/scioperi/rss", accept = "application/rss+xml, application/xml, text/xml", connectTimeoutSeconds = 8, readTimeoutSeconds = 12, totalTimeoutSeconds = 20, maximumBytes = 1048576, maximumRequests = 3, redirects = "same-https-host", viaggiaTrenoCleartextHop = false, minimumIntervalSeconds = 1800, timeToLiveSeconds = 21600, maximumStaleSeconds = 86400, retryDelayMillis = 750, pauseLabel = null),
+            Source(id = "rfi-infomobility-rss", publisher = "RFI", gate = "all-builds", url = "https://www.rfi.it/content/rfi/it/news-e-media/infomobilita.rss.updates.xml", accept = "application/rss+xml, application/xml, text/xml", connectTimeoutSeconds = 12, readTimeoutSeconds = 20, totalTimeoutSeconds = 25, maximumBytes = 2097152, maximumRequests = 3, redirects = "same-resource", viaggiaTrenoCleartextHop = false, minimumIntervalSeconds = 300, timeToLiveSeconds = 600, maximumStaleSeconds = 3600, retryDelayMillis = null, pauseLabel = null),
+            Source(id = "trenitalia-infomobility-news", publisher = "TRENITALIA", gate = "personal", url = "https://www.viaggiatreno.it/infomobilitamobile/resteasy/news/infomobility", accept = "application/json", connectTimeoutSeconds = 8, readTimeoutSeconds = 12, totalTimeoutSeconds = 15, maximumBytes = 2097152, maximumRequests = 3, redirects = "same-resource", viaggiaTrenoCleartextHop = true, minimumIntervalSeconds = 300, timeToLiveSeconds = 600, maximumStaleSeconds = 3600, retryDelayMillis = 750, pauseLabel = "ViaggiaTreno"),
+            Source(id = "trenord-line-notices", publisher = "TRENORD", gate = "personal", url = "https://www.trenord.it/mgmt/store-management-api/mia/direttrici/", accept = "application/json", connectTimeoutSeconds = 8, readTimeoutSeconds = 12, totalTimeoutSeconds = 15, maximumBytes = 1048576, maximumRequests = 3, redirects = "same-resource", viaggiaTrenoCleartextHop = false, minimumIntervalSeconds = 600, timeToLiveSeconds = 900, maximumStaleSeconds = 7200, retryDelayMillis = 750, pauseLabel = null)
+        )
+        val LINKS: Links = Links(
+            mitStrikeCalendar = "https://scioperi.mit.gov.it/mit2/public/scioperi",
+            fsNews = "https://www.fsnews.it/",
+            guaranteedTrains = mapOf(
+                "TRENITALIA" to "https://www.trenitalia.com/it/informazioni/treni-garantiti-incasodisciopero.html",
+                "TRENORD" to "https://www.trenord.it/en/assistance/useful-information/in-case-of-strike-action/"
+            )
+        )
+        val TEXT: TextRules = TextRules(
+            maximumInput = 200000,
+            noticeTitleLength = 300,
+            noticeBodyLength = 6000,
+            strikeWordPattern = "\\bscioper[oi]\\b",
+            urlPattern = "https?://[^\\s<>\"'\\u00A0]+",
+            urlTrailing = ".,;:!?)]}»",
+            minimumUrlLength = 9,
+            cleartextOfficialDomains = listOf(
+                "trenitalia.com", "trenitalia.it", "viaggiatreno.it", "fsitaliane.it", "rfi.it", "fsnews.it"
+            )
+        )
+        val RSS: Rss = Rss(maximumItems = 300, maximumText = 4000)
+        val STRIKES: Strikes = Strikes(railWordsPattern = "\\b(ferroviari[oae]?|ferrovi[ae]|treni|treno|fs|trenitalia|italo|trenord|rfi)\\b", titleLength = 300, descriptionLength = 2000, upcomingShown = 6, undatedRecentDays = 14, startLabelPattern = "(inizio|dal|dalle|a partire)\\W*\$", endLabelPattern = "(fine|al|alle|termine)\\W*\$", labelWindow = 24, inferNextYearMonthsBack = 3)
+        val MONTHS: List<String> = listOf(
+            "gennaio", "febbraio", "marzo", "aprile", "maggio", "giugno", "luglio", "agosto", "settembre", "ottobre",
+            "novembre", "dicembre"
+        )
+        val TRENITALIA: TrenitaliaRules = TrenitaliaRules(maximumItems = 300, titleLength = 300, descriptionLength = 6000, linkLength = 500, maximumTrainTags = 200, trainTagPattern = "[1-9][0-9]{0,5}")
+        val TRENORD: TrenordRules = TrenordRules(
+            maximumLines = 300,
+            maximumNewsPerLine = 100,
+            textLength = 4000,
+            titleLength = 160,
+            lineCodeLength = 16,
+            lineCodePattern = "[A-Za-z0-9_-]{1,16}",
+            lineDescriptionLength = 200,
+            operationalPattern = "scioper|soppress|ritard|lavori|variazion|sostitui|sostitutiv|interruz|interrott|circolazion|sospes|cancellat|limitazion|guast|deviat|modific|autobus|servizi[oa]? (di )?bus|corse (di |con )?bus|\\bbus (tra|fra)\\b",
+            stationTokenSeparators = listOf("-", "/", "–"),
+            minimumTokenLength = 2,
+            hubLineCount = 8,
+            networkWideMinimumLines = 3,
+            area = TrenordArea(minimumLatitude = 44.85, maximumLatitude = 46.65, minimumLongitude = 8.35, maximumLongitude = 10.9),
+            gtfsStationPrefix = "gtfs:lombardia-trenord-gtfs:"
+        )
+        val ROUTE_WORKS: RouteWorksRules = RouteWorksRules(
+            maximumRoutes = 8,
+            minimumNameLength = 3,
+            worksPattern = "\\b(lavori|lavoro|interruzion[ei]|interrott[aoie]|sospes[aoie]|sospension[ei]|cantier[ei]|manutenzion[ei]|potenziament[oi]|sostitutiv[aoie])\\b",
+            linePattern = "\\b(?:[Ll]ine[ae]|LINE[AE])\\s+(?:(?:ferroviari[ae]|FERROVIARI[AE])\\s+)?(\\p{Lu}[\\p{L}'’.]*(?:(?:\\s+(?:di|de|del|della|sul|in))?\\s+\\p{Lu}[\\p{L}'’.]*)*)\\s*[-–—]\\s*(\\p{Lu}[\\p{L}'’.]*(?:(?:\\s+(?:di|de|del|della|sul|in))?\\s+\\p{Lu}[\\p{L}'’.]*)*)",
+            commonWords = listOf(
+                "ora", "tra", "via", "per", "con", "piano", "campo", "ponte", "porto", "monte", "borgo", "villa",
+                "valle", "colle", "lago", "mare", "bivio", "scalo", "centro", "centrale", "linea", "stazione", "nord",
+                "sud", "est", "ovest", "torre", "castello", "croce", "marina", "lido", "porta", "pieve", "sole", "rete",
+                "fiume"
+            )
+        )
+        val DISPLAY: Display = Display(networkCollapsed = 6, bodyCollapsedLines = 3, bodyCollapsedCharacters = 180, maximumLineCodes = 6, worksCollapsed = 3)
+    }
+
+    /**
+     * contracts/shared-data/v1/pack-roles-v1.json: Roles of the offline timetable packs that Android, the iPhone and
+     * the iPhone index builder share: the national operators' packs (their copy of a train first), the foreign
+     * operators' packs (last, first at a station no national pack serves; their stops match catalogue stations with
+     * codes only), the packs that republish partner operators' trains under their own numbers, and those whose bus
+     * routes are the operator's own scheduled coaches (a bus of any other pack replaces a train).
+     */
+    object PackRoles {
+        val NATIONAL_PACKS: Set<String> = setOf("trenitalia-gtfs", "italo-gtfs")
+        val FOREIGN_PACKS: Set<String> = setOf("ch-otd-gtfs", "oebb-gtfs", "sncf-gtfs", "trenitalia-france-gtfs")
+        val CROSS_PUBLISHING_PACKS: Set<String> = setOf("ch-otd-gtfs", "sncf-gtfs", "oebb-gtfs", "alto-adige-sta-gtfs")
+        val SCHEDULED_COACH_PACKS: Set<String> = setOf("trenitalia-gtfs", "italo-gtfs")
+    }
+
+    /**
      * contracts/shared-data/v1/planned-journeys-v1.json: Limits of the Agenda (planned journeys) and of its templates,
      * the same on every phone so a journey exported by one app is read by the other
      * (docs/architecture/PLANNED_JOURNEY.md). Lengths count UTF-16 code units.
@@ -232,6 +558,22 @@ internal object SharedData {
             "Palermo Centrale" to 2018,
             "Cagliari" to 787
         )
+    }
+
+    /**
+     * contracts/shared-data/v1/source-manners-v1.json: How Binario asks every public source, on Android and on the
+     * iPhone: the User-Agent (the app by name, version and platform, never a browser's), the statuses that are a
+     * refusal and the pause after one without Retry-After, and the circuit breaker (failures in a row, first and
+     * longest pause, longest Retry-After honoured).
+     */
+    object SourceManners {
+        const val USER_AGENT: String = "Binario/<version> (<platform>; rail timetable app)"
+        val REFUSAL_STATUSES: Set<Int> = setOf(403, 429)
+        const val REFUSAL_PAUSE_SECONDS: Int = 900
+        const val MAXIMUM_RETRY_AFTER_SECONDS: Int = 3600
+        const val FAILURE_THRESHOLD: Int = 3
+        const val BASE_OPEN_SECONDS: Int = 60
+        const val MAXIMUM_OPEN_SECONDS: Int = 900
     }
 
     /**

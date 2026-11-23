@@ -3,8 +3,8 @@ import XCTest
 @testable import BinarioKit
 
 /// The manners of the notice feeds on the iPhone: Android's addresses, limits, caches and pauses
-/// from the shared table, the personal sources behind «Dati in tempo reale», and no source at all
-/// without a valid table. No test reaches the network.
+/// from the shared tables, the personal sources behind «Dati in tempo reale», and no source at all
+/// without rules. No test reaches the network.
 final class RailNoticeServiceTests: XCTestCase {
     private func service(
         _ clock: LiveTestClock, pauses: LiveSourcePauses = LiveSourcePauses(), _ handler: @escaping FakeLiveTransport.Handler
@@ -13,26 +13,12 @@ final class RailNoticeServiceTests: XCTestCase {
         return (RailNoticeService(rules: try NoticeContract.rules(), transport: transport, pauses: pauses, now: clock.closure), transport)
     }
 
-    func testAMissingOrInvalidTableTurnsEverySourceOff() throws {
-        XCTAssertNil(NoticeSourcesTable.load(url: nil))
-        XCTAssertNil(NoticeSourcesTable.load(data: Data("{}".utf8)))
+    func testEveryPatternOfTheTableCompilesAndWithoutRulesNoSourceIsAsked() throws {
+        // NSRegularExpression takes every pattern Kotlin compiles: the shared rules exist.
+        XCTAssertNotNil(NoticeRules.standard)
+        XCTAssertNil(NoticeRegex("(unclosed"))
         XCTAssertNil(RailNoticeService.standard(rules: nil))
-        let original = try NoticeContract.data("contracts/shared-data/v1/notices-sources-v1.json")
-        XCTAssertNotNil(NoticeSourcesTable.load(data: original))
-        var object = try XCTUnwrap(JSONSerialization.jsonObject(with: original) as? [String: Any])
-        // A feed that is not HTTPS, a missing source or a pattern that does not compile: no table.
-        var sources = try XCTUnwrap(object["sources"] as? [[String: Any]])
-        sources[0]["url"] = "ftp://scioperi.mit.gov.it/rss"
-        object["sources"] = sources
-        XCTAssertNil(NoticeSourcesTable.load(data: try JSONSerialization.data(withJSONObject: object)))
-        object["sources"] = Array(sources.dropFirst())
-        XCTAssertNil(NoticeSourcesTable.load(data: try JSONSerialization.data(withJSONObject: object)))
-        var broken = try XCTUnwrap(JSONSerialization.jsonObject(with: original) as? [String: Any])
-        var text = try XCTUnwrap(broken["text"] as? [String: Any])
-        text["strikeWordPattern"] = "(unclosed"
-        broken["text"] = text
-        let table = try XCTUnwrap(NoticeSourcesTable.load(data: try JSONSerialization.data(withJSONObject: broken)))
-        XCTAssertNil(NoticeRules(table: table))
+        XCTAssertNotNil(RailNoticeService.standard(rules: NoticeRules.standard))
     }
 
     func testEveryRequestIsAndroidsHTTPSGetWithTheHonestUserAgentAndTheFeedsLimits() async throws {
@@ -41,9 +27,9 @@ final class RailNoticeServiceTests: XCTestCase {
         let (notices, transport) = try service(clock) { _ in FakeLiveTransport.ok("[]") }
         _ = await notices.general(personal: true)
         _ = await notices.strikeCalendar()
-        XCTAssertEqual(Set(transport.paths), Set(rules.table.sources.map(\.url)))
+        XCTAssertEqual(Set(transport.paths), Set(NoticeTable.sources.map(\.url)))
         for request in transport.requests {
-            let source = try XCTUnwrap(rules.table.sources.first { $0.url == request.url.absoluteString })
+            let source = try XCTUnwrap(NoticeTable.sources.first { $0.url == request.url.absoluteString })
             XCTAssertEqual(request.url.scheme, "https")
             XCTAssertEqual(request.headers["User-Agent"], LiveSourceUserAgent.general)
             XCTAssertTrue(request.headers["User-Agent"]?.hasSuffix("(iOS; rail timetable app)") == true)
@@ -73,7 +59,7 @@ final class RailNoticeServiceTests: XCTestCase {
     func testAListIsKeptForItsTimeToLiveThenServedAsAnEarlierCopyWhileTheFeedFails() async throws {
         let clock = LiveTestClock(LiveTestDates.viaggiaTrenoNow)
         let rules = try NoticeContract.rules()
-        let rfi = try XCTUnwrap(rules.table.sources.first { $0.id == NoticeSourceID.rfiInfomobility })
+        let rfi = try XCTUnwrap(NoticeTable.sources.first { $0.id == NoticeSourceID.rfiInfomobility })
         let failing = LiveCounter()
         let xml = #"<?xml version="1.0"?><rss><channel><item><title>Lavori tra Pavia e Voghera</title><link>https://www.rfi.it/a.html</link></item></channel></rss>"#
         let (notices, transport) = try service(clock) { _ in failing.marked("fail") ? .failure(.network) : FakeLiveTransport.ok(xml) }
@@ -105,7 +91,7 @@ final class RailNoticeServiceTests: XCTestCase {
         let rules = try NoticeContract.rules()
         let pauses = LiveSourcePauses()
         let (notices, transport) = try service(clock, pauses: pauses) { _ in FakeLiveTransport.status(429) }
-        let rfi = try XCTUnwrap(rules.table.sources.first { $0.id == NoticeSourceID.rfiInfomobility })
+        let rfi = try XCTUnwrap(NoticeTable.sources.first { $0.id == NoticeSourceID.rfiInfomobility })
         let refused = await notices.general(personal: false)
         XCTAssertEqual(refused.unavailable, [.rfi])
         // Past the rate interval the feed is still paused (15 minutes): nothing is sent.
@@ -114,7 +100,7 @@ final class RailNoticeServiceTests: XCTestCase {
         XCTAssertEqual(paused.unavailable, [.rfi])
         XCTAssertEqual(transport.requests.count, 1)
         XCTAssertTrue(pauses.active(at: clock.now()).isEmpty)
-        clock.advance(rules.table.manners.refusalPauseSeconds)
+        clock.advance(SharedData.SourceManners.refusalPauseSeconds)
         _ = await notices.general(personal: false)
         XCTAssertEqual(transport.requests.count, 2)
     }

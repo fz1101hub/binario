@@ -256,19 +256,19 @@ class IOSProjectTests(unittest.TestCase):
         self.assertEqual(5_290, catalog["stationCount"])
         self.assertFalse(catalog["operationalData"])
 
-    def test_notice_sources_come_from_the_shared_table_bundled_once(self) -> None:
-        """The iPhone's rail notices read contracts/shared-data/v1/notices-sources-v1.json (Android's values, kept equal
-        by NoticesSourcesTableTest.kt): bundled from there, never copied, its feeds named nowhere in the Swift sources,
-        Trenitalia and Trenord behind «Dati in tempo reale», MIT and RFI in every build."""
+    def test_notice_sources_come_from_the_shared_table_as_generated_code(self) -> None:
+        """The iPhone's rail notices read contracts/shared-data/v1/notices-sources-v1.json as the generated
+        SharedData.NoticesSources (Android's SharedData too): no bundled copy and no loader, its feeds named in no
+        hand-written Swift source, Trenitalia and Trenord behind «Dati in tempo reale», MIT and RFI in every build."""
         app = self.targets["Binario"]
         resources = [
             entry["path"] for entry in app["sources"]
             if isinstance(entry, dict) and entry.get("buildPhase") == "resources"
         ]
-        self.assertIn("../contracts/shared-data/v1/notices-sources-v1.json", resources)
+        self.assertFalse(any("notices-sources" in path for path in resources))
         self.assertFalse((IOS / "Resources/notices-sources-v1.json").exists())
-        table = json.loads((ROOT / "contracts/shared-data/v1/notices-sources-v1.json").read_text(encoding="utf-8"))
-        self.assertEqual("binario-shared-data-notices-sources-v1", table["schema"])
+        table = json.loads(SHARED_DATA.joinpath("notices-sources-v1.json").read_text(encoding="utf-8"))
+        self.assertEqual("binario-shared-data-v1", table["schema"])
         gates = {source["id"]: source["gate"] for source in table["sources"]}
         self.assertEqual({
             "mit-strikes-rss": "all-builds", "rfi-infomobility-rss": "all-builds",
@@ -280,17 +280,21 @@ class IOSProjectTests(unittest.TestCase):
         swift = "\n".join(path.read_text(encoding="utf-8") for path in kit.glob("*.swift"))
         for source in table["sources"]:
             self.assertNotIn(source["url"], swift, "the feeds live in the shared table only")
-        self.assertIn('public static let resourceName = "notices-sources-v1"', (kit / "NoticeSourcesTable.swift").read_text(encoding="utf-8"))
+        generated = (kit / "Generated/SharedData.swift").read_text(encoding="utf-8")
+        for source in table["sources"]:
+            self.assertIn(f'url: "{source["url"]}"', generated)
+        self.assertIn("public typealias NoticeTable = SharedData.NoticesSources", (kit / "NoticeSourcesTable.swift").read_text(encoding="utf-8"))
         model = (IOS / "BinarioApp/RailNoticesModel.swift").read_text(encoding="utf-8")
-        self.assertIn("bundle.url(forResource: NoticeSourcesTable.resourceName, withExtension: NoticeSourcesTable.resourceExtension)", model)
+        self.assertIn("RailNoticeService.standard(rules: NoticeRules.standard)", model)
+        self.assertNotIn("forResource", model)
         service = (kit / "RailNotices.swift").read_text(encoding="utf-8")
-        self.assertIn("feed.gate == .allBuilds || personal", service)
+        self.assertIn('feed.gate == "all-builds" || personal', service)
         # Every notice section passes «Dati in tempo reale» as the personal switch.
         views = (IOS / "BinarioApp/RailNoticeViews.swift").read_text(encoding="utf-8")
         self.assertNotIn("personal: true", views)
         self.assertIn("personal: model.liveDataEnabled", views)
-        android = (ROOT / "app/src/test/java/it/binario/app/data/notices/NoticesSourcesTableTest.kt").read_text(encoding="utf-8")
-        self.assertIn("contracts/shared-data/v1/notices-sources-v1.json", android)
+        android = (ROOT / "app/src/test/java/it/binario/app/shared/SharedDataTest.kt").read_text(encoding="utf-8")
+        self.assertIn('table("notices-sources-v1.json")', android)
         tests = (IOS / "BinarioKit/Tests/BinarioKitTests/NoticesContractTests.swift").read_text(encoding="utf-8")
         self.assertIn("contracts/shared-rules/v1/notices-v1.json", tests)
 
@@ -440,22 +444,24 @@ class IOSProjectTests(unittest.TestCase):
         self.assertIn("guard let reliabilityStats, !service.isBus else { return nil }", (IOS / "BinarioApp/AppModel.swift").read_text(encoding="utf-8"))
 
     def test_the_timetable_copies_follow_androids_pack_classes(self) -> None:
-        # TimetableCopies names the packs as Android's PlannedPackOrder and the index builder do.
+        # The pack roles are one shared table (contracts/shared-data/v1/pack-roles-v1.json): the index builder reads the
+        # JSON, TimetableCopies, TimetableVehicle and Android (PlannedPackOrder, EmbeddedGtfsRouteAdapter,
+        # EmbeddedGtfsPacks) its generated constants (SharedDataTest.kt, SharedDataTests.swift).
         sys.path.insert(0, str(ROOT / "tools"))
         import build_ios_gtfs_schedule as builder
 
+        roles = json.loads(SHARED_DATA.joinpath("pack-roles-v1.json").read_text(encoding="utf-8"))
+        self.assertEqual(set(builder.FOREIGN_PACKS), set(roles["foreignPacks"]))
+        self.assertEqual(set(builder.SCHEDULED_COACH_PACKS), set(roles["scheduledCoachPacks"]))
         copies = (IOS / "BinarioKit/Sources/BinarioKit/TimetableCopies.swift").read_text(encoding="utf-8")
         vehicle = (IOS / "BinarioKit/Sources/BinarioKit/TimetableVehicle.swift").read_text(encoding="utf-8")
-        def swift_set(source: str, name: str) -> set[str]:
-            return set(re.findall(r'"([^"]+)"', re.search(rf"static let {name}: Set<String> = \[([^\]]*)\]", source).group(1)))
-        self.assertEqual(set(builder.FOREIGN_PACKS), swift_set(copies, "foreignPacks"))
-        self.assertEqual(set(builder.SCHEDULED_COACH_PACKS), swift_set(vehicle, "scheduledCoachPacks"))
+        for name in ("nationalPacks", "foreignPacks", "crossPublishingPacks"):
+            self.assertIn(f"static let {name}: Set<String> = SharedData.PackRoles.{name}", copies)
+        self.assertIn("static let scheduledCoachPacks: Set<String> = SharedData.PackRoles.scheduledCoachPacks", vehicle)
         order = (ROOT / "app/src/main/java/it/binario/app/data/sources/PlannedPackOrder.kt").read_text(encoding="utf-8")
-        self.assertEqual(set(re.findall(r'SourceId\("([^"]+)"\)', re.search(r"val nationalPacks: Set<SourceId> = setOf\(([^\n]*)\)", order).group(1))),
-                         swift_set(copies, "nationalPacks"))
+        self.assertIn("val nationalPacks: Set<SourceId> = SharedData.PackRoles.NATIONAL_PACKS.mapTo(LinkedHashSet(), ::SourceId)", order)
         adapter = (ROOT / "app/src/main/java/it/binario/app/data/gtfs/EmbeddedGtfsRouteAdapter.kt").read_text(encoding="utf-8")
-        self.assertEqual(set(re.findall(r'"([^"]+)"', re.search(r"CROSS_PUBLISHING_PACKS = setOf\(([^)]*)\)", adapter).group(1))),
-                         swift_set(copies, "crossPublishingPacks"))
+        self.assertIn("CROSS_PUBLISHING_PACKS = it.binario.app.shared.SharedData.PackRoles.CROSS_PUBLISHING_PACKS", adapter)
 
     def test_iphone_texts_never_name_another_platform_or_a_widget(self) -> None:
         """App Review and the companion's rule (EXPO_PORT_PLAN R24, audit expo-6): no iPhone text names Android,
@@ -784,7 +790,8 @@ class IOSProjectTests(unittest.TestCase):
             "configuration.httpCookieStorage = nil", "configuration.urlCredentialStorage = nil",
             "configuration.urlCache = nil", "completionHandler(nil)",
             'public static let general = make(version: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String)',
-            'return "Binario/\\(cleaned.isEmpty ? "0" : cleaned) (iOS; rail timetable app)"',
+            'return SharedData.SourceManners.userAgent',
+            '.replacingOccurrences(of: "<platform>", with: "iOS")',
         ]:
             self.assertIn(expected, live)
         sources = "\n".join(path.read_text(encoding="utf-8") for path in (IOS / "BinarioKit/Sources").rglob("*.swift"))

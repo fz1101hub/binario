@@ -134,6 +134,21 @@ class EmitterTest(unittest.TestCase):
             generator.Kotlin(), generator.Swift(), generator.TypeScript())))
         self.assertEqual("readonly (number | null)[]", generator.TypeScript().type_name(generator.ListOf(year)))
 
+    def test_seconds_are_time_intervals_in_swift_and_numbers_are_doubles(self) -> None:
+        seconds, real = generator.Seconds(), generator.Real()
+        self.assertEqual(("Int", "Double", "number"), tuple(language.type_name(seconds) for language in (
+            generator.Kotlin(), generator.Swift(), generator.TypeScript())))
+        self.assertEqual("900", generator.Swift().inline(seconds, 900))
+        self.assertEqual(("Double", "Double", "number"), tuple(language.type_name(real) for language in (
+            generator.Kotlin(), generator.Swift(), generator.TypeScript())))
+        self.assertEqual(["10.9", "45.0"], [generator.Kotlin().inline(real, value) for value in (10.9, 45.0)])
+
+    def test_the_notes_of_a_table_are_comments_of_the_code(self) -> None:
+        kotlin = (ROOT / generator.KOTLIN_OUTPUT).read_text(encoding="utf-8")
+        # italo-gtfs-station-codes.json writes its notes as "comment".
+        self.assertIn('            // Padova ("Padua" in the feed)\n            StationCode(code = "PD_", catalogueId = "S02581"),', kotlin)
+        self.assertIn('            // Roma Termini ↔ Fiumicino Aeroporto (Trenitalia regional express).\n', kotlin)
+
 
 class ValidationTest(unittest.TestCase):
     def assert_refused(self, workspace: Workspace, fragment: str) -> None:
@@ -167,6 +182,14 @@ class ValidationTest(unittest.TestCase):
             ("italo-stations-v1.json", lambda d: d["stations"][0].update(name=" Milano"), "spazi ai bordi"),
             ("train-number-prefixes-v1.json", lambda d: d.update(categories=[]), "almeno 1 elementi"),
             ("train-number-prefixes-v1.json", lambda d: d["categories"].append("R|S"), "non corrisponde"),
+            ("italo-gtfs-station-codes.json", lambda d: d.update(name="other"), "name deve essere 'italo-gtfs-station-codes'"),
+            ("italo-gtfs-station-codes.json", lambda d: d["readers"].update(android=1), "attesa una stringa"),
+            ("italo-gtfs-station-codes.json", lambda d: d["codes"][0].update(note="x"), "chiave non prevista 'note'"),
+            ("notices-sources-v1.json", lambda d: d["trenord"]["area"].update(maximumLatitude="46"), "atteso un numero"),
+            ("notices-sources-v1.json", lambda d: d["trenord"]["area"].update(maximumLatitude=True), "atteso un numero"),
+            ("notices-sources-v1.json", lambda d: d["sources"][0].update(gate="sometimes"), "non corrisponde"),
+            ("notices-sources-v1.json", lambda d: d["sources"][0].update(url="http://scioperi.mit.gov.it/rss"), "non corrisponde"),
+            ("source-manners-v1.json", lambda d: d.update(refusalPauseSeconds=-1), "minore di 1"),
         )
         for name, change, fragment in cases:
             with self.subTest(name=name, fragment=fragment), Workspace() as workspace:
@@ -196,6 +219,11 @@ class ValidationTest(unittest.TestCase):
              "pointsByCategory deve elencare categories"),
             ("italian-holidays-v1.json", lambda d: d["holidays"].append({"month": 2, "day": 30}), "non è una data"),
             ("planned-journeys-v1.json", lambda d: d["reminderMinutes"].reverse(), "in ordine crescente"),
+            ("italo-gtfs-station-codes.json", lambda d: d["unmapped"].append({"code": "MC_"}), "è anche in codes"),
+            ("notices-sources-v1.json", lambda d: d["months"].pop(), "dodici mesi"),
+            ("notices-sources-v1.json", lambda d: d["trenord"]["area"].update(minimumLatitude=50.0), "minimo non minore"),
+            ("source-manners-v1.json", lambda d: d.update(userAgent="Binario (rail timetable app)"), "un solo <version>"),
+            ("pack-roles-v1.json", lambda d: d["foreignPacks"].append("italo-gtfs"), "sia nazionale sia estero"),
         )
         for name, change, fragment in cases:
             with self.subTest(name=name, fragment=fragment), Workspace() as workspace:
@@ -236,10 +264,10 @@ class CheckModeTest(unittest.TestCase):
 
     def test_a_table_not_registered_yet_is_reported_and_generates_nothing(self) -> None:
         with Workspace() as workspace:
-            workspace.table("notices-sources-v1.json").write_text('{"schema": "anything"}\n', encoding="utf-8")
+            workspace.table("future-table-v1.json").write_text('{"schema": "anything"}\n', encoding="utf-8")
             status, _, err = workspace.run(check=True)
             self.assertEqual(0, status, err)
-            self.assertIn("contracts/shared-data/v1/notices-sources-v1.json non è registrato", err)
+            self.assertIn("contracts/shared-data/v1/future-table-v1.json non è registrato", err)
 
 
 if __name__ == "__main__":

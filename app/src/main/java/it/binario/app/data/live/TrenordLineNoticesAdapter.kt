@@ -1,5 +1,6 @@
 package it.binario.app.data.live
 
+import it.binario.app.shared.SharedData
 import it.binario.app.data.core.AlertId
 import it.binario.app.data.core.AlertSeverity
 import it.binario.app.data.core.Confidence
@@ -30,9 +31,9 @@ import org.json.JSONObject
 /** A Trenord line ("direttrice") as published: code (`D034`) and the stations of its name, in order. */
 data class TrenordLine(val code: String, val description: String) {
     /** Normalised station names of the description (`LAVENO-VARESE-SARONNO-MILANO` → LAVENO, VARESE, …). */
-    val stationTokens: List<String> = description.split('-', '/', '–')
+    val stationTokens: List<String> = description.split(*SharedData.NoticesSources.TRENORD.stationTokenSeparators.toTypedArray())
         .map { TrenordLineNoticesAdapter.normalizeStationName(it) }
-        .filter { it.length >= 2 }
+        .filter { it.length >= SharedData.NoticesSources.TRENORD.minimumTokenLength }
         .distinct()
 }
 
@@ -50,7 +51,7 @@ class TrenordLineNoticesAdapter internal constructor(
     retryDelayMillis: Long
 ) : AlertProvider {
     constructor(clock: Clock = Clock.systemUTC()) : this(
-        HttpPublicSourceFetcher(PublicSourceRequestPolicy(maxBytes = MAX_BYTES)), clock, 750
+        HttpPublicSourceFetcher(FEED.requestPolicy()), clock, FEED.retryDelay
     )
 
     override val descriptor = ProviderDescriptor(
@@ -59,11 +60,11 @@ class TrenordLineNoticesAdapter internal constructor(
         capabilities = setOf(ProviderCapability.SERVICE_ALERTS),
         coverage = CoverageDescriptor(countryCodes = setOf("IT", "CH"), description = "Avvisi Trenord per linea (direttrice)"),
         accessMode = AccessMode.PUBLIC_BEST_EFFORT,
-        ratePolicy = RatePolicy(Duration.ofMinutes(10), defaultTimeToLive = TTL),
+        ratePolicy = RatePolicy(FEED.minimumInterval, defaultTimeToLive = TTL),
         schemaVersion = 1
     )
 
-    private val cache = ResilientSourceCache<ParsedLines>(TTL, Duration.ofHours(2), clock, maxEntries = 1, retryDelayMillis = retryDelayMillis)
+    private val cache = ResilientSourceCache<ParsedLines>(TTL, FEED.maximumStale, clock, maxEntries = 1, retryDelayMillis = retryDelayMillis)
 
     override suspend fun getAlerts(request: AlertRequest): ProviderResult<List<ServiceAlert>> = when (val result = getLineNotices()) {
         is ProviderResult.Success -> ProviderResult.Success(result.value.alerts, result.meta)
@@ -85,8 +86,8 @@ class TrenordLineNoticesAdapter internal constructor(
         val news = LinkedHashMap<String, ParsedNews>()
         for (index in 0 until minOf(array.length(), MAX_LINES)) {
             val item = array.optJSONObject(index) ?: continue
-            val code = item.text("nome")?.take(16)?.takeIf { it.matches(LINE_CODE) } ?: continue
-            val line = TrenordLine(code, item.text("descrizione")?.take(200).orEmpty())
+            val code = item.text("nome")?.take(RULES.lineCodeLength)?.takeIf { it.matches(LINE_CODE) } ?: continue
+            val line = TrenordLine(code, item.text("descrizione")?.take(RULES.lineDescriptionLength).orEmpty())
             lines += line
             val items = item.optJSONArray("news") ?: continue
             for (newsIndex in 0 until minOf(items.length(), MAX_NEWS_PER_LINE)) {
@@ -147,14 +148,16 @@ class TrenordLineNoticesAdapter internal constructor(
 
     companion object {
         val SOURCE_ID = SourceId("trenord-line-notices")
-        internal const val URL = "https://www.trenord.it/mgmt/store-management-api/mia/direttrici/"
-        private val TTL: Duration = Duration.ofMinutes(15)
-        private const val MAX_BYTES = 1024 * 1024
-        private const val MAX_LINES = 300
-        private const val MAX_NEWS_PER_LINE = 100
-        private const val MAX_TEXT = 4_000
-        private const val MAX_TITLE = 160
-        private val LINE_CODE = Regex("[A-Za-z0-9_-]{1,16}")
+        // The feed and its reader are the shared table (contracts/shared-data/v1/notices-sources-v1.json).
+        private val FEED = noticeFeed("trenord-line-notices")
+        private val RULES = SharedData.NoticesSources.TRENORD
+        internal val URL = FEED.url
+        private val TTL: Duration = FEED.timeToLive
+        private val MAX_LINES = RULES.maximumLines
+        private val MAX_NEWS_PER_LINE = RULES.maximumNewsPerLine
+        private val MAX_TEXT = RULES.textLength
+        private val MAX_TITLE = RULES.titleLength
+        private val LINE_CODE = Regex(RULES.lineCodePattern)
         private const val UNAVAILABLE = "Gli avvisi Trenord non sono raggiungibili."
         private const val UNREADABLE = "Gli avvisi Trenord non sono leggibili."
 
@@ -168,11 +171,7 @@ class TrenordLineNoticesAdapter internal constructor(
          */
         internal fun isOperational(text: String): Boolean = OPERATIONAL.containsMatchIn(stripAccents(text))
 
-        private val OPERATIONAL = Regex(
-            "scioper|soppress|ritard|lavori|variazion|sostitui|sostitutiv|interruz|interrott|circolazion|sospes|cancellat|" +
-                "limitazion|guast|deviat|modific|autobus|servizi[oa]? (di )?bus|corse (di |con )?bus|\\bbus (tra|fra)\\b",
-            RegexOption.IGNORE_CASE
-        )
+        private val OPERATIONAL = Regex(SharedData.NoticesSources.TRENORD.operationalPattern, RegexOption.IGNORE_CASE)
 
         private fun stripAccents(value: String): String =
             java.text.Normalizer.normalize(value, java.text.Normalizer.Form.NFD).replace(Regex("\\p{M}+"), "")

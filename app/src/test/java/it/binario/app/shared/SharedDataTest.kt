@@ -2,6 +2,25 @@ package it.binario.app.shared
 
 import it.binario.app.data.AirportRoutes
 import it.binario.app.data.core.SourceId
+import it.binario.app.data.gtfs.EmbeddedGtfsPacks
+import it.binario.app.data.gtfs.ItaloGtfsStationCodes
+import it.binario.app.data.live.MitStrikeRssAdapter
+import it.binario.app.data.live.RfiInfomobilityRssAdapter
+import it.binario.app.data.live.SourceCircuitBreaker
+import it.binario.app.data.live.StrikeCalendar
+import it.binario.app.data.live.TrenitaliaInfomobilityNewsAdapter
+import it.binario.app.data.live.TrenordLineNoticesAdapter
+import it.binario.app.data.live.binarioUserAgent
+import it.binario.app.data.live.noticeFeed
+import it.binario.app.data.live.requestPolicy
+import it.binario.app.data.notices.NoticePublisher
+import it.binario.app.data.notices.RailExternalLinks
+import it.binario.app.data.notices.RailNoticesService
+import it.binario.app.data.notices.TrenordLineMatcher
+import it.binario.app.data.sources.PlannedPackClass
+import it.binario.app.data.sources.PlannedPackOrder
+import it.binario.app.links.OfficialLinks
+import it.binario.app.ui.departures.RouteWorksViewModel
 import it.binario.app.data.live.ItaloPublicStationFallbacks
 import it.binario.app.data.live.ItaloStationSlugs
 import it.binario.app.data.live.RfiStationIds
@@ -16,7 +35,11 @@ import it.binario.app.plannedjourney.PlannedJourneyReminderMinutes
 import it.binario.app.plannedjourney.PlannedJourneyTemplates
 import it.binario.app.plannedjourney.PlannedJourneyTransferContract
 import java.io.File
+import java.time.Clock
+import java.time.Duration
+import java.time.Instant
 import java.time.LocalDate
+import java.time.ZoneOffset
 import org.json.JSONArray
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
@@ -170,5 +193,134 @@ class SharedDataTest {
         assertEquals(json.getInt("maximumTemplatesBytes"), SharedData.PlannedJourneys.MAXIMUM_TEMPLATES_BYTES)
         // The reminder leads stay an enum (the editor's labels): it must list the table's values, in its order.
         assertEquals(json.getJSONArray("reminderMinutes").ints(), PlannedJourneyReminderMinutes.entries.map { it.minutes })
+    }
+
+    @Test fun `italo gtfs station codes are the shared table`() {
+        val json = table("italo-gtfs-station-codes.json")
+        val codes = json.getJSONArray("codes").objects()
+        assertEquals(codes.map { it.getString("code") to it.getString("catalogueId") }, SharedData.ItaloGtfsStationCodes.CODES.map { it.code to it.catalogueId })
+        assertEquals(codes.size, ItaloGtfsStationCodes.size)
+        for (code in codes) assertEquals(code.getString("code"), "curated:${code.getString("catalogueId")}", ItaloGtfsStationCodes.catalogueId(code.getString("code")))
+        val unmapped = json.getJSONArray("unmapped").objects().map { it.getString("code") }.toSet()
+        assertEquals(unmapped, ItaloGtfsStationCodes.unmapped)
+        for (code in unmapped) assertEquals(code, null, ItaloGtfsStationCodes.catalogueId(code))
+    }
+
+    @Test fun `pack roles are the shared table`() {
+        val json = table("pack-roles-v1.json")
+        fun set(key: String) = json.getJSONArray(key).strings().toSet()
+        assertEquals(set("nationalPacks"), SharedData.PackRoles.NATIONAL_PACKS)
+        assertEquals(set("nationalPacks"), PlannedPackOrder.nationalPacks.map { it.value }.toSet())
+        assertEquals(set("crossPublishingPacks"), SharedData.PackRoles.CROSS_PUBLISHING_PACKS)
+        assertEquals(set("scheduledCoachPacks"), SharedData.PackRoles.SCHEDULED_COACH_PACKS)
+        val packs = EmbeddedGtfsPacks.forBuild(personalSources = true).filterNot { it.isUrban }
+        assertEquals(set("scheduledCoachPacks"), packs.filter { it.busRoutesAreScheduledCoaches }.map { it.sourceId.value }.toSet())
+        // Android derives a foreign pack from its first catalogue country: for every railway pack it is the table's set.
+        assertEquals(set("foreignPacks"), SharedData.PackRoles.FOREIGN_PACKS)
+        for (pack in packs) {
+            assertEquals(pack.sourceId.value, pack.sourceId.value in set("foreignPacks"), PlannedPackOrder.classOf(pack.sourceId) == PlannedPackClass.FOREIGN)
+        }
+    }
+
+    @Test fun `every source is asked with the shared manners`() {
+        val json = table("source-manners-v1.json")
+        assertEquals("Binario/1.2 (Android; rail timetable app)", binarioUserAgent("1.2"))
+        assertEquals(json.getString("userAgent").replace("<version>", "0").replace("<platform>", "Android"), binarioUserAgent("é"))
+        assertEquals(json.getJSONArray("refusalStatuses").ints().toSet(), SharedData.SourceManners.REFUSAL_STATUSES)
+        assertEquals(json.getInt("refusalPauseSeconds"), SharedData.SourceManners.REFUSAL_PAUSE_SECONDS)
+        val now = Instant.parse("2026-11-23T10:00:00Z")
+        val clock = Clock.fixed(now, ZoneOffset.UTC)
+        val breaker = SourceCircuitBreaker(clock)
+        repeat(json.getInt("failureThreshold") - 1) { breaker.recordFailure() }
+        assertTrue(breaker.allowRequest())
+        breaker.recordFailure()
+        assertEquals(now.plusSeconds(json.getLong("baseOpenSeconds")), breaker.pausedUntil())
+        val asked = SourceCircuitBreaker(clock)
+        asked.recordFailure(Duration.ofDays(1))
+        assertEquals(now.plusSeconds(json.getLong("maximumRetryAfterSeconds")), asked.pausedUntil())
+        assertEquals(json.getInt("maximumOpenSeconds"), SharedData.SourceManners.MAXIMUM_OPEN_SECONDS)
+    }
+
+    @Test fun `the notice feeds are the shared table`() {
+        val json = table("notices-sources-v1.json")
+        val sources = json.getJSONArray("sources").objects()
+        assertEquals(sources.map { it.getString("id") }, SharedData.NoticesSources.SOURCES.map { it.id })
+        for (source in sources) {
+            val id = source.getString("id")
+            val feed = noticeFeed(id)
+            assertEquals(id, source.getString("url"), feed.url)
+            assertEquals(id, source.getString("gate"), feed.gate)
+            assertEquals(id, source.getLong("timeToLiveSeconds"), feed.timeToLiveSeconds.toLong())
+            assertEquals(id, source.getLong("maximumStaleSeconds"), feed.maximumStaleSeconds.toLong())
+            assertEquals(id, source.optLong("retryDelayMillis").takeUnless { source.isNull("retryDelayMillis") }, feed.retryDelayMillis?.toLong())
+            assertEquals(id, source.optString("pauseLabel").takeUnless { source.isNull("pauseLabel") }, feed.pauseLabel)
+            val policy = feed.requestPolicy()
+            assertEquals(id, source.getString("accept"), policy.accept)
+            assertEquals(id, source.getLong("connectTimeoutSeconds") * 1_000, policy.connectTimeoutMillis.toLong())
+            assertEquals(id, source.getLong("readTimeoutSeconds") * 1_000, policy.readTimeoutMillis.toLong())
+            assertEquals(id, source.getLong("totalTimeoutSeconds") * 1_000, policy.totalTimeoutMillis)
+            assertEquals(id, source.getInt("maximumBytes"), policy.maxBytes)
+            assertEquals(id, source.getInt("maximumRequests"), policy.maxRequests)
+            assertEquals(id, source.getBoolean("viaggiaTrenoCleartextHop"), policy.allowViaggiaTrenoCleartextRedirect)
+            val publisher = source.optString("publisher").takeUnless { source.isNull("publisher") }
+            assertEquals(id, publisher, RailNoticesService.publisherOf(SourceId(id))?.name)
+        }
+        fun interval(id: String) = sources.single { it.getString("id") == id }.getLong("minimumIntervalSeconds")
+        fun ttl(id: String) = sources.single { it.getString("id") == id }.getLong("timeToLiveSeconds")
+        val mit = MitStrikeRssAdapter(Clock.systemUTC())
+        assertEquals(noticeFeed("mit-strikes-rss").url, MitStrikeRssAdapter.URL)
+        assertEquals(interval("mit-strikes-rss"), mit.descriptor.ratePolicy.minimumRequestInterval.seconds)
+        assertEquals(ttl("mit-strikes-rss"), MitStrikeRssAdapter.TTL.seconds)
+        val rfi = RfiInfomobilityRssAdapter()
+        assertEquals(noticeFeed("rfi-infomobility-rss").url, RfiInfomobilityRssAdapter.NATIONAL_UPDATES_URL)
+        assertEquals(interval("rfi-infomobility-rss"), rfi.descriptor.ratePolicy.minimumRequestInterval.seconds)
+        assertEquals(ttl("rfi-infomobility-rss"), rfi.descriptor.ratePolicy.defaultTimeToLive.seconds)
+        val news = TrenitaliaInfomobilityNewsAdapter(Clock.systemUTC())
+        assertEquals(noticeFeed("trenitalia-infomobility-news").url, TrenitaliaInfomobilityNewsAdapter.URL)
+        assertEquals(interval("trenitalia-infomobility-news"), news.descriptor.ratePolicy.minimumRequestInterval.seconds)
+        assertEquals(ttl("trenitalia-infomobility-news"), news.descriptor.ratePolicy.defaultTimeToLive.seconds)
+        val lines = TrenordLineNoticesAdapter(Clock.systemUTC())
+        assertEquals(noticeFeed("trenord-line-notices").url, TrenordLineNoticesAdapter.URL)
+        assertEquals(interval("trenord-line-notices"), lines.descriptor.ratePolicy.minimumRequestInterval.seconds)
+        assertEquals(ttl("trenord-line-notices"), lines.descriptor.ratePolicy.defaultTimeToLive.seconds)
+    }
+
+    @Test fun `the notice links, readers and display limits are the shared table`() {
+        val json = table("notices-sources-v1.json")
+        val links = json.getJSONObject("links")
+        assertEquals(links.getString("mitStrikeCalendar"), RailExternalLinks.MIT_STRIKE_CALENDAR)
+        assertEquals(links.getString("fsNews"), OfficialLinks.FS_NEWS)
+        val guaranteed = links.getJSONObject("guaranteedTrains").entries()
+        assertEquals(guaranteed, SharedData.NoticesSources.LINKS.guaranteedTrains)
+        for (publisher in NoticePublisher.entries) assertEquals(publisher.name, guaranteed[publisher.name], OfficialLinks.guaranteedTrainsOf(publisher.name))
+        val strikes = json.getJSONObject("strikes")
+        assertEquals(strikes.getInt("upcomingShown"), StrikeCalendar.UPCOMING_SHOWN)
+        assertEquals(strikes.getLong("undatedRecentDays"), StrikeCalendar.UNDATED_RECENT.toDays())
+        assertEquals(strikes.getString("railWordsPattern"), SharedData.NoticesSources.STRIKES.railWordsPattern)
+        assertEquals(json.getJSONArray("months").strings(), SharedData.NoticesSources.MONTHS)
+        val text = json.getJSONObject("text")
+        assertEquals(text.getString("strikeWordPattern"), SharedData.NoticesSources.TEXT.strikeWordPattern)
+        assertEquals(text.getString("urlPattern"), SharedData.NoticesSources.TEXT.urlPattern)
+        assertEquals(text.getJSONArray("cleartextOfficialDomains").strings(), SharedData.NoticesSources.TEXT.cleartextOfficialDomains)
+        val trenord = json.getJSONObject("trenord")
+        assertEquals(trenord.getString("operationalPattern"), SharedData.NoticesSources.TRENORD.operationalPattern)
+        assertEquals(trenord.getJSONArray("stationTokenSeparators").strings(), SharedData.NoticesSources.TRENORD.stationTokenSeparators)
+        val area = trenord.getJSONObject("area")
+        assertTrue(TrenordLineMatcher.inTrenordArea(area.getDouble("minimumLatitude"), area.getDouble("maximumLongitude")))
+        assertFalse(TrenordLineMatcher.inTrenordArea(area.getDouble("minimumLatitude") - 0.01, area.getDouble("minimumLongitude")))
+        assertFalse(TrenordLineMatcher.inTrenordArea(area.getDouble("maximumLatitude"), area.getDouble("maximumLongitude") + 0.01))
+        val works = json.getJSONObject("routeWorks")
+        assertEquals(works.getInt("maximumRoutes"), RouteWorksViewModel.MAX_ROUTES)
+        assertEquals(works.getString("linePattern"), SharedData.NoticesSources.ROUTE_WORKS.linePattern)
+        assertEquals(works.getJSONArray("commonWords").strings(), SharedData.NoticesSources.ROUTE_WORKS.commonWords)
+        val service = json.getJSONObject("service")
+        assertEquals(service.getInt("sourceTimeoutSeconds"), SharedData.NoticesSources.SERVICE.sourceTimeoutSeconds)
+        assertEquals(service.getInt("reloadAfterSeconds"), SharedData.NoticesSources.SERVICE.reloadAfterSeconds)
+        val display = json.getJSONObject("display")
+        assertEquals(display.getInt("networkCollapsed"), SharedData.NoticesSources.DISPLAY.networkCollapsed)
+        assertEquals(display.getInt("bodyCollapsedLines"), SharedData.NoticesSources.DISPLAY.bodyCollapsedLines)
+        assertEquals(display.getInt("bodyCollapsedCharacters"), SharedData.NoticesSources.DISPLAY.bodyCollapsedCharacters)
+        assertEquals(display.getInt("maximumLineCodes"), SharedData.NoticesSources.DISPLAY.maximumLineCodes)
+        assertEquals(display.getInt("worksCollapsed"), SharedData.NoticesSources.DISPLAY.worksCollapsed)
     }
 }

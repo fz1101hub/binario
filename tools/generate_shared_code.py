@@ -27,10 +27,11 @@ import argparse
 import calendar
 import copy
 import json
+import math
 import re
 import sys
 import textwrap
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Callable, Mapping, Sequence
 
@@ -74,6 +75,21 @@ class Type:
 class Integer(Type):
     minimum: int | None = None
     maximum: int | None = None
+
+
+@dataclass(frozen=True)
+class Seconds(Integer):
+    """Whole seconds: an integer in JSON, Kotlin and TypeScript, a ``Double`` (``TimeInterval``) in Swift."""
+
+    minimum: int | None = 0
+
+
+@dataclass(frozen=True)
+class Real(Type):
+    """A finite number (``Double``), such as a coordinate."""
+
+    minimum: float | None = None
+    maximum: float | None = None
 
 
 @dataclass(frozen=True)
@@ -125,11 +141,13 @@ class Field:
 
 @dataclass(frozen=True)
 class Record(Type):
-    """A JSON object with fixed keys; ``notes`` admits an optional ``note`` (a comment in the code, not data)."""
+    """A JSON object with fixed keys; ``notes`` admits an optional ``note`` (``note_key``: a comment in the code, not
+    data)."""
 
     name: str
     fields: Mapping[str, Field]
     notes: bool = False
+    note_key: str = "note"
 
 
 @dataclass(frozen=True)
@@ -148,6 +166,8 @@ class Table:
     fields: Mapping[str, Field]
     alexa: bool = False
     check: Callable[[Mapping[str, Any]], list[str]] | None = None
+    # Keys of the file checked but not generated (what the table is about, for the tools that read the JSON itself).
+    metadata: Mapping[str, Type] = field(default_factory=dict)
 
     def records(self) -> list[Record]:
         found: list[Record] = []
@@ -222,6 +242,14 @@ def validate(kind: Type, value: Any, where: str, errors: list[str]) -> Any:
         elif kind.maximum is not None and value > kind.maximum:
             errors.append(f"{where}: {value} è maggiore di {kind.maximum}")
         return value
+    if isinstance(kind, Real):
+        if type(value) not in (int, float) or not math.isfinite(value):
+            errors.append(f"{where}: atteso un numero, trovato {type(value).__name__}")
+        elif kind.minimum is not None and value < kind.minimum:
+            errors.append(f"{where}: {value} è minore di {kind.minimum}")
+        elif kind.maximum is not None and value > kind.maximum:
+            errors.append(f"{where}: {value} è maggiore di {kind.maximum}")
+        return float(value) if type(value) in (int, float) else value
     if isinstance(kind, Text):
         if not isinstance(value, str):
             errors.append(f"{where}: attesa una stringa, trovato {type(value).__name__}")
@@ -274,7 +302,7 @@ def validate(kind: Type, value: Any, where: str, errors: list[str]) -> Any:
         if not isinstance(value, dict):
             errors.append(f"{where}: atteso un oggetto {kind.name}, trovato {type(value).__name__}")
             return RecordValue(kind, {})
-        allowed = set(kind.fields) | ({"note"} if kind.notes else set())
+        allowed = set(kind.fields) | ({kind.note_key} if kind.notes else set())
         for key in value:
             if key not in allowed:
                 errors.append(f"{where}: chiave non prevista {key!r}")
@@ -286,11 +314,11 @@ def validate(kind: Type, value: Any, where: str, errors: list[str]) -> Any:
                 errors.append(f"{where}: manca la chiave {key!r}")
             else:
                 values[key] = copy.deepcopy(item.default)
-        note = value.get("note")
+        note = value.get(kind.note_key) if kind.notes else None
         if note is not None:
-            validate(Text(max_length=200), note, f"{where}.note", errors)
+            validate(Text(max_length=200), note, f"{where}.{kind.note_key}", errors)
             if isinstance(note, str) and "*/" in note:
-                errors.append(f"{where}.note: «*/» non ammesso in un commento")
+                errors.append(f"{where}.{kind.note_key}: «*/» non ammesso in un commento")
         return RecordValue(kind, values, note if isinstance(note, str) else None)
     raise TypeError(f"tipo di schema sconosciuto: {kind!r}")
 
@@ -310,11 +338,19 @@ def load_table(table: Table, root: Path) -> tuple[LoadedTable | None, list[str]]
     if document.get("schema") != SCHEMA_MARKER:
         errors.append(f"{where}: schema deve essere {SCHEMA_MARKER!r}")
     description = document.get("description")
-    validate(Text(max_length=400), description, f"{where}: description", errors)
+    validate(Text(max_length=800), description, f"{where}: description", errors)
     if isinstance(description, str) and "*/" in description:
         errors.append(f"{where}: description: «*/» non ammesso in un commento")
+    # Optional for every table: its own name (the file's) and the code that reads it.
+    if "name" in document and document["name"] != table.file.removesuffix(".json"):
+        errors.append(f"{where}: name deve essere {table.file.removesuffix('.json')!r}")
+    if "readers" in document:
+        validate(MapOf(Text(max_length=300)), document["readers"], f"{where}: readers", errors)
+    for key, kind in table.metadata.items():
+        if key in document:
+            validate(kind, document[key], f"{where}: {key}", errors)
     for key in document:
-        if key not in table.fields and key not in {"schema", "description"}:
+        if key not in table.fields and key not in {"schema", "description", "name", "readers", *table.metadata}:
             errors.append(f"{where}: chiave non prevista {key!r}")
     values: dict[str, Any] = {}
     for key, item in table.fields.items():
@@ -338,22 +374,23 @@ def check_registry(tables: Sequence[Table]) -> list[str]:
     names: set[str] = set()
     records: dict[str, Record] = {}
     for table in tables:
-        if not re.fullmatch(r"[a-z0-9]+(?:-[a-z0-9]+)*-v\d+\.json", table.file) or table.file in files:
+        if not re.fullmatch(r"[a-z0-9]+(?:-[a-z0-9]+)*(?:-v\d+)?\.json", table.file) or table.file in files:
             problems.append(f"{table.file}: nome di file non valido o ripetuto")
         files.add(table.file)
         if not TYPE_NAME.fullmatch(table.name) or table.name in names or table.name == "SharedData":
             problems.append(f"{table.file}: nome {table.name!r} non valido o ripetuto")
         names.add(table.name)
-        keys = list(table.fields)
+        # The file's own keys (schema, description, name, readers, the metadata) are no constants.
+        keys = [(key, {"schema", "description", "name", "readers", *table.metadata}) for key in table.fields]
         for record in table.records():
             if not TYPE_NAME.fullmatch(record.name) or record.name in names:
                 problems.append(f"{table.file}: tipo {record.name!r} non valido o uguale a una tabella")
             if records.get(record.name, record) is not record:
                 problems.append(f"{table.file}: tipo {record.name!r} già definito da un'altra tabella")
             records[record.name] = record
-            keys += list(record.fields)
-        for key in keys:
-            if not KEY_NAME.fullmatch(key) or key in RESERVED or key in {"schema", "description", "note"}:
+            keys += [(key, {"note", record.note_key}) for key in record.fields]
+        for key, taken in keys:
+            if not KEY_NAME.fullmatch(key) or key in RESERVED or key in taken:
                 problems.append(f"{table.file}: chiave {key!r} non utilizzabile come identificatore")
     return problems
 
@@ -402,6 +439,36 @@ def _check_planned_journeys(values: Mapping[str, Any]) -> list[str]:
     return [] if minutes == sorted(minutes) else ["reminderMinutes: in ordine crescente"]
 
 
+def _check_italo_gtfs_station_codes(values: Mapping[str, Any]) -> list[str]:
+    mapped = {entry.values["code"] for entry in values["codes"]}
+    return [f"unmapped: {entry.values['code']!r} è anche in codes" for entry in values["unmapped"]
+            if entry.values["code"] in mapped]
+
+
+def _check_notices_sources(values: Mapping[str, Any]) -> list[str]:
+    problems = [] if len(values["months"]) == 12 else ["months: dodici mesi"]
+    for index, source in enumerate(values["sources"]):
+        if source.values["totalTimeoutSeconds"] < source.values["readTimeoutSeconds"]:
+            problems.append(f"sources[{index}]: totalTimeoutSeconds minore di readTimeoutSeconds")
+    area = values["trenord"].values["area"].values
+    if area["minimumLatitude"] >= area["maximumLatitude"] or area["minimumLongitude"] >= area["maximumLongitude"]:
+        problems.append("trenord.area: minimo non minore del massimo")
+    return problems
+
+
+def _check_source_manners(values: Mapping[str, Any]) -> list[str]:
+    problems = [] if values["userAgent"].count("<version>") == 1 and values["userAgent"].count("<platform>") == 1 \
+        else ["userAgent: un solo <version> e un solo <platform>"]
+    if values["baseOpenSeconds"] > values["maximumOpenSeconds"]:
+        problems.append("baseOpenSeconds maggiore di maximumOpenSeconds")
+    return problems
+
+
+def _check_pack_roles(values: Mapping[str, Any]) -> list[str]:
+    both = set(values["nationalPacks"]) & set(values["foreignPacks"])
+    return [f"{pack!r} è sia nazionale sia estero" for pack in sorted(both)]
+
+
 # --- Registry -----------------------------------------------------------------------------------------------------
 
 SOURCE_ID = r"[a-z0-9]+(?:-[a-z0-9]+)*"
@@ -437,6 +504,109 @@ OPERATOR_AFFINITY = Record("Affinity", {
     "pointsByCategory": Field(MapOf(Integer(0, 1_000), key=Text(r"[A-Z][A-Z_]*"))),
 })
 
+ITALO_STATION_CODE = Record("StationCode", {
+    "code": Field(Text(r"[A-Z0-9_]{3}")),
+    "catalogueId": Field(Text(CATALOGUE_STATION)),
+}, notes=True, note_key="comment")
+ITALO_UNMAPPED_CODE = Record("UnmappedCode", {"code": Field(Text(r"[A-Z0-9_]{3}"))}, notes=True, note_key="comment")
+
+HTTPS_URL = Text(r"https://[^\s]+", max_length=300)
+# A regular expression as Kotlin compiles it; the iPhone compiles the same text with NSRegularExpression.
+PATTERN = Text(max_length=1_000)
+LENGTH = Integer(1, 1_000_000)
+NOTICE_SERVICE = Record("Service", {"sourceTimeoutSeconds": Field(Seconds(1)), "reloadAfterSeconds": Field(Seconds(1))})
+NOTICE_SOURCE = Record("Source", {
+    "id": Field(Text(SOURCE_ID)),
+    "publisher": Field(Nullable(Text(r"[A-Z]+"))),
+    "gate": Field(Text(r"all-builds|personal")),
+    "url": Field(HTTPS_URL),
+    "accept": Field(Text()),
+    "connectTimeoutSeconds": Field(Seconds(1)),
+    "readTimeoutSeconds": Field(Seconds(1)),
+    "totalTimeoutSeconds": Field(Seconds(1)),
+    "maximumBytes": Field(Integer(1, 16 * 1_048_576)),
+    "maximumRequests": Field(Integer(1, 5)),
+    "redirects": Field(Text(r"same-resource|same-https-host")),
+    "viaggiaTrenoCleartextHop": Field(Boolean()),
+    "minimumIntervalSeconds": Field(Seconds(1)),
+    "timeToLiveSeconds": Field(Seconds(1)),
+    "maximumStaleSeconds": Field(Seconds()),
+    "retryDelayMillis": Field(Nullable(Integer(0, 60_000))),
+    "pauseLabel": Field(Nullable(Text())),
+})
+NOTICE_LINKS = Record("Links", {
+    "mitStrikeCalendar": Field(HTTPS_URL),
+    "fsNews": Field(HTTPS_URL),
+    "guaranteedTrains": Field(MapOf(HTTPS_URL, key=Text(r"[A-Z]+"))),
+})
+NOTICE_TEXT = Record("TextRules", {
+    "maximumInput": Field(LENGTH),
+    "noticeTitleLength": Field(LENGTH),
+    "noticeBodyLength": Field(LENGTH),
+    "strikeWordPattern": Field(PATTERN),
+    "urlPattern": Field(PATTERN),
+    "urlTrailing": Field(Text()),
+    "minimumUrlLength": Field(LENGTH),
+    "cleartextOfficialDomains": Field(ListOf(Text(r"[a-z0-9-]+(?:\.[a-z0-9-]+)+"))),
+})
+NOTICE_RSS = Record("Rss", {"maximumItems": Field(LENGTH), "maximumText": Field(LENGTH)})
+NOTICE_STRIKES = Record("Strikes", {
+    "railWordsPattern": Field(PATTERN),
+    "titleLength": Field(LENGTH),
+    "descriptionLength": Field(LENGTH),
+    "upcomingShown": Field(LENGTH),
+    "undatedRecentDays": Field(LENGTH),
+    "startLabelPattern": Field(PATTERN),
+    "endLabelPattern": Field(PATTERN),
+    "labelWindow": Field(LENGTH),
+    "inferNextYearMonthsBack": Field(Integer(0, 11)),
+})
+NOTICE_TRENITALIA = Record("TrenitaliaRules", {
+    "maximumItems": Field(LENGTH),
+    "titleLength": Field(LENGTH),
+    "descriptionLength": Field(LENGTH),
+    "linkLength": Field(LENGTH),
+    "maximumTrainTags": Field(LENGTH),
+    "trainTagPattern": Field(PATTERN),
+})
+TRENORD_AREA = Record("TrenordArea", {
+    "minimumLatitude": Field(Real(-90, 90)),
+    "maximumLatitude": Field(Real(-90, 90)),
+    "minimumLongitude": Field(Real(-180, 180)),
+    "maximumLongitude": Field(Real(-180, 180)),
+})
+NOTICE_TRENORD = Record("TrenordRules", {
+    "maximumLines": Field(LENGTH),
+    "maximumNewsPerLine": Field(LENGTH),
+    "textLength": Field(LENGTH),
+    "titleLength": Field(LENGTH),
+    "lineCodeLength": Field(LENGTH),
+    "lineCodePattern": Field(PATTERN),
+    "lineDescriptionLength": Field(LENGTH),
+    "operationalPattern": Field(PATTERN),
+    "stationTokenSeparators": Field(ListOf(Text(max_length=3))),
+    "minimumTokenLength": Field(LENGTH),
+    "hubLineCount": Field(LENGTH),
+    "networkWideMinimumLines": Field(LENGTH),
+    "area": Field(TRENORD_AREA),
+    "gtfsStationPrefix": Field(Text(r"gtfs:[a-z0-9-]+:")),
+})
+NOTICE_ROUTE_WORKS = Record("RouteWorksRules", {
+    "maximumRoutes": Field(LENGTH),
+    "minimumNameLength": Field(LENGTH),
+    "worksPattern": Field(PATTERN),
+    "linePattern": Field(PATTERN),
+    "commonWords": Field(ListOf(Text(r"[a-z]+"))),
+})
+NOTICE_DISPLAY = Record("Display", {
+    "networkCollapsed": Field(LENGTH),
+    "bodyCollapsedLines": Field(LENGTH),
+    "bodyCollapsedCharacters": Field(LENGTH),
+    "maximumLineCodes": Field(LENGTH),
+    "worksCollapsed": Field(LENGTH),
+})
+PACK_SET = ListOf(Text(SOURCE_ID), as_set=True)
+
 TABLES: tuple[Table, ...] = (
     Table("airport-routes-v1.json", "AirportRoutes", {
         "packs": Field(ListOf(AIRPORT_PACK, unique_by=("id",))),
@@ -446,10 +616,33 @@ TABLES: tuple[Table, ...] = (
         "holidays": Field(ListOf(HOLIDAY, unique_by=("month", "day"))),
         "easterOffsetsDays": Field(ListOf(Integer(-60, 60))),
     }, alexa=True, check=_check_holidays),
+    Table("italo-gtfs-station-codes.json", "ItaloGtfsStationCodes", {
+        "codes": Field(ListOf(ITALO_STATION_CODE, unique_by=("code",))),
+        "unmapped": Field(ListOf(ITALO_UNMAPPED_CODE, unique_by=("code",), min_items=0), default=[]),
+    }, check=_check_italo_gtfs_station_codes, metadata={"catalogue": Text(r"app/src/main/assets/[\w/.-]+\.json")}),
     Table("italo-stations-v1.json", "ItaloStations", {
         "stations": Field(ListOf(ITALO_STATION, unique_by=("code",))),
         "slugsByName": Field(MapOf(Text(r"[a-z0-9]+(?:-[a-z0-9]+)*"), key=STATION_NAME)),
     }),
+    Table("notices-sources-v1.json", "NoticesSources", {
+        "service": Field(NOTICE_SERVICE),
+        "sources": Field(ListOf(NOTICE_SOURCE, unique_by=("id",))),
+        "links": Field(NOTICE_LINKS),
+        "text": Field(NOTICE_TEXT),
+        "rss": Field(NOTICE_RSS),
+        "strikes": Field(NOTICE_STRIKES),
+        "months": Field(ListOf(Text(r"[a-z]+"))),
+        "trenitalia": Field(NOTICE_TRENITALIA),
+        "trenord": Field(NOTICE_TRENORD),
+        "routeWorks": Field(NOTICE_ROUTE_WORKS),
+        "display": Field(NOTICE_DISPLAY),
+    }, check=_check_notices_sources),
+    Table("pack-roles-v1.json", "PackRoles", {
+        "nationalPacks": Field(PACK_SET),
+        "foreignPacks": Field(PACK_SET),
+        "crossPublishingPacks": Field(PACK_SET),
+        "scheduledCoachPacks": Field(PACK_SET),
+    }, check=_check_pack_roles),
     Table("planned-journeys-v1.json", "PlannedJourneys", {
         "schemaVersion": Field(Integer(1, 99)),
         "transferKind": Field(Text(r"[a-z_]+")),
@@ -484,6 +677,15 @@ TABLES: tuple[Table, ...] = (
     Table("rfi-place-ids-v1.json", "RfiPlaceIds", {
         "placeIdsByName": Field(MapOf(Integer(1, 99_999), key=STATION_NAME)),
     }),
+    Table("source-manners-v1.json", "SourceManners", {
+        "userAgent": Field(Text(r"[\x20-\x7e]+", max_length=120)),
+        "refusalStatuses": Field(ListOf(Integer(400, 599), as_set=True)),
+        "refusalPauseSeconds": Field(Seconds(1)),
+        "maximumRetryAfterSeconds": Field(Seconds(1)),
+        "failureThreshold": Field(Integer(1, 100)),
+        "baseOpenSeconds": Field(Seconds(1)),
+        "maximumOpenSeconds": Field(Seconds(1)),
+    }, check=_check_source_manners),
     Table("source-scores-v1.json", "SourceScores", {
         "categories": Field(ListOf(Text(r"[A-Z][A-Z_]*"))),
         "defaultScore": Field(Integer(0, 1_000)),
@@ -543,7 +745,7 @@ class Language:
         inline = self.inline(kind, value)
         records = isinstance(kind, ListOf) and isinstance(kind.item, Record)
         flat_record = isinstance(kind, Record) and all(
-            isinstance(item.type, (Integer, Text, Boolean, Nullable)) for item in kind.fields.values())
+            isinstance(item.type, (Integer, Real, Text, Boolean, Nullable)) for item in kind.fields.values())
         if (column + len(inline) <= LINE_WIDTH and not records) or flat_record or \
                 (isinstance(kind, (ListOf, MapOf)) and not value):
             return inline
@@ -605,6 +807,8 @@ class Kotlin(Language):
     def type_name(self, kind: Type) -> str:
         if isinstance(kind, Integer):
             return "Int"
+        if isinstance(kind, Real):
+            return "Double"
         if isinstance(kind, Text):
             return "String"
         if isinstance(kind, Boolean):
@@ -624,7 +828,7 @@ class Kotlin(Language):
             return "true" if value else "false"
         if isinstance(kind, Text):
             return _escape(value, kotlin=True)
-        return str(value)
+        return repr(float(value)) if isinstance(kind, Real) else str(value)
 
     def null(self) -> str:
         return "null"
@@ -650,6 +854,8 @@ class Kotlin(Language):
 
 class Swift(Language):
     def type_name(self, kind: Type) -> str:
+        if isinstance(kind, (Seconds, Real)):
+            return "Double"
         if isinstance(kind, Integer):
             return "Int"
         if isinstance(kind, Text):
@@ -671,7 +877,7 @@ class Swift(Language):
             return "true" if value else "false"
         if isinstance(kind, Text):
             return _escape(value, kotlin=False)
-        return str(value)
+        return repr(float(value)) if isinstance(kind, Real) else str(value)
 
     def null(self) -> str:
         return "nil"
@@ -698,7 +904,7 @@ class TypeScript(Language):
     indent = TYPESCRIPT_INDENT
 
     def type_name(self, kind: Type) -> str:
-        if isinstance(kind, Integer):
+        if isinstance(kind, (Integer, Real)):
             return "number"
         if isinstance(kind, Text):
             return "string"
@@ -722,7 +928,7 @@ class TypeScript(Language):
             return "true" if value else "false"
         if isinstance(kind, Text):
             return json.dumps(value, ensure_ascii=False)
-        return str(value)
+        return repr(float(value)) if isinstance(kind, Real) else str(value)
 
     def null(self) -> str:
         return "null"
@@ -801,7 +1007,7 @@ def kotlin_source(tables: Sequence[LoadedTable]) -> str:
             lines.append("")
         for key, item in loaded.table.fields.items():
             value = loaded.values[key]
-            scalar = isinstance(item.type, (Integer, Text, Boolean))
+            scalar = isinstance(item.type, (Integer, Real, Text, Boolean))
             prefix = f"{INDENT * 2}{'const val' if scalar else 'val'} {constant_name(key)}: {language.type_name(item.type)} = "
             lines.append(prefix + language.render(item.type, value, len(prefix), 2))
         lines.append(f"{INDENT}}}")
@@ -871,6 +1077,16 @@ def load_tables(root: Path, tables: Sequence[Table] = TABLES) -> tuple[list[Load
         if result is not None:
             loaded.append(result)
     return loaded, errors
+
+
+def table_values(file: str, root: Path = ROOT) -> dict[str, Any]:
+    """The values of the registered table ``file`` as plain JSON values, checked against its schema: how the pipeline
+    (tools/) reads a shared table, as the apps read the generated code."""
+    table = next(item for item in TABLES if item.file == file)
+    loaded, errors = load_table(table, root)
+    if loaded is None:
+        raise SchemaError("; ".join(errors))
+    return {key: _plain(value) for key, value in loaded.values.items()}
 
 
 def render_outputs(loaded: Sequence[LoadedTable]) -> dict[Path, str]:

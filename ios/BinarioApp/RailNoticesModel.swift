@@ -6,8 +6,8 @@ import BinarioKit
 /// nothing is asked until a section is shown, every request goes through `RailNoticeService`, and a
 /// section shown again after the table's reload interval asks again (the feeds' own caches decide
 /// whether that reaches the network). `personal` is «Dati in tempo reale»: a list read with another
-/// value is never shown. Nothing is stored on the device. Without the bundled table
-/// (`notices-sources-v1.json`) there is no service and no section at all.
+/// value is never shown. Nothing is stored on the device. The sources and their limits are the
+/// shared table (contracts/shared-data/v1/notices-sources-v1.json), compiled into BinarioKit.
 @MainActor
 final class RailNoticesModel: ObservableObject {
     enum Load<Value: Equatable>: Equatable {
@@ -45,10 +45,9 @@ final class RailNoticesModel: ObservableObject {
         self.service = service
     }
 
-    /// The bundled table's sources; none (and no section) when the table is missing or invalid.
-    static func bootstrap(bundle: Bundle = .main) -> RailNoticesModel {
-        let url = bundle.url(forResource: NoticeSourcesTable.resourceName, withExtension: NoticeSourcesTable.resourceExtension)
-        return RailNoticesModel(service: RailNoticeService.standard(rules: NoticeRules.load(url: url)))
+    /// The shared table's sources; none (and no section) only if a pattern of it does not compile.
+    static func bootstrap() -> RailNoticesModel {
+        RailNoticesModel(service: RailNoticeService.standard(rules: NoticeRules.standard))
     }
 
     private func recent(_ loadedAt: Date?, now: Date) -> Bool {

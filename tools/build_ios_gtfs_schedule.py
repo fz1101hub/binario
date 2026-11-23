@@ -45,6 +45,7 @@ sys.path.insert(0, str(ROOT / "tools"))
 import foreign_pack_rules as foreign_rules  # noqa: E402  (border zone: the one rule of every tool)
 import android_stop_matcher  # noqa: E402  (the Android app's stop matcher, for the pins' station lists)
 import android_station_codes  # noqa: E402  (the Android app's station-code rule, for the national packs' stops)
+import generate_shared_code as shared_code  # noqa: E402  (the shared tables, checked against their schema)
 
 APPLICATION_ID = int.from_bytes(b"BNGT", "big")
 # 2: trip.bikes_allowed (GTFS bikes_allowed: 1 allowed, 2 not allowed, NULL unknown).
@@ -93,7 +94,9 @@ TRANSIT_OUT_OF_SCOPE_KINDS = frozenset({"urban"})
 # trains keep Oulx, Torino Porta Susa and Milano Centrale; Lyon Part-Dieu, listed with a Trenitalia location id, keeps
 # every train of the pack calling there, its Paris – Lyon and Marseille – Paris ones too, so that station's board
 # lists all of this operator's trains; Paris, Chambéry and Marseille, listed without codes, stay unnamed.
-FOREIGN_PACKS = frozenset({"ch-otd-gtfs", "oebb-gtfs", "sncf-gtfs", "trenitalia-france-gtfs"})
+# The roles of the packs are the shared table the apps read too (contracts/shared-data/v1/pack-roles-v1.json).
+PACK_ROLES = shared_code.table_values("pack-roles-v1.json")
+FOREIGN_PACKS = frozenset(PACK_ROLES["foreignPacks"])
 # Reviewed packs whose source numbers a few trips out of their time order: such a trip (a stop's arrival before the
 # previous stop's departure along stop_sequence) is left out of the index and counted in the metadata
 # (filter.outOfOrderTripsLeftOut), instead of failing the build as it does for every other pack.  Trenitalia France's
@@ -127,8 +130,8 @@ RAIL_ROUTE_TYPES = frozenset({2, *range(100, 200)})
 # Italo's packs publish them today; the iPhone names the leg from the pack (SQLiteGTFSJourneyRepository.vehicle).
 BUS_ROUTE_TYPES = frozenset({3, *range(700, 800)})
 INDEXED_ROUTE_TYPES = RAIL_ROUTE_TYPES | BUS_ROUTE_TYPES
-# EmbeddedGtfsPack.busRoutesAreScheduledCoaches: Trenitalia's buses and ItaloBus.
-SCHEDULED_COACH_PACKS = frozenset({"trenitalia-gtfs", "italo-gtfs"})
+# EmbeddedGtfsPack.busRoutesAreScheduledCoaches (pack-roles-v1.json): Trenitalia's buses and ItaloBus.
+SCHEDULED_COACH_PACKS = frozenset(PACK_ROLES["scheduledCoachPacks"])
 # EmbeddedGtfsPack.catalogueNameSuffixes (TransitGtfsPacks.kt): the catalogue names these operators' stations with a
 # suffix ("Matera Centrale FAL", "Bari Centrale FNB"), so a stop "Matera Centrale" of the pack is that station first.
 CATALOGUE_NAME_SUFFIXES: Mapping[str, tuple[str, ...]] = {

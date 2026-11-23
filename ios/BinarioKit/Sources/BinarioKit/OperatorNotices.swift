@@ -19,7 +19,7 @@ enum TrenitaliaNewsParser {
         let trimmed = body.trimmingCharacters(in: .whitespacesAndNewlines)
         if trimmed.isEmpty || trimmed == "null" { return [] }
         guard trimmed.hasPrefix("["), let array = LiveJSON.parse(trimmed) as? [Any] else { throw NoticeFeedError.format }
-        let limits = rules.table.trenitalia
+        let limits = NoticeTable.trenitalia
         return array.prefix(limits.maximumItems).compactMap { value -> NoticeAlert? in
             guard let item = LiveJSONObject(value) else { return nil }
             return alert(item, rules: rules)
@@ -27,7 +27,7 @@ enum TrenitaliaNewsParser {
     }
 
     private static func alert(_ item: LiveJSONObject, rules: NoticeRules) -> NoticeAlert? {
-        let limits = rules.table.trenitalia
+        let limits = NoticeTable.trenitalia
         guard let title = CleartextNoticeLinks.neutralize(
             NoticeText.decodeEntities(noticeText(item, "title"), maximumLength: limits.titleLength, rules: rules), rules: rules
         ) else { return nil }
@@ -62,7 +62,7 @@ public struct TrenordLine: Equatable, Sendable {
     init(code: String, description: String, rules: NoticeRules) {
         self.code = code
         self.description = description
-        let limits = rules.table.trenord
+        let limits = NoticeTable.trenord
         var tokens: [String] = []
         var pieces = [description]
         for separator in limits.stationTokenSeparators {
@@ -89,7 +89,7 @@ enum TrenordLinesParser {
     static func notices(_ body: String, rules: NoticeRules) throws -> TrenordLineNotices {
         let trimmed = body.trimmingCharacters(in: .whitespacesAndNewlines)
         guard trimmed.hasPrefix("["), let array = LiveJSON.parse(trimmed) as? [Any] else { throw NoticeFeedError.format }
-        let limits = rules.table.trenord
+        let limits = NoticeTable.trenord
         var lines: [TrenordLine] = []
         var news: [String: (text: String, date: Date?, lines: [String])] = [:]
         var order: [String] = []
@@ -154,7 +154,7 @@ enum TrenordLinesParser {
                 break
             }
         }
-        let limit = rules.table.trenord.titleLength
+        let limit = NoticeTable.trenord.titleLength
         guard sentence.count > limit else { return sentence }
         return NoticeText.trimmingTrailingWhitespace(String(sentence.prefix(limit - 1))) + "…"
     }
@@ -220,7 +220,7 @@ enum TrenordLineMatcher {
     static func alertsForStation(_ notices: TrenordLineNotices, stationName: String, rules: NoticeRules) -> [NoticeAlert] {
         let matched = Set(linesNaming(notices.lines, stationNames: [stationName], minimum: 1).map(\.code))
         if matched.isEmpty { return [] }
-        if matched.count > rules.table.trenord.hubLineCount {
+        if matched.count > NoticeTable.trenord.hubLineCount {
             return notices.alerts.filter { isNetworkWide($0, lines: notices.lines, rules: rules) }
         }
         return notices.alerts.filter { alert in alert.lines.contains(where: matched.contains) }
@@ -228,6 +228,6 @@ enum TrenordLineMatcher {
 
     /// A notice published on (almost) every line.
     static func isNetworkWide(_ alert: NoticeAlert, lines: [TrenordLine], rules: NoticeRules) -> Bool {
-        lines.count > 1 && alert.lines.count >= max(rules.table.trenord.networkWideMinimumLines, (lines.count + 2) / 3)
+        lines.count > 1 && alert.lines.count >= max(NoticeTable.trenord.networkWideMinimumLines, (lines.count + 2) / 3)
     }
 }

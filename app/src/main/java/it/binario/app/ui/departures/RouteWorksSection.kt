@@ -1,5 +1,6 @@
 package it.binario.app.ui.departures
 
+import it.binario.app.shared.SharedData
 import android.app.Application
 import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Column
@@ -115,7 +116,7 @@ private fun datesLabel(dates: NoticeDates, locale: Locale): String {
     else stringResource(R.string.route_works_dates, dates.first.format(format), dates.last.format(format))
 }
 
-private const val COLLAPSED_NOTICES = 3
+private val COLLAPSED_NOTICES = SharedData.NoticesSources.DISPLAY.worksCollapsed
 
 /**
  * State of the works sections of Per te and of the route board. The notices come from the network notice sources of
@@ -172,8 +173,8 @@ class RouteWorksViewModel(application: Application) : AndroidViewModel(applicati
 
     companion object {
         /** Routes read at most: the pinned ones come first in the saved order. */
-        const val MAX_ROUTES = 8
-        private const val RELOAD_AFTER_MILLIS = 120_000L
+        val MAX_ROUTES = SharedData.NoticesSources.ROUTE_WORKS.maximumRoutes
+        private val RELOAD_AFTER_MILLIS = SharedData.NoticesSources.SERVICE.reloadAfterSeconds * 1_000L
 
         fun keyOf(routes: List<SavedRoute>): String =
             routes.joinToString("|") { "${it.id}:${it.outwardOrigin.id}>${it.outwardDestination.id}:${it.name}" }

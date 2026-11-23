@@ -197,8 +197,8 @@ enum Rss2Parser {
     static func parse(_ data: Data, rules: NoticeRules) throws -> [RssItem] {
         let document = try RssDocument.parse(data)
         guard document.root.lowercased() == "rss" || document.root.lowercased() == "rdf:rdf" else { throw RssFeedError.notRss }
-        let limit = rules.table.rss.maximumText
-        return document.items.prefix(rules.table.rss.maximumItems).compactMap { elements -> RssItem? in
+        let limit = NoticeTable.rss.maximumText
+        return document.items.prefix(NoticeTable.rss.maximumItems).compactMap { elements -> RssItem? in
             /// The first child named so (any case), trimmed and bounded; nil when empty.
             func child(_ name: String) -> String? {
                 guard let element = elements.first(where: { $0.depth == 1 && $0.name.lowercased() == name }) else { return nil }

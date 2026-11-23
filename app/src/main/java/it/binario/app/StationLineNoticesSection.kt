@@ -1,5 +1,6 @@
 package it.binario.app
 
+import it.binario.app.shared.SharedData
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.runtime.Composable
@@ -36,7 +37,7 @@ fun StationLineNoticesSection(station: Station, viewModel: RailNoticesViewModel 
 }
 
 private fun Station.inTrenordArea(): Boolean {
-    if (id.startsWith("gtfs:lombardia-trenord-gtfs:")) return true
+    if (id.startsWith(SharedData.NoticesSources.TRENORD.gtfsStationPrefix)) return true
     val lat = latitude ?: return false
     val lon = longitude ?: return false
     return TrenordLineMatcher.inTrenordArea(lat, lon)

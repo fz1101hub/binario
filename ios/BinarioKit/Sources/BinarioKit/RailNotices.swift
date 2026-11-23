@@ -140,11 +140,12 @@ actor NoticeFeedCache<Value: Sendable> {
     }
 }
 
-/// One notice feed: its address and manners from the shared table, through `LiveSourceGate` (one
-/// request per interval, a pause at the first refusal) and `LiveSourceClient` (HTTPS, the honest
-/// User-Agent, bounded body, Android's redirect rule), with the list kept by `NoticeFeedCache`.
+/// One notice feed: its address, limits and rate from the shared table, through `LiveSourceGate`
+/// (one request per interval, a pause at the first refusal, the breaker of every source:
+/// `SharedData.SourceManners`) and `LiveSourceClient` (HTTPS, the honest User-Agent, bounded body,
+/// Android's redirect rule), with the list kept by `NoticeFeedCache`.
 struct NoticeFeed<Value: Sendable>: Sendable {
-    let source: NoticeSourcesTable.Source
+    let source: NoticeTable.Source
     let gate: LiveSourceGate
     let cache: NoticeFeedCache<Value>
     let fetch: @Sendable () async -> LiveFetchResult
@@ -152,7 +153,7 @@ struct NoticeFeed<Value: Sendable>: Sendable {
     let now: @Sendable () -> Date
 
     init(
-        _ source: NoticeSourcesTable.Source, manners: NoticeSourcesTable.Manners, client: LiveSourceClient,
+        _ source: NoticeTable.Source, client: LiveSourceClient,
         pauses: LiveSourcePauses, now: @escaping @Sendable () -> Date, bytes: Bool = false,
         parse: @escaping @Sendable (LiveBody) -> Value?
     ) {
@@ -160,11 +161,7 @@ struct NoticeFeed<Value: Sendable>: Sendable {
         // No status line names these pauses: Android's breakers of the notice feeds carry no label.
         gate = LiveSourceGate(
             source: nil,
-            configuration: .init(
-                minimumInterval: source.minimumIntervalSeconds, maximumEntries: 1, failureThreshold: manners.failureThreshold,
-                baseOpenDuration: manners.baseOpenSeconds, maximumOpenDuration: manners.maximumOpenSeconds,
-                refusalPause: manners.refusalPauseSeconds, maximumRetryAfter: manners.maximumRetryAfterSeconds
-            ),
+            configuration: .init(minimumInterval: source.minimumIntervalSeconds, maximumEntries: 1),
             pauses: pauses, now: now
         )
         cache = NoticeFeedCache(timeToLive: source.timeToLiveSeconds, maximumStale: source.maximumStaleSeconds)
@@ -172,7 +169,7 @@ struct NoticeFeed<Value: Sendable>: Sendable {
             accept: source.accept, requestTimeout: source.readTimeoutSeconds, totalTimeout: source.totalTimeoutSeconds,
             maximumBytes: source.maximumBytes, maximumRequests: source.maximumRequests,
             allowsViaggiaTrenoCleartextHop: source.viaggiaTrenoCleartextHop,
-            allowsSameHostRedirects: source.redirects == .sameHTTPSHost
+            allowsSameHostRedirects: source.redirects == "same-https-host"
         )
         let url = URL(string: source.url)
         if bytes {
@@ -231,31 +228,30 @@ public struct RailNoticeService: Sendable {
     let trenord: NoticeFeed<TrenordLineNotices>
 
     init(rules: NoticeRules, transport: any LiveHTTPTransport, pauses: LiveSourcePauses, now: @escaping @Sendable () -> Date) {
-        let table = rules.table
         let client = LiveSourceClient(transport: transport, now: now)
-        func source(_ id: String) -> NoticeSourcesTable.Source {
-            // The table was validated with every source: `NoticeSourcesTable.isValid`.
-            table.sources.first { $0.id == id } ?? table.sources[0]
+        func source(_ id: String) -> NoticeTable.Source {
+            // The generated table has every source of `NoticeSourceID` (`SharedDataTests`).
+            NoticeTable.sources.first { $0.id == id } ?? NoticeTable.sources[0]
         }
         let mit = source(NoticeSourceID.mitStrikes)
-        strikeFeed = NoticeFeed(mit, manners: table.manners, client: client, pauses: pauses, now: now, bytes: true) { body in
+        strikeFeed = NoticeFeed(mit, client: client, pauses: pauses, now: now, bytes: true) { body in
             guard let items = try? Rss2Parser.parse(Data(body.text.utf8), rules: rules),
                   let day = ItalianWallClock.date(of: body.fetchedAt) else { return nil }
             return rules.strikes(items, fetchedOn: day)
         }
-        rfi = NoticeFeed(source(NoticeSourceID.rfiInfomobility), manners: table.manners, client: client, pauses: pauses, now: now) { body in
+        rfi = NoticeFeed(source(NoticeSourceID.rfiInfomobility), client: client, pauses: pauses, now: now) { body in
             try? RfiInfomobilityParser.alerts(Data(body.text.utf8))
         }
-        trenitalia = NoticeFeed(source(NoticeSourceID.trenitaliaNews), manners: table.manners, client: client, pauses: pauses, now: now) { body in
+        trenitalia = NoticeFeed(source(NoticeSourceID.trenitaliaNews), client: client, pauses: pauses, now: now) { body in
             try? TrenitaliaNewsParser.alerts(body.text, rules: rules)
         }
-        trenord = NoticeFeed(source(NoticeSourceID.trenordLines), manners: table.manners, client: client, pauses: pauses, now: now) { body in
+        trenord = NoticeFeed(source(NoticeSourceID.trenordLines), client: client, pauses: pauses, now: now) { body in
             try? TrenordLinesParser.notices(body.text, rules: rules)
         }
         self.rules = rules
     }
 
-    /// The iPhone's notice sources over `transport` (ephemeral `URLSession`s); nil without a valid table.
+    /// The iPhone's notice sources over `transport` (ephemeral `URLSession`s); nil without rules.
     public static func standard(
         rules: NoticeRules?, transport: any LiveHTTPTransport = URLSessionLiveTransport(), pauses: LiveSourcePauses = .shared,
         now: @escaping @Sendable () -> Date = { Date() }
@@ -264,8 +260,8 @@ public struct RailNoticeService: Sendable {
         return RailNoticeService(rules: rules, transport: transport, pauses: pauses, now: now)
     }
 
-    private func allowed(_ feed: NoticeSourcesTable.Source, personal: Bool) -> Bool {
-        feed.gate == .allBuilds || personal
+    private func allowed(_ feed: NoticeTable.Source, personal: Bool) -> Bool {
+        feed.gate == "all-builds" || personal
     }
 
     /// Whether the Trenord notices of a station board would be asked (the personal sources on).
@@ -276,7 +272,7 @@ public struct RailNoticeService: Sendable {
     /// A read bounded by Android's per-source time limit; nil when the source is not asked.
     private func read<Value: Sendable>(_ feed: NoticeFeed<Value>, personal: Bool, asked: Bool = true) async -> NoticeFeedRead<Value>? {
         guard asked, allowed(feed.source, personal: personal) else { return nil }
-        let timeout = rules.table.manners.sourceTimeoutSeconds
+        let timeout = NoticeTable.service.sourceTimeoutSeconds
         let read = await LiveTasks.withDeadline(seconds: timeout) { await feed.read() }
         return read ?? NoticeFeedRead<Value>.failed(.sourceUnavailable)
     }
@@ -359,9 +355,9 @@ public struct RailNoticeService: Sendable {
         let cleartextHop = publisher == .trenitalia
         let rules = self.rules
         func checked(_ text: String?) -> String? { cleartextHop ? CleartextNoticeLinks.neutralize(text, rules: rules) : text }
-        guard let title = checked(NoticeText.normalize(alert.title, maximumLength: rules.table.text.noticeTitleLength)) else { return nil }
+        guard let title = checked(NoticeText.normalize(alert.title, maximumLength: NoticeTable.text.noticeTitleLength)) else { return nil }
         // RFI descriptions can carry markup; the others are plain text by now.
-        let body = checked(alert.description.flatMap { NoticeText.fromHtml($0, maximumLength: rules.table.text.noticeBodyLength, rules: rules) })
+        let body = checked(alert.description.flatMap { NoticeText.fromHtml($0, maximumLength: NoticeTable.text.noticeBodyLength, rules: rules) })
             .flatMap { NoticeText.dedupKey($0) == NoticeText.dedupKey(title) ? nil : $0 }
         return RailNotice(
             id: alert.id, publisher: publisher, title: title, body: body, publishedAt: alert.publishedAt,

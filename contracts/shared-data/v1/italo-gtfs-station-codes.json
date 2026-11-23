@@ -4,7 +4,7 @@
   "description": "Italo's station codes (stop_code of the italo-gtfs pack) and the catalogue station each one is, reviewed by name and position on 2 November 2026 against the 64 stations of the feed. The passenger-facing codes match ItaloPublicStationFallbacks where both exist (Villa San Giovanni is \"SGM\" here, \"VSG\" on the public board). Not mapped, so they stay stops of the pack: \"LUX\", the seasonal Lucca Comics coach stop about a kilometre from Lucca station. \"TRX\" (Treviso Centrale) is mapped by name: the feed places it 5 km east of the station.",
   "catalogue": "app/src/main/assets/stations/curated_it_rail_stations.json",
   "readers": {
-    "android": "app/src/main/java/it/binario/app/data/gtfs/GtfsStationCodeIndex.kt (ItaloGtfsStationCodes, same entries until the generator)",
+    "android": "app/src/main/java/it/binario/app/data/gtfs/GtfsStationCodeIndex.kt (ItaloGtfsStationCodes, from the code tools/generate_shared_code.py writes)",
     "iphoneIndex": "tools/android_station_codes.py (read by tools/build_ios_gtfs_schedule.py)"
   },
   "codes": [

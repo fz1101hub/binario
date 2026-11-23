@@ -13,10 +13,12 @@ public enum LiveSourceUserAgent {
     public static let viaggiaTrenoRealtime = general
 
     /// Only the characters of a version reach the header (ASCII letters and digits, «.-+_»), «0»
-    /// without any, as on Android.
+    /// without any, as on Android; the template is the shared one (`SharedData.SourceManners`).
     static func make(version: String?) -> String {
         let cleaned = String((version ?? "").filter { ($0.isASCII && ($0.isLetter || $0.isNumber)) || ".-+_".contains($0) })
-        return "Binario/\(cleaned.isEmpty ? "0" : cleaned) (iOS; rail timetable app)"
+        return SharedData.SourceManners.userAgent
+            .replacingOccurrences(of: "<version>", with: cleaned.isEmpty ? "0" : cleaned)
+            .replacingOccurrences(of: "<platform>", with: "iOS")
     }
 }
 
@@ -45,9 +47,10 @@ public enum LiveFetchFailure: Equatable, Hashable, Sendable {
         return nil
     }
 
-    /// HTTP 403 or 429: the source said no. Binario stops asking at once.
+    /// HTTP 403 or 429 (`SharedData.SourceManners.refusalStatuses`): the source said no. Binario
+    /// stops asking at once.
     var isRefusal: Bool {
-        if case let .http(status, _) = self { return status == 403 || status == 429 }
+        if case let .http(status, _) = self { return SharedData.SourceManners.refusalStatuses.contains(status) }
         return false
     }
 
@@ -57,7 +60,7 @@ public enum LiveFetchFailure: Equatable, Hashable, Sendable {
         case let .paused(until): return .paused(until: until)
         case .cancelled: return .cancelled
         case let .http(status, _):
-            if status == 403 || status == 429 { return .refused }
+            if SharedData.SourceManners.refusalStatuses.contains(status) { return .refused }
             return status == 404 ? .notFound : .sourceUnavailable
         case .network, .offline, .timedOut, .tooLarge, .redirectRefused, .tooManyRedirects: return .sourceUnavailable
         }

@@ -7,19 +7,19 @@ enum NoticeText {
     /// HTML whose markup is entity-escaped once more (`&lt;p&gt;Velocit&amp;agrave;…`), as Trenitalia publishes it.
     static func fromDoubleEscapedHtml(_ value: String?, maximumLength: Int, rules: NoticeRules) -> String? {
         guard let value else { return nil }
-        let once = LiveHTML.decodeEntities(String(value.prefix(rules.table.text.maximumInput)))
+        let once = LiveHTML.decodeEntities(String(value.prefix(NoticeTable.text.maximumInput)))
         return fromHtml(once, maximumLength: maximumLength, rules: rules)
     }
 
     /// A plain-text field (a title) that may still carry HTML entities: entities decoded, nothing read as markup.
     static func decodeEntities(_ value: String?, maximumLength: Int, rules: NoticeRules) -> String? {
         guard let value else { return nil }
-        return normalize(LiveHTML.decodeEntities(String(value.prefix(rules.table.text.maximumInput))), maximumLength: maximumLength)
+        return normalize(LiveHTML.decodeEntities(String(value.prefix(NoticeTable.text.maximumInput))), maximumLength: maximumLength)
     }
 
     static func fromHtml(_ value: String?, maximumLength: Int, rules: NoticeRules) -> String? {
         guard let value else { return nil }
-        let html = String(value.prefix(rules.table.text.maximumInput))
+        let html = String(value.prefix(NoticeTable.text.maximumInput))
         guard html.contains(where: { !$0.isWhitespace }) else { return nil }
         return normalize(NoticeMarkup.wholeText(html), maximumLength: maximumLength)
     }
@@ -310,7 +310,7 @@ public enum NoticeLinks {
     /// A URL that `allow` refuses stays plain text: the rule is enforced here, where the link is made.
     public static func segments(_ text: String, rules: NoticeRules, allow: (String) -> Bool = { _ in true }) -> [Segment] {
         let value = text as NSString
-        let trailing = Set(rules.table.text.urlTrailing.utf16)
+        let trailing = Set(NoticeTable.text.urlTrailing.utf16)
         var out: [Segment] = []
         var cursor = 0
         for match in rules.url.matches(in: text) {
@@ -318,7 +318,7 @@ public enum NoticeLinks {
             while end > match.range.location, trailing.contains(value.character(at: end - 1)) { end -= 1 }
             let url = value.substring(with: NSRange(location: match.range.location, length: end - match.range.location))
             // Shorter than a scheme and one host character: not a usable link.
-            if url.utf16.count < rules.table.text.minimumUrlLength || !allow(url) { continue }
+            if url.utf16.count < NoticeTable.text.minimumUrlLength || !allow(url) { continue }
             if match.range.location > cursor {
                 out.append(.plain(value.substring(with: NSRange(location: cursor, length: match.range.location - cursor))))
             }
@@ -341,7 +341,7 @@ enum CleartextNoticeLinks {
               components.scheme?.lowercased() == "https", components.user == nil, components.password == nil,
               let host = components.host?.lowercased(), !host.isEmpty,
               components.port == nil || components.port == 443 else { return false }
-        return rules.table.text.cleartextOfficialDomains.contains { host == $0 || host.hasSuffix("." + $0) }
+        return NoticeTable.text.cleartextOfficialDomains.contains { host == $0 || host.hasSuffix("." + $0) }
     }
 
     /// The notice's own link, kept only when `allowed`.

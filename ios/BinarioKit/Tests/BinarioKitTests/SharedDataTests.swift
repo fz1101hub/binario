@@ -129,6 +129,78 @@ final class SharedDataTests: XCTestCase {
         XCTAssertEqual(SharedData.ItalianHolidays.easterOffsetsDays, json["easterOffsetsDays"] as? [Int])
     }
 
+    func testItaloGTFSStationCodesAreGeneratedForTheIPhoneToo() throws {
+        // The iPhone index builder reads the JSON itself (tools/android_station_codes.py).
+        let json = try table("italo-gtfs-station-codes.json")
+        let codes = try XCTUnwrap(json["codes"] as? [[String: Any]])
+        XCTAssertEqual(SharedData.ItaloGtfsStationCodes.codes.map(\.code), codes.compactMap { $0["code"] as? String })
+        XCTAssertEqual(SharedData.ItaloGtfsStationCodes.codes.map(\.catalogueId), codes.compactMap { $0["catalogueId"] as? String })
+        let unmapped = try XCTUnwrap(json["unmapped"] as? [[String: Any]])
+        XCTAssertEqual(SharedData.ItaloGtfsStationCodes.unmapped.map(\.code), unmapped.compactMap { $0["code"] as? String })
+    }
+
+    func testPackRolesAreTheSharedTable() throws {
+        let json = try table("pack-roles-v1.json")
+        func set(_ key: String) -> Set<String> { Set((json[key] as? [String]) ?? []) }
+        XCTAssertEqual(TimetableCopies.nationalPacks, set("nationalPacks"))
+        XCTAssertEqual(TimetableCopies.foreignPacks, set("foreignPacks"))
+        XCTAssertEqual(TimetableCopies.crossPublishingPacks, set("crossPublishingPacks"))
+        XCTAssertEqual(TimetableLegMode.scheduledCoachPacks, set("scheduledCoachPacks"))
+        for pack in set("nationalPacks") { XCTAssertEqual(TimetableCopies.rank(pack, border: false), 0, pack) }
+        for pack in set("foreignPacks") { XCTAssertEqual(TimetableCopies.rank(pack, border: true), 0, pack) }
+        for pack in set("scheduledCoachPacks") { XCTAssertEqual(TimetableLegMode.of(routeType: 3, sourceID: pack), .bus, pack) }
+        XCTAssertEqual(TimetableLegMode.of(routeType: 3, sourceID: "lombardia-trenord-gtfs"), .replacementBus)
+    }
+
+    func testEverySourceIsAskedWithTheSharedManners() throws {
+        let json = try table("source-manners-v1.json")
+        XCTAssertEqual(LiveSourceUserAgent.make(version: "1.2"), "Binario/1.2 (iOS; rail timetable app)")
+        let template = try XCTUnwrap(json["userAgent"] as? String)
+        XCTAssertEqual(LiveSourceUserAgent.make(version: "é"), template.replacingOccurrences(of: "<version>", with: "0")
+            .replacingOccurrences(of: "<platform>", with: "iOS"))
+        let statuses = Set((json["refusalStatuses"] as? [Int]) ?? [])
+        XCTAssertEqual(SharedData.SourceManners.refusalStatuses, statuses)
+        for status in statuses { XCTAssertTrue(LiveFetchFailure.http(status: status, retryAfter: nil).isRefusal, "\(status)") }
+        XCTAssertFalse(LiveFetchFailure.http(status: 503, retryAfter: nil).isRefusal)
+        let configuration = LiveSourceGate.Configuration(minimumInterval: 30)
+        XCTAssertEqual(configuration.failureThreshold, json["failureThreshold"] as? Int)
+        XCTAssertEqual(configuration.baseOpenDuration, (json["baseOpenSeconds"] as? NSNumber)?.doubleValue)
+        XCTAssertEqual(configuration.maximumOpenDuration, (json["maximumOpenSeconds"] as? NSNumber)?.doubleValue)
+        XCTAssertEqual(configuration.refusalPause, (json["refusalPauseSeconds"] as? NSNumber)?.doubleValue)
+        XCTAssertEqual(configuration.maximumRetryAfter, (json["maximumRetryAfterSeconds"] as? NSNumber)?.doubleValue)
+    }
+
+    func testTheNoticeFeedsAreTheSharedTable() throws {
+        let json = try table("notices-sources-v1.json")
+        let sources = try XCTUnwrap(json["sources"] as? [[String: Any]])
+        XCTAssertEqual(NoticeTable.sources.map(\.id), sources.compactMap { $0["id"] as? String })
+        XCTAssertTrue(Set(NoticeTable.sources.map(\.id)).isSuperset(of: NoticeSourceID.all))
+        for (source, item) in zip(NoticeTable.sources, sources) {
+            XCTAssertEqual(source.url, item["url"] as? String, source.id)
+            XCTAssertEqual(source.gate, item["gate"] as? String, source.id)
+            XCTAssertEqual(source.accept, item["accept"] as? String, source.id)
+            XCTAssertEqual(source.maximumBytes, item["maximumBytes"] as? Int, source.id)
+            XCTAssertEqual(source.readTimeoutSeconds, (item["readTimeoutSeconds"] as? NSNumber)?.doubleValue, source.id)
+            XCTAssertEqual(source.timeToLiveSeconds, (item["timeToLiveSeconds"] as? NSNumber)?.doubleValue, source.id)
+            XCTAssertEqual(source.publisher, item["publisher"] as? String, source.id)
+        }
+        let rules = try XCTUnwrap(NoticeRules.standard)
+        let service = try XCTUnwrap(json["service"] as? [String: Any])
+        XCTAssertEqual(rules.reloadAfter, (service["reloadAfterSeconds"] as? NSNumber)?.doubleValue)
+        let display = try XCTUnwrap(json["display"] as? [String: Any])
+        XCTAssertEqual(rules.display.networkCollapsed, display["networkCollapsed"] as? Int)
+        XCTAssertEqual(rules.display.worksCollapsed, display["worksCollapsed"] as? Int)
+        let links = try XCTUnwrap(json["links"] as? [String: Any])
+        XCTAssertEqual(rules.mitStrikeCalendar?.absoluteString, links["mitStrikeCalendar"] as? String)
+        XCTAssertEqual(rules.guaranteedTrains(of: .trenord)?.absoluteString, (links["guaranteedTrains"] as? [String: String])?["TRENORD"])
+        XCTAssertNil(rules.guaranteedTrains(of: .rfi))
+        let text = try XCTUnwrap(json["text"] as? [String: Any])
+        XCTAssertEqual(NoticeTable.text.urlPattern, text["urlPattern"] as? String)
+        let works = try XCTUnwrap(json["routeWorks"] as? [String: Any])
+        XCTAssertEqual(NoticeTable.routeWorks.linePattern, works["linePattern"] as? String)
+        XCTAssertEqual(NoticeTable.months, json["months"] as? [String])
+    }
+
     // MARK: - The tables
 
     private func table(_ name: String) throws -> [String: Any] {

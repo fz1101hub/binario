@@ -314,7 +314,7 @@ final class NoticeContractService: @unchecked Sendable {
     private let transport: FakeLiveTransport
 
     init(rules: NoticeRules, answers: [String: String], now: Date) {
-        let urls = Dictionary(uniqueKeysWithValues: rules.table.sources.map { ($0.url, $0.id) })
+        let urls = Dictionary(uniqueKeysWithValues: NoticeTable.sources.map { ($0.url, $0.id) })
         let transport = FakeLiveTransport { request in
             guard let id = urls[request.url.absoluteString], let body = answers[id] else { return .failure(.network) }
             return FakeLiveTransport.ok(body)
@@ -337,7 +337,7 @@ final class NoticeContractService: @unchecked Sendable {
 extension NoticeRules {
     /// The address of the source `id` in the table.
     func feedURL(_ id: String) throws -> String {
-        try XCTUnwrap(table.sources.first { $0.id == id }?.url, id)
+        try XCTUnwrap(NoticeTable.sources.first { $0.id == id }?.url, id)
     }
 }
 
@@ -359,12 +359,9 @@ enum NoticeContract {
         try String(contentsOf: repositoryRoot.appendingPathComponent(path), encoding: .utf8)
     }
 
-    static func table() throws -> NoticeSourcesTable {
-        try XCTUnwrap(NoticeSourcesTable.load(data: data("contracts/shared-data/v1/notices-sources-v1.json")))
-    }
-
+    /// The rules of the generated table (contracts/shared-data/v1/notices-sources-v1.json).
     static func rules() throws -> NoticeRules {
-        try XCTUnwrap(NoticeRules(table: table()))
+        try XCTUnwrap(NoticeRules.standard)
     }
 
     static func section(_ name: String) throws -> NoticeCase {

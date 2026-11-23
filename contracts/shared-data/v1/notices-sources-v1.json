@@ -1,17 +1,7 @@
 {
-  "schema": "binario-shared-data-notices-sources-v1",
-  "about": "Fonti degli avvisi ferroviari e tabelle di lettura comuni ad Android e iPhone (contracts/shared-rules/v1/README.md). Valori di Android; le espressioni regolari sono quelle compilate da Kotlin.",
-  "manners": {
-    "userAgent": "Binario/<version> (<platform>; rail timetable app)",
-    "refusalStatuses": [
-      403,
-      429
-    ],
-    "refusalPauseSeconds": 900,
-    "maximumRetryAfterSeconds": 3600,
-    "failureThreshold": 3,
-    "baseOpenSeconds": 60,
-    "maximumOpenSeconds": 900,
+  "schema": "binario-shared-data-v1",
+  "description": "The rail notice feeds and the tables that read them, the same on Android and on the iPhone: each feed's address, gate (every build or only with the personal live sources), limits, rate, cache and redirect rule, the pages opened on a tap, and the limits, words and patterns of the readers. The patterns are the ones Kotlin compiles; the iPhone compiles them with NSRegularExpression (contracts/shared-rules/v1/notices-v1.json holds the cases both read). How every source is asked (User-Agent, refusals, breaker) is source-manners-v1.json.",
+  "service": {
     "sourceTimeoutSeconds": 20,
     "reloadAfterSeconds": 120
   },

@@ -1,5 +1,6 @@
 package it.binario.app.links
 
+import it.binario.app.shared.SharedData
 import it.binario.app.data.RailOperator
 import java.net.URI
 import java.util.Locale
@@ -39,7 +40,7 @@ object OfficialLinks {
             OperatorLink(OperatorLinkKind.BIKES, "https://www.trenitalia.com/it/servizi/bici-al-seguito.html"),
             OperatorLink(OperatorLinkKind.CUSTOMER_CARE, "https://www.trenitalia.com/it/informazioni.html"),
             OperatorLink(OperatorLinkKind.REFUNDS, "https://www.trenitalia.com/it/informazioni/la-guida-del-viaggiatore/i-rimborsi.html"),
-            OperatorLink(OperatorLinkKind.STRIKES, "https://www.trenitalia.com/it/informazioni/treni-garantiti-incasodisciopero.html")
+            OperatorLink(OperatorLinkKind.STRIKES, SharedData.NoticesSources.LINKS.guaranteedTrains.getValue("TRENITALIA"))
         )
     )
 
@@ -62,7 +63,7 @@ object OfficialLinks {
             OperatorLink(OperatorLinkKind.BIKES, "https://www.trenord.it/en/tickets/concessions-and-extras/bike-transportation/"),
             OperatorLink(OperatorLinkKind.CUSTOMER_CARE, "https://www.trenord.it/en/assistance/"),
             OperatorLink(OperatorLinkKind.REFUNDS, "https://www.trenord.it/en/assistance/services/refunds-and-indemnities/request-a-refund/"),
-            OperatorLink(OperatorLinkKind.STRIKES, "https://www.trenord.it/en/assistance/useful-information/in-case-of-strike-action/")
+            OperatorLink(OperatorLinkKind.STRIKES, SharedData.NoticesSources.LINKS.guaranteedTrains.getValue("TRENORD"))
         )
     )
 
@@ -96,7 +97,7 @@ object OfficialLinks {
     val ALL: List<OperatorLinks> = listOf(TRENITALIA, ITALO, TRENORD) + REGIONAL
 
     /** FS News, the news site of the FS Italiane group, with its radio bulletins on rail traffic. Link only. */
-    const val FS_NEWS = "https://www.fsnews.it/"
+    val FS_NEWS = SharedData.NoticesSources.LINKS.fsNews
     val FS_NEWS_DOMAINS = setOf("fsnews.it")
 
     /**

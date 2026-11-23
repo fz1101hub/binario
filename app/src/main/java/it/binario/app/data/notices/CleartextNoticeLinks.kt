@@ -1,5 +1,6 @@
 package it.binario.app.data.notices
 
+import it.binario.app.shared.SharedData
 import java.net.URI
 import java.util.Locale
 
@@ -12,7 +13,7 @@ import java.util.Locale
  */
 internal object CleartextNoticeLinks {
     /** Domains of the FS group publishers of these notices (Trenitalia, ViaggiaTreno, RFI, FS Italiane), with subdomains. */
-    private val OFFICIAL_DOMAINS = listOf("trenitalia.com", "trenitalia.it", "viaggiatreno.it", "fsitaliane.it", "rfi.it", "fsnews.it")
+    private val OFFICIAL_DOMAINS = SharedData.NoticesSources.TEXT.cleartextOfficialDomains
 
     fun allowed(url: String): Boolean = try {
         val uri = URI(url.trim())

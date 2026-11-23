@@ -35,10 +35,6 @@ targets:
         buildPhase: resources
       - path: ../app/src/main/assets/stations/curated_it_rail_stations.json
         buildPhase: resources
-      # The notice feeds and the tables that read them, shared with Android (contracts/shared-data/v1): read at
-      # launch by RailNoticesModel; a missing or invalid file turns every notice section off.
-      - path: ../contracts/shared-data/v1/notices-sources-v1.json
-        buildPhase: resources
     scheme:
       testTargets:
         - BinarioAppTests

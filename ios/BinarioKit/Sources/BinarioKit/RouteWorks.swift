@@ -127,7 +127,7 @@ public struct RouteWorksMatcher: Sendable {
         let names = Self.names(of: station, rules: rules)
         for count in stride(from: words.count, through: 1, by: -1) {
             let place = words.prefix(count).joined(separator: " ")
-            if place.unicodeScalars.count >= rules.table.routeWorks.minimumNameLength,
+            if place.unicodeScalars.count >= NoticeTable.routeWorks.minimumNameLength,
                names.contains(where: { $0 == place || $0.hasPrefix(place + " ") }) { return true }
         }
         return false
@@ -138,12 +138,12 @@ public struct RouteWorksMatcher: Sendable {
     static func names(of station: Station, rules: NoticeRules) -> [String] {
         let name = fold(station.name)
         let first = name.split(separator: " ", omittingEmptySubsequences: false).first.map(String.init) ?? name
-        let common = Set(rules.table.routeWorks.commonWords)
+        let common = Set(NoticeTable.routeWorks.commonWords)
         var result: [String] = []
         for candidate in [name] + station.aliases.map(fold) {
             let firstWord = candidate.split(separator: " ", omittingEmptySubsequences: false).first.map(String.init) ?? candidate
             guard candidate == name || firstWord == first else { continue }
-            guard candidate.unicodeScalars.count >= rules.table.routeWorks.minimumNameLength,
+            guard candidate.unicodeScalars.count >= NoticeTable.routeWorks.minimumNameLength,
                   candidate.contains(" ") || !common.contains(candidate), !result.contains(candidate) else { continue }
             result.append(candidate)
         }

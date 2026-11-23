@@ -1,5 +1,6 @@
 package it.binario.app.data.notices
 
+import it.binario.app.shared.SharedData
 import it.binario.app.data.Station
 import java.text.Normalizer
 import java.time.Instant
@@ -129,26 +130,20 @@ class RouteWorksMatcher(catalogue: List<Station>) {
 
     companion object {
         private val ZONE: ZoneId = ZoneId.of("Europe/Rome")
-        private const val MIN_NAME_LENGTH = 3
+        // The words and patterns are the shared table (contracts/shared-data/v1/notices-sources-v1.json, routeWorks).
+        private val MIN_NAME_LENGTH = SharedData.NoticesSources.ROUTE_WORKS.minimumNameLength
 
         /** One-word station names that are also ordinary words of a notice: never matched alone. */
-        private val COMMON_WORDS = setOf(
-            "ora", "tra", "via", "per", "con", "piano", "campo", "ponte", "porto", "monte", "borgo", "villa", "valle",
-            "colle", "lago", "mare", "bivio", "scalo", "centro", "centrale", "linea", "stazione", "nord", "sud", "est",
-            "ovest", "torre", "castello", "croce", "marina", "lido", "porta", "pieve", "sole", "rete", "fiume"
-        )
+        private val COMMON_WORDS = SharedData.NoticesSources.ROUTE_WORKS.commonWords.toSet()
 
         /** Works and interruptions, by the words RFI uses: lavori, interruzione, sospesa, cantiere, bus sostitutivi… */
-        private val WORKS = Regex(
-            "\\b(lavori|lavoro|interruzion[ei]|interrott[aoie]|sospes[aoie]|sospension[ei]|cantier[ei]|manutenzion[ei]|" +
-                "potenziament[oi]|sostitutiv[aoie])\\b"
-        )
+        private val WORKS = Regex(SharedData.NoticesSources.ROUTE_WORKS.worksPattern)
 
-        /** A place name of a line end: capitalised words, with "di", "del"… only between two of them ("Reggio di Calabria"). */
-        private const val PLACE = "\\p{Lu}[\\p{L}'’.]*(?:(?:\\s+(?:di|de|del|della|sul|in))?\\s+\\p{Lu}[\\p{L}'’.]*)*"
-
-        /** "linea Roma – Napoli via Cassino", "LINEA MILANO-VENEZIA": the two ends of a line named in the text. */
-        private val LINE = Regex("\\b(?:[Ll]ine[ae]|LINE[AE])\\s+(?:(?:ferroviari[ae]|FERROVIARI[AE])\\s+)?($PLACE)\\s*[-–—]\\s*($PLACE)")
+        /**
+         * "linea Roma – Napoli via Cassino", "LINEA MILANO-VENEZIA": the two ends of a line named in the text, each a
+         * place name (capitalised words, with "di", "del"… only between two of them: "Reggio di Calabria").
+         */
+        private val LINE = Regex(SharedData.NoticesSources.ROUTE_WORKS.linePattern)
 
         internal fun isWorks(text: String): Boolean = !NoticeText.mentionsStrike(text) && WORKS.containsMatchIn(fold(text))
 
@@ -175,9 +170,7 @@ class RouteWorksMatcher(catalogue: List<Station>) {
  * publication day).
  */
 internal object NoticeDateParser {
-    private val MONTHS = listOf(
-        "gennaio", "febbraio", "marzo", "aprile", "maggio", "giugno", "luglio", "agosto", "settembre", "ottobre", "novembre", "dicembre"
-    )
+    private val MONTHS = SharedData.NoticesSources.MONTHS
     private val MONTH = MONTHS.joinToString("|")
     private val NUMERIC = Regex("(?<![\\d/.])(\\d{1,2})[/.](\\d{1,2})[/.](\\d{4}|\\d{2})(?![\\d/.])")
     private val TEXTUAL = Regex("\\b(\\d{1,2})(?:°|º)?\\s+($MONTH)(?:\\s+(\\d{4}))?\\b")
