@@ -1,5 +1,9 @@
 # Changelog
 
+## In sviluppo — «Cerca le corse» nei collegamenti con gli aeroporti
+
+- Il pulsante dei collegamenti con gli aeroporti dice ora «Cerca le corse da … a …» invece di «Cerca i treni»: il collegamento di Bologna è il Marconi Express, una monorotaia, non un treno. Stesso testo su Android (anche nel foglio dei collegamenti diretti) e su iPhone, in 17 lingue; le traduzioni sono automatiche e da rivedere.
+
 ## In sviluppo — Aggiornamento settimanale del 23 novembre
 
 - Orari aggiornati: STA, SNCF (nuovi pin, pre-release verificate online) e Trenitalia France, ricostruito con le regole sulle categorie e sulle corse fuori ordine (righe «FR», 4 corse del 9281 lasciate fuori). Statistiche di puntualità: 10.863 treni, finestra 24 ottobre – 22 novembre.

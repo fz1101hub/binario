@@ -275,7 +275,7 @@
 "result.detail.worst_stop" = "지연이 가장 많이 늘어나는 곳: %1$@(평균 %2$lld분 증가)";
 "result.detail.threshold_note" = "지연이 %1$lld분 이하인 도착을 정시로 봅니다.";
 "planner.airports.title" = "공항 연결 열차";
-"planner.airports.search" = "%1$@에서 %2$@(으)로 가는 열차 검색";
+"planner.airports.search" = "%1$@에서 %2$@(으)로 가는 운행편 검색";
 "result.order.title" = "정렬";
 "result.order.departure" = "출발순";
 "accessibility.open_train_detail" = "열차 상세 정보를 엽니다";

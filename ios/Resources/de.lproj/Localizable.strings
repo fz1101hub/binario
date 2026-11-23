@@ -275,7 +275,7 @@
 "result.detail.worst_stop" = "Wo die Verspätung am stärksten wächst: %1$@ (im Schnitt %2$lld Min. mehr)";
 "result.detail.threshold_note" = "Als pünktlich gilt eine Ankunft mit höchstens %1$lld Min. Verspätung.";
 "planner.airports.title" = "Bahnverbindungen zu den Flughäfen";
-"planner.airports.search" = "Züge von %1$@ nach %2$@ suchen";
+"planner.airports.search" = "Verbindungen von %1$@ nach %2$@ suchen";
 "result.order.title" = "Reihenfolge";
 "result.order.departure" = "Nach Abfahrt";
 "accessibility.open_train_detail" = "Öffnet die Zugdetails";

@@ -275,7 +275,7 @@
 "result.detail.worst_stop" = "Nơi mức trễ tăng nhiều nhất: %1$@ (trung bình thêm %2$lld phút)";
 "result.detail.threshold_note" = "Chuyến đến trễ tối đa %1$lld phút được tính là đúng giờ.";
 "planner.airports.title" = "Tàu đến sân bay";
-"planner.airports.search" = "Tìm tàu từ %1$@ đến %2$@";
+"planner.airports.search" = "Tìm chuyến từ %1$@ đến %2$@";
 "result.order.title" = "Thứ tự";
 "result.order.departure" = "Theo giờ đi";
 "accessibility.open_train_detail" = "Mở chi tiết chuyến tàu";

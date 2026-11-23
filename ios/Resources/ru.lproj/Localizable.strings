@@ -275,7 +275,7 @@
 "result.detail.worst_stop" = "Где опоздание растёт сильнее всего: %1$@ (в среднем на %2$lld мин)";
 "result.detail.threshold_note" = "Вовремя считается прибытие с опозданием не более %1$lld мин.";
 "planner.airports.title" = "Поезда в аэропорты";
-"planner.airports.search" = "Найти поезда: %1$@ → %2$@";
+"planner.airports.search" = "Найти рейсы: %1$@ → %2$@";
 "result.order.title" = "Порядок";
 "result.order.departure" = "По отправлению";
 "accessibility.open_train_detail" = "Открывает сведения о поезде";

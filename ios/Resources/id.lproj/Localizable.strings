@@ -275,7 +275,7 @@
 "result.detail.worst_stop" = "Tempat keterlambatan paling bertambah: %1$@ (rata-rata %2$lld mnt lebih lama)";
 "result.detail.threshold_note" = "Kedatangan dihitung tepat waktu jika terlambat paling lama %1$lld mnt.";
 "planner.airports.title" = "Kereta ke bandara";
-"planner.airports.search" = "Cari kereta dari %1$@ ke %2$@";
+"planner.airports.search" = "Cari jadwal dari %1$@ ke %2$@";
 "result.order.title" = "Urutan";
 "result.order.departure" = "Menurut keberangkatan";
 "accessibility.open_train_detail" = "Membuka detail kereta";

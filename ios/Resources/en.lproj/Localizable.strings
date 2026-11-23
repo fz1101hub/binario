@@ -275,7 +275,7 @@
 "result.detail.worst_stop" = "Where the delay grows most: %1$@ (%2$lld min more on average)";
 "result.detail.threshold_note" = "An arrival counts as on time when it is at most %1$lld min late.";
 "planner.airports.title" = "Airport rail links";
-"planner.airports.search" = "Search trains from %1$@ to %2$@";
+"planner.airports.search" = "Search departures from %1$@ to %2$@";
 "result.order.title" = "Order";
 "result.order.departure" = "By departure";
 "accessibility.open_train_detail" = "Opens the train details";

@@ -275,7 +275,7 @@
 "result.detail.worst_stop" = "จุดที่ความล่าช้าเพิ่มขึ้นมากที่สุด: %1$@ (เพิ่มขึ้นเฉลี่ย %2$lld นาที)";
 "result.detail.threshold_note" = "การมาถึงที่ล่าช้าไม่เกิน %1$lld นาที ถือว่าตรงเวลา";
 "planner.airports.title" = "รถไฟเชื่อมสนามบิน";
-"planner.airports.search" = "ค้นหารถไฟจาก %1$@ ไป %2$@";
+"planner.airports.search" = "ค้นหาเที่ยวรถจาก %1$@ ไป %2$@";
 "result.order.title" = "ลำดับ";
 "result.order.departure" = "ตามเวลาออก";
 "accessibility.open_train_detail" = "เปิดรายละเอียดขบวนรถ";

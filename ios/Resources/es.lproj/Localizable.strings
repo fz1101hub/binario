@@ -275,7 +275,7 @@
 "result.detail.worst_stop" = "Donde más crece el retraso: %1$@ (de media %2$lld min más)";
 "result.detail.threshold_note" = "Cuenta como puntual una llegada con %1$lld min de retraso como máximo.";
 "planner.airports.title" = "Conexiones con los aeropuertos";
-"planner.airports.search" = "Buscar trenes de %1$@ a %2$@";
+"planner.airports.search" = "Buscar salidas de %1$@ a %2$@";
 "result.order.title" = "Orden";
 "result.order.departure" = "Por salida";
 "accessibility.open_train_detail" = "Abre el detalle del tren";

@@ -275,7 +275,7 @@
 "result.detail.worst_stop" = "Où le retard augmente le plus : %1$@ (en moyenne %2$lld min de plus)";
 "result.detail.threshold_note" = "Une arrivée compte comme à l’heure avec au plus %1$lld min de retard.";
 "planner.airports.title" = "Liaisons avec les aéroports";
-"planner.airports.search" = "Chercher les trains de %1$@ à %2$@";
+"planner.airports.search" = "Chercher les départs de %1$@ à %2$@";
 "result.order.title" = "Ordre";
 "result.order.departure" = "Par départ";
 "accessibility.open_train_detail" = "Ouvre le détail du train";

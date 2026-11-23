@@ -275,7 +275,7 @@
 "result.detail.worst_stop" = "Dove il ritardo cresce di più: %1$@ (in media %2$lld min in più)";
 "result.detail.threshold_note" = "Conta come in orario un arrivo con al massimo %1$lld min di ritardo.";
 "planner.airports.title" = "Collegamenti con gli aeroporti";
-"planner.airports.search" = "Cerca i treni da %1$@ a %2$@";
+"planner.airports.search" = "Cerca le corse da %1$@ a %2$@";
 "result.order.title" = "Ordine";
 "result.order.departure" = "Per orario";
 "accessibility.open_train_detail" = "Apre il dettaglio del treno";
