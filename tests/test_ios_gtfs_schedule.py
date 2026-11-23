@@ -962,5 +962,50 @@ class RenonRailwayTest(unittest.TestCase):
         self.assertEqual(self.trips, trips)
 
 
+class TrenitaliaFranceIndexTest(unittest.TestCase):
+    """Trenitalia France's pack, bundled whole on the iPhone as a foreign operator's pack (coded stations only): the
+    shipped index keeps every Paris – Milano trip of the pack on its Italian stations, and names no uncoded French one."""
+
+    PACK = ROOT / "app/src/main/assets/gtfs/trenitalia-france-gtfs.zip"
+    INDEX = ROOT / "ios/Resources/binario_gtfs_schedule_v1.sqlite.zlib"
+    METADATA = ROOT / "ios/Resources/binario_gtfs_schedule_v1.metadata.json"
+    ITALIAN = {"Oulx Cesana Claviere Sestriere": "S00204", "Torino Porta Susa": "S00035", "Milano Centrale": "S01700"}
+
+    def test_the_shipped_index_keeps_the_italian_trips_on_their_stations(self) -> None:
+        self.assertIn("trenitalia-france-gtfs", builder.FOREIGN_PACKS)
+        with zipfile.ZipFile(self.PACK) as pack:
+            def rows(name: str) -> list[dict[str, str]]:
+                return list(csv.DictReader(io.TextIOWrapper(pack.open(name), encoding="utf-8-sig")))
+            names = {row["stop_id"]: row["stop_name"] for row in rows("stops.txt")}
+            italian_trips = {row["trip_id"] for row in rows("stop_times.txt") if names[row["stop_id"]] in self.ITALIAN}
+        metadata = json.loads(self.METADATA.read_text(encoding="utf-8"))
+        left_out = metadata["filter"].get("outOfOrderTripsLeftOut", {}).get("trenitalia-france-gtfs", 0)
+        with tempfile.TemporaryDirectory(prefix="ios-tfr-") as temporary:
+            database = Path(temporary) / "schedule.sqlite"
+            database.write_bytes(zlib.decompress(self.INDEX.read_bytes()))
+            connection = sqlite3.connect(f"file:{database}?mode=ro&immutable=1", uri=True)
+            try:
+                bound = dict(connection.execute(
+                    "SELECT s.name, s.catalog_station_id FROM stop s JOIN pack p ON p.id = s.pack_id "
+                    "WHERE p.source_id = 'trenitalia-france-gtfs'"
+                ).fetchall())
+                kept = {row[0] for row in connection.execute(
+                    "SELECT DISTINCT t.external_id FROM trip t JOIN pack p ON p.id = t.pack_id "
+                    "JOIN stop_time st ON st.trip_id = t.id JOIN stop s ON s.id = st.stop_id "
+                    "WHERE p.source_id = 'trenitalia-france-gtfs' AND s.railway_code IS NOT NULL"
+                )}
+            finally:
+                connection.close()
+        for name, station_id in self.ITALIAN.items():
+            self.assertEqual(station_id, bound[name], name)
+        # Uncoded catalogue stations stay unnamed; Lyon Part-Dieu has a Trenitalia location id.
+        self.assertIsNone(bound["Paris-Gare-de-Lyon"])
+        self.assertIsNone(bound["Chambéry-Challes-les-Eaux"])
+        self.assertEqual("NC000228", bound["Lyon-Part-Dieu"])
+        self.assertGreater(len(kept), 0)
+        self.assertLessEqual(kept, italian_trips)
+        self.assertEqual(len(italian_trips) - left_out, len(kept))
+
+
 if __name__ == "__main__":
     unittest.main()
