@@ -15,6 +15,13 @@ Everything downloaded is untrusted data: it is parsed only by this repository's 
 executed.  Downloads are HTTPS only, except a source registered with ``"transport": "http"``: its bytes must then
 equal those of the HTTPS mirror named in ``corroborateWith`` (the same file, fetched over an authenticated channel),
 or, without a mirror, the pack must be a personal-build pack whose registry entry says why no HTTPS copy exists.
+
+A source registered with ``"candidate": true`` is not yet in the app: ``build=all`` (the weekly refresh) leaves it out
+and only a dispatch naming it (``build=<sourceId>``) acquires and builds it, for review.  ``tools/apply_ci_gtfs_refresh.py
+--add-new <sourceId>`` then adds the printed pack to its directory and to ``TransitGtfsPacks.kt`` from the entry's
+``android`` block, after which the flag is removed.  A publisher that versions its download URL (``version=YYYYMMDD``)
+names a reviewed ``latestVersion`` page and pattern: the acquisition reads the page and takes the highest version it
+lists, never another host or path, and falls back to the registered URL when the page cannot be read.
 """
 from __future__ import annotations
 
@@ -23,6 +30,7 @@ import hashlib
 import http.client
 import json
 import os
+import re
 import shutil
 import sys
 import time
@@ -47,6 +55,9 @@ FORMATS = {"gtfs", "netex"}
 KINDS = {"rail", "urban"}
 RETRYABLE_STATUS = {500, 502, 503, 504}
 RETRY_DELAY_SECONDS = 20
+# The publisher page read for the latest version of a versioned download (``latestVersion``).
+MAX_VERSION_PAGE_BYTES = 4 * 1024 * 1024
+ANDROID_KINDS = {"rail": "RAIL", "urban": "URBAN"}
 
 
 def log_safe(value: object) -> str:
@@ -92,7 +103,96 @@ def load_registry(path: Path = REGISTRY) -> list[dict[str, Any]]:
         for field in ("licence", "attribution", "notes"):
             if not isinstance(pack.get(field), str) or not pack[field].strip():
                 raise AcquisitionError(f"{source_id}: {field} mancante")
+        if not isinstance(pack.get("candidate", False), bool):
+            raise AcquisitionError(f"{source_id}: candidate deve essere true o false")
+        if pack.get("candidate"):
+            # A candidate is added to the app by apply_ci_gtfs_refresh.py --add-new, from this block.
+            android_registration(pack)
+        if "latestVersion" in pack:
+            version_rule(pack)
     return payload["packs"]
+
+
+def android_registration(pack: dict[str, Any]) -> dict[str, Any]:
+    """The ``android`` block of a registry entry: what ``TransitGtfsPacks.kt`` needs beyond the manifest (the city
+    areas of an urban pack, the operator suffixes of catalogue station names).  Kind and personal-only follow ``kind``
+    and ``directory``."""
+    source_id = pack["sourceId"]
+    block = pack.get("android")
+    if not isinstance(block, dict) or set(block) - {"areas", "catalogueNameSuffixes"}:
+        raise AcquisitionError(f"{source_id}: blocco android mancante o con campi sconosciuti")
+    areas = block.get("areas", [])
+    if not isinstance(areas, list) or (pack["kind"] == "urban" and not areas):
+        raise AcquisitionError(f"{source_id}: un pack urbano ha bisogno di almeno un'area")
+    for area in areas:
+        if not isinstance(area, dict) or set(area) != {"name", "latitude", "longitude", "radiusKm"}:
+            raise AcquisitionError(f"{source_id}: area non valida {area!r}")
+        numbers = (area["latitude"], area["longitude"], area["radiusKm"])
+        if not isinstance(area["name"], str) or not area["name"].strip() or '"' in area["name"] or "\\" in area["name"] \
+                or not all(isinstance(value, (int, float)) and not isinstance(value, bool) for value in numbers) \
+                or not (-90 <= area["latitude"] <= 90 and -180 <= area["longitude"] <= 180 and 0 < area["radiusKm"] <= 50):
+            raise AcquisitionError(f"{source_id}: area non valida {area!r}")
+    suffixes = block.get("catalogueNameSuffixes", [])
+    if not isinstance(suffixes, list) or not all(isinstance(item, str) and item.strip() and '"' not in item and "\\" not in item for item in suffixes):
+        raise AcquisitionError(f"{source_id}: catalogueNameSuffixes non valido")
+    return {"kind": ANDROID_KINDS[pack["kind"]], "areas": areas, "catalogueNameSuffixes": suffixes,
+            "personalOnly": pack["directory"] == "gtfs-personal"}
+
+
+def version_rule(pack: dict[str, Any]) -> tuple[str, re.Pattern[str]]:
+    """The reviewed ``latestVersion`` rule: an HTTPS page on the host of ``sourceUrl`` and a pattern whose one group
+    is the version digits, matching ``sourceUrl`` itself (so only those digits can change)."""
+    source_id = pack["sourceId"]
+    rule = pack.get("latestVersion")
+    if not isinstance(rule, dict) or set(rule) != {"page", "pattern"}:
+        raise AcquisitionError(f"{source_id}: latestVersion vuole page e pattern")
+    page = urllib.parse.urlparse(str(rule["page"]))
+    if page.scheme != "https" or page.hostname != urllib.parse.urlparse(pack["sourceUrl"]).hostname:
+        raise AcquisitionError(f"{source_id}: la pagina delle versioni deve essere HTTPS sullo stesso host del download")
+    try:
+        pattern = re.compile(str(rule["pattern"]))
+    except re.error as error:
+        raise AcquisitionError(f"{source_id}: pattern latestVersion non valido: {error}") from error
+    match = pattern.search(pack["sourceUrl"])
+    if pattern.groups != 1 or match is None or not match.group(1).isdigit():
+        raise AcquisitionError(f"{source_id}: il pattern latestVersion deve trovare in sourceUrl un solo gruppo di cifre")
+    return str(rule["page"]), pattern
+
+
+def read_page(url: str) -> str:
+    """A publisher page (HTTPS only, bounded), as text."""
+    opener = urllib.request.build_opener(HttpsOnlyRedirects(False))
+    request = urllib.request.Request(url, headers={"User-Agent": USER_AGENT, "Accept": "text/html,*/*"})
+    with opener.open(request, timeout=60) as response:
+        if urllib.parse.urlparse(response.geturl()).scheme != "https":
+            raise AcquisitionError(f"URL finale non ammesso: {response.geturl()}")
+        body = response.read(MAX_VERSION_PAGE_BYTES + 1)
+    if len(body) > MAX_VERSION_PAGE_BYTES:
+        raise AcquisitionError(f"pagina oltre {MAX_VERSION_PAGE_BYTES} byte: {url}")
+    return body.decode("utf-8", errors="replace")
+
+
+def latest_source_url(pack: dict[str, Any], fetch_page: Any = read_page) -> tuple[str, dict[str, Any]]:
+    """``sourceUrl`` with the highest version the publisher page lists (``latestVersion``), and what was found.
+    The page is untrusted: only the digits of the reviewed group change; an unreadable page or one listing no version
+    keeps the registered URL."""
+    page, pattern = version_rule(pack)
+    url = pack["sourceUrl"]
+    match = pattern.search(url)
+    assert match is not None
+    recorded = match.group(1)
+    record: dict[str, Any] = {"page": page, "recorded": recorded}
+    try:
+        text = fetch_page(page)
+    except (AcquisitionError, OSError, ValueError, http.client.HTTPException) as error:
+        record["error"] = log_safe(f"{type(error).__name__}: {error}")[:300]
+        record["used"] = recorded
+        return url, record
+    listed = sorted({found for found in pattern.findall(text) if isinstance(found, str) and found.isdigit()}, key=int)
+    record["listed"] = listed[-5:]
+    best = max([recorded, *listed], key=int)
+    record["used"] = best
+    return url[:match.start(1)] + best + url[match.end(1):], record
 
 
 class HttpsOnlyRedirects(urllib.request.HTTPRedirectHandler):
@@ -165,6 +265,10 @@ def acquire(packs: list[dict[str, Any]], out: Path) -> dict[str, Any]:
     for pack in packs:
         source_id = pack["sourceId"]
         url = pack["sourceUrl"]
+        version: dict[str, Any] | None = None
+        if "latestVersion" in pack:
+            url, version = latest_source_url(pack)
+            print(f"VERSION {source_id} {log_safe(json.dumps(version, ensure_ascii=False, sort_keys=True))}", flush=True)
         print(f"ACQUIRE {source_id} {url}", flush=True)
         if url not in by_url:
             target = downloads / hashlib.sha256(url.encode()).hexdigest()[:16]
@@ -183,6 +287,9 @@ def acquire(packs: list[dict[str, Any]], out: Path) -> dict[str, Any]:
         target, record = by_url[url]
         asset_name = f"{source_id}.zip"
         entry: dict[str, Any] = {"download": record}
+        if version is not None:
+            entry["sourceUrl"] = url
+            entry["version"] = version
         if pack["format"] == "netex":
             if url not in converted:
                 gtfs = downloads / (target.name + ".gtfs.zip")
@@ -219,7 +326,7 @@ def source_manifests(packs: list[dict[str, Any]], report: dict[str, Any], genera
         entry = {
             "sourceId": pack["sourceId"],
             "asset": f"{directory}/{pack['sourceId']}.zip",
-            "sourceUrl": pack["sourceUrl"],
+            "sourceUrl": acquired.get("sourceUrl", pack["sourceUrl"]),
             "accessMode": "OPEN_DIRECT" if pack.get("transport", "https") == "https" else "GATEWAY_ONLY",
             "attribution": pack["attribution"],
             "licence": pack["licence"],
@@ -309,7 +416,7 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--out", type=Path)
     parser.add_argument("--registry", type=Path, default=REGISTRY)
-    parser.add_argument("--only", action="append", default=[], help="sourceId da acquisire (ripetibile); default: tutti")
+    parser.add_argument("--only", action="append", default=[], help="sourceId da acquisire (ripetibile); default: tutti i pack non candidati")
     parser.add_argument("--generated-at")
     parser.add_argument("--validate-netex", metavar="ASSET", help="converte un asset NAP e lo confronta con --reference")
     parser.add_argument("--reference", type=Path)
@@ -343,7 +450,9 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     try:
         packs = load_registry(args.registry)
-        selected = [pack for pack in packs if not args.only or pack["sourceId"] in set(args.only)]
+        # Without --only (build=all) every pack already in the app; a candidate only when named.
+        selected = [pack for pack in packs if pack["sourceId"] in set(args.only)] if args.only else \
+            [pack for pack in packs if not pack.get("candidate")]
         unknown = set(args.only) - {pack["sourceId"] for pack in packs}
         if unknown:
             raise AcquisitionError(f"sourceId non registrati: {', '.join(sorted(unknown))}")

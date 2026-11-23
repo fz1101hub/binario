@@ -17,6 +17,11 @@ entities of the best-matching pack as a base64 sample (``RTSAMPLE``) for test fi
 reads a GBFS auto-discovery file, its system information (licence and terms fields) and stations or
 vehicles, and counts those within 300 m of the curated railway stations.  ``ckan:URL`` lists the datasets of
 a CKAN ``package_search`` URL (open-data portals) with licence and resources.
+
+Licences: ``licence:URL`` prints only the licence a publisher's metadata API declares (a Socrata view,
+``/api/views/<id>.json``, or a CKAN ``package_show``/``package_search``), and the named scan ``licences`` does so
+for every registered source whose portal has such an API (``LICENCE_METADATA``), so that a licence is recorded from
+the publisher itself (owner decision D3) rather than from a third-party catalogue.
 """
 from __future__ import annotations
 
@@ -57,6 +62,21 @@ DEFAULT_PROBES = [
     "mdb",
     "atlas",
 ]
+
+# Packs whose publisher portal declares the licence in a metadata API (``licences`` scan): sourceId -> API URL.
+# Read-only, one request each; printed as ``LICENCE <sourceId> …`` lines.  The recorded licence of a pack changes only
+# with this printout as evidence (docs/data-sources/GTFS_PACK_REFRESH.md, «Licenze dichiarate dagli editori»).
+LICENCE_METADATA: dict[str, str] = {
+    # Socrata (dati.lombardia.it): the view of the Trenord GTFS dataset (fields licenseId, license, attribution).
+    "lombardia-trenord-gtfs": "https://www.dati.lombardia.it/api/views/3z4k-mxz9.json",
+    # CKAN (dati.trentino.it): the datasets matching the extra-urban GTFS of Trentino Trasporti, with their resources.
+    "trentino-gtfs": "https://dati.trentino.it/api/3/action/package_search?q=trentino+trasporti+gtfs&rows=8",
+    # CKAN (dati.toscana.it): the TFT dataset, whose licence version is not recorded (CC BY).
+    "toscana-tft-gtfs": "https://dati.toscana.it/api/3/action/package_show?id=8bb8f8fe-fe7d-41d0-90dc-49f2456180d1",
+    # National CKAN catalogue (dati.gov.it): EAV publishes on a WordPress page without an API; its harvested record,
+    # when present, names the licence the publisher declared.
+    "eav-gtfs": "https://www.dati.gov.it/opendata/api/3/action/package_search?q=EAV+GTFS&rows=8",
+}
 
 _report_path: Path | None = None
 
@@ -525,6 +545,55 @@ def probe_ckan(url: str, *, fetch_json=None) -> None:
         for resource in (dataset.get("resources") or [])[:12]:
             if isinstance(resource, dict):
                 emit(f"    resource {resource.get('format')} | {str(resource.get('name', ''))[:80]} | {resource.get('url')}")
+
+
+def _socrata_date(value: object) -> str:
+    """A Socrata epoch-seconds field as an ISO date (UTC), or the value as it came."""
+    if isinstance(value, (int, float)) and not isinstance(value, bool) and 0 < value < 10**11:
+        return time.strftime("%Y-%m-%d", time.gmtime(value))
+    return str(value)
+
+
+def probe_licence(url: str, *, label: str = "", fetch_json=None) -> None:
+    """The licence a portal's metadata API declares: a Socrata view or a CKAN package_show/package_search."""
+    status, headers, payload, error = (fetch_json or _fetch_json)(url)
+    prefix = f"LICENCE {label} " if label else "LICENCE "
+    emit(f"{prefix}{url} status={status} error={error}")
+    if not isinstance(payload, dict):
+        return
+    if "licenseId" in payload or "license" in payload or "viewType" in payload:
+        licence = payload.get("license") if isinstance(payload.get("license"), dict) else {}
+        emit(
+            f"  socrata name={payload.get('name')} | licenseId={payload.get('licenseId')} | license={licence.get('name')} "
+            f"| terms={licence.get('termsLink')} | attribution={payload.get('attribution')} "
+            f"| attributionLink={payload.get('attributionLink')} | rowsUpdatedAt={_socrata_date(payload.get('rowsUpdatedAt'))} "
+            f"| viewLastModified={_socrata_date(payload.get('viewLastModified'))}"
+        )
+        return
+    result = payload.get("result")
+    datasets = [result] if isinstance(result, dict) and "license_id" in result else (
+        (result.get("results") or []) if isinstance(result, dict) else []
+    )
+    if not datasets:
+        emit(f"  nessun dataset con licenza nella risposta (chiavi: {sorted(payload)[:12]})")
+    for dataset in datasets[:12]:
+        if not isinstance(dataset, dict):
+            continue
+        organization = dataset.get("organization") if isinstance(dataset.get("organization"), dict) else {}
+        emit(
+            f"  ckan {dataset.get('name')} | {str(dataset.get('title', ''))[:120]} | licence_id={dataset.get('license_id')} "
+            f"| licence_title={dataset.get('license_title')} | licence_url={dataset.get('license_url')} "
+            f"| org={organization.get('title', '')} | modified={dataset.get('metadata_modified')}"
+        )
+        for resource in (dataset.get("resources") or [])[:8]:
+            if isinstance(resource, dict):
+                emit(f"    resource {resource.get('format')} | {str(resource.get('name', ''))[:80]} | {resource.get('url')}")
+
+
+def scan_licences(*, fetch_json=None) -> None:
+    """``probe_licence`` for every pack of ``LICENCE_METADATA``."""
+    for source_id, url in LICENCE_METADATA.items():
+        probe_licence(url, label=source_id, fetch_json=fetch_json)
 
 
 # --- GTFS-Realtime: protobuf wire format, standard library only --------------------------------------------------
@@ -1203,10 +1272,13 @@ def run(tokens: list[str], out: Path, keep: bool) -> None:
         kind, _, url = token.partition(":")
         if token == "mdb":
             scan_mdb(out)
+        elif token == "licences":
+            scan_licences()
         elif token == "atlas":
             scan_atlas(out)
-        elif kind in {"page", "json", "gtfs", "head", "jsgrep", "netexinfo", "nextdata", "nextjson", "text", "netexgtfs", "gtfsrt", "rtstatic", "gbfs", "ckan"} and url.startswith(("http://", "https://")):
+        elif kind in {"page", "json", "gtfs", "head", "jsgrep", "netexinfo", "nextdata", "nextjson", "text", "netexgtfs", "gtfsrt", "rtstatic", "gbfs", "ckan", "licence"} and url.startswith(("http://", "https://")):
             {
+                "licence": lambda: probe_licence(url),
                 "gtfsrt": lambda: probe_gtfsrt(url),
                 "rtstatic": lambda: probe_rtstatic(url, out),
                 "gbfs": lambda: probe_gbfs(url),

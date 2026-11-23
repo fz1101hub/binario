@@ -159,6 +159,52 @@ class CkanProbeTest(unittest.TestCase):
         self.assertIn("resource PB | trip updates | https://x/tu.pb", output.getvalue())
 
 
+
+class LicenceProbeTest(unittest.TestCase):
+    def run_probe(self, payload: object) -> str:
+        output = io.StringIO()
+        with redirect_stdout(output):
+            DISCOVERY.probe_licence("https://x/api", label="demo-gtfs", fetch_json=lambda url: (200, {}, payload, None))
+        return output.getvalue()
+
+    def test_prints_the_licence_of_a_socrata_view(self) -> None:
+        text = self.run_probe({
+            "name": "Orario Ferroviario Regionale Gtfs", "viewType": "blobby", "licenseId": "CC_40_BY",
+            "license": {"name": "Creative Commons Attribution 4.0", "termsLink": "https://creativecommons.org/licenses/by/4.0/"},
+            "attribution": "Regione Lombardia", "rowsUpdatedAt": 1_794_000_000, "columns": [{"name": "x" * 9000}],
+        })
+        self.assertIn("LICENCE demo-gtfs https://x/api status=200", text)
+        self.assertIn("licenseId=CC_40_BY | license=Creative Commons Attribution 4.0 | terms=https://creativecommons.org/licenses/by/4.0/", text)
+        self.assertIn("attribution=Regione Lombardia", text)
+        self.assertIn("rowsUpdatedAt=2026-11-06", text)
+        self.assertNotIn("x" * 100, text)
+
+    def test_prints_the_licence_of_ckan_show_and_search(self) -> None:
+        dataset = {"name": "rt-oraritb", "title": "Orari TPL", "license_id": "cc-by", "license_title": "CC BY 4.0",
+                   "license_url": "https://creativecommons.org/licenses/by/4.0/", "organization": {"title": "Regione Toscana"},
+                   "resources": [{"format": "GTFS", "name": "tft", "url": "https://x/tft.gtfs"}]}
+        for payload in ({"result": dataset}, {"result": {"count": 1, "results": [dataset]}}):
+            text = self.run_probe(payload)
+            self.assertIn("ckan rt-oraritb | Orari TPL | licence_id=cc-by | licence_title=CC BY 4.0", text)
+            self.assertIn("org=Regione Toscana", text)
+            self.assertIn("resource GTFS | tft | https://x/tft.gtfs", text)
+        self.assertIn("nessun dataset", self.run_probe({"result": {"count": 0, "results": []}}))
+        self.assertIn("error=HTTP 404", self.run_probe_error())
+
+    def run_probe_error(self) -> str:
+        output = io.StringIO()
+        with redirect_stdout(output):
+            DISCOVERY.probe_licence("https://x/api", fetch_json=lambda url: (404, {}, None, "HTTP 404"))
+        return output.getvalue()
+
+    def test_the_licences_scan_reads_every_registered_portal_once(self) -> None:
+        seen: list[str] = []
+        with redirect_stdout(io.StringIO()):
+            DISCOVERY.scan_licences(fetch_json=lambda url: (seen.append(url), (200, {}, {}, None))[1])
+        self.assertEqual(list(DISCOVERY.LICENCE_METADATA.values()), seen)
+        self.assertIn("lombardia-trenord-gtfs", DISCOVERY.LICENCE_METADATA)
+        self.assertTrue(all(url.startswith("https://") for url in seen))
+
 class NextJsonProbeTest(unittest.TestCase):
     def test_prints_the_whole_page_props_in_numbered_escaped_parts(self) -> None:
         page = {"props": {"pageProps": {"__namespaces": {"x": "drop me"}, "enumerations": {"DATA_CATEGORY": ["a" * 4000, "::warning::x\nline"]}}},

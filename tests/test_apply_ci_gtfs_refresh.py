@@ -539,5 +539,131 @@ class ApplyTest(unittest.TestCase):
         self.assertEqual({}, apply.planned_edits(ROOT, [], []))
 
 
+class AddNewPackTest(unittest.TestCase):
+    """A candidate of tools/transit_packs.json built by the transit-packs job and added with --add-new."""
+
+    def setUp(self) -> None:
+        self.temp = Path(tempfile.mkdtemp(prefix="apply-new-"))
+        self.addCleanup(shutil.rmtree, self.temp, ignore_errors=True)
+        self.root = self.temp / "repo"
+        sources = self.temp / "sources"
+        sources.mkdir()
+        gtfs_zip(sources / "old.zip")
+        gtfs_zip(sources / "new.zip", end="20280630")
+        base = {"directory": "gtfs-transit", "distribution": "all", "kind": "rail", "format": "gtfs", "licence": "CC BY 4.0",
+                "attribution": "Demo", "notes": "fixture"}
+        registry = self.root / "tools/transit_packs.json"
+        registry.parent.mkdir(parents=True)
+        registry.write_text(json.dumps({"schemaVersion": 1, "packs": [
+            dict(base, sourceId="old-gtfs", sourceUrl="https://example.test/old.zip"),
+            dict(base, sourceId="new-gtfs", sourceUrl="https://example.test/new.zip", candidate=True,
+                 android={"catalogueNameSuffixes": ["NG"]}),
+        ]}), encoding="utf-8")
+        packs = acquire.load_registry(registry)
+
+        def build(source_id: str, output: Path) -> None:
+            selected = [pack for pack in packs if pack["sourceId"] == source_id]
+            report = {"packs": {source_id: {"download": {"sha256": "0" * 64, "bytes": 1}}}}
+            manifest = self.temp / f"{source_id}.json"
+            manifest.write_text(json.dumps(acquire.source_manifests(selected, report, "2026-11-23")["gtfs-transit"]), encoding="utf-8")
+            builder.build_packs(sources, output, manifest_path=manifest, generated_at="2026-11-23",
+                                input_overrides={source_id: sources / f"{source_id.split('-')[0]}.zip"})
+
+        self.transit = self.root / "app/src/main/assets/gtfs-transit"
+        build("old-gtfs", self.transit)
+        build("new-gtfs", self.temp / "printed/gtfs-transit")
+        self.log = self.temp / "transit-packs.log"
+        self.log.write_text(job_log(self.temp / "printed"), encoding="utf-8")
+        kotlin = self.root / "app/src/main/java/it/binario/app/data/gtfs"
+        kotlin.mkdir(parents=True)
+        (kotlin / "EmbeddedGtfsPacks.kt").write_text("object EmbeddedGtfsPacks\n", encoding="utf-8")
+        (kotlin / "TransitGtfsPacks.kt").write_text(TRANSIT_KT.replace('"broken-gtfs"', '"old-gtfs"').replace(
+            '"gtfs/broken-gtfs.zip"', '"gtfs-transit/old-gtfs.zip"').replace("2027, 12, 31", "2027, 12, 31"), encoding="utf-8")
+        self.catalogue = self.root / "app/src/main/java/it/binario/app/data/sources/RailSourceCatalog.kt"
+        self.catalogue.parent.mkdir(parents=True)
+        self.catalogue.write_text('SourceId("old-gtfs")\n', encoding="utf-8")
+        self.before = {path.name: path.read_bytes() for path in self.transit.iterdir()}
+
+    def apply(self, *arguments: str) -> tuple[int, str]:
+        output = io.StringIO()
+        with contextlib.redirect_stdout(output), contextlib.redirect_stderr(output):
+            code = apply.main(["--log", str(self.log), *arguments, "--root", str(self.root), "--no-checks"])
+        return code, output.getvalue()
+
+    def test_a_new_pack_needs_add_new_and_a_catalogue_entry(self) -> None:
+        code, output = self.apply()
+        self.assertEqual(1, code)
+        self.assertIn("--add-new new-gtfs", output)
+        self.assertEqual(self.before, {path.name: path.read_bytes() for path in self.transit.iterdir()})
+        code, output = self.apply("--add-new", "old-gtfs")
+        self.assertEqual(1, code)
+        self.assertIn("non candidati", output)
+        code, output = self.apply("--add-new", "new-gtfs")
+        self.assertEqual(1, code)
+        self.assertIn("senza voce in RailSourceCatalog.kt: new-gtfs", output)
+        self.assertEqual(self.before, {path.name: path.read_bytes() for path in self.transit.iterdir()})
+
+        self.catalogue.write_text('SourceId("old-gtfs")\nSourceId("new-gtfs")\n', encoding="utf-8")
+        code, output = self.apply("--add-new", "new-gtfs")
+        self.assertEqual(0, code, output)
+        self.assertIn("pack nuovo aggiunto (--add-new)", output)
+        manifest = json.loads((self.transit / "manifest.json").read_text(encoding="utf-8"))
+        self.assertEqual(["old-gtfs", "new-gtfs"], [pack["sourceId"] for pack in manifest["packs"]])
+        self.assertEqual(self.before["old-gtfs.zip"], (self.transit / "old-gtfs.zip").read_bytes())
+        builder.verify_assets(self.transit, as_of=None, min_valid_days=None)
+        kotlin = (self.root / "app/src/main/java/it/binario/app/data/gtfs/TransitGtfsPacks.kt").read_text(encoding="utf-8")
+        self.assertIn(
+            '        ),\n        EmbeddedGtfsPack(\n            SourceId("new-gtfs"),\n            "gtfs-transit/new-gtfs.zip",\n'
+            '            LocalDate.of(2028, 6, 30),\n            catalogueNameSuffixes = listOf("NG")\n        )\n    )\n}\n',
+            kotlin,
+        )
+        # Applied again, the pack is known: nothing new to add.
+        self.assertEqual({}, apply.planned_edits(self.root, [], []))
+
+    def test_a_new_pack_comes_from_one_candidate_registry_only(self) -> None:
+        self.catalogue.write_text('SourceId("old-gtfs")\nSourceId("new-gtfs")\n', encoding="utf-8")
+        core = self.root / apply.CANDIDATES
+        core.write_text(json.dumps({"schemaVersion": 1, "purpose": "fixture", "packs": [candidate("new-gtfs")]}), encoding="utf-8")
+        code, output = self.apply("--add-new", "new-gtfs")
+        self.assertEqual(1, code)
+        self.assertIn("si aggiungono senza --add-new): new-gtfs", output)
+        self.assertEqual(self.before, {path.name: path.read_bytes() for path in self.transit.iterdir()})
+        # Called directly with the id in both maps, the merge refuses the pack too.
+        work = self.temp / "work"
+        work.mkdir()
+        printed = {path.name: path.read_bytes() for path in (self.temp / "printed/gtfs-transit").iterdir()}
+        registry = {pack["sourceId"]: pack for pack in acquire.load_registry(self.root / "tools/transit_packs.json")}
+        merged = apply.merge_directory("gtfs-transit", printed, self.transit, work, skip=set(), accept=set(), job_status={},
+                                       candidates={"new-gtfs": candidate("new-gtfs")}, add_new={"new-gtfs": registry["new-gtfs"]})
+        row = next(row for row in merged.rows if row.source_id == "new-gtfs")
+        self.assertIn("candidato sia di", row.failure or "")
+        self.assertEqual(([], {}), (merged.added_candidates, merged.added_new))
+
+    def test_the_shipped_candidate_registries_do_not_share_an_id(self) -> None:
+        core = set(refresh.load_candidates(ROOT / apply.CANDIDATES))
+        transit = {pack["sourceId"] for pack in acquire.load_registry()}
+        self.assertEqual(set(), core & transit)
+        self.assertTrue(core and any(pack.get("candidate") for pack in acquire.load_registry()))
+
+    def test_an_urban_personal_candidate_becomes_the_kotlin_entry_of_the_city_packs(self) -> None:
+        registration = {"kind": "URBAN", "areas": [{"name": "Palermo", "latitude": 38.109187, "longitude": 13.367515, "radiusKm": 12}],
+                        "catalogueNameSuffixes": [], "personalOnly": True}
+        self.assertEqual(
+            "        EmbeddedGtfsPack(\n"
+            '            SourceId("palermo-amat-tram-gtfs"),\n'
+            '            "gtfs-personal/palermo-amat-tram-gtfs.zip",\n'
+            "            LocalDate.of(2027, 1, 31),\n"
+            "            kind = EmbeddedGtfsPackKind.URBAN,\n"
+            '            areas = listOf(TransitArea("Palermo", 38.109187, 13.367515, 12.0)),\n'
+            "            personalOnly = true\n"
+            "        )",
+            apply.kotlin_entry("palermo-amat-tram-gtfs", "gtfs-personal/palermo-amat-tram-gtfs.zip", "2027-01-31", registration),
+        )
+        with self.assertRaises(apply.ApplyError):
+            apply.with_added_packs("object TransitGtfsPacks\n", ["entry"], Path("TransitGtfsPacks.kt"))
+        shipped = (ROOT / apply.TRANSIT_KOTLIN).read_text(encoding="utf-8")
+        self.assertIn("entry", apply.with_added_packs(shipped, ["entry"], apply.TRANSIT_KOTLIN))
+
+
 if __name__ == "__main__":
     unittest.main()
