@@ -1785,6 +1785,7 @@
     <!-- Planner: ready routes to the airports -->
     <string name="planner_airport_links">Collegamenti con gli aeroporti</string>
     <string name="planner_airport_search">Cerca i treni da %1$s a %2$s</string>
+    <string name="planner_airport_search_runs">Cerca le corse da %1$s a %2$s</string>
     <!-- Delay compensation notice (Regulation (EU) 2021/782 art. 19) in the train detail -->
     <string name="compensation_notice_quarter">Arrivato a %1$s con %2$s di ritardo: per il regolamento UE 2021/782 potresti avere diritto a un indennizzo del 25%% del prezzo del biglietto (50%% da 120 minuti).</string>
     <string name="compensation_notice_half">Arrivato a %1$s con %2$s di ritardo: per il regolamento UE 2021/782 potresti avere diritto a un indennizzo del 50%% del prezzo del biglietto.</string>

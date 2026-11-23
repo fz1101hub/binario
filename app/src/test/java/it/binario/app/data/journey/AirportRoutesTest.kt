@@ -74,6 +74,14 @@ class AirportRoutesTest {
         assertTrue(weekday.dayOfWeek !in setOf(DayOfWeek.SATURDAY, DayOfWeek.SUNDAY))
     }
 
+    @Test fun `only the Bologna entry is a city line, so only its rows say runs instead of trains`() {
+        // Fiumicino, Malpensa, Bari (Ferrotramviaria, a gtfs-transit pack) and the others are real trains.
+        assertEquals(
+            listOf("curated:S05043" to "curated:NC000683"),
+            AirportRoutes.all.filter(AirportRoutes::byCityLine).map { it.cityStationId to it.airportStationId }
+        )
+    }
+
     @Test fun `both stations of every entry are in the curated catalogue, with distinct names`() {
         AirportRoutes.all.forEach { route ->
             val city = stations[route.cityStationId]

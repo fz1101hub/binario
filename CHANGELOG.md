@@ -1,5 +1,11 @@
 # Changelog
 
+## In sviluppo — «Cerca le corse» per il Marconi Express e per le linee urbane
+
+- Android, collegamenti con gli aeroporti: i collegamenti in treno (Fiumicino, Malpensa, Bari, Palermo, Cagliari, Trieste, Caselle) continuano a dire «Cerca i treni da … a …»; solo Bologna, servita dal Marconi Express (una monorotaia), dice «Cerca le corse da … a …».
+- Android, collegamenti diretti di una stazione: le destinazioni raggiunte da metro, tram o funicolare dicono «Cerca le corse» invece di «Cerca i treni»; quelle in treno restano invariate.
+- Nuova stringa `planner_airport_search_runs` in 17 lingue (traduzioni automatiche, da rivedere). Su iPhone non cambia nulla: il collegamento di Bologna lì non compare.
+
 ## In sviluppo — Aggiornamento settimanale del 23 novembre
 
 - Orari aggiornati: STA, SNCF (nuovi pin, pre-release verificate online) e Trenitalia France, ricostruito con le regole sulle categorie e sulle corse fuori ordine (righe «FR», 4 corse del 9281 lasciate fuori). Statistiche di puntualità: 10.863 treni, finestra 24 ottobre – 22 novembre.

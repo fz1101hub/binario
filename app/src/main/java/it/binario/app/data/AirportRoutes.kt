@@ -47,6 +47,16 @@ object AirportRoutes {
         AirportRoute("curated:S05043", "curated:NC000683", setOf(MARCONI_EXPRESS))
     )
 
+    /**
+     * Packs whose airport line is a city line, not a train (the Marconi Express people mover): their rows say «Cerca le
+     * corse», every other row «Cerca i treni». Named, not inferred from the asset directory: `gtfs-transit/` also holds
+     * regional railways (Ferrotramviaria serves Bari Aeroporto with real trains).
+     */
+    private val CITY_LINE_PACKS = setOf(MARCONI_EXPRESS)
+
+    /** Whether [route] is served only by a city line (a people mover, a metro), so its rows do not say "trains". */
+    fun byCityLine(route: AirportRoute): Boolean = route.packs.isNotEmpty() && route.packs.all(CITY_LINE_PACKS::contains)
+
     /** The routes whose trains are in [packs] (the packs of this build). */
     fun forBuild(packs: Collection<EmbeddedGtfsPack>): List<AirportRoute> {
         val ids = packs.mapTo(HashSet()) { it.sourceId.value }
