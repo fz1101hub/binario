@@ -54,9 +54,9 @@ object LocalOnlyRailDataPolicy {
     private val viaggiaTrenoBoard by lazy { ViaggiaTrenoRealtimeAdapter(requests = viaggiaTrenoRequests) }
     private val rfiAlerts by lazy { RfiInfomobilityRssAdapter() }
     private val staRealtime by lazy { StaRealtimeAdapter() }
-    private val sncfRealtime by lazy { SncfGtfsRealtimeAdapter() }
     // One refusal pause for the realtime proxy of transport.data.gouv.fr, shared by its feeds.
     private val transportDataGouvRequests by lazy { TransportDataGouvRequests() }
+    private val sncfRealtime by lazy { SncfGtfsRealtimeAdapter(requests = transportDataGouvRequests) }
     private val trenitaliaFranceRealtime by lazy { TrenitaliaFranceGtfsRealtimeAdapter(requests = transportDataGouvRequests) }
     private val swissOpenTransportBoard by lazy { SwissOpenTransportStationBoardAdapter() }
     private val viaggiaTrenoTrainNotices by lazy { ViaggiaTrenoTrainNoticesAdapter(requests = viaggiaTrenoRequests) }

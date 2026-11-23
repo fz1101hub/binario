@@ -51,12 +51,15 @@ internal class HttpSncfRealtimeFetcher(
 
 /**
  * Adapter open-data SNCF per i Trip Updates GTFS-Realtime, abbinati al GTFS statico del pack SNCF. Gli avvisi (Service
- * Alerts) non sono letti: nessuna schermata li usava (pulizia dell'audit A1 F13, novembre 2026).
+ * Alerts) non sono letti: nessuna schermata li usava (pulizia dell'audit A1 F13, novembre 2026). Al primo rifiuto
+ * dell'host (403, 429, 503 con Retry-After) la fonte resta in pausa, insieme agli altri feed dello stesso host
+ * ([TransportDataGouvRequests]).
  */
 class SncfGtfsRealtimeAdapter(
     private val fetcher: SncfRealtimeFetcher = HttpSncfRealtimeFetcher(),
     private val clock: Clock = Clock.systemUTC(),
-    private val cacheTtl: Duration = Duration.ofMinutes(2)
+    private val cacheTtl: Duration = Duration.ofMinutes(2),
+    requests: TransportDataGouvRequests = TransportDataGouvRequests(clock)
 ) : TripUpdateProvider {
     override val descriptor = ProviderDescriptor(
         id = SOURCE_ID,
@@ -72,6 +75,7 @@ class SncfGtfsRealtimeAdapter(
 
     private var cachedTripUpdates: CachedTripUpdates? = null
     private val tripUpdatesGuard = RealtimeFeedGuard(clock, "SNCF Open Data")
+    private val refusals = requests.refusals
 
     override suspend fun getTripUpdates(): ProviderResult<List<RealtimeStopUpdate>> = tripUpdatesMutex.withLock {
         val now = clock.instant()
@@ -80,7 +84,7 @@ class SncfGtfsRealtimeAdapter(
         }
         tripUpdatesGuard.blocked()?.let { return@withLock it }
         try {
-            val payload = fetcher.fetch(SncfRealtimeFeed.TRIP_UPDATES)
+            val payload = refusals.call { fetcher.fetch(SncfRealtimeFeed.TRIP_UPDATES) }
             // The national feed is decoded off the caller's thread.
             val (observed, updates) = withContext(Dispatchers.Default) {
                 val feed = GtfsRealtime.FeedMessage.parseFrom(payload)
