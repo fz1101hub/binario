@@ -77,7 +77,9 @@ enum EveningAlerts {
     private static func alertWorks(service: RailNoticeService, today: PlannedLocalDate, store: EveningAlertsStore) async {
         guard !RouteWorksAlertPlanner.alertedOn(store.lastWorksAlertDay, today: today) else { return }
         // The routes the works sections read, in the saved order; without any, no request at all.
-        let routes = Array(SavedRouteStore().load().prefix(service.rules.maximumWorksRoutes))
+        // The store belongs to the main actor: reading it from the background task is a hop there.
+        let saved = await SavedRouteStore().load()
+        let routes = Array(saved.prefix(service.rules.maximumWorksRoutes))
         guard !routes.isEmpty, let catalogue = catalogue() else { return }
         // RFI only, as Android's alert: never Trenitalia or Trenord, whatever «Dati in tempo reale» says.
         let notices = await service.general(personal: false, includeTrenord: false).network
