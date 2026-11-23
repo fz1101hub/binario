@@ -196,7 +196,7 @@ La tabella copre ogni host `http(s)://` trovato in `app/src/main/java`, `wear/sr
 | `regiojet.com` | E | Catalogo fonti (`InternationalSourceCatalog.kt`), monitor-only |
 | `ressources.data.sncf.com` | E | Catalogo fonti (`RailSourceCatalog.kt`) |
 | `scraped.data.public-transport.earth` | E | Catalogo fonti (`InternationalSourceCatalog.kt`): mirror DELFI community, nessun adapter |
-| `transport.data.gouv.fr` | E | Evidenza di licenza del pack `sncf-gtfs` nel manifest GTFS (scheda della risorsa); nessun traffico |
+| `transport.data.gouv.fr` | E | Evidenza di licenza del pack `sncf-gtfs` nel manifest GTFS (scheda della risorsa) e del pack candidato `trenitalia-france-gtfs` (`tools/core_pack_candidates.json`, scheda del dataset); pagina del dataset Trenitalia France nel catalogo fonti (`RailSourceCatalog.kt`); nessun traffico |
 | `urlaubs-express.de` | E | Catalogo fonti (`InternationalSourceCatalog.kt`), monitor-only |
 | `web.ferroviedellacalabria.it` | E | Catalogo fonti (`RailSourceCatalog.kt`) |
 | `westbahn.at` | E | Catalogo fonti (`InternationalSourceCatalog.kt`), monitor-only |
@@ -205,7 +205,7 @@ La tabella copre ogni host `http(s)://` trovato in `app/src/main/java`, `wear/sr
 | `www.cd.cz` | E | Catalogo fonti (`InternationalSourceCatalog.kt`), monitor-only |
 | `www.circumetnea.it` | E | Catalogo fonti (`RailSourceCatalog.kt`) |
 | `www.cotralspa.it` | E | Catalogo fonti (`RailSourceCatalog.kt`) |
-| `www.data.gouv.fr` | E | Catalogo fonti (`RailSourceCatalog.kt`) |
+| `www.data.gouv.fr` | E | Catalogo fonti (`RailSourceCatalog.kt`), anche come URL della risorsa del pack candidato `trenitalia-france-gtfs`, scaricata solo dal CI (provenienza D quando il pack è incluso); nessun traffico dall'app |
 | `www.eavsrl.it` | E, F | Catalogo fonti (`RailSourceCatalog.kt`); sito ufficiale in Biglietti e assistenza (`links/OfficialLinks.kt`) |
 | `www.europeansleeper.eu` | E | Catalogo fonti (`InternationalSourceCatalog.kt`, `RailSourceCatalog.kt`): landing page, nessun traffico |
 | `www.ferrovieudinecividale.it` | E, F | Catalogo fonti (`RailSourceCatalog.kt`); sito ufficiale in Biglietti e assistenza (`links/OfficialLinks.kt`) |

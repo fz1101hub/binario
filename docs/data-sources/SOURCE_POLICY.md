@@ -20,7 +20,7 @@ Questa policy determina quali fonti possono entrare in Binario e con quali salva
 |---|---|---|---|
 | Italia regionale | GTFS Lombardia, EAV, Alto Adige, Trentino, ARST, AMT Genova, Cotral previa verifica feed | Da accordo o fonte strutturata disponibile | Primo data pack italiano |
 | Svizzera e tratte italiane | GTFS Open Data Platform Mobility Switzerland | GTFS-RT e Service Alerts, con token e limiti | Primo realtime open dopo statico |
-| Francia–Italia | SNCF GTFS/NeTEx | SNCF GTFS-RT e avvisi | Secondo realtime open |
+| Francia–Italia | SNCF GTFS/NeTEx; GTFS di Trenitalia France (candidato, sotto) | SNCF GTFS-RT e avvisi | Secondo realtime open |
 | Austria–Italia | ÖBB GTFS | Controllo lato italiano da fonte separata | Statico internazionale |
 | Trenitalia/RFI | Orario ufficiale Trenitalia (NeTEx sul National Access Point, dataset 1077621) in data pack offline, treni e bus | ViaggiaTreno/RFI solo best effort | Data pack `trenitalia-gtfs` (novembre 2026) |
 | Italo | Orario ufficiale Italo (NeTEx sul National Access Point, dataset 1814124) in data pack offline, treni e ItaloBus | Italo in Viaggio best effort o canale NTV | Data pack `italo-gtfs` (novembre 2026) |
@@ -191,6 +191,12 @@ La sezione «Bici in condivisione vicino a <stazione>» del tabellone di una sta
 | Bird (Roma) | `https://mds.bird.co/gbfs/v2/public/rome/gbfs.json` | GBFS 2.3; 4.272 monopattini (547 disabilitati), autonomia e batteria (`current_fuel_percent` frazione 0–1) | 39 stazioni ferroviarie romane (Termini 75 m, Ostiense, Trastevere, Tiburtina, …) | `license_url` = Bird GBFS Data License Agreement (PDF del 2018, non riesaminato): **solo build personali** |
 
 Non utilizzabili: Lime (Bari, Napoli, Roma, Milano, Torino: `data.lime.bike` risponde 404 senza credenziali), Dott (`gbfs.api.ridedott.com/public/v2/<città>`: 404), Bird Milano e Firenze (feed vuoti), Bird Torino (404), Cooltra Milano/Roma/Torino (GBFS 3.0, ma scooter elettrici a sedere, non bici; Milano e Roma vuoti), Amicar Napoli (404), Zeus Anzio (48 monopattini tutti disabilitati), ToBike Torino, RideMovi (Bologna, Firenze), bike sharing di Roma, Napoli, Genova, Bari e Firenze: nessun GBFS pubblico nel catalogo MobilityData (`systems.csv`, 16 sistemi italiani) né nei portali open data. I dataset «Bike sharing» di dati.gov.it (Torino, Bologna, Puglia, Matera, Cremona) sono elenchi statici delle postazioni o storici dei noleggi, non disponibilità in tempo reale; il bike sharing del Trentino (`os.smartcommunitylab.it`, CC BY 4.0) è un'API JSON propria, non GBFS.
+
+### Trenitalia France (candidato, novembre 2026)
+
+Il GTFS di Trenitalia France (`https://transport.data.gouv.fr/datasets/horaires-des-trains-trenitalia-france`, risorsa `https://www.data.gouv.fr/api/1/datasets/r/bdecea2c-ebc9-4f22-812d-927e4a2e4bad`) è pubblicato con la **Licence Ouverte / Open Licence 2.0** di Etalab (`etalab-2.0`): riuso e ridistribuzione liberi, anche commerciali, citando la fonte «Trenitalia France» e la data dell'ultimo aggiornamento. Il pack `trenitalia-france-gtfs` è registrato come candidato (`tools/core_pack_candidates.json`): entra nell'app solo con un refresh del CI che lo nomina e l'applicazione rivista ([GTFS_PACK_REFRESH.md](GTFS_PACK_REFRESH.md), «Pack nuovi»), intero e solo con i `route_type` ferroviari; l'attribuzione nei crediti porta la data dell'archivio. Nessun traffico dall'app: è un dato incluso. Sull'iPhone resta fuori dall'indice finché non è rivisto come pack estero a sole stazioni con codici (`androidOnlySources`).
+
+Le stesse corse sono già nel pack nazionale `trenitalia-gtfs` (NAP italiano): nel novembre 2026 contiene 76 corse Trenitalia con fermate francesi (Parigi–Lione, Parigi–Marsiglia, Parigi–Milano). Il pack nazionale resta il primo in `PlannedPackOrder` e le copie dello stesso treno sono unite (stesso numero e stessi minuti), quindi il pack francese aggiunge soprattutto la fonte dell'operatore e la base statica per un futuro uso del suo GTFS-RT. L'elenco dei feed di Transitous (CC0) è servito solo a indicare l'editore originale.
 
 ### Orari completi dei paesi confinanti: redistribuzione su GitHub Releases (novembre 2026)
 

@@ -415,7 +415,51 @@ def read_manifest(path: Path) -> dict[str, Any]:
             raise BuildError(f"sourceUrl mancante per {source_id}")
         if "upstream" in pack:
             validate_upstream_pin(source_id, pack)
+        if NEXT_TIMETABLE_FIELD in pack:
+            validate_next_timetable(source_id, pack)
     return manifest
+
+
+# A publisher that puts each timetable year in a dataset of its own behind a stable permalink (Switzerland:
+# timetable-2026-gtfs2020, timetable-2027-gtfs2020) is registered with the permalink of the current year in sourceUrl and
+# the reviewed permalink of the next year here, with the first day the weekly refresh downloads it (the first day of
+# that timetable, so the current year's last weeks are not lost; earlier only by a reviewed change of ``from``).  From
+# that day tools/refresh_core_gtfs.py builds the pack from the next source and proposes the entry with its sourceUrl
+# and without this field; tools/apply_ci_gtfs_refresh.py accepts that sourceUrl only as this reviewed one and carries
+# it (and landingPage) into the iOS source policy and RailSourceCatalog.kt.  The owner adds the following year's next.
+NEXT_TIMETABLE_FIELD = "nextTimetable"
+NEXT_TIMETABLE_KEYS = frozenset({"from", "sourceUrl", "landingPage"})
+
+
+def validate_next_timetable(source_id: str, pack: Mapping[str, Any]) -> None:
+    following = pack.get(NEXT_TIMETABLE_FIELD)
+    if not isinstance(following, dict) or set(following) != NEXT_TIMETABLE_KEYS:
+        raise BuildError(f"{source_id}: {NEXT_TIMETABLE_FIELD} deve avere le chiavi {sorted(NEXT_TIMETABLE_KEYS)}")
+    if "upstream" in pack:
+        raise BuildError(f"{source_id}: {NEXT_TIMETABLE_FIELD} non si combina con un upstream fissato")
+    try:
+        date.fromisoformat(str(following["from"]))
+    except ValueError as error:
+        raise BuildError(f"{source_id}: {NEXT_TIMETABLE_FIELD}.from non ISO-8601: {following['from']!r}") from error
+    for key in ("sourceUrl", "landingPage"):
+        if not isinstance(following[key], str):
+            raise BuildError(f"{source_id}: {NEXT_TIMETABLE_FIELD}.{key} non valido")
+        require_https_url(following[key], context=f"{source_id} {NEXT_TIMETABLE_FIELD}.{key}")
+    if following["sourceUrl"] == pack.get("sourceUrl"):
+        raise BuildError(f"{source_id}: {NEXT_TIMETABLE_FIELD}.sourceUrl uguale a sourceUrl")
+
+
+def timetable_switch(pack: Mapping[str, Any], day: date) -> dict[str, str] | None:
+    """The reviewed switch to the next timetable's source when ``day`` is on or after its ``from``, else None."""
+    following = pack.get(NEXT_TIMETABLE_FIELD)
+    if not isinstance(following, Mapping) or day < date.fromisoformat(str(following["from"])):
+        return None
+    return {
+        "from": str(following["from"]),
+        "previousSourceUrl": str(pack["sourceUrl"]),
+        "sourceUrl": str(following["sourceUrl"]),
+        "landingPage": str(following["landingPage"]),
+    }
 
 
 def _is_hex(value: object, length: int) -> bool:

@@ -65,6 +65,48 @@ def gtfs_zip(
     return path.read_bytes()
 
 
+def trenitalia_france_zip(path: Path) -> bytes:
+    """A synthetic feed shaped like Trenitalia France's: two Frecciarossa Paris - Milano trips (route_type 2) and a coach
+    (route_type 3) the rail filter drops.  Names, ids and coordinates are fixture values, not the publisher's data."""
+    calls = (("PLY", "Paris Gare de Lyon", "08:00"), ("LPD", "Lyon Part-Dieu", "10:00"), ("MOD", "Modane", "13:00"),
+             ("OUX", "Oulx", "13:40"), ("TPS", "Torino Porta Susa", "14:40"), ("MIC", "Milano Centrale", "15:50"))
+    tables = {
+        "agency.txt": "agency_id,agency_name,agency_url,agency_timezone\nTF,Trenitalia France,https://example.test,Europe/Paris\n",
+        "stops.txt": "stop_id,stop_name,stop_lat,stop_lon\n" + "".join(
+            f"{code},{name},{45.0 + index / 10:.1f},{6.0 + index / 10:.1f}\n" for index, (code, name, _) in enumerate(calls)),
+        "routes.txt": "route_id,agency_id,route_short_name,route_long_name,route_type\nFR,TF,FR,Paris - Milano,2\nCAR,TF,CAR,Navette,3\n",
+        "trips.txt": "route_id,service_id,trip_id,trip_short_name\nFR,DAILY,FR9241,9241\nFR,DAILY,FR9247,9247\nCAR,DAILY,CAR1,1\n",
+        "stop_times.txt": "trip_id,arrival_time,departure_time,stop_id,stop_sequence\n" + "".join(
+            f"{trip},{hour + shift:02d}{when[2:]}:00,{hour + shift:02d}{when[2:]}:00,{code},{index + 1}\n"
+            for trip, shift in (("FR9241", 0), ("FR9247", 6))
+            for index, (code, _, when) in enumerate(calls) for hour in (int(when[:2]),)
+        ) + "CAR1,09:00:00,09:00:00,MOD,1\nCAR1,09:30:00,09:30:00,OUX,2\n",
+        "calendar.txt": "service_id,monday,tuesday,wednesday,thursday,friday,saturday,sunday,start_date,end_date\n"
+        "DAILY,1,1,1,1,1,1,1,20261101,20271211\n",
+    }
+    with zipfile.ZipFile(path, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+        for name, text in tables.items():
+            archive.writestr(name, text)
+    return path.read_bytes()
+
+
+def candidate(source_id: str = "trenitalia-france-gtfs") -> dict[str, Any]:
+    """A reviewed candidate as tools/core_pack_candidates.json records it (fixture URLs)."""
+    return {
+        "sourceId": source_id,
+        "asset": f"gtfs/{source_id}.zip",
+        "sourceUrl": f"https://example.test/{source_id}/resource",
+        "accessMode": "OPEN_DIRECT",
+        "attribution": "Trenitalia France",
+        "attributionDated": True,
+        "licence": "Licence Ouverte / Open Licence 2.0 (etalab-2.0)",
+        "licenceEvidence": f"https://example.test/{source_id}",
+        "notes": "fixture candidate",
+        "landingPage": f"https://example.test/{source_id}",
+        "iosAndroidOnlyReason": "fixture: Android-only",
+    }
+
+
 def pinned_url(commit: str) -> str:
     return f"https://raw.githubusercontent.com/example/pinned-gtfs/{commit}/gtfs.zip"
 
@@ -267,11 +309,158 @@ class RefreshCoreTest(unittest.TestCase):
         with contextlib.redirect_stderr(io.StringIO()):
             self.assertEqual(1, refresh.main(["--fail-on-report", str(self.temp / "out/publish/core-refresh.json")]))
 
+    def with_next_timetable(self, start: str) -> dict[str, str]:
+        """plain-gtfs registered like the Swiss pack: this year's permalink, the next year's from ``start``."""
+        following = {"from": start, "sourceUrl": "https://example.test/plain-2027/permalink",
+                     "landingPage": "https://example.test/plain-2027"}
+        for pack in self.manifest["packs"]:
+            if pack["sourceId"] == "plain-gtfs":
+                pack["nextTimetable"] = following
+        builder.write_json(self.published / "manifest.json", self.manifest)
+        builder.read_manifest(self.published / "manifest.json")
+        self.before = {path.name: path.read_bytes() for path in self.published.iterdir()}
+        return following
+
+    def test_the_next_timetable_is_downloaded_from_its_reviewed_first_day(self) -> None:
+        following = self.with_next_timetable("2026-12-13")
+        sources = self.temp / "new"
+        sources.mkdir()
+        current = gtfs_zip(sources / "current.zip", end="20261212")
+        payloads = {"https://example.test/plain-gtfs.zip": current, following["sourceUrl"]: gtfs_zip(sources / "next.zip", end="20271211")}
+        # Before the switch: this year's source, and the entry keeps the next one for later.
+        report, fetch = self.run_refresh(payloads, selection=["plain-gtfs"])
+        self.assertEqual(["https://example.test/plain-gtfs.zip"], fetch.urls)
+        self.assertNotIn("timetableSwitch", report["packs"]["plain-gtfs"])
+        staged = {pack["sourceId"]: pack for pack in json.loads((self.temp / "out/staging/gtfs/manifest.json").read_text(encoding="utf-8"))["packs"]}
+        self.assertEqual("2026-12-12", staged["plain-gtfs"]["lastServiceDate"])
+        self.assertEqual(following, staged["plain-gtfs"]["nextTimetable"])
+        # From the first day of the next timetable: its source, adopted in the entry, and the field is spent.
+        fetch = FakeDownloads(payloads)
+        with contextlib.redirect_stdout(io.StringIO()):
+            report = refresh.refresh(["plain-gtfs"], self.published, self.temp / "out", "2026-12-13", fetch=fetch, resolve=self.resolve)
+        self.assertEqual([following["sourceUrl"]], fetch.urls)
+        self.assertEqual("changed", report["packs"]["plain-gtfs"]["status"])
+        self.assertEqual(
+            {"previousSourceUrl": "https://example.test/plain-gtfs.zip", **following},
+            report["packs"]["plain-gtfs"]["timetableSwitch"],
+        )
+        staged = {pack["sourceId"]: pack for pack in json.loads((self.temp / "out/staging/gtfs/manifest.json").read_text(encoding="utf-8"))["packs"]}
+        self.assertEqual(following["sourceUrl"], staged["plain-gtfs"]["sourceUrl"])
+        self.assertNotIn("nextTimetable", staged["plain-gtfs"])
+        self.assertEqual("2027-12-11", staged["plain-gtfs"]["lastServiceDate"])
+        self.assertIn("orario successivo dal 2026-12-13", refresh.report_markdown(report))
+        self.assertEqual(self.before, {path.name: path.read_bytes() for path in self.published.iterdir()})
+
+    def test_a_permalink_names_the_file_it_resolved_to_in_the_summary(self) -> None:
+        sources = self.temp / "new"
+        sources.mkdir()
+
+        def resolved(url: str, target: Path) -> dict[str, Any]:
+            record = FakeDownloads({url: gtfs_zip(sources / "plain.zip", end="20281231")})(url, target)
+            return {**record, "finalUrl": "https://example.test/download/gtfs_fp2026_2026-11-20.zip"}
+
+        with contextlib.redirect_stdout(io.StringIO()):
+            report = refresh.refresh(["plain-gtfs"], self.published, self.temp / "out", "2026-11-23", fetch=resolved, resolve=self.resolve)
+        self.assertIn("da https://example.test/download/gtfs_fp2026_2026-11-20.zip", refresh.report_markdown(report))
+
+    def test_a_next_timetable_must_be_reviewed_https_and_differ_from_the_current_source(self) -> None:
+        base = {"sourceId": "x", "asset": "gtfs/x.zip", "sourceUrl": "https://example.test/x"}
+        good = {"from": "2026-12-13", "sourceUrl": "https://example.test/y", "landingPage": "https://example.test/y-page"}
+        builder.validate_next_timetable("x", {**base, "nextTimetable": good})
+        for broken in (
+            {**good, "from": "13.12.2026"},
+            {**good, "sourceUrl": "http://example.test/y"},
+            {**good, "sourceUrl": base["sourceUrl"]},
+            {key: value for key, value in good.items() if key != "landingPage"},
+            {**good, "extra": "x"},
+        ):
+            with self.subTest(broken=broken), self.assertRaises(builder.BuildError):
+                builder.validate_next_timetable("x", {**base, "nextTimetable": broken})
+        self.assertIsNone(builder.timetable_switch({**base, "nextTimetable": good}, date(2026, 12, 12)))
+        self.assertEqual("https://example.test/y", builder.timetable_switch({**base, "nextTimetable": good}, date(2026, 12, 13))["sourceUrl"])
+        self.assertIsNone(builder.timetable_switch(base, date(2027, 1, 1)))
+
+    def test_a_candidate_is_built_only_when_named_and_joins_the_manifest_in_order(self) -> None:
+        sources = self.temp / "new"
+        sources.mkdir()
+        candidates = {"trenitalia-france-gtfs": candidate()}
+        url = candidates["trenitalia-france-gtfs"]["sourceUrl"]
+        payloads = {url: trenitalia_france_zip(sources / "tf.zip")}
+        # refresh-core=all refreshes the bundled packs only: adding a pack is never implicit.
+        fetch = FakeDownloads({**payloads, "https://example.test/plain-gtfs.zip": self.archives["plain-gtfs"],
+                               "https://example.test/broken-gtfs.zip": self.archives["broken-gtfs"],
+                               pinned_url(NEW_COMMIT): self.archives["pinned-gtfs"]})
+        with contextlib.redirect_stdout(io.StringIO()):
+            report = refresh.refresh([], self.published, self.temp / "out", "2026-11-24", fetch=fetch, resolve=self.resolve, candidates=candidates)
+        self.assertNotIn(url, fetch.urls)
+        self.assertNotIn("trenitalia-france-gtfs", report["packs"])
+        # Named, it is downloaded, built alone (rail only) and printed with the manifest that lists it.
+        fetch = FakeDownloads(payloads)
+        with contextlib.redirect_stdout(io.StringIO()):
+            report = refresh.refresh(["trenitalia-france-gtfs"], self.published, self.temp / "out", "2026-11-24",
+                                     fetch=fetch, resolve=self.resolve, candidates=candidates)
+        self.assertEqual([url], fetch.urls)
+        self.assertEqual("added", report["packs"]["trenitalia-france-gtfs"]["status"])
+        self.assertEqual(["trenitalia-france-gtfs"], report["added"])
+        self.assertEqual(["trenitalia-france-gtfs"], report["changed"])
+        staging = self.temp / "out/staging/gtfs"
+        builder.verify_assets(staging, as_of=None, min_valid_days=None)
+        manifest = json.loads((staging / "manifest.json").read_text(encoding="utf-8"))
+        # Before the first pack after it in sourceId order (none here: last); the others keep their order.
+        self.assertEqual([pack["sourceId"] for pack in self.manifest["packs"]] + ["trenitalia-france-gtfs"],
+                         [pack["sourceId"] for pack in manifest["packs"]])
+        self.assertEqual(["a", "b", "c"], [pack["sourceId"] for pack in refresh.with_pack_in_order([{"sourceId": "a"}, {"sourceId": "c"}], {"sourceId": "b"})])
+        entry = next(pack for pack in manifest["packs"] if pack["sourceId"] == "trenitalia-france-gtfs")
+        self.assertEqual("Trenitalia France — dati del 2026-11-24", entry["attribution"])
+        self.assertEqual("2027-12-11", entry["lastServiceDate"])
+        self.assertNotIn("landingPage", entry)
+        self.assertNotIn("iosAndroidOnlyReason", entry)
+        self.assertEqual(2, refresh.pack_counts(staging / "trenitalia-france-gtfs.zip")["trips"])
+        self.assertEqual(
+            {"SHA256SUMS", "manifest.json", "trenitalia-france-gtfs.zip"},
+            {path.name for path in (self.temp / "out/publish/gtfs").iterdir()},
+        )
+        self.assertIn("| trenitalia-france-gtfs | nuovo (candidato) | 2027-12-11 | 2 |", refresh.report_markdown(report))
+        # The other packs keep their bytes; the checkout is never touched.
+        for name, data in self.before.items():
+            if name not in ("manifest.json", "SHA256SUMS"):
+                self.assertEqual(data, (staging / name).read_bytes(), name)
+        self.assertEqual(self.before, {path.name: path.read_bytes() for path in self.published.iterdir()})
+
+    def test_the_candidate_registry_is_reviewed(self) -> None:
+        shipped = refresh.load_candidates()
+        for source_id, pack in shipped.items():
+            self.assertTrue(pack["sourceUrl"].startswith("https://"), source_id)
+            self.assertNotIn(source_id, [entry["sourceId"] for entry in json.loads((ROOT / "app/src/main/assets/gtfs/manifest.json").read_text(encoding="utf-8"))["packs"]])
+        registry = self.temp / "candidates.json"
+        for broken in (
+            {**candidate(), "accessMode": "GATEWAY_ONLY"},
+            {**candidate(), "sourceUrl": "http://example.test/x.zip"},
+            {**candidate(), "licence": " "},
+            {**candidate(), "asset": "gtfs-transit/x.zip"},
+            {**candidate("sncf-gtfs")},
+            {**candidate(), "attributionDated": "yes"},
+        ):
+            registry.write_text(json.dumps({"schemaVersion": 1, "packs": [broken]}), encoding="utf-8")
+            with self.subTest(broken=broken), self.assertRaises((refresh.RefreshError, builder.BuildError)):
+                refresh.load_candidates(registry)
+        self.assertEqual({}, refresh.load_candidates(self.temp / "absent.json"))
+
     def test_an_unknown_pack_is_refused_before_any_download(self) -> None:
         fetch = FakeDownloads({})
         with self.assertRaisesRegex(refresh.RefreshError, "missing-gtfs"):
             refresh.refresh(["missing-gtfs"], self.published, self.temp / "out", "2026-11-03", fetch=fetch, resolve=self.resolve)
         self.assertEqual([], fetch.urls)
+
+
+class WorkflowTest(unittest.TestCase):
+    def test_the_refreshed_directory_is_checked_against_the_staged_full_packs(self) -> None:
+        # A refreshed border pack names its new full pack in fullPack; the checkout's data/gtfs-foreign/android still
+        # holds the previous one, so the job's --check must read the staged copy or it fails on every border refresh.
+        workflow = (ROOT / ".github/workflows/gtfs-assets-ci.yml").read_text(encoding="utf-8")
+        step = workflow.split("- name: Verify the refreshed core directory", 1)[1].split("- name:", 1)[0]
+        self.assertIn('--input-dir "$RUNNER_TEMP/core/staging/gtfs"', step)
+        self.assertIn(f'--full-pack-dir "$RUNNER_TEMP/core/staging/{refresh.FULL_PRINT_DIR}"', step)
 
 
 class FreshnessTest(unittest.TestCase):

@@ -11,7 +11,15 @@ reach the publishers.  For every selected pack of the core manifest:
   the upstream archive (GitHub API, ``git ls-remote`` as fallback); the archive of that commit is downloaded and, when
   it differs from the pinned one, the pack is rebuilt with the *proposed* pin.  ``feed_info.txt`` and
   ``attributions.txt`` of the new archive are reported for review: adopting the pin stays a reviewed commit;
-* every other ``OPEN_DIRECT`` pack is downloaded from its registered HTTPS ``sourceUrl``.
+* every other ``OPEN_DIRECT`` pack is downloaded from its registered HTTPS ``sourceUrl``; from the ``from`` day of a
+  reviewed ``nextTimetable`` (a publisher with one dataset per timetable year behind a permalink, Switzerland) from its
+  ``sourceUrl``, and the rebuilt entry takes that URL and drops the field (``build_gtfs_packs.timetable_switch``).
+
+A reviewed pack not bundled yet (``tools/core_pack_candidates.json``) is downloaded and built the same way only when the
+selection names it (``refresh-core=<sourceId>``, never with ``refresh-core=all``): status ``added``, printed with the
+manifest that lists it; ``tools/apply_ci_gtfs_refresh.py`` then adds it to the repository.  A pack registered with
+``attributionDated`` (Etalab Licence Ouverte: source and date of the last update) carries in its attribution the day the
+build took a new archive of it.
 
 Downloads use ``acquire_transit_sources.download`` (HTTPS only, byte cap, resume, retries on 5xx).  An archive equal
 to the one recorded in the manifest (``sourceArchiveSha256``) is not rebuilt.  Every changed source is built alone
@@ -59,12 +67,21 @@ sys.path.insert(0, str(ROOT / "tools"))
 
 import acquire_transit_sources as acquire  # noqa: E402
 import build_gtfs_packs as builder  # noqa: E402
+import foreign_pack_rules as foreign  # noqa: E402
 
 CORE_DIR = ROOT / "app/src/main/assets/gtfs"
 # Printed directory of the full packs of border packs (tools/apply_ci_gtfs_refresh.py writes them to data/gtfs-foreign/android).
 FULL_PRINT_DIR = "gtfs-foreign-android"
 TRANSIT_DIR = ROOT / "app/src/main/assets/gtfs-transit"
 PERSONAL_DIR = ROOT / "app/src/personal/assets/gtfs-personal"
+# Reviewed packs not bundled yet: built only when a dispatch names them, added by tools/apply_ci_gtfs_refresh.py.
+CANDIDATES_PATH = ROOT / "tools/core_pack_candidates.json"
+# Candidate fields that are not manifest fields: the page of the dataset (iOS source policy) and why the iPhone index
+# leaves the pack out for now (androidOnlySources).
+CANDIDATE_ONLY_KEYS = frozenset({"landingPage", "iosAndroidOnlyReason"})
+CANDIDATE_TEXT_KEYS = ("sourceId", "asset", "sourceUrl", "attribution", "licence", "licenceEvidence", "notes", *sorted(CANDIDATE_ONLY_KEYS))
+ATTRIBUTION_DATED_FIELD = "attributionDated"
+DATED_ATTRIBUTION = re.compile(r" — dati del \d{4}-\d{2}-\d{2}$")
 REPORT_NAME = "core-refresh.json"
 REPORT_VERSION = 1
 # Publishers whose terms the owner accepts in person on their portal: never downloaded by automation.
@@ -87,6 +104,51 @@ Resolve = Callable[[Mapping[str, Any]], dict[str, Any]]
 
 class RefreshError(RuntimeError):
     """A source cannot be refreshed safely; its previous pack stays published."""
+
+
+def load_candidates(path: Path = CANDIDATES_PATH) -> dict[str, dict[str, Any]]:
+    """The reviewed candidate packs by sourceId (an absent registry: none).  A candidate is bundled whole, from an
+    OPEN_DIRECT HTTPS source, with licence, its evidence and attribution recorded; a foreign pack bundled as its border
+    subset needs its full-pack pins and is never a candidate."""
+    if not path.is_file():
+        return {}
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(payload, dict) or payload.get("schemaVersion") != 1 or not isinstance(payload.get("packs"), list):
+        raise RefreshError(f"{path.name}: schemaVersion 1 con packs richiesto")
+    candidates: dict[str, dict[str, Any]] = {}
+    for pack in payload["packs"]:
+        if not isinstance(pack, dict) or not all(isinstance(pack.get(key), str) and pack[key].strip() for key in CANDIDATE_TEXT_KEYS):
+            raise RefreshError(f"{path.name}: candidato incompleto ({', '.join(CANDIDATE_TEXT_KEYS)})")
+        source_id = pack["sourceId"]
+        if source_id in candidates or source_id in foreign.FOREIGN_PACK_COUNTRIES or "upstream" in pack or builder.FULL_PACK_FIELD in pack:
+            raise RefreshError(f"{path.name}: {source_id} non ammesso come candidato")
+        if pack.get("accessMode") != "OPEN_DIRECT" or pack["asset"] != f"gtfs/{builder.safe_asset_name(pack['asset'])}":
+            raise RefreshError(f"{path.name}: {source_id} deve essere OPEN_DIRECT con asset in gtfs/")
+        if not isinstance(pack.get(ATTRIBUTION_DATED_FIELD, False), bool):
+            raise RefreshError(f"{path.name}: {source_id}: {ATTRIBUTION_DATED_FIELD} deve essere booleano")
+        for key in ("sourceUrl", "landingPage"):
+            builder.require_https_url(pack[key], context=f"{source_id} {key}")
+        candidates[source_id] = pack
+    return candidates
+
+
+def candidate_entry(candidate: Mapping[str, Any]) -> dict[str, Any]:
+    """The manifest entry a candidate starts from (the build adds digests, dates and filter)."""
+    return {key: value for key, value in candidate.items() if key not in CANDIDATE_ONLY_KEYS}
+
+
+def with_pack_in_order(packs: Sequence[Mapping[str, Any]], entry: Mapping[str, Any]) -> list[dict[str, Any]]:
+    """``packs`` with ``entry`` before the first pack whose sourceId sorts after it (the manifests are in sourceId
+    order); the other entries keep their order."""
+    result = [dict(pack) for pack in packs]
+    position = next((index for index, pack in enumerate(result) if str(pack["sourceId"]) > str(entry["sourceId"])), len(result))
+    result.insert(position, dict(entry))
+    return result
+
+
+def dated_attribution(attribution: str, day: str) -> str:
+    """``Trenitalia France — dati del 2026-11-24``: the attribution with the day the build took the archive."""
+    return f"{DATED_ATTRIBUTION.sub('', attribution)} — dati del {day}"
 
 
 def _is_commit(value: object) -> bool:
@@ -199,14 +261,24 @@ def entry_summary(pack: Mapping[str, Any], directory: Path) -> dict[str, Any]:
 
 
 def proposed_source_manifest(
-    manifest: Mapping[str, Any], source_id: str, proposed: Mapping[str, Any] | None
+    manifest: Mapping[str, Any],
+    source_id: str,
+    proposed: Mapping[str, Any] | None,
+    switch: Mapping[str, Any] | None = None,
+    generated_at: str | None = None,
 ) -> dict[str, Any]:
-    """The staging manifest with the proposed upstream pin of one pack (sourceUrl, commit, archive digest, note)."""
+    """The staging manifest with the proposed upstream pin of one pack (sourceUrl, commit, archive digest, note), or
+    with the source of its next timetable (sourceUrl, without ``nextTimetable``); a dated attribution takes the day."""
     payload = json.loads(json.dumps(manifest))
-    if proposed is None:
-        return payload
     for pack in payload["packs"]:
         if pack["sourceId"] != source_id:
+            continue
+        if pack.get(ATTRIBUTION_DATED_FIELD) is True and generated_at is not None:
+            pack["attribution"] = dated_attribution(str(pack["attribution"]), generated_at)
+        if switch is not None:
+            pack["sourceUrl"] = switch["sourceUrl"]
+            pack.pop(builder.NEXT_TIMETABLE_FIELD, None)
+        if proposed is None:
             continue
         pack["upstream"] = {**pack["upstream"], "commit": proposed["commit"], "archiveSha256": proposed["archiveSha256"]}
         pack["sourceUrl"] = proposed["sourceUrl"]
@@ -223,23 +295,33 @@ def build_one(
     proposed: Mapping[str, Any] | None,
     work: Path,
     full_pack_dir: Path | None = None,
+    switch: Mapping[str, Any] | None = None,
+    candidate: Mapping[str, Any] | None = None,
 ) -> tuple[str, dict[str, Any]]:
-    """Rebuild one pack in ``staging``; returns ("changed" | "content-unchanged", new entry).  The full pack of a
-    border pack is rebuilt in ``full_pack_dir`` (a staging copy of data/gtfs-foreign/android)."""
+    """Rebuild one pack in ``staging``; returns ("changed" | "content-unchanged" | "added", new entry).  The full pack
+    of a border pack is rebuilt in ``full_pack_dir`` (a staging copy of data/gtfs-foreign/android); a ``candidate``
+    joins the manifest in sourceId order."""
     manifest = json.loads((staging / "manifest.json").read_text(encoding="utf-8"))
-    previous = next(pack for pack in manifest["packs"] if pack["sourceId"] == source_id)
-    name = builder.safe_asset_name(previous["asset"])
-    snapshot = {staging / item: (staging / item).read_bytes() for item in ("manifest.json", "SHA256SUMS", name)}
+    previous = next((pack for pack in manifest["packs"] if pack["sourceId"] == source_id), None)
+    if previous is None:
+        if candidate is None:
+            raise RefreshError(f"{source_id}: non registrato")
+        manifest["packs"] = with_pack_in_order(manifest["packs"], candidate_entry(candidate))
+    name = builder.safe_asset_name((previous or candidate or {})["asset"])
+    snapshot = {staging / item: (staging / item).read_bytes()
+                for item in ("manifest.json", "SHA256SUMS", name) if (staging / item).is_file()}
     if full_pack_dir is not None:
         snapshot.update({full_pack_dir / item: (full_pack_dir / item).read_bytes()
                          for item in (name, "SHA256SUMS") if (full_pack_dir / item).is_file()})
     source_manifest = work / f"{source_id}.manifest.json"
-    builder.write_json(source_manifest, proposed_source_manifest(manifest, source_id, proposed))
+    builder.write_json(source_manifest, proposed_source_manifest(manifest, source_id, proposed, switch, generated_at))
     output = builder.build_packs(
         staging, staging, manifest_path=source_manifest, generated_at=generated_at,
         input_overrides={source_id: archive}, only=[source_id], full_pack_dir=full_pack_dir,
     )
     rebuilt = next(pack for pack in output["packs"] if pack["sourceId"] == source_id)
+    if previous is None:
+        return "added", rebuilt
     same_full = (rebuilt.get("fullPack") or {}).get("contentSha256") == (previous.get("fullPack") or {}).get("contentSha256")
     if rebuilt.get("contentSha256") == previous.get("contentSha256") and rebuilt.get("filter") == previous.get("filter") and same_full:
         # Same filtered timetable (a change upstream outside the kept rows): keep the published bytes and entry.
@@ -258,14 +340,19 @@ def refresh(
     fetch: Fetch | None = None,
     resolve: Resolve | None = None,
     full_pack_dir: Path | None = None,
+    candidates: Mapping[str, Mapping[str, Any]] | None = None,
 ) -> dict[str, Any]:
-    """Refresh the selected core packs (empty selection: all) into ``out``; never raises for a single source."""
+    """Refresh the selected core packs (empty selection: all) into ``out``, and build the candidates the selection names;
+    never raises for a single source."""
     fetch = fetch or (lambda url, target: acquire.download(url, target))
     token = os.environ.get("GITHUB_TOKEN") or None
     resolve = resolve or (lambda upstream: resolve_upstream(upstream, token=token))
     manifest = builder.read_manifest(asset_dir / "manifest.json")
     registered = [pack["sourceId"] for pack in manifest["packs"]]
-    unknown = sorted(set(selection) - set(registered))
+    candidates = load_candidates() if candidates is None else candidates
+    # A candidate is built only when named: adding a pack is an explicit choice, never part of refresh-core=all.
+    added = [candidate_entry(candidates[source_id]) for source_id in sorted(set(selection) & set(candidates) - set(registered))]
+    unknown = sorted(set(selection) - set(registered) - set(candidates))
     if unknown:
         raise RefreshError(f"refresh-core con sourceId non registrati in {asset_dir.name}/: {', '.join(unknown)}")
     staging = out / "staging" / asset_dir.name
@@ -293,7 +380,7 @@ def refresh(
         "selection": list(selection) or "all",
         "packs": {},
     }
-    for pack in manifest["packs"]:
+    for pack in [*manifest["packs"], *added]:
         source_id = pack["sourceId"]
         entry: dict[str, Any] = {"previous": entry_summary(pack, asset_dir)}
         report["packs"][source_id] = entry
@@ -310,6 +397,12 @@ def refresh(
                 raise RefreshError(f"accessMode {pack.get('accessMode')}: serve un archivio acquisito da canale approvato")
             proposed: dict[str, Any] | None = None
             url = str(pack["sourceUrl"])
+            switch = builder.timetable_switch(pack, date.fromisoformat(generated_at))
+            if switch is not None:
+                # The next timetable year's dataset, from its reviewed first day.
+                url = switch["sourceUrl"]
+                entry["timetableSwitch"] = switch
+                print(f"  {source_id}: orario successivo dal {switch['from']}", flush=True)
             upstream = pack.get("upstream")
             if isinstance(upstream, dict):
                 resolved = resolve(upstream)
@@ -334,11 +427,12 @@ def refresh(
                 proposed["archiveSha256"] = record["sha256"]
                 entry["proposedUpstream"] = proposed
                 entry["upstreamMetadata"] = upstream_metadata(target)
-            if record["sha256"] == pack.get("sourceArchiveSha256"):
+            if record["sha256"] == pack.get("sourceArchiveSha256") and switch is None:
                 entry["status"] = "unchanged"
                 print(f"  {source_id}: archivio identico a quello pubblicato", flush=True)
                 continue
-            status, rebuilt = build_one(staging, source_id, target, generated_at, proposed, work, staging_full)
+            status, rebuilt = build_one(staging, source_id, target, generated_at, proposed, work, staging_full, switch,
+                                        candidates.get(source_id) if source_id not in registered else None)
             entry["status"] = status
             entry["new"] = entry_summary(rebuilt, staging)
             print(f"  {source_id}: {status} lastServiceDate {pack.get('lastServiceDate')} -> {rebuilt.get('lastServiceDate')}", flush=True)
@@ -352,7 +446,7 @@ def refresh(
     if publish.exists():
         shutil.rmtree(publish)
     (publish / asset_dir.name).mkdir(parents=True)
-    changed = [source_id for source_id, entry in report["packs"].items() if entry.get("status") == "changed"]
+    changed = [source_id for source_id, entry in report["packs"].items() if entry.get("status") in ("changed", "added")]
     if changed:
         final = builder.read_manifest(staging / "manifest.json")
         for pack in final["packs"]:
@@ -367,6 +461,7 @@ def refresh(
         for item in ("manifest.json", "SHA256SUMS"):
             shutil.copyfile(staging / item, publish / asset_dir.name / item)
     report["changed"] = changed
+    report["added"] = [source_id for source_id, entry in report["packs"].items() if entry.get("status") == "added"]
     report["failed"] = [source_id for source_id, entry in report["packs"].items() if entry.get("status") == "failed"]
     (publish / REPORT_NAME).write_text(json.dumps(report, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     shutil.rmtree(work, ignore_errors=True)
@@ -393,6 +488,7 @@ def _code_cell(value: object) -> str:
 
 
 STATUS_LABELS = {
+    "added": "nuovo (candidato)",
     "changed": "aggiornato",
     "content-unchanged": "invariato (orario filtrato identico)",
     "unchanged": "invariato (archivio identico)",
@@ -414,11 +510,19 @@ def report_markdown(report: Mapping[str, Any]) -> str:
         new = entry.get("new", previous)
         dates = previous.get("lastServiceDate")
         if new.get("lastServiceDate") != previous.get("lastServiceDate"):
-            dates = f"{previous.get('lastServiceDate')} → {new.get('lastServiceDate')}"
+            # A pack added in this run has no previous value: only the new one.
+            dates = new.get("lastServiceDate") if dates is None else f"{dates} → {new.get('lastServiceDate')}"
         trips_before = previous.get("counts", {}).get("trips")
         trips_after = new.get("counts", {}).get("trips")
-        trips = trips_before if trips_after == trips_before else f"{trips_before} → {trips_after}"
+        trips = trips_before if trips_after == trips_before else trips_after if trips_before is None else f"{trips_before} → {trips_after}"
         note = entry.get("error") or entry.get("detail") or ""
+        download = entry.get("download") or {}
+        if download.get("finalUrl") and download.get("finalUrl") != download.get("url"):
+            # A permalink (the Swiss datasets) names the dated file it resolved to only here.
+            note = f"da {download['finalUrl']}" + (f"; {note}" if note else "")
+        switch = entry.get("timetableSwitch")
+        if switch:
+            note = f"orario successivo dal {switch.get('from')}: {switch.get('sourceUrl')}" + (f"; {note}" if note else "")
         proposed = entry.get("proposedUpstream")
         if proposed:
             note = (f"commit {str(proposed['commit'])[:12]} ({proposed.get('commitDate') or 'data ignota'}), "
