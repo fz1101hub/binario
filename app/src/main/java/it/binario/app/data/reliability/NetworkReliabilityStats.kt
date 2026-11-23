@@ -240,6 +240,8 @@ object NetworkReliability {
     const val MIN_WEEKDAY_SAMPLES = SharedData.Punctuality.MINIMUM_WEEKDAY_SAMPLES
     /** … and an on-time share at least this many points from the overall one. */
     const val MIN_WEEKDAY_GAP_POINTS = SharedData.Punctuality.MINIMUM_WEEKDAY_GAP_POINTS
+    /** A train's detail shows at most this many weekday remarks ([weekdayRemarksShown]). */
+    const val MAX_WEEKDAY_REMARKS = SharedData.Punctuality.MAXIMUM_WEEKDAY_REMARKS
 
     /** Categories measured at 5 minutes, as the operators and Treniamo do; every other category at 15. */
     private val HIGH_SPEED_CATEGORIES = SharedData.Punctuality.HIGH_SPEED_CATEGORIES
@@ -365,6 +367,20 @@ object NetworkReliability {
             if (kotlin.math.abs(gap) + 1e-9 < MIN_WEEKDAY_GAP_POINTS) null
             else WeekdayRemark(day.weekday, day.samples, onTime, better = gap > 0, gapPoints = gap)
         }
+
+    /**
+     * The weekday remarks a train's detail shows at its stop [index], as the iPhone shows them
+     * (`NetworkReliability.weekdayRemarks`, contracts/shared-rules/v1/weekday-remarks-v1.json): the weekdays of
+     * [weekdayRemarks] against the stop's own on-time share ([stop]), the largest difference first, the earlier weekday
+     * on a tie, at most [MAX_WEEKDAY_REMARKS]; none without weekday counts.
+     */
+    fun weekdayRemarksShown(train: NetworkReliabilityTrain, index: Int, stop: StopReliability): List<WeekdayRemark> {
+        if (index !in 0 until train.stopCount || stop.samples <= 0) return emptyList()
+        val weekdays = train.weekdays(index) ?: return emptyList()
+        return weekdayRemarks(weekdays, stop.onTimeLimitMinutes, stop.onTimeShare)
+            .sortedWith(compareByDescending<WeekdayRemark> { kotlin.math.abs(it.gapPoints) }.thenBy { it.weekday.value })
+            .take(MAX_WEEKDAY_REMARKS)
+    }
 
     /**
      * The weekday remark of [train] at its stop [index], measured against the stop's own on-time share ([stop]): the

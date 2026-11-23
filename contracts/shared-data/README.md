@@ -31,13 +31,13 @@ python3 tools/generate_shared_code.py --check   # esce con 1 se uno non corrispo
 | `italo-stations-v1.json` | Codici Italo di riserva con i loro alias; pagine Italo note per nome | Android, iPhone |
 | `live-train-map-v1.json` | Mappa dei treni in movimento: finestra dell'orario, ritardi applicati, copie di un treno, quanti treni, cadenza, area letta | Android, iPhone |
 | `notices-sources-v1.json` | Fonti degli avvisi (indirizzi, accesso, limiti, intervalli, cache, reindirizzamenti), pagine aperte con un tocco, limiti, parole ed espressioni regolari dei lettori, quanto mostrano le sezioni | Android, iPhone |
-| `pack-roles-v1.json` | Ruoli dei pack orari: nazionali, esteri, che ripubblicano i treni dei partner, con autobus dell'operatore | Android, iPhone; il builder e il verificatore dell'indice iPhone leggono il JSON |
+| `pack-roles-v1.json` | Ruoli dei pack orari: nazionali, esteri, che ripubblicano i treni dei partner, con autobus dell'operatore | Android, iPhone, Alexa (orario programmato); il builder e il verificatore dell'indice iPhone leggono il JSON |
 | `planned-journeys-v1.json` | Limiti dell'Agenda, del file di trasferimento e dei modelli | Android, iPhone |
-| `punctuality-v1.json` | Categorie misurate a 5 minuti, soglie e campioni minimi delle statistiche | Android, iPhone, Alexa |
+| `punctuality-v1.json` | Categorie misurate a 5 minuti, soglie e campioni minimi delle statistiche, quante osservazioni sui giorni della settimana mostra il dettaglio di un treno | Android, iPhone, Alexa |
 | `rfi-place-ids-v1.json` | Place ID del monitor RFI per i nomi di stazione noti | Android, iPhone |
 | `source-manners-v1.json` | Come si chiede a ogni fonte pubblica: User-Agent, risposte che sono un rifiuto e pausa dopo un rifiuto, interruttore dopo errori ripetuti | Android, iPhone |
 | `source-scores-v1.json` | Punteggi delle fonti per categoria, bonus dell'operatore, fonti di sola copertura | Android, iPhone |
-| `train-number-prefixes-v1.json` | Categorie ammesse davanti al numero di un treno | Android, iPhone |
+| `train-number-prefixes-v1.json` | Categorie ammesse davanti al numero di un treno | Android, iPhone, Alexa (corsa programmata di un numero) |
 
 Gli strumenti Python sono la pipeline: quando servono una tabella la leggono dal JSON, controllata con lo stesso schema
 (`generate_shared_code.table_values`), oppure con un loro lettore (`tools/android_station_codes.py`).

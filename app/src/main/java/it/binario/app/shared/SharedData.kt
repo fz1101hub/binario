@@ -698,7 +698,8 @@ internal object SharedData {
     /**
      * contracts/shared-data/v1/punctuality-v1.json: Thresholds of the network punctuality statistics
      * (docs/data-sources/PUNCTUALITY_STATS.md): the categories measured at 5 minutes, as the operators and Treniamo do,
-     * every other category at 15; the minimum samples and the remark thresholds.
+     * every other category at 15; the minimum samples and the remark thresholds; a train's detail shows at most
+     * `maximumWeekdayRemarks` weekday remarks, the largest differences first.
      */
     object Punctuality {
         val HIGH_SPEED_CATEGORIES: Set<String> = setOf("FR", "FA", "FB", "EC", "ES", "ESC", "EN", "ITALO")
@@ -710,6 +711,7 @@ internal object SharedData {
         const val MINIMUM_PLATFORM_SHARE_PERCENT: Int = 60
         const val MINIMUM_WEEKDAY_SAMPLES: Int = 4
         const val MINIMUM_WEEKDAY_GAP_POINTS: Int = 15
+        const val MAXIMUM_WEEKDAY_REMARKS: Int = 2
         const val MINIMUM_BAND_SAMPLES: Int = 20
         const val MINIMUM_BAND_GAP_POINTS: Int = 5
     }

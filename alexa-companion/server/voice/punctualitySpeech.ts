@@ -143,7 +143,7 @@ export function displayedTime(locale: SupportedLocale, minuteOfDay: number) {
 }
 
 /** The hour as the locale writes it (13:05 is 1 in 12-hour English and Spanish), for agreement. */
-function writtenHour(locale: SupportedLocale, minuteOfDay: number) {
+export function writtenHour(locale: SupportedLocale, minuteOfDay: number) {
   const hour = timeParts(locale, minuteOfDay, true).find(part => part.type === "hour")?.value;
   return Number(hour ?? Math.floor(minuteOfDay / 60));
 }

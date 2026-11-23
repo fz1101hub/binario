@@ -69,7 +69,43 @@ final class SharedRulesContractTests: XCTestCase {
         }
     }
 
+    /// weekday-remarks-v1.json: the weekday remarks of a train's detail, as Android shows them
+    /// (WeekdayRemarksContractTest.kt): at most two, the largest difference first.
+    func testEverySharedWeekdayCaseGivesTheSharedRemarks() throws {
+        let rules = try JSONDecoder().decode(WeekdayRules.self, from: Data(contentsOf: contract.appendingPathComponent("weekday-remarks-v1.json")))
+        let document = try Data(contentsOf: contract.appendingPathComponent(rules.document))
+        let stats = try XCTUnwrap(NetworkReliabilityParser.parse(json: [UInt8](document)))
+        XCTAssertFalse(rules.cases.isEmpty)
+        for item in rules.cases {
+            let trains = stats.trains.filter { $0.number == item.number }
+            XCTAssertEqual(trains.count, 1, item.number)
+            let train = try XCTUnwrap(trains.first, item.number)
+            let actual = NetworkReliability.weekdayRemarks(train, index: item.stop).map {
+                WeekdayCase(weekday: $0.weekday, samples: $0.samples, onTime: $0.onTime)
+            }
+            XCTAssertEqual(actual, item.expected, item.why)
+        }
+    }
+
     // MARK: - The contract file
+
+    private struct WeekdayRules: Decodable {
+        let document: String
+        let cases: [WeekdayRule]
+    }
+
+    private struct WeekdayRule: Decodable {
+        let number: String
+        let stop: Int
+        let why: String
+        let expected: [WeekdayCase]
+    }
+
+    private struct WeekdayCase: Decodable, Equatable {
+        let weekday: Int
+        let samples: Int
+        let onTime: Int
+    }
 
     private struct LegVehicleRules: Decodable {
         let scheduledCoachPacks: [String]

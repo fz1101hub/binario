@@ -1,4 +1,4 @@
-# Regole condivise v1: numeri dei treni, statistiche, testi live, Agenda, calendario, codici stazione, mezzi e avvisi
+# Regole condivise v1: numeri dei treni, statistiche, testi live, Agenda, calendario, codici stazione, mezzi, avvisi e prossimi treni
 
 Casi di prova comuni ad Android, iPhone, Alexa e agli strumenti Python che costruiscono l'indice orario dell'iPhone: il terzo livello della base comune
 ([ADR-0002](../../../docs/architecture/ADR-0002-BASE-COMUNE.md)). Le implementazioni restano indipendenti, scritte nel
@@ -13,12 +13,14 @@ regole) stanno invece in [`contracts/shared-data/`](../../shared-data/README.md)
 | `checklist-presets-v1.json` | Le righe di ogni modello di «Preparazione del viaggio» e come un modello si aggiunge al testo dell'editor | Android, iPhone |
 | `calendar-v1.json` | Le festività nazionali, comprese Pasqua e Pasquetta | Android, Alexa |
 | `gtfs-station-codes-v1.json` | `stop_code`, nome e posizione di una fermata dei pack Trenitalia e Italo → stazione del catalogo attesa (o nessuna), sul catalogo `app/src/main/assets/stations/curated_it_rail_stations.json` | `app/src/test/java/it/binario/app/data/gtfs/GtfsStationCodesContractTest.kt`, `tests/test_ios_gtfs_schedule.py` (regola di `tools/android_station_codes.py`, usata dal builder dell'indice iPhone) |
-| `journey-leg-vehicles-v1.json` | `route_type`, pack, operatore e linea di una corsa → modo della tratta, mezzo e chiave dell'etichetta (Android e iPhone) | `app/src/test/java/it/binario/app/journeys/JourneyLegVehiclesContractTest.kt`, `ios/BinarioKit/Tests/BinarioKitTests/SharedRulesContractTests.swift` |
 | `delay-compensation-v1.json` | Quando il dettaglio del treno mostra l'indennizzo per ritardo: arrivo effettivo verificato all'ultima fermata, 25 % da 60 minuti, 50 % da 120 | `app/src/test/java/it/binario/app/data/DelayCompensationContractTest.kt`, `ios/BinarioKit/Tests/BinarioKitTests/ExtrasContractTests.swift` |
 | `destination-weather-v1.json` | Stazione e giorno della previsione, coordinate e richiesta a Open-Meteo, lettura della risposta (fixture Android `open-meteo-lugano.json`), codici WMO con un testo | `app/src/test/java/it/binario/app/data/weather/DestinationWeatherContractTest.kt`, `ios/BinarioKit/Tests/BinarioKitTests/ExtrasContractTests.swift` |
 | `bike-sharing-v1.json` | Sistemi che servono una stazione per build, sotto-feed ammessi, documenti GBFS 2 e 3 (quelli del test Android), cosa elenca la sezione entro 300 m | `app/src/test/java/it/binario/app/data/bikesharing/BikeSharingContractTest.kt`, `ios/BinarioKit/Tests/BinarioKitTests/BikeSharingContractTests.swift` |
 | `live-train-positions-v1.json` | Treni in movimento: avanzamento sull'orario, posizione stimata, abbinamento dei ritardi, copie unite, i più vicini, etichette, area letta e quarto d'ora | `app/src/test/java/it/binario/app/maps/LiveTrainPositionsContractTest.kt`, `ios/BinarioKit/Tests/BinarioKitTests/LiveTrainPositionsContractTests.swift` |
 | `evening-alerts-v1.json` | Promemoria degli scioperi delle 18 e avviso dei lavori di domani delle 19: quando girano, quando possono avvisare, cosa avvisano e cosa ricordano | `app/src/test/java/it/binario/app/notifications/EveningAlertsContractTest.kt`, `ios/BinarioKit/Tests/BinarioKitTests/ExtrasContractTests.swift` |
+| `journey-leg-vehicles-v1.json` | `route_type`, pack, operatore e linea di una corsa → modo della tratta, mezzo e chiave dell'etichetta (Android e iPhone; la skill dice l'etichetta tradotta) | `app/src/test/java/it/binario/app/journeys/JourneyLegVehiclesContractTest.kt`, `ios/BinarioKit/Tests/BinarioKitTests/SharedRulesContractTests.swift`, `alexa-companion/server/timetable/naming.test.ts` |
+| `weekday-remarks-v1.json` (con `weekday-remarks-stats-v1.json`) | Le osservazioni sui giorni della settimana nel dettaglio di un treno: al più due, la differenza maggiore prima, a parità il giorno prima | `app/src/test/java/it/binario/app/data/reliability/WeekdayRemarksContractTest.kt`, `ios/BinarioKit/Tests/BinarioKitTests/SharedRulesContractTests.swift` |
+| `next-trains-v1.json` | Un piccolo indice orario sintetico (schema `userVersion` 2 dell'indice iPhone) e i prossimi treni fra due stazioni da un istante: giorni di servizio, fusi delle aziende, corse oltre le 24:00 e cambio d'ora, copie di un treno tenute una volta, autobus, salita e discesa ammesse, orario scaduto | `ios/BinarioKit/Tests/BinarioKitTests/NextTrainsContractTests.swift` (`SQLiteGTFSJourneyRepository.journeys`), `alexa-companion/server/timetable/nextTrains.test.ts` |
 | `notices-v1.json` | I casi degli avvisi ferroviari: giorni degli scioperi del calendario MIT, testo e collegamenti degli avvisi, infomobilità Trenitalia, avvisi Trenord per direttrice e per stazione, lavori e interruzioni sulle tratte. Gli ingressi sono le fixture dei test Android (`app/src/test/resources/sources/`) e il catalogo stazioni curato | `app/src/test/java/it/binario/app/data/notices/NoticesContractTest.kt` (con gli adapter e i matcher Android esistenti), `ios/BinarioKit/Tests/BinarioKitTests/NoticesContractTests.swift` |
 
 Ogni file nomina i test che lo leggono nel campo `readers` (per `rules-v1.json`:
@@ -52,7 +54,7 @@ Le tabelle che questi casi usano sono nel generatore (`tools/generate_shared_cod
 - **Chiave del numero** (`key`, per le statistiche): le cifre della corsa dopo l'ultimo « - » senza zeri iniziali
   («RE_11 - 2153» → 2153, «S5 - 811A» → 811, «FR 09558» → 9558); con una coda vuota le cifre dell'intero numero
   («S5 - » → 5); senza cifre il numero senza spazi in maiuscolo.
-- **Query del numero** (`query`, `queryNumeric`, `queryValid`; Android e iPhone, Alexa non cerca per numero): la corsa
+- **Query del numero** (`query`, `queryNumeric`, `queryValid`; Android e iPhone, e Alexa nell'orario programmato): la corsa
   dopo l'ultimo « - » senza spazi né trattini in maiuscolo («S5 - 811A» chiede «811A»); la parte numerica solo dopo una
   categoria nota («VE545» non è il treno 545); valida con 1–32 lettere o cifre e almeno una cifra.
 - **In orario**: entro 5 minuti per FR, FA, FB, EC, ES, ESC, EN e Italo, entro 15 per le altre categorie.
@@ -61,6 +63,7 @@ Le tabelle che questi casi usano sono nel generatore (`tools/generate_shared_cod
   (giorni × campioni); i giorni di fermata soppressa non sono campioni.
 - **Stesso numero, origini diverse**: senza origine nessuna cifra quando con quel numero circola più di un treno,
   quali che siano i loro campioni; un treno soppresso in tutti i giorni osservati non circola e non conta.
+- **Giorni della settimana** (`weekday-remarks-v1.json`): un giorno con almeno 4 campioni la cui quota in orario, con la soglia del treno, dista almeno 15 punti da quella della fermata; il dettaglio di un treno ne mostra al più due (`maximumWeekdayRemarks` di `punctuality-v1.json`), la differenza maggiore prima e, a parità, il giorno della settimana che viene prima. Android ne mostrava uno, preferendo il giorno della corsa: ora segue l'iPhone.
 - **Ultima fermata**: un treno con una sola fermata nel file (di solito l'origine, dove il ritardo è in partenza)
   non ha una corsa da misurare ed è ignorato.
 
@@ -101,6 +104,14 @@ Ogni caso ha un solo atteso, uguale per tutti i lettori del file.
   contiene «italo» o la linea «ITALOBUS», Bus Trenitalia se l'operatore contiene «trenitalia», altrimenti Autobus; un
   treno non ha etichetta di mezzo (mostra categoria e numero). Le chiavi sono `journey_leg_*` su Android e
   `result.vehicle.*` sull'iPhone, con lo stesso testo nelle 17 lingue.
+
+## Prossimi treni (`next-trains-v1.json`)
+
+- **Indice**: ogni lettore crea l'indice vuoto dello schema dell'iPhone (`userVersion` 2, i metadati della fixture dei test iPhone, `source_generated_at` 2024-03-30) e vi inserisce le righe di `index`; l'indice è sintetico e indipendente da quello incluso nelle app, che cambia con i pack.
+- **Ricerca**: le fermate legate alla stazione del catalogo, solo quelle con il suo codice ViaggiaTreno quando ce l'ha; salita ammessa all'origine (`pickup_type` 0) e discesa a destinazione (`drop_off_type` 0); i giorni di servizio di ogni corsa nel fuso della sua azienda, dal giorno della richiesta meno sei al giorno dopo; gli orari GTFS contati da mezzogiorno meno dodici ore (nel giorno del cambio d'ora un treno delle 02:30 GTFS parte alle 01:30); le partenze dall'istante chiesto alle 24 ore dopo, al più otto, per orario poi numero.
+- **Copie**: un treno che due pack pubblicano (stesso numero, minuto e fermate, oppure stessi minuti di partenza e arrivo con numero uguale, stesso operatore o un pack che ripubblica i treni dei partner) resta una volta, dal pack preferito: nazionale, regionale italiano, estero; estero prima a una stazione che nessun pack nazionale serve (`pack-roles-v1.json`). Due operatori italiani con numeri diversi agli stessi minuti sono due treni.
+- **Mezzi e nomi**: numero del viaggio, altrimenti linea; categoria dalla linea («0083_FR» è «FR»), altrimenti dal nome lungo; operatore con il marchio breve; autobus dell'operatore e bus sostitutivi come in `journey-leg-vehicles-v1.json`.
+- **Nessun treno**: dopo l'ultimo giorno di tutti i pack, o di tutti quelli che servono le due stazioni, l'orario è scaduto (`scheduleExpired`); altrimenti nessun treno (`noRoute`).
 
 ## Avvisi verificati (`notices-v1.json`)
 

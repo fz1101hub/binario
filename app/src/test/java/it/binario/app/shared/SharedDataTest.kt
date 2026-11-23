@@ -139,6 +139,7 @@ class SharedDataTest {
         assertEquals(0.6, NetworkReliability.MIN_PLATFORM_SHARE, 0.0)
         assertEquals(json.getInt("minimumWeekdaySamples"), NetworkReliability.MIN_WEEKDAY_SAMPLES)
         assertEquals(json.getInt("minimumWeekdayGapPoints"), NetworkReliability.MIN_WEEKDAY_GAP_POINTS)
+        assertEquals(json.getInt("maximumWeekdayRemarks"), NetworkReliability.MAX_WEEKDAY_REMARKS)
         assertEquals(json.getInt("minimumAggregateSamples"), NetworkReliabilityAggregates.MIN_AGGREGATE_SAMPLES)
         assertEquals(json.getInt("minimumBandSamples"), NetworkReliabilityAggregates.MIN_BAND_SAMPLES)
         assertEquals(json.getInt("minimumBandGapPoints"), NetworkReliabilityAggregates.MIN_BAND_GAP_POINTS)

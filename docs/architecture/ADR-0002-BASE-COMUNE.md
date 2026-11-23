@@ -44,7 +44,7 @@ Le tre app restano native: niente Kotlin Multiplatform, niente runtime condiviso
 | `rfi-place-ids-v1.json`: 25 place ID del monitor RFI per nome | `RfiStationIds.byName`; `RfiLiveBoard.swift` | Android, iPhone |
 | `source-scores-v1.json`: punteggi delle fonti per categoria, bonus dell'operatore, fonti di sola copertura | `RailSourceSelectionPolicy.kt`; `LiveSourcePolicy` in `LiveRailData.swift` | Android, iPhone |
 | `punctuality-v1.json`: categorie a 5 minuti (FR FA FB EC ES ESC EN ITALO), soglie e campioni minimi | `NetworkReliabilityStats.kt`, `NetworkReliabilityAggregates.kt`; `NetworkReliability.swift`; `server/punctuality/stats.ts` | Android, iPhone, Alexa |
-| `train-number-prefixes-v1.json`: categorie ammesse davanti al numero di un treno | `TrainNumberSearchService.kt`; `ViaggiaTrenoLive.swift` | Android, iPhone |
+| `train-number-prefixes-v1.json`: categorie ammesse davanti al numero di un treno | `TrainNumberSearchService.kt`; `ViaggiaTrenoLive.swift` | Android, iPhone, Alexa (dal 23 novembre, orario programmato) |
 | `airport-routes-v1.json`: collegamenti con gli aeroporti e pack di linee urbane | `AirportRoutes.kt`; `AirportRoutes.swift` | Android, iPhone (anche `byCityLine`) |
 | `italian-holidays-v1.json`: festività nazionali e giorni contati dalla Pasqua | `ItalianRailServiceCalendar.kt`; `server/punctuality/stats.ts` | Android, Alexa (generata anche per l'iPhone) |
 | `planned-journeys-v1.json`: limiti dell'Agenda, del file di trasferimento e dei modelli | `PlannedJourneyDomain.kt`, `PlannedJourneyTransfer.kt`, `PlannedJourneyTemplates.kt`; `PlannedJourneys.swift`, `PlannedJourneyTemplates.swift` | Android, iPhone |
@@ -56,7 +56,7 @@ Dopo l'unione dei lavori sull'orario e sugli avvisi dell'iPhone, lo stesso giorn
 | `italo-gtfs-station-codes.json`: i 63 codici delle stazioni del pack Italo e il codice lasciato al pack | `ItaloGtfsStationCodes` in `GtfsStationCodeIndex.kt`, uguale al JSON per un test Python | Android; il builder dell'indice iPhone legge il JSON |
 | `notices-sources-v1.json`: fonti degli avvisi, pagine, limiti, parole ed espressioni regolari dei lettori, quanto mostrano le sezioni | costanti di una ventina di file Android, uguali al JSON per un test a riflessione; l'iPhone leggeva il file incluso nell'app all'avvio | Android, iPhone |
 | `source-manners-v1.json`: User-Agent, rifiuti 403 e 429, pausa dopo un rifiuto, interruttore | `PublicSourceHttp.kt`, `SourceCircuitBreaker`; `LiveSourceHTTP.swift`, `LiveSourceGate.swift`; una sezione `manners` della tabella degli avvisi | Android, iPhone |
-| `pack-roles-v1.json`: pack nazionali, esteri, che ripubblicano i treni dei partner, con autobus dell'operatore | `PlannedPackOrder`, `EmbeddedGtfsRouteAdapter`, `EmbeddedGtfsPacks`; `TimetableCopies.swift`, `TimetableVehicle.swift`; `build_ios_gtfs_schedule.py`, `verify_ios_gtfs_schedule.py` | Android, iPhone; builder e verificatore dell'indice leggono il JSON |
+| `pack-roles-v1.json`: pack nazionali, esteri, che ripubblicano i treni dei partner, con autobus dell'operatore | `PlannedPackOrder`, `EmbeddedGtfsRouteAdapter`, `EmbeddedGtfsPacks`; `TimetableCopies.swift`, `TimetableVehicle.swift`; `build_ios_gtfs_schedule.py`, `verify_ios_gtfs_schedule.py` | Android, iPhone, Alexa (orario programmato); builder e verificatore dell'indice leggono il JSON |
 
 Con le funzioni di Android portate sull'iPhone (meteo a destinazione, bici in condivisione, indennizzo per ritardo, treni in movimento, promemoria serali), il 23 novembre 2026:
 

@@ -3,22 +3,238 @@
     "languageModel": {
       "invocationName": "binario züge",
       "intents": [
-        { "name": "AMAZON.CancelIntent", "samples": [] },
-        { "name": "AMAZON.HelpIntent", "samples": [] },
-        { "name": "AMAZON.StopIntent", "samples": [] },
-        { "name": "AMAZON.NavigateHomeIntent", "samples": [] },
-        { "name": "AMAZON.FallbackIntent", "samples": [] },
-        { "name": "NextTrainsIntent", "slots": [{ "name": "routeName", "type": "AMAZON.SearchQuery" }], "samples": ["was sind die nächsten züge", "nächste züge", "den nächsten zügen", "nächste züge für {routeName}", "wann fährt der nächste zug nach {routeName}"] },
-        { "name": "TrainStatusIntent", "slots": [{ "name": "trainNumber", "type": "AMAZON.NUMBER" }], "samples": ["status von zug {trainNumber}", "dem status von zug {trainNumber}", "wie geht es dem zug {trainNumber}", "verspätung von zug {trainNumber}"] },
-        { "name": "MyRoutesIntent", "slots": [], "samples": ["meine strecken", "meinen strecken", "liste meine gespeicherten strecken auf", "welche strecken habe ich gespeichert", "gespeicherte strecken"] },
-        { "name": "TrainPunctualityIntent", "slots": [{ "name": "trainNumber", "type": "AMAZON.NUMBER" }], "samples": ["wie pünktlich ist zug {trainNumber}", "der pünktlichkeit von zug {trainNumber}", "pünktlichkeit von zug {trainNumber}", "wie zuverlässig ist zug {trainNumber}", "ist zug {trainNumber} meistens pünktlich", "ist zug {trainNumber} pünktlich",
-"zug {trainNumber}",
-"der zug {trainNumber}",
-"nummer {trainNumber}"] },
-        { "name": "RoutePunctualityIntent", "slots": [{ "name": "routeName", "type": "AMAZON.SearchQuery" }], "samples": ["wie pünktlich ist meine strecke", "wie pünktlich ist meine strecke {routeName}", "wie pünktlich ist die strecke {routeName}", "der pünktlichkeit meiner strecke {routeName}", "pünktlichkeit meiner strecke", "pünktlichkeit meiner strecke {routeName}"] },
-        { "name": "MostPunctualTrainIntent", "slots": [{ "name": "routeName", "type": "AMAZON.SearchQuery" }], "samples": ["welcher ist der pünktlichste zug", "welcher ist der pünktlichste zug für {routeName}", "welcher zug ist am pünktlichsten für {routeName}", "dem pünktlichsten zug", "dem pünktlichsten zug für {routeName}", "der pünktlichste zug für {routeName}", "dem pünktlichsten zug auf meiner strecke {routeName}", "welcher zug ist in den nächsten drei stunden am pünktlichsten"] }
+        {
+          "name": "AMAZON.CancelIntent",
+          "samples": []
+        },
+        {
+          "name": "AMAZON.HelpIntent",
+          "samples": []
+        },
+        {
+          "name": "AMAZON.StopIntent",
+          "samples": []
+        },
+        {
+          "name": "AMAZON.NavigateHomeIntent",
+          "samples": []
+        },
+        {
+          "name": "AMAZON.FallbackIntent",
+          "samples": []
+        },
+        {
+          "name": "NextTrainsIntent",
+          "slots": [
+            {
+              "name": "routeName",
+              "type": "AMAZON.SearchQuery"
+            }
+          ],
+          "samples": [
+            "was sind die nächsten züge",
+            "nächste züge",
+            "den nächsten zügen",
+            "nächste züge für {routeName}",
+            "wann fährt der nächste zug nach {routeName}"
+          ]
+        },
+        {
+          "name": "StationTrainsIntent",
+          "slots": [
+            {
+              "name": "origin",
+              "type": "BINARIO_STATION"
+            },
+            {
+              "name": "destination",
+              "type": "BINARIO_STATION"
+            }
+          ],
+          "samples": [
+            "nächste züge von {origin} nach {destination}",
+            "den nächsten zügen von {origin} nach {destination}",
+            "wann fährt der nächste zug von {origin} nach {destination}",
+            "züge von {origin} nach {destination}"
+          ]
+        },
+        {
+          "name": "TrainStatusIntent",
+          "slots": [
+            {
+              "name": "trainNumber",
+              "type": "AMAZON.NUMBER"
+            }
+          ],
+          "samples": [
+            "status von zug {trainNumber}",
+            "dem status von zug {trainNumber}",
+            "wie geht es dem zug {trainNumber}",
+            "verspätung von zug {trainNumber}"
+          ]
+        },
+        {
+          "name": "MyRoutesIntent",
+          "slots": [],
+          "samples": [
+            "meine strecken",
+            "meinen strecken",
+            "liste meine gespeicherten strecken auf",
+            "welche strecken habe ich gespeichert",
+            "gespeicherte strecken"
+          ]
+        },
+        {
+          "name": "TrainPunctualityIntent",
+          "slots": [
+            {
+              "name": "trainNumber",
+              "type": "AMAZON.NUMBER"
+            }
+          ],
+          "samples": [
+            "wie pünktlich ist zug {trainNumber}",
+            "der pünktlichkeit von zug {trainNumber}",
+            "pünktlichkeit von zug {trainNumber}",
+            "wie zuverlässig ist zug {trainNumber}",
+            "ist zug {trainNumber} meistens pünktlich",
+            "ist zug {trainNumber} pünktlich",
+            "zug {trainNumber}",
+            "der zug {trainNumber}",
+            "nummer {trainNumber}"
+          ]
+        },
+        {
+          "name": "RoutePunctualityIntent",
+          "slots": [
+            {
+              "name": "routeName",
+              "type": "AMAZON.SearchQuery"
+            }
+          ],
+          "samples": [
+            "wie pünktlich ist meine strecke",
+            "wie pünktlich ist meine strecke {routeName}",
+            "wie pünktlich ist die strecke {routeName}",
+            "der pünktlichkeit meiner strecke {routeName}",
+            "pünktlichkeit meiner strecke",
+            "pünktlichkeit meiner strecke {routeName}"
+          ]
+        },
+        {
+          "name": "MostPunctualTrainIntent",
+          "slots": [
+            {
+              "name": "routeName",
+              "type": "AMAZON.SearchQuery"
+            }
+          ],
+          "samples": [
+            "welcher ist der pünktlichste zug",
+            "welcher ist der pünktlichste zug für {routeName}",
+            "welcher zug ist am pünktlichsten für {routeName}",
+            "dem pünktlichsten zug",
+            "dem pünktlichsten zug für {routeName}",
+            "der pünktlichste zug für {routeName}",
+            "dem pünktlichsten zug auf meiner strecke {routeName}",
+            "welcher zug ist in den nächsten drei stunden am pünktlichsten"
+          ]
+        }
       ],
-      "types": []
+      "types": [
+        {
+          "name": "BINARIO_STATION",
+          "values": [
+            { "name": { "value": "Milano Centrale" } },
+            { "name": { "value": "Roma Termini" } },
+            { "name": { "value": "Napoli Centrale" } },
+            { "name": { "value": "Torino Porta Nuova" } },
+            { "name": { "value": "Firenze Santa Maria Novella" } },
+            { "name": { "value": "Bologna Centrale" } },
+            { "name": { "value": "Venezia Santa Lucia" } },
+            { "name": { "value": "Venezia Mestre" } },
+            { "name": { "value": "Verona Porta Nuova" } },
+            { "name": { "value": "Genova Piazza Principe" } },
+            { "name": { "value": "Genova Brignole" } },
+            { "name": { "value": "Bari Centrale" } },
+            { "name": { "value": "Palermo Centrale" } },
+            { "name": { "value": "Catania Centrale" } },
+            { "name": { "value": "Salerno" } },
+            { "name": { "value": "Padova" } },
+            { "name": { "value": "Brescia" } },
+            { "name": { "value": "Bergamo" } },
+            { "name": { "value": "Trieste Centrale" } },
+            { "name": { "value": "Pisa Centrale" } },
+            { "name": { "value": "Roma Tiburtina" } },
+            { "name": { "value": "Milano Porta Garibaldi" } },
+            { "name": { "value": "Milano Rogoredo" } },
+            { "name": { "value": "Torino Porta Susa" } },
+            { "name": { "value": "Pescara Centrale" } },
+            { "name": { "value": "Lecce" } },
+            { "name": { "value": "Trento" } },
+            { "name": { "value": "Bolzano" } },
+            { "name": { "value": "Udine" } },
+            { "name": { "value": "Parma" } },
+            { "name": { "value": "Modena" } },
+            { "name": { "value": "Piacenza" } },
+            { "name": { "value": "Como San Giovanni" } },
+            { "name": { "value": "Varese" } },
+            { "name": { "value": "Monza" } },
+            { "name": { "value": "Lecco" } },
+            { "name": { "value": "Novara" } },
+            { "name": { "value": "Alessandria" } },
+            { "name": { "value": "La Spezia Centrale" } },
+            { "name": { "value": "Livorno Centrale" } },
+            { "name": { "value": "Perugia" } },
+            { "name": { "value": "Foggia" } },
+            { "name": { "value": "Taranto" } },
+            { "name": { "value": "Cagliari" } },
+            { "name": { "value": "Sassari" } },
+            { "name": { "value": "Tivoli" } },
+            { "name": { "value": "Roma Ostiense" } },
+            { "name": { "value": "Fiumicino Aeroporto" } },
+            { "name": { "value": "Milano Cadorna" } },
+            { "name": { "value": "Napoli Afragola" } },
+            { "name": { "value": "Reggio Emilia AV Mediopadana" } },
+            { "name": { "value": "Vicenza" } },
+            { "name": { "value": "Treviso Centrale" } },
+            { "name": { "value": "Ferrara" } },
+            { "name": { "value": "Arezzo" } },
+            { "name": { "value": "Siena" } },
+            { "name": { "value": "Caserta" } },
+            { "name": { "value": "Messina Centrale" } },
+            { "name": { "value": "Cosenza" } },
+            { "name": { "value": "Potenza Centrale" } },
+            { "name": { "value": "Campobasso" } },
+            { "name": { "value": "L'Aquila" } },
+            { "name": { "value": "Aosta" } },
+            { "name": { "value": "Ventimiglia" } },
+            { "name": { "value": "Savona" } },
+            { "name": { "value": "Cremona" } },
+            { "name": { "value": "Pavia" } },
+            { "name": { "value": "Mantova" } },
+            { "name": { "value": "Ravenna" } },
+            { "name": { "value": "Forlì" } },
+            { "name": { "value": "Cesena" } },
+            { "name": { "value": "Pesaro" } },
+            { "name": { "value": "Grosseto" } },
+            { "name": { "value": "Viterbo Porta Fiorentina" } },
+            { "name": { "value": "Latina" } },
+            { "name": { "value": "Frosinone" } },
+            { "name": { "value": "Benevento" } },
+            { "name": { "value": "Brindisi" } },
+            { "name": { "value": "Sondrio" } },
+            { "name": { "value": "Domodossola" } },
+            { "name": { "value": "Chiasso" } },
+            { "name": { "value": "Lugano" } },
+            { "name": { "value": "Ladispoli-Cerveteri" } },
+            { "name": { "value": "Civitavecchia" } },
+            { "name": { "value": "Orvieto" } },
+            { "name": { "value": "Chiusi-Chianciano Terme" } },
+            { "name": { "value": "Firenze Campo di Marte" } }
+          ]
+        }
+      ]
     }
   }
 }

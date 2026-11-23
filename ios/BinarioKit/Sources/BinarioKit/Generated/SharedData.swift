@@ -721,7 +721,8 @@ public enum SharedData {
 
     /// contracts/shared-data/v1/punctuality-v1.json: Thresholds of the network punctuality statistics
     /// (docs/data-sources/PUNCTUALITY_STATS.md): the categories measured at 5 minutes, as the operators and Treniamo
-    /// do, every other category at 15; the minimum samples and the remark thresholds.
+    /// do, every other category at 15; the minimum samples and the remark thresholds; a train's detail shows at most
+    /// `maximumWeekdayRemarks` weekday remarks, the largest differences first.
     public enum Punctuality {
         public static let highSpeedCategories: Set<String> = ["FR", "FA", "FB", "EC", "ES", "ESC", "EN", "ITALO"]
         public static let highSpeedOnTimeMinutes: Int = 5
@@ -732,6 +733,7 @@ public enum SharedData {
         public static let minimumPlatformSharePercent: Int = 60
         public static let minimumWeekdaySamples: Int = 4
         public static let minimumWeekdayGapPoints: Int = 15
+        public static let maximumWeekdayRemarks: Int = 2
         public static let minimumBandSamples: Int = 20
         public static let minimumBandGapPoints: Int = 5
     }

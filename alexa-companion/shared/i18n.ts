@@ -276,6 +276,49 @@ export type LocaleMessages = {
     /** Echo Show hint: a MostPunctualTrainIntent sample with the locale's invocation name. */
     mostPunctualHint: string;
   };
+  /**
+   * The programmed timetable (the iPhone's bundled index): the next departures between two
+   * stations or of a saved route, and a train's programmed run, never live. {time} and
+   * {departure}/{arrival} are Italian wall-clock times as the locale writes them; plurals of
+   * `departure` and `at` select on the written hour (article agreement), `departures` on the count.
+   */
+  timetable: {
+    /** The stations asked, as the subject of the live-data caveat: {origin}, {destination}. */
+    stationsSubject: string;
+    /** One departure: {train} (category and number, or a bus label) and {time}. */
+    departure: PluralMessages;
+    /** {trains}: a list of `departure`. */
+    departures: PluralMessages;
+    platformAndLive: string;
+    /** No departure in the next 24 hours. */
+    none: string;
+    /** Every timetable serving the stations ended before today. */
+    expired: string;
+    unavailable: string;
+    /** {station}: a spoken name the catalogue does not know. */
+    stationUnknown: string;
+    /** Asks for the two stations, with an example inside a StationTrainsIntent sample of the locale. */
+    stationsMissing: string;
+    /** A time with the locale's preposition and article: {time}. */
+    at: PluralMessages;
+    /** One programmed run of a train number today: {trainNumber}, {origin}, {departure}, {destination}, {arrival}. */
+    trainRun: string;
+    /** Several runs: {trainNumber}, {runs} (a list of `run`). */
+    trainRuns: string;
+    run: string;
+    trainNotScheduled: string;
+    liveInApp: string;
+    /** Echo Show banner: the Apple Watch's «Orari programmati, non in tempo reale». */
+    screenLabel: string;
+    /** {sources}: the timetables' attributions. */
+    screenSource: string;
+    platformLabel: string;
+    platformNotGiven: string;
+    /** Echo Show hint: a StationTrainsIntent sample with the locale's invocation name. */
+    hint: string;
+    /** The bus labels of the timetable (the iPhone's result.vehicle.*, Android's journey_leg_*). */
+    vehicles: { busTrenitalia: string; freccialink: string; italobus: string; bus: string; replacementBus: string };
+  };
 };
 
 const it: LocaleMessages = {
@@ -365,7 +408,7 @@ const it: LocaleMessages = {
     cardTitle: "Binario",
     accountLinkRequired: "Per usare le informazioni personali, collega prima il tuo account Binario nell'app Alexa.",
     unsupported: "Non ho capito la richiesta. Puoi chiedere quanto è puntuale un treno o una tua tratta, qual è il treno più puntuale delle prossime tre ore oppure le tue tratte.",
-    help: "Con Binario puoi chiedere i prossimi treni di una tratta salvata, lo stato di un treno, quanto è puntuale un treno o una tua tratta, il treno più puntuale delle prossime tre ore su una tua tratta, oppure l'elenco delle tue tratte. Cosa vuoi sapere?",
+    help: "Con Binario puoi chiedere i prossimi treni fra due stazioni o di una tratta salvata, lo stato di un treno, quanto è puntuale un treno o una tua tratta, il treno più puntuale delle prossime tre ore su una tua tratta, oppure l'elenco delle tue tratte. Cosa vuoi sapere?",
     goodbye: "A presto.",
     launch: "Ti diamo il benvenuto in Binario. Puoi chiedere quanto è puntuale un treno o una tua tratta, qual è il treno più puntuale delle prossime tre ore oppure le tue tratte.",
     noRoutes: "Non hai ancora salvato alcuna tratta in Binario.",
@@ -443,6 +486,29 @@ const it: LocaleMessages = {
     showRouteMostPunctual: "Treno più puntuale per {routeName}",
     mostPunctualHint: "«Alexa, chiedi a Binario Treni qual è il treno più puntuale per casa lavoro»",
   },
+  timetable: {
+    stationsSubject: "Da {origin} a {destination}",
+    departure: { one: "il {train} dell'{time}", other: "il {train} delle {time}" },
+    departures: { one: "Secondo l'orario programmato la prossima partenza è {trains}.", other: "Secondo l'orario programmato le prossime partenze sono {trains}." },
+    platformAndLive: "Il binario non è indicato e lo stato in tempo reale dei treni è nell'app Binario.",
+    none: "Secondo l'orario programmato nelle prossime 24 ore non c'è nessuna partenza.",
+    expired: "L'orario programmato di Binario per queste stazioni è scaduto: la skill va aggiornata.",
+    unavailable: "L'orario programmato di Binario non è disponibile in questo momento.",
+    stationUnknown: "Non riconosco la stazione {station}. Prova con il nome completo, per esempio Roma Termini.",
+    stationsMissing: "Da quale stazione a quale? Puoi dire, per esempio: prossimi treni da Milano Centrale a Bologna Centrale.",
+    at: { one: "all'{time}", other: "alle {time}" },
+    trainRun: "Secondo l'orario programmato, oggi il treno {trainNumber} parte da {origin} {departure} e arriva a {destination} {arrival}.",
+    trainRuns: "Secondo l'orario programmato, oggi con il numero {trainNumber} viaggiano più treni: {runs}.",
+    run: "da {origin} {departure} a {destination} {arrival}",
+    trainNotScheduled: "Il treno {trainNumber} non è nell'orario programmato di Binario per oggi.",
+    liveInApp: "Lo stato in tempo reale è nell'app Binario.",
+    screenLabel: "Orari programmati, non in tempo reale",
+    screenSource: "Fonte: orario programmato di {sources}",
+    platformLabel: "Binario",
+    platformNotGiven: "non indicato",
+    hint: "«Alexa, chiedi a Binario Treni i prossimi treni da Milano Centrale a Bologna Centrale»",
+    vehicles: { busTrenitalia: "Bus Trenitalia", freccialink: "FrecciaLink", italobus: "ItaloBus", bus: "Autobus", replacementBus: "Bus sostitutivo" },
+  },
 };
 
 const en: LocaleMessages = {
@@ -452,7 +518,7 @@ const en: LocaleMessages = {
   },
   accessibility: { close: "Close", loading: "Loading", pagination: "Pagination", previousPage: "Go to previous page", nextPage: "Go to next page", morePages: "More pages", previousSlide: "Previous slide", nextSlide: "Next slide", breadcrumb: "Breadcrumb", more: "More", mobileSidebar: "Sidebar", mobileSidebarDescription: "Displays the mobile sidebar." },
   consent: { title: "Link Alexa to Binario", signedInAs: " as <strong>{userName}</strong>", description: "You are about to link Amazon Alexa to your Binario account{signedInAs}. Alexa will be able to read the names of routes you have saved. No real-time data is shared.", ownRequestOnly: "Continue only if you started this link from your own Alexa app just now; otherwise, cancel.", allow: "Link", deny: "Cancel", loginRequired: "Sign in to the Binario dashboard first, then repeat Alexa linking.", errorTitle: "Alexa linking failed", notConfigured: "The Alexa integration is not configured. No account can be linked.", invalidRequest: "The linking request is invalid or no longer available. Restart the process from the Alexa app.", invalidCsrf: "The security check has expired or is invalid. No account was linked; restart the process from the Alexa app.", returnDashboard: "Return to the dashboard" },
-  voice: { cardTitle: "Binario", accountLinkRequired: "To use personal information, first link your Binario account in the Alexa app.", unsupported: "I didn't understand that request. You can ask how punctual a train or one of your routes is, for the most punctual train of the next three hours, or for your routes.", help: "With Binario, you can ask for the next trains on a saved route, a train's status, how punctual a train or one of your routes is, the most punctual train of the next three hours on one of your routes, or a list of your routes. What would you like to know?", goodbye: "See you soon.", launch: "Welcome to Binario. You can ask how punctual a train or one of your routes is, for the most punctual train of the next three hours, or for your routes.", noRoutes: "You have not saved any routes in Binario yet.", routeSubject: "For the route {routeName}", trainSubject: "For train {trainNumber}", liveDataUnavailable: "real-time data is not available", routesSaved: "Your saved routes are: {routes}{suffix}", moreRoutes: { one: ". There is one more route in the Binario dashboard.", other: ". There are {count} more routes in the Binario dashboard." }, error: "A problem occurred. Please try again later.", launchReprompt: "What would you like to know? You can ask how punctual a train or one of your routes is, for the most punctual train of the next three hours, or for your routes.", listTerminator: ".", routeNotFound: "I couldn't find the route {routeName}.", routeAmbiguous: "I found more than one route: {routes}.", routeChoice: "Which route would you like? You can say, for example: next trains for {example}." },
+  voice: { cardTitle: "Binario", accountLinkRequired: "To use personal information, first link your Binario account in the Alexa app.", unsupported: "I didn't understand that request. You can ask how punctual a train or one of your routes is, for the most punctual train of the next three hours, or for your routes.", help: "With Binario, you can ask for the next trains between two stations or on a saved route, a train's status, how punctual a train or one of your routes is, the most punctual train of the next three hours on one of your routes, or a list of your routes. What would you like to know?", goodbye: "See you soon.", launch: "Welcome to Binario. You can ask how punctual a train or one of your routes is, for the most punctual train of the next three hours, or for your routes.", noRoutes: "You have not saved any routes in Binario yet.", routeSubject: "For the route {routeName}", trainSubject: "For train {trainNumber}", liveDataUnavailable: "real-time data is not available", routesSaved: "Your saved routes are: {routes}{suffix}", moreRoutes: { one: ". There is one more route in the Binario dashboard.", other: ". There are {count} more routes in the Binario dashboard." }, error: "A problem occurred. Please try again later.", launchReprompt: "What would you like to know? You can ask how punctual a train or one of your routes is, for the most punctual train of the next three hours, or for your routes.", listTerminator: ".", routeNotFound: "I couldn't find the route {routeName}.", routeAmbiguous: "I found more than one route: {routes}.", routeChoice: "Which route would you like? You can say, for example: next trains for {example}." },
   screen: { homeTitle: "What you can ask", departuresTitle: "Departures", trainStatusTitle: "Train status", myRoutesTitle: "My routes", demoData: "Local demo catalogue — not live", sourceNone: "Source: no real-time rail provider connected", sourceDemo: "Source: demo data, not operational", checkedAt: "Checked at {time}", noTimetable: "No times shown: Binario never invents departures, delays or platforms.", trainNumber: "Train {trainNumber}", trainNumberMissing: "No train number given", pinned: "Pinned", moreRoutes: { one: "One more route is in the Binario dashboard.", other: "{count} more routes are in the Binario dashboard." }, showRoute: "Next trains for {routeName}", nextTrainsAction: "Next trains", myRoutesAction: "My routes", hintsTitle: "Try asking", hintNextTrains: "“Alexa, ask Binario Trains for the next trains”", hintTrainStatus: "“Alexa, ask Binario Trains for the status of train 9512”", hintMyRoutes: "“Alexa, ask Binario Trains for my routes”" },
   punctuality: {
     train: { one: "Train {trainNumber} reached its final stop on time, that is within {limit}, {count} time out of 100 over {days}.", other: "Train {trainNumber} reached its final stop on time, that is within {limit}, {count} times out of 100 over {days}." },
@@ -495,6 +561,29 @@ const en: LocaleMessages = {
     showRouteMostPunctual: "Most punctual train for {routeName}",
     mostPunctualHint: "“Alexa, ask Binario Trains which is the most punctual train for casa lavoro”",
   },
+  timetable: {
+    stationsSubject: "From {origin} to {destination}",
+    departure: { one: "the {train} at {time}", other: "the {train} at {time}" },
+    departures: { one: "According to the timetable, the next departure is {trains}.", other: "According to the timetable, the next departures are {trains}." },
+    platformAndLive: "The platform is not given, and the trains' real-time status is in the Binario app.",
+    none: "According to the timetable, nothing leaves in the next 24 hours.",
+    expired: "Binario's timetable for these stations has expired: the skill needs an update.",
+    unavailable: "Binario's timetable is not available right now.",
+    stationUnknown: "I don't recognise the station {station}. Try its full name, for example Roma Termini.",
+    stationsMissing: "From which station to which? You can say, for example: next trains from Milano Centrale to Bologna Centrale.",
+    at: { one: "at {time}", other: "at {time}" },
+    trainRun: "According to the timetable, today train {trainNumber} leaves {origin} {departure} and reaches {destination} {arrival}.",
+    trainRuns: "According to the timetable, several trains run with the number {trainNumber} today: {runs}.",
+    run: "from {origin} {departure} to {destination} {arrival}",
+    trainNotScheduled: "Train {trainNumber} is not in Binario's timetable for today.",
+    liveInApp: "Real-time status is in the Binario app.",
+    screenLabel: "Scheduled times, not real time",
+    screenSource: "Source: timetable of {sources}",
+    platformLabel: "Platform",
+    platformNotGiven: "not given",
+    hint: "“Alexa, ask Binario Trains for the next trains from Milano Centrale to Bologna Centrale”",
+    vehicles: { busTrenitalia: "Trenitalia bus", freccialink: "FrecciaLink", italobus: "ItaloBus", bus: "Bus", replacementBus: "Replacement bus" },
+  },
 };
 
 const de: LocaleMessages = {
@@ -503,7 +592,7 @@ const de: LocaleMessages = {
   },
   accessibility: { close: "Schließen", loading: "Laden", pagination: "Seitennavigation", previousPage: "Zur vorherigen Seite", nextPage: "Zur nächsten Seite", morePages: "Weitere Seiten", previousSlide: "Vorherige Folie", nextSlide: "Nächste Folie", breadcrumb: "Navigationspfad", more: "Mehr", mobileSidebar: "Seitenleiste", mobileSidebarDescription: "Zeigt die mobile Seitenleiste an." },
   consent: { title: "Alexa mit Binario verknüpfen", signedInAs: " als <strong>{userName}</strong>", description: "Sie sind dabei, Amazon Alexa mit Ihrem Binario-Konto{signedInAs} zu verknüpfen. Alexa kann die Namen Ihrer gespeicherten Strecken lesen. Es werden keine Echtzeitdaten weitergegeben.", ownRequestOnly: "Fahren Sie nur fort, wenn Sie diese Verknüpfung gerade selbst in Ihrer Alexa-App gestartet haben; andernfalls brechen Sie ab.", allow: "Verknüpfen", deny: "Abbrechen", loginRequired: "Melden Sie sich zuerst im Binario-Dashboard an und wiederholen Sie dann die Alexa-Verknüpfung.", errorTitle: "Alexa-Verknüpfung fehlgeschlagen", notConfigured: "Die Alexa-Integration ist nicht konfiguriert. Es kann kein Konto verknüpft werden.", invalidRequest: "Die Verknüpfungsanfrage ist ungültig oder nicht mehr verfügbar. Starten Sie den Vorgang in der Alexa-App erneut.", invalidCsrf: "Die Sicherheitsprüfung ist abgelaufen oder ungültig. Es wurde kein Konto verknüpft; starten Sie den Vorgang in der Alexa-App erneut.", returnDashboard: "Zurück zum Dashboard" },
-  voice: { cardTitle: "Binario", accountLinkRequired: "Um persönliche Informationen zu verwenden, verknüpfen Sie zuerst Ihr Binario-Konto in der Alexa-App.", unsupported: "Ich habe diese Anfrage nicht verstanden. Sie können nach der Pünktlichkeit eines Zuges oder einer Ihrer Strecken, dem pünktlichsten Zug der nächsten drei Stunden oder Ihren Strecken fragen.", help: "Mit Binario können Sie nach den nächsten Zügen einer gespeicherten Strecke, dem Status eines Zuges, der Pünktlichkeit eines Zuges oder einer Ihrer Strecken, dem pünktlichsten Zug der nächsten drei Stunden auf einer Ihrer Strecken sowie nach der Liste Ihrer Strecken fragen. Was möchten Sie wissen?", goodbye: "Bis bald.", launch: "Willkommen bei Binario. Sie können nach der Pünktlichkeit eines Zuges oder einer Ihrer Strecken, dem pünktlichsten Zug der nächsten drei Stunden oder Ihren Strecken fragen.", noRoutes: "Sie haben noch keine Strecken in Binario gespeichert.", routeSubject: "Für die Strecke {routeName}", trainSubject: "Für Zug {trainNumber}", liveDataUnavailable: "Echtzeitdaten sind nicht verfügbar", routesSaved: "Ihre gespeicherten Strecken sind: {routes}{suffix}", moreRoutes: { one: ". Es gibt eine weitere Strecke im Binario-Dashboard.", other: ". Es gibt {count} weitere Strecken im Binario-Dashboard." }, error: "Ein Problem ist aufgetreten. Bitte versuchen Sie es später erneut.", launchReprompt: "Was möchten Sie wissen? Sie können nach der Pünktlichkeit eines Zuges oder einer Ihrer Strecken, dem pünktlichsten Zug der nächsten drei Stunden oder Ihren Strecken fragen.", listTerminator: ".", routeNotFound: "Ich habe die Strecke {routeName} nicht gefunden.", routeAmbiguous: "Ich habe mehrere Strecken gefunden: {routes}.", routeChoice: "Welche Strecke meinen Sie? Sagen Sie zum Beispiel: nächste Züge für {example}." },
+  voice: { cardTitle: "Binario", accountLinkRequired: "Um persönliche Informationen zu verwenden, verknüpfen Sie zuerst Ihr Binario-Konto in der Alexa-App.", unsupported: "Ich habe diese Anfrage nicht verstanden. Sie können nach der Pünktlichkeit eines Zuges oder einer Ihrer Strecken, dem pünktlichsten Zug der nächsten drei Stunden oder Ihren Strecken fragen.", help: "Mit Binario können Sie nach den nächsten Zügen zwischen zwei Bahnhöfen oder auf einer gespeicherten Strecke, dem Status eines Zuges, der Pünktlichkeit eines Zuges oder einer Ihrer Strecken, dem pünktlichsten Zug der nächsten drei Stunden auf einer Ihrer Strecken sowie nach der Liste Ihrer Strecken fragen. Was möchten Sie wissen?", goodbye: "Bis bald.", launch: "Willkommen bei Binario. Sie können nach der Pünktlichkeit eines Zuges oder einer Ihrer Strecken, dem pünktlichsten Zug der nächsten drei Stunden oder Ihren Strecken fragen.", noRoutes: "Sie haben noch keine Strecken in Binario gespeichert.", routeSubject: "Für die Strecke {routeName}", trainSubject: "Für Zug {trainNumber}", liveDataUnavailable: "Echtzeitdaten sind nicht verfügbar", routesSaved: "Ihre gespeicherten Strecken sind: {routes}{suffix}", moreRoutes: { one: ". Es gibt eine weitere Strecke im Binario-Dashboard.", other: ". Es gibt {count} weitere Strecken im Binario-Dashboard." }, error: "Ein Problem ist aufgetreten. Bitte versuchen Sie es später erneut.", launchReprompt: "Was möchten Sie wissen? Sie können nach der Pünktlichkeit eines Zuges oder einer Ihrer Strecken, dem pünktlichsten Zug der nächsten drei Stunden oder Ihren Strecken fragen.", listTerminator: ".", routeNotFound: "Ich habe die Strecke {routeName} nicht gefunden.", routeAmbiguous: "Ich habe mehrere Strecken gefunden: {routes}.", routeChoice: "Welche Strecke meinen Sie? Sagen Sie zum Beispiel: nächste Züge für {example}." },
   screen: { homeTitle: "Was Sie fragen können", departuresTitle: "Abfahrten", trainStatusTitle: "Zugstatus", myRoutesTitle: "Meine Strecken", demoData: "Lokaler Demokatalog – nicht live", sourceNone: "Quelle: kein Echtzeit-Bahnanbieter verbunden", sourceDemo: "Quelle: Demodaten, nicht betrieblich", checkedAt: "Geprüft um {time}", noTimetable: "Keine Zeiten angezeigt: Binario erfindet keine Abfahrten, Verspätungen oder Gleise.", trainNumber: "Zug {trainNumber}", trainNumberMissing: "Keine Zugnummer angegeben", pinned: "Angeheftet", moreRoutes: { one: "Eine weitere Strecke ist im Binario-Dashboard.", other: "{count} weitere Strecken sind im Binario-Dashboard." }, showRoute: "Nächste Züge für {routeName}", nextTrainsAction: "Nächste Züge", myRoutesAction: "Meine Strecken", hintsTitle: "Fragen Sie zum Beispiel", hintNextTrains: "„Alexa, frage Binario Züge nach den nächsten Zügen“", hintTrainStatus: "„Alexa, frage Binario Züge nach dem Status von Zug 9512“", hintMyRoutes: "„Alexa, frage Binario Züge nach meinen Strecken“" },
   punctuality: {
     train: { one: "Zug {trainNumber} kam an {days} {count}-mal von 100 pünktlich an der Endstation an, also mit einer Verspätung von höchstens {limit}.", other: "Zug {trainNumber} kam an {days} {count}-mal von 100 pünktlich an der Endstation an, also mit einer Verspätung von höchstens {limit}." },
@@ -546,6 +635,29 @@ const de: LocaleMessages = {
     showRouteMostPunctual: "Pünktlichster Zug für {routeName}",
     mostPunctualHint: "„Alexa, frage Binario Züge nach dem pünktlichsten Zug für casa lavoro“",
   },
+  timetable: {
+    stationsSubject: "Von {origin} nach {destination}",
+    departure: { one: "der {train} um {time}", other: "der {train} um {time}" },
+    departures: { one: "Laut Fahrplan ist die nächste Abfahrt {trains}.", other: "Laut Fahrplan sind die nächsten Abfahrten {trains}." },
+    platformAndLive: "Das Gleis ist nicht angegeben, und den Echtzeitstatus der Züge finden Sie in der Binario-App.",
+    none: "Laut Fahrplan fährt in den nächsten 24 Stunden nichts ab.",
+    expired: "Der Binario-Fahrplan für diese Bahnhöfe ist abgelaufen: Der Skill muss aktualisiert werden.",
+    unavailable: "Der Binario-Fahrplan ist gerade nicht verfügbar.",
+    stationUnknown: "Ich kenne den Bahnhof {station} nicht. Versuchen Sie den vollständigen Namen, zum Beispiel Roma Termini.",
+    stationsMissing: "Von welchem Bahnhof zu welchem? Sagen Sie zum Beispiel: nächste Züge von Milano Centrale nach Bologna Centrale.",
+    at: { one: "um {time}", other: "um {time}" },
+    trainRun: "Laut Fahrplan fährt Zug {trainNumber} heute {departure} in {origin} ab und kommt {arrival} in {destination} an.",
+    trainRuns: "Laut Fahrplan fahren heute mehrere Züge mit der Nummer {trainNumber}: {runs}.",
+    run: "von {origin} {departure} nach {destination} {arrival}",
+    trainNotScheduled: "Zug {trainNumber} steht heute nicht im Binario-Fahrplan.",
+    liveInApp: "Den Echtzeitstatus finden Sie in der Binario-App.",
+    screenLabel: "Fahrplanzeiten, nicht in Echtzeit",
+    screenSource: "Quelle: Fahrplan von {sources}",
+    platformLabel: "Gleis",
+    platformNotGiven: "nicht angegeben",
+    hint: "„Alexa, frage Binario Züge nach den nächsten Zügen von Milano Centrale nach Bologna Centrale“",
+    vehicles: { busTrenitalia: "Trenitalia-Bus", freccialink: "FrecciaLink", italobus: "ItaloBus", bus: "Bus", replacementBus: "Ersatzbus" },
+  },
 };
 
 const fr: LocaleMessages = {
@@ -554,7 +666,7 @@ const fr: LocaleMessages = {
   },
   accessibility: { close: "Fermer", loading: "Chargement", pagination: "Pagination", previousPage: "Aller à la page précédente", nextPage: "Aller à la page suivante", morePages: "Autres pages", previousSlide: "Diapositive précédente", nextSlide: "Diapositive suivante", breadcrumb: "Fil d’Ariane", more: "Plus", mobileSidebar: "Barre latérale", mobileSidebarDescription: "Affiche la barre latérale mobile." },
   consent: { title: "Associer Alexa à Binario", signedInAs: " en tant que <strong>{userName}</strong>", description: "Vous êtes sur le point d’associer Amazon Alexa à votre compte Binario{signedInAs}. Alexa pourra lire les noms des trajets que vous avez enregistrés. Aucune donnée en temps réel n’est partagée.", ownRequestOnly: "Ne continuez que si vous venez de lancer vous-même cette association depuis votre application Alexa ; sinon, annulez.", allow: "Associer", deny: "Annuler", loginRequired: "Connectez-vous d’abord au tableau de bord Binario, puis recommencez l’association Alexa.", errorTitle: "Échec de l’association Alexa", notConfigured: "L’intégration Alexa n’est pas configurée. Aucun compte ne peut être associé.", invalidRequest: "La demande d’association est invalide ou n’est plus disponible. Recommencez la procédure depuis l’application Alexa.", invalidCsrf: "La vérification de sécurité a expiré ou n’est pas valide. Aucun compte n’a été associé ; recommencez la procédure depuis l’application Alexa.", returnDashboard: "Retourner au tableau de bord" },
-  voice: { cardTitle: "Binario", accountLinkRequired: "Pour utiliser les informations personnelles, associez d’abord votre compte Binario dans l’application Alexa.", unsupported: "Je n’ai pas compris cette demande. Vous pouvez demander la ponctualité d’un train ou de l’un de vos trajets, le train le plus ponctuel des trois prochaines heures ou vos trajets.", help: "Avec Binario, vous pouvez demander les prochains trains d’un trajet enregistré, l’état d’un train, la ponctualité d’un train ou de l’un de vos trajets, le train le plus ponctuel des trois prochaines heures sur l’un de vos trajets, ou la liste de vos trajets. Que voulez-vous savoir ?", goodbye: "À bientôt.", launch: "Bienvenue dans Binario. Vous pouvez demander la ponctualité d’un train ou de l’un de vos trajets, le train le plus ponctuel des trois prochaines heures ou vos trajets.", noRoutes: "Vous n’avez encore enregistré aucun trajet dans Binario.", routeSubject: "Pour le trajet {routeName}", trainSubject: "Pour le train {trainNumber}", liveDataUnavailable: "les données en temps réel ne sont pas disponibles", routesSaved: "Vos trajets enregistrés sont : {routes}{suffix}", moreRoutes: { one: ". Il y a un autre trajet dans le tableau de bord Binario.", other: ". Il y a {count} autres trajets dans le tableau de bord Binario." }, error: "Un problème est survenu. Réessayez plus tard.", launchReprompt: "Que voulez-vous savoir ? Vous pouvez demander la ponctualité d’un train ou de l’un de vos trajets, le train le plus ponctuel des trois prochaines heures ou vos trajets.", listTerminator: ".", routeNotFound: "Je n’ai pas trouvé le trajet {routeName}.", routeAmbiguous: "J’ai trouvé plusieurs trajets : {routes}.", routeChoice: "Quel trajet voulez-vous ? Vous pouvez dire, par exemple : prochains trains pour {example}." },
+  voice: { cardTitle: "Binario", accountLinkRequired: "Pour utiliser les informations personnelles, associez d’abord votre compte Binario dans l’application Alexa.", unsupported: "Je n’ai pas compris cette demande. Vous pouvez demander la ponctualité d’un train ou de l’un de vos trajets, le train le plus ponctuel des trois prochaines heures ou vos trajets.", help: "Avec Binario, vous pouvez demander les prochains trains entre deux gares ou d’un trajet enregistré, l’état d’un train, la ponctualité d’un train ou de l’un de vos trajets, le train le plus ponctuel des trois prochaines heures sur l’un de vos trajets, ou la liste de vos trajets. Que voulez-vous savoir ?", goodbye: "À bientôt.", launch: "Bienvenue dans Binario. Vous pouvez demander la ponctualité d’un train ou de l’un de vos trajets, le train le plus ponctuel des trois prochaines heures ou vos trajets.", noRoutes: "Vous n’avez encore enregistré aucun trajet dans Binario.", routeSubject: "Pour le trajet {routeName}", trainSubject: "Pour le train {trainNumber}", liveDataUnavailable: "les données en temps réel ne sont pas disponibles", routesSaved: "Vos trajets enregistrés sont : {routes}{suffix}", moreRoutes: { one: ". Il y a un autre trajet dans le tableau de bord Binario.", other: ". Il y a {count} autres trajets dans le tableau de bord Binario." }, error: "Un problème est survenu. Réessayez plus tard.", launchReprompt: "Que voulez-vous savoir ? Vous pouvez demander la ponctualité d’un train ou de l’un de vos trajets, le train le plus ponctuel des trois prochaines heures ou vos trajets.", listTerminator: ".", routeNotFound: "Je n’ai pas trouvé le trajet {routeName}.", routeAmbiguous: "J’ai trouvé plusieurs trajets : {routes}.", routeChoice: "Quel trajet voulez-vous ? Vous pouvez dire, par exemple : prochains trains pour {example}." },
   screen: { homeTitle: "Ce que vous pouvez demander", departuresTitle: "Départs", trainStatusTitle: "État du train", myRoutesTitle: "Mes trajets", demoData: "Catalogue de démonstration local — pas en direct", sourceNone: "Source : aucun fournisseur ferroviaire en temps réel connecté", sourceDemo: "Source : données de démonstration, non opérationnelles", checkedAt: "Vérifié à {time}", noTimetable: "Aucun horaire affiché : Binario n’invente jamais de départs, de retards ni de quais.", trainNumber: "Train {trainNumber}", trainNumberMissing: "Aucun numéro de train indiqué", pinned: "Épinglé", moreRoutes: { one: "Un autre trajet se trouve dans le tableau de bord Binario.", other: "{count} autres trajets se trouvent dans le tableau de bord Binario." }, showRoute: "Prochains trains pour {routeName}", nextTrainsAction: "Prochains trains", myRoutesAction: "Mes trajets", hintsTitle: "Essayez de demander", hintNextTrains: "« Alexa, demande à Binario Trains les prochains trains »", hintTrainStatus: "« Alexa, demande à Binario Trains le statut du train 9512 »", hintMyRoutes: "« Alexa, demande à Binario Trains mes trajets »" },
   punctuality: {
     train: { one: "Le train {trainNumber} est arrivé à l’heure à son terminus, c’est-à-dire avec un retard d’au plus {limit}, {count} fois sur 100 en {days}.", many: "Le train {trainNumber} est arrivé à l’heure à son terminus, c’est-à-dire avec un retard d’au plus {limit}, {count} fois sur 100 en {days}.", other: "Le train {trainNumber} est arrivé à l’heure à son terminus, c’est-à-dire avec un retard d’au plus {limit}, {count} fois sur 100 en {days}." },
@@ -597,6 +709,29 @@ const fr: LocaleMessages = {
     showRouteMostPunctual: "Train le plus ponctuel pour {routeName}",
     mostPunctualHint: "« Alexa, demande à Binario Trains quel est le train le plus ponctuel pour casa lavoro »",
   },
+  timetable: {
+    stationsSubject: "De {origin} à {destination}",
+    departure: { one: "le {train} de {time}", other: "le {train} de {time}" },
+    departures: { one: "Selon l’horaire prévu, le prochain départ est {trains}.", other: "Selon l’horaire prévu, les prochains départs sont {trains}." },
+    platformAndLive: "Le quai n’est pas indiqué, et l’état des trains en temps réel est dans l’application Binario.",
+    none: "Selon l’horaire prévu, aucun départ dans les 24 prochaines heures.",
+    expired: "L’horaire de Binario pour ces gares a expiré : la skill doit être mise à jour.",
+    unavailable: "L’horaire de Binario n’est pas disponible pour le moment.",
+    stationUnknown: "Je ne reconnais pas la gare {station}. Essayez son nom complet, par exemple Roma Termini.",
+    stationsMissing: "De quelle gare à quelle gare ? Vous pouvez dire, par exemple : prochains trains de Milano Centrale à Bologna Centrale.",
+    at: { one: "à {time}", other: "à {time}" },
+    trainRun: "Selon l’horaire prévu, aujourd’hui le train {trainNumber} part de {origin} {departure} et arrive à {destination} {arrival}.",
+    trainRuns: "Selon l’horaire prévu, plusieurs trains circulent aujourd’hui avec le numéro {trainNumber} : {runs}.",
+    run: "de {origin} {departure} à {destination} {arrival}",
+    trainNotScheduled: "Le train {trainNumber} n’est pas dans l’horaire de Binario pour aujourd’hui.",
+    liveInApp: "L’état en temps réel est dans l’application Binario.",
+    screenLabel: "Horaires prévus, pas en temps réel",
+    screenSource: "Source : horaire de {sources}",
+    platformLabel: "Quai",
+    platformNotGiven: "non indiqué",
+    hint: "« Alexa, demande à Binario Trains les prochains trains de Milano Centrale à Bologna Centrale »",
+    vehicles: { busTrenitalia: "Car Trenitalia", freccialink: "FrecciaLink", italobus: "ItaloBus", bus: "Bus", replacementBus: "Bus de substitution" },
+  },
 };
 
 const es: LocaleMessages = {
@@ -605,7 +740,7 @@ const es: LocaleMessages = {
   },
   accessibility: { close: "Cerrar", loading: "Cargando", pagination: "Paginación", previousPage: "Ir a la página anterior", nextPage: "Ir a la página siguiente", morePages: "Más páginas", previousSlide: "Diapositiva anterior", nextSlide: "Diapositiva siguiente", breadcrumb: "Migas de pan", more: "Más", mobileSidebar: "Barra lateral", mobileSidebarDescription: "Muestra la barra lateral móvil." },
   consent: { title: "Vincular Alexa con Binario", signedInAs: " como <strong>{userName}</strong>", description: "Estás a punto de vincular Amazon Alexa con tu cuenta de Binario{signedInAs}. Alexa podrá leer los nombres de las rutas que has guardado. No se comparten datos en tiempo real.", ownRequestOnly: "Continúa solo si acabas de iniciar tú esta vinculación desde tu aplicación Alexa; si no, cancela.", allow: "Vincular", deny: "Cancelar", loginRequired: "Inicia sesión primero en el panel de Binario y vuelve a intentar la vinculación de Alexa.", errorTitle: "No se pudo vincular Alexa", notConfigured: "La integración de Alexa no está configurada. No se puede vincular ninguna cuenta.", invalidRequest: "La solicitud de vinculación no es válida o ya no está disponible. Reinicia el proceso desde la aplicación Alexa.", invalidCsrf: "La comprobación de seguridad ha caducado o no es válida. No se vinculó ninguna cuenta; reinicia el proceso desde la aplicación Alexa.", returnDashboard: "Volver al panel" },
-  voice: { cardTitle: "Binario", accountLinkRequired: "Para usar información personal, primero vincula tu cuenta de Binario en la aplicación Alexa.", unsupported: "No he entendido esa solicitud. Puedes pedir la puntualidad de un tren o de una de tus rutas, el tren más puntual de las próximas tres horas o tus rutas.", help: "Con Binario puedes pedir los próximos trenes de una ruta guardada, el estado de un tren, la puntualidad de un tren o de una de tus rutas, el tren más puntual de las próximas tres horas en una de tus rutas, o la lista de tus rutas. ¿Qué quieres saber?", goodbye: "Hasta pronto.", launch: "Te damos la bienvenida a Binario. Puedes pedir la puntualidad de un tren o de una de tus rutas, el tren más puntual de las próximas tres horas o tus rutas.", noRoutes: "Aún no has guardado ninguna ruta en Binario.", routeSubject: "Para la ruta {routeName}", trainSubject: "Para el tren {trainNumber}", liveDataUnavailable: "los datos en tiempo real no están disponibles", routesSaved: "Tus rutas guardadas son: {routes}{suffix}", moreRoutes: { one: ". Hay otra ruta en el panel de Binario.", other: ". Hay {count} rutas más en el panel de Binario." }, error: "Se produjo un problema. Inténtalo de nuevo más tarde.", launchReprompt: "¿Qué quieres saber? Puedes pedir la puntualidad de un tren o de una de tus rutas, el tren más puntual de las próximas tres horas o tus rutas.", listTerminator: ".", routeNotFound: "No he encontrado la ruta {routeName}.", routeAmbiguous: "He encontrado varias rutas: {routes}.", routeChoice: "¿Qué ruta quieres? Puedes decir, por ejemplo: próximos trenes para {example}." },
+  voice: { cardTitle: "Binario", accountLinkRequired: "Para usar información personal, primero vincula tu cuenta de Binario en la aplicación Alexa.", unsupported: "No he entendido esa solicitud. Puedes pedir la puntualidad de un tren o de una de tus rutas, el tren más puntual de las próximas tres horas o tus rutas.", help: "Con Binario puedes pedir los próximos trenes entre dos estaciones o de una ruta guardada, el estado de un tren, la puntualidad de un tren o de una de tus rutas, el tren más puntual de las próximas tres horas en una de tus rutas, o la lista de tus rutas. ¿Qué quieres saber?", goodbye: "Hasta pronto.", launch: "Te damos la bienvenida a Binario. Puedes pedir la puntualidad de un tren o de una de tus rutas, el tren más puntual de las próximas tres horas o tus rutas.", noRoutes: "Aún no has guardado ninguna ruta en Binario.", routeSubject: "Para la ruta {routeName}", trainSubject: "Para el tren {trainNumber}", liveDataUnavailable: "los datos en tiempo real no están disponibles", routesSaved: "Tus rutas guardadas son: {routes}{suffix}", moreRoutes: { one: ". Hay otra ruta en el panel de Binario.", other: ". Hay {count} rutas más en el panel de Binario." }, error: "Se produjo un problema. Inténtalo de nuevo más tarde.", launchReprompt: "¿Qué quieres saber? Puedes pedir la puntualidad de un tren o de una de tus rutas, el tren más puntual de las próximas tres horas o tus rutas.", listTerminator: ".", routeNotFound: "No he encontrado la ruta {routeName}.", routeAmbiguous: "He encontrado varias rutas: {routes}.", routeChoice: "¿Qué ruta quieres? Puedes decir, por ejemplo: próximos trenes para {example}." },
   screen: { homeTitle: "Qué puedes preguntar", departuresTitle: "Salidas", trainStatusTitle: "Estado del tren", myRoutesTitle: "Mis rutas", demoData: "Catálogo de demostración local — no en directo", sourceNone: "Fuente: ningún proveedor ferroviario en tiempo real conectado", sourceDemo: "Fuente: datos de demostración, no operativos", checkedAt: "Comprobado a las {time}", noTimetable: "No se muestran horarios: Binario nunca inventa salidas, retrasos ni andenes.", trainNumber: "Tren {trainNumber}", trainNumberMissing: "No se ha indicado número de tren", pinned: "Fijada", moreRoutes: { one: "Hay otra ruta en el panel de Binario.", other: "Hay {count} rutas más en el panel de Binario." }, showRoute: "Próximos trenes para {routeName}", nextTrainsAction: "Próximos trenes", myRoutesAction: "Mis rutas", hintsTitle: "Prueba a preguntar", hintNextTrains: "«Alexa, pregunta a Binario Trenes por los próximos trenes»", hintTrainStatus: "«Alexa, pregunta a Binario Trenes por el estado del tren 9512»", hintMyRoutes: "«Alexa, pregunta a Binario Trenes por mis rutas»" },
   punctuality: {
     train: { one: "El tren {trainNumber} llegó puntual a su destino final, es decir, con un retraso máximo de {limit}, {count} vez de cada 100 en {days}.", many: "El tren {trainNumber} llegó puntual a su destino final, es decir, con un retraso máximo de {limit}, {count} veces de cada 100 en {days}.", other: "El tren {trainNumber} llegó puntual a su destino final, es decir, con un retraso máximo de {limit}, {count} veces de cada 100 en {days}." },
@@ -647,6 +782,29 @@ const es: LocaleMessages = {
     mostPunctualRouteChoice: "¿Qué ruta quieres? Puedes decir, por ejemplo: cuál es el tren más puntual para {example}.",
     showRouteMostPunctual: "Tren más puntual para {routeName}",
     mostPunctualHint: "«Alexa, pregunta a Binario Trenes cuál es el tren más puntual para casa lavoro»",
+  },
+  timetable: {
+    stationsSubject: "De {origin} a {destination}",
+    departure: { one: "el {train} de la {time}", other: "el {train} de las {time}" },
+    departures: { one: "Según el horario previsto, la próxima salida es {trains}.", other: "Según el horario previsto, las próximas salidas son {trains}." },
+    platformAndLive: "El andén no está indicado, y el estado de los trenes en tiempo real está en la aplicación Binario.",
+    none: "Según el horario previsto, no sale nada en las próximas 24 horas.",
+    expired: "El horario de Binario para estas estaciones ha caducado: hay que actualizar la skill.",
+    unavailable: "El horario de Binario no está disponible ahora mismo.",
+    stationUnknown: "No reconozco la estación {station}. Prueba con su nombre completo, por ejemplo Roma Termini.",
+    stationsMissing: "¿De qué estación a cuál? Puedes decir, por ejemplo: próximos trenes de Milano Centrale a Bologna Centrale.",
+    at: { one: "a la {time}", other: "a las {time}" },
+    trainRun: "Según el horario previsto, hoy el tren {trainNumber} sale de {origin} {departure} y llega a {destination} {arrival}.",
+    trainRuns: "Según el horario previsto, hoy circulan varios trenes con el número {trainNumber}: {runs}.",
+    run: "de {origin} {departure} a {destination} {arrival}",
+    trainNotScheduled: "El tren {trainNumber} no está en el horario de Binario para hoy.",
+    liveInApp: "El estado en tiempo real está en la aplicación Binario.",
+    screenLabel: "Horarios previstos, no en tiempo real",
+    screenSource: "Fuente: horario de {sources}",
+    platformLabel: "Andén",
+    platformNotGiven: "no indicado",
+    hint: "«Alexa, pregunta a Binario Trenes por los próximos trenes de Milano Centrale a Bologna Centrale»",
+    vehicles: { busTrenitalia: "Autobús Trenitalia", freccialink: "FrecciaLink", italobus: "ItaloBus", bus: "Autobús", replacementBus: "Autobús sustitutivo" },
   },
 };
 

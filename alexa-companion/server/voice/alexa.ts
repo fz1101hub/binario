@@ -60,6 +60,10 @@ import { alexaRequestLogContext } from "./requestLog";
 import { matchRouteByName } from "./routeMatching";
 import { punctualityStats, railStationIndex } from "../punctuality/source";
 import { mostPunctualDepartures, railClock, routePunctuality, trainPunctuality } from "../punctuality/stats";
+import type { CatalogStation } from "../punctuality/stations";
+import type { StationRef, TimetableService, TrainRun } from "../timetable/repository";
+import { timetableIndex } from "../timetable/source";
+import { departureRows, departureSentences, trainRunSentences } from "./timetableSpeech";
 import {
   answerText,
   joinSentences,
@@ -73,6 +77,7 @@ import {
 /** Intent names the skill handles; the interaction model in skill-package/ must declare all of them. */
 export const HANDLED_INTENTS = [
   "NextTrainsIntent",
+  "StationTrainsIntent",
   "TrainStatusIntent",
   "MyRoutesIntent",
   "TrainPunctualityIntent",
@@ -236,10 +241,94 @@ function spokenRouteSelector(input: HandlerInput): RouteSelector {
   };
 }
 
+/** What the programmed timetable says about two stations: the next departures, none, an ended timetable, or nothing it can read. */
+type TimetableAnswer =
+  | { kind: "trains"; services: TimetableService[]; attributions: string[] }
+  | { kind: "none" }
+  | { kind: "expired" }
+  | { kind: "unavailable" };
+
 /**
- * Speaks the live-data caveat for one saved route, then the trains of the statistics that usually
- * leave it in the next three hours, most punctual first, when there are any. Only reached after the
- * account link has been verified.
+ * The programmed departures from `origins` to `destinations` in the next 24 hours. A failure never
+ * costs the answer: it is logged by error class only and the timetable counts as unavailable.
+ */
+async function programmedDepartures(
+  origins: readonly StationRef[],
+  destinations: readonly StationRef[],
+  now: Date
+): Promise<TimetableAnswer> {
+  if (!origins.length || !destinations.length) return { kind: "unavailable" };
+  try {
+    const index = await timetableIndex();
+    if (!index) return { kind: "unavailable" };
+    const result = index.nextTrains(origins, destinations, now.getTime());
+    if (result.kind === "trains") return result;
+    return { kind: result.kind === "scheduleExpired" ? "expired" : "none" };
+  } catch (error) {
+    console.warn("[Alexa] timetable not read", { error: describeErrorForLog(error) });
+    return { kind: "unavailable" };
+  }
+}
+
+/** The programmed runs of a train number today, or undefined when the timetable cannot answer. */
+async function programmedRuns(trainNumber: string, now: Date): Promise<TrainRun[] | undefined> {
+  try {
+    const index = await timetableIndex();
+    return index ? index.trainRuns(trainNumber, now.getTime()) : undefined;
+  } catch (error) {
+    console.warn("[Alexa] timetable not read", { error: describeErrorForLog(error) });
+    return undefined;
+  }
+}
+
+/** The catalogue stations of two names, or null when the catalogue cannot be read. */
+async function catalogStations(origin: string, destination: string): Promise<{ origins: readonly CatalogStation[]; destinations: readonly CatalogStation[] } | null> {
+  try {
+    const stations = await railStationIndex();
+    return stations ? { origins: stations.stationsFor(origin), destinations: stations.stationsFor(destination) } : null;
+  } catch (error) {
+    console.warn("[Alexa] station catalogue not read", { error: describeErrorForLog(error) });
+    return null;
+  }
+}
+
+/**
+ * The live-data caveat for `subject`, then what the programmed timetable says: the next departures
+ * (category and number, programmed time; the platform is not known and the live state is in the
+ * app), none in the next 24 hours, or an ended timetable. The screen lists the same departures
+ * under the «programmed, not real time» banner, with `hero` as its heading.
+ */
+function timetableResponse(
+  input: HandlerInput,
+  subject: (text: (value: string) => string) => string,
+  hero: string,
+  answer: Exclude<TimetableAnswer, { kind: "unavailable" }>
+) {
+  const locale = getAlexaLocale(input);
+  const t = messagesForLocale(locale).timetable;
+  const sentences = (text: (value: string) => string) =>
+    answer.kind === "trains" ? departureSentences(locale, answer.services, text) : [answer.kind === "none" ? t.none : t.expired];
+  const compose = (text: (value: string) => string) =>
+    joinSentences([`${liveDataUnavailableSpeech(locale, subject(text))}${SENTENCE_END[locale] ?? "."}`, ...sentences(text)]);
+  setScreen(input, {
+    kind: "departures",
+    routeName: hero,
+    message: joinSentences(sentences(plainSpeechText)),
+    ...(answer.kind === "trains" ? { trains: departureRows(locale, answer.services), sources: answer.attributions } : {}),
+  });
+  return input.responseBuilder
+    .speak(compose(escapeSsmlText))
+    .withSimpleCard(messagesForLocale(locale).voice.cardTitle, compose(plainSpeechText))
+    .withShouldEndSession(true)
+    .getResponse();
+}
+
+/**
+ * The next trains of one saved route from the programmed timetable, its origin and destination
+ * matched by name in the catalogue as for the punctuality. When the timetable cannot answer
+ * (stations it does not know, no index) the live-data caveat comes with the trains of the
+ * statistics that usually leave in the next three hours, most punctual first, when there are any.
+ * Only reached after the account link has been verified; the stations stay on the server.
  */
 async function respondNextTrains(
   input: HandlerInput,
@@ -253,6 +342,17 @@ async function respondNextTrains(
   const selected = await selectedRoute(input, principal, select, "nextTrains", onMissing);
   if ("response" in selected) return selected.response;
   const { route } = selected;
+  const stations = await catalogStations(route.origin, route.destination);
+  const programmed = stations
+    ? await programmedDepartures(stations.origins, stations.destinations, requestTime(input))
+    : ({ kind: "unavailable" } as const);
+  if (programmed.kind !== "unavailable")
+    return timetableResponse(
+      input,
+      text => formatMessage(messages.routeSubject, { routeName: text(route.name) }),
+      route.name,
+      programmed
+    );
   const known = await knownRoutePunctuality(input, route);
   // SSML needs escaped text; the companion-app card is plain text and must
   // show the route name as typed, not XML entities.
@@ -350,8 +450,58 @@ const nextTrainsHandler: RequestHandler = {
 };
 
 /**
- * Says that live data is not available, then how punctual the train usually is when the statistics
- * have figures for it: nothing personal, so no linked account is needed.
+ * «Prossimi treni da Roma Termini a Tivoli»: the next departures between two stations of the
+ * catalogue from the programmed timetable. The stations are not personal: no linked account is
+ * needed. A name the catalogue does not know is said back; without both names the skill asks.
+ */
+const stationTrainsHandler: RequestHandler = {
+  canHandle: input => isIntent(input, "StationTrainsIntent"),
+  handle: async input => {
+    const locale = getAlexaLocale(input);
+    const t = messagesForLocale(locale).timetable;
+    const cardTitle = messagesForLocale(locale).voice.cardTitle;
+    const originName = intentSlot(input, "origin");
+    const destinationName = intentSlot(input, "destination");
+    if (!originName || !destinationName) {
+      setScreen(input, { kind: "home", message: t.stationsMissing });
+      return input.responseBuilder
+        .speak(t.stationsMissing)
+        .reprompt(t.stationsMissing)
+        .withSimpleCard(cardTitle, t.stationsMissing)
+        .withShouldEndSession(false)
+        .getResponse();
+    }
+    const stations = await catalogStations(originName, destinationName);
+    const unknown = !stations ? undefined : !stations.origins.length ? originName : !stations.destinations.length ? destinationName : undefined;
+    if (!stations || unknown !== undefined) {
+      const answer = (text: (value: string) => string) => (unknown !== undefined ? formatMessage(t.stationUnknown, { station: text(unknown) }) : t.unavailable);
+      setScreen(input, { kind: "home", message: answer(plainSpeechText) });
+      return input.responseBuilder
+        .speak(answer(escapeSsmlText))
+        .withSimpleCard(cardTitle, answer(plainSpeechText))
+        .withShouldEndSession(true)
+        .getResponse();
+    }
+    const [origin, destination] = [stations.origins[0].name, stations.destinations[0].name];
+    const subject = (text: (value: string) => string) => formatMessage(t.stationsSubject, { origin: text(origin), destination: text(destination) });
+    const programmed = await programmedDepartures(stations.origins, stations.destinations, requestTime(input));
+    if (programmed.kind !== "unavailable") return timetableResponse(input, subject, `${origin} → ${destination}`, programmed);
+    const answer = (text: (value: string) => string) =>
+      joinSentences([`${liveDataUnavailableSpeech(locale, subject(text))}${SENTENCE_END[locale] ?? "."}`, t.unavailable]);
+    setScreen(input, { kind: "departures", routeName: `${origin} → ${destination}` });
+    return input.responseBuilder
+      .speak(answer(escapeSsmlText))
+      .withSimpleCard(cardTitle, answer(plainSpeechText))
+      .withShouldEndSession(true)
+      .getResponse();
+  },
+};
+
+/**
+ * Says that live data is not available, then the train's programmed runs today when the timetable
+ * has the number, that the live state is in the app, and how punctual the train usually is when
+ * the statistics have figures for it: nothing personal, so no linked account is needed. The skill
+ * never asks a live source from the server.
  */
 const trainStatusHandler: RequestHandler = {
   canHandle: input =>
@@ -360,6 +510,7 @@ const trainStatusHandler: RequestHandler = {
   handle: async input => {
     const locale = getAlexaLocale(input);
     const messages = messagesForLocale(locale).voice;
+    const t = messagesForLocale(locale).timetable;
     const slot = intentSlot(input, "trainNumber", "train", "numeroTreno");
     // AMAZON.NUMBER gives "?" when it heard no number: no «Treno ?».
     const trainNumber = slot && /[0-9]/.test(slot) ? slot : undefined;
@@ -370,11 +521,20 @@ const trainStatusHandler: RequestHandler = {
       ? formatMessage(messages.trainSubject, { trainNumber: plainSpeechText(trainNumber) })
       : undefined;
     const known = trainNumber ? await knownTrainPunctuality(locale, trainNumber) : undefined;
-    const speech = withKnownPunctuality(input, liveDataUnavailableSpeech(locale, subject), known, escapeSsmlText);
-    setScreen(input, { kind: "trainStatus", trainNumber });
+    const runs = trainNumber ? await programmedRuns(trainNumber, requestTime(input)) : undefined;
+    const catalogue = runs?.length ? await railStationIndex().catch(() => null) : null;
+    const programmed = (text: (value: string) => string) =>
+      trainNumber && runs ? trainRunSentences(locale, trainNumber, runs, text, id => catalogue?.nameOf(id)) : [];
+    const extra = (text: (value: string) => string) => (trainNumber ? [...programmed(text), t.liveInApp] : []);
+    const speech = withKnownPunctuality(input, liveDataUnavailableSpeech(locale, subject), known, escapeSsmlText, extra(escapeSsmlText));
+    setScreen(input, {
+      kind: "trainStatus",
+      trainNumber,
+      ...(runs ? { message: joinSentences(programmed(plainSpeechText)), sources: [...new Set(runs.map(run => run.attribution).filter(Boolean))] } : {}),
+    });
     return input.responseBuilder
       .speak(speech)
-      .withSimpleCard(messages.cardTitle, withKnownPunctuality(input, liveDataUnavailableSpeech(locale, cardSubject), known, plainSpeechText))
+      .withSimpleCard(messages.cardTitle, withKnownPunctuality(input, liveDataUnavailableSpeech(locale, cardSubject), known, plainSpeechText, extra(plainSpeechText)))
       .withShouldEndSession(true)
       .getResponse();
   },
@@ -438,20 +598,24 @@ function withDataAge(answer: PunctualityAnswer, locale: SupportedLocale, windowE
 type KnownPunctuality = { build: (text: (value: string) => string) => PunctualityAnswer; windowEnd: string };
 
 /**
- * The live-data caveat first, then what the statistics know about the same train or route, with
- * its attribution and, for an old file, until when it runs: the live data are missing, the usual
- * punctuality is not. Without figures the caveat stays alone.
+ * The live-data caveat first, then the `extra` sentences (the programmed run, where the live
+ * state is), then what the statistics know about the same train or route, with its attribution
+ * and, for an old file, until when it runs: the live data are missing, the usual punctuality is
+ * not. Without figures and extra sentences the caveat stays alone.
  */
 function withKnownPunctuality(
   input: HandlerInput,
   caveat: string,
   known: KnownPunctuality | undefined,
-  text: (value: string) => string
+  text: (value: string) => string,
+  extra: readonly string[] = []
 ): string {
-  if (!known) return caveat;
+  if (!known && !extra.length) return caveat;
   const locale = getAlexaLocale(input);
+  const head = [`${caveat}${SENTENCE_END[locale] ?? "."}`, ...extra];
+  if (!known) return joinSentences(head);
   const answer = withDataAge(known.build(text), locale, known.windowEnd, requestTime(input));
-  return answerText(locale, { ...answer, sentences: [`${caveat}${SENTENCE_END[locale] ?? "."}`, ...answer.sentences] });
+  return answerText(locale, { ...answer, sentences: [...head, ...answer.sentences] });
 }
 
 /**
@@ -754,6 +918,7 @@ export function createAlexaSkill() {
       stopHandler,
       sessionEndedHandler,
       nextTrainsHandler,
+      stationTrainsHandler,
       trainStatusHandler,
       myRoutesHandler,
       trainPunctualityHandler,
