@@ -1,11 +1,13 @@
 package it.binario.app.data
 
+import it.binario.app.shared.SharedData
+
 /** The share of the ticket price Regulation (EU) 2021/782, art. 19, sets for a delay at the final destination. */
 enum class CompensationShare(val percent: Int) {
     /** 60 to 119 minutes. */
-    QUARTER(25),
+    QUARTER(SharedData.DelayCompensation.QUARTER_PERCENT),
     /** 120 minutes or more. */
-    HALF(50)
+    HALF(SharedData.DelayCompensation.HALF_PERCENT)
 }
 
 /**
@@ -21,8 +23,9 @@ data class DelayCompensation(val stationName: String, val delayMinutes: Int, val
  * and nothing about the ticket, which the app does not know.
  */
 object DelayCompensationRule {
-    const val QUARTER_FROM_MINUTES = 60
-    const val HALF_FROM_MINUTES = 120
+    // contracts/shared-data/v1/delay-compensation-v1.json; the rule's cases are contracts/shared-rules/v1/delay-compensation-v1.json.
+    const val QUARTER_FROM_MINUTES = SharedData.DelayCompensation.QUARTER_FROM_MINUTES
+    const val HALF_FROM_MINUTES = SharedData.DelayCompensation.HALF_FROM_MINUTES
 
     fun of(service: TrainService, isDemonstration: Boolean): DelayCompensation? {
         if (isDemonstration || service.status == ServiceStatus.CANCELLED) return null

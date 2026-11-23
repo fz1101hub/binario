@@ -1,0 +1,1927 @@
+{
+  "schema": "binario-shared-rules-v1",
+  "description": "The map of trains in motion (maps/LiveTrainPositions.kt): a run's progress on its timetable at a minute of its service day, its estimated point on the straight line between two located stops, the live delay of the matching board row applied to the timetable, copies of one train merged, the nearest trains kept, the marker labels, and the area a map reads. Minutes count from the service day's midnight (24:00+ after midnight); times are railway-local (Europe/Rome). Positions are compared within 1e-9 degrees, fractions within 1e-9.",
+  "readers": [
+    "app/src/test/java/it/binario/app/maps/LiveTrainPositionsContractTest.kt",
+    "ios/BinarioKit/Tests/BinarioKitTests/LiveTrainPositionsContractTests.swift"
+  ],
+  "stops": [
+    {
+      "name": "Alfa",
+      "latitude": 45.0,
+      "longitude": 9.0,
+      "arrival": 600,
+      "departure": 600
+    },
+    {
+      "name": "Beta",
+      "latitude": 45.3,
+      "longitude": 9.3,
+      "arrival": 630,
+      "departure": 632
+    },
+    {
+      "name": "Gamma",
+      "latitude": 45.6,
+      "longitude": 9.6,
+      "arrival": 660,
+      "departure": 660
+    }
+  ],
+  "progress": [
+    {
+      "minute": 599.5,
+      "expected": {
+        "kind": "notStarted"
+      }
+    },
+    {
+      "minute": 600.0,
+      "expected": {
+        "kind": "atStop",
+        "stop": 0
+      }
+    },
+    {
+      "minute": 631.0,
+      "expected": {
+        "kind": "atStop",
+        "stop": 1
+      }
+    },
+    {
+      "minute": 660.0,
+      "expected": {
+        "kind": "atStop",
+        "stop": 2
+      }
+    },
+    {
+      "minute": 615.0,
+      "expected": {
+        "kind": "between",
+        "from": 0,
+        "to": 1,
+        "fraction": 0.5
+      }
+    },
+    {
+      "minute": 639.0,
+      "expected": {
+        "kind": "between",
+        "from": 1,
+        "to": 2,
+        "fraction": 0.25
+      }
+    },
+    {
+      "minute": 660.5,
+      "expected": {
+        "kind": "arrived"
+      }
+    }
+  ],
+  "positions": [
+    {
+      "stops": [
+        {
+          "name": "Alfa",
+          "latitude": 45.0,
+          "longitude": 9.0,
+          "arrival": 600,
+          "departure": 600
+        },
+        {
+          "name": "Beta",
+          "latitude": 45.3,
+          "longitude": 9.3,
+          "arrival": 630,
+          "departure": 632
+        },
+        {
+          "name": "Gamma",
+          "latitude": 45.6,
+          "longitude": 9.6,
+          "arrival": 660,
+          "departure": 660
+        }
+      ],
+      "minute": 599.5,
+      "expected": null
+    },
+    {
+      "stops": [
+        {
+          "name": "Alfa",
+          "latitude": 45.0,
+          "longitude": 9.0,
+          "arrival": 600,
+          "departure": 600
+        },
+        {
+          "name": "Beta",
+          "latitude": 45.3,
+          "longitude": 9.3,
+          "arrival": 630,
+          "departure": 632
+        },
+        {
+          "name": "Gamma",
+          "latitude": 45.6,
+          "longitude": 9.6,
+          "arrival": 660,
+          "departure": 660
+        }
+      ],
+      "minute": 600.0,
+      "expected": {
+        "latitude": 45.0,
+        "longitude": 9.0
+      }
+    },
+    {
+      "stops": [
+        {
+          "name": "Alfa",
+          "latitude": 45.0,
+          "longitude": 9.0,
+          "arrival": 600,
+          "departure": 600
+        },
+        {
+          "name": "Beta",
+          "latitude": 45.3,
+          "longitude": 9.3,
+          "arrival": 630,
+          "departure": 632
+        },
+        {
+          "name": "Gamma",
+          "latitude": 45.6,
+          "longitude": 9.6,
+          "arrival": 660,
+          "departure": 660
+        }
+      ],
+      "minute": 632.0,
+      "expected": {
+        "latitude": 45.3,
+        "longitude": 9.3
+      }
+    },
+    {
+      "stops": [
+        {
+          "name": "Alfa",
+          "latitude": 45.0,
+          "longitude": 9.0,
+          "arrival": 600,
+          "departure": 600
+        },
+        {
+          "name": "Beta",
+          "latitude": 45.3,
+          "longitude": 9.3,
+          "arrival": 630,
+          "departure": 632
+        },
+        {
+          "name": "Gamma",
+          "latitude": 45.6,
+          "longitude": 9.6,
+          "arrival": 660,
+          "departure": 660
+        }
+      ],
+      "minute": 615.0,
+      "expected": {
+        "latitude": 45.15,
+        "longitude": 9.15
+      }
+    },
+    {
+      "stops": [
+        {
+          "name": "Alfa",
+          "latitude": 45.0,
+          "longitude": 9.0,
+          "arrival": 600,
+          "departure": 600
+        },
+        {
+          "name": "Beta",
+          "latitude": 45.3,
+          "longitude": 9.3,
+          "arrival": 630,
+          "departure": 632
+        },
+        {
+          "name": "Gamma",
+          "latitude": 45.6,
+          "longitude": 9.6,
+          "arrival": 660,
+          "departure": 660
+        }
+      ],
+      "minute": 639.0,
+      "expected": {
+        "latitude": 45.375,
+        "longitude": 9.375
+      }
+    },
+    {
+      "stops": [
+        {
+          "name": "Alfa",
+          "latitude": 45.0,
+          "longitude": 9.0,
+          "arrival": 600,
+          "departure": 600
+        },
+        {
+          "name": "Beta",
+          "latitude": 45.3,
+          "longitude": 9.3,
+          "arrival": 630,
+          "departure": 632
+        },
+        {
+          "name": "Gamma",
+          "latitude": 45.6,
+          "longitude": 9.6,
+          "arrival": 660,
+          "departure": 660
+        }
+      ],
+      "minute": 700.0,
+      "expected": null
+    },
+    {
+      "name": "a stop without coordinates is bridged by its located neighbours",
+      "stops": [
+        {
+          "name": "Alfa",
+          "latitude": 45.0,
+          "longitude": 9.0,
+          "arrival": 600,
+          "departure": 600
+        },
+        {
+          "name": "Beta",
+          "latitude": null,
+          "longitude": null,
+          "arrival": 630,
+          "departure": 632
+        },
+        {
+          "name": "Gamma",
+          "latitude": 45.6,
+          "longitude": 9.6,
+          "arrival": 660,
+          "departure": 660
+        }
+      ],
+      "minute": 631.0,
+      "expected": {
+        "latitude": 45.31,
+        "longitude": 9.31
+      }
+    },
+    {
+      "name": "no located stop after the train",
+      "stops": [
+        {
+          "name": "Alfa",
+          "latitude": 45.0,
+          "longitude": 9.0,
+          "arrival": 600,
+          "departure": 600
+        },
+        {
+          "name": "Beta",
+          "latitude": null,
+          "longitude": null,
+          "arrival": 630,
+          "departure": 630
+        }
+      ],
+      "minute": 610.0,
+      "expected": null
+    }
+  ],
+  "minuteOfServiceDay": [
+    {
+      "serviceDate": "2026-11-04",
+      "now": "2026-11-05T00:05:00",
+      "expected": 1445.0
+    },
+    {
+      "serviceDate": "2026-11-04",
+      "now": "2026-11-04T10:15:30",
+      "expected": 615.5
+    }
+  ],
+  "runNumberKeys": [
+    {
+      "number": "2153",
+      "expected": "2153"
+    },
+    {
+      "number": "RE_11 - 2153",
+      "expected": "2153"
+    },
+    {
+      "number": "EC 85",
+      "expected": "85"
+    },
+    {
+      "number": "FR 09558",
+      "expected": "9558"
+    },
+    {
+      "number": "ABC",
+      "expected": "ABC"
+    },
+    {
+      "number": "123456789",
+      "expected": null
+    },
+    {
+      "number": " ",
+      "expected": null
+    }
+  ],
+  "selections": [
+    {
+      "name": "a live delay shifts the timetable",
+      "runs": [
+        {
+          "id": "pack:2153:2026-11-04",
+          "serviceDate": "2026-11-04",
+          "number": "2153",
+          "line": "REG",
+          "stops": [
+            {
+              "name": "Alfa",
+              "latitude": 45.0,
+              "longitude": 9.0,
+              "arrival": 600,
+              "departure": 600
+            },
+            {
+              "name": "Beta",
+              "latitude": 45.3,
+              "longitude": 9.3,
+              "arrival": 630,
+              "departure": 632
+            },
+            {
+              "name": "Gamma",
+              "latitude": 45.6,
+              "longitude": 9.6,
+              "arrival": 660,
+              "departure": 660
+            }
+          ],
+          "origin": null
+        }
+      ],
+      "observations": [
+        {
+          "number": "2153",
+          "scheduledAt": "2026-11-04T10:00",
+          "delayMinutes": 10,
+          "cancelled": false,
+          "ref": 3
+        }
+      ],
+      "now": "2026-11-04T10:25",
+      "bounds": {
+        "north": 60.0,
+        "south": 30.0,
+        "east": 20.0,
+        "west": 0.0
+      },
+      "focus": {
+        "name": "Alfa",
+        "latitude": 45.0,
+        "longitude": 9.0
+      },
+      "cap": null,
+      "expected": {
+        "trains": [
+          {
+            "id": "pack:2153:2026-11-04",
+            "latitude": 45.15,
+            "longitude": 9.15,
+            "delayMinutes": 10,
+            "ref": 3,
+            "progress": {
+              "kind": "between",
+              "from": 0,
+              "to": 1,
+              "fraction": 0.5
+            }
+          }
+        ],
+        "inBounds": 1
+      }
+    },
+    {
+      "name": "on time the run has arrived",
+      "runs": [
+        {
+          "id": "pack:2153:2026-11-04",
+          "serviceDate": "2026-11-04",
+          "number": "2153",
+          "line": "REG",
+          "stops": [
+            {
+              "name": "Alfa",
+              "latitude": 45.0,
+              "longitude": 9.0,
+              "arrival": 600,
+              "departure": 600
+            },
+            {
+              "name": "Beta",
+              "latitude": 45.3,
+              "longitude": 9.3,
+              "arrival": 630,
+              "departure": 632
+            },
+            {
+              "name": "Gamma",
+              "latitude": 45.6,
+              "longitude": 9.6,
+              "arrival": 660,
+              "departure": 660
+            }
+          ],
+          "origin": null
+        }
+      ],
+      "observations": [],
+      "now": "2026-11-04T11:05",
+      "bounds": {
+        "north": 60.0,
+        "south": 30.0,
+        "east": 20.0,
+        "west": 0.0
+      },
+      "focus": {
+        "name": "Alfa",
+        "latitude": 45.0,
+        "longitude": 9.0
+      },
+      "cap": null,
+      "expected": {
+        "trains": [],
+        "inBounds": 0
+      }
+    },
+    {
+      "name": "ten minutes late it is still before the last stop",
+      "runs": [
+        {
+          "id": "pack:2153:2026-11-04",
+          "serviceDate": "2026-11-04",
+          "number": "2153",
+          "line": "REG",
+          "stops": [
+            {
+              "name": "Alfa",
+              "latitude": 45.0,
+              "longitude": 9.0,
+              "arrival": 600,
+              "departure": 600
+            },
+            {
+              "name": "Beta",
+              "latitude": 45.3,
+              "longitude": 9.3,
+              "arrival": 630,
+              "departure": 632
+            },
+            {
+              "name": "Gamma",
+              "latitude": 45.6,
+              "longitude": 9.6,
+              "arrival": 660,
+              "departure": 660
+            }
+          ],
+          "origin": null
+        }
+      ],
+      "observations": [
+        {
+          "number": "2153",
+          "scheduledAt": "2026-11-04T10:00",
+          "delayMinutes": 10,
+          "cancelled": false,
+          "ref": 3
+        }
+      ],
+      "now": "2026-11-04T11:05",
+      "bounds": {
+        "north": 60.0,
+        "south": 30.0,
+        "east": 20.0,
+        "west": 0.0
+      },
+      "focus": {
+        "name": "Alfa",
+        "latitude": 45.0,
+        "longitude": 9.0
+      },
+      "cap": null,
+      "expected": {
+        "trains": [
+          {
+            "id": "pack:2153:2026-11-04",
+            "latitude": 45.54642857142857,
+            "longitude": 9.546428571428573,
+            "delayMinutes": 10,
+            "ref": 3,
+            "progress": {
+              "kind": "between",
+              "from": 1,
+              "to": 2,
+              "fraction": 0.8214285714285714
+            }
+          }
+        ],
+        "inBounds": 1
+      }
+    },
+    {
+      "name": "a delayed run that has not left yet is not drawn",
+      "runs": [
+        {
+          "id": "pack:2153:2026-11-04",
+          "serviceDate": "2026-11-04",
+          "number": "2153",
+          "line": "REG",
+          "stops": [
+            {
+              "name": "Alfa",
+              "latitude": 45.0,
+              "longitude": 9.0,
+              "arrival": 600,
+              "departure": 600
+            },
+            {
+              "name": "Beta",
+              "latitude": 45.3,
+              "longitude": 9.3,
+              "arrival": 630,
+              "departure": 632
+            },
+            {
+              "name": "Gamma",
+              "latitude": 45.6,
+              "longitude": 9.6,
+              "arrival": 660,
+              "departure": 660
+            }
+          ],
+          "origin": null
+        }
+      ],
+      "observations": [
+        {
+          "number": "2153",
+          "scheduledAt": "2026-11-04T10:00",
+          "delayMinutes": 10,
+          "cancelled": false,
+          "ref": 3
+        }
+      ],
+      "now": "2026-11-04T10:05",
+      "bounds": {
+        "north": 60.0,
+        "south": 30.0,
+        "east": 20.0,
+        "west": 0.0
+      },
+      "focus": {
+        "name": "Alfa",
+        "latitude": 45.0,
+        "longitude": 9.0
+      },
+      "cap": null,
+      "expected": {
+        "trains": [],
+        "inBounds": 0
+      }
+    },
+    {
+      "name": "without a delay the timetable alone",
+      "runs": [
+        {
+          "id": "pack:2153:2026-11-04",
+          "serviceDate": "2026-11-04",
+          "number": "2153",
+          "line": "REG",
+          "stops": [
+            {
+              "name": "Alfa",
+              "latitude": 45.0,
+              "longitude": 9.0,
+              "arrival": 600,
+              "departure": 600
+            },
+            {
+              "name": "Beta",
+              "latitude": 45.3,
+              "longitude": 9.3,
+              "arrival": 630,
+              "departure": 632
+            },
+            {
+              "name": "Gamma",
+              "latitude": 45.6,
+              "longitude": 9.6,
+              "arrival": 660,
+              "departure": 660
+            }
+          ],
+          "origin": null
+        }
+      ],
+      "observations": [
+        {
+          "number": "2153",
+          "scheduledAt": "2026-11-04T10:00",
+          "delayMinutes": null,
+          "cancelled": false,
+          "ref": 0
+        }
+      ],
+      "now": "2026-11-04T10:15",
+      "bounds": {
+        "north": 60.0,
+        "south": 30.0,
+        "east": 20.0,
+        "west": 0.0
+      },
+      "focus": {
+        "name": "Alfa",
+        "latitude": 45.0,
+        "longitude": 9.0
+      },
+      "cap": null,
+      "expected": {
+        "trains": [
+          {
+            "id": "pack:2153:2026-11-04",
+            "latitude": 45.15,
+            "longitude": 9.15,
+            "delayMinutes": null,
+            "ref": 0,
+            "progress": {
+              "kind": "between",
+              "from": 0,
+              "to": 1,
+              "fraction": 0.5
+            }
+          }
+        ],
+        "inBounds": 1
+      }
+    },
+    {
+      "name": "yesterday's observation of the same number is not this run's",
+      "runs": [
+        {
+          "id": "pack:2153:2026-11-04",
+          "serviceDate": "2026-11-04",
+          "number": "2153",
+          "line": "REG",
+          "stops": [
+            {
+              "name": "Alfa",
+              "latitude": 45.0,
+              "longitude": 9.0,
+              "arrival": 600,
+              "departure": 600
+            },
+            {
+              "name": "Beta",
+              "latitude": 45.3,
+              "longitude": 9.3,
+              "arrival": 630,
+              "departure": 632
+            },
+            {
+              "name": "Gamma",
+              "latitude": 45.6,
+              "longitude": 9.6,
+              "arrival": 660,
+              "departure": 660
+            }
+          ],
+          "origin": null
+        }
+      ],
+      "observations": [
+        {
+          "number": "2153",
+          "scheduledAt": "2026-11-03T10:00",
+          "delayMinutes": 30,
+          "cancelled": false,
+          "ref": 7
+        }
+      ],
+      "now": "2026-11-04T10:15",
+      "bounds": {
+        "north": 60.0,
+        "south": 30.0,
+        "east": 20.0,
+        "west": 0.0
+      },
+      "focus": {
+        "name": "Alfa",
+        "latitude": 45.0,
+        "longitude": 9.0
+      },
+      "cap": null,
+      "expected": {
+        "trains": [
+          {
+            "id": "pack:2153:2026-11-04",
+            "latitude": 45.15,
+            "longitude": 9.15,
+            "delayMinutes": null,
+            "ref": null,
+            "progress": {
+              "kind": "between",
+              "from": 0,
+              "to": 1,
+              "fraction": 0.5
+            }
+          }
+        ],
+        "inBounds": 1
+      }
+    },
+    {
+      "name": "a cancelled run is not drawn",
+      "runs": [
+        {
+          "id": "pack:2153:2026-11-04",
+          "serviceDate": "2026-11-04",
+          "number": "2153",
+          "line": "REG",
+          "stops": [
+            {
+              "name": "Alfa",
+              "latitude": 45.0,
+              "longitude": 9.0,
+              "arrival": 600,
+              "departure": 600
+            },
+            {
+              "name": "Beta",
+              "latitude": 45.3,
+              "longitude": 9.3,
+              "arrival": 630,
+              "departure": 632
+            },
+            {
+              "name": "Gamma",
+              "latitude": 45.6,
+              "longitude": 9.6,
+              "arrival": 660,
+              "departure": 660
+            }
+          ],
+          "origin": null
+        }
+      ],
+      "observations": [
+        {
+          "number": "2153",
+          "scheduledAt": "2026-11-04T10:00",
+          "delayMinutes": null,
+          "cancelled": true,
+          "ref": -1
+        }
+      ],
+      "now": "2026-11-04T10:15",
+      "bounds": {
+        "north": 60.0,
+        "south": 30.0,
+        "east": 20.0,
+        "west": 0.0
+      },
+      "focus": {
+        "name": "Alfa",
+        "latitude": 45.0,
+        "longitude": 9.0
+      },
+      "cap": null,
+      "expected": {
+        "trains": [],
+        "inBounds": 0
+      }
+    },
+    {
+      "name": "Trenord's RE_11 - 2153 is the timetable's 2153",
+      "runs": [
+        {
+          "id": "pack:2153:2026-11-04",
+          "serviceDate": "2026-11-04",
+          "number": "2153",
+          "line": "REG",
+          "stops": [
+            {
+              "name": "Alfa",
+              "latitude": 45.0,
+              "longitude": 9.0,
+              "arrival": 600,
+              "departure": 600
+            },
+            {
+              "name": "Beta",
+              "latitude": 45.3,
+              "longitude": 9.3,
+              "arrival": 630,
+              "departure": 632
+            },
+            {
+              "name": "Gamma",
+              "latitude": 45.6,
+              "longitude": 9.6,
+              "arrival": 660,
+              "departure": 660
+            }
+          ],
+          "origin": null
+        }
+      ],
+      "observations": [
+        {
+          "number": "RE_11 - 2153",
+          "scheduledAt": "2026-11-04T10:00",
+          "delayMinutes": 4,
+          "cancelled": false,
+          "ref": 1
+        }
+      ],
+      "now": "2026-11-04T10:15",
+      "bounds": {
+        "north": 60.0,
+        "south": 30.0,
+        "east": 20.0,
+        "west": 0.0
+      },
+      "focus": {
+        "name": "Alfa",
+        "latitude": 45.0,
+        "longitude": 9.0
+      },
+      "cap": null,
+      "expected": {
+        "trains": [
+          {
+            "id": "pack:2153:2026-11-04",
+            "latitude": 45.11,
+            "longitude": 9.11,
+            "delayMinutes": 4,
+            "ref": 1,
+            "progress": {
+              "kind": "between",
+              "from": 0,
+              "to": 1,
+              "fraction": 0.36666666666666664
+            }
+          }
+        ],
+        "inBounds": 1
+      }
+    },
+    {
+      "name": "a delay beyond the timetable window is not applied",
+      "runs": [
+        {
+          "id": "pack:2153:2026-11-04",
+          "serviceDate": "2026-11-04",
+          "number": "2153",
+          "line": "REG",
+          "stops": [
+            {
+              "name": "Alfa",
+              "latitude": 45.0,
+              "longitude": 9.0,
+              "arrival": 600,
+              "departure": 600
+            },
+            {
+              "name": "Beta",
+              "latitude": 45.3,
+              "longitude": 9.3,
+              "arrival": 630,
+              "departure": 632
+            },
+            {
+              "name": "Gamma",
+              "latitude": 45.6,
+              "longitude": 9.6,
+              "arrival": 660,
+              "departure": 660
+            }
+          ],
+          "origin": null
+        }
+      ],
+      "observations": [
+        {
+          "number": "2153",
+          "scheduledAt": "2026-11-04T10:00",
+          "delayMinutes": 900,
+          "cancelled": false,
+          "ref": 2
+        }
+      ],
+      "now": "2026-11-04T10:15",
+      "bounds": {
+        "north": 60.0,
+        "south": 30.0,
+        "east": 20.0,
+        "west": 0.0
+      },
+      "focus": {
+        "name": "Alfa",
+        "latitude": 45.0,
+        "longitude": 9.0
+      },
+      "cap": null,
+      "expected": {
+        "trains": [
+          {
+            "id": "pack:2153:2026-11-04",
+            "latitude": 45.15,
+            "longitude": 9.15,
+            "delayMinutes": null,
+            "ref": 2,
+            "progress": {
+              "kind": "between",
+              "from": 0,
+              "to": 1,
+              "fraction": 0.5
+            }
+          }
+        ],
+        "inBounds": 1
+      }
+    },
+    {
+      "name": "south of the visible area",
+      "runs": [
+        {
+          "id": "pack:2153:2026-11-04",
+          "serviceDate": "2026-11-04",
+          "number": "2153",
+          "line": "REG",
+          "stops": [
+            {
+              "name": "Alfa",
+              "latitude": 45.0,
+              "longitude": 9.0,
+              "arrival": 600,
+              "departure": 600
+            },
+            {
+              "name": "Beta",
+              "latitude": 45.3,
+              "longitude": 9.3,
+              "arrival": 630,
+              "departure": 632
+            },
+            {
+              "name": "Gamma",
+              "latitude": 45.6,
+              "longitude": 9.6,
+              "arrival": 660,
+              "departure": 660
+            }
+          ],
+          "origin": null
+        }
+      ],
+      "observations": [],
+      "now": "2026-11-04T10:15",
+      "bounds": {
+        "north": 45.4,
+        "south": 45.2,
+        "east": 9.4,
+        "west": 9.2
+      },
+      "focus": {
+        "name": "Beta",
+        "latitude": 45.3,
+        "longitude": 9.3
+      },
+      "cap": null,
+      "expected": {
+        "trains": [],
+        "inBounds": 0
+      }
+    },
+    {
+      "name": "at Beta, inside the visible area",
+      "runs": [
+        {
+          "id": "pack:2153:2026-11-04",
+          "serviceDate": "2026-11-04",
+          "number": "2153",
+          "line": "REG",
+          "stops": [
+            {
+              "name": "Alfa",
+              "latitude": 45.0,
+              "longitude": 9.0,
+              "arrival": 600,
+              "departure": 600
+            },
+            {
+              "name": "Beta",
+              "latitude": 45.3,
+              "longitude": 9.3,
+              "arrival": 630,
+              "departure": 632
+            },
+            {
+              "name": "Gamma",
+              "latitude": 45.6,
+              "longitude": 9.6,
+              "arrival": 660,
+              "departure": 660
+            }
+          ],
+          "origin": null
+        }
+      ],
+      "observations": [],
+      "now": "2026-11-04T10:31",
+      "bounds": {
+        "north": 45.4,
+        "south": 45.2,
+        "east": 9.4,
+        "west": 9.2
+      },
+      "focus": {
+        "name": "Beta",
+        "latitude": 45.3,
+        "longitude": 9.3
+      },
+      "cap": null,
+      "expected": {
+        "trains": [
+          {
+            "id": "pack:2153:2026-11-04",
+            "latitude": 45.3,
+            "longitude": 9.3,
+            "delayMinutes": null,
+            "ref": null,
+            "progress": {
+              "kind": "atStop",
+              "stop": 1
+            }
+          }
+        ],
+        "inBounds": 1
+      }
+    },
+    {
+      "name": "the nearest trains up to the cap",
+      "runs": [
+        {
+          "id": "pack:100:2026-11-04",
+          "serviceDate": "2026-11-04",
+          "number": "100",
+          "line": "REG",
+          "stops": [
+            {
+              "name": "Alfa",
+              "latitude": 45.0,
+              "longitude": 9.0,
+              "arrival": 600,
+              "departure": 600
+            },
+            {
+              "name": "Gamma",
+              "latitude": 45.6,
+              "longitude": 9.6,
+              "arrival": 660,
+              "departure": 660
+            }
+          ],
+          "origin": null
+        },
+        {
+          "id": "pack:101:2026-11-04",
+          "serviceDate": "2026-11-04",
+          "number": "101",
+          "line": "REG",
+          "stops": [
+            {
+              "name": "Alfa",
+              "latitude": 45.0,
+              "longitude": 9.0,
+              "arrival": 601,
+              "departure": 601
+            },
+            {
+              "name": "Gamma",
+              "latitude": 45.6,
+              "longitude": 9.6,
+              "arrival": 661,
+              "departure": 661
+            }
+          ],
+          "origin": null
+        },
+        {
+          "id": "pack:102:2026-11-04",
+          "serviceDate": "2026-11-04",
+          "number": "102",
+          "line": "REG",
+          "stops": [
+            {
+              "name": "Alfa",
+              "latitude": 45.0,
+              "longitude": 9.0,
+              "arrival": 602,
+              "departure": 602
+            },
+            {
+              "name": "Gamma",
+              "latitude": 45.6,
+              "longitude": 9.6,
+              "arrival": 662,
+              "departure": 662
+            }
+          ],
+          "origin": null
+        },
+        {
+          "id": "pack:103:2026-11-04",
+          "serviceDate": "2026-11-04",
+          "number": "103",
+          "line": "REG",
+          "stops": [
+            {
+              "name": "Alfa",
+              "latitude": 45.0,
+              "longitude": 9.0,
+              "arrival": 603,
+              "departure": 603
+            },
+            {
+              "name": "Gamma",
+              "latitude": 45.6,
+              "longitude": 9.6,
+              "arrival": 663,
+              "departure": 663
+            }
+          ],
+          "origin": null
+        },
+        {
+          "id": "pack:104:2026-11-04",
+          "serviceDate": "2026-11-04",
+          "number": "104",
+          "line": "REG",
+          "stops": [
+            {
+              "name": "Alfa",
+              "latitude": 45.0,
+              "longitude": 9.0,
+              "arrival": 604,
+              "departure": 604
+            },
+            {
+              "name": "Gamma",
+              "latitude": 45.6,
+              "longitude": 9.6,
+              "arrival": 664,
+              "departure": 664
+            }
+          ],
+          "origin": null
+        }
+      ],
+      "observations": [],
+      "now": "2026-11-04T10:10",
+      "bounds": {
+        "north": 60.0,
+        "south": 30.0,
+        "east": 20.0,
+        "west": 0.0
+      },
+      "focus": {
+        "name": "Alfa",
+        "latitude": 45.0,
+        "longitude": 9.0
+      },
+      "cap": 3,
+      "expected": {
+        "trains": [
+          {
+            "id": "pack:104:2026-11-04",
+            "latitude": 45.06,
+            "longitude": 9.06,
+            "delayMinutes": null,
+            "ref": null,
+            "progress": {
+              "kind": "between",
+              "from": 0,
+              "to": 1,
+              "fraction": 0.1
+            }
+          },
+          {
+            "id": "pack:103:2026-11-04",
+            "latitude": 45.07,
+            "longitude": 9.07,
+            "delayMinutes": null,
+            "ref": null,
+            "progress": {
+              "kind": "between",
+              "from": 0,
+              "to": 1,
+              "fraction": 0.11666666666666667
+            }
+          },
+          {
+            "id": "pack:102:2026-11-04",
+            "latitude": 45.08,
+            "longitude": 9.08,
+            "delayMinutes": null,
+            "ref": null,
+            "progress": {
+              "kind": "between",
+              "from": 0,
+              "to": 1,
+              "fraction": 0.13333333333333333
+            }
+          }
+        ],
+        "inBounds": 5
+      }
+    },
+    {
+      "name": "two packs' copies of one train are drawn once",
+      "runs": [
+        {
+          "id": "pack:2153:2026-11-04",
+          "serviceDate": "2026-11-04",
+          "number": "2153",
+          "line": "REG",
+          "stops": [
+            {
+              "name": "Alfa",
+              "latitude": 45.0,
+              "longitude": 9.0,
+              "arrival": 600,
+              "departure": 600
+            },
+            {
+              "name": "Beta",
+              "latitude": 45.3,
+              "longitude": 9.3,
+              "arrival": 630,
+              "departure": 632
+            },
+            {
+              "name": "Gamma",
+              "latitude": 45.6,
+              "longitude": 9.6,
+              "arrival": 660,
+              "departure": 660
+            }
+          ],
+          "origin": null
+        },
+        {
+          "id": "other-pack:2153:2026-11-04",
+          "serviceDate": "2026-11-04",
+          "number": "2153",
+          "line": "REG",
+          "stops": [
+            {
+              "name": "Alfa",
+              "latitude": 45.0,
+              "longitude": 9.0,
+              "arrival": 600,
+              "departure": 600
+            },
+            {
+              "name": "Beta",
+              "latitude": 45.3,
+              "longitude": 9.3,
+              "arrival": 630,
+              "departure": 632
+            },
+            {
+              "name": "Gamma",
+              "latitude": 45.6,
+              "longitude": 9.6,
+              "arrival": 660,
+              "departure": 660
+            }
+          ],
+          "origin": null
+        }
+      ],
+      "observations": [
+        {
+          "number": "2153",
+          "scheduledAt": "2026-11-04T10:00",
+          "delayMinutes": 0,
+          "cancelled": false,
+          "ref": 0
+        }
+      ],
+      "now": "2026-11-04T10:15",
+      "bounds": {
+        "north": 60.0,
+        "south": 30.0,
+        "east": 20.0,
+        "west": 0.0
+      },
+      "focus": {
+        "name": "Alfa",
+        "latitude": 45.0,
+        "longitude": 9.0
+      },
+      "cap": null,
+      "expected": {
+        "trains": [
+          {
+            "id": "other-pack:2153:2026-11-04",
+            "latitude": 45.15,
+            "longitude": 9.15,
+            "delayMinutes": 0,
+            "ref": 0,
+            "progress": {
+              "kind": "between",
+              "from": 0,
+              "to": 1,
+              "fraction": 0.5
+            }
+          }
+        ],
+        "inBounds": 1
+      }
+    },
+    {
+      "name": "two trains with one number far apart both stay",
+      "runs": [
+        {
+          "id": "pack:2153:2026-11-04",
+          "serviceDate": "2026-11-04",
+          "number": "2153",
+          "line": "REG",
+          "stops": [
+            {
+              "name": "Alfa",
+              "latitude": 45.0,
+              "longitude": 9.0,
+              "arrival": 600,
+              "departure": 600
+            },
+            {
+              "name": "Beta",
+              "latitude": 45.3,
+              "longitude": 9.3,
+              "arrival": 630,
+              "departure": 632
+            },
+            {
+              "name": "Gamma",
+              "latitude": 45.6,
+              "longitude": 9.6,
+              "arrival": 660,
+              "departure": 660
+            }
+          ],
+          "origin": null
+        },
+        {
+          "id": "far:2153:2026-11-04",
+          "serviceDate": "2026-11-04",
+          "number": "2153",
+          "line": "REG",
+          "stops": [
+            {
+              "name": "Alfa",
+              "latitude": 40.0,
+              "longitude": 9.0,
+              "arrival": 600,
+              "departure": 600
+            },
+            {
+              "name": "Beta",
+              "latitude": 40.3,
+              "longitude": 9.3,
+              "arrival": 630,
+              "departure": 632
+            },
+            {
+              "name": "Gamma",
+              "latitude": 40.6,
+              "longitude": 9.6,
+              "arrival": 660,
+              "departure": 660
+            }
+          ],
+          "origin": null
+        }
+      ],
+      "observations": [],
+      "now": "2026-11-04T10:15",
+      "bounds": {
+        "north": 60.0,
+        "south": 30.0,
+        "east": 20.0,
+        "west": 0.0
+      },
+      "focus": {
+        "name": "Alfa",
+        "latitude": 45.0,
+        "longitude": 9.0
+      },
+      "cap": null,
+      "expected": {
+        "trains": [
+          {
+            "id": "pack:2153:2026-11-04",
+            "latitude": 45.15,
+            "longitude": 9.15,
+            "delayMinutes": null,
+            "ref": null,
+            "progress": {
+              "kind": "between",
+              "from": 0,
+              "to": 1,
+              "fraction": 0.5
+            }
+          },
+          {
+            "id": "far:2153:2026-11-04",
+            "latitude": 40.15,
+            "longitude": 9.15,
+            "delayMinutes": null,
+            "ref": null,
+            "progress": {
+              "kind": "between",
+              "from": 0,
+              "to": 1,
+              "fraction": 0.5
+            }
+          }
+        ],
+        "inBounds": 2
+      }
+    },
+    {
+      "name": "a run of yesterday's service day keeps moving after midnight",
+      "runs": [
+        {
+          "id": "pack:1959:2026-11-04",
+          "serviceDate": "2026-11-04",
+          "number": "1959",
+          "line": "REG",
+          "stops": [
+            {
+              "name": "Alfa",
+              "latitude": 45.0,
+              "longitude": 9.0,
+              "arrival": 1430,
+              "departure": 1430
+            },
+            {
+              "name": "Gamma",
+              "latitude": 45.6,
+              "longitude": 9.6,
+              "arrival": 1460,
+              "departure": 1460
+            }
+          ],
+          "origin": null
+        }
+      ],
+      "observations": [],
+      "now": "2026-11-05T00:05",
+      "bounds": {
+        "north": 60.0,
+        "south": 30.0,
+        "east": 20.0,
+        "west": 0.0
+      },
+      "focus": {
+        "name": "Alfa",
+        "latitude": 45.0,
+        "longitude": 9.0
+      },
+      "cap": null,
+      "expected": {
+        "trains": [
+          {
+            "id": "pack:1959:2026-11-04",
+            "latitude": 45.3,
+            "longitude": 9.3,
+            "delayMinutes": null,
+            "ref": null,
+            "progress": {
+              "kind": "between",
+              "from": 0,
+              "to": 1,
+              "fraction": 0.5
+            }
+          }
+        ],
+        "inBounds": 1
+      }
+    },
+    {
+      "name": "a run of the new service day leaving at 00:30 has not started",
+      "runs": [
+        {
+          "id": "pack:1961:2026-11-05",
+          "serviceDate": "2026-11-05",
+          "number": "1961",
+          "line": "REG",
+          "stops": [
+            {
+              "name": "Alfa",
+              "latitude": 45.0,
+              "longitude": 9.0,
+              "arrival": 30,
+              "departure": 30
+            },
+            {
+              "name": "Gamma",
+              "latitude": 45.6,
+              "longitude": 9.6,
+              "arrival": 60,
+              "departure": 60
+            }
+          ],
+          "origin": null
+        }
+      ],
+      "observations": [],
+      "now": "2026-11-05T00:05",
+      "bounds": {
+        "north": 60.0,
+        "south": 30.0,
+        "east": 20.0,
+        "west": 0.0
+      },
+      "focus": {
+        "name": "Alfa",
+        "latitude": 45.0,
+        "longitude": 9.0
+      },
+      "cap": null,
+      "expected": {
+        "trains": [],
+        "inBounds": 0
+      }
+    },
+    {
+      "name": "a night train read from the evening is matched from its true origin",
+      "runs": [
+        {
+          "id": "pack:1951:2026-11-04",
+          "serviceDate": "2026-11-04",
+          "number": "1951",
+          "line": "REG",
+          "stops": [
+            {
+              "name": "Beta",
+              "latitude": 45.3,
+              "longitude": 9.3,
+              "arrival": 1230,
+              "departure": 1230
+            },
+            {
+              "name": "Gamma",
+              "latitude": 45.6,
+              "longitude": 9.6,
+              "arrival": 1320,
+              "departure": 1320
+            }
+          ],
+          "origin": {
+            "name": "Alfa",
+            "departure": 1140
+          }
+        }
+      ],
+      "observations": [
+        {
+          "number": "1951",
+          "scheduledAt": "2026-11-04T19:00",
+          "delayMinutes": 6,
+          "cancelled": false,
+          "ref": 0
+        }
+      ],
+      "now": "2026-11-04T21:00",
+      "bounds": {
+        "north": 60.0,
+        "south": 30.0,
+        "east": 20.0,
+        "west": 0.0
+      },
+      "focus": {
+        "name": "Alfa",
+        "latitude": 45.0,
+        "longitude": 9.0
+      },
+      "cap": null,
+      "expected": {
+        "trains": [
+          {
+            "id": "pack:1951:2026-11-04",
+            "latitude": 45.379999999999995,
+            "longitude": 9.38,
+            "delayMinutes": 6,
+            "ref": 0,
+            "progress": {
+              "kind": "between",
+              "from": 0,
+              "to": 1,
+              "fraction": 0.26666666666666666
+            }
+          }
+        ],
+        "inBounds": 1
+      }
+    },
+    {
+      "name": "without its origin an observation from before the run's span is not its own",
+      "runs": [
+        {
+          "id": "pack:1951:2026-11-04",
+          "serviceDate": "2026-11-04",
+          "number": "1951",
+          "line": "REG",
+          "stops": [
+            {
+              "name": "Beta",
+              "latitude": 45.3,
+              "longitude": 9.3,
+              "arrival": 1230,
+              "departure": 1230
+            },
+            {
+              "name": "Gamma",
+              "latitude": 45.6,
+              "longitude": 9.6,
+              "arrival": 1320,
+              "departure": 1320
+            }
+          ],
+          "origin": null
+        }
+      ],
+      "observations": [
+        {
+          "number": "1951",
+          "scheduledAt": "2026-11-04T19:00",
+          "delayMinutes": 6,
+          "cancelled": false,
+          "ref": 0
+        }
+      ],
+      "now": "2026-11-04T21:00",
+      "bounds": {
+        "north": 60.0,
+        "south": 30.0,
+        "east": 20.0,
+        "west": 0.0
+      },
+      "focus": {
+        "name": "Alfa",
+        "latitude": 45.0,
+        "longitude": 9.0
+      },
+      "cap": null,
+      "expected": {
+        "trains": [
+          {
+            "id": "pack:1951:2026-11-04",
+            "latitude": 45.4,
+            "longitude": 9.4,
+            "delayMinutes": null,
+            "ref": null,
+            "progress": {
+              "kind": "between",
+              "from": 0,
+              "to": 1,
+              "fraction": 0.3333333333333333
+            }
+          }
+        ],
+        "inBounds": 1
+      }
+    }
+  ],
+  "markers": [
+    {
+      "line": "REG",
+      "number": "2153",
+      "delayMinutes": 5,
+      "expected": "REG 2153 +5'"
+    },
+    {
+      "line": "REG",
+      "number": "2153",
+      "delayMinutes": 0,
+      "expected": "REG 2153 0'"
+    },
+    {
+      "line": "REG",
+      "number": "2153",
+      "delayMinutes": -2,
+      "expected": "REG 2153 -2'"
+    },
+    {
+      "line": "REG",
+      "number": "2153",
+      "delayMinutes": null,
+      "expected": "REG 2153"
+    },
+    {
+      "line": "RE11",
+      "number": "2153",
+      "delayMinutes": null,
+      "expected": "RE11 2153"
+    },
+    {
+      "line": "2153",
+      "number": "2153",
+      "delayMinutes": null,
+      "expected": "2153"
+    },
+    {
+      "line": null,
+      "number": "2153",
+      "delayMinutes": 12,
+      "expected": "2153 +12'"
+    },
+    {
+      "line": "REGIONALE",
+      "number": "2153",
+      "delayMinutes": null,
+      "expected": "2153"
+    }
+  ],
+  "areas": {
+    "around": [
+      {
+        "latitude": 45.4864,
+        "longitude": 9.2042,
+        "expected": {
+          "north": 45.62114667624866,
+          "south": 45.35165332375135,
+          "east": 9.396399115481143,
+          "west": 9.012000884518857
+        }
+      }
+    ],
+    "routes": [
+      {
+        "origin": {
+          "name": "Alfa",
+          "latitude": 45.0,
+          "longitude": 9.0
+        },
+        "destination": {
+          "name": "Gamma",
+          "latitude": 45.6,
+          "longitude": 9.6
+        },
+        "expected": {
+          "north": 45.72,
+          "south": 44.88,
+          "east": 9.719999999999999,
+          "west": 8.88
+        }
+      }
+    ],
+    "tooWide": [
+      {
+        "bounds": {
+          "north": 45.62114667624866,
+          "south": 45.35165332375135,
+          "east": 9.396399115481143,
+          "west": 9.012000884518857
+        },
+        "expected": false
+      },
+      {
+        "bounds": {
+          "north": 47.0,
+          "south": 44.0,
+          "east": 12.0,
+          "west": 8.0
+        },
+        "expected": true
+      },
+      {
+        "bounds": {
+          "north": 45.5,
+          "south": 45.0,
+          "east": 11.0,
+          "west": 9.0
+        },
+        "expected": true
+      }
+    ],
+    "readAreas": [
+      {
+        "visible": {
+          "north": 45.62114667624866,
+          "south": 45.35165332375135,
+          "east": 9.396399115481143,
+          "west": 9.012000884518857
+        },
+        "expected": {
+          "north": 46.0,
+          "south": 45.0,
+          "east": 9.75,
+          "west": 8.75
+        }
+      }
+    ],
+    "covers": [
+      {
+        "read": {
+          "north": 46.0,
+          "south": 45.0,
+          "east": 9.75,
+          "west": 8.75
+        },
+        "visible": {
+          "north": 45.62114667624866,
+          "south": 45.35165332375135,
+          "east": 9.396399115481143,
+          "west": 9.012000884518857
+        },
+        "expected": true
+      },
+      {
+        "read": {
+          "north": 46.0,
+          "south": 45.0,
+          "east": 9.75,
+          "west": 8.75
+        },
+        "visible": {
+          "north": 45.671146676248654,
+          "south": 45.40165332375135,
+          "east": 9.396399115481143,
+          "west": 9.012000884518857
+        },
+        "expected": true
+      },
+      {
+        "read": {
+          "north": 46.0,
+          "south": 45.0,
+          "east": 9.75,
+          "west": 8.75
+        },
+        "visible": {
+          "north": 46.62114667624866,
+          "south": 46.35165332375135,
+          "east": 9.396399115481143,
+          "west": 9.012000884518857
+        },
+        "expected": false
+      }
+    ]
+  },
+  "slots": [
+    {
+      "now": "2026-11-04T10:29:59",
+      "expected": "2026-11-04T10:15:00"
+    },
+    {
+      "now": "2026-11-04T00:14:00",
+      "expected": "2026-11-04T00:00:00"
+    },
+    {
+      "now": "2026-11-04T23:45:00",
+      "expected": "2026-11-04T23:45:00"
+    }
+  ]
+}

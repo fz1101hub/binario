@@ -1,6 +1,17 @@
 package it.binario.app.shared
 
 import it.binario.app.data.AirportRoutes
+import it.binario.app.data.CompensationShare
+import it.binario.app.data.DelayCompensationRule
+import it.binario.app.data.bikesharing.BikeSharingService
+import it.binario.app.data.bikesharing.BikeSharingSystems
+import it.binario.app.data.journey.ScheduledRunRequest
+import it.binario.app.data.weather.OpenMeteoForecastAdapter
+import it.binario.app.maps.LiveTrainAreas
+import it.binario.app.maps.LiveTrainRefresh
+import it.binario.app.maps.LiveTrainSelector
+import it.binario.app.notifications.RouteWorksAlertPlanner
+import it.binario.app.notifications.StrikeReminderPlanner
 import it.binario.app.data.core.SourceId
 import it.binario.app.data.gtfs.EmbeddedGtfsPacks
 import it.binario.app.data.gtfs.ItaloGtfsStationCodes
@@ -322,5 +333,72 @@ class SharedDataTest {
         assertEquals(display.getInt("bodyCollapsedCharacters"), SharedData.NoticesSources.DISPLAY.bodyCollapsedCharacters)
         assertEquals(display.getInt("maximumLineCodes"), SharedData.NoticesSources.DISPLAY.maximumLineCodes)
         assertEquals(display.getInt("worksCollapsed"), SharedData.NoticesSources.DISPLAY.worksCollapsed)
+    }
+
+    @Test fun `the delay compensation thresholds are the shared table`() {
+        val json = table("delay-compensation-v1.json")
+        assertEquals(json.getInt("quarterFromMinutes"), DelayCompensationRule.QUARTER_FROM_MINUTES)
+        assertEquals(json.getInt("halfFromMinutes"), DelayCompensationRule.HALF_FROM_MINUTES)
+        assertEquals(json.getInt("quarterPercent"), CompensationShare.QUARTER.percent)
+        assertEquals(json.getInt("halfPercent"), CompensationShare.HALF.percent)
+    }
+
+    @Test fun `the destination weather source is the shared table`() {
+        val json = table("destination-weather-v1.json")
+        assertEquals(json.getString("forecastUrl"), SharedData.DestinationWeather.FORECAST_URL)
+        assertEquals(json.getString("attributionUrl"), OpenMeteoForecastAdapter.ATTRIBUTION_URL)
+        assertEquals(json.getInt("forecastDays"), OpenMeteoForecastAdapter.FORECAST_DAYS)
+        assertEquals(json.getJSONArray("dailyVariables").strings(), SharedData.DestinationWeather.DAILY_VARIABLES)
+        assertEquals("45.46", OpenMeteoForecastAdapter.rounded(45.4641))
+        assertEquals(json.getInt("timeToLiveSeconds"), SharedData.DestinationWeather.TIME_TO_LIVE_SECONDS)
+        assertEquals(json.getInt("maximumBytes"), SharedData.DestinationWeather.MAXIMUM_BYTES)
+    }
+
+    @Test fun `the bike sharing systems are the shared table`() {
+        val json = table("bike-sharing-v1.json")
+        val systems = json.getJSONArray("systems").objects()
+        assertEquals(systems.map { it.getString("id") }, BikeSharingSystems.all.map { it.id.value })
+        for ((entry, system) in systems.zip(BikeSharingSystems.all)) {
+            assertEquals(entry.getString("name"), system.name)
+            assertEquals(entry.getString("operatorName"), system.operator)
+            assertEquals(entry.getString("discoveryUrl"), system.discoveryUrl)
+            assertEquals(entry.getString("websiteUrl"), system.websiteUrl)
+            assertEquals(entry.getString("attribution"), system.attribution)
+            assertEquals(entry.getBoolean("personalOnly"), system.personalOnly)
+            val areas = entry.getJSONArray("areas").objects()
+            assertEquals(areas.map { it.getString("name") }, system.areas.map { it.name })
+            assertEquals(areas.map { it.getDouble("radiusKm") }, system.areas.map { it.radiusKm })
+        }
+        assertEquals(listOf("gbfs-bird-roma"), BikeSharingSystems.all.filter { it.personalOnly }.map { it.id.value })
+        assertEquals(json.getInt("radiusMeters"), BikeSharingService.DEFAULT_RADIUS_METERS)
+        assertEquals(json.getJSONArray("feedLanguages").strings(), SharedData.BikeSharing.FEED_LANGUAGES)
+        assertEquals(json.getInt("maximumBytes"), SharedData.BikeSharing.MAXIMUM_BYTES)
+    }
+
+    @Test fun `the live train map is the shared table`() {
+        val json = table("live-train-map-v1.json")
+        assertEquals(json.getInt("lookBackMinutes"), ScheduledRunRequest.DEFAULT_LOOK_BACK_MINUTES)
+        assertEquals(json.getInt("lookAheadMinutes"), ScheduledRunRequest.DEFAULT_LOOK_AHEAD_MINUTES)
+        assertEquals(json.getInt("lookBackMinutes"), LiveTrainSelector.MAX_APPLIED_DELAY)
+        assertEquals(json.getInt("minimumAppliedDelayMinutes"), LiveTrainSelector.MIN_APPLIED_DELAY)
+        assertEquals(json.getInt("maximumTrains"), LiveTrainSelector.MAX_TRAINS)
+        assertEquals(json.getDouble("sameTrainKilometres"), LiveTrainSelector.SAME_TRAIN_KM, 0.0)
+        assertEquals(json.getInt("positionsRefreshSeconds") * 1_000L, LiveTrainRefresh.POSITIONS_MILLIS)
+        assertEquals(json.getDouble("stationRadiusKilometres"), LiveTrainAreas.STATION_RADIUS_KM, 0.0)
+        assertEquals(json.getDouble("maximumLatitudeSpan"), LiveTrainAreas.MAX_LATITUDE_SPAN, 0.0)
+        assertEquals(json.getDouble("maximumLongitudeSpan"), LiveTrainAreas.MAX_LONGITUDE_SPAN, 0.0)
+    }
+
+    @Test fun `the evening alerts are the shared table`() {
+        val json = table("evening-alerts-v1.json")
+        assertEquals(json.getInt("strikeReminderHour"), StrikeReminderPlanner.RUN_AT.hour)
+        assertEquals(json.getInt("quietFromHour"), StrikeReminderPlanner.QUIET_FROM.hour)
+        assertEquals(json.getLong("strikeNotifiedRetentionDays"), StrikeReminderPlanner.NOTIFIED_RETENTION_DAYS)
+        assertEquals(json.getInt("routeWorksAlertHour"), RouteWorksAlertPlanner.RUN_AT.hour)
+        assertEquals(json.getInt("quietFromHour"), RouteWorksAlertPlanner.QUIET_FROM.hour)
+        assertEquals(json.getInt("quietUntilHour"), RouteWorksAlertPlanner.QUIET_UNTIL.hour)
+        assertEquals(json.getInt("routeWorksMaximumItems"), RouteWorksAlertPlanner.MAX_ITEMS)
+        assertEquals(json.getLong("routeWorksMaximumKeepDays"), RouteWorksAlertPlanner.MAX_KEEP_DAYS)
+        assertEquals(json.getInt("routeWorksMaximumNotified"), RouteWorksAlertPlanner.MAX_NOTIFIED)
     }
 }

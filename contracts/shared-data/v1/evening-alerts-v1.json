@@ -1,0 +1,12 @@
+{
+  "schema": "binario-shared-data-v1",
+  "description": "The two evening alerts: the reminder of a rail strike starting tomorrow (MIT calendar) and the alert about tomorrow's works on the saved routes (RFI, and Trenitalia with the personal sources). When each runs, the quiet hours in which nothing is shown, and how long a notified item is remembered.",
+  "strikeReminderHour": 18,
+  "routeWorksAlertHour": 19,
+  "quietFromHour": 22,
+  "quietUntilHour": 7,
+  "strikeNotifiedRetentionDays": 3,
+  "routeWorksMaximumItems": 3,
+  "routeWorksMaximumKeepDays": 45,
+  "routeWorksMaximumNotified": 200
+}

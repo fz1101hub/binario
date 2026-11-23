@@ -22,6 +22,7 @@ import it.binario.app.data.notices.RouteWorksReason
 import it.binario.app.data.notices.RouteWorksStations
 import it.binario.app.data.notices.WorksRoute
 import it.binario.app.data.repository.BinarioDataGraph
+import it.binario.app.shared.SharedData
 import it.binario.app.shortcuts.RouteShortcutPlan
 import it.binario.app.shortcuts.RouteShortcutStore
 import it.binario.app.ui.common.LocalizedDates
@@ -60,15 +61,16 @@ data class RouteWorksAlert(val day: LocalDate, val due: List<RouteWorksAlertItem
  * triggers it, and nothing is shown before [RUN_AT] or in the quiet hours (22–7).
  */
 object RouteWorksAlertPlanner {
-    val RUN_AT: LocalTime = LocalTime.of(19, 0)
-    val QUIET_FROM: LocalTime = LocalTime.of(22, 0)
-    val QUIET_UNTIL: LocalTime = LocalTime.of(7, 0)
-    const val MAX_ITEMS = 3
+    // contracts/shared-data/v1/evening-alerts-v1.json; the planner's cases are contracts/shared-rules/v1/evening-alerts-v1.json.
+    val RUN_AT: LocalTime = LocalTime.of(SharedData.EveningAlerts.ROUTE_WORKS_ALERT_HOUR, 0)
+    val QUIET_FROM: LocalTime = LocalTime.of(SharedData.EveningAlerts.QUIET_FROM_HOUR, 0)
+    val QUIET_UNTIL: LocalTime = LocalTime.of(SharedData.EveningAlerts.QUIET_UNTIL_HOUR, 0)
+    const val MAX_ITEMS = SharedData.EveningAlerts.ROUTE_WORKS_MAXIMUM_ITEMS
     /** The routes read, as in Per te: the pinned ones first, in the saved order. */
     val MAX_ROUTES = RouteWorksViewModel.MAX_ROUTES
     /** A notified notice is remembered until the day after its last date, but never longer than this. */
-    const val MAX_KEEP_DAYS = 45L
-    const val MAX_NOTIFIED = 200
+    const val MAX_KEEP_DAYS = SharedData.EveningAlerts.ROUTE_WORKS_MAXIMUM_KEEP_DAYS.toLong()
+    const val MAX_NOTIFIED = SharedData.EveningAlerts.ROUTE_WORKS_MAXIMUM_NOTIFIED
 
     fun quiet(now: ZonedDateTime): Boolean = !now.toLocalTime().isBefore(QUIET_FROM) || now.toLocalTime().isBefore(QUIET_UNTIL)
 

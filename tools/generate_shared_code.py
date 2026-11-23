@@ -464,6 +464,54 @@ def _check_source_manners(values: Mapping[str, Any]) -> list[str]:
     return problems
 
 
+def _check_delay_compensation(values: Mapping[str, Any]) -> list[str]:
+    problems = []
+    if values["quarterFromMinutes"] >= values["halfFromMinutes"]:
+        problems.append("quarterFromMinutes non minore di halfFromMinutes")
+    if values["quarterPercent"] >= values["halfPercent"]:
+        problems.append("quarterPercent non minore di halfPercent")
+    return problems
+
+
+def _check_destination_weather(values: Mapping[str, Any]) -> list[str]:
+    problems = []
+    if values["forecastDays"] > values["maximumDays"]:
+        problems.append("forecastDays maggiore di maximumDays")
+    if values["readTimeoutSeconds"] > values["totalTimeoutSeconds"]:
+        problems.append("readTimeoutSeconds maggiore di totalTimeoutSeconds")
+    return problems
+
+
+def _check_bike_sharing(values: Mapping[str, Any]) -> list[str]:
+    problems = []
+    for system in values["systems"]:
+        fields = system.values
+        if not any(fields["attribution"].startswith(word) for word in (fields["name"], fields["name"].split()[0])):
+            problems.append(f"{fields['id']}: l'attribuzione non nomina il sistema")
+    if values["staticTimeToLiveSeconds"] > values["staticMaximumStaleSeconds"]:
+        problems.append("staticTimeToLiveSeconds maggiore di staticMaximumStaleSeconds")
+    if values["readTimeoutSeconds"] > values["totalTimeoutSeconds"]:
+        problems.append("readTimeoutSeconds maggiore di totalTimeoutSeconds")
+    return problems
+
+
+def _check_live_train_map(values: Mapping[str, Any]) -> list[str]:
+    problems = []
+    if 60 % values["timetableSlotMinutes"] != 0:
+        problems.append("timetableSlotMinutes non divide l'ora")
+    if values["positionsRefreshSeconds"] >= values["timetableSlotMinutes"] * 60:
+        problems.append("positionsRefreshSeconds non minore dello slot")
+    return problems
+
+
+def _check_evening_alerts(values: Mapping[str, Any]) -> list[str]:
+    problems = []
+    for key in ("strikeReminderHour", "routeWorksAlertHour"):
+        if not values["quietUntilHour"] <= values[key] < values["quietFromHour"]:
+            problems.append(f"{key} nelle ore di quiete")
+    return problems
+
+
 def _check_pack_roles(values: Mapping[str, Any]) -> list[str]:
     both = set(values["nationalPacks"]) & set(values["foreignPacks"])
     return [f"{pack!r} è sia nazionale sia estero" for pack in sorted(both)]
@@ -607,11 +655,79 @@ NOTICE_DISPLAY = Record("Display", {
 })
 PACK_SET = ListOf(Text(SOURCE_ID), as_set=True)
 
+BIKE_AREA = Record("Area", {
+    "name": Field(Text(r"[\w .'’-]+", max_length=64)),
+    "latitude": Field(Real(-90, 90)),
+    "longitude": Field(Real(-180, 180)),
+    "radiusKm": Field(Real(0.1, 100)),
+})
+BIKE_SYSTEM = Record("System", {
+    "id": Field(Text(r"gbfs-[a-z0-9]+(?:-[a-z0-9]+)*")),
+    "name": Field(Text(max_length=64)),
+    "operatorName": Field(Text(max_length=96)),
+    "discoveryUrl": Field(HTTPS_URL),
+    "areas": Field(ListOf(BIKE_AREA, unique_by=("name",))),
+    "websiteUrl": Field(HTTPS_URL),
+    "licence": Field(Text()),
+    "attribution": Field(Text(max_length=96)),
+    "personalOnly": Field(Boolean()),
+}, notes=True)
+MINUTES = Integer(0, 24 * 60)
+HOUR = Integer(0, 23)
+
 TABLES: tuple[Table, ...] = (
     Table("airport-routes-v1.json", "AirportRoutes", {
         "packs": Field(ListOf(AIRPORT_PACK, unique_by=("id",))),
         "routes": Field(ListOf(AIRPORT_ROUTE, unique_by=("city", "airport"))),
     }, check=_check_airport_routes),
+    Table("bike-sharing-v1.json", "BikeSharing", {
+        "systems": Field(ListOf(BIKE_SYSTEM, unique_by=("id",))),
+        "feedLanguages": Field(ListOf(Text(r"[a-z]{2}"))),
+        "radiusMeters": Field(Integer(1, 5_000)),
+        "maximumDocks": Field(Integer(1, 50)),
+        "maximumVehicles": Field(Integer(1, 50)),
+        "staticTimeToLiveSeconds": Field(Seconds(1)),
+        "staticMaximumStaleSeconds": Field(Seconds()),
+        "staticMaximumEntries": Field(Integer(1, 1_000)),
+        "statusTimeToLiveSeconds": Field(Seconds(1)),
+        "statusMaximumStaleSeconds": Field(Seconds()),
+        "statusMaximumEntries": Field(Integer(1, 1_000)),
+        "maximumBytes": Field(Integer(1, 16 * 1_048_576)),
+        "readTimeoutSeconds": Field(Seconds(1)),
+        "totalTimeoutSeconds": Field(Seconds(1)),
+    }, check=_check_bike_sharing),
+    Table("delay-compensation-v1.json", "DelayCompensation", {
+        "quarterFromMinutes": Field(MINUTES),
+        "quarterPercent": Field(Integer(1, 100)),
+        "halfFromMinutes": Field(MINUTES),
+        "halfPercent": Field(Integer(1, 100)),
+    }, check=_check_delay_compensation),
+    Table("destination-weather-v1.json", "DestinationWeather", {
+        "forecastUrl": Field(HTTPS_URL),
+        "attributionUrl": Field(HTTPS_URL),
+        "dailyVariables": Field(ListOf(Text(r"[a-z0-9_]+"))),
+        "timeZone": Field(Text(r"[A-Za-z]+/[A-Za-z_]+")),
+        "forecastDays": Field(Integer(1, 16)),
+        "coordinateDecimals": Field(Integer(0, 6)),
+        "maximumDays": Field(Integer(1, 16)),
+        "timeToLiveSeconds": Field(Seconds(1)),
+        "maximumStaleSeconds": Field(Seconds()),
+        "minimumIntervalSeconds": Field(Seconds(1)),
+        "maximumEntries": Field(Integer(1, 1_000)),
+        "maximumBytes": Field(Integer(1, 16 * 1_048_576)),
+        "readTimeoutSeconds": Field(Seconds(1)),
+        "totalTimeoutSeconds": Field(Seconds(1)),
+    }, check=_check_destination_weather),
+    Table("evening-alerts-v1.json", "EveningAlerts", {
+        "strikeReminderHour": Field(HOUR),
+        "routeWorksAlertHour": Field(HOUR),
+        "quietFromHour": Field(HOUR),
+        "quietUntilHour": Field(HOUR),
+        "strikeNotifiedRetentionDays": Field(Integer(1, 365)),
+        "routeWorksMaximumItems": Field(Integer(1, 20)),
+        "routeWorksMaximumKeepDays": Field(Integer(1, 365)),
+        "routeWorksMaximumNotified": Field(Integer(1, 10_000)),
+    }, check=_check_evening_alerts),
     Table("italian-holidays-v1.json", "ItalianHolidays", {
         "holidays": Field(ListOf(HOLIDAY, unique_by=("month", "day"))),
         "easterOffsetsDays": Field(ListOf(Integer(-60, 60))),
@@ -624,6 +740,25 @@ TABLES: tuple[Table, ...] = (
         "stations": Field(ListOf(ITALO_STATION, unique_by=("code",))),
         "slugsByName": Field(MapOf(Text(r"[a-z0-9]+(?:-[a-z0-9]+)*"), key=STATION_NAME)),
     }),
+    Table("live-train-map-v1.json", "LiveTrainMap", {
+        "lookBackMinutes": Field(Integer(0, 720)),
+        "lookAheadMinutes": Field(Integer(0, 720)),
+        "minimumAppliedDelayMinutes": Field(Integer(-720, 0)),
+        "matchMarginMinutes": Field(Integer(0, 60)),
+        "sameTrainKilometres": Field(Real(0, 100)),
+        "maximumTrains": Field(Integer(1, 500)),
+        "areaPacks": Field(Integer(1, 64)),
+        "positionsRefreshSeconds": Field(Seconds(1)),
+        "timetableSlotMinutes": Field(Integer(1, 60)),
+        "stationRadiusKilometres": Field(Real(0.1, 200)),
+        "maximumLatitudeSpan": Field(Real(0.01, 90)),
+        "maximumLongitudeSpan": Field(Real(0.01, 180)),
+        "readAreaSnapDegrees": Field(Real(0.001, 10)),
+        "routeMarginShare": Field(Real(0, 1)),
+        "minimumRouteMarginDegrees": Field(Real(0, 10)),
+        "maximumCodeLength": Field(Integer(1, 32)),
+        "maximumLineLabelLength": Field(Integer(1, 32)),
+    }, check=_check_live_train_map),
     Table("notices-sources-v1.json", "NoticesSources", {
         "service": Field(NOTICE_SERVICE),
         "sources": Field(ListOf(NOTICE_SOURCE, unique_by=("id",))),

@@ -2205,7 +2205,7 @@ class EmbeddedGtfsJourneyProvider internal constructor(
         private val URBAN_MODES = setOf(LegMode.METRO, LegMode.TRAM, LegMode.FUNICULAR)
         private const val MINUTES_PER_DAY = 24 * 60
         /** Packs read for the map of trains in motion of an area. */
-        private const val MAX_RUN_PACKS = 3
+        private const val MAX_RUN_PACKS = it.binario.app.shared.SharedData.LiveTrainMap.AREA_PACKS
         /** Bound on the remembered ends of yesterday's evening parts (one per pack and day). */
         private const val MAX_EVENING_ENDS = 64
         /** Yesterday's evening is read from this long before the look-back, so a run between two stops keeps both. */

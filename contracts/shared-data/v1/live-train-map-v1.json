@@ -1,0 +1,21 @@
+{
+  "schema": "binario-shared-data-v1",
+  "description": "The map of trains in motion: positions estimated from the static timetable, shifted by a live delay the app already has, on a straight line between two stops (never a GPS position). The timetable window read around now, the delays applied, how copies of one train are merged, how many trains are drawn, the cadence and the area a map reads.",
+  "lookBackMinutes": 180,
+  "lookAheadMinutes": 30,
+  "minimumAppliedDelayMinutes": -30,
+  "matchMarginMinutes": 2,
+  "sameTrainKilometres": 5.0,
+  "maximumTrains": 40,
+  "areaPacks": 3,
+  "positionsRefreshSeconds": 30,
+  "timetableSlotMinutes": 15,
+  "stationRadiusKilometres": 15.0,
+  "maximumLatitudeSpan": 1.2,
+  "maximumLongitudeSpan": 1.8,
+  "readAreaSnapDegrees": 0.25,
+  "routeMarginShare": 0.2,
+  "minimumRouteMarginDegrees": 0.05,
+  "maximumCodeLength": 6,
+  "maximumLineLabelLength": 8
+}

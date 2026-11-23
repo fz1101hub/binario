@@ -1,0 +1,247 @@
+{
+  "schema": "binario-shared-rules-v1",
+  "description": "Weather at the destination (data/weather/DestinationWeatherTarget.kt, OpenMeteoForecastAdapter.kt, DestinationWeatherSection.kt): the station and day a train detail's forecast is for (the last stop shown, on its arrival date: the next day when its arrival clock time is earlier than the departure), the coordinates sent (two decimals, half away from zero), the request, the daily forecast read from an Open-Meteo answer (out-of-range values dropped, at most 16 days; a body without daily dates is unreadable) and the WMO codes that have their own text. The source is contracts/shared-data/v1/destination-weather-v1.json.",
+  "readers": [
+    "app/src/test/java/it/binario/app/data/weather/DestinationWeatherContractTest.kt",
+    "ios/BinarioKit/Tests/BinarioKitTests/ExtrasContractTests.swift"
+  ],
+  "targets": [
+    {
+      "name": "arrival on the day of the departure",
+      "lastStop": "Milano Centrale",
+      "lastScheduled": "12:05",
+      "destination": "Milano Centrale",
+      "departureDate": "2026-11-23",
+      "departure": "10:20",
+      "today": "2026-11-23",
+      "expected": {
+        "station": "Milano Centrale",
+        "date": "2026-11-23"
+      }
+    },
+    {
+      "name": "an arrival clock time before the departure is after midnight",
+      "lastStop": "Palermo Centrale",
+      "lastScheduled": "00:40",
+      "destination": "Palermo Centrale",
+      "departureDate": "2026-11-23",
+      "departure": "23:10",
+      "today": "2026-11-23",
+      "expected": {
+        "station": "Palermo Centrale",
+        "date": "2026-11-24"
+      }
+    },
+    {
+      "name": "a night train leaving yesterday",
+      "lastStop": "Siracusa",
+      "lastScheduled": "09:30",
+      "destination": "Siracusa",
+      "departureDate": "2026-11-22",
+      "departure": "21:00",
+      "today": "2026-11-23",
+      "expected": {
+        "station": "Siracusa",
+        "date": "2026-11-23"
+      }
+    },
+    {
+      "name": "without a departure date, today",
+      "lastStop": "Pavia",
+      "lastScheduled": "08:40",
+      "destination": "Pavia",
+      "departureDate": null,
+      "departure": "08:05",
+      "today": "2026-11-23",
+      "expected": {
+        "station": "Pavia",
+        "date": "2026-11-23"
+      }
+    },
+    {
+      "name": "a last stop without a clock time keeps the departure day",
+      "lastStop": "Pavia",
+      "lastScheduled": null,
+      "destination": "Pavia",
+      "departureDate": "2026-11-23",
+      "departure": "23:50",
+      "today": "2026-11-23",
+      "expected": {
+        "station": "Pavia",
+        "date": "2026-11-23"
+      }
+    },
+    {
+      "name": "without stops, the destination",
+      "lastStop": null,
+      "lastScheduled": null,
+      "destination": "Genova Piazza Principe",
+      "departureDate": "2026-11-23",
+      "departure": "10:00",
+      "today": "2026-11-23",
+      "expected": {
+        "station": "Genova Piazza Principe",
+        "date": "2026-11-23"
+      }
+    },
+    {
+      "name": "no station at all",
+      "lastStop": " ",
+      "lastScheduled": "12:00",
+      "destination": " ",
+      "departureDate": "2026-11-23",
+      "departure": "10:00",
+      "today": "2026-11-23",
+      "expected": null
+    }
+  ],
+  "coordinates": [
+    {
+      "value": 45.4641,
+      "expected": "45.46"
+    },
+    {
+      "value": 9.185,
+      "expected": "9.19"
+    },
+    {
+      "value": 45.99724,
+      "expected": "46.00"
+    },
+    {
+      "value": 8.945581,
+      "expected": "8.95"
+    },
+    {
+      "value": 12.0,
+      "expected": "12.00"
+    },
+    {
+      "value": -0.005,
+      "expected": "-0.01"
+    },
+    {
+      "value": -33.8679,
+      "expected": "-33.87"
+    }
+  ],
+  "requests": [
+    {
+      "latitude": 45.99724,
+      "longitude": 8.945581,
+      "expected": "https://api.open-meteo.com/v1/forecast?latitude=46.00&longitude=8.95&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max&timezone=Europe%2FRome&forecast_days=2"
+    }
+  ],
+  "invalidCoordinates": [
+    {
+      "latitude": 91.0,
+      "longitude": 9.0
+    },
+    {
+      "latitude": 45.0,
+      "longitude": -181.0
+    }
+  ],
+  "forecasts": [
+    {
+      "name": "the Lugano answer of the Android fixture",
+      "file": "app/src/test/resources/sources/open-meteo-lugano.json",
+      "expected": [
+        {
+          "date": "2026-10-25",
+          "weatherCode": 3,
+          "maxTemperatureC": 14.0,
+          "minTemperatureC": 6.5,
+          "precipitationProbabilityPercent": 3
+        },
+        {
+          "date": "2026-10-26",
+          "weatherCode": 3,
+          "maxTemperatureC": 17.3,
+          "minTemperatureC": 6.9,
+          "precipitationProbabilityPercent": 0
+        }
+      ]
+    },
+    {
+      "name": "values outside their ranges and nulls are dropped, days without a date skipped",
+      "body": "{\"daily\":{\"time\":[\"2026-11-23\",\"\",\"2026-11-24\",\"2026-13-01\"],\"weather_code\":[61,2,100,3],\"temperature_2m_max\":[12.5,null,61.0,1.0],\"temperature_2m_min\":[null,1.0,-91.0,0.0],\"precipitation_probability_max\":[101,5,40,7]}}",
+      "expected": [
+        {
+          "date": "2026-11-23",
+          "weatherCode": 61,
+          "maxTemperatureC": 12.5,
+          "minTemperatureC": null,
+          "precipitationProbabilityPercent": null
+        },
+        {
+          "date": "2026-11-24",
+          "weatherCode": null,
+          "maxTemperatureC": null,
+          "minTemperatureC": null,
+          "precipitationProbabilityPercent": 40
+        }
+      ]
+    },
+    {
+      "name": "a day without the other series",
+      "body": "{\"daily\":{\"time\":[\"2026-11-23\"]}}",
+      "expected": [
+        {
+          "date": "2026-11-23",
+          "weatherCode": null,
+          "maxTemperatureC": null,
+          "minTemperatureC": null,
+          "precipitationProbabilityPercent": null
+        }
+      ]
+    },
+    {
+      "name": "no daily dates: unreadable",
+      "body": "{\"daily\":{\"weather_code\":[3]}}",
+      "expected": "unreadable"
+    },
+    {
+      "name": "no daily forecast: unreadable",
+      "body": "{\"error\":true}",
+      "expected": "unreadable"
+    }
+  ],
+  "describedCodes": [
+    0,
+    1,
+    2,
+    3,
+    45,
+    48,
+    51,
+    53,
+    55,
+    56,
+    57,
+    61,
+    63,
+    65,
+    66,
+    67,
+    71,
+    73,
+    75,
+    77,
+    80,
+    81,
+    82,
+    85,
+    86,
+    95,
+    96,
+    99
+  ],
+  "undescribedCodes": [
+    4,
+    10,
+    44,
+    50,
+    98
+  ]
+}
