@@ -30,13 +30,15 @@ import java.time.Clock
 import java.time.Duration
 import java.time.Instant
 import java.time.ZoneId
+import it.binario.app.data.live.RealtimeFeedTable.bytesFetcher
+import it.binario.app.data.live.RealtimeFeedTable.timeToLive
 
 fun interface SncfRealtimeFetcher {
     suspend fun fetch(feed: SncfRealtimeFeed): ByteArray
 }
 
 enum class SncfRealtimeFeed(val url: String) {
-    TRIP_UPDATES("https://proxy.transport.data.gouv.fr/resource/sncf-gtfs-rt-trip-updates")
+    TRIP_UPDATES(RealtimeFeedTable.SNCF.url)
 }
 
 /**
@@ -44,7 +46,7 @@ enum class SncfRealtimeFeed(val url: String) {
  * few MB), a total time limit and a request that stops when the caller is cancelled.
  */
 internal class HttpSncfRealtimeFetcher(
-    private val http: HttpsBytesFetcher = HttpsBytesFetcher(maxBytes = 16 * 1024 * 1024, readTimeoutMillis = 15_000, totalTimeoutMillis = 25_000)
+    private val http: HttpsBytesFetcher = RealtimeFeedTable.SNCF.bytesFetcher()
 ) : SncfRealtimeFetcher {
     override suspend fun fetch(feed: SncfRealtimeFeed): ByteArray = http.fetch(feed.url)
 }
@@ -58,7 +60,7 @@ internal class HttpSncfRealtimeFetcher(
 class SncfGtfsRealtimeAdapter(
     private val fetcher: SncfRealtimeFetcher = HttpSncfRealtimeFetcher(),
     private val clock: Clock = Clock.systemUTC(),
-    private val cacheTtl: Duration = Duration.ofMinutes(2),
+    private val cacheTtl: Duration = RealtimeFeedTable.SNCF.timeToLive(),
     requests: TransportDataGouvRequests = TransportDataGouvRequests(clock)
 ) : TripUpdateProvider {
     override val descriptor = ProviderDescriptor(
@@ -74,7 +76,7 @@ class SncfGtfsRealtimeAdapter(
     private val tripUpdatesMutex = Mutex()
 
     private var cachedTripUpdates: CachedTripUpdates? = null
-    private val tripUpdatesGuard = RealtimeFeedGuard(clock, "SNCF Open Data")
+    private val tripUpdatesGuard = RealtimeFeedGuard(clock, RealtimeFeedTable.SNCF.pauseLabel)
     private val refusals = requests.refusals
 
     override suspend fun getTripUpdates(): ProviderResult<List<RealtimeStopUpdate>> = tripUpdatesMutex.withLock {
@@ -106,7 +108,7 @@ class SncfGtfsRealtimeAdapter(
     }
 
     internal fun parseTripUpdates(feed: GtfsRealtime.FeedMessage, observedAt: Instant): List<RealtimeStopUpdate> =
-        gtfsRealtimeStopUpdates(feed, observedAt, "sncf-gtfs") { nativeId, observed -> sourceRef(nativeId, observed, GtfsRealtimeFreshness.OBSERVATION_WINDOW) }
+        gtfsRealtimeStopUpdates(feed, observedAt, RealtimeFeedTable.SNCF.pack) { nativeId, observed -> sourceRef(nativeId, observed, GtfsRealtimeFreshness.OBSERVATION_WINDOW) }
 
     private fun meta(fetched: Instant, observed: Instant, expires: Instant, fromCache: Boolean, fingerprint: String) =
         ProviderResponseMeta(SOURCE_ID, fetched, observedAt = observed, expiresAt = expires, fromCache = fromCache, responseFingerprint = fingerprint)
@@ -118,7 +120,7 @@ class SncfGtfsRealtimeAdapter(
         fetchedAt = clock.instant(),
         expiresAt = observed.plus(validity),
         confidence = Confidence.OPEN_DATA,
-        licenseId = "Licence Ouverte / Etalab",
+        licenseId = RealtimeFeedTable.SNCF.licence,
         traceId = "sncf:${fingerprint(nativeId.toByteArray()).take(16)}"
     )
 
@@ -127,7 +129,7 @@ class SncfGtfsRealtimeAdapter(
     private data class CachedTripUpdates(val updates: List<RealtimeStopUpdate>, val observedAt: Instant, val expiresAt: Instant, val fingerprint: String)
 
     companion object {
-        val SOURCE_ID = SourceId("sncf-gtfs-rt")
+        val SOURCE_ID = SourceId(RealtimeFeedTable.SNCF.id)
     }
 }
 
@@ -188,5 +190,5 @@ internal fun gtfsRealtimeStopUpdates(
  * together and a success of one cannot hide the pause of the other.
  */
 class TransportDataGouvRequests(clock: Clock = Clock.systemUTC()) {
-    internal val refusals = PublicSourceRefusalGate(clock, "transport.data.gouv.fr")
+    internal val refusals = PublicSourceRefusalGate(clock, RealtimeFeedTable.SNCF.refusalGroup)
 }

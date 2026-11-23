@@ -4,6 +4,7 @@ import it.binario.app.data.core.EnrichedRealtimeStop
 import it.binario.app.data.core.RealtimeOperationalEnricher
 import it.binario.app.data.core.SourceId
 import it.binario.app.data.gtfs.EmbeddedGtfsRealtimeScheduleResolver
+import it.binario.app.data.live.RealtimeFeedTable
 import it.binario.app.data.provider.ProviderError
 import it.binario.app.data.provider.ProviderResult
 import it.binario.app.data.provider.TripUpdateProvider
@@ -101,10 +102,7 @@ class RealtimeEnrichmentService(
         }
     }
 
-    private fun staticFeedFor(providerId: SourceId): SourceId? = when (providerId.value) {
-        "alto-adige-sta-realtime" -> SourceId("alto-adige-sta-gtfs")
-        "sncf-gtfs-rt" -> SourceId("sncf-gtfs")
-        "trenitalia-france-gtfs-rt" -> SourceId("trenitalia-france-gtfs")
-        else -> null
-    }
+    /** The one pack each feed joins, from the shared table (the iPhone's `TimetableRealtime` reads the same). */
+    private fun staticFeedFor(providerId: SourceId): SourceId? =
+        RealtimeFeedTable.packOf(providerId.value)?.let(::SourceId)
 }

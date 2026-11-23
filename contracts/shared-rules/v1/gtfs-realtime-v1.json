@@ -1,0 +1,1653 @@
+{
+  "schema": "binario-shared-rules-gtfs-realtime-v1",
+  "about": "Casi comuni dei Trip Updates GTFS-Realtime (README.md): la lettura del protobuf, le regole dei feed SNCF, Trenitalia France e STA, il raccordo con l'orario incluso e i feed delle reti urbane. Gli ingressi protobuf sono in esadecimale o le fixture dei test Android; la tabella dei feed è contracts/shared-data/v1/realtime-feeds-v1.json.",
+  "readers": {
+    "android": "app/src/test/java/it/binario/app/data/live/GtfsRealtimeContractTest.kt",
+    "iphone": "ios/BinarioKit/Tests/BinarioKitTests/GtfsRealtimeContractTests.swift"
+  },
+  "table": "contracts/shared-data/v1/realtime-feeds-v1.json",
+  "decoding": [
+    {
+      "name": "a header alone",
+      "hex": "0a0b0a03322e3018f0a991d806",
+      "version": "2.0",
+      "timestamp": 1795446000,
+      "entities": []
+    },
+    {
+      "name": "an empty version is set; no timestamp",
+      "hex": "0a020a00",
+      "version": "",
+      "timestamp": null,
+      "entities": []
+    },
+    {
+      "name": "a trip update: negative delay, both events, a second TripDescriptor merged, unknown and unread fields skipped",
+      "hex": "0a0b0a03322e3018f0a991d806125a0a0265311a540a100a0254311a083230323631313233300112230801121308aefeffffffffffffff0110c8ae91d806181e1a02083c2201413802980605120d08021a0610a0b391d8062201420a042a025231282a20d2a991d806",
+      "version": "2.0",
+      "timestamp": 1795446000,
+      "entities": [
+        {
+          "id": "e1",
+          "isDeleted": false,
+          "tripUpdate": {
+            "tripId": "T1",
+            "routeId": "R1",
+            "startDate": "20261123",
+            "scheduleRelationship": "SCHEDULED",
+            "timestamp": 1795445970,
+            "stops": [
+              {
+                "stopSequence": 1,
+                "stopId": "A",
+                "scheduleRelationship": "SCHEDULED",
+                "arrival": {
+                  "delay": -210,
+                  "time": 1795446600
+                },
+                "departure": {
+                  "delay": 60,
+                  "time": null
+                }
+              },
+              {
+                "stopSequence": 2,
+                "stopId": "B",
+                "scheduleRelationship": "SCHEDULED",
+                "arrival": null,
+                "departure": {
+                  "delay": null,
+                  "time": 1795447200
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "vehicle and alert entities are read without their contents; is_deleted",
+      "hex": "0a0b0a03322e3018f0a991d806120e0a02763122080a040a0254392807120c0a0261312a062a040a02543112060a0264311001",
+      "version": "2.0",
+      "timestamp": 1795446000,
+      "entities": [
+        {
+          "id": "v1",
+          "isDeleted": false,
+          "tripUpdate": null
+        },
+        {
+          "id": "a1",
+          "isDeleted": false,
+          "tripUpdate": null
+        },
+        {
+          "id": "d1",
+          "isDeleted": true,
+          "tripUpdate": null
+        }
+      ]
+    },
+    {
+      "name": "an unknown schedule relationship leaves the field as it was",
+      "hex": "0a0b0a03322e3018f0a991d80612170a0275311a110a060a025431200412070801220141280912120a0275321a0c0a060a02543220030a02200412290a0275331a230a060a0254332001120708012201412801120708022201422802120708032201432803",
+      "version": "2.0",
+      "timestamp": 1795446000,
+      "entities": [
+        {
+          "id": "u1",
+          "isDeleted": false,
+          "tripUpdate": {
+            "tripId": "T1",
+            "routeId": "",
+            "startDate": "",
+            "scheduleRelationship": "SCHEDULED",
+            "timestamp": null,
+            "stops": [
+              {
+                "stopSequence": 1,
+                "stopId": "A",
+                "scheduleRelationship": "SCHEDULED",
+                "arrival": null,
+                "departure": null
+              }
+            ]
+          }
+        },
+        {
+          "id": "u2",
+          "isDeleted": false,
+          "tripUpdate": {
+            "tripId": "T2",
+            "routeId": "",
+            "startDate": "",
+            "scheduleRelationship": "CANCELED",
+            "timestamp": null,
+            "stops": []
+          }
+        },
+        {
+          "id": "u3",
+          "isDeleted": false,
+          "tripUpdate": {
+            "tripId": "T3",
+            "routeId": "",
+            "startDate": "",
+            "scheduleRelationship": "ADDED",
+            "timestamp": null,
+            "stops": [
+              {
+                "stopSequence": 1,
+                "stopId": "A",
+                "scheduleRelationship": "SKIPPED",
+                "arrival": null,
+                "departure": null
+              },
+              {
+                "stopSequence": 2,
+                "stopId": "B",
+                "scheduleRelationship": "NO_DATA",
+                "arrival": null,
+                "departure": null
+              },
+              {
+                "stopSequence": 3,
+                "stopId": "C",
+                "scheduleRelationship": "UNSCHEDULED",
+                "arrival": null,
+                "departure": null
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "a scalar given twice keeps the last value",
+      "hex": "0a120a03312e3018050a03322e3018f0a991d80612270a01780a01791a1f0a070a0566697273740a080a067365636f6e64120a08042201412201420805",
+      "version": "2.0",
+      "timestamp": 1795446000,
+      "entities": [
+        {
+          "id": "y",
+          "isDeleted": false,
+          "tripUpdate": {
+            "tripId": "second",
+            "routeId": "",
+            "startDate": "",
+            "scheduleRelationship": "SCHEDULED",
+            "timestamp": null,
+            "stops": [
+              {
+                "stopSequence": 5,
+                "stopId": "B",
+                "scheduleRelationship": "SCHEDULED",
+                "arrival": null,
+                "departure": null
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "a known field with another wire type is skipped",
+      "hex": "0a050a03322e300a041a020102121a0a01771a150a0c08051a08323032363131323312050a01072003",
+      "version": "2.0",
+      "timestamp": null,
+      "entities": [
+        {
+          "id": "w",
+          "isDeleted": false,
+          "tripUpdate": {
+            "tripId": "",
+            "routeId": "",
+            "startDate": "20261123",
+            "scheduleRelationship": "SCHEDULED",
+            "timestamp": null,
+            "stops": [
+              {
+                "stopSequence": null,
+                "stopId": "",
+                "scheduleRelationship": "SCHEDULED",
+                "arrival": null,
+                "departure": null
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "groups and fixed-width fields are skipped",
+      "hex": "0a0b0a03322e3018f0a991d806122f0a0167930308079b031201789c0394031a1d0a040a02543112150801220141e50301020304e9030000000000000000",
+      "version": "2.0",
+      "timestamp": 1795446000,
+      "entities": [
+        {
+          "id": "g",
+          "isDeleted": false,
+          "tripUpdate": {
+            "tripId": "T1",
+            "routeId": "",
+            "startDate": "",
+            "scheduleRelationship": "SCHEDULED",
+            "timestamp": null,
+            "stops": [
+              {
+                "stopSequence": 1,
+                "stopId": "A",
+                "scheduleRelationship": "SCHEDULED",
+                "arrival": null,
+                "departure": null
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "a stop_sequence past 2^31 reads as Java's int",
+      "hex": "0a0b0a03322e3018f0a991d80612230a036269671a1c0a040a025431120908ffffffff0f2201411209088080808008220142",
+      "version": "2.0",
+      "timestamp": 1795446000,
+      "entities": [
+        {
+          "id": "big",
+          "isDeleted": false,
+          "tripUpdate": {
+            "tripId": "T1",
+            "routeId": "",
+            "startDate": "",
+            "scheduleRelationship": "SCHEDULED",
+            "timestamp": null,
+            "stops": [
+              {
+                "stopSequence": -1,
+                "stopId": "A",
+                "scheduleRelationship": "SCHEDULED",
+                "arrival": null,
+                "departure": null
+              },
+              {
+                "stopSequence": -2147483648,
+                "stopId": "B",
+                "scheduleRelationship": "SCHEDULED",
+                "arrival": null,
+                "departure": null
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "empty input (no header)",
+      "hex": "",
+      "unreadable": true
+    },
+    {
+      "name": "no header",
+      "hex": "120b0a01651a060a040a025431",
+      "unreadable": true
+    },
+    {
+      "name": "a header without a version",
+      "hex": "0a0618f0a991d806",
+      "unreadable": true
+    },
+    {
+      "name": "an entity without an id",
+      "hex": "0a050a03322e3012081a060a040a025431",
+      "unreadable": true
+    },
+    {
+      "name": "a trip update without a trip",
+      "hex": "0a050a03322e30120c0a01651a0712050801220141",
+      "unreadable": true
+    },
+    {
+      "name": "a truncated varint",
+      "hex": "0a050a03322e301080",
+      "unreadable": true
+    },
+    {
+      "name": "a length past the end",
+      "hex": "0a050a03322e3012056162",
+      "unreadable": true
+    },
+    {
+      "name": "field number zero",
+      "hex": "0a050a03322e300001",
+      "unreadable": true
+    },
+    {
+      "name": "wire type 6",
+      "hex": "0a050a03322e301601",
+      "unreadable": true
+    },
+    {
+      "name": "an end of group without its start",
+      "hex": "0a050a03322e304c",
+      "unreadable": true
+    },
+    {
+      "name": "a mismatched end of group",
+      "hex": "0a050a03322e304b44",
+      "unreadable": true
+    },
+    {
+      "name": "a varint of eleven bytes",
+      "hex": "0a050a03322e3018ffffffffffffffffffff01",
+      "unreadable": true
+    },
+    {
+      "name": "a broken trip update inside an entity",
+      "hex": "0a050a03322e3012090a01651a040a050a01",
+      "unreadable": true
+    }
+  ],
+  "protobufUpdates": [
+    {
+      "name": "Trenitalia France: SCHEDULED stops with service day and absolute time; a CANCELED trip and a NO_DATA stop are left out",
+      "feed": "trenitalia-france-gtfs-rt",
+      "hex": "0a0b0a03322e3018dca991d806128e010a01301a88010a210a053730343538120831363a30383a30301a0832303236313132332a0436363536121f0800120908f00110d0cb91d8061a0908f00110d0cb91d8062205313030303912210808120908f0011098d291d8061a0908f0011098d291d806220531303030362802121f083e120908f00110c88892d8061a0908f00110c88892d80622053130303037122f0a01311a2a0a130a0537303436391a0832303236313132332003121308001a08080010c0af91d80622053130303039",
+      "fetchedAt": 1795446000,
+      "updates": [
+        {
+          "tripId": "70458",
+          "stopId": "10009",
+          "stopSequence": 0,
+          "serviceDate": 20261123,
+          "predicted": 1795450320,
+          "delaySeconds": 240,
+          "observedAt": 1795445980,
+          "expiresAt": 1795446280,
+          "entityId": "0"
+        },
+        {
+          "tripId": "70458",
+          "stopId": "10007",
+          "stopSequence": 62,
+          "serviceDate": 20261123,
+          "predicted": 1795458120,
+          "delaySeconds": 240,
+          "observedAt": 1795445980,
+          "expiresAt": 1795446280,
+          "entityId": "0"
+        }
+      ]
+    },
+    {
+      "name": "SNCF: the trip's timestamp, else the header's, else when the feed was asked; an entity without id takes the trip_id",
+      "feed": "sncf-gtfs-rt",
+      "hex": "0a070a03322e301800122f0a0474752d311a270a090a07747269702d3432121408031a0908b40110a4ab91d80622054652504d4f20a8a891d806122b0a001a270a130a07747269702d34331a0832303236313132331210120b08c4ffffffffffffffff01220158",
+      "fetchedAt": 1795446000,
+      "updates": [
+        {
+          "tripId": "trip-42",
+          "stopId": "FRPMO",
+          "stopSequence": 3,
+          "serviceDate": null,
+          "predicted": 1795446180,
+          "delaySeconds": 180,
+          "observedAt": 1795445800,
+          "expiresAt": 1795446100,
+          "entityId": "tu-1"
+        },
+        {
+          "tripId": "trip-43",
+          "stopId": "X",
+          "stopSequence": null,
+          "serviceDate": 20261123,
+          "predicted": null,
+          "delaySeconds": -60,
+          "observedAt": 1795446000,
+          "expiresAt": 1795446300,
+          "entityId": "trip-43"
+        }
+      ]
+    },
+    {
+      "name": "trips and stops left out: blank trip_id, unreadable start_date, ADDED, a stop without stop_id and sequence, SKIPPED; an empty departure is still the event; an unknown relationship reads as SCHEDULED",
+      "feed": "sncf-gtfs-rt",
+      "hex": "0a0b0a03322e3018f0a991d806121f0a01611a1a0a0d0a01201a083230323631313233120908011a02083c22014112210a01621a1c0a0f0a01421a0a323032362d31312d3233120908011a02083c22014112170a01631a120a050a01432001120908011a02083c22014112170a01641a120a050a01442004120908011a02083c22014112400a01651a3b0a030a014512071a02083c220120120b08011a02083c2201412801120b0802120208781a00220142120a0803120610acaa91d80612050804220144121f0a01661a1a0a0d0a01461a083230323630323330120908011a02083c220141",
+      "fetchedAt": 1795446000,
+      "updates": [
+        {
+          "tripId": "D",
+          "stopId": "A",
+          "stopSequence": 1,
+          "serviceDate": null,
+          "predicted": null,
+          "delaySeconds": 60,
+          "observedAt": 1795446000,
+          "expiresAt": 1795446300,
+          "entityId": "d"
+        },
+        {
+          "tripId": "E",
+          "stopId": "B",
+          "stopSequence": 2,
+          "serviceDate": null,
+          "predicted": null,
+          "delaySeconds": null,
+          "observedAt": 1795446000,
+          "expiresAt": 1795446300,
+          "entityId": "e"
+        },
+        {
+          "tripId": "E",
+          "stopId": null,
+          "stopSequence": 3,
+          "serviceDate": null,
+          "predicted": 1795446060,
+          "delaySeconds": null,
+          "observedAt": 1795446000,
+          "expiresAt": 1795446300,
+          "entityId": "e"
+        },
+        {
+          "tripId": "E",
+          "stopId": "D",
+          "stopSequence": 4,
+          "serviceDate": null,
+          "predicted": null,
+          "delaySeconds": null,
+          "observedAt": 1795446000,
+          "expiresAt": 1795446300,
+          "entityId": "e"
+        }
+      ]
+    },
+    {
+      "name": "a start_date with an offset is a date",
+      "feed": "sncf-gtfs-rt",
+      "hex": "0a0b0a03322e3018f0a991d80612240a016f1a1f0a120a014f1a0d32303236313132332b30313030120908011a02083c22014112200a017a1a1b0a0e0a015a1a0932303236313132335a120908011a02083c220141",
+      "fetchedAt": 1795446000,
+      "updates": [
+        {
+          "tripId": "O",
+          "stopId": "A",
+          "stopSequence": 1,
+          "serviceDate": 20261123,
+          "predicted": null,
+          "delaySeconds": 60,
+          "observedAt": 1795446000,
+          "expiresAt": 1795446300,
+          "entityId": "o"
+        },
+        {
+          "tripId": "Z",
+          "stopId": "A",
+          "stopSequence": 1,
+          "serviceDate": 20261123,
+          "predicted": null,
+          "delaySeconds": 60,
+          "observedAt": 1795446000,
+          "expiresAt": 1795446300,
+          "entityId": "z"
+        }
+      ]
+    },
+    {
+      "name": "not a feed",
+      "feed": "sncf-gtfs-rt",
+      "hex": "3c68746d6c3e3c2f68746d6c3e",
+      "fetchedAt": 1795446000,
+      "unreadable": true
+    }
+  ],
+  "jsonUpdates": [
+    {
+      "name": "STA: the JSON rendering, numbers as text, \"0\" as SCHEDULED, an entity without id takes the trip_id",
+      "feed": "alto-adige-sta-realtime",
+      "json": "{\"header\":{\"gtfs_realtime_version\":\"2.0\",\"timestamp\":1795445970},\"entity\":[{\"id\":\"sta-1\",\"trip_update\":{\"trip\":{\"trip_id\":\"1.TA.3-100\",\"start_date\":\"20261123\",\"schedule_relationship\":\"SCHEDULED\"},\"timestamp\":1795445990,\"stop_time_update\":[{\"stop_sequence\":1,\"stop_id\":\"it:22021:1\",\"departure\":{\"delay\":120,\"time\":1795446300}},{\"stop_sequence\":\"2\",\"stop_id\":\"it:22021:2\",\"schedule_relationship\":\"0\",\"arrival\":{\"delay\":\"180\"}},{\"stop_sequence\":3,\"stop_id\":\"it:22021:3\",\"schedule_relationship\":\"SKIPPED\",\"departure\":{\"delay\":60}},{\"stop_id\":\" \",\"departure\":{\"delay\":60}},{\"stop_sequence\":5,\"departure\":{\"time\":0,\"delay\":30}}]}},{\"trip_update\":{\"trip\":{\"trip_id\":\"1.TA.3-101\"},\"stop_time_update\":[{\"stop_id\":\"S\",\"arrival\":{\"time\":1795446060}}]}},{\"id\":\"x\",\"trip_update\":{\"trip\":{\"trip_id\":\"1.TA.3-102\",\"schedule_relationship\":\"CANCELED\"},\"stop_time_update\":[{\"stop_id\":\"S\",\"departure\":{\"delay\":60}}]}},{\"id\":\"y\",\"trip_update\":{\"trip\":{\"trip_id\":\"1.TA.3-103\",\"start_date\":\"23/11/2026\"},\"stop_time_update\":[{\"stop_id\":\"S\",\"departure\":{\"delay\":60}}]}},{\"id\":\"z\",\"vehicle\":{\"trip\":{\"trip_id\":\"1.TA.3-104\"}}}]}",
+      "fetchedAt": 1795446000,
+      "updates": [
+        {
+          "tripId": "1.TA.3-100",
+          "stopId": "it:22021:1",
+          "stopSequence": 1,
+          "serviceDate": 20261123,
+          "predicted": 1795446300,
+          "delaySeconds": 120,
+          "observedAt": 1795445990,
+          "expiresAt": 1795446290,
+          "entityId": "sta-1"
+        },
+        {
+          "tripId": "1.TA.3-100",
+          "stopId": "it:22021:2",
+          "stopSequence": 2,
+          "serviceDate": 20261123,
+          "predicted": null,
+          "delaySeconds": 180,
+          "observedAt": 1795445990,
+          "expiresAt": 1795446290,
+          "entityId": "sta-1"
+        },
+        {
+          "tripId": "1.TA.3-100",
+          "stopId": null,
+          "stopSequence": 5,
+          "serviceDate": 20261123,
+          "predicted": null,
+          "delaySeconds": 30,
+          "observedAt": 1795445990,
+          "expiresAt": 1795446290,
+          "entityId": "sta-1"
+        },
+        {
+          "tripId": "1.TA.3-101",
+          "stopId": "S",
+          "stopSequence": null,
+          "serviceDate": null,
+          "predicted": 1795446060,
+          "delaySeconds": null,
+          "observedAt": 1795445970,
+          "expiresAt": 1795446270,
+          "entityId": "1.TA.3-101"
+        }
+      ]
+    },
+    {
+      "name": "STA: no header timestamp: when the feed was asked",
+      "feed": "alto-adige-sta-realtime",
+      "json": "{\"entity\": [{\"id\": \"a\", \"trip_update\": {\"trip\": {\"trip_id\": \"T\"}, \"stop_time_update\": [{\"stop_id\": \"S\", \"departure\": {\"delay\": -60}}]}}]}",
+      "fetchedAt": 1795446000,
+      "updates": [
+        {
+          "tripId": "T",
+          "stopId": "S",
+          "stopSequence": null,
+          "serviceDate": null,
+          "predicted": null,
+          "delaySeconds": -60,
+          "observedAt": 1795446000,
+          "expiresAt": 1795446300,
+          "entityId": "a"
+        }
+      ]
+    },
+    {
+      "name": "STA: an array is not a feed",
+      "feed": "alto-adige-sta-realtime",
+      "json": "[]",
+      "fetchedAt": 1795446000,
+      "unreadable": true
+    },
+    {
+      "name": "STA: not JSON",
+      "feed": "alto-adige-sta-realtime",
+      "json": "<html>",
+      "fetchedAt": 1795446000,
+      "unreadable": true
+    }
+  ],
+  "join": [
+    {
+      "name": "the published delay at the listed stop",
+      "pack": "alto-adige-sta-gtfs",
+      "tripId": "T1",
+      "serviceDate": 20260904,
+      "stops": [
+        {
+          "stopId": "A",
+          "sequence": 1,
+          "time": "12:00:00"
+        },
+        {
+          "stopId": "B",
+          "sequence": 2,
+          "time": "12:30:00"
+        }
+      ],
+      "listed": 0,
+      "now": 1788516000,
+      "updates": [
+        {
+          "feed": "alto-adige-sta-realtime",
+          "tripId": "T1",
+          "stopId": "A",
+          "stopSequence": 1,
+          "serviceDate": 20260904,
+          "delaySeconds": 420,
+          "predicted": null,
+          "observedAt": 1788516000,
+          "expiresAt": 1788516300
+        }
+      ],
+      "expected": {
+        "delayMinutes": 7,
+        "expected": "12:07"
+      }
+    },
+    {
+      "name": "an explicit zero is on time",
+      "pack": "alto-adige-sta-gtfs",
+      "tripId": "T1",
+      "serviceDate": 20260904,
+      "stops": [
+        {
+          "stopId": "A",
+          "sequence": 1,
+          "time": "12:00:00"
+        },
+        {
+          "stopId": "B",
+          "sequence": 2,
+          "time": "12:30:00"
+        }
+      ],
+      "listed": 0,
+      "now": 1788516000,
+      "updates": [
+        {
+          "feed": "alto-adige-sta-realtime",
+          "tripId": "T1",
+          "stopId": "A",
+          "stopSequence": 1,
+          "serviceDate": 20260904,
+          "delaySeconds": 0,
+          "predicted": null,
+          "observedAt": 1788516000,
+          "expiresAt": 1788516300
+        }
+      ],
+      "expected": {
+        "delayMinutes": 0,
+        "expected": "12:00"
+      }
+    },
+    {
+      "name": "an event without delay or time says nothing",
+      "pack": "alto-adige-sta-gtfs",
+      "tripId": "T1",
+      "serviceDate": 20260904,
+      "stops": [
+        {
+          "stopId": "A",
+          "sequence": 1,
+          "time": "12:00:00"
+        },
+        {
+          "stopId": "B",
+          "sequence": 2,
+          "time": "12:30:00"
+        }
+      ],
+      "listed": 0,
+      "now": 1788516000,
+      "updates": [
+        {
+          "feed": "alto-adige-sta-realtime",
+          "tripId": "T1",
+          "stopId": "A",
+          "stopSequence": 1,
+          "serviceDate": 20260904,
+          "delaySeconds": null,
+          "predicted": null,
+          "observedAt": 1788516000,
+          "expiresAt": 1788516300
+        }
+      ],
+      "expected": null
+    },
+    {
+      "name": "a predicted time alone: the delay in whole minutes, the time as published",
+      "pack": "alto-adige-sta-gtfs",
+      "tripId": "T1",
+      "serviceDate": 20260904,
+      "stops": [
+        {
+          "stopId": "A",
+          "sequence": 1,
+          "time": "12:00:00"
+        },
+        {
+          "stopId": "B",
+          "sequence": 2,
+          "time": "12:30:00"
+        }
+      ],
+      "listed": 0,
+      "now": 1788516000,
+      "updates": [
+        {
+          "feed": "alto-adige-sta-realtime",
+          "tripId": "T1",
+          "stopId": "A",
+          "stopSequence": 1,
+          "serviceDate": 20260904,
+          "delaySeconds": null,
+          "predicted": 1788516330,
+          "observedAt": 1788516000,
+          "expiresAt": 1788516300
+        }
+      ],
+      "expected": {
+        "delayMinutes": 5,
+        "expected": "12:05"
+      }
+    },
+    {
+      "name": "an early prediction",
+      "pack": "alto-adige-sta-gtfs",
+      "tripId": "T1",
+      "serviceDate": 20260904,
+      "stops": [
+        {
+          "stopId": "A",
+          "sequence": 1,
+          "time": "12:00:00"
+        },
+        {
+          "stopId": "B",
+          "sequence": 2,
+          "time": "12:30:00"
+        }
+      ],
+      "listed": 0,
+      "now": 1788516000,
+      "updates": [
+        {
+          "feed": "alto-adige-sta-realtime",
+          "tripId": "T1",
+          "stopId": "A",
+          "stopSequence": 1,
+          "serviceDate": 20260904,
+          "delaySeconds": null,
+          "predicted": 1788515930,
+          "observedAt": 1788516000,
+          "expiresAt": 1788516300
+        }
+      ],
+      "expected": {
+        "delayMinutes": -1,
+        "expected": "11:58"
+      }
+    },
+    {
+      "name": "observed more than five minutes ago",
+      "pack": "alto-adige-sta-gtfs",
+      "tripId": "T1",
+      "serviceDate": 20260904,
+      "stops": [
+        {
+          "stopId": "A",
+          "sequence": 1,
+          "time": "12:00:00"
+        },
+        {
+          "stopId": "B",
+          "sequence": 2,
+          "time": "12:30:00"
+        }
+      ],
+      "listed": 0,
+      "now": 1788516000,
+      "updates": [
+        {
+          "feed": "alto-adige-sta-realtime",
+          "tripId": "T1",
+          "stopId": "A",
+          "stopSequence": 1,
+          "serviceDate": 20260904,
+          "delaySeconds": 600,
+          "predicted": null,
+          "observedAt": 1788515699,
+          "expiresAt": 1788515999
+        }
+      ],
+      "expected": null
+    },
+    {
+      "name": "observed more than a minute ahead",
+      "pack": "alto-adige-sta-gtfs",
+      "tripId": "T1",
+      "serviceDate": 20260904,
+      "stops": [
+        {
+          "stopId": "A",
+          "sequence": 1,
+          "time": "12:00:00"
+        },
+        {
+          "stopId": "B",
+          "sequence": 2,
+          "time": "12:30:00"
+        }
+      ],
+      "listed": 0,
+      "now": 1788516000,
+      "updates": [
+        {
+          "feed": "alto-adige-sta-realtime",
+          "tripId": "T1",
+          "stopId": "A",
+          "stopSequence": 1,
+          "serviceDate": 20260904,
+          "delaySeconds": 600,
+          "predicted": null,
+          "observedAt": 1788516061,
+          "expiresAt": 1788516361
+        }
+      ],
+      "expected": null
+    },
+    {
+      "name": "expired",
+      "pack": "alto-adige-sta-gtfs",
+      "tripId": "T1",
+      "serviceDate": 20260904,
+      "stops": [
+        {
+          "stopId": "A",
+          "sequence": 1,
+          "time": "12:00:00"
+        },
+        {
+          "stopId": "B",
+          "sequence": 2,
+          "time": "12:30:00"
+        }
+      ],
+      "listed": 0,
+      "now": 1788516000,
+      "updates": [
+        {
+          "feed": "alto-adige-sta-realtime",
+          "tripId": "T1",
+          "stopId": "A",
+          "stopSequence": 1,
+          "serviceDate": 20260904,
+          "delaySeconds": 600,
+          "predicted": null,
+          "observedAt": 1788516000,
+          "expiresAt": 1788516000
+        }
+      ],
+      "expected": null
+    },
+    {
+      "name": "another service day",
+      "pack": "alto-adige-sta-gtfs",
+      "tripId": "T1",
+      "serviceDate": 20260904,
+      "stops": [
+        {
+          "stopId": "A",
+          "sequence": 1,
+          "time": "12:00:00"
+        },
+        {
+          "stopId": "B",
+          "sequence": 2,
+          "time": "12:30:00"
+        }
+      ],
+      "listed": 0,
+      "now": 1788516000,
+      "updates": [
+        {
+          "feed": "alto-adige-sta-realtime",
+          "tripId": "T1",
+          "stopId": "A",
+          "stopSequence": 1,
+          "serviceDate": 20260903,
+          "delaySeconds": 600,
+          "predicted": null,
+          "observedAt": 1788516000,
+          "expiresAt": 1788516300
+        }
+      ],
+      "expected": null
+    },
+    {
+      "name": "another trip",
+      "pack": "alto-adige-sta-gtfs",
+      "tripId": "T1",
+      "serviceDate": 20260904,
+      "stops": [
+        {
+          "stopId": "A",
+          "sequence": 1,
+          "time": "12:00:00"
+        },
+        {
+          "stopId": "B",
+          "sequence": 2,
+          "time": "12:30:00"
+        }
+      ],
+      "listed": 0,
+      "now": 1788516000,
+      "updates": [
+        {
+          "feed": "alto-adige-sta-realtime",
+          "tripId": "OTHER",
+          "stopId": "A",
+          "stopSequence": 1,
+          "serviceDate": 20260904,
+          "delaySeconds": 600,
+          "predicted": null,
+          "observedAt": 1788516000,
+          "expiresAt": 1788516300
+        }
+      ],
+      "expected": null
+    },
+    {
+      "name": "another stop",
+      "pack": "alto-adige-sta-gtfs",
+      "tripId": "T1",
+      "serviceDate": 20260904,
+      "stops": [
+        {
+          "stopId": "A",
+          "sequence": 1,
+          "time": "12:00:00"
+        },
+        {
+          "stopId": "B",
+          "sequence": 2,
+          "time": "12:30:00"
+        }
+      ],
+      "listed": 0,
+      "now": 1788516000,
+      "updates": [
+        {
+          "feed": "alto-adige-sta-realtime",
+          "tripId": "T1",
+          "stopId": "OTHER",
+          "stopSequence": 1,
+          "serviceDate": 20260904,
+          "delaySeconds": 600,
+          "predicted": null,
+          "observedAt": 1788516000,
+          "expiresAt": 1788516300
+        }
+      ],
+      "expected": null
+    },
+    {
+      "name": "another stop_sequence",
+      "pack": "alto-adige-sta-gtfs",
+      "tripId": "T1",
+      "serviceDate": 20260904,
+      "stops": [
+        {
+          "stopId": "A",
+          "sequence": 1,
+          "time": "12:00:00"
+        },
+        {
+          "stopId": "B",
+          "sequence": 2,
+          "time": "12:30:00"
+        }
+      ],
+      "listed": 0,
+      "now": 1788516000,
+      "updates": [
+        {
+          "feed": "alto-adige-sta-realtime",
+          "tripId": "T1",
+          "stopId": "A",
+          "stopSequence": 9,
+          "serviceDate": 20260904,
+          "delaySeconds": 600,
+          "predicted": null,
+          "observedAt": 1788516000,
+          "expiresAt": 1788516300
+        }
+      ],
+      "expected": null
+    },
+    {
+      "name": "an update of the next stop does not move the listed one",
+      "pack": "alto-adige-sta-gtfs",
+      "tripId": "T1",
+      "serviceDate": 20260904,
+      "stops": [
+        {
+          "stopId": "A",
+          "sequence": 1,
+          "time": "12:00:00"
+        },
+        {
+          "stopId": "B",
+          "sequence": 2,
+          "time": "12:30:00"
+        }
+      ],
+      "listed": 0,
+      "now": 1788516000,
+      "updates": [
+        {
+          "feed": "alto-adige-sta-realtime",
+          "tripId": "T1",
+          "stopId": "B",
+          "stopSequence": 2,
+          "serviceDate": 20260904,
+          "delaySeconds": 600,
+          "predicted": null,
+          "observedAt": 1788516000,
+          "expiresAt": 1788516300
+        }
+      ],
+      "expected": null
+    },
+    {
+      "name": "the stop_sequence alone",
+      "pack": "alto-adige-sta-gtfs",
+      "tripId": "T1",
+      "serviceDate": 20260904,
+      "stops": [
+        {
+          "stopId": "A",
+          "sequence": 1,
+          "time": "12:00:00"
+        },
+        {
+          "stopId": "B",
+          "sequence": 2,
+          "time": "12:30:00"
+        }
+      ],
+      "listed": 0,
+      "now": 1788516000,
+      "updates": [
+        {
+          "feed": "alto-adige-sta-realtime",
+          "tripId": "T1",
+          "stopId": null,
+          "stopSequence": 1,
+          "serviceDate": 20260904,
+          "delaySeconds": 120,
+          "predicted": null,
+          "observedAt": 1788516000,
+          "expiresAt": 1788516300
+        }
+      ],
+      "expected": {
+        "delayMinutes": 2,
+        "expected": "12:02"
+      }
+    },
+    {
+      "name": "the stop_id alone",
+      "pack": "alto-adige-sta-gtfs",
+      "tripId": "T1",
+      "serviceDate": 20260904,
+      "stops": [
+        {
+          "stopId": "A",
+          "sequence": 1,
+          "time": "12:00:00"
+        },
+        {
+          "stopId": "B",
+          "sequence": 2,
+          "time": "12:30:00"
+        }
+      ],
+      "listed": 0,
+      "now": 1788516000,
+      "updates": [
+        {
+          "feed": "alto-adige-sta-realtime",
+          "tripId": "T1",
+          "stopId": "A",
+          "stopSequence": null,
+          "serviceDate": 20260904,
+          "delaySeconds": 120,
+          "predicted": null,
+          "observedAt": 1788516000,
+          "expiresAt": 1788516300
+        }
+      ],
+      "expected": {
+        "delayMinutes": 2,
+        "expected": "12:02"
+      }
+    },
+    {
+      "name": "the latest observation wins",
+      "pack": "alto-adige-sta-gtfs",
+      "tripId": "T1",
+      "serviceDate": 20260904,
+      "stops": [
+        {
+          "stopId": "A",
+          "sequence": 1,
+          "time": "12:00:00"
+        },
+        {
+          "stopId": "B",
+          "sequence": 2,
+          "time": "12:30:00"
+        }
+      ],
+      "listed": 0,
+      "now": 1788516000,
+      "updates": [
+        {
+          "feed": "alto-adige-sta-realtime",
+          "tripId": "T1",
+          "stopId": "A",
+          "stopSequence": 1,
+          "serviceDate": 20260904,
+          "delaySeconds": 120,
+          "predicted": null,
+          "observedAt": 1788515940,
+          "expiresAt": 1788516240
+        },
+        {
+          "feed": "alto-adige-sta-realtime",
+          "tripId": "T1",
+          "stopId": "A",
+          "stopSequence": 1,
+          "serviceDate": 20260904,
+          "delaySeconds": 240,
+          "predicted": null,
+          "observedAt": 1788515970,
+          "expiresAt": 1788516270
+        },
+        {
+          "feed": "alto-adige-sta-realtime",
+          "tripId": "T1",
+          "stopId": "A",
+          "stopSequence": 1,
+          "serviceDate": 20260904,
+          "delaySeconds": 60,
+          "predicted": null,
+          "observedAt": 1788515910,
+          "expiresAt": 1788516210
+        }
+      ],
+      "expected": {
+        "delayMinutes": 4,
+        "expected": "12:04"
+      }
+    },
+    {
+      "name": "the latest observation wins even without a time",
+      "pack": "alto-adige-sta-gtfs",
+      "tripId": "T1",
+      "serviceDate": 20260904,
+      "stops": [
+        {
+          "stopId": "A",
+          "sequence": 1,
+          "time": "12:00:00"
+        },
+        {
+          "stopId": "B",
+          "sequence": 2,
+          "time": "12:30:00"
+        }
+      ],
+      "listed": 0,
+      "now": 1788516000,
+      "updates": [
+        {
+          "feed": "alto-adige-sta-realtime",
+          "tripId": "T1",
+          "stopId": "A",
+          "stopSequence": 1,
+          "serviceDate": 20260904,
+          "delaySeconds": 120,
+          "predicted": null,
+          "observedAt": 1788515940,
+          "expiresAt": 1788516240
+        },
+        {
+          "feed": "alto-adige-sta-realtime",
+          "tripId": "T1",
+          "stopId": "A",
+          "stopSequence": 1,
+          "serviceDate": 20260904,
+          "delaySeconds": null,
+          "predicted": null,
+          "observedAt": 1788515970,
+          "expiresAt": 1788516270
+        }
+      ],
+      "expected": null
+    },
+    {
+      "name": "equal observations: the first",
+      "pack": "alto-adige-sta-gtfs",
+      "tripId": "T1",
+      "serviceDate": 20260904,
+      "stops": [
+        {
+          "stopId": "A",
+          "sequence": 1,
+          "time": "12:00:00"
+        },
+        {
+          "stopId": "B",
+          "sequence": 2,
+          "time": "12:30:00"
+        }
+      ],
+      "listed": 0,
+      "now": 1788516000,
+      "updates": [
+        {
+          "feed": "alto-adige-sta-realtime",
+          "tripId": "T1",
+          "stopId": "A",
+          "stopSequence": 1,
+          "serviceDate": 20260904,
+          "delaySeconds": 120,
+          "predicted": null,
+          "observedAt": 1788516000,
+          "expiresAt": 1788516300
+        },
+        {
+          "feed": "alto-adige-sta-realtime",
+          "tripId": "T1",
+          "stopId": "A",
+          "stopSequence": 1,
+          "serviceDate": 20260904,
+          "delaySeconds": 240,
+          "predicted": null,
+          "observedAt": 1788516000,
+          "expiresAt": 1788516300
+        }
+      ],
+      "expected": {
+        "delayMinutes": 2,
+        "expected": "12:02"
+      }
+    },
+    {
+      "name": "a trip calling twice: a stop_id alone is its first call",
+      "pack": "alto-adige-sta-gtfs",
+      "tripId": "T1",
+      "serviceDate": 20260904,
+      "stops": [
+        {
+          "stopId": "A",
+          "sequence": 1,
+          "time": "11:00:00"
+        },
+        {
+          "stopId": "M",
+          "sequence": 2,
+          "time": "11:30:00"
+        },
+        {
+          "stopId": "A",
+          "sequence": 3,
+          "time": "12:00:00"
+        },
+        {
+          "stopId": "B",
+          "sequence": 4,
+          "time": "12:30:00"
+        }
+      ],
+      "listed": 2,
+      "now": 1788516000,
+      "updates": [
+        {
+          "feed": "alto-adige-sta-realtime",
+          "tripId": "T1",
+          "stopId": "A",
+          "stopSequence": null,
+          "serviceDate": 20260904,
+          "delaySeconds": 120,
+          "predicted": null,
+          "observedAt": 1788516000,
+          "expiresAt": 1788516300
+        }
+      ],
+      "expected": null
+    },
+    {
+      "name": "a trip calling twice: the sequence picks the second call",
+      "pack": "alto-adige-sta-gtfs",
+      "tripId": "T1",
+      "serviceDate": 20260904,
+      "stops": [
+        {
+          "stopId": "A",
+          "sequence": 1,
+          "time": "11:00:00"
+        },
+        {
+          "stopId": "M",
+          "sequence": 2,
+          "time": "11:30:00"
+        },
+        {
+          "stopId": "A",
+          "sequence": 3,
+          "time": "12:00:00"
+        },
+        {
+          "stopId": "B",
+          "sequence": 4,
+          "time": "12:30:00"
+        }
+      ],
+      "listed": 2,
+      "now": 1788516000,
+      "updates": [
+        {
+          "feed": "alto-adige-sta-realtime",
+          "tripId": "T1",
+          "stopId": "A",
+          "stopSequence": 3,
+          "serviceDate": 20260904,
+          "delaySeconds": 120,
+          "predicted": null,
+          "observedAt": 1788516000,
+          "expiresAt": 1788516300
+        }
+      ],
+      "expected": {
+        "delayMinutes": 2,
+        "expected": "12:02"
+      }
+    },
+    {
+      "name": "without start_date only the search's day: a train scheduled after midnight is another day",
+      "pack": "alto-adige-sta-gtfs",
+      "tripId": "T1",
+      "serviceDate": 20260904,
+      "stops": [
+        {
+          "stopId": "A",
+          "sequence": 1,
+          "time": "24:10:00"
+        },
+        {
+          "stopId": "B",
+          "sequence": 2,
+          "time": "24:40:00"
+        }
+      ],
+      "listed": 0,
+      "now": 1788558600,
+      "updates": [
+        {
+          "feed": "alto-adige-sta-realtime",
+          "tripId": "T1",
+          "stopId": "A",
+          "stopSequence": 1,
+          "serviceDate": null,
+          "delaySeconds": 120,
+          "predicted": null,
+          "observedAt": 1788558600,
+          "expiresAt": 1788558900
+        }
+      ],
+      "expected": null
+    },
+    {
+      "name": "with start_date the train after midnight is its own",
+      "pack": "alto-adige-sta-gtfs",
+      "tripId": "T1",
+      "serviceDate": 20260904,
+      "stops": [
+        {
+          "stopId": "A",
+          "sequence": 1,
+          "time": "24:10:00"
+        },
+        {
+          "stopId": "B",
+          "sequence": 2,
+          "time": "24:40:00"
+        }
+      ],
+      "listed": 0,
+      "now": 1788558600,
+      "updates": [
+        {
+          "feed": "alto-adige-sta-realtime",
+          "tripId": "T1",
+          "stopId": "A",
+          "stopSequence": 1,
+          "serviceDate": 20260904,
+          "delaySeconds": 120,
+          "predicted": null,
+          "observedAt": 1788558600,
+          "expiresAt": 1788558900
+        }
+      ],
+      "expected": {
+        "delayMinutes": 2,
+        "expected": "00:12"
+      }
+    },
+    {
+      "name": "without start_date on the search's day",
+      "pack": "alto-adige-sta-gtfs",
+      "tripId": "T1",
+      "serviceDate": 20260904,
+      "stops": [
+        {
+          "stopId": "A",
+          "sequence": 1,
+          "time": "12:00:00"
+        },
+        {
+          "stopId": "B",
+          "sequence": 2,
+          "time": "12:30:00"
+        }
+      ],
+      "listed": 0,
+      "now": 1788516000,
+      "updates": [
+        {
+          "feed": "alto-adige-sta-realtime",
+          "tripId": "T1",
+          "stopId": "A",
+          "stopSequence": 1,
+          "serviceDate": null,
+          "delaySeconds": 180,
+          "predicted": null,
+          "observedAt": 1788516000,
+          "expiresAt": 1788516300
+        }
+      ],
+      "expected": {
+        "delayMinutes": 3,
+        "expected": "12:03"
+      }
+    },
+    {
+      "name": "a pack whose agencies keep another offset joins nothing",
+      "pack": "alto-adige-sta-gtfs",
+      "tripId": "T1",
+      "serviceDate": 20260904,
+      "stops": [
+        {
+          "stopId": "A",
+          "sequence": 1,
+          "time": "12:00:00"
+        },
+        {
+          "stopId": "B",
+          "sequence": 2,
+          "time": "12:30:00"
+        }
+      ],
+      "listed": 0,
+      "now": 1788516000,
+      "updates": [
+        {
+          "feed": "alto-adige-sta-realtime",
+          "tripId": "T1",
+          "stopId": "A",
+          "stopSequence": 1,
+          "serviceDate": 20260904,
+          "delaySeconds": 420,
+          "predicted": null,
+          "observedAt": 1788516000,
+          "expiresAt": 1788516300
+        }
+      ],
+      "expected": null,
+      "agencyTimeZone": "UTC"
+    },
+    {
+      "name": "a pack whose agencies keep Rome's offset",
+      "pack": "alto-adige-sta-gtfs",
+      "tripId": "T1",
+      "serviceDate": 20260904,
+      "stops": [
+        {
+          "stopId": "A",
+          "sequence": 1,
+          "time": "12:00:00"
+        },
+        {
+          "stopId": "B",
+          "sequence": 2,
+          "time": "12:30:00"
+        }
+      ],
+      "listed": 0,
+      "now": 1788516000,
+      "updates": [
+        {
+          "feed": "alto-adige-sta-realtime",
+          "tripId": "T1",
+          "stopId": "A",
+          "stopSequence": 1,
+          "serviceDate": 20260904,
+          "delaySeconds": 420,
+          "predicted": null,
+          "observedAt": 1788516000,
+          "expiresAt": 1788516300
+        }
+      ],
+      "expected": {
+        "delayMinutes": 7,
+        "expected": "12:07"
+      },
+      "agencyTimeZone": "Europe/Paris"
+    }
+  ],
+  "urban": [
+    {
+      "name": "Rome, tram 8: two runs, arrival times only, the NO_DATA terminus left out",
+      "feed": "roma-mobilita-gtfs-rt",
+      "file": "app/src/test/resources/sources/gtfs-rt/roma-tram8-trip-updates.pb",
+      "routes": [
+        "8"
+      ],
+      "fetchedAt": 0,
+      "observedAt": 1793683588,
+      "trips": {
+        "0#4655-4": {
+          "startDate": 20261103,
+          "cancelled": false,
+          "stops": [
+            "80656",
+            "80657",
+            "80658",
+            "80659"
+          ]
+        },
+        "0#4652-5": {
+          "startDate": 20261103,
+          "cancelled": false,
+          "stops": [
+            "80630",
+            "80631",
+            "80632",
+            "80633",
+            "80634",
+            "80635",
+            "80636",
+            "80637",
+            "80638",
+            "80639",
+            "80640",
+            "80641",
+            "80642",
+            "80643",
+            "82167"
+          ]
+        }
+      },
+      "expected": [
+        {
+          "trip": "0#4655-4",
+          "serviceDate": 20261103,
+          "stop": "80657",
+          "scheduled": 1793683980,
+          "departure": true,
+          "result": {
+            "time": 1793683832,
+            "cancelled": false
+          }
+        },
+        {
+          "trip": "0#4652-5",
+          "serviceDate": 20261103,
+          "stop": "80632",
+          "scheduled": 1793683860,
+          "departure": true,
+          "result": {
+            "time": 1793683886,
+            "cancelled": false
+          }
+        },
+        {
+          "trip": "0#4652-5",
+          "serviceDate": 20261103,
+          "stop": "82165",
+          "scheduled": 1793685000,
+          "departure": false,
+          "result": null
+        },
+        {
+          "trip": "0#4655-4",
+          "serviceDate": 20261104,
+          "stop": "80657",
+          "scheduled": 1793683980,
+          "departure": true,
+          "result": null
+        },
+        {
+          "trip": "0#4655-4",
+          "serviceDate": 20261103,
+          "stop": "80657",
+          "scheduled": 1793698380,
+          "departure": true,
+          "result": null
+        }
+      ]
+    },
+    {
+      "name": "Mestre trams of ACTV: the routes of the pack only",
+      "feed": "venezia-actv-gtfs-rt",
+      "file": "app/src/test/resources/sources/gtfs-rt/actv-tram-trip-updates.pb",
+      "routes": [
+        "T1_UM",
+        "T2_UM"
+      ],
+      "fetchedAt": 0,
+      "observedAt": 1793683611,
+      "trips": null,
+      "tripIds": [
+        "AUT_ACTV_795_30666",
+        "AUT_ACTV_795_31279",
+        "AUT_ACTV_795_31314"
+      ],
+      "expected": []
+    }
+  ]
+}

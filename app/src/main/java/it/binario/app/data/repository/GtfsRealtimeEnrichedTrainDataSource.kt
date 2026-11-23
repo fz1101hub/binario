@@ -3,6 +3,7 @@ package it.binario.app.data.repository
 import it.binario.app.data.*
 import it.binario.app.data.core.EnrichedRealtimeStop
 import it.binario.app.data.core.GtfsRealtimeFreshness
+import it.binario.app.data.live.RealtimeFeedTable
 import it.binario.app.data.planned.BoundedSingleFlightCache
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -120,19 +121,14 @@ class GtfsRealtimeEnrichedTrainDataSource(
             val sources = used.map { it.update.source.sourceId.value }.distinct()
             val allVerified = services.all { it.operationalStatusVerified }
             val anyVerified = services.any { it.operationalStatusVerified }
-            val sourceLabels = sources.map { when (it) {
-                "alto-adige-sta-realtime" -> "STA Alto Adige"
-                "sncf-gtfs-rt" -> "SNCF"
-                "trenitalia-france-gtfs-rt" -> "Trenitalia France"
-                else -> "fonte ferroviaria"
-            } }.distinct()
+            val sourceLabels = sources.map { RealtimeFeedTable.labelOf(it) ?: "fonte ferroviaria" }.distinct()
             val notice = result.snapshot.notice?.replace("Ritardi, binari e soppressioni richiedono fonti realtime.", "")?.trim()?.takeIf(String::isNotBlank)
             DataResult.Success(result.snapshot.copy(
                 services = services,
                 providerName = result.snapshot.providerName + " + " + sourceLabels.joinToString(" / "),
                 sourceObservedAtEpochMillis = used.maxOf { it.update.observedAt.toEpochMilli() },
                 expiresAtEpochMillis = minOf(result.snapshot.expiresAtEpochMillis,
-                    used.minOf { (it.update.source.expiresAt ?: it.update.observedAt.plusSeconds(300)).toEpochMilli() }),
+                    used.minOf { (it.update.source.expiresAt ?: it.update.observedAt.plus(GtfsRealtimeFreshness.OBSERVATION_WINDOW)).toEpochMilli() }),
                 freshness = Freshness.FRESH,
                 confidence = if (anyVerified && result.snapshot.confidence == DataConfidence.STATIC_ONLY) DataConfidence.OPEN_DATA else result.snapshot.confidence,
                 qualityWarnings = if (anyVerified) result.snapshot.qualityWarnings - SnapshotWarning.STATIC_ONLY else result.snapshot.qualityWarnings,
@@ -168,7 +164,7 @@ class GtfsRealtimeEnrichedTrainDataSource(
     private fun fresh(stop: EnrichedRealtimeStop): Boolean {
         val now = clock.instant()
         return !stop.update.observedAt.isBefore(now.minus(GtfsRealtimeFreshness.OBSERVATION_WINDOW)) &&
-            !stop.update.observedAt.isAfter(now.plusSeconds(60)) &&
+            !stop.update.observedAt.isAfter(now.plus(RealtimeFeedTable.FUTURE_TOLERANCE)) &&
             stop.update.source.expiresAt?.isAfter(now) != false
     }
 

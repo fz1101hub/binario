@@ -469,6 +469,27 @@ def _check_pack_roles(values: Mapping[str, Any]) -> list[str]:
     return [f"{pack!r} è sia nazionale sia estero" for pack in sorted(both)]
 
 
+def _check_realtime_feeds(values: Mapping[str, Any]) -> list[str]:
+    problems = []
+    for index, feed in enumerate(values["tripUpdates"]):
+        feed = feed.values
+        # The refusal pause is the feed's own, or the one of every feed of its host (transport.data.gouv.fr).
+        if feed["refusalGroup"] != feed["pauseLabel"] and not _host(feed["url"]).endswith(feed["refusalGroup"]):
+            problems.append(f"tripUpdates[{index}].refusalGroup: l'etichetta della pausa o il dominio del feed")
+        if feed["format"] == "json" and feed["redirects"] != "same-resource":
+            problems.append(f"tripUpdates[{index}]: un feed JSON segue solo la stessa risorsa")
+    packs = [feed.values["pack"] for feed in values["tripUpdates"]] + [feed.values["pack"] for feed in values["urban"]]
+    problems += [f"pack {pack!r} con due feed" for pack in sorted({pack for pack in packs if packs.count(pack) > 1})]
+    region = values["swissBoard"].values["borderRegion"].values
+    if region["minimumLatitude"] >= region["maximumLatitude"] or region["minimumLongitude"] >= region["maximumLongitude"]:
+        problems.append("swissBoard.borderRegion: minimo non minore del massimo")
+    return problems
+
+
+def _host(url: str) -> str:
+    return url.split("://", 1)[1].split("/", 1)[0]
+
+
 # --- Registry -----------------------------------------------------------------------------------------------------
 
 SOURCE_ID = r"[a-z0-9]+(?:-[a-z0-9]+)*"
@@ -606,6 +627,82 @@ NOTICE_DISPLAY = Record("Display", {
     "worksCollapsed": Field(LENGTH),
 })
 PACK_SET = ListOf(Text(SOURCE_ID), as_set=True)
+TRIP_UPDATES_FEED = Record("TripUpdatesFeed", {
+    "id": Field(Text(SOURCE_ID)),
+    "pack": Field(Text(SOURCE_ID)),
+    "label": Field(Text(max_length=40)),
+    "format": Field(Text(r"json|protobuf")),
+    "gate": Field(Text(r"all-builds|pack-bundled")),
+    "url": Field(HTTPS_URL),
+    "accept": Field(Text()),
+    "connectTimeoutSeconds": Field(Seconds(1)),
+    "readTimeoutSeconds": Field(Seconds(1)),
+    "totalTimeoutSeconds": Field(Seconds(1)),
+    "maximumBytes": Field(Integer(1, 32 * 1_048_576)),
+    "maximumRequests": Field(Integer(1, 5)),
+    "redirects": Field(Text(r"same-resource|same-https-host")),
+    "timeToLiveSeconds": Field(Seconds(1)),
+    "pauseLabel": Field(Text(max_length=60)),
+    "refusalGroup": Field(Text(max_length=60)),
+    "zone": Field(Text(r"[A-Z][A-Za-z_]+/[A-Z][A-Za-z_]+")),
+    "licence": Field(Text()),
+}, notes=True)
+URBAN_FEED = Record("UrbanFeed", {
+    "id": Field(Text(SOURCE_ID)),
+    "pack": Field(Text(SOURCE_ID)),
+    "displayName": Field(Text(max_length=60)),
+    "url": Field(HTTPS_URL),
+    "licence": Field(Text()),
+    "personalOnly": Field(Boolean()),
+    "zone": Field(Text(r"[A-Z][A-Za-z_]+/[A-Z][A-Za-z_]+")),
+}, notes=True)
+URBAN_FETCH = Record("UrbanFetch", {
+    "accept": Field(Text()),
+    "connectTimeoutSeconds": Field(Seconds(1)),
+    "readTimeoutSeconds": Field(Seconds(1)),
+    "totalTimeoutSeconds": Field(Seconds(1)),
+    "maximumBytes": Field(Integer(1, 32 * 1_048_576)),
+    "maximumRequests": Field(Integer(1, 5)),
+    "timeToLiveSeconds": Field(Seconds(30)),
+    "maximumStaleSeconds": Field(Seconds()),
+    "maximumTrips": Field(LENGTH),
+    "maximumShiftSeconds": Field(Seconds(1)),
+    "maximumRoutes": Field(LENGTH),
+})
+BORDER_REGION = Record("BorderRegion", {
+    "minimumLatitude": Field(Real(-90, 90)),
+    "maximumLatitude": Field(Real(-90, 90)),
+    "minimumLongitude": Field(Real(-180, 180)),
+    "maximumLongitude": Field(Real(-180, 180)),
+})
+SWISS_BOARD = Record("SwissBoard", {
+    "id": Field(Text(SOURCE_ID)),
+    "label": Field(Text(max_length=40)),
+    "baseUrl": Field(HTTPS_URL),
+    "accept": Field(Text()),
+    "connectTimeoutSeconds": Field(Seconds(1)),
+    "readTimeoutSeconds": Field(Seconds(1)),
+    "totalTimeoutSeconds": Field(Seconds(1)),
+    "maximumBytes": Field(Integer(1, 32 * 1_048_576)),
+    "maximumRequests": Field(Integer(1, 5)),
+    "minimumIntervalSeconds": Field(Seconds(1)),
+    "boardTimeToLiveSeconds": Field(Seconds(1)),
+    "boardMaximumStaleSeconds": Field(Seconds()),
+    "locationTimeToLiveSeconds": Field(Seconds(1)),
+    "retryDelayMillis": Field(Integer(0, 60_000)),
+    "pauseLabel": Field(Text(max_length=60)),
+    "boardLimit": Field(Integer(1, 500)),
+    "maximumRows": Field(LENGTH),
+    "maximumLocations": Field(LENGTH),
+    "maximumDelayMinutes": Field(Integer(1, 1_440)),
+    "maximumEarlyArrivalMinutes": Field(Integer(0, 120)),
+    "maximumLocationDistanceMeters": Field(Integer(1, 100_000)),
+    "currentBoardBeforeMinutes": Field(Integer(0, 1_440)),
+    "currentBoardAfterMinutes": Field(Integer(0, 1_440)),
+    "zone": Field(Text(r"[A-Z][A-Za-z_]+/[A-Z][A-Za-z_]+")),
+    "borderRegion": Field(BORDER_REGION),
+    "nonRailCategories": Field(ListOf(Text(r"[A-Z]{1,8}"), as_set=True)),
+})
 
 TABLES: tuple[Table, ...] = (
     Table("airport-routes-v1.json", "AirportRoutes", {
@@ -674,6 +771,15 @@ TABLES: tuple[Table, ...] = (
         "minimumBandSamples": Field(COUNT),
         "minimumBandGapPoints": Field(Integer(1, 100)),
     }, alexa=True),
+    Table("realtime-feeds-v1.json", "RealtimeFeeds", {
+        "observationWindowSeconds": Field(Seconds(1)),
+        "futureToleranceSeconds": Field(Seconds()),
+        "failureMemorySeconds": Field(Seconds(1)),
+        "tripUpdates": Field(ListOf(TRIP_UPDATES_FEED, unique_by=("id",))),
+        "urban": Field(ListOf(URBAN_FEED, unique_by=("id",))),
+        "urbanFetch": Field(URBAN_FETCH),
+        "swissBoard": Field(SWISS_BOARD),
+    }, check=_check_realtime_feeds),
     Table("rfi-place-ids-v1.json", "RfiPlaceIds", {
         "placeIdsByName": Field(MapOf(Integer(1, 99_999), key=STATION_NAME)),
     }),

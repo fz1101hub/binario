@@ -14,6 +14,7 @@ import it.binario.app.data.provider.ProviderCapability
 import it.binario.app.data.provider.ProviderDescriptor
 import it.binario.app.data.provider.RailProvider
 import it.binario.app.data.provider.RatePolicy
+import it.binario.app.shared.SharedData
 import java.io.InputStream
 import java.time.Clock
 import java.time.Duration
@@ -43,37 +44,38 @@ data class UrbanRealtimeFeed(
     }
 }
 
-/** The city realtime feeds verified from CI (see SOURCE_POLICY.md, «Tempo reale di metro e tram»). */
+/**
+ * The city realtime feeds verified from CI (see SOURCE_POLICY.md, «Tempo reale di metro e tram»), from the shared table
+ * (contracts/shared-data/v1/realtime-feeds-v1.json) the iPhone reads too.
+ */
 object UrbanRealtimeFeeds {
     /**
      * Roma Servizi per la Mobilità, Trip Updates of the ATAC network: buses and trams with AVM, no metro (CI runs
      * 41564222536 and 41583916012); the same trip_id and stop_id as the static GTFS the `roma-mobilita-gtfs` pack is
      * built from. Personal builds only, like the pack.
      */
-    val ROMA = UrbanRealtimeFeed(
-        sourceId = SourceId("roma-mobilita-gtfs-rt"),
-        staticSourceId = SourceId("roma-mobilita-gtfs"),
-        displayName = "Roma Servizi per la Mobilità",
-        tripUpdatesUrl = "https://romamobilita.it/sites/default/files/rome_rtgtfs_trip_updates_feed.pb",
-        licence = "CC BY-SA su dati.comune.roma.it, CC BY 4.0 su dati.gov.it, nessuna sulla pagina ufficiale",
-        personalOnly = true
-    )
+    val ROMA = feed("roma-mobilita-gtfs-rt")
 
     /**
      * ACTV automobilistico, Trip Updates of the Mestre trams T1 and T2 (and the buses, dropped): trip_id and stop_id of
      * the `actv_aut` GTFS the `venezia-actv-gtfs` pack is built from. Licence not stated (ACTV data catalogue, art. 53
      * CAD), like the pack: personal builds only.
      */
-    val ACTV = UrbanRealtimeFeed(
-        sourceId = SourceId("venezia-actv-gtfs-rt"),
-        staticSourceId = SourceId("venezia-actv-gtfs"),
-        displayName = "ACTV",
-        tripUpdatesUrl = "https://tpl.actv.it/aut/GTFSRT/tripUpdates",
-        licence = "Non dichiarata (catalogo dei dati ACTV, art. 53 CAD)",
-        personalOnly = true
-    )
+    val ACTV = feed("venezia-actv-gtfs-rt")
 
     val all: List<UrbanRealtimeFeed> = listOf(ROMA, ACTV)
+
+    private fun feed(id: String): UrbanRealtimeFeed = SharedData.RealtimeFeeds.URBAN.single { it.id == id }.let { row ->
+        UrbanRealtimeFeed(
+            sourceId = SourceId(row.id),
+            staticSourceId = SourceId(row.pack),
+            displayName = row.displayName,
+            tripUpdatesUrl = row.url,
+            licence = row.licence,
+            personalOnly = row.personalOnly,
+            zone = ZoneId.of(row.zone)
+        )
+    }
 
     /** The feeds of this build whose city pack is in [packs]. */
     fun forBuild(personalSources: Boolean, packs: List<EmbeddedGtfsPack>): List<UrbanRealtimeFeed> =
@@ -137,10 +139,11 @@ data class UrbanRealtimeSnapshot(
 
     /** True while the observation is recent enough to show as live (five minutes, at most one in the future). */
     fun isFresh(now: Instant): Boolean =
-        !observedAt.isBefore(now.minus(MAX_AGE)) && !observedAt.isAfter(now.plusSeconds(60))
+        !observedAt.isBefore(now.minus(MAX_AGE)) &&
+            !observedAt.isAfter(now.plusSeconds(SharedData.RealtimeFeeds.FUTURE_TOLERANCE_SECONDS.toLong()))
 
     companion object {
-        val MAX_AGE: Duration = Duration.ofMinutes(5)
+        val MAX_AGE: Duration = Duration.ofSeconds(SharedData.RealtimeFeeds.OBSERVATION_WINDOW_SECONDS.toLong())
     }
 }
 
@@ -166,7 +169,7 @@ fun UrbanTripRealtime.expectedAt(stopId: String, scheduled: ZonedDateTime, depar
     return UrbanExpectedTime(expected, cancelled = false)
 }
 
-private val MAX_SHIFT: Duration = Duration.ofHours(3)
+private val MAX_SHIFT: Duration = Duration.ofSeconds(SharedData.RealtimeFeeds.URBAN_FETCH.maximumShiftSeconds.toLong())
 
 private fun UrbanStopTimeRealtime.eventTime(departure: Boolean): Instant? =
     if (departure) this.departure ?: arrival else arrival ?: this.departure
@@ -181,7 +184,7 @@ private fun UrbanStopTimeRealtime.eventDelay(departure: Boolean): Int? =
  * dropped, and so are NO_DATA stops.
  */
 object UrbanGtfsRealtimeDecoder {
-    const val MAX_TRIPS = 20_000
+    val MAX_TRIPS: Int = SharedData.RealtimeFeeds.URBAN_FETCH.maximumTrips
 
     fun decode(
         payload: ByteArray,
@@ -245,9 +248,15 @@ fun interface UrbanRealtimeFetcher {
  */
 class UrbanGtfsRealtimeAdapter(
     val feed: UrbanRealtimeFeed,
-    private val fetcher: UrbanRealtimeFetcher = HttpsBytesFetcher(),
+    private val fetcher: UrbanRealtimeFetcher = SharedData.RealtimeFeeds.URBAN_FETCH.let { fetch ->
+        HttpsBytesFetcher(
+            maxBytes = fetch.maximumBytes, connectTimeoutMillis = fetch.connectTimeoutSeconds * 1_000,
+            readTimeoutMillis = fetch.readTimeoutSeconds * 1_000, totalTimeoutMillis = fetch.totalTimeoutSeconds * 1_000L,
+            accept = fetch.accept, maxRequests = fetch.maximumRequests
+        )
+    },
     private val clock: Clock = Clock.systemUTC(),
-    cacheTtl: Duration = Duration.ofSeconds(30),
+    cacheTtl: Duration = Duration.ofSeconds(SharedData.RealtimeFeeds.URBAN_FETCH.timeToLiveSeconds.toLong()),
     /** route_id values of the city pack, read lazily; null keeps every route. */
     private val packRoutes: (suspend () -> Set<String>?)? = null
 ) : RailProvider {
@@ -257,7 +266,8 @@ class UrbanGtfsRealtimeAdapter(
 
     override val descriptor = descriptor(feed, cacheTtl)
 
-    private val cache = ResilientSourceCache<UrbanRealtimeSnapshot>(ttl = cacheTtl, maxStale = Duration.ofMinutes(2), clock = clock, maxEntries = 1)
+    private val cache = ResilientSourceCache<UrbanRealtimeSnapshot>(ttl = cacheTtl,
+        maxStale = Duration.ofSeconds(SharedData.RealtimeFeeds.URBAN_FETCH.maximumStaleSeconds.toLong()), clock = clock, maxEntries = 1)
 
     /** The latest snapshot, or null when the feed is unavailable; a stale value is returned flagged by its age. */
     suspend fun snapshot(): UrbanRealtimeSnapshot? = when (val read = cache.get(feed.sourceId.value) { load() }) {
@@ -299,5 +309,5 @@ internal object UrbanPackRoutes {
         return ids
     }
 
-    private const val MAX_ROUTES = 5_000
+    private val MAX_ROUTES: Int = SharedData.RealtimeFeeds.URBAN_FETCH.maximumRoutes
 }
