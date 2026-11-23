@@ -288,12 +288,15 @@ def proposed_source_manifest(
 
 
 def published_pack_current(asset_dir: Path, pack: Mapping[str, Any]) -> bool:
-    """Whether the published ZIP of ``pack`` passes this build's filter checks (``verify_filter_from_asset``)."""
+    """Whether the published ZIP of ``pack`` passes this build's filter checks (``verify_filter_from_asset``) and was
+    built with every rule this build has for its source (``missing_reviewed_rules``: a pack built before a rule was
+    added still passes --check, so that CI stays green until this refresh filters its source again)."""
+    path = asset_dir / builder.safe_asset_name(str(pack["asset"]))
     try:
-        builder.verify_filter_from_asset(asset_dir / builder.safe_asset_name(str(pack["asset"])), str(pack["sourceId"]))
+        builder.verify_filter_from_asset(path, str(pack["sourceId"]))
+        return not builder.missing_reviewed_rules(path, str(pack["sourceId"]))
     except (builder.BuildError, OSError, zipfile.BadZipFile, KeyError, ValueError):
         return False
-    return True
 
 
 def build_one(
@@ -441,8 +444,9 @@ def refresh(
                     entry["status"] = "unchanged"
                     print(f"  {source_id}: archivio identico a quello pubblicato", flush=True)
                     continue
-                # A rule added to the build since (Trenitalia France's times in Europe/Rome) makes the same archive
-                # worth filtering again: the published pack no longer passes --check.
+                # A rule added to the build since (Trenitalia France's times in Europe/Rome, its route categories and
+                # out-of-order trips) makes the same archive worth filtering again: the published pack no longer passes
+                # --check, or was built without that rule.
                 print(f"  {source_id}: archivio identico, ma il pack pubblicato non supera le regole correnti: ricostruito", flush=True)
             status, rebuilt = build_one(staging, source_id, target, generated_at, proposed, work, staging_full, switch,
                                         candidates.get(source_id) if source_id not in registered else None)

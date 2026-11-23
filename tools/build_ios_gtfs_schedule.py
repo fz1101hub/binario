@@ -89,7 +89,8 @@ FOREIGN_PACKS = frozenset({"ch-otd-gtfs", "oebb-gtfs", "sncf-gtfs", "trenitalia-
 # GTFS of November 2026 numbers four weekend runs of train 9281 (28-29 November, 5-6 December) Oulx 5, Torino Porta
 # Susa 24, Milano Centrale 38, Paris 39, Lyon 90..., while their times run from Paris at 07:30 to Milano at 14:07; its
 # other runs are in order.  Never reordered by time: the published order is wrong, and guessing another is not ours.
-# More than MAX_OUT_OF_ORDER_TRIP_SHARE of a pack's kept trips still fails the build.
+# More than MAX_OUT_OF_ORDER_TRIP_SHARE of a pack's kept trips still fails the build.  The pack build leaves the same
+# trips out from its next run (build_gtfs_packs.OUT_OF_ORDER_SOURCES); this rule stays for a pack built before it.
 OUT_OF_ORDER_TRIPS_LEFT_OUT = frozenset({"trenitalia-france-gtfs"})
 MAX_OUT_OF_ORDER_TRIP_SHARE = 0.05
 OUT_OF_ORDER_COUNT_KEY = "out_of_order_trip_left_out"

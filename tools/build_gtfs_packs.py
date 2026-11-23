@@ -194,6 +194,30 @@ MAX_LOCAL_TIME_SECONDS = 48 * 3600
 TRAIN_NUMBER_ROUTE_ID_SOURCES = frozenset({"trenitalia-france-gtfs"})
 TRAIN_NUMBERS_RULE = "train-numbers-from-route-id"
 PLAIN_TRAIN_NUMBER = re.compile(r"[0-9]{1,6}")
+# Reviewed sources whose routes name each train by its origin and destination in both route_short_name and
+# route_long_name (Trenitalia France: "Paris-Gare-de-Lyon/Lyon-Perrache-Voyageurs"), which both apps show as the line
+# of a row ("Paris-Gare-de-Lyon/Lyon-Perrache-Voyageurs 6647").  Every route of Trenitalia France's GTFS of November 2026
+# is a Frecciarossa of its one agency, "Trenitalia" (series 61xx Paris – Marseille, 64xx and 66xx Paris – Lyon, 92xx
+# Paris – Milano; the feed's publisher is "Trenitalia France", the company that runs them all): the build writes the category the national pack publishes for its Frecciarossa (route_short_name
+# "0083_FR", which Android shows as "FR", route_long_name "Frecciarossa") without Trenitalia's company code, so the rows
+# read "FR 9281" as the national ones do; named in tripRules (ROUTE_CATEGORY_RULE).  A kept route of another route_type
+# or of another agency fails the build: its category is not known.
+ROUTE_CATEGORY_SOURCES: Mapping[str, tuple[str, str, frozenset[str]]] = {
+    "trenitalia-france-gtfs": ("FR", "Frecciarossa", frozenset({"Trenitalia", "Trenitalia France"})),
+}
+ROUTE_CATEGORY_RULE = "route-category"
+ROUTE_CATEGORY_ROUTE_TYPE = "2"
+# Reviewed sources that number a few trips out of their time order (along stop_sequence, an arrival before the previous
+# stop's departure): such a trip is left out, never reordered, and counted in the filter manifest
+# (OUT_OF_ORDER_COUNT_FIELD; a pack filtered again keeps the count of its source); named in tripRules
+# (OUT_OF_ORDER_RULE).  More than MAX_OUT_OF_ORDER_TRIP_SHARE of the pack's trips fails the build.  Trenitalia France's
+# GTFS of November 2026 numbers four weekend runs of train 9281 Oulx 5, Torino Porta Susa 24, Milano Centrale 38,
+# Paris 39, while their times run from Paris at 07:30 to Milano at 14:07.  The iPhone index applies the same rule
+# (build_ios_gtfs_schedule.OUT_OF_ORDER_TRIPS_LEFT_OUT), which also covers a pack built before this rule.
+OUT_OF_ORDER_SOURCES = frozenset({"trenitalia-france-gtfs"})
+OUT_OF_ORDER_RULE = "out-of-order-trips"
+OUT_OF_ORDER_COUNT_FIELD = "outOfOrderTripsLeftOut"
+MAX_OUT_OF_ORDER_TRIP_SHARE = 0.05
 
 # City networks (assets under gtfs-transit/ and gtfs-personal/): metro (1, 400-499), tram (0, 900-999), funiculars,
 # cable cars and lifts (5, 6, 7, 1300-1499) and monorail (12). Never a bus: a city feed is mostly buses, which
@@ -1047,6 +1071,124 @@ def train_numbers_from_route_ids(trip_rows: Sequence[Mapping[str, str]]) -> tupl
     return tuple(rows), filled
 
 
+def route_categories(
+    source_id: str, route_rows: Sequence[Mapping[str, str]], agency_rows: Sequence[Mapping[str, str]],
+) -> tuple[dict[str, str], ...]:
+    """Routes of a ROUTE_CATEGORY_SOURCES pack named by their category; a route of another route_type or agency fails."""
+    short_name, long_name, agencies = ROUTE_CATEGORY_SOURCES[source_id]
+    names = {row.get("agency_id", "").strip(): row.get("agency_name", "").strip() for row in agency_rows}
+    single = next(iter(names.values())) if len(names) == 1 else None
+    renamed: list[dict[str, str]] = []
+    for row in route_rows:
+        route_id = row.get("route_id", "")
+        route_type = row.get("route_type", "").strip()
+        if route_type != ROUTE_CATEGORY_ROUTE_TYPE:
+            raise BuildError(
+                f"{source_id}: la route {log_safe(route_id)} ha route_type {log_safe(route_type)}, non "
+                f"{ROUTE_CATEGORY_ROUTE_TYPE}: categoria {long_name} non verificata ({ROUTE_CATEGORY_RULE})"
+            )
+        agency_id = row.get("agency_id", "").strip()
+        agency = names.get(agency_id) if agency_id else single
+        if agency not in agencies:
+            raise BuildError(
+                f"{source_id}: la route {log_safe(route_id)} è dell'agenzia {log_safe(str(agency))}, non rivista: "
+                f"categoria {long_name} non verificata ({ROUTE_CATEGORY_RULE})"
+            )
+        renamed.append({**row, "route_short_name": short_name, "route_long_name": long_name})
+    return tuple(renamed)
+
+
+def out_of_order_trips(source_id: str, stop_time_rows: Sequence[Mapping[str, str]]) -> set[str]:
+    """Trips with an arrival before the previous departure along stop_sequence (an empty time is not compared)."""
+    calls: dict[str, list[tuple[int, int | None, int | None]]] = {}
+    for row in stop_time_rows:
+        trip_id = row.get("trip_id", "")
+        try:
+            sequence = int(row.get("stop_sequence", "").strip())
+        except ValueError:
+            raise BuildError(f"{source_id}: stop_sequence non numerica nella corsa {log_safe(trip_id)}") from None
+        calls.setdefault(trip_id, []).append(
+            (sequence, gtfs_seconds(row.get("arrival_time", "")), gtfs_seconds(row.get("departure_time", ""))),
+        )
+    found: set[str] = set()
+    for trip_id, stops in calls.items():
+        previous: int | None = None
+        for _, arrival, departure in sorted(stops, key=lambda call: call[0]):
+            if arrival is not None and previous is not None and arrival < previous:
+                found.add(trip_id)
+                break
+            if departure is not None:
+                previous = departure
+    return found
+
+
+def published_out_of_order_count(archive: zipfile.ZipFile, source_id: str, provenance: str | None) -> int:
+    """The OUT_OF_ORDER_COUNT_FIELD of the published pack the input *is* (``provenance``): filtering it again keeps the
+    count of the source (those trips are no longer in it); 0 for any other input."""
+    entry = filter_manifest_entry(archive) if provenance is not None else None
+    if entry is None:
+        return 0
+    try:
+        value = json.loads(archive.read(entry).decode("utf-8")).get(OUT_OF_ORDER_COUNT_FIELD, 0)
+    except (UnicodeDecodeError, json.JSONDecodeError, AttributeError) as error:
+        raise BuildError(f"{source_id}: {OUT_OF_ORDER_COUNT_FIELD} non valido") from error
+    if not isinstance(value, int) or isinstance(value, bool) or value < 0:
+        raise BuildError(f"{source_id}: {OUT_OF_ORDER_COUNT_FIELD} non valido")
+    return value
+
+
+def verify_route_categories(
+    source_id: str, metadata: Mapping[str, Any], route_rows: Sequence[Mapping[str, str]], agency_rows: Sequence[Mapping[str, str]],
+) -> None:
+    """A pack declaring ROUTE_CATEGORY_RULE is of a reviewed source and every route carries its category.  A pack of a
+    reviewed source built before the rule passes (it is consistent); the refresh rebuilds it (missing_reviewed_rules)."""
+    if ROUTE_CATEGORY_RULE not in (metadata.get("tripRules") or []):
+        return
+    if source_id not in ROUTE_CATEGORY_SOURCES:
+        raise BuildError(f"{source_id}: {ROUTE_CATEGORY_RULE} su una fonte non rivista (ROUTE_CATEGORY_SOURCES)")
+    expected = route_categories(source_id, route_rows, agency_rows)
+    if [dict(row) for row in route_rows] != list(expected):
+        raise BuildError(f"{source_id}: route senza la categoria di {ROUTE_CATEGORY_RULE}: ricostruire il pack")
+
+
+def verify_out_of_order(
+    source_id: str, metadata: Mapping[str, Any], trip_count: int, stop_time_rows: Sequence[Mapping[str, str]],
+) -> None:
+    """A pack declaring OUT_OF_ORDER_RULE is of a reviewed source, records a count within the share and has no trip left
+    out of its time order.  A pack of a reviewed source built before the rule passes; the refresh rebuilds it."""
+    declared = OUT_OF_ORDER_RULE in (metadata.get("tripRules") or [])
+    if not declared and OUT_OF_ORDER_COUNT_FIELD not in metadata:
+        return
+    if source_id not in OUT_OF_ORDER_SOURCES:
+        raise BuildError(f"{source_id}: {OUT_OF_ORDER_RULE} su una fonte non rivista (OUT_OF_ORDER_SOURCES)")
+    count = metadata.get(OUT_OF_ORDER_COUNT_FIELD)
+    if not declared or not isinstance(count, int) or isinstance(count, bool) or count < 0:
+        raise BuildError(f"{source_id}: {OUT_OF_ORDER_RULE} e {OUT_OF_ORDER_COUNT_FIELD} incoerenti")
+    if count > MAX_OUT_OF_ORDER_TRIP_SHARE * (trip_count + count):
+        raise BuildError(f"{source_id}: {count} trip lasciati fuori per l'ordine degli orari, oltre la quota ammessa")
+    left = out_of_order_trips(source_id, stop_time_rows)
+    if left:
+        raise BuildError(f"{source_id}: {len(left)} trip con orari fuori ordine lungo stop_sequence, es. {log_safe(sorted(left)[0])}")
+
+
+def missing_reviewed_rules(path: Path, source_id: str) -> list[str]:
+    """The rules of this build for ``source_id`` that its published pack at ``path`` was built without (a rule added
+    after it): the pack still passes --check, and the weekly refresh filters its source again."""
+    expected = [rule for rule, sources in ((ROUTE_CATEGORY_RULE, ROUTE_CATEGORY_SOURCES), (OUT_OF_ORDER_RULE, OUT_OF_ORDER_SOURCES))
+                if source_id in sources]
+    if not expected:
+        return []
+    with zipfile.ZipFile(path) as archive:
+        entry = filter_manifest_entry(archive)
+        if entry is None:
+            return expected
+        try:
+            declared = json.loads(archive.read(entry).decode("utf-8")).get("tripRules") or []
+        except (UnicodeDecodeError, json.JSONDecodeError, AttributeError) as error:
+            raise BuildError(f"{source_id}: metadati filtro non validi") from error
+    return [rule for rule in expected if rule not in declared]
+
+
 def calendar_span(calendar: CsvTable, calendar_dates: CsvTable, source_id: str) -> tuple[date, date] | None:
     """First and last day named by calendar.txt (start_date to end_date) and calendar_dates.txt; None without any."""
     days: list[date] = []
@@ -1676,7 +1818,7 @@ def filter_archive(
             trip_ids = {row["trip_id"] for row in kept_trips if row.get("trip_id")}
             service_ids = {row["service_id"] for row in kept_trips if row.get("service_id")}
 
-        run_metadata: dict[str, str] = {}
+        run_metadata: dict[str, Any] = {}
         if trips_run_from is not None:
             expired = expired_trips(kept_trips, service_days(calendar, calendar_dates, source_id), trips_run_from)
             if expired:
@@ -1722,6 +1864,23 @@ def filter_archive(
                     trip_ids = {row["trip_id"] for row in kept_trips if row.get("trip_id")}
                     service_ids = {row["service_id"] for row in kept_trips if row.get("service_id")}
                 run_metadata[SERVICE_CLIPPED_AFTER_FIELD] = cut.isoformat()
+
+        if source_id in OUT_OF_ORDER_SOURCES:
+            out_of_order = out_of_order_trips(source_id, kept_stop_times)
+            if len(out_of_order) > MAX_OUT_OF_ORDER_TRIP_SHARE * len(kept_trips):
+                raise BuildError(
+                    f"{source_id}: {len(out_of_order)} trip su {len(kept_trips)} con orari fuori ordine lungo stop_sequence, "
+                    f"oltre la quota ammessa ({OUT_OF_ORDER_RULE})"
+                )
+            if out_of_order:
+                kept_trips = tuple(row for row in kept_trips if row.get("trip_id", "") not in out_of_order)
+                kept_stop_times = tuple(row for row in kept_stop_times if row.get("trip_id", "") not in out_of_order)
+                trip_ids = {row["trip_id"] for row in kept_trips if row.get("trip_id")}
+                service_ids = {row["service_id"] for row in kept_trips if row.get("service_id")}
+            trip_rules.append(OUT_OF_ORDER_RULE)
+            run_metadata[OUT_OF_ORDER_COUNT_FIELD] = published_out_of_order_count(archive, source_id, provenance) + len(out_of_order)
+            print(f"{source_id}: {len(out_of_order)} trip con orari fuori ordine lungo stop_sequence lasciati fuori "
+                  f"{log_safe(json.dumps(sorted(out_of_order)[:5]))}", file=sys.stderr)
 
         stop_ids = {row["stop_id"] for row in kept_stop_times if row.get("stop_id")}
         if not stop_ids:
@@ -1780,6 +1939,12 @@ def filter_archive(
                 trips_header = (*trips_header, "trip_short_name")
             trip_rules.append(TRAIN_NUMBERS_RULE)
             print(f"{source_id}: {filled} trip_short_name ricavati dal route_id", file=sys.stderr)
+        routes_header = routes.header
+        if source_id in ROUTE_CATEGORY_SOURCES:
+            kept_routes = route_categories(source_id, kept_routes, kept_agency)
+            routes_header = (*routes.header, *(column for column in ("route_short_name", "route_long_name") if column not in routes.header))
+            trip_rules.append(ROUTE_CATEGORY_RULE)
+            print(f"{source_id}: {len(kept_routes)} route con la categoria {ROUTE_CATEGORY_SOURCES[source_id][1]}", file=sys.stderr)
 
         kept_calendar = tuple(row for row in calendar.rows if row.get("service_id", "") in service_ids)
         kept_calendar_dates = tuple(row for row in calendar_dates.rows if row.get("service_id", "") in service_ids)
@@ -1793,7 +1958,7 @@ def filter_archive(
         tables: dict[str, CsvTable] = {
             "agency.txt": CsvTable(agency.header, kept_agency),
             "stops.txt": CsvTable(stops.header, kept_stops),
-            "routes.txt": CsvTable(routes.header, kept_routes),
+            "routes.txt": CsvTable(routes_header, kept_routes),
             "trips.txt": CsvTable(
                 trips_header,
                 tuple({key: value for key, value in row.items() if key != "shape_id"} for row in kept_trips),
@@ -2403,6 +2568,8 @@ def verify_filter_from_asset(path: Path, source_id: str) -> str:
         assert agency is not None
         verify_local_times(source_id, metadata, agency.rows, calendar, calendar_dates)
         verify_train_numbers(source_id, metadata, tables["trips.txt"].rows)
+        verify_route_categories(source_id, metadata, routes.rows, agency.rows)
+        verify_out_of_order(source_id, metadata, len(tables["trips.txt"].rows), tables["stop_times.txt"].rows)
         if metadata.get(SERVICE_CLIPPED_AFTER_FIELD) is not None:
             verify_service_clip(
                 source_id, metadata[SERVICE_CLIPPED_AFTER_FIELD], tables["trips.txt"].rows,
