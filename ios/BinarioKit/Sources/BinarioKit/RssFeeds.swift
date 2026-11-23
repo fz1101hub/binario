@@ -201,7 +201,8 @@ enum Rss2Parser {
         return document.items.prefix(NoticeTable.rss.maximumItems).compactMap { elements -> RssItem? in
             /// The first child named so (any case), trimmed and bounded; nil when empty.
             func child(_ name: String) -> String? {
-                guard let element = elements.first(where: { $0.depth == 1 && $0.name.lowercased() == name }) else { return nil }
+                let wanted = name.lowercased()
+                guard let element = elements.first(where: { $0.depth == 1 && $0.name.lowercased() == wanted }) else { return nil }
                 let text = String(element.text.trimmingCharacters(in: .whitespacesAndNewlines).prefix(limit))
                 return text.isEmpty ? nil : text
             }
