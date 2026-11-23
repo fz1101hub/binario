@@ -1,5 +1,18 @@
 # Changelog
 
+## In sviluppo — Avvisi ferroviari anche su iPhone; tabella comune delle fonti degli avvisi
+
+- **iPhone, avvisi come su Android** (stesse fonti, stesse regole, stessi testi):
+  - in fondo a **Partenze**, l'area **Avvisi e infomobilità**: «Scioperi in programma» dal calendario del MIT (solo settore ferroviario), avvisi RFI e Trenitalia senza doppioni, avvisi Trenord per direttrice, etichetta «Sciopero» con la pagina dei treni garantiti, collegamenti al calendario scioperi e a FS News. Non scarica nulla finché non si tocca «Mostra avvisi»;
+  - **Avvisi Trenord per questa stazione** nel tabellone di una stazione dell'area Trenord;
+  - **Lavori e interruzioni sulle tue tratte** nella scheda **Tratte** e **… su questa tratta** sotto i risultati del pianificatore di una tratta salvata. Sull'iPhone l'avviso si abbina ai due estremi della tratta e alle linee che il testo cita: l'indice degli orari non ha ancora le fermate intermedie dei treni, che Android usa in più.
+- **Fonti e regole.** RSS del MIT e di RFI sempre; infomobilità Trenitalia (ViaggiaTreno, con il solo salto in chiaro già ammesso) e avvisi Trenord solo con **Dati in tempo reale** attivo, come le fonti personali di Android. Impostazioni elenca le due nuove fonti e dice che RFI e MIT si leggono anche con l'interruttore spento; la nota dell'interruttore ora dice «non chiede nulla a queste fonti».
+- **Buone maniere come Android:** User-Agent di Binario, HTTPS, stessi intervalli, stesse durate di cache e di copia non aggiornata, stessi limiti di risposta; al primo HTTP 403 o 429 la fonte va in pausa. Nessun nuovo tentativo automatico, come per le altre fonti dell'iPhone.
+- **Non portati sull'iPhone:** il promemoria degli scioperi delle 18 e l'avviso serale dei lavori di domani, che richiedono un controllo in background che l'app iPhone non ha; gli avvisi nel dettaglio del treno.
+- **Tabella comune** `contracts/shared-data/v1/notices-sources-v1.json`: indirizzi dei feed, accesso, intervalli, cache, limiti, pause e tabelle di lettura (parole degli scioperi e dei lavori, mesi, radici operative e area Trenord, domini ufficiali), con i valori di Android. L'iPhone la include e la legge all'avvio; se manca o non è valida, nessuna fonte di avvisi è attiva. Un test Kotlin (`NoticesSourcesTableTest`) la confronta con le costanti Android finché un generatore non scriverà il codice di entrambe.
+- **Casi comuni** `contracts/shared-rules/v1/notices-v1.json` sulle fixture dei test Android, letti da `NoticesContractTest` (Android) e `NoticesContractTests` (iPhone). I workflow Android e Apple partono anche quando cambia `contracts/shared-data/`.
+- Testi: quelli di Android in 17 lingue; le tre righe nuove delle Impostazioni e la nota modificata sono solo iPhone, con traduzioni automatiche da rivedere. Aggiornati [l'informativa privacy verificabile](PRIVACY.md), le note per App Review e la checklist App Store; il controllo della privacy legge ora anche gli host della tabella comune.
+
 ## In sviluppo — «Cerca le corse» per il Marconi Express e per le linee urbane
 
 - Android, collegamenti con gli aeroporti: i collegamenti in treno (Fiumicino, Malpensa, Bari, Palermo, Cagliari, Trieste, Caselle) continuano a dire «Cerca i treni da … a …»; solo Bologna, servita dal Marconi Express (una monorotaia), dice «Cerca le corse da … a …».

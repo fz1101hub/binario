@@ -36,8 +36,12 @@ CONSTRUCTED_HOST_PATTERNS = (
     re.compile(r"\bURL\(\s*\"https?\"\s*,\s*\"" + DOMAIN + r"\""),
     re.compile(r"\b\w*(?:host|Host|HOST)\s*(?::\s*String\??)?\s*=(?!=)\s*\"" + DOMAIN + r"\""),
 )
-# The iPhone and Apple Watch sources: every host they name must be disclosed, backticked, in PRIVACY.md.
-IOS_HOST_SOURCE_GLOBS = ("ios/BinarioKit/Sources/**/*.swift", "ios/BinarioApp/**/*.swift", "apple-watch/**/*.swift")
+# The iPhone and Apple Watch sources: every host they name must be disclosed, backticked, in PRIVACY.md. The shared
+# tables the iPhone bundles and reads at runtime (contracts/shared-data, the notice feeds) name hosts as well.
+IOS_HOST_SOURCE_GLOBS = (
+    "ios/BinarioKit/Sources/**/*.swift", "ios/BinarioApp/**/*.swift", "apple-watch/**/*.swift",
+    "contracts/shared-data/**/*.json",
+)
 HOST_ROW = re.compile(r"^\| `([a-z0-9.-]+)` \|", re.MULTILINE)
 
 REQUIRED_DISCLOSURES: tuple[tuple[str, str, tuple[str, ...]], ...] = (
