@@ -107,6 +107,21 @@ class IOSProjectTests(unittest.TestCase):
         cls.project = yaml.safe_load((IOS / "project.yml").read_text(encoding="utf-8"))
         cls.targets = cls.project["targets"]
 
+    def test_every_localizable_strings_line_is_a_key_line_as_the_swift_reader_takes_it(self) -> None:
+        # BinarioKit's LocalizationTests reads every line as «"key" = "value";» or blank and fails on anything else
+        # (a «//» comment once reached the macOS CI); checked here first, with its pattern and no duplicate keys.
+        pattern = re.compile(r'^"([^"]+)"\s*=\s*"(.*)";$')
+        for path in sorted((IOS / "Resources").glob("*.lproj/Localizable.strings")):
+            keys: set[str] = set()
+            for number, raw in enumerate(path.read_text(encoding="utf-8").split("\n"), start=1):
+                line = raw.strip(" ")
+                if not line:
+                    continue
+                match = pattern.match(line)
+                self.assertIsNotNone(match, f"{path.relative_to(ROOT)}:{number}: {line[:80]}")
+                self.assertNotIn(match.group(1), keys, f"{path.relative_to(ROOT)}:{number}: duplicate key")
+                keys.add(match.group(1))
+
     def test_app_identity_version_and_swift6_phone_deployment_are_explicit(self) -> None:
         app = self.targets["Binario"]
         settings = app["settings"]["base"]
