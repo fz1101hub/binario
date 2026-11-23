@@ -41,6 +41,7 @@ PLURAL_CATEGORIES = {
 }
 ANDROID_STATISTICS = ROOT / "app/src/main/assets/punctuality/stats_v1.json.gz"
 IOS_STATISTICS = IOS / "Resources/binario_punctuality_stats_v1.json.gz"
+SHARED_DATA = ROOT / "contracts/shared-data/v1"
 INVISIBLE = re.compile("[\ufeff\u200b\u200c\u200d\u200e\u200f\u2060\u00ad]")
 # The Android resource folder of each .lproj, for the texts shared with the Android app.
 ANDROID_VALUES = {
@@ -457,9 +458,11 @@ class IOSProjectTests(unittest.TestCase):
         self.assertIn("maximumEvents = 120", ics)
         self.assertIn('PRODUCT_ID = "-//Binario//Planned Journeys 1.0//IT"', android_ics)
         android_transfer = (ROOT / "app/src/main/java/it/binario/app/plannedjourney/PlannedJourneyTransfer.kt").read_text(encoding="utf-8")
-        self.assertIn("const val MAX_NESTING_DEPTH = 16", android_transfer)
+        # Both read the nesting limit of the shared table (contracts/shared-data/v1/planned-journeys-v1.json).
+        self.assertIn("const val MAX_NESTING_DEPTH = SharedData.PlannedJourneys.MAXIMUM_NESTING_DEPTH", android_transfer)
         journeys = (IOS / "BinarioKit/Sources/BinarioKit/PlannedJourneys.swift").read_text(encoding="utf-8")
-        self.assertIn("maximumNestingDepth = 16", journeys)
+        self.assertIn("maximumNestingDepth = SharedData.PlannedJourneys.maximumNestingDepth", journeys)
+        self.assertEqual(16, json.loads(SHARED_DATA.joinpath("planned-journeys-v1.json").read_text(encoding="utf-8"))["maximumNestingDepth"])
 
     def test_home_screen_quick_action_opens_the_agenda_with_a_localized_title(self) -> None:
         """EXPO_PORT_PLAN F45: one static quick action «Agenda» declared in Binario-Info.plist, its title localized
@@ -1138,18 +1141,28 @@ class IOSProjectTests(unittest.TestCase):
 
     def test_reliability_rules_and_texts_follow_the_shared_specification(self) -> None:
         rules = (IOS / "BinarioKit/Sources/BinarioKit/NetworkReliability.swift").read_text(encoding="utf-8")
+        # The thresholds are the shared table (contracts/shared-data/v1/punctuality-v1.json), the specification's values.
+        table = json.loads(SHARED_DATA.joinpath("punctuality-v1.json").read_text(encoding="utf-8"))
+        self.assertEqual(["FR", "FA", "FB", "EC", "ES", "ESC", "EN", "ITALO"], table["highSpeedCategories"])
+        for key, value in (
+            ("minimumSamples", 5), ("highSpeedOnTimeMinutes", 5), ("otherOnTimeMinutes", 15), ("minimumPlatformDays", 5),
+            ("minimumPlatformSharePercent", 60), ("minimumWeekdaySamples", 4), ("minimumWeekdayGapPoints", 15),
+            ("minimumAggregateSamples", 20), ("minimumBandSamples", 20), ("minimumBandGapPoints", 5),
+        ):
+            with self.subTest(key=key):
+                self.assertEqual(value, table[key])
         for fragment in (
-            "public static let minimumSamples = 5",
-            "public static let highSpeedOnTimeMinutes = 5",
-            "public static let otherOnTimeMinutes = 15",
-            'private static let highSpeedCategories: Set<String> = ["FR", "FA", "FB", "EC", "ES", "ESC", "EN", "ITALO"]',
-            "public static let minimumPlatformCount = 5",
-            "public static let minimumPlatformSharePercent = 60",
-            "public static let minimumWeekdaySamples = 4",
-            "public static let minimumWeekdayGapPoints = 15",
-            "public static let minimumAggregateSamples = 20",
-            "public static let minimumBandSamples = 20",
-            "public static let minimumBandGapPoints = 5",
+            "public static let minimumSamples = SharedData.Punctuality.minimumSamples",
+            "public static let highSpeedOnTimeMinutes = SharedData.Punctuality.highSpeedOnTimeMinutes",
+            "public static let otherOnTimeMinutes = SharedData.Punctuality.otherOnTimeMinutes",
+            "private static let highSpeedCategories: Set<String> = SharedData.Punctuality.highSpeedCategories",
+            "public static let minimumPlatformCount = SharedData.Punctuality.minimumPlatformDays",
+            "public static let minimumPlatformSharePercent = SharedData.Punctuality.minimumPlatformSharePercent",
+            "public static let minimumWeekdaySamples = SharedData.Punctuality.minimumWeekdaySamples",
+            "public static let minimumWeekdayGapPoints = SharedData.Punctuality.minimumWeekdayGapPoints",
+            "public static let minimumAggregateSamples = SharedData.Punctuality.minimumAggregateSamples",
+            "public static let minimumBandSamples = SharedData.Punctuality.minimumBandSamples",
+            "public static let minimumBandGapPoints = SharedData.Punctuality.minimumBandGapPoints",
             "let five = train.cumulative(at: index, limit: 5)",
         ):
             with self.subTest(fragment=fragment):
@@ -1821,19 +1834,17 @@ class IOSProjectTests(unittest.TestCase):
             self.assertIsNone(values[source], source)
 
     def test_airport_links_are_the_android_list_filtered_by_the_ios_index(self) -> None:
+        # Both apps build their list from the shared table (contracts/shared-data/v1/airport-routes-v1.json).
         swift = (IOS / "BinarioKit/Sources/BinarioKit/AirportRoutes.swift").read_text(encoding="utf-8")
         android = (ROOT / "app/src/main/java/it/binario/app/data/AirportRoutes.kt").read_text(encoding="utf-8")
-        ios_routes = re.findall(r'AirportRoute\(cityStationID: "([^"]+)", airportStationID: "([^"]+)", packs: \[(\w+)\]\)', swift)
-        android_routes = re.findall(r'AirportRoute\("curated:([^"]+)", "curated:([^"]+)", setOf\((\w+)\)\)', android)
-        self.assertEqual([(city, airport) for city, airport, _ in android_routes], [(city, airport) for city, airport, _ in ios_routes])
-        # Same pack constant on both sides, as each language spells it (MARCONI_EXPRESS, marconiExpress).
-        self.assertEqual([pack.lower().replace("_", "") for *_, pack in android_routes], [pack.lower() for *_, pack in ios_routes])
+        self.assertIn("SharedData.AirportRoutes.routes.map", swift)
+        self.assertIn("SharedData.AirportRoutes.ROUTES.map", android)
+        table = json.loads(SHARED_DATA.joinpath("airport-routes-v1.json").read_text(encoding="utf-8"))
+        ios_routes = [(route["city"], route["airport"], set(route["packs"])) for route in table["routes"]]
         model = (IOS / "BinarioApp/AppModel.swift").read_text(encoding="utf-8")
         self.assertIn("AirportRoutes.links(", model)
         self.assertIn("packsWithTrips: Set(includedPacks.map(\\.sourceID))", model)
         # Every route the iPhone can offer has direct trains both ways in the bundled index.
-        packs = {"trenitalia": "trenitalia-gtfs", "trenord": "lombardia-trenord-gtfs", "ferrotramviaria": "ferrotramviaria-bari-barletta",
-                 "marconiExpress": "marconi-express-gtfs"}
         with tempfile.TemporaryDirectory(prefix="ios-airports-") as temporary:
             database = Path(temporary) / "schedule.sqlite"
             database.write_bytes(zlib.decompress((IOS / "Resources/binario_gtfs_schedule_v1.sqlite.zlib").read_bytes()))
@@ -1842,8 +1853,8 @@ class IOSProjectTests(unittest.TestCase):
                 with_trips = {row[0] for row in connection.execute("SELECT p.source_id FROM pack p WHERE EXISTS (SELECT 1 FROM trip t WHERE t.pack_id = p.id)")}
                 covered = {row[0] for row in connection.execute("SELECT DISTINCT catalog_station_id FROM stop WHERE catalog_station_id IS NOT NULL")}
                 offered = []
-                for city, airport, pack in ios_routes:
-                    if packs[pack] not in with_trips or city not in covered or airport not in covered:
+                for city, airport, packs in ios_routes:
+                    if not packs & with_trips or city not in covered or airport not in covered:
                         continue
                     offered.append((city, airport))
                     for origin, destination in ((city, airport), (airport, city)):

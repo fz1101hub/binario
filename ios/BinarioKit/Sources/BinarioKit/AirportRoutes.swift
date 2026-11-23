@@ -31,30 +31,20 @@ public struct AirportLink: Equatable, Identifiable, Sendable {
 /// carry (Trenitalia, Ferrotramviaria, the Marconi Express city pack) never appear. Station names are the catalogue's; the
 /// timetables carry no service brand ("Malpensa Express"), so none is shown.
 public enum AirportRoutes {
-    static let trenitalia = "trenitalia-gtfs"
-    static let trenord = "lombardia-trenord-gtfs"
-    static let ferrotramviaria = "ferrotramviaria-bari-barletta"
-    static let marconiExpress = "marconi-express-gtfs"
+    /// The shared table contracts/shared-data/v1/airport-routes-v1.json (`SharedData.AirportRoutes`).
+    public static let all: [AirportRoute] = SharedData.AirportRoutes.routes.map { route in
+        AirportRoute(cityStationID: route.city, airportStationID: route.airport, packs: route.packs)
+    }
 
-    public static let all: [AirportRoute] = [
-        // Roma Termini ↔ Fiumicino Aeroporto (Trenitalia regional express).
-        AirportRoute(cityStationID: "S08409", airportStationID: "S08411", packs: [trenitalia]),
-        // Milano Centrale and Milano Cadorna ↔ Malpensa Aeroporto (Terminal 1; Trenord RE51 and RE54).
-        AirportRoute(cityStationID: "S01700", airportStationID: "S01139", packs: [trenord]),
-        AirportRoute(cityStationID: "S01066", airportStationID: "S01139", packs: [trenord]),
-        // Bari ↔ Bari Aeroporto (Ferrotramviaria; "Bari" is the catalogue station of its stop at Bari Centrale).
-        AirportRoute(cityStationID: "NC000634", airportStationID: "NC001565", packs: [ferrotramviaria]),
-        // Palermo Centrale ↔ Punta Raisi (Palermo Aeroporto).
-        AirportRoute(cityStationID: "S12002", airportStationID: "S12133", packs: [trenitalia]),
-        // Cagliari ↔ Elmas Aeroporto.
-        AirportRoute(cityStationID: "S12891", airportStationID: "S12819", packs: [trenitalia]),
-        // Trieste Centrale ↔ Trieste Airport.
-        AirportRoute(cityStationID: "S03317", airportStationID: "S03213", packs: [trenitalia]),
-        // Torino Porta Susa ↔ Caselle Torinese Aeroporto (SFM A).
-        AirportRoute(cityStationID: "S00035", airportStationID: "S00088", packs: [trenitalia]),
-        // Bologna Centrale ↔ Bologna Aeroporto (Marconi Express people mover, a city pack).
-        AirportRoute(cityStationID: "S05043", airportStationID: "NC000683", packs: [marconiExpress]),
-    ]
+    /// Packs whose airport line is a city line (the Marconi Express people mover), not a train:
+    /// flagged in the table, not inferred from the asset directory.
+    static let cityLinePacks: Set<String> = Set(SharedData.AirportRoutes.packs.filter(\.cityLine).map(\.id))
+
+    /// Whether `route` is served only by a city line (a people mover, a metro), so its rows do not
+    /// say "trains" (Android's `byCityLine`). No pack the iPhone carries is a city line yet.
+    public static func byCityLine(_ route: AirportRoute) -> Bool {
+        !route.packs.isEmpty && route.packs.isSubset(of: cityLinePacks)
+    }
 
     /// The routes of `routes` that the bundled index can answer: a pack with trips among
     /// `packsWithTrips` and both stations in `catalog` and in `coveredStationIDs`.
