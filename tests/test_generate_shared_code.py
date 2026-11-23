@@ -77,7 +77,8 @@ class CommittedCodeTest(unittest.TestCase):
     def test_alexa_gets_only_the_tables_it_reads(self) -> None:
         typescript = (ROOT / generator.TYPESCRIPT_OUTPUT).read_text(encoding="utf-8")
         alexa = {table.name for table in generator.TABLES if table.alexa}
-        self.assertEqual({"ItalianHolidays", "Punctuality"}, alexa)
+        # The pack roles and the number prefixes since the skill reads the programmed timetable.
+        self.assertEqual({"ItalianHolidays", "PackRoles", "Punctuality", "TrainNumberPrefixes"}, alexa)
         for table in generator.TABLES:
             with self.subTest(table=table.name):
                 self.assertEqual(table.alexa, f"export const {table.name}: {{" in typescript)

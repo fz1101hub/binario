@@ -642,7 +642,7 @@ TABLES: tuple[Table, ...] = (
         "foreignPacks": Field(PACK_SET),
         "crossPublishingPacks": Field(PACK_SET),
         "scheduledCoachPacks": Field(PACK_SET),
-    }, check=_check_pack_roles),
+    }, alexa=True, check=_check_pack_roles),
     Table("planned-journeys-v1.json", "PlannedJourneys", {
         "schemaVersion": Field(Integer(1, 99)),
         "transferKind": Field(Text(r"[a-z_]+")),
@@ -696,7 +696,7 @@ TABLES: tuple[Table, ...] = (
     Table("train-number-prefixes-v1.json", "TrainNumberPrefixes", {
         # Letters only: each platform joins them into one regular-expression alternation.
         "categories": Field(ListOf(Text(r"[A-Z]{1,16}"))),
-    }),
+    }, alexa=True),
 )
 
 

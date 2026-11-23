@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
 import { getDb } from "../db";
 import { punctualityStats, railStationIndex } from "../punctuality/source";
+import { timetableIndex } from "../timetable/source";
 import { isAlexaConfigured } from "../voice/config";
 import { ENV } from "./env";
 
@@ -14,11 +15,14 @@ export type Readiness = {
   database: "ok" | "unreachable" | "notConfigured";
   /** The punctuality statistics and the station catalogue the skill reads; not needed without the skill. */
   railData: "loaded" | "unavailable" | "notNeeded";
+  /** The programmed timetable index the skill reads (dist/data/timetable); not needed without the skill. */
+  timetable: "loaded" | "unavailable" | "notNeeded";
 };
 
 export type ReadinessProbes = {
   database: () => Promise<Readiness["database"]>;
   railData: () => Promise<Readiness["railData"]>;
+  timetable: () => Promise<Readiness["timetable"]>;
   production: boolean;
 };
 
@@ -51,14 +55,18 @@ export const DEFAULT_READINESS_PROBES: ReadinessProbes = {
     const [stats, stations] = await Promise.all([punctualityStats(), railStationIndex()]);
     return stats && stations ? "loaded" : "unavailable";
   },
+  timetable: async () => {
+    if (!isAlexaConfigured()) return "notNeeded";
+    return (await timetableIndex()) ? "loaded" : "unavailable";
+  },
   get production() {
     return ENV.isProduction;
   },
 };
 
-/** Ready with a database that answers (or none configured, outside production) and the skill's rail data when the skill is on. */
+/** Ready with a database that answers (or none configured, outside production) and the skill's rail data and timetable when the skill is on. */
 export async function checkReadiness(probes: ReadinessProbes = DEFAULT_READINESS_PROBES): Promise<Readiness> {
-  const [database, railData] = await Promise.all([probes.database(), probes.railData()]);
+  const [database, railData, timetable] = await Promise.all([probes.database(), probes.railData(), probes.timetable()]);
   const databaseReady = database === "ok" || (database === "notConfigured" && !probes.production);
-  return { ready: databaseReady && railData !== "unavailable", database, railData };
+  return { ready: databaseReady && railData !== "unavailable" && timetable !== "unavailable", database, railData, timetable };
 }

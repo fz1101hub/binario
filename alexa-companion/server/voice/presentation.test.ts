@@ -269,6 +269,27 @@ describe("screen datasource", () => {
     const missing = buildScreenDatasource({ kind: "trainStatus" }, { locale: "en-US", checkedAt: CHECKED_AT });
     expect(missing.hero).toBe("No train number given");
   });
+
+  it("lists programmed departures under the timetable banner, the platform said not given", () => {
+    const data = buildScreenDatasource(
+      { kind: "departures", routeName: "Casa", message: "Le prossime partenze…", trains: [{ minuteOfDay: 492, train: "REG <2157>" }], sources: ["Trenitalia", "Trenord"] },
+      { locale: "it-IT", checkedAt: CHECKED_AT }
+    );
+    expect(data.quality).toMatchObject({
+      state: "programmed",
+      label: "Orari programmati, non in tempo reale",
+      source: "Fonte: orario programmato di Trenitalia e Trenord",
+    });
+    expect(data.message).toBe("Le prossime partenze…");
+    expect(data.trains).toEqual([
+      { time: "8:12", train: "REG &lt;2157&gt;", value: "—", label: "Binario", accessibilityLabel: "8:12, REG <2157>, Binario: non indicato" },
+    ]);
+    const run = buildScreenDatasource({ kind: "trainStatus", trainNumber: "9558", message: "Secondo l'orario programmato…", sources: ["Trenitalia"] }, { locale: "en-US", checkedAt: CHECKED_AT });
+    expect(run.quality).toMatchObject({ state: "programmed", label: "Scheduled times, not real time", source: "Source: timetable of Trenitalia" });
+    expect(run.message).toBe("Secondo l'orario programmato…");
+    // Without a programmed answer the screens keep the live-data state.
+    expect(buildScreenDatasource(departures, { locale: "it-IT", checkedAt: CHECKED_AT }).quality.state).toBe("unavailable");
+  });
 });
 
 describe("APL document", () => {
@@ -390,6 +411,6 @@ describe("screen events", () => {
 
   it("covers every Alexa publishing locale", () => {
     for (const locale of SUPPORTED_LOCALES)
-      expect(buildScreenDatasource({ kind: "home", message: "x" }, { locale, checkedAt: CHECKED_AT }).hints.items).toHaveLength(5);
+      expect(buildScreenDatasource({ kind: "home", message: "x" }, { locale, checkedAt: CHECKED_AT }).hints.items).toHaveLength(6);
   });
 });
