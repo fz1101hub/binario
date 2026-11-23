@@ -121,6 +121,7 @@ public enum BinarioLocalizationKeys {
         "settings.privacy.foreign_packs",
         "settings.live.sources_title", "settings.live.toggle", "settings.live.detail",
         "settings.live.viaggiatreno", "settings.live.rfi", "settings.live.italo", "settings.live.privacy",
+        "settings.live.swiss", "settings.live.trip_updates",
         "settings.about.title", "settings.about.version", "settings.about.version_unavailable",
         "watch.source.unavailable", "watch.notice.unavailable", "watch.notice.programmed",
         "watch.status.disabled", "watch.status.activating", "watch.status.pending",

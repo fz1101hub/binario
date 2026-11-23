@@ -3,8 +3,9 @@ import Foundation
 /// The live sources together, in Android's order (`LocalOnlyRailDataPolicy`):
 /// - train status by number: ViaggiaTreno, then Italo (`trainNumberSearchProviders`), asked
 ///   together; the runs of both are kept, ViaggiaTreno's first;
-/// - departures: the RFI monitor, Italo, ViaggiaTreno (`stationBoardProviders`), asked together and
-///   merged field by field with Android's per-category source scores (`StationBoardAggregateService`).
+/// - departures: the RFI monitor, Italo, ViaggiaTreno and the Swiss boards of transport.opendata.ch
+///   (`stationBoardProviders`), asked together and merged field by field with Android's per-category
+///   source scores (`StationBoardAggregateService`).
 /// The bundled timetable stays the fallback: nothing here invents a train, a time or a platform.
 public struct LiveRailData: LiveTrainStatusProviding, LiveDeparturesProviding {
     public let statusSources: [any LiveTrainStatusSource]
@@ -24,7 +25,8 @@ public struct LiveRailData: LiveTrainStatusProviding, LiveDeparturesProviding {
         self.boardTimeout = boardTimeout
     }
 
-    /// The iPhone's sources: ViaggiaTreno, RFI and Italo over `transport` (ephemeral `URLSession`s).
+    /// The iPhone's sources: ViaggiaTreno, RFI, Italo and transport.opendata.ch over `transport`
+    /// (ephemeral `URLSession`s).
     public static func standard(
         transport: any LiveHTTPTransport = URLSessionLiveTransport(), pauses: LiveSourcePauses = .shared,
         now: @escaping @Sendable () -> Date = { Date() }
@@ -32,7 +34,9 @@ public struct LiveRailData: LiveTrainStatusProviding, LiveDeparturesProviding {
         let viaggiaTreno = ViaggiaTrenoLiveSource(transport: transport, pauses: pauses, now: now)
         let italo = ItaloLiveSource(transport: transport, pauses: pauses, now: now)
         let rfi = RfiLiveSource(transport: transport, pauses: pauses, now: now)
-        return LiveRailData(statusSources: [viaggiaTreno, italo], boardSources: [rfi, italo, viaggiaTreno])
+        // Android asks it for every station: it answers only for Swiss and near-border ones, without a request elsewhere.
+        let swiss = SwissStationBoardSource(transport: transport, pauses: pauses, now: now)
+        return LiveRailData(statusSources: [viaggiaTreno, italo], boardSources: [rfi, italo, viaggiaTreno, swiss])
     }
 
     public func trainStatus(_ request: LiveTrainStatusRequest) async -> LiveTrainStatusResult {

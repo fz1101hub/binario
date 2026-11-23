@@ -1264,6 +1264,84 @@ public struct GTFSSourcePack: Equatable, Hashable, Sendable {
     }
 }
 
+// MARK: - Trip Updates
+
+extension SQLiteGTFSJourneyRepository: TimetableTripReading {
+    /// At most this many trips are read for one question: a board page and a search list far fewer.
+    static let maximumRealtimeTrips = 128
+    private static let maximumTripStops = 1_000
+    private static let maximumPackTimeZones = 16
+
+    /// The stops of `trips` for their Trip Updates (`TimetableRealtime`), each read from the file that answers for
+    /// its pack: an installed foreign timetable, else the base index. A file that cannot be read gives no trip.
+    public func tripStops(_ trips: [TimetableTripKey]) -> [TimetableTripKey: TimetableTripStops] {
+        var byFile: [URL: [TimetableTripKey]] = [:]
+        var seen = Set<TimetableTripKey>()
+        for trip in trips where seen.count < Self.maximumRealtimeTrips && seen.insert(trip).inserted {
+            byFile[foreignDatabaseURLs[trip.sourceID] ?? databaseURL, default: []].append(trip)
+        }
+        var result: [TimetableTripKey: TimetableTripStops] = [:]
+        for (url, keys) in byFile {
+            guard let found = try? Self.tripStops(keys, in: url) else { continue }
+            result.merge(found) { first, _ in first }
+        }
+        return result
+    }
+
+    private static func tripStops(_ trips: [TimetableTripKey], in databaseURL: URL) throws -> [TimetableTripKey: TimetableTripStops] {
+        let database = try SQLiteDatabase(readOnlyURL: databaseURL)
+        _ = try validatedOnce(database, at: databaseURL)
+        var zonesByPack: [String: [String]] = [:]
+        var result: [TimetableTripKey: TimetableTripStops] = [:]
+        for trip in trips {
+            if zonesByPack[trip.sourceID] == nil {
+                let statement = try database.statement(
+                    "SELECT DISTINCT a.timezone FROM agency AS a JOIN pack AS p ON p.id = a.pack_id WHERE p.source_id = ? LIMIT ?"
+                )
+                try statement.bind(trip.sourceID, at: 1)
+                try statement.bind(Int64(maximumPackTimeZones + 1), at: 2)
+                var zones: [String] = []
+                while try statement.step() {
+                    guard zones.count < maximumPackTimeZones else { throw SQLiteGTFSFailure.limitExceeded }
+                    if let zone = statement.text(at: 0) { zones.append(zone) }
+                }
+                zonesByPack[trip.sourceID] = zones
+            }
+            let statement = try database.statement(
+                """
+                SELECT s.external_id, st.stop_sequence, COALESCE(st.departure_seconds, st.arrival_seconds, -1),
+                       s.catalog_station_id
+                FROM trip AS t
+                JOIN pack AS p ON p.id = t.pack_id
+                JOIN stop_time AS st ON st.trip_id = t.id
+                JOIN stop AS s ON s.id = st.stop_id
+                WHERE p.source_id = ? AND t.external_id = ?
+                ORDER BY st.stop_sequence
+                LIMIT ?
+                """
+            )
+            try statement.bind(trip.sourceID, at: 1)
+            try statement.bind(trip.tripID, at: 2)
+            try statement.bind(Int64(maximumTripStops + 1), at: 3)
+            var stops: [TimetableTripStops.Stop] = []
+            while try statement.step() {
+                guard stops.count < maximumTripStops else { throw SQLiteGTFSFailure.limitExceeded }
+                guard let stopID = statement.text(at: 0)?.nonEmpty else { throw SQLiteGTFSFailure.invalidData }
+                let seconds = statement.int(at: 2)
+                stops.append(TimetableTripStops.Stop(
+                    stopID: stopID,
+                    sequence: Int(statement.int(at: 1)),
+                    seconds: seconds >= 0 && seconds <= Int64(maximumGTFSSeconds) ? Int(seconds) : nil,
+                    catalogStationID: statement.text(at: 3)?.nonEmpty
+                ))
+            }
+            guard !stops.isEmpty else { continue }
+            result[trip] = TimetableTripStops(stops: stops, agencyTimeZones: zonesByPack[trip.sourceID] ?? [])
+        }
+        return result
+    }
+}
+
 private enum SQLiteGTFSFailure: Error {
     case invalidDatabase, invalidSchema, invalidData, limitExceeded, noRoute, scheduleExpired
 }
