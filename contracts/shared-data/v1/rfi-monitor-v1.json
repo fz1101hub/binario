@@ -1,0 +1,15 @@
+{
+  "schema": "binario-shared-data-v1",
+  "description": "RFI's «Arrivi e partenze» monitor as both phones ask and read it: the station selector and the monitor pages, the limits of one request, how often a page is asked and how long its rows stay live, and how long the selector is kept.",
+  "catalogueUrl": "https://iechub.rfi.it/ArriviPartenze",
+  "monitorUrl": "https://iechub.rfi.it/ArriviPartenze/ArrivalsDepartures/Monitor",
+  "accept": "text/html,application/xhtml+xml",
+  "connectTimeoutSeconds": 12,
+  "readTimeoutSeconds": 20,
+  "totalTimeoutSeconds": 10,
+  "maximumBytes": 2097152,
+  "minimumIntervalSeconds": 20,
+  "timeToLiveSeconds": 45,
+  "catalogueRefreshSeconds": 86400,
+  "catalogueRetrySeconds": 60
+}

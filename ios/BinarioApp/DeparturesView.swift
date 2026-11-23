@@ -37,6 +37,14 @@ struct DeparturesView: View {
                     StationPickerField(titleKey: "departures.station", selection: stationSelection)
                     // EXPO_PORT_PLAN I7: the board of the nearest station, from one position on a tap.
                     NearestStationButton(titleKey: "departures.nearest", foundKey: "departures.nearest.found", selection: stationSelection)
+                    // Android's «Partenze» and «Arrivi» chips: the arrivals are the live board alone.
+                    if model.isLiveDataActive, model.boardStation != nil {
+                        Picker("departures.kind.title", selection: boardKindSelection) {
+                            Text("departures.kind.departures").tag(LiveBoardKind.departures)
+                            Text("departures.kind.arrivals").tag(LiveBoardKind.arrivals)
+                        }
+                        .pickerStyle(.segmented)
+                    }
                     // The board lists times in the timetable zone, as the planner does.
                     if AppModel.needsTimetableZoneCaption(at: clock) {
                         Text("planner.departure.italian_time")
@@ -51,7 +59,11 @@ struct DeparturesView: View {
                 if let offer = model.boardForeignOffer {
                     ForeignOfferSection(offer: offer)
                 }
-                BoardContent()
+                if model.isLiveDataActive, model.boardKind == .arrivals {
+                    ArrivalsContent()
+                } else {
+                    BoardContent()
+                }
                 // «Treni in movimento» and «Bici in condivisione» of the board's station (ExtrasViews.swift).
                 BoardExtrasSections()
                 // The bottom of Android's departures board: the station's Trenord notices and «Avvisi e infomobilità».
@@ -120,6 +132,11 @@ struct DeparturesView: View {
                 model.selectBoardStation(StationIdentity(station))
             }
         )
+    }
+
+    /// «Partenze» or «Arrivi» of the chosen station.
+    private var boardKindSelection: Binding<LiveBoardKind> {
+        Binding(get: { model.boardKind }, set: { model.selectBoardKind($0) })
     }
 
     /// Every new minute while the board is on screen: the trains that have left go, and the board

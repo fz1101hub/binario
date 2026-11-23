@@ -16,6 +16,7 @@ import it.binario.app.data.repository.StationBoardRunDetails
 import it.binario.app.data.planned.BoundedSingleFlightCache
 import it.binario.app.data.planned.readBoundedRfiHtml
 import it.binario.app.data.provider.*
+import it.binario.app.shared.SharedData
 import java.io.IOException
 import java.net.HttpURLConnection
 import java.net.URL
@@ -35,29 +36,39 @@ fun interface ViaggiaTrenoRealtimeFetcher {
     suspend fun fetch(path: String): String
 }
 
+/**
+ * The ViaggiaTreno realtime API of the shared table contracts/shared-data/v1/viaggiatreno-v1.json
+ * ([SharedData.ViaggiaTreno], the iPhone's too): its address, resources and request limits.
+ */
+internal object ViaggiaTrenoApi {
+    val RESOURCES = with(SharedData.ViaggiaTreno) {
+        listOf(DEPARTURES_RESOURCE, ARRIVALS_RESOURCE, RUN_RESOURCE, NUMBER_SEARCH_RESOURCE)
+    }
+}
+
 internal class HttpViaggiaTrenoRealtimeFetcher(
-    private val requestTimeoutMillis: Long = 12_000,
+    private val requestTimeoutMillis: Long = SharedData.ViaggiaTreno.TOTAL_TIMEOUT_SECONDS * 1_000L,
     private val openConnection: (URL) -> HttpURLConnection = { it.openConnection() as HttpURLConnection }
 ) : ViaggiaTrenoRealtimeFetcher {
     override suspend fun fetch(path: String): String = withTimeoutOrNull(requestTimeoutMillis) {
-        require(path.startsWith("partenze/") || path.startsWith("arrivi/") || path.startsWith("andamentoTreno/") || path.startsWith("cercaNumeroTrenoTrenoAutocomplete/"))
-        var url = URL("https://www.viaggiatreno.it/infomobilita/resteasy/viaggiatreno/$path")
+        require(ViaggiaTrenoApi.RESOURCES.any(path::startsWith))
+        var url = URL(SharedData.ViaggiaTreno.BASE_URL + path)
         val requestedPath = url.path
-        repeat(4) { attempt ->
+        repeat(SharedData.ViaggiaTreno.MAXIMUM_REQUESTS) { attempt ->
             val connection = openConnection(url)
-            connection.connectTimeout = 8_000
-            connection.readTimeout = 12_000
+            connection.connectTimeout = SharedData.ViaggiaTreno.CONNECT_TIMEOUT_SECONDS * 1_000
+            connection.readTimeout = SharedData.ViaggiaTreno.READ_TIMEOUT_SECONDS * 1_000
             connection.instanceFollowRedirects = false
             connection.useCaches = false
             connection.setRequestProperty("Cache-Control", "no-cache")
-            connection.setRequestProperty("Accept", if (path.startsWith("cercaNumeroTrenoTrenoAutocomplete/")) "text/plain" else "application/json")
+            connection.setRequestProperty("Accept", if (path.startsWith(SharedData.ViaggiaTreno.NUMBER_SEARCH_RESOURCE)) "text/plain" else "application/json")
             connection.setRequestProperty("User-Agent", BINARIO_PUBLIC_SOURCE_USER_AGENT)
             val response = withCancellableHttpConnection(connection) {
                 val status = connection.responseCode
                 Response(status,
                     if (status in setOf(301, 302, 303, 307, 308)) connection.getHeaderField("Location") else null,
                     if (status in 200..299 && status != 204) connection.inputStream.use {
-                        readBoundedRfiHtml(it, connection.contentLengthLong.takeIf { n -> n >= 0 })
+                        readBoundedRfiHtml(it, connection.contentLengthLong.takeIf { n -> n >= 0 }, SharedData.ViaggiaTreno.MAXIMUM_BYTES)
                     } else null,
                     if (status !in 200..399) connection.getHeaderField("Retry-After") else null)
             }
@@ -84,7 +95,7 @@ internal class HttpViaggiaTrenoRealtimeFetcher(
                 if (!publicLegacyApi && !knownHttps) {
                     throw IOException("ViaggiaTreno redirect non consentito da ${url.host}: ${target.protocol}://${target.host}${target.path.take(220)}")
                 }
-                if (attempt == 3) throw IOException("ViaggiaTreno: troppi reindirizzamenti")
+                if (attempt == SharedData.ViaggiaTreno.MAXIMUM_REQUESTS - 1) throw IOException("ViaggiaTreno: troppi reindirizzamenti")
                 url = target
             } else {
                 if (status == 204) return@withTimeoutOrNull "null"
@@ -104,7 +115,7 @@ internal class HttpViaggiaTrenoRealtimeFetcher(
  * (boards and number discovery apart from run details) and the pause after a refusal (403, 429, 503 with Retry-After).
  */
 class ViaggiaTrenoRequests(clock: Clock = Clock.system(RailTime.defaultZone)) {
-    internal val cache = BoundedSingleFlightCache<Result<String>>(128, 30_000L, clock::millis)
+    internal val cache = BoundedSingleFlightCache<Result<String>>(128, SharedData.ViaggiaTreno.MINIMUM_INTERVAL_SECONDS * 1_000L, clock::millis)
     internal val discovery = Semaphore(DISCOVERY_PERMITS)
     internal val details = Semaphore(DETAIL_PERMITS)
     internal val refusals = PublicSourceRefusalGate(clock, "ViaggiaTreno")
@@ -112,7 +123,7 @@ class ViaggiaTrenoRequests(clock: Clock = Clock.system(RailTime.defaultZone)) {
     internal companion object {
         /** Boards and number discovery, which must not queue behind a batch of run details. */
         const val DISCOVERY_PERMITS = 2
-        const val DETAIL_PERMITS = 3
+        val DETAIL_PERMITS = SharedData.ViaggiaTreno.DETAIL_PERMITS
     }
 }
 
@@ -120,7 +131,7 @@ class ViaggiaTrenoRequests(clock: Clock = Clock.system(RailTime.defaultZone)) {
 class ViaggiaTrenoRealtimeAdapter(
     private val fetcher: ViaggiaTrenoRealtimeFetcher = HttpViaggiaTrenoRealtimeFetcher(),
     private val clock: Clock = Clock.system(RailTime.defaultZone),
-    private val routeDetailsTimeoutMillis: Long = 8_000,
+    private val routeDetailsTimeoutMillis: Long = SharedData.ViaggiaTreno.RUN_DETAILS_TIMEOUT_SECONDS * 1_000L,
     private val routeCandidateSource: TrainDataSource? = null,
     private val requests: ViaggiaTrenoRequests = ViaggiaTrenoRequests(clock)
 ) : RealtimeRouteDataSource, StationBoardProvider, StationBoardRunDetailProvider, TrainNumberSearchProvider {
@@ -131,15 +142,15 @@ class ViaggiaTrenoRealtimeAdapter(
         accessMode = AccessMode.PUBLIC_BEST_EFFORT,
         // Enforced by [ViaggiaTrenoRequests], shared by the app's instances: one request per resource every 30 s (the
         // response cache) and at most DISCOVERY_PERMITS + DETAIL_PERMITS requests at a time.
-        ratePolicy = RatePolicy(Duration.ofSeconds(30),
+        ratePolicy = RatePolicy(Duration.ofSeconds(SharedData.ViaggiaTreno.MINIMUM_INTERVAL_SECONDS.toLong()),
             maxConcurrentRequests = ViaggiaTrenoRequests.DISCOVERY_PERMITS + ViaggiaTrenoRequests.DETAIL_PERMITS,
-            defaultTimeToLive = Duration.ofSeconds(30)), schemaVersion = 1
+            defaultTimeToLive = TTL), schemaVersion = 1
     )
     private val zone = RailTime.defaultZone
     // Cache failures for the cooldown too, without representing them as an empty board. Boards and number discovery
     // must not queue behind an entire batch of optional run details. A refusal pauses every request.
     private suspend fun json(path: String): String = requests.cache.getOrLoad(path, expireFromLoadStart = true, cancelWhenUnused = true) {
-        try { Result.success((if (path.startsWith("andamentoTreno/")) requests.details else requests.discovery).withPermit {
+        try { Result.success((if (path.startsWith(SharedData.ViaggiaTreno.RUN_RESOURCE)) requests.details else requests.discovery).withPermit {
             requests.refusals.call { fetcher.fetch(path) }
         }) }
         catch (error: CancellationException) { throw error }
@@ -170,7 +181,7 @@ class ViaggiaTrenoRealtimeAdapter(
                 // The look-back crosses midnight like the boards' lateSince: at 00:20 a 23:50 train 40 minutes late
                 // is still to leave (audit android-data-8).
                 val earlier = requested.minusSeconds(2 * 3600)
-                try { withTimeoutOrNull(2_000) { departures(originCode, earlier) }?.let(boardRows::addAll) }
+                try { withTimeoutOrNull(LOOKBACK_TIMEOUT_MILLIS) { departures(originCode, earlier) }?.let(boardRows::addAll) }
                 catch (error: CancellationException) { throw error }
                 catch (_: IOException) { /* Optional lookback must not erase the current board. */ }
                 catch (_: org.json.JSONException) { }
@@ -192,7 +203,7 @@ class ViaggiaTrenoRealtimeAdapter(
                     val runOrigin = code(row.text("codOrigine")) ?: return@async null
                     val runDate = row.millis("dataPartenzaTreno") ?: row.millis("millisDataPartenza") ?: return@async null
                     try {
-                        val detail = JSONObject(json("andamentoTreno/$runOrigin/$number/$runDate"))
+                        val detail = JSONObject(json("${SharedData.ViaggiaTreno.RUN_RESOURCE}$runOrigin/$number/$runDate"))
                         parseRun(detail, number, runOrigin, runDate, route, direction, query, fetched)?.also(completedServices::add)
                     } catch (error: CancellationException) { throw error }
                     catch (_: IOException) { null }
@@ -204,7 +215,7 @@ class ViaggiaTrenoRealtimeAdapter(
             val observed = services.mapNotNull { it.operationalObservedAtEpochMillis }.maxOrNull()
             val snapshot = RouteSnapshot(
                 route = route, direction = direction, services = services, providerName = descriptor.displayName,
-                retrievedAtEpochMillis = fetched.toEpochMilli(), expiresAtEpochMillis = fetched.plusSeconds(30).toEpochMilli(),
+                retrievedAtEpochMillis = fetched.toEpochMilli(), expiresAtEpochMillis = fetched.plus(TTL).toEpochMilli(),
                 sourceObservedAtEpochMillis = observed ?: fetched.toEpochMilli(),
                 freshness = if (observed != null) Freshness.FRESH else Freshness.AGING,
                 confidence = DataConfidence.OPERATOR_PRIMARY,
@@ -231,7 +242,7 @@ class ViaggiaTrenoRealtimeAdapter(
             // as the route search does: an earlier board alone could hide the upcoming trains of a busy station.
             val rows = movements(stationCode, request.from, request.kind).toMutableList()
             request.lateSince?.takeIf { it.isBefore(request.from) }?.let { since ->
-                try { withTimeoutOrNull(2_000) { movements(stationCode, since, request.kind) }?.let(rows::addAll) }
+                try { withTimeoutOrNull(LOOKBACK_TIMEOUT_MILLIS) { movements(stationCode, since, request.kind) }?.let(rows::addAll) }
                 catch (error: CancellationException) { throw error }
                 catch (_: IOException) { }
                 catch (_: org.json.JSONException) { }
@@ -266,13 +277,13 @@ class ViaggiaTrenoRealtimeAdapter(
                 "$number:$scheduled" to "$origin:$number:$date"
             }.toMap()
             val board = LegacyStationBoardInterop.build(descriptor.id, Confidence.OPERATOR_PRIMARY, request.stationId, request.kind,
-                request.from, request.to, services.distinctBy { it.id }, fetched, Duration.ofSeconds(30), lateSince = request.lateSince)
+                request.from, request.to, services.distinctBy { it.id }, fetched, TTL, lateSince = request.lateSince)
             ProviderResult.Success(
                 board.copy(entries = board.entries.map { entry ->
                     entry.copy(nativeRunIds = identities["${entry.publicNumber}:${entry.scheduledTime.toInstant().toEpochMilli()}"]
                         ?.let { mapOf(descriptor.id to it) }.orEmpty())
                 }),
-                ProviderResponseMeta(descriptor.id, fetched, expiresAt = fetched.plusSeconds(30))
+                ProviderResponseMeta(descriptor.id, fetched, expiresAt = fetched.plus(TTL))
             )
         } catch (error: CancellationException) { throw error }
         catch (_: IOException) { ProviderResult.Failure(ProviderError(ProviderErrorKind.NETWORK, "ViaggiaTreno non è raggiungibile.")) }
@@ -284,32 +295,34 @@ class ViaggiaTrenoRealtimeAdapter(
     private suspend fun movements(stationCode: String, from: Instant, kind: BoardKind): List<JSONObject> {
         val local = from.atZone(zone).withSecond(0).withNano(0)
         val date = local.format(DateTimeFormatter.ofPattern("EEE MMM dd yyyy HH:mm:ss 'GMT'xx", Locale.ENGLISH))
-        val resource = if (kind == BoardKind.ARRIVALS) "arrivi" else "partenze"
-        val body = json("$resource/$stationCode/${URLEncoder.encode(date, "UTF-8").replace("+", "%20")}")
+        val resource = if (kind == BoardKind.ARRIVALS) SharedData.ViaggiaTreno.ARRIVALS_RESOURCE else SharedData.ViaggiaTreno.DEPARTURES_RESOURCE
+        val body = json("$resource$stationCode/${URLEncoder.encode(date, "UTF-8").replace("+", "%20")}")
         if (body.trim() == "null") return emptyList()
         val array = JSONArray(body)
-        return (0 until minOf(array.length(), 2000)).mapNotNull(array::optJSONObject)
+        return (0 until minOf(array.length(), SharedData.ViaggiaTreno.MAXIMUM_BOARD_ROWS)).mapNotNull(array::optJSONObject)
     }
 
     override suspend fun searchByNumber(query: TrainNumberQuery): ProviderResult<List<TrainNumberMatch>> = withContext(Dispatchers.Default) {
         val fetched = clock.instant()
-        val meta = ProviderResponseMeta(descriptor.id, fetched, expiresAt = fetched.plusSeconds(30))
+        val meta = ProviderResponseMeta(descriptor.id, fetched, expiresAt = fetched.plus(TTL))
         val number = query.numeric?.takeIf { it.matches(Regex("[0-9]{1,6}")) }
             ?: return@withContext ProviderResult.Success(emptyList(), meta)
         try {
-            val references = json("cercaNumeroTrenoTrenoAutocomplete/$number").lineSequence().take(200)
+            val references = json("${SharedData.ViaggiaTreno.NUMBER_SEARCH_RESOURCE}$number").lineSequence()
+                .take(SharedData.ViaggiaTreno.MAXIMUM_AUTOCOMPLETE_LINES)
                 .mapNotNull { line -> Regex("([0-9]{1,6})-(S[0-9]{5})-([0-9]{10,16})")
                     .matchEntire(line.substringAfter('|', "").trim()) }
-                .filter { query.matches(it.groupValues[1]) }.map { it.groupValues.drop(1) }.distinct().take(24).toList()
+                .filter { query.matches(it.groupValues[1]) }.map { it.groupValues.drop(1) }.distinct()
+                .take(SharedData.ViaggiaTreno.MAXIMUM_RUN_REFERENCES).toList()
             val failed = java.util.concurrent.atomic.AtomicBoolean(false)
             val completedMatches = java.util.concurrent.ConcurrentLinkedQueue<TrainNumberMatch>()
             val finished = withTimeoutOrNull(routeDetailsTimeoutMillis) { coroutineScope {
                 references.map { (publicNumber, origin, nativeDate) -> async {
                     val date = nativeDate.toLong()
                     val serviceDay = Instant.ofEpochMilli(date).atZone(zone).toLocalDate()
-                    if (serviceDay < query.date.minusDays(2) || serviceDay > query.date) return@async null
+                    if (serviceDay < query.date.minusDays(SharedData.ViaggiaTreno.NUMBER_SEARCH_PAST_DAYS.toLong()) || serviceDay > query.date) return@async null
                     try {
-                        val run = JSONObject(json("andamentoTreno/$origin/$publicNumber/$date"))
+                        val run = JSONObject(json("${SharedData.ViaggiaTreno.RUN_RESOURCE}$origin/$publicNumber/$date"))
                         val rows = run.optJSONArray("fermate") ?: return@async null
                         val first = rows.optJSONObject(0) ?: return@async null
                         val scheduled = (first.millis("partenza_teorica") ?: first.millis("programmata"))?.let(Instant::ofEpochMilli) ?: return@async null
@@ -347,7 +360,7 @@ class ViaggiaTrenoRealtimeAdapter(
                             operationalSourceIds = if (verified) setOf(descriptor.id.value) else emptySet(),
                             operationalObservedAtEpochMillis = observed?.toEpochMilli().takeIf { verified }
                         )
-                        TrainNumberMatch.create(service, descriptor.displayName, DataConfidence.OPERATOR_PRIMARY, fetched.toEpochMilli(), fetched.plusSeconds(30).toEpochMilli()).also(completedMatches::add)
+                        TrainNumberMatch.create(service, descriptor.displayName, DataConfidence.OPERATOR_PRIMARY, fetched.toEpochMilli(), fetched.plus(TTL).toEpochMilli()).also(completedMatches::add)
                     } catch (error: CancellationException) { throw error }
                     catch (_: IOException) { failed.set(true); null }
                     catch (_: org.json.JSONException) { failed.set(true); null }
@@ -380,10 +393,10 @@ class ViaggiaTrenoRealtimeAdapter(
                 val (origin, number, date) = identity.destructured
                 if (number != entry.publicNumber) return@withContext unavailable()
                 val fetched = clock.instant()
-                val run = JSONObject(json("andamentoTreno/$origin/$number/$date"))
+                val run = JSONObject(json("${SharedData.ViaggiaTreno.RUN_RESOURCE}$origin/$number/$date"))
                 val details = parseBoardRun(run, origin, number, date.toLong(), stationCode, kind, entry, fetched)
                     ?: return@withContext unavailable()
-                ProviderResult.Success(details, ProviderResponseMeta(descriptor.id, fetched, details.observedAt, fetched.plusSeconds(30)))
+                ProviderResult.Success(details, ProviderResponseMeta(descriptor.id, fetched, details.observedAt, fetched.plus(TTL)))
             } catch (error: CancellationException) { throw error }
             catch (_: IOException) { unavailable() }
             catch (_: org.json.JSONException) { unavailable() }
@@ -405,7 +418,7 @@ class ViaggiaTrenoRealtimeAdapter(
         val delay = run.intOrNull("ritardo")
         val verified = observed != null && delay != null && !run.optBoolean("nonPartito", false)
         val source = SourceRef(sourceId = descriptor.id, nativeId = "$origin:$number:$date", observedAt = observed,
-            fetchedAt = fetched, expiresAt = fetched.plusSeconds(30), confidence = Confidence.OPERATOR_PRIMARY, traceId = "viaggiatreno:detail:$origin:$number:$date")
+            fetchedAt = fetched, expiresAt = fetched.plus(TTL), confidence = Confidence.OPERATOR_PRIMARY, traceId = "viaggiatreno:detail:$origin:$number:$date")
         val actual = selected.millis(if (arrival) "arrivoReale" else "partenzaReale")?.let(Instant::ofEpochMilli)
         val updatedExpected = actual ?: if (verified && !cancelled) entry.scheduledTime.toInstant().plusSeconds(delay!! * 60L) else null
         val platform = selected.text(if (arrival) "binarioEffettivoArrivoDescrizione" else "binarioEffettivoPartenzaDescrizione")
@@ -538,7 +551,7 @@ class ViaggiaTrenoRealtimeAdapter(
             brand != null && "trenord" in brand -> RailOperator.TRENORD
             brand != null && "trenitalia" in brand -> trenitalia(regional = client == null || client in TRENITALIA_REGIONAL_CLIENTS)
             brand != null -> RailOperator.OTHER
-            client == TRENORD_CLIENT -> RailOperator.TRENORD
+            client in TRENORD_CLIENTS -> RailOperator.TRENORD
             client in TRENITALIA_REGIONAL_CLIENTS -> trenitalia(regional = true)
             client in TRENITALIA_LONG_DISTANCE_CLIENTS -> trenitalia(regional = false)
             else -> RailOperator.OTHER
@@ -554,12 +567,16 @@ class ViaggiaTrenoRealtimeAdapter(
     private fun JSONObject.intOrNull(key: String): Int? = text(key)?.toIntOrNull()
 
     private companion object {
-        const val EXTRAORDINARY_STOP_TYPE = 2
-        const val SUPPRESSED_STOP_TYPE = 3
+        /** How long an answer stays live, as on the iPhone. */
+        val TTL: Duration = Duration.ofSeconds(SharedData.ViaggiaTreno.TIME_TO_LIVE_SECONDS.toLong())
+        /** The optional earlier board for the trains still late to leave. */
+        val LOOKBACK_TIMEOUT_MILLIS = SharedData.ViaggiaTreno.LOOKBACK_TIMEOUT_SECONDS * 1_000L
+        val EXTRAORDINARY_STOP_TYPE = SharedData.ViaggiaTreno.EXTRAORDINARY_STOP_TYPE
+        val SUPPRESSED_STOP_TYPE = SharedData.ViaggiaTreno.SUPPRESSED_STOP_TYPE
         val VARIED_STOP_TYPES = setOf(EXTRAORDINARY_STOP_TYPE, SUPPRESSED_STOP_TYPE)
         /** codiceCliente of ViaggiaTreno: who the train runs for. */
-        const val TRENORD_CLIENT = 63
-        val TRENITALIA_REGIONAL_CLIENTS = setOf(2, 18)
-        val TRENITALIA_LONG_DISTANCE_CLIENTS = setOf(1, 4)
+        val TRENORD_CLIENTS = SharedData.ViaggiaTreno.TRENORD_CLIENTS
+        val TRENITALIA_REGIONAL_CLIENTS = SharedData.ViaggiaTreno.TRENITALIA_REGIONAL_CLIENTS
+        val TRENITALIA_LONG_DISTANCE_CLIENTS = SharedData.ViaggiaTreno.TRENITALIA_LONG_DISTANCE_CLIENTS
     }
 }

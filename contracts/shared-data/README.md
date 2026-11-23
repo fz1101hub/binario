@@ -38,6 +38,12 @@ python3 tools/generate_shared_code.py --check   # esce con 1 se uno non corrispo
 | `source-manners-v1.json` | Come si chiede a ogni fonte pubblica: User-Agent, risposte che sono un rifiuto e pausa dopo un rifiuto, interruttore dopo errori ripetuti | Android, iPhone |
 | `source-scores-v1.json` | Punteggi delle fonti per categoria, bonus dell'operatore, fonti di sola copertura | Android, iPhone |
 | `train-number-prefixes-v1.json` | Categorie ammesse davanti al numero di un treno | Android, iPhone, Alexa (corsa programmata di un numero) |
+| `notices-sources-v1.json` | Fonti degli avvisi (indirizzi, accesso, limiti, intervalli, cache, reindirizzamenti; anche gli avvisi per treno di ViaggiaTreno), pagine aperte con un tocco, limiti, parole ed espressioni regolari dei lettori, quanto mostrano le sezioni | Android, iPhone |
+| `pack-roles-v1.json` | Ruoli dei pack orari: nazionali, esteri, che ripubblicano i treni dei partner, con autobus dell'operatore | Android, iPhone; il builder e il verificatore dell'indice iPhone leggono il JSON |
+| `punctuality-v1.json` | Categorie misurate a 5 minuti, soglie e campioni minimi delle statistiche | Android, iPhone, Alexa |
+| `rfi-monitor-v1.json` | Monitor RFI «Arrivi e partenze»: selettore e pagine, limiti di una richiesta, intervallo, durata dei valori e del selettore | Android, iPhone |
+| `train-number-prefixes-v1.json` | Categorie ammesse davanti al numero di un treno | Android, iPhone |
+| `viaggiatreno-v1.json` | API realtime di ViaggiaTreno: indirizzo e risorse (partenze, arrivi, corsa, ricerca per numero), limiti di una richiesta, intervallo, durata dei valori, dettagli in parallelo e loro tempo massimo, limiti di lettura, tipi di fermata, codici cliente di Trenord e Trenitalia | Android, iPhone |
 
 Gli strumenti Python sono la pipeline: quando servono una tabella la leggono dal JSON, controllata con lo stesso schema
 (`generate_shared_code.table_values`), oppure con un loro lettore (`tools/android_station_codes.py`).

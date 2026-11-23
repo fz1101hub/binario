@@ -804,6 +804,57 @@ final class BinarioAppTests: XCTestCase {
 
     // MARK: Live data
 
+    func testArrivalsAreTheLiveBoardOfTheStationAskedForItsArrivalsOnlyWithLiveDataOn() async throws {
+        let defaults = try makeDefaults()
+        defer { clear(defaults) }
+        let base = try rome(2026, 11, 10, 8, 0)
+        let rows = (0..<3).map { boardDeparture($0, after: base) }
+        let arriving = LiveFixtures.row("2101", scheduled: base.addingTimeInterval(1_800), delay: 4, platform: "2", status: .delayed, at: base)
+        let arrivals = LiveDepartureBoard(
+            stationID: milanoCode.id, from: base, to: base.addingTimeInterval(6 * 3_600), departures: [arriving],
+            sources: [.rfiStationBoard, .viaggiaTreno], unavailableSources: [:], warnings: [], fetchedAt: base, kind: .arrivals
+        )
+        let live = FakeLiveRailData(board: .available(arrivals))
+        let model = makeLiveModel(defaults: defaults, live: live, boardProvider: StubBoardProvider(rows: rows))
+        model.selectBoardStation(milanoCode)
+        await model.boardLoadFinished()
+        await model.reloadBoard(now: base)
+        model.boardLiveDidAppear()
+        await model.boardLiveLoadFinished()
+        XCTAssertEqual(model.boardKind, .departures)
+        // An arrivals board is never laid over the departures.
+        XCTAssertTrue(model.boardDepartures.allSatisfy(\.isScheduled))
+        XCTAssertTrue(model.boardArrivals.isEmpty)
+
+        model.selectBoardKind(.arrivals)
+        await model.boardLiveLoadFinished()
+        let asked = await live.departureRequests
+        XCTAssertEqual(asked.last?.kind, .arrivals)
+        XCTAssertEqual(asked.last?.station.id, milanoCode.id)
+        XCTAssertEqual(model.boardArrivals.map(\.number), ["2101"])
+        XCTAssertEqual(ArrivalsTexts.origin("Bergamo"), String.localizedStringWithFormat(
+            NSLocalizedString("departures.arrivals.from", comment: ""), "Bergamo"
+        ))
+
+        // Back to the departures: the arrivals go and the departures board is asked.
+        model.selectBoardKind(.departures)
+        await model.boardLiveLoadFinished()
+        XCTAssertTrue(model.boardArrivals.isEmpty)
+        let again = await live.departureRequests
+        XCTAssertEqual(again.last?.kind, .departures)
+
+        // Off: the kind is the departures again, and a board row's run and a train's notices are never asked.
+        model.selectBoardKind(.arrivals)
+        await model.boardLiveLoadFinished()
+        model.setLiveDataEnabled(false)
+        XCTAssertEqual(model.boardKind, .departures)
+        XCTAssertTrue(model.boardArrivals.isEmpty)
+        let run = await model.boardRun(arriving, kind: .arrivals)
+        XCTAssertNil(run)
+        let notices = await model.trainNotices(LiveTrainNoticesRequest(number: "2101", serviceDate: base))
+        XCTAssertNil(notices)
+    }
+
     func testPartenzeLaysTheLiveBoardOverItsRowsOnlyOnScreenAndFallsBackWhenEverySourceFails() async throws {
         let defaults = try makeDefaults()
         defer { clear(defaults) }

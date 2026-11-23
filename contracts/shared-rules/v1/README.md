@@ -10,6 +10,7 @@ regole) stanno invece in [`contracts/shared-data/`](../../shared-data/README.md)
 | `rules-v1.json` | Chiave del numero treno, query del numero, soglie «in orario», campioni minimi, treno misurato all'ultima fermata senza origine | Android, iPhone, Alexa |
 | `punctuality-stats-v1.json` | Un file statistiche sintetico nel formato `binario-punctuality-v1` (docs/data-sources/PUNCTUALITY_STATS.md): codici `S000xx` e numeri inventati, nessun dato osservato | Android, iPhone, Alexa |
 | `live-text-v1.json` | La soppressione esplicita in un testo live e l'operatore di una riga del monitor RFI | Android, iPhone |
+| `live-sources-v1.json` | L'operatore di una riga o corsa ViaggiaTreno (`compImpresa`, poi `codiceCliente`), una riga del tabellone arrivi di ViaggiaTreno, gli avvisi per treno validi in un giorno sulle fixture Android (`app/src/test/resources/sources/viaggiatreno-smartcaring-*.json`) | `app/src/test/java/it/binario/app/data/live/LiveSourcesContractTest.kt`, `ios/BinarioKit/Tests/BinarioKitTests/LiveSourcesContractTests.swift` |
 | `checklist-presets-v1.json` | Le righe di ogni modello di «Preparazione del viaggio» e come un modello si aggiunge al testo dell'editor | Android, iPhone |
 | `calendar-v1.json` | Le festività nazionali, comprese Pasqua e Pasquetta | Android, Alexa |
 | `gtfs-station-codes-v1.json` | `stop_code`, nome e posizione di una fermata dei pack Trenitalia e Italo → stazione del catalogo attesa (o nessuna), sul catalogo `app/src/main/assets/stations/curated_it_rail_stations.json` | `app/src/test/java/it/binario/app/data/gtfs/GtfsStationCodesContractTest.kt`, `tests/test_ios_gtfs_schedule.py` (regola di `tools/android_station_codes.py`, usata dal builder dell'indice iPhone) |
@@ -82,6 +83,16 @@ Le tabelle che questi casi usano sono nel generatore (`tools/generate_shared_cod
   gregoriano) e Pasquetta.
 
 Ogni caso ha un solo atteso, uguale per tutti i lettori del file.
+
+## Fonti live ViaggiaTreno (`live-sources-v1.json`)
+
+- **Operatore**: «trenord» o «trenitalia» in `compImpresa` decidono; un'altra impresa dichiarata non ha operatore noto;
+  senza `compImpresa`, il `codiceCliente` della tabella `viaggiatreno-v1.json` (63 Trenord; 1, 2, 4 e 18 Trenitalia);
+  altrimenti nessun operatore, mai Trenitalia per ipotesi.
+- **Arrivi**: l'ora di arrivo, l'origine al posto della destinazione, il binario di arrivo (quello programmato solo
+  accanto a quello effettivo), l'orario previsto e lo stato solo con un rilevamento recente, l'identità della corsa.
+- **Avvisi per treno**: solo le note valide nel giorno della corsa, per lo stesso numero (senza zeri iniziali) e, se
+  nota, la stessa origine; ogni nota una volta, dalla più recente.
 
 ## Codici stazione dei pack nazionali (`gtfs-station-codes-v1.json`)
 

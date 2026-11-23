@@ -70,6 +70,14 @@ Con le funzioni di Android portate sull'iPhone (meteo a destinazione, bici in co
 
 Le loro regole hanno i casi in `contracts/shared-rules/v1/` (`delay-compensation-v1.json`, `destination-weather-v1.json`, `bike-sharing-v1.json`, `live-train-positions-v1.json`, `evening-alerts-v1.json`). Restano specifiche dell'iPhone la mappa di base (MapKit invece di OpenFreeMap) e il modo di girare in background (un solo compito di aggiornamento in background invece di WorkManager).
 
+Con gli arrivi, i dettagli della corsa e gli avvisi per treno sull'iPhone:
+
+| Tabella | Prima | Ora letta da |
+|---|---|---|
+| `viaggiatreno-v1.json`: indirizzo e risorse dell'API realtime, limiti, intervallo, durata dei valori, dettagli in parallelo, limiti di lettura, tipi di fermata, codici cliente | `ViaggiaTrenoRealtimeAdapter.kt`; `ViaggiaTrenoLive.swift` (i codici cliente solo su Android) | Android, iPhone |
+| `rfi-monitor-v1.json`: selettore e monitor RFI, limiti, intervallo, durata dei valori e del selettore | `RfiStationBoardAdapter.kt`, `RfiStationCatalog.kt`; `RfiLiveBoard.swift` | Android, iPhone |
+| `notices-sources-v1.json`, in più: il feed degli avvisi per treno di ViaggiaTreno e i limiti del suo lettore | `ViaggiaTrenoTrainNoticesAdapter.kt` | Android, iPhone |
+
 Il modo di chiedere alle fonti non è degli avvisi: vale per ogni fonte live su entrambi i telefoni, perciò sta in una
 tabella sua. L'iPhone non include più la tabella degli avvisi e non ha più il caricatore: resta spenta ogni sezione di
 avvisi solo se NSRegularExpression rifiutasse un'espressione regolare della tabella, e i test Swift provano che le

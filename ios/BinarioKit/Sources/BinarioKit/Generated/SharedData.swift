@@ -13,10 +13,12 @@
 //   contracts/shared-data/v1/pack-roles-v1.json
 //   contracts/shared-data/v1/planned-journeys-v1.json
 //   contracts/shared-data/v1/punctuality-v1.json
+//   contracts/shared-data/v1/rfi-monitor-v1.json
 //   contracts/shared-data/v1/rfi-place-ids-v1.json
 //   contracts/shared-data/v1/source-manners-v1.json
 //   contracts/shared-data/v1/source-scores-v1.json
 //   contracts/shared-data/v1/train-number-prefixes-v1.json
+//   contracts/shared-data/v1/viaggiatreno-v1.json
 
 /// The tables of contracts/shared-data/v1, one namespace per file: the common base of the apps, read as code
 /// (docs/architecture/ADR-0002-BASE-COMUNE.md).
@@ -616,11 +618,19 @@ public enum SharedData {
             public let worksCollapsed: Int
         }
 
+        public struct TrainNoticeRules: Hashable, Sendable {
+            public let maximumNotes: Int
+            public let textLength: Int
+            public let maximumTrains: Int
+            public let maximumCachedTrains: Int
+        }
+
         public static let service: Service = Service(sourceTimeoutSeconds: 20, reloadAfterSeconds: 120)
         public static let sources: [Source] = [
             Source(id: "mit-strikes-rss", publisher: nil, gate: "all-builds", url: "https://scioperi.mit.gov.it/mit2/public/scioperi/rss", accept: "application/rss+xml, application/xml, text/xml", connectTimeoutSeconds: 8, readTimeoutSeconds: 12, totalTimeoutSeconds: 20, maximumBytes: 1048576, maximumRequests: 3, redirects: "same-https-host", viaggiaTrenoCleartextHop: false, minimumIntervalSeconds: 1800, timeToLiveSeconds: 21600, maximumStaleSeconds: 86400, retryDelayMillis: 750, pauseLabel: nil),
             Source(id: "rfi-infomobility-rss", publisher: "RFI", gate: "all-builds", url: "https://www.rfi.it/content/rfi/it/news-e-media/infomobilita.rss.updates.xml", accept: "application/rss+xml, application/xml, text/xml", connectTimeoutSeconds: 12, readTimeoutSeconds: 20, totalTimeoutSeconds: 25, maximumBytes: 2097152, maximumRequests: 3, redirects: "same-resource", viaggiaTrenoCleartextHop: false, minimumIntervalSeconds: 300, timeToLiveSeconds: 600, maximumStaleSeconds: 3600, retryDelayMillis: nil, pauseLabel: nil),
             Source(id: "trenitalia-infomobility-news", publisher: "TRENITALIA", gate: "personal", url: "https://www.viaggiatreno.it/infomobilitamobile/resteasy/news/infomobility", accept: "application/json", connectTimeoutSeconds: 8, readTimeoutSeconds: 12, totalTimeoutSeconds: 15, maximumBytes: 2097152, maximumRequests: 3, redirects: "same-resource", viaggiaTrenoCleartextHop: true, minimumIntervalSeconds: 300, timeToLiveSeconds: 600, maximumStaleSeconds: 3600, retryDelayMillis: 750, pauseLabel: "ViaggiaTreno"),
+            Source(id: "viaggiatreno-train-notices", publisher: "TRENITALIA", gate: "personal", url: "https://www.viaggiatreno.it/infomobilitamobile/resteasy/news/smartcaring", accept: "application/json", connectTimeoutSeconds: 8, readTimeoutSeconds: 12, totalTimeoutSeconds: 15, maximumBytes: 2097152, maximumRequests: 3, redirects: "same-resource", viaggiaTrenoCleartextHop: true, minimumIntervalSeconds: 30, timeToLiveSeconds: 300, maximumStaleSeconds: 1800, retryDelayMillis: 750, pauseLabel: "ViaggiaTreno"),
             Source(id: "trenord-line-notices", publisher: "TRENORD", gate: "personal", url: "https://www.trenord.it/mgmt/store-management-api/mia/direttrici/", accept: "application/json", connectTimeoutSeconds: 8, readTimeoutSeconds: 12, totalTimeoutSeconds: 15, maximumBytes: 1048576, maximumRequests: 3, redirects: "same-resource", viaggiaTrenoCleartextHop: false, minimumIntervalSeconds: 600, timeToLiveSeconds: 900, maximumStaleSeconds: 7200, retryDelayMillis: 750, pauseLabel: nil)
         ]
         public static let links: Links = Links(
@@ -679,6 +689,7 @@ public enum SharedData {
             ]
         )
         public static let display: Display = Display(networkCollapsed: 6, bodyCollapsedLines: 3, bodyCollapsedCharacters: 180, maximumLineCodes: 6, worksCollapsed: 3)
+        public static let trainNotices: TrainNoticeRules = TrainNoticeRules(maximumNotes: 500, textLength: 1000, maximumTrains: 20, maximumCachedTrains: 32)
     }
 
     /// contracts/shared-data/v1/pack-roles-v1.json: Roles of the offline timetable packs that Android, the iPhone and
@@ -736,6 +747,23 @@ public enum SharedData {
         public static let maximumWeekdayRemarks: Int = 2
         public static let minimumBandSamples: Int = 20
         public static let minimumBandGapPoints: Int = 5
+    }
+
+    /// contracts/shared-data/v1/rfi-monitor-v1.json: RFI's «Arrivi e partenze» monitor as both phones ask and read it:
+    /// the station selector and the monitor pages, the limits of one request, how often a page is asked and how long
+    /// its rows stay live, and how long the selector is kept.
+    public enum RfiMonitor {
+        public static let catalogueUrl: String = "https://iechub.rfi.it/ArriviPartenze"
+        public static let monitorUrl: String = "https://iechub.rfi.it/ArriviPartenze/ArrivalsDepartures/Monitor"
+        public static let accept: String = "text/html,application/xhtml+xml"
+        public static let connectTimeoutSeconds: Double = 12
+        public static let readTimeoutSeconds: Double = 20
+        public static let totalTimeoutSeconds: Double = 10
+        public static let maximumBytes: Int = 2097152
+        public static let minimumIntervalSeconds: Double = 20
+        public static let timeToLiveSeconds: Double = 45
+        public static let catalogueRefreshSeconds: Double = 86400
+        public static let catalogueRetrySeconds: Double = 60
     }
 
     /// contracts/shared-data/v1/rfi-place-ids-v1.json: Place IDs of the RFI «Arrivi e partenze» monitor for the station
@@ -973,5 +1001,36 @@ public enum SharedData {
             "TER", "REX", "CJX", "IRE", "ECE", "CAT", "NJ", "IR", "ES", "FR", "FA", "FB", "AV", "RV", "RE", "IC", "EC",
             "EN", "RJ", "R", "S", "D"
         ]
+    }
+
+    /// contracts/shared-data/v1/viaggiatreno-v1.json: ViaggiaTreno's realtime API as both phones ask and read it: the
+    /// address and its resources, the limits of one request, how long an answer is reused and stays live, how many run
+    /// details are asked at once and for how long, the bounds of what is read, the stop types of a run and who a run is
+    /// for (codiceCliente, when compImpresa does not say).
+    public enum ViaggiaTreno {
+        public static let baseUrl: String = "https://www.viaggiatreno.it/infomobilita/resteasy/viaggiatreno/"
+        public static let departuresResource: String = "partenze/"
+        public static let arrivalsResource: String = "arrivi/"
+        public static let runResource: String = "andamentoTreno/"
+        public static let numberSearchResource: String = "cercaNumeroTrenoTrenoAutocomplete/"
+        public static let connectTimeoutSeconds: Double = 8
+        public static let readTimeoutSeconds: Double = 12
+        public static let totalTimeoutSeconds: Double = 12
+        public static let maximumBytes: Int = 2097152
+        public static let maximumRequests: Int = 4
+        public static let minimumIntervalSeconds: Double = 30
+        public static let timeToLiveSeconds: Double = 30
+        public static let detailPermits: Int = 3
+        public static let runDetailsTimeoutSeconds: Double = 8
+        public static let lookbackTimeoutSeconds: Double = 2
+        public static let maximumAutocompleteLines: Int = 200
+        public static let maximumRunReferences: Int = 24
+        public static let maximumBoardRows: Int = 2000
+        public static let numberSearchPastDays: Int = 2
+        public static let extraordinaryStopType: Int = 2
+        public static let suppressedStopType: Int = 3
+        public static let trenordClients: Set<Int> = [63]
+        public static let trenitaliaRegionalClients: Set<Int> = [2, 18]
+        public static let trenitaliaLongDistanceClients: Set<Int> = [1, 4]
     }
 }

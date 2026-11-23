@@ -83,6 +83,9 @@ final class AppModel: ObservableObject {
         let number: String
         let departure: Date
         let boarding: StationIdentity
+        /// The run of the live board row the detail was opened from, when ViaggiaTreno listed it:
+        /// asked directly, as Android's board row details are, without the number search.
+        var viaggiaTrenoRun: ViaggiaTrenoRunReference? = nil
     }
 
     /// The live state of one run as its sources published it, with its stop at the boarding station.
@@ -94,7 +97,8 @@ final class AppModel: ObservableObject {
         let receivedAt: Date
     }
 
-    /// The merged live board of «Partenze», for the station it was asked for, and when.
+    /// The merged live board of «Partenze» (its departures, or its arrivals), for the station it was
+    /// asked for, and when.
     private struct BoardLive {
         let stationID: String
         let board: LiveDepartureBoard
@@ -183,6 +187,9 @@ final class AppModel: ObservableObject {
     @Published private(set) var boardLiveState: LiveState
     /// The sources whose boards gave the live values of «Partenze», in Android's provider order.
     @Published private(set) var boardLiveSources: [LiveSource] = []
+    /// «Partenze» or «Arrivi» (Android's `stationBoardKind`): the arrivals are the live board alone,
+    /// RFI's and ViaggiaTreno's, as on Android; the departures the bundled timetable under it.
+    @Published private(set) var boardKind: LiveBoardKind = .departures
     /// The planner: the live values of the trains of `latestSnapshot`, by service identifier, from
     /// the live board of the search's origin.
     @Published private(set) var resultLive: [String: StationBoardLiveStatus] = [:]
@@ -1024,6 +1031,23 @@ final class AppModel: ObservableObject {
         restartBoardLive()
     }
 
+    /// «Partenze» or «Arrivi»: the live board of the other kind goes, and the chosen one is asked.
+    func selectBoardKind(_ kind: LiveBoardKind) {
+        guard kind != boardKind else { return }
+        boardKind = kind
+        boardLive = nil
+        boardLiveSources = []
+        setBoardRows(boardScheduled)
+        restartBoardLive()
+    }
+
+    /// The arrivals of the chosen station as its live board lists them, while «Arrivi» is chosen.
+    var boardArrivals: [LiveDeparture] {
+        guard boardKind == .arrivals, liveDataEnabled, let live = boardLive, live.stationID == boardStation?.id,
+              live.board.kind == .arrivals else { return [] }
+        return live.board.departures
+    }
+
     private func scheduleBoardReload() {
         guard boardStation != nil else { return }
         boardLoad = Task { await self.reloadBoard() }
@@ -1216,6 +1240,7 @@ final class AppModel: ObservableObject {
         livePauses.cancelRequestsNobodyWaitsFor()
         boardLive = nil
         boardLiveSources = []
+        boardKind = .departures
         setBoardRows(boardScheduled)
         resultLive = [:]
         resultLiveSources = []
@@ -1317,9 +1342,11 @@ final class AppModel: ObservableObject {
         boardLiveRequestID &+= 1
         let requestID = boardLiveRequestID
         boardLiveState = .loading
-        let request = LiveDeparturesRequest(station: station(for: identity), from: StationBoardQuery.minuteStart(of: now))
+        let kind = boardKind
+        let request = LiveDeparturesRequest(station: station(for: identity), from: StationBoardQuery.minuteStart(of: now), kind: kind)
         let result = await liveData.departures(request)
         guard requestID == boardLiveRequestID, boardStation == identity, liveDataEnabled else { return }
+        guard boardKind == kind else { return }
         liveSourcePauses = livePauses.active(at: now)
         switch result {
         case let .available(board):
@@ -1362,11 +1389,37 @@ final class AppModel: ObservableObject {
     /// rows after the last of them, «orario programmato»; without one, the bundled timetable's rows.
     private func setBoardRows(_ rows: [StationBoardDeparture]) {
         boardScheduled = rows
-        guard liveDataEnabled, let live = boardLive, live.stationID == boardStation?.id else {
+        guard liveDataEnabled, let live = boardLive, live.stationID == boardStation?.id, live.board.kind == .departures else {
             boardDepartures = rows
             return
         }
         boardDepartures = LiveOverlay.stationBoard(rows, with: live.board, at: live.at)
+    }
+
+    // MARK: Live data of a board row and of a train's notices
+
+    /// The run of a row of the live board of «Partenze» or «Arrivi» (Android's board row details):
+    /// asked by its detail when it appears or is pulled, with «Dati in tempo reale» on and the app in
+    /// the foreground; nil otherwise, and when the switch went off meanwhile.
+    func boardRun(_ row: LiveDeparture, kind: LiveBoardKind) async -> LiveBoardRunResult? {
+        guard isForeground else { return nil }
+        guard liveDataEnabled, let liveData, let identity = boardStation else { return nil }
+        let request = LiveBoardRunRequest(row, station: station(for: identity), kind: kind)
+        let result = await liveData.boardRun(request)
+        guard liveDataEnabled else { return nil }
+        liveSourcePauses = livePauses.active(at: Date())
+        return result
+    }
+
+    /// The notices ViaggiaTreno publishes for a train («Avvisi per questo treno», Android's per-train
+    /// notices): asked by the train detail while it shows them, with «Dati in tempo reale» on and the
+    /// app in the foreground; nil otherwise, and when the switch went off meanwhile.
+    func trainNotices(_ request: LiveTrainNoticesRequest) async -> LiveTrainNoticesResult? {
+        guard isForeground else { return nil }
+        guard liveDataEnabled, let liveData else { return nil }
+        let result = await liveData.trainNotices(request)
+        guard liveDataEnabled else { return nil }
+        return result
     }
 
     // MARK: Live data of the planner
@@ -1488,7 +1541,9 @@ final class AppModel: ObservableObject {
     /// a search's time) and never before the window (a favourite saved weeks ago means today's
     /// run). Nil for a train without a number the sources know (a line name, a route's short name)
     /// or outside the window.
-    func liveTrainKey(for service: TrainService, query: JourneyQuery, now: Date = Date()) -> LiveTrainKey? {
+    func liveTrainKey(
+        for service: TrainService, query: JourneyQuery, run: ViaggiaTrenoRunReference? = nil, now: Date = Date()
+    ) -> LiveTrainKey? {
         guard service.hasTrainNumber else { return nil }
         let number = NetworkReliability.numberKey(service.number)
         let digits = number.unicodeScalars.allSatisfy { ("0"..."9").contains($0) }
@@ -1498,7 +1553,9 @@ final class AppModel: ObservableObject {
                   of: service.scheduledDeparture, after: anchor.addingTimeInterval(-60), calendar: Self.timetableCalendar
               ),
               Self.isInLiveWindow(departure, now: now) else { return nil }
-        return LiveTrainKey(number: number, departure: departure, boarding: query.origin)
+        return LiveTrainKey(
+            number: number, departure: departure, boarding: query.origin, viaggiaTrenoRun: run?.number == number ? run : nil
+        )
     }
 
     /// A train detail is on screen: its run is asked now.
@@ -1682,7 +1739,9 @@ final class AppModel: ObservableObject {
     /// day's run of the same number, or another train with that number, is never shown.
     private static func trainLive(_ key: LiveTrainKey, from liveData: any LiveRailProviding, at now: Date) async -> TrainLiveOutcome {
         let code = NetworkReliability.stationCode(key.boarding)
-        let request = LiveTrainStatusRequest(number: key.number, serviceDate: key.departure, stationCode: code)
+        let request = LiveTrainStatusRequest(
+            number: key.number, serviceDate: key.departure, stationCode: code, viaggiaTrenoRun: key.viaggiaTrenoRun
+        )
         switch await liveData.trainStatus(request) {
         case let .available(lookup):
             let sameRun = lookup.runs.filter { run in

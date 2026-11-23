@@ -1,0 +1,70 @@
+{
+  "schema": "binario-shared-rules-v1",
+  "about": "Casi comuni delle fonti live ViaggiaTreno lette dai due telefoni (README.md): l'operatore di una riga o di una corsa (compImpresa, poi codiceCliente della tabella viaggiatreno-v1.json), una riga del tabellone arrivi e gli avvisi per treno («smart caring») validi in un giorno. Gli ingressi sono quelli dei test Android: le righe di ViaggiaTrenoRealtimeAdapterTest e le fixture app/src/test/resources/sources/viaggiatreno-smartcaring-*.json.",
+  "readers": [
+    "app/src/test/java/it/binario/app/data/live/LiveSourcesContractTest.kt",
+    "ios/BinarioKit/Tests/BinarioKitTests/LiveSourcesContractTests.swift"
+  ],
+  "viaggiaTrenoOperator": [
+    {"row": {"compImpresa": "TRENORD"}, "operator": "trenord"},
+    {"row": {"compImpresa": "Trenitalia S.p.A."}, "operator": "trenitalia"},
+    {"row": {"compImpresa": "SAD", "codiceCliente": 63}, "operator": null},
+    {"row": {"codiceCliente": 63}, "operator": "trenord"},
+    {"row": {"codiceCliente": 1}, "operator": "trenitalia"},
+    {"row": {"codiceCliente": 2}, "operator": "trenitalia"},
+    {"row": {"codiceCliente": 4}, "operator": "trenitalia"},
+    {"row": {"codiceCliente": 18}, "operator": "trenitalia"},
+    {"row": {"codiceCliente": 64}, "operator": null},
+    {"row": {}, "operator": null}
+  ],
+  "viaggiaTrenoArrivals": {
+    "now": 1792137600000,
+    "toSeconds": 3600,
+    "rows": [
+      {
+        "numeroTreno": 12345, "codOrigine": "S08001", "dataPartenzaTreno": 1792101600000, "orarioArrivo": 1792139400000,
+        "origine": "Viterbo", "destinazione": "Roma Tiburtina", "ritardo": 6, "ultimoRilev": 1792137570000,
+        "binarioProgrammatoArrivoDescrizione": "5", "binarioEffettivoArrivoDescrizione": "7"
+      },
+      {
+        "numeroTreno": 12347, "codOrigine": "S08001", "dataPartenzaTreno": 1792101600000, "orarioArrivo": 1792140000000,
+        "origine": "Viterbo", "destinazione": "Roma Tiburtina", "binarioProgrammatoArrivoDescrizione": "4"
+      }
+    ],
+    "expected": [
+      {"number": "12345", "endpoint": "Viterbo", "scheduled": "10:30", "expected": "10:36", "platform": "7", "scheduledPlatform": "5", "status": "delayed", "run": "S08001:12345:1792101600000"},
+      {"number": "12347", "endpoint": "Viterbo", "scheduled": "10:40", "expected": null, "platform": null, "scheduledPlatform": null, "status": null, "run": "S08001:12347:1792101600000"}
+    ]
+  },
+  "trainNotices": [
+    {
+      "fixture": "app/src/test/resources/sources/viaggiatreno-smartcaring-8829.json", "number": "8829", "origin": "S01700",
+      "serviceDate": "2026-07-04", "ids": ["viaggiatreno-train-notices:721037", "viaggiatreno-train-notices:721020"]
+    },
+    {
+      "fixture": "app/src/test/resources/sources/viaggiatreno-smartcaring-9588.json", "number": "9588", "origin": "S11781",
+      "serviceDate": "2026-10-11", "ids": ["viaggiatreno-train-notices:815568", "viaggiatreno-train-notices:815521"]
+    },
+    {
+      "fixture": "app/src/test/resources/sources/viaggiatreno-smartcaring-9588.json", "number": "9588", "origin": "S01700",
+      "serviceDate": "2026-10-11", "ids": []
+    },
+    {
+      "fixture": "app/src/test/resources/sources/viaggiatreno-smartcaring-8829.json", "number": "8829", "origin": "S01700",
+      "serviceDate": "2026-10-25", "ids": []
+    },
+    {
+      "fixture": "app/src/test/resources/sources/viaggiatreno-smartcaring-8829.json", "number": "8829", "origin": "S08409",
+      "serviceDate": "2026-09-13", "ids": []
+    },
+    {
+      "fixture": "app/src/test/resources/sources/viaggiatreno-smartcaring-8829.json", "number": "8829", "origin": null,
+      "serviceDate": "2026-09-13", "ids": ["viaggiatreno-train-notices:789111"],
+      "textStartsWith": "Il treno 8829 da MILANO CENTRALE a ANCONA viaggia con 120 minuti", "englishStartsWith": "Buonasera, il treno 8829"
+    },
+    {
+      "fixture": "app/src/test/resources/sources/viaggiatreno-smartcaring-8829.json", "number": "9588", "origin": null,
+      "serviceDate": "2026-09-13", "ids": []
+    }
+  ]
+}

@@ -215,6 +215,27 @@ enum TrenordLineMatcher {
         lines.filter { matchedTokens($0, stationNames: stationNames).count >= minimum }
     }
 
+    /// The lines of a train (Android's `linesForTrain`): a Trenord service is related to the lines
+    /// naming two of its stops (or, failing that, one stop that is not a hub); any other service only
+    /// to the lines naming both its boarding and alighting stations.
+    static func linesForTrain(_ lines: [TrenordLine], context: TrainNoticeContext) -> [TrenordLine] {
+        guard context.trenordOperated else { return linesNaming(lines, stationNames: context.endpoints, minimum: 2) }
+        let strong = linesNaming(lines, stationNames: context.stationNames, minimum: 2)
+        if !strong.isEmpty { return strong }
+        let hubs = hubTokens(lines)
+        return lines.filter { line in matchedTokens(line, stationNames: context.stationNames).contains { !hubs.contains($0) } }
+    }
+
+    /// The station tokens named by more than a third of the lines (and more than two): the hubs.
+    private static func hubTokens(_ lines: [TrenordLine]) -> Set<String> {
+        var counts: [String: Int] = [:]
+        for line in lines {
+            for token in line.stationTokens { counts[token, default: 0] += 1 }
+        }
+        let limit = max(2, lines.count / 3)
+        return Set(counts.filter { $0.value > limit }.keys)
+    }
+
     /// The notices of a station board: its lines' notices, or only the network-wide ones at a hub
     /// such as Milano.
     static func alertsForStation(_ notices: TrenordLineNotices, stationName: String, rules: NoticeRules) -> [NoticeAlert] {

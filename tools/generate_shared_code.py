@@ -512,6 +512,27 @@ def _check_evening_alerts(values: Mapping[str, Any]) -> list[str]:
     return problems
 
 
+def _check_rfi_monitor(values: Mapping[str, Any]) -> list[str]:
+    host = "https://iechub.rfi.it/"
+    return [f"{key}: fuori da {host}" for key in ("catalogueUrl", "monitorUrl") if not values[key].startswith(host)]
+
+
+def _check_viaggiatreno(values: Mapping[str, Any]) -> list[str]:
+    problems = []
+    resources = [values[key] for key in ("departuresResource", "arrivalsResource", "runResource", "numberSearchResource")]
+    if len(set(resources)) != len(resources):
+        problems.append("le risorse devono essere diverse")
+    if not values["baseUrl"].endswith("/"):
+        problems.append("baseUrl: termina con /")
+    if values["extraordinaryStopType"] == values["suppressedStopType"]:
+        problems.append("extraordinaryStopType e suppressedStopType coincidono")
+    groups = [set(values[key]) for key in ("trenordClients", "trenitaliaRegionalClients", "trenitaliaLongDistanceClients")]
+    for index, group in enumerate(groups):
+        for other in groups[index + 1:]:
+            problems += [f"codiceCliente {code} in due gruppi" for code in sorted(group & other)]
+    return problems
+
+
 def _check_pack_roles(values: Mapping[str, Any]) -> list[str]:
     both = set(values["nationalPacks"]) & set(values["foreignPacks"])
     return [f"{pack!r} è sia nazionale sia estero" for pack in sorted(both)]
@@ -653,7 +674,15 @@ NOTICE_DISPLAY = Record("Display", {
     "maximumLineCodes": Field(LENGTH),
     "worksCollapsed": Field(LENGTH),
 })
+NOTICE_TRAIN = Record("TrainNoticeRules", {
+    "maximumNotes": Field(LENGTH),
+    "textLength": Field(LENGTH),
+    "maximumTrains": Field(LENGTH),
+    "maximumCachedTrains": Field(LENGTH),
+})
 PACK_SET = ListOf(Text(SOURCE_ID), as_set=True)
+CLIENT_CODES = ListOf(Integer(0, 9_999), as_set=True)
+RESOURCE = Text(r"[A-Za-z]+/")
 
 BIKE_AREA = Record("Area", {
     "name": Field(Text(r"[\w .'’-]+", max_length=64)),
@@ -771,6 +800,7 @@ TABLES: tuple[Table, ...] = (
         "trenord": Field(NOTICE_TRENORD),
         "routeWorks": Field(NOTICE_ROUTE_WORKS),
         "display": Field(NOTICE_DISPLAY),
+        "trainNotices": Field(NOTICE_TRAIN),
     }, check=_check_notices_sources),
     Table("pack-roles-v1.json", "PackRoles", {
         "nationalPacks": Field(PACK_SET),
@@ -810,6 +840,19 @@ TABLES: tuple[Table, ...] = (
         "minimumBandSamples": Field(COUNT),
         "minimumBandGapPoints": Field(Integer(1, 100)),
     }, alexa=True),
+    Table("rfi-monitor-v1.json", "RfiMonitor", {
+        "catalogueUrl": Field(HTTPS_URL),
+        "monitorUrl": Field(HTTPS_URL),
+        "accept": Field(Text()),
+        "connectTimeoutSeconds": Field(Seconds(1)),
+        "readTimeoutSeconds": Field(Seconds(1)),
+        "totalTimeoutSeconds": Field(Seconds(1)),
+        "maximumBytes": Field(Integer(1, 16 * 1_048_576)),
+        "minimumIntervalSeconds": Field(Seconds(1)),
+        "timeToLiveSeconds": Field(Seconds(1)),
+        "catalogueRefreshSeconds": Field(Seconds(1)),
+        "catalogueRetrySeconds": Field(Seconds(1)),
+    }, check=_check_rfi_monitor),
     Table("rfi-place-ids-v1.json", "RfiPlaceIds", {
         "placeIdsByName": Field(MapOf(Integer(1, 99_999), key=STATION_NAME)),
     }),
@@ -833,6 +876,32 @@ TABLES: tuple[Table, ...] = (
         # Letters only: each platform joins them into one regular-expression alternation.
         "categories": Field(ListOf(Text(r"[A-Z]{1,16}"))),
     }, alexa=True),
+    Table("viaggiatreno-v1.json", "ViaggiaTreno", {
+        "baseUrl": Field(HTTPS_URL),
+        "departuresResource": Field(RESOURCE),
+        "arrivalsResource": Field(RESOURCE),
+        "runResource": Field(RESOURCE),
+        "numberSearchResource": Field(RESOURCE),
+        "connectTimeoutSeconds": Field(Seconds(1)),
+        "readTimeoutSeconds": Field(Seconds(1)),
+        "totalTimeoutSeconds": Field(Seconds(1)),
+        "maximumBytes": Field(Integer(1, 16 * 1_048_576)),
+        "maximumRequests": Field(Integer(1, 5)),
+        "minimumIntervalSeconds": Field(Seconds(1)),
+        "timeToLiveSeconds": Field(Seconds(1)),
+        "detailPermits": Field(Integer(1, 16)),
+        "runDetailsTimeoutSeconds": Field(Seconds(1)),
+        "lookbackTimeoutSeconds": Field(Seconds(1)),
+        "maximumAutocompleteLines": Field(LENGTH),
+        "maximumRunReferences": Field(LENGTH),
+        "maximumBoardRows": Field(LENGTH),
+        "numberSearchPastDays": Field(Integer(0, 7)),
+        "extraordinaryStopType": Field(Integer(0, 99)),
+        "suppressedStopType": Field(Integer(0, 99)),
+        "trenordClients": Field(CLIENT_CODES),
+        "trenitaliaRegionalClients": Field(CLIENT_CODES),
+        "trenitaliaLongDistanceClients": Field(CLIENT_CODES),
+    }, check=_check_viaggiatreno),
 )
 
 
