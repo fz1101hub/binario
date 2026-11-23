@@ -1,0 +1,333 @@
+{
+  "schema": "binario-shared-data-v1",
+  "name": "italo-gtfs-station-codes",
+  "description": "Italo's station codes (stop_code of the italo-gtfs pack) and the catalogue station each one is, reviewed by name and position on 2 November 2026 against the 64 stations of the feed. The passenger-facing codes match ItaloPublicStationFallbacks where both exist (Villa San Giovanni is \"SGM\" here, \"VSG\" on the public board). Not mapped, so they stay stops of the pack: \"LUX\", the seasonal Lucca Comics coach stop about a kilometre from Lucca station. \"TRX\" (Treviso Centrale) is mapped by name: the feed places it 5 km east of the station.",
+  "catalogue": "app/src/main/assets/stations/curated_it_rail_stations.json",
+  "readers": {
+    "android": "app/src/main/java/it/binario/app/data/gtfs/GtfsStationCodeIndex.kt (ItaloGtfsStationCodes, same entries until the generator)",
+    "iphoneIndex": "tools/android_station_codes.py (read by tools/build_ios_gtfs_schedule.py)"
+  },
+  "codes": [
+    {
+      "code": "AGR",
+      "catalogueId": "S11705",
+      "comment": "Agropoli-Castellabate"
+    },
+    {
+      "code": "AVR",
+      "catalogueId": "S09006",
+      "comment": "Aversa"
+    },
+    {
+      "code": "BAC",
+      "catalogueId": "S11119",
+      "comment": "Bari Centrale (catalogue: \"Bari ( Tutte Le Stazioni )\", alias Bari Centrale)"
+    },
+    {
+      "code": "BLT",
+      "catalogueId": "S11108",
+      "comment": "Barletta"
+    },
+    {
+      "code": "BEN",
+      "catalogueId": "S09311",
+      "comment": "Benevento"
+    },
+    {
+      "code": "BIG",
+      "catalogueId": "S11113",
+      "comment": "Bisceglie"
+    },
+    {
+      "code": "BC_",
+      "catalogueId": "S05043",
+      "comment": "Bologna Centrale"
+    },
+    {
+      "code": "BLZ",
+      "catalogueId": "S02026",
+      "comment": "Bolzano Bozen"
+    },
+    {
+      "code": "BSC",
+      "catalogueId": "S01717",
+      "comment": "Brescia"
+    },
+    {
+      "code": "CEA",
+      "catalogueId": "S09211",
+      "comment": "Caserta"
+    },
+    {
+      "code": "CON",
+      "catalogueId": "S02706",
+      "comment": "Conegliano"
+    },
+    {
+      "code": "CDZ",
+      "catalogueId": "S02999",
+      "comment": "Cortina d'Ampezzo (coach stop)"
+    },
+    {
+      "code": "DSG",
+      "catalogueId": "S02084",
+      "comment": "Desenzano del Garda-Sirmione"
+    },
+    {
+      "code": "F__",
+      "catalogueId": "S05712",
+      "comment": "Ferrara"
+    },
+    {
+      "code": "SMN",
+      "catalogueId": "S06421",
+      "comment": "Firenze S. M. Novella"
+    },
+    {
+      "code": "FG_",
+      "catalogueId": "S11100",
+      "comment": "Foggia"
+    },
+    {
+      "code": "GB_",
+      "catalogueId": "S04702",
+      "comment": "Genova Brignole"
+    },
+    {
+      "code": "G__",
+      "catalogueId": "S04700",
+      "comment": "Genova Piazza Principe"
+    },
+    {
+      "code": "LON",
+      "catalogueId": "S11749",
+      "comment": "Lamezia Terme Centrale"
+    },
+    {
+      "code": "LTL",
+      "catalogueId": "S03202",
+      "comment": "Latisana-Lignano-Bibione"
+    },
+    {
+      "code": "LGZ",
+      "catalogueId": "S02556",
+      "comment": "Longarone-Zoldo"
+    },
+    {
+      "code": "MRT",
+      "catalogueId": "S11723",
+      "comment": "Maratea"
+    },
+    {
+      "code": "MC_",
+      "catalogueId": "S01700",
+      "comment": "Milano Centrale"
+    },
+    {
+      "code": "RRO",
+      "catalogueId": "S01039",
+      "comment": "Rho-Fiera Milano"
+    },
+    {
+      "code": "RG_",
+      "catalogueId": "S01820",
+      "comment": "Milano Rogoredo"
+    },
+    {
+      "code": "ML_",
+      "catalogueId": "S11114",
+      "comment": "Molfetta"
+    },
+    {
+      "code": "MNF",
+      "catalogueId": "S03310",
+      "comment": "Monfalcone"
+    },
+    {
+      "code": "NAF",
+      "catalogueId": "S09988",
+      "comment": "Napoli Afragola"
+    },
+    {
+      "code": "NAC",
+      "catalogueId": "S09218",
+      "comment": "Napoli Centrale"
+    },
+    {
+      "code": "PD_",
+      "catalogueId": "S02581",
+      "comment": "Padova (\"Padua\" in the feed)"
+    },
+    {
+      "code": "PAR",
+      "catalogueId": "S11739",
+      "comment": "Paola"
+    },
+    {
+      "code": "P3_",
+      "catalogueId": "S01860",
+      "comment": "Pavia"
+    },
+    {
+      "code": "PSY",
+      "catalogueId": "S02088",
+      "comment": "Peschiera del Garda"
+    },
+    {
+      "code": "PNE",
+      "catalogueId": "S02701",
+      "comment": "Pordenone"
+    },
+    {
+      "code": "PGR",
+      "catalogueId": "S03200",
+      "comment": "Portogruaro-Caorle"
+    },
+    {
+      "code": "RCE",
+      "catalogueId": "S11781",
+      "comment": "Reggio di Calabria Centrale"
+    },
+    {
+      "code": "AAV",
+      "catalogueId": "S05254",
+      "comment": "Reggio Emilia AV Mediopadana"
+    },
+    {
+      "code": "RMT",
+      "catalogueId": "S08409",
+      "comment": "Roma Termini"
+    },
+    {
+      "code": "RTB",
+      "catalogueId": "S08217",
+      "comment": "Roma Tiburtina"
+    },
+    {
+      "code": "RUT",
+      "catalogueId": "S11765",
+      "comment": "Rosarno"
+    },
+    {
+      "code": "RVR",
+      "catalogueId": "S02044",
+      "comment": "Rovereto"
+    },
+    {
+      "code": "R__",
+      "catalogueId": "S05706",
+      "comment": "Rovigo"
+    },
+    {
+      "code": "SAL",
+      "catalogueId": "S09818",
+      "comment": "Salerno"
+    },
+    {
+      "code": "SDP",
+      "catalogueId": "S02666",
+      "comment": "San Donà di Piave-Jesolo"
+    },
+    {
+      "code": "SDX",
+      "catalogueId": "NC001202",
+      "comment": "San Vito di Cadore (coach stop)"
+    },
+    {
+      "code": "SRI",
+      "catalogueId": "S11721",
+      "comment": "Sapri"
+    },
+    {
+      "code": "SDC",
+      "catalogueId": "S11727",
+      "comment": "Scalea-S. Domenica Talao"
+    },
+    {
+      "code": "TDX",
+      "catalogueId": "NC001285",
+      "comment": "Tai di Cadore (coach stop)"
+    },
+    {
+      "code": "TOP",
+      "catalogueId": "S00219",
+      "comment": "Torino Porta Nuova"
+    },
+    {
+      "code": "OUE",
+      "catalogueId": "S00035",
+      "comment": "Torino Porta Susa"
+    },
+    {
+      "code": "TR_",
+      "catalogueId": "S11112",
+      "comment": "Trani"
+    },
+    {
+      "code": "TCN",
+      "catalogueId": "S02038",
+      "comment": "Trento"
+    },
+    {
+      "code": "TRX",
+      "catalogueId": "S02712",
+      "comment": "Treviso Centrale"
+    },
+    {
+      "code": "RHA",
+      "catalogueId": "S03213",
+      "comment": "Trieste Airport"
+    },
+    {
+      "code": "TSC",
+      "catalogueId": "S03317",
+      "comment": "Trieste Centrale"
+    },
+    {
+      "code": "UDN",
+      "catalogueId": "S03026",
+      "comment": "Udine"
+    },
+    {
+      "code": "VLH",
+      "catalogueId": "S11709",
+      "comment": "Vallo della Lucania-Castelnuovo"
+    },
+    {
+      "code": "VEM",
+      "catalogueId": "S02589",
+      "comment": "Venezia Mestre"
+    },
+    {
+      "code": "VSL",
+      "catalogueId": "S02593",
+      "comment": "Venezia S. Lucia"
+    },
+    {
+      "code": "VPN",
+      "catalogueId": "S02430",
+      "comment": "Verona Porta Nuova"
+    },
+    {
+      "code": "VIP",
+      "catalogueId": "S11789",
+      "comment": "Vibo Valentia-Pizzo"
+    },
+    {
+      "code": "VIC",
+      "catalogueId": "S02446",
+      "comment": "Vicenza"
+    },
+    {
+      "code": "SGM",
+      "catalogueId": "S11774",
+      "comment": "Villa S. Giovanni"
+    }
+  ],
+  "unmapped": [
+    {
+      "code": "LUX",
+      "comment": "Codes reviewed and deliberately left to the pack: the seasonal Lucca Comics coach stop"
+    }
+  ]
+}

@@ -10,7 +10,12 @@ packs a stop matching no coded station may match a catalogue station without
 codes the same way (EAV's Cumana and Circumflegrea, the Renon railway, Trento -
 Mezzolombardo), as Android's name match does. Catalogue entries describing one
 physical station collapse onto a single preferred entry with codes; homonyms that
-geography cannot separate stay unmatched (fail closed).
+geography cannot separate stay unmatched (fail closed). The stops of the national
+Trenitalia and Italo packs are bound by the station code they publish first, with
+Android's rule (android_station_codes.py), and by name only when no code binds them.
+The railway packs of both Android manifests are read: gtfs/ and the packs of kind
+"rail" of gtfs-transit/ (city networks stay out). Rail routes and the bus routes of
+the packs are kept, as Android's journey legs (EmbeddedGtfsRouteAdapter.journeyLegMode).
 """
 from __future__ import annotations
 
@@ -39,6 +44,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools"))
 import foreign_pack_rules as foreign_rules  # noqa: E402  (border zone: the one rule of every tool)
 import android_stop_matcher  # noqa: E402  (the Android app's stop matcher, for the pins' station lists)
+import android_station_codes  # noqa: E402  (the Android app's station-code rule, for the national packs' stops)
 
 APPLICATION_ID = int.from_bytes(b"BNGT", "big")
 # 2: trip.bikes_allowed (GTFS bikes_allowed: 1 allowed, 2 not allowed, NULL unknown).
@@ -73,9 +79,14 @@ CO_LOCATED_DUPLICATE_KM = 1.0
 # A GTFS name that is only the leading part of a catalogue name ("Merano" for
 # "Merano Meran") must be this close to it.
 MAX_PREFIX_MATCH_DISTANCE_KM = 1.0
-# The packs of the Android core manifest the index reads (androidOnlySources aside): ten until the Croatian HŽPP pack
-# was removed in November 2026, ten again with Trenitalia France's pack (23 November 2026).
-INDEXED_PACK_COUNT = 10
+# The packs the index reads (androidOnlySources aside): ten of the Android core manifest until 23 November 2026, then
+# every railway pack the Android planner reads: the twelve of gtfs/ (Trenitalia and Italo included) and the five of
+# kind "rail" of gtfs-transit/ (FAL, Ferrotramviaria, Ferrovie del Gargano, Mi.Co.Tra., Genova–Casella).
+INDEXED_PACK_COUNT = 17
+# Kinds of the gtfs-transit/ manifest: a "rail" pack is indexed (or reviewed as androidOnlySources); the city networks
+# ("urban": metro, tram, people mover) are out of the iPhone planner, which has no city legs. Any other kind fails.
+TRANSIT_RAIL_KIND = "rail"
+TRANSIT_OUT_OF_SCOPE_KINDS = frozenset({"urban"})
 # Packs of foreign operators: their stops match only catalogue stations with codes, so the index keeps their trips
 # into Italy and not the French, Swiss or Austrian networks around a station the catalogue lists without codes (Paris).
 # Trenitalia France's pack is bundled whole, outside the border-subset system (foreign_pack_rules): its Paris – Milano
@@ -94,6 +105,11 @@ FOREIGN_PACKS = frozenset({"ch-otd-gtfs", "oebb-gtfs", "sncf-gtfs", "trenitalia-
 OUT_OF_ORDER_TRIPS_LEFT_OUT = frozenset({"trenitalia-france-gtfs"})
 MAX_OUT_OF_ORDER_TRIP_SHARE = 0.05
 OUT_OF_ORDER_COUNT_KEY = "out_of_order_trip_left_out"
+# Counts of ingest_pack recorded in the metadata (filter), not row counts of a table.
+CODE_BOUND_COUNT_KEY = "stop_bound_by_code"
+ITINERARY_ALIGNED_KEY = "itinerary_copy_departure_aligned"
+ITINERARY_COPY_TRIPS_KEY = "itinerary_copy_trip_left_out"
+ITINERARY_COPY_DAYS_KEY = "itinerary_copy_trip_day_left_out"
 # How a pack's stops may match the catalogue: an Italian pack falls back to stations without codes; a foreign pack
 # bundled whole matches stations with codes only; a border subset matches its zone stations with or without codes
 # (design §4.2, the list computed from its full pack); a per-country index (--foreign-full) every station.
@@ -106,10 +122,29 @@ STATION_MODE_FULL = "full"
 FOREIGN_FULL_BUILDER_VERSION = 1
 FOREIGN_FULL_KIND = "foreign-full"
 RAIL_ROUTE_TYPES = frozenset({2, *range(100, 200)})
+# Bus routes are journey legs too, as on Android (EmbeddedGtfsRouteAdapter.journeyLegMode: 3, 700-799): the operator's
+# own scheduled coach in a pack of SCHEDULED_COACH_PACKS, a bus replacing a train in any other. Only Trenitalia's and
+# Italo's packs publish them today; the iPhone names the leg from the pack (SQLiteGTFSJourneyRepository.vehicle).
+BUS_ROUTE_TYPES = frozenset({3, *range(700, 800)})
+INDEXED_ROUTE_TYPES = RAIL_ROUTE_TYPES | BUS_ROUTE_TYPES
+# EmbeddedGtfsPack.busRoutesAreScheduledCoaches: Trenitalia's buses and ItaloBus.
+SCHEDULED_COACH_PACKS = frozenset({"trenitalia-gtfs", "italo-gtfs"})
+# EmbeddedGtfsPack.catalogueNameSuffixes (TransitGtfsPacks.kt): the catalogue names these operators' stations with a
+# suffix ("Matera Centrale FAL", "Bari Centrale FNB"), so a stop "Matera Centrale" of the pack is that station first.
+CATALOGUE_NAME_SUFFIXES: Mapping[str, tuple[str, ...]] = {
+    "fal-basilicata-puglia": ("FAL",),
+    "ferrotramviaria-bari-barletta": ("FNB", "FBN"),
+}
+# EmbeddedGtfsPack.itineraryCopies: the pack also publishes the operator's combined itineraries as trips, so one
+# physical run is several trips, some under another train's number (Italo's NeTEx products). As on Android
+# (EmbeddedGtfsRouteAdapter.finishStopTimes and copiesOn), every copy of a run takes the latest departure the copies
+# publish at a stop, and a copy is left out on each service day another trip of the day runs it under its own number.
+ITINERARY_COPY_PACKS = frozenset({"italo-gtfs"})
+# EmbeddedGtfsRouteAdapter.MAX_DWELL_SKEW_MINUTES: two copies of one run leave a stop within this many minutes.
+MAX_DWELL_SKEW_MINUTES = 20
 # Packs whose bikes_allowed is stored as unknown, as on Android (GtfsDayTimetable.kt): the Italo
 # pack publishes 1 on every trip, but Italo admits only folding bikes carried in a bag, so "bikes
-# allowed" would mislead. The pack is Android-only today (binario_gtfs_source_policy_v1.json);
-# the override is named per pack, never a rule by category, and applies if it joins the index.
+# allowed" would mislead. The override is named per pack, never a rule by category.
 BIKES_VALUE_NOT_SHOWN = frozenset({"italo-gtfs"})
 REQUIRED_FILES = ("agency.txt", "routes.txt", "trips.txt", "stops.txt", "stop_times.txt")
 SCHEMA_TABLES = ("metadata", "pack", "agency", "route", "service", "trip", "stop", "stop_time")
@@ -213,8 +248,9 @@ class CatalogIdentity:
     station_id: str
     railway_code: str | None
     trenitalia_location_id: str | None
-    latitude: float
-    longitude: float
+    # None only for a station a stop's code binds (by_station_id): name matching needs both coordinates.
+    latitude: float | None
+    longitude: float | None
 
     @property
     def coded(self) -> bool:
@@ -241,9 +277,12 @@ class CatalogStationMatcher:
         by_name: Mapping[str, Sequence[CatalogNameMatch]],
         canonical: Sequence[tuple[tuple[str, ...], CatalogIdentity]],
         all_name_positions: Mapping[str, Sequence[tuple[float, float] | None]] = {},
+        by_station_id: Mapping[str, CatalogIdentity] = {},
     ) -> None:
         self._by_name = by_name
         self._all_name_positions = all_name_positions
+        # Every catalogue station, with or without coordinates: the identities a station code may name.
+        self.by_station_id = by_station_id
         self._preferred = self._collapse_co_located(canonical)
         self._prefix_candidates: dict[str, list[tuple[tuple[str, ...], CatalogIdentity]]] = defaultdict(list)
         for tokens, identity in canonical:
@@ -282,6 +321,12 @@ class CatalogStationMatcher:
 
     def preferred(self, identity: CatalogIdentity) -> CatalogIdentity:
         return self._preferred.get(identity.station_id, identity)
+
+    def by_code(self, station: "android_station_codes.Station") -> CatalogIdentity | None:
+        """The identity of a station a stop's code binds (android_station_codes), on the entry the iPhone's station
+        search offers when the station is a co-located duplicate (as for a name match)."""
+        identity = self.by_station_id.get(station.id)
+        return self.preferred(identity) if identity is not None else None
 
     @property
     def unambiguous_name_count(self) -> int:
@@ -494,6 +539,7 @@ def load_catalog(path: Path) -> tuple[CatalogStationMatcher, int]:
     canonical: list[tuple[tuple[str, ...], CatalogIdentity]] = []
     all_name_positions: dict[str, list[tuple[float, float] | None]] = defaultdict(list)
     eligible = 0
+    by_station_id: dict[str, CatalogIdentity] = {}
     for index, station in enumerate(payload["stations"]):
         if not isinstance(station, dict):
             raise BuildError(f"catalog station {index} is not an object")
@@ -508,11 +554,13 @@ def load_catalog(path: Path) -> tuple[CatalogStationMatcher, int]:
         latitude = station.get("latitude")
         longitude = station.get("longitude")
         if not isinstance(latitude, (int, float)) or not isinstance(longitude, (int, float)):
-            # Name-only matching is not a safe geographic identity boundary.
+            # Name-only matching is not a safe geographic identity boundary; a station code still names the station.
+            by_station_id.setdefault(station_id, CatalogIdentity(station_id, railway or None, location or None, None, None))
             continue
         if not -90 <= latitude <= 90 or not -180 <= longitude <= 180:
             raise BuildError(f"catalog station {station_id}: invalid coordinates")
         identity = CatalogIdentity(station_id, railway or None, location or None, float(latitude), float(longitude))
+        by_station_id.setdefault(station_id, identity)
         eligible += identity.coded
         canonical_name = normalize_station_name(name)
         if canonical_name:
@@ -533,6 +581,7 @@ def load_catalog(path: Path) -> tuple[CatalogStationMatcher, int]:
         {name: list(values.values()) for name, values in by_name.items()},
         canonical,
         all_name_positions,
+        by_station_id,
     ), eligible
 
 def record_name_positions(station: Mapping[str, object], positions: dict[str, list[tuple[float, float] | None]]) -> None:
@@ -574,7 +623,7 @@ def geographically_verified_parent_identity(
     longitude = parse_optional_float(row.get("stop_lon"), f"{context}:lon", -180, 180)
     if latitude is None and longitude is None:
         return identity
-    if latitude is None or longitude is None:
+    if latitude is None or longitude is None or identity.latitude is None or identity.longitude is None:
         return None
     distance = distance_kilometres(latitude, longitude, identity.latitude, identity.longitude)
     return identity if distance <= MAX_PARENT_INHERITANCE_DISTANCE_KM else None
@@ -728,13 +777,59 @@ def compute_service_bits(
             bits[offset // 8] |= 1 << (offset % 8)
     return date_int(start), day_count, bytes(bits)
 
+def gateway_source_corroborated(item: Mapping[str, object]) -> bool:
+    """A GATEWAY_ONLY pack (its origin is plain HTTP, never fetched by an app) whose downloaded bytes the manifest
+    records as identical to an HTTPS copy (acquisition.corroboratedBy, tools/acquire_transit_sources.py)."""
+    acquisition = item.get("acquisition")
+    corroboration = acquisition.get("corroboratedBy") if isinstance(acquisition, dict) else None
+    return (
+        isinstance(acquisition, dict) and isinstance(corroboration, dict)
+        and isinstance(corroboration.get("url"), str) and corroboration["url"].startswith("https://")
+        and isinstance(acquisition.get("downloadSha256"), str) and len(acquisition["downloadSha256"]) == 64
+        and corroboration.get("sha256") == acquisition["downloadSha256"]
+    )
+
+def reviewed_source(source_url: object, access_mode: object) -> bool:
+    """The sources the policy may list: an HTTPS direct download, or a GATEWAY_ONLY origin (HTTP or HTTPS) imported
+    offline in CI and corroborated by an HTTPS copy (gateway_source_corroborated, checked on the manifest entry)."""
+    if not isinstance(source_url, str) or not isinstance(access_mode, str):
+        return False
+    if access_mode == "OPEN_DIRECT":
+        return source_url.startswith("https://") and len(source_url) > len("https://")
+    if access_mode == "GATEWAY_ONLY":
+        return source_url.startswith(("https://", "http://")) and len(source_url) > len("https://")
+    return False
+
+def read_transit_rail_packs(transit_manifest_path: Path) -> tuple[list[dict[str, object]], bytes]:
+    """The railway packs (kind "rail") of the gtfs-transit/ manifest; the city networks (TRANSIT_OUT_OF_SCOPE_KINDS)
+    are left out by rule, any other kind fails closed."""
+    try:
+        transit_bytes = read_bounded(transit_manifest_path, MAX_MANIFEST_BYTES, "transit GTFS manifest")
+        transit = json.loads(transit_bytes)
+    except (json.JSONDecodeError, UnicodeError) as error:
+        raise BuildError(f"cannot read transit GTFS manifest: {error}") from error
+    packs = transit.get("packs") if isinstance(transit, dict) else None
+    if not isinstance(packs, list):
+        raise BuildError("transit GTFS manifest has no pack list")
+    rail: list[dict[str, object]] = []
+    for index, item in enumerate(packs):
+        kind = item.get("kind") if isinstance(item, dict) else None
+        if kind == TRANSIT_RAIL_KIND:
+            rail.append(item)
+        elif kind not in TRANSIT_OUT_OF_SCOPE_KINDS:
+            raise BuildError(f"transit GTFS manifest pack {index} has unreviewed kind {kind!r}")
+    return rail, transit_bytes
+
 def read_manifest(
     manifest_path: Path,
     gtfs_root: Path,
     catalog_path: Path,
     source_policy_path: Path | None = None,
     full_pack_dir: Path | None = None,
+    transit_manifest_path: Path | None = None,
 ) -> tuple[list[dict[str, object]], Path, list[InputFile], str, str]:
+    """The packs of the index: those of the core manifest, then the railway packs of the transit manifest (when
+    given), each checked against the reviewed source policy."""
     try:
         manifest_bytes = read_bounded(manifest_path, MAX_MANIFEST_BYTES, "GTFS manifest")
         manifest = json.loads(manifest_bytes)
@@ -750,6 +845,13 @@ def read_manifest(
     packs = manifest.get("packs")
     if not isinstance(packs, list):
         raise BuildError(f"GTFS manifest must contain exactly {INDEXED_PACK_COUNT} packs")
+    # The directory of each pack's archive: the core manifest's own, or the transit manifest's.
+    roots: dict[int, Path] = {id(item): gtfs_root for item in packs}
+    transit_bytes: bytes | None = None
+    if transit_manifest_path is not None:
+        transit_packs, transit_bytes = read_transit_rail_packs(transit_manifest_path)
+        roots.update({id(item): transit_manifest_path.parent for item in transit_packs})
+        packs = [*packs, *transit_packs]
     policy_by_id: dict[str, tuple[str, str]] | None = None
     android_only: dict[str, tuple[str, str]] = {}
     policy_bytes: bytes | None = None
@@ -774,8 +876,8 @@ def read_manifest(
             licence = source["licence"]
             if licence is not None and (not isinstance(licence, str) or not licence.strip()):
                 raise BuildError(f"GTFS source policy entry {source_id!r} has an invalid licence")
-            if source_id in policy_by_id or access_mode != "OPEN_DIRECT" or not source_url.startswith("https://"):
-                raise BuildError(f"GTFS source policy entry {source_id!r} is not an authorised HTTPS direct source")
+            if source_id in policy_by_id or not reviewed_source(source_url, access_mode):
+                raise BuildError(f"GTFS source policy entry {source_id!r} is not an authorised HTTPS direct or corroborated gateway source")
             # The public page of the feed, which the app's source list links to (not the archive).
             landing_page = source["landingPage"]
             if not isinstance(landing_page, str) or not landing_page.startswith("https://") or len(landing_page) <= len("https://"):
@@ -814,6 +916,8 @@ def read_manifest(
     ]
     if source_policy_path is not None and policy_bytes is not None:
         inputs.append(InputFile(source_policy_path.as_posix(), len(policy_bytes), hashlib.sha256(policy_bytes).hexdigest()))
+    if transit_manifest_path is not None and transit_bytes is not None:
+        inputs.append(InputFile(transit_manifest_path.as_posix(), len(transit_bytes), hashlib.sha256(transit_bytes).hexdigest()))
     source_ids: set[str] = set()
     normalized: list[dict[str, object]] = []
     for index, item in enumerate(packs):
@@ -831,6 +935,8 @@ def read_manifest(
         source_ids.add(source_id)
         if policy_by_id is not None and policy_by_id.get(source_id) != (item.get("sourceUrl"), item.get("accessMode")):
             raise BuildError(f"{source_id}: manifest source URL/access mode differs from reviewed iOS policy")
+        if item.get("accessMode") == "GATEWAY_ONLY" and not gateway_source_corroborated(item):
+            raise BuildError(f"{source_id}: a GATEWAY_ONLY pack needs acquisition.corroboratedBy, an HTTPS copy of the same bytes")
         if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", last):
             raise BuildError(f"{source_id}: invalid lastServiceDate")
         try:
@@ -840,8 +946,8 @@ def read_manifest(
         asset_pure = PurePosixPath(asset)
         if asset_pure.is_absolute() or ".." in asset_pure.parts or asset_pure.name != asset_pure.parts[-1]:
             raise BuildError(f"{source_id}: unsafe asset path")
-        # Manifest paths are Android-assets relative (gtfs/foo.zip); gtfs_root is .../gtfs.
-        archive_path = gtfs_root / asset_pure.name
+        # Manifest paths are Android-assets relative (gtfs/foo.zip, gtfs-transit/bar.zip); the root is that directory.
+        archive_path = roots[id(item)] / asset_pure.name
         actual_hash = sha256_file(archive_path)
         if actual_hash != expected_hash:
             raise BuildError(f"{source_id}: archive SHA-256 does not match manifest")
@@ -881,12 +987,35 @@ def stop_identities(
     source_id: str,
     *,
     uncoded: bool,
+    codes: "android_station_codes.StationCodeIndex | None" = None,
+    code_bound: set[str] | None = None,
 ) -> dict[str, CatalogIdentity]:
-    """The catalogue station of every stop that has one: by its name verified by distance, else inherited from its
-    parent station (only an unambiguous verified identity, geographically coherent with the child's coordinates)."""
+    """The catalogue station of every stop that has one: in a pack publishing station codes (``codes``, see
+    android_station_codes.PACK_SCHEMES), by the code first, as on Android (GtfsStopStationResolver.resolveStop); else
+    by its name verified by distance (with the operator's catalogue suffix first, CATALOGUE_NAME_SUFFIXES); else
+    inherited from its parent station (only an unambiguous verified identity, geographically coherent with the
+    child's coordinates). ``code_bound`` collects the stops bound by their code."""
     stop_identity: dict[str, CatalogIdentity] = {}
+    scheme = android_station_codes.PACK_SCHEMES.get(source_id) if codes is not None else None
+    suffixes = CATALOGUE_NAME_SUFFIXES.get(source_id, ())
     for stop_id, row in stops.items():
-        identity = catalog.match(row, f"{source_id}:stop:{stop_id}", uncoded=uncoded)
+        context = f"{source_id}:stop:{stop_id}"
+        identity = None
+        if scheme is not None:
+            assert codes is not None
+            latitude = parse_optional_float(row.get("stop_lat"), f"{context}:lat", -90, 90)
+            longitude = parse_optional_float(row.get("stop_lon"), f"{context}:lon", -180, 180)
+            station = codes.resolve(scheme, row.get("stop_code"), latitude, longitude, row["stop_name"])
+            identity = catalog.by_code(station) if station is not None else None
+            if identity is not None and code_bound is not None:
+                code_bound.add(stop_id)
+        for suffix in suffixes:
+            if identity is not None:
+                break
+            # PackStops.build: "Matera Centrale" of the FAL pack is the catalogue's "Matera Centrale FAL" when it exists.
+            identity = catalog.match({**row, "stop_name": f"{row['stop_name']} {suffix}"}, context, uncoded=uncoded)
+        if identity is None:
+            identity = catalog.match(row, context, uncoded=uncoded)
         if identity is not None:
             stop_identity[stop_id] = identity
     for stop_id, row in stops.items():
@@ -986,12 +1115,227 @@ def out_of_order_kept_trips(connection: sqlite3.Connection) -> set[str]:
             previous_departure = int(departure)
     return found
 
+def is_train_route(route: Mapping[str, str] | None) -> bool:
+    """``journeyLegMode(route?.type) == LegMode.TRAIN``: a rail route type, or none at all."""
+    raw = (route or {}).get("route_type", "").strip()
+    return not raw or (re.fullmatch(r"-?\d+", raw) is not None and int(raw) in RAIL_ROUTE_TYPES)
+
+def public_number(trip: Mapping[str, str], route: Mapping[str, str] | None) -> str:
+    """``EmbeddedGtfsRouteAdapter.publicNumber``: trip_short_name, else a numeric trip_headsign, else the route's
+    short name, else the trip id."""
+    short_name = trip.get("trip_short_name", "")
+    if short_name.strip():
+        return short_name
+    headsign = trip.get("trip_headsign", "").strip()
+    if headsign and headsign.isdigit():
+        return headsign
+    return (route or {}).get("route_short_name", "").strip() or trip["trip_id"]
+
+@dataclass
+class ItineraryRun:
+    """``EmbeddedGtfsRouteAdapter.RunOfDay``: one train trip in stop order, its timed stops only, in GTFS minutes."""
+    trip_id: str
+    trip_index: int
+    service_id: str
+    number: str
+    sequences: list[int]
+    stops: list[int]
+    arrivals: list[int]
+    departures: list[int]
+    own: bool = False
+
+    def start(self) -> tuple[int, int]:
+        return self.departures[0], self.stops[0]
+
+    def offset_in(self, other: "ItineraryRun") -> int:
+        """Where this trip lies inside ``other``, or -1: the same stops in the same order, reached at the same minutes
+        after the first one, and left within MAX_DWELL_SKEW_MINUTES (a copy may have lost a dwell)."""
+        size = len(self.stops)
+        for offset in range(len(other.stops) - size + 1):
+            if all(
+                self.stops[position] == other.stops[offset + position]
+                and (position == 0 or self.arrivals[position] == other.arrivals[offset + position])
+                and (position == size - 1
+                     or abs(self.departures[position] - other.departures[offset + position]) <= MAX_DWELL_SKEW_MINUTES)
+                for position in range(size)
+            ):
+                return offset
+        return -1
+
+def itinerary_runs(
+    connection: sqlite3.Connection,
+    trips: Mapping[str, Mapping[str, str]],
+    routes: Mapping[str, Mapping[str, str]],
+    stops: Mapping[str, Mapping[str, str]],
+) -> list[ItineraryRun]:
+    """``railRuns``: the staged train trips of the pack with two timed stops at least, in trips.txt order. A time is
+    read in whole minutes, as Android reads it; a blank departure falls back to the arrival and back."""
+    stop_index = {stop_id: index for index, stop_id in enumerate(stops)}
+    entries: dict[str, list[tuple[int, int, int, int]]] = defaultdict(list)
+    for trip_id, sequence, stop_id, arrival, departure in connection.execute(
+        "SELECT trip_external_id,stop_sequence,stop_external_id,arrival_seconds,departure_seconds "
+        "FROM temp.ios_gtfs_staged_stop_time ORDER BY trip_external_id,stop_sequence"
+    ):
+        arrival_minute = -1 if arrival is None else int(arrival) // 60
+        departure_minute = -1 if departure is None else int(departure) // 60
+        preferred_departure = departure_minute if departure_minute >= 0 else arrival_minute
+        preferred_arrival = arrival_minute if arrival_minute >= 0 else departure_minute
+        if preferred_departure >= 0:
+            entries[str(trip_id)].append((int(sequence), stop_index[str(stop_id)], preferred_arrival, preferred_departure))
+    runs: list[ItineraryRun] = []
+    for trip_index, (trip_id, trip) in enumerate(trips.items()):
+        route = routes.get(trip["route_id"])
+        timed = entries.get(trip_id, [])
+        if not is_train_route(route) or len(timed) < 2:
+            continue
+        runs.append(ItineraryRun(
+            trip_id, trip_index, trip["service_id"], public_number(trip, route),
+            [entry[0] for entry in timed], [entry[1] for entry in timed],
+            [entry[2] for entry in timed], [entry[3] for entry in timed],
+        ))
+    return runs
+
+def sharing_pairs(runs: Sequence[ItineraryRun]) -> list[tuple[int, int]]:
+    """``forEachSharingPair``: every pair of runs (by position) with a hop in common, the same two stops reached at the
+    same minute, once. Android visits them in hash order; both rules using them give the same result in any order
+    (tests/test_ios_gtfs_schedule.py), here they come in hop order."""
+    by_hop: dict[tuple[int, int, int], list[int]] = defaultdict(list)
+    for index, run in enumerate(runs):
+        for position in range(1, len(run.stops)):
+            sharing = by_hop[(run.stops[position - 1], run.stops[position], run.arrivals[position])]
+            if not sharing or sharing[-1] != index:
+                sharing.append(index)
+    pairs: dict[tuple[int, int], None] = {}
+    for hop in sorted(by_hop):
+        sharing = by_hop[hop]
+        for first in range(len(sharing)):
+            for second in range(first + 1, len(sharing)):
+                pairs.setdefault((min(sharing[first], sharing[second]), max(sharing[first], sharing[second])), None)
+    return list(pairs)
+
+def align_copy_departures(runs: Sequence[ItineraryRun], pairs: Sequence[tuple[int, int]] | None = None) -> dict[tuple[str, int], int]:
+    """``finishStopTimes``: the copies of a run often lose a dwell another copy still has (Italo's 9939 leaves Roma
+    Termini at 17:30, as the itineraries boarding it there say, while its own trip says 17:19); every trip takes the
+    latest departure the trips of the same run publish for a stop. The changed departures, by (trip, stop_sequence)."""
+    changed: dict[tuple[str, int], int] = {}
+    for first_index, second_index in (sharing_pairs(runs) if pairs is None else pairs):
+        first, second = runs[first_index], runs[second_index]
+        inner, outer = (first, second) if len(first.stops) <= len(second.stops) else (second, first)
+        offset = inner.offset_in(outer)
+        if offset < 0:
+            continue
+        # The last stop of the shorter trip has no departure of its own.
+        for position in range(len(inner.stops) - 1):
+            latest = max(inner.departures[position], outer.departures[offset + position])
+            if latest > inner.arrivals[position + 1]:
+                continue
+            for run, at in ((inner, position), (outer, offset + position)):
+                if run.departures[at] != latest:
+                    run.departures[at] = latest
+                    changed[(run.trip_id, run.sequences[at])] = latest
+    return changed
+
+def itinerary_kept_before(kept: ItineraryRun, copy: ItineraryRun) -> bool:
+    """``keptBefore``: the train under its own number stays, then the longer trip, then the first one declared; two
+    trains both under their own numbers are coupled portions and are never merged."""
+    if kept.own != copy.own:
+        return kept.own
+    if kept.own and kept.number != copy.number:
+        return False
+    if len(kept.stops) != len(copy.stops):
+        return len(kept.stops) > len(copy.stops)
+    return kept.trip_index < copy.trip_index
+
+def itinerary_copies_of_day(runs: Sequence[ItineraryRun]) -> set[str]:
+    """``copiesOn``: the trips of one service day (``runs``) left out as copies of another trip of the day."""
+    first_start: dict[str, tuple[int, int]] = {}
+    for run in runs:
+        start = run.start()
+        if run.number not in first_start or start < first_start[run.number]:
+            first_start[run.number] = start
+    for run in runs:
+        run.own = first_start[run.number] == run.start()
+    copies: set[str] = set()
+    for first_index, second_index in sharing_pairs(runs):
+        first, second = runs[first_index], runs[second_index]
+        for copy, kept in ((first, second), (second, first)):
+            if copy.trip_id not in copies and itinerary_kept_before(kept, copy) and copy.offset_in(kept) >= 0:
+                copies.add(copy.trip_id)
+    return copies
+
+def service_dates(start: int, day_count: int, bits: bytes) -> list[date]:
+    first = date(start // 10_000, start // 100 % 100, start % 100)
+    return [first + timedelta(days=offset) for offset in range(day_count) if bits[offset // 8] & (1 << (offset % 8))]
+
+def without_dates(start: int, day_count: int, bits: bytes, left_out: Iterable[date]) -> bytes:
+    first = date(start // 10_000, start // 100 % 100, start % 100)
+    result = bytearray(bits)
+    for day in left_out:
+        offset = (day - first).days
+        if 0 <= offset < day_count:
+            result[offset // 8] &= ~(1 << (offset % 8)) & 0xFF
+    return bytes(result)
+
+def leave_out_itinerary_copies(
+    connection: sqlite3.Connection,
+    source_id: str,
+    trips: Mapping[str, Mapping[str, str]],
+    routes: Mapping[str, Mapping[str, str]],
+    stops: Mapping[str, Mapping[str, str]],
+    calendar_rows: Mapping[str, dict[str, str]],
+    exceptions: Mapping[str, Mapping[date, int]],
+    counts: dict[str, int],
+) -> dict[str, tuple[str, int, int, bytes]]:
+    """ITINERARY_COPY_PACKS, as Android reads them: the staged departures of the copies of a run are aligned
+    (``align_copy_departures``), a trip that is a copy on every day it runs leaves the kept trips, and a trip that is a
+    copy on some days only gets a service of its own without those days. The services by trip: (external id, start,
+    day count, active days)."""
+    runs = itinerary_runs(connection, trips, routes, stops)
+    changed = align_copy_departures(runs)
+    connection.executemany(
+        "UPDATE temp.ios_gtfs_staged_stop_time SET departure_seconds=? WHERE trip_external_id=? AND stop_sequence=?",
+        ((minute * 60, trip_id, sequence) for (trip_id, sequence), minute in sorted(changed.items())),
+    )
+    if changed:
+        counts[ITINERARY_ALIGNED_KEY] = len(changed)
+    bits_of: dict[str, tuple[int, int, bytes]] = {}
+    by_day: dict[date, list[ItineraryRun]] = defaultdict(list)
+    for run in runs:
+        if run.service_id not in bits_of:
+            bits_of[run.service_id] = compute_service_bits(
+                run.service_id, calendar_rows.get(run.service_id), exceptions.get(run.service_id, {}),
+                f"{source_id}:service:{run.service_id}",
+            )
+        for day in service_dates(*bits_of[run.service_id]):
+            by_day[day].append(run)
+    copy_days: dict[str, list[date]] = defaultdict(list)
+    for day in sorted(by_day):
+        for trip_id in itinerary_copies_of_day(by_day[day]):
+            copy_days[trip_id].append(day)
+    published_ids = set(calendar_rows) | set(exceptions)
+    services: dict[str, tuple[str, int, int, bytes]] = {}
+    for trip_id in sorted(copy_days):
+        service_id = trips[trip_id]["service_id"]
+        start, day_count, bits = bits_of[service_id]
+        remaining = without_dates(start, day_count, bits, copy_days[trip_id])
+        if not any(remaining):
+            connection.execute("DELETE FROM temp.ios_gtfs_kept_trip WHERE trip_external_id=?", (trip_id,))
+            counts[ITINERARY_COPY_TRIPS_KEY] += 1
+            continue
+        synthetic = f"{service_id}#binario-without-itinerary-copies#{trip_id}"
+        if synthetic in published_ids:
+            raise BuildError(f"{source_id}: service id {synthetic!r} is published by the pack")
+        services[trip_id] = (synthetic, start, day_count, remaining)
+        counts[ITINERARY_COPY_DAYS_KEY] += len(copy_days[trip_id])
+    return services
+
 def ingest_pack(
     connection: sqlite3.Connection,
     pack_id: int,
     pack: Mapping[str, object],
     catalog: CatalogStationMatcher,
     allocator: IdAllocator,
+    codes: "android_station_codes.StationCodeIndex | None" = None,
 ) -> dict[str, int]:
     source_id = str(pack["source_id"])
     archive_path = Path(pack["archive"])
@@ -1021,7 +1365,9 @@ def ingest_pack(
         trips = unique_rows(archive.rows("trips.txt", ("route_id", "service_id", "trip_id")), "trip_id", f"{source_id}:trips.txt")
         stops = unique_rows(archive.rows("stops.txt", ("stop_id", "stop_name")), "stop_id", f"{source_id}:stops.txt")
 
-        stop_identity = stop_identities(stops, catalog, source_id, uncoded=mode != STATION_MODE_CODED)
+        code_bound: set[str] = set()
+        stop_identity = stop_identities(stops, catalog, source_id, uncoded=mode != STATION_MODE_CODED, codes=codes,
+                                        code_bound=code_bound)
         if mode == STATION_MODE_ZONE:
             # A border subset names only its zone stations (design §4.2): a stop of any other station keeps no
             # catalogue id, so the iPhone never offers it as a journey end, while trips still list it.
@@ -1080,6 +1426,23 @@ def ingest_pack(
         ).fetchone()[0])
         if observed_trip_count != len(trips):
             raise BuildError(f"{source_id}: {len(trips) - observed_trip_count} trips have no stop_times")
+        calendar_rows = unique_rows(
+            archive.rows("calendar.txt", ("service_id", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday", "start_date", "end_date")),
+            "service_id",
+            f"{source_id}:calendar.txt",
+        ) if "calendar.txt" in archive.names else {}
+        exceptions: dict[str, dict[date, int]] = defaultdict(dict)
+        if "calendar_dates.txt" in archive.names:
+            for line, row in enumerate(archive.rows("calendar_dates.txt", ("service_id", "date", "exception_type")), start=2):
+                service_id = required(row, "service_id", f"{source_id}:calendar_dates.txt:{line}")
+                day = parse_yyyymmdd(required(row, "date", f"{source_id}:calendar_dates.txt:{line}"), f"{source_id}:calendar_dates.txt:{line}")
+                if day in exceptions[service_id]:
+                    raise BuildError(f"{source_id}: duplicate calendar exception for {service_id!r} on {day}")
+                exceptions[service_id][day] = parse_int(required(row, "exception_type", f"{source_id}:calendar_dates.txt:{line}"), f"{source_id}:calendar_dates.txt:{line}", minimum=1, maximum=2)
+
+        copy_services: dict[str, tuple[str, int, int, bytes]] = {}
+        if source_id in ITINERARY_COPY_PACKS:
+            copy_services = leave_out_itinerary_copies(connection, source_id, trips, routes, stops, calendar_rows, exceptions, counts)
         if source_id in OUT_OF_ORDER_TRIPS_LEFT_OUT:
             out_of_order = out_of_order_kept_trips(connection)
             kept_before = int(connection.execute("SELECT count(*) FROM temp.ios_gtfs_kept_trip").fetchone()[0])
@@ -1108,21 +1471,13 @@ def ingest_pack(
         unknown_routes = used_route_ids - set(routes)
         if unknown_routes:
             raise BuildError(f"{source_id}: trips reference unknown routes")
-        used_service_ids = {trips[trip_id]["service_id"] for trip_id in kept_trip_ids}
-
-        calendar_rows = unique_rows(
-            archive.rows("calendar.txt", ("service_id", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday", "start_date", "end_date")),
-            "service_id",
-            f"{source_id}:calendar.txt",
-        ) if "calendar.txt" in archive.names else {}
-        exceptions: dict[str, dict[date, int]] = defaultdict(dict)
-        if "calendar_dates.txt" in archive.names:
-            for line, row in enumerate(archive.rows("calendar_dates.txt", ("service_id", "date", "exception_type")), start=2):
-                service_id = required(row, "service_id", f"{source_id}:calendar_dates.txt:{line}")
-                day = parse_yyyymmdd(required(row, "date", f"{source_id}:calendar_dates.txt:{line}"), f"{source_id}:calendar_dates.txt:{line}")
-                if day in exceptions[service_id]:
-                    raise BuildError(f"{source_id}: duplicate calendar exception for {service_id!r} on {day}")
-                exceptions[service_id][day] = parse_int(required(row, "exception_type", f"{source_id}:calendar_dates.txt:{line}"), f"{source_id}:calendar_dates.txt:{line}", minimum=1, maximum=2)
+        # A trip that is an itinerary copy on some of its days runs on a service of its own (leave_out_itinerary_copies).
+        trip_service = {
+            trip_id: copy_services[trip_id][0] if trip_id in copy_services else trips[trip_id]["service_id"]
+            for trip_id in kept_trip_ids
+        }
+        synthetic_services = {service[0]: service[1:] for service in copy_services.values()}
+        used_service_ids = set(trip_service.values())
 
         # GTFS allows omitted agency_id only when exactly one agency exists.
         agency_ids: dict[str, int] = {}
@@ -1151,8 +1506,8 @@ def ingest_pack(
             row = routes[external_id]
             route_type = parse_int(required(row, "route_type", f"{source_id}:route:{external_id}"), f"{source_id}:route:{external_id}", minimum=0, maximum=9999)
             # TFT's railway lines, published as buses, are type 2 in the Android pack (build_gtfs_packs.ROUTE_TYPE_OVERRIDES).
-            if route_type not in RAIL_ROUTE_TYPES:
-                raise BuildError(f"{source_id}: route {external_id!r} is not an authorised railway route")
+            if route_type not in INDEXED_ROUTE_TYPES:
+                raise BuildError(f"{source_id}: route {external_id!r} is neither a railway nor a bus route")
             database_id = allocator.next("route")
             route_ids[external_id] = database_id
             connection.execute(
@@ -1163,7 +1518,10 @@ def ingest_pack(
 
         service_ids: dict[str, int] = {}
         for external_id in sorted(used_service_ids):
-            start_date, day_count, bits = compute_service_bits(external_id, calendar_rows.get(external_id), exceptions.get(external_id, {}), f"{source_id}:service:{external_id}")
+            if external_id in synthetic_services:
+                start_date, day_count, bits = synthetic_services[external_id]
+            else:
+                start_date, day_count, bits = compute_service_bits(external_id, calendar_rows.get(external_id), exceptions.get(external_id, {}), f"{source_id}:service:{external_id}")
             database_id = allocator.next("service")
             service_ids[external_id] = database_id
             connection.execute(
@@ -1181,7 +1539,7 @@ def ingest_pack(
             trip_ids[external_id] = database_id
             connection.execute(
                 "INSERT INTO trip(id,pack_id,route_id,service_id,external_id,headsign,short_name,direction_id,bikes_allowed) VALUES(?,?,?,?,?,?,?,?,?)",
-                (database_id, pack_id, route_ids[row["route_id"]], service_ids[row["service_id"]], external_id, optional_text(row.get("trip_headsign")), optional_text(row.get("trip_short_name")), direction, bikes_allowed(source_id, row.get("bikes_allowed"))),
+                (database_id, pack_id, route_ids[row["route_id"]], service_ids[trip_service[external_id]], external_id, optional_text(row.get("trip_headsign")), optional_text(row.get("trip_short_name")), direction, bikes_allowed(source_id, row.get("bikes_allowed"))),
             )
             counts["trip"] += 1
 
@@ -1201,6 +1559,8 @@ def ingest_pack(
             identity = stop_identity.get(external_id)
             latitude = parse_optional_float(row.get("stop_lat"), f"{source_id}:stop:{external_id}:lat", -90, 90)
             longitude = parse_optional_float(row.get("stop_lon"), f"{source_id}:stop:{external_id}:lon", -180, 180)
+            if external_id in code_bound and identity is not None:
+                counts[CODE_BOUND_COUNT_KEY] += 1
             connection.execute(
                 "INSERT INTO stop(id,pack_id,external_id,name,latitude,longitude,catalog_station_id,railway_code,trenitalia_location_id) VALUES(?,?,?,?,?,?,?,?,?)",
                 (database_id, pack_id, external_id, required(row, "stop_name", f"{source_id}:stop:{external_id}"), latitude, longitude, identity.station_id if identity else None, identity.railway_code if identity else None, identity.trenitalia_location_id if identity else None),
@@ -1255,7 +1615,10 @@ def build_database(
     source_policy_path: Path | None = None,
     max_compressed_bytes: int = DEFAULT_MAX_COMPRESSED_BYTES,
     full_pack_dir: Path | None = None,
+    transit_manifest_path: Path | None = None,
 ) -> dict[str, object]:
+    """The base index: the packs of ``manifest_path`` and the railway packs of ``transit_manifest_path`` (the
+    gtfs-transit/ manifest; None reads the core manifest only, as the fixtures of the tests do)."""
     gtfs_root = manifest_path.parent
     packs, input_root, input_files, input_fingerprint, source_generated_at = read_manifest(
         manifest_path,
@@ -1263,7 +1626,10 @@ def build_database(
         catalog_path,
         source_policy_path,
         full_pack_dir,
+        transit_manifest_path,
     )
+    transit_rail = sorted(str(item["sourceId"]) for item in read_transit_rail_packs(transit_manifest_path)[0]) \
+        if transit_manifest_path is not None else []
     catalog, eligible_catalog_stations = load_catalog(catalog_path)
     border = sorted(str(pack["source_id"]) for pack in packs if pack.get("station_mode") == STATION_MODE_ZONE)
     android = android_stop_matcher.load(catalog_path) if border else None
@@ -1271,16 +1637,24 @@ def build_database(
         if pack.get("station_mode") == STATION_MODE_ZONE:
             assert android is not None
             pack["zone_station_ids"] = border_zone_station_ids(pack, catalog, android)
+    indexed = {str(pack["source_id"]) for pack in packs}
     filter_metadata: dict[str, object] = {
-        "keepsCompleteTripWhen": "at least one stop matches, by normalized name/alias, a stop-name variant (part after 'Stazione di', without a country suffix, a trailing station word or a platform number, Hbf written out) or bilingual-name prefix verified by distance, a single catalog station with railwayCode or trenitaliaLocationId after co-located duplicates collapse onto the preferred entry; in a pack not listed in codedStationsOnly, a stop matching none may match a single catalog station without codes the same way; in a pack listed in borderSubsets only the zone stations of its full pack keep their catalog id",
+        "keepsCompleteTripWhen": "at least one stop matches a single catalog station: in a pack listed in stationCodeSchemes, by the station code it publishes as stop_code, with the Android rule (Trenitalia location id or derived ViaggiaTreno code verified by distance, Italo's reviewed code table), first; else by normalized name/alias, a stop-name variant (part after 'Stazione di', without a country suffix, a trailing station word or a platform number, Hbf written out) or bilingual-name prefix verified by distance, the operator's catalogue name suffix (catalogueNameSuffixes) tried first, a single catalog station with railwayCode or trenitaliaLocationId after co-located duplicates collapse onto the preferred entry; in a pack not listed in codedStationsOnly, a stop matching none may match a single catalog station without codes the same way; in a pack listed in borderSubsets only the zone stations of its full pack keep their catalog id",
         "codedStationsOnly": sorted(FOREIGN_PACKS - set(border)),
         "borderSubsets": border,
         "parentIdentityInheritance": True,
         "parentIdentityMaximumChildDistanceKm": MAX_PARENT_INHERITANCE_DISTANCE_KM,
+        "routeTypes": "rail (2, 100-199) and bus (3, 700-799)",
+        "stationCodeSchemes": {source_id: scheme for source_id, scheme in sorted(android_station_codes.PACK_SCHEMES.items()) if source_id in indexed},
+        "catalogueNameSuffixes": {source_id: list(suffixes) for source_id, suffixes in sorted(CATALOGUE_NAME_SUFFIXES.items()) if source_id in indexed},
+        "scheduledCoachPacks": sorted(SCHEDULED_COACH_PACKS & indexed),
+        "itineraryCopyPacks": sorted(ITINERARY_COPY_PACKS & indexed),
+        "transitRailPacks": transit_rail,
     }
     return write_schedule(
         packs, catalog, eligible_catalog_stations, input_root, input_files, input_fingerprint, source_generated_at,
         output_path, metadata_path, max_compressed_bytes=max_compressed_bytes, filter_metadata=filter_metadata,
+        catalog_path=catalog_path,
     )
 
 def foreign_full_fingerprint(source_id: str, descriptor: Sequence[Mapping[str, object]]) -> str:
@@ -1374,6 +1748,7 @@ def write_schedule(
     max_compressed_bytes: int,
     filter_metadata: Mapping[str, object],
     extra_metadata: Mapping[str, object] | None = None,
+    catalog_path: Path | None = None,
 ) -> dict[str, object]:
     output_path.parent.mkdir(parents=True, exist_ok=True)
     metadata_path.parent.mkdir(parents=True, exist_ok=True)
@@ -1397,13 +1772,29 @@ def write_schedule(
         allocator = IdAllocator()
         per_pack: dict[str, dict[str, int]] = {}
         out_of_order: dict[str, int] = {}
+        code_bound: dict[str, int] = {}
+        itinerary_copies: dict[str, dict[str, int]] = {}
+        codes = (android_station_codes.load(catalog_path)
+                 if catalog_path is not None and any(str(pack["source_id"]) in android_station_codes.PACK_SCHEMES for pack in packs)
+                 else None)
         connection.execute("BEGIN")
         for pack_id, pack in enumerate(packs, start=1):
-            counts = ingest_pack(connection, pack_id, pack, catalog, allocator)
+            source_id = str(pack["source_id"])
+            counts = ingest_pack(connection, pack_id, pack, catalog, allocator, codes)
             left_out = counts.pop(OUT_OF_ORDER_COUNT_KEY, 0)
             if left_out:
-                out_of_order[str(pack["source_id"])] = left_out
-            per_pack[str(pack["source_id"])] = counts
+                out_of_order[source_id] = left_out
+            if source_id in android_station_codes.PACK_SCHEMES and codes is not None:
+                code_bound[source_id] = counts.pop(CODE_BOUND_COUNT_KEY, 0)
+            copies = {
+                label: counts.pop(key, 0) for label, key in (
+                    ("departuresAligned", ITINERARY_ALIGNED_KEY), ("tripsLeftOut", ITINERARY_COPY_TRIPS_KEY),
+                    ("tripDaysLeftOut", ITINERARY_COPY_DAYS_KEY),
+                )
+            }
+            if source_id in ITINERARY_COPY_PACKS:
+                itinerary_copies[source_id] = copies
+            per_pack[source_id] = counts
         totals = {table: int(connection.execute(f"SELECT count(*) FROM {table}").fetchone()[0]) for table in SCHEMA_TABLES if table != "metadata"}
         if totals["trip"] == 0 or totals["stop_time"] == 0:
             raise BuildError("filter produced an empty schedule")
@@ -1454,8 +1845,14 @@ def write_schedule(
                 "eligibleCatalogStationCount": eligible_catalog_stations,
                 "unambiguousNormalizedNameCount": catalog.unambiguous_name_count,
             },
-            # Only when a reviewed pack (OUT_OF_ORDER_TRIPS_LEFT_OUT) had such trips, so other indexes keep their metadata.
-            "filter": {**filter_metadata, **({"outOfOrderTripsLeftOut": out_of_order} if out_of_order else {})},
+            # Only when a reviewed pack (OUT_OF_ORDER_TRIPS_LEFT_OUT) had such trips, so other indexes keep their metadata;
+            # likewise the stops bound by their station code and the itinerary copies, only for an index with such packs.
+            "filter": {
+                **filter_metadata,
+                **({"outOfOrderTripsLeftOut": out_of_order} if out_of_order else {}),
+                **({"stopsBoundByStationCode": code_bound} if code_bound else {}),
+                **({"itineraryCopies": itinerary_copies} if itinerary_copies else {}),
+            },
             "rowCounts": totals,
             "packRowCounts": per_pack,
             "maximumCompressedSizeBytes": max_compressed_bytes,
@@ -1499,6 +1896,10 @@ def default_paths(root: Path) -> tuple[Path, Path, Path, Path, Path]:
         root / "ios/Resources/binario_gtfs_schedule_v1.metadata.json",
     )
 
+def default_transit_manifest(root: Path) -> Path:
+    """The manifest of the regional railways and city networks; its railway packs join the base index."""
+    return root / "app/src/main/assets/gtfs-transit/manifest.json"
+
 def parse_args(argv: Sequence[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     root = Path(__file__).resolve().parents[1]
@@ -1506,6 +1907,8 @@ def parse_args(argv: Sequence[str]) -> argparse.Namespace:
     parser.add_argument("--manifest", type=Path, default=manifest)
     parser.add_argument("--catalog", type=Path, default=catalog)
     parser.add_argument("--source-policy", type=Path, default=source_policy)
+    parser.add_argument("--transit-manifest", type=Path, default=default_transit_manifest(root),
+                        help="gtfs-transit/ manifest whose railway packs join the base index")
     parser.add_argument("--output", type=Path, help=f"default {output.relative_to(root)} (per-country: data/gtfs-foreign/ios/<id>.sqlite.zlib)")
     parser.add_argument("--metadata", type=Path, help=f"default {metadata.relative_to(root)} (per-country: data/gtfs-foreign/ios/<id>.metadata.json)")
     parser.add_argument("--max-compressed-bytes", type=int, default=DEFAULT_MAX_COMPRESSED_BYTES)
@@ -1543,6 +1946,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 source_policy_path=args.source_policy,
                 max_compressed_bytes=args.max_compressed_bytes,
                 full_pack_dir=args.full_pack_dir,
+                transit_manifest_path=args.transit_manifest,
             )
     except BuildError as error:
         print(f"error: {error}", file=sys.stderr)

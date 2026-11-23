@@ -1,0 +1,181 @@
+{
+  "schema": "binario-shared-rules-v1",
+  "readers": {
+    "android": "app/src/test/java/it/binario/app/data/gtfs/GtfsStationCodesContractTest.kt",
+    "python": "tests/test_ios_gtfs_schedule.py (StationCodeContractTest, the rule of the iPhone index builder)"
+  },
+  "catalogue": "app/src/main/assets/stations/curated_it_rail_stations.json",
+  "stationCodes": [
+    {
+      "scheme": "TRENITALIA_LOCATION_ID",
+      "stopCode": "830001700",
+      "name": "MILANO CENTRALE",
+      "latitude": 45.4863,
+      "longitude": 9.2045,
+      "expected": "S01700",
+      "why": "location id of the catalogue, within 10 km"
+    },
+    {
+      "scheme": "TRENITALIA_LOCATION_ID",
+      "stopCode": "830008225",
+      "name": "FIDENE",
+      "latitude": 41.9797,
+      "longitude": 12.5084,
+      "expected": "S08235",
+      "why": "the location id wins over the derived code (S08225 is Pc Orvieto)"
+    },
+    {
+      "scheme": "TRENITALIA_LOCATION_ID",
+      "stopCode": "830009988",
+      "name": "NA Afragola PES",
+      "latitude": 40.930568,
+      "longitude": 14.328634,
+      "expected": "S09988",
+      "why": "location id, whatever the published spelling"
+    },
+    {
+      "scheme": "TRENITALIA_LOCATION_ID",
+      "stopCode": "830005043",
+      "name": "BOLOGNA C.LE",
+      "latitude": 44.506234,
+      "longitude": 11.342267,
+      "expected": "S05043",
+      "why": "derived ViaggiaTreno code S05043, within 3 km"
+    },
+    {
+      "scheme": "TRENITALIA_LOCATION_ID",
+      "stopCode": "830005043",
+      "name": "BOLOGNA C.LE",
+      "latitude": 44.7,
+      "longitude": 11.4,
+      "expected": null,
+      "why": "derived code beyond 3 km: no station"
+    },
+    {
+      "scheme": "TRENITALIA_LOCATION_ID",
+      "stopCode": "830008415",
+      "name": "FIERA DI ROMA",
+      "latitude": 41.79,
+      "longitude": 12.33,
+      "expected": null,
+      "why": "the catalogue location id is Palermo's Fiera, 417 km away; S08415 is not derived when the location id exists elsewhere"
+    },
+    {
+      "scheme": "TRENITALIA_LOCATION_ID",
+      "stopCode": "830008514",
+      "name": "SERENISSIMA",
+      "latitude": 41.91,
+      "longitude": 12.6,
+      "expected": null,
+      "why": "S08514 has another location id (830008505, La Rustica): never derived"
+    },
+    {
+      "scheme": "TRENITALIA_LOCATION_ID",
+      "stopCode": "830012810",
+      "name": "CAGLIARI S.GILLA",
+      "latitude": 39.22779,
+      "longitude": 9.096391,
+      "expected": "NC000072",
+      "why": "location id of a station without coordinates: a shared word of the names corroborates it"
+    },
+    {
+      "scheme": "TRENITALIA_LOCATION_ID",
+      "stopCode": "830012810",
+      "name": "ELMAS",
+      "latitude": 39.22779,
+      "longitude": 9.096391,
+      "expected": null,
+      "why": "station without coordinates and no shared word"
+    },
+    {
+      "scheme": "TRENITALIA_LOCATION_ID",
+      "stopCode": "830002047",
+      "name": "CALLIANO",
+      "latitude": 45.93701,
+      "longitude": 11.09508,
+      "expected": "S02047",
+      "why": "derived code of a station without coordinates, corroborated by the name"
+    },
+    {
+      "scheme": "TRENITALIA_LOCATION_ID",
+      "stopCode": "830002047",
+      "name": "ROVERETO",
+      "latitude": 45.93701,
+      "longitude": 11.09508,
+      "expected": null,
+      "why": "derived code of a station without coordinates, no shared word"
+    },
+    {
+      "scheme": "TRENITALIA_LOCATION_ID",
+      "stopCode": "850001008",
+      "name": "GENEVE",
+      "latitude": 46.21,
+      "longitude": 6.14,
+      "expected": "NC000179",
+      "why": "a foreign location id the catalogue records (Genève), within 10 km"
+    },
+    {
+      "scheme": "TRENITALIA_LOCATION_ID",
+      "stopCode": "800014231",
+      "name": "KARLSRUHE HBF",
+      "latitude": 48.99353,
+      "longitude": 8.40185,
+      "expected": null,
+      "why": "a foreign location id the catalogue does not record: never derived (not 8300…), left to the name"
+    },
+    {
+      "scheme": "TRENITALIA_LOCATION_ID",
+      "stopCode": "8300",
+      "name": "x",
+      "latitude": null,
+      "longitude": null,
+      "expected": null,
+      "why": "not a nine-digit location id"
+    },
+    {
+      "scheme": "ITALO_STATION_CODE",
+      "stopCode": "MC_",
+      "name": "Milano Centrale",
+      "latitude": 45.486389,
+      "longitude": 9.204722,
+      "expected": "S01700",
+      "why": "reviewed Italo table"
+    },
+    {
+      "scheme": "ITALO_STATION_CODE",
+      "stopCode": "PD_",
+      "name": "Padua",
+      "latitude": 45.417,
+      "longitude": 11.88,
+      "expected": "S02581",
+      "why": "reviewed Italo table, whatever the published name"
+    },
+    {
+      "scheme": "ITALO_STATION_CODE",
+      "stopCode": "SDX",
+      "name": "San Vito di Cadore BUS",
+      "latitude": 46.4567,
+      "longitude": 12.2069,
+      "expected": "NC001202",
+      "why": "reviewed Italo table: a coach stop"
+    },
+    {
+      "scheme": "ITALO_STATION_CODE",
+      "stopCode": "LUX",
+      "name": "Lucca Comics and Games BUS",
+      "latitude": 43.84,
+      "longitude": 10.51,
+      "expected": null,
+      "why": "reviewed and deliberately left to the pack"
+    },
+    {
+      "scheme": "ITALO_STATION_CODE",
+      "stopCode": "XYZ",
+      "name": "Nowhere",
+      "latitude": null,
+      "longitude": null,
+      "expected": null,
+      "why": "a code the table does not list"
+    }
+  ]
+}

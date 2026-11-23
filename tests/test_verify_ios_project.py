@@ -890,13 +890,15 @@ class IOSProjectTests(unittest.TestCase):
 
     def test_ios_source_policy_licences_and_pages_match_android(self) -> None:
         # Audit ci-docs-3: the iPhone showed no licence for ARST (CC BY 4.0) and EAV (IODL), which
-        # Android records, and linked the raw archives. Each licence is the Android manifest's
-        # (or the short form it gives in brackets, «CC BY» of «Creative Commons Attribution (CC
-        # BY)»); null exactly while Android's is still to be confirmed by the owner; each link is
-        # the landing page Android's source catalogue opens.
+        # Android records, and linked the raw archives. Each licence is the text of the Android manifest
+        # (gtfs/ or, for a regional railway, gtfs-transit/), word for word; null exactly while Android's
+        # is still to be confirmed by the owner; each link is the landing page Android's source catalogue
+        # opens, and URL and access mode are the manifest's.
         policy = json.loads((IOS / "Resources/binario_gtfs_source_policy_v1.json").read_text(encoding="utf-8"))
-        manifest = json.loads((ROOT / "app/src/main/assets/gtfs/manifest.json").read_text(encoding="utf-8"))
-        android = {pack["sourceId"]: pack.get("licence") for pack in manifest["packs"]}
+        manifests = [json.loads((ROOT / f"app/src/main/assets/{directory}/manifest.json").read_text(encoding="utf-8"))
+                     for directory in ("gtfs", "gtfs-transit")]
+        packs = {pack["sourceId"]: pack for manifest in manifests for pack in manifest["packs"]}
+        android = {source_id: pack.get("licence") for source_id, pack in packs.items()}
         catalogue = (ROOT / "app/src/main/java/it/binario/app/data/sources/RailSourceCatalog.kt").read_text(encoding="utf-8")
         pages = dict(re.findall(r'id = SourceId\("([^"]+)"\),.*?landingPage = uri\("([^"]+)"\)', catalogue, re.S))
         unconfirmed = "Da confermare dal titolare"
@@ -908,10 +910,10 @@ class IOSProjectTests(unittest.TestCase):
                 if expected is None or expected == unconfirmed:
                     self.assertIsNone(source["licence"])
                 else:
-                    self.assertIsNotNone(source["licence"], f"Android records {expected!r}")
-                    self.assertTrue(source["licence"] == expected or expected.endswith(f"({source['licence']})"),
-                                    f"{source['licence']!r} is not {expected!r}")
+                    self.assertEqual(expected, source["licence"])
                 self.assertEqual(pages.get(source_id), source["landingPage"])
+                self.assertEqual((packs[source_id]["sourceUrl"], packs[source_id]["accessMode"]),
+                                 (source["sourceUrl"], source["accessMode"]))
         self.assertEqual(0, sum(source["licence"] is None for source in policy["sources"]))  # D3 closed on 23 Nov 2026
 
     def test_bundled_schedule_fast_path_validates_the_cache_without_rehashing_it(self) -> None:
@@ -1859,8 +1861,10 @@ class IOSProjectTests(unittest.TestCase):
                         self.assertGreater(trips, 0, (origin, destination))
             finally:
                 connection.close()
-        # Today the iPhone index carries Trenord only: Milano Centrale and Cadorna ↔ Malpensa.
-        self.assertEqual([("S01700", "S01139"), ("S01066", "S01139")], offered)
+        # The iPhone index carries every railway pack Android plans with (Trenitalia, Trenord, Ferrotramviaria…): every
+        # link but the Marconi Express, a city people mover the index leaves out.
+        self.assertEqual([(city, airport) for city, airport, pack in ios_routes if pack != "marconiExpress"], offered)
+        self.assertEqual(8, len(offered))
 
     def test_watch_pin_is_persisted_respects_sharing_and_is_answered_in_the_background(self) -> None:
         model = (IOS / "BinarioApp/AppModel.swift").read_text(encoding="utf-8")

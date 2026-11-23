@@ -5,6 +5,7 @@ import hashlib
 import importlib.util
 import io
 import json
+import re
 import shutil
 import sqlite3
 import sys
@@ -288,7 +289,7 @@ class IosGtfsScheduleTest(unittest.TestCase):
              "landingPage": "https://example.test/" + pack["sourceId"]}
             for pack in payload["packs"]
         ]
-        # An eleventh, Android-only pack whose archive the iOS index never reads.
+        # One more, Android-only pack whose archive the iOS index never reads.
         payload["packs"].append({"sourceId": "national-gtfs", "asset": "gtfs/national.zip", "sourceUrl": "https://example.test/national.zip",
                                  "accessMode": "OPEN_DIRECT", "attribution": "Test data", "lastServiceDate": "2026-01-07", "sha256": "0" * 64})
         manifest.write_text(json.dumps(payload), encoding="utf-8")
@@ -319,11 +320,11 @@ class IosGtfsScheduleTest(unittest.TestCase):
         raw = self.temp / "tampered.sqlite"
         raw.write_bytes(zlib.decompress(output.read_bytes()))
         connection = sqlite3.connect(raw)
-        connection.execute("UPDATE route SET route_type=3 WHERE id=1")
+        connection.execute("UPDATE route SET route_type=4 WHERE id=1")
         connection.commit()
         connection.close()
         metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
-        with self.assertRaisesRegex(verifier.VerificationError, "non-rail route"):
+        with self.assertRaisesRegex(verifier.VerificationError, "route neither rail nor bus"):
             verifier.verify_database(raw, metadata, result["inputs"]["fingerprintSha256"])
 
     def rebuild_with_catalog(self, edit) -> Path:
@@ -402,12 +403,19 @@ class IosGtfsScheduleTest(unittest.TestCase):
         with self.assertRaisesRegex(builder.BuildError, "unsafe or duplicate"):
             builder.build_database(manifest, catalog, root / "out.zlib", root / "out.json", max_compressed_bytes=4 * 1024 * 1024)
 
-    def test_rejects_non_rail_route_type(self) -> None:
+    def test_keeps_bus_routes_and_rejects_any_other_route_type(self) -> None:
+        # A bus route is a journey leg, as on Android (journeyLegMode): the operator's coach or a replacement bus.
         root = self.temp / "bus"
         root.mkdir()
         manifest, catalog = write_inputs(root, route_type="3")
-        with self.assertRaisesRegex(builder.BuildError, "not an authorised railway route"):
-            builder.build_database(manifest, catalog, root / "out.zlib", root / "out.json", max_compressed_bytes=4 * 1024 * 1024)
+        result = builder.build_database(manifest, catalog, root / "out.zlib", root / "out.json", max_compressed_bytes=4 * 1024 * 1024)
+        self.assertEqual(builder.INDEXED_PACK_COUNT, result["rowCounts"]["route"])
+        verifier.verify(root / "out.zlib", root / "out.json", max_compressed_bytes=4 * 1024 * 1024, max_database_bytes=16 * 1024 * 1024)
+        ferry = self.temp / "ferry"
+        ferry.mkdir()
+        manifest, catalog = write_inputs(ferry, route_type="4")
+        with self.assertRaisesRegex(builder.BuildError, "neither a railway nor a bus route"):
+            builder.build_database(manifest, catalog, ferry / "out.zlib", ferry / "out.json", max_compressed_bytes=4 * 1024 * 1024)
 
     def test_same_name_far_from_catalog_station_does_not_create_false_identity(self) -> None:
         root = self.temp / "far"
@@ -1005,6 +1013,494 @@ class TrenitaliaFranceIndexTest(unittest.TestCase):
         self.assertGreater(len(kept), 0)
         self.assertLessEqual(kept, italian_trips)
         self.assertEqual(len(italian_trips) - left_out, len(kept))
+
+
+KOTLIN_GTFS = ROOT / "app/src/main/java/it/binario/app/data/gtfs"
+SHIPPED_CATALOG = ROOT / "app/src/main/assets/stations/curated_it_rail_stations.json"
+
+
+def kotlin_pack_entries(path: Path) -> dict[str, str]:
+    """The text of each EmbeddedGtfsPack(...) entry of a Kotlin pack list, by source id."""
+    text = path.read_text(encoding="utf-8")
+    starts = [match.start() for match in re.finditer(r"EmbeddedGtfsPack\(\s*SourceId\(", text)]
+    entries = {}
+    for index, start in enumerate(starts):
+        body = text[start:starts[index + 1] if index + 1 < len(starts) else len(text)]
+        entries[re.search(r'SourceId\("([^"]+)"\)', body).group(1)] = body
+    return entries
+
+
+class StationCodePortTest(unittest.TestCase):
+    """android_station_codes is GtfsStationCodeIndex: GtfsStationCodeIndexTest's cases, and the reviewed table and
+    bounds read from the Kotlin file, so the two cannot drift apart."""
+
+    codes = builder.android_station_codes
+    scheme = builder.android_station_codes.TRENITALIA_LOCATION_ID
+
+    @staticmethod
+    def station(station_id: str, name: str, railway_code: str | None, location_id: str | None,
+                latitude: float | None, longitude: float | None):
+        return builder.android_station_codes.Station(station_id, name, (), railway_code, location_id, latitude, longitude)
+
+    def setUp(self) -> None:
+        # Fidene's location id is 830008225 but its ViaggiaTreno code is S08235; S08225 is another place.
+        self.fidene = self.station("S08235", "Fidene", "S08235", "830008225", 41.979773, 12.508451)
+        self.orvieto = self.station("S08225", "Pc Orvieto", "S08225", None, None, None)
+        self.bologna = self.station("S05043", "Bologna Centrale", "S05043", None, 44.506145, 11.342267)
+        self.wrong_fiera = self.station("S12137", "Fiera", "S12137", "830008415", 38.144004, 13.351336)
+        self.la_rustica = self.station("S08514", "La Rustica Uir", "S08514", "830008505", 41.91, 12.60)
+        self.no_coordinates = self.station("S07000", "Castel Giubileo", "S07000", "830007000", None, None)
+        self.index = self.codes.StationCodeIndex(
+            [self.fidene, self.orvieto, self.bologna, self.wrong_fiera, self.la_rustica, self.no_coordinates])
+
+    def test_the_location_id_wins_over_the_derived_viaggiatreno_code(self) -> None:
+        self.assertEqual(self.fidene, self.index.resolve(self.scheme, "830008225", 41.9797, 12.5084, "FIDENE"))
+
+    def test_the_derived_code_binds_a_station_without_a_location_id_when_the_coordinates_agree(self) -> None:
+        self.assertEqual(self.bologna, self.index.resolve(self.scheme, "830005043", 44.506234, 11.342267, "BOLOGNA C.LE"))
+        # Too far away for a guess: Bologna is not 20 km from its own platform.
+        self.assertIsNone(self.index.resolve(self.scheme, "830005043", 44.70, 11.40, "BOLOGNA C.LE"))
+
+    def test_a_derived_code_never_takes_a_station_that_has_another_location_id(self) -> None:
+        # S08514 is La Rustica (830008505); "SERENISSIMA" 830008514 must not become La Rustica.
+        self.assertIsNone(self.index.resolve(self.scheme, "830008514", 41.91, 12.60, "SERENISSIMA"))
+
+    def test_a_catalogue_location_id_far_from_the_stop_is_rejected(self) -> None:
+        # The catalogue gives Palermo's "Fiera" the location id of Fiera di Roma, 417 km away.
+        self.assertIsNone(self.index.resolve(self.scheme, "830008415", 41.79, 12.33, "FIERA DI ROMA"))
+
+    def test_without_coordinates_a_shared_word_of_the_name_corroborates_the_code(self) -> None:
+        self.assertEqual(self.no_coordinates, self.index.resolve(self.scheme, "830007000", None, None, "CASTEL GIUBILEO"))
+        self.assertIsNone(self.index.resolve(self.scheme, "830007000", None, None, "SETTEBAGNI"))
+
+    def test_foreign_codes_malformed_codes_and_packs_without_a_scheme_resolve_nothing(self) -> None:
+        self.assertIsNone(self.index.resolve(self.scheme, "850001008", 46.21, 6.14, "GENEVE"))
+        self.assertIsNone(self.index.resolve(self.scheme, "8300", None, None, "x"))
+        self.assertIsNone(self.index.resolve(None, "830008225", 41.9797, 12.5084, "FIDENE"))
+
+    def test_a_code_two_stations_share_names_neither(self) -> None:
+        twin = self.station("S99999", "Fidene bis", "S99999", "830008225", 41.98, 12.51)
+        index = self.codes.StationCodeIndex([self.fidene, twin])
+        self.assertIsNone(index.resolve(self.scheme, "830008225", 41.9797, 12.5084, "FIDENE"))
+
+    def test_every_reviewed_italo_code_names_a_station_of_the_shipped_catalogue(self) -> None:
+        real = self.codes.load(SHIPPED_CATALOG)
+        self.assertEqual(63, len(self.codes.ITALO_STATION_CODES))
+        italo_stops = {
+            "MC_": "Milano Centrale", "PD_": "Padova", "BC_": "Bologna Centrale", "AAV": "Reggio Emilia AV",
+            "RCE": "Reggio Di Calabria Centrale", "VEM": "Venezia Mestre", "CDZ": "Cortina D'Ampezzo", "SGM": "Villa S. Giovanni",
+        }
+        for code, name in italo_stops.items():
+            station = real.resolve(self.codes.ITALO_STATION_CODE, code, None, None, "")
+            self.assertEqual(name, station.name if station else None, code)
+        self.assertIsNone(real.resolve(self.codes.ITALO_STATION_CODE, "LUX", 43.84, 10.51, "Lucca Comics and Games BUS"))
+        self.assertTrue(all(code not in self.codes.ITALO_STATION_CODES for code in self.codes.ITALO_UNMAPPED))
+        for code in ("AGR", "BAC", "BEN", "NAF", "SDX", "TDX", "TRX"):
+            self.assertIn(self.codes.ITALO_STATION_CODES[code], real.by_id, code)
+
+    def test_samples_of_the_trenitalia_location_ids_on_the_shipped_catalogue(self) -> None:
+        real = self.codes.load(SHIPPED_CATALOG)
+        def name(code: str, latitude: float, longitude: float, published: str) -> str | None:
+            station = real.resolve(self.scheme, code, latitude, longitude, published)
+            return station.name if station else None
+        self.assertEqual("Milano Centrale", name("830001700", 45.4863, 9.2045, "MILANO CENTRALE"))
+        self.assertEqual("Fidene", name("830008225", 41.9797, 12.5084, "FIDENE"))
+        self.assertEqual("Bologna Centrale", name("830005043", 44.506234, 11.342267, "BOLOGNA C.LE"))
+        self.assertEqual("Napoli Afragola", name("830009988", 40.930568, 14.328634, "NA Afragola PES"))
+        self.assertEqual("Firenze S. M. Novella", name("830006421", 43.7765, 11.2482, "FIRENZE S.MARIA NOVELLA"))
+        self.assertIsNone(name("830008415", 41.79, 12.33, "FIERA DI ROMA"))
+
+    def test_the_shared_table_and_the_bounds_are_the_kotlin_ones(self) -> None:
+        # contracts/shared-data/v1 holds the table every platform reads; until the generator switches Android to it,
+        # ItaloGtfsStationCodes keeps the same entries, comments included.
+        text = (KOTLIN_GTFS / "GtfsStationCodeIndex.kt").read_text(encoding="utf-8")
+        table = text.split("internal object ItaloGtfsStationCodes", 1)[1]
+        kotlin = re.findall(r'"([A-Z0-9_]{3})" to "([A-Z0-9]+)",?[ \t]*// ([^\n]+)', table)
+        self.assertEqual(len(re.findall(r'"([A-Z0-9_]{3})" to "', table)), len(kotlin), "every Kotlin entry has its comment")
+        shared = json.loads(self.codes.ITALO_STATION_CODES_PATH.read_text(encoding="utf-8"))
+        self.assertEqual("binario-shared-data-v1", shared["schema"])
+        self.assertEqual([(code, station, comment.strip()) for code, station, comment in kotlin],
+                         [(entry["code"], entry["catalogueId"], entry["comment"]) for entry in shared["codes"]])
+        self.assertEqual({code: station for code, station, _ in kotlin}, dict(self.codes.ITALO_STATION_CODES))
+        self.assertEqual(set(re.findall(r'"([A-Z0-9_]{3})"', re.search(r"val unmapped: Set<String> = setOf\(([^)]*)\)", table).group(1))),
+                         set(self.codes.ITALO_UNMAPPED))
+        self.assertEqual(set(self.codes.ITALO_UNMAPPED), {entry["code"] for entry in shared["unmapped"]})
+        self.assertIn(f"const val MAX_LOCATION_ID_KM = {self.codes.MAX_LOCATION_ID_KM}", text)
+        self.assertIn(f"const val MAX_DERIVED_CODE_KM = {self.codes.MAX_DERIVED_CODE_KM}", text)
+        self.assertIn('private val TRENITALIA_LOCATION = Regex("\\\\d{9}")', text)
+        self.assertIn('if (!code.startsWith("8300")) return null', text)
+
+    def test_the_pack_rules_are_the_kotlin_ones(self) -> None:
+        core = kotlin_pack_entries(KOTLIN_GTFS / "EmbeddedGtfsPacks.kt")
+        transit = kotlin_pack_entries(KOTLIN_GTFS / "TransitGtfsPacks.kt")
+        packs = {**core, **transit}
+        schemes = {source_id: match.group(1) for source_id, body in packs.items()
+                   if (match := re.search(r"stopCodeScheme = GtfsStopCodeScheme\.([A-Z_]+)", body))}
+        self.assertEqual(schemes, dict(self.codes.PACK_SCHEMES))
+        self.assertEqual({source_id for source_id, body in packs.items() if "busRoutesAreScheduledCoaches = true" in body},
+                         set(builder.SCHEDULED_COACH_PACKS))
+        self.assertEqual({source_id for source_id, body in packs.items() if "itineraryCopies = true" in body},
+                         set(builder.ITINERARY_COPY_PACKS))
+        suffixes = {source_id: tuple(re.findall(r'"([^"]+)"', match.group(1))) for source_id, body in packs.items()
+                    if (match := re.search(r"catalogueNameSuffixes = listOf\(([^)]*)\)", body)) and "personalOnly = true" not in body}
+        self.assertEqual(suffixes, dict(builder.CATALOGUE_NAME_SUFFIXES))
+        self.assertIn("private const val MAX_DWELL_SKEW_MINUTES = 20", (KOTLIN_GTFS / "EmbeddedGtfsRouteAdapter.kt").read_text(encoding="utf-8"))
+        # The railway packs of gtfs-transit/ are the Android railway transit packs of every build.
+        manifest = json.loads((ROOT / "app/src/main/assets/gtfs-transit/manifest.json").read_text(encoding="utf-8"))
+        rail = {pack["sourceId"] for pack in manifest["packs"] if pack["kind"] == builder.TRANSIT_RAIL_KIND}
+        self.assertEqual(rail, {source_id for source_id, body in transit.items()
+                                if "EmbeddedGtfsPackKind.URBAN" not in body and "personalOnly = true" not in body})
+        self.assertEqual({pack["kind"] for pack in manifest["packs"]} - {builder.TRANSIT_RAIL_KIND}, set(builder.TRANSIT_OUT_OF_SCOPE_KINDS))
+
+
+class StationCodeContractTest(unittest.TestCase):
+    """contracts/shared-rules/v1/gtfs-station-codes-v1.json, the cases GtfsStationCodesContractTest runs on Android."""
+
+    def test_every_shared_stop_code_names_the_shared_catalogue_station(self) -> None:
+        rules = json.loads((ROOT / "contracts/shared-rules/v1/gtfs-station-codes-v1.json").read_text(encoding="utf-8"))
+        self.assertEqual("binario-shared-rules-v1", rules["schema"])
+        index = builder.android_station_codes.load(ROOT / rules["catalogue"])
+        schemes = {builder.android_station_codes.TRENITALIA_LOCATION_ID, builder.android_station_codes.ITALO_STATION_CODE}
+        self.assertEqual(schemes, {case["scheme"] for case in rules["stationCodes"]})
+        for case in rules["stationCodes"]:
+            with self.subTest(code=case["stopCode"], name=case["name"]):
+                station = index.resolve(case["scheme"], case["stopCode"], case["latitude"], case["longitude"], case["name"])
+                self.assertEqual(case["expected"], station.id if station else None, case["why"])
+        # Both outcomes of every rule are covered: a station, and none.
+        for scheme in schemes:
+            self.assertEqual({True, False}, {case["expected"] is not None for case in rules["stationCodes"] if case["scheme"] == scheme})
+
+
+class StationCodeIdentityTest(unittest.TestCase):
+    """The stops of a pack publishing station codes are bound by the code first (GtfsStopStationResolver.resolveStop),
+    by name only when no code binds them; the FAL pack's names try the catalogue's operator suffix first."""
+
+    def setUp(self) -> None:
+        self.temp = Path(tempfile.mkdtemp(prefix="ios-gtfs-codes-"))
+        self.addCleanup(shutil.rmtree, self.temp, ignore_errors=True)
+        self.catalog = self.temp / "catalog.json"
+        self.catalog.write_text(json.dumps({"schemaVersion": 1, "stations": [
+            {"id": "S05043", "name": "Bologna Centrale", "aliases": [], "railwayCode": "S05043", "trenitaliaLocationId": None,
+             "latitude": 44.506145, "longitude": 11.342267},
+            {"id": "S02581", "name": "Padova", "aliases": [], "railwayCode": "S02581", "trenitaliaLocationId": "830002581",
+             "latitude": 45.417, "longitude": 11.880},
+            {"id": "S07000", "name": "Castel Giubileo", "aliases": [], "railwayCode": "S07000", "trenitaliaLocationId": "830007000",
+             "latitude": None, "longitude": None},
+            {"id": "S09999", "name": "Ferrara", "aliases": [], "railwayCode": "S09999", "trenitaliaLocationId": None,
+             "latitude": 44.84, "longitude": 11.60},
+            {"id": "NC1", "name": "Matera Centrale FAL", "aliases": [], "railwayCode": None, "trenitaliaLocationId": None,
+             "latitude": 40.667, "longitude": 16.604},
+            {"id": "NC2", "name": "Matera Centrale", "aliases": [], "railwayCode": None, "trenitaliaLocationId": None,
+             "latitude": 40.670, "longitude": 16.600},
+        ]}), encoding="utf-8")
+        self.matcher, _ = builder.load_catalog(self.catalog)
+        self.codes = builder.android_station_codes.load(self.catalog)
+
+    def bound(self, source_id: str, stops: dict[str, dict[str, str]], codes=None) -> tuple[dict[str, str], set[str]]:
+        by_code: set[str] = set()
+        identities = builder.stop_identities(stops, self.matcher, source_id, uncoded=True, codes=codes, code_bound=by_code)
+        return {stop_id: identity.station_id for stop_id, identity in identities.items()}, by_code
+
+    def test_a_trenitalia_stop_is_its_code_station_before_any_name(self) -> None:
+        stops = {
+            # Bologna's spelling matches no catalogue name; its derived ViaggiaTreno code does.
+            "BO": {"stop_id": "BO", "stop_code": "830005043", "stop_name": "BOLOGNA C.LE", "stop_lat": "44.506234", "stop_lon": "11.342267"},
+            # A published name of another station: the code decides.
+            "PD": {"stop_id": "PD", "stop_code": "830002581", "stop_name": "Ferrara", "stop_lat": "45.4171", "stop_lon": "11.8801"},
+            # A station without coordinates, corroborated by a word of the name.
+            "CG": {"stop_id": "CG", "stop_code": "830007000", "stop_name": "CASTEL GIUBILEO", "stop_lat": "", "stop_lon": ""},
+            # A foreign code binds nothing: the name decides.
+            "FE": {"stop_id": "FE", "stop_code": "850009999", "stop_name": "Ferrara", "stop_lat": "44.8401", "stop_lon": "11.6001"},
+        }
+        bound, by_code = self.bound("trenitalia-gtfs", stops, self.codes)
+        self.assertEqual({"BO": "S05043", "PD": "S02581", "CG": "S07000", "FE": "S09999"}, bound)
+        self.assertEqual({"BO", "PD", "CG"}, by_code)
+        # Without the code rule (another pack) the same stops are bound by name only: "Ferrara" 66 km from Ferrara is none.
+        self.assertEqual({"FE": "S09999"}, self.bound("pack-0", stops, self.codes)[0])
+
+    def test_an_italo_stop_is_the_reviewed_station_of_its_code(self) -> None:
+        stops = {"PD_": {"stop_id": "PD_", "stop_code": "PD_", "stop_name": "Padua", "stop_lat": "45.4177", "stop_lon": "11.8807"},
+                 "LUX": {"stop_id": "LUX", "stop_code": "LUX", "stop_name": "Lucca Comics and Games BUS", "stop_lat": "43.84", "stop_lon": "10.51"}}
+        self.assertEqual(({"PD_": "S02581"}, {"PD_"}), self.bound("italo-gtfs", stops, self.codes))
+
+    def test_a_fal_stop_is_the_station_the_catalogue_names_with_the_operator_suffix(self) -> None:
+        stops = {"MT": {"stop_id": "MT", "stop_name": "Matera Centrale", "stop_lat": "40.6671", "stop_lon": "16.6041"}}
+        self.assertEqual({"MT": "NC1"}, self.bound("fal-basilicata-puglia", stops)[0])
+        self.assertEqual({"MT": "NC2"}, self.bound("eav-gtfs", stops)[0])
+
+
+class ItineraryCopiesTest(unittest.TestCase):
+    """EmbeddedGtfsRouteAdapter.finishStopTimes and copiesOn for Italo's pack: a run published again as part of a
+    combined itinerary, under the first train's number, is left out on every day the train itself runs."""
+
+    STATIONS = {"MC": ("Milano Centrale", 45.0, 9.0), "VR": ("Verona Porta Nuova", 45.4, 11.0),
+                "VE": ("Venezia S. Lucia", 45.4, 12.3), "RM": ("Roma Termini", 41.9, 12.5), "FI": ("Firenze S. M. Novella", 43.7, 11.2)}
+
+    def setUp(self) -> None:
+        self.temp = Path(tempfile.mkdtemp(prefix="ios-gtfs-copies-"))
+        self.addCleanup(shutil.rmtree, self.temp, ignore_errors=True)
+        self.catalog = self.temp / "catalog.json"
+        self.catalog.write_text(json.dumps({"schemaVersion": 1, "stations": [
+            {"id": f"S-{code}", "name": name, "aliases": [], "railwayCode": f"S-{code}", "trenitaliaLocationId": None,
+             "latitude": latitude, "longitude": longitude} for code, (name, latitude, longitude) in self.STATIONS.items()
+        ]}), encoding="utf-8")
+        trips = [
+            ["R", "MON-TUE", "8987-own", "", "8987"],   # the train: Milano 10:00, Verona 11:00/11:05, Venezia 12:00
+            ["R", "DAILY", "9920-own", "", "9920"],     # train 9920 itself, Roma - Firenze, every day
+            ["R", "MON-WED", "9920-copy", "", "9920"],  # 9920's itinerary goes on with 8987: Verona 11:03 - Venezia
+            ["R", "DAILY", "9930-own", "", "9930"],
+            ["R", "MON-TUE", "9930-copy", "", "9930"],  # a copy on every day it runs
+            ["B", "DAILY", "bus", "", "1060"],          # an ItaloBus coach: no train run, never a copy
+        ]
+        times = [
+            ["8987-own", "10:00:00", "10:00:00", "MC", "1"], ["8987-own", "11:00:00", "11:05:00", "VR", "2"], ["8987-own", "12:00:00", "12:00:00", "VE", "3"],
+            ["9920-own", "08:00:00", "08:00:00", "RM", "1"], ["9920-own", "09:30:00", "09:30:00", "FI", "2"],
+            ["9920-copy", "11:00:00", "11:03:00", "VR", "1"], ["9920-copy", "12:00:00", "12:00:00", "VE", "2"],
+            ["9930-own", "07:00:00", "07:00:00", "RM", "1"], ["9930-own", "08:30:00", "08:30:00", "FI", "2"],
+            ["9930-copy", "10:00:00", "10:00:00", "MC", "1"], ["9930-copy", "11:00:00", "11:05:00", "VR", "2"],
+            ["bus", "11:00:00", "11:05:00", "VR", "1"], ["bus", "12:00:00", "12:00:00", "VE", "2"],
+        ]
+        days = {"MON-TUE": "1100000", "MON-WED": "1110000", "DAILY": "1111111"}
+        self.archive = self.temp / "italo.zip"
+        with zipfile.ZipFile(self.archive, "w") as archive:
+            archive.writestr("agency.txt", csv_bytes(["agency_id", "agency_name", "agency_url", "agency_timezone"], [["A", "Italo", "https://example.test", "Europe/Rome"]]))
+            archive.writestr("routes.txt", csv_bytes(["route_id", "agency_id", "route_short_name", "route_long_name", "route_type"], [["R", "A", "Italo", "Italo AV", "2"], ["B", "A", "ItaloBus", "ItaloBus", "3"]]))
+            archive.writestr("trips.txt", csv_bytes(["route_id", "service_id", "trip_id", "trip_headsign", "trip_short_name"], trips))
+            archive.writestr("stops.txt", csv_bytes(["stop_id", "stop_name", "stop_lat", "stop_lon"], [[code, name, str(latitude), str(longitude)] for code, (name, latitude, longitude) in self.STATIONS.items()]))
+            archive.writestr("stop_times.txt", csv_bytes(["trip_id", "arrival_time", "departure_time", "stop_id", "stop_sequence"], times))
+            archive.writestr("calendar.txt", csv_bytes(
+                ["service_id", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday", "start_date", "end_date"],
+                [[service, *pattern, "20260105", "20260111"] for service, pattern in days.items()]))
+
+    def ingest(self, source_id: str = "italo-gtfs") -> tuple[sqlite3.Connection, dict[str, int]]:
+        connection = sqlite3.connect(":memory:")
+        self.addCleanup(connection.close)
+        connection.executescript(builder.SCHEMA_SQL)
+        matcher, _ = builder.load_catalog(self.catalog)
+        counts = builder.ingest_pack(connection, 1, {"source_id": source_id, "attribution": "Test", "last_service_date": 20260111,
+                                                     "archive": self.archive}, matcher, builder.IdAllocator())
+        return connection, counts
+
+    def test_copies_are_left_out_on_the_days_the_train_itself_runs(self) -> None:
+        connection, counts = self.ingest()
+        services = dict(connection.execute(
+            "SELECT t.external_id, s.active_days FROM trip t JOIN service s ON s.id = t.service_id").fetchall())
+        # 9930-copy is a copy on both of its days; 9920-copy only on Monday and Tuesday: it keeps Wednesday (bit 2).
+        self.assertEqual({"8987-own", "9920-own", "9920-copy", "9930-own", "bus"}, set(services))
+        self.assertEqual(bytes([0b0000100]), services["9920-copy"])
+        self.assertEqual(bytes([0b0000011]), services["8987-own"])
+        self.assertEqual((1, 2, 1), (counts[builder.ITINERARY_COPY_TRIPS_KEY], counts[builder.ITINERARY_COPY_DAYS_KEY],
+                                     counts[builder.ITINERARY_ALIGNED_KEY]))
+        # The copy lost Verona's dwell: it leaves at 11:05 with the train, as the train's own trip says.
+        departure = connection.execute(
+            "SELECT st.departure_seconds FROM stop_time st JOIN trip t ON t.id = st.trip_id WHERE t.external_id='9920-copy' "
+            "AND st.stop_sequence=1").fetchone()[0]
+        self.assertEqual(11 * 3600 + 5 * 60, departure)
+
+    def test_other_packs_keep_every_trip_as_published(self) -> None:
+        connection, counts = self.ingest("pack-0")
+        self.assertEqual(6, connection.execute("SELECT count(*) FROM trip").fetchone()[0])
+        self.assertNotIn(builder.ITINERARY_COPY_TRIPS_KEY, counts)
+        self.assertEqual(11 * 3600 + 3 * 60, connection.execute(
+            "SELECT st.departure_seconds FROM stop_time st JOIN trip t ON t.id = st.trip_id WHERE t.external_id='9920-copy' "
+            "AND st.stop_sequence=1").fetchone()[0])
+
+    def test_coupled_portions_under_their_own_numbers_are_never_merged(self) -> None:
+        def run(index: int, number: str, stops: list[int], arrivals: list[int], departures: list[int]):
+            return builder.ItineraryRun(f"trip-{index}", index, "S", number, list(range(len(stops))), stops, arrivals, departures)
+        first = run(0, "100", [1, 2], [600, 660], [600, 660])
+        second = run(1, "200", [1, 2], [600, 660], [600, 660])
+        self.assertEqual(set(), builder.itinerary_copies_of_day([first, second]))
+        # The same run twice under one number: the first declared stays.
+        twin = run(2, "100", [1, 2], [600, 660], [600, 660])
+        self.assertEqual({"trip-2"}, builder.itinerary_copies_of_day([first, twin]))
+
+    def test_the_aligned_departures_do_not_depend_on_the_order_of_the_pairs(self) -> None:
+        italo = ROOT / "app/src/main/assets/gtfs/italo-gtfs.zip"
+        import random
+
+        def aligned(seed: int | None) -> dict[tuple[str, int], int]:
+            connection = sqlite3.connect(":memory:")
+            try:
+                connection.execute("CREATE TEMP TABLE ios_gtfs_staged_stop_time (trip_external_id TEXT, stop_sequence INTEGER, "
+                                   "stop_external_id TEXT, arrival_seconds INTEGER, departure_seconds INTEGER)")
+                with builder.BoundedGtfsArchive(italo) as archive:
+                    trips = builder.unique_rows(archive.rows("trips.txt", ("trip_id",)), "trip_id", "trips")
+                    routes = builder.unique_rows(archive.rows("routes.txt", ("route_id",)), "route_id", "routes")
+                    stops = builder.unique_rows(archive.rows("stops.txt", ("stop_id",)), "stop_id", "stops")
+                    for row in archive.rows("stop_times.txt", ("trip_id",)):
+                        connection.execute("INSERT INTO temp.ios_gtfs_staged_stop_time VALUES(?,?,?,?,?)", (
+                            row["trip_id"], int(row["stop_sequence"]), row["stop_id"],
+                            builder.parse_gtfs_time(row["arrival_time"], "a"), builder.parse_gtfs_time(row["departure_time"], "d")))
+                runs = builder.itinerary_runs(connection, trips, routes, stops)
+            finally:
+                connection.close()
+            pairs = builder.sharing_pairs(runs)
+            if seed is not None:
+                random.Random(seed).shuffle(pairs)
+            builder.align_copy_departures(runs, pairs)
+            return {(run.trip_id, sequence): departure for run in runs for sequence, departure in zip(run.sequences, run.departures)}
+
+        reference = aligned(None)
+        for seed in range(4):
+            self.assertEqual(reference, aligned(seed))
+
+
+class TransitRailPacksTest(unittest.TestCase):
+    """The railway packs of the gtfs-transit/ manifest join the index; its city networks stay out by rule, and a pack
+    of any other kind fails closed. A GATEWAY_ONLY source (HTTP origin, Genova–Casella) needs its HTTPS copy."""
+
+    def setUp(self) -> None:
+        self.temp = Path(tempfile.mkdtemp(prefix="ios-gtfs-transit-"))
+        self.addCleanup(shutil.rmtree, self.temp, ignore_errors=True)
+        patcher = mock.patch.object(builder, "FOREIGN_PACKS", FIXTURE_PACKS)
+        patcher.start()
+        self.addCleanup(patcher.stop)
+        self.manifest, self.catalog = write_inputs(self.temp)
+        core = json.loads(self.manifest.read_text(encoding="utf-8"))
+        # The last fixture pack moves to the transit manifest, with a city network next to it.
+        moved = core["packs"].pop()
+        self.manifest.write_text(json.dumps(core), encoding="utf-8")
+        transit_dir = self.temp / "gtfs-transit"
+        transit_dir.mkdir()
+        shutil.move(str(self.temp / "gtfs" / Path(moved["asset"]).name), transit_dir / Path(moved["asset"]).name)
+        self.rail = dict(moved, kind="rail", asset=f"gtfs-transit/{Path(moved['asset']).name}")
+        self.urban = {"sourceId": "city-metro", "kind": "urban", "asset": "gtfs-transit/missing.zip"}
+        self.transit = transit_dir / "manifest.json"
+        self.write_transit([self.rail, self.urban])
+        self.sources = [
+            {"sourceId": pack["sourceId"], "sourceUrl": pack["sourceUrl"], "accessMode": pack["accessMode"], "licence": "CC BY 4.0",
+             "landingPage": "https://example.test/" + pack["sourceId"]} for pack in [*core["packs"], self.rail]
+        ]
+        self.policy = self.temp / "policy.json"
+        self.policy.write_text(json.dumps({"schemaVersion": 1, "sources": self.sources}), encoding="utf-8")
+
+    def write_transit(self, packs: list[dict]) -> None:
+        self.transit.write_text(json.dumps({"schemaVersion": 4, "packs": packs}), encoding="utf-8")
+
+    def build(self) -> dict:
+        return builder.build_database(self.manifest, self.catalog, self.temp / "out.zlib", self.temp / "out.json",
+                                      source_policy_path=self.policy, max_compressed_bytes=4 * 1024 * 1024,
+                                      transit_manifest_path=self.transit)
+
+    def test_rail_packs_are_indexed_and_city_networks_left_out(self) -> None:
+        result = self.build()
+        self.assertEqual(builder.INDEXED_PACK_COUNT, result["rowCounts"]["pack"])
+        self.assertEqual([self.rail["sourceId"]], result["filter"]["transitRailPacks"])
+        self.assertIn("gtfs-transit/manifest.json", [item["path"] for item in result["inputs"]["files"]])
+        verifier.verify(self.temp / "out.zlib", self.temp / "out.json", source_policy_path=self.policy,
+                        max_compressed_bytes=4 * 1024 * 1024, max_database_bytes=16 * 1024 * 1024)
+        # Without the transit manifest the index misses a pack and fails closed.
+        with self.assertRaisesRegex(builder.BuildError, f"exactly {builder.INDEXED_PACK_COUNT} packs"):
+            builder.build_database(self.manifest, self.catalog, self.temp / "out.zlib", self.temp / "out.json",
+                                   source_policy_path=self.policy, max_compressed_bytes=4 * 1024 * 1024)
+
+    def test_an_unreviewed_kind_fails_closed(self) -> None:
+        self.write_transit([self.rail, dict(self.urban, kind="ferry")])
+        with self.assertRaisesRegex(builder.BuildError, "unreviewed kind 'ferry'"):
+            self.build()
+
+    def test_a_gateway_source_needs_an_https_copy_of_the_same_bytes(self) -> None:
+        gateway = dict(self.rail, sourceUrl="http://example.test/feed.zip", accessMode="GATEWAY_ONLY")
+        self.sources[-1].update(sourceUrl=gateway["sourceUrl"], accessMode="GATEWAY_ONLY")
+        self.policy.write_text(json.dumps({"schemaVersion": 1, "sources": self.sources}), encoding="utf-8")
+        self.write_transit([gateway, self.urban])
+        with self.assertRaisesRegex(builder.BuildError, "corroboratedBy"):
+            self.build()
+        self.write_transit([dict(gateway, acquisition={"downloadSha256": "a" * 64, "corroboratedBy": {"url": "https://mirror.test/feed.zip", "sha256": "a" * 64}}), self.urban])
+        self.build()
+        verifier.verify(self.temp / "out.zlib", self.temp / "out.json", source_policy_path=self.policy,
+                        max_compressed_bytes=4 * 1024 * 1024, max_database_bytes=16 * 1024 * 1024)
+        # A cleartext URL is never an OPEN_DIRECT source.
+        self.sources[-1].update(accessMode="OPEN_DIRECT")
+        self.policy.write_text(json.dumps({"schemaVersion": 1, "sources": self.sources}), encoding="utf-8")
+        with self.assertRaisesRegex(builder.BuildError, "not an authorised HTTPS direct"):
+            self.build()
+
+
+class NationalPacksIndexTest(unittest.TestCase):
+    """The shipped index carries the packs Android plans with: Trenitalia's and Italo's stops on the stations of their
+    codes, their coaches as bus routes, the railway packs of gtfs-transit/, and the policy lists exactly them."""
+
+    INDEX = ROOT / "ios/Resources/binario_gtfs_schedule_v1.sqlite.zlib"
+    METADATA = ROOT / "ios/Resources/binario_gtfs_schedule_v1.metadata.json"
+    POLICY = ROOT / "ios/Resources/binario_gtfs_source_policy_v1.json"
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.temporary = tempfile.TemporaryDirectory(prefix="ios-national-")
+        database = Path(cls.temporary.name) / "schedule.sqlite"
+        database.write_bytes(zlib.decompress(cls.INDEX.read_bytes()))
+        cls.connection = sqlite3.connect(f"file:{database}?mode=ro&immutable=1", uri=True)
+        cls.metadata = json.loads(cls.METADATA.read_text(encoding="utf-8"))
+
+    @classmethod
+    def tearDownClass(cls) -> None:
+        cls.connection.close()
+        cls.temporary.cleanup()
+
+    def bound(self, source_id: str) -> dict[str, str | None]:
+        return dict(self.connection.execute(
+            "SELECT s.external_id, s.catalog_station_id FROM stop s JOIN pack p ON p.id = s.pack_id WHERE p.source_id = ?",
+            (source_id,)).fetchall())
+
+    def test_every_android_railway_pack_is_indexed_and_reviewed(self) -> None:
+        core = json.loads((ROOT / "app/src/main/assets/gtfs/manifest.json").read_text(encoding="utf-8"))["packs"]
+        transit = json.loads((ROOT / "app/src/main/assets/gtfs-transit/manifest.json").read_text(encoding="utf-8"))["packs"]
+        expected = {pack["sourceId"] for pack in core} | {pack["sourceId"] for pack in transit if pack["kind"] == "rail"}
+        packs = {row[0] for row in self.connection.execute("SELECT source_id FROM pack")}
+        self.assertEqual(expected, packs)
+        self.assertEqual(expected, set(self.metadata["packRowCounts"]))
+        policy = json.loads(self.POLICY.read_text(encoding="utf-8"))
+        self.assertEqual(expected, {source["sourceId"] for source in policy["sources"]})
+        self.assertEqual([], policy["androidOnlySources"])
+        self.assertTrue(all(self.metadata["packRowCounts"][source_id]["trip"] > 0 for source_id in expected))
+
+    def test_trenitalia_and_italo_stops_are_the_stations_of_their_codes(self) -> None:
+        codes = builder.android_station_codes.load(SHIPPED_CATALOG)
+        matcher, _ = builder.load_catalog(SHIPPED_CATALOG)
+        for source_id, asset in (("trenitalia-gtfs", "trenitalia-gtfs.zip"), ("italo-gtfs", "italo-gtfs.zip")):
+            with zipfile.ZipFile(ROOT / "app/src/main/assets/gtfs" / asset) as pack:
+                stops = list(csv.DictReader(io.TextIOWrapper(pack.open("stops.txt"), encoding="utf-8-sig")))
+            bound = self.bound(source_id)
+            scheme = builder.android_station_codes.PACK_SCHEMES[source_id]
+            checked = 0
+            for row in stops:
+                if row["stop_id"] not in bound:
+                    continue  # a parent station no trip calls at
+                station = codes.resolve(scheme, row["stop_code"], float(row["stop_lat"]), float(row["stop_lon"]), row["stop_name"])
+                if station is not None:
+                    self.assertEqual(matcher.by_code(station).station_id, bound[row["stop_id"]], row["stop_id"])
+                    checked += 1
+            self.assertEqual(self.metadata["filter"]["stopsBoundByStationCode"][source_id], checked)
+        trenitalia = {row[0]: row[1] for row in self.connection.execute(
+            "SELECT s.name, s.catalog_station_id FROM stop s JOIN pack p ON p.id = s.pack_id WHERE p.source_id = 'trenitalia-gtfs'")}
+        self.assertEqual("S05043", trenitalia["BOLOGNA C.LE"])
+        self.assertEqual("S06421", trenitalia["FIRENZE S.MARIA NOVELLA"])
+        italo = {row[0]: row[1] for row in self.connection.execute(
+            "SELECT s.name, s.catalog_station_id FROM stop s JOIN pack p ON p.id = s.pack_id WHERE p.source_id = 'italo-gtfs'")}
+        self.assertEqual("S02581", italo["Padua"])
+        self.assertEqual("S01700", italo["Milano Centrale"])
+
+    def test_the_operators_coaches_are_bus_routes(self) -> None:
+        buses = dict(self.connection.execute(
+            "SELECT p.source_id, count(*) FROM trip t JOIN route r ON r.id = t.route_id JOIN pack p ON p.id = t.pack_id "
+            "WHERE r.route_type = 3 GROUP BY p.source_id").fetchall())
+        self.assertEqual({"trenitalia-gtfs", "italo-gtfs"}, set(buses))
+        self.assertEqual(set(builder.SCHEDULED_COACH_PACKS), set(buses))
+        self.assertEqual({("0083_BUS", 3)}, set(self.connection.execute(
+            "SELECT r.short_name, r.route_type FROM route r JOIN pack p ON p.id = r.pack_id "
+            "WHERE p.source_id = 'trenitalia-gtfs' AND r.route_type = 3").fetchall()))
+        # Italo's bikes stay unknown (BIKES_VALUE_NOT_SHOWN).
+        self.assertEqual([(None,)], self.connection.execute(
+            "SELECT DISTINCT t.bikes_allowed FROM trip t JOIN pack p ON p.id = t.pack_id WHERE p.source_id = 'italo-gtfs'").fetchall())
+
+    def test_the_regional_railways_of_gtfs_transit_reach_their_stations(self) -> None:
+        self.assertEqual(sorted({"fal-basilicata-puglia", "ferrotramviaria-bari-barletta", "fdg-gargano", "micotra-udine-villach",
+                                 "amt-genova-casella-gtfs"}), self.metadata["filter"]["transitRailPacks"])
+        for source_id in self.metadata["filter"]["transitRailPacks"]:
+            with self.subTest(source=source_id):
+                self.assertTrue(any(station is not None for station in self.bound(source_id).values()))
 
 
 if __name__ == "__main__":
