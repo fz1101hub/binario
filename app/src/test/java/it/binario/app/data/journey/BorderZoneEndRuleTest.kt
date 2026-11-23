@@ -42,7 +42,7 @@ class BorderZoneEndRuleTest {
         Trip("T2", "101", listOf("C" to "10:00", "B" to "11:00", "A" to "11:30"))
     ))
     private val whole = pack("ch-otd-gtfs")
-    private val border = whole.copy(borderZone = GtfsBorderZone(setOf("A", "B")))
+    private val border = whole.copy(borderZone = GtfsBorderZone(setOf("A", "B"), servedStationIds = setOf("A", "B", "C")))
 
     private fun options(result: ProviderResult<List<JourneyOption>>): List<JourneyOption> = when (result) {
         is ProviderResult.Success -> result.value
@@ -60,6 +60,14 @@ class BorderZoneEndRuleTest {
         assertEquals("100", options(provider.searchJourneys(request(alfa, gamma))).single().legs.single().publicNumber)
         assertTrue(whole.coversEnd(gamma.id))
         assertTrue(!border.coversEnd(gamma.id) && border.coversEnd(beta.id))
+    }
+
+    @Test
+    fun `a station the pins do not list as served stays covered by the subset`() {
+        // Delta is no station of the full pack for the tools' matcher: the subset keeps the trains it has there.
+        assertTrue(border.coversEnd(delta.id) && border.coversEnd(alfa.id))
+        assertTrue(!border.coversEnd(gamma.id) && !border.coversEnd(null))
+        assertTrue(GtfsBorderZone(emptySet(), setOf("C")).contains("C").not())
     }
 
     @Test

@@ -1,6 +1,7 @@
 package it.binario.app.data.journey
 
 import it.binario.app.TestAssets
+import it.binario.app.data.StationAutocompleteEngine
 import it.binario.app.data.Station
 import it.binario.app.data.catalog.EmbeddedCuratedRailStationCatalog
 import it.binario.app.data.core.JourneyOption
@@ -12,14 +13,19 @@ import it.binario.app.data.gtfs.ForeignPackAdvisor
 import it.binario.app.data.gtfs.ForeignPackEntry
 import it.binario.app.data.gtfs.ForeignPackOffer
 import it.binario.app.data.gtfs.ForeignPackPins
+import it.binario.app.data.gtfs.parseGtfsCsvLine
 import it.binario.app.data.provider.JourneySearchRequest
 import it.binario.app.data.provider.ProviderErrorKind
 import it.binario.app.data.provider.ProviderResult
+import java.io.BufferedReader
 import java.io.File
+import java.io.InputStream
+import java.io.InputStreamReader
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.ZoneId
 import java.time.ZonedDateTime
+import java.util.zip.ZipInputStream
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -122,21 +128,98 @@ class EmbeddedGtfsBorderZoneTest {
         assertFalse(notCovered(full.searchJourneys(request(milano, bern))))
         val offer = ForeignPackAdvisor(pins, { false }, { tuesday }).afterSearch(milano.id, bern.id, found = false)
         assertEquals(ForeignPackOffer.Style.DIALOG, offer?.style)
-        assertEquals(listOf("ch-otd-gtfs"), offer?.packs?.map { it.sourceId.value })
+        // Switzerland first; with every country pinned, also each other pack whose full timetable serves an end
+        // outside its zone (the SNCF pack serves Bern with the TGV Lyria): the advisor's documented rule.
+        val expected = pins.downloadable.filter { entry -> listOf(milano.id, bern.id).any { entry.serves(it) && !entry.inZone(it) } }
+        assertEquals("ch-otd-gtfs", offer?.packs?.firstOrNull()?.sourceId?.value)
+        assertEquals(expected.map { it.sourceId.value }, offer?.packs?.map { it.sourceId.value })
     }
 
-    /** Design §6 ForeignCoverageParityTest: Android's own matcher resolves every station the pins say a full pack serves. */
+    /**
+     * Design §6 ForeignCoverageParityTest, on the real full packs of every pinned country, stop by stop as the Android
+     * matcher resolves them. A stop whose every train of the full pack is in the subset is *complete* (being in the
+     * subset is not enough: a whole trip kept for its border stations also lists Zürich HB). (a) A station whose stops
+     * are all complete is covered by the subset (a zone station, or one the pins do not list as served). (b) A stop with
+     * trains missing from the subset resolves to a station the full pack serves outside the zone, which the subset does
+     * not cover and the advisor offers: partial data is never shown as complete.
+     */
     @Test
-    fun `every served station of the pins is resolved by the Android matcher on the full pack`() = runBlocking {
+    fun `every stop Android resolves is covered by the subset exactly where the subset has all its trains`() = runBlocking {
         requireSubsets()
-        for (entry in pins.packs) {
+        var checked = 0
+        for (entry in pins.borderOnly) {
             val id = entry.sourceId.value
+            assertTrue("$id: zone within served", entry.servedStationIds.containsAll(entry.zoneStationIds))
+            val subsetTrips = HashSet<String>()
+            table(TestAssets.open("gtfs/$id.zip"), "trips.txt") { row, column -> subsetTrips += row[column("trip_id")] }
+            val called = HashSet<String>()
+            val incomplete = HashSet<String>()
+            table(TestAssets.openFull("gtfs/$id.zip"), "stop_times.txt") { row, column ->
+                val stop = row[column("stop_id")]
+                called += stop
+                if (row[column("trip_id")] !in subsetTrips) incomplete += stop
+            }
             val whole = EmbeddedGtfsPacks.all.single { it.sourceId.value == id }
             val provider = EmbeddedGtfsJourneyProvider.create({ path -> TestAssets.openFull(path) }, listOf(whole))
-            val resolved = provider.catalogueStationsForTest(entry.sourceId).map { ForeignPackEntry.catalogueId(it) }.toSet()
-            val missing = entry.servedStationIds - resolved
-            assertTrue("$id: served by the pins but not resolved on Android: $missing", missing.isEmpty())
-            assertTrue("$id: zone within served", entry.servedStationIds.containsAll(entry.zoneStationIds))
+            val bundled = asBundled(id)
+            val partialShownComplete = ArrayList<String>()
+            val stationsWithPartialStops = HashSet<String>()
+            val resolvedStations = HashSet<String>()
+            for ((stop, station) in provider.catalogueStationByStopForTest(entry.sourceId)) {
+                if (stop !in called) continue
+                resolvedStations += station
+                if (stop in incomplete) {
+                    stationsWithPartialStops += station
+                    if (bundled.coversEnd(station) || !entry.serves(station)) partialShownComplete += "$stop -> $station"
+                }
+            }
+            val completeLeftToFullPack = (resolvedStations - stationsWithPartialStops).filterNot(bundled::coversEnd).sorted()
+            assertTrue("$id: resolves no stop", resolvedStations.isNotEmpty())
+            assertTrue("$id: stops with trains missing from the subset at a covered station: $partialShownComplete",
+                partialShownComplete.isEmpty())
+            assertTrue("$id: stations with every train in the subset left to the full pack: $completeLeftToFullPack",
+                completeLeftToFullPack.isEmpty())
+            checked++
         }
+        assertEquals(pins.borderOnly.size, checked)
+    }
+
+    /**
+     * Maccagno has two catalogue entries 300 m apart (S13653 and S19005); the tools' matcher and the Android one place the
+     * Swiss stop at different ones. Whichever the station search offers, the bundled Swiss subset still finds the TILO S30
+     * trains of the Luino – Cadenazzo corridor: trip 25361, Cadenazzo 08:04 – Maccagno 08:34 on Tuesday 24 November 2026.
+     */
+    @Test
+    fun `a search to either Maccagno entry finds the TILO trains of the Swiss subset`() = runBlocking {
+        requireSubsets()
+        assumeTrue("the Swiss pack is bundled whole (no pin, D2)", entry("ch-otd-gtfs")?.borderOnly == true)
+        val search = StationAutocompleteEngine(stations)
+        val maccagno = search.suggest("Maccagno").filter { it.name == "Maccagno" }
+        assertTrue("two catalogue entries named Maccagno: ${maccagno.map(Station::id)}", maccagno.size >= 2)
+        val cadenazzo = station("Cadenazzo")
+        val provider = EmbeddedGtfsJourneyProvider.create(openAsset, listOf(asBundled("ch-otd-gtfs")))
+        for (end in maccagno) {
+            val found = options(provider.searchJourneys(request(cadenazzo, end)))
+            val leg = found.flatMap { it.legs }.firstOrNull { it.publicNumber == "25361" }
+            assertTrue("${end.id}: the S30 25361 of 08:04 is found: ${found.map { option -> option.legs.map { it.publicNumber } }}", leg != null)
+        }
+    }
+
+    private fun table(stream: InputStream, name: String, consumer: (List<String>, (String) -> Int) -> Unit) {
+        ZipInputStream(stream.buffered()).use { zip ->
+            while (true) {
+                val entry = zip.nextEntry ?: break
+                if (entry.name != name) continue
+                val reader = BufferedReader(InputStreamReader(zip, Charsets.UTF_8))
+                val header = parseGtfsCsvLine(reader.readLine().orEmpty().removePrefix("\uFEFF")).map(String::trim)
+                val column = { key: String -> header.indexOf(key).also { require(it >= 0) { "$name: no $key" } } }
+                while (true) {
+                    val line = reader.readLine() ?: break
+                    if (line.isNotBlank()) consumer(parseGtfsCsvLine(line), column)
+                }
+                return
+            }
+        }
+        throw AssertionError("$name missing")
     }
 }

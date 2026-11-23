@@ -361,8 +361,10 @@ class ApplyTest(unittest.TestCase):
         catalogue = self.root / foreign.CATALOGUE_PATH
         catalogue.parent.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(ROOT / foreign.CATALOGUE_PATH, catalogue)
+        corridor = foreign.Corridor("Alfa – Beta", "fixture", foreign.stop("Alfa", 45.0, 9.0), (foreign.stop("Beta", 45.1, 9.1),))
         with mock.patch.dict(foreign.FOREIGN_PACK_COUNTRIES, {"plain-gtfs": "XX"}), \
-                mock.patch.dict(foreign.REQUIRED_BORDER_PAIRS, {}, clear=True):
+                mock.patch.dict(foreign.REQUIRED_BORDER_PAIRS, {}, clear=True), \
+                mock.patch.dict(foreign.CORRIDORS, {"plain-gtfs": (corridor,)}):
             manifest = json.loads((self.assets / "manifest.json").read_text(encoding="utf-8"))
             next(pack for pack in manifest["packs"] if pack["sourceId"] == "plain-gtfs")["licence"] = "CC BY 4.0"
             builder.write_json(self.assets / "manifest.json", manifest)

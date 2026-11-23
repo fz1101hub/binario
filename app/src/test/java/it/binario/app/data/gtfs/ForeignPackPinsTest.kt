@@ -43,6 +43,19 @@ class ForeignPackPinsTest {
         assertFalse(switzerland.downloadable)
     }
 
+    /** Pins written with the corridor rule (frontalieri-corridors-v1) carry no radius; older pins with one still parse. */
+    @Test
+    fun `the corridor rule pins parse without a radius`() {
+        val corridors = """"borderZone": {"rule": "frontalieri-corridors-v1", "corridors": {"oebb-gtfs": ["Brennero – Innsbruck"]}, """ +
+            """"italianStations": "catalogue ^83", "catalogueSha256": "${"5".repeat(64)}", "tripRule": "whole-trips-touching-zone"}"""
+        val json = ForeignPackFixtures.sampleJson().replace(Regex("\"borderZone\":\\s*\\{[^}]*\\}"), corridors)
+        assertTrue(json.contains("frontalieri-corridors-v1"))
+        val pins = ForeignPackPins.parse(json)
+        assertNull(pins.radiusKm)
+        assertEquals(listOf(oebb), pins.downloadable.map { it.sourceId })
+        assertTrue(pins.entry(oebb)!!.inZone("curated:NC000544"))
+    }
+
     @Test
     fun `station ids compare with or without the app prefix`() {
         val austria = ForeignPackPins.parse(ForeignPackFixtures.sampleJson()).entry(oebb)!!

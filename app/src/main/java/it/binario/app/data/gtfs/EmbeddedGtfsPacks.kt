@@ -59,20 +59,36 @@ data class EmbeddedGtfsPack(
      */
     val itineraryCopies: Boolean = false,
     /**
-     * Set while only the border subset of a foreign pack is read ([EmbeddedGtfsPacks.forStore]): its trains are complete
-     * at the zone stations only, so the searches offer just those as ends it covers. Null for a pack read whole.
+     * Set while only the border subset of a foreign pack is read ([EmbeddedGtfsPacks.forStore]): its trains are partial
+     * at the stations its full pack serves outside the zone, so the searches do not offer those as ends it covers.
+     * Null for a pack read whole.
      */
     val borderZone: GtfsBorderZone? = null
 ) {
     val isUrban: Boolean get() = kind == EmbeddedGtfsPackKind.URBAN
 
-    /** True unless this pack is a border subset and [stationId] (an app station id) is not one of its zone stations. */
+    /**
+     * True unless this pack is a border subset and [stationId] (an app station id) is a station its full pack serves
+     * outside the zone, or no catalogue station at all ([GtfsBorderZone.contains]).
+     */
     fun coversEnd(stationId: String?): Boolean = borderZone?.contains(stationId) ?: true
 }
 
-/** The zone stations (catalogue ids) of a foreign pack read as its border subset: every train calling there is in it. */
-data class GtfsBorderZone(val zoneStationIds: Set<String>) {
-    fun contains(stationId: String?): Boolean = stationId != null && ForeignPackEntry.catalogueId(stationId) in zoneStationIds
+/**
+ * The end rule of a foreign pack read as its border subset, from its pins: [zoneStationIds] are the catalogue stations
+ * where every train of the full pack is in the subset, [servedStationIds] those the full pack serves (the tools'
+ * catalogue matcher). The one predicate of every search, board and advisor ([EmbeddedGtfsPack.coversEnd]).
+ */
+data class GtfsBorderZone(val zoneStationIds: Set<String>, val servedStationIds: Set<String>) {
+    /**
+     * A catalogue station the subset covers as an end: a zone station, or a station the pins do not list as served at
+     * all (never a served station outside the zone, so a homonym the app's matcher places elsewhere, Maccagno's second
+     * catalogue entry, keeps the trains it had). Only a served station outside the zone is left to the full pack.
+     */
+    fun contains(stationId: String?): Boolean {
+        val id = stationId?.let(ForeignPackEntry::catalogueId) ?: return false
+        return id in zoneStationIds || id !in servedStationIds
+    }
 }
 
 /** What a pack holds. */
@@ -158,7 +174,7 @@ object EmbeddedGtfsPacks {
 
     /**
      * [packs] as the readers must see them with [pins] and the full packs [installed]: a foreign pack bundled as its
-     * border subset covers only its zone stations ([EmbeddedGtfsPack.borderZone]); once its full pack is installed it is
+     * border subset does not cover the stations its full pack serves outside the zone ([EmbeddedGtfsPack.borderZone]); once its full pack is installed it is
      * read whole, with the pin's last service day. Without pins (or with no pack bundled as a subset) nothing changes.
      */
     fun forStore(packs: List<EmbeddedGtfsPack>, pins: ForeignPackPins, installed: Set<SourceId>): List<EmbeddedGtfsPack> =
@@ -167,7 +183,7 @@ object EmbeddedGtfsPacks {
             if (pack.sourceId in installed && entry.android != null) {
                 pack.copy(lastServiceDate = entry.lastServiceDate, borderZone = null)
             } else {
-                pack.copy(borderZone = GtfsBorderZone(entry.zoneStationIds))
+                pack.copy(borderZone = GtfsBorderZone(entry.zoneStationIds, entry.servedStationIds))
             }
         }
 

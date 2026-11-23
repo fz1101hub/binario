@@ -185,15 +185,18 @@ La tabella copre ogni host `http(s)://` trovato in `app/src/main/java`, `wear/sr
 | `www.trentinotrasporti.it` | D, F | Provenienza del pack `trentino-gtfs`; anche nel catalogo; sito e abbonamenti in Biglietti e assistenza (`links/OfficialLinks.kt`) |
 | `www.wimob.it` | D | Provenienza del pack `eav-gtfs`; anche nel catalogo |
 | `arenaways.it` | E | Catalogo fonti (`RailSourceCatalog.kt`) |
+| `ckan.opendata.swiss` | E | Evidenza di licenza del pack `ch-otd-gtfs` nel manifest GTFS (scheda del dataset su opendata.swiss); nessun traffico |
 | `data.oebb.at` | E | Catalogo fonti (`RailSourceCatalog.kt`) |
 | `dati.comune.genova.it` | E | Catalogo fonti (`RailSourceCatalog.kt`) e evidenza di licenza (CC BY 4.0) nel manifest `gtfs-transit/` |
 | `developer-docs.deutschebahn.com` | E | Catalogo fonti (`InternationalSourceCatalog.kt`) |
 | `developers.deutschebahn.com` | E | Catalogo fonti (`InternationalSourceCatalog.kt`) |
+| `opendata.swiss` | E | Evidenza di licenza del pack `ch-otd-gtfs` nel manifest GTFS (condizioni d'uso «terms_by»); nessun traffico |
 | `opentransportdata.swiss` | E | Catalogo fonti (`RailSourceCatalog.kt`) |
 | `potniski.sz.si` | E | Catalogo fonti (`RailSourceCatalog.kt`) |
 | `regiojet.com` | E | Catalogo fonti (`InternationalSourceCatalog.kt`), monitor-only |
 | `ressources.data.sncf.com` | E | Catalogo fonti (`RailSourceCatalog.kt`) |
 | `scraped.data.public-transport.earth` | E | Catalogo fonti (`InternationalSourceCatalog.kt`): mirror DELFI community, nessun adapter |
+| `transport.data.gouv.fr` | E | Evidenza di licenza del pack `sncf-gtfs` nel manifest GTFS (scheda della risorsa); nessun traffico |
 | `urlaubs-express.de` | E | Catalogo fonti (`InternationalSourceCatalog.kt`), monitor-only |
 | `web.ferroviedellacalabria.it` | E | Catalogo fonti (`RailSourceCatalog.kt`) |
 | `westbahn.at` | E | Catalogo fonti (`InternationalSourceCatalog.kt`), monitor-only |

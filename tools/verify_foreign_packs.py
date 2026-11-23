@@ -45,7 +45,7 @@ MAX_DATABASE_BYTES = 256 * 1024 * 1024
 PIN_KEYS = {
     "schemaVersion", "generatedAt", "repository", "borderZone", "packs",
 }
-BORDER_ZONE_KEYS = {"radiusKm", "distance", "anchors", "anchorCount", "catalogueSha256", "tripRule"}
+BORDER_ZONE_KEYS = {"rule", "corridors", "italianStations", "catalogueSha256", "tripRule"}
 PACK_KEYS = {
     "sourceId", "country", "borderOnly", "lastServiceDate", "fullServiceUntil", "sourceArchiveSha256",
     "servedStationIds", "zoneStationIds", "android", "ios",
@@ -110,13 +110,12 @@ def pins_problems(payload: object) -> list[str]:
     if not isinstance(zone, Mapping) or set(zone) != BORDER_ZONE_KEYS:
         problems.append(f"pin: borderZone deve avere le chiavi {sorted(BORDER_ZONE_KEYS)}")
     else:
-        if zone.get("radiusKm") != rules.BORDER_ZONE_RADIUS_KM or isinstance(zone.get("radiusKm"), bool):
-            problems.append(f"pin: radiusKm {zone.get('radiusKm')!r} diverso da {rules.BORDER_ZONE_RADIUS_KM} (rigenerare)")
-        if zone.get("distance") != rules.DISTANCE_RULE or zone.get("anchors") != rules.ANCHOR_RULE \
-                or zone.get("tripRule") != rules.TRIP_RULE:
+        if zone.get("rule") != rules.BORDER_ZONE_RULE:
+            problems.append(f"pin: rule {zone.get('rule')!r} diversa da {rules.BORDER_ZONE_RULE} (rigenerare)")
+        if zone.get("corridors") != rules.corridor_names():
+            problems.append("pin: corridors diversi da foreign_pack_rules.CORRIDORS (rigenerare)")
+        if zone.get("italianStations") != rules.ITALIAN_STATION_RULE or zone.get("tripRule") != rules.TRIP_RULE:
             problems.append("pin: regole della zona di confine diverse da quelle degli strumenti")
-        if not _size(zone.get("anchorCount")):
-            problems.append("pin: anchorCount non valido")
         if not _hex(zone.get("catalogueSha256")):
             problems.append("pin: catalogueSha256 non valido")
     packs = payload.get("packs")
@@ -338,11 +337,10 @@ def repository_problems(root: Path = ROOT, *, ledger_base: Path | None = None) -
     if manifest is None:
         return problems
     try:
-        anchors = rules.load_anchors(catalogue)
-    except (OSError, ValueError) as error:
+        catalogue_sha256 = rules.sha256_file(catalogue)
+    except OSError as error:
         return problems + [f"catalogo stazioni non leggibile: {error}"]
-    zone = pins["borderZone"]
-    if zone["catalogueSha256"] != anchors.catalogue_sha256 or zone["anchorCount"] != anchors.count:
+    if pins["borderZone"]["catalogueSha256"] != catalogue_sha256:
         problems.append("pin: catalogo stazioni cambiato dopo la generazione (rigenerare)")
     entries = {entry.get("sourceId"): entry for entry in manifest.get("packs", []) if isinstance(entry, Mapping)}
     android_dir, ios_dir = root / rules.FULL_PACK_DIR, root / rules.IOS_FULL_DIR
@@ -400,12 +398,15 @@ def repository_problems(root: Path = ROOT, *, ledger_base: Path | None = None) -
                 problems.append(f"{where}: compressione del pin iPhone diversa dai metadati")
             if (metadata.get("inputs") or {}).get("fingerprintSha256") != ios["inputFingerprintSha256"]:
                 problems.append(f"{where}: impronta degli input diversa dai metadati")
-        # The station lists are the catalogue ids of the two iPhone indexes: served in the per-country index, zone in
-        # the base index built from the border subset (build_ios_gtfs_schedule.foreign_station_coverage).
+        # The station lists hold the catalogue ids of the two iPhone indexes: served includes the per-country index's
+        # (plus the stations only the Android matcher resolves), and the base index built from the border subset names
+        # exactly the zone stations the iPhone matcher resolves (build_ios_gtfs_schedule.foreign_station_coverage).
         try:
-            if ios_path.is_file() and catalogue_ids_of_pack(ios_path, source_id) != set(pack["servedStationIds"]):
-                problems.append(f"{where}: servedStationIds diverso dagli id dell'indice iPhone per paese")
-            if base_index.is_file() and catalogue_ids_of_pack(base_index, source_id) != set(pack["zoneStationIds"]):
+            country_ids = catalogue_ids_of_pack(ios_path, source_id) if ios_path.is_file() else None
+            if country_ids is not None and not country_ids <= set(pack["servedStationIds"]):
+                problems.append(f"{where}: servedStationIds non include gli id dell'indice iPhone per paese")
+            if country_ids is not None and base_index.is_file() \
+                    and catalogue_ids_of_pack(base_index, source_id) != set(pack["zoneStationIds"]) & country_ids:
                 problems.append(f"{where}: zoneStationIds diverso dagli id dell'indice iPhone di base")
         except (OSError, ValueError, sqlite3.Error, zlib.error) as error:
             problems.append(f"{where}: indice iPhone non leggibile ({error})")
