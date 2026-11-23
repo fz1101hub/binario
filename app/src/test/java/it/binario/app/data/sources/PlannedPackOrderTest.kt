@@ -53,6 +53,11 @@ class PlannedPackOrderTest {
         assertEquals(COMMUNITY_FALLBACK, classOf("european-sleeper-gtfs"))
         // A pack the catalogue does not know is taken as Italian.
         assertEquals(ITALIAN_REGIONAL, classOf("not-in-the-catalogue"))
+        // Candidates of tools/transit_packs.json: the Slovenian national timetable ranks with the foreign packs, after
+        // the Italian ones; the Bologna people mover and Palermo's trams with the Italian ones.
+        assertEquals(FOREIGN, classOf("si-nap-rail-gtfs"))
+        assertEquals(ITALIAN_REGIONAL, classOf("marconi-express-gtfs"))
+        assertEquals(ITALIAN_REGIONAL, classOf("palermo-amat-tram-gtfs"))
         // The global scores, which also rank the live sources and the snapshots, stay as they were.
         assertEquals(140, RailSourceSelectionPolicy.score(RailInformationCategory.PLANNED_ITINERARY, SourceId("ch-otd-gtfs")))
         assertEquals(130, RailSourceSelectionPolicy.score(RailInformationCategory.PLANNED_ITINERARY, SourceId("trenitalia-gtfs")))
