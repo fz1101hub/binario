@@ -10,12 +10,12 @@ Il file utente `stazioni_ferroviarie_curato_v4.sqlite` è l’unica sorgente del
 |---|---|
 | Database origine | `stazioni_ferroviarie_curato_v4` |
 | Hash SHA-256 origine | `2db59242ec45816a73a37c4748dc400dafaba762b6df3105673f63a44c882efe` |
-| Stazioni | 5.289 (5.239 del database `v4`, 10 della ferrovia del Renon e 40 di ferrovie regionali) |
+| Stazioni | 5.290 (5.239 del database `v4`, 10 della ferrovia del Renon e 41 di ferrovie regionali) |
 | Codici ferroviari | 3.430 |
 | Location ID Trenitalia univoci | 3.047 |
 | Location ID Trenitalia ambigui | 40, esclusi automaticamente dal mapping operativo |
 | Asset app | `app/src/main/assets/stations/curated_it_rail_stations.json` |
-| Hash SHA-256 asset | `82e08de05e05987df336472da646115a89e3b3c24432d3c25bcbcf784b4e105f` |
+| Hash SHA-256 asset | `3327f5344a89c92a49c6e70f32ee5294b2ef2c9f52ddd0ebabb9ee5720be759d` |
 
 ## Correzioni dell'asset (novembre 2026, audit2 tools-data-3)
 
@@ -51,7 +51,7 @@ Il pack pubblica solo i nomi italiani: i nomi tedeschi (Oberbozen, Klobenstein, 
 
 ## Fermate delle ferrovie regionali (novembre 2026)
 
-Alcune fermate ferroviarie dei pack inclusi non avevano una voce nel catalogo; sei di loro erano legate per nome a un omonimo lontano centinaia di chilometri finché il legame per nome non è stato limitato a 10 km. Le voci nuove seguono lo schema del Renon: nome e posizione (arrotondata a sei decimali) della fermata del pack, la `StopPlace` quando il pack ne pubblica una; nessun codice, confidenza «Indicativa»; solo fermate servite da corse ferroviarie (`route_type` 2). I nomi in maiuscolo diventano iniziali maiuscole, «CITTÀ/LUOGO» del pack AMT diventa «Città Luogo», l'accento scritto «`» diventa la lettera accentata, e «Fermata X» delle Ferrovie del Gargano diventa «X», come il catalogo già scrive Portone Perrone. Quando un'altra voce ha già lo stesso nome, la nuova prende l'operatore tra parentesi, come «Cittadella (FNB)», e il nome del pack resta come alias; un alias tiene anche il nome «Fermata X». Gli ID proseguono la serie `NC`:
+Alcune fermate ferroviarie dei pack inclusi non avevano una voce nel catalogo; sei di loro erano legate per nome a un omonimo lontano centinaia di chilometri finché il legame per nome non è stato limitato a 10 km. Le voci nuove seguono lo schema del Renon: nome e posizione (arrotondata a sei decimali) della fermata del pack, la `StopPlace` quando il pack ne pubblica una; nessun codice, confidenza «Indicativa»; solo fermate servite da corse ferroviarie (`route_type` 2). I nomi in maiuscolo diventano iniziali maiuscole, «CITTÀ/LUOGO» del pack AMT diventa «Città Luogo», l'accento scritto «`» diventa la lettera accentata, «Fermata X» delle Ferrovie del Gargano diventa «X», come il catalogo già scrive Portone Perrone, e «X Ftm» della Trento–Malè–Mezzana diventa «X», come Croviana. Quando un'altra voce ha già lo stesso nome, la nuova prende l'operatore tra parentesi, come «Cittadella (FNB)», e il nome del pack resta come alias; un alias tiene anche il nome «Fermata X» o «X Ftm». Gli ID proseguono la serie `NC`:
 
 | ID | Nome | Lat | Lon | Pack | Fermata (`stop_id`) |
 |---|---|---|---|---|---|
@@ -95,6 +95,7 @@ Alcune fermate ferroviarie dei pack inclusi non avevano una voce nel catalogo; s
 | NC001857 | Rodi Porto | 41.929518 | 15.887936 | `fdg-gargano` | `IT:ITF4:StopPlace:RODIPORTO_Rete_FDG` |
 | NC001858 | Santa Barbara | 41.926786 | 15.865778 | `fdg-gargano` | `IT:ITF4:StopPlace:SANTABARBARA_Rete_FDG` |
 | NC001859 | Sotto la Costa | 41.928596 | 15.878145 | `fdg-gargano` | `IT:ITF4:StopPlace:SOTTOLACOSTA_Rete_FDG` |
+| NC001860 | Mezzana | 46.313421 | 10.800472 | `trentino-gtfs` | `5718` |
 
 Montesanto, capolinea della Cumana e della Circumflegrea (EAV, fermata `6801`), non è una voce nuova: è l'interscambio di Napoli Montesanto (S09107, 139 m), che ne prende l'alias «Montesanto», come la stazione EAV di Napoli Piazza Garibaldi è già la voce S09109. Restano fuori e sono elencate nel resoconto per il titolare: Sassari S.M.B. (ARST, 503 m da Sassari, forse la voce S12980 «Sassari S.Maria», che non ha coordinate) e le fermate che hanno già una voce scritta in un altro modo (per esempio «Albergo (Xxx)» di TFT, «Segno Ferrovia» di Trentino, «Fermata Portone Perrone» e «Stazione di Vico - San Menaio» del Gargano).
 

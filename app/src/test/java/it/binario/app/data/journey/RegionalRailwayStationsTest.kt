@@ -24,16 +24,16 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * Rail stops of the bundled EAV, ARST, Genova-Casella and Ferrovie del Gargano packs that no catalogue station stood
+ * Rail stops of the bundled EAV, ARST, Genova-Casella, Ferrovie del Gargano and Trentino packs that no catalogue station stood
  * for (some were bound to a namesake hundreds of kilometres away until name matches were bounded to 10 km) are
- * catalogue stations without codes, NC001820-NC001859, with the pack's name and position; the EAV terminus Montesanto
+ * catalogue stations without codes, NC001820-NC001860, with the pack's name and position; the EAV terminus Montesanto
  * is an alias of Napoli Montesanto, 139 m away. The search offers them, each has a real train of its pack, and no other stop changes station.
  * See CURATED_STATION_CATALOG.md.
  */
 class RegionalRailwayStationsTest {
     private val openAsset = { path: String -> TestAssets.open(path) }
     private val stations: List<Station> by lazy { EmbeddedCuratedRailStationCatalog(openAsset).load() }
-    private val addedIds = (1820..1859).map { "curated:NC00$it" }.toSet()
+    private val addedIds = (1820..1860).map { "curated:NC00$it" }.toSet()
     private val zone = ZoneId.of("Europe/Rome")
     /** A Tuesday inside the validity of every pack involved, as in [RenonRailwayStationsTest]. */
     private val tuesday = LocalDate.of(2026, 11, 24)
@@ -59,7 +59,8 @@ class RegionalRailwayStationsTest {
             "fdg-gargano", "Peschici Calenella",
             listOf("Bellariva", "Guardiola", "Mulino di Mare", "Murge Nere", "Rodi Porto", "Santa Barbara", "Sotto la Costa")
         ),
-        Triple("fdg-gargano", "Foggia", listOf("Don Bosco", "Lucera 2"))
+        Triple("fdg-gargano", "Foggia", listOf("Don Bosco", "Lucera 2")),
+        Triple("trentino-gtfs", "Daolasa", listOf("Mezzana"))
     )
 
     @Test fun `the added stations are catalogue entries without codes`() {
@@ -131,7 +132,8 @@ class RegionalRailwayStationsTest {
             listOf("BELLARIVA", "DONBOSCO", "GUARDIOLA", "LUCERA2", "MULINO", "MURGENERE", "RODIPORTO", "SANTABARBARA", "SOTTOLACOSTA")
                 .flatMapIndexed { index, stop ->
                     listOf("StopPlace", "ScheduledStopPoint").map { kind -> "fdg-gargano IT:ITF4:$kind:${stop}_Rete_FDG null -> NC00${1851 + index}" }
-                }
+                } +
+            "trentino-gtfs 5718 null -> NC001860"
         assertEquals(expected.sorted(), changed.sorted())
     }
 
