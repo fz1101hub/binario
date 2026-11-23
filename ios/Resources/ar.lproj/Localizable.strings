@@ -275,7 +275,7 @@
 "result.detail.worst_stop" = "حيث يزداد التأخير أكثر: %1$@ (بزيادة %2$lld د في المتوسط)";
 "result.detail.threshold_note" = "يُعدّ الوصول في الموعد إذا لم يتجاوز التأخير %1$lld د.";
 "planner.airports.title" = "الربط بالمطارات";
-"planner.airports.search" = "ابحث عن الرحلات من %1$@ إلى %2$@";
+"planner.airports.search" = "ابحث عن القطارات من %1$@ إلى %2$@";
 "result.order.title" = "الترتيب";
 "result.order.departure" = "حسب المغادرة";
 "accessibility.open_train_detail" = "يفتح تفاصيل القطار";

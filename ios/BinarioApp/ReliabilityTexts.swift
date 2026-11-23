@@ -192,7 +192,7 @@ enum ReliabilityTexts {
 
     // MARK: Planner
 
-    /// «Cerca le corse da Milano Centrale a Malpensa Aeroporto» (corse, not treni: the Bologna link is the Marconi Express people mover).
+    /// «Cerca i treni da Milano Centrale a Malpensa Aeroporto».
     static func airportSearch(from origin: String, to destination: String) -> String {
         String.localizedStringWithFormat(NSLocalizedString("planner.airports.search", comment: ""), origin, destination)
     }

@@ -188,7 +188,10 @@ private fun DirectDestinationRow(origin: Station, destination: DirectDestination
     val fastestSpoken = stringResource(R.string.direct_connections_fastest, journeyDurationSpoken(destination.fastestMinutes.toLong()))
     val boarding = destination.boardingStop?.let { stringResource(R.string.direct_connections_from_stop, it) }
     val lines = destination.lines.joinToString(" ").takeIf(String::isNotEmpty)
-    val action = stringResource(R.string.planner_airport_search, origin.name, destination.name)
+    // A metro, tram or funicular line runs, it is not a train.
+    val action = stringResource(
+        if (destination.urban) R.string.planner_airport_search_runs else R.string.planner_airport_search, origin.name, destination.name
+    )
     val description = listOfNotNull(destination.name, lines, runs, firstLast, fastestSpoken, boarding).joinToString(", ")
     Column(
         Modifier

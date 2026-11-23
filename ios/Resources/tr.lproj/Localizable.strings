@@ -275,7 +275,7 @@
 "result.detail.worst_stop" = "Gecikmenin en çok arttığı yer: %1$@ (ortalama %2$lld dk fazla)";
 "result.detail.threshold_note" = "En fazla %1$lld dk gecikmeli varış zamanında sayılır.";
 "planner.airports.title" = "Havalimanı bağlantıları";
-"planner.airports.search" = "%1$@ → %2$@ seferlerini ara";
+"planner.airports.search" = "%1$@ → %2$@ trenlerini ara";
 "result.order.title" = "Sıralama";
 "result.order.departure" = "Kalkışa göre";
 "accessibility.open_train_detail" = "Tren ayrıntılarını açar";

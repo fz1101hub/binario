@@ -787,8 +787,9 @@ private fun PlannerRouteRow(title: String, detail: String, icon: ImageVector, ac
  */
 @Composable
 private fun AirportRouteRow(link: AirportLink, onSearch: (Station, Station) -> Unit) {
-    val toAirport = stringResource(R.string.planner_airport_search, link.city.name, link.airport.name)
-    val toCity = stringResource(R.string.planner_airport_search, link.airport.name, link.city.name)
+    val search = if (AirportRoutes.byCityLine(link.route)) R.string.planner_airport_search_runs else R.string.planner_airport_search
+    val toAirport = stringResource(search, link.city.name, link.airport.name)
+    val toCity = stringResource(search, link.airport.name, link.city.name)
     Surface(
         onClick = { onSearch(link.city, link.airport) },
         modifier = Modifier

@@ -275,7 +275,7 @@
 "result.detail.worst_stop" = "遅れが最も増える駅：%1$@（平均 %2$lld 分 増加）";
 "result.detail.threshold_note" = "遅れが %1$lld 分 以内の到着を定刻とみなします。";
 "planner.airports.title" = "空港へのアクセス列車";
-"planner.airports.search" = "%1$@ から %2$@ への便を検索";
+"planner.airports.search" = "%1$@ から %2$@ への列車を検索";
 "result.order.title" = "並び順";
 "result.order.departure" = "出発順";
 "accessibility.open_train_detail" = "列車の詳細を開きます";

@@ -1,8 +1,10 @@
 # Changelog
 
-## In sviluppo — «Cerca le corse» nei collegamenti con gli aeroporti
+## In sviluppo — «Cerca le corse» per il Marconi Express e per le linee urbane
 
-- Il pulsante dei collegamenti con gli aeroporti dice ora «Cerca le corse da … a …» invece di «Cerca i treni»: il collegamento di Bologna è il Marconi Express, una monorotaia, non un treno. Stesso testo su Android (anche nel foglio dei collegamenti diretti) e su iPhone, in 17 lingue; le traduzioni sono automatiche e da rivedere.
+- Android, collegamenti con gli aeroporti: i collegamenti in treno (Fiumicino, Malpensa, Bari, Palermo, Cagliari, Trieste, Caselle) continuano a dire «Cerca i treni da … a …»; solo Bologna, servita dal Marconi Express (una monorotaia), dice «Cerca le corse da … a …».
+- Android, collegamenti diretti di una stazione: le destinazioni raggiunte da metro, tram o funicolare dicono «Cerca le corse» invece di «Cerca i treni»; quelle in treno restano invariate.
+- Nuova stringa `planner_airport_search_runs` in 17 lingue (traduzioni automatiche, da rivedere). Su iPhone non cambia nulla: il collegamento di Bologna lì non compare.
 
 ## In sviluppo — Aggiornamento settimanale del 23 novembre
 

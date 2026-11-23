@@ -275,7 +275,7 @@
 "result.detail.worst_stop" = "晚点增加最多的车站：%1$@（平均增加 %2$lld 分钟）";
 "result.detail.threshold_note" = "晚点不超过 %1$lld 分钟 的到达计为准点。";
 "planner.airports.title" = "机场铁路连接";
-"planner.airports.search" = "搜索从 %1$@ 到 %2$@ 的班次";
+"planner.airports.search" = "搜索从 %1$@ 到 %2$@ 的列车";
 "result.order.title" = "排序";
 "result.order.departure" = "按出发时间";
 "accessibility.open_train_detail" = "打开列车详情";

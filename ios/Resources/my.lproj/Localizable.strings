@@ -275,7 +275,7 @@
 "result.detail.worst_stop" = "နောက်ကျမှု အများဆုံး တိုးသည့်နေရာ- %1$@ (ပျမ်းမျှ %2$lld မိနစ် ပိုသည်)";
 "result.detail.threshold_note" = "နောက်ကျမှု %1$lld မိနစ် အထိသာ ရှိသော ဆိုက်ရောက်မှုကို အချိန်မှန်ဟု သတ်မှတ်သည်။";
 "planner.airports.title" = "လေဆိပ်များသို့ ရထားချိတ်ဆက်မှု";
-"planner.airports.search" = "%1$@ မှ %2$@ သို့ ခရီးစဉ်များ ရှာရန်";
+"planner.airports.search" = "%1$@ မှ %2$@ သို့ ရထားများ ရှာရန်";
 "result.order.title" = "အစီအစဉ်";
 "result.order.departure" = "ထွက်ခွာချိန်အလိုက်";
 "accessibility.open_train_detail" = "ရထား အသေးစိတ်ကို ဖွင့်သည်";

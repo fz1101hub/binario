@@ -275,7 +275,7 @@
 "result.detail.worst_stop" = "जहाँ देरी सबसे अधिक बढ़ती है: %1$@ (औसतन %2$lld मि. अधिक)";
 "result.detail.threshold_note" = "अधिकतम %1$lld मि. की देरी वाला आगमन समय पर माना जाता है।";
 "planner.airports.title" = "हवाई अड्डों से रेल संपर्क";
-"planner.airports.search" = "%1$@ से %2$@ तक की सेवाएँ खोजें";
+"planner.airports.search" = "%1$@ से %2$@ तक की ट्रेनें खोजें";
 "result.order.title" = "क्रम";
 "result.order.departure" = "प्रस्थान के अनुसार";
 "accessibility.open_train_detail" = "ट्रेन का विवरण खोलता है";

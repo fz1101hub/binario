@@ -275,7 +275,7 @@
 "result.detail.worst_stop" = "Onde o atraso mais aumenta: %1$@ (em média %2$lld min a mais)";
 "result.detail.threshold_note" = "Conta como no horário uma chegada com no máximo %1$lld min de atraso.";
 "planner.airports.title" = "Ligações com os aeroportos";
-"planner.airports.search" = "Procurar partidas de %1$@ para %2$@";
+"planner.airports.search" = "Procurar trens de %1$@ para %2$@";
 "result.order.title" = "Ordem";
 "result.order.departure" = "Por partida";
 "accessibility.open_train_detail" = "Abre os detalhes do trem";
