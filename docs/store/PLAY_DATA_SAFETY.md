@@ -212,6 +212,7 @@ La tabella copre ogni host `http(s)://` trovato in `app/src/main/java`, `wear/sr
 | `www.cotralspa.it` | E | Catalogo fonti (`RailSourceCatalog.kt`) |
 | `www.data.gouv.fr` | E | Catalogo fonti (`RailSourceCatalog.kt`), anche come URL della risorsa del pack candidato `trenitalia-france-gtfs`, scaricata solo dal CI (provenienza D quando il pack è incluso); nessun traffico dall'app |
 | `www.eavsrl.it` | E, F | Catalogo fonti (`RailSourceCatalog.kt`); sito ufficiale in Biglietti e assistenza (`links/OfficialLinks.kt`) |
+| `www.etalab.gouv.fr` | E | Evidenza di licenza (Licence Ouverte / Etalab 2.0) del pack `trenitalia-france-gtfs` nel manifest GTFS; nessun traffico |
 | `www.europeansleeper.eu` | E | Catalogo fonti (`InternationalSourceCatalog.kt`, `RailSourceCatalog.kt`): landing page, nessun traffico |
 | `www.ferrovieudinecividale.it` | E, F | Catalogo fonti (`RailSourceCatalog.kt`); sito ufficiale in Biglietti e assistenza (`links/OfficialLinks.kt`) |
 | `www.fseonline.it` | E | Catalogo fonti (`RailSourceCatalog.kt`) |

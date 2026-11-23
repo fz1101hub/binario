@@ -109,7 +109,7 @@ PIANIFICA
 • Dettatura della ricerca tramite il riconoscitore vocale di sistema.
 
 CONSULTA
-• Quadri orario programmati RFI per le stazioni hub coperte e orari GTFS ufficiali inclusi nell'app per 21 reti: Trenitalia e Italo in tutta Italia, 14 ferrovie regionali e transfrontaliere, metro e tram di Milano, Genova, Firenze e Cagliari, il Marconi Express di Bologna.
+• Quadri orario programmati RFI per le stazioni hub coperte e orari GTFS ufficiali inclusi nell'app per 22 reti: Trenitalia e Italo in tutta Italia, 15 ferrovie regionali e transfrontaliere, metro e tram di Milano, Genova, Firenze e Cagliari, il Marconi Express di Bologna.
 • Svizzera, Austria e Francia: la zona di confine è sempre inclusa; dove l'orario completo di un paese non è incluso, lo scarichi su richiesta e poi funziona offline.
 • Dettaglio corsa con operatore, categoria, orari programmati e fermate.
 • Tratte salvate, preferiti e monitoraggio locale di un numero treno.
@@ -145,7 +145,7 @@ PLAN
 • Dictate a search through the system speech recogniser.
 
 BROWSE
-• RFI scheduled departure boards for the covered hub stations and official GTFS timetables bundled in the app for 21 networks: Trenitalia and Italo across Italy, 14 regional and cross-border railways, the metro and tram lines of Milan, Genoa, Florence and Cagliari, and Bologna's Marconi Express.
+• RFI scheduled departure boards for the covered hub stations and official GTFS timetables bundled in the app for 22 networks: Trenitalia and Italo across Italy, 15 regional and cross-border railways, the metro and tram lines of Milan, Genoa, Florence and Cagliari, and Bologna's Marconi Express.
 • Switzerland, Austria and France: the border zone is always included; where a country's full timetable is not included, you can download it on request, and it then works offline.
 • Service details with operator, category, scheduled times and all stops.
 • Saved routes, favourites and local monitoring of a train number.
@@ -181,7 +181,7 @@ PLANEN
 • Suche per Diktat über die Spracherkennung des Systems.
 
 ANSEHEN
-• Planmäßige RFI-Abfahrtstafeln für die abgedeckten Knotenbahnhöfe und offizielle GTFS-Fahrpläne in der App für 21 Netze: Trenitalia und Italo in ganz Italien, 14 regionale und grenzüberschreitende Bahnen, U-Bahn und Tram in Mailand, Genua, Florenz und Cagliari sowie der Marconi Express in Bologna.
+• Planmäßige RFI-Abfahrtstafeln für die abgedeckten Knotenbahnhöfe und offizielle GTFS-Fahrpläne in der App für 22 Netze: Trenitalia und Italo in ganz Italien, 15 regionale und grenzüberschreitende Bahnen, U-Bahn und Tram in Mailand, Genua, Florenz und Cagliari sowie der Marconi Express in Bologna.
 • Schweiz, Österreich und Frankreich: Die Grenzregion ist immer enthalten; wo der vollständige Fahrplan eines Landes nicht enthalten ist, lädst du ihn auf Wunsch herunter, danach funktioniert er offline.
 • Verbindungsdetails mit Betreiber, Kategorie, Planzeiten und allen Halten.
 • Gespeicherte Strecken, Favoriten und lokale Überwachung einer Zugnummer.
@@ -217,7 +217,7 @@ PLANIFIER
 • Dictée de la recherche via la reconnaissance vocale du système.
 
 CONSULTER
-• Tableaux des départs programmés RFI pour les gares principales couvertes et horaires GTFS officiels intégrés à l'application pour 21 réseaux : Trenitalia et Italo dans toute l'Italie, 14 lignes ferroviaires régionales et transfrontalières, métro et tram de Milan, Gênes, Florence et Cagliari, et le Marconi Express de Bologne.
+• Tableaux des départs programmés RFI pour les gares principales couvertes et horaires GTFS officiels intégrés à l'application pour 22 réseaux : Trenitalia et Italo dans toute l'Italie, 15 lignes ferroviaires régionales et transfrontalières, métro et tram de Milan, Gênes, Florence et Cagliari, et le Marconi Express de Bologne.
 • Suisse, Autriche et France : la zone frontalière est toujours incluse ; lorsque l'horaire complet d'un pays n'est pas inclus, vous pouvez le télécharger à la demande, puis il fonctionne hors ligne.
 • Détail du train avec opérateur, catégorie, horaires programmés et tous les arrêts.
 • Trajets enregistrés, favoris et suivi local d'un numéro de train.
@@ -253,7 +253,7 @@ PLANIFICAR
 • Dictado de la búsqueda mediante el reconocimiento de voz del sistema.
 
 CONSULTAR
-• Cuadros de salidas programadas de RFI para las estaciones principales cubiertas y horarios GTFS oficiales incluidos en la app para 21 redes: Trenitalia e Italo en toda Italia, 14 ferrocarriles regionales y transfronterizos, metro y tranvía de Milán, Génova, Florencia y Cagliari, y el Marconi Express de Bolonia.
+• Cuadros de salidas programadas de RFI para las estaciones principales cubiertas y horarios GTFS oficiales incluidos en la app para 22 redes: Trenitalia e Italo en toda Italia, 15 ferrocarriles regionales y transfronterizos, metro y tranvía de Milán, Génova, Florencia y Cagliari, y el Marconi Express de Bolonia.
 • Suiza, Austria y Francia: la zona fronteriza siempre está incluida; cuando el horario completo de un país no está incluido, lo descargas a petición y luego funciona sin conexión.
 • Detalle del tren con operador, categoría, horarios programados y todas las paradas.
 • Rutas guardadas, favoritos y seguimiento local de un número de tren.
