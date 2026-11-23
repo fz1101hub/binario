@@ -3,6 +3,8 @@ package it.binario.app.data.gtfs
 import it.binario.app.data.DataConfidence
 import it.binario.app.data.DataResult
 import it.binario.app.data.Direction
+import it.binario.app.data.GtfsServiceIdentity
+import it.binario.app.data.GtfsStopIdentity
 import it.binario.app.data.JourneyQuery
 import it.binario.app.data.RouteFailureReason
 import it.binario.app.data.SavedRoute
@@ -308,6 +310,14 @@ class EmbeddedGtfsRouteAdapterTest {
             ).snapshot.services
         assertEquals(listOf("trenitalia-gtfs"), services.map { it.gtfsIdentity?.sourceId })
         assertEquals("T9241", services.single().gtfsIdentity?.tripId)
+        // The Trenitalia France copy left out stays on the train as an alternate identity, stop for stop, so that the
+        // Trenitalia France realtime keyed by its own trip id can reach the national copy shown.
+        val day = LocalDate.of(2026, 9, 4)
+        assertEquals(
+            listOf(GtfsServiceIdentity("trenitalia-france-gtfs", "F9241", day,
+                listOf(GtfsStopIdentity("MI", 1), GtfsStopIdentity("MO", 2), GtfsStopIdentity("CO", 3)))),
+            services.single().alternateGtfsIdentities
+        )
 
         val border = feeds + ("trenitalia-gtfs" to feed(tripId = "T1", tripNumber = "1", agencyName = "TRENITALIA", stopNames = Triple("Milano Centrale", "Monza", "Lecco")))
         val borderServices = (
@@ -318,6 +328,37 @@ class EmbeddedGtfsRouteAdapterTest {
             ).loadRoute(route, Direction.OUTBOUND, JourneyQuery(LocalDate.of(2026, 9, 4), LocalTime.of(8, 0))) as DataResult.Success
             ).snapshot.services
         assertEquals(listOf("trenitalia-france-gtfs"), borderServices.map { it.gtfsIdentity?.sourceId })
+        assertEquals(listOf(emptyList<GtfsServiceIdentity>()), borderServices.map { it.alternateGtfsIdentities })
+    }
+
+    /**
+     * A copy left out is the same train, but its realtime is shared only stop for stop at the same minute: where the
+     * two packs disagree on a time, the kept train gets no alternate identity (the copy is still left out, as before).
+     * The alternate is lined up with the kept stops when the copy lists one more stop in between.
+     */
+    @Test
+    fun `la copia scartata lascia la sua identita solo con gli stessi orari fermata per fermata`() = runBlocking {
+        suspend fun services(franceStopTimes: String): List<it.binario.app.data.TrainService> {
+            val feeds = mapOf(
+                "trenitalia-france-gtfs" to feed(tripId = "F9241", tripNumber = "FR 9241", agencyName = "Trenitalia France", stopTimes = franceStopTimes),
+                "trenitalia-gtfs" to feed(tripId = "T9241", tripNumber = "9241", agencyName = "TRENITALIA")
+            )
+            return (EmbeddedGtfsRouteAdapter(
+                openAsset = { path -> ByteArrayInputStream(requireNotNull(feeds[path.removePrefix("gtfs/").removeSuffix(".zip")])) },
+                packs = listOf("trenitalia-france-gtfs", "trenitalia-gtfs").map { EmbeddedGtfsPack(SourceId(it), "gtfs/$it.zip") },
+                clock = { 1_000L }
+            ).loadRoute(route, Direction.OUTBOUND, JourneyQuery(LocalDate.of(2026, 9, 4), LocalTime.of(8, 0))) as DataResult.Success).snapshot.services
+        }
+        val header = "trip_id,arrival_time,departure_time,stop_id,stop_sequence\n"
+        val otherMinute = services(header + "F9241,08:05:00,08:05:00,MI,1\nF9241,08:22:00,08:24:00,MO,2\nF9241,08:50:00,08:50:00,CO,3\n")
+        assertEquals(listOf("T9241"), otherMinute.map { it.gtfsIdentity?.tripId })
+        assertEquals(emptyList<GtfsServiceIdentity>(), otherMinute.single().alternateGtfsIdentities)
+
+        val oneMore = services(header + "F9241,08:05:00,08:05:00,MI,10\nF9241,08:15:00,08:16:00,MO,15\n" +
+            "F9241,08:22:00,08:23:00,MO,20\nF9241,08:50:00,08:50:00,CO,30\n")
+        assertEquals(listOf("T9241"), oneMore.map { it.gtfsIdentity?.tripId })
+        assertEquals(listOf(listOf(GtfsStopIdentity("MI", 10), GtfsStopIdentity("MO", 20), GtfsStopIdentity("CO", 30))),
+            oneMore.single().alternateGtfsIdentities.map { it.stops })
     }
 
     /**

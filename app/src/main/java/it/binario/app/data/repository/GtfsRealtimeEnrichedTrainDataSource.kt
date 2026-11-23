@@ -57,7 +57,10 @@ class GtfsRealtimeEnrichedTrainDataSource(
         deadlineMillis: Long = realtimeDeadlineMillis
     ): DataResult {
         if (result !is DataResult.Success || query.serviceDate != clock.instant().atZone(zone).toLocalDate()) return result
-        val identities = result.snapshot.services.mapNotNull { it.gtfsIdentity }
+        // A service's own identity, then the copies other packs publish of it (TrainService.alternateGtfsIdentities).
+        val identities = result.snapshot.services.flatMap { service ->
+            service.gtfsIdentity?.let { listOf(it) + service.alternateGtfsIdentities }.orEmpty()
+        }
         if (identities.isEmpty()) return result
         val key = identities.joinToString("|") { "${it.sourceId}:${it.tripId}:${it.serviceDate}" }
         // Optional data: past the deadline the offline result is the answer, never a blank screen.
@@ -73,21 +76,12 @@ class GtfsRealtimeEnrichedTrainDataSource(
             val used = mutableListOf<EnrichedRealtimeStop>()
             val services = result.snapshot.services.map { service ->
                 val identity = service.gtfsIdentity ?: return@map service
-                if (identity.stops.size != service.stops.size) return@map service
-                val matches = updates.filter {
-                    it.scheduledStop.sourceId.value == identity.sourceId &&
-                        it.scheduledStop.sourceTripId == identity.tripId &&
-                        it.scheduledStop.serviceDate == identity.serviceDate &&
-                        (it.update.serviceDate == null || it.update.serviceDate == identity.serviceDate) &&
-                        // Without start_date, never apply today's observation to tomorrow's train.
-                        (it.update.serviceDate != null || it.scheduledStop.scheduledAt.toLocalDate() == query.serviceDate)
-                }
-                val perStop = identity.stops.map { stop ->
-                    matches.filter { it.scheduledStop.sourceStopId == stop.stopId && it.scheduledStop.stopSequence == stop.sequence }
-                        .maxByOrNull { it.update.observedAt }
-                }
-                val timed = perStop.map { update -> update?.takeIf { delay(it) != null } }
-                if (timed.all { it == null }) return@map service
+                // The service's own pack first: a copy's feed (alternateGtfsIdentities, in their order) is used only when
+                // the ones before it have no timed stop for this train, and never mixed with them.
+                val timed = (listOf(identity) + service.alternateGtfsIdentities).asSequence()
+                    .filter { it.stops.size == service.stops.size }
+                    .map { timedStops(it, updates, query) }
+                    .firstOrNull { stops -> stops.any { it != null } } ?: return@map service
                 used += timed.filterNotNull()
                 val stops = service.stops.mapIndexed { index, stop ->
                     val live = timed[index] ?: return@mapIndexed if (!service.operationalStatusVerified && stop.operationalStatusVerified == null) {
@@ -150,6 +144,23 @@ class GtfsRealtimeEnrichedTrainDataSource(
     companion object {
         const val DEFAULT_DEADLINE_MILLIS = 3_000L
         const val OBSERVED_DEADLINE_MILLIS = 20_000L
+    }
+
+    /** Per stop of [identity], the latest fresh update of its own trip that gives a time or a delay; null elsewhere. */
+    private fun timedStops(identity: GtfsServiceIdentity, updates: List<EnrichedRealtimeStop>, query: JourneyQuery): List<EnrichedRealtimeStop?> {
+        val matches = updates.filter {
+            it.scheduledStop.sourceId.value == identity.sourceId &&
+                it.scheduledStop.sourceTripId == identity.tripId &&
+                it.scheduledStop.serviceDate == identity.serviceDate &&
+                (it.update.serviceDate == null || it.update.serviceDate == identity.serviceDate) &&
+                // Without start_date, never apply today's observation to tomorrow's train.
+                (it.update.serviceDate != null || it.scheduledStop.scheduledAt.toLocalDate() == query.serviceDate)
+        }
+        return identity.stops.map { stop ->
+            matches.filter { it.scheduledStop.sourceStopId == stop.stopId && it.scheduledStop.stopSequence == stop.sequence }
+                .maxByOrNull { it.update.observedAt }
+                ?.takeIf { delay(it) != null }
+        }
     }
 
     private fun fresh(stop: EnrichedRealtimeStop): Boolean {
