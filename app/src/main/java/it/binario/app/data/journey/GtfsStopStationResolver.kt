@@ -21,6 +21,9 @@ import java.util.Locale
  *    packs only the Italian half: the published words must be the leading words of exactly one station inside
  *    the province (the one with the fewest extra words), so "Verona" never becomes "Verona Parona";
  * 3. the strict whole-name matcher of the timetables ([RailStopNameMatcher]: "Bologna C.le", "S. Vitale").
+ * When the stop and the station both have coordinates, a station a rule names counts only within [MAX_NAME_MATCH_KM] of
+ * the stop: the Swiss pack's "Guarda" (Engadin) is not the Guarda near Ferrara, 266 km away, and "Steinach" (SG) is not
+ * Steinach in Tirol. A catalogue entry without coordinates is bound by its unique name, as no distance can be checked.
  * Anything else stays a station of its own pack (never merged across packs by a guess), unless [nearbyStation] places
  * it, by its coordinates, at a catalogue station under the same name ("Verona" of the STA pack, 14 m from Verona
  * Porta Nuova).
@@ -71,28 +74,35 @@ internal class GtfsStopStationResolver(stations: List<Station>) {
 
     /** A stop of a pack: by the code it publishes under [scheme] when one binds it, otherwise by its name. */
     fun resolveStop(scheme: GtfsStopCodeScheme, code: String, latitude: Double?, longitude: Double?, stopName: String): Station? =
-        resolveCode(scheme, code, latitude, longitude, stopName) ?: resolve(stopName)
+        resolveCode(scheme, code, latitude, longitude, stopName) ?: resolve(stopName, latitude, longitude)
 
     /** Only the code rule of [resolveStop] (see [GtfsStationCodeIndex]); null when no code binds the stop. */
     fun resolveCode(scheme: GtfsStopCodeScheme, code: String, latitude: Double?, longitude: Double?, stopName: String): Station? =
         codes.resolve(scheme, code, latitude, longitude, stopName)
 
-    fun resolve(stopName: String): Station? {
+    /** The station [stopName] names by the rules above, with no position to check it against (an end picked by name). */
+    fun resolve(stopName: String): Station? = resolve(stopName, null, null)
+
+    /**
+     * The station [stopName] names by the rules above, for a stop at [latitude], [longitude]: a rule whose station is
+     * farther than [MAX_NAME_MATCH_KM] from the stop does not bind it, and the next rule is tried ([isWithinNameBound]).
+     */
+    fun resolve(stopName: String, latitude: Double?, longitude: Double?): Station? {
         val variants = variants(stopName)
-        for (variant in variants) byKey[normalize(variant)]?.let { return it }
+        for (variant in variants) byKey[normalize(variant)]?.takeIf { isWithinNameBound(it, latitude, longitude) }?.let { return it }
         if (variants.any { normalize(it) in ambiguousKeys }) return null
         for (variant in variants) {
             val candidates = bilingualByPrefix[RailStopNameMatcher.tokens(variant).joinToString(" ")] ?: continue
             val fewest = candidates.minOf { it.second }
             val best = candidates.filter { it.second == fewest }.map { it.first }.distinctBy(Station::id)
-            if (best.size == 1) return best.single()
+            if (best.size == 1 && isWithinNameBound(best.single(), latitude, longitude)) return best.single()
         }
         for (variant in variants) {
             val candidates = RailStopNameMatcher.tokens(variant).filter { it.length >= 4 }
                 .flatMap { byToken[it].orEmpty() }
                 .distinctBy(Station::id)
             val matches = candidates.filter { it.isNamedBy(variant) }
-            if (matches.size == 1) return matches.single()
+            if (matches.size == 1 && isWithinNameBound(matches.single(), latitude, longitude)) return matches.single()
         }
         return null
     }
@@ -137,6 +147,26 @@ internal class GtfsStopStationResolver(stations: List<Station>) {
     companion object {
         /** How far a stop can be from the catalogue station it is placed at ([nearbyStation]). */
         const val SNAP_METERS = 150.0
+        /**
+         * How far a stop a name rule binds ([resolve]) or a name key matches (the journey ends) can be from the catalogue
+         * station, when both have coordinates. The bound of the iPhone index for a catalogue name
+         * (tools/build_ios_gtfs_schedule.py) and of a Trenitalia location id ([GtfsStationCodeIndex.MAX_LOCATION_ID_KM]).
+         * On the packs of November 2026 the farthest same-station pair is 8.4 km (the Trenitalia pack's Rocchetta
+         * S. Antonio-Lacedonia) and the nearest namesake 18.7 km (the Cotral pack's Acqua Acetosa, in Rome's north).
+         */
+        const val MAX_NAME_MATCH_KM = 10.0
+
+        /**
+         * True when [station] can be the station of a stop at [latitude], [longitude] that only its name ties to it:
+         * within [MAX_NAME_MATCH_KM], or either position unknown.
+         */
+        fun isWithinNameBound(station: Station, latitude: Double?, longitude: Double?): Boolean {
+            if (latitude == null || longitude == null || latitude.isNaN() || longitude.isNaN()) return true
+            val stationLatitude = station.latitude ?: return true
+            val stationLongitude = station.longitude ?: return true
+            return GtfsStationCodeIndex.distanceKm(latitude, longitude, stationLatitude, stationLongitude) <= MAX_NAME_MATCH_KM
+        }
+
         /** About 1.1 km of latitude: [nearbyStation] reads the 3 x 3 cells around a stop. */
         private const val SNAP_CELL_DEGREES = 0.01
         /** Words that only say "station" in a stop name ([nearbyStation]): uppercase, as [RailStopNameMatcher.tokens]. */

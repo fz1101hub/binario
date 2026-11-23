@@ -1839,7 +1839,13 @@ class EmbeddedGtfsJourneyProvider internal constructor(
         fun nodesFor(endpoint: Endpoint): Set<String> {
             val nodes = linkedSetOf<String>()
             endpoint.catalogueId?.let { id -> stopsByNode[id]?.forEach { nodes += nodeKeys[it] } }
-            for (key in endpoint.keys) stopsByMatchKey[key]?.forEach { nodes += nodeKeys[it] }
+            // A stop of the end's name is one of its nodes only near it: Guarda (FE) is not the Swiss Guarda.
+            val point = endpoint.point
+            for (key in endpoint.keys) stopsByMatchKey[key]?.forEach { stop ->
+                if (point == null || latitudes[stop].isNaN() || longitudes[stop].isNaN() ||
+                    GtfsStationCodeIndex.distanceKm(point.first, point.second, latitudes[stop], longitudes[stop]) <= GtfsStopStationResolver.MAX_NAME_MATCH_KM
+                ) nodes += nodeKeys[stop]
+            }
             endpoint.gtfsStop?.takeIf { it.first == sourceId.value }?.let { (_, stopId) ->
                 indexById[stopId]?.let { nodes += nodeKeys[it] }
             }
@@ -1917,7 +1923,8 @@ class EmbeddedGtfsJourneyProvider internal constructor(
 
             /**
              * A stop's transfer point is the catalogue station it resolves to (by the station code the pack
-             * publishes, if any, else by name, else by its coordinates and name: [GtfsStopStationResolver.nearbyStation],
+             * publishes, if any, else by name within [GtfsStopStationResolver.MAX_NAME_MATCH_KM], else by its coordinates and
+             * name: [GtfsStopStationResolver.nearbyStation],
              * so that STA's "Verona" is Verona Porta Nuova, with its change time and no walk between two names of one
              * station); the platforms of one parent_station share the station any of them resolves to (when they agree). Stops the catalogue does not know stay points of their own pack:
              * grouped by parent_station, or by identical name when they have none and are at most [SAME_PLACE_METERS] apart. The stops of a city network
@@ -1930,12 +1937,18 @@ class EmbeddedGtfsJourneyProvider internal constructor(
                 val resolved = Array(size) { index ->
                     if (pack.isUrban) return@Array null
                     val name = directory.names[index]
+                    val latitude = directory.latitude(index)
+                    val longitude = directory.longitude(index)
                     val byCode = if (pack.stopCodeScheme == GtfsStopCodeScheme.NONE) null
-                    else resolver.resolveCode(pack.stopCodeScheme, directory.codes[index], directory.latitude(index), directory.longitude(index), name)
-                    byCode ?: resolvedByName.getOrPut(name) {
-                        // "Matera Centrale" of the FAL pack is the catalogue's "Matera Centrale FAL" when it exists.
-                        pack.catalogueNameSuffixes.firstNotNullOfOrNull { suffix -> resolver.resolve("$name $suffix") } ?: resolver.resolve(name)
-                    } ?: resolver.nearbyStation(name, directory.latitude(index), directory.longitude(index))
+                    else resolver.resolveCode(pack.stopCodeScheme, directory.codes[index], latitude, longitude, name)
+                    // "Matera Centrale" of the FAL pack is the catalogue's "Matera Centrale FAL" when it exists.
+                    fun byName(lat: Double?, lon: Double?): Station? =
+                        pack.catalogueNameSuffixes.firstNotNullOfOrNull { suffix -> resolver.resolve("$name $suffix", lat, lon) }
+                            ?: resolver.resolve(name, lat, lon)
+                    // The name's station is the same for every stop of that name unless it is too far from this one.
+                    byCode ?: resolvedByName.getOrPut(name) { byName(null, null) }
+                        ?.let { if (GtfsStopStationResolver.isWithinNameBound(it, latitude, longitude)) it else byName(latitude, longitude) }
+                        ?: resolver.nearbyStation(name, latitude, longitude)
                 }
                 val referencedParents = directory.parents.filter(String::isNotEmpty).toHashSet()
                 val groupOf = Array(size) { index -> directory.parents[index].ifEmpty { directory.ids[index] } }
