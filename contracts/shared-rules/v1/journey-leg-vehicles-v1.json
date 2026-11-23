@@ -1,0 +1,167 @@
+{
+  "schema": "binario-shared-rules-v1",
+  "readers": {
+    "android": "app/src/test/java/it/binario/app/journeys/JourneyLegVehiclesContractTest.kt",
+    "iphone": "ios/BinarioKit/Tests/BinarioKitTests/SharedRulesContractTests.swift"
+  },
+  "scheduledCoachPacks": [
+    "italo-gtfs",
+    "trenitalia-gtfs"
+  ],
+  "legVehicles": [
+    {
+      "routeType": "2",
+      "pack": "trenitalia-gtfs",
+      "operator": "Trenitalia",
+      "line": "FR",
+      "mode": "TRAIN",
+      "vehicle": "TRAIN",
+      "androidLabel": null,
+      "iosLabel": null,
+      "why": "a train shows its category and number, no vehicle label"
+    },
+    {
+      "routeType": "109",
+      "pack": "ch-otd-gtfs",
+      "operator": "SBB",
+      "line": "S10",
+      "mode": "TRAIN",
+      "vehicle": "TRAIN",
+      "androidLabel": null,
+      "iosLabel": null,
+      "why": "every extended rail type (100-199) is a train"
+    },
+    {
+      "routeType": "100",
+      "pack": "italo-gtfs",
+      "operator": "Italo",
+      "line": "Italo",
+      "mode": "TRAIN",
+      "vehicle": "TRAIN",
+      "androidLabel": null,
+      "iosLabel": null,
+      "why": "Italo's trains are trains, its pack's buses coaches"
+    },
+    {
+      "routeType": "3",
+      "pack": "trenitalia-gtfs",
+      "operator": "Trenitalia",
+      "line": "BUS",
+      "mode": "BUS",
+      "vehicle": "BUS_TRENITALIA",
+      "androidLabel": "journey_leg_bus_trenitalia",
+      "iosLabel": "result.vehicle.bus_trenitalia",
+      "why": "Trenitalia's own scheduled bus"
+    },
+    {
+      "routeType": "3",
+      "pack": "trenitalia-gtfs",
+      "operator": "Trenitalia",
+      "line": "FL",
+      "mode": "BUS",
+      "vehicle": "FRECCIALINK",
+      "androidLabel": "journey_leg_freccialink",
+      "iosLabel": "result.vehicle.freccialink",
+      "why": "a FrecciaLink coach, when the line is named so"
+    },
+    {
+      "routeType": "3",
+      "pack": "trenitalia-gtfs",
+      "operator": "Trenitalia",
+      "line": "FRECCIALINK",
+      "mode": "BUS",
+      "vehicle": "FRECCIALINK",
+      "androidLabel": "journey_leg_freccialink",
+      "iosLabel": "result.vehicle.freccialink",
+      "why": "the line written out"
+    },
+    {
+      "routeType": "3",
+      "pack": "italo-gtfs",
+      "operator": "Italo",
+      "line": "ItaloBus",
+      "mode": "BUS",
+      "vehicle": "ITALOBUS",
+      "androidLabel": "journey_leg_italobus",
+      "iosLabel": "result.vehicle.italobus",
+      "why": "ItaloBus"
+    },
+    {
+      "routeType": "700",
+      "pack": "italo-gtfs",
+      "operator": "Italo",
+      "line": null,
+      "mode": "BUS",
+      "vehicle": "ITALOBUS",
+      "androidLabel": "journey_leg_italobus",
+      "iosLabel": "result.vehicle.italobus",
+      "why": "every extended bus type (700-799), by the operator alone"
+    },
+    {
+      "routeType": "3",
+      "pack": "trenitalia-gtfs",
+      "operator": null,
+      "line": null,
+      "mode": "BUS",
+      "vehicle": "BUS",
+      "androidLabel": "journey_leg_bus",
+      "iosLabel": "result.vehicle.bus",
+      "why": "a coach of a coach pack whose operator and line say nothing more"
+    },
+    {
+      "routeType": "3",
+      "pack": "lombardia-trenord-gtfs",
+      "operator": "Trenord",
+      "line": "S11",
+      "mode": "REPLACEMENT_BUS",
+      "vehicle": "REPLACEMENT_BUS",
+      "androidLabel": "journey_leg_replacement_bus",
+      "iosLabel": "result.vehicle.replacement_bus",
+      "why": "a bus of any other pack replaces a train"
+    },
+    {
+      "routeType": "714",
+      "pack": "eav-gtfs",
+      "operator": "EAV",
+      "line": null,
+      "mode": "REPLACEMENT_BUS",
+      "vehicle": "REPLACEMENT_BUS",
+      "androidLabel": "journey_leg_replacement_bus",
+      "iosLabel": "result.vehicle.replacement_bus",
+      "why": "the same for an extended bus type"
+    },
+    {
+      "routeType": "3",
+      "pack": "trenitalia-france-gtfs",
+      "operator": "Trenitalia",
+      "line": "BUS",
+      "mode": "REPLACEMENT_BUS",
+      "vehicle": "REPLACEMENT_BUS",
+      "androidLabel": "journey_leg_replacement_bus",
+      "iosLabel": "result.vehicle.replacement_bus",
+      "why": "the pack decides, not the operator"
+    },
+    {
+      "routeType": "4",
+      "pack": "trenitalia-gtfs",
+      "operator": "Trenitalia",
+      "line": null,
+      "mode": null,
+      "vehicle": null,
+      "androidLabel": null,
+      "iosLabel": null,
+      "why": "a ferry is no leg of a rail journey"
+    },
+    {
+      "routeType": "1100",
+      "pack": "italo-gtfs",
+      "operator": "Italo",
+      "line": null,
+      "mode": null,
+      "vehicle": null,
+      "androidLabel": null,
+      "iosLabel": null,
+      "why": "neither is a flight"
+    }
+  ]
+}
