@@ -4,9 +4,14 @@ from __future__ import annotations
 
 import importlib.util
 import io
+import tempfile
 import unittest
+import urllib.error
+import zipfile
 from contextlib import redirect_stdout
+from email.message import Message
 from pathlib import Path
+from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[1]
 SPEC = importlib.util.spec_from_file_location("transit_source_discovery", ROOT / "tools" / "transit_source_discovery.py")
@@ -113,6 +118,139 @@ class GtfsRealtimeProbeTest(unittest.TestCase):
             DISCOVERY.decode_feed(b"<html>not protobuf</html>")
         with self.assertRaises(DISCOVERY.WireError):
             DISCOVERY.decode_feed(field(2, field(1, "no header")))
+
+
+def alert_entity(entity_id: str, route_id: str) -> bytes:
+    informed = field(5, field(2, route_id))
+    header = field(10, field(1, field(1, "Lavori") + field(2, "it")))
+    return field(2, field(1, entity_id) + field(5, informed + header))
+
+
+def write_static(folder: Path, name: str = "static.zip") -> Path:
+    path = folder / name
+    with zipfile.ZipFile(path, "w") as archive:
+        archive.writestr("routes.txt", "route_id,route_short_name,route_type\nR1,C3,2\n")
+        archive.writestr("trips.txt", "route_id,service_id,trip_id,trip_short_name\nR1,S,T1,86012\nR1,S,T2,6104\n")
+        archive.writestr("stops.txt", "stop_id,stop_name\nS1,Ventimiglia\nS2,Menton\n")
+        archive.writestr(
+            "stop_times.txt",
+            "trip_id,arrival_time,departure_time,stop_id,stop_sequence\n"
+            "T1,08:00:00,08:00:00,S1,1\nT1,08:10:00,08:10:00,S2,2\nT2,09:00:00,09:00:00,S2,1\n",
+        )
+    return path
+
+
+class GtfsRealtimeAgainstStaticTest(unittest.TestCase):
+    """``gtfsrt:URL|gtfs:REF``: synthetic protobuf bytes matched against a synthetic static GTFS."""
+
+    def setUp(self) -> None:
+        DISCOVERY.reset_run_state()
+        self.root = Path(tempfile.mkdtemp(prefix="discovery-rt-"))
+        self.out = self.root / "out"
+        self.out.mkdir()
+        write_static(self.root)
+        self.payload = feed(
+            # Stop 1 joins (id and sequence), stop 9 does not (sequence not in the trip), stop 2 joins.
+            trip_update_entity("e1", "T1", "R1", [(1, "S1", 60), (9, "S1", 60), (2, "S2", 120)]),
+            # A different trip_id whose digits are a train number of the static feed.
+            trip_update_entity("e2", "FR:6104:20261103", "", [(1, "X9", 0)]),
+            alert_entity("a1", "R1"),
+        )
+
+    def fake_fetch(self, url, *, limit, method="GET", accept="*/*", destination=None):
+        self.requests.append(url)
+        if destination is not None:
+            write_static(destination.parent, destination.name)
+            return 200, url, {}, destination, None
+        return 200, url, {}, self.payload, None
+
+    def probe(self, refs: list[str]) -> str:
+        self.requests: list[str] = []
+        output = io.StringIO()
+        with mock.patch.object(DISCOVERY, "fetch", self.fake_fetch), redirect_stdout(output):
+            DISCOVERY.probe_gtfsrt_against("https://rt.example/feed.pb", refs, self.out, now=1_793_000_090, root=self.root)
+        return output.getvalue()
+
+    def test_matches_trips_stops_and_alerts_of_a_repository_zip(self) -> None:
+        text = self.probe(["static.zip"])
+        self.assertIn("age=60s", text)
+        self.assertIn("kinds={'alert': 1, 'trip_update': 2}", text)
+        self.assertIn("vs gtfs:static.zip trip_ids=1/2 matched_start_dates={'20261103': 1} matched_by_route={'C3': 1}", text)
+        self.assertIn("trips_with_attachable_stops=1/1 stop_updates_attachable=2/3 stop_ids_in_static=3/4", text)
+        self.assertIn("unmatched_with_train_number_token=1/1", text)
+        self.assertIn("alerts_touching_static=1/1 informed_routes=1/1", text)
+        self.assertIn("trip 01 trip_update trip_id=T1 route_id=R1 start_date=20261103", text)
+        self.assertIn("gtfs:static.zip=yes(route=C3 attachable=2/3)", text)
+        self.assertIn("trip_id=FR:6104:20261103", text)
+        self.assertIn("gtfs:static.zip=no(train_number_token=6104)", text)
+        self.assertIn("RTSAMPLE gtfs:static.zip", text)
+        self.assertEqual(["https://rt.example/feed.pb"], self.requests)
+
+    def test_a_static_url_and_the_feed_are_downloaded_once_per_run(self) -> None:
+        self.requests = []
+        token = "gtfsrt:https://rt.example/feed.pb|gtfs:https://static.example/zou.zip"
+        output = io.StringIO()
+        with mock.patch.object(DISCOVERY, "fetch", self.fake_fetch), redirect_stdout(output):
+            DISCOVERY.run([token, token, "gtfsrt:https://rt.example/feed.pb|rtstatic:https://x"], self.out, keep=False)
+        self.assertEqual(["https://rt.example/feed.pb", "https://static.example/zou.zip"], self.requests)
+        self.assertEqual(2, output.getvalue().count("vs gtfs:https://static.example/zou.zip trip_ids=1/2"))
+        self.assertIn("SKIP token non riconosciuto", output.getvalue())
+        self.assertEqual([], list((self.out / "archives").iterdir()))
+
+    def test_only_zip_files_inside_the_repository_are_read(self) -> None:
+        outside = self.root.parent / (self.root.name + "-outside.zip")
+        write_static(self.root.parent, outside.name)
+        (self.root / "notes.txt").write_text("x", encoding="utf-8")
+        output = io.StringIO()
+        with redirect_stdout(output):
+            for ref in (f"../{outside.name}", "notes.txt", "missing.zip"):
+                self.assertEqual((None, None), DISCOVERY.resolve_static(ref, self.out, root=self.root))
+        self.assertEqual(3, output.getvalue().count("percorso non ammesso"))
+        outside.unlink()
+
+    def test_stop_rule_follows_the_app(self) -> None:
+        rows = [("S1", 1), ("S2", 2)]
+        self.assertTrue(DISCOVERY.attachable_stop({"stop_id": "S1", "stop_sequence": 1, "arrival": {"delay": 0}}, rows))
+        self.assertTrue(DISCOVERY.attachable_stop({"stop_id": "S2", "departure": {"time": 1}}, rows))
+        self.assertTrue(DISCOVERY.attachable_stop({"stop_sequence": 2, "arrival": {"delay": 5}}, rows))
+        self.assertFalse(DISCOVERY.attachable_stop({"stop_id": "S1", "stop_sequence": 2, "arrival": {"delay": 5}}, rows))
+        self.assertFalse(DISCOVERY.attachable_stop({"stop_id": "S1", "stop_sequence": 1}, rows))
+        self.assertFalse(DISCOVERY.attachable_stop({"stop_id": "S1", "stop_sequence": 1, "schedule_relationship": 1, "arrival": {"delay": 0}}, rows))
+        self.assertEqual({"6104", "86012"}, DISCOVERY.number_tokens("OCESN6104:086012:20261103:87756056"))
+
+    def test_sample_takes_known_trips_first_and_spreads_routes(self) -> None:
+        rows = [
+            {"trip_id": f"bus{i}", "route_id": "B", "start_date": "", "kind": "trip_update", "stops": []} for i in range(30)
+        ] + [{"trip_id": "T1", "route_id": "R1", "start_date": "", "kind": "trip_update", "stops": []},
+             {"trip_id": "x", "route_id": "Z", "start_date": "", "kind": "trip_update", "stops": []}]
+        reference = DISCOVERY.StaticReference("gtfs:s", {"R1": ("2", "C3")}, {"T1": "R1"}, set())
+        sample = DISCOVERY.realtime_trip_sample(rows, [reference])
+        self.assertEqual(20, len(sample))
+        self.assertEqual("T1", sample[0]["trip_id"])
+        self.assertIn("x", [row["trip_id"] for row in sample[:3]])
+
+
+class RefusedHostTest(unittest.TestCase):
+    def setUp(self) -> None:
+        DISCOVERY.reset_run_state()
+
+    def test_a_host_that_answers_429_is_not_contacted_again(self) -> None:
+        calls: list[str] = []
+
+        def refuse(request, timeout):
+            calls.append(request.full_url)
+            self.assertNotIn("Mozilla", request.get_header("User-agent"))
+            raise urllib.error.HTTPError(request.full_url, 429, "Too Many Requests", Message(), None)
+
+        with mock.patch.object(DISCOVERY.urllib.request, "urlopen", refuse), redirect_stdout(io.StringIO()):
+            first = DISCOVERY.fetch("https://proxy.example/a.pb", limit=10)
+            second = DISCOVERY.fetch("https://proxy.example/b.pb", limit=10)
+            other = DISCOVERY.fetch("https://other.example/c.pb", limit=10)
+        self.assertEqual(429, first[0])
+        self.assertIsNone(second[0])
+        self.assertIn("403/429", second[4])
+        self.assertEqual(429, other[0])
+        self.assertEqual(["https://proxy.example/a.pb", "https://other.example/c.pb"], calls)
 
 
 class GbfsProbeTest(unittest.TestCase):
