@@ -203,6 +203,64 @@ final class SharedDataTests: XCTestCase {
 
     // MARK: - The tables
 
+    func testTheDelayCompensationThresholdsAreTheSharedTable() throws {
+        let json = try table("delay-compensation-v1.json")
+        XCTAssertEqual(DelayCompensationRule.quarterFromMinutes, json["quarterFromMinutes"] as? Int)
+        XCTAssertEqual(DelayCompensationRule.halfFromMinutes, json["halfFromMinutes"] as? Int)
+        XCTAssertEqual(CompensationShare.quarter.percent, json["quarterPercent"] as? Int)
+        XCTAssertEqual(CompensationShare.half.percent, json["halfPercent"] as? Int)
+    }
+
+    func testTheDestinationWeatherSourceIsTheSharedTable() throws {
+        let json = try table("destination-weather-v1.json")
+        XCTAssertEqual(DestinationWeatherService.attributionURL?.absoluteString, json["attributionUrl"] as? String)
+        XCTAssertEqual(DestinationWeatherService.attributionURL?.host(), DestinationWeatherService.attributionHost)
+        XCTAssertEqual(SharedData.DestinationWeather.forecastUrl, json["forecastUrl"] as? String)
+        XCTAssertEqual(SharedData.DestinationWeather.dailyVariables, json["dailyVariables"] as? [String])
+        XCTAssertEqual(SharedData.DestinationWeather.forecastDays, json["forecastDays"] as? Int)
+        XCTAssertEqual(SharedData.DestinationWeather.timeToLiveSeconds, (json["timeToLiveSeconds"] as? Double))
+        XCTAssertEqual(SharedData.DestinationWeather.maximumBytes, json["maximumBytes"] as? Int)
+    }
+
+    func testTheBikeSharingSystemsAreTheSharedTable() throws {
+        let json = try table("bike-sharing-v1.json")
+        let systems = try XCTUnwrap(json["systems"] as? [[String: Any]])
+        XCTAssertEqual(BikeSharingSystem.all.map(\.id), systems.compactMap { $0["id"] as? String })
+        XCTAssertEqual(BikeSharingSystem.all.map(\.discoveryURL), systems.compactMap { $0["discoveryUrl"] as? String })
+        XCTAssertEqual(BikeSharingSystem.all.map(\.attribution), systems.compactMap { $0["attribution"] as? String })
+        XCTAssertEqual(BikeSharingSystem.all.map(\.personalOnly), systems.compactMap { $0["personalOnly"] as? Bool })
+        XCTAssertEqual(BikeSharingSystem.forBuild(personalSources: false).map(\.id),
+                       ["gbfs-nextbike-bergamo", "gbfs-famose-senigallia", "gbfs-bikemi", "gbfs-verona-bike"])
+        XCTAssertEqual(SharedData.BikeSharing.radiusMeters, json["radiusMeters"] as? Int)
+        XCTAssertEqual(SharedData.BikeSharing.feedLanguages, json["feedLanguages"] as? [String])
+    }
+
+    func testTheLiveTrainMapIsTheSharedTable() throws {
+        let json = try table("live-train-map-v1.json")
+        XCTAssertEqual(LiveTrainSelector.maximumTrains, json["maximumTrains"] as? Int)
+        XCTAssertEqual(LiveTrainSelector.maximumAppliedDelay, json["lookBackMinutes"] as? Int)
+        XCTAssertEqual(LiveTrainSelector.minimumAppliedDelay, json["minimumAppliedDelayMinutes"] as? Int)
+        XCTAssertEqual(LiveTrainSelector.sameTrainKilometres, json["sameTrainKilometres"] as? Double)
+        XCTAssertEqual(LiveTrainRefresh.positionsSeconds, json["positionsRefreshSeconds"] as? Double)
+        XCTAssertEqual(LiveTrainAreas.stationRadiusKilometres, json["stationRadiusKilometres"] as? Double)
+        let request = ScheduledRunRequest(at: RailMoment(date: try XCTUnwrap(PlannedLocalDate(iso: "2026-11-04")), secondOfDay: 0),
+                                          scope: .area(GeoBounds(north: 1, south: 0, east: 1, west: 0)))
+        XCTAssertEqual(request.lookBackMinutes, json["lookBackMinutes"] as? Int)
+        XCTAssertEqual(request.lookAheadMinutes, json["lookAheadMinutes"] as? Int)
+    }
+
+    func testTheEveningAlertsAreTheSharedTable() throws {
+        let json = try table("evening-alerts-v1.json")
+        XCTAssertEqual(StrikeReminderPlanner.runHour, json["strikeReminderHour"] as? Int)
+        XCTAssertEqual(RouteWorksAlertPlanner.runHour, json["routeWorksAlertHour"] as? Int)
+        XCTAssertEqual(RouteWorksAlertPlanner.quietFromHour, json["quietFromHour"] as? Int)
+        XCTAssertEqual(RouteWorksAlertPlanner.quietUntilHour, json["quietUntilHour"] as? Int)
+        XCTAssertEqual(StrikeReminderPlanner.notifiedRetentionDays, json["strikeNotifiedRetentionDays"] as? Int)
+        XCTAssertEqual(RouteWorksAlertPlanner.maximumItems, json["routeWorksMaximumItems"] as? Int)
+        XCTAssertEqual(RouteWorksAlertPlanner.maximumKeepDays, json["routeWorksMaximumKeepDays"] as? Int)
+        XCTAssertEqual(RouteWorksAlertPlanner.maximumNotified, json["routeWorksMaximumNotified"] as? Int)
+    }
+
     private func table(_ name: String) throws -> [String: Any] {
         let url = repositoryRoot.appendingPathComponent("contracts/shared-data/v1").appendingPathComponent(name)
         let object = try JSONSerialization.jsonObject(with: Data(contentsOf: url))

@@ -139,7 +139,33 @@ public enum BinarioLocalizationKeys {
         "notices.guaranteed_trains", "notices.strikes.title", "notices.strikes.source", "notices.strikes.date_range",
         "notices.strikes.published_on", "notices.works.title", "notices.works.title_route", "notices.works.none",
         "notices.works.names", "notices.works.route_names", "notices.works.line", "notices.works.date",
-        "notices.works.dates", "notices.works.note", "notices.works.show_more"
+        "notices.works.dates", "notices.works.note", "notices.works.show_more",
+        // Weather, bike sharing, compensation, train map and evening alerts (Android's texts).
+        "result.weather.title", "result.weather.station_date", "result.weather.loading", "result.weather.out_of_range",
+        "result.weather.unavailable", "result.weather.temperatures", "result.weather.precipitation",
+        "result.weather.attribution", "result.weather.code.0", "result.weather.code.1", "result.weather.code.2",
+        "result.weather.code.3", "result.weather.code.45", "result.weather.code.48", "result.weather.code.51",
+        "result.weather.code.53", "result.weather.code.55", "result.weather.code.56", "result.weather.code.57",
+        "result.weather.code.61", "result.weather.code.63", "result.weather.code.65", "result.weather.code.66",
+        "result.weather.code.67", "result.weather.code.71", "result.weather.code.73", "result.weather.code.75",
+        "result.weather.code.77", "result.weather.code.80", "result.weather.code.81", "result.weather.code.82",
+        "result.weather.code.85", "result.weather.code.86", "result.weather.code.95", "result.weather.code.96",
+        "result.weather.code.99", "result.weather.code.unknown", "settings.weather.title", "settings.weather.detail",
+        "result.compensation.quarter", "result.compensation.half", "result.compensation.conditions",
+        "departures.bikes.title", "departures.bikes.show", "departures.bikes.loading", "departures.bikes.none",
+        "departures.bikes.unavailable", "departures.bikes.dock_bikes", "departures.bikes.dock_ebikes",
+        "departures.bikes.dock_free", "departures.bikes.battery", "departures.bikes.source", "departures.bikes.open",
+        "departures.bikes.type_bike", "departures.bikes.type_ebike", "departures.bikes.type_scooter",
+        "departures.bikes.type_other", "departures.bikes.distance", "departures.map.title",
+        "departures.map.area_subtitle", "departures.map.route_subtitle", "departures.map.content_description",
+        "departures.map.note", "departures.map.legend_live", "departures.map.legend_timetable",
+        "departures.map.loading", "departures.map.zoom_in", "departures.map.none", "departures.map.row_title",
+        "departures.map.row_at", "departures.map.row_between", "departures.map.row_live",
+        "departures.map.row_timetable", "departures.map.on_time", "departures.map.distance",
+        "settings.alerts.strike_title", "settings.alerts.strike_detail", "settings.alerts.works_title",
+        "settings.alerts.works_detail", "notices.alerts.works_title", "result.compensation.minutes",
+        "departures.map.count", "departures.map.capped", "departures.map.delay", "notices.alerts.strike_title",
+        "notices.alerts.works_title_more",
     ]
 
     /// The keys whose texts count something: Localizable.stringsdict holds their CLDR plural forms
@@ -151,5 +177,7 @@ public enum BinarioLocalizationKeys {
         "result.detail.usual_platform", "result.detail.weekday", "result.alternative.on_time",
         "saved.trains.limit_error", "saved.trains.reliability.description", "departures.later.loaded",
         "result.live.delay", "notices.works.show_more",
+        "result.compensation.minutes", "departures.map.count", "departures.map.capped", "departures.map.delay",
+        "notices.alerts.strike_title", "notices.alerts.works_title_more",
     ]
 }
