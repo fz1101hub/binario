@@ -1,5 +1,6 @@
 package it.binario.app.data.live
 
+import it.binario.app.TestAssets
 import it.binario.app.data.core.*
 import it.binario.app.data.ServiceStatus
 import it.binario.app.data.gtfs.EmbeddedGtfsRealtimeScheduleResolver
@@ -592,9 +593,11 @@ class LiveProviderNetworkTest {
         // skipped. Fresh updates without any timing still fail it.
         assumeTrue("$id: the feed publishes no fresh update at this moment (${updates.size} in total)", fresh.isNotEmpty())
         assertTrue("$id: no fresh updates with published timing", fresh.any { it.officialDelay != null || it.predictedAt != null })
-        val assets by lazy { listOf(File("src/main/assets"), File("app/src/main/assets")).first { it.isDirectory } }
-        val pack = LiveAcceptanceEvidence.GtfsPackIdentity.read(customPack ?: File(assets, "gtfs/$staticSource.zip").readBytes())
-        val resolver = customResolver ?: EmbeddedGtfsRealtimeScheduleResolver({ File(assets, it).inputStream() })
+        // A foreign pack bundled as its border subset (SNCF) holds only the trains of the frontalieri corridors, which may
+        // all be asleep while the feed is busy elsewhere: identity is checked on the full pack the app downloads on request
+        // and attaches the same feed to (TestAssets.fullPackFile falls back to the asset for every other pack).
+        val pack = LiveAcceptanceEvidence.GtfsPackIdentity.read(customPack ?: TestAssets.fullPackFile("gtfs/$staticSource.zip").readBytes())
+        val resolver = customResolver ?: EmbeddedGtfsRealtimeScheduleResolver({ TestAssets.openFull(it) })
         val timed = fresh.filter { it.officialDelay != null || it.predictedAt != null }
         val checked = if (packSubsetRoute == null) timed
             else (LiveAcceptanceEvidence.onPackNetwork(timed, pack, packSubsetRoute) + timed.filter { it.sourceTripId in pack.tripIds }).distinct()

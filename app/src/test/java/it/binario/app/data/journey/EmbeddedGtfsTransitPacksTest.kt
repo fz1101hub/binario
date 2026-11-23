@@ -37,8 +37,11 @@ class EmbeddedGtfsTransitPacksTest {
     private val openAsset: (String) -> InputStream = { path -> TestAssets.open(path) }
     private val stations: List<Station> by lazy { EmbeddedCuratedRailStationCatalog(openAsset).load() }
     private val zone = ZoneId.of("Europe/Rome")
-    /** A Tuesday inside the validity of every bundled pack. */
-    private val tuesday = LocalDate.of(2026, 11, 10)
+    /**
+     * A Tuesday inside the validity of every bundled pack. Not 10 November any more: the Marconi Express pack, built on
+     * 23 November, keeps no weekday service before that day (its expired services were dropped by the build).
+     */
+    private val tuesday = LocalDate.of(2026, 11, 24)
     private val packs: List<EmbeddedGtfsPack> = EmbeddedGtfsPacks.forBuild(personalSources = true)
     private val provider by lazy {
         EmbeddedGtfsJourneyProvider.create(openAsset, packs.filterNot(EmbeddedGtfsPack::isUrban) + packs.filter(EmbeddedGtfsPack::isUrban))
@@ -118,6 +121,22 @@ class EmbeddedGtfsTransitPacksTest {
         val trams = first.legs.filter { it.mode == LegMode.TRAM }
         assertEquals(1, trams.size)
         assertEquals("T2", trams.single().lineLabel)
+    }
+
+    @Test fun `Bologna Centrale to the airport on the Marconi Express`() {
+        // TPER publishes the people mover as a monorail (route_type 12): a metro line "MEX", with walks of about 130 m
+        // and 150 m between the catalogue stations and its stops.
+        val airport = urbanStop("marconi-express-gtfs", "Bologna Aeroporto")
+        val found = search(station("Bologna Centrale"), airport, "08:00")
+        val first = found.first()
+        val vehicles = first.legs.filter { it.mode != LegMode.WALK }
+        assertEquals(1, vehicles.size)
+        assertEquals(LegMode.METRO, vehicles.single().mode)
+        assertEquals("MEX", vehicles.single().lineLabel)
+        assertTrue(vehicles.single().runId!!.value.startsWith("marconi-express-gtfs:"))
+        assertTrue(java.time.Duration.between(first.legs.first().scheduledDeparture, first.legs.last().scheduledArrival).toMinutes() <= 25)
+        val stop = urbanStops.search("Bologna Aeroporto", limit = 20).first { it.station.id.startsWith("gtfs:marconi-express-gtfs:") }
+        assertEquals(UrbanStopBadge.METRO, stop.badge)
     }
 
     @Test fun `Lecce to Gallipoli, Udine to Cividale and Bologna to Sassuolo stay uncovered`() = runBlocking {

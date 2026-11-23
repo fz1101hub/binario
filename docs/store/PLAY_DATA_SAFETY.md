@@ -177,6 +177,7 @@ La tabella copre ogni host `http(s)://` trovato in `app/src/main/java`, `wear/sr
 | `opendatagoogletransit.comune.genova.it` | D | Provenienza (solo HTTP, verificata in CI contro la copia HTTPS del Mobility Database) dei pack `amt-genova-casella-gtfs` e `genova-amt-gtfs`; anche nel catalogo |
 | `raw.githubusercontent.com` | D | Provenienza dei pack `trenitalia-gtfs` e `italo-gtfs` (archivio GTFS a un commit fissato); anche nel catalogo |
 | `romamobilita.it` | D, P | Provenienza del pack `roma-mobilita-gtfs`, incluso solo nelle build personali; anche nel catalogo. Nelle build personali, Trip Updates GTFS-Realtime (`data/urban/UrbanRealtime.kt`) letti solo con il tabellone di una fermata di metro o tram di Roma o un tratto romano di un viaggio entro due ore: `GET` HTTPS senza parametri utente, cache di 30 secondi |
+| `solweb.tper.it` | D | Provenienza del pack `marconi-express-gtfs` (manifest `gtfs-transit/`: GTFS `gtfsmex` di TPER, URL finale sullo stesso host) e evidenza di licenza (CC BY 3.0 IT, pagina open data TPER); anche nel catalogo |
 | `static.web.oebb.at` | D | Provenienza del pack `oebb-gtfs`; anche nel catalogo |
 | `travel.mob.cotralspa.it` | D | Provenienza (solo HTTP) del pack `cotral-ferro-gtfs`, incluso solo nelle build personali; anche nel catalogo |
 | `www.anm.it` | D | Provenienza del pack `napoli-anm-gtfs`, incluso solo nelle build personali; anche nel catalogo |
@@ -200,7 +201,6 @@ La tabella copre ogni host `http(s)://` trovato in `app/src/main/java`, `wear/sr
 | `regiojet.com` | E | Catalogo fonti (`InternationalSourceCatalog.kt`), monitor-only |
 | `ressources.data.sncf.com` | E | Catalogo fonti (`RailSourceCatalog.kt`) |
 | `scraped.data.public-transport.earth` | E | Catalogo fonti (`InternationalSourceCatalog.kt`): mirror DELFI community, nessun adapter |
-| `solweb.tper.it` | E | Catalogo fonti (`RailSourceCatalog.kt`): pagina open data (licenza CC BY 3.0 IT) e GTFS del Marconi Express (`marconi-express-gtfs`, candidato di `tools/transit_packs.json` per `gtfs-transit/`, letto solo dal CI; provenienza, D, quando il pack è aggiunto); nessun traffico |
 | `transport.data.gouv.fr` | E | Evidenza di licenza del pack `sncf-gtfs` nel manifest GTFS (scheda della risorsa) e del pack candidato `trenitalia-france-gtfs` (`tools/core_pack_candidates.json`, scheda del dataset); pagina del dataset Trenitalia France nel catalogo fonti (`RailSourceCatalog.kt`); nessun traffico |
 | `urlaubs-express.de` | E | Catalogo fonti (`InternationalSourceCatalog.kt`), monitor-only |
 | `web.ferroviedellacalabria.it` | E | Catalogo fonti (`RailSourceCatalog.kt`) |
@@ -212,6 +212,7 @@ La tabella copre ogni host `http(s)://` trovato in `app/src/main/java`, `wear/sr
 | `www.cotralspa.it` | E | Catalogo fonti (`RailSourceCatalog.kt`) |
 | `www.data.gouv.fr` | E | Catalogo fonti (`RailSourceCatalog.kt`), anche come URL della risorsa del pack candidato `trenitalia-france-gtfs`, scaricata solo dal CI (provenienza D quando il pack è incluso); nessun traffico dall'app |
 | `www.eavsrl.it` | E, F | Catalogo fonti (`RailSourceCatalog.kt`); sito ufficiale in Biglietti e assistenza (`links/OfficialLinks.kt`) |
+| `www.etalab.gouv.fr` | E | Evidenza di licenza (Licence Ouverte / Etalab 2.0) del pack `trenitalia-france-gtfs` nel manifest GTFS; nessun traffico |
 | `www.europeansleeper.eu` | E | Catalogo fonti (`InternationalSourceCatalog.kt`, `RailSourceCatalog.kt`): landing page, nessun traffico |
 | `www.ferrovieudinecividale.it` | E, F | Catalogo fonti (`RailSourceCatalog.kt`); sito ufficiale in Biglietti e assistenza (`links/OfficialLinks.kt`) |
 | `www.fseonline.it` | E | Catalogo fonti (`RailSourceCatalog.kt`) |

@@ -142,6 +142,7 @@ object EmbeddedGtfsPacks {
         EmbeddedGtfsPack(SourceId("oebb-gtfs"), "gtfs/oebb-gtfs.zip", LocalDate.of(2026, 12, 12)),
         EmbeddedGtfsPack(SourceId("sncf-gtfs"), "gtfs/sncf-gtfs.zip", LocalDate.of(2027, 4, 30)),
         EmbeddedGtfsPack(SourceId("toscana-tft-gtfs"), "gtfs/toscana-tft-gtfs.zip", LocalDate.of(2026, 12, 12)),
+        EmbeddedGtfsPack(SourceId("trenitalia-france-gtfs"), "gtfs/trenitalia-france-gtfs.zip", LocalDate.of(2026, 12, 11)),
         EmbeddedGtfsPack(
             SourceId("trenitalia-gtfs"), "gtfs/trenitalia-gtfs.zip", LocalDate.of(2027, 12, 11),
             stopCodeScheme = GtfsStopCodeScheme.TRENITALIA_LOCATION_ID, busRoutesAreScheduledCoaches = true

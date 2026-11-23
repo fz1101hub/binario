@@ -26,15 +26,19 @@ import org.junit.Test
 
 /**
  * «Collegamenti con gli aeroporti» on the catalogue and the packs shipped in the APK: every entry has both stations in
- * the curated catalogue, and the offline planner finds a direct train each way on a weekday with the packs of a store
- * build (no personal pack). A pack refresh may change the trains, never this check.
+ * the curated catalogue, and the offline planner finds a direct run each way on a weekday with the packs of a store
+ * build (no personal pack): a train, or for an entry served by a city pack (the Marconi Express) one of its lines,
+ * with walks only around it. A pack refresh may change the trains, never this check.
  */
 class AirportRoutesTest {
     private val openAsset: (String) -> InputStream = { path -> TestAssets.open(path) }
     private val stations: Map<String, Station> by lazy { EmbeddedCuratedRailStationCatalog(openAsset).load().associateBy(Station::id) }
     private val zone = ZoneId.of("Europe/Rome")
-    /** A Tuesday inside the validity of every bundled pack. */
-    private val weekday = LocalDate.of(2026, 11, 10)
+    /**
+     * A Tuesday inside the validity of every bundled pack. Not 10 November any more: the Marconi Express pack, built on
+     * 23 November, keeps no weekday service before that day.
+     */
+    private val weekday = LocalDate.of(2026, 11, 24)
     private val storePacks: List<EmbeddedGtfsPack> = EmbeddedGtfsPacks.forBuild(personalSources = false)
     private val provider by lazy {
         EmbeddedGtfsJourneyProvider.create(openAsset, storePacks.filterNot(EmbeddedGtfsPack::isUrban) + storePacks.filter(EmbeddedGtfsPack::isUrban))
@@ -48,15 +52,21 @@ class AirportRoutesTest {
         destinationEndpoint = JourneyEndpoint(to.name, aliases = to.aliases, railwayCode = to.railwayCode)
     )
 
-    private fun directTrains(route: AirportRoute, from: Station, to: Station): List<JourneyOption> = runBlocking {
+    /** The vehicles of [route]: trains, and the city lines too when one of its packs is a city pack. */
+    private fun modesOf(route: AirportRoute): Set<LegMode> =
+        if (storePacks.any { it.isUrban && it.sourceId.value in route.packs }) setOf(LegMode.TRAIN, LegMode.METRO, LegMode.TRAM, LegMode.FUNICULAR)
+        else setOf(LegMode.TRAIN)
+
+    private fun directRuns(route: AirportRoute, from: Station, to: Station): List<JourneyOption> = runBlocking {
         val result = provider.searchJourneys(request(from, to, "08:00"))
         val options = (result as? ProviderResult.Success)?.value ?: throw AssertionError("${from.name} -> ${to.name}: $result")
+        val modes = modesOf(route)
         options.filter { option ->
             val vehicles = option.legs.filter { it.mode != LegMode.WALK }
-            vehicles.size == 1 && vehicles.single().mode == LegMode.TRAIN &&
+            vehicles.size == 1 && vehicles.single().mode in modes &&
                 route.packs.any { pack -> vehicles.single().runId?.value?.startsWith("$pack:") == true }
         }.also { found ->
-            println("AIRPORT ${from.name} -> ${to.name}: ${found.size} direct of ${options.size}, first ${found.firstOrNull()?.legs?.first { it.mode == LegMode.TRAIN }?.let { "${it.publicNumber} ${it.scheduledDeparture.toLocalTime()}" }}")
+            println("AIRPORT ${from.name} -> ${to.name}: ${found.size} direct of ${options.size}, first ${found.firstOrNull()?.legs?.first { it.mode != LegMode.WALK }?.let { "${it.mode} ${it.lineLabel ?: ""} ${it.publicNumber ?: ""} ${it.scheduledDeparture.toLocalTime()}" }}")
         }
     }
 
@@ -78,19 +88,24 @@ class AirportRoutesTest {
                 "Roma Termini" to "Fiumicino Aeroporto", "Milano Centrale" to "Malpensa Aeroporto", "Milano Nord Cadorna" to "Malpensa Aeroporto",
                 "Bari" to "Bari Aeroporto",
                 "Palermo Centrale" to "Punta Raisi", "Cagliari" to "Elmas Aeroporto", "Trieste Centrale" to "Trieste Airport",
-                "Torino Porta Susa" to "Caselle Torinese Aeroporto"
+                "Torino Porta Susa" to "Caselle Torinese Aeroporto", "Bologna Centrale" to "Bologna Aeroporto"
             ),
             AirportRoutes.links(AirportRoutes.all, stations::get).map { it.city.name to it.airport.name }
         )
     }
 
-    @Test fun `the offline planner finds a direct train each way on a weekday with the packs of a store build`() {
+    @Test fun `the offline planner finds a direct run each way on a weekday with the packs of a store build`() {
         AirportRoutes.forBuild(storePacks).forEach { route ->
             val city = stations.getValue(route.cityStationId)
             val airport = stations.getValue(route.airportStationId)
-            assertTrue("${city.name} -> ${airport.name}", directTrains(route, city, airport).isNotEmpty())
-            assertTrue("${airport.name} -> ${city.name}", directTrains(route, airport, city).isNotEmpty())
+            assertTrue("${city.name} -> ${airport.name}", directRuns(route, city, airport).isNotEmpty())
+            assertTrue("${airport.name} -> ${city.name}", directRuns(route, airport, city).isNotEmpty())
         }
+        // Only the Marconi Express entry takes a city line; the others stay trains.
+        assertEquals(
+            listOf("curated:NC000683"),
+            AirportRoutes.all.filter { modesOf(it) != setOf(LegMode.TRAIN) }.map { it.airportStationId }
+        )
     }
 
     @Test fun `an entry shows only with one of its packs in the build, and none needs a personal pack`() {
@@ -101,7 +116,7 @@ class AirportRoutesTest {
         assertTrue(AirportRoutes.forBuild(personalOnly).isEmpty())
         val withoutTrenord = storePacks.filterNot { it.sourceId.value == "lombardia-trenord-gtfs" }
         assertEquals(
-            listOf("curated:S08411", "curated:NC001565", "curated:S12133", "curated:S12819", "curated:S03213", "curated:S00088"),
+            listOf("curated:S08411", "curated:NC001565", "curated:S12133", "curated:S12819", "curated:S03213", "curated:S00088", "curated:NC000683"),
             AirportRoutes.forBuild(withoutTrenord).map { it.airportStationId }
         )
         assertTrue(AirportRoutes.forBuild(emptyList()).isEmpty())

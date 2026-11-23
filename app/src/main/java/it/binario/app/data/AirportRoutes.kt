@@ -4,7 +4,8 @@ import it.binario.app.data.gtfs.EmbeddedGtfsPack
 
 /**
  * A ready route between a city station and an airport station, both of the curated catalogue (ids as the catalogue
- * loader builds them, `curated:<id>`), served by the trains of at least one of [packs].
+ * loader builds them, `curated:<id>`), served by the trains of at least one of [packs] (for Bologna, the Marconi
+ * Express people mover of a city pack, reached with short walks from both stations).
  */
 data class AirportRoute(val cityStationId: String, val airportStationId: String, val packs: Set<String>)
 
@@ -13,7 +14,8 @@ data class AirportLink(val route: AirportRoute, val city: Station, val airport: 
 
 /**
  * «Collegamenti con gli aeroporti» of the planner: only pairs whose stations are both in the curated catalogue and
- * whose trains the offline planner finds on a weekday in the packs every build carries (AirportRoutesTest). An entry
+ * whose trains (or people mover) the offline planner finds on a weekday in the packs every build carries
+ * (AirportRoutesTest). An entry
  * shows only when one of its [AirportRoute.packs] is in the build, so a pack shipped in personal builds only never
  * makes an entry appear in a store build. Station names are the catalogue's; the timetables carry no service brand
  * ("Leonardo Express", "Malpensa Express"), so none is shown.
@@ -22,6 +24,7 @@ object AirportRoutes {
     private const val TRENITALIA = "trenitalia-gtfs"
     private const val TRENORD = "lombardia-trenord-gtfs"
     private const val FERROTRAMVIARIA = "ferrotramviaria-bari-barletta"
+    private const val MARCONI_EXPRESS = "marconi-express-gtfs"
 
     val all: List<AirportRoute> = listOf(
         // Roma Termini ↔ Fiumicino Aeroporto (Trenitalia regional express).
@@ -38,7 +41,10 @@ object AirportRoutes {
         // Trieste Centrale ↔ Trieste Airport.
         AirportRoute("curated:S03317", "curated:S03213", setOf(TRENITALIA)),
         // Torino Porta Susa ↔ Caselle Torinese Aeroporto (SFM A).
-        AirportRoute("curated:S00035", "curated:S00088", setOf(TRENITALIA))
+        AirportRoute("curated:S00035", "curated:S00088", setOf(TRENITALIA)),
+        // Bologna Centrale ↔ Bologna Aeroporto (Marconi Express people mover: a metro line of the city pack, its stops
+        // about 130 m and 150 m from the two catalogue stations).
+        AirportRoute("curated:S05043", "curated:NC000683", setOf(MARCONI_EXPRESS))
     )
 
     /** The routes whose trains are in [packs] (the packs of this build). */
