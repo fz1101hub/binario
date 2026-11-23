@@ -196,6 +196,7 @@ La tabella copre ogni host `http(s)://` trovato in `app/src/main/java`, `wear/sr
 | `regiojet.com` | E | Catalogo fonti (`InternationalSourceCatalog.kt`), monitor-only |
 | `ressources.data.sncf.com` | E | Catalogo fonti (`RailSourceCatalog.kt`) |
 | `scraped.data.public-transport.earth` | E | Catalogo fonti (`InternationalSourceCatalog.kt`): mirror DELFI community, nessun adapter |
+| `solweb.tper.it` | E | Catalogo fonti (`RailSourceCatalog.kt`): pagina open data e GTFS del Marconi Express (`marconi-express-gtfs`, candidato di `tools/transit_packs.json`, letto solo dal CI); nessun traffico |
 | `transport.data.gouv.fr` | E | Evidenza di licenza del pack `sncf-gtfs` nel manifest GTFS (scheda della risorsa); nessun traffico |
 | `urlaubs-express.de` | E | Catalogo fonti (`InternationalSourceCatalog.kt`), monitor-only |
 | `web.ferroviedellacalabria.it` | E | Catalogo fonti (`RailSourceCatalog.kt`) |

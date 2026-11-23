@@ -195,6 +195,34 @@
       "licenceEvidence": "Nessuna licenza nel feed né sul sito Cotral; Transitland f-cotral~lazio~ferro senza licenza",
       "attribution": "Cotral S.p.A.",
       "notes": "Ferrovie Roma - Lido (Metromare) e Roma - Civita Castellana - Viterbo. Licenza non dichiarata e origine solo HTTP: solo build personali."
+    },
+    {
+      "sourceId": "marconi-express-gtfs",
+      "candidate": true,
+      "directory": "gtfs-personal",
+      "distribution": "personal",
+      "kind": "urban",
+      "format": "gtfs",
+      "operator": "TPER (Marconi Express)",
+      "sourceUrl": "https://solweb.tper.it/web/tools/open-data/open-data-download.aspx?source=solweb.tper.it&filename=gtfsmex&version=20260421&format=zip",
+      "latestVersion": {
+        "page": "https://solweb.tper.it/web/tools/open-data/open-data.aspx",
+        "pattern": "filename=gtfsmex&(?:amp;)?version=(\\d{8})"
+      },
+      "licence": "CC BY 3.0 secondo Transitland Atlas; da confermare sulla pagina open data TPER",
+      "licenceEvidence": "Transitland Atlas, feed TPER gtfsmex (CC-BY-3.0), letto come puntatore dall'elenco fonti Transitous (CC0); pagina dell'editore https://solweb.tper.it/web/tools/open-data/open-data.aspx da rileggere dal CI (transit_discovery, token page:)",
+      "attribution": "TPER S.p.A. (Marconi Express)",
+      "notes": "People mover Marconi Express Bologna Centrale - Aeroporto G. Marconi dal GTFS gtfsmex pubblicato da TPER; filtro urbano, mai autobus. L'URL porta la versione (version=AAAAMMGG): l'acquisizione legge la pagina open data TPER e usa la versione più recente elencata, altrimenti quella registrata. Candidato: solo build personali finché la licenza non è letta sulla pagina TPER.",
+      "android": {
+        "areas": [
+          {
+            "name": "Bologna",
+            "latitude": 44.506145,
+            "longitude": 11.342267,
+            "radiusKm": 8.0
+          }
+        ]
+      }
     }
   ]
 }
