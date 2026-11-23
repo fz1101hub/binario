@@ -22,6 +22,81 @@ final class WearSnapshotV1Tests: XCTestCase {
         XCTAssertLessThanOrEqual(data.count, WearSnapshotV1.maximumEncodedBytes)
     }
 
+    func testOptionalFieldsFixtureCanBeRecreatedWithReliabilityAndVehicles() throws {
+        let train = WearServiceV1(
+            number: "9505", operatorName: "Trenitalia", category: "FR", destination: "Napoli Centrale",
+            scheduled: "08:10", expected: "08:18", status: "In ritardo", platform: "7", delayMinutes: 8,
+            reliability: WearReliabilityV1(onTime: 22, samples: 27), vehicle: .train
+        )
+        let coach = WearServiceV1(
+            number: "1060", operatorName: "Italo", category: "ItaloBus", destination: "Napoli Centrale",
+            scheduled: "08:40", expected: "08:40", status: "PROGRAMMED", delayMinutes: 0, vehicle: .italobus
+        )
+        let snapshot = WearSnapshotV1(
+            generatedAtEpochMillis: now,
+            expiresAtEpochMillis: now + 900_000,
+            ttlMillis: 900_000,
+            provenanceProducer: .iosApp,
+            provenanceDataNature: .operational,
+            provenanceSourceLabel: "Fonte primaria del gestore dell’infrastruttura",
+            provenanceObservedAtEpochMillis: now - 5_000,
+            operationalState: .operational,
+            freshness: .fresh,
+            confidence: .infrastructurePrimary,
+            routeId: "S08409--S09218",
+            routeLabel: "Roma Termini → Napoli Centrale",
+            direction: .outbound,
+            notice: "",
+            services: [train, coach]
+        )
+        let data = try WearSnapshotEncoder().encode(snapshot, nowEpochMillis: now)
+        let object = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
+        let goldenData = try Data(contentsOf: repositoryRoot
+            .appendingPathComponent("contracts/wear-snapshot/v1/ios-to-apple-watch-v1-optional.json"))
+        let golden = try XCTUnwrap(JSONSerialization.jsonObject(with: goldenData) as? [String: Any])
+
+        XCTAssertEqual(Set(object.keys), Set(golden.keys))
+        XCTAssertTrue(NSDictionary(dictionary: object).isEqual(to: golden))
+        // Without them the services carry the contract keys only, as for an earlier Watch app.
+        let plain = try WearSnapshotEncoder().encode(operationalFixture(), nowEpochMillis: now)
+        let plainObject = try XCTUnwrap(JSONSerialization.jsonObject(with: plain) as? [String: Any])
+        XCTAssertFalse(plainObject.keys.contains { $0.hasSuffix("Vehicle") || $0.contains("Reliability") })
+    }
+
+    func testReliabilityOutsideTheContractRangeIsRejectedBeforeTheSession() {
+        for pair in [WearReliabilityV1(onTime: 4, samples: 4), WearReliabilityV1(onTime: 28, samples: 27),
+                     WearReliabilityV1(onTime: -1, samples: 27), WearReliabilityV1(onTime: 1, samples: 10_001)] {
+            let invalid = WearServiceV1(
+                number: "FR 9505", operatorName: "Trenitalia", category: "FR", destination: "Napoli Centrale",
+                scheduled: "08:10", expected: "08:18", status: "In ritardo", delayMinutes: 8, reliability: pair
+            )
+            XCTAssertThrowsError(try WearSnapshotEncoder().encode(replacing(operationalFixture(), services: [invalid]), nowEpochMillis: now))
+        }
+    }
+
+    func testWatchCapabilitiesComeFromTheWatchApplicationContextOnly() {
+        XCTAssertEqual(WatchCapabilities.contextKey, "binario_watch_capabilities")
+        XCTAssertEqual(WatchCapabilities.reliability, "binario_wear_reliability_v1")
+        XCTAssertEqual(WatchCapabilities.vehicle, "binario_wear_vehicle_v1")
+        XCTAssertEqual(
+            WatchCapabilities.decode([WatchCapabilities.contextKey: ["binario_wear_reliability_v1", "binario_wear_vehicle_v1"]]),
+            [WatchCapabilities.reliability, WatchCapabilities.vehicle]
+        )
+        XCTAssertEqual(WatchCapabilities.decode([:]), [])
+        XCTAssertEqual(WatchCapabilities.decode([WatchCapabilities.contextKey: "binario_wear_vehicle_v1"]), [])
+        XCTAssertEqual(WatchCapabilities.decode([WatchCapabilities.contextKey: ["", String(repeating: "x", count: 65)]]), [])
+
+        let session = FakeSession(activationState: .activated)
+        let publisher = WatchSnapshotPublisher(session: session)
+        let counter = RequestCounter()
+        publisher.capabilitiesChanged = { counter.count += 1 }
+        XCTAssertEqual(publisher.watchCapabilities, [])
+        session.watchCapabilities = [WatchCapabilities.vehicle]
+        session.capabilitiesHandler?()
+        XCTAssertEqual(counter.count, 1)
+        XCTAssertEqual(publisher.watchCapabilities, [WatchCapabilities.vehicle])
+    }
+
     func testUnavailableSnapshotCarriesNoServicesAndIsShortLived() throws {
         let snapshot = WearSnapshotV1.unavailable(
             routeId: "S08409--S09218",
@@ -325,6 +400,8 @@ private final class FakeSession: WatchSnapshotSession {
     var activationHandler: (@MainActor (WatchSessionActivationState) -> Void)?
     var watchStateHandler: (@MainActor () -> Void)?
     var refreshRequestHandler: (@MainActor () -> Void)?
+    var watchCapabilities: Set<String> = []
+    var capabilitiesHandler: (@MainActor () -> Void)?
     var activationCount = 0
     var contexts: [[String: Data]] = []
     var error: Error?

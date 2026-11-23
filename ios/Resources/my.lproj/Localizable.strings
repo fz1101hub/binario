@@ -235,6 +235,12 @@
 "watch.source.unavailable" = "ခွင့်ပြုထားသော iOS ပံ့ပိုးသူ မရှိပါ";
 "watch.notice.unavailable" = "အချိန်နှင့်တပြေးညီ ရထားဒေတာ မရရှိနိုင်ပါ။";
 "watch.notice.programmed" = "ပုံသေ စီစဉ်ထားသော အချိန်များ။ အချိန်နှင့်တပြေးညီ ဒေတာ မဟုတ်ပါ။";
+"watch.notice.cancelled" = "ဖျက်သိမ်းပြီး- %2$@ ၏ %1$@";
+"watch.notice.source_conflict" = "အချက်အချို့တွင် ရင်းမြစ်များ မကိုက်ညီပါ- မထွက်ခွာမီ တရားဝင် လမ်းကြောင်းမှ စစ်ဆေးပါ။";
+"watch.service.on_time" = "အချိန်မှန်";
+"watch.service.delayed" = "နောက်ကျ";
+"watch.source.operator_primary" = "ရထားကုမ္ပဏီ၏ မူလ ရင်းမြစ်";
+"watch.source.infrastructure_primary" = "အခြေခံအဆောက်အအုံ စီမံသူ၏ မူလ ရင်းမြစ်";
 "accessibility.station_suggestions" = "ဘူတာ အကြံပြုချက်များ";
 "accessibility.selected_station" = "ဘူတာ ရွေးပါ";
 "accessibility.swap_route" = "စထွက်ရာနှင့် ဦးတည်ရာကို လဲလှယ်ရန်";

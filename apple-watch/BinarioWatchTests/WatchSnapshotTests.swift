@@ -73,6 +73,87 @@ final class WatchSnapshotTests: XCTestCase {
         XCTAssertEqual(snapshot?.operationalState, .unknown)
     }
 
+    func testOptionalFieldsFixtureDecodesReliabilityAndVehicles() throws {
+        let snapshot = try XCTUnwrap(BinarioWatchSnapshot.decodeContract(try fixtureData("ios-to-apple-watch-v1-optional"), nowEpochMillis: fixtureNow))
+
+        XCTAssertEqual(snapshot.services.first?.reliability, WatchReliability(onTime: 22, samples: 27))
+        XCTAssertEqual(snapshot.services.first?.vehicle, .train)
+        XCTAssertEqual(snapshot.services.first?.isBus, false)
+        XCTAssertNil(snapshot.services.last?.reliability)
+        XCTAssertEqual(snapshot.services.last?.vehicle, .italobus)
+        XCTAssertEqual(snapshot.services.last?.isBus, true)
+        // The iPhone sends the bus label as the category: the row reads «ItaloBus 1060», never «treno».
+        XCTAssertEqual(snapshot.services.last?.category, "ItaloBus")
+        XCTAssertNotEqual(snapshot.services.last?.accessibilitySummary, snapshot.services.last.map { service in
+            WatchService(
+                number: service.number, operatorName: service.operatorName, category: service.category,
+                destination: service.destination, scheduledDeparture: service.scheduledDeparture,
+                expectedDeparture: service.expectedDeparture, platform: service.platform,
+                delayMinutes: service.delayMinutes, status: service.status
+            ).accessibilitySummary
+        })
+        // Without the fields, as an earlier iPhone sends it, every service is a train without reliability.
+        let plain = try XCTUnwrap(BinarioWatchSnapshot.decodeContract(try fixtureData(), nowEpochMillis: fixtureNow))
+        XCTAssertTrue(plain.services.allSatisfy { $0.vehicle == nil && !$0.isBus && $0.reliability == nil })
+    }
+
+    func testOptionalFieldsAreRejectedWhenIncompleteOutOfRangeOrMalformed() throws {
+        let object = try XCTUnwrap(JSONSerialization.jsonObject(with: fixtureData("ios-to-apple-watch-v1-optional")) as? [String: Any])
+        func decoded(_ change: (inout [String: Any]) -> Void) throws -> BinarioWatchSnapshot? {
+            var variant = object
+            change(&variant)
+            return BinarioWatchSnapshot.decodeContract(try JSONSerialization.data(withJSONObject: variant), nowEpochMillis: fixtureNow)
+        }
+
+        XCTAssertNil(try decoded { $0["service0ReliabilitySamples"] = nil })
+        XCTAssertNil(try decoded { $0["service0ReliabilityOnTime"] = nil })
+        XCTAssertNil(try decoded { $0["service0ReliabilitySamples"] = 4 })
+        XCTAssertNil(try decoded { $0["service0ReliabilitySamples"] = 10_001 })
+        XCTAssertNil(try decoded { $0["service0ReliabilityOnTime"] = 28 })
+        XCTAssertNil(try decoded { $0["service0ReliabilityOnTime"] = "22" })
+        XCTAssertNil(try decoded { $0["service0Vehicle"] = "" })
+        XCTAssertNil(try decoded { $0["service0Vehicle"] = " BUS" })
+        XCTAssertNil(try decoded { $0["service0Vehicle"] = String(repeating: "B", count: 33) })
+        XCTAssertNil(try decoded { $0["service2Vehicle"] = "BUS" })
+        XCTAssertNil(try decoded { $0["service2ReliabilityOnTime"] = 1; $0["service2ReliabilitySamples"] = 5 })
+        // A vehicle this version does not know is shown as a train; each service carries its own.
+        XCTAssertEqual(try decoded { $0["service1Vehicle"] = "FERRY" }?.services.last?.vehicle, .unknown)
+        XCTAssertEqual(try decoded { $0["service1Vehicle"] = "FERRY" }?.services.last?.isBus, false)
+        XCTAssertNil(try decoded { $0["service0Vehicle"] = nil }?.services.first?.vehicle)
+        XCTAssertEqual(try decoded { $0["service0ReliabilityOnTime"] = 0; $0["service0ReliabilitySamples"] = 5 }?.services.first?.reliability, WatchReliability(onTime: 0, samples: 5))
+    }
+
+    func testOptionalFieldsSurviveTheAppGroupCopy() throws {
+        let snapshot = try XCTUnwrap(BinarioWatchSnapshot.decodeContract(try fixtureData("ios-to-apple-watch-v1-optional"), nowEpochMillis: fixtureNow))
+        let stored = try JSONEncoder().encode(snapshot)
+        let object = try XCTUnwrap(JSONSerialization.jsonObject(with: stored) as? [String: Any])
+
+        XCTAssertEqual(object["service0ReliabilityOnTime"] as? Int, 22)
+        XCTAssertEqual(object["service1Vehicle"] as? String, "ITALOBUS")
+        XCTAssertNil(object["service1ReliabilityOnTime"])
+        XCTAssertEqual(BinarioWatchSnapshot.decodeContract(stored, nowEpochMillis: fixtureNow), snapshot)
+        // Revalidation keeps them on the trains still to come.
+        let later = snapshot.revalidated(at: Date(timeIntervalSince1970: TimeInterval(fixtureNow) / 1_000))
+        XCTAssertEqual(later.services.map(\.vehicle), snapshot.services.map(\.vehicle))
+    }
+
+    func testLiveDataNameTheTimeTheirSourceObservedThem() throws {
+        let snapshot = try XCTUnwrap(BinarioWatchSnapshot.decodeContract(try fixtureData(), nowEpochMillis: fixtureNow))
+        // 1_893_484_795_000 is 08:59:55 in Rome on 1 January 2030.
+        XCTAssertEqual(snapshot.observedClockTime, "08:59")
+        XCTAssertEqual(snapshot.displayFreshnessLabel, WatchLocalization.text("watch.freshness.liveAsOf \("08:59")"))
+        XCTAssertNotEqual(snapshot.displayFreshnessLabel, snapshot.freshness.label)
+    }
+
+    func testTheWatchDeclaresTheOptionalFieldsItDecodes() {
+        XCTAssertEqual(WatchCapabilityDeclaration.contextKey, "binario_watch_capabilities")
+        XCTAssertEqual(
+            Set(WatchCapabilityDeclaration.capabilities),
+            ["binario_wear_reliability_v1", "binario_wear_vehicle_v1"]
+        )
+        XCTAssertEqual(WatchCapabilityDeclaration.context[WatchCapabilityDeclaration.contextKey] as? [String], WatchCapabilityDeclaration.capabilities)
+    }
+
     func testFutureVersionExtraKeyAndExpiredPayloadAreRejected() throws {
         let object = try XCTUnwrap(JSONSerialization.jsonObject(with: fixtureData()) as? [String: Any])
         var futureVersion = object
@@ -327,8 +408,8 @@ final class WatchSnapshotTests: XCTestCase {
         return try XCTUnwrap(calendar.date(from: DateComponents(year: year, month: month, day: day, hour: hour, minute: minute)))
     }
 
-    private func fixtureData() throws -> Data {
-        let url = try XCTUnwrap(Bundle(for: Self.self).url(forResource: "ios-to-apple-watch-v1", withExtension: "json"))
+    private func fixtureData(_ name: String = "ios-to-apple-watch-v1") throws -> Data {
+        let url = try XCTUnwrap(Bundle(for: Self.self).url(forResource: name, withExtension: "json"))
         return try Data(contentsOf: url)
     }
 }

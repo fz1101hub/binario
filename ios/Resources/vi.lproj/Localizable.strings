@@ -235,6 +235,12 @@
 "watch.source.unavailable" = "Không có nhà cung cấp iOS được cấp phép";
 "watch.notice.unavailable" = "Dữ liệu đường sắt thời gian thực không khả dụng.";
 "watch.notice.programmed" = "Giờ theo kế hoạch cố định. Đây không phải dữ liệu thời gian thực.";
+"watch.notice.cancelled" = "Đã hủy: %1$@ lúc %2$@";
+"watch.notice.source_conflict" = "Các nguồn mâu thuẫn ở một số trường: hãy kiểm tra kênh chính thức trước khi đi.";
+"watch.service.on_time" = "Đúng giờ";
+"watch.service.delayed" = "Trễ";
+"watch.source.operator_primary" = "Nguồn chính của nhà vận hành";
+"watch.source.infrastructure_primary" = "Nguồn chính của đơn vị quản lý hạ tầng";
 "accessibility.station_suggestions" = "Gợi ý ga";
 "accessibility.selected_station" = "Chọn ga";
 "accessibility.swap_route" = "Đổi chỗ ga đi và ga đến";

@@ -179,6 +179,8 @@ targets:
       - path: ../apple-watch/BinarioWatchTests
       - path: ../contracts/wear-snapshot/v1/ios-to-apple-watch-v1.json
         buildPhase: resources
+      - path: ../contracts/wear-snapshot/v1/ios-to-apple-watch-v1-optional.json
+        buildPhase: resources
     dependencies:
       - target: BinarioWatch
     settings:

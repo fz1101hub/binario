@@ -869,7 +869,8 @@ class IOSProjectTests(unittest.TestCase):
         planner = (IOS / "BinarioApp/PlannerView.swift").read_text(encoding="utf-8")
         model_tests = (IOS / "BinarioAppTests/BinarioAppTests.swift").read_text(encoding="utf-8")
         publish = model.split("private func publishAvailableSnapshot(", 1)[1].split("static func isCurrent(", 1)[0]
-        self.assertIn("Self.upcomingDepartures(in: journey, now: nowDate).prefix(WearSnapshotV1.maximumServices)", publish)
+        self.assertIn("let upcoming = Self.upcomingDepartures(in: journey, now: nowDate, live: values)", publish)
+        self.assertIn("Array(upcoming.filter { $0.live?.cancelled != true }.prefix(WearSnapshotV1.maximumServices))", publish)
         self.assertIn("Self.watchExpiry(for: journey, departures: departures, now: nowDate)", publish)
         self.assertNotIn("journey.services.prefix(", model)
         self.assertIn("offset >= -5 * 60 && offset <= 15 * 60", model)
@@ -1830,9 +1831,14 @@ class IOSProjectTests(unittest.TestCase):
         self.assertIn("parts += LiveTexts.spoken(live, includingPlatform: false)", app["DeparturesView.swift"])
         self.assertIn(".accessibilityLabel(Text(LiveTexts.spokenStop(stop)))", app["TrainDetailView.swift"])
         self.assertIn('.accessibilityLabel(Text(LiveTexts.spoken(status, includingPlatform: showsPlatform).joined(separator: ". ")))', app["LiveTexts.swift"])
-        # The Watch keeps the programmed snapshot.
+        # The Watch gets the live values the iPhone already has, never a request of its own.
         publish = model.split("private func publishAvailableSnapshot(", 1)[1].split("static func isCurrent(", 1)[0]
-        self.assertNotIn("Live", publish)
+        self.assertNotIn("liveData", publish)
+        self.assertNotIn(".departures(", publish)
+        self.assertIn("let live = watchLiveBoard(for: journey.query.origin, at: nowDate)", publish)
+        board = publish.split("private func watchLiveBoard(", 1)[1].split("static func isVerified(", 1)[0]
+        self.assertIn("guard isLiveDataActive else { return nil }", board)
+        self.assertIn("Self.isLiveDisplayable(since: $0.at, now: now)", board)
 
         model_tests = (IOS / "BinarioAppTests/BinarioAppTests.swift").read_text(encoding="utf-8")
         for name in (

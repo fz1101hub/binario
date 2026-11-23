@@ -235,6 +235,12 @@
 "watch.source.unavailable" = "Tidak ada penyedia iOS resmi";
 "watch.notice.unavailable" = "Data kereta waktu nyata tidak tersedia.";
 "watch.notice.programmed" = "Jadwal terencana statis. Ini bukan data waktu nyata.";
+"watch.notice.cancelled" = "Dibatalkan: %1$@ pukul %2$@";
+"watch.notice.source_conflict" = "Sumber berbeda pada beberapa kolom: periksa kanal resmi sebelum bepergian.";
+"watch.service.on_time" = "Tepat waktu";
+"watch.service.delayed" = "Terlambat";
+"watch.source.operator_primary" = "Sumber utama operator";
+"watch.source.infrastructure_primary" = "Sumber utama pengelola infrastruktur";
 "accessibility.station_suggestions" = "Saran stasiun";
 "accessibility.selected_station" = "Pilih stasiun";
 "accessibility.swap_route" = "Tukar asal dan tujuan";

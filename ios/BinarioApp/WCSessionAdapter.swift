@@ -11,6 +11,9 @@ final class WCSessionAdapter: NSObject, WatchSnapshotSession, WCSessionDelegate 
     var activationHandler: (@MainActor (WatchSessionActivationState) -> Void)?
     var watchStateHandler: (@MainActor () -> Void)?
     var refreshRequestHandler: (@MainActor () -> Void)?
+    var capabilitiesHandler: (@MainActor () -> Void)?
+    /// What the Watch app declared in its own application context (`WatchCapabilities`).
+    private(set) var watchCapabilities: Set<String> = []
 
     var isSupported: Bool {
         WCSession.isSupported()
@@ -60,6 +63,8 @@ final class WCSessionAdapter: NSObject, WatchSnapshotSession, WCSessionDelegate 
         error: Error?
     ) {
         let state: WatchSessionActivationState
+        // The Watch app's declaration of the optional fields it decodes, as last received.
+        let capabilities = error == nil ? WatchCapabilities.decode(session.receivedApplicationContext) : []
         if error != nil {
             state = .failed
         } else {
@@ -71,8 +76,23 @@ final class WCSessionAdapter: NSObject, WatchSnapshotSession, WCSessionDelegate 
             }
         }
         Task { @MainActor [weak self] in
+            self?.receive(capabilities)
             self?.activationHandler?(state)
         }
+    }
+
+    /// The Watch app published its application context: the optional fields it decodes.
+    nonisolated func session(_ session: WCSession, didReceiveApplicationContext applicationContext: [String: Any]) {
+        let capabilities = WatchCapabilities.decode(applicationContext)
+        Task { @MainActor [weak self] in
+            self?.receive(capabilities)
+        }
+    }
+
+    private func receive(_ capabilities: Set<String>) {
+        guard capabilities != watchCapabilities else { return }
+        watchCapabilities = capabilities
+        capabilitiesHandler?()
     }
 
     nonisolated func sessionDidBecomeInactive(_ session: WCSession) {

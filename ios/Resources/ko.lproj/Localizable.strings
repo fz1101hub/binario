@@ -235,6 +235,12 @@
 "watch.source.unavailable" = "승인된 iOS 제공자 없음";
 "watch.notice.unavailable" = "실시간 철도 데이터를 사용할 수 없습니다.";
 "watch.notice.programmed" = "고정된 계획 시각입니다. 실시간 데이터가 아닙니다.";
+"watch.notice.cancelled" = "운행 취소: %2$@ %1$@";
+"watch.notice.source_conflict" = "일부 항목에서 출처 간 정보가 다릅니다. 출발 전에 공식 채널을 확인하세요.";
+"watch.service.on_time" = "정시";
+"watch.service.delayed" = "지연";
+"watch.source.operator_primary" = "운영사 1차 출처";
+"watch.source.infrastructure_primary" = "인프라 관리자 1차 출처";
 "accessibility.station_suggestions" = "역 추천";
 "accessibility.selected_station" = "역 선택";
 "accessibility.swap_route" = "출발역과 도착역 바꾸기";
