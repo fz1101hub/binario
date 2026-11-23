@@ -80,6 +80,8 @@ MAX_ARCHIVE_ENTRIES = 128
 MAX_ARCHIVE_UNCOMPRESSED_BYTES = 1024 * 1024 * 1024
 MAX_ARCHIVE_MEMBER_BYTES = 512 * 1024 * 1024
 MAX_COMPRESSION_RATIO = 200
+# Members named, largest first, when an archive exceeds MAX_ARCHIVE_UNCOMPRESSED_BYTES.
+ARCHIVE_LIMIT_REPORTED_MEMBERS = 4
 # Rows read from one source table (only the rows a filter keeps are retained, see MAX_RETAINED_*). City feeds are
 # mostly buses: Rome's stop_times.txt has 5.1 million rows, of which the metro and tram pack keeps a fraction.
 MAX_TABLE_ROWS = 8_000_000
@@ -579,8 +581,12 @@ def validate_archive_limits(archive: zipfile.ZipFile, *, omit_geometry: bool = F
     files = [entry for entry in entries if not entry.is_dir()]
     total = sum(entry.file_size for entry in files)
     if total > MAX_ARCHIVE_UNCOMPRESSED_BYTES:
+        # The largest members, so that the reviewer sees from the log alone what grew (the source is not fetched again
+        # to find out); names come from the archive, hence log_safe.
+        largest = sorted(files, key=lambda entry: entry.file_size, reverse=True)[:ARCHIVE_LIMIT_REPORTED_MEMBERS]
         raise BuildError(
-            f"archivio GTFS decompresso oltre limite: {total} > {MAX_ARCHIVE_UNCOMPRESSED_BYTES} bytes"
+            f"archivio GTFS decompresso oltre limite: {total} > {MAX_ARCHIVE_UNCOMPRESSED_BYTES} bytes "
+            f"(membri più grandi: {', '.join(f'{log_safe(entry.filename)} {entry.file_size}' for entry in largest)})"
         )
     for entry in files:
         # Timetable packs never open shapes.txt. Keep the total-size, entry and
