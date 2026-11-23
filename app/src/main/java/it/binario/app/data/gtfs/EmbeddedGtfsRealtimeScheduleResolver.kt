@@ -67,6 +67,9 @@ class EmbeddedGtfsRealtimeScheduleResolver(
         } catch (_: GtfsCompactIndexLimitException) {
             return null
         }
+        // The app shows a pack's times as local times: a pack whose agency_timezone is another offset that day (the
+        // Trenitalia France GTFS publishes UTC) would put the update on the wrong scheduled time, so it joins nothing.
+        if (!day.timesIn(zone, serviceDate)) return null
         val candidates = day.rows(update.sourceTripId)
         val match = candidates.firstOrNull { row ->
             val idMatches = update.sourceStopId != null && row.stopId == update.sourceStopId
@@ -106,8 +109,9 @@ class EmbeddedGtfsRealtimeScheduleResolver(
 
     /** The trips that run on [date] (null: the pack has no calendar, so every trip), then their stop times. */
     private fun readDay(pack: EmbeddedGtfsPack, date: LocalDate): DayStopTimes {
-        val active = activeTrips(openAsset(pack.assetPath), date)
-        val day = DayStopTimes(limits.maxStopTimeRows)
+        val zones = HashSet<ZoneId>()
+        val active = activeTrips(openAsset(pack.assetPath), date, zones)
+        val day = DayStopTimes(limits.maxStopTimeRows, zones)
         BoundedGtfsZipScanner(limits).scan(openAsset(pack.assetPath), setOf("stop_times.txt")) { _, rows ->
             val tripIndex = rows.header.indexOf("trip_id")
             val arrivalIndex = rows.header.indexOf("arrival_time")
@@ -127,7 +131,8 @@ class EmbeddedGtfsRealtimeScheduleResolver(
         return day
     }
 
-    private fun activeTrips(stream: InputStream, date: LocalDate): Set<String>? {
+    /** The trips of [date] (null: every trip), adding the pack's valid `agency_timezone` values to [zones]. */
+    private fun activeTrips(stream: InputStream, date: LocalDate, zones: MutableSet<ZoneId>): Set<String>? {
         val ymd = date.format(DateTimeFormatter.BASIC_ISO_DATE).toInt()
         // calendar.txt names its weekday columns "monday" … "sunday".
         val weekday = date.dayOfWeek.name.lowercase(java.util.Locale.ROOT)
@@ -137,8 +142,14 @@ class EmbeddedGtfsRealtimeScheduleResolver(
         var hasCalendar = false
         val tripServices = ArrayList<Pair<String, String>>()
         var hasTrips = false
-        BoundedGtfsZipScanner(limits).scan(stream, setOf("calendar.txt", "calendar_dates.txt", "trips.txt")) { table, rows ->
+        BoundedGtfsZipScanner(limits).scan(stream, setOf("agency.txt", "calendar.txt", "calendar_dates.txt", "trips.txt")) { table, rows ->
             when (table) {
+                "agency.txt" -> {
+                    val timezone = rows.header.indexOf("agency_timezone")
+                    rows.forEachRow(limits.maxAgencies) { row ->
+                        runCatching { ZoneId.of(row.gtfsValue(timezone)) }.getOrNull()?.let(zones::add)
+                    }
+                }
                 "calendar.txt" -> {
                     hasCalendar = true
                     val service = rows.header.indexOf("service_id")
@@ -178,7 +189,14 @@ class EmbeddedGtfsRealtimeScheduleResolver(
     }
 
     /** Stop times of one pack and day in int columns, chained per trip; built once and then only read. */
-    private class DayStopTimes(private val maximum: Int) {
+    private class DayStopTimes(private val maximum: Int, private val agencyZones: Set<ZoneId>) {
+        /** True when every agency_timezone of the pack has [zone]'s offset at noon of [date] (or the pack names none). */
+        fun timesIn(zone: ZoneId, date: LocalDate): Boolean {
+            val noon = date.atTime(12, 0)
+            val offset = zone.rules.getOffset(noon)
+            return agencyZones.all { it.rules.getOffset(noon) == offset }
+        }
+
         private val tripHeads = HashMap<String, Int>()
         private val stopIds = HashMap<String, String>()
         private var stops = arrayOfNulls<String>(1024)
