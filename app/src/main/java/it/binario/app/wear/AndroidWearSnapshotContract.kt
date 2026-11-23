@@ -5,6 +5,7 @@ import it.binario.app.R
 import it.binario.app.UiMessageKey
 import it.binario.app.advisoryMessage
 import it.binario.app.data.DataConfidence
+import it.binario.app.data.RailTime
 import it.binario.app.data.RailOperator
 import it.binario.app.data.RouteSnapshot
 import it.binario.app.data.ServiceStatus
@@ -80,6 +81,15 @@ internal object AndroidWearSnapshotContract {
     /** Advertised by the watch apps that decode the optional vehicle of a service (wear/src/main/res/values/wear.xml). */
     const val VEHICLE_CAPABILITY = "binario_wear_vehicle_v1"
     /**
+     * Advertised by the watch apps that show the programmed times once the live values are 15 minutes old: only
+     * they get a payload valid until the last train sent ([operational]).
+     */
+    const val FALLBACK_CAPABILITY = "binario_wear_programmed_fallback_v1"
+    /** The programmed lifetime ends this long after the last train sent leaves, as the iPhone's does. */
+    private const val LAST_DEPARTURE_MARGIN_MILLIS = 2 * 60 * 1_000L
+    /** The programmed lifetime never exceeds the iPhone's timetable expiry. */
+    private const val MAX_PROGRAMMED_LIFETIME_MILLIS = 12 * 60 * 60 * 1_000L
+    /**
      * The `routeId` of every operational payload. The watch never uses the route identity, so the saved route's
      * persistent id stays on the phone; v1 decoders require a non-blank value, so the key cannot be left out.
      */
@@ -96,21 +106,28 @@ internal object AndroidWearSnapshotContract {
      * The watch shows it for 15 minutes from [generatedAtEpochMillis] and never more than 15 minutes past the
      * snapshot's own validity. That validity is the source cache's (30-60 s for a live board): used as the deadline,
      * it expired the glance before the user looked at it. The watch names the observation time of live values.
+     * With [programmedFallback] (every connected watch shows the programmed times once the live values are 15
+     * minutes old) the payload lasts until the last train sent leaves ([programmedExpiry]).
      */
     fun operational(
         snapshot: RouteSnapshot,
         generatedAtEpochMillis: Long,
         strings: WearSnapshotStrings,
         vehicles: Boolean = false,
+        programmedFallback: Boolean = false,
         reliabilityOf: (TrainService) -> ReliabilityMark? = { null }
     ): Map<String, Any> {
-        val expiresAt = minOf(generatedAtEpochMillis, snapshot.expiresAtEpochMillis) + maxTtlMillis
-        require(expiresAt > generatedAtEpochMillis) { "Uno snapshot scaduto non può essere pubblicato" }
+        val liveExpiry = minOf(generatedAtEpochMillis, snapshot.expiresAtEpochMillis) + maxTtlMillis
+        require(liveExpiry > generatedAtEpochMillis) { "Uno snapshot scaduto non può essere pubblicato" }
         val ordered = orderServicesForDisplay(snapshot.services)
         // The Tile and the complication show the next of these as "the next train" without its status.
         val services = ordered.filterNot(::confirmedCancelled).take(2)
         val operational = services.any { it.operationalStatusVerified }
         val dataNature = if (operational) "OPERATIONAL" else "PROGRAMMED"
+        // The watch shows live values for 15 minutes from the generation: not when they were valid for less.
+        val programmed = programmedExpiry(services, generatedAtEpochMillis)
+            ?.takeIf { programmedFallback && (!operational || liveExpiry == generatedAtEpochMillis + maxTtlMillis) }
+        val expiresAt = maxOf(liveExpiry, programmed ?: liveExpiry)
         return buildMap {
             put("schemaVersion", schemaVersion)
             put("generatedAtEpochMillis", generatedAtEpochMillis)
@@ -150,6 +167,37 @@ internal object AndroidWearSnapshotContract {
                 if (vehicles) put("service${index}Vehicle", vehicle.name)
             }
         }
+    }
+
+    /**
+     * Two minutes after the programmed departure of the last of [services], at most 12 hours after
+     * [generatedAtEpochMillis]: the programmed snapshot of the iPhone lasts as long. Null without a service or when one
+     * has no programmed date (an "HH:mm" alone cannot be placed beyond the day of the request).
+     */
+    internal fun programmedExpiry(services: List<TrainService>, generatedAtEpochMillis: Long): Long? {
+        if (services.isEmpty()) return null
+        val last = services.maxOf { service -> service.scheduledDepartureDateTime ?: return null }
+        val leaves = last.atZone(RailTime.defaultZone).toInstant().toEpochMilli() + LAST_DEPARTURE_MARGIN_MILLIS
+        return minOf(leaves, generatedAtEpochMillis + MAX_PROGRAMMED_LIFETIME_MILLIS)
+    }
+
+    /**
+     * [payload] valid at most 15 minutes from its generation, as a watch app without [FALLBACK_CAPABILITY] shows
+     * it: such an app would show live values as current up to the programmed deadline. Null when that is past.
+     */
+    fun withoutProgrammedLifetime(payload: Map<String, Any?>, nowEpochMillis: Long): Map<String, Any?>? {
+        val generatedAt = (payload["generatedAtEpochMillis"] as? Number)?.toLong() ?: return null
+        val expiresAt = (payload["expiresAtEpochMillis"] as? Number)?.toLong() ?: return null
+        val clamped = minOf(expiresAt, generatedAt + maxTtlMillis)
+        if (clamped <= nowEpochMillis) return null
+        if (clamped == expiresAt) return payload
+        return payload + mapOf("expiresAtEpochMillis" to clamped, "ttlMillis" to clamped - generatedAt)
+    }
+
+    fun hasProgrammedLifetime(payload: Map<String, Any?>): Boolean {
+        val generatedAt = (payload["generatedAtEpochMillis"] as? Number)?.toLong() ?: return false
+        val expiresAt = (payload["expiresAtEpochMillis"] as? Number)?.toLong() ?: return false
+        return expiresAt - generatedAt > maxTtlMillis
     }
 
     fun unavailable(routeLabel: String, provider: String, generatedAtEpochMillis: Long, strings: WearSnapshotStrings): Map<String, Any> = mapOf(
@@ -204,7 +252,7 @@ internal object AndroidWearSnapshotContract {
     /**
      * Whether an optional field may be sent: a v1 decoder of an earlier watch app rejects unknown keys, so only when
      * every connected watch advertises its capability ([RELIABILITY_CAPABILITY], [VEHICLE_CAPABILITY]) and at least
-     * one is connected.
+     * one is connected. The programmed lifetime ([FALLBACK_CAPABILITY]) follows the same rule.
      */
     fun watchesDecodeReliability(connectedNodes: Set<String>, capableNodes: Set<String>): Boolean =
         connectedNodes.isNotEmpty() && capableNodes.containsAll(connectedNodes)

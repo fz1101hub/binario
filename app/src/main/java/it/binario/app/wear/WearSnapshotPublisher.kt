@@ -51,8 +51,13 @@ object WearSnapshotPublisher {
         // Up to 3 s for each capability check, plus the statistics load: the payload is dated after them.
         val reliability = reliabilityFor(context, snapshot)
         val vehicles = watchesDecode(context, AndroidWearSnapshotContract.VEHICLE_CAPABILITY)
+        val programmedFallback = watchesDecode(context, AndroidWearSnapshotContract.FALLBACK_CAPABILITY)
         publishPayload(context, token, WearRefreshTarget(snapshot.route, snapshot.direction).encode()) { generatedAt ->
-            runCatching { AndroidWearSnapshotContract.operational(snapshot, generatedAt, strings, vehicles, reliability) }
+            runCatching {
+                AndroidWearSnapshotContract.operational(
+                    snapshot, generatedAt, strings, vehicles = vehicles, programmedFallback = programmedFallback, reliabilityOf = reliability
+                )
+            }
                 .getOrElse { AndroidWearSnapshotContract.unavailable(snapshot.routeLabel, snapshot.providerName, generatedAt, strings) }
         }
     }
@@ -132,11 +137,17 @@ object WearSnapshotPublisher {
             ) {
                 AndroidWearSnapshotContract.withoutReliability(stored)
             } else stored
-            val payload = if (AndroidWearSnapshotContract.hasVehicles(withReliability) &&
+            val withVehicles = if (AndroidWearSnapshotContract.hasVehicles(withReliability) &&
                 !watchesDecode(context, AndroidWearSnapshotContract.VEHICLE_CAPABILITY)
             ) {
                 AndroidWearSnapshotContract.withoutVehicles(withReliability)
             } else withReliability
+            // Nor would it show the programmed times once the live values are 15 minutes old.
+            val payload = if (AndroidWearSnapshotContract.hasProgrammedLifetime(withVehicles) &&
+                !watchesDecode(context, AndroidWearSnapshotContract.FALLBACK_CAPABILITY)
+            ) {
+                AndroidWearSnapshotContract.withoutProgrammedLifetime(withVehicles, System.currentTimeMillis()) ?: return@runPublication false
+            } else withVehicles
             val expiresAt = (payload["expiresAtEpochMillis"] as? Number)?.toLong() ?: return@runPublication false
             if (expiresAt <= System.currentTimeMillis()) return@runPublication false
             runWearSafely { putPayload(context, payload) }

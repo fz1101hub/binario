@@ -42,11 +42,14 @@ import com.google.android.gms.wearable.CapabilityClient
 import com.google.android.gms.wearable.Wearable
 import it.binario.wear.model.WearSnapshot
 import it.binario.wear.sync.WearSnapshotStore
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 
 class WearMainActivity : ComponentActivity() {
     private val phoneApp = MutableStateFlow(WearPhoneAppPresence.UNKNOWN)
     private val refreshFeedback = MutableStateFlow<WearRefreshFeedback?>(null)
+    /** The time the screen shows the snapshot at: moved on resume, when a train leaves and when the live values expire. */
+    private val clock = MutableStateFlow(System.currentTimeMillis())
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -55,9 +58,17 @@ class WearMainActivity : ComponentActivity() {
             val expired by WearSnapshotStore.expired(this).collectAsState()
             val phoneAppPresence by phoneApp.collectAsState()
             val feedback by refreshFeedback.collectAsState()
+            val now by clock.collectAsState()
             // A newly received snapshot answers the request, so its note is no longer current.
             LaunchedEffect(snapshot?.generatedAtEpochMillis) { refreshFeedback.value = null }
-            BinarioWearTheme { AppScaffold { WearHome(snapshot, expired, phoneAppPresence, feedback, ::requestRefreshFromPhone) } }
+            // A train that left goes and, past the live window, the programmed times come, without waiting for a resume.
+            LaunchedEffect(snapshot, now) {
+                val next = snapshot?.nextListChangeAt(now) ?: return@LaunchedEffect
+                delay(next - now)
+                clock.value = System.currentTimeMillis()
+            }
+            val shown = snapshot?.listedAt(now, stringResource(R.string.service_status_programmed))
+            BinarioWearTheme { AppScaffold { WearHome(shown, expired, phoneAppPresence, feedback, ::requestRefreshFromPhone) } }
         }
     }
 
@@ -66,6 +77,7 @@ class WearMainActivity : ComponentActivity() {
         // The expiry callback is posted on uptime, which stops while the watch sleeps, so a value
         // that expired meanwhile is still in the StateFlow: revalidate before the screen shows it.
         WearSnapshotStore.current(this)
+        clock.value = System.currentTimeMillis()
         // A snapshot the phone published before this install, or before the watch data was cleared,
         // is never redelivered as DATA_CHANGED: read it back from the Data Layer.
         WearSnapshotStore.bootstrapFromDataLayer(this)
@@ -115,8 +127,11 @@ private fun WearHome(snapshot: WearSnapshot?, expired: Boolean, phoneApp: WearPh
                     val statusDescription = stringResource(R.string.accessibility_data_status, dataStatus)
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(dataStatus, style = MaterialTheme.typography.labelMedium, textAlign = TextAlign.Center, modifier = Modifier.semantics { contentDescription = statusDescription })
-                        // Where the phone took the data from («Fonte primaria dell’operatore», the timetable…), in the phone's language.
-                        Text(snapshot.provider, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
+                        // Where the phone took the data from («Fonte primaria dell’operatore», the timetable…), in the phone's language;
+                        // none once the live values expired and the programmed times are shown.
+                        if (snapshot.provider.isNotBlank()) {
+                            Text(snapshot.provider, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
+                        }
                     }
                 }
                 itemsIndexed(

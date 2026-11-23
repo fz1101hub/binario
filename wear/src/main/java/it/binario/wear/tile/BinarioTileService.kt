@@ -21,6 +21,7 @@ import it.binario.wear.complication.laterGlanceSegments
 import it.binario.wear.complication.upcomingService
 import it.binario.wear.dataStatus
 import it.binario.wear.glanceNumber
+import it.binario.wear.shownAt
 import it.binario.wear.model.WearService
 import it.binario.wear.model.WearSnapshot
 import it.binario.wear.string
@@ -37,7 +38,14 @@ class BinarioTileService : TileService() {
             TileBuilders.Tile.Builder()
                 .setResourcesVersion(RESOURCES_VERSION)
                 .setFreshnessIntervalMillis(30L * 60L * 1000L)
-                .setTileTimeline(binarioTileTimeline(snapshot, System.currentTimeMillis()) { content -> binarioTileLayout(content, device, strings, packageName) })
+                .setTileTimeline(
+                    binarioTileTimeline(
+                        snapshot,
+                        System.currentTimeMillis(),
+                        layout = { content -> binarioTileLayout(content, device, strings, packageName) },
+                        programmedStatus = strings.string(R.string.service_status_programmed),
+                    )
+                )
                 .build()
         )
     }
@@ -73,12 +81,14 @@ internal sealed interface WearTileContent {
  * The unbounded entry is the fallback selected whenever no snapshot entry is valid: "expired" after
  * the deadline of a snapshot, "nothing synced" without one. The snapshot entries cover the time up to the deadline: the first one shows the service
  * of the glance at [nowEpochMillis], each later one the next service from one minute after the
- * previous one leaves ([laterGlanceSegments]). Every entry comes from the same [layout].
+ * previous one leaves, or the programmed times once the live values expire ([laterGlanceSegments],
+ * [shownAt], with [programmedStatus]). Every entry comes from the same [layout].
  */
 internal fun binarioTileTimeline(
     snapshot: WearSnapshot?,
     nowEpochMillis: Long,
     layout: (WearTileContent) -> LayoutElementBuilders.LayoutElement,
+    programmedStatus: String = "",
 ): TimelineBuilders.Timeline =
     TimelineBuilders.Timeline.Builder()
         .addTimelineEntry(
@@ -87,18 +97,20 @@ internal fun binarioTileTimeline(
         .apply {
             if (snapshot != null) {
                 val later = laterGlanceSegments(snapshot, nowEpochMillis)
+                val shown = snapshot.shownAt(nowEpochMillis, programmedStatus)
                 addTimelineEntry(
                     tileEntry(
-                        layout(WearTileContent.Current(snapshot, upcomingService(snapshot, nowEpochMillis)?.first)),
+                        layout(WearTileContent.Current(shown, upcomingService(shown, nowEpochMillis)?.first)),
                         TimelineBuilders.TimeInterval.Builder()
                             .setEndMillis(later.firstOrNull()?.startEpochMillis ?: snapshot.expiresAtEpochMillis)
                             .build(),
                     )
                 )
                 later.forEach { segment ->
+                    val shownThen = snapshot.shownAt(segment.startEpochMillis, programmedStatus)
                     addTimelineEntry(
                         tileEntry(
-                            layout(WearTileContent.Current(snapshot, upcomingService(snapshot, segment.startEpochMillis)?.first)),
+                            layout(WearTileContent.Current(shownThen, upcomingService(shownThen, segment.startEpochMillis)?.first)),
                             TimelineBuilders.TimeInterval.Builder()
                                 .setStartMillis(segment.startEpochMillis)
                                 .setEndMillis(segment.endEpochMillis)
