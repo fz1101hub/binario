@@ -70,6 +70,7 @@ final class SharedDataTests: XCTestCase {
         XCTAssertEqual(NetworkReliability.minimumPlatformSharePercent, json["minimumPlatformSharePercent"] as? Int)
         XCTAssertEqual(NetworkReliability.minimumWeekdaySamples, json["minimumWeekdaySamples"] as? Int)
         XCTAssertEqual(NetworkReliability.minimumWeekdayGapPoints, json["minimumWeekdayGapPoints"] as? Int)
+        XCTAssertEqual(NetworkReliability.maximumWeekdayRemarks, json["maximumWeekdayRemarks"] as? Int)
         XCTAssertEqual(NetworkReliabilityAggregates.minimumAggregateSamples, json["minimumAggregateSamples"] as? Int)
         XCTAssertEqual(NetworkReliabilityAggregates.minimumBandSamples, json["minimumBandSamples"] as? Int)
         XCTAssertEqual(NetworkReliabilityAggregates.minimumBandGapPoints, json["minimumBandGapPoints"] as? Int)

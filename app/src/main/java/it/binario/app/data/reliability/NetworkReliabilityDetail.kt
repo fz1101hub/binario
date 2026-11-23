@@ -2,7 +2,6 @@ package it.binario.app.data.reliability
 
 import it.binario.app.data.Station
 import it.binario.app.data.TrainService
-import java.time.DayOfWeek
 import java.time.LocalDate
 
 /**
@@ -27,8 +26,11 @@ data class NetworkReliabilityDetail(
     val distribution: DelayDistribution? = null,
     /** The largest delay at [arrival], when the file publishes it. */
     val maxDelayMinutes: Int? = null,
-    /** «Il venerdì è in orario 2 volte su 5, peggio della media» at [arrival] ([NetworkReliability.weekdayRemark]). */
-    val weekdayRemark: WeekdayRemark? = null
+    /**
+     * «Il venerdì è in orario 2 volte su 5, peggio della media» at [arrival]: up to two weekdays, the largest
+     * difference first, as on the iPhone ([NetworkReliability.weekdayRemarksShown]).
+     */
+    val weekdayRemarks: List<WeekdayRemark> = emptyList()
 ) {
     companion object {
         /**
@@ -70,13 +72,9 @@ data class NetworkReliabilityDetail(
                 worstStopName = worstName,
                 distribution = NetworkReliabilityAggregates.distribution(train, match.alightingIndex),
                 maxDelayMinutes = train.maxDelayMinutes(match.alightingIndex),
-                weekdayRemark = NetworkReliability.weekdayRemark(train, match.alightingIndex, arrival, travelDay(service))
+                weekdayRemarks = NetworkReliability.weekdayRemarksShown(train, match.alightingIndex, arrival)
             )
         }
-
-        /** The weekday of the run shown: its scheduled departure, else its timetable service day; null when unknown. */
-        internal fun travelDay(service: TrainService): DayOfWeek? =
-            service.scheduledDepartureDateTime?.dayOfWeek ?: service.gtfsIdentity?.serviceDate?.dayOfWeek
 
         /**
          * The train of [service] in the statistics, as [of] measures it, and the stop where it is boarded: the first stop

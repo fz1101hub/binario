@@ -671,6 +671,7 @@ TABLES: tuple[Table, ...] = (
         "minimumPlatformSharePercent": Field(Integer(1, 100)),
         "minimumWeekdaySamples": Field(COUNT),
         "minimumWeekdayGapPoints": Field(Integer(1, 100)),
+        "maximumWeekdayRemarks": Field(Integer(1, 7)),
         "minimumBandSamples": Field(COUNT),
         "minimumBandGapPoints": Field(Integer(1, 100)),
     }, alexa=True),

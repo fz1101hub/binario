@@ -54,7 +54,8 @@ export const PackRoles: {
 /**
  * contracts/shared-data/v1/punctuality-v1.json: Thresholds of the network punctuality statistics
  * (docs/data-sources/PUNCTUALITY_STATS.md): the categories measured at 5 minutes, as the operators and Treniamo do,
- * every other category at 15; the minimum samples and the remark thresholds.
+ * every other category at 15; the minimum samples and the remark thresholds; a train's detail shows at most
+ * `maximumWeekdayRemarks` weekday remarks, the largest differences first.
  */
 export const Punctuality: {
   readonly HIGH_SPEED_CATEGORIES: ReadonlySet<string>;
@@ -66,6 +67,7 @@ export const Punctuality: {
   readonly MINIMUM_PLATFORM_SHARE_PERCENT: number;
   readonly MINIMUM_WEEKDAY_SAMPLES: number;
   readonly MINIMUM_WEEKDAY_GAP_POINTS: number;
+  readonly MAXIMUM_WEEKDAY_REMARKS: number;
   readonly MINIMUM_BAND_SAMPLES: number;
   readonly MINIMUM_BAND_GAP_POINTS: number;
 } = Object.freeze({
@@ -78,6 +80,7 @@ export const Punctuality: {
   MINIMUM_PLATFORM_SHARE_PERCENT: 60,
   MINIMUM_WEEKDAY_SAMPLES: 4,
   MINIMUM_WEEKDAY_GAP_POINTS: 15,
+  MAXIMUM_WEEKDAY_REMARKS: 2,
   MINIMUM_BAND_SAMPLES: 20,
   MINIMUM_BAND_GAP_POINTS: 5,
 });

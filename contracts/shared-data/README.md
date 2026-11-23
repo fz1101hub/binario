@@ -28,7 +28,7 @@ python3 tools/generate_shared_code.py --check   # esce con 1 se uno non corrispo
 | `notices-sources-v1.json` | Fonti degli avvisi (indirizzi, accesso, limiti, intervalli, cache, reindirizzamenti), pagine aperte con un tocco, limiti, parole ed espressioni regolari dei lettori, quanto mostrano le sezioni | Android, iPhone |
 | `pack-roles-v1.json` | Ruoli dei pack orari: nazionali, esteri, che ripubblicano i treni dei partner, con autobus dell'operatore | Android, iPhone, Alexa (orario programmato); il builder e il verificatore dell'indice iPhone leggono il JSON |
 | `planned-journeys-v1.json` | Limiti dell'Agenda, del file di trasferimento e dei modelli | Android, iPhone |
-| `punctuality-v1.json` | Categorie misurate a 5 minuti, soglie e campioni minimi delle statistiche | Android, iPhone, Alexa |
+| `punctuality-v1.json` | Categorie misurate a 5 minuti, soglie e campioni minimi delle statistiche, quante osservazioni sui giorni della settimana mostra il dettaglio di un treno | Android, iPhone, Alexa |
 | `rfi-place-ids-v1.json` | Place ID del monitor RFI per i nomi di stazione noti | Android, iPhone |
 | `source-manners-v1.json` | Come si chiede a ogni fonte pubblica: User-Agent, risposte che sono un rifiuto e pausa dopo un rifiuto, interruttore dopo errori ripetuti | Android, iPhone |
 | `source-scores-v1.json` | Punteggi delle fonti per categoria, bonus dell'operatore, fonti di sola copertura | Android, iPhone |
