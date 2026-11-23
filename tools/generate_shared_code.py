@@ -466,7 +466,21 @@ def _check_source_manners(values: Mapping[str, Any]) -> list[str]:
 
 def _check_pack_roles(values: Mapping[str, Any]) -> list[str]:
     both = set(values["nationalPacks"]) & set(values["foreignPacks"])
-    return [f"{pack!r} è sia nazionale sia estero" for pack in sorted(both)]
+    errors = [f"{pack!r} è sia nazionale sia estero" for pack in sorted(both)]
+    # A city network holds no trains: it is never a railway role.
+    railway = set(values["nationalPacks"]) | set(values["foreignPacks"]) | set(values["crossPublishingPacks"]) \
+        | set(values["scheduledCoachPacks"])
+    errors += [f"{pack!r} è una rete urbana con un ruolo ferroviario" for pack in sorted(set(values["urbanPacks"]) & railway)]
+    return errors
+
+
+def _check_urban_stops(values: Mapping[str, Any]) -> list[str]:
+    errors = []
+    if values["samePlaceMeters"] > values["platformMeters"]:
+        errors.append("samePlaceMeters supera platformMeters")
+    if values["walkMarginMinutes"] > 30:
+        errors.append("walkMarginMinutes oltre 30 minuti")
+    return errors
 
 
 # --- Registry -----------------------------------------------------------------------------------------------------
@@ -642,6 +656,7 @@ TABLES: tuple[Table, ...] = (
         "foreignPacks": Field(PACK_SET),
         "crossPublishingPacks": Field(PACK_SET),
         "scheduledCoachPacks": Field(PACK_SET),
+        "urbanPacks": Field(PACK_SET),
     }, check=_check_pack_roles),
     Table("planned-journeys-v1.json", "PlannedJourneys", {
         "schemaVersion": Field(Integer(1, 99)),
@@ -697,6 +712,13 @@ TABLES: tuple[Table, ...] = (
         # Letters only: each platform joins them into one regular-expression alternation.
         "categories": Field(ListOf(Text(r"[A-Z]{1,16}"))),
     }),
+    Table("urban-stops-v1.json", "UrbanStops", {
+        "maximumWalkMeters": Field(Integer(0, 2_000)),
+        "walkingSpeedKmh": Field(Real(1.0, 10.0)),
+        "walkMarginMinutes": Field(Integer(0, 60)),
+        "samePlaceMeters": Field(Integer(1, 2_000)),
+        "platformMeters": Field(Integer(1, 2_000)),
+    }, check=_check_urban_stops),
 )
 
 

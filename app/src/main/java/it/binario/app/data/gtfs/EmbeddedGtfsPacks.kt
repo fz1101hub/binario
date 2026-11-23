@@ -153,10 +153,13 @@ object EmbeddedGtfsPacks {
 
     /**
      * [pack] with the roles of the shared table (contracts/shared-data/v1/pack-roles-v1.json, the iPhone's and its index
-     * builder's too): whether its bus routes are the operator's own scheduled coaches.
+     * builder's too): whether its bus routes are the operator's own scheduled coaches, and whether it is a city network
+     * (a pack the CI refresh adds may also say so itself; SharedDataTest requires the table to list it).
      */
-    private fun withPackRoles(pack: EmbeddedGtfsPack): EmbeddedGtfsPack =
-        pack.copy(busRoutesAreScheduledCoaches = pack.sourceId.value in SharedData.PackRoles.SCHEDULED_COACH_PACKS)
+    private fun withPackRoles(pack: EmbeddedGtfsPack): EmbeddedGtfsPack = pack.copy(
+        busRoutesAreScheduledCoaches = pack.sourceId.value in SharedData.PackRoles.SCHEDULED_COACH_PACKS,
+        kind = if (pack.sourceId.value in SharedData.PackRoles.URBAN_PACKS) EmbeddedGtfsPackKind.URBAN else pack.kind
+    )
 
     /**
      * Packs added after the core ones (`gtfs-transit/`, open data in every build; `gtfs-personal/`, personal builds

@@ -61,6 +61,7 @@ import it.binario.app.data.provider.TimetableValidityAware
 import it.binario.app.data.provider.TravelMode
 import it.binario.app.data.provider.WheelchairDataAware
 import it.binario.app.data.sources.PlannedPackOrder
+import it.binario.app.shared.SharedData
 import java.io.IOException
 import java.io.InputStream
 import java.time.Clock
@@ -117,11 +118,11 @@ data class GtfsJourneyPlannerSettings(
      * the requested stations and the stops near them (Milano Centrale and the Centrale M2/M3 stops). The default is
      * what the default travel preferences give (ten minutes at normal speed, [JourneyPreferences.maxWalkMinutes]).
      */
-    val maxWalkMeters: Int = 600,
+    val maxWalkMeters: Int = SharedData.UrbanStops.MAXIMUM_WALK_METERS,
     /** Walking speed of those transfers. */
-    val walkingSpeedKmh: Double = 4.5,
+    val walkingSpeedKmh: Double = SharedData.UrbanStops.WALKING_SPEED_KMH,
     /** Added to every walk (finding the way, stairs, ticket barriers). */
-    val walkMarginMinutes: Int = 2,
+    val walkMarginMinutes: Int = SharedData.UrbanStops.WALK_MARGIN_MINUTES,
     /** Minimum change time at a stop of a city network (metro, tram, funicular). */
     val urbanTransferMinutes: Int = 3,
     /** City packs loaded for one search besides the [maxPacksPerSearch] railway packs: the city of each end. */
@@ -1913,8 +1914,11 @@ class EmbeddedGtfsJourneyProvider internal constructor(
         companion object {
             /** About 550 m of latitude: the nearby search reads the 3 x 5 cells around a point. */
             private const val GRID_DEGREES = 0.005
-            /** Stops of one pack with the same name and no parent station are one transfer point up to this distance. */
-            private const val SAME_PLACE_METERS = 150.0
+            /**
+             * Stops of one pack with the same name and no parent station are one transfer point up to this distance
+             * (contracts/shared-data/v1/urban-stops-v1.json, the iPhone index builder's too).
+             */
+            private val SAME_PLACE_METERS: Double = SharedData.UrbanStops.SAME_PLACE_METERS.toDouble()
 
             private fun key(row: Long, column: Long): Long = (row shl 32) xor (column and 0xFFFFFFFFL)
 

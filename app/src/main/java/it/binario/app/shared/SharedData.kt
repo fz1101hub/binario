@@ -12,6 +12,7 @@
 //   contracts/shared-data/v1/source-manners-v1.json
 //   contracts/shared-data/v1/source-scores-v1.json
 //   contracts/shared-data/v1/train-number-prefixes-v1.json
+//   contracts/shared-data/v1/urban-stops-v1.json
 
 package it.binario.app.shared
 
@@ -473,14 +474,20 @@ internal object SharedData {
      * contracts/shared-data/v1/pack-roles-v1.json: Roles of the offline timetable packs that Android, the iPhone and
      * the iPhone index builder share: the national operators' packs (their copy of a train first), the foreign
      * operators' packs (last, first at a station no national pack serves; their stops match catalogue stations with
-     * codes only), the packs that republish partner operators' trains under their own numbers, and those whose bus
-     * routes are the operator's own scheduled coaches (a bus of any other pack replaces a train).
+     * codes only), the packs that republish partner operators' trains under their own numbers, those whose bus routes
+     * are the operator's own scheduled coaches (a bus of any other pack replaces a train), and the city networks
+     * (metro, tram, funiculars, people movers), whose stops are never railway stations and are reached on foot from the
+     * stations near them.
      */
     object PackRoles {
         val NATIONAL_PACKS: Set<String> = setOf("trenitalia-gtfs", "italo-gtfs")
         val FOREIGN_PACKS: Set<String> = setOf("ch-otd-gtfs", "oebb-gtfs", "sncf-gtfs", "trenitalia-france-gtfs")
         val CROSS_PUBLISHING_PACKS: Set<String> = setOf("ch-otd-gtfs", "sncf-gtfs", "oebb-gtfs", "alto-adige-sta-gtfs")
         val SCHEDULED_COACH_PACKS: Set<String> = setOf("trenitalia-gtfs", "italo-gtfs")
+        val URBAN_PACKS: Set<String> = setOf(
+            "milano-atm-gtfs", "genova-amt-gtfs", "firenze-gest-gtfs", "arst-metro-gtfs", "napoli-anm-gtfs",
+            "venezia-actv-gtfs", "roma-mobilita-gtfs", "gtt-gtfs", "marconi-express-gtfs"
+        )
     }
 
     /**
@@ -765,5 +772,20 @@ internal object SharedData {
             "TER", "REX", "CJX", "IRE", "ECE", "CAT", "NJ", "IR", "ES", "FR", "FA", "FB", "AV", "RV", "RE", "IC", "EC",
             "EN", "RJ", "R", "S", "D"
         )
+    }
+
+    /**
+     * contracts/shared-data/v1/urban-stops-v1.json: How the apps reach the stops of the city networks
+     * (pack-roles-v1.json, urbanPacks) on foot: a station and a city stop at most maximumWalkMeters apart (straight
+     * line) are joined by a walk, timed at walkingSpeedKmh, rounded up to the minute, plus walkMarginMinutes; stops of
+     * one name at most samePlaceMeters apart are one place; a stop picked in the search is boarded at its platforms,
+     * the stops of the same name at most platformMeters from it.
+     */
+    object UrbanStops {
+        const val MAXIMUM_WALK_METERS: Int = 600
+        const val WALKING_SPEED_KMH: Double = 4.5
+        const val WALK_MARGIN_MINUTES: Int = 2
+        const val SAME_PLACE_METERS: Int = 150
+        const val PLATFORM_METERS: Int = 400
     }
 }

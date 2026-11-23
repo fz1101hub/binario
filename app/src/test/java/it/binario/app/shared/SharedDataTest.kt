@@ -4,6 +4,7 @@ import it.binario.app.data.AirportRoutes
 import it.binario.app.data.core.SourceId
 import it.binario.app.data.gtfs.EmbeddedGtfsPacks
 import it.binario.app.data.gtfs.ItaloGtfsStationCodes
+import it.binario.app.data.journey.GtfsJourneyPlannerSettings
 import it.binario.app.data.live.MitStrikeRssAdapter
 import it.binario.app.data.live.RfiInfomobilityRssAdapter
 import it.binario.app.data.live.SourceCircuitBreaker
@@ -30,6 +31,7 @@ import it.binario.app.data.reliability.NetworkReliabilityAggregates
 import it.binario.app.data.repository.TrainNumberQuery
 import it.binario.app.data.sources.RailInformationCategory
 import it.binario.app.data.sources.RailSourceSelectionPolicy
+import it.binario.app.data.urban.UrbanStopPlatforms
 import it.binario.app.plannedjourney.PlannedJourneyPersistenceSchema
 import it.binario.app.plannedjourney.PlannedJourneyReminderMinutes
 import it.binario.app.plannedjourney.PlannedJourneyTemplates
@@ -220,6 +222,25 @@ class SharedDataTest {
         for (pack in packs) {
             assertEquals(pack.sourceId.value, pack.sourceId.value in set("foreignPacks"), PlannedPackOrder.classOf(pack.sourceId) == PlannedPackClass.FOREIGN)
         }
+        // The city networks are the URBAN packs of every build, as the two manifests file them ("kind": "urban").
+        assertEquals(set("urbanPacks"), SharedData.PackRoles.URBAN_PACKS)
+        assertEquals(set("urbanPacks"), EmbeddedGtfsPacks.forBuild(personalSources = true).filter { it.isUrban }.map { it.sourceId.value }.toSet())
+        val manifests = listOf("src/main/assets/gtfs-transit/manifest.json", "src/personal/assets/gtfs-personal/manifest.json")
+        val urban = manifests.flatMap { path ->
+            val packList = JSONObject(File(repositoryRoot, "app/$path").readText(Charsets.UTF_8)).getJSONArray("packs")
+            (0 until packList.length()).map(packList::getJSONObject).filter { it.getString("kind") == "urban" }.map { it.getString("sourceId") }
+        }.toSet()
+        assertEquals(set("urbanPacks"), urban)
+    }
+
+    @Test fun `the walks to the city stops are the shared table`() {
+        val json = table("urban-stops-v1.json")
+        val settings = GtfsJourneyPlannerSettings()
+        assertEquals(json.getInt("maximumWalkMeters"), settings.maxWalkMeters)
+        assertEquals(json.getDouble("walkingSpeedKmh"), settings.walkingSpeedKmh, 0.0)
+        assertEquals(json.getInt("walkMarginMinutes"), settings.walkMarginMinutes)
+        assertEquals(json.getInt("samePlaceMeters"), SharedData.UrbanStops.SAME_PLACE_METERS)
+        assertEquals(json.getInt("platformMeters").toDouble(), UrbanStopPlatforms.SIBLING_METERS, 0.0)
     }
 
     @Test fun `every source is asked with the shared manners`() {

@@ -40,6 +40,7 @@ import it.binario.app.data.provider.RatePolicy
 import it.binario.app.data.provider.StationBoardProvider
 import it.binario.app.data.provider.StationBoardRequest
 import it.binario.app.data.provider.boardWindowKeeps
+import it.binario.app.shared.SharedData
 import java.io.IOException
 import java.time.Clock
 import java.time.Duration
@@ -277,9 +278,12 @@ class UrbanStopBoardAdapter(
     }
 }
 
-/** The platforms of a city stop: same displayed name within [SIBLING_METERS], or the same parent station. */
+/**
+ * The platforms of a city stop: same displayed name within [SIBLING_METERS], or the same parent station. The distance is
+ * the shared one (contracts/shared-data/v1/urban-stops-v1.json), the iPhone's too.
+ */
 object UrbanStopPlatforms {
-    const val SIBLING_METERS = 400.0
+    val SIBLING_METERS: Double = SharedData.UrbanStops.PLATFORM_METERS.toDouble()
 
     internal fun of(directory: GtfsStopDirectory, stopId: String): Set<String> {
         val index = directory.ids.indexOf(stopId)
