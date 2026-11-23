@@ -14,8 +14,14 @@ geography cannot separate stay unmatched (fail closed). The stops of the nationa
 Trenitalia and Italo packs are bound by the station code they publish first, with
 Android's rule (android_station_codes.py), and by name only when no code binds them.
 The railway packs of both Android manifests are read: gtfs/ and the packs of kind
-"rail" of gtfs-transit/ (city networks stay out). Rail routes and the bus routes of
-the packs are kept, as Android's journey legs (EmbeddedGtfsRouteAdapter.journeyLegMode).
+"rail" of gtfs-transit/. Rail routes and the bus routes of the packs are kept, as
+Android's journey legs (EmbeddedGtfsRouteAdapter.journeyLegMode). The city networks of
+gtfs-transit/ (kind "urban": metro, tram, funiculars, the Marconi Express people mover)
+are indexed whole, as Android's planner reads them: their stops are never catalogue
+stations (Android's PackStops), every trip of their metro, tram and funicular routes is
+kept, and two tables of their own give each stop its modes (the pack's
+binario_stop_modes.txt, Android's search badge) and the catalogue stations a short walk
+away (urban_walk, Android's accessFor with the shared urban-stops-v1.json).
 """
 from __future__ import annotations
 
@@ -59,6 +65,7 @@ MAX_ARCHIVE_MEMBERS = 64
 MAX_MEMBER_BYTES = 128 * 1024 * 1024
 MAX_ARCHIVE_UNCOMPRESSED_BYTES = 256 * 1024 * 1024
 MAX_ROWS = {
+    "binario_stop_modes.txt": 250_000,
     "agency.txt": 10_000,
     "routes.txt": 100_000,
     "trips.txt": 250_000,
@@ -82,12 +89,20 @@ CO_LOCATED_DUPLICATE_KM = 1.0
 MAX_PREFIX_MATCH_DISTANCE_KM = 1.0
 # The packs the index reads (androidOnlySources aside): ten of the Android core manifest until 23 November 2026, then
 # every railway pack the Android planner reads: the twelve of gtfs/ (Trenitalia and Italo included) and the five of
-# kind "rail" of gtfs-transit/ (FAL, Ferrotramviaria, Ferrovie del Gargano, Mi.Co.Tra., Genova–Casella).
-INDEXED_PACK_COUNT = 17
-# Kinds of the gtfs-transit/ manifest: a "rail" pack is indexed (or reviewed as androidOnlySources); the city networks
-# ("urban": metro, tram, people mover) are out of the iPhone planner, which has no city legs. Any other kind fails.
+# kind "rail" of gtfs-transit/ (FAL, Ferrotramviaria, Ferrovie del Gargano, Mi.Co.Tra., Genova–Casella); from 23
+# November 2026 also the five city networks of gtfs-transit/ (Milano ATM, Genova AMT, Firenze GEST, ARST's metro
+# lines, the Marconi Express).
+INDEXED_PACK_COUNT = 22
+# The personal index (--personal, the iPhone's Personal configuration, as Android's personal flavour): the packs of the
+# base index and those of gtfs-personal/ (licences that allow personal use only, docs/data-sources/SOURCE_POLICY.md)
+# the reviewed personal policy does not leave to Android: the city networks of Roma, Torino, Venezia and Napoli.
+# Cotral's railway (plain HTTP origin, no HTTPS copy of the same bytes recorded) stays an androidOnlySources entry.
+PERSONAL_INDEXED_PACK_COUNT = 4
+# Kinds of the gtfs-transit/ manifest: a "rail" pack is indexed as a railway, an "urban" one as a city network (both
+# may be reviewed as androidOnlySources instead). Any other kind fails.
 TRANSIT_RAIL_KIND = "rail"
-TRANSIT_OUT_OF_SCOPE_KINDS = frozenset({"urban"})
+TRANSIT_URBAN_KIND = "urban"
+TRANSIT_OUT_OF_SCOPE_KINDS: frozenset[str] = frozenset()
 # Packs of foreign operators: their stops match only catalogue stations with codes, so the index keeps their trips
 # into Italy and not the French, Swiss or Austrian networks around a station the catalogue lists without codes (Paris).
 # Trenitalia France's pack is bundled whole, outside the border-subset system (foreign_pack_rules): its Paris – Milano
@@ -120,6 +135,8 @@ STATION_MODE_ITALIAN = "italian"
 STATION_MODE_CODED = "coded"
 STATION_MODE_ZONE = "zone"
 STATION_MODE_FULL = "full"
+# A city network: its stops are never catalogue stations, every trip is kept (Android's PackStops for isUrban).
+STATION_MODE_URBAN = "urban"
 # Version of the per-country index (--foreign-full) builder, part of its input fingerprint: raise it when a change of
 # this file changes the content of those indexes, so the apps see a new pin.
 FOREIGN_FULL_BUILDER_VERSION = 1
@@ -130,6 +147,17 @@ RAIL_ROUTE_TYPES = frozenset({2, *range(100, 200)})
 # Italo's packs publish them today; the iPhone names the leg from the pack (SQLiteGTFSJourneyRepository.vehicle).
 BUS_ROUTE_TYPES = frozenset({3, *range(700, 800)})
 INDEXED_ROUTE_TYPES = RAIL_ROUTE_TYPES | BUS_ROUTE_TYPES
+# The city networks (pack-roles-v1.json, urbanPacks): metro (1, 400-499, and monorail 12, the Marconi Express), tram
+# (0, 900-999), funicular and lift (5, 6, 7, 1300-1499), Android's journeyLegMode; their packs hold nothing else.
+URBAN_PACKS = frozenset(PACK_ROLES["urbanPacks"])
+METRO_ROUTE_TYPES = frozenset({1, 12, *range(400, 500)})
+TRAM_ROUTE_TYPES = frozenset({0, *range(900, 1000)})
+FUNICULAR_ROUTE_TYPES = frozenset({5, 6, 7, *range(1300, 1500)})
+URBAN_ROUTE_TYPES = METRO_ROUTE_TYPES | TRAM_ROUTE_TYPES | FUNICULAR_ROUTE_TYPES
+# The walks to the city stops, the shared table Android's planner reads (contracts/shared-data/v1/urban-stops-v1.json).
+URBAN_STOPS = shared_code.table_values("urban-stops-v1.json")
+# A city pack's file of the modes of each stop (tools/build_gtfs_packs.py; Android's station search reads it).
+STOP_MODES_FILE = "binario_stop_modes.txt"
 # EmbeddedGtfsPack.busRoutesAreScheduledCoaches (pack-roles-v1.json): Trenitalia's buses and ItaloBus.
 SCHEDULED_COACH_PACKS = frozenset(PACK_ROLES["scheduledCoachPacks"])
 # EmbeddedGtfsPack.catalogueNameSuffixes (TransitGtfsPacks.kt): the catalogue names these operators' stations with a
@@ -151,6 +179,8 @@ MAX_DWELL_SKEW_MINUTES = 20
 BIKES_VALUE_NOT_SHOWN = frozenset({"italo-gtfs"})
 REQUIRED_FILES = ("agency.txt", "routes.txt", "trips.txt", "stops.txt", "stop_times.txt")
 SCHEMA_TABLES = ("metadata", "pack", "agency", "route", "service", "trip", "stop", "stop_time")
+# The tables an index with city networks adds (URBAN_SCHEMA_SQL); the per-country indexes never have them.
+URBAN_SCHEMA_TABLES = ("urban_stop", "urban_walk")
 REQUIRED_INDICES = (
     "idx_route_pack_external",
     "idx_service_pack_external",
@@ -241,6 +271,22 @@ CREATE INDEX idx_trip_route_service ON trip(route_id, service_id);
 CREATE UNIQUE INDEX idx_stop_pack_external ON stop(pack_id, external_id);
 CREATE INDEX idx_stop_catalog_station ON stop(catalog_station_id) WHERE catalog_station_id IS NOT NULL;
 CREATE INDEX idx_stop_time_stop_departure ON stop_time(stop_id, departure_seconds, trip_id);
+"""
+
+# Only in an index with city networks. urban_stop: every stop of a city pack, with the modes its pack lists for it
+# (letters M, T, F; empty when none, and the station search does not offer it). urban_walk: the catalogue stations a
+# walk of at most URBAN_STOPS["maximumWalkMeters"] joins to a stop's place, with the minutes of the walk.
+URBAN_SCHEMA_SQL = """
+CREATE TABLE urban_stop (
+    stop_id INTEGER PRIMARY KEY REFERENCES stop(id),
+    modes TEXT NOT NULL CHECK(modes NOT GLOB '*[^MTF]*')
+);
+CREATE TABLE urban_walk (
+    catalog_station_id TEXT NOT NULL,
+    stop_id INTEGER NOT NULL REFERENCES urban_stop(stop_id),
+    minutes INTEGER NOT NULL CHECK(minutes >= 0),
+    PRIMARY KEY(catalog_station_id, stop_id)
+) WITHOUT ROWID;
 """
 
 class BuildError(RuntimeError):
@@ -471,6 +517,172 @@ def name_variants(stop_name: str) -> list[str]:
             if candidate and candidate not in variants:
                 variants.append(candidate)
     return variants
+
+# --- City networks (Android: StopNameCase, PackStops, GtfsJourneyPlannerSettings.walkMinutes) -------------------------
+
+LINE_CODE = re.compile(r"[a-z][0-9]{1,2}|fs", re.IGNORECASE | re.ASCII)
+
+def stop_name_display(name: str) -> str:
+    """Android's ``StopNameCase.display``: a name published all in capitals or all in lower case gets its words
+    capitalised ("DUOMO M1" -> "Duomo M1", "sant'olcese" -> "Sant'Olcese"), line codes in capitals ("M1", "FS"), a
+    trailing "/" dropped and "/" between two names made a space; a name that mixes cases is kept as published
+    (contracts/shared-rules/v1/urban-stops-v1.json)."""
+    trimmed = name.strip().rstrip("/").strip()
+    letters = "".join(character for character in trimmed if character.isalpha())
+    if not letters or (letters != letters.upper() and letters != letters.lower()):
+        return trimmed
+    words = [word for word in trimmed.replace("/", " ").split(" ") if word]
+    return " ".join(word.upper() if LINE_CODE.fullmatch(word) else _capitalised(word.lower()) for word in words)
+
+def _capitalised(word: str) -> str:
+    """Upper case at the start and after an apostrophe or a hyphen (Kotlin's ``titlecaseChar``, one character)."""
+    result: list[str] = []
+    upper = True
+    for character in word:
+        titled = character.title()
+        result.append(titled if upper and character.isalpha() and len(titled) == 1 else character)
+        if character.isalpha():
+            upper = False
+        if character in "'’-":
+            upper = True
+    return "".join(result)
+
+def android_place_name(value: str) -> str:
+    """``GtfsStopStationResolver.normalize``: without accents, lower case, letters and digits only."""
+    decomposed = unicodedata.normalize("NFD", value)
+    without_marks = "".join(character for character in decomposed if not unicodedata.category(character).startswith("M"))
+    return re.sub(r"[^a-z0-9]", "", without_marks.lower())
+
+def android_distance_km(latitude1: float, longitude1: float, latitude2: float, longitude2: float) -> float:
+    """``GtfsStationCodeIndex.distanceKm``, operation for operation (the walk's minutes round up at whole metres)."""
+    phi1 = math.radians(latitude1)
+    phi2 = math.radians(latitude2)
+    delta_phi = phi2 - phi1
+    delta_lambda = math.radians(longitude2 - longitude1)
+    half_phi = math.sin(delta_phi / 2)
+    half_lambda = math.sin(delta_lambda / 2)
+    a = half_phi * half_phi + math.cos(phi1) * math.cos(phi2) * (half_lambda * half_lambda)
+    return 2 * 6371.0 * math.asin(math.sqrt(min(max(a, 0.0), 1.0)))
+
+def walk_minutes(meters: float) -> int:
+    """``GtfsJourneyPlannerSettings.walkMinutes`` with the shared defaults: the distance at the walking speed, rounded
+    up, plus the margin."""
+    return math.ceil(meters / (URBAN_STOPS["walkingSpeedKmh"] * 1000.0 / 60.0)) + URBAN_STOPS["walkMarginMinutes"]
+
+@dataclass(frozen=True)
+class CataloguePoint:
+    station_id: str
+    latitude: float
+    longitude: float
+
+def catalogue_points(catalog_path: Path) -> list[CataloguePoint]:
+    """Every catalogue station with coordinates: the ends a walk to a city stop may start from (Android's endpoint
+    point, the catalogue's coordinates)."""
+    try:
+        payload = json.loads(read_bounded(catalog_path, MAX_CATALOG_BYTES, "station catalog"))
+    except (UnicodeError, json.JSONDecodeError) as error:
+        raise BuildError(f"cannot read station catalog {catalog_path}: {error}") from error
+    points: list[CataloguePoint] = []
+    for station in payload.get("stations", []) if isinstance(payload, dict) else []:
+        if not isinstance(station, dict):
+            continue
+        station_id, latitude, longitude = station.get("id"), station.get("latitude"), station.get("longitude")
+        if isinstance(station_id, str) and station_id and isinstance(latitude, (int, float)) and isinstance(longitude, (int, float)) \
+                and not isinstance(latitude, bool) and not isinstance(longitude, bool):
+            points.append(CataloguePoint(station_id, float(latitude), float(longitude)))
+    return points
+
+def urban_places(source_id: str, stops: Mapping[str, Mapping[str, str]]) -> dict[str, str]:
+    """The transfer point of every stop of a city pack, as Android's ``PackStops.build`` makes it for ``isUrban``: the
+    stops of one parent_station are one point; any other stop is the point of its name, and stops of one name more
+    than samePlaceMeters from the first stop of their place (in stops.txt order) are another point of that name."""
+    referenced_parents = {row.get("parent_station", "") for row in stops.values()} - {""}
+    keys: dict[str, str] = {}
+    for stop_id, row in stops.items():
+        parent = row.get("parent_station", "")
+        if parent or stop_id in referenced_parents:
+            keys[stop_id] = f"{source_id}:group:{parent or stop_id}"
+        else:
+            keys[stop_id] = f"{source_id}:name:{android_place_name(row.get('stop_name', ''))}"
+    name_prefix = f"{source_id}:name:"
+    anchors: dict[str, list[tuple[float, float]]] = defaultdict(list)
+    for stop_id, row in stops.items():
+        key = keys[stop_id]
+        if not key.startswith(name_prefix):
+            continue
+        latitude = parse_optional_float(row.get("stop_lat"), f"{source_id}:stop:{stop_id}:lat", -90, 90)
+        longitude = parse_optional_float(row.get("stop_lon"), f"{source_id}:stop:{stop_id}:lon", -180, 180)
+        if latitude is None or longitude is None:
+            continue
+        places = anchors[key]
+        place = next((index for index, anchor in enumerate(places)
+                      if android_distance_km(anchor[0], anchor[1], latitude, longitude) * 1000.0 <= URBAN_STOPS["samePlaceMeters"]), -1)
+        if place < 0:
+            places.append((latitude, longitude))
+        number = len(places) if place < 0 else place + 1
+        if number > 1:
+            keys[stop_id] = f"{key}#{number}"
+    return keys
+
+def urban_walks(
+    source_id: str,
+    stops: Mapping[str, Mapping[str, str]],
+    points: Sequence[CataloguePoint],
+) -> dict[tuple[str, str], int]:
+    """The walks of Android's ``accessFor`` from every catalogue station to the stops of a city pack: a place with a
+    stop at most maximumWalkMeters from the station (its coordinates, the stop's own) is reached in the minutes of the
+    shortest such walk, and every stop of that place is boarded after it. By (catalogue station, stop id)."""
+    places = urban_places(source_id, stops)
+    members: dict[str, list[str]] = defaultdict(list)
+    located: list[tuple[str, float, float]] = []
+    for stop_id, row in stops.items():
+        members[places[stop_id]].append(stop_id)
+        latitude = parse_optional_float(row.get("stop_lat"), f"{source_id}:stop:{stop_id}:lat", -90, 90)
+        longitude = parse_optional_float(row.get("stop_lon"), f"{source_id}:stop:{stop_id}:lon", -180, 180)
+        if latitude is not None and longitude is not None:
+            located.append((stop_id, latitude, longitude))
+    if not located:
+        return {}
+    maximum = float(URBAN_STOPS["maximumWalkMeters"])
+    # A coarse box first: a degree of latitude is about 111 km, and a walk never leaves Italy's latitudes.
+    margin_latitude = maximum / 111_000.0 * 1.5
+    margin_longitude = margin_latitude / max(math.cos(math.radians(max(abs(item[1]) for item in located))), 0.2)
+    south = min(item[1] for item in located) - margin_latitude
+    north = max(item[1] for item in located) + margin_latitude
+    west = min(item[2] for item in located) - margin_longitude
+    east = max(item[2] for item in located) + margin_longitude
+    walks: dict[tuple[str, str], int] = {}
+    for point in points:
+        if not (south <= point.latitude <= north and west <= point.longitude <= east):
+            continue
+        reached: dict[str, int] = {}
+        for stop_id, latitude, longitude in located:
+            meters = android_distance_km(point.latitude, point.longitude, latitude, longitude) * 1000.0
+            if meters > maximum:
+                continue
+            minutes = walk_minutes(meters)
+            place = places[stop_id]
+            if place not in reached or minutes < reached[place]:
+                reached[place] = minutes
+        for place, minutes in reached.items():
+            for stop_id in members[place]:
+                walks[(point.station_id, stop_id)] = minutes
+    return walks
+
+def stop_modes(archive: "BoundedGtfsArchive", source_id: str, stops: Mapping[str, Mapping[str, str]]) -> dict[str, str]:
+    """The modes of every stop of a city pack from its binario_stop_modes.txt, a platform without its own taking its
+    parent station's (Android's EmbeddedUrbanStopIndex); a stop with none gets "" (the search does not offer it)."""
+    listed: dict[str, str] = {}
+    for line, row in enumerate(archive.rows(STOP_MODES_FILE, ("stop_id", "modes")), start=2):
+        stop_id = required(row, "stop_id", f"{source_id}:{STOP_MODES_FILE}:{line}")
+        modes = row.get("modes", "")
+        if stop_id in listed or not re.fullmatch(r"[MTF]*", modes):
+            raise BuildError(f"{source_id}:{STOP_MODES_FILE}:{line}: duplicate stop or invalid modes {modes!r}")
+        listed[stop_id] = modes
+    return {
+        stop_id: listed.get(stop_id) if stop_id in listed else listed.get(row.get("parent_station", ""), "")
+        for stop_id, row in stops.items()
+    }
 
 def required(row: Mapping[str, str], field: str, context: str) -> str:
     value = row.get(field, "")
@@ -803,9 +1015,9 @@ def reviewed_source(source_url: object, access_mode: object) -> bool:
         return source_url.startswith(("https://", "http://")) and len(source_url) > len("https://")
     return False
 
-def read_transit_rail_packs(transit_manifest_path: Path) -> tuple[list[dict[str, object]], bytes]:
-    """The railway packs (kind "rail") of the gtfs-transit/ manifest; the city networks (TRANSIT_OUT_OF_SCOPE_KINDS)
-    are left out by rule, any other kind fails closed."""
+def read_transit_packs(transit_manifest_path: Path) -> tuple[list[dict[str, object]], list[dict[str, object]], bytes]:
+    """The railway packs (kind "rail") and the city networks (kind "urban") of the gtfs-transit/ manifest, the latter
+    exactly the urbanPacks of the shared pack roles; any other kind fails closed."""
     try:
         transit_bytes = read_bounded(transit_manifest_path, MAX_MANIFEST_BYTES, "transit GTFS manifest")
         transit = json.loads(transit_bytes)
@@ -815,12 +1027,23 @@ def read_transit_rail_packs(transit_manifest_path: Path) -> tuple[list[dict[str,
     if not isinstance(packs, list):
         raise BuildError("transit GTFS manifest has no pack list")
     rail: list[dict[str, object]] = []
+    urban: list[dict[str, object]] = []
     for index, item in enumerate(packs):
         kind = item.get("kind") if isinstance(item, dict) else None
+        source_id = item.get("sourceId") if isinstance(item, dict) else None
+        if kind in (TRANSIT_RAIL_KIND, TRANSIT_URBAN_KIND) and (kind == TRANSIT_URBAN_KIND) != (source_id in URBAN_PACKS):
+            raise BuildError(f"transit GTFS manifest pack {source_id!r} is {kind!r}, the shared pack roles say otherwise")
         if kind == TRANSIT_RAIL_KIND:
             rail.append(item)
+        elif kind == TRANSIT_URBAN_KIND:
+            urban.append(item)
         elif kind not in TRANSIT_OUT_OF_SCOPE_KINDS:
             raise BuildError(f"transit GTFS manifest pack {index} has unreviewed kind {kind!r}")
+    return rail, urban, transit_bytes
+
+def read_transit_rail_packs(transit_manifest_path: Path) -> tuple[list[dict[str, object]], bytes]:
+    """The railway packs of the gtfs-transit/ manifest (``read_transit_packs``)."""
+    rail, _, transit_bytes = read_transit_packs(transit_manifest_path)
     return rail, transit_bytes
 
 def read_manifest(
@@ -830,9 +1053,12 @@ def read_manifest(
     source_policy_path: Path | None = None,
     full_pack_dir: Path | None = None,
     transit_manifest_path: Path | None = None,
+    personal_manifest_path: Path | None = None,
 ) -> tuple[list[dict[str, object]], Path, list[InputFile], str, str]:
-    """The packs of the index: those of the core manifest, then the railway packs of the transit manifest (when
-    given), each checked against the reviewed source policy."""
+    """The packs of the index: those of the core manifest, then the railway packs and the city networks of the transit
+    manifest (when given), then those of the personal manifest (the personal index), each checked against the reviewed
+    source policy."""
+    expected_count = INDEXED_PACK_COUNT + (PERSONAL_INDEXED_PACK_COUNT if personal_manifest_path is not None else 0)
     try:
         manifest_bytes = read_bounded(manifest_path, MAX_MANIFEST_BYTES, "GTFS manifest")
         manifest = json.loads(manifest_bytes)
@@ -847,14 +1073,24 @@ def read_manifest(
         raise BuildError("GTFS manifest generatedAt is not a valid calendar date") from error
     packs = manifest.get("packs")
     if not isinstance(packs, list):
-        raise BuildError(f"GTFS manifest must contain exactly {INDEXED_PACK_COUNT} packs")
+        raise BuildError(f"GTFS manifest must contain exactly {expected_count} packs")
     # The directory of each pack's archive: the core manifest's own, or the transit manifest's.
     roots: dict[int, Path] = {id(item): gtfs_root for item in packs}
     transit_bytes: bytes | None = None
+    urban_items: set[int] = set()
     if transit_manifest_path is not None:
-        transit_packs, transit_bytes = read_transit_rail_packs(transit_manifest_path)
+        rail_packs, urban_packs, transit_bytes = read_transit_packs(transit_manifest_path)
+        transit_packs = [*rail_packs, *urban_packs]
         roots.update({id(item): transit_manifest_path.parent for item in transit_packs})
+        urban_items = {id(item) for item in urban_packs}
         packs = [*packs, *transit_packs]
+    personal_bytes: bytes | None = None
+    if personal_manifest_path is not None:
+        personal_rail, personal_urban, personal_bytes = read_transit_packs(personal_manifest_path)
+        personal_packs = [*personal_rail, *personal_urban]
+        roots.update({id(item): personal_manifest_path.parent for item in personal_packs})
+        urban_items |= {id(item) for item in personal_urban}
+        packs = [*packs, *personal_packs]
     policy_by_id: dict[str, tuple[str, str]] | None = None
     android_only: dict[str, tuple[str, str]] = {}
     policy_bytes: bytes | None = None
@@ -865,8 +1101,8 @@ def read_manifest(
         except (json.JSONDecodeError, UnicodeError) as error:
             raise BuildError(f"cannot read GTFS source policy: {error}") from error
         sources = policy.get("sources") if isinstance(policy, dict) else None
-        if not isinstance(policy, dict) or policy.get("schemaVersion") != 1 or not isinstance(sources, list) or len(sources) != INDEXED_PACK_COUNT:
-            raise BuildError(f"GTFS source policy must contain exactly {INDEXED_PACK_COUNT} schema-v1 sources")
+        if not isinstance(policy, dict) or policy.get("schemaVersion") != 1 or not isinstance(sources, list) or len(sources) != expected_count:
+            raise BuildError(f"GTFS source policy must contain exactly {expected_count} schema-v1 sources")
         policy_by_id = {}
         for index, source in enumerate(sources):
             if not isinstance(source, dict) or set(source) != {"sourceId", "sourceUrl", "accessMode", "licence", "landingPage"}:
@@ -911,8 +1147,8 @@ def read_manifest(
     if set(android_only) - {item.get("sourceId") for item in packs if isinstance(item, dict)}:
         raise BuildError("GTFS source policy androidOnlySources names packs absent from the manifest")
     packs = indexed_packs
-    if len(packs) != INDEXED_PACK_COUNT:
-        raise BuildError(f"GTFS manifest must contain exactly {INDEXED_PACK_COUNT} packs")
+    if len(packs) != expected_count:
+        raise BuildError(f"GTFS manifest must contain exactly {expected_count} packs")
     inputs = [
         InputFile(manifest_path.as_posix(), len(manifest_bytes), hashlib.sha256(manifest_bytes).hexdigest()),
         InputFile(catalog_path.as_posix(), catalog_path.stat().st_size, sha256_file(catalog_path)),
@@ -921,6 +1157,8 @@ def read_manifest(
         inputs.append(InputFile(source_policy_path.as_posix(), len(policy_bytes), hashlib.sha256(policy_bytes).hexdigest()))
     if transit_manifest_path is not None and transit_bytes is not None:
         inputs.append(InputFile(transit_manifest_path.as_posix(), len(transit_bytes), hashlib.sha256(transit_bytes).hexdigest()))
+    if personal_manifest_path is not None and personal_bytes is not None:
+        inputs.append(InputFile(personal_manifest_path.as_posix(), len(personal_bytes), hashlib.sha256(personal_bytes).hexdigest()))
     source_ids: set[str] = set()
     normalized: list[dict[str, object]] = []
     for index, item in enumerate(packs):
@@ -973,6 +1211,10 @@ def read_manifest(
                 raise BuildError(f"{source_id}: full pack missing or different from manifest fullPack: {full_archive}")
             inputs.append(InputFile(full_archive.as_posix(), full_archive.stat().st_size, full["sha256"]))
             pack_entry.update(station_mode=STATION_MODE_ZONE, full_archive=full_archive)
+        if id(item) in urban_items:
+            pack_entry.update(station_mode=STATION_MODE_URBAN)
+        elif source_id in URBAN_PACKS:
+            raise BuildError(f"{source_id}: a city network outside the transit manifest's urban packs")
         normalized.append(pack_entry)
     if policy_by_id is not None and source_ids != set(policy_by_id):
         raise BuildError("GTFS manifest source IDs differ from reviewed iOS policy")
@@ -1339,10 +1581,14 @@ def ingest_pack(
     catalog: CatalogStationMatcher,
     allocator: IdAllocator,
     codes: "android_station_codes.StationCodeIndex | None" = None,
+    points: Sequence[CataloguePoint] = (),
 ) -> dict[str, int]:
+    """One pack into the index. A city network (STATION_MODE_URBAN, ``points`` the catalogue stations) keeps every trip,
+    binds no stop to a catalogue station, shows its stop names as Android does and fills urban_stop and urban_walk."""
     source_id = str(pack["source_id"])
     archive_path = Path(pack["archive"])
     mode = str(pack.get("station_mode") or (STATION_MODE_CODED if source_id in FOREIGN_PACKS else STATION_MODE_ITALIAN))
+    urban = mode == STATION_MODE_URBAN
     counts = defaultdict(int)
     connection.execute(
         "INSERT INTO pack(id,source_id,attribution,last_service_date) VALUES(?,?,?,?)",
@@ -1369,8 +1615,9 @@ def ingest_pack(
         stops = unique_rows(archive.rows("stops.txt", ("stop_id", "stop_name")), "stop_id", f"{source_id}:stops.txt")
 
         code_bound: set[str] = set()
-        stop_identity = stop_identities(stops, catalog, source_id, uncoded=mode != STATION_MODE_CODED, codes=codes,
-                                        code_bound=code_bound)
+        # A city stop is never a railway station by name ("Garibaldi FS" is not the station): it is reached on foot.
+        stop_identity = {} if urban else stop_identities(stops, catalog, source_id, uncoded=mode != STATION_MODE_CODED,
+                                                         codes=codes, code_bound=code_bound)
         if mode == STATION_MODE_ZONE:
             # A border subset names only its zone stations (design §4.2): a stop of any other station keeps no
             # catalogue id, so the iPhone never offers it as a journey end, while trips still list it.
@@ -1424,6 +1671,11 @@ def ingest_pack(
                     "INSERT OR IGNORE INTO temp.ios_gtfs_kept_trip VALUES(?)",
                     (trip_id,),
                 )
+        if urban:
+            # Every trip of a city network, as Android's planner reads it.
+            connection.execute(
+                "INSERT INTO temp.ios_gtfs_kept_trip SELECT DISTINCT trip_external_id FROM temp.ios_gtfs_staged_stop_time"
+            )
         observed_trip_count = int(connection.execute(
             "SELECT count(DISTINCT trip_external_id) FROM temp.ios_gtfs_staged_stop_time"
         ).fetchone()[0])
@@ -1509,7 +1761,9 @@ def ingest_pack(
             row = routes[external_id]
             route_type = parse_int(required(row, "route_type", f"{source_id}:route:{external_id}"), f"{source_id}:route:{external_id}", minimum=0, maximum=9999)
             # TFT's railway lines, published as buses, are type 2 in the Android pack (build_gtfs_packs.ROUTE_TYPE_OVERRIDES).
-            if route_type not in INDEXED_ROUTE_TYPES:
+            if urban and route_type not in URBAN_ROUTE_TYPES:
+                raise BuildError(f"{source_id}: route {external_id!r} of a city network is no metro, tram or funicular")
+            if not urban and route_type not in INDEXED_ROUTE_TYPES:
                 raise BuildError(f"{source_id}: route {external_id!r} is neither a railway nor a bus route")
             database_id = allocator.next("route")
             route_ids[external_id] = database_id
@@ -1555,7 +1809,9 @@ def ingest_pack(
         }
 
         stop_ids: dict[str, int] = {}
-        for external_id in sorted(used_stop_ids):
+        # A city network's stops in stops.txt order: the station search offers the first stop of each name, as Android's.
+        ordered_stop_ids = [stop_id for stop_id in stops if stop_id in used_stop_ids] if urban else sorted(used_stop_ids)
+        for external_id in ordered_stop_ids:
             row = stops[external_id]
             database_id = allocator.next("stop")
             stop_ids[external_id] = database_id
@@ -1564,11 +1820,31 @@ def ingest_pack(
             longitude = parse_optional_float(row.get("stop_lon"), f"{source_id}:stop:{external_id}:lon", -180, 180)
             if external_id in code_bound and identity is not None:
                 counts[CODE_BOUND_COUNT_KEY] += 1
+            name = required(row, "stop_name", f"{source_id}:stop:{external_id}")
+            if urban:
+                # The name Android shows for a stop of a city network (StopNameCase): "DUOMO M1" is "Duomo M1".
+                name = stop_name_display(name)
+                if not name:
+                    raise BuildError(f"{source_id}:stop:{external_id}: empty stop name")
             connection.execute(
                 "INSERT INTO stop(id,pack_id,external_id,name,latitude,longitude,catalog_station_id,railway_code,trenitalia_location_id) VALUES(?,?,?,?,?,?,?,?,?)",
-                (database_id, pack_id, external_id, required(row, "stop_name", f"{source_id}:stop:{external_id}"), latitude, longitude, identity.station_id if identity else None, identity.railway_code if identity else None, identity.trenitalia_location_id if identity else None),
+                (database_id, pack_id, external_id, name, latitude, longitude, identity.station_id if identity else None, identity.railway_code if identity else None, identity.trenitalia_location_id if identity else None),
             )
             counts["stop"] += 1
+        if urban:
+            if STOP_MODES_FILE not in archive.names:
+                raise BuildError(f"{source_id}: a city network without {STOP_MODES_FILE}")
+            modes = stop_modes(archive, source_id, stops)
+            connection.executemany(
+                "INSERT INTO urban_stop(stop_id,modes) VALUES(?,?)",
+                ((stop_ids[external_id], modes[external_id]) for external_id in ordered_stop_ids),
+            )
+            counts["urban_stop"] += len(ordered_stop_ids)
+            walks = urban_walks(source_id, stops, points)
+            rows = sorted((station_id, stop_ids[stop_id], minutes) for (station_id, stop_id), minutes in walks.items()
+                          if stop_id in stop_ids)
+            connection.executemany("INSERT INTO urban_walk(catalog_station_id,stop_id,minutes) VALUES(?,?,?)", rows)
+            counts["urban_walk"] += len(rows)
         previous_trip_id: str | None = None
         previous_departure: int | None = None
         retained_rows = connection.execute(
@@ -1619,9 +1895,11 @@ def build_database(
     max_compressed_bytes: int = DEFAULT_MAX_COMPRESSED_BYTES,
     full_pack_dir: Path | None = None,
     transit_manifest_path: Path | None = None,
+    personal_manifest_path: Path | None = None,
 ) -> dict[str, object]:
-    """The base index: the packs of ``manifest_path`` and the railway packs of ``transit_manifest_path`` (the
-    gtfs-transit/ manifest; None reads the core manifest only, as the fixtures of the tests do)."""
+    """The base index: the packs of ``manifest_path`` and the railway packs and city networks of
+    ``transit_manifest_path`` (the gtfs-transit/ manifest; None reads the core manifest only, as the fixtures of the
+    tests do); with ``personal_manifest_path`` (gtfs-personal/) the personal index, those packs too."""
     gtfs_root = manifest_path.parent
     packs, input_root, input_files, input_fingerprint, source_generated_at = read_manifest(
         manifest_path,
@@ -1630,9 +1908,11 @@ def build_database(
         source_policy_path,
         full_pack_dir,
         transit_manifest_path,
+        personal_manifest_path,
     )
-    transit_rail = sorted(str(item["sourceId"]) for item in read_transit_rail_packs(transit_manifest_path)[0]) \
-        if transit_manifest_path is not None else []
+    transit_rail, transit_urban = ([sorted(str(item["sourceId"]) for item in kind)
+                                    for kind in read_transit_packs(transit_manifest_path)[:2]]
+                                   if transit_manifest_path is not None else ([], []))
     catalog, eligible_catalog_stations = load_catalog(catalog_path)
     border = sorted(str(pack["source_id"]) for pack in packs if pack.get("station_mode") == STATION_MODE_ZONE)
     android = android_stop_matcher.load(catalog_path) if border else None
@@ -1647,12 +1927,17 @@ def build_database(
         "borderSubsets": border,
         "parentIdentityInheritance": True,
         "parentIdentityMaximumChildDistanceKm": MAX_PARENT_INHERITANCE_DISTANCE_KM,
-        "routeTypes": "rail (2, 100-199) and bus (3, 700-799)",
+        "routeTypes": "rail (2, 100-199) and bus (3, 700-799); in a city network (transitUrbanPacks) metro (1, 12, 400-499), "
+                      "tram (0, 900-999) and funicular (5, 6, 7, 1300-1499), every trip, no stop bound to a catalog station",
         "stationCodeSchemes": {source_id: scheme for source_id, scheme in sorted(android_station_codes.PACK_SCHEMES.items()) if source_id in indexed},
         "catalogueNameSuffixes": {source_id: list(suffixes) for source_id, suffixes in sorted(CATALOGUE_NAME_SUFFIXES.items()) if source_id in indexed},
         "scheduledCoachPacks": sorted(SCHEDULED_COACH_PACKS & indexed),
         "itineraryCopyPacks": sorted(ITINERARY_COPY_PACKS & indexed),
         "transitRailPacks": transit_rail,
+        **({"transitUrbanPacks": transit_urban, "urbanStops": dict(URBAN_STOPS)} if transit_urban else {}),
+        **({"personalPacks": sorted(str(pack["source_id"]) for pack in packs
+                                    if Path(str(pack["archive"])).parent == personal_manifest_path.parent)}
+           if personal_manifest_path is not None else {}),
     }
     return write_schedule(
         packs, catalog, eligible_catalog_stations, input_root, input_files, input_fingerprint, source_generated_at,
@@ -1770,6 +2055,13 @@ def write_schedule(
         connection.execute("PRAGMA temp_store=FILE")
         connection.execute("PRAGMA foreign_keys=ON")
         connection.executescript(SCHEMA_SQL)
+        urban = any(pack.get("station_mode") == STATION_MODE_URBAN for pack in packs)
+        if urban:
+            connection.executescript(URBAN_SCHEMA_SQL)
+        tables = (*SCHEMA_TABLES, *(URBAN_SCHEMA_TABLES if urban else ()))
+        points = catalogue_points(catalog_path) if urban and catalog_path is not None else []
+        if urban and not points:
+            raise BuildError("the walks to the city stops need the catalogue")
         connection.execute(f"PRAGMA application_id={APPLICATION_ID}")
         connection.execute(f"PRAGMA user_version={USER_VERSION}")
         allocator = IdAllocator()
@@ -1783,7 +2075,7 @@ def write_schedule(
         connection.execute("BEGIN")
         for pack_id, pack in enumerate(packs, start=1):
             source_id = str(pack["source_id"])
-            counts = ingest_pack(connection, pack_id, pack, catalog, allocator, codes)
+            counts = ingest_pack(connection, pack_id, pack, catalog, allocator, codes, points)
             left_out = counts.pop(OUT_OF_ORDER_COUNT_KEY, 0)
             if left_out:
                 out_of_order[source_id] = left_out
@@ -1798,7 +2090,7 @@ def write_schedule(
             if source_id in ITINERARY_COPY_PACKS:
                 itinerary_copies[source_id] = copies
             per_pack[source_id] = counts
-        totals = {table: int(connection.execute(f"SELECT count(*) FROM {table}").fetchone()[0]) for table in SCHEMA_TABLES if table != "metadata"}
+        totals = {table: int(connection.execute(f"SELECT count(*) FROM {table}").fetchone()[0]) for table in tables if table != "metadata"}
         if totals["trip"] == 0 or totals["stop_time"] == 0:
             raise BuildError("filter produced an empty schedule")
         metadata_rows = {
@@ -1833,7 +2125,7 @@ def write_schedule(
             "database": {
                 "applicationId": APPLICATION_ID,
                 "userVersion": USER_VERSION,
-                "schemaTables": list(SCHEMA_TABLES),
+                "schemaTables": list(tables),
                 "requiredIndices": list(REQUIRED_INDICES),
                 "sha256": database_hash,
                 "sizeBytes": database_path.stat().st_size,
@@ -1899,6 +2191,16 @@ def default_paths(root: Path) -> tuple[Path, Path, Path, Path, Path]:
         root / "ios/Resources/binario_gtfs_schedule_v1.metadata.json",
     )
 
+def personal_paths(root: Path) -> tuple[Path, Path, Path, Path]:
+    """The personal index (the iPhone's Personal configuration): the gtfs-personal/ manifest of Android's personal
+    flavour, the reviewed personal policy, the index and its metadata, outside the public Resources folder."""
+    return (
+        root / "app/src/personal/assets/gtfs-personal/manifest.json",
+        root / "ios/Personal/binario_gtfs_source_policy_personal_v1.json",
+        root / "ios/Personal/binario_gtfs_schedule_personal_v1.sqlite.zlib",
+        root / "ios/Personal/binario_gtfs_schedule_personal_v1.metadata.json",
+    )
+
 def default_transit_manifest(root: Path) -> Path:
     """The manifest of the regional railways and city networks; its railway packs join the base index."""
     return root / "app/src/main/assets/gtfs-transit/manifest.json"
@@ -1919,7 +2221,16 @@ def parse_args(argv: Sequence[str]) -> argparse.Namespace:
                         help="full packs of the foreign packs bundled as their border subset")
     parser.add_argument("--foreign-full", metavar="SOURCE_ID",
                         help="build the per-country index of this full foreign pack (default output in data/gtfs-foreign/ios/)")
+    parser.add_argument("--personal", action="store_true",
+                        help="build the personal index with the gtfs-personal/ packs (default output in ios/Personal/)")
     args = parser.parse_args(argv)
+    args.personal_manifest = None
+    if args.personal:
+        if args.foreign_full:
+            parser.error("--personal and --foreign-full are two different indexes")
+        args.personal_manifest, personal_policy, output, metadata = personal_paths(root)
+        if args.source_policy == source_policy:
+            args.source_policy = personal_policy
     if args.foreign_full:
         output, metadata = foreign_full_paths(root, args.foreign_full)
     args.output = args.output or output
@@ -1950,6 +2261,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 max_compressed_bytes=args.max_compressed_bytes,
                 full_pack_dir=args.full_pack_dir,
                 transit_manifest_path=args.transit_manifest,
+                personal_manifest_path=args.personal_manifest,
             )
     except BuildError as error:
         print(f"error: {error}", file=sys.stderr)

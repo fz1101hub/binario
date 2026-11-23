@@ -1,0 +1,195 @@
+{
+  "androidOnlySources": [
+    {
+      "accessMode": "GATEWAY_ONLY",
+      "reason": "Origine in HTTP senza una copia HTTPS degli stessi byte registrata nel manifest (acquisition.corroboratedBy): l'indice dell'iPhone accetta un pack GATEWAY_ONLY solo con quella prova. Resta nella build personale Android.",
+      "sourceId": "cotral-ferro-gtfs",
+      "sourceUrl": "http://travel.mob.cotralspa.it:7777/GTFS/GTFS_FERRO.zip"
+    }
+  ],
+  "schemaVersion": 1,
+  "sources": [
+    {
+      "accessMode": "OPEN_DIRECT",
+      "landingPage": "https://gtfs.api.opendatahub.com/v1/dataset/sta-time-tables",
+      "licence": "CC0 1.0",
+      "sourceId": "alto-adige-sta-gtfs",
+      "sourceUrl": "https://gtfs.api.opendatahub.com/v1/dataset/sta-time-tables/raw"
+    },
+    {
+      "accessMode": "GATEWAY_ONLY",
+      "landingPage": "https://dati.comune.genova.it/",
+      "licence": "CC BY 4.0",
+      "sourceId": "amt-genova-casella-gtfs",
+      "sourceUrl": "http://opendatagoogletransit.comune.genova.it/downloads/google_transit.zip"
+    },
+    {
+      "accessMode": "OPEN_DIRECT",
+      "landingPage": "https://www.arst.sardegna.it/open-data/",
+      "licence": "CC BY 4.0",
+      "sourceId": "arst-gtfs",
+      "sourceUrl": "https://arstspa.info/arst-cagliari-it.zip"
+    },
+    {
+      "accessMode": "OPEN_DIRECT",
+      "landingPage": "https://www.arst.sardegna.it/open-data/",
+      "licence": "CC BY 4.0",
+      "sourceId": "arst-metro-gtfs",
+      "sourceUrl": "https://arstspa.info/arst-cagliari-it.zip"
+    },
+    {
+      "accessMode": "OPEN_DIRECT",
+      "landingPage": "https://data.opentransportdata.swiss/dataset/timetable-2026-gtfs2020",
+      "licence": "opendata.swiss terms_by — uso libero, anche commerciale, con obbligo di citare la fonte",
+      "sourceId": "ch-otd-gtfs",
+      "sourceUrl": "https://data.opentransportdata.swiss/de/dataset/timetable-2026-gtfs2020/permalink"
+    },
+    {
+      "accessMode": "OPEN_DIRECT",
+      "landingPage": "https://www.eavsrl.it/open-data/",
+      "licence": "Italian Open Data License (IODL)",
+      "sourceId": "eav-gtfs",
+      "sourceUrl": "https://www.wimob.it/cfile/download.php?file=google-transit.zip"
+    },
+    {
+      "accessMode": "OPEN_DIRECT",
+      "landingPage": "https://www.cciss.it/nap/mmtis/public/it/catalog/Dataset/1860",
+      "licence": "NAP CCISS: no licence - no contract (dati aperti per default, art. 52 c. 2 CAD; Reg. UE 2017/1926)",
+      "sourceId": "fal-basilicata-puglia",
+      "sourceUrl": "https://www.cciss.it/nap/mmtis/public/api/v1/download/blob/Asset/305982/checkedResource"
+    },
+    {
+      "accessMode": "OPEN_DIRECT",
+      "landingPage": "https://www.cciss.it/nap/mmtis/public/it/catalog/Dataset/1860",
+      "licence": "NAP CCISS: no licence - no contract (dati aperti per default, art. 52 c. 2 CAD; Reg. UE 2017/1926)",
+      "sourceId": "fdg-gargano",
+      "sourceUrl": "https://www.cciss.it/nap/mmtis/public/api/v1/download/blob/Asset/307477/checkedResource"
+    },
+    {
+      "accessMode": "OPEN_DIRECT",
+      "landingPage": "https://www.cciss.it/nap/mmtis/public/it/catalog/Dataset/1860",
+      "licence": "NAP CCISS: no licence - no contract (dati aperti per default, art. 52 c. 2 CAD; Reg. UE 2017/1926)",
+      "sourceId": "ferrotramviaria-bari-barletta",
+      "sourceUrl": "https://www.cciss.it/nap/mmtis/public/api/v1/download/blob/Asset/477050/checkedResource"
+    },
+    {
+      "accessMode": "OPEN_DIRECT",
+      "landingPage": "https://dati.toscana.it/dataset/rt-oraritb",
+      "licence": "CC BY 4.0",
+      "sourceId": "firenze-gest-gtfs",
+      "sourceUrl": "https://dati.toscana.it/dataset/8bb8f8fe-fe7d-41d0-90dc-49f2456180d1/resource/1f62d551-65f4-49f8-9a99-e19b02077be3/download/gest.gtfs"
+    },
+    {
+      "accessMode": "GATEWAY_ONLY",
+      "landingPage": "https://dati.comune.genova.it/",
+      "licence": "CC BY 4.0",
+      "sourceId": "genova-amt-gtfs",
+      "sourceUrl": "http://opendatagoogletransit.comune.genova.it/downloads/google_transit.zip"
+    },
+    {
+      "accessMode": "OPEN_DIRECT",
+      "landingPage": "https://www.gtt.to.it/gtt_gtfs_license.html",
+      "licence": "Licenza GTT per uso non commerciale (https://www.gtt.to.it/gtt_gtfs_license.html)",
+      "sourceId": "gtt-gtfs",
+      "sourceUrl": "https://files.mobilitydatabase.org/mdb-2687/latest.zip"
+    },
+    {
+      "accessMode": "OPEN_DIRECT",
+      "landingPage": "https://www.cciss.it/nap/mmtis/public/en/catalog/Dataset/1814124",
+      "licence": "Dati aperti NAP CCISS (art. 52 c. 2 CAD, Reg. UE 2017/1926); conversione GTFS CC BY 4.0",
+      "sourceId": "italo-gtfs",
+      "sourceUrl": "https://raw.githubusercontent.com/deryclem/italo-gtfs/a9d3f90c82448692e6ca3edb17e5473ccaad2c75/gtfs-italo.zip"
+    },
+    {
+      "accessMode": "OPEN_DIRECT",
+      "landingPage": "https://www.dati.lombardia.it/Mobilit-e-trasporti/Orario-Ferroviario-Regionale-Gtfs/3z4k-mxz9",
+      "licence": "CC BY 4.0",
+      "sourceId": "lombardia-trenord-gtfs",
+      "sourceUrl": "https://www.dati.lombardia.it/download/3z4k-mxz9/application/zip"
+    },
+    {
+      "accessMode": "OPEN_DIRECT",
+      "landingPage": "https://solweb.tper.it/web/tools/open-data/open-data.aspx",
+      "licence": "CC BY 3.0 IT",
+      "sourceId": "marconi-express-gtfs",
+      "sourceUrl": "https://solweb.tper.it/web/tools/open-data/open-data-download.aspx?source=solweb.tper.it&filename=gtfsmex&version=20260421&format=zip"
+    },
+    {
+      "accessMode": "OPEN_DIRECT",
+      "landingPage": "https://www.cciss.it/nap/mmtis/public/it/catalog/Dataset/204008",
+      "licence": "NAP CCISS: no licence - no contract (dati aperti per default, art. 52 c. 2 CAD; Reg. UE 2017/1926)",
+      "sourceId": "micotra-udine-villach",
+      "sourceUrl": "https://www.cciss.it/nap/mmtis/public/api/v1/download/blob/Asset/204098/checkedResource"
+    },
+    {
+      "accessMode": "OPEN_DIRECT",
+      "landingPage": "https://dati.comune.milano.it/dataset/ds929-orari-del-trasporto-pubblico-locale-nel-comune-di-milano-in-formato-gtfs",
+      "licence": "CC BY 4.0",
+      "sourceId": "milano-atm-gtfs",
+      "sourceUrl": "https://dati.comune.milano.it/dataset/ae3f3db9-de61-45b7-94e7-9395c0e3ef53/resource/6251f156-4c74-4a0b-904e-01bcb701a686/download/gtfs.zip"
+    },
+    {
+      "accessMode": "OPEN_DIRECT",
+      "landingPage": "https://www.anm.it/",
+      "licence": "Non verificabile sul sito ufficiale: la pagina open data ANM richiede l'accesso; IODL 2.0 secondo Transitland",
+      "sourceId": "napoli-anm-gtfs",
+      "sourceUrl": "https://www.anm.it/google/google-transit.zip"
+    },
+    {
+      "accessMode": "OPEN_DIRECT",
+      "landingPage": "https://data.oebb.at/de/datensaetze~soll-fahrplan-gtfs~",
+      "licence": "CC BY 4.0",
+      "sourceId": "oebb-gtfs",
+      "sourceUrl": "https://static.web.oebb.at/open-data/soll-fahrplan-gtfs/GTFS_Fahrplan_2026.zip"
+    },
+    {
+      "accessMode": "OPEN_DIRECT",
+      "landingPage": "https://romamobilita.it/",
+      "licence": "CC BY 3.0 secondo Transitland e Mobility Database; pagina della licenza ufficiale non raggiungibile (404) al 2 novembre 2026",
+      "sourceId": "roma-mobilita-gtfs",
+      "sourceUrl": "https://romamobilita.it/sites/default/files/rome_static_gtfs.zip"
+    },
+    {
+      "accessMode": "OPEN_DIRECT",
+      "landingPage": "https://ressources.data.sncf.com/pages/accueil/",
+      "licence": "SNCF Open Data — licenza con attribuzione (data.gouv.fr: «Other (Attribution)»)",
+      "sourceId": "sncf-gtfs",
+      "sourceUrl": "https://eu.ftp.opendatasoft.com/sncf/plandata/Export_OpenData_SNCF_GTFS_NewTripId.zip"
+    },
+    {
+      "accessMode": "OPEN_DIRECT",
+      "landingPage": "https://dati.toscana.it/dataset/rt-oraritb",
+      "licence": "Creative Commons Attribution (CC BY)",
+      "sourceId": "toscana-tft-gtfs",
+      "sourceUrl": "https://dati.toscana.it/dataset/8bb8f8fe-fe7d-41d0-90dc-49f2456180d1/resource/59aeacbc-99ee-410b-ac1e-622b5574a666/download/tft.gtfs"
+    },
+    {
+      "accessMode": "OPEN_DIRECT",
+      "landingPage": "https://transport.data.gouv.fr/datasets/horaires-des-trains-trenitalia-france",
+      "licence": "Licence Ouverte / Open Licence 2.0 (Etalab, etalab-2.0): riuso e ridistribuzione liberi, anche commerciali, citando la fonte «Trenitalia France» e la data dell'ultimo aggiornamento",
+      "sourceId": "trenitalia-france-gtfs",
+      "sourceUrl": "https://www.data.gouv.fr/api/1/datasets/r/bdecea2c-ebc9-4f22-812d-927e4a2e4bad"
+    },
+    {
+      "accessMode": "OPEN_DIRECT",
+      "landingPage": "https://www.cciss.it/nap/mmtis/public/en/catalog/Dataset/1077621",
+      "licence": "Dati aperti NAP CCISS (art. 52 c. 2 CAD, Reg. UE 2017/1926); conversione GTFS CC BY 4.0",
+      "sourceId": "trenitalia-gtfs",
+      "sourceUrl": "https://raw.githubusercontent.com/deryclem/trenitalia-gtfs/6c500b619cd10ed4e96ea6181a8d0eb4293a79d8/gtfs-trenitalia.zip"
+    },
+    {
+      "accessMode": "OPEN_DIRECT",
+      "landingPage": "https://www.trentinotrasporti.it/it/opendata-it",
+      "licence": "CC BY 4.0",
+      "sourceId": "trentino-gtfs",
+      "sourceUrl": "https://www.trentinotrasporti.it/opendata/google_transit_extraurbano_tte.zip"
+    },
+    {
+      "accessMode": "OPEN_DIRECT",
+      "landingPage": "https://actv.avmspa.it/it/content/catalogo-dei-dati-metadati-e-banche-dati-actv",
+      "licence": "Non dichiarata: né il feed né la pagina open data ACTV indicano una licenza",
+      "sourceId": "venezia-actv-gtfs",
+      "sourceUrl": "https://actv.avmspa.it/sites/default/files/attachments/opendata/automobilistico/actv_aut.zip"
+    }
+  ]
+}

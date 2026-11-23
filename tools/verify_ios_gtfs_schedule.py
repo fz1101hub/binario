@@ -22,9 +22,22 @@ import generate_shared_code as shared_code  # noqa: E402  (the shared tables, ch
 
 APPLICATION_ID = int.from_bytes(b"BNGT", "big")
 # Packs in the index; the same value as build_ios_gtfs_schedule.INDEXED_PACK_COUNT.
-INDEXED_PACK_COUNT = 17
+INDEXED_PACK_COUNT = 22
+# Packs of gtfs-personal/ the personal index adds (build_ios_gtfs_schedule.PERSONAL_INDEXED_PACK_COUNT).
+PERSONAL_INDEXED_PACK_COUNT = 4
 # Route types of the index (build_ios_gtfs_schedule.INDEXED_ROUTE_TYPES): rail, and the packs' bus routes.
 INDEXED_ROUTE_TYPES_SQL = "route_type = 2 OR route_type BETWEEN 100 AND 199 OR route_type = 3 OR route_type BETWEEN 700 AND 799"
+# Route types of a city network (build_ios_gtfs_schedule.URBAN_ROUTE_TYPES): metro, tram, funicular.
+URBAN_ROUTE_TYPES_SQL = ("route_type IN (0, 1, 5, 6, 7, 12) OR route_type BETWEEN 400 AND 499 OR route_type BETWEEN 900 AND 999 "
+                         "OR route_type BETWEEN 1300 AND 1499")
+# The city networks of the shared pack roles (build_ios_gtfs_schedule.URBAN_PACKS).
+URBAN_PACKS = tuple(shared_code.table_values("pack-roles-v1.json")["urbanPacks"])
+URBAN_TABLE_COLUMNS = {
+    "urban_stop": ("stop_id", "modes"),
+    "urban_walk": ("catalog_station_id", "stop_id", "minutes"),
+}
+# The reader's bound on the city stops a walk joins to one catalogue station (SQLiteGTFSJourneyRepository.swift).
+MAX_WALKED_STOPS = 128
 # Packs whose trips must touch a catalogue station with codes: the foreign packs of the shared table
 # (contracts/shared-data/v1/pack-roles-v1.json), as build_ios_gtfs_schedule.FOREIGN_PACKS.
 FOREIGN_PACKS = tuple(shared_code.table_values("pack-roles-v1.json")["foreignPacks"])
@@ -115,6 +128,25 @@ def border_subset_packs(metadata: dict[str, object]) -> list[str]:
             "metadata filter.borderSubsets is invalid")
     return border
 
+def transit_urban_packs(metadata: dict[str, object]) -> list[str]:
+    """The city networks of the gtfs-transit/ manifest in the index (the shared urbanPacks)."""
+    urban = (metadata.get("filter") or {}).get("transitUrbanPacks", []) if isinstance(metadata.get("filter"), dict) else None
+    require(isinstance(urban, list) and all(item in URBAN_PACKS for item in urban) and urban == sorted(set(urban)),
+            "metadata filter.transitUrbanPacks is invalid")
+    return urban
+
+def personal_packs(metadata: dict[str, object]) -> list[str]:
+    """The packs of gtfs-personal/ in the personal index (none in the public one); its manifest is then an input."""
+    personal = (metadata.get("filter") or {}).get("personalPacks", []) if isinstance(metadata.get("filter"), dict) else None
+    require(isinstance(personal, list) and all(isinstance(item, str) and item for item in personal)
+            and personal == sorted(set(personal)) and len(personal) in (0, PERSONAL_INDEXED_PACK_COUNT),
+            "metadata filter.personalPacks is invalid")
+    return personal
+
+def city_packs(metadata: dict[str, object]) -> list[str]:
+    """Every city network of the index: those of gtfs-transit/ and, in the personal index, of gtfs-personal/."""
+    return sorted({*transit_urban_packs(metadata), *(pack for pack in personal_packs(metadata) if pack in URBAN_PACKS)})
+
 def transit_rail_packs(metadata: dict[str, object]) -> list[str]:
     """The railway packs of the gtfs-transit/ manifest in the index; its manifest is then an input too."""
     rail = (metadata.get("filter") or {}).get("transitRailPacks", []) if isinstance(metadata.get("filter"), dict) else None
@@ -146,8 +178,10 @@ def verify_inputs(
         require(isinstance(files, list) and len(files) == 2, "per-country metadata must describe its full pack and the catalog")
     else:
         border = border_subset_packs(metadata)
-        transit = 1 if transit_rail_packs(metadata) else 0
-        expected_count = INDEXED_PACK_COUNT + (3 if source_policy_path is not None else 2) + transit + len(border)
+        transit = 1 if transit_rail_packs(metadata) or transit_urban_packs(metadata) else 0
+        personal = len(personal_packs(metadata))
+        transit += 1 if personal else 0
+        expected_count = INDEXED_PACK_COUNT + personal + (3 if source_policy_path is not None else 2) + transit + len(border)
         require(
             isinstance(files, list) and len(files) == expected_count,
             f"metadata must describe manifest, catalog, reviewed source policy, {'transit manifest, ' * transit}"
@@ -190,7 +224,7 @@ def verify_inputs(
     else:
         actual_fingerprint = hashlib.sha256(canonical_json(descriptors)).hexdigest()
     require(actual_fingerprint == expected_fingerprint, "input fingerprint mismatch")
-    expected_packs = 1 if foreign_full is not None else INDEXED_PACK_COUNT
+    expected_packs = 1 if foreign_full is not None else INDEXED_PACK_COUNT + len(personal_packs(metadata))
     require(inputs.get("packCount") == expected_packs, f"metadata pack count must be {expected_packs}")
     if source_policy_path is not None and foreign_full is None:
         require(source_policy_path.resolve() in resolved_inputs, "reviewed GTFS source policy is absent from the input fingerprint")
@@ -229,6 +263,177 @@ def border_zone_rules(metadata: dict[str, object], inputs: Mapping[str, Path]) -
                 for source_id, path in full_archives.items()}
     except (builder.BuildError, OSError, ValueError) as error:
         raise VerificationError(f"cannot derive the border zone stations: {error}") from error
+
+def verify_urban_tables(connection: sqlite3.Connection, urban_packs: Sequence[str]) -> None:
+    """The city networks' stops: never a catalogue station, each with its modes (urban_stop) and only theirs; the
+    walks name stops of theirs, in whole minutes, at most MAX_WALKED_STOPS per station."""
+    placeholders = ",".join("?" for _ in urban_packs)
+    bound = connection.execute(
+        f"SELECT count(*) FROM stop s JOIN pack p ON p.id=s.pack_id WHERE p.source_id IN ({placeholders}) "
+        "AND (s.catalog_station_id IS NOT NULL OR s.railway_code IS NOT NULL OR s.trenitalia_location_id IS NOT NULL)",
+        list(urban_packs),
+    ).fetchone()[0]
+    require(bound == 0, "a stop of a city network carries a catalogue identity")
+    listed = {row[0] for row in connection.execute("SELECT stop_id FROM urban_stop")}
+    urban_stops = {row[0] for row in connection.execute(
+        f"SELECT s.id FROM stop s JOIN pack p ON p.id=s.pack_id WHERE p.source_id IN ({placeholders})", list(urban_packs))}
+    require(listed == urban_stops, "urban_stop does not list exactly the stops of the city networks")
+    invalid_modes = connection.execute("SELECT count(*) FROM urban_stop WHERE modes GLOB '*[^MTF]*'").fetchone()[0]
+    require(invalid_modes == 0, "urban_stop modes outside M, T, F")
+    walked = connection.execute(
+        "SELECT count(*) FROM urban_walk w LEFT JOIN urban_stop u ON u.stop_id=w.stop_id WHERE u.stop_id IS NULL "
+        "OR w.minutes < 0 OR w.minutes > 60"
+    ).fetchone()[0]
+    require(walked == 0, "urban_walk names a stop outside the city networks or a walk out of bounds")
+    most = connection.execute(
+        "SELECT max(n) FROM (SELECT count(*) AS n FROM urban_walk GROUP BY catalog_station_id)").fetchone()[0] or 0
+    require(most <= MAX_WALKED_STOPS, f"a station is a walk from {most} city stops, above {MAX_WALKED_STOPS}")
+
+def urban_rules(metadata: dict[str, object], inputs: Mapping[str, Path]) -> dict[str, object]:
+    """What the city networks' rows must be, derived again from their archives and the catalogue (hash-verified
+    inputs) with the builder's rules: the name each stop shows and the walks, by pack and stop id."""
+    urban = city_packs(metadata)
+    if not urban:
+        return {}
+    ordered = list(inputs.values())
+    catalogue_path = ordered[1]
+    manifests = [path for path in ordered if path.name == "manifest.json" and path.parent.name in ("gtfs-transit", "gtfs-personal")]
+    require(bool(manifests), "the city networks need the transit manifest among the inputs")
+    import build_ios_gtfs_schedule as builder  # the one rule for names and walks (urban-stops-v1.json)
+
+    assets: dict[str, tuple[str, object]] = {}
+    for manifest_path in manifests:
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        assets.update({str(entry.get("sourceId")): (str(entry.get("asset", "")).rsplit("/", 1)[-1], entry.get("sha256"))
+                       for entry in manifest.get("packs", []) if isinstance(entry, dict)})
+    try:
+        points = builder.catalogue_points(catalogue_path)
+        names: dict[tuple[str, str], str] = {}
+        walks: dict[tuple[str, str, str], int] = {}
+        for source_id in urban:
+            name, digest = assets.get(source_id, ("", None))
+            found = [path for path in ordered if path.name == name and sha256_file(path) == digest]
+            require(bool(found), f"{source_id}: the archive of the city network is not an input")
+            with builder.BoundedGtfsArchive(found[0]) as archive:
+                stops = builder.unique_rows(archive.rows("stops.txt", ("stop_id", "stop_name")), "stop_id", f"{source_id}:stops.txt")
+            for stop_id, row in stops.items():
+                names[(source_id, stop_id)] = builder.stop_name_display(row["stop_name"])
+            for (station_id, stop_id), minutes in builder.urban_walks(source_id, stops, points).items():
+                walks[(source_id, stop_id, station_id)] = minutes
+        return {"names": names, "walks": walks}
+    except (builder.BuildError, OSError, ValueError) as error:
+        raise VerificationError(f"cannot derive the city networks' names and walks: {error}") from error
+
+def verify_urban_rows(connection: sqlite3.Connection, rules: Mapping[str, object]) -> None:
+    """The names and the walks of the city networks are those the rules derive from the inputs."""
+    if not rules:
+        return
+    names, walks = rules["names"], rules["walks"]
+    used: set[tuple[str, str]] = set()
+    for source_id, external_id, name in connection.execute(
+        "SELECT p.source_id, s.external_id, s.name FROM urban_stop u JOIN stop s ON s.id=u.stop_id JOIN pack p ON p.id=s.pack_id"
+    ):
+        used.add((source_id, external_id))
+        require(names.get((source_id, external_id)) == name, f"{source_id}: stop {external_id} is not named as Android shows it")
+    stored = {
+        (source_id, external_id, station_id): minutes
+        for source_id, external_id, station_id, minutes in connection.execute(
+            "SELECT p.source_id, s.external_id, w.catalog_station_id, w.minutes FROM urban_walk w "
+            "JOIN stop s ON s.id=w.stop_id JOIN pack p ON p.id=s.pack_id"
+        )
+    }
+    expected = {key: minutes for key, minutes in walks.items() if (key[0], key[1]) in used}
+    require(stored == expected, f"urban_walk differs from the walks of the inputs ({len(stored)} rows, {len(expected)} expected)")
+
+def verify_city_row_bounds(connection: sqlite3.Connection, urban_packs: Sequence[str]) -> None:
+    """The rows the iPhone reads for one service day stay within MAX_CANDIDATE_ROWS wherever a city stop is involved
+    (SQLiteGTFSJourneyRepository.swift): a city stop's board (its name's stops, the services running that day), and
+    a search with a city stop at an end (one row per boarding to the first destination stop, the city services
+    running that day, the trains of every service, the stops a walk from both ends left out). Same-name stops of a
+    pack stand in for a picked stop's platforms (a superset)."""
+    if not urban_packs:
+        return
+    from collections import defaultdict
+    urban_pack_ids = {row[0] for row in connection.execute(
+        f"SELECT id FROM pack WHERE source_id IN ({','.join('?' for _ in urban_packs)})", list(urban_packs))}
+    keys: dict[int, set[str]] = defaultdict(set)
+    for stop_id, station_id in connection.execute("SELECT id, catalog_station_id FROM stop WHERE catalog_station_id IS NOT NULL"):
+        keys[stop_id].add(station_id)
+    city_keys: set[str] = set()
+    for station_id, stop_id in connection.execute("SELECT catalog_station_id, stop_id FROM urban_walk"):
+        keys[stop_id].add(station_id)
+        city_keys.add(station_id)
+    for stop_id, pack_id, name in connection.execute(
+        "SELECT s.id, s.pack_id, s.name FROM urban_stop u JOIN stop s ON s.id=u.stop_id"
+    ):
+        place = f"city:{pack_id}:{name.casefold()}"
+        keys[stop_id].add(place)
+        city_keys.add(place)
+    services: dict[int, tuple[int, int, bytes, bool]] = {}
+    for service_id, pack_id, start, count, bits in connection.execute(
+        "SELECT id, pack_id, start_date, day_count, active_days FROM service"
+    ):
+        services[service_id] = (start, count, bits, pack_id in urban_pack_ids)
+    trip_service = dict(connection.execute("SELECT id, service_id FROM trip"))
+    # Rows by (origin key, destination key, service): a train's service is counted whatever the day.
+    rows: dict[tuple[str, str], dict[int, int]] = defaultdict(lambda: defaultdict(int))
+    boards: dict[str, dict[int, int]] = defaultdict(lambda: defaultdict(int))
+    calls: list[tuple[int, int, set[str], int]] = []
+    current: int | None = None
+
+    def flush(trip_id: int) -> None:
+        service = trip_service[trip_id]
+        for position, (pickup, _, origin_keys, _) in enumerate(calls):
+            if pickup != 0 or not origin_keys:
+                continue
+            for key in origin_keys & city_keys:
+                if key.startswith("city:"):
+                    boards[key][service] += 1
+            reached: set[str] = set()
+            for _, drop_off, destination_keys, _ in calls[position + 1:]:
+                if drop_off != 0:
+                    continue
+                for destination in destination_keys - reached:
+                    reached.add(destination)
+                    if destination in origin_keys:
+                        continue
+                    for origin in origin_keys:
+                        if (origin in city_keys or destination in city_keys) and origin != destination \
+                                and origin not in destination_keys:
+                            rows[(origin, destination)][service] += 1
+
+    for trip_id, stop_id, pickup, drop_off in connection.execute(
+        "SELECT trip_id, stop_id, pickup_type, drop_off_type FROM stop_time ORDER BY trip_id, stop_sequence"
+    ):
+        if trip_id != current:
+            if current is not None:
+                flush(current)
+            current, calls = trip_id, []
+        calls.append((pickup, drop_off, keys.get(stop_id, set()), stop_id))
+    if current is not None:
+        flush(current)
+
+    def worst_day(by_service: Mapping[int, int]) -> int:
+        trains = sum(count for service, count in by_service.items() if not services[service][3])
+        city = {service: count for service, count in by_service.items() if services[service][3]}
+        if trains + sum(city.values()) <= MAX_CANDIDATE_ROWS:
+            return trains + sum(city.values())
+        days: dict[int, int] = defaultdict(int)
+        for service, count in city.items():
+            start, day_count, bits, _ = services[service]
+            first = date(start // 10_000, start // 100 % 100, start % 100).toordinal()
+            for offset in range(day_count):
+                if bits[offset // 8] & (1 << (offset % 8)):
+                    days[first + offset] += count
+        return trains + max(days.values(), default=0)
+
+    for key, by_service in boards.items():
+        busiest = worst_day(by_service)
+        require(busiest <= MAX_CANDIDATE_ROWS, f"the board of {key} reads {busiest} rows a day, above {MAX_CANDIDATE_ROWS}")
+    for (origin, destination), by_service in rows.items():
+        busiest = worst_day(by_service)
+        require(busiest <= MAX_CANDIDATE_ROWS,
+                f"a search from {origin} to {destination} reads {busiest} rows a day, above {MAX_CANDIDATE_ROWS}")
 
 def verify_source_policy(source_policy_path: Path, pack_source_ids: set[str]) -> None:
     """The reviewed policy must describe exactly the packs of the index, each with a licence entry."""
@@ -310,6 +515,7 @@ def verify_database(
     *,
     foreign_full: str | None = None,
     border_zones: Mapping[str, set[str]] | None = None,
+    urban: Mapping[str, object] | None = None,
 ) -> dict[str, int]:
     border_zones = border_zones or {}
     database = metadata.get("database")
@@ -327,19 +533,24 @@ def verify_database(
         require(integrity == [("ok",)], f"integrity_check failed: {integrity[:3]}")
         require(connection.execute("PRAGMA foreign_key_check").fetchall() == [], "foreign_key_check failed")
         actual_tables = {row[0] for row in connection.execute("SELECT name FROM sqlite_master WHERE type='table'")}
-        require(actual_tables == set(REQUIRED_TABLE_COLUMNS), f"unexpected schema tables: {sorted(actual_tables)}")
-        for table, expected_columns in REQUIRED_TABLE_COLUMNS.items():
+        # An index with city networks adds their two tables (build_ios_gtfs_schedule.URBAN_SCHEMA_SQL); the reader
+        # accepts exactly the base tables or both sets.
+        urban_packs = [] if foreign_full is not None else city_packs(metadata)
+        tables = {**REQUIRED_TABLE_COLUMNS, **(URBAN_TABLE_COLUMNS if urban_packs else {})}
+        require(actual_tables == set(tables), f"unexpected schema tables: {sorted(actual_tables)}")
+        for table, expected_columns in tables.items():
             columns = tuple(row[1] for row in connection.execute(f"PRAGMA table_info({table})"))
             require(columns == expected_columns, f"column schema mismatch for {table}: {columns}")
         actual_indices = {row[0] for row in connection.execute("SELECT name FROM sqlite_master WHERE type='index' AND name NOT LIKE 'sqlite_autoindex_%'")}
         require(actual_indices == REQUIRED_INDICES, f"index mismatch: {sorted(actual_indices)}")
-        counts = {table: int(connection.execute(f"SELECT count(*) FROM {table}").fetchone()[0]) for table in REQUIRED_TABLE_COLUMNS if table != "metadata"}
+        counts = {table: int(connection.execute(f"SELECT count(*) FROM {table}").fetchone()[0]) for table in tables if table != "metadata"}
         require(counts == expected_counts, f"row count mismatch: expected {expected_counts}, got {counts}")
         if foreign_full is not None:
             packs = [str(row[0]) for row in connection.execute("SELECT source_id FROM pack")]
             require(packs == [foreign_full], f"per-country database must contain only {foreign_full}, not {packs}")
         else:
-            require(counts["pack"] == INDEXED_PACK_COUNT, f"database must contain exactly {INDEXED_PACK_COUNT} packs")
+            expected = INDEXED_PACK_COUNT + len(personal_packs(metadata))
+            require(counts["pack"] == expected, f"database must contain exactly {expected} packs")
         require(counts["trip"] > 0 and counts["stop_time"] > 0, "schedule is empty")
         embedded = dict(connection.execute("SELECT key,value FROM metadata"))
         require(embedded.get("input_fingerprint_sha256") == input_fingerprint, "embedded input fingerprint mismatch")
@@ -352,12 +563,15 @@ def verify_database(
         # but borderSubsets); a border subset or a per-country index may touch one without codes.
         coded_only = [] if foreign_full is not None else sorted(set(FOREIGN_PACKS) - set(border_zones))
         unverified = connection.execute(
-            "SELECT count(*) FROM trip t JOIN pack p ON p.id=t.pack_id WHERE NOT EXISTS ("
+            "SELECT count(*) FROM trip t JOIN pack p ON p.id=t.pack_id WHERE "
+            f"p.source_id NOT IN ({','.join('?' for _ in urban_packs)}) AND NOT EXISTS ("
             "SELECT 1 FROM stop_time st JOIN stop s ON s.id=st.stop_id WHERE st.trip_id=t.id AND s.catalog_station_id IS NOT NULL "
             f"AND (p.source_id NOT IN ({','.join('?' for _ in coded_only) or ''}) OR s.railway_code IS NOT NULL OR s.trenitalia_location_id IS NOT NULL))",
-            coded_only,
+            [*urban_packs, *coded_only],
         ).fetchone()[0]
         require(unverified == 0, "trip not touching a verified catalog station found")
+        if urban_packs:
+            verify_urban_tables(connection, urban_packs)
         # A border subset names only zone stations: no stop of another station carries a catalogue id (design §4.2).
         for source_id, zone_ids in sorted(border_zones.items()):
             for external_id, station_id in connection.execute(
@@ -366,8 +580,17 @@ def verify_database(
             ):
                 require(station_id in zone_ids,
                         f"{source_id}: stop {external_id} carries catalogue id {station_id} outside the border zone")
-        non_rail = connection.execute(f"SELECT count(*) FROM route WHERE NOT ({INDEXED_ROUTE_TYPES_SQL})").fetchone()[0]
+        urban_placeholders = ",".join("?" for _ in urban_packs)
+        non_rail = connection.execute(
+            f"SELECT count(*) FROM route r JOIN pack p ON p.id=r.pack_id WHERE p.source_id NOT IN ({urban_placeholders}) "
+            f"AND NOT ({INDEXED_ROUTE_TYPES_SQL})", urban_packs,
+        ).fetchone()[0]
         require(non_rail == 0, "route neither rail nor bus found")
+        non_urban = connection.execute(
+            f"SELECT count(*) FROM route r JOIN pack p ON p.id=r.pack_id WHERE p.source_id IN ({urban_placeholders}) "
+            f"AND NOT ({URBAN_ROUTE_TYPES_SQL})", urban_packs,
+        ).fetchone()[0]
+        require(non_urban == 0, "route of a city network neither metro, tram nor funicular found")
         invalid_bikes = connection.execute("SELECT count(*) FROM trip WHERE bikes_allowed IS NOT NULL AND bikes_allowed NOT IN (1, 2)").fetchone()[0]
         require(invalid_bikes == 0, "trip bikes_allowed outside 1, 2 or NULL")
         invalid_bits = connection.execute("SELECT count(*) FROM service WHERE length(active_days) != (day_count + 7) / 8").fetchone()[0]
@@ -416,6 +639,9 @@ def verify_database(
             """
         ).fetchone()[0]
         require(regressive == 0, "stop_times regress along a trip")
+        if urban_packs:
+            verify_urban_rows(connection, urban or {})
+            verify_city_row_bounds(connection, urban_packs)
         connection.close()
         return counts
     except (sqlite3.Error, json.JSONDecodeError) as error:
@@ -431,9 +657,12 @@ def verify(
     max_database_bytes: int,
     source_policy_path: Path | None = None,
     foreign_full: str | None = None,
+    personal: bool = False,
 ) -> dict[str, object]:
     metadata = load_metadata(metadata_path)
     require(metadata.get("schemaVersion") == METADATA_SCHEMA_VERSION, "unsupported metadata schemaVersion")
+    # The public index never carries a personal pack; the personal index carries them all (--personal).
+    require(bool(personal_packs(metadata)) == personal, "personal packs in the public index, or missing from the personal one")
     if foreign_full is not None:
         require(foreign_full in FOREIGN_PACKS, f"{foreign_full} is not a foreign pack")
         require(metadata.get("kind") == FOREIGN_FULL_KIND and metadata.get("sourceId") == foreign_full,
@@ -453,6 +682,7 @@ def verify(
     require(metadata.get("maximumCompressedSizeBytes") == max_compressed_bytes, "configured maximum size differs from build metadata")
     input_fingerprint, inputs = verify_inputs(metadata, metadata_path, source_policy_path, foreign_full)
     border_zones = border_zone_rules(metadata, inputs) if foreign_full is None else {}
+    urban = urban_rules(metadata, inputs) if foreign_full is None else {}
     fd, raw_name = tempfile.mkstemp(prefix="binario-verify-", suffix=".sqlite")
     os.close(fd)
     raw_path = Path(raw_name)
@@ -461,7 +691,7 @@ def verify(
         require(database.get("sizeBytes") == database_size, "decompressed size metadata mismatch")
         require(database.get("sha256") == database_hash, "decompressed SHA-256 mismatch")
         counts = verify_database(raw_path, metadata, input_fingerprint, foreign_full=foreign_full,
-                                 border_zones=border_zones)
+                                 border_zones=border_zones, urban=urban)
         if source_policy_path is not None and foreign_full is None:
             verify_source_policy(source_policy_path, pack_source_ids(raw_path))
         elif source_policy_path is not None:
@@ -479,7 +709,14 @@ def parse_args(argv: Sequence[str]) -> argparse.Namespace:
     parser.add_argument("--max-compressed-bytes", type=int, default=DEFAULT_MAX_COMPRESSED_BYTES)
     parser.add_argument("--max-database-bytes", type=int, default=DEFAULT_MAX_DATABASE_BYTES)
     parser.add_argument("--foreign-full", metavar="SOURCE_ID", help="verify the per-country index of this foreign pack")
+    parser.add_argument("--personal", action="store_true", help="verify the personal index (ios/Personal/)")
     args = parser.parse_args(argv)
+    if args.personal:
+        directory = root / "ios/Personal"
+        args.input = args.input or directory / "binario_gtfs_schedule_personal_v1.sqlite.zlib"
+        args.metadata = args.metadata or directory / "binario_gtfs_schedule_personal_v1.metadata.json"
+        if args.source_policy == root / "ios/Resources/binario_gtfs_source_policy_v1.json":
+            args.source_policy = directory / "binario_gtfs_source_policy_personal_v1.json"
     if args.foreign_full:
         directory = root / foreign_rules.IOS_FULL_DIR
         args.input = args.input or directory / f"{args.foreign_full}.sqlite.zlib"
@@ -498,6 +735,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             max_database_bytes=args.max_database_bytes,
             source_policy_path=args.source_policy,
             foreign_full=args.foreign_full,
+            personal=args.personal,
         )
     except VerificationError as error:
         print(f"error: {error}", file=sys.stderr)
