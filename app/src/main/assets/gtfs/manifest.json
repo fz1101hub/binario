@@ -1076,7 +1076,7 @@
       "licence": "Licence Ouverte / Open Licence 2.0 (Etalab, etalab-2.0): riuso e ridistribuzione liberi, anche commerciali, citando la fonte «Trenitalia France» e la data dell'ultimo aggiornamento",
       "licenceEvidence": "https://transport.data.gouv.fr/datasets/horaires-des-trains-trenitalia-france (licenza etalab-2.0 indicata per il dataset, anche nell'elenco dei feed di Transitous consultato nel novembre 2026; la scheda non è raggiungibile dall'ambiente di sviluppo); testo della licenza https://www.etalab.gouv.fr/licence-ouverte-open-licence/",
       "notes": "Orario statico pubblicato da Trenitalia France sul punto di accesso nazionale francese: Frecciarossa Parigi – Lione – Chambéry – Modane – Torino – Milano e, se presenti, Parigi – Lione – Marsiglia; filtrato ai route_type ferroviari e incluso intero. Le stesse corse sono anche nel pack trenitalia-gtfs (NAP italiano, 76 corse con fermate francesi nel novembre 2026): la copia del pack nazionale viene prima (PlannedPackOrder) e le copie uguali sono unite.",
-      "sha256": "9eb60c85b1fc8e68ec426ee13ee99579902ab39d9bd743cb0dad9fc11593a2fc",
+      "sha256": "73c401209b5c8a80dcd1816cf8ad81e081f59904110852c5b3bde8e3c9572e6e",
       "lastServiceDate": "2026-12-11",
       "fullServiceUntil": "2026-12-11",
       "filter": {
@@ -1187,7 +1187,7 @@
         ]
       },
       "sourceArchiveSha256": "cc2404c45f1ce93a54c0c84bbdbf8ed347cda0f2a3de499e7a0f0b1d6e0a179a",
-      "contentSha256": "6b95e74dbad5576471bb3365d112053e499c096f3f7ba3bf7125d3b96f6452d1"
+      "contentSha256": "6e579713ed231e5162253cc28aee0fd8ddfd5351baa2c485d2d61cb1b15b6b0f"
     },
     {
       "sourceId": "trenitalia-gtfs",

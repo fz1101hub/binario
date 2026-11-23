@@ -16,6 +16,7 @@ import zipfile
 from datetime import date
 from pathlib import Path
 from typing import Any
+from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools"))
@@ -426,6 +427,50 @@ class RefreshCoreTest(unittest.TestCase):
             if name not in ("manifest.json", "SHA256SUMS"):
                 self.assertEqual(data, (staging / name).read_bytes(), name)
         self.assertEqual(self.before, {path.name: path.read_bytes() for path in self.published.iterdir()})
+
+    def test_an_identical_archive_is_filtered_again_when_the_published_pack_fails_the_current_rules(self) -> None:
+        # Trenitalia France as merged in #111: UTC times (here a winter-only calendar), built before the time-zone rule,
+        # so --check refuses it now.
+        sources = self.temp / "tf"
+        sources.mkdir()
+        trenitalia_france_zip(sources / "tf.zip")
+        with zipfile.ZipFile(sources / "tf-utc.zip", "w") as archive_out, zipfile.ZipFile(sources / "tf.zip") as archive_in:
+            for name in archive_in.namelist():
+                data = archive_in.read(name)
+                if name == "agency.txt":
+                    data = data.replace(b"Europe/Paris", b"UTC")
+                if name == "calendar.txt":
+                    data = data.replace(b"20271211", b"20261211")
+                archive_out.writestr(name, data)
+        utc = (sources / "tf-utc.zip").read_bytes()
+        candidates = {"trenitalia-france-gtfs": candidate()}
+        url = candidates["trenitalia-france-gtfs"]["sourceUrl"]
+        with mock.patch.object(builder, "LOCAL_TIME_SOURCES", frozenset()), \
+                mock.patch.object(builder, "TRAIN_NUMBER_ROUTE_ID_SOURCES", frozenset()), \
+                mock.patch.object(builder, "verify_local_times", lambda *args: None), \
+                contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+            refresh.refresh(["trenitalia-france-gtfs"], self.published, self.temp / "old", "2026-11-23",
+                            fetch=FakeDownloads({url: utc}), resolve=self.resolve, candidates=candidates)
+        old = self.temp / "old/staging/gtfs"
+        with self.assertRaisesRegex(builder.BuildError, "orari non portati in Europe/Rome"):
+            builder.verify_filter_from_asset(old / "trenitalia-france-gtfs.zip", "trenitalia-france-gtfs")
+        # The same archive again: rebuilt with the current rules, not kept as "unchanged".
+        with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+            report = refresh.refresh(["trenitalia-france-gtfs"], old, self.temp / "out", "2026-11-24",
+                                     fetch=FakeDownloads({url: utc}), resolve=self.resolve, candidates={})
+        self.assertEqual("changed", report["packs"]["trenitalia-france-gtfs"]["status"])
+        staging = self.temp / "out/staging/gtfs"
+        builder.verify_assets(staging, as_of=None, min_valid_days=None)
+        with zipfile.ZipFile(staging / "trenitalia-france-gtfs.zip") as archive:
+            metadata = json.loads(archive.read(builder.FILTER_MANIFEST_MEMBER))
+            agency = archive.read("agency.txt").decode()
+        self.assertEqual("UTC", metadata[builder.LOCAL_TIMES_FROM_FIELD])
+        self.assertIn(builder.APP_TIMEZONE, agency)
+        # A pack that passes the current rules is still kept as it is for the same archive.
+        with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+            again = refresh.refresh(["trenitalia-france-gtfs"], staging, self.temp / "again", "2026-11-25",
+                                    fetch=FakeDownloads({url: utc}), resolve=self.resolve, candidates={})
+        self.assertEqual("unchanged", again["packs"]["trenitalia-france-gtfs"]["status"])
 
     def test_the_candidate_registry_is_reviewed(self) -> None:
         shipped = refresh.load_candidates()

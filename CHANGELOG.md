@@ -1,5 +1,21 @@
 # Changelog
 
+## In sviluppo — Ritardi Trenitalia France e orari francesi in ora italiana
+
+- **Correzione:** il pack Trenitalia France aggiunto con la PR #111 aveva gli orari in UTC, mentre l'app li legge in ora italiana. I suoi treni comparivano un'ora prima, accanto alle copie del pack nazionale.
+  - La costruzione del pack porta ora ogni corsa in ora italiana (+60 minuti d'inverno, +120 d'estate) e riempie il numero del treno dal codice della linea.
+  - `--check` rifiuta qualsiasi pack con orari non in ora italiana.
+  - Ogni Frecciarossa compare una volta sola, abbinato alla sua copia francese.
+- **Ritardi in tempo reale di Trenitalia France su Android** (GTFS-RT di transport.data.gouv.fr, Etalab 2.0, stesso host dei ritardi SNCF):
+  - i Frecciarossa Parigi–Lione, Parigi–Marsiglia e Parigi–Milano ricevono i ritardi anche quando l'app li mostra dal pack nazionale, grazie alla «identità alternativa» del treno tenuto nella deduplica;
+  - il feed del treno ha la precedenza e due feed non si mescolano mai sullo stesso treno;
+  - un pack con orari non locali non riceve ritardi.
+- **Fonti in tempo reale SNCF, STA e Trenitalia France:** si fermano al primo rifiuto (403 o 429) anche senza `Retry-After`; prima potevano partire altre due richieste.
+- PRIVACY.md e la scheda Play sulla sicurezza dei dati citano il nuovo feed. Nessun host nuovo, nessun dato dell'utente inviato.
+- **Fonti valutate e scartate** con la sonda GTFS-RT:
+  - TER ZOU Région Sud: Ventimiglia–Nizza è già coperta dal feed SNCF;
+  - Trentino Trasporti via BusOne: alle 6:15 il feed aveva 83 corse su 58 linee di autobus e nessun treno della Trento–Malè.
+
 ## In sviluppo — Marconi Express e Trenitalia France
 
 - **Marconi Express** (Bologna Centrale – Lazzaretto – Aeroporto, TPER, CC BY 3.0 IT dichiarata dalla pagina open data di TPER): il pack entra fra quelli pubblici (39 KB, 2.326 corse fino al 31 dicembre).

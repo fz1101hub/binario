@@ -138,7 +138,12 @@ data class GtfsServiceIdentity(
     val sourceId: String,
     val tripId: String,
     val serviceDate: LocalDate,
-    val stops: List<GtfsStopIdentity>
+    /**
+     * The trip's stops, one per stop of the service. Null only in an alternate identity
+     * ([TrainService.alternateGtfsIdentities]): a stop of the service that the other pack's copy does not list at the
+     * same minute, which that pack's realtime never reaches.
+     */
+    val stops: List<GtfsStopIdentity?>
 )
 
 data class GtfsStopIdentity(val stopId: String, val sequence: Int)
@@ -178,6 +183,13 @@ data class TrainService(
     val routeChange: OperationalRouteChange? = null,
     val routeChangeSourceIds: Set<String> = emptySet(),
     val gtfsIdentity: GtfsServiceIdentity? = null,
+    /**
+     * The same run as other packs publish it, when the route search kept this copy and left theirs out (cross-pack
+     * duplicates), in the order they were left out: each identity's stops are this service's [stops], one for one
+     * (null where that copy has no stop at the same minute).
+     * Realtime keyed by one of them reaches this service only when [gtfsIdentity]'s own feed has nothing for it.
+     */
+    val alternateGtfsIdentities: List<GtfsServiceIdentity> = emptyList(),
     /**
      * A scheduled coach of the operator's own timetable (Trenitalia bus, ItaloBus) from an offline pack, not a
      * train and not a rail replacement bus: show a bus, never a train category.

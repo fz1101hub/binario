@@ -4,6 +4,8 @@ import it.binario.app.data.DataConfidence
 import it.binario.app.data.DataResult
 import it.binario.app.data.Direction
 import it.binario.app.data.Freshness
+import it.binario.app.data.GtfsServiceIdentity
+import it.binario.app.data.GtfsStopIdentity
 import it.binario.app.data.JourneyQuery
 import it.binario.app.data.RailOperator
 import it.binario.app.data.RailStopNameMatcher
@@ -237,7 +239,7 @@ class EmbeddedGtfsRouteAdapter(
                     index.services(
                         candidate.originStopName, candidate.destinationStopName, source.id.value, query, pack.busRoutesAreScheduledCoaches
                     ).forEach { service ->
-                        add(SourcedService(source.displayName, pack.sourceId, service))
+                        add(SourcedService(source.displayName, pack.sourceId, service, localTimes = index.timesAreLocal(query.serviceDate)))
                     }
                 }
             }
@@ -268,8 +270,7 @@ class EmbeddedGtfsRouteAdapter(
                         .then(plannedPackOrder(borderZone = !nationalAtOrigin || !nationalAtDestination))
                         .thenBy { it.service.number }
                 )
-                .distinctBy { item -> serviceIdentity(item.service) }
-                .let(::withoutCrossPackDuplicates)
+                .let(::withoutDuplicates)
                 .take(24)
                 .sortedWith(compareBy<SourcedService> { it.service.scheduledDepartureDateTime }.thenBy { it.service.number })
         }
@@ -408,17 +409,82 @@ class EmbeddedGtfsRouteAdapter(
      * the minutes (REG 16348 and Italo 8984, Venezia S. Lucia 13:57 → Mestre 14:09), so the times
      * alone are not enough (audit android-data-6). Services of the same pack are never merged here.
      */
-    private fun withoutCrossPackDuplicates(items: List<SourcedService>): List<SourcedService> {
-        val keptByTimes = HashMap<String, MutableList<SourcedService>>()
-        return items.filter { item ->
+    private fun withoutCrossPackDuplicates(items: List<Int>, all: List<SourcedService>, drop: (copy: Int, kept: Int) -> Unit): List<Int> {
+        val keptByTimes = HashMap<String, MutableList<Int>>()
+        return items.filter { index ->
+            val item = all[index]
             val service = item.service
             val departure = service.scheduledDepartureDateTime ?: return@filter true
             val arrival = service.stops.lastOrNull()?.scheduled ?: return@filter true
             val kept = keptByTimes.getOrPut("$departure|$arrival") { mutableListOf() }
-            if (kept.any { other -> other.sourceId != item.sourceId && mayBeSameRun(other, item) }) return@filter false
-            kept += item
+            val same = kept.firstOrNull { other -> all[other].sourceId != item.sourceId && mayBeSameRun(all[other], item) }
+            if (same != null) {
+                drop(index, same)
+                return@filter false
+            }
+            kept += index
             true
         }
+    }
+
+    /**
+     * One copy of each train, in the order of [items]: the first of each [serviceIdentity], then
+     * [withoutCrossPackDuplicates]. A copy of another pack left out for a kept service leaves its GTFS identity on that
+     * service ([TrainService.alternateGtfsIdentities], one per pack, lined up by [alignedIdentity]), so the realtime
+     * feed of that pack still reaches the train shown; a pack whose times are not local that day lends none (its
+     * minutes may pair it with another train). Which copy is kept does not change.
+     */
+    private fun withoutDuplicates(items: List<SourcedService>): List<SourcedService> {
+        // Per item, the copies left out in its favour (with the copies left out in theirs), in the order met.
+        val copies = arrayOfNulls<MutableList<Int>>(items.size)
+        val drop = { copy: Int, kept: Int ->
+            val list = copies[kept] ?: mutableListOf<Int>().also { copies[kept] = it }
+            list += copy
+            copies[copy]?.let(list::addAll)
+            Unit
+        }
+        val firstByIdentity = HashMap<String, Int>()
+        val distinct = items.indices.filter { index ->
+            val kept = firstByIdentity.putIfAbsent(serviceIdentity(items[index].service), index) ?: return@filter true
+            drop(index, kept)
+            false
+        }
+        return withoutCrossPackDuplicates(distinct, items, drop).map { index ->
+            val kept = items[index]
+            val left = copies[index] ?: return@map kept
+            val alternates = left.asSequence()
+                .map(items::get)
+                .filter { it.sourceId != kept.sourceId && it.localTimes }
+                .mapNotNull { alignedIdentity(kept.service, it.service) }
+                .distinctBy { it.sourceId }
+                .toList()
+            if (alternates.isEmpty() || kept.service.gtfsIdentity == null) kept
+            else kept.copy(service = kept.service.copy(alternateGtfsIdentities = alternates))
+        }
+    }
+
+    /**
+     * The identity of [copy] with its stops lined up with [kept]'s, one for one: the first and the last stops are the
+     * ends of both at the same minutes, and each stop between is the next stop of [copy] at the same minute, or null
+     * when [copy] has none (the national pack lists Modane on a Milano–Paris Frecciarossa, Trenitalia France does not).
+     * Null when the ends differ: two packs that disagree on the run do not share their realtime.
+     */
+    private fun alignedIdentity(kept: TrainService, copy: TrainService): GtfsServiceIdentity? {
+        val identity = copy.gtfsIdentity ?: return null
+        if (identity.stops.size != copy.stops.size || kept.stops.size < 2 || copy.stops.size < 2) return null
+        fun sameMinute(keptIndex: Int, copyIndex: Int): Boolean =
+            ':' in kept.stops[keptIndex].scheduled && kept.stops[keptIndex].scheduled == copy.stops[copyIndex].scheduled
+        if (!sameMinute(0, 0) || !sameMinute(kept.stops.lastIndex, copy.stops.lastIndex)) return null
+        val aligned = ArrayList<GtfsStopIdentity?>(kept.stops.size)
+        aligned += identity.stops.first()
+        var next = 1
+        for (index in 1 until kept.stops.lastIndex) {
+            val at = (next until copy.stops.lastIndex).firstOrNull { sameMinute(index, it) }
+            aligned += at?.let { identity.stops[it] }
+            if (at != null) next = at + 1
+        }
+        aligned += identity.stops.last()
+        return identity.copy(stops = aligned)
     }
 
     /**
@@ -567,7 +633,9 @@ class EmbeddedGtfsRouteAdapter(
     private data class SourcedService(
         val sourceName: String,
         val sourceId: SourceId,
-        val service: TrainService
+        val service: TrainService,
+        /** False for a pack whose times are not local that day ([StaticGtfsIndex.timesAreLocal]): it lends no identity. */
+        val localTimes: Boolean = true
     )
 
     internal data class GtfsCompactIndexStats(
@@ -585,6 +653,8 @@ class EmbeddedGtfsRouteAdapter(
     ) {
         private val stops = CompactStops(limits.maxStops)
         private val agencies = HashMap<String, String>()
+        /** The valid agency_timezone values of the pack: its times are read as local times ([timesAreLocal]). */
+        private val agencyZones = HashSet<java.time.ZoneId>()
         private val routes = HashMap<String, CompactRoute>()
         private val trips = CompactTrips(limits.maxTrips)
         private val stopTimes = CompactStopTimes(limits.maxStopTimeRows)
@@ -612,11 +682,24 @@ class EmbeddedGtfsRouteAdapter(
         fun readAgencies(rows: GtfsCsvRows) {
             val idIndex = rows.header.indexOf("agency_id")
             val nameIndex = rows.header.indexOf("agency_name")
+            val timezoneIndex = rows.header.indexOf("agency_timezone")
             rows.forEachRow(limits.maxAgencies) { row ->
                 val id = row.gtfsRawValue(idIndex).trim()
                 val name = row.gtfsRawValue(nameIndex).trim()
                 if (name.isNotBlank()) agencies[id] = name
+                runCatching { java.time.ZoneId.of(row.gtfsValue(timezoneIndex)) }.getOrNull()?.let(agencyZones::add)
             }
+        }
+
+        /**
+         * True when the pack's times are local times on [date]: every agency_timezone it names has the offset of
+         * [RailTime.defaultZone][it.binario.app.data.RailTime.defaultZone] at noon (or it names none). The app reads
+         * every pack's times as local, so a pack in another offset (Trenitalia France publishes UTC) is an hour off.
+         */
+        fun timesAreLocal(date: LocalDate): Boolean {
+            val noon = date.atTime(12, 0)
+            val offset = it.binario.app.data.RailTime.defaultZone.rules.getOffset(noon)
+            return agencyZones.all { zone -> zone.rules.getOffset(noon) == offset }
         }
 
         fun readStops(rows: GtfsCsvRows) {
