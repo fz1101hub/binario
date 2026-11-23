@@ -412,8 +412,6 @@
 "settings.live.trenord" = "ประกาศตามสาย: รายการสายทั้งหมด ไม่มีข้อมูลผู้ใช้";
 "settings.live.notices_always" = "ประกาศของ RFI และปฏิทินการนัดหยุดงานของ MIT จะดาวน์โหลดแม้ปิดข้อมูลแบบเรียลไทม์ เฉพาะเมื่อคุณเปิดส่วนประกาศหรือเมื่อส่วนงานซ่อมบำรุงบนเส้นทางของคุณปรากฏขึ้น";
 
-// Weather at the destination, bike sharing, delay compensation, map of trains in motion and evening
-// alerts: Android's texts (app/src/main/res/values-th/strings.xml).
 "result.weather.title" = "สภาพอากาศที่ปลายทาง";
 "result.weather.station_date" = "%1$@ · %2$@";
 "result.weather.loading" = "กำลังโหลดพยากรณ์อากาศ…";

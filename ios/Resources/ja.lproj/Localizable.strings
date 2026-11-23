@@ -412,8 +412,6 @@
 "settings.live.trenord" = "路線別のお知らせ：路線の全一覧。利用者のデータは送りません";
 "settings.live.notices_always" = "RFI のお知らせと MIT のストライキ予定は、リアルタイムデータがオフでも、お知らせ欄を開いたときか、区間の工事の欄が表示されたときだけ取得します。";
 
-// Weather at the destination, bike sharing, delay compensation, map of trains in motion and evening
-// alerts: Android's texts (app/src/main/res/values-ja/strings.xml).
 "result.weather.title" = "到着地の天気";
 "result.weather.station_date" = "%1$@、%2$@";
 "result.weather.loading" = "予報を読み込んでいます…";

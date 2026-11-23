@@ -412,8 +412,6 @@
 "settings.live.trenord" = "إشعارات حسب الخط: القائمة الكاملة للخطوط، دون بيانات المستخدم";
 "settings.live.notices_always" = "تُنزَّل إشعارات RFI وتقويم إضرابات MIT حتى مع إيقاف البيانات الفورية، فقط عند فتح منطقة الإشعارات أو عند ظهور قسم الأعمال على مساراتك.";
 
-// Weather at the destination, bike sharing, delay compensation, map of trains in motion and evening
-// alerts: Android's texts (app/src/main/res/values-ar/strings.xml).
 "result.weather.title" = "الطقس في الوجهة";
 "result.weather.station_date" = "%1$@، %2$@";
 "result.weather.loading" = "جارٍ تحميل التوقعات…";

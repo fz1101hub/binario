@@ -412,8 +412,6 @@
 "settings.live.trenord" = "လိုင်းအလိုက် အသိပေးချက်များ- လိုင်းစာရင်း အပြည့်အစုံ၊ အသုံးပြုသူ ဒေတာ မပါ";
 "settings.live.notices_always" = "RFI အသိပေးချက်များနှင့် MIT သပိတ်ပြက္ခဒိန်ကို အချိန်နှင့်တပြေးညီ ဒေတာ ပိတ်ထားသော်လည်း အသိပေးချက်ဧရိယာကို ဖွင့်သည့်အခါ သို့မဟုတ် သင့်လမ်းကြောင်းများရှိ ပြုပြင်ရေးအပိုင်း ပေါ်လာသည့်အခါသာ ဒေါင်းလုဒ်လုပ်သည်။";
 
-// Weather at the destination, bike sharing, delay compensation, map of trains in motion and evening
-// alerts: Android's texts (app/src/main/res/values-my/strings.xml).
 "result.weather.title" = "ခရီးဆုံးရှိ ရာသီဥတု";
 "result.weather.station_date" = "%1$@၊ %2$@";
 "result.weather.loading" = "ခန့်မှန်းချက်ကို ဖွင့်နေသည်…";

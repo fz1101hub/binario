@@ -412,8 +412,6 @@
 "settings.live.trenord" = "노선별 안내: 전체 노선 목록, 사용자 데이터 없음";
 "settings.live.notices_always" = "RFI 안내와 MIT 파업 일정은 실시간 데이터가 꺼져 있어도, 안내 영역을 열거나 내 구간의 공사 섹션이 표시될 때만 내려받습니다.";
 
-// Weather at the destination, bike sharing, delay compensation, map of trains in motion and evening
-// alerts: Android's texts (app/src/main/res/values-ko/strings.xml).
 "result.weather.title" = "도착지 날씨";
 "result.weather.station_date" = "%1$@ · %2$@";
 "result.weather.loading" = "예보를 불러오는 중…";

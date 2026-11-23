@@ -412,8 +412,6 @@
 "settings.live.trenord" = "Meldungen nach Linie: die vollständige Linienliste, ohne Nutzerdaten";
 "settings.live.notices_always" = "RFI-Meldungen und der Streikkalender des MIT werden auch bei ausgeschalteten Echtzeitdaten geladen, nur wenn du den Meldungsbereich öffnest oder ein Abschnitt zu Bauarbeiten auf deinen Strecken erscheint.";
 
-// Weather at the destination, bike sharing, delay compensation, map of trains in motion and evening
-// alerts: Android's texts (app/src/main/res/values-de/strings.xml).
 "result.weather.title" = "Wetter am Zielort";
 "result.weather.station_date" = "%1$@ am %2$@";
 "result.weather.loading" = "Vorhersage wird geladen…";

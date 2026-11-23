@@ -412,8 +412,6 @@
 "settings.live.trenord" = "Notices by line: the full list of lines, with no user data";
 "settings.live.notices_always" = "RFI notices and the MIT strike calendar are downloaded even with real-time data off, only when you open the notices area or when a works section on your routes appears.";
 
-// Weather at the destination, bike sharing, delay compensation, map of trains in motion and evening
-// alerts: Android's texts (app/src/main/res/values-en/strings.xml).
 "result.weather.title" = "Weather at destination";
 "result.weather.station_date" = "%1$@ on %2$@";
 "result.weather.loading" = "Loading the forecast…";

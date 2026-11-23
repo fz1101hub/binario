@@ -412,8 +412,6 @@
 "settings.live.trenord" = "लाइन के अनुसार सूचनाएँ: लाइनों की पूरी सूची, उपयोगकर्ता का कोई डेटा नहीं";
 "settings.live.notices_always" = "RFI की सूचनाएँ और MIT का हड़ताल कैलेंडर रीयल-टाइम डेटा बंद होने पर भी डाउनलोड होते हैं, केवल जब आप सूचना क्षेत्र खोलते हैं या आपके मार्गों पर कार्यों का कोई भाग दिखता है।";
 
-// Weather at the destination, bike sharing, delay compensation, map of trains in motion and evening
-// alerts: Android's texts (app/src/main/res/values-hi/strings.xml).
 "result.weather.title" = "गंतव्य पर मौसम";
 "result.weather.station_date" = "%1$@, %2$@";
 "result.weather.loading" = "पूर्वानुमान लोड हो रहा है…";

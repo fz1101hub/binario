@@ -412,8 +412,6 @@
 "settings.live.trenord" = "Avisos por línea: la lista completa de líneas, sin datos del usuario";
 "settings.live.notices_always" = "Los avisos de RFI y el calendario de huelgas del MIT se descargan también con los datos en tiempo real desactivados, solo cuando abres el área de avisos o cuando aparece una sección de obras en tus trayectos.";
 
-// Weather at the destination, bike sharing, delay compensation, map of trains in motion and evening
-// alerts: Android's texts (app/src/main/res/values-es/strings.xml).
 "result.weather.title" = "Tiempo en el destino";
 "result.weather.station_date" = "%1$@ el %2$@";
 "result.weather.loading" = "Cargando la previsión…";

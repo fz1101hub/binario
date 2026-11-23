@@ -412,8 +412,6 @@
 "settings.live.trenord" = "Avis par ligne : la liste complète des lignes, sans données de l’utilisateur";
 "settings.live.notices_always" = "Les avis RFI et le calendrier des grèves du MIT se téléchargent même avec les données en temps réel désactivées, seulement quand vous ouvrez l’espace des avis ou quand une section des travaux sur vos trajets apparaît.";
 
-// Weather at the destination, bike sharing, delay compensation, map of trains in motion and evening
-// alerts: Android's texts (app/src/main/res/values-fr/strings.xml).
 "result.weather.title" = "Météo à destination";
 "result.weather.station_date" = "%1$@ le %2$@";
 "result.weather.loading" = "Chargement de la prévision…";

@@ -412,8 +412,6 @@
 "settings.live.trenord" = "Avvisi per direttrice: l’elenco completo delle linee, senza dati dell’utente";
 "settings.live.notices_always" = "Gli avvisi RFI e il calendario scioperi del MIT si scaricano anche con i dati in tempo reale spenti, solo quando apri l’area avvisi o quando compare una sezione dei lavori sulle tratte.";
 
-// Weather at the destination, bike sharing, delay compensation, map of trains in motion and evening
-// alerts: Android's texts (app/src/main/res/values/strings.xml).
 "result.weather.title" = "Meteo a destinazione";
 "result.weather.station_date" = "%1$@, %2$@";
 "result.weather.loading" = "Caricamento della previsione…";

@@ -412,8 +412,6 @@
 "settings.live.trenord" = "Hatta göre duyurular: hatların tam listesi, kullanıcı verisi olmadan";
 "settings.live.notices_always" = "RFI duyuruları ve MIT grev takvimi gerçek zamanlı veriler kapalıyken de indirilir; yalnızca duyurular alanını açtığınızda veya güzergâhlarınızdaki çalışmalar bölümü göründüğünde.";
 
-// Weather at the destination, bike sharing, delay compensation, map of trains in motion and evening
-// alerts: Android's texts (app/src/main/res/values-tr/strings.xml).
 "result.weather.title" = "Varış noktasında hava durumu";
 "result.weather.station_date" = "%1$@ · %2$@";
 "result.weather.loading" = "Hava tahmini yükleniyor…";

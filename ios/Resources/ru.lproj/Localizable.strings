@@ -412,8 +412,6 @@
 "settings.live.trenord" = "Сообщения по направлениям: полный список линий, без данных пользователя";
 "settings.live.notices_always" = "Сообщения RFI и календарь забастовок MIT загружаются и при выключенных данных в реальном времени, только когда вы открываете раздел сообщений или появляется раздел работ на ваших маршрутах.";
 
-// Weather at the destination, bike sharing, delay compensation, map of trains in motion and evening
-// alerts: Android's texts (app/src/main/res/values-ru/strings.xml).
 "result.weather.title" = "Погода в пункте назначения";
 "result.weather.station_date" = "%1$@ · %2$@";
 "result.weather.loading" = "Загрузка прогноза…";

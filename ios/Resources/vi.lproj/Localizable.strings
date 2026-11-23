@@ -412,8 +412,6 @@
 "settings.live.trenord" = "Thông báo theo tuyến: toàn bộ danh sách tuyến, không có dữ liệu người dùng";
 "settings.live.notices_always" = "Thông báo của RFI và lịch đình công của MIT vẫn được tải xuống khi tắt dữ liệu thời gian thực, chỉ khi bạn mở khu vực thông báo hoặc khi một mục công trình trên tuyến của bạn xuất hiện.";
 
-// Weather at the destination, bike sharing, delay compensation, map of trains in motion and evening
-// alerts: Android's texts (app/src/main/res/values-vi/strings.xml).
 "result.weather.title" = "Thời tiết tại ga đến";
 "result.weather.station_date" = "%1$@ · %2$@";
 "result.weather.loading" = "Đang tải dự báo…";

@@ -412,8 +412,6 @@
 "settings.live.trenord" = "Pemberitahuan per jalur: daftar lengkap jalur, tanpa data pengguna";
 "settings.live.notices_always" = "Pemberitahuan RFI dan kalender mogok MIT tetap diunduh meski data real-time dimatikan, hanya saat Anda membuka area pemberitahuan atau saat bagian pekerjaan pada rute Anda muncul.";
 
-// Weather at the destination, bike sharing, delay compensation, map of trains in motion and evening
-// alerts: Android's texts (app/src/main/res/values-in/strings.xml).
 "result.weather.title" = "Cuaca di tujuan";
 "result.weather.station_date" = "%1$@, %2$@";
 "result.weather.loading" = "Memuat prakiraan…";

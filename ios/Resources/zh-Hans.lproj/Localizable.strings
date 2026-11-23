@@ -412,8 +412,6 @@
 "settings.live.trenord" = "按线路的通告：完整的线路列表，不含用户数据";
 "settings.live.notices_always" = "即使关闭实时数据，RFI 通告和 MIT 罢工日历也会下载，仅在你打开通告区域或你的线路的施工部分出现时。";
 
-// Weather at the destination, bike sharing, delay compensation, map of trains in motion and evening
-// alerts: Android's texts (app/src/main/res/values-zh-rCN/strings.xml).
 "result.weather.title" = "目的地天气";
 "result.weather.station_date" = "%1$@，%2$@";
 "result.weather.loading" = "正在加载天气预报…";
