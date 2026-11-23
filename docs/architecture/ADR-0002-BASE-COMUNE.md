@@ -58,6 +58,14 @@ Dopo l'unione dei lavori sull'orario e sugli avvisi dell'iPhone, lo stesso giorn
 | `source-manners-v1.json`: User-Agent, rifiuti 403 e 429, pausa dopo un rifiuto, interruttore | `PublicSourceHttp.kt`, `SourceCircuitBreaker`; `LiveSourceHTTP.swift`, `LiveSourceGate.swift`; una sezione `manners` della tabella degli avvisi | Android, iPhone |
 | `pack-roles-v1.json`: pack nazionali, esteri, che ripubblicano i treni dei partner, con autobus dell'operatore | `PlannedPackOrder`, `EmbeddedGtfsRouteAdapter`, `EmbeddedGtfsPacks`; `TimetableCopies.swift`, `TimetableVehicle.swift`; `build_ios_gtfs_schedule.py`, `verify_ios_gtfs_schedule.py` | Android, iPhone; builder e verificatore dell'indice leggono il JSON |
 
+Con gli arrivi, i dettagli della corsa e gli avvisi per treno sull'iPhone:
+
+| Tabella | Prima | Ora letta da |
+|---|---|---|
+| `viaggiatreno-v1.json`: indirizzo e risorse dell'API realtime, limiti, intervallo, durata dei valori, dettagli in parallelo, limiti di lettura, tipi di fermata, codici cliente | `ViaggiaTrenoRealtimeAdapter.kt`; `ViaggiaTrenoLive.swift` (i codici cliente solo su Android) | Android, iPhone |
+| `rfi-monitor-v1.json`: selettore e monitor RFI, limiti, intervallo, durata dei valori e del selettore | `RfiStationBoardAdapter.kt`, `RfiStationCatalog.kt`; `RfiLiveBoard.swift` | Android, iPhone |
+| `notices-sources-v1.json`, in più: il feed degli avvisi per treno di ViaggiaTreno e i limiti del suo lettore | `ViaggiaTrenoTrainNoticesAdapter.kt` | Android, iPhone |
+
 Il modo di chiedere alle fonti non è degli avvisi: vale per ogni fonte live su entrambi i telefoni, perciò sta in una
 tabella sua. L'iPhone non include più la tabella degli avvisi e non ha più il caricatore: resta spenta ogni sezione di
 avvisi solo se NSRegularExpression rifiutasse un'espressione regolare della tabella, e i test Swift provano che le
