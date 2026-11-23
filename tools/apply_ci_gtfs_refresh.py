@@ -14,7 +14,10 @@ container).  This helper:
 2. merges each printed directory into ``app/src/main/assets/gtfs/``, ``gtfs-transit/`` or
    ``app/src/personal/assets/gtfs-personal/``; the printed full pack of a foreign pack bundled as its border subset
    (``gtfs-foreign-android/``) goes to ``data/gtfs-foreign/android/`` and its subset is derived again here
-   (``build_gtfs_packs.derive_border_subset``); a pack whose canonical content (``contentSha256``) is unchanged keeps
+   (``build_gtfs_packs.derive_border_subset``); a printed pack not yet in its directory is refused unless it is a
+   candidate of ``tools/transit_packs.json`` named with ``--add-new ID``: it is then appended to the manifest and to
+   ``TransitGtfsPacks.kt`` (from the entry's ``android`` block), once its catalogue entry exists in
+   ``RailSourceCatalog.kt``; a pack whose canonical content (``contentSha256``) is unchanged keeps
    its published bytes and entry, a pack missing from the print (partial build) stays as it is, and a pack that would
    shrink by more than half (trips or stop times), end earlier than before, or claim a lastServiceDate more than a
    month after its last full-service day (a trickle of trips kept for years) is refused unless ``--accept ID``;
@@ -53,6 +56,7 @@ from typing import Any, Callable, Mapping, Sequence
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools"))
 
+import acquire_transit_sources as transit_registry  # noqa: E402
 import build_android_gtfs_credits as android_credits  # noqa: E402
 import build_gtfs_packs as builder  # noqa: E402
 import ci_log_frames as frames  # noqa: E402
@@ -70,6 +74,10 @@ KOTLIN_PACK_FILES = (
     Path("app/src/main/java/it/binario/app/data/gtfs/EmbeddedGtfsPacks.kt"),
     Path("app/src/main/java/it/binario/app/data/gtfs/TransitGtfsPacks.kt"),
 )
+# Where --add-new appends a candidate's entry (the last element of TransitGtfsPacks.all), and the catalogue it needs.
+TRANSIT_KOTLIN = KOTLIN_PACK_FILES[1]
+TRANSIT_LIST_END = "\n        )\n    )\n}"
+CATALOGUE_KOTLIN = Path("app/src/main/java/it/binario/app/data/sources/RailSourceCatalog.kt")
 # Files naming the pinned upstream URL of a core pack next to the manifest.
 PIN_MIRRORS = (
     Path("ios/Resources/binario_gtfs_source_policy_v1.json"),
@@ -259,6 +267,7 @@ class MergedDirectory:
     new_manifest: dict[str, Any]
     staged_full: Path | None = None  # data/gtfs-foreign/android as it will be (border packs), None: unchanged
     full_target: Path | None = None
+    added: dict[str, dict[str, Any]] = field(default_factory=dict)  # --add-new: sourceId -> Android registration
 
 
 def merge_directory(
@@ -273,12 +282,16 @@ def merge_directory(
     full_printed: Mapping[str, bytes] | None = None,
     full_dir: Path | None = None,
     catalogue_path: Path | None = None,
+    add_new: Mapping[str, Mapping[str, Any]] | None = None,
 ) -> MergedDirectory:
     """Merge one printed directory into its published copy, staged under ``work`` and verified.
 
     A printed entry with ``fullPack`` (a foreign pack bundled as its border subset) comes with its full pack in
     ``full_printed``: the full pack is checked against ``fullPack``, compared with the previous full pack in
-    ``full_dir``, and the subset is derived again here; its content must be the one the job derived."""
+    ``full_dir``, and the subset is derived again here; its content must be the one the job derived.  ``add_new`` maps
+    the candidates named with ``--add-new`` to their ``tools/transit_packs.json`` entry."""
+    add_new = add_new or {}
+    added: dict[str, dict[str, Any]] = {}
     full_printed = full_printed or {}
     full_dir = full_dir or builder.DEFAULT_FULL_PACK_DIR
     catalogue_path = catalogue_path or builder.DEFAULT_CATALOGUE
@@ -311,8 +324,23 @@ def merge_directory(
         printed_ids.add(source_id)
         old = old_by_id.get(source_id)
         if old is None:
-            rows[source_id] = Row(name, source_id, None, pack.get("lastServiceDate"),
-                                  failure="pack nuovo, non registrato: aggiungerlo a mano a manifest e Kotlin")
+            row = rows[source_id] = Row(name, source_id, None, pack.get("lastServiceDate"))
+            registered = add_new.get(source_id)
+            asset = f"{name}/{source_id}.zip"
+            data = printed.get(f"{source_id}.zip")
+            if registered is None:
+                row.failure = "pack nuovo: per aggiungerlo, candidato di tools/transit_packs.json e --add-new " + source_id
+            elif registered.get("directory") != name or pack.get("asset") != asset or builder.FULL_PACK_FIELD in pack:
+                row.failure = f"candidato di {registered.get('directory')}/, stampato come {pack.get('asset')}"
+            elif data is None or hashlib.sha256(data).hexdigest() != pack.get("sha256"):
+                row.failure = "ZIP non stampato o SHA-256 diverso dal manifest stampato"
+            else:
+                merged.append(dict(pack))
+                replacements[f"{source_id}.zip"] = data
+                added[source_id] = transit_registry.android_registration(dict(registered))
+                row.new_trips = zip_metadata(data).get("counts", {}).get("trips")
+                row.changed = True
+                row.notes.append("pack nuovo aggiunto (--add-new)")
             continue
         row = rows[source_id]
         if pack.get("asset") != old.get("asset"):
@@ -442,7 +470,7 @@ def merge_directory(
     except builder.BuildError as error:
         raise ApplyError(f"{name}/: la directory unita non supera il controllo di integrità:\n{error}") from error
     return MergedDirectory(name, target, ordered, staged, old_manifest, result,
-                           staged_full if full_replacements else None, full_dir)
+                           staged_full if full_replacements else None, full_dir, added)
 
 
 def pin_updates(merged: MergedDirectory, report: Mapping[str, Any] | None) -> list[tuple[str, str, str]]:
@@ -489,6 +517,32 @@ def updated_kotlin(text: str, dates: Mapping[str, tuple[str, str]], found: set[s
     return KOTLIN_PACK.sub(replace, text)
 
 
+def kotlin_entry(source_id: str, asset: str, last_service_date: str, registration: Mapping[str, Any]) -> str:
+    """The ``EmbeddedGtfsPack(...)`` of a candidate added with --add-new, in the layout of ``TransitGtfsPacks.kt``."""
+    day = date.fromisoformat(last_service_date)
+    lines = [f'SourceId("{source_id}")', f'"{asset}"', f"LocalDate.of({day.year}, {day.month}, {day.day})"]
+    if registration.get("catalogueNameSuffixes"):
+        lines.append("catalogueNameSuffixes = listOf(" + ", ".join(f'"{item}"' for item in registration["catalogueNameSuffixes"]) + ")")
+    if registration["kind"] == "URBAN":
+        lines.append("kind = EmbeddedGtfsPackKind.URBAN")
+        lines.append("areas = listOf(" + ", ".join(
+            f'TransitArea("{area["name"]}", {float(area["latitude"])}, {float(area["longitude"])}, {float(area["radiusKm"])})'
+            for area in registration["areas"]) + ")")
+    if registration.get("personalOnly"):
+        lines.append("personalOnly = true")
+    return "        EmbeddedGtfsPack(\n" + ",\n".join("            " + line for line in lines) + "\n        )"
+
+
+def with_added_packs(text: str, entries: Sequence[str], path: Path) -> str:
+    """``TransitGtfsPacks.kt`` with ``entries`` appended to the list of ``TransitGtfsPacks.all``."""
+    if not entries:
+        return text
+    if not text.endswith(TRANSIT_LIST_END + "\n") or text.count(TRANSIT_LIST_END) != 1:
+        raise ApplyError(f"{path}: fine della lista dei pack non riconosciuta, aggiungere i pack a mano")
+    head = text[: -len(TRANSIT_LIST_END + "\n")]
+    return head + "\n        ),\n" + ",\n".join(entries) + "\n    )\n}\n"
+
+
 def replace_once(text: str, old: str, new: str, path: Path) -> str:
     count = text.count(old)
     if count != 1:
@@ -507,10 +561,20 @@ def planned_edits(root: Path, directories: Sequence[MergedDirectory], pins: Sequ
             dates[pack["sourceId"]] = (pack["asset"], pack["lastServiceDate"])
     edits: dict[Path, str] = {}
     found: set[str] = set()
+    added = {source_id: registration for item in directories for source_id, registration in item.added.items()}
+    if added:
+        catalogue = (root / CATALOGUE_KOTLIN).read_text(encoding="utf-8")
+        absent = sorted(source_id for source_id in added if f'SourceId("{source_id}")' not in catalogue)
+        if absent:
+            raise ApplyError(f"pack nuovi senza voce in {CATALOGUE_KOTLIN.name}: {', '.join(absent)} (aggiungerla prima)")
     for relative in KOTLIN_PACK_FILES:
         path = root / relative
         text = path.read_text(encoding="utf-8")
         updated = updated_kotlin(text, dates, found)
+        if relative == TRANSIT_KOTLIN:
+            new = [source_id for source_id in added if source_id not in found]
+            updated = with_added_packs(updated, [kotlin_entry(source_id, *dates[source_id], added[source_id]) for source_id in new], path)
+            found.update(new)
         if updated != text:
             edits[path] = updated
     missing = sorted(set(dates) - found)
@@ -625,6 +689,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     source.add_argument("--log", action="append", type=Path, help="log di un job già salvato (ripetibile)")
     parser.add_argument("--repo", help="OWNER/NOME (default: da git remote origin)")
     parser.add_argument("--skip", action="append", default=[], metavar="SOURCE_ID", help="non applicare questo pack")
+    parser.add_argument("--add-new", action="append", default=[], metavar="SOURCE_ID",
+                        help="aggiunge un pack candidato di tools/transit_packs.json stampato dal job (manifest e TransitGtfsPacks.kt)")
     parser.add_argument("--accept", action="append", default=[], metavar="SOURCE_ID",
                         help="applica un pack segnalato come sospetto (dimezzato o con fine anticipata), dopo revisione")
     parser.add_argument("--save-logs", type=Path, metavar="DIR", help="salva qui i log scaricati")
@@ -652,6 +718,12 @@ def main(argv: Sequence[str] | None = None) -> int:
             raise ApplyError("nessun file BINARIO_FILE nei log indicati")
         core_report = reports.get("core-refresh.json")
         job_status = (core_report or {}).get("packs", {})
+        candidates = {pack["sourceId"]: pack for pack in transit_registry.load_registry(root / "tools/transit_packs.json")
+                      if pack.get("candidate")} if args.add_new else {}
+        unknown = sorted(set(args.add_new) - set(candidates))
+        if unknown:
+            raise ApplyError(f"--add-new: non candidati di tools/transit_packs.json: {', '.join(unknown)}")
+        add_new = {source_id: candidates[source_id] for source_id in args.add_new}
         work = Path(tempfile.mkdtemp(prefix="binario-apply-gtfs-"))
         try:
             merged: list[MergedDirectory] = []
@@ -661,7 +733,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                         name, directories[name], root / DESTINATIONS[name], work,
                         skip=set(args.skip), accept=set(args.accept), job_status=job_status if name == "gtfs" else {},
                         full_printed=full_printed if name == "gtfs" else None, full_dir=root / foreign.FULL_PACK_DIR,
-                        catalogue_path=root / foreign.CATALOGUE_PATH,
+                        catalogue_path=root / foreign.CATALOGUE_PATH, add_new=add_new,
                     ))
                 elif name == "gtfs" and core_report:
                     # The core job changed nothing: its outcome per pack is still reported.
@@ -706,7 +778,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 path.write_text(text, encoding="utf-8")
         finally:
             shutil.rmtree(work, ignore_errors=True)
-    except (ApplyError, builder.BuildError, OSError, json.JSONDecodeError, zipfile.BadZipFile) as error:
+    except (ApplyError, builder.BuildError, transit_registry.AcquisitionError, OSError, json.JSONDecodeError, zipfile.BadZipFile) as error:
         builder.print_error_lines("ERRORE: ", error)
         return 1
 
