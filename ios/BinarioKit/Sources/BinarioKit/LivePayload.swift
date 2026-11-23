@@ -533,5 +533,12 @@ struct LiveHTML {
         "agrave": "à", "egrave": "è", "eacute": "é", "igrave": "ì", "ograve": "ò", "ugrave": "ù",
         "Agrave": "À", "Egrave": "È", "Eacute": "É", "Igrave": "Ì", "Ograve": "Ò", "Ugrave": "Ù",
         "rsquo": "’", "lsquo": "‘", "laquo": "«", "raquo": "»", "deg": "°", "middot": "·", "ndash": "–", "mdash": "—",
+        // The notices of RFI, Trenitalia and Trenord (`NoticeText`) use these as well.
+        "ldquo": "“", "rdquo": "”", "sbquo": "‚", "bdquo": "„", "bull": "•", "hellip": "…", "euro": "€",
+        "ordm": "º", "ordf": "ª", "times": "×", "copy": "©", "reg": "®",
+        "aacute": "á", "iacute": "í", "oacute": "ó", "uacute": "ú", "Aacute": "Á", "Iacute": "Í", "Oacute": "Ó", "Uacute": "Ú",
+        "acirc": "â", "ecirc": "ê", "icirc": "î", "ocirc": "ô", "ucirc": "û", "auml": "ä", "euml": "ë", "iuml": "ï",
+        "ouml": "ö", "uuml": "ü", "Auml": "Ä", "Ouml": "Ö", "Uuml": "Ü", "szlig": "ß", "ccedil": "ç", "Ccedil": "Ç",
+        "ntilde": "ñ", "ensp": "\u{2002}", "emsp": "\u{2003}", "thinsp": "\u{2009}",
     ]
 }

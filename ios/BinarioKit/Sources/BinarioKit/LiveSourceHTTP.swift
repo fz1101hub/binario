@@ -109,6 +109,9 @@ struct LiveRequestPolicy: Equatable, Sendable {
     /// to GitHub's release-download hosts, over HTTPS on port 443, whatever the path and query
     /// (GitHub's redirect changes both). No other redirect is followed under this policy.
     var followsGitHubReleaseAssetRedirects = false
+    /// Android's `HttpMitStrikeFetcher`: a redirect to any path over HTTPS on the same host (port 443,
+    /// without credentials), not only to the same resource.
+    var allowsSameHostRedirects = false
 
     static let redirectStatuses: Set<Int> = [301, 302, 303, 307, 308]
 
@@ -172,6 +175,10 @@ enum LiveRedirect {
             alternate.percentEncodedPath = from.percentEncodedPath
             alternate.percentEncodedQuery = from.percentEncodedQuery
             return alternate.url
+        }
+        if policy.allowsSameHostRedirects, scheme == "https", host == requestedHost, defaultPort(target, 443),
+           withoutCredentials, target.fragment == nil {
+            return resolved
         }
         guard withoutCredentials, target.fragment == nil, sameResource(target, origin) else { return nil }
         if scheme == "https", host == requestedHost, defaultPort(target, 443) { return resolved }
