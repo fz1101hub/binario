@@ -10,12 +10,12 @@ Il file utente `stazioni_ferroviarie_curato_v4.sqlite` è l’unica sorgente del
 |---|---|
 | Database origine | `stazioni_ferroviarie_curato_v4` |
 | Hash SHA-256 origine | `2db59242ec45816a73a37c4748dc400dafaba762b6df3105673f63a44c882efe` |
-| Stazioni | 5.333 (5.239 del database `v4`, 10 della ferrovia del Renon, 41 di ferrovie regionali e 43 delle ferrovie Cotral) |
+| Stazioni | 5.290 (5.239 del database `v4`, 10 della ferrovia del Renon e 41 di ferrovie regionali) |
 | Codici ferroviari | 3.430 |
 | Location ID Trenitalia univoci | 3.047 |
 | Location ID Trenitalia ambigui | 40, esclusi automaticamente dal mapping operativo |
 | Asset app | `app/src/main/assets/stations/curated_it_rail_stations.json` |
-| Hash SHA-256 asset | `a1633e34f81e9283461341c4b56ee744f55f74be747cd3fd75fdf43d55dbc869` |
+| Hash SHA-256 asset | `3327f5344a89c92a49c6e70f32ee5294b2ef2c9f52ddd0ebabb9ee5720be759d` |
 
 ## Correzioni dell'asset (novembre 2026, audit2 tools-data-3)
 
@@ -98,56 +98,6 @@ Alcune fermate ferroviarie dei pack inclusi non avevano una voce nel catalogo; s
 | NC001860 | Mezzana | 46.313421 | 10.800472 | `trentino-gtfs` | `5718` |
 
 Montesanto, capolinea della Cumana e della Circumflegrea (EAV, fermata `6801`), non è una voce nuova: è l'interscambio di Napoli Montesanto (S09107, 139 m), che ne prende l'alias «Montesanto», come la stazione EAV di Napoli Piazza Garibaldi è già la voce S09109. Restano fuori e sono elencate nel resoconto per il titolare: Sassari S.M.B. (ARST, 503 m da Sassari, forse la voce S12980 «Sassari S.Maria», che non ha coordinate) e le fermate che hanno già una voce scritta in un altro modo (per esempio «Albergo (Xxx)» di TFT, «Segno Ferrovia» di Trentino, «Fermata Portone Perrone» e «Stazione di Vico - San Menaio» del Gargano).
-
-## Ferrovie Roma–Lido e Roma Nord (novembre 2026, da confermare dal titolare)
-
-Le stazioni delle ferrovie Roma–Lido e Roma–Civita Castellana–Viterbo del pack Cotral (`cotral-ferro-gtfs`, solo nelle build personali) non avevano una voce nel catalogo, tranne Civita Castellana, Corchiano e Viterbo; Acqua Acetosa e Montebello erano legate a omonimi a 18,7 e 393 km finché il legame per nome non è stato limitato a 10 km. Le 43 voci seguono le regole delle ferrovie regionali qui sopra; gli omonimi prendono «(Cotral)», che il pack aggiunge già al nome quando cerca la stazione (`catalogueNameSuffixes`). Il pack non dichiara una licenza («Non dichiarata dall'operatore») ed è escluso dalle build pubblicate; il catalogo invece è in ogni build, dove queste stazioni restano senza orari: entrambe le cose sono una decisione del titolare, e questa modifica è un commit a sé, che si può togliere rigenerando poi l'indice dell'iPhone e i pin dei pack esteri.
-
-| ID | Nome | Lat | Lon | Fermata del pack (`stop_id`) |
-|---|---|---|---|---|
-| NC001861 | Acilia | 41.783297 | 12.360617 | `RL_ACILIA` |
-| NC001862 | Acilia Sud | 41.775855 | 12.341877 | `RL_ACILIASUD_DRAGONA` |
-| NC001863 | Casal Bernocchi Centro Giano | 41.78933 | 12.377534 | `RL_CASALBERNO` |
-| NC001864 | Castelfusano | 41.720764 | 12.308773 | `RL_CASFUS` |
-| NC001865 | Cristoforo Colombo | 41.714673 | 12.322216 | `RL_COLOMBO` |
-| NC001866 | EUR Magliana | 41.839659 | 12.46332 | `RL_EURMAGLIANA` |
-| NC001867 | Lido Centro | 41.733137 | 12.28424 | `RL_LIDOCENTRO` |
-| NC001868 | Lido Nord | 41.740281 | 12.284293 | `RL_LIDONORD` |
-| NC001869 | Ostia Antica | 41.757779 | 12.304518 | `RL_OSTIAANT` |
-| NC001870 | Porta San Paolo | 41.875028 | 12.481864 | `RL_PORTASPAOLO` |
-| NC001871 | San Paolo (Cotral) | 41.856033 | 12.478271 | `RL_SANPAOLO` |
-| NC001872 | Stella Polare | 41.727358 | 12.29513 | `RL_STELLAPOL` |
-| NC001873 | Tor Di Valle | 41.819572 | 12.436857 | `RL_TORDIVALLE` |
-| NC001874 | Vitinia | 41.795194 | 12.403757 | `RL_VITINIA` |
-| NC001875 | Acqua Acetosa (Cotral) | 41.931808 | 12.487227 | `RN_ACQUACETOSA` |
-| NC001876 | Bagnaia | 42.427601 | 12.153366 | `RN_BAGNAIA` |
-| NC001877 | Campi Sportivi | 41.933855 | 12.492653 | `RN_CAMPISPORTIVI` |
-| NC001878 | Catalano | 42.295938 | 12.403468 | `RN_CATALANO` |
-| NC001879 | Centro RAI | 41.980861 | 12.493683 | `RN_CENTRORAI` |
-| NC001880 | Due Ponti | 41.957725 | 12.486843 | `RN_DUEPONTI` |
-| NC001881 | Euclide | 41.926692 | 12.481608 | `RN_EUCLIDE` |
-| NC001882 | Fabrica | 42.334754 | 12.309639 | `RN_FABRICA` |
-| NC001883 | Faleri | 42.30583 | 12.35184 | `RN_FALERI` |
-| NC001884 | Flaminio | 41.912898 | 12.476309 | `RN_FLAMINIO` |
-| NC001885 | Giustiniana | 42.001342 | 12.489309 | `RN_GIUSTINIANA` |
-| NC001886 | Grotta Rossa | 41.965452 | 12.490633 | `RN_GROTTAROSSA` |
-| NC001887 | Labaro | 41.98803 | 12.494357 | `RN_LABARO` |
-| NC001888 | La Celsa | 41.99639 | 12.4967 | `RN_LACELSA` |
-| NC001889 | La Fornacchia | 42.440032 | 12.20407 | `RN_LAFORNACCHIA` |
-| NC001890 | Magliano Romano | 42.148284 | 12.479045 | `RN_MAGLIANOR` |
-| NC001891 | Monte Antenne | 41.939085 | 12.496065 | `RN_MONTEANTENNE` |
-| NC001892 | Montebello (Cotral) | 42.011206 | 12.489182 | `RN_MONTEBELLO` |
-| NC001893 | Morlupo | 42.142892 | 12.491456 | `RN_MORLUPO` |
-| NC001894 | Pian Paradiso | 42.26297 | 12.457159 | `RN_PIANPARADISO` |
-| NC001895 | Prima Porta | 41.999692 | 12.491153 | `RN_PRIMAPORTA` |
-| NC001896 | Rignano Flaminio | 42.210839 | 12.479434 | `RN_RIGNANO` |
-| NC001897 | Sant'Oreste | 42.224811 | 12.489295 | `RN_S.ORESTE` |
-| NC001898 | Saxa Rubra | 41.974638 | 12.493281 | `RN_SAXARUBRA` |
-| NC001899 | Soriano | 42.421334 | 12.232964 | `RN_SORIANO` |
-| NC001900 | Tor Di Quinto | 41.950191 | 12.48992 | `RN_TORDIQUINTO` |
-| NC001901 | Vallerano | 42.384103 | 12.269882 | `RN_VALLERANO` |
-| NC001902 | Vignanello | 42.382754 | 12.276076 | `RN_VIGNANELLO` |
-| NC001903 | Vitorchiano | 42.441765 | 12.177007 | `RN_VITORCHIANO` |
 
 ## Regole di utilizzo
 

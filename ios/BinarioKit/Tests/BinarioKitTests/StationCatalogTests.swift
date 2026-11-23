@@ -8,7 +8,7 @@ final class StationCatalogTests: XCTestCase {
             .appendingPathComponent("app/src/main/assets/stations/curated_it_rail_stations.json"))
         let catalog = try CuratedStationCatalog(data: data)
 
-        XCTAssertEqual(catalog.stationCount, 5_333)
+        XCTAssertEqual(catalog.stationCount, 5_290)
         XCTAssertFalse(catalog.operationalData)
         XCTAssertEqual(catalog.station(id: "S08328")?.name, "Appiano Proba Petronia")
         XCTAssertEqual(catalog.station(id: "NC001752")?.name, "Boscotrecase - Porta Di Accesso Al Cratere Del Vesuvio")
@@ -52,7 +52,7 @@ final class StationCatalogTests: XCTestCase {
         guard case let .available(catalog) = state else {
             return XCTFail("Expected available catalog")
         }
-        XCTAssertEqual(catalog.stationCount, 5_333)
+        XCTAssertEqual(catalog.stationCount, 5_290)
     }
 
     func testAsyncLoaderFailsClosedForInvalidData() async {
