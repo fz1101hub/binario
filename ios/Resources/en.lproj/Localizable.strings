@@ -16,6 +16,9 @@
 "planner.same_station" = "Origin and destination must be different.";
 "planner.selection_required" = "Select an origin and destination.";
 "planner.station.no_timetable" = "No timetable included";
+"planner.station.badge.metro" = "Metro stop";
+"planner.station.badge.tram" = "Tram stop";
+"planner.station.badge.funicular" = "Funicular or lift";
 "planner.sources.footer" = "Included timetables:";
 "catalog.unavailable.title" = "Catalogue unavailable";
 "catalog.unavailable.body" = "The curated station catalogue cannot be read. Search remains disabled to avoid unverified identities.";
@@ -214,6 +217,7 @@
 "settings.data.valid_until" = "First feed to expire";
 "settings.data.catalog_notice" = "The station catalogue is used only for identity and search. It neither contains nor determines schedules, delays, platforms, or official statuses.";
 "settings.sources.title" = "GTFS data sources";
+"settings.urban_stops.title" = "Include metro and tram stops in the search";
 "settings.sources.valid_until" = "Valid until";
 "settings.sources.licence" = "Licence:";
 "settings.sources.no_trips" = "No rail service included in this version";
@@ -270,6 +274,10 @@
 "result.vehicle.italobus" = "ItaloBus";
 "result.vehicle.bus" = "Bus";
 "result.vehicle.replacement_bus" = "Replacement bus";
+"result.vehicle.metro" = "Metro";
+"result.vehicle.tram" = "Tram";
+"result.vehicle.funicular" = "Funicular";
+"result.boarding_stop" = "from the %1$@ stop, a short walk away";
 "result.detail.mean_delay" = "Average delay: %1$lld min";
 "result.detail.days" = "Days observed: %1$lld · cancellations: %2$lld";
 "result.detail.distribution_title" = "Delay distribution";
@@ -281,6 +289,7 @@
 "result.detail.threshold_note" = "An arrival counts as on time when it is at most %1$lld min late.";
 "planner.airports.title" = "Airport rail links";
 "planner.airports.search" = "Search trains from %1$@ to %2$@";
+"planner.airports.search_runs" = "Search departures from %1$@ to %2$@";
 "result.order.title" = "Order";
 "result.order.departure" = "By departure";
 "accessibility.open_train_detail" = "Opens the train details";

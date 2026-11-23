@@ -652,8 +652,8 @@ public struct JourneyReliability: Equatable, Sendable {
         let originCode = NetworkReliability.stationCode(snapshot.query.origin)
         let destinationCode = NetworkReliability.stationCode(snapshot.query.destination)
         var byServiceID: [String: StopReliability] = [:]
-        // A bus of the timetable has no train statistics, even one numbered like a train (as on Android).
-        for service in snapshot.services where !service.isBus {
+        // A bus or a city line of the timetable has no train statistics, even one numbered like a train (as on Android).
+        for service in snapshot.services where service.isTrain {
             if let stop = train(service, stats: stats, originCode: originCode, destinationCode: destinationCode) {
                 byServiceID[service.id] = stop
             }

@@ -262,9 +262,9 @@ private struct DepartureRow: View {
             HStack(alignment: .firstTextBaseline) {
                 Text(service.scheduledDeparture)
                     .font(.headline.monospacedDigit())
-                // A bus shows a bus and its label (as on Android), a train its category and number.
-                if service.isBus {
-                    Label(VehicleTexts.rowLabel(service), systemImage: VehicleTexts.busSymbol)
+                // A bus or a city line shows its vehicle and label (as on Android), a train its category and number.
+                if !service.isTrain {
+                    Label(VehicleTexts.rowLabel(service), systemImage: VehicleTexts.symbol(service))
                         .font(.headline)
                 } else {
                     Text(ReliableAlternatives.trainLabel(service))
@@ -407,7 +407,7 @@ enum DeparturesTexts {
         }
         // A bus is said with its label («08:12, Bus Trenitalia BUS 1234 per Bergamo»), never as a train.
         let sentence = String.localizedStringWithFormat(
-            NSLocalizedString(service.isBus ? "departures.row.spoken_vehicle" : "departures.row.spoken", comment: ""),
+            NSLocalizedString(service.isTrain ? "departures.row.spoken" : "departures.row.spoken_vehicle", comment: ""),
             service.scheduledDeparture,
             VehicleTexts.rowLabel(service),
             service.destination,

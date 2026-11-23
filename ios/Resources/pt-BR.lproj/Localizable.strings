@@ -16,6 +16,9 @@
 "planner.same_station" = "A origem e o destino devem ser diferentes.";
 "planner.selection_required" = "Selecione a origem e o destino.";
 "planner.station.no_timetable" = "Horários não incluídos";
+"planner.station.badge.metro" = "Estação de metrô";
+"planner.station.badge.tram" = "Parada de bonde";
+"planner.station.badge.funicular" = "Funicular ou elevador";
 "planner.sources.footer" = "Horários incluídos:";
 "catalog.unavailable.title" = "Catálogo indisponível";
 "catalog.unavailable.body" = "Não é possível ler o catálogo de estações selecionado. A busca permanece desativada para evitar identidades não verificadas.";
@@ -214,6 +217,7 @@
 "settings.data.valid_until" = "Primeiro feed a expirar";
 "settings.data.catalog_notice" = "O catálogo de estações serve apenas para identificação e busca. Ele não contém nem determina horários, atrasos, plataformas ou status oficiais.";
 "settings.sources.title" = "Fontes de dados GTFS";
+"settings.urban_stops.title" = "Incluir paradas de metrô e bonde na busca";
 "settings.sources.valid_until" = "Válido até";
 "settings.sources.licence" = "Licença:";
 "settings.sources.no_trips" = "Nenhum serviço ferroviário incluído nesta versão";
@@ -270,6 +274,10 @@
 "result.vehicle.italobus" = "ItaloBus";
 "result.vehicle.bus" = "Ônibus";
 "result.vehicle.replacement_bus" = "Ônibus substituto";
+"result.vehicle.metro" = "Metrô";
+"result.vehicle.tram" = "Bonde";
+"result.vehicle.funicular" = "Funicular";
+"result.boarding_stop" = "da parada %1$@, a poucos passos";
 "result.detail.mean_delay" = "Atraso médio: %1$lld min";
 "result.detail.days" = "Dias observados: %1$lld · cancelamentos: %2$lld";
 "result.detail.distribution_title" = "Distribuição dos atrasos";
@@ -281,6 +289,7 @@
 "result.detail.threshold_note" = "Conta como no horário uma chegada com no máximo %1$lld min de atraso.";
 "planner.airports.title" = "Ligações com os aeroportos";
 "planner.airports.search" = "Procurar trens de %1$@ para %2$@";
+"planner.airports.search_runs" = "Procurar partidas de %1$@ para %2$@";
 "result.order.title" = "Ordem";
 "result.order.departure" = "Por partida";
 "accessibility.open_train_detail" = "Abre os detalhes do trem";

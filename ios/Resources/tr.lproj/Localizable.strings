@@ -16,6 +16,9 @@
 "planner.same_station" = "Kalkış ve varış istasyonu farklı olmalıdır.";
 "planner.selection_required" = "Kalkış ve varış istasyonunu seçin.";
 "planner.station.no_timetable" = "Tarife dahil değil";
+"planner.station.badge.metro" = "Metro durağı";
+"planner.station.badge.tram" = "Tramvay durağı";
+"planner.station.badge.funicular" = "Füniküler veya asansör";
 "planner.sources.footer" = "Dahil edilen tarifeler:";
 "catalog.unavailable.title" = "Katalog kullanılamıyor";
 "catalog.unavailable.body" = "Seçilmiş istasyon kataloğu okunamıyor. Doğrulanmamış kimlikleri önlemek için arama devre dışı kalır.";
@@ -214,6 +217,7 @@
 "settings.data.valid_until" = "Süresi ilk dolacak akış";
 "settings.data.catalog_notice" = "İstasyon kataloğu yalnızca kimlik ve arama için kullanılır. Saatleri, gecikmeleri, peronları veya resmî durumları içermez ve belirlemez.";
 "settings.sources.title" = "GTFS veri kaynakları";
+"settings.urban_stops.title" = "Aramaya metro ve tramvay duraklarını dahil et";
 "settings.sources.valid_until" = "Geçerlilik sonu";
 "settings.sources.licence" = "Lisans:";
 "settings.sources.no_trips" = "Bu sürümde demiryolu seferi yok";
@@ -270,6 +274,10 @@
 "result.vehicle.italobus" = "ItaloBus";
 "result.vehicle.bus" = "Otobüs";
 "result.vehicle.replacement_bus" = "Yerine çalışan otobüs";
+"result.vehicle.metro" = "Metro";
+"result.vehicle.tram" = "Tramvay";
+"result.vehicle.funicular" = "Füniküler";
+"result.boarding_stop" = "birkaç adım ötedeki %1$@ durağından";
 "result.detail.mean_delay" = "Ortalama gecikme: %1$lld dk";
 "result.detail.days" = "Gözlenen gün: %1$lld · iptal: %2$lld";
 "result.detail.distribution_title" = "Gecikme dağılımı";
@@ -281,6 +289,7 @@
 "result.detail.threshold_note" = "En fazla %1$lld dk gecikmeli varış zamanında sayılır.";
 "planner.airports.title" = "Havalimanı bağlantıları";
 "planner.airports.search" = "%1$@ → %2$@ trenlerini ara";
+"planner.airports.search_runs" = "%1$@ → %2$@ seferlerini ara";
 "result.order.title" = "Sıralama";
 "result.order.departure" = "Kalkışa göre";
 "accessibility.open_train_detail" = "Tren ayrıntılarını açar";

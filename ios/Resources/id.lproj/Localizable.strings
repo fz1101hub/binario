@@ -16,6 +16,9 @@
 "planner.same_station" = "Asal dan tujuan harus berbeda.";
 "planner.selection_required" = "Pilih asal dan tujuan.";
 "planner.station.no_timetable" = "Jadwal tidak disertakan";
+"planner.station.badge.metro" = "Halte metro";
+"planner.station.badge.tram" = "Halte trem";
+"planner.station.badge.funicular" = "Funikular atau lift";
 "planner.sources.footer" = "Jadwal yang disertakan:";
 "catalog.unavailable.title" = "Katalog tidak tersedia";
 "catalog.unavailable.body" = "Katalog stasiun kurasi tidak dapat dibaca. Pencarian tetap dinonaktifkan untuk menghindari identitas yang tidak terverifikasi.";
@@ -214,6 +217,7 @@
 "settings.data.valid_until" = "Feed pertama yang kedaluwarsa";
 "settings.data.catalog_notice" = "Katalog stasiun hanya digunakan untuk identitas dan pencarian. Katalog ini tidak memuat maupun menentukan jadwal, keterlambatan, peron, atau status resmi.";
 "settings.sources.title" = "Sumber data GTFS";
+"settings.urban_stops.title" = "Sertakan halte metro dan trem dalam pencarian";
 "settings.sources.valid_until" = "Berlaku hingga";
 "settings.sources.licence" = "Lisensi:";
 "settings.sources.no_trips" = "Tidak ada layanan kereta dalam versi ini";
@@ -270,6 +274,10 @@
 "result.vehicle.italobus" = "ItaloBus";
 "result.vehicle.bus" = "Bus";
 "result.vehicle.replacement_bus" = "Bus pengganti";
+"result.vehicle.metro" = "Metro";
+"result.vehicle.tram" = "Trem";
+"result.vehicle.funicular" = "Funikular";
+"result.boarding_stop" = "dari halte %1$@, beberapa langkah saja";
 "result.detail.mean_delay" = "Rata-rata keterlambatan: %1$lld mnt";
 "result.detail.days" = "Hari diamati: %1$lld · pembatalan: %2$lld";
 "result.detail.distribution_title" = "Sebaran keterlambatan";
@@ -281,6 +289,7 @@
 "result.detail.threshold_note" = "Kedatangan dihitung tepat waktu jika terlambat paling lama %1$lld mnt.";
 "planner.airports.title" = "Kereta ke bandara";
 "planner.airports.search" = "Cari kereta dari %1$@ ke %2$@";
+"planner.airports.search_runs" = "Cari jadwal dari %1$@ ke %2$@";
 "result.order.title" = "Urutan";
 "result.order.departure" = "Menurut keberangkatan";
 "accessibility.open_train_detail" = "Membuka detail kereta";

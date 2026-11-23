@@ -16,6 +16,9 @@
 "planner.same_station" = "प्रस्थान और गंतव्य अलग होने चाहिए।";
 "planner.selection_required" = "प्रस्थान और गंतव्य चुनें।";
 "planner.station.no_timetable" = "समय-सारणी शामिल नहीं";
+"planner.station.badge.metro" = "मेट्रो स्टॉप";
+"planner.station.badge.tram" = "ट्राम स्टॉप";
+"planner.station.badge.funicular" = "फ़्यूनिक्युलर या लिफ़्ट";
 "planner.sources.footer" = "शामिल समय-सारणियाँ:";
 "catalog.unavailable.title" = "कैटलॉग उपलब्ध नहीं";
 "catalog.unavailable.body" = "चुने हुए स्टेशन कैटलॉग को पढ़ा नहीं जा सकता। असत्यापित पहचानों से बचने के लिए खोज बंद रहती है।";
@@ -214,6 +217,7 @@
 "settings.data.valid_until" = "सबसे पहले समाप्त होने वाला फ़ीड";
 "settings.data.catalog_notice" = "स्टेशन कैटलॉग का उपयोग केवल पहचान और खोज के लिए होता है। इसमें समय, देरी, प्लेटफ़ॉर्म या आधिकारिक स्थितियाँ न तो होती हैं और न ही यह उन्हें तय करता है।";
 "settings.sources.title" = "GTFS डेटा स्रोत";
+"settings.urban_stops.title" = "खोज में मेट्रो और ट्राम स्टॉप शामिल करें";
 "settings.sources.valid_until" = "इस तारीख तक मान्य";
 "settings.sources.licence" = "लाइसेंस:";
 "settings.sources.no_trips" = "इस संस्करण में कोई रेल सेवा शामिल नहीं";
@@ -270,6 +274,10 @@
 "result.vehicle.italobus" = "ItaloBus";
 "result.vehicle.bus" = "बस";
 "result.vehicle.replacement_bus" = "बदले में बस";
+"result.vehicle.metro" = "मेट्रो";
+"result.vehicle.tram" = "ट्राम";
+"result.vehicle.funicular" = "फ़्यूनिक्युलर";
+"result.boarding_stop" = "%1$@ स्टॉप से, थोड़ी दूरी पर";
 "result.detail.mean_delay" = "औसत देरी: %1$lld मि.";
 "result.detail.days" = "देखे गए दिन: %1$lld · रद्द: %2$lld";
 "result.detail.distribution_title" = "देरी का वितरण";
@@ -281,6 +289,7 @@
 "result.detail.threshold_note" = "अधिकतम %1$lld मि. की देरी वाला आगमन समय पर माना जाता है।";
 "planner.airports.title" = "हवाई अड्डों से रेल संपर्क";
 "planner.airports.search" = "%1$@ से %2$@ तक की ट्रेनें खोजें";
+"planner.airports.search_runs" = "%1$@ से %2$@ तक की सेवाएँ खोजें";
 "result.order.title" = "क्रम";
 "result.order.departure" = "प्रस्थान के अनुसार";
 "accessibility.open_train_detail" = "ट्रेन का विवरण खोलता है";

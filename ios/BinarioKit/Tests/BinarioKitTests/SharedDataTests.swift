@@ -150,6 +150,19 @@ final class SharedDataTests: XCTestCase {
         for pack in set("foreignPacks") { XCTAssertEqual(TimetableCopies.rank(pack, border: true), 0, pack) }
         for pack in set("scheduledCoachPacks") { XCTAssertEqual(TimetableLegMode.of(routeType: 3, sourceID: pack), .bus, pack) }
         XCTAssertEqual(TimetableLegMode.of(routeType: 3, sourceID: "lombardia-trenord-gtfs"), .replacementBus)
+        // The city networks: their stops are `gtfs:<pack>:<stop>` ids, never catalogue stations.
+        XCTAssertEqual(UrbanStops.packs, set("urbanPacks"))
+        for pack in set("urbanPacks") { XCTAssertTrue(UrbanStops.isStopID("gtfs:\(pack):1"), pack) }
+        XCTAssertFalse(UrbanStops.isStopID("gtfs:trenitalia-gtfs:1"))
+    }
+
+    func testTheWalksToTheCityStopsAreTheSharedTable() throws {
+        let json = try table("urban-stops-v1.json")
+        let platformMeters = try XCTUnwrap(json["platformMeters"] as? Int)
+        XCTAssertEqual(UrbanStops.platformMeters, Double(platformMeters))
+        XCTAssertEqual(SharedData.UrbanStops.maximumWalkMeters, json["maximumWalkMeters"] as? Int)
+        XCTAssertEqual(SharedData.UrbanStops.walkMarginMinutes, json["walkMarginMinutes"] as? Int)
+        XCTAssertEqual(SharedData.UrbanStops.walkingSpeedKmh, json["walkingSpeedKmh"] as? Double)
     }
 
     func testEverySourceIsAskedWithTheSharedManners() throws {

@@ -29,6 +29,8 @@ enum TimetableCopies {
         let originName: String
         let destinationName: String
         var destinationStationID: String? = nil
+        /// A run of a city network: one pack's own line, never a copy of another pack's train.
+        var urban = false
     }
 
     /// The order of a pack's copy: national, Italian regional, foreign; with `border` (no national
@@ -76,7 +78,7 @@ enum TimetableCopies {
             let others = keptByMinute[minute(run.departure)] ?? []
             let copy = others.contains { other in
                 let listed = runs[other]
-                guard listed.sourceID != run.sourceID,
+                guard listed.sourceID != run.sourceID, !listed.urban, !run.urban,
                       let number = coreNumber(run.number), number == coreNumber(listed.number) else { return false }
                 if let first = listed.destinationStationID, let second = run.destinationStationID { return first == second }
                 return TimetableNaming.normalize(listed.destinationName) == TimetableNaming.normalize(run.destinationName)
@@ -91,7 +93,9 @@ enum TimetableCopies {
     /// `mayBeSameRun`: two services of different packs at the same minutes are the same run when
     /// their numbers match, when the operator is the same, or when one pack republishes partner
     /// operators' trains; two Italian operators' own trains with different numbers are two trains.
+    /// A city run (its line is no train number) is never the same run as another pack's service.
     static func mayBeSameRun(_ first: Run, _ second: Run) -> Bool {
+        if first.urban || second.urban { return false }
         if let number = coreNumber(first.number), number == coreNumber(second.number) { return true }
         let firstOperator = first.operatorName.trimmingCharacters(in: .whitespaces).lowercased()
         if !firstOperator.isEmpty, firstOperator == second.operatorName.trimmingCharacters(in: .whitespaces).lowercased() { return true }

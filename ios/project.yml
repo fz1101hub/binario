@@ -6,6 +6,14 @@ options:
   # as on Android; the seventeen .lproj folders in Resources declare the localisations and
   # XcodeGen derives knownRegions from them (docs/l10n/LOCALES.md).
   developmentLanguage: it
+# Debug and Release are the public app. Personal, a debug build for the owner's own iPhone, adds the timetable
+# packs whose licences allow personal use only, as Android's personal flavour does (app/build.gradle.kts): the
+# compilation condition BINARIO_PERSONAL_SOURCES and the personal index of ios/Personal, which the Binario target
+# copies into the app in that configuration only (tools/build_ios_gtfs_schedule.py --personal).
+configs:
+  Debug: debug
+  Release: release
+  Personal: debug
 settings:
   base:
     SWIFT_VERSION: 6.0
@@ -81,6 +89,24 @@ targets:
           ONLY_ACTIVE_ARCH: YES
           ENABLE_TESTABILITY: YES
           SWIFT_OPTIMIZATION_LEVEL: -Onone
+        Personal:
+          ONLY_ACTIVE_ARCH: YES
+          ENABLE_TESTABILITY: YES
+          SWIFT_OPTIMIZATION_LEVEL: -Onone
+          SWIFT_ACTIVE_COMPILATION_CONDITIONS: "DEBUG BINARIO_PERSONAL_SOURCES"
+    # The personal index, never in a Debug or Release app: its packs' licences allow personal use only.
+    postBuildScripts:
+      - name: Personal timetable index
+        basedOnDependencyAnalysis: false
+        # Plain $VAR forms: XcodeGen fills braced variables from its own environment when it generates the project.
+        script: |
+          set -eu
+          if [ "$CONFIGURATION" != "Personal" ]; then exit 0; fi
+          destination="$TARGET_BUILD_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH"
+          for name in binario_gtfs_schedule_personal_v1.sqlite.zlib binario_gtfs_schedule_personal_v1.metadata.json \
+            binario_gtfs_source_policy_personal_v1.json; do
+            cp "$SRCROOT/Personal/$name" "$destination/$name"
+          done
     dependencies:
       - package: BinarioKit
       - target: BinarioWatch
@@ -219,3 +245,17 @@ targets:
           SWIFT_OPTIMIZATION_LEVEL: -Onone
     entitlements:
       path: ../apple-watch/BinarioWatch/BinarioWatch.entitlements
+schemes:
+  # The owner's own build: run or archive the app in the Personal configuration.
+  Binario Personal:
+    build:
+      targets:
+        Binario: all
+    run:
+      config: Personal
+    profile:
+      config: Personal
+    analyze:
+      config: Personal
+    archive:
+      config: Personal

@@ -16,6 +16,9 @@
 "planner.same_station" = "El origen y el destino deben ser diferentes.";
 "planner.selection_required" = "Selecciona un origen y un destino.";
 "planner.station.no_timetable" = "Horarios no incluidos";
+"planner.station.badge.metro" = "Estación de metro";
+"planner.station.badge.tram" = "Parada de tranvía";
+"planner.station.badge.funicular" = "Funicular o ascensor";
 "planner.sources.footer" = "Horarios incluidos:";
 "catalog.unavailable.title" = "Catálogo no disponible";
 "catalog.unavailable.body" = "No se puede leer el catálogo verificado de estaciones. La búsqueda permanece desactivada para evitar identidades sin verificar.";
@@ -214,6 +217,7 @@
 "settings.data.valid_until" = "Primera fuente en caducar";
 "settings.data.catalog_notice" = "El catálogo de estaciones se usa solo para identidad y búsqueda. No contiene ni determina horarios, retrasos, andenes o estados oficiales.";
 "settings.sources.title" = "Fuentes de datos GTFS";
+"settings.urban_stops.title" = "Incluir paradas de metro y tranvía en la búsqueda";
 "settings.sources.valid_until" = "Válido hasta el";
 "settings.sources.licence" = "Licencia:";
 "settings.sources.no_trips" = "Ningún servicio ferroviario incluido en esta versión";
@@ -270,6 +274,10 @@
 "result.vehicle.italobus" = "ItaloBus";
 "result.vehicle.bus" = "Autobús";
 "result.vehicle.replacement_bus" = "Autobús sustitutivo";
+"result.vehicle.metro" = "Metro";
+"result.vehicle.tram" = "Tranvía";
+"result.vehicle.funicular" = "Funicular";
+"result.boarding_stop" = "desde la parada %1$@, a pocos pasos";
 "result.detail.mean_delay" = "Retraso medio: %1$lld min";
 "result.detail.days" = "Días observados: %1$lld · cancelaciones: %2$lld";
 "result.detail.distribution_title" = "Distribución de los retrasos";
@@ -281,6 +289,7 @@
 "result.detail.threshold_note" = "Cuenta como puntual una llegada con %1$lld min de retraso como máximo.";
 "planner.airports.title" = "Conexiones con los aeropuertos";
 "planner.airports.search" = "Buscar trenes de %1$@ a %2$@";
+"planner.airports.search_runs" = "Buscar salidas de %1$@ a %2$@";
 "result.order.title" = "Orden";
 "result.order.departure" = "Por salida";
 "accessibility.open_train_detail" = "Abre el detalle del tren";

@@ -16,6 +16,9 @@
 "planner.same_station" = "Ga đi và ga đến phải khác nhau.";
 "planner.selection_required" = "Hãy chọn ga đi và ga đến.";
 "planner.station.no_timetable" = "Không có lịch trình";
+"planner.station.badge.metro" = "Điểm dừng tàu điện ngầm";
+"planner.station.badge.tram" = "Điểm dừng tàu điện mặt đất";
+"planner.station.badge.funicular" = "Tàu leo núi hoặc thang máy";
 "planner.sources.footer" = "Lịch trình đi kèm:";
 "catalog.unavailable.title" = "Danh mục không khả dụng";
 "catalog.unavailable.body" = "Không thể đọc danh mục ga đã tuyển chọn. Tính năng tìm kiếm vẫn bị tắt để tránh thông tin ga chưa được xác minh.";
@@ -214,6 +217,7 @@
 "settings.data.valid_until" = "Nguồn dữ liệu hết hạn sớm nhất";
 "settings.data.catalog_notice" = "Danh mục ga chỉ dùng để nhận diện và tìm kiếm. Danh mục không chứa và không xác định giờ chạy, độ trễ, sân ga hay trạng thái chính thức.";
 "settings.sources.title" = "Nguồn dữ liệu GTFS";
+"settings.urban_stops.title" = "Bao gồm điểm dừng tàu điện ngầm và tàu điện mặt đất khi tìm kiếm";
 "settings.sources.valid_until" = "Có hiệu lực đến";
 "settings.sources.licence" = "Giấy phép:";
 "settings.sources.no_trips" = "Phiên bản này không có chuyến tàu nào";
@@ -270,6 +274,10 @@
 "result.vehicle.italobus" = "ItaloBus";
 "result.vehicle.bus" = "Xe buýt";
 "result.vehicle.replacement_bus" = "Xe buýt thay thế";
+"result.vehicle.metro" = "Tàu điện ngầm";
+"result.vehicle.tram" = "Tàu điện mặt đất";
+"result.vehicle.funicular" = "Tàu leo núi";
+"result.boarding_stop" = "từ trạm %1$@, cách vài bước";
 "result.detail.mean_delay" = "Mức trễ trung bình: %1$lld phút";
 "result.detail.days" = "Số ngày quan sát: %1$lld · số lần hủy: %2$lld";
 "result.detail.distribution_title" = "Phân bố độ trễ";
@@ -281,6 +289,7 @@
 "result.detail.threshold_note" = "Chuyến đến trễ tối đa %1$lld phút được tính là đúng giờ.";
 "planner.airports.title" = "Tàu đến sân bay";
 "planner.airports.search" = "Tìm tàu từ %1$@ đến %2$@";
+"planner.airports.search_runs" = "Tìm chuyến từ %1$@ đến %2$@";
 "result.order.title" = "Thứ tự";
 "result.order.departure" = "Theo giờ đi";
 "accessibility.open_train_detail" = "Mở chi tiết chuyến tàu";

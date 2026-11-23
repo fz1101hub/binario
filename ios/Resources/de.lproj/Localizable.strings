@@ -16,6 +16,9 @@
 "planner.same_station" = "Start und Ziel müssen verschieden sein.";
 "planner.selection_required" = "Wählen Sie Start und Ziel aus.";
 "planner.station.no_timetable" = "Kein Fahrplan enthalten";
+"planner.station.badge.metro" = "Metrohaltestelle";
+"planner.station.badge.tram" = "Tramhaltestelle";
+"planner.station.badge.funicular" = "Standseilbahn oder Aufzug";
 "planner.sources.footer" = "Enthaltene Fahrpläne:";
 "catalog.unavailable.title" = "Katalog nicht verfügbar";
 "catalog.unavailable.body" = "Der kuratierte Bahnhofskatalog kann nicht gelesen werden. Die Suche bleibt deaktiviert, um ungeprüfte Identitäten zu vermeiden.";
@@ -214,6 +217,7 @@
 "settings.data.valid_until" = "Erster ablaufender Feed";
 "settings.data.catalog_notice" = "Der Bahnhofskatalog dient nur der Identität und Suche. Er enthält oder bestimmt keine Fahrzeiten, Verspätungen, Gleise oder offiziellen Statusangaben.";
 "settings.sources.title" = "GTFS-Datenquellen";
+"settings.urban_stops.title" = "Metro- und Tramhaltestellen in die Suche aufnehmen";
 "settings.sources.valid_until" = "Gültig bis";
 "settings.sources.licence" = "Lizenz:";
 "settings.sources.no_trips" = "Keine Bahnverbindung in dieser Version enthalten";
@@ -270,6 +274,10 @@
 "result.vehicle.italobus" = "ItaloBus";
 "result.vehicle.bus" = "Bus";
 "result.vehicle.replacement_bus" = "Ersatzbus";
+"result.vehicle.metro" = "Metro";
+"result.vehicle.tram" = "Tram";
+"result.vehicle.funicular" = "Standseilbahn";
+"result.boarding_stop" = "ab der Haltestelle %1$@, wenige Schritte entfernt";
 "result.detail.mean_delay" = "Durchschnittliche Verspätung: %1$lld Min.";
 "result.detail.days" = "Beobachtete Tage: %1$lld · Ausfälle: %2$lld";
 "result.detail.distribution_title" = "Verteilung der Verspätungen";
@@ -281,6 +289,7 @@
 "result.detail.threshold_note" = "Als pünktlich gilt eine Ankunft mit höchstens %1$lld Min. Verspätung.";
 "planner.airports.title" = "Bahnverbindungen zu den Flughäfen";
 "planner.airports.search" = "Züge von %1$@ nach %2$@ suchen";
+"planner.airports.search_runs" = "Verbindungen von %1$@ nach %2$@ suchen";
 "result.order.title" = "Reihenfolge";
 "result.order.departure" = "Nach Abfahrt";
 "accessibility.open_train_detail" = "Öffnet die Zugdetails";

@@ -16,6 +16,9 @@
 "planner.same_station" = "出発駅と到着駅は別の駅を選んでください。";
 "planner.selection_required" = "出発駅と到着駅を選んでください。";
 "planner.station.no_timetable" = "時刻表なし";
+"planner.station.badge.metro" = "地下鉄の駅";
+"planner.station.badge.tram" = "路面電車の停留所";
+"planner.station.badge.funicular" = "ケーブルカーまたはエレベーター";
 "planner.sources.footer" = "収録時刻表：";
 "catalog.unavailable.title" = "カタログを利用できません";
 "catalog.unavailable.body" = "厳選駅カタログを読み込めません。未確認の駅情報を避けるため、検索は無効のままです。";
@@ -214,6 +217,7 @@
 "settings.data.valid_until" = "最初に期限が切れるフィード";
 "settings.data.catalog_notice" = "駅カタログは駅の識別と検索にのみ使用します。時刻、遅延、番線、公式の運行状況は含まれず、それらを決めるものでもありません。";
 "settings.sources.title" = "GTFS データソース";
+"settings.urban_stops.title" = "地下鉄と路面電車の停留所を検索に含める";
 "settings.sources.valid_until" = "有効期限";
 "settings.sources.licence" = "ライセンス：";
 "settings.sources.no_trips" = "このバージョンには鉄道の運行が含まれていません";
@@ -270,6 +274,10 @@
 "result.vehicle.italobus" = "ItaloBus";
 "result.vehicle.bus" = "バス";
 "result.vehicle.replacement_bus" = "代行バス";
+"result.vehicle.metro" = "地下鉄";
+"result.vehicle.tram" = "路面電車";
+"result.vehicle.funicular" = "ケーブルカー";
+"result.boarding_stop" = "徒歩すぐの %1$@ 停留所から";
 "result.detail.mean_delay" = "平均の遅れ：%1$lld 分";
 "result.detail.days" = "観測日数：%1$lld · 運休：%2$lld";
 "result.detail.distribution_title" = "遅れの分布";
@@ -281,6 +289,7 @@
 "result.detail.threshold_note" = "遅れが %1$lld 分 以内の到着を定刻とみなします。";
 "planner.airports.title" = "空港へのアクセス列車";
 "planner.airports.search" = "%1$@ から %2$@ への列車を検索";
+"planner.airports.search_runs" = "%1$@ から %2$@ への便を検索";
 "result.order.title" = "並び順";
 "result.order.departure" = "出発順";
 "accessibility.open_train_detail" = "列車の詳細を開きます";

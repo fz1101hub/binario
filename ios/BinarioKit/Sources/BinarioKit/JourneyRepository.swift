@@ -86,9 +86,13 @@ public struct TrainService: Codable, Equatable, Identifiable, Sendable {
     public let hasTrainNumber: Bool
     /// The bus a timetable service is (a Trenitalia bus, ItaloBus, a replacement bus: the route
     /// types 3 and 700–799 of the bundled timetable, `TimetableVehicle`), shown with a bus icon and
-    /// its label; nil for a train and for every live row. Optional, so a service saved before it
-    /// existed still decodes.
+    /// its label, or the metro, tram or funicular line of a city network («Metro M1»); nil for a
+    /// train and for every live row. Optional, so a service saved before it existed still decodes.
     public let vehicle: TimetableVehicle?
+    /// The stop of a city line where the run is boarded when it is a short walk from the searched
+    /// station (Android's «dalla fermata …, a pochi passi»); nil when it leaves the station itself.
+    /// Optional, so a service saved before it existed still decodes.
+    public let boardingStop: String?
 
     public init(
         id: String,
@@ -103,7 +107,8 @@ public struct TrainService: Codable, Equatable, Identifiable, Sendable {
         delayMinutes: Int,
         bikesAllowed: Bool? = nil,
         hasTrainNumber: Bool = true,
-        vehicle: TimetableVehicle? = nil
+        vehicle: TimetableVehicle? = nil,
+        boardingStop: String? = nil
     ) {
         self.id = id
         self.number = number
@@ -117,11 +122,18 @@ public struct TrainService: Codable, Equatable, Identifiable, Sendable {
         self.delayMinutes = delayMinutes
         self.bikesAllowed = bikesAllowed
         self.hasTrainNumber = hasTrainNumber
-        self.vehicle = vehicle?.isBus == true ? vehicle : nil
+        self.vehicle = vehicle?.isBus == true || vehicle?.isUrban == true ? vehicle : nil
+        self.boardingStop = boardingStop
     }
 
     /// True for a bus of the timetable (`vehicle`): no train statistics, no train icon.
     public var isBus: Bool { vehicle?.isBus == true }
+
+    /// True for a metro, tram or funicular line of a city network (`vehicle`).
+    public var isUrban: Bool { vehicle?.isUrban == true }
+
+    /// A train: neither a bus nor a city line. Only a train has network statistics.
+    public var isTrain: Bool { vehicle == nil }
 }
 
 public struct JourneySnapshot: Codable, Equatable, Sendable {

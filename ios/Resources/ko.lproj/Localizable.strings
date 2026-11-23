@@ -16,6 +16,9 @@
 "planner.same_station" = "출발역과 도착역은 달라야 합니다.";
 "planner.selection_required" = "출발역과 도착역을 선택하세요.";
 "planner.station.no_timetable" = "시간표 미포함";
+"planner.station.badge.metro" = "지하철역";
+"planner.station.badge.tram" = "트램 정류장";
+"planner.station.badge.funicular" = "푸니쿨라 또는 엘리베이터";
 "planner.sources.footer" = "포함된 시간표:";
 "catalog.unavailable.title" = "카탈로그를 사용할 수 없음";
 "catalog.unavailable.body" = "엄선된 역 카탈로그를 읽을 수 없습니다. 확인되지 않은 역 정보를 피하기 위해 검색이 비활성화된 상태로 유지됩니다.";
@@ -214,6 +217,7 @@
 "settings.data.valid_until" = "가장 먼저 만료되는 피드";
 "settings.data.catalog_notice" = "역 카탈로그는 역 식별과 검색에만 사용됩니다. 시각, 지연, 승강장 또는 공식 운행 상태를 포함하거나 결정하지 않습니다.";
 "settings.sources.title" = "GTFS 데이터 출처";
+"settings.urban_stops.title" = "검색에 지하철 및 트램 정류장 포함";
 "settings.sources.valid_until" = "유효 기간";
 "settings.sources.licence" = "라이선스:";
 "settings.sources.no_trips" = "이 버전에는 철도 운행이 포함되어 있지 않음";
@@ -270,6 +274,10 @@
 "result.vehicle.italobus" = "ItaloBus";
 "result.vehicle.bus" = "버스";
 "result.vehicle.replacement_bus" = "대체 버스";
+"result.vehicle.metro" = "지하철";
+"result.vehicle.tram" = "트램";
+"result.vehicle.funicular" = "푸니쿨라";
+"result.boarding_stop" = "가까운 %1$@ 정류장에서";
 "result.detail.mean_delay" = "평균 지연: %1$lld분";
 "result.detail.days" = "관측일: %1$lld · 운행 취소: %2$lld";
 "result.detail.distribution_title" = "지연 분포";
@@ -281,6 +289,7 @@
 "result.detail.threshold_note" = "지연이 %1$lld분 이하인 도착을 정시로 봅니다.";
 "planner.airports.title" = "공항 연결 열차";
 "planner.airports.search" = "%1$@에서 %2$@(으)로 가는 열차 검색";
+"planner.airports.search_runs" = "%1$@에서 %2$@(으)로 가는 운행편 검색";
 "result.order.title" = "정렬";
 "result.order.departure" = "출발순";
 "accessibility.open_train_detail" = "열차 상세 정보를 엽니다";

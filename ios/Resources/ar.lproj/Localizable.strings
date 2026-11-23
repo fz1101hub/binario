@@ -16,6 +16,9 @@
 "planner.same_station" = "يجب أن تختلف محطة الانطلاق عن الوجهة.";
 "planner.selection_required" = "اختر محطة الانطلاق والوجهة.";
 "planner.station.no_timetable" = "المواعيد غير مضمَّنة";
+"planner.station.badge.metro" = "محطة مترو";
+"planner.station.badge.tram" = "محطة ترام";
+"planner.station.badge.funicular" = "قطار جبلي أو مصعد";
 "planner.sources.footer" = "المواعيد المضمَّنة:";
 "catalog.unavailable.title" = "الكتالوج غير متاح";
 "catalog.unavailable.body" = "تتعذّر قراءة كتالوج المحطات المنسَّق. يبقى البحث معطّلًا لتجنّب هويات غير موثَّقة.";
@@ -214,6 +217,7 @@
 "settings.data.valid_until" = "أول مصدر تنتهي صلاحيته";
 "settings.data.catalog_notice" = "يُستخدم كتالوج المحطات للتعريف والبحث فقط، ولا يحتوي على المواعيد أو التأخيرات أو الأرصفة أو الحالات الرسمية ولا يحدّدها.";
 "settings.sources.title" = "مصادر بيانات GTFS";
+"settings.urban_stops.title" = "تضمين محطات المترو والترام في البحث";
 "settings.sources.valid_until" = "صالح حتى";
 "settings.sources.licence" = "الترخيص:";
 "settings.sources.no_trips" = "لا تتضمن هذه النسخة أي رحلة قطار";
@@ -270,6 +274,10 @@
 "result.vehicle.italobus" = "ItaloBus";
 "result.vehicle.bus" = "حافلة";
 "result.vehicle.replacement_bus" = "حافلة بديلة";
+"result.vehicle.metro" = "مترو";
+"result.vehicle.tram" = "ترام";
+"result.vehicle.funicular" = "قطار جبلي";
+"result.boarding_stop" = "من محطة %1$@، على بُعد خطوات";
 "result.detail.mean_delay" = "متوسط التأخير: %1$lld د";
 "result.detail.days" = "الأيام المرصودة: %1$lld · الإلغاءات: %2$lld";
 "result.detail.distribution_title" = "توزيع التأخيرات";
@@ -281,6 +289,7 @@
 "result.detail.threshold_note" = "يُعدّ الوصول في الموعد إذا لم يتجاوز التأخير %1$lld د.";
 "planner.airports.title" = "الربط بالمطارات";
 "planner.airports.search" = "ابحث عن القطارات من %1$@ إلى %2$@";
+"planner.airports.search_runs" = "ابحث عن الرحلات من %1$@ إلى %2$@";
 "result.order.title" = "الترتيب";
 "result.order.departure" = "حسب المغادرة";
 "accessibility.open_train_detail" = "يفتح تفاصيل القطار";

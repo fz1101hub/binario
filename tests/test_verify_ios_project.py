@@ -402,9 +402,11 @@ class IOSProjectTests(unittest.TestCase):
             used.update(SWIFT_REQUIRED_KEY.findall(path.read_text(encoding="utf-8")))
         self.assertTrue(used <= canonical, sorted(used - canonical))
         intentionally_dynamic = {
-            # The bus labels, read through TimetableVehicle.labelKey (VehicleTexts.busLabel).
+            # The bus and city-line labels, read through TimetableVehicle.labelKey (VehicleTexts.busLabel).
             "result.vehicle.bus_trenitalia", "result.vehicle.freccialink", "result.vehicle.italobus", "result.vehicle.bus",
-            "result.vehicle.replacement_bus",
+            "result.vehicle.replacement_bus", "result.vehicle.metro", "result.vehicle.tram", "result.vehicle.funicular",
+            # A city stop's badge, read through UrbanStopBadge.descriptionKey.
+            "planner.station.badge.metro", "planner.station.badge.tram", "planner.station.badge.funicular",
             "settings.about.version_unavailable",
             "watch.status.disabled", "watch.status.activating", "watch.status.pending",
             "watch.status.context_updated", "watch.status.cleared",
@@ -417,7 +419,8 @@ class IOSProjectTests(unittest.TestCase):
         # (contracts/shared-rules/v1/journey-leg-vehicles-v1.json), read by SharedRulesContractTests.swift.
         contract = json.loads((ROOT / "contracts/shared-rules/v1/journey-leg-vehicles-v1.json").read_text(encoding="utf-8"))
         keys = {case["iosLabel"]: case["androidLabel"] for case in contract["legVehicles"] if case["iosLabel"]}
-        self.assertEqual(5, len(keys))
+        # Five buses and the three modes of the city lines.
+        self.assertEqual(8, len(keys))
         vehicle = (IOS / "BinarioKit/Sources/BinarioKit/TimetableVehicle.swift").read_text(encoding="utf-8")
         for key in keys:
             self.assertIn(f'return "{key}"', vehicle)
@@ -437,11 +440,12 @@ class IOSProjectTests(unittest.TestCase):
         for name in ("PlannerView.swift", "TrainDetailView.swift"):
             self.assertIn("VehicleTexts.busLabel(service)", (IOS / "BinarioApp" / name).read_text(encoding="utf-8"), name)
         board = (IOS / "BinarioApp/DeparturesView.swift").read_text(encoding="utf-8")
-        self.assertIn("Label(VehicleTexts.rowLabel(service), systemImage: VehicleTexts.busSymbol)", board)
-        self.assertIn('service.isBus ? "departures.row.spoken_vehicle" : "departures.row.spoken"', board)
-        # A bus has no train statistics, as on Android.
-        self.assertIn("for service in snapshot.services where !service.isBus", (IOS / "BinarioKit/Sources/BinarioKit/NetworkReliability.swift").read_text(encoding="utf-8"))
-        self.assertIn("guard let reliabilityStats, !service.isBus else { return nil }", (IOS / "BinarioApp/AppModel.swift").read_text(encoding="utf-8"))
+        self.assertIn("Label(VehicleTexts.rowLabel(service), systemImage: VehicleTexts.symbol(service))", board)
+        self.assertIn('service.isTrain ? "departures.row.spoken" : "departures.row.spoken_vehicle"', board)
+        # A bus or a city line has no train statistics, as on Android.
+        self.assertIn("for service in snapshot.services where service.isTrain", (IOS / "BinarioKit/Sources/BinarioKit/NetworkReliability.swift").read_text(encoding="utf-8"))
+        self.assertIn("guard let reliabilityStats, service.isTrain else { return nil }", (IOS / "BinarioApp/AppModel.swift").read_text(encoding="utf-8"))
+        self.assertIn("public var isTrain: Bool { vehicle == nil }", (IOS / "BinarioKit/Sources/BinarioKit/JourneyRepository.swift").read_text(encoding="utf-8"))
 
     def test_the_timetable_copies_follow_androids_pack_classes(self) -> None:
         # The pack roles are one shared table (contracts/shared-data/v1/pack-roles-v1.json): the index builder reads the
@@ -843,7 +847,7 @@ class IOSProjectTests(unittest.TestCase):
         # The expiry is checked for the whole index before stations are resolved, so a query
         # after the last service day is "expired" even for stations the index never served.
         load_body = gtfs.split("private static func load(", 1)[1]
-        self.assertLess(load_body.index("indexEnded(before: query.departure"), load_body.index("try resolve(query.origin"))
+        self.assertLess(load_body.index("indexEnded(before: query.departure"), load_body.index("try endpointStops(query.origin"))
         self.assertIn("WHERE EXISTS (SELECT 1 FROM trip AS t WHERE t.pack_id = p.id)", gtfs)
         self.assertIn("testQueriesAfterTheIndexEndsReportExpiryEvenForStationsItNeverServed", (IOS / "BinarioKit/Tests/BinarioKitTests/SQLiteGTFSJourneyRepositoryTests.swift").read_text(encoding="utf-8"))
         self.assertIn("var firstPackExpiry: Date?", model)
@@ -1577,8 +1581,9 @@ class IOSProjectTests(unittest.TestCase):
             "try statement.bind(Int64(maximumCandidateRows + 1), at: binding)",
             "guard rowsRead <= maximumCandidateRows else { throw SQLiteGTFSFailure.limitExceeded }",
             "serviceRuns(serviceDay: serviceDay, startDate: startDate, dayCount: dayCount,",
-            "let number = trainNumber(trip: statement.text(at: 2), route: statement.text(at: 3), externalTripID: externalTripID)",
-            "let category = trainCategory(route: statement.text(at: 3), longName: statement.text(at: 4), type: statement.int(at: 5))",
+            "let naming = serviceNaming(vehicle: vehicle, trip: statement.text(at: 2), route: statement.text(at: 3),",
+            "longName: statement.text(at: 4), type: statement.int(at: 5), externalTripID: externalTripID)",
+            "let category = naming.category",
             "bikesAllowed: bikes(statement.int(at: 15))",
             "platform: nil,",
             "status: OperationalState.programmed.rawValue,",
@@ -1594,7 +1599,13 @@ class IOSProjectTests(unittest.TestCase):
         self.assertNotIn("route_type =", gtfs)
         # The planner rows and the board name trains with the same helpers.
         planner_query = gtfs.split("private static func queryCandidates(", 1)[1].split("private static func trainNumber(", 1)[0]
-        self.assertIn("let number = trainNumber(trip: statement.text(at: 2), route: statement.text(at: 4), externalTripID: externalTripID)", planner_query)
+        self.assertIn("let naming = serviceNaming(vehicle: vehicle, trip: statement.text(at: 2), route: statement.text(at: 4),", planner_query)
+        self.assertIn("longName: statement.text(at: 5), type: statement.int(at: 6), externalTripID: externalTripID)", planner_query)
+        # A train keeps trainNumber and trainCategory; a city run is named by its line, never as a train number.
+        naming = gtfs.split("private static func serviceNaming(", 1)[1].split("private static func", 1)[0]
+        self.assertIn("trainNumber(trip: tripShortName, route: routeShortName, externalTripID: externalTripID)", naming)
+        self.assertIn("trainCategory(route: routeShortName, longName: longName, type: routeType)", naming)
+        self.assertIn("return (line, line, false)", naming)
         self.assertIn("let bikesAllowed = bikes(statement.int(at: 16))", planner_query)
 
         model = (IOS / "BinarioApp/AppModel.swift").read_text(encoding="utf-8")

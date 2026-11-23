@@ -16,6 +16,9 @@
 "planner.same_station" = "ต้นทางและปลายทางต้องไม่ใช่สถานีเดียวกัน";
 "planner.selection_required" = "เลือกต้นทางและปลายทาง";
 "planner.station.no_timetable" = "ไม่มีตารางเวลา";
+"planner.station.badge.metro" = "ป้ายรถไฟใต้ดิน";
+"planner.station.badge.tram" = "ป้ายรถราง";
+"planner.station.badge.funicular" = "รถรางไต่เขาหรือลิฟต์";
 "planner.sources.footer" = "ตารางเวลาที่รวมอยู่:";
 "catalog.unavailable.title" = "แค็ตตาล็อกไม่พร้อมใช้งาน";
 "catalog.unavailable.body" = "ไม่สามารถอ่านแค็ตตาล็อกสถานีที่คัดสรรไว้ได้ การค้นหาจะยังปิดอยู่เพื่อหลีกเลี่ยงข้อมูลสถานีที่ไม่ได้รับการยืนยัน";
@@ -214,6 +217,7 @@
 "settings.data.valid_until" = "ฟีดแรกที่จะหมดอายุ";
 "settings.data.catalog_notice" = "แค็ตตาล็อกสถานีใช้เพื่อระบุตัวตนและค้นหาเท่านั้น ไม่มีและไม่ได้กำหนดเวลา ความล่าช้า ชานชาลา หรือสถานะทางการ";
 "settings.sources.title" = "แหล่งข้อมูล GTFS";
+"settings.urban_stops.title" = "รวมป้ายรถไฟใต้ดินและรถรางในการค้นหา";
 "settings.sources.valid_until" = "ใช้ได้ถึง";
 "settings.sources.licence" = "สัญญาอนุญาต:";
 "settings.sources.no_trips" = "เวอร์ชันนี้ไม่มีเที่ยวรถไฟ";
@@ -270,6 +274,10 @@
 "result.vehicle.italobus" = "ItaloBus";
 "result.vehicle.bus" = "รถบัส";
 "result.vehicle.replacement_bus" = "รถบัสทดแทน";
+"result.vehicle.metro" = "รถไฟใต้ดิน";
+"result.vehicle.tram" = "รถราง";
+"result.vehicle.funicular" = "รถรางไต่เขา";
+"result.boarding_stop" = "จากป้าย %1$@ ที่อยู่ใกล้ๆ";
 "result.detail.mean_delay" = "ความล่าช้าเฉลี่ย: %1$lld นาที";
 "result.detail.days" = "วันที่สังเกต: %1$lld · ยกเลิก: %2$lld";
 "result.detail.distribution_title" = "การกระจายของความล่าช้า";
@@ -281,6 +289,7 @@
 "result.detail.threshold_note" = "การมาถึงที่ล่าช้าไม่เกิน %1$lld นาที ถือว่าตรงเวลา";
 "planner.airports.title" = "รถไฟเชื่อมสนามบิน";
 "planner.airports.search" = "ค้นหารถไฟจาก %1$@ ไป %2$@";
+"planner.airports.search_runs" = "ค้นหาเที่ยวรถจาก %1$@ ไป %2$@";
 "result.order.title" = "ลำดับ";
 "result.order.departure" = "ตามเวลาออก";
 "accessibility.open_train_detail" = "เปิดรายละเอียดขบวนรถ";

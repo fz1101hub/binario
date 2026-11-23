@@ -3,6 +3,7 @@ import BinarioKit
 
 struct SettingsView: View {
     @EnvironmentObject private var model: AppModel
+    @AppStorage(UrbanStopsSetting.key) private var urbanStopsInSearch = UrbanStopsSetting.defaultValue
 
     var body: some View {
         List {
@@ -36,6 +37,10 @@ struct SettingsView: View {
                     ForEach(model.schedulePacks, id: \.sourceID) { pack in
                         SourcePackRow(pack: pack, source: model.sourcePolicy?.source(id: pack.sourceID))
                     }
+                }
+                // The city stops among the station suggestions, as on Android (`UrbanStopsSetting`).
+                if !model.urbanStops.stops.isEmpty {
+                    Toggle("settings.urban_stops.title", isOn: $urbanStopsInSearch)
                 }
             }
 

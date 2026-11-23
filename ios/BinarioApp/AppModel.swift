@@ -162,6 +162,10 @@ final class AppModel: ObservableObject {
     @Published private(set) var pinnedWatchRouteID: String? = nil
     /// «Collegamenti con gli aeroporti»: the airport routes the bundled timetables can answer.
     @Published private(set) var airportLinks: [AirportLink] = []
+    /// The metro, tram and funicular stops of the bundled timetable for the station search
+    /// (`UrbanStopsSetting`), read once per installed index off the main actor; empty until then.
+    @Published private(set) var urbanStops: UrbanStopIndex = .empty
+    private var urbanStopsIndexURL: URL?
     /// «Partenze»: the station chosen, remembered on this iPhone (`StationBoardStationStore`).
     @Published private(set) var boardStation: StationIdentity?
     @Published private(set) var boardState: BoardState = .idle
@@ -413,10 +417,12 @@ final class AppModel: ObservableObject {
         } else {
             model.catalogState = .unavailable
         }
+        // The Personal configuration reads its own index, with the personal packs (PersonalTimetable).
+        let personal = PersonalTimetable.resources(in: bundle)
         guard
-            let compressedURL = bundle.url(forResource: "binario_gtfs_schedule_v1.sqlite", withExtension: "zlib"),
-            let metadataURL = bundle.url(forResource: "binario_gtfs_schedule_v1.metadata", withExtension: "json"),
-            let sourcePolicyURL = bundle.url(forResource: "binario_gtfs_source_policy_v1", withExtension: "json"),
+            let compressedURL = personal?.compressed ?? bundle.url(forResource: "binario_gtfs_schedule_v1.sqlite", withExtension: "zlib"),
+            let metadataURL = personal?.metadata ?? bundle.url(forResource: "binario_gtfs_schedule_v1.metadata", withExtension: "json"),
+            let sourcePolicyURL = personal?.sourcePolicy ?? bundle.url(forResource: "binario_gtfs_source_policy_v1", withExtension: "json"),
             let applicationSupport = FileManager.default.urls(
                 for: .applicationSupportDirectory,
                 in: .userDomainMask
@@ -480,7 +486,7 @@ final class AppModel: ObservableObject {
     /// and measured at its destination; nil without statistics or enough samples.
     func reliabilityDetail(for service: TrainService, query: JourneyQuery) -> NetworkReliabilityDetail? {
         // A bus of the timetable has no train statistics (as on Android).
-        guard let reliabilityStats, !service.isBus else { return nil }
+        guard let reliabilityStats, service.isTrain else { return nil }
         return NetworkReliabilityDetail.of(
             reliabilityStats,
             number: service.number,
@@ -495,8 +501,10 @@ final class AppModel: ObservableObject {
         FavouriteTrainsReliability.assess(favouriteTrains, stats: reliabilityStats)
     }
 
-    /// Recomputes `airportLinks` once both the catalogue and the timetable index are read.
+    /// Recomputes `airportLinks` once both the catalogue and the timetable index are read (and
+    /// reads the index's city stops, `loadUrbanStops`).
     private func updateAirportLinks() {
+        loadUrbanStops()
         guard case let .available(catalog) = catalogState, let coveredStationIDs else {
             airportLinks = []
             return
@@ -514,14 +522,35 @@ final class AppModel: ObservableObject {
         guard let coveredStationIDs else { return stations }
         // Stations the bundled timetables serve come first; the others stay selectable and
         // are marked, so a search for Roma Termini explains itself instead of "no data".
-        return stations.filter { coveredStationIDs.contains($0.id) }
+        let ordered = stations.filter { coveredStationIDs.contains($0.id) }
             + stations.filter { !coveredStationIDs.contains($0.id) }
+        // The city stops, after the stations named as the query (Android's `withUrbanStops`, three at most).
+        guard UrbanStopsSetting.isOn else { return ordered }
+        return UrbanStopIndex.merged(stations: ordered, urban: urbanStops.search(query), query: query)
     }
 
     /// Nil until the timetable index has been read, true when one of its stops is bound to
-    /// the station.
+    /// the station (or, for a city stop, when the index lists it).
     func hasTimetable(_ station: Station) -> Bool? {
-        coveredStationIDs?.contains(station.id)
+        if UrbanStops.isStopID(station.id) { return urbanStops.badge(of: station.id) != nil }
+        return coveredStationIDs?.contains(station.id)
+    }
+
+    /// Reads the city stops of the installed index once (`SQLiteGTFSJourneyRepository.urbanStopIndex`).
+    private func loadUrbanStops() {
+        guard let repository = repository as? SQLiteGTFSJourneyRepository else {
+            urbanStops = .empty
+            urbanStopsIndexURL = nil
+            return
+        }
+        let url = repository.databaseURL
+        guard url != urbanStopsIndexURL else { return }
+        urbanStopsIndexURL = url
+        Task { [weak self] in
+            let index = await Task.detached(priority: .utility) { (try? repository.urbanStopIndex()) ?? .empty }.value
+            guard let self, self.urbanStopsIndexURL == url else { return }
+            self.urbanStops = index
+        }
     }
 
     /// What a typed or dictated sentence says about a route (EXPO_PORT_PLAN I6), read on the iPhone
@@ -1314,6 +1343,13 @@ final class AppModel: ObservableObject {
     func refreshBoardLive(now: Date = Date()) async {
         guard isForeground else { return }
         guard boardLiveVisible, liveDataEnabled, let liveData, let identity = boardStation else { return }
+        // A city stop: no railway source has its board (Android reads only the city's timetable there).
+        guard !UrbanStops.isStopID(identity.id) else {
+            boardLive = nil
+            boardLiveSources = []
+            boardLiveState = .idle
+            return
+        }
         boardLiveRequestID &+= 1
         let requestID = boardLiveRequestID
         boardLiveState = .loading
@@ -1395,7 +1431,8 @@ final class AppModel: ObservableObject {
         guard isForeground else { return }
         guard plannerLiveVisible, liveDataEnabled, let liveData, let snapshot = latestSnapshot else { return }
         let query = snapshot.query
-        guard Self.isInLiveWindow(query.departure, now: now) else {
+        // Nor is a city stop's board asked to the railway sources.
+        guard Self.isInLiveWindow(query.departure, now: now), !UrbanStops.isStopID(query.origin.id) else {
             resultLive = [:]
             resultLiveSources = []
             resultLiveAt = nil

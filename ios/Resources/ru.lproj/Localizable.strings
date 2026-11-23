@@ -16,6 +16,9 @@
 "planner.same_station" = "Станции отправления и назначения должны различаться.";
 "planner.selection_required" = "Выберите станции отправления и назначения.";
 "planner.station.no_timetable" = "Расписание не включено";
+"planner.station.badge.metro" = "Станция метро";
+"planner.station.badge.tram" = "Остановка трамвая";
+"planner.station.badge.funicular" = "Фуникулёр или подъёмник";
 "planner.sources.footer" = "Включённые расписания:";
 "catalog.unavailable.title" = "Каталог недоступен";
 "catalog.unavailable.body" = "Не удаётся прочитать проверенный каталог станций. Поиск остаётся отключённым, чтобы избежать непроверенных данных.";
@@ -214,6 +217,7 @@
 "settings.data.valid_until" = "Первый истекающий фид";
 "settings.data.catalog_notice" = "Каталог станций используется только для идентификации и поиска. Он не содержит и не определяет расписание, задержки, платформы или официальные статусы.";
 "settings.sources.title" = "Источники данных GTFS";
+"settings.urban_stops.title" = "Искать также остановки метро и трамвая";
 "settings.sources.valid_until" = "Действует до";
 "settings.sources.licence" = "Лицензия:";
 "settings.sources.no_trips" = "В этой версии нет железнодорожных рейсов";
@@ -270,6 +274,10 @@
 "result.vehicle.italobus" = "ItaloBus";
 "result.vehicle.bus" = "Автобус";
 "result.vehicle.replacement_bus" = "Автобус вместо поезда";
+"result.vehicle.metro" = "Метро";
+"result.vehicle.tram" = "Трамвай";
+"result.vehicle.funicular" = "Фуникулёр";
+"result.boarding_stop" = "от остановки %1$@ в нескольких шагах";
 "result.detail.mean_delay" = "Среднее опоздание: %1$lld мин";
 "result.detail.days" = "Дней под наблюдением: %1$lld · отмен: %2$lld";
 "result.detail.distribution_title" = "Распределение опозданий";
@@ -281,6 +289,7 @@
 "result.detail.threshold_note" = "Вовремя считается прибытие с опозданием не более %1$lld мин.";
 "planner.airports.title" = "Поезда в аэропорты";
 "planner.airports.search" = "Найти поезда: %1$@ → %2$@";
+"planner.airports.search_runs" = "Найти рейсы: %1$@ → %2$@";
 "result.order.title" = "Порядок";
 "result.order.departure" = "По отправлению";
 "accessibility.open_train_detail" = "Открывает сведения о поезде";

@@ -16,6 +16,9 @@
 "planner.same_station" = "စထွက်ရာနှင့် ဦးတည်ရာ မတူရပါမည်။";
 "planner.selection_required" = "စထွက်ရာနှင့် ဦးတည်ရာကို ရွေးပါ။";
 "planner.station.no_timetable" = "အချိန်ဇယား မပါဝင်ပါ";
+"planner.station.badge.metro" = "မြေအောက်ရထား ဘူတာ";
+"planner.station.badge.tram" = "ဓာတ်ရထား မှတ်တိုင်";
+"planner.station.badge.funicular" = "ကေဘယ်ရထား သို့မဟုတ် ဓာတ်လှေကား";
 "planner.sources.footer" = "ပါဝင်သော အချိန်ဇယားများ-";
 "catalog.unavailable.title" = "စာရင်း မရရှိနိုင်ပါ";
 "catalog.unavailable.body" = "ရွေးချယ်စီစဉ်ထားသော ဘူတာစာရင်းကို ဖတ်၍မရပါ။ အတည်မပြုရသေးသော အချက်အလက်များကို ရှောင်ရှားရန် ရှာဖွေမှုကို ပိတ်ထားဆဲဖြစ်သည်။";
@@ -214,6 +217,7 @@
 "settings.data.valid_until" = "ပထမဆုံး သက်တမ်းကုန်မည့် feed";
 "settings.data.catalog_notice" = "ဘူတာစာရင်းကို ဘူတာ ခွဲခြားသတ်မှတ်ရန်နှင့် ရှာဖွေရန်အတွက်သာ အသုံးပြုသည်။ အချိန်၊ နောက်ကျမှု၊ စင်္ကြံ သို့မဟုတ် တရားဝင် အခြေအနေများ မပါဝင်သလို ယင်းတို့ကိုလည်း မဆုံးဖြတ်ပါ။";
 "settings.sources.title" = "GTFS ဒေတာ ရင်းမြစ်များ";
+"settings.urban_stops.title" = "ရှာဖွေမှုတွင် မြေအောက်ရထားနှင့် ဓာတ်ရထား မှတ်တိုင်များ ထည့်ရန်";
 "settings.sources.valid_until" = "အထိ သက်တမ်းရှိသည်";
 "settings.sources.licence" = "လိုင်စင်-";
 "settings.sources.no_trips" = "ဤဗားရှင်းတွင် ရထားခရီးစဉ် မပါဝင်ပါ";
@@ -270,6 +274,10 @@
 "result.vehicle.italobus" = "ItaloBus";
 "result.vehicle.bus" = "ဘတ်စ်ကား";
 "result.vehicle.replacement_bus" = "အစားထိုး ဘတ်စ်ကား";
+"result.vehicle.metro" = "မြေအောက်ရထား";
+"result.vehicle.tram" = "ဓာတ်ရထား";
+"result.vehicle.funicular" = "ကေဘယ်ရထား";
+"result.boarding_stop" = "အနီးရှိ %1$@ မှတ်တိုင်မှ";
 "result.detail.mean_delay" = "ပျမ်းမျှ နောက်ကျမှု- %1$lld မိနစ်";
 "result.detail.days" = "စောင့်ကြည့်ခဲ့သည့် ရက်- %1$lld · ဖျက်သိမ်းမှု- %2$lld";
 "result.detail.distribution_title" = "နောက်ကျမှု ဖြန့်ကျက်ပုံ";
@@ -281,6 +289,7 @@
 "result.detail.threshold_note" = "နောက်ကျမှု %1$lld မိနစ် အထိသာ ရှိသော ဆိုက်ရောက်မှုကို အချိန်မှန်ဟု သတ်မှတ်သည်။";
 "planner.airports.title" = "လေဆိပ်များသို့ ရထားချိတ်ဆက်မှု";
 "planner.airports.search" = "%1$@ မှ %2$@ သို့ ရထားများ ရှာရန်";
+"planner.airports.search_runs" = "%1$@ မှ %2$@ သို့ ခရီးစဉ်များ ရှာရန်";
 "result.order.title" = "အစီအစဉ်";
 "result.order.departure" = "ထွက်ခွာချိန်အလိုက်";
 "accessibility.open_train_detail" = "ရထား အသေးစိတ်ကို ဖွင့်သည်";

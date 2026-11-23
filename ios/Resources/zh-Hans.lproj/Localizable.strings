@@ -16,6 +16,9 @@
 "planner.same_station" = "出发站和到达站不能相同。";
 "planner.selection_required" = "请选择出发站和到达站。";
 "planner.station.no_timetable" = "未含时刻表";
+"planner.station.badge.metro" = "地铁站";
+"planner.station.badge.tram" = "有轨电车站";
+"planner.station.badge.funicular" = "缆索铁路或电梯";
 "planner.sources.footer" = "所含时刻表：";
 "catalog.unavailable.title" = "目录不可用";
 "catalog.unavailable.body" = "无法读取精选车站目录。为避免使用未经核实的车站信息，搜索功能保持停用。";
@@ -214,6 +217,7 @@
 "settings.data.valid_until" = "最先到期的数据源";
 "settings.data.catalog_notice" = "车站目录仅用于识别和搜索车站，既不包含也不决定时刻、晚点、站台或官方状态。";
 "settings.sources.title" = "GTFS 数据来源";
+"settings.urban_stops.title" = "搜索时包含地铁和有轨电车站";
 "settings.sources.valid_until" = "有效期至";
 "settings.sources.licence" = "许可：";
 "settings.sources.no_trips" = "此版本不含任何铁路车次";
@@ -270,6 +274,10 @@
 "result.vehicle.italobus" = "ItaloBus";
 "result.vehicle.bus" = "巴士";
 "result.vehicle.replacement_bus" = "替代巴士";
+"result.vehicle.metro" = "地铁";
+"result.vehicle.tram" = "有轨电车";
+"result.vehicle.funicular" = "缆索铁路";
+"result.boarding_stop" = "从步行即到的 %1$@ 站出发";
 "result.detail.mean_delay" = "平均晚点：%1$lld 分钟";
 "result.detail.days" = "观测天数：%1$lld · 停运：%2$lld";
 "result.detail.distribution_title" = "晚点分布";
@@ -281,6 +289,7 @@
 "result.detail.threshold_note" = "晚点不超过 %1$lld 分钟 的到达计为准点。";
 "planner.airports.title" = "机场铁路连接";
 "planner.airports.search" = "搜索从 %1$@ 到 %2$@ 的列车";
+"planner.airports.search_runs" = "搜索从 %1$@ 到 %2$@ 的班次";
 "result.order.title" = "排序";
 "result.order.departure" = "按出发时间";
 "accessibility.open_train_detail" = "打开列车详情";

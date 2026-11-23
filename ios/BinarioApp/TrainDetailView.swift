@@ -33,7 +33,7 @@ struct TrainDetailView: View {
                             .font(.title3.weight(.semibold))
                         Spacer()
                         if let busLabel = VehicleTexts.busLabel(service) {
-                            Label(busLabel, systemImage: VehicleTexts.busSymbol)
+                            Label(busLabel, systemImage: VehicleTexts.symbol(service))
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         } else {
