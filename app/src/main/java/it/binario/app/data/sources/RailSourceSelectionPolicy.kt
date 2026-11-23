@@ -2,6 +2,7 @@ package it.binario.app.data.sources
 
 import it.binario.app.data.core.SourceId
 import it.binario.app.data.provider.ProviderCapability
+import it.binario.app.shared.SharedData
 import java.util.Locale
 
 /** Categoria informativa: la fonte migliore non è necessariamente la stessa per ogni dato. */
@@ -33,86 +34,26 @@ data class SourcePreference(
  *   scalzare una fonte ufficiale che copre la stessa corsa.
  */
 object RailSourceSelectionPolicy {
-    private val preferences = listOf(
-        pref("rfi-programmed", RailInformationCategory.PLANNED_ITINERARY, 145, "Quadro orario ufficiale dell'infrastruttura italiana, multi-operatore."),
-        pref("ch-otd-gtfs", RailInformationCategory.PLANNED_ITINERARY, 140, "Dataset nazionale svizzero ufficiale, baseline per SBB/TILO/BLS/RhB/FART e tratte transfrontaliere."),
-        pref("oebb-gtfs", RailInformationCategory.PLANNED_ITINERARY, 140, "GTFS ufficiale ÖBB per Railjet/EuroCity/Nightjet."),
-        pref("sncf-gtfs", RailInformationCategory.PLANNED_ITINERARY, 140, "GTFS ufficiale SNCF per TGV/TER/Intercités."),
-        pref("trenitalia-france-gtfs", RailInformationCategory.PLANNED_ITINERARY, 140, "GTFS ufficiale Trenitalia France per i Frecciarossa Francia–Italia."),
-        pref("lombardia-trenord-gtfs", RailInformationCategory.PLANNED_ITINERARY, 137, "GTFS ferroviario ufficiale Regione Lombardia/Trenord."),
-        pref("alto-adige-sta-gtfs", RailInformationCategory.PLANNED_ITINERARY, 135, "Open Data Hub/STA ufficiale, utile anche per servizi transfrontalieri."),
-        // Which offline pack's copy of a train is shown (route search, journeys) is decided by PlannedPackOrder: the
-        // national packs below come first there, and these scores only order the packs within its classes.
-        pref("trenitalia-gtfs", RailInformationCategory.PLANNED_ITINERARY, 130, "Orario ufficiale Trenitalia dal NAP (NeTEx, conversione GTFS CC BY 4.0), treni e bus."),
-        pref("italo-gtfs", RailInformationCategory.PLANNED_ITINERARY, 130, "Orario ufficiale Italo dal NAP (NeTEx, conversione GTFS CC BY 4.0), treni e ItaloBus."),
-        // Regional railways added with the transit packs (gtfs-transit/, gtfs-personal/), below the Italian packs above
-        // within PlannedPackOrder's class of the Italian regional packs.
-        pref("fal-basilicata-puglia", RailInformationCategory.PLANNED_ITINERARY, 120, "Orario ufficiale FAL dal NAP (NeTEx, conversione Binario)."),
-        pref("ferrotramviaria-bari-barletta", RailInformationCategory.PLANNED_ITINERARY, 120, "Orario ufficiale Ferrotramviaria dal NAP (NeTEx, conversione Binario)."),
-        pref("fdg-gargano", RailInformationCategory.PLANNED_ITINERARY, 120, "Orario ufficiale Ferrovie del Gargano dal NAP (NeTEx, conversione Binario)."),
-        pref("micotra-udine-villach", RailInformationCategory.PLANNED_ITINERARY, 120, "Orario ufficiale Mi.Co.Tra. dal NAP (NeTEx, conversione Binario)."),
-        pref("amt-genova-casella-gtfs", RailInformationCategory.PLANNED_ITINERARY, 120, "GTFS AMT del Comune di Genova per la Genova–Casella, CC BY 4.0."),
-        pref("cotral-ferro-gtfs", RailInformationCategory.PLANNED_ITINERARY, 115, "GTFS Cotral delle ferrovie Roma–Lido e Roma–Viterbo, solo build personali."),
-        pref("delfi-gtfs", RailInformationCategory.PLANNED_ITINERARY, 125, "Dataset nazionale tedesco ufficiale; complemento DB, non duplicato preferito di un feed diretto dell'operatore."),
-        pref("delfi-gtfs-community", RailInformationCategory.PLANNED_ITINERARY, 65, "Mirror community del dataset DELFI: utile solo se il download ufficiale non è disponibile e la tratta resterebbe scoperta."),
-        pref("european-sleeper-gtfs", RailInformationCategory.PLANNED_ITINERARY, 60, "Feed community best-effort; ammesso come fallback dopo l'avvio ufficiale del servizio Milano."),
-
-        pref("db-ris-journeys", RailInformationCategory.TRAIN_REALTIME, 148, "RIS::Journeys ufficiale DB: percorso corsa completo e informazioni operative strutturate."),
-        pref("sncf-gtfs-rt", RailInformationCategory.TRAIN_REALTIME, 145, "Provider runtime SNCF GTFS-RT; usa Trip Updates per lo stato corsa."),
-        pref("sncf-gtfs-rt-trip-updates", RailInformationCategory.TRAIN_REALTIME, 145, "Endpoint canonico GTFS-RT ufficiale SNCF Trip Updates."),
-        pref("trenitalia-france-gtfs-rt", RailInformationCategory.TRAIN_REALTIME, 140, "Trip Updates GTFS-RT ufficiali di Trenitalia France, raccordati al solo pack trenitalia-france-gtfs."),
-        pref("ch-otd-gtfs-rt", RailInformationCategory.TRAIN_REALTIME, 145, "GTFS-RT ufficiale svizzero coordinato con GTFS statico; richiede API key."),
-        pref("db-ris-boards", RailInformationCategory.TRAIN_REALTIME, 143, "RIS::Boards ufficiale DB: tempi previsionali, binari e fermate modificate."),
-        pref("db-timetables", RailInformationCategory.TRAIN_REALTIME, 135, "Timetables API DB: Sollfahrplan e scostamenti, semplice fallback autorizzato."),
-        pref("italo-status", RailInformationCategory.TRAIN_REALTIME, 130, "Fonte operatore Italo per stato della corsa, best-effort personale."),
-        pref("viaggiatreno", RailInformationCategory.TRAIN_REALTIME, 128, "Fonte Trenitalia per stato corsa; uso personale/best-effort e condizioni da rispettare."),
-        pref("rfi-station-board", RailInformationCategory.TRAIN_REALTIME, 126, "Fonte infrastrutturale italiana multi-operatore, ottima per evento di stazione."),
-        pref("ch-transport-opendata", RailInformationCategory.TRAIN_REALTIME, 118, "API pubblica svizzera best-effort: previsioni di stazione per i servizi svizzeri senza il gateway GTFS-RT."),
-        pref("european-sleeper-gtfs-rt", RailInformationCategory.TRAIN_REALTIME, 60, "Fallback community a bassa priorità; non deve sostituire RFI o un feed ufficiale."),
-
-        pref("rfi-station-board", RailInformationCategory.STATION_BOARD, 150, "Fonte infrastrutturale primaria per arrivi/partenze e binari sulle stazioni RFI."),
-        pref("rfi-programmed", RailInformationCategory.STATION_BOARD, 142, "Quadro orario programmato ufficiale RFI: baseline di stazione, senza attribuire stato o binario realtime."),
-        pref("db-ris-boards", RailInformationCategory.STATION_BOARD, 148, "RIS::Boards ufficiale DB per tabelloni con previsione, binario, fermate saltate/aggiunte e sostitutivi."),
-        pref("db-timetables", RailInformationCategory.STATION_BOARD, 135, "Timetables API DB per stazioni servite nel perimetro disponibile."),
-        pref("italo-status", RailInformationCategory.STATION_BOARD, 128, "Fonte operatore complementare per Italo."),
-        pref("viaggiatreno", RailInformationCategory.STATION_BOARD, 128, "Fonte operatore complementare per Trenitalia."),
-        pref("ch-transport-opendata", RailInformationCategory.STATION_BOARD, 118, "Tabellone pubblico svizzero best-effort, con binari per le stazioni svizzere."),
-
-        pref("db-ris-disruptions", RailInformationCategory.SERVICE_ALERTS, 148, "RIS::Disruptions ufficiale DB per perturbazioni e corse/fermate interessate."),
-        pref("sncf-gtfs-rt", RailInformationCategory.SERVICE_ALERTS, 145, "Provider runtime SNCF GTFS-RT; usa Service Alerts per gli avvisi."),
-        pref("sncf-gtfs-rt-alerts", RailInformationCategory.SERVICE_ALERTS, 145, "Endpoint canonico GTFS-RT Service Alerts ufficiale SNCF."),
-        pref("ch-otd-gtfs-rt", RailInformationCategory.SERVICE_ALERTS, 145, "GTFS-RT Service Alerts ufficiale svizzero."),
-        pref("rfi-infomobility-rss", RailInformationCategory.SERVICE_ALERTS, 138, "RSS ufficiale RFI per perturbazioni della rete italiana."),
-        pref("italo-status", RailInformationCategory.SERVICE_ALERTS, 112, "Avvisi operatore Italo come complemento."),
-        pref("viaggiatreno", RailInformationCategory.SERVICE_ALERTS, 108, "Informazioni Trenitalia come complemento personale/best-effort."),
-
-        pref("db-ris-journeys", RailInformationCategory.ROUTE_VARIATIONS, 150, "RIS::Journeys ufficiale DB: percorso corsa operativo completo."),
-        pref("db-ris-boards", RailInformationCategory.ROUTE_VARIATIONS, 148, "RIS::Boards ufficiale DB: via, fermate saltate/aggiunte e servizi sostitutivi."),
-        pref("ch-otd-gtfs-rt", RailInformationCategory.ROUTE_VARIATIONS, 145, "Trip Updates/Service Alerts strutturati per fermate modificate e corse svizzere."),
-        pref("sncf-gtfs-rt", RailInformationCategory.ROUTE_VARIATIONS, 145, "Provider runtime SNCF GTFS-RT per variazioni e cancellazioni."),
-        pref("sncf-gtfs-rt-trip-updates", RailInformationCategory.ROUTE_VARIATIONS, 145, "GTFS-RT Trip Updates strutturato per variazioni/cancellazioni SNCF."),
-        pref("sncf-gtfs-rt-alerts", RailInformationCategory.ROUTE_VARIATIONS, 142, "Service Alerts SNCF come complemento per deviazioni e interruzioni."),
-        pref("db-ris-disruptions", RailInformationCategory.ROUTE_VARIATIONS, 142, "RIS::Disruptions correla perturbazioni a corse e fermate."),
-        pref("rfi-station-board", RailInformationCategory.ROUTE_VARIATIONS, 135, "RFI può fornire informazione operativa ufficiale sul tratto italiano; percorso strutturato solo quando esplicito."),
-        pref("rfi-infomobility-rss", RailInformationCategory.ROUTE_VARIATIONS, 128, "Avvisi RFI ufficiali per deviazioni/interruzioni, tipicamente testuali."),
-        pref("italo-status", RailInformationCategory.ROUTE_VARIATIONS, 118, "Fonte operatore complementare per variazioni Italo."),
-        pref("viaggiatreno", RailInformationCategory.ROUTE_VARIATIONS, 118, "Fonte operatore complementare per variazioni Trenitalia.")
-    )
+    /** The scores of contracts/shared-data/v1/source-scores-v1.json, shared with the iPhone ([SharedData.SourceScores]). */
+    private val preferences = SharedData.SourceScores.PREFERENCES.map { preference ->
+        SourcePreference(SourceId(preference.source), RailInformationCategory.valueOf(preference.category), preference.score, preference.reason)
+    }
 
     fun ranked(category: RailInformationCategory): List<SourcePreference> =
         preferences.filter { it.category == category }.sortedByDescending { it.score }
 
     fun score(category: RailInformationCategory, sourceId: SourceId, operatorHint: String? = null): Int {
-        val base = preferences.firstOrNull { it.category == category && it.sourceId == sourceId }?.score ?: 50
+        val base = preferences.firstOrNull { it.category == category && it.sourceId == sourceId }?.score
+            ?: SharedData.SourceScores.DEFAULT_SCORE
         return base + operatorAffinity(category, sourceId, operatorHint)
     }
 
-    fun isCoverageFallback(sourceId: SourceId): Boolean = sourceId.value in setOf(
-        "european-sleeper-gtfs",
-        "european-sleeper-gtfs-rt",
-        "delfi-gtfs-community"
-    )
+    fun isCoverageFallback(sourceId: SourceId): Boolean = sourceId.value in SharedData.SourceScores.COVERAGE_FALLBACKS
 
+    /**
+     * The bonus of the first rule of [SharedData.SourceScores.OPERATOR_AFFINITY] naming [sourceId] when [operatorHint]
+     * contains one of its operator keywords: the source is the train's own operator.
+     */
     private fun operatorAffinity(
         category: RailInformationCategory,
         sourceId: SourceId,
@@ -120,31 +61,9 @@ object RailSourceSelectionPolicy {
     ): Int {
         val op = normalize(operatorHint.orEmpty())
         if (op.isBlank()) return 0
-        return when (sourceId.value) {
-            "ch-otd-gtfs", "ch-otd-gtfs-rt", "ch-transport-opendata" ->
-                if (op.containsAny("sbb", "tilo", "bls", "rhb", "rhatischebahn", "rhaetischebahn", "fart", "ssif")) 20 else 0
-            "oebb-gtfs" -> if (op.containsAny("oebb", "obb", "osterreichischebundesbahnen")) 20 else 0
-            "sncf-gtfs", "sncf-gtfs-rt", "sncf-gtfs-rt-trip-updates", "sncf-gtfs-rt-alerts" -> if (op.contains("sncf")) 20 else 0
-            "trenitalia-france-gtfs", "trenitalia-france-gtfs-rt" -> if (op.contains("trenitalia")) 20 else 0
-            "lombardia-trenord-gtfs" -> if (op.contains("trenord")) 20 else 0
-            "delfi-gtfs", "delfi-gtfs-community", "db-timetables", "db-ris-boards", "db-ris-journeys", "db-ris-disruptions" ->
-                if (op.containsAny("db", "deutschebahn", "dbfernverkehr")) 20 else 0
-            "italo-status" -> if (op.contains("italo")) operatorRealtimeAffinity(category) else 0
-            "viaggiatreno" -> if (op.containsAny("trenitalia", "frecce", "regionale")) operatorRealtimeAffinity(category) else 0
-            else -> 0
-        }
+        val rule = SharedData.SourceScores.OPERATOR_AFFINITY.firstOrNull { sourceId.value in it.sources } ?: return 0
+        return if (rule.operatorKeywords.any(op::contains)) rule.pointsByCategory[category.name] ?: 0 else 0
     }
-
-    private fun operatorRealtimeAffinity(category: RailInformationCategory): Int = when (category) {
-        RailInformationCategory.TRAIN_REALTIME -> 20
-        RailInformationCategory.ROUTE_VARIATIONS -> 20
-        RailInformationCategory.SERVICE_ALERTS -> 10
-        RailInformationCategory.STATION_BOARD -> 10
-        RailInformationCategory.PLANNED_ITINERARY -> 0
-    }
-
-    private fun pref(id: String, category: RailInformationCategory, score: Int, reason: String) =
-        SourcePreference(SourceId(id), category, score, reason)
 
     private fun normalize(value: String): String = value
         .lowercase(Locale.ROOT)
@@ -152,8 +71,6 @@ object RailSourceSelectionPolicy {
         .replace("ä", "ae")
         .replace("ü", "ue")
         .replace(Regex("[^a-z0-9]"), "")
-
-    private fun String.containsAny(vararg values: String): Boolean = values.any(::contains)
 }
 
 /** Inventario complessivo per audit e UI diagnostica. */

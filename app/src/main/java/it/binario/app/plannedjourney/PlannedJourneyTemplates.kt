@@ -3,6 +3,7 @@ package it.binario.app.plannedjourney
 import android.content.Context
 import android.content.SharedPreferences
 import androidx.core.content.edit
+import it.binario.app.shared.SharedData
 import java.nio.charset.StandardCharsets
 import java.time.Instant
 import java.time.LocalDate
@@ -47,12 +48,13 @@ class SharedPreferencesPlannedJourneyTemplateStore(context: Context) : PlannedJo
     }
 }
 
+/** The template rules shared with the iPhone (contracts/shared-data/v1/planned-journeys-v1.json). */
 object PlannedJourneyTemplates {
-    const val MAX_TEMPLATES = 12
-    const val MAX_NAME_LENGTH = 48
-    private const val KIND = "binario_planned_journey_templates"
-    private const val VERSION = 1
-    private const val MAX_BYTES = 65_536
+    const val MAX_TEMPLATES = SharedData.PlannedJourneys.MAXIMUM_TEMPLATES
+    const val MAX_NAME_LENGTH = SharedData.PlannedJourneys.MAXIMUM_TEMPLATE_NAME_LENGTH
+    private const val KIND = SharedData.PlannedJourneys.TEMPLATES_KIND
+    private const val VERSION = SharedData.PlannedJourneys.SCHEMA_VERSION
+    private const val MAX_BYTES = SharedData.PlannedJourneys.MAXIMUM_TEMPLATES_BYTES
 
     /**
      * A template only when it would make a valid journey: two distinct catalogue stations, a name, and checklist lines

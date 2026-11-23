@@ -1,6 +1,7 @@
 package it.binario.app.data
 
 import it.binario.app.data.gtfs.EmbeddedGtfsPack
+import it.binario.app.shared.SharedData
 
 /**
  * A ready route between a city station and an airport station, both of the curated catalogue (ids as the catalogue
@@ -21,38 +22,17 @@ data class AirportLink(val route: AirportRoute, val city: Station, val airport: 
  * ("Leonardo Express", "Malpensa Express"), so none is shown.
  */
 object AirportRoutes {
-    private const val TRENITALIA = "trenitalia-gtfs"
-    private const val TRENORD = "lombardia-trenord-gtfs"
-    private const val FERROTRAMVIARIA = "ferrotramviaria-bari-barletta"
-    private const val MARCONI_EXPRESS = "marconi-express-gtfs"
-
-    val all: List<AirportRoute> = listOf(
-        // Roma Termini ↔ Fiumicino Aeroporto (Trenitalia regional express).
-        AirportRoute("curated:S08409", "curated:S08411", setOf(TRENITALIA)),
-        // Milano Centrale and Milano Cadorna ↔ Malpensa Aeroporto (Terminal 1; Trenord RE51 and RE54).
-        AirportRoute("curated:S01700", "curated:S01139", setOf(TRENORD)),
-        AirportRoute("curated:S01066", "curated:S01139", setOf(TRENORD)),
-        // Bari ↔ Bari Aeroporto (Ferrotramviaria; "Bari" is the catalogue station of its stop at Bari Centrale).
-        AirportRoute("curated:NC000634", "curated:NC001565", setOf(FERROTRAMVIARIA)),
-        // Palermo Centrale ↔ Punta Raisi (Palermo Aeroporto).
-        AirportRoute("curated:S12002", "curated:S12133", setOf(TRENITALIA)),
-        // Cagliari ↔ Elmas Aeroporto.
-        AirportRoute("curated:S12891", "curated:S12819", setOf(TRENITALIA)),
-        // Trieste Centrale ↔ Trieste Airport.
-        AirportRoute("curated:S03317", "curated:S03213", setOf(TRENITALIA)),
-        // Torino Porta Susa ↔ Caselle Torinese Aeroporto (SFM A).
-        AirportRoute("curated:S00035", "curated:S00088", setOf(TRENITALIA)),
-        // Bologna Centrale ↔ Bologna Aeroporto (Marconi Express people mover: a metro line of the city pack, its stops
-        // about 130 m and 150 m from the two catalogue stations).
-        AirportRoute("curated:S05043", "curated:NC000683", setOf(MARCONI_EXPRESS))
-    )
+    /** The shared table contracts/shared-data/v1/airport-routes-v1.json ([SharedData.AirportRoutes]), the iPhone's too. */
+    val all: List<AirportRoute> = SharedData.AirportRoutes.ROUTES.map { route ->
+        AirportRoute("curated:${route.city}", "curated:${route.airport}", route.packs)
+    }
 
     /**
      * Packs whose airport line is a city line, not a train (the Marconi Express people mover): their rows say «Cerca le
-     * corse», every other row «Cerca i treni». Named, not inferred from the asset directory: `gtfs-transit/` also holds
-     * regional railways (Ferrotramviaria serves Bari Aeroporto with real trains).
+     * corse», every other row «Cerca i treni». Flagged in the table, not inferred from the asset directory:
+     * `gtfs-transit/` also holds regional railways (Ferrotramviaria serves Bari Aeroporto with real trains).
      */
-    private val CITY_LINE_PACKS = setOf(MARCONI_EXPRESS)
+    private val CITY_LINE_PACKS = SharedData.AirportRoutes.PACKS.filter { it.cityLine }.mapTo(HashSet()) { it.id }
 
     /** Whether [route] is served only by a city line (a people mover, a metro), so its rows do not say "trains". */
     fun byCityLine(route: AirportRoute): Boolean = route.packs.isNotEmpty() && route.packs.all(CITY_LINE_PACKS::contains)
