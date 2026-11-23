@@ -287,6 +287,15 @@ def proposed_source_manifest(
     return payload
 
 
+def published_pack_current(asset_dir: Path, pack: Mapping[str, Any]) -> bool:
+    """Whether the published ZIP of ``pack`` passes this build's filter checks (``verify_filter_from_asset``)."""
+    try:
+        builder.verify_filter_from_asset(asset_dir / builder.safe_asset_name(str(pack["asset"])), str(pack["sourceId"]))
+    except (builder.BuildError, OSError, zipfile.BadZipFile, KeyError, ValueError):
+        return False
+    return True
+
+
 def build_one(
     staging: Path,
     source_id: str,
@@ -428,9 +437,13 @@ def refresh(
                 entry["proposedUpstream"] = proposed
                 entry["upstreamMetadata"] = upstream_metadata(target)
             if record["sha256"] == pack.get("sourceArchiveSha256") and switch is None:
-                entry["status"] = "unchanged"
-                print(f"  {source_id}: archivio identico a quello pubblicato", flush=True)
-                continue
+                if published_pack_current(asset_dir, pack):
+                    entry["status"] = "unchanged"
+                    print(f"  {source_id}: archivio identico a quello pubblicato", flush=True)
+                    continue
+                # A rule added to the build since (Trenitalia France's times in Europe/Rome) makes the same archive
+                # worth filtering again: the published pack no longer passes --check.
+                print(f"  {source_id}: archivio identico, ma il pack pubblicato non supera le regole correnti: ricostruito", flush=True)
             status, rebuilt = build_one(staging, source_id, target, generated_at, proposed, work, staging_full, switch,
                                         candidates.get(source_id) if source_id not in registered else None)
             entry["status"] = status
