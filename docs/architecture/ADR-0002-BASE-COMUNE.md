@@ -58,6 +58,18 @@ Dopo l'unione dei lavori sull'orario e sugli avvisi dell'iPhone, lo stesso giorn
 | `source-manners-v1.json`: User-Agent, rifiuti 403 e 429, pausa dopo un rifiuto, interruttore | `PublicSourceHttp.kt`, `SourceCircuitBreaker`; `LiveSourceHTTP.swift`, `LiveSourceGate.swift`; una sezione `manners` della tabella degli avvisi | Android, iPhone |
 | `pack-roles-v1.json`: pack nazionali, esteri, che ripubblicano i treni dei partner, con autobus dell'operatore | `PlannedPackOrder`, `EmbeddedGtfsRouteAdapter`, `EmbeddedGtfsPacks`; `TimetableCopies.swift`, `TimetableVehicle.swift`; `build_ios_gtfs_schedule.py`, `verify_ios_gtfs_schedule.py` | Android, iPhone; builder e verificatore dell'indice leggono il JSON |
 
+Con le funzioni di Android portate sull'iPhone (meteo a destinazione, bici in condivisione, indennizzo per ritardo, treni in movimento, promemoria serali), il 23 novembre 2026:
+
+| Tabella | Prima | Ora letta da |
+|---|---|---|
+| `destination-weather-v1.json`: Open-Meteo, variabili, giorni, decimali, cache e limiti | `OpenMeteoForecastAdapter.kt` | Android, iPhone |
+| `bike-sharing-v1.json`: i cinque sistemi GBFS, raggio, quanti mezzi, cache e limiti | `BikeSharingSystems`, `BikeSharingService`, `BinarioDataGraph.kt` | Android, iPhone |
+| `delay-compensation-v1.json`: soglie e quote del regolamento UE 2021/782 | `DelayCompensation.kt` | Android, iPhone |
+| `live-train-map-v1.json`: finestra dell'orario, ritardi applicati, copie, cadenza e aree | `LiveTrainPositions.kt`, `ScheduledRailRuns.kt`, `EmbeddedGtfsJourneyProvider.kt` | Android, iPhone |
+| `evening-alerts-v1.json`: ore dei promemoria serali e di quiete, memoria degli avvisi | `StrikeReminder.kt`, `RouteWorksAlert.kt` | Android, iPhone |
+
+Le loro regole hanno i casi in `contracts/shared-rules/v1/` (`delay-compensation-v1.json`, `destination-weather-v1.json`, `bike-sharing-v1.json`, `live-train-positions-v1.json`, `evening-alerts-v1.json`). Restano specifiche dell'iPhone la mappa di base (MapKit invece di OpenFreeMap) e il modo di girare in background (un solo compito di aggiornamento in background invece di WorkManager).
+
 Il modo di chiedere alle fonti non è degli avvisi: vale per ogni fonte live su entrambi i telefoni, perciò sta in una
 tabella sua. L'iPhone non include più la tabella degli avvisi e non ha più il caricatore: resta spenta ogni sezione di
 avvisi solo se NSRegularExpression rifiutasse un'espressione regolare della tabella, e i test Swift provano che le

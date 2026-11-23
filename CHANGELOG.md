@@ -1,5 +1,15 @@
 # Changelog
 
+## In sviluppo — iPhone: meteo, bici in condivisione, indennizzo, treni in movimento e promemoria serali come su Android
+
+- **Meteo a destinazione** nel dettaglio del treno: la previsione Open-Meteo di oggi o domani per l'ultima fermata mostrata, con le coordinate del catalogo arrotondate a due decimali (mai la posizione del telefono), gli stessi testi per ogni codice WMO e l'attribuzione CC BY 4.0. Interruttore in Impostazioni, attivo di serie come su Android.
+- **Bici in condivisione** in fondo a **Partenze**: dopo il tocco su «Mostra bici e monopattini entro 300 m», stazioni con bici, e-bike e posti liberi e mezzi a flusso libero con la batteria, dai feed GBFS di BikeMi, Verona Bike, nextbike Bergamo e Fa.Mo.Se; Bird (Roma) solo nelle build personali compilate con `BINARIO_PERSONAL_SOURCES`.
+- **Indennizzo per ritardo** (regolamento UE 2021/782) nel dettaglio del treno: 25 % da 60 minuti, 50 % da 120, solo su un arrivo effettivo verificato dalla fonte all'ultima fermata.
+- **Treni in movimento** da **Partenze** (attorno alla stazione) e sotto i risultati del pianificatore (sulla tratta): posizioni stimate dall'orario incluso, spostate dal ritardo che lo schermo già mostra, con le stesse regole di Android, sulla mappa di Apple (MapKit), con legenda ed elenco per VoiceOver.
+- **Promemoria serali**: «Scioperi del giorno dopo» alle 18 (attivo di serie) e «Lavori di domani sulle tue tratte» alle 19 (spento di serie), con un solo aggiornamento in background (`fetch`, un identificativo). Leggono solo il calendario del MIT e il feed di RFI e mostrano notifiche locali: nessuna notifica push. Con un promemoria attivo, Impostazioni non dice più che quei feed si leggono solo aprendo gli avvisi.
+- **Base comune:** cinque tabelle nuove in `contracts/shared-data/v1/` (meteo, bici in condivisione, indennizzo, mappa dei treni, promemoria serali), lette come codice generato anche da Android al posto delle sue costanti, e cinque file di casi in `contracts/shared-rules/v1/`, letti dai test Android (con le fixture Android) e iPhone. L'indice orari dell'iPhone sa ora dare le corse in movimento di un'area o di una tratta.
+- Testi di Android nelle 17 lingue. La riga «… e altri avvisi in Per te» della notifica dei lavori non c'è sull'iPhone, che non ha la scheda Per te; i treni della mappa non si aprono ancora con un tocco. Aggiornati [l'informativa privacy verificabile](PRIVACY.md) (Open-Meteo, GBFS, mappa Apple, promemoria serali), le note per App Review e la checklist App Store.
+
 ## In sviluppo — Base comune tra i dispositivi
 
 - Le app restano native, ma su una base comune ([ADR-0002](docs/architecture/ADR-0002-BASE-COMUNE.md)). Le tabelle che più piattaforme usano stanno ora in `contracts/shared-data/v1/`, e `tools/generate_shared_code.py` ne scrive il codice Kotlin, Swift e, per la skill, TypeScript. Il generatore controlla le tabelle prima di scrivere, e la CI con `--check` verifica che il codice sia aggiornato.
