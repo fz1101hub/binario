@@ -411,3 +411,31 @@
 "settings.live.trenitalia_news" = "운행 정보(ViaggiaTreno 경유): 전체 소식 목록, 사용자 데이터 없음";
 "settings.live.trenord" = "노선별 안내: 전체 노선 목록, 사용자 데이터 없음";
 "settings.live.notices_always" = "RFI 안내와 MIT 파업 일정은 실시간 데이터가 꺼져 있어도, 안내 영역을 열거나 내 구간의 공사 섹션이 표시될 때만 내려받습니다.";
+
+// Arrivals, board row details and per-train notices: Android's texts (station_board_*, notices_*).
+"departures.kind.title" = "전광판";
+"departures.kind.departures" = "출발";
+"departures.kind.arrivals" = "도착";
+"departures.arrivals.from" = "%1$@발";
+"departures.arrivals.loading.title" = "전광판 불러오는 중";
+"departures.arrivals.loading.body" = "활성화된 출처를 조회하고 항목별로 정보를 대조하고 있습니다.";
+"departures.arrivals.unavailable.title" = "전광판을 이용할 수 없음";
+"departures.arrivals.unavailable.body" = "활성화된 출처에서 사용할 수 있는 데이터를 반환하지 않았습니다.";
+"departures.arrivals.empty.title" = "이 시간대에 운행 없음";
+"departures.arrivals.empty.body" = "활성화된 출처에서 요청한 시간대의 출발 또는 도착 정보를 반환하지 않았습니다.";
+"departures.arrivals.platform_changed" = "승강장 %1$@(기존 %2$@)";
+"departures.arrivals.platform_changed_spoken" = "승강장 변경: %1$@, 기존 %2$@";
+"departures.arrivals.platform_spoken" = "승강장 %1$@";
+"departures.arrivals.platform_unknown" = "승강장 정보 없음";
+"departures.arrivals.scheduled_spoken" = "예정 시각 %1$@";
+"departures.arrivals.number" = "열차 %1$@";
+"departures.run.title" = "열차 상세 정보";
+"departures.run.loading" = "최신 정차역을 불러오는 중…";
+"departures.run.unavailable" = "이 출처에서는 전체 정차역을 제공하지 않습니다. 전광판 정보는 여기에서 계속 볼 수 있습니다.";
+"notices.train.title" = "이 열차 관련 공지";
+"notices.train.empty" = "운행일에 이 열차에 대해 게시된 공지가 없습니다.";
+"notices.train.source" = "출처: ViaggiaTreno(Trenitalia). 가용성이 보장되지 않는 공공 서비스입니다.";
+"notices.train.network_heading" = "이 열차가 언급된 Trenitalia 소식";
+"notices.train.trenord_heading" = "노선의 Trenord 공지";
+"notices.train.published_at" = "게시: %1$@";
+"notices.retry" = "다시 시도";

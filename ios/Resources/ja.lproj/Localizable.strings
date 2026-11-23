@@ -411,3 +411,31 @@
 "settings.live.trenitalia_news" = "運行情報（ViaggiaTreno 経由）：お知らせの全一覧。利用者のデータは送りません";
 "settings.live.trenord" = "路線別のお知らせ：路線の全一覧。利用者のデータは送りません";
 "settings.live.notices_always" = "RFI のお知らせと MIT のストライキ予定は、リアルタイムデータがオフでも、お知らせ欄を開いたときか、区間の工事の欄が表示されたときだけ取得します。";
+
+// Arrivals, board row details and per-train notices: Android's texts (station_board_*, notices_*).
+"departures.kind.title" = "発車案内";
+"departures.kind.departures" = "出発";
+"departures.kind.arrivals" = "到着";
+"departures.arrivals.from" = "%1$@ 発";
+"departures.arrivals.loading.title" = "発車案内を読み込み中";
+"departures.arrivals.loading.body" = "有効な情報源に問い合わせ、項目ごとに情報を照合しています。";
+"departures.arrivals.unavailable.title" = "発車案内を利用できません";
+"departures.arrivals.unavailable.body" = "有効な情報源から利用できるデータが返されませんでした。";
+"departures.arrivals.empty.title" = "この時間帯の発着はありません";
+"departures.arrivals.empty.body" = "有効な情報源から、指定した時間帯の出発・到着は返されませんでした。";
+"departures.arrivals.platform_changed" = "%1$@ 番線（変更前 %2$@）";
+"departures.arrivals.platform_changed_spoken" = "番線変更：%1$@、予定 %2$@";
+"departures.arrivals.platform_spoken" = "%1$@ 番線";
+"departures.arrivals.platform_unknown" = "番線は不明";
+"departures.arrivals.scheduled_spoken" = "予定時刻 %1$@";
+"departures.arrivals.number" = "列車 %1$@";
+"departures.run.title" = "列車の詳細";
+"departures.run.loading" = "最新の停車駅を読み込んでいます…";
+"departures.run.unavailable" = "この情報源からは停車駅の一覧を取得できません。発車案内の情報はここで確認できます。";
+"notices.train.title" = "この列車のお知らせ";
+"notices.train.empty" = "運行日にこの列車について公開されたお知らせはありません。";
+"notices.train.source" = "情報源：ViaggiaTreno（Trenitalia）。可用性の保証がない公共サービスです。";
+"notices.train.network_heading" = "この列車に言及した Trenitalia のニュース";
+"notices.train.trenord_heading" = "路線の Trenord のお知らせ";
+"notices.train.published_at" = "公開：%1$@";
+"notices.retry" = "再試行";

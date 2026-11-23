@@ -1763,7 +1763,7 @@ class IOSProjectTests(unittest.TestCase):
         ):
             with self.subTest(guard=guard):
                 self.assertIn(guard, model)
-        self.assertEqual(3, model.count("await liveData."), "board, planner and the train status lookup")
+        self.assertEqual(5, model.count("await liveData."), "board, planner, train status, board row run and train notices")
         self.assertEqual(1, model.count("await liveData.trainStatus("))
         # Stale answers are dropped as the board's are.
         for fragment in (
@@ -2014,6 +2014,98 @@ class IOSProjectTests(unittest.TestCase):
             "testWatchRefreshWithoutASearchForNowPublishesThePinnedRoute",
         ):
             self.assertIn(name, tests)
+
+
+# The iPhone's arrivals board, board row details and per-train notices (ViaggiaTreno and RFI as on Android).
+# The iPhone keys of these screens and the Android strings they are (station_board_*, notices_*).
+LIVE_BOARD_TEXTS = {
+    "departures.kind.title": "station_board_section",
+    "departures.kind.departures": "station_board_departures",
+    "departures.kind.arrivals": "station_board_arrivals",
+    "departures.arrivals.from": "station_board_arrival_from",
+    "departures.arrivals.loading.title": "station_board_loading_title",
+    "departures.arrivals.loading.body": "station_board_loading_message",
+    "departures.arrivals.unavailable.title": "station_board_unavailable_title",
+    "departures.arrivals.unavailable.body": "station_board_unavailable_message",
+    "departures.arrivals.empty.title": "station_board_empty_title",
+    "departures.arrivals.empty.body": "station_board_empty_message",
+    "departures.arrivals.platform_changed": "platform_changed_short",
+    "departures.arrivals.platform_changed_spoken": "platform_changed_accessible",
+    "departures.arrivals.platform_spoken": "station_board_platform_accessible",
+    "departures.arrivals.platform_unknown": "station_board_platform_unavailable",
+    "departures.arrivals.scheduled_spoken": "station_board_scheduled_time",
+    "departures.arrivals.number": "station_board_train_number",
+    "departures.run.title": "station_board_run_details_title",
+    "departures.run.loading": "station_board_run_details_loading",
+    "departures.run.unavailable": "station_board_run_details_unavailable",
+    "notices.train.title": "notices_train_title",
+    "notices.train.empty": "notices_train_empty",
+    "notices.train.source": "notices_source_viaggiatreno",
+    "notices.train.network_heading": "notices_train_network_heading",
+    "notices.train.trenord_heading": "notices_train_trenord_heading",
+    "notices.train.published_at": "notices_published_at",
+    "notices.retry": "notices_retry",
+    "notices.loading": "notices_loading",
+    "notices.stale": "notices_stale",
+    "notices.unavailable": "notices_unavailable",
+}
+
+
+def apple_placeholders(text: str) -> str:
+    text = re.sub(r"%(\d)\$d", r"%\1$lld", re.sub(r"%(\d)\$s", r"%\1$@", text))
+    return text.replace("%d", "%1$lld")
+
+
+class IOSLiveBoardsTests(unittest.TestCase):
+    def test_the_texts_are_androids_in_every_language(self) -> None:
+        for language, folder in sorted(ANDROID_VALUES.items()):
+            with self.subTest(language=language):
+                resources = ElementTree.parse(ROOT / "app/src/main/res" / folder / "strings.xml").getroot()
+                android = {element.get("name"): element.text for element in resources.findall("string")}
+                values = read_strings(IOS / "Resources" / f"{language}.lproj" / "Localizable.strings")
+                for key, name in LIVE_BOARD_TEXTS.items():
+                    self.assertEqual(apple_placeholders(android[name]), values[key], key)
+
+    def test_the_requests_go_through_the_live_switch_and_the_screen_on_display(self) -> None:
+        model = (IOS / "BinarioApp/AppModel.swift").read_text(encoding="utf-8")
+        for fragment in (
+            "guard liveDataEnabled, let liveData, let identity = boardStation else { return nil }",
+            "let result = await liveData.boardRun(request)",
+            "guard liveDataEnabled, let liveData else { return nil }",
+            "let result = await liveData.trainNotices(request)",
+            "let request = LiveDeparturesRequest(station: station(for: identity), from: StationBoardQuery.minuteStart(of: now), kind: kind)",
+            "guard boardKind == kind else { return }",
+            "live.board.kind == .departures",
+            "viaggiaTrenoRun: key.viaggiaTrenoRun",
+        ):
+            with self.subTest(fragment=fragment):
+                self.assertIn(fragment, model)
+        departures = (IOS / "BinarioApp/DeparturesView.swift").read_text(encoding="utf-8")
+        self.assertIn("if model.isLiveDataActive, model.boardKind == .arrivals {", departures)
+        detail = (IOS / "BinarioApp/TrainDetailView.swift").read_text(encoding="utf-8")
+        self.assertIn("run: boardLive?.viaggiaTrenoRun", detail)
+        self.assertIn("TrainNoticesSection(", detail)
+        section = (IOS / "BinarioApp/TrainNoticesSection.swift").read_text(encoding="utf-8")
+        self.assertIn("guard model.isLiveDataActive, service.hasTrainNumber, let source = notices.service else { return false }", section)
+
+    def test_the_sources_read_the_shared_tables(self) -> None:
+        kit = IOS / "BinarioKit/Sources/BinarioKit"
+        swift = "\n".join(path.read_text(encoding="utf-8") for path in kit.glob("*.swift"))
+        viaggiatreno = json.loads((ROOT / "contracts/shared-data/v1/viaggiatreno-v1.json").read_text(encoding="utf-8"))
+        rfi = json.loads((ROOT / "contracts/shared-data/v1/rfi-monitor-v1.json").read_text(encoding="utf-8"))
+        # The addresses live in the tables only, on both phones.
+        for address in (viaggiatreno["baseUrl"], rfi["catalogueUrl"], rfi["monitorUrl"]):
+            with self.subTest(address=address):
+                self.assertNotIn(f'"{address}', swift)
+        android = "\n".join(
+            (ROOT / "app/src/main/java/it/binario/app/data/live" / name).read_text(encoding="utf-8")
+            for name in ("ViaggiaTrenoRealtimeAdapter.kt", "RfiStationBoardAdapter.kt", "RfiStationCatalog.kt", "ViaggiaTrenoTrainNoticesAdapter.kt")
+        )
+        for address in (viaggiatreno["baseUrl"], rfi["catalogueUrl"], rfi["monitorUrl"], "/news/smartcaring"):
+            with self.subTest(android=address):
+                self.assertNotIn(address, android)
+        for fragment in ("SharedData.ViaggiaTreno.baseUrl", "SharedData.RfiMonitor.monitorUrl", "SharedData.ViaggiaTreno.trenordClients"):
+            self.assertIn(fragment, swift)
 
 
 if __name__ == "__main__":

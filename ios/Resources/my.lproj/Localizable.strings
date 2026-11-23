@@ -411,3 +411,31 @@
 "settings.live.trenitalia_news" = "ခရီးစဉ်သတင်း (ViaggiaTreno မှ)- သတင်းစာရင်း အပြည့်အစုံ၊ အသုံးပြုသူ ဒေတာ မပါ";
 "settings.live.trenord" = "လိုင်းအလိုက် အသိပေးချက်များ- လိုင်းစာရင်း အပြည့်အစုံ၊ အသုံးပြုသူ ဒေတာ မပါ";
 "settings.live.notices_always" = "RFI အသိပေးချက်များနှင့် MIT သပိတ်ပြက္ခဒိန်ကို အချိန်နှင့်တပြေးညီ ဒေတာ ပိတ်ထားသော်လည်း အသိပေးချက်ဧရိယာကို ဖွင့်သည့်အခါ သို့မဟုတ် သင့်လမ်းကြောင်းများရှိ ပြုပြင်ရေးအပိုင်း ပေါ်လာသည့်အခါသာ ဒေါင်းလုဒ်လုပ်သည်။";
+
+// Arrivals, board row details and per-train notices: Android's texts (station_board_*, notices_*).
+"departures.kind.title" = "အချိန်ပြဘုတ်";
+"departures.kind.departures" = "ထွက်ခွာမှု";
+"departures.kind.arrivals" = "ဆိုက်ရောက်မှု";
+"departures.arrivals.from" = "%1$@ မှ";
+"departures.arrivals.loading.title" = "အချိန်ပြဘုတ်ကို ဖွင့်နေသည်";
+"departures.arrivals.loading.body" = "ဖွင့်ထားသော ရင်းမြစ်များကို မေးမြန်းပြီး အချက်တစ်ခုချင်းစီအလိုက် တိုက်ဆိုင်စစ်ဆေးနေသည်။";
+"departures.arrivals.unavailable.title" = "အချိန်ပြဘုတ် မရနိုင်ပါ";
+"departures.arrivals.unavailable.body" = "ဖွင့်ထားသော ရင်းမြစ်များက အသုံးပြုနိုင်သော ဒေတာ မပေးပါ။";
+"departures.arrivals.empty.title" = "ဤအချိန်အတွင်း ရထား မရှိပါ";
+"departures.arrivals.empty.body" = "ဖွင့်ထားသော ရင်းမြစ်များက တောင်းဆိုထားသော အချိန်အတွင်း ထွက်ခွာမှု သို့မဟုတ် ဆိုက်ရောက်မှု မပေးပါ။";
+"departures.arrivals.platform_changed" = "ပလက်ဖောင်း %1$@ (ယခင် %2$@)";
+"departures.arrivals.platform_changed_spoken" = "ပလက်ဖောင်း ပြောင်းသည်- %1$@၊ မူလ %2$@";
+"departures.arrivals.platform_spoken" = "ပလက်ဖောင်း %1$@";
+"departures.arrivals.platform_unknown" = "ပလက်ဖောင်း မသိရပါ";
+"departures.arrivals.scheduled_spoken" = "အချိန်ဇယားပါ အချိန် %1$@";
+"departures.arrivals.number" = "ရထား %1$@";
+"departures.run.title" = "ရထား အသေးစိတ်";
+"departures.run.loading" = "နောက်ဆုံးရ ရပ်နားဘူတာများကို ဖွင့်နေသည်…";
+"departures.run.unavailable" = "ဤရင်းမြစ်မှ ရပ်နားဘူတာ အပြည့်အစုံ မရနိုင်ပါ။ အချိန်ပြဘုတ် အချက်အလက်ကို ဤနေရာတွင် ဆက်ကြည့်နိုင်ပါသည်။";
+"notices.train.title" = "ဤရထားအတွက် ကြေညာချက်များ";
+"notices.train.empty" = "ခရီးစဉ်နေ့တွင် ဤရထားအတွက် ထုတ်ပြန်ထားသော ကြေညာချက် မရှိပါ။";
+"notices.train.source" = "ရင်းမြစ်- ViaggiaTreno (Trenitalia)၊ အမြဲရရှိနိုင်မည်ဟု အာမခံချက်မရှိသော အများသုံး ဝန်ဆောင်မှု။";
+"notices.train.network_heading" = "ဤရထားကို ဖော်ပြထားသော Trenitalia သတင်းများ";
+"notices.train.trenord_heading" = "လမ်းကြောင်းပေါ်ရှိ Trenord ကြေညာချက်များ";
+"notices.train.published_at" = "ထုတ်ပြန်ချိန်- %1$@";
+"notices.retry" = "ထပ်စမ်းကြည့်ရန်";

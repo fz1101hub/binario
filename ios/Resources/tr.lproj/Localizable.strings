@@ -411,3 +411,31 @@
 "settings.live.trenitalia_news" = "Sefer bilgileri, ViaggiaTreno üzerinden: haberlerin tam listesi, kullanıcı verisi olmadan";
 "settings.live.trenord" = "Hatta göre duyurular: hatların tam listesi, kullanıcı verisi olmadan";
 "settings.live.notices_always" = "RFI duyuruları ve MIT grev takvimi gerçek zamanlı veriler kapalıyken de indirilir; yalnızca duyurular alanını açtığınızda veya güzergâhlarınızdaki çalışmalar bölümü göründüğünde.";
+
+// Arrivals, board row details and per-train notices: Android's texts (station_board_*, notices_*).
+"departures.kind.title" = "PANO";
+"departures.kind.departures" = "Kalkışlar";
+"departures.kind.arrivals" = "Varışlar";
+"departures.arrivals.from" = "%1$@ yönünden";
+"departures.arrivals.loading.title" = "Pano yükleniyor";
+"departures.arrivals.loading.body" = "Etkin kaynaklar sorgulanıyor ve bilgiler her alan için uzlaştırılıyor.";
+"departures.arrivals.unavailable.title" = "Pano kullanılamıyor";
+"departures.arrivals.unavailable.body" = "Etkin kaynaklar kullanılabilir veri döndürmedi.";
+"departures.arrivals.empty.title" = "Bu zaman aralığında hareket yok";
+"departures.arrivals.empty.body" = "Etkin kaynaklar istenen zaman aralığında kalkış veya varış döndürmedi.";
+"departures.arrivals.platform_changed" = "Peron %1$@ (önceki %2$@)";
+"departures.arrivals.platform_changed_spoken" = "Peron değişti: %1$@, planlanan %2$@";
+"departures.arrivals.platform_spoken" = "Peron %1$@";
+"departures.arrivals.platform_unknown" = "Peron bilgisi yok";
+"departures.arrivals.scheduled_spoken" = "Planlanan saat %1$@";
+"departures.arrivals.number" = "Tren %1$@";
+"departures.run.title" = "Sefer ayrıntıları";
+"departures.run.loading" = "Güncel duraklar yükleniyor…";
+"departures.run.unavailable" = "Tam durak listesi bu kaynaktan alınamıyor. Pano bilgilerini burada görmeye devam edebilirsiniz.";
+"notices.train.title" = "Bu trene ait duyurular";
+"notices.train.empty" = "Bu tren için sefer gününde yayımlanmış duyuru yok.";
+"notices.train.source" = "Kaynak: ViaggiaTreno (Trenitalia); erişilebilirlik garantisi olmayan kamu hizmeti.";
+"notices.train.network_heading" = "Bu trenden bahseden Trenitalia haberleri";
+"notices.train.trenord_heading" = "Hattaki Trenord duyuruları";
+"notices.train.published_at" = "Yayımlanma: %1$@";
+"notices.retry" = "Tekrar dene";

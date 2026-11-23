@@ -411,3 +411,31 @@
 "settings.live.trenitalia_news" = "Thông tin chạy tàu, qua ViaggiaTreno: toàn bộ danh sách tin, không có dữ liệu người dùng";
 "settings.live.trenord" = "Thông báo theo tuyến: toàn bộ danh sách tuyến, không có dữ liệu người dùng";
 "settings.live.notices_always" = "Thông báo của RFI và lịch đình công của MIT vẫn được tải xuống khi tắt dữ liệu thời gian thực, chỉ khi bạn mở khu vực thông báo hoặc khi một mục công trình trên tuyến của bạn xuất hiện.";
+
+// Arrivals, board row details and per-train notices: Android's texts (station_board_*, notices_*).
+"departures.kind.title" = "BẢNG GIỜ TÀU";
+"departures.kind.departures" = "Tàu đi";
+"departures.kind.arrivals" = "Tàu đến";
+"departures.arrivals.from" = "Từ %1$@";
+"departures.arrivals.loading.title" = "Đang tải bảng giờ tàu";
+"departures.arrivals.loading.body" = "Đang truy vấn các nguồn đã bật và đối chiếu thông tin theo từng trường.";
+"departures.arrivals.unavailable.title" = "Bảng giờ tàu không khả dụng";
+"departures.arrivals.unavailable.body" = "Các nguồn đã bật không trả về dữ liệu dùng được.";
+"departures.arrivals.empty.title" = "Không có chuyến nào trong khung giờ";
+"departures.arrivals.empty.body" = "Các nguồn đã bật không trả về tàu đi hoặc tàu đến trong khung giờ yêu cầu.";
+"departures.arrivals.platform_changed" = "Sân ga %1$@ (trước là %2$@)";
+"departures.arrivals.platform_changed_spoken" = "Đã đổi sân ga: %1$@, theo lịch %2$@";
+"departures.arrivals.platform_spoken" = "Sân ga %1$@";
+"departures.arrivals.platform_unknown" = "Chưa có sân ga";
+"departures.arrivals.scheduled_spoken" = "Giờ theo lịch %1$@";
+"departures.arrivals.number" = "Tàu %1$@";
+"departures.run.title" = "Chi tiết chuyến";
+"departures.run.loading" = "Đang tải các điểm dừng đã cập nhật…";
+"departures.run.unavailable" = "Nguồn này không cung cấp danh sách điểm dừng đầy đủ. Bạn vẫn xem được thông tin bảng giờ tàu tại đây.";
+"notices.train.title" = "Thông báo về chuyến tàu này";
+"notices.train.empty" = "Không có thông báo nào cho chuyến tàu này trong ngày chạy tàu.";
+"notices.train.source" = "Nguồn: ViaggiaTreno (Trenitalia), dịch vụ công không đảm bảo tính sẵn có.";
+"notices.train.network_heading" = "Tin Trenitalia có nhắc đến chuyến tàu này";
+"notices.train.trenord_heading" = "Thông báo của Trenord trên tuyến";
+"notices.train.published_at" = "Đăng lúc: %1$@";
+"notices.retry" = "Thử lại";

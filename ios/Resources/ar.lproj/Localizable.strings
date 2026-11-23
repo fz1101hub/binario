@@ -411,3 +411,31 @@
 "settings.live.trenitalia_news" = "معلومات الحركة من ViaggiaTreno: القائمة الكاملة للأخبار، دون بيانات المستخدم";
 "settings.live.trenord" = "إشعارات حسب الخط: القائمة الكاملة للخطوط، دون بيانات المستخدم";
 "settings.live.notices_always" = "تُنزَّل إشعارات RFI وتقويم إضرابات MIT حتى مع إيقاف البيانات الفورية، فقط عند فتح منطقة الإشعارات أو عند ظهور قسم الأعمال على مساراتك.";
+
+// Arrivals, board row details and per-train notices: Android's texts (station_board_*, notices_*).
+"departures.kind.title" = "اللوحة";
+"departures.kind.departures" = "المغادرات";
+"departures.kind.arrivals" = "الوصول";
+"departures.arrivals.from" = "من %1$@";
+"departures.arrivals.loading.title" = "جارٍ تحميل اللوحة";
+"departures.arrivals.loading.body" = "أستعلم المصادر المفعّلة وأوفّق بين المعلومات حقلًا بحقل.";
+"departures.arrivals.unavailable.title" = "اللوحة غير متاحة";
+"departures.arrivals.unavailable.body" = "لم تُعِد المصادر المفعّلة بيانات قابلة للاستخدام.";
+"departures.arrivals.empty.title" = "لا توجد حركة في الفترة";
+"departures.arrivals.empty.body" = "لم تُعِد المصادر المفعّلة مغادرات أو وصولًا في الفترة المطلوبة.";
+"departures.arrivals.platform_changed" = "رصيف %1$@ (كان %2$@)";
+"departures.arrivals.platform_changed_spoken" = "تغيّر الرصيف: %1$@، المجدول %2$@";
+"departures.arrivals.platform_spoken" = "الرصيف %1$@";
+"departures.arrivals.platform_unknown" = "الرصيف غير متاح";
+"departures.arrivals.scheduled_spoken" = "الموعد المجدول %1$@";
+"departures.arrivals.number" = "القطار %1$@";
+"departures.run.title" = "تفاصيل الرحلة";
+"departures.run.loading" = "جارٍ تحميل المحطات المحدّثة…";
+"departures.run.unavailable" = "القائمة الكاملة للمحطات غير متاحة من هذا المصدر. تبقى بيانات اللوحة معروضة هنا.";
+"notices.train.title" = "تنبيهات هذا القطار";
+"notices.train.empty" = "لا توجد تنبيهات منشورة لهذا القطار في يوم الرحلة.";
+"notices.train.source" = "المصدر: ViaggiaTreno (Trenitalia)، خدمة عامة دون ضمان للتوفر.";
+"notices.train.network_heading" = "أخبار Trenitalia التي تذكر هذا القطار";
+"notices.train.trenord_heading" = "تنبيهات Trenord على الخط";
+"notices.train.published_at" = "نُشر: %1$@";
+"notices.retry" = "إعادة المحاولة";

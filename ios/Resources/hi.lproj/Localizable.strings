@@ -411,3 +411,31 @@
 "settings.live.trenitalia_news" = "यातायात सूचना, ViaggiaTreno से: समाचारों की पूरी सूची, उपयोगकर्ता का कोई डेटा नहीं";
 "settings.live.trenord" = "लाइन के अनुसार सूचनाएँ: लाइनों की पूरी सूची, उपयोगकर्ता का कोई डेटा नहीं";
 "settings.live.notices_always" = "RFI की सूचनाएँ और MIT का हड़ताल कैलेंडर रीयल-टाइम डेटा बंद होने पर भी डाउनलोड होते हैं, केवल जब आप सूचना क्षेत्र खोलते हैं या आपके मार्गों पर कार्यों का कोई भाग दिखता है।";
+
+// Arrivals, board row details and per-train notices: Android's texts (station_board_*, notices_*).
+"departures.kind.title" = "बोर्ड";
+"departures.kind.departures" = "प्रस्थान";
+"departures.kind.arrivals" = "आगमन";
+"departures.arrivals.from" = "%1$@ से";
+"departures.arrivals.loading.title" = "बोर्ड लोड हो रहा है";
+"departures.arrivals.loading.body" = "चालू स्रोतों से पूछा जा रहा है और जानकारी को फ़ील्ड-दर-फ़ील्ड मिलाया जा रहा है।";
+"departures.arrivals.unavailable.title" = "बोर्ड उपलब्ध नहीं";
+"departures.arrivals.unavailable.body" = "चालू स्रोतों ने उपयोग योग्य डेटा नहीं लौटाया।";
+"departures.arrivals.empty.title" = "इस समय-सीमा में कोई आवाजाही नहीं";
+"departures.arrivals.empty.body" = "चालू स्रोतों ने माँगी गई समय-सीमा में कोई प्रस्थान या आगमन नहीं लौटाया।";
+"departures.arrivals.platform_changed" = "PF %1$@ (पहले %2$@)";
+"departures.arrivals.platform_changed_spoken" = "प्लेटफ़ॉर्म बदला: %1$@, निर्धारित %2$@";
+"departures.arrivals.platform_spoken" = "प्लेटफ़ॉर्म %1$@";
+"departures.arrivals.platform_unknown" = "प्लेटफ़ॉर्म उपलब्ध नहीं";
+"departures.arrivals.scheduled_spoken" = "निर्धारित समय %1$@";
+"departures.arrivals.number" = "ट्रेन %1$@";
+"departures.run.title" = "ट्रेन का विवरण";
+"departures.run.loading" = "अपडेट किए गए ठहराव लोड हो रहे हैं…";
+"departures.run.unavailable" = "इस स्रोत से ठहरावों की पूरी सूची उपलब्ध नहीं है। बोर्ड की जानकारी यहाँ देखी जा सकती है।";
+"notices.train.title" = "इस ट्रेन की सूचनाएँ";
+"notices.train.empty" = "यात्रा के दिन इस ट्रेन के लिए कोई सूचना प्रकाशित नहीं हुई है।";
+"notices.train.source" = "स्रोत: ViaggiaTreno (Trenitalia), सार्वजनिक सेवा, उपलब्धता की कोई गारंटी नहीं।";
+"notices.train.network_heading" = "इस ट्रेन का उल्लेख करने वाली Trenitalia की ख़बरें";
+"notices.train.trenord_heading" = "लाइन पर Trenord की सूचनाएँ";
+"notices.train.published_at" = "प्रकाशित: %1$@";
+"notices.retry" = "फिर से कोशिश करें";

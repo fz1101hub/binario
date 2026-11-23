@@ -411,3 +411,31 @@
 "settings.live.trenitalia_news" = "Информация о движении через ViaggiaTreno: полный список новостей, без данных пользователя";
 "settings.live.trenord" = "Сообщения по направлениям: полный список линий, без данных пользователя";
 "settings.live.notices_always" = "Сообщения RFI и календарь забастовок MIT загружаются и при выключенных данных в реальном времени, только когда вы открываете раздел сообщений или появляется раздел работ на ваших маршрутах.";
+
+// Arrivals, board row details and per-train notices: Android's texts (station_board_*, notices_*).
+"departures.kind.title" = "ТАБЛО";
+"departures.kind.departures" = "Отправление";
+"departures.kind.arrivals" = "Прибытие";
+"departures.arrivals.from" = "Из %1$@";
+"departures.arrivals.loading.title" = "Загрузка табло";
+"departures.arrivals.loading.body" = "Опрашиваем включённые источники и сверяем данные по каждому полю.";
+"departures.arrivals.unavailable.title" = "Табло недоступно";
+"departures.arrivals.unavailable.body" = "Включённые источники не вернули пригодных данных.";
+"departures.arrivals.empty.title" = "Нет поездов в этом интервале";
+"departures.arrivals.empty.body" = "Включённые источники не вернули отправлений или прибытий в запрошенном интервале.";
+"departures.arrivals.platform_changed" = "Путь %1$@ (был %2$@)";
+"departures.arrivals.platform_changed_spoken" = "Путь изменён: %1$@, по расписанию %2$@";
+"departures.arrivals.platform_spoken" = "Путь %1$@";
+"departures.arrivals.platform_unknown" = "Путь неизвестен";
+"departures.arrivals.scheduled_spoken" = "По расписанию %1$@";
+"departures.arrivals.number" = "Поезд %1$@";
+"departures.run.title" = "Сведения о поезде";
+"departures.run.loading" = "Загрузка актуальных остановок…";
+"departures.run.unavailable" = "Полный список остановок из этого источника недоступен. Данные табло по-прежнему можно посмотреть здесь.";
+"notices.train.title" = "Объявления по этому поезду";
+"notices.train.empty" = "На день рейса объявлений по этому поезду нет.";
+"notices.train.source" = "Источник: ViaggiaTreno (Trenitalia), публичный сервис без гарантии доступности.";
+"notices.train.network_heading" = "Новости Trenitalia об этом поезде";
+"notices.train.trenord_heading" = "Объявления Trenord по линии";
+"notices.train.published_at" = "Опубликовано: %1$@";
+"notices.retry" = "Повторить";

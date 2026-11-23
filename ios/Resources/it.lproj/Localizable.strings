@@ -411,3 +411,31 @@
 "settings.live.trenitalia_news" = "Infomobilità, da ViaggiaTreno: l’elenco completo delle notizie, senza dati dell’utente";
 "settings.live.trenord" = "Avvisi per direttrice: l’elenco completo delle linee, senza dati dell’utente";
 "settings.live.notices_always" = "Gli avvisi RFI e il calendario scioperi del MIT si scaricano anche con i dati in tempo reale spenti, solo quando apri l’area avvisi o quando compare una sezione dei lavori sulle tratte.";
+
+// Arrivals, board row details and per-train notices: Android's texts (station_board_*, notices_*).
+"departures.kind.title" = "TABELLONE";
+"departures.kind.departures" = "Partenze";
+"departures.kind.arrivals" = "Arrivi";
+"departures.arrivals.from" = "Da %1$@";
+"departures.arrivals.loading.title" = "Caricamento tabellone";
+"departures.arrivals.loading.body" = "Sto interrogando le fonti abilitate e riconciliando le informazioni per singolo campo.";
+"departures.arrivals.unavailable.title" = "Tabellone non disponibile";
+"departures.arrivals.unavailable.body" = "Le fonti abilitate non hanno restituito dati utilizzabili.";
+"departures.arrivals.empty.title" = "Nessun movimento nella finestra";
+"departures.arrivals.empty.body" = "Le fonti abilitate non hanno restituito partenze o arrivi nella finestra richiesta.";
+"departures.arrivals.platform_changed" = "Bin. %1$@ (era %2$@)";
+"departures.arrivals.platform_changed_spoken" = "Binario cambiato: %1$@, previsto %2$@";
+"departures.arrivals.platform_spoken" = "Binario %1$@";
+"departures.arrivals.platform_unknown" = "Binario non disponibile";
+"departures.arrivals.scheduled_spoken" = "Orario programmato %1$@";
+"departures.arrivals.number" = "Treno %1$@";
+"departures.run.title" = "Dettagli corsa";
+"departures.run.loading" = "Caricamento delle fermate aggiornate…";
+"departures.run.unavailable" = "Le fermate complete non sono disponibili da questa fonte. I dati del tabellone restano consultabili qui.";
+"notices.train.title" = "Avvisi per questo treno";
+"notices.train.empty" = "Nessun avviso pubblicato per questo treno nel giorno della corsa.";
+"notices.train.source" = "Fonte: ViaggiaTreno (Trenitalia), servizio pubblico senza garanzia di disponibilità.";
+"notices.train.network_heading" = "Notizie Trenitalia che citano questo treno";
+"notices.train.trenord_heading" = "Avvisi Trenord sulla linea";
+"notices.train.published_at" = "Pubblicato: %1$@";
+"notices.retry" = "Riprova";

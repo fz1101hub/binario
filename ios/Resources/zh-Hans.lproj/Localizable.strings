@@ -411,3 +411,31 @@
 "settings.live.trenitalia_news" = "运行信息（来自 ViaggiaTreno）：完整的消息列表，不含用户数据";
 "settings.live.trenord" = "按线路的通告：完整的线路列表，不含用户数据";
 "settings.live.notices_always" = "即使关闭实时数据，RFI 通告和 MIT 罢工日历也会下载，仅在你打开通告区域或你的线路的施工部分出现时。";
+
+// Arrivals, board row details and per-train notices: Android's texts (station_board_*, notices_*).
+"departures.kind.title" = "车站大屏";
+"departures.kind.departures" = "出发";
+"departures.kind.arrivals" = "到达";
+"departures.arrivals.from" = "来自 %1$@";
+"departures.arrivals.loading.title" = "正在加载车站大屏";
+"departures.arrivals.loading.body" = "正在查询已启用的数据源，并逐字段核对信息。";
+"departures.arrivals.unavailable.title" = "车站大屏不可用";
+"departures.arrivals.unavailable.body" = "已启用的数据源未返回可用数据。";
+"departures.arrivals.empty.title" = "该时段内无列车";
+"departures.arrivals.empty.body" = "已启用的数据源在所选时段内未返回出发或到达信息。";
+"departures.arrivals.platform_changed" = "站台 %1$@（原 %2$@）";
+"departures.arrivals.platform_changed_spoken" = "站台已变更：%1$@，原计划 %2$@";
+"departures.arrivals.platform_spoken" = "站台 %1$@";
+"departures.arrivals.platform_unknown" = "站台信息不可用";
+"departures.arrivals.scheduled_spoken" = "计划时刻 %1$@";
+"departures.arrivals.number" = "车次 %1$@";
+"departures.run.title" = "车次详情";
+"departures.run.loading" = "正在加载最新停靠站…";
+"departures.run.unavailable" = "此数据源无法提供完整的停靠站列表。车站大屏信息仍可在此查看。";
+"notices.train.title" = "本车次公告";
+"notices.train.empty" = "本车次在运行当日没有发布公告。";
+"notices.train.source" = "来源：ViaggiaTreno（Trenitalia），公共服务，不保证可用性。";
+"notices.train.network_heading" = "提及本车次的 Trenitalia 新闻";
+"notices.train.trenord_heading" = "该线路的 Trenord 公告";
+"notices.train.published_at" = "发布时间：%1$@";
+"notices.retry" = "重试";

@@ -411,3 +411,31 @@
 "settings.live.trenitalia_news" = "Infomobilidade, via ViaggiaTreno: a lista completa de notícias, sem dados do usuário";
 "settings.live.trenord" = "Avisos por linha: a lista completa de linhas, sem dados do usuário";
 "settings.live.notices_always" = "Os avisos da RFI e o calendário de greves do MIT são baixados mesmo com os dados em tempo real desativados, só quando você abre a área de avisos ou quando aparece uma seção de obras nos seus trajetos.";
+
+// Arrivals, board row details and per-train notices: Android's texts (station_board_*, notices_*).
+"departures.kind.title" = "PAINEL";
+"departures.kind.departures" = "Partidas";
+"departures.kind.arrivals" = "Chegadas";
+"departures.arrivals.from" = "De %1$@";
+"departures.arrivals.loading.title" = "Carregando o painel";
+"departures.arrivals.loading.body" = "Consultando as fontes ativadas e conciliando as informações campo a campo.";
+"departures.arrivals.unavailable.title" = "Painel indisponível";
+"departures.arrivals.unavailable.body" = "As fontes ativadas não retornaram dados utilizáveis.";
+"departures.arrivals.empty.title" = "Nenhum trem no intervalo";
+"departures.arrivals.empty.body" = "As fontes ativadas não retornaram partidas nem chegadas no intervalo solicitado.";
+"departures.arrivals.platform_changed" = "Plat. %1$@ (era %2$@)";
+"departures.arrivals.platform_changed_spoken" = "Plataforma alterada: %1$@, programada %2$@";
+"departures.arrivals.platform_spoken" = "Plataforma %1$@";
+"departures.arrivals.platform_unknown" = "Plataforma indisponível";
+"departures.arrivals.scheduled_spoken" = "Horário programado %1$@";
+"departures.arrivals.number" = "Trem %1$@";
+"departures.run.title" = "Detalhes do trem";
+"departures.run.loading" = "Carregando as paradas atualizadas…";
+"departures.run.unavailable" = "A lista completa de paradas não está disponível nesta fonte. Os dados do painel continuam disponíveis aqui.";
+"notices.train.title" = "Avisos sobre este trem";
+"notices.train.empty" = "Nenhum aviso publicado para este trem no dia da viagem.";
+"notices.train.source" = "Fonte: ViaggiaTreno (Trenitalia), serviço público sem garantia de disponibilidade.";
+"notices.train.network_heading" = "Notícias da Trenitalia que citam este trem";
+"notices.train.trenord_heading" = "Avisos da Trenord sobre a linha";
+"notices.train.published_at" = "Publicado: %1$@";
+"notices.retry" = "Tentar novamente";
