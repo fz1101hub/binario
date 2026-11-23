@@ -210,8 +210,7 @@ class AndroidStopMatcher:
                 if station.id not in ids:
                     ids.append(station.id)
         by_id = {station.id: station for station in stations}
-        self.by_key = {key: by_id[ids[0]] for key, ids in keyed.items() if len(ids) == 1}
-        self.ambiguous = {key for key, ids in keyed.items() if len(ids) > 1}
+        self.by_key = {key: [by_id[station_id] for station_id in ids] for key, ids in keyed.items()}
         self.bilingual: dict[str, list[tuple[Station, int]]] = {}
         for station in stations:
             if not _in_south_tyrol(station):
@@ -226,33 +225,36 @@ class AndroidStopMatcher:
         self.located = [station for station in stations if station.latitude is not None and station.longitude is not None]
 
     def resolve(self, stop_name: str, latitude: float | None = None, longitude: float | None = None) -> Station | None:
-        """``GtfsStopStationResolver.resolve``: a rule whose station is farther than ``MAX_NAME_MATCH_KM`` from the
-        stop does not bind it, and the next rule is tried."""
+        """``GtfsStopStationResolver.resolve``: a station farther than ``MAX_NAME_MATCH_KM`` from the stop is no
+        candidate of any rule: it neither binds the stop nor makes its name ambiguous."""
         names = variants(stop_name)
+        ambiguous = False
         for variant in names:
-            station = self.by_key.get(normalize(variant))
-            if station is not None and within_name_bound(station, latitude, longitude):
-                return station
-        if any(normalize(variant) in self.ambiguous for variant in names):
+            near = [station for station in self.by_key.get(normalize(variant), ())
+                    if within_name_bound(station, latitude, longitude)]
+            if len(near) == 1:
+                return near[0]
+            ambiguous = ambiguous or len(near) > 1
+        if ambiguous:
             return None
         for variant in names:
-            candidates = self.bilingual.get(" ".join(tokens(variant)))
+            candidates = [(station, extra) for station, extra in self.bilingual.get(" ".join(tokens(variant)), ())
+                          if within_name_bound(station, latitude, longitude)]
             if not candidates:
                 continue
             fewest = min(extra for _, extra in candidates)
             best = list(dict.fromkeys(station.id for station, extra in candidates if extra == fewest))
             if len(best) == 1:
-                station = next(station for station, _ in candidates if station.id == best[0])
-                if within_name_bound(station, latitude, longitude):
-                    return station
+                return next(station for station, _ in candidates if station.id == best[0])
         for variant in names:
             seen: dict[str, Station] = {}
             for token in tokens(variant):
                 if len(token) >= 4:
                     for station in self.by_token.get(token, ()):
                         seen.setdefault(station.id, station)
-            matches = [station for station in seen.values() if is_named_by(station, variant)]
-            if len(matches) == 1 and within_name_bound(matches[0], latitude, longitude):
+            matches = [station for station in seen.values()
+                       if is_named_by(station, variant) and within_name_bound(station, latitude, longitude)]
+            if len(matches) == 1:
                 return matches[0]
         return None
 
@@ -290,7 +292,8 @@ class AndroidStopMatcher:
             if name not in by_name:
                 by_name[name] = self.resolve(name)
             station = by_name[name]
-            if station is not None and not within_name_bound(station, latitude, longitude):
+            # Its station is too far from this stop, or the name gives several stations: the ones near this stop decide.
+            if latitude is not None and longitude is not None and (station is None or not within_name_bound(station, latitude, longitude)):
                 station = self.resolve(name, latitude, longitude)
             station = station or self.nearby(name, latitude, longitude)
             if station is not None:

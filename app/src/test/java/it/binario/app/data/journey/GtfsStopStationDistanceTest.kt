@@ -45,6 +45,30 @@ class GtfsStopStationDistanceTest {
         assertEquals(steinach, resolver.resolve("Steinach", 47.0890, 11.4600))
     }
 
+    @Test fun `a namesake beyond the bound does not make a name ambiguous`() {
+        val sicily = Station("curated:S12034", "San Giorgio", "San Giorgio", railwayCode = "S12034", latitude = 38.173967, longitude = 14.944088)
+        val sardinia = Station(
+            "curated:NC001829", "San Giorgio (ARST)", "San Giorgio (ARST)", aliases = listOf("San Giorgio"),
+            latitude = 40.69019, longitude = 8.470571
+        )
+        val ticino = Station("curated:NC001417", "Sant'Antonino", "Sant'Antonino", latitude = 46.15515, longitude = 8.980107)
+        val genova = Station(
+            "curated:NC001833", "Sant'Antonino (AMT)", "Sant'Antonino (AMT)", aliases = listOf("Sant'Antonino"),
+            latitude = 44.433632, longitude = 8.939717
+        )
+        val namesakes = GtfsStopStationResolver(listOf(sicily, sardinia, ticino, genova))
+        // The exact-name rule: each stop takes the one namesake within the bound.
+        assertEquals(sardinia, namesakes.resolve("SAN GIORGIO", 40.6901903, 8.4705713))
+        assertEquals(sicily, namesakes.resolve("S.GIORGIO", 38.1740, 14.9441))
+        assertEquals(genova, namesakes.resolve("SANT'ANTONINO/", 44.433632, 8.939717))
+        // The strict rule: the Swiss "S. Antonino" is still the Ticino station, 191 km from the Genova one.
+        assertEquals(ticino, namesakes.resolve("S. Antonino", 46.16, 8.97))
+        // Without a position both namesakes are candidates, and two within the bound stay ambiguous.
+        assertNull(namesakes.resolve("San Giorgio"))
+        val near = Station("curated:X", "San Giorgio", "San Giorgio", latitude = 40.70, longitude = 8.48)
+        assertNull(GtfsStopStationResolver(listOf(sicily, sardinia, near)).resolve("SAN GIORGIO", 40.6901903, 8.4705713))
+    }
+
     @Test fun `without coordinates on either side a name still binds as before`() {
         assertEquals(guarda, resolver.resolve("Guarda"))
         assertEquals(steinach, resolver.resolve("Steinach"))

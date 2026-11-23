@@ -1,5 +1,29 @@
 # Changelog
 
+## In sviluppo — Stazioni regionali nel catalogo e nuove fonti candidate
+
+- **Catalogo stazioni: 5.249 → 5.290.** 41 fermate ferroviarie dei pack inclusi non avevano una stazione: ora ce l'hanno, con nome e posizione presi dal pack.
+  - Genova–Casella: tutte le 20 fermate.
+  - ARST: 10 fermate sulle linee Sassari–Alghero, Sassari–Sorso e Macomer–Nuoro.
+  - Ferrovie del Gargano: 9 fermate.
+  - EAV: S. Marco.
+  - Trentino: Mezzana, capolinea della Trento–Malè–Mezzana.
+  - Napoli Montesanto ora si trova anche come «Montesanto», il nome usato da EAV.
+  - Le stazioni Roma–Lido e Roma Nord restano fuori: il loro orario Cotral c'è solo nelle build personali.
+- **Due voci del catalogo corrette, senza cambiare gli identificativi:**
+  - S00239 era Tronzano Vercellese con il nome sbagliato «Pino-Tronzano»;
+  - S09526 «Borgo Lombardo» stava in Umbria, ora è a Borgolombardo.
+- **Android, nomi ambigui:** un'omonima a più di 10 km non rende più ambiguo il nome di una fermata. Tre fermate trovano così la loro stazione e nessuna la perde.
+- **Nuove fonti candidate,** costruite dalla CI solo su richiesta:
+  - Marconi Express (Bologna Centrale–aeroporto);
+  - tram di Palermo (AMAT);
+  - ferrovie della Calabria;
+  - orario nazionale sloveno, per Trieste–Lubiana, Nova Gorica e Sežana.
+  - Restano nelle build personali finché la CI non legge la licenza dichiarata dall'editore.
+  - La CI ora stampa anche le licenze dichiarate dai portali (Socrata, CKAN) per Trenord, Trentino ed EAV.
+- **Licenze di Trenord e Trentino confermate dagli editori:** CC BY 4.0 per entrambe, lette dai portali dati.lombardia.it e dati.trentino.it in una run della CI. Sono registrate nel manifest, nella policy iOS e nei crediti di Impostazioni › Info. Tutti i pack principali hanno ora una licenza registrata.
+- **iPhone:** i tre indici completi dei paesi confinanti hanno un'impronta nuova, perché registrano il catalogo stazioni. Dopo il merge vengono pubblicati come nuove pre-release; le precedenti restano scaricabili per le versioni già installate.
+
 ## In sviluppo — Svizzera dall'indirizzo stabile, orario 2027 dal 13 dicembre
 
 - **Svizzera**: il pack si aggiorna ora dall'indirizzo stabile (permalink) dell'orario 2026 invece che da un file datato agosto 2025, e dal 13 dicembre 2026 passa da solo all'orario 2027.

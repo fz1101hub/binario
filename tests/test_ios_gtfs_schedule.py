@@ -809,6 +809,30 @@ class BorderSubsetIndexTest(unittest.TestCase):
         }
         self.assertEqual({"near": "S05998"}, matcher.pack_stations(stops))
 
+    def test_android_matcher_ignores_namesakes_beyond_the_bound(self) -> None:
+        # GtfsStopStationDistanceTest: a namesake farther than the bound neither binds a stop nor makes its name
+        # ambiguous (San Giorgio in Sicily and in Sardinia; Sant'Antonino in Ticino and on the Genova-Casella line).
+        matcher_module = builder.android_stop_matcher
+        sicily = matcher_module.Station("S12034", "San Giorgio", (), 38.173967, 14.944088)
+        sardinia = matcher_module.Station("NC001829", "San Giorgio (ARST)", ("San Giorgio",), 40.69019, 8.470571)
+        ticino = matcher_module.Station("NC001417", "Sant'Antonino", (), 46.15515, 8.980107)
+        genova = matcher_module.Station("NC001833", "Sant'Antonino (AMT)", ("Sant'Antonino",), 44.433632, 8.939717)
+        matcher = matcher_module.AndroidStopMatcher([sicily, sardinia, ticino, genova])
+        self.assertEqual(sardinia, matcher.resolve("SAN GIORGIO", 40.6901903, 8.4705713))
+        self.assertEqual(sicily, matcher.resolve("S.GIORGIO", 38.1740, 14.9441))
+        self.assertIsNone(matcher.resolve("San Giorgio"))  # no position: both are candidates
+        self.assertEqual(genova, matcher.resolve("SANT'ANTONINO/", 44.433632, 8.939717))
+        self.assertEqual(ticino, matcher.resolve("S. Antonino", 46.16, 8.97))  # the strict rule
+        near = matcher_module.Station("X", "San Giorgio", (), 40.70, 8.48)
+        self.assertIsNone(matcher_module.AndroidStopMatcher([sicily, sardinia, near]).resolve("SAN GIORGIO", 40.6901903, 8.4705713))
+        # A name ambiguous without a position is decided, stop by stop, by the stations near each one.
+        stops = {
+            "sa": {"stop_id": "sa", "stop_name": "SAN GIORGIO", "stop_lat": "40.6901903", "stop_lon": "8.4705713"},
+            "si": {"stop_id": "si", "stop_name": "SAN GIORGIO", "stop_lat": "38.1740", "stop_lon": "14.9441"},
+            "nowhere": {"stop_id": "nowhere", "stop_name": "SAN GIORGIO", "stop_lat": "", "stop_lon": ""},
+        }
+        self.assertEqual({"sa": "NC001829", "si": "S12034"}, matcher.pack_stations(stops))
+
     def border_stops(self) -> dict[str, dict[str, str]]:
         with zipfile.ZipFile(self.full_dir / "pack-0.zip") as archive:
             return {row["stop_id"]: row for row in csv.DictReader(io.TextIOWrapper(archive.open("stops.txt"), encoding="utf-8"))}

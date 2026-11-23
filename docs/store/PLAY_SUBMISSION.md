@@ -11,7 +11,7 @@
 | URL pubblico dell'informativa privacy con titolare e recapito | **Blocco aperto** dichiarato in `PRIVACY.md` | Pubblicare il contenuto di `PRIVACY.md` a un URL stabile, con titolare e recapito, e collegarlo nell'app e nella Console. |
 | Keystore di upload e iscrizione a Play App Signing | Procedura in `RELEASE_BUILD.md` | Generare il keystore, caricare i quattro secret nell'environment protetto `release` (non nel repository), eseguire il dispatch con `sign_release=true` su `main` o `stabilization/*` e approvarlo. |
 | `versionCode` mai riusati | Garantito da `tools/verify_android_release_config.py` | Incrementare `BINARIO_APP_VERSION_CODE` a ogni upload; Wear deriva automaticamente `1000000 + codice telefono`. |
-| Licenze dei pack orari confermate | Ogni voce di `app/src/main/assets/gtfs/manifest.json` e `gtfs-transit/manifest.json` registra `attribution`, `licence` e `licenceEvidence`; `tools/verify_embedded_assets.py` fallisce se mancano o se una licenza non dichiarata esce da `gtfs-personal/`, e avvisa per i pack ancora «Da confermare dal titolare» (oggi `lombardia-trenord-gtfs`, `trentino-gtfs`). Impostazioni › Info mostra per ogni pack della build licenziante, licenza e pagina della fonte, generati da questi campi (`GtfsPackCredits.kt`) | **OWNER ACTION**: per ogni pack confermare che la licenza consenta la redistribuzione in un'app pubblicata su Google Play e i suoi obblighi di attribuzione (CC BY 4.0 §3(a), IODL), registrarla nel manifest con l'evidenza, poi eseguire `python3 tools/build_android_gtfs_credits.py` e ricostruire l'indice iOS (`tools/build_ios_gtfs_schedule.py`). Un pack la cui licenza non si può confermare va escluso dal bundle prima dell'invio. |
+| Licenze dei pack orari confermate | Ogni voce di `app/src/main/assets/gtfs/manifest.json` e `gtfs-transit/manifest.json` registra `attribution`, `licence` e `licenceEvidence`; `tools/verify_embedded_assets.py` fallisce se mancano o se una licenza non dichiarata esce da `gtfs-personal/`, e avvisa per i pack ancora «Da confermare dal titolare» (nessuno tra i pack principali dal 23 novembre 2026). Impostazioni › Info mostra per ogni pack della build licenziante, licenza e pagina della fonte, generati da questi campi (`GtfsPackCredits.kt`) | **OWNER ACTION**: per ogni pack confermare che la licenza consenta la redistribuzione in un'app pubblicata su Google Play e i suoi obblighi di attribuzione (CC BY 4.0 §3(a), IODL), registrarla nel manifest con l'evidenza, poi eseguire `python3 tools/build_android_gtfs_credits.py` e ricostruire l'indice iOS (`tools/build_ios_gtfs_schedule.py`). Un pack la cui licenza non si può confermare va escluso dal bundle prima dell'invio. |
 | Risposte Sicurezza dei dati coerenti con il codice | `PLAY_DATA_SAFETY.md`, verificato da `tools/verify_privacy_policy.py` | Trascrivere le risposte nella Console e confermarle. |
 | Dichiarazione del servizio in primo piano di tipo `location` (sveglia GPS e «Stima dalla tua posizione») | Manifest: `ACCESS_FINE_LOCATION`, `FOREGROUND_SERVICE_LOCATION`, servizio non esportato di tipo `location`; nessuna posizione in background | **OWNER ACTION**: compilare *Autorizzazioni dei servizi in primo piano* con la descrizione e un video dimostrativo come indicato in `PLAY_DATA_SAFETY.md`; senza la dichiarazione la Console non accetta il bundle. |
 
@@ -104,7 +104,7 @@ Binario è un'app originale per seguire le proprie tratte ferroviarie in Italia:
 
 PIANIFICA
 • Modalità Viaggio, N. treno e Stazione, con partenza, arrivo, inversione andata/ritorno, data e ora, filtri e ricerche recenti.
-• Catalogo offline di 5.249 stazioni italiane con alias e codici ferroviari; la ricerca ignora accenti e punteggiatura.
+• Catalogo offline di 5.290 stazioni italiane con alias e codici ferroviari; la ricerca ignora accenti e punteggiatura.
 • Stazioni vicine su richiesta esplicita: la posizione approssimata viene usata solo in memoria.
 • Dettatura della ricerca tramite il riconoscitore vocale di sistema.
 
@@ -140,7 +140,7 @@ Binario is an original app for following your own rail routes in Italy: a journe
 
 PLAN
 • Journey, Train no. and Station modes, with departure, arrival, outbound/return swap, date and time, filters and recent searches.
-• Offline catalogue of 5,249 Italian stations with aliases and railway codes; the search ignores accents and punctuation.
+• Offline catalogue of 5,290 Italian stations with aliases and railway codes; the search ignores accents and punctuation.
 • Nearby stations on explicit request: the approximate location is used in memory only.
 • Dictate a search through the system speech recogniser.
 
@@ -176,7 +176,7 @@ Binario ist eine eigenständige App, mit der du deine Bahnstrecken in Italien ve
 
 PLANEN
 • Modi Reise, Zugnr. und Bahnhof mit Abfahrt, Ankunft, Tausch von Hin- und Rückrichtung, Datum und Uhrzeit, Filtern und letzten Suchen.
-• Offline-Katalog mit 5.249 italienischen Bahnhöfen, Aliasnamen und Bahncodes; die Suche ignoriert Akzente und Satzzeichen.
+• Offline-Katalog mit 5.290 italienischen Bahnhöfen, Aliasnamen und Bahncodes; die Suche ignoriert Akzente und Satzzeichen.
 • Bahnhöfe in der Nähe auf ausdrückliche Anfrage: Der ungefähre Standort wird nur im Arbeitsspeicher verwendet.
 • Suche per Diktat über die Spracherkennung des Systems.
 
@@ -212,7 +212,7 @@ Binario est une application originale pour suivre vos trajets ferroviaires en It
 
 PLANIFIER
 • Modes Trajet, N° de train et Gare, avec départ, arrivée, inversion aller/retour, date et heure, filtres et recherches récentes.
-• Catalogue hors ligne de 5 249 gares italiennes avec alias et codes ferroviaires ; la recherche ignore accents et ponctuation.
+• Catalogue hors ligne de 5 290 gares italiennes avec alias et codes ferroviaires ; la recherche ignore accents et ponctuation.
 • Gares à proximité sur demande explicite : la position approximative n'est utilisée qu'en mémoire.
 • Dictée de la recherche via la reconnaissance vocale du système.
 
@@ -248,7 +248,7 @@ Binario es una app original para seguir tus rutas ferroviarias en Italia: un pla
 
 PLANIFICAR
 • Modos Viaje, N.º de tren y Estación, con salida, llegada, inversión ida/vuelta, fecha y hora, filtros y búsquedas recientes.
-• Catálogo sin conexión de 5.249 estaciones italianas con alias y códigos ferroviarios; la búsqueda ignora acentos y puntuación.
+• Catálogo sin conexión de 5.290 estaciones italianas con alias y códigos ferroviarios; la búsqueda ignora acentos y puntuación.
 • Estaciones cercanas solo si lo pides: la ubicación aproximada se usa únicamente en memoria.
 • Dictado de la búsqueda mediante el reconocimiento de voz del sistema.
 
@@ -280,31 +280,31 @@ Disponible en 17 idiomas: italiano, inglés, alemán, francés, español, árabe
 #### Note di rilascio (it)
 
 ```text
-Prima pubblicazione di Binario 0.20.4 su Google Play: pianificatore con quadri orario programmati RFI e orari GTFS ufficiali, catalogo offline di 5.249 stazioni, widget configurabile e companion Wear OS. Nessun account, nessuna pubblicità: i dati restano sul dispositivo.
+Prima pubblicazione di Binario 0.20.4 su Google Play: pianificatore con quadri orario programmati RFI e orari GTFS ufficiali, catalogo offline di 5.290 stazioni, widget configurabile e companion Wear OS. Nessun account, nessuna pubblicità: i dati restano sul dispositivo.
 ```
 
 #### Note di rilascio (en)
 
 ```text
-First Google Play release of Binario 0.20.4: planner with RFI scheduled boards and official GTFS timetables, offline catalogue of 5,249 stations, configurable widget and Wear OS companion. No account, no ads: data stays on the device.
+First Google Play release of Binario 0.20.4: planner with RFI scheduled boards and official GTFS timetables, offline catalogue of 5,290 stations, configurable widget and Wear OS companion. No account, no ads: data stays on the device.
 ```
 
 #### Note di rilascio (de)
 
 ```text
-Erste Google-Play-Veröffentlichung von Binario 0.20.4: Planer mit planmäßigen RFI-Abfahrtstafeln und offiziellen GTFS-Fahrplänen, Offline-Katalog mit 5.249 Bahnhöfen, konfigurierbares Widget und Wear-OS-Begleiter. Kein Konto, keine Werbung: Die Daten bleiben auf dem Gerät.
+Erste Google-Play-Veröffentlichung von Binario 0.20.4: Planer mit planmäßigen RFI-Abfahrtstafeln und offiziellen GTFS-Fahrplänen, Offline-Katalog mit 5.290 Bahnhöfen, konfigurierbares Widget und Wear-OS-Begleiter. Kein Konto, keine Werbung: Die Daten bleiben auf dem Gerät.
 ```
 
 #### Note di rilascio (fr)
 
 ```text
-Première publication de Binario 0.20.4 sur Google Play : planificateur avec tableaux programmés RFI et horaires GTFS officiels, catalogue hors ligne de 5 249 gares, widget configurable et compagnon Wear OS. Pas de compte, pas de publicité : les données restent sur l'appareil.
+Première publication de Binario 0.20.4 sur Google Play : planificateur avec tableaux programmés RFI et horaires GTFS officiels, catalogue hors ligne de 5 290 gares, widget configurable et compagnon Wear OS. Pas de compte, pas de publicité : les données restent sur l'appareil.
 ```
 
 #### Note di rilascio (es)
 
 ```text
-Primera publicación de Binario 0.20.4 en Google Play: planificador con cuadros programados de RFI y horarios GTFS oficiales, catálogo sin conexión de 5.249 estaciones, widget configurable y complemento para Wear OS. Sin cuenta, sin publicidad: los datos permanecen en el dispositivo.
+Primera publicación de Binario 0.20.4 en Google Play: planificador con cuadros programados de RFI y horarios GTFS oficiales, catálogo sin conexión de 5.290 estaciones, widget configurable y complemento para Wear OS. Sin cuenta, sin publicidad: los datos permanecen en el dispositivo.
 ```
 
 ## 3. Grafica del listing

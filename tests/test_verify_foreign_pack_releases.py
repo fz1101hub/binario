@@ -207,9 +207,21 @@ class VerifyReleasesTest(unittest.TestCase):
                     location = f"https://release-assets.githubusercontent.com/{release['tag']}"
                     routes[release["url"]] = redirect(location)
                     routes[location] = ok((ROOT / directory / release["asset"]).read_bytes())
+        # The ledger keeps the files of earlier pins (a catalogue change re-pins the iPhone per-country indexes): only
+        # the entries whose file is still in the repository can be served here.
+        ledger = json.loads((ROOT / rules.LEDGER_PATH).read_text(encoding="utf-8"))
+        local = {hashlib.sha256(path.read_bytes()).hexdigest()
+                 for directory in (rules.FULL_PACK_DIR, rules.IOS_FULL_DIR) for path in (ROOT / directory).iterdir() if path.is_file()}
+        current = dict(ledger, artifacts=[entry for entry in ledger["artifacts"] if entry["sha256"] in local])
+        self.assertTrue(current["artifacts"])
+        with tempfile.TemporaryDirectory() as temporary:
+            current_ledger = Path(temporary) / "published.json"
+            current_ledger.write_text(json.dumps(current), encoding="utf-8")
+            with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()), \
+                    mock.patch.object(rules, "LEDGER_PATH", current_ledger):
+                self.assertEqual(0, releases.main(["--online", "--ledger"], fetch=FakeHttp(routes)))
         with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
             self.assertEqual(0, releases.main(["--online", "--pins"], fetch=FakeHttp(routes)))
-            self.assertEqual(0, releases.main(["--online", "--ledger"], fetch=FakeHttp(routes)))
             self.assertEqual(1, releases.main(["--online", "--pins"], fetch=FakeHttp({url: redirect("https://evil.example/x")
                                                                                      for url in routes})))
 
