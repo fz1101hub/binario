@@ -28,13 +28,14 @@ enum WatchApplicationContextAction: Equatable {
     }
 }
 
-/// The optional fields of contract v1 this Watch app decodes (contracts/wear-snapshot/v1/README.md):
-/// published to the iPhone as this app's own application context, the only data it sends there, so
-/// the iPhone adds them for this app and never for an earlier one, which would reject them. Same key
-/// and names as WatchCapabilities on the iPhone (BinarioKit).
+/// The optional fields of contract v1 this Watch app decodes, and its programmed times once the live
+/// values end (contracts/wear-snapshot/v1/README.md): published to the iPhone as this app's own
+/// application context, the only data it sends there, so the iPhone adds them for this app and never
+/// for an earlier one, which would reject the fields or show the live values past their window. Same
+/// key and names as WatchCapabilities on the iPhone (BinarioKit).
 enum WatchCapabilityDeclaration {
     static let contextKey = "binario_watch_capabilities"
-    static let capabilities = ["binario_wear_reliability_v1", "binario_wear_vehicle_v1"]
+    static let capabilities = ["binario_wear_reliability_v1", "binario_wear_vehicle_v1", "binario_wear_programmed_fallback_v1"]
 
     static var context: [String: Any] { [contextKey: capabilities] }
 }

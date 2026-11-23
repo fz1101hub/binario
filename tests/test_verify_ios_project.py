@@ -871,7 +871,8 @@ class IOSProjectTests(unittest.TestCase):
         publish = model.split("private func publishAvailableSnapshot(", 1)[1].split("static func isCurrent(", 1)[0]
         self.assertIn("let upcoming = Self.upcomingDepartures(in: journey, now: nowDate, live: values)", publish)
         self.assertIn("Array(upcoming.filter { $0.live?.cancelled != true }.prefix(WearSnapshotV1.maximumServices))", publish)
-        self.assertIn("Self.watchExpiry(for: journey, departures: departures, now: nowDate)", publish)
+        self.assertIn("let expiryDate = Self.watchDeadline(", publish)
+        self.assertIn("var deadline = watchExpiry(for: journey, departures: departures, now: now)", publish)
         self.assertNotIn("journey.services.prefix(", model)
         self.assertIn("offset >= -5 * 60 && offset <= 15 * 60", model)
         # Only the user's edits invalidate a result: the planner moves its own time to now.

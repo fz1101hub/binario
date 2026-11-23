@@ -4863,6 +4863,112 @@
         }
       }
     },
+    "watch.notice.programmed": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Orari programmati statici. Non sono dati in tempo reale."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Static scheduled times. This is not realtime data."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Statische Fahrplandaten. Dies sind keine Echtzeitdaten."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Horaires programmés statiques. Pas de données en temps réel."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Horarios programados estáticos. No son datos en tiempo real."
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "مواعيد مجدولة ثابتة، وليست بيانات في الوقت الفعلي."
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "स्थिर निर्धारित समय। यह रीयल-टाइम डेटा नहीं है।"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Jadwal terencana statis. Ini bukan data waktu nyata."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "固定の計画時刻です。リアルタイムデータではありません。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "고정된 계획 시각입니다. 실시간 데이터가 아닙니다."
+          }
+        },
+        "my": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ပုံသေ စီစဉ်ထားသော အချိန်များ။ အချိန်နှင့်တပြေးညီ ဒေတာ မဟုတ်ပါ။"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Horários programados estáticos. Não são dados em tempo real."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Статическое плановое время. Это не данные в реальном времени."
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เวลาตามแผนแบบคงที่ ไม่ใช่ข้อมูลเรียลไทม์"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sabit planlı saatler. Bunlar gerçek zamanlı veri değildir."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Giờ theo kế hoạch cố định. Đây không phải dữ liệu thời gian thực."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "固定的计划时刻，并非实时数据。"
+          }
+        }
+      }
+    },
     "watch.serviceStatus.programmed": {
       "localizations": {
         "it": {

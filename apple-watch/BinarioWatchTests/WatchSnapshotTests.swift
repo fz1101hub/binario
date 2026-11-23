@@ -149,7 +149,7 @@ final class WatchSnapshotTests: XCTestCase {
         XCTAssertEqual(WatchCapabilityDeclaration.contextKey, "binario_watch_capabilities")
         XCTAssertEqual(
             Set(WatchCapabilityDeclaration.capabilities),
-            ["binario_wear_reliability_v1", "binario_wear_vehicle_v1"]
+            ["binario_wear_reliability_v1", "binario_wear_vehicle_v1", "binario_wear_programmed_fallback_v1"]
         )
         XCTAssertEqual(WatchCapabilityDeclaration.context[WatchCapabilityDeclaration.contextKey] as? [String], WatchCapabilityDeclaration.capabilities)
     }
@@ -294,6 +294,82 @@ final class WatchSnapshotTests: XCTestCase {
         XCTAssertNil(snapshot.nextChange(after: expiredNow))
     }
 
+    func testLiveValuesGiveWayToTheProgrammedTimesWhenTheirWindowEnds() throws {
+        // Generated at 08:00: the 07:50 train is 30 minutes late, the 08:40 one a minute late.
+        let snapshot = try liveSnapshot(
+            [("R 1", "07:50", "08:20", 30, "2"), ("R 2", "08:40", "08:41", 1, "4")],
+            expiresAt: try rome(2026, 10, 6, 8, 42)
+        )
+        XCTAssertEqual(snapshot.liveUntil, try rome(2026, 10, 6, 8, 15))
+
+        let live = snapshot.revalidated(at: try rome(2026, 10, 6, 8, 14))
+        XCTAssertEqual(live, snapshot)
+
+        // From 08:15 the programmed times: the 07:50 had left by then, the 08:40 is shown as programmed.
+        let programmed = snapshot.revalidated(at: try rome(2026, 10, 6, 8, 15))
+        XCTAssertEqual(programmed.operationalState, .programmed)
+        XCTAssertEqual(programmed.provenanceDataNature, .programmed)
+        XCTAssertEqual(programmed.confidence, .staticOnly)
+        XCTAssertTrue(programmed.isScheduledOnly)
+        XCTAssertEqual(programmed.displayFreshnessLabel, WatchLocalization.text("watch.freshness.scheduled"))
+        XCTAssertEqual(programmed.notice, WatchLocalization.text("watch.notice.programmed"))
+        XCTAssertEqual(programmed.providerName, "")
+        XCTAssertEqual(programmed.expiresAtEpochMillis, snapshot.expiresAtEpochMillis)
+        XCTAssertEqual(programmed.services.map(\.number), ["R 2"])
+        let service = try XCTUnwrap(programmed.services.first)
+        XCTAssertEqual(service.expectedDeparture, "08:40")
+        XCTAssertEqual(service.delayMinutes, 0)
+        XCTAssertNil(service.platform)
+        XCTAssertEqual(service.displayStatus, WatchLocalization.text("watch.serviceStatus.programmed"))
+        XCTAssertEqual(programmed.nextDeparture, try rome(2026, 10, 6, 8, 40))
+
+        // The widget and the app switch at 08:15 without a new snapshot, then follow the programmed times.
+        let now = try rome(2026, 10, 6, 8, 0)
+        XCTAssertEqual(snapshot.timelineDates(from: now), [
+            now, try rome(2026, 10, 6, 8, 15), try rome(2026, 10, 6, 8, 40), try rome(2026, 10, 6, 8, 42),
+        ])
+        XCTAssertEqual(snapshot.nextChange(after: now), try rome(2026, 10, 6, 8, 15))
+        XCTAssertEqual(snapshot.timeline(from: now).map { $0.snapshot.operationalState }, [.operational, .programmed, .programmed, .unavailable])
+        XCTAssertEqual(snapshot.timeline(from: now).map { $0.snapshot.services.count }, [2, 1, 0, 0])
+    }
+
+    func testTheProgrammedTimesKeepTheirOwnOrderAndProgrammedDataStaysAsItIs() throws {
+        // The 08:25 runs 6 minutes late, after the 08:30: the iPhone lists them as they leave.
+        let snapshot = try liveSnapshot(
+            [("R 3", "08:30", "08:30", 0, "1"), ("R 4", "08:25", "08:31", 6, "5")],
+            expiresAt: try rome(2026, 10, 6, 8, 32)
+        )
+        let programmed = snapshot.programmedFallback()
+        XCTAssertEqual(programmed.services.map(\.number), ["R 4", "R 3"])
+        XCTAssertEqual(programmed.services.map(\.expectedDeparture), ["08:25", "08:30"])
+
+        let timetable = try programmedSnapshot(times: ["23:50", "00:10"])
+        XCTAssertNil(timetable.liveUntil)
+        XCTAssertEqual(timetable.programmedFallback(), timetable)
+    }
+
+    func testALiveSnapshotFromAnEarlierIPhoneEndsWithItsLiveValues() throws {
+        // Valid for the 15 minutes alone: unavailable at their end, as before.
+        let snapshot = try liveSnapshot([("R 1", "08:40", "08:40", 0, "4")], expiresAt: try rome(2026, 10, 6, 8, 15))
+        let now = try rome(2026, 10, 6, 8, 0)
+        XCTAssertEqual(snapshot.timelineDates(from: now), [now, try rome(2026, 10, 6, 8, 15)])
+        XCTAssertEqual(snapshot.revalidated(at: try rome(2026, 10, 6, 8, 15)).operationalState, .unavailable)
+    }
+
+    @MainActor
+    func testStoreShowsTheProgrammedTimesWhenTheLiveValuesEnd() throws {
+        let clock = TestClock(now: try rome(2026, 10, 6, 8, 10))
+        let snapshot = try liveSnapshot([("R 2", "08:40", "08:41", 1, "4")], expiresAt: try rome(2026, 10, 6, 8, 42))
+        let store = WatchSnapshotStore(snapshot: snapshot, clock: { clock.now })
+        XCTAssertEqual(store.snapshot.operationalState, .operational)
+        XCTAssertEqual(store.snapshot.services.first?.expectedDeparture, "08:41")
+
+        clock.now = try rome(2026, 10, 6, 8, 16)
+        store.revalidate()
+        XCTAssertEqual(store.snapshot.operationalState, .programmed)
+        XCTAssertEqual(store.snapshot.services.first?.expectedDeparture, "08:40")
+    }
+
     func testWithoutASnapshotTheWidgetShowsUnavailableOnceAndWaitsForTheIPhone() throws {
         let now = try rome(2026, 10, 6, 23, 45)
         let empty = WatchWidgetTimeline.plan(for: nil, from: now)
@@ -397,6 +473,44 @@ final class WatchSnapshotTests: XCTestCase {
                     platform: nil,
                     delayMinutes: 0,
                     status: "PROGRAMMED"
+                )
+            }
+        )
+    }
+
+    /// An operational snapshot generated at 08:00 Rome time, its trains as (number, scheduled,
+    /// expected, delay, platform) in the order they leave, as the iPhone lists them.
+    private func liveSnapshot(_ trains: [(String, String, String, Int, String)], expiresAt: Date) throws -> BinarioWatchSnapshot {
+        let generatedAt = Int64(try rome(2026, 10, 6, 8, 0).timeIntervalSince1970 * 1_000)
+        let expires = Int64(expiresAt.timeIntervalSince1970 * 1_000)
+        return BinarioWatchSnapshot(
+            schemaVersion: 1,
+            generatedAtEpochMillis: generatedAt,
+            expiresAtEpochMillis: expires,
+            ttlMillis: expires - generatedAt,
+            provenanceProducer: .iosApp,
+            provenanceDataNature: .operational,
+            provenanceSourceLabel: "Fonte primaria dell’operatore",
+            provenanceObservedAtEpochMillis: generatedAt,
+            operationalState: .operational,
+            freshness: .fresh,
+            confidence: .operatorPrimary,
+            routeId: "S01700--S01529",
+            routeLabel: "Milano Centrale → Bergamo",
+            direction: .outbound,
+            notice: nil,
+            services: trains.map { train in
+                let (number, scheduled, expected, delay, platform) = train
+                return WatchService(
+                    number: number,
+                    operatorName: "Trenord",
+                    category: "R",
+                    destination: "Bergamo",
+                    scheduledDeparture: scheduled,
+                    expectedDeparture: expected,
+                    platform: platform,
+                    delayMinutes: delay,
+                    status: delay > 0 ? "In ritardo" : "In orario"
                 )
             }
         )

@@ -78,6 +78,7 @@ final class WearSnapshotV1Tests: XCTestCase {
         XCTAssertEqual(WatchCapabilities.contextKey, "binario_watch_capabilities")
         XCTAssertEqual(WatchCapabilities.reliability, "binario_wear_reliability_v1")
         XCTAssertEqual(WatchCapabilities.vehicle, "binario_wear_vehicle_v1")
+        XCTAssertEqual(WatchCapabilities.programmedFallback, "binario_wear_programmed_fallback_v1")
         XCTAssertEqual(
             WatchCapabilities.decode([WatchCapabilities.contextKey: ["binario_wear_reliability_v1", "binario_wear_vehicle_v1"]]),
             [WatchCapabilities.reliability, WatchCapabilities.vehicle]

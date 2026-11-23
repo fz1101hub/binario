@@ -100,6 +100,9 @@ public enum WatchCapabilities {
     public static let reliability = "binario_wear_reliability_v1"
     /// The vehicle of a service (`service{n}Vehicle`).
     public static let vehicle = "binario_wear_vehicle_v1"
+    /// No field: the Watch shows the programmed times once the live values are 15 minutes old, so
+    /// a live snapshot may last until its last train.
+    public static let programmedFallback = "binario_wear_programmed_fallback_v1"
     static let maximumCount = 16
     static let maximumLength = 64
 

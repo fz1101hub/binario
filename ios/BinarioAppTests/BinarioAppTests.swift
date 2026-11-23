@@ -1096,6 +1096,14 @@ final class BinarioAppTests: XCTestCase {
         object = try publishedObject(session)
         XCTAssertEqual(object["service0Vehicle"] as? String, "TRAIN")
         XCTAssertEqual(object["operationalState"] as? String, "OPERATIONAL")
+        // A Watch app that shows the programmed times once the live values end keeps the snapshot until the
+        // train's programmed departure; the live values are dated when the board was read.
+        session.watchCapabilities = [WatchCapabilities.vehicle, WatchCapabilities.programmedFallback]
+        await model.refreshWatchSnapshot()
+        object = try publishedObject(session)
+        XCTAssertEqual(object["operationalState"] as? String, "OPERATIONAL")
+        XCTAssertGreaterThan(try XCTUnwrap(object["ttlMillis"] as? Int), 15 * 60 * 1_000)
+        XCTAssertLessThanOrEqual(try XCTUnwrap(object["generatedAtEpochMillis"] as? Int), Int(Date().timeIntervalSince1970 * 1_000))
         let asked = await live.departureRequests.count
         XCTAssertEqual(asked, 1, "nothing is asked for the Watch")
 
@@ -1135,6 +1143,41 @@ final class BinarioAppTests: XCTestCase {
         // Without live values nothing changes.
         XCTAssertEqual(AppModel.upcomingDepartures(in: journey, now: opened).map(\.service.id), services.map(\.id))
         XCTAssertEqual(AppModel.watchConfidence(AppModel.upcomingDepartures(in: journey, now: opened), otherwise: .staticOnly), .staticOnly)
+    }
+
+    func testALiveSnapshotLastsUntilTheLastProgrammedDepartureOnlyForAWatchThatFallsBack() throws {
+        let opened = try rome(2026, 10, 6, 8, 0)
+        let query = try JourneyQuery(origin: milanoCode, destination: bergamoCode, departure: opened)
+        let journey = programmedJourney(query: query, generatedAt: opened, times: ["08:05", "08:40"])
+        let late = StationBoardLiveStatus(
+            expectedDeparture: try rome(2026, 10, 6, 8, 25), delayMinutes: 20, cancelled: false, platform: "3",
+            sourceLabel: "RFI", observedAt: opened, source: .rfiStationBoard
+        )
+        let now = try rome(2026, 10, 6, 8, 10)
+        let liveAt = try rome(2026, 10, 6, 8, 8)
+        let sent = AppModel.watchSelection(AppModel.upcomingDepartures(in: journey, now: now, live: [journey.services[0].id: late])).sent
+        XCTAssertEqual(sent.map(\.departure), [try rome(2026, 10, 6, 8, 25), try rome(2026, 10, 6, 8, 40)])
+        XCTAssertEqual(sent.map(\.timetable), [try rome(2026, 10, 6, 8, 5), try rome(2026, 10, 6, 8, 40)])
+
+        // Live values: 15 minutes after the board was read, unless the Watch shows the programmed times from then.
+        XCTAssertEqual(
+            AppModel.watchDeadline(for: journey, departures: sent, liveAt: liveAt, now: now, programmedFallback: false),
+            try rome(2026, 10, 6, 8, 23)
+        )
+        XCTAssertEqual(
+            AppModel.watchDeadline(for: journey, departures: sent, liveAt: liveAt, now: now, programmedFallback: true),
+            try rome(2026, 10, 6, 8, 42)
+        )
+        // The timetable alone lasts until its last train in any case; a cancellation alone 15 minutes at most.
+        let programmed = AppModel.upcomingDepartures(in: journey, now: now)
+        XCTAssertEqual(
+            AppModel.watchDeadline(for: journey, departures: programmed, liveAt: nil, now: now, programmedFallback: false),
+            try rome(2026, 10, 6, 8, 42)
+        )
+        XCTAssertEqual(
+            AppModel.watchDeadline(for: journey, departures: [], liveAt: liveAt, now: now, programmedFallback: true),
+            try rome(2026, 10, 6, 8, 23)
+        )
     }
 
     func testABusReachesTheWatchWithItsLabelAndItsVehicle() async throws {

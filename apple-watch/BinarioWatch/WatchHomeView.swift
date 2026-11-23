@@ -64,7 +64,10 @@ struct WatchHomeView: View {
                 }
 
                 Section {
-                    Text(WatchLocalization.text("watch.label.source \(store.snapshot.displayProviderName)"))
+                    // The programmed times shown once the live values end name no source, as on Wear OS.
+                    if !store.snapshot.providerName.isEmpty {
+                        Text(WatchLocalization.text("watch.label.source \(store.snapshot.displayProviderName)"))
+                    }
                     Text(WatchLocalization.text("watch.label.quality \(store.snapshot.confidenceLabel)"))
                     if let notice = store.snapshot.displayNotice {
                         Text(notice)

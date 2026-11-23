@@ -58,11 +58,13 @@ final class AppModel: ObservableObject {
     }
 
     /// A listed train with the instant it departs, resolved from its "HH:mm" time, or its live
-    /// expected time when the live board of its origin gave one (`live`).
+    /// expected time when the live board of its origin gave one (`live`); `timetable` is the
+    /// instant of its "HH:mm" time either way (nil when built without it: then `departure`).
     struct WatchDeparture: Equatable {
         let service: TrainService
         let departure: Date
         var live: StationBoardLiveStatus? = nil
+        var timetable: Date? = nil
     }
 
     /// What the live sources gave a screen. The bundled timetable stays on screen in every state.
@@ -2090,16 +2092,20 @@ final class AppModel: ObservableObject {
         let operational = departures.contains { departure in departure.live.map { Self.isVerified($0) } == true }
         let capabilities = watchPublisher.watchCapabilities
         let now = Int64(nowDate.timeIntervalSince1970 * 1_000)
-        // Live values are dated now and shown at most 15 minutes after the board was read (Android's window).
-        let generatedDate = operational ? nowDate : journey.generatedAt
-        var expiryDate = Self.watchExpiry(for: journey, departures: departures, now: nowDate)
-        if operational, let live { expiryDate = min(expiryDate, live.at.addingTimeInterval(Self.watchLiveSeconds)) }
-        if departures.isEmpty { expiryDate = min(expiryDate, nowDate.addingTimeInterval(Self.watchLiveSeconds)) }
+        // Live values are dated when the board was read: the Watch shows them for 15 minutes from then (Android's
+        // window), and then, if it declared it, the programmed times until the last train (`watchDeadline`).
+        let liveAt = operational ? live?.at : nil
+        let generatedDate = liveAt ?? (operational ? nowDate : journey.generatedAt)
+        let expiryDate = Self.watchDeadline(
+            for: journey, departures: departures, liveAt: liveAt, now: nowDate,
+            programmedFallback: capabilities.contains(WatchCapabilities.programmedFallback)
+        )
         let generatedAt = Int64(generatedDate.timeIntervalSince1970 * 1_000)
         let expiresAt = Int64(expiryDate.timeIntervalSince1970 * 1_000)
         let confidence = operational ? Self.watchConfidence(departures, otherwise: journey.provenance.confidence) : journey.provenance.confidence
+        // Never after the generation: a value fetched after the request started is dated when it started.
         let observedAt = operational
-            ? (departures.compactMap { $0.live?.observedAt }.max() ?? live?.at ?? nowDate)
+            ? min(departures.compactMap { $0.live?.observedAt }.max() ?? generatedDate, generatedDate)
             : journey.provenance.observedAt
         let snapshot = WearSnapshotV1(
             generatedAtEpochMillis: generatedAt,
@@ -2130,6 +2136,27 @@ final class AppModel: ObservableObject {
 
     /// How long the Watch shows live values after the board was read: Android's display window.
     static let watchLiveSeconds: TimeInterval = 15 * 60
+
+    /// When the Watch's snapshot ends. Programmed (`liveAt` nil): with its last train
+    /// (`watchExpiry`). Live: 15 minutes after the board was read, since a Watch app that shows the
+    /// live values as they came would show them as current until then; a Watch app that shows the
+    /// programmed times from then on (`programmedFallback`) keeps them until the last train's
+    /// programmed departure. Without a train (a cancellation alone), 15 minutes at most.
+    static func watchDeadline(
+        for journey: JourneySnapshot, departures: [WatchDeparture], liveAt: Date?, now: Date, programmedFallback: Bool
+    ) -> Date {
+        var deadline = watchExpiry(for: journey, departures: departures, now: now)
+        if let liveAt {
+            deadline = min(deadline, liveAt.addingTimeInterval(watchLiveSeconds))
+            if programmedFallback, !departures.isEmpty {
+                let programmed = departures.map { WatchDeparture(service: $0.service, departure: $0.timetable ?? $0.departure) }
+                    .sorted { $0.departure < $1.departure }
+                deadline = max(deadline, watchExpiry(for: journey, departures: programmed, now: now))
+            }
+        }
+        if departures.isEmpty { deadline = min(deadline, now.addingTimeInterval(watchLiveSeconds)) }
+        return deadline
+    }
 
     /// The live board of `station` the iPhone already has (the planner's origin or «Partenze»),
     /// still displayable at `now`, with «Dati in tempo reale» on. Nothing is asked for the Watch:
@@ -2261,7 +2288,7 @@ final class AppModel: ObservableObject {
             let status = live[service.id]
             let leaves = status?.expectedDeparture ?? departure
             guard leaves >= now, departure < journey.expiresAt else { continue }
-            upcoming.append(WatchDeparture(service: service, departure: leaves, live: status))
+            upcoming.append(WatchDeparture(service: service, departure: leaves, live: status, timetable: departure))
         }
         return upcoming.enumerated()
             .sorted { ($0.element.departure, $0.offset) < ($1.element.departure, $1.offset) }
