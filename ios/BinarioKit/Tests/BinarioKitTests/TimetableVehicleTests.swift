@@ -20,7 +20,9 @@ final class TimetableVehicleTests: XCTestCase {
         XCTAssertEqual(TimetableNaming.operatorName("TRENITALIA", sourceID: "trenitalia-gtfs"), "Trenitalia")
         XCTAssertEqual(TimetableNaming.operatorName("Italo - Nuovo Trasporto Viaggiatori", sourceID: "italo-gtfs"), "Italo")
         XCTAssertEqual(TimetableNaming.operatorName("Schweizerische Bundesbahnen SBB", sourceID: "ch-otd-gtfs"), "SBB")
-        XCTAssertEqual(TimetableNaming.operatorName("ÖBB-Personenverkehr AG", sourceID: "oebb-gtfs"), "ÖBB")
+        // The agency of the bundled ÖBB pack; Android's canonicalAgencyLabel keeps a name it does not know as published.
+        XCTAssertEqual(TimetableNaming.operatorName("OEBB Personenverkehr AG Kundenservice", sourceID: "oebb-gtfs"), "ÖBB")
+        XCTAssertEqual(TimetableNaming.operatorName("ÖBB-Personenverkehr AG", sourceID: "oebb-gtfs"), "ÖBB-Personenverkehr AG")
         XCTAssertEqual(TimetableNaming.operatorName("", sourceID: "oebb-gtfs"), "ÖBB")
         XCTAssertEqual(TimetableNaming.operatorName("Ferrovie Appulo Lucane", sourceID: "fal-basilicata-puglia"), "Ferrovie Appulo Lucane")
         XCTAssertEqual(TimetableNaming.operatorName("Synthetic Rail", sourceID: "source"), "Synthetic Rail")
