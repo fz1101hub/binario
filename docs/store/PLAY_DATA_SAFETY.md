@@ -185,11 +185,13 @@ La tabella copre ogni host `http(s)://` trovato in `app/src/main/java`, `wear/sr
 | `www.trentinotrasporti.it` | D, F | Provenienza del pack `trentino-gtfs`; anche nel catalogo; sito e abbonamenti in Biglietti e assistenza (`links/OfficialLinks.kt`) |
 | `www.wimob.it` | D | Provenienza del pack `eav-gtfs`; anche nel catalogo |
 | `arenaways.it` | E | Catalogo fonti (`RailSourceCatalog.kt`) |
+| `b2b.nap.si` | E | Catalogo fonti (`RailSourceCatalog.kt`): GTFS nazionale sloveno IJPP (`si-nap-rail-gtfs`, candidato di `tools/transit_packs.json`, letto solo dal CI); nessun traffico |
 | `ckan.opendata.swiss` | E | Evidenza di licenza del pack `ch-otd-gtfs` nel manifest GTFS (scheda del dataset su opendata.swiss); nessun traffico |
 | `data.oebb.at` | E | Catalogo fonti (`RailSourceCatalog.kt`) |
 | `dati.comune.genova.it` | E | Catalogo fonti (`RailSourceCatalog.kt`) e evidenza di licenza (CC BY 4.0) nel manifest `gtfs-transit/` |
 | `developer-docs.deutschebahn.com` | E | Catalogo fonti (`InternationalSourceCatalog.kt`) |
 | `developers.deutschebahn.com` | E | Catalogo fonti (`InternationalSourceCatalog.kt`) |
+| `nap.si` | E | Catalogo fonti (`RailSourceCatalog.kt`): pagina del dataset IJPP sul National Access Point sloveno, evidenza di licenza (CC BY-SA 4.0); nessun traffico |
 | `opendata.comune.palermo.it` | E | Catalogo fonti (`RailSourceCatalog.kt`): portale open data e GTFS AMAT dei tram di Palermo (`palermo-amat-tram-gtfs`, candidato di `tools/transit_packs.json`, letto solo dal CI); nessun traffico |
 | `opendata.swiss` | E | Evidenza di licenza del pack `ch-otd-gtfs` nel manifest GTFS (condizioni d'uso «terms_by»); nessun traffico |
 | `opentransportdata.swiss` | E | Catalogo fonti (`RailSourceCatalog.kt`) |

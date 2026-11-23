@@ -558,6 +558,24 @@ object RailSourceCatalog {
             notes = "Orari e avvisi ufficiali; nessun feed pubblico completo del tratto italiano verificato."
         ),
         RailSourceDefinition(
+            id = SourceId("si-nap-rail-gtfs"),
+            displayName = "Treni sloveni (SŽ) — GTFS del NAP sloveno",
+            operatorOrAuthority = "NAP Slovenia (orario integrato IJPP)",
+            formats = setOf(SourceFormat.GTFS_ZIP),
+            capabilities = staticCapabilities,
+            accessMode = AccessMode.PUBLIC_BEST_EFFORT,
+            readiness = SourceReadiness.PERSONAL_GTFS_PACK,
+            countryCodes = setOf("SI", "IT"),
+            coverage = "Treni del GTFS nazionale sloveno (IJPP): Trieste – Ljubljana, Nova Gorica, Sežana; autobus esclusi.",
+            landingPage = uri("https://nap.si/en/datasets_details?id=6fc3966a-5e3f-cf10-1df3-70d3af14d03d"),
+            downloadOrProbeUri = uri("https://b2b.nap.si/data/b2b.gtfs"),
+            attribution = "NAP Slovenia (nap.si), orario integrato IJPP — CC BY-SA 4.0",
+            notes = "Candidato di tools/transit_packs.json: licenza CC BY-SA 4.0 (condivisione allo stesso modo: il pack " +
+                "derivato è offerto sotto CC BY-SA 4.0 con attribuzione), da rileggere sulla pagina del dataset; treni SŽ " +
+                "attesi ma non ancora verificati. Se li contiene sostituisce la fonte su accordo sz-passenger. Fino alla " +
+                "conferma pack solo nelle build personali (gtfs-personal/)."
+        ),
+        RailSourceDefinition(
             id = SourceId("fuc-udine-cividale"),
             displayName = "Ferrovie Udine–Cividale",
             operatorOrAuthority = "FUC",

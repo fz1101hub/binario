@@ -262,6 +262,21 @@
       "attribution": "Regione Calabria",
       "notes": "Candidato: GTFS regionale della Calabria, filtrato alle sole route ferroviarie (route_type 2, 100-199). Si aggiunge solo se la scoperta CI vi trova i treni di Ferrovie della Calabria; senza route ferroviarie la build si ferma (nessuna route ammessa dal filtro) e il pack non entra. Treni Trenitalia eventualmente presenti sono già nel pack nazionale.",
       "android": {}
+    },
+    {
+      "sourceId": "si-nap-rail-gtfs",
+      "candidate": true,
+      "directory": "gtfs-personal",
+      "distribution": "personal",
+      "kind": "rail",
+      "format": "gtfs",
+      "operator": "Slovenske železnice (orario integrato IJPP, NAP Slovenia)",
+      "sourceUrl": "https://b2b.nap.si/data/b2b.gtfs",
+      "licence": "CC BY-SA 4.0 (condivisione allo stesso modo: il pack derivato è offerto sotto CC BY-SA 4.0 con attribuzione), da confermare sulla pagina del dataset",
+      "licenceEvidence": "https://nap.si/en/datasets_details?id=6fc3966a-5e3f-cf10-1df3-70d3af14d03d (dataset IJPP del National Access Point sloveno; CC-BY-SA-4.0 secondo l'elenco fonti Transitous, CC0); da rileggere dal CI (transit_discovery, token page:)",
+      "attribution": "NAP Slovenia (nap.si), orario integrato IJPP",
+      "notes": "Candidato: orario nazionale integrato sloveno (IJPP) dal National Access Point, filtrato alle sole route ferroviarie (treni SŽ attesi, non ancora verificati): Trieste - Ljubljana, Nova Gorica, Sežana. Se contiene i treni SŽ sostituisce la fonte su accordo sz-passenger. Pack estero (paese SI nel catalogo): in PlannedPackOrder dopo i pack italiani. Licenza con condivisione allo stesso modo: pack derivato sotto CC BY-SA 4.0 con attribuzione.",
+      "android": {}
     }
   ]
 }
