@@ -1,5 +1,21 @@
 # Changelog
 
+## In sviluppo — Wear OS e Apple Watch con gli stessi dati
+
+- **Apple Watch con i dati in tempo reale.** L'iPhone mette sui treni inviati al Watch i valori live che ha già letto in primo piano, da meno di cinque minuti, per il pianificatore o per «Partenze» (RFI, Italo, ViaggiaTreno), come fa Android con Wear OS:
+  - orario previsto, ritardo, «In orario» o «In ritardo» e binario della fonte; le corse sono in ordine di partenza prevista, e un treno in ritardo non ancora partito resta fra le prossime;
+  - un treno soppresso non è inviato e diventa l'avviso «Soppresso: R 2345 delle 08:15»; con fonti in conflitto l'avviso lo dice;
+  - lo snapshot è operativo, con la fiducia di Android (fonte primaria dell'operatore per ViaggiaTreno e Italo, del gestore dell'infrastruttura per RFI), e scade al più 15 minuti dopo la lettura; il Watch mostra «Dati aggiornati alle 08:12»;
+  - l'iPhone non chiede nulla alle fonti per il Watch: senza valori recenti lo snapshot resta quello dell'orario programmato, come prima.
+- **Affidabilità anche su Apple Watch.** «In orario 22 volte su 27» sotto la corsa nell'app Watch, come su Wear OS, dalle statistiche di rete incluse nell'iPhone e con la stessa regola di Android (mai per un bus), mai nei widget.
+- **Bus su entrambi gli orologi.** Nuovo campo facoltativo `service{n}Vehicle` nel contratto v1 (`contracts/wear-snapshot/v1`, nuove fixture `android-to-wear-v1-vehicle.json` e `ios-to-apple-watch-v1-optional.json`):
+  - Android lo ricava dai pullman dell'operatore (Bus Trenitalia, FrecciaLink, ItaloBus), l'iPhone dal mezzo dell'orario;
+  - Wear OS mostra l'icona del bus nell'app e l'etichetta nel Tile e nella complication («08:10 · Bus Trenitalia 3601»); Apple Watch il simbolo del bus con l'etichetta nelle righe, nel dettaglio e nei tre widget; l'accessibilità non lo chiama treno;
+  - la categoria di un bus è sempre la sua etichetta, anche per un orologio che non conosce il campo: Wear OS non dice più «Treno» e Apple Watch non mostra più «BUS 1234».
+- **Compatibilità.** Un orologio riceve affidabilità e mezzo solo se dichiara di saperli leggere: Wear OS con le capability `binario_wear_reliability_v1` e `binario_wear_vehicle_v1`, Apple Watch con un application context verso l'iPhone che contiene soltanto quell'elenco. Un payload senza i campi resta valido, e una corsa senza mezzo è un treno.
+- **Apple Watch:** un treno è chiamato come nelle righe dell'iPhone («FR 9505», «RE_11 - 2153» senza ripetere la linea).
+- Le differenze che restano fra i due orologi (superfici, azioni, aggiornamento, durata) sono elencate nel README del contratto. Aggiornati l'informativa privacy e le note di Apple Watch e iPhone. Testi nuovi in 17 lingue, da Android e Wear OS.
+
 ## In sviluppo — Base comune tra i dispositivi
 
 - Le app restano native, ma su una base comune ([ADR-0002](docs/architecture/ADR-0002-BASE-COMUNE.md)). Le tabelle che più piattaforme usano stanno ora in `contracts/shared-data/v1/`, e `tools/generate_shared_code.py` ne scrive il codice Kotlin, Swift e, per la skill, TypeScript. Il generatore controlla le tabelle prima di scrivere, e la CI con `--check` verifica che il codice sia aggiornato.
