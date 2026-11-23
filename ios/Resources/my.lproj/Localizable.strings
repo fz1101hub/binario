@@ -3,7 +3,7 @@
 "tab.settings" = "ဆက်တင်များ";
 "planner.title" = "စီစဉ်ရန်";
 "planner.intro.title" = "လမ်းကြောင်း ရှာရန်";
-"planner.intro.body" = "ရွေးချယ်စီစဉ်ထားသော စာရင်းမှ စထွက်ဘူတာနှင့် ဦးတည်ရာဘူတာကို ရွေးပါ။ ပါဝင်သော အချိန်ဇယားများမှာ စီစဉ်ထားသော အချိန်များဖြစ်ပြီး အောက်တွင်ဖော်ပြထားသော ဒေသတွင်းနှင့် နယ်စပ်ဖြတ်ကျော် ကွန်ရက်များကိုသာ ပါဝင်သည်- Trenitalia (Trenitalia France မှလွဲ၍) နှင့် Italo မပါဝင်ဘဲ အချိန်ဇယားမရှိသော ဘူတာများကို ရှာဖွေမှုတွင် အမှတ်အသားပြထားသည်။";
+"planner.intro.body" = "ရွေးချယ်စီစဉ်ထားသော စာရင်းမှ စထွက်ဘူတာနှင့် ဦးတည်ရာဘူတာကို ရွေးပါ။ ပါဝင်သော အချိန်ဇယားများမှာ စီစဉ်ထားသော အချိန်များဖြစ်ပြီး အောက်တွင်ဖော်ပြထားသော ကွန်ရက်များ ပါဝင်သည်- Trenitalia၊ Italo၊ ဒေသတွင်း ရထားလမ်းများနှင့် နယ်စပ်ဖြတ်ကျော် ရထားများ (Trenitalia နှင့် Italo ဘတ်စ်ကားများ အပါအဝင်)။ မြေအောက်ရထားနှင့် ဓာတ်ရထား မပါဝင်ဘဲ အချိန်ဇယားမရှိသော ဘူတာများကို ရှာဖွေမှုတွင် အမှတ်အသားပြထားသည်။";
 "planner.origin" = "စထွက်ရာ";
 "planner.destination" = "ဦးတည်ရာ";
 "planner.departure" = "ရက်စွဲနှင့် အချိန်";
@@ -265,6 +265,11 @@
 "result.route.hour_band" = "%1$lld–%2$lld";
 "result.bikes.allowed" = "စက်ဘီး ယူဆောင်ခွင့်ရှိ";
 "result.bikes.not_allowed" = "စက်ဘီး ယူဆောင်ခွင့်မရှိ";
+"result.vehicle.bus_trenitalia" = "Trenitalia ဘတ်စ်ကား";
+"result.vehicle.freccialink" = "FrecciaLink";
+"result.vehicle.italobus" = "ItaloBus";
+"result.vehicle.bus" = "ဘတ်စ်ကား";
+"result.vehicle.replacement_bus" = "အစားထိုး ဘတ်စ်ကား";
 "result.detail.mean_delay" = "ပျမ်းမျှ နောက်ကျမှု- %1$lld မိနစ်";
 "result.detail.days" = "စောင့်ကြည့်ခဲ့သည့် ရက်- %1$lld · ဖျက်သိမ်းမှု- %2$lld";
 "result.detail.distribution_title" = "နောက်ကျမှု ဖြန့်ကျက်ပုံ";
@@ -327,6 +332,7 @@
 "departures.row.spoken" = "%1$@၊ ရထား %2$@ %3$@ သို့၊ %4$@";
 "departures.row.platform_spoken" = "ပလက်ဖောင်း %1$@";
 "departures.row.platform_unknown" = "ပလက်ဖောင်း မသိရပါ";
+"departures.row.spoken_vehicle" = "%1$@၊ %2$@ %3$@ သို့၊ %4$@";
 "departures.later.loaded" = "ရထား %1$lld စင်း ထပ်ပါသည်";
 "action.refresh" = "ပြန်ယူရန်";
 "result.live.title" = "တိုက်ရိုက်";

@@ -3,7 +3,7 @@
 "tab.settings" = "設定";
 "planner.title" = "経路検索";
 "planner.intro.title" = "ルートを検索";
-"planner.intro.body" = "厳選カタログから出発駅と到着駅を選んでください。収録している時刻表は計画ダイヤで、下記の地域路線と国境を越える路線のみを対象としています。Trenitalia（Trenitalia France を除く）と Italo は含まれず、時刻表のない駅は検索結果で表示されます。";
+"planner.intro.body" = "厳選カタログから出発駅と到着駅を選んでください。収録している時刻表は計画ダイヤで、下記の路線を対象としています：Trenitalia、Italo、地域鉄道、国境を越える列車（Trenitalia と Italo のバスを含む）。地下鉄と路面電車は含まれず、時刻表のない駅は検索結果で表示されます。";
 "planner.origin" = "出発";
 "planner.destination" = "到着";
 "planner.departure" = "日時";
@@ -265,6 +265,11 @@
 "result.route.hour_band" = "%1$lld〜%2$lld時";
 "result.bikes.allowed" = "自転車持ち込み可";
 "result.bikes.not_allowed" = "自転車持ち込み不可";
+"result.vehicle.bus_trenitalia" = "Trenitalia バス";
+"result.vehicle.freccialink" = "FrecciaLink";
+"result.vehicle.italobus" = "ItaloBus";
+"result.vehicle.bus" = "バス";
+"result.vehicle.replacement_bus" = "代行バス";
 "result.detail.mean_delay" = "平均の遅れ：%1$lld 分";
 "result.detail.days" = "観測日数：%1$lld · 運休：%2$lld";
 "result.detail.distribution_title" = "遅れの分布";
@@ -327,6 +332,7 @@
 "departures.row.spoken" = "%1$@、列車 %2$@、%3$@行き、%4$@";
 "departures.row.platform_spoken" = "%1$@ 番線";
 "departures.row.platform_unknown" = "番線は不明";
+"departures.row.spoken_vehicle" = "%1$@、%2$@、%3$@行き、%4$@";
 "departures.later.loaded" = "さらに %1$lld 本の列車";
 "action.refresh" = "更新";
 "result.live.title" = "リアルタイム";

@@ -177,7 +177,7 @@ python3 tools/build_gtfs_packs.py --only trenitalia-gtfs --only italo-gtfs \
   --generated-at "$(date --utc +%F)"
 ```
 
-In alternativa `--refresh --source-id trenitalia-gtfs --only trenitalia-gtfs` scarica l'archivio dall'URL fissato. Restano da allineare `lastServiceDate` in `EmbeddedGtfsPacks.all`, l'URL in `RailSourceCatalog.kt` e in `androidOnlySources` della policy iOS, e l'indice iOS (`tools/build_ios_gtfs_schedule.py` legge il manifest anche se i due pack sono `androidOnlySources`).
+In alternativa `--refresh --source-id trenitalia-gtfs --only trenitalia-gtfs` scarica l'archivio dall'URL fissato. Restano da allineare `lastServiceDate` in `EmbeddedGtfsPacks.all`, l'URL in `RailSourceCatalog.kt` e nelle `sources` della policy iOS, e l'indice iOS (`python3 -I tools/build_foreign_packs.py`, che ricostruisce anche l'indice di base: dal 23 novembre 2026 i due pack ne fanno parte).
 
 **Italo: scadenza il 12 dicembre 2026.** Il calendario Italo del commit fissato al 9 novembre 2026 (`calendar.txt` fino al 12 dicembre 2026, una data isolata il 2 febbraio 2027) termina con il cambio orario: va rinnovato appena l'upstream pubblica l'orario dal 13 dicembre 2026 (vedi «Cambio orario» sopra). Trenitalia è valido fino all'11 dicembre 2027.
 
@@ -228,7 +228,7 @@ Una fonte nuova di `gtfs-transit/` o `gtfs-personal/` entra in `tools/transit_pa
    python3 tools/apply_ci_gtfs_refresh.py --run <run_id> --add-new palermo-amat-tram-gtfs
    ```
 
-   L'helper aggiunge ZIP, voce del manifest e `SHA256SUMS`, la voce di `TransitGtfsPacks.kt` dal blocco `android` (data di fine dal manifest, `personalOnly` per `gtfs-personal/`), rigenera i crediti Android ed esegue le verifiche. Poi: togliere `"candidate": true` dal registro, aggiungere le righe della tabella in `SOURCE_POLICY.md` (pack, corse, fermate, fine) e le corse attese in `EmbeddedGtfsTransitPacksTest`; passare le righe del Play inventory dell'host da E a D (provenienza). Il Marconi Express è stato aggiunto così il 23 novembre 2026 (build della run 45108568868).
+   L'helper aggiunge ZIP, voce del manifest e `SHA256SUMS`, la voce di `TransitGtfsPacks.kt` dal blocco `android` (data di fine dal manifest, `personalOnly` per `gtfs-personal/`), rigenera i crediti Android ed esegue le verifiche. Un pack `rail` di `gtfs-transit/` entra anche nell'indice dell'iPhone, che ogni cambio di `gtfs-transit/` ricostruisce e verifica: finché la policy iOS non lo elenca (fra le `sources`, con licenza e pagina, e nel numero dei pack di `tools/build_ios_gtfs_schedule.py`, o fra gli `androidOnlySources` con il motivo) la build iOS fallisce e le verifiche lo riportano. Un pack `urban` non entra nell'indice, ma il manifest di `gtfs-transit/` è un suo ingresso, quindi l'indice è comunque riscritto con la nuova impronta. Poi: togliere `"candidate": true` dal registro, aggiungere le righe della tabella in `SOURCE_POLICY.md` (pack, corse, fermate, fine) e le corse attese in `EmbeddedGtfsTransitPacksTest`; passare le righe del Play inventory dell'host da E a D (provenienza). Il Marconi Express è stato aggiunto così il 23 novembre 2026 (build della run 45108568868).
 
 ### Licenze dichiarate dagli editori
 

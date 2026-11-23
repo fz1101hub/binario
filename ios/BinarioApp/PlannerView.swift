@@ -458,7 +458,7 @@ private struct AvailableResultView: View {
     }
 }
 
-/// One listed train: time, number, category, its live state at the origin when the live board
+/// One listed train: time, number, category (a bus: a bus icon and its label), its live state at the origin when the live board
 /// lists it (delay, cancellation, platform and their source, read as one sentence), destination and
 /// operator, then bikes on board and the unofficial statistics at the searched destination when known.
 private struct ResultRow: View {
@@ -474,9 +474,16 @@ private struct ResultRow: View {
                 Text(service.number)
                     .font(.headline)
                 Spacer()
-                Text(service.category)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                // A bus shows a bus and its label, never a train's category (as on Android).
+                if let busLabel = VehicleTexts.busLabel(service) {
+                    Label(busLabel, systemImage: VehicleTexts.busSymbol)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                } else {
+                    Text(service.category)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
             }
             if let live {
                 LiveStatusLine(status: live, showsPlatform: true)

@@ -3,7 +3,7 @@
 "tab.settings" = "การตั้งค่า";
 "planner.title" = "วางแผน";
 "planner.intro.title" = "ค้นหาเส้นทาง";
-"planner.intro.body" = "เลือกสถานีต้นทางและปลายทางจากแค็ตตาล็อกที่คัดสรรไว้ ตารางเวลาที่รวมอยู่เป็นตารางตามแผนและครอบคลุมเฉพาะเครือข่ายระดับภูมิภาคและข้ามพรมแดนที่แสดงด้านล่าง: ไม่รวม Trenitalia (ยกเว้น Trenitalia France) และ Italo และสถานีที่ไม่มีตารางเวลาจะถูกระบุไว้ในการค้นหา";
+"planner.intro.body" = "เลือกสถานีต้นทางและปลายทางจากแค็ตตาล็อกที่คัดสรรไว้ ตารางเวลาที่รวมอยู่เป็นตารางตามแผนและครอบคลุมเครือข่ายที่แสดงด้านล่าง: Trenitalia, Italo, รถไฟภูมิภาค และรถไฟข้ามพรมแดน รวมถึงรถบัสของ Trenitalia และ Italo ไม่รวมรถไฟใต้ดินและรถราง และสถานีที่ไม่มีตารางเวลาจะถูกระบุไว้ในการค้นหา";
 "planner.origin" = "ต้นทาง";
 "planner.destination" = "ปลายทาง";
 "planner.departure" = "วันที่และเวลา";
@@ -265,6 +265,11 @@
 "result.route.hour_band" = "%1$lld–%2$lld";
 "result.bikes.allowed" = "นำจักรยานขึ้นได้";
 "result.bikes.not_allowed" = "นำจักรยานขึ้นไม่ได้";
+"result.vehicle.bus_trenitalia" = "รถบัส Trenitalia";
+"result.vehicle.freccialink" = "FrecciaLink";
+"result.vehicle.italobus" = "ItaloBus";
+"result.vehicle.bus" = "รถบัส";
+"result.vehicle.replacement_bus" = "รถบัสทดแทน";
 "result.detail.mean_delay" = "ความล่าช้าเฉลี่ย: %1$lld นาที";
 "result.detail.days" = "วันที่สังเกต: %1$lld · ยกเลิก: %2$lld";
 "result.detail.distribution_title" = "การกระจายของความล่าช้า";
@@ -327,6 +332,7 @@
 "departures.row.spoken" = "%1$@, ขบวน %2$@ ไป %3$@, %4$@";
 "departures.row.platform_spoken" = "ชานชาลา %1$@";
 "departures.row.platform_unknown" = "ไม่มีข้อมูลชานชาลา";
+"departures.row.spoken_vehicle" = "%1$@, %2$@ ไป %3$@, %4$@";
 "departures.later.loaded" = "อีก %1$lld ขบวน";
 "action.refresh" = "รีเฟรช";
 "result.live.title" = "เรียลไทม์";

@@ -3,7 +3,7 @@
 "tab.settings" = "设置";
 "planner.title" = "规划";
 "planner.intro.title" = "搜索路线";
-"planner.intro.body" = "从精选目录中选择出发站和到达站。所含时刻表为计划时刻表，仅覆盖下方列出的区域和跨境线路网：不含 Trenitalia（Trenitalia France 除外）和 Italo，没有时刻表的车站会在搜索中标出。";
+"planner.intro.body" = "从精选目录中选择出发站和到达站。所含时刻表为计划时刻表，覆盖下方列出的线路网：Trenitalia、Italo、区域铁路和跨境列车，包括 Trenitalia 和 Italo 的巴士；不含地铁和有轨电车，没有时刻表的车站会在搜索中标出。";
 "planner.origin" = "出发";
 "planner.destination" = "到达";
 "planner.departure" = "日期和时间";
@@ -265,6 +265,11 @@
 "result.route.hour_band" = "%1$lld–%2$lld 点";
 "result.bikes.allowed" = "可携带自行车";
 "result.bikes.not_allowed" = "不可携带自行车";
+"result.vehicle.bus_trenitalia" = "Trenitalia 巴士";
+"result.vehicle.freccialink" = "FrecciaLink";
+"result.vehicle.italobus" = "ItaloBus";
+"result.vehicle.bus" = "巴士";
+"result.vehicle.replacement_bus" = "替代巴士";
 "result.detail.mean_delay" = "平均晚点：%1$lld 分钟";
 "result.detail.days" = "观测天数：%1$lld · 停运：%2$lld";
 "result.detail.distribution_title" = "晚点分布";
@@ -327,6 +332,7 @@
 "departures.row.spoken" = "%1$@，车次 %2$@，开往 %3$@，%4$@";
 "departures.row.platform_spoken" = "站台 %1$@";
 "departures.row.platform_unknown" = "站台信息不可用";
+"departures.row.spoken_vehicle" = "%1$@，%2$@，开往 %3$@，%4$@";
 "departures.later.loaded" = "又加载了 %1$lld 趟列车";
 "action.refresh" = "刷新";
 "result.live.title" = "实时";

@@ -102,6 +102,7 @@ def rebuild_ios_indexes(root: Path) -> list[str]:
         root, root / BASE_INDEX, root / BASE_METADATA,
         lambda output, metadata: ios_builder.build_database(
             manifest_path, catalogue, output, metadata, source_policy_path=root / SOURCE_POLICY, full_pack_dir=full_dir,
+            transit_manifest_path=ios_builder.default_transit_manifest(root),
         ),
         foreign_full=None,
     ):

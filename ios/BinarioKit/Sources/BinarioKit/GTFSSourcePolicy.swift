@@ -13,6 +13,10 @@ public struct GTFSSourcePolicy: Decodable, Equatable, Sendable {
     public static let supportedSchemaVersion = 1
     public static let maximumSources = 64
     public static let openDirectAccessMode = "OPEN_DIRECT"
+    /// A pack whose origin is plain HTTP (Genova–Casella): imported offline by CI and accepted by the
+    /// index builder only when the manifest records an HTTPS copy of the same bytes. The app never
+    /// downloads it and links its public page, which must be HTTPS.
+    public static let gatewayOnlyAccessMode = "GATEWAY_ONLY"
 
     public struct Source: Decodable, Equatable, Sendable {
         public let sourceID: String
@@ -51,11 +55,22 @@ public struct GTFSSourcePolicy: Decodable, Equatable, Sendable {
               Set(sources.map(\.sourceID)).count == sources.count,
               sources.allSatisfy({ source in
                   !source.sourceID.isEmpty
-                      && source.accessMode == Self.openDirectAccessMode
-                      && source.sourceURL.scheme == "https"
+                      && Self.reviewedOrigin(source)
                       && source.landingPage.map { $0.scheme == "https" } ?? true
                       && source.licence.map { !$0.isEmpty } ?? true
               })
         else { throw GTFSSourcePolicyError.invalidSource }
+    }
+
+    /// An HTTPS direct download, or a gateway source (HTTP or HTTPS) with an HTTPS public page.
+    private static func reviewedOrigin(_ source: Source) -> Bool {
+        switch source.accessMode {
+        case openDirectAccessMode:
+            return source.sourceURL.scheme == "https"
+        case gatewayOnlyAccessMode:
+            return ["https", "http"].contains(source.sourceURL.scheme ?? "") && source.landingPage?.scheme == "https"
+        default:
+            return false
+        }
     }
 }

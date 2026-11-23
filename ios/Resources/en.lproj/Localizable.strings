@@ -3,7 +3,7 @@
 "tab.settings" = "Settings";
 "planner.title" = "Plan";
 "planner.intro.title" = "Search for a route";
-"planner.intro.body" = "Choose the origin and destination from the curated catalogue. The included timetables are scheduled data and cover only the regional and cross-border networks listed below: Trenitalia (except Trenitalia France) and Italo are not included, and stations without timetables are flagged in the search.";
+"planner.intro.body" = "Choose the origin and destination from the curated catalogue. The included timetables are scheduled data and cover the networks listed below: Trenitalia, Italo, the regional railways and the cross-border trains, with Trenitalia's and Italo's buses; metro and tram lines are not included, and stations without timetables are flagged in the search.";
 "planner.origin" = "Origin";
 "planner.destination" = "Destination";
 "planner.departure" = "Date and time";
@@ -265,6 +265,11 @@
 "result.route.hour_band" = "%1$lld–%2$lld";
 "result.bikes.allowed" = "Bikes allowed";
 "result.bikes.not_allowed" = "No bikes allowed";
+"result.vehicle.bus_trenitalia" = "Trenitalia bus";
+"result.vehicle.freccialink" = "FrecciaLink";
+"result.vehicle.italobus" = "ItaloBus";
+"result.vehicle.bus" = "Bus";
+"result.vehicle.replacement_bus" = "Replacement bus";
 "result.detail.mean_delay" = "Average delay: %1$lld min";
 "result.detail.days" = "Days observed: %1$lld · cancellations: %2$lld";
 "result.detail.distribution_title" = "Delay distribution";
@@ -327,6 +332,7 @@
 "departures.row.spoken" = "%1$@, train %2$@ to %3$@, %4$@";
 "departures.row.platform_spoken" = "platform %1$@";
 "departures.row.platform_unknown" = "platform unavailable";
+"departures.row.spoken_vehicle" = "%1$@, %2$@ to %3$@, %4$@";
 "departures.later.loaded" = "%1$lld more trains";
 "action.refresh" = "Refresh";
 "result.live.title" = "Live";

@@ -3,7 +3,7 @@
 "tab.settings" = "Cài đặt";
 "planner.title" = "Lên kế hoạch";
 "planner.intro.title" = "Tìm tuyến";
-"planner.intro.body" = "Chọn ga đi và ga đến từ danh mục đã tuyển chọn. Lịch trình đi kèm là lịch theo kế hoạch và chỉ bao gồm các mạng lưới khu vực và xuyên biên giới liệt kê bên dưới: không bao gồm Trenitalia (trừ Trenitalia France) và Italo, và các ga không có lịch trình được đánh dấu khi tìm kiếm.";
+"planner.intro.body" = "Chọn ga đi và ga đến từ danh mục đã tuyển chọn. Lịch trình đi kèm là lịch theo kế hoạch và bao gồm các mạng lưới liệt kê bên dưới: Trenitalia, Italo, đường sắt khu vực và tàu xuyên biên giới, kể cả xe buýt của Trenitalia và Italo; không bao gồm tàu điện ngầm và tàu điện mặt đất, và các ga không có lịch trình được đánh dấu khi tìm kiếm.";
 "planner.origin" = "Ga đi";
 "planner.destination" = "Ga đến";
 "planner.departure" = "Ngày và giờ";
@@ -265,6 +265,11 @@
 "result.route.hour_band" = "%1$lld–%2$lld";
 "result.bikes.allowed" = "Được mang xe đạp";
 "result.bikes.not_allowed" = "Không được mang xe đạp";
+"result.vehicle.bus_trenitalia" = "Xe buýt Trenitalia";
+"result.vehicle.freccialink" = "FrecciaLink";
+"result.vehicle.italobus" = "ItaloBus";
+"result.vehicle.bus" = "Xe buýt";
+"result.vehicle.replacement_bus" = "Xe buýt thay thế";
 "result.detail.mean_delay" = "Mức trễ trung bình: %1$lld phút";
 "result.detail.days" = "Số ngày quan sát: %1$lld · số lần hủy: %2$lld";
 "result.detail.distribution_title" = "Phân bố độ trễ";
@@ -327,6 +332,7 @@
 "departures.row.spoken" = "%1$@, tàu %2$@ đi %3$@, %4$@";
 "departures.row.platform_spoken" = "sân ga %1$@";
 "departures.row.platform_unknown" = "chưa có sân ga";
+"departures.row.spoken_vehicle" = "%1$@, %2$@ đi %3$@, %4$@";
 "departures.later.loaded" = "thêm %1$lld chuyến tàu";
 "action.refresh" = "Làm mới";
 "result.live.title" = "Trực tiếp";

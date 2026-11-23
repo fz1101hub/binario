@@ -3,7 +3,7 @@
 "tab.settings" = "Impostazioni";
 "planner.title" = "Pianifica";
 "planner.intro.title" = "Cerca una tratta";
-"planner.intro.body" = "Scegli partenza e destinazione dal catalogo curato. Gli orari inclusi sono programmati e coprono solo le reti regionali ed estere elencate sotto: Trenitalia (tranne Trenitalia France) e Italo non sono inclusi e le stazioni senza orari sono segnalate nella ricerca.";
+"planner.intro.body" = "Scegli partenza e destinazione dal catalogo curato. Gli orari inclusi sono programmati e coprono le reti elencate sotto: Trenitalia, Italo, le ferrovie regionali e i treni transfrontalieri, con i bus di Trenitalia e Italo; metropolitane e tram non sono inclusi e le stazioni senza orari sono segnalate nella ricerca.";
 "planner.origin" = "Partenza";
 "planner.destination" = "Destinazione";
 "planner.departure" = "Data e ora";
@@ -265,6 +265,11 @@
 "result.route.hour_band" = "%1$lld–%2$lld";
 "result.bikes.allowed" = "Bici ammessa";
 "result.bikes.not_allowed" = "Bici non ammessa";
+"result.vehicle.bus_trenitalia" = "Bus Trenitalia";
+"result.vehicle.freccialink" = "FrecciaLink";
+"result.vehicle.italobus" = "ItaloBus";
+"result.vehicle.bus" = "Autobus";
+"result.vehicle.replacement_bus" = "Bus sostitutivo";
 "result.detail.mean_delay" = "Ritardo medio: %1$lld min";
 "result.detail.days" = "Giorni osservati: %1$lld · soppressioni: %2$lld";
 "result.detail.distribution_title" = "Distribuzione dei ritardi";
@@ -327,6 +332,7 @@
 "departures.row.spoken" = "%1$@, treno %2$@ per %3$@, %4$@";
 "departures.row.platform_spoken" = "binario %1$@";
 "departures.row.platform_unknown" = "binario non disponibile";
+"departures.row.spoken_vehicle" = "%1$@, %2$@ per %3$@, %4$@";
 "departures.later.loaded" = "%1$lld treni in più";
 "action.refresh" = "Aggiorna";
 "result.live.title" = "In tempo reale";
