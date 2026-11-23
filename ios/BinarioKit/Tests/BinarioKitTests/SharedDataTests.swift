@@ -214,7 +214,7 @@ final class SharedDataTests: XCTestCase {
     func testTheDestinationWeatherSourceIsTheSharedTable() throws {
         let json = try table("destination-weather-v1.json")
         XCTAssertEqual(DestinationWeatherService.attributionURL?.absoluteString, json["attributionUrl"] as? String)
-        XCTAssertEqual(DestinationWeatherService.attributionURL?.host(), DestinationWeatherService.attributionHost)
+        XCTAssertEqual(DestinationWeatherService.attributionURL.flatMap { URLComponents(url: $0, resolvingAgainstBaseURL: false)?.host }, DestinationWeatherService.attributionHost)
         XCTAssertEqual(SharedData.DestinationWeather.forecastUrl, json["forecastUrl"] as? String)
         XCTAssertEqual(SharedData.DestinationWeather.dailyVariables, json["dailyVariables"] as? [String])
         XCTAssertEqual(SharedData.DestinationWeather.forecastDays, json["forecastDays"] as? Int)
