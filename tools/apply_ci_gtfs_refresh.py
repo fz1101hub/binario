@@ -29,7 +29,8 @@ container).  This helper:
    timetable source (``nextTimetable``, Switzerland) into the iOS source policy and ``RailSourceCatalog.kt``, and
    aligns ``lastServiceDate`` in ``EmbeddedGtfsPacks.kt`` and ``TransitGtfsPacks.kt``;
 4. runs ``build_gtfs_packs.py --check`` (integrity and the 30-day release gate) for each directory,
-   ``verify_embedded_assets.py`` and, when the main manifest or the iOS policy changed, ``build_foreign_packs.py``
+   ``verify_embedded_assets.py`` and, when the main or the transit manifest (whose railway packs are in the iPhone
+   index too) or the iOS policy changed, ``build_foreign_packs.py``
    (iPhone base and per-country indexes, foreign-pack pins, ledger and their checks), ``verify_ios_gtfs_schedule.py``
    and ``verify_ios_gtfs_rebuild.py``;
 5. prints a table: pack, lastServiceDate old -> new, trips, changed, full and zone size and trips kept of a border
@@ -94,7 +95,14 @@ CANDIDATES = Path("tools/core_pack_candidates.json")
 IOS_POLICY = Path("ios/Resources/binario_gtfs_source_policy_v1.json")
 CORE_PACKS_KT = Path("app/src/main/java/it/binario/app/data/gtfs/EmbeddedGtfsPacks.kt")
 CATALOG_KT = Path("app/src/main/java/it/binario/app/data/sources/RailSourceCatalog.kt")
-IOS_INPUTS = (Path("app/src/main/assets/gtfs/manifest.json"), Path("ios/Resources/binario_gtfs_source_policy_v1.json"))
+IOS_INPUTS = (
+    Path("app/src/main/assets/gtfs/manifest.json"),
+    Path("app/src/main/assets/gtfs-transit/manifest.json"),
+    Path("ios/Resources/binario_gtfs_source_policy_v1.json"),
+)
+# The directories whose manifest is an input of the iPhone base index (build_ios_gtfs_schedule.py): a change to one
+# rebuilds and verifies it.
+IOS_INDEX_DIRECTORIES = frozenset({"gtfs", "gtfs-transit"})
 JOB_NAMES = ("core-packs", "transit-packs")
 # The step of each job that prints its files; only its frame is read (.github/workflows/gtfs-assets-ci.yml).
 PRINT_STEPS: Mapping[str, str] = {"core-packs": "Print the changed core packs", "transit-packs": "Print the built packs"}
@@ -949,7 +957,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     refused = [row for row in rows if row.failure]
     checks_ok = True
     if not args.no_checks:
-        ios = any(item.name == "gtfs" and item.staged is not None for item in merged) or bool(pins)
+        ios = any(item.name in IOS_INDEX_DIRECTORIES and item.staged is not None for item in merged) or bool(pins)
         print("\nVerifiche:")
         for label, ok, output in run_checks(root, ios=ios):
             print(f"  [{'ok' if ok else 'ERRORE'}] {label}")

@@ -356,6 +356,17 @@ class ApplyTest(unittest.TestCase):
         self.assertNotIn("tools/build_ios_gtfs_schedule.py", later)
         self.assertNotIn("tools/build_foreign_packs.py", later)
 
+    def test_a_change_to_a_manifest_the_iphone_index_reads_rebuilds_it(self) -> None:
+        # The index reads the main manifest and, for its railway packs, the transit one: a refresh of a regional
+        # railway (gtfs-transit/) rebuilds and verifies the iPhone index like a core pack.
+        import build_ios_gtfs_schedule as ios_builder
+
+        manifest, *_ = ios_builder.default_paths(ROOT)
+        read = {manifest.parent.name, ios_builder.default_transit_manifest(ROOT).parent.name}
+        self.assertEqual(read, set(apply.IOS_INDEX_DIRECTORIES))
+        self.assertEqual(read, {apply.DESTINATIONS[name].name for name in apply.IOS_INDEX_DIRECTORIES})
+        self.assertIn(Path("app/src/main/assets/gtfs-transit/manifest.json"), apply.IOS_INPUTS)
+
     def test_a_border_pack_prints_its_full_pack_and_the_subset_is_derived_here(self) -> None:
         """Design §2.4: a foreign pack bundled as its border subset is printed whole; its full pack goes to
         data/gtfs-foreign/android and the subset is derived again where the refresh is applied."""
