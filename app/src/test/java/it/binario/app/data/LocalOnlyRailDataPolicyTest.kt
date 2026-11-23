@@ -4,6 +4,7 @@ import it.binario.app.BuildConfig
 import it.binario.app.data.live.ItaloPublicStationAdapter
 import it.binario.app.data.live.RfiInfomobilityRssAdapter
 import it.binario.app.data.live.SncfGtfsRealtimeAdapter
+import it.binario.app.data.live.TrenitaliaFranceGtfsRealtimeAdapter
 import it.binario.app.data.live.StaRealtimeAdapter
 import it.binario.app.data.live.TrenitaliaInfomobilityNewsAdapter
 import it.binario.app.data.live.TrenordLineNoticesAdapter
@@ -56,9 +57,10 @@ class LocalOnlyRailDataPolicyTest {
         assertEquals(setOf(RfiInfomobilityRssAdapter.SOURCE_ID) + personalAlerts,
             LocalOnlyRailDataPolicy.networkNoticeProviders().map { it.descriptor.id }.toSet())
 
+        // Trenitalia France last: the registry turns it on only with its pack bundled, and it is asked only for that pack.
         assertEquals(
-            setOf(StaRealtimeAdapter.SOURCE_ID, SncfGtfsRealtimeAdapter.SOURCE_ID),
-            LocalOnlyRailDataPolicy.tripUpdateProviders().map { it.descriptor.id }.toSet()
+            listOf(StaRealtimeAdapter.SOURCE_ID, SncfGtfsRealtimeAdapter.SOURCE_ID, TrenitaliaFranceGtfsRealtimeAdapter.SOURCE_ID),
+            LocalOnlyRailDataPolicy.tripUpdateProviders().map { it.descriptor.id }
         )
         // Coverage realtime is owned by the route fallback that produced the
         // same static GTFS route; it must never be exposed as a global provider.

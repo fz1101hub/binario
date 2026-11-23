@@ -101,45 +101,8 @@ class SncfGtfsRealtimeAdapter(
         }
     }
 
-    internal fun parseTripUpdates(feed: GtfsRealtime.FeedMessage, observedAt: Instant): List<RealtimeStopUpdate> = feed.entityList.flatMap { entity ->
-        if (!entity.hasTripUpdate()) return@flatMap emptyList()
-        val update = entity.tripUpdate
-        val tripId = update.trip.tripId.takeIf(String::isNotBlank) ?: return@flatMap emptyList()
-        if (update.trip.scheduleRelationship != GtfsRealtime.TripDescriptor.ScheduleRelationship.SCHEDULED) return@flatMap emptyList()
-        val dateString = update.trip.startDate
-        val serviceDate = dateString.takeIf(String::isNotBlank)?.let {
-            runCatching { java.time.LocalDate.parse(it, java.time.format.DateTimeFormatter.BASIC_ISO_DATE) }.getOrNull()
-        }
-        if (dateString.isNotBlank() && serviceDate == null) return@flatMap emptyList()
-        val nativeEntity = entity.id.takeIf(String::isNotBlank) ?: tripId
-        val tripObservedAt = update.timestamp.takeIf { it > 0 }?.let(Instant::ofEpochSecond) ?: observedAt
-        val source = sourceRef(nativeEntity, tripObservedAt, GtfsRealtimeFreshness.OBSERVATION_WINDOW)
-        update.stopTimeUpdateList.mapNotNull { stop ->
-            if (stop.scheduleRelationship != GtfsRealtime.TripUpdate.StopTimeUpdate.ScheduleRelationship.SCHEDULED) return@mapNotNull null
-            val stopId = stop.stopId.takeIf(String::isNotBlank)
-            val sequence = stop.stopSequence.takeIf { stop.hasStopSequence() }
-            if (stopId == null && sequence == null) return@mapNotNull null
-            val event = when {
-                stop.hasDeparture() -> stop.departure
-                stop.hasArrival() -> stop.arrival
-                else -> null
-            }
-            val valueSource = source.copy(nativeId = "$nativeEntity:${stopId ?: sequence}")
-            val delay = event?.takeIf { it.hasDelay() }?.delay
-            val epoch = event?.takeIf { it.hasTime() }?.time
-            RealtimeStopUpdate(
-                runId = TrainRunId("sncf-gtfs:$tripId"),
-                sourceTripId = tripId,
-                sourceStopId = stopId,
-                stopSequence = sequence,
-                predictedAt = epoch?.let { Instant.ofEpochSecond(it).atZone(ZoneId.of("Europe/Paris")) }?.let { SourcedValue(it, valueSource) },
-                officialDelay = delay?.let { SourcedValue(Duration.ofSeconds(it.toLong()), valueSource) },
-                observedAt = tripObservedAt,
-                source = source,
-                serviceDate = serviceDate
-            )
-        }
-    }
+    internal fun parseTripUpdates(feed: GtfsRealtime.FeedMessage, observedAt: Instant): List<RealtimeStopUpdate> =
+        gtfsRealtimeStopUpdates(feed, observedAt, "sncf-gtfs") { nativeId, observed -> sourceRef(nativeId, observed, GtfsRealtimeFreshness.OBSERVATION_WINDOW) }
 
     private fun meta(fetched: Instant, observed: Instant, expires: Instant, fromCache: Boolean, fingerprint: String) =
         ProviderResponseMeta(SOURCE_ID, fetched, observedAt = observed, expiresAt = expires, fromCache = fromCache, responseFingerprint = fingerprint)
@@ -162,4 +125,64 @@ class SncfGtfsRealtimeAdapter(
     companion object {
         val SOURCE_ID = SourceId("sncf-gtfs-rt")
     }
+}
+
+/**
+ * The stop updates of a GTFS-Realtime Trip Updates feed joined to a pack by trip_id, as the SNCF and Trenitalia France
+ * feeds publish them: only SCHEDULED trips and stops, each stop with a stop_id or a stop_sequence, times in [zone]; the
+ * run id is `<[runPrefix]>:<trip_id>`. [source] gives the reference of a trip entity observed at the given time.
+ */
+internal fun gtfsRealtimeStopUpdates(
+    feed: GtfsRealtime.FeedMessage,
+    observedAt: Instant,
+    runPrefix: String,
+    zone: ZoneId = ZoneId.of("Europe/Paris"),
+    source: (nativeId: String, observedAt: Instant) -> SourceRef
+): List<RealtimeStopUpdate> = feed.entityList.flatMap { entity ->
+    if (!entity.hasTripUpdate()) return@flatMap emptyList()
+    val update = entity.tripUpdate
+    val tripId = update.trip.tripId.takeIf(String::isNotBlank) ?: return@flatMap emptyList()
+    if (update.trip.scheduleRelationship != GtfsRealtime.TripDescriptor.ScheduleRelationship.SCHEDULED) return@flatMap emptyList()
+    val dateString = update.trip.startDate
+    val serviceDate = dateString.takeIf(String::isNotBlank)?.let {
+        runCatching { java.time.LocalDate.parse(it, java.time.format.DateTimeFormatter.BASIC_ISO_DATE) }.getOrNull()
+    }
+    if (dateString.isNotBlank() && serviceDate == null) return@flatMap emptyList()
+    val nativeEntity = entity.id.takeIf(String::isNotBlank) ?: tripId
+    val tripObservedAt = update.timestamp.takeIf { it > 0 }?.let(Instant::ofEpochSecond) ?: observedAt
+    val tripSource = source(nativeEntity, tripObservedAt)
+    update.stopTimeUpdateList.mapNotNull { stop ->
+        if (stop.scheduleRelationship != GtfsRealtime.TripUpdate.StopTimeUpdate.ScheduleRelationship.SCHEDULED) return@mapNotNull null
+        val stopId = stop.stopId.takeIf(String::isNotBlank)
+        val sequence = stop.stopSequence.takeIf { stop.hasStopSequence() }
+        if (stopId == null && sequence == null) return@mapNotNull null
+        val event = when {
+            stop.hasDeparture() -> stop.departure
+            stop.hasArrival() -> stop.arrival
+            else -> null
+        }
+        val valueSource = tripSource.copy(nativeId = "$nativeEntity:${stopId ?: sequence}")
+        val delay = event?.takeIf { it.hasDelay() }?.delay
+        val epoch = event?.takeIf { it.hasTime() }?.time
+        RealtimeStopUpdate(
+            runId = TrainRunId("$runPrefix:$tripId"),
+            sourceTripId = tripId,
+            sourceStopId = stopId,
+            stopSequence = sequence,
+            predictedAt = epoch?.let { Instant.ofEpochSecond(it).atZone(zone) }?.let { SourcedValue(it, valueSource) },
+            officialDelay = delay?.let { SourcedValue(Duration.ofSeconds(it.toLong()), valueSource) },
+            observedAt = tripObservedAt,
+            source = tripSource,
+            serviceDate = serviceDate
+        )
+    }
+}
+
+/**
+ * What the adapters of the French national access point's realtime proxy (`proxy.transport.data.gouv.fr`) share: one
+ * pause after a refusal of that host (403, 429, or 503 with Retry-After), so the SNCF and Trenitalia France feeds stop
+ * together and a success of one cannot hide the pause of the other.
+ */
+class TransportDataGouvRequests(clock: Clock = Clock.systemUTC()) {
+    internal val refusals = PublicSourceRefusalGate(clock, "transport.data.gouv.fr")
 }

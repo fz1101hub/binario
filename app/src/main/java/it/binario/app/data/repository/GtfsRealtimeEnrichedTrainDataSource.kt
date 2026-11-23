@@ -123,6 +123,7 @@ class GtfsRealtimeEnrichedTrainDataSource(
             val sourceLabels = sources.map { when (it) {
                 "alto-adige-sta-realtime" -> "STA Alto Adige"
                 "sncf-gtfs-rt" -> "SNCF"
+                "trenitalia-france-gtfs-rt" -> "Trenitalia France"
                 else -> "fonte ferroviaria"
             } }.distinct()
             val notice = result.snapshot.notice?.replace("Ritardi, binari e soppressioni richiedono fonti realtime.", "")?.trim()?.takeIf(String::isNotBlank)

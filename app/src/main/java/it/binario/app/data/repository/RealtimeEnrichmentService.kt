@@ -104,6 +104,7 @@ class RealtimeEnrichmentService(
     private fun staticFeedFor(providerId: SourceId): SourceId? = when (providerId.value) {
         "alto-adige-sta-realtime" -> SourceId("alto-adige-sta-gtfs")
         "sncf-gtfs-rt" -> SourceId("sncf-gtfs")
+        "trenitalia-france-gtfs-rt" -> SourceId("trenitalia-france-gtfs")
         else -> null
     }
 }

@@ -5,6 +5,7 @@ import it.binario.app.BuildConfig
 import it.binario.app.data.core.SourceId
 import it.binario.app.data.gtfs.EmbeddedGtfsPacks
 import it.binario.app.data.journey.EmbeddedGtfsJourneyProvider
+import it.binario.app.data.live.TrenitaliaFranceGtfsRealtimeAdapter
 import it.binario.app.data.sources.RailSourceCatalog
 import it.binario.app.data.bikesharing.BikeSharingService
 import it.binario.app.data.bikesharing.BikeSharingSystems
@@ -129,6 +130,13 @@ object KnownProviders {
                 ProviderCapability.TRAIN_RUN_REALTIME to 10,
                 ProviderCapability.SERVICE_ALERTS to 10
             )
+        ),
+        ProviderPolicy(
+            // Joined only to the trenitalia-france-gtfs pack: on only in a build that bundles it, so without the pack
+            // the feed is never asked.
+            descriptor = TrenitaliaFranceGtfsRealtimeAdapter.DESCRIPTOR,
+            enabled = TrenitaliaFranceGtfsRealtimeAdapter.STATIC_PACK in EmbeddedGtfsPacks.sourceIds,
+            priorityByCapability = mapOf(ProviderCapability.TRAIN_RUN_REALTIME to 20)
         ),
         ProviderPolicy(
             descriptor = ProviderDescriptor(

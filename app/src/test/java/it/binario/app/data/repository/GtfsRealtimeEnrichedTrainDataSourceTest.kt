@@ -78,6 +78,32 @@ class GtfsRealtimeEnrichedTrainDataSourceTest {
         }
     }
 
+    /**
+     * The Paris–Lyon Frecciarossa shown as the national Trenitalia copy carries the Trenitalia France identity: the
+     * Trenitalia France feed (its own trip_ids, stops and sequences) reaches it; the feed is never asked for a search
+     * without a service or a copy of that pack.
+     */
+    @Test fun `Trenitalia France raggiunge il Frecciarossa mostrato con la copia del pack nazionale`() = runBlocking {
+        val france = "trenitalia-france-gtfs-rt"
+        val stopTimes = DEFAULT_STOP_TIMES + "70458,12:00:00,12:00:00,10009,0\n70458,12:30:00,12:30:00,10007,62\n"
+        val packs = listOf("trenitalia-gtfs", "trenitalia-france-gtfs")
+        val shown = service("trenitalia-gtfs").copy(alternateGtfsIdentities = listOf(GtfsServiceIdentity("trenitalia-france-gtfs", "70458", date,
+            listOf(GtfsStopIdentity("10009", 0), GtfsStopIdentity("10007", 62)))))
+        val updates = listOf(update(france, 300, "10009", 0), update(france, 360, "10007", 62)).map { it.copy(sourceTripId = "70458") }
+        val result = load(listOf(shown), listOf(provider(sta, emptyList()), provider(sncf, emptyList()), provider(france, updates)),
+            stopTimes = stopTimes, packs = packs)
+        val train = result.services.single()
+        assertEquals(5, train.delayMinutes)
+        assertEquals(listOf("12:05", "12:36"), train.stops.map { it.expected })
+        assertEquals(setOf(france), train.operationalSourceIds)
+        assertTrue(result.notice.orEmpty(), result.notice.orEmpty().contains("Ritardi aggiornati da Trenitalia France."))
+        assertEquals(1, calls)
+
+        calls = 0
+        load(listOf(service("trenitalia-gtfs")), listOf(provider(france, updates)), stopTimes = stopTimes, packs = packs)
+        assertEquals(0, calls)
+    }
+
     @Test fun `zero esplicito e un dato live ma un evento privo di tempi resta sconosciuto`() = runBlocking {
         assertTrue(load(listOf(service()), listOf(provider(sta, listOf(update(sta, 0))))).services.single().operationalStatusVerified)
         val unknown = update(sta, 0).copy(officialDelay = null)
@@ -250,7 +276,8 @@ class GtfsRealtimeEnrichedTrainDataSourceTest {
         services: List<TrainService>,
         providers: List<TripUpdateProvider>,
         requested: JourneyQuery = query,
-        stopTimes: String = DEFAULT_STOP_TIMES
+        stopTimes: String = DEFAULT_STOP_TIMES,
+        packs: List<String> = listOf("alto-adige-sta-gtfs", "sncf-gtfs")
     ): RouteSnapshot {
         val snapshot = RouteSnapshot(route, Direction.OUTBOUND, services, "GTFS", now.toEpochMilli(),
             now.plusSeconds(3600).toEpochMilli(), it.binario.app.data.Freshness.AGING, confidence = DataConfidence.STATIC_ONLY,
@@ -258,8 +285,7 @@ class GtfsRealtimeEnrichedTrainDataSourceTest {
         val planned = object : TrainDataSource {
             override suspend fun loadRoute(route: SavedRoute, direction: Direction): DataResult = DataResult.Success(snapshot)
         }
-        val packs = listOf("alto-adige-sta-gtfs", "sncf-gtfs").map { EmbeddedGtfsPack(SourceId(it), it) }
-        val resolver = EmbeddedGtfsRealtimeScheduleResolver({ ByteArrayInputStream(feed(stopTimes)) }, packs)
+        val resolver = EmbeddedGtfsRealtimeScheduleResolver({ ByteArrayInputStream(feed(stopTimes)) }, packs.map { EmbeddedGtfsPack(SourceId(it), it) })
         val enriched = GtfsRealtimeEnrichedTrainDataSource(planned, RealtimeEnrichmentService(providers, resolver), clock, zone)
         return (LegacyTrainDataSourceFacade(enriched, KnownProviders.defaultRegistry(), clock::millis)
             .loadRoute(route, Direction.OUTBOUND, requested) as DataResult.Success).snapshot

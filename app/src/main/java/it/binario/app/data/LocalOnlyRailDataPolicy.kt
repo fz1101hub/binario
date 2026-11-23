@@ -11,6 +11,8 @@ import it.binario.app.data.live.RfiLiveRouteDataSource
 import it.binario.app.data.live.SncfGtfsRealtimeAdapter
 import it.binario.app.data.live.StaRealtimeAdapter
 import it.binario.app.data.live.SwissOpenTransportStationBoardAdapter
+import it.binario.app.data.live.TransportDataGouvRequests
+import it.binario.app.data.live.TrenitaliaFranceGtfsRealtimeAdapter
 import it.binario.app.data.live.TrenitaliaInfomobilityNewsAdapter
 import it.binario.app.data.live.TrenordLineNoticesAdapter
 import it.binario.app.data.live.ViaggiaTrenoRealtimeAdapter
@@ -53,6 +55,9 @@ object LocalOnlyRailDataPolicy {
     private val rfiAlerts by lazy { RfiInfomobilityRssAdapter() }
     private val staRealtime by lazy { StaRealtimeAdapter() }
     private val sncfRealtime by lazy { SncfGtfsRealtimeAdapter() }
+    // One refusal pause for the realtime proxy of transport.data.gouv.fr, shared by its feeds.
+    private val transportDataGouvRequests by lazy { TransportDataGouvRequests() }
+    private val trenitaliaFranceRealtime by lazy { TrenitaliaFranceGtfsRealtimeAdapter(requests = transportDataGouvRequests) }
     private val swissOpenTransportBoard by lazy { SwissOpenTransportStationBoardAdapter() }
     private val viaggiaTrenoTrainNotices by lazy { ViaggiaTrenoTrainNoticesAdapter(requests = viaggiaTrenoRequests) }
     private val trenitaliaNews by lazy { TrenitaliaInfomobilityNewsAdapter(requests = viaggiaTrenoRequests) }
@@ -137,11 +142,13 @@ object LocalOnlyRailDataPolicy {
 
     /**
      * Only realtime feeds that can currently be reconciled against a trusted
-     * static schedule are queried globally.
+     * static schedule are queried globally. Trenitalia France comes last and is asked only for the services of its own
+     * pack (none until that pack is bundled; the registry keeps it off until then).
      */
     fun tripUpdateProviders(): List<TripUpdateProvider> = listOf(
         staRealtime,
-        sncfRealtime
+        sncfRealtime,
+        trenitaliaFranceRealtime
     )
 
     /**

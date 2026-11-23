@@ -306,6 +306,23 @@ object RailSourceCatalog {
                 "la cui copia viene prima (PlannedPackOrder)."
         ),
         RailSourceDefinition(
+            id = SourceId("trenitalia-france-gtfs-rt"),
+            displayName = "Trenitalia France — GTFS-RT Trip Updates",
+            operatorOrAuthority = "Trenitalia France / transport.data.gouv.fr",
+            formats = setOf(SourceFormat.GTFS_REALTIME_PROTOBUF),
+            capabilities = setOf(ProviderCapability.TRAIN_RUN_REALTIME),
+            accessMode = AccessMode.OPEN_DIRECT,
+            readiness = SourceReadiness.READY_FOR_PROTOCOL_TEST,
+            countryCodes = setOf("FR", "IT"),
+            coverage = "Aggiornamenti delle corse Trenitalia France (Parigi–Lione, Parigi–Marsiglia, Parigi–Milano).",
+            landingPage = uri("https://transport.data.gouv.fr/datasets/horaires-des-trains-trenitalia-france"),
+            downloadOrProbeUri = uri("https://proxy.transport.data.gouv.fr/resource/trenitalia-gtfs-rt"),
+            attribution = "Trenitalia France — Licence Ouverte / Open Licence 2.0 (etalab-2.0)",
+            notes = "Protobuf HTTPS sullo stesso host dei feed SNCF; trip_id del solo pack trenitalia-france-gtfs (sonda CI " +
+                "novembre 2026: 53/53 corse e 217/217 aggiornamenti raccordabili, 0 al pack trenitalia-gtfs). Usato solo " +
+                "quando quel pack è incluso; le copie lasciate al pack nazionale lo ricevono tramite l'identità alternativa."
+        ),
+        RailSourceDefinition(
             id = SourceId("ch-otd-gtfs"),
             displayName = "Open Data Platform Mobility Switzerland — GTFS",
             operatorOrAuthority = "ODMCH / SBB Infrastructure",
