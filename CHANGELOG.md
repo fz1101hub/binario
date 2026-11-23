@@ -1,5 +1,28 @@
 # Changelog
 
+## In sviluppo — iPhone e Apple Watch con gli stessi orari di Android
+
+- **iPhone:** l'indice degli orari include ora tutti i pack ferroviari di Android, 17 invece di 10:
+  - Trenitalia e Italo, con i loro bus (Bus Trenitalia, FrecciaLink, ItaloBus);
+  - le ferrovie regionali di `gtfs-transit/`: FAL, Ferrotramviaria, Ferrovie del Gargano, Mi.Co.Tra. Udine – Villach e Genova – Casella.
+  - Metropolitane, tram e people mover restano solo su Android, perché l'iPhone non ha tratte di città. Le stazioni con orari passano da 804 a 2.563.
+- **Stesse stazioni di Android:** le fermate Trenitalia e Italo sono riconosciute dal codice di stazione con le regole dell'app Android (1.829 fermate Trenitalia e 63 Italo), poi dal nome.
+  - La tabella dei codici Italo è in `contracts/shared-data/v1/italo-gtfs-station-codes.json`.
+  - I casi di prova comuni sono in `contracts/shared-rules/v1/gtfs-station-codes-v1.json`, letti dai test Python e Kotlin.
+- **Bus:** nei risultati, nel dettaglio e in «Partenze» un bus compare con l'icona del bus e la stessa etichetta di Android («Bus Trenitalia», «ItaloBus», «Bus sostitutivo»), in 17 lingue.
+  - VoiceOver non lo chiama «treno»; i bus non hanno la riga di puntualità.
+  - I casi comuni ad Android e iPhone sono in `contracts/shared-rules/v1/journey-leg-vehicles-v1.json`.
+- **Nomi e copie come su Android:**
+  - categoria e operatore sono scritti come su Android («FR 9241» di «Trenitalia»);
+  - un treno pubblicato da due pack (per esempio Trenitalia e Trenitalia France) compare una volta sola, con la copia del pack nazionale;
+  - le corse Italo duplicate dello stesso itinerario sono lasciate fuori.
+- **Fonti:** Impostazioni › Info mostra licenza, pagina e attribuzione dei 17 pack, con gli stessi testi del manifest Android. La licenza TFT è ora «Creative Commons Attribution (CC BY)».
+  - Genova – Casella ha un'origine HTTP: è accettata solo come fonte importata offline e confermata da una copia HTTPS identica.
+- **Dimensioni:** l'indice passa da 2,3 a 7,3 MB compressi (27,8 MB decompresso), entro i limiti esistenti.
+- **Aggiornamento settimanale:** l'indice iPhone viene ricostruito e verificato anche quando cambia un pack di `gtfs-transit/`. I filtri della CI Android, Apple e GTFS coprono `contracts/shared-rules/` e `contracts/shared-data/`.
+- **Apple Watch:** riceve gli stessi treni e bus dall'iPhone. Il formato inviato al Watch non ha un campo per il tipo di mezzo, quindi un bus compare con la sua sigla e il numero («BUS 1234»), senza icona.
+- Il testo del pianificatore e le schede App Store dicono ora quali reti sono incluse (traduzioni automatiche, da rivedere).
+
 ## In sviluppo — «Cerca le corse» per il Marconi Express e per le linee urbane
 
 - Android, collegamenti con gli aeroporti: i collegamenti in treno (Fiumicino, Malpensa, Bari, Palermo, Cagliari, Trieste, Caselle) continuano a dire «Cerca i treni da … a …»; solo Bologna, servita dal Marconi Express (una monorotaia), dice «Cerca le corse da … a …».

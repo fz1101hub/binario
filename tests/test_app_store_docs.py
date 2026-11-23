@@ -53,13 +53,15 @@ class AppStoreDocsTest(unittest.TestCase):
             self.assertNotIn(", ", keywords, "le parole chiave sono separate da sola virgola")
             self.assertNotIn("\n", keywords)
 
-    def test_listing_texts_describe_scheduled_data_and_name_the_excluded_operators(self) -> None:
+    def test_listing_texts_describe_scheduled_data_and_name_the_excluded_networks(self) -> None:
+        # The iPhone index carries every railway pack Android plans with (Trenitalia and Italo included since 23
+        # November 2026); only the city networks (metro, tram) are left out.
         markers = {
-            "it": ("orari programmati", "non inventa", "Trenitalia (tranne Trenitalia France) e Italo non sono inclusi"),
-            "en": ("scheduled", "never invents", "Trenitalia (except Trenitalia France) and Italo are not included"),
-            "de": ("Planzeiten", "erfindet keine", "Trenitalia (außer Trenitalia France) und Italo sind nicht enthalten"),
-            "fr": ("programmés", "n'invente", "Trenitalia (sauf Trenitalia France) et Italo ne sont pas inclus"),
-            "es": ("programados", "no inventa", "Trenitalia (salvo Trenitalia France) e Italo no están incluidos"),
+            "it": ("orari programmati", "non inventa", "Trenitalia (treni e bus), Italo (treni e ItaloBus)", "Metropolitane e tram non sono inclusi"),
+            "en": ("scheduled", "never invents", "Trenitalia (trains and buses), Italo (trains and ItaloBus)", "Metro and tram lines are not included"),
+            "de": ("Planzeiten", "erfindet keine", "Trenitalia (Züge und Busse), Italo (Züge und ItaloBus)", "Metro und Tram sind nicht enthalten"),
+            "fr": ("programmés", "n'invente", "Trenitalia (trains et cars), d'Italo (trains et ItaloBus)", "Le métro et le tram ne sont pas inclus"),
+            "es": ("programados", "no inventa", "Trenitalia (trenes y autobuses), Italo (trenes e ItaloBus)", "El metro y el tranvía no están incluidos"),
         }
         for language, fragments in markers.items():
             full = self.texts[("Descrizione", language)]
@@ -69,8 +71,10 @@ class AppStoreDocsTest(unittest.TestCase):
         for language in LANGUAGES:
             with self.subTest(language=language):
                 full = self.texts[("Descrizione", language)]
-                for fragment in ("iOS 17", "watchOS 10", "Trenitalia", "Italo", "GTFS"):
+                for fragment in ("iOS 17", "watchOS 10", "Trenitalia", "Italo", "GTFS", "Ferrotramviaria", "Mi.Co.Tra."):
                     self.assertIn(fragment, full)
+                # No listing says any more that the national operators are missing.
+                self.assertNotIn("Trenitalia France)", full.replace("SNCF, Trenitalia France)", "").replace("SNCF、Trenitalia France)", "").replace("SNCF وTrenitalia France)", ""))
                 self.assertIn("Trenitalia", self.texts[("Testo promozionale", language)])
                 self.assertEqual("Binario", self.texts[("Nome", language)])
 
@@ -100,8 +104,8 @@ class AppStoreDocsTest(unittest.TestCase):
     def test_review_notes_name_covered_routes_that_the_bundled_index_can_answer(self) -> None:
         notes = REVIEW_NOTES.search(self.document)
         self.assertIsNotNone(notes, "note per la revisione assenti")
-        self.assertIn("Trenitalia (tranne Trenitalia France) e Italo non sono inclusi", notes.group(1))
-        self.assertIn("Trenitalia (except Trenitalia France) and Italo are not included", notes.group(1))
+        self.assertIn("GTFS ufficiali di Trenitalia, Italo e delle reti regionali ed estere", notes.group(1))
+        self.assertIn("official GTFS feeds of Trenitalia, Italo and the regional and cross-border networks", notes.group(1))
         # App Review asks why App Transport Security has an exception: the notes say it, in both
         # languages, within the 4,000 characters of the App Review notes field.
         self.assertIn("Eccezione ATS (solo www.viaggiatreno.it, senza sottodomini)", notes.group(1))
