@@ -247,6 +247,21 @@
           }
         ]
       }
+    },
+    {
+      "sourceId": "calabria-rail-gtfs",
+      "candidate": true,
+      "directory": "gtfs-personal",
+      "distribution": "personal",
+      "kind": "rail",
+      "format": "gtfs",
+      "operator": "Regione Calabria (feed regionale)",
+      "sourceUrl": "https://mobilita.regione.calabria.it/gtfs/otp_gtfs.zip",
+      "licence": "IODL 2.0 secondo Transitland Atlas, da confermare sul portale della Regione Calabria",
+      "licenceEvidence": "Transitland Atlas (IODL 2.0) e Mobility Database mdb-2668 «Calabria-CORE», letti come puntatori dall'elenco fonti Transitous (CC0); licenza da leggere sul portale https://mobilita.regione.calabria.it (transit_discovery)",
+      "attribution": "Regione Calabria",
+      "notes": "Candidato: GTFS regionale della Calabria, filtrato alle sole route ferroviarie (route_type 2, 100-199). Si aggiunge solo se la scoperta CI vi trova i treni di Ferrovie della Calabria; senza route ferroviarie la build si ferma (nessuna route ammessa dal filtro) e il pack non entra. Treni Trenitalia eventualmente presenti sono già nel pack nazionale.",
+      "android": {}
     }
   ]
 }
