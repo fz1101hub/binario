@@ -24,22 +24,23 @@ anche quando cambia `contracts/shared-data/`.
 
 ## Tabelle condivise (`contracts/shared-data/v1`)
 
-Due tabelle di `contracts/shared-data/v1/` non passano ancora dal generatore (`tools/generate_shared_code.py`, vedi
-[`contracts/shared-data/README.md`](../../shared-data/README.md)) e ci passeranno in una PR successiva. Finché non ci passano:
+Le tabelle che questi casi usano sono nel generatore (`tools/generate_shared_code.py`, vedi
+[`contracts/shared-data/README.md`](../../shared-data/README.md)): le app le leggono come codice generato, mai come JSON.
 
-- `italo-gtfs-station-codes.json` è la tabella rivista dei codici Italo, letta dal builder dell'indice iPhone; un
-  test Python la confronta con la tabella Kotlin `ItaloGtfsStationCodes`.
-- `notices-sources-v1.json` contiene le fonti degli avvisi con i valori di Android: indirizzi dei feed, accesso
-  (`all-builds` per MIT e RFI, `personal` per Trenitalia e Trenord), intervalli, durate di cache e di copia non
-  aggiornata, limiti di risposta, reindirizzamenti, pause dopo un rifiuto, e le tabelle di lettura (parole del settore
-  ferroviario e degli scioperi, mesi, radici operative Trenord, area Trenord, parole dei lavori, nomi comuni esclusi,
-  domini ufficiali dei collegamenti). Le espressioni regolari sono quelle che compila Kotlin.
-- Kotlin non la legge ancora: `app/src/test/java/it/binario/app/data/notices/NoticesSourcesTableTest.kt` verifica che
-  ogni valore coincida con le costanti Android (per riflessione, o nel sorgente per i pochi numeri scritti in una
-  funzione), così le due copie non possono divergere.
-- L'iPhone la include nell'app (`ios/project.yml`, come il catalogo stazioni) e la legge all'avvio con un solo
-  caricatore (`NoticeSourcesTable.load`): se manca o non è valida, nessuna fonte di avvisi è attiva e nessuna sezione
-  compare.
+- `italo-gtfs-station-codes.json` è la tabella rivista dei codici Italo. Android legge il codice generato
+  (`ItaloGtfsStationCodes`); il builder dell'indice iPhone legge il JSON (`tools/android_station_codes.py`, gli strumenti
+  Python sono la pipeline).
+- `notices-sources-v1.json` contiene le fonti degli avvisi: indirizzi dei feed, accesso (`all-builds` per MIT e RFI,
+  `personal` per Trenitalia e Trenord), intervalli, durate di cache e di copia non aggiornata, limiti di risposta,
+  reindirizzamenti, e le tabelle di lettura (parole del settore ferroviario e degli scioperi, mesi, radici operative
+  Trenord, area Trenord, parole dei lavori, nomi comuni esclusi, domini ufficiali dei collegamenti). Gli adapter e i
+  lettori Android e BinarioKit leggono `SharedData.NoticesSources`: l'iPhone non include più il file e non ha più un
+  caricatore. Il modo di chiedere a ogni fonte (User-Agent, rifiuti 403 e 429, pausa, interruttore) è
+  `source-manners-v1.json`, di tutte le fonti live e non solo degli avvisi.
+- Le espressioni regolari della tabella sono quelle che compila Kotlin; l'iPhone compila lo stesso testo con
+  NSRegularExpression (ICU), e un test Swift verifica che le accetti tutte. I due motori non leggono allo stesso modo
+  `\b`, `\w`, `\W` e `\s` vicino a caratteri non ASCII (lettere accentate, spazio non separabile): come per la
+  soppressione esplicita (`live-text-v1.json`), i casi di `notices-v1.json` usano testi su cui coincidono.
 
 ## Regole verificate
 

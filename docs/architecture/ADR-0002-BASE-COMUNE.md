@@ -49,13 +49,31 @@ Le tre app restano native: niente Kotlin Multiplatform, niente runtime condiviso
 | `italian-holidays-v1.json`: festività nazionali e giorni contati dalla Pasqua | `ItalianRailServiceCalendar.kt`; `server/punctuality/stats.ts` | Android, Alexa (generata anche per l'iPhone) |
 | `planned-journeys-v1.json`: limiti dell'Agenda, del file di trasferimento e dei modelli | `PlannedJourneyDomain.kt`, `PlannedJourneyTransfer.kt`, `PlannedJourneyTemplates.kt`; `PlannedJourneys.swift`, `PlannedJourneyTemplates.swift` | Android, iPhone |
 
+Dopo l'unione dei lavori sull'orario e sugli avvisi dell'iPhone, lo stesso giorno:
+
+| Tabella | Prima | Ora letta da |
+|---|---|---|
+| `italo-gtfs-station-codes.json`: i 63 codici delle stazioni del pack Italo e il codice lasciato al pack | `ItaloGtfsStationCodes` in `GtfsStationCodeIndex.kt`, uguale al JSON per un test Python | Android; il builder dell'indice iPhone legge il JSON |
+| `notices-sources-v1.json`: fonti degli avvisi, pagine, limiti, parole ed espressioni regolari dei lettori, quanto mostrano le sezioni | costanti di una ventina di file Android, uguali al JSON per un test a riflessione; l'iPhone leggeva il file incluso nell'app all'avvio | Android, iPhone |
+| `source-manners-v1.json`: User-Agent, rifiuti 403 e 429, pausa dopo un rifiuto, interruttore | `PublicSourceHttp.kt`, `SourceCircuitBreaker`; `LiveSourceHTTP.swift`, `LiveSourceGate.swift`; una sezione `manners` della tabella degli avvisi | Android, iPhone |
+| `pack-roles-v1.json`: pack nazionali, esteri, che ripubblicano i treni dei partner, con autobus dell'operatore | `PlannedPackOrder`, `EmbeddedGtfsRouteAdapter`, `EmbeddedGtfsPacks`; `TimetableCopies.swift`, `TimetableVehicle.swift`; `build_ios_gtfs_schedule.py`, `verify_ios_gtfs_schedule.py` | Android, iPhone; builder e verificatore dell'indice leggono il JSON |
+
+Il modo di chiedere alle fonti non è degli avvisi: vale per ogni fonte live su entrambi i telefoni, perciò sta in una
+tabella sua. L'iPhone non include più la tabella degli avvisi e non ha più il caricatore: resta spenta ogni sezione di
+avvisi solo se NSRegularExpression rifiutasse un'espressione regolare della tabella, e i test Swift provano che le
+accetta tutte. Le espressioni regolari degli avvisi erano già dati condivisi e restano il testo che compila Kotlin; i due
+motori non leggono allo stesso modo `\b`, `\w`, `\W` e `\s` vicino a caratteri non ASCII, e i casi di
+`contracts/shared-rules/v1/notices-v1.json` usano testi su cui coincidono. Android non ha un elenco dei pack esteri: li
+ricava dal primo paese del catalogo delle fonti. Per ogni pack ferroviario dell'app il risultato è l'elenco della
+tabella, e un test Kotlin lo verifica.
+
 Restano fuori, coperti da casi di prova in `contracts/shared-rules/v1/`, la parola che segna una soppressione esplicita e l'operatore di una riga del monitor RFI (`live-text-v1.json`), i modelli di «Preparazione del viaggio» (`checklist-presets-v1.json`) e il calcolo della Pasqua (`calendar-v1.json`). Le espressioni regolari non diventano dati perché Java e ICU non leggono `\b` e `\w` allo stesso modo sui caratteri non ASCII. L'operatore della riga RFI non è una tabella pulita: Android distingue tre servizi Trenitalia, l'iPhone uno. I modelli di preparazione sono enum legati ai testi tradotti di ogni app. Restano fuori anche i limiti dello snapshot per gli orologi: Wear OS e Apple Watch non dipendono da `app/` né da BinarioKit, quindi non possono leggere il codice generato, e quei limiti li governa già il contratto `contracts/wear-snapshot/v1` con le sue fixture.
 
 ### Cosa resta specifico di ogni piattaforma
 
 - **Interfaccia**: Jetpack Compose e Wear Compose su Android, SwiftUI su iPhone e Apple Watch, voce e schermate APL su Alexa.
 - **Integrazioni di sistema**: widget, notifiche, Tile e complication, Live Activities e WidgetKit, Data Layer di Wear OS, WatchConnectivity, account linking e modello di interazione di Alexa.
-- **Client di rete** delle fonti live: richieste HTTP, lettura di pagine e payload, pause dopo un rifiuto, cache.
+- **Client di rete** delle fonti live: richieste HTTP, lettura di pagine e payload, pause dopo un rifiuto, cache (i valori, come User-Agent, rifiuti e durata delle pause, sono in `source-manners-v1.json`).
 - **Algoritmi e normalizzazioni del testo** (chiavi dei nomi di stazione, Pasqua, espressioni regolari): restano nel linguaggio di ogni app, ma quando sono comuni hanno i loro casi in `contracts/shared-rules/v1/`.
 - **Valori di una sola piattaforma**: per esempio gli identificativi storici delle stazioni di Android (`byLegacyId` di `RfiStationIds` e `ItaloStationSlugs`), che l'iPhone non usa.
 
@@ -73,7 +91,7 @@ Restano fuori, coperti da casi di prova in `contracts/shared-rules/v1/`, la paro
 4. Aggiungere un test per piattaforma che legge il JSON e lo confronta con il codice che usa la tabella (`SharedDataTest.kt`, `SharedDataTests.swift`, `server/punctuality/sharedData.test.ts`). Se lo schema ha controlli nuovi, aggiungere i loro casi in `tests/test_generate_shared_code.py`.
 5. Fare il commit del JSON e dei file generati. La CI esegue `--check`, e i workflow Android, Apple e Alexa partono quando cambia `contracts/shared-data/**` o il generatore.
 
-Un JSON della directory non ancora registrato viene segnalato e non genera codice, quindi una tabella può arrivare prima del suo schema. Le tabelle `italo-gtfs-station-codes.json` e `notices-sources-v1.json`, in arrivo con altri lavori, passeranno al generatore con questi stessi passi.
+Un JSON della directory non ancora registrato viene segnalato e non genera codice, quindi una tabella può arrivare prima del suo schema. Così sono arrivate `italo-gtfs-station-codes.json` e `notices-sources-v1.json`, registrate con questi stessi passi. Gli strumenti Python, che sono la pipeline, leggono una tabella dal JSON (`generate_shared_code.table_values`, con lo stesso schema) invece del codice generato.
 
 ### Aggiungere un caso a una regola
 
