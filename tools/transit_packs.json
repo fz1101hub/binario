@@ -198,7 +198,6 @@
     },
     {
       "sourceId": "marconi-express-gtfs",
-      "candidate": true,
       "directory": "gtfs-transit",
       "distribution": "all",
       "kind": "urban",

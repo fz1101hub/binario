@@ -844,7 +844,7 @@ object RailSourceCatalog {
             attribution = "TPER S.p.A. (Marconi Express) — CC BY 3.0 IT",
             notes = "GTFS gtfsmex pubblicato da TPER (URL con versione: il CI prende la più recente elencata nella pagina open data). " +
                 "Licenza CC BY 3.0 IT dichiarata dalla pagina open data TPER (letta dal CI il 23 novembre 2026): data pack urbano " +
-                "in gtfs-transit/, ogni build, una volta aggiunto dalla build CI (candidato di tools/transit_packs.json fino ad allora)."
+                "in gtfs-transit/, ogni build. TPER lo pubblica come monorotaia (route_type 12): linea metro nei viaggi."
         ),
         RailSourceDefinition(
             id = SourceId("palermo-amat-tram-gtfs"),

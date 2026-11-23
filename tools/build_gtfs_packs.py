@@ -192,8 +192,8 @@ URBAN_SOURCES: Mapping[str, frozenset[str]] = {
     "genova-amt-gtfs": frozenset(),
     "arst-metro-gtfs": frozenset(),
     "gtt-gtfs": frozenset(),
-    # Candidate of tools/transit_packs.json: the Marconi Express people mover (Bologna Centrale - airport), kept
-    # whatever urban route_type TPER gives it (metro, monorail, cable or funicular types); never a bus.
+    # The Marconi Express people mover (Bologna Centrale - airport), kept whatever urban route_type TPER gives it
+    # (monorail, 12, in the 2026 feed; metro, cable or funicular types too); never a bus.
     "marconi-express-gtfs": frozenset(),
     # Candidate: Palermo's AMAT trams; the buses of the same feed are left out.
     "palermo-amat-tram-gtfs": frozenset(),

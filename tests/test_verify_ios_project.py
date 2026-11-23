@@ -1826,12 +1826,14 @@ class IOSProjectTests(unittest.TestCase):
         ios_routes = re.findall(r'AirportRoute\(cityStationID: "([^"]+)", airportStationID: "([^"]+)", packs: \[(\w+)\]\)', swift)
         android_routes = re.findall(r'AirportRoute\("curated:([^"]+)", "curated:([^"]+)", setOf\((\w+)\)\)', android)
         self.assertEqual([(city, airport) for city, airport, _ in android_routes], [(city, airport) for city, airport, _ in ios_routes])
-        self.assertEqual([pack.lower() for *_, pack in android_routes], [pack.lower() for *_, pack in ios_routes])
+        # Same pack constant on both sides, as each language spells it (MARCONI_EXPRESS, marconiExpress).
+        self.assertEqual([pack.lower().replace("_", "") for *_, pack in android_routes], [pack.lower() for *_, pack in ios_routes])
         model = (IOS / "BinarioApp/AppModel.swift").read_text(encoding="utf-8")
         self.assertIn("AirportRoutes.links(", model)
         self.assertIn("packsWithTrips: Set(includedPacks.map(\\.sourceID))", model)
         # Every route the iPhone can offer has direct trains both ways in the bundled index.
-        packs = {"trenitalia": "trenitalia-gtfs", "trenord": "lombardia-trenord-gtfs", "ferrotramviaria": "ferrotramviaria-bari-barletta"}
+        packs = {"trenitalia": "trenitalia-gtfs", "trenord": "lombardia-trenord-gtfs", "ferrotramviaria": "ferrotramviaria-bari-barletta",
+                 "marconiExpress": "marconi-express-gtfs"}
         with tempfile.TemporaryDirectory(prefix="ios-airports-") as temporary:
             database = Path(temporary) / "schedule.sqlite"
             database.write_bytes(zlib.decompress((IOS / "Resources/binario_gtfs_schedule_v1.sqlite.zlib").read_bytes()))
