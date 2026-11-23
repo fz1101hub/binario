@@ -376,6 +376,92 @@ class TransitRegistryTest(unittest.TestCase):
             with self.subTest(changes=changes), self.assertRaises(acquire.AcquisitionError):
                 acquire.load_registry(self.registry(**changes))
 
+    def test_urban_packs_use_the_urban_filter_and_rail_packs_the_rail_one(self) -> None:
+        import acquire_transit_sources as acquire
+        import build_gtfs_packs as builder
+
+        for pack in acquire.load_registry():
+            with self.subTest(pack=pack["sourceId"]):
+                self.assertEqual(pack["kind"] == "urban", pack["sourceId"] in builder.URBAN_SOURCES)
+
+    def test_a_candidate_carries_its_android_registration(self) -> None:
+        import acquire_transit_sources as acquire
+
+        area = {"name": "Bologna", "latitude": 44.5, "longitude": 11.34, "radiusKm": 8.0}
+        packs = acquire.load_registry(self.registry(candidate=True, android={"areas": [area]}))
+        self.assertEqual(
+            {"kind": "URBAN", "areas": [area], "catalogueNameSuffixes": [], "personalOnly": False},
+            acquire.android_registration(packs[0]),
+        )
+        rail = acquire.load_registry(self.registry(candidate=True, kind="rail", android={"catalogueNameSuffixes": ["FdC"]}))
+        self.assertEqual("RAIL", acquire.android_registration(rail[0])["kind"])
+        for android in (None, {}, {"areas": [dict(area, latitude=95.0)]}, {"areas": [dict(area, name='a"b')]},
+                        {"areas": [area], "colour": "red"}, {"areas": [dict(area, radiusKm=True)]}):
+            with self.subTest(android=android), self.assertRaises(acquire.AcquisitionError):
+                acquire.load_registry(self.registry(candidate=True, **({} if android is None else {"android": android})))
+        with self.assertRaises(acquire.AcquisitionError):
+            acquire.load_registry(self.registry(candidate="yes"))
+
+    def test_build_all_leaves_the_candidates_out(self) -> None:
+        import acquire_transit_sources as acquire
+
+        registry = Path(tempfile.mkdtemp()) / "transit_packs.json"
+        base = {"directory": "gtfs-transit", "distribution": "all", "kind": "rail", "format": "gtfs", "licence": "CC BY 4.0",
+                "attribution": "Demo", "notes": "fixture"}
+        registry.write_text(json.dumps({"schemaVersion": 1, "packs": [
+            dict(base, sourceId="old-gtfs", sourceUrl="https://example.test/old.zip"),
+            dict(base, sourceId="new-gtfs", sourceUrl="https://example.test/new.zip", candidate=True, android={}),
+        ]}), encoding="utf-8")
+        acquired: list[list[str]] = []
+
+        def fake_acquire(packs, out):  # type: ignore[no-untyped-def]
+            acquired.append([pack["sourceId"] for pack in packs])
+            return {"packs": {}}
+
+        out = Path(tempfile.mkdtemp())
+        with mock.patch.object(acquire, "acquire", fake_acquire), mock.patch("sys.stdout", io.StringIO()):
+            self.assertEqual(0, acquire.main(["--registry", str(registry), "--out", str(out), "--generated-at", "2026-11-23"]))
+            self.assertEqual(0, acquire.main(["--registry", str(registry), "--out", str(out), "--generated-at", "2026-11-23",
+                                              "--only", "new-gtfs"]))
+        self.assertEqual([["old-gtfs"], ["new-gtfs"]], acquired)
+
+    def test_the_latest_listed_version_replaces_only_the_digits(self) -> None:
+        import acquire_transit_sources as acquire
+
+        url = "https://pub.example.test/dl.aspx?filename=mex&version=20260421&format=zip"
+        rule = {"page": "https://pub.example.test/open-data.aspx", "pattern": "filename=mex&(?:amp;)?version=(\\d{8})"}
+        pack = acquire.load_registry(self.registry(sourceUrl=url, latestVersion=rule))[0]
+        page = ('<a href="dl.aspx?filename=mex&amp;version=20261101&amp;format=zip">MEX</a>'
+                '<a href="dl.aspx?filename=bus&amp;version=20991231&amp;format=zip">bus</a>'
+                '<a href="dl.aspx?filename=mex&amp;version=20250101&amp;format=zip">old</a>')
+        resolved, record = acquire.latest_source_url(pack, lambda _: page)
+        self.assertEqual(url.replace("20260421", "20261101"), resolved)
+        self.assertEqual("20261101", record["used"])
+        # An older or missing listing keeps the registered version; so does a page that cannot be read.
+        self.assertEqual(url, acquire.latest_source_url(pack, lambda _: "nessun link")[0])
+
+        def unreachable(_: str) -> str:
+            raise OSError("refused")
+
+        resolved, record = acquire.latest_source_url(pack, unreachable)
+        self.assertEqual((url, "20260421"), (resolved, record["used"]))
+        self.assertIn("refused", record["error"])
+        for bad in ({"page": "http://pub.example.test/p", "pattern": rule["pattern"]},
+                    {"page": "https://other.example.test/p", "pattern": rule["pattern"]},
+                    {"page": rule["page"], "pattern": "filename=bus&version=(\\d{8})"},
+                    {"page": rule["page"], "pattern": "filename=(mex)"},
+                    {"page": rule["page"]}):
+            with self.subTest(rule=bad), self.assertRaises(acquire.AcquisitionError):
+                acquire.load_registry(self.registry(sourceUrl=url, latestVersion=bad))
+
+    def test_the_manifest_names_the_version_actually_downloaded(self) -> None:
+        import acquire_transit_sources as acquire
+
+        pack = acquire.load_registry(self.registry())[0]
+        used = "https://example.test/demo.zip?version=2"
+        manifests = acquire.source_manifests([pack], {"packs": {"demo-gtfs": {"download": {"sha256": "ab"}, "sourceUrl": used}}}, "2026-11-23")
+        self.assertEqual(used, manifests["gtfs-transit"]["packs"][0]["sourceUrl"])
+
 
 if __name__ == "__main__":
     unittest.main()

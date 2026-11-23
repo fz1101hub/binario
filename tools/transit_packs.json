@@ -195,6 +195,88 @@
       "licenceEvidence": "Nessuna licenza nel feed né sul sito Cotral; Transitland f-cotral~lazio~ferro senza licenza",
       "attribution": "Cotral S.p.A.",
       "notes": "Ferrovie Roma - Lido (Metromare) e Roma - Civita Castellana - Viterbo. Licenza non dichiarata e origine solo HTTP: solo build personali."
+    },
+    {
+      "sourceId": "marconi-express-gtfs",
+      "candidate": true,
+      "directory": "gtfs-personal",
+      "distribution": "personal",
+      "kind": "urban",
+      "format": "gtfs",
+      "operator": "TPER (Marconi Express)",
+      "sourceUrl": "https://solweb.tper.it/web/tools/open-data/open-data-download.aspx?source=solweb.tper.it&filename=gtfsmex&version=20260421&format=zip",
+      "latestVersion": {
+        "page": "https://solweb.tper.it/web/tools/open-data/open-data.aspx",
+        "pattern": "filename=gtfsmex&(?:amp;)?version=(\\d{8})"
+      },
+      "licence": "CC BY 3.0 secondo Transitland Atlas; da confermare sulla pagina open data TPER",
+      "licenceEvidence": "Transitland Atlas, feed TPER gtfsmex (CC-BY-3.0), letto come puntatore dall'elenco fonti Transitous (CC0); pagina dell'editore https://solweb.tper.it/web/tools/open-data/open-data.aspx da rileggere dal CI (transit_discovery, token page:)",
+      "attribution": "TPER S.p.A. (Marconi Express)",
+      "notes": "People mover Marconi Express Bologna Centrale - Aeroporto G. Marconi dal GTFS gtfsmex pubblicato da TPER; filtro urbano, mai autobus. L'URL porta la versione (version=AAAAMMGG): l'acquisizione legge la pagina open data TPER e usa la versione più recente elencata, altrimenti quella registrata. Candidato: solo build personali finché la licenza non è letta sulla pagina TPER.",
+      "android": {
+        "areas": [
+          {
+            "name": "Bologna",
+            "latitude": 44.506145,
+            "longitude": 11.342267,
+            "radiusKm": 8.0
+          }
+        ]
+      }
+    },
+    {
+      "sourceId": "palermo-amat-tram-gtfs",
+      "candidate": true,
+      "directory": "gtfs-personal",
+      "distribution": "personal",
+      "kind": "urban",
+      "format": "gtfs",
+      "operator": "AMAT Palermo",
+      "sourceUrl": "https://opendata.comune.palermo.it/js/server/uploads/dataset/gtfs/amat_gtfs.zip",
+      "licence": "CC BY 4.0 (Transitous/Transitland), da confermare sul portale",
+      "licenceEvidence": "Elenco fonti Transitous (CC0): CC-BY-4.0; la nota Binario del 2 novembre 2026 riportava «feed scaduto e dati CC BY-SA»; licenza da leggere sul portale open data del Comune di Palermo (transit_discovery)",
+      "attribution": "AMAT Palermo / Comune di Palermo",
+      "notes": "Tram AMAT di Palermo dal GTFS del portale open data del Comune; filtro urbano, autobus esclusi. Candidato: il 2 novembre 2026 il feed risultava scaduto; se la build CI non trova corse da oggi in poi non si aggiunge e resta fuori da build=all. Solo build personali finché la licenza non è letta sul portale.",
+      "android": {
+        "areas": [
+          {
+            "name": "Palermo",
+            "latitude": 38.109187,
+            "longitude": 13.367515,
+            "radiusKm": 12.0
+          }
+        ]
+      }
+    },
+    {
+      "sourceId": "calabria-rail-gtfs",
+      "candidate": true,
+      "directory": "gtfs-personal",
+      "distribution": "personal",
+      "kind": "rail",
+      "format": "gtfs",
+      "operator": "Regione Calabria (feed regionale)",
+      "sourceUrl": "https://mobilita.regione.calabria.it/gtfs/otp_gtfs.zip",
+      "licence": "IODL 2.0 secondo Transitland Atlas, da confermare sul portale della Regione Calabria",
+      "licenceEvidence": "Transitland Atlas (IODL 2.0) e Mobility Database mdb-2668 «Calabria-CORE», letti come puntatori dall'elenco fonti Transitous (CC0); licenza da leggere sul portale https://mobilita.regione.calabria.it (transit_discovery)",
+      "attribution": "Regione Calabria",
+      "notes": "Candidato: GTFS regionale della Calabria, filtrato alle sole route ferroviarie (route_type 2, 100-199). Si aggiunge solo se la scoperta CI vi trova i treni di Ferrovie della Calabria; senza route ferroviarie la build si ferma (nessuna route ammessa dal filtro) e il pack non entra. Treni Trenitalia eventualmente presenti sono già nel pack nazionale.",
+      "android": {}
+    },
+    {
+      "sourceId": "si-nap-rail-gtfs",
+      "candidate": true,
+      "directory": "gtfs-personal",
+      "distribution": "personal",
+      "kind": "rail",
+      "format": "gtfs",
+      "operator": "Slovenske železnice (orario integrato IJPP, NAP Slovenia)",
+      "sourceUrl": "https://b2b.nap.si/data/b2b.gtfs",
+      "licence": "CC BY-SA 4.0 (condivisione allo stesso modo: il pack derivato è offerto sotto CC BY-SA 4.0 con attribuzione), da confermare sulla pagina del dataset",
+      "licenceEvidence": "https://nap.si/en/datasets_details?id=6fc3966a-5e3f-cf10-1df3-70d3af14d03d (dataset IJPP del National Access Point sloveno; CC-BY-SA-4.0 secondo l'elenco fonti Transitous, CC0); da rileggere dal CI (transit_discovery, token page:)",
+      "attribution": "NAP Slovenia (nap.si), orario integrato IJPP",
+      "notes": "Candidato: orario nazionale integrato sloveno (IJPP) dal National Access Point, filtrato alle sole route ferroviarie (treni SŽ attesi, non ancora verificati): Trieste - Ljubljana, Nova Gorica, Sežana. Se contiene i treni SŽ sostituisce la fonte su accordo sz-passenger. Pack estero (paese SI nel catalogo): in PlannedPackOrder dopo i pack italiani. Licenza con condivisione allo stesso modo: pack derivato sotto CC BY-SA 4.0 con attribuzione.",
+      "android": {}
     }
   ]
 }

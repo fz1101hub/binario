@@ -192,6 +192,11 @@ URBAN_SOURCES: Mapping[str, frozenset[str]] = {
     "genova-amt-gtfs": frozenset(),
     "arst-metro-gtfs": frozenset(),
     "gtt-gtfs": frozenset(),
+    # Candidate of tools/transit_packs.json: the Marconi Express people mover (Bologna Centrale - airport), kept
+    # whatever urban route_type TPER gives it (metro, monorail, cable or funicular types); never a bus.
+    "marconi-express-gtfs": frozenset(),
+    # Candidate: Palermo's AMAT trams; the buses of the same feed are left out.
+    "palermo-amat-tram-gtfs": frozenset(),
 }
 # One letter per mode for the stop search badges of the city packs ("M" metro, "T" tram, "F" funicular or lift,
 # "R" railway), written to binario_stop_modes.txt next to the GTFS tables.
