@@ -274,6 +274,16 @@ class RefreshCoreTest(unittest.TestCase):
         self.assertEqual([], fetch.urls)
 
 
+class WorkflowTest(unittest.TestCase):
+    def test_the_refreshed_directory_is_checked_against_the_staged_full_packs(self) -> None:
+        # A refreshed border pack names its new full pack in fullPack; the checkout's data/gtfs-foreign/android still
+        # holds the previous one, so the job's --check must read the staged copy or it fails on every border refresh.
+        workflow = (ROOT / ".github/workflows/gtfs-assets-ci.yml").read_text(encoding="utf-8")
+        step = workflow.split("- name: Verify the refreshed core directory", 1)[1].split("- name:", 1)[0]
+        self.assertIn('--input-dir "$RUNNER_TEMP/core/staging/gtfs"', step)
+        self.assertIn(f'--full-pack-dir "$RUNNER_TEMP/core/staging/{refresh.FULL_PRINT_DIR}"', step)
+
+
 class FreshnessTest(unittest.TestCase):
     def test_days_left_threshold_and_manual_pack(self) -> None:
         temp = Path(tempfile.mkdtemp(prefix="freshness-test-"))

@@ -388,8 +388,12 @@ jobs:
           python3 -I tools/refresh_core_gtfs.py --selection "$TRANSIT_PACKS" --out "$RUNNER_TEMP/core"
           --generated-at "$(date --utc +%F)" --summary "$GITHUB_STEP_SUMMARY"
 
+      # A refreshed border pack (Switzerland, ÖBB, SNCF) names its new full pack in fullPack: the staged one, not the
+      # checkout's data/gtfs-foreign/android, which still holds the previous full pack.
       - name: Verify the refreshed core directory
-        run: python3 -I tools/build_gtfs_packs.py --check --integrity-only --input-dir "$RUNNER_TEMP/core/staging/gtfs"
+        run: >-
+          python3 -I tools/build_gtfs_packs.py --check --integrity-only --input-dir "$RUNNER_TEMP/core/staging/gtfs"
+          --full-pack-dir "$RUNNER_TEMP/core/staging/gtfs-foreign-android"
 
       - name: Print the changed core packs
         run: python3 -I tools/acquire_transit_sources.py --print-dir "$RUNNER_TEMP/core/publish"
