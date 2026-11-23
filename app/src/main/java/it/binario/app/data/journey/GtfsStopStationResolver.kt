@@ -21,9 +21,11 @@ import java.util.Locale
  *    packs only the Italian half: the published words must be the leading words of exactly one station inside
  *    the province (the one with the fewest extra words), so "Verona" never becomes "Verona Parona";
  * 3. the strict whole-name matcher of the timetables ([RailStopNameMatcher]: "Bologna C.le", "S. Vitale").
- * When the stop and the station both have coordinates, a station a rule names counts only within [MAX_NAME_MATCH_KM] of
- * the stop: the Swiss pack's "Guarda" (Engadin) is not the Guarda near Ferrara, 266 km away, and "Steinach" (SG) is not
- * Steinach in Tirol. A catalogue entry without coordinates is bound by its unique name, as no distance can be checked.
+ * When the stop and the station both have coordinates, a station farther than [MAX_NAME_MATCH_KM] from the stop is no
+ * candidate of any rule: it neither binds the stop nor makes its name ambiguous. The Swiss pack's "Guarda" (Engadin) is
+ * not the Guarda near Ferrara, 266 km away, and "Steinach" (SG) is not Steinach in Tirol; and two namesakes far apart
+ * ("San Giorgio" in Sicily and in Sardinia) do not hide each other. A catalogue entry without coordinates is a
+ * candidate wherever the stop is, as no distance can be checked.
  * Anything else stays a station of its own pack (never merged across packs by a guess), unless [nearbyStation] places
  * it, by its coordinates, at a catalogue station under the same name ("Verona" of the STA pack, 14 m from Verona
  * Porta Nuova).
@@ -33,8 +35,8 @@ import java.util.Locale
  */
 internal class GtfsStopStationResolver(stations: List<Station>) {
     private val byId: Map<String, Station> = stations.associateBy(Station::id)
-    private val byKey: Map<String, Station>
-    private val ambiguousKeys: Set<String>
+    /** The stations of each normalized name key ([candidateKeys]), in catalogue order. */
+    private val byKey: Map<String, List<Station>>
     private val bilingualByPrefix: Map<String, List<Pair<Station, Int>>>
     private val byToken: Map<String, List<Station>>
     private val codes = GtfsStationCodeIndex(stations)
@@ -48,8 +50,7 @@ internal class GtfsStopStationResolver(stations: List<Station>) {
         for (station in stations) {
             for (key in candidateKeys(station)) keyed.getOrPut(key) { linkedSetOf() } += station.id
         }
-        byKey = keyed.filterValues { it.size == 1 }.mapValues { byId.getValue(it.value.single()) }
-        ambiguousKeys = keyed.filterValues { it.size > 1 }.keys
+        byKey = keyed.mapValues { (_, ids) -> ids.map(byId::getValue) }
 
         val prefixes = HashMap<String, MutableList<Pair<Station, Int>>>()
         for (station in stations) {
@@ -84,25 +85,33 @@ internal class GtfsStopStationResolver(stations: List<Station>) {
     fun resolve(stopName: String): Station? = resolve(stopName, null, null)
 
     /**
-     * The station [stopName] names by the rules above, for a stop at [latitude], [longitude]: a rule whose station is
-     * farther than [MAX_NAME_MATCH_KM] from the stop does not bind it, and the next rule is tried ([isWithinNameBound]).
+     * The station [stopName] names by the rules above, for a stop at [latitude], [longitude]: only the stations within
+     * [MAX_NAME_MATCH_KM] of the stop are candidates of each rule ([isWithinNameBound]), so a namesake farther away
+     * neither binds the stop nor makes its name ambiguous; a rule with no candidate left hands over to the next one.
      */
     fun resolve(stopName: String, latitude: Double?, longitude: Double?): Station? {
         val variants = variants(stopName)
-        for (variant in variants) byKey[normalize(variant)]?.takeIf { isWithinNameBound(it, latitude, longitude) }?.let { return it }
-        if (variants.any { normalize(it) in ambiguousKeys }) return null
+        var ambiguous = false
         for (variant in variants) {
-            val candidates = bilingualByPrefix[RailStopNameMatcher.tokens(variant).joinToString(" ")] ?: continue
+            val near = byKey[normalize(variant)].orEmpty().filter { isWithinNameBound(it, latitude, longitude) }
+            if (near.size == 1) return near.single()
+            if (near.size > 1) ambiguous = true
+        }
+        if (ambiguous) return null
+        for (variant in variants) {
+            val candidates = bilingualByPrefix[RailStopNameMatcher.tokens(variant).joinToString(" ")]
+                ?.filter { isWithinNameBound(it.first, latitude, longitude) }
+                ?.takeIf { it.isNotEmpty() } ?: continue
             val fewest = candidates.minOf { it.second }
             val best = candidates.filter { it.second == fewest }.map { it.first }.distinctBy(Station::id)
-            if (best.size == 1 && isWithinNameBound(best.single(), latitude, longitude)) return best.single()
+            if (best.size == 1) return best.single()
         }
         for (variant in variants) {
             val candidates = RailStopNameMatcher.tokens(variant).filter { it.length >= 4 }
                 .flatMap { byToken[it].orEmpty() }
                 .distinctBy(Station::id)
-            val matches = candidates.filter { it.isNamedBy(variant) }
-            if (matches.size == 1 && isWithinNameBound(matches.single(), latitude, longitude)) return matches.single()
+            val matches = candidates.filter { it.isNamedBy(variant) && isWithinNameBound(it, latitude, longitude) }
+            if (matches.size == 1) return matches.single()
         }
         return null
     }
