@@ -13,7 +13,13 @@ plus the named catalogue scans ``mdb`` (Mobility Database catalogue, Italian row
 Realtime and bike sharing: ``gtfsrt:URL`` decodes a GTFS-Realtime FeedMessage with the small protobuf
 wire-format reader below (no protobuf library) and matches its trips, routes and stops against the
 repository's city packs and any static feed named before it with ``rtstatic:URL``; it prints a few
-entities of the best-matching pack as a base64 sample (``RTSAMPLE``) for test fixtures.  ``gbfs:URL``
+entities of the best-matching pack as a base64 sample (``RTSAMPLE``) for test fixtures.
+``gtfsrt:URL|gtfs:REF|gtfs:REF`` matches one feed against named static feeds instead: each ``REF`` is an
+``https://`` GTFS (downloaded once per run) or a ZIP of this repository (a bundled pack such as
+``app/src/main/assets/gtfs/sncf-gtfs.zip``); it prints, per static feed, the trip_ids found, the stop updates the app
+could join to the pack's ``stop_times.txt`` and the alert selectors that touch it, then 20 sample trips with a
+yes/no per static feed.  A feed URL is downloaded once per run, and a host that answers 403 or 429 is not contacted
+again in the run (every probe).  ``gbfs:URL``
 reads a GBFS auto-discovery file, its system information (licence and terms fields) and stations or
 vehicles, and counts those within 300 m of the curated railway stations.  ``ckan:URL`` lists the datasets of
 a CKAN ``package_search`` URL (open-data portals) with licence and resources.
@@ -79,6 +85,8 @@ LICENCE_METADATA: dict[str, str] = {
 }
 
 _report_path: Path | None = None
+# Hosts that answered 403 or 429 in this run: no further request goes to them (see ``_fetch_once``).
+_refused_hosts: set[str] = set()
 
 
 def log_safe(value: object) -> str:
@@ -119,7 +127,18 @@ def fetch(url: str, *, limit: int, method: str = "GET", accept: str = "*/*", des
     return result
 
 
+def _host(url: str) -> str:
+    try:
+        return (urllib.parse.urlsplit(url).hostname or "").lower()
+    except ValueError:
+        return ""
+
+
 def _fetch_once(url: str, *, limit: int, method: str, accept: str, destination: Path | None, offset: int = 0):
+    host = _host(url)
+    if host in _refused_hosts:
+        # Network manners: a host that answered 403 or 429 is not contacted again in this run.
+        return None, url, {}, None, f"non richiesto: {host} ha già risposto 403/429 in questa run"
     headers = {"User-Agent": USER_AGENT, "Accept": accept}
     if offset:
         headers["Range"] = f"bytes={offset}-"
@@ -157,6 +176,8 @@ def _fetch_once(url: str, *, limit: int, method: str, accept: str, destination: 
                     sink.close()
             return status, final, headers, (destination if destination else b"".join(chunks)), None
     except urllib.error.HTTPError as error:
+        if error.code in (403, 429):
+            _refused_hosts.update(name for name in (host, _host(error.geturl() or "")) if name)
         body = b""
         try:
             body = error.read(4096)
@@ -814,11 +835,12 @@ STOP_RELATIONSHIPS = {0: "SCHEDULED", 1: "SKIPPED", 2: "NO_DATA", 3: "UNSCHEDULE
 class StaticReference:
     """Routes, trips and stops of one static GTFS, to match realtime identifiers against."""
 
-    def __init__(self, label: str, routes: dict, trips: dict, stops: set):
+    def __init__(self, label: str, routes: dict, trips: dict, stops: set, short_names: set | None = None):
         self.label = label
         self.routes = routes  # route_id -> (route_type, short name)
         self.trips = trips  # trip_id -> route_id
         self.stops = stops
+        self.short_names = short_names or set()  # trip_short_name values (train numbers), leading zeros removed
 
     @classmethod
     def from_zip(cls, label: str, path: Path) -> "StaticReference":
@@ -831,11 +853,16 @@ class StaticReference:
             {row.get("route_id", ""): (row.get("route_type", ""), row.get("route_short_name", "")) for row in routes},
             {row.get("trip_id", ""): row.get("route_id", "") for row in trips},
             {row.get("stop_id", "") for row in stops},
+            {row["trip_short_name"].lstrip("0") for row in trips if row.get("trip_short_name", "").lstrip("0")},
         )
 
 
 _static_references: list[StaticReference] = []
 _city_packs_loaded = False
+# One download per URL and run (``gtfsrt:`` feeds and the ``|gtfs:`` static feeds named after them).
+_realtime_downloads: dict[str, tuple] = {}
+_named_statics: dict[str, tuple[StaticReference | None, Path | None]] = {}
+_downloaded_statics: list[Path] = []
 
 
 def load_city_packs(root: Path = ROOT) -> None:
@@ -990,18 +1017,32 @@ def describe_entity(entity: dict, limit: int = 6) -> str:
     return f"entity id={entity.get('id')} kind={entity['kind']}"
 
 
-def probe_gtfsrt(url: str, *, now: float | None = None) -> None:
-    status, final, headers, body, error = fetch(url, limit=REALTIME_LIMIT, accept="application/x-protobuf, application/octet-stream")
+def fetch_realtime(url: str):
+    """The feed of [url] downloaded once per run: a later token with the same URL reuses the bytes."""
+    if url not in _realtime_downloads:
+        _realtime_downloads[url] = fetch(url, limit=REALTIME_LIMIT, accept="application/x-protobuf, application/octet-stream")
+    return _realtime_downloads[url]
+
+
+def read_realtime(url: str, label: str = "GTFSRT") -> dict | None:
+    """Fetch (once) and decode [url], printing the status line; None when it is not a readable FeedMessage."""
+    status, final, headers, body, error = fetch_realtime(url)
     size = len(body) if isinstance(body, bytes) else 0
-    emit(f"GTFSRT {url} status={status} final={final} size={size} {header_summary(headers)} error={error}")
+    emit(f"{label} {url} status={status} final={final} size={size} {header_summary(headers)} error={error}")
     if error is not None or not isinstance(body, bytes):
         if isinstance(body, bytes) and body:
             emit(f"  body {body[:300]!r}")
-        return
+        return None
     try:
-        feed = decode_feed(body)
+        return decode_feed(body)
     except WireError as problem:
         emit(f"  not-gtfs-rt {problem} head={body[:120]!r}")
+        return None
+
+
+def probe_gtfsrt(url: str, *, now: float | None = None) -> None:
+    feed = read_realtime(url)
+    if feed is None:
         return
     load_city_packs()
     now = time.time() if now is None else now
@@ -1026,6 +1067,268 @@ def probe_gtfsrt(url: str, *, now: float | None = None) -> None:
         for entity in sample_feed["entities"]:
             emit(f"  sample {describe_entity(entity)}")
         emit(f"RTSAMPLE {best.label} {url} bytes={len(sample)} {base64.b64encode(sample).decode('ascii')}")
+
+
+# --- GTFS-RT against named static feeds (``gtfsrt:URL|gtfs:REF|gtfs:REF``) ------------------------------------------
+
+RT_TRIP_SAMPLE = 20
+STOP_TIMES_SCAN_ROWS = 40_000_000
+MATCHED_TRIPS_SCANNED = 20_000
+_NUMBER_TOKEN = re.compile(r"(?<![0-9])0*([1-9][0-9]{2,5})(?![0-9])")
+
+
+def resolve_static(ref: str, out: Path, *, root: Path = ROOT) -> tuple[StaticReference | None, Path | None]:
+    """The static GTFS [ref]: an ``https://`` URL (downloaded once per run) or a ZIP of this repository, such as a
+    bundled pack (``app/src/main/assets/gtfs/sncf-gtfs.zip``); the path must stay inside the repository."""
+    if ref in _named_statics:
+        return _named_statics[ref]
+    reference: StaticReference | None = None
+    path: Path | None = None
+    if ref.startswith("https://"):
+        folder = out / "archives"
+        folder.mkdir(parents=True, exist_ok=True)
+        target = folder / (hashlib.sha256(ref.encode()).hexdigest()[:12] + ".named-static.zip")
+        status, final, headers, _, error = fetch(ref, limit=ARCHIVE_LIMIT, destination=target)
+        size = target.stat().st_size if target.exists() else 0
+        digest = hashlib.sha256(target.read_bytes()).hexdigest() if target.exists() else ""
+        emit(f"  STATIC gtfs:{ref} status={status} final={final} size={size} sha256={digest} {header_summary(headers)} error={error}")
+        if target.exists():
+            _downloaded_statics.append(target)
+        if error is None and target.exists():
+            path = target
+    else:
+        base = root.resolve()
+        candidate = (base / ref).resolve()
+        if not candidate.is_relative_to(base) or candidate.suffix != ".zip" or not candidate.is_file():
+            emit(f"  STATIC gtfs:{ref} error=percorso non ammesso (ZIP del repository) o assente")
+        else:
+            path = candidate
+            emit(f"  STATIC gtfs:{ref} size={candidate.stat().st_size} sha256={hashlib.sha256(candidate.read_bytes()).hexdigest()}")
+    if path is not None:
+        if not zipfile.is_zipfile(path):
+            emit(f"  static-error gtfs:{ref} not-a-zip head={path.read_bytes()[:120]!r}")
+            path = None
+        else:
+            try:
+                reference = StaticReference.from_zip(f"gtfs:{ref}", path)
+            except Exception as problem:  # noqa: BLE001 - untrusted archive
+                emit(f"  static-error gtfs:{ref} {type(problem).__name__}: {problem}")
+                path = None
+    if reference is not None:
+        types = Counter(route_type for route_type, _ in reference.routes.values())
+        examples = list(reference.trips)[:3]
+        emit(
+            f"  static gtfs:{ref} routes={len(reference.routes)} trips={len(reference.trips)} stops={len(reference.stops)} "
+            f"trip_short_names={len(reference.short_names)} route_types={dict(sorted(types.items()))} trip_id_examples={examples}"
+        )
+    _named_statics[ref] = (reference, path)
+    return reference, path
+
+
+def scan_trip_stops(path: Path, trip_ids: set[str]) -> dict[str, list[tuple[str, int | None]]]:
+    """(stop_id, stop_sequence) of each trip of [trip_ids] in ``stop_times.txt``, streamed (no full table in memory)."""
+    found: dict[str, list[tuple[str, int | None]]] = {}
+    if not trip_ids:
+        return found
+    with zipfile.ZipFile(path) as archive:
+        candidates = [entry for entry in archive.namelist() if entry.rsplit("/", 1)[-1] == "stop_times.txt"]
+        if not candidates:
+            return found
+        with archive.open(candidates[0]) as raw:
+            reader = csv.DictReader(io.TextIOWrapper(raw, encoding="utf-8-sig", errors="replace", newline=""))
+            for index, row in enumerate(reader):
+                if index >= STOP_TIMES_SCAN_ROWS:
+                    break
+                trip = (row.get("trip_id") or "").strip()
+                if trip in trip_ids:
+                    sequence = (row.get("stop_sequence") or "").strip()
+                    found.setdefault(trip, []).append(((row.get("stop_id") or "").strip(), int(sequence) if sequence.isdigit() else None))
+    return found
+
+
+def attachable_stop(stop: dict, rows: list[tuple[str, int | None]]) -> bool:
+    """Whether the app could join this stop update to the static trip: a SCHEDULED stop with a delay or a time whose
+    stop_id (and stop_sequence, when given) or, without stop_id, stop_sequence is a row of the trip — the rule of
+    EmbeddedGtfsRealtimeScheduleResolver and SncfGtfsRealtimeAdapter."""
+    if stop.get("schedule_relationship", 0) != 0:
+        return False
+    if not any(key in event for event in (stop.get("arrival", {}), stop.get("departure", {})) for key in ("delay", "time")):
+        return False
+    stop_id = stop.get("stop_id") or None
+    sequence = stop.get("stop_sequence")
+    if stop_id is None and sequence is None:
+        return False
+    for row_stop, row_sequence in rows:
+        id_matches = stop_id is not None and row_stop == stop_id
+        sequence_matches = sequence is not None and row_sequence == sequence
+        if (id_matches and (sequence is None or sequence_matches)) or (stop_id is None and sequence_matches):
+            return True
+    return False
+
+
+def number_tokens(trip_id: str) -> set[str]:
+    """Runs of 3 to 6 digits of a trip_id (leading zeros removed): candidate train numbers, for a trip_short_name hint."""
+    return set(_NUMBER_TOKEN.findall(trip_id))
+
+
+def _trip_rows(feed: dict) -> list[dict]:
+    """One row per trip_update / vehicle entity with a trip descriptor."""
+    rows = []
+    for entity in feed["entities"]:
+        if entity["kind"] not in ("trip_update", "vehicle"):
+            continue
+        body = entity.get("trip_update") or entity.get("vehicle") or {}
+        trip = body.get("trip", {})
+        if not trip.get("trip_id") and not trip.get("route_id"):
+            continue
+        rows.append({
+            "kind": entity["kind"],
+            "trip_id": trip.get("trip_id", ""),
+            "route_id": trip.get("route_id", ""),
+            "start_date": trip.get("start_date", ""),
+            "start_time": trip.get("start_time", ""),
+            "relationship": TRIP_RELATIONSHIPS.get(trip.get("schedule_relationship", 0), "?"),
+            "stops": body.get("stop_time_updates", []) if entity["kind"] == "trip_update" else [],
+        })
+    return rows
+
+
+def realtime_trip_sample(rows: list[dict], references: list[StaticReference], size: int = RT_TRIP_SAMPLE) -> list[dict]:
+    """Up to [size] distinct trips: first those found in a named static feed (at most half), then the others, each
+    group spread over its route_ids so that one busy route does not fill the sample."""
+    def spread(candidates: list[dict], limit: int) -> list[dict]:
+        by_route: dict[str, list[dict]] = {}
+        for row in candidates:
+            by_route.setdefault(row["route_id"], []).append(row)
+        chosen: list[dict] = []
+        while len(chosen) < limit and any(by_route.values()):
+            for queue in by_route.values():
+                if queue and len(chosen) < limit:
+                    chosen.append(queue.pop(0))
+        return chosen
+
+    distinct: list[dict] = []
+    seen: set[tuple[str, str]] = set()
+    for row in rows:
+        key = (row["trip_id"], row["start_date"])
+        if key not in seen:
+            seen.add(key)
+            distinct.append(row)
+    known = [row for row in distinct if any(row["trip_id"] in reference.trips for reference in references)]
+    first = spread(known, min(len(known), size // 2))
+    taken = {id(row) for row in first}
+    rest = spread([row for row in distinct if id(row) not in taken], size - len(first))
+    return first + rest
+
+
+def summarize_against(feed: dict, reference: StaticReference, trip_stops: dict[str, list[tuple[str, int | None]]]) -> list[str]:
+    """How the feed's trips, stops, routes and alert selectors meet one named static feed."""
+    rows = _trip_rows(feed)
+    trip_ids = {row["trip_id"] for row in rows if row["trip_id"]}
+    matched = {trip for trip in trip_ids if trip in reference.trips}
+    matched_rows = [row for row in rows if row["trip_id"] in matched]
+    dates = Counter(row["start_date"] for row in matched_rows)
+    by_route = Counter(reference.routes.get(reference.trips[row["trip_id"]], ("", ""))[1] or reference.trips[row["trip_id"]] for row in matched_rows)
+    updates = [row for row in matched_rows if row["kind"] == "trip_update"]
+    stop_total = sum(len(row["stops"]) for row in updates)
+    attached = [sum(1 for stop in row["stops"] if attachable_stop(stop, trip_stops.get(row["trip_id"], []))) for row in updates]
+    stop_ids = [stop.get("stop_id") for row in rows for stop in row["stops"] if stop.get("stop_id")]
+    route_ids = {row["route_id"] for row in rows if row["route_id"]}
+    unmatched = trip_ids - matched
+    hinted = sum(1 for trip in unmatched if number_tokens(trip) & reference.short_names)
+    lines = [
+        f"  vs {reference.label} trip_ids={len(matched)}/{len(trip_ids)} matched_start_dates={dict(dates.most_common(4))} "
+        f"matched_by_route={dict(by_route.most_common(20))}",
+        f"  vs {reference.label} trips_with_attachable_stops={sum(1 for count in attached if count)}/{len(updates)} "
+        f"stop_updates_attachable={sum(attached)}/{stop_total} stop_ids_in_static={sum(1 for s in stop_ids if s in reference.stops)}/{len(stop_ids)} "
+        f"route_ids_in_static={len(route_ids & set(reference.routes))}/{len(route_ids)} "
+        f"unmatched_with_train_number_token={hinted}/{len(unmatched)}",
+    ]
+    alerts = [entity["alert"] for entity in feed["entities"] if entity["kind"] == "alert"]
+    if alerts:
+        selectors = [selector for alert in alerts for selector in alert["informed"]]
+        informed_routes = [s["route_id"] for s in selectors if s.get("route_id")]
+        informed_trips = [s["trip"]["trip_id"] for s in selectors if s.get("trip", {}).get("trip_id")]
+        informed_stops = [s["stop_id"] for s in selectors if s.get("stop_id")]
+        touching = sum(
+            1 for alert in alerts
+            if any(
+                s.get("route_id") in reference.routes or s.get("stop_id") in reference.stops
+                or s.get("trip", {}).get("trip_id") in reference.trips
+                for s in alert["informed"]
+            )
+        )
+        lines.append(
+            f"  vs {reference.label} alerts_touching_static={touching}/{len(alerts)} "
+            f"informed_routes={sum(1 for r in informed_routes if r in reference.routes)}/{len(informed_routes)} "
+            f"informed_trips={sum(1 for t in informed_trips if t in reference.trips)}/{len(informed_trips)} "
+            f"informed_stops={sum(1 for s in informed_stops if s in reference.stops)}/{len(informed_stops)}"
+        )
+    return lines
+
+
+def sample_line(index: int, row: dict, references: list[tuple[StaticReference, dict]]) -> str:
+    verdicts = []
+    for reference, trip_stops in references:
+        if row["trip_id"] in reference.trips:
+            route = reference.routes.get(reference.trips[row["trip_id"]], ("", ""))[1]
+            attached = sum(1 for stop in row["stops"] if attachable_stop(stop, trip_stops.get(row["trip_id"], [])))
+            verdicts.append(f"{reference.label}=yes(route={route} attachable={attached}/{len(row['stops'])})")
+        else:
+            numbers = sorted(number_tokens(row["trip_id"]) & reference.short_names)
+            verdicts.append(f"{reference.label}=no" + (f"(train_number_token={','.join(numbers[:3])})" if numbers else ""))
+    return (
+        f"  trip {index:02d} {row['kind']} trip_id={row['trip_id']} route_id={row['route_id']} start_date={row['start_date']} "
+        f"start_time={row['start_time']} relationship={row['relationship']} stop_time_updates={len(row['stops'])} "
+        + " ".join(verdicts)
+    )
+
+
+def probe_gtfsrt_against(url: str, refs: list[str], out: Path, *, now: float | None = None, root: Path = ROOT) -> None:
+    """``gtfsrt:URL|gtfs:REF…``: the feed (downloaded once) summarised, then matched trip by trip against each named
+    static GTFS — a URL or a ZIP of this repository — with the stop rule the app uses to join an update to its pack."""
+    feed = read_realtime(url, label=f"GTFSRT-VS {len(refs)} static")
+    if feed is None:
+        return
+    now = time.time() if now is None else now
+    for line in summarize_realtime(feed, now, []):
+        emit(line)
+    rows = _trip_rows(feed)
+    loaded: list[tuple[StaticReference, Path]] = []
+    for ref in refs:
+        reference, path = resolve_static(ref, out, root=root)
+        if reference is not None and path is not None:
+            loaded.append((reference, path))
+    references = [reference for reference, _ in loaded]
+    sample = realtime_trip_sample(rows, references)
+    with_stops: list[tuple[StaticReference, dict]] = []
+    for reference, path in loaded:
+        wanted = {row["trip_id"] for row in rows if row["trip_id"] in reference.trips}
+        wanted = set(sorted(wanted)[:MATCHED_TRIPS_SCANNED]) | {row["trip_id"] for row in sample if row["trip_id"] in reference.trips}
+        try:
+            trip_stops = scan_trip_stops(path, wanted)
+        except Exception as problem:  # noqa: BLE001 - untrusted archive
+            emit(f"  static-error {reference.label} stop_times {type(problem).__name__}: {problem}")
+            trip_stops = {}
+        with_stops.append((reference, trip_stops))
+        for line in summarize_against(feed, reference, trip_stops):
+            emit(line)
+        chosen = realtime_sample(feed, reference)
+        if chosen:
+            emit(f"RTSAMPLE {reference.label} {url} bytes={len(chosen)} {base64.b64encode(chosen).decode('ascii')}")
+    emit(f"  sample trips={len(sample)} of {len({(row['trip_id'], row['start_date']) for row in rows})}")
+    for index, row in enumerate(sample, 1):
+        emit(sample_line(index, row, with_stops))
+    for alert_entity in [entity for entity in feed["entities"] if entity["kind"] == "alert"][:5]:
+        emit(f"  {describe_entity(alert_entity)}")
+
+
+def reset_run_state() -> None:
+    """Forget the downloads and refusals of a previous run (tests call [run] several times in one process)."""
+    _realtime_downloads.clear()
+    _named_statics.clear()
+    _downloaded_statics.clear()
+    _refused_hosts.clear()
 
 
 # --- GBFS ---------------------------------------------------------------------------------------------------------
@@ -1265,12 +1568,31 @@ def scan_atlas(out: Path) -> None:
 
 
 def run(tokens: list[str], out: Path, keep: bool) -> None:
+    reset_run_state()
+    try:
+        _run_tokens(tokens, out, keep)
+    finally:
+        for archive in _downloaded_statics:
+            if keep and archive.exists():
+                emit(f"  kept {archive.relative_to(out)}")
+            elif archive.exists():
+                archive.unlink()
+
+
+def _run_tokens(tokens: list[str], out: Path, keep: bool) -> None:
     for token in tokens:
         token = token.strip()
         if not token:
             continue
         kind, _, url = token.partition(":")
-        if token == "mdb":
+        if kind == "gtfsrt" and "|" in url:
+            # gtfsrt:URL|gtfs:REF|gtfs:REF - the feed matched against each named static GTFS (URL or repository ZIP).
+            feed_url, *refs = url.split("|")
+            if feed_url.startswith(("http://", "https://")) and refs and all(ref.startswith("gtfs:") and len(ref) > 5 for ref in refs):
+                probe_gtfsrt_against(feed_url, [ref[5:] for ref in refs], out)
+            else:
+                emit(f"SKIP token non riconosciuto: {token!r}")
+        elif token == "mdb":
             scan_mdb(out)
         elif token == "licences":
             scan_licences()
