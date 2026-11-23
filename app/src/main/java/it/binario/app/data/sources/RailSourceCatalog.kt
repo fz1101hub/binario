@@ -585,12 +585,13 @@ object RailSourceCatalog {
             countryCodes = setOf("SI", "IT"),
             coverage = "Treni del GTFS nazionale sloveno (IJPP): Trieste – Ljubljana, Nova Gorica, Sežana; autobus esclusi.",
             landingPage = uri("https://nap.si/en/datasets_details?id=6fc3966a-5e3f-cf10-1df3-70d3af14d03d"),
-            downloadOrProbeUri = uri("https://b2b.nap.si/data/b2b.gtfs"),
-            attribution = "NAP Slovenia (nap.si), orario integrato IJPP — CC BY-SA 4.0",
-            notes = "Candidato di tools/transit_packs.json: licenza CC BY-SA 4.0 (condivisione allo stesso modo: il pack " +
-                "derivato è offerto sotto CC BY-SA 4.0 con attribuzione), da rileggere sulla pagina del dataset; treni SŽ " +
-                "attesi ma non ancora verificati. Se li contiene sostituisce la fonte su accordo sz-passenger. Fino alla " +
-                "conferma pack solo nelle build personali (gtfs-personal/)."
+            downloadOrProbeUri = uri("https://dujpp.si/gtfs/dujpp-ijpp.zip"),
+            attribution = "Družba za upravljanje javnega potniškega prometa (dujpp.si) / NAP Slovenia (nap.si), orario integrato IJPP",
+            notes = "Candidato di tools/transit_packs.json: file pubblico di dujpp.si a cui rimanda la pagina del dataset (il file " +
+                "b2b.nap.si risponde HTTP 401). Licenza non confermata: CC BY-SA 4.0 secondo Transitous, «CC0» nel testo della " +
+                "pagina nap.si, nessuna su dujpp.si; il pack derivato è offerto sotto CC BY-SA 4.0 con attribuzione. Treni SŽ " +
+                "presenti (probe del 23 novembre 2026); se ci sono le linee di confine sostituisce la fonte su accordo sz-passenger. " +
+                "Fino alla conferma della licenza pack solo nelle build personali (gtfs-personal/)."
         ),
         RailSourceDefinition(
             id = SourceId("fuc-udine-cividale"),
