@@ -299,7 +299,7 @@ final class NetworkReliabilityTests: XCTestCase {
         XCTAssertEqual(trenord.first?.airport.name, "Malpensa Aeroporto")
         XCTAssertEqual(AirportRoutes.links(catalog: catalog, coveredStationIDs: ["S01700", "S01139"], packsWithTrips: []), [])
         XCTAssertEqual(AirportRoutes.links(catalog: catalog, coveredStationIDs: ["S01700"], packsWithTrips: ["lombardia-trenord-gtfs"]), [])
-        XCTAssertEqual(AirportRoutes.all.count, 8)
+        XCTAssertEqual(AirportRoutes.all.count, 9)
     }
 
     // MARK: - Fixtures
