@@ -464,25 +464,25 @@ class EmbeddedGtfsRouteAdapter(
 
     /**
      * The identity of [copy] with its stops lined up with [kept]'s, one for one: the first and the last stops are the
-     * ends of both, and every stop between is the next stop of [copy] at the same minute. Null when a stop of [kept]
-     * has no such stop in [copy]: two packs that disagree on a time do not share their realtime.
+     * ends of both at the same minutes, and each stop between is the next stop of [copy] at the same minute, or null
+     * when [copy] has none (the national pack lists Modane on a Milano–Paris Frecciarossa, Trenitalia France does not).
+     * Null when the ends differ: two packs that disagree on the run do not share their realtime.
      */
     private fun alignedIdentity(kept: TrainService, copy: TrainService): GtfsServiceIdentity? {
         val identity = copy.gtfsIdentity ?: return null
-        if (identity.stops.size != copy.stops.size || kept.stops.size < 2 || copy.stops.size < kept.stops.size) return null
-        val aligned = ArrayList<GtfsStopIdentity>(kept.stops.size)
-        var next = 0
-        kept.stops.forEachIndexed { index, stop ->
-            val time = stop.scheduled.takeIf { ':' in it } ?: return null
-            val candidates = when (index) {
-                0 -> 0..0
-                kept.stops.lastIndex -> copy.stops.lastIndex..copy.stops.lastIndex
-                else -> next until copy.stops.lastIndex
-            }
-            val at = candidates.firstOrNull { it >= next && copy.stops[it].scheduled == time } ?: return null
-            aligned += identity.stops[at]
-            next = at + 1
+        if (identity.stops.size != copy.stops.size || kept.stops.size < 2 || copy.stops.size < 2) return null
+        fun sameMinute(keptIndex: Int, copyIndex: Int): Boolean =
+            ':' in kept.stops[keptIndex].scheduled && kept.stops[keptIndex].scheduled == copy.stops[copyIndex].scheduled
+        if (!sameMinute(0, 0) || !sameMinute(kept.stops.lastIndex, copy.stops.lastIndex)) return null
+        val aligned = ArrayList<GtfsStopIdentity?>(kept.stops.size)
+        aligned += identity.stops.first()
+        var next = 1
+        for (index in 1 until kept.stops.lastIndex) {
+            val at = (next until copy.stops.lastIndex).firstOrNull { sameMinute(index, it) }
+            aligned += at?.let { identity.stops[it] }
+            if (at != null) next = at + 1
         }
+        aligned += identity.stops.last()
         return identity.copy(stops = aligned)
     }
 

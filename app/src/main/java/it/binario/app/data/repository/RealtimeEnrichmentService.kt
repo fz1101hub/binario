@@ -53,7 +53,7 @@ class RealtimeEnrichmentService(
                     byTrip[update.sourceTripId].orEmpty().forEach identityLoop@ { identity ->
                         if (update.serviceDate != null && update.serviceDate != identity.serviceDate) return@identityLoop
                         if (identity.stops.none { stop ->
-                            (update.sourceStopId == null || update.sourceStopId == stop.stopId) &&
+                            stop != null && (update.sourceStopId == null || update.sourceStopId == stop.stopId) &&
                                 (update.stopSequence == null || update.stopSequence == stop.sequence)
                         }) return@identityLoop
                         val scheduled = scheduleResolver.resolve(staticId, update, identity.serviceDate, zone) ?: return@identityLoop

@@ -173,8 +173,8 @@ class EmbeddedGtfsRouteAdapterTest {
         assertEquals("lombardia-trenord-gtfs", service.gtfsIdentity?.sourceId)
         assertEquals("T1", service.gtfsIdentity?.tripId)
         assertEquals(LocalDate.of(2026, 9, 4), service.gtfsIdentity?.serviceDate)
-        assertEquals(listOf(1, 2, 3), service.gtfsIdentity?.stops?.map { it.sequence })
-        assertEquals(listOf("MI", "MO", "CO"), service.gtfsIdentity?.stops?.map { it.stopId })
+        assertEquals(listOf(1, 2, 3), service.gtfsIdentity?.stops?.map { it?.sequence })
+        assertEquals(listOf("MI", "MO", "CO"), service.gtfsIdentity?.stops?.map { it?.stopId })
     }
 
     @Test
@@ -332,15 +332,16 @@ class EmbeddedGtfsRouteAdapterTest {
     }
 
     /**
-     * A copy left out is the same train, but its realtime is shared only stop for stop at the same minute: where the
-     * two packs disagree on a time, the kept train gets no alternate identity (the copy is still left out, as before).
-     * The alternate is lined up with the kept stops when the copy lists one more stop in between.
+     * A copy left out is the same train, but its realtime is shared only stop for stop at the same minute: a stop of
+     * the kept train that the copy lists at another minute, or not at all (Modane on a Milano–Paris Frecciarossa of
+     * the national pack, missing in Trenitalia France's), gets nothing from the copy's feed; ends that differ leave no
+     * alternate at all (the copy is still left out, as before). The copy may list one more stop in between.
      */
     @Test
     fun `la copia scartata lascia la sua identita solo con gli stessi orari fermata per fermata`() = runBlocking {
-        suspend fun services(franceStopTimes: String): List<it.binario.app.data.TrainService> {
+        suspend fun services(franceStopTimes: String, franceNumber: String = "FR 9241"): List<it.binario.app.data.TrainService> {
             val feeds = mapOf(
-                "trenitalia-france-gtfs" to feed(tripId = "F9241", tripNumber = "FR 9241", agencyName = "Trenitalia France", stopTimes = franceStopTimes),
+                "trenitalia-france-gtfs" to feed(tripId = "F9241", tripNumber = franceNumber, agencyName = "Trenitalia France", stopTimes = franceStopTimes),
                 "trenitalia-gtfs" to feed(tripId = "T9241", tripNumber = "9241", agencyName = "TRENITALIA")
             )
             return (EmbeddedGtfsRouteAdapter(
@@ -350,15 +351,25 @@ class EmbeddedGtfsRouteAdapterTest {
             ).loadRoute(route, Direction.OUTBOUND, JourneyQuery(LocalDate.of(2026, 9, 4), LocalTime.of(8, 0))) as DataResult.Success).snapshot.services
         }
         val header = "trip_id,arrival_time,departure_time,stop_id,stop_sequence\n"
+        fun stopsOf(services: List<it.binario.app.data.TrainService>) = services.single().alternateGtfsIdentities.map { it.stops }
+
         val otherMinute = services(header + "F9241,08:05:00,08:05:00,MI,1\nF9241,08:22:00,08:24:00,MO,2\nF9241,08:50:00,08:50:00,CO,3\n")
         assertEquals(listOf("T9241"), otherMinute.map { it.gtfsIdentity?.tripId })
-        assertEquals(emptyList<GtfsServiceIdentity>(), otherMinute.single().alternateGtfsIdentities)
+        assertEquals(listOf(listOf(GtfsStopIdentity("MI", 1), null, GtfsStopIdentity("CO", 3))), stopsOf(otherMinute))
+
+        val withoutMonza = services(header + "F9241,08:05:00,08:05:00,MI,1\nF9241,08:50:00,08:50:00,CO,3\n")
+        assertEquals(listOf(listOf(GtfsStopIdentity("MI", 1), null, GtfsStopIdentity("CO", 3))), stopsOf(withoutMonza))
 
         val oneMore = services(header + "F9241,08:05:00,08:05:00,MI,10\nF9241,08:15:00,08:16:00,MO,15\n" +
             "F9241,08:22:00,08:23:00,MO,20\nF9241,08:50:00,08:50:00,CO,30\n")
         assertEquals(listOf("T9241"), oneMore.map { it.gtfsIdentity?.tripId })
-        assertEquals(listOf(listOf(GtfsStopIdentity("MI", 10), GtfsStopIdentity("MO", 20), GtfsStopIdentity("CO", 30))),
-            oneMore.single().alternateGtfsIdentities.map { it.stops })
+        assertEquals(listOf(listOf(GtfsStopIdentity("MI", 10), GtfsStopIdentity("MO", 20), GtfsStopIdentity("CO", 30))), stopsOf(oneMore))
+
+        // Same number, same departure: one train, but the copy arrives two minutes later, so it shares nothing.
+        val otherArrival = services(header + "F9241,08:05:00,08:05:00,MI,1\nF9241,08:22:00,08:23:00,MO,2\nF9241,08:52:00,08:52:00,CO,3\n",
+            franceNumber = "9241")
+        assertEquals(listOf("T9241"), otherArrival.map { it.gtfsIdentity?.tripId })
+        assertEquals(emptyList<List<GtfsStopIdentity?>>(), stopsOf(otherArrival))
     }
 
     /**

@@ -158,6 +158,7 @@ class GtfsRealtimeEnrichedTrainDataSource(
                 (it.update.serviceDate != null || it.scheduledStop.scheduledAt.toLocalDate() == query.serviceDate)
         }
         return identity.stops.map { stop ->
+            if (stop == null) return@map null
             matches.filter { it.scheduledStop.sourceStopId == stop.stopId && it.scheduledStop.stopSequence == stop.sequence }
                 .maxByOrNull { it.update.observedAt }
                 ?.takeIf { delay(it) != null }

@@ -71,6 +71,13 @@ class GtfsRealtimeEnrichedTrainDataSourceTest {
         assertEquals(4, load(listOf(kept), listOf(provider(sta, listOf(untimed)), provider(sncf, listOf(copyUpdate(240)))),
             stopTimes = stopTimes).services.single().delayMinutes)
 
+        // A stop the copy does not list at the same minute (null) gets nothing from the copy's feed.
+        val partial = service().copy(alternateGtfsIdentities = listOf(copy.copy(stops = listOf(GtfsStopIdentity("A", 10), null))))
+        val onlyFirst = load(listOf(partial), listOf(provider(sncf, listOf(copyUpdate(240), copyUpdate(360, "B", 20)))),
+            stopTimes = stopTimes).services.single()
+        assertEquals(listOf("12:04", "12:30"), onlyFirst.stops.map { it.expected })
+        assertEquals(listOf(4, 0), onlyFirst.stops.map { it.delayMinutes })
+
         // The copy's update is joined by its own trip, stop and sequence only: the kept copy's trip id in the other
         // feed, or another stop sequence, attaches nothing.
         listOf(update(sncf, 240), copyUpdate(240, sequence = 11)).forEach { stray ->
