@@ -1,5 +1,15 @@
 # Changelog
 
+## In sviluppo — Fermate abbinate per nome solo entro 10 km
+
+- **Android, abbinamento delle fermate alle stazioni**: un abbinamento per nome vale ora solo entro 10 km. Prima una fermata poteva finire su una stazione omonima a centinaia di km. Per esempio:
+  - la Guarda dell'Engadina finiva sulla «Guarda» vicino a Ferrara (266 km) e Steinach in Svizzera su Steinach in Tirolo (159 km), così una ricerca Tirano → Guarda (FE) mostrava treni svizzeri;
+  - stesso problema per Bellavista (Svizzera → Puglia), Lison e Villeneuve (Francia → Italia), Montesanto e S. Marco (EAV), Acqua Acetosa e Montebello (Roma Nord), San Giorgio (ARST), Sant'Antonino (Genova–Casella).
+- **Come è stata scelta la soglia**: dai dati di tutti i pack. L'abbinamento giusto più lontano è a 8,4 km (Rocchetta S. Antonio-Lacedonia), quello sbagliato più vicino a 18,7 km. È anche la soglia già usata su iPhone e per i codici Trenitalia.
+- **Cosa cambia**: 20 fermate perdono un abbinamento sbagliato. Nessuna fermata cambia stazione e nessuna stazione italiana perde i suoi treni.
+- Le stazioni servite dai pack esteri si aggiornano di conseguenza (Svizzera −3, Francia −2); i file pubblicati non cambiano.
+- Le stazioni senza coordinate nel catalogo restano abbinate per nome: per 9 su 12 il codice ferroviario conferma che sono proprio quelle.
+
 ## In sviluppo — Corridoi dei frontalieri; Svizzera e Francia a richiesta
 
 Decisioni del titolare del 22 novembre: «più che un raggio in km, un limite ragionato sulle tratte estere più usate, specie dai frontalieri», e «procedi per tutte le nazioni».
