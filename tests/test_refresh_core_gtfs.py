@@ -267,6 +267,77 @@ class RefreshCoreTest(unittest.TestCase):
         with contextlib.redirect_stderr(io.StringIO()):
             self.assertEqual(1, refresh.main(["--fail-on-report", str(self.temp / "out/publish/core-refresh.json")]))
 
+    def with_next_timetable(self, start: str) -> dict[str, str]:
+        """plain-gtfs registered like the Swiss pack: this year's permalink, the next year's from ``start``."""
+        following = {"from": start, "sourceUrl": "https://example.test/plain-2027/permalink",
+                     "landingPage": "https://example.test/plain-2027"}
+        for pack in self.manifest["packs"]:
+            if pack["sourceId"] == "plain-gtfs":
+                pack["nextTimetable"] = following
+        builder.write_json(self.published / "manifest.json", self.manifest)
+        builder.read_manifest(self.published / "manifest.json")
+        self.before = {path.name: path.read_bytes() for path in self.published.iterdir()}
+        return following
+
+    def test_the_next_timetable_is_downloaded_from_its_reviewed_first_day(self) -> None:
+        following = self.with_next_timetable("2026-12-13")
+        sources = self.temp / "new"
+        sources.mkdir()
+        current = gtfs_zip(sources / "current.zip", end="20261212")
+        payloads = {"https://example.test/plain-gtfs.zip": current, following["sourceUrl"]: gtfs_zip(sources / "next.zip", end="20271211")}
+        # Before the switch: this year's source, and the entry keeps the next one for later.
+        report, fetch = self.run_refresh(payloads, selection=["plain-gtfs"])
+        self.assertEqual(["https://example.test/plain-gtfs.zip"], fetch.urls)
+        self.assertNotIn("timetableSwitch", report["packs"]["plain-gtfs"])
+        staged = {pack["sourceId"]: pack for pack in json.loads((self.temp / "out/staging/gtfs/manifest.json").read_text(encoding="utf-8"))["packs"]}
+        self.assertEqual("2026-12-12", staged["plain-gtfs"]["lastServiceDate"])
+        self.assertEqual(following, staged["plain-gtfs"]["nextTimetable"])
+        # From the first day of the next timetable: its source, adopted in the entry, and the field is spent.
+        fetch = FakeDownloads(payloads)
+        with contextlib.redirect_stdout(io.StringIO()):
+            report = refresh.refresh(["plain-gtfs"], self.published, self.temp / "out", "2026-12-13", fetch=fetch, resolve=self.resolve)
+        self.assertEqual([following["sourceUrl"]], fetch.urls)
+        self.assertEqual("changed", report["packs"]["plain-gtfs"]["status"])
+        self.assertEqual(
+            {"previousSourceUrl": "https://example.test/plain-gtfs.zip", **following},
+            report["packs"]["plain-gtfs"]["timetableSwitch"],
+        )
+        staged = {pack["sourceId"]: pack for pack in json.loads((self.temp / "out/staging/gtfs/manifest.json").read_text(encoding="utf-8"))["packs"]}
+        self.assertEqual(following["sourceUrl"], staged["plain-gtfs"]["sourceUrl"])
+        self.assertNotIn("nextTimetable", staged["plain-gtfs"])
+        self.assertEqual("2027-12-11", staged["plain-gtfs"]["lastServiceDate"])
+        self.assertIn("orario successivo dal 2026-12-13", refresh.report_markdown(report))
+        self.assertEqual(self.before, {path.name: path.read_bytes() for path in self.published.iterdir()})
+
+    def test_a_permalink_names_the_file_it_resolved_to_in_the_summary(self) -> None:
+        sources = self.temp / "new"
+        sources.mkdir()
+
+        def resolved(url: str, target: Path) -> dict[str, Any]:
+            record = FakeDownloads({url: gtfs_zip(sources / "plain.zip", end="20281231")})(url, target)
+            return {**record, "finalUrl": "https://example.test/download/gtfs_fp2026_2026-11-20.zip"}
+
+        with contextlib.redirect_stdout(io.StringIO()):
+            report = refresh.refresh(["plain-gtfs"], self.published, self.temp / "out", "2026-11-23", fetch=resolved, resolve=self.resolve)
+        self.assertIn("da https://example.test/download/gtfs_fp2026_2026-11-20.zip", refresh.report_markdown(report))
+
+    def test_a_next_timetable_must_be_reviewed_https_and_differ_from_the_current_source(self) -> None:
+        base = {"sourceId": "x", "asset": "gtfs/x.zip", "sourceUrl": "https://example.test/x"}
+        good = {"from": "2026-12-13", "sourceUrl": "https://example.test/y", "landingPage": "https://example.test/y-page"}
+        builder.validate_next_timetable("x", {**base, "nextTimetable": good})
+        for broken in (
+            {**good, "from": "13.12.2026"},
+            {**good, "sourceUrl": "http://example.test/y"},
+            {**good, "sourceUrl": base["sourceUrl"]},
+            {key: value for key, value in good.items() if key != "landingPage"},
+            {**good, "extra": "x"},
+        ):
+            with self.subTest(broken=broken), self.assertRaises(builder.BuildError):
+                builder.validate_next_timetable("x", {**base, "nextTimetable": broken})
+        self.assertIsNone(builder.timetable_switch({**base, "nextTimetable": good}, date(2026, 12, 12)))
+        self.assertEqual("https://example.test/y", builder.timetable_switch({**base, "nextTimetable": good}, date(2026, 12, 13))["sourceUrl"])
+        self.assertIsNone(builder.timetable_switch(base, date(2027, 1, 1)))
+
     def test_an_unknown_pack_is_refused_before_any_download(self) -> None:
         fetch = FakeDownloads({})
         with self.assertRaisesRegex(refresh.RefreshError, "missing-gtfs"):

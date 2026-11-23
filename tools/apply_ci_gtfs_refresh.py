@@ -18,8 +18,9 @@ container).  This helper:
    its published bytes and entry, a pack missing from the print (partial build) stays as it is, and a pack that would
    shrink by more than half (trips or stop times), end earlier than before, or claim a lastServiceDate more than a
    month after its last full-service day (a trickle of trips kept for years) is refused unless ``--accept ID``;
-3. carries the reviewed Trenitalia/Italo pins (``core-refresh.json``) into the iOS source policy and
-   ``RailSourceCatalog.kt``, and aligns ``lastServiceDate`` in ``EmbeddedGtfsPacks.kt`` and ``TransitGtfsPacks.kt``;
+3. carries the reviewed Trenitalia/Italo pins (``core-refresh.json``) and the switch of a pack to its reviewed next
+   timetable source (``nextTimetable``, Switzerland) into the iOS source policy and ``RailSourceCatalog.kt``, and
+   aligns ``lastServiceDate`` in ``EmbeddedGtfsPacks.kt`` and ``TransitGtfsPacks.kt``;
 4. runs ``build_gtfs_packs.py --check`` (integrity and the 30-day release gate) for each directory,
    ``verify_embedded_assets.py`` and, when the main manifest or the iOS policy changed, ``build_foreign_packs.py``
    (iPhone base and per-country indexes, foreign-pack pins, ledger and their checks), ``verify_ios_gtfs_schedule.py``
@@ -445,17 +446,44 @@ def merge_directory(
                            staged_full if full_replacements else None, full_dir)
 
 
-def pin_updates(merged: MergedDirectory, report: Mapping[str, Any] | None) -> list[tuple[str, str, str]]:
-    """(sourceId, old sourceUrl, new sourceUrl) of the pinned packs adopted, checked against the printed blocks."""
+@dataclass(frozen=True)
+class SourceUpdate:
+    """A new sourceUrl adopted for a pack (and, on a timetable switch, its landing page), with the table note."""
+    source_id: str
+    old_url: str
+    new_url: str
+    note: str
+    landing_page: str | None = None
+
+
+def pin_updates(merged: MergedDirectory, report: Mapping[str, Any] | None) -> list[SourceUpdate]:
+    """The new sourceUrl of each pack that changed it: an adopted upstream pin, checked against the printed blocks, or
+    the switch to the reviewed ``nextTimetable`` of the published entry, checked against the job's report."""
     updates = []
     old_by_id = {pack["sourceId"]: pack for pack in merged.old_manifest["packs"]}
     for pack in merged.new_manifest["packs"]:
         old = old_by_id[pack["sourceId"]]
         if pack.get("sourceUrl") == old.get("sourceUrl"):
             continue
+        entry = ((report or {}).get("packs", {}).get(pack["sourceId"], {}) or {})
         if "upstream" not in pack:
-            raise ApplyError(f"{pack['sourceId']}: sourceUrl cambiato senza upstream fissato")
-        proposed = ((report or {}).get("packs", {}).get(pack["sourceId"], {}) or {}).get("proposedUpstream")
+            following = old.get(builder.NEXT_TIMETABLE_FIELD)
+            switch = entry.get("timetableSwitch") or {}
+            if (
+                not isinstance(following, Mapping)
+                or builder.NEXT_TIMETABLE_FIELD in pack
+                or pack.get("sourceUrl") != following.get("sourceUrl")
+                or switch.get("sourceUrl") != following.get("sourceUrl")
+                or switch.get("previousSourceUrl") != old.get("sourceUrl")
+                or switch.get("landingPage") != following.get("landingPage")
+            ):
+                raise ApplyError(f"{pack['sourceId']}: sourceUrl cambiato senza upstream fissato né nextTimetable rivisto")
+            updates.append(SourceUpdate(
+                pack["sourceId"], str(old["sourceUrl"]), str(pack["sourceUrl"]),
+                f"orario successivo dal {following['from']}: {pack['sourceUrl']}", str(following["landingPage"]),
+            ))
+            continue
+        proposed = entry.get("proposedUpstream")
         upstream = pack["upstream"]
         if (
             not proposed
@@ -465,7 +493,10 @@ def pin_updates(merged: MergedDirectory, report: Mapping[str, Any] | None) -> li
             or upstream.get("archiveSha256") != pack.get("sourceArchiveSha256")
         ):
             raise ApplyError(f"{pack['sourceId']}: pin upstream del manifest diverso dal blocco stampato in core-refresh.json")
-        updates.append((pack["sourceId"], str(old["sourceUrl"]), str(pack["sourceUrl"])))
+        updates.append(SourceUpdate(
+            pack["sourceId"], str(old["sourceUrl"]), str(pack["sourceUrl"]),
+            f"pin upstream {str(old['upstream']['commit'])[:12]} -> {str(upstream['commit'])[:12]}",
+        ))
     return updates
 
 
@@ -496,8 +527,9 @@ def replace_once(text: str, old: str, new: str, path: Path) -> str:
     return text.replace(old, new)
 
 
-def planned_edits(root: Path, directories: Sequence[MergedDirectory], pins: Sequence[tuple[str, str, str]]) -> dict[Path, str]:
-    """New text of the Kotlin registries (lastServiceDate of every pack) and of the files mirroring a pinned URL."""
+def planned_edits(root: Path, directories: Sequence[MergedDirectory], pins: Sequence[SourceUpdate]) -> dict[Path, str]:
+    """New text of the Kotlin registries (lastServiceDate of every pack) and of the files mirroring a pack's sourceUrl
+    (and landing page)."""
     manifests = {item.name: item.new_manifest for item in directories}
     dates: dict[str, tuple[str, str]] = {}
     for name, relative in DESTINATIONS.items():
@@ -522,13 +554,22 @@ def planned_edits(root: Path, directories: Sequence[MergedDirectory], pins: Sequ
         credits = android_credits.render(android_credits.load_manifests(root, manifests))
         if credits != credits_path.read_text(encoding="utf-8"):
             edits[credits_path] = credits
+    replacements = [(update.old_url, update.new_url) for update in pins]
+    policy_path = root / PIN_MIRRORS[0]
+    if any(update.landing_page for update in pins):
+        landing = {item["sourceId"]: item.get("landingPage")
+                   for item in json.loads(policy_path.read_text(encoding="utf-8")).get("sources", [])}
+        for update in pins:
+            old_page = landing.get(update.source_id)
+            if update.landing_page and old_page and old_page != update.landing_page:
+                replacements.append((old_page, update.landing_page))
     for relative in PIN_MIRRORS:
-        if not pins:
+        if not replacements:
             break
         path = root / relative
         text = path.read_text(encoding="utf-8")
-        for _, old_url, new_url in pins:
-            text = replace_once(text, old_url, new_url, relative)
+        for old_text, new_text in replacements:
+            text = replace_once(text, old_text, new_text, relative)
         edits[path] = text
     return edits
 
@@ -673,14 +714,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             edits = planned_edits(root, merged, pins)
             rows = [row for item in merged for row in item.rows]
             if core is not None:
-                previous = {pack["sourceId"]: pack for pack in core.old_manifest["packs"]}
-                current = {pack["sourceId"]: pack for pack in core.new_manifest["packs"]}
                 for row in core.rows:
-                    if any(source_id == row.source_id for source_id, _, _ in pins):
-                        row.notes.append(
-                            f"pin upstream {previous[row.source_id]['upstream']['commit'][:12]} -> "
-                            f"{current[row.source_id]['upstream']['commit'][:12]}"
-                        )
+                    row.notes.extend(update.note for update in pins if update.source_id == row.source_id)
             print(table(rows))
             review = upstream_review(core_report)
             if review:

@@ -11,7 +11,9 @@ reach the publishers.  For every selected pack of the core manifest:
   the upstream archive (GitHub API, ``git ls-remote`` as fallback); the archive of that commit is downloaded and, when
   it differs from the pinned one, the pack is rebuilt with the *proposed* pin.  ``feed_info.txt`` and
   ``attributions.txt`` of the new archive are reported for review: adopting the pin stays a reviewed commit;
-* every other ``OPEN_DIRECT`` pack is downloaded from its registered HTTPS ``sourceUrl``.
+* every other ``OPEN_DIRECT`` pack is downloaded from its registered HTTPS ``sourceUrl``; from the ``from`` day of a
+  reviewed ``nextTimetable`` (a publisher with one dataset per timetable year behind a permalink, Switzerland) from its
+  ``sourceUrl``, and the rebuilt entry takes that URL and drops the field (``build_gtfs_packs.timetable_switch``).
 
 Downloads use ``acquire_transit_sources.download`` (HTTPS only, byte cap, resume, retries on 5xx).  An archive equal
 to the one recorded in the manifest (``sourceArchiveSha256``) is not rebuilt.  Every changed source is built alone
@@ -199,14 +201,21 @@ def entry_summary(pack: Mapping[str, Any], directory: Path) -> dict[str, Any]:
 
 
 def proposed_source_manifest(
-    manifest: Mapping[str, Any], source_id: str, proposed: Mapping[str, Any] | None
+    manifest: Mapping[str, Any],
+    source_id: str,
+    proposed: Mapping[str, Any] | None,
+    switch: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
-    """The staging manifest with the proposed upstream pin of one pack (sourceUrl, commit, archive digest, note)."""
+    """The staging manifest with the proposed upstream pin of one pack (sourceUrl, commit, archive digest, note), or
+    with the source of its next timetable (sourceUrl, without ``nextTimetable``)."""
     payload = json.loads(json.dumps(manifest))
-    if proposed is None:
-        return payload
     for pack in payload["packs"]:
         if pack["sourceId"] != source_id:
+            continue
+        if switch is not None:
+            pack["sourceUrl"] = switch["sourceUrl"]
+            pack.pop(builder.NEXT_TIMETABLE_FIELD, None)
+        if proposed is None:
             continue
         pack["upstream"] = {**pack["upstream"], "commit": proposed["commit"], "archiveSha256": proposed["archiveSha256"]}
         pack["sourceUrl"] = proposed["sourceUrl"]
@@ -223,6 +232,7 @@ def build_one(
     proposed: Mapping[str, Any] | None,
     work: Path,
     full_pack_dir: Path | None = None,
+    switch: Mapping[str, Any] | None = None,
 ) -> tuple[str, dict[str, Any]]:
     """Rebuild one pack in ``staging``; returns ("changed" | "content-unchanged", new entry).  The full pack of a
     border pack is rebuilt in ``full_pack_dir`` (a staging copy of data/gtfs-foreign/android)."""
@@ -234,7 +244,7 @@ def build_one(
         snapshot.update({full_pack_dir / item: (full_pack_dir / item).read_bytes()
                          for item in (name, "SHA256SUMS") if (full_pack_dir / item).is_file()})
     source_manifest = work / f"{source_id}.manifest.json"
-    builder.write_json(source_manifest, proposed_source_manifest(manifest, source_id, proposed))
+    builder.write_json(source_manifest, proposed_source_manifest(manifest, source_id, proposed, switch))
     output = builder.build_packs(
         staging, staging, manifest_path=source_manifest, generated_at=generated_at,
         input_overrides={source_id: archive}, only=[source_id], full_pack_dir=full_pack_dir,
@@ -310,6 +320,12 @@ def refresh(
                 raise RefreshError(f"accessMode {pack.get('accessMode')}: serve un archivio acquisito da canale approvato")
             proposed: dict[str, Any] | None = None
             url = str(pack["sourceUrl"])
+            switch = builder.timetable_switch(pack, date.fromisoformat(generated_at))
+            if switch is not None:
+                # The next timetable year's dataset, from its reviewed first day.
+                url = switch["sourceUrl"]
+                entry["timetableSwitch"] = switch
+                print(f"  {source_id}: orario successivo dal {switch['from']}", flush=True)
             upstream = pack.get("upstream")
             if isinstance(upstream, dict):
                 resolved = resolve(upstream)
@@ -334,11 +350,11 @@ def refresh(
                 proposed["archiveSha256"] = record["sha256"]
                 entry["proposedUpstream"] = proposed
                 entry["upstreamMetadata"] = upstream_metadata(target)
-            if record["sha256"] == pack.get("sourceArchiveSha256"):
+            if record["sha256"] == pack.get("sourceArchiveSha256") and switch is None:
                 entry["status"] = "unchanged"
                 print(f"  {source_id}: archivio identico a quello pubblicato", flush=True)
                 continue
-            status, rebuilt = build_one(staging, source_id, target, generated_at, proposed, work, staging_full)
+            status, rebuilt = build_one(staging, source_id, target, generated_at, proposed, work, staging_full, switch)
             entry["status"] = status
             entry["new"] = entry_summary(rebuilt, staging)
             print(f"  {source_id}: {status} lastServiceDate {pack.get('lastServiceDate')} -> {rebuilt.get('lastServiceDate')}", flush=True)
@@ -419,6 +435,13 @@ def report_markdown(report: Mapping[str, Any]) -> str:
         trips_after = new.get("counts", {}).get("trips")
         trips = trips_before if trips_after == trips_before else f"{trips_before} → {trips_after}"
         note = entry.get("error") or entry.get("detail") or ""
+        download = entry.get("download") or {}
+        if download.get("finalUrl") and download.get("finalUrl") != download.get("url"):
+            # A permalink (the Swiss datasets) names the dated file it resolved to only here.
+            note = f"da {download['finalUrl']}" + (f"; {note}" if note else "")
+        switch = entry.get("timetableSwitch")
+        if switch:
+            note = f"orario successivo dal {switch.get('from')}: {switch.get('sourceUrl')}" + (f"; {note}" if note else "")
         proposed = entry.get("proposedUpstream")
         if proposed:
             note = (f"commit {str(proposed['commit'])[:12]} ({proposed.get('commitDate') or 'data ignota'}), "

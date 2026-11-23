@@ -299,7 +299,7 @@ object RailSourceCatalog {
             countryCodes = setOf("CH", "IT"),
             coverage = "SBB, TILO, BLS, RhB e servizi transfrontalieri inclusi nella distribuzione nazionale.",
             landingPage = uri("https://data.opentransportdata.swiss/dataset/timetable-2026-gtfs2020"),
-            downloadOrProbeUri = uri("https://data.opentransportdata.swiss/dataset/3d2c18f9-9ef1-463f-a249-5c67604efd74/resource/32c2dfb4-8953-45b5-b271-211a2fa3aa18/download/gtfs_fp2026_2025-08-14.zip"),
+            downloadOrProbeUri = uri("https://data.opentransportdata.swiss/de/dataset/timetable-2026-gtfs2020/permalink"),
             attribution = "Open Data Platform Mobility Switzerland / SBB Infrastructure — opendata.swiss terms_by",
             notes = "Data pack ferroviario filtrato e verificato; aggiornare con manifest e attribuzione a ogni release." + FOREIGN_PACK_DELIVERY
         ),

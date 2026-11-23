@@ -408,6 +408,64 @@ class ApplyTest(unittest.TestCase):
                                       job_status={}, full_printed={**directories[apply.FULL_PRINT_DIR], "pinned-gtfs.zip": b"PK"},
                                       full_dir=full_dir, catalogue_path=catalogue)
 
+    def test_a_reviewed_timetable_switch_moves_source_url_and_landing_page_in_the_mirrors(self) -> None:
+        current, landing = "https://example.test/plain-gtfs.zip", "https://example.test/plain-2026"
+        following = {"from": "2026-11-01", "sourceUrl": "https://example.test/plain-2027/permalink",
+                     "landingPage": "https://example.test/plain-2027"}
+        manifest = json.loads((self.assets / "manifest.json").read_text(encoding="utf-8"))
+        for pack in manifest["packs"]:
+            if pack["sourceId"] == "plain-gtfs":
+                pack["nextTimetable"] = following
+        builder.write_json(self.assets / "manifest.json", manifest)
+        policy = self.root / apply.PIN_MIRRORS[0]
+        policy.write_text(json.dumps({"sources": [{"sourceId": "plain-gtfs", "sourceUrl": current, "landingPage": landing}]},
+                                     indent=2) + "\n", encoding="utf-8")
+        catalog = self.root / apply.PIN_MIRRORS[1]
+        catalog.write_text(f'landingPage = uri("{landing}"),\ndownloadOrProbeUri = uri("{current}"),\n', encoding="utf-8")
+        sources = self.temp / "upstream"
+        sources.mkdir()
+        payloads = {following["sourceUrl"]: gtfs_zip(sources / "next.zip", end="20281231")}
+        out = self.temp / "out"
+        with contextlib.redirect_stdout(io.StringIO()):
+            report = refresh.refresh(["plain-gtfs"], self.assets, out, "2026-11-03", fetch=FakeDownloads(payloads),
+                                     resolve=lambda upstream: {}, full_pack_dir=self.temp / "no-full-packs")
+        self.assertEqual("changed", report["packs"]["plain-gtfs"]["status"])
+        log = self.temp / "core-packs.log"
+        log.write_text(job_log(out / "publish"), encoding="utf-8")
+        code, output = self.apply("--log", str(log))
+        self.assertEqual(0, code, output)
+        entry = next(pack for pack in json.loads((self.assets / "manifest.json").read_text(encoding="utf-8"))["packs"]
+                     if pack["sourceId"] == "plain-gtfs")
+        self.assertEqual(following["sourceUrl"], entry["sourceUrl"])
+        self.assertNotIn("nextTimetable", entry)
+        for mirror in (policy, catalog):
+            text = mirror.read_text(encoding="utf-8")
+            self.assertIn(following["sourceUrl"], text)
+            self.assertIn(following["landingPage"], text)
+            self.assertNotIn(current, text)
+            self.assertNotIn(f'"{landing}"', text)
+        self.assertIn("orario successivo dal 2026-11-01", output)
+
+    def test_a_source_url_changed_without_a_pin_or_a_reviewed_switch_is_refused(self) -> None:
+        self.job()
+        manifest = json.loads((self.temp / "out/staging/gtfs/manifest.json").read_text(encoding="utf-8"))
+        old = json.loads((self.assets / "manifest.json").read_text(encoding="utf-8"))
+        for pack in manifest["packs"]:
+            if pack["sourceId"] == "plain-gtfs":
+                pack["sourceUrl"] = "https://example.test/elsewhere.zip"
+        merged = apply.MergedDirectory("gtfs", self.assets, [], self.temp, old, manifest)
+        with self.assertRaisesRegex(apply.ApplyError, "plain-gtfs: sourceUrl cambiato"):
+            apply.pin_updates(merged, {"packs": {}})
+        # A switch to a URL other than the reviewed next one is refused as well.
+        for pack in old["packs"]:
+            if pack["sourceId"] == "plain-gtfs":
+                pack["nextTimetable"] = {"from": "2026-11-01", "sourceUrl": "https://example.test/reviewed.zip",
+                                         "landingPage": "https://example.test/reviewed"}
+        report = {"packs": {"plain-gtfs": {"timetableSwitch": {"previousSourceUrl": "https://example.test/plain-gtfs.zip",
+                                                                "sourceUrl": "https://example.test/elsewhere.zip"}}}}
+        with self.assertRaisesRegex(apply.ApplyError, "nextTimetable rivisto"):
+            apply.pin_updates(apply.MergedDirectory("gtfs", self.assets, [], self.temp, old, manifest), report)
+
     def test_the_shipped_kotlin_registries_match_the_manifests(self) -> None:
         self.assertEqual({}, apply.planned_edits(ROOT, [], []))
 
