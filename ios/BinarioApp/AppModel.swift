@@ -254,6 +254,11 @@ final class AppModel: ObservableObject {
     private let backgroundActivity: (any BackgroundActivityRunning)?
     /// The live sources; nil in a model without them (the tests that do not need them): nothing is asked.
     private let liveData: (any LiveRailProviding)?
+    /// The open Trip Updates feeds of the bundled packs (STA, SNCF, Trenitalia France), joined to the listed trains by
+    /// trip and stop, behind the same «Dati in tempo reale» switch; nil in a build without them.
+    private let timetableRealtime: TimetableRealtime?
+    /// Their statuses on the rows of «Partenze», for the station and the instant they were asked.
+    private var boardRealtime: (stationID: String, statuses: [String: StationBoardLiveStatus], at: Date)?
     private let liveDataStore: LiveDataPreferenceStore
     private let livePauses: LiveSourcePauses
 
@@ -299,6 +304,7 @@ final class AppModel: ObservableObject {
         watchPublisher: WatchSnapshotPublisher?,
         backgroundActivity: (any BackgroundActivityRunning)? = nil,
         liveData: (any LiveRailProviding)? = nil,
+        timetableRealtime: TimetableRealtime? = nil,
         liveDataStore: LiveDataPreferenceStore = LiveDataPreferenceStore(),
         livePauses: LiveSourcePauses = .shared,
         versionDisplay: String
@@ -326,6 +332,7 @@ final class AppModel: ObservableObject {
         self.watchPublisher = watchPublisher
         self.backgroundActivity = backgroundActivity
         self.liveData = liveData
+        self.timetableRealtime = timetableRealtime
         self.liveDataStore = liveDataStore
         self.livePauses = livePauses
         let liveEnabled = liveDataStore.load()
@@ -399,6 +406,7 @@ final class AppModel: ObservableObject {
             // One instance for the whole app: its sources share their gates (one request per
             // resource every 30 seconds, pause at the first refusal) across every screen.
             liveData: LiveRailData.standard(),
+            timetableRealtime: TimetableRealtime.standard(),
             liveDataStore: LiveDataPreferenceStore(),
             versionDisplay: versionFormatter.displayVersion(bundle: bundle)
         )
@@ -1241,6 +1249,7 @@ final class AppModel: ObservableObject {
         boardLive = nil
         boardLiveSources = []
         boardKind = .departures
+        boardRealtime = nil
         setBoardRows(boardScheduled)
         resultLive = [:]
         resultLiveSources = []
@@ -1285,6 +1294,10 @@ final class AppModel: ObservableObject {
     func expireLiveValues(now: Date = Date()) {
         let pauses: [LiveSourcePause] = liveDataEnabled ? livePauses.active(at: now) : []
         if pauses != liveSourcePauses { liveSourcePauses = pauses }
+        if let realtime = boardRealtime, !Self.isLiveDisplayable(since: realtime.at, now: now) {
+            boardRealtime = nil
+            setBoardRows(boardScheduled)
+        }
         if let live = boardLive, !Self.isLiveDisplayable(since: live.at, now: now) {
             boardLive = nil
             boardLiveSources = []
@@ -1361,6 +1374,33 @@ final class AppModel: ObservableObject {
             boardLiveState = .unavailable
         }
         setBoardRows(boardScheduled)
+        await refreshBoardRealtime(identity, requestID: requestID, now: now)
+    }
+
+    /// The Trip Updates of the open feeds on the timetable rows of «Partenze» (the trains of their packs only), asked
+    /// once the live board has answered: a row no live board times shows their delay, as the planner's results do.
+    private func refreshBoardRealtime(_ identity: StationIdentity, requestID: Int, now: Date) async {
+        let answer = await Self.timetableStatuses(
+            timetableRealtime, timetable: repository as? any TimetableTripReading,
+            serviceIDs: boardScheduled.map(\.service.id), stationID: identity.id, day: now
+        )
+        guard requestID == boardLiveRequestID, boardStation == identity, liveDataEnabled else { return }
+        liveSourcePauses = livePauses.active(at: now)
+        guard !answer.statuses.isEmpty else { return }
+        boardRealtime = (identity.id, answer.statuses, now)
+        let used = Set(answer.statuses.values.compactMap(\.source))
+        boardLiveSources += LiveSource.allCases.filter { used.contains($0) && !boardLiveSources.contains($0) }
+        if case .unavailable = boardLiveState { boardLiveState = .available(now) }
+        setBoardRows(boardScheduled)
+    }
+
+    /// The statuses the open Trip Updates feeds give the listed trains (`TimetableRealtime`); none without the feeds or
+    /// the timetable index.
+    nonisolated private static func timetableStatuses(
+        _ realtime: TimetableRealtime?, timetable: (any TimetableTripReading)?, serviceIDs: [String], stationID: String, day: Date
+    ) async -> TimetableRealtimeAnswer {
+        guard let realtime, let timetable, !serviceIDs.isEmpty else { return .none }
+        return await realtime.statuses(serviceIDs: serviceIDs, stationID: stationID, day: day, timetable: timetable)
     }
 
     private var boardLiveRestingState: LiveState {
@@ -1387,8 +1427,16 @@ final class AppModel: ObservableObject {
     /// The rows of «Partenze», live first (`LiveOverlay.stationBoard`): with a usable live board of
     /// the same station, its rows (each on its bundled train when it has one), then the bundled
     /// rows after the last of them, «orario programmato»; without one, the bundled timetable's rows.
-    private func setBoardRows(_ rows: [StationBoardDeparture]) {
-        boardScheduled = rows
+    private func setBoardRows(_ scheduled: [StationBoardDeparture]) {
+        boardScheduled = scheduled
+        // The Trip Updates time the bundled rows first; a live board's row of the same train wins over them.
+        var rows = scheduled
+        if liveDataEnabled, let realtime = boardRealtime, realtime.stationID == boardStation?.id {
+            rows = scheduled.map { row in
+                guard row.live == nil, let status = realtime.statuses[row.service.id] else { return row }
+                return StationBoardDeparture(departure: row.departure, service: row.service, terminus: row.terminus, live: status)
+            }
+        }
         guard liveDataEnabled, let live = boardLive, live.stationID == boardStation?.id, live.board.kind == .departures else {
             boardDepartures = rows
             return
@@ -1477,6 +1525,27 @@ final class AppModel: ObservableObject {
             resultLiveAt = nil
             resultLiveState = .unavailable
         }
+        await refreshResultRealtime(snapshot, requestID: requestID, searchID: searchID, now: now)
+    }
+
+    /// The Trip Updates of the open feeds on the listed trains of their packs (Android's
+    /// `GtfsRealtimeEnrichedTrainDataSource`), joined by trip and stop at the origin, asked once the live board has
+    /// answered: a train its board times keeps the board's values, as Android's board reconciliation wins.
+    private func refreshResultRealtime(_ snapshot: JourneySnapshot, requestID: Int, searchID: Int, now: Date) async {
+        let answer = await Self.timetableStatuses(
+            timetableRealtime, timetable: repository as? any TimetableTripReading,
+            serviceIDs: snapshot.services.map(\.id), stationID: snapshot.query.origin.id, day: snapshot.query.departure
+        )
+        guard requestID == resultLiveRequestID, searchID == searchRequestID, liveDataEnabled else { return }
+        liveSourcePauses = livePauses.active(at: now)
+        let added = answer.statuses.filter { resultLive[$0.key] == nil }
+        guard !added.isEmpty else { return }
+        resultLive.merge(added) { kept, _ in kept }
+        let used = Set(added.values.compactMap(\.source))
+        resultLiveSources += LiveSource.allCases.filter { used.contains($0) && !resultLiveSources.contains($0) }
+        let at = resultLiveAt ?? now
+        resultLiveAt = at
+        resultLiveState = .available(at)
     }
 
     /// Each listed train's row on `board`, placed in time as the Watch places them (the "HH:mm" of

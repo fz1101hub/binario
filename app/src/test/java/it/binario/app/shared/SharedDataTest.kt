@@ -402,4 +402,29 @@ class SharedDataTest {
         assertEquals(json.getLong("routeWorksMaximumKeepDays"), RouteWorksAlertPlanner.MAX_KEEP_DAYS)
         assertEquals(json.getInt("routeWorksMaximumNotified"), RouteWorksAlertPlanner.MAX_NOTIFIED)
     }
+
+    @Test fun `the realtime feeds and the swiss boards are the shared table`() {
+        val json = table("realtime-feeds-v1.json")
+        assertEquals(Duration.ofSeconds(json.getLong("observationWindowSeconds")), it.binario.app.data.core.GtfsRealtimeFreshness.OBSERVATION_WINDOW)
+        assertEquals(json.getLong("observationWindowSeconds"), it.binario.app.data.urban.UrbanRealtimeSnapshot.MAX_AGE.seconds)
+        val feeds = json.getJSONArray("tripUpdates").objects().associateBy { it.getString("id") }
+        val sta = feeds.getValue(it.binario.app.data.live.StaRealtimeAdapter.SOURCE_ID.value)
+        assertEquals(sta.getString("url"), "${it.binario.app.data.live.StaRealtimeAdapter.REALTIME_ROOT}/${it.binario.app.data.live.StaRealtimeFeed.TRIP_UPDATES.path}")
+        val sncf = feeds.getValue(it.binario.app.data.live.SncfGtfsRealtimeAdapter.SOURCE_ID.value)
+        assertEquals(sncf.getString("url"), it.binario.app.data.live.SncfRealtimeFeed.TRIP_UPDATES.url)
+        val france = feeds.getValue(it.binario.app.data.live.TrenitaliaFranceGtfsRealtimeAdapter.SOURCE_ID.value)
+        assertEquals(france.getString("url"), it.binario.app.data.live.HttpTrenitaliaFranceRealtimeFetcher.FEED_URL)
+        assertEquals(france.getString("pack"), it.binario.app.data.live.TrenitaliaFranceGtfsRealtimeAdapter.STATIC_PACK.value)
+        assertEquals(Duration.ofSeconds(france.getLong("timeToLiveSeconds")), it.binario.app.data.live.TrenitaliaFranceGtfsRealtimeAdapter.DESCRIPTOR.ratePolicy.defaultTimeToLive)
+        assertEquals(feeds.keys, SharedData.RealtimeFeeds.TRIP_UPDATES.map { it.id }.toSet())
+        val urban = json.getJSONArray("urban").objects()
+        assertEquals(urban.map { it.getString("id") }, it.binario.app.data.urban.UrbanRealtimeFeeds.all.map { it.sourceId.value })
+        assertEquals(urban.map { it.getString("url") }, it.binario.app.data.urban.UrbanRealtimeFeeds.all.map { it.tripUpdatesUrl })
+        assertEquals(urban.map { it.getBoolean("personalOnly") }, it.binario.app.data.urban.UrbanRealtimeFeeds.all.map { it.personalOnly })
+        assertEquals(json.getJSONObject("urbanFetch").getInt("maximumTrips"), it.binario.app.data.urban.UrbanGtfsRealtimeDecoder.MAX_TRIPS)
+        val swiss = json.getJSONObject("swissBoard")
+        assertEquals(swiss.getString("id"), it.binario.app.data.live.SwissOpenTransportStationBoardAdapter.SOURCE_ID.value)
+        assertEquals(swiss.getString("baseUrl"), it.binario.app.data.live.SwissOpenTransportStationBoardAdapter.BASE_URL)
+        assertEquals(swiss.getJSONArray("nonRailCategories").strings().toSet(), SharedData.RealtimeFeeds.SWISS_BOARD.nonRailCategories)
+    }
 }

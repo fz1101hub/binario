@@ -267,6 +267,34 @@ final class SharedDataTests: XCTestCase {
         XCTAssertEqual(NoticeTable.trainNotices.maximumCachedTrains, rules["maximumCachedTrains"] as? Int)
     }
 
+    func testTheRealtimeFeedsAndTheSwissBoardsAreTheSharedTable() throws {
+        let json = try table("realtime-feeds-v1.json")
+        XCTAssertEqual(SharedData.RealtimeFeeds.observationWindowSeconds, json["observationWindowSeconds"] as? Double)
+        let feeds = try XCTUnwrap(json["tripUpdates"] as? [[String: Any]])
+        XCTAssertEqual(SharedData.RealtimeFeeds.tripUpdates.map(\.id), feeds.compactMap { $0["id"] as? String })
+        // Each feed is a live source of its own, asked for its pack only, with the table's limits.
+        let realtime = TimetableRealtime.standard(transport: FakeLiveTransport { _ in .failure(.network) }, pauses: LiveSourcePauses())
+        for feed in feeds {
+            let id = try XCTUnwrap(feed["id"] as? String)
+            let pack = try XCTUnwrap(feed["pack"] as? String)
+            let source = try XCTUnwrap(realtime.feeds[pack], id)
+            XCTAssertEqual(source.source.rawValue, id)
+            XCTAssertEqual(source.feed.url, feed["url"] as? String)
+            XCTAssertEqual(source.policy.maximumBytes, feed["maximumBytes"] as? Int)
+            XCTAssertEqual(source.policy.maximumRequests, feed["maximumRequests"] as? Int)
+            XCTAssertEqual(source.policy.totalTimeout, feed["totalTimeoutSeconds"] as? Double)
+            XCTAssertEqual(source.policy.allowsSameHostRedirects, (feed["redirects"] as? String) == "same-https-host")
+            XCTAssertEqual(LiveSourceLabels.label(source.source), feed["label"] as? String)
+        }
+        let urban = try XCTUnwrap(json["urban"] as? [[String: Any]])
+        XCTAssertEqual(UrbanRealtimeFeeds.all.map(\.id), urban.compactMap { $0["id"] as? String })
+        let swiss = try XCTUnwrap(json["swissBoard"] as? [String: Any])
+        XCTAssertEqual(LiveSource.swissOpenTransport.rawValue, swiss["id"] as? String)
+        XCTAssertEqual(SwissStationBoardSource.policy.maximumBytes, swiss["maximumBytes"] as? Int)
+        XCTAssertEqual(SwissStationBoardSource.table.nonRailCategories, Set(swiss["nonRailCategories"] as? [String] ?? []))
+        XCTAssertTrue(SwissStationBoardSource.boardURL(uic: "8505300", from: Date(), now: Date()).hasPrefix(try XCTUnwrap(swiss["baseUrl"] as? String)))
+    }
+
     // MARK: - The tables
 
     func testTheDelayCompensationThresholdsAreTheSharedTable() throws {

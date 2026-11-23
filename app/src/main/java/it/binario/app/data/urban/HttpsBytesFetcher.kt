@@ -15,8 +15,8 @@ import kotlinx.coroutines.withTimeoutOrNull
 
 /**
  * A bounded HTTPS GET of a binary open-data feed (GTFS-Realtime protobuf). HTTPS only; a redirect is followed only to
- * HTTPS on the same host (Roma Servizi per la Mobilità moves its files under `/wp-content/uploads/shared/`), at most
- * [MAX_HOPS] times; no cookies or caches, a byte cap that refuses a larger body instead of truncating it and a total
+ * HTTPS on the same host (Roma Servizi per la Mobilità moves its files under `/wp-content/uploads/shared/`), within
+ * [maxRequests] requests (three redirects by default); no cookies or caches, a byte cap that refuses a larger body instead of truncating it and a total
  * time limit. Nothing about the user is sent: the URL is the publisher's fixed feed address.
  */
 class HttpsBytesFetcher(
@@ -25,13 +25,15 @@ class HttpsBytesFetcher(
     private val readTimeoutMillis: Int = 15_000,
     private val totalTimeoutMillis: Long = 20_000,
     private val accept: String = "application/x-protobuf, application/octet-stream",
-    private val openConnection: (URL) -> HttpURLConnection = { it.openConnection() as HttpURLConnection }
+    private val openConnection: (URL) -> HttpURLConnection = { it.openConnection() as HttpURLConnection },
+    /** Requests of one read: the first and the redirects it may follow. */
+    private val maxRequests: Int = MAX_HOPS + 1
 ) : UrbanRealtimeFetcher {
     override suspend fun fetch(url: String): ByteArray = withTimeoutOrNull(totalTimeoutMillis) {
         val requested = try { URI(url).toURL() } catch (_: Exception) { throw IOException("URL del feed non valido") }
         if (requested.protocol != "https" || requested.userInfo != null) throw IOException("Il feed deve usare HTTPS")
         var target = requested
-        repeat(MAX_HOPS + 1) {
+        repeat(maxRequests) {
             val connection = openConnection(target)
             connection.requestMethod = "GET"
             connection.connectTimeout = connectTimeoutMillis

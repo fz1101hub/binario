@@ -233,6 +233,10 @@ class ValidationTest(unittest.TestCase):
             ("bike-sharing-v1.json", lambda d: d["systems"][1].update(discoveryUrl="http://gbfs.nextbike.net/x.json"), "systems"),
             ("live-train-map-v1.json", lambda d: d.update(timetableSlotMinutes=7), "non divide l'ora"),
             ("evening-alerts-v1.json", lambda d: d.update(strikeReminderHour=23), "nelle ore di quiete"),
+            ("realtime-feeds-v1.json", lambda d: d["tripUpdates"][1].update(refusalGroup="opendatahub.com"), "dominio del feed"),
+            ("realtime-feeds-v1.json", lambda d: d["tripUpdates"][0].update(redirects="same-https-host"), "stessa risorsa"),
+            ("realtime-feeds-v1.json", lambda d: d["urban"][0].update(pack="sncf-gtfs"), "con due feed"),
+            ("realtime-feeds-v1.json", lambda d: d["swissBoard"]["borderRegion"].update(minimumLongitude=11.0), "minimo non minore"),
         )
         for name, change, fragment in cases:
             with self.subTest(name=name, fragment=fragment), Workspace() as workspace:

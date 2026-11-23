@@ -366,6 +366,8 @@
 "settings.live.viaggiatreno" = "Trenitalia: số tàu, mã ga, ngày và giờ";
 "settings.live.rfi" = "Bảng giờ đến/đi: mã định danh công khai của ga";
 "settings.live.italo" = "Số tàu hoặc mã ga Italo";
+"settings.live.swiss" = "Số UIC của ga Thụy Sĩ (hoặc, một lần, tên của một ga biên giới)";
+"settings.live.trip_updates" = "Toàn bộ nguồn cập nhật chuyến, không có dữ liệu người dùng: chỉ cho các chuyến trong lịch trình của nguồn đó";
 "settings.live.privacy" = "Không có tài khoản, mã định danh thiết bị hay vị trí. Mỗi nguồn thấy địa chỉ IP của iPhone, như mọi trang web. Dữ liệu nhận được chỉ nằm trong bộ nhớ và không được lưu.";
 "result.live.delay" = "Trễ %1$lld phút";
 "notices.area.title" = "Thông báo và thông tin đi lại";

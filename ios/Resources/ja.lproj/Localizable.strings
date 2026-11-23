@@ -366,6 +366,8 @@
 "settings.live.viaggiatreno" = "Trenitalia：列車番号、駅コード、日付と時刻";
 "settings.live.rfi" = "発着モニター：駅の公開識別子";
 "settings.live.italo" = "列車番号または Italo の駅コード";
+"settings.live.swiss" = "スイスの駅の UIC 番号（または一度だけ国境駅の名前）";
+"settings.live.trip_updates" = "運行情報の更新フィード全体（利用者のデータなし）：その時刻表の便のみ";
 "settings.live.privacy" = "アカウント、端末識別子、位置情報は使いません。各情報源には、どのウェブサイトとも同じく iPhone の IP アドレスが見えます。受信したデータはメモリ内だけに保持され、保存されません。";
 "result.live.delay" = "%1$lld 分遅れ";
 "notices.area.title" = "お知らせと運行情報";

@@ -89,7 +89,7 @@ final class LiveRailDataTests: XCTestCase {
         XCTAssertTrue(asked.marked("viaggiatreno") && asked.marked("italo-status"))
         let standard = LiveRailData.standard(transport: FakeLiveTransport { _ in .failure(.network) }, pauses: LiveSourcePauses())
         XCTAssertEqual(standard.statusSources.map { $0.source }, [.viaggiaTreno, .italo], "LocalOnlyRailDataPolicy.trainNumberSearchProviders")
-        XCTAssertEqual(standard.boardSources.map { $0.source }, [.rfiStationBoard, .italo, .viaggiaTreno], "LocalOnlyRailDataPolicy.stationBoardProviders")
+        XCTAssertEqual(standard.boardSources.map { $0.source }, [.rfiStationBoard, .italo, .viaggiaTreno, .swissOpenTransport], "LocalOnlyRailDataPolicy.stationBoardProviders")
     }
 
     func testTheSameRunKeepsItsVerifiedCopyAndASourceFailureIsReported() async {

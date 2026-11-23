@@ -1,4 +1,5 @@
 # Regole condivise v1: numeri dei treni, statistiche, testi live, Agenda, calendario, codici stazione, mezzi, avvisi e prossimi treni
+# Regole condivise v1: numeri dei treni, statistiche, testi live, Agenda, calendario, codici stazione, mezzi, avvisi, aggiornamenti delle corse e tabelloni svizzeri
 
 Casi di prova comuni ad Android, iPhone, Alexa e agli strumenti Python che costruiscono l'indice orario dell'iPhone: il terzo livello della base comune
 ([ADR-0002](../../../docs/architecture/ADR-0002-BASE-COMUNE.md)). Le implementazioni restano indipendenti, scritte nel
@@ -23,6 +24,8 @@ regole) stanno invece in [`contracts/shared-data/`](../../shared-data/README.md)
 | `weekday-remarks-v1.json` (con `weekday-remarks-stats-v1.json`) | Le osservazioni sui giorni della settimana nel dettaglio di un treno: al più due, la differenza maggiore prima, a parità il giorno prima | `app/src/test/java/it/binario/app/data/reliability/WeekdayRemarksContractTest.kt`, `ios/BinarioKit/Tests/BinarioKitTests/SharedRulesContractTests.swift` |
 | `next-trains-v1.json` | Un piccolo indice orario sintetico (schema `userVersion` 2 dell'indice iPhone) e i prossimi treni fra due stazioni da un istante: giorni di servizio, fusi delle aziende, corse oltre le 24:00 e cambio d'ora, copie di un treno tenute una volta, autobus, salita e discesa ammesse, orario scaduto | `ios/BinarioKit/Tests/BinarioKitTests/NextTrainsContractTests.swift` (`SQLiteGTFSJourneyRepository.journeys`), `alexa-companion/server/timetable/nextTrains.test.ts` |
 | `notices-v1.json` | I casi degli avvisi ferroviari: giorni degli scioperi del calendario MIT, testo e collegamenti degli avvisi, infomobilità Trenitalia, avvisi Trenord per direttrice e per stazione, lavori e interruzioni sulle tratte. Gli ingressi sono le fixture dei test Android (`app/src/test/resources/sources/`) e il catalogo stazioni curato | `app/src/test/java/it/binario/app/data/notices/NoticesContractTest.kt` (con gli adapter e i matcher Android esistenti), `ios/BinarioKit/Tests/BinarioKitTests/NoticesContractTests.swift` |
+| `gtfs-realtime-v1.json` | I Trip Updates GTFS-Realtime: lettura del protobuf, feed SNCF, Trenitalia France e STA, raccordo con le corse dell'orario incluso, feed urbani di Roma e ACTV. Gli ingressi sono protobuf in esadecimale o le fixture dei test Android | `app/src/test/java/it/binario/app/data/live/GtfsRealtimeContractTest.kt` (con le binding protobuf e gli adapter Android), `ios/BinarioKit/Tests/BinarioKitTests/GtfsRealtimeContractTests.swift` |
+| `swiss-station-board-v1.json` | I tabelloni svizzeri di `transport.opendata.ch`: numero UIC della stazione, ricerca per nome vicino al confine, lettura del tabellone, operatori, indirizzi chiesti | `app/src/test/java/it/binario/app/data/live/SwissStationBoardContractTest.kt`, `ios/BinarioKit/Tests/BinarioKitTests/SwissStationBoardContractTests.swift` |
 
 Ogni file nomina i test che lo leggono nel campo `readers` (per `rules-v1.json`:
 `app/src/test/java/it/binario/app/data/reliability/SharedRulesContractTest.kt`,
@@ -137,3 +140,37 @@ Ogni caso ha un solo atteso, uguale per tutti i lettori del file.
 - **Lavori sulle tratte**: un avviso di lavori (mai di sciopero) vale per una tratta se cita per intero e con la
   maiuscola una sua stazione, non dentro un nome di stazione più lungo né come parola comune, o una linea con entrambi
   gli estremi sulla tratta; date del testo con l'anno più vicino alla pubblicazione.
+
+## Aggiornamenti delle corse (`gtfs-realtime-v1.json`)
+
+La tabella dei feed (indirizzi, limiti, durate, pause) è `contracts/shared-data/v1/realtime-feeds-v1.json`.
+
+- **Lettura del protobuf** (`decoding`): come le binding Java proto2 che usa Android. `header`, `gtfs_realtime_version`,
+  l'`id` dell'entità e il `trip` di un `trip_update` sono obbligatori; un messaggio ripetuto si fonde, uno scalare
+  ripetuto tiene l'ultimo valore, un valore enum sconosciuto lascia il campo com'era, un campo noto con un altro tipo di
+  filo, i gruppi e i campi a larghezza fissa sono saltati. Un varint troncato o di undici byte, una lunghezza oltre la
+  fine, il campo zero, il tipo 6 o 7 e una fine gruppo senza inizio rendono illeggibile tutto il feed: nessun dato.
+- **Feed** (`protobufUpdates`, `jsonUpdates`): le fermate con orario delle corse SCHEDULED, con giorno di servizio
+  (`start_date`), orario previsto e ritardo; corse CANCELED o ADDED, `trip_id` vuoto, `start_date` illeggibile, fermate
+  SKIPPED o NO_DATA, senza `stop_id` né sequenza restano fuori. L'osservazione è il `timestamp` della corsa, poi quello
+  dell'intestazione, poi l'ora della richiesta. STA pubblica la resa JSON dello stesso messaggio, con i numeri come testo.
+- **Raccordo** (`join`): una corsa del pack si aggiorna solo alla fermata elencata (prima chiamata con quello `stop_id`,
+  o la sequenza), con un'osservazione al più di cinque minuti prima e un minuto dopo l'ora attuale e non scaduta; vince
+  l'osservazione più recente con un ritardo, a parità la prima. Il ritardo è quello pubblicato in minuti interi, altrimenti
+  la differenza tra orario previsto e programmato. Senza `start_date` vale solo il giorno della ricerca; un pack le cui
+  agenzie non hanno lo scarto di Roma non si raccorda.
+- **Reti urbane** (`urban`): le corse del tram 8 di Roma e dei tram di Mestre, solo per le linee del pack; solo nelle
+  build personali e con l'orario della rete incluso.
+
+## Tabelloni svizzeri (`swiss-station-board-v1.json`)
+
+- **Numero UIC** (`uic`): lo `stop_id` svizzero (`85` e cinque cifre) di `ch-otd-gtfs` o il `trenitaliaLocationId`
+  `8500` e cinque cifre del catalogo (Bellinzona `850005213` è `8505213`); un aggregato di città (`85009…`) non è un
+  numero.
+- **Ricerca per nome** (`locations`, `lookups`): per un aggregato svizzero o una stazione della zona di confine, solo una
+  stazione ferroviaria svizzera entro 1,5 km dalla posizione del catalogo (o, senza coordinate, con lo stesso nome), poi
+  il numero trovato resta una settimana; una stazione italiana lontana dal confine non chiede nulla.
+- **Tabellone** (`boards`, `operators`, `names`): solo treni con numero, destinazione e orario; la previsione di
+  partenza vale solo dal lato e nella finestra giusti, mai quella di arrivo; un binario cambiato tiene quello
+  programmato; un tabellone non dell'ora attuale si chiede dalla sua ora svizzera; una pagina di manutenzione, una
+  risposta tagliata o il tabellone di un'altra stazione sono un errore della fonte.

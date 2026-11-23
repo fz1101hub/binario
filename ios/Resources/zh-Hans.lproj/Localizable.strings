@@ -366,6 +366,8 @@
 "settings.live.viaggiatreno" = "Trenitalia：车次、车站代码、日期和时间";
 "settings.live.rfi" = "到发显示屏：车站的公开标识符";
 "settings.live.italo" = "车次或 Italo 车站代码";
+"settings.live.swiss" = "瑞士车站的 UIC 编号（或一次性提供某个边境车站的名称）";
+"settings.live.trip_updates" = "完整的行程更新数据源，不含用户数据：仅用于其时刻表中的班次";
 "settings.live.privacy" = "不使用账户、设备标识符或位置。与任何网站一样，每个来源都能看到 iPhone 的 IP 地址。收到的数据只保存在内存中，不会存储。";
 "result.live.delay" = "晚点 %1$lld 分钟";
 "notices.area.title" = "公告与出行信息";

@@ -10,12 +10,22 @@ public enum LiveSource: String, CaseIterable, Codable, Hashable, Sendable {
     case rfiStationBoard = "rfi-station-board"
     case viaggiaTreno = "viaggiatreno"
     case italo = "italo-status"
+    /// The swiss boards of transport.opendata.ch (`SwissOpenTransportStationBoardAdapter`).
+    case swissOpenTransport = "ch-transport-opendata"
+    /// The open Trip Updates feeds joined to the bundled timetable (`SharedData.RealtimeFeeds.tripUpdates`).
+    case staRealtime = "alto-adige-sta-realtime"
+    case sncfRealtime = "sncf-gtfs-rt"
+    case trenitaliaFranceRealtime = "trenitalia-france-gtfs-rt"
 
     public var displayName: String {
         switch self {
         case .rfiStationBoard: return "RFI — Monitor Arrivi/Partenze"
         case .viaggiaTreno: return "Trenitalia — ViaggiaTreno realtime"
         case .italo: return "Italo in Viaggio"
+        case .swissOpenTransport: return "transport.opendata.ch — tabelloni svizzeri"
+        case .staRealtime: return "Open Data Hub Alto Adige — GTFS-Realtime"
+        case .sncfRealtime: return "SNCF Open Data — GTFS-Realtime"
+        case .trenitaliaFranceRealtime: return "Trenitalia France — GTFS-Realtime"
         }
     }
 }

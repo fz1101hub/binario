@@ -42,6 +42,7 @@ import kotlin.math.cos
 import kotlin.math.pow
 import kotlin.math.sin
 import kotlin.math.sqrt
+import it.binario.app.shared.SharedData
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
@@ -87,7 +88,14 @@ class SwissOpenTransportStationBoardAdapter internal constructor(
     retryDelayMillis: Long
 ) : StationBoardProvider {
     constructor(clock: Clock = Clock.systemUTC()) : this(
-        HttpPublicSourceFetcher(PublicSourceRequestPolicy(maxBytes = MAX_BOARD_BYTES)), clock, DEFAULT_LIMIT, 750
+        HttpPublicSourceFetcher(
+            PublicSourceRequestPolicy(
+                accept = TABLE.accept, connectTimeoutMillis = TABLE.connectTimeoutSeconds * 1_000,
+                readTimeoutMillis = TABLE.readTimeoutSeconds * 1_000, totalTimeoutMillis = TABLE.totalTimeoutSeconds * 1_000L,
+                maxBytes = TABLE.maximumBytes, maxRequests = TABLE.maximumRequests
+            )
+        ),
+        clock, TABLE.boardLimit, TABLE.retryDelayMillis.toLong()
     )
 
     override val descriptor = ProviderDescriptor(
@@ -99,13 +107,14 @@ class SwissOpenTransportStationBoardAdapter internal constructor(
             description = "Stazioni svizzere e transfrontaliere con numero UIC svizzero (85…)"
         ),
         accessMode = AccessMode.PUBLIC_BEST_EFFORT,
-        ratePolicy = RatePolicy(Duration.ofSeconds(30), defaultTimeToLive = BOARD_TTL),
+        ratePolicy = RatePolicy(Duration.ofSeconds(TABLE.minimumIntervalSeconds.toLong()), defaultTimeToLive = BOARD_TTL),
         schemaVersion = 1
     )
 
-    private val boards = ResilientSourceCache<ParsedBoard>(BOARD_TTL, Duration.ofMinutes(10), clock, maxEntries = 24,
-        breaker = SourceCircuitBreaker(clock, pauseLabel = "transport.opendata.ch"), retryDelayMillis = retryDelayMillis)
-    private val locations = ResilientSourceCache<List<SwissLocation>>(Duration.ofDays(7), Duration.ofDays(7), clock, maxEntries = 64, retryDelayMillis = retryDelayMillis)
+    private val boards = ResilientSourceCache<ParsedBoard>(BOARD_TTL, Duration.ofSeconds(TABLE.boardMaximumStaleSeconds.toLong()), clock,
+        maxEntries = 24, breaker = SourceCircuitBreaker(clock, pauseLabel = TABLE.pauseLabel), retryDelayMillis = retryDelayMillis)
+    private val locations = ResilientSourceCache<List<SwissLocation>>(Duration.ofSeconds(TABLE.locationTimeToLiveSeconds.toLong()),
+        Duration.ofSeconds(TABLE.locationTimeToLiveSeconds.toLong()), clock, maxEntries = 64, retryDelayMillis = retryDelayMillis)
 
     override suspend fun getStationBoard(request: StationBoardRequest): ProviderResult<StationBoard> =
         withContext(Dispatchers.Default) { board(request) }
@@ -154,13 +163,13 @@ class SwissOpenTransportStationBoardAdapter internal constructor(
             .filter { it.icon == "train" && SwissStationIds.isUic(it.id) }
             .firstOrNull { candidate ->
                 val place = candidate.coordinates
-                if (coordinates != null) place != null && distanceKm(coordinates, place) <= MAX_LOCATION_DISTANCE_KM
+                if (coordinates != null) place != null && distanceKm(coordinates, place) * 1_000 <= TABLE.maximumLocationDistanceMeters
                 else normalizeName(candidate.name) == normalizeName(name)
             }?.id
 
     internal fun parseLocations(body: String): List<SwissLocation> {
         val stations = JSONObject(body).optJSONArray("stations") ?: throw PublicSourceFormatException("Elenco località assente")
-        return (0 until minOf(stations.length(), 50)).mapNotNull { index ->
+        return (0 until minOf(stations.length(), TABLE.maximumLocations)).mapNotNull { index ->
             val item = stations.optJSONObject(index) ?: return@mapNotNull null
             val id = item.text("id") ?: return@mapNotNull null
             SwissLocation(id, item.text("name").orEmpty(), item.text("icon"), item.optJSONObject("coordinate")?.geoPoint())
@@ -267,7 +276,8 @@ class SwissOpenTransportStationBoardAdapter internal constructor(
 
     private fun boardUrl(uic: String, request: StationBoardRequest): String {
         val now = clock.instant()
-        val current = !request.from.isBefore(now.minus(Duration.ofMinutes(45))) && !request.from.isAfter(now.plus(Duration.ofMinutes(5)))
+        val current = !request.from.isBefore(now.minus(Duration.ofMinutes(TABLE.currentBoardBeforeMinutes.toLong()))) &&
+            !request.from.isAfter(now.plus(Duration.ofMinutes(TABLE.currentBoardAfterMinutes.toLong())))
         return buildString {
             append("$BASE_URL/stationboard?id=").append(uic).append("&limit=").append(boardLimit)
             append("&transportations%5B%5D=train")
@@ -294,8 +304,9 @@ class SwissOpenTransportStationBoardAdapter internal constructor(
         }
     }
 
-    private fun inBorderRegion(point: GeoPoint): Boolean =
-        point.latitude in 45.80..47.85 && point.longitude in 5.95..10.50
+    private fun inBorderRegion(point: GeoPoint): Boolean = TABLE.borderRegion.let { region ->
+        point.latitude in region.minimumLatitude..region.maximumLatitude && point.longitude in region.minimumLongitude..region.maximumLongitude
+    }
 
     private fun distanceKm(a: GeoPoint, b: GeoPoint): Double {
         val lat1 = Math.toRadians(a.latitude)
@@ -346,23 +357,19 @@ class SwissOpenTransportStationBoardAdapter internal constructor(
     internal data class ParsedBoard(val uic: String, val kind: BoardKind, val rows: List<BoardRow>)
 
     companion object {
-        val SOURCE_ID = SourceId("ch-transport-opendata")
-        internal const val BASE_URL = "https://transport.opendata.ch/v1"
+        /** The shared table's limits of these boards (contracts/shared-data/v1/realtime-feeds-v1.json), the iPhone's too. */
+        private val TABLE = SharedData.RealtimeFeeds.SWISS_BOARD
+        val SOURCE_ID = SourceId(TABLE.id)
+        internal val BASE_URL: String = TABLE.baseUrl
         internal const val LICENSE = "transport.opendata.ch — API pubblica, uso secondo le condizioni del servizio"
-        private val BOARD_TTL: Duration = Duration.ofSeconds(60)
-        private const val DEFAULT_LIMIT = 40
-        private const val MAX_ROWS = 200
-        private const val MAX_BOARD_BYTES = 3 * 1024 * 1024
-        private const val MAX_DELAY_MINUTES = 360
-        private const val MAX_EARLY_ARRIVAL_MINUTES = 15
-        private const val MAX_LOCATION_DISTANCE_KM = 1.5
+        private val BOARD_TTL: Duration = Duration.ofSeconds(TABLE.boardTimeToLiveSeconds.toLong())
+        private val MAX_ROWS = TABLE.maximumRows
+        private val MAX_DELAY_MINUTES = TABLE.maximumDelayMinutes
+        private val MAX_EARLY_ARRIVAL_MINUTES = TABLE.maximumEarlyArrivalMinutes
         private const val UNAVAILABLE = "Il tabellone transport.opendata.ch non è raggiungibile."
         private const val UNREADABLE = "Il tabellone transport.opendata.ch non è leggibile."
-        private val SWISS_ZONE: ZoneId = ZoneId.of("Europe/Zurich")
-        private val NON_RAIL_CATEGORIES = setOf(
-            "B", "BUS", "NFB", "KB", "EXB", "BN", "BP", "CAR", "T", "TRAM", "NFT", "M", "MET", "FUN", "PB", "GB",
-            "LB", "SL", "BAT", "FAE", "KAT", "SCH", "TX", "ALT"
-        )
+        private val SWISS_ZONE: ZoneId = ZoneId.of(TABLE.zone)
+        private val NON_RAIL_CATEGORIES = TABLE.nonRailCategories
         private val OFFSET_FORMAT: DateTimeFormatter = DateTimeFormatterBuilder()
             .appendPattern("uuuu-MM-dd'T'HH:mm:ss")
             .optionalStart().appendOffset("+HHMM", "Z").optionalEnd()

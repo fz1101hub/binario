@@ -366,6 +366,8 @@
 "settings.live.viaggiatreno" = "Trenitalia: número del tren, código de la estación, fecha y hora";
 "settings.live.rfi" = "Monitor de llegadas y salidas: identificador público de la estación";
 "settings.live.italo" = "Número del tren o código Italo de la estación";
+"settings.live.swiss" = "El número UIC de la estación suiza (o, una vez, el nombre de una estación fronteriza)";
+"settings.live.trip_updates" = "El feed completo de actualizaciones de los viajes, sin datos del usuario: solo para los servicios de su horario";
 "settings.live.privacy" = "Sin cuenta, identificador del dispositivo ni ubicación. Cada fuente ve la dirección IP del iPhone, como cualquier sitio web. Los datos recibidos quedan solo en memoria y no se guardan.";
 "result.live.delay" = "%1$lld minutos de retraso";
 "notices.area.title" = "Avisos e información del servicio";

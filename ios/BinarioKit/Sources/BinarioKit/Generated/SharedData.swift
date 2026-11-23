@@ -13,6 +13,7 @@
 //   contracts/shared-data/v1/pack-roles-v1.json
 //   contracts/shared-data/v1/planned-journeys-v1.json
 //   contracts/shared-data/v1/punctuality-v1.json
+//   contracts/shared-data/v1/realtime-feeds-v1.json
 //   contracts/shared-data/v1/rfi-monitor-v1.json
 //   contracts/shared-data/v1/rfi-place-ids-v1.json
 //   contracts/shared-data/v1/source-manners-v1.json
@@ -747,6 +748,145 @@ public enum SharedData {
         public static let maximumWeekdayRemarks: Int = 2
         public static let minimumBandSamples: Int = 20
         public static let minimumBandGapPoints: Int = 5
+    }
+
+    /// contracts/shared-data/v1/realtime-feeds-v1.json: The open GTFS-Realtime Trip Updates feeds and the Swiss station
+    /// boards, the same on Android and on the iPhone: each feed's address, format, timetable pack, gate, limits, cache
+    /// and pause label, how long an observation stays usable, and the limits of the transport.opendata.ch boards. How
+    /// every source is asked (User-Agent, refusals, breaker) is source-manners-v1.json; the cases both platforms read
+    /// are contracts/shared-rules/v1/gtfs-realtime-v1.json and swiss-station-board-v1.json.
+    public enum RealtimeFeeds {
+        public struct TripUpdatesFeed: Hashable, Sendable {
+            public let id: String
+            public let pack: String
+            public let label: String
+            public let format: String
+            public let gate: String
+            public let url: String
+            public let accept: String
+            public let connectTimeoutSeconds: Double
+            public let readTimeoutSeconds: Double
+            public let totalTimeoutSeconds: Double
+            public let maximumBytes: Int
+            public let maximumRequests: Int
+            public let redirects: String
+            public let timeToLiveSeconds: Double
+            public let pauseLabel: String
+            public let refusalGroup: String
+            public let zone: String
+            public let licence: String
+        }
+
+        public struct UrbanFeed: Hashable, Sendable {
+            public let id: String
+            public let pack: String
+            public let displayName: String
+            public let url: String
+            public let licence: String
+            public let personalOnly: Bool
+            public let zone: String
+        }
+
+        public struct UrbanFetch: Hashable, Sendable {
+            public let accept: String
+            public let connectTimeoutSeconds: Double
+            public let readTimeoutSeconds: Double
+            public let totalTimeoutSeconds: Double
+            public let maximumBytes: Int
+            public let maximumRequests: Int
+            public let timeToLiveSeconds: Double
+            public let maximumStaleSeconds: Double
+            public let maximumTrips: Int
+            public let maximumShiftSeconds: Double
+            public let maximumRoutes: Int
+        }
+
+        public struct BorderRegion: Hashable, Sendable {
+            public let minimumLatitude: Double
+            public let maximumLatitude: Double
+            public let minimumLongitude: Double
+            public let maximumLongitude: Double
+        }
+
+        public struct SwissBoard: Hashable, Sendable {
+            public let id: String
+            public let label: String
+            public let baseUrl: String
+            public let accept: String
+            public let connectTimeoutSeconds: Double
+            public let readTimeoutSeconds: Double
+            public let totalTimeoutSeconds: Double
+            public let maximumBytes: Int
+            public let maximumRequests: Int
+            public let minimumIntervalSeconds: Double
+            public let boardTimeToLiveSeconds: Double
+            public let boardMaximumStaleSeconds: Double
+            public let locationTimeToLiveSeconds: Double
+            public let retryDelayMillis: Int
+            public let pauseLabel: String
+            public let boardLimit: Int
+            public let maximumRows: Int
+            public let maximumLocations: Int
+            public let maximumDelayMinutes: Int
+            public let maximumEarlyArrivalMinutes: Int
+            public let maximumLocationDistanceMeters: Int
+            public let currentBoardBeforeMinutes: Int
+            public let currentBoardAfterMinutes: Int
+            public let zone: String
+            public let borderRegion: BorderRegion
+            public let nonRailCategories: Set<String>
+        }
+
+        public static let observationWindowSeconds: Double = 300
+        public static let futureToleranceSeconds: Double = 60
+        public static let failureMemorySeconds: Double = 30
+        public static let tripUpdates: [TripUpdatesFeed] = [
+            // JSON rendering of the GTFS-Realtime Trip Updates by the Open Data Hub, joined to the STA pack.
+            TripUpdatesFeed(id: "alto-adige-sta-realtime", pack: "alto-adige-sta-gtfs", label: "STA Alto Adige", format: "json", gate: "all-builds", url: "https://gtfs.api.opendatahub.com/v1/realtime/sta-time-tables/trip-updates", accept: "application/json", connectTimeoutSeconds: 8, readTimeoutSeconds: 15, totalTimeoutSeconds: 20, maximumBytes: 8388608, maximumRequests: 3, redirects: "same-resource", timeToLiveSeconds: 90, pauseLabel: "Open Data Hub Alto Adige", refusalGroup: "Open Data Hub Alto Adige", zone: "Europe/Rome", licence: "CC0-1.0"),
+            // The national Trip Updates, a few MB.
+            TripUpdatesFeed(id: "sncf-gtfs-rt", pack: "sncf-gtfs", label: "SNCF", format: "protobuf", gate: "all-builds", url: "https://proxy.transport.data.gouv.fr/resource/sncf-gtfs-rt-trip-updates", accept: "application/x-protobuf, application/octet-stream", connectTimeoutSeconds: 8, readTimeoutSeconds: 15, totalTimeoutSeconds: 25, maximumBytes: 16777216, maximumRequests: 4, redirects: "same-https-host", timeToLiveSeconds: 120, pauseLabel: "SNCF Open Data", refusalGroup: "transport.data.gouv.fr", zone: "Europe/Paris", licence: "Licence Ouverte / Etalab"),
+            // About 10 KB for some fifty trains (November 2026); asked only in a build that bundles its pack.
+            TripUpdatesFeed(id: "trenitalia-france-gtfs-rt", pack: "trenitalia-france-gtfs", label: "Trenitalia France", format: "protobuf", gate: "pack-bundled", url: "https://proxy.transport.data.gouv.fr/resource/trenitalia-gtfs-rt", accept: "application/x-protobuf, application/octet-stream", connectTimeoutSeconds: 8, readTimeoutSeconds: 15, totalTimeoutSeconds: 25, maximumBytes: 1048576, maximumRequests: 4, redirects: "same-https-host", timeToLiveSeconds: 120, pauseLabel: "Trenitalia France", refusalGroup: "transport.data.gouv.fr", zone: "Europe/Paris", licence: "Licence Ouverte / Etalab 2.0")
+        ]
+        public static let urban: [UrbanFeed] = [
+            // ATAC buses and trams with AVM, no metro; the trip_id and stop_id of the static GTFS of the
+            // roma-mobilita-gtfs pack.
+            UrbanFeed(id: "roma-mobilita-gtfs-rt", pack: "roma-mobilita-gtfs", displayName: "Roma Servizi per la Mobilità", url: "https://romamobilita.it/sites/default/files/rome_rtgtfs_trip_updates_feed.pb", licence: "CC BY-SA su dati.comune.roma.it, CC BY 4.0 su dati.gov.it, nessuna sulla pagina ufficiale", personalOnly: true, zone: "Europe/Rome"),
+            // The Mestre trams T1 and T2 (and the buses, dropped) of the actv_aut GTFS of the venezia-actv-gtfs pack.
+            UrbanFeed(id: "venezia-actv-gtfs-rt", pack: "venezia-actv-gtfs", displayName: "ACTV", url: "https://tpl.actv.it/aut/GTFSRT/tripUpdates", licence: "Non dichiarata (catalogo dei dati ACTV, art. 53 CAD)", personalOnly: true, zone: "Europe/Rome")
+        ]
+        public static let urbanFetch: UrbanFetch = UrbanFetch(accept: "application/x-protobuf, application/octet-stream", connectTimeoutSeconds: 8, readTimeoutSeconds: 15, totalTimeoutSeconds: 20, maximumBytes: 8388608, maximumRequests: 4, timeToLiveSeconds: 30, maximumStaleSeconds: 120, maximumTrips: 20000, maximumShiftSeconds: 10800, maximumRoutes: 5000)
+        public static let swissBoard: SwissBoard = SwissBoard(
+            id: "ch-transport-opendata",
+            label: "transport.opendata.ch",
+            baseUrl: "https://transport.opendata.ch/v1",
+            accept: "application/json",
+            connectTimeoutSeconds: 8,
+            readTimeoutSeconds: 12,
+            totalTimeoutSeconds: 15,
+            maximumBytes: 3145728,
+            maximumRequests: 3,
+            minimumIntervalSeconds: 30,
+            boardTimeToLiveSeconds: 60,
+            boardMaximumStaleSeconds: 600,
+            locationTimeToLiveSeconds: 604800,
+            retryDelayMillis: 750,
+            pauseLabel: "transport.opendata.ch",
+            boardLimit: 40,
+            maximumRows: 200,
+            maximumLocations: 50,
+            maximumDelayMinutes: 360,
+            maximumEarlyArrivalMinutes: 15,
+            maximumLocationDistanceMeters: 1500,
+            currentBoardBeforeMinutes: 45,
+            currentBoardAfterMinutes: 5,
+            zone: "Europe/Zurich",
+            borderRegion: BorderRegion(minimumLatitude: 45.8, maximumLatitude: 47.85, minimumLongitude: 5.95, maximumLongitude: 10.5),
+            nonRailCategories: [
+                "B", "BUS", "NFB", "KB", "EXB", "BN", "BP", "CAR", "T", "TRAM", "NFT", "M", "MET", "FUN", "PB", "GB",
+                "LB", "SL", "BAT", "FAE", "KAT", "SCH", "TX", "ALT"
+            ]
+        )
     }
 
     /// contracts/shared-data/v1/rfi-monitor-v1.json: RFI's «Arrivi e partenze» monitor as both phones ask and read it:

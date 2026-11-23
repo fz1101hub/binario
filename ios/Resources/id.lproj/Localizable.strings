@@ -366,6 +366,8 @@
 "settings.live.viaggiatreno" = "Trenitalia: nomor kereta, kode stasiun, tanggal, dan waktu";
 "settings.live.rfi" = "Monitor kedatangan/keberangkatan: pengenal publik stasiun";
 "settings.live.italo" = "Nomor kereta atau kode stasiun Italo";
+"settings.live.swiss" = "Nomor UIC stasiun Swiss (atau, satu kali, nama stasiun perbatasan)";
+"settings.live.trip_updates" = "Umpan lengkap pembaruan perjalanan, tanpa data pengguna: hanya untuk perjalanan dari jadwalnya";
 "settings.live.privacy" = "Tanpa akun, pengenal perangkat, atau lokasi. Setiap sumber melihat alamat IP iPhone, seperti situs web mana pun. Data yang diterima hanya ada di memori dan tidak disimpan.";
 "result.live.delay" = "Terlambat %1$lld menit";
 "notices.area.title" = "Pemberitahuan dan info perjalanan";

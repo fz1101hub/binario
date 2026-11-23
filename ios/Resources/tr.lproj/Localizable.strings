@@ -366,6 +366,8 @@
 "settings.live.viaggiatreno" = "Trenitalia: tren numarası, istasyon kodu, tarih ve saat";
 "settings.live.rfi" = "Varış/kalkış monitörü: istasyonun herkese açık kimliği";
 "settings.live.italo" = "Tren numarası veya Italo istasyon kodu";
+"settings.live.swiss" = "İsviçre istasyonunun UIC numarası (ya da bir kez, bir sınır istasyonunun adı)";
+"settings.live.trip_updates" = "Sefer güncellemelerinin tam akışı, kullanıcı verisi olmadan: yalnızca kendi tarifesindeki seferler için";
 "settings.live.privacy" = "Hesap, cihaz kimliği veya konum yok. Her kaynak, herhangi bir web sitesi gibi iPhone’un IP adresini görür. Alınan veriler yalnızca bellekte kalır ve kaydedilmez.";
 "result.live.delay" = "%1$lld dakika gecikmeli";
 "notices.area.title" = "Duyurular ve ulaşım bilgileri";
