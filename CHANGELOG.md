@@ -1,5 +1,19 @@
 # Changelog
 
+## In sviluppo — Marconi Express e Trenitalia France
+
+- **Marconi Express** (Bologna Centrale – Lazzaretto – Aeroporto, TPER, CC BY 3.0 IT dichiarata dalla pagina open data di TPER): il pack entra fra quelli pubblici (39 KB, 2.326 corse fino al 31 dicembre).
+  - Bologna Centrale ↔ Aeroporto si aggiunge ai collegamenti con gli aeroporti, con la linea «MEX».
+  - Su Android le linee monorotaia (route_type 12) si trattano come metropolitana: prima le loro corse venivano scartate.
+  - La versione del file si legge ogni volta dalla pagina di TPER.
+- **Trenitalia France** (Frecciarossa Parigi–Lione, Parigi–Marsiglia, Parigi–Milano; Etalab 2.0): il pack entra fra quelli principali (502 corse).
+  - I treni già presenti nel pack nazionale Trenitalia compaiono una volta sola.
+  - Serve come base per i ritardi in tempo reale di Trenitalia France, in arrivo.
+- **Slovenia:** il candidato legge ora il file pubblico `dujpp.si`, che contiene 766 linee ferroviarie SŽ fino al 2028; `b2b.nap.si` chiede un'autenticazione. Resta solo nelle build personali finché l'editore non chiarisce la licenza.
+- **CI:** nuova sonda GTFS-RT, che confronta un feed in tempo reale con un orario incluso o pubblicato. Sui dati di oggi:
+  - il GTFS-RT SNCF già usato dall'app copre i TER Ventimiglia–Nizza (C3, C13, P1) sul nostro pack, quindi il feed ZOU della Région Sud non serve;
+  - Trenitalia France combacia al 100% con il suo orario.
+
 ## In sviluppo — Stazioni regionali nel catalogo e nuove fonti candidate
 
 - **Catalogo stazioni: 5.249 → 5.290.** 41 fermate ferroviarie dei pack inclusi non avevano una stazione: ora ce l'hanno, con nome e posizione presi dal pack.
