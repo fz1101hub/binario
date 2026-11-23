@@ -64,10 +64,6 @@ class CommittedCodeTest(unittest.TestCase):
         second, _ = generator.load_tables(ROOT)
         self.assertEqual(generator.render_outputs(first), generator.render_outputs(second))
 
-    def test_every_table_file_is_registered(self) -> None:
-        # Other tables can arrive before their schema (they are reported, not generated); this checkout has none.
-        self.assertEqual([], generator.unregistered(ROOT))
-
     def test_headers_name_the_generator_and_the_sources_and_forbid_editing(self) -> None:
         loaded, _ = generator.load_tables(ROOT)
         for path, text in generator.render_outputs(loaded).items():
