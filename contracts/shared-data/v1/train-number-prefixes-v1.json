@@ -1,0 +1,8 @@
+{
+  "schema": "binario-shared-data-v1",
+  "description": "Public train categories that may prefix a train number (ÖBB «NJ 40235», «REX 1824», «S 2590»): an explicit list, not any letters, since a pack also has codes such as «VE545» that are not train 545. Letters only, so every platform can join them into one alternation.",
+  "categories": [
+    "FRECCIAROSSA", "FRECCIARGENTO", "FRECCIABIANCA", "REGIONALE", "ITALO", "REG", "RJX", "ICE", "ICN", "TGV", "TER",
+    "REX", "CJX", "IRE", "ECE", "CAT", "NJ", "IR", "ES", "FR", "FA", "FB", "AV", "RV", "RE", "IC", "EC", "EN", "RJ", "R", "S", "D"
+  ]
+}

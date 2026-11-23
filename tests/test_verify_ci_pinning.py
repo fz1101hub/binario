@@ -323,6 +323,16 @@ class VerifyCiPinningTest(unittest.TestCase):
             ("apple-watch-ci.yml", '      - "tools/build_gtfs_packs.py"\n', "non copre la catena XcodeGen"),
             ("gtfs-assets-ci.yml", '      - "store/**"\n', "non copre input condivisi"),
             ("gtfs-assets-ci.yml", '      - "ios/Resources/**"\n', "non copre input condivisi"),
+            # ADR-0002: the shared tables trigger every product that reads their generated code, and the generator's check.
+            ("android-ci.yml", '      - "contracts/shared-data/**"\n', "non copre input condivisi"),
+            ("android-ci.yml", '      - "tools/generate_shared_code.py"\n', "non copre input condivisi"),
+            ("apple-watch-ci.yml", '      - "contracts/shared-data/**"\n', "non copre la catena XcodeGen"),
+            ("apple-watch-ci.yml", '      - "tools/generate_shared_code.py"\n', "non copre la catena XcodeGen"),
+            ("alexa-companion-ci.yml", '      - "contracts/shared-data/**"\n', "non copre input condivisi"),
+            ("alexa-companion-ci.yml", '      - "tools/generate_shared_code.py"\n', "non copre input condivisi"),
+            ("gtfs-assets-ci.yml", '      - "contracts/shared-data/**"\n', "non copre input condivisi"),
+            ("gtfs-assets-ci.yml", '      - "alexa-companion/shared/generated/**"\n', "non copre input condivisi"),
+            ("gtfs-assets-ci.yml", "        run: python3 tools/generate_shared_code.py --check\n", "generate_shared_code.py --check"),
         )
         for name, line, expected in cases:
             with self.subTest(name=name, line=line):

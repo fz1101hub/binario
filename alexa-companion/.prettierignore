@@ -33,3 +33,6 @@ pnpm-lock.yaml
 # OS files
 .DS_Store
 Thumbs.db
+
+# Written by tools/generate_shared_code.py (its --check compares them byte for byte)
+shared/generated/

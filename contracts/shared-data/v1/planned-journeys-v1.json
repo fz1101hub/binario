@@ -1,0 +1,20 @@
+{
+  "schema": "binario-shared-data-v1",
+  "description": "Limits of the Agenda (planned journeys) and of its templates, the same on every phone so a journey exported by one app is read by the other (docs/architecture/PLANNED_JOURNEY.md). Lengths count UTF-16 code units.",
+  "schemaVersion": 1,
+  "transferKind": "binario_planned_journeys",
+  "maximumJourneys": 40,
+  "maximumSegments": 4,
+  "maximumChecklistItems": 24,
+  "maximumOccurrences": 12,
+  "maximumLabelLength": 96,
+  "maximumChecklistLabelLength": 160,
+  "maximumIdentifierLength": 120,
+  "maximumTransferBytes": 262144,
+  "maximumNestingDepth": 16,
+  "reminderMinutes": [5, 10, 15, 20, 30, 45, 60],
+  "templatesKind": "binario_planned_journey_templates",
+  "maximumTemplates": 12,
+  "maximumTemplateNameLength": 48,
+  "maximumTemplatesBytes": 65536
+}

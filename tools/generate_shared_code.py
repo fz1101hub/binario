@@ -1,0 +1,936 @@
+#!/usr/bin/env python3
+"""Turn the shared tables of ``contracts/shared-data/v1`` into Kotlin, Swift and TypeScript constants.
+
+The common base of the apps (docs/architecture/ADR-0002-BASE-COMUNE.md): a table that more than one platform uses is
+written once, as JSON, and every app reads it as generated code, never by parsing JSON at runtime.
+
+- Kotlin: one file, ``app/src/main/java/it/binario/app/shared/SharedData.kt`` (every table);
+- Swift: one file, ``ios/BinarioKit/Sources/BinarioKit/Generated/SharedData.swift`` (every table);
+- TypeScript: one module, ``alexa-companion/shared/generated/sharedData.ts`` (only the tables Alexa reads).
+
+Each JSON file is checked against the schema registered in ``TABLES`` (types, required keys, no unknown or duplicate
+keys, no duplicate entries, the table's own cross checks) before anything is written. The output is deterministic and
+committed; ``--check`` fails when a generated file is stale or missing (CI, gtfs-assets-ci.yml).
+
+    python3 tools/generate_shared_code.py           # rewrite the generated files
+    python3 tools/generate_shared_code.py --check   # exit 1 when one of them is not what the tables give
+
+Adding a table (contracts/shared-data/README.md): put ``<name>-v1.json`` in contracts/shared-data/v1/, register a
+``Table`` in ``TABLES`` with its schema (and ``alexa=True`` when the skill reads it), run the generator, commit the JSON
+and the three generated files. A JSON file not registered yet is reported and generates nothing.
+
+Standard library only, offline.
+"""
+from __future__ import annotations
+
+import argparse
+import calendar
+import copy
+import json
+import re
+import sys
+import textwrap
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Any, Callable, Mapping, Sequence
+
+ROOT = Path(__file__).resolve().parents[1]
+GENERATOR = "tools/generate_shared_code.py"
+DATA_DIR = Path("contracts/shared-data/v1")
+KOTLIN_OUTPUT = Path("app/src/main/java/it/binario/app/shared/SharedData.kt")
+SWIFT_OUTPUT = Path("ios/BinarioKit/Sources/BinarioKit/Generated/SharedData.swift")
+TYPESCRIPT_OUTPUT = Path("alexa-companion/shared/generated/sharedData.ts")
+SCHEMA_MARKER = "binario-shared-data-v1"
+KOTLIN_PACKAGE = "it.binario.app.shared"
+LINE_WIDTH = 120
+INDENT = "    "
+TYPESCRIPT_INDENT = "  "
+
+KEY_NAME = re.compile(r"[a-z][A-Za-z0-9]*")
+TYPE_NAME = re.compile(r"[A-Z][A-Za-z0-9]*")
+CONTROL = re.compile(r"[\x00-\x1f\x7f  ]")
+# Words no key may take: hard keywords of Kotlin, Swift and TypeScript (a key becomes a property in all three).
+RESERVED = frozenset("""
+    Any Self actor any as associatedtype async await break case catch class const continue debugger default defer
+    deinit delete do else enum export extends extension false fallthrough fileprivate finally for fun func function
+    guard if import in init inout instanceof interface internal is let new nil null object open operator package private
+    protocol public repeat rethrows return self static struct subscript super switch this throw throws true try
+    typealias typeof val var void when where while with yield
+""".split())
+
+
+class SchemaError(ValueError):
+    """A shared table that does not follow its schema."""
+
+
+# --- Schema -------------------------------------------------------------------------------------------------------
+
+
+class Type:
+    """A value type of the schema."""
+
+
+@dataclass(frozen=True)
+class Integer(Type):
+    minimum: int | None = None
+    maximum: int | None = None
+
+
+@dataclass(frozen=True)
+class Text(Type):
+    """A non-empty single-line string, optionally matching ``pattern`` as a whole."""
+
+    pattern: str | None = None
+    max_length: int = 240
+
+
+@dataclass(frozen=True)
+class Boolean(Type):
+    pass
+
+
+@dataclass(frozen=True)
+class Nullable(Type):
+    inner: Type
+
+
+@dataclass(frozen=True)
+class ListOf(Type):
+    """A JSON array; ``as_set`` makes it a set in the code. Entries are unique: equal values, or equal ``unique_by``
+    fields for records."""
+
+    item: Type
+    as_set: bool = False
+    unique_by: tuple[str, ...] = ()
+    min_items: int = 1
+
+
+@dataclass(frozen=True)
+class MapOf(Type):
+    """A JSON object with free keys, kept in file order (the loader refuses a repeated key)."""
+
+    value: Type
+    key: Text = Text()
+    min_items: int = 1
+
+
+REQUIRED = object()
+
+
+@dataclass(frozen=True)
+class Field:
+    type: Type
+    default: Any = REQUIRED
+
+
+@dataclass(frozen=True)
+class Record(Type):
+    """A JSON object with fixed keys; ``notes`` admits an optional ``note`` (a comment in the code, not data)."""
+
+    name: str
+    fields: Mapping[str, Field]
+    notes: bool = False
+
+
+@dataclass(frozen=True)
+class RecordValue:
+    record: Record
+    values: Mapping[str, Any]
+    note: str | None = None
+
+
+@dataclass(frozen=True)
+class Table:
+    """One JSON file of contracts/shared-data/v1 and the namespace it generates (``name`` in every language)."""
+
+    file: str
+    name: str
+    fields: Mapping[str, Field]
+    alexa: bool = False
+    check: Callable[[Mapping[str, Any]], list[str]] | None = None
+
+    def records(self) -> list[Record]:
+        found: list[Record] = []
+
+        def visit(kind: Type) -> None:
+            if isinstance(kind, Record):
+                if kind not in found:
+                    for nested in kind.fields.values():
+                        visit(nested.type)
+                    found.append(kind)
+            elif isinstance(kind, ListOf):
+                visit(kind.item)
+            elif isinstance(kind, MapOf):
+                visit(kind.value)
+            elif isinstance(kind, Nullable):
+                visit(kind.inner)
+
+        for item in self.fields.values():
+            visit(item.type)
+        return found
+
+
+@dataclass
+class LoadedTable:
+    table: Table
+    description: str
+    values: dict[str, Any]
+
+
+# --- Validation ---------------------------------------------------------------------------------------------------
+
+
+def _reject_duplicates(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+    result: dict[str, Any] = {}
+    for key, value in pairs:
+        if key in result:
+            raise SchemaError(f"chiave ripetuta {key!r}")
+        result[key] = value
+    return result
+
+
+def _reject_constant(name: str) -> Any:
+    raise SchemaError(f"valore non ammesso {name}")
+
+
+def parse_json(text: str) -> Any:
+    """JSON with no repeated key in any object and no NaN or Infinity."""
+    return json.loads(text, object_pairs_hook=_reject_duplicates, parse_constant=_reject_constant)
+
+
+def _identity(value: Any) -> str:
+    return json.dumps(_plain(value), ensure_ascii=False, sort_keys=True)
+
+
+def _plain(value: Any) -> Any:
+    if isinstance(value, RecordValue):
+        return {key: _plain(item) for key, item in value.values.items()}
+    if isinstance(value, dict):
+        return {key: _plain(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return [_plain(item) for item in value]
+    return value
+
+
+def validate(kind: Type, value: Any, where: str, errors: list[str]) -> Any:
+    """``value`` checked against ``kind``, defaults filled in; each problem appended to ``errors``."""
+    if isinstance(kind, Integer):
+        if type(value) is not int:
+            errors.append(f"{where}: atteso un intero, trovato {type(value).__name__}")
+        elif kind.minimum is not None and value < kind.minimum:
+            errors.append(f"{where}: {value} è minore di {kind.minimum}")
+        elif kind.maximum is not None and value > kind.maximum:
+            errors.append(f"{where}: {value} è maggiore di {kind.maximum}")
+        return value
+    if isinstance(kind, Text):
+        if not isinstance(value, str):
+            errors.append(f"{where}: attesa una stringa, trovato {type(value).__name__}")
+        elif not value.strip() or value != value.strip():
+            errors.append(f"{where}: stringa vuota o con spazi ai bordi")
+        elif CONTROL.search(value):
+            errors.append(f"{where}: caratteri di controllo nella stringa")
+        elif len(value) > kind.max_length:
+            errors.append(f"{where}: oltre {kind.max_length} caratteri")
+        elif kind.pattern is not None and not re.fullmatch(kind.pattern, value):
+            errors.append(f"{where}: {value!r} non corrisponde a {kind.pattern}")
+        return value
+    if isinstance(kind, Boolean):
+        if type(value) is not bool:
+            errors.append(f"{where}: atteso un booleano, trovato {type(value).__name__}")
+        return value
+    if isinstance(kind, Nullable):
+        return None if value is None else validate(kind.inner, value, where, errors)
+    if isinstance(kind, ListOf):
+        if not isinstance(value, list):
+            errors.append(f"{where}: atteso un array, trovato {type(value).__name__}")
+            return []
+        if len(value) < kind.min_items:
+            errors.append(f"{where}: almeno {kind.min_items} elementi")
+        items = [validate(kind.item, item, f"{where}[{index}]", errors) for index, item in enumerate(value)]
+        seen: dict[str, int] = {}
+        for index, item in enumerate(items):
+            if kind.unique_by and isinstance(item, RecordValue):
+                identity = json.dumps([_plain(item.values.get(key)) for key in kind.unique_by], ensure_ascii=False)
+            else:
+                identity = _identity(item)
+            if identity in seen:
+                label = "/".join(kind.unique_by) if kind.unique_by else "valore"
+                errors.append(f"{where}[{index}]: {label} ripetuto (già in {where}[{seen[identity]}])")
+            else:
+                seen[identity] = index
+        return items
+    if isinstance(kind, MapOf):
+        if not isinstance(value, dict):
+            errors.append(f"{where}: atteso un oggetto, trovato {type(value).__name__}")
+            return {}
+        if len(value) < kind.min_items:
+            errors.append(f"{where}: almeno {kind.min_items} voci")
+        result: dict[str, Any] = {}
+        for key, item in value.items():
+            validate(kind.key, key, f"{where} chiave {key!r}", errors)
+            result[key] = validate(kind.value, item, f"{where}[{key!r}]", errors)
+        return result
+    if isinstance(kind, Record):
+        if not isinstance(value, dict):
+            errors.append(f"{where}: atteso un oggetto {kind.name}, trovato {type(value).__name__}")
+            return RecordValue(kind, {})
+        allowed = set(kind.fields) | ({"note"} if kind.notes else set())
+        for key in value:
+            if key not in allowed:
+                errors.append(f"{where}: chiave non prevista {key!r}")
+        values: dict[str, Any] = {}
+        for key, item in kind.fields.items():
+            if key in value:
+                values[key] = validate(item.type, value[key], f"{where}.{key}", errors)
+            elif item.default is REQUIRED:
+                errors.append(f"{where}: manca la chiave {key!r}")
+            else:
+                values[key] = copy.deepcopy(item.default)
+        note = value.get("note")
+        if note is not None:
+            validate(Text(max_length=200), note, f"{where}.note", errors)
+            if isinstance(note, str) and "*/" in note:
+                errors.append(f"{where}.note: «*/» non ammesso in un commento")
+        return RecordValue(kind, values, note if isinstance(note, str) else None)
+    raise TypeError(f"tipo di schema sconosciuto: {kind!r}")
+
+
+def load_table(table: Table, root: Path) -> tuple[LoadedTable | None, list[str]]:
+    path = root / DATA_DIR / table.file
+    where = (DATA_DIR / table.file).as_posix()
+    try:
+        document = parse_json(path.read_text(encoding="utf-8"))
+    except FileNotFoundError:
+        return None, [f"{where}: file assente"]
+    except (SchemaError, ValueError) as error:
+        return None, [f"{where}: JSON non valido ({error})"]
+    errors: list[str] = []
+    if not isinstance(document, dict):
+        return None, [f"{where}: atteso un oggetto JSON"]
+    if document.get("schema") != SCHEMA_MARKER:
+        errors.append(f"{where}: schema deve essere {SCHEMA_MARKER!r}")
+    description = document.get("description")
+    validate(Text(max_length=400), description, f"{where}: description", errors)
+    if isinstance(description, str) and "*/" in description:
+        errors.append(f"{where}: description: «*/» non ammesso in un commento")
+    for key in document:
+        if key not in table.fields and key not in {"schema", "description"}:
+            errors.append(f"{where}: chiave non prevista {key!r}")
+    values: dict[str, Any] = {}
+    for key, item in table.fields.items():
+        if key in document:
+            values[key] = validate(item.type, document[key], f"{where}: {key}", errors)
+        elif item.default is REQUIRED:
+            errors.append(f"{where}: manca la chiave {key!r}")
+        else:
+            values[key] = copy.deepcopy(item.default)
+    if not errors and table.check is not None:
+        errors += [f"{where}: {problem}" for problem in table.check(values)]
+    if errors:
+        return None, errors
+    return LoadedTable(table, str(description), values), []
+
+
+def check_registry(tables: Sequence[Table]) -> list[str]:
+    """Names usable as identifiers in the three languages, and unique where they meet."""
+    problems: list[str] = []
+    files: set[str] = set()
+    names: set[str] = set()
+    records: dict[str, Record] = {}
+    for table in tables:
+        if not re.fullmatch(r"[a-z0-9]+(?:-[a-z0-9]+)*-v\d+\.json", table.file) or table.file in files:
+            problems.append(f"{table.file}: nome di file non valido o ripetuto")
+        files.add(table.file)
+        if not TYPE_NAME.fullmatch(table.name) or table.name in names or table.name == "SharedData":
+            problems.append(f"{table.file}: nome {table.name!r} non valido o ripetuto")
+        names.add(table.name)
+        keys = list(table.fields)
+        for record in table.records():
+            if not TYPE_NAME.fullmatch(record.name) or record.name in names:
+                problems.append(f"{table.file}: tipo {record.name!r} non valido o uguale a una tabella")
+            if records.get(record.name, record) is not record:
+                problems.append(f"{table.file}: tipo {record.name!r} già definito da un'altra tabella")
+            records[record.name] = record
+            keys += list(record.fields)
+        for key in keys:
+            if not KEY_NAME.fullmatch(key) or key in RESERVED or key in {"schema", "description", "note"}:
+                problems.append(f"{table.file}: chiave {key!r} non utilizzabile come identificatore")
+    return problems
+
+
+# --- Table checks -------------------------------------------------------------------------------------------------
+
+
+def _check_airport_routes(values: Mapping[str, Any]) -> list[str]:
+    packs = [pack.values["id"] for pack in values["packs"]]
+    used = {pack for route in values["routes"] for pack in route.values["packs"]}
+    problems = [f"routes: pack {pack!r} non dichiarato in packs" for pack in sorted(used - set(packs))]
+    problems += [f"packs: {pack!r} non usato da nessuna tratta" for pack in packs if pack not in used]
+    problems += [f"routes[{index}]: stazione di città e aeroporto coincidono" for index, route in enumerate(values["routes"])
+                 if route.values["city"] == route.values["airport"]]
+    return problems
+
+
+def _check_source_scores(values: Mapping[str, Any]) -> list[str]:
+    categories = values["categories"]
+    problems = [f"preferences[{index}]: categoria {item.values['category']!r} non in categories"
+                for index, item in enumerate(values["preferences"]) if item.values["category"] not in categories]
+    owner: dict[str, int] = {}
+    for index, rule in enumerate(values["operatorAffinity"]):
+        if list(rule.values["pointsByCategory"]) != categories:
+            problems.append(f"operatorAffinity[{index}]: pointsByCategory deve elencare categories nello stesso ordine")
+        for source in rule.values["sources"]:
+            if source in owner:
+                problems.append(f"operatorAffinity[{index}]: {source!r} già in operatorAffinity[{owner[source]}]")
+            owner[source] = index
+    return problems
+
+
+def _check_holidays(values: Mapping[str, Any]) -> list[str]:
+    problems = []
+    for index, holiday in enumerate(values["holidays"]):
+        month, day = holiday.values["month"], holiday.values["day"]
+        if day > calendar.monthrange(2028, month)[1]:  # a leap year: 29 February is a date
+            problems.append(f"holidays[{index}]: {day}/{month} non è una data")
+    if values["easterOffsetsDays"] != sorted(values["easterOffsetsDays"]):
+        problems.append("easterOffsetsDays: in ordine crescente")
+    return problems
+
+
+def _check_planned_journeys(values: Mapping[str, Any]) -> list[str]:
+    minutes = values["reminderMinutes"]
+    return [] if minutes == sorted(minutes) else ["reminderMinutes: in ordine crescente"]
+
+
+# --- Registry -----------------------------------------------------------------------------------------------------
+
+SOURCE_ID = r"[a-z0-9]+(?:-[a-z0-9]+)*"
+CATALOGUE_STATION = r"(?:S\d{5}|NC\d{6})"
+STATION_NAME = Text(r"[\w .'’()-]+", max_length=96)
+COUNT = Integer(1, 1_000_000)
+
+AIRPORT_PACK = Record("Pack", {"id": Field(Text(SOURCE_ID)), "cityLine": Field(Boolean())}, notes=True)
+AIRPORT_ROUTE = Record("Route", {
+    "city": Field(Text(CATALOGUE_STATION)),
+    "airport": Field(Text(CATALOGUE_STATION)),
+    "packs": Field(ListOf(Text(SOURCE_ID), as_set=True)),
+}, notes=True)
+HOLIDAY = Record("Holiday", {
+    "month": Field(Integer(1, 12)),
+    "day": Field(Integer(1, 31)),
+    "fromYear": Field(Nullable(Integer(1900, 9999)), default=None),
+}, notes=True)
+ITALO_STATION = Record("Station", {
+    "code": Field(Text(r"[A-Z0-9_]{3}")),
+    "name": Field(STATION_NAME),
+    "aliases": Field(ListOf(STATION_NAME, min_items=0), default=[]),
+})
+SOURCE_PREFERENCE = Record("Preference", {
+    "source": Field(Text(SOURCE_ID)),
+    "category": Field(Text(r"[A-Z][A-Z_]*")),
+    "score": Field(Integer(0, 1_000)),
+    "reason": Field(Text()),
+}, notes=True)
+OPERATOR_AFFINITY = Record("Affinity", {
+    "sources": Field(ListOf(Text(SOURCE_ID))),
+    "operatorKeywords": Field(ListOf(Text(r"[a-z0-9]+"))),
+    "pointsByCategory": Field(MapOf(Integer(0, 1_000), key=Text(r"[A-Z][A-Z_]*"))),
+})
+
+TABLES: tuple[Table, ...] = (
+    Table("airport-routes-v1.json", "AirportRoutes", {
+        "packs": Field(ListOf(AIRPORT_PACK, unique_by=("id",))),
+        "routes": Field(ListOf(AIRPORT_ROUTE, unique_by=("city", "airport"))),
+    }, check=_check_airport_routes),
+    Table("italian-holidays-v1.json", "ItalianHolidays", {
+        "holidays": Field(ListOf(HOLIDAY, unique_by=("month", "day"))),
+        "easterOffsetsDays": Field(ListOf(Integer(-60, 60))),
+    }, alexa=True, check=_check_holidays),
+    Table("italo-stations-v1.json", "ItaloStations", {
+        "stations": Field(ListOf(ITALO_STATION, unique_by=("code",))),
+        "slugsByName": Field(MapOf(Text(r"[a-z0-9]+(?:-[a-z0-9]+)*"), key=STATION_NAME)),
+    }),
+    Table("planned-journeys-v1.json", "PlannedJourneys", {
+        "schemaVersion": Field(Integer(1, 99)),
+        "transferKind": Field(Text(r"[a-z_]+")),
+        "maximumJourneys": Field(COUNT),
+        "maximumSegments": Field(COUNT),
+        "maximumChecklistItems": Field(COUNT),
+        "maximumOccurrences": Field(COUNT),
+        "maximumLabelLength": Field(COUNT),
+        "maximumChecklistLabelLength": Field(COUNT),
+        "maximumIdentifierLength": Field(COUNT),
+        "maximumTransferBytes": Field(COUNT),
+        "maximumNestingDepth": Field(COUNT),
+        "reminderMinutes": Field(ListOf(Integer(1, 1_440))),
+        "templatesKind": Field(Text(r"[a-z_]+")),
+        "maximumTemplates": Field(COUNT),
+        "maximumTemplateNameLength": Field(COUNT),
+        "maximumTemplatesBytes": Field(COUNT),
+    }, check=_check_planned_journeys),
+    Table("punctuality-v1.json", "Punctuality", {
+        "highSpeedCategories": Field(ListOf(Text(r"[A-Z]{1,8}"), as_set=True)),
+        "highSpeedOnTimeMinutes": Field(Integer(0, 60)),
+        "otherOnTimeMinutes": Field(Integer(0, 60)),
+        "minimumSamples": Field(COUNT),
+        "minimumAggregateSamples": Field(COUNT),
+        "minimumPlatformDays": Field(COUNT),
+        "minimumPlatformSharePercent": Field(Integer(1, 100)),
+        "minimumWeekdaySamples": Field(COUNT),
+        "minimumWeekdayGapPoints": Field(Integer(1, 100)),
+        "minimumBandSamples": Field(COUNT),
+        "minimumBandGapPoints": Field(Integer(1, 100)),
+    }, alexa=True),
+    Table("rfi-place-ids-v1.json", "RfiPlaceIds", {
+        "placeIdsByName": Field(MapOf(Integer(1, 99_999), key=STATION_NAME)),
+    }),
+    Table("source-scores-v1.json", "SourceScores", {
+        "categories": Field(ListOf(Text(r"[A-Z][A-Z_]*"))),
+        "defaultScore": Field(Integer(0, 1_000)),
+        "preferences": Field(ListOf(SOURCE_PREFERENCE, unique_by=("source", "category"))),
+        "operatorAffinity": Field(ListOf(OPERATOR_AFFINITY)),
+        "coverageFallbacks": Field(ListOf(Text(SOURCE_ID), as_set=True)),
+    }, check=_check_source_scores),
+    Table("train-number-prefixes-v1.json", "TrainNumberPrefixes", {
+        # Letters only: each platform joins them into one regular-expression alternation.
+        "categories": Field(ListOf(Text(r"[A-Z]{1,16}"))),
+    }),
+)
+
+
+# --- Code emission ------------------------------------------------------------------------------------------------
+
+
+def constant_name(key: str) -> str:
+    """``minimumSamples`` → ``MINIMUM_SAMPLES`` (Kotlin and TypeScript constants)."""
+    return re.sub(r"(?<=[a-z0-9])(?=[A-Z])", "_", key).upper()
+
+
+def _escape(value: str, *, kotlin: bool) -> str:
+    escaped = value.replace("\\", "\\\\").replace('"', '\\"')
+    return '"' + (escaped.replace("$", "\\$") if kotlin else escaped) + '"'
+
+
+class Language:
+    """How one language spells the types and values of the schema."""
+
+    indent = INDENT
+
+    def type_name(self, kind: Type) -> str:
+        raise NotImplementedError
+
+    def scalar(self, kind: Type, value: Any) -> str:
+        raise NotImplementedError
+
+    def brackets(self, kind: Type, empty: bool) -> tuple[str, str]:
+        raise NotImplementedError
+
+    def entry(self, key: str, value: str) -> str:
+        raise NotImplementedError
+
+    def record_open(self, record: Record) -> str:
+        raise NotImplementedError
+
+    def record_close(self) -> str:
+        raise NotImplementedError
+
+    def argument(self, name: str, value: str) -> str:
+        raise NotImplementedError
+
+    # A value: inline when it fits on its line, else one record or entry per line (records always), plain values
+    # filled up to the line width.
+    def render(self, kind: Type, value: Any, column: int, depth: int) -> str:
+        inline = self.inline(kind, value)
+        records = isinstance(kind, ListOf) and isinstance(kind.item, Record)
+        flat_record = isinstance(kind, Record) and all(
+            isinstance(item.type, (Integer, Text, Boolean, Nullable)) for item in kind.fields.values())
+        if (column + len(inline) <= LINE_WIDTH and not records) or flat_record or \
+                (isinstance(kind, (ListOf, MapOf)) and not value):
+            return inline
+        pad = self.indent * (depth + 1)
+        if isinstance(kind, ListOf):
+            opener, closer = self.brackets(kind, empty=False)
+            if records:
+                lines = []
+                for index, item in enumerate(value):
+                    if item.note:
+                        lines += [f"{pad}// {line}" for line in _comment(item.note, pad + "// ")]
+                    rendered = self.render(kind.item, item, len(pad), depth + 1)
+                    lines.append(pad + rendered + ("," if index < len(value) - 1 else ""))
+                return opener + "\n" + "\n".join(lines) + "\n" + self.indent * depth + closer
+            items = [self.inline(kind.item, item) for item in value]
+            lines, line = [], pad
+            for index, item in enumerate(items):
+                piece = item + ("," if index < len(items) - 1 else "")
+                if line != pad and len(line) + 1 + len(piece) > LINE_WIDTH:
+                    lines.append(line.rstrip())
+                    line = pad
+                line += ("" if line == pad else " ") + piece
+            lines.append(line)
+            return opener + "\n" + "\n".join(lines) + "\n" + self.indent * depth + closer
+        if isinstance(kind, MapOf):
+            opener, closer = self.brackets(kind, empty=False)
+            entries = list(value.items())
+            lines = [pad + self.entry(self.scalar(Text(), key), self.render(kind.value, item, len(pad), depth + 1))
+                     + ("," if index < len(entries) - 1 else "") for index, (key, item) in enumerate(entries)]
+            return opener + "\n" + "\n".join(lines) + "\n" + self.indent * depth + closer
+        if isinstance(kind, Record):
+            arguments = [self.argument(name, self.render(item.type, value.values[name], len(pad) + len(name) + 3, depth + 1))
+                         for name, item in kind.fields.items()]
+            return self.record_open(kind) + "\n" + ",\n".join(pad + argument for argument in arguments) + "\n" + \
+                self.indent * depth + self.record_close()
+        return inline
+
+    def inline(self, kind: Type, value: Any) -> str:
+        if isinstance(kind, Nullable):
+            return self.null() if value is None else self.inline(kind.inner, value)
+        if isinstance(kind, ListOf):
+            opener, closer = self.brackets(kind, empty=not value)
+            return opener + ", ".join(self.inline(kind.item, item) for item in value) + closer
+        if isinstance(kind, MapOf):
+            opener, closer = self.brackets(kind, empty=not value)
+            return opener + ", ".join(self.entry(self.scalar(Text(), key), self.inline(kind.value, item))
+                                      for key, item in value.items()) + closer
+        if isinstance(kind, Record):
+            return self.record_open(kind) + ", ".join(
+                self.argument(name, self.inline(item.type, value.values[name])) for name, item in kind.fields.items()
+            ) + self.record_close()
+        return self.scalar(kind, value)
+
+    def null(self) -> str:
+        raise NotImplementedError
+
+
+class Kotlin(Language):
+    def type_name(self, kind: Type) -> str:
+        if isinstance(kind, Integer):
+            return "Int"
+        if isinstance(kind, Text):
+            return "String"
+        if isinstance(kind, Boolean):
+            return "Boolean"
+        if isinstance(kind, Nullable):
+            return self.type_name(kind.inner) + "?"
+        if isinstance(kind, ListOf):
+            return f"{'Set' if kind.as_set else 'List'}<{self.type_name(kind.item)}>"
+        if isinstance(kind, MapOf):
+            return f"Map<String, {self.type_name(kind.value)}>"
+        if isinstance(kind, Record):
+            return kind.name
+        raise TypeError(kind)
+
+    def scalar(self, kind: Type, value: Any) -> str:
+        if isinstance(kind, Boolean):
+            return "true" if value else "false"
+        if isinstance(kind, Text):
+            return _escape(value, kotlin=True)
+        return str(value)
+
+    def null(self) -> str:
+        return "null"
+
+    def brackets(self, kind: Type, empty: bool) -> tuple[str, str]:
+        if isinstance(kind, MapOf):
+            return ("emptyMap(", ")") if empty else ("mapOf(", ")")
+        name = "Set" if isinstance(kind, ListOf) and kind.as_set else "List"
+        return (f"empty{name}(", ")") if empty else (f"{name.lower()}Of(", ")")
+
+    def entry(self, key: str, value: str) -> str:
+        return f"{key} to {value}"
+
+    def record_open(self, record: Record) -> str:
+        return f"{record.name}("
+
+    def record_close(self) -> str:
+        return ")"
+
+    def argument(self, name: str, value: str) -> str:
+        return f"{name} = {value}"
+
+
+class Swift(Language):
+    def type_name(self, kind: Type) -> str:
+        if isinstance(kind, Integer):
+            return "Int"
+        if isinstance(kind, Text):
+            return "String"
+        if isinstance(kind, Boolean):
+            return "Bool"
+        if isinstance(kind, Nullable):
+            return self.type_name(kind.inner) + "?"
+        if isinstance(kind, ListOf):
+            return f"Set<{self.type_name(kind.item)}>" if kind.as_set else f"[{self.type_name(kind.item)}]"
+        if isinstance(kind, MapOf):
+            return f"[String: {self.type_name(kind.value)}]"
+        if isinstance(kind, Record):
+            return kind.name
+        raise TypeError(kind)
+
+    def scalar(self, kind: Type, value: Any) -> str:
+        if isinstance(kind, Boolean):
+            return "true" if value else "false"
+        if isinstance(kind, Text):
+            return _escape(value, kotlin=False)
+        return str(value)
+
+    def null(self) -> str:
+        return "nil"
+
+    def brackets(self, kind: Type, empty: bool) -> tuple[str, str]:
+        if isinstance(kind, MapOf) and empty:
+            return "[:", "]"
+        return "[", "]"
+
+    def entry(self, key: str, value: str) -> str:
+        return f"{key}: {value}"
+
+    def record_open(self, record: Record) -> str:
+        return f"{record.name}("
+
+    def record_close(self) -> str:
+        return ")"
+
+    def argument(self, name: str, value: str) -> str:
+        return f"{name}: {value}"
+
+
+class TypeScript(Language):
+    indent = TYPESCRIPT_INDENT
+
+    def type_name(self, kind: Type) -> str:
+        if isinstance(kind, Integer):
+            return "number"
+        if isinstance(kind, Text):
+            return "string"
+        if isinstance(kind, Boolean):
+            return "boolean"
+        if isinstance(kind, Nullable):
+            return self.type_name(kind.inner) + " | null"
+        if isinstance(kind, ListOf):
+            item = self.type_name(kind.item)
+            if kind.as_set:
+                return f"ReadonlySet<{item}>"
+            return f"readonly ({item})[]" if " | " in item else f"readonly {item}[]"
+        if isinstance(kind, MapOf):
+            return f"ReadonlyMap<string, {self.type_name(kind.value)}>"
+        if isinstance(kind, Record):
+            return kind.name
+        raise TypeError(kind)
+
+    def scalar(self, kind: Type, value: Any) -> str:
+        if isinstance(kind, Boolean):
+            return "true" if value else "false"
+        if isinstance(kind, Text):
+            return json.dumps(value, ensure_ascii=False)
+        return str(value)
+
+    def null(self) -> str:
+        return "null"
+
+    def brackets(self, kind: Type, empty: bool) -> tuple[str, str]:
+        if isinstance(kind, MapOf):
+            return f"new Map<string, {self.type_name(kind.value)}>([", "])"
+        if isinstance(kind, ListOf) and kind.as_set:
+            return f"new Set<{self.type_name(kind.item)}>([", "])"
+        return "[", "]"
+
+    def entry(self, key: str, value: str) -> str:
+        return f"[{key}, {value}]"
+
+    def record_open(self, record: Record) -> str:
+        return "{ "
+
+    def record_close(self) -> str:
+        return " }"
+
+    def argument(self, name: str, value: str) -> str:
+        return f"{name}: {value}"
+
+    def render(self, kind: Type, value: Any, column: int, depth: int) -> str:
+        # Object literals stay on one line: the records of the skill's tables are short.
+        if isinstance(kind, Record):
+            return self.inline(kind, value)
+        return super().render(kind, value, column, depth)
+
+
+def _comment(text: str, prefix: str, width: int = LINE_WIDTH) -> list[str]:
+    return textwrap.wrap(text, width=width - len(prefix), break_long_words=False, break_on_hyphens=False) or [""]
+
+
+def header(sources: Sequence[str]) -> list[str]:
+    return [
+        f"// Generated by {GENERATOR}. Do not edit: change the tables, then run",
+        f"// `python3 {GENERATOR}` (contracts/shared-data/README.md). Sources:",
+    ] + [f"//   {source}" for source in sources]
+
+
+def _doc(lines: list[str], indent: str, text: str, *, kotlin: bool) -> list[str]:
+    if kotlin:
+        wrapped = _comment(text, indent + " * ")
+        if len(wrapped) == 1 and len(indent) + 7 + len(wrapped[0]) <= LINE_WIDTH:
+            return lines + [f"{indent}/** {wrapped[0]} */"]
+        return lines + [f"{indent}/**"] + [f"{indent} * {line}" for line in wrapped] + [f"{indent} */"]
+    return lines + [f"{indent}/// {line}" for line in _comment(text, indent + "/// ")]
+
+
+def table_doc(loaded: LoadedTable) -> str:
+    return f"{(DATA_DIR / loaded.table.file).as_posix()}: {loaded.description}"
+
+
+def kotlin_source(tables: Sequence[LoadedTable]) -> str:
+    language = Kotlin()
+    lines = header([(DATA_DIR / loaded.table.file).as_posix() for loaded in tables])
+    lines += ["", f"package {KOTLIN_PACKAGE}", ""]
+    lines = _doc(lines, "", "The tables of contracts/shared-data/v1, one object per file: the common base of the apps, "
+                 "read as code (docs/architecture/ADR-0002-BASE-COMUNE.md).", kotlin=True)
+    lines.append("internal object SharedData {")
+    for position, loaded in enumerate(tables):
+        if position:
+            lines.append("")
+        lines = _doc(lines, INDENT, table_doc(loaded), kotlin=True)
+        lines.append(f"{INDENT}object {loaded.table.name} {{")
+        for record in loaded.table.records():
+            fields = ", ".join(f"val {name}: {language.type_name(item.type)}" for name, item in record.fields.items())
+            declaration = f"{INDENT * 2}data class {record.name}({fields})"
+            if len(declaration) > LINE_WIDTH:
+                declaration = f"{INDENT * 2}data class {record.name}(\n" + ",\n".join(
+                    f"{INDENT * 3}val {name}: {language.type_name(item.type)}" for name, item in record.fields.items()
+                ) + f"\n{INDENT * 2})"
+            lines.append(declaration)
+        if loaded.table.records():
+            lines.append("")
+        for key, item in loaded.table.fields.items():
+            value = loaded.values[key]
+            scalar = isinstance(item.type, (Integer, Text, Boolean))
+            prefix = f"{INDENT * 2}{'const val' if scalar else 'val'} {constant_name(key)}: {language.type_name(item.type)} = "
+            lines.append(prefix + language.render(item.type, value, len(prefix), 2))
+        lines.append(f"{INDENT}}}")
+    lines.append("}")
+    return "\n".join(lines) + "\n"
+
+
+def swift_source(tables: Sequence[LoadedTable]) -> str:
+    language = Swift()
+    lines = header([(DATA_DIR / loaded.table.file).as_posix() for loaded in tables])
+    lines.append("")
+    lines = _doc(lines, "", "The tables of contracts/shared-data/v1, one namespace per file: the common base of the apps, "
+                 "read as code (docs/architecture/ADR-0002-BASE-COMUNE.md).", kotlin=False)
+    lines.append("public enum SharedData {")
+    for position, loaded in enumerate(tables):
+        if position:
+            lines.append("")
+        lines = _doc(lines, INDENT, table_doc(loaded), kotlin=False)
+        lines.append(f"{INDENT}public enum {loaded.table.name} {{")
+        for record in loaded.table.records():
+            lines.append(f"{INDENT * 2}public struct {record.name}: Hashable, Sendable {{")
+            lines += [f"{INDENT * 3}public let {name}: {language.type_name(item.type)}" for name, item in record.fields.items()]
+            lines += [f"{INDENT * 2}}}", ""]
+        for key, item in loaded.table.fields.items():
+            prefix = f"{INDENT * 2}public static let {key}: {language.type_name(item.type)} = "
+            lines.append(prefix + language.render(item.type, loaded.values[key], len(prefix), 2))
+        lines.append(f"{INDENT}}}")
+    lines.append("}")
+    return "\n".join(lines) + "\n"
+
+
+def typescript_source(tables: Sequence[LoadedTable]) -> str:
+    language = TypeScript()
+    pad = TYPESCRIPT_INDENT
+    lines = header([(DATA_DIR / loaded.table.file).as_posix() for loaded in tables])
+    for loaded in tables:
+        lines.append("")
+        for record in loaded.table.records():
+            fields = "; ".join(f"readonly {name}: {language.type_name(item.type)}" for name, item in record.fields.items())
+            lines.append(f"export type {record.name} = {{ {fields} }};")
+            lines.append("")
+        lines += _ts_doc(table_doc(loaded))
+        lines.append(f"export const {loaded.table.name}: {{")
+        lines += [f"{pad}readonly {constant_name(key)}: {language.type_name(item.type)};" for key, item in loaded.table.fields.items()]
+        lines.append("} = Object.freeze({")
+        for key, item in loaded.table.fields.items():
+            prefix = f"{pad}{constant_name(key)}: "
+            lines.append(prefix + language.render(item.type, loaded.values[key], len(prefix), 1) + ",")
+        lines.append("});")
+    return "\n".join(lines) + "\n"
+
+
+def _ts_doc(text: str) -> list[str]:
+    wrapped = _comment(text, " * ")
+    return ["/**"] + [f" * {line}" for line in wrapped] + [" */"]
+
+
+# --- Driver -------------------------------------------------------------------------------------------------------
+
+
+def load_tables(root: Path, tables: Sequence[Table] = TABLES) -> tuple[list[LoadedTable], list[str]]:
+    errors = check_registry(tables)
+    loaded: list[LoadedTable] = []
+    for table in tables:
+        result, problems = load_table(table, root)
+        errors += problems
+        if result is not None:
+            loaded.append(result)
+    return loaded, errors
+
+
+def render_outputs(loaded: Sequence[LoadedTable]) -> dict[Path, str]:
+    return {
+        KOTLIN_OUTPUT: kotlin_source(loaded),
+        SWIFT_OUTPUT: swift_source(loaded),
+        TYPESCRIPT_OUTPUT: typescript_source([table for table in loaded if table.table.alexa]),
+    }
+
+
+def unregistered(root: Path, tables: Sequence[Table] = TABLES) -> list[str]:
+    known = {table.file for table in tables}
+    directory = root / DATA_DIR
+    return sorted(path.name for path in directory.glob("*.json") if path.name not in known) if directory.is_dir() else []
+
+
+def stale_outputs(root: Path, outputs: Mapping[Path, str]) -> list[str]:
+    stale = []
+    for path, text in outputs.items():
+        target = root / path
+        if not target.is_file() or target.read_text(encoding="utf-8") != text:
+            stale.append(path.as_posix())
+    return stale
+
+
+def run(root: Path, *, check: bool, tables: Sequence[Table] = TABLES, out=sys.stdout, err=sys.stderr) -> int:
+    loaded, errors = load_tables(root, tables)
+    for name in unregistered(root, tables):
+        print(f"nota: {(DATA_DIR / name).as_posix()} non è registrato in {GENERATOR} (TABLES): nessun codice generato",
+              file=err)
+    if errors:
+        for error in errors:
+            print(f"ERRORE: {error}", file=err)
+        print("Nessun file generato: correggere le tabelle.", file=err)
+        return 1
+    outputs = render_outputs(loaded)
+    stale = stale_outputs(root, outputs)
+    if check:
+        for path in stale:
+            print(f"ERRORE: {path} non corrisponde alle tabelle: eseguire python3 {GENERATOR}", file=err)
+        if not stale:
+            print(f"Codice condiviso aggiornato: {len(loaded)} tabelle, {len(outputs)} file generati", file=out)
+        return 1 if stale else 0
+    for path in stale:
+        target = root / path
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(outputs[Path(path)], encoding="utf-8")
+        print(f"scritto {path}", file=out)
+    if not stale:
+        print(f"Nessuna modifica: {len(loaded)} tabelle, {len(outputs)} file generati già aggiornati", file=out)
+    return 0
+
+
+def main(argv: Sequence[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument("--check", action="store_true", help="non scrive nulla; esce con 1 se un file generato non è aggiornato")
+    parser.add_argument("--root", type=Path, default=ROOT, help=argparse.SUPPRESS)
+    args = parser.parse_args(argv)
+    return run(args.root, check=args.check)
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

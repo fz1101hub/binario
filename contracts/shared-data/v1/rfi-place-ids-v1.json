@@ -1,0 +1,31 @@
+{
+  "schema": "binario-shared-data-v1",
+  "description": "Place IDs of the RFI «Arrivi e partenze» monitor for the station names Binario knows, read before the official station selector.",
+  "placeIdsByName": {
+    "Roma Termini": 2416,
+    "Roma Tiburtina": 2385,
+    "Roma Ostiense": 2379,
+    "Roma Trastevere": 2387,
+    "Roma San Pietro": 2383,
+    "Roma S. Pietro": 2383,
+    "Roma Tuscolana": 2388,
+    "Fiumicino Aeroporto": 1327,
+    "Ciampino": 1106,
+    "Civitavecchia": 1123,
+    "Frascati": 1370,
+    "Velletri": 3006,
+    "Orte": 1959,
+    "Latina": 1539,
+    "Frosinone": 1377,
+    "Cassino": 955,
+    "Napoli Centrale": 1888,
+    "Bologna Centrale": 683,
+    "Milano Centrale": 1728,
+    "Genova Piazza Principe": 257,
+    "Genova P. Principe": 257,
+    "Torino Porta Nuova": 2876,
+    "Bari Centrale": 595,
+    "Palermo Centrale": 2018,
+    "Cagliari": 787
+  }
+}

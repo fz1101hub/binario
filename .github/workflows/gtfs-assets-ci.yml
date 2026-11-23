@@ -26,6 +26,10 @@ on:
       - "requirements-ci.txt"
       - "tools/**"
       - "tests/**"
+      # The shared tables and the code tools/generate_shared_code.py writes from them (its --check below).
+      - "contracts/shared-data/**"
+      - "app/src/main/java/it/binario/app/shared/**"
+      - "alexa-companion/shared/generated/**"
       - ".github/ci-inputs-lock.json"
       - ".github/workflows/**"
   push:
@@ -56,6 +60,10 @@ on:
       - "requirements-ci.txt"
       - "tools/**"
       - "tests/**"
+      # The shared tables and the code tools/generate_shared_code.py writes from them (its --check below).
+      - "contracts/shared-data/**"
+      - "app/src/main/java/it/binario/app/shared/**"
+      - "alexa-companion/shared/generated/**"
       - ".github/ci-inputs-lock.json"
       - ".github/workflows/**"
   # Weekly watch (Monday, job freshness-watch): packs ending within 45 days and new datasets of the rail operators on the
@@ -134,6 +142,11 @@ jobs:
           tests/test_app_store_docs.py
           tests/test_build_android_gtfs_credits.py
           tests/test_verify_docs_status.py
+          tests/test_generate_shared_code.py
+
+      # The Kotlin, Swift and TypeScript code of contracts/shared-data/v1 is committed: it must be what the tables give.
+      - name: Verify the generated shared code
+        run: python3 tools/generate_shared_code.py --check
 
       - name: Verify immutable CI inputs
         run: |
