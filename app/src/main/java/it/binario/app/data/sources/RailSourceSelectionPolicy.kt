@@ -38,6 +38,7 @@ object RailSourceSelectionPolicy {
         pref("ch-otd-gtfs", RailInformationCategory.PLANNED_ITINERARY, 140, "Dataset nazionale svizzero ufficiale, baseline per SBB/TILO/BLS/RhB/FART e tratte transfrontaliere."),
         pref("oebb-gtfs", RailInformationCategory.PLANNED_ITINERARY, 140, "GTFS ufficiale ÖBB per Railjet/EuroCity/Nightjet."),
         pref("sncf-gtfs", RailInformationCategory.PLANNED_ITINERARY, 140, "GTFS ufficiale SNCF per TGV/TER/Intercités."),
+        pref("trenitalia-france-gtfs", RailInformationCategory.PLANNED_ITINERARY, 140, "GTFS ufficiale Trenitalia France per i Frecciarossa Francia–Italia."),
         pref("lombardia-trenord-gtfs", RailInformationCategory.PLANNED_ITINERARY, 137, "GTFS ferroviario ufficiale Regione Lombardia/Trenord."),
         pref("alto-adige-sta-gtfs", RailInformationCategory.PLANNED_ITINERARY, 135, "Open Data Hub/STA ufficiale, utile anche per servizi transfrontalieri."),
         // Which offline pack's copy of a train is shown (route search, journeys) is decided by PlannedPackOrder: the
@@ -123,6 +124,7 @@ object RailSourceSelectionPolicy {
                 if (op.containsAny("sbb", "tilo", "bls", "rhb", "rhatischebahn", "rhaetischebahn", "fart", "ssif")) 20 else 0
             "oebb-gtfs" -> if (op.containsAny("oebb", "obb", "osterreichischebundesbahnen")) 20 else 0
             "sncf-gtfs", "sncf-gtfs-rt", "sncf-gtfs-rt-trip-updates", "sncf-gtfs-rt-alerts" -> if (op.contains("sncf")) 20 else 0
+            "trenitalia-france-gtfs" -> if (op.contains("trenitalia")) 20 else 0
             "lombardia-trenord-gtfs" -> if (op.contains("trenord")) 20 else 0
             "delfi-gtfs", "delfi-gtfs-community", "db-timetables", "db-ris-boards", "db-ris-journeys", "db-ris-disruptions" ->
                 if (op.containsAny("db", "deutschebahn", "dbfernverkehr")) 20 else 0

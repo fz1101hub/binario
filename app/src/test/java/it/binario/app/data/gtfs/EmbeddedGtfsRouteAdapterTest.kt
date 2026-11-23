@@ -290,6 +290,36 @@ class EmbeddedGtfsRouteAdapterTest {
         assertEquals(listOf("ch-otd-gtfs"), borderServices.map { it.gtfsIdentity?.sourceId })
     }
 
+    @Test
+    fun `un Frecciarossa di Trenitalia France gia nel pack nazionale resta una sola volta`() = runBlocking {
+        // Trenitalia France's own feed publishes the same train as the national pack ("FR 9241" and "9241", same
+        // minutes): one service, the national copy; where the national pack does not list the other station, its own.
+        val feeds = mapOf(
+            "trenitalia-france-gtfs" to feed(tripId = "F9241", tripNumber = "FR 9241", agencyName = "Trenitalia France"),
+            "trenitalia-gtfs" to feed(tripId = "T9241", tripNumber = "9241", agencyName = "TRENITALIA")
+        )
+        val ids = listOf("trenitalia-france-gtfs", "trenitalia-gtfs")
+        val services = (
+            EmbeddedGtfsRouteAdapter(
+                openAsset = { path -> ByteArrayInputStream(requireNotNull(feeds[path.removePrefix("gtfs/").removeSuffix(".zip")])) },
+                packs = ids.map { EmbeddedGtfsPack(SourceId(it), "gtfs/$it.zip") },
+                clock = { 1_000L }
+            ).loadRoute(route, Direction.OUTBOUND, JourneyQuery(LocalDate.of(2026, 9, 4), LocalTime.of(8, 0))) as DataResult.Success
+            ).snapshot.services
+        assertEquals(listOf("trenitalia-gtfs"), services.map { it.gtfsIdentity?.sourceId })
+        assertEquals("T9241", services.single().gtfsIdentity?.tripId)
+
+        val border = feeds + ("trenitalia-gtfs" to feed(tripId = "T1", tripNumber = "1", agencyName = "TRENITALIA", stopNames = Triple("Milano Centrale", "Monza", "Lecco")))
+        val borderServices = (
+            EmbeddedGtfsRouteAdapter(
+                openAsset = { path -> ByteArrayInputStream(requireNotNull(border[path.removePrefix("gtfs/").removeSuffix(".zip")])) },
+                packs = ids.map { EmbeddedGtfsPack(SourceId(it), "gtfs/$it.zip") },
+                clock = { 1_000L }
+            ).loadRoute(route, Direction.OUTBOUND, JourneyQuery(LocalDate.of(2026, 9, 4), LocalTime.of(8, 0))) as DataResult.Success
+            ).snapshot.services
+        assertEquals(listOf("trenitalia-france-gtfs"), borderServices.map { it.gtfsIdentity?.sourceId })
+    }
+
     /**
      * Audit android-data-6: Venezia S. Lucia → Venezia Mestre has REG 16348 (Trenitalia) and Italo 8984 both at
      * 13:57 → 14:09 on 10 Nov 2026. Same minutes from two packs are one train only when the numbers match, the

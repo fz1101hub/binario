@@ -262,7 +262,12 @@
     {
       "sourceId": "ch-otd-gtfs",
       "asset": "gtfs/ch-otd-gtfs.zip",
-      "sourceUrl": "https://data.opentransportdata.swiss/dataset/3d2c18f9-9ef1-463f-a249-5c67604efd74/resource/32c2dfb4-8953-45b5-b271-211a2fa3aa18/download/gtfs_fp2026_2025-08-14.zip",
+      "sourceUrl": "https://data.opentransportdata.swiss/de/dataset/timetable-2026-gtfs2020/permalink",
+      "nextTimetable": {
+        "from": "2026-12-13",
+        "sourceUrl": "https://data.opentransportdata.swiss/de/dataset/timetable-2027-gtfs2020/permalink",
+        "landingPage": "https://data.opentransportdata.swiss/dataset/timetable-2027-gtfs2020"
+      },
       "accessMode": "OPEN_DIRECT",
       "attribution": "Open Data Platform Mobility Switzerland / SBB Infrastructure",
       "licence": "opendata.swiss terms_by — uso libero, anche commerciale, con obbligo di citare la fonte",

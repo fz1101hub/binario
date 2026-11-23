@@ -18,28 +18,33 @@ class PlannedPackOrderTest {
         val railway = EmbeddedGtfsPacks.forBuild(personalSources = true).filterNot(EmbeddedGtfsPack::isUrban)
         // A pack lands in a class by its catalogue data: each one has an entry with its countries.
         railway.forEach { pack -> assertNotNull(pack.sourceId.value, RailSourceInventory.byId(pack.sourceId)?.countryCodes?.firstOrNull()) }
+        val expected = mapOf(
+            "trenitalia-gtfs" to NATIONAL,
+            "italo-gtfs" to NATIONAL,
+            "alto-adige-sta-gtfs" to ITALIAN_REGIONAL,
+            "arst-gtfs" to ITALIAN_REGIONAL,
+            "eav-gtfs" to ITALIAN_REGIONAL,
+            "lombardia-trenord-gtfs" to ITALIAN_REGIONAL,
+            "toscana-tft-gtfs" to ITALIAN_REGIONAL,
+            "trentino-gtfs" to ITALIAN_REGIONAL,
+            "fal-basilicata-puglia" to ITALIAN_REGIONAL,
+            "ferrotramviaria-bari-barletta" to ITALIAN_REGIONAL,
+            "fdg-gargano" to ITALIAN_REGIONAL,
+            "micotra-udine-villach" to ITALIAN_REGIONAL,
+            "amt-genova-casella-gtfs" to ITALIAN_REGIONAL,
+            "cotral-ferro-gtfs" to ITALIAN_REGIONAL,
+            "ch-otd-gtfs" to FOREIGN,
+            "oebb-gtfs" to FOREIGN,
+            "sncf-gtfs" to FOREIGN,
+            // A reviewed candidate (tools/core_pack_candidates.json), classified before its pack is bundled.
+            "trenitalia-france-gtfs" to FOREIGN
+        )
+        // Every bundled pack is listed: one missing here fails the comparison.
         assertEquals(
-            mapOf(
-                "trenitalia-gtfs" to NATIONAL,
-                "italo-gtfs" to NATIONAL,
-                "alto-adige-sta-gtfs" to ITALIAN_REGIONAL,
-                "arst-gtfs" to ITALIAN_REGIONAL,
-                "eav-gtfs" to ITALIAN_REGIONAL,
-                "lombardia-trenord-gtfs" to ITALIAN_REGIONAL,
-                "toscana-tft-gtfs" to ITALIAN_REGIONAL,
-                "trentino-gtfs" to ITALIAN_REGIONAL,
-                "fal-basilicata-puglia" to ITALIAN_REGIONAL,
-                "ferrotramviaria-bari-barletta" to ITALIAN_REGIONAL,
-                "fdg-gargano" to ITALIAN_REGIONAL,
-                "micotra-udine-villach" to ITALIAN_REGIONAL,
-                "amt-genova-casella-gtfs" to ITALIAN_REGIONAL,
-                "cotral-ferro-gtfs" to ITALIAN_REGIONAL,
-                "ch-otd-gtfs" to FOREIGN,
-                "oebb-gtfs" to FOREIGN,
-                "sncf-gtfs" to FOREIGN
-            ),
+            expected.filterKeys { id -> railway.any { it.sourceId.value == id } },
             railway.associate { it.sourceId.value to PlannedPackOrder.classOf(it.sourceId) }
         )
+        assertEquals(FOREIGN, classOf("trenitalia-france-gtfs"))
     }
 
     @Test fun `the first catalogue country decides between Italian and foreign`() {
@@ -48,6 +53,9 @@ class PlannedPackOrderTest {
         assertEquals(ITALIAN_REGIONAL, classOf("alto-adige-sta-gtfs"))
         assertEquals(listOf("AT", "IT"), RailSourceCatalog.byId(SourceId("oebb-gtfs"))!!.countryCodes.toList())
         assertEquals(FOREIGN, classOf("oebb-gtfs"))
+        // Trenitalia France's own feed is foreign: the national Trenitalia pack, which also lists its trains, comes first.
+        assertEquals(listOf("FR", "IT"), RailSourceCatalog.byId(SourceId("trenitalia-france-gtfs"))!!.countryCodes.toList())
+        assertEquals(FOREIGN, classOf("trenitalia-france-gtfs"))
         assertEquals(FOREIGN, classOf("delfi-gtfs"))
         assertEquals(COMMUNITY_FALLBACK, classOf("delfi-gtfs-community"))
         assertEquals(COMMUNITY_FALLBACK, classOf("european-sleeper-gtfs"))

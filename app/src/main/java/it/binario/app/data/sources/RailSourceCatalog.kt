@@ -289,6 +289,23 @@ object RailSourceCatalog {
             notes = "Payload protobuf HTTPS verificato; non viene decodificato in questa tranche statica."
         ),
         RailSourceDefinition(
+            id = SourceId("trenitalia-france-gtfs"),
+            displayName = "Trenitalia France — GTFS statico",
+            operatorOrAuthority = "Trenitalia France / transport.data.gouv.fr",
+            formats = setOf(SourceFormat.GTFS_ZIP),
+            capabilities = staticCapabilities,
+            accessMode = AccessMode.OPEN_DIRECT,
+            readiness = SourceReadiness.READY_FOR_GTFS_PACK,
+            countryCodes = setOf("FR", "IT"),
+            coverage = "Frecciarossa di Trenitalia France: Parigi–Lione–Chambéry–Modane–Torino–Milano e Parigi–Lione–Marsiglia.",
+            landingPage = uri("https://transport.data.gouv.fr/datasets/horaires-des-trains-trenitalia-france"),
+            downloadOrProbeUri = uri("https://www.data.gouv.fr/api/1/datasets/r/bdecea2c-ebc9-4f22-812d-927e4a2e4bad"),
+            attribution = "Trenitalia France — Licence Ouverte / Open Licence 2.0 (etalab-2.0)",
+            notes = "Pack candidato (tools/core_pack_candidates.json): il CI lo scarica solo quando un dispatch lo nomina e " +
+                "apply_ci_gtfs_refresh.py lo aggiunge intero agli asset. Le stesse corse sono anche nel pack trenitalia-gtfs, " +
+                "la cui copia viene prima (PlannedPackOrder)."
+        ),
+        RailSourceDefinition(
             id = SourceId("ch-otd-gtfs"),
             displayName = "Open Data Platform Mobility Switzerland — GTFS",
             operatorOrAuthority = "ODMCH / SBB Infrastructure",
@@ -299,7 +316,7 @@ object RailSourceCatalog {
             countryCodes = setOf("CH", "IT"),
             coverage = "SBB, TILO, BLS, RhB e servizi transfrontalieri inclusi nella distribuzione nazionale.",
             landingPage = uri("https://data.opentransportdata.swiss/dataset/timetable-2026-gtfs2020"),
-            downloadOrProbeUri = uri("https://data.opentransportdata.swiss/dataset/3d2c18f9-9ef1-463f-a249-5c67604efd74/resource/32c2dfb4-8953-45b5-b271-211a2fa3aa18/download/gtfs_fp2026_2025-08-14.zip"),
+            downloadOrProbeUri = uri("https://data.opentransportdata.swiss/de/dataset/timetable-2026-gtfs2020/permalink"),
             attribution = "Open Data Platform Mobility Switzerland / SBB Infrastructure — opendata.swiss terms_by",
             notes = "Data pack ferroviario filtrato e verificato; aggiornare con manifest e attribuzione a ogni release." + FOREIGN_PACK_DELIVERY
         ),
