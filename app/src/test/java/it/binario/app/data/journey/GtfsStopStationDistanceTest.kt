@@ -7,14 +7,17 @@ import it.binario.app.data.core.JourneyOption
 import it.binario.app.data.core.SourceId
 import it.binario.app.data.core.StationId
 import it.binario.app.data.gtfs.EmbeddedGtfsPacks
+import it.binario.app.data.gtfs.ForeignPackPins
 import it.binario.app.data.provider.JourneySearchRequest
 import it.binario.app.data.provider.ProviderResult
+import java.io.File
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.ZoneId
 import java.time.ZonedDateTime
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -82,5 +85,13 @@ class GtfsStopStationDistanceTest {
         val found: List<JourneyOption> = (result as? ProviderResult.Success)?.value.orEmpty()
         assertTrue("Swiss trains to the Swiss Guarda shown for Guarda (FE): ${found.map { option -> option.legs.map { it.destination } }}",
             found.none { option -> option.legs.any { it.runId?.value?.startsWith("ch-otd-gtfs:") == true } })
+    }
+
+    @Test fun `the pins do not list Guarda near Ferrara or Steinach in Tirol among the Swiss stations`() {
+        val pins = ForeignPackPins.parse(File("src/main/assets/${ForeignPackPins.ASSET_PATH}").readText())
+        val entry = pins.entry(swiss) ?: throw AssertionError("no Swiss pin")
+        assertFalse(entry.serves(guarda.id))
+        assertFalse(entry.serves(steinach.id))
+        assertTrue(entry.serves("curated:S01440"))
     }
 }
