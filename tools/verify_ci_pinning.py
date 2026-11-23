@@ -886,6 +886,8 @@ def _check_apple_paths(
         "app/src/main/assets/punctuality/**",
         "contracts/wear-snapshot/**",
         "contracts/shared-rules/**",
+        # The notice feeds' table the iPhone bundles and reads (contracts/shared-data/v1).
+        "contracts/shared-data/**",
         # The dictation cases shared with Android (RouteDictationTests).
         "contracts/voice-input/**",
         "tools/build_ios_gtfs_schedule.py",
@@ -951,7 +953,11 @@ def _check_linux_trigger_budget(
     required_paths = {
         # The three readers of contracts/shared-rules run when its vectors change;
         # contracts/voice-input: the dictation cases shared with the iPhone (PlannerVoiceDictationFormsTest).
-        "android-ci.yml": {"app/**", "wear/**", "contracts/wear-snapshot/**", "contracts/shared-rules/**", "contracts/voice-input/**"},
+        # contracts/shared-data: the shared tables a Kotlin test keeps equal to Android's constants.
+        "android-ci.yml": {
+            "app/**", "wear/**", "contracts/wear-snapshot/**", "contracts/shared-rules/**", "contracts/shared-data/**",
+            "contracts/voice-input/**",
+        },
         # The document gates of the offline tests must run when their documents change (audit A7-11).
         "gtfs-assets-ci.yml": {
             "docs/**",

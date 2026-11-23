@@ -7,6 +7,8 @@ on:
       - "wear/**"
       - "contracts/wear-snapshot/**"
       - "contracts/shared-rules/**"
+      # The shared tables (notice feeds) the Kotlin tests compare and the iPhone bundles.
+      - "contracts/shared-data/**"
       - "contracts/voice-input/**"
       # Full foreign packs: the JVM tests read them for the trains beyond the border zone of the bundled subsets.
       - "data/gtfs-foreign/android/**"
@@ -41,6 +43,8 @@ on:
       - "wear/**"
       - "contracts/wear-snapshot/**"
       - "contracts/shared-rules/**"
+      # The shared tables (notice feeds) the Kotlin tests compare and the iPhone bundles.
+      - "contracts/shared-data/**"
       - "contracts/voice-input/**"
       # Full foreign packs: the JVM tests read them for the trains beyond the border zone of the bundled subsets.
       - "data/gtfs-foreign/android/**"

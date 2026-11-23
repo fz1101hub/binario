@@ -10,6 +10,8 @@ on:
       - "app/src/main/assets/punctuality/**"
       - "contracts/wear-snapshot/**"
       - "contracts/shared-rules/**"
+      # The shared tables (notice feeds) the Kotlin tests compare and the iPhone bundles.
+      - "contracts/shared-data/**"
       - "contracts/voice-input/**"
       - "tools/build_ios_gtfs_schedule.py"
       - "tools/build_gtfs_packs.py"
@@ -39,6 +41,8 @@ on:
       - "app/src/main/assets/punctuality/**"
       - "contracts/wear-snapshot/**"
       - "contracts/shared-rules/**"
+      # The shared tables (notice feeds) the Kotlin tests compare and the iPhone bundles.
+      - "contracts/shared-data/**"
       - "contracts/voice-input/**"
       - "tools/build_ios_gtfs_schedule.py"
       - "tools/build_gtfs_packs.py"
