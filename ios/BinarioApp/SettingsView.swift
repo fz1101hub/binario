@@ -3,6 +3,7 @@ import BinarioKit
 
 struct SettingsView: View {
     @EnvironmentObject private var model: AppModel
+    @EnvironmentObject private var extras: ExtrasModel
 
     var body: some View {
         List {
@@ -62,13 +63,20 @@ struct SettingsView: View {
                 // The notice sources Android counts among its personal ones, behind the same switch.
                 LiveSourceRow(name: NoticePublisher.trenitalia.brand, detailKey: "settings.live.trenitalia_news")
                 LiveSourceRow(name: NoticePublisher.trenord.brand, detailKey: "settings.live.trenord")
-                Text("settings.live.notices_always")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
+                // True only while no evening alert reads these feeds in the background; the alerts
+                // say themselves when they read them (ExtrasSettingsSection).
+                if !extras.anyEveningAlertEnabled {
+                    Text("settings.live.notices_always")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
                 Text("settings.live.privacy")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             }
+
+            // «Meteo a destinazione» and the evening alerts, as Android's settings.
+            ExtrasSettingsSection()
 
             Section("settings.privacy.title") {
                 Text("settings.privacy.body")

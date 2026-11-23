@@ -16,6 +16,76 @@
 			<string>열차 %1$lld편 추가</string>
 		</dict>
 	</dict>
+	<key>departures.map.capped</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>other</key>
+			<string>가장 가까운 %1$lld대를 표시합니다.</string>
+		</dict>
+	</dict>
+	<key>departures.map.count</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>other</key>
+			<string>운행 중인 열차 %1$lld대</string>
+		</dict>
+	</dict>
+	<key>departures.map.delay</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>other</key>
+			<string>%1$lld분 지연</string>
+		</dict>
+	</dict>
+	<key>notices.alerts.strike_title</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>other</key>
+			<string>내일 철도 파업 %1$lld건</string>
+		</dict>
+	</dict>
+	<key>notices.alerts.works_title_more</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>other</key>
+			<string>내일 %2$@ 외 %1$lld개 구간 공사</string>
+		</dict>
+	</dict>
 	<key>notices.works.show_more</key>
 	<dict>
 		<key>NSStringLocalizedFormatKey</key>
@@ -42,6 +112,20 @@
 			<string>lld</string>
 			<key>other</key>
 			<string>%2$lld회 중 %1$lld회 정시</string>
+		</dict>
+	</dict>
+	<key>result.compensation.minutes</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>other</key>
+			<string>%1$lld분</string>
 		</dict>
 	</dict>
 	<key>result.detail.arrival_on_time</key>

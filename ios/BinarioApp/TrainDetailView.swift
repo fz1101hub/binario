@@ -69,6 +69,9 @@ struct TrainDetailView: View {
                 )
             }
 
+            // The delay compensation notice and the weather at the destination (ExtrasViews.swift).
+            TrainDetailExtrasSections(service: service, query: query, liveRun: liveRun?.run)
+
             if let detail = model.reliabilityDetail(for: service, query: query) {
                 NetworkReliabilitySection(detail: detail, query: query, service: service)
             }

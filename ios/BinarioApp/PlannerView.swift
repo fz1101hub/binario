@@ -125,6 +125,8 @@ struct PlannerView: View {
                     AvailableResultView(snapshot: snapshot, now: clock)
                     // Android's board of a saved route: the works its notices name, nothing when none does.
                     RouteWorksSection(routes: resultRoutes, scope: .thisRoute)
+                    // «Treni in movimento» of the route (LiveTrainMapView.swift).
+                    RouteLiveTrainsEntry(snapshot: snapshot)
                 } else if case let .unavailable(reason) = model.searchState {
                     UnavailableResultView(reason: reason)
                 }

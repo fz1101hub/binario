@@ -52,6 +52,8 @@ struct DeparturesView: View {
                     ForeignOfferSection(offer: offer)
                 }
                 BoardContent()
+                // «Treni in movimento» and «Bici in condivisione» of the board's station (ExtrasViews.swift).
+                BoardExtrasSections()
                 // The bottom of Android's departures board: the station's Trenord notices and «Avvisi e infomobilità».
                 BoardNoticesSections(station: model.boardStation.map { model.station(for: $0) })
             case .unavailable:

@@ -13,6 +13,9 @@ struct BinarioApp: App {
     @StateObject private var model: AppModel
     /// The notice sections; without the bundled table of the notice sources, none is shown.
     @StateObject private var notices: RailNoticesModel
+    /// Weather at the destination, bike sharing and the switches of the evening alerts.
+    @StateObject private var extras: ExtrasModel
+    @Environment(\.scenePhase) private var scenePhase
 
     init() {
         // Built at launch, not with the first window: Watch Connectivity also launches the app in
@@ -21,6 +24,7 @@ struct BinarioApp: App {
         let model = AppModel.bootstrap()
         _model = StateObject(wrappedValue: model)
         _notices = StateObject(wrappedValue: RailNoticesModel.bootstrap())
+        _extras = StateObject(wrappedValue: ExtrasModel())
     }
 
     var body: some Scene {
@@ -28,6 +32,15 @@ struct BinarioApp: App {
             RootView()
                 .environmentObject(model)
                 .environmentObject(notices)
+                .environmentObject(extras)
+        }
+        // The evening alerts' one background app refresh task (EveningAlerts.swift): planned again
+        // each time the app leaves the screen, run by iOS from the hour asked for.
+        .backgroundTask(.appRefresh(EveningAlerts.taskIdentifier)) {
+            await EveningAlerts.run()
+        }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .background { EveningAlerts.schedule() }
         }
     }
 }

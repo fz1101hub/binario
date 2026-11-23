@@ -488,10 +488,16 @@ class IOSProjectTests(unittest.TestCase):
             if path.is_file() and ".build" not in path.parts
             and path.suffix in {".swift", ".yml", ".plist", ".entitlements", ".xcprivacy"}
         ]
+        info_plist = IOS / "Configuration/Binario-Info.plist"
         for path in paths:
             text = path.read_text(encoding="utf-8")
             for forbidden in ("aps-environment", "registerForRemoteNotifications", "remote-notification", "UIBackgroundModes"):
+                # The one background mode, `fetch`, of the evening alerts' app refresh task (owner decision,
+                # November 2026), declared only in the iPhone app's partial Info.plist.
+                if forbidden == "UIBackgroundModes" and path == info_plist:
+                    continue
                 self.assertNotIn(forbidden, text, path)
+        self.assertEqual(["fetch"], plistlib.loads(info_plist.read_bytes())["UIBackgroundModes"])
         self.assertNotIn("entitlements", self.targets["Binario"])
         for name, target in self.targets.items():
             if "entitlements" in target:
@@ -768,7 +774,11 @@ class IOSProjectTests(unittest.TestCase):
             "UIApplicationShortcutItemType": "it.binario.ios.agenda",
             "UIApplicationShortcutItemTitle": "Agenda",
             "UIApplicationShortcutItemIconSymbolName": "calendar",
-        }]}, info)
+        }],
+            # The evening alerts (EveningAlerts.swift): one app refresh task, its only identifier.
+            "UIBackgroundModes": ["fetch"],
+            "BGTaskSchedulerPermittedIdentifiers": ["it.binario.ios.evening-alerts"],
+        }, info)
         android = ElementTree.parse(ROOT / "app/src/main/res/xml/network_security_config.xml").getroot()
         self.assertEqual(
             [domain.text.strip() for domain in android.iter("domain") if domain.text],
@@ -1729,15 +1739,33 @@ class IOSProjectTests(unittest.TestCase):
         code = {name: "\n".join(line for line in source.splitlines() if not line.strip().startswith("//")) for name, source in app.items()}
         self.assertEqual(1, sum(source.count("LiveRailData.standard(") for source in code.values()))
         self.assertIn("liveData: LiveRailData.standard(),", model.split("static func bootstrap(", 1)[1].split("func loadCatalog(", 1)[0])
-        # No background mode, task or schedule was added for it.
-        for path in [IOS / "project.yml", IOS / "Configuration/Binario-Info.plist"]:
-            text = path.read_text(encoding="utf-8")
-            for absent in ("UIBackgroundModes", "BGTaskScheduler", "fetch", "remote-notification"):
-                self.assertNotIn(absent, text, f"{path.name}: {absent}")
+        # No background mode, task or schedule was added for it. The only background work of the app is
+        # the evening alerts' app refresh task (owner decision, November 2026): `fetch` and exactly one
+        # permitted identifier in the partial Info.plist, scheduled and run by EveningAlerts.swift alone,
+        # which reads only the MIT and RFI feeds and posts local notifications.
+        project_text = (IOS / "project.yml").read_text(encoding="utf-8")
+        for absent in ("UIBackgroundModes", "BGTaskScheduler", "fetch", "remote-notification"):
+            self.assertNotIn(absent, project_text, f"project.yml: {absent}")
+        info = plistlib.loads((IOS / "Configuration/Binario-Info.plist").read_bytes())
+        self.assertEqual(["fetch"], info["UIBackgroundModes"])
+        self.assertEqual(["it.binario.ios.evening-alerts"], info["BGTaskSchedulerPermittedIdentifiers"])
+        self.assertNotIn(b"remote-notification", (IOS / "Configuration/Binario-Info.plist").read_bytes())
         for name, source in app.items():
             with self.subTest(source=name):
-                self.assertNotIn("BGTaskScheduler", source)
+                if name != "EveningAlerts.swift":
+                    self.assertNotIn("BGTaskScheduler", source)
                 self.assertNotIn("registerForRemoteNotifications", source)
+                self.assertNotIn("BGProcessingTask", source)
+        alerts = app["EveningAlerts.swift"]
+        self.assertIn('static let taskIdentifier = "it.binario.ios.evening-alerts"', alerts)
+        self.assertEqual(1, alerts.count("BGAppRefreshTaskRequest(identifier: taskIdentifier)"))
+        self.assertIn("UNNotificationRequest(identifier: id, content: content, trigger: nil)", alerts)
+        self.assertIn("service.strikeCalendar()", alerts)
+        self.assertIn("service.general(personal: false, includeTrenord: false)", alerts)
+        for absent in ("LiveRailData", "stationNotices", "personal: true", "URLSession"):
+            self.assertNotIn(absent, alerts)
+        self.assertEqual(1, app["BinarioApp.swift"].count(".backgroundTask(.appRefresh(EveningAlerts.taskIdentifier))"))
+        self.assertEqual(["BinarioApp.swift"], sorted(name for name, source in app.items() if ".backgroundTask(" in source))
 
         # The switch: its own key, on unless the app wrote a boolean false, saved like the other stores.
         store = model.split("final class LiveDataPreferenceStore {", 1)[1].split("extension WatchSyncStatus", 1)[0]
