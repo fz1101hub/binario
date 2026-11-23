@@ -40,6 +40,8 @@ class AndroidGtfsCreditsTest(unittest.TestCase):
         self.assertEqual("X - CC BY 4.0", credits.credit_text("X - CC BY 4.0", "CC BY 4.0"))
         self.assertEqual("X — ODbL", credits.credit_text("X", "ODbL"))
         self.assertEqual("SNCF Open Data", credits.credit_text("SNCF Open Data", "Da confermare dal titolare"))
+        self.assertEqual("SNCF Open Data — licenza con attribuzione",
+                         credits.credit_text("SNCF Open Data", "SNCF Open Data — licenza con attribuzione"))
         self.assertEqual("X", credits.credit_text("X", None))
         with self.assertRaises(ValueError):
             credits.kotlin_string("a\nb")

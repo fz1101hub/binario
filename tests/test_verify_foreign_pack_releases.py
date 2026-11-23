@@ -280,7 +280,10 @@ class PublishTest(unittest.TestCase):
         self.assertEqual(0, code, output)
         creates = [call for call in gh.calls if call[1] == "create"]
         self.assertEqual(len(pinned()), len(creates))
+        manifest = json.loads((ROOT / "app/src/main/assets/gtfs/manifest.json").read_text(encoding="utf-8"))
+        entries = {entry["sourceId"]: entry for entry in manifest["packs"]}
         for platform, release, local in pinned():
+            source_id = release["tag"].removeprefix(rules.TAG_PREFIXES[platform]).rsplit("-", 1)[0]
             call = next(call for call in creates if call[2] == release["tag"])
             self.assertEqual(str(local), call[3])
             self.assertEqual(release["asset"], local.name)
@@ -288,10 +291,13 @@ class PublishTest(unittest.TestCase):
                 self.assertIn(flag, call)
             self.assertEqual(COMMIT, call[call.index("--target") + 1])
             self.assertEqual(rules.REPOSITORY, call[call.index("--repo") + 1])
-            self.assertIn("Binario · orari completi · AT (oebb-gtfs)", call[call.index("--title") + 1])
+            country = rules.FOREIGN_PACK_COUNTRIES[source_id]
+            self.assertIn(f"Binario · orari completi · {country} ({source_id})", call[call.index("--title") + 1])
+            # The licence line and the attribution come from the manifest (an SNCF share-alike licence would show).
             notes = gh.notes[release["tag"]]
-            for text in (release["sha256"], COMMIT, "CC BY 4.0", "ÖBB Personenverkehr AG", publisher.DISCLAIMER):
+            for text in (release["sha256"], COMMIT, entries[source_id]["licence"], entries[source_id]["attribution"], publisher.DISCLAIMER):
                 self.assertIn(text, notes)
+        self.assertIn("CC BY 4.0", gh.notes[next(release["tag"] for _, release, _ in pinned() if "oebb-gtfs" in release["tag"])])
         again = FakeGh({tag: value for tag, value in gh.releases.items()})
         code, output = self.publish(again)
         self.assertEqual(0, code, output)

@@ -37,6 +37,8 @@ def credit_text(attribution: str, licence: str | None) -> str:
     licence = " ".join(licence.split())
     if licence in attribution:
         return attribution
+    if licence.startswith(attribution):  # "SNCF Open Data — licenza con attribuzione": the licence names its licensor
+        return licence
     for separator in (" — ", " - "):
         head, found, tail = attribution.rpartition(separator)
         # "… — CC0" with licence "CC0 1.0": the attribution's short form becomes the full licence name.
