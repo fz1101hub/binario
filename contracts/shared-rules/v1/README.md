@@ -14,6 +14,7 @@ regole) stanno invece in [`contracts/shared-data/`](../../shared-data/README.md)
 | `calendar-v1.json` | Le festività nazionali, comprese Pasqua e Pasquetta | Android, Alexa |
 | `gtfs-station-codes-v1.json` | `stop_code`, nome e posizione di una fermata dei pack Trenitalia e Italo → stazione del catalogo attesa (o nessuna), sul catalogo `app/src/main/assets/stations/curated_it_rail_stations.json` | `app/src/test/java/it/binario/app/data/gtfs/GtfsStationCodesContractTest.kt`, `tests/test_ios_gtfs_schedule.py` (regola di `tools/android_station_codes.py`, usata dal builder dell'indice iPhone) |
 | `journey-leg-vehicles-v1.json` | `route_type`, pack, operatore e linea di una corsa → modo della tratta, mezzo e chiave dell'etichetta (Android e iPhone) | `app/src/test/java/it/binario/app/journeys/JourneyLegVehiclesContractTest.kt`, `ios/BinarioKit/Tests/BinarioKitTests/SharedRulesContractTests.swift` |
+| `urban-stops-v1.json` | Nome mostrato, badge e minuti a piedi di una fermata di metro, tram o funicolare | `app/src/test/java/it/binario/app/data/gtfs/UrbanStopsContractTest.kt`, `ios/BinarioKit/Tests/BinarioKitTests/SharedRulesContractTests.swift`, `tests/test_ios_gtfs_schedule.py` |
 | `notices-v1.json` | I casi degli avvisi ferroviari: giorni degli scioperi del calendario MIT, testo e collegamenti degli avvisi, infomobilità Trenitalia, avvisi Trenord per direttrice e per stazione, lavori e interruzioni sulle tratte. Gli ingressi sono le fixture dei test Android (`app/src/test/resources/sources/`) e il catalogo stazioni curato | `app/src/test/java/it/binario/app/data/notices/NoticesContractTest.kt` (con gli adapter e i matcher Android esistenti), `ios/BinarioKit/Tests/BinarioKitTests/NoticesContractTests.swift` |
 
 Ogni file nomina i test che lo leggono nel campo `readers` (per `rules-v1.json`:
@@ -90,12 +91,23 @@ Ogni caso ha un solo atteso, uguale per tutti i lettori del file.
 
 - **Modo**: `route_type` 2 e 100–199 sono treni; 3 e 700–799 sono il pullman dell'operatore (`BUS`) nei pack di
   `scheduledCoachPacks` (Trenitalia, Italo) e un bus sostitutivo (`REPLACEMENT_BUS`) in ogni altro pack; un altro tipo
-  (traghetto, aereo) non è una tratta. Metro, tram e funicolari delle reti urbane restano fuori: l'indice dell'iPhone
-  non le contiene.
+  (traghetto, aereo) non è una tratta. Nei pack di `urbanPacks` (`pack-roles-v1.json`) 1, 12 e 400–499 sono metro
+  (`METRO`), 0 e 900–999 tram (`TRAM`), 5, 6, 7 e 1300–1499 funicolari (`FUNICULAR`), come le linee urbane di Android.
 - **Mezzo ed etichetta** di un `BUS`: FrecciaLink se la linea è «FL» o contiene «FRECCIALINK», ItaloBus se l'operatore
   contiene «italo» o la linea «ITALOBUS», Bus Trenitalia se l'operatore contiene «trenitalia», altrimenti Autobus; un
   treno non ha etichetta di mezzo (mostra categoria e numero). Le chiavi sono `journey_leg_*` su Android e
   `result.vehicle.*` sull'iPhone, con lo stesso testo nelle 17 lingue.
+- **Linee urbane** (`urbanLines`, `urbanLabels`): la linea mostrata di una corsa urbana («1» della metro → «M1»,
+  «MEA» → «A») e quando l'etichetta del mezzo è già nel nome della linea («Metro M1», non «Metro M1 M1»).
+
+## Fermate urbane (`urban-stops-v1.json`)
+
+- **Nomi**: il nome di una fermata urbana come lo mostra Android (`StopNameCase.display`): un nome tutto maiuscolo o
+  tutto minuscolo prende l'iniziale maiuscola in ogni parola (sigle di linea e «FS» in maiuscolo, la barra diventa uno
+  spazio); un nome che mescola maiuscole e minuscole resta come pubblicato.
+- **Badge**: «M» se una linea della fermata è metro, altrimenti «T» per il tram, «F» per la funicolare.
+- **A piedi**: minuti di cammino da una stazione a una fermata entro 600 m (metri / 75 arrotondato per eccesso, più 2),
+  con i valori di `contracts/shared-data/v1/urban-stops-v1.json`.
 
 ## Avvisi verificati (`notices-v1.json`)
 

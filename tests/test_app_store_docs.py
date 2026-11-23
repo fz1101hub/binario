@@ -53,15 +53,15 @@ class AppStoreDocsTest(unittest.TestCase):
             self.assertNotIn(", ", keywords, "le parole chiave sono separate da sola virgola")
             self.assertNotIn("\n", keywords)
 
-    def test_listing_texts_describe_scheduled_data_and_name_the_excluded_networks(self) -> None:
+    def test_listing_texts_describe_scheduled_data_and_name_the_city_networks(self) -> None:
         # The iPhone index carries every railway pack Android plans with (Trenitalia and Italo included since 23
-        # November 2026); only the city networks (metro, tram) are left out.
+        # November 2026) and, since the same day, the public city networks: the listing names their cities.
         markers = {
-            "it": ("orari programmati", "non inventa", "Trenitalia (treni e bus), Italo (treni e ItaloBus)", "Metropolitane e tram non sono inclusi"),
-            "en": ("scheduled", "never invents", "Trenitalia (trains and buses), Italo (trains and ItaloBus)", "Metro and tram lines are not included"),
-            "de": ("Planzeiten", "erfindet keine", "Trenitalia (Züge und Busse), Italo (Züge und ItaloBus)", "Metro und Tram sind nicht enthalten"),
-            "fr": ("programmés", "n'invente", "Trenitalia (trains et cars), d'Italo (trains et ItaloBus)", "Le métro et le tram ne sont pas inclus"),
-            "es": ("programados", "no inventa", "Trenitalia (trenes y autobuses), Italo (trenes e ItaloBus)", "El metro y el tranvía no están incluidos"),
+            "it": ("orari programmati", "non inventa", "Trenitalia (treni e bus), Italo (treni e ItaloBus)", "metro, tram e funicolari di Milano, Genova, Firenze, Cagliari e Sassari"),
+            "en": ("scheduled", "never invents", "Trenitalia (trains and buses), Italo (trains and ItaloBus)", "metro, tram and funicular lines of Milan, Genoa, Florence, Cagliari and Sassari"),
+            "de": ("Planzeiten", "erfindet keine", "Trenitalia (Züge und Busse), Italo (Züge und ItaloBus)", "Metro, Tram und Standseilbahnen von Mailand, Genua, Florenz, Cagliari und Sassari"),
+            "fr": ("programmés", "n'invente", "Trenitalia (trains et cars), d'Italo (trains et ItaloBus)", "le métro, le tram et les funiculaires de Milan, Gênes, Florence, Cagliari et Sassari"),
+            "es": ("programados", "no inventa", "Trenitalia (trenes y autobuses), Italo (trenes e ItaloBus)", "el metro, el tranvía y los funiculares de Milán, Génova, Florencia, Cagliari y Sassari"),
         }
         for language, fragments in markers.items():
             full = self.texts[("Descrizione", language)]
@@ -71,7 +71,7 @@ class AppStoreDocsTest(unittest.TestCase):
         for language in LANGUAGES:
             with self.subTest(language=language):
                 full = self.texts[("Descrizione", language)]
-                for fragment in ("iOS 17", "watchOS 10", "Trenitalia", "Italo", "GTFS", "Ferrotramviaria", "Mi.Co.Tra."):
+                for fragment in ("iOS 17", "watchOS 10", "Trenitalia", "Italo", "GTFS", "Ferrotramviaria", "Mi.Co.Tra.", "Marconi Express"):
                     self.assertIn(fragment, full)
                 # No listing says any more that the national operators are missing.
                 self.assertNotIn("Trenitalia France)", full.replace("SNCF, Trenitalia France)", "").replace("SNCF、Trenitalia France)", "").replace("SNCF وTrenitalia France)", ""))

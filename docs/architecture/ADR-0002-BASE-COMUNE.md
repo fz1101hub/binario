@@ -67,6 +67,15 @@ motori non leggono allo stesso modo `\b`, `\w`, `\W` e `\s` vicino a caratteri n
 ricava dal primo paese del catalogo delle fonti. Per ogni pack ferroviario dell'app il risultato è l'elenco della
 tabella, e un test Kotlin lo verifica.
 
+Il 23 novembre 2026, con le reti urbane sull'iPhone:
+
+| Tabella | Prima | Ora letta da |
+|---|---|---|
+| `pack-roles-v1.json` (`urbanPacks`): le reti urbane (metro, tram, funicolari) | `kind = EmbeddedGtfsPackKind.URBAN` di ogni pack in `TransitGtfsPacks.kt` | Android (`EmbeddedGtfsPacks.withPackRoles`), iPhone; builder e verificatore dell'indice leggono il JSON |
+| `urban-stops-v1.json`: distanza massima, velocità e margine del cammino verso una fermata urbana, stessa fermata, banchine dello stesso nome | `GtfsJourneyPlannerSettings`, `SAME_PLACE_METERS` in `EmbeddedGtfsJourneyProvider.kt`, `UrbanStopBoardAdapter.SIBLING_METERS` | Android, iPhone; builder e verificatore dell'indice leggono il JSON |
+
+Nomi, badge e minuti a piedi delle fermate urbane sono casi di prova in `contracts/shared-rules/v1/urban-stops-v1.json`; linea e etichetta di una corsa urbana sono in `journey-leg-vehicles-v1.json` (`urbanLines`, `urbanLabels`).
+
 Restano fuori, coperti da casi di prova in `contracts/shared-rules/v1/`, la parola che segna una soppressione esplicita e l'operatore di una riga del monitor RFI (`live-text-v1.json`), i modelli di «Preparazione del viaggio» (`checklist-presets-v1.json`) e il calcolo della Pasqua (`calendar-v1.json`). Le espressioni regolari non diventano dati perché Java e ICU non leggono `\b` e `\w` allo stesso modo sui caratteri non ASCII. L'operatore della riga RFI non è una tabella pulita: Android distingue tre servizi Trenitalia, l'iPhone uno. I modelli di preparazione sono enum legati ai testi tradotti di ogni app. Restano fuori anche i limiti dello snapshot per gli orologi: Wear OS e Apple Watch non dipendono da `app/` né da BinarioKit, quindi non possono leggere il codice generato, e quei limiti li governa già il contratto `contracts/wear-snapshot/v1` con le sue fixture.
 
 ### Cosa resta specifico di ogni piattaforma
@@ -125,4 +134,4 @@ Si potrà riconsiderare per il nucleo del dominio (regole delle statistiche, num
 - Le tabelle si modificano solo nel JSON. `python3 tools/generate_shared_code.py` riscrive il codice, e `--check` (CI `gtfs-assets-ci.yml`, job Python) impedisce di dimenticarlo.
 - I workflow Android, Apple e Alexa partono quando cambiano `contracts/shared-data/**` o il generatore; `tools/verify_ci_pinning.py` verifica questi filtri e lo step `--check`.
 - Il codice generato Swift compila solo sulla CI macOS (Swift 6, iOS 17, watchOS 10). Non richiede modifiche a `ios/project.yml`, perché il pacchetto BinarioKit include tutte le sottocartelle di `Sources/BinarioKit`, compresa `Generated/`.
-- Il comportamento delle app non cambia: i valori migrati erano identici su tutte le piattaforme, verificati prima della migrazione. L'unica funzione nuova è `AirportRoutes.byCityLine` sull'iPhone, che oggi non trova linee urbane perché nessun pack urbano arriva sull'iPhone.
+- Il comportamento delle app non cambia: i valori migrati erano identici su tutte le piattaforme, verificati prima della migrazione. L'unica funzione nuova è `AirportRoutes.byCityLine` sull'iPhone, che dal 23 novembre 2026, con le reti urbane nell'indice dell'iPhone, trova il Marconi Express di Bologna.

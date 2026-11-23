@@ -1,5 +1,15 @@
 # Changelog
 
+## In sviluppo — Metro, tram e funicolari anche su iPhone
+
+- **Indice orari dell'iPhone con le reti urbane pubbliche di Android:** metropolitana e tram di Milano (ATM), metropolitana, funicolari e ascensori di Genova (AMT), tramvia di Firenze (GEST), metrotranvie di Cagliari e Sassari (ARST) e Marconi Express di Bologna. Stessi tipi di linea di Android (metro 1, 12, 400–499; tram 0, 900–999; funicolare 5, 6, 7, 1300–1499). L'indice passa a 22 pack: 16,2 MB compressi e 59,4 MB di SQLite (prima 7,3 e 27,8), sotto i limiti di 32 e 256 MiB.
+- **Viaggi:** dalla stazione si raggiunge a piedi una fermata entro 600 m, con gli stessi minuti di Android, e la tratta si mostra come su Android: «Metro M1», «Tram 14», «Funicolare», con la fermata dove salire. Una corsa urbana non è mai la copia di un treno, non entra nelle statistiche di puntualità e non chiede dati in tempo reale alle fonti ferroviarie.
+- **Ricerca stazioni e tabelloni:** con **Includi fermate di metro e tram nella ricerca** (Impostazioni) le fermate urbane compaiono con il badge «M», «T» o «F»; ogni fermata ha il proprio tabellone in **Partenze**. Nella scheda dell'aeroporto di Bologna, **Cerca le corse** cerca il Marconi Express, come su Android.
+- **Base comune:** l'elenco delle reti urbane è in `contracts/shared-data/v1/pack-roles-v1.json` (`urbanPacks`) e i valori del cammino verso una fermata urbana in `urban-stops-v1.json`; Android li legge ora dal codice generato. Nuovi casi di prova comuni per nomi delle fermate, badge e minuti a piedi (`contracts/shared-rules/v1/urban-stops-v1.json`) e per linee ed etichette delle corse urbane (`journey-leg-vehicles-v1.json`), letti dai test Kotlin, Swift e Python.
+- **Configurazione personale dell'iPhone:** lo schema XcodeGen «Binario Personal» (configurazione `Personal`, condizione `BINARIO_PERSONAL_SOURCES`) include un indice proprio con le reti urbane delle build personali Android: Roma, GTT Torino, ACTV Venezia e ANM Napoli (23,1 MB compressi). Cotral resta solo su Android. Debug e Release restano le configurazioni pubbliche, con l'indice pubblico.
+- **Non ancora sull'iPhone:** il foglio dei collegamenti diretti da una fermata di Android e il tempo reale delle reti urbane.
+- Testi di Android in 17 lingue. Aggiornati [l'informativa privacy](PRIVACY.md) (nuova preferenza locale, nessuna richiesta di rete), i testi del listing, le note per App Review e la checklist App Store.
+
 ## In sviluppo — Base comune tra i dispositivi
 
 - Le app restano native, ma su una base comune ([ADR-0002](docs/architecture/ADR-0002-BASE-COMUNE.md)). Le tabelle che più piattaforme usano stanno ora in `contracts/shared-data/v1/`, e `tools/generate_shared_code.py` ne scrive il codice Kotlin, Swift e, per la skill, TypeScript. Il generatore controlla le tabelle prima di scrivere, e la CI con `--check` verifica che il codice sia aggiornato.
