@@ -78,6 +78,72 @@ public struct GeneralNotices: Equatable, Sendable {
     public let stale: Bool
 }
 
+/// What a train detail knows of the train whose notices it shows (Android's `TrainNoticeContext`):
+/// its number proper, service day, ViaggiaTreno origin code when known, operator, the names of its
+/// stations and of the two the traveller uses.
+public struct TrainNoticeContext: Equatable, Hashable, Sendable {
+    /// The digits of the number without leading zeros («9588» of «FR 09588»).
+    public let number: String
+    /// Any instant of the service day, read in Italian time.
+    public let serviceDate: Date
+    public let originCode: String?
+    /// Android's operator identifier («trenitalia», «trenord», «italo»), nil when unknown.
+    public let operatorID: String?
+    public let stationNames: [String]
+    /// The boarding and alighting stations.
+    public let endpoints: [String]
+    /// A station of `endpoints` lies in Trenord's area.
+    public let nearTrenordNetwork: Bool
+
+    /// Nil without a number of one to six digits (a line name, «0»).
+    public init?(
+        number: String, serviceDate: Date, originCode: String?, operatorName: String?, stationNames: [String],
+        endpoints: [String], nearTrenordNetwork: Bool
+    ) {
+        guard let digits = LiveTrainNumberQuery(number).numeric, digits != "0", LiveText.isDigits(digits, count: 1...6) else {
+            return nil
+        }
+        self.number = digits
+        self.serviceDate = serviceDate
+        self.originCode = NetworkReliability.isStationCode(originCode) ? originCode : nil
+        let folded = (operatorName ?? "").lowercased()
+        if folded.contains("trenord") {
+            operatorID = "trenord"
+        } else if folded.contains("trenitalia") {
+            operatorID = "trenitalia"
+        } else if folded.contains("italo") {
+            operatorID = "italo"
+        } else {
+            operatorID = nil
+        }
+        self.stationNames = Self.unique(stationNames)
+        self.endpoints = Self.unique(endpoints)
+        self.nearTrenordNetwork = nearTrenordNetwork
+    }
+
+    /// The names trimmed, each once, without blanks.
+    private static func unique(_ names: [String]) -> [String] {
+        var seen: Set<String> = []
+        return names.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty && seen.insert($0).inserted }
+    }
+
+    /// Trenitalia notices are matched by number only for Trenitalia services or ViaggiaTreno runs.
+    public var matchesTrenitaliaNumbers: Bool { operatorID == "trenitalia" || originCode != nil }
+
+    public var trenordOperated: Bool { operatorID == "trenord" }
+}
+
+/// The network notices of a train detail: the Trenitalia news that name it and the Trenord notices of
+/// its lines, and whether a source failed or answered from an earlier copy.
+public struct TrainNetworkNotices: Equatable, Sendable {
+    public let network: [RailNotice]
+    public let trenord: [RailNotice]
+    public let unavailable: Bool
+    public let stale: Bool
+
+    public var isEmpty: Bool { network.isEmpty && trenord.isEmpty }
+}
+
 /// The Trenord notices of one station board.
 public struct StationNotices: Equatable, Sendable {
     public let notices: [RailNotice]
@@ -317,6 +383,38 @@ public struct RailNoticeService: Sendable {
         let alerts = TrenordLineMatcher.alertsForStation(value, stationName: stationName, rules: rules)
         return StationNotices(
             notices: alerts.compactMap { trenordNotice($0, lines: value.lines) }, unavailable: lines.isFailed, stale: lines.isStale
+        )
+    }
+
+    /// Whether a train detail would ask a network source for `context` (Android's `appliesTo`
+    /// without the per-train notices, which `LiveRailData` asks): Trenitalia's news for a Trenitalia
+    /// train or a ViaggiaTreno run, Trenord's lines for a Trenord train or one near its network.
+    public func asksNetworkNotices(for context: TrainNoticeContext, personal: Bool) -> Bool {
+        (context.matchesTrenitaliaNumbers && allowed(trenitalia.source, personal: personal))
+            || ((context.trenordOperated || context.nearTrenordNetwork) && allowed(trenord.source, personal: personal))
+    }
+
+    /// The network notices of a train detail, Android's `RailNoticesService.forTrain` without the
+    /// per-train notices: the Trenitalia news that name its number, for a Trenitalia train or a
+    /// ViaggiaTreno run, and the Trenord notices of its lines, for a Trenord train or one near
+    /// Trenord's network. Asked only with the personal sources on.
+    public func trainNetworkNotices(_ context: TrainNoticeContext, personal: Bool) async -> TrainNetworkNotices {
+        async let newsRead = read(trenitalia, personal: personal, asked: context.matchesTrenitaliaNumbers)
+        async let linesRead = read(trenord, personal: personal, asked: context.trenordOperated || context.nearTrenordNetwork)
+        let news: NoticeFeedRead<[NoticeAlert]>? = await newsRead
+        let lines: NoticeFeedRead<TrenordLineNotices>? = await linesRead
+        let named = (news?.value ?? []).filter { $0.trainNumbers.contains(context.number) }
+        let network = newestFirstWithoutDuplicates(named.compactMap { notice($0, publisher: .trenitalia) })
+        var trenordNotices: [RailNotice] = []
+        if let value = lines?.value {
+            let related = Set(TrenordLineMatcher.linesForTrain(value.lines, context: context).map(\.code))
+            trenordNotices = value.alerts.filter { alert in alert.lines.contains(where: related.contains) }
+                .compactMap { trenordNotice($0, lines: value.lines) }
+        }
+        return TrainNetworkNotices(
+            network: network, trenord: trenordNotices,
+            unavailable: news?.isFailed == true || lines?.isFailed == true,
+            stale: news?.isStale == true || lines?.isStale == true
         )
     }
 

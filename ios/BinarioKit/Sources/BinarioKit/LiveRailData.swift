@@ -3,36 +3,49 @@ import Foundation
 /// The live sources together, in Android's order (`LocalOnlyRailDataPolicy`):
 /// - train status by number: ViaggiaTreno, then Italo (`trainNumberSearchProviders`), asked
 ///   together; the runs of both are kept, ViaggiaTreno's first;
-/// - departures: the RFI monitor, Italo, ViaggiaTreno (`stationBoardProviders`), asked together and
-///   merged field by field with Android's per-category source scores (`StationBoardAggregateService`).
+/// - departures and arrivals: the RFI monitor, Italo (departures only), ViaggiaTreno
+///   (`stationBoardProviders`), asked together and merged field by field with Android's
+///   per-category source scores (`StationBoardAggregateService`);
+/// - the run of a board row: ViaggiaTreno (`stationBoardRunDetailProviders`);
+/// - the notices of a train: ViaggiaTreno's «smart caring» (`trainNoticeProviders`).
 /// The bundled timetable stays the fallback: nothing here invents a train, a time or a platform.
 public struct LiveRailData: LiveTrainStatusProviding, LiveDeparturesProviding {
     public let statusSources: [any LiveTrainStatusSource]
     public let boardSources: [any LiveDepartureBoardSource]
+    public let runDetailSources: [any LiveBoardRunSource]
+    public let noticeSources: [any LiveTrainNoticeSource]
     /// Android's `TrainNumberSearchService.providerTimeoutMillis` (15 s) and
-    /// `StationBoardAggregateService.providerTimeoutMillis` (12 s).
+    /// `StationBoardAggregateService.providerTimeoutMillis` (12 s), which is also
+    /// `StationBoardRunDetailService`'s.
     let statusTimeout: TimeInterval
     let boardTimeout: TimeInterval
 
     public init(
         statusSources: [any LiveTrainStatusSource], boardSources: [any LiveDepartureBoardSource],
-        statusTimeout: TimeInterval = 15, boardTimeout: TimeInterval = 12
+        statusTimeout: TimeInterval = 15, boardTimeout: TimeInterval = 12,
+        runDetailSources: [any LiveBoardRunSource] = [], noticeSources: [any LiveTrainNoticeSource] = []
     ) {
         self.statusSources = statusSources
         self.boardSources = boardSources
         self.statusTimeout = statusTimeout
         self.boardTimeout = boardTimeout
+        self.runDetailSources = runDetailSources
+        self.noticeSources = noticeSources
     }
 
     /// The iPhone's sources: ViaggiaTreno, RFI and Italo over `transport` (ephemeral `URLSession`s).
+    /// Without `noticeRules` ViaggiaTreno's train notices are never asked.
     public static func standard(
         transport: any LiveHTTPTransport = URLSessionLiveTransport(), pauses: LiveSourcePauses = .shared,
-        now: @escaping @Sendable () -> Date = { Date() }
+        now: @escaping @Sendable () -> Date = { Date() }, noticeRules: NoticeRules? = NoticeRules.standard
     ) -> LiveRailData {
-        let viaggiaTreno = ViaggiaTrenoLiveSource(transport: transport, pauses: pauses, now: now)
+        let viaggiaTreno = ViaggiaTrenoLiveSource(transport: transport, pauses: pauses, now: now, noticeRules: noticeRules)
         let italo = ItaloLiveSource(transport: transport, pauses: pauses, now: now)
         let rfi = RfiLiveSource(transport: transport, pauses: pauses, now: now)
-        return LiveRailData(statusSources: [viaggiaTreno, italo], boardSources: [rfi, italo, viaggiaTreno])
+        return LiveRailData(
+            statusSources: [viaggiaTreno, italo], boardSources: [rfi, italo, viaggiaTreno],
+            runDetailSources: [viaggiaTreno], noticeSources: noticeRules == nil ? [] : [viaggiaTreno]
+        )
     }
 
     public func trainStatus(_ request: LiveTrainStatusRequest) async -> LiveTrainStatusResult {
@@ -88,10 +101,12 @@ public struct LiveRailData: LiveTrainStatusProviding, LiveDeparturesProviding {
 
     public func departures(_ request: LiveDeparturesRequest) async -> LiveDeparturesResult {
         guard !boardSources.isEmpty else { return .unavailable(.notCovered) }
-        // `StationBoardAggregateService`: ten minutes back, six hours ahead, late trains from two hours back.
+        // `StationBoardAggregateService`: ten minutes back, six hours ahead, late trains from two hours
+        // back, for the departures and the arrivals alike.
         let window = LiveBoardWindow(
             station: request.station, from: request.from.addingTimeInterval(-600),
-            to: request.from.addingTimeInterval(6 * 3_600), lateSince: request.from.addingTimeInterval(-2 * 3_600)
+            to: request.from.addingTimeInterval(6 * 3_600), lateSince: request.from.addingTimeInterval(-2 * 3_600),
+            kind: request.kind
         )
         let sources = boardSources
         let timeout = boardTimeout
@@ -121,8 +136,65 @@ public struct LiveRailData: LiveTrainStatusProviding, LiveDeparturesProviding {
         let fetchedAt = boards.flatMap { $0.departures }.map { $0.observation.fetchedAt }.max() ?? request.from
         return .available(LiveDepartureBoard(
             stationID: request.station.id, from: window.from, to: window.to, departures: merged,
-            sources: boards.map { $0.source }, unavailableSources: unavailable, warnings: warnings, fetchedAt: fetchedAt
+            sources: boards.map { $0.source }, unavailableSources: unavailable, warnings: warnings, fetchedAt: fetchedAt,
+            kind: request.kind
         ))
+    }
+
+    /// The run of a board row, Android's `StationBoardRunDetailService.load`: each source in turn,
+    /// within the board's time limit, the first that has it.
+    public func boardRun(_ request: LiveBoardRunRequest) async -> LiveBoardRunResult {
+        guard !runDetailSources.isEmpty else { return .unavailable(.notCovered) }
+        let timeout = boardTimeout
+        var reasons: [LiveUnavailableReason] = []
+        for source in runDetailSources {
+            let answer = await LiveTasks.withDeadline(seconds: timeout) { await source.boardRun(request) }
+                ?? LiveSourceAnswer<LiveBoardRunDetails>.unavailable(.sourceUnavailable)
+            if Task.isCancelled { return .unavailable(.cancelled) }
+            switch answer {
+            case let .answered(details, _):
+                return .available(details)
+            case let .unavailable(reason):
+                reasons.append(reason)
+            }
+        }
+        return .unavailable(Self.reason(reasons, answered: false))
+    }
+
+    /// The notices of a train, Android's `RailNoticesService.forTrain` for the per-train sources:
+    /// asked together within the notices' time limit, each notice once, newest first; unavailable
+    /// only when no source answered.
+    public func trainNotices(_ request: LiveTrainNoticesRequest) async -> LiveTrainNoticesResult {
+        guard !noticeSources.isEmpty else { return .unavailable(.notCovered) }
+        let sources = noticeSources
+        let timeout = NoticeTable.service.sourceTimeoutSeconds
+        let answers = await LiveTasks.boundedMap(Array(sources.indices), maximumConcurrent: sources.count) { index in
+            await LiveTasks.withDeadline(seconds: timeout) { await sources[index].trainNotices(request) }
+                ?? LiveSourceAnswer<LiveTrainNotices>.unavailable(.sourceUnavailable)
+        }
+        if Task.isCancelled { return .unavailable(.cancelled) }
+        var notices: [LiveTrainNotice] = []
+        var seen: Set<String> = []
+        var reasons: [LiveUnavailableReason] = []
+        var stale = false
+        var answered = false
+        for answer in answers {
+            switch answer {
+            case let .answered(found, _):
+                answered = true
+                stale = stale || found.stale
+                notices += found.notices.filter { seen.insert($0.id).inserted }
+            case let .unavailable(reason):
+                reasons.append(reason)
+            }
+        }
+        guard answered else { return .unavailable(Self.reason(reasons, answered: false)) }
+        let ordered = notices.enumerated().sorted { first, second in
+            let a = first.element.publishedAt ?? Date(timeIntervalSince1970: 0)
+            let b = second.element.publishedAt ?? Date(timeIntervalSince1970: 0)
+            return a != b ? a > b : first.offset < second.offset
+        }.map(\.element)
+        return .available(LiveTrainNotices(notices: ordered, stale: stale))
     }
 
     private static func rank(_ run: LiveRunStatus) -> (Int, Double) {

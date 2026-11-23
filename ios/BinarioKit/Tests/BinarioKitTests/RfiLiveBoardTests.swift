@@ -158,6 +158,22 @@ final class RfiLiveBoardTests: XCTestCase {
         XCTAssertEqual(unavailable, .unavailable(.sourceUnavailable))
     }
 
+    func testTheArrivalsAreTheSameMonitorAskedForItsArrivals() async throws {
+        // Android's `RfiStationBoardAdapter`: the arrivals page, read as the departures (the station
+        // cell is then the train's origin). The fixture is a departures page: the request is what counts.
+        let monitor = try LiveFixtures.text("rfi-monitor-roma-termini.html")
+        let transport = FakeLiveTransport { _ in FakeLiveTransport.ok(monitor) }
+        let window = LiveBoardWindow(
+            station: Station(id: "S08409", name: "Roma Termini", railwayCode: "S08409"),
+            from: Date(timeIntervalSince1970: 1_786_690_800), to: Date(timeIntervalSince1970: 1_786_712_400), lateSince: nil,
+            kind: .arrivals
+        )
+        let answer = await makeSource(transport, now: august).departures(for: window)
+        XCTAssertEqual(transport.paths, ["https://iechub.rfi.it/ArriviPartenze/ArrivalsDepartures/Monitor?placeId=2416&arrivals=True"])
+        guard case let .answered(rows, _) = answer else { return XCTFail("expected rows, got \(answer)") }
+        XCTAssertEqual(rows.first?.destination, "Napoli Centrale")
+    }
+
     func testMalformedPagesGiveNoRows() {
         XCTAssertEqual(RfiMonitorParser.rows("<html><body>Servizio non disponibile</body></html>"), [])
         XCTAssertEqual(RfiMonitorParser.rows("<tr name=\"treno\"><td id=\"RTreno\">1</td><td id=\"RStazione\">X</td>"), [], "no time")

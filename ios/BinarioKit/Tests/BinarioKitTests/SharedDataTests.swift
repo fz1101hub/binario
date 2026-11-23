@@ -201,6 +201,71 @@ final class SharedDataTests: XCTestCase {
         XCTAssertEqual(NoticeTable.months, json["months"] as? [String])
     }
 
+    func testTheViaggiaTrenoApiIsTheSharedTable() throws {
+        let json = try table("viaggiatreno-v1.json")
+        func seconds(_ key: String) -> Double? { (json[key] as? NSNumber)?.doubleValue }
+        XCTAssertEqual(ViaggiaTrenoLiveSource.baseURL, json["baseUrl"] as? String)
+        XCTAssertEqual(
+            ViaggiaTrenoLiveSource.resources,
+            ["departuresResource", "arrivalsResource", "runResource", "numberSearchResource"].compactMap { json[$0] as? String }
+        )
+        let policy = ViaggiaTrenoLiveSource.policy(for: "partenze/S01700/now")
+        XCTAssertEqual(policy.requestTimeout, seconds("readTimeoutSeconds"))
+        XCTAssertEqual(policy.totalTimeout, seconds("totalTimeoutSeconds"))
+        XCTAssertEqual(policy.maximumBytes, json["maximumBytes"] as? Int)
+        XCTAssertEqual(policy.maximumRequests, json["maximumRequests"] as? Int)
+        XCTAssertEqual(ViaggiaTrenoLiveSource.minimumInterval, seconds("minimumIntervalSeconds"))
+        XCTAssertEqual(ViaggiaTrenoParser.timeToLive, seconds("timeToLiveSeconds"))
+        XCTAssertEqual(ViaggiaTrenoLiveSource.detailConcurrency, json["detailPermits"] as? Int)
+        XCTAssertEqual(ViaggiaTrenoLiveSource.defaultDetailsTimeout, seconds("runDetailsTimeoutSeconds"))
+        XCTAssertEqual(ViaggiaTrenoLiveSource.defaultLookbackTimeout, seconds("lookbackTimeoutSeconds"))
+        XCTAssertEqual(ViaggiaTrenoParser.maximumAutocompleteLines, json["maximumAutocompleteLines"] as? Int)
+        XCTAssertEqual(ViaggiaTrenoParser.maximumReferences, json["maximumRunReferences"] as? Int)
+        XCTAssertEqual(ViaggiaTrenoParser.maximumBoardRows, json["maximumBoardRows"] as? Int)
+        XCTAssertEqual(SharedData.ViaggiaTreno.numberSearchPastDays, json["numberSearchPastDays"] as? Int)
+        XCTAssertEqual(ViaggiaTrenoParser.suppressedStopType, json["suppressedStopType"] as? Int)
+        XCTAssertEqual(ViaggiaTrenoParser.extraordinaryStopType, json["extraordinaryStopType"] as? Int)
+        XCTAssertEqual(SharedData.ViaggiaTreno.trenordClients, Set(json["trenordClients"] as? [Int] ?? []))
+        XCTAssertEqual(SharedData.ViaggiaTreno.trenitaliaRegionalClients, Set(json["trenitaliaRegionalClients"] as? [Int] ?? []))
+        XCTAssertEqual(SharedData.ViaggiaTreno.trenitaliaLongDistanceClients, Set(json["trenitaliaLongDistanceClients"] as? [Int] ?? []))
+    }
+
+    func testTheRfiMonitorIsTheSharedTable() throws {
+        let json = try table("rfi-monitor-v1.json")
+        func seconds(_ key: String) -> Double? { (json[key] as? NSNumber)?.doubleValue }
+        XCTAssertEqual(RfiLiveSource.catalogueURL, json["catalogueUrl"] as? String)
+        XCTAssertEqual(RfiLiveSource.monitorURL, json["monitorUrl"] as? String)
+        XCTAssertEqual(RfiLiveSource.policy.accept, json["accept"] as? String)
+        XCTAssertEqual(RfiLiveSource.policy.totalTimeout, seconds("totalTimeoutSeconds"))
+        XCTAssertEqual(RfiLiveSource.policy.maximumBytes, json["maximumBytes"] as? Int)
+        XCTAssertEqual(RfiLiveSource.minimumInterval, seconds("minimumIntervalSeconds"))
+        XCTAssertEqual(RfiMonitorParser.timeToLive, seconds("timeToLiveSeconds"))
+        XCTAssertEqual(RfiPlaceCatalogue.refreshInterval, seconds("catalogueRefreshSeconds"))
+        XCTAssertEqual(RfiPlaceCatalogue.retryInterval, seconds("catalogueRetrySeconds"))
+        XCTAssertEqual(
+            RfiLiveSource.monitorAddress(placeID: 2416, kind: .arrivals),
+            (json["monitorUrl"] as? String ?? "") + "?placeId=2416&arrivals=True"
+        )
+    }
+
+    func testThePerTrainNoticesAreTheSharedFeedAndReader() throws {
+        let json = try table("notices-sources-v1.json")
+        let sources = try XCTUnwrap(json["sources"] as? [[String: Any]])
+        let source = try XCTUnwrap(sources.first { $0["id"] as? String == NoticeSourceID.trainNotices })
+        let notices = try XCTUnwrap(ViaggiaTrenoTrainNotices(rules: try XCTUnwrap(NoticeRules.standard)))
+        let url = try XCTUnwrap(source["url"] as? String)
+        XCTAssertEqual(notices.url(number: "8829")?.absoluteString, url + "?commercialTrainNumber=8829")
+        XCTAssertEqual(notices.policy.accept, source["accept"] as? String)
+        XCTAssertEqual(notices.policy.maximumBytes, source["maximumBytes"] as? Int)
+        XCTAssertEqual(notices.policy.totalTimeout, (source["totalTimeoutSeconds"] as? NSNumber)?.doubleValue)
+        XCTAssertTrue(notices.policy.allowsViaggiaTrenoCleartextHop)
+        let rules = try XCTUnwrap(json["trainNotices"] as? [String: Any])
+        XCTAssertEqual(NoticeTable.trainNotices.maximumNotes, rules["maximumNotes"] as? Int)
+        XCTAssertEqual(NoticeTable.trainNotices.textLength, rules["textLength"] as? Int)
+        XCTAssertEqual(NoticeTable.trainNotices.maximumTrains, rules["maximumTrains"] as? Int)
+        XCTAssertEqual(NoticeTable.trainNotices.maximumCachedTrains, rules["maximumCachedTrains"] as? Int)
+    }
+
     // MARK: - The tables
 
     private func table(_ name: String) throws -> [String: Any] {
