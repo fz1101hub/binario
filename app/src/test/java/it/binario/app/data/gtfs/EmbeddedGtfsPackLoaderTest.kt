@@ -29,8 +29,8 @@ class EmbeddedGtfsPackLoaderTest {
     fun `tutti i data pack embedded appartengono al catalogo`() {
         // The railway packs of the first release come first, in their reviewed order; the transit packs follow.
         val core = EmbeddedGtfsPacks.all.filter { it.assetPath.startsWith("gtfs/") }
-        assertEquals(11, core.size)
-        assertEquals(core, EmbeddedGtfsPacks.all.take(11))
+        assertEquals(12, core.size)  // 11 of the first release + trenitalia-france-gtfs (23 Nov 2026)
+        assertEquals(core, EmbeddedGtfsPacks.all.take(12))
         assertEquals(EmbeddedGtfsPacks.all.size, EmbeddedGtfsPacks.all.map { it.sourceId }.distinct().size)
         (EmbeddedGtfsPacks.all + EmbeddedGtfsPacks.urban).forEach { pack ->
             assertTrue("fonte assente: ${pack.sourceId.value}", RailSourceCatalog.byId(pack.sourceId) != null)

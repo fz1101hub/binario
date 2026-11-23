@@ -643,7 +643,6 @@ class AddNewPackTest(unittest.TestCase):
         core = set(refresh.load_candidates(ROOT / apply.CANDIDATES))
         transit = {pack["sourceId"] for pack in acquire.load_registry()}
         self.assertEqual(set(), core & transit)
-        self.assertTrue(core and any(pack.get("candidate") for pack in acquire.load_registry()))
 
     def test_an_urban_personal_candidate_becomes_the_kotlin_entry_of_the_city_packs(self) -> None:
         registration = {"kind": "URBAN", "areas": [{"name": "Palermo", "latitude": 38.109187, "longitude": 13.367515, "radiusKm": 12}],

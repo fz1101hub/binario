@@ -1,7 +1,8 @@
 import Foundation
 
 /// A ready route between a city station and an airport station of the curated catalogue, served
-/// by the trains of at least one of `packs`.
+/// by the trains of at least one of `packs` (for Bologna, the Marconi Express people mover of a
+/// city pack).
 public struct AirportRoute: Equatable, Hashable, Sendable {
     public let cityStationID: String
     public let airportStationID: String
@@ -27,12 +28,13 @@ public struct AirportLink: Equatable, Identifiable, Sendable {
 /// (app/src/main/java/it/binario/app/data/AirportRoutes.kt). An entry shows only when one of its
 /// packs contributes trips to the bundled iOS index and both stations are in the catalogue and
 /// bound to stops of that index, so the pairs served only by packs that the iPhone app does not
-/// carry (Trenitalia, Ferrotramviaria) never appear. Station names are the catalogue's; the
+/// carry (Trenitalia, Ferrotramviaria, the Marconi Express city pack) never appear. Station names are the catalogue's; the
 /// timetables carry no service brand ("Malpensa Express"), so none is shown.
 public enum AirportRoutes {
     static let trenitalia = "trenitalia-gtfs"
     static let trenord = "lombardia-trenord-gtfs"
     static let ferrotramviaria = "ferrotramviaria-bari-barletta"
+    static let marconiExpress = "marconi-express-gtfs"
 
     public static let all: [AirportRoute] = [
         // Roma Termini ↔ Fiumicino Aeroporto (Trenitalia regional express).
@@ -50,6 +52,8 @@ public enum AirportRoutes {
         AirportRoute(cityStationID: "S03317", airportStationID: "S03213", packs: [trenitalia]),
         // Torino Porta Susa ↔ Caselle Torinese Aeroporto (SFM A).
         AirportRoute(cityStationID: "S00035", airportStationID: "S00088", packs: [trenitalia]),
+        // Bologna Centrale ↔ Bologna Aeroporto (Marconi Express people mover, a city pack).
+        AirportRoute(cityStationID: "S05043", airportStationID: "NC000683", packs: [marconiExpress]),
     ]
 
     /// The routes of `routes` that the bundled index can answer: a pack with trips among
