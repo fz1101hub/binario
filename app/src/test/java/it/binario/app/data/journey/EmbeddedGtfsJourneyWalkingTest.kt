@@ -180,6 +180,35 @@ class EmbeddedGtfsJourneyWalkingTest {
         assertEquals(1, first.transfers)
     }
 
+    /**
+     * A people mover published as a monorail (route_type 12, as TPER publishes the Marconi Express, line "MEX") is a
+     * metro line: its trips are in the day timetable and the planner reaches its stops (build_gtfs_packs.py gives them
+     * the "M" badge). "MEX" is kept as published, not read as a Rome line.
+     */
+    @Test fun `a monorail people mover is a metro line of the day timetable and of a journey`() = runBlocking {
+        val moverFeed = feed(
+            stops = listOf(Stop("MC", "Centrale People Mover", 45.0018, 9.0), Stop("AE", "Aeroporto", 45.03, 9.0)),
+            routes = listOf(Triple("MEX", "MEX", 12)),
+            trips = (0 until 6).map { index ->
+                val minute = 8 * 60 + index * 10
+                Trip("X$index", "MEX", listOf("MC" to hhmm(minute), "AE" to hhmm(minute + 7)))
+            }
+        )
+        val adapter = EmbeddedGtfsRouteAdapter(openAsset = { ByteArrayInputStream(moverFeed) }, packs = listOf(metroPack), indexCacheCapacity = 1)
+        val day = adapter.dayTimetable(metroPack, monday)
+        assertEquals(6, day.trips.size)
+        assertEquals(setOf(LegMode.METRO), day.trips.map { it.mode }.toSet())
+
+        val provider = provider(mapOf(railPack to railFeed, metroPack to moverFeed))
+        val first = options(provider.searchJourneys(request(paese.id, "gtfs:test-city-metro:AE", destinationName = "Aeroporto"))).first()
+        assertEquals(
+            "TRAIN R1 1001 Paese 08:00-08:30 Città Centrale | WALK  Città Centrale 08:30-08:35 Centrale People Mover | " +
+                "METRO MEX Centrale People Mover 08:40-08:47 Aeroporto",
+            first.summary()
+        )
+        assertEquals(ServiceKind.URBAN, first.legs.last().serviceKind)
+    }
+
     @Test fun `a metro stop named like a station is never that station`() = runBlocking {
         // "Città Centrale" of the metro is 1 km from the station: boarding there needs no walk only for the stop itself.
         val provider = provider(mapOf(railPack to railFeed, metroPack to metroFeed))
@@ -287,6 +316,9 @@ class EmbeddedGtfsJourneyWalkingTest {
         assertEquals("M5", urbanLineName(LegMode.METRO, " 5 "))
         assertEquals("A", urbanLineName(LegMode.METRO, "MEA"))
         assertEquals("B1", urbanLineName(LegMode.METRO, "MEB1"))
+        assertEquals("C", urbanLineName(LegMode.METRO, "MEC"))
+        // The Marconi Express (Bologna) is "MEX", not a Rome line "X".
+        assertEquals("MEX", urbanLineName(LegMode.METRO, "MEX"))
         assertEquals("M1", urbanLineName(LegMode.METRO, "M1"))
         assertEquals("14", urbanLineName(LegMode.TRAM, "14"))
         assertEquals(null, urbanLineName(LegMode.TRAM, " "))

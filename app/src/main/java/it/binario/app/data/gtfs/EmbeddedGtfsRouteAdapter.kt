@@ -1562,9 +1562,10 @@ class EmbeddedGtfsRouteAdapter(
         fun LocalDate.toGtfsInt(): Int = year * 10_000 + monthValue * 100 + dayOfMonth
 
         /**
-         * Journey legs come from rail (route_type 2, 100-199), metro (1, 400-499), tram (0, 900-999),
-         * funicular and lift (5, 6, 7, 1300-1499) and bus routes (3, 700-799); a missing type is a train, as in the
-         * route search. Metro, tram and funicular lines are only in the city packs (the railway packs keep rail and
+         * Journey legs come from rail (route_type 2, 100-199), metro (1, 400-499, and monorail 12, the Marconi Express
+         * people mover: an "M" stop in build_gtfs_packs.py too), tram (0, 900-999), funicular and lift (5, 6, 7,
+         * 1300-1499) and bus routes (3, 700-799); a missing type is a train, as in the route search. Metro, tram and
+         * funicular lines are only in the city packs (the railway packs keep rail and
          * the operators' coaches). A bus route is the operator's own scheduled coach ([LegMode.BUS]) in a pack
          * whose buses are [EmbeddedGtfsPack.busRoutesAreScheduledCoaches] (Trenitalia, ItaloBus) and a rail
          * replacement bus in the others. Anything else (ferries, …) is not a leg of a rail journey.
@@ -1575,7 +1576,7 @@ class EmbeddedGtfsRouteAdapter(
             val type = text.toIntOrNull() ?: return null
             return when (type) {
                 2, in 100..199 -> LegMode.TRAIN
-                1, in 400..499 -> LegMode.METRO
+                1, 12, in 400..499 -> LegMode.METRO
                 0, in 900..999 -> LegMode.TRAM
                 5, 6, 7, in 1300..1499 -> LegMode.FUNICULAR
                 3, in 700..799 -> if (scheduledCoaches) LegMode.BUS else LegMode.REPLACEMENT_BUS

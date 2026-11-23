@@ -199,8 +199,8 @@
     {
       "sourceId": "marconi-express-gtfs",
       "candidate": true,
-      "directory": "gtfs-personal",
-      "distribution": "personal",
+      "directory": "gtfs-transit",
+      "distribution": "all",
       "kind": "urban",
       "format": "gtfs",
       "operator": "TPER (Marconi Express)",
@@ -209,10 +209,10 @@
         "page": "https://solweb.tper.it/web/tools/open-data/open-data.aspx",
         "pattern": "filename=gtfsmex&(?:amp;)?version=(\\d{8})"
       },
-      "licence": "CC BY 3.0 secondo Transitland Atlas; da confermare sulla pagina open data TPER",
-      "licenceEvidence": "Transitland Atlas, feed TPER gtfsmex (CC-BY-3.0), letto come puntatore dall'elenco fonti Transitous (CC0); pagina dell'editore https://solweb.tper.it/web/tools/open-data/open-data.aspx da rileggere dal CI (transit_discovery, token page:)",
-      "attribution": "TPER S.p.A. (Marconi Express)",
-      "notes": "People mover Marconi Express Bologna Centrale - Aeroporto G. Marconi dal GTFS gtfsmex pubblicato da TPER; filtro urbano, mai autobus. L'URL porta la versione (version=AAAAMMGG): l'acquisizione legge la pagina open data TPER e usa la versione più recente elencata, altrimenti quella registrata. Candidato: solo build personali finché la licenza non è letta sulla pagina TPER.",
+      "licence": "CC BY 3.0 IT",
+      "licenceEvidence": "https://solweb.tper.it/web/tools/open-data/open-data.aspx (pagina open data TPER: «Creative Commons Attribuzione 3.0 Italia», creativecommons.org/licenses/by/3.0/it; stampata dal CI, transit_discovery run 45103733355 del 2026-11-23)",
+      "attribution": "TPER S.p.A. (Marconi Express) - CC BY 3.0 IT",
+      "notes": "People mover Marconi Express Bologna Centrale - Aeroporto G. Marconi dal GTFS gtfsmex pubblicato da TPER; filtro urbano, mai autobus. L'URL porta la versione (version=AAAAMMGG): l'acquisizione legge la pagina open data TPER e usa la versione più recente elencata, altrimenti quella registrata. Licenza CC BY 3.0 IT dichiarata dalla pagina open data TPER: pack di ogni build (gtfs-transit/).",
       "android": {
         "areas": [
           {
@@ -271,11 +271,11 @@
       "kind": "rail",
       "format": "gtfs",
       "operator": "Slovenske železnice (orario integrato IJPP, NAP Slovenia)",
-      "sourceUrl": "https://b2b.nap.si/data/b2b.gtfs",
-      "licence": "CC BY-SA 4.0 (condivisione allo stesso modo: il pack derivato è offerto sotto CC BY-SA 4.0 con attribuzione), da confermare sulla pagina del dataset",
-      "licenceEvidence": "https://nap.si/en/datasets_details?id=6fc3966a-5e3f-cf10-1df3-70d3af14d03d (dataset IJPP del National Access Point sloveno; CC-BY-SA-4.0 secondo l'elenco fonti Transitous, CC0); da rileggere dal CI (transit_discovery, token page:)",
-      "attribution": "NAP Slovenia (nap.si), orario integrato IJPP",
-      "notes": "Candidato: orario nazionale integrato sloveno (IJPP) dal National Access Point, filtrato alle sole route ferroviarie (treni SŽ attesi, non ancora verificati): Trieste - Ljubljana, Nova Gorica, Sežana. Se contiene i treni SŽ sostituisce la fonte su accordo sz-passenger. Pack estero (paese SI nel catalogo): in PlannedPackOrder dopo i pack italiani. Licenza con condivisione allo stesso modo: pack derivato sotto CC BY-SA 4.0 con attribuzione.",
+      "sourceUrl": "https://dujpp.si/gtfs/dujpp-ijpp.zip",
+      "licence": "Non confermata dall'editore: CC BY-SA 4.0 secondo l'elenco fonti Transitous, «CC0» nel testo della pagina del dataset su nap.si, nessuna licenza su dujpp.si; il pack derivato è offerto sotto CC BY-SA 4.0 con attribuzione (condivisione allo stesso modo)",
+      "licenceEvidence": "https://nap.si/en/datasets_details?id=6fc3966a-5e3f-cf10-1df3-70d3af14d03d (dataset IJPP del National Access Point sloveno: rimanda al file pubblico https://dujpp.si/gtfs/dujpp-ijpp.zip e il suo testo contiene «CC0», senza indicare a cosa si riferisca; transit_discovery run 45103733355 del 2026-11-23); dujpp.si non dichiara una licenza (run 45104758342 del 2026-11-23); CC-BY-SA-4.0 secondo l'elenco fonti Transitous (CC0)",
+      "attribution": "Družba za upravljanje javnega potniškega prometa (dujpp.si) / NAP Slovenia (nap.si), orario integrato IJPP",
+      "notes": "Candidato: orario nazionale integrato sloveno (IJPP) dal National Access Point, filtrato alle sole route ferroviarie: nel probe del 23 novembre 2026 (run 45104758342) agenzia 1161 «SŽ - Potniški promet d.o.o.» con 766 route route_type 2, calendario 2025-12-29 - 2028-01-02; le linee di confine Trieste - Ljubljana, Nova Gorica, Sežana non sono ancora verificate. Se contiene i treni SŽ sostituisce la fonte su accordo sz-passenger. Pack estero (paese SI nel catalogo): in PlannedPackOrder dopo i pack italiani. Il file del NAP b2b.nap.si/data/b2b.gtfs risponde HTTP 401: si usa il file pubblico di dujpp.si a cui rimanda la pagina del dataset. Licenza non confermata: solo build personali, pack derivato sotto CC BY-SA 4.0 con attribuzione.",
       "android": {}
     }
   ]

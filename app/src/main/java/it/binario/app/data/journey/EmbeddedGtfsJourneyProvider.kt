@@ -2342,7 +2342,8 @@ data class StaticDayDepartures(val lastByTerminus: List<StaticDeparture>, val fi
 
 /**
  * The public name of a city line from its route_short_name: Milan publishes its metro lines as "1".."5" ("M1"),
- * Rome as "MEA", "MEB1" ("A", "B1"); every other name is kept as published ("M1", "T2", "14").
+ * Rome as "MEA", "MEB", "MEB1", "MEC" ("A", "B1"); every other name is kept as published ("M1", "T2", "14", the
+ * Marconi Express "MEX").
  */
 internal fun urbanLineName(mode: LegMode, label: String?): String? {
     val value = label?.trim()?.takeIf(String::isNotEmpty) ?: return null
@@ -2351,4 +2352,4 @@ internal fun urbanLineName(mode: LegMode, label: String?): String? {
     return ROME_METRO_LINE.matchEntire(value)?.groupValues?.get(1) ?: value
 }
 
-private val ROME_METRO_LINE = Regex("ME([A-Z][0-9]?)")
+private val ROME_METRO_LINE = Regex("ME([ABC][0-9]?)")

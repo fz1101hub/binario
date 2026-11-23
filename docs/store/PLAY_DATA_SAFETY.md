@@ -185,14 +185,14 @@ La tabella copre ogni host `http(s)://` trovato in `app/src/main/java`, `wear/sr
 | `www.trentinotrasporti.it` | D, F | Provenienza del pack `trentino-gtfs`; anche nel catalogo; sito e abbonamenti in Biglietti e assistenza (`links/OfficialLinks.kt`) |
 | `www.wimob.it` | D | Provenienza del pack `eav-gtfs`; anche nel catalogo |
 | `arenaways.it` | E | Catalogo fonti (`RailSourceCatalog.kt`) |
-| `b2b.nap.si` | E | Catalogo fonti (`RailSourceCatalog.kt`): GTFS nazionale sloveno IJPP (`si-nap-rail-gtfs`, candidato di `tools/transit_packs.json`, letto solo dal CI); nessun traffico |
 | `ckan.opendata.swiss` | E | Evidenza di licenza del pack `ch-otd-gtfs` nel manifest GTFS (scheda del dataset su opendata.swiss); nessun traffico |
 | `data.oebb.at` | E | Catalogo fonti (`RailSourceCatalog.kt`) |
 | `dati.comune.genova.it` | E | Catalogo fonti (`RailSourceCatalog.kt`) e evidenza di licenza (CC BY 4.0) nel manifest `gtfs-transit/` |
 | `dati.trentino.it` | E | Evidenza di licenza (CC BY 4.0, dichiarata dal portale) del pack `trentino-gtfs` nel manifest GTFS; nessun traffico |
 | `developer-docs.deutschebahn.com` | E | Catalogo fonti (`InternationalSourceCatalog.kt`) |
 | `developers.deutschebahn.com` | E | Catalogo fonti (`InternationalSourceCatalog.kt`) |
-| `nap.si` | E | Catalogo fonti (`RailSourceCatalog.kt`): pagina del dataset IJPP sul National Access Point sloveno, evidenza di licenza (CC BY-SA 4.0); nessun traffico |
+| `dujpp.si` | E | Catalogo fonti (`RailSourceCatalog.kt`): GTFS nazionale sloveno IJPP pubblicato da DUJPP (`si-nap-rail-gtfs`, candidato di `tools/transit_packs.json` per le sole build personali, letto solo dal CI); nessun traffico |
+| `nap.si` | E | Catalogo fonti (`RailSourceCatalog.kt`): pagina del dataset IJPP sul National Access Point sloveno, che rimanda al file di `dujpp.si` (licenza non confermata); nessun traffico |
 | `opendata.comune.palermo.it` | E | Catalogo fonti (`RailSourceCatalog.kt`): portale open data e GTFS AMAT dei tram di Palermo (`palermo-amat-tram-gtfs`, candidato di `tools/transit_packs.json`, letto solo dal CI); nessun traffico |
 | `opendata.swiss` | E | Evidenza di licenza del pack `ch-otd-gtfs` nel manifest GTFS (condizioni d'uso «terms_by»); nessun traffico |
 | `opentransportdata.swiss` | E | Catalogo fonti (`RailSourceCatalog.kt`) |
@@ -200,7 +200,7 @@ La tabella copre ogni host `http(s)://` trovato in `app/src/main/java`, `wear/sr
 | `regiojet.com` | E | Catalogo fonti (`InternationalSourceCatalog.kt`), monitor-only |
 | `ressources.data.sncf.com` | E | Catalogo fonti (`RailSourceCatalog.kt`) |
 | `scraped.data.public-transport.earth` | E | Catalogo fonti (`InternationalSourceCatalog.kt`): mirror DELFI community, nessun adapter |
-| `solweb.tper.it` | E | Catalogo fonti (`RailSourceCatalog.kt`): pagina open data e GTFS del Marconi Express (`marconi-express-gtfs`, candidato di `tools/transit_packs.json`, letto solo dal CI); nessun traffico |
+| `solweb.tper.it` | E | Catalogo fonti (`RailSourceCatalog.kt`): pagina open data (licenza CC BY 3.0 IT) e GTFS del Marconi Express (`marconi-express-gtfs`, candidato di `tools/transit_packs.json` per `gtfs-transit/`, letto solo dal CI; provenienza, D, quando il pack è aggiunto); nessun traffico |
 | `transport.data.gouv.fr` | E | Evidenza di licenza del pack `sncf-gtfs` nel manifest GTFS (scheda della risorsa) e del pack candidato `trenitalia-france-gtfs` (`tools/core_pack_candidates.json`, scheda del dataset); pagina del dataset Trenitalia France nel catalogo fonti (`RailSourceCatalog.kt`); nessun traffico |
 | `urlaubs-express.de` | E | Catalogo fonti (`InternationalSourceCatalog.kt`), monitor-only |
 | `web.ferroviedellacalabria.it` | E | Catalogo fonti (`RailSourceCatalog.kt`) |

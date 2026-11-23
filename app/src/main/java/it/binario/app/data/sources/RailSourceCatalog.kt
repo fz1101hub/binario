@@ -585,12 +585,13 @@ object RailSourceCatalog {
             countryCodes = setOf("SI", "IT"),
             coverage = "Treni del GTFS nazionale sloveno (IJPP): Trieste – Ljubljana, Nova Gorica, Sežana; autobus esclusi.",
             landingPage = uri("https://nap.si/en/datasets_details?id=6fc3966a-5e3f-cf10-1df3-70d3af14d03d"),
-            downloadOrProbeUri = uri("https://b2b.nap.si/data/b2b.gtfs"),
-            attribution = "NAP Slovenia (nap.si), orario integrato IJPP — CC BY-SA 4.0",
-            notes = "Candidato di tools/transit_packs.json: licenza CC BY-SA 4.0 (condivisione allo stesso modo: il pack " +
-                "derivato è offerto sotto CC BY-SA 4.0 con attribuzione), da rileggere sulla pagina del dataset; treni SŽ " +
-                "attesi ma non ancora verificati. Se li contiene sostituisce la fonte su accordo sz-passenger. Fino alla " +
-                "conferma pack solo nelle build personali (gtfs-personal/)."
+            downloadOrProbeUri = uri("https://dujpp.si/gtfs/dujpp-ijpp.zip"),
+            attribution = "Družba za upravljanje javnega potniškega prometa (dujpp.si) / NAP Slovenia (nap.si), orario integrato IJPP",
+            notes = "Candidato di tools/transit_packs.json: file pubblico di dujpp.si a cui rimanda la pagina del dataset (il file " +
+                "b2b.nap.si risponde HTTP 401). Licenza non confermata: CC BY-SA 4.0 secondo Transitous, «CC0» nel testo della " +
+                "pagina nap.si, nessuna su dujpp.si; il pack derivato è offerto sotto CC BY-SA 4.0 con attribuzione. Treni SŽ " +
+                "presenti (probe del 23 novembre 2026); se ci sono le linee di confine sostituisce la fonte su accordo sz-passenger. " +
+                "Fino alla conferma della licenza pack solo nelle build personali (gtfs-personal/)."
         ),
         RailSourceDefinition(
             id = SourceId("fuc-udine-cividale"),
@@ -834,16 +835,16 @@ object RailSourceCatalog {
             operatorOrAuthority = "TPER S.p.A. (Marconi Express)",
             formats = setOf(SourceFormat.GTFS_ZIP),
             capabilities = setOf(ProviderCapability.STATION_CATALOG, ProviderCapability.JOURNEY_SEARCH),
-            accessMode = AccessMode.PUBLIC_BEST_EFFORT,
-            readiness = SourceReadiness.PERSONAL_GTFS_PACK,
+            accessMode = AccessMode.OPEN_DIRECT,
+            readiness = SourceReadiness.READY_FOR_GTFS_PACK,
             countryCodes = setOf("IT"),
             coverage = "People mover Marconi Express tra Bologna Centrale e l'aeroporto di Bologna; autobus esclusi.",
             landingPage = uri("https://solweb.tper.it/web/tools/open-data/open-data.aspx"),
             downloadOrProbeUri = uri("https://solweb.tper.it/web/tools/open-data/open-data-download.aspx?source=solweb.tper.it&filename=gtfsmex&version=20260421&format=zip"),
-            attribution = "TPER S.p.A. (Marconi Express)",
+            attribution = "TPER S.p.A. (Marconi Express) — CC BY 3.0 IT",
             notes = "GTFS gtfsmex pubblicato da TPER (URL con versione: il CI prende la più recente elencata nella pagina open data). " +
-                "Candidato di tools/transit_packs.json: licenza CC BY 3.0 secondo Transitland, da leggere sulla pagina TPER; " +
-                "fino ad allora pack solo nelle build personali (gtfs-personal/)."
+                "Licenza CC BY 3.0 IT dichiarata dalla pagina open data TPER (letta dal CI il 23 novembre 2026): data pack urbano " +
+                "in gtfs-transit/, ogni build, una volta aggiunto dalla build CI (candidato di tools/transit_packs.json fino ad allora)."
         ),
         RailSourceDefinition(
             id = SourceId("palermo-amat-tram-gtfs"),
