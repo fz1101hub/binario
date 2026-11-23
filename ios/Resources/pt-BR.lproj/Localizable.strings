@@ -3,7 +3,7 @@
 "tab.settings" = "Ajustes";
 "planner.title" = "Planejar";
 "planner.intro.title" = "Buscar um trajeto";
-"planner.intro.body" = "Escolha a origem e o destino no catálogo selecionado. Os horários incluídos são programados e cobrem apenas as redes regionais e internacionais listadas abaixo: Trenitalia e Italo não estão incluídas, e as estações sem horários são sinalizadas na busca.";
+"planner.intro.body" = "Escolha a origem e o destino no catálogo selecionado. Os horários incluídos são programados e cobrem apenas as redes regionais e internacionais listadas abaixo: Trenitalia (exceto Trenitalia France) e Italo não estão incluídas, e as estações sem horários são sinalizadas na busca.";
 "planner.origin" = "Origem";
 "planner.destination" = "Destino";
 "planner.departure" = "Data e hora";

@@ -1,10 +1,22 @@
 # Changelog
 
+## In sviluppo — Trenitalia France anche su iPhone; Frecciarossa francesi con la loro categoria
+
+- **iPhone:** l'indice degli orari include il pack di Trenitalia France (10 pack). I Frecciarossa Parigi–Lione–Chambéry–Oulx–Torino–Milano compaiono da Oulx, Torino Porta Susa e Milano Centrale; restano anche le corse che fermano a Lione Part-Dieu, così il suo tabellone mostra tutti i treni dell'operatore.
+  - Parigi, Chambéry e Marsiglia non hanno codici nel catalogo e non si possono scegliere come estremi del viaggio, come per i treni SNCF.
+  - Il testo del pianificatore dice ora «Trenitalia (tranne Trenitalia France) e Italo non sono inclusi», in 17 lingue (le traduzioni aggiunte sono automatiche e da rivedere). Stesse modifiche nelle schede App Store.
+- **Costruzione del pack Trenitalia France** (vale per Android e iPhone dalla prossima ricostruzione, cioè l'aggiornamento settimanale):
+  - le linee prendono la categoria del pack nazionale («FR», «Frecciarossa») invece della coppia origine/destinazione. Su Android quindi le righe diventano «FR 9281» e i treni entrano nel filtro Frecce; prima erano classificati come regionali;
+  - le corse con le fermate numerate fuori dall'ordine degli orari vengono lasciate fuori e contate (oggi 4 corse del 9281 di fine novembre e inizio dicembre, che su Android comparivano come un treno fantasma Milano → Parigi). Oltre il 5% delle corse il pack non viene costruito;
+  - la costruzione si ferma se compaiono una linea non ferroviaria o un'agenzia non rivista;
+  - l'aggiornamento settimanale ricostruisce un pack pubblicato prima di queste regole anche se l'archivio di origine non è cambiato.
+
 ## In sviluppo — setup-java 6.3.0 (Dependabot #103)
 
 - `actions/setup-java` passa da 6.2.0 a 6.3.0 (commit `d1374f8`, tag verificato con `git ls-remote`) nei tre job Android e nel controllo delle fonti live; aggiornato anche `.github/ci-inputs-lock.json`.
   - Novità della versione: le annotazioni del compilatore Java nelle PR diventano opzionali e sono spente per impostazione predefinita. Gli errori di compilazione restano nei log e fanno comunque fallire la build.
   - Il JDK resta Temurin 17.0.20+101, fissato come prima.
+- **Correzione di un test Android:** l'annullamento di un download dei pack esteri ora viene provato solo dopo che il download è partito davvero. Prima il test poteva fallire a caso.
 
 ## In sviluppo — Ritardi Trenitalia France e orari francesi in ora italiana
 

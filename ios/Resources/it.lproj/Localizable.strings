@@ -3,7 +3,7 @@
 "tab.settings" = "Impostazioni";
 "planner.title" = "Pianifica";
 "planner.intro.title" = "Cerca una tratta";
-"planner.intro.body" = "Scegli partenza e destinazione dal catalogo curato. Gli orari inclusi sono programmati e coprono solo le reti regionali ed estere elencate sotto: Trenitalia e Italo non sono inclusi e le stazioni senza orari sono segnalate nella ricerca.";
+"planner.intro.body" = "Scegli partenza e destinazione dal catalogo curato. Gli orari inclusi sono programmati e coprono solo le reti regionali ed estere elencate sotto: Trenitalia (tranne Trenitalia France) e Italo non sono inclusi e le stazioni senza orari sono segnalate nella ricerca.";
 "planner.origin" = "Partenza";
 "planner.destination" = "Destinazione";
 "planner.departure" = "Data e ora";

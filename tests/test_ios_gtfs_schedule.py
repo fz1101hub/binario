@@ -297,7 +297,7 @@ class IosGtfsScheduleTest(unittest.TestCase):
         metadata = self.temp / "policy.metadata.json"
         options = {"source_policy_path": policy, "max_compressed_bytes": 4 * 1024 * 1024}
         policy.write_text(json.dumps({"schemaVersion": 1, "sources": sources}), encoding="utf-8")
-        with self.assertRaisesRegex(builder.BuildError, "differ from reviewed iOS policy|exactly 9 packs"):
+        with self.assertRaisesRegex(builder.BuildError, f"differ from reviewed iOS policy|exactly {builder.INDEXED_PACK_COUNT} packs"):
             builder.build_database(manifest, catalog, output, metadata, **options)
         excluded = {"sourceId": "national-gtfs", "sourceUrl": "https://example.test/national.zip", "accessMode": "OPEN_DIRECT", "reason": "bus legs"}
         policy.write_text(json.dumps({"schemaVersion": 1, "sources": sources, "androidOnlySources": [excluded]}), encoding="utf-8")
@@ -484,6 +484,38 @@ class IosGtfsScheduleTest(unittest.TestCase):
         connection.close()
         with self.assertRaisesRegex(verifier.VerificationError, "stop_times regress"):
             verifier.verify_database(raw, json.loads(metadata_path.read_text()), result["inputs"]["fingerprintSha256"])
+
+    def test_a_reviewed_pack_leaves_out_its_trips_numbered_out_of_time_order(self) -> None:
+        # Only pack-0 numbers its kept trip out of time order (Trenitalia France's train 9281 on four days, Nov 2026).
+        root = self.temp / "out-of-order"
+        root.mkdir()
+        manifest, catalog = write_inputs(root)
+        archive = root / "gtfs/pack-0.zip"
+        write_feed(archive, second_arrival="22:00:00", second_departure="22:00:00")
+        payload = json.loads(manifest.read_text(encoding="utf-8"))
+        payload["packs"][0]["sha256"] = hashlib.sha256(archive.read_bytes()).hexdigest()
+        manifest.write_text(json.dumps(payload), encoding="utf-8")
+
+        def build(name: str) -> dict:
+            return builder.build_database(manifest, catalog, root / f"{name}.zlib", root / f"{name}.json",
+                                          max_compressed_bytes=4 * 1024 * 1024)
+
+        # Any other pack still fails the build, and so does a reviewed pack above the share.
+        with self.assertRaisesRegex(builder.BuildError, "arrival regresses"):
+            build("unreviewed")
+        with mock.patch.object(builder, "OUT_OF_ORDER_TRIPS_LEFT_OUT", frozenset({"pack-0"})):
+            with self.assertRaisesRegex(builder.BuildError, "pack-0: 1 of 1 kept trips are out of time order"):
+                build("above-share")
+            with mock.patch.object(builder, "MAX_OUT_OF_ORDER_TRIP_SHARE", 1.0):
+                result = build("reviewed")
+        self.assertEqual({"pack-0": 1}, result["filter"]["outOfOrderTripsLeftOut"])
+        self.assertEqual(0, result["packRowCounts"]["pack-0"].get("trip", 0))
+        self.assertNotIn(builder.OUT_OF_ORDER_COUNT_KEY, result["packRowCounts"]["pack-0"])
+        self.assertEqual(builder.INDEXED_PACK_COUNT - 1, result["rowCounts"]["trip"])
+        verifier.verify(root / "reviewed.zlib", root / "reviewed.json",
+                        max_compressed_bytes=4 * 1024 * 1024, max_database_bytes=16 * 1024 * 1024)
+        # An index without such trips keeps the metadata it had.
+        self.assertNotIn("outOfOrderTripsLeftOut", self.build()[4]["filter"])
 
     def test_retained_stop_time_budget_fails_before_materializing_rows(self) -> None:
         root = self.temp / "retained-budget"
@@ -928,6 +960,51 @@ class RenonRailwayTest(unittest.TestCase):
         self.assertEqual(set(self.IDS), set(bound.values()))
         self.assertGreater(len(self.trips), 0)
         self.assertEqual(self.trips, trips)
+
+
+class TrenitaliaFranceIndexTest(unittest.TestCase):
+    """Trenitalia France's pack, bundled whole on the iPhone as a foreign operator's pack (coded stations only): the
+    shipped index keeps every Paris – Milano trip of the pack on its Italian stations, and names no uncoded French one."""
+
+    PACK = ROOT / "app/src/main/assets/gtfs/trenitalia-france-gtfs.zip"
+    INDEX = ROOT / "ios/Resources/binario_gtfs_schedule_v1.sqlite.zlib"
+    METADATA = ROOT / "ios/Resources/binario_gtfs_schedule_v1.metadata.json"
+    ITALIAN = {"Oulx Cesana Claviere Sestriere": "S00204", "Torino Porta Susa": "S00035", "Milano Centrale": "S01700"}
+
+    def test_the_shipped_index_keeps_the_italian_trips_on_their_stations(self) -> None:
+        self.assertIn("trenitalia-france-gtfs", builder.FOREIGN_PACKS)
+        with zipfile.ZipFile(self.PACK) as pack:
+            def rows(name: str) -> list[dict[str, str]]:
+                return list(csv.DictReader(io.TextIOWrapper(pack.open(name), encoding="utf-8-sig")))
+            names = {row["stop_id"]: row["stop_name"] for row in rows("stops.txt")}
+            italian_trips = {row["trip_id"] for row in rows("stop_times.txt") if names[row["stop_id"]] in self.ITALIAN}
+        metadata = json.loads(self.METADATA.read_text(encoding="utf-8"))
+        left_out = metadata["filter"].get("outOfOrderTripsLeftOut", {}).get("trenitalia-france-gtfs", 0)
+        with tempfile.TemporaryDirectory(prefix="ios-tfr-") as temporary:
+            database = Path(temporary) / "schedule.sqlite"
+            database.write_bytes(zlib.decompress(self.INDEX.read_bytes()))
+            connection = sqlite3.connect(f"file:{database}?mode=ro&immutable=1", uri=True)
+            try:
+                bound = dict(connection.execute(
+                    "SELECT s.name, s.catalog_station_id FROM stop s JOIN pack p ON p.id = s.pack_id "
+                    "WHERE p.source_id = 'trenitalia-france-gtfs'"
+                ).fetchall())
+                kept = {row[0] for row in connection.execute(
+                    "SELECT DISTINCT t.external_id FROM trip t JOIN pack p ON p.id = t.pack_id "
+                    "JOIN stop_time st ON st.trip_id = t.id JOIN stop s ON s.id = st.stop_id "
+                    "WHERE p.source_id = 'trenitalia-france-gtfs' AND s.railway_code IS NOT NULL"
+                )}
+            finally:
+                connection.close()
+        for name, station_id in self.ITALIAN.items():
+            self.assertEqual(station_id, bound[name], name)
+        # Uncoded catalogue stations stay unnamed; Lyon Part-Dieu has a Trenitalia location id.
+        self.assertIsNone(bound["Paris-Gare-de-Lyon"])
+        self.assertIsNone(bound["Chambéry-Challes-les-Eaux"])
+        self.assertEqual("NC000228", bound["Lyon-Part-Dieu"])
+        self.assertGreater(len(kept), 0)
+        self.assertLessEqual(kept, italian_trips)
+        self.assertEqual(len(italian_trips) - left_out, len(kept))
 
 
 if __name__ == "__main__":

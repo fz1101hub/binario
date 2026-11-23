@@ -55,11 +55,11 @@ class AppStoreDocsTest(unittest.TestCase):
 
     def test_listing_texts_describe_scheduled_data_and_name_the_excluded_operators(self) -> None:
         markers = {
-            "it": ("orari programmati", "non inventa", "Trenitalia e Italo non sono inclusi"),
-            "en": ("scheduled", "never invents", "Trenitalia and Italo are not included"),
-            "de": ("Planzeiten", "erfindet keine", "Trenitalia und Italo sind nicht enthalten"),
-            "fr": ("programmés", "n'invente", "Trenitalia et Italo ne sont pas inclus"),
-            "es": ("programados", "no inventa", "Trenitalia e Italo no están incluidos"),
+            "it": ("orari programmati", "non inventa", "Trenitalia (tranne Trenitalia France) e Italo non sono inclusi"),
+            "en": ("scheduled", "never invents", "Trenitalia (except Trenitalia France) and Italo are not included"),
+            "de": ("Planzeiten", "erfindet keine", "Trenitalia (außer Trenitalia France) und Italo sind nicht enthalten"),
+            "fr": ("programmés", "n'invente", "Trenitalia (sauf Trenitalia France) et Italo ne sont pas inclus"),
+            "es": ("programados", "no inventa", "Trenitalia (salvo Trenitalia France) e Italo no están incluidos"),
         }
         for language, fragments in markers.items():
             full = self.texts[("Descrizione", language)]
@@ -100,8 +100,8 @@ class AppStoreDocsTest(unittest.TestCase):
     def test_review_notes_name_covered_routes_that_the_bundled_index_can_answer(self) -> None:
         notes = REVIEW_NOTES.search(self.document)
         self.assertIsNotNone(notes, "note per la revisione assenti")
-        self.assertIn("Trenitalia e Italo non sono inclusi", notes.group(1))
-        self.assertIn("Trenitalia and Italo are not included", notes.group(1))
+        self.assertIn("Trenitalia (tranne Trenitalia France) e Italo non sono inclusi", notes.group(1))
+        self.assertIn("Trenitalia (except Trenitalia France) and Italo are not included", notes.group(1))
         # App Review asks why App Transport Security has an exception: the notes say it, in both
         # languages, within the 4,000 characters of the App Review notes field.
         self.assertIn("Eccezione ATS (solo www.viaggiatreno.it, senza sottodomini)", notes.group(1))

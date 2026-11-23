@@ -3,7 +3,7 @@
 "tab.settings" = "Réglages";
 "planner.title" = "Planifier";
 "planner.intro.title" = "Rechercher un trajet";
-"planner.intro.body" = "Choisissez le départ et la destination dans le catalogue vérifié. Les horaires inclus sont des données programmées et ne couvrent que les réseaux régionaux et transfrontaliers listés ci-dessous : Trenitalia et Italo ne sont pas inclus, et les gares sans horaires sont signalées dans la recherche.";
+"planner.intro.body" = "Choisissez le départ et la destination dans le catalogue vérifié. Les horaires inclus sont des données programmées et ne couvrent que les réseaux régionaux et transfrontaliers listés ci-dessous : Trenitalia (sauf Trenitalia France) et Italo ne sont pas inclus, et les gares sans horaires sont signalées dans la recherche.";
 "planner.origin" = "Départ";
 "planner.destination" = "Destination";
 "planner.departure" = "Date et heure";
