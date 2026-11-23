@@ -6,7 +6,7 @@
       "assetPath": "stations/curated_it_rail_stations.json",
       "kind": "curated-rail-station-catalog",
       "source": "Database curato fornito dall’utente",
-      "provenance": "Da confermare dal titolare: il repository non registra da quali fonti derivano nomi, alias e coordinate di stazioni_ferroviarie_curato_v4 (l'asset OpenStreetMap usato in precedenza è stato rimosso nel commit 9268bb3; audit A7-09). Le dieci fermate della ferrovia del Renon (NC001810–NC001819) sono aggiunte all'asset con nome e posizione del pack STA incluso (alto-adige-sta-gtfs, CC0 1.0)",
+      "provenance": "Da confermare dal titolare: il repository non registra da quali fonti derivano nomi, alias e coordinate di stazioni_ferroviarie_curato_v4 (l'asset OpenStreetMap usato in precedenza è stato rimosso nel commit 9268bb3; audit A7-09). Le dieci fermate della ferrovia del Renon (NC001810–NC001819) sono aggiunte all'asset con nome e posizione del pack STA incluso (alto-adige-sta-gtfs, CC0 1.0). Le voci S00239 (Tronzano: nome e location ID della fermata Trenitalia 830000239) e S09526 (posizione della fermata Trenord S01830) sono corrette con i pack inclusi",
       "licence": "Da confermare dal titolare",
       "sourceDatabaseSha256": "2db59242ec45816a73a37c4748dc400dafaba762b6df3105673f63a44c882efe",
       "sourceCreatedAtUtc": "2026-08-16T01:21:36.343197+00:00",
@@ -14,7 +14,7 @@
       "railwayCodes": 3430,
       "uniqueTrenitaliaLocationIds": 3047,
       "ambiguousTrenitaliaLocationIdsExcluded": 40,
-      "assetSha256": "8ff7dfa1bf2985b349ce24a1b105b315e24a51d72a29001af13382ceedf67328",
+      "assetSha256": "0a39d29757ce48f4b56a22961dbfb6a9c6dbeff23b50f74729b76630e0102a23",
       "operationalData": false,
       "notes": "Catalogo canonico unico per ricerca, tratte, preferiti, widget, stazioni vicine e riconciliazione di identità. I codici Trenitalia ambigui sono esclusi dal mapping automatico; l’asset non abilita né determina dati live."
     }
