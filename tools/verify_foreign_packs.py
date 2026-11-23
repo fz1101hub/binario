@@ -398,12 +398,15 @@ def repository_problems(root: Path = ROOT, *, ledger_base: Path | None = None) -
                 problems.append(f"{where}: compressione del pin iPhone diversa dai metadati")
             if (metadata.get("inputs") or {}).get("fingerprintSha256") != ios["inputFingerprintSha256"]:
                 problems.append(f"{where}: impronta degli input diversa dai metadati")
-        # The station lists are the catalogue ids of the two iPhone indexes: served in the per-country index, zone in
-        # the base index built from the border subset (build_ios_gtfs_schedule.foreign_station_coverage).
+        # The station lists hold the catalogue ids of the two iPhone indexes: served includes the per-country index's
+        # (plus the stations only the Android matcher resolves), and the base index built from the border subset names
+        # exactly the zone stations the iPhone matcher resolves (build_ios_gtfs_schedule.foreign_station_coverage).
         try:
-            if ios_path.is_file() and catalogue_ids_of_pack(ios_path, source_id) != set(pack["servedStationIds"]):
-                problems.append(f"{where}: servedStationIds diverso dagli id dell'indice iPhone per paese")
-            if base_index.is_file() and catalogue_ids_of_pack(base_index, source_id) != set(pack["zoneStationIds"]):
+            country_ids = catalogue_ids_of_pack(ios_path, source_id) if ios_path.is_file() else None
+            if country_ids is not None and not country_ids <= set(pack["servedStationIds"]):
+                problems.append(f"{where}: servedStationIds non include gli id dell'indice iPhone per paese")
+            if country_ids is not None and base_index.is_file() \
+                    and catalogue_ids_of_pack(base_index, source_id) != set(pack["zoneStationIds"]) & country_ids:
                 problems.append(f"{where}: zoneStationIds diverso dagli id dell'indice iPhone di base")
         except (OSError, ValueError, sqlite3.Error, zlib.error) as error:
             problems.append(f"{where}: indice iPhone non leggibile ({error})")

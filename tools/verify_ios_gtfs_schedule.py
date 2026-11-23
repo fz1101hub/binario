@@ -207,11 +207,14 @@ def border_zone_rules(metadata: dict[str, object], inputs: Mapping[str, Path]) -
             require(bool(found), f"{source_id}: the full pack of the border subset is not an input")
             full_archives[source_id] = found[0]  # several inputs with these bytes are the same pack
     require(sorted(full_archives) == border, f"border subsets {border} differ from the manifest fullPack entries {sorted(full_archives)}")
+    import android_stop_matcher
     import build_ios_gtfs_schedule as builder  # the one catalogue matcher (design §1.1, rule 5)
 
     try:
         matcher, _ = builder.load_catalog(catalogue_path)
-        return {source_id: builder.foreign_station_coverage(path, matcher, source_id)[1] for source_id, path in full_archives.items()}
+        android = android_stop_matcher.load(catalogue_path)
+        return {source_id: builder.foreign_station_coverage(path, matcher, source_id, android)[1]
+                for source_id, path in full_archives.items()}
     except (builder.BuildError, OSError, ValueError) as error:
         raise VerificationError(f"cannot derive the border zone stations: {error}") from error
 

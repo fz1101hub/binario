@@ -759,11 +759,35 @@ class BorderSubsetIndexTest(unittest.TestCase):
 
     def test_served_and_zone_lists(self) -> None:
         catalog, _ = builder.load_catalog(self.catalog)
-        served, zone = builder.foreign_station_coverage(self.full_dir / "pack-0.zip", catalog, "pack-0")
+        android = builder.android_stop_matcher.load(self.catalog)
+        served, zone = builder.foreign_station_coverage(self.full_dir / "pack-0.zip", catalog, "pack-0", android)
         self.assertEqual(({"S1", "N1", "N2"}, {"S1", "N2"}), (served, zone))
         with mock.patch.dict(builder.foreign_rules.CORRIDORS, {}, clear=True):  # only the Italian station is left
-            _, zone = builder.foreign_station_coverage(self.full_dir / "pack-0.zip", catalog, "pack-0")
+            _, zone = builder.foreign_station_coverage(self.full_dir / "pack-0.zip", catalog, "pack-0", android)
         self.assertEqual({"S1"}, zone)
+
+    def test_stations_only_the_android_matcher_resolves_are_served_and_complete_ones_in_the_zone(self) -> None:
+        # «Elsewhere» is a catalogue entry without coordinates: the tools' matcher never binds a stop to it, the Android
+        # one by its unique name. Its stop Y has a trip outside the subset (FAR): served, outside the zone. The second
+        # «Nowhere» (no coordinates) makes the name ambiguous; the Android matcher places X at N1 by its position.
+        catalog_payload = json.loads(self.catalog.read_text(encoding="utf-8"))
+        catalog_payload["stations"].append({"id": "N9", "name": "Nowhere", "aliases": [], "railwayCode": None,
+                                            "trenitaliaLocationId": None, "latitude": None, "longitude": None})
+        catalog_payload["stations"].append({"id": "N8", "name": "Elsewhere", "aliases": [], "railwayCode": None,
+                                            "trenitaliaLocationId": None, "latitude": None, "longitude": None})
+        other = self.temp / "catalog-homonyms.json"
+        other.write_text(json.dumps(catalog_payload), encoding="utf-8")
+        catalog, _ = builder.load_catalog(other)
+        android = builder.android_stop_matcher.load(other)
+        self.assertEqual({"PL": "S1", "P": "S1", "V": "N2", "X": "N1", "Y": "N8"},
+                         {stop: station for stop, station in android.pack_stations(
+                             {row_id: row for row_id, row in self.border_stops().items()}).items()})
+        served, zone = builder.foreign_station_coverage(self.full_dir / "pack-0.zip", catalog, "pack-0", android)
+        self.assertEqual(({"S1", "N1", "N2", "N8"}, {"S1", "N2"}), (served, zone))
+
+    def border_stops(self) -> dict[str, dict[str, str]]:
+        with zipfile.ZipFile(self.full_dir / "pack-0.zip") as archive:
+            return {row["stop_id"]: row for row in csv.DictReader(io.TextIOWrapper(archive.open("stops.txt"), encoding="utf-8"))}
 
     def test_foreign_full_index_has_one_pack_and_every_station(self) -> None:
         output, metadata = self.temp / "full.zlib", self.temp / "full.json"

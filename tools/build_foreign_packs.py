@@ -36,6 +36,7 @@ sys.path.insert(0, str(ROOT / "tools"))
 
 import build_gtfs_packs as packs  # noqa: E402
 import build_ios_gtfs_schedule as ios_builder  # noqa: E402
+import android_stop_matcher  # noqa: E402
 import foreign_pack_rules as rules  # noqa: E402
 import verify_foreign_packs as pins_verifier  # noqa: E402
 import verify_ios_gtfs_rebuild as ios_rebuild  # noqa: E402
@@ -142,6 +143,7 @@ def pins_payload(root: Path) -> dict[str, Any]:
     manifest = manifest_of(root)
     catalogue_path = root / rules.CATALOGUE_PATH
     matcher = None
+    android_matcher = None
     entries = {entry["sourceId"]: entry for entry in manifest["packs"]}
     result: list[dict[str, Any]] = []
     for source_id in sorted(rules.FOREIGN_PACK_COUNTRIES):
@@ -166,8 +168,9 @@ def pins_payload(root: Path) -> dict[str, Any]:
             continue
         if matcher is None:
             matcher, _ = ios_builder.load_catalog(catalogue_path)
+            android_matcher = android_stop_matcher.load(catalogue_path)
         full_archive = root / rules.FULL_PACK_DIR / packs.safe_asset_name(str(entry["asset"]))
-        served, zone = ios_builder.foreign_station_coverage(full_archive, matcher, source_id)
+        served, zone = ios_builder.foreign_station_coverage(full_archive, matcher, source_id, android_matcher)
         metadata_path = root / rules.IOS_FULL_DIR / f"{source_id}.metadata.json"
         try:
             metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
