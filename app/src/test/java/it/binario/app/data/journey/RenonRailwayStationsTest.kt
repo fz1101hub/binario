@@ -124,8 +124,8 @@ class RenonRailwayStationsTest {
         val byCode = if (pack.stopCodeScheme == GtfsStopCodeScheme.NONE) null
         else resolver.resolveCode(pack.stopCodeScheme, directory.codes[index], latitude, longitude, name)
         return byCode
-            ?: pack.catalogueNameSuffixes.firstNotNullOfOrNull { suffix -> resolver.resolve("$name $suffix") }
-            ?: resolver.resolve(name)
+            ?: pack.catalogueNameSuffixes.firstNotNullOfOrNull { suffix -> resolver.resolve("$name $suffix", latitude, longitude) }
+            ?: resolver.resolve(name, latitude, longitude)
             ?: resolver.nearbyStation(name, latitude, longitude)
     }
 }

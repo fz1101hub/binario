@@ -163,8 +163,8 @@ class EmbeddedGtfsTransitPacksTest {
             stops.forEach { stop ->
                 // As the planner does: the station code, then the operator's suffixed catalogue name, then the name.
                 val station = resolver.resolveCode(pack.stopCodeScheme, stop.code, stop.latitude, stop.longitude, stop.name)
-                    ?: pack.catalogueNameSuffixes.firstNotNullOfOrNull { resolver.resolve("${stop.name} $it") }
-                    ?: resolver.resolve(stop.name)
+                    ?: pack.catalogueNameSuffixes.firstNotNullOfOrNull { resolver.resolve("${stop.name} $it", stop.latitude, stop.longitude) }
+                    ?: resolver.resolve(stop.name, stop.latitude, stop.longitude)
                 if (station != null) resolved += 1
                 else {
                     unresolved += stop.name

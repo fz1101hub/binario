@@ -5,8 +5,8 @@ The pins name, for each foreign pack, the catalogue stations its full pack serve
 completely (``servedStationIds``, ``zoneStationIds``). The iPhone matches stops with the tools' matcher
 (``build_ios_gtfs_schedule.CatalogStationMatcher``); the Android app with its own
 (``app/src/main/java/it/binario/app/data/journey/GtfsStopStationResolver.kt`` and ``PackStops.build`` in
-``EmbeddedGtfsJourneyProvider.kt``), which binds some stops to other catalogue entries (homonyms without coordinates or
-far away, co-located duplicates). A station either app can resolve a stop of the pack to must be in the lists, or the
+``EmbeddedGtfsJourneyProvider.kt``), which binds some stops to other catalogue entries (homonyms without coordinates,
+namesakes up to ``MAX_NAME_MATCH_KM`` away, co-located duplicates). A station either app can resolve a stop of the pack to must be in the lists, or the
 Android end rule could show the subset's partial trains as complete. This module mirrors the Android rules for the
 foreign packs (no station-code scheme, no catalogue name suffixes, not urban); the JVM test
 ``EmbeddedGtfsBorderZoneTest`` checks the result against the Android matcher itself on the real packs.
@@ -22,6 +22,9 @@ from pathlib import Path
 from typing import Any, Mapping
 
 SNAP_METERS = 150.0
+# ``GtfsStopStationResolver.MAX_NAME_MATCH_KM``: a station a name rule names binds a stop only this close, when both have
+# coordinates (the Swiss Guarda is not the Guarda near Ferrara, 266 km away).
+MAX_NAME_MATCH_KM = 10.0
 STATION_WORDS = frozenset({
     "STAZIONE", "STAZ", "CENTRALE", "FS", "RFI", "FERROVIA", "FTM", "BAHNHOF", "HBF", "HAUPTBAHNHOF", "BF",
     "GARE", "STATION", "CENTRAL",
@@ -184,6 +187,13 @@ def candidate_keys(station: Station) -> list[str]:
     return keys
 
 
+def within_name_bound(station: Station, latitude: float | None, longitude: float | None) -> bool:
+    """``GtfsStopStationResolver.isWithinNameBound``: within ``MAX_NAME_MATCH_KM``, or either position unknown."""
+    if latitude is None or longitude is None or station.latitude is None or station.longitude is None:
+        return True
+    return distance_km(latitude, longitude, station.latitude, station.longitude) <= MAX_NAME_MATCH_KM
+
+
 def _in_south_tyrol(station: Station) -> bool:
     return (station.latitude is not None and station.longitude is not None
             and 46.20 <= station.latitude <= 47.10 and 10.35 <= station.longitude <= 12.50)
@@ -215,11 +225,14 @@ class AndroidStopMatcher:
                 self.by_token.setdefault(token, []).append(station)
         self.located = [station for station in stations if station.latitude is not None and station.longitude is not None]
 
-    def resolve(self, stop_name: str) -> Station | None:
+    def resolve(self, stop_name: str, latitude: float | None = None, longitude: float | None = None) -> Station | None:
+        """``GtfsStopStationResolver.resolve``: a rule whose station is farther than ``MAX_NAME_MATCH_KM`` from the
+        stop does not bind it, and the next rule is tried."""
         names = variants(stop_name)
         for variant in names:
-            if normalize(variant) in self.by_key:
-                return self.by_key[normalize(variant)]
+            station = self.by_key.get(normalize(variant))
+            if station is not None and within_name_bound(station, latitude, longitude):
+                return station
         if any(normalize(variant) in self.ambiguous for variant in names):
             return None
         for variant in names:
@@ -229,7 +242,9 @@ class AndroidStopMatcher:
             fewest = min(extra for _, extra in candidates)
             best = list(dict.fromkeys(station.id for station, extra in candidates if extra == fewest))
             if len(best) == 1:
-                return next(station for station, _ in candidates if station.id == best[0])
+                station = next(station for station, _ in candidates if station.id == best[0])
+                if within_name_bound(station, latitude, longitude):
+                    return station
         for variant in names:
             seen: dict[str, Station] = {}
             for token in tokens(variant):
@@ -237,7 +252,7 @@ class AndroidStopMatcher:
                     for station in self.by_token.get(token, ()):
                         seen.setdefault(station.id, station)
             matches = [station for station in seen.values() if is_named_by(station, variant)]
-            if len(matches) == 1:
+            if len(matches) == 1 and within_name_bound(matches[0], latitude, longitude):
                 return matches[0]
         return None
 
@@ -271,9 +286,13 @@ class AndroidStopMatcher:
         resolved: dict[str, Station] = {}
         for stop_id, row in stops.items():
             name = row.get("stop_name", "")
+            latitude, longitude = _coordinate(row.get("stop_lat")), _coordinate(row.get("stop_lon"))
             if name not in by_name:
                 by_name[name] = self.resolve(name)
-            station = by_name[name] or self.nearby(name, _coordinate(row.get("stop_lat")), _coordinate(row.get("stop_lon")))
+            station = by_name[name]
+            if station is not None and not within_name_bound(station, latitude, longitude):
+                station = self.resolve(name, latitude, longitude)
+            station = station or self.nearby(name, latitude, longitude)
             if station is not None:
                 resolved[stop_id] = station
         group_station: dict[str, str] = {}
