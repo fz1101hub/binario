@@ -520,6 +520,11 @@ class EmbeddedGtfsJourneyProvider internal constructor(
         packStops(packs.first { it.sourceId == sourceId }, resolver()).catalogueStations
     }
 
+    /** Diagnostics for tests: the catalogue station (app id) each stop of a pack resolves to, for the stops that resolve. */
+    internal suspend fun catalogueStationByStopForTest(sourceId: SourceId): Map<String, String> = withContext(dispatcher) {
+        packStops(packs.first { it.sourceId == sourceId }, resolver()).catalogueStationByStop()
+    }
+
     /** Diagnostics for tests: cached service days and their approximate size. */
     internal fun cachedDaysForTest(): Int = synchronized(dayCache) { dayCache.size }
     internal fun cachedBytesForTest(): Long = synchronized(dayCache) { dayCache.values.sumOf(GtfsDayTimetable::approximateBytes) }
@@ -628,7 +633,7 @@ class EmbeddedGtfsJourneyProvider internal constructor(
     /**
      * The packs that know [origin] or [destination] (their own stops, or stops a short walk away), in registry order,
      * and whether a pack over its reading limits had to be left out. A foreign pack read as its border subset
-     * ([EmbeddedGtfsPack.borderZone]) covers an end only at one of its zone stations: elsewhere its trains are partial.
+     * ([EmbeddedGtfsPack.borderZone]) does not cover an end its full pack serves outside the zone: its trains are partial there.
      */
     private suspend fun packCoverage(
         origin: Endpoint,
@@ -1797,6 +1802,9 @@ class EmbeddedGtfsJourneyProvider internal constructor(
         }
 
         fun nodeKey(stopId: String): String = indexById[stopId]?.let { nodeKeys[it] } ?: "${sourceId.value}:stop:$stopId"
+
+        fun catalogueStationByStop(): Map<String, String> =
+            indexById.entries.mapNotNull { (stopId, index) -> nodeKeys[index].takeIf { it in catalogueStations }?.let { stopId to it } }.toMap()
 
         /** True only when the stop (or its parent station) is published as wheelchair accessible (1). */
         fun stopAccessible(stopId: String): Boolean = indexById[stopId]?.let { wheelchair[it] == WHEELCHAIR_YES } == true

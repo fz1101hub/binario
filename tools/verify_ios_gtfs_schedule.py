@@ -184,29 +184,39 @@ def verify_inputs(
         require(source_policy_path.resolve() in resolved_inputs, "reviewed GTFS source policy is absent from the input fingerprint")
     return actual_fingerprint, paths
 
-def border_zone_rules(metadata: dict[str, object], inputs: Mapping[str, Path]) -> tuple[dict[str, float], "foreign_rules.Anchors | None"]:
-    """Radius of each border subset (manifest filter.borderZone, the hash-verified manifest input) and the anchors of
-    the hash-verified catalogue input."""
+def border_zone_rules(metadata: dict[str, object], inputs: Mapping[str, Path]) -> dict[str, set[str]]:
+    """The zone stations of each border subset, derived again from its full pack and the catalogue (both
+    hash-verified inputs) with the builder's matcher and the corridors of foreign_pack_rules."""
     border = border_subset_packs(metadata)
     if not border:
-        return {}, None
+        return {}
     # The builder lists the manifest first and the catalogue second (build_ios_gtfs_schedule.read_manifest).
     ordered = list(inputs.values())
     require(len(ordered) >= 2, "border subsets need the manifest and catalogue inputs")
     manifest_path, catalogue_path = ordered[0], ordered[1]
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-    radius: dict[str, float] = {}
+    full_archives: dict[str, Path] = {}
     for entry in manifest.get("packs", []):
         if isinstance(entry, dict) and "fullPack" in entry:
-            value = ((entry.get("filter") or {}).get("borderZone") or {}).get("radiusKm")
-            require(isinstance(value, (int, float)) and not isinstance(value, bool) and value > 0, f"{entry.get('sourceId')}: invalid borderZone radius")
-            radius[str(entry.get("sourceId"))] = float(value)
-    require(sorted(radius) == border, f"border subsets {border} differ from the manifest fullPack entries {sorted(radius)}")
+            source_id = str(entry.get("sourceId"))
+            rule = ((entry.get("filter") or {}).get("borderZone") or {}).get("rule")
+            require(rule == foreign_rules.BORDER_ZONE_RULE, f"{source_id}: invalid borderZone rule {rule!r}")
+            full = entry["fullPack"] if isinstance(entry["fullPack"], dict) else {}
+            name = str(full.get("path", "")).rsplit("/", 1)[-1]
+            found = [path for path in ordered[2:] if path.name == name and sha256_file(path) == full.get("sha256")]
+            require(bool(found), f"{source_id}: the full pack of the border subset is not an input")
+            full_archives[source_id] = found[0]  # several inputs with these bytes are the same pack
+    require(sorted(full_archives) == border, f"border subsets {border} differ from the manifest fullPack entries {sorted(full_archives)}")
+    import android_stop_matcher
+    import build_ios_gtfs_schedule as builder  # the one catalogue matcher (design §1.1, rule 5)
+
     try:
-        anchors = foreign_rules.load_anchors(catalogue_path)
-    except (OSError, ValueError) as error:
-        raise VerificationError(f"cannot read the catalogue anchors: {error}") from error
-    return radius, anchors
+        matcher, _ = builder.load_catalog(catalogue_path)
+        android = android_stop_matcher.load(catalogue_path)
+        return {source_id: builder.foreign_station_coverage(path, matcher, source_id, android)[1]
+                for source_id, path in full_archives.items()}
+    except (builder.BuildError, OSError, ValueError) as error:
+        raise VerificationError(f"cannot derive the border zone stations: {error}") from error
 
 def verify_source_policy(source_policy_path: Path, pack_source_ids: set[str]) -> None:
     """The reviewed policy must describe exactly the packs of the index, each with a licence entry."""
@@ -281,10 +291,9 @@ def verify_database(
     input_fingerprint: str,
     *,
     foreign_full: str | None = None,
-    border_radius: Mapping[str, float] | None = None,
-    anchors: "foreign_rules.Anchors | None" = None,
+    border_zones: Mapping[str, set[str]] | None = None,
 ) -> dict[str, int]:
-    border_radius = border_radius or {}
+    border_zones = border_zones or {}
     database = metadata.get("database")
     expected_counts = metadata.get("rowCounts")
     require(isinstance(database, dict), "metadata.database is missing")
@@ -323,7 +332,7 @@ def verify_database(
         require(incomplete == 0, "trip without stop_times found")
         # A trip touches a catalogue station; in a foreign operator's pack bundled whole, one with codes (FOREIGN_PACKS
         # but borderSubsets); a border subset or a per-country index may touch one without codes.
-        coded_only = [] if foreign_full is not None else sorted(set(FOREIGN_PACKS) - set(border_radius))
+        coded_only = [] if foreign_full is not None else sorted(set(FOREIGN_PACKS) - set(border_zones))
         unverified = connection.execute(
             "SELECT count(*) FROM trip t JOIN pack p ON p.id=t.pack_id WHERE NOT EXISTS ("
             "SELECT 1 FROM stop_time st JOIN stop s ON s.id=st.stop_id WHERE st.trip_id=t.id AND s.catalog_station_id IS NOT NULL "
@@ -331,15 +340,14 @@ def verify_database(
             coded_only,
         ).fetchone()[0]
         require(unverified == 0, "trip not touching a verified catalog station found")
-        # A border subset names only zone stations: no stop outside the border zone carries a catalogue id (design §4.2).
-        for source_id, radius in sorted(border_radius.items()):
-            require(anchors is not None, "border subsets need the catalogue anchors")
-            for external_id, latitude, longitude in connection.execute(
-                "SELECT s.external_id, s.latitude, s.longitude FROM stop s JOIN pack p ON p.id=s.pack_id "
+        # A border subset names only zone stations: no stop of another station carries a catalogue id (design §4.2).
+        for source_id, zone_ids in sorted(border_zones.items()):
+            for external_id, station_id in connection.execute(
+                "SELECT s.external_id, s.catalog_station_id FROM stop s JOIN pack p ON p.id=s.pack_id "
                 "WHERE p.source_id=? AND s.catalog_station_id IS NOT NULL", (source_id,),
             ):
-                require(latitude is not None and longitude is not None and anchors.within(float(latitude), float(longitude), radius),
-                        f"{source_id}: stop {external_id} outside the {radius:g} km border zone carries a catalogue id")
+                require(station_id in zone_ids,
+                        f"{source_id}: stop {external_id} carries catalogue id {station_id} outside the border zone")
         non_rail = connection.execute(
             "SELECT count(*) FROM route WHERE route_type != 2 AND NOT (route_type BETWEEN 100 AND 199)"
         ).fetchone()[0]
@@ -428,7 +436,7 @@ def verify(
     require(compression.get("sha256") == compressed_hash, "compressed SHA-256 mismatch")
     require(metadata.get("maximumCompressedSizeBytes") == max_compressed_bytes, "configured maximum size differs from build metadata")
     input_fingerprint, inputs = verify_inputs(metadata, metadata_path, source_policy_path, foreign_full)
-    border_radius, anchors = border_zone_rules(metadata, inputs) if foreign_full is None else ({}, None)
+    border_zones = border_zone_rules(metadata, inputs) if foreign_full is None else {}
     fd, raw_name = tempfile.mkstemp(prefix="binario-verify-", suffix=".sqlite")
     os.close(fd)
     raw_path = Path(raw_name)
@@ -437,7 +445,7 @@ def verify(
         require(database.get("sizeBytes") == database_size, "decompressed size metadata mismatch")
         require(database.get("sha256") == database_hash, "decompressed SHA-256 mismatch")
         counts = verify_database(raw_path, metadata, input_fingerprint, foreign_full=foreign_full,
-                                 border_radius=border_radius, anchors=anchors)
+                                 border_zones=border_zones)
         if source_policy_path is not None and foreign_full is None:
             verify_source_policy(source_policy_path, pack_source_ids(raw_path))
         elif source_policy_path is not None:

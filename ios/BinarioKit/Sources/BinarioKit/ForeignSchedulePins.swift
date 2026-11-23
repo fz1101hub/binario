@@ -36,7 +36,9 @@ public struct ForeignSchedulePins: Equatable, Sendable {
     static let maximumStations = 8_192
     static let maximumIdentifierLength = 64
 
-    public let radiusKm: Double
+    /// The radius of the first border rule (pins written before 23 Nov 2026); nil for the corridor rule
+    /// (`frontalieri-corridors-v1`), whose zone is only the stations listed in `zoneStationIDs`.
+    public let radiusKm: Double?
     public let packs: [Pack]
 
     /// One foreign pack: which catalogue stations its full timetable serves, which of them its
@@ -100,7 +102,7 @@ public struct ForeignSchedulePins: Equatable, Sendable {
         }
         guard file.schemaVersion == Self.schemaVersion,
               file.repository == Self.repository,
-              file.borderZone.radiusKm > 0, file.borderZone.radiusKm <= 200,
+              file.borderZone.radiusKm.map({ $0 > 0 && $0 <= 200 }) ?? true,
               !file.packs.isEmpty, file.packs.count <= Self.maximumPacks
         else { throw ForeignSchedulePinsError.invalid }
         var packs: [Pack] = []
@@ -263,7 +265,7 @@ public struct ForeignSchedulePins: Equatable, Sendable {
         let packs: [PackEntry]
 
         struct BorderZone: Decodable {
-            let radiusKm: Double
+            let radiusKm: Double?
         }
 
         struct PackEntry: Decodable {

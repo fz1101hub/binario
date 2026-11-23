@@ -53,7 +53,7 @@ def sample_pins(pinned: tuple[str, ...] = ("oebb-gtfs",)) -> dict:
                    "url": f"{RELEASE_PREFIX}{ios_tag}/{source_id}.sqlite.zlib", "sizeBytes": 2048, "sha256": digest}
         packs.append({"sourceId": source_id, "country": country, "borderOnly": source_id in pinned,
                       "servedStationIds": [], "zoneStationIds": [], "android": android, "ios": ios})
-    return {"schemaVersion": 1, "repository": "fz1101hub/binario", "borderZone": {"radiusKm": 35}, "packs": packs}
+    return {"schemaVersion": 1, "repository": "fz1101hub/binario", "borderZone": {"rule": "frontalieri-corridors-v1"}, "packs": packs}
 
 
 def android_fixture_tree(root: Path, pins: dict | None) -> Path:

@@ -657,7 +657,8 @@ class StopNameVariantTest(unittest.TestCase):
 
 
 def write_border_feed(path: Path) -> None:
-    """Citta Alta (coded anchor) and Vicino (11 km, no codes) are in the border zone; Nowhere (136 km) is not."""
+    """Citta Alta (an Italian station, coded) and Vicino (no codes, the station of the fixture corridor) are in the
+    border zone; Nowhere is not."""
     members = {
         "agency.txt": csv_bytes(["agency_id", "agency_name", "agency_url", "agency_timezone"], [["A", "Rail", "https://example.test", "Europe/Rome"]]),
         "routes.txt": csv_bytes(["route_id", "agency_id", "route_short_name", "route_long_name", "route_type"], [["R", "A", "EC", "Test", "2"]]),
@@ -698,12 +699,15 @@ class BorderSubsetIndexTest(unittest.TestCase):
         shutil.copyfile(subset, self.full_dir / "pack-0.zip")
         manifest = json.loads(self.manifest.read_text(encoding="utf-8"))
         digest = hashlib.sha256(subset.read_bytes()).hexdigest()
-        manifest["packs"][0].update(sha256=digest, filter={"borderZone": {"radiusKm": 35}}, fullPack={
+        manifest["packs"][0].update(sha256=digest, filter={"borderZone": {"rule": "frontalieri-corridors-v1"}}, fullPack={
             "path": "data/gtfs-foreign/android/pack-0.zip", "sha256": digest, "lastServiceDate": "2026-01-09",
         })
         self.manifest.write_text(json.dumps(manifest), encoding="utf-8")
+        corridor = builder.foreign_rules.Corridor("Citta Alta – Vicino", "fixture", builder.foreign_rules.station("S1", "Citta Alta"),
+                                                  (builder.foreign_rules.stop("Vicino Bahnhof", 45.1, 9.0),))
         for patcher in (mock.patch.object(builder, "FOREIGN_PACKS", frozenset({"pack-0", "pack-1"})),
-                        mock.patch.object(verifier, "FOREIGN_PACKS", ("pack-0", "pack-1"))):
+                        mock.patch.object(verifier, "FOREIGN_PACKS", ("pack-0", "pack-1")),
+                        mock.patch.dict(builder.foreign_rules.CORRIDORS, {"pack-0": (corridor,)}, clear=True)):
             patcher.start()
             self.addCleanup(patcher.stop)
 
@@ -745,7 +749,7 @@ class BorderSubsetIndexTest(unittest.TestCase):
         payload["compression"].update(sha256=hashlib.sha256(compressed).hexdigest(), sizeBytes=len(compressed))
         payload["database"].update(sha256=hashlib.sha256(raw.read_bytes()).hexdigest(), sizeBytes=raw.stat().st_size)
         metadata.write_text(json.dumps(payload), encoding="utf-8")
-        with self.assertRaisesRegex(verifier.VerificationError, "outside the 35 km border zone"):
+        with self.assertRaisesRegex(verifier.VerificationError, "carries catalogue id N1 outside the border zone"):
             verifier.verify(output, metadata, max_compressed_bytes=4 * 1024 * 1024, max_database_bytes=16 * 1024 * 1024)
 
     def test_full_pack_must_match_the_manifest(self) -> None:
@@ -754,12 +758,36 @@ class BorderSubsetIndexTest(unittest.TestCase):
             self.build_base()
 
     def test_served_and_zone_lists(self) -> None:
-        anchors = builder.foreign_rules.load_anchors(self.catalog)
         catalog, _ = builder.load_catalog(self.catalog)
-        served, zone = builder.foreign_station_coverage(self.full_dir / "pack-0.zip", catalog, "pack-0", anchors, 35)
+        android = builder.android_stop_matcher.load(self.catalog)
+        served, zone = builder.foreign_station_coverage(self.full_dir / "pack-0.zip", catalog, "pack-0", android)
         self.assertEqual(({"S1", "N1", "N2"}, {"S1", "N2"}), (served, zone))
-        _, zone = builder.foreign_station_coverage(self.full_dir / "pack-0.zip", catalog, "pack-0", anchors, 5)
+        with mock.patch.dict(builder.foreign_rules.CORRIDORS, {}, clear=True):  # only the Italian station is left
+            _, zone = builder.foreign_station_coverage(self.full_dir / "pack-0.zip", catalog, "pack-0", android)
         self.assertEqual({"S1"}, zone)
+
+    def test_stations_only_the_android_matcher_resolves_are_served_and_complete_ones_in_the_zone(self) -> None:
+        # «Elsewhere» is a catalogue entry without coordinates: the tools' matcher never binds a stop to it, the Android
+        # one by its unique name. Its stop Y has a trip outside the subset (FAR): served, outside the zone. The second
+        # «Nowhere» (no coordinates) makes the name ambiguous; the Android matcher places X at N1 by its position.
+        catalog_payload = json.loads(self.catalog.read_text(encoding="utf-8"))
+        catalog_payload["stations"].append({"id": "N9", "name": "Nowhere", "aliases": [], "railwayCode": None,
+                                            "trenitaliaLocationId": None, "latitude": None, "longitude": None})
+        catalog_payload["stations"].append({"id": "N8", "name": "Elsewhere", "aliases": [], "railwayCode": None,
+                                            "trenitaliaLocationId": None, "latitude": None, "longitude": None})
+        other = self.temp / "catalog-homonyms.json"
+        other.write_text(json.dumps(catalog_payload), encoding="utf-8")
+        catalog, _ = builder.load_catalog(other)
+        android = builder.android_stop_matcher.load(other)
+        self.assertEqual({"PL": "S1", "P": "S1", "V": "N2", "X": "N1", "Y": "N8"},
+                         {stop: station for stop, station in android.pack_stations(
+                             {row_id: row for row_id, row in self.border_stops().items()}).items()})
+        served, zone = builder.foreign_station_coverage(self.full_dir / "pack-0.zip", catalog, "pack-0", android)
+        self.assertEqual(({"S1", "N1", "N2", "N8"}, {"S1", "N2"}), (served, zone))
+
+    def border_stops(self) -> dict[str, dict[str, str]]:
+        with zipfile.ZipFile(self.full_dir / "pack-0.zip") as archive:
+            return {row["stop_id"]: row for row in csv.DictReader(io.TextIOWrapper(archive.open("stops.txt"), encoding="utf-8"))}
 
     def test_foreign_full_index_has_one_pack_and_every_station(self) -> None:
         output, metadata = self.temp / "full.zlib", self.temp / "full.json"

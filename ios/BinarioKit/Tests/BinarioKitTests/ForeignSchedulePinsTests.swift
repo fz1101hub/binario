@@ -96,6 +96,21 @@ final class ForeignSchedulePinsTests: XCTestCase {
         XCTAssertThrowsError(try ForeignSchedulePins(data: Data(repeating: 0x20, count: ForeignSchedulePins.maximumBytes + 1)))
     }
 
+    func testTheCorridorRuleDecodesWithoutARadius() throws {
+        var object = try sampleObject()
+        object["borderZone"] = [
+            "rule": "frontalieri-corridors-v1",
+            "corridors": ["oebb-gtfs": ["Brennero – Innsbruck"]],
+            "italianStations": "stop matched to a catalogue station with trenitaliaLocationId ^83",
+            "catalogueSha256": String(repeating: "a", count: 64),
+            "tripRule": "whole-trips-touching-zone",
+        ] as [String: Any]
+        let pins = try ForeignSchedulePins(data: JSONSerialization.data(withJSONObject: object))
+        XCTAssertNil(pins.radiusKm)
+        XCTAssertEqual(pins.downloadablePacks.map(\.sourceID), ["oebb-gtfs"])
+        XCTAssertFalse(try XCTUnwrap(pins.pack("oebb-gtfs")).needsFullTimetable("TEST-INNSBRUCK"))
+    }
+
     func testNoPinnedPackAndAnAbsentFileLeaveNothingToDownload() throws {
         var object = try sampleObject()
         Self.editPack(&object, index: 1) { pack in

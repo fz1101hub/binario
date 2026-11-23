@@ -381,13 +381,13 @@ def merge_directory(
                 directory.mkdir(parents=True, exist_ok=True)
             full_copy.write_bytes(data)
             try:
-                derived = builder.derive_border_subset(full_copy, subset_path, source_id, foreign.load_anchors(catalogue_path))
+                derived = builder.derive_border_subset(full_copy, subset_path, source_id, builder.load_zone_catalogue(catalogue_path))
                 entry = builder.border_manifest_entry(pack, subset_path, full_copy)
             except (builder.BuildError, OSError, ValueError, zipfile.BadZipFile) as error:
                 row.failure = f"sottoinsieme di confine non derivabile: {builder.log_safe(error)}"
                 continue
             if derived.content_sha256 != pack.get("contentSha256"):
-                row.failure = "sottoinsieme di confine derivato qui diverso da quello del job (catalogo o raggio diversi?)"
+                row.failure = "sottoinsieme di confine derivato qui diverso da quello del job (catalogo o corridoi diversi?)"
                 continue
             if entry[builder.FULL_PACK_FIELD] != dict(full):
                 row.failure = "fullPack del manifest stampato diverso dal pack completo stampato"

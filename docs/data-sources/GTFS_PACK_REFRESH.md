@@ -110,16 +110,25 @@ Un archivio identico a quello registrato (`sourceArchiveSha256`) non è ricostru
 
 Parte tecnica; le regole generali dei pack esteri sono in `SOURCE_POLICY.md`.
 
-**Regola della licenza.** I tre pack esteri (`ch-otd-gtfs`, `oebb-gtfs`, `sncf-gtfs`) sono inclusi come *sottoinsieme di confine* solo se il campo `licence` del manifest è confermato (non «Da confermare dal titolare»); oggi solo ÖBB (CC BY 4.0). Gli altri restano inclusi interi come prima: nessun sottoinsieme, nessun pin, nessun file pubblicato. Tool e test gestiscono qualsiasi combinazione.
+**Regola della licenza.** I tre pack esteri (`ch-otd-gtfs`, `oebb-gtfs`, `sncf-gtfs`) sono inclusi come *sottoinsieme di confine* solo se il campo `licence` del manifest è confermato (non «Da confermare dal titolare»); dal 22 novembre 2026 tutti e tre (ÖBB CC BY 4.0; Svizzera e Francia con le licenze registrate dal titolare, vedi `SOURCE_POLICY.md`). Un pack senza licenza confermata resta incluso intero come prima: nessun sottoinsieme, nessun pin, nessun file pubblicato. Tool e test gestiscono qualsiasi combinazione.
 
-**Sottoinsieme.** Le corse intere che fermano almeno una volta entro `BORDER_ZONE_RADIUS_KM` (35 km, l'unico valore, in `tools/foreign_pack_rules.py`) da una stazione del catalogo con `trenitaliaLocationId` che inizia per `83` e coordinate (distanza haversine dalla fermata o dalla sua stazione madre); le tabelle collegate sono ridotte alle righe usate. Il `--check` ricava di nuovo ogni sottoinsieme dal pack completo e dal catalogo e richiede lo stesso contenuto, controlla `fullPack` e i due `SHA256SUMS`, che le coppie obbligatorie del pack (Brennero–Innsbruck Hbf; Domodossola–Brig e Como S. Giovanni–Lugano per la Svizzera, Ventimiglia–Nice-Ville per la Francia, per id di catalogo) abbiano tutte le corse del pack completo e che i sottoinsiemi insieme restino entro 1,2 MB.
+**Sottoinsieme (regola `frontalieri-corridors-v1`).** Le corse intere che fermano almeno una volta in una *fermata di zona*: una fermata di una stazione italiana (abbinata dal matcher del catalogo a una stazione con `trenitaliaLocationId` che inizia per `83`, oppure con il prefisso dell'Italia nel proprio `stop_id`: `it:` nel pack ÖBB, codice UIC `83` nei pack SBB e SNCF) o di una stazione di uno dei **corridoi transfrontalieri** del pack (`CORRIDORS` in `tools/foreign_pack_rules.py`, elencati con il motivo in [SOURCE_POLICY.md](SOURCE_POLICY.md#corridoi-dei-frontalieri)). I treni che entrano in Italia restano quindi sempre interi. Ogni corridoio ha un estremo italiano e le stazioni dell'intera tratta oltre il confine (tutte le fermate dei suoi treni fino alla stazione più lontana); una stazione è indicata con l'id del catalogo quando il matcher del catalogo vi abbina le fermate del pack, altrimenti con il nome della fermata GTFS e le coordinate lette dal pack completo (entro 1 km, con le sue banchine). Le tabelle collegate sono ridotte alle righe usate.
+
+**Stazioni servite e di zona (pin).** Una stazione del catalogo è *servita* (`servedStationIds`) se una fermata con corse del pack completo vi è abbinata dal matcher del catalogo degli strumenti (quello dell'iPhone) o da quello dell'app Android, riprodotto in `tools/android_stop_matcher.py` (omonimi senza coordinate o lontani, doppioni vicini: Maccagno ha due voci a 300 m). È *di zona* (`zoneStationIds`) se ogni sua fermata servita è *completa*: ogni corsa del pack completo che vi ferma è nel sottoinsieme. Le app non usano un pack ridotto per un estremo servito fuori zona (lo lasciano all'orario completo e ne propongono il download); un estremo di zona o che il pack non serve resta coperto. `EmbeddedGtfsBorderZoneTest` confronta queste liste, fermata per fermata, con il matcher Android vero sui pack completi: se il matcher Android cambia, va aggiornato `android_stop_matcher.py`.
+
+Il `--check` ricava di nuovo ogni sottoinsieme dal pack completo e dal catalogo e richiede lo stesso contenuto, controlla `fullPack` e i due `SHA256SUMS`, che i sottoinsiemi insieme restino entro 1,2 MB e, per i corridoi:
+- ogni coppia di un corridoio (estremo italiano – ciascuna sua stazione) ha nel sottoinsieme tutte le corse del pack completo fra le due;
+- nessuna fermata servita fra l'estremo italiano e una stazione del corridoio resta fuori zona (una fermata nuova o rinominata: aggiungerla al corridoio);
+- le coppie obbligatorie del pack (Brennero–Innsbruck Hbf; Domodossola–Brig e Como S. Giovanni–Lugano per la Svizzera, Ventimiglia–Nice-Ville per la Francia, per id di catalogo) hanno almeno una corsa.
+
+Una stazione di corridoio senza fermate nel pack completo (linea chiusa per lavori, fermata rinominata) e una coppia senza corse dirette non fanno fallire il controllo: il generatore le stampa come «Avviso corridoi».
 
 | File | Contenuto | Nell'app |
 |---|---|---|
 | `data/gtfs-foreign/android/<id>.zip`, `SHA256SUMS` | pack completi filtrati come prima | no |
 | `data/gtfs-foreign/ios/<id>.sqlite.zlib`, `<id>.metadata.json` | indice iPhone per paese (stesso schema di `binario_gtfs_schedule_v1`) | no |
 | `data/gtfs-foreign/published.json` | registro append-only di ogni file mai fissato (tag, asset, SHA-256, dimensione, `firstPinnedOn`) | no |
-| `app/src/main/assets/gtfs/<id>.zip` | sottoinsieme di confine; nel manifest `fullPack` e `filter.borderZone.radiusKm` | sì |
+| `app/src/main/assets/gtfs/<id>.zip` | sottoinsieme di confine; nel manifest `fullPack` e `filter.borderZone.rule` | sì |
 | `app/src/main/assets/gtfs/foreign_packs.json`, `ios/Resources/binario_gtfs_foreign_packs_v1.json` | pin (schema 1, stessi byte): tag `gtfs-full-<id>-<sha12>` / `gtfs-ios-<id>-<sha12>`, URL `https://github.com/fz1101hub/binario/releases/download/<tag>/<asset>`, stazioni servite e di zona | sì |
 
 **Un solo comando** rigenera tutto ciò che deriva dai pack esteri e dal manifest principale (circa 100 s): regola della licenza, sottoinsiemi, indice iPhone di base e indici per paese (i byte committati restano se il contenuto non cambia, quindi un pack invariato tiene il suo pin), i due file di pin, il registro e tutte le verifiche offline:
@@ -129,7 +138,7 @@ python3 -I tools/build_foreign_packs.py            # rigenera e verifica
 python3 -I tools/build_foreign_packs.py --check    # verifica soltanto
 ```
 
-Per cambiare il raggio: una riga in `tools/foreign_pack_rules.py`, poi il comando. I file generati non si modificano mai a mano e vanno in un commit separato dal codice.
+Per cambiare un corridoio: `CORRIDORS` in `tools/foreign_pack_rules.py` (stazioni lette dal pack completo, mai inventate), poi il comando. Il campo `borderZone` dei pin riporta la regola (`rule`), i nomi dei corridoi di ogni pack, la regola delle stazioni italiane e l'impronta del catalogo; le app leggono soltanto `zoneStationIds` e `servedStationIds` (i pin scritti prima, con `radiusKm`, restano leggibili). I file generati non si modificano mai a mano e vanno in un commit separato dal codice.
 
 **Aggiornamento settimanale.** Per un pack di confine il job `core-packs` stampa il pack **completo** in `gtfs-foreign-android/<id>.zip` (non il sottoinsieme) con il manifest. `apply_ci_gtfs_refresh.py` lo confronta con `fullPack`, applica le regole di sospetto al pack completo, lo scrive in `data/gtfs-foreign/android/`, ricava di nuovo il sottoinsieme negli asset (il suo contenuto deve essere quello ricavato dal job) e tra le verifiche esegue `build_foreign_packs.py`. Un pack completo stampato senza `fullPack` nel manifest stampato fa fallire l'applicazione.
 

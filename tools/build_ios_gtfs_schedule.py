@@ -38,6 +38,7 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools"))
 import foreign_pack_rules as foreign_rules  # noqa: E402  (border zone: the one rule of every tool)
+import android_stop_matcher  # noqa: E402  (the Android app's stop matcher, for the pins' station lists)
 
 APPLICATION_ID = int.from_bytes(b"BNGT", "big")
 # 2: trip.bikes_allowed (GTFS bikes_allowed: 1 allowed, 2 not allowed, NULL unknown).
@@ -839,15 +840,15 @@ def read_manifest(
         full = item.get("fullPack")
         if full is not None:
             # A border subset (licence-confirmed foreign pack): its zone stations come from its full pack, an input.
-            radius = ((item.get("filter") or {}).get("borderZone") or {}).get("radiusKm") if isinstance(item.get("filter"), dict) else None
+            rule = ((item.get("filter") or {}).get("borderZone") or {}).get("rule") if isinstance(item.get("filter"), dict) else None
             if source_id not in FOREIGN_PACKS or not isinstance(full, dict) or not isinstance(full.get("path"), str) \
-                    or not isinstance(full.get("sha256"), str) or isinstance(radius, bool) or not isinstance(radius, (int, float)) or radius <= 0:
+                    or not isinstance(full.get("sha256"), str) or rule != foreign_rules.BORDER_ZONE_RULE:
                 raise BuildError(f"{source_id}: invalid fullPack/borderZone in the manifest")
             full_archive = (full_pack_dir or ROOT / foreign_rules.FULL_PACK_DIR) / PurePosixPath(full["path"]).name
             if not full_archive.is_file() or sha256_file(full_archive) != full["sha256"]:
                 raise BuildError(f"{source_id}: full pack missing or different from manifest fullPack: {full_archive}")
             inputs.append(InputFile(full_archive.as_posix(), full_archive.stat().st_size, full["sha256"]))
-            pack_entry.update(station_mode=STATION_MODE_ZONE, full_archive=full_archive, radius_km=float(radius))
+            pack_entry.update(station_mode=STATION_MODE_ZONE, full_archive=full_archive)
         normalized.append(pack_entry)
     if policy_by_id is not None and source_ids != set(policy_by_id):
         raise BuildError("GTFS manifest source IDs differ from reviewed iOS policy")
@@ -901,27 +902,38 @@ def archive_station_trips(
             calls[required(row, "trip_id", f"{source_id}:stop_times.txt:{line}")].add(stop_id)
     return stops, identities, dict(calls)
 
+def foreign_zone(stops: Mapping[str, Mapping[str, str]], catalog: CatalogStationMatcher, source_id: str) -> "foreign_rules.PackZone":
+    """The zone stops of a foreign pack (foreign_pack_rules: Italian stations and the pack's corridors), resolved
+    with the catalogue identities of this matcher."""
+    return foreign_rules.pack_zone(source_id, stops, stop_identities(stops, catalog, source_id, uncoded=True))
+
 def foreign_station_coverage(
     archive_path: Path,
     catalog: CatalogStationMatcher,
     source_id: str,
-    anchors: "foreign_rules.Anchors",
-    radius_km: float,
+    android: "android_stop_matcher.AndroidStopMatcher",
 ) -> tuple[set[str], set[str]]:
-    """``(served, zone)`` catalogue ids of a full foreign pack (design §1.1, rule 5): served stations are matched to
-    a stop some trip calls at; a zone station has every such stop inside the border zone."""
+    """``(served, zone)`` catalogue ids of a full foreign pack (design §1.1, rule 5).
+
+    A station is *served* when a stop some trip calls at resolves to it, with this matcher (the iPhone's) or with the
+    Android app's (``android``): either app may name it as a journey end. A served station is a *zone* station when
+    every such stop is complete in the border subset: each trip calling there is a kept trip (one calling at a zone
+    stop: an Italian station or a station of one of the pack's corridors). Elsewhere the subset's trains are partial."""
     stops, identities, calls = archive_station_trips(archive_path, catalog, source_id)
-    zone_stops = foreign_rules.zone_stop_ids(stops.values(), anchors, radius_km)
-    served: set[str] = set()
-    outside: set[str] = set()
-    for stop_id in set().union(*calls.values()) if calls else set():
+    zone_stops = foreign_rules.pack_zone(source_id, stops, identities).stops
+    android_ids = android.pack_stations(stops)
+    incomplete: set[str] = set()
+    called: set[str] = set()
+    for stop_ids in calls.values():
+        called |= stop_ids
+        if not stop_ids & zone_stops:
+            incomplete |= stop_ids
+    related: dict[str, set[str]] = defaultdict(set)
+    for stop_id in called:
         identity = identities.get(stop_id)
-        if identity is None:
-            continue
-        served.add(identity.station_id)
-        if stop_id not in zone_stops:
-            outside.add(identity.station_id)
-    return served, served - outside
+        for station_id in {identity.station_id if identity is not None else None, android_ids.get(stop_id)} - {None}:
+            related[str(station_id)].add(stop_id)
+    return set(related), {station_id for station_id, members in related.items() if not members & incomplete}
 
 def pair_trip_counts(
     archive_path: Path,
@@ -1182,12 +1194,11 @@ def fsync_path(path: Path) -> None:
     with path.open("rb") as stream:
         os.fsync(stream.fileno())
 
-def border_zone_station_ids(pack: Mapping[str, object], catalog: CatalogStationMatcher, catalog_path: Path) -> set[str]:
+def border_zone_station_ids(
+    pack: Mapping[str, object], catalog: CatalogStationMatcher, android: "android_stop_matcher.AndroidStopMatcher",
+) -> set[str]:
     """The zone stations of a border subset, computed on its full pack (design §1.1, rule 5)."""
-    anchors = foreign_rules.load_anchors(catalog_path)
-    _, zone = foreign_station_coverage(
-        Path(str(pack["full_archive"])), catalog, str(pack["source_id"]), anchors, float(pack["radius_km"]),  # type: ignore[arg-type]
-    )
+    _, zone = foreign_station_coverage(Path(str(pack["full_archive"])), catalog, str(pack["source_id"]), android)
     return zone
 
 def build_database(
@@ -1210,9 +1221,11 @@ def build_database(
     )
     catalog, eligible_catalog_stations = load_catalog(catalog_path)
     border = sorted(str(pack["source_id"]) for pack in packs if pack.get("station_mode") == STATION_MODE_ZONE)
+    android = android_stop_matcher.load(catalog_path) if border else None
     for pack in packs:
         if pack.get("station_mode") == STATION_MODE_ZONE:
-            pack["zone_station_ids"] = border_zone_station_ids(pack, catalog, catalog_path)
+            assert android is not None
+            pack["zone_station_ids"] = border_zone_station_ids(pack, catalog, android)
     filter_metadata: dict[str, object] = {
         "keepsCompleteTripWhen": "at least one stop matches, by normalized name/alias, a stop-name variant (part after 'Stazione di', without a country suffix, a trailing station word or a platform number, Hbf written out) or bilingual-name prefix verified by distance, a single catalog station with railwayCode or trenitaliaLocationId after co-located duplicates collapse onto the preferred entry; in a pack not listed in codedStationsOnly, a stop matching none may match a single catalog station without codes the same way; in a pack listed in borderSubsets only the zone stations of its full pack keep their catalog id",
         "codedStationsOnly": sorted(FOREIGN_PACKS - set(border)),
