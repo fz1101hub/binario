@@ -74,11 +74,25 @@ CO_LOCATED_DUPLICATE_KM = 1.0
 # "Merano Meran") must be this close to it.
 MAX_PREFIX_MATCH_DISTANCE_KM = 1.0
 # The packs of the Android core manifest the index reads (androidOnlySources aside): ten until the Croatian HŽPP pack
-# was removed in November 2026.
-INDEXED_PACK_COUNT = 9
+# was removed in November 2026, ten again with Trenitalia France's pack (23 November 2026).
+INDEXED_PACK_COUNT = 10
 # Packs of foreign operators: their stops match only catalogue stations with codes, so the index keeps their trips
 # into Italy and not the French, Swiss or Austrian networks around a station the catalogue lists without codes (Paris).
-FOREIGN_PACKS = frozenset({"ch-otd-gtfs", "oebb-gtfs", "sncf-gtfs"})
+# Trenitalia France's pack is bundled whole, outside the border-subset system (foreign_pack_rules): its Paris – Milano
+# trains keep Oulx, Torino Porta Susa and Milano Centrale; Lyon Part-Dieu, listed with a Trenitalia location id, keeps
+# every train of the pack calling there, its Paris – Lyon and Marseille – Paris ones too, so that station's board
+# lists all of this operator's trains; Paris, Chambéry and Marseille, listed without codes, stay unnamed.
+FOREIGN_PACKS = frozenset({"ch-otd-gtfs", "oebb-gtfs", "sncf-gtfs", "trenitalia-france-gtfs"})
+# Reviewed packs whose source numbers a few trips out of their time order: such a trip (a stop's arrival before the
+# previous stop's departure along stop_sequence) is left out of the index and counted in the metadata
+# (filter.outOfOrderTripsLeftOut), instead of failing the build as it does for every other pack.  Trenitalia France's
+# GTFS of November 2026 numbers four weekend runs of train 9281 (28-29 November, 5-6 December) Oulx 5, Torino Porta
+# Susa 24, Milano Centrale 38, Paris 39, Lyon 90..., while their times run from Paris at 07:30 to Milano at 14:07; its
+# other runs are in order.  Never reordered by time: the published order is wrong, and guessing another is not ours.
+# More than MAX_OUT_OF_ORDER_TRIP_SHARE of a pack's kept trips still fails the build.
+OUT_OF_ORDER_TRIPS_LEFT_OUT = frozenset({"trenitalia-france-gtfs"})
+MAX_OUT_OF_ORDER_TRIP_SHARE = 0.05
+OUT_OF_ORDER_COUNT_KEY = "out_of_order_trip_left_out"
 # How a pack's stops may match the catalogue: an Italian pack falls back to stations without codes; a foreign pack
 # bundled whole matches stations with codes only; a border subset matches its zone stations with or without codes
 # (design §4.2, the list computed from its full pack); a per-country index (--foreign-full) every station.
@@ -951,6 +965,26 @@ def pair_trip_counts(
         for first, second in pairs
     }
 
+def out_of_order_kept_trips(connection: sqlite3.Connection) -> set[str]:
+    """Kept trips of the staged pack with an arrival before the previous departure along stop_sequence: the trips the
+    ingest below would refuse ("arrival regresses"), by the same rule."""
+    found: set[str] = set()
+    previous_trip_id: str | None = None
+    previous_departure: int | None = None
+    for trip_id, arrival, departure in connection.execute(
+        "SELECT st.trip_external_id,st.arrival_seconds,st.departure_seconds "
+        "FROM temp.ios_gtfs_staged_stop_time st "
+        "JOIN temp.ios_gtfs_kept_trip kt ON kt.trip_external_id=st.trip_external_id "
+        "ORDER BY st.trip_external_id,st.stop_sequence"
+    ):
+        if trip_id != previous_trip_id:
+            previous_trip_id, previous_departure = str(trip_id), None
+        if arrival is not None and previous_departure is not None and arrival < previous_departure:
+            found.add(str(trip_id))
+        if departure is not None:
+            previous_departure = int(departure)
+    return found
+
 def ingest_pack(
     connection: sqlite3.Connection,
     pack_id: int,
@@ -1045,6 +1079,16 @@ def ingest_pack(
         ).fetchone()[0])
         if observed_trip_count != len(trips):
             raise BuildError(f"{source_id}: {len(trips) - observed_trip_count} trips have no stop_times")
+        if source_id in OUT_OF_ORDER_TRIPS_LEFT_OUT:
+            out_of_order = out_of_order_kept_trips(connection)
+            kept_before = int(connection.execute("SELECT count(*) FROM temp.ios_gtfs_kept_trip").fetchone()[0])
+            if len(out_of_order) > MAX_OUT_OF_ORDER_TRIP_SHARE * kept_before:
+                raise BuildError(f"{source_id}: {len(out_of_order)} of {kept_before} kept trips are out of time order")
+            connection.executemany(
+                "DELETE FROM temp.ios_gtfs_kept_trip WHERE trip_external_id=?", ((trip_id,) for trip_id in sorted(out_of_order)),
+            )
+            if out_of_order:
+                counts[OUT_OF_ORDER_COUNT_KEY] = len(out_of_order)
         kept_trip_count = int(connection.execute("SELECT count(*) FROM temp.ios_gtfs_kept_trip").fetchone()[0])
         if kept_trip_count > MAX_RETAINED_TRIPS:
             raise BuildError(f"{source_id}: retained trips exceed {MAX_RETAINED_TRIPS}")
@@ -1351,9 +1395,13 @@ def write_schedule(
         connection.execute(f"PRAGMA user_version={USER_VERSION}")
         allocator = IdAllocator()
         per_pack: dict[str, dict[str, int]] = {}
+        out_of_order: dict[str, int] = {}
         connection.execute("BEGIN")
         for pack_id, pack in enumerate(packs, start=1):
             counts = ingest_pack(connection, pack_id, pack, catalog, allocator)
+            left_out = counts.pop(OUT_OF_ORDER_COUNT_KEY, 0)
+            if left_out:
+                out_of_order[str(pack["source_id"])] = left_out
             per_pack[str(pack["source_id"])] = counts
         totals = {table: int(connection.execute(f"SELECT count(*) FROM {table}").fetchone()[0]) for table in SCHEMA_TABLES if table != "metadata"}
         if totals["trip"] == 0 or totals["stop_time"] == 0:
@@ -1405,7 +1453,8 @@ def write_schedule(
                 "eligibleCatalogStationCount": eligible_catalog_stations,
                 "unambiguousNormalizedNameCount": catalog.unambiguous_name_count,
             },
-            "filter": dict(filter_metadata),
+            # Only when a reviewed pack (OUT_OF_ORDER_TRIPS_LEFT_OUT) had such trips, so other indexes keep their metadata.
+            "filter": {**filter_metadata, **({"outOfOrderTripsLeftOut": out_of_order} if out_of_order else {})},
             "rowCounts": totals,
             "packRowCounts": per_pack,
             "maximumCompressedSizeBytes": max_compressed_bytes,

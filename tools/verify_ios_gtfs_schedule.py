@@ -21,9 +21,9 @@ import foreign_pack_rules as foreign_rules  # noqa: E402  (border zone rule shar
 
 APPLICATION_ID = int.from_bytes(b"BNGT", "big")
 # Packs in the index; the same value as build_ios_gtfs_schedule.INDEXED_PACK_COUNT.
-INDEXED_PACK_COUNT = 9
+INDEXED_PACK_COUNT = 10
 # Packs whose trips must touch a catalogue station with codes; build_ios_gtfs_schedule.FOREIGN_PACKS.
-FOREIGN_PACKS = ("ch-otd-gtfs", "oebb-gtfs", "sncf-gtfs")
+FOREIGN_PACKS = ("ch-otd-gtfs", "oebb-gtfs", "sncf-gtfs", "trenitalia-france-gtfs")
 # Per-country index (build_ios_gtfs_schedule.py --foreign-full): kind and builder version of its metadata.
 FOREIGN_FULL_KIND = "foreign-full"
 FOREIGN_FULL_BUILDER_VERSION = 1
