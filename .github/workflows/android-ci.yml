@@ -33,6 +33,7 @@ on:
       - "tools/verify_privacy_policy.py"
       - "tests/test_wear_compose_gradle_dependency_suppressions.py"
       - "tests/test_android_string_resources.py"
+      - "tests/test_wear_snapshot_contract.py"
       - "tools/run_android_ui_tests.sh"
       - ".github/ci-inputs-lock.json"
       - ".github/workflows/android-ci.yml"
@@ -71,6 +72,7 @@ on:
       - "tools/verify_privacy_policy.py"
       - "tests/test_wear_compose_gradle_dependency_suppressions.py"
       - "tests/test_android_string_resources.py"
+      - "tests/test_wear_snapshot_contract.py"
       - "tools/run_android_ui_tests.sh"
       - ".github/ci-inputs-lock.json"
       - ".github/workflows/android-ci.yml"
@@ -171,6 +173,11 @@ jobs:
       - name: Verify the string resources of the 17 locales
         # Keys, placeholders and CLDR plural quantities of every translation of app and wear against the base.
         run: python3 -m unittest tests.test_android_string_resources
+
+      - name: Verify the watch snapshot contract
+        # The fixtures of contracts/wear-snapshot/v1 within its closed key set, and the same capability names in the
+        # README, the phone encoders and the Wear OS and Apple Watch decoders.
+        run: python3 -m unittest tests.test_wear_snapshot_contract
 
       - name: Android UI and notification tests on API 35
         timeout-minutes: 25

@@ -235,6 +235,12 @@
 "watch.source.unavailable" = "Nenhum provedor iOS autorizado";
 "watch.notice.unavailable" = "Dados ferroviários em tempo real indisponíveis.";
 "watch.notice.programmed" = "Horários programados estáticos. Não são dados em tempo real.";
+"watch.notice.cancelled" = "Cancelado: %1$@ das %2$@";
+"watch.notice.source_conflict" = "Fontes em conflito em alguns campos: verifique o canal oficial antes de viajar.";
+"watch.service.on_time" = "No horário";
+"watch.service.delayed" = "Atrasado";
+"watch.source.operator_primary" = "Fonte primária da operadora";
+"watch.source.infrastructure_primary" = "Fonte primária do gestor da infraestrutura";
 "accessibility.station_suggestions" = "Sugestões de estação";
 "accessibility.selected_station" = "Selecionar estação";
 "accessibility.swap_route" = "Inverter origem e destino";

@@ -13,9 +13,11 @@ import it.binario.app.data.Station
 import it.binario.app.data.TrainCategory
 import it.binario.app.data.TrainService
 import it.binario.app.data.reliability.ReliabilityFixtures
+import it.binario.app.journeys.JourneyLegVehicle
 import it.binario.app.widget.ReliabilityMark
 import java.io.File
 import java.time.LocalDateTime
+import java.time.ZoneId
 import javax.xml.parsers.DocumentBuilderFactory
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
@@ -131,7 +133,7 @@ class AndroidWearSnapshotContractTest {
     @Test
     fun `encoder adds the optional reliability pair as in the reliability golden fixture`() {
         val reliability = { service: TrainService -> if (service.number == "FR 9505") ReliabilityMark(22, 27, 5, 22, 30) else null }
-        val actual = AndroidWearSnapshotContract.operational(goldenSnapshot, generatedAt, strings(locale = null), reliability).normalisedNumbers()
+        val actual = AndroidWearSnapshotContract.operational(goldenSnapshot, generatedAt, strings(locale = null), reliabilityOf = reliability).normalisedNumbers()
 
         assertEquals(fixture("android-to-wear-v1-reliability.json").normalisedNumbers(), actual)
         assertTrue(AndroidWearSnapshotContract.hasReliability(actual))
@@ -185,6 +187,117 @@ class AndroidWearSnapshotContractTest {
             .first { File(it, "settings.gradle.kts").isFile }
         val watch = File(repositoryRoot, "wear/src/main/res/values/wear.xml").readText()
         assertTrue(watch.contains("<item>${AndroidWearSnapshotContract.RELIABILITY_CAPABILITY}</item>"))
+    }
+
+    @Test
+    fun `encoder adds the optional vehicle as in the vehicle golden fixture and names a bus by its label`() {
+        val bus = service("bus3601", "3601", RailOperator.TRENITALIA_REGIONALE, TrainCategory.OTHER, "08:10", "08:10", "", 0, ServiceStatus.ON_TIME)
+            .copy(scheduledBus = true, operatorDisplayName = "Trenitalia", operationalStatusVerified = false, platform = null, destination = "Potenza Centrale")
+        val train = service("r3473", "R 3473", RailOperator.TRENITALIA_REGIONALE, TrainCategory.REGIONALE, "08:35", "08:35", "", 0, ServiceStatus.ON_TIME)
+            .copy(operatorDisplayName = "Trenitalia", operationalStatusVerified = false, platform = null, destination = "Potenza Centrale")
+        val snapshot = goldenSnapshot.copy(
+            route = SavedRoute("salerno-potenza", "Salerno–Potenza", Station("salerno", "Salerno", "Salerno"), Station("potenza", "Potenza Centrale", "Potenza")),
+            services = listOf(bus, train),
+            sourceObservedAtEpochMillis = generatedAt,
+            confidence = DataConfidence.STATIC_ONLY
+        )
+
+        val actual = AndroidWearSnapshotContract.operational(snapshot, generatedAt, strings(locale = null), vehicles = true).normalisedNumbers()
+
+        assertEquals(fixture("android-to-wear-v1-vehicle.json").normalisedNumbers(), actual)
+        assertTrue(AndroidWearSnapshotContract.hasVehicles(actual))
+        // For a watch without the field the vehicle stays out, but the bus is never «Treno».
+        val plain = AndroidWearSnapshotContract.operational(snapshot, generatedAt, strings(locale = null)).normalisedNumbers()
+        assertEquals(AndroidWearSnapshotContract.withoutVehicles(actual), plain)
+        assertFalse(AndroidWearSnapshotContract.hasVehicles(plain))
+        assertEquals("Bus Trenitalia", plain["service0Category"])
+        assertEquals("Trenitalia bus", AndroidWearSnapshotContract.operational(snapshot, generatedAt, strings("en"))["service0Category"])
+        assertFalse(AndroidWearSnapshotContract.hasVehicles(fixture("android-to-wear-v1.json")))
+    }
+
+    @Test
+    fun `the vehicle of a coach follows its operator and line, every other service is a train`() {
+        val coach = goldenSnapshot.services[0].copy(scheduledBus = true, trainCategory = TrainCategory.OTHER)
+        assertEquals(JourneyLegVehicle.BUS_TRENITALIA, AndroidWearSnapshotContract.vehicleOf(coach.copy(operatorDisplayName = "Trenitalia")))
+        assertEquals(JourneyLegVehicle.FRECCIALINK, AndroidWearSnapshotContract.vehicleOf(coach.copy(operatorDisplayName = "Trenitalia", busLine = "FL")))
+        assertEquals(JourneyLegVehicle.ITALOBUS, AndroidWearSnapshotContract.vehicleOf(coach.copy(operator = RailOperator.ITALO, operatorDisplayName = "Italo")))
+        assertEquals(JourneyLegVehicle.BUS, AndroidWearSnapshotContract.vehicleOf(coach.copy(operator = RailOperator.OTHER, operatorDisplayName = "Autolinee")))
+        assertEquals(JourneyLegVehicle.TRAIN, AndroidWearSnapshotContract.vehicleOf(goldenSnapshot.services[0]))
+        val payload = AndroidWearSnapshotContract.operational(goldenSnapshot, generatedAt, strings(locale = null), vehicles = true)
+        assertEquals("TRAIN", payload["service0Vehicle"])
+        assertEquals("TRAIN", payload["service1Vehicle"])
+        assertEquals(goldenSnapshot.services.size, payload.keys.count { it.endsWith("Vehicle") })
+    }
+
+    @Test
+    fun `the watch declares the vehicle capability the phone checks`() {
+        val repositoryRoot = generateSequence(File(requireNotNull(System.getProperty("user.dir")))) { it.parentFile }
+            .first { File(it, "settings.gradle.kts").isFile }
+        val watch = File(repositoryRoot, "wear/src/main/res/values/wear.xml").readText()
+        assertTrue(watch.contains("<item>${AndroidWearSnapshotContract.VEHICLE_CAPABILITY}</item>"))
+    }
+
+    @Test
+    fun `for a watch that falls back to the programmed times a live payload lasts until the last train sent leaves`() {
+        // 09:00: the 09:10 runs 8 minutes late, the 10:35 on time; the live board is cached for 45 s.
+        val live = goldenSnapshot.copy(
+            services = listOf(
+                service("r1", "R 1", RailOperator.TRENITALIA_REGIONALE, TrainCategory.REGIONALE, "09:10", "09:18", "3", 8, ServiceStatus.DELAYED),
+                service("r2", "R 2", RailOperator.TRENITALIA_REGIONALE, TrainCategory.REGIONALE, "10:35", "10:35", "4", 0, ServiceStatus.ON_TIME)
+            ),
+            expiresAtEpochMillis = generatedAt + 45_000L
+        )
+
+        val extended = AndroidWearSnapshotContract.operational(live, generatedAt, strings(locale = null), programmedFallback = true)
+        val plain = AndroidWearSnapshotContract.operational(live, generatedAt, strings(locale = null))
+
+        val lastLeaves = LocalDateTime.of(2030, 1, 1, 10, 37).atZone(ZoneId.of("Europe/Rome")).toInstant().toEpochMilli()
+        assertEquals(lastLeaves, (extended["expiresAtEpochMillis"] as Number).toLong())
+        assertEquals(lastLeaves - generatedAt, (extended["ttlMillis"] as Number).toLong())
+        assertEquals("OPERATIONAL", extended["operationalState"])
+        assertEquals(generatedAt + 15 * 60_000L, (plain["expiresAtEpochMillis"] as Number).toLong())
+        assertTrue(AndroidWearSnapshotContract.hasProgrammedLifetime(extended))
+        assertFalse(AndroidWearSnapshotContract.hasProgrammedLifetime(plain))
+        // Reissued to a watch app without the fallback, the payload is the 15-minute one again, until it is over.
+        assertEquals(plain.normalisedNumbers(), AndroidWearSnapshotContract.withoutProgrammedLifetime(extended, generatedAt)?.normalisedNumbers())
+        assertNull(AndroidWearSnapshotContract.withoutProgrammedLifetime(extended, generatedAt + 15 * 60_000L))
+        assertEquals(plain, AndroidWearSnapshotContract.withoutProgrammedLifetime(plain, generatedAt))
+    }
+
+    @Test
+    fun `the programmed lifetime is never shorter than the live window and never stretches what cannot be placed`() {
+        val later = service("r2", "R 2", RailOperator.TRENITALIA_REGIONALE, TrainCategory.REGIONALE, "10:35", "10:35", "4", 0, ServiceStatus.ON_TIME)
+        // Trains that left before the generation keep the live window.
+        assertEquals(
+            AndroidWearSnapshotContract.operational(goldenSnapshot, generatedAt, strings(locale = null)),
+            AndroidWearSnapshotContract.operational(goldenSnapshot, generatedAt, strings(locale = null), programmedFallback = true)
+        )
+        // Tomorrow's first train: twelve hours at most, the iPhone's timetable expiry.
+        val tomorrow = later.copy(scheduledDepartureDateTime = LocalDateTime.of(2030, 1, 2, 10, 35))
+        assertEquals(generatedAt + 12 * 60 * 60_000L, AndroidWearSnapshotContract.programmedExpiry(listOf(tomorrow), generatedAt))
+        // An "HH:mm" without its date, or no train at all.
+        assertNull(AndroidWearSnapshotContract.programmedExpiry(listOf(later, later.copy(scheduledDepartureDateTime = null)), generatedAt))
+        assertNull(AndroidWearSnapshotContract.programmedExpiry(emptyList(), generatedAt))
+        // Live values valid for less than the watch's 15 minutes from the generation are not followed by the fallback.
+        val stale = goldenSnapshot.copy(services = listOf(later), expiresAtEpochMillis = generatedAt - 5 * 60_000L)
+        val payload = AndroidWearSnapshotContract.operational(stale, generatedAt, strings(locale = null), programmedFallback = true)
+        assertEquals(generatedAt + 10 * 60_000L, (payload["expiresAtEpochMillis"] as Number).toLong())
+        // A programmed payload has no live values: its timetable lasts until its last train.
+        val programmed = stale.copy(services = listOf(later.copy(operationalStatusVerified = false)))
+        val timetable = AndroidWearSnapshotContract.operational(programmed, generatedAt, strings(locale = null), programmedFallback = true)
+        assertEquals("PROGRAMMED", timetable["operationalState"])
+        assertEquals(
+            LocalDateTime.of(2030, 1, 1, 10, 37).atZone(ZoneId.of("Europe/Rome")).toInstant().toEpochMilli(),
+            (timetable["expiresAtEpochMillis"] as Number).toLong()
+        )
+    }
+
+    @Test
+    fun `the watch declares the fallback capability the phone checks`() {
+        val repositoryRoot = generateSequence(File(requireNotNull(System.getProperty("user.dir")))) { it.parentFile }
+            .first { File(it, "settings.gradle.kts").isFile }
+        val watch = File(repositoryRoot, "wear/src/main/res/values/wear.xml").readText()
+        assertTrue(watch.contains("<item>${AndroidWearSnapshotContract.FALLBACK_CAPABILITY}</item>"))
     }
 
     @Test
@@ -293,7 +406,8 @@ class AndroidWearSnapshotContractTest {
             unavailableNotice = catalogue.getValue("data_status_unavailable"),
             missingValue = catalogue.getValue("wear_payload_value_unavailable"),
             cancelledNotice = catalogue.getValue("wear_notice_cancelled"),
-            otherOperator = catalogue.getValue("wear_operator_other")
+            otherOperator = catalogue.getValue("wear_operator_other"),
+            vehicleLabels = JourneyLegVehicle.entries.mapNotNull { vehicle -> vehicle.resourceName?.takeIf { vehicle.isBus }?.let { vehicle to catalogue.getValue(it) } }.toMap()
         )
     }
 

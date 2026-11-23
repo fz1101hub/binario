@@ -5,15 +5,18 @@ import it.binario.app.R
 import it.binario.app.UiMessageKey
 import it.binario.app.advisoryMessage
 import it.binario.app.data.DataConfidence
+import it.binario.app.data.RailTime
 import it.binario.app.data.RailOperator
 import it.binario.app.data.RouteSnapshot
 import it.binario.app.data.ServiceStatus
 import it.binario.app.data.SnapshotWarning
 import it.binario.app.data.TrainCategory
 import it.binario.app.data.TrainService
+import it.binario.app.data.core.LegMode
 import it.binario.app.data.orderServicesForDisplay
 import it.binario.app.data.reliability.NetworkReliability
 import it.binario.app.data.reliability.NetworkReliabilityStats
+import it.binario.app.journeys.JourneyLegVehicle
 import it.binario.app.labelRes
 import it.binario.app.resourceId
 import it.binario.app.widget.ReliabilityMark
@@ -36,7 +39,9 @@ internal data class WearSnapshotStrings(
     /** «Soppresso: %1$s delle %2$s»: train number and scheduled time of a cancellation left out of the services. */
     val cancelledNotice: String,
     /** The operator of a train whose source names none and whose legacy enum is the generic «other». */
-    val otherOperator: String
+    val otherOperator: String,
+    /** The label of each bus vehicle (`journey_leg_*`): the category the watch shows for a bus instead of «Treno». */
+    val vehicleLabels: Map<JourneyLegVehicle, String> = emptyMap()
 ) {
     companion object {
         /** The advisories RouteSnapshot.advisoryMessage() can raise; the watch shows them as the notice. */
@@ -52,7 +57,14 @@ internal data class WearSnapshotStrings(
             unavailableNotice = resources.getString(R.string.data_status_unavailable),
             missingValue = resources.getString(R.string.wear_payload_value_unavailable),
             cancelledNotice = resources.getString(R.string.wear_notice_cancelled),
-            otherOperator = resources.getString(R.string.wear_operator_other)
+            otherOperator = resources.getString(R.string.wear_operator_other),
+            vehicleLabels = mapOf(
+                JourneyLegVehicle.BUS_TRENITALIA to resources.getString(R.string.journey_leg_bus_trenitalia),
+                JourneyLegVehicle.FRECCIALINK to resources.getString(R.string.journey_leg_freccialink),
+                JourneyLegVehicle.ITALOBUS to resources.getString(R.string.journey_leg_italobus),
+                JourneyLegVehicle.BUS to resources.getString(R.string.journey_leg_bus),
+                JourneyLegVehicle.REPLACEMENT_BUS to resources.getString(R.string.journey_leg_replacement_bus)
+            )
         )
     }
 }
@@ -66,34 +78,56 @@ internal object AndroidWearSnapshotContract {
     private const val maxTtlMillis = 15 * 60 * 1_000L
     /** Advertised by the watch apps that decode the optional reliability pair (wear/src/main/res/values/wear.xml). */
     const val RELIABILITY_CAPABILITY = "binario_wear_reliability_v1"
+    /** Advertised by the watch apps that decode the optional vehicle of a service (wear/src/main/res/values/wear.xml). */
+    const val VEHICLE_CAPABILITY = "binario_wear_vehicle_v1"
+    /**
+     * Advertised by the watch apps that show the programmed times once the live values are 15 minutes old: only
+     * they get a payload valid until the last train sent ([operational]).
+     */
+    const val FALLBACK_CAPABILITY = "binario_wear_programmed_fallback_v1"
+    /** The programmed lifetime ends this long after the last train sent leaves, as the iPhone's does. */
+    private const val LAST_DEPARTURE_MARGIN_MILLIS = 2 * 60 * 1_000L
+    /** The programmed lifetime never exceeds the iPhone's timetable expiry. */
+    private const val MAX_PROGRAMMED_LIFETIME_MILLIS = 12 * 60 * 60 * 1_000L
     /**
      * The `routeId` of every operational payload. The watch never uses the route identity, so the saved route's
      * persistent id stays on the phone; v1 decoders require a non-blank value, so the key cannot be left out.
      */
     const val ACTIVE_ROUTE_ID = "active"
     private val reliabilityKey = Regex("service[0-9]+Reliability(OnTime|Samples)")
+    private val vehicleKey = Regex("service[0-9]+Vehicle")
 
     /**
      * The v1 payload of [snapshot]. [reliabilityOf] gives the optional «In orario N volte su M» of a service (the
-     * `service{n}ReliabilityOnTime` / `service{n}ReliabilitySamples` pair); it stays out when it gives none.
+     * `service{n}ReliabilityOnTime` / `service{n}ReliabilitySamples` pair); it stays out when it gives none. With
+     * [vehicles] every service carries its optional `service{n}Vehicle` ([vehicleOf]). A bus is sent with its vehicle
+     * label as its category in any case, so a watch without the field still never calls it «Treno».
      *
      * The watch shows it for 15 minutes from [generatedAtEpochMillis] and never more than 15 minutes past the
      * snapshot's own validity. That validity is the source cache's (30-60 s for a live board): used as the deadline,
      * it expired the glance before the user looked at it. The watch names the observation time of live values.
+     * With [programmedFallback] (every connected watch shows the programmed times once the live values are 15
+     * minutes old) the payload lasts until the last train sent leaves ([programmedExpiry]).
      */
     fun operational(
         snapshot: RouteSnapshot,
         generatedAtEpochMillis: Long,
         strings: WearSnapshotStrings,
+        vehicles: Boolean = false,
+        programmedFallback: Boolean = false,
         reliabilityOf: (TrainService) -> ReliabilityMark? = { null }
     ): Map<String, Any> {
-        val expiresAt = minOf(generatedAtEpochMillis, snapshot.expiresAtEpochMillis) + maxTtlMillis
-        require(expiresAt > generatedAtEpochMillis) { "Uno snapshot scaduto non può essere pubblicato" }
+        val liveExpiry = minOf(generatedAtEpochMillis, snapshot.expiresAtEpochMillis) + maxTtlMillis
+        require(liveExpiry > generatedAtEpochMillis) { "Uno snapshot scaduto non può essere pubblicato" }
         val ordered = orderServicesForDisplay(snapshot.services)
         // The Tile and the complication show the next of these as "the next train" without its status.
         val services = ordered.filterNot(::confirmedCancelled).take(2)
         val operational = services.any { it.operationalStatusVerified }
         val dataNature = if (operational) "OPERATIONAL" else "PROGRAMMED"
+        // The watch shows live values for 15 minutes from the generation: not when they were valid for less.
+        val programmed = programmedExpiry(services, generatedAtEpochMillis)
+            ?.takeIf { programmedFallback && (!operational || liveExpiry == generatedAtEpochMillis + maxTtlMillis) }
+        val expiresAt = maxOf(liveExpiry, programmed ?: liveExpiry)
         return buildMap {
             put("schemaVersion", schemaVersion)
             put("generatedAtEpochMillis", generatedAtEpochMillis)
@@ -112,9 +146,11 @@ internal object AndroidWearSnapshotContract {
             put("notice", optional(notice(snapshot, skippedCancellation(ordered, services), strings), 180))
             put("serviceCount", services.size)
             services.forEachIndexed { index, service ->
+                val vehicle = vehicleOf(service)
+                val category = strings.vehicleLabels[vehicle]?.takeIf { vehicle.isBus } ?: strings.categoryLabels.getValue(service.trainCategory)
                 put("service${index}Number", required(service.number, 24, strings.missingValue))
                 put("service${index}Operator", required(operatorLabel(service, strings), 64, strings.missingValue))
-                put("service${index}Category", required(strings.categoryLabels.getValue(service.trainCategory), 64, strings.missingValue))
+                put("service${index}Category", required(category, 64, strings.missingValue))
                 put("service${index}Destination", required(service.destination, 96, strings.missingValue))
                 put("service${index}Scheduled", required(service.scheduledDeparture, 16, strings.missingValue))
                 put("service${index}Expected", required(service.expectedDeparture, 16, strings.missingValue))
@@ -128,8 +164,40 @@ internal object AndroidWearSnapshotContract {
                     put("service${index}ReliabilityOnTime", mark.onTime)
                     put("service${index}ReliabilitySamples", mark.samples)
                 }
+                if (vehicles) put("service${index}Vehicle", vehicle.name)
             }
         }
+    }
+
+    /**
+     * Two minutes after the programmed departure of the last of [services], at most 12 hours after
+     * [generatedAtEpochMillis]: the programmed snapshot of the iPhone lasts as long. Null without a service or when one
+     * has no programmed date (an "HH:mm" alone cannot be placed beyond the day of the request).
+     */
+    internal fun programmedExpiry(services: List<TrainService>, generatedAtEpochMillis: Long): Long? {
+        if (services.isEmpty()) return null
+        val last = services.maxOf { service -> service.scheduledDepartureDateTime ?: return null }
+        val leaves = last.atZone(RailTime.defaultZone).toInstant().toEpochMilli() + LAST_DEPARTURE_MARGIN_MILLIS
+        return minOf(leaves, generatedAtEpochMillis + MAX_PROGRAMMED_LIFETIME_MILLIS)
+    }
+
+    /**
+     * [payload] valid at most 15 minutes from its generation, as a watch app without [FALLBACK_CAPABILITY] shows
+     * it: such an app would show live values as current up to the programmed deadline. Null when that is past.
+     */
+    fun withoutProgrammedLifetime(payload: Map<String, Any?>, nowEpochMillis: Long): Map<String, Any?>? {
+        val generatedAt = (payload["generatedAtEpochMillis"] as? Number)?.toLong() ?: return null
+        val expiresAt = (payload["expiresAtEpochMillis"] as? Number)?.toLong() ?: return null
+        val clamped = minOf(expiresAt, generatedAt + maxTtlMillis)
+        if (clamped <= nowEpochMillis) return null
+        if (clamped == expiresAt) return payload
+        return payload + mapOf("expiresAtEpochMillis" to clamped, "ttlMillis" to clamped - generatedAt)
+    }
+
+    fun hasProgrammedLifetime(payload: Map<String, Any?>): Boolean {
+        val generatedAt = (payload["generatedAtEpochMillis"] as? Number)?.toLong() ?: return false
+        val expiresAt = (payload["expiresAtEpochMillis"] as? Number)?.toLong() ?: return false
+        return expiresAt - generatedAt > maxTtlMillis
     }
 
     fun unavailable(routeLabel: String, provider: String, generatedAtEpochMillis: Long, strings: WearSnapshotStrings): Map<String, Any> = mapOf(
@@ -169,9 +237,22 @@ internal object AndroidWearSnapshotContract {
 
     fun hasReliability(payload: Map<String, Any?>): Boolean = payload.keys.any(reliabilityKey::matches)
 
+    /** [payload] without the optional vehicles, for a watch that does not decode them. */
+    fun withoutVehicles(payload: Map<String, Any?>): Map<String, Any?> = payload.filterKeys { !vehicleKey.matches(it) }
+
+    fun hasVehicles(payload: Map<String, Any?>): Boolean = payload.keys.any(vehicleKey::matches)
+
     /**
-     * Whether the pair may be sent: a v1 decoder of an earlier watch app rejects unknown keys, so only when every
-     * connected watch advertises [RELIABILITY_CAPABILITY] (and at least one is connected).
+     * What [service] travels on, as the phone names a leg of a railway pack (`JourneyLegVehicle.of`): the operator's
+     * own coach of a timetable ([TrainService.scheduledBus], FrecciaLink by its line), else a train.
+     */
+    fun vehicleOf(service: TrainService): JourneyLegVehicle =
+        if (service.scheduledBus) JourneyLegVehicle.of(LegMode.BUS, service.accessibleOperator, service.busLine) else JourneyLegVehicle.TRAIN
+
+    /**
+     * Whether an optional field may be sent: a v1 decoder of an earlier watch app rejects unknown keys, so only when
+     * every connected watch advertises its capability ([RELIABILITY_CAPABILITY], [VEHICLE_CAPABILITY]) and at least
+     * one is connected. The programmed lifetime ([FALLBACK_CAPABILITY]) follows the same rule.
      */
     fun watchesDecodeReliability(connectedNodes: Set<String>, capableNodes: Set<String>): Boolean =
         connectedNodes.isNotEmpty() && capableNodes.containsAll(connectedNodes)

@@ -16,6 +16,7 @@
     <string name="tile_no_departures">Gösterilecek kalkış yok</string>
     <string name="tile_service_details">%1$s · %2$s · %3$s</string>
     <string name="status_programmed">Planlanan tarife</string>
+    <string name="service_status_programmed">Planlandı</string>
     <string name="status_live_as_of">Veriler %1$s itibarıyla güncel</string>
     <string name="status_not_recent_as_of">Veriler güncel değil, saat %1$s</string>
     <string name="status_local_snapshot">Son yerel anlık görüntü</string>

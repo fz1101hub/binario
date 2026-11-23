@@ -91,7 +91,10 @@ class BinarioTileTimelineTest {
         val now = 1_893_481_200_000L
         val expiresAt = now + 30 * 60_000L
         val next = service.copy(number = "RV 2347", scheduledDeparture = "08:42", expectedDeparture = "08:42", platform = "5")
-        val snapshot = snapshot(expiresAt, services = listOf(service, next)).copy(generatedAtEpochMillis = now, ttlMillis = expiresAt - now)
+        // Programmed: live values would give way to the programmed times after 15 minutes (WearProgrammedFallbackTest).
+        val snapshot = snapshot(expiresAt, services = listOf(service, next)).copy(
+            generatedAtEpochMillis = now, ttlMillis = expiresAt - now, operationalState = WearOperationalState.PROGRAMMED,
+        )
         val handOver = now + 16 * 60_000L // 08:16
 
         val entries = binarioTileTimeline(snapshot, now, ::contentLayout).timelineEntries

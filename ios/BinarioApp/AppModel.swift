@@ -57,10 +57,14 @@ final class AppModel: ObservableObject {
         let destination: StationIdentity
     }
 
-    /// A listed train with the instant it departs, resolved from its "HH:mm" time.
+    /// A listed train with the instant it departs, resolved from its "HH:mm" time, or its live
+    /// expected time when the live board of its origin gave one (`live`); `timetable` is the
+    /// instant of its "HH:mm" time either way (nil when built without it: then `departure`).
     struct WatchDeparture: Equatable {
         let service: TrainService
         let departure: Date
+        var live: StationBoardLiveStatus? = nil
+        var timetable: Date? = nil
     }
 
     /// What the live sources gave a screen. The bundled timetable stays on screen in every state.
@@ -265,6 +269,9 @@ final class AppModel: ObservableObject {
     /// «Partenze»: the rows of the bundled timetable, before the live values are laid over them.
     private var boardScheduled: [StationBoardDeparture] = []
     private var boardLive: BoardLive?
+    /// The live board of the planner's origin, as last read: the Watch gets its values while they
+    /// are displayable (`watchLiveBoard`).
+    private var plannerLiveBoard: BoardLive?
     /// When the live values of the planner's result were asked for.
     private var resultLiveAt: Date?
     /// False from the moment the app goes to the background until it is active again: no live
@@ -365,6 +372,11 @@ final class AppModel: ObservableObject {
         }
         watchPublisher?.refreshRequested = { [weak self] in
             guard let self else { return }
+            Task { await self.refreshWatchSnapshot() }
+        }
+        watchPublisher?.capabilitiesChanged = { [weak self] in
+            guard let self else { return }
+            // A Watch app that decodes more of the contract gets its trains again, with them.
             Task { await self.refreshWatchSnapshot() }
         }
         watchPublisher?.bootstrap()
@@ -1254,6 +1266,7 @@ final class AppModel: ObservableObject {
         resultLive = [:]
         resultLiveSources = []
         resultLiveAt = nil
+        plannerLiveBoard = nil
         detailLive = nil
         favouriteLive = [:]
         liveSourcePauses = []
@@ -1517,6 +1530,9 @@ final class AppModel: ObservableObject {
             resultLiveSources = board.sources
             resultLiveAt = now
             resultLiveState = .available(now)
+            plannerLiveBoard = BoardLive(stationID: query.origin.id, board: board, at: now)
+            // The Watch shows this search: its trains go there with their live values.
+            if watchRouteQuery != nil, latestSnapshot == snapshot { publishAvailableSnapshot(snapshot) }
         case .unavailable(.cancelled):
             resultLiveState = resultLiveRestingState
         case .unavailable:
@@ -2182,59 +2198,192 @@ final class AppModel: ObservableObject {
     }
 
     /// The Watch lists the next trains: only those that have not left are sent, so a result
-    /// searched a while ago never shows departed trains as upcoming. Without any, the Watch gets
-    /// the unavailable state for the route.
+    /// searched a while ago never shows departed trains as upcoming. With a live board of the origin
+    /// the iPhone already has (`watchLiveBoard`), each train takes its live time, delay and platform
+    /// and a cancelled one is left out and named in the notice, as Android's producer does
+    /// (contracts/wear-snapshot/v1/README.md); the optional reliability and vehicle go only to a
+    /// Watch app that declared it decodes them. Without any train, the Watch gets the unavailable
+    /// state for the route.
     private func publishAvailableSnapshot(_ journey: JourneySnapshot) {
         let nowDate = Date()
         guard watchSharingEnabled, let watchPublisher else { return }
-        let departures = Array(Self.upcomingDepartures(in: journey, now: nowDate).prefix(WearSnapshotV1.maximumServices))
-        guard !departures.isEmpty else {
+        let live = watchLiveBoard(for: journey.query.origin, at: nowDate)
+        // Placed as the planner placed them when the board was read, and shown as long as it shows them.
+        let values = live.map { Self.liveValues(of: journey, board: $0.board, at: $0.at) } ?? [:]
+        let upcoming = Self.upcomingDepartures(in: journey, now: nowDate, live: values)
+        let selection = Self.watchSelection(upcoming)
+        let departures = selection.sent
+        guard !departures.isEmpty || selection.cancelled != nil else {
             publishUnavailableSnapshot(for: journey.query)
             return
         }
-        let services = departures.map(\.service)
+        let operational = departures.contains { departure in departure.live.map { Self.isVerified($0) } == true }
+        let capabilities = watchPublisher.watchCapabilities
         let now = Int64(nowDate.timeIntervalSince1970 * 1_000)
-        let generatedAt = Int64(journey.generatedAt.timeIntervalSince1970 * 1_000)
-        let expiresAt = Int64(Self.watchExpiry(for: journey, departures: departures, now: nowDate).timeIntervalSince1970 * 1_000)
+        // Live values are dated when the board was read: the Watch shows them for 15 minutes from then (Android's
+        // window), and then, if it declared it, the programmed times until the last train (`watchDeadline`).
+        let liveAt = operational ? live?.at : nil
+        let generatedDate = liveAt ?? (operational ? nowDate : journey.generatedAt)
+        let expiryDate = Self.watchDeadline(
+            for: journey, departures: departures, liveAt: liveAt, now: nowDate,
+            programmedFallback: capabilities.contains(WatchCapabilities.programmedFallback)
+        )
+        let generatedAt = Int64(generatedDate.timeIntervalSince1970 * 1_000)
+        let expiresAt = Int64(expiryDate.timeIntervalSince1970 * 1_000)
+        let confidence = operational ? Self.watchConfidence(departures, otherwise: journey.provenance.confidence) : journey.provenance.confidence
+        // Never after the generation: a value fetched after the request started is dated when it started.
+        let observedAt = operational
+            ? min(departures.compactMap { $0.live?.observedAt }.max() ?? generatedDate, generatedDate)
+            : journey.provenance.observedAt
         let snapshot = WearSnapshotV1(
             generatedAtEpochMillis: generatedAt,
             expiresAtEpochMillis: expiresAt,
             ttlMillis: expiresAt - generatedAt,
             provenanceProducer: journey.provenance.producer,
-            provenanceDataNature: journey.provenance.nature,
-            provenanceSourceLabel: journey.provenance.sourceLabel,
-            provenanceObservedAtEpochMillis: Int64(
-                journey.provenance.observedAt.timeIntervalSince1970 * 1_000
-            ),
-            operationalState: journey.operationalState,
-            freshness: journey.provenance.freshness,
-            confidence: journey.provenance.confidence,
+            provenanceDataNature: operational ? .operational : journey.provenance.nature,
+            provenanceSourceLabel: operational ? Self.watchSourceLabel(confidence) ?? journey.provenance.sourceLabel : journey.provenance.sourceLabel,
+            provenanceObservedAtEpochMillis: Int64(observedAt.timeIntervalSince1970 * 1_000),
+            operationalState: operational ? .operational : journey.operationalState,
+            freshness: operational ? .fresh : journey.provenance.freshness,
+            confidence: confidence,
             routeId: SavedRoute.routeIdentifier(
                 origin: journey.query.origin,
                 destination: journey.query.destination
             ),
             routeLabel: watchRouteLabel(origin: journey.query.origin, destination: journey.query.destination),
             direction: journey.query.direction,
-            notice: String(localized: "watch.notice.programmed"),
-            services: services.map { service in
-                WearServiceV1(
-                    number: service.number,
-                    operatorName: service.operatorName,
-                    category: service.category,
-                    destination: service.destination,
-                    scheduled: service.scheduledDeparture,
-                    expected: service.expectedDeparture,
-                    status: service.status,
-                    platform: service.platform ?? "",
-                    delayMinutes: service.delayMinutes
-                )
-            }
+            notice: watchNotice(cancelled: selection.cancelled, operational: operational, warnings: live?.board.warnings ?? []),
+            services: departures.map { watchService($0, journey: journey, capabilities: capabilities) }
         )
         do {
             try watchPublisher.publish(snapshot, nowEpochMillis: now)
         } catch {
             watchSyncStatus = watchPublisher.status
         }
+    }
+
+    /// How long the Watch shows live values after the board was read: Android's display window.
+    static let watchLiveSeconds: TimeInterval = 15 * 60
+
+    /// When the Watch's snapshot ends. Programmed (`liveAt` nil): with its last train
+    /// (`watchExpiry`). Live: 15 minutes after the board was read, since a Watch app that shows the
+    /// live values as they came would show them as current until then; a Watch app that shows the
+    /// programmed times from then on (`programmedFallback`) keeps them until the last train's
+    /// programmed departure. Without a train (a cancellation alone), 15 minutes at most.
+    static func watchDeadline(
+        for journey: JourneySnapshot, departures: [WatchDeparture], liveAt: Date?, now: Date, programmedFallback: Bool
+    ) -> Date {
+        var deadline = watchExpiry(for: journey, departures: departures, now: now)
+        if let liveAt {
+            deadline = min(deadline, liveAt.addingTimeInterval(watchLiveSeconds))
+            if programmedFallback, !departures.isEmpty {
+                let programmed = departures.map { WatchDeparture(service: $0.service, departure: $0.timetable ?? $0.departure) }
+                    .sorted { $0.departure < $1.departure }
+                deadline = max(deadline, watchExpiry(for: journey, departures: programmed, now: now))
+            }
+        }
+        if departures.isEmpty { deadline = min(deadline, now.addingTimeInterval(watchLiveSeconds)) }
+        return deadline
+    }
+
+    /// The live board of `station` the iPhone already has (the planner's origin or «Partenze»),
+    /// still displayable at `now`, with «Dati in tempo reale» on. Nothing is asked for the Watch:
+    /// the live sources are asked in the foreground only, for the screen on display.
+    private func watchLiveBoard(for station: StationIdentity, at now: Date) -> BoardLive? {
+        guard isLiveDataActive else { return nil }
+        return [plannerLiveBoard, boardLive]
+            .compactMap { $0 }
+            .filter { $0.stationID == station.id && Self.isLiveDisplayable(since: $0.at, now: now) }
+            .max { $0.at < $1.at }
+    }
+
+    /// A live value the source observed: an expected time (Android's `operationalStatusVerified`).
+    /// A platform alone, or «RITARDO» without minutes, leaves the train programmed.
+    nonisolated static func isVerified(_ status: StationBoardLiveStatus) -> Bool {
+        !status.cancelled && status.expectedDeparture != nil
+    }
+
+    /// The two trains the Watch shows and the first cancellation they leave out, as Android's
+    /// producer picks them: a train the source confirms cancelled is never sent, and the first one
+    /// before the last train sent (anywhere, with fewer sent) is named in the notice.
+    nonisolated static func watchSelection(_ upcoming: [WatchDeparture]) -> (sent: [WatchDeparture], cancelled: WatchDeparture?) {
+        let sent = Array(upcoming.filter { $0.live?.cancelled != true }.prefix(WearSnapshotV1.maximumServices))
+        var window = upcoming[...]
+        if sent.count == WearSnapshotV1.maximumServices, let last = sent.last, let index = upcoming.firstIndex(of: last) {
+            window = upcoming[..<index]
+        }
+        return (sent, window.first { $0.live?.cancelled == true })
+    }
+
+    /// Android's rule for a timetable overlaid with live values: ViaggiaTreno or Italo make it the
+    /// operator's primary source, RFI the infrastructure manager's.
+    nonisolated static func watchConfidence(_ departures: [WatchDeparture], otherwise: DataConfidence) -> DataConfidence {
+        let sources = Set(departures.compactMap(\.live).flatMap { [$0.source, $0.platformSource].compactMap { $0 } })
+        if sources.contains(.viaggiaTreno) || sources.contains(.italo) { return .operatorPrimary }
+        if sources.contains(.rfiStationBoard) { return .infrastructurePrimary }
+        return otherwise
+    }
+
+    private static func watchSourceLabel(_ confidence: DataConfidence) -> String? {
+        switch confidence {
+        case .operatorPrimary: return NSLocalizedString("watch.source.operator_primary", comment: "")
+        case .infrastructurePrimary: return NSLocalizedString("watch.source.infrastructure_primary", comment: "")
+        default: return nil
+        }
+    }
+
+    /// The cancellation left out («Soppresso: R 2345 delle 08:15»), else, with live values, the
+    /// board's conflicting sources; scheduled times keep their disclosure.
+    private func watchNotice(cancelled: WatchDeparture?, operational: Bool, warnings: Set<LiveBoardWarning>) -> String {
+        if let cancelled {
+            return String.localizedStringWithFormat(
+                NSLocalizedString("watch.notice.cancelled", comment: ""), cancelled.service.number, cancelled.service.scheduledDeparture
+            )
+        }
+        guard operational else { return String(localized: "watch.notice.programmed") }
+        return warnings.contains(.sourceConflict) ? NSLocalizedString("watch.notice.source_conflict", comment: "") : ""
+    }
+
+    /// A train as the Watch lists it: its live time, delay, state and platform when the source gave
+    /// them; a bus with its label as the category («Bus Trenitalia BUS»), so the Watch never calls
+    /// it a train; the optional fields only for a Watch app that decodes them.
+    private func watchService(_ departure: WatchDeparture, journey: JourneySnapshot, capabilities: Set<String>) -> WearServiceV1 {
+        let service = departure.service
+        let verified = departure.live.map { Self.isVerified($0) } == true
+        let delay = verified ? min(max(departure.live?.delayMinutes ?? 0, -720), 1_440) : service.delayMinutes
+        let status: String
+        if verified {
+            status = delay > 0 ? NSLocalizedString("watch.service.delayed", comment: "") : NSLocalizedString("watch.service.on_time", comment: "")
+        } else {
+            status = service.status
+        }
+        var reliability: WearReliabilityV1?
+        if capabilities.contains(WatchCapabilities.reliability), let reliabilityStats {
+            reliability = WearReliabilityV1.route(
+                reliabilityStats, service: service,
+                originCode: NetworkReliability.stationCode(journey.query.origin),
+                destinationCode: NetworkReliability.stationCode(journey.query.destination)
+            )
+        }
+        return WearServiceV1(
+            number: service.number,
+            operatorName: service.operatorName,
+            category: VehicleTexts.busLabel(service) ?? service.category,
+            destination: service.destination,
+            scheduled: service.scheduledDeparture,
+            expected: verified ? Self.watchClockTime(departure.departure) : service.expectedDeparture,
+            status: status,
+            platform: departure.live?.platform ?? service.platform ?? "",
+            delayMinutes: delay,
+            reliability: reliability,
+            vehicle: capabilities.contains(WatchCapabilities.vehicle) ? (service.vehicle ?? .train) : nil
+        )
+    }
+
+    /// "HH:mm" in the timetable zone, as the Watch reads the contract's times.
+    private static func watchClockTime(_ date: Date) -> String {
+        let parts = timetableCalendar.dateComponents([.hour, .minute], from: date)
+        return String(format: "%02ld:%02ld", parts.hour ?? 0, parts.minute ?? 0)
     }
 
     /// The Watch presents its snapshot as the next trains of the route, so only a search for
@@ -2248,8 +2397,11 @@ final class AppModel: ObservableObject {
 
     /// The listed trains that have not left at `now`, with their departure instants, up to the
     /// repository's expiry. The Watch resolves the same "HH:mm" times after the snapshot's
-    /// generation (apple-watch/Shared/WatchDepartures.swift), unambiguous within that window.
-    static func upcomingDepartures(in journey: JourneySnapshot, now: Date) -> [WatchDeparture] {
+    /// generation (apple-watch/Shared/WatchDepartures.swift), unambiguous within that window. A
+    /// train with a live expected time (`live`, by service identifier) leaves then: a late train
+    /// is still to come, and the list is in the order the trains leave, so the Watch reads each
+    /// time after the one before.
+    static func upcomingDepartures(in journey: JourneySnapshot, now: Date, live: [String: StationBoardLiveStatus] = [:]) -> [WatchDeparture] {
         let calendar = timetableCalendar
         // The repository lists trains from the query time on; "HH:mm" drops the seconds.
         var cursor = journey.query.departure.addingTimeInterval(-60)
@@ -2261,10 +2413,14 @@ final class AppModel: ObservableObject {
             }
             // Two trains at the same minute must resolve to the same day.
             cursor = departure.addingTimeInterval(-1)
-            guard departure >= now, departure < journey.expiresAt else { continue }
-            upcoming.append(WatchDeparture(service: service, departure: departure))
+            let status = live[service.id]
+            let leaves = status?.expectedDeparture ?? departure
+            guard leaves >= now, departure < journey.expiresAt else { continue }
+            upcoming.append(WatchDeparture(service: service, departure: leaves, live: status, timetable: departure))
         }
-        return upcoming
+        return upcoming.enumerated()
+            .sorted { ($0.element.departure, $0.offset) < ($1.element.departure, $1.offset) }
+            .map(\.element)
     }
 
     /// The snapshot must not outlive the last train it lists; the repository's 12-hour expiry

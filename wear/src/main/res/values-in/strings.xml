@@ -16,6 +16,7 @@
     <string name="tile_no_departures">Tidak ada keberangkatan untuk ditampilkan</string>
     <string name="tile_service_details">%1$s · %2$s · %3$s</string>
     <string name="status_programmed">Jadwal</string>
+    <string name="service_status_programmed">Terjadwal</string>
     <string name="status_live_as_of">Data diperbarui pukul %1$s</string>
     <string name="status_not_recent_as_of">Data tidak terbaru, pukul %1$s</string>
     <string name="status_local_snapshot">Snapshot lokal terakhir</string>

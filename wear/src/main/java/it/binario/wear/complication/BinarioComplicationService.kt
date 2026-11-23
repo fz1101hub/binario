@@ -24,6 +24,9 @@ import it.binario.wear.WearStringProvider
 import it.binario.wear.accessibleLabel
 import it.binario.wear.RAIL_TIME_ZONE
 import it.binario.wear.dataStatus
+import it.binario.wear.glanceNumber
+import it.binario.wear.liveUntilEpochMillis
+import it.binario.wear.shownAt
 import it.binario.wear.string
 import it.binario.wear.model.WearService
 import it.binario.wear.model.WearSnapshot
@@ -88,7 +91,7 @@ internal data class WearComplicationTexts(
 )
 
 /** A service counts as gone one minute after its expected departure; the next one is shown then. */
-private const val DEPARTED_GRACE_MILLIS = 60_000L
+internal const val DEPARTED_GRACE_MILLIS = 60_000L
 
 /**
  * A listed departure up to this long before the snapshot's generation is one that has just left;
@@ -127,20 +130,25 @@ internal fun upcomingService(snapshot: WearSnapshot, nowEpochMillis: Long): Pair
 internal data class GlanceSegment(val startEpochMillis: Long, val endEpochMillis: Long)
 
 /**
- * The stretches after [nowEpochMillis] in which the glance shows another service: each starts one
+ * The stretches after [nowEpochMillis] in which the glance shows something else: each starts one
  * minute after a departure that hands over to the next service ([upcomingService]), or to none after
- * the last one, and lasts until the next hand-over or the snapshot deadline. Empty when the glance
- * keeps its service until then.
- * The Tile and the complication timelines switch on these instants without a new request.
+ * the last one, or when the live values expire and the programmed times take over ([shownAt]), and
+ * lasts until the next change or the snapshot deadline. Empty when the glance keeps what it shows
+ * until then. The Tile and the complication timelines switch on these instants without a new request.
  */
 internal fun laterGlanceSegments(snapshot: WearSnapshot, nowEpochMillis: Long): List<GlanceSegment> {
-    val handOvers = snapshot.services
-        .mapNotNull { service -> departureInstant(service.expectedDeparture, snapshot.generatedAtEpochMillis) }
-        .map { departure -> departure.toEpochMilli() + DEPARTED_GRACE_MILLIS }
+    // The status is not shown by what the instants compare, so any text does for it.
+    fun shown(at: Long) = snapshot.shownAt(at, "")
+    fun glance(at: Long) = shown(at).let { shown -> shown.operationalState to upcomingService(shown, at)?.first }
+    val live = snapshot.liveUntilEpochMillis
+    val departures = listOf(snapshot, snapshot.shownAt(Long.MAX_VALUE, "")).flatMap { phase ->
+        phase.services.mapNotNull { service -> departureInstant(service.expectedDeparture, phase.generatedAtEpochMillis) }
+    }
+    val handOvers = (departures.map { departure -> departure.toEpochMilli() + DEPARTED_GRACE_MILLIS } + listOfNotNull(live))
         .filter { at -> at > nowEpochMillis && at < snapshot.expiresAtEpochMillis }
         .distinct()
         .sorted()
-        .filter { at -> upcomingService(snapshot, at - 1)?.first != upcomingService(snapshot, at)?.first }
+        .filter { at -> glance(at - 1) != glance(at) }
     return handOvers.mapIndexed { index, start -> GlanceSegment(start, handOvers.getOrElse(index + 1) { snapshot.expiresAtEpochMillis }) }
 }
 
@@ -161,7 +169,7 @@ internal fun longTextComplicationTexts(snapshot: WearSnapshot, strings: WearStri
     val title = snapshot.routeLabel.take(48)
     val (service, departure) = upcomingService(snapshot, nowEpochMillis)
         ?: return WearComplicationTexts(strings.string(snapshot.dataStatus()), title, strings.string(snapshot.dataStatus()))
-    val label = strings.string(R.string.service_time_number, service.expectedDeparture, service.number)
+    val label = strings.string(R.string.service_time_number, service.expectedDeparture, service.glanceNumber)
     // Same " · " separator as service_time_number in every language.
     return if (departure == null) WearComplicationTexts(label, title, service.accessibleLabel(strings))
     else WearComplicationTexts("$label · $COUNTDOWN", title, service.accessibleLabel(strings), departure)
@@ -171,17 +179,20 @@ internal fun longTextComplicationTexts(snapshot: WearSnapshot, strings: WearStri
  * Push-driven payload: the manifest declares no polling period, the Data Layer listener and the
  * store's expiry callback request updates, and the valid time range lets the watch face drop the
  * value at the snapshot deadline even when neither of them runs. [nowEpochMillis] picks the service
- * shown (a later timeline entry passes its own start). [tapAction] opens the app.
+ * shown (a later timeline entry passes its own start) and, past the live window of [stored], its
+ * programmed times. [tapAction] opens the app.
  */
 internal fun binarioComplicationData(
     type: ComplicationType,
-    snapshot: WearSnapshot?,
+    stored: WearSnapshot?,
     strings: WearStringProvider,
     nowEpochMillis: Long,
     tapAction: PendingIntent? = null,
 ): ComplicationData {
-    if (snapshot == null) return NoDataComplicationData()
-    val validity = TimeRange.before(Instant.ofEpochMilli(snapshot.expiresAtEpochMillis))
+    if (stored == null) return NoDataComplicationData()
+    val validity = TimeRange.before(Instant.ofEpochMilli(stored.expiresAtEpochMillis))
+    // Past the live window the programmed times, until the deadline.
+    val snapshot = stored.shownAt(nowEpochMillis, strings.string(R.string.service_status_programmed))
     return when (type) {
         ComplicationType.SHORT_TEXT -> {
             val texts = shortTextComplicationTexts(snapshot, strings, nowEpochMillis)
