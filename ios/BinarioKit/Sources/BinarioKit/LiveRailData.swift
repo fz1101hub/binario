@@ -139,34 +139,36 @@ public struct LiveRailData: LiveTrainStatusProviding, LiveDeparturesProviding {
 }
 
 /// Android's `RailSourceSelectionPolicy` for the three live sources: the best source is not the
-/// same for every value.
+/// same for every value. The scores and the operator bonus are the shared table
+/// contracts/shared-data/v1/source-scores-v1.json (`SharedData.SourceScores`).
 enum LiveSourcePolicy {
     enum Category {
         /// Expected times and running states.
         case trainRealtime
         /// Platforms, destinations and the row itself.
         case stationBoard
+
+        /// The category's name in the shared table (Android's `RailInformationCategory`).
+        var sharedName: String {
+            switch self {
+            case .trainRealtime: return "TRAIN_REALTIME"
+            case .stationBoard: return "STATION_BOARD"
+            }
+        }
     }
 
+    /// The source's score for `category`, plus the bonus of its operator rule when the hint names
+    /// the train's operator as the source's own.
     static func score(_ category: Category, _ source: LiveSource, operatorHint: String?) -> Int {
-        let base: Int
-        switch (category, source) {
-        case (.trainRealtime, .italo): base = 130
-        case (.trainRealtime, .viaggiaTreno): base = 128
-        case (.trainRealtime, .rfiStationBoard): base = 126
-        case (.stationBoard, .rfiStationBoard): base = 150
-        case (.stationBoard, .italo): base = 128
-        case (.stationBoard, .viaggiaTreno): base = 128
-        }
+        let base = SharedData.SourceScores.preferences.first {
+            $0.category == category.sharedName && $0.source == source.rawValue
+        }?.score ?? SharedData.SourceScores.defaultScore
         let hint = LiveText.boardKey(operatorHint ?? "")
-        guard !hint.isEmpty else { return base }
-        let affinity = category == .trainRealtime ? 20 : 10
-        switch source {
-        case .italo: return hint.contains("italo") ? base + affinity : base
-        case .viaggiaTreno:
-            return ["trenitalia", "frecce", "regionale"].contains(where: { hint.contains($0) }) ? base + affinity : base
-        case .rfiStationBoard: return base
-        }
+        guard !hint.isEmpty,
+              let rule = SharedData.SourceScores.operatorAffinity.first(where: { $0.sources.contains(source.rawValue) }),
+              rule.operatorKeywords.contains(where: { hint.contains($0) })
+        else { return base }
+        return base + (rule.pointsByCategory[category.sharedName] ?? 0)
     }
 }
 

@@ -20,6 +20,24 @@
 			<string>mais %1$lld trens</string>
 		</dict>
 	</dict>
+	<key>notices.works.show_more</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>many</key>
+			<string>Mostrar mais %1$lld avisos</string>
+			<key>one</key>
+			<string>Mostrar mais %1$lld aviso</string>
+			<key>other</key>
+			<string>Mostrar mais %1$lld avisos</string>
+		</dict>
+	</dict>
 	<key>result.alternative.on_time</key>
 	<dict>
 		<key>NSStringLocalizedFormatKey</key>

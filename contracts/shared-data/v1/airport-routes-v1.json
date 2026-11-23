@@ -1,0 +1,21 @@
+{
+  "schema": "binario-shared-data-v1",
+  "description": "«Collegamenti con gli aeroporti» of the planner: a city station and an airport station of the curated catalogue (catalogue ids), served by the trains of at least one of the packs. A route served only by city-line packs (a people mover, a metro) does not say «trains».",
+  "packs": [
+    {"id": "trenitalia-gtfs", "cityLine": false},
+    {"id": "lombardia-trenord-gtfs", "cityLine": false},
+    {"id": "ferrotramviaria-bari-barletta", "cityLine": false, "note": "A regional railway of gtfs-transit/: it serves Bari Aeroporto with real trains."},
+    {"id": "marconi-express-gtfs", "cityLine": true, "note": "The Marconi Express people mover: a metro line of the city pack."}
+  ],
+  "routes": [
+    {"city": "S08409", "airport": "S08411", "packs": ["trenitalia-gtfs"], "note": "Roma Termini ↔ Fiumicino Aeroporto (Trenitalia regional express)."},
+    {"city": "S01700", "airport": "S01139", "packs": ["lombardia-trenord-gtfs"], "note": "Milano Centrale and Milano Cadorna ↔ Malpensa Aeroporto (Terminal 1; Trenord RE51 and RE54)."},
+    {"city": "S01066", "airport": "S01139", "packs": ["lombardia-trenord-gtfs"]},
+    {"city": "NC000634", "airport": "NC001565", "packs": ["ferrotramviaria-bari-barletta"], "note": "Bari ↔ Bari Aeroporto (Ferrotramviaria; «Bari» is the catalogue station of its stop at Bari Centrale)."},
+    {"city": "S12002", "airport": "S12133", "packs": ["trenitalia-gtfs"], "note": "Palermo Centrale ↔ Punta Raisi (Palermo Aeroporto)."},
+    {"city": "S12891", "airport": "S12819", "packs": ["trenitalia-gtfs"], "note": "Cagliari ↔ Elmas Aeroporto."},
+    {"city": "S03317", "airport": "S03213", "packs": ["trenitalia-gtfs"], "note": "Trieste Centrale ↔ Trieste Airport."},
+    {"city": "S00035", "airport": "S00088", "packs": ["trenitalia-gtfs"], "note": "Torino Porta Susa ↔ Caselle Torinese Aeroporto (SFM A)."},
+    {"city": "S05043", "airport": "NC000683", "packs": ["marconi-express-gtfs"], "note": "Bologna Centrale ↔ Bologna Aeroporto (Marconi Express people mover: a metro line of the city pack, its stops about 130 m and 150 m from the two catalogue stations)."}
+  ]
+}

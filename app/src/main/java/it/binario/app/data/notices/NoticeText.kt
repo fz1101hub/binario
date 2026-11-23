@@ -1,5 +1,6 @@
 package it.binario.app.data.notices
 
+import it.binario.app.shared.SharedData
 import java.util.Locale
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
@@ -10,7 +11,7 @@ import org.jsoup.parser.Parser
  * it is never rendered, so scripts, styles and attributes cannot reach the UI.
  */
 internal object NoticeText {
-    private const val MAX_INPUT = 200_000
+    private val MAX_INPUT = SharedData.NoticesSources.TEXT.maximumInput
 
     /** HTML whose markup is entity-escaped once more (`&lt;p&gt;Velocit&amp;agrave;…`), as Trenitalia publishes it. */
     fun fromDoubleEscapedHtml(value: String?, maxLength: Int): String? {
@@ -50,7 +51,7 @@ internal object NoticeText {
         return if (text.length <= maxLength) text else text.take(maxLength - 1).trimEnd() + "…"
     }
 
-    private val STRIKE = Regex("\\bscioper[oi]\\b", RegexOption.IGNORE_CASE)
+    private val STRIKE = Regex(SharedData.NoticesSources.TEXT.strikeWordPattern, RegexOption.IGNORE_CASE)
 
     /** True when the text mentions a strike ("sciopero" / "scioperi"), the trigger for the strike badge. */
     fun mentionsStrike(vararg texts: String?): Boolean = texts.any { it != null && STRIKE.containsMatchIn(it) }
@@ -71,9 +72,10 @@ object NoticeLinks {
         data class Link(override val text: String, val url: String) : Segment
     }
 
-    private val URL = Regex("https?://[^\\s<>\"'\\u00A0]+", RegexOption.IGNORE_CASE)
-    private const val TRAILING = ".,;:!?)]}»"
-    private const val MIN_URL_LENGTH = 9
+    // The pattern and limits are the shared table (contracts/shared-data/v1/notices-sources-v1.json, text).
+    private val URL = Regex(SharedData.NoticesSources.TEXT.urlPattern, RegexOption.IGNORE_CASE)
+    private val TRAILING = SharedData.NoticesSources.TEXT.urlTrailing
+    private val MIN_URL_LENGTH = SharedData.NoticesSources.TEXT.minimumUrlLength
 
     /** A URL that [allow] refuses stays plain text: the rule is enforced here, where the link is made. */
     fun segments(text: String, allow: (String) -> Boolean = { true }): List<Segment> {

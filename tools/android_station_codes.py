@@ -16,7 +16,8 @@ bind a stop of these packs to the same catalogue station:
 
 A stop no code binds returns None and is matched by name, as in every other pack. ``tests/test_ios_gtfs_schedule.py``
 mirrors ``GtfsStationCodeIndexTest``, runs the cases of ``contracts/shared-rules/v1/gtfs-station-codes-v1.json`` (as
-``GtfsStationCodesContractTest`` does on Android) and compares the shared table and the bounds with the Kotlin file.
+``GtfsStationCodesContractTest`` does on Android) and compares the shared table with the generated Kotlin and the bounds
+with the Kotlin file.
 """
 from __future__ import annotations
 
@@ -41,7 +42,7 @@ MAX_DERIVED_CODE_KM = 3.0
 _TRENITALIA_LOCATION = re.compile(r"\d{9}")
 
 # ItaloGtfsStationCodes: the reviewed table of Italo's codes, shared by every platform as data (contracts/shared-data/v1;
-# Android still holds the same entries in Kotlin until the generator, and tests/test_ios_gtfs_schedule.py compares them).
+# Android reads the Kotlin tools/generate_shared_code.py writes from it, this pipeline the JSON).
 ITALO_STATION_CODES_PATH = Path(__file__).resolve().parents[1] / "contracts/shared-data/v1/italo-gtfs-station-codes.json"
 
 

@@ -6,6 +6,7 @@ import it.binario.app.data.provider.ProviderErrorKind
 import it.binario.app.data.provider.ProviderResponseMeta
 import it.binario.app.data.provider.ProviderResult
 import it.binario.app.data.provider.ProviderWarning
+import it.binario.app.shared.SharedData
 import java.io.IOException
 import java.net.SocketTimeoutException
 import java.time.Clock
@@ -45,13 +46,14 @@ internal sealed interface SourceRead<out T> {
  * an open period that doubles up to [maxOpenDuration]; one trial request is let through when it expires.
  * A `Retry-After` the source sent with its failure (429, 503) opens it at once for that long, at most [maxRetryAfter].
  * When [pauseLabel] is set, every pause is published to [SourcePauses] so the data status can say until when.
+ * The defaults are the shared manners of every source (contracts/shared-data/v1/source-manners-v1.json), the iPhone's too.
  */
 internal class SourceCircuitBreaker(
     private val clock: Clock,
-    private val failureThreshold: Int = 3,
-    private val baseOpenDuration: Duration = Duration.ofMinutes(1),
-    private val maxOpenDuration: Duration = Duration.ofMinutes(15),
-    private val maxRetryAfter: Duration = Duration.ofHours(1),
+    private val failureThreshold: Int = SharedData.SourceManners.FAILURE_THRESHOLD,
+    private val baseOpenDuration: Duration = Duration.ofSeconds(SharedData.SourceManners.BASE_OPEN_SECONDS.toLong()),
+    private val maxOpenDuration: Duration = Duration.ofSeconds(SharedData.SourceManners.MAXIMUM_OPEN_SECONDS.toLong()),
+    private val maxRetryAfter: Duration = Duration.ofSeconds(SharedData.SourceManners.MAXIMUM_RETRY_AFTER_SECONDS.toLong()),
     private val pauseLabel: String? = null
 ) {
     private var consecutiveFailures = 0

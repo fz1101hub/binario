@@ -1,5 +1,6 @@
 package it.binario.app.data.notices
 
+import it.binario.app.shared.SharedData
 /**
  * Pages the app only opens in the browser on an explicit tap; the app never requests them itself.
  *
@@ -8,5 +9,5 @@ package it.binario.app.data.notices
  * changes, this link is all the area shows about strikes.
  */
 object RailExternalLinks {
-    const val MIT_STRIKE_CALENDAR = "https://scioperi.mit.gov.it/mit2/public/scioperi"
+    val MIT_STRIKE_CALENDAR = SharedData.NoticesSources.LINKS.mitStrikeCalendar
 }

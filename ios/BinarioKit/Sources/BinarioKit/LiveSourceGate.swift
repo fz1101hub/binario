@@ -79,18 +79,21 @@ public final class LiveSourcePauses: @unchecked Sendable {
 /// joins it or reuses its answer instead of sending the same request twice; only
 /// `cancelRequestsNobodyWaitsFor` (the app in the background, live data switched off) cancels it.
 final class LiveSourceGate: @unchecked Sendable {
+    /// The defaults are the manners of every source, Android's too (`SharedData.SourceManners`).
     struct Configuration: Equatable, Sendable {
         var minimumInterval: TimeInterval
         var maximumEntries = 64
-        var failureThreshold = 3
-        var baseOpenDuration: TimeInterval = 60
-        var maximumOpenDuration: TimeInterval = 900
+        var failureThreshold = SharedData.SourceManners.failureThreshold
+        var baseOpenDuration: TimeInterval = SharedData.SourceManners.baseOpenSeconds
+        var maximumOpenDuration: TimeInterval = SharedData.SourceManners.maximumOpenSeconds
         /// The pause after a refusal without `Retry-After`, Android's `refusalPause`.
-        var refusalPause: TimeInterval = 900
-        var maximumRetryAfter: TimeInterval = 3_600
+        var refusalPause: TimeInterval = SharedData.SourceManners.refusalPauseSeconds
+        var maximumRetryAfter: TimeInterval = SharedData.SourceManners.maximumRetryAfterSeconds
     }
 
-    let source: LiveSource
+    /// The source a status line names when it is paused; nil for one no status line names (the
+    /// notice feeds, as Android's breakers without a pause label).
+    let source: LiveSource?
     private let configuration: Configuration
     private let pauses: LiveSourcePauses
     private let now: @Sendable () -> Date
@@ -142,7 +145,7 @@ final class LiveSourceGate: @unchecked Sendable {
         case start(flight: UInt64, caller: UInt64)
     }
 
-    init(source: LiveSource, configuration: Configuration, pauses: LiveSourcePauses, now: @escaping @Sendable () -> Date) {
+    init(source: LiveSource?, configuration: Configuration, pauses: LiveSourcePauses, now: @escaping @Sendable () -> Date) {
         self.source = source
         self.configuration = configuration
         self.pauses = pauses
@@ -325,8 +328,8 @@ final class LiveSourceGate: @unchecked Sendable {
             pauseUntil = record(failure, at: current)
         }
         lock.unlock()
-        if resumed { pauses.resume(source) }
-        if let pauseUntil { pauses.pause(source, until: pauseUntil) }
+        if resumed, let source { pauses.resume(source) }
+        if let pauseUntil, let source { pauses.pause(source, until: pauseUntil) }
         for continuation in continuations { continuation.resume(returning: result) }
     }
 

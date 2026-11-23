@@ -52,6 +52,8 @@ struct DeparturesView: View {
                     ForeignOfferSection(offer: offer)
                 }
                 BoardContent()
+                // The bottom of Android's departures board: the station's Trenord notices and «Avvisi e infomobilità».
+                BoardNoticesSections(station: model.boardStation.map { model.station(for: $0) })
             case .unavailable:
                 ContentUnavailableView(
                     "catalog.unavailable.title",

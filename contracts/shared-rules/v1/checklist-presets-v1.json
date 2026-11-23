@@ -1,0 +1,25 @@
+{
+  "schema": "binario-shared-rules-v1",
+  "readers": {
+    "android": "app/src/test/java/it/binario/app/plannedjourney/ChecklistPresetsContractTest.kt",
+    "iphone": "ios/BinarioKit/Tests/BinarioKitTests/ChecklistPresetsContractTests.swift"
+  },
+  "lines": ["timeMargin", "documents", "belongings", "connection", "bike", "assistance"],
+  "presets": [
+    {"preset": "commuter", "lines": ["timeMargin", "documents", "belongings"]},
+    {"preset": "connection", "lines": ["timeMargin", "documents", "belongings", "connection"]},
+    {"preset": "bike", "lines": ["timeMargin", "documents", "belongings", "bike"]},
+    {"preset": "assistance", "lines": ["timeMargin", "documents", "belongings", "assistance"]}
+  ],
+  "apply": [
+    {"text": "", "preset": "commuter", "expected": "Margine\nDocumenti\nEffetti personali"},
+    {"text": "Ombrello\n  \n  documenti  ", "preset": "bike", "expected": "Ombrello\ndocumenti\nMargine\nEffetti personali\nBici"},
+    {"text": "MARGINE\nBICI", "preset": "bike", "expected": "MARGINE\nBICI\nDocumenti\nEffetti personali"},
+    {"text": "1\n2\n3\n4\n5\n6\n7\n8\n9\n10\n11\n12\n13\n14\n15\n16\n17\n18\n19\n20\n21\n22", "preset": "assistance",
+     "expected": "1\n2\n3\n4\n5\n6\n7\n8\n9\n10\n11\n12\n13\n14\n15\n16\n17\n18\n19\n20\n21\n22\nMargine\nDocumenti"}
+  ],
+  "labels": {
+    "timeMargin": "Margine", "documents": "Documenti", "belongings": "Effetti personali",
+    "connection": "Coincidenza", "bike": "Bici", "assistance": "Assistenza"
+  }
+}

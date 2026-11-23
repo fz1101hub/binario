@@ -20,6 +20,24 @@
 			<string>%1$lld trains de plus</string>
 		</dict>
 	</dict>
+	<key>notices.works.show_more</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>many</key>
+			<string>Afficher %1$lld autres avis</string>
+			<key>one</key>
+			<string>Afficher %1$lld autre avis</string>
+			<key>other</key>
+			<string>Afficher %1$lld autres avis</string>
+		</dict>
+	</dict>
 	<key>result.alternative.on_time</key>
 	<dict>
 		<key>NSStringLocalizedFormatKey</key>

@@ -3,6 +3,7 @@ import BinarioKit
 
 struct PlannerView: View {
     @EnvironmentObject private var model: AppModel
+    @EnvironmentObject private var notices: RailNoticesModel
     @Environment(\.scenePhase) private var scenePhase
     @State private var origin: Station?
     @State private var destination: Station?
@@ -122,6 +123,8 @@ struct PlannerView: View {
 
                 if let snapshot = model.latestSnapshot {
                     AvailableResultView(snapshot: snapshot, now: clock)
+                    // Android's board of a saved route: the works its notices name, nothing when none does.
+                    RouteWorksSection(routes: resultRoutes, scope: .thisRoute)
                 } else if case let .unavailable(reason) = model.searchState {
                     UnavailableResultView(reason: reason)
                 }
@@ -134,6 +137,7 @@ struct PlannerView: View {
             }
         }
         .navigationTitle("planner.title")
+        .loadsRouteWorks(resultRoutes, model: model, notices: notices)
         .onChange(of: scenePhase) { _, phase in
             if phase == .active { followCurrentTime() }
         }
@@ -317,6 +321,13 @@ struct PlannerView: View {
         // A refusal (the limit, the storage) is the alert of RootView, on this tab too.
         model.save(query: query)
         if isSaved { DeparturesTexts.announce(String(localized: "accessibility.saved_route")) }
+    }
+
+    /// The saved route the results are for, if any: a search not saved has no works section, as on Android.
+    private var resultRoutes: [SavedRoute] {
+        guard let query = model.latestSnapshot?.query else { return [] }
+        let id = SavedRoute.routeIdentifier(origin: query.origin, destination: query.destination)
+        return model.savedRoutes.filter { $0.id == id }
     }
 
     /// The route of the form is among the saved routes.

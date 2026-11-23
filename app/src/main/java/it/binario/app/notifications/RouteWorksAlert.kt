@@ -65,7 +65,7 @@ object RouteWorksAlertPlanner {
     val QUIET_UNTIL: LocalTime = LocalTime.of(7, 0)
     const val MAX_ITEMS = 3
     /** The routes read, as in Per te: the pinned ones first, in the saved order. */
-    const val MAX_ROUTES = RouteWorksViewModel.MAX_ROUTES
+    val MAX_ROUTES = RouteWorksViewModel.MAX_ROUTES
     /** A notified notice is remembered until the day after its last date, but never longer than this. */
     const val MAX_KEEP_DAYS = 45L
     const val MAX_NOTIFIED = 200

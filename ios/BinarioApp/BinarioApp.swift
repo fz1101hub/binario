@@ -11,6 +11,8 @@ struct BinarioApp: App {
     @UIApplicationDelegateAdaptor(BinarioAppDelegate.self) private var appDelegate
     #endif
     @StateObject private var model: AppModel
+    /// The notice sections; without the bundled table of the notice sources, none is shown.
+    @StateObject private var notices: RailNoticesModel
 
     init() {
         // Built at launch, not with the first window: Watch Connectivity also launches the app in
@@ -18,12 +20,14 @@ struct BinarioApp: App {
         // must be active by then to answer with the route the Watch shows (or the pinned one).
         let model = AppModel.bootstrap()
         _model = StateObject(wrappedValue: model)
+        _notices = StateObject(wrappedValue: RailNoticesModel.bootstrap())
     }
 
     var body: some Scene {
         WindowGroup {
             RootView()
                 .environmentObject(model)
+                .environmentObject(notices)
         }
     }
 }

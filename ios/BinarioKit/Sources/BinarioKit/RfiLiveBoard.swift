@@ -175,19 +175,12 @@ enum LiveBoardTime {
 /// The RFI monitor's place IDs, Android's `RfiStationIds` (the names it knows) and
 /// `RfiStationCatalog` (the official selector, read once a day; a minute after a failure).
 final class RfiPlaceCatalogue: @unchecked Sendable {
-    /// Android's `RfiStationIds.byName`. Its `byLegacyId` keys are Android's own station identifiers,
+    /// Android's `RfiStationIds.byName`, the shared table contracts/shared-data/v1/rfi-place-ids-v1.json
+    /// (`SharedData.RfiPlaceIds`). Its `byLegacyId` keys are Android's own station identifiers,
     /// which the iPhone catalogue does not use.
     static let knownPlaces: [String: Int] = {
-        let names: [(String, Int)] = [
-            ("Roma Termini", 2416), ("Roma Tiburtina", 2385), ("Roma Ostiense", 2379), ("Roma Trastevere", 2387),
-            ("Roma San Pietro", 2383), ("Roma S. Pietro", 2383), ("Roma Tuscolana", 2388), ("Fiumicino Aeroporto", 1327),
-            ("Ciampino", 1106), ("Civitavecchia", 1123), ("Frascati", 1370), ("Velletri", 3006), ("Orte", 1959),
-            ("Latina", 1539), ("Frosinone", 1377), ("Cassino", 955), ("Napoli Centrale", 1888), ("Bologna Centrale", 683),
-            ("Milano Centrale", 1728), ("Genova Piazza Principe", 257), ("Genova P. Principe", 257),
-            ("Torino Porta Nuova", 2876), ("Bari Centrale", 595), ("Palermo Centrale", 2018), ("Cagliari", 787),
-        ]
         var places: [String: Int] = [:]
-        for (name, id) in names { places[LiveText.legacyStationKey(name)] = id }
+        for (name, id) in SharedData.RfiPlaceIds.placeIdsByName { places[LiveText.legacyStationKey(name)] = id }
         return places
     }()
 

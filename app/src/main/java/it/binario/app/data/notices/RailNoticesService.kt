@@ -1,5 +1,6 @@
 package it.binario.app.data.notices
 
+import it.binario.app.shared.SharedData
 import it.binario.app.data.RailOperator
 import it.binario.app.data.RailTime
 import it.binario.app.data.TrainService
@@ -134,7 +135,7 @@ class RailNoticesService(
     private val trainNoticeProviders: List<TrainNoticeProvider>,
     private val networkAlertProviders: List<AlertProvider> = emptyList(),
     private val trenord: TrenordLineNoticesAdapter? = null,
-    private val sourceTimeoutMillis: Long = 20_000
+    private val sourceTimeoutMillis: Long = SharedData.NoticesSources.SERVICE.sourceTimeoutSeconds * 1_000L
 ) {
     val hasTrainSources: Boolean
         get() = trainNoticeProviders.isNotEmpty() || trenord != null ||
@@ -243,13 +244,13 @@ class RailNoticesService(
         // The last transformation of the text happens here (decoding an entity can complete a URL), so the links of a
         // cleartext source are checked again after it; the UI checks once more when it makes them tappable.
         fun String.checked(): String? = if (cleartextHop) CleartextNoticeLinks.neutralize(this) else this
-        val cleanTitle = NoticeText.normalize(title.value, 300)?.checked() ?: return null
+        val cleanTitle = NoticeText.normalize(title.value, SharedData.NoticesSources.TEXT.noticeTitleLength)?.checked() ?: return null
         return RailNotice(
             id = id.value,
             publisher = publisher,
             title = cleanTitle,
             // RFI RSS descriptions can carry markup; Trenitalia's are already plain text.
-            body = description?.value?.let { NoticeText.fromHtml(it, 6_000) }?.checked()?.takeIf { NoticeText.dedupKey(it) != NoticeText.dedupKey(cleanTitle) },
+            body = description?.value?.let { NoticeText.fromHtml(it, SharedData.NoticesSources.TEXT.noticeBodyLength) }?.checked()?.takeIf { NoticeText.dedupKey(it) != NoticeText.dedupKey(cleanTitle) },
             publishedAt = validFrom,
             link = if (cleartextHop) CleartextNoticeLinks.link(link) else link,
             cleartextHop = cleartextHop
@@ -273,13 +274,10 @@ class RailNoticesService(
 
     companion object {
         /** Network notices fetched through the ViaggiaTreno host, which redirects its HTTPS requests to HTTP. */
-        private val CLEARTEXT_HOP_SOURCES = setOf("trenitalia-infomobility-news")
+        private val CLEARTEXT_HOP_SOURCES = SharedData.NoticesSources.SOURCES.filter { it.viaggiaTrenoCleartextHop }.mapTo(HashSet()) { it.id }
 
-        fun publisherOf(sourceId: SourceId): NoticePublisher? = when (sourceId.value) {
-            "rfi-infomobility-rss" -> NoticePublisher.RFI
-            "trenitalia-infomobility-news" -> NoticePublisher.TRENITALIA
-            "trenord-line-notices" -> NoticePublisher.TRENORD
-            else -> null
-        }
+        /** The publisher of a feed of the shared table (none for the MIT calendar). */
+        fun publisherOf(sourceId: SourceId): NoticePublisher? =
+            SharedData.NoticesSources.SOURCES.firstOrNull { it.id == sourceId.value }?.publisher?.let(NoticePublisher::valueOf)
     }
 }

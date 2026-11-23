@@ -11,8 +11,10 @@ on:
       - "app/src/main/assets/punctuality/**"
       - "contracts/wear-snapshot/**"
       - "contracts/shared-rules/**"
-      - "contracts/shared-data/**"
       - "contracts/voice-input/**"
+      # The shared tables (the generated BinarioKit/Sources/BinarioKit/Generated/) and their generator.
+      - "contracts/shared-data/**"
+      - "tools/generate_shared_code.py"
       - "tools/build_ios_gtfs_schedule.py"
       - "tools/android_station_codes.py"
       - "tools/android_stop_matcher.py"
@@ -45,8 +47,10 @@ on:
       - "app/src/main/assets/punctuality/**"
       - "contracts/wear-snapshot/**"
       - "contracts/shared-rules/**"
-      - "contracts/shared-data/**"
       - "contracts/voice-input/**"
+      # The shared tables (the generated BinarioKit/Sources/BinarioKit/Generated/) and their generator.
+      - "contracts/shared-data/**"
+      - "tools/generate_shared_code.py"
       - "tools/build_ios_gtfs_schedule.py"
       - "tools/android_station_codes.py"
       - "tools/android_stop_matcher.py"

@@ -1,3 +1,5 @@
+import { ItalianHolidays, Punctuality } from "@shared/generated/sharedData";
+
 /**
  * Binario's unofficial network punctuality statistics (`stats_v1.json.gz`, format in
  * docs/data-sources/PUNCTUALITY_STATS.md): how every observed train ran over the last 30 days,
@@ -12,15 +14,16 @@
  */
 
 export const PUNCTUALITY_SCHEMA = "binario-punctuality-v1";
+// The thresholds are the table the apps share, contracts/shared-data/v1/punctuality-v1.json (generated module).
 /** Below this many samples at the stop considered nothing is said (shared spec). */
-export const MIN_SAMPLES = 5;
+export const MIN_SAMPLES = Punctuality.MINIMUM_SAMPLES;
 /** Below this many samples in all, a route says nothing (as the app's route aggregate). */
-export const MIN_AGGREGATE_SAMPLES = 20;
-export const HIGH_SPEED_ON_TIME_MINUTES = 5;
-export const OTHER_ON_TIME_MINUTES = 15;
+export const MIN_AGGREGATE_SAMPLES = Punctuality.MINIMUM_AGGREGATE_SAMPLES;
+export const HIGH_SPEED_ON_TIME_MINUTES = Punctuality.HIGH_SPEED_ON_TIME_MINUTES;
+export const OTHER_ON_TIME_MINUTES = Punctuality.OTHER_ON_TIME_MINUTES;
 
 /** Categories measured at 5 minutes, as the operators and the app do; every other category at 15. */
-const HIGH_SPEED_CATEGORIES: ReadonlySet<string> = new Set(["FR", "FA", "FB", "EC", "ES", "ESC", "EN", "ITALO"]);
+const HIGH_SPEED_CATEGORIES: ReadonlySet<string> = Punctuality.HIGH_SPEED_CATEGORIES;
 const STATION_CODE = /^S[0-9]{5}$/;
 const MAX_TEXT = 16;
 const MAX_DELAY_MINUTES = 24 * 60;
@@ -414,21 +417,23 @@ function easterSunday(year: number): string {
   return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
 }
 
-const FIXED_HOLIDAYS: ReadonlySet<string> = new Set(["01-01", "01-06", "04-25", "05-01", "06-02", "08-15", "11-01", "12-08", "12-25", "12-26"]);
-
 /**
  * Whether `date` (`YYYY-MM-DD`) is an Italian national holiday, on which the railways run their
- * Sunday service: the same calendar as the Android app's `ItalianRailServiceCalendar` (fixed
- * dates, Easter Sunday and Monday, and 4 October from 2026).
+ * Sunday service: the calendar the Android app's `ItalianRailServiceCalendar` reads too,
+ * contracts/shared-data/v1/italian-holidays-v1.json (fixed dates, some only from a year on, such
+ * as 4 October from 2026; Easter Sunday and Monday).
  */
 export function isItalianHoliday(date: string): boolean {
   const year = Number(date.slice(0, 4));
   const monthDay = date.slice(5);
-  if (FIXED_HOLIDAYS.has(monthDay)) return true;
-  // San Francesco d'Assisi, national holiday again from 2026 (legge 151/2025).
-  if (year >= 2026 && monthDay === "10-04") return true;
+  const fixed = ItalianHolidays.HOLIDAYS.some(
+    holiday =>
+      monthDay === `${String(holiday.month).padStart(2, "0")}-${String(holiday.day).padStart(2, "0")}` &&
+      (holiday.fromYear === null || year >= holiday.fromYear)
+  );
+  if (fixed) return true;
   const easter = easterSunday(year);
-  return date === easter || date === addDays(easter, 1);
+  return ItalianHolidays.EASTER_OFFSETS_DAYS.some(offset => date === addDays(easter, offset));
 }
 
 /**

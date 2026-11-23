@@ -29,7 +29,7 @@ LANGUAGES = {
     "ar", "hi", "id", "ja", "ko", "my", "pt-BR", "ru", "th", "tr", "vi", "zh-Hans",
 }
 STRINGS_ENTRY = re.compile(r'^"((?:[^"\\]|\\.)+)"\s*=\s*"((?:[^"\\]|\\.)*)";$')
-SWIFT_REQUIRED_KEY = re.compile(r'"((?:action|app|tab|planner|departures|catalog|schedule|result|saved|settings|watch|accessibility)\.[a-z0-9_.]+)"')
+SWIFT_REQUIRED_KEY = re.compile(r'"((?:action|app|tab|planner|departures|catalog|schedule|result|saved|settings|watch|accessibility|notices)\.[a-z0-9_.]+)"')
 PLACEHOLDER = re.compile(r'%(?:\d+\$)?(?:hh|h|ll|l)?[@diufFeEgGxXoscpaA]')
 # CLDR plural categories of each .lproj (docs/l10n/LOCALES.md and the batch rules).
 PLURAL_CATEGORIES = {
@@ -42,6 +42,7 @@ PLURAL_CATEGORIES = {
 }
 ANDROID_STATISTICS = ROOT / "app/src/main/assets/punctuality/stats_v1.json.gz"
 IOS_STATISTICS = IOS / "Resources/binario_punctuality_stats_v1.json.gz"
+SHARED_DATA = ROOT / "contracts/shared-data/v1"
 INVISIBLE = re.compile("[\ufeff\u200b\u200c\u200d\u200e\u200f\u2060\u00ad]")
 # The Android resource folder of each .lproj, for the texts shared with the Android app.
 ANDROID_VALUES = {
@@ -255,6 +256,48 @@ class IOSProjectTests(unittest.TestCase):
         self.assertEqual(5_290, catalog["stationCount"])
         self.assertFalse(catalog["operationalData"])
 
+    def test_notice_sources_come_from_the_shared_table_as_generated_code(self) -> None:
+        """The iPhone's rail notices read contracts/shared-data/v1/notices-sources-v1.json as the generated
+        SharedData.NoticesSources (Android's SharedData too): no bundled copy and no loader, its feeds named in no
+        hand-written Swift source, Trenitalia and Trenord behind «Dati in tempo reale», MIT and RFI in every build."""
+        app = self.targets["Binario"]
+        resources = [
+            entry["path"] for entry in app["sources"]
+            if isinstance(entry, dict) and entry.get("buildPhase") == "resources"
+        ]
+        self.assertFalse(any("notices-sources" in path for path in resources))
+        self.assertFalse((IOS / "Resources/notices-sources-v1.json").exists())
+        table = json.loads(SHARED_DATA.joinpath("notices-sources-v1.json").read_text(encoding="utf-8"))
+        self.assertEqual("binario-shared-data-v1", table["schema"])
+        gates = {source["id"]: source["gate"] for source in table["sources"]}
+        self.assertEqual({
+            "mit-strikes-rss": "all-builds", "rfi-infomobility-rss": "all-builds",
+            "trenitalia-infomobility-news": "personal", "trenord-line-notices": "personal",
+        }, gates)
+        for source in table["sources"]:
+            self.assertTrue(source["url"].startswith("https://"), source["id"])
+        kit = IOS / "BinarioKit/Sources/BinarioKit"
+        swift = "\n".join(path.read_text(encoding="utf-8") for path in kit.glob("*.swift"))
+        for source in table["sources"]:
+            self.assertNotIn(source["url"], swift, "the feeds live in the shared table only")
+        generated = (kit / "Generated/SharedData.swift").read_text(encoding="utf-8")
+        for source in table["sources"]:
+            self.assertIn(f'url: "{source["url"]}"', generated)
+        self.assertIn("public typealias NoticeTable = SharedData.NoticesSources", (kit / "NoticeSourcesTable.swift").read_text(encoding="utf-8"))
+        model = (IOS / "BinarioApp/RailNoticesModel.swift").read_text(encoding="utf-8")
+        self.assertIn("RailNoticeService.standard(rules: NoticeRules.standard)", model)
+        self.assertNotIn("forResource", model)
+        service = (kit / "RailNotices.swift").read_text(encoding="utf-8")
+        self.assertIn('feed.gate == "all-builds" || personal', service)
+        # Every notice section passes «Dati in tempo reale» as the personal switch.
+        views = (IOS / "BinarioApp/RailNoticeViews.swift").read_text(encoding="utf-8")
+        self.assertNotIn("personal: true", views)
+        self.assertIn("personal: model.liveDataEnabled", views)
+        android = (ROOT / "app/src/test/java/it/binario/app/shared/SharedDataTest.kt").read_text(encoding="utf-8")
+        self.assertIn('table("notices-sources-v1.json")', android)
+        tests = (IOS / "BinarioKit/Tests/BinarioKitTests/NoticesContractTests.swift").read_text(encoding="utf-8")
+        self.assertIn("contracts/shared-rules/v1/notices-v1.json", tests)
+
     def test_authoritative_catalog_matches_its_checked_in_manifest(self) -> None:
         payload = CATALOG.read_bytes()
         catalog = json.loads(payload)
@@ -401,22 +444,24 @@ class IOSProjectTests(unittest.TestCase):
         self.assertIn("guard let reliabilityStats, !service.isBus else { return nil }", (IOS / "BinarioApp/AppModel.swift").read_text(encoding="utf-8"))
 
     def test_the_timetable_copies_follow_androids_pack_classes(self) -> None:
-        # TimetableCopies names the packs as Android's PlannedPackOrder and the index builder do.
+        # The pack roles are one shared table (contracts/shared-data/v1/pack-roles-v1.json): the index builder reads the
+        # JSON, TimetableCopies, TimetableVehicle and Android (PlannedPackOrder, EmbeddedGtfsRouteAdapter,
+        # EmbeddedGtfsPacks) its generated constants (SharedDataTest.kt, SharedDataTests.swift).
         sys.path.insert(0, str(ROOT / "tools"))
         import build_ios_gtfs_schedule as builder
 
+        roles = json.loads(SHARED_DATA.joinpath("pack-roles-v1.json").read_text(encoding="utf-8"))
+        self.assertEqual(set(builder.FOREIGN_PACKS), set(roles["foreignPacks"]))
+        self.assertEqual(set(builder.SCHEDULED_COACH_PACKS), set(roles["scheduledCoachPacks"]))
         copies = (IOS / "BinarioKit/Sources/BinarioKit/TimetableCopies.swift").read_text(encoding="utf-8")
         vehicle = (IOS / "BinarioKit/Sources/BinarioKit/TimetableVehicle.swift").read_text(encoding="utf-8")
-        def swift_set(source: str, name: str) -> set[str]:
-            return set(re.findall(r'"([^"]+)"', re.search(rf"static let {name}: Set<String> = \[([^\]]*)\]", source).group(1)))
-        self.assertEqual(set(builder.FOREIGN_PACKS), swift_set(copies, "foreignPacks"))
-        self.assertEqual(set(builder.SCHEDULED_COACH_PACKS), swift_set(vehicle, "scheduledCoachPacks"))
+        for name in ("nationalPacks", "foreignPacks", "crossPublishingPacks"):
+            self.assertIn(f"static let {name}: Set<String> = SharedData.PackRoles.{name}", copies)
+        self.assertIn("static let scheduledCoachPacks: Set<String> = SharedData.PackRoles.scheduledCoachPacks", vehicle)
         order = (ROOT / "app/src/main/java/it/binario/app/data/sources/PlannedPackOrder.kt").read_text(encoding="utf-8")
-        self.assertEqual(set(re.findall(r'SourceId\("([^"]+)"\)', re.search(r"val nationalPacks: Set<SourceId> = setOf\(([^\n]*)\)", order).group(1))),
-                         swift_set(copies, "nationalPacks"))
+        self.assertIn("val nationalPacks: Set<SourceId> = SharedData.PackRoles.NATIONAL_PACKS.mapTo(LinkedHashSet(), ::SourceId)", order)
         adapter = (ROOT / "app/src/main/java/it/binario/app/data/gtfs/EmbeddedGtfsRouteAdapter.kt").read_text(encoding="utf-8")
-        self.assertEqual(set(re.findall(r'"([^"]+)"', re.search(r"CROSS_PUBLISHING_PACKS = setOf\(([^)]*)\)", adapter).group(1))),
-                         swift_set(copies, "crossPublishingPacks"))
+        self.assertIn("CROSS_PUBLISHING_PACKS = it.binario.app.shared.SharedData.PackRoles.CROSS_PUBLISHING_PACKS", adapter)
 
     def test_iphone_texts_never_name_another_platform_or_a_widget(self) -> None:
         """App Review and the companion's rule (EXPO_PORT_PLAN R24, audit expo-6): no iPhone text names Android,
@@ -510,9 +555,11 @@ class IOSProjectTests(unittest.TestCase):
         self.assertIn("maximumEvents = 120", ics)
         self.assertIn('PRODUCT_ID = "-//Binario//Planned Journeys 1.0//IT"', android_ics)
         android_transfer = (ROOT / "app/src/main/java/it/binario/app/plannedjourney/PlannedJourneyTransfer.kt").read_text(encoding="utf-8")
-        self.assertIn("const val MAX_NESTING_DEPTH = 16", android_transfer)
+        # Both read the nesting limit of the shared table (contracts/shared-data/v1/planned-journeys-v1.json).
+        self.assertIn("const val MAX_NESTING_DEPTH = SharedData.PlannedJourneys.MAXIMUM_NESTING_DEPTH", android_transfer)
         journeys = (IOS / "BinarioKit/Sources/BinarioKit/PlannedJourneys.swift").read_text(encoding="utf-8")
-        self.assertIn("maximumNestingDepth = 16", journeys)
+        self.assertIn("maximumNestingDepth = SharedData.PlannedJourneys.maximumNestingDepth", journeys)
+        self.assertEqual(16, json.loads(SHARED_DATA.joinpath("planned-journeys-v1.json").read_text(encoding="utf-8"))["maximumNestingDepth"])
 
     def test_home_screen_quick_action_opens_the_agenda_with_a_localized_title(self) -> None:
         """EXPO_PORT_PLAN F45: one static quick action «Agenda» declared in Binario-Info.plist, its title localized
@@ -743,7 +790,8 @@ class IOSProjectTests(unittest.TestCase):
             "configuration.httpCookieStorage = nil", "configuration.urlCredentialStorage = nil",
             "configuration.urlCache = nil", "completionHandler(nil)",
             'public static let general = make(version: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String)',
-            'return "Binario/\\(cleaned.isEmpty ? "0" : cleaned) (iOS; rail timetable app)"',
+            'return SharedData.SourceManners.userAgent',
+            '.replacingOccurrences(of: "<platform>", with: "iOS")',
         ]:
             self.assertIn(expected, live)
         sources = "\n".join(path.read_text(encoding="utf-8") for path in (IOS / "BinarioKit/Sources").rglob("*.swift"))
@@ -1205,18 +1253,28 @@ class IOSProjectTests(unittest.TestCase):
 
     def test_reliability_rules_and_texts_follow_the_shared_specification(self) -> None:
         rules = (IOS / "BinarioKit/Sources/BinarioKit/NetworkReliability.swift").read_text(encoding="utf-8")
+        # The thresholds are the shared table (contracts/shared-data/v1/punctuality-v1.json), the specification's values.
+        table = json.loads(SHARED_DATA.joinpath("punctuality-v1.json").read_text(encoding="utf-8"))
+        self.assertEqual(["FR", "FA", "FB", "EC", "ES", "ESC", "EN", "ITALO"], table["highSpeedCategories"])
+        for key, value in (
+            ("minimumSamples", 5), ("highSpeedOnTimeMinutes", 5), ("otherOnTimeMinutes", 15), ("minimumPlatformDays", 5),
+            ("minimumPlatformSharePercent", 60), ("minimumWeekdaySamples", 4), ("minimumWeekdayGapPoints", 15),
+            ("minimumAggregateSamples", 20), ("minimumBandSamples", 20), ("minimumBandGapPoints", 5),
+        ):
+            with self.subTest(key=key):
+                self.assertEqual(value, table[key])
         for fragment in (
-            "public static let minimumSamples = 5",
-            "public static let highSpeedOnTimeMinutes = 5",
-            "public static let otherOnTimeMinutes = 15",
-            'private static let highSpeedCategories: Set<String> = ["FR", "FA", "FB", "EC", "ES", "ESC", "EN", "ITALO"]',
-            "public static let minimumPlatformCount = 5",
-            "public static let minimumPlatformSharePercent = 60",
-            "public static let minimumWeekdaySamples = 4",
-            "public static let minimumWeekdayGapPoints = 15",
-            "public static let minimumAggregateSamples = 20",
-            "public static let minimumBandSamples = 20",
-            "public static let minimumBandGapPoints = 5",
+            "public static let minimumSamples = SharedData.Punctuality.minimumSamples",
+            "public static let highSpeedOnTimeMinutes = SharedData.Punctuality.highSpeedOnTimeMinutes",
+            "public static let otherOnTimeMinutes = SharedData.Punctuality.otherOnTimeMinutes",
+            "private static let highSpeedCategories: Set<String> = SharedData.Punctuality.highSpeedCategories",
+            "public static let minimumPlatformCount = SharedData.Punctuality.minimumPlatformDays",
+            "public static let minimumPlatformSharePercent = SharedData.Punctuality.minimumPlatformSharePercent",
+            "public static let minimumWeekdaySamples = SharedData.Punctuality.minimumWeekdaySamples",
+            "public static let minimumWeekdayGapPoints = SharedData.Punctuality.minimumWeekdayGapPoints",
+            "public static let minimumAggregateSamples = SharedData.Punctuality.minimumAggregateSamples",
+            "public static let minimumBandSamples = SharedData.Punctuality.minimumBandSamples",
+            "public static let minimumBandGapPoints = SharedData.Punctuality.minimumBandGapPoints",
             "let five = train.cumulative(at: index, limit: 5)",
         ):
             with self.subTest(fragment=fragment):
@@ -1888,19 +1946,17 @@ class IOSProjectTests(unittest.TestCase):
             self.assertIsNone(values[source], source)
 
     def test_airport_links_are_the_android_list_filtered_by_the_ios_index(self) -> None:
+        # Both apps build their list from the shared table (contracts/shared-data/v1/airport-routes-v1.json).
         swift = (IOS / "BinarioKit/Sources/BinarioKit/AirportRoutes.swift").read_text(encoding="utf-8")
         android = (ROOT / "app/src/main/java/it/binario/app/data/AirportRoutes.kt").read_text(encoding="utf-8")
-        ios_routes = re.findall(r'AirportRoute\(cityStationID: "([^"]+)", airportStationID: "([^"]+)", packs: \[(\w+)\]\)', swift)
-        android_routes = re.findall(r'AirportRoute\("curated:([^"]+)", "curated:([^"]+)", setOf\((\w+)\)\)', android)
-        self.assertEqual([(city, airport) for city, airport, _ in android_routes], [(city, airport) for city, airport, _ in ios_routes])
-        # Same pack constant on both sides, as each language spells it (MARCONI_EXPRESS, marconiExpress).
-        self.assertEqual([pack.lower().replace("_", "") for *_, pack in android_routes], [pack.lower() for *_, pack in ios_routes])
+        self.assertIn("SharedData.AirportRoutes.routes.map", swift)
+        self.assertIn("SharedData.AirportRoutes.ROUTES.map", android)
+        table = json.loads(SHARED_DATA.joinpath("airport-routes-v1.json").read_text(encoding="utf-8"))
+        ios_routes = [(route["city"], route["airport"], set(route["packs"])) for route in table["routes"]]
         model = (IOS / "BinarioApp/AppModel.swift").read_text(encoding="utf-8")
         self.assertIn("AirportRoutes.links(", model)
         self.assertIn("packsWithTrips: Set(includedPacks.map(\\.sourceID))", model)
         # Every route the iPhone can offer has direct trains both ways in the bundled index.
-        packs = {"trenitalia": "trenitalia-gtfs", "trenord": "lombardia-trenord-gtfs", "ferrotramviaria": "ferrotramviaria-bari-barletta",
-                 "marconiExpress": "marconi-express-gtfs"}
         with tempfile.TemporaryDirectory(prefix="ios-airports-") as temporary:
             database = Path(temporary) / "schedule.sqlite"
             database.write_bytes(zlib.decompress((IOS / "Resources/binario_gtfs_schedule_v1.sqlite.zlib").read_bytes()))
@@ -1909,8 +1965,8 @@ class IOSProjectTests(unittest.TestCase):
                 with_trips = {row[0] for row in connection.execute("SELECT p.source_id FROM pack p WHERE EXISTS (SELECT 1 FROM trip t WHERE t.pack_id = p.id)")}
                 covered = {row[0] for row in connection.execute("SELECT DISTINCT catalog_station_id FROM stop WHERE catalog_station_id IS NOT NULL")}
                 offered = []
-                for city, airport, pack in ios_routes:
-                    if packs[pack] not in with_trips or city not in covered or airport not in covered:
+                for city, airport, packs in ios_routes:
+                    if not packs & with_trips or city not in covered or airport not in covered:
                         continue
                     offered.append((city, airport))
                     for origin, destination in ((city, airport), (airport, city)):
@@ -1928,7 +1984,7 @@ class IOSProjectTests(unittest.TestCase):
                 connection.close()
         # The iPhone index carries every railway pack Android plans with (Trenitalia, Trenord, Ferrotramviaria…): every
         # link but the Marconi Express, a city people mover the index leaves out.
-        self.assertEqual([(city, airport) for city, airport, pack in ios_routes if pack != "marconiExpress"], offered)
+        self.assertEqual([(city, airport) for city, airport, packs in ios_routes if packs != {"marconi-express-gtfs"}], offered)
         self.assertEqual(8, len(offered))
 
     def test_watch_pin_is_persisted_respects_sharing_and_is_answered_in_the_background(self) -> None:

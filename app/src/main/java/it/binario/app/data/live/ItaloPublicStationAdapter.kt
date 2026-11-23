@@ -31,6 +31,7 @@ import it.binario.app.data.provider.ProviderResult
 import it.binario.app.data.provider.RatePolicy
 import it.binario.app.data.provider.StationBoardProvider
 import it.binario.app.data.provider.StationBoardRequest
+import it.binario.app.shared.SharedData
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -340,17 +341,8 @@ internal object ItaloStationSlugs {
         "venezia-sl" to "venezia-santa-lucia"
     )
 
-    private val byName = mapOf(
-        key("Roma Termini") to "roma-termini",
-        key("Roma Tiburtina") to "roma-tiburtina",
-        key("Napoli Centrale") to "napoli-centrale",
-        key("Firenze S.M.N.") to "firenze-santa-maria-novella",
-        key("Firenze Santa Maria Novella") to "firenze-santa-maria-novella",
-        key("Milano Centrale") to "milano-centrale",
-        key("Torino Porta Nuova") to "torino-porta-nuova",
-        key("Venezia Santa Lucia") to "venezia-santa-lucia",
-        key("Venezia S. Lucia") to "venezia-santa-lucia"
-    )
+    /** The pages known by station name, shared with the iPhone (contracts/shared-data/v1/italo-stations-v1.json). */
+    private val byName = SharedData.ItaloStations.SLUGS_BY_NAME.mapKeys { (name, _) -> key(name) }
 
     fun slug(stationId: String, stationName: String? = null): String? =
         byLegacyId[stationId] ?: stationName?.let { byName[key(it)] }

@@ -9,6 +9,7 @@ import java.time.ZoneId
 import java.time.ZonedDateTime
 import java.time.temporal.ChronoUnit
 import java.util.Locale
+import it.binario.app.shared.SharedData
 
 /**
  * Persistence contract for planned personal journeys. This namespace is intentionally separate
@@ -19,13 +20,18 @@ import java.util.Locale
  * domain deliberately owns neither Android storage nor synchronization.
  */
 object PlannedJourneyPersistenceSchema {
-    const val VERSION: Int = 1
+    // The limits shared with the iPhone: contracts/shared-data/v1/planned-journeys-v1.json ([SharedData.PlannedJourneys]).
+    const val VERSION: Int = SharedData.PlannedJourneys.SCHEMA_VERSION
     const val STORAGE_KEY: String = "binario-planned-journeys-v1"
     const val PERSISTENCE_KIND: String = "planned_journey"
-    const val MAX_JOURNEYS: Int = 40
-    const val MAX_ITINERARY_SEGMENTS: Int = 4
-    const val MAX_CHECKLIST_ITEMS: Int = 24
-    const val MAX_RECURRENCE_OCCURRENCES: Int = 12
+    const val MAX_JOURNEYS: Int = SharedData.PlannedJourneys.MAXIMUM_JOURNEYS
+    const val MAX_ITINERARY_SEGMENTS: Int = SharedData.PlannedJourneys.MAXIMUM_SEGMENTS
+    const val MAX_CHECKLIST_ITEMS: Int = SharedData.PlannedJourneys.MAXIMUM_CHECKLIST_ITEMS
+    const val MAX_RECURRENCE_OCCURRENCES: Int = SharedData.PlannedJourneys.MAXIMUM_OCCURRENCES
+    /** Journey, leg and checklist identifiers, trimmed. */
+    const val MAX_IDENTIFIER_LENGTH: Int = SharedData.PlannedJourneys.MAXIMUM_IDENTIFIER_LENGTH
+    const val MAX_LABEL_LENGTH: Int = SharedData.PlannedJourneys.MAXIMUM_LABEL_LENGTH
+    const val MAX_CHECKLIST_LABEL_LENGTH: Int = SharedData.PlannedJourneys.MAXIMUM_CHECKLIST_LABEL_LENGTH
 }
 
 /** A versioned local-persistence payload, intentionally not a SavedRoute payload. */
@@ -266,11 +272,13 @@ object PlannedJourneyValidator {
     }
 
     private fun validateIdentity(id: String, label: String, issues: MutableList<PlannedJourneyValidationIssue>) {
-        if (id.trim().isEmpty() || id.trim().length > 120) {
-            issues += issue(PlannedJourneyValidationCode.BLANK_ID, "id", "An id of at most 120 characters is required")
+        if (id.trim().isEmpty() || id.trim().length > PlannedJourneyPersistenceSchema.MAX_IDENTIFIER_LENGTH) {
+            issues += issue(PlannedJourneyValidationCode.BLANK_ID, "id",
+                "An id of at most ${PlannedJourneyPersistenceSchema.MAX_IDENTIFIER_LENGTH} characters is required")
         }
-        if (label.length > 96 || label.any { it.isISOControl() }) {
-            issues += issue(PlannedJourneyValidationCode.INVALID_LABEL, "label", "Label must be plain text of at most 96 characters")
+        if (label.length > PlannedJourneyPersistenceSchema.MAX_LABEL_LENGTH || label.any { it.isISOControl() }) {
+            issues += issue(PlannedJourneyValidationCode.INVALID_LABEL, "label",
+                "Label must be plain text of at most ${PlannedJourneyPersistenceSchema.MAX_LABEL_LENGTH} characters")
         }
     }
 
@@ -301,8 +309,9 @@ object PlannedJourneyValidator {
         val ids = mutableSetOf<String>()
         itinerary.segments.forEachIndexed { index, segment ->
             val field = "itinerary.segments[$index]"
-            if (segment.id.trim().isEmpty() || segment.id.trim().length > 120) {
-                issues += issue(PlannedJourneyValidationCode.INVALID_SEGMENT_ID, "$field.id", "A segment id of at most 120 characters is required")
+            if (segment.id.trim().isEmpty() || segment.id.trim().length > PlannedJourneyPersistenceSchema.MAX_IDENTIFIER_LENGTH) {
+                issues += issue(PlannedJourneyValidationCode.INVALID_SEGMENT_ID, "$field.id",
+                    "A segment id of at most ${PlannedJourneyPersistenceSchema.MAX_IDENTIFIER_LENGTH} characters is required")
             } else if (!ids.add(segment.id.trim())) {
                 issues += issue(PlannedJourneyValidationCode.DUPLICATE_SEGMENT_ID, "$field.id", "Segment ids must be unique")
             }
@@ -388,7 +397,10 @@ object PlannedJourneyValidator {
         val ids = mutableSetOf<String>()
         checklist.forEachIndexed { index, item ->
             val field = "checklist[$index]"
-            if (item.id.trim().isEmpty() || item.id.trim().length > 120 || item.label.trim().length !in 1..160 || item.label.any { it.isISOControl() } || !ids.add(item.id.trim())) {
+            if (item.id.trim().isEmpty() || item.id.trim().length > PlannedJourneyPersistenceSchema.MAX_IDENTIFIER_LENGTH ||
+                item.label.trim().length !in 1..PlannedJourneyPersistenceSchema.MAX_CHECKLIST_LABEL_LENGTH ||
+                item.label.any { it.isISOControl() } || !ids.add(item.id.trim())
+            ) {
                 issues += issue(PlannedJourneyValidationCode.INVALID_CHECKLIST, field, "Checklist ids must be unique and labels must be short plain text")
             }
             if (containsSensitiveChecklistContent(item.label)) {

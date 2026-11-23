@@ -1,6 +1,7 @@
 package it.binario.app.data.sources
 
 import it.binario.app.data.core.SourceId
+import it.binario.app.shared.SharedData
 
 /** The classes of offline timetable packs, in the order a planned search takes them. */
 enum class PlannedPackClass {
@@ -30,8 +31,11 @@ enum class PlannedPackClass {
  * copy at Innsbruck, the Swiss one at Lugano), while an Italian local line keeps its regional pack (STA at Merano).
  */
 object PlannedPackOrder {
-    /** Named here: the catalogue does not tell a national operator from a regional one. */
-    val nationalPacks: Set<SourceId> = setOf(SourceId("trenitalia-gtfs"), SourceId("italo-gtfs"))
+    /**
+     * Named in the shared table (contracts/shared-data/v1/pack-roles-v1.json, the iPhone's too): the catalogue does not
+     * tell a national operator from a regional one.
+     */
+    val nationalPacks: Set<SourceId> = SharedData.PackRoles.NATIONAL_PACKS.mapTo(LinkedHashSet(), ::SourceId)
 
     private const val ITALY = "IT"
 

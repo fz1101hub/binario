@@ -4,7 +4,7 @@
 
 ## Persistenza e portabilità
 
-`PlannedJourneyPersistenceSnapshot` è lo schema locale v1. La validazione impone un massimo di 40 viaggi, 4 segmenti, 24 elementi checklist e 12 occorrenze ricorrenti. Le date in gap DST sono rifiutate; gli overlap usano deterministicamente l’offset precedente.
+`PlannedJourneyPersistenceSnapshot` è lo schema locale v1. La validazione impone un massimo di 40 viaggi, 4 segmenti, 24 elementi checklist e 12 occorrenze ricorrenti, limiti comuni ad Android e iPhone nella tabella condivisa `contracts/shared-data/v1/planned-journeys-v1.json` ([ADR-0002](ADR-0002-BASE-COMUNE.md)). Le date in gap DST sono rifiutate; gli overlap usano deterministicamente l’offset precedente.
 
 `PlannedJourneyTransfer` è il confine JSON portabile. Accetta al massimo 256 KiB, rifiuta campi sconosciuti e versioni future, valida integralmente i viaggi prima dell’import e produce una preview distinta in:
 

@@ -18,14 +18,16 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools"))
 import foreign_pack_rules as foreign_rules  # noqa: E402  (border zone rule shared with the builders)
+import generate_shared_code as shared_code  # noqa: E402  (the shared tables, checked against their schema)
 
 APPLICATION_ID = int.from_bytes(b"BNGT", "big")
 # Packs in the index; the same value as build_ios_gtfs_schedule.INDEXED_PACK_COUNT.
 INDEXED_PACK_COUNT = 17
 # Route types of the index (build_ios_gtfs_schedule.INDEXED_ROUTE_TYPES): rail, and the packs' bus routes.
 INDEXED_ROUTE_TYPES_SQL = "route_type = 2 OR route_type BETWEEN 100 AND 199 OR route_type = 3 OR route_type BETWEEN 700 AND 799"
-# Packs whose trips must touch a catalogue station with codes; build_ios_gtfs_schedule.FOREIGN_PACKS.
-FOREIGN_PACKS = ("ch-otd-gtfs", "oebb-gtfs", "sncf-gtfs", "trenitalia-france-gtfs")
+# Packs whose trips must touch a catalogue station with codes: the foreign packs of the shared table
+# (contracts/shared-data/v1/pack-roles-v1.json), as build_ios_gtfs_schedule.FOREIGN_PACKS.
+FOREIGN_PACKS = tuple(shared_code.table_values("pack-roles-v1.json")["foreignPacks"])
 # Per-country index (build_ios_gtfs_schedule.py --foreign-full): kind and builder version of its metadata.
 FOREIGN_FULL_KIND = "foreign-full"
 FOREIGN_FULL_BUILDER_VERSION = 1

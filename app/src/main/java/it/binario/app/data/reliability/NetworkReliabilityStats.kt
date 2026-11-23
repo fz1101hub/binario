@@ -2,6 +2,7 @@ package it.binario.app.data.reliability
 
 import it.binario.app.data.RailTime
 import it.binario.app.data.Station
+import it.binario.app.shared.SharedData
 import java.io.BufferedInputStream
 import java.io.IOException
 import java.io.InputStream
@@ -225,22 +226,23 @@ data class WorstStop(val stationCode: String, val increaseMinutes: Int, val samp
 
 /** Pure rules of the network statistics (thresholds, minimum samples, matching, interpolation). */
 object NetworkReliability {
+    // The thresholds are the shared table contracts/shared-data/v1/punctuality-v1.json ([SharedData.Punctuality]).
     /** Below this many samples at the stop considered nothing is shown. */
-    const val MIN_SAMPLES = 5
-    const val HIGH_SPEED_ON_TIME_MINUTES = 5
-    const val OTHER_ON_TIME_MINUTES = 15
+    const val MIN_SAMPLES = SharedData.Punctuality.MINIMUM_SAMPLES
+    const val HIGH_SPEED_ON_TIME_MINUTES = SharedData.Punctuality.HIGH_SPEED_ON_TIME_MINUTES
+    const val OTHER_ON_TIME_MINUTES = SharedData.Punctuality.OTHER_ON_TIME_MINUTES
 
     /** «Di solito al binario …» needs at least this many days on the platform … */
-    const val MIN_PLATFORM_DAYS = 5
+    const val MIN_PLATFORM_DAYS = SharedData.Punctuality.MINIMUM_PLATFORM_DAYS
     /** … and at least this share of the days that published a platform. */
-    const val MIN_PLATFORM_SHARE = 0.6
+    const val MIN_PLATFORM_SHARE = SharedData.Punctuality.MINIMUM_PLATFORM_SHARE_PERCENT / 100.0
     /** A weekday is remarked on with at least this many samples … */
-    const val MIN_WEEKDAY_SAMPLES = 4
+    const val MIN_WEEKDAY_SAMPLES = SharedData.Punctuality.MINIMUM_WEEKDAY_SAMPLES
     /** … and an on-time share at least this many points from the overall one. */
-    const val MIN_WEEKDAY_GAP_POINTS = 15
+    const val MIN_WEEKDAY_GAP_POINTS = SharedData.Punctuality.MINIMUM_WEEKDAY_GAP_POINTS
 
     /** Categories measured at 5 minutes, as the operators and Treniamo do; every other category at 15. */
-    private val HIGH_SPEED_CATEGORIES = setOf("FR", "FA", "FB", "EC", "ES", "ESC", "EN", "ITALO")
+    private val HIGH_SPEED_CATEGORIES = SharedData.Punctuality.HIGH_SPEED_CATEGORIES
     private val STATION_CODE = Regex("S[0-9]{5}")
 
     fun onTimeLimitMinutes(category: String): Int =

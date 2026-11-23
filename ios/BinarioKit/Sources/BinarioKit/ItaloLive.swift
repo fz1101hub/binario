@@ -412,38 +412,12 @@ enum ItaloParser {
 }
 
 /// Android's `ItaloPublicStationFallbacks`: reviewed passenger-facing Italo codes, used when the
-/// public page moves its station list away; never inferred from RFI or ViaggiaTreno codes.
+/// public page moves its station list away; never inferred from RFI or ViaggiaTreno codes. The
+/// list is the shared table contracts/shared-data/v1/italo-stations-v1.json (`SharedData.ItaloStations`).
 enum ItaloStationFallbacks {
-    static let all: [ItaloPublicStation] = {
-        let aliases: [String: [String]] = [
-            "RRO": ["Milano Expo Rho", "Rho Fiera"], "NAC": ["Napoli"],
-            "RCE": ["Reggio Calabria"], "LON": ["Lamezia Terme C"],
-            "SDC": ["Scalea"], "VLH": ["Vallo d.Lucania"], "TSC": ["Trieste C.le"],
-            "LTL": ["Latisana-Lignano"], "PGR": ["Portogruaro"], "SDP": ["S.Dona-Jesolo"],
-            "DSG": ["Desenzano"], "PSY": ["Peschiera"], "VSL": ["Venezia S.Lucia"],
-            "SMN": ["Firenze S.M.N.", "Firenze S. Maria Novella"], "AAV": ["Mediopadana R.Emilia"],
-        ]
-        let stations: [(String, String)] = [
-            ("MC_", "Milano Centrale"), ("RRO", "Milano Rho Fiera"), ("RMT", "Roma Termini"),
-            ("RTB", "Roma Tiburtina"), ("SMN", "Firenze Santa Maria Novella"), ("BO2", "Bologna Centrale"),
-            ("AAV", "Reggio Emilia AV Mediopadana"), ("OUE", "Torino Porta Susa"), ("TOP", "Torino Porta Nuova"),
-            ("RG_", "Milano Rogoredo"), ("NAF", "Napoli Afragola"), ("NAC", "Napoli Centrale"),
-            ("CEA", "Caserta"), ("SAL", "Salerno"), ("RCE", "Reggio di Calabria Centrale"),
-            ("VSG", "Villa S. Giovanni"), ("RUT", "Rosarno"), ("LON", "Lamezia Terme Centrale"),
-            ("PAR", "Paola"), ("SDC", "Scalea S. Domenica Talao"), ("MRT", "Maratea"), ("SRI", "Sapri"),
-            ("VLH", "Vallo della Lucania Castelnuovo"), ("AGR", "Agropoli Castellabate"),
-            ("TSC", "Trieste Centrale"), ("MNF", "Monfalcone"), ("RHA", "Trieste Airport"),
-            ("LTL", "Latisana Lignano Bibione"), ("PGR", "Portogruaro Caorle"), ("SDP", "S. Dona di Piave Jesolo"),
-            ("VEM", "Venezia Mestre"), ("VSL", "Venezia Santa Lucia"), ("PD_", "Padova"), ("VPN", "Verona Porta Nuova"),
-            ("BSC", "Brescia"), ("DSG", "Desenzano del Garda Sirmione"), ("PSY", "Peschiera del Garda"),
-            ("VIC", "Vicenza"), ("F__", "Ferrara"), ("R__", "Rovigo"), ("BAC", "Bari Centrale"),
-            ("ML_", "Molfetta"), ("BIG", "Bisceglie"), ("TR_", "Trani"), ("BLT", "Barletta"),
-            ("FG_", "Foggia"), ("BEN", "Benevento"), ("BLZ", "Bolzano"), ("TCN", "Trento"), ("RVR", "Rovereto"),
-        ]
-        return stations.map { code, name in
-            ItaloPublicStation(code: code, name: name, slug: ItaloParser.slug(name), aliases: aliases[code] ?? [])
-        }
-    }()
+    static let all: [ItaloPublicStation] = SharedData.ItaloStations.stations.map { station in
+        ItaloPublicStation(code: station.code, name: station.name, slug: ItaloParser.slug(station.name), aliases: station.aliases)
+    }
 
     /// The only fallback station for which `predicate` holds, nil for none or several.
     static func single(_ predicate: (ItaloPublicStation) -> Bool) -> ItaloPublicStation? {
@@ -451,16 +425,10 @@ enum ItaloStationFallbacks {
         return matches.count == 1 ? matches[0] : nil
     }
 
-    /// Android's `ItaloStationSlugs.byName`: the pages Binario knows by station name.
+    /// Android's `ItaloStationSlugs.byName`: the pages Binario knows by station name (the shared table).
     static let knownSlugs: [String: String] = {
-        let names: [(String, String)] = [
-            ("Roma Termini", "roma-termini"), ("Roma Tiburtina", "roma-tiburtina"), ("Napoli Centrale", "napoli-centrale"),
-            ("Firenze S.M.N.", "firenze-santa-maria-novella"), ("Firenze Santa Maria Novella", "firenze-santa-maria-novella"),
-            ("Milano Centrale", "milano-centrale"), ("Torino Porta Nuova", "torino-porta-nuova"),
-            ("Venezia Santa Lucia", "venezia-santa-lucia"), ("Venezia S. Lucia", "venezia-santa-lucia"),
-        ]
         var slugs: [String: String] = [:]
-        for (name, slug) in names { slugs[LiveText.legacyStationKey(name)] = slug }
+        for (name, slug) in SharedData.ItaloStations.slugsByName { slugs[LiveText.legacyStationKey(name)] = slug }
         return slugs
     }()
 }

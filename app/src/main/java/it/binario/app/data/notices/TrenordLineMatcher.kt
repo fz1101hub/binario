@@ -1,5 +1,6 @@
 package it.binario.app.data.notices
 
+import it.binario.app.shared.SharedData
 import it.binario.app.data.core.ServiceAlert
 import it.binario.app.data.live.TrenordLine
 import it.binario.app.data.live.TrenordLineNoticesAdapter
@@ -11,7 +12,7 @@ import it.binario.app.data.live.TrenordLineNoticesAdapter
  */
 object TrenordLineMatcher {
     /** A station named by more lines than this is a hub, like Milano. */
-    private const val HUB_LINE_COUNT = 8
+    private val HUB_LINE_COUNT = SharedData.NoticesSources.TRENORD.hubLineCount
 
     fun matchedTokens(line: TrenordLine, stationNames: Collection<String>): Set<String> {
         val stations = stationNames.map { TrenordLineNoticesAdapter.normalizeStationName(it) }.filter { it.length >= 2 }
@@ -46,12 +47,14 @@ object TrenordLineMatcher {
     }
 
     fun isNetworkWide(alert: ServiceAlert, lines: List<TrenordLine>): Boolean =
-        lines.size > 1 && alert.affectedLines.size >= maxOf(3, (lines.size + 2) / 3)
+        lines.size > 1 && alert.affectedLines.size >= maxOf(SharedData.NoticesSources.TRENORD.networkWideMinimumLines, (lines.size + 2) / 3)
 
     private fun hubTokens(lines: List<TrenordLine>): Set<String> = lines.flatMap { it.stationTokens }
         .groupingBy { it }.eachCount()
         .filterValues { it > maxOf(2, lines.size / 3) }.keys
 
     /** Rough Trenord service area (Lombardy and its border stations), used only to avoid useless requests. */
-    fun inTrenordArea(latitude: Double, longitude: Double): Boolean = latitude in 44.85..46.65 && longitude in 8.35..10.90
+    fun inTrenordArea(latitude: Double, longitude: Double): Boolean = with(SharedData.NoticesSources.TRENORD.area) {
+        latitude in minimumLatitude..maximumLatitude && longitude in minimumLongitude..maximumLongitude
+    }
 }

@@ -1,5 +1,6 @@
 package it.binario.app.data.live
 
+import it.binario.app.shared.SharedData
 import it.binario.app.data.core.AlertId
 import it.binario.app.data.core.AlertSeverity
 import it.binario.app.data.core.Confidence
@@ -39,12 +40,12 @@ class TrenitaliaInfomobilityNewsAdapter internal constructor(
     private val clock: Clock,
     retryDelayMillis: Long,
     // The pause of www.viaggiatreno.it after a refusal: the one of the realtime API when the app shares it.
-    private val refusals: PublicSourceRefusalGate = PublicSourceRefusalGate(clock, "ViaggiaTreno")
+    private val refusals: PublicSourceRefusalGate = PublicSourceRefusalGate(clock, PAUSE_LABEL)
 ) : AlertProvider {
     /** With [requests] a refusal of the ViaggiaTreno host pauses this client together with the realtime adapters (audit fix-android-7). */
     constructor(clock: Clock = Clock.systemUTC(), requests: ViaggiaTrenoRequests? = null) : this(
-        HttpPublicSourceFetcher(PublicSourceRequestPolicy(maxBytes = MAX_BYTES, allowViaggiaTrenoCleartextRedirect = true)), clock, 750,
-        requests?.refusals ?: PublicSourceRefusalGate(clock, "ViaggiaTreno")
+        HttpPublicSourceFetcher(FEED.requestPolicy()), clock, FEED.retryDelay,
+        requests?.refusals ?: PublicSourceRefusalGate(clock, PAUSE_LABEL)
     )
 
     override val descriptor = ProviderDescriptor(
@@ -53,11 +54,11 @@ class TrenitaliaInfomobilityNewsAdapter internal constructor(
         capabilities = setOf(ProviderCapability.SERVICE_ALERTS),
         coverage = CoverageDescriptor(countryCodes = setOf("IT"), description = "Notizie di circolazione Trenitalia con numeri treno interessati"),
         accessMode = AccessMode.PUBLIC_BEST_EFFORT,
-        ratePolicy = RatePolicy(Duration.ofMinutes(5), defaultTimeToLive = TTL),
+        ratePolicy = RatePolicy(FEED.minimumInterval, defaultTimeToLive = TTL),
         schemaVersion = 1
     )
 
-    private val cache = ResilientSourceCache<List<ParsedNews>>(TTL, Duration.ofHours(1), clock, maxEntries = 1, retryDelayMillis = retryDelayMillis)
+    private val cache = ResilientSourceCache<List<ParsedNews>>(TTL, FEED.maximumStale, clock, maxEntries = 1, retryDelayMillis = retryDelayMillis)
 
     override suspend fun getAlerts(request: AlertRequest): ProviderResult<List<ServiceAlert>> = withContext(Dispatchers.Default) {
         cache.get(URL) { parse(refusals.call { fetcher.get(URL) }) }
@@ -78,13 +79,13 @@ class TrenitaliaInfomobilityNewsAdapter internal constructor(
         val description = CleartextNoticeLinks.neutralize(NoticeText.fromDoubleEscapedHtml(item.text("description"), MAX_DESCRIPTION))
         val published = item.millis("pubDate")?.let(Instant::ofEpochMilli)
         val trainTags = item.optJSONArray("trainTags")?.let { tags ->
-            (0 until minOf(tags.length(), 200)).mapNotNull { tags.opt(it)?.toString()?.trim()?.trimStart('0')?.takeIf { tag -> tag.matches(TRAIN_TAG) } }
+            (0 until minOf(tags.length(), RULES.maximumTrainTags)).mapNotNull { tags.opt(it)?.toString()?.trim()?.trimStart('0')?.takeIf { tag -> tag.matches(TRAIN_TAG) } }
         }.orEmpty().toSet()
         return ParsedNews(
             title = title,
             description = description,
             publishedAt = published,
-            link = CleartextNoticeLinks.link(item.text("link")?.take(500)),
+            link = CleartextNoticeLinks.link(item.text("link")?.take(RULES.linkLength)),
             trainNumbers = trainTags
         )
     }
@@ -136,13 +137,17 @@ class TrenitaliaInfomobilityNewsAdapter internal constructor(
 
     companion object {
         val SOURCE_ID = SourceId("trenitalia-infomobility-news")
-        internal const val URL = "https://www.viaggiatreno.it/infomobilitamobile/resteasy/news/infomobility"
-        private val TTL: Duration = Duration.ofMinutes(10)
-        private const val MAX_BYTES = 2 * 1024 * 1024
-        private const val MAX_ITEMS = 300
-        private const val MAX_TITLE = 300
-        private const val MAX_DESCRIPTION = 6_000
-        private val TRAIN_TAG = Regex("[1-9][0-9]{0,5}")
+        // The feed and its reader are the shared table (contracts/shared-data/v1/notices-sources-v1.json).
+        private val FEED = noticeFeed("trenitalia-infomobility-news")
+        private val RULES = SharedData.NoticesSources.TRENITALIA
+        /** www.viaggiatreno.it is paused as one host: the label of the realtime API's pause. */
+        private val PAUSE_LABEL = requireNotNull(FEED.pauseLabel)
+        internal val URL = FEED.url
+        private val TTL: Duration = FEED.timeToLive
+        private val MAX_ITEMS = RULES.maximumItems
+        private val MAX_TITLE = RULES.titleLength
+        private val MAX_DESCRIPTION = RULES.descriptionLength
+        private val TRAIN_TAG = Regex(RULES.trainTagPattern)
         private const val UNAVAILABLE = "L'infomobilità Trenitalia non è raggiungibile."
         private const val UNREADABLE = "L'infomobilità Trenitalia non è leggibile."
     }

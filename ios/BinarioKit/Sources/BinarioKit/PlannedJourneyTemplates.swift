@@ -50,11 +50,12 @@ public struct PlannedJourneyTemplate: Equatable, Identifiable, Sendable {
 
 /// Android's template rules and document (`PlannedJourneyTemplates`): at most twelve, newest
 /// first, a template with the same name replaced; a stored value that cannot be read is no template.
+/// The limits are the shared table contracts/shared-data/v1/planned-journeys-v1.json.
 public enum PlannedJourneyTemplates {
-    public static let maximumTemplates = 12
-    public static let maximumNameLength = 48
-    static let kind = "binario_planned_journey_templates"
-    static let maximumBytes = 65_536
+    public static let maximumTemplates = SharedData.PlannedJourneys.maximumTemplates
+    public static let maximumNameLength = SharedData.PlannedJourneys.maximumTemplateNameLength
+    static let kind = SharedData.PlannedJourneys.templatesKind
+    static let maximumBytes = SharedData.PlannedJourneys.maximumTemplatesBytes
 
     /// Newest first: a template with the same name (ignoring case) or identifier is replaced, and
     /// only the newest twelve are kept.

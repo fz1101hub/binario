@@ -1,5 +1,6 @@
 package it.binario.app
 
+import it.binario.app.shared.SharedData
 import androidx.compose.material3.Button
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
@@ -88,7 +89,7 @@ fun RailNoticesArea(viewModel: RailNoticesViewModel = viewModel()) {
     }
 }
 
-private const val COLLAPSED_COUNT = 6
+private val COLLAPSED_COUNT = SharedData.NoticesSources.DISPLAY.networkCollapsed
 
 /** "Scioperi in programma": date (or range), title and the announcement's page, from the MIT calendar. */
 @Composable

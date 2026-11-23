@@ -1,5 +1,6 @@
 package it.binario.app
 
+import it.binario.app.shared.SharedData
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -198,6 +199,7 @@ internal fun RailNoticeItem(notice: RailNotice, showLines: Boolean = true) {
     }
 }
 
-private const val COLLAPSED_LINES = 3
-private const val COLLAPSED_CHARACTERS = 180
-private const val MAX_LINE_CODES = 6
+// How much a notice shows before «Mostra tutto»: the shared table (contracts/shared-data/v1/notices-sources-v1.json).
+private val COLLAPSED_LINES = SharedData.NoticesSources.DISPLAY.bodyCollapsedLines
+private val COLLAPSED_CHARACTERS = SharedData.NoticesSources.DISPLAY.bodyCollapsedCharacters
+private val MAX_LINE_CODES = SharedData.NoticesSources.DISPLAY.maximumLineCodes

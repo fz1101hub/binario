@@ -1,5 +1,6 @@
 package it.binario.app.data.reliability
 
+import it.binario.app.shared.SharedData
 import kotlin.math.floor
 import kotlin.math.roundToInt
 
@@ -139,11 +140,11 @@ data class StationPunctuality(
 /** Aggregates of the network statistics: one stop's delay distribution, a route, a station. */
 object NetworkReliabilityAggregates {
     /** Below this many samples in all, a route or a station shows nothing. */
-    const val MIN_AGGREGATE_SAMPLES = 20
+    const val MIN_AGGREGATE_SAMPLES = SharedData.Punctuality.MINIMUM_AGGREGATE_SAMPLES
     /** An hour band takes part in "più / meno puntuali" with at least this many samples. */
-    const val MIN_BAND_SAMPLES = 20
+    const val MIN_BAND_SAMPLES = SharedData.Punctuality.MINIMUM_BAND_SAMPLES
     /** The best and the worst band are named only when their on-time shares differ by at least this many points. */
-    const val MIN_BAND_GAP_POINTS = 5
+    const val MIN_BAND_GAP_POINTS = SharedData.Punctuality.MINIMUM_BAND_GAP_POINTS
     /** The trains named as often late at a station. */
     const val MAX_LATE_TRAINS = 3
 

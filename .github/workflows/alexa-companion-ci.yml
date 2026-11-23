@@ -9,6 +9,9 @@ on:
       - "app/src/main/assets/stations/curated_it_rail_stations.json"
       # The number-key and statistics vectors shared with the Android and iPhone tests.
       - "contracts/shared-rules/**"
+      # The shared tables (the generated shared/generated/sharedData.ts) and their generator.
+      - "contracts/shared-data/**"
+      - "tools/generate_shared_code.py"
       - ".github/workflows/alexa-companion-ci.yml"
   push:
     branches:
@@ -21,6 +24,9 @@ on:
       - "app/src/main/assets/stations/curated_it_rail_stations.json"
       # The number-key and statistics vectors shared with the Android and iPhone tests.
       - "contracts/shared-rules/**"
+      # The shared tables (the generated shared/generated/sharedData.ts) and their generator.
+      - "contracts/shared-data/**"
+      - "tools/generate_shared_code.py"
       - ".github/workflows/alexa-companion-ci.yml"
   workflow_dispatch:
 

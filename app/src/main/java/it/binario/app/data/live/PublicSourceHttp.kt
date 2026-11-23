@@ -1,6 +1,7 @@
 package it.binario.app.data.live
 
 import it.binario.app.BuildConfig
+import it.binario.app.shared.SharedData
 import java.io.ByteArrayOutputStream
 import java.io.IOException
 import java.io.InputStream
@@ -18,9 +19,13 @@ import kotlinx.coroutines.withTimeoutOrNull
  */
 internal val BINARIO_PUBLIC_SOURCE_USER_AGENT: String = binarioUserAgent(BuildConfig.VERSION_NAME)
 
-/** «Binario/0.20.4 (Android; rail timetable app)»; only the characters of a version reach the header. */
-internal fun binarioUserAgent(versionName: String): String =
-    "Binario/${versionName.filter { it.isLetterOrDigit() && it.code < 128 || it in ".-+_" }.ifEmpty { "0" }} (Android; rail timetable app)"
+/**
+ * «Binario/0.20.4 (Android; rail timetable app)», the shared template (contracts/shared-data/v1/source-manners-v1.json,
+ * the iPhone's too); only the characters of a version reach the header.
+ */
+internal fun binarioUserAgent(versionName: String): String = SharedData.SourceManners.USER_AGENT
+    .replace("<version>", versionName.filter { it.isLetterOrDigit() && it.code < 128 || it in ".-+_" }.ifEmpty { "0" })
+    .replace("<platform>", "Android")
 
 /**
  * A public source answered with a non-success HTTP status. Never retried by [ResilientSourceCache]; a [retryAfter]
@@ -40,7 +45,7 @@ internal class PublicSourcePausedException(message: String) : IOException(messag
 internal class PublicSourceRefusalGate(
     private val clock: java.time.Clock,
     private val label: String,
-    private val refusalPause: java.time.Duration = java.time.Duration.ofMinutes(15),
+    private val refusalPause: java.time.Duration = java.time.Duration.ofSeconds(SharedData.SourceManners.REFUSAL_PAUSE_SECONDS.toLong()),
     /** Where the pause outlives the process ([PersistedRefusals]); none in JVM tests unless given. */
     private val store: () -> RefusalPauseStore? = { PersistedRefusals.store }
 ) {
@@ -54,7 +59,7 @@ internal class PublicSourceRefusalGate(
             block()
         } catch (error: PublicSourceHttpException) {
             val pause = when {
-                error.status == 403 || error.status == 429 -> error.retryAfter ?: refusalPause
+                error.status in SharedData.SourceManners.REFUSAL_STATUSES -> error.retryAfter ?: refusalPause
                 error.status == 503 && error.retryAfter != null -> error.retryAfter
                 else -> null
             }
@@ -94,6 +99,8 @@ internal data class PublicSourceRequestPolicy(
     val readTimeoutMillis: Int = 12_000,
     val totalTimeoutMillis: Long = 15_000,
     val maxBytes: Int = 1_048_576,
+    /** Requests of one read: the first and the redirects it may follow. */
+    val maxRequests: Int = 3,
     val allowViaggiaTrenoCleartextRedirect: Boolean = false
 ) {
     init {
@@ -115,7 +122,7 @@ internal class HttpPublicSourceFetcher(
         val requested = try { URI(url).toURL() } catch (_: Exception) { throw IOException("URL della fonte non valido") }
         if (requested.protocol != "https" || requested.userInfo != null) throw IOException("La fonte deve usare HTTPS")
         var current = requested
-        repeat(MAX_HOPS) {
+        repeat(policy.maxRequests) {
             val connection = openConnection(current)
             connection.requestMethod = "GET"
             connection.connectTimeout = policy.connectTimeoutMillis
@@ -167,7 +174,6 @@ internal class HttpPublicSourceFetcher(
     private data class Response(val status: Int, val location: String?, val body: String?, val retryAfter: String? = null)
 
     private companion object {
-        const val MAX_HOPS = 3
         const val VIAGGIATRENO_HOST = "www.viaggiatreno.it"
         val REDIRECTS = setOf(301, 302, 303, 307, 308)
     }

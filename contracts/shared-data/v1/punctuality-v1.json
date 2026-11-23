@@ -1,0 +1,15 @@
+{
+  "schema": "binario-shared-data-v1",
+  "description": "Thresholds of the network punctuality statistics (docs/data-sources/PUNCTUALITY_STATS.md): the categories measured at 5 minutes, as the operators and Treniamo do, every other category at 15; the minimum samples and the remark thresholds.",
+  "highSpeedCategories": ["FR", "FA", "FB", "EC", "ES", "ESC", "EN", "ITALO"],
+  "highSpeedOnTimeMinutes": 5,
+  "otherOnTimeMinutes": 15,
+  "minimumSamples": 5,
+  "minimumAggregateSamples": 20,
+  "minimumPlatformDays": 5,
+  "minimumPlatformSharePercent": 60,
+  "minimumWeekdaySamples": 4,
+  "minimumWeekdayGapPoints": 15,
+  "minimumBandSamples": 20,
+  "minimumBandGapPoints": 5
+}

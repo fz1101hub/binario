@@ -1111,19 +1111,22 @@ class StationCodePortTest(unittest.TestCase):
         self.assertIsNone(name("830008415", 41.79, 12.33, "FIERA DI ROMA"))
 
     def test_the_shared_table_and_the_bounds_are_the_kotlin_ones(self) -> None:
-        # contracts/shared-data/v1 holds the table every platform reads; until the generator switches Android to it,
-        # ItaloGtfsStationCodes keeps the same entries, comments included.
+        # contracts/shared-data/v1 holds the table every platform reads: this module reads the JSON, Android the Kotlin
+        # tools/generate_shared_code.py writes from it, entries and comments in the table's order.
         text = (KOTLIN_GTFS / "GtfsStationCodeIndex.kt").read_text(encoding="utf-8")
         table = text.split("internal object ItaloGtfsStationCodes", 1)[1]
-        kotlin = re.findall(r'"([A-Z0-9_]{3})" to "([A-Z0-9]+)",?[ \t]*// ([^\n]+)', table)
-        self.assertEqual(len(re.findall(r'"([A-Z0-9_]{3})" to "', table)), len(kotlin), "every Kotlin entry has its comment")
+        self.assertIn("SharedData.ItaloGtfsStationCodes.CODES.associate { it.code to it.catalogueId }", table)
+        self.assertIn("SharedData.ItaloGtfsStationCodes.UNMAPPED.mapTo(LinkedHashSet()) { it.code }", table)
+        self.assertNotRegex(table, r'"[A-Z0-9_]{3}" to "')
+        generated = (ROOT / "app/src/main/java/it/binario/app/shared/SharedData.kt").read_text(encoding="utf-8")
+        generated = generated.split("    object ItaloGtfsStationCodes {", 1)[1].split("\n    }\n", 1)[0]
+        kotlin = re.findall(r'// ([^\n]+)\n\s*StationCode\(code = "([A-Z0-9_]{3})", catalogueId = "([A-Z0-9]+)"\)', generated)
         shared = json.loads(self.codes.ITALO_STATION_CODES_PATH.read_text(encoding="utf-8"))
         self.assertEqual("binario-shared-data-v1", shared["schema"])
-        self.assertEqual([(code, station, comment.strip()) for code, station, comment in kotlin],
+        self.assertEqual([(code, station, comment) for comment, code, station in kotlin],
                          [(entry["code"], entry["catalogueId"], entry["comment"]) for entry in shared["codes"]])
-        self.assertEqual({code: station for code, station, _ in kotlin}, dict(self.codes.ITALO_STATION_CODES))
-        self.assertEqual(set(re.findall(r'"([A-Z0-9_]{3})"', re.search(r"val unmapped: Set<String> = setOf\(([^)]*)\)", table).group(1))),
-                         set(self.codes.ITALO_UNMAPPED))
+        self.assertEqual({code: station for _, code, station in kotlin}, dict(self.codes.ITALO_STATION_CODES))
+        self.assertEqual(set(re.findall(r'UnmappedCode\(code = "([A-Z0-9_]{3})"\)', generated)), set(self.codes.ITALO_UNMAPPED))
         self.assertEqual(set(self.codes.ITALO_UNMAPPED), {entry["code"] for entry in shared["unmapped"]})
         self.assertIn(f"const val MAX_LOCATION_ID_KM = {self.codes.MAX_LOCATION_ID_KM}", text)
         self.assertIn(f"const val MAX_DERIVED_CODE_KM = {self.codes.MAX_DERIVED_CODE_KM}", text)
@@ -1137,8 +1140,12 @@ class StationCodePortTest(unittest.TestCase):
         schemes = {source_id: match.group(1) for source_id, body in packs.items()
                    if (match := re.search(r"stopCodeScheme = GtfsStopCodeScheme\.([A-Z_]+)", body))}
         self.assertEqual(schemes, dict(self.codes.PACK_SCHEMES))
-        self.assertEqual({source_id for source_id, body in packs.items() if "busRoutesAreScheduledCoaches = true" in body},
-                         set(builder.SCHEDULED_COACH_PACKS))
+        # The scheduled coaches are the shared pack roles on both sides (contracts/shared-data/v1/pack-roles-v1.json).
+        self.assertFalse(any("busRoutesAreScheduledCoaches = true" in body for body in packs.values()))
+        self.assertIn("busRoutesAreScheduledCoaches = pack.sourceId.value in SharedData.PackRoles.SCHEDULED_COACH_PACKS",
+                      (KOTLIN_GTFS / "EmbeddedGtfsPacks.kt").read_text(encoding="utf-8"))
+        roles = json.loads((ROOT / "contracts/shared-data/v1/pack-roles-v1.json").read_text(encoding="utf-8"))
+        self.assertEqual(set(roles["scheduledCoachPacks"]), set(builder.SCHEDULED_COACH_PACKS))
         self.assertEqual({source_id for source_id, body in packs.items() if "itineraryCopies = true" in body},
                          set(builder.ITINERARY_COPY_PACKS))
         suffixes = {source_id: tuple(re.findall(r'"([^"]+)"', match.group(1))) for source_id, body in packs.items()

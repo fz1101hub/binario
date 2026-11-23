@@ -1,0 +1,18 @@
+{
+  "schema": "binario-shared-data-v1",
+  "description": "Italian national holidays, on which the railways run their Sunday service: fixed dates (some only from a year on) and days counted from Easter Sunday (Gregorian computus, in code).",
+  "holidays": [
+    {"month": 1, "day": 1},
+    {"month": 1, "day": 6},
+    {"month": 4, "day": 25},
+    {"month": 5, "day": 1},
+    {"month": 6, "day": 2},
+    {"month": 8, "day": 15},
+    {"month": 10, "day": 4, "fromYear": 2026, "note": "San Francesco d'Assisi, national holiday again from 2026 (legge 151/2025)."},
+    {"month": 11, "day": 1},
+    {"month": 12, "day": 8},
+    {"month": 12, "day": 25},
+    {"month": 12, "day": 26}
+  ],
+  "easterOffsetsDays": [0, 1]
+}

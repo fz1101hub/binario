@@ -1,0 +1,11 @@
+{
+  "schema": "binario-shared-data-v1",
+  "description": "How Binario asks every public source, on Android and on the iPhone: the User-Agent (the app by name, version and platform, never a browser's), the statuses that are a refusal and the pause after one without Retry-After, and the circuit breaker (failures in a row, first and longest pause, longest Retry-After honoured).",
+  "userAgent": "Binario/<version> (<platform>; rail timetable app)",
+  "refusalStatuses": [403, 429],
+  "refusalPauseSeconds": 900,
+  "maximumRetryAfterSeconds": 3600,
+  "failureThreshold": 3,
+  "baseOpenSeconds": 60,
+  "maximumOpenSeconds": 900
+}

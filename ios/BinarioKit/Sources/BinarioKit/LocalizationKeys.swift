@@ -128,7 +128,18 @@ public enum BinarioLocalizationKeys {
         "watch.status.unsupported", "watch.status.not_paired", "watch.status.failed",
         "accessibility.station_suggestions", "accessibility.selected_station",
         "accessibility.swap_route", "accessibility.saved_route", "accessibility.open_saved_route",
-        "accessibility.delete_route", "accessibility.open_train_detail"
+        "accessibility.delete_route", "accessibility.open_train_detail",
+        "settings.live.trenitalia_news", "settings.live.trenord", "settings.live.notices_always",
+        "notices.area.title", "notices.area.description", "notices.area.show", "notices.area.refresh",
+        "notices.area.show_all", "notices.area.empty", "notices.network_heading", "notices.loading", "notices.stale",
+        "notices.unavailable", "notices.unavailable_publisher", "notices.published_by", "notices.published_by_at",
+        "notices.open_source", "notices.expand", "notices.collapse", "notices.trenord_heading",
+        "notices.trenord_all_lines", "notices.trenord_line", "notices.trenord_line_code", "notices.trenord_lines",
+        "notices.station_trenord_title", "notices.strike_badge", "notices.strike_calendar", "notices.fs_news_bulletin",
+        "notices.guaranteed_trains", "notices.strikes.title", "notices.strikes.source", "notices.strikes.date_range",
+        "notices.strikes.published_on", "notices.works.title", "notices.works.title_route", "notices.works.none",
+        "notices.works.names", "notices.works.route_names", "notices.works.line", "notices.works.date",
+        "notices.works.dates", "notices.works.note", "notices.works.show_more"
     ]
 
     /// The keys whose texts count something: Localizable.stringsdict holds their CLDR plural forms
@@ -139,6 +150,6 @@ public enum BinarioLocalizationKeys {
         "result.detail.reliability_title", "result.detail.arrival_on_time", "result.detail.band_share",
         "result.detail.usual_platform", "result.detail.weekday", "result.alternative.on_time",
         "saved.trains.limit_error", "saved.trains.reliability.description", "departures.later.loaded",
-        "result.live.delay",
+        "result.live.delay", "notices.works.show_more",
     ]
 }

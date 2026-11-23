@@ -3,6 +3,7 @@ import BinarioKit
 
 struct SavedRoutesView: View {
     @EnvironmentObject private var model: AppModel
+    @EnvironmentObject private var notices: RailNoticesModel
     /// «Elimina tutte le tratte» asks first: one tap would delete up to 32 routes and the Watch pin.
     @State private var confirmingDeleteAll = false
 
@@ -90,6 +91,9 @@ struct SavedRoutesView: View {
                     }
                 }
 
+                // «Lavori e interruzioni sulle tue tratte», as Android's «Per te».
+                RouteWorksSection(routes: model.savedRoutes, scope: .savedRoutes)
+
                 Section {
                     Button("saved.delete_all", role: .destructive) {
                         confirmingDeleteAll = true
@@ -103,6 +107,7 @@ struct SavedRoutesView: View {
             }
         }
         .navigationTitle("saved.title")
+        .loadsRouteWorks(model.savedRoutes, model: model, notices: notices)
         // The Home-screen quick action «Agenda» opens the page as the row does.
         .navigationDestination(isPresented: $model.showingAgenda) {
             AgendaView()

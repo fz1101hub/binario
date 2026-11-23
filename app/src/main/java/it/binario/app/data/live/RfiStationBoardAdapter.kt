@@ -34,6 +34,7 @@ import it.binario.app.data.provider.ProviderResult
 import it.binario.app.data.provider.RatePolicy
 import it.binario.app.data.provider.StationBoardProvider
 import it.binario.app.data.provider.StationBoardRequest
+import it.binario.app.shared.SharedData
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -107,33 +108,8 @@ internal object RfiStationIds {
         "cagliari" to 787
     )
 
-    private val byName = mapOf(
-        key("Roma Termini") to 2416,
-        key("Roma Tiburtina") to 2385,
-        key("Roma Ostiense") to 2379,
-        key("Roma Trastevere") to 2387,
-        key("Roma San Pietro") to 2383,
-        key("Roma S. Pietro") to 2383,
-        key("Roma Tuscolana") to 2388,
-        key("Fiumicino Aeroporto") to 1327,
-        key("Ciampino") to 1106,
-        key("Civitavecchia") to 1123,
-        key("Frascati") to 1370,
-        key("Velletri") to 3006,
-        key("Orte") to 1959,
-        key("Latina") to 1539,
-        key("Frosinone") to 1377,
-        key("Cassino") to 955,
-        key("Napoli Centrale") to 1888,
-        key("Bologna Centrale") to 683,
-        key("Milano Centrale") to 1728,
-        key("Genova Piazza Principe") to 257,
-        key("Genova P. Principe") to 257,
-        key("Torino Porta Nuova") to 2876,
-        key("Bari Centrale") to 595,
-        key("Palermo Centrale") to 2018,
-        key("Cagliari") to 787
-    )
+    /** The names known on every platform (contracts/shared-data/v1/rfi-place-ids-v1.json); [byLegacyId] is Android's own. */
+    private val byName = SharedData.RfiPlaceIds.PLACE_IDS_BY_NAME.mapKeys { (name, _) -> key(name) }
 
     fun placeId(stationId: String, stationName: String? = null): Int? =
         byLegacyId[stationId] ?: stationName?.let { byName[key(it)] }
@@ -359,7 +335,8 @@ class RfiStationBoardAdapter(
     private fun isBareLateLabel(value: String): Boolean =
         value.uppercase(Locale.ROOT).normalizeSpace().removeSurrounding("\"").removeSurrounding("'").trim() == "RITARDO"
 
-    private fun operatorFrom(carrier: String, category: String, number: String): RailOperator {
+    /** The operator of a row; its Italo/Trenord/Trenitalia split is a shared rule (contracts/shared-rules/v1/live-text-v1.json). */
+    internal fun operatorFrom(carrier: String, category: String, number: String): RailOperator {
         val all = "$carrier $category $number".uppercase(Locale.ROOT)
         return when {
             "ITALO" in all || "NTV" in all -> RailOperator.ITALO

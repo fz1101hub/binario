@@ -1,5 +1,6 @@
 package it.binario.app.plannedjourney
 
+import it.binario.app.shared.SharedData
 import org.json.JSONArray
 import org.json.JSONObject
 import java.nio.charset.StandardCharsets
@@ -9,12 +10,13 @@ import java.time.LocalDate
 import java.time.LocalTime
 import java.time.ZoneId
 
+/** The transfer document, as the iPhone reads and writes it (contracts/shared-data/v1/planned-journeys-v1.json). */
 object PlannedJourneyTransferContract {
-    const val KIND = "binario_planned_journeys"
-    const val VERSION = 1
-    const val MAX_BYTES = 262_144
+    const val KIND = SharedData.PlannedJourneys.TRANSFER_KIND
+    const val VERSION = SharedData.PlannedJourneys.SCHEMA_VERSION
+    const val MAX_BYTES = SharedData.PlannedJourneys.MAXIMUM_TRANSFER_BYTES
     /** The schema nests seven levels deep (root → journeys → itinerary → segments → stations); twice that is generous. */
-    const val MAX_NESTING_DEPTH = 16
+    const val MAX_NESTING_DEPTH = SharedData.PlannedJourneys.MAXIMUM_NESTING_DEPTH
 }
 
 enum class PlannedJourneyTransferErrorCode {

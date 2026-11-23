@@ -41,19 +41,10 @@ fun interface RfiRssFetcher {
  * (a blocking read inside withContext(IO) could not be interrupted) and the shared User-Agent (audit android-data-7).
  */
 internal class HttpRfiRssFetcher(
-    maxBytes: Int = 2 * 1024 * 1024,
+    maxBytes: Int = RFI_FEED.maximumBytes,
     openConnection: (URL) -> HttpURLConnection = { it.openConnection() as HttpURLConnection }
 ) : RfiRssFetcher {
-    private val http = HttpPublicSourceFetcher(
-        PublicSourceRequestPolicy(
-            accept = "application/rss+xml, application/xml, text/xml",
-            connectTimeoutMillis = 12_000,
-            readTimeoutMillis = 20_000,
-            totalTimeoutMillis = 25_000,
-            maxBytes = maxBytes
-        ),
-        openConnection
-    )
+    private val http = HttpPublicSourceFetcher(RFI_FEED.requestPolicy().copy(maxBytes = maxBytes), openConnection)
 
     override suspend fun fetch(url: String): String = http.get(url)
 }
@@ -62,7 +53,7 @@ internal class HttpRfiRssFetcher(
 class RfiInfomobilityRssAdapter(
     private val fetcher: RfiRssFetcher = HttpRfiRssFetcher(),
     private val clock: Clock = Clock.systemUTC(),
-    private val cacheTtl: Duration = Duration.ofMinutes(10)
+    private val cacheTtl: Duration = RFI_FEED.timeToLive
 ) : AlertProvider {
     override val descriptor = ProviderDescriptor(
         id = SOURCE_ID,
@@ -70,7 +61,7 @@ class RfiInfomobilityRssAdapter(
         capabilities = setOf(ProviderCapability.SERVICE_ALERTS),
         coverage = CoverageDescriptor(countryCodes = setOf("IT"), description = "Avvisi RFI nazionali e regionali"),
         accessMode = AccessMode.OPEN_DIRECT,
-        ratePolicy = RatePolicy(Duration.ofMinutes(5), defaultTimeToLive = cacheTtl, supportsConditionalRequests = true),
+        ratePolicy = RatePolicy(RFI_FEED.minimumInterval, defaultTimeToLive = cacheTtl, supportsConditionalRequests = true),
         schemaVersion = 1
     )
 
@@ -112,9 +103,9 @@ class RfiInfomobilityRssAdapter(
         }
     }
 
-    /** The last feed, if at most an hour past its TTL, marked stale; otherwise the typed failure. */
+    /** The last feed, if at most [maximumStale] (an hour) past its TTL, marked stale; otherwise the typed failure. */
     private fun staleOr(error: ProviderError): ProviderResult<List<ServiceAlert>> {
-        val last = cached?.takeIf { !clock.instant().isAfter(it.expiresAt.plus(Duration.ofHours(1))) }
+        val last = cached?.takeIf { !clock.instant().isAfter(it.expiresAt.plus(RFI_FEED.maximumStale)) }
             ?: return ProviderResult.Failure(error)
         return ProviderResult.Partial(last.alerts, setOf(ProviderWarning.STALE_SOURCE),
             ProviderResponseMeta(SOURCE_ID, last.observedAt, observedAt = last.observedAt, fromCache = true))
@@ -172,6 +163,9 @@ class RfiInfomobilityRssAdapter(
 
     companion object {
         val SOURCE_ID = SourceId("rfi-infomobility-rss")
-        const val NATIONAL_UPDATES_URL = "https://www.rfi.it/content/rfi/it/news-e-media/infomobilita.rss.updates.xml"
+        val NATIONAL_UPDATES_URL = RFI_FEED.url
     }
 }
+
+/** RFI's national infomobility feed in the shared table (contracts/shared-data/v1/notices-sources-v1.json). */
+private val RFI_FEED = noticeFeed("rfi-infomobility-rss")

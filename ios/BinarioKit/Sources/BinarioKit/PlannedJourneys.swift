@@ -3,26 +3,27 @@ import Foundation
 /// The limits of the Agenda and the JSON contract it shares with Android
 /// (`PlannedJourneyPersistenceSchema`, `PlannedJourneyTransferContract`): a document written by
 /// the iPhone is a valid Android transfer document, so a later file transfer needs no conversion.
+/// The limits shared with Android: contracts/shared-data/v1/planned-journeys-v1.json (`SharedData.PlannedJourneys`).
 public enum PlannedJourneySchema {
-    public static let version = 1
-    public static let transferKind = "binario_planned_journeys"
+    public static let version = SharedData.PlannedJourneys.schemaVersion
+    public static let transferKind = SharedData.PlannedJourneys.transferKind
     /// As Android's `MAX_JOURNEYS`: a full Agenda refuses a new journey rather than dropping one.
-    public static let maximumJourneys = 40
-    public static let maximumChecklistItems = 24
+    public static let maximumJourneys = SharedData.PlannedJourneys.maximumJourneys
+    public static let maximumChecklistItems = SharedData.PlannedJourneys.maximumChecklistItems
     /// Lengths count UTF-16 code units, as Kotlin's `String.length`.
-    public static let maximumLabelLength = 96
-    public static let maximumChecklistLabelLength = 160
-    public static let maximumIdentifierLength = 120
+    public static let maximumLabelLength = SharedData.PlannedJourneys.maximumLabelLength
+    public static let maximumChecklistLabelLength = SharedData.PlannedJourneys.maximumChecklistLabelLength
+    public static let maximumIdentifierLength = SharedData.PlannedJourneys.maximumIdentifierLength
     /// As Android's `PlannedJourneyTransferContract.MAX_BYTES`.
-    public static let maximumEncodedBytes = 262_144
+    public static let maximumEncodedBytes = SharedData.PlannedJourneys.maximumTransferBytes
     /// As Android's `MAX_NESTING_DEPTH`: the document nests seven levels; deeper is refused unread.
-    public static let maximumNestingDepth = 16
+    public static let maximumNestingDepth = SharedData.PlannedJourneys.maximumNestingDepth
     /// Android's `PlannedJourneyReminderMinutes`.
-    public static let reminderMinutes: Set<Int> = [5, 10, 15, 20, 30, 45, 60]
+    public static let reminderMinutes: Set<Int> = Set(SharedData.PlannedJourneys.reminderMinutes)
     /// As Android's `MAX_ITINERARY_SEGMENTS`: a journey has one to four legs.
-    public static let maximumSegments = 4
+    public static let maximumSegments = SharedData.PlannedJourneys.maximumSegments
     /// As Android's `MAX_RECURRENCE_OCCURRENCES`: a repeating journey departs at most twelve times.
-    public static let maximumOccurrences = 12
+    public static let maximumOccurrences = SharedData.PlannedJourneys.maximumOccurrences
 }
 
 /// Why a planned journey, or a list of them, was refused.

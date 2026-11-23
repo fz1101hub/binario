@@ -18,6 +18,22 @@
 			<string>%1$lld और ट्रेनें</string>
 		</dict>
 	</dict>
+	<key>notices.works.show_more</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%1$lld और सूचना दिखाएँ</string>
+			<key>other</key>
+			<string>%1$lld और सूचनाएँ दिखाएँ</string>
+		</dict>
+	</dict>
 	<key>result.alternative.on_time</key>
 	<dict>
 		<key>NSStringLocalizedFormatKey</key>

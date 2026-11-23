@@ -37,10 +37,10 @@ struct LiveTrainNumberQuery: Equatable, Sendable {
         String(value.trimmingCharacters(in: .whitespacesAndNewlines).uppercased().filter { !$0.isWhitespace && $0 != "-" })
     }
 
-    /// The categories Android accepts in front of a number, an explicit list: «VE545» is not train 545.
+    /// The categories Android accepts in front of a number, an explicit list: «VE545» is not train 545
+    /// (the shared table contracts/shared-data/v1/train-number-prefixes-v1.json, letters only).
     private static let number = LiveRegex(
-        "^(?:(?:FRECCIAROSSA|FRECCIARGENTO|FRECCIABIANCA|REGIONALE|ITALO|REG|RJX|ICE|ICN|TGV|TER|"
-            + "REX|CJX|IRE|ECE|CAT|NJ|IR|ES|FR|FA|FB|AV|RV|RE|IC|EC|EN|RJ|R|S|D))?([0-9]+)$"
+        "^(?:(?:" + SharedData.TrainNumberPrefixes.categories.joined(separator: "|") + "))?([0-9]+)$"
     )
 
     private static func numeric(_ value: String) -> String? {

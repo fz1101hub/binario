@@ -6,14 +6,16 @@ import Foundation
 /// `PlannedPackOrder`): the national packs' copy first, the foreign packs' copy first at a station
 /// no national pack serves (Lugano, Innsbruck), the Italian regional packs in between.
 enum TimetableCopies {
+    // The roles are the shared table contracts/shared-data/v1/pack-roles-v1.json (`SharedData.PackRoles`).
     /// `PlannedPackOrder.nationalPacks`.
-    static let nationalPacks: Set<String> = ["trenitalia-gtfs", "italo-gtfs"]
-    /// The packs whose first catalogue country is not Italy (`PlannedPackClass.FOREIGN`; FOREIGN_PACKS
-    /// of the index builder). Every other pack of the index is an Italian regional one.
-    static let foreignPacks: Set<String> = ["ch-otd-gtfs", "oebb-gtfs", "sncf-gtfs", "trenitalia-france-gtfs"]
+    static let nationalPacks: Set<String> = SharedData.PackRoles.nationalPacks
+    /// The packs whose first catalogue country is not Italy (`PlannedPackClass.FOREIGN`, which
+    /// Android derives from the catalogue; FOREIGN_PACKS of the index builder). Every other pack of
+    /// the index is an Italian regional one.
+    static let foreignPacks: Set<String> = SharedData.PackRoles.foreignPacks
     /// `EmbeddedGtfsRouteAdapter.CROSS_PUBLISHING_PACKS`: packs that republish partner operators'
     /// trains under their own numbering, so a copy there may carry another number.
-    static let crossPublishingPacks: Set<String> = ["ch-otd-gtfs", "sncf-gtfs", "oebb-gtfs", "alto-adige-sta-gtfs"]
+    static let crossPublishingPacks: Set<String> = SharedData.PackRoles.crossPublishingPacks
 
     /// A service as the copies are compared: its pack, number, operator, and the minutes it leaves
     /// and arrives (the arrival at the searched destination, nil on a board), with the names of the

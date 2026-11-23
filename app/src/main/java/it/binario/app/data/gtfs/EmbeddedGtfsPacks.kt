@@ -2,6 +2,7 @@ package it.binario.app.data.gtfs
 
 import it.binario.app.data.core.SourceId
 import it.binario.app.data.sources.RailSourceCatalog
+import it.binario.app.shared.SharedData
 import java.io.InputStream
 import java.time.Instant
 import java.time.LocalDate
@@ -136,7 +137,7 @@ object EmbeddedGtfsPacks {
         EmbeddedGtfsPack(SourceId("eav-gtfs"), "gtfs/eav-gtfs.zip", LocalDate.of(2027, 12, 31)),
         EmbeddedGtfsPack(
             SourceId("italo-gtfs"), "gtfs/italo-gtfs.zip", LocalDate.of(2026, 12, 12),
-            stopCodeScheme = GtfsStopCodeScheme.ITALO_STATION_CODE, busRoutesAreScheduledCoaches = true, itineraryCopies = true
+            stopCodeScheme = GtfsStopCodeScheme.ITALO_STATION_CODE, itineraryCopies = true
         ),
         EmbeddedGtfsPack(SourceId("lombardia-trenord-gtfs"), "gtfs/lombardia-trenord-gtfs.zip", LocalDate.of(2026, 12, 12)),
         EmbeddedGtfsPack(SourceId("oebb-gtfs"), "gtfs/oebb-gtfs.zip", LocalDate.of(2026, 12, 12)),
@@ -145,16 +146,23 @@ object EmbeddedGtfsPacks {
         EmbeddedGtfsPack(SourceId("trenitalia-france-gtfs"), "gtfs/trenitalia-france-gtfs.zip", LocalDate.of(2026, 12, 11)),
         EmbeddedGtfsPack(
             SourceId("trenitalia-gtfs"), "gtfs/trenitalia-gtfs.zip", LocalDate.of(2027, 12, 11),
-            stopCodeScheme = GtfsStopCodeScheme.TRENITALIA_LOCATION_ID, busRoutesAreScheduledCoaches = true
+            stopCodeScheme = GtfsStopCodeScheme.TRENITALIA_LOCATION_ID
         ),
         EmbeddedGtfsPack(SourceId("trentino-gtfs"), "gtfs/trentino-extraurban-gtfs.zip", LocalDate.of(2027, 6, 25))
-    )
+    ).map(::withPackRoles)
+
+    /**
+     * [pack] with the roles of the shared table (contracts/shared-data/v1/pack-roles-v1.json, the iPhone's and its index
+     * builder's too): whether its bus routes are the operator's own scheduled coaches.
+     */
+    private fun withPackRoles(pack: EmbeddedGtfsPack): EmbeddedGtfsPack =
+        pack.copy(busRoutesAreScheduledCoaches = pack.sourceId.value in SharedData.PackRoles.SCHEDULED_COACH_PACKS)
 
     /**
      * Packs added after the core ones (`gtfs-transit/`, open data in every build; `gtfs-personal/`, personal builds
      * only): regional railways and city networks. See TransitGtfsPacks.
      */
-    val transit: List<EmbeddedGtfsPack> = TransitGtfsPacks.all
+    val transit: List<EmbeddedGtfsPack> = TransitGtfsPacks.all.map(::withPackRoles)
 
     /** Every pack of this build: the core railway packs, then the transit packs this build includes. */
     fun forBuild(personalSources: Boolean): List<EmbeddedGtfsPack> =

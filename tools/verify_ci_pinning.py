@@ -675,6 +675,18 @@ def _workflow_commands(jobs: Mapping[str, Any]) -> str:
     return "\n".join(commands)
 
 
+SHARED_CODE_CHECK = "python3 tools/generate_shared_code.py --check"
+
+
+def _check_shared_code(path: Path, workflow: Mapping[str, Any], problems: list[str]) -> None:
+    """The code generated from contracts/shared-data is committed (ADR-0002): the offline job of gtfs-assets-ci.yml
+    proves it is what the tables give, on every pull request and push that runs the job."""
+    job = _mapping((_mapping(workflow.get("jobs")) or {}).get("gtfs-assets")) or {}
+    steps = job.get("steps") if isinstance(job.get("steps"), list) else []
+    if not any(_commands((_mapping(step) or {}).get("run")).strip() == SHARED_CODE_CHECK for step in steps):
+        problems.append(f"{path.name}: il job gtfs-assets deve eseguire `{SHARED_CODE_CHECK}` in uno step proprio")
+
+
 FOREIGN_RELEASE_PATHS = ["data/gtfs-foreign/**", "app/src/main/assets/gtfs/foreign_packs.json"]
 FOREIGN_RELEASE_PUBLISH = 'python3 -I tools/publish_foreign_packs.py --target "$GITHUB_SHA"'
 FOREIGN_RELEASE_COMMANDS = ("python3 -I tools/verify_foreign_packs.py", FOREIGN_RELEASE_PUBLISH, FOREIGN_RELEASE_GATE)
@@ -888,10 +900,13 @@ def _check_apple_paths(
         "app/src/main/assets/punctuality/**",
         "contracts/wear-snapshot/**",
         "contracts/shared-rules/**",
-        # The Italo station-code table the index builder reads.
+        # The shared tables: the Italo station codes the index builder reads, the notice feeds the iPhone bundles.
         "contracts/shared-data/**",
         # The dictation cases shared with Android (RouteDictationTests).
         "contracts/voice-input/**",
+        # The shared tables and their generator (BinarioKit/Sources/BinarioKit/Generated/, SharedDataTests).
+        "contracts/shared-data/**",
+        "tools/generate_shared_code.py",
         "tools/build_ios_gtfs_schedule.py",
         "tools/android_station_codes.py",
         "tools/android_stop_matcher.py",
@@ -958,8 +973,10 @@ def _check_linux_trigger_budget(
     required_paths = {
         # The three readers of contracts/shared-rules run when its vectors change;
         # contracts/voice-input: the dictation cases shared with the iPhone (PlannerVoiceDictationFormsTest).
-        "android-ci.yml": {"app/**", "wear/**", "contracts/wear-snapshot/**", "contracts/shared-rules/**", "contracts/shared-data/**",
-                           "contracts/voice-input/**"},
+        # contracts/shared-data: the shared tables the Kotlin tests compare and that generate
+        # app/src/main/java/it/binario/app/shared/ (ADR-0002).
+        "android-ci.yml": {"app/**", "wear/**", "contracts/wear-snapshot/**", "contracts/shared-rules/**", "contracts/voice-input/**",
+                           "contracts/shared-data/**", "tools/generate_shared_code.py"},
         # The document gates of the offline tests must run when their documents change (audit A7-11).
         "gtfs-assets-ci.yml": {
             "docs/**",
@@ -972,9 +989,12 @@ def _check_linux_trigger_budget(
             # The listing assets and the brand icon they are generated from (store/source/).
             "store/**",
             "ios/Resources/**",
-            # The shared cases and tables read by the offline tests (test_ios_gtfs_schedule.py).
+            # The shared cases and tables read by the offline tests, and the code
+            # tools/generate_shared_code.py --check compares with the tables.
             "contracts/shared-rules/**",
             "contracts/shared-data/**",
+            "app/src/main/java/it/binario/app/shared/**",
+            "alexa-companion/shared/generated/**",
         },
         # The skill bundles the punctuality statistics and the station catalogue (ci-tests-build-6).
         "alexa-companion-ci.yml": {
@@ -982,6 +1002,9 @@ def _check_linux_trigger_budget(
             "app/src/main/assets/punctuality/**",
             "app/src/main/assets/stations/curated_it_rail_stations.json",
             "contracts/shared-rules/**",
+            # The tables the skill reads (shared/generated/sharedData.ts).
+            "contracts/shared-data/**",
+            "tools/generate_shared_code.py",
         },
         # The Expo companion is frozen (companion-expo/README.md): its own code and this workflow, nothing shared.
         "companion-ci.yml": FROZEN_COMPANION_PATHS,
@@ -1388,6 +1411,8 @@ def workflow_problems(
     if path.name == "android-ci.yml":
         _check_release_signing(path, root or {}, problems)
         _check_punctuality_switch(path, root or {}, problems)
+    if path.name == "gtfs-assets-ci.yml":
+        _check_shared_code(path, root or {}, problems)
     if path.name == PUNCTUALITY_WORKFLOW:
         _check_punctuality(path, root or {}, problems)
     elif "tools/collect_punctuality.py" in _workflow_commands(jobs):

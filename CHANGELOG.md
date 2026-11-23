@@ -1,5 +1,32 @@
 # Changelog
 
+## In sviluppo — Base comune tra i dispositivi
+
+- Le app restano native, ma su una base comune ([ADR-0002](docs/architecture/ADR-0002-BASE-COMUNE.md)). Le tabelle che più piattaforme usano stanno ora in `contracts/shared-data/v1/`, e `tools/generate_shared_code.py` ne scrive il codice Kotlin, Swift e, per la skill, TypeScript. Il generatore controlla le tabelle prima di scrivere, e la CI con `--check` verifica che il codice sia aggiornato.
+- Otto tabelle, finora ricopiate a mano, ora sono scritte una volta sola: codici Italo di riserva e pagine per nome, place ID RFI, punteggi delle fonti, soglie della puntualità (anche per Alexa), categorie ammesse davanti al numero di un treno, collegamenti con gli aeroporti, festività (Android e Alexa), limiti dell'Agenda e dei modelli. Su ogni piattaforma i valori erano già identici: non cambia nessun comportamento.
+- Nuovi casi di prova comuni in `contracts/shared-rules/v1/` per le regole rimaste nel codice: soppressione esplicita e operatore delle righe RFI, modelli di «Preparazione del viaggio», festività con Pasqua e Pasquetta.
+- iPhone: i collegamenti con gli aeroporti sanno quali pack sono linee urbane (`AirportRoutes.byCityLine`). Oggi non cambia nulla, perché nessun pack urbano arriva sull'iPhone.
+- Dopo l'unione dei lavori iPhone su orari e avvisi, quattro tabelle in più passano dal generatore:
+  - i codici delle stazioni Italo del pack orario (`italo-gtfs-station-codes.json`): Android legge il codice generato, il builder dell'indice iPhone il JSON;
+  - le fonti degli avvisi (`notices-sources-v1.json`): Android e iPhone leggono il codice generato. Sull'iPhone la tabella non è più un file incluso nell'app, letto all'avvio, e il test Kotlin a riflessione non serve più;
+  - come si chiede a ogni fonte (`source-manners-v1.json`: User-Agent, rifiuti 403 e 429, pausa, interruttore), separata dagli avvisi perché vale per tutte le fonti live dei due telefoni;
+  - i ruoli dei pack orari (`pack-roles-v1.json`: nazionali, esteri, che ripubblicano i treni dei partner, con autobus dell'operatore), letti anche dal builder e dal verificatore dell'indice iPhone. Android continua a riconoscere i pack esteri dal paese del catalogo, e per ogni pack ferroviario il risultato coincide con la tabella.
+  - Anche qui i valori erano identici: non cambia nessun comportamento.
+- I workflow Android, Apple e Alexa partono anche quando cambiano le tabelle o il generatore.
+
+## In sviluppo — Avvisi ferroviari anche su iPhone; tabella comune delle fonti degli avvisi
+
+- **iPhone, avvisi come su Android** (stesse fonti, stesse regole, stessi testi):
+  - in fondo a **Partenze**, l'area **Avvisi e infomobilità**: «Scioperi in programma» dal calendario del MIT (solo settore ferroviario), avvisi RFI e Trenitalia senza doppioni, avvisi Trenord per direttrice, etichetta «Sciopero» con la pagina dei treni garantiti, collegamenti al calendario scioperi e a FS News. Non scarica nulla finché non si tocca «Mostra avvisi»;
+  - **Avvisi Trenord per questa stazione** nel tabellone di una stazione dell'area Trenord;
+  - **Lavori e interruzioni sulle tue tratte** nella scheda **Tratte** e **… su questa tratta** sotto i risultati del pianificatore di una tratta salvata. Sull'iPhone l'avviso si abbina ai due estremi della tratta e alle linee che il testo cita: l'indice degli orari non ha ancora le fermate intermedie dei treni, che Android usa in più.
+- **Fonti e regole.** RSS del MIT e di RFI sempre; infomobilità Trenitalia (ViaggiaTreno, con il solo salto in chiaro già ammesso) e avvisi Trenord solo con **Dati in tempo reale** attivo, come le fonti personali di Android. Impostazioni elenca le due nuove fonti e dice che RFI e MIT si leggono anche con l'interruttore spento; la nota dell'interruttore ora dice «non chiede nulla a queste fonti».
+- **Buone maniere come Android:** User-Agent di Binario, HTTPS, stessi intervalli, stesse durate di cache e di copia non aggiornata, stessi limiti di risposta; al primo HTTP 403 o 429 la fonte va in pausa. Nessun nuovo tentativo automatico, come per le altre fonti dell'iPhone.
+- **Non portati sull'iPhone:** il promemoria degli scioperi delle 18 e l'avviso serale dei lavori di domani, che richiedono un controllo in background che l'app iPhone non ha; gli avvisi nel dettaglio del treno.
+- **Tabella comune** `contracts/shared-data/v1/notices-sources-v1.json`: indirizzi dei feed, accesso, intervalli, cache, limiti, pause e tabelle di lettura (parole degli scioperi e dei lavori, mesi, radici operative e area Trenord, domini ufficiali), con i valori di Android. Android e iPhone la leggono come codice generato (vedi «Base comune tra i dispositivi»).
+- **Casi comuni** `contracts/shared-rules/v1/notices-v1.json` sulle fixture dei test Android, letti da `NoticesContractTest` (Android) e `NoticesContractTests` (iPhone). I workflow Android e Apple partono anche quando cambia `contracts/shared-data/`.
+- Testi: quelli di Android in 17 lingue; le tre righe nuove delle Impostazioni e la nota modificata sono solo iPhone, con traduzioni automatiche da rivedere. Aggiornati [l'informativa privacy verificabile](PRIVACY.md), le note per App Review e la checklist App Store; il controllo della privacy legge ora anche gli host della tabella comune.
+
 ## In sviluppo — iPhone e Apple Watch con gli stessi orari di Android
 
 - **iPhone:** l'indice degli orari include ora tutti i pack ferroviari di Android, 17 invece di 10:

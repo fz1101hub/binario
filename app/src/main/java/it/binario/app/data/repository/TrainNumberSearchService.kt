@@ -3,6 +3,7 @@ package it.binario.app.data.repository
 import it.binario.app.data.*
 import it.binario.app.data.provider.ProviderResult
 import it.binario.app.data.provider.RailProvider
+import it.binario.app.shared.SharedData
 import java.time.LocalDate
 import java.util.Locale
 import kotlinx.coroutines.*
@@ -33,10 +34,10 @@ data class TrainNumberQuery(val number: String, val date: LocalDate) {
         /**
          * Public train categories that prefix a train number in the packs (ÖBB "NJ 40235", "REX 1824", "S 2590", "CJX 9109",
          * "IR 884", "D 1130", "CAT 9056"). An explicit list, not any letters: the Trenitalia pack also has codes such as
-         * "VE545" or "TO246" that are not train 545 or 246.
+         * "VE545" or "TO246" that are not train 545 or 246. The list is shared with the iPhone
+         * (contracts/shared-data/v1/train-number-prefixes-v1.json), letters only.
          */
-        private val NUMBER = Regex("(?:(?:FRECCIAROSSA|FRECCIARGENTO|FRECCIABIANCA|REGIONALE|ITALO|REG|RJX|ICE|ICN|TGV|TER|" +
-            "REX|CJX|IRE|ECE|CAT|NJ|IR|ES|FR|FA|FB|AV|RV|RE|IC|EC|EN|RJ|R|S|D))?([0-9]+)")
+        private val NUMBER = Regex("(?:(?:${SharedData.TrainNumberPrefixes.CATEGORIES.joinToString("|")}))?([0-9]+)")
         private fun numeric(value: String): String? = NUMBER
             .matchEntire(value)?.groupValues?.get(1)?.trimStart('0')?.ifEmpty { "0" }
     }

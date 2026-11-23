@@ -7,8 +7,11 @@ on:
       - "wear/**"
       - "contracts/wear-snapshot/**"
       - "contracts/shared-rules/**"
-      - "contracts/shared-data/**"
       - "contracts/voice-input/**"
+      # The shared tables (Italo station codes, notice feeds, the generated app/src/main/java/it/binario/app/shared/) and
+      # their generator.
+      - "contracts/shared-data/**"
+      - "tools/generate_shared_code.py"
       # Full foreign packs: the JVM tests read them for the trains beyond the border zone of the bundled subsets.
       - "data/gtfs-foreign/android/**"
       - "gradle/**"
@@ -42,8 +45,11 @@ on:
       - "wear/**"
       - "contracts/wear-snapshot/**"
       - "contracts/shared-rules/**"
-      - "contracts/shared-data/**"
       - "contracts/voice-input/**"
+      # The shared tables (Italo station codes, notice feeds, the generated app/src/main/java/it/binario/app/shared/) and
+      # their generator.
+      - "contracts/shared-data/**"
+      - "tools/generate_shared_code.py"
       # Full foreign packs: the JVM tests read them for the trains beyond the border zone of the bundled subsets.
       - "data/gtfs-foreign/android/**"
       - "gradle/**"

@@ -1,5 +1,6 @@
 package it.binario.app
 
+import it.binario.app.shared.SharedData
 import android.app.Application
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -210,6 +211,7 @@ class RailNoticesViewModel(application: Application) : AndroidViewModel(applicat
     private fun recent(loadedAt: Long): Boolean = now() - loadedAt in 0 until RELOAD_AFTER_MILLIS
 
     private companion object {
-        const val RELOAD_AFTER_MILLIS = 120_000L
+        /** The shared table's reload interval (contracts/shared-data/v1/notices-sources-v1.json, service). */
+        val RELOAD_AFTER_MILLIS = SharedData.NoticesSources.SERVICE.reloadAfterSeconds * 1_000L
     }
 }

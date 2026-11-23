@@ -1,0 +1,769 @@
+{
+  "schema": "binario-shared-rules-notices-v1",
+  "about": "Casi comuni degli avvisi ferroviari (README.md). Ingressi: le fixture dei test Android e la tabella contracts/shared-data/v1/notices-sources-v1.json.",
+  "readers": {
+    "android": "app/src/test/java/it/binario/app/data/notices/NoticesContractTest.kt",
+    "iphone": "ios/BinarioKit/Tests/BinarioKitTests/NoticesContractTests.swift"
+  },
+  "table": "contracts/shared-data/v1/notices-sources-v1.json",
+  "strikes": {
+    "feed": "app/src/test/resources/sources/mit-scioperi-rss.xml",
+    "fetchedOn": "2026-11-02",
+    "now": "2026-11-02T10:00:00Z",
+    "items": 9,
+    "firstItem": {
+      "title": "Ferroviario - Sciopero nazionale del personale del Gruppo FS Italiane",
+      "link": "https://scioperi.mit.gov.it/mit2/public/scioperi/dettaglio?id=12001",
+      "guid": "mit-sciopero-12001",
+      "pubDate": "2026-10-19T08:15:00Z",
+      "descriptionContains": "Data inizio: 03/11/2026"
+    },
+    "rail": [
+      {
+        "id": "mit-sciopero-12001",
+        "start": "2026-11-03",
+        "end": "2026-11-04"
+      },
+      {
+        "id": "mit-sciopero-12004",
+        "start": "2026-11-21",
+        "end": "2026-11-22"
+      },
+      {
+        "id": "mit-sciopero-12006",
+        "start": "2026-12-03",
+        "end": "2026-12-03"
+      },
+      {
+        "id": "mit-sciopero-12008",
+        "start": "2026-10-01",
+        "end": "2026-10-02"
+      },
+      {
+        "id": "mit-sciopero-12009",
+        "start": null,
+        "end": null
+      }
+    ],
+    "descriptionContains": {
+      "id": "mit-sciopero-12001",
+      "text": "USB Lavoro Privato & CUB Trasporti"
+    },
+    "upcoming": [
+      "mit-sciopero-12001",
+      "mit-sciopero-12004",
+      "mit-sciopero-12006",
+      "mit-sciopero-12009"
+    ],
+    "startingTomorrow": [
+      "mit-sciopero-12001"
+    ],
+    "undatedGoneAfter": {
+      "now": "2026-12-02T10:00:00Z",
+      "id": "mit-sciopero-12009"
+    },
+    "isRail": [
+      {
+        "title": "Sciopero",
+        "description": "Settore: FERROVIÀRIO",
+        "rail": true
+      },
+      {
+        "title": "Personale RFI",
+        "description": null,
+        "rail": true
+      },
+      {
+        "title": "Sciopero del personale italiano dei porti",
+        "description": null,
+        "rail": false
+      },
+      {
+        "title": "Trasporto pubblico locale - Autoferrotranvieri ATM Milano",
+        "description": null,
+        "rail": false
+      }
+    ],
+    "dates": [
+      {
+        "text": "Sciopero dal 14 al 15 dicembre",
+        "reference": "2026-11-02",
+        "start": "2026-12-14",
+        "end": "2026-12-15"
+      },
+      {
+        "text": "Sciopero il 9 gennaio",
+        "reference": "2026-11-02",
+        "start": "2027-01-09",
+        "end": "2027-01-09"
+      },
+      {
+        "text": "Data: 2026-11-20",
+        "reference": "2026-11-02",
+        "start": "2026-11-20",
+        "end": "2026-11-20"
+      },
+      {
+        "text": "Pubblicato il 01/11/2026. Data inizio: 28/11/2026 Data fine: 29/11/2026",
+        "reference": "2026-11-02",
+        "start": "2026-11-28",
+        "end": "2026-11-29"
+      },
+      {
+        "text": "Data da confermare",
+        "reference": "2026-11-02",
+        "start": null,
+        "end": null
+      }
+    ],
+    "unreadable": [
+      "<html><body>Manutenzione</body></html>",
+      "<?xml version=\"1.0\"?><!DOCTYPE rss [<!ENTITY x \"y\">]><rss><channel><item><title>&x;</title></item></channel></rss>"
+    ]
+  },
+  "text": {
+    "mentionsStrike": [
+      {
+        "texts": [
+          "Il sindacato USB ha indetto uno sciopero Nazionale"
+        ],
+        "strike": true
+      },
+      {
+        "texts": [
+          null,
+          "Calendario degli SCIOPERI di novembre"
+        ],
+        "strike": true
+      },
+      {
+        "texts": [
+          "Lavori notturni tra Rho e Parabiago",
+          null
+        ],
+        "strike": false
+      },
+      {
+        "texts": [
+          "Gli scioperanti si riuniranno"
+        ],
+        "strike": false
+      }
+    ],
+    "normalize": [
+      {
+        "text": "  a \t b \r\n\n\n\n c  ",
+        "maximumLength": 100,
+        "expected": "a b\n\nc"
+      },
+      {
+        "text": "abcdefghij",
+        "maximumLength": 5,
+        "expected": "abcd…"
+      }
+    ],
+    "fromHtml": [
+      {
+        "html": "<p> </p>",
+        "maximumLength": 10,
+        "expected": null
+      },
+      {
+        "html": "<script>alert(1)</script><p onclick=\"x()\">Treni &amp; bus</p><img src=x onerror=y>",
+        "maximumLength": 100,
+        "expected": "Treni & bus"
+      }
+    ],
+    "sameDedupKey": [
+      [
+        "Linea Roma–Napoli: circolazione SOSPESA",
+        "linea roma napoli circolazione sospesa"
+      ]
+    ],
+    "links": [
+      {
+        "text": "Saranno sostituiti con bus: https://a.mktgcdn.com/f/3714691/PjWHEpSTC0pJ8CxIxiFCNpHWgDcXYbgQRqe6xpLiwUM.pdf. Info su short.do/c6g1w7",
+        "links": [
+          "https://a.mktgcdn.com/f/3714691/PjWHEpSTC0pJ8CxIxiFCNpHWgDcXYbgQRqe6xpLiwUM.pdf"
+        ]
+      },
+      {
+        "text": "javascript:alert(1) ftp://x",
+        "links": []
+      }
+    ],
+    "cleartextAllowed": [
+      {
+        "url": "https://www.trenitalia.com/it/info.html",
+        "allowed": true
+      },
+      {
+        "url": "https://www.fsitaliane.it/content/fsitaliane/it/notizie.html",
+        "allowed": true
+      },
+      {
+        "url": "http://www.trenitalia.com/old",
+        "allowed": false
+      },
+      {
+        "url": "https://user@www.rfi.it/a",
+        "allowed": false
+      },
+      {
+        "url": "https://bit.ly/x",
+        "allowed": false
+      },
+      {
+        "url": "https://evil.example/trenitalia",
+        "allowed": false
+      }
+    ],
+    "neutralize": [
+      {
+        "text": "Rimborso: https://https://evil.example/login",
+        "contains": "evil.example/login",
+        "links": []
+      },
+      {
+        "text": "Rimborso: http://https://evil.example/login",
+        "contains": "evil.example/login",
+        "links": []
+      },
+      {
+        "text": "Rimborso: https://a/https://evil.example/login",
+        "contains": "evil.example/login",
+        "links": []
+      },
+      {
+        "text": "Rimborso: HTTPS://https://http://evil.example/login.",
+        "contains": "evil.example/login",
+        "links": []
+      },
+      {
+        "text": "Vedi https://www.trenitalia.com/it/info.html e https://https://bit.ly/x",
+        "expected": "Vedi https://www.trenitalia.com/it/info.html e bit.ly/x",
+        "links": [
+          "https://www.trenitalia.com/it/info.html"
+        ]
+      }
+    ]
+  },
+  "trenitalia": {
+    "feed": "app/src/test/resources/sources/trenitalia-infomobility-news.json",
+    "notices": [
+      {
+        "title": "CIRCOLAZIONE REGOLARE SULLA RETE ALTA VELOCITÀ",
+        "descriptionStartsWith": "In questo momento la circolazione si svolge regolarmente sull'intera rete Alta Velocità.",
+        "descriptionContains": [
+          "\n\nREGULAR TRAFFIC ON THE HIGH-SPEED RAILWAY NETWORK"
+        ],
+        "trainNumbers": [],
+        "publishedAt": "2026-10-24T22:00:00Z"
+      },
+      {
+        "titleStartsWith": "Linea Roma - Napoli via Cassino",
+        "descriptionContains": [
+          "all’infrastruttura ferroviaria",
+          "• FR 8380 Lecce (18:10) - Napoli Centrale (23:27): il treno non ferma a Napoli Afragola."
+        ],
+        "trainNumbers": [
+          "715",
+          "716",
+          "8380",
+          "8382"
+        ],
+        "publishedAt": "2026-10-24T22:00:00Z",
+        "link": "https://www.trenitalia.com/content/trenitalia/it/informazioni/Infomobilita/notizie-infomobilita.html"
+      }
+    ],
+    "neverInDescriptions": [
+      "<p>",
+      "<br",
+      "&lt;",
+      "&agrave;",
+      "&nbsp;",
+      "&amp;",
+      "\r"
+    ],
+    "hostile": {
+      "item": {
+        "title": "Avviso",
+        "description": "&lt;script&gt;alert(1)&lt;/script&gt;&lt;p onclick=&quot;x()&quot;&gt;Treni &amp;amp; bus&lt;/p&gt;&lt;img src=x onerror=y&gt;",
+        "link": "javascript:alert(1)"
+      },
+      "description": "Treni & bus",
+      "link": null
+    },
+    "foreignLinks": {
+      "items": [
+        {
+          "title": "Rimborsi: https://trenitalia-rimborsi.example/login",
+          "description": "&lt;p&gt;Dettagli su https://www.trenitalia.com/it/info.html e http://www.trenitalia.com/old oppure https://bit.ly/x e https://user@www.rfi.it/a&lt;/p&gt;",
+          "link": "https://evil.example/trenitalia",
+          "pubDate": 1790000000000
+        },
+        {
+          "title": "Avviso",
+          "link": "https://www.fsitaliane.it/content/fsitaliane/it/notizie.html"
+        }
+      ],
+      "firstLink": null,
+      "firstLinks": [
+        "https://www.trenitalia.com/it/info.html"
+      ],
+      "firstTitleContains": "trenitalia-rimborsi.example/login",
+      "firstDescriptionContains": "bit.ly/x",
+      "secondLink": "https://www.fsitaliane.it/content/fsitaliane/it/notizie.html"
+    },
+    "encodedTwice": {
+      "item": {
+        "title": "Rimborsi: https://https://evil.example/titolo",
+        "description": "Rimborso su https:&amp;amp;#47;&amp;amp;#47;evil.example/login e su https://www.trenitalia.com/it/info.html",
+        "link": "https://www.trenitalia.com/it/info.html",
+        "pubDate": 1790000000000
+      },
+      "links": [
+        "https://www.trenitalia.com/it/info.html"
+      ],
+      "bodyContains": "evil.example/login",
+      "link": "https://www.trenitalia.com/it/info.html"
+    },
+    "unreadable": [
+      "<html>",
+      "{}"
+    ],
+    "truncatedUnreadable": 300
+  },
+  "general": {
+    "rfi": "<?xml version=\"1.0\"?><rss><channel>\n<item><title>Linea Roma - Napoli via Cassino: circolazione sospesa tra Maddaloni e Cancello dal 21 ottobre per lavori di ripristino a seguito dei danni all'infrastruttura causati da una società esterna</title>\n<link>https://www.rfi.it/it/news-e-media/infomobilita/1.html</link><description>&lt;p&gt;Circolazione sospesa&lt;/p&gt;</description>\n<pubDate>Sun, 25 Oct 2026 08:00:00 +0100</pubDate></item>\n<item><title>Linea Milano - Venezia: rallentamenti</title><link>https://www.rfi.it/it/news-e-media/infomobilita/2.html</link></item>\n</channel></rss>",
+    "network": 3,
+    "rfiOnlyTitleStartsWith": "Linea Roma - Napoli via Cassino",
+    "rfiOnlyBody": "Circolazione sospesa",
+    "rfiOnlyPublishedAt": "2026-10-25T07:00:00Z",
+    "trenitaliaFailingNetwork": 2,
+    "strikeRfi": "<?xml version=\"1.0\"?><rss><channel>\n<item><title>Sciopero nazionale del personale del Gruppo FS</title><link>https://www.rfi.it/it/news-e-media/infomobilita/s.html</link></item>\n<item><title>Linea Milano - Venezia: rallentamenti</title><link>https://www.rfi.it/it/news-e-media/infomobilita/r.html</link></item>\n</channel></rss>",
+    "strikeBadgePublishers": [
+      "RFI"
+    ],
+    "trenordStrikeBodyContains": "sciopero Nazionale"
+  },
+  "trenord": {
+    "feed": "app/src/test/resources/sources/trenord-direttrici.json",
+    "lines": [
+      "D034",
+      "D010",
+      "D004",
+      "D005"
+    ],
+    "firstLineTokens": [
+      "LAVENO",
+      "VARESE",
+      "SARONNO",
+      "MILANO"
+    ],
+    "notices": 5,
+    "strike": {
+      "startsWith": "Il sindacato USB ha indetto uno sciopero",
+      "lines": [
+        "D004",
+        "D010",
+        "D034"
+      ],
+      "date": "2026-10-23T10:36:04Z",
+      "titleStartsWith": "Il sindacato USB ha indetto uno sciopero Nazionale",
+      "titleMaximumLength": 160,
+      "descriptionEndsWith": "AvvisoTrenord_2026_228__Sciopero_29-30_ott.pdf"
+    },
+    "neverContains": "Ricaricami",
+    "operational": [
+      {
+        "text": "Viaggiare è più semplice e più sostenibile con Ricaricami, il biglietto ricaricabile che permette di viaggiare con lo stesso supporto su treni, metro, tram e bus in Lombardia. SCOPRI DI PIÙ: short.do/c6g1w7",
+        "operational": false
+      },
+      {
+        "text": "Scopri le nuove offerte estive per il Lago Maggiore",
+        "operational": false
+      },
+      {
+        "text": "i seguenti treni saranno soppressi nella tratta Laveno Mombello Lago/Varese FN  Tradate e sostituiti con bus",
+        "operational": true
+      },
+      {
+        "text": "Il sindacato USB ha indetto uno sciopero Nazionale",
+        "operational": true
+      },
+      {
+        "text": "È stato predisposto un servizio di autobus sostitutivi",
+        "operational": true
+      },
+      {
+        "text": "Dalle 21:00 servizio bus tra Saronno e Seveso",
+        "operational": true
+      },
+      {
+        "text": "i treni subiscono variazioni",
+        "operational": true
+      },
+      {
+        "text": "La circolazione è sospesa tra Lecco e Calolziocorte",
+        "operational": true
+      },
+      {
+        "text": "RITARDI fino a 15 minuti",
+        "operational": true
+      }
+    ],
+    "groups": [
+      {
+        "lines": [
+          "D004",
+          "D010",
+          "D034"
+        ],
+        "allLines": true
+      },
+      {
+        "lines": [
+          "D004"
+        ],
+        "allLines": false,
+        "name": "LUINO-GALLARATE-MILANO"
+      },
+      {
+        "lines": [
+          "D005"
+        ],
+        "allLines": false
+      },
+      {
+        "lines": [
+          "D034"
+        ],
+        "allLines": false
+      }
+    ],
+    "groupedNotices": 5,
+    "stations": [
+      {
+        "name": "Varese Nord",
+        "notices": 2,
+        "everyNoticeOnLine": "D034"
+      },
+      {
+        "name": "Luino",
+        "notices": 3
+      },
+      {
+        "name": "Roma Termini",
+        "notices": 0
+      }
+    ],
+    "matchedTokens": [
+      {
+        "code": "D034",
+        "description": "LAVENO-VARESE-SARONNO-MILANO",
+        "stations": [
+          "Varese Nord",
+          "Milano P.ta Garibaldi"
+        ],
+        "tokens": [
+          "VARESE",
+          "MILANO"
+        ]
+      },
+      {
+        "code": "D034",
+        "description": "LAVENO-VARESE-SARONNO-MILANO",
+        "stations": [
+          "Varesina",
+          "Saronno Sud"
+        ],
+        "tokens": [
+          "SARONNO"
+        ]
+      }
+    ],
+    "area": [
+      {
+        "latitude": 45.8183,
+        "longitude": 8.8335,
+        "inArea": true
+      },
+      {
+        "latitude": 41.901,
+        "longitude": 12.5016,
+        "inArea": false
+      }
+    ],
+    "unreadable": [
+      "{}",
+      "<html>"
+    ],
+    "truncatedUnreadable": 400
+  },
+  "routeWorks": {
+    "feed": "app/src/test/resources/sources/rfi-infomobilita-works.xml",
+    "catalogue": "app/src/main/assets/stations/curated_it_rail_stations.json",
+    "now": "2026-11-04T08:00:00Z",
+    "today": "2026-11-04",
+    "network": 8,
+    "routes": [
+      {
+        "id": "milano-venezia",
+        "stations": [
+          "Milano Centrale",
+          "Milano Lambrate",
+          "Brescia",
+          "Desenzano Del Garda-Sirmione",
+          "Verona Porta Nuova",
+          "Vicenza",
+          "Venezia Santa Lucia"
+        ]
+      },
+      {
+        "id": "roma-napoli",
+        "stations": [
+          "Roma Termini",
+          "Napoli Centrale"
+        ]
+      },
+      {
+        "id": "monza-milano",
+        "stations": [
+          "Monza",
+          "Milano Centrale"
+        ]
+      },
+      {
+        "id": "pavia-milano",
+        "stations": [
+          "Pavia",
+          "Milano Rogoredo",
+          "Milano Centrale"
+        ]
+      }
+    ],
+    "works": [
+      {
+        "title": "Linea Milano – Venezia: lavori tra Brescia e Verona Porta Nuova",
+        "reasons": [
+          {
+            "routeId": "milano-venezia",
+            "stations": [
+              "Brescia",
+              "Desenzano Del Garda-Sirmione",
+              "Verona Porta Nuova"
+            ],
+            "line": "Milano – Venezia"
+          }
+        ],
+        "dates": {
+          "first": "2026-11-14",
+          "last": "2026-11-16"
+        }
+      },
+      {
+        "title": "Linea Roma - Napoli via Cassino: circolazione interrotta tra Cassino e Caianello",
+        "reasons": [
+          {
+            "routeId": "roma-napoli",
+            "stations": [],
+            "line": "Roma – Napoli"
+          }
+        ],
+        "dates": {
+          "first": "2026-10-21",
+          "last": "2026-10-21"
+        }
+      },
+      {
+        "title": "Lavori notturni tra Pavia e Voghera",
+        "reasons": [
+          {
+            "routeId": "pavia-milano",
+            "stations": [
+              "Pavia"
+            ],
+            "line": null
+          }
+        ],
+        "dates": {
+          "first": "2026-11-10",
+          "last": "2026-11-19"
+        }
+      }
+    ],
+    "noMatchRoutes": [
+      [
+        "monza-milano"
+      ],
+      []
+    ],
+    "singleNotices": [
+      {
+        "title": "Circolazione sospesa tra Maddaloni e Cancello per lavori",
+        "route": [
+          "Cancello",
+          "Caserta"
+        ],
+        "stations": [
+          "Cancello"
+        ]
+      },
+      {
+        "title": "Lavori nella stazione di Cancello ed Arnone",
+        "route": [
+          "Cancello",
+          "Caserta"
+        ],
+        "stations": null
+      },
+      {
+        "title": "Lavori di potenziamento: il cancello della stazione resta chiuso",
+        "route": [
+          "Cancello",
+          "Caserta"
+        ],
+        "stations": null
+      },
+      {
+        "title": "CIRCOLAZIONE INTERROTTA TRA CANCELLO E NAPOLI",
+        "route": [
+          "Cancello",
+          "Caserta"
+        ],
+        "stations": [
+          "Cancello"
+        ]
+      },
+      {
+        "title": "Lavori tra Bolzano e Ponte Gardena",
+        "route": [
+          "Bolzano Bozen",
+          "Merano Meran"
+        ],
+        "stations": [
+          "Bolzano Bozen"
+        ]
+      },
+      {
+        "title": "Lavori a Mailand e dintorni",
+        "route": [
+          "Milano Centrale",
+          "Monza"
+        ],
+        "stations": null
+      }
+    ],
+    "dates": [
+      {
+        "text": "Dal 2 novembre al 6 dicembre bus sostitutivi",
+        "reference": "2026-11-04",
+        "first": "2026-11-02",
+        "last": "2026-12-06"
+      },
+      {
+        "text": "Lavori dal 28 al 3 gennaio",
+        "reference": "2026-12-20",
+        "first": "2026-12-28",
+        "last": "2027-01-03"
+      },
+      {
+        "text": "Sospesa il 14/11/26 dalle 9.00",
+        "reference": "2026-11-04",
+        "first": "2026-11-14",
+        "last": "2026-11-14"
+      },
+      {
+        "text": "Dal 1° dicembre nuovo orario",
+        "reference": "2026-11-04",
+        "first": "2026-12-01",
+        "last": "2026-12-01"
+      },
+      {
+        "text": "Lavori il 10 gennaio",
+        "reference": "2026-01-05",
+        "first": "2026-01-10",
+        "last": "2026-01-10"
+      },
+      {
+        "text": "Lavori sui binari 4 e 5 dalle ore 23.30",
+        "reference": "2026-11-04",
+        "first": null,
+        "last": null
+      },
+      {
+        "text": "Nessuna data",
+        "reference": "2026-11-04",
+        "first": null,
+        "last": null
+      },
+      {
+        "text": "Lavori nei giorni 14, 15, 21 e 22 novembre",
+        "reference": "2026-11-04",
+        "first": "2026-11-14",
+        "last": "2026-11-22"
+      },
+      {
+        "text": "Dalle ore 22.50 del 14 alle ore 5.50 del 15 novembre circolazione sospesa",
+        "reference": "2026-11-04",
+        "first": "2026-11-14",
+        "last": "2026-11-15"
+      },
+      {
+        "text": "Bus sostitutivi 14 e 15 novembre",
+        "reference": "2026-11-04",
+        "first": "2026-11-14",
+        "last": "2026-11-15"
+      },
+      {
+        "text": "Nelle giornate del 10 e dell'11 novembre",
+        "reference": "2026-11-04",
+        "first": "2026-11-10",
+        "last": "2026-11-11"
+      },
+      {
+        "text": "Dal 1° al 3 dicembre bus sostitutivi",
+        "reference": "2026-11-04",
+        "first": "2026-12-01",
+        "last": "2026-12-03"
+      },
+      {
+        "text": "Dalle ore 23.30, 15 e 16 novembre",
+        "reference": "2026-11-04",
+        "first": "2026-11-15",
+        "last": "2026-11-16"
+      },
+      {
+        "text": "Lavori sui binari 4, 5 e 6 dalle ore 23.30",
+        "reference": "2026-11-04",
+        "first": null,
+        "last": null
+      }
+    ],
+    "isWorks": [
+      {
+        "text": "Interruzione della circolazione tra Alfa e Beta",
+        "works": true
+      },
+      {
+        "text": "Attivi bus SOSTITUTIVI",
+        "works": true
+      },
+      {
+        "text": "Circolazione rallentata per un guasto",
+        "works": false
+      },
+      {
+        "text": "Sciopero: circolazione sospesa",
+        "works": false
+      }
+    ],
+    "fold": [
+      {
+        "text": "Milano  Centrale — Sant’Ilario d'Enza",
+        "expected": "milano centrale sant ilario d enza"
+      }
+    ]
+  }
+}

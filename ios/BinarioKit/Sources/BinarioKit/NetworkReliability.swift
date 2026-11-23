@@ -273,24 +273,25 @@ public struct WeekdayRemark: Equatable, Sendable {
 }
 
 /// Pure rules of the network statistics (thresholds, minimum samples, matching, interpolation),
-/// the same as the Android app's.
+/// the same as the Android app's. The thresholds are the shared table
+/// contracts/shared-data/v1/punctuality-v1.json (`SharedData.Punctuality`).
 public enum NetworkReliability {
     /// Below this many samples at the stop considered nothing is shown.
-    public static let minimumSamples = 5
-    public static let highSpeedOnTimeMinutes = 5
-    public static let otherOnTimeMinutes = 15
+    public static let minimumSamples = SharedData.Punctuality.minimumSamples
+    public static let highSpeedOnTimeMinutes = SharedData.Punctuality.highSpeedOnTimeMinutes
+    public static let otherOnTimeMinutes = SharedData.Punctuality.otherOnTimeMinutes
     /// «Di solito al binario …» needs this many days at the platform…
-    public static let minimumPlatformCount = 5
+    public static let minimumPlatformCount = SharedData.Punctuality.minimumPlatformDays
     /// …and at least this share of the days with a platform, in percent.
-    public static let minimumPlatformSharePercent = 60
+    public static let minimumPlatformSharePercent = SharedData.Punctuality.minimumPlatformSharePercent
     /// A weekday is compared with at least this many samples…
-    public static let minimumWeekdaySamples = 4
+    public static let minimumWeekdaySamples = SharedData.Punctuality.minimumWeekdaySamples
     /// …and remarked when its on-time share differs from the overall one by this many points.
-    public static let minimumWeekdayGapPoints = 15
+    public static let minimumWeekdayGapPoints = SharedData.Punctuality.minimumWeekdayGapPoints
     public static let maximumWeekdayRemarks = 2
 
     /// Categories measured at 5 minutes, as the operators and Treniamo do; every other category at 15.
-    private static let highSpeedCategories: Set<String> = ["FR", "FA", "FB", "EC", "ES", "ESC", "EN", "ITALO"]
+    private static let highSpeedCategories: Set<String> = SharedData.Punctuality.highSpeedCategories
 
     public static func onTimeLimitMinutes(category: String) -> Int {
         let normalized = category.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
@@ -556,11 +557,11 @@ public struct RoutePunctuality: Equatable, Sendable {
 /// Aggregates of the network statistics: one stop's delay distribution and a route.
 public enum NetworkReliabilityAggregates {
     /// Below this many samples in all, a route shows nothing.
-    public static let minimumAggregateSamples = 20
+    public static let minimumAggregateSamples = SharedData.Punctuality.minimumAggregateSamples
     /// An hour band takes part in "più / meno puntuali" with at least this many samples.
-    public static let minimumBandSamples = 20
+    public static let minimumBandSamples = SharedData.Punctuality.minimumBandSamples
     /// The best and the worst band are named only when their shares differ by this many points.
-    public static let minimumBandGapPoints = 5
+    public static let minimumBandGapPoints = SharedData.Punctuality.minimumBandGapPoints
 
     /// The delay distribution of `train` at `index`, or nil below `minimumSamples` samples or when
     /// the buckets of the file do not include 0, 5, 15 and 30 minutes.

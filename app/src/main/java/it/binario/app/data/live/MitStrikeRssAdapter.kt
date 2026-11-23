@@ -1,5 +1,6 @@
 package it.binario.app.data.live
 
+import it.binario.app.shared.SharedData
 import it.binario.app.data.RailTime
 import it.binario.app.data.core.SourceId
 import it.binario.app.data.notices.NoticeText
@@ -58,8 +59,8 @@ data class StrikeNotice(
 
 /** A standard RSS 2.0 reader: `channel/item` with title, link, description, pubDate and guid. No DTD, no entities. */
 object Rss2Parser {
-    private const val MAX_ITEMS = 300
-    private const val MAX_TEXT = 4_000
+    private val MAX_ITEMS = SharedData.NoticesSources.RSS.maximumItems
+    private val MAX_TEXT = SharedData.NoticesSources.RSS.maximumText
 
     fun parse(bytes: ByteArray): List<RssItem> {
         val factory = DocumentBuilderFactory.newInstance().apply {
@@ -118,21 +119,18 @@ object Rss2Parser {
  */
 object StrikeCalendar {
     private val accents = Regex("\\p{M}+")
-    private val railWords = Regex(
-        "\\b(ferroviari[oae]?|ferrovi[ae]|treni|treno|fs|trenitalia|italo|trenord|rfi)\\b"
-    )
-    private val months = listOf(
-        "gennaio", "febbraio", "marzo", "aprile", "maggio", "giugno", "luglio", "agosto", "settembre", "ottobre", "novembre", "dicembre"
-    )
+    // The words, months and limits are the shared table (contracts/shared-data/v1/notices-sources-v1.json, strikes).
+    private val railWords = Regex(SharedData.NoticesSources.STRIKES.railWordsPattern)
+    private val months = SharedData.NoticesSources.MONTHS
     private val monthPattern = months.joinToString("|")
     private val numeric = Regex("\\b(\\d{1,2})[/.-](\\d{1,2})[/.-](\\d{4})\\b")
     private val iso = Regex("\\b(\\d{4})-(\\d{2})-(\\d{2})\\b")
     private val spanned = Regex("\\b(\\d{1,2})\\s*(?:-|al|e)\\s*(\\d{1,2})\\s+($monthPattern)(?:\\s+(\\d{4}))?\\b")
     private val named = Regex("\\b(\\d{1,2})(?:°|º)?\\s+($monthPattern)(?:\\s+(\\d{4}))?\\b")
-    private val startLabel = Regex("(inizio|dal|dalle|a partire)\\W*$")
-    private val endLabel = Regex("(fine|al|alle|termine)\\W*$")
-    const val UPCOMING_SHOWN = 6
-    val UNDATED_RECENT: Duration = Duration.ofDays(14)
+    private val startLabel = Regex(SharedData.NoticesSources.STRIKES.startLabelPattern)
+    private val endLabel = Regex(SharedData.NoticesSources.STRIKES.endLabelPattern)
+    val UPCOMING_SHOWN = SharedData.NoticesSources.STRIKES.upcomingShown
+    val UNDATED_RECENT: Duration = Duration.ofDays(SharedData.NoticesSources.STRIKES.undatedRecentDays.toLong())
 
     fun normalize(value: String): String = Normalizer.normalize(value, Normalizer.Form.NFD).replace(accents, "").lowercase(Locale.ROOT)
 
@@ -165,7 +163,7 @@ object StrikeCalendar {
         }
         if (found.isEmpty()) return null to null
         val ordered = found.sortedBy { it.position }
-        val prefix = { item: Found -> value.substring(maxOf(0, item.position - 24), item.position) }
+        val prefix = { item: Found -> value.substring(maxOf(0, item.position - SharedData.NoticesSources.STRIKES.labelWindow), item.position) }
         val start = ordered.firstOrNull { startLabel.containsMatchIn(prefix(it)) } ?: ordered.first()
         val end = start.end
             ?: ordered.firstOrNull { it !== start && endLabel.containsMatchIn(prefix(it)) && !it.start.isBefore(start.start) }?.start
@@ -175,14 +173,14 @@ object StrikeCalendar {
     }
 
     private fun inferYear(month: Int, reference: LocalDate): Int =
-        if (month < reference.monthValue - 3) reference.year + 1 else reference.year
+        if (month < reference.monthValue - SharedData.NoticesSources.STRIKES.inferNextYearMonthsBack) reference.year + 1 else reference.year
 
     private fun date(year: Int, month: Int, day: Int): LocalDate? = runCatching { LocalDate.of(year, month, day) }.getOrNull()
 
     /** Rail items with their dates; markup in titles and descriptions is reduced to plain text. */
     fun strikes(items: List<RssItem>, fetchedOn: LocalDate): List<StrikeNotice> = items.filter(::isRail).map { item ->
-        val title = NoticeText.fromHtml(item.title, 300) ?: item.title
-        val description = NoticeText.fromHtml(item.description, 2_000)
+        val title = NoticeText.fromHtml(item.title, SharedData.NoticesSources.STRIKES.titleLength) ?: item.title
+        val description = NoticeText.fromHtml(item.description, SharedData.NoticesSources.STRIKES.descriptionLength)
         val reference = item.pubDate?.atZone(RailTime.defaultZone)?.toLocalDate() ?: fetchedOn
         val (start, end) = dates(title, reference).takeIf { it.first != null } ?: dates(description.orEmpty(), reference)
         StrikeNotice(
@@ -221,22 +219,22 @@ fun interface MitStrikeFetcher {
 }
 
 /** HTTPS GET with timeouts and a bounded body; redirects only to the same HTTPS host. Bytes, so the XML declares the charset. */
-internal class HttpMitStrikeFetcher(private val maxBytes: Int = 1_048_576) : MitStrikeFetcher {
-    override suspend fun fetch(url: String): ByteArray = withTimeoutOrNull(20_000) {
+internal class HttpMitStrikeFetcher(private val maxBytes: Int = MIT_FEED.maximumBytes) : MitStrikeFetcher {
+    override suspend fun fetch(url: String): ByteArray = withTimeoutOrNull(MIT_FEED.totalTimeoutSeconds * 1_000L) {
         withContext(Dispatchers.IO) {
             var current = runCatching { URI(url).toURL() }.getOrElse { throw IOException("URL della fonte non valido") }
             val host = current.host
-            repeat(MAX_HOPS) {
+            repeat(MIT_FEED.maximumRequests) {
                 if (current.protocol != "https" || !current.host.equals(host, ignoreCase = true) || current.userInfo != null) {
                     throw IOException("La fonte deve usare HTTPS sullo stesso host")
                 }
                 val connection = current.openConnection() as HttpURLConnection
                 connection.requestMethod = "GET"
-                connection.connectTimeout = 8_000
-                connection.readTimeout = 12_000
+                connection.connectTimeout = MIT_FEED.connectTimeoutSeconds * 1_000
+                connection.readTimeout = MIT_FEED.readTimeoutSeconds * 1_000
                 connection.instanceFollowRedirects = false
                 connection.useCaches = false
-                connection.setRequestProperty("Accept", "application/rss+xml, application/xml, text/xml")
+                connection.setRequestProperty("Accept", MIT_FEED.accept)
                 connection.setRequestProperty("User-Agent", BINARIO_PUBLIC_SOURCE_USER_AGENT)
                 val response = withCancellableHttpConnection(connection) {
                     val status = connection.responseCode
@@ -279,7 +277,6 @@ internal class HttpMitStrikeFetcher(private val maxBytes: Int = 1_048_576) : Mit
     private class Response(val status: Int, val location: String?, val body: ByteArray?)
 
     private companion object {
-        const val MAX_HOPS = 3
         val REDIRECTS = setOf(301, 302, 303, 307, 308)
     }
 }
@@ -294,7 +291,7 @@ class MitStrikeRssAdapter internal constructor(
     private val clock: Clock,
     retryDelayMillis: Long
 ) : RailProvider {
-    constructor(clock: Clock = Clock.systemUTC()) : this(HttpMitStrikeFetcher(), clock, 750)
+    constructor(clock: Clock = Clock.systemUTC()) : this(HttpMitStrikeFetcher(), clock, MIT_FEED.retryDelay)
 
     override val descriptor = ProviderDescriptor(
         id = SOURCE_ID,
@@ -302,7 +299,7 @@ class MitStrikeRssAdapter internal constructor(
         capabilities = setOf(ProviderCapability.SERVICE_ALERTS),
         coverage = CoverageDescriptor(countryCodes = setOf("IT"), description = "Scioperi del settore ferroviario proclamati e comunicati al Ministero"),
         accessMode = AccessMode.OPEN_DIRECT,
-        ratePolicy = RatePolicy(Duration.ofMinutes(30), defaultTimeToLive = TTL),
+        ratePolicy = RatePolicy(MIT_FEED.minimumInterval, defaultTimeToLive = TTL),
         schemaVersion = 1
     )
 
@@ -317,10 +314,13 @@ class MitStrikeRssAdapter internal constructor(
 
     companion object {
         val SOURCE_ID = SourceId("mit-strikes-rss")
-        const val URL = "https://scioperi.mit.gov.it/mit2/public/scioperi/rss"
-        val TTL: Duration = Duration.ofHours(6)
-        private val MAX_STALE: Duration = Duration.ofHours(24)
+        val URL = MIT_FEED.url
+        val TTL: Duration = MIT_FEED.timeToLive
+        private val MAX_STALE: Duration = MIT_FEED.maximumStale
         private const val UNAVAILABLE = "Il calendario scioperi del MIT non è raggiungibile."
         private const val UNREADABLE = "Il calendario scioperi del MIT non è leggibile."
     }
 }
+
+/** The MIT strike calendar's feed in the shared table: address, limits, rate and cache (same-HTTPS-host redirects). */
+private val MIT_FEED = noticeFeed("mit-strikes-rss")

@@ -3,29 +3,21 @@ package it.binario.app.data.planned
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.text.Normalizer
-import java.time.Month
 import java.util.Locale
+import it.binario.app.shared.SharedData
 
-/** Calendario minimo delle festività nazionali che rendono festivo un servizio RFI. */
+/**
+ * Calendario minimo delle festività nazionali che rendono festivo un servizio RFI: la tabella condivisa con Alexa
+ * contracts/shared-data/v1/italian-holidays-v1.json ([SharedData.ItalianHolidays]).
+ */
 internal object ItalianRailServiceCalendar {
     fun isHoliday(date: LocalDate): Boolean {
-        val fixed = setOf(
-            Month.JANUARY to 1,
-            Month.JANUARY to 6,
-            Month.APRIL to 25,
-            Month.MAY to 1,
-            Month.JUNE to 2,
-            Month.AUGUST to 15,
-            Month.NOVEMBER to 1,
-            Month.DECEMBER to 8,
-            Month.DECEMBER to 25,
-            Month.DECEMBER to 26
-        )
-        if ((date.month to date.dayOfMonth) in fixed) return true
-        // San Francesco d'Assisi, national holiday again from 2026 (legge 151/2025).
-        if (date.year >= 2026 && date.month == Month.OCTOBER && date.dayOfMonth == 4) return true
+        val fixed = SharedData.ItalianHolidays.HOLIDAYS.any { holiday ->
+            holiday.month == date.monthValue && holiday.day == date.dayOfMonth && date.year >= (holiday.fromYear ?: date.year)
+        }
+        if (fixed) return true
         val easter = easterSunday(date.year)
-        return date == easter || date == easter.plusDays(1)
+        return SharedData.ItalianHolidays.EASTER_OFFSETS_DAYS.any { offset -> date == easter.plusDays(offset.toLong()) }
     }
 
     /**
