@@ -21,6 +21,7 @@
   - orario nazionale sloveno, per Trieste–Lubiana, Nova Gorica e Sežana.
   - Restano nelle build personali finché la CI non legge la licenza dichiarata dall'editore.
   - La CI ora stampa anche le licenze dichiarate dai portali (Socrata, CKAN) per Trenord, Trentino ed EAV.
+- **Licenze di Trenord e Trentino confermate dagli editori:** CC BY 4.0 per entrambe, lette dai portali dati.lombardia.it e dati.trentino.it in una run della CI. Sono registrate nel manifest, nella policy iOS e nei crediti di Impostazioni › Info. Tutti i pack principali hanno ora una licenza registrata.
 - **iPhone:** i tre indici completi dei paesi confinanti hanno un'impronta nuova, perché registrano il catalogo stazioni. Dopo il merge vengono pubblicati come nuove pre-release; le precedenti restano scaricabili per le versioni già installate.
 
 ## In sviluppo — Svizzera dall'indirizzo stabile, orario 2027 dal 13 dicembre

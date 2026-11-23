@@ -189,6 +189,7 @@ La tabella copre ogni host `http(s)://` trovato in `app/src/main/java`, `wear/sr
 | `ckan.opendata.swiss` | E | Evidenza di licenza del pack `ch-otd-gtfs` nel manifest GTFS (scheda del dataset su opendata.swiss); nessun traffico |
 | `data.oebb.at` | E | Catalogo fonti (`RailSourceCatalog.kt`) |
 | `dati.comune.genova.it` | E | Catalogo fonti (`RailSourceCatalog.kt`) e evidenza di licenza (CC BY 4.0) nel manifest `gtfs-transit/` |
+| `dati.trentino.it` | E | Evidenza di licenza (CC BY 4.0, dichiarata dal portale) del pack `trentino-gtfs` nel manifest GTFS; nessun traffico |
 | `developer-docs.deutschebahn.com` | E | Catalogo fonti (`InternationalSourceCatalog.kt`) |
 | `developers.deutschebahn.com` | E | Catalogo fonti (`InternationalSourceCatalog.kt`) |
 | `nap.si` | E | Catalogo fonti (`RailSourceCatalog.kt`): pagina del dataset IJPP sul National Access Point sloveno, evidenza di licenza (CC BY-SA 4.0); nessun traffico |

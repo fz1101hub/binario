@@ -46,7 +46,7 @@
     {
       "accessMode": "OPEN_DIRECT",
       "landingPage": "https://www.dati.lombardia.it/Mobilit-e-trasporti/Orario-Ferroviario-Regionale-Gtfs/3z4k-mxz9",
-      "licence": null,
+      "licence": "CC BY 4.0",
       "sourceId": "lombardia-trenord-gtfs",
       "sourceUrl": "https://www.dati.lombardia.it/download/3z4k-mxz9/application/zip"
     },
@@ -74,7 +74,7 @@
     {
       "accessMode": "OPEN_DIRECT",
       "landingPage": "https://www.trentinotrasporti.it/it/opendata-it",
-      "licence": null,
+      "licence": "CC BY 4.0",
       "sourceId": "trentino-gtfs",
       "sourceUrl": "https://www.trentinotrasporti.it/opendata/google_transit_extraurbano_tte.zip"
     }
