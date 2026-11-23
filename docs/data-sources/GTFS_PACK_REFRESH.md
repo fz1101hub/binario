@@ -211,24 +211,24 @@ Una fonte nuova di `gtfs-transit/` o `gtfs-personal/` entra in `tools/transit_pa
      -f 'inputs[transit_discovery]=licences page:https://solweb.tper.it/web/tools/open-data/open-data.aspx gtfs:https://opendata.comune.palermo.it/js/server/uploads/dataset/gtfs/amat_gtfs.zip page:https://opendata.comune.palermo.it/ gtfs:https://mobilita.regione.calabria.it/gtfs/otp_gtfs.zip page:https://mobilita.regione.calabria.it/ gtfs:https://dujpp.si/gtfs/dujpp-ijpp.zip page:https://nap.si/en/datasets_details?id=6fc3966a-5e3f-cf10-1df3-70d3af14d03d page:https://www.circumetnea.it/pubblicazione-orari-del-trasporto-pubblico-locale-in-formato-gtfs/ gtfs:https://it.mangonese.dev/gtfs/fce.gtfs.zip'
    ```
 
-   Per ogni `gtfs:` controllare `agency` (operatore), `route_types` e le righe `route type=…` (treni 2 o 100–199, tram 0, metro 1), `calendar … end=` e `calendar_dates … last=` (orario in corso), `size`; per ogni `page:` le righe `licence-text` e `link`; per `licences` le righe `LICENCE`. Se un collegamento `.zip` della pagina Circumetnea è un GTFS nuovo, ripetere il dispatch con `gtfs:<quel link>`.
+   Per ogni `gtfs:` controllare `agency` (operatore), `route_types` e le righe `route type=…` (treni 2 o 100–199, tram 0, metro 1, monorotaia 12), `calendar … end=` e `calendar_dates … last=` (orario in corso), `size`; per ogni `page:` le righe `licence-text` e `link`; per `licences` le righe `LICENCE`. Se un collegamento `.zip` della pagina Circumetnea è un GTFS nuovo, ripetere il dispatch con `gtfs:<quel link>`.
 2. **Decisione.** Con la licenza confermata dall'editore spostare il candidato in `gtfs-transit/` (`"directory": "gtfs-transit"`, `"distribution": "all"`) e scrivere licenza ed evidenza; senza treni (Calabria), senza corse in corso (Palermo) o senza SŽ (Slovenia) il candidato non va costruito. Treni di un operatore già incluso (per esempio Trenitalia nel feed calabrese) vanno esclusi prima con un selettore rivisto in `build_gtfs_packs.py`.
-3. **Build** dei soli candidati scelti, in un dispatch che non includa `build=all` (una fonte senza route ammesse ferma la build della sua directory):
+3. **Build** dei soli candidati scelti, un dispatch per candidato e mai insieme a `build=all` (una fonte senza route ammesse ferma la build della sua directory):
 
    ```sh
    gh api -X POST repos/fz1101hub/binario/actions/workflows/gtfs-assets-ci.yml/dispatches -f ref=<ramo> \
-     -f 'inputs[transit_packs]=build=marconi-express-gtfs,palermo-amat-tram-gtfs,calabria-rail-gtfs,si-nap-rail-gtfs' \
+     -f 'inputs[transit_packs]=build=palermo-amat-tram-gtfs' \
      -f 'inputs[print_personal_packs]=true'
    ```
 
-   `print_personal_packs=true` stampa solo i pack di `gtfs-personal/` di questa build (i candidati; non GTT né gli altri pack personali, che il dispatch non costruisce). Nel log: la riga `VERSION marconi-express-gtfs {…}` con le versioni TPER elencate e quella usata, `ACQUIRE … {download}` con byte e SHA-256, gli errori del filtro, la tabella di validità nel riepilogo.
-4. **Aggiunta**: prima la voce del catalogo in `RailSourceCatalog.kt` (già presente per Marconi Express, Palermo e Slovenia; per la Calabria va scritta con l'operatore trovato), con `readiness` coerente con la directory (`PERSONAL_GTFS_PACK` per `gtfs-personal/`, `READY_FOR_GTFS_PACK` o `IMPORT_VIA_GATEWAY` per `gtfs-transit/`), poi
+   `print_personal_packs=true` stampa solo i pack di `gtfs-personal/` di questa build (i candidati; non GTT né gli altri pack personali, che il dispatch non costruisce) e serve solo per un candidato di `gtfs-personal/` che si vuole aggiungere; un candidato di `gtfs-transit/` è stampato comunque. Non va usato per un candidato con licenza non risolta (oggi il GTFS sloveno): una build senza stampa dà comunque dimensione (`ls -l`) e validità, senza pubblicare il pack nel log. Nel log: `ACQUIRE … {download}` con byte e SHA-256, la riga `VERSION <sourceId> {…}` di una fonte con `latestVersion` (versioni elencate e quella usata), gli errori del filtro, la tabella di validità nel riepilogo.
+4. **Aggiunta**: prima la voce del catalogo in `RailSourceCatalog.kt` (già presente per Palermo e Slovenia; per la Calabria va scritta con l'operatore trovato), con `readiness` coerente con la directory (`PERSONAL_GTFS_PACK` per `gtfs-personal/`, `READY_FOR_GTFS_PACK` o `IMPORT_VIA_GATEWAY` per `gtfs-transit/`), poi
 
    ```sh
-   python3 tools/apply_ci_gtfs_refresh.py --run <run_id> --add-new marconi-express-gtfs --add-new si-nap-rail-gtfs
+   python3 tools/apply_ci_gtfs_refresh.py --run <run_id> --add-new palermo-amat-tram-gtfs
    ```
 
-   L'helper aggiunge ZIP, voce del manifest e `SHA256SUMS`, la voce di `TransitGtfsPacks.kt` dal blocco `android` (data di fine dal manifest, `personalOnly` per `gtfs-personal/`), rigenera i crediti Android ed esegue le verifiche. Poi: togliere `"candidate": true` dal registro, aggiungere le righe della tabella in `SOURCE_POLICY.md` (pack, corse, fermate, fine) e le corse attese in `EmbeddedGtfsTransitPacksTest`; per il Marconi Express valutare la voce Bologna Centrale (`curated:S05043`) ↔ Bologna Aeroporto (`curated:NC000683`) in `AirportRoutes.kt`, solo se `AirportRoutesTest` la trova sui pack reali (oggi il test vuole pack di ogni build: un pack personale non basta).
+   L'helper aggiunge ZIP, voce del manifest e `SHA256SUMS`, la voce di `TransitGtfsPacks.kt` dal blocco `android` (data di fine dal manifest, `personalOnly` per `gtfs-personal/`), rigenera i crediti Android ed esegue le verifiche. Poi: togliere `"candidate": true` dal registro, aggiungere le righe della tabella in `SOURCE_POLICY.md` (pack, corse, fermate, fine) e le corse attese in `EmbeddedGtfsTransitPacksTest`; passare le righe del Play inventory dell'host da E a D (provenienza). Il Marconi Express è stato aggiunto così il 23 novembre 2026 (build della run 45108568868).
 
 ### Licenze dichiarate dagli editori
 
