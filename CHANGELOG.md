@@ -1,5 +1,16 @@
 # Changelog
 
+## In sviluppo — Svizzera dall'indirizzo stabile, orario 2027 dal 13 dicembre
+
+- **Svizzera**: il pack si aggiorna ora dall'indirizzo stabile (permalink) dell'orario 2026 invece che da un file datato agosto 2025, e dal 13 dicembre 2026 passa da solo all'orario 2027.
+  - Il cambio è scritto nel manifest (`nextTimetable`). L'aggiornamento accetta il nuovo indirizzo solo se è quello registrato, poi aggiorna anche la policy iOS e il catalogo delle fonti.
+  - Ogni altro cambio di indirizzo viene rifiutato.
+- **Aggiornamento settimanale**: corretto un controllo della CI che avrebbe fatto fallire ogni aggiornamento della Svizzera e della Francia, ora che sono pack di zona di confine. Il controllo cercava il pack completo nella copia del repository invece che in quella appena scaricata.
+- **Trenitalia France** (Frecciarossa Milano–Parigi e Parigi–Lione–Marsiglia, licenza Etalab 2.0) è registrato come pack candidato: la CI lo costruisce solo su richiesta.
+  - Per ora non entra nell'app, perché i suoi treni sono già nel pack nazionale Trenitalia.
+  - Servirà come base per i ritardi in tempo reale di Trenitalia France.
+  - I test garantiscono che, quando entrerà, ogni Frecciarossa compaia una volta sola.
+
 ## In sviluppo — Fermate abbinate per nome solo entro 10 km
 
 - **Android, abbinamento delle fermate alle stazioni**: un abbinamento per nome vale ora solo entro 10 km. Prima una fermata poteva finire su una stazione omonima a centinaia di km. Per esempio:
