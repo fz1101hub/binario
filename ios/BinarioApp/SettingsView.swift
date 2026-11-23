@@ -59,6 +59,12 @@ struct SettingsView: View {
                 LiveSourceRow(name: LiveTexts.sourceName(.viaggiaTreno), detailKey: "settings.live.viaggiatreno")
                 LiveSourceRow(name: LiveTexts.sourceName(.rfiStationBoard), detailKey: "settings.live.rfi")
                 LiveSourceRow(name: LiveTexts.sourceName(.italo), detailKey: "settings.live.italo")
+                // The notice sources Android counts among its personal ones, behind the same switch.
+                LiveSourceRow(name: NoticePublisher.trenitalia.brand, detailKey: "settings.live.trenitalia_news")
+                LiveSourceRow(name: NoticePublisher.trenord.brand, detailKey: "settings.live.trenord")
+                Text("settings.live.notices_always")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
                 Text("settings.live.privacy")
                     .font(.footnote)
                     .foregroundStyle(.secondary)

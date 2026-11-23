@@ -28,7 +28,7 @@ LANGUAGES = {
     "ar", "hi", "id", "ja", "ko", "my", "pt-BR", "ru", "th", "tr", "vi", "zh-Hans",
 }
 STRINGS_ENTRY = re.compile(r'^"((?:[^"\\]|\\.)+)"\s*=\s*"((?:[^"\\]|\\.)*)";$')
-SWIFT_REQUIRED_KEY = re.compile(r'"((?:action|app|tab|planner|departures|catalog|schedule|result|saved|settings|watch|accessibility)\.[a-z0-9_.]+)"')
+SWIFT_REQUIRED_KEY = re.compile(r'"((?:action|app|tab|planner|departures|catalog|schedule|result|saved|settings|watch|accessibility|notices)\.[a-z0-9_.]+)"')
 PLACEHOLDER = re.compile(r'%(?:\d+\$)?(?:hh|h|ll|l)?[@diufFeEgGxXoscpaA]')
 # CLDR plural categories of each .lproj (docs/l10n/LOCALES.md and the batch rules).
 PLURAL_CATEGORIES = {
@@ -253,6 +253,44 @@ class IOSProjectTests(unittest.TestCase):
         catalog = json.loads(CATALOG.read_text(encoding="utf-8"))
         self.assertEqual(5_290, catalog["stationCount"])
         self.assertFalse(catalog["operationalData"])
+
+    def test_notice_sources_come_from_the_shared_table_bundled_once(self) -> None:
+        """The iPhone's rail notices read contracts/shared-data/v1/notices-sources-v1.json (Android's values, kept equal
+        by NoticesSourcesTableTest.kt): bundled from there, never copied, its feeds named nowhere in the Swift sources,
+        Trenitalia and Trenord behind «Dati in tempo reale», MIT and RFI in every build."""
+        app = self.targets["Binario"]
+        resources = [
+            entry["path"] for entry in app["sources"]
+            if isinstance(entry, dict) and entry.get("buildPhase") == "resources"
+        ]
+        self.assertIn("../contracts/shared-data/v1/notices-sources-v1.json", resources)
+        self.assertFalse((IOS / "Resources/notices-sources-v1.json").exists())
+        table = json.loads((ROOT / "contracts/shared-data/v1/notices-sources-v1.json").read_text(encoding="utf-8"))
+        self.assertEqual("binario-shared-data-notices-sources-v1", table["schema"])
+        gates = {source["id"]: source["gate"] for source in table["sources"]}
+        self.assertEqual({
+            "mit-strikes-rss": "all-builds", "rfi-infomobility-rss": "all-builds",
+            "trenitalia-infomobility-news": "personal", "trenord-line-notices": "personal",
+        }, gates)
+        for source in table["sources"]:
+            self.assertTrue(source["url"].startswith("https://"), source["id"])
+        kit = IOS / "BinarioKit/Sources/BinarioKit"
+        swift = "\n".join(path.read_text(encoding="utf-8") for path in kit.glob("*.swift"))
+        for source in table["sources"]:
+            self.assertNotIn(source["url"], swift, "the feeds live in the shared table only")
+        self.assertIn('public static let resourceName = "notices-sources-v1"', (kit / "NoticeSourcesTable.swift").read_text(encoding="utf-8"))
+        model = (IOS / "BinarioApp/RailNoticesModel.swift").read_text(encoding="utf-8")
+        self.assertIn("bundle.url(forResource: NoticeSourcesTable.resourceName, withExtension: NoticeSourcesTable.resourceExtension)", model)
+        service = (kit / "RailNotices.swift").read_text(encoding="utf-8")
+        self.assertIn("feed.gate == .allBuilds || personal", service)
+        # Every notice section passes «Dati in tempo reale» as the personal switch.
+        views = (IOS / "BinarioApp/RailNoticeViews.swift").read_text(encoding="utf-8")
+        self.assertNotIn("personal: true", views)
+        self.assertIn("personal: model.liveDataEnabled", views)
+        android = (ROOT / "app/src/test/java/it/binario/app/data/notices/NoticesSourcesTableTest.kt").read_text(encoding="utf-8")
+        self.assertIn("contracts/shared-data/v1/notices-sources-v1.json", android)
+        tests = (IOS / "BinarioKit/Tests/BinarioKitTests/NoticesContractTests.swift").read_text(encoding="utf-8")
+        self.assertIn("contracts/shared-rules/v1/notices-v1.json", tests)
 
     def test_authoritative_catalog_matches_its_checked_in_manifest(self) -> None:
         payload = CATALOG.read_bytes()

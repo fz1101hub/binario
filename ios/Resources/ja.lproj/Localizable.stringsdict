@@ -16,6 +16,20 @@
 			<string>さらに %1$lld 本の列車</string>
 		</dict>
 	</dict>
+	<key>notices.works.show_more</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>other</key>
+			<string>ほかのお知らせ %1$lld 件を表示</string>
+		</dict>
+	</dict>
 	<key>result.alternative.on_time</key>
 	<dict>
 		<key>NSStringLocalizedFormatKey</key>
