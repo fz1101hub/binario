@@ -8,7 +8,7 @@ final class StationCatalogTests: XCTestCase {
             .appendingPathComponent("app/src/main/assets/stations/curated_it_rail_stations.json"))
         let catalog = try CuratedStationCatalog(data: data)
 
-        XCTAssertEqual(catalog.stationCount, 5_249)
+        XCTAssertEqual(catalog.stationCount, 5_290)
         XCTAssertFalse(catalog.operationalData)
         XCTAssertEqual(catalog.station(id: "S08328")?.name, "Appiano Proba Petronia")
         XCTAssertEqual(catalog.station(id: "NC001752")?.name, "Boscotrecase - Porta Di Accesso Al Cratere Del Vesuvio")
@@ -20,6 +20,12 @@ final class StationCatalogTests: XCTestCase {
         XCTAssertEqual(catalog.station(id: "NC001819")?.name, "Collalbo")
         XCTAssertEqual(catalog.search("soprabolzano").first?.id, "NC001811")
         XCTAssertEqual(catalog.search("Collalbo").first?.id, "NC001819")
+        // Regional railway stops named as their bundled packs name them; a namesake of an existing station carries
+        // its operator. S00239 is Tronzano, the station its code names.
+        XCTAssertEqual(catalog.station(id: "NC001829")?.name, "San Giorgio (ARST)")
+        XCTAssertEqual(catalog.station(id: "NC001849")?.name, "Casella Paese")
+        XCTAssertEqual(catalog.search("Casella Paese").first?.id, "NC001849")
+        XCTAssertEqual(catalog.station(id: "S00239")?.name, "Tronzano")
         for station in catalog.stations {
             XCTAssertNoThrow(try JourneyModelValidator.identity(StationIdentity(station)), station.id)
         }
@@ -46,7 +52,7 @@ final class StationCatalogTests: XCTestCase {
         guard case let .available(catalog) = state else {
             return XCTFail("Expected available catalog")
         }
-        XCTAssertEqual(catalog.stationCount, 5_249)
+        XCTAssertEqual(catalog.stationCount, 5_290)
     }
 
     func testAsyncLoaderFailsClosedForInvalidData() async {

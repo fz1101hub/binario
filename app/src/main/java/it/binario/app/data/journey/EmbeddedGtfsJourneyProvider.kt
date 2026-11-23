@@ -1945,9 +1945,11 @@ class EmbeddedGtfsJourneyProvider internal constructor(
                     fun byName(lat: Double?, lon: Double?): Station? =
                         pack.catalogueNameSuffixes.firstNotNullOfOrNull { suffix -> resolver.resolve("$name $suffix", lat, lon) }
                             ?: resolver.resolve(name, lat, lon)
-                    // The name's station is the same for every stop of that name unless it is too far from this one.
+                    // The name's station is the same for every stop of that name unless it is too far from this one, or the
+                    // name gives several stations: then the ones near this stop decide.
                     byCode ?: resolvedByName.getOrPut(name) { byName(null, null) }
-                        ?.let { if (GtfsStopStationResolver.isWithinNameBound(it, latitude, longitude)) it else byName(latitude, longitude) }
+                        ?.takeIf { GtfsStopStationResolver.isWithinNameBound(it, latitude, longitude) }
+                        ?: (if (latitude != null && longitude != null) byName(latitude, longitude) else null)
                         ?: resolver.nearbyStation(name, latitude, longitude)
                 }
                 val referencedParents = directory.parents.filter(String::isNotEmpty).toHashSet()
