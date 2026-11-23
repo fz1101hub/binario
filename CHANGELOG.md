@@ -1,5 +1,10 @@
 # Changelog
 
+## In sviluppo — Aggiornamento settimanale del 23 novembre
+
+- Orari aggiornati: STA, SNCF (nuovi pin, pre-release verificate online) e Trenitalia France, ricostruito con le regole sulle categorie e sulle corse fuori ordine (righe «FR», 4 corse del 9281 lasciate fuori). Statistiche di puntualità: 10.863 treni, finestra 24 ottobre – 22 novembre.
+- Svizzera e Trenord non aggiornati, restano i pack precedenti (validi fino al 12 dicembre). Per la Svizzera, l'archivio del 21 novembre si decomprime a 4,6 GB, oltre il limite di 1 GB. L'errore elenca ora i membri più grandi, così il prossimo aggiornamento mostra cosa è cresciuto senza scaricare di nuovo la fonte.
+
 ## In sviluppo — Trenitalia France anche su iPhone; Frecciarossa francesi con la loro categoria
 
 - **iPhone:** l'indice degli orari include il pack di Trenitalia France (10 pack). I Frecciarossa Parigi–Lione–Chambéry–Oulx–Torino–Milano compaiono da Oulx, Torino Porta Susa e Milano Centrale; restano anche le corse che fermano a Lione Part-Dieu, così il suo tabellone mostra tutti i treni dell'operatore.
