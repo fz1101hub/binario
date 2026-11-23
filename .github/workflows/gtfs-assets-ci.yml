@@ -26,7 +26,9 @@ on:
       - "requirements-ci.txt"
       - "tools/**"
       - "tests/**"
-      # The shared tables and the code tools/generate_shared_code.py writes from them (its --check below).
+      # The shared cases and tables the offline tests read, and the code tools/generate_shared_code.py writes from the
+      # tables (its --check below).
+      - "contracts/shared-rules/**"
       - "contracts/shared-data/**"
       - "app/src/main/java/it/binario/app/shared/**"
       - "alexa-companion/shared/generated/**"
@@ -60,7 +62,9 @@ on:
       - "requirements-ci.txt"
       - "tools/**"
       - "tests/**"
-      # The shared tables and the code tools/generate_shared_code.py writes from them (its --check below).
+      # The shared cases and tables the offline tests read, and the code tools/generate_shared_code.py writes from the
+      # tables (its --check below).
+      - "contracts/shared-rules/**"
       - "contracts/shared-data/**"
       - "app/src/main/java/it/binario/app/shared/**"
       - "alexa-companion/shared/generated/**"
@@ -142,6 +146,7 @@ jobs:
           tests/test_app_store_docs.py
           tests/test_build_android_gtfs_credits.py
           tests/test_verify_docs_status.py
+          tests/test_ios_gtfs_schedule.py
           tests/test_generate_shared_code.py
 
       # The Kotlin, Swift and TypeScript code of contracts/shared-data/v1 is committed: it must be what the tables give.

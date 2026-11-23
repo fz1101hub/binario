@@ -21,7 +21,9 @@ import foreign_pack_rules as foreign_rules  # noqa: E402  (border zone rule shar
 
 APPLICATION_ID = int.from_bytes(b"BNGT", "big")
 # Packs in the index; the same value as build_ios_gtfs_schedule.INDEXED_PACK_COUNT.
-INDEXED_PACK_COUNT = 10
+INDEXED_PACK_COUNT = 17
+# Route types of the index (build_ios_gtfs_schedule.INDEXED_ROUTE_TYPES): rail, and the packs' bus routes.
+INDEXED_ROUTE_TYPES_SQL = "route_type = 2 OR route_type BETWEEN 100 AND 199 OR route_type = 3 OR route_type BETWEEN 700 AND 799"
 # Packs whose trips must touch a catalogue station with codes; build_ios_gtfs_schedule.FOREIGN_PACKS.
 FOREIGN_PACKS = ("ch-otd-gtfs", "oebb-gtfs", "sncf-gtfs", "trenitalia-france-gtfs")
 # Per-country index (build_ios_gtfs_schedule.py --foreign-full): kind and builder version of its metadata.
@@ -111,6 +113,13 @@ def border_subset_packs(metadata: dict[str, object]) -> list[str]:
             "metadata filter.borderSubsets is invalid")
     return border
 
+def transit_rail_packs(metadata: dict[str, object]) -> list[str]:
+    """The railway packs of the gtfs-transit/ manifest in the index; its manifest is then an input too."""
+    rail = (metadata.get("filter") or {}).get("transitRailPacks", []) if isinstance(metadata.get("filter"), dict) else None
+    require(isinstance(rail, list) and all(isinstance(item, str) and item for item in rail) and rail == sorted(set(rail)),
+            "metadata filter.transitRailPacks is invalid")
+    return rail
+
 def verify_input_fingerprint(
     metadata: dict[str, object],
     metadata_path: Path,
@@ -135,13 +144,14 @@ def verify_inputs(
         require(isinstance(files, list) and len(files) == 2, "per-country metadata must describe its full pack and the catalog")
     else:
         border = border_subset_packs(metadata)
-        expected_count = INDEXED_PACK_COUNT + (3 if source_policy_path is not None else 2) + len(border)
+        transit = 1 if transit_rail_packs(metadata) else 0
+        expected_count = INDEXED_PACK_COUNT + (3 if source_policy_path is not None else 2) + transit + len(border)
         require(
             isinstance(files, list) and len(files) == expected_count,
-            f"metadata must describe manifest, catalog, reviewed source policy, {INDEXED_PACK_COUNT} archives and "
-            f"{len(border)} full packs of border subsets"
+            f"metadata must describe manifest, catalog, reviewed source policy, {'transit manifest, ' * transit}"
+            f"{INDEXED_PACK_COUNT} archives and {len(border)} full packs of border subsets"
             if source_policy_path is not None
-            else f"metadata must describe manifest, catalog, and {INDEXED_PACK_COUNT} archives",
+            else f"metadata must describe manifest, catalog, {'transit manifest, ' * transit}and {INDEXED_PACK_COUNT} archives",
         )
     require(isinstance(expected_fingerprint, str) and len(expected_fingerprint) == 64, "invalid input fingerprint")
     require(isinstance(base_path, str) and base_path, "metadata input basePath is missing")
@@ -231,7 +241,13 @@ def verify_source_policy(source_policy_path: Path, pack_source_ids: set[str]) ->
         require(isinstance(source, dict) and set(source) == {"sourceId", "sourceUrl", "accessMode", "licence", "landingPage"}, f"GTFS source policy entry {index} is invalid")
         source_id, source_url, access_mode, licence = source["sourceId"], source["sourceUrl"], source["accessMode"], source["licence"]
         require(isinstance(source_id, str) and source_id and source_id not in policy_ids, f"GTFS source policy entry {index} has an invalid sourceId")
-        require(isinstance(source_url, str) and source_url.startswith("https://") and access_mode == "OPEN_DIRECT", f"GTFS source policy entry {source_id!r} is not an HTTPS direct source")
+        # build_ios_gtfs_schedule.reviewed_source: an HTTPS direct download, or a GATEWAY_ONLY origin imported offline
+        # in CI and corroborated by an HTTPS copy (checked by the builder on the manifest entry).
+        require(isinstance(source_url, str) and isinstance(access_mode, str)
+                and (access_mode == "OPEN_DIRECT" and source_url.startswith("https://")
+                     or access_mode == "GATEWAY_ONLY" and source_url.startswith(("https://", "http://")))
+                and len(source_url) > len("https://"),
+                f"GTFS source policy entry {source_id!r} is not an HTTPS direct or a gateway source")
         require(licence is None or (isinstance(licence, str) and licence.strip()), f"GTFS source policy entry {source_id!r} has an invalid licence")
         landing_page = source["landingPage"]
         require(isinstance(landing_page, str) and landing_page.startswith("https://") and len(landing_page) > len("https://"),
@@ -348,10 +364,8 @@ def verify_database(
             ):
                 require(station_id in zone_ids,
                         f"{source_id}: stop {external_id} carries catalogue id {station_id} outside the border zone")
-        non_rail = connection.execute(
-            "SELECT count(*) FROM route WHERE route_type != 2 AND NOT (route_type BETWEEN 100 AND 199)"
-        ).fetchone()[0]
-        require(non_rail == 0, "non-rail route found")
+        non_rail = connection.execute(f"SELECT count(*) FROM route WHERE NOT ({INDEXED_ROUTE_TYPES_SQL})").fetchone()[0]
+        require(non_rail == 0, "route neither rail nor bus found")
         invalid_bikes = connection.execute("SELECT count(*) FROM trip WHERE bikes_allowed IS NOT NULL AND bikes_allowed NOT IN (1, 2)").fetchone()[0]
         require(invalid_bikes == 0, "trip bikes_allowed outside 1, 2 or NULL")
         invalid_bits = connection.execute("SELECT count(*) FROM service WHERE length(active_days) != (day_count + 7) / 8").fetchone()[0]

@@ -11,6 +11,7 @@ import plistlib
 import re
 import sqlite3
 import struct
+import sys
 import tempfile
 import unittest
 import xml.etree.ElementTree as ElementTree
@@ -28,7 +29,7 @@ LANGUAGES = {
     "ar", "hi", "id", "ja", "ko", "my", "pt-BR", "ru", "th", "tr", "vi", "zh-Hans",
 }
 STRINGS_ENTRY = re.compile(r'^"((?:[^"\\]|\\.)+)"\s*=\s*"((?:[^"\\]|\\.)*)";$')
-SWIFT_REQUIRED_KEY = re.compile(r'"((?:action|app|tab|planner|departures|catalog|schedule|result|saved|settings|watch|accessibility)\.[a-z0-9_.]+)"')
+SWIFT_REQUIRED_KEY = re.compile(r'"((?:action|app|tab|planner|departures|catalog|schedule|result|saved|settings|watch|accessibility|notices)\.[a-z0-9_.]+)"')
 PLACEHOLDER = re.compile(r'%(?:\d+\$)?(?:hh|h|ll|l)?[@diufFeEgGxXoscpaA]')
 # CLDR plural categories of each .lproj (docs/l10n/LOCALES.md and the batch rules).
 PLURAL_CATEGORIES = {
@@ -255,6 +256,44 @@ class IOSProjectTests(unittest.TestCase):
         self.assertEqual(5_290, catalog["stationCount"])
         self.assertFalse(catalog["operationalData"])
 
+    def test_notice_sources_come_from_the_shared_table_bundled_once(self) -> None:
+        """The iPhone's rail notices read contracts/shared-data/v1/notices-sources-v1.json (Android's values, kept equal
+        by NoticesSourcesTableTest.kt): bundled from there, never copied, its feeds named nowhere in the Swift sources,
+        Trenitalia and Trenord behind «Dati in tempo reale», MIT and RFI in every build."""
+        app = self.targets["Binario"]
+        resources = [
+            entry["path"] for entry in app["sources"]
+            if isinstance(entry, dict) and entry.get("buildPhase") == "resources"
+        ]
+        self.assertIn("../contracts/shared-data/v1/notices-sources-v1.json", resources)
+        self.assertFalse((IOS / "Resources/notices-sources-v1.json").exists())
+        table = json.loads((ROOT / "contracts/shared-data/v1/notices-sources-v1.json").read_text(encoding="utf-8"))
+        self.assertEqual("binario-shared-data-notices-sources-v1", table["schema"])
+        gates = {source["id"]: source["gate"] for source in table["sources"]}
+        self.assertEqual({
+            "mit-strikes-rss": "all-builds", "rfi-infomobility-rss": "all-builds",
+            "trenitalia-infomobility-news": "personal", "trenord-line-notices": "personal",
+        }, gates)
+        for source in table["sources"]:
+            self.assertTrue(source["url"].startswith("https://"), source["id"])
+        kit = IOS / "BinarioKit/Sources/BinarioKit"
+        swift = "\n".join(path.read_text(encoding="utf-8") for path in kit.glob("*.swift"))
+        for source in table["sources"]:
+            self.assertNotIn(source["url"], swift, "the feeds live in the shared table only")
+        self.assertIn('public static let resourceName = "notices-sources-v1"', (kit / "NoticeSourcesTable.swift").read_text(encoding="utf-8"))
+        model = (IOS / "BinarioApp/RailNoticesModel.swift").read_text(encoding="utf-8")
+        self.assertIn("bundle.url(forResource: NoticeSourcesTable.resourceName, withExtension: NoticeSourcesTable.resourceExtension)", model)
+        service = (kit / "RailNotices.swift").read_text(encoding="utf-8")
+        self.assertIn("feed.gate == .allBuilds || personal", service)
+        # Every notice section passes «Dati in tempo reale» as the personal switch.
+        views = (IOS / "BinarioApp/RailNoticeViews.swift").read_text(encoding="utf-8")
+        self.assertNotIn("personal: true", views)
+        self.assertIn("personal: model.liveDataEnabled", views)
+        android = (ROOT / "app/src/test/java/it/binario/app/data/notices/NoticesSourcesTableTest.kt").read_text(encoding="utf-8")
+        self.assertIn("contracts/shared-data/v1/notices-sources-v1.json", android)
+        tests = (IOS / "BinarioKit/Tests/BinarioKitTests/NoticesContractTests.swift").read_text(encoding="utf-8")
+        self.assertIn("contracts/shared-rules/v1/notices-v1.json", tests)
+
     def test_authoritative_catalog_matches_its_checked_in_manifest(self) -> None:
         payload = CATALOG.read_bytes()
         catalog = json.loads(payload)
@@ -359,12 +398,64 @@ class IOSProjectTests(unittest.TestCase):
             used.update(SWIFT_REQUIRED_KEY.findall(path.read_text(encoding="utf-8")))
         self.assertTrue(used <= canonical, sorted(used - canonical))
         intentionally_dynamic = {
+            # The bus labels, read through TimetableVehicle.labelKey (VehicleTexts.busLabel).
+            "result.vehicle.bus_trenitalia", "result.vehicle.freccialink", "result.vehicle.italobus", "result.vehicle.bus",
+            "result.vehicle.replacement_bus",
             "settings.about.version_unavailable",
             "watch.status.disabled", "watch.status.activating", "watch.status.pending",
             "watch.status.context_updated", "watch.status.cleared",
             "watch.status.unsupported", "watch.status.not_paired", "watch.status.failed",
         }
         self.assertEqual(set(), canonical - used - intentionally_dynamic)
+
+    def test_a_timetable_bus_is_shown_with_its_icon_and_androids_label(self) -> None:
+        # The labels are Android's journey_leg_* in the 17 languages; the keys are the iPhone's of the shared cases
+        # (contracts/shared-rules/v1/journey-leg-vehicles-v1.json), read by SharedRulesContractTests.swift.
+        contract = json.loads((ROOT / "contracts/shared-rules/v1/journey-leg-vehicles-v1.json").read_text(encoding="utf-8"))
+        keys = {case["iosLabel"]: case["androidLabel"] for case in contract["legVehicles"] if case["iosLabel"]}
+        self.assertEqual(5, len(keys))
+        vehicle = (IOS / "BinarioKit/Sources/BinarioKit/TimetableVehicle.swift").read_text(encoding="utf-8")
+        for key in keys:
+            self.assertIn(f'return "{key}"', vehicle)
+        for language, folder in sorted(ANDROID_VALUES.items()):
+            with self.subTest(language=language):
+                resources = ElementTree.parse(ROOT / "app/src/main/res" / folder / "strings.xml").getroot()
+                android_strings = {element.get("name"): element.text for element in resources.findall("string")}
+                values = read_strings(IOS / "Resources" / f"{language}.lproj" / "Localizable.strings")
+                for key, android_key in keys.items():
+                    self.assertEqual(android_strings[android_key], values[key], key)
+                # A bus is never said as a train: the board's sentence without its word for "train".
+                self.assertEqual(sorted(PLACEHOLDER.findall(values["departures.row.spoken"])),
+                                 sorted(PLACEHOLDER.findall(values["departures.row.spoken_vehicle"])))
+                self.assertLess(len(values["departures.row.spoken_vehicle"]), len(values["departures.row.spoken"]))
+        texts = (IOS / "BinarioApp/VehicleTexts.swift").read_text(encoding="utf-8")
+        self.assertIn('static let busSymbol = "bus"', texts)
+        for name in ("PlannerView.swift", "TrainDetailView.swift"):
+            self.assertIn("VehicleTexts.busLabel(service)", (IOS / "BinarioApp" / name).read_text(encoding="utf-8"), name)
+        board = (IOS / "BinarioApp/DeparturesView.swift").read_text(encoding="utf-8")
+        self.assertIn("Label(VehicleTexts.rowLabel(service), systemImage: VehicleTexts.busSymbol)", board)
+        self.assertIn('service.isBus ? "departures.row.spoken_vehicle" : "departures.row.spoken"', board)
+        # A bus has no train statistics, as on Android.
+        self.assertIn("for service in snapshot.services where !service.isBus", (IOS / "BinarioKit/Sources/BinarioKit/NetworkReliability.swift").read_text(encoding="utf-8"))
+        self.assertIn("guard let reliabilityStats, !service.isBus else { return nil }", (IOS / "BinarioApp/AppModel.swift").read_text(encoding="utf-8"))
+
+    def test_the_timetable_copies_follow_androids_pack_classes(self) -> None:
+        # TimetableCopies names the packs as Android's PlannedPackOrder and the index builder do.
+        sys.path.insert(0, str(ROOT / "tools"))
+        import build_ios_gtfs_schedule as builder
+
+        copies = (IOS / "BinarioKit/Sources/BinarioKit/TimetableCopies.swift").read_text(encoding="utf-8")
+        vehicle = (IOS / "BinarioKit/Sources/BinarioKit/TimetableVehicle.swift").read_text(encoding="utf-8")
+        def swift_set(source: str, name: str) -> set[str]:
+            return set(re.findall(r'"([^"]+)"', re.search(rf"static let {name}: Set<String> = \[([^\]]*)\]", source).group(1)))
+        self.assertEqual(set(builder.FOREIGN_PACKS), swift_set(copies, "foreignPacks"))
+        self.assertEqual(set(builder.SCHEDULED_COACH_PACKS), swift_set(vehicle, "scheduledCoachPacks"))
+        order = (ROOT / "app/src/main/java/it/binario/app/data/sources/PlannedPackOrder.kt").read_text(encoding="utf-8")
+        self.assertEqual(set(re.findall(r'SourceId\("([^"]+)"\)', re.search(r"val nationalPacks: Set<SourceId> = setOf\(([^\n]*)\)", order).group(1))),
+                         swift_set(copies, "nationalPacks"))
+        adapter = (ROOT / "app/src/main/java/it/binario/app/data/gtfs/EmbeddedGtfsRouteAdapter.kt").read_text(encoding="utf-8")
+        self.assertEqual(set(re.findall(r'"([^"]+)"', re.search(r"CROSS_PUBLISHING_PACKS = setOf\(([^)]*)\)", adapter).group(1))),
+                         swift_set(copies, "crossPublishingPacks"))
 
     def test_iphone_texts_never_name_another_platform_or_a_widget(self) -> None:
         """App Review and the companion's rule (EXPO_PORT_PLAN R24, audit expo-6): no iPhone text names Android,
@@ -648,10 +739,14 @@ class IOSProjectTests(unittest.TestCase):
         self.assertNotRegex(text, re.compile(r"AKIA[0-9A-Z]{16}"))
         # Live rail data (owner decision, November 2026): every request is HTTPS. The one cleartext
         # address allowed is Android's hop to www.viaggiatreno.it; only the HTTP client's tests spell
-        # out the cleartext redirects that the client refuses.
-        refused_redirect_tests = IOS / "BinarioKit/Tests/BinarioKitTests/LiveSourceHTTPTests.swift"
+        # out the cleartext redirects that the client refuses, and the source policy's tests the
+        # cleartext origin a gateway feed may record (imported offline, never requested by the app).
+        cleartext_tests = {
+            IOS / "BinarioKit/Tests/BinarioKitTests/LiveSourceHTTPTests.swift",
+            IOS / "BinarioKit/Tests/BinarioKitTests/GTFSSourcePolicyTests.swift",
+        }
         for path in paths:
-            if path != refused_redirect_tests:
+            if path not in cleartext_tests:
                 self.assertNotRegex(path.read_text(encoding="utf-8"), r"http://(?!www\.viaggiatreno\.it/)", str(path))
 
     def test_the_only_cleartext_exception_is_androids_viaggiatreno_hop(self) -> None:
@@ -857,11 +952,19 @@ class IOSProjectTests(unittest.TestCase):
         self.assertIn("model.includedFeedAttributions", planner)
         self.assertIn("testStationsWithoutTimetableAreMarkedAndListedAfterCoveredOnes", model_tests)
         self.assertIn("testCoveredCatalogStationIDsListEveryBoundStopOnce", (IOS / "BinarioKit/Tests/BinarioKitTests/SQLiteGTFSJourneyRepositoryTests.swift").read_text(encoding="utf-8"))
-        # The intro no longer implies national coverage.
+        # The intro says which networks the index covers (every railway pack of Android, since 23 November 2026) and
+        # that the city networks are not among them, in every language.
         italian = read_strings(IOS / "Resources/it.lproj/Localizable.strings")
         english = read_strings(IOS / "Resources/en.lproj/Localizable.strings")
-        self.assertIn("Trenitalia (tranne Trenitalia France) e Italo non sono inclusi", italian["planner.intro.body"])
-        self.assertIn("Trenitalia (except Trenitalia France) and Italo are not included", english["planner.intro.body"])
+        self.assertIn("Trenitalia, Italo, le ferrovie regionali e i treni transfrontalieri", italian["planner.intro.body"])
+        self.assertIn("metropolitane e tram non sono inclusi", italian["planner.intro.body"])
+        self.assertIn("Trenitalia, Italo, the regional railways and the cross-border trains", english["planner.intro.body"])
+        self.assertIn("metro and tram lines are not included", english["planner.intro.body"])
+        for language in sorted(LANGUAGES):
+            body = read_strings(IOS / "Resources" / f"{language}.lproj" / "Localizable.strings")["planner.intro.body"]
+            self.assertIn("Trenitalia", body, language)
+            self.assertIn("Italo", body, language)
+            self.assertNotIn("Trenitalia France", body, language)
 
     def test_settings_source_list_is_backed_by_the_reviewed_policy_licences(self) -> None:
         policy = json.loads((IOS / "Resources/binario_gtfs_source_policy_v1.json").read_text(encoding="utf-8"))
@@ -893,13 +996,15 @@ class IOSProjectTests(unittest.TestCase):
 
     def test_ios_source_policy_licences_and_pages_match_android(self) -> None:
         # Audit ci-docs-3: the iPhone showed no licence for ARST (CC BY 4.0) and EAV (IODL), which
-        # Android records, and linked the raw archives. Each licence is the Android manifest's
-        # (or the short form it gives in brackets, «CC BY» of «Creative Commons Attribution (CC
-        # BY)»); null exactly while Android's is still to be confirmed by the owner; each link is
-        # the landing page Android's source catalogue opens.
+        # Android records, and linked the raw archives. Each licence is the text of the Android manifest
+        # (gtfs/ or, for a regional railway, gtfs-transit/), word for word; null exactly while Android's
+        # is still to be confirmed by the owner; each link is the landing page Android's source catalogue
+        # opens, and URL and access mode are the manifest's.
         policy = json.loads((IOS / "Resources/binario_gtfs_source_policy_v1.json").read_text(encoding="utf-8"))
-        manifest = json.loads((ROOT / "app/src/main/assets/gtfs/manifest.json").read_text(encoding="utf-8"))
-        android = {pack["sourceId"]: pack.get("licence") for pack in manifest["packs"]}
+        manifests = [json.loads((ROOT / f"app/src/main/assets/{directory}/manifest.json").read_text(encoding="utf-8"))
+                     for directory in ("gtfs", "gtfs-transit")]
+        packs = {pack["sourceId"]: pack for manifest in manifests for pack in manifest["packs"]}
+        android = {source_id: pack.get("licence") for source_id, pack in packs.items()}
         catalogue = (ROOT / "app/src/main/java/it/binario/app/data/sources/RailSourceCatalog.kt").read_text(encoding="utf-8")
         pages = dict(re.findall(r'id = SourceId\("([^"]+)"\),.*?landingPage = uri\("([^"]+)"\)', catalogue, re.S))
         unconfirmed = "Da confermare dal titolare"
@@ -911,10 +1016,10 @@ class IOSProjectTests(unittest.TestCase):
                 if expected is None or expected == unconfirmed:
                     self.assertIsNone(source["licence"])
                 else:
-                    self.assertIsNotNone(source["licence"], f"Android records {expected!r}")
-                    self.assertTrue(source["licence"] == expected or expected.endswith(f"({source['licence']})"),
-                                    f"{source['licence']!r} is not {expected!r}")
+                    self.assertEqual(expected, source["licence"])
                 self.assertEqual(pages.get(source_id), source["landingPage"])
+                self.assertEqual((packs[source_id]["sourceUrl"], packs[source_id]["accessMode"]),
+                                 (source["sourceUrl"], source["accessMode"]))
         self.assertEqual(0, sum(source["licence"] is None for source in policy["sources"]))  # D3 closed on 23 Nov 2026
 
     def test_bundled_schedule_fast_path_validates_the_cache_without_rehashing_it(self) -> None:
@@ -1870,8 +1975,10 @@ class IOSProjectTests(unittest.TestCase):
                         self.assertGreater(trips, 0, (origin, destination))
             finally:
                 connection.close()
-        # Today the iPhone index carries Trenord only: Milano Centrale and Cadorna ↔ Malpensa.
-        self.assertEqual([("S01700", "S01139"), ("S01066", "S01139")], offered)
+        # The iPhone index carries every railway pack Android plans with (Trenitalia, Trenord, Ferrotramviaria…): every
+        # link but the Marconi Express, a city people mover the index leaves out.
+        self.assertEqual([(city, airport) for city, airport, packs in ios_routes if packs != {"marconi-express-gtfs"}], offered)
+        self.assertEqual(8, len(offered))
 
     def test_watch_pin_is_persisted_respects_sharing_and_is_answered_in_the_background(self) -> None:
         model = (IOS / "BinarioApp/AppModel.swift").read_text(encoding="utf-8")

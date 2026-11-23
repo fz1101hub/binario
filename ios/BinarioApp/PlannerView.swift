@@ -3,6 +3,7 @@ import BinarioKit
 
 struct PlannerView: View {
     @EnvironmentObject private var model: AppModel
+    @EnvironmentObject private var notices: RailNoticesModel
     @Environment(\.scenePhase) private var scenePhase
     @State private var origin: Station?
     @State private var destination: Station?
@@ -122,6 +123,8 @@ struct PlannerView: View {
 
                 if let snapshot = model.latestSnapshot {
                     AvailableResultView(snapshot: snapshot, now: clock)
+                    // Android's board of a saved route: the works its notices name, nothing when none does.
+                    RouteWorksSection(routes: resultRoutes, scope: .thisRoute)
                 } else if case let .unavailable(reason) = model.searchState {
                     UnavailableResultView(reason: reason)
                 }
@@ -134,6 +137,7 @@ struct PlannerView: View {
             }
         }
         .navigationTitle("planner.title")
+        .loadsRouteWorks(resultRoutes, model: model, notices: notices)
         .onChange(of: scenePhase) { _, phase in
             if phase == .active { followCurrentTime() }
         }
@@ -319,6 +323,13 @@ struct PlannerView: View {
         if isSaved { DeparturesTexts.announce(String(localized: "accessibility.saved_route")) }
     }
 
+    /// The saved route the results are for, if any: a search not saved has no works section, as on Android.
+    private var resultRoutes: [SavedRoute] {
+        guard let query = model.latestSnapshot?.query else { return [] }
+        let id = SavedRoute.routeIdentifier(origin: query.origin, destination: query.destination)
+        return model.savedRoutes.filter { $0.id == id }
+    }
+
     /// The route of the form is among the saved routes.
     private var isSaved: Bool {
         guard let origin, let destination else { return false }
@@ -447,7 +458,7 @@ private struct AvailableResultView: View {
     }
 }
 
-/// One listed train: time, number, category, its live state at the origin when the live board
+/// One listed train: time, number, category (a bus: a bus icon and its label), its live state at the origin when the live board
 /// lists it (delay, cancellation, platform and their source, read as one sentence), destination and
 /// operator, then bikes on board and the unofficial statistics at the searched destination when known.
 private struct ResultRow: View {
@@ -463,9 +474,16 @@ private struct ResultRow: View {
                 Text(service.number)
                     .font(.headline)
                 Spacer()
-                Text(service.category)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                // A bus shows a bus and its label, never a train's category (as on Android).
+                if let busLabel = VehicleTexts.busLabel(service) {
+                    Label(busLabel, systemImage: VehicleTexts.busSymbol)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                } else {
+                    Text(service.category)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
             }
             if let live {
                 LiveStatusLine(status: live, showsPlatform: true)

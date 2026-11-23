@@ -8,6 +8,42 @@
 - iPhone: i collegamenti con gli aeroporti sanno quali pack sono linee urbane (`AirportRoutes.byCityLine`). Oggi non cambia nulla, perché nessun pack urbano arriva sull'iPhone.
 - I workflow Android, Apple e Alexa partono anche quando cambiano le tabelle o il generatore.
 
+## In sviluppo — Avvisi ferroviari anche su iPhone; tabella comune delle fonti degli avvisi
+
+- **iPhone, avvisi come su Android** (stesse fonti, stesse regole, stessi testi):
+  - in fondo a **Partenze**, l'area **Avvisi e infomobilità**: «Scioperi in programma» dal calendario del MIT (solo settore ferroviario), avvisi RFI e Trenitalia senza doppioni, avvisi Trenord per direttrice, etichetta «Sciopero» con la pagina dei treni garantiti, collegamenti al calendario scioperi e a FS News. Non scarica nulla finché non si tocca «Mostra avvisi»;
+  - **Avvisi Trenord per questa stazione** nel tabellone di una stazione dell'area Trenord;
+  - **Lavori e interruzioni sulle tue tratte** nella scheda **Tratte** e **… su questa tratta** sotto i risultati del pianificatore di una tratta salvata. Sull'iPhone l'avviso si abbina ai due estremi della tratta e alle linee che il testo cita: l'indice degli orari non ha ancora le fermate intermedie dei treni, che Android usa in più.
+- **Fonti e regole.** RSS del MIT e di RFI sempre; infomobilità Trenitalia (ViaggiaTreno, con il solo salto in chiaro già ammesso) e avvisi Trenord solo con **Dati in tempo reale** attivo, come le fonti personali di Android. Impostazioni elenca le due nuove fonti e dice che RFI e MIT si leggono anche con l'interruttore spento; la nota dell'interruttore ora dice «non chiede nulla a queste fonti».
+- **Buone maniere come Android:** User-Agent di Binario, HTTPS, stessi intervalli, stesse durate di cache e di copia non aggiornata, stessi limiti di risposta; al primo HTTP 403 o 429 la fonte va in pausa. Nessun nuovo tentativo automatico, come per le altre fonti dell'iPhone.
+- **Non portati sull'iPhone:** il promemoria degli scioperi delle 18 e l'avviso serale dei lavori di domani, che richiedono un controllo in background che l'app iPhone non ha; gli avvisi nel dettaglio del treno.
+- **Tabella comune** `contracts/shared-data/v1/notices-sources-v1.json`: indirizzi dei feed, accesso, intervalli, cache, limiti, pause e tabelle di lettura (parole degli scioperi e dei lavori, mesi, radici operative e area Trenord, domini ufficiali), con i valori di Android. L'iPhone la include e la legge all'avvio; se manca o non è valida, nessuna fonte di avvisi è attiva. Un test Kotlin (`NoticesSourcesTableTest`) la confronta con le costanti Android finché un generatore non scriverà il codice di entrambe.
+- **Casi comuni** `contracts/shared-rules/v1/notices-v1.json` sulle fixture dei test Android, letti da `NoticesContractTest` (Android) e `NoticesContractTests` (iPhone). I workflow Android e Apple partono anche quando cambia `contracts/shared-data/`.
+- Testi: quelli di Android in 17 lingue; le tre righe nuove delle Impostazioni e la nota modificata sono solo iPhone, con traduzioni automatiche da rivedere. Aggiornati [l'informativa privacy verificabile](PRIVACY.md), le note per App Review e la checklist App Store; il controllo della privacy legge ora anche gli host della tabella comune.
+
+## In sviluppo — iPhone e Apple Watch con gli stessi orari di Android
+
+- **iPhone:** l'indice degli orari include ora tutti i pack ferroviari di Android, 17 invece di 10:
+  - Trenitalia e Italo, con i loro bus (Bus Trenitalia, FrecciaLink, ItaloBus);
+  - le ferrovie regionali di `gtfs-transit/`: FAL, Ferrotramviaria, Ferrovie del Gargano, Mi.Co.Tra. Udine – Villach e Genova – Casella.
+  - Metropolitane, tram e people mover restano solo su Android, perché l'iPhone non ha tratte di città. Le stazioni con orari passano da 804 a 2.563.
+- **Stesse stazioni di Android:** le fermate Trenitalia e Italo sono riconosciute dal codice di stazione con le regole dell'app Android (1.829 fermate Trenitalia e 63 Italo), poi dal nome.
+  - La tabella dei codici Italo è in `contracts/shared-data/v1/italo-gtfs-station-codes.json`.
+  - I casi di prova comuni sono in `contracts/shared-rules/v1/gtfs-station-codes-v1.json`, letti dai test Python e Kotlin.
+- **Bus:** nei risultati, nel dettaglio e in «Partenze» un bus compare con l'icona del bus e la stessa etichetta di Android («Bus Trenitalia», «ItaloBus», «Bus sostitutivo»), in 17 lingue.
+  - VoiceOver non lo chiama «treno»; i bus non hanno la riga di puntualità.
+  - I casi comuni ad Android e iPhone sono in `contracts/shared-rules/v1/journey-leg-vehicles-v1.json`.
+- **Nomi e copie come su Android:**
+  - categoria e operatore sono scritti come su Android («FR 9241» di «Trenitalia»);
+  - un treno pubblicato da due pack (per esempio Trenitalia e Trenitalia France) compare una volta sola, con la copia del pack nazionale;
+  - le corse Italo duplicate dello stesso itinerario sono lasciate fuori.
+- **Fonti:** Impostazioni › Info mostra licenza, pagina e attribuzione dei 17 pack, con gli stessi testi del manifest Android. La licenza TFT è ora «Creative Commons Attribution (CC BY)».
+  - Genova – Casella ha un'origine HTTP: è accettata solo come fonte importata offline e confermata da una copia HTTPS identica.
+- **Dimensioni:** l'indice passa da 2,3 a 7,3 MB compressi (27,8 MB decompresso), entro i limiti esistenti.
+- **Aggiornamento settimanale:** l'indice iPhone viene ricostruito e verificato anche quando cambia un pack di `gtfs-transit/`. I filtri della CI Android, Apple e GTFS coprono `contracts/shared-rules/` e `contracts/shared-data/`.
+- **Apple Watch:** riceve gli stessi treni e bus dall'iPhone. Il formato inviato al Watch non ha un campo per il tipo di mezzo, quindi un bus compare con la sua sigla e il numero («BUS 1234»), senza icona.
+- Il testo del pianificatore e le schede App Store dicono ora quali reti sono incluse (traduzioni automatiche, da rivedere).
+
 ## In sviluppo — «Cerca le corse» per il Marconi Express e per le linee urbane
 
 - Android, collegamenti con gli aeroporti: i collegamenti in treno (Fiumicino, Malpensa, Bari, Palermo, Cagliari, Trieste, Caselle) continuano a dire «Cerca i treni da … a …»; solo Bologna, servita dal Marconi Express (una monorotaia), dice «Cerca le corse da … a …».

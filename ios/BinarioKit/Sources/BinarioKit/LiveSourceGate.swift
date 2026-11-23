@@ -90,7 +90,9 @@ final class LiveSourceGate: @unchecked Sendable {
         var maximumRetryAfter: TimeInterval = 3_600
     }
 
-    let source: LiveSource
+    /// The source a status line names when it is paused; nil for one no status line names (the
+    /// notice feeds, as Android's breakers without a pause label).
+    let source: LiveSource?
     private let configuration: Configuration
     private let pauses: LiveSourcePauses
     private let now: @Sendable () -> Date
@@ -142,7 +144,7 @@ final class LiveSourceGate: @unchecked Sendable {
         case start(flight: UInt64, caller: UInt64)
     }
 
-    init(source: LiveSource, configuration: Configuration, pauses: LiveSourcePauses, now: @escaping @Sendable () -> Date) {
+    init(source: LiveSource?, configuration: Configuration, pauses: LiveSourcePauses, now: @escaping @Sendable () -> Date) {
         self.source = source
         self.configuration = configuration
         self.pauses = pauses
@@ -325,8 +327,8 @@ final class LiveSourceGate: @unchecked Sendable {
             pauseUntil = record(failure, at: current)
         }
         lock.unlock()
-        if resumed { pauses.resume(source) }
-        if let pauseUntil { pauses.pause(source, until: pauseUntil) }
+        if resumed, let source { pauses.resume(source) }
+        if let pauseUntil, let source { pauses.pause(source, until: pauseUntil) }
         for continuation in continuations { continuation.resume(returning: result) }
     }
 
