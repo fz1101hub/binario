@@ -8,7 +8,7 @@ final class GTFSSourcePolicyTests: XCTestCase {
             .appendingPathComponent("ios/Resources/binario_gtfs_source_policy_v1.json"))
         let policy = try GTFSSourcePolicy(data: data)
 
-        XCTAssertEqual(policy.sources.count, 9)
+        XCTAssertEqual(policy.sources.count, 10)
         XCTAssertTrue(policy.sources.allSatisfy { $0.sourceURL.scheme == "https" && $0.accessMode == "OPEN_DIRECT" })
         XCTAssertEqual(policy.source(id: "oebb-gtfs")?.licence, "CC BY 4.0")
         XCTAssertEqual(policy.source(id: "alto-adige-sta-gtfs")?.licence, "CC0 1.0")
@@ -17,6 +17,13 @@ final class GTFSSourcePolicyTests: XCTestCase {
         XCTAssertTrue(policy.sources.allSatisfy { $0.landingPage?.scheme == "https" }, "every feed links its public page")
         XCTAssertEqual(policy.source(id: "arst-gtfs")?.landingPage?.absoluteString, "https://www.arst.sardegna.it/open-data/")
         XCTAssertNotNil(policy.source(id: "sncf-gtfs"))
+        // Bundled whole since 23 Nov 2026 (Etalab Open Licence 2.0, as the Android manifest records it).
+        let france = try XCTUnwrap(policy.source(id: "trenitalia-france-gtfs"))
+        XCTAssertTrue(france.licence?.hasPrefix("Licence Ouverte / Open Licence 2.0 (Etalab, etalab-2.0)") == true)
+        XCTAssertEqual(
+            france.landingPage?.absoluteString,
+            "https://transport.data.gouv.fr/datasets/horaires-des-trains-trenitalia-france"
+        )
         XCTAssertNil(policy.source(id: "missing"))
     }
 

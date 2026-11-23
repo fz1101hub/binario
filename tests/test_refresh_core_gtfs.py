@@ -472,6 +472,38 @@ class RefreshCoreTest(unittest.TestCase):
                                     fetch=FakeDownloads({url: utc}), resolve=self.resolve, candidates={})
         self.assertEqual("unchanged", again["packs"]["trenitalia-france-gtfs"]["status"])
 
+    def test_an_identical_archive_is_filtered_again_when_the_published_pack_misses_a_reviewed_rule(self) -> None:
+        # Trenitalia France as built before its route categories and out-of-order trips: it still passes --check, so CI
+        # stays green, and the weekly refresh filters the same archive again with the rules.
+        sources = self.temp / "tf"
+        sources.mkdir()
+        data = trenitalia_france_zip(sources / "tf.zip")
+        candidates = {"trenitalia-france-gtfs": candidate()}
+        url = candidates["trenitalia-france-gtfs"]["sourceUrl"]
+        with mock.patch.object(builder, "ROUTE_CATEGORY_SOURCES", {}), mock.patch.object(builder, "OUT_OF_ORDER_SOURCES", frozenset()), \
+                contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+            refresh.refresh(["trenitalia-france-gtfs"], self.published, self.temp / "old", "2026-11-23",
+                            fetch=FakeDownloads({url: data}), resolve=self.resolve, candidates=candidates)
+        old = self.temp / "old/staging/gtfs"
+        builder.verify_filter_from_asset(old / "trenitalia-france-gtfs.zip", "trenitalia-france-gtfs")
+        self.assertEqual([builder.ROUTE_CATEGORY_RULE, builder.OUT_OF_ORDER_RULE],
+                         builder.missing_reviewed_rules(old / "trenitalia-france-gtfs.zip", "trenitalia-france-gtfs"))
+        with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+            report = refresh.refresh(["trenitalia-france-gtfs"], old, self.temp / "out", "2026-11-24",
+                                     fetch=FakeDownloads({url: data}), resolve=self.resolve, candidates={})
+        self.assertEqual("changed", report["packs"]["trenitalia-france-gtfs"]["status"])
+        staging = self.temp / "out/staging/gtfs"
+        builder.verify_assets(staging, as_of=None, min_valid_days=None)
+        with zipfile.ZipFile(staging / "trenitalia-france-gtfs.zip") as archive:
+            metadata = json.loads(archive.read(builder.FILTER_MANIFEST_MEMBER))
+            routes = archive.read("routes.txt").decode()
+        self.assertEqual(0, metadata[builder.OUT_OF_ORDER_COUNT_FIELD])
+        self.assertIn("FR,TF,FR,Frecciarossa,2", routes)
+        with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+            again = refresh.refresh(["trenitalia-france-gtfs"], staging, self.temp / "again", "2026-11-25",
+                                    fetch=FakeDownloads({url: data}), resolve=self.resolve, candidates={})
+        self.assertEqual("unchanged", again["packs"]["trenitalia-france-gtfs"]["status"])
+
     def test_the_candidate_registry_is_reviewed(self) -> None:
         shipped = refresh.load_candidates()
         for source_id, pack in shipped.items():

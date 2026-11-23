@@ -3,7 +3,7 @@
 "tab.settings" = "設定";
 "planner.title" = "経路検索";
 "planner.intro.title" = "ルートを検索";
-"planner.intro.body" = "厳選カタログから出発駅と到着駅を選んでください。収録している時刻表は計画ダイヤで、下記の地域路線と国境を越える路線のみを対象としています。Trenitalia と Italo は含まれず、時刻表のない駅は検索結果で表示されます。";
+"planner.intro.body" = "厳選カタログから出発駅と到着駅を選んでください。収録している時刻表は計画ダイヤで、下記の地域路線と国境を越える路線のみを対象としています。Trenitalia（Trenitalia France を除く）と Italo は含まれず、時刻表のない駅は検索結果で表示されます。";
 "planner.origin" = "出発";
 "planner.destination" = "到着";
 "planner.departure" = "日時";

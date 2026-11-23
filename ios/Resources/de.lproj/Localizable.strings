@@ -3,7 +3,7 @@
 "tab.settings" = "Einstellungen";
 "planner.title" = "Planen";
 "planner.intro.title" = "Strecke suchen";
-"planner.intro.body" = "Wählen Sie Start und Ziel aus dem kuratierten Katalog. Die enthaltenen Fahrpläne sind Plandaten und decken nur die unten aufgeführten regionalen und grenzüberschreitenden Netze ab: Trenitalia und Italo sind nicht enthalten, Bahnhöfe ohne Fahrplan werden in der Suche gekennzeichnet.";
+"planner.intro.body" = "Wählen Sie Start und Ziel aus dem kuratierten Katalog. Die enthaltenen Fahrpläne sind Plandaten und decken nur die unten aufgeführten regionalen und grenzüberschreitenden Netze ab: Trenitalia (außer Trenitalia France) und Italo sind nicht enthalten, Bahnhöfe ohne Fahrplan werden in der Suche gekennzeichnet.";
 "planner.origin" = "Start";
 "planner.destination" = "Ziel";
 "planner.departure" = "Datum und Uhrzeit";

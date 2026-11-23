@@ -3,7 +3,7 @@
 "tab.settings" = "设置";
 "planner.title" = "规划";
 "planner.intro.title" = "搜索路线";
-"planner.intro.body" = "从精选目录中选择出发站和到达站。所含时刻表为计划时刻表，仅覆盖下方列出的区域和跨境线路网：不含 Trenitalia 和 Italo，没有时刻表的车站会在搜索中标出。";
+"planner.intro.body" = "从精选目录中选择出发站和到达站。所含时刻表为计划时刻表，仅覆盖下方列出的区域和跨境线路网：不含 Trenitalia（Trenitalia France 除外）和 Italo，没有时刻表的车站会在搜索中标出。";
 "planner.origin" = "出发";
 "planner.destination" = "到达";
 "planner.departure" = "日期和时间";

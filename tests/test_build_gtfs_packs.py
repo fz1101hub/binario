@@ -1092,7 +1092,8 @@ class LocalTimesTest(unittest.TestCase):
         self.assertEqual([builder.APP_TIMEZONE], [row["agency_timezone"] for row in agency])
         self.assertEqual({"70458": "6656", "70300": "6656", "70310": "6656", "70900": "6662", "70950": "9283"},
                          {row["trip_id"]: row["trip_short_name"] for row in trip_rows})
-        self.assertEqual([builder.LOCAL_TIMES_RULE, builder.TRAIN_NUMBERS_RULE], metadata["tripRules"])
+        self.assertEqual([builder.OUT_OF_ORDER_RULE, builder.LOCAL_TIMES_RULE, builder.TRAIN_NUMBERS_RULE, builder.ROUTE_CATEGORY_RULE],
+                         metadata["tripRules"])
         self.assertEqual("UTC", metadata[builder.LOCAL_TIMES_FROM_FIELD])
         builder.verify_filter_from_asset(output, self.SOURCE)
 
@@ -1173,6 +1174,123 @@ class LocalTimesTest(unittest.TestCase):
         with self.assertRaisesRegex(builder.BuildError, r"1 trip senza trip_short_name"):
             builder.verify_train_numbers(self.SOURCE, {"tripRules": [builder.TRAIN_NUMBERS_RULE]},
                                          [{"trip_id": "X", "route_id": "6656", "trip_short_name": ""}])
+
+
+def rewrite_member(path: Path, name: str, old: str, new: str) -> None:
+    """``path`` with ``old`` replaced by ``new`` in its member ``name``."""
+    with zipfile.ZipFile(path) as archive:
+        members = {member: archive.read(member) for member in archive.namelist()}
+    assert old.encode() in members[name]
+    members[name] = members[name].replace(old.encode(), new.encode())
+    with zipfile.ZipFile(path, "w", zipfile.ZIP_DEFLATED) as archive:
+        for member, data in members.items():
+            archive.writestr(member, data)
+
+
+class FranceRoutesAndTripOrderTest(unittest.TestCase):
+    """Trenitalia France names each route by its two ends and numbers a few trips out of their time order: the build
+    writes the Frecciarossa category as the national pack publishes it and leaves those trips out, counted.  A pack built
+    before these rules still passes --check; the weekly refresh filters its source again (missing_reviewed_rules)."""
+
+    SOURCE = "trenitalia-france-gtfs"
+    LYON = LocalTimesTest.LYON
+    # Numbered Paris first, while Paris is the end of the run: an arrival before the previous departure.
+    BACKWARDS = [("PARIS", "18:18:00", "18:18:00"), ("PERRACHE", "16:08:00", "16:08:00"), ("PARTDIEU", "16:16:00", "16:22:00")]
+
+    def setUp(self) -> None:
+        self.temp = Path(tempfile.mkdtemp(prefix="gtfs-france-rules-test-"))
+        self.addCleanup(shutil.rmtree, self.temp, ignore_errors=True)
+        self.builds = 0
+
+    def source(self, trips, **feed) -> Path:
+        self.builds += 1
+        path = self.temp / f"source-{self.builds}.zip"
+        write_france_feed(path, trips, {"NOV": ["20261124"]}, **feed)
+        return path
+
+    def build(self, source: Path, source_id: str = SOURCE, **options):
+        output = self.temp / f"{source_id}-{self.builds}.zip"
+        with mock.patch.object(sys, "stderr", io.StringIO()):
+            builder.filter_archive(source, output, source_id, **options)
+        with zipfile.ZipFile(output) as archive:
+            return (output, json.loads(archive.read(builder.FILTER_MANIFEST_MEMBER)), table(archive, "routes.txt"),
+                    table(archive, "trips.txt"))
+
+    def test_every_route_is_named_by_the_national_frecciarossa_category(self) -> None:
+        trips = [("70458", "6656", "NOV", self.LYON), ("70950", "9283", "NOV", self.LYON)]
+        output, metadata, routes, _ = self.build(self.source(trips))
+        self.assertEqual([("6656", "FR", "Frecciarossa", "2", "TI"), ("9283", "FR", "Frecciarossa", "2", "TI")],
+                         [(row["route_id"], row["route_short_name"], row["route_long_name"], row["route_type"], row["agency_id"])
+                          for row in routes])
+        self.assertIn(builder.ROUTE_CATEGORY_RULE, metadata["tripRules"])
+        builder.verify_filter_from_asset(output, self.SOURCE)
+        self.assertEqual([], builder.missing_reviewed_rules(output, self.SOURCE))
+        # Any other pack keeps its routes as published.
+        _, other, other_routes, _ = self.build(self.source(trips, timezone="Europe/Paris"), "some-rail-gtfs")
+        self.assertEqual({"Paris/Lyon"}, {row["route_short_name"] for row in other_routes})
+        self.assertNotIn("tripRules", other)
+
+    def test_a_route_of_another_type_or_agency_fails_the_build(self) -> None:
+        trips = [("70458", "6656", "NOV", self.LYON)]
+        extended = self.source(trips)
+        rewrite_member(extended, "routes.txt", ",2\n", ",101\n")  # still a railway route, kept by the filter
+        with self.assertRaisesRegex(builder.BuildError, r"route 6656 ha route_type 101, non 2"):
+            self.build(extended)
+        other = self.source(trips)
+        rewrite_member(other, "agency.txt", "TI,Trenitalia,", "TI,Another Rail,")
+        with self.assertRaisesRegex(builder.BuildError, r"route 6656 è dell'agenzia Another Rail, non rivista"):
+            self.build(other)
+
+    def test_trips_out_of_time_order_are_left_out_counted_and_capped(self) -> None:
+        trips = [(f"7{index:04d}", "6656", "NOV", self.LYON) for index in range(20)] + [("71124", "9281", "NOV", self.BACKWARDS)]
+        output, metadata, _, trip_rows = self.build(self.source(trips))
+        self.assertEqual(20, len(trip_rows))
+        self.assertNotIn("71124", {row["trip_id"] for row in trip_rows})
+        self.assertEqual(1, metadata[builder.OUT_OF_ORDER_COUNT_FIELD])
+        self.assertEqual(20, metadata["counts"]["trips"])
+        self.assertIn(builder.OUT_OF_ORDER_RULE, metadata["tripRules"])
+        builder.verify_filter_from_asset(output, self.SOURCE)
+        # Filtering the published pack again keeps the count of its source and every byte.
+        again, refiltered, _, _ = self.build(output, published_entries=[
+            {"sha256": builder.sha256_file(output), "sourceArchiveSha256": metadata["sourceArchiveSha256"]}])
+        self.assertEqual(1, refiltered[builder.OUT_OF_ORDER_COUNT_FIELD])
+        self.assertEqual(output.read_bytes(), again.read_bytes())
+        # Above five per cent of the pack's trips the build fails; nothing is ever reordered.
+        with self.assertRaisesRegex(builder.BuildError, r"1 trip su 2 con orari fuori ordine"):
+            self.build(self.source([("70458", "6656", "NOV", self.LYON), ("71124", "9281", "NOV", self.BACKWARDS)]))
+        # Any other pack keeps such a trip as published.
+        _, other, _, other_trips = self.build(self.source(trips, timezone="Europe/Paris"), "some-rail-gtfs")
+        self.assertIn("71124", {row["trip_id"] for row in other_trips})
+        self.assertNotIn(builder.OUT_OF_ORDER_COUNT_FIELD, other)
+
+    def test_a_pack_built_before_the_rules_passes_check_and_is_marked_for_the_refresh(self) -> None:
+        trips = [(f"7{index:04d}", "6656", "NOV", self.LYON) for index in range(20)] + [("71124", "9281", "NOV", self.BACKWARDS)]
+        with mock.patch.object(builder, "ROUTE_CATEGORY_SOURCES", {}), mock.patch.object(builder, "OUT_OF_ORDER_SOURCES", frozenset()):
+            output, metadata, routes, _ = self.build(self.source(trips))
+        self.assertEqual({"Paris/Lyon"}, {row["route_short_name"] for row in routes})
+        builder.verify_filter_from_asset(output, self.SOURCE)
+        self.assertEqual([builder.ROUTE_CATEGORY_RULE, builder.OUT_OF_ORDER_RULE], builder.missing_reviewed_rules(output, self.SOURCE))
+        self.assertEqual([], builder.missing_reviewed_rules(output, "some-rail-gtfs"))
+
+    def test_a_pack_declaring_the_rules_is_checked(self) -> None:
+        declared = {"tripRules": [builder.ROUTE_CATEGORY_RULE, builder.OUT_OF_ORDER_RULE], builder.OUT_OF_ORDER_COUNT_FIELD: 0}
+        agency = [{"agency_id": "TI", "agency_name": "Trenitalia"}]
+        published = [{"route_id": "6656", "agency_id": "TI", "route_short_name": "Paris/Lyon", "route_long_name": "Paris/Lyon", "route_type": "2"}]
+        with self.assertRaisesRegex(builder.BuildError, r"route senza la categoria di route-category"):
+            builder.verify_route_categories(self.SOURCE, declared, published, agency)
+        with self.assertRaisesRegex(builder.BuildError, r"route-category su una fonte non rivista"):
+            builder.verify_route_categories("some-rail-gtfs", declared, published, agency)
+        backwards = [{"trip_id": "71124", "stop_sequence": str(index), "arrival_time": arrival, "departure_time": departure}
+                     for index, (_, arrival, departure) in enumerate(self.BACKWARDS)]
+        with self.assertRaisesRegex(builder.BuildError, r"1 trip con orari fuori ordine lungo stop_sequence, es. 71124"):
+            builder.verify_out_of_order(self.SOURCE, declared, 1, backwards)
+        with self.assertRaisesRegex(builder.BuildError, r"out-of-order-trips su una fonte non rivista"):
+            builder.verify_out_of_order("some-rail-gtfs", declared, 1, [])
+        with self.assertRaisesRegex(builder.BuildError, r"oltre la quota ammessa"):
+            builder.verify_out_of_order(self.SOURCE, {**declared, builder.OUT_OF_ORDER_COUNT_FIELD: 2}, 20, [])
+        with self.assertRaisesRegex(builder.BuildError, r"incoerenti"):
+            builder.verify_out_of_order(self.SOURCE, {builder.OUT_OF_ORDER_COUNT_FIELD: 0}, 1, [])
+        builder.verify_out_of_order(self.SOURCE, {**declared, builder.OUT_OF_ORDER_COUNT_FIELD: 1}, 20, [])
 
 
 class ItineraryCopiesTest(unittest.TestCase):

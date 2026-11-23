@@ -6,9 +6,11 @@ import it.binario.app.data.Direction
 import it.binario.app.data.GtfsServiceIdentity
 import it.binario.app.data.GtfsStopIdentity
 import it.binario.app.data.JourneyQuery
+import it.binario.app.data.RailOperator
 import it.binario.app.data.RouteFailureReason
 import it.binario.app.data.SavedRoute
 import it.binario.app.data.Station
+import it.binario.app.data.TrainCategory
 import it.binario.app.data.core.SourceId
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.asCoroutineDispatcher
@@ -290,6 +292,34 @@ class EmbeddedGtfsRouteAdapterTest {
             ).loadRoute(route, Direction.OUTBOUND, JourneyQuery(LocalDate.of(2026, 9, 4), LocalTime.of(8, 0))) as DataResult.Success
             ).snapshot.services
         assertEquals(listOf("ch-otd-gtfs"), borderServices.map { it.gtfsIdentity?.sourceId })
+    }
+
+    /**
+     * Trenitalia France names each route by its two ends ("Paris-Gare-de-Lyon/Lyon-Perrache-Voyageurs"), which read as
+     * a regional train of the long-distance Trenitalia operator; the pack build (tools/build_gtfs_packs.py,
+     * route-category) writes the national pack's Frecciarossa category instead, "FR" and "Frecciarossa": a Freccia of
+     * Trenitalia's high-speed operator, with the line "FR" the rows and the board show.
+     */
+    @Test
+    fun `una route Trenitalia France con la categoria del pack nazionale e un Frecciarossa`() = runBlocking {
+        val france = EmbeddedGtfsPack(SourceId("trenitalia-france-gtfs"), "gtfs/trenitalia-france-gtfs.zip")
+        val day = LocalDate.of(2026, 9, 4)
+        fun adapter(short: String, long: String) = EmbeddedGtfsRouteAdapter(
+            openAsset = { ByteArrayInputStream(feed(routeShortName = short, routeLongName = long, agencyName = "Trenitalia", tripNumber = "9281")) },
+            packs = listOf(france),
+            clock = { 1_000L }
+        )
+        suspend fun service(short: String, long: String) =
+            (adapter(short, long).loadRoute(route, Direction.OUTBOUND, JourneyQuery(day, LocalTime.of(8, 0))) as DataResult.Success)
+                .snapshot.services.single()
+
+        val named = service("FR", "Frecciarossa")
+        assertEquals(TrainCategory.FRECCE to RailOperator.TRENITALIA_AV, named.trainCategory to named.operator)
+        assertEquals(listOf("FR"), adapter("FR", "Frecciarossa").dayTimetable(france, day).trips.map { it.lineLabel })
+        // As Trenitalia France publishes it: the ends as the line, no category.
+        val ends = "Paris-Gare-de-Lyon/Lyon-Perrache-Voyageurs"
+        val published = service(ends, ends)
+        assertEquals(TrainCategory.REGIONALE to RailOperator.TRENITALIA_LONG_DISTANCE, published.trainCategory to published.operator)
     }
 
     @Test
@@ -851,6 +881,7 @@ class EmbeddedGtfsRouteAdapterTest {
         departure: String = "08:05:00",
         headsign: String = "Como S. Giovanni",
         routeShortName: String = "RE",
+        routeLongName: String = "Milano Como",
         agencyName: String = "Test Rail",
         stopNames: Triple<String, String, String> = Triple("Milano Centrale", "Monza", "Como S. Giovanni"),
         agencyTimezone: String = "Europe/Rome"
@@ -865,7 +896,7 @@ class EmbeddedGtfsRouteAdapterTest {
             "agency.txt" to "agency_id,agency_name,agency_url,agency_timezone\nT,$agencyName,https://example.test,$agencyTimezone\n",
             "stops.txt" to "stop_id,stop_name,stop_lat,stop_lon\nMI,${stopNames.first},45.48,9.20\nMO,${stopNames.second},45.58,9.27\n" +
                 "CO,${stopNames.third},45.80,9.08\n",
-            "routes.txt" to "route_id,agency_id,route_short_name,route_long_name,route_type\nR,T,$routeShortName,Milano Como,2\n",
+            "routes.txt" to "route_id,agency_id,route_short_name,route_long_name,route_type\nR,T,$routeShortName,$routeLongName,2\n",
             "trips.txt" to "route_id,service_id,trip_id,trip_headsign,trip_short_name\nR,W,$tripId,$headsign,$tripNumber\n",
             "stop_times.txt" to effectiveStopTimes,
             "calendar.txt" to "service_id,monday,tuesday,wednesday,thursday,friday,saturday,sunday,start_date,end_date\nW,1,1,1,1,1,0,0,20260101,20261231\n"

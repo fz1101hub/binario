@@ -3,7 +3,7 @@
 "tab.settings" = "설정";
 "planner.title" = "계획";
 "planner.intro.title" = "경로 검색";
-"planner.intro.body" = "엄선된 카탈로그에서 출발역과 도착역을 선택하세요. 포함된 시간표는 계획 시간표이며 아래에 나열된 지역 및 국경 간 노선만 다룹니다. Trenitalia와 Italo는 포함되지 않으며, 시간표가 없는 역은 검색에서 표시됩니다.";
+"planner.intro.body" = "엄선된 카탈로그에서 출발역과 도착역을 선택하세요. 포함된 시간표는 계획 시간표이며 아래에 나열된 지역 및 국경 간 노선만 다룹니다. Trenitalia(Trenitalia France 제외)와 Italo는 포함되지 않으며, 시간표가 없는 역은 검색에서 표시됩니다.";
 "planner.origin" = "출발";
 "planner.destination" = "도착";
 "planner.departure" = "날짜 및 시간";

@@ -3,7 +3,7 @@
 "tab.settings" = "Cài đặt";
 "planner.title" = "Lên kế hoạch";
 "planner.intro.title" = "Tìm tuyến";
-"planner.intro.body" = "Chọn ga đi và ga đến từ danh mục đã tuyển chọn. Lịch trình đi kèm là lịch theo kế hoạch và chỉ bao gồm các mạng lưới khu vực và xuyên biên giới liệt kê bên dưới: không bao gồm Trenitalia và Italo, và các ga không có lịch trình được đánh dấu khi tìm kiếm.";
+"planner.intro.body" = "Chọn ga đi và ga đến từ danh mục đã tuyển chọn. Lịch trình đi kèm là lịch theo kế hoạch và chỉ bao gồm các mạng lưới khu vực và xuyên biên giới liệt kê bên dưới: không bao gồm Trenitalia (trừ Trenitalia France) và Italo, và các ga không có lịch trình được đánh dấu khi tìm kiếm.";
 "planner.origin" = "Ga đi";
 "planner.destination" = "Ga đến";
 "planner.departure" = "Ngày và giờ";
