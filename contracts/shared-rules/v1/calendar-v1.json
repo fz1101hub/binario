@@ -1,0 +1,39 @@
+{
+  "schema": "binario-shared-rules-v1",
+  "readers": {
+    "android": "app/src/test/java/it/binario/app/data/planned/CalendarContractTest.kt",
+    "alexa": "alexa-companion/server/punctuality/calendarRules.test.ts"
+  },
+  "holidays": [
+    {"date": "2026-01-01", "holiday": true},
+    {"date": "2026-01-06", "holiday": true},
+    {"date": "2026-04-05", "holiday": true},
+    {"date": "2026-04-06", "holiday": true},
+    {"date": "2026-04-07", "holiday": false},
+    {"date": "2026-04-25", "holiday": true},
+    {"date": "2026-06-02", "holiday": true},
+    {"date": "2026-08-15", "holiday": true},
+    {"date": "2025-10-04", "holiday": false},
+    {"date": "2026-10-04", "holiday": true},
+    {"date": "2030-10-04", "holiday": true},
+    {"date": "2026-11-01", "holiday": true},
+    {"date": "2026-11-02", "holiday": false},
+    {"date": "2026-12-07", "holiday": false},
+    {"date": "2026-12-08", "holiday": true},
+    {"date": "2026-12-24", "holiday": false},
+    {"date": "2026-12-25", "holiday": true},
+    {"date": "2026-12-26", "holiday": true},
+    {"date": "2026-12-31", "holiday": false},
+    {"date": "2025-04-20", "holiday": true},
+    {"date": "2025-04-21", "holiday": true},
+    {"date": "2027-03-28", "holiday": true},
+    {"date": "2027-03-29", "holiday": true},
+    {"date": "2027-04-05", "holiday": false},
+    {"date": "2030-04-21", "holiday": true},
+    {"date": "2030-04-22", "holiday": true},
+    {"date": "2038-04-25", "holiday": true},
+    {"date": "2038-04-26", "holiday": true},
+    {"date": "2011-04-25", "holiday": true},
+    {"date": "2028-02-29", "holiday": false}
+  ]
+}

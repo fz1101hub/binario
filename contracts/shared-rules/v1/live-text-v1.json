@@ -1,0 +1,35 @@
+{
+  "schema": "binario-shared-rules-v1",
+  "readers": {
+    "android": "app/src/test/java/it/binario/app/data/live/LiveTextContractTest.kt",
+    "iphone": "ios/BinarioKit/Tests/BinarioKitTests/LiveTextContractTests.swift"
+  },
+  "explicitCancellation": [
+    {"text": "Treno soppresso", "cancelled": true},
+    {"text": "SOPPRESSO", "cancelled": true},
+    {"text": "Corsa soppressa tra Roma Termini e Napoli Centrale", "cancelled": true},
+    {"text": "Soppressione parziale", "cancelled": true},
+    {"text": "Cancellato", "cancelled": true},
+    {"text": "treno cancellato per sciopero", "cancelled": true},
+    {"text": "(soppresso)", "cancelled": true},
+    {"text": "In orario", "cancelled": false},
+    {"text": "Ritardo 5'", "cancelled": false},
+    {"text": "Non ferma a Orte", "cancelled": false},
+    {"text": "insoppressibile", "cancelled": false},
+    {"text": "Cancellazione", "cancelled": false},
+    {"text": "", "cancelled": false}
+  ],
+  "rfiRowOperator": [
+    {"carrier": "Italo", "category": "", "number": "9911", "operator": "italo"},
+    {"carrier": "NTV", "category": "AV", "number": "8123", "operator": "italo"},
+    {"carrier": "", "category": "ITALO", "number": "9984", "operator": "italo"},
+    {"carrier": "Trenord", "category": "REG", "number": "2615", "operator": "trenord"},
+    {"carrier": "", "category": "Frecciarossa", "number": "9558", "operator": "trenitalia"},
+    {"carrier": "Trenitalia", "category": "REG", "number": "2345", "operator": "trenitalia"},
+    {"carrier": "Trenitalia", "category": "RV", "number": "2101", "operator": "trenitalia"},
+    {"carrier": "Trenitalia", "category": "IC", "number": "583", "operator": "trenitalia"},
+    {"carrier": "Trenitalia Tper", "category": "REG", "number": "17401", "operator": "trenitalia"},
+    {"carrier": "SBB", "category": "EC", "number": "35", "operator": null},
+    {"carrier": "", "category": "", "number": "1234", "operator": null}
+  ]
+}
