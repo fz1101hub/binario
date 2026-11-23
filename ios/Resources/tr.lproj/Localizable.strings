@@ -3,7 +3,7 @@
 "tab.settings" = "Ayarlar";
 "planner.title" = "Planla";
 "planner.intro.title" = "Güzergâh ara";
-"planner.intro.body" = "Kalkış ve varış istasyonunu seçilmiş katalogdan belirleyin. Dahil edilen tarifeler planlı tarifelerdir ve yalnızca aşağıda listelenen bölgesel ve sınır ötesi ağları kapsar: Trenitalia (Trenitalia France hariç) ve Italo dahil değildir; tarifesi olmayan istasyonlar aramada işaretlenir.";
+"planner.intro.body" = "Kalkış ve varış istasyonunu seçilmiş katalogdan belirleyin. Dahil edilen tarifeler planlı tarifelerdir ve aşağıda listelenen ağları kapsar: Trenitalia, Italo, bölgesel demiryolları ve sınır ötesi trenler, Trenitalia ve Italo otobüsleri dahil; metro ve tramvay dahil değildir; tarifesi olmayan istasyonlar aramada işaretlenir.";
 "planner.origin" = "Kalkış";
 "planner.destination" = "Varış";
 "planner.departure" = "Tarih ve saat";
@@ -265,6 +265,11 @@
 "result.route.hour_band" = "%1$lld–%2$lld";
 "result.bikes.allowed" = "Bisiklet kabul edilir";
 "result.bikes.not_allowed" = "Bisiklet kabul edilmez";
+"result.vehicle.bus_trenitalia" = "Trenitalia otobüsü";
+"result.vehicle.freccialink" = "FrecciaLink";
+"result.vehicle.italobus" = "ItaloBus";
+"result.vehicle.bus" = "Otobüs";
+"result.vehicle.replacement_bus" = "Yerine çalışan otobüs";
 "result.detail.mean_delay" = "Ortalama gecikme: %1$lld dk";
 "result.detail.days" = "Gözlenen gün: %1$lld · iptal: %2$lld";
 "result.detail.distribution_title" = "Gecikme dağılımı";
@@ -327,6 +332,7 @@
 "departures.row.spoken" = "%1$@, tren %2$@, %3$@ yönüne, %4$@";
 "departures.row.platform_spoken" = "peron %1$@";
 "departures.row.platform_unknown" = "peron bilgisi yok";
+"departures.row.spoken_vehicle" = "%1$@, %2$@, %3$@ yönüne, %4$@";
 "departures.later.loaded" = "%1$lld tren daha";
 "action.refresh" = "Yenile";
 "result.live.title" = "Canlı";

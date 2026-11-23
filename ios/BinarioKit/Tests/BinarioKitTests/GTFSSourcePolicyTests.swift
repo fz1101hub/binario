@@ -8,8 +8,24 @@ final class GTFSSourcePolicyTests: XCTestCase {
             .appendingPathComponent("ios/Resources/binario_gtfs_source_policy_v1.json"))
         let policy = try GTFSSourcePolicy(data: data)
 
-        XCTAssertEqual(policy.sources.count, 10)
-        XCTAssertTrue(policy.sources.allSatisfy { $0.sourceURL.scheme == "https" && $0.accessMode == "OPEN_DIRECT" })
+        // Every railway pack the Android planner reads: twelve of gtfs/, five of gtfs-transit/.
+        XCTAssertEqual(policy.sources.count, 17)
+        XCTAssertTrue(policy.sources.filter { $0.sourceID != "amt-genova-casella-gtfs" }
+            .allSatisfy { $0.sourceURL.scheme == "https" && $0.accessMode == "OPEN_DIRECT" })
+        // Genova–Casella's origin is plain HTTP, imported offline and corroborated by an HTTPS copy.
+        let casella = try XCTUnwrap(policy.source(id: "amt-genova-casella-gtfs"))
+        XCTAssertEqual(casella.accessMode, GTFSSourcePolicy.gatewayOnlyAccessMode)
+        XCTAssertEqual(casella.licence, "CC BY 4.0")
+        XCTAssertEqual(casella.landingPage?.absoluteString, "https://dati.comune.genova.it/")
+        for national in ["trenitalia-gtfs", "italo-gtfs"] {
+            let source = try XCTUnwrap(policy.source(id: national), national)
+            XCTAssertEqual(source.licence, "Dati aperti NAP CCISS (art. 52 c. 2 CAD, Reg. UE 2017/1926); conversione GTFS CC BY 4.0")
+            XCTAssertTrue(source.landingPage?.absoluteString.hasPrefix("https://www.cciss.it/nap/") == true, national)
+        }
+        XCTAssertEqual(policy.source(id: "toscana-tft-gtfs")?.licence, "Creative Commons Attribution (CC BY)")
+        for regional in ["fal-basilicata-puglia", "ferrotramviaria-bari-barletta", "fdg-gargano", "micotra-udine-villach"] {
+            XCTAssertEqual(policy.source(id: regional)?.accessMode, "OPEN_DIRECT", regional)
+        }
         XCTAssertEqual(policy.source(id: "oebb-gtfs")?.licence, "CC BY 4.0")
         XCTAssertEqual(policy.source(id: "alto-adige-sta-gtfs")?.licence, "CC0 1.0")
         XCTAssertEqual(policy.source(id: "arst-gtfs")?.licence, "CC BY 4.0", "as the Android manifest records it")
@@ -45,6 +61,20 @@ final class GTFSSourcePolicyTests: XCTestCase {
                 XCTAssertEqual(error as? GTFSSourcePolicyError, .invalidSource)
             }
         }
+        // A gateway source may name an HTTP origin, never without an HTTPS public page.
+        var gateway = source
+        gateway["accessMode"] = "GATEWAY_ONLY"
+        gateway["sourceUrl"] = "http://example.test/a.zip"
+        XCTAssertThrowsError(try decode(["schemaVersion": 1, "sources": [gateway]])) { error in
+            XCTAssertEqual(error as? GTFSSourcePolicyError, .invalidSource)
+        }
+        gateway["landingPage"] = "https://example.test/a"
+        XCTAssertNoThrow(try decode(["schemaVersion": 1, "sources": [gateway]]))
+        gateway["sourceUrl"] = "ftp://example.test/a.zip"
+        XCTAssertThrowsError(try decode(["schemaVersion": 1, "sources": [gateway]]))
+        var cleartext = source
+        cleartext["sourceUrl"] = "http://example.test/a.zip"
+        XCTAssertThrowsError(try decode(["schemaVersion": 1, "sources": [cleartext]]), "an OPEN_DIRECT source is HTTPS")
         XCTAssertThrowsError(try decode(["schemaVersion": 1, "sources": [source, source]])) { error in
             XCTAssertEqual(error as? GTFSSourcePolicyError, .invalidSource)
         }

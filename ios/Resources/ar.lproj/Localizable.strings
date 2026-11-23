@@ -3,7 +3,7 @@
 "tab.settings" = "الإعدادات";
 "planner.title" = "خطِّط";
 "planner.intro.title" = "ابحث عن مسار";
-"planner.intro.body" = "اختر محطة الانطلاق والوجهة من الكتالوج المنسَّق. المواعيد المضمَّنة مجدولة وتغطي فقط الشبكات الإقليمية والعابرة للحدود المدرجة أدناه: Trenitalia (باستثناء Trenitalia France) وItalo غير مضمَّنتين، ويُشار في البحث إلى المحطات التي لا تتوفر لها مواعيد.";
+"planner.intro.body" = "اختر محطة الانطلاق والوجهة من الكتالوج المنسَّق. المواعيد المضمَّنة مجدولة وتغطي الشبكات المدرجة أدناه: Trenitalia وItalo والسكك الحديدية الإقليمية والقطارات العابرة للحدود، مع حافلات Trenitalia وItalo؛ المترو والترام غير مضمَّنين، ويُشار في البحث إلى المحطات التي لا تتوفر لها مواعيد.";
 "planner.origin" = "الانطلاق";
 "planner.destination" = "الوجهة";
 "planner.departure" = "التاريخ والوقت";
@@ -265,6 +265,11 @@
 "result.route.hour_band" = "%1$lld–%2$lld";
 "result.bikes.allowed" = "يُسمح بالدراجات";
 "result.bikes.not_allowed" = "لا يُسمح بالدراجات";
+"result.vehicle.bus_trenitalia" = "حافلة Trenitalia";
+"result.vehicle.freccialink" = "FrecciaLink";
+"result.vehicle.italobus" = "ItaloBus";
+"result.vehicle.bus" = "حافلة";
+"result.vehicle.replacement_bus" = "حافلة بديلة";
 "result.detail.mean_delay" = "متوسط التأخير: %1$lld د";
 "result.detail.days" = "الأيام المرصودة: %1$lld · الإلغاءات: %2$lld";
 "result.detail.distribution_title" = "توزيع التأخيرات";
@@ -327,6 +332,7 @@
 "departures.row.spoken" = "%1$@، القطار %2$@ إلى %3$@، %4$@";
 "departures.row.platform_spoken" = "الرصيف %1$@";
 "departures.row.platform_unknown" = "الرصيف غير متاح";
+"departures.row.spoken_vehicle" = "%1$@، %2$@ إلى %3$@، %4$@";
 "departures.later.loaded" = "%1$lld قطار إضافي";
 "action.refresh" = "تحديث";
 "result.live.title" = "مباشر";

@@ -260,8 +260,14 @@ private struct DepartureRow: View {
             HStack(alignment: .firstTextBaseline) {
                 Text(service.scheduledDeparture)
                     .font(.headline.monospacedDigit())
-                Text(ReliableAlternatives.trainLabel(service))
-                    .font(.headline)
+                // A bus shows a bus and its label (as on Android), a train its category and number.
+                if service.isBus {
+                    Label(VehicleTexts.rowLabel(service), systemImage: VehicleTexts.busSymbol)
+                        .font(.headline)
+                } else {
+                    Text(ReliableAlternatives.trainLabel(service))
+                        .font(.headline)
+                }
                 Spacer()
                 if let platform = departure.live?.platform ?? service.platform {
                     Text(DeparturesTexts.platform(platform))
@@ -385,7 +391,8 @@ enum DeparturesTexts {
         String.localizedStringWithFormat(NSLocalizedString("departures.later.loaded", comment: ""), count)
     }
 
-    /// The row as one sentence, «08:12, treno REG 2153 per Bergamo, binario non disponibile», then
+    /// The row as one sentence, «08:12, treno REG 2153 per Bergamo, binario non disponibile» («08:12,
+    /// Bus Trenitalia BUS 1234 per Bergamo, …» for a bus), then
     /// its live state and provenance when a source observed it, the operator and, when the
     /// timetable publishes it, bikes on board.
     static func spoken(_ departure: StationBoardDeparture) -> String {
@@ -396,10 +403,11 @@ enum DeparturesTexts {
         } else {
             platform = NSLocalizedString("departures.row.platform_unknown", comment: "")
         }
+        // A bus is said with its label («08:12, Bus Trenitalia BUS 1234 per Bergamo»), never as a train.
         let sentence = String.localizedStringWithFormat(
-            NSLocalizedString("departures.row.spoken", comment: ""),
+            NSLocalizedString(service.isBus ? "departures.row.spoken_vehicle" : "departures.row.spoken", comment: ""),
             service.scheduledDeparture,
-            ReliableAlternatives.trainLabel(service),
+            VehicleTexts.rowLabel(service),
             service.destination,
             platform
         )

@@ -3,7 +3,7 @@
 "tab.settings" = "Ajustes";
 "planner.title" = "Planejar";
 "planner.intro.title" = "Buscar um trajeto";
-"planner.intro.body" = "Escolha a origem e o destino no catálogo selecionado. Os horários incluídos são programados e cobrem apenas as redes regionais e internacionais listadas abaixo: Trenitalia (exceto Trenitalia France) e Italo não estão incluídas, e as estações sem horários são sinalizadas na busca.";
+"planner.intro.body" = "Escolha a origem e o destino no catálogo selecionado. Os horários incluídos são programados e cobrem as redes listadas abaixo: Trenitalia, Italo, as ferrovias regionais e os trens internacionais, com os ônibus da Trenitalia e da Italo; metrô e bonde não estão incluídos, e as estações sem horários são sinalizadas na busca.";
 "planner.origin" = "Origem";
 "planner.destination" = "Destino";
 "planner.departure" = "Data e hora";
@@ -265,6 +265,11 @@
 "result.route.hour_band" = "%1$lld–%2$lld";
 "result.bikes.allowed" = "Bicicletas permitidas";
 "result.bikes.not_allowed" = "Bicicletas não permitidas";
+"result.vehicle.bus_trenitalia" = "Ônibus Trenitalia";
+"result.vehicle.freccialink" = "FrecciaLink";
+"result.vehicle.italobus" = "ItaloBus";
+"result.vehicle.bus" = "Ônibus";
+"result.vehicle.replacement_bus" = "Ônibus substituto";
 "result.detail.mean_delay" = "Atraso médio: %1$lld min";
 "result.detail.days" = "Dias observados: %1$lld · cancelamentos: %2$lld";
 "result.detail.distribution_title" = "Distribuição dos atrasos";
@@ -327,6 +332,7 @@
 "departures.row.spoken" = "%1$@, trem %2$@ para %3$@, %4$@";
 "departures.row.platform_spoken" = "plataforma %1$@";
 "departures.row.platform_unknown" = "plataforma indisponível";
+"departures.row.spoken_vehicle" = "%1$@, %2$@ para %3$@, %4$@";
 "departures.later.loaded" = "mais %1$lld trens";
 "action.refresh" = "Atualizar";
 "result.live.title" = "Ao vivo";

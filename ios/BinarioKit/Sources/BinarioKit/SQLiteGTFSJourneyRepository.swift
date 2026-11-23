@@ -230,7 +230,8 @@ public struct SQLiteGTFSJourneyRepository: JourneyRepository, Sendable {
             candidates += selection.candidates
             observedAt = min(observedAt ?? selection.observedAt, selection.observedAt)
         }
-        let selected = firstResults(candidates)
+        // The base index says whether a national pack serves both ends (the foreign files have none).
+        let selected = firstResults(candidates, border: selections.first?.border ?? true)
         guard !selected.isEmpty, let sourceObservedAt = observedAt else { throw combinedFailure(failures) }
 
         let sourceLabel = boundedSourceLabel(selected.map(\.attribution).uniqued())
@@ -278,9 +279,12 @@ public struct SQLiteGTFSJourneyRepository: JourneyRepository, Sendable {
         return first.id < second.id
     }
 
-    /// The first `maximumResults` trains in departure order, each once.
-    private static func firstResults(_ candidates: [Candidate]) -> [Candidate] {
-        let sorted = candidates.sorted(by: precedes)
+    /// The first `maximumResults` trains in departure order, each once: a train two packs publish
+    /// is listed from the preferred one (`TimetableCopies.kept`; `border` when no national pack
+    /// serves an end of the search).
+    private static func firstResults(_ candidates: [Candidate], border: Bool) -> [Candidate] {
+        let kept = TimetableCopies.kept(candidates.map(\.run), border: border).map { candidates[$0] }
+        let sorted = kept.sorted(by: precedes)
         var result: [Candidate] = []
         for candidate in sorted {
             guard result.count < maximumResults else { break }
@@ -309,6 +313,9 @@ public struct SQLiteGTFSJourneyRepository: JourneyRepository, Sendable {
         let originIDs = try resolve(query.origin, database: database)
         let destinationIDs = try resolve(query.destination, database: database)
         guard Set(originIDs).isDisjoint(with: destinationIDs) else { throw SQLiteGTFSFailure.noRoute }
+        let nationalAtOrigin = try nationalPackServes(originIDs, database: database)
+        let nationalAtDestination = try nationalPackServes(destinationIDs, database: database)
+        let border = !nationalAtOrigin || !nationalAtDestination
 
         var candidates: [Candidate] = []
         for timeZone in timeZones {
@@ -334,7 +341,7 @@ public struct SQLiteGTFSJourneyRepository: JourneyRepository, Sendable {
         for candidate in candidates where candidate.departure >= query.departure && candidate.departure <= upperBound {
             inWindow.append(candidate)
         }
-        let selected = firstResults(inWindow)
+        let selected = firstResults(inWindow, border: border)
         guard !selected.isEmpty else {
             if try packsEnded(
                 before: query.departure,
@@ -347,7 +354,7 @@ public struct SQLiteGTFSJourneyRepository: JourneyRepository, Sendable {
             }
             throw SQLiteGTFSFailure.noRoute
         }
-        return JourneySelection(candidates: selected, observedAt: sourceObservedAt)
+        return JourneySelection(candidates: selected, observedAt: sourceObservedAt, border: border)
     }
 
     private static func validate(_ database: SQLiteDatabase) throws -> [String: String] {
@@ -487,11 +494,13 @@ public struct SQLiteGTFSJourneyRepository: JourneyRepository, Sendable {
                    a.name, a.timezone, destination_stop.name,
                    COALESCE(origin_time.departure_seconds, origin_time.arrival_seconds),
                    p.source_id, p.attribution,
-                   svc.start_date, svc.day_count, svc.active_days, t.bikes_allowed
+                   svc.start_date, svc.day_count, svc.active_days, t.bikes_allowed,
+                   origin_stop.name, COALESCE(destination_time.arrival_seconds, destination_time.departure_seconds)
             FROM stop_time AS origin_time
             JOIN stop_time AS destination_time
               ON destination_time.trip_id = origin_time.trip_id
              AND destination_time.stop_sequence > origin_time.stop_sequence
+            JOIN stop AS origin_stop ON origin_stop.id = origin_time.stop_id
             JOIN stop AS destination_stop ON destination_stop.id = destination_time.stop_id
             JOIN trip AS t ON t.id = origin_time.trip_id
             JOIN route AS r ON r.id = t.route_id
@@ -540,11 +549,19 @@ public struct SQLiteGTFSJourneyRepository: JourneyRepository, Sendable {
 
             let departure = try gtfsDate(serviceDay: serviceDay, seconds: TimeInterval(seconds), calendar: calendar)
             let number = trainNumber(trip: statement.text(at: 2), route: statement.text(at: 4), externalTripID: externalTripID)
-            let operatorName = bounded(agencyName, maximum: 64)
+            let operatorName = bounded(TimetableNaming.operatorName(agencyName, sourceID: sourceID), maximum: 64)
             let category = trainCategory(route: statement.text(at: 4), longName: statement.text(at: 5), type: statement.int(at: 6))
             let destination = bounded(destinationName, maximum: 96)
-            guard !number.isEmpty, !operatorName.isEmpty, !category.isEmpty, !destination.isEmpty else {
+            guard !number.isEmpty, !operatorName.isEmpty, !category.isEmpty, !destination.isEmpty,
+                  let vehicle = timetableVehicle(routeType: statement.int(at: 6), sourceID: sourceID, operatorName: operatorName, route: statement.text(at: 4))
+            else {
                 throw SQLiteGTFSFailure.invalidData
+            }
+            // The arrival at the searched destination: two packs' copies of one train leave and arrive together.
+            let arrivalSeconds = statement.int(at: 18)
+            var arrival: Date?
+            if arrivalSeconds >= seconds, arrivalSeconds <= Int64(maximumGTFSSeconds) {
+                arrival = try gtfsDate(serviceDay: serviceDay, seconds: TimeInterval(arrivalSeconds), calendar: calendar)
             }
             let formattedTime = timeString(departure, timeZone: calendar.timeZone)
             let bikesAllowed = bikes(statement.int(at: 16))
@@ -555,6 +572,10 @@ public struct SQLiteGTFSJourneyRepository: JourneyRepository, Sendable {
                 number: number,
                 departure: departure,
                 attribution: attribution,
+                run: TimetableCopies.Run(
+                    sourceID: sourceID, number: number, operatorName: operatorName, departure: departure, arrival: arrival,
+                    originName: statement.text(at: 17) ?? "", destinationName: destination
+                ),
                 service: TrainService(
                     id: id,
                     number: number,
@@ -567,7 +588,8 @@ public struct SQLiteGTFSJourneyRepository: JourneyRepository, Sendable {
                     platform: nil,
                     delayMinutes: 0,
                     bikesAllowed: bikesAllowed,
-                    hasTrainNumber: statement.text(at: 2)?.nonEmpty != nil
+                    hasTrainNumber: statement.text(at: 2)?.nonEmpty != nil,
+                    vehicle: vehicle
                 )
             ))
         }
@@ -582,10 +604,35 @@ public struct SQLiteGTFSJourneyRepository: JourneyRepository, Sendable {
         return bounded(raw, maximum: 24)
     }
 
-    /// The route's short name, else its long name, else its GTFS route type.
+    /// The route's short name as Android shows it («FR» for Trenitalia's «0083_FR»,
+    /// `TimetableNaming.lineLabel`), else its long name, else its GTFS route type.
     private static func trainCategory(route routeShortName: String?, longName: String?, type routeType: Int64) -> String {
-        let raw: String = routeShortName?.nonEmpty ?? longName?.nonEmpty ?? "GTFS \(routeType)"
+        let line = routeShortName.map(TimetableNaming.lineLabel)?.nonEmpty
+        let raw: String = line ?? longName?.nonEmpty ?? "GTFS \(routeType)"
         return bounded(raw, maximum: 64)
+    }
+
+    /// What a service travels on (`TimetableLegMode`, `TimetableVehicle.of`), from its route type,
+    /// its pack, its operator and its line; nil for a route type the index never keeps.
+    private static func timetableVehicle(routeType: Int64, sourceID: String, operatorName: String, route routeShortName: String?) -> TimetableVehicle? {
+        guard let mode = TimetableLegMode.of(routeType: routeType, sourceID: sourceID) else { return nil }
+        return TimetableVehicle.of(mode: mode, operatorName: operatorName, lineLabel: routeShortName.map(TimetableNaming.lineLabel))
+    }
+
+    /// True when a stop of `stopIDs` belongs to a national pack (`TimetableCopies.nationalPacks`):
+    /// otherwise the station is a border one and the foreign packs' copy of a train is kept.
+    private static func nationalPackServes(_ stopIDs: [Int64], database: SQLiteDatabase) throws -> Bool {
+        guard !stopIDs.isEmpty else { return false }
+        let placeholders = Array(repeating: "?", count: stopIDs.count).joined(separator: ",")
+        let statement = try database.statement(
+            "SELECT DISTINCT p.source_id FROM stop AS s JOIN pack AS p ON p.id = s.pack_id WHERE s.id IN (\(placeholders))"
+        )
+        var binding: Int32 = 1
+        for id in stopIDs { try statement.bind(id, at: binding); binding += 1 }
+        while try statement.step() {
+            if let sourceID = statement.text(at: 0), TimetableCopies.nationalPacks.contains(sourceID) { return true }
+        }
+        return false
     }
 
     /// Only a published value: 1 allowed, 2 not allowed; NULL (empty, 0 or a pack whose value is
@@ -687,13 +734,16 @@ public struct SQLiteGTFSJourneyRepository: JourneyRepository, Sendable {
         let number: String
         let departure: Date
         let attribution: String
+        let run: TimetableCopies.Run
         let service: TrainService
     }
 
-    /// The first trains of one file and the day its source was generated.
+    /// The first trains of one file, the day its source was generated, and whether no national
+    /// pack of the file serves an end of the search (`TimetableCopies.rank`).
     private struct JourneySelection {
         let candidates: [Candidate]
         let observedAt: Date
+        let border: Bool
     }
 }
 
@@ -711,8 +761,9 @@ extension SQLiteGTFSJourneyRepository: StationBoardProvider {
     /// `firstDepartureNextDay`, the next service day's first train.
     /// A trip whose last stop is the station itself (it only arrives there) is no departure, and a
     /// trip calling twice is listed once, at its first departure from `query.from`. Coaches and
-    /// replacement buses follow the planner's rule: the index keeps only the rail routes of the
-    /// packs (tools/build_ios_gtfs_schedule.py, RAIL_ROUTE_TYPES), as the feeds publish them.
+    /// replacement buses follow the planner's rule: the index keeps the rail and bus routes of the
+    /// packs (tools/build_ios_gtfs_schedule.py, INDEXED_ROUTE_TYPES), a bus is listed with its
+    /// vehicle (`TrainService.vehicle`), and a train two packs publish is listed once (`boardOrder`).
     public func departures(for query: StationBoardQuery) async -> StationBoardResult {
         do {
             return .available(try Self.loadBoards(databaseURL: databaseURL, foreignFiles: foreignFiles, query: query))
@@ -757,12 +808,8 @@ extension SQLiteGTFSJourneyRepository: StationBoardProvider {
         for failure in failures where (failure as? SQLiteGTFSFailure) == .scheduleExpired {
             someEnded = true
         }
-        let sorted = candidates.sorted { $0.entry.cursor < $1.entry.cursor }
-        var seen = Set<String>()
-        var ordered: [StationBoardCandidate] = []
-        for candidate in sorted where seen.insert(candidate.entry.id).inserted {
-            ordered.append(candidate)
-        }
+        // The base index says whether a national pack serves the station (the foreign files have none).
+        let ordered = boardOrder(candidates, border: selections.first?.border ?? true)
         let listed = Array(ordered.prefix(query.limit))
         var firstNextDay: StationBoardCandidate?
         if listed.isEmpty {
@@ -797,8 +844,10 @@ extension SQLiteGTFSJourneyRepository: StationBoardProvider {
             throw SQLiteGTFSFailure.scheduleExpired
         }
         let stopIDs = try resolve(query.station, database: database)
-        // One more than the page tells whether «Più tardi» has anything to add.
-        let wanted = query.limit + 1
+        let border = try !nationalPackServes(stopIDs, database: database)
+        // One more than the page tells whether «Più tardi» has anything to add; twice as many, as a
+        // train two packs publish is listed once (`boardOrder`).
+        let wanted = 2 * (query.limit + 1)
 
         var candidates: [StationBoardCandidate] = []
         for timeZone in timeZones {
@@ -822,10 +871,7 @@ extension SQLiteGTFSJourneyRepository: StationBoardProvider {
                 )
             }
         }
-        var seen = Set<String>()
-        let ordered = candidates
-            .sorted { $0.entry.cursor < $1.entry.cursor }
-            .filter { seen.insert($0.entry.id).inserted }
+        let ordered = boardOrder(candidates, border: border)
         let listed = Array(ordered.prefix(query.limit))
 
         var firstNextDay: StationBoardCandidate?
@@ -844,7 +890,19 @@ extension SQLiteGTFSJourneyRepository: StationBoardProvider {
         }
         // Decided per feed: one ended while another goes on still says why trains are missing.
         let someEnded = try stationPackEnded(before: query.from, stopIDs: stopIDs, timeZone: referenceTimeZone, database: database)
-        return BoardSelection(ordered: ordered, firstNextDay: firstNextDay, someEnded: someEnded)
+        return BoardSelection(ordered: ordered, firstNextDay: firstNextDay, someEnded: someEnded, border: border)
+    }
+
+    /// `candidates` in board order, each departure once and each train once: a train two packs
+    /// publish leaving at the same minute for the same terminus is listed from the preferred pack
+    /// (`TimetableCopies.keptOnBoard`; `border` when no national pack serves the station).
+    private static func boardOrder(_ candidates: [StationBoardCandidate], border: Bool) -> [StationBoardCandidate] {
+        var seen = Set<String>()
+        let unique = candidates
+            .sorted { $0.entry.cursor < $1.entry.cursor }
+            .filter { seen.insert($0.entry.id).inserted }
+        let kept = Set(TimetableCopies.keptOnBoard(unique.map(\.run), border: border))
+        return unique.indices.filter { kept.contains($0) }.map { unique[$0] }
     }
 
     /// «Primo domani alle …»: the first train of the service day after today's, over every agency
@@ -982,10 +1040,12 @@ extension SQLiteGTFSJourneyRepository: StationBoardProvider {
                   !boardStops.contains(terminus.stopID),
                   terminus.catalogStationID != query.station.id
             else { continue }
-            let operatorName = bounded(agencyName, maximum: 64)
+            let operatorName = bounded(TimetableNaming.operatorName(agencyName, sourceID: sourceID), maximum: 64)
             let category = trainCategory(route: statement.text(at: 3), longName: statement.text(at: 4), type: statement.int(at: 5))
             let destination = bounded(terminus.name, maximum: 96)
-            guard !number.isEmpty, !operatorName.isEmpty, !category.isEmpty, !destination.isEmpty else {
+            guard !number.isEmpty, !operatorName.isEmpty, !category.isEmpty, !destination.isEmpty,
+                  let vehicle = timetableVehicle(routeType: statement.int(at: 5), sourceID: sourceID, operatorName: operatorName, route: statement.text(at: 3))
+            else {
                 throw SQLiteGTFSFailure.invalidData
             }
             let formattedTime = timeString(departure, timeZone: calendar.timeZone)
@@ -1001,7 +1061,8 @@ extension SQLiteGTFSJourneyRepository: StationBoardProvider {
                 platform: nil,
                 delayMinutes: 0,
                 bikesAllowed: bikes(statement.int(at: 15)),
-                hasTrainNumber: statement.text(at: 2)?.nonEmpty != nil
+                hasTrainNumber: statement.text(at: 2)?.nonEmpty != nil,
+                vehicle: vehicle
             )
             candidates.append(StationBoardCandidate(
                 entry: StationBoardDeparture(
@@ -1010,7 +1071,11 @@ extension SQLiteGTFSJourneyRepository: StationBoardProvider {
                     terminus: terminusIdentity(terminus, sourceID: sourceID, name: destination)
                 ),
                 seconds: seconds,
-                attribution: attribution
+                attribution: attribution,
+                run: TimetableCopies.Run(
+                    sourceID: sourceID, number: number, operatorName: operatorName, departure: departure, arrival: nil,
+                    originName: query.station.name, destinationName: destination, destinationStationID: terminus.catalogStationID
+                )
             ))
         }
         return candidates
@@ -1155,18 +1220,22 @@ private struct ForeignFile: Sendable {
     let url: URL
 }
 
-/// The board of one file before the files are merged.
+/// The board of one file before the files are merged; `border`: no national pack of the file
+/// serves the station (`TimetableCopies.rank`).
 private struct BoardSelection {
     let ordered: [StationBoardCandidate]
     let firstNextDay: StationBoardCandidate?
     let someEnded: Bool
+    let border: Bool
 }
 
-/// A train of a service day read for «Partenze», with its GTFS second and its feed.
+/// A train of a service day read for «Partenze», with its GTFS second, its feed, and what tells a
+/// copy another pack publishes of it (`TimetableCopies.Run`).
 private struct StationBoardCandidate {
     let entry: StationBoardDeparture
     let seconds: Int64
     let attribution: String
+    let run: TimetableCopies.Run
 }
 
 /// The last stop of a trip: its terminus on the board.

@@ -3,7 +3,7 @@
 "tab.settings" = "설정";
 "planner.title" = "계획";
 "planner.intro.title" = "경로 검색";
-"planner.intro.body" = "엄선된 카탈로그에서 출발역과 도착역을 선택하세요. 포함된 시간표는 계획 시간표이며 아래에 나열된 지역 및 국경 간 노선만 다룹니다. Trenitalia(Trenitalia France 제외)와 Italo는 포함되지 않으며, 시간표가 없는 역은 검색에서 표시됩니다.";
+"planner.intro.body" = "엄선된 카탈로그에서 출발역과 도착역을 선택하세요. 포함된 시간표는 계획 시간표이며 아래에 나열된 노선을 다룹니다: Trenitalia, Italo, 지역 철도와 국경 간 열차(Trenitalia와 Italo의 버스 포함). 지하철과 트램은 포함되지 않으며, 시간표가 없는 역은 검색에서 표시됩니다.";
 "planner.origin" = "출발";
 "planner.destination" = "도착";
 "planner.departure" = "날짜 및 시간";
@@ -265,6 +265,11 @@
 "result.route.hour_band" = "%1$lld~%2$lld시";
 "result.bikes.allowed" = "자전거 휴대 가능";
 "result.bikes.not_allowed" = "자전거 휴대 불가";
+"result.vehicle.bus_trenitalia" = "Trenitalia 버스";
+"result.vehicle.freccialink" = "FrecciaLink";
+"result.vehicle.italobus" = "ItaloBus";
+"result.vehicle.bus" = "버스";
+"result.vehicle.replacement_bus" = "대체 버스";
 "result.detail.mean_delay" = "평균 지연: %1$lld분";
 "result.detail.days" = "관측일: %1$lld · 운행 취소: %2$lld";
 "result.detail.distribution_title" = "지연 분포";
@@ -327,6 +332,7 @@
 "departures.row.spoken" = "%1$@, 열차 %2$@, %3$@행, %4$@";
 "departures.row.platform_spoken" = "승강장 %1$@";
 "departures.row.platform_unknown" = "승강장 정보 없음";
+"departures.row.spoken_vehicle" = "%1$@, %2$@, %3$@행, %4$@";
 "departures.later.loaded" = "열차 %1$lld편 추가";
 "action.refresh" = "새로고침";
 "result.live.title" = "실시간";

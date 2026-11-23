@@ -3,7 +3,7 @@
 "tab.settings" = "Настройки";
 "planner.title" = "Планирование";
 "planner.intro.title" = "Поиск маршрута";
-"planner.intro.body" = "Выберите станции отправления и назначения в проверенном каталоге. Включённые расписания являются плановыми и охватывают только перечисленные ниже региональные и трансграничные сети: Trenitalia (кроме Trenitalia France) и Italo не включены, а станции без расписания отмечаются при поиске.";
+"planner.intro.body" = "Выберите станции отправления и назначения в проверенном каталоге. Включённые расписания являются плановыми и охватывают перечисленные ниже сети: Trenitalia, Italo, региональные железные дороги и трансграничные поезда, включая автобусы Trenitalia и Italo; метро и трамвай не включены, а станции без расписания отмечаются при поиске.";
 "planner.origin" = "Отправление";
 "planner.destination" = "Назначение";
 "planner.departure" = "Дата и время";
@@ -265,6 +265,11 @@
 "result.route.hour_band" = "%1$lld–%2$lld ч";
 "result.bikes.allowed" = "Велосипеды разрешены";
 "result.bikes.not_allowed" = "Велосипеды не разрешены";
+"result.vehicle.bus_trenitalia" = "Автобус Trenitalia";
+"result.vehicle.freccialink" = "FrecciaLink";
+"result.vehicle.italobus" = "ItaloBus";
+"result.vehicle.bus" = "Автобус";
+"result.vehicle.replacement_bus" = "Автобус вместо поезда";
 "result.detail.mean_delay" = "Среднее опоздание: %1$lld мин";
 "result.detail.days" = "Дней под наблюдением: %1$lld · отмен: %2$lld";
 "result.detail.distribution_title" = "Распределение опозданий";
@@ -327,6 +332,7 @@
 "departures.row.spoken" = "%1$@, поезд %2$@ до %3$@, %4$@";
 "departures.row.platform_spoken" = "путь %1$@";
 "departures.row.platform_unknown" = "путь неизвестен";
+"departures.row.spoken_vehicle" = "%1$@, %2$@ до %3$@, %4$@";
 "departures.later.loaded" = "ещё %1$lld поезда";
 "action.refresh" = "Обновить";
 "result.live.title" = "Онлайн";

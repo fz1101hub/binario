@@ -32,9 +32,15 @@ struct TrainDetailView: View {
                         Text(service.number)
                             .font(.title3.weight(.semibold))
                         Spacer()
-                        Text(service.category)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+                        if let busLabel = VehicleTexts.busLabel(service) {
+                            Label(busLabel, systemImage: VehicleTexts.busSymbol)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        } else {
+                            Text(service.category)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
                     }
                     Text(verbatim: "\(query.origin.name) → \(service.destination)")
                     Text(service.operatorName)
