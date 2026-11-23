@@ -18,6 +18,9 @@ container).  This helper:
    its published bytes and entry, a pack missing from the print (partial build) stays as it is, and a pack that would
    shrink by more than half (trips or stop times), end earlier than before, or claim a lastServiceDate more than a
    month after its last full-service day (a trickle of trips kept for years) is refused unless ``--accept ID``;
+   A pack the core job printed as a reviewed candidate (``tools/core_pack_candidates.json``, its fields as registered)
+   is added: manifest entry in sourceId order, ZIP, its ``EmbeddedGtfsPacks.kt`` entry, its iOS source policy entry
+   (``androidOnlySources``), and the candidate leaves the registry; its ``RailSourceCatalog.kt`` entry must exist;
 3. carries the reviewed Trenitalia/Italo pins (``core-refresh.json``) and the switch of a pack to its reviewed next
    timetable source (``nextTimetable``, Switzerland) into the iOS source policy and ``RailSourceCatalog.kt``, and
    aligns ``lastServiceDate`` in ``EmbeddedGtfsPacks.kt`` and ``TransitGtfsPacks.kt``;
@@ -58,6 +61,7 @@ import build_android_gtfs_credits as android_credits  # noqa: E402
 import build_gtfs_packs as builder  # noqa: E402
 import ci_log_frames as frames  # noqa: E402
 import foreign_pack_rules as foreign  # noqa: E402
+import refresh_core_gtfs as core_refresh  # noqa: E402
 
 DESTINATIONS: Mapping[str, Path] = {
     "gtfs": Path("app/src/main/assets/gtfs"),
@@ -76,6 +80,11 @@ PIN_MIRRORS = (
     Path("ios/Resources/binario_gtfs_source_policy_v1.json"),
     Path("app/src/main/java/it/binario/app/data/sources/RailSourceCatalog.kt"),
 )
+# Reviewed packs not bundled yet (tools/refresh_core_gtfs.py): one printed by the core job is added here.
+CANDIDATES = Path("tools/core_pack_candidates.json")
+IOS_POLICY = Path("ios/Resources/binario_gtfs_source_policy_v1.json")
+CORE_PACKS_KT = Path("app/src/main/java/it/binario/app/data/gtfs/EmbeddedGtfsPacks.kt")
+CATALOG_KT = Path("app/src/main/java/it/binario/app/data/sources/RailSourceCatalog.kt")
 IOS_INPUTS = (Path("app/src/main/assets/gtfs/manifest.json"), Path("ios/Resources/binario_gtfs_source_policy_v1.json"))
 JOB_NAMES = ("core-packs", "transit-packs")
 # The step of each job that prints its files; only its frame is read (.github/workflows/gtfs-assets-ci.yml).
@@ -260,6 +269,21 @@ class MergedDirectory:
     new_manifest: dict[str, Any]
     staged_full: Path | None = None  # data/gtfs-foreign/android as it will be (border packs), None: unchanged
     full_target: Path | None = None
+    added: list[str] = field(default_factory=list)  # candidates added to the manifest (tools/core_pack_candidates.json)
+
+
+def candidate_problem(candidate: Mapping[str, Any], pack: Mapping[str, Any]) -> str | None:
+    """Why a printed new entry is not the reviewed candidate (its fields as registered, a dated attribution aside)."""
+    expected = core_refresh.candidate_entry(candidate)
+    for key, value in expected.items():
+        actual = pack.get(key)
+        if key == "attribution" and expected.get(core_refresh.ATTRIBUTION_DATED_FIELD) is True and isinstance(actual, str):
+            actual = core_refresh.DATED_ATTRIBUTION.sub("", actual)
+        if actual != value:
+            return f"{key} diverso dal candidato rivisto"
+    if builder.FULL_PACK_FIELD in pack:
+        return "un candidato è incluso intero (fullPack non ammesso)"
+    return None
 
 
 def merge_directory(
@@ -274,6 +298,7 @@ def merge_directory(
     full_printed: Mapping[str, bytes] | None = None,
     full_dir: Path | None = None,
     catalogue_path: Path | None = None,
+    candidates: Mapping[str, Mapping[str, Any]] | None = None,
 ) -> MergedDirectory:
     """Merge one printed directory into its published copy, staged under ``work`` and verified.
 
@@ -307,13 +332,34 @@ def merge_directory(
     full_replacements: dict[str, bytes] = {}
     manifest_changed = False
     printed_ids: set[str] = set()
+    additions: list[dict[str, Any]] = []
     for pack in new_manifest.get("packs", []):
         source_id = str(pack.get("sourceId"))
         printed_ids.add(source_id)
         old = old_by_id.get(source_id)
         if old is None:
-            rows[source_id] = Row(name, source_id, None, pack.get("lastServiceDate"),
-                                  failure="pack nuovo, non registrato: aggiungerlo a mano a manifest e Kotlin")
+            row = rows[source_id] = Row(name, source_id, None, pack.get("lastServiceDate"))
+            candidate = (candidates or {}).get(source_id)
+            if candidate is None:
+                row.failure = "pack nuovo, non registrato: aggiungerlo a mano a manifest e Kotlin"
+                continue
+            if source_id in skip:
+                row.notes.append("candidato escluso con --skip")
+                continue
+            data = printed.get(builder.safe_asset_name(str(pack.get("asset"))))
+            problem = candidate_problem(candidate, pack)
+            if problem is None and data is None:
+                problem = "ZIP non stampato nel log"
+            if problem is None and hashlib.sha256(data).hexdigest() != pack.get("sha256"):
+                problem = "SHA-256 dello ZIP diverso dal manifest stampato"
+            if problem is not None:
+                row.failure = f"candidato non applicato: {problem}"
+                continue
+            row.new_trips = zip_metadata(data).get("counts", {}).get("trips")
+            row.changed = True
+            row.notes.append(f"pack nuovo dal registro dei candidati ({CANDIDATES.as_posix()})")
+            additions.append(dict(pack))
+            replacements[builder.safe_asset_name(str(pack["asset"]))] = data
             continue
         row = rows[source_id]
         if pack.get("asset") != old.get("asset"):
@@ -404,6 +450,9 @@ def merge_directory(
         replacements[asset] = data
         row.new_date = entry.get("lastServiceDate")
         row.changed = True
+    for addition in additions:
+        # Where the core job put it (before the first pack after it in sourceId order).
+        merged = core_refresh.with_pack_in_order(merged, addition)
     border_assets = {builder.safe_asset_name(pack["asset"]) for pack in new_manifest.get("packs", [])
                      if isinstance(pack.get(builder.FULL_PACK_FIELD), Mapping)}
     unexpected = sorted(set(full_printed) - border_assets)
@@ -443,7 +492,7 @@ def merge_directory(
     except builder.BuildError as error:
         raise ApplyError(f"{name}/: la directory unita non supera il controllo di integrità:\n{error}") from error
     return MergedDirectory(name, target, ordered, staged, old_manifest, result,
-                           staged_full if full_replacements else None, full_dir)
+                           staged_full if full_replacements else None, full_dir, [str(pack["sourceId"]) for pack in additions])
 
 
 @dataclass(frozen=True)
@@ -462,8 +511,9 @@ def pin_updates(merged: MergedDirectory, report: Mapping[str, Any] | None) -> li
     updates = []
     old_by_id = {pack["sourceId"]: pack for pack in merged.old_manifest["packs"]}
     for pack in merged.new_manifest["packs"]:
-        old = old_by_id[pack["sourceId"]]
-        if pack.get("sourceUrl") == old.get("sourceUrl"):
+        old = old_by_id.get(pack["sourceId"])
+        if old is None or pack.get("sourceUrl") == old.get("sourceUrl"):
+            # A candidate added in this run has no previous source (its URL is the reviewed one).
             continue
         entry = ((report or {}).get("packs", {}).get(pack["sourceId"], {}) or {})
         if "upstream" not in pack:
@@ -527,23 +577,79 @@ def replace_once(text: str, old: str, new: str, path: Path) -> str:
     return text.replace(old, new)
 
 
-def planned_edits(root: Path, directories: Sequence[MergedDirectory], pins: Sequence[SourceUpdate]) -> dict[Path, str]:
-    """New text of the Kotlin registries (lastServiceDate of every pack) and of the files mirroring a pack's sourceUrl
-    (and landing page)."""
+def with_core_pack(text: str, source_id: str, asset: str) -> str:
+    """EmbeddedGtfsPacks.kt with a plain entry for ``source_id`` in the core list, before the first entry after it in
+    sourceId order (its date is set with the others, from the manifest)."""
+    start = text.find("private val corePacks = listOf(")
+    end = text.find("\n    )\n", start)
+    if start < 0 or end < 0:
+        raise ApplyError(f"{CORE_PACKS_KT}: elenco corePacks non trovato")
+    entries = list(re.finditer(r'^        EmbeddedGtfsPack\(\s*SourceId\("([^"]+)"\)', text[start:end], re.MULTILINE))
+    following = next((match for match in entries if match.group(1) > source_id), None)
+    if following is None:
+        raise ApplyError(f"{CORE_PACKS_KT}: nessuna voce dopo {source_id}: aggiungerla a mano")
+    line = f'        EmbeddedGtfsPack(SourceId("{source_id}"), "{asset}", LocalDate.of(2000, 1, 1)),\n'
+    position = start + following.start()
+    return text[:position] + line + text[position:]
+
+
+def candidate_edits(root: Path, added: Sequence[Mapping[str, Any]], candidates: Mapping[str, Mapping[str, Any]]) -> dict[Path, str]:
+    """For each candidate added to the manifest: its EmbeddedGtfsPacks.kt entry, its iOS source policy entry
+    (androidOnlySources with the reviewed reason) and the candidate registry without it.  The catalogue entry
+    (RailSourceCatalog.kt, the pack's countries for PlannedPackOrder) is reviewed code and must already exist."""
+    if not added:
+        return {}
+    kotlin_path, policy_path, registry_path = root / CORE_PACKS_KT, root / IOS_POLICY, root / CANDIDATES
+    kotlin = kotlin_path.read_text(encoding="utf-8")
+    catalog = (root / CATALOG_KT).read_text(encoding="utf-8")
+    policy = json.loads(policy_path.read_text(encoding="utf-8"))
+    registry = json.loads(registry_path.read_text(encoding="utf-8"))
+    for pack in added:
+        source_id = str(pack["sourceId"])
+        candidate = candidates[source_id]
+        if f'SourceId("{source_id}")' not in catalog or f'uri("{candidate["sourceUrl"]}")' not in catalog:
+            raise ApplyError(f"{CATALOG_KT}: voce di catalogo di {source_id} con il suo sourceUrl assente")
+        kotlin = with_core_pack(kotlin, source_id, str(pack["asset"]))
+        listed = {item.get("sourceId") for key in ("sources", "androidOnlySources") for item in policy.get(key, [])}
+        if source_id in listed:
+            raise ApplyError(f"{IOS_POLICY}: {source_id} già presente")
+        policy.setdefault("androidOnlySources", []).append({
+            "accessMode": pack["accessMode"], "reason": candidate["iosAndroidOnlyReason"],
+            "sourceId": source_id, "sourceUrl": pack["sourceUrl"],
+        })
+        policy["androidOnlySources"].sort(key=lambda item: str(item.get("sourceId")))
+        registry["packs"] = [item for item in registry.get("packs", []) if item.get("sourceId") != source_id]
+    return {
+        kotlin_path: kotlin,
+        policy_path: json.dumps(policy, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+        registry_path: json.dumps(registry, ensure_ascii=False, indent=2) + "\n",
+    }
+
+
+def planned_edits(
+    root: Path,
+    directories: Sequence[MergedDirectory],
+    pins: Sequence[SourceUpdate],
+    candidates: Mapping[str, Mapping[str, Any]] | None = None,
+) -> dict[Path, str]:
+    """New text of the Kotlin registries (lastServiceDate of every pack, the entry of an added candidate), of the files
+    mirroring a pack's sourceUrl (and landing page) and of the candidate registry."""
     manifests = {item.name: item.new_manifest for item in directories}
+    added = [pack for item in directories for pack in item.new_manifest.get("packs", []) if pack["sourceId"] in item.added]
+    edits = candidate_edits(root, added, candidates or {})
     dates: dict[str, tuple[str, str]] = {}
     for name, relative in DESTINATIONS.items():
         manifest_path = root / relative / "manifest.json"
         manifest = manifests.get(name) or (json.loads(manifest_path.read_text(encoding="utf-8")) if manifest_path.is_file() else None)
         for pack in (manifest or {}).get("packs", []):
             dates[pack["sourceId"]] = (pack["asset"], pack["lastServiceDate"])
-    edits: dict[Path, str] = {}
     found: set[str] = set()
     for relative in KOTLIN_PACK_FILES:
         path = root / relative
-        text = path.read_text(encoding="utf-8")
+        original = path.read_text(encoding="utf-8")
+        text = edits.get(path, original)
         updated = updated_kotlin(text, dates, found)
-        if updated != text:
+        if updated != original:
             edits[path] = updated
     missing = sorted(set(dates) - found)
     if missing:
@@ -567,7 +673,7 @@ def planned_edits(root: Path, directories: Sequence[MergedDirectory], pins: Sequ
         if not replacements:
             break
         path = root / relative
-        text = path.read_text(encoding="utf-8")
+        text = edits.get(path) or path.read_text(encoding="utf-8")
         for old_text, new_text in replacements:
             text = replace_once(text, old_text, new_text, relative)
         edits[path] = text
@@ -693,6 +799,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             raise ApplyError("nessun file BINARIO_FILE nei log indicati")
         core_report = reports.get("core-refresh.json")
         job_status = (core_report or {}).get("packs", {})
+        candidates = core_refresh.load_candidates(root / CANDIDATES)
         work = Path(tempfile.mkdtemp(prefix="binario-apply-gtfs-"))
         try:
             merged: list[MergedDirectory] = []
@@ -703,6 +810,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                         skip=set(args.skip), accept=set(args.accept), job_status=job_status if name == "gtfs" else {},
                         full_printed=full_printed if name == "gtfs" else None, full_dir=root / foreign.FULL_PACK_DIR,
                         catalogue_path=root / foreign.CATALOGUE_PATH,
+                        candidates=candidates if name == "gtfs" else None,
                     ))
                 elif name == "gtfs" and core_report:
                     # The core job changed nothing: its outcome per pack is still reported.
@@ -711,7 +819,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                     merged.append(merge_directory(name, printed, target, work, skip=set(), accept=set(), job_status=job_status))
             core = next((item for item in merged if item.name == "gtfs"), None)
             pins = pin_updates(core, core_report) if core and core.staged else []
-            edits = planned_edits(root, merged, pins)
+            edits = planned_edits(root, merged, pins, candidates)
             rows = [row for item in merged for row in item.rows]
             if core is not None:
                 for row in core.rows:
@@ -741,7 +849,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 path.write_text(text, encoding="utf-8")
         finally:
             shutil.rmtree(work, ignore_errors=True)
-    except (ApplyError, builder.BuildError, OSError, json.JSONDecodeError, zipfile.BadZipFile) as error:
+    except (ApplyError, core_refresh.RefreshError, builder.BuildError, OSError, json.JSONDecodeError, zipfile.BadZipFile) as error:
         builder.print_error_lines("ERRORE: ", error)
         return 1
 

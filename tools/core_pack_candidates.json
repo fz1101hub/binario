@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "purpose": "Reviewed core packs not bundled yet: tools/refresh_core_gtfs.py builds one only when the dispatch names it (refresh-core=<sourceId>, never with refresh-core=all) and tools/apply_ci_gtfs_refresh.py adds it to app/src/main/assets/gtfs/ (manifest, ZIP, EmbeddedGtfsPacks.kt, iOS source policy) and removes it from here.",
+  "packs": [
+    {
+      "sourceId": "trenitalia-france-gtfs",
+      "asset": "gtfs/trenitalia-france-gtfs.zip",
+      "sourceUrl": "https://www.data.gouv.fr/api/1/datasets/r/bdecea2c-ebc9-4f22-812d-927e4a2e4bad",
+      "accessMode": "OPEN_DIRECT",
+      "attribution": "Trenitalia France",
+      "attributionDated": true,
+      "licence": "Licence Ouverte / Open Licence 2.0 (Etalab, etalab-2.0): riuso e ridistribuzione liberi, anche commerciali, citando la fonte «Trenitalia France» e la data dell'ultimo aggiornamento",
+      "licenceEvidence": "https://transport.data.gouv.fr/datasets/horaires-des-trains-trenitalia-france (licenza etalab-2.0 indicata per il dataset, anche nell'elenco dei feed di Transitous consultato nel novembre 2026; la scheda non è raggiungibile dall'ambiente di sviluppo); testo della licenza https://www.etalab.gouv.fr/licence-ouverte-open-licence/",
+      "notes": "Orario statico pubblicato da Trenitalia France sul punto di accesso nazionale francese: Frecciarossa Parigi – Lione – Chambéry – Modane – Torino – Milano e, se presenti, Parigi – Lione – Marsiglia; filtrato ai route_type ferroviari e incluso intero. Le stesse corse sono anche nel pack trenitalia-gtfs (NAP italiano, 76 corse con fermate francesi nel novembre 2026): la copia del pack nazionale viene prima (PlannedPackOrder) e le copie uguali sono unite.",
+      "landingPage": "https://transport.data.gouv.fr/datasets/horaires-des-trains-trenitalia-france",
+      "iosAndroidOnlyReason": "Android-only for now: on the iPhone it would be indexed as a foreign operator's pack bundled whole (coded stations only, build_ios_gtfs_schedule.FOREIGN_PACKS) with the indexed pack count raised and an Apple CI run; reviewed once its data is bundled."
+    }
+  ]
+}

@@ -289,6 +289,23 @@ object RailSourceCatalog {
             notes = "Payload protobuf HTTPS verificato; non viene decodificato in questa tranche statica."
         ),
         RailSourceDefinition(
+            id = SourceId("trenitalia-france-gtfs"),
+            displayName = "Trenitalia France — GTFS statico",
+            operatorOrAuthority = "Trenitalia France / transport.data.gouv.fr",
+            formats = setOf(SourceFormat.GTFS_ZIP),
+            capabilities = staticCapabilities,
+            accessMode = AccessMode.OPEN_DIRECT,
+            readiness = SourceReadiness.READY_FOR_GTFS_PACK,
+            countryCodes = setOf("FR", "IT"),
+            coverage = "Frecciarossa di Trenitalia France: Parigi–Lione–Chambéry–Modane–Torino–Milano e Parigi–Lione–Marsiglia.",
+            landingPage = uri("https://transport.data.gouv.fr/datasets/horaires-des-trains-trenitalia-france"),
+            downloadOrProbeUri = uri("https://www.data.gouv.fr/api/1/datasets/r/bdecea2c-ebc9-4f22-812d-927e4a2e4bad"),
+            attribution = "Trenitalia France — Licence Ouverte / Open Licence 2.0 (etalab-2.0)",
+            notes = "Pack candidato (tools/core_pack_candidates.json): il CI lo scarica solo quando un dispatch lo nomina e " +
+                "apply_ci_gtfs_refresh.py lo aggiunge intero agli asset. Le stesse corse sono anche nel pack trenitalia-gtfs, " +
+                "la cui copia viene prima (PlannedPackOrder)."
+        ),
+        RailSourceDefinition(
             id = SourceId("ch-otd-gtfs"),
             displayName = "Open Data Platform Mobility Switzerland — GTFS",
             operatorOrAuthority = "ODMCH / SBB Infrastructure",

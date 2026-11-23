@@ -24,7 +24,9 @@ import apply_ci_gtfs_refresh as apply  # noqa: E402
 import build_gtfs_packs as builder  # noqa: E402
 import foreign_pack_rules as foreign  # noqa: E402
 import refresh_core_gtfs as refresh  # noqa: E402
-from test_refresh_core_gtfs import NEW_COMMIT, OLD_COMMIT, FakeDownloads, core_directory, gtfs_zip, pinned_url  # noqa: E402
+from test_refresh_core_gtfs import (  # noqa: E402
+    NEW_COMMIT, OLD_COMMIT, FakeDownloads, candidate, core_directory, gtfs_zip, pinned_url, trenitalia_france_zip,
+)
 
 EMBEDDED_KT = '''object EmbeddedGtfsPacks {
     private val corePacks = listOf(
@@ -465,6 +467,72 @@ class ApplyTest(unittest.TestCase):
                                                                 "sourceUrl": "https://example.test/elsewhere.zip"}}}}
         with self.assertRaisesRegex(apply.ApplyError, "nextTimetable rivisto"):
             apply.pin_updates(apply.MergedDirectory("gtfs", self.assets, [], self.temp, old, manifest), report)
+
+    def test_a_named_candidate_is_added_with_its_kotlin_and_ios_entries(self) -> None:
+        reviewed = candidate("new-gtfs")
+        registry = self.root / apply.CANDIDATES
+        registry.parent.mkdir(parents=True)
+        registry.write_text(json.dumps({"schemaVersion": 1, "purpose": "fixture", "packs": [reviewed]}, indent=2) + "\n", encoding="utf-8")
+        catalog = self.root / apply.CATALOG_KT
+        catalog.write_text(catalog.read_text(encoding="utf-8")
+                           + f'id = SourceId("new-gtfs"),\ndownloadOrProbeUri = uri("{reviewed["sourceUrl"]}"),\n', encoding="utf-8")
+        sources = self.temp / "upstream"
+        sources.mkdir()
+        out = self.temp / "out"
+        with contextlib.redirect_stdout(io.StringIO()):
+            report = refresh.refresh(["new-gtfs"], self.assets, out, "2026-11-24",
+                                     fetch=FakeDownloads({reviewed["sourceUrl"]: trenitalia_france_zip(sources / "tf.zip")}),
+                                     resolve=lambda upstream: {}, full_pack_dir=self.temp / "no-full-packs",
+                                     candidates=refresh.load_candidates(registry))
+        self.assertEqual(["new-gtfs"], report["added"])
+        log = self.temp / "core-packs.log"
+        log.write_text(job_log(out / "publish"), encoding="utf-8")
+        code, output = self.apply("--log", str(log))
+        self.assertEqual(0, code, output)
+        self.assertIn("pack nuovo dal registro dei candidati", output)
+        manifest = json.loads((self.assets / "manifest.json").read_text(encoding="utf-8"))
+        # Before the first pack after it in sourceId order, as the job printed it; the others keep their order.
+        self.assertEqual(["new-gtfs", "plain-gtfs", "oebb-gtfs", "pinned-gtfs", "broken-gtfs"], [pack["sourceId"] for pack in manifest["packs"]])
+        printed = json.loads((out / "staging/gtfs/manifest.json").read_text(encoding="utf-8"))
+        self.assertEqual(printed["packs"], manifest["packs"])
+        entry = next(pack for pack in manifest["packs"] if pack["sourceId"] == "new-gtfs")
+        self.assertEqual("Trenitalia France — dati del 2026-11-24", entry["attribution"])
+        self.assertEqual(reviewed["licence"], entry["licence"])
+        builder.verify_assets(self.assets, as_of=None, min_valid_days=None)
+        for name, data in self.before.items():
+            if name not in ("manifest.json", "SHA256SUMS"):
+                self.assertEqual(data, (self.assets / name).read_bytes(), name)
+        embedded = (self.root / apply.CORE_PACKS_KT).read_text(encoding="utf-8")
+        self.assertIn('        EmbeddedGtfsPack(SourceId("new-gtfs"), "gtfs/new-gtfs.zip", LocalDate.of(2027, 12, 11)),\n'
+                      '        EmbeddedGtfsPack(SourceId("plain-gtfs")', embedded)
+        policy = json.loads((self.root / apply.IOS_POLICY).read_text(encoding="utf-8"))
+        self.assertIn({"accessMode": "OPEN_DIRECT", "reason": reviewed["iosAndroidOnlyReason"], "sourceId": "new-gtfs",
+                       "sourceUrl": reviewed["sourceUrl"]}, policy["androidOnlySources"])
+        self.assertEqual([], json.loads(registry.read_text(encoding="utf-8"))["packs"])
+        # Applied again, the pack is registered: nothing changes.
+        before = {path: path.read_bytes() for path in (*self.assets.iterdir(), registry, self.root / apply.CORE_PACKS_KT)}
+        code, output = self.apply("--log", str(log))
+        self.assertEqual(0, code, output)
+        self.assertEqual(before, {path: path.read_bytes() for path in before})
+
+    def test_a_printed_new_pack_is_added_only_as_the_reviewed_candidate(self) -> None:
+        reviewed = candidate("new-gtfs")
+        printed = {**refresh.candidate_entry(reviewed), "attribution": "Trenitalia France — dati del 2026-11-24"}
+        self.assertIsNone(apply.candidate_problem(reviewed, printed))
+        self.assertIn("licence", apply.candidate_problem(reviewed, {**printed, "licence": "CC BY-SA"}) or "")
+        self.assertIn("sourceUrl", apply.candidate_problem(reviewed, {**printed, "sourceUrl": "https://example.test/other"}) or "")
+        self.assertIn("attribution", apply.candidate_problem(reviewed, {**printed, "attribution": "Someone else"}) or "")
+        self.assertIn("fullPack", apply.candidate_problem(reviewed, {**printed, "fullPack": {}}) or "")
+        # Without a registry entry a new pack stays refused, as before.
+        self.job()
+        manifest = json.loads((self.temp / "out/staging/gtfs/manifest.json").read_text(encoding="utf-8"))
+        manifest["packs"].append({**printed, "asset": "gtfs/new-gtfs.zip", "sha256": "0" * 64, "lastServiceDate": "2027-12-11"})
+        work = self.temp / "work"
+        work.mkdir()
+        merged = apply.merge_directory("gtfs", {"manifest.json": json.dumps(manifest).encode()}, self.assets, work,
+                                       skip=set(), accept=set(), job_status={})
+        row = next(row for row in merged.rows if row.source_id == "new-gtfs")
+        self.assertIn("non registrato", row.failure or "")
 
     def test_the_shipped_kotlin_registries_match_the_manifests(self) -> None:
         self.assertEqual({}, apply.planned_edits(ROOT, [], []))

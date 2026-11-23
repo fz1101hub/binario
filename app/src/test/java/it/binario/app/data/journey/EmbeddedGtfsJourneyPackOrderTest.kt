@@ -3,6 +3,7 @@ package it.binario.app.data.journey
 import it.binario.app.data.core.JourneyOption
 import it.binario.app.data.journey.JourneyFixtures.Trip
 import it.binario.app.data.journey.JourneyFixtures.alfa
+import it.binario.app.data.journey.JourneyFixtures.beta
 import it.binario.app.data.journey.JourneyFixtures.epsilon
 import it.binario.app.data.journey.JourneyFixtures.feed
 import it.binario.app.data.journey.JourneyFixtures.pack
@@ -98,5 +99,34 @@ class EmbeddedGtfsJourneyPackOrderTest {
         // When Trenord serves Lugano too, the foreign pack still comes first among the packs serving it.
         val withTrenord = options(packs(trenordServesLugano = true).searchJourneys(request(alfa, epsilon))).first()
         assertEquals(listOf("ch-otd-gtfs:C25", "ch-otd-gtfs:C41"), withTrenord.trips())
+    }
+    @Test fun `a Frecciarossa published by Trenitalia France and by the national pack is kept once, the national copy`() = runBlocking {
+        // As Milano Centrale (Alfa) - Torino Porta Susa (Beta) - Paris Gare de Lyon (Epsilon): the national pack lists
+        // the whole run (the NAP pack of November 2026 does), and so does Trenitalia France's own feed, as "FR 9241".
+        val provider = provider(
+            linkedMapOf(
+                pack("trenitalia-france-gtfs") to feed(listOf(Trip("F9241", "FR 9241", listOf("A" to "08:00", "B" to "09:10", "E" to "15:50")))),
+                pack("trenitalia-gtfs") to feed(listOf(Trip("T9241", "9241", listOf("A" to "08:00", "B" to "09:10", "E" to "15:50"))))
+            )
+        )
+        assertEquals(listOf(listOf("trenitalia-gtfs:T9241")), options(provider.searchJourneys(request(alfa, epsilon))).map { it.trips() })
+        assertEquals(listOf(listOf("trenitalia-gtfs:T9241")), options(provider.searchJourneys(request(alfa, beta))).map { it.trips() })
+    }
+
+    @Test fun `an end only Trenitalia France serves keeps its copy of the whole run`() = runBlocking {
+        // Were the national pack to list the Italian leg only, Paris (Epsilon) would be served by Trenitalia France
+        // alone: its copy is kept, without a change onto the national copy; between two Italian stations the national
+        // copy stays the one shown.
+        val provider = provider(
+            linkedMapOf(
+                pack("trenitalia-gtfs") to feed(
+                    listOf(Trip("T9241", "9241", listOf("A" to "08:00", "B" to "09:10"))),
+                    mapOf("A" to "Alfa", "B" to "Beta")
+                ),
+                pack("trenitalia-france-gtfs") to feed(listOf(Trip("F9241", "FR 9241", listOf("A" to "08:00", "B" to "09:10", "E" to "15:50"))))
+            )
+        )
+        assertEquals(listOf("trenitalia-france-gtfs:F9241"), options(provider.searchJourneys(request(alfa, epsilon))).first().trips())
+        assertEquals(listOf(listOf("trenitalia-gtfs:T9241")), options(provider.searchJourneys(request(alfa, beta))).map { it.trips() })
     }
 }
