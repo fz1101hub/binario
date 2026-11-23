@@ -115,7 +115,7 @@ flowchart LR
     Future[Provider autorizzato\no backend personale] --> DS
 ```
 
-Il dominio dati è deliberatamente separato da Compose e dagli API Android. L'app Android per smartphone resta il prodotto principale e la fonte di verità; widget, Wear OS, Apple Watch e Alexa sono companion. In futuro il dominio può essere estratto in un core Kotlin Multiplatform, mentre le superfici restano integrazioni dedicate. Ogni companion riceve soltanto uno snapshot ridotto e versionato; non è una fonte live indipendente né un canale per credenziali o dati personali estesi.
+Il dominio dati è deliberatamente separato da Compose e dagli API Android. L'app Android per smartphone resta il prodotto principale e la fonte di verità; widget, Wear OS, Apple Watch e Alexa sono companion. Le app restano native (Kotlin, Swift, TypeScript) su una base comune: gli stessi file dati, le tabelle di [`contracts/shared-data/`](contracts/shared-data/README.md) generate come codice per ogni linguaggio, i casi di prova delle regole e i contratti tra dispositivi; ognuna tiene per sé interfaccia, integrazioni di sistema e client di rete ([ADR-0002](docs/architecture/ADR-0002-BASE-COMUNE.md)). Un core Kotlin Multiplatform del dominio potrà essere riconsiderato più avanti. Ogni companion riceve soltanto uno snapshot ridotto e versionato; non è una fonte live indipendente né un canale per credenziali o dati personali estesi.
 
 ## Esperienza unificata e integrazioni
 

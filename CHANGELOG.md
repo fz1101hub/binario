@@ -1,5 +1,13 @@
 # Changelog
 
+## In sviluppo — Base comune tra i dispositivi
+
+- Le app restano native, ma su una base comune ([ADR-0002](docs/architecture/ADR-0002-BASE-COMUNE.md)). Le tabelle che più piattaforme usano stanno ora in `contracts/shared-data/v1/`, e `tools/generate_shared_code.py` ne scrive il codice Kotlin, Swift e, per la skill, TypeScript. Il generatore controlla le tabelle prima di scrivere, e la CI con `--check` verifica che il codice sia aggiornato.
+- Otto tabelle, finora ricopiate a mano, ora sono scritte una volta sola: codici Italo di riserva e pagine per nome, place ID RFI, punteggi delle fonti, soglie della puntualità (anche per Alexa), categorie ammesse davanti al numero di un treno, collegamenti con gli aeroporti, festività (Android e Alexa), limiti dell'Agenda e dei modelli. Su ogni piattaforma i valori erano già identici: non cambia nessun comportamento.
+- Nuovi casi di prova comuni in `contracts/shared-rules/v1/` per le regole rimaste nel codice: soppressione esplicita e operatore delle righe RFI, modelli di «Preparazione del viaggio», festività con Pasqua e Pasquetta.
+- iPhone: i collegamenti con gli aeroporti sanno quali pack sono linee urbane (`AirportRoutes.byCityLine`). Oggi non cambia nulla, perché nessun pack urbano arriva sull'iPhone.
+- I workflow Android, Apple e Alexa partono anche quando cambiano le tabelle o il generatore.
+
 ## In sviluppo — «Cerca le corse» per il Marconi Express e per le linee urbane
 
 - Android, collegamenti con gli aeroporti: i collegamenti in treno (Fiumicino, Malpensa, Bari, Palermo, Cagliari, Trieste, Caselle) continuano a dire «Cerca i treni da … a …»; solo Bologna, servita dal Marconi Express (una monorotaia), dice «Cerca le corse da … a …».
