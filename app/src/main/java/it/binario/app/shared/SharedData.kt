@@ -8,10 +8,12 @@
 //   contracts/shared-data/v1/pack-roles-v1.json
 //   contracts/shared-data/v1/planned-journeys-v1.json
 //   contracts/shared-data/v1/punctuality-v1.json
+//   contracts/shared-data/v1/rfi-monitor-v1.json
 //   contracts/shared-data/v1/rfi-place-ids-v1.json
 //   contracts/shared-data/v1/source-manners-v1.json
 //   contracts/shared-data/v1/source-scores-v1.json
 //   contracts/shared-data/v1/train-number-prefixes-v1.json
+//   contracts/shared-data/v1/viaggiatreno-v1.json
 
 package it.binario.app.shared
 
@@ -403,12 +405,19 @@ internal object SharedData {
             val maximumLineCodes: Int,
             val worksCollapsed: Int
         )
+        data class TrainNoticeRules(
+            val maximumNotes: Int,
+            val textLength: Int,
+            val maximumTrains: Int,
+            val maximumCachedTrains: Int
+        )
 
         val SERVICE: Service = Service(sourceTimeoutSeconds = 20, reloadAfterSeconds = 120)
         val SOURCES: List<Source> = listOf(
             Source(id = "mit-strikes-rss", publisher = null, gate = "all-builds", url = "https://scioperi.mit.gov.it/mit2/public/scioperi/rss", accept = "application/rss+xml, application/xml, text/xml", connectTimeoutSeconds = 8, readTimeoutSeconds = 12, totalTimeoutSeconds = 20, maximumBytes = 1048576, maximumRequests = 3, redirects = "same-https-host", viaggiaTrenoCleartextHop = false, minimumIntervalSeconds = 1800, timeToLiveSeconds = 21600, maximumStaleSeconds = 86400, retryDelayMillis = 750, pauseLabel = null),
             Source(id = "rfi-infomobility-rss", publisher = "RFI", gate = "all-builds", url = "https://www.rfi.it/content/rfi/it/news-e-media/infomobilita.rss.updates.xml", accept = "application/rss+xml, application/xml, text/xml", connectTimeoutSeconds = 12, readTimeoutSeconds = 20, totalTimeoutSeconds = 25, maximumBytes = 2097152, maximumRequests = 3, redirects = "same-resource", viaggiaTrenoCleartextHop = false, minimumIntervalSeconds = 300, timeToLiveSeconds = 600, maximumStaleSeconds = 3600, retryDelayMillis = null, pauseLabel = null),
             Source(id = "trenitalia-infomobility-news", publisher = "TRENITALIA", gate = "personal", url = "https://www.viaggiatreno.it/infomobilitamobile/resteasy/news/infomobility", accept = "application/json", connectTimeoutSeconds = 8, readTimeoutSeconds = 12, totalTimeoutSeconds = 15, maximumBytes = 2097152, maximumRequests = 3, redirects = "same-resource", viaggiaTrenoCleartextHop = true, minimumIntervalSeconds = 300, timeToLiveSeconds = 600, maximumStaleSeconds = 3600, retryDelayMillis = 750, pauseLabel = "ViaggiaTreno"),
+            Source(id = "viaggiatreno-train-notices", publisher = "TRENITALIA", gate = "personal", url = "https://www.viaggiatreno.it/infomobilitamobile/resteasy/news/smartcaring", accept = "application/json", connectTimeoutSeconds = 8, readTimeoutSeconds = 12, totalTimeoutSeconds = 15, maximumBytes = 2097152, maximumRequests = 3, redirects = "same-resource", viaggiaTrenoCleartextHop = true, minimumIntervalSeconds = 30, timeToLiveSeconds = 300, maximumStaleSeconds = 1800, retryDelayMillis = 750, pauseLabel = "ViaggiaTreno"),
             Source(id = "trenord-line-notices", publisher = "TRENORD", gate = "personal", url = "https://www.trenord.it/mgmt/store-management-api/mia/direttrici/", accept = "application/json", connectTimeoutSeconds = 8, readTimeoutSeconds = 12, totalTimeoutSeconds = 15, maximumBytes = 1048576, maximumRequests = 3, redirects = "same-resource", viaggiaTrenoCleartextHop = false, minimumIntervalSeconds = 600, timeToLiveSeconds = 900, maximumStaleSeconds = 7200, retryDelayMillis = 750, pauseLabel = null)
         )
         val LINKS: Links = Links(
@@ -467,6 +476,7 @@ internal object SharedData {
             )
         )
         val DISPLAY: Display = Display(networkCollapsed = 6, bodyCollapsedLines = 3, bodyCollapsedCharacters = 180, maximumLineCodes = 6, worksCollapsed = 3)
+        val TRAIN_NOTICES: TrainNoticeRules = TrainNoticeRules(maximumNotes = 500, textLength = 1000, maximumTrains = 20, maximumCachedTrains = 32)
     }
 
     /**
@@ -524,6 +534,25 @@ internal object SharedData {
         const val MINIMUM_WEEKDAY_GAP_POINTS: Int = 15
         const val MINIMUM_BAND_SAMPLES: Int = 20
         const val MINIMUM_BAND_GAP_POINTS: Int = 5
+    }
+
+    /**
+     * contracts/shared-data/v1/rfi-monitor-v1.json: RFI's «Arrivi e partenze» monitor as both phones ask and read it:
+     * the station selector and the monitor pages, the limits of one request, how often a page is asked and how long its
+     * rows stay live, and how long the selector is kept.
+     */
+    object RfiMonitor {
+        const val CATALOGUE_URL: String = "https://iechub.rfi.it/ArriviPartenze"
+        const val MONITOR_URL: String = "https://iechub.rfi.it/ArriviPartenze/ArrivalsDepartures/Monitor"
+        const val ACCEPT: String = "text/html,application/xhtml+xml"
+        const val CONNECT_TIMEOUT_SECONDS: Int = 12
+        const val READ_TIMEOUT_SECONDS: Int = 20
+        const val TOTAL_TIMEOUT_SECONDS: Int = 10
+        const val MAXIMUM_BYTES: Int = 2097152
+        const val MINIMUM_INTERVAL_SECONDS: Int = 20
+        const val TIME_TO_LIVE_SECONDS: Int = 45
+        const val CATALOGUE_REFRESH_SECONDS: Int = 86400
+        const val CATALOGUE_RETRY_SECONDS: Int = 60
     }
 
     /**
@@ -765,5 +794,38 @@ internal object SharedData {
             "TER", "REX", "CJX", "IRE", "ECE", "CAT", "NJ", "IR", "ES", "FR", "FA", "FB", "AV", "RV", "RE", "IC", "EC",
             "EN", "RJ", "R", "S", "D"
         )
+    }
+
+    /**
+     * contracts/shared-data/v1/viaggiatreno-v1.json: ViaggiaTreno's realtime API as both phones ask and read it: the
+     * address and its resources, the limits of one request, how long an answer is reused and stays live, how many run
+     * details are asked at once and for how long, the bounds of what is read, the stop types of a run and who a run is
+     * for (codiceCliente, when compImpresa does not say).
+     */
+    object ViaggiaTreno {
+        const val BASE_URL: String = "https://www.viaggiatreno.it/infomobilita/resteasy/viaggiatreno/"
+        const val DEPARTURES_RESOURCE: String = "partenze/"
+        const val ARRIVALS_RESOURCE: String = "arrivi/"
+        const val RUN_RESOURCE: String = "andamentoTreno/"
+        const val NUMBER_SEARCH_RESOURCE: String = "cercaNumeroTrenoTrenoAutocomplete/"
+        const val CONNECT_TIMEOUT_SECONDS: Int = 8
+        const val READ_TIMEOUT_SECONDS: Int = 12
+        const val TOTAL_TIMEOUT_SECONDS: Int = 12
+        const val MAXIMUM_BYTES: Int = 2097152
+        const val MAXIMUM_REQUESTS: Int = 4
+        const val MINIMUM_INTERVAL_SECONDS: Int = 30
+        const val TIME_TO_LIVE_SECONDS: Int = 30
+        const val DETAIL_PERMITS: Int = 3
+        const val RUN_DETAILS_TIMEOUT_SECONDS: Int = 8
+        const val LOOKBACK_TIMEOUT_SECONDS: Int = 2
+        const val MAXIMUM_AUTOCOMPLETE_LINES: Int = 200
+        const val MAXIMUM_RUN_REFERENCES: Int = 24
+        const val MAXIMUM_BOARD_ROWS: Int = 2000
+        const val NUMBER_SEARCH_PAST_DAYS: Int = 2
+        const val EXTRAORDINARY_STOP_TYPE: Int = 2
+        const val SUPPRESSED_STOP_TYPE: Int = 3
+        val TRENORD_CLIENTS: Set<Int> = setOf(63)
+        val TRENITALIA_REGIONAL_CLIENTS: Set<Int> = setOf(2, 18)
+        val TRENITALIA_LONG_DISTANCE_CLIENTS: Set<Int> = setOf(1, 4)
     }
 }

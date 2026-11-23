@@ -1,5 +1,6 @@
 package it.binario.app.data.live
 
+import it.binario.app.shared.SharedData
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import org.jsoup.Jsoup
@@ -23,16 +24,16 @@ internal class RfiStationCatalog(
                 val parsed = parse(fetcher.fetch(URL))
                 if (parsed.isEmpty()) throw IOException("Catalogo stazioni RFI vuoto")
                 names = parsed
-                refreshAfter = clock.millis() + 24 * 60 * 60_000L
+                refreshAfter = clock.millis() + SharedData.RfiMonitor.CATALOGUE_REFRESH_SECONDS * 1_000L
             } catch (_: IOException) {
-                refreshAfter = clock.millis() + 60_000L
+                refreshAfter = clock.millis() + SharedData.RfiMonitor.CATALOGUE_RETRY_SECONDS * 1_000L
             }
         }
         stationNames.flatMap { names[key(it)].orEmpty() }.distinct().singleOrNull()
     }
 
     companion object {
-        const val URL = "https://iechub.rfi.it/ArriviPartenze"
+        const val URL = SharedData.RfiMonitor.CATALOGUE_URL
 
         internal fun parse(html: String): Map<String, Set<Int>> = Jsoup.parse(html)
             .select("select#ElencoLocalita option[value]")

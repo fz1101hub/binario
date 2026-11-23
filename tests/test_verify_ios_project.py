@@ -273,6 +273,7 @@ class IOSProjectTests(unittest.TestCase):
         self.assertEqual({
             "mit-strikes-rss": "all-builds", "rfi-infomobility-rss": "all-builds",
             "trenitalia-infomobility-news": "personal", "trenord-line-notices": "personal",
+            "viaggiatreno-train-notices": "personal",
         }, gates)
         for source in table["sources"]:
             self.assertTrue(source["url"].startswith("https://"), source["id"])

@@ -16,6 +16,7 @@ import it.binario.app.data.provider.ProviderResult
 import it.binario.app.data.provider.RatePolicy
 import it.binario.app.data.provider.TrainNoticeProvider
 import it.binario.app.data.provider.TrainNoticeRequest
+import it.binario.app.shared.SharedData
 import java.time.Clock
 import java.time.Duration
 import java.time.Instant
@@ -38,12 +39,12 @@ class ViaggiaTrenoTrainNoticesAdapter internal constructor(
     private val clock: Clock,
     retryDelayMillis: Long,
     // The pause of www.viaggiatreno.it after a refusal: the one of the realtime API when the app shares it.
-    private val refusals: PublicSourceRefusalGate = PublicSourceRefusalGate(clock, "ViaggiaTreno")
+    private val refusals: PublicSourceRefusalGate = PublicSourceRefusalGate(clock, PAUSE_LABEL)
 ) : TrainNoticeProvider {
     /** With [requests] a refusal of the ViaggiaTreno host pauses this client together with the realtime adapters (audit fix-android-7). */
     constructor(clock: Clock = Clock.systemUTC(), requests: ViaggiaTrenoRequests? = null) : this(
-        HttpPublicSourceFetcher(PublicSourceRequestPolicy(maxBytes = MAX_BYTES, allowViaggiaTrenoCleartextRedirect = true)), clock, 750,
-        requests?.refusals ?: PublicSourceRefusalGate(clock, "ViaggiaTreno")
+        HttpPublicSourceFetcher(FEED.requestPolicy()), clock, FEED.retryDelay,
+        requests?.refusals ?: PublicSourceRefusalGate(clock, PAUSE_LABEL)
     )
 
     override val descriptor = ProviderDescriptor(
@@ -52,11 +53,11 @@ class ViaggiaTrenoTrainNoticesAdapter internal constructor(
         capabilities = setOf(ProviderCapability.SERVICE_ALERTS),
         coverage = CoverageDescriptor(countryCodes = setOf("IT"), description = "Avvisi Trenitalia pubblicati per numero treno"),
         accessMode = AccessMode.PUBLIC_BEST_EFFORT,
-        ratePolicy = RatePolicy(Duration.ofSeconds(30), defaultTimeToLive = TTL),
+        ratePolicy = RatePolicy(FEED.minimumInterval, defaultTimeToLive = TTL),
         schemaVersion = 1
     )
 
-    private val cache = ResilientSourceCache<List<RawNote>>(TTL, Duration.ofMinutes(30), clock, maxEntries = 32, retryDelayMillis = retryDelayMillis)
+    private val cache = ResilientSourceCache<List<RawNote>>(TTL, FEED.maximumStale, clock, maxEntries = RULES.maximumCachedTrains, retryDelayMillis = retryDelayMillis)
 
     override suspend fun getTrainNotices(request: TrainNoticeRequest): ProviderResult<List<TrainNotice>> =
         withContext(Dispatchers.Default) {
@@ -85,7 +86,7 @@ class ViaggiaTrenoTrainNoticesAdapter internal constructor(
         val start = item.millis("startValidity") ?: return null
         val end = item.millis("endValidity") ?: start
         val trains = item.optJSONArray("trains") ?: return null
-        val references = (0 until minOf(trains.length(), 20)).mapNotNull { index ->
+        val references = (0 until minOf(trains.length(), RULES.maximumTrains)).mapNotNull { index ->
             val train = trains.optJSONObject(index) ?: return@mapNotNull null
             val number = train.text("commercialTrainNumber")?.trimStart('0') ?: return@mapNotNull null
             TrainReference(number, train.text("originCode")?.uppercase())
@@ -148,12 +149,16 @@ class ViaggiaTrenoTrainNoticesAdapter internal constructor(
     )
 
     companion object {
-        val SOURCE_ID = SourceId("viaggiatreno-train-notices")
-        internal const val BASE_URL = "https://www.viaggiatreno.it/infomobilitamobile/resteasy/news/smartcaring"
-        private val TTL: Duration = Duration.ofMinutes(5)
-        private const val MAX_BYTES = 2 * 1024 * 1024
-        private const val MAX_NOTES = 500
-        private const val MAX_TEXT = 1_000
+        // The feed and its reader are the shared table (contracts/shared-data/v1/notices-sources-v1.json), the iPhone's too.
+        private val FEED = noticeFeed("viaggiatreno-train-notices")
+        private val RULES = SharedData.NoticesSources.TRAIN_NOTICES
+        /** www.viaggiatreno.it is paused as one host: the label of the realtime API's pause. */
+        private val PAUSE_LABEL = requireNotNull(FEED.pauseLabel)
+        val SOURCE_ID = SourceId(FEED.id)
+        internal val BASE_URL = FEED.url
+        private val TTL: Duration = FEED.timeToLive
+        private val MAX_NOTES = RULES.maximumNotes
+        private val MAX_TEXT = RULES.textLength
         private val NUMBER = Regex("[1-9][0-9]{0,5}")
         private val ORIGIN = Regex("S[0-9]{5}")
         private const val UNAVAILABLE = "Gli avvisi ViaggiaTreno non sono raggiungibili."

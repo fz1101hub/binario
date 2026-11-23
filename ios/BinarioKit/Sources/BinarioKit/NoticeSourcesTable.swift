@@ -11,7 +11,9 @@ enum NoticeSourceID {
     static let rfiInfomobility = "rfi-infomobility-rss"
     static let trenitaliaNews = "trenitalia-infomobility-news"
     static let trenordLines = "trenord-line-notices"
-    static let all: Set<String> = [mitStrikes, rfiInfomobility, trenitaliaNews, trenordLines]
+    /// The per-train notices, asked by `ViaggiaTrenoLiveSource` through the realtime API's gate.
+    static let trainNotices = "viaggiatreno-train-notices"
+    static let all: Set<String> = [mitStrikes, rfiInfomobility, trenitaliaNews, trenordLines, trainNotices]
 }
 
 /// A compiled pattern of the notice rules. `NSRegularExpression` is immutable and thread safe.
