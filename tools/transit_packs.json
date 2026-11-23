@@ -199,8 +199,8 @@
     {
       "sourceId": "marconi-express-gtfs",
       "candidate": true,
-      "directory": "gtfs-personal",
-      "distribution": "personal",
+      "directory": "gtfs-transit",
+      "distribution": "all",
       "kind": "urban",
       "format": "gtfs",
       "operator": "TPER (Marconi Express)",
@@ -209,10 +209,10 @@
         "page": "https://solweb.tper.it/web/tools/open-data/open-data.aspx",
         "pattern": "filename=gtfsmex&(?:amp;)?version=(\\d{8})"
       },
-      "licence": "CC BY 3.0 secondo Transitland Atlas; da confermare sulla pagina open data TPER",
-      "licenceEvidence": "Transitland Atlas, feed TPER gtfsmex (CC-BY-3.0), letto come puntatore dall'elenco fonti Transitous (CC0); pagina dell'editore https://solweb.tper.it/web/tools/open-data/open-data.aspx da rileggere dal CI (transit_discovery, token page:)",
-      "attribution": "TPER S.p.A. (Marconi Express)",
-      "notes": "People mover Marconi Express Bologna Centrale - Aeroporto G. Marconi dal GTFS gtfsmex pubblicato da TPER; filtro urbano, mai autobus. L'URL porta la versione (version=AAAAMMGG): l'acquisizione legge la pagina open data TPER e usa la versione più recente elencata, altrimenti quella registrata. Candidato: solo build personali finché la licenza non è letta sulla pagina TPER.",
+      "licence": "CC BY 3.0 IT",
+      "licenceEvidence": "https://solweb.tper.it/web/tools/open-data/open-data.aspx (pagina open data TPER: «Creative Commons Attribuzione 3.0 Italia», creativecommons.org/licenses/by/3.0/it; stampata dal CI, transit_discovery run 45103733355 del 2026-11-23)",
+      "attribution": "TPER S.p.A. (Marconi Express) - CC BY 3.0 IT",
+      "notes": "People mover Marconi Express Bologna Centrale - Aeroporto G. Marconi dal GTFS gtfsmex pubblicato da TPER; filtro urbano, mai autobus. L'URL porta la versione (version=AAAAMMGG): l'acquisizione legge la pagina open data TPER e usa la versione più recente elencata, altrimenti quella registrata. Licenza CC BY 3.0 IT dichiarata dalla pagina open data TPER: pack di ogni build (gtfs-transit/).",
       "android": {
         "areas": [
           {

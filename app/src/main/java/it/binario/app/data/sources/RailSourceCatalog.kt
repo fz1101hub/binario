@@ -834,16 +834,16 @@ object RailSourceCatalog {
             operatorOrAuthority = "TPER S.p.A. (Marconi Express)",
             formats = setOf(SourceFormat.GTFS_ZIP),
             capabilities = setOf(ProviderCapability.STATION_CATALOG, ProviderCapability.JOURNEY_SEARCH),
-            accessMode = AccessMode.PUBLIC_BEST_EFFORT,
-            readiness = SourceReadiness.PERSONAL_GTFS_PACK,
+            accessMode = AccessMode.OPEN_DIRECT,
+            readiness = SourceReadiness.READY_FOR_GTFS_PACK,
             countryCodes = setOf("IT"),
             coverage = "People mover Marconi Express tra Bologna Centrale e l'aeroporto di Bologna; autobus esclusi.",
             landingPage = uri("https://solweb.tper.it/web/tools/open-data/open-data.aspx"),
             downloadOrProbeUri = uri("https://solweb.tper.it/web/tools/open-data/open-data-download.aspx?source=solweb.tper.it&filename=gtfsmex&version=20260421&format=zip"),
-            attribution = "TPER S.p.A. (Marconi Express)",
+            attribution = "TPER S.p.A. (Marconi Express) — CC BY 3.0 IT",
             notes = "GTFS gtfsmex pubblicato da TPER (URL con versione: il CI prende la più recente elencata nella pagina open data). " +
-                "Candidato di tools/transit_packs.json: licenza CC BY 3.0 secondo Transitland, da leggere sulla pagina TPER; " +
-                "fino ad allora pack solo nelle build personali (gtfs-personal/)."
+                "Licenza CC BY 3.0 IT dichiarata dalla pagina open data TPER (letta dal CI il 23 novembre 2026): data pack urbano " +
+                "in gtfs-transit/, ogni build, una volta aggiunto dalla build CI (candidato di tools/transit_packs.json fino ad allora)."
         ),
         RailSourceDefinition(
             id = SourceId("palermo-amat-tram-gtfs"),
