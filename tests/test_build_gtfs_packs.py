@@ -174,6 +174,22 @@ class BuildGtfsPacksTest(unittest.TestCase):
             with self.assertRaisesRegex(builder.BuildError, "decompresso oltre limite"):
                 builder.validate_archive_limits(archive, omit_geometry=True)
 
+    def test_total_archive_limit_names_the_largest_members_on_one_line(self) -> None:
+        source = self.temp / "large-feed.zip"
+        with zipfile.ZipFile(source, "w") as archive:
+            archive.writestr("stop_times.txt", b"s" * 400)
+            archive.writestr("shapes.txt", b"g" * 300)
+            archive.writestr("stops\n::warning::x.txt", b"t" * 200)
+            for index in range(3):
+                archive.writestr(f"extra{index}.txt", b"e" * (10 + index))
+        with zipfile.ZipFile(source) as archive, mock.patch.object(builder, "MAX_ARCHIVE_UNCOMPRESSED_BYTES", 512):
+            with self.assertRaises(builder.BuildError) as raised:
+                builder.validate_archive_limits(archive, omit_geometry=True)
+        message = str(raised.exception)
+        self.assertIn("membri più grandi: stop_times.txt 400, shapes.txt 300, stops\\n::warning::x.txt 200, extra2.txt 12)", message)
+        self.assertNotIn("\n", message)
+        self.assertNotIn("extra1.txt", message)
+
     def test_omitted_geometry_still_obeys_compression_ratio_limit(self) -> None:
         source = self.temp / "geometry-bomb.zip"
         with zipfile.ZipFile(source, "w", compression=zipfile.ZIP_DEFLATED) as archive:
