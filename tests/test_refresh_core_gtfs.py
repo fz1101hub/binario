@@ -420,7 +420,7 @@ class RefreshCoreTest(unittest.TestCase):
             {"SHA256SUMS", "manifest.json", "trenitalia-france-gtfs.zip"},
             {path.name for path in (self.temp / "out/publish/gtfs").iterdir()},
         )
-        self.assertIn("| trenitalia-france-gtfs | nuovo (candidato) |", refresh.report_markdown(report))
+        self.assertIn("| trenitalia-france-gtfs | nuovo (candidato) | 2027-12-11 | 2 |", refresh.report_markdown(report))
         # The other packs keep their bytes; the checkout is never touched.
         for name, data in self.before.items():
             if name not in ("manifest.json", "SHA256SUMS"):

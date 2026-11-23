@@ -510,10 +510,11 @@ def report_markdown(report: Mapping[str, Any]) -> str:
         new = entry.get("new", previous)
         dates = previous.get("lastServiceDate")
         if new.get("lastServiceDate") != previous.get("lastServiceDate"):
-            dates = f"{previous.get('lastServiceDate')} → {new.get('lastServiceDate')}"
+            # A pack added in this run has no previous value: only the new one.
+            dates = new.get("lastServiceDate") if dates is None else f"{dates} → {new.get('lastServiceDate')}"
         trips_before = previous.get("counts", {}).get("trips")
         trips_after = new.get("counts", {}).get("trips")
-        trips = trips_before if trips_after == trips_before else f"{trips_before} → {trips_after}"
+        trips = trips_before if trips_after == trips_before else trips_after if trips_before is None else f"{trips_before} → {trips_after}"
         note = entry.get("error") or entry.get("detail") or ""
         download = entry.get("download") or {}
         if download.get("finalUrl") and download.get("finalUrl") != download.get("url"):

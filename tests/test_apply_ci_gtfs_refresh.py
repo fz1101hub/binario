@@ -490,6 +490,7 @@ class ApplyTest(unittest.TestCase):
         code, output = self.apply("--log", str(log))
         self.assertEqual(0, code, output)
         self.assertIn("pack nuovo dal registro dei candidati", output)
+        self.assertRegex(output, r"gtfs\s+new-gtfs\s+2027-12-11\s+2\s+sì")
         manifest = json.loads((self.assets / "manifest.json").read_text(encoding="utf-8"))
         # Before the first pack after it in sourceId order, as the job printed it; the others keep their order.
         self.assertEqual(["new-gtfs", "plain-gtfs", "oebb-gtfs", "pinned-gtfs", "broken-gtfs"], [pack["sourceId"] for pack in manifest["packs"]])

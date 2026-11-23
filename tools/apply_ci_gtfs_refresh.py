@@ -727,8 +727,9 @@ def table(rows: Sequence[Row]) -> str:
     header = ("Directory", "Pack", "lastServiceDate", "Viaggi", "Cambiato", "Completo MB", "Zona MB", "Corse tenute", "Note / errori")
     lines = [header]
     for row in rows:
-        dates = str(row.old_date) if row.old_date == row.new_date else f"{row.old_date} -> {row.new_date}"
-        trips = str(row.old_trips) if row.old_trips == row.new_trips else f"{row.old_trips} -> {row.new_trips}"
+        # A pack added in this run has no previous date or count: only the new ones.
+        dates = str(row.old_date) if row.old_date == row.new_date else str(row.new_date) if row.old_date is None else f"{row.old_date} -> {row.new_date}"
+        trips = str(row.old_trips) if row.old_trips == row.new_trips else str(row.new_trips) if row.old_trips is None else f"{row.old_trips} -> {row.new_trips}"
         notes = "; ".join(note for note in row.notes if note)
         if row.job_failure:
             notes = f"NON AGGIORNATO dal job: {row.job_failure}" + (f"; {notes}" if notes else "")
