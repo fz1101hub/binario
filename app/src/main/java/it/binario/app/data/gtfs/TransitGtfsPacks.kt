@@ -105,6 +105,13 @@ internal object TransitGtfsPacks {
             kind = EmbeddedGtfsPackKind.URBAN,
             areas = listOf(TransitArea("Torino", 45.0703, 7.6869, 15.0)),
             personalOnly = true
+        ),
+        EmbeddedGtfsPack(
+            SourceId("marconi-express-gtfs"),
+            "gtfs-transit/marconi-express-gtfs.zip",
+            LocalDate.of(2026, 12, 31),
+            kind = EmbeddedGtfsPackKind.URBAN,
+            areas = listOf(TransitArea("Bologna", 44.506145, 11.342267, 8.0))
         )
     )
 }

@@ -34,6 +34,7 @@ object GtfsPackCredits {
         GtfsPackCredit("milano-atm-gtfs", "Comune di Milano / AMAT, dati ATM - CC BY 4.0"),
         GtfsPackCredit("firenze-gest-gtfs", "Regione Toscana / GEST S.p.A. - CC BY 4.0"),
         GtfsPackCredit("arst-metro-gtfs", "ARST S.p.A. - CC BY 4.0"),
+        GtfsPackCredit("marconi-express-gtfs", "TPER S.p.A. (Marconi Express) - CC BY 3.0 IT"),
         GtfsPackCredit("roma-mobilita-gtfs", "Roma Servizi per la Mobilità (dati ATAC) — CC BY 3.0 secondo Transitland e Mobility Database; pagina della licenza ufficiale non raggiungibile (404) al 2 novembre 2026"),
         GtfsPackCredit("gtt-gtfs", "GTT S.p.A. (feed ufficiale via Mobility Database mdb-2687) — Licenza GTT per uso non commerciale (https://www.gtt.to.it/gtt_gtfs_license.html)"),
         GtfsPackCredit("venezia-actv-gtfs", "ACTV S.p.A. — Non dichiarata: né il feed né la pagina open data ACTV indicano una licenza"),
