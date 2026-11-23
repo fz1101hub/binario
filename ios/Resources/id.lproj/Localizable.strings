@@ -3,7 +3,7 @@
 "tab.settings" = "Pengaturan";
 "planner.title" = "Rencanakan";
 "planner.intro.title" = "Cari rute";
-"planner.intro.body" = "Pilih stasiun asal dan tujuan dari katalog kurasi. Jadwal yang disertakan adalah jadwal terencana dan hanya mencakup jaringan regional dan lintas batas yang tercantum di bawah: Trenitalia dan Italo tidak disertakan, dan stasiun tanpa jadwal ditandai dalam pencarian.";
+"planner.intro.body" = "Pilih stasiun asal dan tujuan dari katalog kurasi. Jadwal yang disertakan adalah jadwal terencana dan hanya mencakup jaringan regional dan lintas batas yang tercantum di bawah: Trenitalia (kecuali Trenitalia France) dan Italo tidak disertakan, dan stasiun tanpa jadwal ditandai dalam pencarian.";
 "planner.origin" = "Asal";
 "planner.destination" = "Tujuan";
 "planner.departure" = "Tanggal dan waktu";

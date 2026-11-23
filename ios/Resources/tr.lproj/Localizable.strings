@@ -3,7 +3,7 @@
 "tab.settings" = "Ayarlar";
 "planner.title" = "Planla";
 "planner.intro.title" = "Güzergâh ara";
-"planner.intro.body" = "Kalkış ve varış istasyonunu seçilmiş katalogdan belirleyin. Dahil edilen tarifeler planlı tarifelerdir ve yalnızca aşağıda listelenen bölgesel ve sınır ötesi ağları kapsar: Trenitalia ve Italo dahil değildir; tarifesi olmayan istasyonlar aramada işaretlenir.";
+"planner.intro.body" = "Kalkış ve varış istasyonunu seçilmiş katalogdan belirleyin. Dahil edilen tarifeler planlı tarifelerdir ve yalnızca aşağıda listelenen bölgesel ve sınır ötesi ağları kapsar: Trenitalia (Trenitalia France hariç) ve Italo dahil değildir; tarifesi olmayan istasyonlar aramada işaretlenir.";
 "planner.origin" = "Kalkış";
 "planner.destination" = "Varış";
 "planner.departure" = "Tarih ve saat";

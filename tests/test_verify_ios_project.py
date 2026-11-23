@@ -857,8 +857,8 @@ class IOSProjectTests(unittest.TestCase):
         # The intro no longer implies national coverage.
         italian = read_strings(IOS / "Resources/it.lproj/Localizable.strings")
         english = read_strings(IOS / "Resources/en.lproj/Localizable.strings")
-        self.assertIn("Trenitalia e Italo non sono inclusi", italian["planner.intro.body"])
-        self.assertIn("Trenitalia and Italo are not included", english["planner.intro.body"])
+        self.assertIn("Trenitalia (tranne Trenitalia France) e Italo non sono inclusi", italian["planner.intro.body"])
+        self.assertIn("Trenitalia (except Trenitalia France) and Italo are not included", english["planner.intro.body"])
 
     def test_settings_source_list_is_backed_by_the_reviewed_policy_licences(self) -> None:
         policy = json.loads((IOS / "Resources/binario_gtfs_source_policy_v1.json").read_text(encoding="utf-8"))
