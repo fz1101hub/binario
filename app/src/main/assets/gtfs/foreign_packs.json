@@ -3,10 +3,27 @@
   "generatedAt": "2026-11-22",
   "repository": "fz1101hub/binario",
   "borderZone": {
-    "radiusKm": 35,
-    "distance": "haversine-6371.0088km-stop-or-parent",
-    "anchors": "catalogue trenitaliaLocationId ^83 with coordinates",
-    "anchorCount": 2945,
+    "rule": "frontalieri-corridors-v1",
+    "corridors": {
+      "ch-otd-gtfs": [
+        "Como – Chiasso – Lugano – Bellinzona – Biasca/Locarno",
+        "Varese – Stabio – Mendrisio",
+        "Luino – Cadenazzo",
+        "Tirano – Poschiavo – St. Moritz (Bernina)",
+        "Domodossola – Re – Camedo – Locarno (Vigezzina-Centovalli)",
+        "Domodossola – Iselle – Brig – Visp (Sempione)"
+      ],
+      "oebb-gtfs": [
+        "Brennero – Innsbruck",
+        "San Candido – Lienz (Val Pusteria)",
+        "Tarvisio – Villach – Klagenfurt"
+      ],
+      "sncf-gtfs": [
+        "Ventimiglia – Menton – Monaco – Nice",
+        "Oulx – Modane (Fréjus)"
+      ]
+    },
+    "italianStations": "stop matched to a catalogue station with trenitaliaLocationId ^83, or whose stop_id carries Italy's country code (ITALIAN_STOP_IDS)",
     "catalogueSha256": "8ff7dfa1bf2985b349ce24a1b105b315e24a51d72a29001af13382ceedf67328",
     "tripRule": "whole-trips-touching-zone"
   },
@@ -86,6 +103,7 @@
         "S08217"
       ],
       "zoneStationIds": [
+        "NC000204",
         "NC000272",
         "NC000503",
         "NC000544",
