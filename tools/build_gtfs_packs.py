@@ -56,6 +56,7 @@ import urllib.parse
 import urllib.request
 import uuid
 import zipfile
+from collections import defaultdict
 from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import date, timedelta
@@ -64,7 +65,7 @@ from typing import Any, BinaryIO, Callable, Iterable, Mapping, Sequence
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools"))
-import foreign_pack_rules as foreign  # noqa: E402  (border radius, licence gate: one place for every tool)
+import foreign_pack_rules as foreign  # noqa: E402  (border corridors, licence gate: one place for every tool)
 
 DEFAULT_ASSET_DIR = ROOT / "app/src/main/assets/gtfs"
 # Full packs of the foreign packs bundled as their border subset (licence confirmed): not shipped in the app,
@@ -1851,13 +1852,13 @@ def _build_packs_locked(
             if border:
                 rebuilt_full.add(name)
         output_manifest = manifest_for_build(source_manifest, results, generated_at, kept_entries)
-        anchors = foreign.load_anchors(catalogue_path) if rebuilt_full else None
+        zone_catalogue = load_zone_catalogue(catalogue_path) if rebuilt_full else None
         for index, pack in enumerate(output_manifest["packs"]):
             if pack["sourceId"] in kept_entries:
                 continue
             name = safe_asset_name(pack["asset"])
-            if name in rebuilt_full and staging_full is not None and anchors is not None:
-                derive_border_subset(staging_full / name, staging / name, pack["sourceId"], anchors)
+            if name in rebuilt_full and staging_full is not None and zone_catalogue is not None:
+                derive_border_subset(staging_full / name, staging / name, pack["sourceId"], zone_catalogue)
                 output_manifest["packs"][index] = border_manifest_entry(pack, staging / name, staging_full / name)
                 continue
             output_manifest["packs"][index] = pack = whole_manifest_entry(pack)
@@ -1927,7 +1928,7 @@ def apply_border_zones(
     report: list[dict[str, Any]] = []
     with publication_lock(asset_dir):
         manifest = read_manifest(asset_dir / "manifest.json")
-        anchors = foreign.load_anchors(catalogue_path)
+        zone_catalogue = load_zone_catalogue(catalogue_path)
         staging = Path(tempfile.mkdtemp(prefix=".gtfs-border-", dir=asset_dir.parent))
         full_pack_dir.mkdir(parents=True, exist_ok=True)
         staging_full = Path(tempfile.mkdtemp(prefix=".gtfs-full-", dir=full_pack_dir.parent))
@@ -1952,7 +1953,7 @@ def apply_border_zones(
                     else:
                         raise BuildError(f"{source_id}: pack completo assente in {full_pack_dir}")
                     derived = staging / f".{name}.derived"
-                    derive_border_subset(staging_full / name, derived, source_id, anchors)
+                    derive_border_subset(staging_full / name, derived, source_id, zone_catalogue)
                     if asset.is_file() and archive_member_bytes(asset) == archive_member_bytes(derived):
                         derived.unlink()
                     else:
@@ -2163,21 +2164,42 @@ def _column_values(rows: Iterable[Mapping[str, str]], column: str) -> set[str]:
     return {row.get(column, "") for row in rows}
 
 
+def load_zone_catalogue(catalogue_path: Path) -> foreign.ZoneCatalogue:
+    """The station catalogue with the one catalogue matcher of the tools (design §1.1, rule 5)."""
+    import build_ios_gtfs_schedule as ios
+
+    try:
+        matcher, _ = ios.load_catalog(catalogue_path)
+    except ios.BuildError as error:
+        raise BuildError(f"catalogo stazioni non leggibile: {log_safe(error)}") from error
+    return foreign.ZoneCatalogue(matcher, sha256_file(catalogue_path))
+
+
+def pack_zone_of(stops: CsvTable, source_id: str, catalogue: foreign.ZoneCatalogue) -> foreign.PackZone:
+    """The zone stops of a pack's stops.txt: Italian stations and the stations of the pack's corridors."""
+    import build_ios_gtfs_schedule as ios
+
+    require_columns(stops, "stops.txt", "stop_id", "stop_name")
+    try:
+        return ios.foreign_zone({row.get("stop_id", ""): row for row in stops.rows}, catalogue.matcher, source_id)
+    except ios.BuildError as error:
+        raise BuildError(f"{source_id}: {log_safe(error)}") from error
+
+
 def derive_border_subset(
     full_pack: Path,
     destination: Path,
     source_id: str,
-    anchors: foreign.Anchors,
-    *,
-    radius_km: float = foreign.BORDER_ZONE_RADIUS_KM,
+    catalogue: foreign.ZoneCatalogue,
 ) -> BorderSubset:
     """Write the border subset of a filtered foreign pack (design §1.1).
 
-    A stop is in the zone when its coordinates, or else its parent station's, lie within ``radius_km`` (haversine)
-    of an anchor, a catalogue station whose trenitaliaLocationId starts with 83.  Every trip calling at least once
-    at a zone stop is kept whole, with every stop_times row; the other tables keep the rows those trips reference
-    (stops with their parents, transfers and pathways between kept stops); feed metadata is copied.  The writer is
-    the deterministic one of the build, and the filter manifest records the rule and its inputs in ``borderZone``.
+    A stop is in the zone when it is a stop of an Italian station (matched to a catalogue station whose
+    trenitaliaLocationId starts with 83, or with Italy's country code in its stop_id) or of a station of one of the
+    pack's frontalieri corridors (``foreign_pack_rules.CORRIDORS``).  Every trip calling at least once at a zone stop
+    is kept whole, with every stop_times row; the other tables keep the rows those trips reference (stops with their
+    parents, transfers and pathways between kept stops); feed metadata is copied.  The writer is the deterministic
+    one of the build, and the filter manifest records the rule and its inputs in ``borderZone``.
     """
     if not full_pack.is_file() or not zipfile.is_zipfile(full_pack):
         raise BuildError(f"{source_id}: pack completo assente o non ZIP: {full_pack}")
@@ -2196,8 +2218,7 @@ def derive_border_subset(
             raise BuildError(f"{source_id}: tabelle non previste per il sottoinsieme di confine: {', '.join(map(log_safe, unknown))}")
         stops = read_table(archive, "stops.txt", required=True)
         assert stops is not None
-        require_columns(stops, "stops.txt", "stop_id")
-        zone = foreign.zone_stop_ids(stops.rows, anchors, radius_km)
+        zone = pack_zone_of(stops, source_id, catalogue).stops
         trips_in_full: set[str] = set()
         kept_trip_ids: set[str] = set()
 
@@ -2209,7 +2230,7 @@ def derive_border_subset(
 
         read_table(archive, "stop_times.txt", required=True, predicate=scan)
         if not kept_trip_ids:
-            raise BuildError(f"{source_id}: nessuna corsa ferma nella zona di confine di {radius_km} km")
+            raise BuildError(f"{source_id}: nessuna corsa ferma in una stazione italiana o di un corridoio")
         tables: dict[str, CsvTable] = {}
         trips = read_table(archive, "trips.txt", required=True, predicate=lambda row: row.get("trip_id", "") in kept_trip_ids)
         stop_times = read_table(archive, "stop_times.txt", required=True, predicate=lambda row: row.get("trip_id", "") in kept_trip_ids)
@@ -2269,11 +2290,10 @@ def derive_border_subset(
     }
     metadata["lastServiceDate"] = last_service_date(calendar, calendar_dates, source_id).isoformat()
     metadata[BORDER_ZONE_FIELD] = {
-        "radiusKm": radius_km,
-        "distance": foreign.DISTANCE_RULE,
-        "anchorRule": foreign.ANCHOR_RULE,
-        "anchorCount": anchors.count,
-        "catalogueSha256": anchors.catalogue_sha256,
+        "rule": foreign.BORDER_ZONE_RULE,
+        "corridors": [corridor.name for corridor in foreign.CORRIDORS.get(source_id, ())],
+        "italianStations": foreign.ITALIAN_STATION_RULE,
+        "catalogueSha256": catalogue.sha256,
         "fullPackSha256": full_sha256,
         "fullContentSha256": full_content_sha256,
         "zoneStops": len(zone),
@@ -2319,7 +2339,7 @@ def border_manifest_entry(entry: Mapping[str, Any], subset: Path, full_pack: Pat
     updated["fullServiceUntil"] = full_service_end_from_asset(subset, source_id).isoformat()
     updated["contentSha256"] = verify_filter_from_asset(subset, source_id)
     policy = {key: value for key, value in dict(entry.get("filter") or {}).items() if key != BORDER_ZONE_FIELD}
-    updated["filter"] = {**policy, BORDER_ZONE_FIELD: {"radiusKm": foreign.BORDER_ZONE_RADIUS_KM}}
+    updated["filter"] = {**policy, BORDER_ZONE_FIELD: {"rule": foreign.BORDER_ZONE_RULE}}
     updated[FULL_PACK_FIELD] = full_pack_entry(full_pack, source_id)
     return updated
 
@@ -2367,12 +2387,92 @@ def border_pair_problems(source_id: str, subset: Path, full_pack: Path, catalogu
     return problems
 
 
+@dataclass(frozen=True)
+class CorridorReport:
+    """The corridors of a pack measured on its full pack and its subset (``tools/build_foreign_packs.py`` prints it)."""
+
+    pairs: tuple[tuple[str, int, int], ...]  # (label, trips in the full pack, trips in the subset)
+    gaps: tuple[str, ...]  # «corridor: stop name (stop_id)» between an end and a station, not in the zone
+    unresolved: tuple[str, ...]  # «corridor: station» naming no stop of the full pack
+    zone_stops: int
+
+
+def _calls_by_trip(archive: zipfile.ZipFile, relevant: frozenset[str], ordered_for: Callable[[set[str]], bool] | None = None,
+                   ) -> tuple[dict[str, set[str]], dict[str, list[str]]]:
+    """Per trip, the stops of ``relevant`` it calls at; with ``ordered_for``, the ordered calls of the trips it accepts."""
+    called: dict[str, set[str]] = defaultdict(set)
+
+    def scan(row: Mapping[str, str]) -> bool:
+        if row.get("stop_id", "") in relevant:
+            called[row.get("trip_id", "")].add(row.get("stop_id", ""))
+        return False
+
+    read_table(archive, "stop_times.txt", required=True, predicate=scan)
+    sequences: dict[str, list[tuple[int, str]]] = defaultdict(list)
+    if ordered_for is not None:
+        wanted = {trip_id for trip_id, stops in called.items() if ordered_for(stops)}
+
+        def collect(row: Mapping[str, str]) -> bool:
+            trip_id = row.get("trip_id", "")
+            if trip_id in wanted:
+                try:
+                    sequences[trip_id].append((int(row.get("stop_sequence", "")), row.get("stop_id", "")))
+                except ValueError:
+                    raise BuildError(f"stop_sequence non numerica nella corsa {log_safe(trip_id)}") from None
+            return False
+
+        read_table(archive, "stop_times.txt", required=True, predicate=collect)
+    return dict(called), {trip_id: [stop_id for _, stop_id in sorted(calls)] for trip_id, calls in sequences.items()}
+
+
+def corridor_report(source_id: str, subset: Path, full_pack: Path, catalogue: foreign.ZoneCatalogue) -> CorridorReport:
+    """Every pair a corridor lists (its Italian end and each of its stations) measured on the full pack and the
+    subset, the stops between an end and a station that are not zone stops, and the stations naming no stop."""
+    with zipfile.ZipFile(full_pack) as archive:
+        validate_archive_limits(archive)
+        stops = read_table(archive, "stops.txt", required=True)
+        assert stops is not None
+        zone = pack_zone_of(stops, source_id, catalogue)
+        pairs = foreign.corridor_pairs(source_id, zone)
+        ends = frozenset().union(*zone.ends.values()) if zone.ends else frozenset()
+        relevant = frozenset().union(ends, *(stations for _, _, stations in pairs))
+        full_calls, sequences = _calls_by_trip(archive, relevant, ordered_for=lambda called: bool(called & ends))
+    with zipfile.ZipFile(subset) as archive:
+        validate_archive_limits(archive)
+        subset_calls, _ = _calls_by_trip(archive, relevant)
+    names = {row.get("stop_id", ""): row.get("stop_name", "") for row in stops.rows}
+    gaps = sorted(f"{corridor}: {names.get(stop_id, '')} ({stop_id})"
+                  for corridor, stop_id in foreign.stretch_gaps(source_id, zone, sequences.values()))
+    measured = tuple(
+        (label, foreign.pair_trip_count(full_calls.values(), end, stations),
+         foreign.pair_trip_count(subset_calls.values(), end, stations))
+        for label, end, stations in pairs
+    )
+    return CorridorReport(measured, tuple(gaps), tuple(zone.unresolved()), len(zone.stops))
+
+
+def corridor_problems(source_id: str, subset: Path, full_pack: Path, catalogue: foreign.ZoneCatalogue) -> list[str]:
+    """``--check`` of the corridors of a border pack: every listed pair keeps in the subset every trip of the full
+    pack between its ends, and no stop between a corridor's Italian end and one of its stations is left out of the
+    zone (a new or renamed station: add it to ``foreign_pack_rules.CORRIDORS``).  A station naming no stop (a line
+    closed for works, a renamed stop) is only reported by the generator: its trips, if any, stay whole elsewhere."""
+    try:
+        report = corridor_report(source_id, subset, full_pack, catalogue)
+    except BuildError as error:
+        return [f"{source_id}: corridoi non verificabili: {error}"]
+    problems = [f"{source_id}: {label} ha {kept} corse nel sottoinsieme e {full} nel pack completo"
+                for label, full, kept in report.pairs if kept != full]
+    problems += [f"{source_id}: fermata fuori zona tra l'estremo italiano e una stazione del corridoio {gap} "
+                 "(aggiungerla a foreign_pack_rules.CORRIDORS)" for gap in report.gaps]
+    return problems
+
+
 def verify_border_pack(
     pack: Mapping[str, Any],
     asset: Path,
     *,
     full_pack_dir: Path,
-    anchors: foreign.Anchors | None,
+    catalogue: foreign.ZoneCatalogue | None,
     catalogue_path: Path,
     as_of: date | None,
     min_valid_days: int | None,
@@ -2386,8 +2486,8 @@ def verify_border_pack(
     problems: list[str] = []
     if full["path"] != f"{foreign.FULL_PACK_DIR}/{name}":
         problems.append(f"{source_id}: {FULL_PACK_FIELD}.path {full['path']!r} diverso da {foreign.FULL_PACK_DIR}/{name}")
-    if (pack.get("filter") or {}).get(BORDER_ZONE_FIELD) != {"radiusKm": foreign.BORDER_ZONE_RADIUS_KM}:
-        problems.append(f"{source_id}: filter.{BORDER_ZONE_FIELD} diverso da radiusKm {foreign.BORDER_ZONE_RADIUS_KM} (rigenerare)")
+    if (pack.get("filter") or {}).get(BORDER_ZONE_FIELD) != {"rule": foreign.BORDER_ZONE_RULE}:
+        problems.append(f"{source_id}: filter.{BORDER_ZONE_FIELD} diverso da rule {foreign.BORDER_ZONE_RULE} (rigenerare)")
     full_pack = full_pack_dir / name
     if not full_pack.is_file():
         return problems + [f"{source_id}: pack completo assente: {full_pack}"]
@@ -2403,20 +2503,21 @@ def verify_border_pack(
         end = min(date.fromisoformat(actual["lastServiceDate"]), date.fromisoformat(actual["fullServiceUntil"]))
         if not is_release_fresh(end, as_of, days):
             problems.append(f"pack completo scaduto o in scadenza entro {days} giorni: {source_id} termina {end}")
-    if anchors is None:
+    if catalogue is None:
         return problems + [f"{source_id}: catalogo stazioni non leggibile, sottoinsieme non verificabile"]
     with tempfile.TemporaryDirectory(prefix=".border-check-") as folder:
         derived = Path(folder) / name
         try:
-            derive_border_subset(full_pack, derived, source_id, anchors)
+            derive_border_subset(full_pack, derived, source_id, catalogue)
             if archive_member_bytes(derived) != archive_member_bytes(asset):
                 problems.append(
-                    f"{source_id}: {name} non è il sottoinsieme derivato da {foreign.FULL_PACK_DIR}/{name} con raggio "
-                    f"{foreign.BORDER_ZONE_RADIUS_KM} km e il catalogo attuale (rigenerare: tools/build_foreign_packs.py)"
+                    f"{source_id}: {name} non è il sottoinsieme derivato da {foreign.FULL_PACK_DIR}/{name} con i "
+                    f"corridoi ({foreign.BORDER_ZONE_RULE}) e il catalogo attuale (rigenerare: tools/build_foreign_packs.py)"
                 )
         except BuildError as error:
             problems.append(str(error))
     problems += border_pair_problems(source_id, asset, full_pack, catalogue_path)
+    problems += corridor_problems(source_id, asset, full_pack, catalogue)
     return problems
 
 
@@ -2476,11 +2577,11 @@ def verify_assets(
     catalogue_path = catalogue_path or DEFAULT_CATALOGUE
     manifest = read_manifest(asset_dir / "manifest.json")
     packs = manifest["packs"]
-    anchors: foreign.Anchors | None = None
+    zone_catalogue: foreign.ZoneCatalogue | None = None
     if any(FULL_PACK_FIELD in pack for pack in packs):
         try:
-            anchors = foreign.load_anchors(catalogue_path)
-        except (OSError, ValueError, UnicodeDecodeError) as error:
+            zone_catalogue = load_zone_catalogue(catalogue_path)
+        except (OSError, ValueError, UnicodeDecodeError, BuildError) as error:
             print_error_lines("ERRORE GTFS: ", f"catalogo stazioni non leggibile: {error}")
     border_sums: dict[str, str] = {}
     subset_bytes = 0
@@ -2551,7 +2652,7 @@ def verify_assets(
             if isinstance(pack[FULL_PACK_FIELD], Mapping):
                 border_sums[name] = str(pack[FULL_PACK_FIELD].get("sha256"))
             problems += verify_border_pack(
-                pack, path, full_pack_dir=full_pack_dir, anchors=anchors, catalogue_path=catalogue_path,
+                pack, path, full_pack_dir=full_pack_dir, catalogue=zone_catalogue, catalogue_path=catalogue_path,
                 as_of=as_of, min_valid_days=min_valid_days,
             )
         if as_of is not None and min_valid_days is not None:

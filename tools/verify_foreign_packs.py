@@ -45,7 +45,7 @@ MAX_DATABASE_BYTES = 256 * 1024 * 1024
 PIN_KEYS = {
     "schemaVersion", "generatedAt", "repository", "borderZone", "packs",
 }
-BORDER_ZONE_KEYS = {"radiusKm", "distance", "anchors", "anchorCount", "catalogueSha256", "tripRule"}
+BORDER_ZONE_KEYS = {"rule", "corridors", "italianStations", "catalogueSha256", "tripRule"}
 PACK_KEYS = {
     "sourceId", "country", "borderOnly", "lastServiceDate", "fullServiceUntil", "sourceArchiveSha256",
     "servedStationIds", "zoneStationIds", "android", "ios",
@@ -110,13 +110,12 @@ def pins_problems(payload: object) -> list[str]:
     if not isinstance(zone, Mapping) or set(zone) != BORDER_ZONE_KEYS:
         problems.append(f"pin: borderZone deve avere le chiavi {sorted(BORDER_ZONE_KEYS)}")
     else:
-        if zone.get("radiusKm") != rules.BORDER_ZONE_RADIUS_KM or isinstance(zone.get("radiusKm"), bool):
-            problems.append(f"pin: radiusKm {zone.get('radiusKm')!r} diverso da {rules.BORDER_ZONE_RADIUS_KM} (rigenerare)")
-        if zone.get("distance") != rules.DISTANCE_RULE or zone.get("anchors") != rules.ANCHOR_RULE \
-                or zone.get("tripRule") != rules.TRIP_RULE:
+        if zone.get("rule") != rules.BORDER_ZONE_RULE:
+            problems.append(f"pin: rule {zone.get('rule')!r} diversa da {rules.BORDER_ZONE_RULE} (rigenerare)")
+        if zone.get("corridors") != rules.corridor_names():
+            problems.append("pin: corridors diversi da foreign_pack_rules.CORRIDORS (rigenerare)")
+        if zone.get("italianStations") != rules.ITALIAN_STATION_RULE or zone.get("tripRule") != rules.TRIP_RULE:
             problems.append("pin: regole della zona di confine diverse da quelle degli strumenti")
-        if not _size(zone.get("anchorCount")):
-            problems.append("pin: anchorCount non valido")
         if not _hex(zone.get("catalogueSha256")):
             problems.append("pin: catalogueSha256 non valido")
     packs = payload.get("packs")
@@ -338,11 +337,10 @@ def repository_problems(root: Path = ROOT, *, ledger_base: Path | None = None) -
     if manifest is None:
         return problems
     try:
-        anchors = rules.load_anchors(catalogue)
-    except (OSError, ValueError) as error:
+        catalogue_sha256 = rules.sha256_file(catalogue)
+    except OSError as error:
         return problems + [f"catalogo stazioni non leggibile: {error}"]
-    zone = pins["borderZone"]
-    if zone["catalogueSha256"] != anchors.catalogue_sha256 or zone["anchorCount"] != anchors.count:
+    if pins["borderZone"]["catalogueSha256"] != catalogue_sha256:
         problems.append("pin: catalogo stazioni cambiato dopo la generazione (rigenerare)")
     entries = {entry.get("sourceId"): entry for entry in manifest.get("packs", []) if isinstance(entry, Mapping)}
     android_dir, ios_dir = root / rules.FULL_PACK_DIR, root / rules.IOS_FULL_DIR

@@ -19,7 +19,8 @@ In order (docs/data-sources/GTFS_PACK_REFRESH.md, «Paesi confinanti»):
 5. ``build_gtfs_packs.py --check --integrity-only``, ``verify_foreign_packs.py``, ``verify_ios_gtfs_schedule.py``
    (base and per-country).
 
-The border radius is ``foreign_pack_rules.BORDER_ZONE_RADIUS_KM``: change it there and run this command.
+The border zone is the frontalieri corridors of ``foreign_pack_rules.CORRIDORS``: change them there and run this
+command.
 """
 from __future__ import annotations
 
@@ -140,7 +141,6 @@ def pins_payload(root: Path) -> dict[str, Any]:
     per-country iPhone indexes and the catalogue."""
     manifest = manifest_of(root)
     catalogue_path = root / rules.CATALOGUE_PATH
-    anchors = rules.load_anchors(catalogue_path)
     matcher = None
     entries = {entry["sourceId"]: entry for entry in manifest["packs"]}
     result: list[dict[str, Any]] = []
@@ -166,9 +166,8 @@ def pins_payload(root: Path) -> dict[str, Any]:
             continue
         if matcher is None:
             matcher, _ = ios_builder.load_catalog(catalogue_path)
-        radius = float(entry["filter"][packs.BORDER_ZONE_FIELD]["radiusKm"])
         full_archive = root / rules.FULL_PACK_DIR / packs.safe_asset_name(str(entry["asset"]))
-        served, zone = ios_builder.foreign_station_coverage(full_archive, matcher, source_id, anchors, radius)
+        served, zone = ios_builder.foreign_station_coverage(full_archive, matcher, source_id)
         metadata_path = root / rules.IOS_FULL_DIR / f"{source_id}.metadata.json"
         try:
             metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
@@ -186,11 +185,10 @@ def pins_payload(root: Path) -> dict[str, Any]:
         "generatedAt": manifest["generatedAt"],
         "repository": rules.REPOSITORY,
         "borderZone": {
-            "radiusKm": rules.BORDER_ZONE_RADIUS_KM,
-            "distance": rules.DISTANCE_RULE,
-            "anchors": rules.ANCHOR_RULE,
-            "anchorCount": anchors.count,
-            "catalogueSha256": anchors.catalogue_sha256,
+            "rule": rules.BORDER_ZONE_RULE,
+            "corridors": rules.corridor_names(),
+            "italianStations": rules.ITALIAN_STATION_RULE,
+            "catalogueSha256": rules.sha256_file(catalogue_path),
             "tripRule": rules.TRIP_RULE,
         },
         "packs": result,
@@ -314,12 +312,27 @@ def check(root: Path, *, ledger_base: Path | None = None) -> list[str]:
     return problems
 
 
+def corridor_notices(root: Path) -> list[str]:
+    """Corridor stations naming no stop of their full pack and listed pairs without a trip: not errors (a line closed
+    for works, a seasonal service), but a renamed station shows here first."""
+    notices: list[str] = []
+    catalogue = None
+    for entry in border_entries(manifest_of(root)):
+        source_id = str(entry["sourceId"])
+        name = packs.safe_asset_name(str(entry["asset"]))
+        catalogue = catalogue or packs.load_zone_catalogue(root / rules.CATALOGUE_PATH)
+        report = packs.corridor_report(source_id, root / ASSET_DIR / name, root / rules.FULL_PACK_DIR / name, catalogue)
+        notices += [f"{source_id}: stazione senza fermate nel pack completo: {item}" for item in report.unresolved]
+        notices += [f"{source_id}: nessuna corsa diretta {label}" for label, full, _ in report.pairs if full == 0]
+    return notices
+
+
 def regenerate(root: Path, *, ledger_base: Path | None = None) -> dict[str, Any]:
     border = packs.apply_border_zones(root / ASSET_DIR, full_pack_dir=root / rules.FULL_PACK_DIR,
                                       catalogue_path=root / rules.CATALOGUE_PATH)
     changed = rebuild_ios_indexes(root)
     changed += write_pins_and_ledger(root, ledger_base=ledger_base)
-    return {"packs": border, "changed": changed}
+    return {"packs": border, "changed": changed, "notices": corridor_notices(root)}
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -342,6 +355,8 @@ def main(argv: Sequence[str] | None = None) -> int:
                 )))
             for item in summary["changed"]:
                 print(f"Aggiornato: {item}")
+            for notice in summary["notices"]:
+                print(f"Avviso corridoi: {notice}")
     except (GenerationError, packs.BuildError, ios_builder.BuildError, ios_verifier.VerificationError, OSError, ValueError) as error:
         packs.print_error_lines("ERRORE pack esteri: ", error)
         return 1

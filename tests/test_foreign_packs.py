@@ -10,6 +10,7 @@ import json
 import shutil
 import sys
 import tempfile
+import types
 import unittest
 import zipfile
 from datetime import date
@@ -58,34 +59,80 @@ class ForeignPackRulesTest(unittest.TestCase):
         self.assertFalse(rules.is_border_pack({"sourceId": "trenitalia-gtfs", "licence": "CC BY 4.0"}))
         self.assertFalse(rules.is_border_pack({"sourceId": "ch-otd-gtfs", "licence": "Da confermare dal titolare"}))
 
-    def test_anchors_are_italian_coded_stations_with_coordinates_only(self) -> None:
-        catalogue = {"stations": [
-            {"id": "A", "trenitaliaLocationId": "830001", "latitude": 46.0, "longitude": 11.0},
-            {"id": "B", "trenitaliaLocationId": "850001", "latitude": 46.5, "longitude": 8.0},  # Swiss code
-            {"id": "C", "trenitaliaLocationId": "830002", "latitude": None, "longitude": 11.0},
-            {"id": "D", "trenitaliaLocationId": None, "latitude": 45.0, "longitude": 9.0},
-            {"id": "E", "trenitaliaLocationId": "1830003", "latitude": 45.0, "longitude": 9.0},
-            {"id": "F", "trenitaliaLocationId": "830004", "latitude": True, "longitude": 9.0},
-        ]}
-        anchors = rules.anchors_from_catalogue(catalogue, "0" * 64)
-        self.assertEqual(anchors.points, ((46.0, 11.0),))
-        self.assertEqual(anchors.count, 1)
+    CORRIDOR = rules.Corridor(
+        "Confine – Lontano", "fixture", rules.station("S1", "Confine"),
+        (rules.stop("Valico", 46.29, 11.0), rules.station("NC1", "Lontano")),
+    )
 
-    def test_zone_uses_own_coordinates_else_the_parent_and_haversine(self) -> None:
-        anchors = rules.anchors_from_catalogue(
-            {"stations": [{"trenitaliaLocationId": "830000001", "latitude": 47.0, "longitude": 11.5}]}, "0" * 64,
-        )
-        # 0.3 degrees of latitude: about 33.4 km.
-        stops = [
-            {"stop_id": "near", "stop_lat": "47.3", "stop_lon": "11.5", "parent_station": ""},
-            {"stop_id": "far", "stop_lat": "47.33", "stop_lon": "11.5", "parent_station": ""},
-            {"stop_id": "parent", "stop_lat": "47.1", "stop_lon": "11.5", "parent_station": ""},
-            {"stop_id": "child", "stop_lat": "", "stop_lon": "", "parent_station": "parent"},
-            {"stop_id": "orphan", "stop_lat": "", "stop_lon": "", "parent_station": "missing"},
-        ]
-        self.assertAlmostEqual(rules.haversine_km(47.0, 11.5, 47.3, 11.5), 33.36, places=1)
-        self.assertEqual(rules.zone_stop_ids(stops, anchors, 35), {"near", "parent", "child"})
-        self.assertEqual(rules.zone_stop_ids(stops, anchors, 30), {"parent", "child"})
+    @staticmethod
+    def identity(station_id: str, location: str | None = None) -> types.SimpleNamespace:
+        return types.SimpleNamespace(station_id=station_id, trenitalia_location_id=location)
+
+    def test_zone_is_italian_stations_and_corridor_stations(self) -> None:
+        stops = {
+            "Z1": {"stop_id": "Z1", "stop_name": "Confine", "stop_lat": "46.0", "stop_lon": "11.0"},
+            "PZ": {"stop_id": "PZ", "stop_name": "Valico", "stop_lat": "46.29", "stop_lon": "11.005"},
+            "PZ1": {"stop_id": "PZ1", "stop_name": "Valico 1", "stop_lat": "", "stop_lon": "", "parent_station": "PZ"},
+            "FAR": {"stop_id": "FAR", "stop_name": "Valico", "stop_lat": "46.40", "stop_lon": "11.0"},
+            "F1": {"stop_id": "F1", "stop_name": "Lontano", "stop_lat": "47.0", "stop_lon": "11.0"},
+            "it:9": {"stop_id": "it:9", "stop_name": "Stazione italiana senza catalogo", "stop_lat": "45.0", "stop_lon": "11.0"},
+            "X": {"stop_id": "X", "stop_name": "Altrove", "stop_lat": "48.0", "stop_lon": "11.0"},
+            "CH": {"stop_id": "CH", "stop_name": "Chiasso", "stop_lat": "45.8", "stop_lon": "9.0"},
+        }
+        identities = {"Z1": self.identity("S1", "830000001"), "F1": self.identity("NC1"),
+                      "CH": self.identity("S2", "830000002"), "X": self.identity("NC9", "850000009")}
+        with mock.patch.dict(rules.CORRIDORS, {"oebb-gtfs": (self.CORRIDOR,)}, clear=True):
+            zone = rules.pack_zone("oebb-gtfs", stops, identities)
+            self.assertEqual({"Z1", "CH", "it:9"}, set(zone.italian))  # ^83 identities and Italy's code in the stop_id
+            self.assertEqual({"Z1"}, set(zone.ends["Confine – Lontano"]))
+            # By name within 1 km (PZ is 0.4 km away; FAR, 12 km, is another stop of the same name), with its platform.
+            self.assertEqual({"PZ", "PZ1"}, set(zone.stations["Confine – Lontano"]["Valico"]))
+            self.assertEqual({"F1"}, set(zone.stations["Confine – Lontano"]["Lontano"]))
+            self.assertEqual({"Z1", "CH", "it:9", "PZ", "PZ1", "F1"}, set(zone.stops))
+            self.assertEqual([], zone.unresolved())
+            del stops["F1"], identities["F1"]
+            self.assertEqual(["Confine – Lontano: Lontano"], rules.pack_zone("oebb-gtfs", stops, identities).unresolved())
+            # Another pack has its own corridors (none here) and its own stop-id code.
+            self.assertEqual({"Z1", "CH"}, set(rules.pack_zone("sncf-gtfs", stops, identities).stops))
+
+    def test_pairs_and_stretch_gaps(self) -> None:
+        with mock.patch.dict(rules.CORRIDORS, {"oebb-gtfs": (self.CORRIDOR,)}, clear=True):
+            zone = rules.PackZone(
+                frozenset({"Z1"}), {"Confine – Lontano": frozenset({"Z1"})},
+                {"Confine – Lontano": {"Valico": frozenset({"PZ1"}), "Lontano": frozenset({"F1"})}},
+                frozenset({"Z1", "PZ1", "F1"}),
+            )
+            pairs = rules.corridor_pairs("oebb-gtfs", zone)
+            self.assertEqual(["Confine – Lontano: Confine – Valico", "Confine – Lontano: Confine – Lontano"], [label for label, _, _ in pairs])
+            trips = [["Z1", "PZ1", "F1", "X"], ["F1", "NEW", "PZ1", "Z1"], ["X", "F1"], ["Z1", "Y"]]
+            self.assertEqual(2, rules.pair_trip_count(trips, pairs[1][1], pairs[1][2]))
+            # A stop between the Italian end and a corridor station that is not in the zone is a gap; beyond the
+            # last corridor station (X) or on a trip that never calls at a station (Y) it is not.
+            self.assertEqual({("Confine – Lontano", "NEW")}, rules.stretch_gaps("oebb-gtfs", zone, trips))
+
+    def test_the_corridors_name_stations_once_with_coordinates_or_a_catalogue_id(self) -> None:
+        catalogue = json.loads((ROOT / rules.CATALOGUE_PATH).read_text(encoding="utf-8"))
+        ids = {station["id"] for station in catalogue["stations"]}
+        self.assertEqual(set(rules.FOREIGN_PACK_COUNTRIES), set(rules.CORRIDORS))
+        self.assertEqual(set(rules.FOREIGN_PACK_COUNTRIES), set(rules.ITALIAN_STOP_IDS))
+        for source_id, corridors in rules.CORRIDORS.items():
+            self.assertTrue(corridors, source_id)
+            self.assertEqual(len({corridor.name for corridor in corridors}), len(corridors), source_id)
+            for corridor in corridors:
+                labels = [ref.label for ref in corridor.stations]
+                self.assertEqual(len(labels), len(set(labels)), corridor.name)
+                self.assertTrue(corridor.reason.strip(), corridor.name)
+                for ref in (corridor.italian_end, *corridor.stations):
+                    if ref.catalogue_id is not None:
+                        self.assertIn(ref.catalogue_id, ids, ref.label)
+                        self.assertIsNone(ref.stop_name, ref.label)
+                    else:
+                        self.assertTrue(ref.stop_name and -90 <= ref.latitude <= 90 and -180 <= ref.longitude <= 180, ref.label)
+        # Every required pair is a pair of a corridor of its pack.
+        for source_id, pairs in rules.REQUIRED_BORDER_PAIRS.items():
+            listed = {(corridor.italian_end.catalogue_id, ref.catalogue_id) for corridor in rules.CORRIDORS[source_id] for ref in corridor.stations}
+            for first, second, label in pairs:
+                self.assertIn((first, second), listed, label)
 
     def test_tags_and_urls_are_content_addressed_under_the_repository(self) -> None:
         sha = "64764fcb68ec7f9eeb0ff1280d99e9261ddab928e701f30dd2b46b8ad9561caa"
@@ -159,10 +206,16 @@ class PinSchemaTest(unittest.TestCase):
         pack(payload, "oebb-gtfs")["ios"] = None
         self.assertRejected(payload, "ios deve avere")
 
-    def test_radius_rules_and_pack_set(self) -> None:
+    def test_zone_rules_and_pack_set(self) -> None:
         payload = sample()
-        payload["borderZone"]["radiusKm"] = 30
-        self.assertRejected(payload, "radiusKm")
+        payload["borderZone"]["rule"] = "radius-35km"
+        self.assertRejected(payload, "rule")
+        payload = sample()
+        payload["borderZone"]["corridors"]["oebb-gtfs"].pop()
+        self.assertRejected(payload, "corridors")
+        payload = sample()
+        payload["borderZone"]["radiusKm"] = 35
+        self.assertRejected(payload, "borderZone deve avere")
         payload = sample()
         payload["packs"].pop()
         self.assertRejected(payload, "tutti e tre")

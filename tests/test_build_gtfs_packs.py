@@ -1464,8 +1464,9 @@ BORDER_CATALOGUE = {"schemaVersion": 1, "stations": [
 
 
 def write_raw_foreign_feed(target: Path) -> None:
-    """Z1 is the anchor itself; PZ1, without coordinates, has its parent PZ 32.2 km away (inside 35, outside 30);
-    T1 calls once in the zone, T2 never, T3 only at PZ1."""
+    """Z1 is an Italian station (Confine, trenitaliaLocationId ^83); PZ1, without coordinates, is a platform of PZ,
+    the station Valico of the fixture corridor; T1 calls once at an Italian station, T2 never in the zone, T3 only at
+    PZ1."""
     members = {
         "agency.txt": csv_text(["agency_id", "agency_name", "agency_url", "agency_timezone"],
                                [["A1", "Rail", "https://example.test", "Europe/Vienna"], ["A2", "Other", "https://example.test", "Europe/Vienna"]]),
@@ -1504,15 +1505,23 @@ class BorderSubsetTest(unittest.TestCase):
     """Design §1 and §6: the border subset of a foreign pack whose licence is confirmed (D2)."""
 
     PAIRS = {"oebb-gtfs": (("S1", "NC1", "Confine – Lontano"), ("NC2", "NC3", "Valico – Remoto"))}
+    VALICO = builder.foreign.Corridor("Confine – Valico", "fixture", builder.foreign.station("S1", "Confine"),
+                                      (builder.foreign.station("NC2", "Valico"),))
+    CORRIDORS = {"oebb-gtfs": (VALICO,)}
+    NO_CORRIDORS = {"oebb-gtfs": ()}
+    # With Lontano in the corridor, T2 (Lontano – Altrove) is kept too.
+    WIDER = {"oebb-gtfs": (builder.foreign.Corridor("Confine – Valico", "fixture", builder.foreign.station("S1", "Confine"),
+                                                    (builder.foreign.station("NC2", "Valico"), builder.foreign.station("NC1", "Lontano"))),)}
 
     def setUp(self) -> None:
         self.temp = Path(tempfile.mkdtemp(prefix="border-subset-"))
         self.addCleanup(shutil.rmtree, self.temp, ignore_errors=True)
         self.catalogue = self.temp / "catalogue.json"
         self.catalogue.write_text(json.dumps(BORDER_CATALOGUE), encoding="utf-8")
-        self.anchors = builder.foreign.load_anchors(self.catalogue)
+        self.zone_catalogue = builder.load_zone_catalogue(self.catalogue)
         self.full_dir = self.temp / "full"
-        for patcher in (mock.patch.dict(builder.foreign.REQUIRED_BORDER_PAIRS, self.PAIRS, clear=True),):
+        for patcher in (mock.patch.dict(builder.foreign.REQUIRED_BORDER_PAIRS, self.PAIRS, clear=True),
+                        mock.patch.dict(builder.foreign.CORRIDORS, self.CORRIDORS, clear=True)):
             patcher.start()
             self.addCleanup(patcher.stop)
 
@@ -1559,7 +1568,7 @@ class BorderSubsetTest(unittest.TestCase):
     def test_whole_trips_touching_the_zone_are_kept_with_their_rows(self) -> None:
         full = self.full_pack()
         subset = self.temp / "subset.zip"
-        result = builder.derive_border_subset(full, subset, "oebb-gtfs", self.anchors, radius_km=35)
+        result = builder.derive_border_subset(full, subset, "oebb-gtfs", self.zone_catalogue)
         self.assertEqual({"T1", "T3"}, {row["trip_id"] for row in read_rows(subset, "trips.txt")})
         kept_rows = [row for row in read_rows(full, "stop_times.txt") if row["trip_id"] in {"T1", "T3"}]
         self.assertEqual(kept_rows, read_rows(subset, "stop_times.txt"))
@@ -1570,30 +1579,33 @@ class BorderSubsetTest(unittest.TestCase):
         self.assertEqual([("Z1", "F1")], [(row["from_stop_id"], row["to_stop_id"]) for row in read_rows(subset, "transfers.txt")])
         self.assertEqual(read_rows(full, "feed_info.txt"), read_rows(subset, "feed_info.txt"))
         zone = result.metadata["borderZone"]
-        self.assertEqual((35, 2, 3, 1), (zone["radiusKm"], zone["tripsKept"], zone["tripsInFull"], zone["anchorCount"]))
+        self.assertEqual(("frontalieri-corridors-v1", ["Confine – Valico"], 2, 3),
+                         (zone["rule"], zone["corridors"], zone["tripsKept"], zone["tripsInFull"]))
         self.assertEqual(hashlib.sha256(full.read_bytes()).hexdigest(), zone["fullPackSha256"])
-        self.assertEqual(3, zone["zoneStops"])  # Z1, PZ and PZ1 (parent coordinates)
+        self.assertEqual(hashlib.sha256(self.catalogue.read_bytes()).hexdigest(), zone["catalogueSha256"])
+        self.assertEqual(3, zone["zoneStops"])  # Z1 (Italian), PZ (corridor station) and its platform PZ1
         self.assertEqual({"agency": 1, "routes": 1, "trips": 2, "stopTimes": 4, "stops": 5}, result.metadata["counts"])
         self.assertEqual(result.content_sha256, builder.verify_filter_from_asset(subset, "oebb-gtfs"))
-        # At 30 km the platform whose parent is 32.2 km away is outside.
-        builder.derive_border_subset(full, subset, "oebb-gtfs", self.anchors, radius_km=30)
+        # Without the corridor only the trip calling at the Italian station is kept.
+        with mock.patch.dict(builder.foreign.CORRIDORS, self.NO_CORRIDORS, clear=True):
+            builder.derive_border_subset(full, subset, "oebb-gtfs", self.zone_catalogue)
         self.assertEqual({"T1"}, {row["trip_id"] for row in read_rows(subset, "trips.txt")})
 
     def test_subset_is_deterministic_and_refuses_a_subset_as_full_pack(self) -> None:
         full = self.full_pack()
         first, second = self.temp / "one.zip", self.temp / "two.zip"
-        builder.derive_border_subset(full, first, "oebb-gtfs", self.anchors)
-        builder.derive_border_subset(full, second, "oebb-gtfs", self.anchors)
+        builder.derive_border_subset(full, first, "oebb-gtfs", self.zone_catalogue)
+        builder.derive_border_subset(full, second, "oebb-gtfs", self.zone_catalogue)
         self.assertEqual(first.read_bytes(), second.read_bytes())
         with self.assertRaisesRegex(builder.BuildError, "già un sottoinsieme"):
-            builder.derive_border_subset(first, self.temp / "three.zip", "oebb-gtfs", self.anchors)
+            builder.derive_border_subset(first, self.temp / "three.zip", "oebb-gtfs", self.zone_catalogue)
 
     def test_build_bundles_the_subset_and_keeps_the_full_pack_outside_the_assets(self) -> None:
         output = self.build()
         manifest = json.loads((output / "manifest.json").read_text(encoding="utf-8"))
         entry = manifest["packs"][0]
         full = self.full_dir / "oebb-gtfs.zip"
-        self.assertEqual({"radiusKm": 35}, entry["filter"]["borderZone"])
+        self.assertEqual({"rule": "frontalieri-corridors-v1"}, entry["filter"]["borderZone"])
         self.assertEqual("data/gtfs-foreign/android/oebb-gtfs.zip", entry["fullPack"]["path"])
         self.assertEqual(hashlib.sha256(full.read_bytes()).hexdigest(), entry["fullPack"]["sha256"])
         self.assertEqual(full.stat().st_size, entry["fullPack"]["sizeBytes"])
@@ -1619,18 +1631,19 @@ class BorderSubsetTest(unittest.TestCase):
 
     def test_check_catches_removed_or_extra_trips(self) -> None:
         output = self.build()
-        for radius in (30, 200):
-            with self.subTest(radius=radius):
-                builder.derive_border_subset(self.full_dir / "oebb-gtfs.zip", output / "oebb-gtfs.zip", "oebb-gtfs", self.anchors, radius_km=radius)
+        for corridors in (self.NO_CORRIDORS, self.WIDER):
+            with self.subTest(corridors=corridors):
+                with mock.patch.dict(builder.foreign.CORRIDORS, corridors, clear=True):
+                    builder.derive_border_subset(self.full_dir / "oebb-gtfs.zip", output / "oebb-gtfs.zip", "oebb-gtfs", self.zone_catalogue)
                 self.republish(output)
                 self.assertCheckFails(output, "non è il sottoinsieme derivato")
 
-    def test_check_catches_a_changed_radius_and_a_wrong_full_pack(self) -> None:
+    def test_check_catches_a_changed_rule_and_a_wrong_full_pack(self) -> None:
         output = self.build()
         manifest = json.loads((output / "manifest.json").read_text(encoding="utf-8"))
-        manifest["packs"][0]["filter"]["borderZone"]["radiusKm"] = 30
+        manifest["packs"][0]["filter"]["borderZone"] = {"radiusKm": 35}
         builder.write_json(output / "manifest.json", manifest)
-        self.assertCheckFails(output, "radiusKm")
+        self.assertCheckFails(output, "filter.borderZone")
         shutil.rmtree(output)
         shutil.rmtree(self.full_dir)
         output = self.build()
@@ -1638,8 +1651,8 @@ class BorderSubsetTest(unittest.TestCase):
         manifest["packs"][0]["fullPack"]["sha256"] = "1" * 64
         builder.write_json(output / "manifest.json", manifest)
         self.assertCheckFails(output, "fullPack.sha256")
-        with mock.patch.object(builder.foreign, "BORDER_ZONE_RADIUS_KM", 30):
-            self.assertCheckFails(output, "radiusKm")
+        with mock.patch.object(builder.foreign, "BORDER_ZONE_RULE", "frontalieri-corridors-v2"):
+            self.assertCheckFails(output, "filter.borderZone")
 
     def test_check_catches_the_licence_gate_and_the_size_budget(self) -> None:
         output = self.build()
@@ -1656,12 +1669,42 @@ class BorderSubsetTest(unittest.TestCase):
     def test_required_pairs_keep_every_trip_of_the_full_pack(self) -> None:
         full = self.full_pack()
         subset = self.temp / "subset.zip"
-        builder.derive_border_subset(full, subset, "oebb-gtfs", self.anchors, radius_km=35)
+        builder.derive_border_subset(full, subset, "oebb-gtfs", self.zone_catalogue)
         self.assertEqual([], builder.border_pair_problems("oebb-gtfs", subset, full, self.catalogue))
-        builder.derive_border_subset(full, subset, "oebb-gtfs", self.anchors, radius_km=30)
+        with mock.patch.dict(builder.foreign.CORRIDORS, self.NO_CORRIDORS, clear=True):
+            builder.derive_border_subset(full, subset, "oebb-gtfs", self.zone_catalogue)
         problems = builder.border_pair_problems("oebb-gtfs", subset, full, self.catalogue)
         self.assertEqual(1, len(problems))
         self.assertIn("Valico – Remoto (NC2–NC3) ha 0 corse nel sottoinsieme e 1 nel pack completo", problems[0])
+
+    def test_corridor_pairs_keep_every_trip_and_are_reported(self) -> None:
+        full = self.full_pack()
+        subset = self.temp / "subset.zip"
+        with mock.patch.dict(builder.foreign.CORRIDORS, self.WIDER, clear=True):
+            builder.derive_border_subset(full, subset, "oebb-gtfs", self.zone_catalogue)
+            report = builder.corridor_report("oebb-gtfs", subset, full, self.zone_catalogue)
+            self.assertEqual((("Confine – Valico: Confine – Valico", 0, 0), ("Confine – Valico: Confine – Lontano", 1, 1)), report.pairs)
+            self.assertEqual(((), (), 4), (report.gaps, report.unresolved, report.zone_stops))  # Z1, PZ, PZ1, F1
+            self.assertEqual([], builder.corridor_problems("oebb-gtfs", subset, full, self.zone_catalogue))
+            # A subset derived where Confine is not an Italian station and has no corridor loses T1 (Confine – Lontano).
+            catalogue = json.loads(self.catalogue.read_text(encoding="utf-8"))
+            catalogue["stations"][0]["trenitaliaLocationId"] = None
+            other = self.temp / "other-catalogue.json"
+            other.write_text(json.dumps(catalogue), encoding="utf-8")
+            with mock.patch.dict(builder.foreign.CORRIDORS, self.NO_CORRIDORS, clear=True), \
+                    mock.patch.dict(builder.foreign.ITALIAN_STOP_IDS, {}, clear=True):
+                with self.assertRaisesRegex(builder.BuildError, "nessuna corsa"):
+                    builder.derive_border_subset(full, subset, "oebb-gtfs", builder.load_zone_catalogue(other))
+            valico_only = builder.foreign.Corridor("Valico", "fixture", builder.foreign.station("NC2", "Valico"), ())
+            with mock.patch.dict(builder.foreign.CORRIDORS, {"oebb-gtfs": (valico_only,)}, clear=True):
+                builder.derive_border_subset(full, subset, "oebb-gtfs", builder.load_zone_catalogue(other))
+            self.assertEqual({"T3"}, {row["trip_id"] for row in read_rows(subset, "trips.txt")})
+            problems = builder.corridor_problems("oebb-gtfs", subset, full, self.zone_catalogue)
+            self.assertEqual(["oebb-gtfs: Confine – Valico: Confine – Lontano ha 0 corse nel sottoinsieme e 1 nel pack completo"], problems)
+            del catalogue["stations"][2]  # Lontano leaves the catalogue: the station names no stop any more
+            other.write_text(json.dumps(catalogue), encoding="utf-8")
+            report = builder.corridor_report("oebb-gtfs", subset, full, builder.load_zone_catalogue(other))
+            self.assertEqual(("Confine – Valico: Lontano",), report.unresolved)
 
     def test_apply_border_zones_moves_the_whole_pack_out_and_back(self) -> None:
         output = self.build("Da confermare dal titolare")
