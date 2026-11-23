@@ -326,7 +326,7 @@ final class BinarioAppTests: XCTestCase {
         guard case let .available(catalog) = model.catalogState else {
             return XCTFail("Expected catalog")
         }
-        XCTAssertEqual(catalog.stationCount, 5_290)
+        XCTAssertEqual(catalog.stationCount, 5_333)
 
         await model.loadCatalog { Data("{}".utf8) }
         XCTAssertEqual(model.catalogState, .unavailable)

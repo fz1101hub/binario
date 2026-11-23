@@ -6,15 +6,15 @@
       "assetPath": "stations/curated_it_rail_stations.json",
       "kind": "curated-rail-station-catalog",
       "source": "Database curato fornito dall’utente",
-      "provenance": "Da confermare dal titolare: il repository non registra da quali fonti derivano nomi, alias e coordinate di stazioni_ferroviarie_curato_v4 (l'asset OpenStreetMap usato in precedenza è stato rimosso nel commit 9268bb3; audit A7-09). Le dieci fermate della ferrovia del Renon (NC001810–NC001819) sono aggiunte all'asset con nome e posizione del pack STA incluso (alto-adige-sta-gtfs, CC0 1.0). Le voci S00239 (Tronzano: nome e location ID della fermata Trenitalia 830000239) e S09526 (posizione della fermata Trenord S01830) sono corrette con i pack inclusi. Le fermate NC001820–NC001860 sono aggiunte con nome e posizione dei pack inclusi EAV (IODL), ARST (CC BY 4.0), AMT Genova–Casella (CC BY 4.0), Ferrovie del Gargano (NAP CCISS) e Trentino Trasporti (Mezzana); «Montesanto» (EAV) è un alias di Napoli Montesanto",
+      "provenance": "Da confermare dal titolare: il repository non registra da quali fonti derivano nomi, alias e coordinate di stazioni_ferroviarie_curato_v4 (l'asset OpenStreetMap usato in precedenza è stato rimosso nel commit 9268bb3; audit A7-09). Le dieci fermate della ferrovia del Renon (NC001810–NC001819) sono aggiunte all'asset con nome e posizione del pack STA incluso (alto-adige-sta-gtfs, CC0 1.0). Le voci S00239 (Tronzano: nome e location ID della fermata Trenitalia 830000239) e S09526 (posizione della fermata Trenord S01830) sono corrette con i pack inclusi. Le fermate NC001820–NC001860 sono aggiunte con nome e posizione dei pack inclusi EAV (IODL), ARST (CC BY 4.0), AMT Genova–Casella (CC BY 4.0), Ferrovie del Gargano (NAP CCISS) e Trentino Trasporti (Mezzana); «Montesanto» (EAV) è un alias di Napoli Montesanto. Le stazioni NC001861–NC001903 delle ferrovie Roma–Lido e Roma Nord vengono dal pack Cotral delle build personali, la cui licenza non è dichiarata (da confermare dal titolare)",
       "licence": "Da confermare dal titolare",
       "sourceDatabaseSha256": "2db59242ec45816a73a37c4748dc400dafaba762b6df3105673f63a44c882efe",
       "sourceCreatedAtUtc": "2026-08-16T01:21:36.343197+00:00",
-      "stationCount": 5290,
+      "stationCount": 5333,
       "railwayCodes": 3430,
       "uniqueTrenitaliaLocationIds": 3047,
       "ambiguousTrenitaliaLocationIdsExcluded": 40,
-      "assetSha256": "3327f5344a89c92a49c6e70f32ee5294b2ef2c9f52ddd0ebabb9ee5720be759d",
+      "assetSha256": "a1633e34f81e9283461341c4b56ee744f55f74be747cd3fd75fdf43d55dbc869",
       "operationalData": false,
       "notes": "Catalogo canonico unico per ricerca, tratte, preferiti, widget, stazioni vicine e riconciliazione di identità. I codici Trenitalia ambigui sono esclusi dal mapping automatico; l’asset non abilita né determina dati live."
     }

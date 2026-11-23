@@ -64,7 +64,7 @@ class EmbeddedCuratedRailStationCatalogTest {
 
         val stations = catalog.load()
 
-        assertEquals(5290, stations.size)
+        assertEquals(5333, stations.size)
         assertTrue(stations.all { it.id.startsWith("curated:") })
     }
 
