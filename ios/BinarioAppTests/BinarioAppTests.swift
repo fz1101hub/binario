@@ -1041,6 +1041,70 @@ final class BinarioAppTests: XCTestCase {
         XCTAssertEqual(laterModel.resultLiveState, .idle)
     }
 
+    func testPlannerResultsTakeTheTripUpdatesOfTheirPackWhenNoBoardTimesThem() async throws {
+        let defaults = try makeDefaults()
+        defer { clear(defaults) }
+        // Trenitalia France's train 70458 of 23 November 2026, from Paris at 17:08 Italian time, asked at 16:00.
+        let now = Date(timeIntervalSince1970: 1_795_446_000)
+        let query = try JourneyQuery(origin: milanoCode, destination: bergamoCode, departure: now)
+        let id = "trenitalia-france-gtfs:70458:20261123:61680"
+        let service = TrainService(
+            id: id, number: "9241", operatorName: "Trenitalia France", category: "FR", destination: "Milano Centrale",
+            scheduledDeparture: "17:08", expectedDeparture: "17:08", status: "PROGRAMMED", platform: nil, delayMinutes: 0
+        )
+        let snapshot = JourneySnapshot(
+            query: query, generatedAt: now, expiresAt: now.addingTimeInterval(3_600), operationalState: .programmed,
+            provenance: DataProvenance(producer: .iosApp, nature: .programmed, sourceLabel: "Official GTFS", observedAt: now,
+                                       freshness: .unknown, confidence: .staticOnly),
+            services: [service]
+        )
+        let transport = TripUpdatesTransport(payload: try tripUpdatesFixture())
+        let model = AppModel(
+            catalogState: .loading,
+            savedRouteStore: SavedRouteStore(defaults: defaults),
+            favouriteTrainStore: FavouriteTrainStore(defaults: defaults),
+            boardStationStore: StationBoardStationStore(defaults: defaults),
+            watchSharingStore: WatchSharingPreferenceStore(defaults: defaults),
+            repository: TimetableStubRepository(result: .available(snapshot)),
+            watchPublisher: nil,
+            liveData: FakeLiveRailData(board: .unavailable(.sourceUnavailable)),
+            timetableRealtime: TimetableRealtime.standard(transport: transport, pauses: LiveSourcePauses(), now: { now }),
+            liveDataStore: LiveDataPreferenceStore(defaults: defaults),
+            livePauses: LiveSourcePauses(),
+            versionDisplay: "test"
+        )
+        await model.run(query: query)
+        model.plannerLiveDidAppear()
+        await model.resultLiveLoadFinished()
+        // No board answers: the feed of the train's own pack times it at its origin.
+        await model.refreshResultLive(now: now)
+        let status = try XCTUnwrap(model.resultLive[id])
+        XCTAssertEqual(status.delayMinutes, 4)
+        XCTAssertEqual(status.source, .trenitaliaFranceRealtime)
+        XCTAssertEqual(model.resultLiveSources, [.trenitaliaFranceRealtime])
+        guard case .available = model.resultLiveState else { return XCTFail("expected live values, got \(model.resultLiveState)") }
+
+        // «Dati in tempo reale» off: the feeds are not asked and the values go.
+        model.setLiveDataEnabled(false)
+        XCTAssertTrue(model.resultLive.isEmpty)
+    }
+
+    /// The Trenitalia France feed of contracts/shared-rules/v1/gtfs-realtime-v1.json.
+    private func tripUpdatesFixture() throws -> Data {
+        let data = try Data(contentsOf: repositoryRoot.appendingPathComponent("contracts/shared-rules/v1/gtfs-realtime-v1.json"))
+        let json = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
+        let cases = try XCTUnwrap(json["protobufUpdates"] as? [[String: Any]])
+        let hex = try XCTUnwrap(cases.first { $0["feed"] as? String == "trenitalia-france-gtfs-rt" }?["hex"] as? String)
+        var bytes: [UInt8] = []
+        var index = hex.startIndex
+        while index < hex.endIndex {
+            let next = hex.index(index, offsetBy: 2)
+            bytes.append(try XCTUnwrap(UInt8(hex[index..<next], radix: 16)))
+            index = next
+        }
+        return Data(bytes)
+    }
+
     func testTrainDetailShowsItsOwnRunAtTheBoardingStationAndNeverAnotherDays() async throws {
         let defaults = try makeDefaults()
         defer { clear(defaults) }
@@ -1523,6 +1587,31 @@ private struct StubVersionFormatter: AppVersionFormatting {
 private struct StubJourneyRepository: JourneyRepository {
     let result: JourneyResult
     func journeys(for query: JourneyQuery) async -> JourneyResult { result }
+}
+
+/// The search's result and the stops of Trenitalia France's train 70458 in the timetable index.
+private struct TimetableStubRepository: JourneyRepository, TimetableTripReading {
+    let result: JourneyResult
+    func journeys(for query: JourneyQuery) async -> JourneyResult { result }
+
+    func tripStops(_ trips: [TimetableTripKey]) -> [TimetableTripKey: TimetableTripStops] {
+        var found: [TimetableTripKey: TimetableTripStops] = [:]
+        for trip in trips where trip.tripID == "70458" {
+            found[trip] = TimetableTripStops(stops: [
+                .init(stopID: "10009", sequence: 0, seconds: 17 * 3_600 + 8 * 60, catalogStationID: nil),
+                .init(stopID: "10007", sequence: 62, seconds: 19 * 3_600 + 18 * 60, catalogStationID: nil),
+            ], agencyTimeZones: ["Europe/Rome"])
+        }
+        return found
+    }
+}
+
+/// A transport answering every request with one feed; nothing leaves the machine.
+private struct TripUpdatesTransport: LiveHTTPTransport {
+    let payload: Data
+    func send(_ request: LiveHTTPRequest) async -> LiveTransportOutcome {
+        .response(status: 200, headers: [:], body: payload)
+    }
 }
 
 /// A result per destination station.

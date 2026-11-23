@@ -366,6 +366,8 @@
 "settings.live.viaggiatreno" = "Trenitalia: 열차 번호, 역 코드, 날짜와 시각";
 "settings.live.rfi" = "도착/출발 모니터: 역의 공개 식별자";
 "settings.live.italo" = "열차 번호 또는 Italo 역 코드";
+"settings.live.swiss" = "스위스 역의 UIC 번호(한 번은 국경역 이름)";
+"settings.live.trip_updates" = "운행 업데이트 전체 피드, 사용자 데이터 없음: 해당 시간표의 운행에만 사용";
 "settings.live.privacy" = "계정, 기기 식별자, 위치를 사용하지 않습니다. 각 출처는 일반 웹사이트처럼 iPhone의 IP 주소를 볼 수 있습니다. 받은 데이터는 메모리에만 있고 저장되지 않습니다.";
 "result.live.delay" = "%1$lld분 지연";
 "notices.area.title" = "공지 및 운행 정보";
