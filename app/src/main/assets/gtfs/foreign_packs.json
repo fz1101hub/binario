@@ -24,7 +24,7 @@
       ]
     },
     "italianStations": "stop matched to a catalogue station with trenitaliaLocationId ^83, or whose stop_id carries Italy's country code (ITALIAN_STOP_IDS)",
-    "catalogueSha256": "8ff7dfa1bf2985b349ce24a1b105b315e24a51d72a29001af13382ceedf67328",
+    "catalogueSha256": "a1633e34f81e9283461341c4b56ee744f55f74be747cd3fd75fdf43d55dbc869",
     "tripRule": "whole-trips-touching-zone"
   },
   "packs": [
@@ -281,18 +281,18 @@
         "contentSha256": "a6ffd3197fa8360f6fcf9258b05b1f4ad072757af4b55412b2701606a1b09a7a"
       },
       "ios": {
-        "tag": "gtfs-ios-ch-otd-gtfs-311021edd2d0",
+        "tag": "gtfs-ios-ch-otd-gtfs-95d1499eb798",
         "asset": "ch-otd-gtfs.sqlite.zlib",
-        "url": "https://github.com/fz1101hub/binario/releases/download/gtfs-ios-ch-otd-gtfs-311021edd2d0/ch-otd-gtfs.sqlite.zlib",
-        "sizeBytes": 2641057,
-        "sha256": "311021edd2d0a35dbbd99444b7e506940ca5186aed1c9c028e5cc3168203ce43",
+        "url": "https://github.com/fz1101hub/binario/releases/download/gtfs-ios-ch-otd-gtfs-95d1499eb798/ch-otd-gtfs.sqlite.zlib",
+        "sizeBytes": 2641055,
+        "sha256": "95d1499eb798ca6cecc3c2888a0495c074838dcdbaebd57cfaad185c8be96070",
         "database": {
-          "sha256": "4882432aac0492c08047d80fcf107ceec0bffc6a1bc40ad21b3fc87a78b79755",
+          "sha256": "0c75bc4df8fdcdb4e0490f02c6ea03617ad7519ca5e586d370cb4a81712e718a",
           "sizeBytes": 6868992,
           "userVersion": 2,
           "applicationId": 1112426324
         },
-        "inputFingerprintSha256": "9df0452756e11429d735edd4df7cfb0d0326a679d4905fa1edc73afa991128e0"
+        "inputFingerprintSha256": "d5a198091a6aa7859b213590ea362d8f2dad385bb467bce14089f25ee931f3d6"
       }
     },
     {
@@ -413,18 +413,18 @@
         "contentSha256": "211b7240bb6cd037a012fa1b521d2aa5e14fd1e9f1874d3a1411f8f6c39caab4"
       },
       "ios": {
-        "tag": "gtfs-ios-oebb-gtfs-fa44dee8b099",
+        "tag": "gtfs-ios-oebb-gtfs-4ffba86b524d",
         "asset": "oebb-gtfs.sqlite.zlib",
-        "url": "https://github.com/fz1101hub/binario/releases/download/gtfs-ios-oebb-gtfs-fa44dee8b099/oebb-gtfs.sqlite.zlib",
-        "sizeBytes": 1157545,
-        "sha256": "fa44dee8b0999dc4f70d9fdb4ec0d12361df7ab8acddb1a260bc25399ab5193a",
+        "url": "https://github.com/fz1101hub/binario/releases/download/gtfs-ios-oebb-gtfs-4ffba86b524d/oebb-gtfs.sqlite.zlib",
+        "sizeBytes": 1157535,
+        "sha256": "4ffba86b524d5b1bd3370fd600f7f501f491a081ba8744d79c7b621e2c49a1e7",
         "database": {
-          "sha256": "b11bb5edf2761245c98f8337066fb4c5e33d68ac58aeb84292430f4eb21a65fa",
+          "sha256": "47b57378343f7b8f0aacb65d300b9039766ce800e22331b7a76c668f03ee1ccd",
           "sizeBytes": 3080192,
           "userVersion": 2,
           "applicationId": 1112426324
         },
-        "inputFingerprintSha256": "c43a3795c19d8da51100f709a9c9b9fad537f774e2e12b406951991d4bf75b92"
+        "inputFingerprintSha256": "022887479e60200076d000aa8d4907ea7efca3c5755755fffca41b8576ad26bf"
       }
     },
     {
@@ -504,18 +504,18 @@
         "contentSha256": "13670355414f2586d416b8803e93b3add9b0a9e0b9d5c83cb258c76f1b9e20d5"
       },
       "ios": {
-        "tag": "gtfs-ios-sncf-gtfs-e24a225b0345",
+        "tag": "gtfs-ios-sncf-gtfs-c8b036a7d827",
         "asset": "sncf-gtfs.sqlite.zlib",
-        "url": "https://github.com/fz1101hub/binario/releases/download/gtfs-ios-sncf-gtfs-e24a225b0345/sncf-gtfs.sqlite.zlib",
-        "sizeBytes": 2514637,
-        "sha256": "e24a225b034533b3bd91a43ff66ec23c3de132be206dd1e8b89fcbd21610c39a",
+        "url": "https://github.com/fz1101hub/binario/releases/download/gtfs-ios-sncf-gtfs-c8b036a7d827/sncf-gtfs.sqlite.zlib",
+        "sizeBytes": 2514636,
+        "sha256": "c8b036a7d827995da29efe4d2a759b1a422360c9584b9daf9838ad76e28dee3d",
         "database": {
-          "sha256": "0062cff79d67997e61282f53b556bd509b34e6c33a5b367eeda0f8207bba5dcd",
+          "sha256": "5b0eee115abb729d289609cf4b65d59cf7074cb00194bd0448848f0b9d2eb7fa",
           "sizeBytes": 12161024,
           "userVersion": 2,
           "applicationId": 1112426324
         },
-        "inputFingerprintSha256": "9524c800dfc23dc06d00eb029854bcfebe595ca96f9c5133f0126f83e68e8a57"
+        "inputFingerprintSha256": "c64b0668458d224a8b1746227a463293c2f62a0e672c79636a37c61b49a10407"
       }
     }
   ]

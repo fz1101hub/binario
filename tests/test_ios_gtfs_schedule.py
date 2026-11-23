@@ -930,5 +930,59 @@ class RenonRailwayTest(unittest.TestCase):
         self.assertEqual(self.trips, trips)
 
 
+class RegionalRailwayStationsTest(unittest.TestCase):
+    """Rail stops of the bundled regional packs that had no catalogue station are entries without codes taken from
+    their pack (CURATED_STATION_CATALOG.md); the shipped iPhone index binds the stops of its packs to them."""
+
+    CATALOG = ROOT / "app/src/main/assets/stations/curated_it_rail_stations.json"
+    INDEX = ROOT / "ios/Resources/binario_gtfs_schedule_v1.sqlite.zlib"
+    ASSETS = ROOT / "app/src/main/assets"
+    # (pack file, stop_id, catalogue id): EAV, ARST and Trentino are in the iPhone index, the others Android only.
+    STOPS = [("gtfs/eav-gtfs.zip", "6706", "NC001820"), ("gtfs/eav-gtfs.zip", "6801", "S09107")] + [
+        ("gtfs/arst-gtfs.zip", stop, f"NC00{1821 + index}") for index, stop in enumerate(
+            ["F_22562", "F_22579", "F_22596", "F_22604", "F_22605", "F_22606", "F_22607", "F_22608", "F_22626", "F_22627"])
+    ] + [("gtfs-transit/amt-genova-casella-gtfs.zip", str(stop), f"NC00{1831 + stop - 9780}") for stop in range(9780, 9800)] + [
+        ("gtfs-transit/fdg-gargano.zip", f"IT:ITF4:StopPlace:{stop}_Rete_FDG", f"NC00{1851 + index}") for index, stop in enumerate(
+            ["BELLARIVA", "DONBOSCO", "GUARDIOLA", "LUCERA2", "MULINO", "MURGENERE", "RODIPORTO", "SANTABARBARA", "SOTTOLACOSTA"])
+    ] + [("gtfs/trentino-extraurban-gtfs.zip", "5718", "NC001860")]
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.stations = {s["id"]: s for s in json.loads(cls.CATALOG.read_text(encoding="utf-8"))["stations"]}
+        cls.pack_stops: dict[tuple[str, str], dict[str, str]] = {}
+        for path in {path for path, _, _ in cls.STOPS}:
+            with zipfile.ZipFile(cls.ASSETS / path) as pack:
+                for row in csv.DictReader(io.TextIOWrapper(pack.open("stops.txt"), encoding="utf-8-sig")):
+                    cls.pack_stops[(path, row["stop_id"])] = row
+
+    def test_entries_have_the_position_of_their_pack_stop_and_no_codes(self) -> None:
+        for path, stop_id, station_id in self.STOPS:
+            if station_id == "S09107":
+                self.assertIn("Montesanto", self.stations[station_id]["aliases"])
+                continue
+            stop, station = self.pack_stops[(path, stop_id)], self.stations[station_id]
+            self.assertEqual((round(float(stop["stop_lat"]), 6), round(float(stop["stop_lon"]), 6)),
+                             (station["latitude"], station["longitude"]), station_id)
+            self.assertIsNone(station["railwayCode"])
+            self.assertIsNone(station["trenitaliaLocationId"])
+
+    def test_the_shipped_index_binds_the_stops_of_its_packs(self) -> None:
+        expected = {stop_id: station_id for path, stop_id, station_id in self.STOPS
+                    if any(pack in path for pack in ("eav-gtfs", "arst-gtfs", "trentino-extraurban-gtfs"))}
+        with tempfile.TemporaryDirectory(prefix="ios-regional-") as temporary:
+            database = Path(temporary) / "schedule.sqlite"
+            database.write_bytes(zlib.decompress(self.INDEX.read_bytes()))
+            connection = sqlite3.connect(f"file:{database}?mode=ro&immutable=1", uri=True)
+            try:
+                bound = dict(connection.execute(
+                    "SELECT s.external_id, s.catalog_station_id FROM stop s JOIN pack p ON p.id = s.pack_id "
+                    "WHERE p.source_id IN ('eav-gtfs', 'arst-gtfs', 'trentino-gtfs') AND s.external_id IN (%s)"
+                    % ",".join("?" * len(expected)), list(expected),
+                ).fetchall())
+            finally:
+                connection.close()
+        self.assertEqual(expected, bound)
+
+
 if __name__ == "__main__":
     unittest.main()
