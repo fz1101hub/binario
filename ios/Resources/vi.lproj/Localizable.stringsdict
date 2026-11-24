@@ -492,6 +492,34 @@
 			<string>Xuống sau %1$lld điểm dừng</string>
 		</dict>
 	</dict>
+	<key>result.trip.gps_radius_km</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>other</key>
+			<string>%1$lld km</string>
+		</dict>
+	</dict>
+	<key>result.trip.gps_too_early</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>other</key>
+			<string>Cảnh báo theo vị trí chỉ khả dụng từ %1$lld giờ trước giờ đến dự kiến: hãy đặt lại báo thức sau để thêm cảnh báo này.</string>
+		</dict>
+	</dict>
 	<key>result.trip.minutes</key>
 	<dict>
 		<key>NSStringLocalizedFormatKey</key>

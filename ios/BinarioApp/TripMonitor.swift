@@ -9,7 +9,8 @@ import ActivityKit
 
 /// Android's trip notifications and alarms on the iPhone (notifications/ in the Android app): the followed trip as a
 /// Live Activity with «Aggiorna» and «Interrompi», the stop alarms, «Avvisami quando sta arrivando», the new notices of
-/// the trains with the bell, the commuter alerts with the train's status, and the position during the trip.
+/// the trains with the bell, the commuter alerts with the train's status, the position during the trip and the GPS stop
+/// alarm, whose circle iOS watches (GpsStopAlarmNotifier.swift).
 ///
 /// Android runs these checks with WorkManager. Here they run every 30 seconds while the app is in the foreground and,
 /// when iOS grants it, in the app's one background refresh task (EveningAlerts.swift), with the same rules
@@ -21,6 +22,8 @@ final class TripMonitor: ObservableObject {
 
     @Published private(set) var followedTrip: FollowedTrip?
     @Published private(set) var stopAlarms: [StopAlarmPlan] = []
+    /// The GPS stop alarm iOS watches (GpsStopAlarmNotifier.swift), one at a time as on Android.
+    @Published private(set) var gpsAlarm: GpsStopAlarm?
     @Published private(set) var approachAlerts: [ApproachAlert] = []
     @Published private(set) var trainAlertsEnabled = false
     @Published private(set) var trainAlertSubscriptions: [TrainAlertSubscription] = []
@@ -35,6 +38,8 @@ final class TripMonitor: ObservableObject {
     private weak var model: AppModel?
     private let store = TripAlertsStore()
     private let location: TripLocationSession
+    /// Made on the first GPS alarm only: no location manager exists before the user turns one on.
+    private lazy var gpsAuthorization = GpsStopAlarmAuthorization()
     /// The runs the last refresh read, in memory only: the position repaints the Live Activity without asking again.
     private var lastRuns: (tripID: String, runs: [LiveRunStatus?], at: Date)?
     private var loop: Task<Void, Never>?
@@ -47,6 +52,7 @@ final class TripMonitor: ObservableObject {
         location = TripLocationSession()
         followedTrip = store.followedTrip
         stopAlarms = store.stopAlarms
+        gpsAlarm = store.gpsAlarm
         approachAlerts = store.approachAlerts
         trainAlertsEnabled = store.trainAlertsEnabled
         trainAlertSubscriptions = store.trainAlertSubscriptions
@@ -111,6 +117,7 @@ final class TripMonitor: ObservableObject {
         await checkTrainAlerts(now: now)
         await planCommuterAlerts(now: now)
         cleanStopAlarms(now: now)
+        await cleanGpsAlarm(now: now)
     }
 
     private var liveData: (any LiveRailProviding)? { model?.tripLiveData }
@@ -423,6 +430,59 @@ final class TripMonitor: ObservableObject {
         stopAlarms = kept
     }
 
+    // MARK: GPS stop alarm
+
+    enum GpsAlarmOutcome {
+        case set
+        case denied
+        case preciseRequired
+        case failed
+    }
+
+    /// The radius to offer for a train class: the one last chosen, else the class default.
+    func gpsRadius(for trainClass: GpsAlarmTrainClass) -> Int {
+        GpsStopAlarmPolicy.initialRadiusMeters(trainClass, remembered: store.gpsAlarmRadii[trainClass.rawValue])
+    }
+
+    /// «Avvisami anche in base alla posizione», after the time alarm of the same stop: the precise When-In-Use
+    /// authorization is asked now, then iOS gets the circle and replaces any other GPS alarm.
+    func setGpsAlarm(_ alarm: GpsStopAlarm, trainClass: GpsAlarmTrainClass) async -> GpsAlarmOutcome {
+        var radii = store.gpsAlarmRadii
+        radii[trainClass.rawValue] = alarm.radiusMeters
+        store.gpsAlarmRadii = radii
+        switch await gpsAuthorization.authorize() {
+        case .denied: return .denied
+        case .preciseRequired: return .preciseRequired
+        case .allowed: break
+        }
+        GpsStopAlarmNotifier.remove()
+        guard await GpsStopAlarmNotifier.schedule(alarm) else {
+            store.gpsAlarm = nil
+            gpsAlarm = nil
+            return .failed
+        }
+        store.gpsAlarm = alarm
+        gpsAlarm = alarm
+        return .set
+    }
+
+    /// «Disattiva sveglia GPS»: the time alarm of the stop stays.
+    func cancelGpsAlarm() {
+        GpsStopAlarmNotifier.remove()
+        store.gpsAlarm = nil
+        gpsAlarm = nil
+    }
+
+    /// The alarm ends when iOS showed it, or two hours after the arrival (iOS keeps the circle until the app removes it).
+    private func cleanGpsAlarm(now: Date) async {
+        guard let alarm = store.gpsAlarm else { return }
+        let pending = await GpsStopAlarmNotifier.isPending()
+        guard !pending || GpsStopAlarmPolicy.isExpired(alarm, now: now), store.gpsAlarm == alarm else { return }
+        GpsStopAlarmNotifier.remove()
+        store.gpsAlarm = nil
+        gpsAlarm = nil
+    }
+
     // MARK: «Avvisami quando sta arrivando»
 
     func approachAlert(for number: String) -> ApproachAlert? {
@@ -715,11 +775,12 @@ final class TripMonitor: ObservableObject {
 enum TripBackgroundSchedule {
     static func nextRunAt(_ now: Date) -> Date? {
         let next = dates(now)
-        return [next.followed, next.approach, next.trainAlerts, next.commuter].compactMap { $0 }.min()
+        return [next.followed, next.approach, next.trainAlerts, next.commuter, next.gpsAlarmEnd].compactMap { $0 }.min()
     }
 
-    /// The next time each trip check is due («Attività in background» lists them one by one).
-    static func dates(_ now: Date) -> (followed: Date?, approach: Date?, trainAlerts: Date?, commuter: Date?) {
+    /// The next time each trip check is due («Attività in background» lists them one by one), and the end of the GPS
+    /// stop alarm, when the run removes the circle iOS watches.
+    static func dates(_ now: Date) -> (followed: Date?, approach: Date?, trainAlerts: Date?, commuter: Date?, gpsAlarmEnd: Date?) {
         let store = TripAlertsStore()
         var followed: Date?
         if store.followedTrip != nil, let next = store.followedState.nextRefreshAt { followed = max(next, now) }
@@ -742,6 +803,6 @@ enum TripBackgroundSchedule {
         for alert in store.commuterAlerts {
             if case let .at(trigger) = CommuterAlertPlanner.nextTrigger(alert, now: now) { commuter.append(max(trigger.addingTimeInterval(-45 * 60), now)) }
         }
-        return (followed, approach.min(), trainAlerts, commuter.min())
+        return (followed, approach.min(), trainAlerts, commuter.min(), store.gpsAlarm.map { max($0.expiresAt, now) })
     }
 }

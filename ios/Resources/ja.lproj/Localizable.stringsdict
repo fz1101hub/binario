@@ -492,6 +492,34 @@
 			<string>あと %1$lld 駅で下車</string>
 		</dict>
 	</dict>
+	<key>result.trip.gps_radius_km</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>other</key>
+			<string>%1$lld km</string>
+		</dict>
+	</dict>
+	<key>result.trip.gps_too_early</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>other</key>
+			<string>位置情報による通知は到着見込みの %1$lld 時間前から利用できます。追加するには後でもう一度アラームを設定してください。</string>
+		</dict>
+	</dict>
 	<key>result.trip.minutes</key>
 	<dict>
 		<key>NSStringLocalizedFormatKey</key>

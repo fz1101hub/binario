@@ -2,4 +2,4 @@
 "Tratta attiva" = "Ruta activa";
 "Prossime partenze" = "Próximas salidas";
 "Ricerca treno" = "Buscar tren";
-"NSLocationWhenInUseUsageDescription" = "Binario usa tu ubicación cuando pides la estación más cercana y, si activas la estimación desde tu posición, durante el viaje que sigues con la app abierta. La ubicación se queda en el teléfono: no se guarda ni se envía.";
+"NSLocationWhenInUseUsageDescription" = "Binario usa tu ubicación cuando pides la estación más cercana y, si activas la estimación desde tu posición, durante el viaje que sigues con la app abierta. Para la alarma GPS, si la activas, es iOS quien comprueba cuándo entras en la zona de la parada, incluso con la app cerrada: Binario no recibe tu ubicación. La ubicación se queda en el teléfono: no se guarda ni se envía.";

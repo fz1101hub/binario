@@ -1,6 +1,6 @@
 {
   "schema": "binario-shared-data-v1",
-  "description": "The trip notifications and alarms: the stop alarm, the followed trip (Android's ongoing notification, the iPhone's Live Activity) with its stop countdown, «Avvisami quando sta arrivando», the commuter alerts, the new notices of the trains with the bell and the position estimate during the trip. Leads, windows, cadences, tolerances and limits; the quiet hours (22-7) are those of evening-alerts-v1.json.",
+  "description": "The trip notifications and alarms: the stop alarm, the followed trip (Android's ongoing notification, the iPhone's Live Activity) with its stop countdown, «Avvisami quando sta arrivando», the commuter alerts, the new notices of the trains with the bell, the GPS stop alarm (its radius choices and the default radius of regional and long-distance trains) and the position estimate during the trip. Leads, windows, cadences, tolerances and limits; the quiet hours (22-7) are those of evening-alerts-v1.json.",
   "stopAlarmLeadMinutes": 5,
   "stopAlarmMaximumAlarms": 8,
   "stopAlarmKeepAfterArrivalMinutes": 120,
@@ -33,6 +33,9 @@
   "trainAlertsMaximumSubscriptions": 16,
   "trainAlertsMaximumSeen": 400,
   "trainAlertsSeenRetentionDays": 7,
+  "gpsAlarmRadiusOptionsMeters": [1000, 2000, 3000, 5000, 10000, 15000, 20000, 25000],
+  "gpsAlarmRegionalDefaultRadiusMeters": 2000,
+  "gpsAlarmLongDistanceDefaultRadiusMeters": 20000,
   "positionMaximumAccuracyMeters": 200,
   "positionMaximumFixAgeSeconds": 120,
   "positionOffRouteMeters": 1500,

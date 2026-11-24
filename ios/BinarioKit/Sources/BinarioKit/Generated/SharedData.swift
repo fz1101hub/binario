@@ -1697,9 +1697,9 @@ public enum SharedData {
 
     /// contracts/shared-data/v1/trip-alerts-v1.json: The trip notifications and alarms: the stop alarm, the followed
     /// trip (Android's ongoing notification, the iPhone's Live Activity) with its stop countdown, «Avvisami quando sta
-    /// arrivando», the commuter alerts, the new notices of the trains with the bell and the position estimate during
-    /// the trip. Leads, windows, cadences, tolerances and limits; the quiet hours (22-7) are those of
-    /// evening-alerts-v1.json.
+    /// arrivando», the commuter alerts, the new notices of the trains with the bell, the GPS stop alarm (its radius
+    /// choices and the default radius of regional and long-distance trains) and the position estimate during the trip.
+    /// Leads, windows, cadences, tolerances and limits; the quiet hours (22-7) are those of evening-alerts-v1.json.
     public enum TripAlerts {
         public static let stopAlarmLeadMinutes: Int = 5
         public static let stopAlarmMaximumAlarms: Int = 8
@@ -1733,6 +1733,9 @@ public enum SharedData {
         public static let trainAlertsMaximumSubscriptions: Int = 16
         public static let trainAlertsMaximumSeen: Int = 400
         public static let trainAlertsSeenRetentionDays: Int = 7
+        public static let gpsAlarmRadiusOptionsMeters: [Int] = [1000, 2000, 3000, 5000, 10000, 15000, 20000, 25000]
+        public static let gpsAlarmRegionalDefaultRadiusMeters: Int = 2000
+        public static let gpsAlarmLongDistanceDefaultRadiusMeters: Int = 20000
         public static let positionMaximumAccuracyMeters: Int = 200
         public static let positionMaximumFixAgeSeconds: Double = 120
         public static let positionOffRouteMeters: Int = 1500

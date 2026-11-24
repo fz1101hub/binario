@@ -22,6 +22,8 @@ struct TripAlertsSection: View {
     let liveRun: LiveRunStatus?
 
     @State private var feedback: String?
+    /// The stop whose alarm options are open (Android's `StopAlarmOptionsDialog`).
+    @State private var alarmChoice: StopAlarmChoice?
 
     var body: some View {
         if service.hasTrainNumber {
@@ -37,6 +39,13 @@ struct TripAlertsSection: View {
                 }
             } header: {
                 Text("settings.alerts.live_title")
+            }
+            .sheet(item: $alarmChoice) { choice in
+                StopAlarmOptionsSheet(choice: choice, replacing: trips.gpsAlarm.flatMap { alarm -> String? in
+                    alarm.isFor(trainNumber: choice.run.number, station: choice.stop.stationName) ? nil : alarm.station
+                }) { useLocation, radius in
+                    Task { await setStopAlarm(choice, useLocation: useLocation, radius: radius) }
+                }
             }
         }
     }
@@ -133,7 +142,7 @@ struct TripAlertsSection: View {
                 ForEach(futureStops.indices, id: \.self) { index in
                     let stop = futureStops[index]
                     Button {
-                        Task { await setStopAlarm(run: run, stop: stop) }
+                        alarmChoice = choice(run: run, stop: stop)
                     } label: {
                         Text(verbatim: "\(stop.stationName) · \(TripTime.clock(stop.expected))")
                     }
@@ -149,18 +158,46 @@ struct TripAlertsSection: View {
         ForEach(trips.stopAlarms.filter { TrainAlertWatch.key($0.trainNumber) == TrainAlertWatch.key(service.number) }, id: \.station) { plan in
             StopAlarmRow(plan: plan)
         }
+        if let alarm = trips.gpsAlarm, TrainAlertWatch.key(alarm.trainNumber) == TrainAlertWatch.key(service.number) {
+            GpsStopAlarmRow(alarm: alarm) { feedback = TripTexts.format("result.trip.gps_ended_cancelled", alarm.station) }
+        }
     }
 
-    private func setStopAlarm(run: LiveRunStatus, stop: LiveStopStatus) async {
+    /// The options of a stop: the stop's catalogue coordinates, the train class and the radius to offer.
+    private func choice(run: LiveRunStatus, stop: LiveStopStatus) -> StopAlarmChoice {
+        let trainClass = GpsStopAlarmPolicy.trainClass(TrainTypeGroups.group(of: service))
+        let coordinates = model.tripCoordinates(stop.stationName)
+        return StopAlarmChoice(
+            run: run, stop: stop, trainClass: trainClass, latitude: coordinates?.latitude, longitude: coordinates?.longitude,
+            availability: GpsStopAlarmPolicy.availability(now: Date(), arrival: stop.expected, hasCoordinates: coordinates != nil),
+            initialRadius: trips.gpsRadius(for: trainClass)
+        )
+    }
+
+    /// The time alarm first, as on Android; then, when chosen, the GPS alarm and its location authorization.
+    private func setStopAlarm(_ choice: StopAlarmChoice, useLocation: Bool, radius: Int) async {
         guard await TripPermission.ensure() else {
             feedback = TripTexts.text("result.trip.stop_alarm_permission")
             return
         }
-        if let plan = await trips.setStopAlarm(run: run, stop: stop) {
-            feedback = TripTexts.format("result.trip.stop_alarm_set", TripTime.clock(plan.triggerAt), plan.expectedTime)
-        } else {
+        guard let plan = await trips.setStopAlarm(run: choice.run, stop: choice.stop) else {
             feedback = TripTexts.text("result.trip.stop_alarm_unavailable")
+            return
         }
+        var lines = [TripTexts.format("result.trip.stop_alarm_set", TripTime.clock(plan.triggerAt), plan.expectedTime)]
+        if useLocation, choice.locationAvailable, let latitude = choice.latitude, let longitude = choice.longitude {
+            if let alarm = GpsStopAlarmPolicy.alarm(for: plan, latitude: latitude, longitude: longitude, radiusMeters: radius, now: Date()) {
+                switch await trips.setGpsAlarm(alarm, trainClass: choice.trainClass) {
+                case .set: lines.append(TripTexts.format("result.trip.gps_active_title", plan.station))
+                case .denied: lines.append(TripTexts.text("result.trip.gps_denied"))
+                case .preciseRequired: lines.append(TripTexts.text("result.trip.gps_precise"))
+                case .failed: lines.append(TripTexts.format("result.trip.gps_failed", plan.station))
+                }
+            } else {
+                lines.append(GpsStopAlarmTexts.tooEarly())
+            }
+        }
+        feedback = lines.joined(separator: "\n")
     }
 
     // MARK: New notices (the bell)
@@ -312,6 +349,7 @@ struct TripAlertsSettingsSection: View {
     @EnvironmentObject private var trips: TripMonitor
     @State private var editing = false
     @State private var feedback: String?
+    @State private var gpsMessage: String?
 
     var body: some View {
         Section {
@@ -327,6 +365,13 @@ struct TripAlertsSettingsSection: View {
                 ForEach(trips.stopAlarms, id: \.triggerAt) { plan in
                     StopAlarmRow(plan: plan)
                 }
+            }
+            if let alarm = trips.gpsAlarm {
+                GpsStopAlarmRow(alarm: alarm) { gpsMessage = TripTexts.format("result.trip.gps_ended_cancelled", alarm.station) }
+            }
+            if let gpsMessage {
+                Text(verbatim: gpsMessage)
+                    .font(.footnote)
             }
             Text("settings.alerts.commuter_title")
                 .font(.subheadline.weight(.semibold))
@@ -489,5 +534,126 @@ private struct CommuterAlertEditor: View {
         )
         saved(await trips.saveCommuterAlert(alert))
         dismiss()
+    }
+}
+
+/// A stop chosen for the alarm, with what the GPS option needs (Android's `StopAlarmOffer`).
+struct StopAlarmChoice: Identifiable {
+    let run: LiveRunStatus
+    let stop: LiveStopStatus
+    let trainClass: GpsAlarmTrainClass
+    /// The stop's coordinates in the bundled catalogue, when it has them.
+    let latitude: Double?
+    let longitude: Double?
+    let availability: GpsAlarmAvailability
+    let initialRadius: Int
+
+    var id: String { "\(run.number)|\(stop.stationName)|\(stop.expected.timeIntervalSince1970)" }
+
+    var locationAvailable: Bool { latitude != nil && longitude != nil && availability == .available }
+}
+
+/// Android's `StopAlarmOptionsDialog`: the time alarm is always set; the GPS part is an explicit choice whose texts
+/// are also the explanation shown before iOS asks for the position.
+struct StopAlarmOptionsSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    let choice: StopAlarmChoice
+    /// The stop of another active GPS alarm, which this one would replace.
+    let replacing: String?
+    let onConfirm: (Bool, Int) -> Void
+    @State private var useLocation = false
+    @State private var radius: Int
+
+    init(choice: StopAlarmChoice, replacing: String?, onConfirm: @escaping (Bool, Int) -> Void) {
+        self.choice = choice
+        self.replacing = replacing
+        self.onConfirm = onConfirm
+        _radius = State(initialValue: choice.initialRadius)
+    }
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section {
+                    Text(verbatim: TripTexts.format("result.trip.stop_alarm_dialog_time", TripTime.clock(choice.stop.expected)))
+                }
+                Section {
+                    Toggle(isOn: $useLocation) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("result.trip.gps_option")
+                            Text("result.trip.gps_option_detail")
+                                .font(.footnote)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    .disabled(!choice.locationAvailable)
+                    switch choice.availability {
+                    case .noCoordinates:
+                        note(TripTexts.text("result.trip.gps_no_coordinates"))
+                    case .tooEarly:
+                        note(GpsStopAlarmTexts.tooEarly())
+                    case .available:
+                        EmptyView()
+                    }
+                    if useLocation, choice.locationAvailable {
+                        Picker("result.trip.gps_radius_label", selection: $radius) {
+                            ForEach(GpsStopAlarmPolicy.radiusOptionsMeters, id: \.self) { option in
+                                Text(verbatim: GpsStopAlarmTexts.radius(option)).tag(option)
+                            }
+                        }
+                        note(TripTexts.text("result.trip.gps_high_speed_hint"))
+                        note(TripTexts.text("result.trip.gps_privacy"))
+                        note(TripTexts.text("result.trip.gps_end_note"))
+                        if let replacing {
+                            note(TripTexts.format("result.trip.gps_replaces", replacing))
+                        }
+                    }
+                }
+            }
+            .navigationTitle(Text(verbatim: TripTexts.format("result.trip.stop_alarm_dialog_title", choice.stop.stationName)))
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("action.cancel") { dismiss() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("result.trip.set_stop_alarm") {
+                        onConfirm(useLocation && choice.locationAvailable, radius)
+                        dismiss()
+                    }
+                }
+            }
+        }
+    }
+
+    private func note(_ text: String) -> some View {
+        Text(verbatim: text)
+            .font(.footnote)
+            .foregroundStyle(.secondary)
+    }
+}
+
+/// The active GPS stop alarm with «Disattiva sveglia GPS» (Android's `GpsArrivalAlarmPanel`).
+struct GpsStopAlarmRow: View {
+    @EnvironmentObject private var trips: TripMonitor
+    let alarm: GpsStopAlarm
+    let onCancelled: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(verbatim: TripTexts.format("result.trip.gps_active_title", alarm.station))
+                .font(.subheadline.weight(.semibold))
+            Text(verbatim: TripTexts.format("result.trip.gps_active_note", GpsStopAlarmTexts.radius(alarm.radiusMeters)))
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+            Text("result.trip.gps_end_note")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+            Button("result.trip.gps_stop") {
+                trips.cancelGpsAlarm()
+                onCancelled()
+            }
+            .buttonStyle(.bordered)
+        }
     }
 }

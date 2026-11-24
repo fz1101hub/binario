@@ -492,6 +492,34 @@
 			<string>Turun dalam %1$lld pemberhentian</string>
 		</dict>
 	</dict>
+	<key>result.trip.gps_radius_km</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>other</key>
+			<string>%1$lld km</string>
+		</dict>
+	</dict>
+	<key>result.trip.gps_too_early</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>other</key>
+			<string>Peringatan berbasis lokasi baru tersedia mulai %1$lld jam sebelum perkiraan kedatangan: setel alarm lagi nanti untuk menambahkannya.</string>
+		</dict>
+	</dict>
 	<key>result.trip.minutes</key>
 	<dict>
 		<key>NSStringLocalizedFormatKey</key>

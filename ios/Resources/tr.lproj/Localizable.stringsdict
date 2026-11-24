@@ -562,6 +562,38 @@
 			<string>%1$lld durak sonra inin</string>
 		</dict>
 	</dict>
+	<key>result.trip.gps_radius_km</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%1$lld km</string>
+			<key>other</key>
+			<string>%1$lld km</string>
+		</dict>
+	</dict>
+	<key>result.trip.gps_too_early</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>Konuma dayalı uyarı yalnızca tahmini varıştan %1$lld saat önce kullanılabilir: eklemek için alarmı daha sonra yeniden kurun.</string>
+			<key>other</key>
+			<string>Konuma dayalı uyarı yalnızca tahmini varıştan %1$lld saat önce kullanılabilir: eklemek için alarmı daha sonra yeniden kurun.</string>
+		</dict>
+	</dict>
 	<key>result.trip.minutes</key>
 	<dict>
 		<key>NSStringLocalizedFormatKey</key>

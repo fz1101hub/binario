@@ -1706,9 +1706,9 @@ internal object SharedData {
     /**
      * contracts/shared-data/v1/trip-alerts-v1.json: The trip notifications and alarms: the stop alarm, the followed
      * trip (Android's ongoing notification, the iPhone's Live Activity) with its stop countdown, «Avvisami quando sta
-     * arrivando», the commuter alerts, the new notices of the trains with the bell and the position estimate during the
-     * trip. Leads, windows, cadences, tolerances and limits; the quiet hours (22-7) are those of
-     * evening-alerts-v1.json.
+     * arrivando», the commuter alerts, the new notices of the trains with the bell, the GPS stop alarm (its radius
+     * choices and the default radius of regional and long-distance trains) and the position estimate during the trip.
+     * Leads, windows, cadences, tolerances and limits; the quiet hours (22-7) are those of evening-alerts-v1.json.
      */
     object TripAlerts {
         const val STOP_ALARM_LEAD_MINUTES: Int = 5
@@ -1743,6 +1743,9 @@ internal object SharedData {
         const val TRAIN_ALERTS_MAXIMUM_SUBSCRIPTIONS: Int = 16
         const val TRAIN_ALERTS_MAXIMUM_SEEN: Int = 400
         const val TRAIN_ALERTS_SEEN_RETENTION_DAYS: Int = 7
+        val GPS_ALARM_RADIUS_OPTIONS_METERS: List<Int> = listOf(1000, 2000, 3000, 5000, 10000, 15000, 20000, 25000)
+        const val GPS_ALARM_REGIONAL_DEFAULT_RADIUS_METERS: Int = 2000
+        const val GPS_ALARM_LONG_DISTANCE_DEFAULT_RADIUS_METERS: Int = 20000
         const val POSITION_MAXIMUM_ACCURACY_METERS: Int = 200
         const val POSITION_MAXIMUM_FIX_AGE_SECONDS: Int = 120
         const val POSITION_OFF_ROUTE_METERS: Int = 1500

@@ -2,4 +2,4 @@
 "Tratta attiva" = "Etkin güzergâh";
 "Prossime partenze" = "Sonraki kalkışlar";
 "Ricerca treno" = "Tren arama";
-"NSLocationWhenInUseUsageDescription" = "Binario, en yakın istasyonu sorduğunuzda ve konumunuzdan tahmini açtıysanız uygulama açıkken takip ettiğiniz yolculuk sırasında konumunuzu kullanır. Konum telefonda kalır: kaydedilmez ve gönderilmez.";
+"NSLocationWhenInUseUsageDescription" = "Binario, en yakın istasyonu sorduğunuzda ve konumunuzdan tahmini açtıysanız uygulama açıkken takip ettiğiniz yolculuk sırasında konumunuzu kullanır. GPS alarmını açarsanız, durağın alanına girip girmediğinizi uygulama kapalıyken bile iOS’in kendisi denetler: Binario konumunuzu almaz. Konum telefonda kalır: kaydedilmez ve gönderilmez.";

@@ -52,9 +52,10 @@ internal sealed interface GpsFixDecision {
  * decisions.
  */
 internal object GpsArrivalAlarmPolicy {
-    val RADIUS_OPTIONS_METERS: List<Int> = listOf(1_000, 2_000, 3_000, 5_000, 10_000, 15_000, 20_000, 25_000)
-    const val REGIONAL_DEFAULT_RADIUS_METERS = 2_000
-    const val LONG_DISTANCE_DEFAULT_RADIUS_METERS = 20_000
+    /** The radius choices and defaults, shared with the iPhone (contracts/shared-data/v1/trip-alerts-v1.json). */
+    val RADIUS_OPTIONS_METERS: List<Int> = SharedData.TripAlerts.GPS_ALARM_RADIUS_OPTIONS_METERS
+    const val REGIONAL_DEFAULT_RADIUS_METERS = SharedData.TripAlerts.GPS_ALARM_REGIONAL_DEFAULT_RADIUS_METERS
+    const val LONG_DISTANCE_DEFAULT_RADIUS_METERS = SharedData.TripAlerts.GPS_ALARM_LONG_DISTANCE_DEFAULT_RADIUS_METERS
 
     /**
      * Added to the chosen radius when only approximate location is granted: Android then serves

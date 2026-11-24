@@ -492,6 +492,34 @@
 			<string>%1$lld개 정차역 뒤 하차</string>
 		</dict>
 	</dict>
+	<key>result.trip.gps_radius_km</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>other</key>
+			<string>%1$lld km</string>
+		</dict>
+	</dict>
+	<key>result.trip.gps_too_early</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>other</key>
+			<string>위치 기반 알림은 도착 예정 %1$lld시간 전부터만 이용할 수 있습니다. 나중에 알람을 다시 설정하여 추가하세요.</string>
+		</dict>
+	</dict>
 	<key>result.trip.minutes</key>
 	<dict>
 		<key>NSStringLocalizedFormatKey</key>

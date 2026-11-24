@@ -3,8 +3,9 @@ import UserNotifications
 import BinarioKit
 
 /// What the trip notifications and alarms keep, in the app's `UserDefaults` on this iPhone only (Android's
-/// preferences of the same features): the followed trip and what its last refresh showed, the stop alarms, the
-/// approach alerts and their day, the bells, the notices already seen, the commuter alerts. Nothing is sent.
+/// preferences of the same features): the followed trip and what its last refresh showed, the stop alarms and the GPS
+/// stop alarm, the approach alerts and their day, the bells, the notices already seen, the commuter alerts. Nothing is
+/// sent.
 final class TripAlertsStore: @unchecked Sendable {
     private let defaults: UserDefaults
 
@@ -53,6 +54,18 @@ final class TripAlertsStore: @unchecked Sendable {
     var stopAlarms: [StopAlarmPlan] {
         get { value(Keys.stopAlarms) ?? [] }
         set { store(newValue, Keys.stopAlarms) }
+    }
+
+    /// The one GPS stop alarm iOS watches (GpsStopAlarm.swift): the stop's catalogue coordinates and radius, never a position.
+    var gpsAlarm: GpsStopAlarm? {
+        get { value(Keys.gpsAlarm) }
+        set { store(newValue, Keys.gpsAlarm) }
+    }
+
+    /// The radius last chosen for each train class (Android's `GpsArrivalAlarmStore.rememberRadius`).
+    var gpsAlarmRadii: [String: Int] {
+        get { value(Keys.gpsAlarmRadii) ?? [:] }
+        set { store(newValue, Keys.gpsAlarmRadii) }
     }
 
     var approachAlerts: [ApproachAlert] {
@@ -106,6 +119,8 @@ final class TripAlertsStore: @unchecked Sendable {
         static let followedTrip = "it.binario.ios.trip.followed.v1"
         static let followedState = "it.binario.ios.trip.followed-state.v1"
         static let stopAlarms = "it.binario.ios.trip.stop-alarms.v1"
+        static let gpsAlarm = "it.binario.ios.trip.gps-alarm.v1"
+        static let gpsAlarmRadii = "it.binario.ios.trip.gps-alarm-radius.v1"
         static let approachAlerts = "it.binario.ios.trip.approach-alerts.v1"
         static let approachStates = "it.binario.ios.trip.approach-states.v1"
         static let trainAlertsEnabled = "it.binario.ios.trip.train-alerts-enabled.v1"

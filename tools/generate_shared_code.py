@@ -595,6 +595,12 @@ def _check_trip_alerts(values: Mapping[str, Any]) -> list[str]:
         problems.append("commuterLeadOptionsMinutes non in ordine crescente")
     if values["followedTripMinimumRefreshMinutes"] > values["followedTripRefreshMinutes"]:
         problems.append("followedTripMinimumRefreshMinutes maggiore di followedTripRefreshMinutes")
+    radii = values["gpsAlarmRadiusOptionsMeters"]
+    if radii != sorted(set(radii)):
+        problems.append("gpsAlarmRadiusOptionsMeters non in ordine crescente o con doppioni")
+    for key in ("gpsAlarmRegionalDefaultRadiusMeters", "gpsAlarmLongDistanceDefaultRadiusMeters"):
+        if values[key] not in radii:
+            problems.append(f"{key} fuori da gpsAlarmRadiusOptionsMeters")
     if values["positionDwellRadiusMeters"] > values["positionOffRouteMeters"]:
         problems.append("positionDwellRadiusMeters maggiore di positionOffRouteMeters")
     if values["estimateFreshSeconds"] > values["positionFreshSeconds"]:
@@ -1459,6 +1465,9 @@ TABLES: tuple[Table, ...] = (
         "trainAlertsMaximumSubscriptions": Field(Integer(1, 64)),
         "trainAlertsMaximumSeen": Field(Integer(1, 10_000)),
         "trainAlertsSeenRetentionDays": Field(Integer(1, 365)),
+        "gpsAlarmRadiusOptionsMeters": Field(ListOf(Integer(100, 100_000))),
+        "gpsAlarmRegionalDefaultRadiusMeters": Field(Integer(100, 100_000)),
+        "gpsAlarmLongDistanceDefaultRadiusMeters": Field(Integer(100, 100_000)),
         "positionMaximumAccuracyMeters": Field(Integer(1, 10_000)),
         "positionMaximumFixAgeSeconds": Field(Seconds(1)),
         "positionOffRouteMeters": Field(Integer(1, 100_000)),
