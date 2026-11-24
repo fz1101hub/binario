@@ -541,3 +541,8 @@
 "notices.train.trenord_heading" = "Thông báo của Trenord trên tuyến";
 "notices.train.published_at" = "Đăng lúc: %1$@";
 "notices.retry" = "Thử lại";
+"app.widget_nearest.title" = "Ga gần nhất";
+"app.widget_nearest.locating" = "Đang tìm ga gần nhất…";
+"app.widget_nearest.denied" = "Chưa cấp quyền vị trí: tiện ích vẫn ở %1$@.";
+"app.widget_nearest.unavailable" = "Không xác định được vị trí: tiện ích vẫn ở %1$@.";
+"app.widget_nearest.none" = "Không có ga nào trong danh mục trong phạm vi 50 km: tiện ích vẫn ở %1$@.";

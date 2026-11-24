@@ -46,6 +46,8 @@ struct RootView: View {
             }
         }
         .task { await expireLiveValues() }
+        // A tap on a home-screen widget (ios/BinarioWidgets).
+        .modifier(WidgetLinkHandler())
         // The Home-screen quick action «Agenda», at launch or later.
         .onAppear { openAgendaIfAsked() }
         .onReceive(NotificationCenter.default.publisher(for: AgendaQuickAction.notification)) { _ in

@@ -541,3 +541,8 @@
 "notices.train.trenord_heading" = "Trenord-Hinweise zur Linie";
 "notices.train.published_at" = "Veröffentlicht: %1$@";
 "notices.retry" = "Erneut versuchen";
+"app.widget_nearest.title" = "Nächster Bahnhof";
+"app.widget_nearest.locating" = "Suche den nächsten Bahnhof …";
+"app.widget_nearest.denied" = "Standortberechtigung nicht erteilt: Das Widget bleibt bei %1$@.";
+"app.widget_nearest.unavailable" = "Standort nicht verfügbar: Das Widget bleibt bei %1$@.";
+"app.widget_nearest.none" = "Kein Bahnhof des Katalogs im Umkreis von 50 km: Das Widget bleibt bei %1$@.";

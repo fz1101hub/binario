@@ -541,3 +541,8 @@
 "notices.train.trenord_heading" = "Trenord notices on the line";
 "notices.train.published_at" = "Published: %1$@";
 "notices.retry" = "Try again";
+"app.widget_nearest.title" = "Nearest station";
+"app.widget_nearest.locating" = "Looking for the nearest station…";
+"app.widget_nearest.denied" = "Location permission not granted: the widget stays on %1$@.";
+"app.widget_nearest.unavailable" = "Location unavailable: the widget stays on %1$@.";
+"app.widget_nearest.none" = "No catalogue station within 50 km: the widget stays on %1$@.";

@@ -65,12 +65,10 @@
 "widgets.action.next" = "显示后五个车次";
 "widgets.action.trains_previous" = "上一页列车";
 "widgets.action.trains_next" = "下一页列车";
-"widgets.action.open" = "打开 Binario";
 "widgets.column.time" = "时间";
 "widgets.column.destination" = "终点 / 车次";
 "widgets.column.platform" = "站台";
 "widgets.column.status" = "状态";
-"widgets.column.train" = "车次";
 "widgets.symbol.refresh" = "↻";
 "widgets.symbol.previous" = "‹";
 "widgets.symbol.next" = "›";

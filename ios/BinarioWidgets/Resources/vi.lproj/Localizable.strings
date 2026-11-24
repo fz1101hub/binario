@@ -65,12 +65,10 @@
 "widgets.action.next" = "Hiển thị năm chuyến tiếp theo";
 "widgets.action.trains_previous" = "Các tàu trước";
 "widgets.action.trains_next" = "Các tàu tiếp theo";
-"widgets.action.open" = "Mở Binario";
 "widgets.column.time" = "GIỜ";
 "widgets.column.destination" = "GA ĐẾN / TÀU";
 "widgets.column.platform" = "SÂN GA";
 "widgets.column.status" = "TRẠNG THÁI";
-"widgets.column.train" = "TÀU";
 "widgets.symbol.refresh" = "↻";
 "widgets.symbol.previous" = "‹";
 "widgets.symbol.next" = "›";

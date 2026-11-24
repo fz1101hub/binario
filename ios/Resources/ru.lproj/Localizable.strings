@@ -541,3 +541,8 @@
 "notices.train.trenord_heading" = "Объявления Trenord по линии";
 "notices.train.published_at" = "Опубликовано: %1$@";
 "notices.retry" = "Повторить";
+"app.widget_nearest.title" = "Ближайшая станция";
+"app.widget_nearest.locating" = "Ищем ближайшую станцию…";
+"app.widget_nearest.denied" = "Доступ к местоположению не предоставлен: виджет остаётся на %1$@.";
+"app.widget_nearest.unavailable" = "Местоположение недоступно: виджет остаётся на %1$@.";
+"app.widget_nearest.none" = "В радиусе 50 км нет станций из каталога: виджет остаётся на %1$@.";

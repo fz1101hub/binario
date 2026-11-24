@@ -541,3 +541,8 @@
 "notices.train.trenord_heading" = "လမ်းကြောင်းပေါ်ရှိ Trenord ကြေညာချက်များ";
 "notices.train.published_at" = "ထုတ်ပြန်ချိန်- %1$@";
 "notices.retry" = "ထပ်စမ်းကြည့်ရန်";
+"app.widget_nearest.title" = "အနီးဆုံး ဘူတာ";
+"app.widget_nearest.locating" = "အနီးဆုံး ဘူတာကို ရှာနေသည်…";
+"app.widget_nearest.denied" = "တည်နေရာ ခွင့်ပြုချက် မရပါ- ဝစ်ဂျက်သည် %1$@ တွင် ဆက်ရှိနေမည်။";
+"app.widget_nearest.unavailable" = "တည်နေရာ မရနိုင်ပါ- ဝစ်ဂျက်သည် %1$@ တွင် ဆက်ရှိနေမည်။";
+"app.widget_nearest.none" = "50 km အတွင်း ကက်တလောက် ဘူတာ မရှိပါ- ဝစ်ဂျက်သည် %1$@ တွင် ဆက်ရှိနေမည်။";

@@ -65,12 +65,10 @@
 "widgets.action.next" = "عرض الرحلات الخمس التالية";
 "widgets.action.trains_previous" = "القطارات السابقة";
 "widgets.action.trains_next" = "القطارات التالية";
-"widgets.action.open" = "فتح Binario";
 "widgets.column.time" = "الوقت";
 "widgets.column.destination" = "الوجهة / القطار";
 "widgets.column.platform" = "رصيف";
 "widgets.column.status" = "الحالة";
-"widgets.column.train" = "القطار";
 "widgets.symbol.refresh" = "↻";
 "widgets.symbol.previous" = "‹";
 "widgets.symbol.next" = "›";

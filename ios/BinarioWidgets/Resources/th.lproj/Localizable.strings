@@ -65,12 +65,10 @@
 "widgets.action.next" = "แสดงห้าขบวนถัดไป";
 "widgets.action.trains_previous" = "ขบวนก่อนหน้า";
 "widgets.action.trains_next" = "ขบวนถัดไป";
-"widgets.action.open" = "เปิด Binario";
 "widgets.column.time" = "เวลา";
 "widgets.column.destination" = "ปลายทาง / ขบวน";
 "widgets.column.platform" = "ชานชาลา";
 "widgets.column.status" = "สถานะ";
-"widgets.column.train" = "ขบวน";
 "widgets.symbol.refresh" = "↻";
 "widgets.symbol.previous" = "‹";
 "widgets.symbol.next" = "›";

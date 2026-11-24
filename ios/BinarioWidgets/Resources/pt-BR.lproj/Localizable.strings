@@ -65,12 +65,10 @@
 "widgets.action.next" = "Mostrar os próximos cinco trens";
 "widgets.action.trains_previous" = "Trens anteriores";
 "widgets.action.trains_next" = "Próximos trens";
-"widgets.action.open" = "Abrir o Binario";
 "widgets.column.time" = "HORA";
 "widgets.column.destination" = "DESTINO / TREM";
 "widgets.column.platform" = "PLAT.";
 "widgets.column.status" = "STATUS";
-"widgets.column.train" = "TREM";
 "widgets.symbol.refresh" = "↻";
 "widgets.symbol.previous" = "‹";
 "widgets.symbol.next" = "›";

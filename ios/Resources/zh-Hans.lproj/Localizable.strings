@@ -541,3 +541,8 @@
 "notices.train.trenord_heading" = "该线路的 Trenord 公告";
 "notices.train.published_at" = "发布时间：%1$@";
 "notices.retry" = "重试";
+"app.widget_nearest.title" = "最近的车站";
+"app.widget_nearest.locating" = "正在查找最近的车站…";
+"app.widget_nearest.denied" = "未授予位置权限：小组件继续显示 %1$@。";
+"app.widget_nearest.unavailable" = "无法获取位置：小组件继续显示 %1$@。";
+"app.widget_nearest.none" = "50 公里内没有目录中的车站：小组件继续显示 %1$@。";

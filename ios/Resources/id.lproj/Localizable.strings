@@ -541,3 +541,8 @@
 "notices.train.trenord_heading" = "Pemberitahuan Trenord di lintas ini";
 "notices.train.published_at" = "Diterbitkan: %1$@";
 "notices.retry" = "Coba lagi";
+"app.widget_nearest.title" = "Stasiun terdekat";
+"app.widget_nearest.locating" = "Mencari stasiun terdekat…";
+"app.widget_nearest.denied" = "Izin lokasi tidak diberikan: widget tetap di %1$@.";
+"app.widget_nearest.unavailable" = "Lokasi tidak tersedia: widget tetap di %1$@.";
+"app.widget_nearest.none" = "Tidak ada stasiun katalog dalam 50 km: widget tetap di %1$@.";

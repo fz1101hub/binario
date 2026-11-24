@@ -65,12 +65,10 @@
 "widgets.action.next" = "次の 5 本を表示";
 "widgets.action.trains_previous" = "前の列車";
 "widgets.action.trains_next" = "次の列車";
-"widgets.action.open" = "Binario を開く";
 "widgets.column.time" = "時刻";
 "widgets.column.destination" = "行先 / 列車";
 "widgets.column.platform" = "番線";
 "widgets.column.status" = "状況";
-"widgets.column.train" = "列車";
 "widgets.symbol.refresh" = "↻";
 "widgets.symbol.previous" = "‹";
 "widgets.symbol.next" = "›";

@@ -65,12 +65,10 @@
 "widgets.action.next" = "अगली पाँच ट्रेनें दिखाएँ";
 "widgets.action.trains_previous" = "पिछली ट्रेनें";
 "widgets.action.trains_next" = "अगली ट्रेनें";
-"widgets.action.open" = "Binario खोलें";
 "widgets.column.time" = "समय";
 "widgets.column.destination" = "गंतव्य / ट्रेन";
 "widgets.column.platform" = "PF";
 "widgets.column.status" = "स्थिति";
-"widgets.column.train" = "ट्रेन";
 "widgets.symbol.refresh" = "↻";
 "widgets.symbol.previous" = "‹";
 "widgets.symbol.next" = "›";

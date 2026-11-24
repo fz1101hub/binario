@@ -541,3 +541,8 @@
 "notices.train.trenord_heading" = "노선의 Trenord 공지";
 "notices.train.published_at" = "게시: %1$@";
 "notices.retry" = "다시 시도";
+"app.widget_nearest.title" = "가장 가까운 역";
+"app.widget_nearest.locating" = "가장 가까운 역을 찾는 중…";
+"app.widget_nearest.denied" = "위치 권한이 허용되지 않아 위젯이 %1$@에 머뭅니다.";
+"app.widget_nearest.unavailable" = "위치를 이용할 수 없어 위젯이 %1$@에 머뭅니다.";
+"app.widget_nearest.none" = "50km 이내에 카탈로그 역이 없어 위젯이 %1$@에 머뭅니다.";

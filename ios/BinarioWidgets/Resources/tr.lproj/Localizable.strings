@@ -65,12 +65,10 @@
 "widgets.action.next" = "Sonraki beş seferi göster";
 "widgets.action.trains_previous" = "Önceki trenler";
 "widgets.action.trains_next" = "Sonraki trenler";
-"widgets.action.open" = "Binario\'yu aç";
 "widgets.column.time" = "SAAT";
 "widgets.column.destination" = "VARIŞ / TREN";
 "widgets.column.platform" = "PERON";
 "widgets.column.status" = "DURUM";
-"widgets.column.train" = "TREN";
 "widgets.symbol.refresh" = "↻";
 "widgets.symbol.previous" = "‹";
 "widgets.symbol.next" = "›";

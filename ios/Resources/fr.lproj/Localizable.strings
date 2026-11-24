@@ -541,3 +541,8 @@
 "notices.train.trenord_heading" = "Avis Trenord sur la ligne";
 "notices.train.published_at" = "Publié : %1$@";
 "notices.retry" = "Réessayer";
+"app.widget_nearest.title" = "Gare la plus proche";
+"app.widget_nearest.locating" = "Recherche de la gare la plus proche…";
+"app.widget_nearest.denied" = "Autorisation de localisation refusée : le widget reste sur %1$@.";
+"app.widget_nearest.unavailable" = "Position indisponible : le widget reste sur %1$@.";
+"app.widget_nearest.none" = "Aucune gare du catalogue à moins de 50 km : le widget reste sur %1$@.";

@@ -65,12 +65,10 @@
 "widgets.action.next" = "Die fünf nächsten Verbindungen anzeigen";
 "widgets.action.trains_previous" = "Vorherige Züge";
 "widgets.action.trains_next" = "Weitere Züge";
-"widgets.action.open" = "Binario öffnen";
 "widgets.column.time" = "ZEIT";
 "widgets.column.destination" = "ZIEL / ZUG";
 "widgets.column.platform" = "GL.";
 "widgets.column.status" = "STATUS";
-"widgets.column.train" = "ZUG";
 "widgets.symbol.refresh" = "↻";
 "widgets.symbol.previous" = "‹";
 "widgets.symbol.next" = "›";

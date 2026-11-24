@@ -541,3 +541,8 @@
 "notices.train.trenord_heading" = "تنبيهات Trenord على الخط";
 "notices.train.published_at" = "نُشر: %1$@";
 "notices.retry" = "إعادة المحاولة";
+"app.widget_nearest.title" = "أقرب محطة";
+"app.widget_nearest.locating" = "أبحث عن أقرب محطة…";
+"app.widget_nearest.denied" = "لم يُمنح إذن الموقع: تبقى الأداة على %1$@.";
+"app.widget_nearest.unavailable" = "الموقع غير متاح: تبقى الأداة على %1$@.";
+"app.widget_nearest.none" = "لا توجد محطة في الكتالوج ضمن 50 كم: تبقى الأداة على %1$@.";

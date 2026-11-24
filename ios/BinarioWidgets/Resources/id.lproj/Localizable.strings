@@ -65,12 +65,10 @@
 "widgets.action.next" = "Tampilkan lima perjalanan berikutnya";
 "widgets.action.trains_previous" = "Kereta sebelumnya";
 "widgets.action.trains_next" = "Kereta berikutnya";
-"widgets.action.open" = "Buka Binario";
 "widgets.column.time" = "WAKTU";
 "widgets.column.destination" = "TUJUAN / KERETA";
 "widgets.column.platform" = "PERON";
 "widgets.column.status" = "STATUS";
-"widgets.column.train" = "KERETA";
 "widgets.symbol.refresh" = "↻";
 "widgets.symbol.previous" = "‹";
 "widgets.symbol.next" = "›";

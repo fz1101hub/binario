@@ -118,12 +118,15 @@ enum WidgetSources {
 enum WidgetLinks {
     static let scheme = "binario"
 
-    static func route(origin: String, destination: String) -> URL? {
-        url("route", [URLQueryItem(name: "origin", value: origin), URLQueryItem(name: "destination", value: destination)])
+    static func route(origin: StationEntity, destination: StationEntity) -> URL? {
+        url("route", [
+            URLQueryItem(name: "origin", value: origin.id), URLQueryItem(name: "originName", value: origin.name),
+            URLQueryItem(name: "destination", value: destination.id), URLQueryItem(name: "destinationName", value: destination.name),
+        ])
     }
 
-    static func station(_ identifier: String) -> URL? {
-        url("station", [URLQueryItem(name: "id", value: identifier)])
+    static func station(_ station: StationIdentity) -> URL? {
+        url("station", [URLQueryItem(name: "id", value: station.id), URLQueryItem(name: "name", value: station.name)])
     }
 
     static func train(_ identifier: String) -> URL? {
@@ -134,8 +137,8 @@ enum WidgetLinks {
         url("trains", [])
     }
 
-    static func nearest(configuredStation identifier: String) -> URL? {
-        url("nearest", [URLQueryItem(name: "station", value: identifier)])
+    static func nearest(configuredStation station: StationEntity) -> URL? {
+        url("nearest", [URLQueryItem(name: "id", value: station.id), URLQueryItem(name: "name", value: station.name)])
     }
 
     private static func url(_ path: String, _ items: [URLQueryItem]) -> URL? {

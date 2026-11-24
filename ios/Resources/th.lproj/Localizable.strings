@@ -541,3 +541,8 @@
 "notices.train.trenord_heading" = "ประกาศของ Trenord บนสายนี้";
 "notices.train.published_at" = "เผยแพร่: %1$@";
 "notices.retry" = "ลองอีกครั้ง";
+"app.widget_nearest.title" = "สถานีที่ใกล้ที่สุด";
+"app.widget_nearest.locating" = "กำลังค้นหาสถานีที่ใกล้ที่สุด…";
+"app.widget_nearest.denied" = "ไม่ได้รับสิทธิ์เข้าถึงตำแหน่ง วิดเจ็ตยังคงแสดง %1$@";
+"app.widget_nearest.unavailable" = "ไม่ทราบตำแหน่ง วิดเจ็ตยังคงแสดง %1$@";
+"app.widget_nearest.none" = "ไม่มีสถานีในแคตตาล็อกภายใน 50 กม. วิดเจ็ตยังคงแสดง %1$@";

@@ -65,12 +65,10 @@
 "widgets.action.next" = "Показать пять следующих поездов";
 "widgets.action.trains_previous" = "Предыдущие поезда";
 "widgets.action.trains_next" = "Следующие поезда";
-"widgets.action.open" = "Открыть Binario";
 "widgets.column.time" = "ВРЕМЯ";
 "widgets.column.destination" = "КУДА / ПОЕЗД";
 "widgets.column.platform" = "ПУТЬ";
 "widgets.column.status" = "СТАТУС";
-"widgets.column.train" = "ПОЕЗД";
 "widgets.symbol.refresh" = "↻";
 "widgets.symbol.previous" = "‹";
 "widgets.symbol.next" = "›";

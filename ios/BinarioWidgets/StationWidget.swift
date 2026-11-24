@@ -189,7 +189,7 @@ struct StationWidgetView: View {
             HStack(alignment: .top, spacing: 6) {
                 WidgetHeader(title: title, updated: WidgetText.updated(snapshot?.retrievedAt), meta: meta.joined(separator: " · "))
                 Spacer(minLength: 0)
-                if settings.showNearest, family != .systemSmall, let link = WidgetLinks.nearest(configuredStation: configured.id) {
+                if settings.showNearest, family != .systemSmall, let link = WidgetLinks.nearest(configuredStation: configured) {
                     Link(destination: link) {
                         WidgetButtonLabel(
                             text: WidgetText.string("widgets.station.nearest"),
@@ -224,7 +224,7 @@ struct StationWidgetView: View {
             }
             Spacer(minLength: 0)
         }
-        .widgetURL(WidgetLinks.station(shown.id))
+        .widgetURL(WidgetLinks.station(shown))
     }
 
     static func noteText(_ note: WidgetNearestState.Note, station: String) -> String {

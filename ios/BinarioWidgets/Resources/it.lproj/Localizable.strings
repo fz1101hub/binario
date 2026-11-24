@@ -65,12 +65,10 @@
 "widgets.action.next" = "Mostra le cinque corse successive";
 "widgets.action.trains_previous" = "Treni precedenti";
 "widgets.action.trains_next" = "Treni successivi";
-"widgets.action.open" = "Apri Binario";
 "widgets.column.time" = "ORA";
 "widgets.column.destination" = "DESTINAZIONE / TRENO";
 "widgets.column.platform" = "BIN.";
 "widgets.column.status" = "STATO";
-"widgets.column.train" = "TRENO";
 "widgets.symbol.refresh" = "↻";
 "widgets.symbol.previous" = "‹";
 "widgets.symbol.next" = "›";

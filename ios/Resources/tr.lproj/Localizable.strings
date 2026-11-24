@@ -541,3 +541,8 @@
 "notices.train.trenord_heading" = "Hattaki Trenord duyuruları";
 "notices.train.published_at" = "Yayımlanma: %1$@";
 "notices.retry" = "Tekrar dene";
+"app.widget_nearest.title" = "En yakın istasyon";
+"app.widget_nearest.locating" = "En yakın istasyon aranıyor…";
+"app.widget_nearest.denied" = "Konum izni verilmedi: widget %1$@ istasyonunda kalıyor.";
+"app.widget_nearest.unavailable" = "Konum kullanılamıyor: widget %1$@ istasyonunda kalıyor.";
+"app.widget_nearest.none" = "50 km içinde katalogda istasyon yok: widget %1$@ istasyonunda kalıyor.";

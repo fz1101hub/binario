@@ -65,12 +65,10 @@
 "widgets.action.next" = "Muestra los cinco servicios siguientes";
 "widgets.action.trains_previous" = "Trenes anteriores";
 "widgets.action.trains_next" = "Trenes siguientes";
-"widgets.action.open" = "Abrir Binario";
 "widgets.column.time" = "HORA";
 "widgets.column.destination" = "DESTINO / TREN";
 "widgets.column.platform" = "AND.";
 "widgets.column.status" = "ESTADO";
-"widgets.column.train" = "TREN";
 "widgets.symbol.refresh" = "↻";
 "widgets.symbol.previous" = "‹";
 "widgets.symbol.next" = "›";

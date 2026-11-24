@@ -65,12 +65,10 @@
 "widgets.action.next" = "နောက် ရထား ငါးစီး ပြရန်";
 "widgets.action.trains_previous" = "ယခင် ရထားများ";
 "widgets.action.trains_next" = "နောက် ရထားများ";
-"widgets.action.open" = "Binario ဖွင့်ရန်";
 "widgets.column.time" = "အချိန်";
 "widgets.column.destination" = "ခရီးဆုံး / ရထား";
 "widgets.column.platform" = "ပလက်ဖောင်း";
 "widgets.column.status" = "အခြေအနေ";
-"widgets.column.train" = "ရထား";
 "widgets.symbol.refresh" = "↻";
 "widgets.symbol.previous" = "‹";
 "widgets.symbol.next" = "›";

@@ -65,12 +65,10 @@
 "widgets.action.next" = "다음 열차 5개 보기";
 "widgets.action.trains_previous" = "이전 열차";
 "widgets.action.trains_next" = "다음 열차";
-"widgets.action.open" = "Binario 열기";
 "widgets.column.time" = "시각";
 "widgets.column.destination" = "행선지 / 열차";
 "widgets.column.platform" = "승강장";
 "widgets.column.status" = "상태";
-"widgets.column.train" = "열차";
 "widgets.symbol.refresh" = "↻";
 "widgets.symbol.previous" = "‹";
 "widgets.symbol.next" = "›";

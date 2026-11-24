@@ -65,12 +65,10 @@
 "widgets.action.next" = "Afficher les cinq trajets suivants";
 "widgets.action.trains_previous" = "Trains précédents";
 "widgets.action.trains_next" = "Trains suivants";
-"widgets.action.open" = "Ouvrir Binario";
 "widgets.column.time" = "HEURE";
 "widgets.column.destination" = "DESTINATION / TRAIN";
 "widgets.column.platform" = "VOIE";
 "widgets.column.status" = "ÉTAT";
-"widgets.column.train" = "TRAIN";
 "widgets.symbol.refresh" = "↻";
 "widgets.symbol.previous" = "‹";
 "widgets.symbol.next" = "›";

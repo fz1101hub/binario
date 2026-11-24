@@ -541,3 +541,8 @@
 "notices.train.trenord_heading" = "लाइन पर Trenord की सूचनाएँ";
 "notices.train.published_at" = "प्रकाशित: %1$@";
 "notices.retry" = "फिर से कोशिश करें";
+"app.widget_nearest.title" = "सबसे पास का स्टेशन";
+"app.widget_nearest.locating" = "सबसे पास का स्टेशन खोजा जा रहा है…";
+"app.widget_nearest.denied" = "लोकेशन की अनुमति नहीं मिली: विजेट %1$@ पर ही रहता है।";
+"app.widget_nearest.unavailable" = "लोकेशन उपलब्ध नहीं: विजेट %1$@ पर ही रहता है।";
+"app.widget_nearest.none" = "50 किमी के भीतर कैटलॉग का कोई स्टेशन नहीं: विजेट %1$@ पर ही रहता है।";

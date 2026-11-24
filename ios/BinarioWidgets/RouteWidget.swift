@@ -275,7 +275,7 @@ struct RouteWidgetView: View {
                 }
             }
         }
-        .widgetURL(WidgetLinks.route(origin: from.id, destination: to.id))
+        .widgetURL(WidgetLinks.route(origin: from, destination: to))
     }
 }
 
