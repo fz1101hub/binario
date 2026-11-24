@@ -36,6 +36,12 @@ URBAN_TABLE_COLUMNS = {
     "urban_stop": ("stop_id", "modes"),
     "urban_walk": ("catalog_station_id", "stop_id", "minutes"),
 }
+# The planner's details (build_ios_gtfs_schedule.DETAIL_SCHEMA_SQL): in the base and personal indexes, never in a
+# per-country one.
+DETAIL_TABLE_COLUMNS = {
+    "trip_detail": ("trip_id", "block_id", "wheelchair_accessible"),
+    "stop_detail": ("stop_id", "place", "wheelchair_boarding"),
+}
 # The reader's bound on the city stops a walk joins to one catalogue station (SQLiteGTFSJourneyRepository.swift).
 MAX_WALKED_STOPS = 128
 # Packs whose trips must touch a catalogue station with codes: the foreign packs of the shared table
@@ -263,6 +269,41 @@ def border_zone_rules(metadata: dict[str, object], inputs: Mapping[str, Path]) -
                 for source_id, path in full_archives.items()}
     except (builder.BuildError, OSError, ValueError) as error:
         raise VerificationError(f"cannot derive the border zone stations: {error}") from error
+
+def verify_detail_tables(connection: sqlite3.Connection) -> None:
+    """The planner's details: rows only with a value, wheelchair values 1 or 2, a transfer point only for a stop no
+    catalogue station binds and named after its own pack (``<pack>:group:`` or ``<pack>:name:``), as Android's
+    PackStops keys are."""
+    empty_trips = connection.execute(
+        "SELECT count(*) FROM trip_detail WHERE block_id IS NULL AND wheelchair_accessible IS NULL"
+    ).fetchone()[0]
+    require(empty_trips == 0, "trip_detail row without a value")
+    bad_trip_values = connection.execute(
+        "SELECT count(*) FROM trip_detail WHERE wheelchair_accessible IS NOT NULL AND wheelchair_accessible NOT IN (1, 2) "
+        "OR block_id = ''"
+    ).fetchone()[0]
+    require(bad_trip_values == 0, "trip_detail value outside its domain")
+    empty_stops = connection.execute(
+        "SELECT count(*) FROM stop_detail WHERE place IS NULL AND wheelchair_boarding IS NULL"
+    ).fetchone()[0]
+    require(empty_stops == 0, "stop_detail row without a value")
+    bad_stop_values = connection.execute(
+        "SELECT count(*) FROM stop_detail WHERE wheelchair_boarding IS NOT NULL AND wheelchair_boarding NOT IN (1, 2)"
+    ).fetchone()[0]
+    require(bad_stop_values == 0, "stop_detail wheelchair_boarding outside 1, 2 or NULL")
+    bound_with_place = connection.execute(
+        "SELECT count(*) FROM stop_detail d JOIN stop s ON s.id = d.stop_id WHERE d.place IS NOT NULL AND s.catalog_station_id IS NOT NULL"
+    ).fetchone()[0]
+    require(bound_with_place == 0, "a stop bound to a catalogue station has a transfer point of its own")
+    unbound_without_place = connection.execute(
+        "SELECT count(*) FROM stop s LEFT JOIN stop_detail d ON d.stop_id = s.id WHERE s.catalog_station_id IS NULL AND d.place IS NULL"
+    ).fetchone()[0]
+    require(unbound_without_place == 0, "a stop no catalogue station binds has no transfer point")
+    foreign_place = connection.execute(
+        "SELECT count(*) FROM stop_detail d JOIN stop s ON s.id = d.stop_id JOIN pack p ON p.id = s.pack_id "
+        "WHERE d.place IS NOT NULL AND substr(d.place, 1, length(p.source_id) + 1) != p.source_id || ':'"
+    ).fetchone()[0]
+    require(foreign_place == 0, "a transfer point named after another pack")
 
 def verify_urban_tables(connection: sqlite3.Connection, urban_packs: Sequence[str]) -> None:
     """The city networks' stops: never a catalogue station, each with its modes (urban_stop) and only theirs; the
@@ -536,7 +577,9 @@ def verify_database(
         # An index with city networks adds their two tables (build_ios_gtfs_schedule.URBAN_SCHEMA_SQL); the reader
         # accepts exactly the base tables or both sets.
         urban_packs = [] if foreign_full is not None else city_packs(metadata)
-        tables = {**REQUIRED_TABLE_COLUMNS, **(URBAN_TABLE_COLUMNS if urban_packs else {})}
+        # The planner's details: in the base and personal indexes, never in a per-country one.
+        details = foreign_full is None
+        tables = {**REQUIRED_TABLE_COLUMNS, **(URBAN_TABLE_COLUMNS if urban_packs else {}), **(DETAIL_TABLE_COLUMNS if details else {})}
         require(actual_tables == set(tables), f"unexpected schema tables: {sorted(actual_tables)}")
         for table, expected_columns in tables.items():
             columns = tuple(row[1] for row in connection.execute(f"PRAGMA table_info({table})"))
@@ -580,6 +623,8 @@ def verify_database(
             ):
                 require(station_id in zone_ids,
                         f"{source_id}: stop {external_id} carries catalogue id {station_id} outside the border zone")
+        if details:
+            verify_detail_tables(connection)
         urban_placeholders = ",".join("?" for _ in urban_packs)
         non_rail = connection.execute(
             f"SELECT count(*) FROM route r JOIN pack p ON p.id=r.pack_id WHERE p.source_id NOT IN ({urban_placeholders}) "
