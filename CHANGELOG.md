@@ -1,5 +1,9 @@
 # Changelog
 
+## In sviluppo — L'orario svizzero si costruisce di nuovo
+
+- **Svizzera:** l'aggiornamento settimanale legge l'archivio nazionale svizzero (4,6 GB decompresso il 21 novembre, rifiutato il 23 dal limite di 1 GB) una riga alla volta, senza estrarlo, con limiti rivisti solo per questa fonte (8 GiB in tutto, 6 GiB e 120 milioni di righe per tabella, 768 MiB di download) e lascia fuori le corse già scadute prima di leggerne le fermate; restano i controlli su entry, rapporto di compressione e righe trattenute, e il pack è identico a quello che darebbe la costruzione normale. Senza, dal 13 dicembre (orario 2027) la Svizzera sarebbe sparita da Android e iPhone.
+
 ## In sviluppo — iPhone: «Per te», CO₂, condivisione, orari salvati, puntualità personale, mappe, collegamenti diretti e impostazioni come su Android
 
 - **Confronto completo Android ↔ iPhone e Wear OS ↔ Apple Watch** in [docs/PARITA_ANDROID_IPHONE.md](docs/PARITA_ANDROID_IPHONE.md): una riga per funzione, con lo stato e l'area di lavoro; in fondo ciò che resta.
