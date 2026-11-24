@@ -75,6 +75,10 @@ struct ResultsActionsSection: View {
 
     var body: some View {
         let rows = services.map { PersonalTexts.timetableRow($0, live: model.resultLive[$0.id], source: snapshot.provenance.sourceLabel) }
+        // The return of a round trip, when the planner searched one.
+        let back = personal.plannerReturn.map { returned in
+            returned.services.map { PersonalTexts.timetableRow($0, live: nil, source: returned.provenance.sourceLabel) }
+        } ?? []
         let date = ItalianWallClock.date(of: snapshot.query.departure) ?? PersonalModel.today()
         let from = LiveTexts.clock(snapshot.query.departure)
         let share = PersonalTexts.listShare(
@@ -82,11 +86,11 @@ struct ResultsActionsSection: View {
             destination: snapshot.query.destination.name,
             dateLabel: PersonalTexts.searchDate(date, from: from),
             rows: rows,
-            returnRows: []
+            returnRows: back
         )
         Section {
             Button {
-                save(rows: rows, date: date, from: from)
+                save(rows: rows, returnRows: back, date: date, from: from)
             } label: {
                 Label("result.save_timetable", systemImage: savedID == nil ? "square.and.arrow.down" : "checkmark")
             }
@@ -104,7 +108,7 @@ struct ResultsActionsSection: View {
         .onChange(of: snapshot.generatedAt) { _, _ in savedID = nil }
     }
 
-    private func save(rows: [TimetableRow], date: PlannedLocalDate, from: String) {
+    private func save(rows: [TimetableRow], returnRows: [TimetableRow], date: PlannedLocalDate, from: String) {
         let id = UUID().uuidString
         personal.saveTimetable(SavedTimetable(
             id: id,
@@ -114,7 +118,8 @@ struct ResultsActionsSection: View {
             serviceDate: date,
             fromTime: from,
             savedAt: Date(),
-            rows: rows
+            rows: rows,
+            returnRows: returnRows
         ))
         savedID = id
         DeparturesTexts.announce(String(localized: "result.timetable_saved"))
@@ -243,6 +248,26 @@ extension PersonalModel {
             stops: verified.map { PunctualityStopDelay(station: $0.stationName, delayMinutes: $0.delayMinutes) }
         ) else { return }
         record(observation)
+    }
+
+    /// The run of a favourite train found in the background, under the favourite's own number and
+    /// for the day asked (Android's `PunctualityRecordingPlanner.observation`); false when the run
+    /// gives no observation.
+    func recordFavourite(_ run: LiveRunStatus, number: String, date: PlannedLocalDate) -> Bool {
+        let cancelled = run.cancellation == .full || run.state == .cancelled
+        guard cancelled || run.operationalStatusVerified else { return false }
+        let verified = run.stops.filter { $0.operationalStatusVerified && !$0.skipped }
+        guard let observation = PunctualityHistory.observation(
+            number: number,
+            operatorName: run.operatorName,
+            serviceDate: date,
+            today: Self.today(),
+            delayMinutes: run.delayMinutes ?? 0,
+            cancelled: cancelled,
+            stops: verified.map { PunctualityStopDelay(station: $0.stationName, delayMinutes: $0.delayMinutes) }
+        ) else { return false }
+        record(observation)
+        return true
     }
 }
 
@@ -566,6 +591,9 @@ struct NearbyStationsSection: View {
     @State private var locating = false
     @State private var stations: [NearbyStation] = []
     @State private var message: String?
+    /// The position the list was sorted from, in memory while the screen is open, for the circle
+    /// of «Mappa delle stazioni vicine»; never stored.
+    @State private var position: GeoPoint?
 
     var body: some View {
         Section("departures.nearby.title") {
@@ -597,6 +625,8 @@ struct NearbyStationsSection: View {
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             }
+            // Android's «Mappa delle stazioni vicine» (StationMaps.swift).
+            NearbyStationsMapRows(stations: stations, position: position)
         }
     }
 
@@ -614,6 +644,7 @@ struct NearbyStationsSection: View {
             case .unavailable:
                 text = NSLocalizedString("planner.nearest.unavailable", comment: "")
             case let .located(latitude, longitude):
+                position = GeoPoint(latitude: latitude, longitude: longitude)
                 stations = await model.nearbyStations(latitude: latitude, longitude: longitude)
                 text = NSLocalizedString(stations.isEmpty ? "planner.nearest.none" : "departures.nearby.sorted", comment: "")
             }

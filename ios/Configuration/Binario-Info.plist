@@ -29,6 +29,41 @@
 			<key>UIApplicationShortcutItemIconSymbolName</key>
 			<string>calendar</string>
 		</dict>
+		<dict>
+			<key>UIApplicationShortcutItemType</key>
+			<string>it.binario.ios.active-route</string>
+			<key>UIApplicationShortcutItemTitle</key>
+			<string>Tratta attiva</string>
+			<key>UIApplicationShortcutItemIconSymbolName</key>
+			<string>point.topleft.down.to.point.bottomright.curvepath</string>
+		</dict>
+		<dict>
+			<key>UIApplicationShortcutItemType</key>
+			<string>it.binario.ios.next-departures</string>
+			<key>UIApplicationShortcutItemTitle</key>
+			<string>Prossime partenze</string>
+			<key>UIApplicationShortcutItemIconSymbolName</key>
+			<string>list.bullet.rectangle</string>
+		</dict>
+		<dict>
+			<key>UIApplicationShortcutItemType</key>
+			<string>it.binario.ios.train-search</string>
+			<key>UIApplicationShortcutItemTitle</key>
+			<string>Ricerca treno</string>
+			<key>UIApplicationShortcutItemIconSymbolName</key>
+			<string>magnifyingglass</string>
+		</dict>
+	</array>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>it.binario.ios.links</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>binario</string>
+			</array>
+		</dict>
 	</array>
 	<key>UIBackgroundModes</key>
 	<array>

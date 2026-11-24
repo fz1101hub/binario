@@ -478,3 +478,52 @@ private final class BoardFixture {
 }
 
 private enum BoardFixtureError: Error { case sqlite, noPage }
+
+/// «Collegamenti diretti» (Android's `DirectConnectionsCollector`), on the same small index.
+extension StationBoardTests {
+    func testDirectConnectionsCountTheDaysRunsOnceEachWithFirstLastAndFastest() async throws {
+        let fixture = try BoardFixture()
+        try fixture.insertTrip(id: 1, externalID: "morning", number: "2153", calls: [
+            BoardCall(stop: 1, seconds: 9 * 3_600 + 30 * 60), BoardCall(stop: 5, seconds: 10 * 3_600),
+            BoardCall(stop: 2, seconds: 11 * 3_600),
+        ])
+        // Another pack's copy of the same train two minutes later counts once.
+        try fixture.insertTrip(id: 2, externalID: "copy", number: "2153", calls: [
+            BoardCall(stop: 1, seconds: 9 * 3_600 + 32 * 60), BoardCall(stop: 2, seconds: 11 * 3_600 + 5 * 60),
+        ])
+        // Boarded at the station's other stop.
+        try fixture.insertTrip(id: 3, externalID: "fast", number: "2155", calls: [
+            BoardCall(stop: 4, seconds: 11 * 3_600), BoardCall(stop: 2, seconds: 11 * 3_600 + 50 * 60),
+        ])
+        // Not running on Monday.
+        try fixture.insertTrip(id: 4, externalID: "sunday", number: "2157", service: 2, calls: [
+            BoardCall(stop: 1, seconds: 8 * 3_600), BoardCall(stop: 5, seconds: 8 * 3_600 + 20 * 60),
+        ])
+        // No setting down at Monza, and Lugano is not in the catalogue.
+        try fixture.insertTrip(id: 5, externalID: "through", number: "2159", calls: [
+            BoardCall(stop: 1, seconds: 12 * 3_600), BoardCall(stop: 5, seconds: 12 * 3_600 + 20 * 60, dropOff: 1),
+            BoardCall(stop: 3, seconds: 13 * 3_600),
+        ])
+        let monday = try XCTUnwrap(PlannedLocalDate(iso: "2024-04-01"))
+        let connections = await fixture.repository.directConnections(
+            from: StationIdentity(id: "catalog-board", name: "Milano Centrale", railwayCode: "S01700"), on: monday
+        )
+        XCTAssertEqual(connections.date, monday)
+        XCTAssertTrue(connections.urban.isEmpty)
+        XCTAssertEqual(connections.rail.map(\.stationID), ["catalog-terminus", "catalog-middle"])
+        XCTAssertEqual(connections.rail.map(\.name), ["Bergamo", "Monza"])
+        XCTAssertEqual(connections.rail.map(\.runs), [2, 1])
+        XCTAssertEqual(connections.rail.map(\.firstDepartureMinute), [9 * 60 + 30, 9 * 60 + 30])
+        XCTAssertEqual(connections.rail.map(\.lastDepartureMinute), [11 * 60, 9 * 60 + 30])
+        XCTAssertEqual(connections.rail.map(\.fastestMinutes), [50, 30])
+        XCTAssertEqual(connections.rail.map(\.boardingStop), [nil, nil])
+
+        let sunday = try XCTUnwrap(PlannedLocalDate(iso: "2024-03-31"))
+        let other = await fixture.repository.directConnections(
+            from: StationIdentity(id: "catalog-board", name: "Milano Centrale", railwayCode: "S01700"), on: sunday
+        )
+        XCTAssertEqual(other.rail.map(\.stationID), ["catalog-middle"])
+        let nowhere = await fixture.repository.directConnections(from: StationIdentity(id: "nowhere", name: "Nessuna"), on: monday)
+        XCTAssertTrue(nowhere.isEmpty)
+    }
+}

@@ -1,2 +1,5 @@
 "Agenda" = "日程";
+"Tratta attiva" = "当前路线";
+"Prossime partenze" = "即将出发";
+"Ricerca treno" = "查询车次";
 "NSLocationWhenInUseUsageDescription" = "当你查询最近的车站时，以及在你开启根据位置估算后、于 App 打开时跟踪行程期间，Binario 会使用你的位置。位置只保留在手机上：不会被保存或发送。";

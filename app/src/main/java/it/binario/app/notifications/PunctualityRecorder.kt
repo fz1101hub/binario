@@ -21,6 +21,7 @@ import it.binario.app.data.TrainService
 import it.binario.app.data.repository.BinarioDataGraph
 import it.binario.app.data.repository.TrainNumberQuery
 import it.binario.app.data.repository.TrainNumberSearchUpdate
+import it.binario.app.shared.SharedData
 import java.time.Duration
 import java.time.Instant
 import java.time.LocalDate
@@ -53,11 +54,13 @@ data class RecordingCandidate(
  * train saved without one). A failed or early attempt is retried after [RETRY], at most [MAX_ATTEMPTS] times a day.
  */
 object PunctualityRecordingPlanner {
-    val AFTER_ARRIVAL: Duration = Duration.ofMinutes(20)
-    val FIRST_TRY_AFTER_DEPARTURE: Duration = Duration.ofHours(2)
-    val WITHOUT_DEPARTURE: LocalTime = LocalTime.of(23, 15)
-    val RETRY: Duration = Duration.ofMinutes(45)
-    const val MAX_ATTEMPTS = 3
+    val AFTER_ARRIVAL: Duration = Duration.ofMinutes(SharedData.FavouritePunctuality.RECORDING_AFTER_ARRIVAL_MINUTES.toLong())
+    val FIRST_TRY_AFTER_DEPARTURE: Duration = Duration.ofMinutes(SharedData.FavouritePunctuality.RECORDING_FIRST_TRY_AFTER_DEPARTURE_MINUTES.toLong())
+    val WITHOUT_DEPARTURE: LocalTime = LocalTime.of(SharedData.FavouritePunctuality.RECORDING_WITHOUT_DEPARTURE_MINUTE / 60, SharedData.FavouritePunctuality.RECORDING_WITHOUT_DEPARTURE_MINUTE % 60)
+    val RETRY: Duration = Duration.ofMinutes(SharedData.FavouritePunctuality.RECORDING_RETRY_MINUTES.toLong())
+    const val MAX_ATTEMPTS = SharedData.FavouritePunctuality.RECORDING_MAXIMUM_ATTEMPTS
+    /** A due run older than this is no longer recorded. */
+    val LOOKBACK: Duration = Duration.ofHours(SharedData.FavouritePunctuality.RECORDING_LOOKBACK_HOURS.toLong())
 
     /** The instant the run of [date] should be recorded, or null when it is done or out of attempts. */
     fun dueAt(candidate: RecordingCandidate, date: LocalDate, zone: ZoneId = RailTime.defaultZone): Instant? {
@@ -79,7 +82,7 @@ object PunctualityRecordingPlanner {
         val today = now.atZone(zone).toLocalDate()
         return candidates.flatMap { candidate ->
             listOf(today.minusDays(1), today).mapNotNull { date ->
-                dueAt(candidate, date, zone)?.takeIf { !it.isAfter(now) && it.isAfter(now.minus(Duration.ofHours(20))) }?.let { candidate to date }
+                dueAt(candidate, date, zone)?.takeIf { !it.isAfter(now) && it.isAfter(now.minus(LOOKBACK)) }?.let { candidate to date }
             }
         }
     }

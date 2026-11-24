@@ -257,6 +257,8 @@ struct LiveStatusLine: View {
     let status: StationBoardLiveStatus
     /// The planner rows show the live platform on this line; «Partenze» shows it at the top of the row.
     var showsPlatform = false
+    /// The timetable's platform: a live one that differs reads «Bin. 7 (era 5)», as on Android.
+    var scheduledPlatform: String? = nil
 
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
@@ -271,8 +273,14 @@ struct LiveStatusLine: View {
                     .foregroundStyle(LiveTexts.isDisrupted(status) ? BinarioPalette.statusError : Color.primary)
                 }
                 if showsPlatform, let platform = status.platform {
-                    Text(DeparturesTexts.platform(platform))
-                        .font(.subheadline.weight(.semibold))
+                    if let before = PersonalTexts.platformChange(platform, scheduledPlatform) {
+                        Text(PersonalTexts.platformChanged(platform, before))
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(BinarioPalette.statusError)
+                    } else {
+                        Text(DeparturesTexts.platform(platform))
+                            .font(.subheadline.weight(.semibold))
+                    }
                 }
             }
             Text(LiveTexts.provenance(status).joined(separator: " · "))
@@ -280,7 +288,15 @@ struct LiveStatusLine: View {
                 .foregroundStyle(.secondary)
         }
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(Text(LiveTexts.spoken(status, includingPlatform: showsPlatform).joined(separator: ". ")))
+        .accessibilityLabel(Text(spokenParts.joined(separator: ". ")))
+    }
+
+    /// «Binario cambiato: 7, previsto 5» in place of the platform when it changed.
+    private var spokenParts: [String] {
+        if showsPlatform, let platform = status.platform, let before = PersonalTexts.platformChange(platform, scheduledPlatform) {
+            return LiveTexts.spoken(status, includingPlatform: false) + [PersonalTexts.platformChangedSpoken(platform, before)]
+        }
+        return LiveTexts.spoken(status, includingPlatform: showsPlatform)
     }
 }
 

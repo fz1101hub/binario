@@ -70,6 +70,9 @@ struct TrainDetailView: View {
                 )
             }
 
+            // Android's «Mappa del percorso» (StationMaps.swift).
+            RouteMapSection(service: service, liveStops: liveRun?.run.stops ?? [])
+
             // The delay compensation notice and the weather at the destination (ExtrasViews.swift).
             TrainDetailExtrasSections(service: service, query: query, liveRun: liveRun?.run)
 
@@ -78,6 +81,10 @@ struct TrainDetailView: View {
                 Co2Section(estimate: co2)
             }
             OfficialPagesSection(service: service)
+            // Android's «Aggiungi al calendario» (RouteBoard.swift).
+            Section {
+                CalendarEventButton(service: service, query: query)
+            }
             if service.hasTrainNumber {
                 PersonalPunctualitySection(number: service.number)
             }
@@ -194,7 +201,12 @@ private struct LiveRunSection: View {
             }
             if let platform = status.boarding.platform, !status.boarding.skipped {
                 LabeledContent("result.live.platform") {
-                    Text(verbatim: platform)
+                    if let before = PersonalTexts.platformChange(platform, status.boarding.scheduledPlatform) {
+                        Text(PersonalTexts.platformChanged(platform, before))
+                            .foregroundStyle(BinarioPalette.statusError)
+                    } else {
+                        Text(verbatim: platform)
+                    }
                 }
             }
             if let point = run.lastObservation {

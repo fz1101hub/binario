@@ -1,0 +1,13 @@
+{
+  "schema": "binario-shared-data-v1",
+  "description": "«Più presto» and «Più tardi» of the results: how far back «Più presto» looks (an hour, then three, six and twelve), how many earlier solutions it shows per source, how many times a window that fills up is continued, the shortest window before the first departure, and how many journeys with changes one window of «Più presto» asks for.",
+  "readers": {
+    "android": "journeys/ResultsPaging.kt (app/src/main/java/it/binario/app/)",
+    "iphone": "ios/BinarioKit/Sources/BinarioKit/JourneyPlanner/ResultsPaging.swift"
+  },
+  "earlierSpansMinutes": [60, 180, 360, 720],
+  "earlierPage": 6,
+  "maximumFillLoads": 3,
+  "minimumEarlierSpanMinutes": 15,
+  "earlierJourneyResults": 20
+}

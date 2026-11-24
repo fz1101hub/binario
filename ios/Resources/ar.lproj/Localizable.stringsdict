@@ -2,6 +2,54 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>departures.direct.run_count</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>few</key>
+			<string>%1$lld رحلات</string>
+			<key>many</key>
+			<string>%1$lld رحلة</string>
+			<key>one</key>
+			<string>%1$lld رحلة</string>
+			<key>other</key>
+			<string>%1$lld رحلة</string>
+			<key>two</key>
+			<string>%1$lld رحلتان</string>
+			<key>zero</key>
+			<string>%1$lld رحلة</string>
+		</dict>
+	</dict>
+	<key>departures.direct.train_count</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>few</key>
+			<string>%1$lld قطارات</string>
+			<key>many</key>
+			<string>%1$lld قطارًا</string>
+			<key>one</key>
+			<string>%1$lld قطار</string>
+			<key>other</key>
+			<string>%1$lld قطار</string>
+			<key>two</key>
+			<string>%1$lld قطاران</string>
+			<key>zero</key>
+			<string>%1$lld قطار</string>
+		</dict>
+	</dict>
 	<key>departures.later.loaded</key>
 	<dict>
 		<key>NSStringLocalizedFormatKey</key>
@@ -576,6 +624,30 @@
 			<string>%1$lld قطارين</string>
 			<key>zero</key>
 			<string>%1$lld قطار</string>
+		</dict>
+	</dict>
+	<key>saved.digest.network</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>few</key>
+			<string>آخر %1$lld أيام على الشبكة: %2$lld%% في الموعد</string>
+			<key>many</key>
+			<string>آخر %1$lld يومًا على الشبكة: %2$lld%% في الموعد</string>
+			<key>one</key>
+			<string>آخر %1$lld يوم على الشبكة: %2$lld%% في الموعد</string>
+			<key>other</key>
+			<string>آخر %1$lld يوم على الشبكة: %2$lld%% في الموعد</string>
+			<key>two</key>
+			<string>آخر %1$lld يومين على الشبكة: %2$lld%% في الموعد</string>
+			<key>zero</key>
+			<string>آخر %1$lld يوم على الشبكة: %2$lld%% في الموعد</string>
 		</dict>
 	</dict>
 	<key>saved.timetables.solutions</key>

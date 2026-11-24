@@ -6,6 +6,7 @@ struct PlannerView: View {
     /// The journeys with changes, searched next to the direct trains (JourneysModel.swift).
     @EnvironmentObject private var journeys: JourneysModel
     @EnvironmentObject private var notices: RailNoticesModel
+    @EnvironmentObject private var personal: PersonalModel
     @Environment(\.scenePhase) private var scenePhase
     @State private var origin: Station?
     @State private var destination: Station?
@@ -20,6 +21,10 @@ struct PlannerView: View {
     @State private var searchRequestID = 0
     /// The minute the results are read at: «Più puntuale» never suggests a train that has left.
     @State private var clock = Date()
+    /// Android's «Andata e ritorno»: the return's departure and its trains (PlannerExtras.swift).
+    @State private var roundTrip = false
+    @State private var returnDeparture = Date().addingTimeInterval(4 * 3_600)
+    @State private var returnResult: JourneyResult?
 
     var body: some View {
         Form {
@@ -49,6 +54,8 @@ struct PlannerView: View {
                     }
                 }
             case .available:
+                // Android's «Treno» and «Stazione» modes (PlannerExtras.swift).
+                PlannerModesSection()
                 // A typed or dictated route fills the form (EXPO_PORT_PLAN I6).
                 RouteAssistSection(origin: originSelection, destination: destinationSelection, departure: assistedDeparture)
                 Section {
@@ -70,6 +77,7 @@ struct PlannerView: View {
                                 .tag(filter)
                         }
                     }
+                    RoundTripFields(roundTrip: $roundTrip, returnDeparture: $returnDeparture)
                 }
 
                 if model.scheduleState == .loading {
@@ -122,6 +130,11 @@ struct PlannerView: View {
                     Section { Text(LocalizedStringKey(validationKey)).foregroundStyle(BinarioPalette.statusError) }
                 }
 
+                // Android's «Recenti e preferite» before a search (PersonalLists.swift).
+                if model.latestSnapshot == nil, model.searchState == .idle {
+                    RecentAndFavouriteRoutesSection()
+                }
+
                 if !model.airportLinks.isEmpty, model.latestSnapshot == nil, model.searchState == .idle {
                     AirportLinksSection(links: model.airportLinks, search: searchAirport)
                 }
@@ -137,6 +150,9 @@ struct PlannerView: View {
                     RouteWorksSection(routes: resultRoutes, scope: .thisRoute)
                     // «Treni in movimento» of the route (LiveTrainMapView.swift).
                     RouteLiveTrainsEntry(snapshot: snapshot)
+                    if roundTrip, let returnResult {
+                        ReturnResultsSection(result: returnResult)
+                    }
                 } else if case let .unavailable(reason) = model.searchState {
                     // No direct train: the journeys with changes may still get there.
                     if journeys.rows.isEmpty {
@@ -269,6 +285,8 @@ struct PlannerView: View {
         while !Task.isCancelled {
             let current = Date()
             clock = current
+            // The live legs of the journeys with changes, at most once a minute (JourneyLiveRefresh), in the foreground.
+            if scenePhase == .active { journeys.refreshLive(live: model.tripLiveData, now: current) }
             let seconds = 60 - current.timeIntervalSince1970.truncatingRemainder(dividingBy: 60)
             try? await Task.sleep(nanoseconds: UInt64((seconds + 0.5) * 1_000_000_000))
         }
@@ -279,8 +297,14 @@ struct PlannerView: View {
         guard let request = model.takePlannerRequest() else { return }
         origin = model.station(for: request.origin)
         destination = model.station(for: request.destination)
-        departure = Date()
-        departureEdited = false
+        if let chosen = request.departure {
+            // «Collegamenti diretti» for another day: that day, at the first departure.
+            departure = chosen
+            departureEdited = true
+        } else {
+            departure = Date()
+            departureEdited = false
+        }
         inputDidChange()
         if canSearch {
             search()
@@ -293,6 +317,8 @@ struct PlannerView: View {
         searchRequestID &+= 1
         validationKey = nil
         isSearching = false
+        returnResult = nil
+        personal.plannerReturn = nil
         model.invalidateSearchResult()
         journeys.reset()
     }
@@ -322,15 +348,35 @@ struct PlannerView: View {
         if !departureEdited { departure = Date() }
         guard let query = makeQuery() else { return }
         validationKey = nil
+        // «Ricerca recente», as Android records every route searched.
+        personal.recordRecent(origin: query.origin, destination: query.destination)
         searchRequestID &+= 1
         let requestID = searchRequestID
         isSearching = true
-        journeys.search(query, repository: model.repository, catalog: model.catalogState, stats: model.reliabilityStats)
+        journeys.search(query, repository: model.repository, catalog: model.catalogState, stats: model.reliabilityStats, live: model.tripLiveData)
         Task {
             await model.run(query: query)
             guard requestID == searchRequestID else { return }
+            await searchReturn(after: query)
+            guard requestID == searchRequestID else { return }
             isSearching = false
         }
+    }
+
+    /// «Andata e ritorno»: the way back from the destination at the return's time, which must follow
+    /// the outbound departure (Android's `planner_return_after_outbound`).
+    private func searchReturn(after query: JourneyQuery) async {
+        returnResult = nil
+        personal.plannerReturn = nil
+        guard roundTrip else { return }
+        guard returnDeparture > query.departure else {
+            validationKey = "planner.return.after_outbound"
+            return
+        }
+        guard let back = try? JourneyQuery(origin: query.destination, destination: query.origin, departure: returnDeparture, direction: .return) else { return }
+        let result = await model.repository.journeys(for: back)
+        returnResult = result
+        if case let .available(snapshot) = result { personal.plannerReturn = snapshot }
     }
 
     private func save() {
@@ -416,6 +462,12 @@ private struct AvailableResultView: View {
         let co2 = model.co2Estimate(from: snapshot.query.origin, to: snapshot.query.destination)
         // The direct trains and the journeys with changes in one list, with Android's chips.
         let merged = mergedEntries
+        let services = allServices
+        let paging = ResultsPaging.Status(
+            servicesCanPage: !services.isEmpty, journeysCanPage: journeys.query == snapshot.query && journeys.canPage,
+            serviceEarlier: journeys.serviceEarlierState(for: snapshot.query), serviceLater: journeys.serviceLaterState(for: snapshot.query),
+            journeyEarlier: journeys.earlier, journeyLater: journeys.later, hasEntries: !merged.entries.isEmpty
+        )
         let scores = reliabilityScores(measuredTrains)
         let shown = JourneyResultsMerge.apply(merged.entries, filter: journeys.filter, preferences: journeys.preferences, reliability: scores)
         Section("result.title") {
@@ -425,7 +477,7 @@ private struct AvailableResultView: View {
             JourneyFilterChips(
                 selection: journeys.filter, counts: JourneyResultsMerge.counts(merged.entries), showsMostReliable: !scores.isEmpty
             ) { journeys.filter = $0 }
-            JourneyActiveFiltersView(hiddenTrains: snapshot.services.count - JourneyResultsMerge.shownServices(snapshot.services, preferences: journeys.preferences).count)
+            JourneyActiveFiltersView(hiddenTrains: services.count - JourneyResultsMerge.shownServices(services, preferences: journeys.preferences).count)
             if let first = merged.firstNextDay {
                 Text(verbatim: JourneyTexts.noMoreToday(first))
                     .font(.footnote.weight(.medium))
@@ -437,6 +489,12 @@ private struct AvailableResultView: View {
                 Text(verbatim: JourneyTexts.empty(.noSolution, hasOptions: true))
                     .font(.footnote)
                     .foregroundStyle(.secondary)
+            }
+            if paging.available {
+                ResultsPageControl(later: false, loading: paging.earlierLoading, nothingNew: paging.earlierNothingNew) {
+                    journeys.pageServices(later: false, snapshot: snapshot, repository: model.repository)
+                    if paging.journeysCanPage { journeys.loadEarlier() }
+                }
             }
             ForEach(shown) { entry in
                 switch entry {
@@ -471,6 +529,12 @@ private struct AvailableResultView: View {
                     } label: {
                         JourneyResultRow(row: row, reliability: journeys.reliability[row.id])
                     }
+                }
+            }
+            if paging.available {
+                ResultsPageControl(later: true, loading: paging.laterLoading, nothingNew: paging.laterNothingNew) {
+                    journeys.pageServices(later: true, snapshot: snapshot, repository: model.repository)
+                    if paging.journeysCanPage { journeys.loadLater() }
                 }
             }
             JourneyNoticesView(hasEntries: !merged.entries.isEmpty)
@@ -509,6 +573,11 @@ private struct AvailableResultView: View {
         }
     }
 
+    /// The direct trains of the search, then those «Più presto» / «Più tardi» loaded around it.
+    private var allServices: [TrainService] {
+        snapshot.services + journeys.pagedServices(for: snapshot.query)
+    }
+
     /// The direct trains of this search merged with its journeys with changes (Android's `ResultsMerge`), with
     /// «Ultimo di oggi», «primo domani» and «Nessun treno fino alle …» only for a search of today.
     private var mergedEntries: (entries: [JourneyResultEntry], firstNextDay: Date?, noTrainsUntil: Date?) {
@@ -524,7 +593,7 @@ private struct AvailableResultView: View {
         // The changes filter of the planner applies to the journeys with changes as to the direct trains.
         let filtered = rows.filter { journeys.changeFilter.accepts($0.changes) }
         let day = markedDay ?? JourneyResultsMerge.encodedDay(snapshot.query.departure)
-        let entries = JourneyResultsMerge.entries(services: snapshot.services, journeys: filtered, serviceDate: day, preferences: journeys.preferences)
+        let entries = JourneyResultsMerge.entries(services: allServices, journeys: filtered, serviceDate: day, preferences: journeys.preferences)
         let firstNextDay = markedDay.flatMap { JourneyResultsMerge.firstDepartureNextDay(entries, journeys: rows, serviceDate: $0) }
         let noTrainsUntil = JourneyResultsMerge.noTrainsUntil(entries, journeys: rows, requested: snapshot.query.departure, firstNextDay: firstNextDay)
         return (entries, firstNextDay, noTrainsUntil)
@@ -557,11 +626,26 @@ private struct JourneysOnlyResultView: View {
                     ) { journeys.filter = $0 }
                 }
                 JourneyActiveFiltersView(hiddenTrains: 0)
+                let paging = ResultsPaging.Status(
+                    servicesCanPage: false, journeysCanPage: journeys.canPage, serviceEarlier: ResultsPageState(),
+                    serviceLater: ResultsPageState(), journeyEarlier: journeys.earlier, journeyLater: journeys.later,
+                    hasEntries: !filtered.isEmpty
+                )
+                if paging.available {
+                    ResultsPageControl(later: false, loading: paging.earlierLoading, nothingNew: paging.earlierNothingNew) {
+                        journeys.loadEarlier()
+                    }
+                }
                 ForEach(rows) { row in
                     NavigationLink {
                         JourneyDetailView(row: row, reliability: journeys.reliability[row.id])
                     } label: {
                         JourneyResultRow(row: row, reliability: journeys.reliability[row.id])
+                    }
+                }
+                if paging.available {
+                    ResultsPageControl(later: true, loading: paging.laterLoading, nothingNew: paging.laterNothingNew) {
+                        journeys.loadLater()
                     }
                 }
                 JourneyNoticesView(hasEntries: !rows.isEmpty)
@@ -605,7 +689,7 @@ private struct ResultRow: View {
                 }
             }
             if let live {
-                LiveStatusLine(status: live, showsPlatform: true)
+                LiveStatusLine(status: live, showsPlatform: true, scheduledPlatform: service.platform)
             }
             if let boardingStop = VehicleTexts.boardingStop(service) {
                 Label(boardingStop, systemImage: "figure.walk")

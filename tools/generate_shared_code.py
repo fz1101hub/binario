@@ -544,6 +544,17 @@ def _check_official_links(values: Mapping[str, Any]) -> list[str]:
     return problems
 
 
+def _check_favourite_punctuality(values: Mapping[str, Any]) -> list[str]:
+    problems = []
+    if not values["digestQuietUntilHour"] <= values["digestHour"] < values["digestQuietFromHour"]:
+        problems.append("digestHour nelle ore di quiete")
+    if not values["digestQuietUntilHour"] < values["digestLatestHour"] < values["digestQuietFromHour"]:
+        problems.append("digestLatestHour nelle ore di quiete")
+    if values["trendDays"] > values["personalDays"] * 2:
+        problems.append("trendDays oltre due volte personalDays")
+    return problems
+
+
 def _check_personal_punctuality(values: Mapping[str, Any]) -> list[str]:
     problems = []
     if not values["onTimeMinutes"] < values["lateMinutes"] < values["severeMinutes"]:
@@ -619,6 +630,16 @@ def _check_pack_roles(values: Mapping[str, Any]) -> list[str]:
     railway = set(values["nationalPacks"]) | set(values["foreignPacks"]) | set(values["crossPublishingPacks"]) \
         | set(values["scheduledCoachPacks"])
     errors += [f"{pack!r} è una rete urbana con un ruolo ferroviario" for pack in sorted(set(values["urbanPacks"]) & railway)]
+    return errors
+
+
+def _check_results_paging(data: Mapping[str, Any]) -> list[str]:
+    spans = data["earlierSpansMinutes"]
+    errors = []
+    if spans != sorted(set(spans)):
+        errors.append("earlierSpansMinutes: windows from the shortest, each once")
+    if data["minimumEarlierSpanMinutes"] > spans[0]:
+        errors.append("minimumEarlierSpanMinutes: no longer than the first window")
     return errors
 
 
@@ -1081,6 +1102,28 @@ TABLES: tuple[Table, ...] = (
         "routeWorksMaximumKeepDays": Field(Integer(1, 365)),
         "routeWorksMaximumNotified": Field(Integer(1, 10_000)),
     }, check=_check_evening_alerts),
+    Table("favourite-punctuality-v1.json", "FavouritePunctuality", {
+        "maximumRows": Field(Integer(1, 100)),
+        "personalDays": Field(Integer(1, 365)),
+        "trendDays": Field(Integer(1, 365)),
+        "minimumTrendRuns": Field(Integer(1, 100)),
+        "minimumTrendPoints": Field(Integer(1, 100)),
+        "recordingAfterArrivalMinutes": Field(MINUTES),
+        "recordingFirstTryAfterDepartureMinutes": Field(MINUTES),
+        "recordingWithoutDepartureMinute": Field(Integer(0, 24 * 60 - 1)),
+        "recordingRetryMinutes": Field(MINUTES),
+        "recordingMaximumAttempts": Field(Integer(1, 10)),
+        "recordingLookbackHours": Field(Integer(1, 48)),
+        "digestIsoWeekday": Field(Integer(1, 7)),
+        "digestHour": Field(HOUR),
+        "digestQuietFromHour": Field(HOUR),
+        "digestQuietUntilHour": Field(HOUR),
+        "digestLatestHour": Field(HOUR),
+        "digestEarlierDays": Field(Integer(1, 365)),
+        "digestMinimumWeekRuns": Field(Integer(1, 100)),
+        "digestMinimumEarlierRuns": Field(Integer(1, 100)),
+        "digestMinimumDropPoints": Field(Integer(1, 100)),
+    }, check=_check_favourite_punctuality),
     Table("italian-holidays-v1.json", "ItalianHolidays", {
         "holidays": Field(ListOf(HOLIDAY, unique_by=("month", "day"))),
         "easterOffsetsDays": Field(ListOf(Integer(-60, 60))),
@@ -1125,6 +1168,23 @@ TABLES: tuple[Table, ...] = (
         "longWaitMinutes": Field(Integer(1, 24 * 60)),
         "duplicateWalkMinutes": Field(Integer(0, 60)),
     }, check=_check_journey_planner),
+    Table("journey-live-v1.json", "JourneyLive", {
+        "lookBackMinutes": Field(Integer(0, 24 * 60)),
+        "lookAheadMinutes": Field(Integer(0, 24 * 60)),
+        "maximumTrains": Field(Integer(1, 50)),
+        "sameRunToleranceMinutes": Field(Integer(0, 24 * 60)),
+        "parallelLookups": Field(Integer(1, 16)),
+        "trainTimeoutSeconds": Field(Integer(1, 120)),
+        "maximumAgeMinutes": Field(Integer(1, 60)),
+        "minimumIntervalSeconds": Field(Integer(1, 3_600)),
+    }),
+    Table("results-paging-v1.json", "ResultsPaging", {
+        "earlierSpansMinutes": Field(ListOf(Integer(1, 24 * 60))),
+        "earlierPage": Field(Integer(1, 50)),
+        "maximumFillLoads": Field(Integer(1, 10)),
+        "minimumEarlierSpanMinutes": Field(Integer(1, 24 * 60)),
+        "earlierJourneyResults": Field(Integer(1, 50)),
+    }, check=_check_results_paging),
     Table("live-train-map-v1.json", "LiveTrainMap", {
         "lookBackMinutes": Field(Integer(0, 720)),
         "lookAheadMinutes": Field(Integer(0, 720)),

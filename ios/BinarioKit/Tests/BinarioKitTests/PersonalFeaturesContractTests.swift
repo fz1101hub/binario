@@ -231,7 +231,18 @@ final class PersonalFeaturesContractTests: XCTestCase {
         let fromAndroid = try LocalBackupCodec.decode(Data(android.utf8)) { _ in nil }.get()
         XCTAssertEqual(fromAndroid.routes.map(\.name), ["Lavoro"])
         XCTAssertEqual(fromAndroid.favouriteStations.map(\.id), ["S01860"])
+        // Without operator and destination (an older Android file) a favourite cannot be made.
         XCTAssertTrue(fromAndroid.favouriteTrains.isEmpty)
+        let withNames = android.replacingOccurrences(
+            of: "{\"number\":\"2153\",\"label\":\"REG 2153\"}",
+            with: "{\"number\":\"2153\",\"label\":\"Trenord · Pavia\",\"origin\":\"Milano Centrale\",\"scheduledDeparture\":\"07:42\",\"destination\":\"Pavia\",\"operator\":\"Trenord\",\"category\":\"REGIONALE\"}"
+        )
+        let names = ["Milano Centrale": milano, "Pavia": pavia]
+        let named = try LocalBackupCodec.decode(Data(withNames.utf8), catalogue: { _ in nil }, stationNamed: { name in
+            names[name].map { Station(id: $0.id, name: $0.name, railwayCode: $0.railwayCode) }
+        }).get()
+        XCTAssertEqual(named.favouriteTrains.map(\.category), ["REG"])
+        XCTAssertEqual(named.favouriteTrains.first?.destination, pavia)
         XCTAssertNil(fromAndroid.savedTimetables)
         XCTAssertEqual(LocalBackupCodec.decode(Data("{\"kind\":\"other\"}".utf8)) { _ in nil }, .failure(.unreadable))
     }

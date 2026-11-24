@@ -55,6 +55,8 @@ final class AppModel: ObservableObject {
         let id = UUID()
         let origin: StationIdentity
         let destination: StationIdentity
+        /// Another day's departure («Collegamenti diretti»); nil searches from now.
+        var departure: Date? = nil
     }
 
     /// A listed train with the instant it departs, resolved from its "HH:mm" time, or its live
@@ -1005,8 +1007,8 @@ final class AppModel: ObservableObject {
     }
 
     /// Fills the planner with a route and searches it from now (a saved route, an airport link).
-    func openPlanner(origin: StationIdentity, destination: StationIdentity) {
-        plannerRequest = PlannerRequest(origin: origin, destination: destination)
+    func openPlanner(origin: StationIdentity, destination: StationIdentity, departure: Date? = nil) {
+        plannerRequest = PlannerRequest(origin: origin, destination: destination, departure: departure)
         selectedTab = .planner
     }
 
@@ -2291,6 +2293,51 @@ final class AppModel: ObservableObject {
         favouriteTrains = collection.trains
         WidgetBridge.favouritesChanged(collection)
         return true
+    }
+
+    /// The runs of a train number on a day from every live source (Android's train-number search):
+    /// «Treno» on a tap, and the favourites' punctuality in the background (EveningAlerts.swift);
+    /// nil when «Dati in tempo reale» is off.
+    func trainNumberRuns(_ request: LiveTrainStatusRequest) async -> LiveTrainStatusResult? {
+        guard liveDataEnabled, let liveData else { return nil }
+        return await liveData.trainStatus(request)
+    }
+
+    /// «Nuova tratta» of Per te (Android's `createRoute`): the route with the name chosen, or the
+    /// stations' names; false when it cannot be saved (the alert says why).
+    @discardableResult
+    func saveRoute(origin: StationIdentity, destination: StationIdentity, name: String) -> Bool {
+        let id = SavedRoute.routeIdentifier(origin: origin, destination: destination)
+        let clean = name.split(whereSeparator: { $0.isWhitespace }).joined(separator: " ")
+        let label = clean.isEmpty ? "\(origin.name) → \(destination.name)" : String(clean.prefix(128))
+        do {
+            let route = try SavedRoute(id: id, name: label, origin: origin, destination: destination)
+            var routes = savedRoutes.filter { $0.id != id }
+            guard routes.count < SavedRouteCollection.maximumRoutes else {
+                persistenceMessageKey = "saved.limit_error"
+                return false
+            }
+            routes.append(route)
+            try setRoutes(routes)
+            return true
+        } catch {
+            persistenceMessageKey = "saved.storage_error"
+            return false
+        }
+    }
+
+    /// Moves a saved route up (-1) or down (+1), as Android's route menu does.
+    func moveRoute(id: String, by delta: Int) {
+        guard let index = savedRoutes.firstIndex(where: { $0.id == id }) else { return }
+        let target = index + delta
+        guard savedRoutes.indices.contains(target) else { return }
+        var routes = savedRoutes
+        routes.swapAt(index, target)
+        do {
+            try setRoutes(routes)
+        } catch {
+            persistenceMessageKey = "saved.storage_error"
+        }
     }
 
     /// A local backup import replaces the saved routes and «I miei treni» as a whole

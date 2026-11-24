@@ -2,6 +2,7 @@ package it.binario.app.journeys
 
 import it.binario.app.data.TrainService
 import it.binario.app.data.repository.SourcedJourneyOption
+import it.binario.app.shared.SharedData
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
@@ -21,15 +22,15 @@ data class ResultsPageState(val loading: Boolean = false, val nothingNew: Boolea
  */
 object ResultsPaging {
     /** «Più presto» looks this far back first, then further while it finds fewer than a page. */
-    val EARLIER_SPANS_MINUTES = listOf(60L, 180L, 360L, 720L)
+    val EARLIER_SPANS_MINUTES: List<Long> = SharedData.ResultsPaging.EARLIER_SPANS_MINUTES.map { it.toLong() }
     /** «Più presto» shows at most this many earlier solutions per source, the ones closest to the first shown. */
-    const val EARLIER_PAGE = 6
+    const val EARLIER_PAGE = SharedData.ResultsPaging.EARLIER_PAGE
     /** A window before the first departure that fills up before reaching it is loaded this many times at most. */
-    const val MAX_FILL_LOADS = 3
+    const val MAX_FILL_LOADS = SharedData.ResultsPaging.MAXIMUM_FILL_LOADS
     /** A window still too full starts closer to the first departure, but never less than this before it. */
-    const val MIN_EARLIER_SPAN_MINUTES = 15L
+    const val MIN_EARLIER_SPAN_MINUTES: Long = SharedData.ResultsPaging.MINIMUM_EARLIER_SPAN_MINUTES * 1L
     /** Journeys with changes asked per window of «Più presto» (the provider's own bound). */
-    const val EARLIER_JOURNEY_RESULTS = 20
+    const val EARLIER_JOURNEY_RESULTS = SharedData.ResultsPaging.EARLIER_JOURNEY_RESULTS
 
     /**
      * «Più tardi»: the items of the window from [last] (inclusive: another train may leave at the same minute), or null

@@ -2,6 +2,42 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>departures.direct.run_count</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>many</key>
+			<string>%1$lld viajes</string>
+			<key>one</key>
+			<string>%1$lld viaje</string>
+			<key>other</key>
+			<string>%1$lld viajes</string>
+		</dict>
+	</dict>
+	<key>departures.direct.train_count</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>many</key>
+			<string>%1$lld trenes</string>
+			<key>one</key>
+			<string>%1$lld tren</string>
+			<key>other</key>
+			<string>%1$lld trenes</string>
+		</dict>
+	</dict>
 	<key>departures.later.loaded</key>
 	<dict>
 		<key>NSStringLocalizedFormatKey</key>
@@ -432,6 +468,24 @@
 			<string>%1$lld tren</string>
 			<key>other</key>
 			<string>%1$lld trenes</string>
+		</dict>
+	</dict>
+	<key>saved.digest.network</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>many</key>
+			<string>últimos %1$lld días en la red: %2$lld%% puntual</string>
+			<key>one</key>
+			<string>último %1$lld día en la red: %2$lld%% puntual</string>
+			<key>other</key>
+			<string>últimos %1$lld días en la red: %2$lld%% puntual</string>
 		</dict>
 	</dict>
 	<key>saved.timetables.solutions</key>

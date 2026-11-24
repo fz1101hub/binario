@@ -7,6 +7,7 @@ import it.binario.app.data.core.LegMode
 import it.binario.app.data.repository.SourcedJourneyOption
 import it.binario.app.data.repository.TrainNumberQuery
 import it.binario.app.data.repository.TrainNumberSearchService
+import it.binario.app.shared.SharedData
 import java.time.Duration
 import java.time.Instant
 import java.time.LocalDate
@@ -25,9 +26,9 @@ import kotlinx.coroutines.withTimeoutOrNull
  * the scheduled times ("solo orario programmato").
  */
 object JourneyLiveCandidates {
-    val LOOKBACK: Duration = Duration.ofHours(3)
-    val LOOKAHEAD: Duration = Duration.ofHours(3)
-    const val MAX_TRAINS = 8
+    val LOOKBACK: Duration = Duration.ofMinutes(SharedData.JourneyLive.LOOK_BACK_MINUTES.toLong())
+    val LOOKAHEAD: Duration = Duration.ofMinutes(SharedData.JourneyLive.LOOK_AHEAD_MINUTES.toLong())
+    const val MAX_TRAINS = SharedData.JourneyLive.MAXIMUM_TRAINS
 
     data class Train(val number: String, val serviceDate: LocalDate)
 
@@ -50,7 +51,7 @@ object JourneyLiveCandidates {
      * Runs of one number further apart than this at the boarding stop are two runs: the number search also returns
      * yesterday's run of a night train, still running today, which is 24 hours from the leg.
      */
-    val SAME_RUN_TOLERANCE: Duration = Duration.ofHours(2)
+    val SAME_RUN_TOLERANCE: Duration = Duration.ofMinutes(SharedData.JourneyLive.SAME_RUN_TOLERANCE_MINUTES.toLong())
 
     /**
      * The live data of [leg] among the runs found for its number, or null when none is its run or none is live. The run
@@ -111,7 +112,7 @@ class JourneyLiveLookup(
     private val search: TrainNumberSearchService,
     private val now: () -> Instant = Instant::now,
     private val zone: ZoneId = RailTime.defaultZone,
-    private val trainTimeoutMillis: Long = 25_000
+    private val trainTimeoutMillis: Long = SharedData.JourneyLive.TRAIN_TIMEOUT_SECONDS * 1_000L
 ) {
     suspend fun lookup(options: List<SourcedJourneyOption>): Map<String, JourneyLegLive> {
         val legs = JourneyLiveCandidates.legs(options, now())
@@ -140,6 +141,6 @@ class JourneyLiveLookup(
     }
 
     private companion object {
-        const val PARALLEL = 3
+        const val PARALLEL = SharedData.JourneyLive.PARALLEL_LOOKUPS
     }
 }

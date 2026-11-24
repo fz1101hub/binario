@@ -1,6 +1,6 @@
 # Changelog
 
-## In sviluppo — iPhone: «Per te», CO₂, condivisione, orari salvati, puntualità personale e impostazioni come su Android
+## In sviluppo — iPhone: «Per te», CO₂, condivisione, orari salvati, puntualità personale, mappe, collegamenti diretti e impostazioni come su Android
 
 - **Confronto completo Android ↔ iPhone e Wear OS ↔ Apple Watch** in [docs/PARITA_ANDROID_IPHONE.md](docs/PARITA_ANDROID_IPHONE.md): una riga per funzione, con lo stato e l'area di lavoro; in fondo ciò che resta.
 - **Navigazione come su Android:** tre schede, **Pianifica**, **Partenze** e **Per te**; Per te raccoglie le tratte salvate, l'Agenda, **Impostazioni**, **Orari salvati**, **Stazioni preferite** e **I miei treni**, dove ogni treno si può rinominare.
@@ -12,8 +12,17 @@
 - **Dettaglio del treno:** «Apri sul sito ufficiale» per Trenitalia e Italo e «Bici a bordo: condizioni» quando l'orario non lo dice.
 - **Impostazioni:** tema Sistema/Chiaro/Scuro, lingua dell'app (nelle Impostazioni di iOS), **Biglietti e assistenza**, **Backup locale** nello stesso file JSON di Android, **Suggerisci una stazione**.
 - **Base comune:** nuove tabelle `co2-estimate-v1.json`, `official-links-v1.json`, `saved-timetables-v1.json`, `personal-punctuality-v1.json`, `train-type-groups-v1.json` e `local-backup-v1.json`, lette da Android e iPhone; nuove regole con i casi comuni `co2-estimate-v1.json`, `personal-punctuality-v1.json` e `train-type-groups-v1.json`.
-- **Non ancora sull'iPhone** (area di questo lavoro): ricerca per numero di treno, andata e ritorno, arrivo e durata nei risultati, collegamenti diretti di una stazione, tabellone della tratta attiva, mappe del percorso, della stazione e dei risultati, aggiungi al calendario, monitoraggio di una stazione, ricerche recenti, riepilogo settimanale, profilo vocale Alexa.
-- Testi di Android in 17 lingue. Aggiornati [l'informativa privacy](PRIVACY.md) (nuovi dati locali, file di backup, collegamenti ufficiali), le note per App Review, il README, l'ADR della base comune e i README dei contratti.
+- **Pianifica:** modalità **Treno** (le corse di oggi di un numero dalle fonti in tempo reale) e **Stazione**, **Andata e ritorno** con data e ora del ritorno («RITORNO» anche in «Salva orario» e «Condividi»), **Recenti e preferite** sotto il modulo.
+- **Partenze:** **Le tue partenze**, il tabellone della tratta attiva con «Direzione» e «Cambia tratta»; **Collegamenti diretti** di una stazione per sette giorni, con «Cerca i treni» e «Cerca le corse»; **Monitora questa stazione**; il binario cambiato «Bin. 7 (era 5)» anche in partenze, risultati e dettaglio.
+- **Mappe come su Android, aperte solo su tocco:** **Mappa del percorso** nel dettaglio del treno, **Mappa della stazione** con le sei stazioni vicine e **Mappa delle stazioni vicine**, sulla mappa di Apple (MapKit).
+- **Dettaglio del treno:** **Aggiungi al calendario** con l'editor di eventi di iOS, senza permesso del calendario.
+- **Per te:** **Recenti**, **Nuova tratta** («Salva e attiva tratta»), tratte da fissare e spostare, **Stazioni monitorate**.
+- **Treni preferiti in background:** **Puntualità dei treni preferiti** (attiva di serie, una volta al giorno dopo l'arrivo previsto, con «Dati in tempo reale») e **Riepilogo settimanale dei treni preferiti** (spento di serie, la domenica sera, senza richieste), nello stesso compito serale in background dei promemoria.
+- **Azioni rapide e collegamenti:** Tratta attiva, Prossime partenze e Ricerca treno accanto ad Agenda; i collegamenti `binario://` di Android.
+- **Impostazioni:** **Integrazioni Binario** con il profilo vocale per Alexa; il backup locale porta ora anche i treni preferiti (con destinazione e operatore, in entrambe le app) e le stazioni monitorate.
+- **Base comune:** nuova tabella `favourite-punctuality-v1.json` e casi comuni `favourite-punctuality-v1.json` (registro, andamento, riepilogo e registrazione dei treni preferiti), letti da Android e iPhone.
+- **Non ancora sull'iPhone** (area di questo lavoro): la ricerca per numero nell'orario incluso, le corse registrate e l'andamento nella sezione «Affidabilità dei miei treni». Arrivo e durata nei risultati passano al lavoro sui viaggi con cambi.
+- Testi di Android in 17 lingue. Aggiornati [l'informativa privacy](PRIVACY.md) (nuovi dati locali, file di backup, collegamenti ufficiali, mappe, calendario, lavori in background dei treni preferiti), le note per App Review, il README, l'ADR della base comune e i README dei contratti.
 
 ## In sviluppo — iPhone: European Sleeper e quadro orario programmato RFI come su Android
 
@@ -53,7 +62,10 @@
 - **Preferenze di viaggio** (Impostazioni): velocità a piedi, tempo massimo a piedi per tratto, «Preferisci», tipi di servizio da preferire o evitare e «Solo percorsi accessibili in sedia a rotelle». Restano sull'iPhone (`UserDefaults`); i treni diretti nascosti dalle preferenze sono contati sotto i risultati, come su Android.
 - **Indice orari:** due tabelle facoltative, `trip_detail` (`block_id` e `wheelchair_accessible` delle corse) e `stop_detail` (punto di cambio delle fermate e `wheelchair_boarding`), nell'indice pubblico e in quello personale; lo schema resta alla versione 2, così gli indici esteri già fissati restano validi (senza blocchi né accessibilità quando è installato l'orario completo di un paese). Indici ricostruiti in modo riproducibile; l'orario di Alexa accetta le tabelle nuove.
 - **Base comune:** i parametri della ricerca sono la nuova tabella `contracts/shared-data/v1/journey-planner-v1.json`, letta come codice generato anche da Android al posto delle sue costanti; nuovi casi comuni `contracts/shared-rules/v1/connection-scan-v1.json`, letti dai test Kotlin e Swift.
-- **Non ancora sull'iPhone:** «Coincidenza a rischio / persa» con i dati in tempo reale (le regole sono portate, manca il collegamento ai dati live dei treni del viaggio), il percorso in tempo reale di un viaggio e «Più presto» / «Più tardi» nei risultati.
+- **Coincidenza a rischio / persa** con i dati in tempo reale: con **Dati in tempo reale** attivo i treni dei cambi in corsa entro tre ore (al massimo otto) sono chiesti per numero a ViaggiaTreno e Italo quando arrivano i viaggi, poi al massimo una volta al minuto mentre i risultati sono sullo schermo e ogni 30 secondi per il viaggio aperto, che passa per primo. Schede e dettaglio mostrano «Coincidenza a rischio», «Coincidenza persa», «Coincidenza confermata» e gli orari previsti; una risposta non confermata scade dopo cinque minuti. Stesse regole di Android per scegliere la corsa della ricerca per numero (mai quella di ieri di un treno notturno).
+- **Più presto / Più tardi** sopra e sotto i risultati: treni diretti e viaggi con cambi, ognuno dalla propria prima o ultima partenza, finestre di un'ora, tre, sei e dodici, mai prima del giorno cercato, con «Nessun'altra soluzione più presto / più tardi».
+- **Base comune:** nuove tabelle `journey-live-v1.json` e `results-paging-v1.json` in `contracts/shared-data/v1/`, lette come codice generato anche da Android, e nuovi casi `contracts/shared-rules/v1/journey-live-v1.json` e `results-paging-v1.json`, letti dai test Kotlin e Swift.
+- **Non ancora sull'iPhone:** il percorso in tempo reale dei treni diretti (tabelloni RFI di partenza e arrivo riconciliati e corse ViaggiaTreno verificate fino alla destinazione, unite all'orario come fa `LiveRunMerge` di Android): l'iPhone mostra sui treni diretti i valori del tabellone della stazione di partenza.
 - Testi di Android nelle 17 lingue; i testi «Ordine» e «Per orario» del vecchio selettore dei risultati lasciano il posto ai chip. Aggiornati [l'informativa privacy](PRIVACY.md) (nuova preferenza locale, nessuna richiesta di rete) e le note per App Review.
 
 ## In sviluppo — Metro, tram e funicolari anche su iPhone

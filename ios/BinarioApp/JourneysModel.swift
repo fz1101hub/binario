@@ -61,18 +61,33 @@ final class JourneysModel: ObservableObject {
 
     func reset() {
         searchTask?.cancel()
+        liveTask?.cancel()
+        pageTask?.cancel()
+        servicePageTask?.cancel()
         generation &+= 1
         state = .idle
         query = nil
         result = nil
         rows = []
         reliability = [:]
+        liveLegs = [:]
+        liveFetchedAt = [:]
+        liveLookupStartedAt = nil
+        earlier = ResultsPageState()
+        later = ResultsPageState()
+        resetServicePages(for: nil)
     }
 
-    /// Searches `query` on `repository` (the bundled index and the installed foreign timetables). Without the index
-    /// nothing is searched.
-    func search(_ query: JourneyQuery, repository: any JourneyRepository, catalog: StationCatalogLoadState, stats: NetworkReliabilityStats?) {
+    /// Searches `query` on `repository` (the bundled index and the installed foreign timetables) and, with `live` (the
+    /// live sources, nil with «Dati in tempo reale» off), looks up the trains of the changes when the answer arrives.
+    /// Without the index nothing is searched.
+    func search(
+        _ query: JourneyQuery, repository: any JourneyRepository, catalog: StationCatalogLoadState, stats: NetworkReliabilityStats?,
+        live: (any LiveTrainStatusProviding)? = nil, keepServicePages: Bool = false
+    ) {
         searchTask?.cancel()
+        liveTask?.cancel()
+        pageTask?.cancel()
         generation &+= 1
         let current = generation
         guard let repository = repository as? SQLiteGTFSJourneyRepository else {
@@ -81,51 +96,309 @@ final class JourneysModel: ObservableObject {
         }
         lastRepository = repository
         lastStats = stats
+        liveProvider = live
+        liveLookup = live.map { JourneyLiveLookup(provider: $0) }
         if case let .available(loaded) = catalog, loaded.stations.count != stationsCount {
             stations = Dictionary(loaded.stations.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
             stationsCount = loaded.stations.count
         }
+        // A new search starts without the pages of the direct trains of the previous one.
+        if !keepServicePages || servicePagesQuery != query { resetServicePages(for: query) }
         self.query = query
         state = .loading
         result = nil
         rows = []
         reliability = [:]
-        let request = JourneyPlanRequest(
-            origin: query.origin, destination: query.destination, departure: query.departure,
-            preferences: preferences, stations: stations,
-            borderZones: Self.borderZones(installed: Set(repository.foreignDatabaseURLs.keys))
-        )
-        let stations = self.stations
+        liveLegs = [:]
+        liveFetchedAt = [:]
+        liveLookupStartedAt = nil
+        earlier = ResultsPageState()
+        later = ResultsPageState()
+        let request = planRequest(query, departure: query.departure, repository: repository)
         searchTask = Task { [weak self] in
-            let work = Task.detached(priority: .userInitiated) {
-                repository.planJourneys(request, isCancelled: { Task.isCancelled })
-            }
-            let answer = await withTaskCancellationHandler {
-                await work.value
-            } onCancel: {
-                work.cancel()
-            }
+            let answer = await Self.plan(request, on: repository)
             guard let self, !Task.isCancelled, current == self.generation else { return }
-            let rows = answer.options.map { JourneyResultsPresenter.row($0) }
             self.result = answer
-            self.rows = rows
             self.state = .done
-            if let stats {
-                var measured: [String: JourneyPlanReliability] = [:]
-                for row in rows {
-                    let assessed = JourneyPlanReliability.assess(row, stats: stats) { id in
-                        stations[id].flatMap { NetworkReliability.stationCode(StationIdentity($0)) }
-                    }
-                    if let assessed { measured[row.id] = assessed }
-                }
-                self.reliability = measured
-            }
+            self.present()
+            // The timetable results first; the live check of the changes follows when it answers.
+            guard let lookup = self.liveLookup else { return }
+            let startedAt = Date()
+            self.liveLookupStartedAt = startedAt
+            let live = await self.runLive(lookup, options: answer.options)
+            guard current == self.generation, !live.isEmpty else { return }
+            self.publishLive(live, startedAt: startedAt)
         }
+    }
+
+    /// Runs the planner off the main actor; cancelling the caller cancels it.
+    private nonisolated static func plan(_ request: JourneyPlanRequest, on repository: SQLiteGTFSJourneyRepository) async -> JourneyPlanResult {
+        let work = Task.detached(priority: .userInitiated) {
+            repository.planJourneys(request, isCancelled: { Task.isCancelled })
+        }
+        return await withTaskCancellationHandler {
+            await work.value
+        } onCancel: {
+            work.cancel()
+        }
+    }
+
+    private func planRequest(_ query: JourneyQuery, departure: Date, repository: SQLiteGTFSJourneyRepository) -> JourneyPlanRequest {
+        requestMaker(query, repository: repository)(departure, SharedData.JourneyPlanner.maximumResults)
+    }
+
+    /// The request of `query` from a departure with a number of results, from values only (no reference to the model).
+    private func requestMaker(
+        _ query: JourneyQuery, repository: SQLiteGTFSJourneyRepository
+    ) -> @Sendable (Date, Int) -> JourneyPlanRequest {
+        let preferences = self.preferences
+        let stations = self.stations
+        let zones = Self.borderZones(installed: Set(repository.foreignDatabaseURLs.keys))
+        let origin = query.origin, destination = query.destination
+        return { departure, maxResults in
+            JourneyPlanRequest(
+                origin: origin, destination: destination, departure: departure, maxResults: maxResults,
+                preferences: preferences, stations: stations, borderZones: zones
+            )
+        }
+    }
+
+    /// The rows of the result with the live legs, and their network statistics.
+    private func present() {
+        let options = result?.options ?? []
+        rows = options.map { JourneyResultsPresenter.row($0, live: liveLegs) }
+        guard let stats = lastStats else {
+            reliability = [:]
+            return
+        }
+        let stations = self.stations
+        var measured: [String: JourneyPlanReliability] = [:]
+        for row in rows {
+            let assessed = JourneyPlanReliability.assess(row, stats: stats) { id in
+                stations[id].flatMap { NetworkReliability.stationCode(StationIdentity($0)) }
+            }
+            if let assessed { measured[row.id] = assessed }
+        }
+        reliability = measured
     }
 
     private func researchIfShown() {
         guard let query, let repository = lastRepository else { return }
-        search(query, repository: repository, catalog: .loading, stats: lastStats)
+        search(query, repository: repository, catalog: .loading, stats: lastStats, live: liveProvider, keepServicePages: true)
+    }
+
+    // MARK: Live data of the changes («Coincidenza a rischio»)
+
+    @Published private(set) var liveLegs: [String: JourneyLegLive] = [:]
+    private var liveLookup: JourneyLiveLookup?
+    private var liveProvider: (any LiveTrainStatusProviding)?
+    private var liveTask: Task<Void, Never>?
+    private var liveRunning = false
+    /// When the lookup that answered each live leg started (by leg key), and when the last lookup started.
+    private var liveFetchedAt: [String: Date] = [:]
+    private var liveLookupStartedAt: Date?
+
+    private func runLive(_ lookup: JourneyLiveLookup, options: [JourneyPlanOption]) async -> [String: JourneyLegLive] {
+        liveRunning = true
+        defer { liveRunning = false }
+        return await lookup.lookup(options)
+    }
+
+    /// Repeats only the live lookup of the journeys shown (Android's `refreshLive`), the one on screen (`focusedID`)
+    /// first, so the expected times and «Coincidenza a rischio» follow the trains while the results or a journey stay
+    /// open. Answers older than `JourneyLiveRefresh.maximumAge` are dropped at once; the periodic caller asks at most
+    /// once per `JourneyLiveRefresh.minimumInterval`, `force` (pull to refresh) always, but never while a search or
+    /// another lookup runs. `live` nil (the switch went off) drops the live legs.
+    func refreshLive(live: (any LiveTrainStatusProviding)?, focusedID: String? = nil, force: Bool = false, now: Date = Date()) {
+        guard let live else {
+            liveProvider = nil
+            liveLookup = nil
+            if !liveLegs.isEmpty {
+                liveLegs = [:]
+                liveFetchedAt = [:]
+                present()
+            }
+            return
+        }
+        if liveLookup == nil { liveLookup = JourneyLiveLookup(provider: live) }
+        liveProvider = live
+        guard let lookup = liveLookup, let options = result?.options, !options.isEmpty else { return }
+        dropExpiredLive(now)
+        guard state == .done, !liveRunning else { return }
+        guard force || JourneyLiveRefresh.isDue(lastStartedAt: liveLookupStartedAt, now: now) else { return }
+        let ordered = JourneyLiveRefresh.focusedFirst(options, focusedID: focusedID) { $0.id }
+        let current = generation
+        liveLookupStartedAt = now
+        liveTask = Task { [weak self] in
+            guard let self else { return }
+            let found = await self.runLive(lookup, options: ordered)
+            guard current == self.generation else { return }
+            // Also without an answer: what the earlier lookups found is not shown past its age.
+            self.publishLive(found, startedAt: now)
+        }
+    }
+
+    /// Adds `found` (from the lookup started at `startedAt`) to the legs shown and drops those past their age.
+    private func publishLive(_ found: [String: JourneyLegLive], startedAt: Date) {
+        for key in found.keys { liveFetchedAt[key] = startedAt }
+        let legs = JourneyLiveRefresh.current(liveLegs.merging(found) { _, new in new }, fetchedAt: liveFetchedAt, now: Date())
+        liveFetchedAt = liveFetchedAt.filter { legs[$0.key] != nil }
+        guard legs != liveLegs else { return }
+        liveLegs = legs
+        present()
+    }
+
+    private func dropExpiredLive(_ now: Date) {
+        guard !liveLegs.isEmpty else { return }
+        let legs = JourneyLiveRefresh.current(liveLegs, fetchedAt: liveFetchedAt, now: now)
+        liveFetchedAt = liveFetchedAt.filter { legs[$0.key] != nil }
+        guard legs.count != liveLegs.count else { return }
+        liveLegs = legs
+        present()
+    }
+
+    // MARK: «Più presto» / «Più tardi» of the journeys
+
+    @Published private(set) var earlier = ResultsPageState()
+    @Published private(set) var later = ResultsPageState()
+    private var pageTask: Task<Void, Never>?
+
+    /// The journeys can page: answered, with options.
+    var canPage: Bool { state == .done && !(result?.options.isEmpty ?? true) }
+
+    /// «Più tardi»: the options of the window from the last departure found, merged into the result.
+    func loadLater() { page(later: true) }
+
+    /// «Più presto»: the options leaving before the first departure found (`ResultsPaging.earlier`), merged likewise.
+    func loadEarlier() { page(later: false) }
+
+    private func page(later isLater: Bool) {
+        guard let query, let repository = lastRepository, let shown = result, state == .done,
+              !earlier.loading, !later.loading else { return }
+        let departures = shown.options.map(\.departure)
+        guard let anchor = isLater ? departures.max() : departures.min() else { return }
+        let current = generation
+        if isLater { later = .loadingPage } else { earlier = .loadingPage }
+        let make = requestMaker(query, repository: repository)
+        let startOfDay = Self.startOfItalianDay(query.departure)
+        pageTask = Task { [weak self] in
+            let loaded = await Self.loadJourneyPage(later: isLater, anchor: anchor, notBefore: startOfDay, make: make, repository: repository)
+            guard let self, current == self.generation, let shown = self.result else { return }
+            // «Nessun treno fino alle …» belongs to the searched window only, never to a page.
+            let fresh = ResultsPaging.newOptions(shown: shown.options, page: loaded ?? []).map { option -> JourneyPlanOption in
+                var copy = option
+                copy.firstAfterEmptyWindow = false
+                return copy
+            }
+            if !fresh.isEmpty {
+                let merged = (shown.options + fresh).enumerated().sorted { first, second in
+                    let a = first.element, b = second.element
+                    if a.departure != b.departure { return a.departure < b.departure }
+                    if a.arrival != b.arrival { return a.arrival < b.arrival }
+                    return first.offset < second.offset
+                }.map(\.element)
+                self.result = JourneyPlanResult(
+                    status: .found, options: merged, incompleteCoverage: shown.incompleteCoverage,
+                    accessibilityDataUnavailable: shown.accessibilityDataUnavailable, staleTimetables: shown.staleTimetables,
+                    expiredSources: shown.expiredSources
+                )
+                self.present()
+            }
+            let pageState = ResultsPageState(nothingNew: fresh.isEmpty)
+            if isLater { self.later = pageState } else { self.earlier = pageState }
+            guard !fresh.isEmpty, let lookup = self.liveLookup else { return }
+            let startedAt = Date()
+            let live = await self.runLive(lookup, options: fresh)
+            guard current == self.generation, !live.isEmpty else { return }
+            self.publishLive(live, startedAt: startedAt)
+        }
+    }
+
+    /// «Più tardi» from `anchor`, or «Più presto» before it and never before the day searched (`notBefore`): «Più
+    /// presto» at 06:00 is not yesterday evening.
+    private nonisolated static func loadJourneyPage(
+        later: Bool, anchor: Date, notBefore: Date, make: @escaping @Sendable (Date, Int) -> JourneyPlanRequest,
+        repository: SQLiteGTFSJourneyRepository
+    ) async -> [JourneyPlanOption]? {
+        if later {
+            return await ResultsPaging.later(anchor, departureOf: { $0.departure }) { from in
+                await planPage(make(from, SharedData.JourneyPlanner.maximumResults), on: repository)
+            }
+        }
+        return await ResultsPaging.earlier(anchor, departureOf: { $0.departure }, notBefore: notBefore) { from in
+            await planPage(make(from, ResultsPaging.earlierJourneyResults), on: repository)
+        }
+    }
+
+    /// One window of the search; nil when the timetables could not answer it.
+    private nonisolated static func planPage(_ request: JourneyPlanRequest, on repository: SQLiteGTFSJourneyRepository) async -> [JourneyPlanOption]? {
+        let answer = await plan(request, on: repository)
+        return answer.status == .found || answer.status == .noSolution ? answer.options : nil
+    }
+
+    nonisolated static func startOfItalianDay(_ date: Date) -> Date {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: "Europe/Rome") ?? .current
+        return calendar.startOfDay(for: date)
+    }
+
+    // MARK: «Più presto» / «Più tardi» of the direct trains
+
+    /// A window of the direct trains of `query` from the same timetables as its search; nil when they could not answer.
+    private nonisolated static func loadServicePage(
+        later: Bool, anchor: Date, notBefore: Date, query: JourneyQuery, repository: any JourneyRepository
+    ) async -> [TrainService]? {
+        let load: (Date) async -> [TrainService]? = { from in
+            guard let pageQuery = try? JourneyQuery(origin: query.origin, destination: query.destination, departure: from,
+                                                    direction: query.direction) else { return nil }
+            guard case let .available(page) = await repository.journeys(for: pageQuery) else { return nil }
+            return page.services
+        }
+        if later { return await ResultsPaging.later(anchor, departureOf: { $0.departureDate }, load: load) }
+        return await ResultsPaging.earlier(anchor, departureOf: { $0.departureDate }, notBefore: notBefore, load: load)
+    }
+
+    /// The direct trains the pages loaded for `servicePagesQuery`, beyond those of its search.
+    @Published private(set) var pagedTrains: [TrainService] = []
+    @Published private(set) var serviceEarlier = ResultsPageState()
+    @Published private(set) var serviceLater = ResultsPageState()
+    private var servicePagesQuery: JourneyQuery?
+    private var servicePageTask: Task<Void, Never>?
+
+    private func resetServicePages(for query: JourneyQuery?) {
+        servicePageTask?.cancel()
+        servicePagesQuery = query
+        pagedTrains = []
+        serviceEarlier = ResultsPageState()
+        serviceLater = ResultsPageState()
+    }
+
+    /// The paged direct trains of `query`'s search, none for another search.
+    func pagedServices(for query: JourneyQuery) -> [TrainService] {
+        servicePagesQuery == query ? pagedTrains : []
+    }
+
+    func serviceEarlierState(for query: JourneyQuery) -> ResultsPageState { servicePagesQuery == query ? serviceEarlier : ResultsPageState() }
+
+    func serviceLaterState(for query: JourneyQuery) -> ResultsPageState { servicePagesQuery == query ? serviceLater : ResultsPageState() }
+
+    /// «Più tardi» / «Più presto» of the direct trains of `snapshot`, from the same timetables as its search.
+    func pageServices(later isLater: Bool, snapshot: JourneySnapshot, repository: any JourneyRepository) {
+        if servicePagesQuery != snapshot.query { resetServicePages(for: snapshot.query) }
+        guard !serviceEarlier.loading, !serviceLater.loading else { return }
+        let departures = (snapshot.services + pagedTrains).compactMap(\.departureDate)
+        guard let anchor = isLater ? departures.max() : departures.min() else { return }
+        if isLater { serviceLater = .loadingPage } else { serviceEarlier = .loadingPage }
+        let query = snapshot.query
+        let startOfDay = Self.startOfItalianDay(query.departure)
+        servicePageTask = Task { [weak self] in
+            let loaded = await Self.loadServicePage(later: isLater, anchor: anchor, notBefore: startOfDay, query: query, repository: repository)
+            guard let self, self.servicePagesQuery == query else { return }
+            let fresh = ResultsPaging.newServices(shown: snapshot.services + self.pagedTrains, page: loaded ?? [])
+            self.pagedTrains += fresh
+            let pageState = ResultsPageState(nothingNew: fresh.isEmpty)
+            if isLater { self.serviceLater = pageState } else { self.serviceEarlier = pageState }
+        }
     }
 
     /// The foreign packs read as their border subset: those the pins reduce to their zone whose full timetable is not

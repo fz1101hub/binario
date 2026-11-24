@@ -1,2 +1,5 @@
 "Agenda" = "Agenda";
+"Tratta attiva" = "Rute aktif";
+"Prossime partenze" = "Keberangkatan berikutnya";
+"Ricerca treno" = "Cari kereta";
 "NSLocationWhenInUseUsageDescription" = "Binario menggunakan lokasi Anda saat Anda meminta stasiun terdekat dan, jika Anda mengaktifkan perkiraan dari posisi Anda, selama perjalanan yang Anda ikuti dengan aplikasi terbuka. Lokasi tetap di ponsel: tidak disimpan maupun dikirim.";

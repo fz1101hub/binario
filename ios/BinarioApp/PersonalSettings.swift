@@ -189,7 +189,8 @@ struct LocalBackupSection: View {
             favouriteTrains: model.favouriteTrains,
             trainNames: personal.trainNames,
             punctualityHistory: personal.punctuality,
-            savedTimetables: personal.savedTimetables
+            savedTimetables: personal.savedTimetables,
+            stationMonitors: personal.stationMonitors.map { BackupStationMonitor(station: $0.station, mode: $0.mode.rawValue) }
         )
         return LocalBackupCodec.encode(backup) { model.station(for: $0) }
     }
@@ -207,7 +208,7 @@ struct LocalBackupSection: View {
             report(PersonalTexts.format("settings.backup.import_failure", NSLocalizedString("settings.backup.file_error", comment: "")))
             return
         }
-        switch LocalBackupCodec.decode(data, catalogue: { id in model.catalogStation(id: id) }) {
+        switch LocalBackupCodec.decode(data, catalogue: { id in model.catalogStation(id: id) }, stationNamed: { name in model.catalogStation(named: name) }) {
         case let .failure(reason):
             report(PersonalTexts.format("settings.backup.import_failure", Self.reason(reason)))
         case let .success(backup):
@@ -221,6 +222,9 @@ struct LocalBackupSection: View {
             }
             if let history = backup.punctualityHistory { personal.replacePunctuality(history) }
             if let timetables = backup.savedTimetables { personal.replaceTimetables(timetables) }
+            personal.replaceStationMonitors(backup.stationMonitors.compactMap { monitor in
+                PersonalModel.MonitorMode(rawValue: monitor.mode).map { PersonalModel.StationMonitor(station: monitor.station, mode: $0) }
+            })
             if backup.routes.isEmpty {
                 report(NSLocalizedString("settings.backup.imported_without_route", comment: ""))
             } else {
@@ -296,6 +300,17 @@ extension AppModel {
     func catalogStation(id: String) -> Station? {
         guard case let .available(catalog) = catalogState else { return nil }
         return catalog.station(id: id)
+    }
+
+    /// The catalogue station a published name or alias names, case and accents aside; nil when none.
+    func catalogStation(named name: String) -> Station? {
+        guard case let .available(catalog) = catalogState else { return nil }
+        let wanted = name.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: Locale(identifier: "it_IT"))
+        return catalog.offeredStations.first { station in
+            ([station.name] + station.aliases).contains {
+                $0.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: Locale(identifier: "it_IT")) == wanted
+            }
+        }
     }
 }
 

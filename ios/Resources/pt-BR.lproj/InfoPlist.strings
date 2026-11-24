@@ -1,2 +1,5 @@
 "Agenda" = "Agenda";
+"Tratta attiva" = "Trajeto ativo";
+"Prossime partenze" = "Próximas partidas";
+"Ricerca treno" = "Buscar trem";
 "NSLocationWhenInUseUsageDescription" = "O Binario usa sua localização quando você pede a estação mais próxima e, se você ativar a estimativa pela sua posição, durante a viagem que você segue com o app aberto. A localização fica no celular: não é salva nem enviada.";

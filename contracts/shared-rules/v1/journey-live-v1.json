@@ -1,0 +1,950 @@
+{
+  "schema": "binario-shared-rules-v1",
+  "description": "«Coincidenza a rischio / persa» with live data, as Android's journeys/TransferRisk.kt and journeys/JourneyLiveLookup.kt compute it and the iPhone's JourneyLive.swift: the risk of a change from the expected times; which legs of the journeys with changes are looked up; which run of a number search is the leg's and its expected times; how long a lookup is shown and how often it is repeated. Times are Italian time; a time without a date is on 2026-11-24.",
+  "day": "2026-11-24",
+  "transferRisk": [
+    {
+      "name": "no live data: unknown, on the timetable",
+      "scheduledArrival": "08:50",
+      "scheduledDeparture": "08:58",
+      "walkMinutes": 0,
+      "changeMinutes": 5,
+      "expected": {
+        "level": "UNKNOWN",
+        "marginMinutes": 3,
+        "expectedArrival": "2026-11-24T08:50",
+        "expectedDeparture": "2026-11-24T08:58"
+      }
+    },
+    {
+      "name": "late arrival, still before the departure: at risk",
+      "scheduledArrival": "08:50",
+      "scheduledDeparture": "08:58",
+      "arrivingLive": {
+        "expectedArrival": "08:55"
+      },
+      "walkMinutes": 0,
+      "changeMinutes": 5,
+      "expected": {
+        "level": "AT_RISK",
+        "marginMinutes": -2,
+        "expectedArrival": "2026-11-24T08:55",
+        "expectedDeparture": "2026-11-24T08:58"
+      }
+    },
+    {
+      "name": "arrival after the departure: missed",
+      "scheduledArrival": "08:50",
+      "scheduledDeparture": "08:58",
+      "arrivingLive": {
+        "expectedArrival": "09:00"
+      },
+      "walkMinutes": 0,
+      "changeMinutes": 5,
+      "expected": {
+        "level": "MISSED",
+        "marginMinutes": -7,
+        "expectedArrival": "2026-11-24T09:00",
+        "expectedDeparture": "2026-11-24T08:58"
+      }
+    },
+    {
+      "name": "a minute late, the change time is met: confirmed",
+      "scheduledArrival": "08:50",
+      "scheduledDeparture": "08:58",
+      "arrivingLive": {
+        "expectedArrival": "08:51"
+      },
+      "walkMinutes": 0,
+      "changeMinutes": 5,
+      "expected": {
+        "level": "OK",
+        "marginMinutes": 2,
+        "expectedArrival": "2026-11-24T08:51",
+        "expectedDeparture": "2026-11-24T08:58"
+      }
+    },
+    {
+      "name": "the next train cancelled: missed",
+      "scheduledArrival": "08:50",
+      "scheduledDeparture": "08:58",
+      "leavingLive": {
+        "cancelled": true
+      },
+      "walkMinutes": 0,
+      "changeMinutes": 5,
+      "expected": {
+        "level": "MISSED",
+        "marginMinutes": 3,
+        "expectedArrival": "2026-11-24T08:50",
+        "expectedDeparture": "2026-11-24T08:58"
+      }
+    },
+    {
+      "name": "the arriving train cancelled: missed",
+      "scheduledArrival": "08:50",
+      "scheduledDeparture": "08:58",
+      "arrivingLive": {
+        "cancelled": true
+      },
+      "walkMinutes": 0,
+      "changeMinutes": 5,
+      "expected": {
+        "level": "MISSED",
+        "marginMinutes": 3,
+        "expectedArrival": "2026-11-24T08:50",
+        "expectedDeparture": "2026-11-24T08:58"
+      }
+    },
+    {
+      "name": "a walk is the change time: less than it is at risk",
+      "scheduledArrival": "08:50",
+      "scheduledDeparture": "09:05",
+      "arrivingLive": {
+        "expectedArrival": "08:58"
+      },
+      "walkMinutes": 10,
+      "changeMinutes": 5,
+      "expected": {
+        "level": "AT_RISK",
+        "marginMinutes": -3,
+        "expectedArrival": "2026-11-24T08:58",
+        "expectedDeparture": "2026-11-24T09:05"
+      }
+    },
+    {
+      "name": "less than half the walk: missed",
+      "scheduledArrival": "08:50",
+      "scheduledDeparture": "09:05",
+      "arrivingLive": {
+        "expectedArrival": "09:01"
+      },
+      "walkMinutes": 10,
+      "changeMinutes": 5,
+      "expected": {
+        "level": "MISSED",
+        "marginMinutes": -6,
+        "expectedArrival": "2026-11-24T09:01",
+        "expectedDeparture": "2026-11-24T09:05"
+      }
+    },
+    {
+      "name": "a large hub's ten minutes, never more than the scheduled wait",
+      "scheduledArrival": "08:50",
+      "scheduledDeparture": "08:58",
+      "leavingLive": {
+        "expectedDeparture": "09:00"
+      },
+      "walkMinutes": 0,
+      "changeMinutes": 10,
+      "expected": {
+        "level": "OK",
+        "marginMinutes": 2,
+        "expectedArrival": "2026-11-24T08:50",
+        "expectedDeparture": "2026-11-24T09:00"
+      }
+    },
+    {
+      "name": "the next train leaves early: the margin shrinks",
+      "scheduledArrival": "08:50",
+      "scheduledDeparture": "08:58",
+      "leavingLive": {
+        "expectedDeparture": "08:54"
+      },
+      "walkMinutes": 0,
+      "changeMinutes": 5,
+      "expected": {
+        "level": "AT_RISK",
+        "marginMinutes": -1,
+        "expectedArrival": "2026-11-24T08:50",
+        "expectedDeparture": "2026-11-24T08:54"
+      }
+    },
+    {
+      "name": "both late: the margin of the expected times",
+      "scheduledArrival": "08:50",
+      "scheduledDeparture": "08:58",
+      "arrivingLive": {
+        "expectedArrival": "09:02"
+      },
+      "leavingLive": {
+        "expectedDeparture": "09:10"
+      },
+      "walkMinutes": 0,
+      "changeMinutes": 5,
+      "expected": {
+        "level": "OK",
+        "marginMinutes": 3,
+        "expectedArrival": "2026-11-24T09:02",
+        "expectedDeparture": "2026-11-24T09:10"
+      }
+    }
+  ],
+  "liveRuns": [
+    {
+      "name": "yesterday's run of a night train is never today's",
+      "leg": {
+        "number": "1963",
+        "from": "Milano Centrale",
+        "to": "Napoli Centrale",
+        "departure": "2026-11-24T18:45",
+        "arrival": "2026-11-25T01:30",
+        "serviceDate": "2026-11-24"
+      },
+      "runs": [
+        {
+          "id": "viaggiatreno:1963:y",
+          "start": "2026-11-23T18:45",
+          "verified": true,
+          "status": "DELAYED",
+          "delayMinutes": 28,
+          "stops": [
+            {
+              "station": "MILANO CENTRALE",
+              "scheduled": "18:45",
+              "expected": "18:52",
+              "verified": true
+            },
+            {
+              "station": "NAPOLI CENTRALE",
+              "scheduled": "01:30",
+              "expected": "01:58",
+              "verified": true
+            },
+            {
+              "station": "PALERMO CENTRALE",
+              "scheduled": "16:55",
+              "expected": "16:55",
+              "verified": true
+            }
+          ]
+        },
+        {
+          "id": "viaggiatreno:1963:t",
+          "start": "2026-11-24T18:45",
+          "verified": false,
+          "status": "DELAYED",
+          "delayMinutes": 0,
+          "stops": [
+            {
+              "station": "MILANO CENTRALE",
+              "scheduled": "18:45",
+              "expected": "18:45",
+              "verified": false
+            },
+            {
+              "station": "NAPOLI CENTRALE",
+              "scheduled": "01:30",
+              "expected": "01:30",
+              "verified": false
+            },
+            {
+              "station": "PALERMO CENTRALE",
+              "scheduled": "16:55",
+              "expected": "16:55",
+              "verified": false
+            }
+          ]
+        }
+      ],
+      "expected": null
+    },
+    {
+      "name": "yesterday's run alone gives nothing",
+      "leg": {
+        "number": "1963",
+        "from": "Milano Centrale",
+        "to": "Napoli Centrale",
+        "departure": "2026-11-24T18:45",
+        "arrival": "2026-11-25T01:30",
+        "serviceDate": "2026-11-24"
+      },
+      "runs": [
+        {
+          "id": "viaggiatreno:1963:y",
+          "start": "2026-11-23T18:45",
+          "verified": true,
+          "status": "DELAYED",
+          "delayMinutes": 28,
+          "stops": [
+            {
+              "station": "MILANO CENTRALE",
+              "scheduled": "18:45",
+              "expected": "18:52",
+              "verified": true
+            },
+            {
+              "station": "NAPOLI CENTRALE",
+              "scheduled": "01:30",
+              "expected": "01:58",
+              "verified": true
+            },
+            {
+              "station": "PALERMO CENTRALE",
+              "scheduled": "16:55",
+              "expected": "16:55",
+              "verified": true
+            }
+          ]
+        }
+      ],
+      "expected": null
+    },
+    {
+      "name": "today's verified run wins over the timetable's copy of it",
+      "leg": {
+        "number": "1963",
+        "from": "Milano Centrale",
+        "to": "Napoli Centrale",
+        "departure": "2026-11-24T18:45",
+        "arrival": "2026-11-25T01:30",
+        "serviceDate": "2026-11-24"
+      },
+      "runs": [
+        {
+          "id": "viaggiatreno:1963:y",
+          "start": "2026-11-23T18:45",
+          "verified": true,
+          "status": "DELAYED",
+          "delayMinutes": 28,
+          "stops": [
+            {
+              "station": "MILANO CENTRALE",
+              "scheduled": "18:45",
+              "expected": "18:52",
+              "verified": true
+            },
+            {
+              "station": "NAPOLI CENTRALE",
+              "scheduled": "01:30",
+              "expected": "01:58",
+              "verified": true
+            },
+            {
+              "station": "PALERMO CENTRALE",
+              "scheduled": "16:55",
+              "expected": "16:55",
+              "verified": true
+            }
+          ]
+        },
+        {
+          "id": "embedded-gtfs:1963",
+          "start": "2026-11-24T18:45",
+          "verified": false,
+          "status": "DELAYED",
+          "delayMinutes": 0,
+          "stops": [
+            {
+              "station": "MILANO CENTRALE",
+              "scheduled": "18:45",
+              "expected": "18:45",
+              "verified": false
+            },
+            {
+              "station": "NAPOLI CENTRALE",
+              "scheduled": "01:30",
+              "expected": "01:30",
+              "verified": false
+            },
+            {
+              "station": "PALERMO CENTRALE",
+              "scheduled": "16:55",
+              "expected": "16:55",
+              "verified": false
+            }
+          ]
+        },
+        {
+          "id": "viaggiatreno:1963:t",
+          "start": "2026-11-24T18:45",
+          "verified": true,
+          "status": "DELAYED",
+          "delayMinutes": 10,
+          "stops": [
+            {
+              "station": "MILANO CENTRALE",
+              "scheduled": "18:45",
+              "expected": "18:50",
+              "verified": true
+            },
+            {
+              "station": "NAPOLI CENTRALE",
+              "scheduled": "01:30",
+              "expected": "01:40",
+              "verified": true
+            },
+            {
+              "station": "PALERMO CENTRALE",
+              "scheduled": "16:55",
+              "expected": "16:55",
+              "verified": true
+            }
+          ]
+        }
+      ],
+      "expected": {
+        "expectedDeparture": "2026-11-24T18:50",
+        "expectedArrival": "2026-11-25T01:40",
+        "cancelled": false
+      }
+    },
+    {
+      "name": "a verified cancellation",
+      "leg": {
+        "number": "1963",
+        "from": "Milano Centrale",
+        "to": "Napoli Centrale",
+        "departure": "2026-11-24T18:45",
+        "arrival": "2026-11-25T01:30",
+        "serviceDate": "2026-11-24"
+      },
+      "runs": [
+        {
+          "id": "viaggiatreno:1963:c",
+          "start": "2026-11-24T18:45",
+          "verified": true,
+          "status": "CANCELLED",
+          "delayMinutes": 0,
+          "stops": [
+            {
+              "station": "MILANO CENTRALE",
+              "scheduled": "18:45",
+              "expected": "18:45",
+              "verified": true
+            },
+            {
+              "station": "NAPOLI CENTRALE",
+              "scheduled": "01:30",
+              "expected": "01:30",
+              "verified": true
+            },
+            {
+              "station": "PALERMO CENTRALE",
+              "scheduled": "16:55",
+              "expected": "16:55",
+              "verified": true
+            }
+          ]
+        }
+      ],
+      "expected": {
+        "expectedDeparture": null,
+        "expectedArrival": null,
+        "cancelled": true
+      }
+    },
+    {
+      "name": "the nearer of two verified runs within two hours",
+      "leg": {
+        "number": "1963",
+        "from": "Milano Centrale",
+        "to": "Napoli Centrale",
+        "departure": "2026-11-24T18:45",
+        "arrival": "2026-11-25T01:30",
+        "serviceDate": "2026-11-24"
+      },
+      "runs": [
+        {
+          "id": "viaggiatreno:1963:a",
+          "start": "2026-11-24T17:45",
+          "verified": true,
+          "status": "DELAYED",
+          "delayMinutes": 5,
+          "stops": [
+            {
+              "station": "MILANO CENTRALE",
+              "scheduled": "17:45",
+              "expected": "17:50",
+              "verified": true
+            },
+            {
+              "station": "NAPOLI CENTRALE",
+              "scheduled": "00:30",
+              "expected": "00:35",
+              "verified": true
+            },
+            {
+              "station": "PALERMO CENTRALE",
+              "scheduled": "16:55",
+              "expected": "16:55",
+              "verified": true
+            }
+          ]
+        },
+        {
+          "id": "viaggiatreno:1963:b",
+          "start": "2026-11-24T18:45",
+          "verified": true,
+          "status": "DELAYED",
+          "delayMinutes": 3,
+          "stops": [
+            {
+              "station": "MILANO CENTRALE",
+              "scheduled": "18:45",
+              "expected": "18:47",
+              "verified": true
+            },
+            {
+              "station": "NAPOLI CENTRALE",
+              "scheduled": "01:30",
+              "expected": "01:33",
+              "verified": true
+            },
+            {
+              "station": "PALERMO CENTRALE",
+              "scheduled": "16:55",
+              "expected": "16:55",
+              "verified": true
+            }
+          ]
+        }
+      ],
+      "expected": {
+        "expectedDeparture": "2026-11-24T18:47",
+        "expectedArrival": "2026-11-25T01:33",
+        "cancelled": false
+      }
+    },
+    {
+      "name": "a single run whose stops are not matched: its delay, on the leg's day",
+      "leg": {
+        "number": "1963",
+        "from": "Milano Centrale",
+        "to": "Napoli Centrale",
+        "departure": "2026-11-24T18:45",
+        "arrival": "2026-11-25T01:30",
+        "serviceDate": "2026-11-24"
+      },
+      "runs": [
+        {
+          "id": "viaggiatreno:1963:u",
+          "start": "2026-11-24T18:45",
+          "verified": true,
+          "status": "DELAYED",
+          "delayMinutes": 6,
+          "stops": [
+            {
+              "station": "TORINO PORTA NUOVA",
+              "scheduled": "18:45",
+              "expected": "18:51",
+              "verified": true
+            },
+            {
+              "station": "GENOVA BRIGNOLE",
+              "scheduled": "01:30",
+              "expected": "01:36",
+              "verified": true
+            },
+            {
+              "station": "PALERMO CENTRALE",
+              "scheduled": "16:55",
+              "expected": "16:55",
+              "verified": true
+            }
+          ]
+        }
+      ],
+      "expected": {
+        "expectedDeparture": "2026-11-24T18:51",
+        "expectedArrival": "2026-11-25T01:36",
+        "cancelled": false
+      }
+    },
+    {
+      "name": "a single run whose stops are not matched, two days later: nothing",
+      "leg": {
+        "number": "1963",
+        "from": "Milano Centrale",
+        "to": "Napoli Centrale",
+        "departure": "2026-11-24T18:45",
+        "arrival": "2026-11-25T01:30",
+        "serviceDate": "2026-11-24"
+      },
+      "runs": [
+        {
+          "id": "viaggiatreno:1963:u",
+          "start": "2026-11-26T18:45",
+          "verified": true,
+          "status": "DELAYED",
+          "delayMinutes": 6,
+          "stops": [
+            {
+              "station": "TORINO PORTA NUOVA",
+              "scheduled": "18:45",
+              "expected": "18:51",
+              "verified": true
+            },
+            {
+              "station": "GENOVA BRIGNOLE",
+              "scheduled": "01:30",
+              "expected": "01:36",
+              "verified": true
+            },
+            {
+              "station": "PALERMO CENTRALE",
+              "scheduled": "16:55",
+              "expected": "16:55",
+              "verified": true
+            }
+          ]
+        }
+      ],
+      "expected": null
+    },
+    {
+      "name": "a verified run whose boarding stop is not verified: only the arrival",
+      "leg": {
+        "number": "1963",
+        "from": "Milano Centrale",
+        "to": "Napoli Centrale",
+        "departure": "2026-11-24T18:45",
+        "arrival": "2026-11-25T01:30",
+        "serviceDate": "2026-11-24"
+      },
+      "runs": [
+        {
+          "id": "viaggiatreno:1963:p",
+          "start": "2026-11-24T18:45",
+          "verified": true,
+          "status": "DELAYED",
+          "delayMinutes": 14,
+          "stops": [
+            {
+              "station": "MILANO CENTRALE",
+              "scheduled": "18:45",
+              "expected": "18:45",
+              "verified": false
+            },
+            {
+              "station": "NAPOLI CENTRALE",
+              "scheduled": "01:30",
+              "expected": "01:44",
+              "verified": true
+            },
+            {
+              "station": "PALERMO CENTRALE",
+              "scheduled": "16:55",
+              "expected": "16:55",
+              "verified": true
+            }
+          ]
+        }
+      ],
+      "expected": {
+        "expectedDeparture": null,
+        "expectedArrival": "2026-11-25T01:44",
+        "cancelled": false
+      }
+    }
+  ],
+  "candidates": [
+    {
+      "name": "train legs of journeys with changes running within three hours",
+      "now": "12:00",
+      "options": [
+        [
+          {
+            "mode": "TRAIN",
+            "number": "2153",
+            "departure": "11:00",
+            "arrival": "11:30"
+          },
+          {
+            "mode": "WALK",
+            "number": null,
+            "departure": "11:30",
+            "arrival": "11:36"
+          },
+          {
+            "mode": "TRAIN",
+            "number": "5521",
+            "departure": "11:40",
+            "arrival": "12:20"
+          }
+        ],
+        [
+          {
+            "mode": "TRAIN",
+            "number": "100",
+            "departure": "12:10",
+            "arrival": "13:00"
+          }
+        ],
+        [
+          {
+            "mode": "TRAIN",
+            "number": "200",
+            "departure": "08:00",
+            "arrival": "08:30"
+          },
+          {
+            "mode": "REPLACEMENT_BUS",
+            "number": "201",
+            "departure": "08:40",
+            "arrival": "09:20"
+          },
+          {
+            "mode": "TRAIN",
+            "number": "",
+            "departure": "13:00",
+            "arrival": "13:30"
+          },
+          {
+            "mode": "TRAIN",
+            "number": "202",
+            "departure": "15:30",
+            "arrival": "16:00"
+          },
+          {
+            "mode": "TRAIN",
+            "number": "203",
+            "departure": "14:00",
+            "arrival": "14:40"
+          }
+        ]
+      ],
+      "expected": {
+        "legs": [
+          "2153@2026-11-24T11:00",
+          "5521@2026-11-24T11:40",
+          "203@2026-11-24T14:00"
+        ],
+        "trains": [
+          {
+            "number": "2153",
+            "serviceDate": "2026-11-24"
+          },
+          {
+            "number": "5521",
+            "serviceDate": "2026-11-24"
+          },
+          {
+            "number": "203",
+            "serviceDate": "2026-11-24"
+          }
+        ]
+      }
+    },
+    {
+      "name": "at most eight trains, each number and day once",
+      "now": "12:00",
+      "options": [
+        [
+          {
+            "mode": "TRAIN",
+            "number": "1",
+            "departure": "11:10",
+            "arrival": "11:15"
+          },
+          {
+            "mode": "TRAIN",
+            "number": "2",
+            "departure": "11:20",
+            "arrival": "11:25"
+          },
+          {
+            "mode": "TRAIN",
+            "number": "3",
+            "departure": "11:30",
+            "arrival": "11:35"
+          },
+          {
+            "mode": "TRAIN",
+            "number": "4",
+            "departure": "11:40",
+            "arrival": "11:45"
+          },
+          {
+            "mode": "TRAIN",
+            "number": "5",
+            "departure": "11:50",
+            "arrival": "11:55"
+          },
+          {
+            "mode": "TRAIN",
+            "number": "6",
+            "departure": "12:00",
+            "arrival": "12:05"
+          },
+          {
+            "mode": "TRAIN",
+            "number": "7",
+            "departure": "12:10",
+            "arrival": "12:15"
+          },
+          {
+            "mode": "TRAIN",
+            "number": "8",
+            "departure": "12:20",
+            "arrival": "12:25"
+          },
+          {
+            "mode": "TRAIN",
+            "number": "9",
+            "departure": "12:30",
+            "arrival": "12:35"
+          },
+          {
+            "mode": "TRAIN",
+            "number": "10",
+            "departure": "12:40",
+            "arrival": "12:45"
+          }
+        ],
+        [
+          {
+            "mode": "TRAIN",
+            "number": "1",
+            "departure": "11:10",
+            "arrival": "11:15"
+          },
+          {
+            "mode": "TRAIN",
+            "number": "300",
+            "departure": "12:30",
+            "arrival": "12:50"
+          }
+        ]
+      ],
+      "expected": {
+        "legs": [
+          "1@2026-11-24T11:10",
+          "2@2026-11-24T11:20",
+          "3@2026-11-24T11:30",
+          "4@2026-11-24T11:40",
+          "5@2026-11-24T11:50",
+          "6@2026-11-24T12:00",
+          "7@2026-11-24T12:10",
+          "8@2026-11-24T12:20",
+          "9@2026-11-24T12:30",
+          "10@2026-11-24T12:40",
+          "1@2026-11-24T11:10",
+          "300@2026-11-24T12:30"
+        ],
+        "trains": [
+          {
+            "number": "1",
+            "serviceDate": "2026-11-24"
+          },
+          {
+            "number": "2",
+            "serviceDate": "2026-11-24"
+          },
+          {
+            "number": "3",
+            "serviceDate": "2026-11-24"
+          },
+          {
+            "number": "4",
+            "serviceDate": "2026-11-24"
+          },
+          {
+            "number": "5",
+            "serviceDate": "2026-11-24"
+          },
+          {
+            "number": "6",
+            "serviceDate": "2026-11-24"
+          },
+          {
+            "number": "7",
+            "serviceDate": "2026-11-24"
+          },
+          {
+            "number": "8",
+            "serviceDate": "2026-11-24"
+          }
+        ]
+      }
+    }
+  ],
+  "refresh": {
+    "current": [
+      {
+        "name": "five minutes old is still shown, older is dropped",
+        "fetchedSecondsAgo": {
+          "a": 0,
+          "b": 300,
+          "c": 301
+        },
+        "expected": [
+          "a",
+          "b"
+        ]
+      },
+      {
+        "name": "a leg without a lookup time is dropped",
+        "fetchedSecondsAgo": {
+          "a": 10
+        },
+        "legs": [
+          "a",
+          "b"
+        ],
+        "expected": [
+          "a"
+        ]
+      }
+    ],
+    "isDue": [
+      {
+        "name": "never looked up",
+        "startedSecondsAgo": null,
+        "expected": true
+      },
+      {
+        "name": "a minute ago",
+        "startedSecondsAgo": 60,
+        "expected": true
+      },
+      {
+        "name": "59 seconds ago",
+        "startedSecondsAgo": 59,
+        "expected": false
+      }
+    ],
+    "focusedFirst": [
+      {
+        "name": "the journey on screen first",
+        "ids": [
+          "a",
+          "b",
+          "c"
+        ],
+        "focused": "b",
+        "expected": [
+          "b",
+          "a",
+          "c"
+        ]
+      },
+      {
+        "name": "none on screen",
+        "ids": [
+          "a",
+          "b",
+          "c"
+        ],
+        "focused": null,
+        "expected": [
+          "a",
+          "b",
+          "c"
+        ]
+      },
+      {
+        "name": "one not listed",
+        "ids": [
+          "a",
+          "b"
+        ],
+        "focused": "z",
+        "expected": [
+          "a",
+          "b"
+        ]
+      }
+    ]
+  }
+}
