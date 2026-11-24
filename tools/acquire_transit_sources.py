@@ -206,8 +206,12 @@ class HttpsOnlyRedirects(urllib.request.HTTPRedirectHandler):
         return super().redirect_request(req, fp, code, msg, headers, newurl)
 
 
-def download(url: str, destination: Path, *, allow_http: bool = False, attempts: int = 6) -> dict[str, Any]:
-    """Stream ``url`` to ``destination`` under the byte cap, resuming a dropped connection with a Range request."""
+def download(
+    url: str, destination: Path, *, allow_http: bool = False, attempts: int = 6, max_bytes: int | None = None,
+) -> dict[str, Any]:
+    """Stream ``url`` to ``destination`` under the byte cap (MAX_DOWNLOAD_BYTES, or ``max_bytes``: the reviewed limit of
+    a large archive, build_gtfs_packs.REVIEWED_LARGE_ARCHIVES), resuming a dropped connection with a Range request."""
+    limit = MAX_DOWNLOAD_BYTES if max_bytes is None else max_bytes
     destination.parent.mkdir(parents=True, exist_ok=True)
     opener = urllib.request.build_opener(HttpsOnlyRedirects(allow_http))
     written = 0
@@ -232,8 +236,8 @@ def download(url: str, destination: Path, *, allow_http: bool = False, attempts:
                         if not chunk:
                             break
                         written += len(chunk)
-                        if written > MAX_DOWNLOAD_BYTES:
-                            raise AcquisitionError(f"download oltre {MAX_DOWNLOAD_BYTES} byte: {url}")
+                        if written > limit:
+                            raise AcquisitionError(f"download oltre {limit} byte: {url}")
                         output.write(chunk)
             break
         except (http.client.IncompleteRead, ConnectionError, TimeoutError, urllib.error.URLError) as error:
@@ -251,8 +255,12 @@ def download(url: str, destination: Path, *, allow_http: bool = False, attempts:
             print(f"  ripresa {attempt + 1} di {url} da {written} byte", flush=True)
     if written == 0:
         raise AcquisitionError(f"download vuoto: {url}")
-    digest = hashlib.sha256(destination.read_bytes()).hexdigest()
-    return {"url": url, "finalUrl": final_url, "bytes": written, "sha256": digest}
+    # Hashed in blocks: the archive is never held in memory whole.
+    digest = hashlib.sha256()
+    with destination.open("rb") as stored:
+        for block in iter(lambda: stored.read(1 << 20), b""):
+            digest.update(block)
+    return {"url": url, "finalUrl": final_url, "bytes": written, "sha256": digest.hexdigest()}
 
 
 def acquire(packs: list[dict[str, Any]], out: Path) -> dict[str, Any]:
