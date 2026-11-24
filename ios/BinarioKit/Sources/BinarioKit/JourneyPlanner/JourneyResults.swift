@@ -18,31 +18,22 @@ public enum JourneyResultsFilter: String, CaseIterable, Sendable {
         case .leastWalking: return .leastWalking
         }
     }
-
-    /// The localization key of the chip (Android's `journey_filter_*`).
-    public var labelKey: String {
-        switch self {
-        case .all: return "journey.filter.all"
-        case .direct: return "journey.filter.direct"
-        case .fewestChanges: return "journey.filter.fewest_changes"
-        case .fastest: return "journey.filter.fastest"
-        case .leastWalking: return "journey.filter.least_walking"
-        case .mostReliable: return "journey.filter.most_reliable"
-        }
-    }
 }
 
-/// The search's limit of changes (Android's change filter of the planner): direct, at most one, at most two.
-public enum JourneyChangeFilter: Int, CaseIterable, Sendable {
-    case direct = 0
-    case one = 1
-    case two = 2
+/// The changes filter of the planner (Android's `JourneyChangeFilter`): «Qualsiasi», «Diretto», «Max 1 cambio», «Max 2
+/// cambi». It filters the journeys shown, as on Android; the search keeps its limit of changes.
+public enum JourneyChangeFilter: String, CaseIterable, Sendable {
+    case any = "ANY"
+    case direct = "DIRECT"
+    case upToOne = "UP_TO_ONE"
+    case upToTwo = "UP_TO_TWO"
 
-    public var labelKey: String {
+    public func accepts(_ transferCount: Int) -> Bool {
         switch self {
-        case .direct: return "journey.change.direct"
-        case .one: return "journey.change.one"
-        case .two: return "journey.change.two"
+        case .any: return true
+        case .direct: return transferCount == 0
+        case .upToOne: return transferCount <= 1
+        case .upToTwo: return transferCount <= 2
         }
     }
 }
@@ -417,6 +408,9 @@ public enum JourneyResultsMerge {
         }
     }
 
+    /// The day of `date` in Italian time, as yyyymmdd.
+    public static func encodedDay(_ date: Date) -> Int { encoded(date) }
+
     static func encoded(_ date: Date) -> Int {
         let parts = romeCalendar.dateComponents([.year, .month, .day], from: date)
         return (parts.year ?? 0) * 10_000 + (parts.month ?? 0) * 100 + (parts.day ?? 0)
@@ -448,11 +442,11 @@ public enum JourneyResultsMerge {
     }
 
     /// The orders of the chips: «Tutti» by departure, «Diretti» only entries without changes, «Meno cambi», «Più veloce»
-    /// and «Meno a piedi» by their key then the preferences, «Più affidabili» by the statistics (`reliability`, higher
-    /// first) then the departure.
+    /// and «Meno a piedi» by their key then the preferences, «Più affidabili» by the statistics of each entry id
+    /// (`reliability`) then the departure.
     public static func apply(
         _ entries: [JourneyResultEntry], filter: JourneyResultsFilter, preferences: JourneyPreferences? = nil,
-        reliability: [String: Double] = [:]
+        reliability: [String: EntryReliability] = [:]
     ) -> [JourneyResultEntry] {
         let preferred = preferences?.preferredModes ?? []
         let ranking = preferences?.ranking ?? .fastest
@@ -499,14 +493,7 @@ public enum JourneyResultsMerge {
             }
         case .mostReliable:
             return sorted(entries) { a, b -> Bool? in
-                let first = reliability[a.id]
-                let second = reliability[b.id]
-                if first != second {
-                    // Measured entries first, the higher score first.
-                    guard let first else { return false }
-                    guard let second else { return true }
-                    return first > second
-                }
+                if let order = EntryReliability.mostReliableFirst(reliability[a.id], reliability[b.id]) { return order }
                 return byDeparture(a, b)
             }
         }
@@ -554,6 +541,44 @@ public enum JourneyResultsMerge {
 }
 
 // MARK: - Network statistics of a journey
+
+/// The statistics of a result entry for «Più affidabili» (Android's `EntryReliability`): its chance of arriving on
+/// time and the mean delay where it arrives.
+public struct EntryReliability: Equatable, Sendable {
+    public let score: Double
+    public let meanDelayMinutes: Double
+
+    public init(score: Double, meanDelayMinutes: Double) {
+        self.score = score
+        self.meanDelayMinutes = meanDelayMinutes
+    }
+
+    /// A direct train at the destination.
+    public init(train: StopReliability) {
+        self.init(score: train.score, meanDelayMinutes: train.meanDelayMinutes)
+    }
+
+    /// A journey with every train and change, its last train for the delay.
+    public init?(journey: JourneyPlanReliability) {
+        guard let last = journey.legs.last else { return nil }
+        self.init(score: journey.score, meanDelayMinutes: last.stop.meanDelayMinutes)
+    }
+
+    /// Measured entries first, the higher score first (equal to six decimals is a tie), then the lower mean delay;
+    /// nil on a tie.
+    static func mostReliableFirst(_ a: EntryReliability?, _ b: EntryReliability?) -> Bool? {
+        switch (a, b) {
+        case let (a?, b?):
+            let first = Int64((a.score * 1_000_000).rounded()), second = Int64((b.score * 1_000_000).rounded())
+            if first != second { return first > second }
+            if a.meanDelayMinutes != b.meanDelayMinutes { return a.meanDelayMinutes < b.meanDelayMinutes }
+            return nil
+        case (.some, nil): return true
+        case (nil, .some): return false
+        case (nil, nil): return nil
+        }
+    }
+}
 
 /// The chance a change works on the statistics: how often the arriving train was at most the slack late.
 public struct ConnectionOdds: Equatable, Sendable {
