@@ -38,8 +38,6 @@ import it.binario.app.data.gtfs.bikesOfCopies
 import it.binario.app.data.gtfs.bikesOnBoard
 import it.binario.app.data.gtfs.WHEELCHAIR_UNKNOWN
 import it.binario.app.data.gtfs.WHEELCHAIR_YES
-import it.binario.app.data.planned.RfiProgrammedStationIds
-import it.binario.app.data.planned.SupplementalRfiProgrammedStationIds
 import it.binario.app.data.provider.AccessMode
 import it.binario.app.data.provider.CoverageDescriptor
 import it.binario.app.data.provider.ExpiredTimetable
@@ -83,30 +81,33 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 
-/** Tuning of the offline planner. Every value is a parameter so that tests and later screens can change it. */
+/**
+ * Tuning of the offline planner. Every value is a parameter so that tests and later screens can change it; the defaults are
+ * the shared table both phones read (contracts/shared-data/v1/journey-planner-v1.json).
+ */
 data class GtfsJourneyPlannerSettings(
     /** Minimum change time at an ordinary station. */
-    val defaultTransferMinutes: Int = 5,
+    val defaultTransferMinutes: Int = SharedData.JourneyPlanner.DEFAULT_TRANSFER_MINUTES,
     /** Minimum change time at a large hub. */
-    val largeHubTransferMinutes: Int = 10,
-    /** Catalogue railway codes treated as large hubs: by default the hubs with a verified RFI timetable. */
+    val largeHubTransferMinutes: Int = SharedData.JourneyPlanner.LARGE_HUB_TRANSFER_MINUTES,
+    /** Catalogue railway codes treated as large hubs: by default the hubs with a verified RFI timetable (a test keeps them equal). */
     val largeHubRailwayCodes: Set<String> = DEFAULT_LARGE_HUB_RAILWAY_CODES,
     /** Departures are searched from the requested time up to this many minutes later. */
-    val searchWindowMinutes: Int = 8 * 60,
+    val searchWindowMinutes: Int = SharedData.JourneyPlanner.SEARCH_WINDOW_MINUTES,
     /**
      * Vehicles leaving up to this long after the window can still be boarded at a change, so that a journey leaving
      * inside the window can still arrive (Merano → Roma takes seven hours): only its first departure must be in the
      * window. A vehicle boarded by then is followed to its end, however late (Milano → Palermo by night train).
      */
-    val journeyHorizonMinutes: Int = 10 * 60,
+    val journeyHorizonMinutes: Int = SharedData.JourneyPlanner.JOURNEY_HORIZON_MINUTES,
     /**
      * Railway packs of one search besides those serving both ends, which always take part: the packs a change between
      * packs needs, or those of one end when a city network reaches the other.
      */
-    val maxPacksPerSearch: Int = 3,
-    val maxIterations: Int = 32,
+    val maxPacksPerSearch: Int = SharedData.JourneyPlanner.MAXIMUM_PACKS_PER_SEARCH,
+    val maxIterations: Int = SharedData.JourneyPlanner.MAXIMUM_ITERATIONS,
     /** Bound on the connections of one search window (they are copied into the scan arrays). */
-    val maxSearchConnections: Int = 400_000,
+    val maxSearchConnections: Int = SharedData.JourneyPlanner.MAXIMUM_SEARCH_CONNECTIONS,
     /**
      * Bound on the cached per-pack, per-service-day connection arrays (the Swiss pack's day is about 5 MB, the
      * Trenitalia one 2.5 MB): room for the requested and the next day of the packs of one search.
@@ -124,15 +125,15 @@ data class GtfsJourneyPlannerSettings(
     /** Added to every walk (finding the way, stairs, ticket barriers). */
     val walkMarginMinutes: Int = SharedData.UrbanStops.WALK_MARGIN_MINUTES,
     /** Minimum change time at a stop of a city network (metro, tram, funicular). */
-    val urbanTransferMinutes: Int = 3,
+    val urbanTransferMinutes: Int = SharedData.JourneyPlanner.URBAN_TRANSFER_MINUTES,
     /** City packs loaded for one search besides the [maxPacksPerSearch] railway packs: the city of each end. */
-    val maxUrbanPacksPerSearch: Int = 2,
+    val maxUrbanPacksPerSearch: Int = SharedData.JourneyPlanner.MAXIMUM_URBAN_PACKS_PER_SEARCH,
     /**
      * A wait between two vehicles longer than this is a long wait: such an option is left out when another one
      * arrives no later than its arrival plus the extra wait (a night in a station before the first train of the
      * morning), and it is never "Ultimo di oggi".
      */
-    val maxChangeWaitMinutes: Int = 120
+    val maxChangeWaitMinutes: Int = SharedData.JourneyPlanner.MAXIMUM_CHANGE_WAIT_MINUTES
 ) {
     init {
         require(defaultTransferMinutes in 0..60 && largeHubTransferMinutes in 0..60) { "Tempo di cambio non valido" }
@@ -154,8 +155,7 @@ data class GtfsJourneyPlannerSettings(
         if (railwayCode != null && railwayCode in largeHubRailwayCodes) largeHubTransferMinutes else defaultTransferMinutes
 
     companion object {
-        val DEFAULT_LARGE_HUB_RAILWAY_CODES: Set<String> =
-            RfiProgrammedStationIds.hubRailwayCodes + SupplementalRfiProgrammedStationIds.hubRailwayCodes
+        val DEFAULT_LARGE_HUB_RAILWAY_CODES: Set<String> = SharedData.JourneyPlanner.LARGE_HUB_RAILWAY_CODES
     }
 }
 
@@ -2215,19 +2215,19 @@ class EmbeddedGtfsJourneyProvider internal constructor(
         /** Yesterday's evening is read from this long before the look-back, so a run between two stops keeps both. */
         private const val RUN_SEGMENT_MARGIN_MINUTES = 60
         /** Longest stop of a vehicle between two trips the traveller can stay on board through. */
-        private const val MAX_IN_SEAT_WAIT_MINUTES = 30
+        private const val MAX_IN_SEAT_WAIT_MINUTES = SharedData.JourneyPlanner.MAXIMUM_IN_SEAT_WAIT_MINUTES
         /** Two packs' copies of one train leave and reach a station within this many minutes of each other. */
-        private const val MAX_COPY_SKEW_MINUTES = 5
+        private const val MAX_COPY_SKEW_MINUTES = SharedData.JourneyPlanner.MAXIMUM_COPY_SKEW_MINUTES
         /** Stops of the other pack's copy compared with the first pack's onward stops ([sameWayOn]). */
-        private const val ONWARD_STOPS = 3
+        private const val ONWARD_STOPS = SharedData.JourneyPlanner.ONWARD_STOPS
         /** Scans of the search for the first option after a window that ends with nothing more to find. */
-        private const val FOLLOW_UP_ITERATIONS = 2
+        private const val FOLLOW_UP_ITERATIONS = SharedData.JourneyPlanner.FOLLOW_UP_ITERATIONS
         /** That search reaches this far into the next service day: the first train of the next morning. */
-        private const val NEXT_DAY_FOLLOW_UP_MINUTES = 12 * 60
+        private const val NEXT_DAY_FOLLOW_UP_MINUTES = SharedData.JourneyPlanner.NEXT_DAY_FOLLOW_UP_MINUTES
         /** Bound on the "Resta a bordo" notes of one leg. */
-        private const val MAX_CONTINUATIONS = 8
+        private const val MAX_CONTINUATIONS = SharedData.JourneyPlanner.MAXIMUM_CONTINUATIONS
         /** Upper bound of a walk, whatever the preferences (the planner settings accept up to 2 km). */
-        private const val MAX_WALK_METERS = 2_000
+        private const val MAX_WALK_METERS = SharedData.JourneyPlanner.MAXIMUM_WALK_METERS
 
         /**
          * The public number and the line a leg of [trip] shows: a city run has a line ("M1", "14") but no number (its
@@ -2301,10 +2301,11 @@ class EmbeddedGtfsJourneyProvider internal constructor(
         internal fun brandsAgree(first: Brand, second: Brand): Boolean =
             first == second || first == Brand.UNKNOWN || second == Brand.UNKNOWN
 
-        private val LONG_DISTANCE_CODES = setOf(
-            "EC", "IC", "ICN", "EN", "NJ", "FR", "FA", "FB", "AV", "RJ", "RJX", "ICE", "TGV", "ES", "ITALO", "EUROCITY", "RAILJET"
+        private val LONG_DISTANCE_CODES = SharedData.JourneyPlanner.LONG_DISTANCE_CODES
+        /** A local code: one of the table's letters, then up to its digits ("S10", "RE11"). */
+        private val LOCAL_CODE = Regex(
+            "(" + SharedData.JourneyPlanner.LOCAL_CODES.joinToString("|") + ")\\d{0," + SharedData.JourneyPlanner.LOCAL_CODE_MAXIMUM_DIGITS + "}"
         )
-        private val LOCAL_CODE = Regex("(S|R|RE|REX|RV|REG|RB|TER)\\d{0,3}")
 
         internal fun serviceKind(mode: LegMode, category: TrainCategory, line: String?): ServiceKind {
             if (mode == LegMode.REPLACEMENT_BUS) return ServiceKind.REPLACEMENT_BUS

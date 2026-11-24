@@ -1,5 +1,14 @@
 package it.binario.app.shared
 
+import java.time.LocalDateTime
+import it.binario.app.journeys.TransferRiskCalculator
+import it.binario.app.journeys.JourneyResultsPresenter
+import it.binario.app.data.repository.JourneySearchQuery
+import it.binario.app.data.provider.WalkingSpeed
+import it.binario.app.data.provider.JourneyPreferences
+import it.binario.app.data.planned.SupplementalRfiProgrammedStationIds
+import it.binario.app.data.planned.RfiProgrammedStationIds
+import it.binario.app.data.Station
 import it.binario.app.data.AirportRoutes
 import it.binario.app.data.CompensationShare
 import it.binario.app.data.DelayCompensationRule
@@ -253,6 +262,37 @@ class SharedDataTest {
         assertEquals(json.getInt("walkMarginMinutes"), settings.walkMarginMinutes)
         assertEquals(json.getInt("samePlaceMeters"), SharedData.UrbanStops.SAME_PLACE_METERS)
         assertEquals(json.getInt("platformMeters").toDouble(), UrbanStopPlatforms.SIBLING_METERS, 0.0)
+    }
+
+    @Test fun `the planner of the journeys with changes reads the shared table`() {
+        val json = table("journey-planner-v1.json")
+        val settings = GtfsJourneyPlannerSettings()
+        assertEquals(json.getInt("defaultTransferMinutes"), settings.defaultTransferMinutes)
+        assertEquals(json.getInt("largeHubTransferMinutes"), settings.largeHubTransferMinutes)
+        assertEquals(json.getInt("urbanTransferMinutes"), settings.urbanTransferMinutes)
+        assertEquals(json.getInt("searchWindowMinutes"), settings.searchWindowMinutes)
+        assertEquals(json.getInt("journeyHorizonMinutes"), settings.journeyHorizonMinutes)
+        assertEquals(json.getInt("maximumPacksPerSearch"), settings.maxPacksPerSearch)
+        assertEquals(json.getInt("maximumUrbanPacksPerSearch"), settings.maxUrbanPacksPerSearch)
+        assertEquals(json.getInt("maximumIterations"), settings.maxIterations)
+        assertEquals(json.getInt("maximumSearchConnections"), settings.maxSearchConnections)
+        assertEquals(json.getInt("maximumChangeWaitMinutes"), settings.maxChangeWaitMinutes)
+        // The large hubs are the stations with a verified RFI timetable: the table must follow them.
+        val hubs = json.getJSONArray("largeHubRailwayCodes").strings().toSet()
+        assertEquals(hubs, settings.largeHubRailwayCodes)
+        assertEquals(RfiProgrammedStationIds.hubRailwayCodes + SupplementalRfiProgrammedStationIds.hubRailwayCodes, hubs)
+        assertEquals(json.getDouble("slowWalkingKmh"), WalkingSpeed.SLOW.kmh, 0.0)
+        assertEquals(json.getDouble("normalWalkingKmh"), WalkingSpeed.NORMAL.kmh, 0.0)
+        assertEquals(json.getDouble("fastWalkingKmh"), WalkingSpeed.FAST.kmh, 0.0)
+        assertEquals(json.getJSONArray("walkMinuteChoices").ints(), JourneyPreferences.MAX_WALK_CHOICES)
+        assertEquals(json.getInt("defaultMaximumWalkMinutes"), JourneyPreferences().maxWalkMinutes)
+        val query = JourneySearchQuery(Station("a", "A", "A"), Station("b", "B", "B"), LocalDateTime.of(2026, 1, 1, 8, 0))
+        assertEquals(json.getInt("defaultMaximumTransfers"), query.maxTransfers)
+        assertEquals(json.getInt("maximumResults"), query.maxResults)
+        assertEquals(json.getInt("longWaitMinutes").toLong(), JourneyResultsPresenter.LONG_WAIT_MINUTES)
+        assertEquals(json.getInt("defaultTransferMinutes").toLong(), TransferRiskCalculator.DEFAULT_TRANSFER_MINUTES)
+        assertEquals(json.getJSONArray("longDistanceCodes").strings().toSet(), SharedData.JourneyPlanner.LONG_DISTANCE_CODES)
+        assertEquals(json.getJSONArray("localCodes").strings().toSet(), SharedData.JourneyPlanner.LOCAL_CODES)
     }
 
     @Test fun `every source is asked with the shared manners`() {

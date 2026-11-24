@@ -543,6 +543,24 @@ def _check_pack_roles(values: Mapping[str, Any]) -> list[str]:
     return errors
 
 
+def _check_journey_planner(values: Mapping[str, Any]) -> list[str]:
+    errors = []
+    if values["largeHubTransferMinutes"] < values["defaultTransferMinutes"]:
+        errors.append("largeHubTransferMinutes sotto defaultTransferMinutes")
+    if not values["slowWalkingKmh"] < values["normalWalkingKmh"] < values["fastWalkingKmh"]:
+        errors.append("velocità a piedi non crescenti")
+    choices = values["walkMinuteChoices"]
+    if choices != sorted(set(choices)):
+        errors.append("walkMinuteChoices non crescenti")
+    if values["defaultMaximumWalkMinutes"] not in choices:
+        errors.append("defaultMaximumWalkMinutes non è tra walkMinuteChoices")
+    if set(values["localCodes"]) & set(values["longDistanceCodes"]):
+        errors.append("un codice è sia locale sia di lunga percorrenza")
+    if values["maximumCopySkewMinutes"] > values["maximumInSeatWaitMinutes"]:
+        errors.append("maximumCopySkewMinutes supera maximumInSeatWaitMinutes")
+    return errors
+
+
 def _check_urban_stops(values: Mapping[str, Any]) -> list[str]:
     errors = []
     if values["samePlaceMeters"] > values["platformMeters"]:
@@ -881,6 +899,38 @@ TABLES: tuple[Table, ...] = (
         "stations": Field(ListOf(ITALO_STATION, unique_by=("code",))),
         "slugsByName": Field(MapOf(Text(r"[a-z0-9]+(?:-[a-z0-9]+)*"), key=STATION_NAME)),
     }),
+    Table("journey-planner-v1.json", "JourneyPlanner", {
+        "defaultTransferMinutes": Field(Integer(0, 60)),
+        "largeHubTransferMinutes": Field(Integer(0, 60)),
+        "urbanTransferMinutes": Field(Integer(0, 60)),
+        "largeHubRailwayCodes": Field(ListOf(Text(r"S\d{5}"), as_set=True)),
+        "searchWindowMinutes": Field(Integer(30, 24 * 60)),
+        "journeyHorizonMinutes": Field(Integer(0, 24 * 60)),
+        "maximumPacksPerSearch": Field(Integer(1, 8)),
+        "maximumUrbanPacksPerSearch": Field(Integer(0, 4)),
+        "maximumIterations": Field(Integer(1, 1_000)),
+        "maximumSearchConnections": Field(Integer(1, 4_000_000)),
+        "maximumChangeWaitMinutes": Field(Integer(0, 24 * 60)),
+        "followUpIterations": Field(Integer(1, 100)),
+        "nextDayFollowUpMinutes": Field(Integer(0, 24 * 60)),
+        "maximumInSeatWaitMinutes": Field(Integer(0, 24 * 60)),
+        "maximumCopySkewMinutes": Field(Integer(0, 60)),
+        "onwardStops": Field(Integer(1, 20)),
+        "maximumContinuations": Field(Integer(1, 50)),
+        "longDistanceCodes": Field(ListOf(Text(r"[A-Z]{1,12}"), as_set=True)),
+        "localCodes": Field(ListOf(Text(r"[A-Z]{1,8}"), as_set=True)),
+        "localCodeMaximumDigits": Field(Integer(0, 6)),
+        "maximumWalkMeters": Field(Integer(0, 5_000)),
+        "slowWalkingKmh": Field(Real(1.0, 10.0)),
+        "normalWalkingKmh": Field(Real(1.0, 10.0)),
+        "fastWalkingKmh": Field(Real(1.0, 10.0)),
+        "walkMinuteChoices": Field(ListOf(Integer(1, 60))),
+        "defaultMaximumWalkMinutes": Field(Integer(1, 60)),
+        "defaultMaximumTransfers": Field(Integer(0, 6)),
+        "maximumResults": Field(Integer(1, 50)),
+        "longWaitMinutes": Field(Integer(1, 24 * 60)),
+        "duplicateWalkMinutes": Field(Integer(0, 60)),
+    }, check=_check_journey_planner),
     Table("live-train-map-v1.json", "LiveTrainMap", {
         "lookBackMinutes": Field(Integer(0, 720)),
         "lookAheadMinutes": Field(Integer(0, 720)),

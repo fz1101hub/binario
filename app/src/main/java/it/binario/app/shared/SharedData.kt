@@ -8,6 +8,7 @@
 //   contracts/shared-data/v1/italian-holidays-v1.json
 //   contracts/shared-data/v1/italo-gtfs-station-codes.json
 //   contracts/shared-data/v1/italo-stations-v1.json
+//   contracts/shared-data/v1/journey-planner-v1.json
 //   contracts/shared-data/v1/live-train-map-v1.json
 //   contracts/shared-data/v1/notices-sources-v1.json
 //   contracts/shared-data/v1/pack-roles-v1.json
@@ -471,6 +472,53 @@ internal object SharedData {
             "Venezia Santa Lucia" to "venezia-santa-lucia",
             "Venezia S. Lucia" to "venezia-santa-lucia"
         )
+    }
+
+    /**
+     * contracts/shared-data/v1/journey-planner-v1.json: The offline planner of journeys with changes, as both phones
+     * compute it from the bundled timetables (Connection Scan): the change time at a station, a large hub and a city
+     * stop; the search window and the horizon of the changes; how many packs one search reads; the bounds of a search;
+     * the long wait at a change; the in-seat continuations (Resta a bordo) by block or by the same train in another
+     * pack; the walking speeds, the longest walk and its choices; the default changes and results; the long wait the
+     * results name and the walk that keeps a journey the same as its direct train.
+     */
+    object JourneyPlanner {
+        const val DEFAULT_TRANSFER_MINUTES: Int = 5
+        const val LARGE_HUB_TRANSFER_MINUTES: Int = 10
+        const val URBAN_TRANSFER_MINUTES: Int = 3
+        val LARGE_HUB_RAILWAY_CODES: Set<String> = setOf(
+            "S00035", "S00219", "S01700", "S02430", "S02593", "S04700", "S05043", "S06421", "S07113", "S08217",
+            "S08406", "S08409", "S09218", "S09818", "S11119", "S11145", "S11781", "S12002", "S12332"
+        )
+        const val SEARCH_WINDOW_MINUTES: Int = 480
+        const val JOURNEY_HORIZON_MINUTES: Int = 600
+        const val MAXIMUM_PACKS_PER_SEARCH: Int = 3
+        const val MAXIMUM_URBAN_PACKS_PER_SEARCH: Int = 2
+        const val MAXIMUM_ITERATIONS: Int = 32
+        const val MAXIMUM_SEARCH_CONNECTIONS: Int = 400000
+        const val MAXIMUM_CHANGE_WAIT_MINUTES: Int = 120
+        const val FOLLOW_UP_ITERATIONS: Int = 2
+        const val NEXT_DAY_FOLLOW_UP_MINUTES: Int = 720
+        const val MAXIMUM_IN_SEAT_WAIT_MINUTES: Int = 30
+        const val MAXIMUM_COPY_SKEW_MINUTES: Int = 5
+        const val ONWARD_STOPS: Int = 3
+        const val MAXIMUM_CONTINUATIONS: Int = 8
+        val LONG_DISTANCE_CODES: Set<String> = setOf(
+            "EC", "IC", "ICN", "EN", "NJ", "FR", "FA", "FB", "AV", "RJ", "RJX", "ICE", "TGV", "ES", "ITALO", "EUROCITY",
+            "RAILJET"
+        )
+        val LOCAL_CODES: Set<String> = setOf("S", "R", "RE", "REX", "RV", "REG", "RB", "TER")
+        const val LOCAL_CODE_MAXIMUM_DIGITS: Int = 3
+        const val MAXIMUM_WALK_METERS: Int = 2000
+        const val SLOW_WALKING_KMH: Double = 3.5
+        const val NORMAL_WALKING_KMH: Double = 4.5
+        const val FAST_WALKING_KMH: Double = 5.5
+        val WALK_MINUTE_CHOICES: List<Int> = listOf(5, 10, 15, 20)
+        const val DEFAULT_MAXIMUM_WALK_MINUTES: Int = 10
+        const val DEFAULT_MAXIMUM_TRANSFERS: Int = 2
+        const val MAXIMUM_RESULTS: Int = 6
+        const val LONG_WAIT_MINUTES: Int = 120
+        const val DUPLICATE_WALK_MINUTES: Int = 10
     }
 
     /**

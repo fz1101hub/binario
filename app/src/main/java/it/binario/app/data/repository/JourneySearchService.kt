@@ -10,13 +10,14 @@ import it.binario.app.data.core.StationId
 import it.binario.app.data.provider.ExpiredTimetable
 import it.binario.app.data.provider.JourneyEndpoint
 import it.binario.app.data.provider.JourneyPreferences
-import it.binario.app.data.provider.WheelchairDataAware
 import it.binario.app.data.provider.JourneyProvider
 import it.binario.app.data.provider.JourneySearchRequest
 import it.binario.app.data.provider.ProviderErrorKind
 import it.binario.app.data.provider.ProviderResult
 import it.binario.app.data.provider.ProviderWarning
 import it.binario.app.data.provider.TimetableValidityAware
+import it.binario.app.data.provider.WheelchairDataAware
+import it.binario.app.shared.SharedData
 import java.time.Clock
 import java.time.Instant
 import java.time.LocalDateTime
@@ -31,8 +32,8 @@ data class JourneySearchQuery(
     val origin: Station,
     val destination: Station,
     val departure: LocalDateTime,
-    val maxTransfers: Int = 2,
-    val maxResults: Int = 6,
+    val maxTransfers: Int = SharedData.JourneyPlanner.DEFAULT_MAXIMUM_TRANSFERS,
+    val maxResults: Int = SharedData.JourneyPlanner.MAXIMUM_RESULTS,
     /** "Preferenze di viaggio" (walks, ranking, service kinds, wheelchair access); null: the planner's defaults. */
     val preferences: JourneyPreferences? = null
 )

@@ -6,13 +6,14 @@ import it.binario.app.data.core.JourneyLeg
 import it.binario.app.data.core.LegMode
 import it.binario.app.data.core.ServiceKind
 import it.binario.app.data.journey.EmbeddedGtfsJourneyProvider
-import it.binario.app.data.repository.JourneySearchResult
-import it.binario.app.data.repository.JourneySearchStatus
-import it.binario.app.data.repository.SourcedJourneyOption
 import it.binario.app.data.provider.JourneyPreferences
 import it.binario.app.data.provider.JourneyRanking
 import it.binario.app.data.provider.TravelMode
+import it.binario.app.data.repository.JourneySearchResult
+import it.binario.app.data.repository.JourneySearchStatus
+import it.binario.app.data.repository.SourcedJourneyOption
 import it.binario.app.data.sources.RailSourceCatalog
+import it.binario.app.shared.SharedData
 import java.time.Duration
 import java.time.LocalDate
 import java.time.ZoneId
@@ -294,7 +295,7 @@ object JourneyResultsPresenter {
     private val timeFormat = DateTimeFormatter.ofPattern("HH:mm", Locale.ROOT)
 
     /** From this wait at a change on, the card says how long it is (the offline planner's long wait, two hours). */
-    const val LONG_WAIT_MINUTES = 120L
+    const val LONG_WAIT_MINUTES: Long = SharedData.JourneyPlanner.LONG_WAIT_MINUTES * 1L
 
     fun present(
         result: JourneySearchResult,

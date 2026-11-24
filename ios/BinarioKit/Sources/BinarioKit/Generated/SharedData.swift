@@ -8,6 +8,7 @@
 //   contracts/shared-data/v1/italian-holidays-v1.json
 //   contracts/shared-data/v1/italo-gtfs-station-codes.json
 //   contracts/shared-data/v1/italo-stations-v1.json
+//   contracts/shared-data/v1/journey-planner-v1.json
 //   contracts/shared-data/v1/live-train-map-v1.json
 //   contracts/shared-data/v1/notices-sources-v1.json
 //   contracts/shared-data/v1/pack-roles-v1.json
@@ -479,6 +480,51 @@ public enum SharedData {
             "Venezia Santa Lucia": "venezia-santa-lucia",
             "Venezia S. Lucia": "venezia-santa-lucia"
         ]
+    }
+
+    /// contracts/shared-data/v1/journey-planner-v1.json: The offline planner of journeys with changes, as both phones
+    /// compute it from the bundled timetables (Connection Scan): the change time at a station, a large hub and a city
+    /// stop; the search window and the horizon of the changes; how many packs one search reads; the bounds of a search;
+    /// the long wait at a change; the in-seat continuations (Resta a bordo) by block or by the same train in another
+    /// pack; the walking speeds, the longest walk and its choices; the default changes and results; the long wait the
+    /// results name and the walk that keeps a journey the same as its direct train.
+    public enum JourneyPlanner {
+        public static let defaultTransferMinutes: Int = 5
+        public static let largeHubTransferMinutes: Int = 10
+        public static let urbanTransferMinutes: Int = 3
+        public static let largeHubRailwayCodes: Set<String> = [
+            "S00035", "S00219", "S01700", "S02430", "S02593", "S04700", "S05043", "S06421", "S07113", "S08217",
+            "S08406", "S08409", "S09218", "S09818", "S11119", "S11145", "S11781", "S12002", "S12332"
+        ]
+        public static let searchWindowMinutes: Int = 480
+        public static let journeyHorizonMinutes: Int = 600
+        public static let maximumPacksPerSearch: Int = 3
+        public static let maximumUrbanPacksPerSearch: Int = 2
+        public static let maximumIterations: Int = 32
+        public static let maximumSearchConnections: Int = 400000
+        public static let maximumChangeWaitMinutes: Int = 120
+        public static let followUpIterations: Int = 2
+        public static let nextDayFollowUpMinutes: Int = 720
+        public static let maximumInSeatWaitMinutes: Int = 30
+        public static let maximumCopySkewMinutes: Int = 5
+        public static let onwardStops: Int = 3
+        public static let maximumContinuations: Int = 8
+        public static let longDistanceCodes: Set<String> = [
+            "EC", "IC", "ICN", "EN", "NJ", "FR", "FA", "FB", "AV", "RJ", "RJX", "ICE", "TGV", "ES", "ITALO", "EUROCITY",
+            "RAILJET"
+        ]
+        public static let localCodes: Set<String> = ["S", "R", "RE", "REX", "RV", "REG", "RB", "TER"]
+        public static let localCodeMaximumDigits: Int = 3
+        public static let maximumWalkMeters: Int = 2000
+        public static let slowWalkingKmh: Double = 3.5
+        public static let normalWalkingKmh: Double = 4.5
+        public static let fastWalkingKmh: Double = 5.5
+        public static let walkMinuteChoices: [Int] = [5, 10, 15, 20]
+        public static let defaultMaximumWalkMinutes: Int = 10
+        public static let defaultMaximumTransfers: Int = 2
+        public static let maximumResults: Int = 6
+        public static let longWaitMinutes: Int = 120
+        public static let duplicateWalkMinutes: Int = 10
     }
 
     /// contracts/shared-data/v1/live-train-map-v1.json: The map of trains in motion: positions estimated from the
