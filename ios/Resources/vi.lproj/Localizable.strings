@@ -994,3 +994,17 @@
 "result.live_route.rfi_monitor" = "Bảng đến/đi trực tiếp";
 "result.live_route.rfi_notice" = "Độ trễ từ bảng tàu của RFI. Hiển thị các ga khởi hành và ga đến đã yêu cầu.";
 "result.live_route.viaggiatreno_notice" = "Dữ liệu ViaggiaTreno do nguồn cập nhật. Giờ dự kiến được tính từ độ trễ đã công bố; nếu không có lần ghi nhận gần đây, trạng thái vận hành vẫn chưa được xác minh.";
+"settings.mobility.title" = "Di chuyển và hỗ trợ tiếp cận";
+"settings.mobility.description" = "Các tùy chọn này được lưu trên thiết bị và sẽ dùng cho bộ lọc khi có nguồn được cấp phép.";
+"settings.mobility.changes" = "Số lần đổi tàu mong muốn";
+"settings.mobility.changes_any" = "Bất kỳ";
+"settings.mobility.changes_direct" = "Đi thẳng";
+"settings.mobility.changes_max" = "Tối đa %1$lld";
+"settings.mobility.margin" = "Thời gian dự phòng khi đổi tàu";
+"settings.mobility.step_free" = "Ưu tiên lối đi không bậc thang";
+"settings.mobility.compact" = "Ưu tiên bảng giờ tàu thu gọn";
+"settings.mobility.summary" = "%1$@, thời gian dự phòng khi đổi tàu %2$@%3$@%4$@.";
+"settings.mobility.summary_any_changes" = "Không giới hạn số lần đổi tàu";
+"settings.mobility.summary_step_free" = ", ưu tiên lối đi không bậc thang";
+"settings.mobility.summary_compact" = ", bảng giờ tàu thu gọn";
+"settings.mobility.summary_max_changes" = "Tối đa %1$lld lần đổi tàu";

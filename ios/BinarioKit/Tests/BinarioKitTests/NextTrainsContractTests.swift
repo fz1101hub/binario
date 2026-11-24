@@ -48,6 +48,44 @@ final class NextTrainsContractTests: XCTestCase {
         }
     }
 
+    /// «Ultimo di oggi» read from the same index (`staticDayDepartures`): the last departure of the day towards each
+    /// terminus (a run past midnight is still the day's), the first of the next service day, and with a destination
+    /// one terminus; a run not boarding at the station is left out.
+    func testTheLastDeparturesOfTheDayComeFromTheSameIndex() async throws {
+        let contract = try JSONDecoder().decode(
+            Contract.self,
+            from: Data(contentsOf: repositoryRoot.appendingPathComponent("contracts/shared-rules/v1/next-trains-v1.json"))
+        )
+        let fixture = try GTFSFixtureDatabase(packs: [])
+        defer { withExtendedLifetime(fixture) {} }
+        try insert(contract.index, into: fixture)
+        fixture.close()
+        let repository = SQLiteGTFSJourneyRepository(databaseURL: fixture.url)
+        let parser = ISO8601DateFormatter()
+        parser.formatOptions = [.withInternetDateTime]
+        let alfa = StationIdentity(id: "S90001", name: "Alfa Centrale", railwayCode: "S90001")
+        let gamma = StationIdentity(id: "S90003", name: "Gamma", railwayCode: "S90003")
+        let now = try XCTUnwrap(parser.date(from: "2024-03-28T12:00:00+01:00"))
+
+        let day = await repository.staticDayDepartures(origin: alfa, destination: nil, at: now)
+        XCTAssertEqual(day.lastByTerminus.count, 3)
+        let last = Dictionary(day.lastByTerminus.map { ($0.terminus, $0.departure) }, uniquingKeysWith: { first, _ in first })
+        XCTAssertEqual(last, [
+            "Gamma": try XCTUnwrap(parser.date(from: "2024-03-29T00:30:00+01:00")),
+            "Beta": try XCTUnwrap(parser.date(from: "2024-03-28T10:00:00+01:00")),
+            "Delta Confine": try XCTUnwrap(parser.date(from: "2024-03-28T09:10:00+01:00")),
+        ])
+        XCTAssertTrue(LastOfDayMarks.isLast(day, publicNumber: "REG 2199", scheduledDeparture: last["Gamma"]))
+        XCTAssertFalse(LastOfDayMarks.isLast(day, publicNumber: "2115", scheduledDeparture: parser.date(from: "2024-03-28T16:00:00+01:00")))
+        XCTAssertEqual(day.firstNextDay?.departure, parser.date(from: "2024-03-29T07:50:00+01:00"))
+        XCTAssertNil(LastOfDayMarks.firstNextDay(day, now: now))
+
+        let route = await repository.staticDayDepartures(origin: alfa, destination: gamma, at: now)
+        XCTAssertEqual(route.lastByTerminus.map(\.terminus), ["Gamma"])
+        XCTAssertEqual(route.lastByTerminus.first?.departure, last["Gamma"])
+        XCTAssertEqual(route.firstNextDay?.departure, parser.date(from: "2024-03-29T08:00:00+01:00"))
+    }
+
     /// The rows of the contract's index, in the schema `GTFSFixtureDatabase` creates.
     private func insert(_ index: Index, into fixture: GTFSFixtureDatabase) throws {
         var sql = ""

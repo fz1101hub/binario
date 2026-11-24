@@ -994,3 +994,17 @@
 "result.live_route.rfi_monitor" = "Табло прибытия/отправления онлайн";
 "result.live_route.rfi_notice" = "Задержки по табло RFI. Показаны запрошенные станции отправления и прибытия.";
 "result.live_route.viaggiatreno_notice" = "Данные ViaggiaTreno обновлены источником. Ожидаемое время рассчитывается по опубликованной задержке; без недавней отметки рабочий статус остаётся неподтверждённым.";
+"settings.mobility.title" = "Передвижение и доступность";
+"settings.mobility.description" = "Эти настройки хранятся на устройстве и будут учитываться в фильтрах, когда появится авторизованный источник.";
+"settings.mobility.changes" = "Предпочтительные пересадки";
+"settings.mobility.changes_any" = "Любые";
+"settings.mobility.changes_direct" = "Прямой";
+"settings.mobility.changes_max" = "Не более %1$lld";
+"settings.mobility.margin" = "Запас времени на пересадку";
+"settings.mobility.step_free" = "Приоритет маршрутов без ступенек";
+"settings.mobility.compact" = "Предпочитаю компактные табло";
+"settings.mobility.summary" = "%1$@, запас на пересадку %2$@%3$@%4$@.";
+"settings.mobility.summary_any_changes" = "Любое число пересадок";
+"settings.mobility.summary_step_free" = ", приоритет маршрутов без ступенек";
+"settings.mobility.summary_compact" = ", компактное табло";
+"settings.mobility.summary_max_changes" = "Не более %1$lld пересадки";

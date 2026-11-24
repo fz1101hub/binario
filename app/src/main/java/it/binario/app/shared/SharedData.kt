@@ -14,6 +14,7 @@
 //   contracts/shared-data/v1/journey-live-v1.json
 //   contracts/shared-data/v1/live-route-v1.json
 //   contracts/shared-data/v1/results-paging-v1.json
+//   contracts/shared-data/v1/mobility-preferences-v1.json
 //   contracts/shared-data/v1/live-train-map-v1.json
 //   contracts/shared-data/v1/local-backup-v1.json
 //   contracts/shared-data/v1/notices-sources-v1.json
@@ -658,6 +659,18 @@ internal object SharedData {
         const val MAXIMUM_FILL_LOADS: Int = 3
         const val MINIMUM_EARLIER_SPAN_MINUTES: Int = 15
         const val EARLIER_JOURNEY_RESULTS: Int = 20
+    }
+
+    /**
+     * contracts/shared-data/v1/mobility-preferences-v1.json: «Mobilità e accessibilità» in the settings and the local
+     * backup: the interchange margin when none is set and the most a stored or imported one may be, and the choices of
+     * the panel (changes: direct, at most one, at most two; margins in minutes).
+     */
+    object MobilityPreferences {
+        const val DEFAULT_TRANSFER_MARGIN_MINUTES: Int = 10
+        const val MAXIMUM_TRANSFER_MARGIN_MINUTES: Int = 45
+        val CHANGE_CHOICES: List<Int> = listOf(0, 1, 2)
+        val TRANSFER_MARGIN_CHOICES: List<Int> = listOf(5, 10, 15, 20)
     }
 
     /**

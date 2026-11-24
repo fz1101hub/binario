@@ -994,3 +994,17 @@
 "result.live_route.rfi_monitor" = "Monitor kedatangan/keberangkatan langsung";
 "result.live_route.rfi_notice" = "Keterlambatan dari papan RFI. Pemberhentian keberangkatan dan kedatangan yang diminta ditampilkan.";
 "result.live_route.viaggiatreno_notice" = "Data ViaggiaTreno diperbarui oleh sumbernya. Waktu perkiraan dihitung dari keterlambatan yang dipublikasikan; tanpa pengamatan terbaru, status operasional tetap belum terverifikasi.";
+"settings.mobility.title" = "Mobilitas dan aksesibilitas";
+"settings.mobility.description" = "Preferensi ini tetap di perangkat dan akan memandu filter saat sumber resmi tersedia.";
+"settings.mobility.changes" = "Transit yang diinginkan";
+"settings.mobility.changes_any" = "Bebas";
+"settings.mobility.changes_direct" = "Langsung";
+"settings.mobility.changes_max" = "Maks %1$lld";
+"settings.mobility.margin" = "Waktu cadangan transit";
+"settings.mobility.step_free" = "Utamakan rute bebas hambatan";
+"settings.mobility.compact" = "Saya lebih suka papan ringkas";
+"settings.mobility.summary" = "%1$@, waktu cadangan transit %2$@%3$@%4$@.";
+"settings.mobility.summary_any_changes" = "Jumlah transit bebas";
+"settings.mobility.summary_step_free" = ", utamakan rute bebas hambatan";
+"settings.mobility.summary_compact" = ", papan ringkas";
+"settings.mobility.summary_max_changes" = "Maksimal %1$lld kali transit";

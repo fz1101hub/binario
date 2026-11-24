@@ -994,3 +994,17 @@
 "result.live_route.rfi_monitor" = "တိုက်ရိုက် ဆိုက်ရောက်/ထွက်ခွာ မော်နီတာ";
 "result.live_route.rfi_notice" = "RFI ဆိုင်းဘုတ်များမှ နောက်ကျမှုများ။ တောင်းဆိုထားသော ထွက်ခွာမှတ်တိုင်နှင့် ဆိုက်ရောက်မှတ်တိုင်ကို ပြထားသည်။";
 "result.live_route.viaggiatreno_notice" = "ViaggiaTreno ဒေတာကို ရင်းမြစ်မှ အပ်ဒိတ်လုပ်ထားသည်။ မျှော်မှန်းချိန်များကို ထုတ်ပြန်ထားသော နောက်ကျမှုမှ တွက်ချက်သည်; မကြာသေးမီ မှတ်တမ်းမရှိပါက လည်ပတ်မှုအခြေအနေကို အတည်မပြုရသေးပါ။";
+"settings.mobility.title" = "သွားလာမှုနှင့် အသုံးပြုရလွယ်ကူမှု";
+"settings.mobility.description" = "ဤရွေးချယ်မှုများသည် စက်ပေါ်တွင်သာ ရှိပြီး ခွင့်ပြုထားသော ရင်းမြစ် ရရှိနိုင်သည့်အခါ စစ်ထုတ်မှုများကို လမ်းညွှန်ပါမည်။";
+"settings.mobility.changes" = "နှစ်သက်သော ရထားပြောင်းမှု";
+"settings.mobility.changes_any" = "မည်သည့်အရေအတွက်မဆို";
+"settings.mobility.changes_direct" = "တိုက်ရိုက်";
+"settings.mobility.changes_max" = "အများဆုံး %1$lld";
+"settings.mobility.margin" = "ရထားပြောင်းရန် အချိန်ပို";
+"settings.mobility.step_free" = "လှေကားမပါသော လမ်းကြောင်းကို ဦးစားပေး";
+"settings.mobility.compact" = "ကျစ်လျစ်သော အချိန်ပြဘုတ်ကို နှစ်သက်သည်";
+"settings.mobility.summary" = "%1$@၊ ရထားပြောင်းရန် အချိန်ပို %2$@%3$@%4$@။";
+"settings.mobility.summary_any_changes" = "ရထားပြောင်း အကြိမ်ရေ အကန့်အသတ်မရှိ";
+"settings.mobility.summary_step_free" = "၊ လှေကားမပါသော လမ်းကြောင်း ဦးစားပေး";
+"settings.mobility.summary_compact" = "၊ ကျစ်လျစ်သော အချိန်ပြဘုတ်";
+"settings.mobility.summary_max_changes" = "ရထားပြောင်း အများဆုံး %1$lld ကြိမ်";

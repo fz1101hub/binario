@@ -709,6 +709,12 @@ struct ResultRow: View {
                 // «08:12 → 09:40», as Android's cards: the scheduled departure and arrival.
                 Text(verbatim: service.arrivalDate.map { "\(service.scheduledDeparture) → \(JourneyTexts.time($0))" } ?? service.scheduledDeparture)
                     .font(.headline.monospacedDigit())
+                // And the duration («1h 28min»), as Android's `JourneyTimes.durationMinutes`.
+                if let minutes = PersonalTexts.arrivalAndDuration(departure: service.departureDate, arrival: service.arrivalDate)?.minutes, minutes > 0 {
+                    Text(verbatim: JourneyTexts.duration(minutes))
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
                 // A city line has no number: its label says the mode and the line («Metro M1»).
                 Text(service.isUrban ? VehicleTexts.rowLabel(service) : service.number)
                     .font(.headline)

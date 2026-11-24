@@ -994,3 +994,17 @@
 "result.live_route.rfi_monitor" = "شاشة الوصول/المغادرة المباشرة";
 "result.live_route.rfi_notice" = "التأخيرات من لوحات RFI. تُعرض محطتا المغادرة والوصول المطلوبتان.";
 "result.live_route.viaggiatreno_notice" = "بيانات ViaggiaTreno محدّثة من المصدر. تُحسب الأوقات المتوقعة من التأخير المنشور؛ ومن دون رصد حديث تبقى الحالة التشغيلية غير مؤكدة.";
+"settings.mobility.title" = "التنقل وإمكانية الوصول";
+"settings.mobility.description" = "تبقى هذه التفضيلات على الجهاز، وستوجّه الفلاتر عندما يتوفر مصدر مرخّص.";
+"settings.mobility.changes" = "التبديلات المفضّلة";
+"settings.mobility.changes_any" = "أي عدد";
+"settings.mobility.changes_direct" = "مباشر";
+"settings.mobility.changes_max" = "%1$lld كحد أقصى";
+"settings.mobility.margin" = "هامش التبديل";
+"settings.mobility.step_free" = "أولوية للمسارات الخالية من العوائق";
+"settings.mobility.compact" = "أفضّل اللوحات المختصرة";
+"settings.mobility.summary" = "%1$@، هامش التبديل %2$@%3$@%4$@.";
+"settings.mobility.summary_any_changes" = "أي عدد من التبديلات";
+"settings.mobility.summary_step_free" = "، أولوية للمسارات الخالية من العوائق";
+"settings.mobility.summary_compact" = "، لوحة مختصرة";
+"settings.mobility.summary_max_changes" = "%1$lld تبديل كحد أقصى";

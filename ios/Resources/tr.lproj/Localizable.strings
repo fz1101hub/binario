@@ -994,3 +994,17 @@
 "result.live_route.rfi_monitor" = "Canlı varış/kalkış monitörü";
 "result.live_route.rfi_notice" = "Gecikmeler RFI panolarından. İstenen kalkış ve varış durakları gösterilir.";
 "result.live_route.viaggiatreno_notice" = "ViaggiaTreno verileri kaynak tarafından güncellenir. Beklenen saatler yayımlanan gecikmeden hesaplanır; yakın zamanda bir tespit yoksa işletme durumu doğrulanmamış kalır.";
+"settings.mobility.title" = "Hareketlilik ve erişilebilirlik";
+"settings.mobility.description" = "Bu tercihler cihazda kalır ve yetkili bir kaynak kullanılabilir olduğunda filtrelere yön verir.";
+"settings.mobility.changes" = "Tercih edilen aktarmalar";
+"settings.mobility.changes_any" = "Fark etmez";
+"settings.mobility.changes_direct" = "Aktarmasız";
+"settings.mobility.changes_max" = "En fazla %1$lld";
+"settings.mobility.margin" = "Aktarma payı";
+"settings.mobility.step_free" = "Basamaksız güzergâhlara öncelik ver";
+"settings.mobility.compact" = "Kompakt panoları tercih ediyorum";
+"settings.mobility.summary" = "%1$@, aktarma payı %2$@%3$@%4$@.";
+"settings.mobility.summary_any_changes" = "Aktarma sayısı fark etmez";
+"settings.mobility.summary_step_free" = ", basamaksız güzergâhlara öncelik";
+"settings.mobility.summary_compact" = ", kompakt pano";
+"settings.mobility.summary_max_changes" = "En fazla %1$lld aktarma";

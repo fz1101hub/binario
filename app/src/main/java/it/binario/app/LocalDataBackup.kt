@@ -218,7 +218,7 @@ object LocalDataBackupCodec {
                 CommuterAlert(value.optString("id"), value.optString("routeLabel"), value.optString("stationName"), time, value.optInt("leadMinutes", 15).coerceIn(1, 60), AlertRepeat.valueOf(value.optString("repeat")), value.optBoolean("quietHoursEnabled"), value.optBoolean("enabled", true))
             }.getOrNull()
         } }.filterNotNull().filter { it.id.isNotBlank() && it.stationName.isNotBlank() }.distinctBy { it.id }.take(24)
-        val mobility = root.optJSONObject("mobility")?.let { value -> MobilityPreferences(value.optInt("maxChanges", -1).takeIf { it >= 0 }, value.optInt("transferMarginMinutes", 10).coerceIn(0, 45), value.optBoolean("stepFreePreferred"), value.optBoolean("compactTimetablePreferred")) } ?: MobilityPreferences()
+        val mobility = root.optJSONObject("mobility")?.let { value -> MobilityPreferences(value.optInt("maxChanges", -1).takeIf { it >= 0 }, value.optInt("transferMarginMinutes", SharedData.MobilityPreferences.DEFAULT_TRANSFER_MARGIN_MINUTES).coerceIn(0, SharedData.MobilityPreferences.MAXIMUM_TRANSFER_MARGIN_MINUTES), value.optBoolean("stepFreePreferred"), value.optBoolean("compactTimetablePreferred")) } ?: MobilityPreferences()
         val usedIds = routes.flatMap { listOf(it.outwardOrigin.id, it.outwardDestination.id) }.toSet() +
             favouriteIds + stationMonitors.map { it.stationId }
         val punctuality = root.optJSONArray("punctualityHistory")?.let(PunctualityHistory::fromJson)

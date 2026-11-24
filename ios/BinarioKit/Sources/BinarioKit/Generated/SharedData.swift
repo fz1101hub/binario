@@ -14,6 +14,7 @@
 //   contracts/shared-data/v1/journey-live-v1.json
 //   contracts/shared-data/v1/live-route-v1.json
 //   contracts/shared-data/v1/results-paging-v1.json
+//   contracts/shared-data/v1/mobility-preferences-v1.json
 //   contracts/shared-data/v1/live-train-map-v1.json
 //   contracts/shared-data/v1/local-backup-v1.json
 //   contracts/shared-data/v1/notices-sources-v1.json
@@ -654,6 +655,16 @@ public enum SharedData {
         public static let maximumFillLoads: Int = 3
         public static let minimumEarlierSpanMinutes: Int = 15
         public static let earlierJourneyResults: Int = 20
+    }
+
+    /// contracts/shared-data/v1/mobility-preferences-v1.json: «Mobilità e accessibilità» in the settings and the local
+    /// backup: the interchange margin when none is set and the most a stored or imported one may be, and the choices of
+    /// the panel (changes: direct, at most one, at most two; margins in minutes).
+    public enum MobilityPreferences {
+        public static let defaultTransferMarginMinutes: Int = 10
+        public static let maximumTransferMarginMinutes: Int = 45
+        public static let changeChoices: [Int] = [0, 1, 2]
+        public static let transferMarginChoices: [Int] = [5, 10, 15, 20]
     }
 
     /// contracts/shared-data/v1/live-train-map-v1.json: The map of trains in motion: positions estimated from the

@@ -994,3 +994,17 @@
 "result.live_route.rfi_monitor" = "จอแสดงขบวนเข้า/ออกแบบเรียลไทม์";
 "result.live_route.rfi_notice" = "ความล่าช้าจากป้ายแสดงของ RFI แสดงสถานีต้นทางและปลายทางที่ขอไว้";
 "result.live_route.viaggiatreno_notice" = "ข้อมูล ViaggiaTreno อัปเดตโดยแหล่งที่มา เวลาที่คาดคำนวณจากความล่าช้าที่เผยแพร่ หากไม่มีการบันทึกล่าสุด สถานะการเดินรถจะยังไม่ได้รับการยืนยัน";
+"settings.mobility.title" = "การเดินทางและการช่วยเหลือพิเศษ";
+"settings.mobility.description" = "ค่ากำหนดเหล่านี้อยู่ในอุปกรณ์ และจะใช้กับตัวกรองเมื่อมีแหล่งข้อมูลที่ได้รับอนุญาต";
+"settings.mobility.changes" = "การเปลี่ยนขบวนที่ต้องการ";
+"settings.mobility.changes_any" = "กี่ครั้งก็ได้";
+"settings.mobility.changes_direct" = "เที่ยวตรง";
+"settings.mobility.changes_max" = "สูงสุด %1$lld";
+"settings.mobility.margin" = "เวลาเผื่อเปลี่ยนขบวน";
+"settings.mobility.step_free" = "เน้นเส้นทางที่ไม่มีขั้นบันได";
+"settings.mobility.compact" = "ฉันชอบกระดานขบวนรถแบบกะทัดรัด";
+"settings.mobility.summary" = "%1$@ เวลาเผื่อเปลี่ยนขบวน %2$@%3$@%4$@";
+"settings.mobility.summary_any_changes" = "เปลี่ยนขบวนกี่ครั้งก็ได้";
+"settings.mobility.summary_step_free" = ", เน้นเส้นทางที่ไม่มีขั้นบันได";
+"settings.mobility.summary_compact" = ", กระดานขบวนรถแบบกะทัดรัด";
+"settings.mobility.summary_max_changes" = "เปลี่ยนขบวนสูงสุด %1$lld ครั้ง";

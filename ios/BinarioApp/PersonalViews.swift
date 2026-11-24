@@ -41,12 +41,21 @@ extension AppModel {
     /// The estimate between two stations of the catalogue, from their positions; nil when one has
     /// none or the trip is too short (Android's `rememberCo2` of a direct train).
     func co2Estimate(from origin: StationIdentity, to destination: StationIdentity) -> Co2Estimate? {
-        func point(_ identity: StationIdentity) -> Co2Point? {
-            let found = self.station(for: identity)
-            guard let latitude = found.latitude, let longitude = found.longitude else { return nil }
-            return Co2Point(latitude: latitude, longitude: longitude)
-        }
-        return Co2Estimator.estimate(points: [(point(origin), point(destination))])
+        Co2Estimator.estimate(points: [(co2Point(origin), co2Point(destination))])
+    }
+
+    /// A journey with changes (Android's `rememberCo2(row)`): every vehicle leg between its stations, walks left out.
+    func co2Estimate(of row: JourneyOptionRow) -> Co2Estimate? {
+        Co2Estimator.estimate(points: row.legs.filter { !$0.isWalk }.map { leg in
+            (co2Point(StationIdentity(id: leg.originID, name: leg.originLabel)),
+             co2Point(StationIdentity(id: leg.destinationID, name: leg.destinationLabel)))
+        })
+    }
+
+    private func co2Point(_ identity: StationIdentity) -> Co2Point? {
+        let found = station(for: identity)
+        guard let latitude = found.latitude, let longitude = found.longitude else { return nil }
+        return Co2Point(latitude: latitude, longitude: longitude)
     }
 }
 

@@ -1,0 +1,12 @@
+{
+  "schema": "binario-shared-data-v1",
+  "description": "«Mobilità e accessibilità» in the settings and the local backup: the interchange margin when none is set and the most a stored or imported one may be, and the choices of the panel (changes: direct, at most one, at most two; margins in minutes).",
+  "readers": {
+    "android": "MobilityPreferences.kt, LocalDataBackup.kt, ui/settings/SettingsScreens.kt (app/src/main/java/it/binario/app/)",
+    "iphone": "ios/BinarioKit/Sources/BinarioKit/MobilityPreferences.swift, ios/BinarioApp/PersonalSettings.swift"
+  },
+  "defaultTransferMarginMinutes": 10,
+  "maximumTransferMarginMinutes": 45,
+  "changeChoices": [0, 1, 2],
+  "transferMarginChoices": [5, 10, 15, 20]
+}

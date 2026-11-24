@@ -217,6 +217,8 @@ private struct BoardContent: View {
 private struct DepartureListSection: View {
     @EnvironmentObject private var model: AppModel
     @EnvironmentObject private var personal: PersonalModel
+    /// «Ultimo di oggi» and «primo domani alle …» from the static timetable, never from live data.
+    @State private var staticDay: StaticDayDepartures?
 
     var body: some View {
         // Android's «Tipi di treno»: the types hidden at this station; a train of unknown type stays.
@@ -229,17 +231,22 @@ private struct DepartureListSection: View {
             if model.boardSomeTimetablesEnded {
                 ExpiredTimetablesNotice()
             }
+            if let first = LastOfDayMarks.firstNextDay(staticDay, now: Date()) {
+                Label(JourneyTexts.noMoreToday(first.departure), systemImage: "moon.zzz")
+                    .font(.footnote)
+            }
             ForEach(shown) { departure in
+                let lastOfDay = LastOfDayMarks.isLast(staticDay, publicNumber: departure.service.number, scheduledDeparture: departure.departure)
                 // As a planner row: the detail of the train, boarded at this station.
                 if let query = model.boardDetailQuery(for: departure) {
                     NavigationLink {
                         TrainDetailView(service: departure.service, query: query, boardLive: departure.live)
                     } label: {
-                        DepartureRow(departure: departure)
+                        DepartureRow(departure: departure, lastOfDay: lastOfDay)
                     }
                     .accessibilityHint(Text("accessibility.open_train_detail"))
                 } else {
-                    DepartureRow(departure: departure)
+                    DepartureRow(departure: departure, lastOfDay: lastOfDay)
                 }
             }
             if model.boardHasMore {
@@ -257,6 +264,11 @@ private struct DepartureListSection: View {
             LiveSourcesFooter(state: model.boardLiveState, sources: model.boardLiveSources, pauses: model.liveSourcePauses)
         } header: {
             Text("departures.list.title")
+        }
+        .task(id: "\(model.boardStation?.id ?? "")|\(AppModel.boardDay(Date()))") {
+            staticDay = nil
+            guard let station = model.boardStation else { return }
+            staticDay = await model.staticDayDepartures(origin: station)
         }
     }
 
@@ -302,6 +314,7 @@ private struct BoardSourceFooter: View {
 /// ritardo di 5 minuti. Fonte: ViaggiaTreno. Rilevato alle 08:10», then the operator and bikes.
 private struct DepartureRow: View {
     let departure: StationBoardDeparture
+    var lastOfDay = false
 
     var body: some View {
         let service = departure.service
@@ -342,9 +355,14 @@ private struct DepartureRow: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
+            if lastOfDay {
+                LastOfDayMark()
+            }
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(Text(DeparturesTexts.spoken(departure)))
+        // «Ultimo di oggi», read after the row.
+        .accessibilityValue(lastOfDay ? Text("result.journey.last_of_day") : Text(verbatim: ""))
     }
 }
 
@@ -422,6 +440,15 @@ private struct BoardUnavailableView: View {
         case .scheduleExpired: "departures.expired.body"
         case .noAuthorizedProvider, .providerInvalid: "result.provider_error.body"
         }
+    }
+}
+
+extension AppModel {
+    /// The static timetable's last departures of today from `origin` (towards `destination`) and the first of the
+    /// next day (Android's `rememberStaticDayDepartures`); nil without the bundled timetable.
+    func staticDayDepartures(origin: StationIdentity, destination: StationIdentity? = nil) async -> StaticDayDepartures? {
+        guard scheduleState == .available, let repository = repository as? SQLiteGTFSJourneyRepository else { return nil }
+        return await repository.staticDayDepartures(origin: origin, destination: destination, at: Date())
     }
 }
 
