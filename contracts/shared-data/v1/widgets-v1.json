@@ -1,0 +1,41 @@
+{
+  "schema": "binario-shared-data-v1",
+  "name": "widgets-v1",
+  "readers": {
+    "android": "app/src/main/java/it/binario/app/widget/ (WidgetSettings.kt, WidgetTrainTypes.kt, WidgetPresentation.kt, RouteWidgetTimeline.kt, StationWidgetModel.kt, TrainsWidgetModel.kt, WidgetAutoRefresh.kt)",
+    "iphone": "ios/BinarioKit/Sources/BinarioKit/WidgetRules.swift (read by the WidgetKit extension ios/BinarioWidgets)"
+  },
+  "description": "The three home-screen widgets (Tratta, Tabellone stazione, I miei treni) on both phones: the automatic refresh (intervals, days, one or two daily windows, also across midnight), the automatic return direction, which runs a widget lists and for how long, when its live values count as fresh, which favourite trains a refresh asks for, and the retries of a refresh the user asked for. Times are railway-local (Europe/Rome).",
+  "refreshIntervalsMinutes": [15, 30, 60],
+  "defaultIntervalMinutes": 30,
+  "alwaysIntervalMinutes": 15,
+  "weekdays": [1, 2, 3, 4, 5],
+  "maximumWindows": 2,
+  "defaultMorningWindow": {"start": "07:00", "end": "09:30"},
+  "defaultEveningWindow": {"start": "17:00", "end": "19:30"},
+  "windowLookaheadDays": 8,
+  "minimumRescheduleSeconds": 60,
+  "defaultReturnFrom": "14:00",
+  "maximumTitleLength": 42,
+  "departedGraceSeconds": 60,
+  "freshSeconds": 300,
+  "agingSeconds": 900,
+  "timeRanges": [
+    {"id": "NEXT", "hours": null, "extraPages": 0, "note": "What the source returns now: the list of the widgets added before the settings."},
+    {"id": "NEXT_3H", "hours": 3, "extraPages": 1},
+    {"id": "NEXT_6H", "hours": 6, "extraPages": 2},
+    {"id": "WHOLE_DAY", "hours": null, "extraPages": 3, "note": "Until 23:59 of the day, kept for the day and readable offline."}
+  ],
+  "dayCacheMaximumRows": 60,
+  "compactRows": 2,
+  "pageRows": 5,
+  "stationStoredDepartures": 12,
+  "stationMaximumRows": 4,
+  "trainsArrivalGraceMinutes": 10,
+  "lookupBeforeDepartureMinutes": 60,
+  "lookupAfterArrivalMinutes": 30,
+  "lookupDefaultDurationMinutes": 180,
+  "lookupMaximumDurationMinutes": 2160,
+  "retryMaximumAttempts": 3,
+  "retryFirstDelayMinutes": 15
+}

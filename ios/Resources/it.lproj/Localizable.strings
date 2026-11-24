@@ -580,7 +580,6 @@
 "settings.live.trenitalia_news" = "Infomobilità, da ViaggiaTreno: l’elenco completo delle notizie, senza dati dell’utente";
 "settings.live.trenord" = "Avvisi per direttrice: l’elenco completo delle linee, senza dati dell’utente";
 "settings.live.notices_always" = "Gli avvisi RFI e il calendario scioperi del MIT si scaricano anche con i dati in tempo reale spenti, solo quando apri l’area avvisi o quando compare una sezione dei lavori sulle tratte.";
-
 "result.weather.title" = "Meteo a destinazione";
 "result.weather.station_date" = "%1$@, %2$@";
 "result.weather.loading" = "Caricamento della previsione…";
@@ -693,6 +692,11 @@
 "notices.train.trenord_heading" = "Avvisi Trenord sulla linea";
 "notices.train.published_at" = "Pubblicato: %1$@";
 "notices.retry" = "Riprova";
+"app.widget_nearest.title" = "Stazione più vicina";
+"app.widget_nearest.locating" = "Cerco la stazione più vicina…";
+"app.widget_nearest.denied" = "Permesso di posizione non concesso: il widget resta su %1$@.";
+"app.widget_nearest.unavailable" = "Posizione non disponibile: il widget resta su %1$@.";
+"app.widget_nearest.none" = "Nessuna stazione del catalogo entro 50 km: il widget resta su %1$@.";
 "result.coverage_fallback" = "Orario da una fonte di copertura non ufficiale: verifica con il vettore prima di partire.";
 "result.trip.follow_toggle" = "Notifica con lo stato del viaggio";
 "result.trip.follow_detail" = "Da 30 minuti prima della partenza a 30 minuti dopo l’arrivo: ritardo, prossima fermata e binario, aggiornati ogni 15 minuti. Si chiude da sola alla fine.";

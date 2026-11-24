@@ -39,7 +39,7 @@ CONSTRUCTED_HOST_PATTERNS = (
 # The iPhone and Apple Watch sources: every host they name must be disclosed, backticked, in PRIVACY.md. The shared
 # tables the iPhone bundles and reads at runtime (contracts/shared-data, the notice feeds) name hosts as well.
 IOS_HOST_SOURCE_GLOBS = (
-    "ios/BinarioKit/Sources/**/*.swift", "ios/BinarioApp/**/*.swift", "apple-watch/**/*.swift",
+    "ios/BinarioKit/Sources/**/*.swift", "ios/BinarioApp/**/*.swift", "ios/BinarioWidgets/**/*.swift", "apple-watch/**/*.swift",
     "contracts/shared-data/**/*.json",
 )
 HOST_ROW = re.compile(r"^\| `([a-z0-9.-]+)` \|", re.MULTILINE)
@@ -59,6 +59,10 @@ REQUIRED_DISCLOSURES: tuple[tuple[str, str, tuple[str, ...]], ...] = (
             "`it.binario.ios.saved-routes.v1`",
             "`it.binario.ios.watch-sharing-enabled.v1`",
             "`group.it.binario.watch`",
+            # The iPhone's Home Screen widgets: their App Group and what they ask, keep and never read.
+            "### Widget della schermata Home sull'iPhone",
+            "`group.it.binario.ios`",
+            "Il widget non legge la posizione e non ne ha il permesso",
             "`binario_snapshot_clear`",
             "Data Not Collected",
             "Posizione effimera",

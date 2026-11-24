@@ -580,7 +580,6 @@
 "settings.live.trenitalia_news" = "Thông tin chạy tàu, qua ViaggiaTreno: toàn bộ danh sách tin, không có dữ liệu người dùng";
 "settings.live.trenord" = "Thông báo theo tuyến: toàn bộ danh sách tuyến, không có dữ liệu người dùng";
 "settings.live.notices_always" = "Thông báo của RFI và lịch đình công của MIT vẫn được tải xuống khi tắt dữ liệu thời gian thực, chỉ khi bạn mở khu vực thông báo hoặc khi một mục công trình trên tuyến của bạn xuất hiện.";
-
 "result.weather.title" = "Thời tiết tại ga đến";
 "result.weather.station_date" = "%1$@ · %2$@";
 "result.weather.loading" = "Đang tải dự báo…";
@@ -693,6 +692,11 @@
 "notices.train.trenord_heading" = "Thông báo của Trenord trên tuyến";
 "notices.train.published_at" = "Đăng lúc: %1$@";
 "notices.retry" = "Thử lại";
+"app.widget_nearest.title" = "Ga gần nhất";
+"app.widget_nearest.locating" = "Đang tìm ga gần nhất…";
+"app.widget_nearest.denied" = "Chưa cấp quyền vị trí: tiện ích vẫn ở %1$@.";
+"app.widget_nearest.unavailable" = "Không xác định được vị trí: tiện ích vẫn ở %1$@.";
+"app.widget_nearest.none" = "Không có ga nào trong danh mục trong phạm vi 50 km: tiện ích vẫn ở %1$@.";
 "result.coverage_fallback" = "Lịch tàu lấy từ nguồn bổ sung không chính thức: hãy kiểm tra với nhà vận hành trước khi đi.";
 "result.trip.follow_toggle" = "Thông báo trạng thái chuyến đi";
 "result.trip.follow_detail" = "Từ 30 phút trước giờ khởi hành đến 30 phút sau khi đến: mức trễ, điểm dừng tiếp theo và sân ga, cập nhật mỗi 15 phút. Tự đóng khi kết thúc.";

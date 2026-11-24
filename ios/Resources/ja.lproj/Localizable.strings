@@ -580,7 +580,6 @@
 "settings.live.trenitalia_news" = "運行情報（ViaggiaTreno 経由）：お知らせの全一覧。利用者のデータは送りません";
 "settings.live.trenord" = "路線別のお知らせ：路線の全一覧。利用者のデータは送りません";
 "settings.live.notices_always" = "RFI のお知らせと MIT のストライキ予定は、リアルタイムデータがオフでも、お知らせ欄を開いたときか、区間の工事の欄が表示されたときだけ取得します。";
-
 "result.weather.title" = "到着地の天気";
 "result.weather.station_date" = "%1$@、%2$@";
 "result.weather.loading" = "予報を読み込んでいます…";
@@ -693,6 +692,11 @@
 "notices.train.trenord_heading" = "路線の Trenord のお知らせ";
 "notices.train.published_at" = "公開：%1$@";
 "notices.retry" = "再試行";
+"app.widget_nearest.title" = "最寄り駅";
+"app.widget_nearest.locating" = "最寄り駅を探しています…";
+"app.widget_nearest.denied" = "位置情報の権限が許可されていないため、ウィジェットは %1$@ のままです。";
+"app.widget_nearest.unavailable" = "位置情報を取得できないため、ウィジェットは %1$@ のままです。";
+"app.widget_nearest.none" = "50 km 以内にカタログの駅がないため、ウィジェットは %1$@ のままです。";
 "result.coverage_fallback" = "非公式の情報源による時刻です。ご乗車前に事業者で確認してください。";
 "result.trip.follow_toggle" = "旅程の状況を通知";
 "result.trip.follow_detail" = "出発 30 分前から到着 30 分後まで、遅れ、次の停車駅、番線を 15 分ごとに更新します。終了すると自動で閉じます。";

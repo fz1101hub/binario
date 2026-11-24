@@ -445,6 +445,8 @@ final class AppModel: ObservableObject {
 
         // The reminders of the Agenda as the system holds them; nothing is asked to the user here.
         Task { await model.refreshReminders() }
+        // The home-screen widgets read the switch and «I miei treni» from the App Group.
+        WidgetBridge.share(favourites: model.favouriteTrains, liveDataEnabled: model.liveDataEnabled)
 
         // The statistics are optional: a build without the file shows no reliability at all.
         let statisticsURL = bundle.url(
@@ -474,9 +476,10 @@ final class AppModel: ObservableObject {
             model.scheduleState = .unavailable
             return model
         }
-        let cacheDirectory = applicationSupport
+        // In the App Group, where the home-screen widgets read the same index (WidgetBridge).
+        let cacheDirectory = WidgetBridge.scheduleDirectory(fallback: applicationSupport
             .appendingPathComponent("Binario", isDirectory: true)
-            .appendingPathComponent("GTFS", isDirectory: true)
+            .appendingPathComponent("GTFS", isDirectory: true))
         // The full foreign timetables (design §4.4): optional pins in the bundle, downloads in their
         // own folder, excluded from backup.
         let foreignPinsURL = bundle.url(
@@ -686,6 +689,7 @@ final class AppModel: ObservableObject {
         coveredStationIDs = installed.coveredStationIDs
         sourcePolicy = installed.sourcePolicy
         baseScheduleURL = installed.baseURL
+        WidgetBridge.scheduleInstalled(installed.baseURL)
         foreignTimetables = installed.foreign
         installedForeignFiles = installed.repository.foreignDatabaseURLs
         scheduleState = .available
@@ -1283,6 +1287,7 @@ final class AppModel: ObservableObject {
         guard liveDataEnabled != enabled else { return }
         liveDataStore.save(enabled)
         liveDataEnabled = enabled
+        WidgetBridge.liveDataChanged(enabled)
         guard enabled else {
             clearLiveData()
             return
@@ -2284,6 +2289,7 @@ final class AppModel: ObservableObject {
             return false
         }
         favouriteTrains = collection.trains
+        WidgetBridge.favouritesChanged(collection)
         return true
     }
 

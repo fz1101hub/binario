@@ -50,6 +50,7 @@ python3 tools/generate_shared_code.py --check   # esce con 1 se uno non corrispo
 | `train-number-prefixes-v1.json` | Categorie ammesse davanti al numero di un treno | Android, iPhone, Alexa (corsa programmata di un numero) |
 | `train-type-groups-v1.json` | «Tipi di treno»: gruppi, operatori Italo ed esteri, codici di Frecce/AV, internazionali, Intercity e bus, espressione dei regionali | Android (tabellone e widget), iPhone |
 | `urban-stops-v1.json` | Fermate urbane: distanza massima a piedi, velocità e margine del cammino, stessa fermata e banchine dello stesso nome | Android, iPhone; il builder e il verificatore dell'indice iPhone leggono il JSON |
+| `widgets-v1.json` | Widget della schermata Home (Tratta, Tabellone stazione, I miei treni): intervalli e finestre dell'aggiornamento automatico, ritorno predefinito, lunghezza del titolo, righe per formato, freschezza dei valori, finestre delle corse, quanto resta «In viaggio», ricerca dei treni salvati, tentativi dopo un errore, gruppi dei tipi di treno | Android, iPhone |
 | `viaggiatreno-v1.json` | API realtime di ViaggiaTreno: indirizzo e risorse (partenze, arrivi, corsa, ricerca per numero), limiti di una richiesta, intervallo, durata dei valori, dettagli in parallelo e loro tempo massimo, limiti di lettura, tipi di fermata, codici cliente di Trenord e Trenitalia | Android, iPhone |
 
 Gli strumenti Python sono la pipeline: quando servono una tabella la leggono dal JSON, controllata con lo stesso schema

@@ -103,6 +103,14 @@ Il 23 novembre 2026, con le reti urbane sull'iPhone:
 | `pack-roles-v1.json` (`urbanPacks`): le reti urbane (metro, tram, funicolari) | `kind = EmbeddedGtfsPackKind.URBAN` di ogni pack in `TransitGtfsPacks.kt` | Android (`EmbeddedGtfsPacks.withPackRoles`), iPhone; builder e verificatore dell'indice leggono il JSON |
 | `urban-stops-v1.json`: distanza massima, velocità e margine del cammino verso una fermata urbana, stessa fermata, banchine dello stesso nome | `GtfsJourneyPlannerSettings`, `SAME_PLACE_METERS` in `EmbeddedGtfsJourneyProvider.kt`, `UrbanStopBoardAdapter.SIBLING_METERS` | Android, iPhone; builder e verificatore dell'indice leggono il JSON |
 
+Il 24 novembre 2026, con i widget della schermata Home sull'iPhone:
+
+| Tabella | Prima | Ora letta da |
+|---|---|---|
+| `widgets-v1.json`: intervalli, finestre e ritardi dell'aggiornamento automatico, ritorno predefinito, titolo, righe, freschezza, finestre delle corse, «In viaggio», ricerca dei treni salvati, tentativi, gruppi dei tipi di treno | costanti di `WidgetSettings.kt`, `WidgetTrainTypes.kt`, `WidgetPresentation.kt`, `RouteWidgetTimeline.kt`, `StationWidgetModel.kt`, `TrainsWidgetModel.kt`, `WidgetAutoRefresh.kt` | Android, iPhone (`WidgetRules.swift`) |
+
+Le regole dei widget hanno i casi in `contracts/shared-rules/v1/widgets-v1.json`. Restano specifici dell'iPhone il modo di aggiornarsi (la timeline di WidgetKit al posto di WorkManager) e «📍 Più vicina», che apre l'app invece di leggere la posizione nel widget.
+
 Nomi, badge e minuti a piedi delle fermate urbane sono casi di prova in `contracts/shared-rules/v1/urban-stops-v1.json`; linea e etichetta di una corsa urbana sono in `journey-leg-vehicles-v1.json` (`urbanLines`, `urbanLabels`).
 
 Con le funzioni minori di Android portate sull'iPhone (confronto in [PARITA_ANDROID_IPHONE.md](../PARITA_ANDROID_IPHONE.md)), il 24 novembre 2026:

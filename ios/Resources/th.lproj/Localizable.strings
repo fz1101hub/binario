@@ -580,7 +580,6 @@
 "settings.live.trenitalia_news" = "ข้อมูลการเดินรถจาก ViaggiaTreno: รายการข่าวทั้งหมด ไม่มีข้อมูลผู้ใช้";
 "settings.live.trenord" = "ประกาศตามสาย: รายการสายทั้งหมด ไม่มีข้อมูลผู้ใช้";
 "settings.live.notices_always" = "ประกาศของ RFI และปฏิทินการนัดหยุดงานของ MIT จะดาวน์โหลดแม้ปิดข้อมูลแบบเรียลไทม์ เฉพาะเมื่อคุณเปิดส่วนประกาศหรือเมื่อส่วนงานซ่อมบำรุงบนเส้นทางของคุณปรากฏขึ้น";
-
 "result.weather.title" = "สภาพอากาศที่ปลายทาง";
 "result.weather.station_date" = "%1$@ · %2$@";
 "result.weather.loading" = "กำลังโหลดพยากรณ์อากาศ…";
@@ -693,6 +692,11 @@
 "notices.train.trenord_heading" = "ประกาศของ Trenord บนสายนี้";
 "notices.train.published_at" = "เผยแพร่: %1$@";
 "notices.retry" = "ลองอีกครั้ง";
+"app.widget_nearest.title" = "สถานีที่ใกล้ที่สุด";
+"app.widget_nearest.locating" = "กำลังค้นหาสถานีที่ใกล้ที่สุด…";
+"app.widget_nearest.denied" = "ไม่ได้รับสิทธิ์เข้าถึงตำแหน่ง วิดเจ็ตยังคงแสดง %1$@";
+"app.widget_nearest.unavailable" = "ไม่ทราบตำแหน่ง วิดเจ็ตยังคงแสดง %1$@";
+"app.widget_nearest.none" = "ไม่มีสถานีในแคตตาล็อกภายใน 50 กม. วิดเจ็ตยังคงแสดง %1$@";
 "result.coverage_fallback" = "ตารางเวลาจากแหล่งข้อมูลเสริมที่ไม่เป็นทางการ โปรดตรวจสอบกับผู้ให้บริการก่อนออกเดินทาง";
 "result.trip.follow_toggle" = "แจ้งเตือนสถานะการเดินทาง";
 "result.trip.follow_detail" = "ตั้งแต่ 30 นาทีก่อนออกจนถึง 30 นาทีหลังถึง: ความล่าช้า จุดจอดถัดไป และชานชาลา อัปเดตทุก 15 นาที และปิดเองเมื่อสิ้นสุด";

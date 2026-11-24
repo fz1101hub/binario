@@ -648,6 +648,22 @@ def _check_realtime_feeds(values: Mapping[str, Any]) -> list[str]:
     return problems
 
 
+def _check_widgets(values: Mapping[str, Any]) -> list[str]:
+    problems = []
+    intervals = values["refreshIntervalsMinutes"]
+    if values["defaultIntervalMinutes"] not in intervals or values["alwaysIntervalMinutes"] not in intervals:
+        problems.append("defaultIntervalMinutes e alwaysIntervalMinutes devono essere tra refreshIntervalsMinutes")
+    if values["freshSeconds"] >= values["agingSeconds"]:
+        problems.append("freshSeconds non minore di agingSeconds")
+    if values["stationMaximumRows"] > values["stationStoredDepartures"]:
+        problems.append("stationMaximumRows oltre stationStoredDepartures")
+    if values["compactRows"] > values["pageRows"]:
+        problems.append("compactRows oltre pageRows")
+    if [item.values["id"] for item in values["timeRanges"]] != ["NEXT", "NEXT_3H", "NEXT_6H", "WHOLE_DAY"]:
+        problems.append("timeRanges: NEXT, NEXT_3H, NEXT_6H, WHOLE_DAY in quest'ordine")
+    return problems
+
+
 def _host(url: str) -> str:
     return url.split("://", 1)[1].split("/", 1)[0]
 
@@ -692,6 +708,14 @@ ITALO_STATION_CODE = Record("StationCode", {
     "catalogueId": Field(Text(CATALOGUE_STATION)),
 }, notes=True, note_key="comment")
 ITALO_UNMAPPED_CODE = Record("UnmappedCode", {"code": Field(Text(r"[A-Z0-9_]{3}"))}, notes=True, note_key="comment")
+
+CLOCK_TIME = Text(r"(?:[01]\d|2[0-3]):[0-5]\d")
+WIDGET_WINDOW = Record("RefreshWindow", {"start": Field(CLOCK_TIME), "end": Field(CLOCK_TIME)})
+WIDGET_TIME_RANGE = Record("TimeRange", {
+    "id": Field(Text(r"[A-Z][A-Z0-9_]*")),
+    "hours": Field(Nullable(Integer(1, 24))),
+    "extraPages": Field(Integer(0, 10)),
+}, notes=True)
 
 HTTPS_URL = Text(r"https://[^\s]+", max_length=300)
 # A regular expression as Kotlin compiles it; the iPhone compiles the same text with NSRegularExpression.
@@ -1335,6 +1359,35 @@ TABLES: tuple[Table, ...] = (
         "trenitaliaRegionalClients": Field(CLIENT_CODES),
         "trenitaliaLongDistanceClients": Field(CLIENT_CODES),
     }, check=_check_viaggiatreno),
+    Table("widgets-v1.json", "Widgets", {
+        "refreshIntervalsMinutes": Field(ListOf(Integer(1, 1_440))),
+        "defaultIntervalMinutes": Field(Integer(1, 1_440)),
+        "alwaysIntervalMinutes": Field(Integer(1, 1_440)),
+        "weekdays": Field(ListOf(Integer(1, 7), as_set=True)),
+        "maximumWindows": Field(Integer(1, 4)),
+        "defaultMorningWindow": Field(WIDGET_WINDOW),
+        "defaultEveningWindow": Field(WIDGET_WINDOW),
+        "windowLookaheadDays": Field(Integer(1, 31)),
+        "minimumRescheduleSeconds": Field(Seconds(1)),
+        "defaultReturnFrom": Field(CLOCK_TIME),
+        "maximumTitleLength": Field(Integer(1, 200)),
+        "departedGraceSeconds": Field(Seconds()),
+        "freshSeconds": Field(Seconds(1)),
+        "agingSeconds": Field(Seconds(1)),
+        "timeRanges": Field(ListOf(WIDGET_TIME_RANGE, unique_by=("id",))),
+        "dayCacheMaximumRows": Field(Integer(1, 1_000)),
+        "compactRows": Field(Integer(1, 20)),
+        "pageRows": Field(Integer(1, 20)),
+        "stationStoredDepartures": Field(Integer(1, 100)),
+        "stationMaximumRows": Field(Integer(1, 20)),
+        "trainsArrivalGraceMinutes": Field(Integer(0, 120)),
+        "lookupBeforeDepartureMinutes": Field(Integer(0, 1_440)),
+        "lookupAfterArrivalMinutes": Field(Integer(0, 1_440)),
+        "lookupDefaultDurationMinutes": Field(Integer(1, 2_880)),
+        "lookupMaximumDurationMinutes": Field(Integer(1, 10_080)),
+        "retryMaximumAttempts": Field(Integer(1, 10)),
+        "retryFirstDelayMinutes": Field(Integer(1, 1_440)),
+    }, check=_check_widgets),
 )
 
 

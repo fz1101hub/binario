@@ -151,6 +151,8 @@ public enum BinarioLocalizationKeys {
         "planner.nearest.origin", "planner.nearest.hint", "planner.nearest.locating", "planner.nearest.found",
         "planner.nearest.none", "planner.nearest.unavailable", "planner.nearest.denied",
         "departures.nearest", "departures.nearest.found",
+        "app.widget_nearest.title", "app.widget_nearest.locating", "app.widget_nearest.denied",
+        "app.widget_nearest.unavailable", "app.widget_nearest.none",
         "departures.kind.title", "departures.kind.departures", "departures.kind.arrivals", "departures.arrivals.from",
         "departures.arrivals.loading.title", "departures.arrivals.loading.body", "departures.arrivals.unavailable.title",
         "departures.arrivals.unavailable.body", "departures.arrivals.empty.title", "departures.arrivals.empty.body",

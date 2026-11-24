@@ -2,7 +2,7 @@ import Foundation
 
 /// The train types a station board can hide («Tipi di treno»), Android's `TrainTypeGroup`, in the
 /// same order.
-public enum TrainTypeGroup: String, CaseIterable, Hashable, Sendable {
+public enum TrainTypeGroup: String, CaseIterable, Hashable, Codable, Sendable {
     case highSpeed = "HIGH_SPEED"
     case intercityNight = "INTERCITY_NIGHT"
     case regionalSuburban = "REGIONAL_SUBURBAN"

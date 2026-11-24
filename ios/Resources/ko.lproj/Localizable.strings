@@ -580,7 +580,6 @@
 "settings.live.trenitalia_news" = "운행 정보(ViaggiaTreno 경유): 전체 소식 목록, 사용자 데이터 없음";
 "settings.live.trenord" = "노선별 안내: 전체 노선 목록, 사용자 데이터 없음";
 "settings.live.notices_always" = "RFI 안내와 MIT 파업 일정은 실시간 데이터가 꺼져 있어도, 안내 영역을 열거나 내 구간의 공사 섹션이 표시될 때만 내려받습니다.";
-
 "result.weather.title" = "도착지 날씨";
 "result.weather.station_date" = "%1$@ · %2$@";
 "result.weather.loading" = "예보를 불러오는 중…";
@@ -693,6 +692,11 @@
 "notices.train.trenord_heading" = "노선의 Trenord 공지";
 "notices.train.published_at" = "게시: %1$@";
 "notices.retry" = "다시 시도";
+"app.widget_nearest.title" = "가장 가까운 역";
+"app.widget_nearest.locating" = "가장 가까운 역을 찾는 중…";
+"app.widget_nearest.denied" = "위치 권한이 허용되지 않아 위젯이 %1$@에 머뭅니다.";
+"app.widget_nearest.unavailable" = "위치를 이용할 수 없어 위젯이 %1$@에 머뭅니다.";
+"app.widget_nearest.none" = "50km 이내에 카탈로그 역이 없어 위젯이 %1$@에 머뭅니다.";
 "result.coverage_fallback" = "비공식 출처의 시간표입니다. 출발 전에 운영사에 확인하세요.";
 "result.trip.follow_toggle" = "여정 상태 알림";
 "result.trip.follow_detail" = "출발 30분 전부터 도착 30분 후까지 지연, 다음 정차역, 승강장을 15분마다 업데이트합니다. 끝나면 자동으로 닫힙니다.";

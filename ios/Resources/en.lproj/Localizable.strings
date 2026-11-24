@@ -580,7 +580,6 @@
 "settings.live.trenitalia_news" = "Infomobility, from ViaggiaTreno: the full list of news, with no user data";
 "settings.live.trenord" = "Notices by line: the full list of lines, with no user data";
 "settings.live.notices_always" = "RFI notices and the MIT strike calendar are downloaded even with real-time data off, only when you open the notices area or when a works section on your routes appears.";
-
 "result.weather.title" = "Weather at destination";
 "result.weather.station_date" = "%1$@ on %2$@";
 "result.weather.loading" = "Loading the forecast…";
@@ -693,6 +692,11 @@
 "notices.train.trenord_heading" = "Trenord notices on the line";
 "notices.train.published_at" = "Published: %1$@";
 "notices.retry" = "Try again";
+"app.widget_nearest.title" = "Nearest station";
+"app.widget_nearest.locating" = "Looking for the nearest station…";
+"app.widget_nearest.denied" = "Location permission not granted: the widget stays on %1$@.";
+"app.widget_nearest.unavailable" = "Location unavailable: the widget stays on %1$@.";
+"app.widget_nearest.none" = "No catalogue station within 50 km: the widget stays on %1$@.";
 "result.coverage_fallback" = "Timetable from an unofficial coverage source: check with the operator before you travel.";
 "result.trip.follow_toggle" = "Notification with the trip status";
 "result.trip.follow_detail" = "From 30 minutes before departure to 30 minutes after arrival: delay, next stop and platform, updated every 15 minutes. It closes by itself at the end.";

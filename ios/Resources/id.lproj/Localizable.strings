@@ -580,7 +580,6 @@
 "settings.live.trenitalia_news" = "Info perjalanan, dari ViaggiaTreno: daftar lengkap berita, tanpa data pengguna";
 "settings.live.trenord" = "Pemberitahuan per jalur: daftar lengkap jalur, tanpa data pengguna";
 "settings.live.notices_always" = "Pemberitahuan RFI dan kalender mogok MIT tetap diunduh meski data real-time dimatikan, hanya saat Anda membuka area pemberitahuan atau saat bagian pekerjaan pada rute Anda muncul.";
-
 "result.weather.title" = "Cuaca di tujuan";
 "result.weather.station_date" = "%1$@, %2$@";
 "result.weather.loading" = "Memuat prakiraan…";
@@ -693,6 +692,11 @@
 "notices.train.trenord_heading" = "Pemberitahuan Trenord di lintas ini";
 "notices.train.published_at" = "Diterbitkan: %1$@";
 "notices.retry" = "Coba lagi";
+"app.widget_nearest.title" = "Stasiun terdekat";
+"app.widget_nearest.locating" = "Mencari stasiun terdekat…";
+"app.widget_nearest.denied" = "Izin lokasi tidak diberikan: widget tetap di %1$@.";
+"app.widget_nearest.unavailable" = "Lokasi tidak tersedia: widget tetap di %1$@.";
+"app.widget_nearest.none" = "Tidak ada stasiun katalog dalam 50 km: widget tetap di %1$@.";
 "result.coverage_fallback" = "Jadwal dari sumber cakupan tidak resmi: periksa dengan operator sebelum bepergian.";
 "result.trip.follow_toggle" = "Notifikasi dengan status perjalanan";
 "result.trip.follow_detail" = "Dari 30 menit sebelum berangkat hingga 30 menit setelah tiba: keterlambatan, pemberhentian berikutnya, dan peron, diperbarui setiap 15 menit. Tertutup sendiri di akhir.";

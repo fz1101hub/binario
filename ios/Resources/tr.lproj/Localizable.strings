@@ -580,7 +580,6 @@
 "settings.live.trenitalia_news" = "Sefer bilgileri, ViaggiaTreno üzerinden: haberlerin tam listesi, kullanıcı verisi olmadan";
 "settings.live.trenord" = "Hatta göre duyurular: hatların tam listesi, kullanıcı verisi olmadan";
 "settings.live.notices_always" = "RFI duyuruları ve MIT grev takvimi gerçek zamanlı veriler kapalıyken de indirilir; yalnızca duyurular alanını açtığınızda veya güzergâhlarınızdaki çalışmalar bölümü göründüğünde.";
-
 "result.weather.title" = "Varış noktasında hava durumu";
 "result.weather.station_date" = "%1$@ · %2$@";
 "result.weather.loading" = "Hava tahmini yükleniyor…";
@@ -693,6 +692,11 @@
 "notices.train.trenord_heading" = "Hattaki Trenord duyuruları";
 "notices.train.published_at" = "Yayımlanma: %1$@";
 "notices.retry" = "Tekrar dene";
+"app.widget_nearest.title" = "En yakın istasyon";
+"app.widget_nearest.locating" = "En yakın istasyon aranıyor…";
+"app.widget_nearest.denied" = "Konum izni verilmedi: widget %1$@ istasyonunda kalıyor.";
+"app.widget_nearest.unavailable" = "Konum kullanılamıyor: widget %1$@ istasyonunda kalıyor.";
+"app.widget_nearest.none" = "50 km içinde katalogda istasyon yok: widget %1$@ istasyonunda kalıyor.";
 "result.coverage_fallback" = "Tarife resmî olmayan bir kapsama kaynağından: yola çıkmadan önce işletmeciyle doğrulayın.";
 "result.trip.follow_toggle" = "Yolculuk durumunu bildirimle göster";
 "result.trip.follow_detail" = "Kalkıştan 30 dakika önceden varıştan 30 dakika sonrasına kadar: gecikme, sonraki durak ve peron, 15 dakikada bir güncellenir. Sonunda kendiliğinden kapanır.";

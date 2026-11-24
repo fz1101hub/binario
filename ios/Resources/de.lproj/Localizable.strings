@@ -580,7 +580,6 @@
 "settings.live.trenitalia_news" = "Verkehrsinformationen über ViaggiaTreno: die vollständige Meldungsliste, ohne Nutzerdaten";
 "settings.live.trenord" = "Meldungen nach Linie: die vollständige Linienliste, ohne Nutzerdaten";
 "settings.live.notices_always" = "RFI-Meldungen und der Streikkalender des MIT werden auch bei ausgeschalteten Echtzeitdaten geladen, nur wenn du den Meldungsbereich öffnest oder ein Abschnitt zu Bauarbeiten auf deinen Strecken erscheint.";
-
 "result.weather.title" = "Wetter am Zielort";
 "result.weather.station_date" = "%1$@ am %2$@";
 "result.weather.loading" = "Vorhersage wird geladen…";
@@ -693,6 +692,11 @@
 "notices.train.trenord_heading" = "Trenord-Hinweise zur Linie";
 "notices.train.published_at" = "Veröffentlicht: %1$@";
 "notices.retry" = "Erneut versuchen";
+"app.widget_nearest.title" = "Nächster Bahnhof";
+"app.widget_nearest.locating" = "Suche den nächsten Bahnhof …";
+"app.widget_nearest.denied" = "Standortberechtigung nicht erteilt: Das Widget bleibt bei %1$@.";
+"app.widget_nearest.unavailable" = "Standort nicht verfügbar: Das Widget bleibt bei %1$@.";
+"app.widget_nearest.none" = "Kein Bahnhof des Katalogs im Umkreis von 50 km: Das Widget bleibt bei %1$@.";
 "result.coverage_fallback" = "Fahrplan aus einer inoffiziellen Ergänzungsquelle: Prüfe ihn vor der Fahrt beim Verkehrsunternehmen.";
 "result.trip.follow_toggle" = "Benachrichtigung mit dem Reisestatus";
 "result.trip.follow_detail" = "Von 30 Minuten vor der Abfahrt bis 30 Minuten nach der Ankunft: Verspätung, nächster Halt und Gleis, alle 15 Minuten aktualisiert. Sie schließt sich am Ende von selbst.";

@@ -580,7 +580,6 @@
 "settings.live.trenitalia_news" = "Infomobilité, via ViaggiaTreno : la liste complète des actualités, sans données de l’utilisateur";
 "settings.live.trenord" = "Avis par ligne : la liste complète des lignes, sans données de l’utilisateur";
 "settings.live.notices_always" = "Les avis RFI et le calendrier des grèves du MIT se téléchargent même avec les données en temps réel désactivées, seulement quand vous ouvrez l’espace des avis ou quand une section des travaux sur vos trajets apparaît.";
-
 "result.weather.title" = "Météo à destination";
 "result.weather.station_date" = "%1$@ le %2$@";
 "result.weather.loading" = "Chargement de la prévision…";
@@ -693,6 +692,11 @@
 "notices.train.trenord_heading" = "Avis Trenord sur la ligne";
 "notices.train.published_at" = "Publié : %1$@";
 "notices.retry" = "Réessayer";
+"app.widget_nearest.title" = "Gare la plus proche";
+"app.widget_nearest.locating" = "Recherche de la gare la plus proche…";
+"app.widget_nearest.denied" = "Autorisation de localisation refusée : le widget reste sur %1$@.";
+"app.widget_nearest.unavailable" = "Position indisponible : le widget reste sur %1$@.";
+"app.widget_nearest.none" = "Aucune gare du catalogue à moins de 50 km : le widget reste sur %1$@.";
 "result.coverage_fallback" = "Horaire issu d'une source de couverture non officielle : vérifiez auprès du transporteur avant de partir.";
 "result.trip.follow_toggle" = "Notification avec l’état du trajet";
 "result.trip.follow_detail" = "De 30 minutes avant le départ à 30 minutes après l’arrivée : retard, prochain arrêt et voie, mis à jour toutes les 15 minutes. Elle se ferme seule à la fin.";
