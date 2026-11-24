@@ -870,3 +870,7 @@
 "result.trip.countdown_stops" = "Bájate en %1$lld paradas";
 "notices.alerts.train_title" = "%1$lld avisos nuevos para %2$@";
 "notices.alerts.status_delay" = "%1$lld minutos de retraso";
+"result.paging.earlier" = "Más temprano";
+"result.paging.later" = "Más tarde";
+"result.paging.no_more_earlier" = "No hay más soluciones antes";
+"result.paging.no_more_later" = "No hay más soluciones después";

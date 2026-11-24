@@ -162,10 +162,24 @@ struct JourneyResultRow: View {
 /// operator, accessibility, bikes and the «Resta a bordo» notes; each change with its wait and, with live data, its
 /// risk; the walks; the source with the scheduled-only notice.
 struct JourneyDetailView: View {
-    let row: JourneyOptionRow
-    let reliability: JourneyPlanReliability?
+    @EnvironmentObject private var model: AppModel
+    @EnvironmentObject private var journeys: JourneysModel
+    /// The journey as it was opened; the model's copy (with the live legs that arrive meanwhile) is shown.
+    let opened: JourneyOptionRow
+    let openedReliability: JourneyPlanReliability?
+
+    init(row: JourneyOptionRow, reliability: JourneyPlanReliability?) {
+        opened = row
+        openedReliability = reliability
+    }
+
+    private var row: JourneyOptionRow { journeys.rows.first { $0.id == opened.id } ?? opened }
+
+    private var reliability: JourneyPlanReliability? { journeys.reliability[opened.id] ?? openedReliability }
 
     var body: some View {
+        let row = self.row
+        let reliability = self.reliability
         List {
             Section {
                 VStack(alignment: .leading, spacing: 4) {
@@ -217,6 +231,55 @@ struct JourneyDetailView: View {
         }
         .navigationTitle(Text(verbatim: JourneyTexts.changes(row.changes)))
         .navigationBarTitleDisplayMode(.inline)
+        // The trains of this journey looked up first, at most once a minute while it is open (JourneyLiveRefresh).
+        .task(id: opened.id) { await followLive() }
+        .refreshable { await refreshLive() }
+    }
+
+    private func followLive() async {
+        while !Task.isCancelled {
+            journeys.refreshLive(live: model.tripLiveData, focusedID: opened.id)
+            try? await Task.sleep(nanoseconds: 30_000_000_000)
+        }
+    }
+
+    private func refreshLive() async {
+        journeys.refreshLive(live: model.tripLiveData, focusedID: opened.id, force: true)
+    }
+}
+
+/// «Più presto» above the results and «Più tardi» below them (Android's `ResultsPageControl`): a button, a progress
+/// bar while a window loads, and «Nessun’altra soluzione …» when every source looked and found nothing new.
+struct ResultsPageControl: View {
+    let later: Bool
+    let loading: Bool
+    let nothingNew: Bool
+    let load: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            if loading {
+                ProgressView()
+                    .frame(maxWidth: .infinity)
+            } else if later {
+                Button(action: load) {
+                    Label("result.paging.later", systemImage: "chevron.down")
+                }
+            } else {
+                Button(action: load) {
+                    Label("result.paging.earlier", systemImage: "chevron.up")
+                }
+            }
+            if nothingNew, later {
+                Text("result.paging.no_more_later")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            } else if nothingNew {
+                Text("result.paging.no_more_earlier")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            }
+        }
     }
 }
 

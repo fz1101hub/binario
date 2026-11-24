@@ -870,3 +870,7 @@
 "result.trip.countdown_stops" = "%1$lld durak sonra inin";
 "notices.alerts.train_title" = "%1$lld yeni duyuru: %2$@";
 "notices.alerts.status_delay" = "%1$lld dakika gecikme";
+"result.paging.earlier" = "Daha erken";
+"result.paging.later" = "Daha geç";
+"result.paging.no_more_earlier" = "Daha erken başka seçenek yok";
+"result.paging.no_more_later" = "Daha geç başka seçenek yok";

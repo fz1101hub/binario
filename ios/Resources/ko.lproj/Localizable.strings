@@ -870,3 +870,7 @@
 "result.trip.countdown_stops" = "%1$lld개 정차역 뒤 하차";
 "notices.alerts.train_title" = "새 공지 %1$lld건: %2$@";
 "notices.alerts.status_delay" = "%1$lld분 지연";
+"result.paging.earlier" = "이전 시간";
+"result.paging.later" = "이후 시간";
+"result.paging.no_more_earlier" = "더 이른 경로가 없습니다";
+"result.paging.no_more_later" = "더 늦은 경로가 없습니다";

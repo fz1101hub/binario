@@ -870,3 +870,7 @@
 "result.trip.countdown_stops" = "انزل بعد %1$lld محطة";
 "notices.alerts.train_title" = "%1$lld تنبيه جديد لـ %2$@";
 "notices.alerts.status_delay" = "تأخير %1$lld دقيقة";
+"result.paging.earlier" = "أبكر";
+"result.paging.later" = "لاحقًا";
+"result.paging.no_more_earlier" = "لا توجد حلول أخرى أبكر";
+"result.paging.no_more_later" = "لا توجد حلول أخرى لاحقًا";

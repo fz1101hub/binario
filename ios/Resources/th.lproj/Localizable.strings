@@ -870,3 +870,7 @@
 "result.trip.countdown_stops" = "ลงในอีก %1$lld จุดจอด";
 "notices.alerts.train_title" = "ประกาศใหม่ %1$lld รายการสำหรับ %2$@";
 "notices.alerts.status_delay" = "ล่าช้า %1$lld นาที";
+"result.paging.earlier" = "ก่อนหน้า";
+"result.paging.later" = "ถัดไป";
+"result.paging.no_more_earlier" = "ไม่มีตัวเลือกอื่นที่เร็วกว่านี้";
+"result.paging.no_more_later" = "ไม่มีตัวเลือกอื่นที่ช้ากว่านี้";

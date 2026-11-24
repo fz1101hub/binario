@@ -870,3 +870,7 @@
 "result.trip.countdown_stops" = "%1$lld ठहराव बाद उतरें";
 "notices.alerts.train_title" = "%2$@ के लिए %1$lld नई सूचनाएँ";
 "notices.alerts.status_delay" = "%1$lld मिनट की देरी";
+"result.paging.earlier" = "पहले के";
+"result.paging.later" = "बाद के";
+"result.paging.no_more_earlier" = "इससे पहले कोई और विकल्प नहीं";
+"result.paging.no_more_later" = "इसके बाद कोई और विकल्प नहीं";

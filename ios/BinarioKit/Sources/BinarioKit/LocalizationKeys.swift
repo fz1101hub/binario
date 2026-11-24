@@ -354,6 +354,7 @@ public enum BinarioLocalizationKeys {
         "settings.travel.wheelchair_only", "settings.travel.wheelchair_note", "result.journey.changes",
         "result.journey.transfer_wait", "result.journey.hidden_by_preferences", "settings.travel.minutes",
         "result.journey.leg_on_time", "result.journey.leg_cancelled_share", "result.journey.connection",
+        "result.paging.earlier", "result.paging.later", "result.paging.no_more_earlier", "result.paging.no_more_later",
     ]
 
     /// The keys whose texts count something: Localizable.stringsdict holds their CLDR plural forms

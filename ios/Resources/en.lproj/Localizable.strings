@@ -870,3 +870,7 @@
 "result.trip.countdown_stops" = "Get off in %1$lld stops";
 "notices.alerts.train_title" = "%1$lld new notices for %2$@";
 "notices.alerts.status_delay" = "%1$lld minutes late";
+"result.paging.earlier" = "Earlier";
+"result.paging.later" = "Later";
+"result.paging.no_more_earlier" = "No other solutions earlier";
+"result.paging.no_more_later" = "No other solutions later";

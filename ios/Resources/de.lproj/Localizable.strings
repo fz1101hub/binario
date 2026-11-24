@@ -870,3 +870,7 @@
 "result.trip.countdown_stops" = "Aussteigen in %1$lld Halten";
 "notices.alerts.train_title" = "%1$lld neue Hinweise zu %2$@";
 "notices.alerts.status_delay" = "%1$lld Minuten Verspätung";
+"result.paging.earlier" = "Früher";
+"result.paging.later" = "Später";
+"result.paging.no_more_earlier" = "Keine weiteren Verbindungen früher";
+"result.paging.no_more_later" = "Keine weiteren Verbindungen später";

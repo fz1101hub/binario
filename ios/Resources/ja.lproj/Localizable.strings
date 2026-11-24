@@ -870,3 +870,7 @@
 "result.trip.countdown_stops" = "あと %1$lld 駅で下車";
 "notices.alerts.train_title" = "%2$@ の新しいお知らせ %1$lld 件";
 "notices.alerts.status_delay" = "%1$lld 分遅れ";
+"result.paging.earlier" = "より早い時間";
+"result.paging.later" = "より遅い時間";
+"result.paging.no_more_earlier" = "これより早い経路はありません";
+"result.paging.no_more_later" = "これより遅い経路はありません";
