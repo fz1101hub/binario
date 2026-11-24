@@ -19,6 +19,7 @@ import it.binario.app.data.repository.JourneySearchResult
 import it.binario.app.data.repository.JourneySearchService
 import it.binario.app.data.repository.JourneySearchStatus
 import it.binario.app.data.repository.SourcedJourneyOption
+import it.binario.app.shared.SharedData
 import java.time.Duration
 import java.time.Instant
 import java.time.LocalDate
@@ -62,10 +63,10 @@ data class JourneySearchUiState(
  */
 object JourneyLiveRefresh {
     /** A leg's live times are shown this long after the lookup that found them, unless a newer lookup replaces them. */
-    val MAX_AGE: Duration = Duration.ofMinutes(5)
+    val MAX_AGE: Duration = Duration.ofMinutes(SharedData.JourneyLive.MAXIMUM_AGE_MINUTES.toLong())
 
     /** The periodic refresh repeats the lookup (up to eight train numbers) once a minute, not at every 30-second tick. */
-    val MIN_INTERVAL: Duration = Duration.ofSeconds(60)
+    val MIN_INTERVAL: Duration = Duration.ofSeconds(SharedData.JourneyLive.MINIMUM_INTERVAL_SECONDS.toLong())
 
     /** The legs of [legs] whose lookup ([fetchedAt], by leg key) is not older than [MAX_AGE] at [now]. */
     fun current(legs: Map<String, JourneyLegLive>, fetchedAt: Map<String, Instant>, now: Instant): Map<String, JourneyLegLive> =

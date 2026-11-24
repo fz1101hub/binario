@@ -10,6 +10,8 @@
 //   contracts/shared-data/v1/italo-gtfs-station-codes.json
 //   contracts/shared-data/v1/italo-stations-v1.json
 //   contracts/shared-data/v1/journey-planner-v1.json
+//   contracts/shared-data/v1/journey-live-v1.json
+//   contracts/shared-data/v1/results-paging-v1.json
 //   contracts/shared-data/v1/live-train-map-v1.json
 //   contracts/shared-data/v1/local-backup-v1.json
 //   contracts/shared-data/v1/notices-sources-v1.json
@@ -558,6 +560,34 @@ public enum SharedData {
         public static let maximumResults: Int = 6
         public static let longWaitMinutes: Int = 120
         public static let duplicateWalkMinutes: Int = 10
+    }
+
+    /// contracts/shared-data/v1/journey-live-v1.json: The live check of the journeys with changes («Coincidenza a
+    /// rischio / persa»): which train legs are looked up by number (running from three hours before to three hours
+    /// after now, at most eight trains), when a run of the number search is another day's run, how many lookups run
+    /// together and how long one may take, how long an answer is shown and how often the lookup is repeated while the
+    /// results or a journey stay on screen.
+    public enum JourneyLive {
+        public static let lookBackMinutes: Int = 180
+        public static let lookAheadMinutes: Int = 180
+        public static let maximumTrains: Int = 8
+        public static let sameRunToleranceMinutes: Int = 120
+        public static let parallelLookups: Int = 3
+        public static let trainTimeoutSeconds: Int = 25
+        public static let maximumAgeMinutes: Int = 5
+        public static let minimumIntervalSeconds: Int = 60
+    }
+
+    /// contracts/shared-data/v1/results-paging-v1.json: «Più presto» and «Più tardi» of the results: how far back «Più
+    /// presto» looks (an hour, then three, six and twelve), how many earlier solutions it shows per source, how many
+    /// times a window that fills up is continued, the shortest window before the first departure, and how many journeys
+    /// with changes one window of «Più presto» asks for.
+    public enum ResultsPaging {
+        public static let earlierSpansMinutes: [Int] = [60, 180, 360, 720]
+        public static let earlierPage: Int = 6
+        public static let maximumFillLoads: Int = 3
+        public static let minimumEarlierSpanMinutes: Int = 15
+        public static let earlierJourneyResults: Int = 20
     }
 
     /// contracts/shared-data/v1/live-train-map-v1.json: The map of trains in motion: positions estimated from the
