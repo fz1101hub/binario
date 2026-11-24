@@ -1,6 +1,6 @@
 {
   "schema": "binario-shared-data-v1",
-  "description": "The trip notifications and alarms: the stop alarm, the followed trip (Android's ongoing notification, the iPhone's Live Activity) with its stop countdown, «Avvisami quando sta arrivando», the new notices of the trains with the bell and the position estimate during the trip. Leads, windows, cadences, tolerances and limits; the quiet hours (22-7) are those of evening-alerts-v1.json.",
+  "description": "The trip notifications and alarms: the stop alarm, the followed trip (Android's ongoing notification, the iPhone's Live Activity) with its stop countdown, «Avvisami quando sta arrivando», the commuter alerts, the new notices of the trains with the bell and the position estimate during the trip. Leads, windows, cadences, tolerances and limits; the quiet hours (22-7) are those of evening-alerts-v1.json.",
   "stopAlarmLeadMinutes": 5,
   "stopAlarmMaximumAlarms": 8,
   "stopAlarmKeepAfterArrivalMinutes": 120,
@@ -24,6 +24,8 @@
   "approachMinimumGapMinutes": 1,
   "approachNotificationTimeoutMinutes": 15,
   "approachMaximumAlerts": 12,
+  "commuterLeadOptionsMinutes": [5, 10, 15, 30, 60],
+  "commuterMaximumAlerts": 24,
   "trainAlertsCheckMinutes": 15,
   "trainAlertsBeforeDepartureMinutes": 240,
   "trainAlertsAfterDepartureMinutes": 180,

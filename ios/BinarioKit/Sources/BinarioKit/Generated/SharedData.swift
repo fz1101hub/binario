@@ -1153,8 +1153,9 @@ public enum SharedData {
 
     /// contracts/shared-data/v1/trip-alerts-v1.json: The trip notifications and alarms: the stop alarm, the followed
     /// trip (Android's ongoing notification, the iPhone's Live Activity) with its stop countdown, «Avvisami quando sta
-    /// arrivando», the new notices of the trains with the bell and the position estimate during the trip. Leads,
-    /// windows, cadences, tolerances and limits; the quiet hours (22-7) are those of evening-alerts-v1.json.
+    /// arrivando», the commuter alerts, the new notices of the trains with the bell and the position estimate during
+    /// the trip. Leads, windows, cadences, tolerances and limits; the quiet hours (22-7) are those of
+    /// evening-alerts-v1.json.
     public enum TripAlerts {
         public static let stopAlarmLeadMinutes: Int = 5
         public static let stopAlarmMaximumAlarms: Int = 8
@@ -1179,6 +1180,8 @@ public enum SharedData {
         public static let approachMinimumGapMinutes: Int = 1
         public static let approachNotificationTimeoutMinutes: Int = 15
         public static let approachMaximumAlerts: Int = 12
+        public static let commuterLeadOptionsMinutes: [Int] = [5, 10, 15, 30, 60]
+        public static let commuterMaximumAlerts: Int = 24
         public static let trainAlertsCheckMinutes: Int = 15
         public static let trainAlertsBeforeDepartureMinutes: Int = 240
         public static let trainAlertsAfterDepartureMinutes: Int = 180

@@ -1135,8 +1135,9 @@ internal object SharedData {
     /**
      * contracts/shared-data/v1/trip-alerts-v1.json: The trip notifications and alarms: the stop alarm, the followed
      * trip (Android's ongoing notification, the iPhone's Live Activity) with its stop countdown, «Avvisami quando sta
-     * arrivando», the new notices of the trains with the bell and the position estimate during the trip. Leads,
-     * windows, cadences, tolerances and limits; the quiet hours (22-7) are those of evening-alerts-v1.json.
+     * arrivando», the commuter alerts, the new notices of the trains with the bell and the position estimate during the
+     * trip. Leads, windows, cadences, tolerances and limits; the quiet hours (22-7) are those of
+     * evening-alerts-v1.json.
      */
     object TripAlerts {
         const val STOP_ALARM_LEAD_MINUTES: Int = 5
@@ -1162,6 +1163,8 @@ internal object SharedData {
         const val APPROACH_MINIMUM_GAP_MINUTES: Int = 1
         const val APPROACH_NOTIFICATION_TIMEOUT_MINUTES: Int = 15
         const val APPROACH_MAXIMUM_ALERTS: Int = 12
+        val COMMUTER_LEAD_OPTIONS_MINUTES: List<Int> = listOf(5, 10, 15, 30, 60)
+        const val COMMUTER_MAXIMUM_ALERTS: Int = 24
         const val TRAIN_ALERTS_CHECK_MINUTES: Int = 15
         const val TRAIN_ALERTS_BEFORE_DEPARTURE_MINUTES: Int = 240
         const val TRAIN_ALERTS_AFTER_DEPARTURE_MINUTES: Int = 180

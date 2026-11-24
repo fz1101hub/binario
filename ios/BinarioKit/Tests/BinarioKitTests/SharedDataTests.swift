@@ -395,6 +395,8 @@ final class SharedDataTests: XCTestCase {
         XCTAssertEqual(ApproachAlertPlanner.minimumGap, minutes("approachMinimumGapMinutes"))
         XCTAssertEqual(ApproachAlertPlanner.notificationTimeout, minutes("approachNotificationTimeoutMinutes"))
         XCTAssertEqual(ApproachAlertPlanner.maximumAlerts, json["approachMaximumAlerts"] as? Int)
+        XCTAssertEqual(CommuterAlert.leadOptions, json["commuterLeadOptionsMinutes"] as? [Int])
+        XCTAssertEqual(CommuterAlert.maximumAlerts, json["commuterMaximumAlerts"] as? Int)
         XCTAssertEqual(TrainAlertWatch.interval, minutes("trainAlertsCheckMinutes"))
         XCTAssertEqual(TrainAlertWatch.beforeDeparture, minutes("trainAlertsBeforeDepartureMinutes"))
         XCTAssertEqual(TrainAlertWatch.afterDeparture, minutes("trainAlertsAfterDepartureMinutes"))

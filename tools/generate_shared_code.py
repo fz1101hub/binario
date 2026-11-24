@@ -521,6 +521,8 @@ def _check_trip_alerts(values: Mapping[str, Any]) -> list[str]:
         problems.append("approachDefaultLeadMinutes fuori da approachLeadOptionsMinutes")
     if values["approachEarlyToleranceMinutes"] > values["approachLateToleranceMinutes"]:
         problems.append("approachEarlyToleranceMinutes maggiore di approachLateToleranceMinutes")
+    if values["commuterLeadOptionsMinutes"] != sorted(values["commuterLeadOptionsMinutes"]):
+        problems.append("commuterLeadOptionsMinutes non in ordine crescente")
     if values["followedTripMinimumRefreshMinutes"] > values["followedTripRefreshMinutes"]:
         problems.append("followedTripMinimumRefreshMinutes maggiore di followedTripRefreshMinutes")
     if values["positionDwellRadiusMeters"] > values["positionOffRouteMeters"]:
@@ -1040,6 +1042,8 @@ TABLES: tuple[Table, ...] = (
         "approachMinimumGapMinutes": Field(Integer(1, 60)),
         "approachNotificationTimeoutMinutes": Field(Integer(1, 240)),
         "approachMaximumAlerts": Field(Integer(1, 64)),
+        "commuterLeadOptionsMinutes": Field(ListOf(Integer(1, 60))),
+        "commuterMaximumAlerts": Field(Integer(1, 64)),
         "trainAlertsCheckMinutes": Field(Integer(1, 60)),
         "trainAlertsBeforeDepartureMinutes": Field(Integer(0, 1_440)),
         "trainAlertsAfterDepartureMinutes": Field(Integer(0, 1_440)),

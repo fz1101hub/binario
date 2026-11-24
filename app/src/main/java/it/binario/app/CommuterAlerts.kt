@@ -173,7 +173,7 @@ class CommuterAlertStore(context: Context) {
         .sortedWith(compareBy<CommuterAlert> { !it.enabled }.thenBy { it.time })
 
     fun save(alert: CommuterAlert): List<CommuterAlert> {
-        val updated = (listOf(alert) + alerts().filterNot { it.id == alert.id }).take(24)
+        val updated = (listOf(alert) + alerts().filterNot { it.id == alert.id }).take(SharedData.TripAlerts.COMMUTER_MAXIMUM_ALERTS)
         persist(updated)
         return updated
     }
@@ -191,7 +191,7 @@ class CommuterAlertStore(context: Context) {
     }
 
     fun replace(alerts: List<CommuterAlert>): List<CommuterAlert> {
-        val normalized = alerts.distinctBy { it.id }.take(24)
+        val normalized = alerts.distinctBy { it.id }.take(SharedData.TripAlerts.COMMUTER_MAXIMUM_ALERTS)
         persist(normalized)
         return normalized
     }

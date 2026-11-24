@@ -58,6 +58,11 @@ public enum TripQuietHours {
     }
 }
 
+/// The key a station name is compared by («Milano C.le» and «MILANO CENTRALE» alike), for the app's catalogue lookups.
+public enum TripStationNames {
+    public static func key(_ name: String) -> String { LiveText.catalogueStationKey(name, sanPrefix: true) }
+}
+
 /// Station names as the sources publish them, compared as the live overlay compares them.
 enum TripStops {
     static func namesMatch(_ first: String, _ second: String) -> Bool {
@@ -1100,7 +1105,8 @@ public enum CommuterAlertRepeat: String, Codable, CaseIterable, Equatable, Senda
 
 /// A commuter alert (Android's `CommuterAlert`): a reminder `leadMinutes` before a train's time at a station.
 public struct CommuterAlert: Codable, Equatable, Identifiable, Sendable {
-    public static let maximumAlerts = 24
+    public static let maximumAlerts = SharedData.TripAlerts.commuterMaximumAlerts
+    public static let leadOptions = SharedData.TripAlerts.commuterLeadOptionsMinutes
 
     public let id: String
     public let routeLabel: String

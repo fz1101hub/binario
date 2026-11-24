@@ -454,6 +454,8 @@ class SharedDataTest {
         assertEquals(minutes("approachMinimumGapMinutes"), ApproachAlertPlanner.MIN_DELAY_BETWEEN_RUNS)
         assertEquals(minutes("approachNotificationTimeoutMinutes"), ApproachAlertPlanner.NOTIFICATION_TIMEOUT)
         assertEquals(json.getInt("approachMaximumAlerts"), ApproachAlertPlanner.MAX_ALERTS)
+        assertEquals(json.getJSONArray("commuterLeadOptionsMinutes").ints(), SharedData.TripAlerts.COMMUTER_LEAD_OPTIONS_MINUTES)
+        assertEquals(json.getInt("commuterMaximumAlerts"), SharedData.TripAlerts.COMMUTER_MAXIMUM_ALERTS)
         assertEquals(minutes("trainAlertsCheckMinutes"), TrainAlertWatch.INTERVAL)
         assertEquals(minutes("trainAlertsBeforeDepartureMinutes"), TrainAlertWatch.BEFORE_DEPARTURE)
         assertEquals(minutes("trainAlertsAfterDepartureMinutes"), TrainAlertWatch.AFTER_DEPARTURE)

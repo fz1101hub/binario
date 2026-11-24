@@ -579,7 +579,7 @@ private fun CommuterAlertSheet(
             }, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.commuter_alert_time, time)) }
             Text(stringResource(R.string.commuter_alert_lead), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
             LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                items(listOf(5, 10, 15, 30, 60)) { minutes ->
+                items(it.binario.app.shared.SharedData.TripAlerts.COMMUTER_LEAD_OPTIONS_MINUTES) { minutes ->
                     FilterChip(
                         selected = lead == minutes,
                         onClick = { lead = minutes },
