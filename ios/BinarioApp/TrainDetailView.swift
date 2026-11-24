@@ -70,6 +70,9 @@ struct TrainDetailView: View {
                 )
             }
 
+            // Android's «Mappa del percorso» (StationMaps.swift).
+            RouteMapSection(service: service, liveStops: liveRun?.run.stops ?? [])
+
             // The delay compensation notice and the weather at the destination (ExtrasViews.swift).
             TrainDetailExtrasSections(service: service, query: query, liveRun: liveRun?.run)
 

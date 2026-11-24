@@ -76,6 +76,8 @@ struct DeparturesView: View {
                 // Android's «Assistenza Sala Blu», favourite and nearby stations (PersonalViews.swift).
                 if let station = model.boardStation {
                     SalaBluSection(station: model.station(for: station))
+                    // Android's «Mappa della stazione» (StationMaps.swift).
+                    StationMapSection(station: model.station(for: station))
                 }
                 FavouriteStationsSection()
                 NearbyStationsSection()

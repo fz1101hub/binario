@@ -571,6 +571,9 @@ struct NearbyStationsSection: View {
     @State private var locating = false
     @State private var stations: [NearbyStation] = []
     @State private var message: String?
+    /// The position the list was sorted from, in memory while the screen is open, for the circle
+    /// of «Mappa delle stazioni vicine»; never stored.
+    @State private var position: GeoPoint?
 
     var body: some View {
         Section("departures.nearby.title") {
@@ -602,6 +605,8 @@ struct NearbyStationsSection: View {
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             }
+            // Android's «Mappa delle stazioni vicine» (StationMaps.swift).
+            NearbyStationsMapRows(stations: stations, position: position)
         }
     }
 
@@ -619,6 +624,7 @@ struct NearbyStationsSection: View {
             case .unavailable:
                 text = NSLocalizedString("planner.nearest.unavailable", comment: "")
             case let .located(latitude, longitude):
+                position = GeoPoint(latitude: latitude, longitude: longitude)
                 stations = await model.nearbyStations(latitude: latitude, longitude: longitude)
                 text = NSLocalizedString(stations.isEmpty ? "planner.nearest.none" : "departures.nearby.sorted", comment: "")
             }
