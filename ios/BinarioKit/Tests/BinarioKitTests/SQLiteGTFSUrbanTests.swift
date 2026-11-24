@@ -38,10 +38,15 @@ final class SQLiteGTFSUrbanTests: XCTestCase {
             XCTAssertEqual(service.destination, "Bologna Aeroporto")
         }
 
-        // The walk comes first: from 10:03, the 10:06 at BFS cannot be reached.
+        // The walk comes first: from 10:03, the 10:06 at BFS cannot be reached. The search covers the next 24 hours,
+        // so the next run is tomorrow's 09:58 from BFS (the service runs every day to 2 April), not today's.
         let later = await repository.journeys(for: try query(bologna, airport, at: "2024-04-01 10:03"))
         guard case let .available(laterSnapshot) = later else { return XCTFail("expected the people mover, got \(later)") }
-        XCTAssertEqual(laterSnapshot.services.map(\.scheduledDeparture), ["10:20"])
+        XCTAssertEqual(laterSnapshot.services.map(\.scheduledDeparture), ["10:20", "09:58"])
+        XCTAssertEqual(laterSnapshot.services.map(\.id), [
+            "marconi-express-gtfs:mex-3:20240401:\(10 * 3_600 + 20 * 60)",
+            "marconi-express-gtfs:mex-1:20240402:\(9 * 3_600 + 58 * 60)",
+        ])
 
         // The railway search is the one it always was.
         let rail = await repository.journeys(for: try query(bologna, imola, at: "2024-04-01 09:50"))
