@@ -8,15 +8,34 @@ final class GTFSSourcePolicyTests: XCTestCase {
             .appendingPathComponent("ios/Resources/binario_gtfs_source_policy_v1.json"))
         let policy = try GTFSSourcePolicy(data: data)
 
-        // Every railway pack the Android planner reads: twelve of gtfs/, five of gtfs-transit/.
-        XCTAssertEqual(policy.sources.count, 17)
-        XCTAssertTrue(policy.sources.filter { $0.sourceID != "amt-genova-casella-gtfs" }
+        // Every pack the Android planner reads in a public build: the twelve railway packs of gtfs/, the five
+        // railway packs of gtfs-transit/ and its five public city networks (SharedData.PackRoles.urbanPacks).
+        XCTAssertEqual(policy.sources.count, 22)
+        let cityPacks: Set<String> = ["milano-atm-gtfs", "genova-amt-gtfs", "firenze-gest-gtfs", "arst-metro-gtfs", "marconi-express-gtfs"]
+        XCTAssertTrue(cityPacks.isSubset(of: SharedData.PackRoles.urbanPacks))
+        XCTAssertTrue(cityPacks.allSatisfy { policy.source(id: $0) != nil })
+        // A source is an HTTPS direct download, or a gateway source: an origin no app fetches, imported offline
+        // and corroborated by an HTTPS copy of the same bytes (the manifest's acquisition.corroboratedBy, checked by
+        // tools/build_ios_gtfs_schedule.py), with an HTTPS public page. AMT Genova's two packs (Genova–Casella and the
+        // city network) are cut from one archive, published over plain HTTP only.
+        let gateways = Set(policy.sources.filter { $0.accessMode == GTFSSourcePolicy.gatewayOnlyAccessMode }.map(\.sourceID))
+        XCTAssertEqual(gateways, ["amt-genova-casella-gtfs", "genova-amt-gtfs"])
+        XCTAssertTrue(policy.sources.filter { !gateways.contains($0.sourceID) }
             .allSatisfy { $0.sourceURL.scheme == "https" && $0.accessMode == "OPEN_DIRECT" })
-        // Genova–Casella's origin is plain HTTP, imported offline and corroborated by an HTTPS copy.
-        let casella = try XCTUnwrap(policy.source(id: "amt-genova-casella-gtfs"))
-        XCTAssertEqual(casella.accessMode, GTFSSourcePolicy.gatewayOnlyAccessMode)
-        XCTAssertEqual(casella.licence, "CC BY 4.0")
-        XCTAssertEqual(casella.landingPage?.absoluteString, "https://dati.comune.genova.it/")
+        let manifest = try JSONSerialization.jsonObject(with: Data(contentsOf: repositoryRoot
+            .appendingPathComponent("app/src/main/assets/gtfs-transit/manifest.json"))) as? [String: Any]
+        let packs = (manifest?["packs"] as? [[String: Any]]) ?? []
+        for id in gateways.sorted() {
+            let source = try XCTUnwrap(policy.source(id: id), id)
+            XCTAssertEqual(source.sourceURL.absoluteString, "http://opendatagoogletransit.comune.genova.it/downloads/google_transit.zip", id)
+            XCTAssertEqual(source.licence, "CC BY 4.0", id)
+            XCTAssertEqual(source.landingPage?.absoluteString, "https://dati.comune.genova.it/", id)
+            let pack = try XCTUnwrap(packs.first { $0["sourceId"] as? String == id }, id)
+            let acquisition = try XCTUnwrap(pack["acquisition"] as? [String: Any], id)
+            let copy = try XCTUnwrap(acquisition["corroboratedBy"] as? [String: Any], id)
+            XCTAssertTrue((copy["url"] as? String)?.hasPrefix("https://") == true, id)
+            XCTAssertEqual(copy["sha256"] as? String, acquisition["downloadSha256"] as? String, id)
+        }
         for national in ["trenitalia-gtfs", "italo-gtfs"] {
             let source = try XCTUnwrap(policy.source(id: national), national)
             XCTAssertEqual(source.licence, "Dati aperti NAP CCISS (art. 52 c. 2 CAD, Reg. UE 2017/1926); conversione GTFS CC BY 4.0")
