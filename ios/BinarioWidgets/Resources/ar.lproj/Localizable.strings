@@ -13,6 +13,7 @@
 "widgets.refresh.windows" = "في الفترات الزمنية المختارة";
 "widgets.refresh.always" = "دائمًا، كل 15 دقيقة";
 "widgets.param.interval" = "التكرار";
+"widgets.param.time" = "الفترات الزمنية";
 "widgets.interval.15" = "كل 15 دقيقة";
 "widgets.interval.30" = "كل 30 دقيقة";
 "widgets.interval.60" = "كل 60 دقيقة";
@@ -65,6 +66,11 @@
 "widgets.action.trains_previous" = "القطارات السابقة";
 "widgets.action.trains_next" = "القطارات التالية";
 "widgets.action.open" = "فتح Binario";
+"widgets.column.time" = "الوقت";
+"widgets.column.destination" = "الوجهة / القطار";
+"widgets.column.platform" = "رصيف";
+"widgets.column.status" = "الحالة";
+"widgets.column.train" = "القطار";
 "widgets.symbol.refresh" = "↻";
 "widgets.symbol.previous" = "‹";
 "widgets.symbol.next" = "›";
@@ -83,7 +89,6 @@
 "widgets.platform" = "رصيف %1$@";
 "widgets.platform.changed" = "رصيف %1$@\nكان %2$@";
 "widgets.in_transit" = "في الطريق";
-"widgets.in_transit.arrival" = "في الطريق · الوصول %1$@";
 "widgets.confidence.static" = "مجدول";
 "widgets.freshness.fresh" = "محدّث";
 "widgets.freshness.aging" = "غير حديثة";

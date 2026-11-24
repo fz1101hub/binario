@@ -13,6 +13,7 @@
 "widgets.refresh.windows" = "В выбранные интервалы";
 "widgets.refresh.always" = "Всегда, каждые 15 минут";
 "widgets.param.interval" = "Частота";
+"widgets.param.time" = "Интервалы времени";
 "widgets.interval.15" = "Каждые 15 минут";
 "widgets.interval.30" = "Каждые 30 минут";
 "widgets.interval.60" = "Каждые 60 минут";
@@ -65,6 +66,11 @@
 "widgets.action.trains_previous" = "Предыдущие поезда";
 "widgets.action.trains_next" = "Следующие поезда";
 "widgets.action.open" = "Открыть Binario";
+"widgets.column.time" = "ВРЕМЯ";
+"widgets.column.destination" = "КУДА / ПОЕЗД";
+"widgets.column.platform" = "ПУТЬ";
+"widgets.column.status" = "СТАТУС";
+"widgets.column.train" = "ПОЕЗД";
 "widgets.symbol.refresh" = "↻";
 "widgets.symbol.previous" = "‹";
 "widgets.symbol.next" = "›";
@@ -83,7 +89,6 @@
 "widgets.platform" = "ПУТЬ %1$@";
 "widgets.platform.changed" = "ПУТЬ %1$@\nбыл %2$@";
 "widgets.in_transit" = "В пути";
-"widgets.in_transit.arrival" = "В пути · прибытие %1$@";
 "widgets.confidence.static" = "ПО РАСПИСАНИЮ";
 "widgets.freshness.fresh" = "ОБНОВЛЕНО";
 "widgets.freshness.aging" = "НЕ СВЕЖИЕ";

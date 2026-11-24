@@ -13,6 +13,7 @@
 "widgets.refresh.windows" = "Pendant les plages horaires choisies";
 "widgets.refresh.always" = "Toujours, toutes les 15 minutes";
 "widgets.param.interval" = "Fréquence";
+"widgets.param.time" = "Plages horaires";
 "widgets.interval.15" = "Toutes les 15 minutes";
 "widgets.interval.30" = "Toutes les 30 minutes";
 "widgets.interval.60" = "Toutes les 60 minutes";
@@ -65,6 +66,11 @@
 "widgets.action.trains_previous" = "Trains précédents";
 "widgets.action.trains_next" = "Trains suivants";
 "widgets.action.open" = "Ouvrir Binario";
+"widgets.column.time" = "HEURE";
+"widgets.column.destination" = "DESTINATION / TRAIN";
+"widgets.column.platform" = "VOIE";
+"widgets.column.status" = "ÉTAT";
+"widgets.column.train" = "TRAIN";
 "widgets.symbol.refresh" = "↻";
 "widgets.symbol.previous" = "‹";
 "widgets.symbol.next" = "›";
@@ -83,7 +89,6 @@
 "widgets.platform" = "VOIE %1$@";
 "widgets.platform.changed" = "VOIE %1$@\nau lieu %2$@";
 "widgets.in_transit" = "En route";
-"widgets.in_transit.arrival" = "En route · arrivée %1$@";
 "widgets.confidence.static" = "PROGRAMMÉ";
 "widgets.freshness.fresh" = "ACTUALISÉ";
 "widgets.freshness.aging" = "NON RÉCENT";

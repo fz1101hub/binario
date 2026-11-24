@@ -13,6 +13,7 @@
 "widgets.refresh.windows" = "चुनी गई समय-सीमाओं में";
 "widgets.refresh.always" = "हमेशा, हर 15 मिनट";
 "widgets.param.interval" = "आवृत्ति";
+"widgets.param.time" = "समय-सीमाएँ";
 "widgets.interval.15" = "हर 15 मिनट";
 "widgets.interval.30" = "हर 30 मिनट";
 "widgets.interval.60" = "हर 60 मिनट";
@@ -65,6 +66,11 @@
 "widgets.action.trains_previous" = "पिछली ट्रेनें";
 "widgets.action.trains_next" = "अगली ट्रेनें";
 "widgets.action.open" = "Binario खोलें";
+"widgets.column.time" = "समय";
+"widgets.column.destination" = "गंतव्य / ट्रेन";
+"widgets.column.platform" = "PF";
+"widgets.column.status" = "स्थिति";
+"widgets.column.train" = "ट्रेन";
 "widgets.symbol.refresh" = "↻";
 "widgets.symbol.previous" = "‹";
 "widgets.symbol.next" = "›";
@@ -83,7 +89,6 @@
 "widgets.platform" = "PF %1$@";
 "widgets.platform.changed" = "PF %1$@\nपहले %2$@";
 "widgets.in_transit" = "रास्ते में";
-"widgets.in_transit.arrival" = "रास्ते में · आगमन %1$@";
 "widgets.confidence.static" = "निर्धारित";
 "widgets.freshness.fresh" = "अपडेट";
 "widgets.freshness.aging" = "पुराना डेटा";

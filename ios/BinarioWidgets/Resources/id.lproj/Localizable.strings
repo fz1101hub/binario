@@ -13,6 +13,7 @@
 "widgets.refresh.windows" = "Pada rentang waktu yang dipilih";
 "widgets.refresh.always" = "Selalu, setiap 15 menit";
 "widgets.param.interval" = "Frekuensi";
+"widgets.param.time" = "Rentang waktu";
 "widgets.interval.15" = "Setiap 15 menit";
 "widgets.interval.30" = "Setiap 30 menit";
 "widgets.interval.60" = "Setiap 60 menit";
@@ -65,6 +66,11 @@
 "widgets.action.trains_previous" = "Kereta sebelumnya";
 "widgets.action.trains_next" = "Kereta berikutnya";
 "widgets.action.open" = "Buka Binario";
+"widgets.column.time" = "WAKTU";
+"widgets.column.destination" = "TUJUAN / KERETA";
+"widgets.column.platform" = "PERON";
+"widgets.column.status" = "STATUS";
+"widgets.column.train" = "KERETA";
 "widgets.symbol.refresh" = "↻";
 "widgets.symbol.previous" = "‹";
 "widgets.symbol.next" = "›";
@@ -83,7 +89,6 @@
 "widgets.platform" = "PERON %1$@";
 "widgets.platform.changed" = "PERON %1$@\ndulu %2$@";
 "widgets.in_transit" = "Dalam perjalanan";
-"widgets.in_transit.arrival" = "Dalam perjalanan · tiba %1$@";
 "widgets.confidence.static" = "JADWAL";
 "widgets.freshness.fresh" = "TERBARU";
 "widgets.freshness.aging" = "TIDAK TERBARU";

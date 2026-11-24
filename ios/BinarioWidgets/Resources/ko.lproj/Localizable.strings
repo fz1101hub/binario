@@ -13,6 +13,7 @@
 "widgets.refresh.windows" = "선택한 시간대에만";
 "widgets.refresh.always" = "항상, 15분마다";
 "widgets.param.interval" = "빈도";
+"widgets.param.time" = "시간대";
 "widgets.interval.15" = "15분마다";
 "widgets.interval.30" = "30분마다";
 "widgets.interval.60" = "60분마다";
@@ -65,6 +66,11 @@
 "widgets.action.trains_previous" = "이전 열차";
 "widgets.action.trains_next" = "다음 열차";
 "widgets.action.open" = "Binario 열기";
+"widgets.column.time" = "시각";
+"widgets.column.destination" = "행선지 / 열차";
+"widgets.column.platform" = "승강장";
+"widgets.column.status" = "상태";
+"widgets.column.train" = "열차";
 "widgets.symbol.refresh" = "↻";
 "widgets.symbol.previous" = "‹";
 "widgets.symbol.next" = "›";
@@ -83,7 +89,6 @@
 "widgets.platform" = "승강장 %1$@";
 "widgets.platform.changed" = "승강장 %1$@\n기존 %2$@";
 "widgets.in_transit" = "운행 중";
-"widgets.in_transit.arrival" = "운행 중 · %1$@ 도착";
 "widgets.confidence.static" = "예정";
 "widgets.freshness.fresh" = "업데이트됨";
 "widgets.freshness.aging" = "최신 아님";

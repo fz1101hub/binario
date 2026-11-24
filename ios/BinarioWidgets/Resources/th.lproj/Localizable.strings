@@ -13,6 +13,7 @@
 "widgets.refresh.windows" = "ในช่วงเวลาที่เลือก";
 "widgets.refresh.always" = "ตลอดเวลา ทุก 15 นาที";
 "widgets.param.interval" = "ความถี่";
+"widgets.param.time" = "ช่วงเวลา";
 "widgets.interval.15" = "ทุก 15 นาที";
 "widgets.interval.30" = "ทุก 30 นาที";
 "widgets.interval.60" = "ทุก 60 นาที";
@@ -65,6 +66,11 @@
 "widgets.action.trains_previous" = "ขบวนก่อนหน้า";
 "widgets.action.trains_next" = "ขบวนถัดไป";
 "widgets.action.open" = "เปิด Binario";
+"widgets.column.time" = "เวลา";
+"widgets.column.destination" = "ปลายทาง / ขบวน";
+"widgets.column.platform" = "ชานชาลา";
+"widgets.column.status" = "สถานะ";
+"widgets.column.train" = "ขบวน";
 "widgets.symbol.refresh" = "↻";
 "widgets.symbol.previous" = "‹";
 "widgets.symbol.next" = "›";
@@ -83,7 +89,6 @@
 "widgets.platform" = "ชานชาลา %1$@";
 "widgets.platform.changed" = "ชานชาลา %1$@\nเดิม %2$@";
 "widgets.in_transit" = "กำลังเดินทาง";
-"widgets.in_transit.arrival" = "กำลังเดินทาง · ถึง %1$@";
 "widgets.confidence.static" = "ตามตาราง";
 "widgets.freshness.fresh" = "อัปเดตแล้ว";
 "widgets.freshness.aging" = "ไม่ใช่ล่าสุด";

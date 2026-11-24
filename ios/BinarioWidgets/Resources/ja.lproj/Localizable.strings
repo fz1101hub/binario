@@ -13,6 +13,7 @@
 "widgets.refresh.windows" = "指定した時間帯";
 "widgets.refresh.always" = "常に（15 分ごと）";
 "widgets.param.interval" = "頻度";
+"widgets.param.time" = "時間帯";
 "widgets.interval.15" = "15 分ごと";
 "widgets.interval.30" = "30 分ごと";
 "widgets.interval.60" = "60 分ごと";
@@ -65,6 +66,11 @@
 "widgets.action.trains_previous" = "前の列車";
 "widgets.action.trains_next" = "次の列車";
 "widgets.action.open" = "Binario を開く";
+"widgets.column.time" = "時刻";
+"widgets.column.destination" = "行先 / 列車";
+"widgets.column.platform" = "番線";
+"widgets.column.status" = "状況";
+"widgets.column.train" = "列車";
 "widgets.symbol.refresh" = "↻";
 "widgets.symbol.previous" = "‹";
 "widgets.symbol.next" = "›";
@@ -83,7 +89,6 @@
 "widgets.platform" = "%1$@ 番線";
 "widgets.platform.changed" = "%1$@ 番線\n旧 %2$@";
 "widgets.in_transit" = "運行中";
-"widgets.in_transit.arrival" = "運行中 · %1$@ 着";
 "widgets.confidence.static" = "時刻表";
 "widgets.freshness.fresh" = "最新";
 "widgets.freshness.aging" = "最新でない";

@@ -13,6 +13,7 @@
 "widgets.refresh.windows" = "在所选时段内";
 "widgets.refresh.always" = "始终，每 15 分钟";
 "widgets.param.interval" = "频率";
+"widgets.param.time" = "时段";
 "widgets.interval.15" = "每 15 分钟";
 "widgets.interval.30" = "每 30 分钟";
 "widgets.interval.60" = "每 60 分钟";
@@ -65,6 +66,11 @@
 "widgets.action.trains_previous" = "上一页列车";
 "widgets.action.trains_next" = "下一页列车";
 "widgets.action.open" = "打开 Binario";
+"widgets.column.time" = "时间";
+"widgets.column.destination" = "终点 / 车次";
+"widgets.column.platform" = "站台";
+"widgets.column.status" = "状态";
+"widgets.column.train" = "车次";
 "widgets.symbol.refresh" = "↻";
 "widgets.symbol.previous" = "‹";
 "widgets.symbol.next" = "›";
@@ -83,7 +89,6 @@
 "widgets.platform" = "站台 %1$@";
 "widgets.platform.changed" = "站台 %1$@\n原 %2$@";
 "widgets.in_transit" = "运行中";
-"widgets.in_transit.arrival" = "运行中 · %1$@ 到达";
 "widgets.confidence.static" = "计划";
 "widgets.freshness.fresh" = "已更新";
 "widgets.freshness.aging" = "非最新";

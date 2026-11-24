@@ -13,6 +13,7 @@
 "widgets.refresh.windows" = "Seçilen zaman aralıklarında";
 "widgets.refresh.always" = "Her zaman, 15 dakikada bir";
 "widgets.param.interval" = "Sıklık";
+"widgets.param.time" = "Zaman aralıkları";
 "widgets.interval.15" = "15 dakikada bir";
 "widgets.interval.30" = "30 dakikada bir";
 "widgets.interval.60" = "60 dakikada bir";
@@ -65,6 +66,11 @@
 "widgets.action.trains_previous" = "Önceki trenler";
 "widgets.action.trains_next" = "Sonraki trenler";
 "widgets.action.open" = "Binario\'yu aç";
+"widgets.column.time" = "SAAT";
+"widgets.column.destination" = "VARIŞ / TREN";
+"widgets.column.platform" = "PERON";
+"widgets.column.status" = "DURUM";
+"widgets.column.train" = "TREN";
 "widgets.symbol.refresh" = "↻";
 "widgets.symbol.previous" = "‹";
 "widgets.symbol.next" = "›";
@@ -83,7 +89,6 @@
 "widgets.platform" = "PERON %1$@";
 "widgets.platform.changed" = "PERON %1$@\nönceki %2$@";
 "widgets.in_transit" = "Yolda";
-"widgets.in_transit.arrival" = "Yolda · varış %1$@";
 "widgets.confidence.static" = "PLANLANAN";
 "widgets.freshness.fresh" = "GÜNCEL";
 "widgets.freshness.aging" = "GÜNCEL DEĞİL";

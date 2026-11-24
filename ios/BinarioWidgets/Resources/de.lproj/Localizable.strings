@@ -13,6 +13,7 @@
 "widgets.refresh.windows" = "In gewählten Zeitfenstern";
 "widgets.refresh.always" = "Immer, alle 15 Minuten";
 "widgets.param.interval" = "Häufigkeit";
+"widgets.param.time" = "Zeitfenster";
 "widgets.interval.15" = "Alle 15 Minuten";
 "widgets.interval.30" = "Alle 30 Minuten";
 "widgets.interval.60" = "Alle 60 Minuten";
@@ -65,6 +66,11 @@
 "widgets.action.trains_previous" = "Vorherige Züge";
 "widgets.action.trains_next" = "Weitere Züge";
 "widgets.action.open" = "Binario öffnen";
+"widgets.column.time" = "ZEIT";
+"widgets.column.destination" = "ZIEL / ZUG";
+"widgets.column.platform" = "GL.";
+"widgets.column.status" = "STATUS";
+"widgets.column.train" = "ZUG";
 "widgets.symbol.refresh" = "↻";
 "widgets.symbol.previous" = "‹";
 "widgets.symbol.next" = "›";
@@ -83,7 +89,6 @@
 "widgets.platform" = "GL %1$@";
 "widgets.platform.changed" = "GL %1$@\nstatt %2$@";
 "widgets.in_transit" = "Unterwegs";
-"widgets.in_transit.arrival" = "Unterwegs · Ankunft %1$@";
 "widgets.confidence.static" = "GEPLANT";
 "widgets.freshness.fresh" = "AKTUELL";
 "widgets.freshness.aging" = "NICHT AKTUELL";

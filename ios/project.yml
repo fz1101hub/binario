@@ -107,10 +107,50 @@ targets:
             binario_gtfs_source_policy_personal_v1.json; do
             cp "$SRCROOT/Personal/$name" "$destination/$name"
           done
+    # The App Group the app shares with its widgets (WidgetAppGroup): the installed timetable index, the live
+    # switch, «I miei treni» and what each widget last loaded. Automatic signing registers it on both App IDs.
+    entitlements:
+      path: Configuration/Binario.entitlements
     dependencies:
       - package: BinarioKit
       - target: BinarioWatch
         embed: true
+      # The home-screen widgets, embedded in Binario.app/PlugIns.
+      - target: BinarioWidgets
+        embed: true
+  # Android's three home-screen widgets on the iPhone (WidgetKit, iOS 17 AppIntentConfiguration): the app's one
+  # widget extension. A Live Activity joins this target rather than adding another (ios/BinarioWidgets/BinarioWidgetsBundle.swift).
+  BinarioWidgets:
+    type: app-extension
+    platform: iOS
+    deploymentTarget: "17.0"
+    sources:
+      # Swift, Info.plist, the privacy manifest and Resources/<language>.lproj (tools/ios_widget_strings.py).
+      - path: BinarioWidgets
+      # The station search of the edit sheet reads the same offline catalogue as the app.
+      - path: ../app/src/main/assets/stations/curated_it_rail_stations.json
+        buildPhase: resources
+    settings:
+      base:
+        SDKROOT: iphoneos
+        SUPPORTED_PLATFORMS: "iphoneos iphonesimulator"
+        TARGETED_DEVICE_FAMILY: "1"
+        PRODUCT_NAME: BinarioWidgets
+        PRODUCT_BUNDLE_IDENTIFIER: it.binario.ios.widgets
+        # Embedded in Binario.app/PlugIns only, never installed on its own.
+        SKIP_INSTALL: YES
+        # A full Info.plist, as the Watch widget's: NSExtension, export compliance, and the same single cleartext
+        # hop to www.viaggiatreno.it as the app's (Configuration/Binario-Info.plist), for the live sources.
+        GENERATE_INFOPLIST_FILE: NO
+        INFOPLIST_FILE: BinarioWidgets/Info.plist
+      configs:
+        debug:
+          ONLY_ACTIVE_ARCH: YES
+          SWIFT_OPTIMIZATION_LEVEL: -Onone
+    entitlements:
+      path: Configuration/BinarioWidgets.entitlements
+    dependencies:
+      - package: BinarioKit
   BinarioAppTests:
     type: bundle.unit-test
     platform: iOS

@@ -13,6 +13,7 @@
 "widgets.refresh.windows" = "ရွေးထားသော အချိန်ပိုင်းများတွင်";
 "widgets.refresh.always" = "အမြဲ၊ 15 မိနစ်တိုင်း";
 "widgets.param.interval" = "အကြိမ်ရေ";
+"widgets.param.time" = "အချိန်ပိုင်းများ";
 "widgets.interval.15" = "15 မိနစ်တိုင်း";
 "widgets.interval.30" = "30 မိနစ်တိုင်း";
 "widgets.interval.60" = "60 မိနစ်တိုင်း";
@@ -65,6 +66,11 @@
 "widgets.action.trains_previous" = "ယခင် ရထားများ";
 "widgets.action.trains_next" = "နောက် ရထားများ";
 "widgets.action.open" = "Binario ဖွင့်ရန်";
+"widgets.column.time" = "အချိန်";
+"widgets.column.destination" = "ခရီးဆုံး / ရထား";
+"widgets.column.platform" = "ပလက်ဖောင်း";
+"widgets.column.status" = "အခြေအနေ";
+"widgets.column.train" = "ရထား";
 "widgets.symbol.refresh" = "↻";
 "widgets.symbol.previous" = "‹";
 "widgets.symbol.next" = "›";
@@ -83,7 +89,6 @@
 "widgets.platform" = "ပလက်ဖောင်း %1$@";
 "widgets.platform.changed" = "ပလက်ဖောင်း %1$@\nယခင် %2$@";
 "widgets.in_transit" = "ခရီးသွားနေသည်";
-"widgets.in_transit.arrival" = "ခရီးသွားနေသည် · ဆိုက်ရောက်ချိန် %1$@";
 "widgets.confidence.static" = "ဇယား";
 "widgets.freshness.fresh" = "အပ်ဒိတ်ဖြစ်ပြီ";
 "widgets.freshness.aging" = "နောက်ဆုံးရ မဟုတ်";
