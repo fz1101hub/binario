@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>widgets.a11y.delay</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>few</key>
+			<string>متأخر %1$lld دقائق</string>
+			<key>many</key>
+			<string>متأخر %1$lld دقيقة</string>
+			<key>one</key>
+			<string>متأخر %1$lld دقيقة</string>
+			<key>other</key>
+			<string>متأخر %1$lld دقيقة</string>
+			<key>two</key>
+			<string>متأخر %1$lld دقيقتين</string>
+			<key>zero</key>
+			<string>متأخر %1$lld دقيقة</string>
+		</dict>
+	</dict>
+	<key>widgets.a11y.early</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>few</key>
+			<string>مبكر %1$lld دقائق</string>
+			<key>many</key>
+			<string>مبكر %1$lld دقيقة</string>
+			<key>one</key>
+			<string>مبكر %1$lld دقيقة</string>
+			<key>other</key>
+			<string>مبكر %1$lld دقيقة</string>
+			<key>two</key>
+			<string>مبكر %1$lld دقيقتين</string>
+			<key>zero</key>
+			<string>مبكر %1$lld دقيقة</string>
+		</dict>
+	</dict>
+	<key>widgets.trains.count</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>few</key>
+			<string>%1$lld قطارات</string>
+			<key>many</key>
+			<string>%1$lld قطارًا</string>
+			<key>one</key>
+			<string>%1$lld قطار</string>
+			<key>other</key>
+			<string>%1$lld قطار</string>
+			<key>two</key>
+			<string>%1$lld قطاران</string>
+			<key>zero</key>
+			<string>%1$lld قطار</string>
+		</dict>
+	</dict>
+	<key>widgets.trains.hidden</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>few</key>
+			<string>%1$lld مخفية (لا تسير)</string>
+			<key>many</key>
+			<string>%1$lld مخفيًا (لا يسير)</string>
+			<key>one</key>
+			<string>%1$lld مخفي (لا يسير)</string>
+			<key>other</key>
+			<string>%1$lld مخفي (لا يسير)</string>
+			<key>two</key>
+			<string>%1$lld مخفيان (لا يسيران)</string>
+			<key>zero</key>
+			<string>%1$lld مخفي (لا يسير)</string>
+		</dict>
+	</dict>
+</dict>
+</plist>
