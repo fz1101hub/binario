@@ -20,15 +20,15 @@ pianificatore. 2 = notifiche di viaggio, sveglia di fermata, GPS, avvisi di arri
 
 | | Funzioni | Uguali | Parziali | Mancano |
 |---|---|---|---|---|
-| Area 1 | 13 | 0 | 3 | 10 |
+| Area 1 | 14 | 0 | 3 | 11 |
 | Area 2 | 7 | 0 | 0 | 7 |
 | Area 3 | 5 | 0 | 0 | 5 |
-| Area 4 | 93 | 70 | 9 | 14 |
+| Area 4 | 93 | 89 | 4 | 0 |
 | Area 5 | 2 | 0 | 0 | 2 |
-| **Telefono** | **120** | **70** | **12** | **38** |
+| **Telefono** | **121** | **89** | **7** | **25** |
 | Orologio | 16 | 16 | 0 | 0 |
 
-«Uguali» comprende gli «Uguale (nativo iOS)». I conteggi sono quelli dopo i lavori del ramo `ios-misc` (24 novembre 2026); le righe «Manca» e «Parziale» dell'area 4 sono l'elenco di ciò che resta, in fondo al documento.
+«Uguali» comprende gli «Uguale (nativo iOS)». I conteggi sono quelli dopo i lavori del ramo `ios-misc` (24 novembre 2026, secondo giro); le righe «Manca» e «Parziale» dell'area 4 sono l'elenco di ciò che resta, in fondo al documento.
 
 ## 1. Navigazione e struttura
 
@@ -38,8 +38,8 @@ pianificatore. 2 = notifiche di viaggio, sveglia di fermata, GPS, avvisi di arri
 | «Impostazioni» dentro «Per te» | Riga «Impostazioni» di Per te, gruppi in sottoschermate | Riga «Impostazioni» di Per te, gruppi in sottopagine | Uguale | 4 |
 | «I miei treni» dentro «Per te» | Sezione di Per te | Riga di Per te che apre «I miei treni» | Uguale | 4 |
 | Doppio pannello da 840 dp | Elenco e dettaglio affiancati | Solo iPhone (`TARGETED_DEVICE_FAMILY = 1`): nessun tablet | Uguale (nativo iOS) | 4 |
-| Scorciatoie dell'icona | Tratta attiva, Prossime partenze, Ricerca treno, Agenda | Azione rapida «Agenda» | Parziale: mancano tratta attiva, prossime partenze e ricerca treno | 4 |
-| Collegamenti profondi (`binario://`) | Agenda, Per te, tratta attiva, treno preferito | Nessuno | Manca | 4 |
+| Scorciatoie dell'icona | Tratta attiva, Prossime partenze, Ricerca treno, Agenda | Le stesse quattro azioni rapide della schermata Home (`Binario-Info.plist`, `RouteBoard.swift`) | Uguale (nativo iOS) | 4 |
+| Collegamenti profondi (`binario://`) | `binario://agenda`, `route/active`, `departures/next`, `train/search[?number=]` (`BinarioDeepLinkParser`); Per te e treno preferito solo da notifiche e widget | Gli stessi quattro collegamenti, con la stessa lista chiusa (`AppLinks` in `RouteBoard.swift`) | Uguale | 4 |
 
 ## 2. Pianifica
 
@@ -47,10 +47,10 @@ pianificatore. 2 = notifiche di viaggio, sveglia di fermata, GPS, avvisi di arri
 |---|---|---|---|---|
 | Ricerca tratta con partenza, arrivo, data e ora | `PlannerScreen.kt` | `PlannerView.swift` | Uguale | 4 |
 | Inverti partenza e arrivo | Pulsante | Pulsante | Uguale | 4 |
-| Modalità «Treno» (ricerca per numero) | `TrainNumberSearchScreen.kt`, ViaggiaTreno e orario offline | Nessuna | Manca | 4 |
+| Modalità «Treno» (ricerca per numero) | `TrainNumberSearchScreen.kt`, ViaggiaTreno e orario offline | «Treno» nel pianificatore: corse di oggi dalle fonti in tempo reale, ciascuna apre il dettaglio (`PlannerExtras.swift`) | Parziale: le corse dell'orario incluso non sono cercate per numero | 4 |
 | Modalità «Stazione» | Apre il tabellone di stazione | Scheda Partenze | Uguale | 4 |
-| Andata e ritorno | Opzione con data e ora del ritorno, risultati in due parti | Nessuna | Manca | 4 |
-| Ricerche recenti e preferite nel pianificatore | «Recenti e preferite» | Le tratte salvate in Per te | Parziale: niente ricerche recenti | 4 |
+| Andata e ritorno | Opzione con data e ora del ritorno, risultati in due parti | «Andata e ritorno» con data e ora del ritorno, «RITORNO» sotto l'andata, anche in «Salva orario» e «Condividi» | Uguale | 4 |
+| Ricerche recenti e preferite nel pianificatore | «Recenti e preferite» | «Recenti e preferite» sotto il modulo: tratte salvate (fissate prima) e ultime otto ricerche | Uguale | 4 |
 | Salva tratta | Stella | Stella «Salva tratta» | Uguale | 4 |
 | Partenza dalla stazione più vicina | «Usa la posizione per la partenza» | «Partenza dalla stazione più vicina» | Uguale | 4 |
 | Dettatura | Riconoscitore di sistema | `RouteAssistSection.swift` | Uguale (nativo iOS) | 4 |
@@ -72,9 +72,9 @@ pianificatore. 2 = notifiche di viaggio, sveglia di fermata, GPS, avvisi di arri
 | «Ultimo di oggi» e «Non ci sono più treni oggi» nei risultati | Sì | Nessuno | Manca | 1 |
 | Prima / Dopo | Pagine di risultati | Nessuno | Manca | 1 |
 | «Salva orario» | Salva l'elenco mostrato | Pulsante «Salva orario» sotto i risultati | Uguale | 4 |
-| Arrivo e durata di ogni treno nei risultati | Sì | Solo la partenza | Manca | 4 |
+| Arrivo e durata di ogni treno nei risultati | Sì | Solo la partenza | Manca | 1 |
 | Condividi l'elenco dei risultati | `TimetableShareFormatter.list` | Stesso testo dal foglio di condivisione | Uguale (nativo iOS) | 4 |
-| Mappa dei risultati | `ResultsMapPane.kt` (OpenFreeMap) | Nessuna | Manca | 4 |
+| Mappa dei risultati | `ResultsMapPane.kt`, solo nel doppio pannello da 840 dp (tablet) | Solo iPhone (`TARGETED_DEVICE_FAMILY = 1`): nessun doppio pannello, come sui telefoni Android | Uguale (nativo iOS) | 4 |
 | Percorso live nel pianificatore | Sì | Nessuno | Manca | 1 |
 | Orari dei paesi confinanti («Scarica») | Sì | Sì | Uguale | 4 |
 
@@ -84,19 +84,19 @@ pianificatore. 2 = notifiche di viaggio, sveglia di fermata, GPS, avvisi di arri
 |---|---|---|---|---|
 | Intestazione, operatore, categoria, fermate e orari live | `ServiceDetailScreen.kt` | `TrainDetailView.swift` | Uguale | 4 |
 | Schede Info / Percorso / Servizi | Tre schede | Un solo elenco con le stesse sezioni | Uguale (nativo iOS) | 4 |
-| Salva in «I miei treni» | Cuore | Stella, come dicono i testi dell'iPhone | Uguale | 4 |
+| Salva in «I miei treni» | Cuore | Stella: scelta tenuta, i testi dell'iPhone dicono «stella» in 17 lingue | Uguale | 4 |
 | Condividi il treno | `TrainShareFormatter` | Stesso testo dal foglio di condivisione | Uguale (nativo iOS) | 4 |
 | Condividi una fermata | «Treno X, fermata Y: arr. 10:05, bin. 3» | Stesso testo dal menu della fermata | Uguale (nativo iOS) | 4 |
 | Stima CO₂ con nota | Sì | Sì | Uguale | 4 |
 | Affidabilità della rete | Scheda «Affidabilità ultimi N giorni» | Stessa sezione | Uguale | 4 |
-| Puntualità personale | Scheda «Puntualità» dalle osservazioni sul telefono | Stessa sezione, osservazioni registrate quando l'app legge lo stato del treno | Parziale: niente registrazione quotidiana in background | 4 |
+| Puntualità personale | Scheda «Puntualità» dalle osservazioni sul telefono, registrate anche una volta al giorno in background | Stessa sezione; osservazioni registrate quando l'app legge lo stato del treno e una volta al giorno nel compito in background di iOS per i treni preferiti (`EveningAlerts.swift`) | Uguale (nativo iOS) | 4 |
 | Indennizzo per ritardo | Sì | Sì | Uguale | 4 |
 | Meteo a destinazione | Sì | Sì | Uguale | 4 |
 | Avvisi per questo treno | Sì | Sì | Uguale | 4 |
 | «Apri sul sito ufficiale» | Trenitalia e Italo | Stesso collegamento e nota | Uguale | 4 |
 | Bici a bordo: condizioni dell'operatore | Collegamento quando manca il dato | Stesso collegamento | Uguale | 4 |
-| Aggiungi al calendario | Evento con gli orari programmati | Nessuno | Manca | 4 |
-| Mappa del percorso | OpenFreeMap | Nessuna | Manca | 4 |
+| Aggiungi al calendario | Evento con gli orari programmati | Editor di eventi di iOS già compilato (treno, stazioni, ora, operatore, nota), senza permesso del calendario (`RouteBoard.swift`) | Uguale (nativo iOS) | 4 |
+| Mappa del percorso | OpenFreeMap, su tocco | Mappa di Apple (MapKit), su tocco: fermate live o dell'orario incluso, ultima confermata e prossima, elenco sotto la mappa (`StationMaps.swift`) | Uguale (nativo iOS) | 4 |
 | Cambi di percorso («Fermata aggiunta», «Saltata») | Sì | Fermate aggiunte e soppresse nell'elenco live | Uguale | 4 |
 | Segui questo viaggio | Viaggio attivo con notifica | Nessuno | Manca | 2 |
 | Sveglia di fermata e sveglia GPS | Sì | Nessuna | Manca | 2 |
@@ -125,15 +125,15 @@ pianificatore. 2 = notifiche di viaggio, sveglia di fermata, GPS, avvisi di arri
 | Stazioni vicine | Elenco ordinato per distanza, consenso su tocco | «Stazioni più vicine»: elenco per distanza, una posizione su tocco | Uguale | 4 |
 | Stazione più vicina | Sì | Sì | Uguale | 4 |
 | «Tipi di treno» | Nasconde Frecce/AV, Intercity/notte, Regionali, Italo, Bus, Internazionali per stazione, con il conteggio e «Mostra tutti» | Stesso foglio, stessa scelta per stazione, stesso conteggio | Uguale | 4 |
-| Collegamenti diretti | `DirectConnectionsSheet.kt` | Nessuno | Manca | 4 |
+| Collegamenti diretti | `DirectConnectionsSheet.kt` | Stesso foglio: sette giorni, filtro, treni e linee urbane, «Cerca i treni» e «Cerca le corse» (`DirectConnections.swift`) | Uguale | 4 |
 | Assistenza Sala Blu | Pagina RFI e numeri | Stessa sezione nel tabellone | Uguale | 4 |
-| Tabellone della tratta attiva | Prossima partenza evidenziata, cambio direzione, scelta tratta | Nessuno: la tratta si apre nel pianificatore | Manca | 4 |
+| Tabellone della tratta attiva | Prossima partenza evidenziata, cambio direzione, scelta tratta | «Le tue partenze» in cima a Partenze: prossima corsa, altre corse, «Direzione», «Cambia tratta» (`RouteBoard.swift`) | Uguale | 4 |
 | «Ultimo di oggi» nei tabelloni | Sì | «Non ci sono più treni oggi: primo domani» | Parziale: manca il segno «Ultimo di oggi» | 1 |
-| Monitora questa stazione | Monitoraggio locale | Nessuno | Manca | 4 |
+| Monitora questa stazione | Monitoraggio locale | «Monitora questa stazione» nel tabellone (partenze, arrivi o entrambi), elenco in Per te | Uguale | 4 |
 | Treni in movimento | Mappa | Mappa (MapKit) | Uguale (nativo iOS) | 4 |
-| Mappa della stazione e delle stazioni vicine | OpenFreeMap | Nessuna | Manca | 4 |
+| Mappa della stazione e delle stazioni vicine | OpenFreeMap, su tocco | Mappa di Apple (MapKit), su tocco: le sei stazioni vicine, o le stazioni trovate con la posizione approssimativa (`StationMaps.swift`) | Uguale (nativo iOS) | 4 |
 | Bici in condivisione | Sì | Sì | Uguale | 4 |
-| Cambio binario «Bin. 7 (era 5)» | Partenze, risultati, dettaglio, tabelloni | Solo negli arrivi | Parziale | 4 |
+| Cambio binario «Bin. 7 (era 5)» | Partenze, risultati, dettaglio, tabelloni | Partenze, arrivi, risultati e dettaglio | Uguale | 4 |
 | Tabelloni programmati RFI | Sì | Nessuno | Manca | 5 |
 | European Sleeper | Sì | Nessuno | Manca | 5 |
 
@@ -154,17 +154,17 @@ pianificatore. 2 = notifiche di viaggio, sveglia di fermata, GPS, avvisi di arri
 | Funzione | Android | iPhone | Stato | Area |
 |---|---|---|---|---|
 | Le tue tratte | Preferite | Tratte salvate | Uguale | 4 |
-| Recenti | Scheda «Recenti» | Nessuna | Manca | 4 |
-| Nuova tratta (foglio) | «Nuova tratta» | Si salva dal pianificatore | Parziale | 4 |
-| Fissa, sposta, elimina una tratta | Menu della tratta | Elimina; «Mostra su Watch» | Parziale: niente fissare e spostare | 4 |
+| Recenti | Scheda «Recenti» | «Recenti» in Per te: le ultime otto ricerche | Uguale | 4 |
+| Nuova tratta (foglio) | «Nuova tratta» | «Nuova tratta» in Per te: partenza, arrivo, nome, «Salva e attiva tratta» | Uguale | 4 |
+| Fissa, sposta, elimina una tratta | Menu della tratta | Menu della tratta: fissa, sposta su e giù, elimina, «Mostra su Watch»; le stesse azioni per VoiceOver | Uguale | 4 |
 | Agenda | Sì | Sì | Uguale | 4 |
 | Pronto per partire | Sì | Sì | Uguale | 4 |
-| Orari salvati | Elenco, sola lettura, rinomina, condividi, elimina | Stesso elenco, stesse azioni, stesso formato | Parziale: le righe salvate sull'iPhone non hanno arrivo e durata, che i suoi risultati non mostrano | 4 |
+| Orari salvati | Elenco, sola lettura, rinomina, condividi, elimina | Stesso elenco, stesse azioni, stesso formato | Parziale: le righe salvate sull'iPhone non hanno arrivo e durata, che arrivano con l'arrivo e la durata nei risultati (area 1) | 4 |
 | Stazioni preferite | Sezione | Sezione | Uguale | 4 |
 | I miei treni: apri, rinomina, rimuovi | Sì | Apri, rinomina, rimuovi | Uguale | 4 |
-| Affidabilità dei miei treni | Rete e corse registrate sul telefono, con l'andamento | Solo la rete; le corse registrate sono nel dettaglio di ogni treno | Parziale | 4 |
+| Affidabilità dei miei treni | Rete e corse registrate sul telefono, con l'andamento | La rete; le corse registrate sono nel dettaglio di ogni treno e nel riepilogo settimanale | Parziale: la sezione non mostra ancora le corse registrate e l'andamento | 4 |
 | Viaggio attivo e monitoraggi | Pannello | Nessuno | Manca | 2 |
-| Riepilogo settimanale | Notifica della domenica | Nessuno | Manca | 4 |
+| Riepilogo settimanale | Notifica della domenica | Stessa notifica senza suono, dal compito serale in background di iOS (`EveningAlerts.swift`) | Uguale (nativo iOS) | 4 |
 
 ## 9. Impostazioni
 
@@ -173,7 +173,7 @@ pianificatore. 2 = notifiche di viaggio, sveglia di fermata, GPS, avvisi di arri
 | Tema Sistema / Chiaro / Scuro | Scelta locale | Stessa scelta, applicata a tutta l'app | Uguale | 4 |
 | Lingua nell'app | Da Android 13, elenco nell'app e nel sistema | Riga che apre la lingua di Binario nelle Impostazioni di iOS | Uguale (nativo iOS) | 4 |
 | Biglietti e assistenza | Pagine ufficiali degli operatori | Stesse pagine, dalla tabella comune | Uguale | 4 |
-| Esporta e importa i dati (JSON) | `LocalDataBackup.kt` | Stesso file `binario-local-backup`, dal foglio di condivisione e da File | Parziale: un file di Android porta sull'iPhone tratte, stazioni preferite, orari salvati e puntualità, non i treni preferiti (al file mancano destinazione e operatore); monitoraggi, avvisi e preferenze non esistono sull'iPhone | 4 |
+| Esporta e importa i dati (JSON) | `LocalDataBackup.kt` | Stesso file `binario-local-backup`: tratte, stazioni preferite e monitorate, treni preferiti con nome, destinazione e operatore (anche nel file di Android), orari salvati e puntualità | Parziale: gli avvisi e le preferenze di Android (area 2) non esistono sull'iPhone | 4 |
 | Suggerisci una stazione | Modulo pubblico del progetto | Stesso collegamento | Uguale | 4 |
 | Informazioni e crediti | Versione, OSM, mappe, orari, CO₂ | Versione, fonti, CO₂ | Uguale | 4 |
 | Fonti aggiuntive e dati in tempo reale | Sì | Sì (con interruttore) | Uguale | 4 |
@@ -183,7 +183,8 @@ pianificatore. 2 = notifiche di viaggio, sveglia di fermata, GPS, avvisi di arri
 | Privacy | Testi | Testi | Uguale | 4 |
 | Preferenze di viaggio e mobilità | Sì | Nessuna | Manca | 1 |
 | Integrazioni: orologio | Wear, Apple Watch | Apple Watch | Uguale | 4 |
-| Integrazioni: profilo vocale Alexa | Sì | Nessuno | Manca | 4 |
+| Integrazioni: profilo vocale Alexa | Sì | Stesso interruttore e stesse note; nessun collegamento dell'account, come su Android senza collegamento | Uguale | 4 |
+| Puntualità dei treni preferiti e riepilogo settimanale | Interruttori (acceso e spento di serie) | Stessi interruttori e testi in Impostazioni | Uguale | 4 |
 | Sveglie e avvisi, avvisi pendolare, notifiche in tempo reale | Sì | Promemoria della sera soltanto | Manca | 2 |
 | Stato del lavoro in background | Sì | Nessuno | Manca | 2 |
 | Impostazioni dei widget | Testi e impostazioni | Nessun widget sull'iPhone | Manca | 3 |
@@ -230,8 +231,9 @@ pianificatore. 2 = notifiche di viaggio, sveglia di fermata, GPS, avvisi di arri
 
 Area 4 (audit e funzioni minori), dopo i lavori di questo ramo:
 
-- **Mancano (14):** Collegamenti profondi (`binario://`); Modalità «Treno» (ricerca per numero); Andata e ritorno; Arrivo e durata di ogni treno nei risultati; Mappa dei risultati; Aggiungi al calendario; Mappa del percorso; Collegamenti diretti; Tabellone della tratta attiva; Monitora questa stazione; Mappa della stazione e delle stazioni vicine; Recenti; Riepilogo settimanale; Integrazioni: profilo vocale Alexa.
-- **Parziali (9):** Scorciatoie dell'icona; Ricerche recenti e preferite nel pianificatore; Puntualità personale; Cambio binario «Bin. 7 (era 5)»; Nuova tratta (foglio); Fissa, sposta, elimina una tratta; Orari salvati; Affidabilità dei miei treni; Esporta e importa i dati (JSON). Il dettaglio è nella colonna «Stato».
+- **Mancano (0):** nessuna.
+- **Parziali (4):** Modalità «Treno» (ricerca per numero); Orari salvati; Affidabilità dei miei treni; Esporta e importa i dati (JSON). Il dettaglio è nella colonna «Stato».
+- **Scelte tenute:** la stella al posto del cuore di Android per «I miei treni», perché i testi dell'iPhone in 17 lingue dicono «stella»; la mappa dei risultati di Android esiste solo nel doppio pannello dei tablet, che l'app iPhone (solo telefono) non ha.
 - **Orologio:** nessuna differenza aperta.
 
-Le righe delle altre aree restano ai lavori in corso: area 1 13, area 2 7, area 3 5, area 5 2 righe non ancora uguali.
+Le righe delle altre aree restano ai lavori in corso: area 1 14, area 2 7, area 3 5, area 5 2 righe non ancora uguali. «Arrivo e durata di ogni treno nei risultati» è passata all'area 1 (viaggi).

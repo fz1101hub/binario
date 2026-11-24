@@ -602,9 +602,15 @@ class IOSProjectTests(unittest.TestCase):
         for language in sorted(LANGUAGES):
             folder = IOS / "Resources" / f"{language}.lproj"
             titles = read_strings(folder / "InfoPlist.strings")
-            # The quick action's title and the location permission text (I7) are the only Info.plist strings.
-            self.assertEqual({"Agenda", "NSLocationWhenInUseUsageDescription"}, set(titles), language)
+            # The quick actions' titles (Android's four shortcuts) and the location permission text (I7)
+            # are the only Info.plist strings.
+            self.assertEqual(
+                {"Agenda", "Tratta attiva", "Prossime partenze", "Ricerca treno", "NSLocationWhenInUseUsageDescription"},
+                set(titles), language,
+            )
             self.assertEqual(read_strings(folder / "Localizable.strings")["saved.agenda.title"], titles["Agenda"], language)
+            for title in ("Tratta attiva", "Prossime partenze", "Ricerca treno"):
+                self.assertTrue(titles[title].strip(), language)
         app = (IOS / "BinarioApp/BinarioApp.swift").read_text(encoding="utf-8")
         self.assertIn('static let type = "it.binario.ios.agenda"', app)
         self.assertIn("@UIApplicationDelegateAdaptor(BinarioAppDelegate.self)", app)
@@ -612,6 +618,13 @@ class IOSProjectTests(unittest.TestCase):
         self.assertIn("performActionFor shortcutItem: UIApplicationShortcutItem", app)
         root = (IOS / "BinarioApp/RootView.swift").read_text(encoding="utf-8")
         self.assertIn("NotificationCenter.default.publisher(for: AgendaQuickAction.notification)", root)
+        # The other three, and Android's `binario://` links, through RouteBoard.swift's AppLinks.
+        board = (IOS / "BinarioApp/RouteBoard.swift").read_text(encoding="utf-8")
+        for kind in ("active-route", "next-departures", "train-search"):
+            self.assertIn(f'case "it.binario.ios.{kind}":', board)
+        self.assertIn("AppLinks.handle(item)", app)
+        self.assertIn("return AppLinks.handle(shortcutItem)", app)
+        self.assertIn(".modifier(AppLinksHandler())", app)
         saved = (IOS / "BinarioApp/SavedRoutesView.swift").read_text(encoding="utf-8")
         self.assertIn(".navigationDestination(isPresented: $model.showingAgenda)", saved)
 
@@ -702,7 +715,10 @@ class IOSProjectTests(unittest.TestCase):
         forbidden_words = re.compile(r"android|wear\s*os|google\s*play|widget|companion", re.IGNORECASE)
         for language in sorted(LANGUAGES):
             values = read_strings(IOS / "Resources" / f"{language}.lproj" / "InfoPlist.strings")
-            self.assertEqual({"Agenda", "NSLocationWhenInUseUsageDescription"}, set(values), language)
+            self.assertEqual(
+                {"Agenda", "Tratta attiva", "Prossime partenze", "Ricerca treno", "NSLocationWhenInUseUsageDescription"},
+                set(values), language,
+            )
             text = values["NSLocationWhenInUseUsageDescription"]
             self.assertTrue(text.strip(), language)
             self.assertIn("Binario", text, language)
@@ -856,7 +872,21 @@ class IOSProjectTests(unittest.TestCase):
             "UIApplicationShortcutItemType": "it.binario.ios.agenda",
             "UIApplicationShortcutItemTitle": "Agenda",
             "UIApplicationShortcutItemIconSymbolName": "calendar",
+        }, {
+            "UIApplicationShortcutItemType": "it.binario.ios.active-route",
+            "UIApplicationShortcutItemTitle": "Tratta attiva",
+            "UIApplicationShortcutItemIconSymbolName": "point.topleft.down.to.point.bottomright.curvepath",
+        }, {
+            "UIApplicationShortcutItemType": "it.binario.ios.next-departures",
+            "UIApplicationShortcutItemTitle": "Prossime partenze",
+            "UIApplicationShortcutItemIconSymbolName": "list.bullet.rectangle",
+        }, {
+            "UIApplicationShortcutItemType": "it.binario.ios.train-search",
+            "UIApplicationShortcutItemTitle": "Ricerca treno",
+            "UIApplicationShortcutItemIconSymbolName": "magnifyingglass",
         }],
+            # Android's `binario://` links (BinarioDeepLinkParser's allowlist, RouteBoard.swift).
+            "CFBundleURLTypes": [{"CFBundleURLName": "it.binario.ios.links", "CFBundleURLSchemes": ["binario"]}],
             # The evening alerts (EveningAlerts.swift): one app refresh task, its only identifier.
             "UIBackgroundModes": ["fetch"],
             "BGTaskSchedulerPermittedIdentifiers": ["it.binario.ios.evening-alerts"],
@@ -1636,7 +1666,9 @@ class IOSProjectTests(unittest.TestCase):
         }
         for source, android_fragment, fragment in (
             ("favourites", "const val MAX = 12", "public static let maximumTrains = 12"),
-            ("punctuality", "const val MAX_ROWS = 8", "public static let maximumRows = 8"),
+            # Both from contracts/shared-data/v1/favourite-punctuality-v1.json (8).
+            ("punctuality", "const val MAX_ROWS = SharedData.FavouritePunctuality.MAXIMUM_ROWS",
+             "public static let maximumRows = SharedData.FavouritePunctuality.maximumRows"),
             ("link", 'Regex("^[A-Za-z0-9]{1,12}$")', "public static let maximumNumberKeyLength = 12"),
             (
                 "marks",
@@ -1940,7 +1972,9 @@ class IOSProjectTests(unittest.TestCase):
         # which reads only the MIT and RFI feeds and posts local notifications. The same task runs the
         # trip checks that are due (TripMonitor.swift, owner decision of 24 November 2026: Android's trip
         # notifications and alarms), which ask the live sources only through `tripLiveData`, nil with
-        # «Dati in tempo reale» off; no other identifier and no push.
+        # «Dati in tempo reale» off; no other identifier and no push. The other live request it may
+        # make is Android's «Puntualità dei treni preferiti» (parity, November 2026): a favourite's
+        # number on its day, through the model's switch-guarded `trainNumberRuns`, never LiveRailData.
         project_text = (IOS / "project.yml").read_text(encoding="utf-8")
         for absent in ("UIBackgroundModes", "BGTaskScheduler", "fetch", "remote-notification"):
             self.assertNotIn(absent, project_text, f"project.yml: {absent}")
@@ -1960,7 +1994,7 @@ class IOSProjectTests(unittest.TestCase):
         self.assertIn("UNNotificationRequest(identifier: id, content: content, trigger: nil)", alerts)
         self.assertIn("service.strikeCalendar()", alerts)
         self.assertIn("service.general(personal: false, includeTrenord: false)", alerts)
-        for absent in ("LiveRailData", "stationNotices", "personal: true", "URLSession"):
+        for absent in ("LiveRailData", "stationNotices", "personal: true", "URLSession", "liveData."):
             self.assertNotIn(absent, alerts)
         self.assertIn("await TripMonitor.runInBackground(now: now)", alerts.split("static func run(now: Date = Date()) async {", 1)[1].split("guard await notificationsAllowed()", 1)[0])
         self.assertIn("if let next = TripBackgroundSchedule.nextRunAt(now) { dates.append(next) }", alerts)
@@ -1970,6 +2004,9 @@ class IOSProjectTests(unittest.TestCase):
         self.assertEqual(4, trips.count("await liveData."), "train status, notices, board, approach lookup")
         for absent in ("LiveRailData", "URLSession", "BGTask", "registerForRemoteNotifications", "pushType: .token"):
             self.assertNotIn(absent, trips)
+        self.assertEqual(1, alerts.count("app.trainNumberRuns(request)"))
+        self.assertIn("guard let app, let personal, app.liveDataEnabled else { return }", alerts)
+        self.assertIn("if ExtrasPreferenceStore().punctualityRecordingEnabled, !Task.isCancelled {", alerts)
         self.assertEqual(1, app["BinarioApp.swift"].count(".backgroundTask(.appRefresh(EveningAlerts.taskIdentifier))"))
         self.assertEqual(["BinarioApp.swift"], sorted(name for name, source in app.items() if ".backgroundTask(" in source))
 
@@ -1993,11 +2030,13 @@ class IOSProjectTests(unittest.TestCase):
             "guard plannerLiveVisible, liveDataEnabled, let liveData, let snapshot = latestSnapshot else { return }",
             "guard liveDataEnabled, let liveData, let key = detailLiveKey else { return }",
             "guard favouritesLiveVisible, liveDataEnabled, let liveData else { return }",
+            # «Treno» (PlannerExtras.swift): asked on the user's tap only.
+            "guard liveDataEnabled, let liveData else { return nil }",
         ):
             with self.subTest(guard=guard):
                 self.assertIn(guard, model)
-        self.assertEqual(5, model.count("await liveData."), "board, planner, train status, board row run and train notices")
-        self.assertEqual(1, model.count("await liveData.trainStatus("))
+        self.assertEqual(6, model.count("await liveData."), "board, planner, train status, board row run, train notices, by number")
+        self.assertEqual(2, model.count("await liveData.trainStatus("), "the train's detail and the search by number")
         # Stale answers are dropped as the board's are.
         for fragment in (
             "guard requestID == boardLiveRequestID, boardStation == identity, liveDataEnabled else { return }",
@@ -2010,7 +2049,8 @@ class IOSProjectTests(unittest.TestCase):
         # Android's numbers: the first 8 favourites, the ±3 hour window, two runs 2 hours apart are two.
         punctuality = (ROOT / "app/src/main/java/it/binario/app/FavouriteTrainPunctuality.kt").read_text(encoding="utf-8")
         candidates = (ROOT / "app/src/main/java/it/binario/app/journeys/JourneyLiveLookup.kt").read_text(encoding="utf-8")
-        self.assertIn("const val MAX_ROWS = 8", punctuality)
+        self.assertIn("const val MAX_ROWS = SharedData.FavouritePunctuality.MAXIMUM_ROWS", punctuality)
+        self.assertEqual(8, json.loads((ROOT / "contracts/shared-data/v1/favourite-punctuality-v1.json").read_text(encoding="utf-8"))["maximumRows"])
         self.assertIn("static let maximumLiveFavourites = 8", model)
         self.assertIn("val LOOKBACK: Duration = Duration.ofHours(3)", candidates)
         self.assertIn("val LOOKAHEAD: Duration = Duration.ofHours(3)", candidates)
@@ -2063,7 +2103,9 @@ class IOSProjectTests(unittest.TestCase):
         # The live state is part of each row's sentence.
         self.assertIn("parts += LiveTexts.spoken(live, includingPlatform: false)", app["DeparturesView.swift"])
         self.assertIn(".accessibilityLabel(Text(LiveTexts.spokenStop(stop)))", app["TrainDetailView.swift"])
-        self.assertIn('.accessibilityLabel(Text(LiveTexts.spoken(status, includingPlatform: showsPlatform).joined(separator: ". ")))', app["LiveTexts.swift"])
+        # One sentence, with Android's «Binario cambiato: 7, previsto 5» when the live platform is not the timetable's.
+        self.assertIn('.accessibilityLabel(Text(spokenParts.joined(separator: ". ")))', app["LiveTexts.swift"])
+        self.assertIn("return LiveTexts.spoken(status, includingPlatform: showsPlatform)", app["LiveTexts.swift"])
         # The Watch gets the live values the iPhone already has, never a request of its own.
         publish = model.split("private func publishAvailableSnapshot(", 1)[1].split("static func isCurrent(", 1)[0]
         self.assertNotIn("liveData", publish)

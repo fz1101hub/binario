@@ -6,6 +6,7 @@
 //   contracts/shared-data/v1/delay-compensation-v1.json
 //   contracts/shared-data/v1/destination-weather-v1.json
 //   contracts/shared-data/v1/evening-alerts-v1.json
+//   contracts/shared-data/v1/favourite-punctuality-v1.json
 //   contracts/shared-data/v1/italian-holidays-v1.json
 //   contracts/shared-data/v1/italo-gtfs-station-codes.json
 //   contracts/shared-data/v1/italo-stations-v1.json
@@ -257,6 +258,34 @@ public enum SharedData {
         public static let routeWorksMaximumItems: Int = 3
         public static let routeWorksMaximumKeepDays: Int = 45
         public static let routeWorksMaximumNotified: Int = 200
+    }
+
+    /// contracts/shared-data/v1/favourite-punctuality-v1.json: The punctuality of the favourite trains from the runs
+    /// recorded on this phone: the days of the personal record and of the trend, the background recording of each
+    /// favourite's final delay (once a day after its scheduled arrival, with retries) and the Sunday weekly digest
+    /// (when it may show, its quiet hours, the weeks it compares and the drop that names a train). The rules are the
+    /// cases of contracts/shared-rules/v1/favourite-punctuality-v1.json.
+    public enum FavouritePunctuality {
+        public static let maximumRows: Int = 8
+        public static let personalDays: Int = 30
+        public static let trendDays: Int = 28
+        public static let minimumTrendRuns: Int = 4
+        public static let minimumTrendPoints: Int = 15
+        public static let recordingAfterArrivalMinutes: Int = 20
+        public static let recordingFirstTryAfterDepartureMinutes: Int = 120
+        public static let recordingWithoutDepartureMinute: Int = 1395
+        public static let recordingRetryMinutes: Int = 45
+        public static let recordingMaximumAttempts: Int = 3
+        public static let recordingLookbackHours: Int = 20
+        public static let digestIsoWeekday: Int = 7
+        public static let digestHour: Int = 19
+        public static let digestQuietFromHour: Int = 22
+        public static let digestQuietUntilHour: Int = 7
+        public static let digestLatestHour: Int = 12
+        public static let digestEarlierDays: Int = 28
+        public static let digestMinimumWeekRuns: Int = 2
+        public static let digestMinimumEarlierRuns: Int = 3
+        public static let digestMinimumDropPoints: Int = 20
     }
 
     /// contracts/shared-data/v1/italian-holidays-v1.json: Italian national holidays, on which the railways run their

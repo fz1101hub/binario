@@ -1,0 +1,1174 @@
+{
+  "schema": "binario-shared-rules-v1",
+  "description": "The punctuality of the favourite trains (FavouriteTrainPunctuality.kt, notifications/WeeklyDigest.kt, notifications/PunctualityRecorder.kt): the runs recorded between two days (on time within 5 minutes, a cancelled run never on time), the trend of the last four weeks against the four before (exact arithmetic), the Sunday digest's week and next run (railway-local, Europe/Rome; never in the quiet hours), the favourite train the digest names as worse, and when a favourite's final delay is recorded. The numbers are contracts/shared-data/v1/favourite-punctuality-v1.json.",
+  "readers": [
+    "app/src/test/java/it/binario/app/FavouritePunctualityContractTest.kt",
+    "ios/BinarioKit/Tests/BinarioKitTests/FavouritePunctualityContractTests.swift"
+  ],
+  "local": [
+    {
+      "name": "the days between from and to, both included, of the train's key; cancelled never on time; on time within 5 minutes",
+      "history": [
+        {
+          "date": "2026-11-23",
+          "train": "2153",
+          "delay": 2,
+          "cancelled": false
+        },
+        {
+          "date": "2026-11-24",
+          "train": "REG 2153",
+          "delay": 12,
+          "cancelled": false
+        },
+        {
+          "date": "2026-11-25",
+          "train": "2153",
+          "delay": 0,
+          "cancelled": true
+        },
+        {
+          "date": "2026-11-26",
+          "train": "2153",
+          "delay": 5,
+          "cancelled": false
+        },
+        {
+          "date": "2026-11-15",
+          "train": "2153",
+          "delay": 1,
+          "cancelled": false
+        },
+        {
+          "date": "2026-11-24",
+          "train": "9558",
+          "delay": 3,
+          "cancelled": false
+        }
+      ],
+      "train": "2153",
+      "from": "2026-11-23",
+      "to": "2026-11-26",
+      "expected": {
+        "runs": 3,
+        "onTime": 2,
+        "cancelled": 1,
+        "onTimePercent": 67
+      }
+    },
+    {
+      "name": "no run in the days",
+      "history": [
+        {
+          "date": "2026-11-23",
+          "train": "2153",
+          "delay": 2,
+          "cancelled": false
+        },
+        {
+          "date": "2026-11-24",
+          "train": "REG 2153",
+          "delay": 12,
+          "cancelled": false
+        },
+        {
+          "date": "2026-11-25",
+          "train": "2153",
+          "delay": 0,
+          "cancelled": true
+        },
+        {
+          "date": "2026-11-26",
+          "train": "2153",
+          "delay": 5,
+          "cancelled": false
+        },
+        {
+          "date": "2026-11-15",
+          "train": "2153",
+          "delay": 1,
+          "cancelled": false
+        },
+        {
+          "date": "2026-11-24",
+          "train": "9558",
+          "delay": 3,
+          "cancelled": false
+        }
+      ],
+      "train": "2153",
+      "from": "2026-11-16",
+      "to": "2026-11-22",
+      "expected": null
+    },
+    {
+      "name": "another train's runs do not count",
+      "history": [
+        {
+          "date": "2026-11-23",
+          "train": "2153",
+          "delay": 2,
+          "cancelled": false
+        },
+        {
+          "date": "2026-11-24",
+          "train": "REG 2153",
+          "delay": 12,
+          "cancelled": false
+        },
+        {
+          "date": "2026-11-25",
+          "train": "2153",
+          "delay": 0,
+          "cancelled": true
+        },
+        {
+          "date": "2026-11-26",
+          "train": "2153",
+          "delay": 5,
+          "cancelled": false
+        },
+        {
+          "date": "2026-11-15",
+          "train": "2153",
+          "delay": 1,
+          "cancelled": false
+        },
+        {
+          "date": "2026-11-24",
+          "train": "9558",
+          "delay": 3,
+          "cancelled": false
+        }
+      ],
+      "train": "9558",
+      "from": "2026-11-01",
+      "to": "2026-11-30",
+      "expected": {
+        "runs": 1,
+        "onTime": 1,
+        "cancelled": 0,
+        "onTimePercent": 100
+      }
+    }
+  ],
+  "trend": [
+    {
+      "name": "8 of 10 against 4 of 10: better by 40 points",
+      "history": [
+        {
+          "date": "2026-10-01",
+          "train": "2153",
+          "delay": 0,
+          "cancelled": false
+        },
+        {
+          "date": "2026-10-02",
+          "train": "2153",
+          "delay": 0,
+          "cancelled": false
+        },
+        {
+          "date": "2026-10-03",
+          "train": "2153",
+          "delay": 0,
+          "cancelled": false
+        },
+        {
+          "date": "2026-10-04",
+          "train": "2153",
+          "delay": 0,
+          "cancelled": false
+        },
+        {
+          "date": "2026-10-05",
+          "train": "2153",
+          "delay": 20,
+          "cancelled": false
+        },
+        {
+          "date": "2026-10-06",
+          "train": "2153",
+          "delay": 20,
+          "cancelled": false
+        },
+        {
+          "date": "2026-10-07",
+          "train": "2153",
+          "delay": 20,
+          "cancelled": false
+        },
+        {
+          "date": "2026-10-08",
+          "train": "2153",
+          "delay": 20,
+          "cancelled": false
+        },
+        {
+          "date": "2026-10-09",
+          "train": "2153",
+          "delay": 20,
+          "cancelled": false
+        },
+        {
+          "date": "2026-10-10",
+          "train": "2153",
+          "delay": 20,
+          "cancelled": false
+        },
+        {
+          "date": "2026-11-10",
+          "train": "2153",
+          "delay": 0,
+          "cancelled": false
+        },
+        {
+          "date": "2026-11-11",
+          "train": "2153",
+          "delay": 0,
+          "cancelled": false
+        },
+        {
+          "date": "2026-11-12",
+          "train": "2153",
+          "delay": 0,
+          "cancelled": false
+        },
+        {
+          "date": "2026-11-13",
+          "train": "2153",
+          "delay": 0,
+          "cancelled": false
+        },
+        {
+          "date": "2026-11-14",
+          "train": "2153",
+          "delay": 0,
+          "cancelled": false
+        },
+        {
+          "date": "2026-11-15",
+          "train": "2153",
+          "delay": 0,
+          "cancelled": false
+        },
+        {
+          "date": "2026-11-16",
+          "train": "2153",
+          "delay": 0,
+          "cancelled": false
+        },
+        {
+          "date": "2026-11-17",
+          "train": "2153",
+          "delay": 0,
+          "cancelled": false
+        },
+        {
+          "date": "2026-11-18",
+          "train": "2153",
+          "delay": 20,
+          "cancelled": false
+        },
+        {
+          "date": "2026-11-19",
+          "train": "2153",
+          "delay": 20,
+          "cancelled": false
+        }
+      ],
+      "train": "2153",
+      "today": "2026-11-24",
+      "expected": {
+        "recent": {
+          "runs": 10,
+          "onTime": 8,
+          "cancelled": 0,
+          "onTimePercent": 80
+        },
+        "earlier": {
+          "runs": 10,
+          "onTime": 4,
+          "cancelled": 0,
+          "onTimePercent": 40
+        },
+        "better": true
+      }
+    },
+    {
+      "name": "2 of 5 against 5 of 5: worse",
+      "history": [
+        {
+          "date": "2026-10-20",
+          "train": "2153",
+          "delay": 0,
+          "cancelled": false
+        },
+        {
+          "date": "2026-10-21",
+          "train": "2153",
+          "delay": 0,
+          "cancelled": false
+        },
+        {
+          "date": "2026-10-22",
+          "train": "2153",
+          "delay": 0,
+          "cancelled": false
+        },
+        {
+          "date": "2026-10-23",
+          "train": "2153",
+          "delay": 0,
+          "cancelled": false
+        },
+        {
+          "date": "2026-10-24",
+          "train": "2153",
+          "delay": 0,
+          "cancelled": false
+        },
+        {
+          "date": "2026-11-15",
+          "train": "2153",
+          "delay": 0,
+          "cancelled": false
+        },
+        {
+          "date": "2026-11-16",
+          "train": "2153",
+          "delay": 0,
+          "cancelled": false
+        },
+        {
+          "date": "2026-11-17",
+          "train": "2153",
+          "delay": 20,
+          "cancelled": false
+        },
+        {
+          "date": "2026-11-18",
+          "train": "2153",
+          "delay": 20,
+          "cancelled": false
+        },
+        {
+          "date": "2026-11-19",
+          "train": "2153",
+          "delay": 20,
+          "cancelled": false
+        }
+      ],
+      "train": "2153",
+      "today": "2026-11-24",
+      "expected": {
+        "recent": {
+          "runs": 5,
+          "onTime": 2,
+          "cancelled": 0,
+          "onTimePercent": 40
+        },
+        "earlier": {
+          "runs": 5,
+          "onTime": 5,
+          "cancelled": 0,
+          "onTimePercent": 100
+        },
+        "better": false
+      }
+    },
+    {
+      "name": "a gap under 15 points is no trend (7 of 10 against 6 of 10)",
+      "history": [
+        {
+          "date": "2026-10-01",
+          "train": "2153",
+          "delay": 0,
+          "cancelled": false
+        },
+        {
+          "date": "2026-10-02",
+          "train": "2153",
+          "delay": 0,
+          "cancelled": false
+        },
+        {
+          "date": "2026-10-03",
+          "train": "2153",
+          "delay": 0,
+          "cancelled": false
+        },
+        {
+          "date": "2026-10-04",
+          "train": "2153",
+          "delay": 0,
+          "cancelled": false
+        },
+        {
+          "date": "2026-10-05",
+          "train": "2153",
+          "delay": 0,
+          "cancelled": false
+        },
+        {
+          "date": "2026-10-06",
+          "train": "2153",
+          "delay": 0,
+          "cancelled": false
+        },
+        {
+          "date": "2026-10-07",
+          "train": "2153",
+          "delay": 20,
+          "cancelled": false
+        },
+        {
+          "date": "2026-10-08",
+          "train": "2153",
+          "delay": 20,
+          "cancelled": false
+        },
+        {
+          "date": "2026-10-09",
+          "train": "2153",
+          "delay": 20,
+          "cancelled": false
+        },
+        {
+          "date": "2026-10-10",
+          "train": "2153",
+          "delay": 20,
+          "cancelled": false
+        },
+        {
+          "date": "2026-11-10",
+          "train": "2153",
+          "delay": 0,
+          "cancelled": false
+        },
+        {
+          "date": "2026-11-11",
+          "train": "2153",
+          "delay": 0,
+          "cancelled": false
+        },
+        {
+          "date": "2026-11-12",
+          "train": "2153",
+          "delay": 0,
+          "cancelled": false
+        },
+        {
+          "date": "2026-11-13",
+          "train": "2153",
+          "delay": 0,
+          "cancelled": false
+        },
+        {
+          "date": "2026-11-14",
+          "train": "2153",
+          "delay": 0,
+          "cancelled": false
+        },
+        {
+          "date": "2026-11-15",
+          "train": "2153",
+          "delay": 0,
+          "cancelled": false
+        },
+        {
+          "date": "2026-11-16",
+          "train": "2153",
+          "delay": 0,
+          "cancelled": false
+        },
+        {
+          "date": "2026-11-17",
+          "train": "2153",
+          "delay": 20,
+          "cancelled": false
+        },
+        {
+          "date": "2026-11-18",
+          "train": "2153",
+          "delay": 20,
+          "cancelled": false
+        },
+        {
+          "date": "2026-11-19",
+          "train": "2153",
+          "delay": 20,
+          "cancelled": false
+        }
+      ],
+      "train": "2153",
+      "today": "2026-11-24",
+      "expected": null
+    },
+    {
+      "name": "exactly 15 points is a trend (exact arithmetic: 19 of 20 against 16 of 20)",
+      "history": [
+        {
+          "date": "2026-09-30",
+          "train": "2153",
+          "delay": 0,
+          "cancelled": false
+        },
+        {
+          "date": "2026-10-01",
+          "train": "2153",
+          "delay": 0,
+          "cancelled": false
+        },
+        {
+          "date": "2026-10-02",
+          "train": "2153",
+          "delay": 0,
+          "cancelled": false
+        },
+        {
+          "date": "2026-10-03",
+          "train": "2153",
+          "delay": 0,
+          "cancelled": false
+        },
+        {
+          "date": "2026-10-04",
+          "train": "2153",
+          "delay": 0,
+          "cancelled": false
+        },
+        {
+          "date": "2026-10-05",
+          "train": "2153",
+          "delay": 0,
+          "cancelled": false
+        },
+        {
+          "date": "2026-10-06",
+          "train": "2153",
+          "delay": 0,
+          "cancelled": false
+        },
+        {
+          "date": "2026-10-07",
+          "train": "2153",
+          "delay": 0,
+          "cancelled": false
+        },
+        {
+          "date": "2026-10-08",
+          "train": "2153",
+          "delay": 0,
+          "cancelled": false
+        },
+        {
+          "date": "2026-10-09",
+          "train": "2153",
+          "delay": 0,
+          "cancelled": false
+        },
+        {
+          "date": "2026-10-10",
+          "train": "2153",
+          "delay": 0,
+          "cancelled": false
+        },
+        {
+          "date": "2026-10-11",
+          "train": "2153",
+          "delay": 0,
+          "cancelled": false
+        },
+        {
+          "date": "2026-10-12",
+          "train": "2153",
+          "delay": 0,
+          "cancelled": false
+        },
+        {
+          "date": "2026-10-13",
+          "train": "2153",
+          "delay": 0,
+          "cancelled": false
+        },
+        {
+          "date": "2026-10-14",
+          "train": "2153",
+          "delay": 0,
+          "cancelled": false
+        },
+        {
+          "date": "2026-10-15",
+          "train": "2153",
+          "delay": 0,
+          "cancelled": false
+        },
+        {
+          "date": "2026-10-16",
+          "train": "2153",
+          "delay": 20,
+          "cancelled": false
+        },
+        {
+          "date": "2026-10-17",
+          "train": "2153",
+          "delay": 20,
+          "cancelled": false
+        },
+        {
+          "date": "2026-10-18",
+          "train": "2153",
+          "delay": 20,
+          "cancelled": false
+        },
+        {
+          "date": "2026-10-19",
+          "train": "2153",
+          "delay": 20,
+          "cancelled": false
+        },
+        {
+          "date": "2026-10-30",
+          "train": "2153",
+          "delay": 0,
+          "cancelled": false
+        },
+        {
+          "date": "2026-10-31",
+          "train": "2153",
+          "delay": 0,
+          "cancelled": false
+        },
+        {
+          "date": "2026-11-01",
+          "train": "2153",
+          "delay": 0,
+          "cancelled": false
+        },
+        {
+          "date": "2026-11-02",
+          "train": "2153",
+          "delay": 0,
+          "cancelled": false
+        },
+        {
+          "date": "2026-11-03",
+          "train": "2153",
+          "delay": 0,
+          "cancelled": false
+        },
+        {
+          "date": "2026-11-04",
+          "train": "2153",
+          "delay": 0,
+          "cancelled": false
+        },
+        {
+          "date": "2026-11-05",
+          "train": "2153",
+          "delay": 0,
+          "cancelled": false
+        },
+        {
+          "date": "2026-11-06",
+          "train": "2153",
+          "delay": 0,
+          "cancelled": false
+        },
+        {
+          "date": "2026-11-07",
+          "train": "2153",
+          "delay": 0,
+          "cancelled": false
+        },
+        {
+          "date": "2026-11-08",
+          "train": "2153",
+          "delay": 0,
+          "cancelled": false
+        },
+        {
+          "date": "2026-11-09",
+          "train": "2153",
+          "delay": 0,
+          "cancelled": false
+        },
+        {
+          "date": "2026-11-10",
+          "train": "2153",
+          "delay": 0,
+          "cancelled": false
+        },
+        {
+          "date": "2026-11-11",
+          "train": "2153",
+          "delay": 0,
+          "cancelled": false
+        },
+        {
+          "date": "2026-11-12",
+          "train": "2153",
+          "delay": 0,
+          "cancelled": false
+        },
+        {
+          "date": "2026-11-13",
+          "train": "2153",
+          "delay": 0,
+          "cancelled": false
+        },
+        {
+          "date": "2026-11-14",
+          "train": "2153",
+          "delay": 0,
+          "cancelled": false
+        },
+        {
+          "date": "2026-11-15",
+          "train": "2153",
+          "delay": 0,
+          "cancelled": false
+        },
+        {
+          "date": "2026-11-16",
+          "train": "2153",
+          "delay": 0,
+          "cancelled": false
+        },
+        {
+          "date": "2026-11-17",
+          "train": "2153",
+          "delay": 0,
+          "cancelled": false
+        },
+        {
+          "date": "2026-11-18",
+          "train": "2153",
+          "delay": 20,
+          "cancelled": false
+        }
+      ],
+      "train": "2153",
+      "today": "2026-11-24",
+      "expected": {
+        "recent": {
+          "runs": 20,
+          "onTime": 19,
+          "cancelled": 0,
+          "onTimePercent": 95
+        },
+        "earlier": {
+          "runs": 20,
+          "onTime": 16,
+          "cancelled": 0,
+          "onTimePercent": 80
+        },
+        "better": true
+      }
+    },
+    {
+      "name": "fewer than 4 runs in a span is no trend",
+      "history": [
+        {
+          "date": "2026-10-01",
+          "train": "2153",
+          "delay": 0,
+          "cancelled": false
+        },
+        {
+          "date": "2026-10-02",
+          "train": "2153",
+          "delay": 0,
+          "cancelled": false
+        },
+        {
+          "date": "2026-10-03",
+          "train": "2153",
+          "delay": 0,
+          "cancelled": false
+        },
+        {
+          "date": "2026-11-10",
+          "train": "2153",
+          "delay": 20,
+          "cancelled": false
+        },
+        {
+          "date": "2026-11-11",
+          "train": "2153",
+          "delay": 20,
+          "cancelled": false
+        },
+        {
+          "date": "2026-11-12",
+          "train": "2153",
+          "delay": 20,
+          "cancelled": false
+        },
+        {
+          "date": "2026-11-13",
+          "train": "2153",
+          "delay": 20,
+          "cancelled": false
+        },
+        {
+          "date": "2026-11-14",
+          "train": "2153",
+          "delay": 20,
+          "cancelled": false
+        }
+      ],
+      "train": "2153",
+      "today": "2026-11-24",
+      "expected": null
+    }
+  ],
+  "digestWeekEnd": [
+    {
+      "now": "2026-11-29T18:59",
+      "expected": null,
+      "mayNotify": false
+    },
+    {
+      "now": "2026-11-29T19:00",
+      "expected": "2026-11-29",
+      "mayNotify": true
+    },
+    {
+      "now": "2026-11-29T23:30",
+      "expected": "2026-11-29",
+      "mayNotify": false
+    },
+    {
+      "now": "2026-11-30T06:00",
+      "expected": "2026-11-29",
+      "mayNotify": false
+    },
+    {
+      "now": "2026-11-30T11:59",
+      "expected": "2026-11-29",
+      "mayNotify": true
+    },
+    {
+      "now": "2026-11-30T12:00",
+      "expected": null,
+      "mayNotify": false
+    },
+    {
+      "now": "2026-11-24T19:00",
+      "expected": null,
+      "mayNotify": false
+    }
+  ],
+  "digestNextRun": [
+    {
+      "now": "2026-11-24T10:00",
+      "lastSent": null,
+      "expected": "2026-11-29T19:00"
+    },
+    {
+      "now": "2026-11-29T19:00",
+      "lastSent": null,
+      "expected": "2026-11-29T19:00"
+    },
+    {
+      "now": "2026-11-29T19:00",
+      "lastSent": "2026-11-29",
+      "expected": "2026-12-06T19:00"
+    },
+    {
+      "now": "2026-11-29T22:30",
+      "lastSent": null,
+      "expected": "2026-11-30T07:00"
+    },
+    {
+      "now": "2026-11-30T03:00",
+      "lastSent": null,
+      "expected": "2026-11-30T07:00"
+    },
+    {
+      "now": "2026-11-30T11:00",
+      "lastSent": null,
+      "expected": "2026-11-30T11:00"
+    },
+    {
+      "now": "2026-11-30T11:00",
+      "lastSent": "2026-11-29",
+      "expected": "2026-12-06T19:00"
+    },
+    {
+      "now": "2026-11-29T18:00",
+      "lastSent": "2026-11-22",
+      "expected": "2026-11-29T19:00"
+    }
+  ],
+  "digestWorse": [
+    {
+      "name": "against the earlier weeks: 1 of 4 this week, usually 9 of 10",
+      "trains": [
+        {
+          "number": "2153",
+          "week": {
+            "runs": 4,
+            "onTime": 1,
+            "cancelled": 0
+          },
+          "earlier": {
+            "runs": 10,
+            "onTime": 9,
+            "cancelled": 0
+          },
+          "network": null
+        },
+        {
+          "number": "9558",
+          "week": {
+            "runs": 4,
+            "onTime": 4,
+            "cancelled": 0
+          },
+          "earlier": {
+            "runs": 10,
+            "onTime": 9,
+            "cancelled": 0
+          },
+          "network": null
+        }
+      ],
+      "expected": {
+        "number": "2153",
+        "weekPercent": 25,
+        "usualPercent": 90
+      }
+    },
+    {
+      "name": "without earlier weeks, against the network within 5 minutes",
+      "trains": [
+        {
+          "number": "2153",
+          "week": {
+            "runs": 3,
+            "onTime": 1,
+            "cancelled": 0
+          },
+          "earlier": {
+            "runs": 2,
+            "onTime": 2,
+            "cancelled": 0
+          },
+          "network": {
+            "onTime": 27,
+            "samples": 30,
+            "limitMinutes": 15,
+            "onTimeWithin5": 24,
+            "days": 30
+          }
+        }
+      ],
+      "expected": {
+        "number": "2153",
+        "weekPercent": 33,
+        "usualPercent": 80
+      }
+    },
+    {
+      "name": "a drop under 20 points names no train",
+      "trains": [
+        {
+          "number": "2153",
+          "week": {
+            "runs": 5,
+            "onTime": 4,
+            "cancelled": 0
+          },
+          "earlier": {
+            "runs": 10,
+            "onTime": 9,
+            "cancelled": 0
+          },
+          "network": null
+        }
+      ],
+      "expected": null
+    },
+    {
+      "name": "one run this week is too few",
+      "trains": [
+        {
+          "number": "2153",
+          "week": {
+            "runs": 1,
+            "onTime": 0,
+            "cancelled": 0
+          },
+          "earlier": {
+            "runs": 10,
+            "onTime": 10,
+            "cancelled": 0
+          },
+          "network": null
+        }
+      ],
+      "expected": null
+    },
+    {
+      "name": "the largest drop wins, then the most runs, then the lower number",
+      "trains": [
+        {
+          "number": "3000",
+          "week": {
+            "runs": 4,
+            "onTime": 2,
+            "cancelled": 0
+          },
+          "earlier": {
+            "runs": 10,
+            "onTime": 10,
+            "cancelled": 0
+          },
+          "network": null
+        },
+        {
+          "number": "2000",
+          "week": {
+            "runs": 4,
+            "onTime": 2,
+            "cancelled": 0
+          },
+          "earlier": {
+            "runs": 10,
+            "onTime": 10,
+            "cancelled": 0
+          },
+          "network": null
+        },
+        {
+          "number": "1000",
+          "week": {
+            "runs": 2,
+            "onTime": 1,
+            "cancelled": 0
+          },
+          "earlier": {
+            "runs": 10,
+            "onTime": 10,
+            "cancelled": 0
+          },
+          "network": null
+        }
+      ],
+      "expected": {
+        "number": "2000",
+        "weekPercent": 50,
+        "usualPercent": 100
+      }
+    }
+  ],
+  "recordingDueAt": [
+    {
+      "name": "duration known: 20 minutes after the scheduled arrival",
+      "candidate": {
+        "departure": "07:42",
+        "duration": 68,
+        "recordedOn": null,
+        "attemptDate": null,
+        "attempts": 0,
+        "lastAttempt": null
+      },
+      "date": "2026-11-24",
+      "expected": "2026-11-24T09:10"
+    },
+    {
+      "name": "duration unknown: two hours after the departure",
+      "candidate": {
+        "departure": "07:42",
+        "duration": null,
+        "recordedOn": null,
+        "attemptDate": null,
+        "attempts": 0,
+        "lastAttempt": null
+      },
+      "date": "2026-11-24",
+      "expected": "2026-11-24T09:42"
+    },
+    {
+      "name": "no departure saved: 23:15",
+      "candidate": {
+        "departure": null,
+        "duration": null,
+        "recordedOn": null,
+        "attemptDate": null,
+        "attempts": 0,
+        "lastAttempt": null
+      },
+      "date": "2026-11-24",
+      "expected": "2026-11-24T23:15"
+    },
+    {
+      "name": "already recorded that day",
+      "candidate": {
+        "departure": "07:42",
+        "duration": 68,
+        "recordedOn": "2026-11-24",
+        "attemptDate": null,
+        "attempts": 0,
+        "lastAttempt": null
+      },
+      "date": "2026-11-24",
+      "expected": null
+    },
+    {
+      "name": "three attempts that day are the last",
+      "candidate": {
+        "departure": "07:42",
+        "duration": 68,
+        "recordedOn": null,
+        "attemptDate": "2026-11-24",
+        "attempts": 3,
+        "lastAttempt": "2026-11-24T10:30"
+      },
+      "date": "2026-11-24",
+      "expected": null
+    },
+    {
+      "name": "a retry 45 minutes after the last attempt",
+      "candidate": {
+        "departure": "07:42",
+        "duration": 68,
+        "recordedOn": null,
+        "attemptDate": "2026-11-24",
+        "attempts": 1,
+        "lastAttempt": "2026-11-24T09:10"
+      },
+      "date": "2026-11-24",
+      "expected": "2026-11-24T09:55"
+    },
+    {
+      "name": "attempts of another day do not count",
+      "candidate": {
+        "departure": "07:42",
+        "duration": 68,
+        "recordedOn": null,
+        "attemptDate": "2026-11-23",
+        "attempts": 3,
+        "lastAttempt": "2026-11-23T10:30"
+      },
+      "date": "2026-11-24",
+      "expected": "2026-11-24T09:10"
+    },
+    {
+      "name": "a late train arriving after midnight belongs to its departure day",
+      "candidate": {
+        "departure": "23:10",
+        "duration": 95,
+        "recordedOn": null,
+        "attemptDate": null,
+        "attempts": 0,
+        "lastAttempt": null
+      },
+      "date": "2026-11-24",
+      "expected": "2026-11-25T01:05"
+    }
+  ]
+}

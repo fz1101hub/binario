@@ -4,6 +4,19 @@ import Foundation
 /// treni» with their names, the personal punctuality history and «Orari salvati». The history and
 /// the timetables are nil when the file has none (an older file): an import then keeps this
 /// iPhone's own.
+/// A station followed on the phone (Android's `StationMonitor`): `mode` is DEPARTURES, ARRIVALS or BOTH.
+public struct BackupStationMonitor: Equatable, Sendable {
+    public let station: StationIdentity
+    public let mode: String
+
+    public init(station: StationIdentity, mode: String) {
+        self.station = station
+        self.mode = mode
+    }
+
+    public static let modes: Set<String> = ["DEPARTURES", "ARRIVALS", "BOTH"]
+}
+
 public struct LocalBackup: Equatable, Sendable {
     public let routes: [SavedRoute]
     public let favouriteStations: [StationIdentity]
@@ -12,6 +25,7 @@ public struct LocalBackup: Equatable, Sendable {
     public let trainNames: [String: String]
     public let punctualityHistory: [PunctualityObservation]?
     public let savedTimetables: [SavedTimetable]?
+    public let stationMonitors: [BackupStationMonitor]
 
     public init(
         routes: [SavedRoute],
@@ -19,7 +33,8 @@ public struct LocalBackup: Equatable, Sendable {
         favouriteTrains: [FavouriteTrain],
         trainNames: [String: String],
         punctualityHistory: [PunctualityObservation]?,
-        savedTimetables: [SavedTimetable]?
+        savedTimetables: [SavedTimetable]?,
+        stationMonitors: [BackupStationMonitor] = []
     ) {
         self.routes = routes
         self.favouriteStations = favouriteStations
@@ -27,11 +42,13 @@ public struct LocalBackup: Equatable, Sendable {
         self.trainNames = trainNames
         self.punctualityHistory = punctualityHistory
         self.savedTimetables = savedTimetables
+        self.stationMonitors = stationMonitors
     }
 
     /// Anything besides the routes: a file with none of it and no route is not written.
     public var carriesMoreThanRoutes: Bool {
-        !favouriteStations.isEmpty || !favouriteTrains.isEmpty || !(punctualityHistory ?? []).isEmpty || !(savedTimetables ?? []).isEmpty
+        !favouriteStations.isEmpty || !favouriteTrains.isEmpty || !(punctualityHistory ?? []).isEmpty
+            || !(savedTimetables ?? []).isEmpty || !stationMonitors.isEmpty
     }
 }
 
@@ -65,7 +82,8 @@ public enum LocalBackupCodec {
             "monitoredServices": backup.favouriteTrains.map { train -> [String: Any] in
                 var value: [String: Any] = [
                     "number": train.number,
-                    "label": "\(train.category) \(train.number)",
+                    "label": "\(train.operatorName) · \(train.destination.name)",
+                    "destination": train.destination.name,
                     "origin": train.origin.name,
                     "scheduledDeparture": train.scheduledDeparture,
                     "originId": train.origin.id,
@@ -77,13 +95,15 @@ public enum LocalBackupCodec {
                 if let name = backup.trainNames[train.id] { value["customName"] = name }
                 return value
             },
-            "stationMonitors": [Any](),
+            "stationMonitors": backup.stationMonitors.map { monitor -> [String: Any] in
+                ["stationId": monitor.station.id, "stationName": monitor.station.name, "mode": monitor.mode]
+            },
             "commuterAlerts": [Any](),
         ]
         var identities: [StationIdentity] = []
         var seen = Set<String>()
         let used = backup.routes.flatMap { [$0.origin, $0.destination] } + backup.favouriteStations
-            + backup.favouriteTrains.flatMap { [$0.origin, $0.destination] }
+            + backup.favouriteTrains.flatMap { [$0.origin, $0.destination] } + backup.stationMonitors.map(\.station)
         for identity in used where seen.insert(identity.id).inserted { identities.append(identity) }
         root["stations"] = identities.prefix(Table.maximumStations).map { stationObject(station($0)) }
         if let history = backup.punctualityHistory { root["punctualityHistory"] = PunctualityHistory.jsonObjects(history) }
@@ -96,7 +116,13 @@ public enum LocalBackupCodec {
     }
 
     /// `catalogue` gives the catalogue station of an id; stations outside it come from the file.
-    public static func decode(_ data: Data, catalogue: (String) -> Station?) -> Result<LocalBackup, LocalBackupFailure> {
+    /// `catalogue` gives the catalogue station of an id, `stationNamed` the one of a published name
+    /// (Android's favourite trains carry station names, not ids).
+    public static func decode(
+        _ data: Data,
+        catalogue: (String) -> Station?,
+        stationNamed: (String) -> Station? = { _ in nil }
+    ) -> Result<LocalBackup, LocalBackupFailure> {
         guard data.count <= Table.maximumBytes else { return .failure(.tooLarge) }
         guard let root = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
               root["kind"] as? String == Table.kind,
@@ -111,6 +137,10 @@ public enum LocalBackupCodec {
             guard let id = id as? String, !id.isEmpty else { return nil }
             if let station = catalogue(id) { return StationIdentity(station) }
             return embedded[id]
+        }
+        func named(_ name: Any?) -> StationIdentity? {
+            guard let name = text(name), let station = stationNamed(name) else { return nil }
+            return StationIdentity(station)
         }
         let listed = root["routes"] as? [Any] ?? []
         var routes: [SavedRoute] = []
@@ -136,15 +166,25 @@ public enum LocalBackupCodec {
         for item in root["monitoredServices"] as? [Any] ?? [] {
             guard let value = item as? [String: Any],
                   let number = text(value["number"]),
-                  let origin = identity(value["originId"]), let destination = identity(value["destinationId"]),
-                  let operatorName = text(value["operator"]), let category = text(value["category"]),
-                  let terminus = text(value["terminus"]), let departure = text(value["scheduledDeparture"]),
-                  let train = try? FavouriteTrain(
+                  let origin = identity(value["originId"]) ?? named(value["origin"]),
+                  let destination = identity(value["destinationId"]) ?? named(value["destination"]),
+                  let operatorName = text(value["operator"]),
+                  let departure = text(value["scheduledDeparture"]) else { continue }
+            let category = categoryCode(text(value["category"]), number: number)
+            let terminus = text(value["terminus"]) ?? destination.name
+            guard let train = try? FavouriteTrain(
                       number: number, operatorName: operatorName, category: category, terminus: terminus,
                       scheduledDeparture: departure, bikesAllowed: nil, origin: origin, destination: destination, savedAt: Date()
                   ) else { continue }
             trains.append(train)
             if let name = text(value["customName"]) { names[train.id] = name }
+        }
+        var monitors: [BackupStationMonitor] = []
+        for item in root["stationMonitors"] as? [Any] ?? [] {
+            guard let value = item as? [String: Any], let station = identity(value["stationId"]),
+                  let mode = value["mode"] as? String, BackupStationMonitor.modes.contains(mode),
+                  !monitors.contains(where: { $0.station.id == station.id }) else { continue }
+            monitors.append(BackupStationMonitor(station: station, mode: mode))
         }
         let history = (root["punctualityHistory"] as? [Any]).map { PunctualityHistory.observations(fromJSON: $0) }
         let timetables = (root["savedTimetables"] as? [Any]).map { SavedTimetableCodec.timetables(fromJSON: $0) }
@@ -154,10 +194,30 @@ public enum LocalBackupCodec {
             favouriteTrains: trains,
             trainNames: names,
             punctualityHistory: history,
-            savedTimetables: timetables
+            savedTimetables: timetables,
+            stationMonitors: Array(monitors.prefix(12))
         )
         guard !routes.isEmpty || backup.carriesMoreThanRoutes else { return .failure(.nothing) }
         return .success(backup)
+    }
+
+    /// Android writes its category enum (`FRECCE`, `REGIONALE`…): the published code the iPhone
+    /// shows instead; without one, the letters of the number, else «Treno».
+    static func categoryCode(_ category: String?, number: String) -> String {
+        guard let category, !category.isEmpty else {
+            let letters = String(number.prefix { $0.isLetter })
+            return letters.isEmpty ? "Treno" : letters
+        }
+        switch category {
+        case "FRECCE": return "FR"
+        case "INTERCITY": return "IC"
+        case "REGIONALE": return "REG"
+        case "REGIONALE_VELOCE": return "RV"
+        case "AV_ITALO": return "AV"
+        case "TRENORD_REGIO": return "R"
+        case "METROPOLITANO": return "S"
+        default: return String(category.prefix(16))
+        }
     }
 
     private static func stationObject(_ station: Station) -> [String: Any] {

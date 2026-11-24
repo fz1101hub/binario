@@ -141,6 +141,16 @@ enum PersonalTexts {
         return scheduled
     }
 
+    /// «Bin. 7 (era 5)», Android's `platform_changed_short`.
+    static func platformChanged(_ shown: String, _ before: String) -> String {
+        format("departures.arrivals.platform_changed", shown, before)
+    }
+
+    /// «Binario cambiato: 7, previsto 5».
+    static func platformChangedSpoken(_ shown: String, _ before: String) -> String {
+        format("departures.arrivals.platform_changed_spoken", shown, before)
+    }
+
     // MARK: A result list
 
     /// «lun 2 nov · dalle 17:00»: the date and starting time of a search, absolute.

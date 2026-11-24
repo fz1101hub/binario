@@ -1,2 +1,5 @@
 "Agenda" = "Agenda";
+"Tratta attiva" = "Itinéraire actif";
+"Prossime partenze" = "Prochains départs";
+"Ricerca treno" = "Recherche de train";
 "NSLocationWhenInUseUsageDescription" = "Binario utilise votre position quand vous demandez la gare la plus proche et, si vous activez l’estimation depuis votre position, pendant le trajet que vous suivez avec l’app ouverte. La position reste sur le téléphone : elle n’est ni enregistrée ni envoyée.";

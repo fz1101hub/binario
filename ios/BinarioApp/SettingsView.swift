@@ -140,6 +140,9 @@ struct SettingsView: View {
                 }
             }
 
+            // Android's «Integrazioni Binario»: the voice profile for Alexa (PersonalLists.swift).
+            IntegrationsSection()
+
             // Android's «Backup locale»: the same file on both phones.
             LocalBackupSection()
 

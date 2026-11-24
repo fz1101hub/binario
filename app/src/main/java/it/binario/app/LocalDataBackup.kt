@@ -89,6 +89,10 @@ object LocalDataBackupCodec {
             monitor.customName.takeIf(String::isNotBlank)?.let { put("customName", it) }
             monitor.origin.takeIf(String::isNotBlank)?.let { put("origin", it) }
             monitor.scheduledDeparture.takeIf(String::isNotBlank)?.let { put("scheduledDeparture", it) }
+            // Optional, shared with the iPhone (local-backup-v1.json): with them the iPhone makes the same favourite.
+            monitor.destination.takeIf(String::isNotBlank)?.let { put("destination", it) }
+            monitor.operatorName.takeIf(String::isNotBlank)?.let { put("operator", it) }
+            monitor.category.takeIf(String::isNotBlank)?.let { put("category", it) }
         }) } })
         put("stationMonitors", JSONArray().apply { backup.stationMonitors.forEach { monitor -> put(JSONObject().apply { put("stationId", monitor.stationId); put("stationName", monitor.stationName); put("mode", monitor.mode.name) }) } })
         put("commuterAlerts", JSONArray().apply { backup.commuterAlerts.forEach { alert -> put(JSONObject().apply {
@@ -198,7 +202,10 @@ object LocalDataBackupCodec {
                 label = it.optString("label"),
                 customName = it.optString("customName").trim().take(FavouriteTrains.MAX_NAME_LENGTH),
                 origin = it.optString("origin").trim().take(MAX_STATION_TEXT),
-                scheduledDeparture = it.optString("scheduledDeparture").trim().takeIf { time -> runCatching { LocalTime.parse(time) }.isSuccess }.orEmpty()
+                scheduledDeparture = it.optString("scheduledDeparture").trim().takeIf { time -> runCatching { LocalTime.parse(time) }.isSuccess }.orEmpty(),
+                destination = it.optString("destination").trim().take(MAX_STATION_TEXT),
+                operatorName = it.optString("operator").trim().take(MAX_STATION_TEXT),
+                category = it.optString("category").trim().take(MAX_STATION_TEXT)
             )
         } }.filter { it.number.isNotBlank() }.distinctBy { it.number }.take(FavouriteTrains.MAX)
         val stationMonitors = root.optJSONArray("stationMonitors").orEmpty().mapNotNull { item -> (item as? JSONObject)?.let { value ->

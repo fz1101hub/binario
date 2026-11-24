@@ -123,6 +123,7 @@ Con le funzioni minori di Android portate sull'iPhone (confronto in [PARITA_ANDR
 | `personal-punctuality-v1.json`: conservazione e soglie della puntualità personale | `PunctualityHistory.kt`, `PunctualityCard.kt` | Android, iPhone (`PersonalPunctuality.swift`) |
 | `train-type-groups-v1.json`: gruppi e codici di «Tipi di treno» | `WidgetTrainTypes.kt` | Android, iPhone (`TrainTypeGroups.swift`) |
 | `local-backup-v1.json`: tipo, versione e limiti del backup locale | `LocalDataBackupCodec` | Android, iPhone (`LocalBackup.swift`), che leggono e scrivono lo stesso file |
+| `favourite-punctuality-v1.json`: registro personale, registrazione in background e riepilogo della domenica dei treni preferiti | `FavouriteTrainPunctuality.kt`, `WeeklyDigest.kt`, `PunctualityRecorder.kt` | Android, iPhone (`FavouritePunctuality.swift`) |
 
 Le regole hanno i casi in `contracts/shared-rules/v1/` (`co2-estimate-v1.json`, `personal-punctuality-v1.json`, `train-type-groups-v1.json`). Gli orari salvati e lo storico della puntualità tengono sull'iPhone il JSON di Android, così il backup passa da un telefono all'altro.
 Il 24 novembre 2026, con European Sleeper e il quadro orario programmato RFI sull'iPhone:
@@ -137,6 +138,7 @@ Il 24 novembre 2026, con i viaggi con cambi sull'iPhone:
 | `journey-planner-v1.json`: tempi di cambio (grandi stazioni comprese), finestra, orizzonte, pack per ricerca, limiti della ricerca, «Resta a bordo», codici locali e a lunga percorrenza, velocità e minuti a piedi delle preferenze, cambi e risultati di serie, attesa lunga, doppioni | `GtfsJourneyPlannerSettings` e costanti di `EmbeddedGtfsJourneyProvider.kt`, `JourneyPreferences.kt`, `JourneyResultsPresenter.kt`, `ResultsMerge.kt`, `TransferRisk.kt`, `JourneySearchService.kt` | Android, iPhone |
 
 La ricerca ha i casi in `contracts/shared-rules/v1/connection-scan-v1.json`, letti dai test Kotlin e Swift.
+Le regole hanno i casi in `contracts/shared-rules/v1/` (`co2-estimate-v1.json`, `favourite-punctuality-v1.json`, `personal-punctuality-v1.json`, `train-type-groups-v1.json`). Gli orari salvati e lo storico della puntualità tengono sull'iPhone il JSON di Android, così il backup passa da un telefono all'altro.
 
 Restano fuori, coperti da casi di prova in `contracts/shared-rules/v1/`, la parola che segna una soppressione esplicita e l'operatore di una riga del monitor RFI (`live-text-v1.json`), i modelli di «Preparazione del viaggio» (`checklist-presets-v1.json`) e il calcolo della Pasqua (`calendar-v1.json`). Le espressioni regolari non diventano dati perché Java e ICU non leggono `\b` e `\w` allo stesso modo sui caratteri non ASCII. L'operatore della riga RFI non è una tabella pulita: Android distingue tre servizi Trenitalia, l'iPhone uno. I modelli di preparazione sono enum legati ai testi tradotti di ogni app. Restano fuori anche i limiti dello snapshot per gli orologi: Wear OS e Apple Watch non dipendono da `app/` né da BinarioKit, quindi non possono leggere il codice generato, e quei limiti li governa già il contratto `contracts/wear-snapshot/v1` con le sue fixture.
 

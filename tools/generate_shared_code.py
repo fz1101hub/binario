@@ -544,6 +544,17 @@ def _check_official_links(values: Mapping[str, Any]) -> list[str]:
     return problems
 
 
+def _check_favourite_punctuality(values: Mapping[str, Any]) -> list[str]:
+    problems = []
+    if not values["digestQuietUntilHour"] <= values["digestHour"] < values["digestQuietFromHour"]:
+        problems.append("digestHour nelle ore di quiete")
+    if not values["digestQuietUntilHour"] < values["digestLatestHour"] < values["digestQuietFromHour"]:
+        problems.append("digestLatestHour nelle ore di quiete")
+    if values["trendDays"] > values["personalDays"] * 2:
+        problems.append("trendDays oltre due volte personalDays")
+    return problems
+
+
 def _check_personal_punctuality(values: Mapping[str, Any]) -> list[str]:
     problems = []
     if not values["onTimeMinutes"] < values["lateMinutes"] < values["severeMinutes"]:
@@ -1081,6 +1092,28 @@ TABLES: tuple[Table, ...] = (
         "routeWorksMaximumKeepDays": Field(Integer(1, 365)),
         "routeWorksMaximumNotified": Field(Integer(1, 10_000)),
     }, check=_check_evening_alerts),
+    Table("favourite-punctuality-v1.json", "FavouritePunctuality", {
+        "maximumRows": Field(Integer(1, 100)),
+        "personalDays": Field(Integer(1, 365)),
+        "trendDays": Field(Integer(1, 365)),
+        "minimumTrendRuns": Field(Integer(1, 100)),
+        "minimumTrendPoints": Field(Integer(1, 100)),
+        "recordingAfterArrivalMinutes": Field(MINUTES),
+        "recordingFirstTryAfterDepartureMinutes": Field(MINUTES),
+        "recordingWithoutDepartureMinute": Field(Integer(0, 24 * 60 - 1)),
+        "recordingRetryMinutes": Field(MINUTES),
+        "recordingMaximumAttempts": Field(Integer(1, 10)),
+        "recordingLookbackHours": Field(Integer(1, 48)),
+        "digestIsoWeekday": Field(Integer(1, 7)),
+        "digestHour": Field(HOUR),
+        "digestQuietFromHour": Field(HOUR),
+        "digestQuietUntilHour": Field(HOUR),
+        "digestLatestHour": Field(HOUR),
+        "digestEarlierDays": Field(Integer(1, 365)),
+        "digestMinimumWeekRuns": Field(Integer(1, 100)),
+        "digestMinimumEarlierRuns": Field(Integer(1, 100)),
+        "digestMinimumDropPoints": Field(Integer(1, 100)),
+    }, check=_check_favourite_punctuality),
     Table("italian-holidays-v1.json", "ItalianHolidays", {
         "holidays": Field(ListOf(HOLIDAY, unique_by=("month", "day"))),
         "easterOffsetsDays": Field(ListOf(Integer(-60, 60))),

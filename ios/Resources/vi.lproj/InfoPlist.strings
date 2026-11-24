@@ -1,2 +1,5 @@
 "Agenda" = "Lịch trình";
+"Tratta attiva" = "Tuyến đang dùng";
+"Prossime partenze" = "Chuyến đi sắp tới";
+"Ricerca treno" = "Tìm tàu";
 "NSLocationWhenInUseUsageDescription" = "Binario dùng vị trí của bạn khi bạn hỏi ga gần nhất và, nếu bạn bật ước tính từ vị trí của mình, trong chuyến đi bạn theo dõi khi ứng dụng mở. Vị trí ở lại trên điện thoại: không được lưu cũng không được gửi đi.";

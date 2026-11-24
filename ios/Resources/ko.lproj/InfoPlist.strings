@@ -1,2 +1,5 @@
 "Agenda" = "일정";
+"Tratta attiva" = "활성 구간";
+"Prossime partenze" = "다음 출발";
+"Ricerca treno" = "열차 검색";
 "NSLocationWhenInUseUsageDescription" = "Binario는 가장 가까운 역을 찾을 때, 그리고 내 위치로 추정을 켠 경우 앱을 연 상태로 따라가는 여정 동안 위치를 사용합니다. 위치는 휴대폰에만 남으며 저장되거나 전송되지 않습니다.";

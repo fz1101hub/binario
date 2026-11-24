@@ -329,6 +329,21 @@ struct ExtrasSettingsSection: View {
             Text("settings.alerts.works_detail")
                 .font(.footnote)
                 .foregroundStyle(.secondary)
+            // Android's two background jobs of the favourite trains (EveningAlerts.swift).
+            Toggle(
+                "settings.punctuality_recording.title",
+                isOn: Binding(get: { extras.punctualityRecordingEnabled }, set: { extras.setPunctualityRecordingEnabled($0) })
+            )
+            Text("settings.punctuality_recording.detail")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+            Toggle(
+                "settings.weekly_digest.title",
+                isOn: Binding(get: { extras.weeklyDigestEnabled }, set: { extras.setWeeklyDigestEnabled($0) })
+            )
+            Text("settings.weekly_digest.detail")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
         }
     }
 }
