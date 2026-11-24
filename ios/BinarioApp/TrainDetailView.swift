@@ -192,7 +192,12 @@ private struct LiveRunSection: View {
             }
             if let platform = status.boarding.platform, !status.boarding.skipped {
                 LabeledContent("result.live.platform") {
-                    Text(verbatim: platform)
+                    if let before = PersonalTexts.platformChange(platform, status.boarding.scheduledPlatform) {
+                        Text(PersonalTexts.platformChanged(platform, before))
+                            .foregroundStyle(BinarioPalette.statusError)
+                    } else {
+                        Text(verbatim: platform)
+                    }
                 }
             }
             if let point = run.lastObservation {

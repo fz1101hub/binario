@@ -4,6 +4,7 @@ import BinarioKit
 struct PlannerView: View {
     @EnvironmentObject private var model: AppModel
     @EnvironmentObject private var notices: RailNoticesModel
+    @EnvironmentObject private var personal: PersonalModel
     @Environment(\.scenePhase) private var scenePhase
     @State private var origin: Station?
     @State private var destination: Station?
@@ -110,6 +111,11 @@ struct PlannerView: View {
 
                 if let validationKey {
                     Section { Text(LocalizedStringKey(validationKey)).foregroundStyle(BinarioPalette.statusError) }
+                }
+
+                // Android's «Recenti e preferite» before a search (PersonalLists.swift).
+                if model.latestSnapshot == nil, model.searchState == .idle {
+                    RecentAndFavouriteRoutesSection()
                 }
 
                 if !model.airportLinks.isEmpty, model.latestSnapshot == nil, model.searchState == .idle {
@@ -307,6 +313,8 @@ struct PlannerView: View {
         if !departureEdited { departure = Date() }
         guard let query = makeQuery() else { return }
         validationKey = nil
+        // «Ricerca recente», as Android records every route searched.
+        personal.recordRecent(origin: query.origin, destination: query.destination)
         searchRequestID &+= 1
         let requestID = searchRequestID
         isSearching = true
@@ -499,7 +507,7 @@ private struct ResultRow: View {
                 }
             }
             if let live {
-                LiveStatusLine(status: live, showsPlatform: true)
+                LiveStatusLine(status: live, showsPlatform: true, scheduledPlatform: service.platform)
             }
             if let boardingStop = VehicleTexts.boardingStop(service) {
                 Label(boardingStop, systemImage: "figure.walk")

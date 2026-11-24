@@ -2245,6 +2245,43 @@ final class AppModel: ObservableObject {
         return true
     }
 
+    /// «Nuova tratta» of Per te (Android's `createRoute`): the route with the name chosen, or the
+    /// stations' names; false when it cannot be saved (the alert says why).
+    @discardableResult
+    func saveRoute(origin: StationIdentity, destination: StationIdentity, name: String) -> Bool {
+        let id = SavedRoute.routeIdentifier(origin: origin, destination: destination)
+        let clean = name.split(whereSeparator: { $0.isWhitespace }).joined(separator: " ")
+        let label = clean.isEmpty ? "\(origin.name) → \(destination.name)" : String(clean.prefix(128))
+        do {
+            let route = try SavedRoute(id: id, name: label, origin: origin, destination: destination)
+            var routes = savedRoutes.filter { $0.id != id }
+            guard routes.count < SavedRouteCollection.maximumRoutes else {
+                persistenceMessageKey = "saved.limit_error"
+                return false
+            }
+            routes.append(route)
+            try setRoutes(routes)
+            return true
+        } catch {
+            persistenceMessageKey = "saved.storage_error"
+            return false
+        }
+    }
+
+    /// Moves a saved route up (-1) or down (+1), as Android's route menu does.
+    func moveRoute(id: String, by delta: Int) {
+        guard let index = savedRoutes.firstIndex(where: { $0.id == id }) else { return }
+        let target = index + delta
+        guard savedRoutes.indices.contains(target) else { return }
+        var routes = savedRoutes
+        routes.swapAt(index, target)
+        do {
+            try setRoutes(routes)
+        } catch {
+            persistenceMessageKey = "saved.storage_error"
+        }
+    }
+
     /// A local backup import replaces the saved routes and «I miei treni» as a whole
     /// (LocalBackup.swift); false when the lists cannot be written.
     func replaceFromBackup(routes: [SavedRoute], trains: [FavouriteTrain]) -> Bool {

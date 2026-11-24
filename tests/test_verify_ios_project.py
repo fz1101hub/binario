@@ -1890,7 +1890,9 @@ class IOSProjectTests(unittest.TestCase):
         # The live state is part of each row's sentence.
         self.assertIn("parts += LiveTexts.spoken(live, includingPlatform: false)", app["DeparturesView.swift"])
         self.assertIn(".accessibilityLabel(Text(LiveTexts.spokenStop(stop)))", app["TrainDetailView.swift"])
-        self.assertIn('.accessibilityLabel(Text(LiveTexts.spoken(status, includingPlatform: showsPlatform).joined(separator: ". ")))', app["LiveTexts.swift"])
+        # One sentence, with Android's «Binario cambiato: 7, previsto 5» when the live platform is not the timetable's.
+        self.assertIn('.accessibilityLabel(Text(spokenParts.joined(separator: ". ")))', app["LiveTexts.swift"])
+        self.assertIn("return LiveTexts.spoken(status, includingPlatform: showsPlatform)", app["LiveTexts.swift"])
         # The Watch gets the live values the iPhone already has, never a request of its own.
         publish = model.split("private func publishAvailableSnapshot(", 1)[1].split("static func isCurrent(", 1)[0]
         self.assertNotIn("liveData", publish)

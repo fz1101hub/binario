@@ -20,7 +20,14 @@ data class ServiceMonitor(
     val label: String,
     val customName: String = "",
     val origin: String = "",
-    val scheduledDeparture: String = ""
+    val scheduledDeparture: String = "",
+    /**
+     * Destination, operator and category of the saved run, kept so a local backup can make the same favourite on the
+     * iPhone (`destination`, `operator`, `category` of the shared backup format); empty for a train saved earlier.
+     */
+    val destination: String = "",
+    val operatorName: String = "",
+    val category: String = ""
 ) {
     /** The custom name, or null when the user gave none. */
     val displayName: String? get() = customName.trim().ifBlank { null }
@@ -82,7 +89,10 @@ object FavouriteTrains {
         number = service.number,
         label = "${service.displayOperator} · ${service.destination}",
         origin = service.origin,
-        scheduledDeparture = service.scheduledDeparture.trim().takeIf { runCatching { LocalTime.parse(it) }.isSuccess }.orEmpty()
+        scheduledDeparture = service.scheduledDeparture.trim().takeIf { runCatching { LocalTime.parse(it) }.isSuccess }.orEmpty(),
+        destination = service.destination,
+        operatorName = service.displayOperator,
+        category = service.trainCategory.name
     )
 
     /**
@@ -108,13 +118,15 @@ object FavouriteTrains {
 }
 
 /**
- * `number,label[,customName,origin,departure]` records separated by `;`, every field Base64 encoded.
- * Two-field records are those of earlier versions; unreadable records are skipped one by one.
+ * `number,label[,customName,origin,departure[,destination,operator,category]]` records separated by `;`, every field
+ * Base64 encoded. Two- and five-field records are those of earlier versions; unreadable records are skipped one by one.
  */
 object FavouriteTrainCodec {
     fun encode(monitors: List<ServiceMonitor>): String = monitors.joinToString(";") { monitor ->
-        listOf(monitor.number, monitor.label, monitor.customName, monitor.origin, monitor.scheduledDeparture)
-            .joinToString(",") { PreferenceValueCodec.encode(it) }
+        listOf(
+            monitor.number, monitor.label, monitor.customName, monitor.origin, monitor.scheduledDeparture,
+            monitor.destination, monitor.operatorName, monitor.category
+        ).joinToString(",") { PreferenceValueCodec.encode(it) }
     }
 
     fun decode(raw: String): List<ServiceMonitor> = raw.split(";").filter(String::isNotBlank).mapNotNull { entry ->
@@ -122,6 +134,7 @@ object FavouriteTrainCodec {
         when (parts.size) {
             2 -> ServiceMonitor(parts[0], parts[1])
             5 -> ServiceMonitor(parts[0], parts[1], parts[2], parts[3], parts[4])
+            8 -> ServiceMonitor(parts[0], parts[1], parts[2], parts[3], parts[4], parts[5], parts[6], parts[7])
             else -> null
         }
     }.filter { it.number.isNotBlank() }

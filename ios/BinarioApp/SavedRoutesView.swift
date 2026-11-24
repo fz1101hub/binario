@@ -7,6 +7,9 @@ import BinarioKit
 struct SavedRoutesView: View {
     @EnvironmentObject private var model: AppModel
     @EnvironmentObject private var notices: RailNoticesModel
+    @EnvironmentObject private var personal: PersonalModel
+    /// «Nuova tratta».
+    @State private var composing = false
     /// «Elimina tutte le tratte» asks first: one tap would delete up to 32 routes and the Watch pin.
     @State private var confirmingDeleteAll = false
 
@@ -47,7 +50,8 @@ struct SavedRoutesView: View {
                 }
             } else {
                 Section {
-                    ForEach(model.savedRoutes) { route in
+                    // Pinned routes first, as on Android.
+                    ForEach(personal.ordered(model.savedRoutes)) { route in
                         let pinned = model.pinnedWatchRouteID == route.id
                         // One tap opens the planner on this route and searches it from now.
                         Button {
@@ -60,6 +64,11 @@ struct SavedRoutesView: View {
                                 Text("\(route.origin.name) → \(route.destination.name)")
                                     .font(.subheadline)
                                     .foregroundStyle(.secondary)
+                                if personal.isPinned(routeID: route.id) {
+                                    Label("saved.routes.pinned", systemImage: "star.fill")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
                                 if pinned {
                                     Label("saved.watch.pinned", systemImage: "applewatch")
                                         .font(.caption)
@@ -85,11 +94,18 @@ struct SavedRoutesView: View {
                         .swipeActions(edge: .leading) {
                             WatchPinButton(pinned: pinned) { model.setWatchPin(route, pinned: !pinned) }
                         }
+                        .modifier(SavedRouteAccessibilityActions(route: route))
                         .contextMenu {
                             WatchPinButton(pinned: pinned) { model.setWatchPin(route, pinned: !pinned) }
+                            SavedRouteMenuItems(route: route)
                         }
                     }
-                    .onDelete(perform: model.deleteRoutes)
+                    .onDelete { offsets in
+                        // The rows are listed pinned first: delete by identity, in the model's order.
+                        let shown = personal.ordered(model.savedRoutes)
+                        let ids = Set(offsets.compactMap { shown.indices.contains($0) ? shown[$0].id : nil })
+                        model.deleteRoutes(at: IndexSet(model.savedRoutes.indices.filter { ids.contains(model.savedRoutes[$0].id) }))
+                    }
                 } footer: {
                     VStack(alignment: .leading, spacing: 6) {
                         Text("saved.local_only")
@@ -115,8 +131,19 @@ struct SavedRoutesView: View {
                 }
             }
 
+            // «Nuova tratta» and «Recenti», as Android's «Le tue tratte» (PersonalLists.swift).
+            Section {
+                Button {
+                    composing = true
+                } label: {
+                    Label("saved.composer.title", systemImage: "plus")
+                }
+            }
+            RecentRoutesSection()
+
             // The rest of Android's «Per te» (PersonalViews.swift).
             SavedTimetablesSection()
+            StationMonitorsSection()
             FavouriteStationsSection()
             Section {
                 NavigationLink {
@@ -127,6 +154,7 @@ struct SavedRoutesView: View {
             }
         }
         .navigationTitle("tab.for_you")
+        .sheet(isPresented: $composing) { RouteComposerSheet() }
         .loadsRouteWorks(model.savedRoutes, model: model, notices: notices)
         // The Home-screen quick action «Agenda» opens the page as the row does.
         .navigationDestination(isPresented: $model.showingAgenda) {

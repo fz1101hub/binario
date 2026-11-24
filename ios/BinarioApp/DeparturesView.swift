@@ -40,6 +40,7 @@ struct DeparturesView: View {
                     // Android's star of a board: «Stazioni preferite» (PersonalViews.swift).
                     if let station = model.boardStation {
                         FavouriteStationButton(station: station)
+                        StationMonitorMenu(station: station)
                     }
                     // Android's «Partenze» and «Arrivi» chips: the arrivals are the live board alone.
                     if model.isLiveDataActive, model.boardStation != nil {
@@ -308,8 +309,15 @@ private struct DepartureRow: View {
                 }
                 Spacer()
                 if let platform = departure.live?.platform ?? service.platform {
-                    Text(DeparturesTexts.platform(platform))
-                        .font(.subheadline.weight(.semibold))
+                    // Android's «Bin. 7 (era 5)» when the live platform is not the timetable's.
+                    if let before = PersonalTexts.platformChange(platform, service.platform), departure.live?.platform != nil {
+                        Text(PersonalTexts.platformChanged(platform, before))
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(BinarioPalette.statusError)
+                    } else {
+                        Text(DeparturesTexts.platform(platform))
+                            .font(.subheadline.weight(.semibold))
+                    }
                 }
             }
             if let live = departure.live {

@@ -46,6 +46,14 @@ final class PersonalModel: ObservableObject {
     @Published private(set) var theme: Theme
     /// Bumped when the hidden train types of any station change, so the boards filter again.
     @Published private(set) var trainTypesGeneration = 0
+    /// «Recenti»: the last route searches, newest first (Android keeps 8).
+    @Published private(set) var recentRoutes: [RecentRoute]
+    /// «Tratta fissata»: the pinned saved routes, listed first as on Android.
+    @Published private(set) var pinnedRouteIDs: Set<String>
+    /// «Monitora questa stazione»: the stations followed on this iPhone, with what is followed.
+    @Published private(set) var stationMonitors: [StationMonitor]
+    /// «Comandi vocali e Alexa»: the wish to share the voice profile, which needs an Alexa account link.
+    @Published private(set) var voiceProfileRequested: Bool
 
     private let defaults: UserDefaults
 
@@ -56,7 +64,46 @@ final class PersonalModel: ObservableObject {
         static let punctuality = "it.binario.ios.punctuality-history.v1"
         static let theme = "it.binario.ios.theme.v1"
         static let trainTypesPrefix = "it.binario.ios.excluded-train-types.v1:"
+        static let recentRoutes = "it.binario.ios.recent-routes.v1"
+        static let pinnedRoutes = "it.binario.ios.pinned-routes.v1"
+        static let stationMonitors = "it.binario.ios.station-monitors.v1"
+        static let voiceProfile = "it.binario.ios.voice-profile-requested.v1"
     }
+
+    /// A route searched recently.
+    struct RecentRoute: Codable, Equatable, Hashable, Identifiable {
+        let origin: StationIdentity
+        let destination: StationIdentity
+        var id: String { SavedRoute.routeIdentifier(origin: origin, destination: destination) }
+    }
+
+    /// Android's `StationMonitorMode`.
+    enum MonitorMode: String, Codable, CaseIterable, Identifiable {
+        case departures = "DEPARTURES"
+        case arrivals = "ARRIVALS"
+        case both = "BOTH"
+
+        var id: String { rawValue }
+
+        var titleKey: String {
+            switch self {
+            case .departures: "departures.monitor.departures"
+            case .arrivals: "departures.monitor.arrivals"
+            case .both: "departures.monitor.both"
+            }
+        }
+    }
+
+    /// Android's `StationMonitor`: a station followed on this iPhone.
+    struct StationMonitor: Codable, Equatable, Identifiable {
+        let station: StationIdentity
+        let mode: MonitorMode
+        var id: String { station.id }
+    }
+
+    static let maximumRecentRoutes = 8
+    /// As many as Android's backup keeps.
+    static let maximumStationMonitors = 12
 
     init(defaults: UserDefaults = .standard) {
         let stations = PersonalModel.decodeStations(defaults.data(forKey: Key.favouriteStations))
@@ -70,6 +117,64 @@ final class PersonalModel: ObservableObject {
         trainNames = defaults.dictionary(forKey: Key.trainNames) as? [String: String] ?? [:]
         theme = Theme(rawValue: defaults.string(forKey: Key.theme) ?? "") ?? .system
         punctuality = history
+        recentRoutes = PersonalModel.decode([RecentRoute].self, defaults.data(forKey: Key.recentRoutes)) ?? []
+        pinnedRouteIDs = Set(defaults.stringArray(forKey: Key.pinnedRoutes) ?? [])
+        stationMonitors = PersonalModel.decode([StationMonitor].self, defaults.data(forKey: Key.stationMonitors)) ?? []
+        voiceProfileRequested = defaults.bool(forKey: Key.voiceProfile)
+    }
+
+    private static func decode<Value: Decodable>(_ type: Value.Type, _ data: Data?) -> Value? {
+        guard let data else { return nil }
+        return try? JSONDecoder().decode(type, from: data)
+    }
+
+    // MARK: Recenti, tratte fissate
+
+    /// Android's `recordRecent`: the route first, once, at most eight.
+    func recordRecent(origin: StationIdentity, destination: StationIdentity) {
+        let recent = RecentRoute(origin: origin, destination: destination)
+        let updated = Array(([recent] + recentRoutes.filter { $0.id != recent.id }).prefix(Self.maximumRecentRoutes))
+        guard updated != recentRoutes else { return }
+        recentRoutes = updated
+        defaults.set(try? JSONEncoder().encode(updated), forKey: Key.recentRoutes)
+    }
+
+    func isPinned(routeID: String) -> Bool { pinnedRouteIDs.contains(routeID) }
+
+    /// The star of a saved route: pinned routes come first.
+    func togglePin(routeID: String) {
+        if pinnedRouteIDs.contains(routeID) { pinnedRouteIDs.remove(routeID) } else { pinnedRouteIDs.insert(routeID) }
+        defaults.set(pinnedRouteIDs.sorted(), forKey: Key.pinnedRoutes)
+    }
+
+    /// Saved routes as Android lists them: pinned first, then in their own order.
+    func ordered(_ routes: [SavedRoute]) -> [SavedRoute] {
+        routes.filter { pinnedRouteIDs.contains($0.id) } + routes.filter { !pinnedRouteIDs.contains($0.id) }
+    }
+
+    // MARK: Monitoraggi di stazione
+
+    func monitor(of station: StationIdentity) -> StationMonitor? {
+        stationMonitors.first { $0.station.id == station.id }
+    }
+
+    func setMonitor(_ station: StationIdentity, mode: MonitorMode?) {
+        var monitors = stationMonitors.filter { $0.station.id != station.id }
+        if let mode { monitors.insert(StationMonitor(station: station, mode: mode), at: 0) }
+        replaceStationMonitors(monitors)
+    }
+
+    func replaceStationMonitors(_ value: [StationMonitor]) {
+        var seen = Set<String>()
+        stationMonitors = Array(value.filter { seen.insert($0.id).inserted }.prefix(Self.maximumStationMonitors))
+        defaults.set(try? JSONEncoder().encode(stationMonitors), forKey: Key.stationMonitors)
+    }
+
+    // MARK: Integrazioni
+
+    func setVoiceProfileRequested(_ requested: Bool) {
+        voiceProfileRequested = requested
+        defaults.set(requested, forKey: Key.voiceProfile)
     }
 
     // MARK: Theme
