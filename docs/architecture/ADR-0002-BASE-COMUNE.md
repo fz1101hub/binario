@@ -69,6 +69,14 @@ Con le funzioni di Android portate sull'iPhone (meteo a destinazione, bici in co
 | `live-train-map-v1.json`: finestra dell'orario, ritardi applicati, copie, cadenza e aree | `LiveTrainPositions.kt`, `ScheduledRailRuns.kt`, `EmbeddedGtfsJourneyProvider.kt` | Android, iPhone |
 | `evening-alerts-v1.json`: ore dei promemoria serali e di quiete, memoria degli avvisi | `StrikeReminder.kt`, `RouteWorksAlert.kt` | Android, iPhone |
 
+Con le notifiche e le sveglie del viaggio sull'iPhone, il 24 novembre 2026:
+
+| Tabella | Prima | Ora letta da |
+|---|---|---|
+| `trip-alerts-v1.json`: sveglia fermata, viaggio seguito, «Avvisami quando sta arrivando», avvisi dei treni con la campanella, posizione durante il viaggio | `StopAlarmPlanner.kt`, `FollowedTrip.kt`, `ApproachAlert.kt`, `TrainAlertWatch.kt`, `GpsTrainRoute.kt`, `GpsArrivalAlarmPolicy.kt`; le ore di quiete di `CommuterAlertPlanner` da `evening-alerts-v1.json` | Android, iPhone |
+
+I casi sono in `contracts/shared-rules/v1/trip-alerts-v1.json`. Restano dell'iPhone la Live Activity al posto della notifica in corso, la posizione solo con l'app aperta (nessuna posizione in background) e i controlli in background affidati all'unico compito di aggiornamento in background dell'app, che iOS esegue quando decide.
+
 Le loro regole hanno i casi in `contracts/shared-rules/v1/` (`delay-compensation-v1.json`, `destination-weather-v1.json`, `bike-sharing-v1.json`, `live-train-positions-v1.json`, `evening-alerts-v1.json`). Restano specifiche dell'iPhone la mappa di base (MapKit invece di OpenFreeMap) e il modo di girare in background (un solo compito di aggiornamento in background invece di WorkManager).
 
 Con gli arrivi, i dettagli della corsa e gli avvisi per treno sull'iPhone:
