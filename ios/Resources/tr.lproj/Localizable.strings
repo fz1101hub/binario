@@ -986,3 +986,4 @@
 "result.paging.later" = "Daha geç";
 "result.paging.no_more_earlier" = "Daha erken başka seçenek yok";
 "result.paging.no_more_later" = "Daha geç başka seçenek yok";
+"result.arrival.live" = "İşletme verilerine göre tahmini varış %1$@.";

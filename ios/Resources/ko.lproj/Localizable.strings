@@ -986,3 +986,4 @@
 "result.paging.later" = "이후 시간";
 "result.paging.no_more_earlier" = "더 이른 경로가 없습니다";
 "result.paging.no_more_later" = "더 늦은 경로가 없습니다";
+"result.arrival.live" = "운행 데이터 기준 %1$@ 도착 예상.";

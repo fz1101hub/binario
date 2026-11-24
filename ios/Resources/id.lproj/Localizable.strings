@@ -986,3 +986,4 @@
 "result.paging.later" = "Berikutnya";
 "result.paging.no_more_earlier" = "Tidak ada solusi lain sebelumnya";
 "result.paging.no_more_later" = "Tidak ada solusi lain berikutnya";
+"result.arrival.live" = "Perkiraan tiba pukul %1$@ menurut data operasional.";

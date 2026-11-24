@@ -986,3 +986,4 @@
 "result.paging.later" = "Позже";
 "result.paging.no_more_earlier" = "Более ранних вариантов нет";
 "result.paging.no_more_later" = "Более поздних вариантов нет";
+"result.arrival.live" = "Ожидаемое прибытие в %1$@ по оперативным данным.";

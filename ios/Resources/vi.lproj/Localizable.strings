@@ -986,3 +986,4 @@
 "result.paging.later" = "Muộn hơn";
 "result.paging.no_more_earlier" = "Không có lựa chọn nào sớm hơn";
 "result.paging.no_more_later" = "Không có lựa chọn nào muộn hơn";
+"result.arrival.live" = "Dự kiến đến lúc %1$@ theo dữ liệu vận hành.";

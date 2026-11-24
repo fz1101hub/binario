@@ -986,3 +986,4 @@
 "result.paging.later" = "ถัดไป";
 "result.paging.no_more_earlier" = "ไม่มีตัวเลือกอื่นที่เร็วกว่านี้";
 "result.paging.no_more_later" = "ไม่มีตัวเลือกอื่นที่ช้ากว่านี้";
+"result.arrival.live" = "คาดว่าจะถึงเวลา %1$@ ตามข้อมูลการเดินรถ";

@@ -986,3 +986,4 @@
 "result.paging.later" = "より遅い時間";
 "result.paging.no_more_earlier" = "これより早い経路はありません";
 "result.paging.no_more_later" = "これより遅い経路はありません";
+"result.arrival.live" = "運行データによる到着見込みは %1$@ です。";
