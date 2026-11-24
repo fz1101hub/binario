@@ -1,2 +1,2 @@
 "Agenda" = "予定";
-"NSLocationWhenInUseUsageDescription" = "Binario は、最寄り駅を調べるときに一度だけ位置情報を使い、スマートフォンに保存された駅一覧から探します。位置情報は保存も送信もされません。";
+"NSLocationWhenInUseUsageDescription" = "Binarioは、最寄り駅を探すとき、また位置からの推定をオンにした場合はアプリを開いて追跡中の旅程の間に、位置情報を使用します。位置情報は電話の中にとどまり、保存も送信もされません。";

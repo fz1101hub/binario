@@ -46,6 +46,7 @@ python3 tools/generate_shared_code.py --check   # esce con 1 se uno non corrispo
 | `saved-timetables-v1.json` | «Orari salvati»: quanti elenchi, righe, cambi e testi, lunghezza dei nomi | Android, iPhone |
 | `source-manners-v1.json` | Come si chiede a ogni fonte pubblica: User-Agent, risposte che sono un rifiuto e pausa dopo un rifiuto, interruttore dopo errori ripetuti | Android, iPhone |
 | `source-scores-v1.json` | Punteggi delle fonti per categoria, bonus dell'operatore, fonti di sola copertura | Android, iPhone |
+| `trip-alerts-v1.json` | Notifiche e sveglie del viaggio: anticipo della sveglia fermata, finestra e aggiornamenti del viaggio seguito (notifica in corso su Android, Live Activity su iPhone), «Avvisami quando sta arrivando», nuovi avvisi dei treni con la campanella, posizione durante il viaggio (precisione, distanze, freschezza, durata della sessione); le ore di quiete sono quelle di `evening-alerts-v1.json` | Android, iPhone |
 | `train-number-prefixes-v1.json` | Categorie ammesse davanti al numero di un treno | Android, iPhone, Alexa (corsa programmata di un numero) |
 | `train-type-groups-v1.json` | «Tipi di treno»: gruppi, operatori Italo ed esteri, codici di Frecce/AV, internazionali, Intercity e bus, espressione dei regionali | Android (tabellone e widget), iPhone |
 | `urban-stops-v1.json` | Fermate urbane: distanza massima a piedi, velocità e margine del cammino, stessa fermata e banchine dello stesso nome | Android, iPhone; il builder e il verificatore dell'indice iPhone leggono il JSON |

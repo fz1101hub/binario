@@ -571,6 +571,26 @@ def _check_train_type_groups(values: Mapping[str, Any]) -> list[str]:
     return problems
 
 
+def _check_trip_alerts(values: Mapping[str, Any]) -> list[str]:
+    problems = []
+    leads = values["approachLeadOptionsMinutes"]
+    if leads != sorted(leads):
+        problems.append("approachLeadOptionsMinutes non in ordine crescente")
+    if values["approachDefaultLeadMinutes"] not in leads:
+        problems.append("approachDefaultLeadMinutes fuori da approachLeadOptionsMinutes")
+    if values["approachEarlyToleranceMinutes"] > values["approachLateToleranceMinutes"]:
+        problems.append("approachEarlyToleranceMinutes maggiore di approachLateToleranceMinutes")
+    if values["commuterLeadOptionsMinutes"] != sorted(values["commuterLeadOptionsMinutes"]):
+        problems.append("commuterLeadOptionsMinutes non in ordine crescente")
+    if values["followedTripMinimumRefreshMinutes"] > values["followedTripRefreshMinutes"]:
+        problems.append("followedTripMinimumRefreshMinutes maggiore di followedTripRefreshMinutes")
+    if values["positionDwellRadiusMeters"] > values["positionOffRouteMeters"]:
+        problems.append("positionDwellRadiusMeters maggiore di positionOffRouteMeters")
+    if values["estimateFreshSeconds"] > values["positionFreshSeconds"]:
+        problems.append("estimateFreshSeconds maggiore di positionFreshSeconds")
+    return problems
+
+
 def _check_rfi_monitor(values: Mapping[str, Any]) -> list[str]:
     host = "https://iechub.rfi.it/"
     return [f"{key}: fuori da {host}" for key in ("catalogueUrl", "monitorUrl") if not values[key].startswith(host)]
@@ -1235,6 +1255,53 @@ TABLES: tuple[Table, ...] = (
         "busCodes": Field(ListOf(CATEGORY_CODE, as_set=True)),
         "regionalCodePattern": Field(PATTERN),
     }, check=_check_train_type_groups),
+    Table("trip-alerts-v1.json", "TripAlerts", {
+        "stopAlarmLeadMinutes": Field(Integer(1, 60)),
+        "stopAlarmMaximumAlarms": Field(Integer(1, 64)),
+        "stopAlarmKeepAfterArrivalMinutes": Field(Integer(0, 1_440)),
+        "stopAlarmNotificationTimeoutMinutes": Field(Integer(1, 1_440)),
+        "stopAlarmReplanThresholdSeconds": Field(Seconds(1)),
+        "followedTripLeadMinutes": Field(Integer(0, 240)),
+        "followedTripTrailMinutes": Field(Integer(0, 240)),
+        "followedTripRefreshMinutes": Field(Integer(1, 60)),
+        "followedTripMaximumDelayExtensionMinutes": Field(Integer(0, 1_440)),
+        "followedTripNearAlightStops": Field(Integer(1, 10)),
+        "followedTripNearAlightDelaySeconds": Field(Seconds()),
+        "followedTripMinimumRefreshMinutes": Field(Integer(1, 60)),
+        "followedTripMaximumLegs": Field(Integer(1, 12)),
+        "approachLeadOptionsMinutes": Field(ListOf(Integer(1, 60))),
+        "approachDefaultLeadMinutes": Field(Integer(1, 60)),
+        "approachCheckMinutes": Field(Integer(1, 60)),
+        "approachFirstCheckBeforeMinutes": Field(Integer(0, 240)),
+        "approachMaximumDelayMinutes": Field(Integer(0, 1_440)),
+        "approachEarlyToleranceMinutes": Field(Integer(0, 60)),
+        "approachLateToleranceMinutes": Field(Integer(0, 60)),
+        "approachMinimumGapMinutes": Field(Integer(1, 60)),
+        "approachNotificationTimeoutMinutes": Field(Integer(1, 240)),
+        "approachMaximumAlerts": Field(Integer(1, 64)),
+        "commuterLeadOptionsMinutes": Field(ListOf(Integer(1, 60))),
+        "commuterMaximumAlerts": Field(Integer(1, 64)),
+        "trainAlertsCheckMinutes": Field(Integer(1, 60)),
+        "trainAlertsBeforeDepartureMinutes": Field(Integer(0, 1_440)),
+        "trainAlertsAfterDepartureMinutes": Field(Integer(0, 1_440)),
+        "trainAlertsAfterArrivalMinutes": Field(Integer(0, 1_440)),
+        "trainAlertsMaximumSubscriptions": Field(Integer(1, 64)),
+        "trainAlertsMaximumSeen": Field(Integer(1, 10_000)),
+        "trainAlertsSeenRetentionDays": Field(Integer(1, 365)),
+        "positionMaximumAccuracyMeters": Field(Integer(1, 10_000)),
+        "positionMaximumFixAgeSeconds": Field(Seconds(1)),
+        "positionOffRouteMeters": Field(Integer(1, 100_000)),
+        "positionDwellRadiusMeters": Field(Integer(1, 100_000)),
+        "positionBacktrackToleranceMeters": Field(Integer(0, 100_000)),
+        "positionFreshSeconds": Field(Seconds(1)),
+        "positionMaximumRouteStops": Field(Integer(2, 500)),
+        "positionSessionAfterArrivalMinutes": Field(Integer(1, 1_440)),
+        "positionSessionMaximumMinutes": Field(Integer(1, 1_440)),
+        "estimateFreshSeconds": Field(Seconds(1)),
+        "estimateMaximumDelayMinutes": Field(Integer(1, 1_440)),
+        "estimateBeforeDepartureMinutes": Field(Integer(0, 240)),
+        "estimateAfterArrivalMinutes": Field(Integer(0, 240)),
+    }, check=_check_trip_alerts),
     Table("urban-stops-v1.json", "UrbanStops", {
         "maximumWalkMeters": Field(Integer(0, 2_000)),
         "walkingSpeedKmh": Field(Real(1.0, 10.0)),

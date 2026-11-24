@@ -1,2 +1,2 @@
 "Agenda" = "Lịch trình";
-"NSLocationWhenInUseUsageDescription" = "Binario chỉ dùng vị trí của bạn một lần khi bạn tìm ga gần nhất, để tìm ga đó trong danh sách ga lưu trên điện thoại. Vị trí không được lưu hay gửi đi.";
+"NSLocationWhenInUseUsageDescription" = "Binario dùng vị trí của bạn khi bạn hỏi ga gần nhất và, nếu bạn bật ước tính từ vị trí của mình, trong chuyến đi bạn theo dõi khi ứng dụng mở. Vị trí ở lại trên điện thoại: không được lưu cũng không được gửi đi.";

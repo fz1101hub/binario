@@ -27,6 +27,7 @@
 //   contracts/shared-data/v1/source-scores-v1.json
 //   contracts/shared-data/v1/train-number-prefixes-v1.json
 //   contracts/shared-data/v1/train-type-groups-v1.json
+//   contracts/shared-data/v1/trip-alerts-v1.json
 //   contracts/shared-data/v1/urban-stops-v1.json
 //   contracts/shared-data/v1/viaggiatreno-v1.json
 
@@ -1534,6 +1535,61 @@ internal object SharedData {
         val INTERCITY_CODES: Set<String> = setOf("IC", "ICN")
         val BUS_CODES: Set<String> = setOf("BUS", "B", "SEV", "EV")
         const val REGIONAL_CODE_PATTERN: String = "(R|RE|REX|RV|REG|RB|TER|S|SFM|FL|FM|MET)\\d{0,3}"
+    }
+
+    /**
+     * contracts/shared-data/v1/trip-alerts-v1.json: The trip notifications and alarms: the stop alarm, the followed
+     * trip (Android's ongoing notification, the iPhone's Live Activity) with its stop countdown, «Avvisami quando sta
+     * arrivando», the commuter alerts, the new notices of the trains with the bell and the position estimate during the
+     * trip. Leads, windows, cadences, tolerances and limits; the quiet hours (22-7) are those of
+     * evening-alerts-v1.json.
+     */
+    object TripAlerts {
+        const val STOP_ALARM_LEAD_MINUTES: Int = 5
+        const val STOP_ALARM_MAXIMUM_ALARMS: Int = 8
+        const val STOP_ALARM_KEEP_AFTER_ARRIVAL_MINUTES: Int = 120
+        const val STOP_ALARM_NOTIFICATION_TIMEOUT_MINUTES: Int = 60
+        const val STOP_ALARM_REPLAN_THRESHOLD_SECONDS: Int = 60
+        const val FOLLOWED_TRIP_LEAD_MINUTES: Int = 30
+        const val FOLLOWED_TRIP_TRAIL_MINUTES: Int = 30
+        const val FOLLOWED_TRIP_REFRESH_MINUTES: Int = 15
+        const val FOLLOWED_TRIP_MAXIMUM_DELAY_EXTENSION_MINUTES: Int = 360
+        const val FOLLOWED_TRIP_NEAR_ALIGHT_STOPS: Int = 3
+        const val FOLLOWED_TRIP_NEAR_ALIGHT_DELAY_SECONDS: Int = 30
+        const val FOLLOWED_TRIP_MINIMUM_REFRESH_MINUTES: Int = 2
+        const val FOLLOWED_TRIP_MAXIMUM_LEGS: Int = 6
+        val APPROACH_LEAD_OPTIONS_MINUTES: List<Int> = listOf(5, 10, 15)
+        const val APPROACH_DEFAULT_LEAD_MINUTES: Int = 10
+        const val APPROACH_CHECK_MINUTES: Int = 15
+        const val APPROACH_FIRST_CHECK_BEFORE_MINUTES: Int = 30
+        const val APPROACH_MAXIMUM_DELAY_MINUTES: Int = 180
+        const val APPROACH_EARLY_TOLERANCE_MINUTES: Int = 1
+        const val APPROACH_LATE_TOLERANCE_MINUTES: Int = 2
+        const val APPROACH_MINIMUM_GAP_MINUTES: Int = 1
+        const val APPROACH_NOTIFICATION_TIMEOUT_MINUTES: Int = 15
+        const val APPROACH_MAXIMUM_ALERTS: Int = 12
+        val COMMUTER_LEAD_OPTIONS_MINUTES: List<Int> = listOf(5, 10, 15, 30, 60)
+        const val COMMUTER_MAXIMUM_ALERTS: Int = 24
+        const val TRAIN_ALERTS_CHECK_MINUTES: Int = 15
+        const val TRAIN_ALERTS_BEFORE_DEPARTURE_MINUTES: Int = 240
+        const val TRAIN_ALERTS_AFTER_DEPARTURE_MINUTES: Int = 180
+        const val TRAIN_ALERTS_AFTER_ARRIVAL_MINUTES: Int = 30
+        const val TRAIN_ALERTS_MAXIMUM_SUBSCRIPTIONS: Int = 16
+        const val TRAIN_ALERTS_MAXIMUM_SEEN: Int = 400
+        const val TRAIN_ALERTS_SEEN_RETENTION_DAYS: Int = 7
+        const val POSITION_MAXIMUM_ACCURACY_METERS: Int = 200
+        const val POSITION_MAXIMUM_FIX_AGE_SECONDS: Int = 120
+        const val POSITION_OFF_ROUTE_METERS: Int = 1500
+        const val POSITION_DWELL_RADIUS_METERS: Int = 400
+        const val POSITION_BACKTRACK_TOLERANCE_METERS: Int = 500
+        const val POSITION_FRESH_SECONDS: Int = 180
+        const val POSITION_MAXIMUM_ROUTE_STOPS: Int = 80
+        const val POSITION_SESSION_AFTER_ARRIVAL_MINUTES: Int = 120
+        const val POSITION_SESSION_MAXIMUM_MINUTES: Int = 480
+        const val ESTIMATE_FRESH_SECONDS: Int = 120
+        const val ESTIMATE_MAXIMUM_DELAY_MINUTES: Int = 600
+        const val ESTIMATE_BEFORE_DEPARTURE_MINUTES: Int = 10
+        const val ESTIMATE_AFTER_ARRIVAL_MINUTES: Int = 10
     }
 
     /**

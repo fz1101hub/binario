@@ -16,6 +16,7 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import androidx.core.content.edit
 import it.binario.app.data.RailTime
+import it.binario.app.shared.SharedData
 import java.time.DayOfWeek
 import java.time.Instant
 import java.time.LocalDate
@@ -92,7 +93,9 @@ object CommuterAlertPlanner {
         return CommuterAlertTriggerResult.NoUpcomingTrigger
     }
 
-    fun isQuiet(time: LocalTime): Boolean = time >= LocalTime.of(22, 0) || time < LocalTime.of(7, 0)
+    /** The quiet hours of every alert (22:00 to 07:00), contracts/shared-data/v1/evening-alerts-v1.json. */
+    fun isQuiet(time: LocalTime): Boolean =
+        time >= LocalTime.of(SharedData.EveningAlerts.QUIET_FROM_HOUR, 0) || time < LocalTime.of(SharedData.EveningAlerts.QUIET_UNTIL_HOUR, 0)
 
     /**
      * How long after its trigger a reminder that has not rung yet is still delivered: an inexact alarm may come late,
@@ -170,7 +173,7 @@ class CommuterAlertStore(context: Context) {
         .sortedWith(compareBy<CommuterAlert> { !it.enabled }.thenBy { it.time })
 
     fun save(alert: CommuterAlert): List<CommuterAlert> {
-        val updated = (listOf(alert) + alerts().filterNot { it.id == alert.id }).take(24)
+        val updated = (listOf(alert) + alerts().filterNot { it.id == alert.id }).take(SharedData.TripAlerts.COMMUTER_MAXIMUM_ALERTS)
         persist(updated)
         return updated
     }
@@ -188,7 +191,7 @@ class CommuterAlertStore(context: Context) {
     }
 
     fun replace(alerts: List<CommuterAlert>): List<CommuterAlert> {
-        val normalized = alerts.distinctBy { it.id }.take(24)
+        val normalized = alerts.distinctBy { it.id }.take(SharedData.TripAlerts.COMMUTER_MAXIMUM_ALERTS)
         persist(normalized)
         return normalized
     }

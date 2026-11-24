@@ -287,6 +287,8 @@ final class AppModel: ObservableObject {
     /// False from the moment the app goes to the background until it is active again: no live
     /// request starts meanwhile, not even one a pull or a search begun just before reaches.
     private var isForeground = true
+    /// Catalogue stations by name key, for the trip alerts; rebuilt with the catalogue.
+    private var tripStationIndex: [String: Station]?
     /// The screens that ask live sources do so only while they are on screen.
     private var boardLiveVisible = false
     private var plannerLiveVisible = false
@@ -438,6 +440,9 @@ final class AppModel: ObservableObject {
             versionDisplay: versionFormatter.displayVersion(bundle: bundle)
         )
 
+        // The trip notifications and alarms read the live sources through this model (TripMonitor.swift).
+        TripMonitor.shared.attach(model)
+
         // The reminders of the Agenda as the system holds them; nothing is asked to the user here.
         Task { await model.refreshReminders() }
 
@@ -495,6 +500,7 @@ final class AppModel: ObservableObject {
     func loadCatalog(data: @escaping @Sendable () throws -> Data) async {
         catalogState = .loading
         catalogState = await StationCatalogLoader.load(data: data)
+        tripStationIndex = nil
         stationNamesByCode = [:]
         dictationStations = nil
         if case let .available(catalog) = catalogState {
@@ -1956,6 +1962,33 @@ final class AppModel: ObservableObject {
         case .unavailable:
             return .failed
         }
+    }
+
+    // MARK: Trip notifications and alarms (TripMonitor.swift)
+
+    /// The live sources for the trip alerts, nil with «Dati in tempo reale» off: then nothing is asked.
+    var tripLiveData: (any LiveRailProviding)? { liveDataEnabled ? liveData : nil }
+
+    /// The catalogue coordinates of a stop name, for the position during the trip (built once per catalogue).
+    func tripCoordinates(_ name: String) -> (latitude: Double, longitude: Double)? {
+        guard let station = tripStation(named: name), let latitude = station.latitude, let longitude = station.longitude else { return nil }
+        return (latitude, longitude)
+    }
+
+    /// The catalogue station a published stop name names, compared as the trip rules compare names.
+    func tripStation(named name: String) -> Station? {
+        guard case let .available(catalog) = catalogState else { return nil }
+        if tripStationIndex == nil {
+            var index: [String: Station] = [:]
+            for station in catalog.stations {
+                for alias in [station.name] + station.aliases {
+                    let key = TripStationNames.key(alias)
+                    if !key.isEmpty, index[key] == nil { index[key] = station }
+                }
+            }
+            tripStationIndex = index
+        }
+        return tripStationIndex?[TripStationNames.key(name)]
     }
 
     func takePlannerRequest() -> PlannerRequest? {

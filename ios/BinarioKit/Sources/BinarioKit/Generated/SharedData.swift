@@ -27,6 +27,7 @@
 //   contracts/shared-data/v1/source-scores-v1.json
 //   contracts/shared-data/v1/train-number-prefixes-v1.json
 //   contracts/shared-data/v1/train-type-groups-v1.json
+//   contracts/shared-data/v1/trip-alerts-v1.json
 //   contracts/shared-data/v1/urban-stops-v1.json
 //   contracts/shared-data/v1/viaggiatreno-v1.json
 
@@ -1538,6 +1539,59 @@ public enum SharedData {
         public static let intercityCodes: Set<String> = ["IC", "ICN"]
         public static let busCodes: Set<String> = ["BUS", "B", "SEV", "EV"]
         public static let regionalCodePattern: String = "(R|RE|REX|RV|REG|RB|TER|S|SFM|FL|FM|MET)\\d{0,3}"
+    }
+
+    /// contracts/shared-data/v1/trip-alerts-v1.json: The trip notifications and alarms: the stop alarm, the followed
+    /// trip (Android's ongoing notification, the iPhone's Live Activity) with its stop countdown, «Avvisami quando sta
+    /// arrivando», the commuter alerts, the new notices of the trains with the bell and the position estimate during
+    /// the trip. Leads, windows, cadences, tolerances and limits; the quiet hours (22-7) are those of
+    /// evening-alerts-v1.json.
+    public enum TripAlerts {
+        public static let stopAlarmLeadMinutes: Int = 5
+        public static let stopAlarmMaximumAlarms: Int = 8
+        public static let stopAlarmKeepAfterArrivalMinutes: Int = 120
+        public static let stopAlarmNotificationTimeoutMinutes: Int = 60
+        public static let stopAlarmReplanThresholdSeconds: Double = 60
+        public static let followedTripLeadMinutes: Int = 30
+        public static let followedTripTrailMinutes: Int = 30
+        public static let followedTripRefreshMinutes: Int = 15
+        public static let followedTripMaximumDelayExtensionMinutes: Int = 360
+        public static let followedTripNearAlightStops: Int = 3
+        public static let followedTripNearAlightDelaySeconds: Double = 30
+        public static let followedTripMinimumRefreshMinutes: Int = 2
+        public static let followedTripMaximumLegs: Int = 6
+        public static let approachLeadOptionsMinutes: [Int] = [5, 10, 15]
+        public static let approachDefaultLeadMinutes: Int = 10
+        public static let approachCheckMinutes: Int = 15
+        public static let approachFirstCheckBeforeMinutes: Int = 30
+        public static let approachMaximumDelayMinutes: Int = 180
+        public static let approachEarlyToleranceMinutes: Int = 1
+        public static let approachLateToleranceMinutes: Int = 2
+        public static let approachMinimumGapMinutes: Int = 1
+        public static let approachNotificationTimeoutMinutes: Int = 15
+        public static let approachMaximumAlerts: Int = 12
+        public static let commuterLeadOptionsMinutes: [Int] = [5, 10, 15, 30, 60]
+        public static let commuterMaximumAlerts: Int = 24
+        public static let trainAlertsCheckMinutes: Int = 15
+        public static let trainAlertsBeforeDepartureMinutes: Int = 240
+        public static let trainAlertsAfterDepartureMinutes: Int = 180
+        public static let trainAlertsAfterArrivalMinutes: Int = 30
+        public static let trainAlertsMaximumSubscriptions: Int = 16
+        public static let trainAlertsMaximumSeen: Int = 400
+        public static let trainAlertsSeenRetentionDays: Int = 7
+        public static let positionMaximumAccuracyMeters: Int = 200
+        public static let positionMaximumFixAgeSeconds: Double = 120
+        public static let positionOffRouteMeters: Int = 1500
+        public static let positionDwellRadiusMeters: Int = 400
+        public static let positionBacktrackToleranceMeters: Int = 500
+        public static let positionFreshSeconds: Double = 180
+        public static let positionMaximumRouteStops: Int = 80
+        public static let positionSessionAfterArrivalMinutes: Int = 120
+        public static let positionSessionMaximumMinutes: Int = 480
+        public static let estimateFreshSeconds: Double = 120
+        public static let estimateMaximumDelayMinutes: Int = 600
+        public static let estimateBeforeDepartureMinutes: Int = 10
+        public static let estimateAfterArrivalMinutes: Int = 10
     }
 
     /// contracts/shared-data/v1/urban-stops-v1.json: How the apps reach the stops of the city networks

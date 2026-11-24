@@ -722,5 +722,101 @@
 			<string>%1$lld محطة متابَعة</string>
 		</dict>
 	</dict>
+	<key>result.trip.minutes</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>zero</key>
+			<string>%1$lld د</string>
+			<key>one</key>
+			<string>%1$lld د</string>
+			<key>two</key>
+			<string>%1$lld د</string>
+			<key>few</key>
+			<string>%1$lld د</string>
+			<key>many</key>
+			<string>%1$lld د</string>
+			<key>other</key>
+			<string>%1$lld د</string>
+		</dict>
+	</dict>
+	<key>result.trip.countdown_stops</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>zero</key>
+			<string>انزل بعد %1$lld محطة</string>
+			<key>one</key>
+			<string>انزل بعد %1$lld محطة</string>
+			<key>two</key>
+			<string>انزل بعد %1$lld محطتين</string>
+			<key>few</key>
+			<string>انزل بعد %1$lld محطات</string>
+			<key>many</key>
+			<string>انزل بعد %1$lld محطة</string>
+			<key>other</key>
+			<string>انزل بعد %1$lld محطة</string>
+		</dict>
+	</dict>
+	<key>notices.alerts.train_title</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>zero</key>
+			<string>%1$lld تنبيه جديد لـ %2$@</string>
+			<key>one</key>
+			<string>%1$lld تنبيه جديد لـ %2$@</string>
+			<key>two</key>
+			<string>%1$lld تنبيهان جديدان لـ %2$@</string>
+			<key>few</key>
+			<string>%1$lld تنبيهات جديدة لـ %2$@</string>
+			<key>many</key>
+			<string>%1$lld تنبيهًا جديدًا لـ %2$@</string>
+			<key>other</key>
+			<string>%1$lld تنبيه جديد لـ %2$@</string>
+		</dict>
+	</dict>
+	<key>notices.alerts.status_delay</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>zero</key>
+			<string>تأخير %1$lld دقيقة</string>
+			<key>one</key>
+			<string>تأخير %1$lld دقيقة</string>
+			<key>two</key>
+			<string>تأخير %1$lld دقيقتين</string>
+			<key>few</key>
+			<string>تأخير %1$lld دقائق</string>
+			<key>many</key>
+			<string>تأخير %1$lld دقيقة</string>
+			<key>other</key>
+			<string>تأخير %1$lld دقيقة</string>
+		</dict>
+	</dict>
 </dict>
 </plist>

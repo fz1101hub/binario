@@ -10,8 +10,12 @@ import it.binario.app.data.weather.OpenMeteoForecastAdapter
 import it.binario.app.maps.LiveTrainAreas
 import it.binario.app.maps.LiveTrainRefresh
 import it.binario.app.maps.LiveTrainSelector
+import it.binario.app.notifications.ApproachAlertPlanner
+import it.binario.app.notifications.FollowedTrip
+import it.binario.app.notifications.FollowedTripPlanner
 import it.binario.app.notifications.RouteWorksAlertPlanner
 import it.binario.app.notifications.StrikeReminderPlanner
+import it.binario.app.notifications.TrainAlertWatch
 import it.binario.app.data.core.SourceId
 import it.binario.app.data.gtfs.EmbeddedGtfsPacks
 import it.binario.app.data.gtfs.ItaloGtfsStationCodes
@@ -422,6 +426,59 @@ class SharedDataTest {
         assertEquals(json.getInt("routeWorksMaximumItems"), RouteWorksAlertPlanner.MAX_ITEMS)
         assertEquals(json.getLong("routeWorksMaximumKeepDays"), RouteWorksAlertPlanner.MAX_KEEP_DAYS)
         assertEquals(json.getInt("routeWorksMaximumNotified"), RouteWorksAlertPlanner.MAX_NOTIFIED)
+    }
+
+    @Test fun `the trip alerts are the shared table`() {
+        val json = table("trip-alerts-v1.json")
+        fun minutes(key: String): Duration = Duration.ofMinutes(json.getLong(key))
+        fun seconds(key: String): Duration = Duration.ofSeconds(json.getLong(key))
+        assertEquals(json.getInt("stopAlarmMaximumAlarms"), it.binario.app.StopAlarmPlanner.MAX_ALARMS)
+        assertEquals(minutes("stopAlarmNotificationTimeoutMinutes").toMillis(), it.binario.app.StopAlarmPlanner.NOTIFICATION_TIMEOUT_MILLIS)
+        assertEquals(minutes("stopAlarmKeepAfterArrivalMinutes").toMillis(), it.binario.app.StopAlarmPlanner.KEEP_AFTER_ARRIVAL_MILLIS)
+        assertEquals(seconds("stopAlarmReplanThresholdSeconds").toMillis(), it.binario.app.StopAlarmPlanner.REPLAN_THRESHOLD_MILLIS)
+        assertEquals(minutes("followedTripLeadMinutes"), FollowedTripPlanner.LEAD)
+        assertEquals(minutes("followedTripTrailMinutes"), FollowedTripPlanner.TRAIL)
+        assertEquals(minutes("followedTripRefreshMinutes"), FollowedTripPlanner.INTERVAL)
+        assertEquals(minutes("followedTripMaximumDelayExtensionMinutes"), FollowedTripPlanner.MAX_DELAY_EXTENSION)
+        assertEquals(json.getInt("followedTripNearAlightStops"), FollowedTripPlanner.NEAR_ALIGHT_STOPS)
+        assertEquals(seconds("followedTripNearAlightDelaySeconds"), FollowedTripPlanner.NEAR_ALIGHT_DELAY)
+        assertEquals(minutes("followedTripMinimumRefreshMinutes"), FollowedTripPlanner.MIN_REFRESH)
+        assertEquals(json.getInt("followedTripMaximumLegs"), FollowedTrip.MAX_LEGS)
+        assertEquals(json.getJSONArray("approachLeadOptionsMinutes").ints(), ApproachAlertPlanner.LEAD_OPTIONS)
+        assertEquals(json.getInt("approachDefaultLeadMinutes"), ApproachAlertPlanner.DEFAULT_LEAD)
+        assertEquals(minutes("approachCheckMinutes"), ApproachAlertPlanner.CHECK_INTERVAL)
+        assertEquals(minutes("approachFirstCheckBeforeMinutes"), ApproachAlertPlanner.FIRST_CHECK_BEFORE)
+        assertEquals(minutes("approachMaximumDelayMinutes"), ApproachAlertPlanner.MAX_DELAY)
+        assertEquals(minutes("approachEarlyToleranceMinutes"), ApproachAlertPlanner.EARLY_TOLERANCE)
+        assertEquals(minutes("approachLateToleranceMinutes"), ApproachAlertPlanner.LATE_TOLERANCE)
+        assertEquals(minutes("approachMinimumGapMinutes"), ApproachAlertPlanner.MIN_DELAY_BETWEEN_RUNS)
+        assertEquals(minutes("approachNotificationTimeoutMinutes"), ApproachAlertPlanner.NOTIFICATION_TIMEOUT)
+        assertEquals(json.getInt("approachMaximumAlerts"), ApproachAlertPlanner.MAX_ALERTS)
+        assertEquals(json.getJSONArray("commuterLeadOptionsMinutes").ints(), SharedData.TripAlerts.COMMUTER_LEAD_OPTIONS_MINUTES)
+        assertEquals(json.getInt("commuterMaximumAlerts"), SharedData.TripAlerts.COMMUTER_MAXIMUM_ALERTS)
+        assertEquals(minutes("trainAlertsCheckMinutes"), TrainAlertWatch.INTERVAL)
+        assertEquals(minutes("trainAlertsBeforeDepartureMinutes"), TrainAlertWatch.BEFORE_DEPARTURE)
+        assertEquals(minutes("trainAlertsAfterDepartureMinutes"), TrainAlertWatch.AFTER_DEPARTURE)
+        assertEquals(minutes("trainAlertsAfterArrivalMinutes"), TrainAlertWatch.AFTER_ARRIVAL)
+        assertEquals(json.getInt("trainAlertsMaximumSubscriptions"), TrainAlertWatch.MAX_SUBSCRIPTIONS)
+        assertEquals(json.getInt("trainAlertsMaximumSeen"), TrainAlertWatch.MAX_SEEN)
+        assertEquals(json.getLong("trainAlertsSeenRetentionDays"), TrainAlertWatch.SEEN_RETENTION_DAYS)
+        val evening = table("evening-alerts-v1.json")
+        assertEquals(evening.getInt("quietFromHour"), TrainAlertWatch.QUIET_START.hour)
+        assertEquals(evening.getInt("quietUntilHour"), TrainAlertWatch.QUIET_END.hour)
+        assertEquals(json.getInt("positionMaximumRouteStops"), it.binario.app.gpsalarm.GpsTrainRoute.MAX_STOPS)
+        assertEquals(seconds("positionMaximumFixAgeSeconds").toMillis(), it.binario.app.gpsalarm.GpsArrivalAlarmPolicy.MAX_FIX_AGE_MILLIS)
+        assertEquals(minutes("positionSessionAfterArrivalMinutes").toMillis(), it.binario.app.gpsalarm.GpsArrivalAlarmPolicy.AFTER_ARRIVAL_MILLIS)
+        assertEquals(minutes("positionSessionMaximumMinutes").toMillis(), it.binario.app.gpsalarm.GpsArrivalAlarmPolicy.MAX_DURATION_MILLIS)
+        assertEquals(json.getDouble("positionMaximumAccuracyMeters"), it.binario.app.gpsalarm.GpsTrainTracking.MAX_ACCURACY_METERS, 0.0)
+        assertEquals(json.getDouble("positionOffRouteMeters"), it.binario.app.gpsalarm.GpsTrainTracking.OFF_ROUTE_METERS, 0.0)
+        assertEquals(json.getDouble("positionDwellRadiusMeters"), it.binario.app.gpsalarm.GpsTrainTracking.DWELL_RADIUS_METERS, 0.0)
+        assertEquals(json.getDouble("positionBacktrackToleranceMeters"), it.binario.app.gpsalarm.GpsTrainTracking.BACKTRACK_TOLERANCE_METERS, 0.0)
+        assertEquals(seconds("positionFreshSeconds").toMillis(), it.binario.app.gpsalarm.GpsTrainTracking.POSITION_FRESH_MILLIS)
+        assertEquals(seconds("estimateFreshSeconds").toMillis(), it.binario.app.gpsalarm.GpsTrainTracking.ESTIMATE_FRESH_MILLIS)
+        assertEquals(json.getInt("estimateMaximumDelayMinutes"), it.binario.app.gpsalarm.GpsTrainTracking.MAX_DELAY_MINUTES)
+        assertEquals(minutes("estimateBeforeDepartureMinutes").toMillis(), it.binario.app.gpsalarm.GpsTrainTracking.BEFORE_DEPARTURE_MILLIS)
+        assertEquals(minutes("estimateAfterArrivalMinutes").toMillis(), it.binario.app.gpsalarm.GpsTrainTracking.AFTER_ARRIVAL_MILLIS)
     }
 
     @Test fun `the realtime feeds and the swiss boards are the shared table`() {

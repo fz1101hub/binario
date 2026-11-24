@@ -90,6 +90,7 @@ import it.binario.app.LocalDataBackupCodec
 import it.binario.app.MobilityPreferences
 import it.binario.app.ProjectLinks
 import it.binario.app.R
+import it.binario.app.shared.SharedData
 import it.binario.app.SourcesSettingsPanel
 import it.binario.app.TrainViewModel
 import it.binario.app.VoiceProfileSyncReadiness
@@ -579,7 +580,7 @@ private fun CommuterAlertSheet(
             }, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.commuter_alert_time, time)) }
             Text(stringResource(R.string.commuter_alert_lead), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
             LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                items(listOf(5, 10, 15, 30, 60)) { minutes ->
+                items(SharedData.TripAlerts.COMMUTER_LEAD_OPTIONS_MINUTES) { minutes ->
                     FilterChip(
                         selected = lead == minutes,
                         onClick = { lead = minutes },

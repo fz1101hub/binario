@@ -1,2 +1,2 @@
 "Agenda" = "日程";
-"NSLocationWhenInUseUsageDescription" = "Binario 仅在你查找最近的车站时使用一次你的位置，在手机上保存的车站列表中查找。位置不会被保存或发送。";
+"NSLocationWhenInUseUsageDescription" = "当你查询最近的车站时，以及在你开启根据位置估算后、于 App 打开时跟踪行程期间，Binario 会使用你的位置。位置只保留在手机上：不会被保存或发送。";

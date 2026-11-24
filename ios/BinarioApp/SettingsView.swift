@@ -102,6 +102,9 @@ struct SettingsView: View {
             // «Meteo a destinazione» and the evening alerts, as Android's settings.
             ExtrasSettingsSection()
 
+            // «Notifiche e sveglie»: the trip alerts and the commuter alerts, as Android's settings (TripAlertViews.swift).
+            TripAlertsSettingsSection()
+
             Section("settings.privacy.title") {
                 Text("settings.privacy.body")
                 Label("settings.privacy.no_collection", systemImage: "hand.raised")

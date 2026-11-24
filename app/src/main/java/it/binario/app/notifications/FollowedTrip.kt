@@ -15,6 +15,7 @@ import it.binario.app.journeys.JourneyOptionRow
 import it.binario.app.journeys.LiveStopTimes
 import it.binario.app.journeys.TransferAssessment
 import it.binario.app.journeys.TransferRiskCalculator
+import it.binario.app.shared.SharedData
 import java.time.Duration
 import java.time.Instant
 import java.time.LocalDate
@@ -57,7 +58,7 @@ data class FollowedTrip(
     fun walkBefore(legIndex: Int): Duration = Duration.ofMinutes((transferMinutes.getOrNull(legIndex - 1) ?: 0).toLong().coerceIn(0, 120))
 
     companion object {
-        const val MAX_LEGS = 6
+        const val MAX_LEGS = SharedData.TripAlerts.FOLLOWED_TRIP_MAXIMUM_LEGS
 
         /** The train of the detail, from its first shown stop to its last one; null without usable times. */
         fun fromService(service: TrainService, label: String, today: LocalDate, zone: ZoneId = RailTime.defaultZone): FollowedTrip? {
@@ -109,10 +110,10 @@ data class FollowedTrip(
  * the last known delay (at most [MAX_DELAY_EXTENSION]), refreshed every [INTERVAL]. Outside the window nothing runs.
  */
 object FollowedTripPlanner {
-    val LEAD: Duration = Duration.ofMinutes(30)
-    val TRAIL: Duration = Duration.ofMinutes(30)
-    val INTERVAL: Duration = Duration.ofMinutes(15)
-    val MAX_DELAY_EXTENSION: Duration = Duration.ofHours(6)
+    val LEAD: Duration = Duration.ofMinutes(SharedData.TripAlerts.FOLLOWED_TRIP_LEAD_MINUTES.toLong())
+    val TRAIL: Duration = Duration.ofMinutes(SharedData.TripAlerts.FOLLOWED_TRIP_TRAIL_MINUTES.toLong())
+    val INTERVAL: Duration = Duration.ofMinutes(SharedData.TripAlerts.FOLLOWED_TRIP_REFRESH_MINUTES.toLong())
+    val MAX_DELAY_EXTENSION: Duration = Duration.ofMinutes(SharedData.TripAlerts.FOLLOWED_TRIP_MAXIMUM_DELAY_EXTENSION_MINUTES.toLong())
 
     sealed interface Step {
         /** Before the window: the first run is at [at], nothing is shown yet. */
@@ -148,9 +149,9 @@ object FollowedTripPlanner {
     fun isUpcomingOrRunning(trip: FollowedTrip, now: Instant): Boolean = !now.isAfter(windowEnd(trip, null))
 
     /** In the last [NEAR_ALIGHT_STOPS] stops before getting off, the refresh follows the stops. */
-    const val NEAR_ALIGHT_STOPS = 3
-    val NEAR_ALIGHT_DELAY: Duration = Duration.ofSeconds(30)
-    val MIN_REFRESH: Duration = Duration.ofMinutes(2)
+    const val NEAR_ALIGHT_STOPS = SharedData.TripAlerts.FOLLOWED_TRIP_NEAR_ALIGHT_STOPS
+    val NEAR_ALIGHT_DELAY: Duration = Duration.ofSeconds(SharedData.TripAlerts.FOLLOWED_TRIP_NEAR_ALIGHT_DELAY_SECONDS.toLong())
+    val MIN_REFRESH: Duration = Duration.ofMinutes(SharedData.TripAlerts.FOLLOWED_TRIP_MINIMUM_REFRESH_MINUTES.toLong())
 
     /**
      * The next refresh: the regular one, or, in the last stops before the traveller gets off, just after the next
