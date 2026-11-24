@@ -55,10 +55,25 @@ public struct SQLiteGTFSJourneyRepository: JourneyRepository, Sendable {
     /// index no longer reads the trips of these packs (its border subset), so no train is listed
     /// twice. The files are never attached to one connection: their row identifiers overlap.
     public let foreignDatabaseURLs: [String: URL]
+    /// What is asked when these files give no train (`TimetableFallbacks`): RFI's programmed timetable, then the
+    /// community archives downloaded at runtime (European Sleeper). Nil: the files alone answer, as before.
+    public let fallbacks: TimetableFallbacks?
 
-    public init(databaseURL: URL, foreignDatabaseURLs: [String: URL] = [:]) {
+    public init(databaseURL: URL, foreignDatabaseURLs: [String: URL] = [:], fallbacks: TimetableFallbacks? = nil) {
         self.databaseURL = databaseURL
         self.foreignDatabaseURLs = foreignDatabaseURLs
+        self.fallbacks = fallbacks
+    }
+
+    /// The same files, with `fallbacks` asked when they give no train.
+    public func with(fallbacks: TimetableFallbacks?) -> SQLiteGTFSJourneyRepository {
+        SQLiteGTFSJourneyRepository(databaseURL: databaseURL, foreignDatabaseURLs: foreignDatabaseURLs, fallbacks: fallbacks)
+    }
+
+    /// Android's tiers (`QualityTieredTrainDataSource`): a fallback is asked only when the timetables of this iPhone
+    /// have no train for the request or have ended; a damaged index is not hidden behind one (`providerInvalid`).
+    static func asksFallbacks(_ reason: JourneyUnavailableReason) -> Bool {
+        reason == .noJourney || reason == .scheduleExpired
     }
 
     /// The installed foreign indexes in a fixed order, by source.
@@ -215,15 +230,18 @@ public struct SQLiteGTFSJourneyRepository: JourneyRepository, Sendable {
     }
 
     public func journeys(for query: JourneyQuery) async -> JourneyResult {
+        let result: JourneyResult
         do {
-            return .available(try Self.loadAll(databaseURL: databaseURL, foreignFiles: foreignFiles, query: query))
+            result = .available(try Self.loadAll(databaseURL: databaseURL, foreignFiles: foreignFiles, query: query))
         } catch SQLiteGTFSFailure.noRoute {
-            return .unavailable(.noJourney)
+            result = .unavailable(.noJourney)
         } catch SQLiteGTFSFailure.scheduleExpired {
-            return .unavailable(.scheduleExpired)
+            result = .unavailable(.scheduleExpired)
         } catch {
-            return .unavailable(.providerInvalid)
+            result = .unavailable(.providerInvalid)
         }
+        guard let fallbacks, case let .unavailable(reason) = result, Self.asksFallbacks(reason) else { return result }
+        return await fallbacks.journeys(for: query) ?? result
     }
 
     /// The first trains of the base index and of every installed foreign index, merged by time
@@ -1047,15 +1065,18 @@ extension SQLiteGTFSJourneyRepository: StationBoardProvider {
     /// packs (tools/build_ios_gtfs_schedule.py, INDEXED_ROUTE_TYPES), a bus is listed with its
     /// vehicle (`TrainService.vehicle`), and a train two packs publish is listed once (`boardOrder`).
     public func departures(for query: StationBoardQuery) async -> StationBoardResult {
+        let result: StationBoardResult
         do {
-            return .available(try Self.loadBoards(databaseURL: databaseURL, foreignFiles: foreignFiles, query: query))
+            result = .available(try Self.loadBoards(databaseURL: databaseURL, foreignFiles: foreignFiles, query: query))
         } catch SQLiteGTFSFailure.noRoute {
-            return .unavailable(.noJourney)
+            result = .unavailable(.noJourney)
         } catch SQLiteGTFSFailure.scheduleExpired {
-            return .unavailable(.scheduleExpired)
+            result = .unavailable(.scheduleExpired)
         } catch {
-            return .unavailable(.providerInvalid)
+            result = .unavailable(.providerInvalid)
         }
+        guard let fallbacks, case let .unavailable(reason) = result, Self.asksFallbacks(reason) else { return result }
+        return await fallbacks.departures(for: query) ?? result
     }
 
     /// The board of the base index and of every installed foreign index, merged by departure:
@@ -1807,7 +1828,9 @@ extension SQLiteGTFSJourneyRepository: TimetableTripReading {
         var byFile: [URL: [TimetableTripKey]] = [:]
         var seen = Set<TimetableTripKey>()
         for trip in trips where seen.count < Self.maximumRealtimeTrips && seen.insert(trip).inserted {
-            byFile[foreignDatabaseURLs[trip.sourceID] ?? databaseURL, default: []].append(trip)
+            // A downloaded archive's trips are read from its own index (`TimetableFallbacks`).
+            let file = foreignDatabaseURLs[trip.sourceID] ?? fallbacks?.indexURL(for: trip.sourceID) ?? databaseURL
+            byFile[file, default: []].append(trip)
         }
         var result: [TimetableTripKey: TimetableTripStops] = [:]
         for (url, keys) in byFile {
