@@ -5,7 +5,7 @@
   "readers": {
     "android": "app/src/test/java/it/binario/app/data/gtfs/RemoteGtfsContractTest.kt",
     "ios": "ios/BinarioKit/Tests/BinarioKitTests/RemoteGTFSContractTests.swift",
-    "python": "tests/test_remote_gtfs_rules.py"
+    "python": "tests/test_ios_gtfs_schedule.py"
   },
   "archives": [
     {

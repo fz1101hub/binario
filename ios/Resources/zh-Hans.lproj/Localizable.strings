@@ -541,3 +541,4 @@
 "notices.train.trenord_heading" = "该线路的 Trenord 公告";
 "notices.train.published_at" = "发布时间：%1$@";
 "notices.retry" = "重试";
+"result.coverage_fallback" = "时刻表来自非官方的补充数据源：出行前请向运营商核实。";

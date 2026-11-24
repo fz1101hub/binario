@@ -265,6 +265,9 @@ final class AppModel: ObservableObject {
     /// The open Trip Updates feeds of the bundled packs (STA, SNCF, Trenitalia France), joined to the listed trains by
     /// trip and stop, behind the same «Dati in tempo reale» switch; nil in a build without them.
     private let timetableRealtime: TimetableRealtime?
+    /// What the timetables ask when they give no train (Android's tiers): RFI's programmed timetable, then the
+    /// community archives (European Sleeper); nil in a model without them (the tests that do not need them).
+    private let timetableFallbacks: TimetableFallbacks?
     /// Their statuses on the rows of «Partenze», for the station and the instant they were asked.
     private var boardRealtime: (stationID: String, statuses: [String: StationBoardLiveStatus], at: Date)?
     private let liveDataStore: LiveDataPreferenceStore
@@ -319,6 +322,7 @@ final class AppModel: ObservableObject {
         backgroundActivity: (any BackgroundActivityRunning)? = nil,
         liveData: (any LiveRailProviding)? = nil,
         timetableRealtime: TimetableRealtime? = nil,
+        timetableFallbacks: TimetableFallbacks? = nil,
         liveDataStore: LiveDataPreferenceStore = LiveDataPreferenceStore(),
         livePauses: LiveSourcePauses = .shared,
         versionDisplay: String
@@ -347,6 +351,7 @@ final class AppModel: ObservableObject {
         self.backgroundActivity = backgroundActivity
         self.liveData = liveData
         self.timetableRealtime = timetableRealtime
+        self.timetableFallbacks = timetableFallbacks
         self.liveDataStore = liveDataStore
         self.livePauses = livePauses
         let liveEnabled = liveDataStore.load()
@@ -426,6 +431,9 @@ final class AppModel: ObservableObject {
             // resource every 30 seconds, pause at the first refusal) across every screen.
             liveData: LiveRailData.standard(),
             timetableRealtime: TimetableRealtime.standard(),
+            timetableFallbacks: FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first.map {
+                TimetableFallbacks.standard(cachesDirectory: $0.appendingPathComponent("Binario", isDirectory: true))
+            },
             liveDataStore: LiveDataPreferenceStore(),
             versionDisplay: versionFormatter.displayVersion(bundle: bundle)
         )
@@ -490,6 +498,7 @@ final class AppModel: ObservableObject {
         stationNamesByCode = [:]
         dictationStations = nil
         if case let .available(catalog) = catalogState {
+            timetableFallbacks?.useCatalogue(catalog.stations)
             for station in catalog.stations {
                 guard let code = NetworkReliability.stationCode(StationIdentity(station)), stationNamesByCode[code] == nil else { continue }
                 stationNamesByCode[code] = station.name
@@ -665,8 +674,8 @@ final class AppModel: ObservableObject {
             endPendingWatchRefresh()
             return
         }
-        repository = installed.repository
-        boardProvider = installed.repository
+        repository = installed.repository.with(fallbacks: timetableFallbacks)
+        boardProvider = installed.repository.with(fallbacks: timetableFallbacks)
         schedulePacks = installed.packs
         coveredStationIDs = installed.coveredStationIDs
         sourcePolicy = installed.sourcePolicy
@@ -866,8 +875,8 @@ final class AppModel: ObservableObject {
             return Self.openSchedule(base: baseURL, foreign: current)
         }.value
         guard let opened, scheduleState == .available else { return }
-        repository = opened.repository
-        boardProvider = opened.repository
+        repository = opened.repository.with(fallbacks: timetableFallbacks)
+        boardProvider = opened.repository.with(fallbacks: timetableFallbacks)
         schedulePacks = opened.packs
         coveredStationIDs = opened.coveredStationIDs
         installedForeignFiles = opened.repository.foreignDatabaseURLs

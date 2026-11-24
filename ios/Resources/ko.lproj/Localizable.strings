@@ -541,3 +541,4 @@
 "notices.train.trenord_heading" = "노선의 Trenord 공지";
 "notices.train.published_at" = "게시: %1$@";
 "notices.retry" = "다시 시도";
+"result.coverage_fallback" = "비공식 출처의 시간표입니다. 출발 전에 운영사에 확인하세요.";

@@ -541,3 +541,4 @@
 "notices.train.trenord_heading" = "Pemberitahuan Trenord di lintas ini";
 "notices.train.published_at" = "Diterbitkan: %1$@";
 "notices.retry" = "Coba lagi";
+"result.coverage_fallback" = "Jadwal dari sumber cakupan tidak resmi: periksa dengan operator sebelum bepergian.";

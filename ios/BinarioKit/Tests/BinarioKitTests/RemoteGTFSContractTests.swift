@@ -5,7 +5,7 @@ import XCTest
 /// contracts/shared-rules/v1/remote-gtfs-v1.json: the archives the iPhone reads and refuses (`GTFSZipArchive`), the
 /// catalogue station a stop names (`RemoteGTFSStationMatch`), and the trains of the operator a route finds through
 /// the downloaded index (`RemoteGTFSSchedule`, `TimetableFallbacks`), the cases Android's RemoteGtfsContractTest and
-/// tests/test_remote_gtfs_rules.py read too.
+/// tests/test_ios_gtfs_schedule.py read too.
 final class RemoteGTFSContractTests: XCTestCase {
     func testEveryArchiveIsReadOrRefusedAsTheCaseSays() throws {
         let rules = try contract()

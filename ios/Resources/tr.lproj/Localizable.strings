@@ -541,3 +541,4 @@
 "notices.train.trenord_heading" = "Hattaki Trenord duyuruları";
 "notices.train.published_at" = "Yayımlanma: %1$@";
 "notices.retry" = "Tekrar dene";
+"result.coverage_fallback" = "Tarife resmî olmayan bir kapsama kaynağından: yola çıkmadan önce işletmeciyle doğrulayın.";

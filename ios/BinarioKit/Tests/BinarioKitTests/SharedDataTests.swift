@@ -368,6 +368,31 @@ final class SharedDataTests: XCTestCase {
         XCTAssertEqual(RouteWorksAlertPlanner.maximumNotified, json["routeWorksMaximumNotified"] as? Int)
     }
 
+    func testTheCommunityArchivesAndRfisProgrammedTimetableAreTheSharedTables() throws {
+        let remote = try table("remote-gtfs-v1.json")
+        let feeds = try XCTUnwrap(remote["feeds"] as? [[String: Any]])
+        XCTAssertEqual(SharedData.RemoteGtfs.feeds.map(\.url), feeds.compactMap { $0["url"] as? String })
+        XCTAssertEqual(RemoteGTFSSchedule.policy.maximumBytes, remote["maximumArchiveBytes"] as? Int)
+        XCTAssertEqual(RemoteGTFSSchedule.policy.maximumRequests, (remote["maximumRedirects"] as? Int).map { $0 + 1 })
+        XCTAssertTrue(RemoteGTFSSchedule.policy.allowsSameHostRedirects)
+        XCTAssertEqual(RemoteGTFSSchedule.policy.accept, remote["accept"] as? String)
+        let archive = try XCTUnwrap(remote["archive"] as? [String: Any])
+        XCTAssertEqual(GTFSArchiveLimits.remote.maximumEntries, archive["maximumEntries"] as? Int)
+        XCTAssertEqual(GTFSArchiveLimits.remote.maximumEntryBytes, archive["maximumEntryBytes"] as? Int)
+        XCTAssertEqual(GTFSArchiveLimits.remote.maximumCompressionRatio, archive["maximumCompressionRatio"] as? Int)
+        XCTAssertEqual(GTFSArchiveLimits.remote.maximumArchiveBytes, remote["maximumArchiveBytes"] as? Int)
+        for feed in SharedData.RemoteGtfs.feeds {
+            let realtime = try XCTUnwrap(SharedData.RealtimeFeeds.tripUpdates.first { $0.id == feed.realtimeFeed }, feed.id)
+            XCTAssertEqual(realtime.pack, feed.pack)
+            XCTAssertEqual(realtime.gate, "remote-pack")
+        }
+        let rfi = try table("rfi-programmed-v1.json")
+        XCTAssertEqual(RfiProgrammedTimetable.policy.maximumBytes, rfi["maximumBytes"] as? Int)
+        XCTAssertEqual(RfiProgrammedTimetable.policy.totalTimeout, rfi["totalTimeoutSeconds"] as? Double)
+        XCTAssertEqual(RfiProgrammedTimetable.policy.maximumRequests, 1)
+        XCTAssertEqual(SharedData.RfiProgrammed.supplementalHubs.count, (rfi["supplementalHubs"] as? [[String: Any]])?.count)
+    }
+
     private func table(_ name: String) throws -> [String: Any] {
         let url = repositoryRoot.appendingPathComponent("contracts/shared-data/v1").appendingPathComponent(name)
         let object = try JSONSerialization.jsonObject(with: Data(contentsOf: url))

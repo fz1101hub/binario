@@ -541,3 +541,4 @@
 "notices.train.trenord_heading" = "Trenord notices on the line";
 "notices.train.published_at" = "Published: %1$@";
 "notices.retry" = "Try again";
+"result.coverage_fallback" = "Timetable from an unofficial coverage source: check with the operator before you travel.";

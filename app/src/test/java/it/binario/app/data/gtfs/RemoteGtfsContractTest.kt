@@ -25,7 +25,7 @@ import org.junit.Test
 
 /**
  * contracts/shared-rules/v1/remote-gtfs-v1.json, read by the iPhone (RemoteGTFSContractTests.swift) and by
- * tests/test_remote_gtfs_rules.py too: which catalogue stations a stop of the community archive names (`stationMatches`,
+ * tests/test_ios_gtfs_schedule.py too: which catalogue stations a stop of the community archive names (`stationMatches`,
  * through the route search) and the operator's trains a route finds in it (`timetables`).
  */
 class RemoteGtfsContractTest {

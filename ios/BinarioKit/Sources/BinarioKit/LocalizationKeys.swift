@@ -20,7 +20,7 @@ public enum BinarioLocalizationKeys {
         "result.title", "result.unavailable.title", "result.unavailable.body",
         "result.unavailable.disclosure", "result.provider_error.title", "result.provider_error.body",
         "result.expired.title", "result.expired.body",
-        "result.source_label", "result.programmed.disclosure",
+        "result.source_label", "result.programmed.disclosure", "result.coverage_fallback",
         "result.reliability.on_time", "result.reliability.mean_delay", "result.reliability.cancelled",
         "result.reliability.cancelled_share", "result.reliability.spoken", "result.reliability.attribution",
         "result.order.title", "result.order.departure", "result.order.most_reliable",

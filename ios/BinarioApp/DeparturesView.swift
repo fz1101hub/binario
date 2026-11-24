@@ -264,6 +264,11 @@ private struct BoardSourceFooter: View {
                 .font(.footnote)
                 .foregroundStyle(.secondary)
         }
+        if rows.contains(where: { RemoteGTFSSchedule.isCoverageService($0.service.id) }) {
+            Label("result.coverage_fallback", systemImage: "exclamationmark.triangle")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+        }
     }
 }
 

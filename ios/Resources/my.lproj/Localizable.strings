@@ -541,3 +541,4 @@
 "notices.train.trenord_heading" = "လမ်းကြောင်းပေါ်ရှိ Trenord ကြေညာချက်များ";
 "notices.train.published_at" = "ထုတ်ပြန်ချိန်- %1$@";
 "notices.retry" = "ထပ်စမ်းကြည့်ရန်";
+"result.coverage_fallback" = "တရားဝင် မဟုတ်သော ရင်းမြစ်မှ အချိန်ဇယား- မထွက်ခွာမီ ဝန်ဆောင်မှုပေးသူထံ စစ်ဆေးပါ။";

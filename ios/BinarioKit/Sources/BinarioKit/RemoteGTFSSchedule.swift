@@ -4,7 +4,7 @@ import Foundation
 /// `RemoteGtfsFallbackDataSource` keeps it: downloaded only when a search or a board the other timetables cannot answer
 /// needs it, with one HTTPS GET of the table's address (redirects only to HTTPS on the same host, the honest
 /// User-Agent, at most `maximumArchiveBytes`), read into a timetable index (`RemoteGTFSIndex`) kept for
-/// `cacheTimeToLiveSeconds` in the app's caches folder. After a failure nothing is asked for `failureCooldownSeconds`;
+/// `cacheTimeToLiveSeconds` in the app's caches folder, within the launch. After a failure nothing is asked for `failureCooldownSeconds`;
 /// after a refusal (403, 429, or 503 with Retry-After) for the Retry-After sent, else `refusalPauseSeconds`. Before
 /// `notBefore` the archive answers nothing. Nothing about the user is sent.
 public actor RemoteGTFSSchedule {
@@ -51,7 +51,7 @@ public actor RemoteGTFSSchedule {
     public func index(forDay day: RailDay, stations: [Station]) async -> URL? {
         guard let first = RailDay(iso: feed.notBefore), first <= day else { return nil }
         let started = now()
-        reconcileOnce(at: started)
+        reconcileOnce()
         if let current, started < current.expiresAt { return current.url }
         if let pausedUntil, started < pausedUntil { return nil }
         guard !stations.isEmpty else { return nil }
@@ -114,42 +114,15 @@ public actor RemoteGTFSSchedule {
         }
     }
 
-    /// At the first question: an index of this archive built less than `cacheTimeToLiveSeconds` ago is used again
-    /// (Android's cache lives in memory; the iPhone keeps it in its caches folder for the same time); older files and
-    /// staged leftovers are removed.
-    private func reconcileOnce(at time: Date) {
+    /// At the first question of this launch, every file a previous launch left is removed: as Android's cache, which
+    /// lives in memory, the index lasts `cacheTimeToLiveSeconds` within one launch at most.
+    private func reconcileOnce() {
         guard !reconciled else { return }
         reconciled = true
-        let urls = (try? FileManager.default.contentsOfDirectory(
-            at: directory, includingPropertiesForKeys: [.contentModificationDateKey], options: []
-        )) ?? []
-        var newest: (url: URL, modified: Date)?
-        for url in urls {
-            let name = url.lastPathComponent
-            if name.hasPrefix(".staged-") {
-                try? FileManager.default.removeItem(at: url)
-                continue
-            }
-            guard name.hasPrefix(feed.pack + "-"), url.pathExtension == "sqlite" else { continue }
-            let modified = (try? url.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate) ?? .distantPast
-            let fresh = modified <= time && time.timeIntervalSince(modified) < SharedData.RemoteGtfs.cacheTimeToLiveSeconds
-            if fresh, newest.map({ modified > $0.modified }) ?? true {
-                if let older = newest { try? FileManager.default.removeItem(at: older.url) }
-                newest = (url, modified)
-            } else {
-                try? FileManager.default.removeItem(at: url)
-            }
+        let urls = (try? FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: [], options: [])) ?? []
+        for url in urls where url.lastPathComponent.hasPrefix(".staged-") || url.lastPathComponent.hasPrefix(feed.pack + "-") {
+            try? FileManager.default.removeItem(at: url)
         }
-        guard let newest else { return }
-        let fingerprint = String(newest.url.deletingPathExtension().lastPathComponent.dropFirst(feed.pack.count + 1))
-        guard fingerprint.count == 64,
-              SQLiteGTFSJourneyRepository.validatesDatabase(at: newest.url, inputFingerprint: fingerprint, onlySourceID: feed.pack) else {
-            try? FileManager.default.removeItem(at: newest.url)
-            return
-        }
-        let expiresAt = newest.modified.addingTimeInterval(SharedData.RemoteGtfs.cacheTimeToLiveSeconds)
-        current = (newest.url, expiresAt)
-        published.set(newest.url, until: expiresAt)
     }
 
     /// «european-sleeper-<SHA-256 of the archive>.sqlite».
