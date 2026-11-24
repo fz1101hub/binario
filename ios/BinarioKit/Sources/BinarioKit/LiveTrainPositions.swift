@@ -247,6 +247,12 @@ public struct LiveTrainSelection: Equatable, Sendable {
     public let trains: [LiveTrain]
     public let inBounds: Int
 
+    /// Public so the map can show an empty selection when the area is too wide to read.
+    public init(trains: [LiveTrain], inBounds: Int) {
+        self.trains = trains
+        self.inBounds = inBounds
+    }
+
     public var capped: Bool { inBounds > trains.count }
 }
 
