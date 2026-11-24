@@ -201,6 +201,17 @@ export const zh: LocaleMessages = {
     platformLabel: "站台",
     platformNotGiven: "未注明",
     hint: "“Alexa, ask Binario Trains for the next trains from Milano Centrale to Bologna Centrale”",
-    vehicles: { busTrenitalia: "Trenitalia 巴士", freccialink: "FrecciaLink", italobus: "ItaloBus", bus: "巴士", replacementBus: "替代巴士" },
+    vehicles: { busTrenitalia: "Trenitalia 巴士", freccialink: "FrecciaLink", italobus: "ItaloBus", bus: "巴士", replacementBus: "替代巴士", metro: "地铁", tram: "有轨电车", funicular: "缆索铁路" },
+    cityDeparture: {
+      metro: { one: "{time} 发车的 {train}", other: "{time} 发车的 {train}" },
+      tram: { one: "{time} 发车的 {train}", other: "{time} 发车的 {train}" },
+      funicular: { one: "{time} 发车的 {train}", other: "{time} 发车的 {train}" },
+    },
+    cityDepartures: { one: "按时刻表，下一班是{trains}。", other: "按时刻表，接下来的班次是{trains}。" },
+    walk: { one: "在 {stop} 站上车，距 {station} 步行 {count} 分钟。", other: "在 {stop} 站上车，距 {station} 步行 {count} 分钟。" },
+    routeWalk: { one: "在距出发站步行 {count} 分钟的车站上车。", other: "在距出发站步行 {count} 分钟的车站上车。" },
+    cityProgrammedOnly: "城市线路在 Binario 中只有时刻表。",
+    walkLabel: "步行",
+    walkValue: "{minutes} 分钟",
   },
 };

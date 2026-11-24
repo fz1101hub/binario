@@ -201,6 +201,17 @@ export const my: LocaleMessages = {
     platformLabel: "ပလက်ဖောင်း",
     platformNotGiven: "မဖော်ပြထား",
     hint: "“Alexa, ask Binario Trains for the next trains from Milano Centrale to Bologna Centrale”",
-    vehicles: { busTrenitalia: "Trenitalia ဘတ်စ်ကား", freccialink: "FrecciaLink", italobus: "ItaloBus", bus: "ဘတ်စ်ကား", replacementBus: "အစားထိုး ဘတ်စ်ကား" },
+    vehicles: { busTrenitalia: "Trenitalia ဘတ်စ်ကား", freccialink: "FrecciaLink", italobus: "ItaloBus", bus: "ဘတ်စ်ကား", replacementBus: "အစားထိုး ဘတ်စ်ကား", metro: "မြေအောက်ရထား", tram: "ဓာတ်ရထား", funicular: "ကေဘယ်ရထား" },
+    cityDeparture: {
+      metro: { one: "{time} ထွက် {train}", other: "{time} ထွက် {train}" },
+      tram: { one: "{time} ထွက် {train}", other: "{time} ထွက် {train}" },
+      funicular: { one: "{time} ထွက် {train}", other: "{time} ထွက် {train}" },
+    },
+    cityDepartures: { one: "အချိန်ဇယားအရ နောက်ခရီးစဉ်မှာ {trains} ဖြစ်သည်။", other: "အချိန်ဇယားအရ နောက်ခရီးစဉ်များမှာ {trains} ဖြစ်သည်။" },
+    walk: { one: "{station} မှ လမ်းလျှောက် {count} မိနစ်အကွာရှိ {stop} မှတ်တိုင်တွင် စီးရသည်။", other: "{station} မှ လမ်းလျှောက် {count} မိနစ်အကွာရှိ {stop} မှတ်တိုင်တွင် စီးရသည်။" },
+    routeWalk: { one: "ထွက်ခွာဘူတာမှ လမ်းလျှောက် {count} မိနစ်အကွာရှိ မှတ်တိုင်တွင် စီးရသည်။", other: "ထွက်ခွာဘူတာမှ လမ်းလျှောက် {count} မိနစ်အကွာရှိ မှတ်တိုင်တွင် စီးရသည်။" },
+    cityProgrammedOnly: "မြို့တွင်းလိုင်းများအတွက် Binario တွင် အချိန်ဇယားသာ ရှိသည်။",
+    walkLabel: "လမ်းလျှောက်",
+    walkValue: "{minutes} မိနစ်",
   },
 };

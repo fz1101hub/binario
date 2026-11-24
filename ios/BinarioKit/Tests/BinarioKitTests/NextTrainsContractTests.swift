@@ -4,7 +4,8 @@ import XCTest
 
 /// contracts/shared-rules/v1/next-trains-v1.json: the next trains between two stations of the
 /// programmed timetable index, as the planner reads them (`SQLiteGTFSJourneyRepository.journeys`)
-/// and as the Alexa skill reads them (alexa-companion/server/timetable/nextTrains.test.ts).
+/// and as the Alexa skill reads them (alexa-companion/server/timetable/nextTrains.test.ts), with the
+/// city runs boarded at a city stop a short walk from a station (`urban_walk`).
 final class NextTrainsContractTests: XCTestCase {
     func testEverySharedCaseGivesTheSharedTrains() async throws {
         let contract = try JSONDecoder().decode(
@@ -36,7 +37,8 @@ final class NextTrainsContractTests: XCTestCase {
                         destination: $0.destination,
                         // A train stores no vehicle (`TrainService.vehicle` is a bus's or a city line's only):
                         // the shared cases, like the skill, name it TRAIN.
-                        vehicle: ($0.vehicle ?? TimetableVehicle.train).rawValue
+                        vehicle: ($0.vehicle ?? TimetableVehicle.train).rawValue,
+                        boardingStop: $0.boardingStop
                     )
                 }
                 XCTAssertEqual(trains, item.expected.trains ?? [], item.why)
@@ -106,6 +108,19 @@ final class NextTrainsContractTests: XCTestCase {
         for stop in index.stops {
             sql += "INSERT INTO stop VALUES (\(stop.id), \(stop.pack), \(literal(stop.externalId)), \(literal(stop.name)), NULL, NULL, \(literal(stop.catalogStationId)), \(literal(stop.railwayCode)), NULL);"
         }
+        // The city networks' tables (URBAN_SCHEMA_SQL of tools/build_ios_gtfs_schedule.py), when the index has them.
+        if let urbanStops = index.urbanStops {
+            sql += """
+                CREATE TABLE urban_stop (stop_id INTEGER PRIMARY KEY REFERENCES stop(id), modes TEXT NOT NULL CHECK(modes NOT GLOB '*[^MTF]*'));
+                CREATE TABLE urban_walk (catalog_station_id TEXT NOT NULL, stop_id INTEGER NOT NULL REFERENCES urban_stop(stop_id), minutes INTEGER NOT NULL CHECK(minutes >= 0), PRIMARY KEY(catalog_station_id, stop_id)) WITHOUT ROWID;
+                """
+            for stop in urbanStops {
+                sql += "INSERT INTO urban_stop VALUES (\(stop.stop), \(literal(stop.modes)));"
+            }
+            for walk in index.urbanWalks ?? [] {
+                sql += "INSERT INTO urban_walk VALUES (\(literal(walk.catalogStationId)), \(walk.stop), \(walk.minutes));"
+            }
+        }
         for trip in index.trips {
             sql += "INSERT INTO trip VALUES (\(trip.id), \(trip.pack), \(trip.route), \(trip.service), \(literal(trip.externalId)), NULL, \(literal(trip.shortName)), NULL, NULL);"
             for (offset, call) in trip.calls.enumerated() {
@@ -146,6 +161,20 @@ final class NextTrainsContractTests: XCTestCase {
         let services: [Service]
         let stops: [Stop]
         let trips: [Trip]
+        /// The city stops with their modes (`urban_stop`) and the walks to them (`urban_walk`).
+        let urbanStops: [UrbanStopEntry]?
+        let urbanWalks: [UrbanWalkEntry]?
+    }
+
+    private struct UrbanStopEntry: Decodable {
+        let stop: Int
+        let modes: String
+    }
+
+    private struct UrbanWalkEntry: Decodable {
+        let catalogStationId: String
+        let stop: Int
+        let minutes: Int
     }
 
     private struct Pack: Decodable {
@@ -224,6 +253,8 @@ final class NextTrainsContractTests: XCTestCase {
         let unavailable: String?
     }
 
+    /// A city run boarded a walk from the station also has `boardingStop` (compared) and `walkMinutes`, which the
+    /// skill says and the planner keeps inside the search (`Candidate.walkMinutes`): the times of the cases check it.
     private struct Train: Decodable, Equatable {
         let time: String
         let number: String
@@ -231,18 +262,20 @@ final class NextTrainsContractTests: XCTestCase {
         let operatorName: String
         let destination: String
         let vehicle: String
+        let boardingStop: String?
 
-        init(time: String, number: String, category: String, operatorName: String, destination: String, vehicle: String) {
+        init(time: String, number: String, category: String, operatorName: String, destination: String, vehicle: String, boardingStop: String?) {
             self.time = time
             self.number = number
             self.category = category
             self.operatorName = operatorName
             self.destination = destination
             self.vehicle = vehicle
+            self.boardingStop = boardingStop
         }
 
         enum CodingKeys: String, CodingKey {
-            case time, number, category, operatorName = "operator", destination, vehicle
+            case time, number, category, operatorName = "operator", destination, vehicle, boardingStop
         }
     }
 }

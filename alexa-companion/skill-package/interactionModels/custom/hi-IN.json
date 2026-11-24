@@ -53,7 +53,8 @@
           "samples": [
             "{origin} से {destination} तक की अगली ट्रेनें",
             "{origin} से {destination} तक अगली ट्रेन कब है",
-            "{origin} से {destination} तक की ट्रेनें"
+            "{origin} से {destination} तक की ट्रेनें",
+            "{origin} से {destination} तक के अगले फेरे"
           ]
         },
         {
@@ -184,6 +185,7 @@
             { "name": { "value": "Tivoli" } },
             { "name": { "value": "Roma Ostiense" } },
             { "name": { "value": "Fiumicino Aeroporto" } },
+            { "name": { "value": "Bologna Aeroporto" } },
             { "name": { "value": "Milano Cadorna" } },
             { "name": { "value": "Napoli Afragola" } },
             { "name": { "value": "Reggio Emilia AV Mediopadana" } },

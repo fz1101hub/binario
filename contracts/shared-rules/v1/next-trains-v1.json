@@ -1,21 +1,23 @@
 {
   "schema": "binario-shared-rules-v1",
   "readers": {"iphone": "ios/BinarioKit/Tests/BinarioKitTests/NextTrainsContractTests.swift", "alexa": "alexa-companion/server/timetable/nextTrains.test.ts"},
-  "description": "The next trains between two catalogue stations in the programmed timetable index (schema userVersion 2 of tools/build_ios_gtfs_schedule.py): the iPhone planner's query (SQLiteGTFSJourneyRepository.journeys) and the skill's (server/timetable/repository.ts). Each reader builds `index` into an empty index of that schema with the metadata of the iPhone tests' fixture (source_generated_at 2024-03-30), asks each case from `at`, and compares the first trains of the next 24 hours (at most eight): time in the agency's zone, number, category, operator, searched destination and vehicle, or why there is none. The index is synthetic and independent of the bundled one.",
+  "description": "The next trains between two catalogue stations in the programmed timetable index (schema userVersion 2 of tools/build_ios_gtfs_schedule.py): the iPhone planner's query (SQLiteGTFSJourneyRepository.journeys) and the skill's (server/timetable/repository.ts). Each reader builds `index` into an empty index of that schema with the metadata of the iPhone tests' fixture (source_generated_at 2024-03-30), with the city networks' tables (URBAN_SCHEMA_SQL of the builder) filled from `urbanStops` and `urbanWalks`, asks each case from `at`, and compares the first trains of the next 24 hours (at most eight): time in the agency's zone, number, category, operator, searched destination and vehicle, or why there is none. A run of a city line boarded at a city stop a short walk from the station asked (`urban_walk`, the rule of contracts/shared-data/v1/urban-stops-v1.json) also has `boardingStop`, which both readers compare, and `walkMinutes`, which the skill says and the iPhone keeps inside the search (the run leaves no earlier than the time asked plus the walk, which the times of the cases check on both). The index is synthetic and independent of the bundled one: «Iota Centrale» and «Kappa Aeroporto» with a people mover stand for Bologna Centrale, Bologna Aeroporto and the Marconi Express.",
   "index": {
     "packs": [
       {"id": 1, "sourceId": "trenitalia-gtfs", "attribution": "Trenitalia", "lastServiceDate": 20240403},
       {"id": 2, "sourceId": "ch-otd-gtfs", "attribution": "opentransportdata.swiss", "lastServiceDate": 20240403},
       {"id": 3, "sourceId": "lombardia-trenord-gtfs", "attribution": "Trenord", "lastServiceDate": 20240403},
       {"id": 4, "sourceId": "toscana-tft-gtfs", "attribution": "TFT", "lastServiceDate": 20240330},
-      {"id": 5, "sourceId": "fixture-lisbon-gtfs", "attribution": "Fixture Lisbon", "lastServiceDate": 20240403}
+      {"id": 5, "sourceId": "fixture-lisbon-gtfs", "attribution": "Fixture Lisbon", "lastServiceDate": 20240403},
+      {"id": 6, "sourceId": "marconi-express-gtfs", "attribution": "Fixture people mover", "lastServiceDate": 20240403}
     ],
     "agencies": [
       {"id": 1, "pack": 1, "externalId": "TI", "name": "TRENITALIA", "timezone": "Europe/Rome"},
       {"id": 2, "pack": 2, "externalId": "SBB", "name": "SBB CFF FFS", "timezone": "Europe/Zurich"},
       {"id": 3, "pack": 3, "externalId": "TN", "name": "Trenord S.r.l.", "timezone": "Europe/Rome"},
       {"id": 4, "pack": 4, "externalId": "TFT", "name": "TFT", "timezone": "Europe/Rome"},
-      {"id": 5, "pack": 5, "externalId": "LR", "name": "Lisbon Rail", "timezone": "Europe/Lisbon"}
+      {"id": 5, "pack": 5, "externalId": "LR", "name": "Lisbon Rail", "timezone": "Europe/Lisbon"},
+      {"id": 6, "pack": 6, "externalId": "MEX", "name": "Marconi Express", "timezone": "Europe/Rome"}
     ],
     "routes": [
       {"id": 1, "pack": 1, "agency": 1, "externalId": "FR", "shortName": "0083_FR", "longName": null, "routeType": 2},
@@ -26,7 +28,8 @@
       {"id": 6, "pack": 3, "agency": 3, "externalId": "S11-BUS", "shortName": "S11", "longName": null, "routeType": 3},
       {"id": 7, "pack": 4, "agency": 4, "externalId": "R", "shortName": "R", "longName": null, "routeType": 2},
       {"id": 8, "pack": 5, "agency": 5, "externalId": "IR", "shortName": null, "longName": "Interregional", "routeType": 2},
-      {"id": 9, "pack": 1, "agency": 1, "externalId": "EC", "shortName": "0083_EC", "longName": null, "routeType": 2}
+      {"id": 9, "pack": 1, "agency": 1, "externalId": "EC", "shortName": "0083_EC", "longName": null, "routeType": 2},
+      {"id": 10, "pack": 6, "agency": 6, "externalId": "MEX", "shortName": "MEX", "longName": "Marconi Express", "routeType": 12}
     ],
     "services": [
       {"id": 1, "pack": 1, "externalId": "daily", "startDate": 20240328, "dayCount": 7, "activeDays": "7F"},
@@ -35,7 +38,9 @@
       {"id": 4, "pack": 2, "externalId": "daily", "startDate": 20240328, "dayCount": 7, "activeDays": "7F"},
       {"id": 5, "pack": 3, "externalId": "daily", "startDate": 20240328, "dayCount": 7, "activeDays": "7F"},
       {"id": 6, "pack": 4, "externalId": "daily", "startDate": 20240324, "dayCount": 7, "activeDays": "7F"},
-      {"id": 7, "pack": 5, "externalId": "daily", "startDate": 20240328, "dayCount": 7, "activeDays": "7F"}
+      {"id": 7, "pack": 5, "externalId": "daily", "startDate": 20240328, "dayCount": 7, "activeDays": "7F"},
+      {"id": 8, "pack": 6, "externalId": "daily", "startDate": 20240328, "dayCount": 7, "activeDays": "7F"},
+      {"id": 9, "pack": 6, "externalId": "saturday", "startDate": 20240328, "dayCount": 7, "activeDays": "04"}
     ],
     "stops": [
       {"id": 1, "pack": 1, "externalId": "A", "name": "Alfa Centrale", "catalogStationId": "S90001", "railwayCode": "S90001"},
@@ -50,7 +55,21 @@
       {"id": 10, "pack": 4, "externalId": "TF-Z", "name": "Zeta", "catalogStationId": "S90006", "railwayCode": "S90006"},
       {"id": 11, "pack": 1, "externalId": "A-BUS", "name": "Alfa Centrale Piazzale", "catalogStationId": "S90001", "railwayCode": null},
       {"id": 12, "pack": 5, "externalId": "ETA", "name": "Eta", "catalogStationId": "S90007", "railwayCode": null},
-      {"id": 13, "pack": 5, "externalId": "THETA", "name": "Theta", "catalogStationId": "S90008", "railwayCode": null}
+      {"id": 13, "pack": 5, "externalId": "THETA", "name": "Theta", "catalogStationId": "S90008", "railwayCode": null},
+      {"id": 14, "pack": 1, "externalId": "I", "name": "Iota Centrale", "catalogStationId": "S90009", "railwayCode": "S90009"},
+      {"id": 15, "pack": 6, "externalId": "IFS", "name": "Iota Centrale FS", "catalogStationId": null, "railwayCode": null},
+      {"id": 16, "pack": 6, "externalId": "LAZ", "name": "Lazzaretto", "catalogStationId": null, "railwayCode": null},
+      {"id": 17, "pack": 6, "externalId": "KAP", "name": "Kappa Aeroporto", "catalogStationId": null, "railwayCode": null}
+    ],
+    "urbanStops": [
+      {"stop": 15, "modes": "M"},
+      {"stop": 16, "modes": "M"},
+      {"stop": 17, "modes": "M"}
+    ],
+    "urbanWalks": [
+      {"catalogStationId": "S90009", "stop": 15, "minutes": 4},
+      {"catalogStationId": "S90009", "stop": 16, "minutes": 9},
+      {"catalogStationId": "NC90010", "stop": 17, "minutes": 5}
     ],
     "trips": [
       {"id": 1, "pack": 1, "route": 1, "service": 1, "externalId": "T1", "shortName": "9501", "calls": [[1, 28800, 28800], [2, 32400, 32400], [3, 36000, 36000]]},
@@ -72,7 +91,12 @@
       {"id": 17, "pack": 5, "route": 8, "service": 7, "externalId": "T17", "shortName": "801", "calls": [[12, 25200, 25200], [13, 28800, 28800]]},
       {"id": 18, "pack": 1, "route": 2, "service": 1, "externalId": "T18", "shortName": "2109", "calls": [[1, 43200, 43200], [3, 46800, 46800]]},
       {"id": 19, "pack": 1, "route": 2, "service": 1, "externalId": "T19", "shortName": "2113", "calls": [[1, 50400, 50400], [3, 54000, 54000]]},
-      {"id": 20, "pack": 1, "route": 2, "service": 1, "externalId": "T20", "shortName": "2115", "calls": [[1, 57600, 57600], [3, 61200, 61200]]}
+      {"id": 20, "pack": 1, "route": 2, "service": 1, "externalId": "T20", "shortName": "2115", "calls": [[1, 57600, 57600], [3, 61200, 61200]]},
+      {"id": 21, "pack": 6, "route": 10, "service": 8, "externalId": "MEX-1", "shortName": null, "calls": [[15, 35880, 35880], [16, 36120, 36120], [17, 36300, 36300]]},
+      {"id": 22, "pack": 6, "route": 10, "service": 8, "externalId": "MEX-2", "shortName": null, "calls": [[15, 36360, 36360], [17, 36780, 36780]]},
+      {"id": 23, "pack": 6, "route": 10, "service": 8, "externalId": "MEX-3", "shortName": null, "calls": [[15, 37200, 37200], [17, 37620, 37620]]},
+      {"id": 24, "pack": 6, "route": 10, "service": 9, "externalId": "MEX-SAT", "shortName": null, "calls": [[15, 36600, 36600], [17, 37020, 37020]]},
+      {"id": 25, "pack": 6, "route": 10, "service": 8, "externalId": "MEX-4", "shortName": null, "calls": [[17, 37800, 37800], [15, 38220, 38220]]}
     ]
   },
   "cases": [
@@ -158,6 +182,41 @@
       "origin": {"id": "S90002", "name": "Beta", "railwayCode": "S90002"},
       "destination": {"id": "S90001", "name": "Alfa Centrale", "railwayCode": "S90001"},
       "at": "2024-03-29T07:00:00+01:00",
+      "expected": {"unavailable": "noRoute"}
+    },
+    {
+      "why": "a station a short walk from a city line is served by it (Bologna Centrale to Bologna Aeroporto by the Marconi Express): the people mover's line, never a number, boarded at the stop 4 minutes on foot, each run once where the walk is shortest (not at Lazzaretto, 9 minutes away), to a station no railway serves; the Saturday-only run is left out on a Monday",
+      "origin": {"id": "S90009", "name": "Iota Centrale", "railwayCode": "S90009"},
+      "destination": {"id": "NC90010", "name": "Kappa Aeroporto", "railwayCode": null},
+      "at": "2024-04-01T09:50:00+02:00",
+      "expected": {"trains": [{"time": "09:58", "number": "MEX", "category": "MEX", "operator": "Marconi Express", "destination": "Kappa Aeroporto", "vehicle": "METRO", "boardingStop": "Iota Centrale FS", "walkMinutes": 4}, {"time": "10:06", "number": "MEX", "category": "MEX", "operator": "Marconi Express", "destination": "Kappa Aeroporto", "vehicle": "METRO", "boardingStop": "Iota Centrale FS", "walkMinutes": 4}, {"time": "10:20", "number": "MEX", "category": "MEX", "operator": "Marconi Express", "destination": "Kappa Aeroporto", "vehicle": "METRO", "boardingStop": "Iota Centrale FS", "walkMinutes": 4}]}
+    },
+    {
+      "why": "the walk comes first: from 10:03 the 10:06 at the stop 4 minutes away cannot be reached, so after the 10:20 the next is tomorrow's 09:58, within the 24 hours, still boarded at the nearer stop",
+      "origin": {"id": "S90009", "name": "Iota Centrale", "railwayCode": "S90009"},
+      "destination": {"id": "NC90010", "name": "Kappa Aeroporto", "railwayCode": null},
+      "at": "2024-04-01T10:03:00+02:00",
+      "expected": {"trains": [{"time": "10:20", "number": "MEX", "category": "MEX", "operator": "Marconi Express", "destination": "Kappa Aeroporto", "vehicle": "METRO", "boardingStop": "Iota Centrale FS", "walkMinutes": 4}, {"time": "09:58", "number": "MEX", "category": "MEX", "operator": "Marconi Express", "destination": "Kappa Aeroporto", "vehicle": "METRO", "boardingStop": "Iota Centrale FS", "walkMinutes": 4}]}
+    },
+    {
+      "why": "on a Saturday the Saturday-only run is read too; 24 hours later is 10:50 of Sunday, summer time, so Sunday's morning runs follow",
+      "origin": {"id": "S90009", "name": "Iota Centrale", "railwayCode": "S90009"},
+      "destination": {"id": "NC90010", "name": "Kappa Aeroporto", "railwayCode": null},
+      "at": "2024-03-30T09:50:00+01:00",
+      "expected": {"trains": [{"time": "09:58", "number": "MEX", "category": "MEX", "operator": "Marconi Express", "destination": "Kappa Aeroporto", "vehicle": "METRO", "boardingStop": "Iota Centrale FS", "walkMinutes": 4}, {"time": "10:06", "number": "MEX", "category": "MEX", "operator": "Marconi Express", "destination": "Kappa Aeroporto", "vehicle": "METRO", "boardingStop": "Iota Centrale FS", "walkMinutes": 4}, {"time": "10:10", "number": "MEX", "category": "MEX", "operator": "Marconi Express", "destination": "Kappa Aeroporto", "vehicle": "METRO", "boardingStop": "Iota Centrale FS", "walkMinutes": 4}, {"time": "10:20", "number": "MEX", "category": "MEX", "operator": "Marconi Express", "destination": "Kappa Aeroporto", "vehicle": "METRO", "boardingStop": "Iota Centrale FS", "walkMinutes": 4}, {"time": "09:58", "number": "MEX", "category": "MEX", "operator": "Marconi Express", "destination": "Kappa Aeroporto", "vehicle": "METRO", "boardingStop": "Iota Centrale FS", "walkMinutes": 4}, {"time": "10:06", "number": "MEX", "category": "MEX", "operator": "Marconi Express", "destination": "Kappa Aeroporto", "vehicle": "METRO", "boardingStop": "Iota Centrale FS", "walkMinutes": 4}, {"time": "10:20", "number": "MEX", "category": "MEX", "operator": "Marconi Express", "destination": "Kappa Aeroporto", "vehicle": "METRO", "boardingStop": "Iota Centrale FS", "walkMinutes": 4}]}
+    },
+    {
+      "why": "the way back: boarded at the airport's stop 5 minutes on foot, to the stop of the station",
+      "origin": {"id": "NC90010", "name": "Kappa Aeroporto", "railwayCode": null},
+      "destination": {"id": "S90009", "name": "Iota Centrale", "railwayCode": "S90009"},
+      "at": "2024-04-01T10:00:00+02:00",
+      "expected": {"trains": [{"time": "10:30", "number": "MEX", "category": "MEX", "operator": "Marconi Express", "destination": "Iota Centrale FS", "vehicle": "METRO", "boardingStop": "Kappa Aeroporto", "walkMinutes": 5}]}
+    },
+    {
+      "why": "a city stop a walk away joins no railway station its line does not reach",
+      "origin": {"id": "NC90010", "name": "Kappa Aeroporto", "railwayCode": null},
+      "destination": {"id": "S90002", "name": "Beta", "railwayCode": "S90002"},
+      "at": "2024-04-01T10:00:00+02:00",
       "expected": {"unavailable": "noRoute"}
     }
   ]

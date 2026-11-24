@@ -54,7 +54,7 @@ import {
   stopFromDelays,
 } from "../punctuality/testFixtures";
 import { TimetableIndex } from "../timetable/repository";
-import { skillTimetableRows, writeIndex } from "../timetable/testIndex";
+import { BOLOGNA_AEROPORTO, BOLOGNA_CENTRALE, cityTimetableRows, skillTimetableRows, writeIndex } from "../timetable/testIndex";
 import { createAlexaSkill, HANDLED_INTENTS } from "./alexa";
 import { issueVoiceAccessToken } from "./crypto";
 
@@ -1459,5 +1459,122 @@ describe("programmed timetable", () => {
     } finally {
       for (const spy of spies) spy.mockRestore();
     }
+  });
+});
+
+describe("city runs a short walk from the station", () => {
+  type SkillResponse = Awaited<ReturnType<ReturnType<typeof createAlexaSkill>["invoke"]>>;
+  const ROUTES = [{ id: 1, name: "Aeroporto", origin: "Bologna Centrale", destination: "Bologna Aeroporto", isPinned: true }];
+  const card = (response: SkillResponse) => (response.response.card as { content?: string } | undefined)?.content ?? "";
+  const screenOf = (response: SkillResponse) =>
+    (response.response.directives?.find(item => item.type === "Alexa.Presentation.APL.RenderDocument") as
+      | { datasources: { binario: Record<string, unknown> & { trains: Array<Record<string, string>>; quality: Record<string, string> } } }
+      | undefined)?.datasources.binario;
+  // Tuesday 10 November 2026 at 09:00 in Rome: the 9:02 run cannot be reached on foot (4 minutes to its stop).
+  const MEX_IT =
+    "Secondo l'orario programmato le prossime corse sono la Metro MEX delle 9:09, la Metro MEX delle 9:16 e la Metro MEX delle 9:23.";
+  const catalogue = () =>
+    parseStationCatalog(
+      JSON.stringify({
+        stations: [
+          { id: BOLOGNA_CENTRALE, name: "Bologna Centrale", railwayCode: BOLOGNA_CENTRALE, aliases: ["Bologne"] },
+          { id: BOLOGNA_AEROPORTO, name: "Bologna Aeroporto", railwayCode: null, aliases: ["Airport"] },
+          { id: "S05054", name: "Imola", railwayCode: "S05054", aliases: [] },
+        ],
+      })
+    );
+
+  let scratch: string;
+  let index: TimetableIndex;
+  beforeAll(() => {
+    scratch = mkdtempSync(path.join(tmpdir(), "binario-skill-city-"));
+    writeIndex(path.join(scratch, "index.sqlite"), cityTimetableRows());
+    index = new TimetableIndex(path.join(scratch, "index.sqlite"));
+  });
+  afterAll(() => {
+    index.close();
+    rmSync(scratch, { recursive: true, force: true });
+  });
+  afterEach(() => timetable.timetableIndex.mockResolvedValue(null));
+
+  function withCityTimetable() {
+    timetable.timetableIndex.mockResolvedValue(index);
+    railData.punctualityStats.mockResolvedValue(parsePunctualityStats(networkDocument()));
+    railData.railStationIndex.mockResolvedValue(catalogue());
+  }
+
+  function withApl(request: Envelope): Envelope {
+    request.context.System.device!.supportedInterfaces["Alexa.Presentation.APL"] = { runtime: { maxVersion: "1.8" } };
+    return request;
+  }
+
+  it("answers «prossimi treni da Bologna Centrale a Bologna Aeroporto» with the people mover's runs and the walk to its stop", async () => {
+    withCityTimetable();
+    const response = await createAlexaSkill().invoke(intent("StationTrainsIntent", "it-IT", { origin: "bologna centrale", destination: "bologna aeroporto" }));
+    expect(card(response)).toBe(
+      `Da Bologna Centrale a Bologna Aeroporto: dati non disponibili in tempo reale. ${MEX_IT} ` +
+        "Si sale alla fermata Bologna Centrale FS, a 4 minuti a piedi da Bologna Centrale. Per le corse urbane Binario ha solo l'orario programmato."
+    );
+    expect(speechText(response)).toContain("la Metro MEX delle 9:09");
+    // Never a platform or a live state for a city line.
+    expect(card(response)).not.toMatch(/binario non è indicato|treni è nell'app/);
+    const english = card(await createAlexaSkill().invoke(intent("StationTrainsIntent", "en-US", { origin: "bologna centrale", destination: "airport" })));
+    expect(english).toBe(
+      "From Bologna Centrale to Bologna Aeroporto: real-time data is not available. According to the timetable, the next departures are " +
+        "the Metro MEX at 9:09 AM, the Metro MEX at 9:16 AM, and the Metro MEX at 9:23 AM. Board at the Bologna Centrale FS stop, " +
+        "a 4-minute walk from Bologna Centrale. For city lines, Binario only has the timetable. Times are Italian time."
+    );
+  });
+
+  it("says the way back from the airport's stop, and the trains of a station as before", async () => {
+    withCityTimetable();
+    const back = card(await createAlexaSkill().invoke(intent("StationTrainsIntent", "it-IT", { origin: "bologna aeroporto", destination: "bologna centrale" })));
+    expect(back).toBe(
+      "Da Bologna Aeroporto a Bologna Centrale: dati non disponibili in tempo reale. Secondo l'orario programmato la prossima corsa è la Metro MEX delle 9:30. " +
+        "Si sale alla fermata Bologna Aeroporto, a 5 minuti a piedi da Bologna Aeroporto. Per le corse urbane Binario ha solo l'orario programmato."
+    );
+    const train = card(await createAlexaSkill().invoke(intent("StationTrainsIntent", "it-IT", { origin: "bologna centrale", destination: "imola" })));
+    expect(train).toBe(
+      "Da Bologna Centrale a Imola: dati non disponibili in tempo reale. Secondo l'orario programmato la prossima partenza è il REG 2181 delle 9:10. " +
+        "Il binario non è indicato e lo stato in tempo reale dei treni è nell'app Binario."
+    );
+  });
+
+  it("speaks the walk in every skill locale", async () => {
+    withCityTimetable();
+    for (const locale of LOCALES) {
+      const t = messagesForLocale(locale).timetable;
+      const text = card(await createAlexaSkill().invoke(intent("StationTrainsIntent", locale, { origin: "bologna centrale", destination: "bologna aeroporto" })));
+      expect(text, locale).toContain("Bologna Centrale FS");
+      expect(text, locale).toContain(t.cityProgrammedOnly);
+      expect(text, locale).not.toContain(t.platformAndLive);
+      expect(text, locale).not.toMatch(/\{[a-z]+\}/i);
+    }
+  });
+
+  it("says a saved route's walk without naming its stations or the stop", async () => {
+    withCityTimetable();
+    vi.mocked(getAlexaLinkStatus).mockResolvedValue({ userId: 7, credentialVersion: 3, revokedAt: null } as Awaited<ReturnType<typeof getAlexaLinkStatus>>);
+    vi.mocked(listPersonalRoutesForAlexa).mockResolvedValue(ROUTES as Awaited<ReturnType<typeof listPersonalRoutesForAlexa>>);
+    const response = await createAlexaSkill().invoke(
+      withApl(withAccessToken(intent("NextTrainsIntent", "it-IT", { routeName: "aeroporto" }), await issueVoiceAccessToken(7, 3)))
+    );
+    expect(card(response)).toBe(
+      `Per la tratta Aeroporto: dati non disponibili in tempo reale. ${MEX_IT} ` +
+        "Si sale a una fermata a 4 minuti a piedi dalla stazione di partenza. Per le corse urbane Binario ha solo l'orario programmato."
+    );
+    // Echo Show: the same runs, the walk where a train shows its platform.
+    const screen = screenOf(response);
+    // The answer names neither the route's stations nor the stop (the screen's hints are the skill's own examples).
+    expect(JSON.stringify([response.response.outputSpeech, response.response.card, screen?.hero, screen?.message, screen?.trains])).not.toMatch(
+      /Bologna|Lazzaretto/
+    );
+    expect(screen).toMatchObject({ screen: "departures", hero: "Aeroporto", quality: { state: "programmed", source: "Fonte: orario programmato di TPER (Marconi Express)" } });
+    expect(screen?.trains.map(row => `${row.time} ${row.train} ${row.label} ${row.value}`)).toEqual([
+      "9:09 Metro MEX A piedi 4 min",
+      "9:16 Metro MEX A piedi 4 min",
+      "9:23 Metro MEX A piedi 4 min",
+    ]);
+    expect(screen?.trains[0].accessibilityLabel).toBe("9:09, Metro MEX, A piedi: 4 min");
   });
 });

@@ -19,6 +19,8 @@ export type TimetableRun = {
   arrival: number | null;
   originName: string;
   destinationName: string;
+  /** A run of a city network: one pack's own line, never a copy of another pack's train. */
+  urban?: boolean;
 };
 
 /** National, Italian regional, foreign; with `border` (no national pack serves an end) foreign, Italian regional, national. */
@@ -51,9 +53,11 @@ export function coreNumber(number: string): string | null {
 
 /**
  * Two services of different packs at the same minutes are one run when their numbers match, when
- * the operator is the same, or when one pack republishes partner operators' trains.
+ * the operator is the same, or when one pack republishes partner operators' trains. A city run (its
+ * line is no train number) is never the same run as another pack's service.
  */
 export function mayBeSameRun(first: TimetableRun, second: TimetableRun): boolean {
+  if (first.urban || second.urban) return false;
   const number = coreNumber(first.number);
   if (number !== null && number === coreNumber(second.number)) return true;
   const firstOperator = first.operatorName.trim().toLowerCase();

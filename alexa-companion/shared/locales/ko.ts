@@ -201,6 +201,17 @@ export const ko: LocaleMessages = {
     platformLabel: "승강장",
     platformNotGiven: "표시 없음",
     hint: "“Alexa, ask Binario Trains for the next trains from Milano Centrale to Bologna Centrale”",
-    vehicles: { busTrenitalia: "Trenitalia 버스", freccialink: "FrecciaLink", italobus: "ItaloBus", bus: "버스", replacementBus: "대체 버스" },
+    vehicles: { busTrenitalia: "Trenitalia 버스", freccialink: "FrecciaLink", italobus: "ItaloBus", bus: "버스", replacementBus: "대체 버스", metro: "지하철", tram: "트램", funicular: "푸니쿨라" },
+    cityDeparture: {
+      metro: { one: "{time} 출발 {train}", other: "{time} 출발 {train}" },
+      tram: { one: "{time} 출발 {train}", other: "{time} 출발 {train}" },
+      funicular: { one: "{time} 출발 {train}", other: "{time} 출발 {train}" },
+    },
+    cityDepartures: { one: "시간표에 따르면 다음 운행편은 {trains}입니다.", other: "시간표에 따르면 다음 운행편은 {trains}입니다." },
+    walk: { one: "{station}에서 걸어서 {count}분 거리인 {stop} 정류장에서 탑니다.", other: "{station}에서 걸어서 {count}분 거리인 {stop} 정류장에서 탑니다." },
+    routeWalk: { one: "출발역에서 걸어서 {count}분 거리인 정류장에서 탑니다.", other: "출발역에서 걸어서 {count}분 거리인 정류장에서 탑니다." },
+    cityProgrammedOnly: "도시 노선은 Binario에 시간표만 있습니다.",
+    walkLabel: "도보",
+    walkValue: "{minutes}분",
   },
 };

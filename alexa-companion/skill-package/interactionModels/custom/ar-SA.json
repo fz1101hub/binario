@@ -54,7 +54,8 @@
             "القطارات التالية من {origin} إلى {destination}",
             "ما هي القطارات التالية من {origin} إلى {destination}",
             "متى يغادر القطار التالي من {origin} إلى {destination}",
-            "قطارات من {origin} إلى {destination}"
+            "قطارات من {origin} إلى {destination}",
+            "الرحلات التالية من {origin} إلى {destination}"
           ]
         },
         {
@@ -185,6 +186,7 @@
             { "name": { "value": "Tivoli" } },
             { "name": { "value": "Roma Ostiense" } },
             { "name": { "value": "Fiumicino Aeroporto" } },
+            { "name": { "value": "Bologna Aeroporto" } },
             { "name": { "value": "Milano Cadorna" } },
             { "name": { "value": "Napoli Afragola" } },
             { "name": { "value": "Reggio Emilia AV Mediopadana" } },

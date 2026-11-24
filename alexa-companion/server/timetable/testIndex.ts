@@ -19,10 +19,24 @@ export type IndexRows = {
   stops: Array<{ id: number; pack: number; externalId: string; name: string; catalogStationId: string | null; railwayCode: string | null }>;
   /** `calls`: [stop, arrival, departure, pickupType = 0, dropOffType = 0] in stop order. */
   trips: Array<{ id: number; pack: number; route: number; service: number; externalId: string; shortName: string | null; headsign?: string | null; calls: number[][] }>;
+  /** The city networks' stops with their modes (`urban_stop`): with them the index has the city tables. */
+  urbanStops?: Array<{ stop: number; modes: string }>;
+  /** The catalogue stations a short walk from a city stop, with the minutes of the walk (`urban_walk`). */
+  urbanWalks?: Array<{ catalogStationId: string; stop: number; minutes: number }>;
 };
 
 export type ContractStation = { id: string; name: string; railwayCode: string | null };
-export type ContractTrain = { time: string; number: string; category: string; operator: string; destination: string; vehicle: string };
+export type ContractTrain = {
+  time: string;
+  number: string;
+  category: string;
+  operator: string;
+  destination: string;
+  vehicle: string;
+  /** A city run boarded a walk from the station: the stop and the minutes of the walk. */
+  boardingStop?: string;
+  walkMinutes?: number;
+};
 export type NextTrainsContract = {
   index: IndexRows;
   cases: Array<{
@@ -56,11 +70,18 @@ CREATE INDEX idx_stop_catalog_station ON stop(catalog_station_id) WHERE catalog_
 CREATE INDEX idx_stop_time_stop_departure ON stop_time(stop_id, departure_seconds, trip_id);
 `;
 
+/** The city networks' tables (URBAN_SCHEMA_SQL of tools/build_ios_gtfs_schedule.py). */
+const URBAN_SCHEMA = `
+CREATE TABLE urban_stop (stop_id INTEGER PRIMARY KEY REFERENCES stop(id), modes TEXT NOT NULL CHECK(modes NOT GLOB '*[^MTF]*'));
+CREATE TABLE urban_walk (catalog_station_id TEXT NOT NULL, stop_id INTEGER NOT NULL REFERENCES urban_stop(stop_id), minutes INTEGER NOT NULL CHECK(minutes >= 0), PRIMARY KEY(catalog_station_id, stop_id)) WITHOUT ROWID;
+`;
+
 /** Writes the index of `rows` to `file` (a new file) and closes it. */
 export function writeIndex(file: string, rows: IndexRows, fingerprint = "a".repeat(64)) {
   const database = new DatabaseSync(file);
   try {
     database.exec(SCHEMA);
+    if (rows.urbanStops) database.exec(URBAN_SCHEMA);
     database.exec(`PRAGMA application_id = ${APPLICATION_ID}; PRAGMA user_version = ${USER_VERSION};`);
     const metadata = database.prepare("INSERT INTO metadata VALUES (?, ?)");
     for (const [key, value] of [
@@ -85,6 +106,8 @@ export function writeIndex(file: string, rows: IndexRows, fingerprint = "a".repe
         insert("INSERT INTO stop_time VALUES (?, ?, ?, ?, ?, ?, ?)", [trip.id, index + 1, stop, arrival, departure, pickup, dropOff])
       );
     }
+    for (const stop of rows.urbanStops ?? []) insert("INSERT INTO urban_stop VALUES (?, ?)", [stop.stop, stop.modes]);
+    for (const walk of rows.urbanWalks ?? []) insert("INSERT INTO urban_walk VALUES (?, ?, ?)", [walk.catalogStationId, walk.stop, walk.minutes]);
   } finally {
     database.close();
   }
@@ -124,6 +147,72 @@ export function skillTimetableRows(): IndexRows {
       trip(3, 3, "7001", [call(1, H(9, 30)), call(3, H(10, 30))]),
       trip(4, 1, "2165", [call(1, H(10, 12)), call(3, H(11))]),
       trip(5, 2, "9558", [call(4, H(6)), call(5, H(7, 40)), call(1, H(9, 10))]),
+    ],
+  };
+}
+
+/** Bologna Centrale and Bologna Aeroporto as the catalogue names them (app/src/main/assets/stations/curated_it_rail_stations.json). */
+export const BOLOGNA_CENTRALE = "S05043";
+export const BOLOGNA_AEROPORTO = "NC000683";
+
+/**
+ * The skill tests' city network: the Marconi Express (a people mover, route type 12) from Bologna
+ * Centrale FS (4 minutes on foot from Bologna Centrale) by Lazzaretto (9 minutes from it) to
+ * Bologna Aeroporto (5 minutes from the catalogue's Bologna Aeroporto, which no railway serves),
+ * every 7 minutes from 9:02, and back at 9:30; a Trenitalia train leaves Bologna Centrale for
+ * Imola. Every day of November and December 2026, as `skillTimetableRows`.
+ */
+export function cityTimetableRows(): IndexRows {
+  const mex = (id: number, minute: number) => ({
+    id,
+    pack: 2,
+    route: 2,
+    service: 2,
+    externalId: `MEX-${id}`,
+    shortName: null,
+    calls: [call(3, H(9, minute)), call(4, H(9, minute + 4)), call(5, H(9, minute + 7))],
+  });
+  return {
+    packs: [
+      { id: 1, sourceId: "trenitalia-gtfs", attribution: "Trenitalia", lastServiceDate: 20261231 },
+      { id: 2, sourceId: "marconi-express-gtfs", attribution: "TPER (Marconi Express)", lastServiceDate: 20261231 },
+    ],
+    agencies: [
+      { id: 1, pack: 1, externalId: "TI", name: "TRENITALIA", timezone: "Europe/Rome" },
+      { id: 2, pack: 2, externalId: "MEX", name: "Marconi Express", timezone: "Europe/Rome" },
+    ],
+    routes: [
+      { id: 1, pack: 1, agency: 1, externalId: "REG", shortName: "0083_REG", longName: null, routeType: 2 },
+      { id: 2, pack: 2, agency: 2, externalId: "MEX", shortName: "MEX", longName: "Marconi Express", routeType: 12 },
+    ],
+    services: [
+      { id: 1, pack: 1, externalId: "daily", startDate: 20261101, dayCount: 61, activeDays: "FFFFFFFFFFFFFF1F" },
+      { id: 2, pack: 2, externalId: "daily", startDate: 20261101, dayCount: 61, activeDays: "FFFFFFFFFFFFFF1F" },
+    ],
+    stops: [
+      { id: 1, pack: 1, externalId: "BOLOGNA", name: "Bologna Centrale", catalogStationId: BOLOGNA_CENTRALE, railwayCode: BOLOGNA_CENTRALE },
+      { id: 2, pack: 1, externalId: "IMOLA", name: "Imola", catalogStationId: "S05054", railwayCode: "S05054" },
+      { id: 3, pack: 2, externalId: "BFS", name: "Bologna Centrale FS", catalogStationId: null, railwayCode: null },
+      { id: 4, pack: 2, externalId: "LAZ", name: "Lazzaretto", catalogStationId: null, railwayCode: null },
+      { id: 5, pack: 2, externalId: "BLQ", name: "Bologna Aeroporto", catalogStationId: null, railwayCode: null },
+    ],
+    urbanStops: [
+      { stop: 3, modes: "M" },
+      { stop: 4, modes: "M" },
+      { stop: 5, modes: "M" },
+    ],
+    urbanWalks: [
+      { catalogStationId: BOLOGNA_CENTRALE, stop: 3, minutes: 4 },
+      { catalogStationId: BOLOGNA_CENTRALE, stop: 4, minutes: 9 },
+      { catalogStationId: BOLOGNA_AEROPORTO, stop: 5, minutes: 5 },
+    ],
+    trips: [
+      { id: 1, pack: 1, route: 1, service: 1, externalId: "T1", shortName: "2181", calls: [call(1, H(9, 10)), call(2, H(9, 40))] },
+      mex(2, 2),
+      mex(3, 9),
+      mex(4, 16),
+      mex(5, 23),
+      { id: 6, pack: 2, route: 2, service: 2, externalId: "MEX-BACK", shortName: null, calls: [call(5, H(9, 30)), call(4, H(9, 33)), call(3, H(9, 37))] },
     ],
   };
 }

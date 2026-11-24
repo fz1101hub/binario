@@ -201,6 +201,17 @@ export const id: LocaleMessages = {
     platformLabel: "Peron",
     platformNotGiven: "tidak disebutkan",
     hint: "“Alexa, ask Binario Trains for the next trains from Milano Centrale to Bologna Centrale”",
-    vehicles: { busTrenitalia: "Bus Trenitalia", freccialink: "FrecciaLink", italobus: "ItaloBus", bus: "Bus", replacementBus: "Bus pengganti" },
+    vehicles: { busTrenitalia: "Bus Trenitalia", freccialink: "FrecciaLink", italobus: "ItaloBus", bus: "Bus", replacementBus: "Bus pengganti", metro: "Metro", tram: "Trem", funicular: "Funikular" },
+    cityDeparture: {
+      metro: { one: "{train} pukul {time}", other: "{train} pukul {time}" },
+      tram: { one: "{train} pukul {time}", other: "{train} pukul {time}" },
+      funicular: { one: "{train} pukul {time}", other: "{train} pukul {time}" },
+    },
+    cityDepartures: { one: "Menurut jadwal, perjalanan berikutnya adalah {trains}.", other: "Menurut jadwal, perjalanan berikutnya adalah {trains}." },
+    walk: { one: "Naik di halte {stop}, {count} menit berjalan kaki dari {station}.", other: "Naik di halte {stop}, {count} menit berjalan kaki dari {station}." },
+    routeWalk: { one: "Naik di halte yang berjarak {count} menit berjalan kaki dari stasiun keberangkatan.", other: "Naik di halte yang berjarak {count} menit berjalan kaki dari stasiun keberangkatan." },
+    cityProgrammedOnly: "Untuk jalur kota, Binario hanya memiliki jadwal.",
+    walkLabel: "Jalan kaki",
+    walkValue: "{minutes} mnt",
   },
 };

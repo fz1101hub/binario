@@ -7,7 +7,8 @@ import { nextTrainsContract, writeIndex } from "./testIndex";
 
 /**
  * contracts/shared-rules/v1/next-trains-v1.json: the next trains between two stations in the
- * programmed timetable index, as the iPhone planner reads them (NextTrainsContractTests.swift).
+ * programmed timetable index, as the iPhone planner reads them (NextTrainsContractTests.swift),
+ * with the city runs boarded a short walk from a station (`urban_walk`).
  */
 const contract = nextTrainsContract();
 let scratch: string;
@@ -42,7 +43,8 @@ describe("next trains, shared with the iPhone planner", () => {
         operator: service.operatorName,
         destination: service.destination,
         vehicle: service.vehicle,
+        ...(service.walkMinutes > 0 ? { boardingStop: service.boardingStop, walkMinutes: service.walkMinutes } : {}),
       }))
-    ).toEqual(item.expected.trains);
+    ).toStrictEqual(item.expected.trains);
   });
 });

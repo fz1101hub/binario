@@ -201,6 +201,17 @@ export const ar: LocaleMessages = {
     platformLabel: "الرصيف",
     platformNotGiven: "غير محدد",
     hint: "«أليكسا، اسأل قطارات بيناريو عن القطارات التالية من Milano Centrale إلى Bologna Centrale»",
-    vehicles: { busTrenitalia: "حافلة Trenitalia", freccialink: "FrecciaLink", italobus: "ItaloBus", bus: "حافلة", replacementBus: "حافلة بديلة" },
+    vehicles: { busTrenitalia: "حافلة Trenitalia", freccialink: "FrecciaLink", italobus: "ItaloBus", bus: "حافلة", replacementBus: "حافلة بديلة", metro: "مترو", tram: "ترام", funicular: "قطار جبلي" },
+    cityDeparture: {
+      metro: { one: "{train} الساعة {time}", other: "{train} الساعة {time}" },
+      tram: { one: "{train} الساعة {time}", other: "{train} الساعة {time}" },
+      funicular: { one: "{train} الساعة {time}", other: "{train} الساعة {time}" },
+    },
+    cityDepartures: { one: "وفق الجدول الزمني المبرمج، الرحلة التالية هي {trains}.", other: "وفق الجدول الزمني المبرمج، الرحلات التالية هي {trains}." },
+    walk: { zero: "الصعود من محطة {stop}، على بُعد {count} دقيقة سيرًا من {station}.", one: "الصعود من محطة {stop}، على بُعد {count} دقيقة سيرًا من {station}.", two: "الصعود من محطة {stop}، على بُعد دقيقتين سيرًا من {station}.", few: "الصعود من محطة {stop}، على بُعد {count} دقائق سيرًا من {station}.", many: "الصعود من محطة {stop}، على بُعد {count} دقيقة سيرًا من {station}.", other: "الصعود من محطة {stop}، على بُعد {count} دقيقة سيرًا من {station}." },
+    routeWalk: { zero: "الصعود من محطة على بُعد {count} دقيقة سيرًا من محطة المغادرة.", one: "الصعود من محطة على بُعد {count} دقيقة سيرًا من محطة المغادرة.", two: "الصعود من محطة على بُعد دقيقتين سيرًا من محطة المغادرة.", few: "الصعود من محطة على بُعد {count} دقائق سيرًا من محطة المغادرة.", many: "الصعود من محطة على بُعد {count} دقيقة سيرًا من محطة المغادرة.", other: "الصعود من محطة على بُعد {count} دقيقة سيرًا من محطة المغادرة." },
+    cityProgrammedOnly: "بالنسبة لخطوط المدينة، لدى بيناريو الجدول الزمني المبرمج فقط.",
+    walkLabel: "سيرًا على الأقدام",
+    walkValue: "{minutes} د",
   },
 };
