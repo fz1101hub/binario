@@ -93,6 +93,11 @@ public struct TrainService: Codable, Equatable, Identifiable, Sendable {
     /// station (Android's «dalla fermata …, a pochi passi»); nil when it leaves the station itself.
     /// Optional, so a service saved before it existed still decodes.
     public let boardingStop: String?
+    /// The scheduled departure and the arrival at the searched destination of a train of the bundled timetable, for
+    /// the results' durations and the journeys with changes it is the same train as; nil for a live row. Optional,
+    /// so a service saved before they existed still decodes.
+    public let departureDate: Date?
+    public let arrivalDate: Date?
 
     public init(
         id: String,
@@ -108,7 +113,9 @@ public struct TrainService: Codable, Equatable, Identifiable, Sendable {
         bikesAllowed: Bool? = nil,
         hasTrainNumber: Bool = true,
         vehicle: TimetableVehicle? = nil,
-        boardingStop: String? = nil
+        boardingStop: String? = nil,
+        departureDate: Date? = nil,
+        arrivalDate: Date? = nil
     ) {
         self.id = id
         self.number = number
@@ -124,6 +131,8 @@ public struct TrainService: Codable, Equatable, Identifiable, Sendable {
         self.hasTrainNumber = hasTrainNumber
         self.vehicle = vehicle?.isBus == true || vehicle?.isUrban == true ? vehicle : nil
         self.boardingStop = boardingStop
+        self.departureDate = departureDate
+        self.arrivalDate = arrivalDate
     }
 
     /// True for a bus of the timetable (`vehicle`): no train statistics, no train icon.

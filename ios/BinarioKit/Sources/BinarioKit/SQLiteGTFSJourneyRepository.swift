@@ -854,7 +854,9 @@ public struct SQLiteGTFSJourneyRepository: JourneyRepository, Sendable {
                     bikesAllowed: bikesAllowed,
                     hasTrainNumber: naming.hasTrainNumber,
                     vehicle: vehicle,
-                    boardingStop: boardingStop
+                    boardingStop: boardingStop,
+                    departureDate: departure,
+                    arrivalDate: arrival
                 ),
                 walkMinutes: walkMinutes,
                 runKey: "\(sourceID):\(externalTripID):\(serviceDate)"
