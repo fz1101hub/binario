@@ -14,6 +14,7 @@ import androidx.work.WorkerParameters
 import it.binario.app.data.Direction
 import it.binario.app.data.RailTime
 import it.binario.app.data.RouteFailureReason
+import it.binario.app.shared.SharedData
 import java.time.Duration
 import java.time.ZonedDateTime
 import java.util.concurrent.TimeUnit
@@ -48,7 +49,7 @@ data class AutoRefreshAction(val candidate: AutoRefreshCandidate, val fetch: Boo
  */
 object WidgetAutoRefreshPlanner {
     /** Floor between two runs scheduled by a run, so that a refresh that records nothing cannot loop. */
-    val MIN_RESCHEDULE: Duration = Duration.ofMinutes(1)
+    val MIN_RESCHEDULE: Duration = Duration.ofSeconds(SharedData.Widgets.MINIMUM_RESCHEDULE_SECONDS.toLong())
 
     fun plan(candidates: List<AutoRefreshCandidate>, now: ZonedDateTime): List<AutoRefreshAction> = candidates.mapNotNull { candidate ->
         val due = candidate.settings.isDue(candidate.lastRefreshEpochMillis, now)
@@ -84,8 +85,8 @@ object WidgetAutoRefreshPlanner {
  * the widget's automatic refresh windows. With automatic refresh off nothing is retried in the background.
  */
 internal object WidgetRefreshRetryPolicy {
-    const val MAX_ATTEMPTS = 3
-    val FIRST_DELAY: Duration = Duration.ofMinutes(15)
+    const val MAX_ATTEMPTS = SharedData.Widgets.RETRY_MAXIMUM_ATTEMPTS
+    val FIRST_DELAY: Duration = Duration.ofMinutes(SharedData.Widgets.RETRY_FIRST_DELAY_MINUTES.toLong())
 
     data class Retry(val widgetIds: Set<Int>, val delay: Duration)
 

@@ -16,6 +16,8 @@ public enum LiveSource: String, CaseIterable, Codable, Hashable, Sendable {
     case staRealtime = "alto-adige-sta-realtime"
     case sncfRealtime = "sncf-gtfs-rt"
     case trenitaliaFranceRealtime = "trenitalia-france-gtfs-rt"
+    /// The community Trip Updates of European Sleeper, joined to the archive downloaded at runtime (remote-gtfs-v1.json).
+    case europeanSleeperRealtime = "european-sleeper-gtfs-rt"
 
     public var displayName: String {
         switch self {
@@ -26,6 +28,7 @@ public enum LiveSource: String, CaseIterable, Codable, Hashable, Sendable {
         case .staRealtime: return "Open Data Hub Alto Adige — GTFS-Realtime"
         case .sncfRealtime: return "SNCF Open Data — GTFS-Realtime"
         case .trenitaliaFranceRealtime: return "Trenitalia France — GTFS-Realtime"
+        case .europeanSleeperRealtime: return "European Sleeper / JBB — GTFS-Realtime best-effort"
         }
     }
 }

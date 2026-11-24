@@ -422,5 +422,159 @@
 			<string>%1$lld 个关注的车站</string>
 		</dict>
 	</dict>
+	<key>result.trip.minutes</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>other</key>
+			<string>%1$lld 分钟</string>
+		</dict>
+	</dict>
+	<key>result.trip.countdown_stops</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>other</key>
+			<string>再过 %1$lld 站下车</string>
+		</dict>
+	</dict>
+	<key>notices.alerts.train_title</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>other</key>
+			<string>%1$lld 条新公告：%2$@</string>
+		</dict>
+	</dict>
+	<key>notices.alerts.status_delay</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>other</key>
+			<string>晚点 %1$lld 分钟</string>
+		</dict>
+	</dict>
+	<key>result.journey.changes</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>other</key>
+			<string>换乘 %1$lld 次</string>
+		</dict>
+	</dict>
+	<key>result.journey.connection</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>other</key>
+			<string>在 %3$@ 换乘 %2$lld 次中成功 %1$lld 次</string>
+		</dict>
+	</dict>
+	<key>result.journey.hidden_by_preferences</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>other</key>
+			<string>已按出行偏好隐藏 %1$lld 趟直达车次</string>
+		</dict>
+	</dict>
+	<key>result.journey.leg_cancelled_share</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>other</key>
+			<string>%3$@ %2$lld 次中停运 %1$lld 次</string>
+		</dict>
+	</dict>
+	<key>result.journey.leg_on_time</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>other</key>
+			<string>%3$@ %2$lld 次中准点 %1$lld 次</string>
+		</dict>
+	</dict>
+	<key>result.journey.transfer_wait</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>other</key>
+			<string>等候 %1$lld 分钟</string>
+		</dict>
+	</dict>
+	<key>settings.travel.minutes</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>other</key>
+			<string>%1$lld 分钟</string>
+		</dict>
+	</dict>
 </dict>
 </plist>

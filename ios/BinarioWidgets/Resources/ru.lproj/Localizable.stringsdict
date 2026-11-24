@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>widgets.a11y.delay</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>few</key>
+			<string>Опаздывает на %1$lld минуты</string>
+			<key>many</key>
+			<string>Опаздывает на %1$lld минут</string>
+			<key>one</key>
+			<string>Опаздывает на %1$lld минуту</string>
+			<key>other</key>
+			<string>Опаздывает на %1$lld минуты</string>
+		</dict>
+	</dict>
+	<key>widgets.a11y.early</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>few</key>
+			<string>Опережает на %1$lld минуты</string>
+			<key>many</key>
+			<string>Опережает на %1$lld минут</string>
+			<key>one</key>
+			<string>Опережает на %1$lld минуту</string>
+			<key>other</key>
+			<string>Опережает на %1$lld минуты</string>
+		</dict>
+	</dict>
+	<key>widgets.trains.count</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>few</key>
+			<string>%1$lld поезда</string>
+			<key>many</key>
+			<string>%1$lld поездов</string>
+			<key>one</key>
+			<string>%1$lld поезд</string>
+			<key>other</key>
+			<string>%1$lld поезда</string>
+		</dict>
+	</dict>
+	<key>widgets.trains.hidden</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>few</key>
+			<string>%1$lld не в пути, скрыты</string>
+			<key>many</key>
+			<string>%1$lld не в пути, скрыты</string>
+			<key>one</key>
+			<string>%1$lld не в пути, скрыт</string>
+			<key>other</key>
+			<string>%1$lld не в пути, скрыты</string>
+		</dict>
+	</dict>
+</dict>
+</plist>

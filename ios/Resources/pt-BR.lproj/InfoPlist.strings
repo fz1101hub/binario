@@ -1,2 +1,2 @@
 "Agenda" = "Agenda";
-"NSLocationWhenInUseUsageDescription" = "O Binario usa sua localização uma única vez, quando você pede a estação mais próxima, para encontrá-la na lista de estações salva no celular. A localização não é salva nem enviada.";
+"NSLocationWhenInUseUsageDescription" = "O Binario usa sua localização quando você pede a estação mais próxima e, se você ativar a estimativa pela sua posição, durante a viagem que você segue com o app aberto. A localização fica no celular: não é salva nem enviada.";

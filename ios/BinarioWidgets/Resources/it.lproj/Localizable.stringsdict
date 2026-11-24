@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>widgets.a11y.delay</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>many</key>
+			<string>In ritardo di %1$lld minuti</string>
+			<key>one</key>
+			<string>In ritardo di %1$lld minuto</string>
+			<key>other</key>
+			<string>In ritardo di %1$lld minuti</string>
+		</dict>
+	</dict>
+	<key>widgets.a11y.early</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>many</key>
+			<string>In anticipo di %1$lld minuti</string>
+			<key>one</key>
+			<string>In anticipo di %1$lld minuto</string>
+			<key>other</key>
+			<string>In anticipo di %1$lld minuti</string>
+		</dict>
+	</dict>
+	<key>widgets.trains.count</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>many</key>
+			<string>%1$lld treni</string>
+			<key>one</key>
+			<string>%1$lld treno</string>
+			<key>other</key>
+			<string>%1$lld treni</string>
+		</dict>
+	</dict>
+	<key>widgets.trains.hidden</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>many</key>
+			<string>%1$lld non in viaggio nascosti</string>
+			<key>one</key>
+			<string>%1$lld non in viaggio nascosto</string>
+			<key>other</key>
+			<string>%1$lld non in viaggio nascosti</string>
+		</dict>
+	</dict>
+</dict>
+</plist>

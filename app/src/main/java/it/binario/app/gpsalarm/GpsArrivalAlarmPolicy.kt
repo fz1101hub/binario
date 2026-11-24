@@ -2,6 +2,7 @@ package it.binario.app.gpsalarm
 
 import it.binario.app.data.RailOperator
 import it.binario.app.data.TrainCategory
+import it.binario.app.shared.SharedData
 import kotlin.math.asin
 import kotlin.math.cos
 import kotlin.math.min
@@ -62,14 +63,14 @@ internal object GpsArrivalAlarmPolicy {
      */
     const val APPROXIMATE_EXTRA_RADIUS_METERS = 3_000
 
-    const val MAX_FIX_AGE_MILLIS = 2 * 60_000L
+    const val MAX_FIX_AGE_MILLIS = SharedData.TripAlerts.POSITION_MAXIMUM_FIX_AGE_SECONDS * 1_000L
     const val MAX_ACCURACY_METERS = 5_000.0
 
     /** The service stops at the latest this long after the expected arrival... */
-    const val AFTER_ARRIVAL_MILLIS = 2 * 60 * 60_000L
+    const val AFTER_ARRIVAL_MILLIS = SharedData.TripAlerts.POSITION_SESSION_AFTER_ARRIVAL_MINUTES * 60_000L
 
     /** ...and never runs longer than this, whatever the arrival time. */
-    const val MAX_DURATION_MILLIS = 8 * 60 * 60_000L
+    const val MAX_DURATION_MILLIS = SharedData.TripAlerts.POSITION_SESSION_MAXIMUM_MINUTES * 60_000L
 
     /** 300 km/h: the fastest service the alarm has to keep up with (about 5 km per minute). */
     const val MAX_TRAIN_SPEED_METERS_PER_SECOND = 300_000.0 / 3_600.0

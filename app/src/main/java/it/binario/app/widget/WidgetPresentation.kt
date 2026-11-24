@@ -1,12 +1,13 @@
 package it.binario.app.widget
 
 import it.binario.app.data.Freshness
+import it.binario.app.shared.SharedData
 import java.util.concurrent.TimeUnit
 
 enum class WidgetLayoutMode(val visibleRows: Int, val showColumnHeader: Boolean, val routeTextSizeSp: Float, val rowTextSizeSp: Float) {
-    COMPACT(2, false, 14f, 12f),
-    STANDARD(5, true, 16f, 13f),
-    EXPANDED(5, true, 18f, 15f);
+    COMPACT(SharedData.Widgets.COMPACT_ROWS, false, 14f, 12f),
+    STANDARD(SharedData.Widgets.PAGE_ROWS, true, 16f, 13f),
+    EXPANDED(SharedData.Widgets.PAGE_ROWS, true, 18f, 15f);
 
     companion object {
         fun fromSize(widthDp: Int, heightDp: Int): WidgetLayoutMode = when {
@@ -44,8 +45,8 @@ object WidgetRowPagination {
 
 /** Nessun dato con più di quindici minuti viene presentato come appena aggiornato. */
 object WidgetFreshness {
-    private val freshForMillis = TimeUnit.MINUTES.toMillis(5)
-    private val agingForMillis = TimeUnit.MINUTES.toMillis(15)
+    private val freshForMillis = TimeUnit.SECONDS.toMillis(SharedData.Widgets.FRESH_SECONDS.toLong())
+    private val agingForMillis = TimeUnit.SECONDS.toMillis(SharedData.Widgets.AGING_SECONDS.toLong())
 
     fun fromAge(retrievedAtEpochMillis: Long, nowEpochMillis: Long = System.currentTimeMillis()): Freshness {
         if (retrievedAtEpochMillis <= 0L) return Freshness.UNAVAILABLE

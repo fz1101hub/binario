@@ -26,6 +26,13 @@ public struct SQLiteGTFSJourneyRepository: JourneyRepository, Sendable {
         "urban_stop": ["stop_id", "modes"],
         "urban_walk": ["catalog_station_id", "stop_id", "minutes"],
     ]
+    /// The planner's details (tools/build_ios_gtfs_schedule.py, DETAIL_SCHEMA_SQL): GTFS block_id and
+    /// wheelchair_accessible of a trip, the transfer point and wheelchair_boarding of a stop. The base and
+    /// personal indexes have them; a per-country timetable has none.
+    static let detailTables: [String: [String]] = [
+        "trip_detail": ["trip_id", "block_id", "wheelchair_accessible"],
+        "stop_detail": ["stop_id", "place", "wheelchair_boarding"],
+    ]
     private static let expectedIndices: Set<String> = [
         "idx_route_pack_external", "idx_service_pack_external", "idx_trip_pack_external",
         "idx_trip_route_service", "idx_stop_pack_external", "idx_stop_catalog_station",
@@ -41,7 +48,7 @@ public struct SQLiteGTFSJourneyRepository: JourneyRepository, Sendable {
     private static let maximumPacks = 64
     private static let maximumCoveredStations = 8_192
     private static let maximumCandidateRows = 4_096
-    private static let maximumGTFSSeconds = 168 * 60 * 60 - 1
+    static let maximumGTFSSeconds = 168 * 60 * 60 - 1
     private static let maximumServiceDayLookback = maximumGTFSSeconds / (24 * 60 * 60)
     /// «Partenze» reads the next service day only this far after the page's time: the trains just
     /// after midnight of a feed whose service day starts at 00:00 (Trenord, the Swiss pack).
@@ -55,14 +62,29 @@ public struct SQLiteGTFSJourneyRepository: JourneyRepository, Sendable {
     /// index no longer reads the trips of these packs (its border subset), so no train is listed
     /// twice. The files are never attached to one connection: their row identifiers overlap.
     public let foreignDatabaseURLs: [String: URL]
+    /// What is asked when these files give no train (`TimetableFallbacks`): RFI's programmed timetable, then the
+    /// community archives downloaded at runtime (European Sleeper). Nil: the files alone answer, as before.
+    public let fallbacks: TimetableFallbacks?
 
-    public init(databaseURL: URL, foreignDatabaseURLs: [String: URL] = [:]) {
+    public init(databaseURL: URL, foreignDatabaseURLs: [String: URL] = [:], fallbacks: TimetableFallbacks? = nil) {
         self.databaseURL = databaseURL
         self.foreignDatabaseURLs = foreignDatabaseURLs
+        self.fallbacks = fallbacks
+    }
+
+    /// The same files, with `fallbacks` asked when they give no train.
+    public func with(fallbacks: TimetableFallbacks?) -> SQLiteGTFSJourneyRepository {
+        SQLiteGTFSJourneyRepository(databaseURL: databaseURL, foreignDatabaseURLs: foreignDatabaseURLs, fallbacks: fallbacks)
+    }
+
+    /// Android's tiers (`QualityTieredTrainDataSource`): a fallback is asked only when the timetables of this iPhone
+    /// have no train for the request or have ended; a damaged index is not hidden behind one (`providerInvalid`).
+    static func asksFallbacks(_ reason: JourneyUnavailableReason) -> Bool {
+        reason == .noJourney || reason == .scheduleExpired
     }
 
     /// The installed foreign indexes in a fixed order, by source.
-    private var foreignFiles: [ForeignFile] {
+    var foreignFiles: [ForeignFile] {
         var files: [ForeignFile] = []
         for sourceID in foreignDatabaseURLs.keys.sorted() {
             guard let url = foreignDatabaseURLs[sourceID] else { continue }
@@ -118,7 +140,7 @@ public struct SQLiteGTFSJourneyRepository: JourneyRepository, Sendable {
     private static let validatedIndices = ValidatedIndexCache()
 
     /// `validate`, once per process for a file of the same path and size.
-    private static func validatedOnce(_ database: SQLiteDatabase, at url: URL) throws -> [String: String] {
+    static func validatedOnce(_ database: SQLiteDatabase, at url: URL) throws -> [String: String] {
         if let metadata = validatedIndices.metadata(for: url) { return metadata }
         let metadata = try validate(database)
         validatedIndices.record(metadata, for: url)
@@ -215,15 +237,18 @@ public struct SQLiteGTFSJourneyRepository: JourneyRepository, Sendable {
     }
 
     public func journeys(for query: JourneyQuery) async -> JourneyResult {
+        let result: JourneyResult
         do {
-            return .available(try Self.loadAll(databaseURL: databaseURL, foreignFiles: foreignFiles, query: query))
+            result = .available(try Self.loadAll(databaseURL: databaseURL, foreignFiles: foreignFiles, query: query))
         } catch SQLiteGTFSFailure.noRoute {
-            return .unavailable(.noJourney)
+            result = .unavailable(.noJourney)
         } catch SQLiteGTFSFailure.scheduleExpired {
-            return .unavailable(.scheduleExpired)
+            result = .unavailable(.scheduleExpired)
         } catch {
-            return .unavailable(.providerInvalid)
+            result = .unavailable(.providerInvalid)
         }
+        guard let fallbacks, case let .unavailable(reason) = result, Self.asksFallbacks(reason) else { return result }
+        return await fallbacks.journeys(for: query) ?? result
     }
 
     /// The first trains of the base index and of every installed foreign index, merged by time
@@ -415,12 +440,20 @@ public struct SQLiteGTFSJourneyRepository: JourneyRepository, Sendable {
         }
 
         let tables = try database.names(type: "table", excludingAutoIndices: false)
-        let urban = tables == Set(expectedTables.keys).union(urbanTables.keys)
-        guard tables == Set(expectedTables.keys) || urban else { throw SQLiteGTFSFailure.invalidSchema }
+        // The base tables, with the city networks' and the planner's details each present whole or not at all.
+        let urban = tables.contains("urban_stop") || tables.contains("urban_walk")
+        let details = tables.contains("trip_detail") || tables.contains("stop_detail")
+        var expected = Set(expectedTables.keys)
+        if urban { expected.formUnion(urbanTables.keys) }
+        if details { expected.formUnion(detailTables.keys) }
+        guard tables == expected else { throw SQLiteGTFSFailure.invalidSchema }
         for (table, columns) in expectedTables {
             guard try database.columns(in: table) == columns else { throw SQLiteGTFSFailure.invalidSchema }
         }
         for (table, columns) in urbanTables where urban {
+            guard try database.columns(in: table) == columns else { throw SQLiteGTFSFailure.invalidSchema }
+        }
+        for (table, columns) in detailTables where details {
             guard try database.columns(in: table) == columns else { throw SQLiteGTFSFailure.invalidSchema }
         }
         let indices = try database.names(type: "index", excludingAutoIndices: true)
@@ -839,7 +872,9 @@ public struct SQLiteGTFSJourneyRepository: JourneyRepository, Sendable {
                     bikesAllowed: bikesAllowed,
                     hasTrainNumber: naming.hasTrainNumber,
                     vehicle: vehicle,
-                    boardingStop: boardingStop
+                    boardingStop: boardingStop,
+                    departureDate: departure,
+                    arrivalDate: arrival
                 ),
                 walkMinutes: walkMinutes,
                 runKey: "\(sourceID):\(externalTripID):\(serviceDate)"
@@ -923,7 +958,7 @@ public struct SQLiteGTFSJourneyRepository: JourneyRepository, Sendable {
         }
     }
 
-    private static func serviceRuns(
+    static func serviceRuns(
         serviceDay: Date,
         startDate: Int64,
         dayCount: Int64,
@@ -938,7 +973,7 @@ public struct SQLiteGTFSJourneyRepository: JourneyRepository, Sendable {
         return activeDays[offset / 8] & UInt8(1 << (offset % 8)) != 0
     }
 
-    private static func date(from encoded: Int64, calendar: Calendar) -> Date? {
+    static func date(from encoded: Int64, calendar: Calendar) -> Date? {
         guard encoded >= 1_000_0000, encoded <= 9_999_1231 else { return nil }
         var components = DateComponents()
         components.calendar = calendar
@@ -950,14 +985,14 @@ public struct SQLiteGTFSJourneyRepository: JourneyRepository, Sendable {
         return calendar.date(from: components)
     }
 
-    private static func encodedDate(_ date: Date, calendar: Calendar) -> Int {
+    static func encodedDate(_ date: Date, calendar: Calendar) -> Int {
         let parts = calendar.dateComponents([.year, .month, .day], from: date)
         return (parts.year ?? 0) * 10_000 + (parts.month ?? 0) * 100 + (parts.day ?? 0)
     }
 
     /// GTFS time is elapsed time from local noon minus twelve hours. Adding the
     /// duration to that instant correctly traverses 23/25-hour DST service days.
-    private static func gtfsDate(serviceDay: Date, seconds: TimeInterval, calendar: Calendar) throws -> Date {
+    static func gtfsDate(serviceDay: Date, seconds: TimeInterval, calendar: Calendar) throws -> Date {
         var noon = calendar.dateComponents([.year, .month, .day], from: serviceDay)
         noon.hour = 12
         noon.minute = 0
@@ -966,7 +1001,7 @@ public struct SQLiteGTFSJourneyRepository: JourneyRepository, Sendable {
         return localNoon.addingTimeInterval(seconds - 12 * 60 * 60)
     }
 
-    private static func serviceCalendar(timeZone: TimeZone) -> Calendar {
+    static func serviceCalendar(timeZone: TimeZone) -> Calendar {
         var calendar = Calendar(identifier: .gregorian)
         calendar.locale = Locale(identifier: "en_US_POSIX")
         calendar.timeZone = timeZone
@@ -982,7 +1017,7 @@ public struct SQLiteGTFSJourneyRepository: JourneyRepository, Sendable {
         return formatter.string(from: date)
     }
 
-    private static func parseSourceDate(_ value: String) -> Date? {
+    static func parseSourceDate(_ value: String) -> Date? {
         let parts = value.split(separator: "-", omittingEmptySubsequences: false)
         guard parts.count == 3,
               let year = Int(parts[0]),
@@ -1001,7 +1036,7 @@ public struct SQLiteGTFSJourneyRepository: JourneyRepository, Sendable {
         return String(normalized.prefix(maximum - 1)) + "…"
     }
 
-    private static func boundedSourceLabel(_ labels: [String]) -> String {
+    static func boundedSourceLabel(_ labels: [String]) -> String {
         let joined = labels.map { String($0.prefix(96)) }.joined(separator: " + ")
         guard joined.count > maximumSourceLabelLength else { return joined }
         return String(joined.prefix(maximumSourceLabelLength - 1)) + "…"
@@ -1047,15 +1082,18 @@ extension SQLiteGTFSJourneyRepository: StationBoardProvider {
     /// packs (tools/build_ios_gtfs_schedule.py, INDEXED_ROUTE_TYPES), a bus is listed with its
     /// vehicle (`TrainService.vehicle`), and a train two packs publish is listed once (`boardOrder`).
     public func departures(for query: StationBoardQuery) async -> StationBoardResult {
+        let result: StationBoardResult
         do {
-            return .available(try Self.loadBoards(databaseURL: databaseURL, foreignFiles: foreignFiles, query: query))
+            result = .available(try Self.loadBoards(databaseURL: databaseURL, foreignFiles: foreignFiles, query: query))
         } catch SQLiteGTFSFailure.noRoute {
-            return .unavailable(.noJourney)
+            result = .unavailable(.noJourney)
         } catch SQLiteGTFSFailure.scheduleExpired {
-            return .unavailable(.scheduleExpired)
+            result = .unavailable(.scheduleExpired)
         } catch {
-            return .unavailable(.providerInvalid)
+            result = .unavailable(.providerInvalid)
         }
+        guard let fallbacks, case let .unavailable(reason) = result, Self.asksFallbacks(reason) else { return result }
+        return await fallbacks.departures(for: query) ?? result
     }
 
     /// The board of the base index and of every installed foreign index, merged by departure:
@@ -1744,7 +1782,7 @@ private final class ValidatedIndexCache: @unchecked Sendable {
 }
 
 /// An installed full foreign timetable: its source and its file.
-private struct ForeignFile: Sendable {
+struct ForeignFile: Sendable {
     let sourceID: String
     let url: URL
 }
@@ -1807,7 +1845,9 @@ extension SQLiteGTFSJourneyRepository: TimetableTripReading {
         var byFile: [URL: [TimetableTripKey]] = [:]
         var seen = Set<TimetableTripKey>()
         for trip in trips where seen.count < Self.maximumRealtimeTrips && seen.insert(trip).inserted {
-            byFile[foreignDatabaseURLs[trip.sourceID] ?? databaseURL, default: []].append(trip)
+            // A downloaded archive's trips are read from its own index (`TimetableFallbacks`).
+            let file = foreignDatabaseURLs[trip.sourceID] ?? fallbacks?.indexURL(for: trip.sourceID) ?? databaseURL
+            byFile[file, default: []].append(trip)
         }
         var result: [TimetableTripKey: TimetableTripStops] = [:]
         for (url, keys) in byFile {
@@ -1871,16 +1911,21 @@ extension SQLiteGTFSJourneyRepository: TimetableTripReading {
     }
 }
 
-private enum SQLiteGTFSFailure: Error {
+enum SQLiteGTFSFailure: Error {
     case invalidDatabase, invalidSchema, invalidData, limitExceeded, noRoute, scheduleExpired
 }
 
-private final class SQLiteDatabase {
+final class SQLiteDatabase {
     private var handle: OpaquePointer?
     /// The packs another file answers for (`foreignDatabaseURLs`): the queries of the planner and
     /// of «Partenze» skip them. Empty for every file but the base index with foreign files installed.
     var excludedSourceIDs: [String] = []
     private var urbanTablesPresent: Bool?
+
+    /// True for an index with the planner's details (`trip_detail`, `stop_detail`).
+    func hasDetailTables() throws -> Bool {
+        try names(type: "table", excludingAutoIndices: false).contains("trip_detail")
+    }
 
     /// True for an index with city networks (`urban_stop`, `urban_walk`), read once per connection.
     func hasUrbanTables() throws -> Bool {
@@ -1979,7 +2024,7 @@ private final class SQLiteDatabase {
     }
 }
 
-private final class SQLiteStatement {
+final class SQLiteStatement {
     private var handle: OpaquePointer?
 
     init(database: OpaquePointer, sql: String) throws {
@@ -2032,6 +2077,12 @@ private final class SQLiteStatement {
         guard let handle, sqlite3_column_type(handle, index) != SQLITE_NULL,
               let value = sqlite3_column_text(handle, index) else { return nil }
         return String(cString: value)
+    }
+
+    /// An INTEGER column, nil when NULL.
+    func optionalInt(at index: Int32) -> Int64? {
+        guard let handle, sqlite3_column_type(handle, index) != SQLITE_NULL else { return nil }
+        return sqlite3_column_int64(handle, index)
     }
 
     /// A REAL column, nil when NULL (the coordinates of the map's stops).

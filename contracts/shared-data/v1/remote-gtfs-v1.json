@@ -1,0 +1,42 @@
+{
+  "schema": "binario-shared-data-v1",
+  "description": "The community GTFS archives a phone downloads at runtime as a last-resort coverage source, the same on Android and on the iPhone: which archive, for which operator only, from which day, how it is asked (HTTPS on its own host, the time limits, the largest body, the redirects), how long a download is kept and how long a failure or a refusal pauses it, and the limits of the archive and of its tables. The realtime feed joined to each archive is in realtime-feeds-v1.json; the cases both platforms read are contracts/shared-rules/v1/remote-gtfs-v1.json.",
+  "readers": {
+    "android": "app/src/main/java/it/binario/app/data/gtfs/RemoteGtfsFallbackDataSource.kt, EuropeanSleeperGtfsRealtimeAdapter.kt; GtfsCompactIndexLimits equals archive",
+    "ios": "ios/BinarioKit/Sources/BinarioKit/RemoteGTFSSchedule.swift, GTFSZipArchive.swift, RemoteGTFSIndex.swift"
+  },
+  "feeds": [
+    {
+      "id": "european-sleeper-gtfs",
+      "pack": "european-sleeper",
+      "operatorScope": "European Sleeper",
+      "attribution": "European Sleeper / JBB community feed",
+      "url": "https://jbb.ghsq.de/gtfs/eu-es.gtfs.zip",
+      "notBefore": "2026-09-09",
+      "realtimeFeed": "european-sleeper-gtfs-rt",
+      "note": "Brussels and Amsterdam to Milan by night since 9 September 2026; a community mirror, never above RFI or an official GTFS."
+    }
+  ],
+  "accept": "application/zip, application/octet-stream;q=0.9",
+  "connectTimeoutSeconds": 15,
+  "readTimeoutSeconds": 45,
+  "maximumRedirects": 5,
+  "maximumArchiveBytes": 8388608,
+  "cacheTimeToLiveSeconds": 21600,
+  "failureCooldownSeconds": 300,
+  "refusalPauseSeconds": 900,
+  "archive": {
+    "maximumEntries": 64,
+    "maximumEntryBytes": 134217728,
+    "maximumTotalUncompressedBytes": 134217728,
+    "maximumCompressionRatio": 1000,
+    "maximumCsvLineLength": 32768,
+    "maximumAgencies": 10000,
+    "maximumStops": 300000,
+    "maximumRoutes": 100000,
+    "maximumTrips": 150000,
+    "maximumCalendars": 100000,
+    "maximumCalendarDateRows": 500000,
+    "maximumStopTimeRows": 1500000
+  }
+}

@@ -9,6 +9,7 @@
 //   contracts/shared-data/v1/italian-holidays-v1.json
 //   contracts/shared-data/v1/italo-gtfs-station-codes.json
 //   contracts/shared-data/v1/italo-stations-v1.json
+//   contracts/shared-data/v1/journey-planner-v1.json
 //   contracts/shared-data/v1/live-train-map-v1.json
 //   contracts/shared-data/v1/local-backup-v1.json
 //   contracts/shared-data/v1/notices-sources-v1.json
@@ -18,15 +19,19 @@
 //   contracts/shared-data/v1/planned-journeys-v1.json
 //   contracts/shared-data/v1/punctuality-v1.json
 //   contracts/shared-data/v1/realtime-feeds-v1.json
+//   contracts/shared-data/v1/remote-gtfs-v1.json
 //   contracts/shared-data/v1/rfi-monitor-v1.json
 //   contracts/shared-data/v1/rfi-place-ids-v1.json
+//   contracts/shared-data/v1/rfi-programmed-v1.json
 //   contracts/shared-data/v1/saved-timetables-v1.json
 //   contracts/shared-data/v1/source-manners-v1.json
 //   contracts/shared-data/v1/source-scores-v1.json
 //   contracts/shared-data/v1/train-number-prefixes-v1.json
 //   contracts/shared-data/v1/train-type-groups-v1.json
+//   contracts/shared-data/v1/trip-alerts-v1.json
 //   contracts/shared-data/v1/urban-stops-v1.json
 //   contracts/shared-data/v1/viaggiatreno-v1.json
+//   contracts/shared-data/v1/widgets-v1.json
 
 package it.binario.app.shared
 
@@ -502,6 +507,53 @@ internal object SharedData {
             "Venezia Santa Lucia" to "venezia-santa-lucia",
             "Venezia S. Lucia" to "venezia-santa-lucia"
         )
+    }
+
+    /**
+     * contracts/shared-data/v1/journey-planner-v1.json: The offline planner of journeys with changes, as both phones
+     * compute it from the bundled timetables (Connection Scan): the change time at a station, a large hub and a city
+     * stop; the search window and the horizon of the changes; how many packs one search reads; the bounds of a search;
+     * the long wait at a change; the in-seat continuations (Resta a bordo) by block or by the same train in another
+     * pack; the walking speeds, the longest walk and its choices; the default changes and results; the long wait the
+     * results name and the walk that keeps a journey the same as its direct train.
+     */
+    object JourneyPlanner {
+        const val DEFAULT_TRANSFER_MINUTES: Int = 5
+        const val LARGE_HUB_TRANSFER_MINUTES: Int = 10
+        const val URBAN_TRANSFER_MINUTES: Int = 3
+        val LARGE_HUB_RAILWAY_CODES: Set<String> = setOf(
+            "S00035", "S00219", "S01700", "S02430", "S02593", "S04700", "S05043", "S06421", "S07113", "S08217",
+            "S08406", "S08409", "S09218", "S09818", "S11119", "S11145", "S11781", "S12002", "S12332"
+        )
+        const val SEARCH_WINDOW_MINUTES: Int = 480
+        const val JOURNEY_HORIZON_MINUTES: Int = 600
+        const val MAXIMUM_PACKS_PER_SEARCH: Int = 3
+        const val MAXIMUM_URBAN_PACKS_PER_SEARCH: Int = 2
+        const val MAXIMUM_ITERATIONS: Int = 32
+        const val MAXIMUM_SEARCH_CONNECTIONS: Int = 400000
+        const val MAXIMUM_CHANGE_WAIT_MINUTES: Int = 120
+        const val FOLLOW_UP_ITERATIONS: Int = 2
+        const val NEXT_DAY_FOLLOW_UP_MINUTES: Int = 720
+        const val MAXIMUM_IN_SEAT_WAIT_MINUTES: Int = 30
+        const val MAXIMUM_COPY_SKEW_MINUTES: Int = 5
+        const val ONWARD_STOPS: Int = 3
+        const val MAXIMUM_CONTINUATIONS: Int = 8
+        val LONG_DISTANCE_CODES: Set<String> = setOf(
+            "EC", "IC", "ICN", "EN", "NJ", "FR", "FA", "FB", "AV", "RJ", "RJX", "ICE", "TGV", "ES", "ITALO", "EUROCITY",
+            "RAILJET"
+        )
+        val LOCAL_CODES: Set<String> = setOf("S", "R", "RE", "REX", "RV", "REG", "RB", "TER")
+        const val LOCAL_CODE_MAXIMUM_DIGITS: Int = 3
+        const val MAXIMUM_WALK_METERS: Int = 2000
+        const val SLOW_WALKING_KMH: Double = 3.5
+        const val NORMAL_WALKING_KMH: Double = 4.5
+        const val FAST_WALKING_KMH: Double = 5.5
+        val WALK_MINUTE_CHOICES: List<Int> = listOf(5, 10, 15, 20)
+        const val DEFAULT_MAXIMUM_WALK_MINUTES: Int = 10
+        const val DEFAULT_MAXIMUM_TRANSFERS: Int = 2
+        const val MAXIMUM_RESULTS: Int = 6
+        const val LONG_WAIT_MINUTES: Int = 120
+        const val DUPLICATE_WALK_MINUTES: Int = 10
     }
 
     /**
@@ -986,10 +1038,11 @@ internal object SharedData {
 
     /**
      * contracts/shared-data/v1/realtime-feeds-v1.json: The open GTFS-Realtime Trip Updates feeds and the Swiss station
-     * boards, the same on Android and on the iPhone: each feed's address, format, timetable pack, gate, limits, cache
-     * and pause label, how long an observation stays usable, and the limits of the transport.opendata.ch boards. How
-     * every source is asked (User-Agent, refusals, breaker) is source-manners-v1.json; the cases both platforms read
-     * are contracts/shared-rules/v1/gtfs-realtime-v1.json and swiss-station-board-v1.json.
+     * boards, the same on Android and on the iPhone: each feed's address, format, timetable pack (bundled, or
+     * downloaded at runtime: gate remote-pack, remote-gtfs-v1.json), gate, limits, cache and pause label, how long an
+     * observation stays usable, and the limits of the transport.opendata.ch boards. How every source is asked
+     * (User-Agent, refusals, breaker) is source-manners-v1.json; the cases both platforms read are
+     * contracts/shared-rules/v1/gtfs-realtime-v1.json and swiss-station-board-v1.json.
      */
     object RealtimeFeeds {
         data class TripUpdatesFeed(
@@ -1078,7 +1131,10 @@ internal object SharedData {
             // The national Trip Updates, a few MB.
             TripUpdatesFeed(id = "sncf-gtfs-rt", pack = "sncf-gtfs", label = "SNCF", format = "protobuf", gate = "all-builds", url = "https://proxy.transport.data.gouv.fr/resource/sncf-gtfs-rt-trip-updates", accept = "application/x-protobuf, application/octet-stream", connectTimeoutSeconds = 8, readTimeoutSeconds = 15, totalTimeoutSeconds = 25, maximumBytes = 16777216, maximumRequests = 4, redirects = "same-https-host", timeToLiveSeconds = 120, pauseLabel = "SNCF Open Data", refusalGroup = "transport.data.gouv.fr", zone = "Europe/Paris", licence = "Licence Ouverte / Etalab"),
             // About 10 KB for some fifty trains (November 2026); asked only in a build that bundles its pack.
-            TripUpdatesFeed(id = "trenitalia-france-gtfs-rt", pack = "trenitalia-france-gtfs", label = "Trenitalia France", format = "protobuf", gate = "pack-bundled", url = "https://proxy.transport.data.gouv.fr/resource/trenitalia-gtfs-rt", accept = "application/x-protobuf, application/octet-stream", connectTimeoutSeconds = 8, readTimeoutSeconds = 15, totalTimeoutSeconds = 25, maximumBytes = 1048576, maximumRequests = 4, redirects = "same-https-host", timeToLiveSeconds = 120, pauseLabel = "Trenitalia France", refusalGroup = "transport.data.gouv.fr", zone = "Europe/Paris", licence = "Licence Ouverte / Etalab 2.0")
+            TripUpdatesFeed(id = "trenitalia-france-gtfs-rt", pack = "trenitalia-france-gtfs", label = "Trenitalia France", format = "protobuf", gate = "pack-bundled", url = "https://proxy.transport.data.gouv.fr/resource/trenitalia-gtfs-rt", accept = "application/x-protobuf, application/octet-stream", connectTimeoutSeconds = 8, readTimeoutSeconds = 15, totalTimeoutSeconds = 25, maximumBytes = 1048576, maximumRequests = 4, redirects = "same-https-host", timeToLiveSeconds = 120, pauseLabel = "Trenitalia France", refusalGroup = "transport.data.gouv.fr", zone = "Europe/Paris", licence = "Licence Ouverte / Etalab 2.0"),
+            // The community Trip Updates of European Sleeper, joined only to the trains of the archive of
+            // remote-gtfs-v1.json it was downloaded with.
+            TripUpdatesFeed(id = "european-sleeper-gtfs-rt", pack = "european-sleeper", label = "European Sleeper", format = "protobuf", gate = "remote-pack", url = "https://jbb.ghsq.de/gtfs/european-sleeper/TripUpdates", accept = "application/x-protobuf, application/octet-stream", connectTimeoutSeconds = 8, readTimeoutSeconds = 15, totalTimeoutSeconds = 20, maximumBytes = 4194304, maximumRequests = 4, redirects = "same-https-host", timeToLiveSeconds = 120, pauseLabel = "European Sleeper", refusalGroup = "European Sleeper", zone = "Europe/Brussels", licence = "Community mirror (JBB), no licence declared")
         )
         val URBAN: List<UrbanFeed> = listOf(
             // ATAC buses and trams with AVM, no metro; the trip_id and stop_id of the static GTFS of the
@@ -1119,6 +1175,55 @@ internal object SharedData {
                 "LB", "SL", "BAT", "FAE", "KAT", "SCH", "TX", "ALT"
             )
         )
+    }
+
+    /**
+     * contracts/shared-data/v1/remote-gtfs-v1.json: The community GTFS archives a phone downloads at runtime as a
+     * last-resort coverage source, the same on Android and on the iPhone: which archive, for which operator only, from
+     * which day, how it is asked (HTTPS on its own host, the time limits, the largest body, the redirects), how long a
+     * download is kept and how long a failure or a refusal pauses it, and the limits of the archive and of its tables.
+     * The realtime feed joined to each archive is in realtime-feeds-v1.json; the cases both platforms read are
+     * contracts/shared-rules/v1/remote-gtfs-v1.json.
+     */
+    object RemoteGtfs {
+        data class RemoteFeed(
+            val id: String,
+            val pack: String,
+            val operatorScope: String,
+            val attribution: String,
+            val url: String,
+            val notBefore: String,
+            val realtimeFeed: String?
+        )
+        data class ArchiveLimits(
+            val maximumEntries: Int,
+            val maximumEntryBytes: Int,
+            val maximumTotalUncompressedBytes: Int,
+            val maximumCompressionRatio: Int,
+            val maximumCsvLineLength: Int,
+            val maximumAgencies: Int,
+            val maximumStops: Int,
+            val maximumRoutes: Int,
+            val maximumTrips: Int,
+            val maximumCalendars: Int,
+            val maximumCalendarDateRows: Int,
+            val maximumStopTimeRows: Int
+        )
+
+        val FEEDS: List<RemoteFeed> = listOf(
+            // Brussels and Amsterdam to Milan by night since 9 September 2026; a community mirror, never above RFI or
+            // an official GTFS.
+            RemoteFeed(id = "european-sleeper-gtfs", pack = "european-sleeper", operatorScope = "European Sleeper", attribution = "European Sleeper / JBB community feed", url = "https://jbb.ghsq.de/gtfs/eu-es.gtfs.zip", notBefore = "2026-09-09", realtimeFeed = "european-sleeper-gtfs-rt")
+        )
+        const val ACCEPT: String = "application/zip, application/octet-stream;q=0.9"
+        const val CONNECT_TIMEOUT_SECONDS: Int = 15
+        const val READ_TIMEOUT_SECONDS: Int = 45
+        const val MAXIMUM_REDIRECTS: Int = 5
+        const val MAXIMUM_ARCHIVE_BYTES: Int = 8388608
+        const val CACHE_TIME_TO_LIVE_SECONDS: Int = 21600
+        const val FAILURE_COOLDOWN_SECONDS: Int = 300
+        const val REFUSAL_PAUSE_SECONDS: Int = 900
+        val ARCHIVE: ArchiveLimits = ArchiveLimits(maximumEntries = 64, maximumEntryBytes = 134217728, maximumTotalUncompressedBytes = 134217728, maximumCompressionRatio = 1000, maximumCsvLineLength = 32768, maximumAgencies = 10000, maximumStops = 300000, maximumRoutes = 100000, maximumTrips = 150000, maximumCalendars = 100000, maximumCalendarDateRows = 500000, maximumStopTimeRows = 1500000)
     }
 
     /**
@@ -1171,6 +1276,69 @@ internal object SharedData {
             "Bari Centrale" to 595,
             "Palermo Centrale" to 2018,
             "Cagliari" to 787
+        )
+    }
+
+    /**
+     * contracts/shared-data/v1/rfi-programmed-v1.json: RFI's public programmed timetable («Quadro orario», prm.rfi.it),
+     * the same on Android and on the iPhone: the page of a station's departures or arrivals for a whole day, how it is
+     * asked (HTTPS, the time limits, the largest page), how long a page and a read timetable are kept, how many trains
+     * a route lists, and the hubs whose timetable identifier was verified (main and supplemental), by railway code and
+     * by the names RFI and the catalogue give them. The cases both platforms read are
+     * contracts/shared-rules/v1/rfi-programmed-v1.json.
+     */
+    object RfiProgrammed {
+        data class Hub(val railwayCode: String, val timetableId: Int, val names: List<String>)
+
+        const val URL_TEMPLATE: String = "https://prm.rfi.it/qo_prm/QO_<board>_SiPMR.aspx?Id=<id>&lin=it&dalle=00.00&alle=23.59&ora=00.00"
+        const val DEPARTURES_BOARD: String = "Partenze"
+        const val ARRIVALS_BOARD: String = "Arrivi"
+        const val ACCEPT: String = "text/html,application/xhtml+xml"
+        const val CONNECT_TIMEOUT_SECONDS: Int = 12
+        const val READ_TIMEOUT_SECONDS: Int = 25
+        const val TOTAL_TIMEOUT_SECONDS: Int = 10
+        const val MAXIMUM_BYTES: Int = 2097152
+        const val PAGE_TIME_TO_LIVE_SECONDS: Int = 1800
+        const val MAXIMUM_PAGES: Int = 3
+        const val TIMETABLE_TIME_TO_LIVE_SECONDS: Int = 21600
+        const val MAXIMUM_TIMETABLES: Int = 16
+        const val MAXIMUM_SUPPLEMENTAL_TIMETABLES: Int = 8
+        const val MAXIMUM_ROUTE_SERVICES: Int = 24
+        const val BOARD_MINIMUM_INTERVAL_SECONDS: Int = 2
+        val HUBS: List<Hub> = listOf(
+            Hub(railwayCode = "S08409", timetableId = 2247, names = listOf("Roma Termini")),
+            Hub(railwayCode = "S08217", timetableId = 2217, names = listOf("Roma Tiburtina")),
+            Hub(railwayCode = "S08406", timetableId = 2211, names = listOf("Roma Ostiense")),
+            Hub(railwayCode = "S01700", timetableId = 1603, names = listOf("Milano Centrale")),
+            Hub(railwayCode = "S09218", timetableId = 1757, names = listOf("Napoli Centrale")),
+            Hub(railwayCode = "S05043", timetableId = 635, names = listOf("Bologna Centrale")),
+            Hub(
+                railwayCode = "S06421",
+                timetableId = 1325,
+                names = listOf("Firenze S.M.N.", "Firenze Santa Maria Novella")
+            ),
+            Hub(railwayCode = "S00219", timetableId = 2672, names = listOf("Torino Porta Nuova")),
+            Hub(railwayCode = "S00035", timetableId = 25350269, names = listOf("Torino Porta Susa")),
+            Hub(railwayCode = "S02593", timetableId = 2796, names = listOf("Venezia Santa Lucia", "Venezia S. Lucia")),
+            Hub(railwayCode = "S02430", timetableId = 2812, names = listOf("Verona Porta Nuova")),
+            Hub(
+                railwayCode = "S04700",
+                timetableId = 248,
+                names = listOf("Genova Piazza Principe", "Genova P. Principe")
+            ),
+            Hub(railwayCode = "S11119", timetableId = 550, names = listOf("Bari Centrale")),
+            Hub(railwayCode = "S09818", timetableId = 2434, names = listOf("Salerno"))
+        )
+        val SUPPLEMENTAL_HUBS: List<Hub> = listOf(
+            Hub(
+                railwayCode = "S11781",
+                timetableId = 116,
+                names = listOf("Reggio Calabria Centrale", "Reggio di Calabria Centrale")
+            ),
+            Hub(railwayCode = "S07113", timetableId = 408, names = listOf("Ancona", "Ancona (Tutte le stazioni)")),
+            Hub(railwayCode = "S12002", timetableId = 1878, names = listOf("Palermo Centrale")),
+            Hub(railwayCode = "S12332", timetableId = 959, names = listOf("Catania Centrale")),
+            Hub(railwayCode = "S11145", timetableId = 1436, names = listOf("Lecce"))
         )
     }
 
@@ -1419,6 +1587,61 @@ internal object SharedData {
     }
 
     /**
+     * contracts/shared-data/v1/trip-alerts-v1.json: The trip notifications and alarms: the stop alarm, the followed
+     * trip (Android's ongoing notification, the iPhone's Live Activity) with its stop countdown, «Avvisami quando sta
+     * arrivando», the commuter alerts, the new notices of the trains with the bell and the position estimate during the
+     * trip. Leads, windows, cadences, tolerances and limits; the quiet hours (22-7) are those of
+     * evening-alerts-v1.json.
+     */
+    object TripAlerts {
+        const val STOP_ALARM_LEAD_MINUTES: Int = 5
+        const val STOP_ALARM_MAXIMUM_ALARMS: Int = 8
+        const val STOP_ALARM_KEEP_AFTER_ARRIVAL_MINUTES: Int = 120
+        const val STOP_ALARM_NOTIFICATION_TIMEOUT_MINUTES: Int = 60
+        const val STOP_ALARM_REPLAN_THRESHOLD_SECONDS: Int = 60
+        const val FOLLOWED_TRIP_LEAD_MINUTES: Int = 30
+        const val FOLLOWED_TRIP_TRAIL_MINUTES: Int = 30
+        const val FOLLOWED_TRIP_REFRESH_MINUTES: Int = 15
+        const val FOLLOWED_TRIP_MAXIMUM_DELAY_EXTENSION_MINUTES: Int = 360
+        const val FOLLOWED_TRIP_NEAR_ALIGHT_STOPS: Int = 3
+        const val FOLLOWED_TRIP_NEAR_ALIGHT_DELAY_SECONDS: Int = 30
+        const val FOLLOWED_TRIP_MINIMUM_REFRESH_MINUTES: Int = 2
+        const val FOLLOWED_TRIP_MAXIMUM_LEGS: Int = 6
+        val APPROACH_LEAD_OPTIONS_MINUTES: List<Int> = listOf(5, 10, 15)
+        const val APPROACH_DEFAULT_LEAD_MINUTES: Int = 10
+        const val APPROACH_CHECK_MINUTES: Int = 15
+        const val APPROACH_FIRST_CHECK_BEFORE_MINUTES: Int = 30
+        const val APPROACH_MAXIMUM_DELAY_MINUTES: Int = 180
+        const val APPROACH_EARLY_TOLERANCE_MINUTES: Int = 1
+        const val APPROACH_LATE_TOLERANCE_MINUTES: Int = 2
+        const val APPROACH_MINIMUM_GAP_MINUTES: Int = 1
+        const val APPROACH_NOTIFICATION_TIMEOUT_MINUTES: Int = 15
+        const val APPROACH_MAXIMUM_ALERTS: Int = 12
+        val COMMUTER_LEAD_OPTIONS_MINUTES: List<Int> = listOf(5, 10, 15, 30, 60)
+        const val COMMUTER_MAXIMUM_ALERTS: Int = 24
+        const val TRAIN_ALERTS_CHECK_MINUTES: Int = 15
+        const val TRAIN_ALERTS_BEFORE_DEPARTURE_MINUTES: Int = 240
+        const val TRAIN_ALERTS_AFTER_DEPARTURE_MINUTES: Int = 180
+        const val TRAIN_ALERTS_AFTER_ARRIVAL_MINUTES: Int = 30
+        const val TRAIN_ALERTS_MAXIMUM_SUBSCRIPTIONS: Int = 16
+        const val TRAIN_ALERTS_MAXIMUM_SEEN: Int = 400
+        const val TRAIN_ALERTS_SEEN_RETENTION_DAYS: Int = 7
+        const val POSITION_MAXIMUM_ACCURACY_METERS: Int = 200
+        const val POSITION_MAXIMUM_FIX_AGE_SECONDS: Int = 120
+        const val POSITION_OFF_ROUTE_METERS: Int = 1500
+        const val POSITION_DWELL_RADIUS_METERS: Int = 400
+        const val POSITION_BACKTRACK_TOLERANCE_METERS: Int = 500
+        const val POSITION_FRESH_SECONDS: Int = 180
+        const val POSITION_MAXIMUM_ROUTE_STOPS: Int = 80
+        const val POSITION_SESSION_AFTER_ARRIVAL_MINUTES: Int = 120
+        const val POSITION_SESSION_MAXIMUM_MINUTES: Int = 480
+        const val ESTIMATE_FRESH_SECONDS: Int = 120
+        const val ESTIMATE_MAXIMUM_DELAY_MINUTES: Int = 600
+        const val ESTIMATE_BEFORE_DEPARTURE_MINUTES: Int = 10
+        const val ESTIMATE_AFTER_ARRIVAL_MINUTES: Int = 10
+    }
+
+    /**
      * contracts/shared-data/v1/urban-stops-v1.json: How the apps reach the stops of the city networks
      * (pack-roles-v1.json, urbanPacks) on foot: a station and a city stop at most maximumWalkMeters apart (straight
      * line) are joined by a walk, timed at walkingSpeedKmh, rounded up to the minute, plus walkMarginMinutes; stops of
@@ -1464,5 +1687,52 @@ internal object SharedData {
         val TRENORD_CLIENTS: Set<Int> = setOf(63)
         val TRENITALIA_REGIONAL_CLIENTS: Set<Int> = setOf(2, 18)
         val TRENITALIA_LONG_DISTANCE_CLIENTS: Set<Int> = setOf(1, 4)
+    }
+
+    /**
+     * contracts/shared-data/v1/widgets-v1.json: The three home-screen widgets (Tratta, Tabellone stazione, I miei
+     * treni) on both phones: the automatic refresh (intervals, days, one or two daily windows, also across midnight),
+     * the automatic return direction, which runs a widget lists and for how long, when its live values count as fresh,
+     * which favourite trains a refresh asks for, and the retries of a refresh the user asked for. Times are
+     * railway-local (Europe/Rome).
+     */
+    object Widgets {
+        data class RefreshWindow(val start: String, val end: String)
+        data class TimeRange(val id: String, val hours: Int?, val extraPages: Int)
+
+        val REFRESH_INTERVALS_MINUTES: List<Int> = listOf(15, 30, 60)
+        const val DEFAULT_INTERVAL_MINUTES: Int = 30
+        const val ALWAYS_INTERVAL_MINUTES: Int = 15
+        val WEEKDAYS: Set<Int> = setOf(1, 2, 3, 4, 5)
+        const val MAXIMUM_WINDOWS: Int = 2
+        val DEFAULT_MORNING_WINDOW: RefreshWindow = RefreshWindow(start = "07:00", end = "09:30")
+        val DEFAULT_EVENING_WINDOW: RefreshWindow = RefreshWindow(start = "17:00", end = "19:30")
+        const val WINDOW_LOOKAHEAD_DAYS: Int = 8
+        const val MINIMUM_RESCHEDULE_SECONDS: Int = 60
+        const val DEFAULT_RETURN_FROM: String = "14:00"
+        const val MAXIMUM_TITLE_LENGTH: Int = 42
+        const val DEPARTED_GRACE_SECONDS: Int = 60
+        const val FRESH_SECONDS: Int = 300
+        const val AGING_SECONDS: Int = 900
+        val TIME_RANGES: List<TimeRange> = listOf(
+            // What the source returns now: the list of the widgets added before the settings.
+            TimeRange(id = "NEXT", hours = null, extraPages = 0),
+            TimeRange(id = "NEXT_3H", hours = 3, extraPages = 1),
+            TimeRange(id = "NEXT_6H", hours = 6, extraPages = 2),
+            // Until 23:59 of the day, kept for the day and readable offline.
+            TimeRange(id = "WHOLE_DAY", hours = null, extraPages = 3)
+        )
+        const val DAY_CACHE_MAXIMUM_ROWS: Int = 60
+        const val COMPACT_ROWS: Int = 2
+        const val PAGE_ROWS: Int = 5
+        const val STATION_STORED_DEPARTURES: Int = 12
+        const val STATION_MAXIMUM_ROWS: Int = 4
+        const val TRAINS_ARRIVAL_GRACE_MINUTES: Int = 10
+        const val LOOKUP_BEFORE_DEPARTURE_MINUTES: Int = 60
+        const val LOOKUP_AFTER_ARRIVAL_MINUTES: Int = 30
+        const val LOOKUP_DEFAULT_DURATION_MINUTES: Int = 180
+        const val LOOKUP_MAXIMUM_DURATION_MINUTES: Int = 2160
+        const val RETRY_MAXIMUM_ATTEMPTS: Int = 3
+        const val RETRY_FIRST_DELAY_MINUTES: Int = 15
     }
 }

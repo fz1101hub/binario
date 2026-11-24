@@ -81,6 +81,8 @@ struct TrainDetailView: View {
             if service.hasTrainNumber {
                 PersonalPunctualitySection(number: service.number)
             }
+            // The followed trip, the stop alarm, the bell and «Avvisami quando sta arrivando» (TripAlertViews.swift).
+            TripAlertsSection(service: service, query: query, liveRun: liveRun?.run)
 
             if let detail = model.reliabilityDetail(for: service, query: query) {
                 NetworkReliabilitySection(detail: detail, query: query, service: service)

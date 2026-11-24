@@ -1,5 +1,14 @@
 package it.binario.app.shared
 
+import java.time.LocalDateTime
+import it.binario.app.journeys.TransferRiskCalculator
+import it.binario.app.journeys.JourneyResultsPresenter
+import it.binario.app.data.repository.JourneySearchQuery
+import it.binario.app.data.provider.WalkingSpeed
+import it.binario.app.data.provider.JourneyPreferences
+import it.binario.app.data.planned.SupplementalRfiProgrammedStationIds
+import it.binario.app.data.planned.RfiProgrammedStationIds
+import it.binario.app.data.Station
 import it.binario.app.data.AirportRoutes
 import it.binario.app.data.CompensationShare
 import it.binario.app.data.DelayCompensationRule
@@ -10,8 +19,12 @@ import it.binario.app.data.weather.OpenMeteoForecastAdapter
 import it.binario.app.maps.LiveTrainAreas
 import it.binario.app.maps.LiveTrainRefresh
 import it.binario.app.maps.LiveTrainSelector
+import it.binario.app.notifications.ApproachAlertPlanner
+import it.binario.app.notifications.FollowedTrip
+import it.binario.app.notifications.FollowedTripPlanner
 import it.binario.app.notifications.RouteWorksAlertPlanner
 import it.binario.app.notifications.StrikeReminderPlanner
+import it.binario.app.notifications.TrainAlertWatch
 import it.binario.app.data.core.SourceId
 import it.binario.app.data.gtfs.EmbeddedGtfsPacks
 import it.binario.app.data.gtfs.ItaloGtfsStationCodes
@@ -47,6 +60,21 @@ import it.binario.app.plannedjourney.PlannedJourneyPersistenceSchema
 import it.binario.app.plannedjourney.PlannedJourneyReminderMinutes
 import it.binario.app.plannedjourney.PlannedJourneyTemplates
 import it.binario.app.plannedjourney.PlannedJourneyTransferContract
+import it.binario.app.widget.AutoRefreshSettings
+import it.binario.app.widget.DayPreset
+import it.binario.app.widget.RefreshInterval
+import it.binario.app.widget.RouteTimeRange
+import it.binario.app.widget.RouteWidgetDayCache
+import it.binario.app.widget.RouteWidgetPaging
+import it.binario.app.widget.RouteWidgetPresenter
+import it.binario.app.widget.StationWidgetPresenter
+import it.binario.app.widget.StationWidgetSnapshot
+import it.binario.app.widget.TimeWindow
+import it.binario.app.widget.TrainsWidgetLookupPlanner
+import it.binario.app.widget.WidgetAutoRefreshPlanner
+import it.binario.app.widget.WidgetLayoutMode
+import it.binario.app.widget.WidgetRefreshRetryPolicy
+import java.time.DayOfWeek
 import java.io.File
 import java.time.Clock
 import java.time.Duration
@@ -255,6 +283,37 @@ class SharedDataTest {
         assertEquals(json.getInt("platformMeters").toDouble(), UrbanStopPlatforms.SIBLING_METERS, 0.0)
     }
 
+    @Test fun `the planner of the journeys with changes reads the shared table`() {
+        val json = table("journey-planner-v1.json")
+        val settings = GtfsJourneyPlannerSettings()
+        assertEquals(json.getInt("defaultTransferMinutes"), settings.defaultTransferMinutes)
+        assertEquals(json.getInt("largeHubTransferMinutes"), settings.largeHubTransferMinutes)
+        assertEquals(json.getInt("urbanTransferMinutes"), settings.urbanTransferMinutes)
+        assertEquals(json.getInt("searchWindowMinutes"), settings.searchWindowMinutes)
+        assertEquals(json.getInt("journeyHorizonMinutes"), settings.journeyHorizonMinutes)
+        assertEquals(json.getInt("maximumPacksPerSearch"), settings.maxPacksPerSearch)
+        assertEquals(json.getInt("maximumUrbanPacksPerSearch"), settings.maxUrbanPacksPerSearch)
+        assertEquals(json.getInt("maximumIterations"), settings.maxIterations)
+        assertEquals(json.getInt("maximumSearchConnections"), settings.maxSearchConnections)
+        assertEquals(json.getInt("maximumChangeWaitMinutes"), settings.maxChangeWaitMinutes)
+        // The large hubs are the stations with a verified RFI timetable: the table must follow them.
+        val hubs = json.getJSONArray("largeHubRailwayCodes").strings().toSet()
+        assertEquals(hubs, settings.largeHubRailwayCodes)
+        assertEquals(RfiProgrammedStationIds.hubRailwayCodes + SupplementalRfiProgrammedStationIds.hubRailwayCodes, hubs)
+        assertEquals(json.getDouble("slowWalkingKmh"), WalkingSpeed.SLOW.kmh, 0.0)
+        assertEquals(json.getDouble("normalWalkingKmh"), WalkingSpeed.NORMAL.kmh, 0.0)
+        assertEquals(json.getDouble("fastWalkingKmh"), WalkingSpeed.FAST.kmh, 0.0)
+        assertEquals(json.getJSONArray("walkMinuteChoices").ints(), JourneyPreferences.MAX_WALK_CHOICES)
+        assertEquals(json.getInt("defaultMaximumWalkMinutes"), JourneyPreferences().maxWalkMinutes)
+        val query = JourneySearchQuery(Station("a", "A", "A"), Station("b", "B", "B"), LocalDateTime.of(2026, 1, 1, 8, 0))
+        assertEquals(json.getInt("defaultMaximumTransfers"), query.maxTransfers)
+        assertEquals(json.getInt("maximumResults"), query.maxResults)
+        assertEquals(json.getInt("longWaitMinutes").toLong(), JourneyResultsPresenter.LONG_WAIT_MINUTES)
+        assertEquals(json.getInt("defaultTransferMinutes").toLong(), TransferRiskCalculator.DEFAULT_TRANSFER_MINUTES)
+        assertEquals(json.getJSONArray("longDistanceCodes").strings().toSet(), SharedData.JourneyPlanner.LONG_DISTANCE_CODES)
+        assertEquals(json.getJSONArray("localCodes").strings().toSet(), SharedData.JourneyPlanner.LOCAL_CODES)
+    }
+
     @Test fun `every source is asked with the shared manners`() {
         val json = table("source-manners-v1.json")
         assertEquals("Binario/1.2 (Android; rail timetable app)", binarioUserAgent("1.2"))
@@ -424,6 +483,59 @@ class SharedDataTest {
         assertEquals(json.getInt("routeWorksMaximumNotified"), RouteWorksAlertPlanner.MAX_NOTIFIED)
     }
 
+    @Test fun `the trip alerts are the shared table`() {
+        val json = table("trip-alerts-v1.json")
+        fun minutes(key: String): Duration = Duration.ofMinutes(json.getLong(key))
+        fun seconds(key: String): Duration = Duration.ofSeconds(json.getLong(key))
+        assertEquals(json.getInt("stopAlarmMaximumAlarms"), it.binario.app.StopAlarmPlanner.MAX_ALARMS)
+        assertEquals(minutes("stopAlarmNotificationTimeoutMinutes").toMillis(), it.binario.app.StopAlarmPlanner.NOTIFICATION_TIMEOUT_MILLIS)
+        assertEquals(minutes("stopAlarmKeepAfterArrivalMinutes").toMillis(), it.binario.app.StopAlarmPlanner.KEEP_AFTER_ARRIVAL_MILLIS)
+        assertEquals(seconds("stopAlarmReplanThresholdSeconds").toMillis(), it.binario.app.StopAlarmPlanner.REPLAN_THRESHOLD_MILLIS)
+        assertEquals(minutes("followedTripLeadMinutes"), FollowedTripPlanner.LEAD)
+        assertEquals(minutes("followedTripTrailMinutes"), FollowedTripPlanner.TRAIL)
+        assertEquals(minutes("followedTripRefreshMinutes"), FollowedTripPlanner.INTERVAL)
+        assertEquals(minutes("followedTripMaximumDelayExtensionMinutes"), FollowedTripPlanner.MAX_DELAY_EXTENSION)
+        assertEquals(json.getInt("followedTripNearAlightStops"), FollowedTripPlanner.NEAR_ALIGHT_STOPS)
+        assertEquals(seconds("followedTripNearAlightDelaySeconds"), FollowedTripPlanner.NEAR_ALIGHT_DELAY)
+        assertEquals(minutes("followedTripMinimumRefreshMinutes"), FollowedTripPlanner.MIN_REFRESH)
+        assertEquals(json.getInt("followedTripMaximumLegs"), FollowedTrip.MAX_LEGS)
+        assertEquals(json.getJSONArray("approachLeadOptionsMinutes").ints(), ApproachAlertPlanner.LEAD_OPTIONS)
+        assertEquals(json.getInt("approachDefaultLeadMinutes"), ApproachAlertPlanner.DEFAULT_LEAD)
+        assertEquals(minutes("approachCheckMinutes"), ApproachAlertPlanner.CHECK_INTERVAL)
+        assertEquals(minutes("approachFirstCheckBeforeMinutes"), ApproachAlertPlanner.FIRST_CHECK_BEFORE)
+        assertEquals(minutes("approachMaximumDelayMinutes"), ApproachAlertPlanner.MAX_DELAY)
+        assertEquals(minutes("approachEarlyToleranceMinutes"), ApproachAlertPlanner.EARLY_TOLERANCE)
+        assertEquals(minutes("approachLateToleranceMinutes"), ApproachAlertPlanner.LATE_TOLERANCE)
+        assertEquals(minutes("approachMinimumGapMinutes"), ApproachAlertPlanner.MIN_DELAY_BETWEEN_RUNS)
+        assertEquals(minutes("approachNotificationTimeoutMinutes"), ApproachAlertPlanner.NOTIFICATION_TIMEOUT)
+        assertEquals(json.getInt("approachMaximumAlerts"), ApproachAlertPlanner.MAX_ALERTS)
+        assertEquals(json.getJSONArray("commuterLeadOptionsMinutes").ints(), SharedData.TripAlerts.COMMUTER_LEAD_OPTIONS_MINUTES)
+        assertEquals(json.getInt("commuterMaximumAlerts"), SharedData.TripAlerts.COMMUTER_MAXIMUM_ALERTS)
+        assertEquals(minutes("trainAlertsCheckMinutes"), TrainAlertWatch.INTERVAL)
+        assertEquals(minutes("trainAlertsBeforeDepartureMinutes"), TrainAlertWatch.BEFORE_DEPARTURE)
+        assertEquals(minutes("trainAlertsAfterDepartureMinutes"), TrainAlertWatch.AFTER_DEPARTURE)
+        assertEquals(minutes("trainAlertsAfterArrivalMinutes"), TrainAlertWatch.AFTER_ARRIVAL)
+        assertEquals(json.getInt("trainAlertsMaximumSubscriptions"), TrainAlertWatch.MAX_SUBSCRIPTIONS)
+        assertEquals(json.getInt("trainAlertsMaximumSeen"), TrainAlertWatch.MAX_SEEN)
+        assertEquals(json.getLong("trainAlertsSeenRetentionDays"), TrainAlertWatch.SEEN_RETENTION_DAYS)
+        val evening = table("evening-alerts-v1.json")
+        assertEquals(evening.getInt("quietFromHour"), TrainAlertWatch.QUIET_START.hour)
+        assertEquals(evening.getInt("quietUntilHour"), TrainAlertWatch.QUIET_END.hour)
+        assertEquals(json.getInt("positionMaximumRouteStops"), it.binario.app.gpsalarm.GpsTrainRoute.MAX_STOPS)
+        assertEquals(seconds("positionMaximumFixAgeSeconds").toMillis(), it.binario.app.gpsalarm.GpsArrivalAlarmPolicy.MAX_FIX_AGE_MILLIS)
+        assertEquals(minutes("positionSessionAfterArrivalMinutes").toMillis(), it.binario.app.gpsalarm.GpsArrivalAlarmPolicy.AFTER_ARRIVAL_MILLIS)
+        assertEquals(minutes("positionSessionMaximumMinutes").toMillis(), it.binario.app.gpsalarm.GpsArrivalAlarmPolicy.MAX_DURATION_MILLIS)
+        assertEquals(json.getDouble("positionMaximumAccuracyMeters"), it.binario.app.gpsalarm.GpsTrainTracking.MAX_ACCURACY_METERS, 0.0)
+        assertEquals(json.getDouble("positionOffRouteMeters"), it.binario.app.gpsalarm.GpsTrainTracking.OFF_ROUTE_METERS, 0.0)
+        assertEquals(json.getDouble("positionDwellRadiusMeters"), it.binario.app.gpsalarm.GpsTrainTracking.DWELL_RADIUS_METERS, 0.0)
+        assertEquals(json.getDouble("positionBacktrackToleranceMeters"), it.binario.app.gpsalarm.GpsTrainTracking.BACKTRACK_TOLERANCE_METERS, 0.0)
+        assertEquals(seconds("positionFreshSeconds").toMillis(), it.binario.app.gpsalarm.GpsTrainTracking.POSITION_FRESH_MILLIS)
+        assertEquals(seconds("estimateFreshSeconds").toMillis(), it.binario.app.gpsalarm.GpsTrainTracking.ESTIMATE_FRESH_MILLIS)
+        assertEquals(json.getInt("estimateMaximumDelayMinutes"), it.binario.app.gpsalarm.GpsTrainTracking.MAX_DELAY_MINUTES)
+        assertEquals(minutes("estimateBeforeDepartureMinutes").toMillis(), it.binario.app.gpsalarm.GpsTrainTracking.BEFORE_DEPARTURE_MILLIS)
+        assertEquals(minutes("estimateAfterArrivalMinutes").toMillis(), it.binario.app.gpsalarm.GpsTrainTracking.AFTER_ARRIVAL_MILLIS)
+    }
+
     @Test fun `the realtime feeds and the swiss boards are the shared table`() {
         val json = table("realtime-feeds-v1.json")
         assertEquals(Duration.ofSeconds(json.getLong("observationWindowSeconds")), it.binario.app.data.core.GtfsRealtimeFreshness.OBSERVATION_WINDOW)
@@ -447,5 +559,70 @@ class SharedDataTest {
         assertEquals(swiss.getString("id"), it.binario.app.data.live.SwissOpenTransportStationBoardAdapter.SOURCE_ID.value)
         assertEquals(swiss.getString("baseUrl"), it.binario.app.data.live.SwissOpenTransportStationBoardAdapter.BASE_URL)
         assertEquals(swiss.getJSONArray("nonRailCategories").strings().toSet(), SharedData.RealtimeFeeds.SWISS_BOARD.nonRailCategories)
+        val sleeper = feeds.getValue(it.binario.app.data.live.EuropeanSleeperGtfsRealtimeAdapter.SOURCE_ID.value)
+        assertEquals(sleeper.getString("url"), it.binario.app.data.live.HttpEuropeanSleeperRealtimeFetcher.FEED_URL)
+        assertEquals("remote-pack", sleeper.getString("gate"))
+    }
+
+    @Test fun `the community archives and RFI's programmed timetable are the shared tables`() {
+        val remote = table("remote-gtfs-v1.json")
+        val feed = remote.getJSONArray("feeds").getJSONObject(0)
+        val catalogued = requireNotNull(it.binario.app.data.sources.InternationalSourceCatalog.byId(SourceId(feed.getString("id"))))
+        assertEquals(feed.getString("url"), catalogued.downloadOrProbeUri.toString())
+        assertEquals(feed.getString("realtimeFeed"), it.binario.app.data.live.EuropeanSleeperGtfsRealtimeAdapter.SOURCE_ID.value)
+        assertEquals(java.time.LocalDate.parse(feed.getString("notBefore")), it.binario.app.data.live.EuropeanSleeperGtfsRealtimeAdapter.LAUNCH_DATE)
+        assertEquals(feed.getString("pack"), it.binario.app.data.gtfs.RemoteGtfsFallbackDataSource.EUROPEAN_SLEEPER.pack)
+        assertEquals(remote.getInt("maximumArchiveBytes"), SharedData.RemoteGtfs.MAXIMUM_ARCHIVE_BYTES)
+        val rfi = table("rfi-programmed-v1.json")
+        assertEquals(
+            "https://prm.rfi.it/qo_prm/QO_Partenze_SiPMR.aspx?Id=2247&lin=it&dalle=00.00&alle=23.59&ora=00.00",
+            it.binario.app.data.planned.RfiTimetablePages.url(2247)
+        )
+        assertEquals(rfi.getInt("maximumBytes"), it.binario.app.data.planned.RFI_PROGRAMMED_TIMETABLE_MAX_BYTES)
+        for (hub in rfi.getJSONArray("hubs").objects()) {
+            val id = hub.getInt("timetableId")
+            val code = hub.getString("railwayCode")
+            assertEquals(id, it.binario.app.data.planned.RfiProgrammedStationIds.timetableId(it.binario.app.data.Station("x", "?", "?", railwayCode = code)))
+            for (name in hub.getJSONArray("names").strings()) {
+                assertEquals(name, id, it.binario.app.data.planned.RfiProgrammedStationIds.timetableId(it.binario.app.data.Station("x", name, name)))
+            }
+        }
+        for (hub in rfi.getJSONArray("supplementalHubs").objects()) {
+            val id = hub.getInt("timetableId")
+            for (name in hub.getJSONArray("names").strings()) {
+                assertEquals(name, id, it.binario.app.data.planned.SupplementalRfiProgrammedStationIds.timetableId(it.binario.app.data.Station("x", name, name)))
+            }
+        }
+    }
+
+    @Test fun `the widgets read the shared table`() {
+        val json = table("widgets-v1.json")
+        // The enums of the settings are the table's values, in its order.
+        assertEquals(json.getJSONArray("refreshIntervalsMinutes").ints(), RefreshInterval.entries.map { it.minutes })
+        assertEquals(json.getJSONArray("timeRanges").objects().map { it.getString("id") }, RouteTimeRange.entries.map { it.name })
+        assertEquals(listOf(null, 3L, 6L, null), RouteTimeRange.entries.map { it.hours })
+        assertEquals(listOf(0, 1, 2, 3), RouteTimeRange.entries.map { range -> RouteWidgetPaging.maxExtraPages(range) })
+        val defaults = AutoRefreshSettings()
+        assertEquals(json.getInt("defaultIntervalMinutes"), defaults.interval.minutes)
+        assertEquals(json.getInt("alwaysIntervalMinutes"), AutoRefreshSettings.LEGACY.interval.minutes)
+        assertEquals(json.getJSONArray("weekdays").ints().map { DayOfWeek.of(it) }.toSet(), DayPreset.WEEKDAYS.days)
+        assertEquals(json.getInt("maximumWindows"), AutoRefreshSettings.MAX_WINDOWS)
+        val morning = json.getJSONObject("defaultMorningWindow")
+        assertEquals(morning.getString("start"), TimeWindow.DEFAULT_MORNING.start.toString())
+        assertEquals(morning.getString("end"), TimeWindow.DEFAULT_MORNING.end.toString())
+        assertEquals(json.getJSONObject("defaultEveningWindow").getString("start"), TimeWindow.DEFAULT_EVENING.start.toString())
+        assertEquals(listOf(morning.getString("start") to morning.getString("end")), defaults.windows.map { it.start.toString() to it.end.toString() })
+        assertEquals(Duration.ofSeconds(json.getLong("minimumRescheduleSeconds")), WidgetAutoRefreshPlanner.MIN_RESCHEDULE)
+        assertEquals(json.getLong("departedGraceSeconds") * 1_000, RouteWidgetPresenter.DEPARTED_GRACE_MILLIS)
+        assertEquals(json.getInt("dayCacheMaximumRows"), RouteWidgetDayCache.MAX_ROWS)
+        assertEquals(json.getInt("stationStoredDepartures"), StationWidgetSnapshot.MAX_STORED)
+        assertEquals(json.getInt("stationMaximumRows"), StationWidgetPresenter.MAX_ROWS)
+        assertEquals(json.getInt("compactRows"), WidgetLayoutMode.COMPACT.visibleRows)
+        assertEquals(json.getInt("pageRows"), WidgetLayoutMode.STANDARD.visibleRows)
+        assertEquals(json.getInt("retryMaximumAttempts"), WidgetRefreshRetryPolicy.MAX_ATTEMPTS)
+        assertEquals(Duration.ofMinutes(json.getLong("retryFirstDelayMinutes")), WidgetRefreshRetryPolicy.FIRST_DELAY)
+        assertEquals(Duration.ofMinutes(json.getLong("lookupBeforeDepartureMinutes")), TrainsWidgetLookupPlanner.BEFORE_DEPARTURE)
+        assertEquals(Duration.ofMinutes(json.getLong("lookupAfterArrivalMinutes")), TrainsWidgetLookupPlanner.AFTER_ARRIVAL)
+        assertEquals(Duration.ofMinutes(json.getLong("lookupDefaultDurationMinutes")), TrainsWidgetLookupPlanner.DEFAULT_DURATION)
     }
 }

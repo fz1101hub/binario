@@ -265,6 +265,9 @@ final class AppModel: ObservableObject {
     /// The open Trip Updates feeds of the bundled packs (STA, SNCF, Trenitalia France), joined to the listed trains by
     /// trip and stop, behind the same «Dati in tempo reale» switch; nil in a build without them.
     private let timetableRealtime: TimetableRealtime?
+    /// What the timetables ask when they give no train (Android's tiers): RFI's programmed timetable, then the
+    /// community archives (European Sleeper); nil in a model without them (the tests that do not need them).
+    private let timetableFallbacks: TimetableFallbacks?
     /// Their statuses on the rows of «Partenze», for the station and the instant they were asked.
     private var boardRealtime: (stationID: String, statuses: [String: StationBoardLiveStatus], at: Date)?
     private let liveDataStore: LiveDataPreferenceStore
@@ -284,6 +287,8 @@ final class AppModel: ObservableObject {
     /// False from the moment the app goes to the background until it is active again: no live
     /// request starts meanwhile, not even one a pull or a search begun just before reaches.
     private var isForeground = true
+    /// Catalogue stations by name key, for the trip alerts; rebuilt with the catalogue.
+    private var tripStationIndex: [String: Station]?
     /// The screens that ask live sources do so only while they are on screen.
     private var boardLiveVisible = false
     private var plannerLiveVisible = false
@@ -319,6 +324,7 @@ final class AppModel: ObservableObject {
         backgroundActivity: (any BackgroundActivityRunning)? = nil,
         liveData: (any LiveRailProviding)? = nil,
         timetableRealtime: TimetableRealtime? = nil,
+        timetableFallbacks: TimetableFallbacks? = nil,
         liveDataStore: LiveDataPreferenceStore = LiveDataPreferenceStore(),
         livePauses: LiveSourcePauses = .shared,
         versionDisplay: String
@@ -347,6 +353,7 @@ final class AppModel: ObservableObject {
         self.backgroundActivity = backgroundActivity
         self.liveData = liveData
         self.timetableRealtime = timetableRealtime
+        self.timetableFallbacks = timetableFallbacks
         self.liveDataStore = liveDataStore
         self.livePauses = livePauses
         let liveEnabled = liveDataStore.load()
@@ -426,12 +433,20 @@ final class AppModel: ObservableObject {
             // resource every 30 seconds, pause at the first refusal) across every screen.
             liveData: LiveRailData.standard(),
             timetableRealtime: TimetableRealtime.standard(),
+            timetableFallbacks: FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first.map {
+                TimetableFallbacks.standard(cachesDirectory: $0.appendingPathComponent("Binario", isDirectory: true))
+            },
             liveDataStore: LiveDataPreferenceStore(),
             versionDisplay: versionFormatter.displayVersion(bundle: bundle)
         )
 
+        // The trip notifications and alarms read the live sources through this model (TripMonitor.swift).
+        TripMonitor.shared.attach(model)
+
         // The reminders of the Agenda as the system holds them; nothing is asked to the user here.
         Task { await model.refreshReminders() }
+        // The home-screen widgets read the switch and «I miei treni» from the App Group.
+        WidgetBridge.share(favourites: model.favouriteTrains, liveDataEnabled: model.liveDataEnabled)
 
         // The statistics are optional: a build without the file shows no reliability at all.
         let statisticsURL = bundle.url(
@@ -461,9 +476,10 @@ final class AppModel: ObservableObject {
             model.scheduleState = .unavailable
             return model
         }
-        let cacheDirectory = applicationSupport
+        // In the App Group, where the home-screen widgets read the same index (WidgetBridge).
+        let cacheDirectory = WidgetBridge.scheduleDirectory(fallback: applicationSupport
             .appendingPathComponent("Binario", isDirectory: true)
-            .appendingPathComponent("GTFS", isDirectory: true)
+            .appendingPathComponent("GTFS", isDirectory: true))
         // The full foreign timetables (design §4.4): optional pins in the bundle, downloads in their
         // own folder, excluded from backup.
         let foreignPinsURL = bundle.url(
@@ -487,9 +503,11 @@ final class AppModel: ObservableObject {
     func loadCatalog(data: @escaping @Sendable () throws -> Data) async {
         catalogState = .loading
         catalogState = await StationCatalogLoader.load(data: data)
+        tripStationIndex = nil
         stationNamesByCode = [:]
         dictationStations = nil
         if case let .available(catalog) = catalogState {
+            timetableFallbacks?.useCatalogue(catalog.stations)
             for station in catalog.stations {
                 guard let code = NetworkReliability.stationCode(StationIdentity(station)), stationNamesByCode[code] == nil else { continue }
                 stationNamesByCode[code] = station.name
@@ -665,12 +683,13 @@ final class AppModel: ObservableObject {
             endPendingWatchRefresh()
             return
         }
-        repository = installed.repository
-        boardProvider = installed.repository
+        repository = installed.repository.with(fallbacks: timetableFallbacks)
+        boardProvider = installed.repository.with(fallbacks: timetableFallbacks)
         schedulePacks = installed.packs
         coveredStationIDs = installed.coveredStationIDs
         sourcePolicy = installed.sourcePolicy
         baseScheduleURL = installed.baseURL
+        WidgetBridge.scheduleInstalled(installed.baseURL)
         foreignTimetables = installed.foreign
         installedForeignFiles = installed.repository.foreignDatabaseURLs
         scheduleState = .available
@@ -866,8 +885,8 @@ final class AppModel: ObservableObject {
             return Self.openSchedule(base: baseURL, foreign: current)
         }.value
         guard let opened, scheduleState == .available else { return }
-        repository = opened.repository
-        boardProvider = opened.repository
+        repository = opened.repository.with(fallbacks: timetableFallbacks)
+        boardProvider = opened.repository.with(fallbacks: timetableFallbacks)
         schedulePacks = opened.packs
         coveredStationIDs = opened.coveredStationIDs
         installedForeignFiles = opened.repository.foreignDatabaseURLs
@@ -1268,6 +1287,7 @@ final class AppModel: ObservableObject {
         guard liveDataEnabled != enabled else { return }
         liveDataStore.save(enabled)
         liveDataEnabled = enabled
+        WidgetBridge.liveDataChanged(enabled)
         guard enabled else {
             clearLiveData()
             return
@@ -1949,6 +1969,33 @@ final class AppModel: ObservableObject {
         }
     }
 
+    // MARK: Trip notifications and alarms (TripMonitor.swift)
+
+    /// The live sources for the trip alerts, nil with «Dati in tempo reale» off: then nothing is asked.
+    var tripLiveData: (any LiveRailProviding)? { liveDataEnabled ? liveData : nil }
+
+    /// The catalogue coordinates of a stop name, for the position during the trip (built once per catalogue).
+    func tripCoordinates(_ name: String) -> (latitude: Double, longitude: Double)? {
+        guard let station = tripStation(named: name), let latitude = station.latitude, let longitude = station.longitude else { return nil }
+        return (latitude, longitude)
+    }
+
+    /// The catalogue station a published stop name names, compared as the trip rules compare names.
+    func tripStation(named name: String) -> Station? {
+        guard case let .available(catalog) = catalogState else { return nil }
+        if tripStationIndex == nil {
+            var index: [String: Station] = [:]
+            for station in catalog.stations {
+                for alias in [station.name] + station.aliases {
+                    let key = TripStationNames.key(alias)
+                    if !key.isEmpty, index[key] == nil { index[key] = station }
+                }
+            }
+            tripStationIndex = index
+        }
+        return tripStationIndex?[TripStationNames.key(name)]
+    }
+
     func takePlannerRequest() -> PlannerRequest? {
         defer { plannerRequest = nil }
         return plannerRequest
@@ -2242,6 +2289,7 @@ final class AppModel: ObservableObject {
             return false
         }
         favouriteTrains = collection.trains
+        WidgetBridge.favouritesChanged(collection)
         return true
     }
 

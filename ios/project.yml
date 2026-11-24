@@ -43,6 +43,9 @@ targets:
         buildPhase: resources
       - path: ../app/src/main/assets/stations/curated_it_rail_stations.json
         buildPhase: resources
+      # The followed trip's Live Activity: its attributes and its two buttons, shared with the
+      # BinarioLiveActivity extension, which draws it.
+      - path: BinarioLiveActivity/Shared
     scheme:
       testTargets:
         - BinarioAppTests
@@ -73,11 +76,14 @@ targets:
         # integrity: export-compliance exempt. Without the key App Store Connect holds every build
         # as "Missing Compliance".
         INFOPLIST_KEY_ITSAppUsesNonExemptEncryption: NO
-        # «Stazione più vicina» (EXPO_PORT_PLAN I7): When-In-Use only, asked on a tap, one position used
-        # on the iPhone and kept nowhere. The text is the Italian one (the development language); each
-        # of the 17 languages has it in Resources/<language>.lproj/InfoPlist.strings. No microphone,
-        # speech or Always key.
-        INFOPLIST_KEY_NSLocationWhenInUseUsageDescription: "Binario usa la tua posizione una sola volta, quando chiedi la stazione più vicina, per trovarla nell’elenco delle stazioni salvato sul telefono. La posizione non viene salvata né inviata."
+        # «Stazione più vicina» (EXPO_PORT_PLAN I7) and «Stima dalla tua posizione» of a followed trip:
+        # When-In-Use only, asked on a tap, positions used on the iPhone while the app is open and kept
+        # nowhere. The text is the Italian one (the development language); each of the 17 languages has
+        # it in Resources/<language>.lproj/InfoPlist.strings. No microphone, speech or Always key.
+        INFOPLIST_KEY_NSLocationWhenInUseUsageDescription: "Binario usa la tua posizione quando chiedi la stazione più vicina e, se attivi la stima dalla tua posizione, durante il viaggio che segui con l’app aperta. La posizione resta sul telefono: non viene salvata né inviata."
+        # The followed trip's Live Activity (TripMonitor.swift, BinarioLiveActivity), updated by the app
+        # itself: no push token is ever asked.
+        INFOPLIST_KEY_NSSupportsLiveActivities: YES
         TARGETED_DEVICE_FAMILY: "1"
         SUPPORTS_MACCATALYST: NO
         # Watch Connectivity is unsupported on Apple silicon Macs and Apple Vision, and the
@@ -107,10 +113,77 @@ targets:
             binario_gtfs_source_policy_personal_v1.json; do
             cp "$SRCROOT/Personal/$name" "$destination/$name"
           done
+    # The App Group the app shares with its widgets (WidgetAppGroup): the installed timetable index, the live
+    # switch, «I miei treni» and what each widget last loaded. Automatic signing registers it on both App IDs.
+    entitlements:
+      path: Configuration/Binario.entitlements
     dependencies:
       - package: BinarioKit
       - target: BinarioWatch
         embed: true
+      - target: BinarioLiveActivity
+        embed: true
+      # The home-screen widgets, embedded in Binario.app/PlugIns.
+      - target: BinarioWidgets
+        embed: true
+  # The followed trip's Live Activity (Lock Screen and Dynamic Island), apart from the home-screen
+  # widgets: every text arrives localized from the app, the extension keeps no data of its own.
+  BinarioLiveActivity:
+    type: app-extension
+    platform: iOS
+    deploymentTarget: "17.0"
+    sources:
+      - path: BinarioLiveActivity
+        excludes:
+          - Info.plist
+    settings:
+      base:
+        SDKROOT: iphoneos
+        SUPPORTED_PLATFORMS: "iphoneos iphonesimulator"
+        PRODUCT_NAME: BinarioLiveActivity
+        PRODUCT_BUNDLE_IDENTIFIER: it.binario.ios.liveactivity
+        # Embedded in Binario.app/PlugIns only, never installed on its own.
+        SKIP_INSTALL: YES
+        GENERATE_INFOPLIST_FILE: NO
+        INFOPLIST_FILE: BinarioLiveActivity/Info.plist
+        TARGETED_DEVICE_FAMILY: "1"
+      configs:
+        debug:
+          ONLY_ACTIVE_ARCH: YES
+          SWIFT_OPTIMIZATION_LEVEL: -Onone
+  # Android's three home-screen widgets on the iPhone (WidgetKit, iOS 17 AppIntentConfiguration). The
+  # followed trip's Live Activity has its own extension (BinarioLiveActivity) and reads nothing of this one.
+  BinarioWidgets:
+    type: app-extension
+    platform: iOS
+    deploymentTarget: "17.0"
+    sources:
+      # Swift, Info.plist, the privacy manifest and Resources/<language>.lproj (tools/ios_widget_strings.py).
+      - path: BinarioWidgets
+      # The station search of the edit sheet reads the same offline catalogue as the app.
+      - path: ../app/src/main/assets/stations/curated_it_rail_stations.json
+        buildPhase: resources
+    settings:
+      base:
+        SDKROOT: iphoneos
+        SUPPORTED_PLATFORMS: "iphoneos iphonesimulator"
+        TARGETED_DEVICE_FAMILY: "1"
+        PRODUCT_NAME: BinarioWidgets
+        PRODUCT_BUNDLE_IDENTIFIER: it.binario.ios.widgets
+        # Embedded in Binario.app/PlugIns only, never installed on its own.
+        SKIP_INSTALL: YES
+        # A full Info.plist, as the Watch widget's: NSExtension, export compliance, and the same single cleartext
+        # hop to www.viaggiatreno.it as the app's (Configuration/Binario-Info.plist), for the live sources.
+        GENERATE_INFOPLIST_FILE: NO
+        INFOPLIST_FILE: BinarioWidgets/Info.plist
+      configs:
+        debug:
+          ONLY_ACTIVE_ARCH: YES
+          SWIFT_OPTIMIZATION_LEVEL: -Onone
+    entitlements:
+      path: Configuration/BinarioWidgets.entitlements
+    dependencies:
+      - package: BinarioKit
   BinarioAppTests:
     type: bundle.unit-test
     platform: iOS

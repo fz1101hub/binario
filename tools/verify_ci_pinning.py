@@ -1298,6 +1298,8 @@ def _check_apple_toolchain(
                 "Products/Applications/Binario.app",
                 "Watch/BinarioWatch.app",
                 "PlugIns/BinarioWatchWidgets.appex",
+                "PlugIns/BinarioWidgets.appex",
+                "com.apple.widgetkit-extension",
                 "PrivacyInfo.xcprivacy",
                 "plutil -extract ITSAppUsesNonExemptEncryption raw",
                 "CFBundleIcons.CFBundlePrimaryIcon.CFBundleIconName",

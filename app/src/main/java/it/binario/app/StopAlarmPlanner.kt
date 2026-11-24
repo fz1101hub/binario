@@ -5,6 +5,7 @@ import it.binario.app.data.TrainService
 import it.binario.app.data.TrainStop
 import it.binario.app.journeys.LiveStopTimes
 import it.binario.app.notifications.TrainAlertWatch
+import it.binario.app.shared.SharedData
 import java.time.Instant
 import java.time.LocalDateTime
 import java.time.LocalTime
@@ -23,10 +24,10 @@ data class StopAlarmPlan(
 )
 
 object StopAlarmPlanner {
-    private const val LEAD_MINUTES = 5L
+    private const val LEAD_MINUTES = SharedData.TripAlerts.STOP_ALARM_LEAD_MINUTES.toLong()
 
     /** The rung alarm (time or GPS) leaves the notification shade after an hour: the stop is long behind by then. */
-    const val NOTIFICATION_TIMEOUT_MILLIS = 60 * 60_000L
+    const val NOTIFICATION_TIMEOUT_MILLIS = SharedData.TripAlerts.STOP_ALARM_NOTIFICATION_TIMEOUT_MINUTES * 60_000L
     private val timeFormatter = DateTimeFormatter.ofPattern("H:mm")
 
     fun plan(
@@ -88,16 +89,16 @@ object StopAlarmPlanner {
 
     private fun parse(value: String): LocalTime? = runCatching { LocalTime.parse(value, timeFormatter) }.getOrNull()
 
-    const val MAX_ALARMS = 8
+    const val MAX_ALARMS = SharedData.TripAlerts.STOP_ALARM_MAXIMUM_ALARMS
 
     /** A plan is kept this long after its expected arrival, then dropped even if it never rang. */
-    const val KEEP_AFTER_ARRIVAL_MILLIS = 2 * 60 * 60_000L
+    const val KEEP_AFTER_ARRIVAL_MILLIS = SharedData.TripAlerts.STOP_ALARM_KEEP_AFTER_ARRIVAL_MINUTES * 60_000L
 
     /** A fired alarm whose stored trigger is later than this was planned again meanwhile and stays active. */
     const val REPLANNED_MARGIN_MILLIS = 60_000L
 
     /** Below this difference a new expected time does not move the alarm. */
-    const val REPLAN_THRESHOLD_MILLIS = 60_000L
+    const val REPLAN_THRESHOLD_MILLIS = SharedData.TripAlerts.STOP_ALARM_REPLAN_THRESHOLD_SECONDS * 1_000L
 
     /** One stop alarm per train and stop, whatever its expected time. */
     fun key(trainNumber: String, station: String): String = "${trainNumber.trim()}|${station.trim()}"

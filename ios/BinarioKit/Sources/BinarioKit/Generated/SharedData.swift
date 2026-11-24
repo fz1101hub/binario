@@ -9,6 +9,7 @@
 //   contracts/shared-data/v1/italian-holidays-v1.json
 //   contracts/shared-data/v1/italo-gtfs-station-codes.json
 //   contracts/shared-data/v1/italo-stations-v1.json
+//   contracts/shared-data/v1/journey-planner-v1.json
 //   contracts/shared-data/v1/live-train-map-v1.json
 //   contracts/shared-data/v1/local-backup-v1.json
 //   contracts/shared-data/v1/notices-sources-v1.json
@@ -18,15 +19,19 @@
 //   contracts/shared-data/v1/planned-journeys-v1.json
 //   contracts/shared-data/v1/punctuality-v1.json
 //   contracts/shared-data/v1/realtime-feeds-v1.json
+//   contracts/shared-data/v1/remote-gtfs-v1.json
 //   contracts/shared-data/v1/rfi-monitor-v1.json
 //   contracts/shared-data/v1/rfi-place-ids-v1.json
+//   contracts/shared-data/v1/rfi-programmed-v1.json
 //   contracts/shared-data/v1/saved-timetables-v1.json
 //   contracts/shared-data/v1/source-manners-v1.json
 //   contracts/shared-data/v1/source-scores-v1.json
 //   contracts/shared-data/v1/train-number-prefixes-v1.json
 //   contracts/shared-data/v1/train-type-groups-v1.json
+//   contracts/shared-data/v1/trip-alerts-v1.json
 //   contracts/shared-data/v1/urban-stops-v1.json
 //   contracts/shared-data/v1/viaggiatreno-v1.json
+//   contracts/shared-data/v1/widgets-v1.json
 
 /// The tables of contracts/shared-data/v1, one namespace per file: the common base of the apps, read as code
 /// (docs/architecture/ADR-0002-BASE-COMUNE.md).
@@ -508,6 +513,51 @@ public enum SharedData {
             "Venezia Santa Lucia": "venezia-santa-lucia",
             "Venezia S. Lucia": "venezia-santa-lucia"
         ]
+    }
+
+    /// contracts/shared-data/v1/journey-planner-v1.json: The offline planner of journeys with changes, as both phones
+    /// compute it from the bundled timetables (Connection Scan): the change time at a station, a large hub and a city
+    /// stop; the search window and the horizon of the changes; how many packs one search reads; the bounds of a search;
+    /// the long wait at a change; the in-seat continuations (Resta a bordo) by block or by the same train in another
+    /// pack; the walking speeds, the longest walk and its choices; the default changes and results; the long wait the
+    /// results name and the walk that keeps a journey the same as its direct train.
+    public enum JourneyPlanner {
+        public static let defaultTransferMinutes: Int = 5
+        public static let largeHubTransferMinutes: Int = 10
+        public static let urbanTransferMinutes: Int = 3
+        public static let largeHubRailwayCodes: Set<String> = [
+            "S00035", "S00219", "S01700", "S02430", "S02593", "S04700", "S05043", "S06421", "S07113", "S08217",
+            "S08406", "S08409", "S09218", "S09818", "S11119", "S11145", "S11781", "S12002", "S12332"
+        ]
+        public static let searchWindowMinutes: Int = 480
+        public static let journeyHorizonMinutes: Int = 600
+        public static let maximumPacksPerSearch: Int = 3
+        public static let maximumUrbanPacksPerSearch: Int = 2
+        public static let maximumIterations: Int = 32
+        public static let maximumSearchConnections: Int = 400000
+        public static let maximumChangeWaitMinutes: Int = 120
+        public static let followUpIterations: Int = 2
+        public static let nextDayFollowUpMinutes: Int = 720
+        public static let maximumInSeatWaitMinutes: Int = 30
+        public static let maximumCopySkewMinutes: Int = 5
+        public static let onwardStops: Int = 3
+        public static let maximumContinuations: Int = 8
+        public static let longDistanceCodes: Set<String> = [
+            "EC", "IC", "ICN", "EN", "NJ", "FR", "FA", "FB", "AV", "RJ", "RJX", "ICE", "TGV", "ES", "ITALO", "EUROCITY",
+            "RAILJET"
+        ]
+        public static let localCodes: Set<String> = ["S", "R", "RE", "REX", "RV", "REG", "RB", "TER"]
+        public static let localCodeMaximumDigits: Int = 3
+        public static let maximumWalkMeters: Int = 2000
+        public static let slowWalkingKmh: Double = 3.5
+        public static let normalWalkingKmh: Double = 4.5
+        public static let fastWalkingKmh: Double = 5.5
+        public static let walkMinuteChoices: [Int] = [5, 10, 15, 20]
+        public static let defaultMaximumWalkMinutes: Int = 10
+        public static let defaultMaximumTransfers: Int = 2
+        public static let maximumResults: Int = 6
+        public static let longWaitMinutes: Int = 120
+        public static let duplicateWalkMinutes: Int = 10
     }
 
     /// contracts/shared-data/v1/live-train-map-v1.json: The map of trains in motion: positions estimated from the
@@ -1004,10 +1054,11 @@ public enum SharedData {
     }
 
     /// contracts/shared-data/v1/realtime-feeds-v1.json: The open GTFS-Realtime Trip Updates feeds and the Swiss station
-    /// boards, the same on Android and on the iPhone: each feed's address, format, timetable pack, gate, limits, cache
-    /// and pause label, how long an observation stays usable, and the limits of the transport.opendata.ch boards. How
-    /// every source is asked (User-Agent, refusals, breaker) is source-manners-v1.json; the cases both platforms read
-    /// are contracts/shared-rules/v1/gtfs-realtime-v1.json and swiss-station-board-v1.json.
+    /// boards, the same on Android and on the iPhone: each feed's address, format, timetable pack (bundled, or
+    /// downloaded at runtime: gate remote-pack, remote-gtfs-v1.json), gate, limits, cache and pause label, how long an
+    /// observation stays usable, and the limits of the transport.opendata.ch boards. How every source is asked
+    /// (User-Agent, refusals, breaker) is source-manners-v1.json; the cases both platforms read are
+    /// contracts/shared-rules/v1/gtfs-realtime-v1.json and swiss-station-board-v1.json.
     public enum RealtimeFeeds {
         public struct TripUpdatesFeed: Hashable, Sendable {
             public let id: String
@@ -1099,7 +1150,10 @@ public enum SharedData {
             // The national Trip Updates, a few MB.
             TripUpdatesFeed(id: "sncf-gtfs-rt", pack: "sncf-gtfs", label: "SNCF", format: "protobuf", gate: "all-builds", url: "https://proxy.transport.data.gouv.fr/resource/sncf-gtfs-rt-trip-updates", accept: "application/x-protobuf, application/octet-stream", connectTimeoutSeconds: 8, readTimeoutSeconds: 15, totalTimeoutSeconds: 25, maximumBytes: 16777216, maximumRequests: 4, redirects: "same-https-host", timeToLiveSeconds: 120, pauseLabel: "SNCF Open Data", refusalGroup: "transport.data.gouv.fr", zone: "Europe/Paris", licence: "Licence Ouverte / Etalab"),
             // About 10 KB for some fifty trains (November 2026); asked only in a build that bundles its pack.
-            TripUpdatesFeed(id: "trenitalia-france-gtfs-rt", pack: "trenitalia-france-gtfs", label: "Trenitalia France", format: "protobuf", gate: "pack-bundled", url: "https://proxy.transport.data.gouv.fr/resource/trenitalia-gtfs-rt", accept: "application/x-protobuf, application/octet-stream", connectTimeoutSeconds: 8, readTimeoutSeconds: 15, totalTimeoutSeconds: 25, maximumBytes: 1048576, maximumRequests: 4, redirects: "same-https-host", timeToLiveSeconds: 120, pauseLabel: "Trenitalia France", refusalGroup: "transport.data.gouv.fr", zone: "Europe/Paris", licence: "Licence Ouverte / Etalab 2.0")
+            TripUpdatesFeed(id: "trenitalia-france-gtfs-rt", pack: "trenitalia-france-gtfs", label: "Trenitalia France", format: "protobuf", gate: "pack-bundled", url: "https://proxy.transport.data.gouv.fr/resource/trenitalia-gtfs-rt", accept: "application/x-protobuf, application/octet-stream", connectTimeoutSeconds: 8, readTimeoutSeconds: 15, totalTimeoutSeconds: 25, maximumBytes: 1048576, maximumRequests: 4, redirects: "same-https-host", timeToLiveSeconds: 120, pauseLabel: "Trenitalia France", refusalGroup: "transport.data.gouv.fr", zone: "Europe/Paris", licence: "Licence Ouverte / Etalab 2.0"),
+            // The community Trip Updates of European Sleeper, joined only to the trains of the archive of
+            // remote-gtfs-v1.json it was downloaded with.
+            TripUpdatesFeed(id: "european-sleeper-gtfs-rt", pack: "european-sleeper", label: "European Sleeper", format: "protobuf", gate: "remote-pack", url: "https://jbb.ghsq.de/gtfs/european-sleeper/TripUpdates", accept: "application/x-protobuf, application/octet-stream", connectTimeoutSeconds: 8, readTimeoutSeconds: 15, totalTimeoutSeconds: 20, maximumBytes: 4194304, maximumRequests: 4, redirects: "same-https-host", timeToLiveSeconds: 120, pauseLabel: "European Sleeper", refusalGroup: "European Sleeper", zone: "Europe/Brussels", licence: "Community mirror (JBB), no licence declared")
         ]
         public static let urban: [UrbanFeed] = [
             // ATAC buses and trams with AVM, no metro; the trip_id and stop_id of the static GTFS of the
@@ -1140,6 +1194,54 @@ public enum SharedData {
                 "LB", "SL", "BAT", "FAE", "KAT", "SCH", "TX", "ALT"
             ]
         )
+    }
+
+    /// contracts/shared-data/v1/remote-gtfs-v1.json: The community GTFS archives a phone downloads at runtime as a
+    /// last-resort coverage source, the same on Android and on the iPhone: which archive, for which operator only, from
+    /// which day, how it is asked (HTTPS on its own host, the time limits, the largest body, the redirects), how long a
+    /// download is kept and how long a failure or a refusal pauses it, and the limits of the archive and of its tables.
+    /// The realtime feed joined to each archive is in realtime-feeds-v1.json; the cases both platforms read are
+    /// contracts/shared-rules/v1/remote-gtfs-v1.json.
+    public enum RemoteGtfs {
+        public struct RemoteFeed: Hashable, Sendable {
+            public let id: String
+            public let pack: String
+            public let operatorScope: String
+            public let attribution: String
+            public let url: String
+            public let notBefore: String
+            public let realtimeFeed: String?
+        }
+
+        public struct ArchiveLimits: Hashable, Sendable {
+            public let maximumEntries: Int
+            public let maximumEntryBytes: Int
+            public let maximumTotalUncompressedBytes: Int
+            public let maximumCompressionRatio: Int
+            public let maximumCsvLineLength: Int
+            public let maximumAgencies: Int
+            public let maximumStops: Int
+            public let maximumRoutes: Int
+            public let maximumTrips: Int
+            public let maximumCalendars: Int
+            public let maximumCalendarDateRows: Int
+            public let maximumStopTimeRows: Int
+        }
+
+        public static let feeds: [RemoteFeed] = [
+            // Brussels and Amsterdam to Milan by night since 9 September 2026; a community mirror, never above RFI or
+            // an official GTFS.
+            RemoteFeed(id: "european-sleeper-gtfs", pack: "european-sleeper", operatorScope: "European Sleeper", attribution: "European Sleeper / JBB community feed", url: "https://jbb.ghsq.de/gtfs/eu-es.gtfs.zip", notBefore: "2026-09-09", realtimeFeed: "european-sleeper-gtfs-rt")
+        ]
+        public static let accept: String = "application/zip, application/octet-stream;q=0.9"
+        public static let connectTimeoutSeconds: Double = 15
+        public static let readTimeoutSeconds: Double = 45
+        public static let maximumRedirects: Int = 5
+        public static let maximumArchiveBytes: Int = 8388608
+        public static let cacheTimeToLiveSeconds: Double = 21600
+        public static let failureCooldownSeconds: Double = 300
+        public static let refusalPauseSeconds: Double = 900
+        public static let archive: ArchiveLimits = ArchiveLimits(maximumEntries: 64, maximumEntryBytes: 134217728, maximumTotalUncompressedBytes: 134217728, maximumCompressionRatio: 1000, maximumCsvLineLength: 32768, maximumAgencies: 10000, maximumStops: 300000, maximumRoutes: 100000, maximumTrips: 150000, maximumCalendars: 100000, maximumCalendarDateRows: 500000, maximumStopTimeRows: 1500000)
     }
 
     /// contracts/shared-data/v1/rfi-monitor-v1.json: RFI's «Arrivi e partenze» monitor as both phones ask and read it:
@@ -1188,6 +1290,63 @@ public enum SharedData {
             "Bari Centrale": 595,
             "Palermo Centrale": 2018,
             "Cagliari": 787
+        ]
+    }
+
+    /// contracts/shared-data/v1/rfi-programmed-v1.json: RFI's public programmed timetable («Quadro orario»,
+    /// prm.rfi.it), the same on Android and on the iPhone: the page of a station's departures or arrivals for a whole
+    /// day, how it is asked (HTTPS, the time limits, the largest page), how long a page and a read timetable are kept,
+    /// how many trains a route lists, and the hubs whose timetable identifier was verified (main and supplemental), by
+    /// railway code and by the names RFI and the catalogue give them. The cases both platforms read are
+    /// contracts/shared-rules/v1/rfi-programmed-v1.json.
+    public enum RfiProgrammed {
+        public struct Hub: Hashable, Sendable {
+            public let railwayCode: String
+            public let timetableId: Int
+            public let names: [String]
+        }
+
+        public static let urlTemplate: String = "https://prm.rfi.it/qo_prm/QO_<board>_SiPMR.aspx?Id=<id>&lin=it&dalle=00.00&alle=23.59&ora=00.00"
+        public static let departuresBoard: String = "Partenze"
+        public static let arrivalsBoard: String = "Arrivi"
+        public static let accept: String = "text/html,application/xhtml+xml"
+        public static let connectTimeoutSeconds: Double = 12
+        public static let readTimeoutSeconds: Double = 25
+        public static let totalTimeoutSeconds: Double = 10
+        public static let maximumBytes: Int = 2097152
+        public static let pageTimeToLiveSeconds: Double = 1800
+        public static let maximumPages: Int = 3
+        public static let timetableTimeToLiveSeconds: Double = 21600
+        public static let maximumTimetables: Int = 16
+        public static let maximumSupplementalTimetables: Int = 8
+        public static let maximumRouteServices: Int = 24
+        public static let boardMinimumIntervalSeconds: Double = 2
+        public static let hubs: [Hub] = [
+            Hub(railwayCode: "S08409", timetableId: 2247, names: ["Roma Termini"]),
+            Hub(railwayCode: "S08217", timetableId: 2217, names: ["Roma Tiburtina"]),
+            Hub(railwayCode: "S08406", timetableId: 2211, names: ["Roma Ostiense"]),
+            Hub(railwayCode: "S01700", timetableId: 1603, names: ["Milano Centrale"]),
+            Hub(railwayCode: "S09218", timetableId: 1757, names: ["Napoli Centrale"]),
+            Hub(railwayCode: "S05043", timetableId: 635, names: ["Bologna Centrale"]),
+            Hub(railwayCode: "S06421", timetableId: 1325, names: ["Firenze S.M.N.", "Firenze Santa Maria Novella"]),
+            Hub(railwayCode: "S00219", timetableId: 2672, names: ["Torino Porta Nuova"]),
+            Hub(railwayCode: "S00035", timetableId: 25350269, names: ["Torino Porta Susa"]),
+            Hub(railwayCode: "S02593", timetableId: 2796, names: ["Venezia Santa Lucia", "Venezia S. Lucia"]),
+            Hub(railwayCode: "S02430", timetableId: 2812, names: ["Verona Porta Nuova"]),
+            Hub(railwayCode: "S04700", timetableId: 248, names: ["Genova Piazza Principe", "Genova P. Principe"]),
+            Hub(railwayCode: "S11119", timetableId: 550, names: ["Bari Centrale"]),
+            Hub(railwayCode: "S09818", timetableId: 2434, names: ["Salerno"])
+        ]
+        public static let supplementalHubs: [Hub] = [
+            Hub(
+                railwayCode: "S11781",
+                timetableId: 116,
+                names: ["Reggio Calabria Centrale", "Reggio di Calabria Centrale"]
+            ),
+            Hub(railwayCode: "S07113", timetableId: 408, names: ["Ancona", "Ancona (Tutte le stazioni)"]),
+            Hub(railwayCode: "S12002", timetableId: 1878, names: ["Palermo Centrale"]),
+            Hub(railwayCode: "S12332", timetableId: 959, names: ["Catania Centrale"]),
+            Hub(railwayCode: "S11145", timetableId: 1436, names: ["Lecce"])
         ]
     }
 
@@ -1429,6 +1588,59 @@ public enum SharedData {
         public static let regionalCodePattern: String = "(R|RE|REX|RV|REG|RB|TER|S|SFM|FL|FM|MET)\\d{0,3}"
     }
 
+    /// contracts/shared-data/v1/trip-alerts-v1.json: The trip notifications and alarms: the stop alarm, the followed
+    /// trip (Android's ongoing notification, the iPhone's Live Activity) with its stop countdown, «Avvisami quando sta
+    /// arrivando», the commuter alerts, the new notices of the trains with the bell and the position estimate during
+    /// the trip. Leads, windows, cadences, tolerances and limits; the quiet hours (22-7) are those of
+    /// evening-alerts-v1.json.
+    public enum TripAlerts {
+        public static let stopAlarmLeadMinutes: Int = 5
+        public static let stopAlarmMaximumAlarms: Int = 8
+        public static let stopAlarmKeepAfterArrivalMinutes: Int = 120
+        public static let stopAlarmNotificationTimeoutMinutes: Int = 60
+        public static let stopAlarmReplanThresholdSeconds: Double = 60
+        public static let followedTripLeadMinutes: Int = 30
+        public static let followedTripTrailMinutes: Int = 30
+        public static let followedTripRefreshMinutes: Int = 15
+        public static let followedTripMaximumDelayExtensionMinutes: Int = 360
+        public static let followedTripNearAlightStops: Int = 3
+        public static let followedTripNearAlightDelaySeconds: Double = 30
+        public static let followedTripMinimumRefreshMinutes: Int = 2
+        public static let followedTripMaximumLegs: Int = 6
+        public static let approachLeadOptionsMinutes: [Int] = [5, 10, 15]
+        public static let approachDefaultLeadMinutes: Int = 10
+        public static let approachCheckMinutes: Int = 15
+        public static let approachFirstCheckBeforeMinutes: Int = 30
+        public static let approachMaximumDelayMinutes: Int = 180
+        public static let approachEarlyToleranceMinutes: Int = 1
+        public static let approachLateToleranceMinutes: Int = 2
+        public static let approachMinimumGapMinutes: Int = 1
+        public static let approachNotificationTimeoutMinutes: Int = 15
+        public static let approachMaximumAlerts: Int = 12
+        public static let commuterLeadOptionsMinutes: [Int] = [5, 10, 15, 30, 60]
+        public static let commuterMaximumAlerts: Int = 24
+        public static let trainAlertsCheckMinutes: Int = 15
+        public static let trainAlertsBeforeDepartureMinutes: Int = 240
+        public static let trainAlertsAfterDepartureMinutes: Int = 180
+        public static let trainAlertsAfterArrivalMinutes: Int = 30
+        public static let trainAlertsMaximumSubscriptions: Int = 16
+        public static let trainAlertsMaximumSeen: Int = 400
+        public static let trainAlertsSeenRetentionDays: Int = 7
+        public static let positionMaximumAccuracyMeters: Int = 200
+        public static let positionMaximumFixAgeSeconds: Double = 120
+        public static let positionOffRouteMeters: Int = 1500
+        public static let positionDwellRadiusMeters: Int = 400
+        public static let positionBacktrackToleranceMeters: Int = 500
+        public static let positionFreshSeconds: Double = 180
+        public static let positionMaximumRouteStops: Int = 80
+        public static let positionSessionAfterArrivalMinutes: Int = 120
+        public static let positionSessionMaximumMinutes: Int = 480
+        public static let estimateFreshSeconds: Double = 120
+        public static let estimateMaximumDelayMinutes: Int = 600
+        public static let estimateBeforeDepartureMinutes: Int = 10
+        public static let estimateAfterArrivalMinutes: Int = 10
+    }
+
     /// contracts/shared-data/v1/urban-stops-v1.json: How the apps reach the stops of the city networks
     /// (pack-roles-v1.json, urbanPacks) on foot: a station and a city stop at most maximumWalkMeters apart (straight
     /// line) are joined by a walk, timed at walkingSpeedKmh, rounded up to the minute, plus walkMarginMinutes; stops of
@@ -1471,5 +1683,58 @@ public enum SharedData {
         public static let trenordClients: Set<Int> = [63]
         public static let trenitaliaRegionalClients: Set<Int> = [2, 18]
         public static let trenitaliaLongDistanceClients: Set<Int> = [1, 4]
+    }
+
+    /// contracts/shared-data/v1/widgets-v1.json: The three home-screen widgets (Tratta, Tabellone stazione, I miei
+    /// treni) on both phones: the automatic refresh (intervals, days, one or two daily windows, also across midnight),
+    /// the automatic return direction, which runs a widget lists and for how long, when its live values count as fresh,
+    /// which favourite trains a refresh asks for, and the retries of a refresh the user asked for. Times are
+    /// railway-local (Europe/Rome).
+    public enum Widgets {
+        public struct RefreshWindow: Hashable, Sendable {
+            public let start: String
+            public let end: String
+        }
+
+        public struct TimeRange: Hashable, Sendable {
+            public let id: String
+            public let hours: Int?
+            public let extraPages: Int
+        }
+
+        public static let refreshIntervalsMinutes: [Int] = [15, 30, 60]
+        public static let defaultIntervalMinutes: Int = 30
+        public static let alwaysIntervalMinutes: Int = 15
+        public static let weekdays: Set<Int> = [1, 2, 3, 4, 5]
+        public static let maximumWindows: Int = 2
+        public static let defaultMorningWindow: RefreshWindow = RefreshWindow(start: "07:00", end: "09:30")
+        public static let defaultEveningWindow: RefreshWindow = RefreshWindow(start: "17:00", end: "19:30")
+        public static let windowLookaheadDays: Int = 8
+        public static let minimumRescheduleSeconds: Double = 60
+        public static let defaultReturnFrom: String = "14:00"
+        public static let maximumTitleLength: Int = 42
+        public static let departedGraceSeconds: Double = 60
+        public static let freshSeconds: Double = 300
+        public static let agingSeconds: Double = 900
+        public static let timeRanges: [TimeRange] = [
+            // What the source returns now: the list of the widgets added before the settings.
+            TimeRange(id: "NEXT", hours: nil, extraPages: 0),
+            TimeRange(id: "NEXT_3H", hours: 3, extraPages: 1),
+            TimeRange(id: "NEXT_6H", hours: 6, extraPages: 2),
+            // Until 23:59 of the day, kept for the day and readable offline.
+            TimeRange(id: "WHOLE_DAY", hours: nil, extraPages: 3)
+        ]
+        public static let dayCacheMaximumRows: Int = 60
+        public static let compactRows: Int = 2
+        public static let pageRows: Int = 5
+        public static let stationStoredDepartures: Int = 12
+        public static let stationMaximumRows: Int = 4
+        public static let trainsArrivalGraceMinutes: Int = 10
+        public static let lookupBeforeDepartureMinutes: Int = 60
+        public static let lookupAfterArrivalMinutes: Int = 30
+        public static let lookupDefaultDurationMinutes: Int = 180
+        public static let lookupMaximumDurationMinutes: Int = 2160
+        public static let retryMaximumAttempts: Int = 3
+        public static let retryFirstDelayMinutes: Int = 15
     }
 }

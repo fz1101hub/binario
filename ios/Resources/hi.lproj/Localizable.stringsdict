@@ -482,5 +482,181 @@
 			<string>निगरानी वाले %1$lld स्टेशन</string>
 		</dict>
 	</dict>
+	<key>result.trip.minutes</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%1$lld मि.</string>
+			<key>other</key>
+			<string>%1$lld मि.</string>
+		</dict>
+	</dict>
+	<key>result.trip.countdown_stops</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%1$lld ठहराव बाद उतरें</string>
+			<key>other</key>
+			<string>%1$lld ठहराव बाद उतरें</string>
+		</dict>
+	</dict>
+	<key>notices.alerts.train_title</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%2$@ के लिए %1$lld नई सूचना</string>
+			<key>other</key>
+			<string>%2$@ के लिए %1$lld नई सूचनाएँ</string>
+		</dict>
+	</dict>
+	<key>notices.alerts.status_delay</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%1$lld मिनट की देरी</string>
+			<key>other</key>
+			<string>%1$lld मिनट की देरी</string>
+		</dict>
+	</dict>
+	<key>result.journey.changes</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%1$lld बदलाव</string>
+			<key>other</key>
+			<string>%1$lld बदलाव</string>
+		</dict>
+	</dict>
+	<key>result.journey.connection</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%3$@ पर कनेक्शन %2$lld में से %1$lld बार सफल</string>
+			<key>other</key>
+			<string>%3$@ पर कनेक्शन %2$lld में से %1$lld बार सफल</string>
+		</dict>
+	</dict>
+	<key>result.journey.hidden_by_preferences</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>यात्रा प्राथमिकताओं के कारण %1$lld सीधी ट्रेन छिपी है</string>
+			<key>other</key>
+			<string>यात्रा प्राथमिकताओं के कारण %1$lld सीधी ट्रेनें छिपी हैं</string>
+		</dict>
+	</dict>
+	<key>result.journey.leg_cancelled_share</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%3$@ %2$lld में से %1$lld बार रद्द</string>
+			<key>other</key>
+			<string>%3$@ %2$lld में से %1$lld बार रद्द</string>
+		</dict>
+	</dict>
+	<key>result.journey.leg_on_time</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%3$@ %2$lld में से %1$lld बार समय पर</string>
+			<key>other</key>
+			<string>%3$@ %2$lld में से %1$lld बार समय पर</string>
+		</dict>
+	</dict>
+	<key>result.journey.transfer_wait</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%1$lld मिनट का इंतज़ार</string>
+			<key>other</key>
+			<string>%1$lld मिनट का इंतज़ार</string>
+		</dict>
+	</dict>
+	<key>settings.travel.minutes</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%1$lld मि.</string>
+			<key>other</key>
+			<string>%1$lld मि.</string>
+		</dict>
+	</dict>
 </dict>
 </plist>

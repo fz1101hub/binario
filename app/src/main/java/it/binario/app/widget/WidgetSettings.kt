@@ -1,6 +1,7 @@
 package it.binario.app.widget
 
 import it.binario.app.data.Direction
+import it.binario.app.shared.SharedData
 import java.time.DayOfWeek
 import java.time.Duration
 import java.time.LocalDate
@@ -15,18 +16,27 @@ import java.time.format.DateTimeFormatter
  * these settings existed decode to the `LEGACY` values, which reproduce the previous behaviour.
  */
 
-/** OFF: only manual or in-app refreshes. WINDOWS: in the chosen days and time windows. ALWAYS: the pre-settings behaviour. */
+/**
+ * OFF: only manual or in-app refreshes. WINDOWS: in the chosen days and time windows. ALWAYS: the pre-settings behaviour.
+ * The numbers of these rules (intervals, windows, days) are contracts/shared-data/v1/widgets-v1.json, which the iPhone's
+ * widgets read too; the cases both apps run are contracts/shared-rules/v1/widgets-v1.json.
+ */
 enum class AutoRefreshMode { OFF, WINDOWS, ALWAYS }
 
+/** The intervals of SharedData.Widgets.REFRESH_INTERVALS_MINUTES, in order (SharedDataTest checks them). */
 enum class RefreshInterval(val minutes: Int) {
     MINUTES_15(15), MINUTES_30(30), MINUTES_60(60);
 
     val duration: Duration get() = Duration.ofMinutes(minutes.toLong())
+
+    companion object {
+        fun of(minutes: Int): RefreshInterval? = entries.firstOrNull { it.minutes == minutes }
+    }
 }
 
 /** Day presets of the configure screen; any other set of days is CUSTOM. */
 enum class DayPreset(val days: Set<DayOfWeek>) {
-    WEEKDAYS(setOf(DayOfWeek.MONDAY, DayOfWeek.TUESDAY, DayOfWeek.WEDNESDAY, DayOfWeek.THURSDAY, DayOfWeek.FRIDAY)),
+    WEEKDAYS(SharedData.Widgets.WEEKDAYS.map { DayOfWeek.of(it) }.toSet()),
     EVERY_DAY(DayOfWeek.entries.toSet()),
     CUSTOM(emptySet());
 
@@ -45,14 +55,16 @@ data class TimeWindow(val start: LocalTime, val end: LocalTime) {
     fun label(): String = "${start.format(HH_MM)}–${end.format(HH_MM)}"
 
     companion object {
-        val DEFAULT_MORNING = TimeWindow(LocalTime.of(7, 0), LocalTime.of(9, 30))
-        val DEFAULT_EVENING = TimeWindow(LocalTime.of(17, 0), LocalTime.of(19, 30))
+        val DEFAULT_MORNING = of(SharedData.Widgets.DEFAULT_MORNING_WINDOW)
+        val DEFAULT_EVENING = of(SharedData.Widgets.DEFAULT_EVENING_WINDOW)
+
+        private fun of(window: SharedData.Widgets.RefreshWindow): TimeWindow = TimeWindow(LocalTime.parse(window.start), LocalTime.parse(window.end))
     }
 }
 
 data class AutoRefreshSettings(
     val mode: AutoRefreshMode = AutoRefreshMode.OFF,
-    val interval: RefreshInterval = RefreshInterval.MINUTES_30,
+    val interval: RefreshInterval = RefreshInterval.of(SharedData.Widgets.DEFAULT_INTERVAL_MINUTES) ?: RefreshInterval.MINUTES_30,
     val days: Set<DayOfWeek> = DayPreset.WEEKDAYS.days,
     /** One or two windows; more are ignored. */
     val windows: List<TimeWindow> = listOf(TimeWindow.DEFAULT_MORNING)
@@ -111,11 +123,14 @@ data class AutoRefreshSettings(
     }
 
     companion object {
-        const val MAX_WINDOWS = 2
-        private const val LOOKAHEAD_DAYS = 8L
+        const val MAX_WINDOWS = SharedData.Widgets.MAXIMUM_WINDOWS
+        private val LOOKAHEAD_DAYS: Long = SharedData.Widgets.WINDOW_LOOKAHEAD_DAYS.toLong()
+
+        /** The interval of «Sempre, ogni 15 minuti». */
+        val ALWAYS_INTERVAL: RefreshInterval = RefreshInterval.of(SharedData.Widgets.ALWAYS_INTERVAL_MINUTES) ?: RefreshInterval.MINUTES_15
 
         /** The refresh of widgets configured before the settings existed: every fifteen minutes, all day. */
-        val LEGACY = AutoRefreshSettings(AutoRefreshMode.ALWAYS, RefreshInterval.MINUTES_15, DayPreset.EVERY_DAY.days, emptyList())
+        val LEGACY = AutoRefreshSettings(AutoRefreshMode.ALWAYS, ALWAYS_INTERVAL, DayPreset.EVERY_DAY.days, emptyList())
     }
 }
 
@@ -154,8 +169,16 @@ object WidgetDirectionSchedule {
 }
 
 /** How far ahead the route widget lists trains. NEXT is the pre-settings list: what the source returns now. */
-enum class RouteTimeRange(val hours: Long?) {
-    NEXT(null), NEXT_3H(3), NEXT_6H(6), WHOLE_DAY(null)
+enum class RouteTimeRange {
+    NEXT, NEXT_3H, NEXT_6H, WHOLE_DAY;
+
+    private val shared: SharedData.Widgets.TimeRange get() = SharedData.Widgets.TIME_RANGES.first { it.id == name }
+
+    /** Hours listed from now (SharedData.Widgets.TIME_RANGES); null for the next trains and the whole day. */
+    val hours: Long? get() = shared.hours?.toLong()
+
+    /** Timetable requests a refresh may add to fill the range. */
+    val extraPages: Int get() = shared.extraPages
 }
 
 /** Train type groups the route and station widgets can hide; a train of no known group is never hidden. */

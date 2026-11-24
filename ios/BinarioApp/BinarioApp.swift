@@ -18,6 +18,8 @@ struct BinarioApp: App {
     /// «Orari salvati», favourite stations, hidden train types, names of «I miei treni», the
     /// personal punctuality and the theme (PersonalModel.swift).
     @StateObject private var personal: PersonalModel
+    /// The journeys with changes of the planner and the travel preferences.
+    @StateObject private var journeys = JourneysModel()
     @Environment(\.scenePhase) private var scenePhase
 
     init() {
@@ -39,6 +41,9 @@ struct BinarioApp: App {
                 .environmentObject(notices)
                 .environmentObject(extras)
                 .environmentObject(personal)
+                // The trip notifications and alarms (TripMonitor.swift), made at launch by AppModel.bootstrap.
+                .environmentObject(TripMonitor.shared)
+                .environmentObject(journeys)
         }
         // The evening alerts' one background app refresh task (EveningAlerts.swift): planned again
         // each time the app leaves the screen, run by iOS from the hour asked for.

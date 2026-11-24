@@ -542,5 +542,203 @@
 			<string>%1$lld estações monitoradas</string>
 		</dict>
 	</dict>
+	<key>result.trip.minutes</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%1$lld min</string>
+			<key>many</key>
+			<string>%1$lld min</string>
+			<key>other</key>
+			<string>%1$lld min</string>
+		</dict>
+	</dict>
+	<key>result.trip.countdown_stops</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>Desça em %1$lld parada</string>
+			<key>many</key>
+			<string>Desça em %1$lld paradas</string>
+			<key>other</key>
+			<string>Desça em %1$lld paradas</string>
+		</dict>
+	</dict>
+	<key>notices.alerts.train_title</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%1$lld novo aviso para %2$@</string>
+			<key>many</key>
+			<string>%1$lld novos avisos para %2$@</string>
+			<key>other</key>
+			<string>%1$lld novos avisos para %2$@</string>
+		</dict>
+	</dict>
+	<key>notices.alerts.status_delay</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>atraso de %1$lld minuto</string>
+			<key>many</key>
+			<string>atraso de %1$lld minutos</string>
+			<key>other</key>
+			<string>atraso de %1$lld minutos</string>
+		</dict>
+	</dict>
+	<key>result.journey.changes</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>many</key>
+			<string>%1$lld baldeações</string>
+			<key>one</key>
+			<string>%1$lld baldeação</string>
+			<key>other</key>
+			<string>%1$lld baldeações</string>
+		</dict>
+	</dict>
+	<key>result.journey.connection</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>many</key>
+			<string>Conexão em %3$@ bem-sucedida %1$lld vezes de %2$lld</string>
+			<key>one</key>
+			<string>Conexão em %3$@ bem-sucedida %1$lld vez de %2$lld</string>
+			<key>other</key>
+			<string>Conexão em %3$@ bem-sucedida %1$lld vezes de %2$lld</string>
+		</dict>
+	</dict>
+	<key>result.journey.hidden_by_preferences</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>many</key>
+			<string>%1$lld trens diretos ocultos pelas preferências de viagem</string>
+			<key>one</key>
+			<string>%1$lld trem direto oculto pelas preferências de viagem</string>
+			<key>other</key>
+			<string>%1$lld trens diretos ocultos pelas preferências de viagem</string>
+		</dict>
+	</dict>
+	<key>result.journey.leg_cancelled_share</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>many</key>
+			<string>%3$@ cancelado %1$lld vezes de %2$lld</string>
+			<key>one</key>
+			<string>%3$@ cancelado %1$lld vez de %2$lld</string>
+			<key>other</key>
+			<string>%3$@ cancelado %1$lld vezes de %2$lld</string>
+		</dict>
+	</dict>
+	<key>result.journey.leg_on_time</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>many</key>
+			<string>%3$@ no horário %1$lld vezes de %2$lld</string>
+			<key>one</key>
+			<string>%3$@ no horário %1$lld vez de %2$lld</string>
+			<key>other</key>
+			<string>%3$@ no horário %1$lld vezes de %2$lld</string>
+		</dict>
+	</dict>
+	<key>result.journey.transfer_wait</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>many</key>
+			<string>Espera de %1$lld minutos</string>
+			<key>one</key>
+			<string>Espera de %1$lld minuto</string>
+			<key>other</key>
+			<string>Espera de %1$lld minutos</string>
+		</dict>
+	</dict>
+	<key>settings.travel.minutes</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>many</key>
+			<string>%1$lld min</string>
+			<key>one</key>
+			<string>%1$lld min</string>
+			<key>other</key>
+			<string>%1$lld min</string>
+		</dict>
+	</dict>
 </dict>
 </plist>

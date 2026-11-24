@@ -69,6 +69,14 @@ Con le funzioni di Android portate sull'iPhone (meteo a destinazione, bici in co
 | `live-train-map-v1.json`: finestra dell'orario, ritardi applicati, copie, cadenza e aree | `LiveTrainPositions.kt`, `ScheduledRailRuns.kt`, `EmbeddedGtfsJourneyProvider.kt` | Android, iPhone |
 | `evening-alerts-v1.json`: ore dei promemoria serali e di quiete, memoria degli avvisi | `StrikeReminder.kt`, `RouteWorksAlert.kt` | Android, iPhone |
 
+Con le notifiche e le sveglie del viaggio sull'iPhone, il 24 novembre 2026:
+
+| Tabella | Prima | Ora letta da |
+|---|---|---|
+| `trip-alerts-v1.json`: sveglia fermata, viaggio seguito, «Avvisami quando sta arrivando», avvisi dei treni con la campanella, posizione durante il viaggio | `StopAlarmPlanner.kt`, `FollowedTrip.kt`, `ApproachAlert.kt`, `TrainAlertWatch.kt`, `GpsTrainRoute.kt`, `GpsArrivalAlarmPolicy.kt`; le ore di quiete di `CommuterAlertPlanner` da `evening-alerts-v1.json` | Android, iPhone |
+
+I casi sono in `contracts/shared-rules/v1/trip-alerts-v1.json`. Restano dell'iPhone la Live Activity al posto della notifica in corso, la posizione solo con l'app aperta (nessuna posizione in background) e i controlli in background affidati all'unico compito di aggiornamento in background dell'app, che iOS esegue quando decide.
+
 Le loro regole hanno i casi in `contracts/shared-rules/v1/` (`delay-compensation-v1.json`, `destination-weather-v1.json`, `bike-sharing-v1.json`, `live-train-positions-v1.json`, `evening-alerts-v1.json`). Restano specifiche dell'iPhone la mappa di base (MapKit invece di OpenFreeMap) e il modo di girare in background (un solo compito di aggiornamento in background invece di WorkManager).
 
 Con gli arrivi, i dettagli della corsa e gli avvisi per treno sull'iPhone:
@@ -95,6 +103,14 @@ Il 23 novembre 2026, con le reti urbane sull'iPhone:
 | `pack-roles-v1.json` (`urbanPacks`): le reti urbane (metro, tram, funicolari) | `kind = EmbeddedGtfsPackKind.URBAN` di ogni pack in `TransitGtfsPacks.kt` | Android (`EmbeddedGtfsPacks.withPackRoles`), iPhone; builder e verificatore dell'indice leggono il JSON |
 | `urban-stops-v1.json`: distanza massima, velocità e margine del cammino verso una fermata urbana, stessa fermata, banchine dello stesso nome | `GtfsJourneyPlannerSettings`, `SAME_PLACE_METERS` in `EmbeddedGtfsJourneyProvider.kt`, `UrbanStopBoardAdapter.SIBLING_METERS` | Android, iPhone; builder e verificatore dell'indice leggono il JSON |
 
+Il 24 novembre 2026, con i widget della schermata Home sull'iPhone:
+
+| Tabella | Prima | Ora letta da |
+|---|---|---|
+| `widgets-v1.json`: intervalli, finestre e ritardi dell'aggiornamento automatico, ritorno predefinito, titolo, righe, freschezza, finestre delle corse, «In viaggio», ricerca dei treni salvati, tentativi, gruppi dei tipi di treno | costanti di `WidgetSettings.kt`, `WidgetTrainTypes.kt`, `WidgetPresentation.kt`, `RouteWidgetTimeline.kt`, `StationWidgetModel.kt`, `TrainsWidgetModel.kt`, `WidgetAutoRefresh.kt` | Android, iPhone (`WidgetRules.swift`) |
+
+Le regole dei widget hanno i casi in `contracts/shared-rules/v1/widgets-v1.json`. Restano specifici dell'iPhone il modo di aggiornarsi (la timeline di WidgetKit al posto di WorkManager) e «📍 Più vicina», che apre l'app invece di leggere la posizione nel widget.
+
 Nomi, badge e minuti a piedi delle fermate urbane sono casi di prova in `contracts/shared-rules/v1/urban-stops-v1.json`; linea e etichetta di una corsa urbana sono in `journey-leg-vehicles-v1.json` (`urbanLines`, `urbanLabels`).
 
 Con le funzioni minori di Android portate sull'iPhone (confronto in [PARITA_ANDROID_IPHONE.md](../PARITA_ANDROID_IPHONE.md)), il 24 novembre 2026:
@@ -109,6 +125,18 @@ Con le funzioni minori di Android portate sull'iPhone (confronto in [PARITA_ANDR
 | `local-backup-v1.json`: tipo, versione e limiti del backup locale | `LocalDataBackupCodec` | Android, iPhone (`LocalBackup.swift`), che leggono e scrivono lo stesso file |
 
 Le regole hanno i casi in `contracts/shared-rules/v1/` (`co2-estimate-v1.json`, `personal-punctuality-v1.json`, `train-type-groups-v1.json`). Gli orari salvati e lo storico della puntualità tengono sull'iPhone il JSON di Android, così il backup passa da un telefono all'altro.
+Il 24 novembre 2026, con European Sleeper e il quadro orario programmato RFI sull'iPhone:
+
+| `remote-gtfs-v1.json`: l'archivio GTFS community di European Sleeper/JBB, l'operatore, il primo giorno, tempi, dimensione, cache, pause e limiti dell'archivio | `RemoteGtfsFallbackDataSource.europeanSleeper`, `GtfsArtifactDownloader`, `GtfsCompactIndexLimits` (uguali alla tabella per un test) | Android, iPhone (`RemoteGTFSSchedule`, `GTFSZipArchive`, `RemoteGTFSIndex`) |
+| `rfi-programmed-v1.json`: pagina, limiti, durate e hub verificati del quadro orario RFI | `RfiProgrammedStationIds`, `SupplementalRfiProgrammedStationIds`, `HttpRfiProgrammedTimetableFetcher`, `RfiTimetablePageCache` e gli adapter del quadro orario | Android, iPhone (`RfiProgrammedTimetable`) |
+| `realtime-feeds-v1.json`, in più: i Trip Updates di European Sleeper (`gate` `remote-pack`) | `EuropeanSleeperGtfsRealtimeAdapter` | Android, iPhone (`TimetableRealtime`) |
+
+Le loro regole hanno i casi in `contracts/shared-rules/v1/remote-gtfs-v1.json` e `rfi-programmed-v1.json`; l'iPhone legge anche `calendar-v1.json`. Restano dell'iPhone il lettore ZIP e HTML (Android usa `ZipInputStream` e Jsoup) e il modo di usare l'archivio: invece di un secondo pianificatore, un piccolo indice con lo schema di quello incluso, chiesto solo quando gli orari dell'iPhone non danno treni.
+Il 24 novembre 2026, con i viaggi con cambi sull'iPhone:
+
+| `journey-planner-v1.json`: tempi di cambio (grandi stazioni comprese), finestra, orizzonte, pack per ricerca, limiti della ricerca, «Resta a bordo», codici locali e a lunga percorrenza, velocità e minuti a piedi delle preferenze, cambi e risultati di serie, attesa lunga, doppioni | `GtfsJourneyPlannerSettings` e costanti di `EmbeddedGtfsJourneyProvider.kt`, `JourneyPreferences.kt`, `JourneyResultsPresenter.kt`, `ResultsMerge.kt`, `TransferRisk.kt`, `JourneySearchService.kt` | Android, iPhone |
+
+La ricerca ha i casi in `contracts/shared-rules/v1/connection-scan-v1.json`, letti dai test Kotlin e Swift.
 
 Restano fuori, coperti da casi di prova in `contracts/shared-rules/v1/`, la parola che segna una soppressione esplicita e l'operatore di una riga del monitor RFI (`live-text-v1.json`), i modelli di «Preparazione del viaggio» (`checklist-presets-v1.json`) e il calcolo della Pasqua (`calendar-v1.json`). Le espressioni regolari non diventano dati perché Java e ICU non leggono `\b` e `\w` allo stesso modo sui caratteri non ASCII. L'operatore della riga RFI non è una tabella pulita: Android distingue tre servizi Trenitalia, l'iPhone uno. I modelli di preparazione sono enum legati ai testi tradotti di ogni app. Restano fuori anche i limiti dello snapshot per gli orologi: Wear OS e Apple Watch non dipendono da `app/` né da BinarioKit, quindi non possono leggere il codice generato, e quei limiti li governa già il contratto `contracts/wear-snapshot/v1` con le sue fixture.
 

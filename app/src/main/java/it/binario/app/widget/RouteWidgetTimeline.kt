@@ -4,6 +4,7 @@ import it.binario.app.data.JourneyQuery
 import it.binario.app.data.RailTime
 import it.binario.app.data.ServiceStatus
 import it.binario.app.data.TrainService
+import it.binario.app.shared.SharedData
 import java.time.Duration
 import java.time.Instant
 import java.time.LocalDate
@@ -92,7 +93,7 @@ data class RouteWidgetRow(val service: WidgetService, val inTransit: Boolean)
  * leave at their (expected, else scheduled) departure or, with "until arrival", at their arrival.
  */
 object RouteWidgetPresenter {
-    const val DEPARTED_GRACE_MILLIS = 60_000L
+    const val DEPARTED_GRACE_MILLIS = SharedData.Widgets.DEPARTED_GRACE_SECONDS * 1_000L
 
     fun visible(services: List<WidgetService>, nowEpochMillis: Long, settings: RouteWidgetSettings): List<RouteWidgetRow> {
         val horizon = settings.timeRange.hours?.let { nowEpochMillis + Duration.ofHours(it).toMillis() }
@@ -122,12 +123,7 @@ object RouteWidgetPaging {
         RouteTimeRange.WHOLE_DAY -> now.toLocalDate().atTime(23, 59).atZone(now.zone)
     }
 
-    fun maxExtraPages(range: RouteTimeRange): Int = when (range) {
-        RouteTimeRange.NEXT -> 0
-        RouteTimeRange.NEXT_3H -> 1
-        RouteTimeRange.NEXT_6H -> 2
-        RouteTimeRange.WHOLE_DAY -> 3
-    }
+    fun maxExtraPages(range: RouteTimeRange): Int = range.extraPages
 
     /** The query of the next page after the latest departure collected so far, or null to stop. */
     fun nextQuery(range: RouteTimeRange, now: ZonedDateTime, latestDepartureEpochMillis: Long?, pagesDone: Int): JourneyQuery? {
@@ -147,7 +143,7 @@ object RouteWidgetPaging {
  * offline. Rows of another day are dropped.
  */
 object RouteWidgetDayCache {
-    const val MAX_ROWS = 60
+    const val MAX_ROWS = SharedData.Widgets.DAY_CACHE_MAXIMUM_ROWS
 
     fun merge(stored: List<WidgetService>, fresh: List<WidgetService>, serviceDate: LocalDate): List<WidgetService> {
         val freshKeys = fresh.mapTo(hashSetOf()) { it.runKey }

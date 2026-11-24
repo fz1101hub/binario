@@ -42,6 +42,7 @@ import it.binario.app.BinarioTheme
 import it.binario.app.FavouriteTrainStore
 import it.binario.app.R
 import it.binario.app.ThemeSettings
+import it.binario.app.shared.SharedData
 
 /** Settings of one "I miei treni" widget; the trains themselves are the favourites saved in the app. */
 class TrainsWidgetConfigureActivity : ComponentActivity() {
@@ -111,7 +112,7 @@ class TrainsWidgetConfigureActivity : ComponentActivity() {
                         item {
                             OutlinedTextField(
                                 value = settings.displayName,
-                                onValueChange = { if (it.length <= 42) settings = settings.copy(displayName = it) },
+                                onValueChange = { if (it.length <= SharedData.Widgets.MAXIMUM_TITLE_LENGTH) settings = settings.copy(displayName = it) },
                                 modifier = Modifier.fillMaxWidth(),
                                 label = { Text(stringResource(R.string.widget_display_name_label)) },
                                 supportingText = { Text(stringResource(R.string.trains_widget_display_name_description)) },

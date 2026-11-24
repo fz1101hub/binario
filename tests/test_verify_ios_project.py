@@ -187,6 +187,7 @@ class IOSProjectTests(unittest.TestCase):
             "BinarioWatch",
             "BinarioWatchTests",
             "BinarioWatchWidgets",
+            "BinarioLiveActivity",
         ):
             with self.subTest(target=name):
                 settings = self.targets[name]["settings"]
@@ -243,6 +244,7 @@ class IOSProjectTests(unittest.TestCase):
             "BinarioWatch": ("watchOS", "watchos", "watchos watchsimulator"),
             "BinarioWatchTests": ("watchOS", "watchos", "watchos watchsimulator"),
             "BinarioWatchWidgets": ("watchOS", "watchos", "watchos watchsimulator"),
+            "BinarioLiveActivity": ("iOS", "iphoneos", "iphoneos iphonesimulator"),
         }
         for name, (platform, sdk, supported) in platforms.items():
             with self.subTest(target=name):
@@ -485,19 +487,23 @@ class IOSProjectTests(unittest.TestCase):
 
     def test_iphone_texts_never_name_another_platform_or_a_widget(self) -> None:
         """App Review and the companion's rule (EXPO_PORT_PLAN R24, audit expo-6): no iPhone text names Android,
-        Wear OS, Google Play or a widget the app does not have, in any of the 17 languages."""
-        forbidden = re.compile(
-            r"android|wear\s*os|google\s*play|widget|ウィジェット|위젯|小组件|小部件|виджет|วิดเจ็ต|विजेट|ودجت|ويدجت",
-            re.IGNORECASE,
-        )
+        Wear OS or Google Play, in any of the 17 languages. A widget is named only by the home-screen widgets'
+        own texts (ios/BinarioWidgets) and by the app's «Stazione più vicina» sheet that one of them opens."""
+        platforms = re.compile(r"android|wear\s*os|google\s*play", re.IGNORECASE)
+        widget = re.compile(r"widget|ウィジェット|위젯|小组件|小部件|виджет|วิดเจ็ต|विजेट|ودجت|ويدجت", re.IGNORECASE)
         for language in sorted(LANGUAGES):
-            folder = IOS / "Resources" / f"{language}.lproj"
-            texts = list(read_strings(folder / "Localizable.strings").values())
-            with (folder / "Localizable.stringsdict").open("rb") as source:
-                for entry in plistlib.load(source).values():
-                    texts.extend(form for category, form in entry["count"].items() if not category.startswith("NSString"))
-            for text in texts:
-                self.assertIsNone(forbidden.search(text), f"{language}: {text}")
+            for folder, named in (
+                (IOS / "Resources" / f"{language}.lproj", ("app.widget_",)),
+                (IOS / "BinarioWidgets/Resources" / f"{language}.lproj", ("",)),
+            ):
+                texts = list(read_strings(folder / "Localizable.strings").items())
+                with (folder / "Localizable.stringsdict").open("rb") as source:
+                    for key, entry in plistlib.load(source).items():
+                        texts.extend((key, form) for category, form in entry["count"].items() if not category.startswith("NSString"))
+                for key, text in texts:
+                    self.assertIsNone(platforms.search(text), f"{folder.relative_to(IOS)}: {text}")
+                    if not key.startswith(named):
+                        self.assertIsNone(widget.search(text), f"{folder.relative_to(IOS)}: {key}")
 
     def test_agenda_reminders_are_local_notifications_without_a_push_entitlement(self) -> None:
         """EXPO_PORT_PLAN R25 and F30: the Agenda's reminders are local requests behind a protocol; no target
@@ -518,7 +524,10 @@ class IOSProjectTests(unittest.TestCase):
                     continue
                 self.assertNotIn(forbidden, text, path)
         self.assertEqual(["fetch"], plistlib.loads(info_plist.read_bytes())["UIBackgroundModes"])
-        self.assertNotIn("entitlements", self.targets["Binario"])
+        # The one entitlement of the iPhone app and its widget extension: their App Group (WidgetAppGroup).
+        for name in ("Binario", "BinarioWidgets"):
+            with (IOS / self.targets[name]["entitlements"]["path"]).open("rb") as source:
+                self.assertEqual({"com.apple.security.application-groups": ["group.it.binario.ios"]}, plistlib.load(source), name)
         for name, target in self.targets.items():
             if "entitlements" in target:
                 with (IOS / target["entitlements"]["path"]).open("rb") as source:
@@ -606,6 +615,41 @@ class IOSProjectTests(unittest.TestCase):
         saved = (IOS / "BinarioApp/SavedRoutesView.swift").read_text(encoding="utf-8")
         self.assertIn(".navigationDestination(isPresented: $model.showingAgenda)", saved)
 
+    def test_followed_trip_is_a_live_activity_updated_by_the_app_without_push(self) -> None:
+        """Android's ongoing notification of the followed trip is a Live Activity on the iPhone: its own extension
+        (apart from the home-screen widgets), embedded in the app, with «Aggiorna» and «Interrompi» as intents that run
+        in the app; started and updated by the app itself, never with a push token, and no entitlement is added."""
+        app = self.targets["Binario"]
+        self.assertIs(True, app["settings"]["base"]["INFOPLIST_KEY_NSSupportsLiveActivities"])
+        self.assertIn({"target": "BinarioLiveActivity", "embed": True}, app["dependencies"])
+        self.assertIn({"path": "BinarioLiveActivity/Shared"}, app["sources"])
+        extension = self.targets["BinarioLiveActivity"]
+        self.assertEqual("app-extension", extension["type"])
+        self.assertEqual("17.0", extension["deploymentTarget"])
+        self.assertNotIn("entitlements", extension)
+        settings = extension["settings"]["base"]
+        self.assertEqual("it.binario.ios.liveactivity", settings["PRODUCT_BUNDLE_IDENTIFIER"])
+        self.assertEqual("BinarioLiveActivity/Info.plist", settings["INFOPLIST_FILE"])
+        self.assertIs(True, settings["SKIP_INSTALL"])
+        info = plistlib.loads((IOS / "BinarioLiveActivity/Info.plist").read_bytes())
+        self.assertEqual("com.apple.widgetkit-extension", info["NSExtension"]["NSExtensionPointIdentifier"])
+        self.assertIs(False, info["ITSAppUsesNonExemptEncryption"])
+        manifest = privacy_manifest(IOS / "BinarioLiveActivity/PrivacyInfo.xcprivacy")
+        self.assertEqual(([], [], []), (manifest["NSPrivacyTrackingDomains"], manifest["NSPrivacyCollectedDataTypes"], manifest["NSPrivacyAccessedAPITypes"]))
+        shared = (IOS / "BinarioLiveActivity/Shared/TripActivity.swift").read_text(encoding="utf-8")
+        for fragment in ("struct TripActivityAttributes: ActivityAttributes", "struct TripRefreshIntent: LiveActivityIntent",
+                         "struct TripStopIntent: LiveActivityIntent"):
+            self.assertIn(fragment, shared)
+        widget = (IOS / "BinarioLiveActivity/TripLiveActivityWidget.swift").read_text(encoding="utf-8")
+        self.assertIn("ActivityConfiguration(for: TripActivityAttributes.self)", widget)
+        self.assertIn("dynamicIsland:", widget)
+        for code in (shared, widget):
+            for absent in ("URLSession", "UserDefaults", "CoreLocation", "NSLocalizedString"):
+                self.assertNotIn(absent, code)
+        monitor = (IOS / "BinarioApp/TripMonitor.swift").read_text(encoding="utf-8")
+        self.assertEqual(1, monitor.count("Activity.request("))
+        self.assertIn("pushType: nil)", monitor)
+
     def test_text_import_adds_reviewed_journeys_on_catalogue_stations_only(self) -> None:
         """EXPO_PORT_PLAN F22 and §3.4: a pasted text becomes a preview on catalogue stations; journeys are added
         only after «Ho verificato», never replacing one, at most the Agenda's free places."""
@@ -649,7 +693,10 @@ class IOSProjectTests(unittest.TestCase):
     def test_nearest_station_is_one_when_in_use_position_used_on_the_iphone_only(self) -> None:
         """EXPO_PORT_PLAN I7, F4, R20 and §3.9: «Stazione più vicina» asks for When-In-Use authorization on a tap
         only, reads one position, and picks the nearest catalogue station on the phone; the position is neither
-        stored nor sent. Every language explains why in its InfoPlist.strings; no Always or background location."""
+        stored nor sent. Every language explains why in its InfoPlist.strings; no Always or background location.
+        The followed trip's «Stima dalla tua posizione» (TripLocation.swift) is the one other user: When-In-Use, precise,
+        continuous updates only while the app is in the foreground and the trip is followed, each position handed to
+        BinarioKit's tracker and kept nowhere."""
         settings = self.targets["Binario"]["settings"]["base"]
         italian = settings["INFOPLIST_KEY_NSLocationWhenInUseUsageDescription"]
         forbidden_words = re.compile(r"android|wear\s*os|google\s*play|widget|companion", re.IGNORECASE)
@@ -666,7 +713,20 @@ class IOSProjectTests(unittest.TestCase):
 
         sources = [path for base in (IOS / "BinarioApp", IOS / "BinarioKit/Sources") for path in base.rglob("*.swift")]
         importing = sorted(path.name for path in sources if "import CoreLocation" in path.read_text(encoding="utf-8"))
-        self.assertEqual(["NearestStation.swift"], importing)
+        self.assertEqual(["NearestStation.swift", "TripLocation.swift"], importing)
+        trip = (IOS / "BinarioApp/TripLocation.swift").read_text(encoding="utf-8")
+        self.assertEqual(1, trip.count("manager.requestWhenInUseAuthorization()"))
+        self.assertIn("manager.accuracyAuthorization == .fullAccuracy", trip)
+        self.assertIn("onTrack?(tracker.onFix(fix, now: Date()))", trip)
+        for forbidden in (
+            "requestAlwaysAuthorization", "allowsBackgroundLocationUpdates", "startMonitoringSignificantLocationChanges",
+            "startMonitoringVisits", "CLBackgroundActivitySession", "UserDefaults", "@AppStorage", "requestLocation()",
+        ):
+            self.assertNotIn(forbidden, trip)
+        monitor = (IOS / "BinarioApp/TripMonitor.swift").read_text(encoding="utf-8")
+        leaving = monitor.split("private func didEnterBackground() {", 1)[1].split("\n    }\n", 1)[0]
+        self.assertIn("location.stop()", leaving)
+        self.assertNotIn("UserDefaults", monitor)
         locator = (IOS / "BinarioApp/NearestStation.swift").read_text(encoding="utf-8")
         self.assertEqual(1, locator.count("requestWhenInUseAuthorization()"))
         self.assertEqual(1, locator.count("manager.requestLocation()"))
@@ -691,14 +751,16 @@ class IOSProjectTests(unittest.TestCase):
         self.assertFalse(ios_privacy["NSPrivacyTracking"])
         self.assertEqual([], ios_privacy["NSPrivacyTrackingDomains"])
         self.assertEqual([], ios_privacy["NSPrivacyCollectedDataTypes"])
+        # The app's own defaults (CA92.1) and the App Group it shares with its widgets (1C8F.1).
         self.assertEqual([{
             "NSPrivacyAccessedAPIType": "NSPrivacyAccessedAPICategoryUserDefaults",
-            "NSPrivacyAccessedAPITypeReasons": ["CA92.1"],
+            "NSPrivacyAccessedAPITypeReasons": ["CA92.1", "1C8F.1"],
         }], ios_privacy["NSPrivacyAccessedAPITypes"])
 
         for relative in [
             "apple-watch/BinarioWatch/PrivacyInfo.xcprivacy",
             "apple-watch/BinarioWatchWidgets/PrivacyInfo.xcprivacy",
+            "ios/BinarioWidgets/PrivacyInfo.xcprivacy",
         ]:
             manifest = privacy_manifest(ROOT / relative)
             self.assertEqual([{
@@ -723,7 +785,7 @@ class IOSProjectTests(unittest.TestCase):
             "NSPrivacyAccessedAPICategoryActiveKeyboards": r"\bactiveInputModes\b",
         }
         sources = [
-            path for base in (IOS / "BinarioKit/Sources", IOS / "BinarioApp", ROOT / "apple-watch")
+            path for base in (IOS / "BinarioKit/Sources", IOS / "BinarioApp", IOS / "BinarioWidgets", ROOT / "apple-watch")
             for path in base.rglob("*.swift")
             if ".build" not in path.parts and "Tests" not in path.name and not any(part.endswith("Tests") for part in path.parts)
         ]
@@ -731,7 +793,7 @@ class IOSProjectTests(unittest.TestCase):
         declared = {
             entry["NSPrivacyAccessedAPIType"]
             for relative in ("ios/Resources/PrivacyInfo.xcprivacy", "apple-watch/BinarioWatch/PrivacyInfo.xcprivacy",
-                             "apple-watch/BinarioWatchWidgets/PrivacyInfo.xcprivacy")
+                             "apple-watch/BinarioWatchWidgets/PrivacyInfo.xcprivacy", "ios/BinarioWidgets/PrivacyInfo.xcprivacy")
             for entry in privacy_manifest(ROOT / relative)["NSPrivacyAccessedAPITypes"]
         }
         problems = []
@@ -809,8 +871,12 @@ class IOSProjectTests(unittest.TestCase):
                 path = entry["path"] if isinstance(entry, dict) else entry
                 self.assertFalse(path.startswith("Configuration"), name)
             self.assertNotIn("info", target, name)
+        # The widget extension (ios/BinarioWidgets) is a bundle of its own for App Transport Security: its live
+        # sources follow the same hop, with the same single exception as the app.
+        widgets = IOS / "BinarioWidgets/Info.plist"
+        self.assertEqual(info["NSAppTransportSecurity"], plistlib.loads(widgets.read_bytes())["NSAppTransportSecurity"])
         for path in list(IOS.rglob("*.plist")) + list((ROOT / "apple-watch").rglob("*.plist")):
-            if path != IOS / "Configuration/Binario-Info.plist" and ".build" not in path.parts:
+            if path not in {IOS / "Configuration/Binario-Info.plist", widgets} and ".build" not in path.parts:
                 self.assertNotIn(b"NSAppTransportSecurity", path.read_bytes(), str(path))
         # The client follows that hop only for the same resource, with an ephemeral session and an
         # honest User-Agent, and the system follows no redirect by itself.
@@ -827,6 +893,99 @@ class IOSProjectTests(unittest.TestCase):
         sources = "\n".join(path.read_text(encoding="utf-8") for path in (IOS / "BinarioKit/Sources").rglob("*.swift"))
         for absent in ["URLSession.shared", "Mozilla", "AppleWebKit"]:
             self.assertNotIn(absent, sources)
+
+    def test_home_screen_widgets_are_one_embedded_extension_without_location_or_background_mode(self) -> None:
+        """Android's three home-screen widgets (Tratta, Tabellone stazione, I miei treni) on the iPhone: one WidgetKit
+        extension inside the app, an iOS 17 AppIntentConfiguration per widget, the App Group as its only entitlement,
+        no location of its own (the «📍 Più vicina» button opens the app, which reads one position in the foreground)
+        and no background mode; it asks the live sources only with the app's «Dati in tempo reale» on."""
+        app = self.targets["Binario"]
+        widgets = self.targets["BinarioWidgets"]
+        settings = widgets["settings"]["base"]
+        ios_id = app["settings"]["base"]["PRODUCT_BUNDLE_IDENTIFIER"]
+        self.assertIn({"target": "BinarioWidgets", "embed": True}, app["dependencies"])
+        self.assertEqual(("app-extension", "iOS", "17.0"), (widgets["type"], widgets["platform"], widgets["deploymentTarget"]))
+        self.assertEqual(f"{ios_id}.widgets", settings["PRODUCT_BUNDLE_IDENTIFIER"])
+        self.assertEqual("BinarioWidgets", settings["PRODUCT_NAME"])
+        self.assertIs(True, settings["SKIP_INSTALL"])
+        self.assertEqual("1", settings["TARGETED_DEVICE_FAMILY"])
+        self.assertIs(False, settings["GENERATE_INFOPLIST_FILE"])
+        self.assertEqual("BinarioWidgets/Info.plist", settings["INFOPLIST_FILE"])
+        self.assertIn({"package": "BinarioKit"}, widgets["dependencies"])
+        # One team and one signing style for every target: the project's, never a target's own.
+        for key in ("DEVELOPMENT_TEAM", "CODE_SIGN_STYLE", "CODE_SIGN_IDENTITY", "PROVISIONING_PROFILE_SPECIFIER"):
+            self.assertNotIn(key, settings)
+            self.assertNotIn(key, app["settings"]["base"])
+        resources = [entry["path"] for entry in widgets["sources"] if isinstance(entry, dict) and entry.get("buildPhase") == "resources"]
+        self.assertEqual(["../app/src/main/assets/stations/curated_it_rail_stations.json"], resources)
+
+        info = plistlib.loads((IOS / "BinarioWidgets/Info.plist").read_bytes())
+        self.assertEqual({"NSExtensionPointIdentifier": "com.apple.widgetkit-extension"}, info["NSExtension"])
+        self.assertEqual("XPC!", info["CFBundlePackageType"])
+        self.assertEqual("$(MARKETING_VERSION)", info["CFBundleShortVersionString"])
+        self.assertEqual("$(CURRENT_PROJECT_VERSION)", info["CFBundleVersion"])
+        self.assertIs(False, info["ITSAppUsesNonExemptEncryption"])
+        self.assertEqual([], [key for key in info if key.startswith("NSLocation") or key in {"UIBackgroundModes", "BGTaskSchedulerPermittedIdentifiers"}])
+
+        sources = {path.name: path.read_text(encoding="utf-8") for path in (IOS / "BinarioWidgets").glob("*.swift")}
+        code = "\n".join(sources.values())
+        for absent in (
+            "CoreLocation", "CLLocationManager", "requestLocation", "BGTaskScheduler", "URLSession", "http://", "https://",
+            "UserDefaults.standard", "StaticConfiguration",
+        ):
+            self.assertNotIn(absent, code)
+        # SiriKit's older IntentConfiguration would need an intent definition file: AppIntentConfiguration only.
+        self.assertNotRegex(code, r"(?<!App)IntentConfiguration\(")
+        self.assertIn("@main", sources["BinarioWidgetsBundle.swift"])
+        for widget in ("RouteWidget()", "StationWidget()", "TrainsWidget()"):
+            self.assertIn(widget, sources["BinarioWidgetsBundle.swift"])
+        for kind, intent in (("route", "RouteWidgetIntent"), ("station", "StationWidgetIntent"), ("trains", "TrainsWidgetIntent")):
+            self.assertEqual(1, code.count(f"AppIntentConfiguration(kind: WidgetKindName.{kind}.rawValue, intent: {intent}.self"))
+            self.assertIn(f"struct {intent}: WidgetConfigurationIntent", code)
+        # The live sources: one for the extension's process, asked only with the app's switch on.
+        self.assertEqual(1, code.count("LiveRailData.standard("))
+        self.assertIn("guard store?.liveDataEnabled ?? false else { return nil }", sources["WidgetSupport.swift"])
+        store = (IOS / "BinarioKit/Sources/BinarioKit/WidgetStore.swift").read_text(encoding="utf-8")
+        self.assertIn('public static let identifier = "group.it.binario.ios"', store)
+
+        # The app shares the index it installs, the switch and «I miei treni», and answers the widgets' links.
+        model = (IOS / "BinarioApp/AppModel.swift").read_text(encoding="utf-8")
+        for expected in (
+            "WidgetBridge.scheduleDirectory(fallback:", "WidgetBridge.scheduleInstalled(installed.baseURL)",
+            "WidgetBridge.share(favourites: model.favouriteTrains, liveDataEnabled: model.liveDataEnabled)",
+            "WidgetBridge.liveDataChanged(enabled)", "WidgetBridge.favouritesChanged(collection)",
+        ):
+            self.assertEqual(1, model.count(expected), expected)
+        self.assertIn(".modifier(WidgetLinkHandler())", (IOS / "BinarioApp/RootView.swift").read_text(encoding="utf-8"))
+        bridge = (IOS / "BinarioApp/WidgetBridge.swift").read_text(encoding="utf-8")
+        self.assertEqual(1, bridge.count("OneShotLocation()"))
+        self.assertIn("model.nearestStation(latitude: latitude, longitude: longitude)", bridge)
+        self.assertNotIn("import CoreLocation", bridge)
+
+        # The texts are Android's, generated in every language, as lines the Swift reader takes.
+        tool = importlib.util.spec_from_file_location("ios_widget_strings", ROOT / "tools/ios_widget_strings.py")
+        strings_tool = importlib.util.module_from_spec(tool)
+        tool.loader.exec_module(strings_tool)
+        self.assertEqual([], strings_tool.stale())
+        self.assertEqual(LANGUAGES, {path.name.removesuffix(".lproj") for path in (IOS / "BinarioWidgets/Resources").glob("*.lproj")})
+        pattern = re.compile(r'^"([^"]+)"\s*=\s*"(.*)";$')
+        used = set(re.findall(r'"(widgets\.[A-Za-z0-9_.]+)"', code))
+        for language in sorted(LANGUAGES):
+            folder = IOS / "BinarioWidgets/Resources" / f"{language}.lproj"
+            lines = [line for line in (folder / "Localizable.strings").read_text(encoding="utf-8").splitlines() if line.strip()]
+            self.assertEqual([], [line for line in lines if not pattern.match(line)], language)
+            with (folder / "Localizable.stringsdict").open("rb") as source:
+                keys = {pattern.match(line).group(1) for line in lines} | set(plistlib.load(source))
+            self.assertEqual(used, keys, language)
+
+        # The rules are the shared table and cases, read by both platforms.
+        self.assertIn("SharedData.Widgets", (IOS / "BinarioKit/Sources/BinarioKit/WidgetRules.swift").read_text(encoding="utf-8"))
+        android = (ROOT / "app/src/main/java/it/binario/app/widget/WidgetSettings.kt").read_text(encoding="utf-8")
+        self.assertIn("SharedData.Widgets", android)
+        cases = json.loads((ROOT / "contracts/shared-rules/v1/widgets-v1.json").read_text(encoding="utf-8"))
+        self.assertIn("widgets-v1.json", (ROOT / "app/src/test/java/it/binario/app/widget/WidgetRulesContractTest.kt").read_text(encoding="utf-8"))
+        self.assertIn("widgets-v1.json", (IOS / "BinarioKit/Tests/BinarioKitTests/WidgetRulesContractTests.swift").read_text(encoding="utf-8"))
+        self.assertTrue(cases)
 
     def test_bundled_gtfs_fallback_bounded_snapshot_and_explicit_clear_are_wired(self) -> None:
         repository = (IOS / "BinarioKit/Sources/BinarioKit/JourneyRepository.swift").read_text(encoding="utf-8")
@@ -1119,7 +1278,7 @@ class IOSProjectTests(unittest.TestCase):
             (store, ".githubReleaseAsset(maximumBytes: artifact.sizeBytes)"),
             (installer, "public func installVerified("),
             (installer, "onlySourceID: sourceID"),
-            (gtfs, "public init(databaseURL: URL, foreignDatabaseURLs: [String: URL] = [:])"),
+            (gtfs, "public init(databaseURL: URL, foreignDatabaseURLs: [String: URL] = [:], fallbacks: TimetableFallbacks? = nil)"),
             (gtfs, 'return "\\n              AND \\(column) NOT IN (\\(placeholders))"'),
             (model, "applicationSupport.appendingPathComponent(ForeignScheduleStore.directoryName, isDirectory: true)"),
         ):
@@ -1333,7 +1492,10 @@ class IOSProjectTests(unittest.TestCase):
         planner = (IOS / "BinarioApp/PlannerView.swift").read_text(encoding="utf-8")
         texts = (IOS / "BinarioApp/ReliabilityTexts.swift").read_text(encoding="utf-8")
         detail = (IOS / "BinarioApp/TrainDetailView.swift").read_text(encoding="utf-8")
-        self.assertIn("reliability.mostReliableFirst(snapshot.services)", planner)
+        # «Più affidabili» is a chip of the merged list, ordered as Android's ResultsReliability.mostReliableFirst.
+        self.assertIn("JourneyResultsMerge.apply(merged.entries, filter: journeys.filter, preferences: journeys.preferences, reliability: scores)", planner)
+        self.assertIn("let first = Int64((a.score * 1_000_000).rounded()), second = Int64((b.score * 1_000_000).rounded())",
+                      (IOS / "BinarioKit/Sources/BinarioKit/JourneyPlanner/JourneyResults.swift").read_text(encoding="utf-8"))
         self.assertIn("TrainDetailView(service: service, query: snapshot.query, boardLive: live)", planner)
         self.assertIn("RoutePunctualityView(route: route)", planner)
         self.assertIn('parts.joined(separator: " · ")', planner)
@@ -1775,7 +1937,10 @@ class IOSProjectTests(unittest.TestCase):
         # No background mode, task or schedule was added for it. The only background work of the app is
         # the evening alerts' app refresh task (owner decision, November 2026): `fetch` and exactly one
         # permitted identifier in the partial Info.plist, scheduled and run by EveningAlerts.swift alone,
-        # which reads only the MIT and RFI feeds and posts local notifications.
+        # which reads only the MIT and RFI feeds and posts local notifications. The same task runs the
+        # trip checks that are due (TripMonitor.swift, owner decision of 24 November 2026: Android's trip
+        # notifications and alarms), which ask the live sources only through `tripLiveData`, nil with
+        # «Dati in tempo reale» off; no other identifier and no push.
         project_text = (IOS / "project.yml").read_text(encoding="utf-8")
         for absent in ("UIBackgroundModes", "BGTaskScheduler", "fetch", "remote-notification"):
             self.assertNotIn(absent, project_text, f"project.yml: {absent}")
@@ -1797,6 +1962,14 @@ class IOSProjectTests(unittest.TestCase):
         self.assertIn("service.general(personal: false, includeTrenord: false)", alerts)
         for absent in ("LiveRailData", "stationNotices", "personal: true", "URLSession"):
             self.assertNotIn(absent, alerts)
+        self.assertIn("await TripMonitor.runInBackground(now: now)", alerts.split("static func run(now: Date = Date()) async {", 1)[1].split("guard await notificationsAllowed()", 1)[0])
+        self.assertIn("if let next = TripBackgroundSchedule.nextRunAt(now) { dates.append(next) }", alerts)
+        trips = app["TripMonitor.swift"]
+        self.assertIn("private var liveData: (any LiveRailProviding)? { model?.tripLiveData }", trips)
+        self.assertIn("var tripLiveData: (any LiveRailProviding)? { liveDataEnabled ? liveData : nil }", model)
+        self.assertEqual(4, trips.count("await liveData."), "train status, notices, board, approach lookup")
+        for absent in ("LiveRailData", "URLSession", "BGTask", "registerForRemoteNotifications", "pushType: .token"):
+            self.assertNotIn(absent, trips)
         self.assertEqual(1, app["BinarioApp.swift"].count(".backgroundTask(.appRefresh(EveningAlerts.taskIdentifier))"))
         self.assertEqual(["BinarioApp.swift"], sorted(name for name, source in app.items() if ".backgroundTask(" in source))
 

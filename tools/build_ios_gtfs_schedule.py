@@ -181,6 +181,9 @@ REQUIRED_FILES = ("agency.txt", "routes.txt", "trips.txt", "stops.txt", "stop_ti
 SCHEMA_TABLES = ("metadata", "pack", "agency", "route", "service", "trip", "stop", "stop_time")
 # The tables an index with city networks adds (URBAN_SCHEMA_SQL); the per-country indexes never have them.
 URBAN_SCHEMA_TABLES = ("urban_stop", "urban_walk")
+# The details the planner of journeys with changes reads (DETAIL_SCHEMA_SQL): only in the base and personal indexes; a
+# per-country index (--foreign-full) has none, so its published pins stay what this builder makes of them.
+DETAIL_SCHEMA_TABLES = ("trip_detail", "stop_detail")
 REQUIRED_INDICES = (
     "idx_route_pack_external",
     "idx_service_pack_external",
@@ -287,6 +290,26 @@ CREATE TABLE urban_walk (
     minutes INTEGER NOT NULL CHECK(minutes >= 0),
     PRIMARY KEY(catalog_station_id, stop_id)
 ) WITHOUT ROWID;
+"""
+
+# The planner's details, as Android's planner reads them from the packs (GtfsDayTrip, PackStops). trip_detail: a trip's
+# GTFS block_id (trips of one block and service day run with the same vehicle, "Resta a bordo") and wheelchair_accessible
+# (1 accessible, 2 not; unknown is no row). stop_detail: the transfer point of a stop no catalogue station binds (its
+# parent_station's group, else its name, a stop of that name more than samePlaceMeters from the first one being another
+# place: PackStops.build) and wheelchair_boarding (its own 1 or 2, else its parent station's). A row only with a value.
+DETAIL_SCHEMA_SQL = """
+CREATE TABLE trip_detail (
+    trip_id INTEGER PRIMARY KEY REFERENCES trip(id),
+    block_id TEXT,
+    wheelchair_accessible INTEGER CHECK(wheelchair_accessible IN (1, 2)),
+    CHECK(block_id IS NOT NULL OR wheelchair_accessible IS NOT NULL)
+);
+CREATE TABLE stop_detail (
+    stop_id INTEGER PRIMARY KEY REFERENCES stop(id),
+    place TEXT,
+    wheelchair_boarding INTEGER CHECK(wheelchair_boarding IN (1, 2)),
+    CHECK(place IS NOT NULL OR wheelchair_boarding IS NOT NULL)
+);
 """
 
 class BuildError(RuntimeError):
@@ -592,13 +615,16 @@ def catalogue_points(catalog_path: Path) -> list[CataloguePoint]:
             points.append(CataloguePoint(station_id, float(latitude), float(longitude)))
     return points
 
-def urban_places(source_id: str, stops: Mapping[str, Mapping[str, str]]) -> dict[str, str]:
+def urban_places(source_id: str, stops: Mapping[str, Mapping[str, str]], bound: frozenset[str] = frozenset()) -> dict[str, str]:
     """The transfer point of every stop of a city pack, as Android's ``PackStops.build`` makes it for ``isUrban``: the
     stops of one parent_station are one point; any other stop is the point of its name, and stops of one name more
-    than samePlaceMeters from the first stop of their place (in stops.txt order) are another point of that name."""
+    than samePlaceMeters from the first stop of their place (in stops.txt order) are another point of that name. In a
+    railway pack the stops a catalogue station binds (``bound``) are that station and take no part."""
     referenced_parents = {row.get("parent_station", "") for row in stops.values()} - {""}
     keys: dict[str, str] = {}
     for stop_id, row in stops.items():
+        if stop_id in bound:
+            continue
         parent = row.get("parent_station", "")
         if parent or stop_id in referenced_parents:
             keys[stop_id] = f"{source_id}:group:{parent or stop_id}"
@@ -607,8 +633,8 @@ def urban_places(source_id: str, stops: Mapping[str, Mapping[str, str]]) -> dict
     name_prefix = f"{source_id}:name:"
     anchors: dict[str, list[tuple[float, float]]] = defaultdict(list)
     for stop_id, row in stops.items():
-        key = keys[stop_id]
-        if not key.startswith(name_prefix):
+        key = keys.get(stop_id)
+        if key is None or not key.startswith(name_prefix):
             continue
         latitude = parse_optional_float(row.get("stop_lat"), f"{source_id}:stop:{stop_id}:lat", -90, 90)
         longitude = parse_optional_float(row.get("stop_lon"), f"{source_id}:stop:{stop_id}:lon", -180, 180)
@@ -668,6 +694,25 @@ def urban_walks(
             for stop_id in members[place]:
                 walks[(point.station_id, stop_id)] = minutes
     return walks
+
+def wheelchair_value(value: str | None) -> int | None:
+    """GTFS wheelchair_boarding / wheelchair_accessible as Android reads them (wheelchairValue): 1 and 2 as published,
+    0, empty and anything else unknown (None)."""
+    raw = (value or "").strip()
+    return int(raw) if raw in ("1", "2") else None
+
+def stop_wheelchair(stops: Mapping[str, Mapping[str, str]]) -> dict[str, int]:
+    """wheelchair_boarding of every stop as Android's GtfsStopDirectory.inheritWheelchair takes it: its own 1 or 2, else
+    (0 or empty) its parent station's; only one level. Stops without a known value are left out."""
+    own = {stop_id: wheelchair_value(row.get("wheelchair_boarding")) for stop_id, row in stops.items()}
+    values: dict[str, int] = {}
+    for stop_id, row in stops.items():
+        value = own[stop_id]
+        if value is None:
+            value = own.get(row.get("parent_station", ""))
+        if value is not None:
+            values[stop_id] = value
+    return values
 
 def stop_modes(archive: "BoundedGtfsArchive", source_id: str, stops: Mapping[str, Mapping[str, str]]) -> dict[str, str]:
     """The modes of every stop of a city pack from its binario_stop_modes.txt, a platform without its own taking its
@@ -1582,9 +1627,11 @@ def ingest_pack(
     allocator: IdAllocator,
     codes: "android_station_codes.StationCodeIndex | None" = None,
     points: Sequence[CataloguePoint] = (),
+    details: bool = False,
 ) -> dict[str, int]:
     """One pack into the index. A city network (STATION_MODE_URBAN, ``points`` the catalogue stations) keeps every trip,
-    binds no stop to a catalogue station, shows its stop names as Android does and fills urban_stop and urban_walk."""
+    binds no stop to a catalogue station, shows its stop names as Android does and fills urban_stop and urban_walk.
+    With ``details`` it fills trip_detail and stop_detail (DETAIL_SCHEMA_SQL)."""
     source_id = str(pack["source_id"])
     archive_path = Path(pack["archive"])
     mode = str(pack.get("station_mode") or (STATION_MODE_CODED if source_id in FOREIGN_PACKS else STATION_MODE_ITALIAN))
@@ -1799,6 +1846,15 @@ def ingest_pack(
                 (database_id, pack_id, route_ids[row["route_id"]], service_ids[trip_service[external_id]], external_id, optional_text(row.get("trip_headsign")), optional_text(row.get("trip_short_name")), direction, bikes_allowed(source_id, row.get("bikes_allowed"))),
             )
             counts["trip"] += 1
+            if details:
+                block = (row.get("block_id") or "").strip() or None
+                wheelchair = wheelchair_value(row.get("wheelchair_accessible"))
+                if block is not None or wheelchair is not None:
+                    connection.execute(
+                        "INSERT INTO trip_detail(trip_id,block_id,wheelchair_accessible) VALUES(?,?,?)",
+                        (database_id, block, wheelchair),
+                    )
+                    counts["trip_detail"] += 1
 
         used_stop_ids = {
             str(row[0])
@@ -1811,6 +1867,9 @@ def ingest_pack(
         stop_ids: dict[str, int] = {}
         # A city network's stops in stops.txt order: the station search offers the first stop of each name, as Android's.
         ordered_stop_ids = [stop_id for stop_id in stops if stop_id in used_stop_ids] if urban else sorted(used_stop_ids)
+        if details:
+            places = urban_places(source_id, stops, frozenset(stop_identity))
+            wheelchair_boarding = stop_wheelchair(stops)
         for external_id in ordered_stop_ids:
             row = stops[external_id]
             database_id = allocator.next("stop")
@@ -1831,6 +1890,15 @@ def ingest_pack(
                 (database_id, pack_id, external_id, name, latitude, longitude, identity.station_id if identity else None, identity.railway_code if identity else None, identity.trenitalia_location_id if identity else None),
             )
             counts["stop"] += 1
+            if details:
+                place = None if identity is not None else places.get(external_id)
+                boarding = wheelchair_boarding.get(external_id)
+                if place is not None or boarding is not None:
+                    connection.execute(
+                        "INSERT INTO stop_detail(stop_id,place,wheelchair_boarding) VALUES(?,?,?)",
+                        (database_id, place, boarding),
+                    )
+                    counts["stop_detail"] += 1
         if urban:
             if STOP_MODES_FILE not in archive.names:
                 raise BuildError(f"{source_id}: a city network without {STOP_MODES_FILE}")
@@ -1942,7 +2010,7 @@ def build_database(
     return write_schedule(
         packs, catalog, eligible_catalog_stations, input_root, input_files, input_fingerprint, source_generated_at,
         output_path, metadata_path, max_compressed_bytes=max_compressed_bytes, filter_metadata=filter_metadata,
-        catalog_path=catalog_path,
+        catalog_path=catalog_path, details=True,
     )
 
 def foreign_full_fingerprint(source_id: str, descriptor: Sequence[Mapping[str, object]]) -> str:
@@ -2037,6 +2105,7 @@ def write_schedule(
     filter_metadata: Mapping[str, object],
     extra_metadata: Mapping[str, object] | None = None,
     catalog_path: Path | None = None,
+    details: bool = False,
 ) -> dict[str, object]:
     output_path.parent.mkdir(parents=True, exist_ok=True)
     metadata_path.parent.mkdir(parents=True, exist_ok=True)
@@ -2058,7 +2127,9 @@ def write_schedule(
         urban = any(pack.get("station_mode") == STATION_MODE_URBAN for pack in packs)
         if urban:
             connection.executescript(URBAN_SCHEMA_SQL)
-        tables = (*SCHEMA_TABLES, *(URBAN_SCHEMA_TABLES if urban else ()))
+        if details:
+            connection.executescript(DETAIL_SCHEMA_SQL)
+        tables = (*SCHEMA_TABLES, *(URBAN_SCHEMA_TABLES if urban else ()), *(DETAIL_SCHEMA_TABLES if details else ()))
         points = catalogue_points(catalog_path) if urban and catalog_path is not None else []
         if urban and not points:
             raise BuildError("the walks to the city stops need the catalogue")
@@ -2075,7 +2146,7 @@ def write_schedule(
         connection.execute("BEGIN")
         for pack_id, pack in enumerate(packs, start=1):
             source_id = str(pack["source_id"])
-            counts = ingest_pack(connection, pack_id, pack, catalog, allocator, codes, points)
+            counts = ingest_pack(connection, pack_id, pack, catalog, allocator, codes, points, details=details)
             left_out = counts.pop(OUT_OF_ORDER_COUNT_KEY, 0)
             if left_out:
                 out_of_order[source_id] = left_out

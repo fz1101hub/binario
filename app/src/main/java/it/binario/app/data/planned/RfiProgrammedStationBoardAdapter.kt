@@ -34,6 +34,7 @@ import java.time.LocalTime
 import java.time.ZoneId
 import java.time.ZonedDateTime
 import java.util.Locale
+import it.binario.app.shared.SharedData
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
@@ -49,7 +50,7 @@ class RfiProgrammedStationBoardAdapter(
     private val fetcher: RfiProgrammedTimetableFetcher = HttpRfiProgrammedTimetableFetcher(),
     private val clock: Clock = Clock.systemUTC(),
     private val zone: ZoneId = ZoneId.of("Europe/Rome"),
-    private val cacheTtl: Duration = Duration.ofHours(6),
+    private val cacheTtl: Duration = Duration.ofSeconds(SharedData.RfiProgrammed.TIMETABLE_TIME_TO_LIVE_SECONDS.toLong()),
     private val pages: RfiTimetablePageCache = RfiTimetablePageCache(fetcher, clock)
 ) : StationBoardProvider {
     override val descriptor = ProviderDescriptor(
@@ -62,7 +63,7 @@ class RfiProgrammedStationBoardAdapter(
         ),
         accessMode = AccessMode.OPEN_DIRECT,
         ratePolicy = RatePolicy(
-            minimumRequestInterval = Duration.ofSeconds(2),
+            minimumRequestInterval = Duration.ofSeconds(SharedData.RfiProgrammed.BOARD_MINIMUM_INTERVAL_SECONDS.toLong()),
             defaultTimeToLive = cacheTtl
         ),
         schemaVersion = 1
@@ -211,7 +212,7 @@ class RfiProgrammedStationBoardAdapter(
         }
         if (cached != null) return TimetableLoad.Success(cached)
 
-        val url = "https://prm.rfi.it/qo_prm/QO_Partenze_SiPMR.aspx?Id=$timetableId&lin=it&dalle=00.00&alle=23.59&ora=00.00"
+        val url = RfiTimetablePages.url(timetableId)
         val html = try {
             pages.page(url)
         } catch (error: kotlinx.coroutines.CancellationException) {

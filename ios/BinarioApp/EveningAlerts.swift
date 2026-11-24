@@ -5,7 +5,9 @@ import BinarioKit
 
 /// The two evening alerts of Android on the iPhone, «Scioperi del giorno dopo» (18:00) and «Lavori
 /// di domani sulle tue tratte» (19:00), with one background app refresh task: the only background
-/// mode the app declares (`fetch`) and its only permitted identifier. iOS decides when the task
+/// mode the app declares (`fetch`) and its only permitted identifier. The same task also runs the
+/// trip checks that are due (TripMonitor.swift: the followed trip's Live Activity, «Avvisami quando
+/// sta arrivando», the notices of the trains with the bell, the status of the commuter alerts). iOS decides when the task
 /// runs, never before the hour asked for; a run outside an alert's window (after 22:00) notifies
 /// nothing for it, as on Android. A run reads only the public MIT strike calendar and RFI's
 /// infomobility feed, with the manners of every source, and schedules local notifications: no
@@ -25,6 +27,7 @@ enum EveningAlerts {
         if preferences.routeWorksAlertEnabled, let next = RouteWorksAlertPlanner.nextRunAt(now, immediate: immediateWorksAlert) {
             dates.append(next)
         }
+        if let next = TripBackgroundSchedule.nextRunAt(now) { dates.append(next) }
         guard let earliest = dates.min() else {
             BGTaskScheduler.shared.cancel(taskRequestWithIdentifier: taskIdentifier)
             return
@@ -38,6 +41,7 @@ enum EveningAlerts {
     /// One background run: each alert whose window it is, then the next run.
     static func run(now: Date = Date()) async {
         defer { schedule() }
+        await TripMonitor.runInBackground(now: now)
         guard await notificationsAllowed(), let clock = RailWallClock(now) else { return }
         let preferences = ExtrasPreferenceStore()
         guard let service = RailNoticeService.standard(rules: NoticeRules.standard) else { return }

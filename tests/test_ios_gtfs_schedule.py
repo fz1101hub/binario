@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import base64
 import csv
 import hashlib
 import importlib.util
@@ -1372,10 +1373,12 @@ def write_city_feed(path: Path) -> None:
         "agency.txt": csv_bytes(["agency_id", "agency_name", "agency_url", "agency_timezone"], [["M", "City Mover", "https://example.test", "Europe/Rome"]]),
         "routes.txt": csv_bytes(["route_id", "agency_id", "route_short_name", "route_long_name", "route_type"],
                                 [["MEX", "M", "MEX", "People mover", "12"], ["T", "M", "1", "Tram", "0"], ["F", "M", "", "Funicolare", "7"]]),
-        "trips.txt": csv_bytes(["route_id", "service_id", "trip_id"], [["MEX", "WK", "MEX1"], ["MEX", "WK", "MEX2"], ["T", "WK", "T1"], ["F", "WK", "F1"]]),
-        "stops.txt": csv_bytes(["stop_id", "stop_name", "stop_lat", "stop_lon"], [
-            ["A", "STAZIONE/", "45.0009", "9.0"], ["A2", "STAZIONE/", "45.00135", "9.0"],
-            ["C", "PIAZZA CENTRALE", "45.018", "9.0"], ["F", "Collina", "45.03", "9.0"],
+        # The people mover's two runs are one vehicle (block B1); wheelchair values as published, 0 and empty unknown.
+        "trips.txt": csv_bytes(["route_id", "service_id", "trip_id", "block_id", "wheelchair_accessible"],
+                               [["MEX", "WK", "MEX1", "B1", "1"], ["MEX", "WK", "MEX2", "B1", "2"], ["T", "WK", "T1", "", ""], ["F", "WK", "F1", "", "0"]]),
+        "stops.txt": csv_bytes(["stop_id", "stop_name", "stop_lat", "stop_lon", "wheelchair_boarding"], [
+            ["A", "STAZIONE/", "45.0009", "9.0", "1"], ["A2", "STAZIONE/", "45.00135", "9.0", ""],
+            ["C", "PIAZZA CENTRALE", "45.018", "9.0", "2"], ["F", "Collina", "45.03", "9.0", "0"],
         ]),
         "stop_times.txt": csv_bytes(["trip_id", "arrival_time", "departure_time", "stop_id", "stop_sequence"], stop_times),
         "calendar.txt": csv_bytes(["service_id", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday", "start_date", "end_date"],
@@ -1385,6 +1388,33 @@ def write_city_feed(path: Path) -> None:
     with zipfile.ZipFile(path, "w", compression=zipfile.ZIP_DEFLATED) as archive:
         for name, content in members.items():
             archive.writestr(name, content)
+
+
+class PlannerDetailsTest(unittest.TestCase):
+    """The rules of the planner's details (DETAIL_SCHEMA_SQL), as Android's planner reads the packs."""
+
+    def test_wheelchair_values_as_android_reads_them(self) -> None:
+        self.assertEqual([1, 2, None, None, None, None], [builder.wheelchair_value(v) for v in ("1", " 2 ", "0", "", None, "3")])
+
+    def test_a_platform_takes_its_parent_station_s_wheelchair_boarding(self) -> None:
+        stops = {
+            "P": {"wheelchair_boarding": "1"}, "A": {"parent_station": "P", "wheelchair_boarding": ""},
+            "B": {"parent_station": "P", "wheelchair_boarding": "2"}, "C": {"wheelchair_boarding": "0"},
+        }
+        self.assertEqual({"P": 1, "A": 1, "B": 2}, builder.stop_wheelchair(stops))
+
+    def test_the_stops_a_catalogue_station_binds_take_no_place(self) -> None:
+        stops = {
+            "A": {"stop_name": "Alfa", "stop_lat": "45.0", "stop_lon": "9.0"},
+            "B": {"stop_name": "Alfa", "stop_lat": "45.0", "stop_lon": "9.01"},
+            "C": {"stop_name": "Alfa", "stop_lat": "45.0", "stop_lon": "9.0001"},
+            "D": {"stop_name": "Beta", "parent_station": "G"}, "G": {"stop_name": "Beta"},
+        }
+        self.assertEqual({"A": "p:name:alfa", "B": "p:name:alfa#2", "C": "p:name:alfa", "D": "p:group:G", "G": "p:group:G"},
+                         builder.urban_places("p", stops))
+        # Without A, B is the first of its name and C, 780 m from it, another place.
+        self.assertEqual({"B": "p:name:alfa", "C": "p:name:alfa#2", "D": "p:group:G", "G": "p:group:G"},
+                         builder.urban_places("p", stops, frozenset({"A"})))
 
 
 class TransitPacksTest(unittest.TestCase):
@@ -1450,13 +1480,36 @@ class TransitPacksTest(unittest.TestCase):
         self.assertEqual([self.rail["sourceId"]], result["filter"]["transitRailPacks"])
         self.assertEqual([self.CITY], result["filter"]["transitUrbanPacks"])
         self.assertEqual(dict(builder.URBAN_STOPS), result["filter"]["urbanStops"])
-        self.assertEqual([*builder.SCHEMA_TABLES, *builder.URBAN_SCHEMA_TABLES], result["database"]["schemaTables"])
+        self.assertEqual([*builder.SCHEMA_TABLES, *builder.URBAN_SCHEMA_TABLES, *builder.DETAIL_SCHEMA_TABLES], result["database"]["schemaTables"])
         self.assertIn("gtfs-transit/manifest.json", [item["path"] for item in result["inputs"]["files"]])
         self.verify()
         # Without the transit manifest the index misses two packs and fails closed.
         with self.assertRaisesRegex(builder.BuildError, f"exactly {builder.INDEXED_PACK_COUNT} packs"):
             builder.build_database(self.manifest, self.catalog, self.temp / "out.zlib", self.temp / "out.json",
                                    source_policy_path=self.policy, max_compressed_bytes=4 * 1024 * 1024)
+
+    def test_the_planner_details_are_android_s_blocks_transfer_points_and_wheelchair_values(self) -> None:
+        self.build()
+        connection = self.database()
+        city = (self.CITY,)
+        trips = connection.execute(
+            "SELECT t.external_id, d.block_id, d.wheelchair_accessible FROM trip_detail d JOIN trip t ON t.id = d.trip_id "
+            "JOIN pack p ON p.id = t.pack_id WHERE p.source_id = ? ORDER BY t.external_id", city).fetchall()
+        self.assertEqual([("MEX1", "B1", 1), ("MEX2", "B1", 2)], trips)
+        stops = connection.execute(
+            "SELECT s.external_id, d.place, d.wheelchair_boarding FROM stop s JOIN pack p ON p.id = s.pack_id "
+            "LEFT JOIN stop_detail d ON d.stop_id = s.id WHERE p.source_id = ? ORDER BY s.external_id", city).fetchall()
+        # The two platforms of "STAZIONE/" (50 m apart) are one place; every stop of a city network has one.
+        self.assertEqual([
+            ("A", f"{self.CITY}:name:stazione", 1), ("A2", f"{self.CITY}:name:stazione", None),
+            ("C", f"{self.CITY}:name:piazzacentrale", 2), ("F", f"{self.CITY}:name:collina", None),
+        ], stops)
+        # A railway stop a catalogue station binds is that station: no place of its own.
+        bound = connection.execute(
+            "SELECT count(*) FROM stop s JOIN stop_detail d ON d.stop_id = s.id WHERE s.catalog_station_id IS NOT NULL AND d.place IS NOT NULL"
+        ).fetchone()[0]
+        self.assertEqual(0, bound)
+        self.verify()
 
     def test_a_city_network_keeps_every_trip_and_never_names_a_railway_station(self) -> None:
         self.build()
@@ -1760,6 +1813,67 @@ class PersonalIndexTest(unittest.TestCase):
         for name in ("binario_gtfs_schedule_personal_v1", "binario_gtfs_source_policy_personal_v1"):
             self.assertIn(name, swift)
             self.assertIn(name, script)
+
+# contracts/shared-rules/v1/remote-gtfs-v1.json and rfi-programmed-v1.json: well formed, read by the tests they name, and,
+# for the archives marked ``builder``, refused or accepted by the builder's archive reader (``BoundedGtfsArchive``)
+# exactly as the iPhone's reader of a downloaded archive (GTFSZipArchive.swift) does.
+REMOTE = ROOT / "contracts/shared-rules/v1/remote-gtfs-v1.json"
+RFI = ROOT / "contracts/shared-rules/v1/rfi-programmed-v1.json"
+FAILURES = {
+    "tooLarge", "malformed", "tooManyEntries", "unsafeName", "duplicateName", "entryTooLarge", "totalTooLarge",
+    "ratioTooHigh", "unsupported", "corrupt", "missingFiles",
+}
+
+
+class RemoteGtfsRulesTest(unittest.TestCase):
+    def setUp(self) -> None:
+        self.rules = json.loads(REMOTE.read_text(encoding="utf-8"))
+
+    def test_the_cases_are_well_formed_and_their_readers_exist(self) -> None:
+        for path in (REMOTE, RFI):
+            rules = json.loads(path.read_text(encoding="utf-8"))
+            with self.subTest(path=path.name):
+                self.assertEqual("binario-shared-rules-v1", rules["schema"])
+                for reader in rules["readers"].values():
+                    self.assertTrue((ROOT / reader).is_file(), reader)
+        for case in self.rules["archives"]:
+            with self.subTest(case=case["name"]):
+                self.assertIn(case["expected"], FAILURES | {"ok"})
+                self.assertEqual(case["expected"] == "ok", "files" in case)
+                self.assertTrue(base64.b64decode(case["zipBase64"], validate=True))
+        for case in self.rules["stationMatches"]:
+            ids = [station["id"] for station in case["stations"]]
+            with self.subTest(case=case["name"]):
+                self.assertTrue(set(case["named"]) <= set(ids))
+                self.assertEqual(case["bound"] is None, not case["named"])
+                if case["bound"] is not None:
+                    self.assertIn(case["bound"], case["named"])
+
+    def test_the_builder_reads_the_archives_it_shares_as_the_iphone_does(self) -> None:
+        shared = [case for case in self.rules["archives"] if case["builder"]]
+        self.assertGreaterEqual(len(shared), 6)
+        with tempfile.TemporaryDirectory() as directory:
+            for index, case in enumerate(shared):
+                path = Path(directory) / f"case-{index}.zip"
+                path.write_bytes(base64.b64decode(case["zipBase64"]))
+                with self.subTest(case=case["name"]):
+                    try:
+                        with builder.BoundedGtfsArchive(path) as archive:
+                            names = sorted(archive.names)
+                    except builder.BuildError:
+                        self.assertNotEqual("ok", case["expected"])
+                    else:
+                        self.assertEqual("ok", case["expected"])
+                        self.assertEqual(case["files"], names)
+
+    def test_the_timetable_cases_use_the_table_first_day(self) -> None:
+        table = builder.shared_code.table_values("remote-gtfs-v1.json")
+        first = table["feeds"][0]["notBefore"]
+        before = [case for case in self.rules["timetables"] if case["departure"][:10] < first]
+        self.assertTrue(before)
+        for case in before:
+            self.assertEqual([], case["expected"], case["name"])
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -1,0 +1,43 @@
+{
+  "schema": "binario-shared-data-v1",
+  "description": "The offline planner of journeys with changes, as both phones compute it from the bundled timetables (Connection Scan): the change time at a station, a large hub and a city stop; the search window and the horizon of the changes; how many packs one search reads; the bounds of a search; the long wait at a change; the in-seat continuations (Resta a bordo) by block or by the same train in another pack; the walking speeds, the longest walk and its choices; the default changes and results; the long wait the results name and the walk that keeps a journey the same as its direct train.",
+  "readers": {
+    "android": "data/journey/EmbeddedGtfsJourneyProvider.kt, data/provider/JourneyPreferences.kt, journeys/JourneyResultsPresenter.kt, journeys/TransferRisk.kt, ui/planner/ResultsMerge.kt (app/src/main/java/it/binario/app/)",
+    "iphone": "ios/BinarioKit/Sources/BinarioKit/JourneyPlanner/"
+  },
+  "defaultTransferMinutes": 5,
+  "largeHubTransferMinutes": 10,
+  "urbanTransferMinutes": 3,
+  "largeHubRailwayCodes": [
+    "S00035", "S00219", "S01700", "S02430", "S02593", "S04700", "S05043", "S06421", "S07113", "S08217", "S08406",
+    "S08409", "S09218", "S09818", "S11119", "S11145", "S11781", "S12002", "S12332"
+  ],
+  "searchWindowMinutes": 480,
+  "journeyHorizonMinutes": 600,
+  "maximumPacksPerSearch": 3,
+  "maximumUrbanPacksPerSearch": 2,
+  "maximumIterations": 32,
+  "maximumSearchConnections": 400000,
+  "maximumChangeWaitMinutes": 120,
+  "followUpIterations": 2,
+  "nextDayFollowUpMinutes": 720,
+  "maximumInSeatWaitMinutes": 30,
+  "maximumCopySkewMinutes": 5,
+  "onwardStops": 3,
+  "maximumContinuations": 8,
+  "longDistanceCodes": [
+    "EC", "IC", "ICN", "EN", "NJ", "FR", "FA", "FB", "AV", "RJ", "RJX", "ICE", "TGV", "ES", "ITALO", "EUROCITY", "RAILJET"
+  ],
+  "localCodes": ["S", "R", "RE", "REX", "RV", "REG", "RB", "TER"],
+  "localCodeMaximumDigits": 3,
+  "maximumWalkMeters": 2000,
+  "slowWalkingKmh": 3.5,
+  "normalWalkingKmh": 4.5,
+  "fastWalkingKmh": 5.5,
+  "walkMinuteChoices": [5, 10, 15, 20],
+  "defaultMaximumWalkMinutes": 10,
+  "defaultMaximumTransfers": 2,
+  "maximumResults": 6,
+  "longWaitMinutes": 120,
+  "duplicateWalkMinutes": 10
+}

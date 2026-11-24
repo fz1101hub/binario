@@ -571,6 +571,26 @@ def _check_train_type_groups(values: Mapping[str, Any]) -> list[str]:
     return problems
 
 
+def _check_trip_alerts(values: Mapping[str, Any]) -> list[str]:
+    problems = []
+    leads = values["approachLeadOptionsMinutes"]
+    if leads != sorted(leads):
+        problems.append("approachLeadOptionsMinutes non in ordine crescente")
+    if values["approachDefaultLeadMinutes"] not in leads:
+        problems.append("approachDefaultLeadMinutes fuori da approachLeadOptionsMinutes")
+    if values["approachEarlyToleranceMinutes"] > values["approachLateToleranceMinutes"]:
+        problems.append("approachEarlyToleranceMinutes maggiore di approachLateToleranceMinutes")
+    if values["commuterLeadOptionsMinutes"] != sorted(values["commuterLeadOptionsMinutes"]):
+        problems.append("commuterLeadOptionsMinutes non in ordine crescente")
+    if values["followedTripMinimumRefreshMinutes"] > values["followedTripRefreshMinutes"]:
+        problems.append("followedTripMinimumRefreshMinutes maggiore di followedTripRefreshMinutes")
+    if values["positionDwellRadiusMeters"] > values["positionOffRouteMeters"]:
+        problems.append("positionDwellRadiusMeters maggiore di positionOffRouteMeters")
+    if values["estimateFreshSeconds"] > values["positionFreshSeconds"]:
+        problems.append("estimateFreshSeconds maggiore di positionFreshSeconds")
+    return problems
+
+
 def _check_rfi_monitor(values: Mapping[str, Any]) -> list[str]:
     host = "https://iechub.rfi.it/"
     return [f"{key}: fuori da {host}" for key in ("catalogueUrl", "monitorUrl") if not values[key].startswith(host)]
@@ -602,6 +622,24 @@ def _check_pack_roles(values: Mapping[str, Any]) -> list[str]:
     return errors
 
 
+def _check_journey_planner(values: Mapping[str, Any]) -> list[str]:
+    errors = []
+    if values["largeHubTransferMinutes"] < values["defaultTransferMinutes"]:
+        errors.append("largeHubTransferMinutes sotto defaultTransferMinutes")
+    if not values["slowWalkingKmh"] < values["normalWalkingKmh"] < values["fastWalkingKmh"]:
+        errors.append("velocità a piedi non crescenti")
+    choices = values["walkMinuteChoices"]
+    if choices != sorted(set(choices)):
+        errors.append("walkMinuteChoices non crescenti")
+    if values["defaultMaximumWalkMinutes"] not in choices:
+        errors.append("defaultMaximumWalkMinutes non è tra walkMinuteChoices")
+    if set(values["localCodes"]) & set(values["longDistanceCodes"]):
+        errors.append("un codice è sia locale sia di lunga percorrenza")
+    if values["maximumCopySkewMinutes"] > values["maximumInSeatWaitMinutes"]:
+        errors.append("maximumCopySkewMinutes supera maximumInSeatWaitMinutes")
+    return errors
+
+
 def _check_urban_stops(values: Mapping[str, Any]) -> list[str]:
     errors = []
     if values["samePlaceMeters"] > values["platformMeters"]:
@@ -625,6 +663,22 @@ def _check_realtime_feeds(values: Mapping[str, Any]) -> list[str]:
     region = values["swissBoard"].values["borderRegion"].values
     if region["minimumLatitude"] >= region["maximumLatitude"] or region["minimumLongitude"] >= region["maximumLongitude"]:
         problems.append("swissBoard.borderRegion: minimo non minore del massimo")
+    return problems
+
+
+def _check_widgets(values: Mapping[str, Any]) -> list[str]:
+    problems = []
+    intervals = values["refreshIntervalsMinutes"]
+    if values["defaultIntervalMinutes"] not in intervals or values["alwaysIntervalMinutes"] not in intervals:
+        problems.append("defaultIntervalMinutes e alwaysIntervalMinutes devono essere tra refreshIntervalsMinutes")
+    if values["freshSeconds"] >= values["agingSeconds"]:
+        problems.append("freshSeconds non minore di agingSeconds")
+    if values["stationMaximumRows"] > values["stationStoredDepartures"]:
+        problems.append("stationMaximumRows oltre stationStoredDepartures")
+    if values["compactRows"] > values["pageRows"]:
+        problems.append("compactRows oltre pageRows")
+    if [item.values["id"] for item in values["timeRanges"]] != ["NEXT", "NEXT_3H", "NEXT_6H", "WHOLE_DAY"]:
+        problems.append("timeRanges: NEXT, NEXT_3H, NEXT_6H, WHOLE_DAY in quest'ordine")
     return problems
 
 
@@ -672,6 +726,14 @@ ITALO_STATION_CODE = Record("StationCode", {
     "catalogueId": Field(Text(CATALOGUE_STATION)),
 }, notes=True, note_key="comment")
 ITALO_UNMAPPED_CODE = Record("UnmappedCode", {"code": Field(Text(r"[A-Z0-9_]{3}"))}, notes=True, note_key="comment")
+
+CLOCK_TIME = Text(r"(?:[01]\d|2[0-3]):[0-5]\d")
+WIDGET_WINDOW = Record("RefreshWindow", {"start": Field(CLOCK_TIME), "end": Field(CLOCK_TIME)})
+WIDGET_TIME_RANGE = Record("TimeRange", {
+    "id": Field(Text(r"[A-Z][A-Z0-9_]*")),
+    "hours": Field(Nullable(Integer(1, 24))),
+    "extraPages": Field(Integer(0, 10)),
+}, notes=True)
 
 HTTPS_URL = Text(r"https://[^\s]+", max_length=300)
 # A regular expression as Kotlin compiles it; the iPhone compiles the same text with NSRegularExpression.
@@ -818,7 +880,8 @@ TRIP_UPDATES_FEED = Record("TripUpdatesFeed", {
     "pack": Field(Text(SOURCE_ID)),
     "label": Field(Text(max_length=40)),
     "format": Field(Text(r"json|protobuf")),
-    "gate": Field(Text(r"all-builds|pack-bundled")),
+    # remote-pack: the pack is an archive downloaded at runtime (remote-gtfs-v1.json), asked only once it answers.
+    "gate": Field(Text(r"all-builds|pack-bundled|remote-pack")),
     "url": Field(HTTPS_URL),
     "accept": Field(Text()),
     "connectTimeoutSeconds": Field(Seconds(1)),
@@ -889,6 +952,65 @@ SWISS_BOARD = Record("SwissBoard", {
     "borderRegion": Field(BORDER_REGION),
     "nonRailCategories": Field(ListOf(Text(r"[A-Z]{1,8}"), as_set=True)),
 })
+
+ISO_DAY = Text(r"\d{4}-\d{2}-\d{2}")
+REMOTE_GTFS_FEED = Record("RemoteFeed", {
+    "id": Field(Text(SOURCE_ID)),
+    "pack": Field(Text(SOURCE_ID)),
+    "operatorScope": Field(Text(max_length=60)),
+    "attribution": Field(Text(max_length=96)),
+    "url": Field(HTTPS_URL),
+    "notBefore": Field(ISO_DAY),
+    "realtimeFeed": Field(Nullable(Text(SOURCE_ID))),
+}, notes=True)
+REMOTE_ARCHIVE = Record("ArchiveLimits", {
+    "maximumEntries": Field(Integer(1, 1_000)),
+    "maximumEntryBytes": Field(Integer(1, 512 * 1_048_576)),
+    "maximumTotalUncompressedBytes": Field(Integer(1, 512 * 1_048_576)),
+    "maximumCompressionRatio": Field(Integer(1, 100_000)),
+    "maximumCsvLineLength": Field(Integer(1, 1_048_576)),
+    "maximumAgencies": Field(COUNT),
+    "maximumStops": Field(COUNT),
+    "maximumRoutes": Field(COUNT),
+    "maximumTrips": Field(COUNT),
+    "maximumCalendars": Field(COUNT),
+    "maximumCalendarDateRows": Field(Integer(1, 10_000_000)),
+    "maximumStopTimeRows": Field(Integer(1, 10_000_000)),
+})
+RFI_HUB = Record("Hub", {
+    "railwayCode": Field(Text(r"S\d{5}")),
+    "timetableId": Field(Integer(1, 999_999_999)),
+    "names": Field(ListOf(STATION_NAME)),
+}, notes=True)
+
+
+def _check_remote_gtfs(values: Mapping[str, Any]) -> list[str]:
+    problems = []
+    archive = values["archive"].values
+    if archive["maximumEntryBytes"] > archive["maximumTotalUncompressedBytes"]:
+        problems.append("archive: maximumEntryBytes supera maximumTotalUncompressedBytes")
+    for index, feed in enumerate(values["feeds"]):
+        year, month, day = (int(part) for part in feed.values["notBefore"].split("-"))
+        if not 1 <= month <= 12 or not 1 <= day <= calendar.monthrange(year, month)[1]:
+            problems.append(f"feeds[{index}].notBefore: data inesistente")
+    packs = [feed.values["pack"] for feed in values["feeds"]]
+    problems += [f"pack {pack!r} con due archivi" for pack in sorted({pack for pack in packs if packs.count(pack) > 1})]
+    return problems
+
+
+def _check_rfi_programmed(values: Mapping[str, Any]) -> list[str]:
+    problems = []
+    if "<board>" not in values["urlTemplate"] or "<id>" not in values["urlTemplate"]:
+        problems.append("urlTemplate: servono <board> e <id>")
+    if _host(values["urlTemplate"]) != "prm.rfi.it":
+        problems.append("urlTemplate: l'host è prm.rfi.it")
+    hubs = values["hubs"] + values["supplementalHubs"]
+    codes = [hub.values["railwayCode"] for hub in hubs]
+    problems += [f"railwayCode {code!r} in due hub" for code in sorted({code for code in codes if codes.count(code) > 1})]
+    names = [name.upper() for hub in hubs for name in hub.values["names"]]
+    problems += [f"nome {name!r} in due hub" for name in sorted({name for name in names if names.count(name) > 1})]
+    return problems
+
 
 TABLES: tuple[Table, ...] = (
     Table("airport-routes-v1.json", "AirportRoutes", {
@@ -971,6 +1093,38 @@ TABLES: tuple[Table, ...] = (
         "stations": Field(ListOf(ITALO_STATION, unique_by=("code",))),
         "slugsByName": Field(MapOf(Text(r"[a-z0-9]+(?:-[a-z0-9]+)*"), key=STATION_NAME)),
     }),
+    Table("journey-planner-v1.json", "JourneyPlanner", {
+        "defaultTransferMinutes": Field(Integer(0, 60)),
+        "largeHubTransferMinutes": Field(Integer(0, 60)),
+        "urbanTransferMinutes": Field(Integer(0, 60)),
+        "largeHubRailwayCodes": Field(ListOf(Text(r"S\d{5}"), as_set=True)),
+        "searchWindowMinutes": Field(Integer(30, 24 * 60)),
+        "journeyHorizonMinutes": Field(Integer(0, 24 * 60)),
+        "maximumPacksPerSearch": Field(Integer(1, 8)),
+        "maximumUrbanPacksPerSearch": Field(Integer(0, 4)),
+        "maximumIterations": Field(Integer(1, 1_000)),
+        "maximumSearchConnections": Field(Integer(1, 4_000_000)),
+        "maximumChangeWaitMinutes": Field(Integer(0, 24 * 60)),
+        "followUpIterations": Field(Integer(1, 100)),
+        "nextDayFollowUpMinutes": Field(Integer(0, 24 * 60)),
+        "maximumInSeatWaitMinutes": Field(Integer(0, 24 * 60)),
+        "maximumCopySkewMinutes": Field(Integer(0, 60)),
+        "onwardStops": Field(Integer(1, 20)),
+        "maximumContinuations": Field(Integer(1, 50)),
+        "longDistanceCodes": Field(ListOf(Text(r"[A-Z]{1,12}"), as_set=True)),
+        "localCodes": Field(ListOf(Text(r"[A-Z]{1,8}"), as_set=True)),
+        "localCodeMaximumDigits": Field(Integer(0, 6)),
+        "maximumWalkMeters": Field(Integer(0, 5_000)),
+        "slowWalkingKmh": Field(Real(1.0, 10.0)),
+        "normalWalkingKmh": Field(Real(1.0, 10.0)),
+        "fastWalkingKmh": Field(Real(1.0, 10.0)),
+        "walkMinuteChoices": Field(ListOf(Integer(1, 60))),
+        "defaultMaximumWalkMinutes": Field(Integer(1, 60)),
+        "defaultMaximumTransfers": Field(Integer(0, 6)),
+        "maximumResults": Field(Integer(1, 50)),
+        "longWaitMinutes": Field(Integer(1, 24 * 60)),
+        "duplicateWalkMinutes": Field(Integer(0, 60)),
+    }, check=_check_journey_planner),
     Table("live-train-map-v1.json", "LiveTrainMap", {
         "lookBackMinutes": Field(Integer(0, 720)),
         "lookAheadMinutes": Field(Integer(0, 720)),
@@ -1089,6 +1243,18 @@ TABLES: tuple[Table, ...] = (
         "urbanFetch": Field(URBAN_FETCH),
         "swissBoard": Field(SWISS_BOARD),
     }, check=_check_realtime_feeds),
+    Table("remote-gtfs-v1.json", "RemoteGtfs", {
+        "feeds": Field(ListOf(REMOTE_GTFS_FEED, unique_by=("id",))),
+        "accept": Field(Text()),
+        "connectTimeoutSeconds": Field(Seconds(1)),
+        "readTimeoutSeconds": Field(Seconds(1)),
+        "maximumRedirects": Field(Integer(0, 10)),
+        "maximumArchiveBytes": Field(Integer(1, 64 * 1_048_576)),
+        "cacheTimeToLiveSeconds": Field(Seconds(1)),
+        "failureCooldownSeconds": Field(Seconds(1)),
+        "refusalPauseSeconds": Field(Seconds(1)),
+        "archive": Field(REMOTE_ARCHIVE),
+    }, check=_check_remote_gtfs),
     Table("rfi-monitor-v1.json", "RfiMonitor", {
         "catalogueUrl": Field(HTTPS_URL),
         "monitorUrl": Field(HTTPS_URL),
@@ -1105,6 +1271,25 @@ TABLES: tuple[Table, ...] = (
     Table("rfi-place-ids-v1.json", "RfiPlaceIds", {
         "placeIdsByName": Field(MapOf(Integer(1, 99_999), key=STATION_NAME)),
     }),
+    Table("rfi-programmed-v1.json", "RfiProgrammed", {
+        "urlTemplate": Field(HTTPS_URL),
+        "departuresBoard": Field(Text(r"[A-Za-z]+")),
+        "arrivalsBoard": Field(Text(r"[A-Za-z]+")),
+        "accept": Field(Text()),
+        "connectTimeoutSeconds": Field(Seconds(1)),
+        "readTimeoutSeconds": Field(Seconds(1)),
+        "totalTimeoutSeconds": Field(Seconds(1)),
+        "maximumBytes": Field(Integer(1, 16 * 1_048_576)),
+        "pageTimeToLiveSeconds": Field(Seconds(1)),
+        "maximumPages": Field(Integer(1, 64)),
+        "timetableTimeToLiveSeconds": Field(Seconds(1)),
+        "maximumTimetables": Field(Integer(1, 256)),
+        "maximumSupplementalTimetables": Field(Integer(1, 256)),
+        "maximumRouteServices": Field(Integer(1, 500)),
+        "boardMinimumIntervalSeconds": Field(Seconds(1)),
+        "hubs": Field(ListOf(RFI_HUB, unique_by=("railwayCode",))),
+        "supplementalHubs": Field(ListOf(RFI_HUB, unique_by=("railwayCode",))),
+    }, check=_check_rfi_programmed),
     Table("saved-timetables-v1.json", "SavedTimetables", {
         "maximumTimetables": Field(Integer(1, 1_000)),
         "maximumRows": Field(Integer(1, 1_000)),
@@ -1144,6 +1329,53 @@ TABLES: tuple[Table, ...] = (
         "busCodes": Field(ListOf(CATEGORY_CODE, as_set=True)),
         "regionalCodePattern": Field(PATTERN),
     }, check=_check_train_type_groups),
+    Table("trip-alerts-v1.json", "TripAlerts", {
+        "stopAlarmLeadMinutes": Field(Integer(1, 60)),
+        "stopAlarmMaximumAlarms": Field(Integer(1, 64)),
+        "stopAlarmKeepAfterArrivalMinutes": Field(Integer(0, 1_440)),
+        "stopAlarmNotificationTimeoutMinutes": Field(Integer(1, 1_440)),
+        "stopAlarmReplanThresholdSeconds": Field(Seconds(1)),
+        "followedTripLeadMinutes": Field(Integer(0, 240)),
+        "followedTripTrailMinutes": Field(Integer(0, 240)),
+        "followedTripRefreshMinutes": Field(Integer(1, 60)),
+        "followedTripMaximumDelayExtensionMinutes": Field(Integer(0, 1_440)),
+        "followedTripNearAlightStops": Field(Integer(1, 10)),
+        "followedTripNearAlightDelaySeconds": Field(Seconds()),
+        "followedTripMinimumRefreshMinutes": Field(Integer(1, 60)),
+        "followedTripMaximumLegs": Field(Integer(1, 12)),
+        "approachLeadOptionsMinutes": Field(ListOf(Integer(1, 60))),
+        "approachDefaultLeadMinutes": Field(Integer(1, 60)),
+        "approachCheckMinutes": Field(Integer(1, 60)),
+        "approachFirstCheckBeforeMinutes": Field(Integer(0, 240)),
+        "approachMaximumDelayMinutes": Field(Integer(0, 1_440)),
+        "approachEarlyToleranceMinutes": Field(Integer(0, 60)),
+        "approachLateToleranceMinutes": Field(Integer(0, 60)),
+        "approachMinimumGapMinutes": Field(Integer(1, 60)),
+        "approachNotificationTimeoutMinutes": Field(Integer(1, 240)),
+        "approachMaximumAlerts": Field(Integer(1, 64)),
+        "commuterLeadOptionsMinutes": Field(ListOf(Integer(1, 60))),
+        "commuterMaximumAlerts": Field(Integer(1, 64)),
+        "trainAlertsCheckMinutes": Field(Integer(1, 60)),
+        "trainAlertsBeforeDepartureMinutes": Field(Integer(0, 1_440)),
+        "trainAlertsAfterDepartureMinutes": Field(Integer(0, 1_440)),
+        "trainAlertsAfterArrivalMinutes": Field(Integer(0, 1_440)),
+        "trainAlertsMaximumSubscriptions": Field(Integer(1, 64)),
+        "trainAlertsMaximumSeen": Field(Integer(1, 10_000)),
+        "trainAlertsSeenRetentionDays": Field(Integer(1, 365)),
+        "positionMaximumAccuracyMeters": Field(Integer(1, 10_000)),
+        "positionMaximumFixAgeSeconds": Field(Seconds(1)),
+        "positionOffRouteMeters": Field(Integer(1, 100_000)),
+        "positionDwellRadiusMeters": Field(Integer(1, 100_000)),
+        "positionBacktrackToleranceMeters": Field(Integer(0, 100_000)),
+        "positionFreshSeconds": Field(Seconds(1)),
+        "positionMaximumRouteStops": Field(Integer(2, 500)),
+        "positionSessionAfterArrivalMinutes": Field(Integer(1, 1_440)),
+        "positionSessionMaximumMinutes": Field(Integer(1, 1_440)),
+        "estimateFreshSeconds": Field(Seconds(1)),
+        "estimateMaximumDelayMinutes": Field(Integer(1, 1_440)),
+        "estimateBeforeDepartureMinutes": Field(Integer(0, 240)),
+        "estimateAfterArrivalMinutes": Field(Integer(0, 240)),
+    }, check=_check_trip_alerts),
     Table("urban-stops-v1.json", "UrbanStops", {
         "maximumWalkMeters": Field(Integer(0, 2_000)),
         "walkingSpeedKmh": Field(Real(1.0, 10.0)),
@@ -1177,6 +1409,35 @@ TABLES: tuple[Table, ...] = (
         "trenitaliaRegionalClients": Field(CLIENT_CODES),
         "trenitaliaLongDistanceClients": Field(CLIENT_CODES),
     }, check=_check_viaggiatreno),
+    Table("widgets-v1.json", "Widgets", {
+        "refreshIntervalsMinutes": Field(ListOf(Integer(1, 1_440))),
+        "defaultIntervalMinutes": Field(Integer(1, 1_440)),
+        "alwaysIntervalMinutes": Field(Integer(1, 1_440)),
+        "weekdays": Field(ListOf(Integer(1, 7), as_set=True)),
+        "maximumWindows": Field(Integer(1, 4)),
+        "defaultMorningWindow": Field(WIDGET_WINDOW),
+        "defaultEveningWindow": Field(WIDGET_WINDOW),
+        "windowLookaheadDays": Field(Integer(1, 31)),
+        "minimumRescheduleSeconds": Field(Seconds(1)),
+        "defaultReturnFrom": Field(CLOCK_TIME),
+        "maximumTitleLength": Field(Integer(1, 200)),
+        "departedGraceSeconds": Field(Seconds()),
+        "freshSeconds": Field(Seconds(1)),
+        "agingSeconds": Field(Seconds(1)),
+        "timeRanges": Field(ListOf(WIDGET_TIME_RANGE, unique_by=("id",))),
+        "dayCacheMaximumRows": Field(Integer(1, 1_000)),
+        "compactRows": Field(Integer(1, 20)),
+        "pageRows": Field(Integer(1, 20)),
+        "stationStoredDepartures": Field(Integer(1, 100)),
+        "stationMaximumRows": Field(Integer(1, 20)),
+        "trainsArrivalGraceMinutes": Field(Integer(0, 120)),
+        "lookupBeforeDepartureMinutes": Field(Integer(0, 1_440)),
+        "lookupAfterArrivalMinutes": Field(Integer(0, 1_440)),
+        "lookupDefaultDurationMinutes": Field(Integer(1, 2_880)),
+        "lookupMaximumDurationMinutes": Field(Integer(1, 10_080)),
+        "retryMaximumAttempts": Field(Integer(1, 10)),
+        "retryFirstDelayMinutes": Field(Integer(1, 1_440)),
+    }, check=_check_widgets),
 )
 
 

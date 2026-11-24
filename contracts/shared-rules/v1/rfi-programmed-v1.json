@@ -1,0 +1,2066 @@
+{
+  "schema": "binario-shared-rules-v1",
+  "name": "rfi-programmed-v1",
+  "description": "RFI's programmed timetable (rfi-programmed-v1.json of shared-data): the reading of «Periodicità e avvertenze» (periodicity: dates of 2026 with Android's week of ItalianRailServiceCalendarTest), the day a row leaves (departureDays, minutes), whether a published stop name names a station (names, Android's RailStopNameMatcherTest), and the trains of a route and of a hub's board read from a page (pages: the synthetic pages of Android's tests, {periodicity} replaced by the case's).",
+  "readers": {
+    "android": "app/src/test/java/it/binario/app/data/planned/RfiProgrammedContractTest.kt",
+    "ios": "ios/BinarioKit/Tests/BinarioKitTests/RfiProgrammedContractTests.swift"
+  },
+  "periodicity": [
+    {
+      "text": "",
+      "date": "2026-10-05",
+      "runs": true
+    },
+    {
+      "text": "",
+      "date": "2026-10-06",
+      "runs": true
+    },
+    {
+      "text": "",
+      "date": "2026-10-07",
+      "runs": true
+    },
+    {
+      "text": "",
+      "date": "2026-10-09",
+      "runs": true
+    },
+    {
+      "text": "",
+      "date": "2026-10-10",
+      "runs": true
+    },
+    {
+      "text": "",
+      "date": "2026-10-11",
+      "runs": true
+    },
+    {
+      "text": "",
+      "date": "2026-06-02",
+      "runs": true
+    },
+    {
+      "text": "",
+      "date": "2026-04-06",
+      "runs": true
+    },
+    {
+      "text": "Giornaliero",
+      "date": "2026-10-05",
+      "runs": true
+    },
+    {
+      "text": "Giornaliero",
+      "date": "2026-10-06",
+      "runs": true
+    },
+    {
+      "text": "Giornaliero",
+      "date": "2026-10-07",
+      "runs": true
+    },
+    {
+      "text": "Giornaliero",
+      "date": "2026-10-09",
+      "runs": true
+    },
+    {
+      "text": "Giornaliero",
+      "date": "2026-10-10",
+      "runs": true
+    },
+    {
+      "text": "Giornaliero",
+      "date": "2026-10-11",
+      "runs": true
+    },
+    {
+      "text": "Giornaliero",
+      "date": "2026-06-02",
+      "runs": true
+    },
+    {
+      "text": "Giornaliero",
+      "date": "2026-04-06",
+      "runs": true
+    },
+    {
+      "text": "Tutti i giorni",
+      "date": "2026-10-05",
+      "runs": true
+    },
+    {
+      "text": "Tutti i giorni",
+      "date": "2026-10-06",
+      "runs": true
+    },
+    {
+      "text": "Tutti i giorni",
+      "date": "2026-10-07",
+      "runs": true
+    },
+    {
+      "text": "Tutti i giorni",
+      "date": "2026-10-09",
+      "runs": true
+    },
+    {
+      "text": "Tutti i giorni",
+      "date": "2026-10-10",
+      "runs": true
+    },
+    {
+      "text": "Tutti i giorni",
+      "date": "2026-10-11",
+      "runs": true
+    },
+    {
+      "text": "Tutti i giorni",
+      "date": "2026-06-02",
+      "runs": true
+    },
+    {
+      "text": "Tutti i giorni",
+      "date": "2026-04-06",
+      "runs": true
+    },
+    {
+      "text": "Quotidiano",
+      "date": "2026-10-05",
+      "runs": true
+    },
+    {
+      "text": "Quotidiano",
+      "date": "2026-10-06",
+      "runs": true
+    },
+    {
+      "text": "Quotidiano",
+      "date": "2026-10-07",
+      "runs": true
+    },
+    {
+      "text": "Quotidiano",
+      "date": "2026-10-09",
+      "runs": true
+    },
+    {
+      "text": "Quotidiano",
+      "date": "2026-10-10",
+      "runs": true
+    },
+    {
+      "text": "Quotidiano",
+      "date": "2026-10-11",
+      "runs": true
+    },
+    {
+      "text": "Quotidiano",
+      "date": "2026-06-02",
+      "runs": true
+    },
+    {
+      "text": "Quotidiano",
+      "date": "2026-04-06",
+      "runs": true
+    },
+    {
+      "text": "Non ferma a Pioltello",
+      "date": "2026-10-05",
+      "runs": true
+    },
+    {
+      "text": "Non ferma a Pioltello",
+      "date": "2026-10-06",
+      "runs": true
+    },
+    {
+      "text": "Non ferma a Pioltello",
+      "date": "2026-10-07",
+      "runs": true
+    },
+    {
+      "text": "Non ferma a Pioltello",
+      "date": "2026-10-09",
+      "runs": true
+    },
+    {
+      "text": "Non ferma a Pioltello",
+      "date": "2026-10-10",
+      "runs": true
+    },
+    {
+      "text": "Non ferma a Pioltello",
+      "date": "2026-10-11",
+      "runs": true
+    },
+    {
+      "text": "Non ferma a Pioltello",
+      "date": "2026-06-02",
+      "runs": true
+    },
+    {
+      "text": "Non ferma a Pioltello",
+      "date": "2026-04-06",
+      "runs": true
+    },
+    {
+      "text": "Prenotazione obbligatoria",
+      "date": "2026-10-05",
+      "runs": true
+    },
+    {
+      "text": "Prenotazione obbligatoria",
+      "date": "2026-10-06",
+      "runs": true
+    },
+    {
+      "text": "Prenotazione obbligatoria",
+      "date": "2026-10-07",
+      "runs": true
+    },
+    {
+      "text": "Prenotazione obbligatoria",
+      "date": "2026-10-09",
+      "runs": true
+    },
+    {
+      "text": "Prenotazione obbligatoria",
+      "date": "2026-10-10",
+      "runs": true
+    },
+    {
+      "text": "Prenotazione obbligatoria",
+      "date": "2026-10-11",
+      "runs": true
+    },
+    {
+      "text": "Prenotazione obbligatoria",
+      "date": "2026-06-02",
+      "runs": true
+    },
+    {
+      "text": "Prenotazione obbligatoria",
+      "date": "2026-04-06",
+      "runs": true
+    },
+    {
+      "text": "Lun-Ven",
+      "date": "2026-10-05",
+      "runs": true
+    },
+    {
+      "text": "Lun-Ven",
+      "date": "2026-10-06",
+      "runs": true
+    },
+    {
+      "text": "Lun-Ven",
+      "date": "2026-10-07",
+      "runs": true
+    },
+    {
+      "text": "Lun-Ven",
+      "date": "2026-10-09",
+      "runs": true
+    },
+    {
+      "text": "Lun-Ven",
+      "date": "2026-10-10",
+      "runs": false
+    },
+    {
+      "text": "Lun-Ven",
+      "date": "2026-10-11",
+      "runs": false
+    },
+    {
+      "text": "Lun-Ven",
+      "date": "2026-06-02",
+      "runs": true
+    },
+    {
+      "text": "Lun-Ven",
+      "date": "2026-04-06",
+      "runs": true
+    },
+    {
+      "text": "Feriale",
+      "date": "2026-10-05",
+      "runs": true
+    },
+    {
+      "text": "Feriale",
+      "date": "2026-10-06",
+      "runs": true
+    },
+    {
+      "text": "Feriale",
+      "date": "2026-10-07",
+      "runs": true
+    },
+    {
+      "text": "Feriale",
+      "date": "2026-10-09",
+      "runs": true
+    },
+    {
+      "text": "Feriale",
+      "date": "2026-10-10",
+      "runs": true
+    },
+    {
+      "text": "Feriale",
+      "date": "2026-10-11",
+      "runs": false
+    },
+    {
+      "text": "Feriale",
+      "date": "2026-06-02",
+      "runs": false
+    },
+    {
+      "text": "Feriale",
+      "date": "2026-04-06",
+      "runs": false
+    },
+    {
+      "text": "Festivo",
+      "date": "2026-10-05",
+      "runs": false
+    },
+    {
+      "text": "Festivo",
+      "date": "2026-10-06",
+      "runs": false
+    },
+    {
+      "text": "Festivo",
+      "date": "2026-10-07",
+      "runs": false
+    },
+    {
+      "text": "Festivo",
+      "date": "2026-10-09",
+      "runs": false
+    },
+    {
+      "text": "Festivo",
+      "date": "2026-10-10",
+      "runs": false
+    },
+    {
+      "text": "Festivo",
+      "date": "2026-10-11",
+      "runs": true
+    },
+    {
+      "text": "Festivo",
+      "date": "2026-06-02",
+      "runs": true
+    },
+    {
+      "text": "Festivo",
+      "date": "2026-04-06",
+      "runs": true
+    },
+    {
+      "text": "SAB E FEST",
+      "date": "2026-10-05",
+      "runs": false
+    },
+    {
+      "text": "SAB E FEST",
+      "date": "2026-10-06",
+      "runs": false
+    },
+    {
+      "text": "SAB E FEST",
+      "date": "2026-10-07",
+      "runs": false
+    },
+    {
+      "text": "SAB E FEST",
+      "date": "2026-10-09",
+      "runs": false
+    },
+    {
+      "text": "SAB E FEST",
+      "date": "2026-10-10",
+      "runs": true
+    },
+    {
+      "text": "SAB E FEST",
+      "date": "2026-10-11",
+      "runs": true
+    },
+    {
+      "text": "SAB E FEST",
+      "date": "2026-06-02",
+      "runs": true
+    },
+    {
+      "text": "SAB E FEST",
+      "date": "2026-04-06",
+      "runs": true
+    },
+    {
+      "text": "SABATO E FESTIVI",
+      "date": "2026-10-05",
+      "runs": false
+    },
+    {
+      "text": "SABATO E FESTIVI",
+      "date": "2026-10-06",
+      "runs": false
+    },
+    {
+      "text": "SABATO E FESTIVI",
+      "date": "2026-10-07",
+      "runs": false
+    },
+    {
+      "text": "SABATO E FESTIVI",
+      "date": "2026-10-09",
+      "runs": false
+    },
+    {
+      "text": "SABATO E FESTIVI",
+      "date": "2026-10-10",
+      "runs": true
+    },
+    {
+      "text": "SABATO E FESTIVI",
+      "date": "2026-10-11",
+      "runs": true
+    },
+    {
+      "text": "SABATO E FESTIVI",
+      "date": "2026-06-02",
+      "runs": true
+    },
+    {
+      "text": "SABATO E FESTIVI",
+      "date": "2026-04-06",
+      "runs": true
+    },
+    {
+      "text": "DOM",
+      "date": "2026-10-05",
+      "runs": false
+    },
+    {
+      "text": "DOM",
+      "date": "2026-10-06",
+      "runs": false
+    },
+    {
+      "text": "DOM",
+      "date": "2026-10-07",
+      "runs": false
+    },
+    {
+      "text": "DOM",
+      "date": "2026-10-09",
+      "runs": false
+    },
+    {
+      "text": "DOM",
+      "date": "2026-10-10",
+      "runs": false
+    },
+    {
+      "text": "DOM",
+      "date": "2026-10-11",
+      "runs": true
+    },
+    {
+      "text": "DOM",
+      "date": "2026-06-02",
+      "runs": false
+    },
+    {
+      "text": "DOM",
+      "date": "2026-04-06",
+      "runs": false
+    },
+    {
+      "text": "Domenica",
+      "date": "2026-10-05",
+      "runs": false
+    },
+    {
+      "text": "Domenica",
+      "date": "2026-10-06",
+      "runs": false
+    },
+    {
+      "text": "Domenica",
+      "date": "2026-10-07",
+      "runs": false
+    },
+    {
+      "text": "Domenica",
+      "date": "2026-10-09",
+      "runs": false
+    },
+    {
+      "text": "Domenica",
+      "date": "2026-10-10",
+      "runs": false
+    },
+    {
+      "text": "Domenica",
+      "date": "2026-10-11",
+      "runs": true
+    },
+    {
+      "text": "Domenica",
+      "date": "2026-06-02",
+      "runs": false
+    },
+    {
+      "text": "Domenica",
+      "date": "2026-04-06",
+      "runs": false
+    },
+    {
+      "text": "festività",
+      "date": "2026-10-05",
+      "runs": false
+    },
+    {
+      "text": "festività",
+      "date": "2026-10-06",
+      "runs": false
+    },
+    {
+      "text": "festività",
+      "date": "2026-10-07",
+      "runs": false
+    },
+    {
+      "text": "festività",
+      "date": "2026-10-09",
+      "runs": false
+    },
+    {
+      "text": "festività",
+      "date": "2026-10-10",
+      "runs": false
+    },
+    {
+      "text": "festività",
+      "date": "2026-10-11",
+      "runs": true
+    },
+    {
+      "text": "festività",
+      "date": "2026-06-02",
+      "runs": true
+    },
+    {
+      "text": "festività",
+      "date": "2026-04-06",
+      "runs": true
+    },
+    {
+      "text": "Fest.",
+      "date": "2026-10-05",
+      "runs": false
+    },
+    {
+      "text": "Fest.",
+      "date": "2026-10-06",
+      "runs": false
+    },
+    {
+      "text": "Fest.",
+      "date": "2026-10-07",
+      "runs": false
+    },
+    {
+      "text": "Fest.",
+      "date": "2026-10-09",
+      "runs": false
+    },
+    {
+      "text": "Fest.",
+      "date": "2026-10-10",
+      "runs": false
+    },
+    {
+      "text": "Fest.",
+      "date": "2026-10-11",
+      "runs": true
+    },
+    {
+      "text": "Fest.",
+      "date": "2026-06-02",
+      "runs": true
+    },
+    {
+      "text": "Fest.",
+      "date": "2026-04-06",
+      "runs": true
+    },
+    {
+      "text": "Prefestivo",
+      "date": "2026-10-05",
+      "runs": false
+    },
+    {
+      "text": "Prefestivo",
+      "date": "2026-10-06",
+      "runs": false
+    },
+    {
+      "text": "Prefestivo",
+      "date": "2026-10-07",
+      "runs": false
+    },
+    {
+      "text": "Prefestivo",
+      "date": "2026-10-09",
+      "runs": false
+    },
+    {
+      "text": "Prefestivo",
+      "date": "2026-10-10",
+      "runs": true
+    },
+    {
+      "text": "Prefestivo",
+      "date": "2026-10-11",
+      "runs": false
+    },
+    {
+      "text": "Prefestivo",
+      "date": "2026-06-02",
+      "runs": false
+    },
+    {
+      "text": "Prefestivo",
+      "date": "2026-04-06",
+      "runs": false
+    },
+    {
+      "text": "Prefestivi e festivi",
+      "date": "2026-10-05",
+      "runs": false
+    },
+    {
+      "text": "Prefestivi e festivi",
+      "date": "2026-10-06",
+      "runs": false
+    },
+    {
+      "text": "Prefestivi e festivi",
+      "date": "2026-10-07",
+      "runs": false
+    },
+    {
+      "text": "Prefestivi e festivi",
+      "date": "2026-10-09",
+      "runs": false
+    },
+    {
+      "text": "Prefestivi e festivi",
+      "date": "2026-10-10",
+      "runs": true
+    },
+    {
+      "text": "Prefestivi e festivi",
+      "date": "2026-10-11",
+      "runs": true
+    },
+    {
+      "text": "Prefestivi e festivi",
+      "date": "2026-06-02",
+      "runs": true
+    },
+    {
+      "text": "Prefestivi e festivi",
+      "date": "2026-04-06",
+      "runs": true
+    },
+    {
+      "text": "Giorni lavorativi",
+      "date": "2026-10-05",
+      "runs": true
+    },
+    {
+      "text": "Giorni lavorativi",
+      "date": "2026-10-06",
+      "runs": true
+    },
+    {
+      "text": "Giorni lavorativi",
+      "date": "2026-10-07",
+      "runs": true
+    },
+    {
+      "text": "Giorni lavorativi",
+      "date": "2026-10-09",
+      "runs": true
+    },
+    {
+      "text": "Giorni lavorativi",
+      "date": "2026-10-10",
+      "runs": true
+    },
+    {
+      "text": "Giorni lavorativi",
+      "date": "2026-10-11",
+      "runs": false
+    },
+    {
+      "text": "Giorni lavorativi",
+      "date": "2026-06-02",
+      "runs": false
+    },
+    {
+      "text": "Giorni lavorativi",
+      "date": "2026-04-06",
+      "runs": false
+    },
+    {
+      "text": "Non si effettua nei giorni prefestivi",
+      "date": "2026-10-05",
+      "runs": true
+    },
+    {
+      "text": "Non si effettua nei giorni prefestivi",
+      "date": "2026-10-06",
+      "runs": true
+    },
+    {
+      "text": "Non si effettua nei giorni prefestivi",
+      "date": "2026-10-07",
+      "runs": true
+    },
+    {
+      "text": "Non si effettua nei giorni prefestivi",
+      "date": "2026-10-09",
+      "runs": true
+    },
+    {
+      "text": "Non si effettua nei giorni prefestivi",
+      "date": "2026-10-10",
+      "runs": false
+    },
+    {
+      "text": "Non si effettua nei giorni prefestivi",
+      "date": "2026-10-11",
+      "runs": true
+    },
+    {
+      "text": "Non si effettua nei giorni prefestivi",
+      "date": "2026-06-02",
+      "runs": true
+    },
+    {
+      "text": "Non si effettua nei giorni prefestivi",
+      "date": "2026-04-06",
+      "runs": true
+    },
+    {
+      "text": "Dal lunedì al sabato",
+      "date": "2026-10-05",
+      "runs": true
+    },
+    {
+      "text": "Dal lunedì al sabato",
+      "date": "2026-10-06",
+      "runs": true
+    },
+    {
+      "text": "Dal lunedì al sabato",
+      "date": "2026-10-07",
+      "runs": true
+    },
+    {
+      "text": "Dal lunedì al sabato",
+      "date": "2026-10-09",
+      "runs": true
+    },
+    {
+      "text": "Dal lunedì al sabato",
+      "date": "2026-10-10",
+      "runs": true
+    },
+    {
+      "text": "Dal lunedì al sabato",
+      "date": "2026-10-11",
+      "runs": false
+    },
+    {
+      "text": "Dal lunedì al sabato",
+      "date": "2026-06-02",
+      "runs": true
+    },
+    {
+      "text": "Dal lunedì al sabato",
+      "date": "2026-04-06",
+      "runs": true
+    },
+    {
+      "text": "lu-ve",
+      "date": "2026-10-05",
+      "runs": true
+    },
+    {
+      "text": "lu-ve",
+      "date": "2026-10-06",
+      "runs": true
+    },
+    {
+      "text": "lu-ve",
+      "date": "2026-10-07",
+      "runs": true
+    },
+    {
+      "text": "lu-ve",
+      "date": "2026-10-09",
+      "runs": true
+    },
+    {
+      "text": "lu-ve",
+      "date": "2026-10-10",
+      "runs": false
+    },
+    {
+      "text": "lu-ve",
+      "date": "2026-10-11",
+      "runs": false
+    },
+    {
+      "text": "lu-ve",
+      "date": "2026-06-02",
+      "runs": true
+    },
+    {
+      "text": "lu-ve",
+      "date": "2026-04-06",
+      "runs": true
+    },
+    {
+      "text": "Da mercoledì a sabato",
+      "date": "2026-10-05",
+      "runs": false
+    },
+    {
+      "text": "Da mercoledì a sabato",
+      "date": "2026-10-06",
+      "runs": false
+    },
+    {
+      "text": "Da mercoledì a sabato",
+      "date": "2026-10-07",
+      "runs": true
+    },
+    {
+      "text": "Da mercoledì a sabato",
+      "date": "2026-10-09",
+      "runs": true
+    },
+    {
+      "text": "Da mercoledì a sabato",
+      "date": "2026-10-10",
+      "runs": true
+    },
+    {
+      "text": "Da mercoledì a sabato",
+      "date": "2026-10-11",
+      "runs": false
+    },
+    {
+      "text": "Da mercoledì a sabato",
+      "date": "2026-06-02",
+      "runs": false
+    },
+    {
+      "text": "Da mercoledì a sabato",
+      "date": "2026-04-06",
+      "runs": false
+    },
+    {
+      "text": "Escluso sabato e festivi",
+      "date": "2026-10-05",
+      "runs": true
+    },
+    {
+      "text": "Escluso sabato e festivi",
+      "date": "2026-10-06",
+      "runs": true
+    },
+    {
+      "text": "Escluso sabato e festivi",
+      "date": "2026-10-07",
+      "runs": true
+    },
+    {
+      "text": "Escluso sabato e festivi",
+      "date": "2026-10-09",
+      "runs": true
+    },
+    {
+      "text": "Escluso sabato e festivi",
+      "date": "2026-10-10",
+      "runs": false
+    },
+    {
+      "text": "Escluso sabato e festivi",
+      "date": "2026-10-11",
+      "runs": false
+    },
+    {
+      "text": "Escluso sabato e festivi",
+      "date": "2026-06-02",
+      "runs": false
+    },
+    {
+      "text": "Escluso sabato e festivi",
+      "date": "2026-04-06",
+      "runs": false
+    },
+    {
+      "text": "Tutti i giorni escluso domenica",
+      "date": "2026-10-05",
+      "runs": true
+    },
+    {
+      "text": "Tutti i giorni escluso domenica",
+      "date": "2026-10-06",
+      "runs": true
+    },
+    {
+      "text": "Tutti i giorni escluso domenica",
+      "date": "2026-10-07",
+      "runs": true
+    },
+    {
+      "text": "Tutti i giorni escluso domenica",
+      "date": "2026-10-09",
+      "runs": true
+    },
+    {
+      "text": "Tutti i giorni escluso domenica",
+      "date": "2026-10-10",
+      "runs": true
+    },
+    {
+      "text": "Tutti i giorni escluso domenica",
+      "date": "2026-10-11",
+      "runs": false
+    },
+    {
+      "text": "Tutti i giorni escluso domenica",
+      "date": "2026-06-02",
+      "runs": true
+    },
+    {
+      "text": "Tutti i giorni escluso domenica",
+      "date": "2026-04-06",
+      "runs": true
+    },
+    {
+      "text": "Lun-Sab; non si effettua il sabato",
+      "date": "2026-10-05",
+      "runs": true
+    },
+    {
+      "text": "Lun-Sab; non si effettua il sabato",
+      "date": "2026-10-06",
+      "runs": true
+    },
+    {
+      "text": "Lun-Sab; non si effettua il sabato",
+      "date": "2026-10-07",
+      "runs": true
+    },
+    {
+      "text": "Lun-Sab; non si effettua il sabato",
+      "date": "2026-10-09",
+      "runs": true
+    },
+    {
+      "text": "Lun-Sab; non si effettua il sabato",
+      "date": "2026-10-10",
+      "runs": false
+    },
+    {
+      "text": "Lun-Sab; non si effettua il sabato",
+      "date": "2026-10-11",
+      "runs": false
+    },
+    {
+      "text": "Lun-Sab; non si effettua il sabato",
+      "date": "2026-06-02",
+      "runs": true
+    },
+    {
+      "text": "Lun-Sab; non si effettua il sabato",
+      "date": "2026-04-06",
+      "runs": true
+    },
+    {
+      "text": "Escl. sab. e fest.",
+      "date": "2026-10-05",
+      "runs": true
+    },
+    {
+      "text": "Escl. sab. e fest.",
+      "date": "2026-10-06",
+      "runs": true
+    },
+    {
+      "text": "Escl. sab. e fest.",
+      "date": "2026-10-07",
+      "runs": true
+    },
+    {
+      "text": "Escl. sab. e fest.",
+      "date": "2026-10-09",
+      "runs": true
+    },
+    {
+      "text": "Escl. sab. e fest.",
+      "date": "2026-10-10",
+      "runs": false
+    },
+    {
+      "text": "Escl. sab. e fest.",
+      "date": "2026-10-11",
+      "runs": false
+    },
+    {
+      "text": "Escl. sab. e fest.",
+      "date": "2026-06-02",
+      "runs": false
+    },
+    {
+      "text": "Escl. sab. e fest.",
+      "date": "2026-04-06",
+      "runs": false
+    },
+    {
+      "text": "Lun.-Ven.",
+      "date": "2026-10-05",
+      "runs": true
+    },
+    {
+      "text": "Lun.-Ven.",
+      "date": "2026-10-06",
+      "runs": true
+    },
+    {
+      "text": "Lun.-Ven.",
+      "date": "2026-10-07",
+      "runs": true
+    },
+    {
+      "text": "Lun.-Ven.",
+      "date": "2026-10-09",
+      "runs": true
+    },
+    {
+      "text": "Lun.-Ven.",
+      "date": "2026-10-10",
+      "runs": false
+    },
+    {
+      "text": "Lun.-Ven.",
+      "date": "2026-10-11",
+      "runs": false
+    },
+    {
+      "text": "Lun.-Ven.",
+      "date": "2026-06-02",
+      "runs": true
+    },
+    {
+      "text": "Lun.-Ven.",
+      "date": "2026-04-06",
+      "runs": true
+    },
+    {
+      "text": "Dal lun. al sab.",
+      "date": "2026-10-05",
+      "runs": true
+    },
+    {
+      "text": "Dal lun. al sab.",
+      "date": "2026-10-06",
+      "runs": true
+    },
+    {
+      "text": "Dal lun. al sab.",
+      "date": "2026-10-07",
+      "runs": true
+    },
+    {
+      "text": "Dal lun. al sab.",
+      "date": "2026-10-09",
+      "runs": true
+    },
+    {
+      "text": "Dal lun. al sab.",
+      "date": "2026-10-10",
+      "runs": true
+    },
+    {
+      "text": "Dal lun. al sab.",
+      "date": "2026-10-11",
+      "runs": false
+    },
+    {
+      "text": "Dal lun. al sab.",
+      "date": "2026-06-02",
+      "runs": true
+    },
+    {
+      "text": "Dal lun. al sab.",
+      "date": "2026-04-06",
+      "runs": true
+    },
+    {
+      "text": "Fer. escl. fest.",
+      "date": "2026-10-05",
+      "runs": true
+    },
+    {
+      "text": "Fer. escl. fest.",
+      "date": "2026-10-06",
+      "runs": true
+    },
+    {
+      "text": "Fer. escl. fest.",
+      "date": "2026-10-07",
+      "runs": true
+    },
+    {
+      "text": "Fer. escl. fest.",
+      "date": "2026-10-09",
+      "runs": true
+    },
+    {
+      "text": "Fer. escl. fest.",
+      "date": "2026-10-10",
+      "runs": true
+    },
+    {
+      "text": "Fer. escl. fest.",
+      "date": "2026-10-11",
+      "runs": false
+    },
+    {
+      "text": "Fer. escl. fest.",
+      "date": "2026-06-02",
+      "runs": false
+    },
+    {
+      "text": "Fer. escl. fest.",
+      "date": "2026-04-06",
+      "runs": false
+    },
+    {
+      "text": "Escl. sab. Si effettua dom.",
+      "date": "2026-10-05",
+      "runs": false
+    },
+    {
+      "text": "Escl. sab. Si effettua dom.",
+      "date": "2026-10-06",
+      "runs": false
+    },
+    {
+      "text": "Escl. sab. Si effettua dom.",
+      "date": "2026-10-07",
+      "runs": false
+    },
+    {
+      "text": "Escl. sab. Si effettua dom.",
+      "date": "2026-10-09",
+      "runs": false
+    },
+    {
+      "text": "Escl. sab. Si effettua dom.",
+      "date": "2026-10-10",
+      "runs": false
+    },
+    {
+      "text": "Escl. sab. Si effettua dom.",
+      "date": "2026-10-11",
+      "runs": true
+    },
+    {
+      "text": "Escl. sab. Si effettua dom.",
+      "date": "2026-06-02",
+      "runs": false
+    },
+    {
+      "text": "Escl. sab. Si effettua dom.",
+      "date": "2026-04-06",
+      "runs": false
+    },
+    {
+      "text": "Escluso sabato. Lun-Ven",
+      "date": "2026-10-05",
+      "runs": true
+    },
+    {
+      "text": "Escluso sabato. Lun-Ven",
+      "date": "2026-10-06",
+      "runs": true
+    },
+    {
+      "text": "Escluso sabato. Lun-Ven",
+      "date": "2026-10-07",
+      "runs": true
+    },
+    {
+      "text": "Escluso sabato. Lun-Ven",
+      "date": "2026-10-09",
+      "runs": true
+    },
+    {
+      "text": "Escluso sabato. Lun-Ven",
+      "date": "2026-10-10",
+      "runs": false
+    },
+    {
+      "text": "Escluso sabato. Lun-Ven",
+      "date": "2026-10-11",
+      "runs": false
+    },
+    {
+      "text": "Escluso sabato. Lun-Ven",
+      "date": "2026-06-02",
+      "runs": true
+    },
+    {
+      "text": "Escluso sabato. Lun-Ven",
+      "date": "2026-04-06",
+      "runs": true
+    },
+    {
+      "text": "Feriale ma non festivo",
+      "date": "2026-10-05",
+      "runs": true
+    },
+    {
+      "text": "Feriale ma non festivo",
+      "date": "2026-10-06",
+      "runs": true
+    },
+    {
+      "text": "Feriale ma non festivo",
+      "date": "2026-10-07",
+      "runs": true
+    },
+    {
+      "text": "Feriale ma non festivo",
+      "date": "2026-10-09",
+      "runs": true
+    },
+    {
+      "text": "Feriale ma non festivo",
+      "date": "2026-10-10",
+      "runs": true
+    },
+    {
+      "text": "Feriale ma non festivo",
+      "date": "2026-10-11",
+      "runs": false
+    },
+    {
+      "text": "Feriale ma non festivo",
+      "date": "2026-06-02",
+      "runs": false
+    },
+    {
+      "text": "Feriale ma non festivo",
+      "date": "2026-04-06",
+      "runs": false
+    },
+    {
+      "text": "LU MA ME",
+      "date": "2026-10-05",
+      "runs": true
+    },
+    {
+      "text": "LU MA ME",
+      "date": "2026-10-06",
+      "runs": true
+    },
+    {
+      "text": "LU MA ME",
+      "date": "2026-10-07",
+      "runs": true
+    },
+    {
+      "text": "LU MA ME",
+      "date": "2026-10-09",
+      "runs": false
+    },
+    {
+      "text": "LU MA ME",
+      "date": "2026-10-10",
+      "runs": false
+    },
+    {
+      "text": "LU MA ME",
+      "date": "2026-10-11",
+      "runs": false
+    },
+    {
+      "text": "LU MA ME",
+      "date": "2026-06-02",
+      "runs": true
+    },
+    {
+      "text": "LU MA ME",
+      "date": "2026-04-06",
+      "runs": true
+    },
+    {
+      "text": "Prefestivi",
+      "date": "2026-06-01",
+      "runs": true
+    },
+    {
+      "text": "Prefestivi",
+      "date": "2026-12-25",
+      "runs": false
+    },
+    {
+      "text": "Prefestivi",
+      "date": "2026-04-05",
+      "runs": false
+    },
+    {
+      "text": "Prefestivi",
+      "date": "2026-12-24",
+      "runs": true
+    },
+    {
+      "text": "Festivo",
+      "date": "2027-10-04",
+      "runs": true
+    },
+    {
+      "text": "Feriale",
+      "date": "2027-10-04",
+      "runs": false
+    },
+    {
+      "text": "Festivo",
+      "date": "2025-10-04",
+      "runs": false
+    }
+  ],
+  "departureDays": [
+    {
+      "row": 1425,
+      "serviceDate": "2026-10-08",
+      "requested": 1410,
+      "expected": "2026-10-08"
+    },
+    {
+      "row": 5,
+      "serviceDate": "2026-10-08",
+      "requested": 1410,
+      "expected": "2026-10-09"
+    },
+    {
+      "row": 480,
+      "serviceDate": "2026-10-08",
+      "requested": 1410,
+      "expected": "2026-10-09"
+    },
+    {
+      "row": 5,
+      "serviceDate": "2026-10-08",
+      "requested": 480,
+      "expected": "2026-10-09"
+    },
+    {
+      "row": 480,
+      "serviceDate": "2026-10-08",
+      "requested": 480,
+      "expected": "2026-10-08"
+    },
+    {
+      "row": 1500,
+      "serviceDate": "2026-10-08",
+      "requested": 1410,
+      "expected": null
+    }
+  ],
+  "names": [
+    {
+      "station": "Latina",
+      "aliases": [],
+      "published": "LATINA",
+      "matches": true
+    },
+    {
+      "station": "Firenze S. M. Novella",
+      "aliases": [
+        "FIRENZE SANTA MARIA NOVELLA",
+        "Firenze Santa Maria Novella"
+      ],
+      "published": "Firenze S.M.N.",
+      "matches": true
+    },
+    {
+      "station": "Firenze S. M. Novella",
+      "aliases": [
+        "FIRENZE SANTA MARIA NOVELLA",
+        "Firenze Santa Maria Novella"
+      ],
+      "published": "FIRENZE SMN",
+      "matches": true
+    },
+    {
+      "station": "Firenze S. M. Novella",
+      "aliases": [
+        "FIRENZE SANTA MARIA NOVELLA",
+        "Firenze Santa Maria Novella"
+      ],
+      "published": "Firenze Santa Maria Novella",
+      "matches": true
+    },
+    {
+      "station": "Milano Centrale",
+      "aliases": [
+        "Mailand",
+        "Milán",
+        "Milão"
+      ],
+      "published": "MILANO C.LE",
+      "matches": true
+    },
+    {
+      "station": "Torino Porta Nuova",
+      "aliases": [
+        "@ITTRNTOP",
+        "Turín"
+      ],
+      "published": "TORINO P.NUOVA",
+      "matches": true
+    },
+    {
+      "station": "Torino Porta Nuova",
+      "aliases": [
+        "@ITTRNTOP",
+        "Turín"
+      ],
+      "published": "Torino P. Nuova",
+      "matches": true
+    },
+    {
+      "station": "Reggio Di Calabria Centrale",
+      "aliases": [
+        "Reggio de Calabre"
+      ],
+      "published": "Reggio Calabria C.le",
+      "matches": true
+    },
+    {
+      "station": "Reggio Di Calabria Centrale",
+      "aliases": [
+        "Reggio de Calabre"
+      ],
+      "published": "REGGIO DI CALABRIA CENTRALE",
+      "matches": true
+    },
+    {
+      "station": "Bari ( Tutte Le Stazioni )",
+      "aliases": [
+        "BARI CENTRALE",
+        "Bari Centrale"
+      ],
+      "published": "Bari C.le",
+      "matches": true
+    },
+    {
+      "station": "Genova Piazza Principe",
+      "aliases": [
+        "G__"
+      ],
+      "published": "Genova P.Principe",
+      "matches": true
+    },
+    {
+      "station": "Genova Piazza Principe",
+      "aliases": [
+        "G__"
+      ],
+      "published": "GENOVA P.ZA PRINCIPE",
+      "matches": true
+    },
+    {
+      "station": "Ancona ( Tutte Le Stazioni )",
+      "aliases": [],
+      "published": "ANCONA",
+      "matches": true
+    },
+    {
+      "station": "Ancona M.ma",
+      "aliases": [
+        "ANCONA MARITTIMA"
+      ],
+      "published": "Ancona Marittima",
+      "matches": true
+    },
+    {
+      "station": "Re",
+      "aliases": [],
+      "published": "RE",
+      "matches": true
+    },
+    {
+      "station": "Re",
+      "aliases": [],
+      "published": "Reggio Di Calabria Centrale",
+      "matches": false
+    },
+    {
+      "station": "Latina",
+      "aliases": [],
+      "published": "Cisterna di Latina",
+      "matches": false
+    },
+    {
+      "station": "Roma Termini",
+      "aliases": [],
+      "published": "Roma Tiburtina",
+      "matches": false
+    },
+    {
+      "station": "Roma",
+      "aliases": [],
+      "published": "Roma Termini",
+      "matches": false
+    },
+    {
+      "station": "Milano Centrale",
+      "aliases": [
+        "Mailand",
+        "Milán",
+        "Milão"
+      ],
+      "published": "Milano Rogoredo",
+      "matches": false
+    },
+    {
+      "station": "Torino Porta Nuova",
+      "aliases": [
+        "@ITTRNTOP",
+        "Turín"
+      ],
+      "published": "Torino Porta Susa",
+      "matches": false
+    },
+    {
+      "station": "Firenze S. M. Novella",
+      "aliases": [
+        "FIRENZE SANTA MARIA NOVELLA",
+        "Firenze Santa Maria Novella"
+      ],
+      "published": "Firenze Rifredi",
+      "matches": false
+    },
+    {
+      "station": "Ancona ( Tutte Le Stazioni )",
+      "aliases": [],
+      "published": "Ancona Stadio",
+      "matches": false
+    },
+    {
+      "station": "Piacenza",
+      "aliases": [
+        "P__"
+      ],
+      "published": "Pavia",
+      "matches": false
+    },
+    {
+      "station": "Piacenza",
+      "aliases": [
+        "P__"
+      ],
+      "published": "P",
+      "matches": false
+    },
+    {
+      "station": "Ferrara",
+      "aliases": [
+        "F__"
+      ],
+      "published": "Firenze S.M.N.",
+      "matches": false
+    },
+    {
+      "station": "Genova Piazza Principe",
+      "aliases": [
+        "G__"
+      ],
+      "published": "Genova Brignole",
+      "matches": false
+    },
+    {
+      "station": "Torino Porta Nuova",
+      "aliases": [
+        "@ITTRNTOP",
+        "Turín"
+      ],
+      "published": "ITTRNTOP",
+      "matches": false
+    },
+    {
+      "station": "Latina",
+      "aliases": [],
+      "published": "",
+      "matches": false
+    }
+  ],
+  "pages": {
+    "departures": "<html><body>\n  <div>ORARIO PROGRAMMATO 14 Giugno 2026 - 12 Dicembre 2026</div>\n  <table>\n    <tr>\n      <th>Orario di partenza</th><th>Tipo e n. di treno</th><th>Stazione di arrivo</th>\n      <th>Binario programmato</th><th>Classi e servizi a bordo</th><th>Impresa di trasporto</th>\n      <th>Fermate precedenti (orario di partenza)</th>\n      <th>Fermate successive (orario di arrivo)</th><th>Periodicità e avvertenze</th>\n    </tr>\n    <tr>\n      <td>08.20</td>\n      <td><img alt=\"Treno Frecciarossa Alta Velocità\"/>9611</td>\n      <td><img alt=\"Stazione accessibile\"/>Milano Centrale (11.40)</td>\n      <td>8</td><td></td><td>TI</td><td></td>\n      <td>Roma Tiburtina (08.27) Firenze S.M.N. (09.46) Bologna Centrale (10.23) Milano Centrale (11.40)</td>\n      <td>{periodicity}</td>\n    </tr>\n    <tr>\n      <td>09.30</td>\n      <td><img alt=\"Treno Italo Alta Velocità\"/>9923</td>\n      <td>Torino Porta Nuova (14.50)</td>\n      <td>10</td><td></td><td>NTV</td><td></td>\n      <td>Firenze S.M.N. (10.55) Bologna Centrale (11.33) Milano Centrale (12.45) Torino Porta Susa (14.40) Torino Porta Nuova (14.50)</td>\n      <td>{periodicity}</td>\n    </tr>\n  </table>\n</body></html>",
+    "arrivals": "<html><body><div>ORARIO PROGRAMMATO 14 Giugno 2026 - 12 Dicembre 2026</div>\n<table><tr><th>Orario di arrivo</th><th>Tipo e n. di treno</th><th>Stazione di partenza</th>\n<th>Fermate precedenti (orario di partenza)</th><th>Periodicità e avvertenze</th></tr>\n<tr><td>08.30</td><td><img alt=\"Treno Regionale\"/>12345</td><td>Viterbo Porta Fiorentina</td>\n<td>Roma Monte Mario (08.05) Appiano (08.12) Valle Aurelia (08.15) Roma S.Pietro (08.20) Roma Trastevere (08.26)</td>\n<td>{periodicity}</td></tr></table></body></html>"
+  },
+  "routes": [
+    {
+      "name": "Roma Termini to Milano Centrale: the Frecciarossa and Italo with their stops",
+      "page": "departures",
+      "periodicity": "Giornaliero",
+      "origin": {
+        "id": "S08409",
+        "name": "Roma Termini",
+        "railwayCode": "S08409",
+        "aliases": []
+      },
+      "destination": {
+        "id": "S01700",
+        "name": "Milano Centrale",
+        "railwayCode": "S01700",
+        "aliases": []
+      },
+      "departure": "2026-09-04T08:00",
+      "url": "QO_Partenze_SiPMR.aspx?Id=2247&",
+      "expected": [
+        {
+          "number": "9611",
+          "operator": "TRENITALIA_AV",
+          "category": "FRECCE",
+          "departure": "2026-09-04T08:20",
+          "stops": [
+            "Roma Termini",
+            "Roma Tiburtina",
+            "Firenze S.M.N.",
+            "Bologna Centrale",
+            "Milano Centrale"
+          ]
+        },
+        {
+          "number": "9923",
+          "operator": "ITALO",
+          "category": "AV_ITALO",
+          "departure": "2026-09-04T09:30",
+          "stops": [
+            "Roma Termini",
+            "Firenze S.M.N.",
+            "Bologna Centrale",
+            "Milano Centrale"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "an intermediate stop by its alias: the stops end at the destination",
+      "page": "departures",
+      "periodicity": "Giornaliero",
+      "origin": {
+        "id": "S08409",
+        "name": "Roma Termini",
+        "railwayCode": "S08409",
+        "aliases": []
+      },
+      "destination": {
+        "id": "S06421",
+        "name": "Firenze S.M.N.",
+        "railwayCode": "S06421",
+        "aliases": [
+          "Firenze Santa Maria Novella"
+        ]
+      },
+      "departure": "2026-09-04T08:00",
+      "url": "QO_Partenze_SiPMR.aspx?Id=2247&",
+      "expected": [
+        {
+          "number": "9611",
+          "operator": "TRENITALIA_AV",
+          "category": "FRECCE",
+          "departure": "2026-09-04T08:20",
+          "stops": [
+            "Roma Termini",
+            "Roma Tiburtina",
+            "Firenze S.M.N."
+          ]
+        },
+        {
+          "number": "9923",
+          "operator": "ITALO",
+          "category": "AV_ITALO",
+          "departure": "2026-09-04T09:30",
+          "stops": [
+            "Roma Termini",
+            "Firenze S.M.N."
+          ]
+        }
+      ]
+    },
+    {
+      "name": "a train already gone is the next day's",
+      "page": "departures",
+      "periodicity": "Giornaliero",
+      "origin": {
+        "id": "S08409",
+        "name": "Roma Termini",
+        "railwayCode": "S08409",
+        "aliases": []
+      },
+      "destination": {
+        "id": "S01700",
+        "name": "Milano Centrale",
+        "railwayCode": "S01700",
+        "aliases": []
+      },
+      "departure": "2026-09-04T09:00",
+      "url": "QO_Partenze_SiPMR.aspx?Id=2247&",
+      "expected": [
+        {
+          "number": "9923",
+          "operator": "ITALO",
+          "category": "AV_ITALO",
+          "departure": "2026-09-04T09:30",
+          "stops": [
+            "Roma Termini",
+            "Firenze S.M.N.",
+            "Bologna Centrale",
+            "Milano Centrale"
+          ]
+        },
+        {
+          "number": "9611",
+          "operator": "TRENITALIA_AV",
+          "category": "FRECCE",
+          "departure": "2026-09-05T08:20",
+          "stops": [
+            "Roma Termini",
+            "Roma Tiburtina",
+            "Firenze S.M.N.",
+            "Bologna Centrale",
+            "Milano Centrale"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "outside the timetable's validity",
+      "page": "departures",
+      "periodicity": "Giornaliero",
+      "origin": {
+        "id": "S08409",
+        "name": "Roma Termini",
+        "railwayCode": "S08409",
+        "aliases": []
+      },
+      "destination": {
+        "id": "S01700",
+        "name": "Milano Centrale",
+        "railwayCode": "S01700",
+        "aliases": []
+      },
+      "departure": "2027-01-10T08:00",
+      "url": "QO_Partenze_SiPMR.aspx?Id=2247&",
+      "expected": []
+    },
+    {
+      "name": "Lun-Ven on a Saturday",
+      "page": "departures",
+      "periodicity": "Lun-Ven",
+      "origin": {
+        "id": "S08409",
+        "name": "Roma Termini",
+        "railwayCode": "S08409",
+        "aliases": []
+      },
+      "destination": {
+        "id": "S01700",
+        "name": "Milano Centrale",
+        "railwayCode": "S01700",
+        "aliases": []
+      },
+      "departure": "2026-09-05T08:00",
+      "url": "QO_Partenze_SiPMR.aspx?Id=2247&",
+      "expected": []
+    },
+    {
+      "name": "Feriale on Ferragosto, a Saturday",
+      "page": "departures",
+      "periodicity": "Feriale",
+      "origin": {
+        "id": "S08409",
+        "name": "Roma Termini",
+        "railwayCode": "S08409",
+        "aliases": []
+      },
+      "destination": {
+        "id": "S01700",
+        "name": "Milano Centrale",
+        "railwayCode": "S01700",
+        "aliases": []
+      },
+      "departure": "2026-08-15T08:00",
+      "url": "QO_Partenze_SiPMR.aspx?Id=2247&",
+      "expected": []
+    },
+    {
+      "name": "Festivo on Ferragosto, a Saturday",
+      "page": "departures",
+      "periodicity": "Festivo",
+      "origin": {
+        "id": "S08409",
+        "name": "Roma Termini",
+        "railwayCode": "S08409",
+        "aliases": []
+      },
+      "destination": {
+        "id": "S01700",
+        "name": "Milano Centrale",
+        "railwayCode": "S01700",
+        "aliases": []
+      },
+      "departure": "2026-08-15T08:00",
+      "url": "QO_Partenze_SiPMR.aspx?Id=2247&",
+      "expected": [
+        {
+          "number": "9611",
+          "operator": "TRENITALIA_AV",
+          "category": "FRECCE",
+          "departure": "2026-08-15T08:20",
+          "stops": [
+            "Roma Termini",
+            "Roma Tiburtina",
+            "Firenze S.M.N.",
+            "Bologna Centrale",
+            "Milano Centrale"
+          ]
+        },
+        {
+          "number": "9923",
+          "operator": "ITALO",
+          "category": "AV_ITALO",
+          "departure": "2026-08-15T09:30",
+          "stops": [
+            "Roma Termini",
+            "Firenze S.M.N.",
+            "Bologna Centrale",
+            "Milano Centrale"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "from a station without a timetable: the destination's arrivals",
+      "page": "arrivals",
+      "periodicity": "Giornaliero",
+      "origin": {
+        "id": "S08328",
+        "name": "Appiano Proba Petronia",
+        "railwayCode": "S08328",
+        "aliases": [
+          "APPIANO"
+        ]
+      },
+      "destination": {
+        "id": "S08406",
+        "name": "Roma Ostiense",
+        "railwayCode": "S08406",
+        "aliases": []
+      },
+      "departure": "2026-09-04T08:00",
+      "url": "QO_Arrivi_SiPMR.aspx?Id=2211&",
+      "expected": [
+        {
+          "number": "12345",
+          "operator": "TRENITALIA_REGIONALE",
+          "category": "REGIONALE",
+          "departure": "2026-09-04T08:12",
+          "stops": [
+            "Appiano Proba Petronia",
+            "Valle Aurelia",
+            "Roma S.Pietro",
+            "Roma Trastevere",
+            "Roma Ostiense"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "arrivals: after the day's only train, the next day's",
+      "page": "arrivals",
+      "periodicity": "Giornaliero",
+      "origin": {
+        "id": "S08328",
+        "name": "Appiano Proba Petronia",
+        "railwayCode": "S08328",
+        "aliases": [
+          "APPIANO"
+        ]
+      },
+      "destination": {
+        "id": "S08406",
+        "name": "Roma Ostiense",
+        "railwayCode": "S08406",
+        "aliases": []
+      },
+      "departure": "2026-09-04T08:13",
+      "url": "QO_Arrivi_SiPMR.aspx?Id=2211&",
+      "expected": [
+        {
+          "number": "12345",
+          "operator": "TRENITALIA_REGIONALE",
+          "category": "REGIONALE",
+          "departure": "2026-09-05T08:12",
+          "stops": [
+            "Appiano Proba Petronia",
+            "Valle Aurelia",
+            "Roma S.Pietro",
+            "Roma Trastevere",
+            "Roma Ostiense"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "arrivals: feriale on a Sunday",
+      "page": "arrivals",
+      "periodicity": "feriale",
+      "origin": {
+        "id": "S08328",
+        "name": "Appiano Proba Petronia",
+        "railwayCode": "S08328",
+        "aliases": [
+          "APPIANO"
+        ]
+      },
+      "destination": {
+        "id": "S08406",
+        "name": "Roma Ostiense",
+        "railwayCode": "S08406",
+        "aliases": []
+      },
+      "departure": "2026-09-06T08:00",
+      "url": "QO_Arrivi_SiPMR.aspx?Id=2211&",
+      "expected": []
+    },
+    {
+      "name": "a departures board is never read as arrivals",
+      "page": "departures",
+      "periodicity": "Giornaliero",
+      "origin": {
+        "id": "S08328",
+        "name": "Appiano Proba Petronia",
+        "railwayCode": "S08328",
+        "aliases": [
+          "APPIANO"
+        ]
+      },
+      "destination": {
+        "id": "S08406",
+        "name": "Roma Ostiense",
+        "railwayCode": "S08406",
+        "aliases": []
+      },
+      "departure": "2026-09-04T08:00",
+      "url": "QO_Arrivi_SiPMR.aspx?Id=2211&",
+      "expected": []
+    }
+  ],
+  "boards": [
+    {
+      "name": "the hub's departures of the next 24 hours",
+      "page": "departures",
+      "periodicity": "Giornaliero",
+      "station": {
+        "id": "S08409",
+        "name": "Roma Termini",
+        "railwayCode": "S08409",
+        "aliases": []
+      },
+      "from": "2026-09-04T08:00",
+      "hours": 24,
+      "url": "QO_Partenze_SiPMR.aspx?Id=2247&",
+      "expected": [
+        {
+          "number": "9611",
+          "departure": "2026-09-04T08:20",
+          "destination": "Milano Centrale"
+        },
+        {
+          "number": "9923",
+          "departure": "2026-09-04T09:30",
+          "destination": "Torino Porta Nuova"
+        }
+      ]
+    },
+    {
+      "name": "Lun-Ven on a weekend",
+      "page": "departures",
+      "periodicity": "Lun-Ven",
+      "station": {
+        "id": "S08409",
+        "name": "Roma Termini",
+        "railwayCode": "S08409",
+        "aliases": []
+      },
+      "from": "2026-09-05T08:00",
+      "hours": 24,
+      "url": "QO_Partenze_SiPMR.aspx?Id=2247&",
+      "expected": []
+    },
+    {
+      "name": "a hub by its railway code although the catalogue names it otherwise",
+      "page": "departures",
+      "periodicity": "Giornaliero",
+      "station": {
+        "id": "S06421",
+        "name": "Firenze S. M. Novella",
+        "railwayCode": "S06421",
+        "aliases": []
+      },
+      "from": "2026-09-04T08:00",
+      "hours": 2,
+      "url": "QO_Partenze_SiPMR.aspx?Id=1325&",
+      "expected": [
+        {
+          "number": "9611",
+          "departure": "2026-09-04T08:20",
+          "destination": "Milano Centrale"
+        },
+        {
+          "number": "9923",
+          "departure": "2026-09-04T09:30",
+          "destination": "Torino Porta Nuova"
+        }
+      ]
+    }
+  ]
+}

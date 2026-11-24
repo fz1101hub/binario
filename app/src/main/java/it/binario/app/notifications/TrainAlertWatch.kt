@@ -5,6 +5,7 @@ import it.binario.app.data.RailOperator
 import it.binario.app.data.RailTime
 import it.binario.app.data.notices.TrainNoticeContext
 import it.binario.app.data.repository.TrainNumberQuery
+import it.binario.app.shared.SharedData
 import java.time.Duration
 import java.time.Instant
 import java.time.LocalDate
@@ -51,15 +52,15 @@ data class FollowedTrainTimes(val number: String, val departure: Instant, val ar
  * the device has not seen yet are notified.
  */
 object TrainAlertWatch {
-    val INTERVAL: Duration = Duration.ofMinutes(15)
-    val BEFORE_DEPARTURE: Duration = Duration.ofHours(4)
-    val AFTER_DEPARTURE: Duration = Duration.ofHours(3)
-    val AFTER_ARRIVAL: Duration = Duration.ofMinutes(30)
-    val QUIET_END: LocalTime = LocalTime.of(7, 0)
-    val QUIET_START: LocalTime = LocalTime.of(22, 0)
-    const val MAX_SUBSCRIPTIONS = 16
-    const val MAX_SEEN = 400
-    const val SEEN_RETENTION_DAYS = 7L
+    val INTERVAL: Duration = Duration.ofMinutes(SharedData.TripAlerts.TRAIN_ALERTS_CHECK_MINUTES.toLong())
+    val BEFORE_DEPARTURE: Duration = Duration.ofMinutes(SharedData.TripAlerts.TRAIN_ALERTS_BEFORE_DEPARTURE_MINUTES.toLong())
+    val AFTER_DEPARTURE: Duration = Duration.ofMinutes(SharedData.TripAlerts.TRAIN_ALERTS_AFTER_DEPARTURE_MINUTES.toLong())
+    val AFTER_ARRIVAL: Duration = Duration.ofMinutes(SharedData.TripAlerts.TRAIN_ALERTS_AFTER_ARRIVAL_MINUTES.toLong())
+    val QUIET_END: LocalTime = LocalTime.of(SharedData.EveningAlerts.QUIET_UNTIL_HOUR, 0)
+    val QUIET_START: LocalTime = LocalTime.of(SharedData.EveningAlerts.QUIET_FROM_HOUR, 0)
+    const val MAX_SUBSCRIPTIONS = SharedData.TripAlerts.TRAIN_ALERTS_MAXIMUM_SUBSCRIPTIONS
+    const val MAX_SEEN = SharedData.TripAlerts.TRAIN_ALERTS_MAXIMUM_SEEN
+    const val SEEN_RETENTION_DAYS = SharedData.TripAlerts.TRAIN_ALERTS_SEEN_RETENTION_DAYS.toLong()
 
     /** "REG 2153", "2153" and "02153" are the same public train: the numeric part when there is one. */
     fun key(number: String): String = TrainNumberQuery(number, LocalDate.MIN).let { it.numeric ?: it.normalized }

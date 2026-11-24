@@ -4,17 +4,18 @@ import it.binario.app.TrainViewModel
 import it.binario.app.data.Station
 import it.binario.app.data.TrainService
 import it.binario.app.data.core.LegMode
+import it.binario.app.data.provider.JourneyPreferences
+import it.binario.app.data.provider.JourneyRanking
+import it.binario.app.data.provider.TravelMode
 import it.binario.app.data.repository.JourneySearchQuery
 import it.binario.app.data.repository.JourneySearchResult
 import it.binario.app.journeys.JourneyLegLive
 import it.binario.app.journeys.JourneyOptionRow
+import it.binario.app.journeys.JourneyResultsFilter
 import it.binario.app.journeys.JourneyResultsPresentation
 import it.binario.app.journeys.JourneyResultsPresenter
-import it.binario.app.journeys.JourneyResultsFilter
 import it.binario.app.journeys.JourneySourceLabel
-import it.binario.app.data.provider.JourneyPreferences
-import it.binario.app.data.provider.JourneyRanking
-import it.binario.app.data.provider.TravelMode
+import it.binario.app.shared.SharedData
 import it.binario.app.ui.common.JourneyTimes
 import java.time.Duration
 import java.time.LocalDate
@@ -213,7 +214,7 @@ internal object ResultsMerge {
     }
 
     /** Longer walks around the same train make an option of its own (another station, the metro). */
-    private const val MAX_DUPLICATE_WALK_MINUTES = 10L
+    private const val MAX_DUPLICATE_WALK_MINUTES: Long = SharedData.JourneyPlanner.DUPLICATE_WALK_MINUTES * 1L
 
     private fun train(service: TrainService, serviceDate: LocalDate): ResultEntry.Train {
         val departure = service.scheduledDepartureDateTime
