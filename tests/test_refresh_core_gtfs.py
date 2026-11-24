@@ -352,6 +352,49 @@ class RefreshCoreTest(unittest.TestCase):
         self.assertIn("orario successivo dal 2026-12-13", refresh.report_markdown(report))
         self.assertEqual(self.before, {path.name: path.read_bytes() for path in self.published.iterdir()})
 
+    def test_each_source_is_downloaded_under_its_own_cap(self) -> None:
+        # Without a fetch, a reviewed large archive (build_gtfs_packs.REVIEWED_LARGE_ARCHIVES: Switzerland) is downloaded
+        # under its reviewed cap and read under its reviewed limits; every other source keeps acquire.MAX_DOWNLOAD_BYTES.
+        sources = self.temp / "new"
+        sources.mkdir()
+        payloads = {f"https://example.test/{source_id}.zip": gtfs_zip(sources / f"{source_id}.zip", end="20281231")
+                    for source_id in ("plain-gtfs", "broken-gtfs")}
+        caps: dict[str, int | None] = {}
+
+        def download(url: str, target: Path, *, max_bytes: int | None = None) -> dict[str, Any]:
+            caps[url] = max_bytes
+            return FakeDownloads(payloads)(url, target)
+
+        review = builder.LargeArchiveReview("fixture", 5 * 1024 * 1024, 1 << 30, 1 << 30, 10_000_000)
+        log = io.StringIO()
+        with mock.patch.object(builder, "REVIEWED_LARGE_ARCHIVES", {"plain-gtfs": review}), \
+                mock.patch.object(acquire, "download", side_effect=download), \
+                contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(log):
+            report = refresh.refresh(["plain-gtfs", "broken-gtfs"], self.published, self.temp / "out", "2026-11-03", resolve=self.resolve)
+        self.assertEqual({"https://example.test/plain-gtfs.zip": review.max_download_bytes,
+                          "https://example.test/broken-gtfs.zip": acquire.MAX_DOWNLOAD_BYTES}, caps)
+        self.assertEqual(("changed", "changed"), (report["packs"]["plain-gtfs"]["status"], report["packs"]["broken-gtfs"]["status"]))
+        self.assertIn("plain-gtfs: archivio rivisto", log.getvalue())
+        self.assertNotIn("broken-gtfs: archivio rivisto", log.getvalue())
+
+    def test_the_download_stops_at_the_cap_it_is_given(self) -> None:
+        class Response(io.BytesIO):
+            status = 200
+
+            def geturl(self) -> str:
+                return "https://example.test/feed.zip"
+
+        target = self.temp / "download" / "feed.zip"
+        opener = mock.Mock(open=lambda request, timeout: Response(b"0123456789"))
+        with mock.patch.object(acquire.urllib.request, "build_opener", return_value=opener):
+            with self.assertRaisesRegex(acquire.AcquisitionError, "download oltre 9 byte"):
+                acquire.download("https://example.test/feed.zip", target, max_bytes=9)
+            record = acquire.download("https://example.test/feed.zip", target, max_bytes=10)
+            with mock.patch.object(acquire, "MAX_DOWNLOAD_BYTES", 9), self.assertRaisesRegex(acquire.AcquisitionError, "oltre 9 byte"):
+                acquire.download("https://example.test/feed.zip", target)
+        self.assertEqual({"bytes": 10, "sha256": hashlib.sha256(b"0123456789").hexdigest()},
+                         {key: record[key] for key in ("bytes", "sha256")})
+
     def test_a_permalink_names_the_file_it_resolved_to_in_the_summary(self) -> None:
         sources = self.temp / "new"
         sources.mkdir()

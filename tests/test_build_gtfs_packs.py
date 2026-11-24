@@ -2,6 +2,7 @@
 """Offline regression tests for tools/build_gtfs_packs.py."""
 from __future__ import annotations
 
+import contextlib
 import csv
 import hashlib
 import importlib.util
@@ -13,9 +14,9 @@ import sys
 import tempfile
 import unittest
 import zipfile
-from datetime import date
+from datetime import date, timedelta
 from pathlib import Path
-from typing import Mapping
+from typing import Any, Mapping
 from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -2025,6 +2026,293 @@ class BorderSubsetTest(unittest.TestCase):
         self.assertFalse(self.full_dir.exists())
         self.assertNotIn("fullPack", json.loads((output / "manifest.json").read_text(encoding="utf-8"))["packs"][0])
         self.verify(output)
+
+
+SWISS = "ch-otd-gtfs"
+SWISS_RUNS_FROM = date(2026, 12, 5)
+SWISS_RAIL_STOPS = ("8503000", "8503006", "8505000", "8507000")
+# Limits of a few kilobytes in place of the gigabytes: the synthetic feed is over the defaults below and within these.
+SMALL_DEFAULTS = {"MAX_ARCHIVE_UNCOMPRESSED_BYTES": 64 * 1024, "MAX_ARCHIVE_MEMBER_BYTES": 32 * 1024, "MAX_TABLE_ROWS": 1_000}
+
+
+def small_review(**changes: int) -> "builder.LargeArchiveReview":
+    values: dict[str, object] = {
+        "reason": "fixture", "max_download_bytes": 1024 * 1024, "max_uncompressed_bytes": 1024 * 1024,
+        "max_streamed_member_bytes": 512 * 1024, "max_streamed_table_rows": 10_000,
+    }
+    values.update(changes)
+    return builder.LargeArchiveReview(**values)  # type: ignore[arg-type]
+
+
+def write_swiss_like_feed(
+    target: Path, *, bus_trips: int = 400, expired_trips: int = 3, frequencies: tuple[str, ...] = (),
+    extra: Mapping[str, bytes] | None = None,
+) -> dict[str, list[str]]:
+    """A synthetic feed shaped like the Swiss national one (its identifier style, invented values): three rail trips
+    running to 12 December 2026, ``expired_trips`` rail trips whose service ended on 30 November, and ``bus_trips`` buses
+    of ten calls each that the rail filter drops, so stop_times.txt is the large table; ``frequencies`` names the kinds
+    of rail trip ("alive", "expired") that run by frequencies.txt.  Returns the trip ids by kind."""
+    alive = ["1.TA.91-10-A-j26-1.1.H", "2.TA.91-10-A-j26-1.1.R", "1.TA.91-1-P-j26-1.1.H"]
+    expired = [f"{index}.TA+old.91-10-A-j26-1.2.H" for index in range(1, expired_trips + 1)]
+    buses = [f"{index}.TA.92-{index % 7}-j26-1.1.H" for index in range(bus_trips)]
+    route_of = {trip: trip.split(".")[2] for trip in alive + expired + buses}
+    trips = [[route_of[trip], "TA+old" if trip in expired else "TA", trip, str(12000 + index)]
+             for index, trip in enumerate(alive + expired)]
+    trips += [[route_of[trip], "BUS", trip, ""] for trip in buses]
+    stop_times = [[trip, f"{8 + call:02d}:{index % 60:02d}:00", f"{8 + call:02d}:{index % 60:02d}:00",
+                   SWISS_RAIL_STOPS[call] if call else "8503000:0:3", str(call + 1)]
+                  for index, trip in enumerate(alive + expired) for call in range(4)]
+    stop_times += [[trip, f"{6 + call:02d}:{index % 60:02d}:00", f"{6 + call:02d}:{index % 60:02d}:00",
+                    f"859{(index + call) % 6:04d}", str(call + 1)]
+                   for index, trip in enumerate(buses) for call in range(10)]
+    weekdays = ["1"] * 7
+    members = {
+        "agency.txt": csv_text(["agency_id", "agency_name", "agency_url", "agency_timezone"],
+                               [["11", "Schweizerische Bundesbahnen SBB", "https://example.test", "Europe/Zurich"],
+                                ["801", "PostAuto", "https://example.test", "Europe/Zurich"]]),
+        "stops.txt": csv_text(["stop_id", "stop_name", "stop_lat", "stop_lon", "location_type", "parent_station"],
+                              [["Parent8503000", "Zürich HB", "47.378", "8.540", "1", ""],
+                               ["8503000:0:3", "Zürich HB", "47.378", "8.540", "", "Parent8503000"]]
+                              + [[stop, f"Bahnhof {stop}", "47.0", "8.0", "", ""] for stop in SWISS_RAIL_STOPS[1:]]
+                              + [[f"859{index:04d}", f"Bushalt {index}", "46.9", "7.9", "", ""] for index in range(6)]),
+        "routes.txt": csv_text(["route_id", "agency_id", "route_short_name", "route_type"],
+                               [["91-10-A-j26-1", "11", "S10", "109"], ["91-1-P-j26-1", "11", "IC1", "102"]]
+                               + [[f"92-{index}-j26-1", "801", str(100 + index), "700"] for index in range(7)]),
+        "trips.txt": csv_text(["route_id", "service_id", "trip_id", "trip_short_name"], trips),
+        "stop_times.txt": csv_text(["trip_id", "arrival_time", "departure_time", "stop_id", "stop_sequence"], stop_times),
+        "calendar.txt": csv_text(["service_id", *builder.WEEKDAY_COLUMNS, "start_date", "end_date"],
+                                 [["TA", *weekdays, "20251214", "20261212"], ["TA+old", *weekdays, "20251214", "20261130"],
+                                  ["BUS", *weekdays, "20251214", "20261212"]]),
+        "calendar_dates.txt": csv_text(["service_id", "date", "exception_type"],
+                                       [["TA", "20251225", "2"], ["TA+old", "20251226", "2"], ["BUS", "20251225", "2"]]),
+        "transfers.txt": csv_text(["from_stop_id", "to_stop_id", "transfer_type", "min_transfer_time"],
+                                  [["8503000:0:3", "8503006", "2", "300"], ["8590000", "8590001", "2", "120"]]),
+        "feed_info.txt": csv_text(["feed_publisher_name", "feed_publisher_url", "feed_lang", "feed_version"],
+                                  [["Fixture", "https://example.test", "DE", "20261121"]]),
+    }
+    if frequencies:
+        members["frequencies.txt"] = csv_text(["trip_id", "start_time", "end_time", "headway_secs"], [
+            row for kind, row in (("alive", [alive[0], "08:00:00", "09:00:00", "1800"]), ("expired", [expired[0], "08:00:00", "10:00:00", "3600"]))
+            if kind in frequencies
+        ])
+    with zipfile.ZipFile(target, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+        for name, text in members.items():
+            archive.writestr(name, text)
+        for name, data in (extra or {}).items():
+            archive.writestr(name, data)
+    return {"alive": alive, "expired": expired, "buses": buses}
+
+
+class RecordingBudget(builder.RetentionBudget):
+    """The retention budget, counting what each table retained and what was released."""
+
+    retained: dict[str, int] = {}
+    released: list[int] = []
+
+    def retain(self, basename: str, row: Mapping[str, str]) -> None:
+        RecordingBudget.retained[basename] = RecordingBudget.retained.get(basename, 0) + 1
+        super().retain(basename, row)
+
+    def release(self, rows) -> None:  # type: ignore[no-untyped-def]
+        rows = list(rows)
+        RecordingBudget.released.append(len(rows))
+        super().release(rows)
+
+
+class ReviewedLargeArchiveTest(unittest.TestCase):
+    """The Swiss national archive (4.6 GB decompressed in November 2026) under its reviewed limits
+    (REVIEWED_LARGE_ARCHIVES): streamed, filtered while read, and still refused where the guards must refuse it."""
+
+    def setUp(self) -> None:
+        self.temp = Path(tempfile.mkdtemp(prefix="reviewed-large-archive-"))
+        self.addCleanup(shutil.rmtree, self.temp, ignore_errors=True)
+        self.review = small_review()
+        patcher = mock.patch.object(builder, "REVIEWED_LARGE_ARCHIVES", {SWISS: self.review})
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
+    @contextlib.contextmanager
+    def small_defaults(self, **extra: int):  # type: ignore[no-untyped-def]
+        with contextlib.ExitStack() as stack:
+            for name, value in {**SMALL_DEFAULTS, **extra}.items():
+                stack.enter_context(mock.patch.object(builder, name, value))
+            yield
+
+    def feed(self, name: str = "swiss.zip", **options: Any) -> tuple[Path, dict[str, list[str]]]:
+        path = self.temp / name
+        return path, write_swiss_like_feed(path, **options)
+
+    def filter(self, source: Path, source_id: str = SWISS, runs_from: date | None = SWISS_RUNS_FROM,
+               name: str = "out.zip") -> tuple[Path, "builder.FilterResult", str]:
+        output = self.temp / name
+        log = io.StringIO()
+        with contextlib.redirect_stderr(log):
+            result = builder.filter_archive(source, output, source_id, trips_run_from=runs_from)
+        return output, result, log.getvalue()
+
+    def test_the_feed_is_over_every_default_limit_the_review_replaces(self) -> None:
+        source, _ = self.feed()
+        with zipfile.ZipFile(source) as archive, self.small_defaults():
+            stop_times = archive.getinfo("stop_times.txt")
+            self.assertGreater(sum(entry.file_size for entry in archive.infolist()), builder.MAX_ARCHIVE_UNCOMPRESSED_BYTES)
+            self.assertGreater(stop_times.file_size, builder.MAX_ARCHIVE_MEMBER_BYTES)
+            self.assertLess(stop_times.file_size / stop_times.compress_size, builder.MAX_COMPRESSION_RATIO)
+            self.assertGreater(len(archive.read("stop_times.txt").splitlines()) - 1, builder.MAX_TABLE_ROWS)
+
+    def test_a_large_table_is_streamed_and_only_the_trips_the_pack_keeps_are_retained(self) -> None:
+        source, trips = self.feed()
+        RecordingBudget.retained, RecordingBudget.released = {}, []
+        with self.small_defaults(), mock.patch.object(builder, "RetentionBudget", RecordingBudget):
+            output, result, log = self.filter(source)
+        # Only the stop times of the three rail trips that still run were ever held: not the 4,000 bus calls, not the
+        # calls of the rail trips whose service ended before tripsRunFrom (dropped, with their calendar, before
+        # stop_times.txt was read).
+        self.assertEqual(12, RecordingBudget.retained["stop_times.txt"])
+        self.assertEqual(len(trips["alive"]) + len(trips["expired"]), RecordingBudget.retained["trips.txt"])
+        self.assertIn(len(trips["expired"]), RecordingBudget.released)
+        self.assertIn(f"{SWISS}: stop_times.txt {4 * 6 + 10 * 400} righe lette, 12 tenute", log)
+        self.assertIn(f"{SWISS}: archivio rivisto, ", log)
+        self.assertIn("membri più grandi: stop_times.txt ", log)
+        self.assertEqual(trips["alive"], [row["trip_id"] for row in read_rows(output, "trips.txt")])
+        self.assertEqual({(trip, str(call)) for trip in trips["alive"] for call in range(1, 5)},
+                         {(row["trip_id"], row["stop_sequence"]) for row in read_rows(output, "stop_times.txt")})
+        self.assertEqual(["TA"], [row["service_id"] for row in read_rows(output, "calendar.txt")])
+        self.assertFalse(any(row["stop_id"].startswith("859") for row in read_rows(output, "stops.txt")))
+        self.assertEqual(SWISS_RUNS_FROM.isoformat(), result.filter_metadata["tripsRunFrom"])
+        self.assertEqual("gtfs-rail-route-types", result.filter_metadata["policy"]["kind"])
+
+    def test_an_unreviewed_source_over_the_limit_is_refused_naming_its_largest_members(self) -> None:
+        source, _ = self.feed()
+        for source_id in ("sncf-gtfs", "other-gtfs"):
+            with self.subTest(source_id=source_id), self.small_defaults(), self.assertRaises(builder.BuildError) as raised:
+                self.filter(source, source_id)
+            message = str(raised.exception)
+            self.assertRegex(message, r"^archivio GTFS decompresso oltre limite: \d+ > 65536 bytes \(membri più grandi: stop_times\.txt ")
+            self.assertNotIn("REVIEWED", message)
+
+    def test_the_reviewed_limits_and_the_other_guards_still_refuse(self) -> None:
+        source, _ = self.feed()
+        with zipfile.ZipFile(source) as archive:
+            total = sum(entry.file_size for entry in archive.infolist())
+            stop_times = archive.getinfo("stop_times.txt").file_size
+        cases = {
+            "reviewed total": (small_review(max_uncompressed_bytes=total - 1), source,
+                               r"decompresso oltre limite: \d+ > \d+ bytes \(limite rivisto di ch-otd-gtfs.*membri più grandi: stop_times\.txt"),
+            "reviewed member": (small_review(max_streamed_member_bytes=stop_times - 1), source,
+                                r"membro GTFS oltre limite: 'stop_times\.txt' \d+ > \d+ bytes \(limite rivisto"),
+            "reviewed rows": (small_review(max_streamed_table_rows=4_000), source, r"tabella oltre limite righe: stop_times\.txt > 4000"),
+        }
+        large_stops = self.temp / "large-stops.zip"
+        write_swiss_like_feed(large_stops, bus_trips=5, extra={"nested/stops.txt": b"x" * (48 * 1024)})
+        cases["a member that is not streamed keeps the default limit"] = (
+            self.review, large_stops, r"membro GTFS oltre limite: 'nested/stops\.txt' 49152 > 32768 bytes$")
+        bomb = self.temp / "ratio.zip"
+        write_swiss_like_feed(bomb, bus_trips=5, extra={"x/calendar_dates.txt": b"A" * 300_000})
+        cases["compression ratio"] = (self.review, bomb, r"rapporto di compressione GTFS sospetto: 'x/calendar_dates\.txt'")
+        entries = self.temp / "entries.zip"
+        write_swiss_like_feed(entries, bus_trips=5, extra={f"extra/{index}.txt": b"" for index in range(builder.MAX_ARCHIVE_ENTRIES)})
+        cases["entries"] = (self.review, entries, r"archivio GTFS con troppe entry")
+        for name, (review, archive, pattern) in cases.items():
+            with self.subTest(name), self.small_defaults(), \
+                    mock.patch.object(builder, "REVIEWED_LARGE_ARCHIVES", {SWISS: review}), \
+                    self.assertRaisesRegex(builder.BuildError, pattern):
+                self.filter(archive)
+
+    def test_the_retained_row_cell_and_byte_budgets_still_apply_to_what_is_kept(self) -> None:
+        source, _ = self.feed()
+        for name, value, pattern in (
+            ("MAX_RETAINED_TABLE_ROWS", 11, r"tabella oltre budget righe trattenute: stop_times\.txt > 11"),
+            ("MAX_RETAINED_BUILD_ROWS", 20, r"build GTFS oltre budget righe trattenute: \d+ > 20"),
+            ("MAX_RETAINED_BUILD_CELLS", 100, r"build GTFS oltre budget celle trattenute"),
+            ("MAX_RETAINED_BUILD_UTF8_BYTES", 600, r"build GTFS oltre budget byte UTF-8 trattenuti"),
+        ):
+            with self.subTest(name), self.small_defaults(**{name: value}), self.assertRaisesRegex(builder.BuildError, pattern):
+                self.filter(source)
+
+    def test_the_reviewed_path_keeps_exactly_what_the_current_builder_keeps(self) -> None:
+        # Under the old limits the same archive goes through both paths: the pack must be the same bytes.
+        cases = {
+            "trips that expired": ({}, SWISS_RUNS_FROM),
+            "no tripsRunFrom": ({}, None),
+            "nothing expired": ({}, date(2026, 1, 1)),
+            "frequencies of a trip that runs and of one that expired": ({"frequencies": ("alive", "expired")}, SWISS_RUNS_FROM),
+            "frequencies of an expired trip only": ({"frequencies": ("expired",)}, SWISS_RUNS_FROM),
+            "no expired trip in the feed": ({"expired_trips": 0}, SWISS_RUNS_FROM),
+        }
+        for name, (options, runs_from) in cases.items():
+            with self.subTest(name):
+                source, trips = self.feed(f"{len(name)}.zip", bus_trips=5, **options)
+                reviewed, reviewed_result, log = self.filter(source, runs_from=runs_from, name="reviewed.zip")
+                self.assertIn("archivio rivisto", log)
+                with mock.patch.object(builder, "REVIEWED_LARGE_ARCHIVES", {}):
+                    default, default_result, default_log = self.filter(source, runs_from=runs_from, name="default.zip")
+                self.assertNotIn("archivio rivisto", default_log)
+                self.assertEqual(default.read_bytes(), reviewed.read_bytes())
+                self.assertEqual(default_result, reviewed_result)
+                kept = {row["trip_id"].split("@")[0] for row in read_rows(reviewed, "trips.txt")}
+                self.assertEqual(set(trips["alive"]) | (set() if runs_from == SWISS_RUNS_FROM else set(trips["expired"])), kept)
+        source, _ = self.feed("dead.zip", bus_trips=5)
+        for table in ({SWISS: self.review}, {}):
+            with self.subTest(table=bool(table)), mock.patch.object(builder, "REVIEWED_LARGE_ARCHIVES", table), \
+                    self.assertRaisesRegex(builder.BuildError, "i trip filtrati non hanno stop_times"):
+                self.filter(source, runs_from=date(2026, 12, 20))
+
+    def test_the_published_swiss_full_pack_filters_to_the_same_bytes_on_both_paths(self) -> None:
+        # Real Swiss rows: the full pack published in data/gtfs-foreign, filtered from the last day of its median trip,
+        # so that the trips ending before it no longer run.
+        manifest = json.loads((ROOT / "app/src/main/assets/gtfs/manifest.json").read_text(encoding="utf-8"))
+        entry = next(pack for pack in manifest["packs"] if pack["sourceId"] == SWISS)
+        full = ROOT / entry["fullPack"]["path"]
+        with zipfile.ZipFile(full) as archive:
+            calendar = builder.read_table(archive, "calendar.txt") or builder.empty_calendar()
+            exceptions = builder.read_table(archive, "calendar_dates.txt") or builder.empty_calendar_dates()
+            trips = builder.read_table(archive, "trips.txt", required=True)
+        assert trips is not None
+        days = builder.service_days(calendar, exceptions, SWISS)
+        ends = sorted(max(days[row["service_id"]]) for row in trips.rows if days.get(row["service_id"]))
+        runs_from = ends[len(ends) // 2]
+        with mock.patch.object(builder, "REVIEWED_LARGE_ARCHIVES", {SWISS: builder.LargeArchiveReview(
+                "fixture", 1 << 30, 1 << 30, 1 << 30, 10_000_000)}):
+            reviewed, reviewed_result, _ = self.filter(full, runs_from=runs_from, name="reviewed.zip")
+        with mock.patch.object(builder, "REVIEWED_LARGE_ARCHIVES", {}):
+            default, default_result, _ = self.filter(full, runs_from=runs_from, name="default.zip")
+        self.assertEqual(default.read_bytes(), reviewed.read_bytes())
+        self.assertEqual(default_result, reviewed_result)
+        if ends[0] < runs_from:
+            self.assertLess(reviewed_result.filter_metadata["counts"]["trips"], len(trips.rows))
+
+    def test_refresh_downloads_each_source_under_its_own_cap(self) -> None:
+        manifest = {"packs": [
+            {"sourceId": SWISS, "asset": f"gtfs/{SWISS}.zip", "sourceUrl": "https://example.test/ch.zip", "accessMode": "OPEN_DIRECT"},
+            {"sourceId": "sncf-gtfs", "asset": "gtfs/sncf-gtfs.zip", "sourceUrl": "https://example.test/fr.zip", "accessMode": "OPEN_DIRECT"},
+        ]}
+        for explicit, expected in ((None, {SWISS: self.review.max_download_bytes, "sncf-gtfs": builder.DEFAULT_MAX_DOWNLOAD_BYTES}),
+                                   (1234, {SWISS: 1234, "sncf-gtfs": 1234})):
+            with self.subTest(explicit=explicit), mock.patch.object(builder, "download_to_file") as download:
+                _, directory = builder.refresh_overrides(manifest, set(), max_download_bytes=explicit)
+                shutil.rmtree(directory, ignore_errors=True)
+                self.assertEqual(expected, {call.args[1].stem: call.kwargs["max_bytes"] for call in download.call_args_list})
+
+
+class ReviewedLargeArchiveRegistryTest(unittest.TestCase):
+    def test_only_switzerland_is_reviewed_and_its_limits_are_an_exception_to_the_defaults(self) -> None:
+        self.assertEqual({SWISS}, set(builder.REVIEWED_LARGE_ARCHIVES))
+        review = builder.REVIEWED_LARGE_ARCHIVES[SWISS]
+        self.assertIn("4,6 GB", review.reason)
+        self.assertGreater(review.max_uncompressed_bytes, builder.MAX_ARCHIVE_UNCOMPRESSED_BYTES)
+        self.assertGreater(review.max_streamed_member_bytes, builder.MAX_ARCHIVE_MEMBER_BYTES)
+        self.assertLessEqual(review.max_streamed_member_bytes, review.max_uncompressed_bytes)
+        self.assertGreater(review.max_streamed_table_rows, builder.MAX_TABLE_ROWS)
+        self.assertGreater(review.max_download_bytes, builder.DEFAULT_MAX_DOWNLOAD_BYTES)
+        self.assertNotIn(SWISS, builder.ITINERARY_COPY_SOURCES)
+        self.assertFalse({"routes.txt", "stops.txt", "agency.txt"} & builder.STREAMED_TABLES)
+        manifest = json.loads((ROOT / "app/src/main/assets/gtfs/manifest.json").read_text(encoding="utf-8"))
+        pack = next(pack for pack in manifest["packs"] if pack["sourceId"] == SWISS)
+        self.assertEqual("OPEN_DIRECT", pack["accessMode"])
+        self.assertIsNone(builder.large_archive_review("sncf-gtfs"))
+        self.assertIsNone(builder.large_archive_review(None))
+        self.assertEqual(review.max_download_bytes, builder.source_download_limit(SWISS, 1))
+        self.assertEqual(1, builder.source_download_limit("sncf-gtfs", 1))
 
 
 if __name__ == "__main__":
