@@ -1,5 +1,17 @@
 # Changelog
 
+## In sviluppo — iPhone: viaggi con cambi come su Android
+
+- **Viaggi con cambi** nei risultati del pianificatore: fino a due cambi, calcolati sull'iPhone dall'indice incluso (e dagli orari completi dei paesi confinanti già scaricati) con la ricerca di Android (Connection Scan): stessi tempi di cambio (10 minuti nelle grandi stazioni, 3 tra mezzi urbani), percorsi a piedi tra stazioni vicine e fermate urbane, finestra, orizzonte, scelta dei pack, attese lunghe e «meno camminate». I treni diretti e i viaggi con cambi stanno in un solo elenco con i chip di Android («Tutti», «Diretti», «Meno cambi», «Più veloce», «Meno a piedi», «Più affidabili») e il filtro dei cambi del pianificatore («Qualsiasi», «Diretto», «Max 1 cambio», «Max 2 cambi»).
+- **Resta a bordo:** una corsa che prosegue con un altro numero (stesso `block_id`, o lo stesso treno pubblicato da due pack) non è un cambio, come su Android.
+- **Ultimo di oggi**, «Non ci sono più treni oggi: primo domani alle HH:mm» e «Nessun treno fino alle HH:mm» per una ricerca di oggi; con le statistiche, «Più affidabili», il treno più debole del viaggio e «Coincidenza a … riuscita N volte su M».
+- **Dettaglio del viaggio:** ogni tratta con orari, mezzo, operatore, accessibilità e bici, i cambi con l'attesa, i percorsi a piedi, la fonte e l'avviso sugli orari programmati.
+- **Preferenze di viaggio** (Impostazioni): velocità a piedi, tempo massimo a piedi per tratto, «Preferisci», tipi di servizio da preferire o evitare e «Solo percorsi accessibili in sedia a rotelle». Restano sull'iPhone (`UserDefaults`); i treni diretti nascosti dalle preferenze sono contati sotto i risultati, come su Android.
+- **Indice orari:** due tabelle facoltative, `trip_detail` (`block_id` e `wheelchair_accessible` delle corse) e `stop_detail` (punto di cambio delle fermate e `wheelchair_boarding`), nell'indice pubblico e in quello personale; lo schema resta alla versione 2, così gli indici esteri già fissati restano validi (senza blocchi né accessibilità quando è installato l'orario completo di un paese). Indici ricostruiti in modo riproducibile; l'orario di Alexa accetta le tabelle nuove.
+- **Base comune:** i parametri della ricerca sono la nuova tabella `contracts/shared-data/v1/journey-planner-v1.json`, letta come codice generato anche da Android al posto delle sue costanti; nuovi casi comuni `contracts/shared-rules/v1/connection-scan-v1.json`, letti dai test Kotlin e Swift.
+- **Non ancora sull'iPhone:** «Coincidenza a rischio / persa» con i dati in tempo reale (le regole sono portate, manca il collegamento ai dati live dei treni del viaggio), il percorso in tempo reale di un viaggio e «Più presto» / «Più tardi» nei risultati.
+- Testi di Android nelle 17 lingue; i testi «Ordine» e «Per orario» del vecchio selettore dei risultati lasciano il posto ai chip. Aggiornati [l'informativa privacy](PRIVACY.md) (nuova preferenza locale, nessuna richiesta di rete) e le note per App Review.
+
 ## In sviluppo — Metro, tram e funicolari anche su iPhone
 
 - **Indice orari dell'iPhone con le reti urbane pubbliche di Android:** metropolitana e tram di Milano (ATM), metropolitana, funicolari e ascensori di Genova (AMT), tramvia di Firenze (GEST), metrotranvie di Cagliari e Sassari (ARST) e Marconi Express di Bologna. Stessi tipi di linea di Android (metro 1, 12, 400–499; tram 0, 900–999; funicolare 5, 6, 7, 1300–1499). L'indice passa a 22 pack: 16,2 MB compressi e 59,4 MB di SQLite (prima 7,3 e 27,8), sotto i limiti di 32 e 256 MiB.
