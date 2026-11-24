@@ -134,6 +134,73 @@ final class RemoteGTFSContractTests: XCTestCase {
         XCTAssertEqual(transport.requests.count, 1)
     }
 
+    /// Android's `enrichWithSameFeedRealtime`: the Trip Updates of the archive's own feed time its train by trip_id
+    /// and stop of the same archive. 2026-09-10, ES123 leaves Bruxelles-Midi at 09:00 and is 10 minutes late.
+    func testTheArchivesTripUpdatesTimeItsTrains() async throws {
+        let rules = try contract()
+        let item = rules.timetables[0]
+        let archive = try XCTUnwrap(Data(base64Encoded: item.zipBase64))
+        let now = Date(timeIntervalSince1970: 1_789_023_900) // 2026-09-10T07:05:00Z, 09:05 in Brussels and Rome
+        let realtimeFeed = try XCTUnwrap(SharedData.RealtimeFeeds.tripUpdates.first { $0.pack == "european-sleeper" })
+        let payload = Self.tripUpdates(timestamp: 1_789_023_900, tripID: "trip-1", startDate: "20260910", stopID: "bru", sequence: 1, delay: 600)
+        let transport = FakeLiveTransport { request in
+            .response(status: 200, headers: [:], body: request.url.absoluteString == realtimeFeed.url ? payload : archive)
+        }
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent("BinarioRemote-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let feed = try XCTUnwrap(SharedData.RemoteGtfs.feeds.first)
+        let fallbacks = TimetableFallbacks(
+            rfi: nil, archives: [RemoteGTFSSchedule(feed: feed, directory: directory, transport: transport, now: { now })]
+        )
+        let stations = item.stations.map(\.station)
+        fallbacks.useCatalogue(stations)
+        let origin = try XCTUnwrap(stations.first { $0.id == item.origin })
+        let destination = try XCTUnwrap(stations.first { $0.id == item.destination })
+        let query = try JourneyQuery(
+            origin: StationIdentity(origin), destination: StationIdentity(destination),
+            departure: Date(timeIntervalSince1970: 1_789_020_000)
+        )
+        guard case let .available(snapshot)? = await fallbacks.journeys(for: query) else { return XCTFail("no train") }
+        let service = try XCTUnwrap(snapshot.services.first)
+        // The bundled index is never opened for the archive's trips: they are read from the archive's own index.
+        let repository = SQLiteGTFSJourneyRepository(
+            databaseURL: directory.appendingPathComponent("absent.sqlite"), fallbacks: fallbacks
+        )
+        let realtime = TimetableRealtime.standard(transport: transport, pauses: LiveSourcePauses(), now: { now })
+        let answer = await realtime.statuses(serviceIDs: [service.id], stationID: origin.id, day: now, timetable: repository)
+        let status = try XCTUnwrap(answer.statuses[service.id])
+        XCTAssertEqual(status.delayMinutes, 10)
+        XCTAssertEqual(status.expectedDeparture, Date(timeIntervalSince1970: 1_789_024_200)) // 09:10
+        XCTAssertEqual(status.source, .europeanSleeperRealtime)
+        XCTAssertEqual(answer.sources, [.europeanSleeperRealtime])
+    }
+
+    /// A GTFS-Realtime FeedMessage with one Trip Update of one stop, as protobuf.
+    private static func tripUpdates(
+        timestamp: UInt64, tripID: String, startDate: String, stopID: String, sequence: UInt64, delay: UInt64
+    ) -> Data {
+        func varint(_ value: UInt64) -> [UInt8] {
+            var bytes: [UInt8] = []
+            var rest = value
+            repeat {
+                var byte = UInt8(rest & 0x7F)
+                rest >>= 7
+                if rest != 0 { byte |= 0x80 }
+                bytes.append(byte)
+            } while rest != 0
+            return bytes
+        }
+        func message(_ number: UInt64, _ body: [UInt8]) -> [UInt8] { varint(number << 3 | 2) + varint(UInt64(body.count)) + body }
+        func text(_ number: UInt64, _ value: String) -> [UInt8] { message(number, Array(value.utf8)) }
+        func number(_ field: UInt64, _ value: UInt64) -> [UInt8] { varint(field << 3) + varint(value) }
+        let header = text(1, "2.0") + number(3, timestamp)
+        let trip = text(1, tripID) + text(3, startDate)
+        let stop = number(1, sequence) + message(3, number(1, delay)) + text(4, stopID)
+        let update = message(1, trip) + message(2, stop)
+        let entity = text(1, "entity-1") + message(3, update)
+        return Data(message(1, header) + message(2, entity))
+    }
+
     func testOnlyTheOperatorsAgencyIsKept() {
         XCTAssertEqual(TimetableNaming.operatorName("European Sleeper", sourceID: "european-sleeper"), "European Sleeper")
         XCTAssertTrue(RemoteGTFSSchedule.isCoverageService("european-sleeper:trip-1:20260910:32400"))

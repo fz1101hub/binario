@@ -13,8 +13,8 @@ public actor RemoteGTFSSchedule {
     public nonisolated let feed: SharedData.RemoteGtfs.RemoteFeed
     private let directory: URL
     private let client: LiveSourceClient
-    private let now: @Sendable () -> Date
-    private let published = PublishedIndex()
+    private nonisolated let now: @Sendable () -> Date
+    private nonisolated let published = PublishedIndex()
     private var current: (url: URL, expiresAt: Date)?
     private var pausedUntil: Date?
     private var loading: Task<URL?, Never>?
@@ -43,7 +43,7 @@ public actor RemoteGTFSSchedule {
 
     /// The index built last, while it is valid, for the readers that cannot wait (`tripStops`).
     public nonisolated func publishedIndexURL() -> URL? {
-        published.url(at: Date())
+        published.url(at: now())
     }
 
     /// The index of the archive valid now, downloaded and built when there is none; nil before `notBefore`, during a
