@@ -138,6 +138,15 @@ Il 24 novembre 2026, con i viaggi con cambi sull'iPhone:
 
 La ricerca ha i casi in `contracts/shared-rules/v1/connection-scan-v1.json`, letti dai test Kotlin e Swift.
 
+Con «Coincidenza a rischio / persa» e «Più presto / Più tardi» sull'iPhone:
+
+| Tabella | Prima | Ora letta da |
+|---|---|---|
+| `journey-live-v1.json`: finestra delle tratte cercate per numero, otto treni, due ore che fanno un'altra corsa, richieste in parallelo e loro tempo massimo, durata di una risposta, intervallo fra due ricerche | `JourneyLiveCandidates`, `JourneyLiveLookup` in `JourneyLiveLookup.kt`, `JourneyLiveRefresh` in `JourneySearchViewModel.kt` | Android, iPhone |
+| `results-paging-v1.json`: finestre di «Più presto», soluzioni mostrate, finestre continuate, finestra più breve, viaggi chiesti per finestra | `ResultsPaging.kt` | Android, iPhone |
+
+Le regole hanno i casi in `contracts/shared-rules/v1/journey-live-v1.json` (rischio di un cambio, corsa della ricerca per numero, tratte cercate, aggiornamento) e `results-paging-v1.json` (sorgenti sintetiche), letti dai test Kotlin e Swift.
+
 Restano fuori, coperti da casi di prova in `contracts/shared-rules/v1/`, la parola che segna una soppressione esplicita e l'operatore di una riga del monitor RFI (`live-text-v1.json`), i modelli di «Preparazione del viaggio» (`checklist-presets-v1.json`) e il calcolo della Pasqua (`calendar-v1.json`). Le espressioni regolari non diventano dati perché Java e ICU non leggono `\b` e `\w` allo stesso modo sui caratteri non ASCII. L'operatore della riga RFI non è una tabella pulita: Android distingue tre servizi Trenitalia, l'iPhone uno. I modelli di preparazione sono enum legati ai testi tradotti di ogni app. Restano fuori anche i limiti dello snapshot per gli orologi: Wear OS e Apple Watch non dipendono da `app/` né da BinarioKit, quindi non possono leggere il codice generato, e quei limiti li governa già il contratto `contracts/wear-snapshot/v1` con le sue fixture.
 
 ### Cosa resta specifico di ogni piattaforma
