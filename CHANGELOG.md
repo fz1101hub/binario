@@ -21,7 +21,11 @@
 - **Azioni rapide e collegamenti:** Tratta attiva, Prossime partenze e Ricerca treno accanto ad Agenda; i collegamenti `binario://` di Android.
 - **Impostazioni:** **Integrazioni Binario** con il profilo vocale per Alexa; il backup locale porta ora anche i treni preferiti (con destinazione e operatore, in entrambe le app) e le stazioni monitorate.
 - **Base comune:** nuova tabella `favourite-punctuality-v1.json` e casi comuni `favourite-punctuality-v1.json` (registro, andamento, riepilogo e registrazione dei treni preferiti), letti da Android e iPhone.
-- **Non ancora sull'iPhone** (area di questo lavoro): la ricerca per numero nell'orario incluso, le corse registrate e l'andamento nella sezione «Affidabilità dei miei treni». Arrivo e durata nei risultati passano al lavoro sui viaggi con cambi.
+- **Treno** cerca il numero anche nell'orario incluso (e negli orari completi dei paesi confinanti scaricati), come Android; senza dati in tempo reale restano le corse dell'orario.
+- **Affidabilità dei miei treni** come su Android: per i primi otto treni preferiti la rete (con il proprio limite), «Registrato su questo telefono» negli ultimi 30 giorni, «In miglioramento» / «In peggioramento» o «Ancora nessun dato».
+- **Salva orario** e **Condividi** prendono l'elenco come è mostrato, viaggi con cambi compresi, con arrivo, «giorno dopo» e durata in ogni riga.
+- **Backup locale:** anche avvisi pendolare, preferenze di viaggio, tratte fissate e il loro ordine, nelle chiavi di Android.
+- Il confronto Android ↔ iPhone conta ora anche viaggi con cambi, notifiche e sveglie del viaggio, widget, European Sleeper e quadro orario RFI: nell'area di questo lavoro non resta nulla di aperto.
 - Testi di Android in 17 lingue. Aggiornati [l'informativa privacy](PRIVACY.md) (nuovi dati locali, file di backup, collegamenti ufficiali, mappe, calendario, lavori in background dei treni preferiti), le note per App Review, il README, l'ADR della base comune e i README dei contratti.
 
 ## In sviluppo — iPhone: European Sleeper e quadro orario programmato RFI come su Android
