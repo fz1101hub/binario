@@ -12,6 +12,8 @@ import BinarioKit
 /// nothing for it, as on Android. A run reads only the public MIT strike calendar and RFI's
 /// infomobility feed, with the manners of every source, and schedules local notifications: no
 /// remote notification and no push entitlement. What was notified is kept on this iPhone only.
+/// When iOS last started the task and which checks it handled are kept there too, for «Attività in
+/// background» (BackgroundStatusView.swift).
 /// The same task also runs Android's two background jobs of the favourite trains: «Puntualità dei
 /// treni preferiti», the one live request the app makes in the background (with «Dati in tempo
 /// reale» on, the favourite's number on its day, through `AppModel.trainNumberRuns`), and the
@@ -37,22 +39,8 @@ enum EveningAlerts {
     /// is asked for at once, as on Android.
     @MainActor
     static func schedule(now: Date = Date(), immediateWorksAlert: Bool = false) {
-        let preferences = ExtrasPreferenceStore()
-        var dates: [Date] = []
-        if preferences.strikeReminderEnabled, let next = StrikeReminderPlanner.nextRunAt(now) { dates.append(next) }
-        if preferences.routeWorksAlertEnabled, let next = RouteWorksAlertPlanner.nextRunAt(now, immediate: immediateWorksAlert) {
-            dates.append(next)
-        }
+        var dates = eveningChecks(now: now, immediateWorksAlert: immediateWorksAlert).map { $0.at }
         if let next = TripBackgroundSchedule.nextRunAt(now) { dates.append(next) }
-        if preferences.weeklyDigestEnabled,
-           let next = WeeklyDigestPlanner.nextRunAt(now, lastSent: EveningAlertsStore().lastDigestWeekEnd) {
-            dates.append(next)
-        }
-        if preferences.punctualityRecordingEnabled, app?.liveDataEnabled ?? true,
-           let next = PunctualityRecordingPlanner.nextRun(PunctualityRecorderStore().candidates(FavouriteTrainStore().load().trains), now: now) {
-            // iOS runs a refresh task some minutes after the date at the earliest.
-            dates.append(max(next, now.addingTimeInterval(60)))
-        }
         guard let earliest = dates.min() else {
             BGTaskScheduler.shared.cancel(taskRequestWithIdentifier: taskIdentifier)
             return
@@ -63,8 +51,82 @@ enum EveningAlerts {
         try? BGTaskScheduler.shared.submit(request)
     }
 
+    /// The next run of the evening alerts and of the favourites' jobs switched on.
+    @MainActor
+    private static func eveningChecks(now: Date, immediateWorksAlert: Bool) -> [(check: BackgroundCheck, at: Date)] {
+        let preferences = ExtrasPreferenceStore()
+        var planned: [(check: BackgroundCheck, at: Date)] = []
+        if preferences.punctualityRecordingEnabled, app?.liveDataEnabled ?? true,
+           let next = PunctualityRecordingPlanner.nextRun(PunctualityRecorderStore().candidates(FavouriteTrainStore().load().trains), now: now) {
+            // iOS runs a refresh task some minutes after the date at the earliest.
+            planned.append((check: .punctuality, at: max(next, now.addingTimeInterval(60))))
+        }
+        if preferences.strikeReminderEnabled, let next = StrikeReminderPlanner.nextRunAt(now) { planned.append((check: .strikes, at: next)) }
+        if preferences.routeWorksAlertEnabled, let next = RouteWorksAlertPlanner.nextRunAt(now, immediate: immediateWorksAlert) {
+            planned.append((check: .routeWorks, at: next))
+        }
+        if preferences.weeklyDigestEnabled,
+           let next = WeeklyDigestPlanner.nextRunAt(now, lastSent: EveningAlertsStore().lastDigestWeekEnd) {
+            planned.append((check: .weeklyDigest, at: next))
+        }
+        return planned
+    }
+
+    /// «Prossimi controlli in background»: the next run of every check, in the order of
+    /// [BackgroundCheck] (Android's `BackgroundRuns.planned`).
+    @MainActor
+    static func plannedChecks(now: Date) -> [(check: BackgroundCheck, at: Date)] {
+        let trips = TripBackgroundSchedule.dates(now)
+        let tripChecks: [(check: BackgroundCheck, at: Date?)] = [
+            (check: .followedTrip, at: trips.followed), (check: .trainAlerts, at: trips.trainAlerts),
+            (check: .approachAlerts, at: trips.approach), (check: .commuterAlerts, at: trips.commuter),
+        ]
+        let all = tripChecks.compactMap { item in item.at.map { (check: item.check, at: $0) } } + eveningChecks(now: now, immediateWorksAlert: false)
+        return BackgroundCheck.allCases.compactMap { check in all.first { $0.check == check } }
+    }
+
+    /// The checks a run starting at `now` handles, as `run` below decides them, for «Attività in background».
+    @MainActor
+    private static func dueChecks(now: Date, notificationsAllowed: Bool) -> [BackgroundCheck] {
+        let trips = TripBackgroundSchedule.dates(now)
+        var due: [BackgroundCheck] = []
+        if trips.followed.map({ $0 <= now }) == true { due.append(.followedTrip) }
+        if trips.trainAlerts.map({ $0 <= now }) == true { due.append(.trainAlerts) }
+        if trips.approach.map({ $0 <= now }) == true { due.append(.approachAlerts) }
+        if trips.commuter.map({ $0 <= now }) == true { due.append(.commuterAlerts) }
+        let preferences = ExtrasPreferenceStore()
+        if preferences.punctualityRecordingEnabled, app?.liveDataEnabled == true,
+           !PunctualityRecordingPlanner.due(PunctualityRecorderStore().candidates(FavouriteTrainStore().load().trains), now: now).isEmpty {
+            due.append(.punctuality)
+        }
+        if notificationsAllowed, let clock = RailWallClock(now) {
+            if preferences.strikeReminderEnabled, StrikeReminderPlanner.mayNotify(clock) { due.append(.strikes) }
+            if preferences.routeWorksAlertEnabled, RouteWorksAlertPlanner.mayNotify(clock) { due.append(.routeWorks) }
+            if WeeklyDigestPlanner.handles(
+                enabled: preferences.weeklyDigestEnabled, notificationsAllowed: true, now: clock, lastSent: EveningAlertsStore().lastDigestWeekEnd
+            ) != nil {
+                due.append(.weeklyDigest)
+            }
+        }
+        return due
+    }
+
+    /// The earliest start asked of iOS for the background task, if one is pending.
+    static func requestedStart() async -> Date? {
+        await withCheckedContinuation { continuation in
+            BGTaskScheduler.shared.getPendingTaskRequests { requests in
+                let request = requests.first { $0.identifier == taskIdentifier }
+                continuation.resume(returning: request.map { $0.earliestBeginDate ?? .distantPast })
+            }
+        }
+    }
+
     /// One background run: each alert whose window it is, the favourite trains' jobs, then the next run.
     static func run(now: Date = Date()) async {
+        // «Attività in background»: when iOS started this run and what it is about to check, on this iPhone only.
+        let allowed = await notificationsAllowed()
+        let due = await dueChecks(now: now, notificationsAllowed: allowed)
+        BackgroundRunLog.record(due, startedAt: now)
         // The trip checks that are due (TripMonitor.swift), then the evening alerts and the favourites' jobs.
         await TripMonitor.runInBackground(now: now)
         await runAlerts(now: now)
@@ -172,7 +234,7 @@ enum EveningAlerts {
         _ = await post(id: digestNotificationID, title: String(localized: "saved.digest.title"), body: lines.joined(separator: "\n"), sound: false)
     }
 
-    private static func notificationsAllowed() async -> Bool {
+    static func notificationsAllowed() async -> Bool {
         let settings = await UNUserNotificationCenter.current().notificationSettings()
         switch settings.authorizationStatus {
         case .authorized, .provisional, .ephemeral: return true

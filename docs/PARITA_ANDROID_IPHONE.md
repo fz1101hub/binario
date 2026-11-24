@@ -6,7 +6,7 @@ impostazione e azione dell'app Android (`app/src/main/java/it/binario/app/ui/`, 
 `TrainViewModel.kt`, la tabella «Funzionalità» del README e `app/src/main/res/values/strings.xml`) con l'app iPhone
 (`ios/BinarioApp`, `ios/BinarioKit`), e Wear OS (`wear/`) con Apple Watch (`apple-watch/`).
 
-Base del confronto: il ramo `ios-misc` unito a `ios-int` (`7710bf1b`: viaggi con cambi, notifiche e sveglie del viaggio, widget, European Sleeper e quadro orario RFI), con i lavori di parità del 24 novembre 2026 descritti sotto. Le
+Base del confronto: il ramo `ios-misc` unito a `ios-int` (`5bc076ed`: viaggi con cambi, notifiche e sveglie del viaggio, widget, European Sleeper, quadro orario RFI e percorso live dei treni diretti), con i lavori di parità del 24 novembre 2026 descritti sotto. Le
 tabelle e le regole comuni seguono [ADR-0002](architecture/ADR-0002-BASE-COMUNE.md).
 
 **Stati.** «Uguale»: stessa funzione e stessi testi. «Uguale (nativo iOS)»: stessa funzione con il componente di
@@ -21,14 +21,14 @@ pianificatore. 2 = notifiche di viaggio, sveglia di fermata, GPS, avvisi di arri
 | | Funzioni | Uguali | Parziali | Mancano |
 |---|---|---|---|---|
 | Area 1 | 14 | 8 | 5 | 1 |
-| Area 2 | 7 | 2 | 4 | 1 |
+| Area 2 | 7 | 4 | 3 | 0 |
 | Area 3 | 5 | 5 | 0 | 0 |
 | Area 4 | 93 | 93 | 0 | 0 |
 | Area 5 | 2 | 2 | 0 | 0 |
-| **Telefono** | **121** | **110** | **9** | **2** |
+| **Telefono** | **121** | **112** | **8** | **1** |
 | Orologio | 16 | 16 | 0 | 0 |
 
-«Uguali» comprende gli «Uguale (nativo iOS)». I conteggi sono quelli dopo i lavori del ramo `ios-misc` (24 novembre 2026, terzo giro, con `ios-int`); le righe «Manca» e «Parziale» sono elencate in fondo al documento.
+«Uguali» comprende gli «Uguale (nativo iOS)». I conteggi sono quelli dopo i lavori del ramo `ios-misc` (24 novembre 2026, quarto giro, con `ios-int`); le righe «Manca» e «Parziale» sono elencate in fondo al documento.
 
 ## 1. Navigazione e struttura
 
@@ -99,9 +99,9 @@ pianificatore. 2 = notifiche di viaggio, sveglia di fermata, GPS, avvisi di arri
 | Mappa del percorso | OpenFreeMap, su tocco | Mappa di Apple (MapKit), su tocco: fermate live o dell'orario incluso, ultima confermata e prossima, elenco sotto la mappa (`StationMaps.swift`) | Uguale (nativo iOS) | 4 |
 | Cambi di percorso («Fermata aggiunta», «Saltata») | Sì | Fermate aggiunte e soppresse nell'elenco live | Uguale | 4 |
 | Segui questo viaggio | Viaggio attivo con notifica in corso | «Notifica con lo stato del viaggio»: attività in tempo reale sulla schermata di blocco e nella Dynamic Island, con le notifiche di soppressione, binario e coincidenza | Uguale (nativo iOS) | 2 |
-| Sveglia di fermata e sveglia GPS | Sì, anche dalla posizione in background | Sveglia alla fermata dall'orario previsto; «Stima dalla tua posizione» solo con l'app aperta | Parziale: limite scelto su iOS, nessuna posizione in background | 2 |
-| «Avvisami quando sta arrivando» | Controlli ogni 15 minuti (WorkManager) | Stesso avviso; controlli con l'app aperta e nell'aggiornamento in background quando iOS lo avvia | Parziale: limite di iOS, nessun orario garantito | 2 |
-| Campanella degli avvisi ViaggiaTreno | Controlli periodici | Stessa campanella; controlli con l'app aperta e nell'aggiornamento in background quando iOS lo avvia | Parziale: limite di iOS, nessun orario garantito | 2 |
+| Sveglia di fermata e sveglia GPS | Sveglia alla fermata (allarme esatto, ripianificato con il ritardo) e sveglia GPS da un servizio in primo piano che legge la posizione anche a schermo spento | Sveglia alla fermata uguale: notifica locale all'orario previsto, ripianificata con il ritardo letto con l'app aperta o quando iOS avvia il compito in background. Nessuna sveglia GPS: l'iPhone non usa la posizione in background («Stima dalla tua posizione» solo con l'app aperta) | Parziale: limite scelto su iOS, nessuna posizione in background | 2 |
+| «Avvisami quando sta arrivando» | Controlli ogni 15 minuti (WorkManager), anche ad app chiusa | Stesso avviso, stesse regole; la notifica resta pianificata in iOS all'ora dell'orario o dell'ultimo ritardo letto, quindi arriva anche senza altri controlli. Ad app chiusa il ritardo è riletto solo quando iOS avvia il compito in background: l'ora dell'avviso può non seguire un ritardo nuovo | Parziale: limite di iOS, nessun orario garantito | 2 |
+| Campanella degli avvisi ViaggiaTreno | Controlli periodici (WorkManager), anche ad app chiusa | Stessa campanella, stesse regole; ad app chiusa i nuovi avvisi si cercano solo quando iOS avvia il compito in background: un avviso può arrivare tardi o solo alla riapertura dell'app | Parziale: limite di iOS, nessun orario garantito | 2 |
 
 ## 5. Viaggi con cambi
 
@@ -163,7 +163,7 @@ pianificatore. 2 = notifiche di viaggio, sveglia di fermata, GPS, avvisi di arri
 | Stazioni preferite | Sezione | Sezione | Uguale | 4 |
 | I miei treni: apri, rinomina, rimuovi | Sì | Apri, rinomina, rimuovi | Uguale | 4 |
 | Affidabilità dei miei treni | Rete e corse registrate sul telefono, con l'andamento | Stesse righe: rete con il proprio limite, «Registrato su questo telefono», andamento o «Ancora nessun dato» | Uguale | 4 |
-| Viaggio attivo e monitoraggi | Pannello in Per te | Il viaggio seguito è nell'attività in tempo reale e nel dettaglio del treno, sveglie e avvisi in Impostazioni; nessun pannello in Per te | Parziale | 2 |
+| Viaggio attivo e monitoraggi | Pannello in Per te | «Viaggio e monitoraggi» in Per te: il viaggio seguito con il treno in corso, la prossima fermata (prevista, con il binario quando noto), «Fermata raggiunta» e «Termina», poi le stazioni monitorate (`PersonalLists.swift`) | Uguale | 2 |
 | Riepilogo settimanale | Notifica della domenica | Stessa notifica senza suono, dal compito serale in background di iOS (`EveningAlerts.swift`) | Uguale (nativo iOS) | 4 |
 
 ## 9. Impostazioni
@@ -186,7 +186,7 @@ pianificatore. 2 = notifiche di viaggio, sveglia di fermata, GPS, avvisi di arri
 | Integrazioni: profilo vocale Alexa | Sì | Stesso interruttore e stesse note; nessun collegamento dell'account, come su Android senza collegamento | Uguale | 4 |
 | Puntualità dei treni preferiti e riepilogo settimanale | Interruttori (acceso e spento di serie) | Stessi interruttori e testi in Impostazioni | Uguale | 4 |
 | Sveglie e avvisi, avvisi pendolare, notifiche in tempo reale | Sì | «Notifiche e sveglie»: avvisi sui treni, sveglie attive, avvisi pendolare, fascia silenziosa e ciò che iOS consente | Uguale (nativo iOS) | 2 |
-| Stato del lavoro in background | Sì | Una nota su ciò che iOS consente; iOS non dice quando ha eseguito il compito | Manca | 2 |
+| Stato del lavoro in background | «Attività in background»: notifiche, sveglie esatte, ottimizzazione della batteria, prossimi controlli | «Attività in background» in Impostazioni: notifiche, aggiornamento app in background e risparmio energetico (le impostazioni di iOS al posto di sveglie esatte e batteria), ultimo avvio del compito e controlli svolti, avvio chiesto a iOS e prossimi controlli con i testi di Android; senza «in corso», che iOS non comunica, e senza i widget, che iOS aggiorna da sé (`BackgroundStatusView.swift`) | Uguale (nativo iOS) | 2 |
 | Impostazioni dei widget | Testi e impostazioni | Nel foglio di modifica di iOS, stesse scelte; senza anteprima né «Prova ora», che quel foglio non ha | Uguale (nativo iOS) | 3 |
 
 ## 10. Widget
@@ -232,8 +232,8 @@ pianificatore. 2 = notifiche di viaggio, sveglia di fermata, GPS, avvisi di arri
 Dopo i lavori di questo ramo, con `ios-int` (viaggi con cambi, notifiche e sveglie del viaggio, widget, European Sleeper e quadro orario RFI):
 
 - **Area 4 (audit e funzioni minori):** 0 mancanti e 0 parziali.
-- **Altre aree:** area 1: Arrivo e durata di ogni treno nei risultati (parziale), Percorso live nel pianificatore (manca), Stima CO₂ del viaggio (parziale), Condividi un viaggio (parziale), «Ultimo di oggi» nei tabelloni (parziale), Preferenze di viaggio e mobilità (parziale); area 2: Sveglia di fermata e sveglia GPS (parziale), «Avvisami quando sta arrivando» (parziale), Campanella degli avvisi ViaggiaTreno (parziale), Viaggio attivo e monitoraggi (parziale), Stato del lavoro in background (manca).
+- **Altre aree:** area 1: Arrivo e durata di ogni treno nei risultati (parziale), Percorso live nel pianificatore (manca), Stima CO₂ del viaggio (parziale), Condividi un viaggio (parziale), «Ultimo di oggi» nei tabelloni (parziale), Preferenze di viaggio e mobilità (parziale); area 2: Sveglia di fermata e sveglia GPS (parziale), «Avvisami quando sta arrivando» (parziale), Campanella degli avvisi ViaggiaTreno (parziale).
 - **In corso:** il percorso live dei treni diretti nel pianificatore (area 1), nel lavoro sui viaggi.
-- **Limiti di iOS:** le righe «Parziale: limite di iOS» dipendono da ciò che iOS consente in background (nessun orario garantito, nessuna posizione in background per scelta); non si chiudono con altro codice.
+- **Limiti di iOS (area 2, da decidere o accettare):** le tre righe «Parziale» dell'area 2 restano tali con iOS 17, senza posizione in background e senza nuove modalità in background. Sveglia alla fermata, avviso di arrivo e campanella sono le stesse; cambia solo quando si aggiornano ad app chiusa: Android controlla a intervalli fissi, l'iPhone solo quando iOS avvia il compito in background (orario non garantito; «Attività in background» mostra l'ultimo avvio e il prossimo chiesto). La sveglia GPS manca: Android usa la posizione anche a schermo spento. Sull'iPhone sarebbe possibile solo come notifica di iOS all'ingresso nell'area della fermata (`UNLocationNotificationTrigger`, permesso «mentre usi l'app», con iOS che controlla la posizione al posto dell'app): è una scelta del titolare, perché cambia l'informativa («posizione mai usata in background») e le note per la revisione di Apple.
 - **Scelte tenute:** la stella al posto del cuore di Android per «I miei treni», perché i testi dell'iPhone in 17 lingue dicono «stella»; la mappa dei risultati di Android esiste solo nel doppio pannello dei tablet, che l'app iPhone (solo telefono) non ha.
 - **Orologio:** nessuna differenza aperta.

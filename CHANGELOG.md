@@ -26,6 +26,8 @@
 - **Salva orario** e **Condividi** prendono l'elenco come è mostrato, viaggi con cambi compresi, con arrivo, «giorno dopo» e durata in ogni riga.
 - **Backup locale:** anche avvisi pendolare, preferenze di viaggio, tratte fissate e il loro ordine, nelle chiavi di Android.
 - Il confronto Android ↔ iPhone conta ora anche viaggi con cambi, notifiche e sveglie del viaggio, widget, European Sleeper e quadro orario RFI: nell'area di questo lavoro non resta nulla di aperto.
+- **Per te › Viaggio e monitoraggi** come su Android: il viaggio seguito con il treno in corso, la prossima fermata con l'orario previsto e il binario, «Fermata raggiunta» e «Termina», poi le stazioni monitorate.
+- **Impostazioni › Attività in background** come su Android: notifiche, aggiornamento app in background e risparmio energetico, l'ultimo avvio del compito in background con i controlli svolti, l'avvio chiesto a iOS e i prossimi controlli; tutto letto sull'iPhone.
 - Testi di Android in 17 lingue. Aggiornati [l'informativa privacy](PRIVACY.md) (nuovi dati locali, file di backup, collegamenti ufficiali, mappe, calendario, lavori in background dei treni preferiti), le note per App Review, il README, l'ADR della base comune e i README dei contratti.
 
 ## In sviluppo — iPhone: European Sleeper e quadro orario programmato RFI come su Android

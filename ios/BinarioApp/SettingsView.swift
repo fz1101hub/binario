@@ -116,6 +116,9 @@ struct SettingsView: View {
             // «Meteo a destinazione» and the evening alerts, as Android's settings.
             ExtrasSettingsSection()
 
+            // «Attività in background», at the head of the alarms as on Android (BackgroundStatusView.swift).
+            BackgroundStatusSection()
+
             // «Notifiche e sveglie»: the trip alerts and the commuter alerts, as Android's settings (TripAlertViews.swift).
             TripAlertsSettingsSection()
 

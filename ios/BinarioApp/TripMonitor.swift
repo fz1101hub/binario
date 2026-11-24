@@ -25,6 +25,8 @@ final class TripMonitor: ObservableObject {
     @Published private(set) var trainAlertsEnabled = false
     @Published private(set) var trainAlertSubscriptions: [TrainAlertSubscription] = []
     @Published private(set) var commuterAlerts: [CommuterAlert] = []
+    /// When the sources last answered for the followed trip: Per te's panel reads its stops again.
+    @Published private(set) var followedAnsweredAt: Date?
     /// «Stima dalla tua posizione» for the followed train, in memory only.
     @Published private(set) var estimateEnabled = false
     @Published private(set) var track: GpsTrainTrack?
@@ -156,6 +158,12 @@ final class TripMonitor: ObservableObject {
         rescheduleTrainAlerts()
     }
 
+    /// The run the sources last gave for a train of the followed trip, for Per te's «Viaggio e monitoraggi».
+    func followedRun(legIndex: Int) -> LiveRunStatus? {
+        guard let trip = followedTrip, let last = lastRuns, last.tripID == trip.id, last.runs.indices.contains(legIndex) else { return nil }
+        return last.runs[legIndex]
+    }
+
     func follows(_ number: String) -> Bool {
         followedTrip?.trainNumbers.contains(TrainAlertWatch.key(number)) == true
     }
@@ -177,7 +185,10 @@ final class TripMonitor: ObservableObject {
         // A stop requested while the trains were being looked up wins over this refresh.
         guard followedTrip?.id == trip.id else { return }
         let answered = runs.contains { $0 != nil }
-        if answered { lastRuns = (trip.id, runs, now) }
+        if answered {
+            lastRuns = (trip.id, runs, now)
+            followedAnsweredAt = now
+        }
         replanStopAlarms(runs: runs.compactMap { $0 }, now: now)
         let delay = FollowedTripStatus.arrivalDelayMinutes(trip, runs: runs)
         let end = FollowedTripPlanner.windowEnd(trip, lastDelayMinutes: delay ?? state.lastDelayMinutes)
@@ -703,27 +714,34 @@ final class TripMonitor: ObservableObject {
 /// EveningAlerts.schedule can ask it from any context.
 enum TripBackgroundSchedule {
     static func nextRunAt(_ now: Date) -> Date? {
+        let next = dates(now)
+        return [next.followed, next.approach, next.trainAlerts, next.commuter].compactMap { $0 }.min()
+    }
+
+    /// The next time each trip check is due («Attività in background» lists them one by one).
+    static func dates(_ now: Date) -> (followed: Date?, approach: Date?, trainAlerts: Date?, commuter: Date?) {
         let store = TripAlertsStore()
-        var dates: [Date] = []
-        if store.followedTrip != nil, let next = store.followedState.nextRefreshAt { dates.append(max(next, now)) }
+        var followed: Date?
+        if store.followedTrip != nil, let next = store.followedState.nextRefreshAt { followed = max(next, now) }
         let states = store.approachStates
+        var approach: [Date] = []
         for alert in store.approachAlerts {
             let state = states[alert.key]
             let next = ApproachAlertPlanner.nextRun(
                 alert, doneOn: state?.doneOn.flatMap { PlannedLocalDate(iso: $0) }, notifiedOn: state?.notifiedOn.flatMap { PlannedLocalDate(iso: $0) },
                 observation: state?.observation, now: now
             )
-            if let next { dates.append(next) }
+            if let next { approach.append(next) }
         }
+        var trainAlerts: Date?
         if store.trainAlertsEnabled, !store.trainAlertSubscriptions.isEmpty {
-            let followed = store.followedTrip?.legs.map { FollowedTrainTimes(number: $0.number, departure: $0.departure, arrival: $0.arrival) } ?? []
-            if let next = TrainAlertWatch.nextRun(store.trainAlertSubscriptions, followed: followed, now: now, lastCheckAt: store.trainAlertsLastCheck) {
-                dates.append(next)
-            }
+            let legs = store.followedTrip?.legs.map { FollowedTrainTimes(number: $0.number, departure: $0.departure, arrival: $0.arrival) } ?? []
+            trainAlerts = TrainAlertWatch.nextRun(store.trainAlertSubscriptions, followed: legs, now: now, lastCheckAt: store.trainAlertsLastCheck)
         }
+        var commuter: [Date] = []
         for alert in store.commuterAlerts {
-            if case let .at(trigger) = CommuterAlertPlanner.nextTrigger(alert, now: now) { dates.append(max(trigger.addingTimeInterval(-45 * 60), now)) }
+            if case let .at(trigger) = CommuterAlertPlanner.nextTrigger(alert, now: now) { commuter.append(max(trigger.addingTimeInterval(-45 * 60), now)) }
         }
-        return dates.min()
+        return (followed, approach.min(), trainAlerts, commuter.min())
     }
 }
