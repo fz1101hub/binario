@@ -991,3 +991,6 @@
 "result.paging.no_more_earlier" = "Không có lựa chọn nào sớm hơn";
 "result.paging.no_more_later" = "Không có lựa chọn nào muộn hơn";
 "result.arrival.live" = "Dự kiến đến lúc %1$@ theo dữ liệu vận hành.";
+"result.live_route.rfi_monitor" = "Bảng đến/đi trực tiếp";
+"result.live_route.rfi_notice" = "Độ trễ từ bảng tàu của RFI. Hiển thị các ga khởi hành và ga đến đã yêu cầu.";
+"result.live_route.viaggiatreno_notice" = "Dữ liệu ViaggiaTreno do nguồn cập nhật. Giờ dự kiến được tính từ độ trễ đã công bố; nếu không có lần ghi nhận gần đây, trạng thái vận hành vẫn chưa được xác minh.";

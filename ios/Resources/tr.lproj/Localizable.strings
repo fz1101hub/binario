@@ -991,3 +991,6 @@
 "result.paging.no_more_earlier" = "Daha erken başka seçenek yok";
 "result.paging.no_more_later" = "Daha geç başka seçenek yok";
 "result.arrival.live" = "İşletme verilerine göre tahmini varış %1$@.";
+"result.live_route.rfi_monitor" = "Canlı varış/kalkış monitörü";
+"result.live_route.rfi_notice" = "Gecikmeler RFI panolarından. İstenen kalkış ve varış durakları gösterilir.";
+"result.live_route.viaggiatreno_notice" = "ViaggiaTreno verileri kaynak tarafından güncellenir. Beklenen saatler yayımlanan gecikmeden hesaplanır; yakın zamanda bir tespit yoksa işletme durumu doğrulanmamış kalır.";

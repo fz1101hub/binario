@@ -991,3 +991,6 @@
 "result.paging.no_more_earlier" = "더 이른 경로가 없습니다";
 "result.paging.no_more_later" = "더 늦은 경로가 없습니다";
 "result.arrival.live" = "운행 데이터 기준 %1$@ 도착 예상.";
+"result.live_route.rfi_monitor" = "실시간 도착/출발 모니터";
+"result.live_route.rfi_notice" = "RFI 안내판의 지연 정보입니다. 요청한 출발역과 도착역이 표시됩니다.";
+"result.live_route.viaggiatreno_notice" = "ViaggiaTreno 데이터는 출처에서 업데이트됩니다. 예상 시각은 게시된 지연으로 계산되며, 최근 관측이 없으면 운행 상태는 확인되지 않은 상태로 남습니다.";

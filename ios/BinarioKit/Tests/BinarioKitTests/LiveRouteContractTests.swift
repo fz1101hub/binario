@@ -96,8 +96,8 @@ final class LiveRouteContractTests: XCTestCase {
         let rules = try file("contracts/shared-rules/v1/live-route-v1.json")
         let day = try XCTUnwrap(rules["day"] as? String)
         let cases = try XCTUnwrap(rules["merge"] as? [[String: Any]])
-        XCTAssertEqual(cases.count, 12)
-        let names: [String: String] = ["trenitalia": "Trenitalia", "trenord": "Trenord", "italo": "Italo", "sbb": "SBB CFF FFS"]
+        XCTAssertEqual(cases.count, 11)
+        let names: [String: String] = ["trenitalia": "Trenitalia", "trenord": "Trenord", "italo": "Italo"]
         for item in cases {
             let name = item["name"] as? String ?? "?"
             let requested = try date(try XCTUnwrap(item["requested"] as? String), day: day)
@@ -128,6 +128,20 @@ final class LiveRouteContractTests: XCTestCase {
             let expected = try XCTUnwrap(item["expected"] as? [String: Any])
             XCTAssertEqual(merged.replaced.mapValues(\.id), expected["replaced"] as? [String: String], name)
             XCTAssertEqual(merged.added.map(\.id), expected["added"] as? [String], name)
+        }
+    }
+
+    func testTheOperatorOfATimetableAgency() throws {
+        let rules = try file("contracts/shared-rules/v1/live-route-v1.json")
+        let cases = try XCTUnwrap(rules["timetableOperators"] as? [[String: Any]])
+        XCTAssertEqual(cases.count, 9)
+        for item in cases {
+            let name = try XCTUnwrap(item["name"] as? String)
+            XCTAssertEqual(LiveRunMerge.timetableOperator(name), item["expected"] as? String, name)
+        }
+        // Every operator a timetable can name has a family, as Android's legacyOperator only names these three.
+        for id in Set(SharedData.LiveRoute.timetableOperators.values) {
+            XCTAssertNotNil(SharedData.LiveRoute.operatorFamilies[id], id)
         }
     }
 

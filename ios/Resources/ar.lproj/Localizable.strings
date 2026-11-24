@@ -991,3 +991,6 @@
 "result.paging.no_more_earlier" = "لا توجد حلول أخرى أبكر";
 "result.paging.no_more_later" = "لا توجد حلول أخرى لاحقًا";
 "result.arrival.live" = "الوصول المتوقع الساعة %1$@ وفق البيانات التشغيلية.";
+"result.live_route.rfi_monitor" = "شاشة الوصول/المغادرة المباشرة";
+"result.live_route.rfi_notice" = "التأخيرات من لوحات RFI. تُعرض محطتا المغادرة والوصول المطلوبتان.";
+"result.live_route.viaggiatreno_notice" = "بيانات ViaggiaTreno محدّثة من المصدر. تُحسب الأوقات المتوقعة من التأخير المنشور؛ ومن دون رصد حديث تبقى الحالة التشغيلية غير مؤكدة.";

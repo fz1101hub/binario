@@ -991,3 +991,6 @@
 "result.paging.no_more_earlier" = "没有更早的方案";
 "result.paging.no_more_later" = "没有更晚的方案";
 "result.arrival.live" = "根据运行数据，预计 %1$@ 到达。";
+"result.live_route.rfi_monitor" = "实时到发显示屏";
+"result.live_route.rfi_notice" = "延误信息来自 RFI 显示屏。显示所查询的出发站和到达站。";
+"result.live_route.viaggiatreno_notice" = "ViaggiaTreno 数据由来源更新。预计时间根据公布的延误计算；若无近期观测，运营状态仍未核实。";

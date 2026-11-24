@@ -613,7 +613,8 @@ internal object SharedData {
      * ViaggiaTreno route (the origin's board, the runs of up to twelve of its trains, the planned numbers first on a
      * busy board, each run checked up to the destination) and the RFI route (the departures of the origin and the
      * arrivals of the destination, the same train on both), then the live runs merged into the timetable list
-     * (LiveRunMerge): the same run within the retiming window, of a compatible operator family, replaced; a run the
+     * (LiveRunMerge): the same run within the retiming window, of a compatible operator family (a timetable operator
+     * named by none of timetableOperators is unknown and matches any family, as Android's OTHER), replaced; a run the
      * timetable does not list added.
      */
     object LiveRoute {
@@ -622,6 +623,14 @@ internal object SharedData {
             "trenitalia" to "trenitalia-trenord",
             "trenord" to "trenitalia-trenord",
             "italo" to "italo"
+        )
+        val TIMETABLE_OPERATORS: Map<String, String> = mapOf(
+            "trenord" to "trenord",
+            "italo" to "italo",
+            "ntv" to "italo",
+            "frecc" to "trenitalia",
+            "intercity" to "trenitalia",
+            "trenitalia" to "trenitalia"
         )
         const val LIVE_SOURCE_TIMEOUT_SECONDS: Int = 15
         const val RFI_BOARD_LOOK_BACK_MINUTES: Int = 120

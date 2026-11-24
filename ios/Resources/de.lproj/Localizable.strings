@@ -991,3 +991,6 @@
 "result.paging.no_more_earlier" = "Keine weiteren Verbindungen früher";
 "result.paging.no_more_later" = "Keine weiteren Verbindungen später";
 "result.arrival.live" = "Erwartete Ankunft um %1$@ laut Betriebsdaten.";
+"result.live_route.rfi_monitor" = "Ankunfts-/Abfahrtsmonitor live";
+"result.live_route.rfi_notice" = "Verspätungen von den RFI-Anzeigetafeln. Angezeigt werden die angefragten Abfahrts- und Ankunftshalte.";
+"result.live_route.viaggiatreno_notice" = "ViaggiaTreno-Daten, von der Quelle aktualisiert. Die erwarteten Zeiten werden aus der veröffentlichten Verspätung berechnet; ohne aktuelle Meldung bleibt der Betriebsstatus unbestätigt.";

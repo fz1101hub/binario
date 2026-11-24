@@ -389,6 +389,7 @@ public enum BinarioLocalizationKeys {
         "result.journey.leg_on_time", "result.journey.leg_cancelled_share", "result.journey.connection",
         "result.paging.earlier", "result.paging.later", "result.paging.no_more_earlier", "result.paging.no_more_later",
         "result.arrival.live",
+        "result.live_route.rfi_monitor", "result.live_route.rfi_notice", "result.live_route.viaggiatreno_notice",
     ]
 
     /// The keys whose texts count something: Localizable.stringsdict holds their CLDR plural forms

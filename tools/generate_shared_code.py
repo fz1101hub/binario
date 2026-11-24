@@ -1181,6 +1181,7 @@ TABLES: tuple[Table, ...] = (
     Table("live-route-v1.json", "LiveRoute", {
         "retimingWindowMinutes": Field(Integer(0, 24 * 60)),
         "operatorFamilies": Field(MapOf(Text(r"[a-z][a-z-]*"), key=Text(r"[a-z]+"))),
+        "timetableOperators": Field(MapOf(Text(r"[a-z]+"), key=Text(r"[a-z]+"))),
         "liveSourceTimeoutSeconds": Field(Integer(1, 120)),
         "rfiBoardLookBackMinutes": Field(Integer(0, 24 * 60)),
         "rfiBoardLookAheadMinutes": Field(Integer(1, 24 * 60)),

@@ -1,6 +1,6 @@
 {
   "schema": "binario-shared-rules-v1",
-  "description": "The live route of the direct trains (Android's RfiLiveRouteDataSource and LiveRunMerge, the iPhone's LiveRoute.swift): the same train on the RFI departures of the origin and arrivals of the destination, and the live runs merged into the timetable list. Times are Italian time on 2026-11-24; a board row has its delay in minutes (null: no expected time), its status, how many seconds ago it was observed (0 by default) and how long it stays valid (45 seconds by default).",
+  "description": "The live route of the direct trains (Android's RfiLiveRouteDataSource and LiveRunMerge, the iPhone's LiveRoute.swift): the same train on the RFI departures of the origin and arrivals of the destination, the live runs merged into the timetable list, and the operator a timetable agency name is (Android's legacyOperator; none of them: unknown, any family). Times are Italian time on 2026-11-24; a board row has its delay in minutes (null: no expected time), its status, how many seconds ago it was observed (0 by default) and how long it stays valid (45 seconds by default).",
   "day": "2026-11-24",
   "rfiRoute": [
     {
@@ -508,34 +508,6 @@
       }
     },
     {
-      "name": "an operator outside the families is its own family",
-      "requested": "10:00",
-      "planned": [
-        {
-          "id": "p1",
-          "number": "123",
-          "operator": "sbb",
-          "scheduled": "10:30",
-          "verified": false
-        }
-      ],
-      "live": [
-        {
-          "id": "l1",
-          "number": "123",
-          "operator": "trenitalia",
-          "scheduled": "10:30",
-          "verified": true
-        }
-      ],
-      "expected": {
-        "replaced": {},
-        "added": [
-          "l1"
-        ]
-      }
-    },
-    {
       "name": "an unknown operator matches any family",
       "requested": "10:00",
       "planned": [
@@ -789,6 +761,44 @@
           "l1"
         ]
       }
+    }
+  ],
+  "timetableOperators": [
+    {
+      "name": "Trenord",
+      "expected": "trenord"
+    },
+    {
+      "name": "NTV Italo",
+      "expected": "italo"
+    },
+    {
+      "name": "Italo",
+      "expected": "italo"
+    },
+    {
+      "name": "Trenitalia Tper",
+      "expected": "trenitalia"
+    },
+    {
+      "name": "Frecciarossa",
+      "expected": "trenitalia"
+    },
+    {
+      "name": "Intercity Notte",
+      "expected": "trenitalia"
+    },
+    {
+      "name": "SBB CFF FFS",
+      "expected": null
+    },
+    {
+      "name": "ÖBB",
+      "expected": null
+    },
+    {
+      "name": "",
+      "expected": null
     }
   ]
 }

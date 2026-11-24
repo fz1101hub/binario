@@ -991,3 +991,6 @@
 "result.paging.no_more_earlier" = "No other solutions earlier";
 "result.paging.no_more_later" = "No other solutions later";
 "result.arrival.live" = "Expected arrival at %1$@ according to operational data.";
+"result.live_route.rfi_monitor" = "Live arrivals/departures monitor";
+"result.live_route.rfi_notice" = "Delays from the RFI boards. The requested departure and arrival stops are shown.";
+"result.live_route.viaggiatreno_notice" = "ViaggiaTreno data updated by the source. Expected times are calculated from the published delay; without a recent observation the operational status stays unverified.";

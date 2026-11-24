@@ -77,6 +77,9 @@ final class JourneysModel: ObservableObject {
         later = ResultsPageState()
         resetServicePages(for: nil)
         resetRoute(for: nil)
+        routeTasks[true]?.cancel()
+        boardTasks[true]?.cancel()
+        returnLive = RouteLive()
     }
 
     /// Searches `query` on `repository` (the bundled index and the installed foreign timetables) and, with `live` (the
@@ -399,139 +402,214 @@ final class JourneysModel: ObservableObject {
             self.pagedTrains += fresh
             let pageState = ResultsPageState(nothingNew: fresh.isEmpty)
             if isLater { self.serviceLater = pageState } else { self.serviceEarlier = pageState }
-            // The trains of a page get their live values as Android's pages do: the board from their time, the route.
-            guard !fresh.isEmpty else { return }
-            self.refreshPagedBoard(force: true)
-            self.refreshRoute(force: true)
+            // The trains of a page get their live values as Android's pages do: the board from their time, the route of
+            // the page's window.
+            self.pageLoaded(fresh)
         }
     }
 
     // MARK: Live values of the direct trains beyond the search's own
 
-    /// The origin's board from the earliest train «Più presto» / «Più tardi» loaded (Android enriches each page with
-    /// the boards of its time); nil without paged trains or live data.
-    @Published private(set) var pagedBoard: LiveDepartureBoard?
-    private var pagedBoardAt: Date?
-    private var pagedBoardStartedAt: Date?
-    private var pagedBoardTask: Task<Void, Never>?
+    /// Live values of one list of direct trains: the live route of its search (Android's `liveFirst`), the runs of the
+    /// windows «Più presto» / «Più tardi» loaded (Android asks the route of each page's window), and the board of the
+    /// origin from the earliest train of those pages or of a return leg.
+    struct RouteLive {
+        var query: JourneyQuery?
+        var runs: [LiveRouteRun] = []
+        var source: LiveSource?
+        var runsAt: Date?
+        var runsStartedAt: Date?
+        /// The runs of the paged windows, each with when it was asked.
+        var pageRuns: [(runs: [LiveRouteRun], source: LiveSource, at: Date)] = []
+        var board: LiveDepartureBoard?
+        var boardAt: Date?
+        var boardStartedAt: Date?
 
-    /// The board's live values of the paged trains, matched as the search's own trains are (`LiveOverlay`).
-    func pagedLive(now: Date) -> [String: StationBoardLiveStatus] {
-        guard let board = pagedBoard, let at = pagedBoardAt, now.timeIntervalSince(at) <= JourneyLiveRefresh.maximumAge else { return [:] }
-        let trains = pagedTrains
-        let planned = trains.map { service -> LiveOverlay.PlannedTrain? in
-            guard service.hasTrainNumber, let departure = service.departureDate else { return nil }
-            return LiveOverlay.PlannedTrain(number: service.number, scheduled: departure, operatorName: service.operatorName)
-        }
-        let matched = LiveOverlay.departures(for: planned, in: board.departures)
-        var values: [String: StationBoardLiveStatus] = [:]
-        for (index, service) in trains.enumerated() {
-            guard let row = matched[index], let departure = service.departureDate,
-                  let status = row.stationBoardLiveStatus(at: now, timetable: departure) else { continue }
-            values[service.id] = status
-        }
-        return values
-    }
-
-    /// Asks the origin's board for the paged trains of today, at most once a minute unless `force`.
-    func refreshPagedBoard(force: Bool = false, now: Date = Date()) {
-        guard let live = routeLive, let origin = routeOrigin, let query = servicePagesQuery,
-              let first = pagedTrains.compactMap(\.departureDate).min(),
-              JourneyResultsMerge.encodedDay(query.departure) == JourneyResultsMerge.encodedDay(now) else {
-            pagedBoard = nil
-            return
-        }
-        guard force || JourneyLiveRefresh.isDue(lastStartedAt: pagedBoardStartedAt, now: now) else { return }
-        pagedBoardStartedAt = now
-        pagedBoardTask?.cancel()
-        let request = LiveDeparturesRequest(station: origin, from: StationBoardQuery.minuteStart(of: first))
-        pagedBoardTask = Task { [weak self] in
-            let result = await live.departures(request)
-            guard let self, !Task.isCancelled, self.servicePagesQuery == query else { return }
-            if case let .available(board) = result {
-                self.pagedBoard = board
-                self.pagedBoardAt = now
+        /// The runs shown at `now`: the search's, then the pages' not already listed; none older than live values are.
+        func shownRuns(now: Date) -> [LiveRouteRun] {
+            var shown = runsAt.map { now.timeIntervalSince($0) <= JourneyLiveRefresh.maximumAge ? runs : [] } ?? []
+            var ids = Set(shown.map(\.id))
+            for page in pageRuns where now.timeIntervalSince(page.at) <= JourneyLiveRefresh.maximumAge {
+                for run in page.runs where ids.insert(run.id).inserted { shown.append(run) }
             }
+            return shown
+        }
+
+        /// The sources of the runs shown, in Android's precedence.
+        func shownSources(now: Date) -> [LiveSource] {
+            var sources: [LiveSource] = []
+            if let source, let runsAt, now.timeIntervalSince(runsAt) <= JourneyLiveRefresh.maximumAge { sources.append(source) }
+            for page in pageRuns where now.timeIntervalSince(page.at) <= JourneyLiveRefresh.maximumAge && !sources.contains(page.source) {
+                sources.append(page.source)
+            }
+            return sources
+        }
+
+        func boardValues(of services: [TrainService], now: Date) -> [String: StationBoardLiveStatus] {
+            guard let board, let boardAt, now.timeIntervalSince(boardAt) <= JourneyLiveRefresh.maximumAge else { return [:] }
+            let planned = services.map { service -> LiveOverlay.PlannedTrain? in
+                guard service.hasTrainNumber, let departure = service.departureDate else { return nil }
+                return LiveOverlay.PlannedTrain(number: service.number, scheduled: departure, operatorName: service.operatorName)
+            }
+            let matched = LiveOverlay.departures(for: planned, in: board.departures)
+            var values: [String: StationBoardLiveStatus] = [:]
+            for (index, service) in services.enumerated() {
+                guard let row = matched[index], let departure = service.departureDate,
+                      let status = row.stationBoardLiveStatus(at: now, timetable: departure) else { continue }
+                values[service.id] = status
+            }
+            return values
         }
     }
 
-    // MARK: The live route of the direct trains (Android's live route sources and LiveRunMerge)
-
-    /// The live runs of the route of `routeQuery`: the ViaggiaTreno or RFI route, when one verified a run.
-    @Published private(set) var liveRouteRuns: [LiveRouteRun] = []
-    private var routeQuery: JourneyQuery?
-    private var routeAt: Date?
-    private var routeStartedAt: Date?
-    private var routeTask: Task<Void, Never>?
+    /// The search's list (with its pages) and the return leg of «Andata e ritorno».
+    @Published private(set) var outboundLive = RouteLive()
+    @Published private(set) var returnLive = RouteLive()
+    private var routeTasks: [Bool: Task<Void, Never>] = [:]
+    private var boardTasks: [Bool: Task<Void, Never>] = [:]
+    private var pageRouteTasks: [Task<Void, Never>] = []
     private var routeLive: (any LiveDeparturesProviding)?
-    private var routeOrigin: Station?
-    private var routeDestination: Station?
-    private var routePlanned: [TrainService] = []
+    private var routeStations: [Bool: (origin: Station, destination: Station)] = [:]
+    private var routePlanned: [Bool: [TrainService]] = [:]
 
     private func resetRoute(for query: JourneyQuery?) {
-        routeTask?.cancel()
-        pagedBoardTask?.cancel()
-        routeQuery = query
-        liveRouteRuns = []
-        routeAt = nil
-        routeStartedAt = nil
-        pagedBoard = nil
-        pagedBoardAt = nil
-        pagedBoardStartedAt = nil
+        routeTasks[false]?.cancel()
+        boardTasks[false]?.cancel()
+        pageRouteTasks.forEach { $0.cancel() }
+        pageRouteTasks = []
+        outboundLive = RouteLive(query: query)
     }
 
-    /// The live runs of `query`'s route, none for another search or older than the live values are shown.
+    private func live(_ isReturn: Bool) -> RouteLive { isReturn ? returnLive : outboundLive }
+
+    private func setLive(_ isReturn: Bool, _ change: (inout RouteLive) -> Void) {
+        if isReturn { change(&returnLive) } else { change(&outboundLive) }
+    }
+
+    /// The live runs of `query`'s list (the search's and its pages'), none for another search.
     func routeRuns(for query: JourneyQuery, now: Date) -> [LiveRouteRun] {
-        guard routeQuery == query, let routeAt, now.timeIntervalSince(routeAt) <= JourneyLiveRefresh.maximumAge else { return [] }
-        return liveRouteRuns
+        if outboundLive.query == query { return outboundLive.shownRuns(now: now) }
+        if returnLive.query == query { return returnLive.shownRuns(now: now) }
+        return []
+    }
+
+    /// The live sources of `query`'s runs (Android's provider label of the merged list).
+    func routeSources(for query: JourneyQuery, now: Date) -> [LiveSource] {
+        if outboundLive.query == query { return outboundLive.shownSources(now: now) }
+        if returnLive.query == query { return returnLive.shownSources(now: now) }
+        return []
+    }
+
+    /// The origin board's live values of the paged trains, matched as the search's own trains are (`LiveOverlay`).
+    func pagedLive(now: Date) -> [String: StationBoardLiveStatus] {
+        outboundLive.boardValues(of: pagedTrains, now: now)
+    }
+
+    /// The origin board's live values of the return leg's trains.
+    func returnBoardLive(_ snapshot: JourneySnapshot, now: Date) -> [String: StationBoardLiveStatus] {
+        guard returnLive.query == snapshot.query else { return [:] }
+        return returnLive.boardValues(of: snapshot.services, now: now)
     }
 
     /// Asks the live route of a search of today (Android's `liveFirst`): `planned` are the timetable's direct trains of
-    /// the search (none when it found none), the paged ones added here. At most once a minute unless `force` or a new
-    /// search; `live` nil (the switch off) drops the runs.
+    /// the search (none when it found none). At most once a minute unless `force` or a new search; `live` nil (the
+    /// switch off) drops the runs. `isReturn`: the return leg of «Andata e ritorno», with its origin's board too.
     func refreshRoute(
         query: JourneyQuery, origin: Station, destination: Station, planned: [TrainService], live: (any LiveDeparturesProviding)?,
-        force: Bool = false, now: Date = Date()
+        isReturn: Bool = false, force: Bool = false, now: Date = Date()
     ) {
-        if routeQuery != query { resetRoute(for: query) }
+        if isReturn {
+            if returnLive.query != query {
+                routeTasks[true]?.cancel()
+                boardTasks[true]?.cancel()
+                returnLive = RouteLive(query: query)
+            }
+        } else if outboundLive.query != query {
+            resetRoute(for: query)
+        }
         routeLive = live
-        routeOrigin = origin
-        routeDestination = destination
-        routePlanned = planned
-        refreshRoute(force: force || routeStartedAt == nil, now: now)
-        refreshPagedBoard(force: false, now: now)
+        routeStations[isReturn] = (origin, destination)
+        routePlanned[isReturn] = planned
+        refreshRoute(isReturn: isReturn, force: force || self.live(isReturn).runsStartedAt == nil, now: now)
+        if isReturn {
+            refreshBoard(isReturn: true, from: query.departure, force: force, now: now)
+        } else if let first = pagedTrains.compactMap(\.departureDate).min() {
+            refreshBoard(isReturn: false, from: first, force: force, now: now)
+        }
     }
 
-    private func refreshRoute(force: Bool, now: Date = Date()) {
-        guard let query = routeQuery, let live = routeLive, let origin = routeOrigin, let destination = routeDestination,
-              JourneyResultsMerge.encodedDay(query.departure) == JourneyResultsMerge.encodedDay(now) else {
-            liveRouteRuns = []
-            routeAt = nil
+    /// Today only (Android: `query.serviceDate == today`), with the live sources on.
+    private func isToday(_ query: JourneyQuery, now: Date) -> Bool {
+        JourneyResultsMerge.encodedDay(query.departure) == JourneyResultsMerge.encodedDay(now)
+    }
+
+    private func refreshRoute(isReturn: Bool, force: Bool, now: Date = Date()) {
+        let state = live(isReturn)
+        guard let query = state.query, let live = routeLive, let stations = routeStations[isReturn], isToday(query, now: now) else {
+            setLive(isReturn) { $0.runs = []; $0.runsAt = nil; $0.pageRuns = [] }
             return
         }
-        guard force || JourneyLiveRefresh.isDue(lastStartedAt: routeStartedAt, now: now) else { return }
-        routeStartedAt = now
-        let planned = routePlanned + pagedServices(for: query)
-        // From the earliest train shown, so that the trains «Più presto» loaded get their live runs too.
-        let requested = min(query.departure, planned.compactMap(\.departureDate).min() ?? query.departure)
+        guard force || JourneyLiveRefresh.isDue(lastStartedAt: state.runsStartedAt, now: now) else { return }
+        setLive(isReturn) { $0.runsStartedAt = now }
+        let planned = (routePlanned[isReturn] ?? []) + (isReturn ? [] : pagedServices(for: query))
         let request = LiveRouteRequest(
-            origin: origin, destination: destination, requested: requested, plannedNumbers: Set(planned.map(\.number))
+            origin: stations.origin, destination: stations.destination, requested: query.departure,
+            plannedNumbers: Set(planned.map(\.number))
         )
-        routeTask?.cancel()
-        routeTask = Task { [weak self] in
+        routeTasks[isReturn]?.cancel()
+        routeTasks[isReturn] = Task { [weak self] in
             let result = await live.liveRoute(request)
-            guard let self, !Task.isCancelled, self.routeQuery == query else { return }
+            guard let self, !Task.isCancelled, self.live(isReturn).query == query else { return }
             switch result {
-            case let .available(runs, _):
-                self.liveRouteRuns = runs
-                self.routeAt = Date()
+            case let .available(runs, source):
+                self.setLive(isReturn) { $0.runs = runs; $0.source = source; $0.runsAt = Date() }
             case .unavailable(.cancelled):
                 break
             case .unavailable:
-                self.liveRouteRuns = []
-                self.routeAt = nil
+                self.setLive(isReturn) { $0.runs = []; $0.source = nil; $0.runsAt = nil }
             }
         }
+    }
+
+    /// The live route of one window «Più presto» / «Più tardi» loaded (Android's `routePage`), from `from`.
+    private func refreshPageRoute(from: Date, now: Date = Date()) {
+        guard let query = outboundLive.query, let live = routeLive, let stations = routeStations[false], isToday(query, now: now) else { return }
+        let request = LiveRouteRequest(
+            origin: stations.origin, destination: stations.destination, requested: from,
+            plannedNumbers: Set(pagedServices(for: query).map(\.number))
+        )
+        pageRouteTasks.append(Task { [weak self] in
+            let result = await live.liveRoute(request)
+            guard let self, !Task.isCancelled, self.outboundLive.query == query,
+                  case let .available(runs, source) = result else { return }
+            self.outboundLive.pageRuns.append((runs: runs, source: source, at: Date()))
+        })
+    }
+
+    /// The origin's board from `from`, for the paged trains or the return leg, at most once a minute unless `force`.
+    private func refreshBoard(isReturn: Bool, from: Date, force: Bool, now: Date = Date()) {
+        let state = live(isReturn)
+        guard let query = state.query, let live = routeLive, let stations = routeStations[isReturn], isToday(query, now: now) else {
+            setLive(isReturn) { $0.board = nil; $0.boardAt = nil }
+            return
+        }
+        guard force || JourneyLiveRefresh.isDue(lastStartedAt: state.boardStartedAt, now: now) else { return }
+        setLive(isReturn) { $0.boardStartedAt = now }
+        let request = LiveDeparturesRequest(station: stations.origin, from: StationBoardQuery.minuteStart(of: from))
+        boardTasks[isReturn]?.cancel()
+        boardTasks[isReturn] = Task { [weak self] in
+            let result = await live.departures(request)
+            guard let self, !Task.isCancelled, self.live(isReturn).query == query, case let .available(board) = result else { return }
+            self.setLive(isReturn) { $0.board = board; $0.boardAt = Date() }
+        }
+    }
+
+    /// A page of direct trains loaded: its board and the live route of its window.
+    private func pageLoaded(_ fresh: [TrainService]) {
+        guard !fresh.isEmpty, let first = pagedTrains.compactMap(\.departureDate).min() else { return }
+        refreshBoard(isReturn: false, from: first, force: true)
+        // The page's window starts at its first train (Android's `routePage` from the window's start).
+        if let window = fresh.compactMap(\.departureDate).min() { refreshPageRoute(from: window) }
     }
 
     /// The foreign packs read as their border subset: those the pins reduce to their zone whose full timetable is not

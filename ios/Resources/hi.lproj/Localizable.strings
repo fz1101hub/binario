@@ -991,3 +991,6 @@
 "result.paging.no_more_earlier" = "इससे पहले कोई और विकल्प नहीं";
 "result.paging.no_more_later" = "इसके बाद कोई और विकल्प नहीं";
 "result.arrival.live" = "परिचालन डेटा के अनुसार अनुमानित आगमन %1$@ बजे।";
+"result.live_route.rfi_monitor" = "लाइव आगमन/प्रस्थान मॉनिटर";
+"result.live_route.rfi_notice" = "RFI बोर्ड से देरी। अनुरोधित प्रस्थान और आगमन स्टॉप दिखाए गए हैं।";
+"result.live_route.viaggiatreno_notice" = "ViaggiaTreno डेटा स्रोत द्वारा अपडेट किया गया। अपेक्षित समय प्रकाशित देरी से गणना किए जाते हैं; हाल की सूचना के बिना परिचालन स्थिति असत्यापित रहती है।";

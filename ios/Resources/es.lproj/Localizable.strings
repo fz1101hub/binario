@@ -991,3 +991,6 @@
 "result.paging.no_more_earlier" = "No hay más soluciones antes";
 "result.paging.no_more_later" = "No hay más soluciones después";
 "result.arrival.live" = "Llegada prevista a las %1$@ según los datos operativos.";
+"result.live_route.rfi_monitor" = "Monitor de llegadas/salidas en directo";
+"result.live_route.rfi_notice" = "Retrasos de los paneles de RFI. Se muestran las paradas de salida y llegada solicitadas.";
+"result.live_route.viaggiatreno_notice" = "Datos de ViaggiaTreno actualizados por la fuente. Las horas previstas se calculan a partir del retraso publicado; sin una detección reciente, el estado operativo queda sin verificar.";

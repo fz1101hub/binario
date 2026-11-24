@@ -991,3 +991,6 @@
 "result.paging.no_more_earlier" = "これより早い経路はありません";
 "result.paging.no_more_later" = "これより遅い経路はありません";
 "result.arrival.live" = "運行データによる到着見込みは %1$@ です。";
+"result.live_route.rfi_monitor" = "発着モニター（リアルタイム）";
+"result.live_route.rfi_notice" = "RFIの発着案内板による遅延情報です。指定した出発駅と到着駅を表示しています。";
+"result.live_route.viaggiatreno_notice" = "ViaggiaTrenoのデータは提供元が更新しています。予想時刻は公表された遅延から計算されます。最近の観測がない場合、運行状況は未確認のままです。";

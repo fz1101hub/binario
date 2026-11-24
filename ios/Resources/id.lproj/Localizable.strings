@@ -991,3 +991,6 @@
 "result.paging.no_more_earlier" = "Tidak ada solusi lain sebelumnya";
 "result.paging.no_more_later" = "Tidak ada solusi lain berikutnya";
 "result.arrival.live" = "Perkiraan tiba pukul %1$@ menurut data operasional.";
+"result.live_route.rfi_monitor" = "Monitor kedatangan/keberangkatan langsung";
+"result.live_route.rfi_notice" = "Keterlambatan dari papan RFI. Pemberhentian keberangkatan dan kedatangan yang diminta ditampilkan.";
+"result.live_route.viaggiatreno_notice" = "Data ViaggiaTreno diperbarui oleh sumbernya. Waktu perkiraan dihitung dari keterlambatan yang dipublikasikan; tanpa pengamatan terbaru, status operasional tetap belum terverifikasi.";
