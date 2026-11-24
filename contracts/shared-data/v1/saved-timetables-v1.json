@@ -1,0 +1,11 @@
+{
+  "schema": "binario-shared-data-v1",
+  "description": "«Orari salvati»: the result lists saved on the device, read-only and never updated, kept in the app's own storage and in the local backup file (key savedTimetables). Bounds of the list, of its rows and of its texts, the same when saving, reading a backup and writing one.",
+  "maximumTimetables": 15,
+  "maximumRows": 30,
+  "maximumNameLength": 60,
+  "maximumTextLength": 200,
+  "maximumTransfers": 6,
+  "maximumArrivalDayOffset": 7,
+  "maximumChanges": 20
+}

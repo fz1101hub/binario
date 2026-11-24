@@ -1,5 +1,6 @@
 package it.binario.app.timetables
 
+import it.binario.app.shared.SharedData
 import org.json.JSONArray
 import org.json.JSONObject
 import java.time.LocalDate
@@ -52,11 +53,12 @@ data class SavedTimetable(
  * dropped on its own, never the whole list.
  */
 object SavedTimetableCodec {
-    const val MAX_TIMETABLES = 15
-    const val MAX_ROWS = 30
-    const val MAX_NAME_LENGTH = 60
-    private const val MAX_TEXT = 200
-    private const val MAX_TRANSFERS = 6
+    // The bounds are the shared table contracts/shared-data/v1/saved-timetables-v1.json, read by the iPhone too.
+    const val MAX_TIMETABLES = SharedData.SavedTimetables.MAXIMUM_TIMETABLES
+    const val MAX_ROWS = SharedData.SavedTimetables.MAXIMUM_ROWS
+    const val MAX_NAME_LENGTH = SharedData.SavedTimetables.MAXIMUM_NAME_LENGTH
+    private const val MAX_TEXT = SharedData.SavedTimetables.MAXIMUM_TEXT_LENGTH
+    private const val MAX_TRANSFERS = SharedData.SavedTimetables.MAXIMUM_TRANSFERS
     private val TIME = Regex("\\d{1,2}:\\d{2}")
 
     fun encode(timetables: List<SavedTimetable>): String = toJson(timetables).toString()
@@ -126,10 +128,10 @@ object SavedTimetableCodec {
             TimetableRow(
                 departure = departure,
                 arrival = value.optString("arrival").takeIf { TIME.matches(it) },
-                arrivalDayOffset = value.optInt("arrivalDayOffset", 0).coerceIn(0, 7),
+                arrivalDayOffset = value.optInt("arrivalDayOffset", 0).coerceIn(0, SharedData.SavedTimetables.MAXIMUM_ARRIVAL_DAY_OFFSET),
                 durationMinutes = if (value.has("duration")) value.optInt("duration").takeIf { it >= 0 } else null,
                 trains = value.text("trains").orEmpty(),
-                changes = value.optInt("changes", 0).coerceIn(0, 20),
+                changes = value.optInt("changes", 0).coerceIn(0, SharedData.SavedTimetables.MAXIMUM_CHANGES),
                 transfers = value.optJSONArray("transfers")?.let { list ->
                     (0 until list.length()).mapNotNull { list.optString(it).trim().takeIf(String::isNotEmpty)?.take(MAX_TEXT) }
                 }.orEmpty().take(MAX_TRANSFERS),

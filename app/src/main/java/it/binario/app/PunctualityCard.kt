@@ -149,4 +149,4 @@ private fun bucketColor(bucket: PunctualityBucket): Color = when (bucket) {
     PunctualityBucket.CANCELLED -> MaterialTheme.colorScheme.outline
 }
 
-private const val HISTORY_COLLAPSED = 7
+private const val HISTORY_COLLAPSED = it.binario.app.shared.SharedData.PersonalPunctuality.HISTORY_COLLAPSED

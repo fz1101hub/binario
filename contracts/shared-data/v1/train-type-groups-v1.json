@@ -1,0 +1,54 @@
+{
+  "schema": "binario-shared-data-v1",
+  "description": "The train types a station board («Tipi di treno») and the widgets can hide: Frecce/AV, Intercity/notte, Regionali/suburbani, Italo, Bus, Internazionali. A row's group comes from what the sources already publish: a bus, the operator (Italo, an operator outside Italy), then the letters that open its category or line label. A train whose type no source tells has no group and is never hidden. The rule has the cases of contracts/shared-rules/v1/train-type-groups-v1.json.",
+  "groups": [
+    "HIGH_SPEED",
+    "INTERCITY_NIGHT",
+    "REGIONAL_SUBURBAN",
+    "ITALO",
+    "REPLACEMENT_BUS",
+    "INTERNATIONAL"
+  ],
+  "italoOperatorIds": [
+    "italo"
+  ],
+  "internationalOperatorIds": [
+    "sbb",
+    "bls",
+    "rhb",
+    "sncf",
+    "oebb",
+    "db",
+    "westbahn",
+    "european-sleeper"
+  ],
+  "highSpeedCodes": [
+    "FR",
+    "FA",
+    "FB",
+    "AV",
+    "ES",
+    "ESC"
+  ],
+  "internationalCodes": [
+    "EC",
+    "EN",
+    "NJ",
+    "RJ",
+    "RJX",
+    "ICE",
+    "TGV",
+    "EST"
+  ],
+  "intercityCodes": [
+    "IC",
+    "ICN"
+  ],
+  "busCodes": [
+    "BUS",
+    "B",
+    "SEV",
+    "EV"
+  ],
+  "regionalCodePattern": "(R|RE|REX|RV|REG|RB|TER|S|SFM|FL|FM|MET)\\d{0,3}"
+}

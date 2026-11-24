@@ -1,5 +1,6 @@
 package it.binario.app.widget
 
+import it.binario.app.shared.SharedData
 import it.binario.app.data.RailOperator
 import it.binario.app.data.TrainCategory
 import it.binario.app.data.core.RouteChangeKind
@@ -18,12 +19,15 @@ object WidgetTrainTypes {
         RailOperator.SBB, RailOperator.BLS, RailOperator.RHB, RailOperator.SNCF, RailOperator.OEBB,
         RailOperator.DB, RailOperator.WESTBAHN, RailOperator.EUROPEAN_SLEEPER
     )
-    private val internationalOperatorIds = setOf("sbb", "bls", "rhb", "sncf", "oebb", "db", "westbahn", "european-sleeper")
-    private val highSpeedCodes = setOf("FR", "FA", "FB", "AV", "ES", "ESC")
-    private val internationalCodes = setOf("EC", "EN", "NJ", "RJ", "RJX", "ICE", "TGV", "EST")
-    private val intercityCodes = setOf("IC", "ICN")
-    private val busCodes = setOf("BUS", "B", "SEV", "EV")
-    private val regionalCode = Regex("(R|RE|REX|RV|REG|RB|TER|S|SFM|FL|FM|MET)\\d{0,3}")
+    // The codes of a board row are the shared table contracts/shared-data/v1/train-type-groups-v1.json, and the rule has
+    // the cases of contracts/shared-rules/v1/train-type-groups-v1.json: the iPhone's «Tipi di treno» reads both.
+    private val italoOperatorIds = SharedData.TrainTypeGroups.ITALO_OPERATOR_IDS
+    private val internationalOperatorIds = SharedData.TrainTypeGroups.INTERNATIONAL_OPERATOR_IDS
+    private val highSpeedCodes = SharedData.TrainTypeGroups.HIGH_SPEED_CODES
+    private val internationalCodes = SharedData.TrainTypeGroups.INTERNATIONAL_CODES
+    private val intercityCodes = SharedData.TrainTypeGroups.INTERCITY_CODES
+    private val busCodes = SharedData.TrainTypeGroups.BUS_CODES
+    private val regionalCode = Regex(SharedData.TrainTypeGroups.REGIONAL_CODE_PATTERN)
 
     /** Route widget rows: category and operator of the route snapshot, plus a replacement-service flag. */
     fun groupOf(category: TrainCategory, operator: RailOperator, replacementService: Boolean = false): TrainTypeGroup? = when {
@@ -46,7 +50,7 @@ object WidgetTrainTypes {
         val prefix = code.takeWhile(Char::isLetter)
         return when {
             status == RunStatus.REPLACED_BY_BUS || kind == ServiceKind.REPLACEMENT_BUS || prefix in busCodes -> TrainTypeGroup.REPLACEMENT_BUS
-            operator == "italo" -> TrainTypeGroup.ITALO
+            operator in italoOperatorIds -> TrainTypeGroup.ITALO
             operator in internationalOperatorIds -> TrainTypeGroup.INTERNATIONAL
             kind == ServiceKind.HIGH_SPEED -> TrainTypeGroup.HIGH_SPEED
             kind == ServiceKind.INTERCITY || kind == ServiceKind.NIGHT -> TrainTypeGroup.INTERCITY_NIGHT

@@ -1,0 +1,18 @@
+{
+  "schema": "binario-shared-data-v1",
+  "description": "The CO2 estimate of a solution (results, train detail, journey detail): emission factors per passenger-kilometre in grams of CO2 equivalent, well-to-wheel, from the European Environment Agency report «Transport and environment report 2020 – Train or plane?» (EEA Report No 19/2020): an international high-speed electric train, an average fossil-fuelled car with 1.5 occupants and an A320 on 500 and 1,000 km. The distance factors are Binario's own assumptions, stated in the credits: rail and road are longer than the great circle between stations, a flight adds 8 % for routing and holding. No estimate under minimumKm.",
+  "source": "EEA Report No 19/2020, Transport and environment report 2020 – Train or plane?",
+  "sourceUrl": "https://www.eea.europa.eu/en/analysis/publications/transport-and-environment-report-2020",
+  "sourceYear": 2020,
+  "trainGramsPerPkm": 18.0,
+  "carGramsPerPkm": 111.0,
+  "planeGramsPerPkmShort": 340.0,
+  "planeShortKm": 500.0,
+  "planeGramsPerPkmLong": 270.0,
+  "planeLongKm": 1000.0,
+  "railDetour": 1.2,
+  "roadDetour": 1.25,
+  "flightUplift": 1.08,
+  "minimumKm": 5.0,
+  "earthRadiusKm": 6371.0088
+}
