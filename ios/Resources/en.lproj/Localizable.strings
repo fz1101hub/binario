@@ -239,6 +239,12 @@
 "watch.source.unavailable" = "No authorised iOS provider";
 "watch.notice.unavailable" = "Realtime railway data is unavailable.";
 "watch.notice.programmed" = "Static scheduled times. This is not realtime data.";
+"watch.notice.cancelled" = "Cancelled: %1$@ at %2$@";
+"watch.notice.source_conflict" = "Sources conflict on some fields: check the official channel before you travel.";
+"watch.service.on_time" = "On time";
+"watch.service.delayed" = "Delayed";
+"watch.source.operator_primary" = "Operator primary source";
+"watch.source.infrastructure_primary" = "Infrastructure manager primary source";
 "accessibility.station_suggestions" = "Station suggestions";
 "accessibility.selected_station" = "Select station";
 "accessibility.swap_route" = "Swap origin and destination";

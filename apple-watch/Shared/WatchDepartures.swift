@@ -74,27 +74,92 @@ extension BinarioWatchSnapshot {
         serviceDepartures.first ?? nil
     }
 
-    /// The snapshot as it reads at `date`: trains that have left are dropped, and once the
-    /// snapshot has expired (or is otherwise no longer valid) it is the unavailable state. A time
-    /// that cannot be read keeps its train listed until the snapshot expires.
+    /// How long the live values of an operational snapshot are shown from its generation: the
+    /// window of Wear OS, the one the iPhone dates its live values for.
+    static let liveWindow: TimeInterval = 15 * 60
+
+    /// When the live values end; nil for a snapshot without them. A snapshot that lasts longer
+    /// (the iPhone sends that only to a Watch app that declares `binario_wear_programmed_fallback_v1`)
+    /// shows its programmed times from then on (`programmedFallback()`).
+    var liveUntil: Date? {
+        operationalState == .operational ? retrievedAt.addingTimeInterval(Self.liveWindow) : nil
+    }
+
+    /// The programmed snapshot inside a live one. In contract v1 the expected time, the delay and
+    /// the platform are the live part and the scheduled time stays: each train at its programmed
+    /// time (its expected time less its delay) and in that order, without the trains whose
+    /// programmed time had passed when the live values ended, with the notice and quality of the
+    /// iPhone's programmed snapshot and no source, as on Wear OS. Itself without live values.
+    func programmedFallback() -> BinarioWatchSnapshot {
+        guard let liveUntil else { return self }
+        let programmed = zip(services, serviceDepartures).enumerated().compactMap { offset, pair -> (offset: Int, departure: Date?, service: WatchService)? in
+            let (service, departure) = pair
+            let scheduled = departure?.addingTimeInterval(-TimeInterval(service.delayMinutes) * 60)
+            if let scheduled, scheduled <= liveUntil { return nil }
+            let shown = WatchService(
+                number: service.number,
+                operatorName: service.operatorName,
+                category: service.category,
+                destination: service.destination,
+                scheduledDeparture: service.scheduledDeparture,
+                expectedDeparture: service.scheduledDeparture,
+                platform: nil,
+                delayMinutes: 0,
+                status: BinarioOperationalState.programmed.rawValue,
+                reliability: service.reliability,
+                vehicle: service.vehicle
+            )
+            return (offset, scheduled, shown)
+        }
+        .sorted { ($0.departure ?? .distantFuture, $0.offset) < ($1.departure ?? .distantFuture, $1.offset) }
+        return BinarioWatchSnapshot(
+            schemaVersion: schemaVersion,
+            generatedAtEpochMillis: generatedAtEpochMillis,
+            expiresAtEpochMillis: expiresAtEpochMillis,
+            ttlMillis: ttlMillis,
+            provenanceProducer: provenanceProducer,
+            provenanceDataNature: .programmed,
+            provenanceSourceLabel: "",
+            provenanceObservedAtEpochMillis: provenanceObservedAtEpochMillis,
+            operationalState: .programmed,
+            freshness: .unknown,
+            confidence: .staticOnly,
+            routeId: routeId,
+            routeLabel: routeLabel,
+            direction: direction,
+            notice: WatchLocalization.text("watch.notice.programmed"),
+            services: programmed.map { $0.service }
+        )
+    }
+
+    /// The snapshot as it reads at `date`: past the live window its programmed times, trains
+    /// that have left dropped, and once the snapshot has expired (or is otherwise no longer valid)
+    /// the unavailable state. A time that cannot be read keeps its train listed until the
+    /// snapshot expires.
     func revalidated(at date: Date) -> BinarioWatchSnapshot {
         guard isCompatible(at: Int64((date.timeIntervalSince1970 * 1_000).rounded(.down))) else {
             return .unavailable
         }
-        let remaining = zip(services, serviceDepartures).compactMap { service, departure -> WatchService? in
+        let shown = liveUntil.map { date >= $0 } == true ? programmedFallback() : self
+        let remaining = zip(shown.services, shown.serviceDepartures).compactMap { service, departure -> WatchService? in
             guard let departure else { return service }
             return departure > date ? service : nil
         }
-        guard remaining.count != services.count else { return self }
-        return replacingServices(remaining)
+        guard remaining.count != shown.services.count else { return shown }
+        return shown.replacingServices(remaining)
     }
 
     /// The instants at which what the snapshot shows changes, starting at `now`: each later
-    /// departure before the expiry, then the expiry itself, when it switches to unavailable.
+    /// departure before the expiry (the live ones until the live values end, then that instant
+    /// and the programmed ones), then the expiry itself, when it switches to unavailable.
     func timelineDates(from now: Date) -> [Date] {
         let expiry = expiresAt
         guard expiry > now else { return [now] }
-        let departures = Set(serviceDepartures.compactMap { $0 }.filter { $0 > now && $0 < expiry })
+        var changes = serviceDepartures.compactMap { $0 }
+        if let liveUntil {
+            changes = changes.filter { $0 < liveUntil } + [liveUntil] + programmedFallback().serviceDepartures.compactMap { $0 }
+        }
+        let departures = Set(changes.filter { $0 > now && $0 < expiry })
         return [now] + departures.sorted() + [expiry]
     }
 

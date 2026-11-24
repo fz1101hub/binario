@@ -239,6 +239,12 @@
 "watch.source.unavailable" = "没有经授权的 iOS 提供方";
 "watch.notice.unavailable" = "实时铁路数据不可用。";
 "watch.notice.programmed" = "固定的计划时刻，并非实时数据。";
+"watch.notice.cancelled" = "停运：%2$@ 的 %1$@";
+"watch.notice.source_conflict" = "部分字段的数据源存在冲突：出行前请查看官方渠道。";
+"watch.service.on_time" = "准点";
+"watch.service.delayed" = "晚点";
+"watch.source.operator_primary" = "运营商一手数据源";
+"watch.source.infrastructure_primary" = "基础设施管理方一手数据源";
 "accessibility.station_suggestions" = "车站建议";
 "accessibility.selected_station" = "选择车站";
 "accessibility.swap_route" = "交换出发站和到达站";

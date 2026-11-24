@@ -239,6 +239,12 @@
 "watch.source.unavailable" = "कोई अधिकृत iOS प्रदाता नहीं";
 "watch.notice.unavailable" = "रीयल-टाइम रेलवे डेटा उपलब्ध नहीं है।";
 "watch.notice.programmed" = "स्थिर निर्धारित समय। यह रीयल-टाइम डेटा नहीं है।";
+"watch.notice.cancelled" = "रद्द: %1$@, %2$@ बजे";
+"watch.notice.source_conflict" = "कुछ फ़ील्ड पर स्रोतों में टकराव है: यात्रा से पहले आधिकारिक चैनल देखें।";
+"watch.service.on_time" = "समय पर";
+"watch.service.delayed" = "देरी से";
+"watch.source.operator_primary" = "ऑपरेटर का प्राथमिक स्रोत";
+"watch.source.infrastructure_primary" = "इंफ़्रास्ट्रक्चर प्रबंधक का प्राथमिक स्रोत";
 "accessibility.station_suggestions" = "स्टेशन सुझाव";
 "accessibility.selected_station" = "स्टेशन चुनें";
 "accessibility.swap_route" = "प्रस्थान और गंतव्य आपस में बदलें";

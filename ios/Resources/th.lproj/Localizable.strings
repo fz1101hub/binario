@@ -239,6 +239,12 @@
 "watch.source.unavailable" = "ไม่มีผู้ให้บริการ iOS ที่ได้รับอนุญาต";
 "watch.notice.unavailable" = "ไม่มีข้อมูลรถไฟแบบเรียลไทม์";
 "watch.notice.programmed" = "เวลาตามแผนแบบคงที่ ไม่ใช่ข้อมูลเรียลไทม์";
+"watch.notice.cancelled" = "ยกเลิก: %1$@ เวลา %2$@";
+"watch.notice.source_conflict" = "แหล่งข้อมูลขัดแย้งกันในบางช่อง โปรดตรวจสอบช่องทางทางการก่อนออกเดินทาง";
+"watch.service.on_time" = "ตรงเวลา";
+"watch.service.delayed" = "ล่าช้า";
+"watch.source.operator_primary" = "แหล่งข้อมูลหลักของผู้ให้บริการ";
+"watch.source.infrastructure_primary" = "แหล่งข้อมูลหลักของผู้บริหารโครงสร้างพื้นฐาน";
 "accessibility.station_suggestions" = "สถานีที่แนะนำ";
 "accessibility.selected_station" = "เลือกสถานี";
 "accessibility.swap_route" = "สลับต้นทางและปลายทาง";

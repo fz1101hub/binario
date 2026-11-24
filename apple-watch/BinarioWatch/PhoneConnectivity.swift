@@ -28,6 +28,18 @@ enum WatchApplicationContextAction: Equatable {
     }
 }
 
+/// The optional fields of contract v1 this Watch app decodes, and its programmed times once the live
+/// values end (contracts/wear-snapshot/v1/README.md): published to the iPhone as this app's own
+/// application context, the only data it sends there, so the iPhone adds them for this app and never
+/// for an earlier one, which would reject the fields or show the live values past their window. Same
+/// key and names as WatchCapabilities on the iPhone (BinarioKit).
+enum WatchCapabilityDeclaration {
+    static let contextKey = "binario_watch_capabilities"
+    static let capabilities = ["binario_wear_reliability_v1", "binario_wear_vehicle_v1", "binario_wear_programmed_fallback_v1"]
+
+    static var context: [String: Any] { [contextKey: capabilities] }
+}
+
 /// Riceve gli snapshot v1 prodotti dall'app iOS Binario associata. Il decoder
 /// resta fail-closed; l'effettiva consegna iPhone↔Watch richiede una prova hardware.
 final class PhoneConnectivity: NSObject, ObservableObject, WCSessionDelegate {
@@ -52,6 +64,9 @@ final class PhoneConnectivity: NSObject, ObservableObject, WCSessionDelegate {
     ) {
         guard error == nil else { return }
         apply(session.receivedApplicationContext)
+        guard activationState == .activated else { return }
+        // Without the iPhone app installed this throws: the next activation declares them again.
+        try? session.updateApplicationContext(WatchCapabilityDeclaration.context)
     }
 
     func session(

@@ -239,6 +239,12 @@
 "watch.source.unavailable" = "Kein autorisierter iOS-Anbieter";
 "watch.notice.unavailable" = "Echtzeit-Bahndaten sind nicht verfügbar.";
 "watch.notice.programmed" = "Statische Fahrplandaten. Dies sind keine Echtzeitdaten.";
+"watch.notice.cancelled" = "Ausgefallen: %1$@ um %2$@";
+"watch.notice.source_conflict" = "Quellenkonflikt bei einigen Feldern: Prüfe vor der Fahrt den offiziellen Kanal.";
+"watch.service.on_time" = "Pünktlich";
+"watch.service.delayed" = "Verspätet";
+"watch.source.operator_primary" = "Primärquelle des Betreibers";
+"watch.source.infrastructure_primary" = "Primärquelle des Infrastrukturbetreibers";
 "accessibility.station_suggestions" = "Bahnhofsvorschläge";
 "accessibility.selected_station" = "Bahnhof auswählen";
 "accessibility.swap_route" = "Start und Ziel vertauschen";

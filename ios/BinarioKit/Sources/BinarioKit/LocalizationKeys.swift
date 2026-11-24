@@ -134,6 +134,8 @@ public enum BinarioLocalizationKeys {
         "settings.live.swiss", "settings.live.trip_updates",
         "settings.about.title", "settings.about.version", "settings.about.version_unavailable",
         "watch.source.unavailable", "watch.notice.unavailable", "watch.notice.programmed",
+        "watch.notice.cancelled", "watch.notice.source_conflict", "watch.service.on_time", "watch.service.delayed",
+        "watch.source.operator_primary", "watch.source.infrastructure_primary",
         "watch.status.disabled", "watch.status.activating", "watch.status.pending",
         "watch.status.context_updated", "watch.status.cleared",
         "watch.status.unsupported", "watch.status.not_paired", "watch.status.failed",

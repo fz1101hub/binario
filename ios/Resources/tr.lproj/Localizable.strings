@@ -239,6 +239,12 @@
 "watch.source.unavailable" = "Yetkili iOS sağlayıcısı yok";
 "watch.notice.unavailable" = "Gerçek zamanlı demiryolu verileri kullanılamıyor.";
 "watch.notice.programmed" = "Sabit planlı saatler. Bunlar gerçek zamanlı veri değildir.";
+"watch.notice.cancelled" = "İptal edildi: %2$@ %1$@";
+"watch.notice.source_conflict" = "Bazı alanlarda kaynaklar çelişiyor: yola çıkmadan önce resmî kanalı kontrol edin.";
+"watch.service.on_time" = "Zamanında";
+"watch.service.delayed" = "Gecikmeli";
+"watch.source.operator_primary" = "İşletmecinin birincil kaynağı";
+"watch.source.infrastructure_primary" = "Altyapı yöneticisinin birincil kaynağı";
 "accessibility.station_suggestions" = "İstasyon önerileri";
 "accessibility.selected_station" = "İstasyon seç";
 "accessibility.swap_route" = "Kalkış ve varışı değiştir";

@@ -239,6 +239,12 @@
 "watch.source.unavailable" = "認可された iOS プロバイダがありません";
 "watch.notice.unavailable" = "リアルタイムの鉄道データは利用できません。";
 "watch.notice.programmed" = "固定の計画時刻です。リアルタイムデータではありません。";
+"watch.notice.cancelled" = "運休: %2$@ の %1$@";
+"watch.notice.source_conflict" = "一部の項目で情報源が食い違っています。ご乗車前に公式の案内を確認してください。";
+"watch.service.on_time" = "定刻";
+"watch.service.delayed" = "遅れ";
+"watch.source.operator_primary" = "事業者の一次情報";
+"watch.source.infrastructure_primary" = "鉄道インフラ管理者の一次情報";
 "accessibility.station_suggestions" = "駅の候補";
 "accessibility.selected_station" = "駅を選択";
 "accessibility.swap_route" = "出発駅と到着駅を入れ替える";

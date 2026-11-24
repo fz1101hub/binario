@@ -239,6 +239,12 @@
 "watch.source.unavailable" = "لا يوجد مزوّد iOS مُصرَّح به";
 "watch.notice.unavailable" = "بيانات القطارات في الوقت الفعلي غير متاحة.";
 "watch.notice.programmed" = "مواعيد مجدولة ثابتة، وليست بيانات في الوقت الفعلي.";
+"watch.notice.cancelled" = "ملغى: %1$@ في %2$@";
+"watch.notice.source_conflict" = "تتعارض المصادر في بعض الحقول: تحقّق من القناة الرسمية قبل السفر.";
+"watch.service.on_time" = "في الموعد";
+"watch.service.delayed" = "متأخر";
+"watch.source.operator_primary" = "مصدر أساسي من المشغّل";
+"watch.source.infrastructure_primary" = "مصدر أساسي من مدير البنية التحتية";
 "accessibility.station_suggestions" = "اقتراحات المحطات";
 "accessibility.selected_station" = "اختر المحطة";
 "accessibility.swap_route" = "بدِّل الانطلاق والوجهة";

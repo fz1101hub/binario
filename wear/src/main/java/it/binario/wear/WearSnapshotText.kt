@@ -58,16 +58,24 @@ internal fun emptySnapshotMessageResId(phoneApp: WearPhoneAppPresence, expired: 
     else -> R.string.empty_snapshot_message
 }
 
+/**
+ * The number as the Tile and the complication show it: a bus with its label first («Bus Trenitalia 3601», the phone
+ * sends the label as its category), a train its number alone. The glances are text only, so the label is the bus icon.
+ */
+internal val WearService.glanceNumber: String
+    get() = if (isBus) listOf(category, number).filter(String::isNotBlank).joinToString(" ") else number
+
 /** [reliability] is the spoken reliability line of the watch screen; the tile and the complication have none. */
 internal fun WearService.accessibleLabel(context: Context, reliability: String? = null): String = accessibleLabel(context.wearStrings(), reliability)
 
 internal fun WearService.accessibleLabel(strings: WearStringProvider, reliability: String? = null): String = listOfNotNull(
     strings.string(R.string.accessibility_scheduled_departure, scheduledDeparture),
     strings.string(R.string.accessibility_expected_departure, expectedDeparture),
-    strings.string(R.string.accessibility_train, number),
+    // A bus is said with its label («Bus Trenitalia 3601»), never as a train.
+    if (isBus) glanceNumber else strings.string(R.string.accessibility_train, number),
     destination.takeIf { it.isNotBlank() },
     operator.takeIf { it.isNotBlank() },
-    category.takeIf { it.isNotBlank() },
+    category.takeIf { it.isNotBlank() && !isBus },
     platform?.let { strings.string(R.string.accessibility_platform, it) },
     status.takeIf { it.isNotBlank() },
     reliability?.let { strings.string(R.string.accessibility_reliability, it) },

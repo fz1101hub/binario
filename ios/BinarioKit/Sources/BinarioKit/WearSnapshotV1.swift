@@ -16,6 +16,40 @@ public enum WearSnapshotError: Error, Equatable, Sendable {
     case publicationFailed
 }
 
+/// «In orario 22 volte su 27»: the optional reliability pair of a service in contract v1, from the
+/// network statistics the app includes (contracts/wear-snapshot/v1/README.md).
+public struct WearReliabilityV1: Equatable, Sendable {
+    public static let minimumSamples = 5
+    public static let maximumSamples = 10_000
+
+    public let onTime: Int
+    public let samples: Int
+
+    public init(onTime: Int, samples: Int) {
+        self.onTime = onTime
+        self.samples = samples
+    }
+
+    var isValid: Bool {
+        (Self.minimumSamples...Self.maximumSamples).contains(samples) && (0...samples).contains(onTime)
+    }
+
+    /// The pair of a train boarded at `originCode` and left at `destinationCode`, measured there, as
+    /// Android's `ReliabilityMarks.route`: nil for a bus, a train the statistics do not match from
+    /// that origin, or one below the minimum samples.
+    public static func route(
+        _ stats: NetworkReliabilityStats, service: TrainService, originCode: String?, destinationCode: String?
+    ) -> WearReliabilityV1? {
+        // Only a train has network statistics: never a bus or a city line.
+        guard service.isTrain,
+              let match = NetworkReliability.match(stats, number: service.number, alightingCode: destinationCode, boardingCode: originCode),
+              let stop = NetworkReliability.at(match.train, index: match.alightingIndex)
+        else { return nil }
+        let pair = WearReliabilityV1(onTime: stop.onTime, samples: stop.samples)
+        return pair.isValid ? pair : nil
+    }
+}
+
 public struct WearServiceV1: Equatable, Sendable {
     public let number: String
     public let operatorName: String
@@ -26,6 +60,10 @@ public struct WearServiceV1: Equatable, Sendable {
     public let status: String
     public let platform: String
     public let delayMinutes: Int
+    /// Optional in contract v1: encoded only when set, which the caller does only for a Watch app
+    /// that declared it decodes them (`WatchCapabilities`).
+    public let reliability: WearReliabilityV1?
+    public let vehicle: TimetableVehicle?
 
     public init(
         number: String,
@@ -36,7 +74,9 @@ public struct WearServiceV1: Equatable, Sendable {
         expected: String,
         status: String,
         platform: String = "",
-        delayMinutes: Int
+        delayMinutes: Int,
+        reliability: WearReliabilityV1? = nil,
+        vehicle: TimetableVehicle? = nil
     ) {
         self.number = number
         self.operatorName = operatorName
@@ -47,6 +87,30 @@ public struct WearServiceV1: Equatable, Sendable {
         self.status = status
         self.platform = platform
         self.delayMinutes = delayMinutes
+        self.reliability = reliability
+        self.vehicle = vehicle
+    }
+}
+
+/// The optional fields of contract v1 a Watch app declares it decodes. A v1 decoder rejects a key
+/// it does not know, so the iPhone adds a field only when the Watch app has published its name under
+/// `contextKey` in its own application context; an earlier Watch app publishes nothing and gets none.
+public enum WatchCapabilities {
+    public static let contextKey = "binario_watch_capabilities"
+    /// The reliability pair (`service{n}ReliabilityOnTime`, `service{n}ReliabilitySamples`).
+    public static let reliability = "binario_wear_reliability_v1"
+    /// The vehicle of a service (`service{n}Vehicle`).
+    public static let vehicle = "binario_wear_vehicle_v1"
+    /// No field: the Watch shows the programmed times once the live values are 15 minutes old, so
+    /// a live snapshot may last until its last train.
+    public static let programmedFallback = "binario_wear_programmed_fallback_v1"
+    static let maximumCount = 16
+    static let maximumLength = 64
+
+    /// The names a Watch application context declares; none when it carries no declaration.
+    public static func decode(_ context: [String: Any]) -> Set<String> {
+        guard let names = context[contextKey] as? [String] else { return [] }
+        return Set(names.prefix(maximumCount).filter { !$0.isEmpty && $0.count <= maximumLength })
     }
 }
 
@@ -178,7 +242,8 @@ public struct WearSnapshotV1: Encodable, Equatable, Sendable {
             isRequired(service.expected, maximum: 16) &&
             isRequired(service.status, maximum: 64) &&
             isOptional(service.platform, maximum: 16) &&
-            (-720...1_440).contains(service.delayMinutes)
+            (-720...1_440).contains(service.delayMinutes) &&
+            (service.reliability?.isValid ?? true)
     }
 
     private static func isRequired(_ value: String, maximum: Int) -> Bool {
@@ -222,6 +287,13 @@ public struct WearSnapshotV1: Encodable, Equatable, Sendable {
             try container.encode(service.status, forKey: .init("service\(index)Status"))
             try container.encode(service.platform, forKey: .init("service\(index)Platform"))
             try container.encode(service.delayMinutes, forKey: .init("service\(index)DelayMinutes"))
+            if let reliability = service.reliability {
+                try container.encode(reliability.onTime, forKey: .init("service\(index)ReliabilityOnTime"))
+                try container.encode(reliability.samples, forKey: .init("service\(index)ReliabilitySamples"))
+            }
+            if let vehicle = service.vehicle {
+                try container.encode(vehicle.rawValue, forKey: .init("service\(index)Vehicle"))
+            }
         }
     }
 }
@@ -405,6 +477,11 @@ public protocol WatchSnapshotSession: AnyObject {
     var watchStateHandler: (@MainActor () -> Void)? { get set }
     /// Called when the Watch asks for a refresh (WatchRefreshRequest).
     var refreshRequestHandler: (@MainActor () -> Void)? { get set }
+    /// The optional fields the Watch app declared it decodes (`WatchCapabilities`), from its own
+    /// application context; empty for an earlier Watch app.
+    var watchCapabilities: Set<String> { get }
+    /// Called when the Watch app's declaration changes.
+    var capabilitiesHandler: (@MainActor () -> Void)? { get set }
     func activate()
     func updateApplicationContext(_ context: [String: Data]) throws
 }
@@ -417,6 +494,10 @@ public final class WatchSnapshotPublisher {
     public var statusDidChange: (@MainActor (WatchSyncStatus) -> Void)?
     /// The Watch asked for its snapshot to be refreshed.
     public var refreshRequested: (@MainActor () -> Void)?
+    /// The Watch app declared other optional fields: its snapshot can be published again with them.
+    public var capabilitiesChanged: (@MainActor () -> Void)?
+    /// The optional fields the Watch app decodes (`WatchCapabilities`).
+    public var watchCapabilities: Set<String> { session.watchCapabilities }
     public private(set) var status: WatchSyncStatus = .disabled {
         didSet { statusDidChange?(status) }
     }
@@ -436,6 +517,9 @@ public final class WatchSnapshotPublisher {
         }
         self.session.refreshRequestHandler = { [weak self] in
             self?.refreshRequested?()
+        }
+        self.session.capabilitiesHandler = { [weak self] in
+            self?.capabilitiesChanged?()
         }
     }
 

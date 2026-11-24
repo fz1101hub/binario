@@ -987,6 +987,7 @@ class EmbeddedGtfsRouteAdapter(
                 operatorDisplayName = canonicalAgencyLabel(agencyName, sourceId),
                 trainCategory = if (scheduledBus) TrainCategory.OTHER else category(route?.type, route, agencyName),
                 scheduledBus = scheduledBus,
+                busLine = if (scheduledBus) lineLabel(route) else null,
                 bikesAllowed = bikesOnBoard(packBikesValue(sourceId, trip.bikes)),
                 origin = stops.name(stopTimes.stop(segment.originEntry)),
                 destination = stops.name(stopTimes.stop(segment.destinationEntry)),

@@ -72,8 +72,23 @@ data class WearService(
     val platform: String?,
     val delayMinutes: Int,
     /** Optional since 4 Nov 2026: how often the train was on time in the phone's embedded network statistics. */
-    val reliability: WearReliability? = null
-)
+    val reliability: WearReliability? = null,
+    /** Optional since 23 Nov 2026: what the service travels on; null (an earlier phone, an older cache) is a train. */
+    val vehicle: WearVehicle? = null
+) {
+    /** A bus of the phone's timetable: the glance shows a bus and its label ([category]), never «Treno». */
+    val isBus: Boolean get() = vehicle?.isBus == true
+}
+
+/**
+ * The vehicle of a service (contracts/wear-snapshot/v1, `service{n}Vehicle`): the phone's `JourneyLegVehicle` for the
+ * modes of a railway pack. An unknown value is [UNKNOWN] and shown as a train, as a service without the field.
+ */
+enum class WearVehicle(val isBus: Boolean) {
+    TRAIN(false), BUS_TRENITALIA(true), FRECCIALINK(true), ITALOBUS(true), BUS(true), REPLACEMENT_BUS(true), UNKNOWN(false);
+
+    companion object { fun fromWire(value: String) = entries.firstOrNull { it.name == value } ?: UNKNOWN }
+}
 
 /**
  * «In orario 8 volte su 10»: [onTime] of [samples] days within the train's own on-time limit, from the unofficial
@@ -88,8 +103,8 @@ data class WearReliability(val onTime: Int, val samples: Int) {
 
 /**
  * Independent v1 decoder for the phone Data Layer. It accepts only the closed key set defined in
- * contracts/wear-snapshot/v1, including an explicit expiry and the optional reliability pair of each
- * service; malformed, expired and future-version input returns null so the caller never replaces a
+ * contracts/wear-snapshot/v1, including an explicit expiry and the optional reliability pair and vehicle of
+ * each service; malformed, expired and future-version input returns null so the caller never replaces a
  * valid cache.
  */
 object WearSnapshotCodec {
@@ -98,6 +113,7 @@ object WearSnapshotCodec {
     const val MAX_SERVICES = 2
     const val MAX_TTL_MILLIS = 365L * 24 * 60 * 60 * 1_000
     private const val MAX_FUTURE_SKEW_MILLIS = 60_000L
+    private const val MAX_VEHICLE_LENGTH = 32
 
     private val baseKeys = setOf(
         "schemaVersion", "generatedAtEpochMillis", "expiresAtEpochMillis", "ttlMillis",
@@ -139,7 +155,9 @@ object WearSnapshotCodec {
                 else -> return null
             }
         }
-        if (payload.keys != expectedKeys + reliabilityKeys) return null
+        // The optional vehicle of a service stands alone; a key beyond the services is unknown and rejects the payload.
+        val vehicleKeys = (0 until serviceCount).map(::vehicleKey).filter { it in payload }
+        if (payload.keys != expectedKeys + reliabilityKeys + vehicleKeys) return null
 
         val generatedAt = payload.long("generatedAtEpochMillis") ?: return null
         val expiresAt = payload.long("expiresAtEpochMillis") ?: return null
@@ -182,7 +200,10 @@ object WearSnapshotCodec {
                 val onTime = payload.int(reliabilityOnTimeKey(index), 0, samples) ?: return null
                 WearReliability(onTime, samples)
             } else null
-            WearService(number, operator, category, destination, scheduled, expected, status, platform.ifBlank { null }, delay, reliability)
+            val vehicle = if (vehicleKey(index) in payload) {
+                WearVehicle.fromWire(payload.requiredText(vehicleKey(index), MAX_VEHICLE_LENGTH) ?: return null)
+            } else null
+            WearService(number, operator, category, destination, scheduled, expected, status, platform.ifBlank { null }, delay, reliability, vehicle)
         }
         return WearSnapshot(
             routeId = routeId,
@@ -231,11 +252,13 @@ object WearSnapshotCodec {
                 put(reliabilityOnTimeKey(index), reliability.onTime)
                 put(reliabilitySamplesKey(index), reliability.samples)
             }
+            service.vehicle?.let { put(vehicleKey(index), it.name) }
         }
     }
 
     fun reliabilityOnTimeKey(index: Int): String = "service${index}ReliabilityOnTime"
     fun reliabilitySamplesKey(index: Int): String = "service${index}ReliabilitySamples"
+    fun vehicleKey(index: Int): String = "service${index}Vehicle"
 
     private fun Map<String, Any?>.long(key: String): Long? {
         val number = this[key] as? Number ?: return null

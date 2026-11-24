@@ -34,7 +34,7 @@ Le tre app restano native: niente Kotlin Multiplatform, niente runtime condiviso
 
    Ogni file generato comincia con un'intestazione che nomina il generatore e le tabelle e dice di non modificarlo. I file generati sono nel repository. Prima di scrivere qualsiasi cosa, il generatore controlla ogni JSON con lo schema che definisce: tipi, chiavi obbligatorie, nessuna chiave sconosciuta o ripetuta, nessuna voce doppia, più i controlli incrociati della tabella. `--check` fallisce quando un file generato non corrisponde alle tabelle e gira nella CI (`gtfs-assets-ci.yml`). Le app leggono le costanti come codice, mai interpretando JSON a runtime.
 3. **Regole condivise.** I casi di prova stanno in `contracts/shared-rules/v1/` ([README](../../contracts/shared-rules/v1/README.md)), e i test di ogni piattaforma li leggono così come sono. L'implementazione della regola resta nel linguaggio di ogni app.
-4. **Contratti tra dispositivi.** `contracts/wear-snapshot/` (telefono → Wear OS e Apple Watch) e `contracts/voice-input/` (dettatura).
+4. **Contratti tra dispositivi.** `contracts/wear-snapshot/` (telefono → Wear OS e Apple Watch, con i campi facoltativi che ogni orologio dichiara di leggere; `tests/test_wear_snapshot_contract.py` controlla le fixture e gli stessi nomi in ogni programma) e `contracts/voice-input/` (dettatura).
 
 ### Tabelle migrate il 23 novembre 2026
 

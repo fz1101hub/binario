@@ -114,7 +114,8 @@ class BinarioComplicationDataTest {
     @Test
     fun `the complication timeline switches to the next service a minute after the first one leaves`() {
         val next = service.copy(number = "RV 2347", scheduledDeparture = "08:42", expectedDeparture = "08:42")
-        val snapshot = snapshot(expiresAt = now + 3_600_000L, services = listOf(service, next))
+        // Programmed: live values would give way to the programmed times after 15 minutes (WearProgrammedFallbackTest).
+        val snapshot = snapshot(expiresAt = now + 3_600_000L, services = listOf(service, next)).programmed()
         val handOver = Instant.parse("2030-01-01T07:16:00Z").toEpochMilli()
         val lastGoneAt = Instant.parse("2030-01-01T07:43:00Z").toEpochMilli()
 
@@ -130,8 +131,8 @@ class BinarioComplicationDataTest {
         assertNull(upcomingService(snapshot, lastGone))
         assertEquals("app_name", shortTextComplicationTexts(snapshot, ResourceNameStrings, lastGone).text)
         assertNull(shortTextComplicationTexts(snapshot, ResourceNameStrings, lastGone).countdownTo)
-        assertEquals(emptyList<GlanceSegment>(), laterGlanceSegments(snapshot(expiresAt = handOver, services = listOf(service, next)), now))
-        assertEquals(emptyList<GlanceSegment>(), laterGlanceSegments(snapshot(services = listOf(service)), now))
+        assertEquals(emptyList<GlanceSegment>(), laterGlanceSegments(snapshot(expiresAt = handOver, services = listOf(service, next)).programmed(), now))
+        assertEquals(emptyList<GlanceSegment>(), laterGlanceSegments(snapshot(services = listOf(service)).programmed(), now))
     }
 
     // binarioComplicationData() only hands these texts to the library builders (ShortText/LongText ComplicationData,
@@ -149,6 +150,9 @@ class BinarioComplicationDataTest {
         platform = "4",
         delayMinutes = 10,
     )
+
+    private fun WearSnapshot.programmed(): WearSnapshot =
+        copy(operationalState = WearOperationalState.PROGRAMMED, provenance = provenance.copy(dataNature = WearDataNature.PROGRAMMED))
 
     private fun snapshot(expiresAt: Long = now + 900_000L, services: List<WearService>): WearSnapshot = WearSnapshot(
         routeId = "route-id",

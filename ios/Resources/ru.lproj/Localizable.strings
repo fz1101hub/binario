@@ -239,6 +239,12 @@
 "watch.source.unavailable" = "Нет авторизованного поставщика iOS";
 "watch.notice.unavailable" = "Железнодорожные данные в реальном времени недоступны.";
 "watch.notice.programmed" = "Статическое плановое время. Это не данные в реальном времени.";
+"watch.notice.cancelled" = "Отменён: %1$@ в %2$@";
+"watch.notice.source_conflict" = "Источники расходятся по некоторым полям: перед поездкой проверьте официальный канал.";
+"watch.service.on_time" = "Вовремя";
+"watch.service.delayed" = "Опаздывает";
+"watch.source.operator_primary" = "Первичный источник перевозчика";
+"watch.source.infrastructure_primary" = "Первичный источник управляющего инфраструктурой";
 "accessibility.station_suggestions" = "Варианты станций";
 "accessibility.selected_station" = "Выбрать станцию";
 "accessibility.swap_route" = "Поменять местами отправление и назначение";

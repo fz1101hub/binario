@@ -291,6 +291,25 @@ final class NetworkReliabilityTests: XCTestCase {
         XCTAssertEqual(NetworkReliabilityDetail.of(stats, number: "2155", boardingCode: "S01700", destinationCode: nil)?.arrival.cancelledEveryDay, true)
     }
 
+    func testTheWatchPairIsTheTrainOfTheRouteMeasuredAtTheDestinationAndNeverABus() throws {
+        let stats = try XCTUnwrap(NetworkReliabilityParser.parse(json: document([frecciarossa, regional, southTyrol, cancelled])))
+        func service(_ number: String, vehicle: TimetableVehicle? = nil) -> TrainService {
+            TrainService(id: number, number: number, operatorName: "Trenord", category: "RE11", destination: "Bergamo",
+                         scheduledDeparture: "08:00", expectedDeparture: "08:00", status: "PROGRAMMED", platform: nil,
+                         delayMinutes: 0, vehicle: vehicle)
+        }
+
+        XCTAssertEqual(
+            WearReliabilityV1.route(stats, service: service("RE_11 - 2153"), originCode: "S01700", destinationCode: "S01529"),
+            WearReliabilityV1(onTime: 8, samples: 10)
+        )
+        // A train cancelled on every day observed has no samples to send; a bus has no train statistics.
+        XCTAssertNil(WearReliabilityV1.route(stats, service: service("2155"), originCode: "S01700", destinationCode: "S01529"))
+        XCTAssertNil(WearReliabilityV1.route(stats, service: service("RE_11 - 2153", vehicle: .busTrenitalia), originCode: "S01700", destinationCode: "S01529"))
+        XCTAssertNil(WearReliabilityV1.route(stats, service: service("R 1"), originCode: "S01700", destinationCode: "S01529"))
+        XCTAssertNil(WearReliabilityV1.route(stats, service: service("RE_11 - 2153"), originCode: "S01700", destinationCode: nil))
+    }
+
     func testAirportLinksNeedAPackWithTripsAndCoveredStations() throws {
         let catalog = try CuratedStationCatalog(data: Data(contentsOf: repositoryRoot
             .appendingPathComponent("app/src/main/assets/stations/curated_it_rail_stations.json")))
