@@ -386,6 +386,22 @@
 			<string>%1$lld tren</string>
 		</dict>
 	</dict>
+	<key>saved.digest.network</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>ağda son %1$lld gün: %%%2$lld zamanında</string>
+			<key>other</key>
+			<string>ağda son %1$lld gün: %%%2$lld zamanında</string>
+		</dict>
+	</dict>
 	<key>saved.timetables.solutions</key>
 	<dict>
 		<key>NSStringLocalizedFormatKey</key>

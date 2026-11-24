@@ -18,6 +18,7 @@ import it.binario.app.R
 import it.binario.app.ServiceMonitor
 import it.binario.app.data.RailTime
 import it.binario.app.data.reliability.NetworkReliabilityRepository
+import it.binario.app.shared.SharedData
 import it.binario.app.widget.CatalogueStationCodes
 import it.binario.app.widget.ReliabilityMark
 import it.binario.app.widget.ReliabilityMarks
@@ -59,11 +60,11 @@ data class WeeklyDigest(val weekEnd: LocalDate, val trains: List<DigestTrain>, v
  * delays still notifies until Monday [LATEST], never in the quiet hours (22–7): then it waits for 7:00.
  */
 object WeeklyDigestPlanner {
-    val RUN_DAY: DayOfWeek = DayOfWeek.SUNDAY
-    val RUN_AT: LocalTime = LocalTime.of(19, 0)
-    val QUIET_FROM: LocalTime = LocalTime.of(22, 0)
-    val QUIET_UNTIL: LocalTime = LocalTime.of(7, 0)
-    val LATEST: LocalTime = LocalTime.of(12, 0)
+    val RUN_DAY: DayOfWeek = DayOfWeek.of(SharedData.FavouritePunctuality.DIGEST_ISO_WEEKDAY)
+    val RUN_AT: LocalTime = LocalTime.of(SharedData.FavouritePunctuality.DIGEST_HOUR, 0)
+    val QUIET_FROM: LocalTime = LocalTime.of(SharedData.FavouritePunctuality.DIGEST_QUIET_FROM_HOUR, 0)
+    val QUIET_UNTIL: LocalTime = LocalTime.of(SharedData.FavouritePunctuality.DIGEST_QUIET_UNTIL_HOUR, 0)
+    val LATEST: LocalTime = LocalTime.of(SharedData.FavouritePunctuality.DIGEST_LATEST_HOUR, 0)
 
     /** The Sunday whose digest may be shown at [now], or null outside Sunday [RUN_AT] – Monday [LATEST]. */
     fun weekEndAt(now: ZonedDateTime): LocalDate? {
@@ -120,11 +121,11 @@ object WeeklyDigestPlanner {
  */
 object WeeklyDigestBuilder {
     /** The earlier weeks compared with this one. */
-    const val EARLIER_DAYS = 28L
-    const val MIN_WEEK_RUNS = 2
-    const val MIN_EARLIER_RUNS = 3
+    const val EARLIER_DAYS = SharedData.FavouritePunctuality.DIGEST_EARLIER_DAYS.toLong()
+    const val MIN_WEEK_RUNS = SharedData.FavouritePunctuality.DIGEST_MINIMUM_WEEK_RUNS
+    const val MIN_EARLIER_RUNS = SharedData.FavouritePunctuality.DIGEST_MINIMUM_EARLIER_RUNS
     /** A drop of at least this many percentage points names the train. */
-    const val MIN_DROP_POINTS = 20
+    const val MIN_DROP_POINTS = SharedData.FavouritePunctuality.DIGEST_MINIMUM_DROP_POINTS
 
     /**
      * The digest of the week ending on [weekEnd], or null when no favourite train has anything to show (no run recorded

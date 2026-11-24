@@ -231,6 +231,16 @@
 "departures.nearby_map.description" = "Mappa delle stazioni più vicine. Le stesse stazioni, con la distanza, sono elencate sotto.";
 "departures.nearby_map.tap_hint" = "Tocca una stazione per aprirne il tabellone.";
 "departures.nearby_map.position" = "Posizione approssimativa, non salvata";
+"settings.punctuality_recording.title" = "Puntualità dei treni preferiti";
+"settings.punctuality_recording.detail" = "Una volta al giorno, dopo l’arrivo previsto, chiede lo stato del treno e registra solo su questo telefono il ritardo finale e quello alle fermate, per al massimo 365 giorni.";
+"settings.weekly_digest.title" = "Riepilogo settimanale dei treni preferiti";
+"settings.weekly_digest.detail" = "La domenica verso le 19 una notifica riassume la puntualità della settimana registrata su questo telefono per i treni preferiti e, quando disponibile, la loro affidabilità sulla rete negli ultimi 30 giorni, e indica quello peggiorato. Nessuna richiesta di rete; mai tra le 22 e le 7.";
+"saved.digest.title" = "I tuoi treni questa settimana";
+"saved.digest.train_line" = "%1$@: %2$@";
+"saved.digest.no_runs" = "nessuna corsa registrata";
+"saved.digest.worse" = "Peggiorato: %1$@, %2$lld%% in orario questa settimana (di solito %3$lld%%)";
+"saved.digest.within" = "%1$@ (entro %2$@)";
+"saved.digest.train" = "Treno %1$@";
 "saved.timetables.solutions" = "%1$lld soluzioni";
 "departures.types.hidden_trains" = "%1$lld treni nascosti";
 "result.punctuality.observations" = "%1$lld osservazioni registrate su questo dispositivo";
@@ -238,6 +248,7 @@
 "settings.backup.routes" = "%1$lld tratte";
 "settings.backup.stations" = "%1$lld stazioni monitorate";
 "settings.backup.alerts" = "%1$lld avvisi";
+"saved.digest.network" = "ultimi %1$lld giorni sulla rete: %2$lld%% in orario";
 "planner.title" = "Pianifica";
 "planner.intro.title" = "Cerca una tratta";
 "planner.intro.body" = "Scegli partenza e destinazione dal catalogo curato. Gli orari inclusi sono programmati e coprono le reti elencate sotto: Trenitalia, Italo, le ferrovie regionali e i treni transfrontalieri, con i bus di Trenitalia e Italo; metropolitane e tram non sono inclusi e le stazioni senza orari sono segnalate nella ricerca.";

@@ -10,20 +10,45 @@ import BinarioKit
 /// nothing for it, as on Android. A run reads only the public MIT strike calendar and RFI's
 /// infomobility feed, with the manners of every source, and schedules local notifications: no
 /// remote notification and no push entitlement. What was notified is kept on this iPhone only.
+/// The same task also runs Android's two background jobs of the favourite trains: «Puntualità dei
+/// treni preferiti», the one live request the app makes in the background (with «Dati in tempo
+/// reale» on, the favourite's number on its day, through `AppModel.trainNumberRuns`), and the
+/// Sunday «Riepilogo settimanale», which reads only what is on the iPhone.
 enum EveningAlerts {
     static let taskIdentifier = "it.binario.ios.evening-alerts"
     static let strikeNotificationID = "it.binario.ios.strike-reminder"
     static let worksNotificationID = "it.binario.ios.route-works-alert"
+    static let digestNotificationID = "it.binario.ios.weekly-digest"
 
-    /// Plans the next run: the earliest of the alerts switched on, or none. With
+    /// The app's models, for the favourite trains' jobs: the live sources and the punctuality history.
+    @MainActor private static weak var app: AppModel?
+    @MainActor private static weak var personal: PersonalModel?
+
+    @MainActor
+    static func attach(model: AppModel, personal: PersonalModel) {
+        app = model
+        self.personal = personal
+    }
+
+    /// Plans the next run: the earliest of the alerts and jobs switched on, or none. With
     /// `immediateWorksAlert` (the works alert just turned on in the evening window) tonight's alert
     /// is asked for at once, as on Android.
+    @MainActor
     static func schedule(now: Date = Date(), immediateWorksAlert: Bool = false) {
         let preferences = ExtrasPreferenceStore()
         var dates: [Date] = []
         if preferences.strikeReminderEnabled, let next = StrikeReminderPlanner.nextRunAt(now) { dates.append(next) }
         if preferences.routeWorksAlertEnabled, let next = RouteWorksAlertPlanner.nextRunAt(now, immediate: immediateWorksAlert) {
             dates.append(next)
+        }
+        if preferences.weeklyDigestEnabled,
+           let next = WeeklyDigestPlanner.nextRunAt(now, lastSent: EveningAlertsStore().lastDigestWeekEnd) {
+            dates.append(next)
+        }
+        if preferences.punctualityRecordingEnabled, app?.liveDataEnabled ?? true,
+           let next = PunctualityRecordingPlanner.nextRun(PunctualityRecorderStore().candidates(FavouriteTrainStore().load().trains), now: now) {
+            // iOS runs a refresh task some minutes after the date at the earliest.
+            dates.append(max(next, now.addingTimeInterval(60)))
         }
         guard let earliest = dates.min() else {
             BGTaskScheduler.shared.cancel(taskRequestWithIdentifier: taskIdentifier)
@@ -35,9 +60,19 @@ enum EveningAlerts {
         try? BGTaskScheduler.shared.submit(request)
     }
 
-    /// One background run: each alert whose window it is, then the next run.
+    /// One background run: each alert whose window it is, the favourite trains' jobs, then the next run.
     static func run(now: Date = Date()) async {
-        defer { schedule() }
+        await runAlerts(now: now)
+        if ExtrasPreferenceStore().punctualityRecordingEnabled, !Task.isCancelled {
+            await recordPunctuality(now: now)
+        }
+        if !Task.isCancelled {
+            await sendWeeklyDigest(now: Date())
+        }
+        await schedule()
+    }
+
+    private static func runAlerts(now: Date) async {
         guard await notificationsAllowed(), let clock = RailWallClock(now) else { return }
         let preferences = ExtrasPreferenceStore()
         guard let service = RailNoticeService.standard(rules: NoticeRules.standard) else { return }
@@ -48,6 +83,88 @@ enum EveningAlerts {
         if preferences.routeWorksAlertEnabled, RouteWorksAlertPlanner.mayNotify(clock), !Task.isCancelled {
             await alertWorks(service: service, today: clock.date, store: store)
         }
+    }
+
+    // MARK: Favourite trains: punctuality and weekly digest
+
+    /// Android's `PunctualityRecorderWorker`: the favourites whose run is due get their state asked
+    /// on that day and, once arrived, one observation in the personal punctuality. Nothing is shown.
+    @MainActor
+    private static func recordPunctuality(now: Date) async {
+        guard let app, let personal, app.liveDataEnabled else { return }
+        let favourites = FavouriteTrainStore().load().trains
+        let store = PunctualityRecorderStore()
+        store.retainOnly(favourites.map(\.number))
+        for (candidate, date) in PunctualityRecordingPlanner.due(store.candidates(favourites), now: now) {
+            guard !Task.isCancelled,
+                  let favourite = favourites.first(where: { PunctualityHistory.trainKey($0.number) == PunctualityHistory.trainKey(candidate.number) }),
+                  let noon = PlannedLocalTime(hour: 12, minute: 0),
+                  let day = ItalianWallClock.instant(date: date, time: noon) else { continue }
+            var attempted = candidate
+            attempted.attempts = (candidate.attemptDate == date ? candidate.attempts : 0) + 1
+            attempted.attemptDate = date
+            attempted.lastAttempt = now
+            store.save(attempted)
+            let request = LiveTrainStatusRequest(
+                number: NetworkReliability.numberKey(favourite.number), serviceDate: day,
+                stationCode: NetworkReliability.stationCode(favourite.origin), originName: favourite.origin.name
+            )
+            guard let result = await app.trainNumberRuns(request) else { return }
+            switch result {
+            case let .available(lookup):
+                guard let run = lookup.run(for: request) else {
+                    // A day the train does not run is done after one complete answer.
+                    if lookup.runs.isEmpty, lookup.isComplete, lookup.unavailableSources.isEmpty {
+                        attempted.recordedOn = date
+                        store.save(attempted)
+                    }
+                    continue
+                }
+                let arrival = run.stops.last?.scheduled
+                if let arrival {
+                    attempted.durationMinutes = max(1, Int(arrival.timeIntervalSince(run.scheduledDeparture) / 60))
+                }
+                let afterArrival = TimeInterval(SharedData.FavouritePunctuality.recordingAfterArrivalMinutes * 60)
+                let arrived = run.stops.last?.passed == true || arrival.map { Date() >= $0.addingTimeInterval(afterArrival) } == true
+                if arrived, personal.recordFavourite(run, number: favourite.number, date: date) {
+                    attempted.recordedOn = date
+                }
+                store.save(attempted)
+            case .unavailable(.notFound):
+                attempted.recordedOn = date
+                store.save(attempted)
+            case .unavailable:
+                continue
+            }
+        }
+    }
+
+    /// Android's `WeeklyDigestWorker`: on Sunday evening, one notification with the week of each
+    /// favourite train recorded on this iPhone and its network share; no request at all.
+    @MainActor
+    private static func sendWeeklyDigest(now: Date) async {
+        let store = EveningAlertsStore()
+        guard let clock = RailWallClock(now),
+              let weekEnd = WeeklyDigestPlanner.handles(
+                  enabled: ExtrasPreferenceStore().weeklyDigestEnabled, notificationsAllowed: await notificationsAllowed(),
+                  now: clock, lastSent: store.lastDigestWeekEnd
+              ) else { return }
+        // The week is handled even with nothing to say: next Sunday tries again.
+        store.lastDigestWeekEnd = weekEnd
+        let favourites = FavouriteTrainStore().load().trains
+        guard !favourites.isEmpty else { return }
+        let history = personal?.punctuality ?? []
+        let stats = app?.reliabilityStats
+        var origins: [String: String?] = [:]
+        for favourite in favourites { origins[favourite.number] = NetworkReliability.stationCode(favourite.origin) }
+        guard let digest = WeeklyDigestBuilder.build(
+            favourites: favourites.map { (number: $0.number, name: personal?.name(ofTrain: $0.id)) },
+            history: history,
+            weekEnd: weekEnd,
+            network: { number in stats.flatMap { DigestNetwork.of($0, number: number, originCode: origins[number] ?? nil) } }
+        ) else { return }
+        let lines = WeeklyDigestTexts.lines(digest, statsEnd: stats?.windowEnd)
+        _ = await post(id: digestNotificationID, title: String(localized: "saved.digest.title"), body: lines.joined(separator: "\n"), sound: false)
     }
 
     private static func notificationsAllowed() async -> Bool {
@@ -107,11 +224,11 @@ enum EveningAlerts {
     }
 
     /// A local notification shown at once; true when the system accepted it.
-    private static func post(id: String, title: String, body: String) async -> Bool {
+    private static func post(id: String, title: String, body: String, sound: Bool = true) async -> Bool {
         let content = UNMutableNotificationContent()
         content.title = title
         content.body = body
-        content.sound = .default
+        content.sound = sound ? .default : nil
         content.threadIdentifier = id
         do {
             try await UNUserNotificationCenter.current().add(UNNotificationRequest(identifier: id, content: content, trigger: nil))
@@ -171,6 +288,7 @@ final class EveningAlertsStore: @unchecked Sendable {
     private static let strikesKey = "it.binario.ios.strike-reminder.notified.v1"
     private static let worksKey = "it.binario.ios.route-works-alert.notified.v1"
     private static let lastWorksKey = "it.binario.ios.route-works-alert.last-day.v1"
+    private static let lastDigestKey = "it.binario.ios.weekly-digest.last-sent.v1"
 
     private let defaults: UserDefaults
 
@@ -193,6 +311,12 @@ final class EveningAlertsStore: @unchecked Sendable {
         set { defaults.set(newValue?.iso, forKey: Self.lastWorksKey) }
     }
 
+    /// The Sunday of the last weekly digest handled.
+    var lastDigestWeekEnd: PlannedLocalDate? {
+        get { defaults.string(forKey: Self.lastDigestKey).flatMap { PlannedLocalDate(iso: $0) } }
+        set { defaults.set(newValue?.iso, forKey: Self.lastDigestKey) }
+    }
+
     private func days(_ key: String) -> [String: Int] {
         let stored = defaults.dictionary(forKey: key) ?? [:]
         var result: [String: Int] = [:]
@@ -200,5 +324,97 @@ final class EveningAlertsStore: @unchecked Sendable {
             if let day = (value as? NSNumber)?.intValue { result[id] = day }
         }
         return result
+    }
+}
+
+/// The recorder's schedule of each favourite train (Android's `PunctualityRecorderStore`): what it
+/// learned (the duration) and did (the day recorded, today's attempts), in the app's `UserDefaults`
+/// on this iPhone only, never in a backup: it is only a schedule.
+final class PunctualityRecorderStore {
+    private static let key = "it.binario.ios.punctuality-recorder.v1"
+    private let defaults: UserDefaults
+
+    init(defaults: UserDefaults = .standard) {
+        self.defaults = defaults
+    }
+
+    private var stored: [String: [String: Any]] {
+        (defaults.dictionary(forKey: Self.key) ?? [:]).compactMapValues { $0 as? [String: Any] }
+    }
+
+    func candidates(_ favourites: [FavouriteTrain]) -> [RecordingCandidate] {
+        let all = stored
+        return favourites.map { favourite in
+            let value = all[PunctualityHistory.trainKey(favourite.number)] ?? [:]
+            let duration = (value["duration"] as? NSNumber)?.intValue
+            return RecordingCandidate(
+                number: favourite.number,
+                departure: PlannedLocalTime(hhmm: favourite.scheduledDeparture),
+                durationMinutes: duration.flatMap { (1...(36 * 60)).contains($0) ? $0 : nil },
+                recordedOn: (value["recorded"] as? String).flatMap { PlannedLocalDate(iso: $0) },
+                attemptDate: (value["attemptDate"] as? String).flatMap { PlannedLocalDate(iso: $0) },
+                attempts: (value["attempts"] as? NSNumber)?.intValue ?? 0,
+                lastAttempt: (value["lastAttempt"] as? NSNumber).map { Date(timeIntervalSince1970: $0.doubleValue / 1_000) }
+            )
+        }
+    }
+
+    func save(_ candidate: RecordingCandidate) {
+        var value: [String: Any] = ["attempts": candidate.attempts]
+        if let duration = candidate.durationMinutes { value["duration"] = duration }
+        if let recorded = candidate.recordedOn { value["recorded"] = recorded.iso }
+        if let attemptDate = candidate.attemptDate { value["attemptDate"] = attemptDate.iso }
+        if let last = candidate.lastAttempt { value["lastAttempt"] = Int64(last.timeIntervalSince1970 * 1_000) }
+        var all = stored
+        all[PunctualityHistory.trainKey(candidate.number)] = value
+        defaults.set(all, forKey: Self.key)
+    }
+
+    /// Forgets the trains that are no longer favourites.
+    func retainOnly(_ numbers: [String]) {
+        let keep = Set(numbers.map(PunctualityHistory.trainKey))
+        let all = stored
+        let kept = all.filter { keep.contains($0.key) }
+        if kept.count != all.count { defaults.set(kept, forKey: Self.key) }
+    }
+}
+
+/// The texts of the weekly digest (Android's `WeeklyDigestText`): one line per train, the train
+/// that got worse first, the statistics' attribution last when a network share is shown.
+enum WeeklyDigestTexts {
+    static func title(_ train: DigestTrain) -> String {
+        train.name ?? PersonalTexts.format("saved.digest.train", train.number)
+    }
+
+    /// «%1$s (entro %2$s)»: a count or share with the on-time limit it counts against.
+    static func within(_ text: String, minutes: Int) -> String {
+        PersonalTexts.format("saved.digest.within", text, String.localizedStringWithFormat(NSLocalizedString("result.minutes_short", comment: ""), minutes))
+    }
+
+    static func line(_ train: DigestTrain) -> String {
+        var parts: [String] = []
+        if let week = train.week {
+            parts.append(within(ReliabilityTexts.onTime(week.onTime, of: week.runs), minutes: SharedData.PersonalPunctuality.onTimeMinutes))
+            if week.cancelled > 0 { parts.append(ReliabilityTexts.cancelled(week.cancelled)) }
+        } else {
+            parts.append(String(localized: "saved.digest.no_runs"))
+        }
+        if let network = train.network {
+            let share = String.localizedStringWithFormat(NSLocalizedString("saved.digest.network", comment: ""), network.days, network.percent)
+            parts.append(within(share, minutes: network.limitMinutes))
+        }
+        return PersonalTexts.format("saved.digest.train_line", title(train), parts.joined(separator: " · "))
+    }
+
+    static func lines(_ digest: WeeklyDigest, statsEnd: NetworkReliabilityDay?) -> [String] {
+        var lines: [String] = []
+        if let worse = digest.worse {
+            lines.append(PersonalTexts.format("saved.digest.worse", title(worse.train), worse.weekPercent, worse.usualPercent))
+        }
+        lines += digest.trains.map(line)
+        if let statsEnd, digest.trains.contains(where: { $0.network != nil }) {
+            lines.append(ReliabilityTexts.attribution(statsEnd))
+        }
+        return lines
     }
 }

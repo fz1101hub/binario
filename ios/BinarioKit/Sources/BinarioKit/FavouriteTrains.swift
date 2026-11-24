@@ -299,8 +299,8 @@ public struct FavouriteTrainReliability: Equatable, Identifiable, Sendable {
 /// the bundled file is one 30-day aggregate per train and stop. A favourite without statistics, or
 /// below `NetworkReliability.minimumSamples` at its last stop, has no row.
 public struct FavouriteTrainsReliability: Equatable, Sendable {
-    /// As on Android (`FavouriteTrainPunctuality.MAX_ROWS`).
-    public static let maximumRows = 8
+    /// As on Android (`FavouriteTrainPunctuality.MAX_ROWS`), from the shared table.
+    public static let maximumRows = SharedData.FavouritePunctuality.maximumRows
 
     public let rows: [FavouriteTrainReliability]
     /// The last day the statistics include.

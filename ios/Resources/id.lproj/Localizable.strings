@@ -231,6 +231,16 @@
 "departures.nearby_map.description" = "Peta stasiun terdekat. Stasiun yang sama, dengan jaraknya, tercantum di bawah.";
 "departures.nearby_map.tap_hint" = "Ketuk stasiun untuk membuka papannya.";
 "departures.nearby_map.position" = "Perkiraan posisi, tidak disimpan";
+"settings.punctuality_recording.title" = "Ketepatan waktu kereta favorit";
+"settings.punctuality_recording.detail" = "Sekali sehari, setelah jadwal tiba, menanyakan status kereta dan mencatat hanya di ponsel ini keterlambatan akhir dan keterlambatan di pemberhentian, paling lama 365 hari.";
+"settings.weekly_digest.title" = "Ringkasan mingguan kereta favorit";
+"settings.weekly_digest.detail" = "Setiap Minggu sekitar pukul 19.00 sebuah notifikasi merangkum ketepatan waktu minggu itu yang tercatat di ponsel ini untuk kereta favorit dan, jika tersedia, keandalannya di jaringan selama 30 hari terakhir, serta menyebut kereta yang memburuk. Tanpa permintaan jaringan; tidak pernah antara pukul 22.00 dan 07.00.";
+"saved.digest.title" = "Kereta Anda minggu ini";
+"saved.digest.train_line" = "%1$@: %2$@";
+"saved.digest.no_runs" = "tidak ada perjalanan tercatat";
+"saved.digest.worse" = "Memburuk: %1$@, tepat waktu %2$lld%% minggu ini (biasanya %3$lld%%)";
+"saved.digest.within" = "%1$@ (dalam %2$@)";
+"saved.digest.train" = "Kereta %1$@";
 "saved.timetables.solutions" = "%1$lld pilihan perjalanan";
 "departures.types.hidden_trains" = "%1$lld kereta disembunyikan";
 "result.punctuality.observations" = "%1$lld pengamatan tercatat di perangkat ini";
@@ -238,6 +248,7 @@
 "settings.backup.routes" = "%1$lld rute";
 "settings.backup.stations" = "%1$lld stasiun dipantau";
 "settings.backup.alerts" = "%1$lld peringatan";
+"saved.digest.network" = "%1$lld hari terakhir di jaringan: %2$lld%% tepat waktu";
 "planner.title" = "Rencanakan";
 "planner.intro.title" = "Cari rute";
 "planner.intro.body" = "Pilih stasiun asal dan tujuan dari katalog kurasi. Jadwal yang disertakan adalah jadwal terencana dan mencakup jaringan yang tercantum di bawah: Trenitalia, Italo, kereta regional, dan kereta lintas batas, termasuk bus Trenitalia dan Italo; metro dan trem tidak disertakan, dan stasiun tanpa jadwal ditandai dalam pencarian.";

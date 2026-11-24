@@ -110,7 +110,7 @@ struct TrainNumberSearchView: View {
         searching = true
         messageKey = nil
         Task {
-            let result = await model.trainNumberRuns(query)
+            let result = await model.trainNumberRuns(LiveTrainStatusRequest(number: query, serviceDate: Date()))
             searching = false
             switch result {
             case nil:

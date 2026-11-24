@@ -231,6 +231,16 @@
 "departures.nearby_map.description" = "แผนที่สถานีที่ใกล้ที่สุด สถานีเดียวกันพร้อมระยะทางแสดงอยู่ด้านล่าง";
 "departures.nearby_map.tap_hint" = "แตะสถานีเพื่อเปิดกระดานขบวนรถ";
 "departures.nearby_map.position" = "ตำแหน่งโดยประมาณ ไม่ถูกบันทึก";
+"settings.punctuality_recording.title" = "ความตรงต่อเวลาของขบวนโปรด";
+"settings.punctuality_recording.detail" = "วันละครั้งหลังเวลาถึงตามตาราง จะขอสถานะของขบวนรถ และบันทึกความล่าช้าสุดท้ายรวมถึงความล่าช้าที่จุดจอดต่างๆ ไว้ในโทรศัพท์เครื่องนี้เท่านั้น ไม่เกิน 365 วัน";
+"settings.weekly_digest.title" = "สรุปรายสัปดาห์ของขบวนโปรด";
+"settings.weekly_digest.detail" = "ทุกวันอาทิตย์ราว 19:00 น. การแจ้งเตือนจะสรุปความตรงต่อเวลาของขบวนโปรดในสัปดาห์นั้นที่บันทึกไว้ในโทรศัพท์เครื่องนี้ และหากมีข้อมูล ความน่าเชื่อถือบนเครือข่ายใน 30 วันล่าสุด พร้อมระบุขบวนที่แย่ลง ไม่มีการส่งคำขอทางเครือข่าย และไม่แจ้งระหว่าง 22:00 ถึง 7:00 น.";
+"saved.digest.title" = "รถไฟของคุณสัปดาห์นี้";
+"saved.digest.train_line" = "%1$@: %2$@";
+"saved.digest.no_runs" = "ไม่มีเที่ยวที่บันทึกไว้";
+"saved.digest.worse" = "แย่ลง: %1$@ ตรงเวลา %2$lld%% ในสัปดาห์นี้ (ปกติ %3$lld%%)";
+"saved.digest.within" = "%1$@ (ภายใน %2$@)";
+"saved.digest.train" = "ขบวน %1$@";
 "saved.timetables.solutions" = "%1$lld ตัวเลือก";
 "departures.types.hidden_trains" = "ซ่อนอยู่ %1$lld ขบวน";
 "result.punctuality.observations" = "บันทึกไว้ %1$lld รายการในอุปกรณ์นี้";
@@ -238,6 +248,7 @@
 "settings.backup.routes" = "%1$lld เส้นทาง";
 "settings.backup.stations" = "สถานีที่ติดตาม %1$lld แห่ง";
 "settings.backup.alerts" = "การแจ้งเตือน %1$lld รายการ";
+"saved.digest.network" = "%1$lld วันล่าสุดบนเครือข่าย: ตรงเวลา %2$lld%%";
 "planner.title" = "วางแผน";
 "planner.intro.title" = "ค้นหาเส้นทาง";
 "planner.intro.body" = "เลือกสถานีต้นทางและปลายทางจากแค็ตตาล็อกที่คัดสรรไว้ ตารางเวลาที่รวมอยู่เป็นตารางตามแผนและครอบคลุมเครือข่ายที่แสดงด้านล่าง: Trenitalia, Italo, รถไฟภูมิภาค และรถไฟข้ามพรมแดน รวมถึงรถบัสของ Trenitalia และ Italo ไม่รวมรถไฟใต้ดินและรถราง และสถานีที่ไม่มีตารางเวลาจะถูกระบุไว้ในการค้นหา";

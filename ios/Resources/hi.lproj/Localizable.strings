@@ -231,6 +231,16 @@
 "departures.nearby_map.description" = "सबसे पास के स्टेशनों का नक्शा। वही स्टेशन दूरी के साथ नीचे सूचीबद्ध हैं।";
 "departures.nearby_map.tap_hint" = "बोर्ड खोलने के लिए किसी स्टेशन पर टैप करें।";
 "departures.nearby_map.position" = "अनुमानित लोकेशन, सहेजी नहीं गई";
+"settings.punctuality_recording.title" = "पसंदीदा ट्रेनों का समय-पालन";
+"settings.punctuality_recording.detail" = "दिन में एक बार, निर्धारित आगमन के बाद, ट्रेन की स्थिति पूछता है और केवल इसी फ़ोन पर अंतिम देरी और ठहरावों पर देरी दर्ज करता है, अधिकतम 365 दिनों तक।";
+"settings.weekly_digest.title" = "पसंदीदा ट्रेनों का साप्ताहिक सारांश";
+"settings.weekly_digest.detail" = "रविवार शाम लगभग 19 बजे एक सूचना इस फ़ोन पर दर्ज पसंदीदा ट्रेनों के सप्ताह भर के समय-पालन का सारांश देती है और उपलब्ध होने पर पिछले 30 दिनों में नेटवर्क पर उनकी विश्वसनीयता भी बताती है, साथ ही उस ट्रेन का नाम बताती है जिसका प्रदर्शन बिगड़ा। कोई नेटवर्क अनुरोध नहीं; 22 से 7 बजे के बीच कभी नहीं।";
+"saved.digest.title" = "इस सप्ताह आपकी ट्रेनें";
+"saved.digest.train_line" = "%1$@: %2$@";
+"saved.digest.no_runs" = "कोई यात्रा दर्ज नहीं";
+"saved.digest.worse" = "प्रदर्शन बिगड़ा: %1$@, इस सप्ताह %2$lld%% बार समय पर (आमतौर पर %3$lld%%)";
+"saved.digest.within" = "%1$@ (%2$@ के भीतर)";
+"saved.digest.train" = "ट्रेन %1$@";
 "saved.timetables.solutions" = "%1$lld विकल्प";
 "departures.types.hidden_trains" = "%1$lld ट्रेनें छिपाई गईं";
 "result.punctuality.observations" = "इस डिवाइस पर %1$lld अवलोकन दर्ज";
@@ -238,6 +248,7 @@
 "settings.backup.routes" = "%1$lld मार्ग";
 "settings.backup.stations" = "निगरानी वाले %1$lld स्टेशन";
 "settings.backup.alerts" = "%1$lld अलर्ट";
+"saved.digest.network" = "नेटवर्क पर पिछले %1$lld दिन: %2$lld%% समय पर";
 "planner.title" = "योजना बनाएँ";
 "planner.intro.title" = "रूट खोजें";
 "planner.intro.body" = "चुने हुए कैटलॉग से प्रस्थान और गंतव्य चुनें। शामिल समय-सारणियाँ निर्धारित हैं और नीचे सूचीबद्ध नेटवर्क को कवर करती हैं: Trenitalia, Italo, क्षेत्रीय रेलवे और सीमा-पार ट्रेनें, Trenitalia और Italo की बसों सहित; मेट्रो और ट्राम शामिल नहीं हैं, और बिना समय-सारणी वाले स्टेशन खोज में चिह्नित किए जाते हैं।";

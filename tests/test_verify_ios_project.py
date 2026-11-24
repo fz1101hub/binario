@@ -1504,7 +1504,9 @@ class IOSProjectTests(unittest.TestCase):
         }
         for source, android_fragment, fragment in (
             ("favourites", "const val MAX = 12", "public static let maximumTrains = 12"),
-            ("punctuality", "const val MAX_ROWS = 8", "public static let maximumRows = 8"),
+            # Both from contracts/shared-data/v1/favourite-punctuality-v1.json (8).
+            ("punctuality", "const val MAX_ROWS = SharedData.FavouritePunctuality.MAXIMUM_ROWS",
+             "public static let maximumRows = SharedData.FavouritePunctuality.maximumRows"),
             ("link", 'Regex("^[A-Za-z0-9]{1,12}$")', "public static let maximumNumberKeyLength = 12"),
             (
                 "marks",
@@ -1805,7 +1807,9 @@ class IOSProjectTests(unittest.TestCase):
         # No background mode, task or schedule was added for it. The only background work of the app is
         # the evening alerts' app refresh task (owner decision, November 2026): `fetch` and exactly one
         # permitted identifier in the partial Info.plist, scheduled and run by EveningAlerts.swift alone,
-        # which reads only the MIT and RFI feeds and posts local notifications.
+        # which reads the MIT and RFI feeds and posts local notifications. The one live request it may
+        # make is Android's «Puntualità dei treni preferiti» (parity, November 2026): a favourite's
+        # number on its day, through the model's switch-guarded `trainNumberRuns`, never LiveRailData.
         project_text = (IOS / "project.yml").read_text(encoding="utf-8")
         for absent in ("UIBackgroundModes", "BGTaskScheduler", "fetch", "remote-notification"):
             self.assertNotIn(absent, project_text, f"project.yml: {absent}")
@@ -1825,8 +1829,11 @@ class IOSProjectTests(unittest.TestCase):
         self.assertIn("UNNotificationRequest(identifier: id, content: content, trigger: nil)", alerts)
         self.assertIn("service.strikeCalendar()", alerts)
         self.assertIn("service.general(personal: false, includeTrenord: false)", alerts)
-        for absent in ("LiveRailData", "stationNotices", "personal: true", "URLSession"):
+        for absent in ("LiveRailData", "stationNotices", "personal: true", "URLSession", "liveData."):
             self.assertNotIn(absent, alerts)
+        self.assertEqual(1, alerts.count("app.trainNumberRuns(request)"))
+        self.assertIn("guard let app, let personal, app.liveDataEnabled else { return }", alerts)
+        self.assertIn("if ExtrasPreferenceStore().punctualityRecordingEnabled, !Task.isCancelled {", alerts)
         self.assertEqual(1, app["BinarioApp.swift"].count(".backgroundTask(.appRefresh(EveningAlerts.taskIdentifier))"))
         self.assertEqual(["BinarioApp.swift"], sorted(name for name, source in app.items() if ".backgroundTask(" in source))
 
@@ -1855,7 +1862,7 @@ class IOSProjectTests(unittest.TestCase):
         ):
             with self.subTest(guard=guard):
                 self.assertIn(guard, model)
-        self.assertEqual(6, model.count("await liveData."), "board, planner, train status, board row run, train notices, «Treno»")
+        self.assertEqual(6, model.count("await liveData."), "board, planner, train status, board row run, train notices, by number")
         self.assertEqual(2, model.count("await liveData.trainStatus("), "the train's detail and the search by number")
         # Stale answers are dropped as the board's are.
         for fragment in (
@@ -1869,7 +1876,8 @@ class IOSProjectTests(unittest.TestCase):
         # Android's numbers: the first 8 favourites, the ±3 hour window, two runs 2 hours apart are two.
         punctuality = (ROOT / "app/src/main/java/it/binario/app/FavouriteTrainPunctuality.kt").read_text(encoding="utf-8")
         candidates = (ROOT / "app/src/main/java/it/binario/app/journeys/JourneyLiveLookup.kt").read_text(encoding="utf-8")
-        self.assertIn("const val MAX_ROWS = 8", punctuality)
+        self.assertIn("const val MAX_ROWS = SharedData.FavouritePunctuality.MAXIMUM_ROWS", punctuality)
+        self.assertEqual(8, json.loads((ROOT / "contracts/shared-data/v1/favourite-punctuality-v1.json").read_text(encoding="utf-8"))["maximumRows"])
         self.assertIn("static let maximumLiveFavourites = 8", model)
         self.assertIn("val LOOKBACK: Duration = Duration.ofHours(3)", candidates)
         self.assertIn("val LOOKAHEAD: Duration = Duration.ofHours(3)", candidates)

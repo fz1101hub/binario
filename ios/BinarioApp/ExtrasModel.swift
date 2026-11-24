@@ -20,6 +20,9 @@ final class ExtrasModel: ObservableObject {
     @Published private(set) var strikeReminderEnabled: Bool
     /// «Lavori di domani sulle tue tratte», off by default as on Android.
     @Published private(set) var routeWorksAlertEnabled: Bool
+    /// «Puntualità dei treni preferiti» and «Riepilogo settimanale» (EveningAlerts.swift).
+    @Published private(set) var punctualityRecordingEnabled: Bool
+    @Published private(set) var weeklyDigestEnabled: Bool
     /// The weather sections, by `weatherKey`.
     @Published private(set) var weather: [String: Load<DestinationWeatherResult>] = [:]
     /// The bike sharing sections, by station id; nothing until the user taps «Mostra».
@@ -57,6 +60,8 @@ final class ExtrasModel: ObservableObject {
         destinationWeatherEnabled = preferences.destinationWeatherEnabled
         strikeReminderEnabled = preferences.strikeReminderEnabled
         routeWorksAlertEnabled = preferences.routeWorksAlertEnabled
+        punctualityRecordingEnabled = preferences.punctualityRecordingEnabled
+        weeklyDigestEnabled = preferences.weeklyDigestEnabled
     }
 
     /// Whether an evening alert may read the MIT or RFI feed in the background.
@@ -80,6 +85,19 @@ final class ExtrasModel: ObservableObject {
         preferences.routeWorksAlertEnabled = enabled
         routeWorksAlertEnabled = enabled
         alertsChanged(turnedOn: enabled, immediate: enabled)
+    }
+
+    func setPunctualityRecordingEnabled(_ enabled: Bool) {
+        preferences.punctualityRecordingEnabled = enabled
+        punctualityRecordingEnabled = enabled
+        EveningAlerts.schedule()
+    }
+
+    /// The digest is a notification: turning it on asks for the permission, as the alerts do.
+    func setWeeklyDigestEnabled(_ enabled: Bool) {
+        preferences.weeklyDigestEnabled = enabled
+        weeklyDigestEnabled = enabled
+        alertsChanged(turnedOn: enabled, immediate: false)
     }
 
     private func alertsChanged(turnedOn: Bool, immediate: Bool) {
@@ -168,6 +186,8 @@ final class ExtrasPreferenceStore: @unchecked Sendable {
     static let destinationWeatherKey = "it.binario.ios.destination-weather.v1"
     static let strikeReminderKey = "it.binario.ios.strike-reminder.v1"
     static let routeWorksAlertKey = "it.binario.ios.route-works-alert.v1"
+    static let punctualityRecordingKey = "it.binario.ios.punctuality-recording.v1"
+    static let weeklyDigestKey = "it.binario.ios.weekly-digest.v1"
 
     private let defaults: UserDefaults
 
@@ -188,6 +208,18 @@ final class ExtrasPreferenceStore: @unchecked Sendable {
     var routeWorksAlertEnabled: Bool {
         get { flag(Self.routeWorksAlertKey, fallback: false) }
         set { defaults.set(newValue, forKey: Self.routeWorksAlertKey) }
+    }
+
+    /// «Puntualità dei treni preferiti», on by default as on Android.
+    var punctualityRecordingEnabled: Bool {
+        get { flag(Self.punctualityRecordingKey, fallback: true) }
+        set { defaults.set(newValue, forKey: Self.punctualityRecordingKey) }
+    }
+
+    /// «Riepilogo settimanale dei treni preferiti», off by default as on Android.
+    var weeklyDigestEnabled: Bool {
+        get { flag(Self.weeklyDigestKey, fallback: false) }
+        set { defaults.set(newValue, forKey: Self.weeklyDigestKey) }
     }
 
     private func flag(_ key: String, fallback: Bool) -> Bool {

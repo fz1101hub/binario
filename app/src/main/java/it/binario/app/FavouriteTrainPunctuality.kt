@@ -2,6 +2,7 @@ package it.binario.app
 
 import it.binario.app.data.reliability.NetworkReliabilityStats
 import it.binario.app.data.reliability.StopReliability
+import it.binario.app.shared.SharedData
 import it.binario.app.widget.ReliabilityMarks
 import java.time.LocalDate
 import kotlin.math.abs
@@ -44,15 +45,15 @@ data class FavouriteTrainReliability(
  */
 object FavouriteTrainPunctuality {
     /** At most this many favourite trains are listed, in the order of «I miei treni». */
-    const val MAX_ROWS = 8
+    const val MAX_ROWS = SharedData.FavouritePunctuality.MAXIMUM_ROWS
     /** The personal record covers today and the days before it, as the network window does. */
-    const val PERSONAL_DAYS = 30L
+    const val PERSONAL_DAYS = SharedData.FavouritePunctuality.PERSONAL_DAYS.toLong()
     /** The trend compares the last four weeks (today included) with the four weeks before them … */
-    const val TREND_DAYS = 28L
+    const val TREND_DAYS = SharedData.FavouritePunctuality.TREND_DAYS.toLong()
     /** … each with at least this many runs recorded … */
-    const val MIN_TREND_RUNS = 4
+    const val MIN_TREND_RUNS = SharedData.FavouritePunctuality.MINIMUM_TREND_RUNS
     /** … and on-time shares at least this many percentage points apart. */
-    const val MIN_TREND_POINTS = 15
+    const val MIN_TREND_POINTS = SharedData.FavouritePunctuality.MINIMUM_TREND_POINTS
 
     /** The runs of [trainNumber] recorded from [from] to [to] (both included), or null when there is none. */
     fun local(history: List<PunctualityObservation>, trainNumber: String, from: LocalDate, to: LocalDate): LocalPunctuality? {

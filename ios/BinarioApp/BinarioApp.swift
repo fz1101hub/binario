@@ -28,7 +28,11 @@ struct BinarioApp: App {
         _model = StateObject(wrappedValue: model)
         _notices = StateObject(wrappedValue: RailNoticesModel.bootstrap())
         _extras = StateObject(wrappedValue: ExtrasModel())
-        _personal = StateObject(wrappedValue: PersonalModel())
+        let personal = PersonalModel()
+        _personal = StateObject(wrappedValue: personal)
+        // The favourite trains' background jobs read the live sources and the punctuality history
+        // of these two models (EveningAlerts.swift).
+        EveningAlerts.attach(model: model, personal: personal)
     }
 
     var body: some Scene {

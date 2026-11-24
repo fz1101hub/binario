@@ -2245,11 +2245,12 @@ final class AppModel: ObservableObject {
         return true
     }
 
-    /// «Treno»: today's runs of a train number from every live source (the live part of Android's
-    /// train-number search); nil when «Dati in tempo reale» is off.
-    func trainNumberRuns(_ number: String, date: Date = Date()) async -> LiveTrainStatusResult? {
+    /// The runs of a train number on a day from every live source (Android's train-number search):
+    /// «Treno» on a tap, and the favourites' punctuality in the background (EveningAlerts.swift);
+    /// nil when «Dati in tempo reale» is off.
+    func trainNumberRuns(_ request: LiveTrainStatusRequest) async -> LiveTrainStatusResult? {
         guard liveDataEnabled, let liveData else { return nil }
-        return await liveData.trainStatus(LiveTrainStatusRequest(number: number, serviceDate: date))
+        return await liveData.trainStatus(request)
     }
 
     /// «Nuova tratta» of Per te (Android's `createRoute`): the route with the name chosen, or the

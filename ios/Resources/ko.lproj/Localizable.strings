@@ -231,6 +231,16 @@
 "departures.nearby_map.description" = "가장 가까운 역 지도. 같은 역이 거리와 함께 아래에 나열되어 있습니다.";
 "departures.nearby_map.tap_hint" = "역을 탭하면 전광판이 열립니다.";
 "departures.nearby_map.position" = "대략적인 위치, 저장되지 않음";
+"settings.punctuality_recording.title" = "즐겨찾는 열차의 정시성";
+"settings.punctuality_recording.detail" = "하루 한 번 도착 예정 시각 이후 열차 상태를 조회하여 최종 지연과 정차역별 지연을 이 휴대전화에만 최대 365일 동안 기록합니다.";
+"settings.weekly_digest.title" = "즐겨찾는 열차 주간 요약";
+"settings.weekly_digest.detail" = "일요일 19시쯤 이 휴대전화에 기록된 즐겨찾는 열차의 한 주 정시성과, 가능한 경우 최근 30일 동안의 네트워크 신뢰도를 알림으로 요약하고 나빠진 열차를 알려 줍니다. 네트워크 요청은 없으며 22시부터 7시 사이에는 알리지 않습니다.";
+"saved.digest.title" = "이번 주 내 열차";
+"saved.digest.train_line" = "%1$@: %2$@";
+"saved.digest.no_runs" = "기록된 운행 없음";
+"saved.digest.worse" = "나빠짐: %1$@, 이번 주 정시율 %2$lld%% (평소 %3$lld%%)";
+"saved.digest.within" = "%1$@(%2$@ 이내)";
+"saved.digest.train" = "열차 %1$@";
 "saved.timetables.solutions" = "여정 %1$lld개";
 "departures.types.hidden_trains" = "숨겨진 열차 %1$lld대";
 "result.punctuality.observations" = "이 기기에 기록된 관측 %1$lld건";
@@ -238,6 +248,7 @@
 "settings.backup.routes" = "구간 %1$lld개";
 "settings.backup.stations" = "모니터링 중인 역 %1$lld개";
 "settings.backup.alerts" = "알림 %1$lld개";
+"saved.digest.network" = "네트워크 최근 %1$lld일: 정시 %2$lld%%";
 "planner.title" = "계획";
 "planner.intro.title" = "경로 검색";
 "planner.intro.body" = "엄선된 카탈로그에서 출발역과 도착역을 선택하세요. 포함된 시간표는 계획 시간표이며 아래에 나열된 노선을 다룹니다: Trenitalia, Italo, 지역 철도와 국경 간 열차(Trenitalia와 Italo의 버스 포함). 지하철과 트램은 포함되지 않으며, 시간표가 없는 역은 검색에서 표시됩니다.";

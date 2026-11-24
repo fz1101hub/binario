@@ -231,6 +231,16 @@
 "departures.nearby_map.description" = "近くの駅の地図。同じ駅が距離付きで下に一覧表示されます。";
 "departures.nearby_map.tap_hint" = "駅をタップすると発車案内が開きます。";
 "departures.nearby_map.position" = "おおよその位置（保存されません）";
+"settings.punctuality_recording.title" = "お気に入りの列車の定時運行";
+"settings.punctuality_recording.detail" = "1 日 1 回、到着予定時刻の後に列車の状況を取得し、最終的な遅れと各停車駅での遅れをこのスマートフォンにのみ最長 365 日間記録します。";
+"settings.weekly_digest.title" = "お気に入りの列車の週間まとめ";
+"settings.weekly_digest.detail" = "日曜日の 19 時ごろ、このスマートフォンに記録されたお気に入りの列車の 1 週間の定時運行と、利用できる場合は過去 30 日間のネットワーク上の信頼性を通知でまとめ、悪化した列車を示します。ネットワークへのリクエストはありません。22 時から 7 時までは通知しません。";
+"saved.digest.title" = "今週のあなたの列車";
+"saved.digest.train_line" = "%1$@：%2$@";
+"saved.digest.no_runs" = "記録された運行なし";
+"saved.digest.worse" = "悪化：%1$@、今週の定時率 %2$lld%%（通常は %3$lld%%）";
+"saved.digest.within" = "%1$@（%2$@以内）";
+"saved.digest.train" = "列車 %1$@";
 "saved.timetables.solutions" = "%1$lld 件の経路";
 "departures.types.hidden_trains" = "%1$lld 本を非表示";
 "result.punctuality.observations" = "この端末に記録した観測 %1$lld 件";
@@ -238,6 +248,7 @@
 "settings.backup.routes" = "区間 %1$lld 件";
 "settings.backup.stations" = "モニタリング中の駅 %1$lld 件";
 "settings.backup.alerts" = "通知 %1$lld 件";
+"saved.digest.network" = "ネットワークの過去 %1$lld 日間：定時 %2$lld%%";
 "planner.title" = "経路検索";
 "planner.intro.title" = "ルートを検索";
 "planner.intro.body" = "厳選カタログから出発駅と到着駅を選んでください。収録している時刻表は計画ダイヤで、下記の路線を対象としています：Trenitalia、Italo、地域鉄道、国境を越える列車（Trenitalia と Italo のバスを含む）。地下鉄と路面電車は含まれず、時刻表のない駅は検索結果で表示されます。";

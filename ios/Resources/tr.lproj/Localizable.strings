@@ -231,6 +231,16 @@
 "departures.nearby_map.description" = "En yakın istasyonların haritası. Aynı istasyonlar mesafeleriyle birlikte aşağıda listelenmiştir.";
 "departures.nearby_map.tap_hint" = "Panosunu açmak için bir istasyona dokunun.";
 "departures.nearby_map.position" = "Yaklaşık konum, kaydedilmez";
+"settings.punctuality_recording.title" = "Favori trenlerin dakikliği";
+"settings.punctuality_recording.detail" = "Günde bir kez, planlanan varıştan sonra trenin durumunu sorgular ve son gecikmeyi ve duraklardaki gecikmeleri yalnızca bu telefonda, en fazla 365 gün boyunca kaydeder.";
+"settings.weekly_digest.title" = "Favori trenlerin haftalık özeti";
+"settings.weekly_digest.detail" = "Pazar günleri saat 19:00 civarında bir bildirim, bu telefonda kaydedilen favori trenlerin haftalık dakikliğini ve varsa son 30 gündeki ağ güvenilirliğini özetler ve kötüleşen treni belirtir. Ağ isteği yapılmaz; 22:00 ile 07:00 arasında asla gösterilmez.";
+"saved.digest.title" = "Bu hafta trenleriniz";
+"saved.digest.train_line" = "%1$@: %2$@";
+"saved.digest.no_runs" = "kayıtlı sefer yok";
+"saved.digest.worse" = "Kötüleşti: %1$@, bu hafta seferlerin %%%2$lld kadarında zamanında (genellikle %%%3$lld)";
+"saved.digest.within" = "%1$@ (%2$@ içinde)";
+"saved.digest.train" = "Tren %1$@";
 "saved.timetables.solutions" = "%1$lld seçenek";
 "departures.types.hidden_trains" = "%1$lld tren gizlendi";
 "result.punctuality.observations" = "Bu cihazda %1$lld gözlem kaydedildi";
@@ -238,6 +248,7 @@
 "settings.backup.routes" = "%1$lld güzergâh";
 "settings.backup.stations" = "%1$lld takip edilen istasyon";
 "settings.backup.alerts" = "%1$lld uyarı";
+"saved.digest.network" = "ağda son %1$lld gün: %%%2$lld zamanında";
 "planner.title" = "Planla";
 "planner.intro.title" = "Güzergâh ara";
 "planner.intro.body" = "Kalkış ve varış istasyonunu seçilmiş katalogdan belirleyin. Dahil edilen tarifeler planlı tarifelerdir ve aşağıda listelenen ağları kapsar: Trenitalia, Italo, bölgesel demiryolları ve sınır ötesi trenler, Trenitalia ve Italo otobüsleri dahil; metro ve tramvay dahil değildir; tarifesi olmayan istasyonlar aramada işaretlenir.";

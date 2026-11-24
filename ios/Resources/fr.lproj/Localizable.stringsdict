@@ -434,6 +434,24 @@
 			<string>%1$lld trains</string>
 		</dict>
 	</dict>
+	<key>saved.digest.network</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>many</key>
+			<string>%1$lld derniers jours sur le réseau : %2$lld %% à l’heure</string>
+			<key>one</key>
+			<string>dernier %1$lld jour sur le réseau : %2$lld %% à l’heure</string>
+			<key>other</key>
+			<string>%1$lld derniers jours sur le réseau : %2$lld %% à l’heure</string>
+		</dict>
+	</dict>
 	<key>saved.timetables.solutions</key>
 	<dict>
 		<key>NSStringLocalizedFormatKey</key>

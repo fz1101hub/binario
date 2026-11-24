@@ -231,6 +231,16 @@
 "departures.nearby_map.description" = "Carte des gares les plus proches. Les mêmes gares, avec leur distance, sont listées ci-dessous.";
 "departures.nearby_map.tap_hint" = "Touchez une gare pour ouvrir son tableau.";
 "departures.nearby_map.position" = "Position approximative, non enregistrée";
+"settings.punctuality_recording.title" = "Ponctualité des trains favoris";
+"settings.punctuality_recording.detail" = "Une fois par jour, après l’arrivée prévue, demande l’état du train et enregistre uniquement sur ce téléphone le retard final et ceux aux arrêts, pendant 365 jours au plus.";
+"settings.weekly_digest.title" = "Résumé hebdomadaire des trains favoris";
+"settings.weekly_digest.detail" = "Le dimanche vers 19 h, une notification résume la ponctualité de la semaine enregistrée sur ce téléphone pour les trains favoris et, si elle est disponible, leur fiabilité sur le réseau ces 30 derniers jours, et indique celui qui s’est dégradé. Aucune requête réseau ; jamais entre 22 h et 7 h.";
+"saved.digest.title" = "Vos trains cette semaine";
+"saved.digest.train_line" = "%1$@ : %2$@";
+"saved.digest.no_runs" = "aucun trajet enregistré";
+"saved.digest.worse" = "Dégradé : %1$@, à l’heure %2$lld %% du temps cette semaine (d’habitude %3$lld %%)";
+"saved.digest.within" = "%1$@ (à %2$@ près)";
+"saved.digest.train" = "Train %1$@";
 "saved.timetables.solutions" = "%1$lld solutions";
 "departures.types.hidden_trains" = "%1$lld trains masqués";
 "result.punctuality.observations" = "%1$lld observations enregistrées sur cet appareil";
@@ -238,6 +248,7 @@
 "settings.backup.routes" = "%1$lld trajets";
 "settings.backup.stations" = "%1$lld gares surveillées";
 "settings.backup.alerts" = "%1$lld alertes";
+"saved.digest.network" = "%1$lld derniers jours sur le réseau : %2$lld %% à l’heure";
 "planner.title" = "Planifier";
 "planner.intro.title" = "Rechercher un trajet";
 "planner.intro.body" = "Choisissez le départ et la destination dans le catalogue vérifié. Les horaires inclus sont des données programmées et couvrent les réseaux listés ci-dessous : Trenitalia, Italo, les chemins de fer régionaux et les trains transfrontaliers, avec les cars de Trenitalia et d'Italo ; le métro et le tram ne sont pas inclus, et les gares sans horaires sont signalées dans la recherche.";

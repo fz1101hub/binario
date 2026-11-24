@@ -249,6 +249,26 @@ extension PersonalModel {
         ) else { return }
         record(observation)
     }
+
+    /// The run of a favourite train found in the background, under the favourite's own number and
+    /// for the day asked (Android's `PunctualityRecordingPlanner.observation`); false when the run
+    /// gives no observation.
+    func recordFavourite(_ run: LiveRunStatus, number: String, date: PlannedLocalDate) -> Bool {
+        let cancelled = run.cancellation == .full || run.state == .cancelled
+        guard cancelled || run.operationalStatusVerified else { return false }
+        let verified = run.stops.filter { $0.operationalStatusVerified && !$0.skipped }
+        guard let observation = PunctualityHistory.observation(
+            number: number,
+            operatorName: run.operatorName,
+            serviceDate: date,
+            today: Self.today(),
+            delayMinutes: run.delayMinutes ?? 0,
+            cancelled: cancelled,
+            stops: verified.map { PunctualityStopDelay(station: $0.stationName, delayMinutes: $0.delayMinutes) }
+        ) else { return false }
+        record(observation)
+        return true
+    }
 }
 
 // MARK: Official pages of a train

@@ -482,6 +482,26 @@
 			<string>%1$lld поезда</string>
 		</dict>
 	</dict>
+	<key>saved.digest.network</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>few</key>
+			<string>последние %1$lld дня в сети: вовремя %2$lld%%</string>
+			<key>many</key>
+			<string>последние %1$lld дней в сети: вовремя %2$lld%%</string>
+			<key>one</key>
+			<string>последний %1$lld день в сети: вовремя %2$lld%%</string>
+			<key>other</key>
+			<string>последние %1$lld дня в сети: вовремя %2$lld%%</string>
+		</dict>
+	</dict>
 	<key>saved.timetables.solutions</key>
 	<dict>
 		<key>NSStringLocalizedFormatKey</key>

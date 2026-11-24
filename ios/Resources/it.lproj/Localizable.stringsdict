@@ -434,6 +434,24 @@
 			<string>%1$lld treni</string>
 		</dict>
 	</dict>
+	<key>saved.digest.network</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>many</key>
+			<string>ultimi %1$lld giorni sulla rete: %2$lld%% in orario</string>
+			<key>one</key>
+			<string>ultimo %1$lld giorno sulla rete: %2$lld%% in orario</string>
+			<key>other</key>
+			<string>ultimi %1$lld giorni sulla rete: %2$lld%% in orario</string>
+		</dict>
+	</dict>
 	<key>saved.timetables.solutions</key>
 	<dict>
 		<key>NSStringLocalizedFormatKey</key>

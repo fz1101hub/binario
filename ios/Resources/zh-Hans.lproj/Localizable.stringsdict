@@ -338,6 +338,20 @@
 			<string>%1$lld 趟列车</string>
 		</dict>
 	</dict>
+	<key>saved.digest.network</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>other</key>
+			<string>路网最近 %1$lld 天：准点 %2$lld%%</string>
+		</dict>
+	</dict>
 	<key>saved.timetables.solutions</key>
 	<dict>
 		<key>NSStringLocalizedFormatKey</key>

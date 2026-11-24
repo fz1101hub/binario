@@ -434,6 +434,24 @@
 			<string>%1$lld trens</string>
 		</dict>
 	</dict>
+	<key>saved.digest.network</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>many</key>
+			<string>últimos %1$lld dias na rede: %2$lld%% no horário</string>
+			<key>one</key>
+			<string>último %1$lld dia na rede: %2$lld%% no horário</string>
+			<key>other</key>
+			<string>últimos %1$lld dias na rede: %2$lld%% no horário</string>
+		</dict>
+	</dict>
 	<key>saved.timetables.solutions</key>
 	<dict>
 		<key>NSStringLocalizedFormatKey</key>

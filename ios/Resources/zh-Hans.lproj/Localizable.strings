@@ -231,6 +231,16 @@
 "departures.nearby_map.description" = "最近车站的地图。相同的车站及其距离列在下方。";
 "departures.nearby_map.tap_hint" = "点按车站即可打开其车站大屏。";
 "departures.nearby_map.position" = "大致位置，不会保存";
+"settings.punctuality_recording.title" = "收藏列车的准点率";
+"settings.punctuality_recording.detail" = "每天在计划到达后查询一次列车状态，并仅在本手机上记录最终晚点和各停靠站的晚点，最多保存 365 天。";
+"settings.weekly_digest.title" = "收藏列车每周摘要";
+"settings.weekly_digest.detail" = "每周日 19:00 左右，一条通知会汇总本手机记录的收藏列车本周的准点情况，以及在可用时它们最近 30 天在路网上的可靠性，并指出表现变差的列车。不发出网络请求；22:00 至 7:00 之间从不通知。";
+"saved.digest.title" = "你本周的列车";
+"saved.digest.train_line" = "%1$@：%2$@";
+"saved.digest.no_runs" = "没有记录的车次";
+"saved.digest.worse" = "变差：%1$@，本周准点率 %2$lld%%（通常为 %3$lld%%）";
+"saved.digest.within" = "%1$@（%2$@ 以内）";
+"saved.digest.train" = "车次 %1$@";
 "saved.timetables.solutions" = "%1$lld 个方案";
 "departures.types.hidden_trains" = "已隐藏 %1$lld 趟列车";
 "result.punctuality.observations" = "本设备上已记录 %1$lld 次观测";
@@ -238,6 +248,7 @@
 "settings.backup.routes" = "%1$lld 条路线";
 "settings.backup.stations" = "%1$lld 个关注的车站";
 "settings.backup.alerts" = "%1$lld 个提醒";
+"saved.digest.network" = "路网最近 %1$lld 天：准点 %2$lld%%";
 "planner.title" = "规划";
 "planner.intro.title" = "搜索路线";
 "planner.intro.body" = "从精选目录中选择出发站和到达站。所含时刻表为计划时刻表，覆盖下方列出的线路网：Trenitalia、Italo、区域铁路和跨境列车，包括 Trenitalia 和 Italo 的巴士；不含地铁和有轨电车，没有时刻表的车站会在搜索中标出。";

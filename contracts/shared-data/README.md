@@ -27,6 +27,7 @@ python3 tools/generate_shared_code.py --check   # esce con 1 se uno non corrispo
 | `delay-compensation-v1.json` | Soglie e quote dell'indennizzo per ritardo (regolamento UE 2021/782) | Android, iPhone |
 | `destination-weather-v1.json` | Meteo a destinazione da Open-Meteo: indirizzo, variabili, giorni, decimali delle coordinate, cache, limiti | Android, iPhone |
 | `evening-alerts-v1.json` | Promemoria serali: ore degli scioperi e dei lavori, ore di quiete, quanto si ricorda un avviso | Android, iPhone |
+| `favourite-punctuality-v1.json` | Puntualità dei treni preferiti: giorni del registro personale e dell'andamento, registrazione in background dopo l'arrivo previsto (ritardi, tentativi), riepilogo della domenica (ore, ore di quiete, settimane confrontate, calo che nomina un treno) | Android, iPhone |
 | `italian-holidays-v1.json` | Festività nazionali (alcune da un anno in poi) e giorni contati dalla Pasqua | Android, Alexa; generata anche per l'iPhone |
 | `italo-gtfs-station-codes.json` | Codici delle stazioni del pack Italo (`stop_code`) e stazione del catalogo di ciascuno, rivisti; codici lasciati al pack | Android; il builder dell'indice iPhone legge il JSON (`tools/android_station_codes.py`); generata anche per l'iPhone |
 | `italo-stations-v1.json` | Codici Italo di riserva con i loro alias; pagine Italo note per nome | Android, iPhone |

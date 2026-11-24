@@ -231,6 +231,16 @@
 "departures.nearby_map.description" = "Map of the nearest stations. The same stations, with their distance, are listed below.";
 "departures.nearby_map.tap_hint" = "Tap a station to open its board.";
 "departures.nearby_map.position" = "Approximate position, not saved";
+"settings.punctuality_recording.title" = "Punctuality of favourite trains";
+"settings.punctuality_recording.detail" = "Once a day, after the scheduled arrival, asks for the train status and records only on this phone the final delay and the delays at the stops, for up to 365 days.";
+"settings.weekly_digest.title" = "Weekly summary of favourite trains";
+"settings.weekly_digest.detail" = "On Sunday around 19:00 a notification sums up the week’s punctuality recorded on this phone for your favourite trains and, when available, their network reliability over the last 30 days, and names the one that got worse. No network request; never between 22:00 and 7:00.";
+"saved.digest.title" = "Your trains this week";
+"saved.digest.train_line" = "%1$@: %2$@";
+"saved.digest.no_runs" = "no run recorded";
+"saved.digest.worse" = "Got worse: %1$@, on time %2$lld%% of the time this week (usually %3$lld%%)";
+"saved.digest.within" = "%1$@ (within %2$@)";
+"saved.digest.train" = "Train %1$@";
 "saved.timetables.solutions" = "%1$lld options";
 "departures.types.hidden_trains" = "%1$lld trains hidden";
 "result.punctuality.observations" = "%1$lld observations recorded on this device";
@@ -238,6 +248,7 @@
 "settings.backup.routes" = "%1$lld routes";
 "settings.backup.stations" = "%1$lld monitored stations";
 "settings.backup.alerts" = "%1$lld alerts";
+"saved.digest.network" = "last %1$lld days on the network: %2$lld%% on time";
 "planner.title" = "Plan";
 "planner.intro.title" = "Search for a route";
 "planner.intro.body" = "Choose the origin and destination from the curated catalogue. The included timetables are scheduled data and cover the networks listed below: Trenitalia, Italo, the regional railways and the cross-border trains, with Trenitalia's and Italo's buses; metro and tram lines are not included, and stations without timetables are flagged in the search.";

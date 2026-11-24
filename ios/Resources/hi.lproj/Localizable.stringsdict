@@ -386,6 +386,22 @@
 			<string>%1$lld ट्रेनें</string>
 		</dict>
 	</dict>
+	<key>saved.digest.network</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>नेटवर्क पर पिछला %1$lld दिन: %2$lld%% समय पर</string>
+			<key>other</key>
+			<string>नेटवर्क पर पिछले %1$lld दिन: %2$lld%% समय पर</string>
+		</dict>
+	</dict>
 	<key>saved.timetables.solutions</key>
 	<dict>
 		<key>NSStringLocalizedFormatKey</key>

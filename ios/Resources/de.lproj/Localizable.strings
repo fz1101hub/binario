@@ -231,6 +231,16 @@
 "departures.nearby_map.description" = "Karte der nächstgelegenen Bahnhöfe. Dieselben Bahnhöfe stehen mit Entfernung in der Liste darunter.";
 "departures.nearby_map.tap_hint" = "Tippe auf einen Bahnhof, um seine Tafel zu öffnen.";
 "departures.nearby_map.position" = "Ungefähre Position, nicht gespeichert";
+"settings.punctuality_recording.title" = "Pünktlichkeit der favorisierten Züge";
+"settings.punctuality_recording.detail" = "Fragt einmal am Tag nach der planmäßigen Ankunft den Zugstatus ab und speichert nur auf diesem Telefon die Endverspätung und die Verspätungen an den Halten, höchstens 365 Tage lang.";
+"settings.weekly_digest.title" = "Wochenübersicht der favorisierten Züge";
+"settings.weekly_digest.detail" = "Sonntags gegen 19 Uhr fasst eine Benachrichtigung die auf diesem Telefon erfasste Pünktlichkeit der Woche deiner favorisierten Züge zusammen, dazu, wenn verfügbar, ihre Zuverlässigkeit im Netz in den letzten 30 Tagen, und nennt den Zug, der sich verschlechtert hat. Keine Netzanfrage; nie zwischen 22 und 7 Uhr.";
+"saved.digest.title" = "Deine Züge diese Woche";
+"saved.digest.train_line" = "%1$@: %2$@";
+"saved.digest.no_runs" = "keine Fahrt erfasst";
+"saved.digest.worse" = "Verschlechtert: %1$@, diese Woche zu %2$lld%% pünktlich (sonst zu %3$lld%%)";
+"saved.digest.within" = "%1$@ (bis %2$@)";
+"saved.digest.train" = "Zug %1$@";
 "saved.timetables.solutions" = "%1$lld Verbindungen";
 "departures.types.hidden_trains" = "%1$lld Züge ausgeblendet";
 "result.punctuality.observations" = "%1$lld Beobachtungen auf diesem Gerät erfasst";
@@ -238,6 +248,7 @@
 "settings.backup.routes" = "%1$lld Strecken";
 "settings.backup.stations" = "%1$lld überwachte Bahnhöfe";
 "settings.backup.alerts" = "%1$lld Warnungen";
+"saved.digest.network" = "letzte %1$lld Tage im Netz: %2$lld%% pünktlich";
 "planner.title" = "Planen";
 "planner.intro.title" = "Strecke suchen";
 "planner.intro.body" = "Wählen Sie Start und Ziel aus dem kuratierten Katalog. Die enthaltenen Fahrpläne sind Plandaten und decken die unten aufgeführten Netze ab: Trenitalia, Italo, die Regionalbahnen und die grenzüberschreitenden Züge, mit den Bussen von Trenitalia und Italo; Metro und Tram sind nicht enthalten, Bahnhöfe ohne Fahrplan werden in der Suche gekennzeichnet.";

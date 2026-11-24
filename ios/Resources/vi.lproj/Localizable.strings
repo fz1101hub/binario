@@ -231,6 +231,16 @@
 "departures.nearby_map.description" = "Bản đồ các ga gần nhất. Các ga này, kèm khoảng cách, được liệt kê bên dưới.";
 "departures.nearby_map.tap_hint" = "Nhấn vào một ga để mở bảng giờ tàu.";
 "departures.nearby_map.position" = "Vị trí gần đúng, không được lưu";
+"settings.punctuality_recording.title" = "Mức đúng giờ của tàu yêu thích";
+"settings.punctuality_recording.detail" = "Mỗi ngày một lần, sau giờ đến theo lịch, ứng dụng hỏi trạng thái tàu và chỉ ghi trên điện thoại này mức trễ cuối cùng và mức trễ tại các điểm dừng, tối đa 365 ngày.";
+"settings.weekly_digest.title" = "Tóm tắt hằng tuần của tàu yêu thích";
+"settings.weekly_digest.detail" = "Chủ nhật khoảng 19:00, một thông báo tóm tắt mức đúng giờ trong tuần của các tàu yêu thích được ghi lại trên điện thoại này và, nếu có, độ tin cậy của chúng trên mạng lưới trong 30 ngày qua, đồng thời nêu tàu kém đi. Không gửi yêu cầu mạng; không bao giờ trong khoảng 22:00 đến 7:00.";
+"saved.digest.title" = "Tàu của bạn tuần này";
+"saved.digest.train_line" = "%1$@: %2$@";
+"saved.digest.no_runs" = "chưa ghi lại chuyến nào";
+"saved.digest.worse" = "Kém đi: %1$@, đúng giờ %2$lld%% số lần trong tuần này (thường là %3$lld%%)";
+"saved.digest.within" = "%1$@ (trong vòng %2$@)";
+"saved.digest.train" = "Tàu %1$@";
 "saved.timetables.solutions" = "%1$lld phương án";
 "departures.types.hidden_trains" = "Đã ẩn %1$lld tàu";
 "result.punctuality.observations" = "Đã ghi nhận %1$lld lần trên thiết bị này";
@@ -238,6 +248,7 @@
 "settings.backup.routes" = "%1$lld tuyến";
 "settings.backup.stations" = "%1$lld ga đang theo dõi";
 "settings.backup.alerts" = "%1$lld cảnh báo";
+"saved.digest.network" = "%1$lld ngày qua trên mạng lưới: %2$lld%% đúng giờ";
 "planner.title" = "Lên kế hoạch";
 "planner.intro.title" = "Tìm tuyến";
 "planner.intro.body" = "Chọn ga đi và ga đến từ danh mục đã tuyển chọn. Lịch trình đi kèm là lịch theo kế hoạch và bao gồm các mạng lưới liệt kê bên dưới: Trenitalia, Italo, đường sắt khu vực và tàu xuyên biên giới, kể cả xe buýt của Trenitalia và Italo; không bao gồm tàu điện ngầm và tàu điện mặt đất, và các ga không có lịch trình được đánh dấu khi tìm kiếm.";
