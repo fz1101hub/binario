@@ -447,6 +447,42 @@ final class SharedDataTests: XCTestCase {
         XCTAssertEqual(TripQuietHours.untilHour, evening["quietUntilHour"] as? Int)
     }
 
+    func testTheJourneyPlannerIsTheSharedTable() throws {
+        let json = try table("journey-planner-v1.json")
+        let hubs = try XCTUnwrap(json["largeHubRailwayCodes"] as? [String])
+        let longDistance = try XCTUnwrap(json["longDistanceCodes"] as? [String])
+        let local = try XCTUnwrap(json["localCodes"] as? [String])
+        let settings = JourneyPlannerSettings()
+        XCTAssertEqual(settings.defaultTransferMinutes, json["defaultTransferMinutes"] as? Int)
+        XCTAssertEqual(settings.largeHubTransferMinutes, json["largeHubTransferMinutes"] as? Int)
+        XCTAssertEqual(settings.urbanTransferMinutes, json["urbanTransferMinutes"] as? Int)
+        XCTAssertEqual(settings.largeHubRailwayCodes, Set(hubs))
+        XCTAssertEqual(settings.searchWindowMinutes, json["searchWindowMinutes"] as? Int)
+        XCTAssertEqual(settings.journeyHorizonMinutes, json["journeyHorizonMinutes"] as? Int)
+        XCTAssertEqual(settings.maxPacksPerSearch, json["maximumPacksPerSearch"] as? Int)
+        XCTAssertEqual(settings.maxUrbanPacksPerSearch, json["maximumUrbanPacksPerSearch"] as? Int)
+        XCTAssertEqual(settings.maxIterations, json["maximumIterations"] as? Int)
+        XCTAssertEqual(settings.maxSearchConnections, json["maximumSearchConnections"] as? Int)
+        XCTAssertEqual(settings.maxChangeWaitMinutes, json["maximumChangeWaitMinutes"] as? Int)
+        XCTAssertEqual(settings.railTransferMinutes("S01700"), json["largeHubTransferMinutes"] as? Int)
+        XCTAssertEqual(settings.railTransferMinutes(nil), json["defaultTransferMinutes"] as? Int)
+        XCTAssertEqual(JourneyPreferences.walkMinuteChoices, json["walkMinuteChoices"] as? [Int])
+        XCTAssertEqual(JourneyPreferences().maxWalkMinutes, json["defaultMaximumWalkMinutes"] as? Int)
+        XCTAssertEqual(WalkingSpeed.slow.kmh, json["slowWalkingKmh"] as? Double)
+        XCTAssertEqual(WalkingSpeed.normal.kmh, json["normalWalkingKmh"] as? Double)
+        XCTAssertEqual(WalkingSpeed.fast.kmh, json["fastWalkingKmh"] as? Double)
+        XCTAssertEqual(SharedData.JourneyPlanner.longDistanceCodes, Set(longDistance))
+        XCTAssertEqual(SharedData.JourneyPlanner.localCodes, Set(local))
+        XCTAssertEqual(SharedData.JourneyPlanner.maximumResults, json["maximumResults"] as? Int)
+        XCTAssertEqual(SharedData.JourneyPlanner.longWaitMinutes, json["longWaitMinutes"] as? Int)
+        XCTAssertEqual(SharedData.JourneyPlanner.duplicateWalkMinutes, json["duplicateWalkMinutes"] as? Int)
+        let request = JourneyPlanRequest(
+            origin: StationIdentity(id: "a", name: "A"), destination: StationIdentity(id: "b", name: "B"), departure: Date(), stations: [:]
+        )
+        XCTAssertEqual(request.maxTransfers, json["defaultMaximumTransfers"] as? Int)
+        XCTAssertEqual(request.maxResults, json["maximumResults"] as? Int)
+    }
+
     private func table(_ name: String) throws -> [String: Any] {
         let url = repositoryRoot.appendingPathComponent("contracts/shared-data/v1").appendingPathComponent(name)
         let object = try JSONSerialization.jsonObject(with: Data(contentsOf: url))

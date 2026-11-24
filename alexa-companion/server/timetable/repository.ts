@@ -38,6 +38,14 @@ const URBAN_TABLES: Readonly<Record<string, readonly string[]>> = {
   urban_stop: ["stop_id", "modes"],
   urban_walk: ["catalog_station_id", "stop_id", "minutes"],
 };
+/**
+ * The details the iPhone's planner of journeys with changes reads (blocks, wheelchair values, transfer points), present
+ * together or not at all: the skill does not read them, so it only accepts them.
+ */
+const DETAIL_TABLES: Readonly<Record<string, readonly string[]>> = {
+  trip_detail: ["trip_id", "block_id", "wheelchair_accessible"],
+  stop_detail: ["stop_id", "place", "wheelchair_boarding"],
+};
 const EXPECTED_INDICES = new Set([
   "idx_route_pack_external", "idx_service_pack_external", "idx_trip_pack_external",
   "idx_trip_route_service", "idx_stop_pack_external", "idx_stop_catalog_station",
@@ -180,7 +188,11 @@ export class TimetableIndex {
     if (this.scalar("PRAGMA quick_check(1)") !== "ok") throw new TimetableIndexError("invalidDatabase");
 
     const tables = new Set(this.all("SELECT name FROM sqlite_master WHERE type = ?", "table").map(row => text(row.name)));
-    const schema = { ...EXPECTED_TABLES, ...(Object.keys(URBAN_TABLES).some(name => tables.has(name)) ? URBAN_TABLES : {}) };
+    const schema = {
+      ...EXPECTED_TABLES,
+      ...(Object.keys(URBAN_TABLES).some(name => tables.has(name)) ? URBAN_TABLES : {}),
+      ...(Object.keys(DETAIL_TABLES).some(name => tables.has(name)) ? DETAIL_TABLES : {}),
+    };
     const expected = Object.keys(schema);
     if (tables.size !== expected.length || !expected.every(name => tables.has(name))) throw new TimetableIndexError("invalidSchema");
     for (const [table, columns] of Object.entries(schema)) {

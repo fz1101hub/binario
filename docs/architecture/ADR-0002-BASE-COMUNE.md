@@ -132,6 +132,11 @@ Il 24 novembre 2026, con European Sleeper e il quadro orario programmato RFI sul
 | `realtime-feeds-v1.json`, in più: i Trip Updates di European Sleeper (`gate` `remote-pack`) | `EuropeanSleeperGtfsRealtimeAdapter` | Android, iPhone (`TimetableRealtime`) |
 
 Le loro regole hanno i casi in `contracts/shared-rules/v1/remote-gtfs-v1.json` e `rfi-programmed-v1.json`; l'iPhone legge anche `calendar-v1.json`. Restano dell'iPhone il lettore ZIP e HTML (Android usa `ZipInputStream` e Jsoup) e il modo di usare l'archivio: invece di un secondo pianificatore, un piccolo indice con lo schema di quello incluso, chiesto solo quando gli orari dell'iPhone non danno treni.
+Il 24 novembre 2026, con i viaggi con cambi sull'iPhone:
+
+| `journey-planner-v1.json`: tempi di cambio (grandi stazioni comprese), finestra, orizzonte, pack per ricerca, limiti della ricerca, «Resta a bordo», codici locali e a lunga percorrenza, velocità e minuti a piedi delle preferenze, cambi e risultati di serie, attesa lunga, doppioni | `GtfsJourneyPlannerSettings` e costanti di `EmbeddedGtfsJourneyProvider.kt`, `JourneyPreferences.kt`, `JourneyResultsPresenter.kt`, `ResultsMerge.kt`, `TransferRisk.kt`, `JourneySearchService.kt` | Android, iPhone |
+
+La ricerca ha i casi in `contracts/shared-rules/v1/connection-scan-v1.json`, letti dai test Kotlin e Swift.
 
 Restano fuori, coperti da casi di prova in `contracts/shared-rules/v1/`, la parola che segna una soppressione esplicita e l'operatore di una riga del monitor RFI (`live-text-v1.json`), i modelli di «Preparazione del viaggio» (`checklist-presets-v1.json`) e il calcolo della Pasqua (`calendar-v1.json`). Le espressioni regolari non diventano dati perché Java e ICU non leggono `\b` e `\w` allo stesso modo sui caratteri non ASCII. L'operatore della riga RFI non è una tabella pulita: Android distingue tre servizi Trenitalia, l'iPhone uno. I modelli di preparazione sono enum legati ai testi tradotti di ogni app. Restano fuori anche i limiti dello snapshot per gli orologi: Wear OS e Apple Watch non dipendono da `app/` né da BinarioKit, quindi non possono leggere il codice generato, e quei limiti li governa già il contratto `contracts/wear-snapshot/v1` con le sue fixture.
 

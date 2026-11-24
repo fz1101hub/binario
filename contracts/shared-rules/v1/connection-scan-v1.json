@@ -1,0 +1,1073 @@
+{
+  "schema": "binario-shared-rules-v1",
+  "readers": {
+    "android": "app/src/test/java/it/binario/app/data/journey/ConnectionScanContractTest.kt",
+    "iphone": "ios/BinarioKit/Tests/BinarioKitTests/JourneyPlannerContractTests.swift"
+  },
+  "description": "The Connection Scan of the planner of journeys with changes (Android's ConnectionScanPlanner, the iPhone's port): a timetable of connections sorted by departure (from node, to node, departure and arrival minute, trip), the change time of every node, connections without pickup or drop off, walks between nodes (whole minutes, change time included) and in-seat continuations (after a connection the traveller is on board of a trip), then a query: origin and destination nodes, the window, the changes, the results, the scans, the horizon of the changes, walks from the origin and to the destination, «meno camminate» and the longest wait. Expected: the journeys in order, each with its vehicles (boarding and alighting connection), departure and arrival minute and walks ([from node, to node, minutes], -1 for the origin or the destination), and whether the window was exhausted. Every reader builds the same timetable from these lists.",
+  "cases": [
+    {
+      "name": "a direct train and a faster one with a change, both kept",
+      "description": "Alfa (0) to Delta (3): a direct train 08:00-10:00, and 08:10 to Beta (1) at 08:40 with the 08:50 to Delta at 09:30; five minutes to change at Beta.",
+      "timetable": {
+        "nodes": 4,
+        "transferMinutes": [
+          5,
+          5,
+          5,
+          5
+        ],
+        "connections": [
+          [
+            0,
+            3,
+            480,
+            600,
+            0
+          ],
+          [
+            0,
+            1,
+            490,
+            520,
+            1
+          ],
+          [
+            1,
+            3,
+            530,
+            570,
+            2
+          ]
+        ]
+      },
+      "query": {
+        "origins": [
+          0
+        ],
+        "destinations": [
+          3
+        ],
+        "departureMinute": 470,
+        "latestDepartureMinute": 600,
+        "maxTransfers": 2,
+        "maxResults": 6,
+        "maxIterations": 32
+      },
+      "expected": {
+        "exhausted": true,
+        "journeys": [
+          {
+            "legs": [
+              [
+                0,
+                0
+              ]
+            ],
+            "departure": 480,
+            "arrival": 600,
+            "accessWalk": null,
+            "transferWalks": [],
+            "egressWalk": null
+          },
+          {
+            "legs": [
+              [
+                1,
+                1
+              ],
+              [
+                2,
+                2
+              ]
+            ],
+            "departure": 490,
+            "arrival": 570,
+            "accessWalk": null,
+            "transferWalks": [
+              null
+            ],
+            "egressWalk": null
+          }
+        ]
+      }
+    },
+    {
+      "name": "a change without its change time is no journey",
+      "description": "The next train leaves Beta three minutes after the arrival: five are needed.",
+      "timetable": {
+        "nodes": 4,
+        "transferMinutes": [
+          5,
+          5,
+          5,
+          5
+        ],
+        "connections": [
+          [
+            0,
+            3,
+            480,
+            600,
+            0
+          ],
+          [
+            0,
+            1,
+            490,
+            520,
+            1
+          ],
+          [
+            1,
+            3,
+            523,
+            570,
+            2
+          ]
+        ]
+      },
+      "query": {
+        "origins": [
+          0
+        ],
+        "destinations": [
+          3
+        ],
+        "departureMinute": 470,
+        "latestDepartureMinute": 600,
+        "maxTransfers": 2,
+        "maxResults": 6,
+        "maxIterations": 32
+      },
+      "expected": {
+        "exhausted": true,
+        "journeys": [
+          {
+            "legs": [
+              [
+                0,
+                0
+              ]
+            ],
+            "departure": 480,
+            "arrival": 600,
+            "accessWalk": null,
+            "transferWalks": [],
+            "egressWalk": null
+          }
+        ]
+      }
+    },
+    {
+      "name": "a large hub needs its own change time",
+      "description": "Beta is a large hub (ten minutes): the 08:48 is missed, the 08:52 is taken.",
+      "timetable": {
+        "nodes": 4,
+        "transferMinutes": [
+          5,
+          10,
+          5,
+          5
+        ],
+        "connections": [
+          [
+            0,
+            1,
+            490,
+            520,
+            0
+          ],
+          [
+            1,
+            3,
+            528,
+            560,
+            1
+          ],
+          [
+            1,
+            3,
+            532,
+            575,
+            2
+          ]
+        ]
+      },
+      "query": {
+        "origins": [
+          0
+        ],
+        "destinations": [
+          3
+        ],
+        "departureMinute": 470,
+        "latestDepartureMinute": 600,
+        "maxTransfers": 2,
+        "maxResults": 6,
+        "maxIterations": 32
+      },
+      "expected": {
+        "exhausted": true,
+        "journeys": [
+          {
+            "legs": [
+              [
+                0,
+                0
+              ],
+              [
+                2,
+                2
+              ]
+            ],
+            "departure": 490,
+            "arrival": 575,
+            "accessWalk": null,
+            "transferWalks": [
+              null
+            ],
+            "egressWalk": null
+          }
+        ]
+      }
+    },
+    {
+      "name": "a walk between two stations is no change of its own",
+      "description": "Beta (1) and Gamma (2) are joined by a seven-minute walk: arrive at Beta 08:40, leave Gamma 08:50.",
+      "timetable": {
+        "nodes": 4,
+        "transferMinutes": [
+          5,
+          5,
+          5,
+          5
+        ],
+        "connections": [
+          [
+            0,
+            1,
+            490,
+            520,
+            0
+          ],
+          [
+            2,
+            3,
+            530,
+            560,
+            1
+          ]
+        ],
+        "footpaths": [
+          [
+            1,
+            2,
+            7
+          ],
+          [
+            2,
+            1,
+            7
+          ]
+        ]
+      },
+      "query": {
+        "origins": [
+          0
+        ],
+        "destinations": [
+          3
+        ],
+        "departureMinute": 470,
+        "latestDepartureMinute": 600,
+        "maxTransfers": 2,
+        "maxResults": 6,
+        "maxIterations": 32
+      },
+      "expected": {
+        "exhausted": true,
+        "journeys": [
+          {
+            "legs": [
+              [
+                0,
+                0
+              ],
+              [
+                1,
+                1
+              ]
+            ],
+            "departure": 490,
+            "arrival": 560,
+            "accessWalk": null,
+            "transferWalks": [
+              [
+                1,
+                2,
+                7
+              ]
+            ],
+            "egressWalk": null
+          }
+        ]
+      }
+    },
+    {
+      "name": "walks from the origin and to the destination",
+      "description": "A metro stop (4) four minutes from the origin, and the destination three minutes from Delta (3).",
+      "timetable": {
+        "nodes": 5,
+        "transferMinutes": [
+          5,
+          5,
+          5,
+          5,
+          3
+        ],
+        "connections": [
+          [
+            4,
+            3,
+            500,
+            540,
+            0
+          ]
+        ]
+      },
+      "query": {
+        "origins": [
+          0
+        ],
+        "destinations": [
+          2
+        ],
+        "departureMinute": 480,
+        "latestDepartureMinute": 600,
+        "maxTransfers": 2,
+        "maxResults": 6,
+        "maxIterations": 32,
+        "originWalk": {
+          "4": 4
+        },
+        "destinationWalk": {
+          "3": 3
+        }
+      },
+      "expected": {
+        "exhausted": true,
+        "journeys": [
+          {
+            "legs": [
+              [
+                0,
+                0
+              ]
+            ],
+            "departure": 496,
+            "arrival": 543,
+            "accessWalk": [
+              -1,
+              4,
+              4
+            ],
+            "transferWalks": [],
+            "egressWalk": [
+              3,
+              -1,
+              3
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "staying on board is no change",
+      "description": "The vehicle of trip 0 goes on as trip 1 at Beta two minutes later («Resta a bordo»): one vehicle, no change time.",
+      "timetable": {
+        "nodes": 4,
+        "transferMinutes": [
+          5,
+          5,
+          5,
+          5
+        ],
+        "connections": [
+          [
+            0,
+            1,
+            490,
+            520,
+            0
+          ],
+          [
+            1,
+            3,
+            522,
+            560,
+            1
+          ]
+        ],
+        "continuations": [
+          [
+            0,
+            1
+          ]
+        ]
+      },
+      "query": {
+        "origins": [
+          0
+        ],
+        "destinations": [
+          3
+        ],
+        "departureMinute": 470,
+        "latestDepartureMinute": 600,
+        "maxTransfers": 2,
+        "maxResults": 6,
+        "maxIterations": 32
+      },
+      "expected": {
+        "exhausted": true,
+        "journeys": [
+          {
+            "legs": [
+              [
+                0,
+                1
+              ]
+            ],
+            "departure": 490,
+            "arrival": 560,
+            "accessWalk": null,
+            "transferWalks": [],
+            "egressWalk": null
+          }
+        ]
+      }
+    },
+    {
+      "name": "boarding after the junction never rides the continuation",
+      "description": "From Beta, where trip 0 ends, trip 1 is boarded as a train of its own: the link only carries travellers already on board.",
+      "timetable": {
+        "nodes": 4,
+        "transferMinutes": [
+          5,
+          5,
+          5,
+          5
+        ],
+        "connections": [
+          [
+            0,
+            1,
+            490,
+            520,
+            0
+          ],
+          [
+            1,
+            3,
+            522,
+            560,
+            1
+          ]
+        ],
+        "continuations": [
+          [
+            0,
+            1
+          ]
+        ]
+      },
+      "query": {
+        "origins": [
+          1
+        ],
+        "destinations": [
+          3
+        ],
+        "departureMinute": 470,
+        "latestDepartureMinute": 600,
+        "maxTransfers": 2,
+        "maxResults": 6,
+        "maxIterations": 32
+      },
+      "expected": {
+        "exhausted": true,
+        "journeys": [
+          {
+            "legs": [
+              [
+                1,
+                1
+              ]
+            ],
+            "departure": 522,
+            "arrival": 560,
+            "accessWalk": null,
+            "transferWalks": [],
+            "egressWalk": null
+          }
+        ]
+      }
+    },
+    {
+      "name": "no pickup and no drop off",
+      "description": "Trip 0 lets nobody board at Alfa (pickup 1), trip 1 nobody off at Gamma (drop off 1): only trip 2 takes the traveller from Alfa to Gamma.",
+      "timetable": {
+        "nodes": 3,
+        "transferMinutes": [
+          5,
+          5,
+          5
+        ],
+        "connections": [
+          [
+            0,
+            1,
+            480,
+            500,
+            0
+          ],
+          [
+            0,
+            2,
+            490,
+            530,
+            1
+          ],
+          [
+            1,
+            2,
+            505,
+            520,
+            0
+          ],
+          [
+            0,
+            2,
+            540,
+            560,
+            2
+          ]
+        ],
+        "noPickup": [
+          0
+        ],
+        "noDropOff": [
+          1
+        ]
+      },
+      "query": {
+        "origins": [
+          0
+        ],
+        "destinations": [
+          2
+        ],
+        "departureMinute": 470,
+        "latestDepartureMinute": 600,
+        "maxTransfers": 2,
+        "maxResults": 6,
+        "maxIterations": 32
+      },
+      "expected": {
+        "exhausted": true,
+        "journeys": [
+          {
+            "legs": [
+              [
+                3,
+                3
+              ]
+            ],
+            "departure": 540,
+            "arrival": 560,
+            "accessWalk": null,
+            "transferWalks": [],
+            "egressWalk": null
+          }
+        ]
+      }
+    },
+    {
+      "name": "a needless night in a station is left out",
+      "description": "A change with a five-hour wait arrives at 06:00; a later direct train arrives at 06:30, within the extra wait: only the direct train stays.",
+      "timetable": {
+        "nodes": 3,
+        "transferMinutes": [
+          5,
+          5,
+          5
+        ],
+        "connections": [
+          [
+            0,
+            1,
+            0,
+            60,
+            0
+          ],
+          [
+            0,
+            2,
+            300,
+            390,
+            2
+          ],
+          [
+            1,
+            2,
+            360,
+            360,
+            1
+          ]
+        ]
+      },
+      "query": {
+        "origins": [
+          0
+        ],
+        "destinations": [
+          2
+        ],
+        "departureMinute": 0,
+        "latestDepartureMinute": 400,
+        "maxTransfers": 2,
+        "maxResults": 6,
+        "maxIterations": 32,
+        "maxChangeWaitMinutes": 120
+      },
+      "expected": {
+        "exhausted": true,
+        "journeys": [
+          {
+            "legs": [
+              [
+                1,
+                1
+              ]
+            ],
+            "departure": 300,
+            "arrival": 390,
+            "accessWalk": null,
+            "transferWalks": [],
+            "egressWalk": null
+          }
+        ]
+      }
+    },
+    {
+      "name": "a long wait is kept when nothing spares it",
+      "description": "The same change, with no other way to get there before 09:00.",
+      "timetable": {
+        "nodes": 3,
+        "transferMinutes": [
+          5,
+          5,
+          5
+        ],
+        "connections": [
+          [
+            0,
+            1,
+            0,
+            60,
+            0
+          ],
+          [
+            1,
+            2,
+            360,
+            400,
+            1
+          ],
+          [
+            0,
+            2,
+            480,
+            540,
+            2
+          ]
+        ]
+      },
+      "query": {
+        "origins": [
+          0
+        ],
+        "destinations": [
+          2
+        ],
+        "departureMinute": 0,
+        "latestDepartureMinute": 400,
+        "maxTransfers": 2,
+        "maxResults": 6,
+        "maxIterations": 32,
+        "maxChangeWaitMinutes": 120
+      },
+      "expected": {
+        "exhausted": true,
+        "journeys": [
+          {
+            "legs": [
+              [
+                0,
+                0
+              ],
+              [
+                1,
+                1
+              ]
+            ],
+            "departure": 0,
+            "arrival": 400,
+            "accessWalk": null,
+            "transferWalks": [
+              null
+            ],
+            "egressWalk": null
+          }
+        ]
+      }
+    },
+    {
+      "name": "meno camminate keeps the option that walks less",
+      "description": "The same train reached on foot at two of its stops, four and two minutes from the origin: one option, the one that walks less.",
+      "timetable": {
+        "nodes": 4,
+        "transferMinutes": [
+          5,
+          5,
+          5,
+          5
+        ],
+        "connections": [
+          [
+            1,
+            2,
+            500,
+            504,
+            0
+          ],
+          [
+            2,
+            3,
+            505,
+            530,
+            0
+          ]
+        ]
+      },
+      "query": {
+        "origins": [
+          0
+        ],
+        "destinations": [
+          3
+        ],
+        "departureMinute": 480,
+        "latestDepartureMinute": 600,
+        "maxTransfers": 2,
+        "maxResults": 6,
+        "maxIterations": 32,
+        "originWalk": {
+          "1": 4,
+          "2": 2
+        },
+        "preferLessWalking": true
+      },
+      "expected": {
+        "exhausted": true,
+        "journeys": [
+          {
+            "legs": [
+              [
+                1,
+                1
+              ]
+            ],
+            "departure": 503,
+            "arrival": 530,
+            "accessWalk": [
+              -1,
+              2,
+              2
+            ],
+            "transferWalks": [],
+            "egressWalk": null
+          }
+        ]
+      }
+    },
+    {
+      "name": "without meno camminate the first option found stays",
+      "description": "The same train and walks: the option found first, boarding at the first stop, stays.",
+      "timetable": {
+        "nodes": 4,
+        "transferMinutes": [
+          5,
+          5,
+          5,
+          5
+        ],
+        "connections": [
+          [
+            1,
+            2,
+            500,
+            504,
+            0
+          ],
+          [
+            2,
+            3,
+            505,
+            530,
+            0
+          ]
+        ]
+      },
+      "query": {
+        "origins": [
+          0
+        ],
+        "destinations": [
+          3
+        ],
+        "departureMinute": 480,
+        "latestDepartureMinute": 600,
+        "maxTransfers": 2,
+        "maxResults": 6,
+        "maxIterations": 32,
+        "originWalk": {
+          "1": 4,
+          "2": 2
+        }
+      },
+      "expected": {
+        "exhausted": true,
+        "journeys": [
+          {
+            "legs": [
+              [
+                0,
+                1
+              ]
+            ],
+            "departure": 496,
+            "arrival": 530,
+            "accessWalk": [
+              -1,
+              1,
+              4
+            ],
+            "transferWalks": [],
+            "egressWalk": null
+          }
+        ]
+      }
+    },
+    {
+      "name": "a night train boarded before the horizon goes on after it",
+      "description": "No vehicle is boarded after 10:00, but the night train boarded at 09:50 reaches Delta the next day.",
+      "timetable": {
+        "nodes": 4,
+        "transferMinutes": [
+          5,
+          5,
+          5,
+          5
+        ],
+        "connections": [
+          [
+            0,
+            1,
+            590,
+            900,
+            0
+          ],
+          [
+            0,
+            3,
+            620,
+            700,
+            1
+          ],
+          [
+            1,
+            3,
+            905,
+            2000,
+            0
+          ]
+        ]
+      },
+      "query": {
+        "origins": [
+          0
+        ],
+        "destinations": [
+          3
+        ],
+        "departureMinute": 580,
+        "latestDepartureMinute": 600,
+        "maxTransfers": 2,
+        "maxResults": 6,
+        "maxIterations": 32,
+        "lastConnectionMinute": 600
+      },
+      "expected": {
+        "exhausted": true,
+        "journeys": [
+          {
+            "legs": [
+              [
+                0,
+                2
+              ]
+            ],
+            "departure": 590,
+            "arrival": 2000,
+            "accessWalk": null,
+            "transferWalks": [],
+            "egressWalk": null
+          }
+        ]
+      }
+    },
+    {
+      "name": "at most the changes asked",
+      "description": "Only a journey with two changes exists; the direct search finds nothing.",
+      "timetable": {
+        "nodes": 4,
+        "transferMinutes": [
+          5,
+          5,
+          5,
+          5
+        ],
+        "connections": [
+          [
+            0,
+            1,
+            480,
+            500,
+            0
+          ],
+          [
+            1,
+            2,
+            510,
+            530,
+            1
+          ],
+          [
+            2,
+            3,
+            540,
+            560,
+            2
+          ]
+        ]
+      },
+      "query": {
+        "origins": [
+          0
+        ],
+        "destinations": [
+          3
+        ],
+        "departureMinute": 470,
+        "latestDepartureMinute": 600,
+        "maxTransfers": 0,
+        "maxResults": 6,
+        "maxIterations": 32
+      },
+      "expected": {
+        "exhausted": true,
+        "journeys": []
+      }
+    },
+    {
+      "name": "options leaving later are found too, sorted by departure",
+      "description": "Three direct trains in the window, at most two results.",
+      "timetable": {
+        "nodes": 2,
+        "transferMinutes": [
+          5,
+          5
+        ],
+        "connections": [
+          [
+            0,
+            1,
+            480,
+            540,
+            0
+          ],
+          [
+            0,
+            1,
+            540,
+            600,
+            1
+          ],
+          [
+            0,
+            1,
+            600,
+            660,
+            2
+          ]
+        ]
+      },
+      "query": {
+        "origins": [
+          0
+        ],
+        "destinations": [
+          1
+        ],
+        "departureMinute": 470,
+        "latestDepartureMinute": 700,
+        "maxTransfers": 2,
+        "maxResults": 2,
+        "maxIterations": 32
+      },
+      "expected": {
+        "exhausted": false,
+        "journeys": [
+          {
+            "legs": [
+              [
+                0,
+                0
+              ]
+            ],
+            "departure": 480,
+            "arrival": 540,
+            "accessWalk": null,
+            "transferWalks": [],
+            "egressWalk": null
+          },
+          {
+            "legs": [
+              [
+                1,
+                1
+              ]
+            ],
+            "departure": 540,
+            "arrival": 600,
+            "accessWalk": null,
+            "transferWalks": [],
+            "egressWalk": null
+          }
+        ]
+      }
+    }
+  ]
+}

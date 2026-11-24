@@ -818,5 +818,173 @@
 			<string>تأخير %1$lld دقيقة</string>
 		</dict>
 	</dict>
+	<key>result.journey.changes</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>few</key>
+			<string>%1$lld تبديلات</string>
+			<key>many</key>
+			<string>%1$lld تبديلًا</string>
+			<key>one</key>
+			<string>%1$lld تبديل</string>
+			<key>other</key>
+			<string>%1$lld تبديل</string>
+			<key>two</key>
+			<string>%1$lld تبديلان</string>
+			<key>zero</key>
+			<string>%1$lld تبديل</string>
+		</dict>
+	</dict>
+	<key>result.journey.connection</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>few</key>
+			<string>نجح تبديل القطار في %3$@ %1$lld مرات من أصل %2$lld</string>
+			<key>many</key>
+			<string>نجح تبديل القطار في %3$@ %1$lld مرة من أصل %2$lld</string>
+			<key>one</key>
+			<string>نجح تبديل القطار في %3$@ %1$lld مرة من أصل %2$lld</string>
+			<key>other</key>
+			<string>نجح تبديل القطار في %3$@ %1$lld مرة من أصل %2$lld</string>
+			<key>two</key>
+			<string>نجح تبديل القطار في %3$@ %1$lld مرتين من أصل %2$lld</string>
+			<key>zero</key>
+			<string>نجح تبديل القطار في %3$@ %1$lld مرة من أصل %2$lld</string>
+		</dict>
+	</dict>
+	<key>result.journey.hidden_by_preferences</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>few</key>
+			<string>قطارات مباشرة أخفتها تفضيلات السفر: %1$lld</string>
+			<key>many</key>
+			<string>قطارات مباشرة أخفتها تفضيلات السفر: %1$lld</string>
+			<key>one</key>
+			<string>قطارات مباشرة أخفتها تفضيلات السفر: %1$lld</string>
+			<key>other</key>
+			<string>قطارات مباشرة أخفتها تفضيلات السفر: %1$lld</string>
+			<key>two</key>
+			<string>قطارات مباشرة أخفتها تفضيلات السفر: %1$lld</string>
+			<key>zero</key>
+			<string>قطارات مباشرة أخفتها تفضيلات السفر: %1$lld</string>
+		</dict>
+	</dict>
+	<key>result.journey.leg_cancelled_share</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>few</key>
+			<string>%3$@ أُلغي %1$lld مرات من أصل %2$lld</string>
+			<key>many</key>
+			<string>%3$@ أُلغي %1$lld مرة من أصل %2$lld</string>
+			<key>one</key>
+			<string>%3$@ أُلغي %1$lld مرة من أصل %2$lld</string>
+			<key>other</key>
+			<string>%3$@ أُلغي %1$lld مرة من أصل %2$lld</string>
+			<key>two</key>
+			<string>%3$@ أُلغي %1$lld مرتين من أصل %2$lld</string>
+			<key>zero</key>
+			<string>%3$@ أُلغي %1$lld مرة من أصل %2$lld</string>
+		</dict>
+	</dict>
+	<key>result.journey.leg_on_time</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>few</key>
+			<string>%3$@ في الموعد %1$lld مرات من أصل %2$lld</string>
+			<key>many</key>
+			<string>%3$@ في الموعد %1$lld مرة من أصل %2$lld</string>
+			<key>one</key>
+			<string>%3$@ في الموعد %1$lld مرة من أصل %2$lld</string>
+			<key>other</key>
+			<string>%3$@ في الموعد %1$lld مرة من أصل %2$lld</string>
+			<key>two</key>
+			<string>%3$@ في الموعد %1$lld مرتين من أصل %2$lld</string>
+			<key>zero</key>
+			<string>%3$@ في الموعد %1$lld مرة من أصل %2$lld</string>
+		</dict>
+	</dict>
+	<key>result.journey.transfer_wait</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>few</key>
+			<string>انتظار %1$lld دقائق</string>
+			<key>many</key>
+			<string>انتظار %1$lld دقيقة</string>
+			<key>one</key>
+			<string>انتظار %1$lld دقيقة</string>
+			<key>other</key>
+			<string>انتظار %1$lld دقيقة</string>
+			<key>two</key>
+			<string>انتظار %1$lld دقيقتين</string>
+			<key>zero</key>
+			<string>انتظار %1$lld دقيقة</string>
+		</dict>
+	</dict>
+	<key>settings.travel.minutes</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>few</key>
+			<string>%1$lld د</string>
+			<key>many</key>
+			<string>%1$lld د</string>
+			<key>one</key>
+			<string>%1$lld د</string>
+			<key>other</key>
+			<string>%1$lld د</string>
+			<key>two</key>
+			<string>%1$lld د</string>
+			<key>zero</key>
+			<string>%1$lld د</string>
+		</dict>
+	</dict>
 </dict>
 </plist>

@@ -4,14 +4,15 @@ import it.binario.app.data.TrainCategory
 import it.binario.app.data.core.LegMode
 import it.binario.app.data.core.ServiceKind
 import it.binario.app.data.core.SourceId
+import it.binario.app.shared.SharedData
 import java.time.LocalDate
 import java.util.Locale
 
 /** Walking speed of the walks of a journey (to the metro, between two stations). */
 enum class WalkingSpeed(val kmh: Double) {
-    SLOW(3.5),
-    NORMAL(4.5),
-    FAST(5.5)
+    SLOW(SharedData.JourneyPlanner.SLOW_WALKING_KMH),
+    NORMAL(SharedData.JourneyPlanner.NORMAL_WALKING_KMH),
+    FAST(SharedData.JourneyPlanner.FAST_WALKING_KMH)
 }
 
 /** "Preferisci": how the results are ranked. It never changes which journeys are correct. */
@@ -114,8 +115,8 @@ data class JourneyPreferences(
     val isCustomized: Boolean get() = this != JourneyPreferences()
 
     companion object {
-        const val DEFAULT_MAX_WALK_MINUTES = 10
-        val MAX_WALK_CHOICES = listOf(5, 10, 15, 20)
+        const val DEFAULT_MAX_WALK_MINUTES = SharedData.JourneyPlanner.DEFAULT_MAXIMUM_WALK_MINUTES
+        val MAX_WALK_CHOICES: List<Int> = SharedData.JourneyPlanner.WALK_MINUTE_CHOICES
     }
 }
 

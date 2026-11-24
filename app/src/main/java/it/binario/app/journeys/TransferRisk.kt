@@ -8,6 +8,7 @@ import it.binario.app.data.TrainService
 import it.binario.app.data.TrainStop
 import it.binario.app.data.core.JourneyLeg
 import it.binario.app.data.core.LegMode
+import it.binario.app.shared.SharedData
 import java.time.Duration
 import java.time.Instant
 import java.time.LocalDateTime
@@ -66,7 +67,7 @@ data class TransferAssessment(
  * already include margin and change time) and the connection is lost with less than half of it.
  */
 object TransferRiskCalculator {
-    const val DEFAULT_TRANSFER_MINUTES = 5L
+    const val DEFAULT_TRANSFER_MINUTES: Long = SharedData.JourneyPlanner.DEFAULT_TRANSFER_MINUTES * 1L
 
     fun assess(
         scheduledArrival: Instant,
