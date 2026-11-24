@@ -325,7 +325,7 @@ extension DigestNetwork {
     public static func of(_ stats: NetworkReliabilityStats, number: String, originCode: String?) -> DigestNetwork? {
         guard let found = FavouriteTrainsReliability.match(stats, number: number, originCode: originCode),
               let stop = NetworkReliability.at(found.train, index: found.alightingIndex), !stop.cancelledEveryDay else { return nil }
-        let within5 = NetworkReliability.distribution(found.train, index: found.alightingIndex)
+        let within5 = NetworkReliabilityAggregates.distribution(found.train, index: found.alightingIndex)
             .map { min(max($0.noDelay + $0.upTo5, 0), stop.samples) }
         return DigestNetwork(onTime: stop.onTime, samples: stop.samples, limitMinutes: stop.onTimeLimitMinutes, onTimeWithin5: within5, days: stats.coveredDays)
     }
