@@ -464,6 +464,75 @@ def _check_source_manners(values: Mapping[str, Any]) -> list[str]:
     return problems
 
 
+def _check_delay_compensation(values: Mapping[str, Any]) -> list[str]:
+    problems = []
+    if values["quarterFromMinutes"] >= values["halfFromMinutes"]:
+        problems.append("quarterFromMinutes non minore di halfFromMinutes")
+    if values["quarterPercent"] >= values["halfPercent"]:
+        problems.append("quarterPercent non minore di halfPercent")
+    return problems
+
+
+def _check_destination_weather(values: Mapping[str, Any]) -> list[str]:
+    problems = []
+    if values["forecastDays"] > values["maximumDays"]:
+        problems.append("forecastDays maggiore di maximumDays")
+    if values["readTimeoutSeconds"] > values["totalTimeoutSeconds"]:
+        problems.append("readTimeoutSeconds maggiore di totalTimeoutSeconds")
+    return problems
+
+
+def _check_bike_sharing(values: Mapping[str, Any]) -> list[str]:
+    problems = []
+    for system in values["systems"]:
+        fields = system.values
+        if not any(fields["attribution"].startswith(word) for word in (fields["name"], fields["name"].split()[0])):
+            problems.append(f"{fields['id']}: l'attribuzione non nomina il sistema")
+    if values["staticTimeToLiveSeconds"] > values["staticMaximumStaleSeconds"]:
+        problems.append("staticTimeToLiveSeconds maggiore di staticMaximumStaleSeconds")
+    if values["readTimeoutSeconds"] > values["totalTimeoutSeconds"]:
+        problems.append("readTimeoutSeconds maggiore di totalTimeoutSeconds")
+    return problems
+
+
+def _check_live_train_map(values: Mapping[str, Any]) -> list[str]:
+    problems = []
+    if 60 % values["timetableSlotMinutes"] != 0:
+        problems.append("timetableSlotMinutes non divide l'ora")
+    if values["positionsRefreshSeconds"] >= values["timetableSlotMinutes"] * 60:
+        problems.append("positionsRefreshSeconds non minore dello slot")
+    return problems
+
+
+def _check_evening_alerts(values: Mapping[str, Any]) -> list[str]:
+    problems = []
+    for key in ("strikeReminderHour", "routeWorksAlertHour"):
+        if not values["quietUntilHour"] <= values[key] < values["quietFromHour"]:
+            problems.append(f"{key} nelle ore di quiete")
+    return problems
+
+
+def _check_rfi_monitor(values: Mapping[str, Any]) -> list[str]:
+    host = "https://iechub.rfi.it/"
+    return [f"{key}: fuori da {host}" for key in ("catalogueUrl", "monitorUrl") if not values[key].startswith(host)]
+
+
+def _check_viaggiatreno(values: Mapping[str, Any]) -> list[str]:
+    problems = []
+    resources = [values[key] for key in ("departuresResource", "arrivalsResource", "runResource", "numberSearchResource")]
+    if len(set(resources)) != len(resources):
+        problems.append("le risorse devono essere diverse")
+    if not values["baseUrl"].endswith("/"):
+        problems.append("baseUrl: termina con /")
+    if values["extraordinaryStopType"] == values["suppressedStopType"]:
+        problems.append("extraordinaryStopType e suppressedStopType coincidono")
+    groups = [set(values[key]) for key in ("trenordClients", "trenitaliaRegionalClients", "trenitaliaLongDistanceClients")]
+    for index, group in enumerate(groups):
+        for other in groups[index + 1:]:
+            problems += [f"codiceCliente {code} in due gruppi" for code in sorted(group & other)]
+    return problems
+
+
 def _check_pack_roles(values: Mapping[str, Any]) -> list[str]:
     both = set(values["nationalPacks"]) & set(values["foreignPacks"])
     errors = [f"{pack!r} è sia nazionale sia estero" for pack in sorted(both)]
@@ -481,6 +550,27 @@ def _check_urban_stops(values: Mapping[str, Any]) -> list[str]:
     if values["walkMarginMinutes"] > 30:
         errors.append("walkMarginMinutes oltre 30 minuti")
     return errors
+
+
+def _check_realtime_feeds(values: Mapping[str, Any]) -> list[str]:
+    problems = []
+    for index, feed in enumerate(values["tripUpdates"]):
+        feed = feed.values
+        # The refusal pause is the feed's own, or the one of every feed of its host (transport.data.gouv.fr).
+        if feed["refusalGroup"] != feed["pauseLabel"] and not _host(feed["url"]).endswith(feed["refusalGroup"]):
+            problems.append(f"tripUpdates[{index}].refusalGroup: l'etichetta della pausa o il dominio del feed")
+        if feed["format"] == "json" and feed["redirects"] != "same-resource":
+            problems.append(f"tripUpdates[{index}]: un feed JSON segue solo la stessa risorsa")
+    packs = [feed.values["pack"] for feed in values["tripUpdates"]] + [feed.values["pack"] for feed in values["urban"]]
+    problems += [f"pack {pack!r} con due feed" for pack in sorted({pack for pack in packs if packs.count(pack) > 1})]
+    region = values["swissBoard"].values["borderRegion"].values
+    if region["minimumLatitude"] >= region["maximumLatitude"] or region["minimumLongitude"] >= region["maximumLongitude"]:
+        problems.append("swissBoard.borderRegion: minimo non minore del massimo")
+    return problems
+
+
+def _host(url: str) -> str:
+    return url.split("://", 1)[1].split("/", 1)[0]
 
 
 # --- Registry -----------------------------------------------------------------------------------------------------
@@ -619,13 +709,166 @@ NOTICE_DISPLAY = Record("Display", {
     "maximumLineCodes": Field(LENGTH),
     "worksCollapsed": Field(LENGTH),
 })
+NOTICE_TRAIN = Record("TrainNoticeRules", {
+    "maximumNotes": Field(LENGTH),
+    "textLength": Field(LENGTH),
+    "maximumTrains": Field(LENGTH),
+    "maximumCachedTrains": Field(LENGTH),
+})
 PACK_SET = ListOf(Text(SOURCE_ID), as_set=True)
+CLIENT_CODES = ListOf(Integer(0, 9_999), as_set=True)
+RESOURCE = Text(r"[A-Za-z]+/")
+
+BIKE_AREA = Record("Area", {
+    "name": Field(Text(r"[\w .'’-]+", max_length=64)),
+    "latitude": Field(Real(-90, 90)),
+    "longitude": Field(Real(-180, 180)),
+    "radiusKm": Field(Real(0.1, 100)),
+})
+BIKE_SYSTEM = Record("System", {
+    "id": Field(Text(r"gbfs-[a-z0-9]+(?:-[a-z0-9]+)*")),
+    "name": Field(Text(max_length=64)),
+    "operatorName": Field(Text(max_length=96)),
+    "discoveryUrl": Field(HTTPS_URL),
+    "areas": Field(ListOf(BIKE_AREA, unique_by=("name",))),
+    "websiteUrl": Field(HTTPS_URL),
+    "licence": Field(Text()),
+    "attribution": Field(Text(max_length=96)),
+    "personalOnly": Field(Boolean()),
+}, notes=True)
+MINUTES = Integer(0, 24 * 60)
+HOUR = Integer(0, 23)
+
+TRIP_UPDATES_FEED = Record("TripUpdatesFeed", {
+    "id": Field(Text(SOURCE_ID)),
+    "pack": Field(Text(SOURCE_ID)),
+    "label": Field(Text(max_length=40)),
+    "format": Field(Text(r"json|protobuf")),
+    "gate": Field(Text(r"all-builds|pack-bundled")),
+    "url": Field(HTTPS_URL),
+    "accept": Field(Text()),
+    "connectTimeoutSeconds": Field(Seconds(1)),
+    "readTimeoutSeconds": Field(Seconds(1)),
+    "totalTimeoutSeconds": Field(Seconds(1)),
+    "maximumBytes": Field(Integer(1, 32 * 1_048_576)),
+    "maximumRequests": Field(Integer(1, 5)),
+    "redirects": Field(Text(r"same-resource|same-https-host")),
+    "timeToLiveSeconds": Field(Seconds(1)),
+    "pauseLabel": Field(Text(max_length=60)),
+    "refusalGroup": Field(Text(max_length=60)),
+    "zone": Field(Text(r"[A-Z][A-Za-z_]+/[A-Z][A-Za-z_]+")),
+    "licence": Field(Text()),
+}, notes=True)
+URBAN_FEED = Record("UrbanFeed", {
+    "id": Field(Text(SOURCE_ID)),
+    "pack": Field(Text(SOURCE_ID)),
+    "displayName": Field(Text(max_length=60)),
+    "url": Field(HTTPS_URL),
+    "licence": Field(Text()),
+    "personalOnly": Field(Boolean()),
+    "zone": Field(Text(r"[A-Z][A-Za-z_]+/[A-Z][A-Za-z_]+")),
+}, notes=True)
+URBAN_FETCH = Record("UrbanFetch", {
+    "accept": Field(Text()),
+    "connectTimeoutSeconds": Field(Seconds(1)),
+    "readTimeoutSeconds": Field(Seconds(1)),
+    "totalTimeoutSeconds": Field(Seconds(1)),
+    "maximumBytes": Field(Integer(1, 32 * 1_048_576)),
+    "maximumRequests": Field(Integer(1, 5)),
+    "timeToLiveSeconds": Field(Seconds(30)),
+    "maximumStaleSeconds": Field(Seconds()),
+    "maximumTrips": Field(LENGTH),
+    "maximumShiftSeconds": Field(Seconds(1)),
+    "maximumRoutes": Field(LENGTH),
+})
+BORDER_REGION = Record("BorderRegion", {
+    "minimumLatitude": Field(Real(-90, 90)),
+    "maximumLatitude": Field(Real(-90, 90)),
+    "minimumLongitude": Field(Real(-180, 180)),
+    "maximumLongitude": Field(Real(-180, 180)),
+})
+SWISS_BOARD = Record("SwissBoard", {
+    "id": Field(Text(SOURCE_ID)),
+    "label": Field(Text(max_length=40)),
+    "baseUrl": Field(HTTPS_URL),
+    "accept": Field(Text()),
+    "connectTimeoutSeconds": Field(Seconds(1)),
+    "readTimeoutSeconds": Field(Seconds(1)),
+    "totalTimeoutSeconds": Field(Seconds(1)),
+    "maximumBytes": Field(Integer(1, 32 * 1_048_576)),
+    "maximumRequests": Field(Integer(1, 5)),
+    "minimumIntervalSeconds": Field(Seconds(1)),
+    "boardTimeToLiveSeconds": Field(Seconds(1)),
+    "boardMaximumStaleSeconds": Field(Seconds()),
+    "locationTimeToLiveSeconds": Field(Seconds(1)),
+    "retryDelayMillis": Field(Integer(0, 60_000)),
+    "pauseLabel": Field(Text(max_length=60)),
+    "boardLimit": Field(Integer(1, 500)),
+    "maximumRows": Field(LENGTH),
+    "maximumLocations": Field(LENGTH),
+    "maximumDelayMinutes": Field(Integer(1, 1_440)),
+    "maximumEarlyArrivalMinutes": Field(Integer(0, 120)),
+    "maximumLocationDistanceMeters": Field(Integer(1, 100_000)),
+    "currentBoardBeforeMinutes": Field(Integer(0, 1_440)),
+    "currentBoardAfterMinutes": Field(Integer(0, 1_440)),
+    "zone": Field(Text(r"[A-Z][A-Za-z_]+/[A-Z][A-Za-z_]+")),
+    "borderRegion": Field(BORDER_REGION),
+    "nonRailCategories": Field(ListOf(Text(r"[A-Z]{1,8}"), as_set=True)),
+})
 
 TABLES: tuple[Table, ...] = (
     Table("airport-routes-v1.json", "AirportRoutes", {
         "packs": Field(ListOf(AIRPORT_PACK, unique_by=("id",))),
         "routes": Field(ListOf(AIRPORT_ROUTE, unique_by=("city", "airport"))),
     }, check=_check_airport_routes),
+    Table("bike-sharing-v1.json", "BikeSharing", {
+        "systems": Field(ListOf(BIKE_SYSTEM, unique_by=("id",))),
+        "feedLanguages": Field(ListOf(Text(r"[a-z]{2}"))),
+        "radiusMeters": Field(Integer(1, 5_000)),
+        "maximumDocks": Field(Integer(1, 50)),
+        "maximumVehicles": Field(Integer(1, 50)),
+        "staticTimeToLiveSeconds": Field(Seconds(1)),
+        "staticMaximumStaleSeconds": Field(Seconds()),
+        "staticMaximumEntries": Field(Integer(1, 1_000)),
+        "statusTimeToLiveSeconds": Field(Seconds(1)),
+        "statusMaximumStaleSeconds": Field(Seconds()),
+        "statusMaximumEntries": Field(Integer(1, 1_000)),
+        "maximumBytes": Field(Integer(1, 16 * 1_048_576)),
+        "readTimeoutSeconds": Field(Seconds(1)),
+        "totalTimeoutSeconds": Field(Seconds(1)),
+    }, check=_check_bike_sharing),
+    Table("delay-compensation-v1.json", "DelayCompensation", {
+        "quarterFromMinutes": Field(MINUTES),
+        "quarterPercent": Field(Integer(1, 100)),
+        "halfFromMinutes": Field(MINUTES),
+        "halfPercent": Field(Integer(1, 100)),
+    }, check=_check_delay_compensation),
+    Table("destination-weather-v1.json", "DestinationWeather", {
+        "forecastUrl": Field(HTTPS_URL),
+        "attributionUrl": Field(HTTPS_URL),
+        "dailyVariables": Field(ListOf(Text(r"[a-z0-9_]+"))),
+        "timeZone": Field(Text(r"[A-Za-z]+/[A-Za-z_]+")),
+        "forecastDays": Field(Integer(1, 16)),
+        "coordinateDecimals": Field(Integer(0, 6)),
+        "maximumDays": Field(Integer(1, 16)),
+        "timeToLiveSeconds": Field(Seconds(1)),
+        "maximumStaleSeconds": Field(Seconds()),
+        "minimumIntervalSeconds": Field(Seconds(1)),
+        "maximumEntries": Field(Integer(1, 1_000)),
+        "maximumBytes": Field(Integer(1, 16 * 1_048_576)),
+        "readTimeoutSeconds": Field(Seconds(1)),
+        "totalTimeoutSeconds": Field(Seconds(1)),
+    }, check=_check_destination_weather),
+    Table("evening-alerts-v1.json", "EveningAlerts", {
+        "strikeReminderHour": Field(HOUR),
+        "routeWorksAlertHour": Field(HOUR),
+        "quietFromHour": Field(HOUR),
+        "quietUntilHour": Field(HOUR),
+        "strikeNotifiedRetentionDays": Field(Integer(1, 365)),
+        "routeWorksMaximumItems": Field(Integer(1, 20)),
+        "routeWorksMaximumKeepDays": Field(Integer(1, 365)),
+        "routeWorksMaximumNotified": Field(Integer(1, 10_000)),
+    }, check=_check_evening_alerts),
     Table("italian-holidays-v1.json", "ItalianHolidays", {
         "holidays": Field(ListOf(HOLIDAY, unique_by=("month", "day"))),
         "easterOffsetsDays": Field(ListOf(Integer(-60, 60))),
@@ -638,6 +881,25 @@ TABLES: tuple[Table, ...] = (
         "stations": Field(ListOf(ITALO_STATION, unique_by=("code",))),
         "slugsByName": Field(MapOf(Text(r"[a-z0-9]+(?:-[a-z0-9]+)*"), key=STATION_NAME)),
     }),
+    Table("live-train-map-v1.json", "LiveTrainMap", {
+        "lookBackMinutes": Field(Integer(0, 720)),
+        "lookAheadMinutes": Field(Integer(0, 720)),
+        "minimumAppliedDelayMinutes": Field(Integer(-720, 0)),
+        "matchMarginMinutes": Field(Integer(0, 60)),
+        "sameTrainKilometres": Field(Real(0, 100)),
+        "maximumTrains": Field(Integer(1, 500)),
+        "areaPacks": Field(Integer(1, 64)),
+        "positionsRefreshSeconds": Field(Seconds(1)),
+        "timetableSlotMinutes": Field(Integer(1, 60)),
+        "stationRadiusKilometres": Field(Real(0.1, 200)),
+        "maximumLatitudeSpan": Field(Real(0.01, 90)),
+        "maximumLongitudeSpan": Field(Real(0.01, 180)),
+        "readAreaSnapDegrees": Field(Real(0.001, 10)),
+        "routeMarginShare": Field(Real(0, 1)),
+        "minimumRouteMarginDegrees": Field(Real(0, 10)),
+        "maximumCodeLength": Field(Integer(1, 32)),
+        "maximumLineLabelLength": Field(Integer(1, 32)),
+    }, check=_check_live_train_map),
     Table("notices-sources-v1.json", "NoticesSources", {
         "service": Field(NOTICE_SERVICE),
         "sources": Field(ListOf(NOTICE_SOURCE, unique_by=("id",))),
@@ -650,6 +912,7 @@ TABLES: tuple[Table, ...] = (
         "trenord": Field(NOTICE_TRENORD),
         "routeWorks": Field(NOTICE_ROUTE_WORKS),
         "display": Field(NOTICE_DISPLAY),
+        "trainNotices": Field(NOTICE_TRAIN),
     }, check=_check_notices_sources),
     Table("pack-roles-v1.json", "PackRoles", {
         "nationalPacks": Field(PACK_SET),
@@ -657,7 +920,7 @@ TABLES: tuple[Table, ...] = (
         "crossPublishingPacks": Field(PACK_SET),
         "scheduledCoachPacks": Field(PACK_SET),
         "urbanPacks": Field(PACK_SET),
-    }, check=_check_pack_roles),
+    }, alexa=True, check=_check_pack_roles),
     Table("planned-journeys-v1.json", "PlannedJourneys", {
         "schemaVersion": Field(Integer(1, 99)),
         "transferKind": Field(Text(r"[a-z_]+")),
@@ -686,9 +949,32 @@ TABLES: tuple[Table, ...] = (
         "minimumPlatformSharePercent": Field(Integer(1, 100)),
         "minimumWeekdaySamples": Field(COUNT),
         "minimumWeekdayGapPoints": Field(Integer(1, 100)),
+        "maximumWeekdayRemarks": Field(Integer(1, 7)),
         "minimumBandSamples": Field(COUNT),
         "minimumBandGapPoints": Field(Integer(1, 100)),
     }, alexa=True),
+    Table("realtime-feeds-v1.json", "RealtimeFeeds", {
+        "observationWindowSeconds": Field(Seconds(1)),
+        "futureToleranceSeconds": Field(Seconds()),
+        "failureMemorySeconds": Field(Seconds(1)),
+        "tripUpdates": Field(ListOf(TRIP_UPDATES_FEED, unique_by=("id",))),
+        "urban": Field(ListOf(URBAN_FEED, unique_by=("id",))),
+        "urbanFetch": Field(URBAN_FETCH),
+        "swissBoard": Field(SWISS_BOARD),
+    }, check=_check_realtime_feeds),
+    Table("rfi-monitor-v1.json", "RfiMonitor", {
+        "catalogueUrl": Field(HTTPS_URL),
+        "monitorUrl": Field(HTTPS_URL),
+        "accept": Field(Text()),
+        "connectTimeoutSeconds": Field(Seconds(1)),
+        "readTimeoutSeconds": Field(Seconds(1)),
+        "totalTimeoutSeconds": Field(Seconds(1)),
+        "maximumBytes": Field(Integer(1, 16 * 1_048_576)),
+        "minimumIntervalSeconds": Field(Seconds(1)),
+        "timeToLiveSeconds": Field(Seconds(1)),
+        "catalogueRefreshSeconds": Field(Seconds(1)),
+        "catalogueRetrySeconds": Field(Seconds(1)),
+    }, check=_check_rfi_monitor),
     Table("rfi-place-ids-v1.json", "RfiPlaceIds", {
         "placeIdsByName": Field(MapOf(Integer(1, 99_999), key=STATION_NAME)),
     }),
@@ -711,7 +997,7 @@ TABLES: tuple[Table, ...] = (
     Table("train-number-prefixes-v1.json", "TrainNumberPrefixes", {
         # Letters only: each platform joins them into one regular-expression alternation.
         "categories": Field(ListOf(Text(r"[A-Z]{1,16}"))),
-    }),
+    }, alexa=True),
     Table("urban-stops-v1.json", "UrbanStops", {
         "maximumWalkMeters": Field(Integer(0, 2_000)),
         "walkingSpeedKmh": Field(Real(1.0, 10.0)),
@@ -719,6 +1005,32 @@ TABLES: tuple[Table, ...] = (
         "samePlaceMeters": Field(Integer(1, 2_000)),
         "platformMeters": Field(Integer(1, 2_000)),
     }, check=_check_urban_stops),
+    Table("viaggiatreno-v1.json", "ViaggiaTreno", {
+        "baseUrl": Field(HTTPS_URL),
+        "departuresResource": Field(RESOURCE),
+        "arrivalsResource": Field(RESOURCE),
+        "runResource": Field(RESOURCE),
+        "numberSearchResource": Field(RESOURCE),
+        "connectTimeoutSeconds": Field(Seconds(1)),
+        "readTimeoutSeconds": Field(Seconds(1)),
+        "totalTimeoutSeconds": Field(Seconds(1)),
+        "maximumBytes": Field(Integer(1, 16 * 1_048_576)),
+        "maximumRequests": Field(Integer(1, 5)),
+        "minimumIntervalSeconds": Field(Seconds(1)),
+        "timeToLiveSeconds": Field(Seconds(1)),
+        "detailPermits": Field(Integer(1, 16)),
+        "runDetailsTimeoutSeconds": Field(Seconds(1)),
+        "lookbackTimeoutSeconds": Field(Seconds(1)),
+        "maximumAutocompleteLines": Field(LENGTH),
+        "maximumRunReferences": Field(LENGTH),
+        "maximumBoardRows": Field(LENGTH),
+        "numberSearchPastDays": Field(Integer(0, 7)),
+        "extraordinaryStopType": Field(Integer(0, 99)),
+        "suppressedStopType": Field(Integer(0, 99)),
+        "trenordClients": Field(CLIENT_CODES),
+        "trenitaliaRegionalClients": Field(CLIENT_CODES),
+        "trenitaliaLongDistanceClients": Field(CLIENT_CODES),
+    }, check=_check_viaggiatreno),
 )
 
 

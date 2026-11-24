@@ -3,6 +3,7 @@ package it.binario.app.data.live
 import it.binario.app.data.provider.ProviderError
 import it.binario.app.data.provider.ProviderErrorKind
 import it.binario.app.data.provider.ProviderResult
+import it.binario.app.shared.SharedData
 import java.time.Clock
 import java.time.Duration
 import java.time.Instant
@@ -15,7 +16,7 @@ import java.time.Instant
 internal class RealtimeFeedGuard(
     private val clock: Clock,
     label: String,
-    private val failureCooldown: Duration = Duration.ofSeconds(30)
+    private val failureCooldown: Duration = Duration.ofSeconds(SharedData.RealtimeFeeds.FAILURE_MEMORY_SECONDS.toLong())
 ) {
     private val breaker = SourceCircuitBreaker(clock, pauseLabel = label)
     private var lastFailure: Pair<ProviderError, Instant>? = null

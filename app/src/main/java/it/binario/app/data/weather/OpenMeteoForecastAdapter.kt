@@ -20,8 +20,10 @@ import it.binario.app.data.provider.ProviderResult
 import it.binario.app.data.provider.ProviderWarning
 import it.binario.app.data.provider.RailProvider
 import it.binario.app.data.provider.RatePolicy
+import it.binario.app.shared.SharedData
 import java.math.BigDecimal
 import java.math.RoundingMode
+import java.net.URLEncoder
 import java.time.Clock
 import java.time.Duration
 import java.time.LocalDate
@@ -49,7 +51,17 @@ class OpenMeteoForecastAdapter internal constructor(
     private val clock: Clock,
     retryDelayMillis: Long
 ) : RailProvider {
-    constructor(clock: Clock = Clock.systemUTC()) : this(HttpPublicSourceFetcher(PublicSourceRequestPolicy(maxBytes = MAX_BYTES)), clock, 750)
+    constructor(clock: Clock = Clock.systemUTC()) : this(
+        HttpPublicSourceFetcher(
+            PublicSourceRequestPolicy(
+                maxBytes = MAX_BYTES,
+                readTimeoutMillis = WEATHER.READ_TIMEOUT_SECONDS * 1_000,
+                totalTimeoutMillis = WEATHER.TOTAL_TIMEOUT_SECONDS * 1_000L
+            )
+        ),
+        clock,
+        750
+    )
 
     override val descriptor = ProviderDescriptor(
         id = SOURCE_ID,
@@ -57,11 +69,13 @@ class OpenMeteoForecastAdapter internal constructor(
         capabilities = setOf(ProviderCapability.WEATHER_FORECAST),
         coverage = CoverageDescriptor(description = "Previsione giornaliera per le coordinate della stazione di arrivo"),
         accessMode = AccessMode.OPEN_DIRECT,
-        ratePolicy = RatePolicy(Duration.ofMinutes(1), defaultTimeToLive = TTL),
+        ratePolicy = RatePolicy(Duration.ofSeconds(WEATHER.MINIMUM_INTERVAL_SECONDS.toLong()), defaultTimeToLive = TTL),
         schemaVersion = 1
     )
 
-    private val cache = ResilientSourceCache<List<DailyForecast>>(TTL, Duration.ofHours(3), clock, maxEntries = 16, retryDelayMillis = retryDelayMillis)
+    private val cache = ResilientSourceCache<List<DailyForecast>>(
+        TTL, Duration.ofSeconds(WEATHER.MAXIMUM_STALE_SECONDS.toLong()), clock, maxEntries = WEATHER.MAXIMUM_ENTRIES, retryDelayMillis = retryDelayMillis
+    )
 
     /** The forecast for [date] at the given station coordinates; NOT_FOUND when the provider has no such day. */
     suspend fun forecast(latitude: Double, longitude: Double, date: LocalDate): ProviderResult<DailyForecast> = withContext(Dispatchers.Default) {
@@ -70,8 +84,8 @@ class OpenMeteoForecastAdapter internal constructor(
         }
         val lat = rounded(latitude)
         val lon = rounded(longitude)
-        val url = "$BASE_URL?latitude=$lat&longitude=$lon&daily=weather_code,temperature_2m_max,temperature_2m_min," +
-            "precipitation_probability_max&timezone=Europe%2FRome&forecast_days=$FORECAST_DAYS"
+        val url = "$BASE_URL?latitude=$lat&longitude=$lon&daily=${WEATHER.DAILY_VARIABLES.joinToString(",")}" +
+            "&timezone=${URLEncoder.encode(WEATHER.TIME_ZONE, "UTF-8")}&forecast_days=$FORECAST_DAYS"
         val today = clock.instant().atZone(RailTime.defaultZone).toLocalDate()
         when (val read = cache.get("$lat,$lon@$today") { parse(fetcher.get(url)) }) {
             is SourceRead.Failed -> ProviderResult.Failure(read.failure.toProviderError(UNAVAILABLE, UNREADABLE))
@@ -94,7 +108,7 @@ class OpenMeteoForecastAdapter internal constructor(
         val maxima = daily.optJSONArray("temperature_2m_max")
         val minima = daily.optJSONArray("temperature_2m_min")
         val rain = daily.optJSONArray("precipitation_probability_max")
-        return (0 until minOf(days.length(), 16)).mapNotNull { index ->
+        return (0 until minOf(days.length(), WEATHER.MAXIMUM_DAYS)).mapNotNull { index ->
             val date = days.optString(index).takeIf { it.isNotBlank() }?.let { runCatching { LocalDate.parse(it) }.getOrNull() }
                 ?: return@mapNotNull null
             DailyForecast(
@@ -115,16 +129,19 @@ class OpenMeteoForecastAdapter internal constructor(
 
     companion object {
         val SOURCE_ID = SourceId("open-meteo")
-        internal const val BASE_URL = "https://api.open-meteo.com/v1/forecast"
-        const val ATTRIBUTION_URL = "https://open-meteo.com/"
+        // contracts/shared-data/v1/destination-weather-v1.json, read by the iPhone too.
+        private val WEATHER = SharedData.DestinationWeather
+        internal const val BASE_URL = SharedData.DestinationWeather.FORECAST_URL
+        const val ATTRIBUTION_URL = SharedData.DestinationWeather.ATTRIBUTION_URL
         /** Today and tomorrow, as requested: a forecast further ahead is not shown. */
-        const val FORECAST_DAYS = 2
-        private val TTL: Duration = Duration.ofHours(3)
-        private const val MAX_BYTES = 64 * 1024
+        const val FORECAST_DAYS = SharedData.DestinationWeather.FORECAST_DAYS
+        private val TTL: Duration = Duration.ofSeconds(SharedData.DestinationWeather.TIME_TO_LIVE_SECONDS.toLong())
+        private const val MAX_BYTES = SharedData.DestinationWeather.MAXIMUM_BYTES
         private const val UNAVAILABLE = "Previsione Open-Meteo non raggiungibile."
         private const val UNREADABLE = "Previsione Open-Meteo non leggibile."
 
         /** Two decimals, half up, in a locale-independent form: the only place information sent to Open-Meteo. */
-        internal fun rounded(value: Double): String = BigDecimal.valueOf(value).setScale(2, RoundingMode.HALF_UP).toPlainString()
+        internal fun rounded(value: Double): String =
+            BigDecimal.valueOf(value).setScale(SharedData.DestinationWeather.COORDINATE_DECIMALS, RoundingMode.HALF_UP).toPlainString()
     }
 }

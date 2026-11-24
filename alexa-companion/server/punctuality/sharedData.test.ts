@@ -1,7 +1,10 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { ItalianHolidays, Punctuality } from "@shared/generated/sharedData";
+import { ItalianHolidays, PackRoles, Punctuality, TrainNumberPrefixes } from "@shared/generated/sharedData";
+import { packRank } from "../timetable/copies";
+import { legMode } from "../timetable/naming";
+import { TrainNumberQuery } from "../timetable/trainNumbers";
 import {
   HIGH_SPEED_ON_TIME_MINUTES,
   isItalianHoliday,
@@ -54,5 +57,24 @@ describe("shared data", () => {
     for (const [date, offset] of [["2026-04-04", -1], ["2026-04-05", 0], ["2026-04-06", 1], ["2026-04-07", 2]] as const) {
       expect(isItalianHoliday(date), date).toBe(json.easterOffsetsDays.includes(offset));
     }
+  });
+
+  it("orders the timetable's copies of a train and names its buses with the shared pack roles", () => {
+    const json = table<{ nationalPacks: string[]; foreignPacks: string[]; crossPublishingPacks: string[]; scheduledCoachPacks: string[] }>("pack-roles-v1.json");
+    expect([...PackRoles.NATIONAL_PACKS]).toEqual(json.nationalPacks);
+    expect([...PackRoles.FOREIGN_PACKS]).toEqual(json.foreignPacks);
+    expect([...PackRoles.CROSS_PUBLISHING_PACKS]).toEqual(json.crossPublishingPacks);
+    expect([...PackRoles.SCHEDULED_COACH_PACKS]).toEqual(json.scheduledCoachPacks);
+    for (const pack of json.nationalPacks) expect([packRank(pack, false), packRank(pack, true)], pack).toEqual([0, 2]);
+    for (const pack of json.foreignPacks) expect([packRank(pack, false), packRank(pack, true)], pack).toEqual([2, 0]);
+    for (const pack of json.scheduledCoachPacks) expect(legMode(3, pack), pack).toBe("BUS");
+    expect(legMode(3, "lombardia-trenord-gtfs")).toBe("REPLACEMENT_BUS");
+  });
+
+  it("reads a number after the shared categories only", () => {
+    const json = table<{ categories: string[] }>("train-number-prefixes-v1.json");
+    expect(TrainNumberPrefixes.CATEGORIES).toEqual(json.categories);
+    for (const category of json.categories) expect(new TrainNumberQuery(`${category} 0123`).numeric, category).toBe("123");
+    expect(new TrainNumberQuery("VE545").numeric).toBeNull();
   });
 });

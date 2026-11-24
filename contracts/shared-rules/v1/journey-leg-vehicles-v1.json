@@ -2,7 +2,8 @@
   "schema": "binario-shared-rules-v1",
   "readers": {
     "android": "app/src/test/java/it/binario/app/journeys/JourneyLegVehiclesContractTest.kt",
-    "iphone": "ios/BinarioKit/Tests/BinarioKitTests/SharedRulesContractTests.swift"
+    "iphone": "ios/BinarioKit/Tests/BinarioKitTests/SharedRulesContractTests.swift",
+    "alexa": "alexa-companion/server/timetable/naming.test.ts"
   },
   "scheduledCoachPacks": [
     "italo-gtfs",

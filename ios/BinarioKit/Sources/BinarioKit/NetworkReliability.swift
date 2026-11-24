@@ -288,7 +288,8 @@ public enum NetworkReliability {
     public static let minimumWeekdaySamples = SharedData.Punctuality.minimumWeekdaySamples
     /// …and remarked when its on-time share differs from the overall one by this many points.
     public static let minimumWeekdayGapPoints = SharedData.Punctuality.minimumWeekdayGapPoints
-    public static let maximumWeekdayRemarks = 2
+    /// …and a train's detail shows at most this many, the largest differences first.
+    public static let maximumWeekdayRemarks = SharedData.Punctuality.maximumWeekdayRemarks
 
     /// Categories measured at 5 minutes, as the operators and Treniamo do; every other category at 15.
     private static let highSpeedCategories: Set<String> = SharedData.Punctuality.highSpeedCategories

@@ -1,0 +1,75 @@
+{
+  "schema": "binario-shared-data-v1",
+  "description": "Bike and scooter sharing near a station: the GBFS systems verified from CI (runs 41561372909 and 41564222536) with their terms (docs/data-sources/SOURCE_POLICY.md, «Bici in condivisione»), how far from the station's own coordinates vehicles are listed, how many, and how long each document is kept. A personalOnly system (no licence in the feed, or one not reviewed) is used only in personal builds.",
+  "systems": [
+    {
+      "id": "gbfs-nextbike-bergamo",
+      "name": "nextbike Bergamo",
+      "operatorName": "nextbike GmbH",
+      "discoveryUrl": "https://gbfs.nextbike.net/maps/gbfs/v2/nextbike_ib/gbfs.json",
+      "areas": [{"name": "Bergamo", "latitude": 45.6983, "longitude": 9.6773, "radiusKm": 8.0}],
+      "websiteUrl": "https://www.nextbike.it/bergamo/",
+      "licence": "CC0-1.0 (license_id in system_information)",
+      "attribution": "nextbike Bergamo, CC0",
+      "personalOnly": false
+    },
+    {
+      "id": "gbfs-famose-senigallia",
+      "name": "Fa.Mo.Se",
+      "operatorName": "TIER Mobility SE / nextbike",
+      "discoveryUrl": "https://gbfs.nextbike.net/maps/gbfs/v2/nextbike_fa/gbfs.json",
+      "areas": [{"name": "Senigallia", "latitude": 43.7147, "longitude": 13.2180, "radiusKm": 12.0}],
+      "websiteUrl": "https://www.comune.senigallia.an.it/aree-tematiche/mobilita/bike-sharing-fa-mo-se/",
+      "licence": "CC0-1.0 (license_id in system_information)",
+      "attribution": "Fa.Mo.Se, CC0",
+      "personalOnly": false
+    },
+    {
+      "id": "gbfs-bikemi",
+      "name": "BikeMi",
+      "operatorName": "IGPDecaux S.p.A.",
+      "discoveryUrl": "https://gbfs.urbansharing.com/bikemi.com/gbfs.json",
+      "areas": [{"name": "Milano", "latitude": 45.4642, "longitude": 9.1900, "radiusKm": 10.0}],
+      "websiteUrl": "https://bikemi.com/",
+      "licence": "NLOD 2.0 (Norwegian Licence for Open Government Data), dichiarata su bikemi.com/it/open-data",
+      "attribution": "BikeMi, NLOD 2.0",
+      "personalOnly": false
+    },
+    {
+      "id": "gbfs-verona-bike",
+      "name": "Verona Bike",
+      "operatorName": "IGPDecaux S.p.A.",
+      "discoveryUrl": "https://gbfs.urbansharing.com/bikeverona.it/gbfs.json",
+      "areas": [{"name": "Verona", "latitude": 45.4384, "longitude": 10.9916, "radiusKm": 8.0}],
+      "websiteUrl": "https://bikeverona.it/",
+      "licence": "NLOD 2.0 (Norwegian Licence for Open Government Data), dichiarata su bikeverona.it/en/open-data",
+      "attribution": "Verona Bike, NLOD 2.0",
+      "personalOnly": false
+    },
+    {
+      "id": "gbfs-bird-roma",
+      "name": "Bird",
+      "operatorName": "Bird Rides, Inc.",
+      "discoveryUrl": "https://mds.bird.co/gbfs/v2/public/rome/gbfs.json",
+      "areas": [{"name": "Roma", "latitude": 41.8986, "longitude": 12.4964, "radiusKm": 15.0}],
+      "websiteUrl": "https://www.bird.co/",
+      "licence": "Bird GBFS Data License Agreement (license_url del feed), condizioni non riesaminate",
+      "attribution": "Bird",
+      "personalOnly": true,
+      "note": "No open licence reviewed: personal builds only."
+    }
+  ],
+  "feedLanguages": ["it", "en"],
+  "radiusMeters": 300,
+  "maximumDocks": 4,
+  "maximumVehicles": 4,
+  "staticTimeToLiveSeconds": 21600,
+  "staticMaximumStaleSeconds": 86400,
+  "staticMaximumEntries": 64,
+  "statusTimeToLiveSeconds": 60,
+  "statusMaximumStaleSeconds": 300,
+  "statusMaximumEntries": 32,
+  "maximumBytes": 4194304,
+  "readTimeoutSeconds": 15,
+  "totalTimeoutSeconds": 20
+}

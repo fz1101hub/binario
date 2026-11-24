@@ -4,6 +4,7 @@ import {
   type ResponseInterceptor,
 } from "ask-sdk-core";
 import {
+  formatList,
   formatMessage,
   formatPlural,
   messagesForLocale,
@@ -42,8 +43,24 @@ const RAIL_TIME_ZONE = "Europe/Rome";
 
 export type BinarioScreen =
   | { kind: "home"; message: string }
-  | { kind: "departures"; routeName: string }
-  | { kind: "trainStatus"; trainNumber?: string }
+  | {
+      kind: "departures";
+      /** The saved route's name, or the two stations asked («Roma Termini → Tivoli»). */
+      routeName: string;
+      /** The programmed answer without the live-data caveat, when the timetable answered. */
+      message?: string;
+      /** The programmed departures the voice reads. */
+      trains?: readonly DepartureRow[];
+      /** Attributions of the timetables of those departures. */
+      sources?: readonly string[];
+    }
+  | {
+      kind: "trainStatus";
+      trainNumber?: string;
+      /** The programmed runs of the number as spoken, when the timetable answered. */
+      message?: string;
+      sources?: readonly string[];
+    }
   | {
       kind: "myRoutes";
       routes: ReadonlyArray<{ name: string; isPinned: boolean }>;
@@ -71,6 +88,9 @@ export type BinarioScreen =
 
 export type RouteAction = "nextTrains" | "punctuality" | "mostPunctual";
 
+/** One programmed departure: its time (minutes since midnight, Italian time) and its label («REG 2157»). */
+export type DepartureRow = { minuteOfDay: number; train: string };
+
 /** One train of a most-punctual answer: the number, its usual departure and on-time percentage the voice reads. */
 export type PunctualityTrainRow = {
   trainNumber: string;
@@ -89,10 +109,11 @@ export type PunctualityFigures = {
 };
 
 /**
- * "unavailable" is the state of every real-time screen today; "demo" labels a demo catalogue;
- * "statistics" the punctuality screens, which show unofficial statistics and never real-time data.
+ * "unavailable" is the state of every real-time screen without a programmed answer; "demo" labels
+ * a demo catalogue; "statistics" the punctuality screens, which show unofficial statistics and
+ * never real-time data; "programmed" the departures and train runs of the programmed timetable.
  */
-export type ScreenDataQuality = "unavailable" | "demo" | "statistics";
+export type ScreenDataQuality = "unavailable" | "demo" | "statistics" | "programmed";
 
 export type ScreenOptions = {
   locale: SupportedLocale;
@@ -262,17 +283,46 @@ function punctualityTrainRows(rows: readonly PunctualityTrainRow[] | undefined, 
   });
 }
 
+/** The programmed departures under the timetable banner: time, label, and the platform the timetable does not give. */
+function departureTrainRows(rows: readonly DepartureRow[] | undefined, locale: SupportedLocale): ScreenDatasource["trains"] {
+  if (!rows?.length) return [];
+  const tt = messagesForLocale(locale).timetable;
+  return rows.map(row => {
+    const time = displayedTime(locale, row.minuteOfDay);
+    const train = plainLabel(row.train);
+    return {
+      time: aplText(time),
+      train: aplText(train),
+      value: "—",
+      label: aplText(tt.platformLabel),
+      accessibilityLabel: `${time}, ${train}, ${tt.platformLabel}: ${tt.platformNotGiven}`,
+    };
+  });
+}
+
+/** The answer comes from the programmed timetable: departures listed or a train's runs said. */
+function isProgrammed(screen: BinarioScreen): screen is Extract<BinarioScreen, { kind: "departures" | "trainStatus" }> {
+  return (screen.kind === "departures" || screen.kind === "trainStatus") && screen.message !== undefined;
+}
+
 export function buildScreenDatasource(screen: BinarioScreen, options: ScreenOptions): ScreenDatasource {
   const { locale } = options;
   const messages = messagesForLocale(locale);
   const t = messages.screen;
   const p = messages.punctuality;
-  const state = screen.kind === "punctuality" ? "statistics" : options.quality ?? "unavailable";
+  const tt = messages.timetable;
+  const state = screen.kind === "punctuality" ? "statistics" : isProgrammed(screen) ? "programmed" : options.quality ?? "unavailable";
   const qualityLabel =
     state === "statistics" ? p.statisticsLabel
+    : state === "programmed" ? tt.screenLabel
     : state === "demo" ? t.demoData
     : sentenceCase(messages.voice.liveDataUnavailable, locale);
-  const source = state === "statistics" ? p.statisticsNotLive : state === "demo" ? t.sourceDemo : t.sourceNone;
+  const sources = isProgrammed(screen) ? screen.sources ?? [] : [];
+  const source =
+    state === "statistics" ? p.statisticsNotLive
+    : state === "programmed" ? (sources.length ? formatMessage(tt.screenSource, { sources: formatList(locale, sources.map(item => plainLabel(item))) }) : tt.screenLabel)
+    : state === "demo" ? t.sourceDemo
+    : t.sourceNone;
   const checked =
     screen.kind === "punctuality" && screen.windowEnd
       ? [
@@ -316,7 +366,7 @@ export function buildScreenDatasource(screen: BinarioScreen, options: ScreenOpti
     actions: [],
     hints: {
       title: aplText(t.hintsTitle),
-      items: [t.hintNextTrains, t.hintTrainStatus, p.hint, p.mostPunctualHint, t.hintMyRoutes].map(hint => aplText(hint)),
+      items: [t.hintNextTrains, tt.hint, t.hintTrainStatus, p.hint, p.mostPunctualHint, t.hintMyRoutes].map(hint => aplText(hint)),
     },
   };
 
@@ -334,7 +384,8 @@ export function buildScreenDatasource(screen: BinarioScreen, options: ScreenOpti
         title: aplText(t.departuresTitle),
         hero: aplText(screen.routeName),
         heroAccessibilityLabel: plainLabel(screen.routeName),
-        message: aplText(t.noTimetable),
+        message: aplText(screen.message ?? t.noTimetable, MAX_MESSAGE_LENGTH),
+        trains: departureTrainRows(screen.trains, locale),
         actions: [myRoutes],
       };
     case "trainStatus": {
@@ -346,7 +397,7 @@ export function buildScreenDatasource(screen: BinarioScreen, options: ScreenOpti
         title: aplText(t.trainStatusTitle),
         hero: aplText(heading),
         heroAccessibilityLabel: heading,
-        message: aplText(t.noTimetable),
+        message: aplText(screen.message ?? t.noTimetable, MAX_MESSAGE_LENGTH),
         actions: [nextTrains, myRoutes],
       };
     }
@@ -691,7 +742,7 @@ const BINARIO_APL_DOCUMENT: Record<string, unknown> = {
       ],
     },
     BinarioTrainRow: {
-      description: "One train of the most-punctual list: usual time, train and on-time share; read as one VoiceView item.",
+      description: "One train of a list: its time, the train, and a value with its label (on-time share, or the platform the timetable does not give); read as one VoiceView item.",
       parameters: ["train"],
       items: [
         {

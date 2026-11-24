@@ -16,6 +16,76 @@
 			<string>又加载了 %1$lld 趟列车</string>
 		</dict>
 	</dict>
+	<key>departures.map.capped</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>other</key>
+			<string>显示最近的 %1$lld 趟。</string>
+		</dict>
+	</dict>
+	<key>departures.map.count</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>other</key>
+			<string>运行中的列车 %1$lld 趟</string>
+		</dict>
+	</dict>
+	<key>departures.map.delay</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>other</key>
+			<string>晚点 %1$lld 分钟</string>
+		</dict>
+	</dict>
+	<key>notices.alerts.strike_title</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>other</key>
+			<string>明天有 %1$lld 场铁路罢工</string>
+		</dict>
+	</dict>
+	<key>notices.alerts.works_title_more</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>other</key>
+			<string>明天 %2$@ 和另外 %1$lld 条线路有施工</string>
+		</dict>
+	</dict>
 	<key>notices.works.show_more</key>
 	<dict>
 		<key>NSStringLocalizedFormatKey</key>
@@ -42,6 +112,20 @@
 			<string>lld</string>
 			<key>other</key>
 			<string>%2$lld 次中准点 %1$lld 次</string>
+		</dict>
+	</dict>
+	<key>result.compensation.minutes</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>other</key>
+			<string>%1$lld 分钟</string>
 		</dict>
 	</dict>
 	<key>result.detail.arrival_on_time</key>

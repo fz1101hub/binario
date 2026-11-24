@@ -6,6 +6,7 @@ import it.binario.app.data.core.LegMode
 import it.binario.app.data.core.StationId
 import it.binario.app.data.gtfs.GtfsDayTimetable
 import it.binario.app.data.provider.JourneyEndpoint
+import it.binario.app.shared.SharedData
 import java.time.LocalDate
 import java.time.LocalDateTime
 
@@ -88,8 +89,9 @@ data class ScheduledRunRequest(
     }
 
     companion object {
-        const val DEFAULT_LOOK_BACK_MINUTES = 180
-        const val DEFAULT_LOOK_AHEAD_MINUTES = 30
+        // contracts/shared-data/v1/live-train-map-v1.json, read by the iPhone too.
+        const val DEFAULT_LOOK_BACK_MINUTES = SharedData.LiveTrainMap.LOOK_BACK_MINUTES
+        const val DEFAULT_LOOK_AHEAD_MINUTES = SharedData.LiveTrainMap.LOOK_AHEAD_MINUTES
         private const val MAX_LOOK_MINUTES = 12 * 60
     }
 }
@@ -166,5 +168,5 @@ internal object ScheduledRunCollector {
         return false
     }
 
-    private const val MAX_LINE_LABEL = 8
+    private const val MAX_LINE_LABEL = SharedData.LiveTrainMap.MAXIMUM_LINE_LABEL_LENGTH
 }

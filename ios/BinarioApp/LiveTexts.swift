@@ -14,6 +14,9 @@ enum LiveTexts {
         case .rfiStationBoard: return "RFI"
         case .viaggiaTreno: return "ViaggiaTreno"
         case .italo: return "Italo"
+        // Android's labels of these sources (`GtfsRealtimeEnrichedTrainDataSource`, the shared table).
+        case .swissOpenTransport, .staRealtime, .sncfRealtime, .trenitaliaFranceRealtime:
+            return LiveSourceLabels.label(source) ?? source.rawValue
         }
     }
 

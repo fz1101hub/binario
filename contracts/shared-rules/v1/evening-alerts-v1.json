@@ -1,0 +1,679 @@
+{
+  "schema": "binario-shared-rules-v1",
+  "description": "The two evening alerts (notifications/StrikeReminder.kt, RouteWorksAlert.kt): when each runs (18:00 and 19:00 railway-local, Europe/Rome), when it may notify (from its hour until 22:00; the works alert never in the quiet hours 22–7), which strikes start tomorrow and were not notified, which works notices are due tomorrow on the saved routes (works only, never a strike, with dates that include tomorrow, not notified before, each under the first route it names in the routes' order), and what is remembered (epoch days). The hours and limits are contracts/shared-data/v1/evening-alerts-v1.json.",
+  "readers": [
+    "app/src/test/java/it/binario/app/notifications/EveningAlertsContractTest.kt",
+    "ios/BinarioKit/Tests/BinarioKitTests/ExtrasContractTests.swift"
+  ],
+  "strikeReminder": {
+    "nextRunAt": [
+      {
+        "now": "2026-11-23T09:30",
+        "expected": "2026-11-23T18:00"
+      },
+      {
+        "now": "2026-11-23T17:59",
+        "expected": "2026-11-23T18:00"
+      },
+      {
+        "now": "2026-11-23T18:00",
+        "expected": "2026-11-24T18:00"
+      },
+      {
+        "now": "2026-11-23T23:10",
+        "expected": "2026-11-24T18:00"
+      },
+      {
+        "now": "2027-03-27T20:00",
+        "expected": "2027-03-28T18:00"
+      }
+    ],
+    "mayNotify": [
+      {
+        "now": "2026-11-23T17:59",
+        "expected": false
+      },
+      {
+        "now": "2026-11-23T18:00",
+        "expected": true
+      },
+      {
+        "now": "2026-11-23T21:59",
+        "expected": true
+      },
+      {
+        "now": "2026-11-23T22:00",
+        "expected": false
+      },
+      {
+        "now": "2026-11-24T06:00",
+        "expected": false
+      }
+    ],
+    "toNotify": [
+      {
+        "name": "a strike starting tomorrow, not one starting today or later, nor one without a date",
+        "strikes": [
+          {
+            "id": "a",
+            "start": "2026-11-24",
+            "end": "2026-11-24"
+          },
+          {
+            "id": "b",
+            "start": "2026-11-23",
+            "end": "2026-11-24"
+          },
+          {
+            "id": "c",
+            "start": "2026-11-25",
+            "end": null
+          },
+          {
+            "id": "d",
+            "start": null,
+            "end": null
+          },
+          {
+            "id": "e",
+            "start": "2026-11-24",
+            "end": "2026-11-25"
+          }
+        ],
+        "today": "2026-11-23",
+        "notified": {},
+        "expected": [
+          "a",
+          "e"
+        ]
+      },
+      {
+        "name": "a strike already notified is not notified again",
+        "strikes": [
+          {
+            "id": "a",
+            "start": "2026-11-24",
+            "end": null
+          },
+          {
+            "id": "e",
+            "start": "2026-11-24",
+            "end": null
+          }
+        ],
+        "today": "2026-11-23",
+        "notified": {
+          "a": 20780
+        },
+        "expected": [
+          "e"
+        ]
+      }
+    ],
+    "remember": [
+      {
+        "notified": {
+          "old": 20777,
+          "recent": 20778
+        },
+        "strikes": [
+          "a"
+        ],
+        "today": "2026-11-23",
+        "expected": {
+          "recent": 20778,
+          "a": 20780
+        }
+      }
+    ]
+  },
+  "routeWorks": {
+    "nextRunAt": [
+      {
+        "now": "2026-11-09T09:30",
+        "immediate": false,
+        "expected": "2026-11-09T19:00"
+      },
+      {
+        "now": "2026-11-09T03:00",
+        "immediate": true,
+        "expected": "2026-11-09T19:00"
+      },
+      {
+        "now": "2026-11-09T19:00",
+        "immediate": false,
+        "expected": "2026-11-10T19:00"
+      },
+      {
+        "now": "2026-11-09T20:15",
+        "immediate": false,
+        "expected": "2026-11-10T19:00"
+      },
+      {
+        "now": "2026-11-09T20:15",
+        "immediate": true,
+        "expected": "2026-11-09T20:15"
+      },
+      {
+        "now": "2026-11-09T22:30",
+        "immediate": true,
+        "expected": "2026-11-10T19:00"
+      },
+      {
+        "now": "2027-03-27T20:00",
+        "immediate": false,
+        "expected": "2027-03-28T19:00"
+      }
+    ],
+    "mayNotify": [
+      {
+        "now": "2026-11-09T18:59",
+        "expected": false
+      },
+      {
+        "now": "2026-11-09T19:00",
+        "expected": true
+      },
+      {
+        "now": "2026-11-09T21:59",
+        "expected": true
+      },
+      {
+        "now": "2026-11-09T22:00",
+        "expected": false
+      },
+      {
+        "now": "2026-11-09T23:30",
+        "expected": false
+      },
+      {
+        "now": "2026-11-10T02:00",
+        "expected": false
+      },
+      {
+        "now": "2026-11-10T07:00",
+        "expected": false
+      }
+    ],
+    "quiet": [
+      {
+        "now": "2026-11-09T22:00",
+        "expected": true
+      },
+      {
+        "now": "2026-11-10T06:59",
+        "expected": true
+      },
+      {
+        "now": "2026-11-10T07:00",
+        "expected": false
+      },
+      {
+        "now": "2026-11-09T21:59",
+        "expected": false
+      }
+    ],
+    "select": [
+      {
+        "name": "only works whose dates include tomorrow, never an undated notice nor a strike",
+        "works": [
+          {
+            "id": "domani",
+            "mentionsStrike": false,
+            "dates": {
+              "first": "2026-11-10",
+              "last": "2026-11-10"
+            },
+            "reasons": [
+              {
+                "routeId": "casa",
+                "routeName": "Casa → Lavoro",
+                "stations": [
+                  "Pavia"
+                ],
+                "line": null
+              }
+            ]
+          },
+          {
+            "id": "dopodomani",
+            "mentionsStrike": false,
+            "dates": {
+              "first": "2026-11-11",
+              "last": "2026-11-12"
+            },
+            "reasons": [
+              {
+                "routeId": "casa",
+                "routeName": "Casa → Lavoro",
+                "stations": [
+                  "Pavia"
+                ],
+                "line": null
+              }
+            ]
+          },
+          {
+            "id": "ieri",
+            "mentionsStrike": false,
+            "dates": {
+              "first": "2026-11-08",
+              "last": "2026-11-08"
+            },
+            "reasons": [
+              {
+                "routeId": "casa",
+                "routeName": "Casa → Lavoro",
+                "stations": [
+                  "Pavia"
+                ],
+                "line": null
+              }
+            ]
+          },
+          {
+            "id": "senza-date",
+            "mentionsStrike": false,
+            "dates": null,
+            "reasons": [
+              {
+                "routeId": "casa",
+                "routeName": "Casa → Lavoro",
+                "stations": [
+                  "Pavia"
+                ],
+                "line": null
+              }
+            ]
+          },
+          {
+            "id": "sciopero",
+            "mentionsStrike": true,
+            "dates": {
+              "first": "2026-11-10",
+              "last": "2026-11-10"
+            },
+            "reasons": [
+              {
+                "routeId": "casa",
+                "routeName": "Casa → Lavoro",
+                "stations": [
+                  "Pavia"
+                ],
+                "line": null
+              }
+            ]
+          },
+          {
+            "id": "settimana",
+            "mentionsStrike": false,
+            "dates": {
+              "first": "2026-11-09",
+              "last": "2026-11-15"
+            },
+            "reasons": [
+              {
+                "routeId": "casa",
+                "routeName": "Casa → Lavoro",
+                "stations": [
+                  "Pavia"
+                ],
+                "line": null
+              }
+            ]
+          }
+        ],
+        "routeIds": [
+          "casa",
+          "mare",
+          "lago"
+        ],
+        "today": "2026-11-09",
+        "notified": {},
+        "expected": {
+          "day": "2026-11-10",
+          "due": [
+            {
+              "id": "domani",
+              "routeId": "casa"
+            },
+            {
+              "id": "settimana",
+              "routeId": "casa"
+            }
+          ],
+          "routeNames": [
+            "Casa → Lavoro"
+          ]
+        }
+      },
+      {
+        "name": "each notice under the first route it names, in the routes' order; every route named",
+        "works": [
+          {
+            "id": "lago",
+            "mentionsStrike": false,
+            "dates": {
+              "first": "2026-11-10",
+              "last": "2026-11-10"
+            },
+            "reasons": [
+              {
+                "routeId": "lago",
+                "routeName": "Milano → Como",
+                "stations": [
+                  "Como San Giovanni"
+                ],
+                "line": null
+              }
+            ]
+          },
+          {
+            "id": "due",
+            "mentionsStrike": false,
+            "dates": {
+              "first": "2026-11-10",
+              "last": "2026-11-11"
+            },
+            "reasons": [
+              {
+                "routeId": "lago",
+                "routeName": "Milano → Como",
+                "stations": [
+                  "Monza"
+                ],
+                "line": null
+              },
+              {
+                "routeId": "mare",
+                "routeName": "Milano → Genova",
+                "stations": [],
+                "line": "Milano – Genova"
+              }
+            ]
+          },
+          {
+            "id": "casa",
+            "mentionsStrike": false,
+            "dates": {
+              "first": "2026-11-09",
+              "last": "2026-11-10"
+            },
+            "reasons": [
+              {
+                "routeId": "casa",
+                "routeName": "Casa → Lavoro",
+                "stations": [
+                  "Pavia"
+                ],
+                "line": null
+              }
+            ]
+          }
+        ],
+        "routeIds": [
+          "casa",
+          "mare",
+          "lago"
+        ],
+        "today": "2026-11-09",
+        "notified": {},
+        "expected": {
+          "day": "2026-11-10",
+          "due": [
+            {
+              "id": "casa",
+              "routeId": "casa"
+            },
+            {
+              "id": "due",
+              "routeId": "mare"
+            },
+            {
+              "id": "lago",
+              "routeId": "lago"
+            }
+          ],
+          "routeNames": [
+            "Casa → Lavoro",
+            "Milano → Genova",
+            "Milano → Como"
+          ]
+        }
+      },
+      {
+        "name": "a notice notified before, and still remembered, is not notified again",
+        "works": [
+          {
+            "id": "vecchio",
+            "mentionsStrike": false,
+            "dates": {
+              "first": "2026-11-09",
+              "last": "2026-11-12"
+            },
+            "reasons": [
+              {
+                "routeId": "casa",
+                "routeName": "Casa → Lavoro",
+                "stations": [
+                  "Pavia"
+                ],
+                "line": null
+              }
+            ]
+          },
+          {
+            "id": "scaduto",
+            "mentionsStrike": false,
+            "dates": {
+              "first": "2026-11-09",
+              "last": "2026-11-12"
+            },
+            "reasons": [
+              {
+                "routeId": "casa",
+                "routeName": "Casa → Lavoro",
+                "stations": [
+                  "Pavia"
+                ],
+                "line": null
+              }
+            ]
+          }
+        ],
+        "routeIds": [
+          "casa"
+        ],
+        "today": "2026-11-09",
+        "notified": {
+          "vecchio": 20770,
+          "scaduto": 20765
+        },
+        "expected": {
+          "day": "2026-11-10",
+          "due": [
+            {
+              "id": "scaduto",
+              "routeId": "casa"
+            }
+          ],
+          "routeNames": [
+            "Casa → Lavoro"
+          ]
+        }
+      },
+      {
+        "name": "a route no longer saved names nothing",
+        "works": [
+          {
+            "id": "altrove",
+            "mentionsStrike": false,
+            "dates": {
+              "first": "2026-11-10",
+              "last": "2026-11-10"
+            },
+            "reasons": [
+              {
+                "routeId": "mare",
+                "routeName": "Milano → Genova",
+                "stations": [
+                  "Genova Brignole"
+                ],
+                "line": null
+              }
+            ]
+          }
+        ],
+        "routeIds": [
+          "casa"
+        ],
+        "today": "2026-11-09",
+        "notified": {},
+        "expected": null
+      },
+      {
+        "name": "four due, three shown",
+        "works": [
+          {
+            "id": "n0",
+            "mentionsStrike": false,
+            "dates": {
+              "first": "2026-11-10",
+              "last": "2026-11-10"
+            },
+            "reasons": [
+              {
+                "routeId": "casa",
+                "routeName": "Casa → Lavoro",
+                "stations": [
+                  "Pavia"
+                ],
+                "line": null
+              }
+            ]
+          },
+          {
+            "id": "n1",
+            "mentionsStrike": false,
+            "dates": {
+              "first": "2026-11-10",
+              "last": "2026-11-10"
+            },
+            "reasons": [
+              {
+                "routeId": "casa",
+                "routeName": "Casa → Lavoro",
+                "stations": [
+                  "Pavia"
+                ],
+                "line": null
+              }
+            ]
+          },
+          {
+            "id": "n2",
+            "mentionsStrike": false,
+            "dates": {
+              "first": "2026-11-10",
+              "last": "2026-11-10"
+            },
+            "reasons": [
+              {
+                "routeId": "casa",
+                "routeName": "Casa → Lavoro",
+                "stations": [
+                  "Pavia"
+                ],
+                "line": null
+              }
+            ]
+          },
+          {
+            "id": "n3",
+            "mentionsStrike": false,
+            "dates": {
+              "first": "2026-11-10",
+              "last": "2026-11-10"
+            },
+            "reasons": [
+              {
+                "routeId": "casa",
+                "routeName": "Casa → Lavoro",
+                "stations": [
+                  "Pavia"
+                ],
+                "line": null
+              }
+            ]
+          }
+        ],
+        "routeIds": [
+          "casa"
+        ],
+        "today": "2026-11-09",
+        "notified": {},
+        "expected": {
+          "day": "2026-11-10",
+          "due": [
+            {
+              "id": "n0",
+              "routeId": "casa"
+            },
+            {
+              "id": "n1",
+              "routeId": "casa"
+            },
+            {
+              "id": "n2",
+              "routeId": "casa"
+            },
+            {
+              "id": "n3",
+              "routeId": "casa"
+            }
+          ],
+          "routeNames": [
+            "Casa → Lavoro"
+          ],
+          "shown": 3,
+          "hidden": 1
+        }
+      }
+    ],
+    "keepUntil": [
+      {
+        "first": "2026-11-10",
+        "last": "2026-11-12",
+        "today": "2026-11-09",
+        "expected": "2026-11-13"
+      },
+      {
+        "first": "2026-11-10",
+        "last": "2027-06-30",
+        "today": "2026-11-09",
+        "expected": "2026-12-24"
+      }
+    ],
+    "remember": [
+      {
+        "name": "the notices of the alert until their day, past entries dropped",
+        "notified": {
+          "kept": 20777,
+          "past": 20765
+        },
+        "due": [
+          {
+            "id": "a",
+            "first": "2026-11-10",
+            "last": "2026-11-12"
+          }
+        ],
+        "today": "2026-11-09",
+        "expected": {
+          "a": 20770,
+          "kept": 20777
+        }
+      }
+    ]
+  }
+}

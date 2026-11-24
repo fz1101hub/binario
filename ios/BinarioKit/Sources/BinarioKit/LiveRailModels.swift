@@ -10,12 +10,22 @@ public enum LiveSource: String, CaseIterable, Codable, Hashable, Sendable {
     case rfiStationBoard = "rfi-station-board"
     case viaggiaTreno = "viaggiatreno"
     case italo = "italo-status"
+    /// The swiss boards of transport.opendata.ch (`SwissOpenTransportStationBoardAdapter`).
+    case swissOpenTransport = "ch-transport-opendata"
+    /// The open Trip Updates feeds joined to the bundled timetable (`SharedData.RealtimeFeeds.tripUpdates`).
+    case staRealtime = "alto-adige-sta-realtime"
+    case sncfRealtime = "sncf-gtfs-rt"
+    case trenitaliaFranceRealtime = "trenitalia-france-gtfs-rt"
 
     public var displayName: String {
         switch self {
         case .rfiStationBoard: return "RFI — Monitor Arrivi/Partenze"
         case .viaggiaTreno: return "Trenitalia — ViaggiaTreno realtime"
         case .italo: return "Italo in Viaggio"
+        case .swissOpenTransport: return "transport.opendata.ch — tabelloni svizzeri"
+        case .staRealtime: return "Open Data Hub Alto Adige — GTFS-Realtime"
+        case .sncfRealtime: return "SNCF Open Data — GTFS-Realtime"
+        case .trenitaliaFranceRealtime: return "Trenitalia France — GTFS-Realtime"
         }
     }
 }
@@ -230,7 +240,13 @@ public enum LiveDepartureStatus: String, Equatable, Hashable, Sendable {
     case cancelled
 }
 
-/// One train of a live departure board, from one source or merged from several.
+/// Which board of a station: the trains leaving it or the trains arriving (Android's `BoardKind`).
+public enum LiveBoardKind: String, CaseIterable, Hashable, Sendable {
+    case departures
+    case arrivals
+}
+
+/// One train of a live departure or arrivals board, from one source or merged from several.
 public struct LiveDeparture: Equatable, Identifiable, Sendable {
     /// "<source>:<number>:<yyyy-MM-dd>", Android's `StationBoardEntry.runId`.
     public let id: String
@@ -239,8 +255,10 @@ public struct LiveDeparture: Equatable, Identifiable, Sendable {
     public let operatorID: String?
     /// The category as the source publishes it ("Frecciarossa", "REG"), possibly empty.
     public let category: String
-    /// The train's destination as the source publishes it.
+    /// The train's destination as the source publishes it; on an arrivals board, its origin
+    /// (Android's `destinationOrOrigin`).
     public let destination: String
+    /// The scheduled departure; on an arrivals board, the scheduled arrival.
     public let scheduled: Date
     public let expected: LiveSourced<Date>?
     public let platform: LiveSourced<String>?
@@ -362,10 +380,13 @@ public struct LiveDeparturesRequest: Equatable, Sendable {
     public let station: Station
     /// The board starts here (Android: ten minutes earlier, and two hours earlier for late trains).
     public let from: Date
+    /// The departures, or the arrivals (RFI and ViaggiaTreno; Italo lists departures only).
+    public let kind: LiveBoardKind
 
-    public init(station: Station, from: Date) {
+    public init(station: Station, from: Date, kind: LiveBoardKind = .departures) {
         self.station = station
         self.from = from
+        self.kind = kind
     }
 }
 
@@ -376,12 +397,14 @@ public struct LiveBoardWindow: Equatable, Sendable {
     public let to: Date
     /// A late train scheduled from here stays while its expected time is still ahead.
     public let lateSince: Date?
+    public let kind: LiveBoardKind
 
-    public init(station: Station, from: Date, to: Date, lateSince: Date?) {
+    public init(station: Station, from: Date, to: Date, lateSince: Date?, kind: LiveBoardKind = .departures) {
         self.station = station
         self.from = from
         self.to = to
         self.lateSince = lateSince
+        self.kind = kind
     }
 
     /// Android's `boardWindowKeeps`.
@@ -414,10 +437,13 @@ public struct LiveDepartureBoard: Equatable, Sendable {
     public let unavailableSources: [LiveSource: LiveUnavailableReason]
     public let warnings: Set<LiveBoardWarning>
     public let fetchedAt: Date
+    /// The departures board, or the arrivals board (its rows name the trains' origins).
+    public let kind: LiveBoardKind
 
     public init(
         stationID: String, from: Date, to: Date, departures: [LiveDeparture], sources: [LiveSource],
-        unavailableSources: [LiveSource: LiveUnavailableReason], warnings: Set<LiveBoardWarning>, fetchedAt: Date
+        unavailableSources: [LiveSource: LiveUnavailableReason], warnings: Set<LiveBoardWarning>, fetchedAt: Date,
+        kind: LiveBoardKind = .departures
     ) {
         self.stationID = stationID
         self.from = from
@@ -427,11 +453,130 @@ public struct LiveDepartureBoard: Equatable, Sendable {
         self.unavailableSources = unavailableSources
         self.warnings = warnings
         self.fetchedAt = fetchedAt
+        self.kind = kind
     }
 }
 
 public enum LiveDeparturesResult: Equatable, Sendable {
     case available(LiveDepartureBoard)
+    case unavailable(LiveUnavailableReason)
+}
+
+/// A row of a live board to open, Android's `StationBoardRunDetailProvider` request: the board's
+/// station and kind, the row's number, scheduled time and operator, and the ViaggiaTreno identity
+/// of its run when ViaggiaTreno listed it.
+public struct LiveBoardRunRequest: Equatable, Sendable {
+    public let station: Station
+    public let kind: LiveBoardKind
+    public let number: String
+    /// The scheduled departure, or arrival on an arrivals board, at `station`.
+    public let scheduled: Date
+    public let operatorID: String?
+    public let viaggiaTrenoRun: ViaggiaTrenoRunReference?
+
+    public init(
+        station: Station, kind: LiveBoardKind, number: String, scheduled: Date, operatorID: String? = nil,
+        viaggiaTrenoRun: ViaggiaTrenoRunReference? = nil
+    ) {
+        self.station = station
+        self.kind = kind
+        self.number = number
+        self.scheduled = scheduled
+        self.operatorID = operatorID
+        self.viaggiaTrenoRun = viaggiaTrenoRun
+    }
+
+    /// The request of a board row at `station`.
+    public init(_ row: LiveDeparture, station: Station, kind: LiveBoardKind) {
+        self.init(
+            station: station, kind: kind, number: row.number, scheduled: row.scheduled, operatorID: row.operatorID,
+            viaggiaTrenoRun: row.viaggiaTrenoRun
+        )
+    }
+}
+
+/// The run of a board row (Android's `StationBoardRunDetails`): every stop as the source published
+/// it, and the stop at the board's station, where the row's expected time, platform and state are.
+public struct LiveBoardRunDetails: Equatable, Sendable {
+    public let kind: LiveBoardKind
+    public let run: LiveRunStatus
+    public let stop: LiveStopStatus
+
+    public init(kind: LiveBoardKind, run: LiveRunStatus, stop: LiveStopStatus) {
+        self.kind = kind
+        self.run = run
+        self.stop = stop
+    }
+}
+
+public enum LiveBoardRunResult: Equatable, Sendable {
+    case available(LiveBoardRunDetails)
+    case unavailable(LiveUnavailableReason)
+}
+
+/// The notices of one train (Android's `TrainNoticeRequest`): its number, service day and, when
+/// known, the ViaggiaTreno code of its origin.
+public struct LiveTrainNoticesRequest: Equatable, Sendable {
+    public let number: String
+    /// Any instant of the service day, read in Italian time.
+    public let serviceDate: Date
+    public let originCode: String?
+
+    public init(number: String, serviceDate: Date, originCode: String? = nil) {
+        self.number = number
+        self.serviceDate = serviceDate
+        self.originCode = originCode
+    }
+}
+
+/// A notice ViaggiaTreno publishes for one train («smart caring», Android's `TrainNotice`).
+public struct LiveTrainNotice: Equatable, Identifiable, Sendable {
+    /// "viaggiatreno-train-notices:<id>".
+    public let id: String
+    public let text: String
+    public let englishText: String?
+    /// The Italian days the notice is valid on, from the start of the first to the start of the last.
+    public let validFrom: Date
+    public let validUntil: Date
+    public let publishedAt: Date?
+    /// The strike badge: a text of the notice mentions «sciopero» or «scioperi».
+    public let mentionsStrike: Bool
+
+    public init(
+        id: String, text: String, englishText: String?, validFrom: Date, validUntil: Date, publishedAt: Date?,
+        mentionsStrike: Bool = false
+    ) {
+        self.id = id
+        self.text = text
+        self.englishText = englishText
+        self.validFrom = validFrom
+        self.validUntil = validUntil
+        self.publishedAt = publishedAt
+        self.mentionsStrike = mentionsStrike
+    }
+
+    /// The publisher's English text for an app language other than Italian when it has one, else
+    /// the Italian text (Android's `textFor`).
+    public func text(for languageCode: String) -> String {
+        guard languageCode.lowercased() != "it", let english = englishText,
+              !english.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return text }
+        return english
+    }
+}
+
+/// The notices of one train, newest first, and whether they are an earlier copy kept after a failed read.
+public struct LiveTrainNotices: Equatable, Sendable {
+    public let notices: [LiveTrainNotice]
+    public let stale: Bool
+
+    public init(notices: [LiveTrainNotice], stale: Bool) {
+        self.notices = notices
+        self.stale = stale
+    }
+}
+
+public enum LiveTrainNoticesResult: Equatable, Sendable {
+    case available(LiveTrainNotices)
     case unavailable(LiveUnavailableReason)
 }
 
@@ -447,14 +592,43 @@ public protocol LiveDepartureBoardSource: Sendable {
     func departures(for window: LiveBoardWindow) async -> LiveSourceAnswer<[LiveDeparture]>
 }
 
-/// Train status by number, all sources together. Never throws; cancellable.
-public protocol LiveTrainStatusProviding: Sendable {
-    func trainStatus(_ request: LiveTrainStatusRequest) async -> LiveTrainStatusResult
+/// The run of a board row from one source (Android's `StationBoardRunDetailProvider`).
+public protocol LiveBoardRunSource: Sendable {
+    var source: LiveSource { get }
+    func boardRun(_ request: LiveBoardRunRequest) async -> LiveSourceAnswer<LiveBoardRunDetails>
 }
 
-/// Departures of a station, all sources together. Never throws; cancellable.
+/// The notices of a train from one source (Android's `TrainNoticeProvider`).
+public protocol LiveTrainNoticeSource: Sendable {
+    func trainNotices(_ request: LiveTrainNoticesRequest) async -> LiveSourceAnswer<LiveTrainNotices>
+}
+
+/// Train status by number, all sources together, and the notices published for a train. Never
+/// throws; cancellable.
+public protocol LiveTrainStatusProviding: Sendable {
+    func trainStatus(_ request: LiveTrainStatusRequest) async -> LiveTrainStatusResult
+    func trainNotices(_ request: LiveTrainNoticesRequest) async -> LiveTrainNoticesResult
+}
+
+extension LiveTrainStatusProviding {
+    /// No notice source: nothing is asked.
+    public func trainNotices(_ request: LiveTrainNoticesRequest) async -> LiveTrainNoticesResult {
+        .unavailable(.notCovered)
+    }
+}
+
+/// Departures or arrivals of a station, all sources together, and the run of one of its rows.
+/// Never throws; cancellable.
 public protocol LiveDeparturesProviding: Sendable {
     func departures(_ request: LiveDeparturesRequest) async -> LiveDeparturesResult
+    func boardRun(_ request: LiveBoardRunRequest) async -> LiveBoardRunResult
+}
+
+extension LiveDeparturesProviding {
+    /// No source of run details: nothing is asked.
+    public func boardRun(_ request: LiveBoardRunRequest) async -> LiveBoardRunResult {
+        .unavailable(.notCovered)
+    }
 }
 
 /// Italian railway time: Europe/Rome days and Android's recency limits.

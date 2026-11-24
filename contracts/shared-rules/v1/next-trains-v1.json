@@ -1,0 +1,164 @@
+{
+  "schema": "binario-shared-rules-v1",
+  "readers": {"iphone": "ios/BinarioKit/Tests/BinarioKitTests/NextTrainsContractTests.swift", "alexa": "alexa-companion/server/timetable/nextTrains.test.ts"},
+  "description": "The next trains between two catalogue stations in the programmed timetable index (schema userVersion 2 of tools/build_ios_gtfs_schedule.py): the iPhone planner's query (SQLiteGTFSJourneyRepository.journeys) and the skill's (server/timetable/repository.ts). Each reader builds `index` into an empty index of that schema with the metadata of the iPhone tests' fixture (source_generated_at 2024-03-30), asks each case from `at`, and compares the first trains of the next 24 hours (at most eight): time in the agency's zone, number, category, operator, searched destination and vehicle, or why there is none. The index is synthetic and independent of the bundled one.",
+  "index": {
+    "packs": [
+      {"id": 1, "sourceId": "trenitalia-gtfs", "attribution": "Trenitalia", "lastServiceDate": 20240403},
+      {"id": 2, "sourceId": "ch-otd-gtfs", "attribution": "opentransportdata.swiss", "lastServiceDate": 20240403},
+      {"id": 3, "sourceId": "lombardia-trenord-gtfs", "attribution": "Trenord", "lastServiceDate": 20240403},
+      {"id": 4, "sourceId": "toscana-tft-gtfs", "attribution": "TFT", "lastServiceDate": 20240330},
+      {"id": 5, "sourceId": "fixture-lisbon-gtfs", "attribution": "Fixture Lisbon", "lastServiceDate": 20240403}
+    ],
+    "agencies": [
+      {"id": 1, "pack": 1, "externalId": "TI", "name": "TRENITALIA", "timezone": "Europe/Rome"},
+      {"id": 2, "pack": 2, "externalId": "SBB", "name": "SBB CFF FFS", "timezone": "Europe/Zurich"},
+      {"id": 3, "pack": 3, "externalId": "TN", "name": "Trenord S.r.l.", "timezone": "Europe/Rome"},
+      {"id": 4, "pack": 4, "externalId": "TFT", "name": "TFT", "timezone": "Europe/Rome"},
+      {"id": 5, "pack": 5, "externalId": "LR", "name": "Lisbon Rail", "timezone": "Europe/Lisbon"}
+    ],
+    "routes": [
+      {"id": 1, "pack": 1, "agency": 1, "externalId": "FR", "shortName": "0083_FR", "longName": null, "routeType": 2},
+      {"id": 2, "pack": 1, "agency": 1, "externalId": "REG", "shortName": "0083_REG", "longName": null, "routeType": 2},
+      {"id": 3, "pack": 1, "agency": 1, "externalId": "BUS", "shortName": "0083_BUS", "longName": null, "routeType": 3},
+      {"id": 4, "pack": 2, "agency": 2, "externalId": "EC", "shortName": "EC", "longName": null, "routeType": 102},
+      {"id": 5, "pack": 3, "agency": 3, "externalId": "S11", "shortName": "S11", "longName": null, "routeType": 2},
+      {"id": 6, "pack": 3, "agency": 3, "externalId": "S11-BUS", "shortName": "S11", "longName": null, "routeType": 3},
+      {"id": 7, "pack": 4, "agency": 4, "externalId": "R", "shortName": "R", "longName": null, "routeType": 2},
+      {"id": 8, "pack": 5, "agency": 5, "externalId": "IR", "shortName": null, "longName": "Interregional", "routeType": 2},
+      {"id": 9, "pack": 1, "agency": 1, "externalId": "EC", "shortName": "0083_EC", "longName": null, "routeType": 2}
+    ],
+    "services": [
+      {"id": 1, "pack": 1, "externalId": "daily", "startDate": 20240328, "dayCount": 7, "activeDays": "7F"},
+      {"id": 2, "pack": 1, "externalId": "weekdays", "startDate": 20240328, "dayCount": 7, "activeDays": "73"},
+      {"id": 3, "pack": 1, "externalId": "sunday", "startDate": 20240328, "dayCount": 7, "activeDays": "08"},
+      {"id": 4, "pack": 2, "externalId": "daily", "startDate": 20240328, "dayCount": 7, "activeDays": "7F"},
+      {"id": 5, "pack": 3, "externalId": "daily", "startDate": 20240328, "dayCount": 7, "activeDays": "7F"},
+      {"id": 6, "pack": 4, "externalId": "daily", "startDate": 20240324, "dayCount": 7, "activeDays": "7F"},
+      {"id": 7, "pack": 5, "externalId": "daily", "startDate": 20240328, "dayCount": 7, "activeDays": "7F"}
+    ],
+    "stops": [
+      {"id": 1, "pack": 1, "externalId": "A", "name": "Alfa Centrale", "catalogStationId": "S90001", "railwayCode": "S90001"},
+      {"id": 2, "pack": 1, "externalId": "B", "name": "Beta", "catalogStationId": "S90002", "railwayCode": "S90002"},
+      {"id": 3, "pack": 1, "externalId": "C", "name": "Gamma", "catalogStationId": "S90003", "railwayCode": "S90003"},
+      {"id": 4, "pack": 2, "externalId": "8500001", "name": "Alfa Centrale", "catalogStationId": "S90001", "railwayCode": "S90001"},
+      {"id": 5, "pack": 2, "externalId": "8500002", "name": "Beta", "catalogStationId": "S90002", "railwayCode": "S90002"},
+      {"id": 6, "pack": 2, "externalId": "8500004", "name": "Delta Confine", "catalogStationId": "S90004", "railwayCode": "S90004"},
+      {"id": 7, "pack": 3, "externalId": "TN-A", "name": "Alfa Centrale", "catalogStationId": "S90001", "railwayCode": "S90001"},
+      {"id": 8, "pack": 3, "externalId": "TN-C", "name": "Gamma", "catalogStationId": "S90003", "railwayCode": "S90003"},
+      {"id": 9, "pack": 4, "externalId": "TF-E", "name": "Epsilon", "catalogStationId": "S90005", "railwayCode": "S90005"},
+      {"id": 10, "pack": 4, "externalId": "TF-Z", "name": "Zeta", "catalogStationId": "S90006", "railwayCode": "S90006"},
+      {"id": 11, "pack": 1, "externalId": "A-BUS", "name": "Alfa Centrale Piazzale", "catalogStationId": "S90001", "railwayCode": null},
+      {"id": 12, "pack": 5, "externalId": "ETA", "name": "Eta", "catalogStationId": "S90007", "railwayCode": null},
+      {"id": 13, "pack": 5, "externalId": "THETA", "name": "Theta", "catalogStationId": "S90008", "railwayCode": null}
+    ],
+    "trips": [
+      {"id": 1, "pack": 1, "route": 1, "service": 1, "externalId": "T1", "shortName": "9501", "calls": [[1, 28800, 28800], [2, 32400, 32400], [3, 36000, 36000]]},
+      {"id": 2, "pack": 1, "route": 2, "service": 2, "externalId": "T2", "shortName": "2101", "calls": [[1, 30600, 30600], [3, 35100, 35100]]},
+      {"id": 3, "pack": 1, "route": 2, "service": 3, "externalId": "T3", "shortName": "2103", "calls": [[1, 30600, 30600], [2, 33600, 33600]]},
+      {"id": 4, "pack": 1, "route": 3, "service": 1, "externalId": "T4", "shortName": "7001", "calls": [[1, 31500, 31500], [2, 36000, 36000]]},
+      {"id": 5, "pack": 2, "route": 4, "service": 4, "externalId": "T5", "shortName": "31", "calls": [[4, 33000, 33000], [5, 36300, 36300], [6, 39600, 39600]]},
+      {"id": 6, "pack": 1, "route": 9, "service": 1, "externalId": "T6", "shortName": "31", "calls": [[1, 33000, 33000], [2, 36300, 36300]]},
+      {"id": 7, "pack": 2, "route": 4, "service": 4, "externalId": "T7", "shortName": "20953", "calls": [[4, 36000, 36000], [5, 39600, 39600]]},
+      {"id": 8, "pack": 1, "route": 1, "service": 1, "externalId": "T8", "shortName": "9503", "calls": [[1, 36000, 36000], [2, 39600, 39600]]},
+      {"id": 9, "pack": 3, "route": 5, "service": 5, "externalId": "T9", "shortName": "25001", "calls": [[7, 36000, 36000], [8, 39600, 39600]]},
+      {"id": 10, "pack": 1, "route": 2, "service": 1, "externalId": "T10", "shortName": "2105", "calls": [[1, 36000, 36000], [3, 39600, 39600]]},
+      {"id": 11, "pack": 3, "route": 6, "service": 5, "externalId": "T11", "shortName": "25003", "calls": [[7, 37800, 37800], [8, 41400, 41400]]},
+      {"id": 12, "pack": 1, "route": 2, "service": 1, "externalId": "T12", "shortName": "2107", "calls": [[1, 39600, 39600, 1, 0], [3, 43200, 43200]]},
+      {"id": 13, "pack": 1, "route": 2, "service": 1, "externalId": "T13", "shortName": "2199", "calls": [[1, 88200, 88200], [3, 90900, 90900]]},
+      {"id": 14, "pack": 1, "route": 2, "service": 3, "externalId": "T14", "shortName": "2111", "calls": [[1, 9000, 9000], [3, 12600, 12600]]},
+      {"id": 15, "pack": 4, "route": 7, "service": 6, "externalId": "T15", "shortName": "301", "calls": [[9, 25200, 25200], [10, 27600, 27600]]},
+      {"id": 16, "pack": 1, "route": 3, "service": 1, "externalId": "T16", "shortName": "7003", "calls": [[11, 28200, 28200], [2, 31200, 31200]]},
+      {"id": 17, "pack": 5, "route": 8, "service": 7, "externalId": "T17", "shortName": "801", "calls": [[12, 25200, 25200], [13, 28800, 28800]]},
+      {"id": 18, "pack": 1, "route": 2, "service": 1, "externalId": "T18", "shortName": "2109", "calls": [[1, 43200, 43200], [3, 46800, 46800]]},
+      {"id": 19, "pack": 1, "route": 2, "service": 1, "externalId": "T19", "shortName": "2113", "calls": [[1, 50400, 50400], [3, 54000, 54000]]},
+      {"id": 20, "pack": 1, "route": 2, "service": 1, "externalId": "T20", "shortName": "2115", "calls": [[1, 57600, 57600], [3, 61200, 61200]]}
+    ]
+  },
+  "cases": [
+    {
+      "why": "a weekday morning: the trains of the day in departure order, a Trenitalia coach labelled as a bus; the Swiss pack's copy of EC 31 and its own-numbered copy of FR 9503 are kept once, from the national pack",
+      "origin": {"id": "S90001", "name": "Alfa Centrale", "railwayCode": "S90001"},
+      "destination": {"id": "S90002", "name": "Beta", "railwayCode": "S90002"},
+      "at": "2024-03-29T07:00:00+01:00",
+      "expected": {"trains": [{"time": "08:00", "number": "9501", "category": "FR", "operator": "Trenitalia", "destination": "Beta", "vehicle": "TRAIN"}, {"time": "08:45", "number": "7001", "category": "BUS", "operator": "Trenitalia", "destination": "Beta", "vehicle": "BUS_TRENITALIA"}, {"time": "09:10", "number": "31", "category": "EC", "operator": "Trenitalia", "destination": "Beta", "vehicle": "TRAIN"}, {"time": "10:00", "number": "9503", "category": "FR", "operator": "Trenitalia", "destination": "Beta", "vehicle": "TRAIN"}]}
+    },
+    {
+      "why": "a station without a ViaggiaTreno code reads every stop bound to it, the coach stop of Alfa Centrale too",
+      "origin": {"id": "S90001", "name": "Alfa Centrale", "railwayCode": null},
+      "destination": {"id": "S90002", "name": "Beta", "railwayCode": "S90002"},
+      "at": "2024-03-29T07:00:00+01:00",
+      "expected": {"trains": [{"time": "07:50", "number": "7003", "category": "BUS", "operator": "Trenitalia", "destination": "Beta", "vehicle": "BUS_TRENITALIA"}, {"time": "08:00", "number": "9501", "category": "FR", "operator": "Trenitalia", "destination": "Beta", "vehicle": "TRAIN"}, {"time": "08:45", "number": "7001", "category": "BUS", "operator": "Trenitalia", "destination": "Beta", "vehicle": "BUS_TRENITALIA"}, {"time": "09:10", "number": "31", "category": "EC", "operator": "Trenitalia", "destination": "Beta", "vehicle": "TRAIN"}, {"time": "10:00", "number": "9503", "category": "FR", "operator": "Trenitalia", "destination": "Beta", "vehicle": "TRAIN"}]}
+    },
+    {
+      "why": "a Sunday: the Sunday-only train runs, in summer time from that day",
+      "origin": {"id": "S90001", "name": "Alfa Centrale", "railwayCode": "S90001"},
+      "destination": {"id": "S90002", "name": "Beta", "railwayCode": "S90002"},
+      "at": "2024-03-31T07:00:00+02:00",
+      "expected": {"trains": [{"time": "08:00", "number": "9501", "category": "FR", "operator": "Trenitalia", "destination": "Beta", "vehicle": "TRAIN"}, {"time": "08:30", "number": "2103", "category": "REG", "operator": "Trenitalia", "destination": "Beta", "vehicle": "TRAIN"}, {"time": "08:45", "number": "7001", "category": "BUS", "operator": "Trenitalia", "destination": "Beta", "vehicle": "BUS_TRENITALIA"}, {"time": "09:10", "number": "31", "category": "EC", "operator": "Trenitalia", "destination": "Beta", "vehicle": "TRAIN"}, {"time": "10:00", "number": "9503", "category": "FR", "operator": "Trenitalia", "destination": "Beta", "vehicle": "TRAIN"}]}
+    },
+    {
+      "why": "from midnight on a Tuesday: yesterday's run past 24:00 first, weekday trains, a Trenord train at the same minutes as a Trenitalia one with another number kept (two operators' own trains), a Trenord replacement bus, no train where boarding is not allowed, at most eight",
+      "origin": {"id": "S90001", "name": "Alfa Centrale", "railwayCode": "S90001"},
+      "destination": {"id": "S90003", "name": "Gamma", "railwayCode": "S90003"},
+      "at": "2024-04-02T00:00:00+02:00",
+      "expected": {"trains": [{"time": "00:30", "number": "2199", "category": "REG", "operator": "Trenitalia", "destination": "Gamma", "vehicle": "TRAIN"}, {"time": "08:00", "number": "9501", "category": "FR", "operator": "Trenitalia", "destination": "Gamma", "vehicle": "TRAIN"}, {"time": "08:30", "number": "2101", "category": "REG", "operator": "Trenitalia", "destination": "Gamma", "vehicle": "TRAIN"}, {"time": "10:00", "number": "2105", "category": "REG", "operator": "Trenitalia", "destination": "Gamma", "vehicle": "TRAIN"}, {"time": "10:00", "number": "25001", "category": "S11", "operator": "Trenord", "destination": "Gamma", "vehicle": "TRAIN"}, {"time": "10:30", "number": "25003", "category": "S11", "operator": "Trenord", "destination": "Gamma", "vehicle": "REPLACEMENT_BUS"}, {"time": "12:00", "number": "2109", "category": "REG", "operator": "Trenitalia", "destination": "Gamma", "vehicle": "TRAIN"}, {"time": "14:00", "number": "2113", "category": "REG", "operator": "Trenitalia", "destination": "Gamma", "vehicle": "TRAIN"}]}
+    },
+    {
+      "why": "the night summer time starts: GTFS times count from noon minus twelve hours, so the Sunday train published at 02:30 leaves at 01:30",
+      "origin": {"id": "S90001", "name": "Alfa Centrale", "railwayCode": "S90001"},
+      "destination": {"id": "S90003", "name": "Gamma", "railwayCode": "S90003"},
+      "at": "2024-03-31T00:00:00+01:00",
+      "expected": {"trains": [{"time": "00:30", "number": "2199", "category": "REG", "operator": "Trenitalia", "destination": "Gamma", "vehicle": "TRAIN"}, {"time": "01:30", "number": "2111", "category": "REG", "operator": "Trenitalia", "destination": "Gamma", "vehicle": "TRAIN"}, {"time": "08:00", "number": "9501", "category": "FR", "operator": "Trenitalia", "destination": "Gamma", "vehicle": "TRAIN"}, {"time": "10:00", "number": "2105", "category": "REG", "operator": "Trenitalia", "destination": "Gamma", "vehicle": "TRAIN"}, {"time": "10:00", "number": "25001", "category": "S11", "operator": "Trenord", "destination": "Gamma", "vehicle": "TRAIN"}, {"time": "10:30", "number": "25003", "category": "S11", "operator": "Trenord", "destination": "Gamma", "vehicle": "REPLACEMENT_BUS"}, {"time": "12:00", "number": "2109", "category": "REG", "operator": "Trenitalia", "destination": "Gamma", "vehicle": "TRAIN"}, {"time": "14:00", "number": "2113", "category": "REG", "operator": "Trenitalia", "destination": "Gamma", "vehicle": "TRAIN"}]}
+    },
+    {
+      "why": "a border station only the foreign pack serves: its train, with the operator's short brand",
+      "origin": {"id": "S90001", "name": "Alfa Centrale", "railwayCode": "S90001"},
+      "destination": {"id": "S90004", "name": "Delta Confine", "railwayCode": "S90004"},
+      "at": "2024-03-29T07:00:00+01:00",
+      "expected": {"trains": [{"time": "09:10", "number": "31", "category": "EC", "operator": "SBB", "destination": "Delta Confine", "vehicle": "TRAIN"}]}
+    },
+    {
+      "why": "an agency in another time zone: its service day and its time are its own (07:00 in Lisbon is 08:00 in Rome); a route without a short name shows its long name",
+      "origin": {"id": "S90007", "name": "Eta", "railwayCode": null},
+      "destination": {"id": "S90008", "name": "Theta", "railwayCode": null},
+      "at": "2024-04-02T07:30:00+02:00",
+      "expected": {"trains": [{"time": "07:00", "number": "801", "category": "Interregional", "operator": "Lisbon Rail", "destination": "Theta", "vehicle": "TRAIN"}]}
+    },
+    {
+      "why": "a pack on its last day still answers",
+      "origin": {"id": "S90005", "name": "Epsilon", "railwayCode": "S90005"},
+      "destination": {"id": "S90006", "name": "Zeta", "railwayCode": "S90006"},
+      "at": "2024-03-30T06:00:00+01:00",
+      "expected": {"trains": [{"time": "07:00", "number": "301", "category": "R", "operator": "TFT", "destination": "Zeta", "vehicle": "TRAIN"}]}
+    },
+    {
+      "why": "after the last day of every pack serving the route: the timetable has ended, not «no train»",
+      "origin": {"id": "S90005", "name": "Epsilon", "railwayCode": "S90005"},
+      "destination": {"id": "S90006", "name": "Zeta", "railwayCode": "S90006"},
+      "at": "2024-04-01T06:00:00+02:00",
+      "expected": {"unavailable": "scheduleExpired"}
+    },
+    {
+      "why": "after the last day of the whole index: ended for any station",
+      "origin": {"id": "S90001", "name": "Alfa Centrale", "railwayCode": "S90001"},
+      "destination": {"id": "S90002", "name": "Beta", "railwayCode": "S90002"},
+      "at": "2024-04-05T08:00:00+02:00",
+      "expected": {"unavailable": "scheduleExpired"}
+    },
+    {
+      "why": "a station the index does not serve",
+      "origin": {"id": "S99998", "name": "Nowhere", "railwayCode": "S99998"},
+      "destination": {"id": "S90002", "name": "Beta", "railwayCode": "S90002"},
+      "at": "2024-03-29T07:00:00+01:00",
+      "expected": {"unavailable": "noRoute"}
+    },
+    {
+      "why": "no train in that direction within 24 hours",
+      "origin": {"id": "S90002", "name": "Beta", "railwayCode": "S90002"},
+      "destination": {"id": "S90001", "name": "Alfa Centrale", "railwayCode": "S90001"},
+      "at": "2024-03-29T07:00:00+01:00",
+      "expected": {"unavailable": "noRoute"}
+    }
+  ]
+}

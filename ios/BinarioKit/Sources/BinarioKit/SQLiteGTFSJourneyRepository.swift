@@ -1471,6 +1471,237 @@ extension SQLiteGTFSJourneyRepository: StationBoardProvider {
 
 /// The metadata of the databases validated in this process, by path and size
 /// (`SQLiteGTFSJourneyRepository.validatedOnce`). Process memory only.
+// MARK: - Runs of the map of trains in motion
+
+extension SQLiteGTFSJourneyRepository {
+    /// A run's stops are read only for the trips that call at a stop of the scope within this many
+    /// minutes of the timetable window: what the map can place is near its area.
+    static let mapCandidateMarginMinutes = 240
+    private static let maximumMapTrips = 1_500
+    private static let maximumMapStops = 1_200
+    private static let mapStopChunk = 400
+
+    /// Android's `EmbeddedGtfsJourneyProvider.scheduledRailRuns`: the train runs of the index (the
+    /// base file and each installed foreign timetable) that can be on the move around the
+    /// request's time, for the map of trains in motion. A route's runs call at its origin and later
+    /// at its destination; an area's have a stop inside it, from the packs with the most stops there
+    /// (`SharedData.LiveTrainMap.areaPacks`). Today's service day and yesterday's, whose night
+    /// trains still run. Coaches and replacement buses are not trains. Stops take the coordinates
+    /// and name of their catalogue station (`stations`, by id), else their own. Empty when the
+    /// index cannot answer; nothing is asked of the network.
+    public func scheduledRailRuns(_ request: ScheduledRunRequest, stations: [String: Station]) async -> [ScheduledRailRun] {
+        var runs: [ScheduledRailRun] = []
+        let files = [(url: databaseURL, excluded: foreignFiles.map(\.sourceID))] + foreignFiles.map { (url: $0.url, excluded: [String]()) }
+        for file in files {
+            if Task.isCancelled { return [] }
+            runs += (try? Self.railRuns(databaseURL: file.url, excluded: file.excluded, request: request, stations: stations)) ?? []
+        }
+        return runs
+    }
+
+    private static func railRuns(
+        databaseURL: URL, excluded: [String], request: ScheduledRunRequest, stations: [String: Station]
+    ) throws -> [ScheduledRailRun] {
+        let database = try SQLiteDatabase(readOnlyURL: databaseURL)
+        database.excludedSourceIDs = excluded
+        _ = try validatedOnce(database, at: databaseURL)
+        var originStops: Set<Int64> = []
+        var destinationStops: Set<Int64> = []
+        let scopeStops: [Int64]
+        switch request.scope {
+        case let .route(origin, destination):
+            guard let from = try? resolve(origin, database: database), let to = try? resolve(destination, database: database) else { return [] }
+            originStops = Set(from)
+            destinationStops = Set(to)
+            scopeStops = from
+        case let .area(bounds):
+            scopeStops = try areaStops(bounds, database: database)
+        }
+        guard !scopeStops.isEmpty else { return [] }
+        let calendar = serviceCalendar(timeZone: ItalianWallClock.timeZone)
+        let nowMinute = Double(request.at.secondOfDay) / 60
+        var runs: [ScheduledRailRun] = []
+        var seen: Set<String> = []
+        // Yesterday's service day first: its night trains, then today's.
+        for daysBack in [1, 0] {
+            guard let serviceDate = request.at.date.adding(days: -daysBack),
+                  let serviceDay = calendar.date(from: DateComponents(year: serviceDate.year, month: serviceDate.month, day: serviceDate.day))
+            else { continue }
+            let minute = nowMinute + Double(daysBack * 1_440)
+            let from = minute - Double(request.lookBackMinutes)
+            let until = minute + Double(request.lookAheadMinutes)
+            let margin = Double(mapCandidateMarginMinutes)
+            let lower = Int64(max(0, (from - margin) * 60))
+            let upper = Int64(min(Double(maximumGTFSSeconds), (until + margin) * 60))
+            guard lower <= upper else { continue }
+            for tripID in try mapTrips(scopeStops, lower: lower, upper: upper, database: database) {
+                guard runs.count < maximumMapTrips else { break }
+                guard let run = try mapRun(
+                    tripID, serviceDay: serviceDay, serviceDate: serviceDate, calendar: calendar, stations: stations, database: database
+                ) else { continue }
+                guard Double(run.lastArrivalMinute) >= from, Double(run.firstDepartureMinute) <= until else { continue }
+                switch request.scope {
+                case let .area(bounds):
+                    guard run.stops.contains(where: { $0.point.map(bounds.contains) ?? false }) else { continue }
+                case .route:
+                    guard run.servesInOrder(originStops, destinationStops) else { continue }
+                }
+                if seen.insert(run.run.id).inserted { runs.append(run.run) }
+            }
+        }
+        return runs
+    }
+
+    /// The stops inside `bounds` of the packs with the most stops there; never a city network's
+    /// (Android skips `isUrban` packs: they run no trains).
+    private static func areaStops(_ bounds: GeoBounds, database: SQLiteDatabase) throws -> [Int64] {
+        let cityPacks = UrbanStops.packs.sorted()
+        let cityPlaceholders = Array(repeating: "?", count: cityPacks.count).joined(separator: ",")
+        let statement = try database.statement(
+            """
+            SELECT s.id, s.pack_id
+            FROM stop AS s
+            JOIN pack AS p ON p.id = s.pack_id
+            WHERE s.latitude BETWEEN ? AND ? AND s.longitude BETWEEN ? AND ?
+              AND p.source_id NOT IN (\(cityPlaceholders))\(database.excludedPacksClause("p.source_id"))
+            ORDER BY s.id
+            LIMIT ?
+            """
+        )
+        try statement.bind(bounds.south, at: 1)
+        try statement.bind(bounds.north, at: 2)
+        try statement.bind(bounds.west, at: 3)
+        try statement.bind(bounds.east, at: 4)
+        var binding: Int32 = 5
+        for sourceID in cityPacks { try statement.bind(sourceID, at: binding); binding += 1 }
+        try database.bindExcludedPacks(statement, from: &binding)
+        try statement.bind(Int64(maximumMapStops * 4), at: binding)
+        var byPack: [Int64: [Int64]] = [:]
+        while try statement.step() {
+            byPack[statement.int(at: 1), default: []].append(statement.int(at: 0))
+        }
+        let packs = byPack.sorted { $0.value.count == $1.value.count ? $0.key < $1.key : $0.value.count > $1.value.count }
+            .prefix(SharedData.LiveTrainMap.areaPacks)
+        return Array(packs.flatMap(\.value).prefix(maximumMapStops))
+    }
+
+    /// The trips that call at `stops` between the two GTFS seconds, each once.
+    private static func mapTrips(_ stops: [Int64], lower: Int64, upper: Int64, database: SQLiteDatabase) throws -> [Int64] {
+        var trips: [Int64] = []
+        var seen: Set<Int64> = []
+        var start = 0
+        while start < stops.count, trips.count < maximumMapTrips {
+            let chunk = Array(stops[start..<min(start + mapStopChunk, stops.count)])
+            start += mapStopChunk
+            let placeholders = Array(repeating: "?", count: chunk.count).joined(separator: ",")
+            let statement = try database.statement(
+                """
+                SELECT DISTINCT st.trip_id
+                FROM stop_time AS st
+                JOIN trip AS t ON t.id = st.trip_id
+                JOIN pack AS p ON p.id = t.pack_id
+                WHERE st.stop_id IN (\(placeholders))
+                  AND st.departure_seconds BETWEEN ? AND ?\(database.excludedPacksClause("p.source_id"))
+                LIMIT ?
+                """
+            )
+            var binding: Int32 = 1
+            for id in chunk { try statement.bind(id, at: binding); binding += 1 }
+            try statement.bind(lower, at: binding); binding += 1
+            try statement.bind(upper, at: binding); binding += 1
+            try database.bindExcludedPacks(statement, from: &binding)
+            try statement.bind(Int64(maximumMapTrips), at: binding)
+            while try statement.step() {
+                let trip = statement.int(at: 0)
+                if seen.insert(trip).inserted { trips.append(trip) }
+            }
+        }
+        return trips
+    }
+
+    /// A run and the index stops it calls at, for the route check.
+    private struct MapRun {
+        let run: ScheduledRailRun
+        let stopIDs: [Int64]
+
+        var lastArrivalMinute: Int { run.lastArrivalMinute }
+        var firstDepartureMinute: Int { run.firstDepartureMinute }
+        var stops: [ScheduledRunStop] { run.stops }
+
+        /// Android's `servesInOrder`: a stop of the origin, then a later stop of the destination.
+        func servesInOrder(_ origin: Set<Int64>, _ destination: Set<Int64>) -> Bool {
+            guard let boarding = stopIDs.firstIndex(where: origin.contains) else { return false }
+            return stopIDs[(boarding + 1)...].contains(where: destination.contains)
+        }
+    }
+
+    /// The run of `tripID` on `serviceDate`: nil when its service does not run that day, it is not
+    /// a train, or it has fewer than two timed stops.
+    private static func mapRun(
+        _ tripID: Int64, serviceDay: Date, serviceDate: PlannedLocalDate, calendar: Calendar, stations: [String: Station],
+        database: SQLiteDatabase
+    ) throws -> MapRun? {
+        let trip = try database.statement(
+            """
+            SELECT t.external_id, t.short_name, r.short_name, r.route_type, p.source_id,
+                   svc.start_date, svc.day_count, svc.active_days
+            FROM trip AS t
+            JOIN route AS r ON r.id = t.route_id
+            JOIN pack AS p ON p.id = t.pack_id
+            JOIN service AS svc ON svc.id = t.service_id
+            WHERE t.id = ?
+            """
+        )
+        try trip.bind(tripID, at: 1)
+        guard try trip.step(), let externalID = trip.text(at: 0)?.nonEmpty, let sourceID = trip.text(at: 4)?.nonEmpty,
+              let activeDays = trip.blob(at: 7),
+              TimetableLegMode.of(routeType: trip.int(at: 3), sourceID: sourceID) == .train,
+              serviceRuns(serviceDay: serviceDay, startDate: trip.int(at: 5), dayCount: trip.int(at: 6), activeDays: activeDays, calendar: calendar)
+        else { return nil }
+        // The number as the timetable shows it after the last « - » (Android's `displayNumber`).
+        var number: String?
+        if let published = trip.text(at: 1)?.normalizedWhitespace, !published.isEmpty {
+            let shown = (published.components(separatedBy: " - ").last ?? published).trimmingCharacters(in: .whitespaces)
+            number = shown.isEmpty ? published : shown
+        }
+        var line: String?
+        if let shortName = trip.text(at: 2) {
+            let label = TimetableNaming.lineLabel(shortName).trimmingCharacters(in: .whitespaces)
+            if !label.isEmpty, label.count <= SharedData.LiveTrainMap.maximumLineLabelLength, !label.contains("(") { line = label }
+        }
+        let times = try database.statement(
+            """
+            SELECT st.stop_id, st.arrival_seconds, st.departure_seconds, s.name, s.latitude, s.longitude, s.catalog_station_id
+            FROM stop_time AS st
+            JOIN stop AS s ON s.id = st.stop_id
+            WHERE st.trip_id = ? AND st.arrival_seconds IS NOT NULL AND st.departure_seconds IS NOT NULL
+            ORDER BY st.stop_sequence
+            """
+        )
+        try times.bind(tripID, at: 1)
+        var stops: [ScheduledRunStop] = []
+        var stopIDs: [Int64] = []
+        while try times.step() {
+            let station = times.text(at: 6).flatMap { stations[$0] }
+            let name = station?.name ?? times.text(at: 3)?.normalizedWhitespace ?? ""
+            let latitude = station?.latitude ?? times.double(at: 4)
+            let longitude = station?.longitude ?? times.double(at: 5)
+            stops.append(ScheduledRunStop(
+                name: name, latitude: latitude, longitude: longitude,
+                arrivalMinute: Int(times.int(at: 1) / 60), departureMinute: Int(times.int(at: 2) / 60)
+            ))
+            stopIDs.append(times.int(at: 0))
+        }
+        guard stops.count >= 2 else { return nil }
+        return MapRun(
+            run: ScheduledRailRun(
+                id: "\(sourceID):\(externalID):\(serviceDate.iso)", serviceDate: serviceDate, publicNumber: number, lineLabel: line, stops: stops
+            ),
+            stopIDs: stopIDs
+        )
+    }
+}
+
 private final class ValidatedIndexCache: @unchecked Sendable {
     private struct Entry {
         let size: Int
@@ -1559,6 +1790,84 @@ public struct GTFSSourcePack: Equatable, Hashable, Sendable {
         self.attribution = attribution
         self.lastServiceDate = lastServiceDate
         self.tripCount = tripCount
+    }
+}
+
+// MARK: - Trip Updates
+
+extension SQLiteGTFSJourneyRepository: TimetableTripReading {
+    /// At most this many trips are read for one question: a board page and a search list far fewer.
+    static let maximumRealtimeTrips = 128
+    private static let maximumTripStops = 1_000
+    private static let maximumPackTimeZones = 16
+
+    /// The stops of `trips` for their Trip Updates (`TimetableRealtime`), each read from the file that answers for
+    /// its pack: an installed foreign timetable, else the base index. A file that cannot be read gives no trip.
+    public func tripStops(_ trips: [TimetableTripKey]) -> [TimetableTripKey: TimetableTripStops] {
+        var byFile: [URL: [TimetableTripKey]] = [:]
+        var seen = Set<TimetableTripKey>()
+        for trip in trips where seen.count < Self.maximumRealtimeTrips && seen.insert(trip).inserted {
+            byFile[foreignDatabaseURLs[trip.sourceID] ?? databaseURL, default: []].append(trip)
+        }
+        var result: [TimetableTripKey: TimetableTripStops] = [:]
+        for (url, keys) in byFile {
+            guard let found = try? Self.tripStops(keys, in: url) else { continue }
+            result.merge(found) { first, _ in first }
+        }
+        return result
+    }
+
+    private static func tripStops(_ trips: [TimetableTripKey], in databaseURL: URL) throws -> [TimetableTripKey: TimetableTripStops] {
+        let database = try SQLiteDatabase(readOnlyURL: databaseURL)
+        _ = try validatedOnce(database, at: databaseURL)
+        var zonesByPack: [String: [String]] = [:]
+        var result: [TimetableTripKey: TimetableTripStops] = [:]
+        for trip in trips {
+            if zonesByPack[trip.sourceID] == nil {
+                let statement = try database.statement(
+                    "SELECT DISTINCT a.timezone FROM agency AS a JOIN pack AS p ON p.id = a.pack_id WHERE p.source_id = ? LIMIT ?"
+                )
+                try statement.bind(trip.sourceID, at: 1)
+                try statement.bind(Int64(maximumPackTimeZones + 1), at: 2)
+                var zones: [String] = []
+                while try statement.step() {
+                    guard zones.count < maximumPackTimeZones else { throw SQLiteGTFSFailure.limitExceeded }
+                    if let zone = statement.text(at: 0) { zones.append(zone) }
+                }
+                zonesByPack[trip.sourceID] = zones
+            }
+            let statement = try database.statement(
+                """
+                SELECT s.external_id, st.stop_sequence, COALESCE(st.departure_seconds, st.arrival_seconds, -1),
+                       s.catalog_station_id
+                FROM trip AS t
+                JOIN pack AS p ON p.id = t.pack_id
+                JOIN stop_time AS st ON st.trip_id = t.id
+                JOIN stop AS s ON s.id = st.stop_id
+                WHERE p.source_id = ? AND t.external_id = ?
+                ORDER BY st.stop_sequence
+                LIMIT ?
+                """
+            )
+            try statement.bind(trip.sourceID, at: 1)
+            try statement.bind(trip.tripID, at: 2)
+            try statement.bind(Int64(maximumTripStops + 1), at: 3)
+            var stops: [TimetableTripStops.Stop] = []
+            while try statement.step() {
+                guard stops.count < maximumTripStops else { throw SQLiteGTFSFailure.limitExceeded }
+                guard let stopID = statement.text(at: 0)?.nonEmpty else { throw SQLiteGTFSFailure.invalidData }
+                let seconds = statement.int(at: 2)
+                stops.append(TimetableTripStops.Stop(
+                    stopID: stopID,
+                    sequence: Int(statement.int(at: 1)),
+                    seconds: seconds >= 0 && seconds <= Int64(maximumGTFSSeconds) ? Int(seconds) : nil,
+                    catalogStationID: statement.text(at: 3)?.nonEmpty
+                ))
+            }
+            guard !stops.isEmpty else { continue }
+            result[trip] = TimetableTripStops(stops: stops, agencyTimeZones: zonesByPack[trip.sourceID] ?? [])
+        }
+        return result
     }
 }
 
@@ -1699,6 +2008,12 @@ private final class SQLiteStatement {
         }
     }
 
+    func bind(_ value: Double, at index: Int32) throws {
+        guard let handle, sqlite3_bind_double(handle, index, value) == SQLITE_OK else {
+            throw SQLiteGTFSFailure.invalidDatabase
+        }
+    }
+
     func step() throws -> Bool {
         guard let handle else { throw SQLiteGTFSFailure.invalidDatabase }
         switch sqlite3_step(handle) {
@@ -1713,15 +2028,17 @@ private final class SQLiteStatement {
         return sqlite3_column_int64(handle, index)
     }
 
-    func double(at index: Int32) -> Double? {
-        guard let handle, sqlite3_column_type(handle, index) != SQLITE_NULL else { return nil }
-        return sqlite3_column_double(handle, index)
-    }
-
     func text(at index: Int32) -> String? {
         guard let handle, sqlite3_column_type(handle, index) != SQLITE_NULL,
               let value = sqlite3_column_text(handle, index) else { return nil }
         return String(cString: value)
+    }
+
+    /// A REAL column, nil when NULL (the coordinates of the map's stops).
+    func double(at index: Int32) -> Double? {
+        guard let handle, sqlite3_column_type(handle, index) != SQLITE_NULL else { return nil }
+        let value = sqlite3_column_double(handle, index)
+        return value.isFinite ? value : nil
     }
 
     func blob(at index: Int32) -> Data? {

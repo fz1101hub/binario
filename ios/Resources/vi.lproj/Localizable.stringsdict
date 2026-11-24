@@ -16,6 +16,76 @@
 			<string>thêm %1$lld chuyến tàu</string>
 		</dict>
 	</dict>
+	<key>departures.map.capped</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>other</key>
+			<string>Hiển thị %1$lld tàu gần nhất.</string>
+		</dict>
+	</dict>
+	<key>departures.map.count</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>other</key>
+			<string>%1$lld tàu đang chạy</string>
+		</dict>
+	</dict>
+	<key>departures.map.delay</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>other</key>
+			<string>Trễ %1$lld phút</string>
+		</dict>
+	</dict>
+	<key>notices.alerts.strike_title</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>other</key>
+			<string>%1$lld cuộc đình công đường sắt vào ngày mai</string>
+		</dict>
+	</dict>
+	<key>notices.alerts.works_title_more</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>other</key>
+			<string>Ngày mai thi công trên %2$@ và %1$lld tuyến khác</string>
+		</dict>
+	</dict>
 	<key>notices.works.show_more</key>
 	<dict>
 		<key>NSStringLocalizedFormatKey</key>
@@ -42,6 +112,20 @@
 			<string>lld</string>
 			<key>other</key>
 			<string>đúng giờ %1$lld trên %2$lld lần</string>
+		</dict>
+	</dict>
+	<key>result.compensation.minutes</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>other</key>
+			<string>%1$lld phút</string>
 		</dict>
 	</dict>
 	<key>result.detail.arrival_on_time</key>

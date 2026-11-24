@@ -44,7 +44,7 @@ Le tre app restano native: niente Kotlin Multiplatform, niente runtime condiviso
 | `rfi-place-ids-v1.json`: 25 place ID del monitor RFI per nome | `RfiStationIds.byName`; `RfiLiveBoard.swift` | Android, iPhone |
 | `source-scores-v1.json`: punteggi delle fonti per categoria, bonus dell'operatore, fonti di sola copertura | `RailSourceSelectionPolicy.kt`; `LiveSourcePolicy` in `LiveRailData.swift` | Android, iPhone |
 | `punctuality-v1.json`: categorie a 5 minuti (FR FA FB EC ES ESC EN ITALO), soglie e campioni minimi | `NetworkReliabilityStats.kt`, `NetworkReliabilityAggregates.kt`; `NetworkReliability.swift`; `server/punctuality/stats.ts` | Android, iPhone, Alexa |
-| `train-number-prefixes-v1.json`: categorie ammesse davanti al numero di un treno | `TrainNumberSearchService.kt`; `ViaggiaTrenoLive.swift` | Android, iPhone |
+| `train-number-prefixes-v1.json`: categorie ammesse davanti al numero di un treno | `TrainNumberSearchService.kt`; `ViaggiaTrenoLive.swift` | Android, iPhone, Alexa (dal 23 novembre, orario programmato) |
 | `airport-routes-v1.json`: collegamenti con gli aeroporti e pack di linee urbane | `AirportRoutes.kt`; `AirportRoutes.swift` | Android, iPhone (anche `byCityLine`) |
 | `italian-holidays-v1.json`: festività nazionali e giorni contati dalla Pasqua | `ItalianRailServiceCalendar.kt`; `server/punctuality/stats.ts` | Android, Alexa (generata anche per l'iPhone) |
 | `planned-journeys-v1.json`: limiti dell'Agenda, del file di trasferimento e dei modelli | `PlannedJourneyDomain.kt`, `PlannedJourneyTransfer.kt`, `PlannedJourneyTemplates.kt`; `PlannedJourneys.swift`, `PlannedJourneyTemplates.swift` | Android, iPhone |
@@ -56,7 +56,28 @@ Dopo l'unione dei lavori sull'orario e sugli avvisi dell'iPhone, lo stesso giorn
 | `italo-gtfs-station-codes.json`: i 63 codici delle stazioni del pack Italo e il codice lasciato al pack | `ItaloGtfsStationCodes` in `GtfsStationCodeIndex.kt`, uguale al JSON per un test Python | Android; il builder dell'indice iPhone legge il JSON |
 | `notices-sources-v1.json`: fonti degli avvisi, pagine, limiti, parole ed espressioni regolari dei lettori, quanto mostrano le sezioni | costanti di una ventina di file Android, uguali al JSON per un test a riflessione; l'iPhone leggeva il file incluso nell'app all'avvio | Android, iPhone |
 | `source-manners-v1.json`: User-Agent, rifiuti 403 e 429, pausa dopo un rifiuto, interruttore | `PublicSourceHttp.kt`, `SourceCircuitBreaker`; `LiveSourceHTTP.swift`, `LiveSourceGate.swift`; una sezione `manners` della tabella degli avvisi | Android, iPhone |
-| `pack-roles-v1.json`: pack nazionali, esteri, che ripubblicano i treni dei partner, con autobus dell'operatore | `PlannedPackOrder`, `EmbeddedGtfsRouteAdapter`, `EmbeddedGtfsPacks`; `TimetableCopies.swift`, `TimetableVehicle.swift`; `build_ios_gtfs_schedule.py`, `verify_ios_gtfs_schedule.py` | Android, iPhone; builder e verificatore dell'indice leggono il JSON |
+| `pack-roles-v1.json`: pack nazionali, esteri, che ripubblicano i treni dei partner, con autobus dell'operatore | `PlannedPackOrder`, `EmbeddedGtfsRouteAdapter`, `EmbeddedGtfsPacks`; `TimetableCopies.swift`, `TimetableVehicle.swift`; `build_ios_gtfs_schedule.py`, `verify_ios_gtfs_schedule.py` | Android, iPhone, Alexa (orario programmato); builder e verificatore dell'indice leggono il JSON |
+| `realtime-feeds-v1.json`: feed GTFS-Realtime e tabelloni svizzeri (indirizzi, limiti, cache, pause, finestra di osservazione) | costanti di `StaRealtimeAdapter`, `SncfGtfsRealtimeAdapter`, `TrenitaliaFranceGtfsRealtimeAdapter`, `UrbanRealtime.kt`, `SwissOpenTransportStationBoardAdapter`; nuova per l'iPhone (`GTFSRealtimeFeeds.swift`, `SwissStationBoard.swift`) | Android, iPhone |
+
+Con le funzioni di Android portate sull'iPhone (meteo a destinazione, bici in condivisione, indennizzo per ritardo, treni in movimento, promemoria serali), il 23 novembre 2026:
+
+| Tabella | Prima | Ora letta da |
+|---|---|---|
+| `destination-weather-v1.json`: Open-Meteo, variabili, giorni, decimali, cache e limiti | `OpenMeteoForecastAdapter.kt` | Android, iPhone |
+| `bike-sharing-v1.json`: i cinque sistemi GBFS, raggio, quanti mezzi, cache e limiti | `BikeSharingSystems`, `BikeSharingService`, `BinarioDataGraph.kt` | Android, iPhone |
+| `delay-compensation-v1.json`: soglie e quote del regolamento UE 2021/782 | `DelayCompensation.kt` | Android, iPhone |
+| `live-train-map-v1.json`: finestra dell'orario, ritardi applicati, copie, cadenza e aree | `LiveTrainPositions.kt`, `ScheduledRailRuns.kt`, `EmbeddedGtfsJourneyProvider.kt` | Android, iPhone |
+| `evening-alerts-v1.json`: ore dei promemoria serali e di quiete, memoria degli avvisi | `StrikeReminder.kt`, `RouteWorksAlert.kt` | Android, iPhone |
+
+Le loro regole hanno i casi in `contracts/shared-rules/v1/` (`delay-compensation-v1.json`, `destination-weather-v1.json`, `bike-sharing-v1.json`, `live-train-positions-v1.json`, `evening-alerts-v1.json`). Restano specifiche dell'iPhone la mappa di base (MapKit invece di OpenFreeMap) e il modo di girare in background (un solo compito di aggiornamento in background invece di WorkManager).
+
+Con gli arrivi, i dettagli della corsa e gli avvisi per treno sull'iPhone:
+
+| Tabella | Prima | Ora letta da |
+|---|---|---|
+| `viaggiatreno-v1.json`: indirizzo e risorse dell'API realtime, limiti, intervallo, durata dei valori, dettagli in parallelo, limiti di lettura, tipi di fermata, codici cliente | `ViaggiaTrenoRealtimeAdapter.kt`; `ViaggiaTrenoLive.swift` (i codici cliente solo su Android) | Android, iPhone |
+| `rfi-monitor-v1.json`: selettore e monitor RFI, limiti, intervallo, durata dei valori e del selettore | `RfiStationBoardAdapter.kt`, `RfiStationCatalog.kt`; `RfiLiveBoard.swift` | Android, iPhone |
+| `notices-sources-v1.json`, in più: il feed degli avvisi per treno di ViaggiaTreno e i limiti del suo lettore | `ViaggiaTrenoTrainNoticesAdapter.kt` | Android, iPhone |
 
 Il modo di chiedere alle fonti non è degli avvisi: vale per ogni fonte live su entrambi i telefoni, perciò sta in una
 tabella sua. L'iPhone non include più la tabella degli avvisi e non ha più il caricatore: resta spenta ogni sezione di

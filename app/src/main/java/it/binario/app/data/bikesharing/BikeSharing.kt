@@ -12,6 +12,7 @@ import it.binario.app.data.provider.CoverageDescriptor
 import it.binario.app.data.provider.ProviderCapability
 import it.binario.app.data.provider.ProviderDescriptor
 import it.binario.app.data.provider.RatePolicy
+import it.binario.app.shared.SharedData
 import java.net.URI
 import java.time.Clock
 import java.time.Duration
@@ -55,66 +56,31 @@ data class BikeSharingSystem(
 
 /**
  * The GBFS systems verified from CI (runs 41561372909 and 41564222536): reachable, current, with stations or vehicles
- * near railway stations, and their terms.
+ * near railway stations, and their terms. The table is contracts/shared-data/v1/bike-sharing-v1.json, read by the
+ * iPhone too.
  */
 object BikeSharingSystems {
-    val NEXTBIKE_BERGAMO = BikeSharingSystem(
-        id = SourceId("gbfs-nextbike-bergamo"),
-        name = "nextbike Bergamo",
-        operator = "nextbike GmbH",
-        discoveryUrl = "https://gbfs.nextbike.net/maps/gbfs/v2/nextbike_ib/gbfs.json",
-        areas = listOf(TransitArea("Bergamo", 45.6983, 9.6773, 8.0)),
-        websiteUrl = "https://www.nextbike.it/bergamo/",
-        licence = "CC0-1.0 (license_id in system_information)",
-        attribution = "nextbike Bergamo, CC0",
-        personalOnly = false
-    )
-    val FAMOSE_SENIGALLIA = BikeSharingSystem(
-        id = SourceId("gbfs-famose-senigallia"),
-        name = "Fa.Mo.Se",
-        operator = "TIER Mobility SE / nextbike",
-        discoveryUrl = "https://gbfs.nextbike.net/maps/gbfs/v2/nextbike_fa/gbfs.json",
-        areas = listOf(TransitArea("Senigallia", 43.7147, 13.2180, 12.0)),
-        websiteUrl = "https://www.comune.senigallia.an.it/aree-tematiche/mobilita/bike-sharing-fa-mo-se/",
-        licence = "CC0-1.0 (license_id in system_information)",
-        attribution = "Fa.Mo.Se, CC0",
-        personalOnly = false
-    )
-    val BIKEMI = BikeSharingSystem(
-        id = SourceId("gbfs-bikemi"),
-        name = "BikeMi",
-        operator = "IGPDecaux S.p.A.",
-        discoveryUrl = "https://gbfs.urbansharing.com/bikemi.com/gbfs.json",
-        areas = listOf(TransitArea("Milano", 45.4642, 9.1900, 10.0)),
-        websiteUrl = "https://bikemi.com/",
-        licence = "NLOD 2.0 (Norwegian Licence for Open Government Data), dichiarata su bikemi.com/it/open-data",
-        attribution = "BikeMi, NLOD 2.0",
-        personalOnly = false
-    )
-    val VERONA_BIKE = BikeSharingSystem(
-        id = SourceId("gbfs-verona-bike"),
-        name = "Verona Bike",
-        operator = "IGPDecaux S.p.A.",
-        discoveryUrl = "https://gbfs.urbansharing.com/bikeverona.it/gbfs.json",
-        areas = listOf(TransitArea("Verona", 45.4384, 10.9916, 8.0)),
-        websiteUrl = "https://bikeverona.it/",
-        licence = "NLOD 2.0 (Norwegian Licence for Open Government Data), dichiarata su bikeverona.it/en/open-data",
-        attribution = "Verona Bike, NLOD 2.0",
-        personalOnly = false
-    )
-    val BIRD_ROMA = BikeSharingSystem(
-        id = SourceId("gbfs-bird-roma"),
-        name = "Bird",
-        operator = "Bird Rides, Inc.",
-        discoveryUrl = "https://mds.bird.co/gbfs/v2/public/rome/gbfs.json",
-        areas = listOf(TransitArea("Roma", 41.8986, 12.4964, 15.0)),
-        websiteUrl = "https://www.bird.co/",
-        licence = "Bird GBFS Data License Agreement (license_url del feed), condizioni non riesaminate",
-        attribution = "Bird",
-        personalOnly = true
-    )
+    val all: List<BikeSharingSystem> = SharedData.BikeSharing.SYSTEMS.map { system ->
+        BikeSharingSystem(
+            id = SourceId(system.id),
+            name = system.name,
+            operator = system.operatorName,
+            discoveryUrl = system.discoveryUrl,
+            areas = system.areas.map { TransitArea(it.name, it.latitude, it.longitude, it.radiusKm) },
+            websiteUrl = system.websiteUrl,
+            licence = system.licence,
+            attribution = system.attribution,
+            personalOnly = system.personalOnly
+        )
+    }
 
-    val all: List<BikeSharingSystem> = listOf(NEXTBIKE_BERGAMO, FAMOSE_SENIGALLIA, BIKEMI, VERONA_BIKE, BIRD_ROMA)
+    private fun system(id: String): BikeSharingSystem = all.first { it.id.value == id }
+
+    val NEXTBIKE_BERGAMO = system("gbfs-nextbike-bergamo")
+    val FAMOSE_SENIGALLIA = system("gbfs-famose-senigallia")
+    val BIKEMI = system("gbfs-bikemi")
+    val VERONA_BIKE = system("gbfs-verona-bike")
+    val BIRD_ROMA = system("gbfs-bird-roma")
 
     fun forBuild(personalSources: Boolean): List<BikeSharingSystem> = all.filter { personalSources || !it.personalOnly }
 }
@@ -185,7 +151,7 @@ internal object GbfsParser {
     /** {feed name: url} of gbfs.json: v3 lists `data.feeds`, v1/v2 one list per language (Italian, then English). */
     fun feeds(json: String): Map<String, String> {
         val data = JSONObject(json).optJSONObject("data") ?: return emptyMap()
-        val list = data.optJSONArray("feeds") ?: listOf("it", "en").firstNotNullOfOrNull { data.optJSONObject(it)?.optJSONArray("feeds") }
+        val list = data.optJSONArray("feeds") ?: SharedData.BikeSharing.FEED_LANGUAGES.firstNotNullOfOrNull { data.optJSONObject(it)?.optJSONArray("feeds") }
             ?: data.keys().asSequence().firstNotNullOfOrNull { data.optJSONObject(it)?.optJSONArray("feeds") }
             ?: return emptyMap()
         return objects(list).mapNotNull { feed ->
@@ -290,14 +256,20 @@ class BikeSharingService(
     private val fetcher: PublicSourceFetcher,
     private val clock: Clock = Clock.systemUTC(),
     private val radiusMeters: Int = DEFAULT_RADIUS_METERS,
-    private val maxDocks: Int = 4,
-    private val maxVehicles: Int = 4
+    private val maxDocks: Int = SharedData.BikeSharing.MAXIMUM_DOCKS,
+    private val maxVehicles: Int = SharedData.BikeSharing.MAXIMUM_VEHICLES
 ) {
     // One circuit breaker per operator host: an outage of one system must not pause the others.
-    private val staticCache = ResilientSourceCache<String>(ttl = Duration.ofHours(6), maxStale = Duration.ofHours(24), clock = clock, maxEntries = 64,
-        breakerPerHost = true)
-    private val statusCache = ResilientSourceCache<String>(ttl = Duration.ofSeconds(60), maxStale = Duration.ofMinutes(5), clock = clock, maxEntries = 32,
-        breakerPerHost = true)
+    private val staticCache = ResilientSourceCache<String>(
+        ttl = Duration.ofSeconds(SharedData.BikeSharing.STATIC_TIME_TO_LIVE_SECONDS.toLong()),
+        maxStale = Duration.ofSeconds(SharedData.BikeSharing.STATIC_MAXIMUM_STALE_SECONDS.toLong()),
+        clock = clock, maxEntries = SharedData.BikeSharing.STATIC_MAXIMUM_ENTRIES, breakerPerHost = true
+    )
+    private val statusCache = ResilientSourceCache<String>(
+        ttl = Duration.ofSeconds(SharedData.BikeSharing.STATUS_TIME_TO_LIVE_SECONDS.toLong()),
+        maxStale = Duration.ofSeconds(SharedData.BikeSharing.STATUS_MAXIMUM_STALE_SECONDS.toLong()),
+        clock = clock, maxEntries = SharedData.BikeSharing.STATUS_MAXIMUM_ENTRIES, breakerPerHost = true
+    )
 
     val hasSystems: Boolean get() = systems.isNotEmpty()
 
@@ -363,7 +335,7 @@ class BikeSharingService(
     private class Body(val value: String, val fetchedAt: Instant, val stale: Boolean)
 
     companion object {
-        const val DEFAULT_RADIUS_METERS = 300
+        const val DEFAULT_RADIUS_METERS = SharedData.BikeSharing.RADIUS_METERS
 
         /** A sub-feed is read only over HTTPS on the auto-discovery host: a document cannot send the app elsewhere. */
         internal fun sameHost(url: String, discovery: String): Boolean = try {
@@ -384,7 +356,10 @@ class BikeSharingService(
             capabilities = setOf(ProviderCapability.BIKE_SHARING),
             coverage = CoverageDescriptor(countryCodes = setOf("IT"), description = "Bici e monopattini in condivisione di ${system.areas.joinToString { it.name }}"),
             accessMode = AccessMode.OPEN_DIRECT,
-            ratePolicy = RatePolicy(Duration.ofSeconds(60), defaultTimeToLive = Duration.ofSeconds(60)),
+            ratePolicy = RatePolicy(
+                Duration.ofSeconds(SharedData.BikeSharing.STATUS_TIME_TO_LIVE_SECONDS.toLong()),
+                defaultTimeToLive = Duration.ofSeconds(SharedData.BikeSharing.STATUS_TIME_TO_LIVE_SECONDS.toLong())
+            ),
             schemaVersion = 1
         )
     }

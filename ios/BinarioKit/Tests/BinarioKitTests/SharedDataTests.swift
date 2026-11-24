@@ -70,6 +70,7 @@ final class SharedDataTests: XCTestCase {
         XCTAssertEqual(NetworkReliability.minimumPlatformSharePercent, json["minimumPlatformSharePercent"] as? Int)
         XCTAssertEqual(NetworkReliability.minimumWeekdaySamples, json["minimumWeekdaySamples"] as? Int)
         XCTAssertEqual(NetworkReliability.minimumWeekdayGapPoints, json["minimumWeekdayGapPoints"] as? Int)
+        XCTAssertEqual(NetworkReliability.maximumWeekdayRemarks, json["maximumWeekdayRemarks"] as? Int)
         XCTAssertEqual(NetworkReliabilityAggregates.minimumAggregateSamples, json["minimumAggregateSamples"] as? Int)
         XCTAssertEqual(NetworkReliabilityAggregates.minimumBandSamples, json["minimumBandSamples"] as? Int)
         XCTAssertEqual(NetworkReliabilityAggregates.minimumBandGapPoints, json["minimumBandGapPoints"] as? Int)
@@ -214,7 +215,158 @@ final class SharedDataTests: XCTestCase {
         XCTAssertEqual(NoticeTable.months, json["months"] as? [String])
     }
 
+    func testTheViaggiaTrenoApiIsTheSharedTable() throws {
+        let json = try table("viaggiatreno-v1.json")
+        func seconds(_ key: String) -> Double? { (json[key] as? NSNumber)?.doubleValue }
+        XCTAssertEqual(ViaggiaTrenoLiveSource.baseURL, json["baseUrl"] as? String)
+        XCTAssertEqual(
+            ViaggiaTrenoLiveSource.resources,
+            ["departuresResource", "arrivalsResource", "runResource", "numberSearchResource"].compactMap { json[$0] as? String }
+        )
+        let policy = ViaggiaTrenoLiveSource.policy(for: "partenze/S01700/now")
+        XCTAssertEqual(policy.requestTimeout, seconds("readTimeoutSeconds"))
+        XCTAssertEqual(policy.totalTimeout, seconds("totalTimeoutSeconds"))
+        XCTAssertEqual(policy.maximumBytes, json["maximumBytes"] as? Int)
+        XCTAssertEqual(policy.maximumRequests, json["maximumRequests"] as? Int)
+        XCTAssertEqual(ViaggiaTrenoLiveSource.minimumInterval, seconds("minimumIntervalSeconds"))
+        XCTAssertEqual(ViaggiaTrenoParser.timeToLive, seconds("timeToLiveSeconds"))
+        XCTAssertEqual(ViaggiaTrenoLiveSource.detailConcurrency, json["detailPermits"] as? Int)
+        XCTAssertEqual(ViaggiaTrenoLiveSource.defaultDetailsTimeout, seconds("runDetailsTimeoutSeconds"))
+        XCTAssertEqual(ViaggiaTrenoLiveSource.defaultLookbackTimeout, seconds("lookbackTimeoutSeconds"))
+        XCTAssertEqual(ViaggiaTrenoParser.maximumAutocompleteLines, json["maximumAutocompleteLines"] as? Int)
+        XCTAssertEqual(ViaggiaTrenoParser.maximumReferences, json["maximumRunReferences"] as? Int)
+        XCTAssertEqual(ViaggiaTrenoParser.maximumBoardRows, json["maximumBoardRows"] as? Int)
+        XCTAssertEqual(SharedData.ViaggiaTreno.numberSearchPastDays, json["numberSearchPastDays"] as? Int)
+        XCTAssertEqual(ViaggiaTrenoParser.suppressedStopType, json["suppressedStopType"] as? Int)
+        XCTAssertEqual(ViaggiaTrenoParser.extraordinaryStopType, json["extraordinaryStopType"] as? Int)
+        XCTAssertEqual(SharedData.ViaggiaTreno.trenordClients, Set(json["trenordClients"] as? [Int] ?? []))
+        XCTAssertEqual(SharedData.ViaggiaTreno.trenitaliaRegionalClients, Set(json["trenitaliaRegionalClients"] as? [Int] ?? []))
+        XCTAssertEqual(SharedData.ViaggiaTreno.trenitaliaLongDistanceClients, Set(json["trenitaliaLongDistanceClients"] as? [Int] ?? []))
+    }
+
+    func testTheRfiMonitorIsTheSharedTable() throws {
+        let json = try table("rfi-monitor-v1.json")
+        func seconds(_ key: String) -> Double? { (json[key] as? NSNumber)?.doubleValue }
+        XCTAssertEqual(RfiLiveSource.catalogueURL, json["catalogueUrl"] as? String)
+        XCTAssertEqual(RfiLiveSource.monitorURL, json["monitorUrl"] as? String)
+        XCTAssertEqual(RfiLiveSource.policy.accept, json["accept"] as? String)
+        XCTAssertEqual(RfiLiveSource.policy.totalTimeout, seconds("totalTimeoutSeconds"))
+        XCTAssertEqual(RfiLiveSource.policy.maximumBytes, json["maximumBytes"] as? Int)
+        XCTAssertEqual(RfiLiveSource.minimumInterval, seconds("minimumIntervalSeconds"))
+        XCTAssertEqual(RfiMonitorParser.timeToLive, seconds("timeToLiveSeconds"))
+        XCTAssertEqual(RfiPlaceCatalogue.refreshInterval, seconds("catalogueRefreshSeconds"))
+        XCTAssertEqual(RfiPlaceCatalogue.retryInterval, seconds("catalogueRetrySeconds"))
+        XCTAssertEqual(
+            RfiLiveSource.monitorAddress(placeID: 2416, kind: .arrivals),
+            (json["monitorUrl"] as? String ?? "") + "?placeId=2416&arrivals=True"
+        )
+    }
+
+    func testThePerTrainNoticesAreTheSharedFeedAndReader() throws {
+        let json = try table("notices-sources-v1.json")
+        let sources = try XCTUnwrap(json["sources"] as? [[String: Any]])
+        let source = try XCTUnwrap(sources.first { $0["id"] as? String == NoticeSourceID.trainNotices })
+        let notices = try XCTUnwrap(ViaggiaTrenoTrainNotices(rules: try XCTUnwrap(NoticeRules.standard)))
+        let url = try XCTUnwrap(source["url"] as? String)
+        XCTAssertEqual(notices.url(number: "8829")?.absoluteString, url + "?commercialTrainNumber=8829")
+        XCTAssertEqual(notices.policy.accept, source["accept"] as? String)
+        XCTAssertEqual(notices.policy.maximumBytes, source["maximumBytes"] as? Int)
+        XCTAssertEqual(notices.policy.totalTimeout, (source["totalTimeoutSeconds"] as? NSNumber)?.doubleValue)
+        XCTAssertTrue(notices.policy.allowsViaggiaTrenoCleartextHop)
+        let rules = try XCTUnwrap(json["trainNotices"] as? [String: Any])
+        XCTAssertEqual(NoticeTable.trainNotices.maximumNotes, rules["maximumNotes"] as? Int)
+        XCTAssertEqual(NoticeTable.trainNotices.textLength, rules["textLength"] as? Int)
+        XCTAssertEqual(NoticeTable.trainNotices.maximumTrains, rules["maximumTrains"] as? Int)
+        XCTAssertEqual(NoticeTable.trainNotices.maximumCachedTrains, rules["maximumCachedTrains"] as? Int)
+    }
+
+    func testTheRealtimeFeedsAndTheSwissBoardsAreTheSharedTable() throws {
+        let json = try table("realtime-feeds-v1.json")
+        XCTAssertEqual(SharedData.RealtimeFeeds.observationWindowSeconds, json["observationWindowSeconds"] as? Double)
+        let feeds = try XCTUnwrap(json["tripUpdates"] as? [[String: Any]])
+        XCTAssertEqual(SharedData.RealtimeFeeds.tripUpdates.map(\.id), feeds.compactMap { $0["id"] as? String })
+        // Each feed is a live source of its own, asked for its pack only, with the table's limits.
+        let realtime = TimetableRealtime.standard(transport: FakeLiveTransport { _ in .failure(.network) }, pauses: LiveSourcePauses())
+        for feed in feeds {
+            let id = try XCTUnwrap(feed["id"] as? String)
+            let pack = try XCTUnwrap(feed["pack"] as? String)
+            let source = try XCTUnwrap(realtime.feeds[pack], id)
+            XCTAssertEqual(source.source.rawValue, id)
+            XCTAssertEqual(source.feed.url, feed["url"] as? String)
+            XCTAssertEqual(source.policy.maximumBytes, feed["maximumBytes"] as? Int)
+            XCTAssertEqual(source.policy.maximumRequests, feed["maximumRequests"] as? Int)
+            XCTAssertEqual(source.policy.totalTimeout, feed["totalTimeoutSeconds"] as? Double)
+            XCTAssertEqual(source.policy.allowsSameHostRedirects, (feed["redirects"] as? String) == "same-https-host")
+            XCTAssertEqual(LiveSourceLabels.label(source.source), feed["label"] as? String)
+        }
+        let urban = try XCTUnwrap(json["urban"] as? [[String: Any]])
+        XCTAssertEqual(UrbanRealtimeFeeds.all.map(\.id), urban.compactMap { $0["id"] as? String })
+        let swiss = try XCTUnwrap(json["swissBoard"] as? [String: Any])
+        XCTAssertEqual(LiveSource.swissOpenTransport.rawValue, swiss["id"] as? String)
+        XCTAssertEqual(SwissStationBoardSource.policy.maximumBytes, swiss["maximumBytes"] as? Int)
+        XCTAssertEqual(SwissStationBoardSource.table.nonRailCategories, Set(swiss["nonRailCategories"] as? [String] ?? []))
+        XCTAssertTrue(SwissStationBoardSource.boardURL(uic: "8505300", from: Date(), now: Date()).hasPrefix(try XCTUnwrap(swiss["baseUrl"] as? String)))
+    }
+
     // MARK: - The tables
+
+    func testTheDelayCompensationThresholdsAreTheSharedTable() throws {
+        let json = try table("delay-compensation-v1.json")
+        XCTAssertEqual(DelayCompensationRule.quarterFromMinutes, json["quarterFromMinutes"] as? Int)
+        XCTAssertEqual(DelayCompensationRule.halfFromMinutes, json["halfFromMinutes"] as? Int)
+        XCTAssertEqual(CompensationShare.quarter.percent, json["quarterPercent"] as? Int)
+        XCTAssertEqual(CompensationShare.half.percent, json["halfPercent"] as? Int)
+    }
+
+    func testTheDestinationWeatherSourceIsTheSharedTable() throws {
+        let json = try table("destination-weather-v1.json")
+        XCTAssertEqual(DestinationWeatherService.attributionURL?.absoluteString, json["attributionUrl"] as? String)
+        XCTAssertEqual(DestinationWeatherService.attributionURL.flatMap { URLComponents(url: $0, resolvingAgainstBaseURL: false)?.host }, DestinationWeatherService.attributionHost)
+        XCTAssertEqual(SharedData.DestinationWeather.forecastUrl, json["forecastUrl"] as? String)
+        XCTAssertEqual(SharedData.DestinationWeather.dailyVariables, json["dailyVariables"] as? [String])
+        XCTAssertEqual(SharedData.DestinationWeather.forecastDays, json["forecastDays"] as? Int)
+        XCTAssertEqual(SharedData.DestinationWeather.timeToLiveSeconds, (json["timeToLiveSeconds"] as? Double))
+        XCTAssertEqual(SharedData.DestinationWeather.maximumBytes, json["maximumBytes"] as? Int)
+    }
+
+    func testTheBikeSharingSystemsAreTheSharedTable() throws {
+        let json = try table("bike-sharing-v1.json")
+        let systems = try XCTUnwrap(json["systems"] as? [[String: Any]])
+        XCTAssertEqual(BikeSharingSystem.all.map(\.id), systems.compactMap { $0["id"] as? String })
+        XCTAssertEqual(BikeSharingSystem.all.map(\.discoveryURL), systems.compactMap { $0["discoveryUrl"] as? String })
+        XCTAssertEqual(BikeSharingSystem.all.map(\.attribution), systems.compactMap { $0["attribution"] as? String })
+        XCTAssertEqual(BikeSharingSystem.all.map(\.personalOnly), systems.compactMap { $0["personalOnly"] as? Bool })
+        XCTAssertEqual(BikeSharingSystem.forBuild(personalSources: false).map(\.id),
+                       ["gbfs-nextbike-bergamo", "gbfs-famose-senigallia", "gbfs-bikemi", "gbfs-verona-bike"])
+        XCTAssertEqual(SharedData.BikeSharing.radiusMeters, json["radiusMeters"] as? Int)
+        XCTAssertEqual(SharedData.BikeSharing.feedLanguages, json["feedLanguages"] as? [String])
+    }
+
+    func testTheLiveTrainMapIsTheSharedTable() throws {
+        let json = try table("live-train-map-v1.json")
+        XCTAssertEqual(LiveTrainSelector.maximumTrains, json["maximumTrains"] as? Int)
+        XCTAssertEqual(LiveTrainSelector.maximumAppliedDelay, json["lookBackMinutes"] as? Int)
+        XCTAssertEqual(LiveTrainSelector.minimumAppliedDelay, json["minimumAppliedDelayMinutes"] as? Int)
+        XCTAssertEqual(LiveTrainSelector.sameTrainKilometres, json["sameTrainKilometres"] as? Double)
+        XCTAssertEqual(LiveTrainRefresh.positionsSeconds, json["positionsRefreshSeconds"] as? Double)
+        XCTAssertEqual(LiveTrainAreas.stationRadiusKilometres, json["stationRadiusKilometres"] as? Double)
+        let request = ScheduledRunRequest(at: RailMoment(date: try XCTUnwrap(PlannedLocalDate(iso: "2026-11-04")), secondOfDay: 0),
+                                          scope: .area(GeoBounds(north: 1, south: 0, east: 1, west: 0)))
+        XCTAssertEqual(request.lookBackMinutes, json["lookBackMinutes"] as? Int)
+        XCTAssertEqual(request.lookAheadMinutes, json["lookAheadMinutes"] as? Int)
+    }
+
+    func testTheEveningAlertsAreTheSharedTable() throws {
+        let json = try table("evening-alerts-v1.json")
+        XCTAssertEqual(StrikeReminderPlanner.runHour, json["strikeReminderHour"] as? Int)
+        XCTAssertEqual(RouteWorksAlertPlanner.runHour, json["routeWorksAlertHour"] as? Int)
+        XCTAssertEqual(RouteWorksAlertPlanner.quietFromHour, json["quietFromHour"] as? Int)
+        XCTAssertEqual(RouteWorksAlertPlanner.quietUntilHour, json["quietUntilHour"] as? Int)
+        XCTAssertEqual(StrikeReminderPlanner.notifiedRetentionDays, json["strikeNotifiedRetentionDays"] as? Int)
+        XCTAssertEqual(RouteWorksAlertPlanner.maximumItems, json["routeWorksMaximumItems"] as? Int)
+        XCTAssertEqual(RouteWorksAlertPlanner.maximumKeepDays, json["routeWorksMaximumKeepDays"] as? Int)
+        XCTAssertEqual(RouteWorksAlertPlanner.maximumNotified, json["routeWorksMaximumNotified"] as? Int)
+    }
 
     private func table(_ name: String) throws -> [String: Any] {
         let url = repositoryRoot.appendingPathComponent("contracts/shared-data/v1").appendingPathComponent(name)

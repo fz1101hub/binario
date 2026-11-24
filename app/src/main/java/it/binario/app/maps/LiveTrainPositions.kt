@@ -11,6 +11,7 @@ import it.binario.app.data.journey.EmbeddedGtfsJourneyProvider
 import it.binario.app.data.journey.ScheduledRailRun
 import it.binario.app.data.journey.ScheduledRunRequest
 import it.binario.app.data.journey.ScheduledRunStop
+import it.binario.app.shared.SharedData
 import java.time.Duration
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -200,17 +201,17 @@ fun GeoBounds.contains(point: GeoPoint): Boolean =
 
 internal object LiveTrainSelector {
     /** Markers drawn at most: the nearest to the map's station. */
-    const val MAX_TRAINS = 40
+    const val MAX_TRAINS = SharedData.LiveTrainMap.MAXIMUM_TRAINS
 
     /** A live delay outside this range is not applied (early trains by more than this are not credible). */
-    const val MIN_APPLIED_DELAY = -30
+    const val MIN_APPLIED_DELAY = SharedData.LiveTrainMap.MINIMUM_APPLIED_DELAY_MINUTES
     const val MAX_APPLIED_DELAY = ScheduledRunRequest.DEFAULT_LOOK_BACK_MINUTES
 
     /** Two copies of one train (two packs publish it) closer than this are one train. */
-    const val SAME_TRAIN_KM = 5.0
+    const val SAME_TRAIN_KM = SharedData.LiveTrainMap.SAME_TRAIN_KILOMETRES
 
     /** An observation belongs to a run when its time falls within the run's scheduled span, with this margin. */
-    private const val MATCH_MARGIN_MINUTES = 2L
+    private const val MATCH_MARGIN_MINUTES = SharedData.LiveTrainMap.MATCH_MARGIN_MINUTES.toLong()
 
     /**
      * The runs of [runs] under way at [now] (railway-local) whose estimated point is inside [bounds]: delayed by the
@@ -287,7 +288,7 @@ internal object LiveTrainSelector {
 
 /** The text drawn next to a marker: category code, number and delay, in characters every map font has. */
 internal object LiveTrainLabels {
-    private const val MAX_CODE = 6
+    private const val MAX_CODE = SharedData.LiveTrainMap.MAXIMUM_CODE_LENGTH
 
     /** "REG 2153 +5'", "FR 9558 0'", "RE11 2153" (no delay known). */
     fun marker(train: LiveTrain): String = listOfNotNull(
@@ -323,8 +324,8 @@ internal object LiveTrainLabels {
 
 /** The cadence of the map: positions every 30 seconds, the timetable once per quarter of an hour. */
 internal object LiveTrainRefresh {
-    const val POSITIONS_MILLIS = 30_000L
-    private const val SLOT_MINUTES = 15
+    const val POSITIONS_MILLIS = SharedData.LiveTrainMap.POSITIONS_REFRESH_SECONDS * 1_000L
+    private const val SLOT_MINUTES = SharedData.LiveTrainMap.TIMETABLE_SLOT_MINUTES
 
     /** Start of the quarter hour of [now]: the runs read then cover the whole quarter (see [ScheduledRunRequest]). */
     fun slotStart(now: LocalDateTime): LocalDateTime =
@@ -334,14 +335,14 @@ internal object LiveTrainRefresh {
 /** The area a station's map of trains covers, and when its timetable must be read again. */
 internal object LiveTrainAreas {
     /** Around a station: about 15 km in every direction. */
-    const val STATION_RADIUS_KM = 15.0
+    const val STATION_RADIUS_KM = SharedData.LiveTrainMap.STATION_RADIUS_KILOMETRES
 
     /** Wider than this (degrees of latitude or longitude) the area map asks to zoom in instead of reading timetables. */
-    const val MAX_LATITUDE_SPAN = 1.2
-    const val MAX_LONGITUDE_SPAN = 1.8
+    const val MAX_LATITUDE_SPAN = SharedData.LiveTrainMap.MAXIMUM_LATITUDE_SPAN
+    const val MAX_LONGITUDE_SPAN = SharedData.LiveTrainMap.MAXIMUM_LONGITUDE_SPAN
 
     /** Grid of the read area, so small pans reuse the runs already read. */
-    private const val SNAP_DEGREES = 0.25
+    private const val SNAP_DEGREES = SharedData.LiveTrainMap.READ_AREA_SNAP_DEGREES
 
     fun around(point: GeoPoint, radiusKm: Double = STATION_RADIUS_KM): GeoBounds {
         val latitudeDelta = radiusKm / KM_PER_DEGREE
@@ -389,6 +390,6 @@ internal object LiveTrainAreas {
     private fun snapDown(value: Double): Double = Math.floor(value / SNAP_DEGREES) * SNAP_DEGREES
 
     private const val KM_PER_DEGREE = 111.32
-    private const val ROUTE_MARGIN_SHARE = 0.2
-    private const val MIN_ROUTE_MARGIN = 0.05
+    private const val ROUTE_MARGIN_SHARE = SharedData.LiveTrainMap.ROUTE_MARGIN_SHARE
+    private const val MIN_ROUTE_MARGIN = SharedData.LiveTrainMap.MINIMUM_ROUTE_MARGIN_DEGREES
 }

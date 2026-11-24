@@ -1,8 +1,9 @@
 import { formatMessage, LOCALE_MESSAGES, messagesForLocale, SUPPORTED_LOCALES } from "@shared/i18n";
 import { DrizzleQueryError } from "drizzle-orm";
-import { readFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
 import path from "node:path";
-import { describe, expect, it, vi } from "vitest";
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 
 const SKILL_ID = "amzn1.ask.skill.test";
 const LOCALES = ["it-IT", "en-US", "en-GB", "en-IN", "de-DE", "fr-FR", "es-ES", "es-US", "ar-SA", "hi-IN", "ja-JP", "pt-BR"] as const;
@@ -33,6 +34,10 @@ const railData = vi.hoisted(() => ({
 }));
 vi.mock("../punctuality/source", () => railData);
 
+// The programmed timetable is absent unless a test gives one: the answers then keep the live-data caveat.
+const timetable = vi.hoisted(() => ({ timetableIndex: vi.fn(async () => null as unknown) }));
+vi.mock("../timetable/source", () => timetable);
+
 import { getAlexaLinkStatus, listPersonalRoutesForAlexa } from "../db";
 import { parseStationCatalog } from "../punctuality/stations";
 import { parsePunctualityStats } from "../punctuality/stats";
@@ -48,6 +53,8 @@ import {
   statsDocument,
   stopFromDelays,
 } from "../punctuality/testFixtures";
+import { TimetableIndex } from "../timetable/repository";
+import { skillTimetableRows, writeIndex } from "../timetable/testIndex";
 import { createAlexaSkill, HANDLED_INTENTS } from "./alexa";
 import { issueVoiceAccessToken } from "./crypto";
 
@@ -628,6 +635,7 @@ describe("versioned interaction models", () => {
       for (const phrase of [
         ...published[locale].examplePhrases,
         screen.hintNextTrains,
+        messagesForLocale(locale).timetable.hint,
         screen.hintTrainStatus,
         screen.hintMyRoutes,
         messagesForLocale(locale).punctuality.hint,
@@ -717,6 +725,7 @@ describe("versioned interaction models", () => {
       const phrases: Array<[string, string | undefined]> = [
         ...published[locale].examplePhrases.map(phrase => [phrase, undefined] as [string, undefined]),
         [screen.hintNextTrains, "NextTrainsIntent"],
+        [messagesForLocale(locale).timetable.hint, "StationTrainsIntent"],
         [screen.hintTrainStatus, "TrainStatusIntent"],
         [screen.hintMyRoutes, "MyRoutesIntent"],
         [messagesForLocale(locale).punctuality.hint, "TrainPunctualityIntent"],
@@ -805,7 +814,7 @@ describe("versioned interaction models", () => {
 
   it("keeps every sample, with its slots filled, out of every other intent's samples", () => {
     const filled = (locale: string, sample: string) =>
-      plain(locale, sample.replace("{routeName}", "casa lavoro").replace("{trainNumber}", "9558"));
+      plain(locale, sample.replace("{routeName}", "casa lavoro").replace("{trainNumber}", "9558").replace("{origin}", "roma termini").replace("{destination}", "tivoli"));
     // A number slot takes digits only (AMAZON.NUMBER), a search slot any words. plain() lowers the slot names too.
     const fits = (locale: string, item: ModelIntent, sample: string, utterance: string) => {
       const pattern = escapeRegExp(plain(locale, sample)).replace(/\\\{([A-Za-z]+)\\\}/g, (_match, name: string) =>
@@ -845,6 +854,28 @@ describe("versioned interaction models", () => {
         `${locale}: ${bestQuestion}`
       ).toBe(true);
     }
+  });
+
+  it("asks for the two stations with a phrase the locale's StationTrainsIntent understands", () => {
+    for (const locale of LOCALES) {
+      const question = plain(locale, messagesForLocale(locale).timetable.stationsMissing);
+      const samples = model(locale).interactionModel.languageModel.intents.find(item => item.name === "StationTrainsIntent")!.samples;
+      expect(
+        samples.some(sample => question.includes(plain(locale, sample.replace("{origin}", "milano centrale").replace("{destination}", "bologna centrale")))),
+        `${locale}: ${question}`
+      ).toBe(true);
+    }
+  });
+
+  it("offers catalogue station names as the values of the station slot, the same in every locale", () => {
+    const catalogue = parseStationCatalog(readFileSync(path.resolve(import.meta.dirname, "..", "..", "..", "app", "src", "main", "assets", "stations", "curated_it_rail_stations.json"), "utf8"));
+    type Types = Array<{ name: string; values: Array<{ name: { value: string } }> }>;
+    const valuesOf = (locale: string) =>
+      ((model(locale).interactionModel.languageModel as unknown as { types: Types }).types.find(type => type.name === "BINARIO_STATION")?.values ?? []).map(item => item.name.value);
+    const italian = valuesOf("it-IT");
+    expect(italian.length).toBeGreaterThan(50);
+    for (const name of italian) expect(catalogue?.stationsFor(name).length, name).toBeGreaterThan(0);
+    for (const locale of LOCALES) expect(valuesOf(locale), locale).toEqual(italian);
   });
 
   it("asks which route with a phrase the locale's NextTrainsIntent understands", () => {
@@ -957,23 +988,23 @@ describe("punctuality intents", () => {
     withStatistics();
     const response = await createAlexaSkill().invoke(intent("TrainStatusIntent", "it-IT", { trainNumber: "9558" }));
     expect(card(response)).toBe(
-      "Per il treno 9558: dati non disponibili in tempo reale. " +
+      "Per il treno 9558: dati non disponibili in tempo reale. Lo stato in tempo reale è nell'app Binario. " +
         "Il treno 9558 è arrivato al capolinea in orario, cioè entro 5 minuti, 81 volte su 100 in 28 giorni osservati. " +
         "Il ritardo medio è stato di 6 minuti. È stato soppresso 1 volta. " +
         "Sono statistiche non ufficiali di Binario su dati ViaggiaTreno."
     );
-    expect(speechText(response)).toContain("Per il treno 9558: dati non disponibili in tempo reale. Il treno 9558");
+    expect(speechText(response)).toContain("Per il treno 9558: dati non disponibili in tempo reale. Lo stato in tempo reale è nell'app Binario. Il treno 9558");
     expect(response.response.card?.type).not.toBe("LinkAccount");
     const japanese = card(await createAlexaSkill().invoke(intent("TrainStatusIntent", "ja-JP", { trainNumber: "9558" })));
-    expect(japanese.startsWith("9558 号の列車について: リアルタイムデータは利用できません。9558 号が終着駅に"), japanese).toBe(true);
-    // Without figures the caveat stays alone.
+    expect(japanese.startsWith("9558 号の列車について: リアルタイムデータは利用できません。リアルタイムの状況はビナリオのアプリで確認できます。9558 号が終着駅に"), japanese).toBe(true);
+    // Without figures the caveat stays with where the live state is.
     for (const trainNumber of ["4242", "1234"])
       expect(card(await createAlexaSkill().invoke(intent("TrainStatusIntent", "it-IT", { trainNumber })))).toBe(
-        `Per il treno ${trainNumber}: dati non disponibili in tempo reale`
+        `Per il treno ${trainNumber}: dati non disponibili in tempo reale. Lo stato in tempo reale è nell'app Binario.`
       );
     withStatistics(false);
     expect(card(await createAlexaSkill().invoke(intent("TrainStatusIntent", "it-IT", { trainNumber: "9558" })))).toBe(
-      "Per il treno 9558: dati non disponibili in tempo reale"
+      "Per il treno 9558: dati non disponibili in tempo reale. Lo stato in tempo reale è nell'app Binario."
     );
   });
 
@@ -981,7 +1012,7 @@ describe("punctuality intents", () => {
     const warnings = vi.spyOn(console, "warn").mockImplementation(() => undefined);
     railData.punctualityStats.mockRejectedValueOnce(new Error("statistics unreadable"));
     const response = await createAlexaSkill().invoke(intent("TrainStatusIntent", "it-IT", { trainNumber: "9558" }));
-    expect(card(response)).toBe("Per il treno 9558: dati non disponibili in tempo reale");
+    expect(card(response)).toBe("Per il treno 9558: dati non disponibili in tempo reale. Lo stato in tempo reale è nell'app Binario.");
     expect(warnings).toHaveBeenCalledTimes(1);
     expect(JSON.stringify(warnings.mock.calls)).not.toContain("9558");
     warnings.mockRestore();
@@ -1007,7 +1038,7 @@ describe("punctuality intents", () => {
       "Several trains run with the number 9558, from different origins, so I can't tell which one you mean."
     );
     expect(card(await createAlexaSkill().invoke(intent("TrainStatusIntent", "it-IT", { trainNumber: "9558" })))).toBe(
-      "Per il treno 9558: dati non disponibili in tempo reale"
+      "Per il treno 9558: dati non disponibili in tempo reale. Lo stato in tempo reale è nell'app Binario."
     );
   });
 
@@ -1275,6 +1306,156 @@ describe("most punctual train intent", () => {
       const serialized = JSON.stringify(calls);
       for (const secret of ["casa lavoro", "Casa-Lavoro", "Roma Termini", "Tivoli", "2157", "2161", "8:12", "amzn1.ask.account"])
         expect(serialized).not.toContain(secret);
+    } finally {
+      for (const spy of spies) spy.mockRestore();
+    }
+  });
+});
+
+describe("programmed timetable", () => {
+  type SkillResponse = Awaited<ReturnType<ReturnType<typeof createAlexaSkill>["invoke"]>>;
+  const ROUTES = [
+    { id: 1, name: "Casa-Lavoro", origin: "Roma Termini", destination: "Tivoli", isPinned: true },
+    { id: 2, name: "Mare", origin: "Roma Ostiense", destination: "Ostia", isPinned: false },
+  ];
+  const card = (response: SkillResponse) => (response.response.card as { content?: string } | undefined)?.content ?? "";
+  const screenOf = (response: SkillResponse) =>
+    (response.response.directives?.find(item => item.type === "Alexa.Presentation.APL.RenderDocument") as
+      | { datasources: { binario: Record<string, unknown> & { trains: Array<Record<string, string>>; quality: Record<string, string> } } }
+      | undefined)?.datasources.binario;
+  // Tuesday 10 November 2026 at 09:00 in Rome (the envelope's instant).
+  const DEPARTURES_IT =
+    "Secondo l'orario programmato le prossime partenze sono il REG 2161 delle 9:12, il Bus Trenitalia BUS 7001 delle 9:30 e il REG 2165 delle 10:12. " +
+    "Il binario non è indicato e lo stato in tempo reale dei treni è nell'app Binario.";
+
+  let scratch: string;
+  let index: TimetableIndex;
+  beforeAll(() => {
+    scratch = mkdtempSync(path.join(tmpdir(), "binario-skill-timetable-"));
+    writeIndex(path.join(scratch, "index.sqlite"), skillTimetableRows());
+    index = new TimetableIndex(path.join(scratch, "index.sqlite"));
+  });
+  afterAll(() => {
+    index.close();
+    rmSync(scratch, { recursive: true, force: true });
+  });
+  afterEach(() => timetable.timetableIndex.mockResolvedValue(null));
+
+  function withTimetable() {
+    timetable.timetableIndex.mockResolvedValue(index);
+    railData.punctualityStats.mockResolvedValue(parsePunctualityStats(networkDocument()));
+    railData.railStationIndex.mockResolvedValue(parseStationCatalog(catalogDocument()));
+  }
+
+  function withApl(request: Envelope): Envelope {
+    request.context.System.device!.supportedInterfaces["Alexa.Presentation.APL"] = { runtime: { maxVersion: "1.8" } };
+    return request;
+  }
+
+  async function linked(request: Envelope) {
+    vi.mocked(getAlexaLinkStatus).mockResolvedValue({ userId: 7, credentialVersion: 3, revokedAt: null } as Awaited<ReturnType<typeof getAlexaLinkStatus>>);
+    vi.mocked(listPersonalRoutesForAlexa).mockResolvedValue(ROUTES as Awaited<ReturnType<typeof listPersonalRoutesForAlexa>>);
+    return withAccessToken(request, await issueVoiceAccessToken(7, 3));
+  }
+
+  it("answers a saved route's next trains from the programmed timetable, platform unknown, live state in the app", async () => {
+    withTimetable();
+    const response = await createAlexaSkill().invoke(await linked(intent("NextTrainsIntent", "it-IT", { routeName: "casa lavoro" })));
+    expect(card(response)).toBe(`Per la tratta Casa-Lavoro: dati non disponibili in tempo reale. ${DEPARTURES_IT}`);
+    expect(speechText(response)).toContain("il REG 2161 delle 9:12");
+    expect(response.response.shouldEndSession).toBe(true);
+    // Only the route's name: never its stations.
+    expect(JSON.stringify(response.response)).not.toMatch(/Roma|Tivoli/);
+  });
+
+  it("answers two stations asked by voice without a linked account", async () => {
+    withTimetable();
+    vi.mocked(listPersonalRoutesForAlexa).mockClear();
+    const response = await createAlexaSkill().invoke(intent("StationTrainsIntent", "it-IT", { origin: "roma termini", destination: "tivoli" }));
+    expect(card(response)).toBe(`Da Roma Termini a Tivoli: dati non disponibili in tempo reale. ${DEPARTURES_IT}`);
+    expect(response.response.card?.type).not.toBe("LinkAccount");
+    expect(listPersonalRoutesForAlexa).not.toHaveBeenCalled();
+    const english = card(await createAlexaSkill().invoke(intent("StationTrainsIntent", "en-US", { origin: "rome termini", destination: "tivoli" })));
+    expect(english).toBe(
+      "From Roma Termini to Tivoli: real-time data is not available. According to the timetable, the next departures are the REG 2161 at 9:12 AM, " +
+        "the Trenitalia bus BUS 7001 at 9:30 AM, and the REG 2165 at 10:12 AM. The platform is not given, and the trains' real-time status is in the Binario app. " +
+        "Times are Italian time."
+    );
+  });
+
+  it("says when a station is not known, when the stations are missing, and when the timetable has nothing or cannot be read", async () => {
+    withTimetable();
+    const unknown = await createAlexaSkill().invoke(intent("StationTrainsIntent", "it-IT", { origin: "milano", destination: "tivoli" }));
+    expect(card(unknown)).toBe("Non riconosco la stazione milano. Prova con il nome completo, per esempio Roma Termini.");
+    const missing = await createAlexaSkill().invoke(intent("StationTrainsIntent", "it-IT", { origin: "roma termini" }));
+    expect(card(missing)).toBe(messagesForLocale("it-IT").timetable.stationsMissing);
+    expect(missing.response.shouldEndSession).toBe(false);
+    expect(missing.response.reprompt).toBeDefined();
+    // Tivoli → Roma Termini: no train in that direction.
+    const none = await createAlexaSkill().invoke(intent("StationTrainsIntent", "it-IT", { origin: "tivoli", destination: "roma termini" }));
+    expect(card(none)).toBe("Da Tivoli a Roma Termini: dati non disponibili in tempo reale. Secondo l'orario programmato nelle prossime 24 ore non c'è nessuna partenza.");
+    // After the last day of the timetable.
+    const ended = intent("StationTrainsIntent", "it-IT", { origin: "roma termini", destination: "tivoli" });
+    (ended.request as { timestamp: string }).timestamp = "2027-01-02T08:00:00Z";
+    expect(card(await createAlexaSkill().invoke(ended))).toContain("L'orario programmato di Binario per queste stazioni è scaduto");
+    timetable.timetableIndex.mockResolvedValue(null);
+    expect(card(await createAlexaSkill().invoke(intent("StationTrainsIntent", "it-IT", { origin: "roma termini", destination: "tivoli" })))).toBe(
+      "Da Roma Termini a Tivoli: dati non disponibili in tempo reale. L'orario programmato di Binario non è disponibile in questo momento."
+    );
+  });
+
+  it("says a train's programmed run today, then where the live state is, then its punctuality", async () => {
+    withTimetable();
+    const response = await createAlexaSkill().invoke(intent("TrainStatusIntent", "it-IT", { trainNumber: "9558" }));
+    expect(card(response).startsWith(
+      "Per il treno 9558: dati non disponibili in tempo reale. " +
+        "Secondo l'orario programmato, oggi il treno 9558 parte da Milano Centrale alle 6:00 e arriva a Roma Termini alle 9:10. " +
+        "Lo stato in tempo reale è nell'app Binario. Il treno 9558 è arrivato al capolinea in orario"
+    ), card(response)).toBe(true);
+    expect(card(await createAlexaSkill().invoke(intent("TrainStatusIntent", "it-IT", { trainNumber: "4242" })))).toBe(
+      "Per il treno 4242: dati non disponibili in tempo reale. Il treno 4242 non è nell'orario programmato di Binario per oggi. Lo stato in tempo reale è nell'app Binario."
+    );
+  });
+
+  it("lists the programmed departures on Echo Show, without the saved route's stations", async () => {
+    withTimetable();
+    const route = screenOf(await createAlexaSkill().invoke(withApl(await linked(intent("NextTrainsIntent", "it-IT")))));
+    expect(route).toMatchObject({
+      screen: "departures",
+      title: "Partenze",
+      hero: "Casa-Lavoro",
+      quality: { state: "programmed", label: "Orari programmati, non in tempo reale", source: "Fonte: orario programmato di Trenitalia" },
+    });
+    expect(route?.trains.map(row => `${row.time} ${row.train} ${row.label} ${row.value}`)).toEqual([
+      "9:12 REG 2161 Binario —",
+      "9:30 Bus Trenitalia BUS 7001 Binario —",
+      "10:12 REG 2165 Binario —",
+    ]);
+    expect(JSON.stringify(route)).not.toMatch(/Roma|Tivoli/);
+    const stations = screenOf(await createAlexaSkill().invoke(withApl(intent("StationTrainsIntent", "it-IT", { origin: "roma termini", destination: "tivoli" }))));
+    expect(stations).toMatchObject({ screen: "departures", hero: "Roma Termini → Tivoli", quality: { state: "programmed" } });
+    const train = screenOf(await createAlexaSkill().invoke(withApl(intent("TrainStatusIntent", "it-IT", { trainNumber: "9558" }))));
+    expect(train).toMatchObject({
+      screen: "trainStatus",
+      hero: "Treno 9558",
+      message: "Secondo l'orario programmato, oggi il treno 9558 parte da Milano Centrale alle 6:00 e arriva a Roma Termini alle 9:10.",
+      quality: { state: "programmed" },
+    });
+  });
+
+  it("logs nothing about the route, its stations or the trains", async () => {
+    const calls: unknown[][] = [];
+    const spies = (["log", "info", "warn", "error", "debug"] as const).map(level =>
+      vi.spyOn(console, level).mockImplementation((...args: unknown[]) => void calls.push(args))
+    );
+    try {
+      withTimetable();
+      await createAlexaSkill().invoke(await linked(intent("NextTrainsIntent", "it-IT", { routeName: "casa lavoro" })));
+      await createAlexaSkill().invoke(intent("StationTrainsIntent", "it-IT", { origin: "roma termini", destination: "tivoli" }));
+      timetable.timetableIndex.mockRejectedValueOnce(new Error("timetable unreadable"));
+      await createAlexaSkill().invoke(intent("TrainStatusIntent", "it-IT", { trainNumber: "9558" }));
+      const serialized = JSON.stringify(calls);
+      for (const secret of ["casa lavoro", "Casa-Lavoro", "Roma Termini", "Tivoli", "2161", "9558", "9:12"]) expect(serialized).not.toContain(secret);
     } finally {
       for (const spy of spies) spy.mockRestore();
     }

@@ -64,6 +64,25 @@
       "pauseLabel": "ViaggiaTreno"
     },
     {
+      "id": "viaggiatreno-train-notices",
+      "publisher": "TRENITALIA",
+      "gate": "personal",
+      "url": "https://www.viaggiatreno.it/infomobilitamobile/resteasy/news/smartcaring",
+      "accept": "application/json",
+      "connectTimeoutSeconds": 8,
+      "readTimeoutSeconds": 12,
+      "totalTimeoutSeconds": 15,
+      "maximumBytes": 2097152,
+      "maximumRequests": 3,
+      "redirects": "same-resource",
+      "viaggiaTrenoCleartextHop": true,
+      "minimumIntervalSeconds": 30,
+      "timeToLiveSeconds": 300,
+      "maximumStaleSeconds": 1800,
+      "retryDelayMillis": 750,
+      "pauseLabel": "ViaggiaTreno"
+    },
+    {
       "id": "trenord-line-notices",
       "publisher": "TRENORD",
       "gate": "personal",
@@ -220,5 +239,11 @@
     "bodyCollapsedCharacters": 180,
     "maximumLineCodes": 6,
     "worksCollapsed": 3
+  },
+  "trainNotices": {
+    "maximumNotes": 500,
+    "textLength": 1000,
+    "maximumTrains": 20,
+    "maximumCachedTrains": 32
   }
 }

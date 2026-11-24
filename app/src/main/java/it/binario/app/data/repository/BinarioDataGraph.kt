@@ -347,7 +347,13 @@ object BinarioDataGraph {
         BikeSharingService(
             systems = BikeSharingSystems.forBuild(EmbeddedGtfsPacks.personalSourcesIncluded).filter { defaultRegistry.isEnabled(it.id) },
             // A citywide vehicle list (Bird Rome, about 4,300 scooters) is near 1 MB of JSON.
-            fetcher = HttpPublicSourceFetcher(PublicSourceRequestPolicy(maxBytes = 4 * 1024 * 1024, readTimeoutMillis = 15_000, totalTimeoutMillis = 20_000))
+            fetcher = HttpPublicSourceFetcher(
+                PublicSourceRequestPolicy(
+                    maxBytes = it.binario.app.shared.SharedData.BikeSharing.MAXIMUM_BYTES,
+                    readTimeoutMillis = it.binario.app.shared.SharedData.BikeSharing.READ_TIMEOUT_SECONDS * 1_000,
+                    totalTimeoutMillis = it.binario.app.shared.SharedData.BikeSharing.TOTAL_TIMEOUT_SECONDS * 1_000L
+                )
+            )
         )
     }
 

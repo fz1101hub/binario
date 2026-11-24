@@ -22,6 +22,106 @@
 			<string>ещё %1$lld поезда</string>
 		</dict>
 	</dict>
+	<key>departures.map.capped</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>few</key>
+			<string>Показаны %1$lld ближайших.</string>
+			<key>many</key>
+			<string>Показаны %1$lld ближайших.</string>
+			<key>one</key>
+			<string>Показан %1$lld ближайший.</string>
+			<key>other</key>
+			<string>Показаны %1$lld ближайших.</string>
+		</dict>
+	</dict>
+	<key>departures.map.count</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>few</key>
+			<string>%1$lld поезда в пути</string>
+			<key>many</key>
+			<string>%1$lld поездов в пути</string>
+			<key>one</key>
+			<string>%1$lld поезд в пути</string>
+			<key>other</key>
+			<string>%1$lld поезда в пути</string>
+		</dict>
+	</dict>
+	<key>departures.map.delay</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>few</key>
+			<string>Опоздание %1$lld минуты</string>
+			<key>many</key>
+			<string>Опоздание %1$lld минут</string>
+			<key>one</key>
+			<string>Опоздание %1$lld минута</string>
+			<key>other</key>
+			<string>Опоздание %1$lld минуты</string>
+		</dict>
+	</dict>
+	<key>notices.alerts.strike_title</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>few</key>
+			<string>Завтра %1$lld железнодорожные забастовки</string>
+			<key>many</key>
+			<string>Завтра %1$lld железнодорожных забастовок</string>
+			<key>one</key>
+			<string>Завтра %1$lld железнодорожная забастовка</string>
+			<key>other</key>
+			<string>Завтра %1$lld железнодорожной забастовки</string>
+		</dict>
+	</dict>
+	<key>notices.alerts.works_title_more</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>few</key>
+			<string>Завтра работы на маршруте %2$@ и ещё на %1$lld маршрутах</string>
+			<key>many</key>
+			<string>Завтра работы на маршруте %2$@ и ещё на %1$lld маршрутах</string>
+			<key>one</key>
+			<string>Завтра работы на маршруте %2$@ и ещё на %1$lld маршруте</string>
+			<key>other</key>
+			<string>Завтра работы на маршруте %2$@ и ещё на %1$lld маршрута</string>
+		</dict>
+	</dict>
 	<key>notices.works.show_more</key>
 	<dict>
 		<key>NSStringLocalizedFormatKey</key>
@@ -60,6 +160,26 @@
 			<string>вовремя %1$lld раз из %2$lld</string>
 			<key>other</key>
 			<string>вовремя %1$lld раза из %2$lld</string>
+		</dict>
+	</dict>
+	<key>result.compensation.minutes</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>few</key>
+			<string>%1$lld мин</string>
+			<key>many</key>
+			<string>%1$lld мин</string>
+			<key>one</key>
+			<string>%1$lld мин</string>
+			<key>other</key>
+			<string>%1$lld мин</string>
 		</dict>
 	</dict>
 	<key>result.detail.arrival_on_time</key>

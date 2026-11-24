@@ -137,13 +137,15 @@ internal fun NetworkReliabilityCard(detail: NetworkReliabilityDetail, modifier: 
                 )
                 Text(stringResource(R.string.punctuality_average_delay, minutes(arrival.shownMeanDelayMinutes)), style = MaterialTheme.typography.bodyMedium)
                 Text(stringResource(R.string.reliability_detail_days, detail.daysObserved, detail.daysCancelled), style = MaterialTheme.typography.bodyMedium)
-                detail.weekdayRemark?.let { remark ->
+                if (detail.weekdayRemarks.isNotEmpty()) {
                     val strings = rememberUsualPlatformStrings()
-                    Text(
-                        remember(remark, strings) { UsualPlatformLines.weekday(remark, strings).text },
-                        modifier = Modifier.testTag("detail-weekday-remark"),
-                        style = MaterialTheme.typography.bodyMedium
-                    )
+                    detail.weekdayRemarks.forEach { remark ->
+                        Text(
+                            remember(remark, strings) { UsualPlatformLines.weekday(remark, strings).text },
+                            modifier = Modifier.testTag("detail-weekday-remark"),
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
                 }
                 detail.distribution?.let { DelayDistributionBlock(it, detail.maxDelayMinutes) }
                     ?: detail.maxDelayMinutes?.let { Text(stringResource(R.string.reliability_max_delay, minutes(it)), style = MaterialTheme.typography.bodyMedium) }

@@ -1,0 +1,15 @@
+{
+  "schema": "binario-shared-rules-v1",
+  "readers": {
+    "android": "app/src/test/java/it/binario/app/data/reliability/WeekdayRemarksContractTest.kt",
+    "iphone": "ios/BinarioKit/Tests/BinarioKitTests/SharedRulesContractTests.swift"
+  },
+  "description": "The weekday remarks of a train's punctuality detail («Il martedì è in orario 0 volte su 4, peggio della media»): the weekdays with at least minimumWeekdaySamples samples whose on-time share, against the train's own limit, is at least minimumWeekdayGapPoints points from the stop's share, the largest difference first, the earlier weekday on a tie, at most maximumWeekdayRemarks (contracts/shared-data/v1/punctuality-v1.json). Each reader parses the file `document` names (the statistics format of docs/data-sources/PUNCTUALITY_STATS.md, synthetic) and asks the remarks of the train numbered `number` at its stop `stop`.",
+  "document": "weekday-remarks-stats-v1.json",
+  "cases": [
+    {"number": "8001", "stop": 0, "why": "a Frecciarossa measured at 5 minutes (12 of 20, 60%): Tuesday at 0% (60 points) first, then Wednesday and Friday at 100% (40 points each), the earlier weekday kept; Thursday at 75% (15 points) is a fourth; Monday has 3 samples, too few", "expected": [{"weekday": 2, "samples": 4, "onTime": 0}, {"weekday": 3, "samples": 4, "onTime": 4}]},
+    {"number": "8002", "stop": 0, "why": "a regional train measured at 15 minutes (10 of 20, 50%): Monday at 100% and Friday at 0% differ by 50 points each, the earlier weekday first", "expected": [{"weekday": 1, "samples": 4, "onTime": 4}, {"weekday": 5, "samples": 4, "onTime": 0}]},
+    {"number": "8003", "stop": 0, "why": "a stop that publishes no weekdays has no remark", "expected": []},
+    {"number": "8004", "stop": 0, "why": "15 points from the stop's share (80% against 65%) are enough; 5 points are not", "expected": [{"weekday": 1, "samples": 5, "onTime": 4}]}
+  ]
+}

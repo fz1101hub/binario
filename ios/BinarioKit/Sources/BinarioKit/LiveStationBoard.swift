@@ -19,7 +19,7 @@ extension LiveDeparture {
             delayMinutes: cancelled ? nil : expected.map { LiveRailTime.wholeMinutes(from: timetable ?? scheduled, to: $0.value) },
             cancelled: cancelled, platform: platform?.value, sourceLabel: observation.source.displayName,
             observedAt: observation.observedAt, source: observation.source, platformSource: platform?.observation.source,
-            lateWithoutMinutes: !cancelled && expected == nil && status?.value == .delayed
+            lateWithoutMinutes: !cancelled && expected == nil && status?.value == .delayed, viaggiaTrenoRun: viaggiaTrenoRun
         )
     }
 }

@@ -39,6 +39,25 @@
           ]
         },
         {
+          "name": "StationTrainsIntent",
+          "slots": [
+            {
+              "name": "origin",
+              "type": "BINARIO_STATION"
+            },
+            {
+              "name": "destination",
+              "type": "BINARIO_STATION"
+            }
+          ],
+          "samples": [
+            "القطارات التالية من {origin} إلى {destination}",
+            "ما هي القطارات التالية من {origin} إلى {destination}",
+            "متى يغادر القطار التالي من {origin} إلى {destination}",
+            "قطارات من {origin} إلى {destination}"
+          ]
+        },
+        {
           "name": "TrainStatusIntent",
           "slots": [
             {
@@ -114,7 +133,100 @@
           ]
         }
       ],
-      "types": []
+      "types": [
+        {
+          "name": "BINARIO_STATION",
+          "values": [
+            { "name": { "value": "Milano Centrale" } },
+            { "name": { "value": "Roma Termini" } },
+            { "name": { "value": "Napoli Centrale" } },
+            { "name": { "value": "Torino Porta Nuova" } },
+            { "name": { "value": "Firenze Santa Maria Novella" } },
+            { "name": { "value": "Bologna Centrale" } },
+            { "name": { "value": "Venezia Santa Lucia" } },
+            { "name": { "value": "Venezia Mestre" } },
+            { "name": { "value": "Verona Porta Nuova" } },
+            { "name": { "value": "Genova Piazza Principe" } },
+            { "name": { "value": "Genova Brignole" } },
+            { "name": { "value": "Bari Centrale" } },
+            { "name": { "value": "Palermo Centrale" } },
+            { "name": { "value": "Catania Centrale" } },
+            { "name": { "value": "Salerno" } },
+            { "name": { "value": "Padova" } },
+            { "name": { "value": "Brescia" } },
+            { "name": { "value": "Bergamo" } },
+            { "name": { "value": "Trieste Centrale" } },
+            { "name": { "value": "Pisa Centrale" } },
+            { "name": { "value": "Roma Tiburtina" } },
+            { "name": { "value": "Milano Porta Garibaldi" } },
+            { "name": { "value": "Milano Rogoredo" } },
+            { "name": { "value": "Torino Porta Susa" } },
+            { "name": { "value": "Pescara Centrale" } },
+            { "name": { "value": "Lecce" } },
+            { "name": { "value": "Trento" } },
+            { "name": { "value": "Bolzano" } },
+            { "name": { "value": "Udine" } },
+            { "name": { "value": "Parma" } },
+            { "name": { "value": "Modena" } },
+            { "name": { "value": "Piacenza" } },
+            { "name": { "value": "Como San Giovanni" } },
+            { "name": { "value": "Varese" } },
+            { "name": { "value": "Monza" } },
+            { "name": { "value": "Lecco" } },
+            { "name": { "value": "Novara" } },
+            { "name": { "value": "Alessandria" } },
+            { "name": { "value": "La Spezia Centrale" } },
+            { "name": { "value": "Livorno Centrale" } },
+            { "name": { "value": "Perugia" } },
+            { "name": { "value": "Foggia" } },
+            { "name": { "value": "Taranto" } },
+            { "name": { "value": "Cagliari" } },
+            { "name": { "value": "Sassari" } },
+            { "name": { "value": "Tivoli" } },
+            { "name": { "value": "Roma Ostiense" } },
+            { "name": { "value": "Fiumicino Aeroporto" } },
+            { "name": { "value": "Milano Cadorna" } },
+            { "name": { "value": "Napoli Afragola" } },
+            { "name": { "value": "Reggio Emilia AV Mediopadana" } },
+            { "name": { "value": "Vicenza" } },
+            { "name": { "value": "Treviso Centrale" } },
+            { "name": { "value": "Ferrara" } },
+            { "name": { "value": "Arezzo" } },
+            { "name": { "value": "Siena" } },
+            { "name": { "value": "Caserta" } },
+            { "name": { "value": "Messina Centrale" } },
+            { "name": { "value": "Cosenza" } },
+            { "name": { "value": "Potenza Centrale" } },
+            { "name": { "value": "Campobasso" } },
+            { "name": { "value": "L'Aquila" } },
+            { "name": { "value": "Aosta" } },
+            { "name": { "value": "Ventimiglia" } },
+            { "name": { "value": "Savona" } },
+            { "name": { "value": "Cremona" } },
+            { "name": { "value": "Pavia" } },
+            { "name": { "value": "Mantova" } },
+            { "name": { "value": "Ravenna" } },
+            { "name": { "value": "Forlì" } },
+            { "name": { "value": "Cesena" } },
+            { "name": { "value": "Pesaro" } },
+            { "name": { "value": "Grosseto" } },
+            { "name": { "value": "Viterbo Porta Fiorentina" } },
+            { "name": { "value": "Latina" } },
+            { "name": { "value": "Frosinone" } },
+            { "name": { "value": "Benevento" } },
+            { "name": { "value": "Brindisi" } },
+            { "name": { "value": "Sondrio" } },
+            { "name": { "value": "Domodossola" } },
+            { "name": { "value": "Chiasso" } },
+            { "name": { "value": "Lugano" } },
+            { "name": { "value": "Ladispoli-Cerveteri" } },
+            { "name": { "value": "Civitavecchia" } },
+            { "name": { "value": "Orvieto" } },
+            { "name": { "value": "Chiusi-Chianciano Terme" } },
+            { "name": { "value": "Firenze Campo di Marte" } }
+          ]
+        }
+      ]
     }
   }
 }

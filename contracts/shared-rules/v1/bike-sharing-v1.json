@@ -1,0 +1,366 @@
+{
+  "schema": "binario-shared-rules-v1",
+  "description": "Bike sharing near a station (data/bikesharing/BikeSharing.kt): which systems of a build serve a station's coordinates (personalOnly ones only in personal builds), the sub-feeds read only over HTTPS on the auto-discovery host, the GBFS 2.x and 3.0 documents read (feeds by language, vehicle types, stations that rent with their bikes, e-bikes and free docks, free-floating vehicles that are neither reserved, disabled nor docked, with battery; last_updated in POSIX seconds or RFC 3339), and what the section lists: within 300 m of the station's own coordinates, nearest first, at most 4 docks and 4 vehicles. The documents are those of the Android BikeSharingTest (GBFS feeds read by the discovery workflow, run 41561372909, trimmed). The systems are contracts/shared-data/v1/bike-sharing-v1.json.",
+  "readers": [
+    "app/src/test/java/it/binario/app/data/bikesharing/BikeSharingContractTest.kt",
+    "ios/BinarioKit/Tests/BinarioKitTests/BikeSharingContractTests.swift"
+  ],
+  "serves": [
+    {
+      "name": "Milano Centrale",
+      "latitude": 45.4864,
+      "longitude": 9.2042,
+      "personal": false,
+      "expected": [
+        "gbfs-bikemi"
+      ]
+    },
+    {
+      "name": "Bergamo",
+      "latitude": 45.6907,
+      "longitude": 9.6754,
+      "personal": false,
+      "expected": [
+        "gbfs-nextbike-bergamo"
+      ]
+    },
+    {
+      "name": "Senigallia",
+      "latitude": 43.7166,
+      "longitude": 13.2167,
+      "personal": false,
+      "expected": [
+        "gbfs-famose-senigallia"
+      ]
+    },
+    {
+      "name": "Verona Porta Nuova",
+      "latitude": 45.429,
+      "longitude": 10.9822,
+      "personal": false,
+      "expected": [
+        "gbfs-verona-bike"
+      ]
+    },
+    {
+      "name": "Roma Termini, public build",
+      "latitude": 41.901,
+      "longitude": 12.5016,
+      "personal": false,
+      "expected": []
+    },
+    {
+      "name": "Roma Termini, personal build",
+      "latitude": 41.901,
+      "longitude": 12.5016,
+      "personal": true,
+      "expected": [
+        "gbfs-bird-roma"
+      ]
+    },
+    {
+      "name": "Pavia",
+      "latitude": 45.1887,
+      "longitude": 9.1449,
+      "personal": true,
+      "expected": []
+    }
+  ],
+  "sameHost": [
+    {
+      "url": "https://gbfs.nextbike.net/maps/gbfs/v2/nextbike_ib/it/station_status.json",
+      "discovery": "https://gbfs.nextbike.net/maps/gbfs/v2/nextbike_ib/gbfs.json",
+      "expected": true
+    },
+    {
+      "url": "https://GBFS.nextbike.net:443/x.json",
+      "discovery": "https://gbfs.nextbike.net/maps/gbfs/v2/nextbike_ib/gbfs.json",
+      "expected": true
+    },
+    {
+      "url": "http://gbfs.nextbike.net/x.json",
+      "discovery": "https://gbfs.nextbike.net/maps/gbfs/v2/nextbike_ib/gbfs.json",
+      "expected": false
+    },
+    {
+      "url": "https://gbfs.nextbike.net.evil.example/x.json",
+      "discovery": "https://gbfs.nextbike.net/maps/gbfs/v2/nextbike_ib/gbfs.json",
+      "expected": false
+    },
+    {
+      "url": "https://user@gbfs.nextbike.net/x.json",
+      "discovery": "https://gbfs.nextbike.net/maps/gbfs/v2/nextbike_ib/gbfs.json",
+      "expected": false
+    },
+    {
+      "url": "https://gbfs.nextbike.net:8443/x.json",
+      "discovery": "https://gbfs.nextbike.net/maps/gbfs/v2/nextbike_ib/gbfs.json",
+      "expected": false
+    },
+    {
+      "url": "https://elsewhere.example/station_information.json",
+      "discovery": "https://mds.bird.co/gbfs/v2/public/rome/gbfs.json",
+      "expected": false
+    }
+  ],
+  "feeds": [
+    {
+      "name": "GBFS 2: the Italian list",
+      "json": "{\"last_updated\":1793670090,\"ttl\":15,\"version\":\"2.3\",\"data\":{\"it\":{\"feeds\":[{\"name\":\"system_information\",\"url\":\"https://gbfs.urbansharing.com/bikemi.com/system_information.json\"},{\"name\":\"station_information\",\"url\":\"https://gbfs.urbansharing.com/bikemi.com/station_information.json\"},{\"name\":\"station_status\",\"url\":\"https://gbfs.urbansharing.com/bikemi.com/station_status.json\"},{\"name\":\"vehicle_types\",\"url\":\"https://gbfs.urbansharing.com/bikemi.com/vehicle_types.json\"}]}}}",
+      "expected": {
+        "system_information": "https://gbfs.urbansharing.com/bikemi.com/system_information.json",
+        "station_information": "https://gbfs.urbansharing.com/bikemi.com/station_information.json",
+        "station_status": "https://gbfs.urbansharing.com/bikemi.com/station_status.json",
+        "vehicle_types": "https://gbfs.urbansharing.com/bikemi.com/vehicle_types.json"
+      }
+    },
+    {
+      "name": "GBFS 2: the English list when there is no Italian one",
+      "json": "{\"data\":{\"de\":{\"feeds\":[{\"name\":\"a\",\"url\":\"https://x.example/de.json\"}]},\"en\":{\"feeds\":[{\"name\":\"a\",\"url\":\"https://x.example/en.json\"}]}}}",
+      "expected": {
+        "a": "https://x.example/en.json"
+      }
+    },
+    {
+      "name": "GBFS 2: another language as the last resort",
+      "json": "{\"data\":{\"de\":{\"feeds\":[{\"name\":\"a\",\"url\":\"https://x.example/de.json\"},{\"name\":\"\",\"url\":\"https://x.example/b.json\"},{\"name\":\"c\"}]}}}",
+      "expected": {
+        "a": "https://x.example/de.json"
+      }
+    },
+    {
+      "name": "GBFS 3: feeds without languages",
+      "json": "{\"version\":\"3.0\",\"data\":{\"feeds\":[{\"name\":\"vehicle_status\",\"url\":\"https://maas.example/vs.json\"}]}}",
+      "expected": {
+        "vehicle_status": "https://maas.example/vs.json"
+      }
+    },
+    {
+      "name": "no data",
+      "json": "{\"version\":\"2.3\"}",
+      "expected": {}
+    }
+  ],
+  "vehicleTypes": [
+    {
+      "json": "{\"last_updated\":1793670090,\"ttl\":15,\"version\":\"2.3\",\"data\":{\"vehicle_types\":[{\"vehicle_type_id\":\"ebike_with_childseat\",\"form_factor\":\"bicycle\",\"propulsion_type\":\"electric_assist\",\"max_range_meters\":60000},{\"vehicle_type_id\":\"ebike\",\"form_factor\":\"bicycle\",\"propulsion_type\":\"electric_assist\",\"max_range_meters\":60000},{\"vehicle_type_id\":\"bike\",\"form_factor\":\"bicycle\",\"propulsion_type\":\"human\"}]}}",
+      "expected": {
+        "ebike_with_childseat": "EBIKE",
+        "ebike": "EBIKE",
+        "bike": "BIKE"
+      }
+    },
+    {
+      "json": "{\"data\":{\"vehicle_types\":[{\"vehicle_type_id\":\"150\",\"form_factor\":\"bicycle\",\"propulsion_type\":\"human\"},{\"vehicle_type_id\":\"201\",\"form_factor\":\"bicycle\",\"propulsion_type\":\"electric_assist\"},{\"vehicle_type_id\":\"300\",\"form_factor\":\"scooter_standing\",\"propulsion_type\":\"electric\"},{\"vehicle_type_id\":\"400\",\"form_factor\":\"cargo_bicycle\",\"propulsion_type\":\"human\"},{\"vehicle_type_id\":\"500\",\"form_factor\":\"car\",\"propulsion_type\":\"combustion\"},{\"form_factor\":\"bicycle\"}]}}",
+      "expected": {
+        "150": "BIKE",
+        "201": "EBIKE",
+        "300": "SCOOTER",
+        "400": "BIKE",
+        "500": "OTHER"
+      }
+    }
+  ],
+  "stations": [
+    {
+      "name": "stations that rent, with their e-bikes by vehicle type",
+      "information": "{\"last_updated\":1793670090,\"ttl\":15,\"version\":\"2.3\",\"data\":{\"stations\":[{\"station_id\":\"6060\",\"name\":\"19 - Italia - Santa Sofia\",\"address\":\"via Santa Sofia angolo Corso Italia\",\"lat\":45.45621307011987,\"lon\":9.187812079479983,\"is_virtual_station\":false,\"capacity\":30},{\"station_id\":\"2318\",\"name\":\"V3 - Commenda - Berchet\",\"lat\":45.45548125196515,\"lon\":9.199369054959675,\"is_virtual_station\":true,\"capacity\":20},{\"station_id\":\"9999\",\"name\":\"Lontana\",\"lat\":45.50,\"lon\":9.25,\"capacity\":10}]}}",
+      "status": "{\"last_updated\":1793670101,\"ttl\":15,\"version\":\"2.3\",\"data\":{\"stations\":[{\"station_id\":\"6060\",\"is_installed\":true,\"is_renting\":true,\"is_returning\":true,\"last_reported\":1793670101,\"num_vehicles_available\":8,\"num_bikes_available\":8,\"num_docks_available\":20,\"vehicle_types_available\":[{\"vehicle_type_id\":\"bike\",\"count\":6},{\"vehicle_type_id\":\"ebike\",\"count\":2},{\"vehicle_type_id\":\"ebike_with_childseat\",\"count\":0}]},{\"station_id\":\"2318\",\"is_installed\":true,\"is_renting\":false,\"is_returning\":true,\"last_reported\":1793670101,\"num_bikes_available\":2,\"num_docks_available\":18},{\"station_id\":\"9999\",\"is_installed\":true,\"is_renting\":true,\"num_bikes_available\":5,\"num_docks_available\":5}]}}",
+      "types": "{\"last_updated\":1793670090,\"ttl\":15,\"version\":\"2.3\",\"data\":{\"vehicle_types\":[{\"vehicle_type_id\":\"ebike_with_childseat\",\"form_factor\":\"bicycle\",\"propulsion_type\":\"electric_assist\",\"max_range_meters\":60000},{\"vehicle_type_id\":\"ebike\",\"form_factor\":\"bicycle\",\"propulsion_type\":\"electric_assist\",\"max_range_meters\":60000},{\"vehicle_type_id\":\"bike\",\"form_factor\":\"bicycle\",\"propulsion_type\":\"human\"}]}}",
+      "expected": [
+        {
+          "id": "6060",
+          "name": "19 - Italia - Santa Sofia",
+          "latitude": 45.45621307011987,
+          "longitude": 9.187812079479983,
+          "bikes": 8,
+          "ebikes": 2,
+          "docks": 20
+        },
+        {
+          "id": "9999",
+          "name": "Lontana",
+          "latitude": 45.5,
+          "longitude": 9.25,
+          "bikes": 5,
+          "ebikes": null,
+          "docks": 5
+        }
+      ]
+    },
+    {
+      "name": "without vehicle types no e-bike count; GBFS 3 names and vehicles",
+      "information": "{\"data\":{\"stations\":[{\"station_id\":\"a\",\"name\":[{\"text\":\"Bahnhof\",\"language\":\"de\"},{\"text\":\"Stazione\",\"language\":\"it\"}],\"lat\":46.0,\"lon\":11.0},{\"station_id\":\"b\",\"name\":\"Senza stato\",\"lat\":46.1,\"lon\":11.1},{\"station_id\":\"c\",\"name\":\"Fuori servizio\",\"lat\":46.2,\"lon\":11.2},{\"name\":\"Senza id\",\"lat\":46.3,\"lon\":11.3},{\"station_id\":\"e\",\"name\":\"Senza posizione\"}]}}",
+      "status": "{\"data\":{\"stations\":[{\"station_id\":\"a\",\"num_vehicles_available\":3,\"vehicle_types_available\":[{\"vehicle_type_id\":\"x\",\"count\":3}]},{\"station_id\":\"c\",\"is_installed\":false,\"num_bikes_available\":4},{\"station_id\":\"e\",\"num_bikes_available\":1}]}}",
+      "types": "{\"data\":{}}",
+      "expected": [
+        {
+          "id": "a",
+          "name": "Stazione",
+          "latitude": 46.0,
+          "longitude": 11.0,
+          "bikes": 3,
+          "ebikes": null,
+          "docks": null
+        }
+      ]
+    }
+  ],
+  "vehicles": [
+    {
+      "name": "scooters with battery; reserved and disabled ones left out",
+      "json": "{\"last_updated\":1793670080,\"ttl\":60,\"version\":\"2.3\",\"data\":{\"bikes\":[{\"lat\":41.926265,\"lon\":12.463118,\"is_disabled\":false,\"is_reserved\":false,\"vehicle_type_id\":\"bae2102b-56ba-42ba-9097-720e5990b4b2\",\"last_reported\":1793670039,\"current_range_meters\":8298.0,\"current_fuel_percent\":0.19354838},{\"lat\":41.926300,\"lon\":12.463200,\"is_disabled\":false,\"is_reserved\":true,\"vehicle_type_id\":\"bae2102b-56ba-42ba-9097-720e5990b4b2\",\"current_fuel_percent\":0.0},{\"lat\":41.926300,\"lon\":12.463000,\"is_disabled\":true,\"is_reserved\":false,\"vehicle_type_id\":\"bae2102b-56ba-42ba-9097-720e5990b4b2\"}]}}",
+      "types": "{\"data\":{\"vehicle_types\":[{\"vehicle_type_id\":\"bae2102b-56ba-42ba-9097-720e5990b4b2\",\"form_factor\":\"scooter\",\"propulsion_type\":\"electric\",\"max_range_meters\":24000.0}]}}",
+      "expected": [
+        {
+          "kind": "SCOOTER",
+          "latitude": 41.926265,
+          "longitude": 12.463118,
+          "batteryPercent": 19
+        }
+      ]
+    },
+    {
+      "name": "docked bikes are counted at their station; unknown types and bad positions",
+      "json": "{\"data\":{\"bikes\":[{\"is_reserved\":false,\"is_disabled\":false,\"lat\":45.687389,\"lon\":9.638754,\"vehicle_type_id\":\"150\",\"station_id\":\"60670647\",\"pricing_plan_id\":\"Rate0372\"},{\"is_reserved\":false,\"is_disabled\":false,\"lat\":45.6900,\"lon\":9.6400,\"vehicle_type_id\":\"201\",\"current_fuel_percent\":0.8},{\"is_reserved\":false,\"is_disabled\":false,\"lat\":95.0,\"lon\":9.64,\"vehicle_type_id\":\"201\"},{\"is_reserved\":0,\"is_disabled\":0,\"lat\":45.6901,\"lon\":9.6401,\"vehicle_type_id\":\"999\",\"current_fuel_percent\":1.5}]}}",
+      "types": "{\"data\":{\"vehicle_types\":[{\"vehicle_type_id\":\"150\",\"form_factor\":\"bicycle\",\"propulsion_type\":\"human\"},{\"vehicle_type_id\":\"201\",\"form_factor\":\"bicycle\",\"propulsion_type\":\"electric_assist\"},{\"vehicle_type_id\":\"300\",\"form_factor\":\"scooter_standing\",\"propulsion_type\":\"electric\"},{\"vehicle_type_id\":\"400\",\"form_factor\":\"cargo_bicycle\",\"propulsion_type\":\"human\"},{\"vehicle_type_id\":\"500\",\"form_factor\":\"car\",\"propulsion_type\":\"combustion\"},{\"form_factor\":\"bicycle\"}]}}",
+      "expected": [
+        {
+          "kind": "EBIKE",
+          "latitude": 45.69,
+          "longitude": 9.64,
+          "batteryPercent": 80
+        },
+        {
+          "kind": "OTHER",
+          "latitude": 45.6901,
+          "longitude": 9.6401,
+          "batteryPercent": null
+        }
+      ]
+    },
+    {
+      "name": "GBFS 3 vehicles",
+      "json": "{\"data\":{\"vehicles\":[{\"lat\":45.0,\"lon\":9.0,\"vehicle_type_id\":\"201\"}]}}",
+      "types": "{\"data\":{\"vehicle_types\":[{\"vehicle_type_id\":\"150\",\"form_factor\":\"bicycle\",\"propulsion_type\":\"human\"},{\"vehicle_type_id\":\"201\",\"form_factor\":\"bicycle\",\"propulsion_type\":\"electric_assist\"},{\"vehicle_type_id\":\"300\",\"form_factor\":\"scooter_standing\",\"propulsion_type\":\"electric\"},{\"vehicle_type_id\":\"400\",\"form_factor\":\"cargo_bicycle\",\"propulsion_type\":\"human\"},{\"vehicle_type_id\":\"500\",\"form_factor\":\"car\",\"propulsion_type\":\"combustion\"},{\"form_factor\":\"bicycle\"}]}}",
+      "expected": [
+        {
+          "kind": "EBIKE",
+          "latitude": 45.0,
+          "longitude": 9.0,
+          "batteryPercent": null
+        }
+      ]
+    }
+  ],
+  "lastUpdated": [
+    {
+      "json": "{\"last_updated\":1793670101}",
+      "expected": 1793670101
+    },
+    {
+      "json": "{\"last_updated\":\"2026-11-03T01:42:14Z\"}",
+      "expected": 1793670134
+    },
+    {
+      "json": "{\"last_updated\":\"2026-11-03T02:42:14+01:00\"}",
+      "expected": 1793670134
+    },
+    {
+      "json": "{\"last_updated\":\"1793670101\"}",
+      "expected": 1793670101
+    },
+    {
+      "json": "{\"last_updated\":0}",
+      "expected": null
+    },
+    {
+      "json": "{\"data\":{}}",
+      "expected": null
+    }
+  ],
+  "nearby": [
+    {
+      "name": "docking stations within 300 m with bikes, e-bikes and free docks, nearest first",
+      "system": "gbfs-bikemi",
+      "latitude": 45.456,
+      "longitude": 9.189,
+      "documents": {
+        "https://gbfs.urbansharing.com/bikemi.com/gbfs.json": "{\"last_updated\":1793670090,\"ttl\":15,\"version\":\"2.3\",\"data\":{\"it\":{\"feeds\":[{\"name\":\"system_information\",\"url\":\"https://gbfs.urbansharing.com/bikemi.com/system_information.json\"},{\"name\":\"station_information\",\"url\":\"https://gbfs.urbansharing.com/bikemi.com/station_information.json\"},{\"name\":\"station_status\",\"url\":\"https://gbfs.urbansharing.com/bikemi.com/station_status.json\"},{\"name\":\"vehicle_types\",\"url\":\"https://gbfs.urbansharing.com/bikemi.com/vehicle_types.json\"}]}}}",
+        "https://gbfs.urbansharing.com/bikemi.com/vehicle_types.json": "{\"last_updated\":1793670090,\"ttl\":15,\"version\":\"2.3\",\"data\":{\"vehicle_types\":[{\"vehicle_type_id\":\"ebike_with_childseat\",\"form_factor\":\"bicycle\",\"propulsion_type\":\"electric_assist\",\"max_range_meters\":60000},{\"vehicle_type_id\":\"ebike\",\"form_factor\":\"bicycle\",\"propulsion_type\":\"electric_assist\",\"max_range_meters\":60000},{\"vehicle_type_id\":\"bike\",\"form_factor\":\"bicycle\",\"propulsion_type\":\"human\"}]}}",
+        "https://gbfs.urbansharing.com/bikemi.com/station_information.json": "{\"last_updated\":1793670090,\"ttl\":15,\"version\":\"2.3\",\"data\":{\"stations\":[{\"station_id\":\"6060\",\"name\":\"19 - Italia - Santa Sofia\",\"address\":\"via Santa Sofia angolo Corso Italia\",\"lat\":45.45621307011987,\"lon\":9.187812079479983,\"is_virtual_station\":false,\"capacity\":30},{\"station_id\":\"2318\",\"name\":\"V3 - Commenda - Berchet\",\"lat\":45.45548125196515,\"lon\":9.199369054959675,\"is_virtual_station\":true,\"capacity\":20},{\"station_id\":\"9999\",\"name\":\"Lontana\",\"lat\":45.50,\"lon\":9.25,\"capacity\":10}]}}",
+        "https://gbfs.urbansharing.com/bikemi.com/station_status.json": "{\"last_updated\":1793670101,\"ttl\":15,\"version\":\"2.3\",\"data\":{\"stations\":[{\"station_id\":\"6060\",\"is_installed\":true,\"is_renting\":true,\"is_returning\":true,\"last_reported\":1793670101,\"num_vehicles_available\":8,\"num_bikes_available\":8,\"num_docks_available\":20,\"vehicle_types_available\":[{\"vehicle_type_id\":\"bike\",\"count\":6},{\"vehicle_type_id\":\"ebike\",\"count\":2},{\"vehicle_type_id\":\"ebike_with_childseat\",\"count\":0}]},{\"station_id\":\"2318\",\"is_installed\":true,\"is_renting\":false,\"is_returning\":true,\"last_reported\":1793670101,\"num_bikes_available\":2,\"num_docks_available\":18},{\"station_id\":\"9999\",\"is_installed\":true,\"is_renting\":true,\"num_bikes_available\":5,\"num_docks_available\":5}]}}"
+      },
+      "expected": {
+        "docks": [
+          {
+            "name": "19 - Italia - Santa Sofia",
+            "distanceMeters": 96,
+            "bikes": 8,
+            "ebikes": 2,
+            "docks": 20
+          }
+        ],
+        "vehicles": [],
+        "observedAt": 1793670101
+      },
+      "asked": [
+        "https://gbfs.urbansharing.com/bikemi.com/gbfs.json",
+        "https://gbfs.urbansharing.com/bikemi.com/vehicle_types.json",
+        "https://gbfs.urbansharing.com/bikemi.com/station_information.json",
+        "https://gbfs.urbansharing.com/bikemi.com/station_status.json"
+      ]
+    },
+    {
+      "name": "free-floating scooters; a sub-feed on another host is never asked",
+      "system": "gbfs-bird-roma",
+      "latitude": 41.926,
+      "longitude": 12.463,
+      "documents": {
+        "https://mds.bird.co/gbfs/v2/public/rome/gbfs.json": "{\"last_updated\":1793670127,\"ttl\":60,\"version\":\"2.3\",\"data\":{\"en\":{\"feeds\":[{\"name\":\"free_bike_status\",\"url\":\"https://mds.bird.co/gbfs/v2/public/rome/free_bike_status.json\"},{\"name\":\"vehicle_types\",\"url\":\"https://mds.bird.co/gbfs/v2/public/rome/vehicle_types.json\"},{\"name\":\"station_information\",\"url\":\"https://elsewhere.example/station_information.json\"}]}}}",
+        "https://mds.bird.co/gbfs/v2/public/rome/vehicle_types.json": "{\"data\":{\"vehicle_types\":[{\"vehicle_type_id\":\"bae2102b-56ba-42ba-9097-720e5990b4b2\",\"form_factor\":\"scooter\",\"propulsion_type\":\"electric\",\"max_range_meters\":24000.0}]}}",
+        "https://mds.bird.co/gbfs/v2/public/rome/free_bike_status.json": "{\"last_updated\":1793670080,\"ttl\":60,\"version\":\"2.3\",\"data\":{\"bikes\":[{\"lat\":41.926265,\"lon\":12.463118,\"is_disabled\":false,\"is_reserved\":false,\"vehicle_type_id\":\"bae2102b-56ba-42ba-9097-720e5990b4b2\",\"last_reported\":1793670039,\"current_range_meters\":8298.0,\"current_fuel_percent\":0.19354838},{\"lat\":41.926300,\"lon\":12.463200,\"is_disabled\":false,\"is_reserved\":true,\"vehicle_type_id\":\"bae2102b-56ba-42ba-9097-720e5990b4b2\",\"current_fuel_percent\":0.0},{\"lat\":41.926300,\"lon\":12.463000,\"is_disabled\":true,\"is_reserved\":false,\"vehicle_type_id\":\"bae2102b-56ba-42ba-9097-720e5990b4b2\"}]}}"
+      },
+      "expected": {
+        "docks": [],
+        "vehicles": [
+          {
+            "kind": "SCOOTER",
+            "distanceMeters": 31,
+            "batteryPercent": 19
+          }
+        ],
+        "observedAt": 1793670080
+      },
+      "asked": [
+        "https://mds.bird.co/gbfs/v2/public/rome/gbfs.json",
+        "https://mds.bird.co/gbfs/v2/public/rome/vehicle_types.json",
+        "https://mds.bird.co/gbfs/v2/public/rome/free_bike_status.json"
+      ]
+    }
+  ],
+  "distances": [
+    {
+      "from": {
+        "latitude": 45.456,
+        "longitude": 9.189
+      },
+      "to": {
+        "latitude": 45.45621307011987,
+        "longitude": 9.187812079479983
+      },
+      "expectedMeters": 96
+    },
+    {
+      "from": {
+        "latitude": 41.926,
+        "longitude": 12.463
+      },
+      "to": {
+        "latitude": 41.926265,
+        "longitude": 12.463118
+      },
+      "expectedMeters": 31
+    }
+  ]
+}

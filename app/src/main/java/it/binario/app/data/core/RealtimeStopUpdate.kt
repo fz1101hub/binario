@@ -1,5 +1,6 @@
 package it.binario.app.data.core
 
+import it.binario.app.shared.SharedData
 import java.time.Duration
 import java.time.Instant
 import java.time.ZonedDateTime
@@ -10,7 +11,8 @@ import java.time.ZonedDateTime
  * fetch, and it is the only age rule: the adapters' fetch caches are shorter and never shorten it.
  */
 object GtfsRealtimeFreshness {
-    val OBSERVATION_WINDOW: Duration = Duration.ofMinutes(5)
+    /** The shared table's window (contracts/shared-data/v1/realtime-feeds-v1.json), the iPhone's too. */
+    val OBSERVATION_WINDOW: Duration = Duration.ofSeconds(SharedData.RealtimeFeeds.OBSERVATION_WINDOW_SECONDS.toLong())
 }
 
 /** Indica se il tempo realtime è una previsione o un evento effettivamente osservato dal provider. */

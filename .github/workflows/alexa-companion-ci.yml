@@ -4,9 +4,11 @@ on:
   pull_request:
     paths:
       - "alexa-companion/**"
-      # The build copies these two files into the skill (scripts/rail-data.mjs) and the station tests read them.
+      # The build copies these files into the skill (scripts/rail-data.mjs) and the station and timetable tests read them.
       - "app/src/main/assets/punctuality/**"
       - "app/src/main/assets/stations/curated_it_rail_stations.json"
+      - "ios/Resources/binario_gtfs_schedule_v1.sqlite.zlib"
+      - "ios/Resources/binario_gtfs_schedule_v1.metadata.json"
       # The number-key and statistics vectors shared with the Android and iPhone tests.
       - "contracts/shared-rules/**"
       # The shared tables (the generated shared/generated/sharedData.ts) and their generator.
@@ -19,9 +21,11 @@ on:
       - "stabilization/**"
     paths:
       - "alexa-companion/**"
-      # The build copies these two files into the skill (scripts/rail-data.mjs) and the station tests read them.
+      # The build copies these files into the skill (scripts/rail-data.mjs) and the station and timetable tests read them.
       - "app/src/main/assets/punctuality/**"
       - "app/src/main/assets/stations/curated_it_rail_stations.json"
+      - "ios/Resources/binario_gtfs_schedule_v1.sqlite.zlib"
+      - "ios/Resources/binario_gtfs_schedule_v1.metadata.json"
       # The number-key and statistics vectors shared with the Android and iPhone tests.
       - "contracts/shared-rules/**"
       # The shared tables (the generated shared/generated/sharedData.ts) and their generator.

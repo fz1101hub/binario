@@ -22,18 +22,26 @@ python3 tools/generate_shared_code.py --check   # esce con 1 se uno non corrispo
 | File | Contenuto | Letta da |
 |---|---|---|
 | `airport-routes-v1.json` | Collegamenti con gli aeroporti (id del catalogo curato) e pack di linee urbane (`cityLine`) | Android, iPhone |
+| `bike-sharing-v1.json` | Sistemi GBFS di bici in condivisione (auto-discovery, aree, licenza, attribuzione, solo build personali), raggio, quanti mezzi, cache, limiti | Android, iPhone |
+| `delay-compensation-v1.json` | Soglie e quote dell'indennizzo per ritardo (regolamento UE 2021/782) | Android, iPhone |
+| `destination-weather-v1.json` | Meteo a destinazione da Open-Meteo: indirizzo, variabili, giorni, decimali delle coordinate, cache, limiti | Android, iPhone |
+| `evening-alerts-v1.json` | Promemoria serali: ore degli scioperi e dei lavori, ore di quiete, quanto si ricorda un avviso | Android, iPhone |
 | `italian-holidays-v1.json` | Festività nazionali (alcune da un anno in poi) e giorni contati dalla Pasqua | Android, Alexa; generata anche per l'iPhone |
 | `italo-gtfs-station-codes.json` | Codici delle stazioni del pack Italo (`stop_code`) e stazione del catalogo di ciascuno, rivisti; codici lasciati al pack | Android; il builder dell'indice iPhone legge il JSON (`tools/android_station_codes.py`); generata anche per l'iPhone |
 | `italo-stations-v1.json` | Codici Italo di riserva con i loro alias; pagine Italo note per nome | Android, iPhone |
-| `notices-sources-v1.json` | Fonti degli avvisi (indirizzi, accesso, limiti, intervalli, cache, reindirizzamenti), pagine aperte con un tocco, limiti, parole ed espressioni regolari dei lettori, quanto mostrano le sezioni | Android, iPhone |
-| `pack-roles-v1.json` | Ruoli dei pack orari: nazionali, esteri, che ripubblicano i treni dei partner, con autobus dell'operatore, reti urbane (metro, tram, funicolari) | Android, iPhone; il builder e il verificatore dell'indice iPhone leggono il JSON |
+| `live-train-map-v1.json` | Mappa dei treni in movimento: finestra dell'orario, ritardi applicati, copie di un treno, quanti treni, cadenza, area letta | Android, iPhone |
+| `notices-sources-v1.json` | Fonti degli avvisi (indirizzi, accesso, limiti, intervalli, cache, reindirizzamenti; anche gli avvisi per treno di ViaggiaTreno), pagine aperte con un tocco, limiti, parole ed espressioni regolari dei lettori, quanto mostrano le sezioni | Android, iPhone |
+| `pack-roles-v1.json` | Ruoli dei pack orari: nazionali, esteri, che ripubblicano i treni dei partner, con autobus dell'operatore, reti urbane (metro, tram, funicolari) | Android, iPhone, Alexa (orario programmato); il builder e il verificatore dell'indice iPhone leggono il JSON |
 | `planned-journeys-v1.json` | Limiti dell'Agenda, del file di trasferimento e dei modelli | Android, iPhone |
-| `punctuality-v1.json` | Categorie misurate a 5 minuti, soglie e campioni minimi delle statistiche | Android, iPhone, Alexa |
+| `punctuality-v1.json` | Categorie misurate a 5 minuti, soglie e campioni minimi delle statistiche, quante osservazioni sui giorni della settimana mostra il dettaglio di un treno | Android, iPhone, Alexa |
+| `realtime-feeds-v1.json` | Feed GTFS-Realtime (STA, SNCF, Trenitalia France, reti urbane di Roma e ACTV solo personali) e tabelloni svizzeri: indirizzi, formati, limiti, durate di cache, gruppi di pausa, finestra di osservazione | Android, iPhone |
+| `rfi-monitor-v1.json` | Monitor RFI «Arrivi e partenze»: selettore e pagine, limiti di una richiesta, intervallo, durata dei valori e del selettore | Android, iPhone |
 | `rfi-place-ids-v1.json` | Place ID del monitor RFI per i nomi di stazione noti | Android, iPhone |
 | `source-manners-v1.json` | Come si chiede a ogni fonte pubblica: User-Agent, risposte che sono un rifiuto e pausa dopo un rifiuto, interruttore dopo errori ripetuti | Android, iPhone |
 | `source-scores-v1.json` | Punteggi delle fonti per categoria, bonus dell'operatore, fonti di sola copertura | Android, iPhone |
+| `train-number-prefixes-v1.json` | Categorie ammesse davanti al numero di un treno | Android, iPhone, Alexa (corsa programmata di un numero) |
 | `urban-stops-v1.json` | Fermate urbane: distanza massima a piedi, velocità e margine del cammino, stessa fermata e banchine dello stesso nome | Android, iPhone; il builder e il verificatore dell'indice iPhone leggono il JSON |
-| `train-number-prefixes-v1.json` | Categorie ammesse davanti al numero di un treno | Android, iPhone |
+| `viaggiatreno-v1.json` | API realtime di ViaggiaTreno: indirizzo e risorse (partenze, arrivi, corsa, ricerca per numero), limiti di una richiesta, intervallo, durata dei valori, dettagli in parallelo e loro tempo massimo, limiti di lettura, tipi di fermata, codici cliente di Trenord e Trenitalia | Android, iPhone |
 
 Gli strumenti Python sono la pipeline: quando servono una tabella la leggono dal JSON, controllata con lo stesso schema
 (`generate_shared_code.table_values`), oppure con un loro lettore (`tools/android_station_codes.py`).
