@@ -982,3 +982,7 @@
 "result.trip.countdown_stops" = "Выходите через %1$lld остановки";
 "notices.alerts.train_title" = "%1$lld нового объявления по %2$@";
 "notices.alerts.status_delay" = "опоздание %1$lld минуты";
+"result.paging.earlier" = "Раньше";
+"result.paging.later" = "Позже";
+"result.paging.no_more_earlier" = "Более ранних вариантов нет";
+"result.paging.no_more_later" = "Более поздних вариантов нет";

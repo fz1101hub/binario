@@ -1,0 +1,16 @@
+{
+  "schema": "binario-shared-data-v1",
+  "description": "The live check of the journeys with changes («Coincidenza a rischio / persa»): which train legs are looked up by number (running from three hours before to three hours after now, at most eight trains), when a run of the number search is another day's run, how many lookups run together and how long one may take, how long an answer is shown and how often the lookup is repeated while the results or a journey stay on screen.",
+  "readers": {
+    "android": "journeys/JourneyLiveLookup.kt, journeys/JourneySearchViewModel.kt (app/src/main/java/it/binario/app/)",
+    "iphone": "ios/BinarioKit/Sources/BinarioKit/JourneyPlanner/JourneyLive.swift"
+  },
+  "lookBackMinutes": 180,
+  "lookAheadMinutes": 180,
+  "maximumTrains": 8,
+  "sameRunToleranceMinutes": 120,
+  "parallelLookups": 3,
+  "trainTimeoutSeconds": 25,
+  "maximumAgeMinutes": 5,
+  "minimumIntervalSeconds": 60
+}

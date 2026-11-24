@@ -633,6 +633,16 @@ def _check_pack_roles(values: Mapping[str, Any]) -> list[str]:
     return errors
 
 
+def _check_results_paging(data: Mapping[str, Any]) -> list[str]:
+    spans = data["earlierSpansMinutes"]
+    errors = []
+    if spans != sorted(set(spans)):
+        errors.append("earlierSpansMinutes: windows from the shortest, each once")
+    if data["minimumEarlierSpanMinutes"] > spans[0]:
+        errors.append("minimumEarlierSpanMinutes: no longer than the first window")
+    return errors
+
+
 def _check_journey_planner(values: Mapping[str, Any]) -> list[str]:
     errors = []
     if values["largeHubTransferMinutes"] < values["defaultTransferMinutes"]:
@@ -1158,6 +1168,23 @@ TABLES: tuple[Table, ...] = (
         "longWaitMinutes": Field(Integer(1, 24 * 60)),
         "duplicateWalkMinutes": Field(Integer(0, 60)),
     }, check=_check_journey_planner),
+    Table("journey-live-v1.json", "JourneyLive", {
+        "lookBackMinutes": Field(Integer(0, 24 * 60)),
+        "lookAheadMinutes": Field(Integer(0, 24 * 60)),
+        "maximumTrains": Field(Integer(1, 50)),
+        "sameRunToleranceMinutes": Field(Integer(0, 24 * 60)),
+        "parallelLookups": Field(Integer(1, 16)),
+        "trainTimeoutSeconds": Field(Integer(1, 120)),
+        "maximumAgeMinutes": Field(Integer(1, 60)),
+        "minimumIntervalSeconds": Field(Integer(1, 3_600)),
+    }),
+    Table("results-paging-v1.json", "ResultsPaging", {
+        "earlierSpansMinutes": Field(ListOf(Integer(1, 24 * 60))),
+        "earlierPage": Field(Integer(1, 50)),
+        "maximumFillLoads": Field(Integer(1, 10)),
+        "minimumEarlierSpanMinutes": Field(Integer(1, 24 * 60)),
+        "earlierJourneyResults": Field(Integer(1, 50)),
+    }, check=_check_results_paging),
     Table("live-train-map-v1.json", "LiveTrainMap", {
         "lookBackMinutes": Field(Integer(0, 720)),
         "lookAheadMinutes": Field(Integer(0, 720)),

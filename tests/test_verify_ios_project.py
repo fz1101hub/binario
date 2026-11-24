@@ -2052,9 +2052,13 @@ class IOSProjectTests(unittest.TestCase):
         self.assertIn("const val MAX_ROWS = SharedData.FavouritePunctuality.MAXIMUM_ROWS", punctuality)
         self.assertEqual(8, json.loads((ROOT / "contracts/shared-data/v1/favourite-punctuality-v1.json").read_text(encoding="utf-8"))["maximumRows"])
         self.assertIn("static let maximumLiveFavourites = 8", model)
-        self.assertIn("val LOOKBACK: Duration = Duration.ofHours(3)", candidates)
-        self.assertIn("val LOOKAHEAD: Duration = Duration.ofHours(3)", candidates)
-        self.assertIn("val SAME_RUN_TOLERANCE: Duration = Duration.ofHours(2)", candidates)
+        # The window and the run tolerance of the journeys' live lookup are the shared table journey-live-v1.json.
+        journey_live = json.loads((SHARED_DATA / "journey-live-v1.json").read_text(encoding="utf-8"))
+        self.assertEqual((180, 180, 120), (journey_live["lookBackMinutes"], journey_live["lookAheadMinutes"],
+                                           journey_live["sameRunToleranceMinutes"]))
+        self.assertIn("val LOOKBACK: Duration = Duration.ofMinutes(SharedData.JourneyLive.LOOK_BACK_MINUTES.toLong())", candidates)
+        self.assertIn("val LOOKAHEAD: Duration = Duration.ofMinutes(SharedData.JourneyLive.LOOK_AHEAD_MINUTES.toLong())", candidates)
+        self.assertIn("val SAME_RUN_TOLERANCE: Duration = Duration.ofMinutes(SharedData.JourneyLive.SAME_RUN_TOLERANCE_MINUTES.toLong())", candidates)
         # A live row and a bundled train: Android's LiveRunMerge window, the same number and family.
         reconciler = (ROOT / "app/src/main/java/it/binario/app/data/repository/StationBoardRealtimeReconciler.kt").read_text(encoding="utf-8")
         overlay = (IOS / "BinarioKit/Sources/BinarioKit/LiveRailData.swift").read_text(encoding="utf-8")

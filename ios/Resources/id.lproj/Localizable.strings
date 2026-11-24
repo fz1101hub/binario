@@ -982,3 +982,7 @@
 "result.trip.countdown_stops" = "Turun dalam %1$lld pemberhentian";
 "notices.alerts.train_title" = "%1$lld pemberitahuan baru untuk %2$@";
 "notices.alerts.status_delay" = "terlambat %1$lld menit";
+"result.paging.earlier" = "Sebelumnya";
+"result.paging.later" = "Berikutnya";
+"result.paging.no_more_earlier" = "Tidak ada solusi lain sebelumnya";
+"result.paging.no_more_later" = "Tidak ada solusi lain berikutnya";

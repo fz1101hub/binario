@@ -285,6 +285,8 @@ struct PlannerView: View {
         while !Task.isCancelled {
             let current = Date()
             clock = current
+            // The live legs of the journeys with changes, at most once a minute (JourneyLiveRefresh), in the foreground.
+            if scenePhase == .active { journeys.refreshLive(live: model.tripLiveData, now: current) }
             let seconds = 60 - current.timeIntervalSince1970.truncatingRemainder(dividingBy: 60)
             try? await Task.sleep(nanoseconds: UInt64((seconds + 0.5) * 1_000_000_000))
         }
@@ -351,7 +353,7 @@ struct PlannerView: View {
         searchRequestID &+= 1
         let requestID = searchRequestID
         isSearching = true
-        journeys.search(query, repository: model.repository, catalog: model.catalogState, stats: model.reliabilityStats)
+        journeys.search(query, repository: model.repository, catalog: model.catalogState, stats: model.reliabilityStats, live: model.tripLiveData)
         Task {
             await model.run(query: query)
             guard requestID == searchRequestID else { return }
@@ -460,6 +462,12 @@ private struct AvailableResultView: View {
         let co2 = model.co2Estimate(from: snapshot.query.origin, to: snapshot.query.destination)
         // The direct trains and the journeys with changes in one list, with Android's chips.
         let merged = mergedEntries
+        let services = allServices
+        let paging = ResultsPaging.Status(
+            servicesCanPage: !services.isEmpty, journeysCanPage: journeys.query == snapshot.query && journeys.canPage,
+            serviceEarlier: journeys.serviceEarlierState(for: snapshot.query), serviceLater: journeys.serviceLaterState(for: snapshot.query),
+            journeyEarlier: journeys.earlier, journeyLater: journeys.later, hasEntries: !merged.entries.isEmpty
+        )
         let scores = reliabilityScores(measuredTrains)
         let shown = JourneyResultsMerge.apply(merged.entries, filter: journeys.filter, preferences: journeys.preferences, reliability: scores)
         Section("result.title") {
@@ -469,7 +477,7 @@ private struct AvailableResultView: View {
             JourneyFilterChips(
                 selection: journeys.filter, counts: JourneyResultsMerge.counts(merged.entries), showsMostReliable: !scores.isEmpty
             ) { journeys.filter = $0 }
-            JourneyActiveFiltersView(hiddenTrains: snapshot.services.count - JourneyResultsMerge.shownServices(snapshot.services, preferences: journeys.preferences).count)
+            JourneyActiveFiltersView(hiddenTrains: services.count - JourneyResultsMerge.shownServices(services, preferences: journeys.preferences).count)
             if let first = merged.firstNextDay {
                 Text(verbatim: JourneyTexts.noMoreToday(first))
                     .font(.footnote.weight(.medium))
@@ -481,6 +489,12 @@ private struct AvailableResultView: View {
                 Text(verbatim: JourneyTexts.empty(.noSolution, hasOptions: true))
                     .font(.footnote)
                     .foregroundStyle(.secondary)
+            }
+            if paging.available {
+                ResultsPageControl(later: false, loading: paging.earlierLoading, nothingNew: paging.earlierNothingNew) {
+                    journeys.pageServices(later: false, snapshot: snapshot, repository: model.repository)
+                    if paging.journeysCanPage { journeys.loadEarlier() }
+                }
             }
             ForEach(shown) { entry in
                 switch entry {
@@ -515,6 +529,12 @@ private struct AvailableResultView: View {
                     } label: {
                         JourneyResultRow(row: row, reliability: journeys.reliability[row.id])
                     }
+                }
+            }
+            if paging.available {
+                ResultsPageControl(later: true, loading: paging.laterLoading, nothingNew: paging.laterNothingNew) {
+                    journeys.pageServices(later: true, snapshot: snapshot, repository: model.repository)
+                    if paging.journeysCanPage { journeys.loadLater() }
                 }
             }
             JourneyNoticesView(hasEntries: !merged.entries.isEmpty)
@@ -553,6 +573,11 @@ private struct AvailableResultView: View {
         }
     }
 
+    /// The direct trains of the search, then those «Più presto» / «Più tardi» loaded around it.
+    private var allServices: [TrainService] {
+        snapshot.services + journeys.pagedServices(for: snapshot.query)
+    }
+
     /// The direct trains of this search merged with its journeys with changes (Android's `ResultsMerge`), with
     /// «Ultimo di oggi», «primo domani» and «Nessun treno fino alle …» only for a search of today.
     private var mergedEntries: (entries: [JourneyResultEntry], firstNextDay: Date?, noTrainsUntil: Date?) {
@@ -568,7 +593,7 @@ private struct AvailableResultView: View {
         // The changes filter of the planner applies to the journeys with changes as to the direct trains.
         let filtered = rows.filter { journeys.changeFilter.accepts($0.changes) }
         let day = markedDay ?? JourneyResultsMerge.encodedDay(snapshot.query.departure)
-        let entries = JourneyResultsMerge.entries(services: snapshot.services, journeys: filtered, serviceDate: day, preferences: journeys.preferences)
+        let entries = JourneyResultsMerge.entries(services: allServices, journeys: filtered, serviceDate: day, preferences: journeys.preferences)
         let firstNextDay = markedDay.flatMap { JourneyResultsMerge.firstDepartureNextDay(entries, journeys: rows, serviceDate: $0) }
         let noTrainsUntil = JourneyResultsMerge.noTrainsUntil(entries, journeys: rows, requested: snapshot.query.departure, firstNextDay: firstNextDay)
         return (entries, firstNextDay, noTrainsUntil)
@@ -601,11 +626,26 @@ private struct JourneysOnlyResultView: View {
                     ) { journeys.filter = $0 }
                 }
                 JourneyActiveFiltersView(hiddenTrains: 0)
+                let paging = ResultsPaging.Status(
+                    servicesCanPage: false, journeysCanPage: journeys.canPage, serviceEarlier: ResultsPageState(),
+                    serviceLater: ResultsPageState(), journeyEarlier: journeys.earlier, journeyLater: journeys.later,
+                    hasEntries: !filtered.isEmpty
+                )
+                if paging.available {
+                    ResultsPageControl(later: false, loading: paging.earlierLoading, nothingNew: paging.earlierNothingNew) {
+                        journeys.loadEarlier()
+                    }
+                }
                 ForEach(rows) { row in
                     NavigationLink {
                         JourneyDetailView(row: row, reliability: journeys.reliability[row.id])
                     } label: {
                         JourneyResultRow(row: row, reliability: journeys.reliability[row.id])
+                    }
+                }
+                if paging.available {
+                    ResultsPageControl(later: true, loading: paging.laterLoading, nothingNew: paging.laterNothingNew) {
+                        journeys.loadLater()
                     }
                 }
                 JourneyNoticesView(hasEntries: !rows.isEmpty)

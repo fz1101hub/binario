@@ -11,6 +11,8 @@
 //   contracts/shared-data/v1/italo-gtfs-station-codes.json
 //   contracts/shared-data/v1/italo-stations-v1.json
 //   contracts/shared-data/v1/journey-planner-v1.json
+//   contracts/shared-data/v1/journey-live-v1.json
+//   contracts/shared-data/v1/results-paging-v1.json
 //   contracts/shared-data/v1/live-train-map-v1.json
 //   contracts/shared-data/v1/local-backup-v1.json
 //   contracts/shared-data/v1/notices-sources-v1.json
@@ -585,6 +587,38 @@ internal object SharedData {
         const val MAXIMUM_RESULTS: Int = 6
         const val LONG_WAIT_MINUTES: Int = 120
         const val DUPLICATE_WALK_MINUTES: Int = 10
+    }
+
+    /**
+     * contracts/shared-data/v1/journey-live-v1.json: The live check of the journeys with changes («Coincidenza a
+     * rischio / persa»): which train legs are looked up by number (running from three hours before to three hours after
+     * now, at most eight trains), when a run of the number search is another day's run, how many lookups run together
+     * and how long one may take, how long an answer is shown and how often the lookup is repeated while the results or
+     * a journey stay on screen.
+     */
+    object JourneyLive {
+        const val LOOK_BACK_MINUTES: Int = 180
+        const val LOOK_AHEAD_MINUTES: Int = 180
+        const val MAXIMUM_TRAINS: Int = 8
+        const val SAME_RUN_TOLERANCE_MINUTES: Int = 120
+        const val PARALLEL_LOOKUPS: Int = 3
+        const val TRAIN_TIMEOUT_SECONDS: Int = 25
+        const val MAXIMUM_AGE_MINUTES: Int = 5
+        const val MINIMUM_INTERVAL_SECONDS: Int = 60
+    }
+
+    /**
+     * contracts/shared-data/v1/results-paging-v1.json: «Più presto» and «Più tardi» of the results: how far back «Più
+     * presto» looks (an hour, then three, six and twelve), how many earlier solutions it shows per source, how many
+     * times a window that fills up is continued, the shortest window before the first departure, and how many journeys
+     * with changes one window of «Più presto» asks for.
+     */
+    object ResultsPaging {
+        val EARLIER_SPANS_MINUTES: List<Int> = listOf(60, 180, 360, 720)
+        const val EARLIER_PAGE: Int = 6
+        const val MAXIMUM_FILL_LOADS: Int = 3
+        const val MINIMUM_EARLIER_SPAN_MINUTES: Int = 15
+        const val EARLIER_JOURNEY_RESULTS: Int = 20
     }
 
     /**

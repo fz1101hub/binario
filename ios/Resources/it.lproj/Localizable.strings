@@ -982,3 +982,7 @@
 "result.trip.countdown_stops" = "Scendi tra %1$lld fermate";
 "notices.alerts.train_title" = "%1$lld nuovi avvisi per %2$@";
 "notices.alerts.status_delay" = "ritardo di %1$lld minuti";
+"result.paging.earlier" = "Più presto";
+"result.paging.later" = "Più tardi";
+"result.paging.no_more_earlier" = "Nessun’altra soluzione più presto";
+"result.paging.no_more_later" = "Nessun’altra soluzione più tardi";

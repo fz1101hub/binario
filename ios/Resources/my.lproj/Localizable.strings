@@ -982,3 +982,7 @@
 "result.trip.countdown_stops" = "ရပ်နားဘူတာ %1$lld ခု အကြာတွင် ဆင်းပါ";
 "notices.alerts.train_title" = "ကြေညာချက်အသစ် %1$lld ခု- %2$@";
 "notices.alerts.status_delay" = "%1$lld မိနစ် နောက်ကျ";
+"result.paging.earlier" = "အစောပိုင်း";
+"result.paging.later" = "နောက်ပိုင်း";
+"result.paging.no_more_earlier" = "ပိုစောသော ရွေးချယ်စရာ မရှိပါ";
+"result.paging.no_more_later" = "ပိုနောက်ကျသော ရွေးချယ်စရာ မရှိပါ";

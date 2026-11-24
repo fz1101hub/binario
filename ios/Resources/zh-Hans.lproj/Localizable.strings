@@ -982,3 +982,7 @@
 "result.trip.countdown_stops" = "再过 %1$lld 站下车";
 "notices.alerts.train_title" = "%1$lld 条新公告：%2$@";
 "notices.alerts.status_delay" = "晚点 %1$lld 分钟";
+"result.paging.earlier" = "更早";
+"result.paging.later" = "更晚";
+"result.paging.no_more_earlier" = "没有更早的方案";
+"result.paging.no_more_later" = "没有更晚的方案";
