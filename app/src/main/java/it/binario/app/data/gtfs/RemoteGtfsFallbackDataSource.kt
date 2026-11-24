@@ -19,6 +19,7 @@ import it.binario.app.data.provider.ProviderResult
 import it.binario.app.data.provider.TripUpdateProvider
 import it.binario.app.data.sources.InternationalSourceCatalog
 import it.binario.app.data.sources.RailSourceDefinition
+import it.binario.app.shared.SharedData
 import java.io.ByteArrayInputStream
 import java.text.Normalizer
 import java.time.Clock
@@ -50,19 +51,19 @@ class RemoteGtfsFallbackDataSource(
     private val parserSourceId: SourceId,
     /** Canonical operator label of the only trains this mirror may contribute; other agencies it carries are ignored. */
     private val operatorScope: String,
-    private val downloader: GtfsArtifactSource = GtfsArtifactDownloader(),
+    private val downloader: GtfsArtifactSource = remoteArchiveDownloader(),
     private val clock: Clock = Clock.systemUTC(),
     private val notBefore: LocalDate? = null,
-    private val cacheTtl: Duration = Duration.ofHours(6),
+    private val cacheTtl: Duration = Duration.ofSeconds(SharedData.RemoteGtfs.CACHE_TIME_TO_LIVE_SECONDS.toLong()),
     private val realtimeProvider: TripUpdateProvider? = null,
     private val realtimeZone: ZoneId = ZoneId.of("Europe/Rome"),
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
     private val parsingDispatcher: CoroutineDispatcher = Dispatchers.Default,
     private val onParsing: (() -> Unit)? = null,
     /** The mirror's archive is a few hundred kB: a larger body is refused instead of being buffered in memory. */
-    private val maxArchiveBytes: Int = 8 * 1024 * 1024,
+    private val maxArchiveBytes: Int = SharedData.RemoteGtfs.MAXIMUM_ARCHIVE_BYTES,
     /** After a failed download the fallback is not retried by every search, only after this pause. */
-    private val failureCooldown: Duration = Duration.ofMinutes(5)
+    private val failureCooldown: Duration = Duration.ofSeconds(SharedData.RemoteGtfs.FAILURE_COOLDOWN_SECONDS.toLong())
 ) : TrainDataSource {
     @Volatile private var cached: CachedFeed? = null
     @Volatile private var failure: Pair<String, java.time.Instant>? = null
@@ -276,14 +277,29 @@ class RemoteGtfsFallbackDataSource(
     companion object {
         private val HH_MM = DateTimeFormatter.ofPattern("HH:mm", java.util.Locale.ROOT)
 
+        /**
+         * The downloads of a community archive: the time limits, redirects and refusal pause of the shared table
+         * (remote-gtfs-v1.json), which the iPhone reads too.
+         */
+        fun remoteArchiveDownloader(): GtfsArtifactDownloader = GtfsArtifactDownloader(
+            connectTimeoutMillis = SharedData.RemoteGtfs.CONNECT_TIMEOUT_SECONDS * 1_000,
+            readTimeoutMillis = SharedData.RemoteGtfs.READ_TIMEOUT_SECONDS * 1_000,
+            maxRedirects = SharedData.RemoteGtfs.MAXIMUM_REDIRECTS,
+            refusalPause = Duration.ofSeconds(SharedData.RemoteGtfs.REFUSAL_PAUSE_SECONDS.toLong())
+        )
+
+        /** The European Sleeper row of the shared table (remote-gtfs-v1.json). */
+        internal val EUROPEAN_SLEEPER: SharedData.RemoteGtfs.RemoteFeed =
+            SharedData.RemoteGtfs.FEEDS.single { it.id == "european-sleeper-gtfs" }
+
         fun europeanSleeper(clock: Clock = Clock.systemUTC()): RemoteGtfsFallbackDataSource =
             RemoteGtfsFallbackDataSource(
-                source = requireNotNull(InternationalSourceCatalog.byId(SourceId("european-sleeper-gtfs"))),
+                source = requireNotNull(InternationalSourceCatalog.byId(SourceId(EUROPEAN_SLEEPER.id))),
                 // The legacy source id already exists in RailSourceCatalog and is used only as parser provenance.
-                parserSourceId = SourceId("european-sleeper"),
-                operatorScope = "European Sleeper",
+                parserSourceId = SourceId(EUROPEAN_SLEEPER.pack),
+                operatorScope = EUROPEAN_SLEEPER.operatorScope,
                 clock = clock,
-                notBefore = LocalDate.of(2026, 9, 9),
+                notBefore = LocalDate.parse(EUROPEAN_SLEEPER.notBefore),
                 realtimeProvider = EuropeanSleeperGtfsRealtimeAdapter(clock = clock)
             )
     }
