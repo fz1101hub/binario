@@ -164,6 +164,7 @@ struct JourneyResultRow: View {
 struct JourneyDetailView: View {
     @EnvironmentObject private var model: AppModel
     @EnvironmentObject private var journeys: JourneysModel
+    @Environment(\.scenePhase) private var scenePhase
     /// The journey as it was opened; the model's copy (with the live legs that arrive meanwhile) is shown.
     let opened: JourneyOptionRow
     let openedReliability: JourneyPlanReliability?
@@ -238,7 +239,7 @@ struct JourneyDetailView: View {
 
     private func followLive() async {
         while !Task.isCancelled {
-            journeys.refreshLive(live: model.tripLiveData, focusedID: opened.id)
+            if scenePhase == .active { journeys.refreshLive(live: model.tripLiveData, focusedID: opened.id) }
             try? await Task.sleep(nanoseconds: 30_000_000_000)
         }
     }

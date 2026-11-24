@@ -269,8 +269,8 @@ struct PlannerView: View {
         while !Task.isCancelled {
             let current = Date()
             clock = current
-            // The live legs of the journeys with changes, at most once a minute (JourneyLiveRefresh).
-            journeys.refreshLive(live: model.tripLiveData, now: current)
+            // The live legs of the journeys with changes, at most once a minute (JourneyLiveRefresh), in the foreground.
+            if scenePhase == .active { journeys.refreshLive(live: model.tripLiveData, now: current) }
             let seconds = 60 - current.timeIntervalSince1970.truncatingRemainder(dividingBy: 60)
             try? await Task.sleep(nanoseconds: UInt64((seconds + 0.5) * 1_000_000_000))
         }
