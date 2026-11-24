@@ -90,7 +90,6 @@ import it.binario.app.LocalDataBackupCodec
 import it.binario.app.MobilityPreferences
 import it.binario.app.ProjectLinks
 import it.binario.app.R
-import it.binario.app.shared.SharedData
 import it.binario.app.SourcesSettingsPanel
 import it.binario.app.TrainViewModel
 import it.binario.app.VoiceProfileSyncReadiness
@@ -100,6 +99,7 @@ import it.binario.app.localizedLabel
 import it.binario.app.openExternalLink
 import it.binario.app.openReplacingOutputStream
 import it.binario.app.resolve
+import it.binario.app.shared.SharedData
 import it.binario.app.ui.common.BinarioCard
 import it.binario.app.ui.common.HeaderOverlapBox
 import it.binario.app.ui.common.NavigationRow
@@ -611,11 +611,11 @@ private fun MobilityPreferencesPanel(value: MobilityPreferences, onChange: (Mobi
         Text(stringResource(R.string.mobility_changes_title), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
         LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             item { FilterChip(selected = value.maxChanges == null, onClick = { onChange(value.copy(maxChanges = null)) }, label = { Text(stringResource(R.string.mobility_changes_any)) }) }
-            items(listOf(0, 1, 2)) { changes -> FilterChip(selected = value.maxChanges == changes, onClick = { onChange(value.copy(maxChanges = changes)) }, label = { Text(if (changes == 0) stringResource(R.string.mobility_changes_direct) else stringResource(R.string.mobility_changes_max, changes)) }) }
+            items(SharedData.MobilityPreferences.CHANGE_CHOICES) { changes -> FilterChip(selected = value.maxChanges == changes, onClick = { onChange(value.copy(maxChanges = changes)) }, label = { Text(if (changes == 0) stringResource(R.string.mobility_changes_direct) else stringResource(R.string.mobility_changes_max, changes)) }) }
         }
         Text(stringResource(R.string.mobility_transfer_margin), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
         LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            items(listOf(5, 10, 15, 20)) { minutes -> FilterChip(selected = value.transferMarginMinutes == minutes, onClick = { onChange(value.copy(transferMarginMinutes = minutes)) }, label = { Text(pluralStringResource(R.plurals.minutes_short, minutes, minutes)) }) }
+            items(SharedData.MobilityPreferences.TRANSFER_MARGIN_CHOICES) { minutes -> FilterChip(selected = value.transferMarginMinutes == minutes, onClick = { onChange(value.copy(transferMarginMinutes = minutes)) }, label = { Text(pluralStringResource(R.plurals.minutes_short, minutes, minutes)) }) }
         }
         FilterChip(selected = value.stepFreePreferred, onClick = { onChange(value.copy(stepFreePreferred = !value.stepFreePreferred)) }, label = { Text(stringResource(R.string.mobility_step_free)) })
         FilterChip(selected = value.compactTimetablePreferred, onClick = { onChange(value.copy(compactTimetablePreferred = !value.compactTimetablePreferred)) }, label = { Text(stringResource(R.string.mobility_compact_timetable)) })

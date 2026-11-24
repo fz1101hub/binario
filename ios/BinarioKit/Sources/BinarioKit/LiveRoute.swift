@@ -292,15 +292,21 @@ public enum LiveRunMerge {
         return SharedData.LiveRoute.operatorFamilies[id] ?? id
     }
 
-    /// The family of a timetable operator by its name ("Trenitalia", "Trenord", "Italo"); another named operator is its
-    /// own family, a missing name nil (any).
-    public static func family(operatorName: String) -> String? {
-        let folded = operatorName.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-        guard !folded.isEmpty else { return nil }
-        for key in SharedData.LiveRoute.operatorFamilies.keys.sorted() where folded.contains(key) {
-            return SharedData.LiveRoute.operatorFamilies[key]
+    /// The operator of a timetable train by its agency name, as Android's `legacyOperator` reads it ("Trenord", "NTV
+    /// Italo", "Trenitalia"): nil for any other name, Android's `OTHER`.
+    public static func timetableOperator(_ operatorName: String) -> String? {
+        let folded = operatorName.lowercased()
+        let table = SharedData.LiveRoute.timetableOperators
+        // Android's order: Trenord, then Italo, then Trenitalia.
+        for id in ["trenord", "italo", "trenitalia"] {
+            if table.contains(where: { $0.value == id && folded.contains($0.key) }) { return id }
         }
-        return folded
+        return nil
+    }
+
+    /// The family of a timetable operator; an unknown one is nil and matches any family, as Android's `OTHER`.
+    public static func family(operatorName: String) -> String? {
+        timetableOperator(operatorName).flatMap { SharedData.LiveRoute.operatorFamilies[$0] }
     }
 
     /// The scheduled departure of a planned train: its date, else its "HH:mm" around the time asked (an hour earlier

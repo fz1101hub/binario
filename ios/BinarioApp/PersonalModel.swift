@@ -59,6 +59,8 @@ final class PersonalModel: ObservableObject {
     @Published private(set) var reachedStops: [String: Int]
     /// «Tratta attiva»: the saved route of «Le tue partenze»; nil follows the first saved route.
     @Published private(set) var activeRouteID: String?
+    /// «Mobilità e accessibilità» (Android's `MobilityPreferences`): stored and backed up; nothing reads them yet.
+    @Published private(set) var mobility: MobilityPreferences
     /// The return trains of the planner's round trip, for «Salva orario» and «Condividi»; never stored.
     @Published var plannerReturn: JourneySnapshot?
 
@@ -77,6 +79,7 @@ final class PersonalModel: ObservableObject {
         static let voiceProfile = "it.binario.ios.voice-profile-requested.v1"
         static let activeRoute = "it.binario.ios.active-route.v1"
         static let reachedStops = "it.binario.ios.followed-trip-reached.v1"
+        static let mobility = "it.binario.ios.mobility-preferences.v1"
     }
 
     /// A route searched recently.
@@ -131,6 +134,7 @@ final class PersonalModel: ObservableObject {
         stationMonitors = PersonalModel.decode([StationMonitor].self, defaults.data(forKey: Key.stationMonitors)) ?? []
         voiceProfileRequested = defaults.bool(forKey: Key.voiceProfile)
         activeRouteID = defaults.string(forKey: Key.activeRoute)
+        mobility = PersonalModel.decode(MobilityPreferences.self, defaults.data(forKey: Key.mobility)) ?? MobilityPreferences()
         reachedStops = (defaults.dictionary(forKey: Key.reachedStops) ?? [:]).compactMapValues { ($0 as? NSNumber)?.intValue }
     }
 
@@ -212,6 +216,13 @@ final class PersonalModel: ObservableObject {
     func setVoiceProfileRequested(_ requested: Bool) {
         voiceProfileRequested = requested
         defaults.set(requested, forKey: Key.voiceProfile)
+    }
+
+    // MARK: Mobilità e accessibilità
+
+    func setMobility(_ value: MobilityPreferences) {
+        mobility = value
+        defaults.set(try? JSONEncoder().encode(value), forKey: Key.mobility)
     }
 
     // MARK: Theme

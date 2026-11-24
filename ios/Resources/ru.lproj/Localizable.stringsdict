@@ -862,6 +862,26 @@
 			<string>%1$lld отслеживаемой станции</string>
 		</dict>
 	</dict>
+	<key>settings.mobility.summary_max_changes</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>few</key>
+			<string>Не более %1$lld пересадок</string>
+			<key>many</key>
+			<string>Не более %1$lld пересадок</string>
+			<key>one</key>
+			<string>Не более %1$lld пересадки</string>
+			<key>other</key>
+			<string>Не более %1$lld пересадки</string>
+		</dict>
+	</dict>
 	<key>settings.travel.minutes</key>
 	<dict>
 		<key>NSStringLocalizedFormatKey</key>

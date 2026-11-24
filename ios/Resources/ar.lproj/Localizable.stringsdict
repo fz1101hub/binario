@@ -1034,6 +1034,30 @@
 			<string>%1$lld محطة متابَعة</string>
 		</dict>
 	</dict>
+	<key>settings.mobility.summary_max_changes</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>few</key>
+			<string>%1$lld تبديلات كحد أقصى</string>
+			<key>many</key>
+			<string>%1$lld تبديلًا كحد أقصى</string>
+			<key>one</key>
+			<string>%1$lld تبديل كحد أقصى</string>
+			<key>other</key>
+			<string>%1$lld تبديل كحد أقصى</string>
+			<key>two</key>
+			<string>%1$lld تبديلان كحد أقصى</string>
+			<key>zero</key>
+			<string>%1$lld تبديل كحد أقصى</string>
+		</dict>
+	</dict>
 	<key>settings.travel.minutes</key>
 	<dict>
 		<key>NSStringLocalizedFormatKey</key>

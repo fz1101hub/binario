@@ -2546,3 +2546,154 @@ extension SQLiteGTFSJourneyRepository {
         return (stop: stop, seconds: seconds)
     }
 }
+
+// MARK: - «Ultimo di oggi»
+
+extension SQLiteGTFSJourneyRepository {
+    /// The static timetable's view of one station on the service day of `now` (Android's `staticDayDepartures`): for
+    /// each terminus the last departure of the day («Ultimo di oggi») and the first departure of the next service
+    /// day. With a `destination`, only runs that then set down there count, and there is one terminus: the
+    /// destination. Trains and buses only, never a city line. A file that cannot answer adds nothing, and the base
+    /// index counts only where a national pack serves the station: a border subset says nothing complete about it.
+    public func staticDayDepartures(origin: StationIdentity, destination: StationIdentity?, at now: Date) async -> StaticDayDepartures {
+        var last: [String: StaticDeparture] = [:]
+        var first: StaticDeparture?
+        let files: [(url: URL, excluded: [String], base: Bool)] = [(url: databaseURL, excluded: foreignFiles.map(\.sourceID), base: true)]
+            + foreignFiles.map { (url: $0.url, excluded: [String](), base: false) }
+        for file in files {
+            guard let day = try? Self.dayDepartures(
+                databaseURL: file.url, excluded: file.excluded, base: file.base, origin: origin, destination: destination, now: now
+            ) else { continue }
+            for (terminus, departure) in day.last where last[terminus].map({ departure.departure > $0.departure }) ?? true {
+                last[terminus] = departure
+            }
+            if let candidate = day.first, first.map({ candidate.departure < $0.departure }) ?? true { first = candidate }
+        }
+        return StaticDayDepartures(lastByTerminus: last.values.sorted { $0.departure < $1.departure }, firstNextDay: first)
+    }
+
+    /// Rows of one station read for «Ultimo di oggi», at most: past it the marks are left out.
+    private static let maximumDayRows = 65_536
+
+    private static func dayDepartures(
+        databaseURL: URL, excluded: [String], base: Bool, origin: StationIdentity, destination: StationIdentity?, now: Date
+    ) throws -> (last: [String: StaticDeparture], first: StaticDeparture?) {
+        let database = try SQLiteDatabase(readOnlyURL: databaseURL)
+        database.excludedSourceIDs = excluded
+        _ = try validatedOnce(database, at: databaseURL)
+        let originStops = try resolve(origin, database: database)
+        let destinationStops = try destination.map { try resolve($0, database: database) }
+        if base {
+            guard try nationalPackServes(originStops, database: database) else { return ([:], nil) }
+            if let destinationStops, try !nationalPackServes(destinationStops, database: database) { return ([:], nil) }
+        }
+        let originPlaceholders = Array(repeating: "?", count: originStops.count).joined(separator: ",")
+        let destinationClause = destinationStops.map { stops in
+            """
+
+              AND EXISTS (SELECT 1 FROM stop_time AS alight
+                          WHERE alight.trip_id = t.id AND alight.stop_sequence > board_time.stop_sequence
+                            AND alight.drop_off_type = 0
+                            AND alight.stop_id IN (\(Array(repeating: "?", count: stops.count).joined(separator: ","))))
+            """
+        } ?? ""
+        var last: [String: StaticDeparture] = [:]
+        var first: StaticDeparture?
+        for timeZone in try agencyTimeZones(database) {
+            let calendar = serviceCalendar(timeZone: timeZone)
+            let today = calendar.startOfDay(for: now)
+            guard let tomorrow = calendar.date(byAdding: .day, value: 1, to: today) else { throw SQLiteGTFSFailure.invalidData }
+            let statement = try database.statement(
+                """
+                SELECT t.id, t.external_id, t.short_name, r.short_name, r.long_name, r.route_type, a.name, p.source_id,
+                       board_time.departure_seconds, svc.start_date, svc.day_count, svc.active_days,
+                       last_time.stop_id, last_stop.name, last_stop.catalog_station_id
+                FROM stop_time AS board_time
+                JOIN trip AS t ON t.id = board_time.trip_id
+                JOIN route AS r ON r.id = t.route_id
+                JOIN agency AS a ON a.id = r.agency_id
+                JOIN pack AS p ON p.id = t.pack_id
+                JOIN service AS svc ON svc.id = t.service_id
+                JOIN stop_time AS last_time ON last_time.trip_id = t.id
+                 AND last_time.stop_sequence = (SELECT MAX(s.stop_sequence) FROM stop_time AS s WHERE s.trip_id = t.id)
+                JOIN stop AS last_stop ON last_stop.id = last_time.stop_id
+                WHERE board_time.stop_id IN (\(originPlaceholders))
+                  AND board_time.pickup_type = 0
+                  AND board_time.departure_seconds IS NOT NULL
+                  AND a.timezone = ?\(destinationClause)\(database.excludedPacksClause("p.source_id"))
+                LIMIT ?
+                """
+            )
+            var binding: Int32 = 1
+            for id in originStops { try statement.bind(id, at: binding); binding += 1 }
+            try statement.bind(timeZone.identifier, at: binding); binding += 1
+            for id in destinationStops ?? [] { try statement.bind(id, at: binding); binding += 1 }
+            try database.bindExcludedPacks(statement, from: &binding)
+            try statement.bind(Int64(maximumDayRows + 1), at: binding)
+
+            // A trip calling twice boards at its first departure from the station.
+            var boarded: [Int64: DayRun] = [:]
+            var rows = 0
+            while try statement.step() {
+                rows += 1
+                guard rows <= maximumDayRows else { throw SQLiteGTFSFailure.limitExceeded }
+                let tripID = statement.int(at: 0)
+                let seconds = statement.int(at: 8)
+                guard seconds >= 0, seconds <= Int64(maximumGTFSSeconds),
+                      boarded[tripID].map({ seconds < $0.seconds }) ?? true,
+                      let externalTripID = statement.text(at: 1), !externalTripID.isEmpty,
+                      let agencyName = statement.text(at: 6), let sourceID = statement.text(at: 7),
+                      let activeDays = statement.blob(at: 11),
+                      let terminusName = statement.text(at: 13)?.normalizedWhitespace, !terminusName.isEmpty
+                else { continue }
+                let operatorName = TimetableNaming.operatorName(agencyName, sourceID: sourceID)
+                guard let vehicle = timetableVehicle(routeType: statement.int(at: 5), sourceID: sourceID, operatorName: operatorName, route: statement.text(at: 3)),
+                      !vehicle.isUrban else { continue }
+                let lastStopID = statement.int(at: 12)
+                let catalogID = statement.text(at: 14)?.nonEmpty
+                // A run that ends at the station itself (it only arrives there after a loop) is no departure.
+                if destination == nil, originStops.contains(lastStopID) || catalogID == origin.id { continue }
+                let naming = serviceNaming(vehicle: vehicle, trip: statement.text(at: 2), route: statement.text(at: 3),
+                                           longName: statement.text(at: 4), type: statement.int(at: 5), externalTripID: externalTripID)
+                boarded[tripID] = DayRun(
+                    seconds: seconds,
+                    number: naming.number.nonEmpty,
+                    terminus: destination?.name ?? terminusName,
+                    key: destination == nil ? (catalogID ?? "\(sourceID):\(lastStopID)") : "destination",
+                    startDate: statement.int(at: 9),
+                    dayCount: statement.int(at: 10),
+                    activeDays: activeDays
+                )
+            }
+            for run in boarded.values {
+                for serviceDay in [today, tomorrow] where serviceRuns(
+                    serviceDay: serviceDay, startDate: run.startDate, dayCount: run.dayCount, activeDays: run.activeDays, calendar: calendar
+                ) {
+                    let departure = StaticDeparture(
+                        departure: try gtfsDate(serviceDay: serviceDay, seconds: TimeInterval(run.seconds), calendar: calendar),
+                        publicNumber: run.number,
+                        terminus: run.terminus
+                    )
+                    if serviceDay == today {
+                        if last[run.key].map({ departure.departure > $0.departure }) ?? true { last[run.key] = departure }
+                    } else if first.map({ departure.departure < $0.departure }) ?? true {
+                        first = departure
+                    }
+                }
+            }
+        }
+        return (last, first)
+    }
+}
+
+/// A run boarded at the station for «Ultimo di oggi»: its first departure there, number, terminus and service days.
+private struct DayRun {
+    let seconds: Int64
+    let number: String?
+    let terminus: String
+    /// The terminus as a station of the catalogue (or a stop of a pack), or "destination".
+    let key: String
+    let startDate: Int64
+    let dayCount: Int64
+    let activeDays: Data
+}

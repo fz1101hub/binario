@@ -399,6 +399,12 @@ public enum BinarioLocalizationKeys {
         "result.journey.leg_on_time", "result.journey.leg_cancelled_share", "result.journey.connection",
         "result.paging.earlier", "result.paging.later", "result.paging.no_more_earlier", "result.paging.no_more_later",
         "result.arrival.live",
+        "result.live_route.rfi_monitor", "result.live_route.rfi_notice", "result.live_route.viaggiatreno_notice",
+        "settings.mobility.title", "settings.mobility.description", "settings.mobility.changes",
+        "settings.mobility.changes_any", "settings.mobility.changes_direct", "settings.mobility.changes_max",
+        "settings.mobility.margin", "settings.mobility.step_free", "settings.mobility.compact",
+        "settings.mobility.summary", "settings.mobility.summary_any_changes", "settings.mobility.summary_step_free",
+        "settings.mobility.summary_compact", "settings.mobility.summary_max_changes",
     ]
 
     /// The keys whose texts count something: Localizable.stringsdict holds their CLDR plural forms
@@ -422,6 +428,6 @@ public enum BinarioLocalizationKeys {
         "notices.alerts.status_delay",
         "result.journey.changes", "result.journey.transfer_wait", "result.journey.hidden_by_preferences",
         "settings.travel.minutes", "result.journey.leg_on_time", "result.journey.leg_cancelled_share",
-        "result.journey.connection",
+        "result.journey.connection", "settings.mobility.summary_max_changes",
     ]
 }

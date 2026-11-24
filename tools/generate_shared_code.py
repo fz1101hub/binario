@@ -643,6 +643,20 @@ def _check_results_paging(data: Mapping[str, Any]) -> list[str]:
     return errors
 
 
+def _check_mobility_preferences(data: Mapping[str, Any]) -> list[str]:
+    errors = []
+    for key in ("changeChoices", "transferMarginChoices"):
+        if data[key] != sorted(set(data[key])):
+            errors.append(f"{key}: from the smallest, each once")
+    if not data["defaultTransferMarginMinutes"] <= data["maximumTransferMarginMinutes"]:
+        errors.append("defaultTransferMarginMinutes: no more than the maximum")
+    if data["transferMarginChoices"][-1] > data["maximumTransferMarginMinutes"]:
+        errors.append("transferMarginChoices: no more than the maximum")
+    if data["defaultTransferMarginMinutes"] not in data["transferMarginChoices"]:
+        errors.append("defaultTransferMarginMinutes: one of the choices")
+    return errors
+
+
 def _check_journey_planner(values: Mapping[str, Any]) -> list[str]:
     errors = []
     if values["largeHubTransferMinutes"] < values["defaultTransferMinutes"]:
@@ -1181,6 +1195,7 @@ TABLES: tuple[Table, ...] = (
     Table("live-route-v1.json", "LiveRoute", {
         "retimingWindowMinutes": Field(Integer(0, 24 * 60)),
         "operatorFamilies": Field(MapOf(Text(r"[a-z][a-z-]*"), key=Text(r"[a-z]+"))),
+        "timetableOperators": Field(MapOf(Text(r"[a-z]+"), key=Text(r"[a-z]+"))),
         "liveSourceTimeoutSeconds": Field(Integer(1, 120)),
         "rfiBoardLookBackMinutes": Field(Integer(0, 24 * 60)),
         "rfiBoardLookAheadMinutes": Field(Integer(1, 24 * 60)),
@@ -1201,6 +1216,12 @@ TABLES: tuple[Table, ...] = (
         "minimumEarlierSpanMinutes": Field(Integer(1, 24 * 60)),
         "earlierJourneyResults": Field(Integer(1, 50)),
     }, check=_check_results_paging),
+    Table("mobility-preferences-v1.json", "MobilityPreferences", {
+        "defaultTransferMarginMinutes": Field(Integer(0, 120)),
+        "maximumTransferMarginMinutes": Field(Integer(0, 120)),
+        "changeChoices": Field(ListOf(Integer(0, 9))),
+        "transferMarginChoices": Field(ListOf(Integer(0, 120))),
+    }, check=_check_mobility_preferences),
     Table("live-train-map-v1.json", "LiveTrainMap", {
         "lookBackMinutes": Field(Integer(0, 720)),
         "lookAheadMinutes": Field(Integer(0, 720)),

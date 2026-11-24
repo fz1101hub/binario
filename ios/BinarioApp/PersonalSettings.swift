@@ -43,6 +43,7 @@ struct AppearanceLanguageSection: View {
         } header: {
             Text("settings.language.title")
         }
+        MobilityPreferencesSection()
     }
 
     /// The app's page in the iPhone's Settings, where iOS keeps the app's language.
@@ -53,6 +54,58 @@ struct AppearanceLanguageSection: View {
         #else
         nil
         #endif
+    }
+}
+
+/// «Mobilità e accessibilità» (Android's `MobilityPreferencesPanel`): changes, interchange margin, step-free routes
+/// and compact boards, with Android's summary. Stored and backed up; as on Android, no search reads them yet.
+private struct MobilityPreferencesSection: View {
+    @EnvironmentObject private var personal: PersonalModel
+
+    var body: some View {
+        let value = personal.mobility
+        Section {
+            Text("settings.mobility.description")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+            // -1 stands for «Qualsiasi» (no limit).
+            Picker("settings.mobility.changes", selection: Binding(get: { value.maxChanges ?? -1 }, set: { chosen in
+                update { $0.maxChanges = chosen >= 0 ? chosen : nil }
+            })) {
+                Text("settings.mobility.changes_any").tag(-1)
+                ForEach(SharedData.MobilityPreferences.changeChoices, id: \.self) { changes in
+                    if changes == 0 {
+                        Text("settings.mobility.changes_direct").tag(changes)
+                    } else {
+                        Text(PersonalTexts.mobilityMaxChanges(changes)).tag(changes)
+                    }
+                }
+            }
+            Picker("settings.mobility.margin", selection: Binding(get: { value.transferMarginMinutes }, set: { minutes in
+                update { $0.transferMarginMinutes = minutes }
+            })) {
+                ForEach(SharedData.MobilityPreferences.transferMarginChoices, id: \.self) { minutes in
+                    Text(PersonalTexts.minutes(minutes)).tag(minutes)
+                }
+            }
+            Toggle("settings.mobility.step_free", isOn: Binding(get: { value.stepFreePreferred }, set: { on in
+                update { $0.stepFreePreferred = on }
+            }))
+            Toggle("settings.mobility.compact", isOn: Binding(get: { value.compactTimetablePreferred }, set: { on in
+                update { $0.compactTimetablePreferred = on }
+            }))
+            Text(PersonalTexts.mobilitySummary(value))
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+        } header: {
+            Text("settings.mobility.title")
+        }
+    }
+
+    private func update(_ change: (inout MobilityPreferences) -> Void) {
+        var value = personal.mobility
+        change(&value)
+        personal.setMobility(value)
     }
 }
 
@@ -195,7 +248,8 @@ struct LocalBackupSection: View {
             stationMonitors: personal.stationMonitors.map { BackupStationMonitor(station: $0.station, mode: $0.mode.rawValue) },
             pinnedRouteIDs: personal.pinnedRouteIDs,
             commuterAlerts: trips.commuterAlerts,
-            travelPreferences: journeys.preferences
+            travelPreferences: journeys.preferences,
+            mobilityPreferences: personal.mobility
         )
         return LocalBackupCodec.encode(backup) { model.station(for: $0) }
     }
@@ -232,6 +286,8 @@ struct LocalBackupSection: View {
             })
             personal.replacePins(backup.pinnedRouteIDs)
             if let travel = backup.travelPreferences { journeys.setPreferences(travel) }
+            // As on Android, a file without them gives the defaults.
+            personal.setMobility(backup.mobilityPreferences)
             let alerts = backup.commuterAlerts
             Task { await trips.replaceCommuterAlerts(alerts) }
             if backup.routes.isEmpty {

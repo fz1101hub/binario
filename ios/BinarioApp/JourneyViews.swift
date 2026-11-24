@@ -212,6 +212,21 @@ struct JourneyDetailView: View {
                     }
                 }
             }
+            // «Condividi» (Android's `TimetableShareFormatter.solution`), then the estimated CO₂ of the vehicle legs.
+            let share = PersonalTexts.solutionShare(
+                PersonalTexts.journeyRow(row),
+                origin: journeys.query?.origin.name ?? row.legs.first?.originLabel ?? "",
+                destination: journeys.query?.destination.name ?? row.legs.last?.destinationLabel ?? "",
+                dateLabel: PersonalTexts.weekdayDayMonth(row.departure)
+            )
+            Section {
+                ShareLink(item: share.text, subject: Text(verbatim: share.title), preview: SharePreview(share.title)) {
+                    Label("action.share", systemImage: "square.and.arrow.up")
+                }
+            }
+            if let estimate = model.co2Estimate(of: row) {
+                Co2Section(estimate: estimate)
+            }
             if let reliability {
                 Section {
                     ForEach(JourneyTexts.reliabilityLines(reliability, row: row), id: \.self) { line in

@@ -32,6 +32,8 @@ public struct LocalBackup: Equatable, Sendable {
     public let commuterAlerts: [CommuterAlert]
     /// «Preferenze di viaggio» (Android's `travel`); nil when the file has none, so an import keeps this iPhone's.
     public let travelPreferences: JourneyPreferences?
+    /// «Mobilità e accessibilità» (Android's `mobility`); the defaults when the file has none, as on Android.
+    public let mobilityPreferences: MobilityPreferences
 
     public init(
         routes: [SavedRoute],
@@ -43,7 +45,8 @@ public struct LocalBackup: Equatable, Sendable {
         stationMonitors: [BackupStationMonitor] = [],
         pinnedRouteIDs: Set<String> = [],
         commuterAlerts: [CommuterAlert] = [],
-        travelPreferences: JourneyPreferences? = nil
+        travelPreferences: JourneyPreferences? = nil,
+        mobilityPreferences: MobilityPreferences = MobilityPreferences()
     ) {
         self.routes = routes
         self.favouriteStations = favouriteStations
@@ -55,6 +58,7 @@ public struct LocalBackup: Equatable, Sendable {
         self.pinnedRouteIDs = pinnedRouteIDs
         self.commuterAlerts = commuterAlerts
         self.travelPreferences = travelPreferences
+        self.mobilityPreferences = mobilityPreferences
     }
 
     /// Anything besides the routes (Android's `carriesMoreThanRoutes`): a file with none of it and
@@ -62,6 +66,7 @@ public struct LocalBackup: Equatable, Sendable {
     public var carriesMoreThanRoutes: Bool {
         !favouriteStations.isEmpty || !favouriteTrains.isEmpty || !(punctualityHistory ?? []).isEmpty
             || !(savedTimetables ?? []).isEmpty || !stationMonitors.isEmpty || !commuterAlerts.isEmpty
+            || mobilityPreferences != MobilityPreferences()
             || (travelPreferences != nil && travelPreferences != JourneyPreferences())
     }
 }
@@ -77,9 +82,8 @@ public enum LocalBackupFailure: Error, Equatable, Sendable {
 /// Android's local backup file (`LocalDataBackupCodec`, `binario-local-backup`, schema 2), written
 /// and read by the iPhone so a backup moves between the two phones. Kind, version and bounds are
 /// `SharedData.LocalBackup`; the saved timetables and the punctuality history keep Android's JSON.
-/// The commuter alerts (`commuterAlerts`), the travel preferences (`travel`) and the routes' pins and
-/// manual order are Android's keys; the mobility preferences, which the iPhone does not have, are
-/// left out and ignored on import. A favourite train adds the iPhone's own optional keys
+/// The commuter alerts (`commuterAlerts`), the travel and mobility preferences (`travel`, `mobility`) and the
+/// routes' pins and manual order are Android's keys. A favourite train adds the iPhone's own optional keys
 /// (`originId`, `destinationId`, `operator`, `category`, `terminus`) to Android's entry; an entry
 /// without them, written by Android, cannot make an iPhone favourite and is skipped.
 public enum LocalBackupCodec {
@@ -124,6 +128,7 @@ public enum LocalBackupCodec {
                 ]
             },
         ]
+        root["mobility"] = backup.mobilityPreferences.backupJSON
         if let travel = backup.travelPreferences {
             root["travel"] = [
                 "walkingSpeed": travel.walkingSpeed.rawValue,
@@ -265,7 +270,8 @@ public enum LocalBackupCodec {
             stationMonitors: Array(monitors.prefix(12)),
             pinnedRouteIDs: pinned.intersection(routes.map(\.id)),
             commuterAlerts: Array(alerts.prefix(CommuterAlert.maximumAlerts)),
-            travelPreferences: travel
+            travelPreferences: travel,
+            mobilityPreferences: (root["mobility"] as? [String: Any]).map(MobilityPreferences.init(backupJSON:)) ?? MobilityPreferences()
         )
         guard !routes.isEmpty || backup.carriesMoreThanRoutes else { return .failure(.nothing) }
         return .success(backup)

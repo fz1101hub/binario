@@ -14,6 +14,7 @@
 //   contracts/shared-data/v1/journey-live-v1.json
 //   contracts/shared-data/v1/live-route-v1.json
 //   contracts/shared-data/v1/results-paging-v1.json
+//   contracts/shared-data/v1/mobility-preferences-v1.json
 //   contracts/shared-data/v1/live-train-map-v1.json
 //   contracts/shared-data/v1/local-backup-v1.json
 //   contracts/shared-data/v1/notices-sources-v1.json
@@ -612,7 +613,8 @@ public enum SharedData {
     /// ViaggiaTreno route (the origin's board, the runs of up to twelve of its trains, the planned numbers first on a
     /// busy board, each run checked up to the destination) and the RFI route (the departures of the origin and the
     /// arrivals of the destination, the same train on both), then the live runs merged into the timetable list
-    /// (LiveRunMerge): the same run within the retiming window, of a compatible operator family, replaced; a run the
+    /// (LiveRunMerge): the same run within the retiming window, of a compatible operator family (a timetable operator
+    /// named by none of timetableOperators is unknown and matches any family, as Android's OTHER), replaced; a run the
     /// timetable does not list added.
     public enum LiveRoute {
         public static let retimingWindowMinutes: Int = 180
@@ -620,6 +622,14 @@ public enum SharedData {
             "trenitalia": "trenitalia-trenord",
             "trenord": "trenitalia-trenord",
             "italo": "italo"
+        ]
+        public static let timetableOperators: [String: String] = [
+            "trenord": "trenord",
+            "italo": "italo",
+            "ntv": "italo",
+            "frecc": "trenitalia",
+            "intercity": "trenitalia",
+            "trenitalia": "trenitalia"
         ]
         public static let liveSourceTimeoutSeconds: Int = 15
         public static let rfiBoardLookBackMinutes: Int = 120
@@ -645,6 +655,16 @@ public enum SharedData {
         public static let maximumFillLoads: Int = 3
         public static let minimumEarlierSpanMinutes: Int = 15
         public static let earlierJourneyResults: Int = 20
+    }
+
+    /// contracts/shared-data/v1/mobility-preferences-v1.json: «Mobilità e accessibilità» in the settings and the local
+    /// backup: the interchange margin when none is set and the most a stored or imported one may be, and the choices of
+    /// the panel (changes: direct, at most one, at most two; margins in minutes).
+    public enum MobilityPreferences {
+        public static let defaultTransferMarginMinutes: Int = 10
+        public static let maximumTransferMarginMinutes: Int = 45
+        public static let changeChoices: [Int] = [0, 1, 2]
+        public static let transferMarginChoices: [Int] = [5, 10, 15, 20]
     }
 
     /// contracts/shared-data/v1/live-train-map-v1.json: The map of trains in motion: positions estimated from the

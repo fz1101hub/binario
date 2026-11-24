@@ -1,0 +1,346 @@
+{
+  "schema": "binario-shared-rules-v1",
+  "readers": [
+    "app/src/test/java/it/binario/app/journeys/LastOfDayContractTest.kt",
+    "ios/BinarioKit/Tests/BinarioKitTests/LastOfDayContractTests.swift"
+  ],
+  "description": "«Ultimo di oggi» and «Non ci sono più treni oggi: primo domani alle …» on the boards (Android's journeys/LastOfDayMarks.kt, the iPhone's LastOfDay.swift), from the static timetable's day: the last departure of each terminus and the first of the next day. Times are railway-local (Europe/Rome) date and time; a null day is a timetable not read.",
+  "isLast": [
+    {
+      "name": "the last departure towards its terminus",
+      "day": {
+        "lastByTerminus": [
+          {
+            "departure": "2026-11-24T21:40",
+            "publicNumber": "02153",
+            "terminus": "Bergamo"
+          },
+          {
+            "departure": "2026-11-24T22:10",
+            "publicNumber": "RE_11 - 2671",
+            "terminus": "Brescia"
+          }
+        ],
+        "firstNextDay": {
+          "departure": "2026-11-25T05:42",
+          "publicNumber": "2601",
+          "terminus": "Brescia"
+        }
+      },
+      "publicNumber": "REG 2153",
+      "scheduledDeparture": "2026-11-24T21:40",
+      "expected": true
+    },
+    {
+      "name": "the seconds of the row are dropped",
+      "day": {
+        "lastByTerminus": [
+          {
+            "departure": "2026-11-24T21:40",
+            "publicNumber": "02153",
+            "terminus": "Bergamo"
+          },
+          {
+            "departure": "2026-11-24T22:10",
+            "publicNumber": "RE_11 - 2671",
+            "terminus": "Brescia"
+          }
+        ],
+        "firstNextDay": {
+          "departure": "2026-11-25T05:42",
+          "publicNumber": "2601",
+          "terminus": "Brescia"
+        }
+      },
+      "publicNumber": "REG 2153",
+      "scheduledDeparture": "2026-11-24T21:40:30",
+      "expected": true
+    },
+    {
+      "name": "Trenord's «RE_11 - 2671» is train 2671",
+      "day": {
+        "lastByTerminus": [
+          {
+            "departure": "2026-11-24T21:40",
+            "publicNumber": "02153",
+            "terminus": "Bergamo"
+          },
+          {
+            "departure": "2026-11-24T22:10",
+            "publicNumber": "RE_11 - 2671",
+            "terminus": "Brescia"
+          }
+        ],
+        "firstNextDay": {
+          "departure": "2026-11-25T05:42",
+          "publicNumber": "2601",
+          "terminus": "Brescia"
+        }
+      },
+      "publicNumber": "2671",
+      "scheduledDeparture": "2026-11-24T22:10",
+      "expected": true
+    },
+    {
+      "name": "the same number at another minute is no last departure",
+      "day": {
+        "lastByTerminus": [
+          {
+            "departure": "2026-11-24T21:40",
+            "publicNumber": "02153",
+            "terminus": "Bergamo"
+          },
+          {
+            "departure": "2026-11-24T22:10",
+            "publicNumber": "RE_11 - 2671",
+            "terminus": "Brescia"
+          }
+        ],
+        "firstNextDay": {
+          "departure": "2026-11-25T05:42",
+          "publicNumber": "2601",
+          "terminus": "Brescia"
+        }
+      },
+      "publicNumber": "REG 2153",
+      "scheduledDeparture": "2026-11-24T20:40",
+      "expected": false
+    },
+    {
+      "name": "another number at the same minute is no last departure",
+      "day": {
+        "lastByTerminus": [
+          {
+            "departure": "2026-11-24T21:40",
+            "publicNumber": "02153",
+            "terminus": "Bergamo"
+          },
+          {
+            "departure": "2026-11-24T22:10",
+            "publicNumber": "RE_11 - 2671",
+            "terminus": "Brescia"
+          }
+        ],
+        "firstNextDay": {
+          "departure": "2026-11-25T05:42",
+          "publicNumber": "2601",
+          "terminus": "Brescia"
+        }
+      },
+      "publicNumber": "REG 2155",
+      "scheduledDeparture": "2026-11-24T21:40",
+      "expected": false
+    },
+    {
+      "name": "a row without a number is never marked",
+      "day": {
+        "lastByTerminus": [
+          {
+            "departure": "2026-11-24T21:40",
+            "publicNumber": "02153",
+            "terminus": "Bergamo"
+          },
+          {
+            "departure": "2026-11-24T22:10",
+            "publicNumber": "RE_11 - 2671",
+            "terminus": "Brescia"
+          }
+        ],
+        "firstNextDay": {
+          "departure": "2026-11-25T05:42",
+          "publicNumber": "2601",
+          "terminus": "Brescia"
+        }
+      },
+      "publicNumber": null,
+      "scheduledDeparture": "2026-11-24T21:40",
+      "expected": false
+    },
+    {
+      "name": "a row without a scheduled time is never marked",
+      "day": {
+        "lastByTerminus": [
+          {
+            "departure": "2026-11-24T21:40",
+            "publicNumber": "02153",
+            "terminus": "Bergamo"
+          },
+          {
+            "departure": "2026-11-24T22:10",
+            "publicNumber": "RE_11 - 2671",
+            "terminus": "Brescia"
+          }
+        ],
+        "firstNextDay": {
+          "departure": "2026-11-25T05:42",
+          "publicNumber": "2601",
+          "terminus": "Brescia"
+        }
+      },
+      "publicNumber": "REG 2153",
+      "scheduledDeparture": null,
+      "expected": false
+    },
+    {
+      "name": "without the timetable of the day nothing is marked",
+      "day": null,
+      "publicNumber": "REG 2153",
+      "scheduledDeparture": "2026-11-24T21:40",
+      "expected": false
+    },
+    {
+      "name": "a last departure without a number marks nothing",
+      "day": {
+        "lastByTerminus": [
+          {
+            "departure": "2026-11-24T21:40",
+            "publicNumber": null,
+            "terminus": "Bergamo"
+          }
+        ],
+        "firstNextDay": null
+      },
+      "publicNumber": "REG 2153",
+      "scheduledDeparture": "2026-11-24T21:40",
+      "expected": false
+    }
+  ],
+  "firstNextDay": [
+    {
+      "name": "every last departure has left: the first of tomorrow",
+      "day": {
+        "lastByTerminus": [
+          {
+            "departure": "2026-11-24T21:40",
+            "publicNumber": "02153",
+            "terminus": "Bergamo"
+          },
+          {
+            "departure": "2026-11-24T22:10",
+            "publicNumber": "RE_11 - 2671",
+            "terminus": "Brescia"
+          }
+        ],
+        "firstNextDay": {
+          "departure": "2026-11-25T05:42",
+          "publicNumber": "2601",
+          "terminus": "Brescia"
+        }
+      },
+      "now": "2026-11-24T22:15",
+      "expected": "2026-11-25T05:42"
+    },
+    {
+      "name": "a train of the day is still to leave",
+      "day": {
+        "lastByTerminus": [
+          {
+            "departure": "2026-11-24T21:40",
+            "publicNumber": "02153",
+            "terminus": "Bergamo"
+          },
+          {
+            "departure": "2026-11-24T22:10",
+            "publicNumber": "RE_11 - 2671",
+            "terminus": "Brescia"
+          }
+        ],
+        "firstNextDay": {
+          "departure": "2026-11-25T05:42",
+          "publicNumber": "2601",
+          "terminus": "Brescia"
+        }
+      },
+      "now": "2026-11-24T22:00",
+      "expected": null
+    },
+    {
+      "name": "a last departure leaving this minute is still to leave",
+      "day": {
+        "lastByTerminus": [
+          {
+            "departure": "2026-11-24T21:40",
+            "publicNumber": "02153",
+            "terminus": "Bergamo"
+          },
+          {
+            "departure": "2026-11-24T22:10",
+            "publicNumber": "RE_11 - 2671",
+            "terminus": "Brescia"
+          }
+        ],
+        "firstNextDay": {
+          "departure": "2026-11-25T05:42",
+          "publicNumber": "2601",
+          "terminus": "Brescia"
+        }
+      },
+      "now": "2026-11-24T22:10",
+      "expected": null
+    },
+    {
+      "name": "a day without departures gives the first of tomorrow",
+      "day": {
+        "lastByTerminus": [],
+        "firstNextDay": {
+          "departure": "2026-11-25T05:42",
+          "publicNumber": "2601",
+          "terminus": "Brescia"
+        }
+      },
+      "now": "2026-11-24T10:00",
+      "expected": "2026-11-25T05:42"
+    },
+    {
+      "name": "no train tomorrow: nothing to say",
+      "day": {
+        "lastByTerminus": [
+          {
+            "departure": "2026-11-24T21:40",
+            "publicNumber": "2153",
+            "terminus": "Bergamo"
+          }
+        ],
+        "firstNextDay": null
+      },
+      "now": "2026-11-24T23:00",
+      "expected": null
+    },
+    {
+      "name": "without the timetable of the day nothing is said",
+      "day": null,
+      "now": "2026-11-24T23:00",
+      "expected": null
+    }
+  ],
+  "markedDay": [
+    {
+      "name": "a board following the current time marks today",
+      "today": "2026-11-24",
+      "followsCurrentTime": true,
+      "searchDate": "2026-11-25",
+      "expected": "2026-11-24"
+    },
+    {
+      "name": "a search of today marks today",
+      "today": "2026-11-24",
+      "followsCurrentTime": false,
+      "searchDate": "2026-11-24",
+      "expected": "2026-11-24"
+    },
+    {
+      "name": "a search planned for tomorrow marks nothing",
+      "today": "2026-11-24",
+      "followsCurrentTime": false,
+      "searchDate": "2026-11-25",
+      "expected": null
+    },
+    {
+      "name": "a search of yesterday marks nothing",
+      "today": "2026-11-24",
+      "followsCurrentTime": false,
+      "searchDate": "2026-11-23",
+      "expected": null
+    }
+  ]
+}

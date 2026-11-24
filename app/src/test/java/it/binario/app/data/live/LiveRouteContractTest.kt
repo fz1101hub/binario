@@ -73,6 +73,10 @@ class LiveRouteContractTest {
         assertEquals(families.keys().asSequence().associateWith { families.getString(it) }, SharedData.LiveRoute.OPERATOR_FAMILIES)
         assertEquals(table.getInt("rfiMaximumRuns"), SharedData.LiveRoute.RFI_MAXIMUM_RUNS)
         assertEquals(table.getInt("viaggiaTrenoMaximumRuns"), SharedData.LiveRoute.VIAGGIA_TRENO_MAXIMUM_RUNS)
+        // The timetable names Android's legacyOperator reads (EmbeddedGtfsRouteAdapter) are operators of the families.
+        val timetable = table.getJSONObject("timetableOperators")
+        assertEquals(timetable.keys().asSequence().associateWith { timetable.getString(it) }, SharedData.LiveRoute.TIMETABLE_OPERATORS)
+        SharedData.LiveRoute.TIMETABLE_OPERATORS.values.forEach { id -> assertTrue(id, SharedData.LiveRoute.OPERATOR_FAMILIES.containsKey(id)) }
     }
 
     private fun entry(value: JSONObject, id: String, now: java.time.Instant): StationBoardEntry {
@@ -141,7 +145,6 @@ class LiveRouteContractTest {
         "trenitalia" -> RailOperator.TRENITALIA_REGIONALE
         "trenord" -> RailOperator.TRENORD
         "italo" -> RailOperator.ITALO
-        "sbb" -> RailOperator.SBB
         else -> error("unknown operator $id")
     }
 
@@ -162,7 +165,7 @@ class LiveRouteContractTest {
 
     @Test fun `the live runs merged into the timetable`() {
         val cases = rules.getJSONArray("merge").objects()
-        assertEquals(12, cases.size)
+        assertEquals(11, cases.size)
         cases.forEach { case ->
             val name = case.getString("name")
             val planned = case.getJSONArray("planned").objects().map { service(it) }

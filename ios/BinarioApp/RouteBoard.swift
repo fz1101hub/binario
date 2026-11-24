@@ -16,6 +16,8 @@ struct ActiveRouteBoardSection: View {
     @EnvironmentObject private var model: AppModel
     @EnvironmentObject private var personal: PersonalModel
     @State private var result: JourneyResult?
+    /// «Ultimo di oggi» and «primo domani alle …» of the route, from the static timetable.
+    @State private var staticDay: StaticDayDepartures?
     @State private var reversed = false
     @State private var choosing = false
 
@@ -46,6 +48,10 @@ struct ActiveRouteBoardSection: View {
                     ProgressView()
                 case let .available(snapshot)?:
                     let upcoming = Array(snapshot.services.prefix(6))
+                    if let first = LastOfDayMarks.firstNextDay(staticDay, now: Date()) {
+                        Label(JourneyTexts.noMoreToday(first.departure), systemImage: "moon.zzz")
+                            .font(.footnote)
+                    }
                     ForEach(upcoming.indices, id: \.self) { index in
                         NavigationLink {
                             TrainDetailView(service: upcoming[index], query: snapshot.query)
@@ -68,6 +74,9 @@ struct ActiveRouteBoardSection: View {
                                 Text(upcoming[index].operatorName)
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
+                                if LastOfDayMarks.isLast(staticDay, publicNumber: upcoming[index].number, scheduledDeparture: upcoming[index].departureDate) {
+                                    LastOfDayMark()
+                                }
                             }
                             .accessibilityElement(children: .combine)
                         }
@@ -78,11 +87,15 @@ struct ActiveRouteBoardSection: View {
                 case .unavailable?:
                     Text("departures.none.title")
                         .foregroundStyle(.secondary)
+                    if let first = LastOfDayMarks.firstNextDay(staticDay, now: Date()) {
+                        Text(JourneyTexts.noMoreToday(first.departure))
+                            .font(.footnote)
+                    }
                 }
             } header: {
                 Text("departures.route.title")
             }
-            .task(id: "\(route.id)|\(reversed)") { await load(origin: origin, destination: destination) }
+            .task(id: "\(route.id)|\(reversed)|\(AppModel.boardDay(Date()))") { await load(origin: origin, destination: destination) }
             .sheet(isPresented: $choosing) {
                 RoutePickerSheet()
             }
@@ -91,12 +104,14 @@ struct ActiveRouteBoardSection: View {
 
     private func load(origin: StationIdentity, destination: StationIdentity) async {
         result = nil
+        staticDay = nil
         guard model.scheduleState == .available,
               let query = try? JourneyQuery(origin: origin, destination: destination, departure: Date()) else {
             result = .unavailable(.noJourney)
             return
         }
         result = await model.repository.journeys(for: query)
+        staticDay = await model.staticDayDepartures(origin: origin, destination: destination)
     }
 }
 
