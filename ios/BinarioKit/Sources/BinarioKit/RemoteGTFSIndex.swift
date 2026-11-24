@@ -603,7 +603,8 @@ private enum RemoteIndexWriter {
                 "agency": feed.agencies.count, "route": feed.routes.count, "service": feed.services.count,
                 "stop": feed.stops.count, "trip": feed.trips.count, "stop_time": stopTimes,
             ]
-            let countsJSON = String(decoding: try JSONSerialization.data(withJSONObject: counts, options: [.sortedKeys]), as: UTF8.self)
+            let countsData = try JSONSerialization.data(withJSONObject: counts, options: [.sortedKeys])
+            let countsJSON = String(decoding: countsData, as: UTF8.self)
             let metadata: [(String, String)] = [
                 ("schema_version", String(SQLiteGTFSJourneyRepository.userVersion)),
                 ("input_fingerprint_sha256", fingerprint),
