@@ -55,6 +55,8 @@ final class AppModel: ObservableObject {
         let id = UUID()
         let origin: StationIdentity
         let destination: StationIdentity
+        /// Another day's departure («Collegamenti diretti»); nil searches from now.
+        var departure: Date? = nil
     }
 
     /// A listed train with the instant it departs, resolved from its "HH:mm" time, or its live
@@ -986,8 +988,8 @@ final class AppModel: ObservableObject {
     }
 
     /// Fills the planner with a route and searches it from now (a saved route, an airport link).
-    func openPlanner(origin: StationIdentity, destination: StationIdentity) {
-        plannerRequest = PlannerRequest(origin: origin, destination: destination)
+    func openPlanner(origin: StationIdentity, destination: StationIdentity, departure: Date? = nil) {
+        plannerRequest = PlannerRequest(origin: origin, destination: destination, departure: departure)
         selectedTab = .planner
     }
 

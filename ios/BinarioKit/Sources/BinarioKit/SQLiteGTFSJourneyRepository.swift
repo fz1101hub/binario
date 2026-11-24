@@ -2062,3 +2062,290 @@ private extension Sequence where Element: Hashable {
         return filter { seen.insert($0).inserted }
     }
 }
+
+// MARK: - «Collegamenti diretti»
+
+/// A destination reachable from a station without changes on one service day (Android's
+/// `DirectDestination`).
+public struct DirectDestination: Equatable, Identifiable, Sendable {
+    /// A catalogue station id, or a city stop's `gtfs:<pack>:<stop>`.
+    public let stationID: String
+    public let name: String
+    /// Reached by a metro, tram or funicular line.
+    public let urban: Bool
+    /// Runs of the day; a train two packs publish counts once.
+    public let runs: Int
+    /// First and last departure from the station, minutes from the service day's midnight (24:00
+    /// and later after midnight).
+    public let firstDepartureMinute: Int
+    public let lastDepartureMinute: Int
+    /// Shortest scheduled time from the departure to the arrival there.
+    public let fastestMinutes: Int
+    /// The city lines that go there («M2», «9»), at most four; empty for trains.
+    public let lines: [String]
+    /// The city stop most of these runs leave from when it is a short walk from the station.
+    public let boardingStop: String?
+
+    public var id: String { (urban ? "urban:" : "rail:") + stationID }
+}
+
+/// The direct connections of one station on one service day: trains first, then the city lines.
+public struct DirectConnections: Equatable, Sendable {
+    public let date: PlannedLocalDate
+    public let rail: [DirectDestination]
+    public let urban: [DirectDestination]
+
+    public init(date: PlannedLocalDate, rail: [DirectDestination], urban: [DirectDestination]) {
+        self.date = date
+        self.rail = rail
+        self.urban = urban
+    }
+
+    public var isEmpty: Bool { rail.isEmpty && urban.isEmpty }
+}
+
+/// Android's `DirectConnectionsCollector`: every later stop where a run boarding at the station sets
+/// down passengers, with the runs of the day, the first and last departure and the fastest run.
+private struct DirectConnectionsCollector {
+    struct Destination {
+        let id: String
+        let name: String
+        let urban: Bool
+        var runs = 0
+        var first = Int.max
+        var last = Int.min
+        var fastest = Int.max
+        var lines: [String] = []
+        var boardingStops: [String: Int] = [:]
+    }
+
+    static let maximumLines = 4
+    /// Two packs' copies of one train leave within this many minutes of each other.
+    static let copySkewMinutes = 5
+
+    private(set) var destinations: [String: Destination] = [:]
+    private var order: [String] = []
+    private var counted: [String: [Int]] = [:]
+
+    mutating func add(key: String, id: String, name: String, urban: Bool, number: String?, line: String?,
+                      boardMinute: Int, minutes: Int, walkedFrom: String?) {
+        if let number {
+            let countedKey = "\(key)|\(number)"
+            let minutesCounted = counted[countedKey] ?? []
+            if minutesCounted.contains(where: { abs($0 - boardMinute) <= Self.copySkewMinutes }) { return }
+            counted[countedKey] = minutesCounted + [boardMinute]
+        }
+        var destination: Destination
+        if let known = destinations[key] {
+            destination = known
+        } else {
+            order.append(key)
+            destination = Destination(id: id, name: name, urban: urban)
+        }
+        destination.runs += 1
+        destination.first = min(destination.first, boardMinute)
+        destination.last = max(destination.last, boardMinute)
+        destination.fastest = min(destination.fastest, minutes)
+        if let line, destination.lines.count < Self.maximumLines, !destination.lines.contains(line) { destination.lines.append(line) }
+        if let walkedFrom { destination.boardingStops[walkedFrom, default: 0] += 1 }
+        destinations[key] = destination
+    }
+
+    func result(date: PlannedLocalDate) -> DirectConnections {
+        let all = order.compactMap { destinations[$0] }.map { destination in
+            DirectDestination(
+                stationID: destination.id,
+                name: destination.name,
+                urban: destination.urban,
+                runs: destination.runs,
+                firstDepartureMinute: destination.first,
+                lastDepartureMinute: destination.last,
+                fastestMinutes: destination.fastest,
+                lines: destination.lines,
+                boardingStop: destination.boardingStops.max { left, right in
+                    left.value != right.value ? left.value < right.value : left.key > right.key
+                }?.key
+            )
+        }.sorted { left, right in
+            left.runs != right.runs ? left.runs > right.runs : left.name < right.name
+        }
+        return DirectConnections(date: date, rail: all.filter { !$0.urban }, urban: all.filter(\.urban))
+    }
+}
+
+extension SQLiteGTFSJourneyRepository {
+    /// City stops at most 300 metres from the station count as at the station (Android's
+    /// `DIRECT_URBAN_WALK_METERS`), as the minutes of the index's walks (urban-stops-v1.json).
+    static var directWalkMinutes: Int {
+        let metresPerMinute = SharedData.UrbanStops.walkingSpeedKmh * 1_000 / 60
+        return Int((300 / metresPerMinute).rounded(.up)) + SharedData.UrbanStops.walkMarginMinutes
+    }
+
+    /// Rows of every service at the station's stops (the day is checked on the phone).
+    private static let maximumDirectRows = 65_536
+    private static let maximumDirectStops = 512
+
+    /// The destinations reachable from `station` without changes on the service day `date`, from the
+    /// bundled index and the installed foreign timetables (Android's `directConnections`): the trains
+    /// of the railway packs, then the metro, tram and funicular lines leaving from the station or from
+    /// a city stop a short walk away. Scheduled times only; empty when nothing serves the station.
+    public func directConnections(from station: StationIdentity, on date: PlannedLocalDate) async -> DirectConnections {
+        var collector = DirectConnectionsCollector()
+        var files: [(url: URL, excluded: [String])] = [(url: databaseURL, excluded: foreignFiles.map(\.sourceID))]
+        for file in foreignFiles { files.append((url: file.url, excluded: [])) }
+        for file in files {
+            // A file that cannot answer is left out; the others still do.
+            try? Self.collectDirect(databaseURL: file.url, excluded: file.excluded, station: station, date: date, into: &collector)
+        }
+        return collector.result(date: date)
+    }
+
+    private static func collectDirect(
+        databaseURL: URL, excluded: [String], station: StationIdentity, date: PlannedLocalDate,
+        into collector: inout DirectConnectionsCollector
+    ) throws {
+        let database = try SQLiteDatabase(readOnlyURL: databaseURL)
+        database.excludedSourceIDs = excluded
+        _ = try validatedOnce(database, at: databaseURL)
+        var origin: [Int64: Int] = [:]
+        do {
+            for id in try resolve(station, database: database) { origin[id] = 0 }
+        } catch SQLiteGTFSFailure.noRoute {
+            // A station no railway pack serves may still be a walk from a city line.
+        }
+        if !UrbanStops.isStopID(station.id) {
+            for (id, minutes) in try walkedStops(station.id, database: database) where origin[id] == nil && minutes <= directWalkMinutes {
+                origin[id] = minutes
+            }
+        }
+        guard !origin.isEmpty else { return }
+        for timeZone in try agencyTimeZones(database) {
+            let calendar = serviceCalendar(timeZone: timeZone)
+            guard let serviceDay = calendar.date(from: DateComponents(year: date.year, month: date.month, day: date.day)) else { continue }
+            try collectDirectDay(database: database, station: station, origin: origin, timeZone: timeZone.identifier,
+                                 serviceDay: serviceDay, calendar: calendar, into: &collector)
+        }
+    }
+
+    private struct DirectBoarding {
+        let sequence: Int64
+        let minute: Int
+        let walk: Int
+        let stopName: String
+        let urban: Bool
+        let number: String?
+        let line: String?
+        let sourceID: String
+    }
+
+    private static func collectDirectDay(
+        database: SQLiteDatabase, station: StationIdentity, origin: [Int64: Int], timeZone: String,
+        serviceDay: Date, calendar: Calendar, into collector: inout DirectConnectionsCollector
+    ) throws {
+        let stopIDs = origin.keys.sorted()
+        let placeholders = Array(repeating: "?", count: stopIDs.count).joined(separator: ",")
+        let statement = try database.statement(
+            """
+            SELECT t.id, t.external_id, t.short_name, r.short_name, r.long_name, r.route_type, a.name, p.source_id,
+                   svc.start_date, svc.day_count, svc.active_days, board.stop_id, board.stop_sequence,
+                   board.departure_seconds, s.name
+            FROM stop_time AS board
+            JOIN stop AS s ON s.id = board.stop_id
+            JOIN trip AS t ON t.id = board.trip_id
+            JOIN route AS r ON r.id = t.route_id
+            JOIN agency AS a ON a.id = r.agency_id
+            JOIN pack AS p ON p.id = t.pack_id
+            JOIN service AS svc ON svc.id = t.service_id
+            WHERE board.stop_id IN (\(placeholders))
+              AND board.pickup_type = 0
+              AND board.departure_seconds IS NOT NULL
+              AND a.timezone = ?\(database.excludedPacksClause("p.source_id"))
+            ORDER BY t.id, board.stop_sequence
+            LIMIT ?
+            """
+        )
+        var binding: Int32 = 1
+        for id in stopIDs { try statement.bind(id, at: binding); binding += 1 }
+        try statement.bind(timeZone, at: binding); binding += 1
+        try database.bindExcludedPacks(statement, from: &binding)
+        try statement.bind(Int64(maximumDirectRows + 1), at: binding)
+
+        // Each run boards at the station itself when it calls there, else at the nearest stop.
+        var boardings: [Int64: DirectBoarding] = [:]
+        var rows = 0
+        while try statement.step() {
+            rows += 1
+            guard rows <= maximumDirectRows else { throw SQLiteGTFSFailure.limitExceeded }
+            let tripID = statement.int(at: 0)
+            let walk = origin[statement.int(at: 11)] ?? 0
+            if let known = boardings[tripID], known.walk <= walk { continue }
+            guard let activeDays = statement.blob(at: 10),
+                  serviceRuns(serviceDay: serviceDay, startDate: statement.int(at: 8), dayCount: statement.int(at: 9),
+                              activeDays: activeDays, calendar: calendar),
+                  let externalTripID = statement.text(at: 1), !externalTripID.isEmpty,
+                  let agencyName = statement.text(at: 6), let sourceID = statement.text(at: 7), !sourceID.isEmpty
+            else { continue }
+            let seconds = statement.int(at: 13)
+            guard seconds >= 0, seconds <= Int64(maximumGTFSSeconds) else { continue }
+            let operatorName = TimetableNaming.operatorName(agencyName, sourceID: sourceID)
+            // Trains and city lines only: coaches, replacement buses and walks are left out.
+            guard let vehicle = timetableVehicle(routeType: statement.int(at: 5), sourceID: sourceID, operatorName: operatorName, route: statement.text(at: 3)),
+                  vehicle == .train || vehicle.isUrban else { continue }
+            let naming = serviceNaming(vehicle: vehicle, trip: statement.text(at: 2), route: statement.text(at: 3),
+                                       longName: statement.text(at: 4), type: statement.int(at: 5), externalTripID: externalTripID)
+            boardings[tripID] = DirectBoarding(
+                sequence: statement.int(at: 12), minute: Int(seconds / 60), walk: walk,
+                stopName: statement.text(at: 14)?.normalizedWhitespace ?? "", urban: vehicle.isUrban,
+                number: vehicle.isUrban ? nil : NetworkReliability.numberKey(naming.number),
+                line: vehicle.isUrban ? naming.number : nil, sourceID: sourceID
+            )
+        }
+
+        let originStops = Set(stopIDs)
+        for tripID in boardings.keys.sorted() {
+            guard let boarding = boardings[tripID] else { continue }
+            let later = try database.statement(
+                """
+                SELECT st.stop_id, COALESCE(st.arrival_seconds, st.departure_seconds), st.drop_off_type,
+                       s.catalog_station_id, s.external_id, s.name
+                FROM stop_time AS st
+                JOIN stop AS s ON s.id = st.stop_id
+                WHERE st.trip_id = ? AND st.stop_sequence > ?
+                  AND COALESCE(st.arrival_seconds, st.departure_seconds) IS NOT NULL
+                ORDER BY st.stop_sequence
+                LIMIT ?
+                """
+            )
+            try later.bind(tripID, at: 1)
+            try later.bind(boarding.sequence, at: 2)
+            try later.bind(Int64(maximumDirectStops), at: 3)
+            var reached = Set<String>()
+            while try later.step() {
+                guard later.int(at: 2) == 0, !originStops.contains(later.int(at: 0)) else { continue }
+                let catalogID = later.text(at: 3)?.nonEmpty
+                guard catalogID != station.id, let name = later.text(at: 5)?.normalizedWhitespace, !name.isEmpty else { continue }
+                let key: String
+                let id: String
+                if boarding.urban {
+                    // The stops of one name in a city network are one place (its two platforms).
+                    guard let externalID = later.text(at: 4), !externalID.isEmpty else { continue }
+                    key = "urban|\(boarding.sourceID)|\(name.lowercased())"
+                    id = UrbanStops.stationID(sourceID: boarding.sourceID, stopID: externalID)
+                } else {
+                    // A railway stop the catalogue does not know cannot be searched to.
+                    guard let catalogID else { continue }
+                    key = "rail|\(catalogID)"
+                    id = catalogID
+                }
+                guard reached.insert(key).inserted else { continue }
+                let minutes = Int(later.int(at: 1) / 60) - boarding.minute
+                guard minutes >= 0 else { continue }
+                collector.add(
+                    key: key, id: id, name: bounded(name, maximum: 96), urban: boarding.urban, number: boarding.number,
+                    line: boarding.line, boardMinute: boarding.minute, minutes: minutes,
+                    walkedFrom: boarding.walk > 0 ? boarding.stopName : nil
+                )
+            }
+        }
+    }
+}

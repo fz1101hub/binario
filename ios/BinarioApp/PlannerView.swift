@@ -281,8 +281,14 @@ struct PlannerView: View {
         guard let request = model.takePlannerRequest() else { return }
         origin = model.station(for: request.origin)
         destination = model.station(for: request.destination)
-        departure = Date()
-        departureEdited = false
+        if let chosen = request.departure {
+            // «Collegamenti diretti» for another day: that day, at the first departure.
+            departure = chosen
+            departureEdited = true
+        } else {
+            departure = Date()
+            departureEdited = false
+        }
         inputDidChange()
         if canSearch {
             search()
