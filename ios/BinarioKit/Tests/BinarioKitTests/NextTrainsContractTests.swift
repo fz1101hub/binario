@@ -34,7 +34,9 @@ final class NextTrainsContractTests: XCTestCase {
                         category: $0.category,
                         operatorName: $0.operatorName,
                         destination: $0.destination,
-                        vehicle: $0.vehicle?.rawValue ?? ""
+                        // A train stores no vehicle (`TrainService.vehicle` is a bus's or a city line's only):
+                        // the shared cases, like the skill, name it TRAIN.
+                        vehicle: ($0.vehicle ?? TimetableVehicle.train).rawValue
                     )
                 }
                 XCTAssertEqual(trains, item.expected.trains ?? [], item.why)
