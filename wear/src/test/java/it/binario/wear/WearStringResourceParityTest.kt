@@ -87,7 +87,8 @@ class WearStringResourceParityTest {
         val QUALIFIERS = listOf(
             "en", "de", "fr", "es", "ar", "hi", "in", "ja", "ko", "my", "pt", "ru", "th", "tr", "vi", "zh-rCN"
         ).map { "values-$it" }
-        val IDENTICAL_KEYS = setOf("app_name", "complication_label")
+        /** The city modes are the phone's `journey_leg_*`: «Metro» and «Tram» are the same word in several languages. */
+        val IDENTICAL_KEYS = setOf("app_name", "complication_label", "vehicle_metro", "vehicle_tram")
         val FORMAT = Regex("%(?:\\d+\\$)?[-#+ 0,(]*\\d*(?:\\.\\d+)?[a-zA-Z%]")
         val FORBIDDEN = setOf(
             '﻿', '​', '⁠', '­', '‎', '‏', '؜', '‪', '‫', '‬', '‭', '‮',

@@ -13,6 +13,7 @@ import it.binario.app.data.TrainService
 import it.binario.app.data.TrainStop
 import it.binario.app.data.core.BoardKind
 import it.binario.app.data.core.Confidence
+import it.binario.app.data.core.LegMode
 import it.binario.app.data.core.OperatorId
 import it.binario.app.data.core.ServiceKind
 import it.binario.app.data.core.SourceId
@@ -55,6 +56,18 @@ class LastGoodSnapshotCodecTest {
         assertFalse(service.operationalStatusVerified)
         assertEquals(listOf("10:05", "11:15"), service.stops.map { it.expected })
         assertEquals(LocalDateTime.of(2026, 11, 3, 10, 5), service.scheduledDepartureDateTime)
+    }
+
+    @Test fun `a city run keeps its mode and line, a train has none`() {
+        val metro = TrainService("m2", "M2", RailOperator.OTHER, TrainCategory.OTHER, "Milano Centrale FS", "Abbiategrasso",
+            "09:04", "09:04", null, 0, ServiceStatus.ON_TIME, emptyList(), operationalStatusVerified = false, cityMode = LegMode.METRO)
+        val train = metro.copy(id = "r1", number = "2153", trainCategory = TrainCategory.REGIONALE, cityMode = null)
+        val snapshot = RouteSnapshot(route, Direction.OUTBOUND, listOf(metro, train), "Orario", savedAt, savedAt + 30_000,
+            Freshness.FRESH, confidence = DataConfidence.STATIC_ONLY)
+
+        val copy = LastGoodSnapshotCodec.decodeRoute(LastGoodSnapshotCodec.encodeRoute(snapshot), route, Direction.OUTBOUND)!!
+        assertEquals(listOf(LegMode.METRO, null), copy.services.map { it.cityMode })
+        assertEquals("M2", copy.services.first().number)
     }
 
     @Test fun `a board comes back with its scheduled rows only`() {

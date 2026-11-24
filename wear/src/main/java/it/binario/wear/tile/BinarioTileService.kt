@@ -154,7 +154,7 @@ internal fun binarioTileLayout(
         // No service, as in the "not available" snapshot of a failed refresh: sharing works, nothing to list.
         is WearTileContent.Current -> listOf(
             content.snapshot.routeLabel,
-            content.service?.let { strings.string(R.string.tile_service_details, it.expectedDeparture, it.glanceNumber, it.destination) }
+            content.service?.let { strings.string(R.string.tile_service_details, it.expectedDeparture, it.glanceNumber(strings), it.destination) }
                 ?: strings.string(R.string.tile_no_departures),
             strings.string(content.snapshot.dataStatus()),
         )

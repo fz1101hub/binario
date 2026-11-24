@@ -14,6 +14,7 @@ import it.binario.app.data.TrainCategory
 import it.binario.app.data.TrainService
 import it.binario.app.data.TrainStop
 import it.binario.app.data.core.BoardKind
+import it.binario.app.data.core.LegMode
 import it.binario.app.data.core.OperatorId
 import it.binario.app.data.core.ServiceKind
 import it.binario.app.data.core.StationBoardEntry
@@ -93,6 +94,7 @@ internal object LastGoodSnapshotCodec {
                     .put("departureAt", service.scheduledDepartureDateTime?.toString())
                     .put("bus", service.scheduledBus)
                     .put("busLine", service.busLine)
+                    .put("city", service.cityMode?.name)
                     .put("stops", JSONArray().apply {
                         service.stops.forEach { stop -> put(JSONObject().put("station", stop.station).put("time", stop.scheduled)) }
                     }))
@@ -128,7 +130,8 @@ internal object LastGoodSnapshotCodec {
                 operationalStatusVerified = false,
                 scheduledDepartureDateTime = item.textOrNull("departureAt")?.let { runCatching { LocalDateTime.parse(it) }.getOrNull() },
                 scheduledBus = item.optBoolean("bus", false),
-                busLine = item.textOrNull("busLine")
+                busLine = item.textOrNull("busLine"),
+                cityMode = item.textOrNull("city")?.let { name -> CITY_MODES.firstOrNull { it.name == name } }
             )
         }
         if (services.isEmpty()) return null
@@ -177,6 +180,9 @@ internal object LastGoodSnapshotCodec {
 
     private fun objects(array: JSONArray?): List<JSONObject> =
         if (array == null) emptyList() else (0 until array.length()).mapNotNull(array::optJSONObject)
+
+    /** The modes a saved city run may carry ([TrainService.cityMode]). */
+    private val CITY_MODES = listOf(LegMode.METRO, LegMode.TRAM, LegMode.FUNICULAR)
 
     private inline fun <reified E : Enum<E>> enumOr(name: String?, fallback: E): E =
         name?.let { value -> enumValues<E>().firstOrNull { it.name == value } } ?: fallback

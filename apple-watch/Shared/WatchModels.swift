@@ -120,8 +120,9 @@ enum BinarioConfidence: String, UnknownWireEnum {
 }
 
 /// What a service travels on (contract v1 `service{n}Vehicle`, since 23 November 2026): the iPhone's
-/// `TimetableVehicle`. A service without it (an earlier iPhone, an older cache) is a train, and so is
-/// an unknown value: only a known bus gets the bus symbol.
+/// `TimetableVehicle`, a train, a bus or, since 24 November 2026, a line of a city network. A service
+/// without it (an earlier iPhone, an older cache) is a train, and so is an unknown value: only a
+/// known bus or city line gets its symbol.
 enum WatchVehicle: String, UnknownWireEnum {
     case train = "TRAIN"
     case busTrenitalia = "BUS_TRENITALIA"
@@ -129,6 +130,11 @@ enum WatchVehicle: String, UnknownWireEnum {
     case italobus = "ITALOBUS"
     case bus = "BUS"
     case replacementBus = "REPLACEMENT_BUS"
+    /// A metro line, the Marconi Express people mover too.
+    case metro = "METRO"
+    case tram = "TRAM"
+    /// A funicular, a rack railway or a lift of a city network.
+    case funicular = "FUNICULAR"
     case unknown = "UNKNOWN"
 
     static let unknownValue = WatchVehicle.unknown
@@ -138,9 +144,67 @@ enum WatchVehicle: String, UnknownWireEnum {
     var isBus: Bool {
         switch self {
         case .busTrenitalia, .freccialink, .italobus, .bus, .replacementBus: return true
-        case .train, .unknown: return false
+        case .train, .metro, .tram, .funicular, .unknown: return false
         }
     }
+
+    /// A metro, tram or funicular line of a city network: its mode and line, never a train.
+    var isUrban: Bool { self == .metro || self == .tram || self == .funicular }
+
+    /// The SF Symbol the iPhone draws for the vehicle (VehicleTexts.symbol): a bus, or the mode of a
+    /// city line; nil for a train and an unknown vehicle.
+    var symbol: String? {
+        switch self {
+        case .busTrenitalia, .freccialink, .italobus, .bus, .replacementBus: return Self.busSymbol
+        case .metro: return "tram.fill.tunnel"
+        case .tram: return "tram"
+        case .funicular: return "cablecar"
+        case .train, .unknown: return nil
+        }
+    }
+
+    /// The name of a city line's mode in the Watch's language: Android's `journey_leg_metro`,
+    /// `journey_leg_tram` and `journey_leg_funicular` (the iPhone's `result.vehicle.*`), in the same
+    /// 17 languages. Nil for a train, a bus or an unknown vehicle.
+    var modeLabel: String? {
+        switch self {
+        case .metro: return WatchLocalization.text("watch.vehicle.metro")
+        case .tram: return WatchLocalization.text("watch.vehicle.tram")
+        case .funicular: return WatchLocalization.text("watch.vehicle.funicular")
+        case .train, .busTrenitalia, .freccialink, .italobus, .bus, .replacementBus, .unknown: return nil
+        }
+    }
+
+    /// A city line named as the phones name it (the iPhone's `TimetableVehicle.urbanLabel`, Android's
+    /// `journeyLegLabel`): the mode and the line, «Metro M1», «Tram 14»; a city run has no public
+    /// number, and the iPhone sends the line in its place. The cases are the phones' (`urbanLabels` in
+    /// contracts/shared-rules/v1/journey-leg-vehicles-v1.json).
+    static func urbanLabel(_ label: String, line: String?) -> String {
+        guard let shown = shownUrbanLine(line, label: label) else { return label }
+        return "\(label) \(shown)"
+    }
+
+    /// The line shown after the mode: nil when there is none, or when it is a long name, a
+    /// placeholder or only repeats the mode («METRO», «Tramvia»).
+    static func shownUrbanLine(_ line: String?, label: String) -> String? {
+        guard let line = line?.trimmingCharacters(in: .whitespaces), !line.isEmpty, line.count <= 10,
+              !line.contains("("), line.caseInsensitiveCompare("INCONNU") != .orderedSame,
+              !urbanLineRepeatsMode(line, label: label)
+        else { return nil }
+        return line
+    }
+
+    /// The line, without spaces and in lower case, is the label itself or a word that names a city
+    /// mode in any language of the list.
+    static func urbanLineRepeatsMode(_ line: String, label: String) -> Bool {
+        let compact = line.replacingOccurrences(of: " ", with: "").lowercased()
+        return compact == label.replacingOccurrences(of: " ", with: "").lowercased() || urbanModeWords.contains(compact)
+    }
+
+    private static let urbanModeWords: Set<String> = [
+        "metro", "metropolitana", "métro", "u-bahn", "subway", "tram", "tramvia", "tranvia", "tranvía", "tramway",
+        "straßenbahn", "funicolare", "funicular", "funiculaire", "standseilbahn",
+    ]
 }
 
 /// «In orario 22 volte su 27»: how often the train was on time in the unofficial network statistics
@@ -190,12 +254,39 @@ struct WatchService: Codable, Equatable, Identifiable {
     /// the category («Bus Trenitalia BUS»), and never called a train.
     var isBus: Bool { vehicle?.isBus == true }
 
-    /// The service as the iPhone rows name it (`ReliableAlternatives.trainLabel`, `VehicleTexts.rowLabel`):
-    /// a bus by its label and number, a train by category and number («FR 9505»), or by its number
-    /// alone when that already names the line («RE_11 - 2153»).
-    var label: String {
+    /// A metro, tram or funicular line of a city network: the symbol of its mode before its mode and
+    /// line («Metro M1»: the iPhone sends the line as the number), and never called a train.
+    var isUrban: Bool { vehicle?.isUrban == true }
+
+    /// The symbol before a bus or a city line, as the iPhone draws them; nil for a train.
+    var vehicleSymbol: String? { vehicle?.symbol }
+
+    /// What a bus or a city line is named by: a bus's label, which the iPhone sends as the category
+    /// («ItaloBus»), or the mode of a city line in the Watch's language («Metro»); nil for a train.
+    var vehicleTitle: String? {
+        if let mode = vehicle?.modeLabel { return mode }
+        return isBus ? category : nil
+    }
+
+    /// What follows `vehicleTitle`: a bus's number, a city line's line («M1»); empty for a city line
+    /// whose line is left out (`WatchVehicle.shownUrbanLine`) and for a train.
+    var vehicleLine: String {
         let trimmed = number.trimmingCharacters(in: .whitespaces)
-        if !isBus, category.isEmpty || trimmed.contains(where: { $0.isLetter }) { return trimmed }
+        if let mode = vehicle?.modeLabel { return WatchVehicle.shownUrbanLine(trimmed, label: mode) ?? "" }
+        return isBus ? trimmed : ""
+    }
+
+    /// The service as the iPhone rows name it (`ReliableAlternatives.trainLabel`, `VehicleTexts.rowLabel`):
+    /// a bus by its label and number, a city line by its mode and line («Metro M1»), a train by
+    /// category and number («FR 9505»), or by its number alone when that already names the line
+    /// («RE_11 - 2153»).
+    var label: String {
+        if let title = vehicleTitle {
+            let line = vehicleLine
+            return line.isEmpty ? title : "\(title) \(line)"
+        }
+        let trimmed = number.trimmingCharacters(in: .whitespaces)
+        if category.isEmpty || trimmed.contains(where: { $0.isLetter }) { return trimmed }
         return "\(category) \(trimmed)"
     }
 
@@ -209,20 +300,22 @@ struct WatchService: Codable, Equatable, Identifiable {
 
     var accessibilitySummary: String {
         let platformLabel = platform ?? WatchLocalization.text("watch.detail.noValue")
+        // A bus or a city line is said with its label («ItaloBus 1060», «Metro M1»), never as a train.
+        let vehicleLabel = vehicleTitle == nil ? nil : label
         if delayMinutes > 0 {
             let delay = WatchLocalization.text("watch.detail.delay \(delayMinutes)")
-            if isBus {
+            if let vehicleLabel {
                 return WatchLocalization.text(
-                    "watch.accessibility.vehicle.withDelay \(operatorName) \(category) \(number) \(destination) \(expectedDeparture) \(delay) \(platformLabel)"
+                    "watch.accessibility.vehicle.withDelay \(operatorName) \(vehicleLabel) \(destination) \(expectedDeparture) \(delay) \(platformLabel)"
                 )
             }
             return WatchLocalization.text(
                 "watch.accessibility.service.withDelay \(operatorName) \(category) \(number) \(destination) \(expectedDeparture) \(delay) \(platformLabel)"
             )
         }
-        if isBus {
+        if let vehicleLabel {
             return WatchLocalization.text(
-                "watch.accessibility.vehicle.withoutDelay \(operatorName) \(category) \(number) \(destination) \(expectedDeparture) \(platformLabel)"
+                "watch.accessibility.vehicle.withoutDelay \(operatorName) \(vehicleLabel) \(destination) \(expectedDeparture) \(platformLabel)"
             )
         }
         return WatchLocalization.text(

@@ -3,6 +3,7 @@ package it.binario.app.data
 import android.content.Context
 import androidx.core.content.edit
 import it.binario.app.data.core.DelayConsistency
+import it.binario.app.data.core.LegMode
 import it.binario.app.data.core.OperationalDetection
 import it.binario.app.data.core.OperationalRouteChange
 import java.time.Clock
@@ -212,7 +213,14 @@ data class TrainService(
      * The published line of a [scheduledBus] ("FL" for a FrecciaLink, "BUS"), which names its vehicle
      * (`JourneyLegVehicle.of`) for the watch; null for every train.
      */
-    val busLine: String? = null
+    val busLine: String? = null,
+    /**
+     * The mode of a metro, tram or funicular run of a city pack ([LegMode.METRO], [LegMode.TRAM], [LegMode.FUNICULAR]):
+     * its [number] is then its line ("M1", "14"), a city run having no public number, and the watch names it by its mode
+     * (`JourneyLegVehicle.of`), as the iPhone does. Null for every train and bus. Set by the timetable adapter for a city
+     * route; the Trains tab reads the railway packs only, so none of its routes carries one today.
+     */
+    val cityMode: LegMode? = null
 ) {
     val displayOperator: String get() = operatorDisplayName?.takeIf(String::isNotBlank) ?: operator.shortLabel
     val accessibleOperator: String get() = operatorDisplayName?.takeIf(String::isNotBlank) ?: operator.accessibleLabel

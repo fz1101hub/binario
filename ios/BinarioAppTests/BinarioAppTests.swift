@@ -1326,6 +1326,47 @@ final class BinarioAppTests: XCTestCase {
         XCTAssertNil(object["service0ReliabilityOnTime"])
     }
 
+    func testACityLineReachesTheWatchWithItsModeAndLineAndItsVehicle() async throws {
+        let defaults = try makeDefaults()
+        defer { clear(defaults) }
+        WatchSharingPreferenceStore(defaults: defaults).save(true)
+        let session = FakeAppSession()
+        session.watchCapabilities = [WatchCapabilities.vehicle, WatchCapabilities.reliability]
+        let query = try JourneyQuery(origin: roma, destination: napoli, departure: Date())
+        let fixture = fixtureSnapshot(query: query, serviceNumber: "M2")
+        let train = fixture.services[0]
+        // A city run of the timetable: its line is both its number and its category (SQLiteGTFSJourneyRepository).
+        let metro = TrainService(
+            id: "metro", number: "M2", operatorName: "ATM", category: "M2", destination: "Abbiategrasso",
+            scheduledDeparture: train.scheduledDeparture, expectedDeparture: train.expectedDeparture, status: "PROGRAMMED",
+            platform: nil, delayMinutes: 0, hasTrainNumber: false, vehicle: .metro
+        )
+        let journey = JourneySnapshot(
+            query: query, generatedAt: fixture.generatedAt, expiresAt: fixture.expiresAt,
+            operationalState: fixture.operationalState, provenance: fixture.provenance, services: [metro]
+        )
+        let model = makeModel(defaults: defaults, publisher: WatchSnapshotPublisher(session: session), repository: StubJourneyRepository(result: .available(journey)))
+        session.completeActivation(.activated)
+
+        await model.run(query: query)
+
+        // As Android sends it (contracts/wear-snapshot/v1/ios-to-apple-watch-v1-city.json): the mode as the category,
+        // the line as the number, the vehicle METRO for a Watch app that declares the vehicle.
+        let mode = NSLocalizedString("result.vehicle.metro", comment: "")
+        var object = try publishedObject(session)
+        XCTAssertEqual(object["service0Vehicle"] as? String, "METRO")
+        XCTAssertEqual(object["service0Category"] as? String, mode)
+        XCTAssertEqual(object["service0Number"] as? String, "M2")
+        // A city line has no train statistics, whatever the Watch decodes.
+        XCTAssertNil(object["service0ReliabilityOnTime"])
+        // An earlier Watch app gets no vehicle, and the mode as the category all the same: never «treno».
+        session.watchCapabilities = []
+        await model.refreshWatchSnapshot()
+        object = try publishedObject(session)
+        XCTAssertNil(object["service0Vehicle"])
+        XCTAssertEqual(object["service0Category"] as? String, mode)
+    }
+
     func testTrainDetailShowsItsOwnRunAtTheBoardingStationAndNeverAnotherDays() async throws {
         let defaults = try makeDefaults()
         defer { clear(defaults) }

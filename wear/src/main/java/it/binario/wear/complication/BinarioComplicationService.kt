@@ -169,7 +169,7 @@ internal fun longTextComplicationTexts(snapshot: WearSnapshot, strings: WearStri
     val title = snapshot.routeLabel.take(48)
     val (service, departure) = upcomingService(snapshot, nowEpochMillis)
         ?: return WearComplicationTexts(strings.string(snapshot.dataStatus()), title, strings.string(snapshot.dataStatus()))
-    val label = strings.string(R.string.service_time_number, service.expectedDeparture, service.glanceNumber)
+    val label = strings.string(R.string.service_time_number, service.expectedDeparture, service.glanceNumber(strings))
     // Same " · " separator as service_time_number in every language.
     return if (departure == null) WearComplicationTexts(label, title, service.accessibleLabel(strings))
     else WearComplicationTexts("$label · $COUNTDOWN", title, service.accessibleLabel(strings), departure)
