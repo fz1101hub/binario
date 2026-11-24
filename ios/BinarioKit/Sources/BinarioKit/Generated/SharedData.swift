@@ -12,6 +12,7 @@
 //   contracts/shared-data/v1/italo-stations-v1.json
 //   contracts/shared-data/v1/journey-planner-v1.json
 //   contracts/shared-data/v1/journey-live-v1.json
+//   contracts/shared-data/v1/live-route-v1.json
 //   contracts/shared-data/v1/results-paging-v1.json
 //   contracts/shared-data/v1/live-train-map-v1.json
 //   contracts/shared-data/v1/local-backup-v1.json
@@ -605,6 +606,33 @@ public enum SharedData {
         public static let trainTimeoutSeconds: Int = 25
         public static let maximumAgeMinutes: Int = 5
         public static let minimumIntervalSeconds: Int = 60
+    }
+
+    /// contracts/shared-data/v1/live-route-v1.json: The live route of the direct trains of a search of today: the
+    /// ViaggiaTreno route (the origin's board, the runs of up to twelve of its trains, the planned numbers first on a
+    /// busy board, each run checked up to the destination) and the RFI route (the departures of the origin and the
+    /// arrivals of the destination, the same train on both), then the live runs merged into the timetable list
+    /// (LiveRunMerge): the same run within the retiming window, of a compatible operator family, replaced; a run the
+    /// timetable does not list added.
+    public enum LiveRoute {
+        public static let retimingWindowMinutes: Int = 180
+        public static let operatorFamilies: [String: String] = [
+            "trenitalia": "trenitalia-trenord",
+            "trenord": "trenitalia-trenord",
+            "italo": "italo"
+        ]
+        public static let liveSourceTimeoutSeconds: Int = 15
+        public static let rfiBoardLookBackMinutes: Int = 120
+        public static let rfiBoardLookAheadMinutes: Int = 480
+        public static let rfiMaximumJourneyHours: Int = 24
+        public static let rfiMaximumRuns: Int = 12
+        public static let freshObservationSeconds: Int = 300
+        public static let futureObservationSeconds: Int = 60
+        public static let viaggiaTrenoLookBackMinutes: Int = 120
+        public static let viaggiaTrenoLookBackWithinSeconds: Int = 600
+        public static let viaggiaTrenoHorizonMinutes: Int = 480
+        public static let viaggiaTrenoMaximumRuns: Int = 12
+        public static let viaggiaTrenoHintTimeoutSeconds: Int = 4
     }
 
     /// contracts/shared-data/v1/results-paging-v1.json: «Più presto» and «Più tardi» of the results: how far back «Più

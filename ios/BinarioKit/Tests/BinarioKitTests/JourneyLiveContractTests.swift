@@ -220,17 +220,19 @@ final class JourneyLiveContractTests: XCTestCase {
         XCTAssertEqual(ResultsPaging.earlierJourneyResults, table["earlierJourneyResults"] as? Int)
     }
 
-    /// Minutes from the start of the day searched, as dates.
-    private func minutes(_ value: Int) throws -> Date {
-        let start = try XCTUnwrap(rome.date(from: DateComponents(year: 2026, month: 11, day: 24)))
-        return start.addingTimeInterval(TimeInterval(value * 60))
+    /// Minutes of the Italian clock from the start of `day` ("2026-11-24" unless a case says its day), as dates.
+    private func minutes(_ value: Int, day: String = "2026-11-24") throws -> Date {
+        let parts = day.split(separator: "-").compactMap { Int($0) }
+        let start = try XCTUnwrap(rome.date(from: DateComponents(year: parts[0], month: parts[1], day: parts[2])))
+        let shifted = try XCTUnwrap(rome.date(byAdding: .day, value: value / 1_440, to: start))
+        return try XCTUnwrap(rome.date(bySettingHour: value % 1_440 / 60, minute: value % 60, second: 0, of: shifted))
     }
 
-    private func source(_ value: [String: Any]) throws -> (Date) async -> [Date]? {
-        let departures = try XCTUnwrap(value["departures"] as? [Int]).sorted().map { try minutes($0) }
+    private func source(_ value: [String: Any], day: String = "2026-11-24") throws -> (Date) async -> [Date]? {
+        let departures = try XCTUnwrap(value["departures"] as? [Int]).sorted().map { try minutes($0, day: day) }
         let pageSize = try XCTUnwrap(value["pageSize"] as? Int)
         let fails = value["fails"] as? Bool ?? false
-        let failsBefore = try (value["failsBefore"] as? Int).map { try minutes($0) }
+        let failsBefore = try (value["failsBefore"] as? Int).map { try minutes($0, day: day) }
         return { from in
             if fails { return nil }
             if let failsBefore, from < failsBefore { return nil }
@@ -239,7 +241,8 @@ final class JourneyLiveContractTests: XCTestCase {
     }
 
     private func expected(_ item: [String: Any]) throws -> [Date]? {
-        try (item["expected"] as? [Int]).map { try $0.map { try minutes($0) } }
+        let day = item["day"] as? String ?? "2026-11-24"
+        return try (item["expected"] as? [Int]).map { try $0.map { try minutes($0, day: day) } }
     }
 
     func testLater() async throws {
@@ -256,11 +259,12 @@ final class JourneyLiveContractTests: XCTestCase {
 
     func testEarlier() async throws {
         let cases = try XCTUnwrap(try sharedRules("results-paging-v1.json")["earlier"] as? [[String: Any]])
-        XCTAssertEqual(cases.count, 7)
+        XCTAssertEqual(cases.count, 8)
         for item in cases {
-            let load = try source(try XCTUnwrap(item["source"] as? [String: Any]))
-            let first = try minutes(try XCTUnwrap(item["first"] as? Int))
-            let notBefore = try minutes(try XCTUnwrap(item["notBefore"] as? Int))
+            let day = item["day"] as? String ?? "2026-11-24"
+            let load = try source(try XCTUnwrap(item["source"] as? [String: Any]), day: day)
+            let first = try minutes(try XCTUnwrap(item["first"] as? Int), day: day)
+            let notBefore = try minutes(try XCTUnwrap(item["notBefore"] as? Int), day: day)
             let count = try XCTUnwrap(item["wanted"] as? Int)
             let wanted = try expected(item)
             let found = await ResultsPaging.earlier(first, departureOf: { $0 }, notBefore: notBefore, wanted: count, load: load)

@@ -2062,10 +2062,15 @@ class IOSProjectTests(unittest.TestCase):
         # A live row and a bundled train: Android's LiveRunMerge window, the same number and family.
         reconciler = (ROOT / "app/src/main/java/it/binario/app/data/repository/StationBoardRealtimeReconciler.kt").read_text(encoding="utf-8")
         overlay = (IOS / "BinarioKit/Sources/BinarioKit/LiveRailData.swift").read_text(encoding="utf-8")
-        self.assertIn("private val RETIMING_WINDOW: Duration = Duration.ofHours(3)", reconciler)
-        self.assertIn("RailOperator.TRENORD -> \"trenitalia-trenord\"", reconciler)
+        # The window and the families are the shared table live-route-v1.json (LiveRunMerge, LiveOverlay).
+        live_route = json.loads((SHARED_DATA / "live-route-v1.json").read_text(encoding="utf-8"))
+        self.assertEqual(180, live_route["retimingWindowMinutes"])
+        self.assertEqual({"trenitalia": "trenitalia-trenord", "trenord": "trenitalia-trenord", "italo": "italo"},
+                         live_route["operatorFamilies"])
+        self.assertIn("private val RETIMING_WINDOW: Duration = Duration.ofMinutes(SharedData.LiveRoute.RETIMING_WINDOW_MINUTES.toLong())", reconciler)
+        self.assertIn("SharedData.LiveRoute.OPERATOR_FAMILIES[id] ?: id", reconciler)
         for fragment in (
-            "public static let timetableTolerance: TimeInterval = 3 * 60 * 60",
+            "public static let timetableTolerance = TimeInterval(SharedData.LiveRoute.retimingWindowMinutes * 60)",
             "abs($0.scheduled.timeIntervalSince(scheduled)) <= timetableTolerance",
             "&& sameFamily(family, operatorFamily($0.operatorID))",
             'if folded.contains("trenitalia") || folded.contains("trenord") { return "trenitalia-trenord" }',
