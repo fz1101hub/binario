@@ -34,12 +34,13 @@ import java.time.LocalDateTime
 import java.time.LocalTime
 import java.time.Month
 import java.util.Locale
+import it.binario.app.shared.SharedData
 
 fun interface RfiProgrammedTimetableFetcher {
     suspend fun fetch(url: String): String
 }
 
-internal const val RFI_PROGRAMMED_TIMETABLE_MAX_BYTES = 2 * 1024 * 1024
+internal const val RFI_PROGRAMMED_TIMETABLE_MAX_BYTES = SharedData.RfiProgrammed.MAXIMUM_BYTES
 
 internal fun readBoundedRfiHtml(
     input: InputStream,
@@ -77,7 +78,7 @@ internal interface ConditionalRfiTimetableFetcher : RfiProgrammedTimetableFetche
 }
 
 internal class HttpRfiProgrammedTimetableFetcher(
-    private val timeoutMillis: Long = 10_000,
+    private val timeoutMillis: Long = SharedData.RfiProgrammed.TOTAL_TIMEOUT_SECONDS * 1_000L,
     private val openConnection: (URL) -> HttpURLConnection = { it.openConnection() as HttpURLConnection }
 ) : ConditionalRfiTimetableFetcher {
     override suspend fun fetch(url: String): String = (fetchConditional(url, null) as RfiPage.Body).html
@@ -85,10 +86,10 @@ internal class HttpRfiProgrammedTimetableFetcher(
     override suspend fun fetchConditional(url: String, previous: RfiPageValidators?): RfiPage = kotlinx.coroutines.withTimeoutOrNull(timeoutMillis) {
         val connection = openConnection(URL(url))
         connection.requestMethod = "GET"
-        connection.connectTimeout = 12_000
-        connection.readTimeout = 25_000
+        connection.connectTimeout = SharedData.RfiProgrammed.CONNECT_TIMEOUT_SECONDS * 1_000
+        connection.readTimeout = SharedData.RfiProgrammed.READ_TIMEOUT_SECONDS * 1_000
         connection.instanceFollowRedirects = false
-        connection.setRequestProperty("Accept", "text/html,application/xhtml+xml")
+        connection.setRequestProperty("Accept", SharedData.RfiProgrammed.ACCEPT)
         connection.setRequestProperty("User-Agent", it.binario.app.data.live.BINARIO_PUBLIC_SOURCE_USER_AGENT)
         previous?.etag?.let { connection.setRequestProperty("If-None-Match", it) }
         previous?.lastModified?.let { connection.setRequestProperty("If-Modified-Since", it) }
@@ -114,8 +115,8 @@ internal class HttpRfiProgrammedTimetableFetcher(
 class RfiTimetablePageCache internal constructor(
     private val fetcher: RfiProgrammedTimetableFetcher,
     clock: Clock,
-    ttlMillis: Long = 30L * 60L * 1000L,
-    private val maxEntries: Int = 3
+    ttlMillis: Long = SharedData.RfiProgrammed.PAGE_TIME_TO_LIVE_SECONDS * 1_000L,
+    private val maxEntries: Int = SharedData.RfiProgrammed.MAXIMUM_PAGES
 ) {
     private val pages = BoundedSingleFlightCache<String>(maxEntries, ttlMillis, clock::millis)
     private val revalidation = object : java.util.LinkedHashMap<String, Pair<RfiPageValidators, String>>(maxEntries, 0.75f, true) {
@@ -143,6 +144,11 @@ class RfiTimetablePageCache internal constructor(
 internal object RfiTimetablePages {
     /** The process-wide page cache of the app's RFI adapters (the default HTTPS fetcher); tests build their own. */
     val shared: RfiTimetablePageCache by lazy { RfiTimetablePageCache(HttpRfiProgrammedTimetableFetcher(), Clock.systemUTC()) }
+
+    /** The page of a station's whole-day departures or arrivals: the shared table's address (rfi-programmed-v1.json). */
+    fun url(timetableId: Int, arrivals: Boolean = false): String = SharedData.RfiProgrammed.URL_TEMPLATE
+        .replace("<board>", if (arrivals) SharedData.RfiProgrammed.ARRIVALS_BOARD else SharedData.RfiProgrammed.DEPARTURES_BOARD)
+        .replace("<id>", timetableId.toString())
 }
 
 internal object RfiProgrammedStationIds {
@@ -163,47 +169,16 @@ internal object RfiProgrammedStationIds {
         "salerno" to 2434
     )
 
-    private val byName = mapOf(
-        key("Roma Termini") to 2247,
-        key("Roma Tiburtina") to 2217,
-        key("Roma Ostiense") to 2211,
-        key("Milano Centrale") to 1603,
-        key("Napoli Centrale") to 1757,
-        key("Bologna Centrale") to 635,
-        key("Firenze S.M.N.") to 1325,
-        key("Firenze Santa Maria Novella") to 1325,
-        key("Torino Porta Nuova") to 2672,
-        key("Torino Porta Susa") to 25350269,
-        key("Venezia Santa Lucia") to 2796,
-        key("Venezia S. Lucia") to 2796,
-        key("Verona Porta Nuova") to 2812,
-        key("Genova Piazza Principe") to 248,
-        key("Genova P. Principe") to 248,
-        key("Bari Centrale") to 550,
-        key("Salerno") to 2434
-    )
+    /** The verified hubs of the shared table (rfi-programmed-v1.json), by every name RFI and the catalogue give them. */
+    private val byName: Map<String, Int> = SharedData.RfiProgrammed.HUBS
+        .flatMap { hub -> hub.names.map { key(it) to hub.timetableId } }.toMap()
 
     /**
      * Curated railway codes are the stable key: catalogue names differ from RFI labels
      * ("Firenze S. M. Novella", "Bari ( Tutte Le Stazioni )") and the board path used to
      * receive only the display name (Opus audit N-M4).
      */
-    private val byRailwayCode = mapOf(
-        "S08409" to 2247, // Roma Termini
-        "S08217" to 2217, // Roma Tiburtina
-        "S08406" to 2211, // Roma Ostiense
-        "S01700" to 1603, // Milano Centrale
-        "S09218" to 1757, // Napoli Centrale
-        "S05043" to 635, // Bologna Centrale
-        "S06421" to 1325, // Firenze S. M. Novella
-        "S00219" to 2672, // Torino Porta Nuova
-        "S00035" to 25350269, // Torino Porta Susa
-        "S02593" to 2796, // Venezia S. Lucia
-        "S02430" to 2812, // Verona Porta Nuova
-        "S04700" to 248, // Genova Piazza Principe
-        "S11119" to 550, // Bari Centrale
-        "S09818" to 2434 // Salerno
-    )
+    private val byRailwayCode: Map<String, Int> = SharedData.RfiProgrammed.HUBS.associate { it.railwayCode to it.timetableId }
 
     /** Railway codes of the hubs with a verified RFI timetable: the large stations of the network. */
     val hubRailwayCodes: Set<String> get() = byRailwayCode.keys
@@ -225,8 +200,8 @@ internal object RfiProgrammedStationIds {
 class RfiProgrammedTimetableAdapter(
     private val fetcher: RfiProgrammedTimetableFetcher = HttpRfiProgrammedTimetableFetcher(),
     private val clock: Clock = Clock.system(RailTime.defaultZone),
-    private val cacheTtlMillis: Long = 6L * 60L * 60L * 1000L,
-    private val cacheMaxEntries: Int = 16,
+    private val cacheTtlMillis: Long = SharedData.RfiProgrammed.TIMETABLE_TIME_TO_LIVE_SECONDS * 1_000L,
+    private val cacheMaxEntries: Int = SharedData.RfiProgrammed.MAXIMUM_TIMETABLES,
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
     private val parsingDispatcher: CoroutineDispatcher = Dispatchers.Default,
     private val onParsing: (() -> Unit)? = null,
@@ -259,7 +234,7 @@ class RfiProgrammedTimetableAdapter(
         val key = "${route.id}:${direction.name}:$stationId:$board:${origin.id}:${destination.id}"
         val cached = try {
             cache.getOrLoad(key) {
-                val url = "https://prm.rfi.it/qo_prm/QO_${board}_SiPMR.aspx?Id=$stationId&lin=it&dalle=00.00&alle=23.59&ora=00.00"
+                val url = RfiTimetablePages.url(stationId, arrivals)
                 val html = try {
                     pages.page(url, ioDispatcher)
                 } catch (error: CancellationException) {
@@ -343,7 +318,7 @@ class RfiProgrammedTimetableAdapter(
                     )
                 }
                 .sortedBy { it.scheduledDepartureDateTime }
-                .take(24)
+                .take(SharedData.RfiProgrammed.MAXIMUM_ROUTE_SERVICES)
                 .toList()
         }
 

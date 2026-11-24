@@ -445,6 +445,12 @@ private struct AvailableResultView: View {
             Text("\(String(localized: "result.source_label")) \(snapshot.provenance.sourceLabel)")
                 .font(.footnote)
                 .foregroundStyle(.secondary)
+            // Android's advisory of a coverage fallback (route_coverage_fallback): a community timetable, not an official one.
+            if snapshot.usesCoverageTimetable {
+                Label("result.coverage_fallback", systemImage: "exclamationmark.triangle")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            }
             // The timetable's trains without a live value keep the disclosure, as in «Partenze».
             if snapshot.services.contains(where: { model.resultLive[$0.id] == nil }) {
                 Label("result.programmed.disclosure", systemImage: "clock")

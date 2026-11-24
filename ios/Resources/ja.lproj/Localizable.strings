@@ -693,3 +693,4 @@
 "notices.train.trenord_heading" = "路線の Trenord のお知らせ";
 "notices.train.published_at" = "公開：%1$@";
 "notices.retry" = "再試行";
+"result.coverage_fallback" = "非公式の情報源による時刻です。ご乗車前に事業者で確認してください。";

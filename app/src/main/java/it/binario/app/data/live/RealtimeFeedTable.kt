@@ -13,6 +13,8 @@ internal object RealtimeFeedTable {
     val STA: SharedData.RealtimeFeeds.TripUpdatesFeed = tripUpdates("alto-adige-sta-realtime")
     val SNCF: SharedData.RealtimeFeeds.TripUpdatesFeed = tripUpdates("sncf-gtfs-rt")
     val TRENITALIA_FRANCE: SharedData.RealtimeFeeds.TripUpdatesFeed = tripUpdates("trenitalia-france-gtfs-rt")
+    /** The community Trip Updates joined to the European Sleeper archive downloaded at runtime (remote-gtfs-v1.json). */
+    val EUROPEAN_SLEEPER: SharedData.RealtimeFeeds.TripUpdatesFeed = tripUpdates("european-sleeper-gtfs-rt")
     val SWISS: SharedData.RealtimeFeeds.SwissBoard = SharedData.RealtimeFeeds.SWISS_BOARD
 
     /** How long a Trip Updates observation stays usable, from the feed's own observation time. */

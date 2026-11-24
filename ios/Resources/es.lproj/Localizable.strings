@@ -693,3 +693,4 @@
 "notices.train.trenord_heading" = "Avisos de Trenord en la línea";
 "notices.train.published_at" = "Publicado: %1$@";
 "notices.retry" = "Reintentar";
+"result.coverage_fallback" = "Horario de una fuente de cobertura no oficial: compruébalo con el operador antes de viajar.";

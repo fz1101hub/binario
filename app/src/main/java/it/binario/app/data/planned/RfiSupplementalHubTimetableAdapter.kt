@@ -22,6 +22,7 @@ import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
 import java.util.Locale
+import it.binario.app.shared.SharedData
 
 /**
  * Estensione conservativa del quadro orario RFI per hub il cui Id PRM è stato
@@ -32,7 +33,7 @@ class RfiSupplementalHubTimetableAdapter(
     private val fetcher: RfiProgrammedTimetableFetcher = HttpRfiProgrammedTimetableFetcher(),
     private val clock: Clock = Clock.system(RailTime.defaultZone),
     private val cacheTtlMillis: Long = CACHE_TTL_MILLIS,
-    private val cacheMaxEntries: Int = 8,
+    private val cacheMaxEntries: Int = SharedData.RfiProgrammed.MAXIMUM_SUPPLEMENTAL_TIMETABLES,
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
     private val parsingDispatcher: CoroutineDispatcher = Dispatchers.Default,
     private val onParsing: (() -> Unit)? = null,
@@ -65,7 +66,7 @@ class RfiSupplementalHubTimetableAdapter(
         val cacheKey = "${route.id}:${direction.name}:$timetableId"
         val cached = try {
             cache.getOrLoad(cacheKey) {
-                val url = "https://prm.rfi.it/qo_prm/QO_Partenze_SiPMR.aspx?Id=$timetableId&lin=it&dalle=00.00&alle=23.59&ora=00.00"
+                val url = RfiTimetablePages.url(timetableId)
                 val html = try {
                     pages.page(url, ioDispatcher)
                 } catch (error: CancellationException) {
@@ -134,7 +135,7 @@ class RfiSupplementalHubTimetableAdapter(
                     )
                 }
                 .sortedBy { it.scheduledDepartureDateTime }
-                .take(24)
+                .take(SharedData.RfiProgrammed.MAXIMUM_ROUTE_SERVICES)
                 .toList()
         }
 
@@ -180,28 +181,17 @@ class RfiSupplementalHubTimetableAdapter(
     internal suspend fun cachedTimetableCountForTest(): Int = cache.sizeForTest()
 
     private companion object {
-        const val CACHE_TTL_MILLIS = 6L * 60L * 60L * 1000L
+        const val CACHE_TTL_MILLIS = SharedData.RfiProgrammed.TIMETABLE_TIME_TO_LIVE_SECONDS * 1_000L
     }
 }
 
 internal object SupplementalRfiProgrammedStationIds {
-    private val byName = mapOf(
-        key("Reggio Calabria Centrale") to 116,
-        key("Reggio di Calabria Centrale") to 116,
-        key("Ancona") to 408,
-        key("Ancona (Tutte le stazioni)") to 408,
-        key("Palermo Centrale") to 1878,
-        key("Catania Centrale") to 959,
-        key("Lecce") to 1436
-    )
+    /** The supplemental hubs of the shared table (rfi-programmed-v1.json), by every name RFI and the catalogue give them. */
+    private val byName: Map<String, Int> = SharedData.RfiProgrammed.SUPPLEMENTAL_HUBS
+        .flatMap { hub -> hub.names.map { key(it) to hub.timetableId } }.toMap()
 
-    private val byRailwayCode = mapOf(
-        "S11781" to 116, // Reggio di Calabria Centrale
-        "S07113" to 408, // Ancona
-        "S12002" to 1878, // Palermo Centrale
-        "S12332" to 959, // Catania Centrale
-        "S11145" to 1436 // Lecce
-    )
+    private val byRailwayCode: Map<String, Int> =
+        SharedData.RfiProgrammed.SUPPLEMENTAL_HUBS.associate { it.railwayCode to it.timetableId }
 
     /** Railway codes of the hubs with a verified RFI timetable: the large stations of the network. */
     val hubRailwayCodes: Set<String> get() = byRailwayCode.keys

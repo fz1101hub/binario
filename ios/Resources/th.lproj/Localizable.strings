@@ -693,3 +693,4 @@
 "notices.train.trenord_heading" = "ประกาศของ Trenord บนสายนี้";
 "notices.train.published_at" = "เผยแพร่: %1$@";
 "notices.retry" = "ลองอีกครั้ง";
+"result.coverage_fallback" = "ตารางเวลาจากแหล่งข้อมูลเสริมที่ไม่เป็นทางการ โปรดตรวจสอบกับผู้ให้บริการก่อนออกเดินทาง";

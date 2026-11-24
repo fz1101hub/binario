@@ -693,3 +693,4 @@
 "notices.train.trenord_heading" = "लाइन पर Trenord की सूचनाएँ";
 "notices.train.published_at" = "प्रकाशित: %1$@";
 "notices.retry" = "फिर से कोशिश करें";
+"result.coverage_fallback" = "अनौपचारिक कवरेज स्रोत की समय-सारणी: यात्रा से पहले ऑपरेटर से पुष्टि करें।";

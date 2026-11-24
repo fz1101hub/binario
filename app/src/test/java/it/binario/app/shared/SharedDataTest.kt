@@ -447,5 +447,39 @@ class SharedDataTest {
         assertEquals(swiss.getString("id"), it.binario.app.data.live.SwissOpenTransportStationBoardAdapter.SOURCE_ID.value)
         assertEquals(swiss.getString("baseUrl"), it.binario.app.data.live.SwissOpenTransportStationBoardAdapter.BASE_URL)
         assertEquals(swiss.getJSONArray("nonRailCategories").strings().toSet(), SharedData.RealtimeFeeds.SWISS_BOARD.nonRailCategories)
+        val sleeper = feeds.getValue(it.binario.app.data.live.EuropeanSleeperGtfsRealtimeAdapter.SOURCE_ID.value)
+        assertEquals(sleeper.getString("url"), it.binario.app.data.live.HttpEuropeanSleeperRealtimeFetcher.FEED_URL)
+        assertEquals("remote-pack", sleeper.getString("gate"))
+    }
+
+    @Test fun `the community archives and RFI's programmed timetable are the shared tables`() {
+        val remote = table("remote-gtfs-v1.json")
+        val feed = remote.getJSONArray("feeds").getJSONObject(0)
+        val catalogued = requireNotNull(it.binario.app.data.sources.InternationalSourceCatalog.byId(SourceId(feed.getString("id"))))
+        assertEquals(feed.getString("url"), catalogued.downloadOrProbeUri.toString())
+        assertEquals(feed.getString("realtimeFeed"), it.binario.app.data.live.EuropeanSleeperGtfsRealtimeAdapter.SOURCE_ID.value)
+        assertEquals(java.time.LocalDate.parse(feed.getString("notBefore")), it.binario.app.data.live.EuropeanSleeperGtfsRealtimeAdapter.LAUNCH_DATE)
+        assertEquals(feed.getString("pack"), it.binario.app.data.gtfs.RemoteGtfsFallbackDataSource.EUROPEAN_SLEEPER.pack)
+        assertEquals(remote.getInt("maximumArchiveBytes"), SharedData.RemoteGtfs.MAXIMUM_ARCHIVE_BYTES)
+        val rfi = table("rfi-programmed-v1.json")
+        assertEquals(
+            "https://prm.rfi.it/qo_prm/QO_Partenze_SiPMR.aspx?Id=2247&lin=it&dalle=00.00&alle=23.59&ora=00.00",
+            it.binario.app.data.planned.RfiTimetablePages.url(2247)
+        )
+        assertEquals(rfi.getInt("maximumBytes"), it.binario.app.data.planned.RFI_PROGRAMMED_TIMETABLE_MAX_BYTES)
+        for (hub in rfi.getJSONArray("hubs").objects()) {
+            val id = hub.getInt("timetableId")
+            val code = hub.getString("railwayCode")
+            assertEquals(id, it.binario.app.data.planned.RfiProgrammedStationIds.timetableId(it.binario.app.data.Station("x", "?", "?", railwayCode = code)))
+            for (name in hub.getJSONArray("names").strings()) {
+                assertEquals(name, id, it.binario.app.data.planned.RfiProgrammedStationIds.timetableId(it.binario.app.data.Station("x", name, name)))
+            }
+        }
+        for (hub in rfi.getJSONArray("supplementalHubs").objects()) {
+            val id = hub.getInt("timetableId")
+            for (name in hub.getJSONArray("names").strings()) {
+                assertEquals(name, id, it.binario.app.data.planned.SupplementalRfiProgrammedStationIds.timetableId(it.binario.app.data.Station("x", name, name)))
+            }
+        }
     }
 }

@@ -1119,7 +1119,7 @@ class IOSProjectTests(unittest.TestCase):
             (store, ".githubReleaseAsset(maximumBytes: artifact.sizeBytes)"),
             (installer, "public func installVerified("),
             (installer, "onlySourceID: sourceID"),
-            (gtfs, "public init(databaseURL: URL, foreignDatabaseURLs: [String: URL] = [:])"),
+            (gtfs, "public init(databaseURL: URL, foreignDatabaseURLs: [String: URL] = [:], fallbacks: TimetableFallbacks? = nil)"),
             (gtfs, 'return "\\n              AND \\(column) NOT IN (\\(placeholders))"'),
             (model, "applicationSupport.appendingPathComponent(ForeignScheduleStore.directoryName, isDirectory: true)"),
         ):

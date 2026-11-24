@@ -1,6 +1,6 @@
 {
   "schema": "binario-shared-data-v1",
-  "description": "The open GTFS-Realtime Trip Updates feeds and the Swiss station boards, the same on Android and on the iPhone: each feed's address, format, timetable pack, gate, limits, cache and pause label, how long an observation stays usable, and the limits of the transport.opendata.ch boards. How every source is asked (User-Agent, refusals, breaker) is source-manners-v1.json; the cases both platforms read are contracts/shared-rules/v1/gtfs-realtime-v1.json and swiss-station-board-v1.json.",
+  "description": "The open GTFS-Realtime Trip Updates feeds and the Swiss station boards, the same on Android and on the iPhone: each feed's address, format, timetable pack (bundled, or downloaded at runtime: gate remote-pack, remote-gtfs-v1.json), gate, limits, cache and pause label, how long an observation stays usable, and the limits of the transport.opendata.ch boards. How every source is asked (User-Agent, refusals, breaker) is source-manners-v1.json; the cases both platforms read are contracts/shared-rules/v1/gtfs-realtime-v1.json and swiss-station-board-v1.json.",
   "observationWindowSeconds": 300,
   "futureToleranceSeconds": 60,
   "failureMemorySeconds": 30,
@@ -67,6 +67,27 @@
       "zone": "Europe/Paris",
       "licence": "Licence Ouverte / Etalab 2.0",
       "note": "About 10 KB for some fifty trains (November 2026); asked only in a build that bundles its pack."
+    },
+    {
+      "id": "european-sleeper-gtfs-rt",
+      "pack": "european-sleeper",
+      "label": "European Sleeper",
+      "format": "protobuf",
+      "gate": "remote-pack",
+      "url": "https://jbb.ghsq.de/gtfs/european-sleeper/TripUpdates",
+      "accept": "application/x-protobuf, application/octet-stream",
+      "connectTimeoutSeconds": 8,
+      "readTimeoutSeconds": 15,
+      "totalTimeoutSeconds": 20,
+      "maximumBytes": 4194304,
+      "maximumRequests": 4,
+      "redirects": "same-https-host",
+      "timeToLiveSeconds": 120,
+      "pauseLabel": "European Sleeper",
+      "refusalGroup": "European Sleeper",
+      "zone": "Europe/Brussels",
+      "licence": "Community mirror (JBB), no licence declared",
+      "note": "The community Trip Updates of European Sleeper, joined only to the trains of the archive of remote-gtfs-v1.json it was downloaded with."
     }
   ],
   "urban": [

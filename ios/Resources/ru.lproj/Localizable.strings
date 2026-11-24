@@ -693,3 +693,4 @@
 "notices.train.trenord_heading" = "Объявления Trenord по линии";
 "notices.train.published_at" = "Опубликовано: %1$@";
 "notices.retry" = "Повторить";
+"result.coverage_fallback" = "Расписание из неофициального источника: перед поездкой уточните у перевозчика.";

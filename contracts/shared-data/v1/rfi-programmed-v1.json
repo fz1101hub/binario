@@ -1,0 +1,46 @@
+{
+  "schema": "binario-shared-data-v1",
+  "description": "RFI's public programmed timetable («Quadro orario», prm.rfi.it), the same on Android and on the iPhone: the page of a station's departures or arrivals for a whole day, how it is asked (HTTPS, the time limits, the largest page), how long a page and a read timetable are kept, how many trains a route lists, and the hubs whose timetable identifier was verified (main and supplemental), by railway code and by the names RFI and the catalogue give them. The cases both platforms read are contracts/shared-rules/v1/rfi-programmed-v1.json.",
+  "readers": {
+    "android": "app/src/main/java/it/binario/app/data/planned/RfiProgrammedTimetableAdapter.kt, RfiSupplementalHubTimetableAdapter.kt, RfiProgrammedStationBoardAdapter.kt",
+    "ios": "ios/BinarioKit/Sources/BinarioKit/RfiProgrammedTimetable.swift"
+  },
+  "urlTemplate": "https://prm.rfi.it/qo_prm/QO_<board>_SiPMR.aspx?Id=<id>&lin=it&dalle=00.00&alle=23.59&ora=00.00",
+  "departuresBoard": "Partenze",
+  "arrivalsBoard": "Arrivi",
+  "accept": "text/html,application/xhtml+xml",
+  "connectTimeoutSeconds": 12,
+  "readTimeoutSeconds": 25,
+  "totalTimeoutSeconds": 10,
+  "maximumBytes": 2097152,
+  "pageTimeToLiveSeconds": 1800,
+  "maximumPages": 3,
+  "timetableTimeToLiveSeconds": 21600,
+  "maximumTimetables": 16,
+  "maximumSupplementalTimetables": 8,
+  "maximumRouteServices": 24,
+  "boardMinimumIntervalSeconds": 2,
+  "hubs": [
+    {"railwayCode": "S08409", "timetableId": 2247, "names": ["Roma Termini"]},
+    {"railwayCode": "S08217", "timetableId": 2217, "names": ["Roma Tiburtina"]},
+    {"railwayCode": "S08406", "timetableId": 2211, "names": ["Roma Ostiense"]},
+    {"railwayCode": "S01700", "timetableId": 1603, "names": ["Milano Centrale"]},
+    {"railwayCode": "S09218", "timetableId": 1757, "names": ["Napoli Centrale"]},
+    {"railwayCode": "S05043", "timetableId": 635, "names": ["Bologna Centrale"]},
+    {"railwayCode": "S06421", "timetableId": 1325, "names": ["Firenze S.M.N.", "Firenze Santa Maria Novella"]},
+    {"railwayCode": "S00219", "timetableId": 2672, "names": ["Torino Porta Nuova"]},
+    {"railwayCode": "S00035", "timetableId": 25350269, "names": ["Torino Porta Susa"]},
+    {"railwayCode": "S02593", "timetableId": 2796, "names": ["Venezia Santa Lucia", "Venezia S. Lucia"]},
+    {"railwayCode": "S02430", "timetableId": 2812, "names": ["Verona Porta Nuova"]},
+    {"railwayCode": "S04700", "timetableId": 248, "names": ["Genova Piazza Principe", "Genova P. Principe"]},
+    {"railwayCode": "S11119", "timetableId": 550, "names": ["Bari Centrale"]},
+    {"railwayCode": "S09818", "timetableId": 2434, "names": ["Salerno"]}
+  ],
+  "supplementalHubs": [
+    {"railwayCode": "S11781", "timetableId": 116, "names": ["Reggio Calabria Centrale", "Reggio di Calabria Centrale"]},
+    {"railwayCode": "S07113", "timetableId": 408, "names": ["Ancona", "Ancona (Tutte le stazioni)"]},
+    {"railwayCode": "S12002", "timetableId": 1878, "names": ["Palermo Centrale"]},
+    {"railwayCode": "S12332", "timetableId": 959, "names": ["Catania Centrale"]},
+    {"railwayCode": "S11145", "timetableId": 1436, "names": ["Lecce"]}
+  ]
+}

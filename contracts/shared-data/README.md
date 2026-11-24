@@ -38,9 +38,11 @@ python3 tools/generate_shared_code.py --check   # esce con 1 se uno non corrispo
 | `personal-punctuality-v1.json` | Puntualità personale: conservazione (giorni, osservazioni per treno e in tutto, dettagli per fermata), soglie della distribuzione, limiti dei testi | Android, iPhone |
 | `planned-journeys-v1.json` | Limiti dell'Agenda, del file di trasferimento e dei modelli | Android, iPhone |
 | `punctuality-v1.json` | Categorie misurate a 5 minuti, soglie e campioni minimi delle statistiche, quante osservazioni sui giorni della settimana mostra il dettaglio di un treno | Android, iPhone, Alexa |
-| `realtime-feeds-v1.json` | Feed GTFS-Realtime (STA, SNCF, Trenitalia France, reti urbane di Roma e ACTV solo personali) e tabelloni svizzeri: indirizzi, formati, limiti, durate di cache, gruppi di pausa, finestra di osservazione | Android, iPhone |
+| `realtime-feeds-v1.json` | Feed GTFS-Realtime (STA, SNCF, Trenitalia France, European Sleeper sull'archivio scaricato, reti urbane di Roma e ACTV solo personali) e tabelloni svizzeri: indirizzi, formati, limiti, durate di cache, gruppi di pausa, finestra di osservazione | Android, iPhone |
+| `remote-gtfs-v1.json` | Archivi GTFS community scaricati quando serve come ultima copertura (European Sleeper/JBB): indirizzo, solo l'operatore, primo giorno, tempi, redirect, dimensione, durata, pause dopo un errore e un rifiuto, limiti dell'archivio (anche il rapporto di compressione del lettore iPhone) e delle tabelle | Android, iPhone |
 | `rfi-monitor-v1.json` | Monitor RFI «Arrivi e partenze»: selettore e pagine, limiti di una richiesta, intervallo, durata dei valori e del selettore | Android, iPhone |
 | `rfi-place-ids-v1.json` | Place ID del monitor RFI per i nomi di stazione noti | Android, iPhone |
+| `rfi-programmed-v1.json` | Quadro orario programmato RFI (`prm.rfi.it`): pagina di partenze e arrivi, limiti, durate della pagina e dell'orario letto, treni di una tratta, hub verificati e supplementari per codice e per nome | Android, iPhone |
 | `saved-timetables-v1.json` | «Orari salvati»: quanti elenchi, righe, cambi e testi, lunghezza dei nomi | Android, iPhone |
 | `source-manners-v1.json` | Come si chiede a ogni fonte pubblica: User-Agent, risposte che sono un rifiuto e pausa dopo un rifiuto, interruttore dopo errori ripetuti | Android, iPhone |
 | `source-scores-v1.json` | Punteggi delle fonti per categoria, bonus dell'operatore, fonti di sola copertura | Android, iPhone |

@@ -2,6 +2,7 @@
   "schema": "binario-shared-rules-v1",
   "readers": {
     "android": "app/src/test/java/it/binario/app/data/planned/CalendarContractTest.kt",
+    "ios": "ios/BinarioKit/Tests/BinarioKitTests/RfiProgrammedContractTests.swift",
     "alexa": "alexa-companion/server/punctuality/calendarRules.test.ts"
   },
   "holidays": [

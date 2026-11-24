@@ -818,7 +818,8 @@ TRIP_UPDATES_FEED = Record("TripUpdatesFeed", {
     "pack": Field(Text(SOURCE_ID)),
     "label": Field(Text(max_length=40)),
     "format": Field(Text(r"json|protobuf")),
-    "gate": Field(Text(r"all-builds|pack-bundled")),
+    # remote-pack: the pack is an archive downloaded at runtime (remote-gtfs-v1.json), asked only once it answers.
+    "gate": Field(Text(r"all-builds|pack-bundled|remote-pack")),
     "url": Field(HTTPS_URL),
     "accept": Field(Text()),
     "connectTimeoutSeconds": Field(Seconds(1)),
@@ -889,6 +890,65 @@ SWISS_BOARD = Record("SwissBoard", {
     "borderRegion": Field(BORDER_REGION),
     "nonRailCategories": Field(ListOf(Text(r"[A-Z]{1,8}"), as_set=True)),
 })
+
+ISO_DAY = Text(r"\d{4}-\d{2}-\d{2}")
+REMOTE_GTFS_FEED = Record("RemoteFeed", {
+    "id": Field(Text(SOURCE_ID)),
+    "pack": Field(Text(SOURCE_ID)),
+    "operatorScope": Field(Text(max_length=60)),
+    "attribution": Field(Text(max_length=96)),
+    "url": Field(HTTPS_URL),
+    "notBefore": Field(ISO_DAY),
+    "realtimeFeed": Field(Nullable(Text(SOURCE_ID))),
+}, notes=True)
+REMOTE_ARCHIVE = Record("ArchiveLimits", {
+    "maximumEntries": Field(Integer(1, 1_000)),
+    "maximumEntryBytes": Field(Integer(1, 512 * 1_048_576)),
+    "maximumTotalUncompressedBytes": Field(Integer(1, 512 * 1_048_576)),
+    "maximumCompressionRatio": Field(Integer(1, 100_000)),
+    "maximumCsvLineLength": Field(Integer(1, 1_048_576)),
+    "maximumAgencies": Field(COUNT),
+    "maximumStops": Field(COUNT),
+    "maximumRoutes": Field(COUNT),
+    "maximumTrips": Field(COUNT),
+    "maximumCalendars": Field(COUNT),
+    "maximumCalendarDateRows": Field(Integer(1, 10_000_000)),
+    "maximumStopTimeRows": Field(Integer(1, 10_000_000)),
+})
+RFI_HUB = Record("Hub", {
+    "railwayCode": Field(Text(r"S\d{5}")),
+    "timetableId": Field(Integer(1, 999_999_999)),
+    "names": Field(ListOf(STATION_NAME)),
+}, notes=True)
+
+
+def _check_remote_gtfs(values: Mapping[str, Any]) -> list[str]:
+    problems = []
+    archive = values["archive"].values
+    if archive["maximumEntryBytes"] > archive["maximumTotalUncompressedBytes"]:
+        problems.append("archive: maximumEntryBytes supera maximumTotalUncompressedBytes")
+    for index, feed in enumerate(values["feeds"]):
+        year, month, day = (int(part) for part in feed.values["notBefore"].split("-"))
+        if not 1 <= month <= 12 or not 1 <= day <= calendar.monthrange(year, month)[1]:
+            problems.append(f"feeds[{index}].notBefore: data inesistente")
+    packs = [feed.values["pack"] for feed in values["feeds"]]
+    problems += [f"pack {pack!r} con due archivi" for pack in sorted({pack for pack in packs if packs.count(pack) > 1})]
+    return problems
+
+
+def _check_rfi_programmed(values: Mapping[str, Any]) -> list[str]:
+    problems = []
+    if "<board>" not in values["urlTemplate"] or "<id>" not in values["urlTemplate"]:
+        problems.append("urlTemplate: servono <board> e <id>")
+    if _host(values["urlTemplate"]) != "prm.rfi.it":
+        problems.append("urlTemplate: l'host è prm.rfi.it")
+    hubs = values["hubs"] + values["supplementalHubs"]
+    codes = [hub.values["railwayCode"] for hub in hubs]
+    problems += [f"railwayCode {code!r} in due hub" for code in sorted({code for code in codes if codes.count(code) > 1})]
+    names = [name.upper() for hub in hubs for name in hub.values["names"]]
+    problems += [f"nome {name!r} in due hub" for name in sorted({name for name in names if names.count(name) > 1})]
+    return problems
+
 
 TABLES: tuple[Table, ...] = (
     Table("airport-routes-v1.json", "AirportRoutes", {
@@ -1089,6 +1149,18 @@ TABLES: tuple[Table, ...] = (
         "urbanFetch": Field(URBAN_FETCH),
         "swissBoard": Field(SWISS_BOARD),
     }, check=_check_realtime_feeds),
+    Table("remote-gtfs-v1.json", "RemoteGtfs", {
+        "feeds": Field(ListOf(REMOTE_GTFS_FEED, unique_by=("id",))),
+        "accept": Field(Text()),
+        "connectTimeoutSeconds": Field(Seconds(1)),
+        "readTimeoutSeconds": Field(Seconds(1)),
+        "maximumRedirects": Field(Integer(0, 10)),
+        "maximumArchiveBytes": Field(Integer(1, 64 * 1_048_576)),
+        "cacheTimeToLiveSeconds": Field(Seconds(1)),
+        "failureCooldownSeconds": Field(Seconds(1)),
+        "refusalPauseSeconds": Field(Seconds(1)),
+        "archive": Field(REMOTE_ARCHIVE),
+    }, check=_check_remote_gtfs),
     Table("rfi-monitor-v1.json", "RfiMonitor", {
         "catalogueUrl": Field(HTTPS_URL),
         "monitorUrl": Field(HTTPS_URL),
@@ -1105,6 +1177,25 @@ TABLES: tuple[Table, ...] = (
     Table("rfi-place-ids-v1.json", "RfiPlaceIds", {
         "placeIdsByName": Field(MapOf(Integer(1, 99_999), key=STATION_NAME)),
     }),
+    Table("rfi-programmed-v1.json", "RfiProgrammed", {
+        "urlTemplate": Field(HTTPS_URL),
+        "departuresBoard": Field(Text(r"[A-Za-z]+")),
+        "arrivalsBoard": Field(Text(r"[A-Za-z]+")),
+        "accept": Field(Text()),
+        "connectTimeoutSeconds": Field(Seconds(1)),
+        "readTimeoutSeconds": Field(Seconds(1)),
+        "totalTimeoutSeconds": Field(Seconds(1)),
+        "maximumBytes": Field(Integer(1, 16 * 1_048_576)),
+        "pageTimeToLiveSeconds": Field(Seconds(1)),
+        "maximumPages": Field(Integer(1, 64)),
+        "timetableTimeToLiveSeconds": Field(Seconds(1)),
+        "maximumTimetables": Field(Integer(1, 256)),
+        "maximumSupplementalTimetables": Field(Integer(1, 256)),
+        "maximumRouteServices": Field(Integer(1, 500)),
+        "boardMinimumIntervalSeconds": Field(Seconds(1)),
+        "hubs": Field(ListOf(RFI_HUB, unique_by=("railwayCode",))),
+        "supplementalHubs": Field(ListOf(RFI_HUB, unique_by=("railwayCode",))),
+    }, check=_check_rfi_programmed),
     Table("saved-timetables-v1.json", "SavedTimetables", {
         "maximumTimetables": Field(Integer(1, 1_000)),
         "maximumRows": Field(Integer(1, 1_000)),

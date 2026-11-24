@@ -693,3 +693,4 @@
 "notices.train.trenord_heading" = "Trenord-Hinweise zur Linie";
 "notices.train.published_at" = "Veröffentlicht: %1$@";
 "notices.retry" = "Erneut versuchen";
+"result.coverage_fallback" = "Fahrplan aus einer inoffiziellen Ergänzungsquelle: Prüfe ihn vor der Fahrt beim Verkehrsunternehmen.";

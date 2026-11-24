@@ -693,3 +693,4 @@
 "notices.train.trenord_heading" = "تنبيهات Trenord على الخط";
 "notices.train.published_at" = "نُشر: %1$@";
 "notices.retry" = "إعادة المحاولة";
+"result.coverage_fallback" = "مواعيد من مصدر تغطية غير رسمي: تحقّق مع المشغّل قبل السفر.";

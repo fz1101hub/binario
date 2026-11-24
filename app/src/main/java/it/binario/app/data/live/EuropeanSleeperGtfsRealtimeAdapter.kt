@@ -23,6 +23,9 @@ import java.time.Duration
 import java.time.LocalDate
 import java.time.ZoneId
 import it.binario.app.data.urban.HttpsBytesFetcher
+import it.binario.app.data.live.RealtimeFeedTable.bytesFetcher
+import it.binario.app.data.live.RealtimeFeedTable.timeToLive
+import it.binario.app.shared.SharedData
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -31,14 +34,17 @@ fun interface EuropeanSleeperRealtimeFetcher {
     suspend fun fetch(): ByteArray
 }
 
-/** A small community feed: HTTPS on the same host, at most 4 MB, a total time limit and cancellable. */
+/**
+ * A small community feed: HTTPS on the same host, at most 4 MB, a total time limit and cancellable; the address, limits
+ * and time limits of the shared table (realtime-feeds-v1.json, `european-sleeper-gtfs-rt`), as the iPhone asks it.
+ */
 internal class HttpEuropeanSleeperRealtimeFetcher(
-    private val http: HttpsBytesFetcher = HttpsBytesFetcher(maxBytes = 4 * 1024 * 1024, readTimeoutMillis = 15_000, totalTimeoutMillis = 20_000)
+    private val http: HttpsBytesFetcher = RealtimeFeedTable.EUROPEAN_SLEEPER.bytesFetcher()
 ) : EuropeanSleeperRealtimeFetcher {
     override suspend fun fetch(): ByteArray = http.fetch(FEED_URL)
 
     companion object {
-        const val FEED_URL = "https://jbb.ghsq.de/gtfs/european-sleeper/TripUpdates"
+        val FEED_URL: String = RealtimeFeedTable.EUROPEAN_SLEEPER.url
     }
 }
 
@@ -50,8 +56,8 @@ internal class HttpEuropeanSleeperRealtimeFetcher(
 class EuropeanSleeperGtfsRealtimeAdapter(
     private val fetcher: EuropeanSleeperRealtimeFetcher = HttpEuropeanSleeperRealtimeFetcher(),
     private val clock: Clock = Clock.systemUTC(),
-    private val launchDate: LocalDate = LocalDate.of(2026, 9, 9),
-    private val ttl: Duration = Duration.ofMinutes(2)
+    private val launchDate: LocalDate = LAUNCH_DATE,
+    private val ttl: Duration = RealtimeFeedTable.EUROPEAN_SLEEPER.timeToLive()
 ) : TripUpdateProvider {
     override val descriptor = ProviderDescriptor(
         id = SOURCE_ID,
@@ -126,7 +132,7 @@ class EuropeanSleeperGtfsRealtimeAdapter(
                     stopSequence = sequence,
                     predictedAt = event?.takeIf { it.hasTime() }?.time
                         ?.let(::epochSecondOrNull)
-                        ?.atZone(ZoneId.of("Europe/Brussels"))
+                        ?.atZone(FEED_ZONE)
                         ?.let { SourcedValue(it, source) },
                     officialDelay = event?.takeIf { it.hasDelay() }?.delay
                         ?.let { SourcedValue(Duration.ofSeconds(it.toLong()), source) },
@@ -145,7 +151,13 @@ class EuropeanSleeperGtfsRealtimeAdapter(
         seconds.takeIf { it in 1..MAX_EPOCH_SECOND }?.let(java.time.Instant::ofEpochSecond)
 
     companion object {
-        val SOURCE_ID = SourceId("european-sleeper-gtfs-rt")
+        val SOURCE_ID = SourceId(RealtimeFeedTable.EUROPEAN_SLEEPER.id)
         private const val MAX_EPOCH_SECOND = 253_402_300_799L // 9999-12-31T23:59:59Z
+        /** The predicted times are read in the feed's own zone (the shared table's). */
+        private val FEED_ZONE: ZoneId = ZoneId.of(RealtimeFeedTable.EUROPEAN_SLEEPER.zone)
+        /** The first day of the archive this feed is joined to (remote-gtfs-v1.json, `notBefore`). */
+        internal val LAUNCH_DATE: LocalDate = LocalDate.parse(
+            SharedData.RemoteGtfs.FEEDS.single { feed -> feed.realtimeFeed == RealtimeFeedTable.EUROPEAN_SLEEPER.id }.notBefore
+        )
     }
 }
