@@ -74,6 +74,24 @@
 			<string>%1$lld minuti di ritardo</string>
 		</dict>
 	</dict>
+	<key>departures.types.hidden_trains</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>many</key>
+			<string>%1$lld treni nascosti</string>
+			<key>one</key>
+			<string>%1$lld treno nascosto</string>
+			<key>other</key>
+			<string>%1$lld treni nascosti</string>
+		</dict>
+	</dict>
 	<key>notices.alerts.strike_title</key>
 	<dict>
 		<key>NSStringLocalizedFormatKey</key>
@@ -272,6 +290,42 @@
 			<string>In ritardo di %1$lld minuti</string>
 		</dict>
 	</dict>
+	<key>result.minutes_short</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>many</key>
+			<string>%1$lld min</string>
+			<key>one</key>
+			<string>%1$lld min</string>
+			<key>other</key>
+			<string>%1$lld min</string>
+		</dict>
+	</dict>
+	<key>result.punctuality.observations</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>many</key>
+			<string>%1$lld osservazioni registrate su questo dispositivo</string>
+			<key>one</key>
+			<string>%1$lld osservazione registrata su questo dispositivo</string>
+			<key>other</key>
+			<string>%1$lld osservazioni registrate su questo dispositivo</string>
+		</dict>
+	</dict>
 	<key>result.reliability.cancelled</key>
 	<dict>
 		<key>NSStringLocalizedFormatKey</key>
@@ -380,6 +434,24 @@
 			<string>%1$lld treni</string>
 		</dict>
 	</dict>
+	<key>saved.timetables.solutions</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>many</key>
+			<string>%1$lld soluzioni</string>
+			<key>one</key>
+			<string>%1$lld soluzione</string>
+			<key>other</key>
+			<string>%1$lld soluzioni</string>
+		</dict>
+	</dict>
 	<key>saved.trains.limit_error</key>
 	<dict>
 		<key>NSStringLocalizedFormatKey</key>
@@ -414,6 +486,60 @@
 			<string>Ultimo %1$lld giorno, all’arrivo all’ultima fermata di ogni treno. Tocca un treno per aprirlo.</string>
 			<key>other</key>
 			<string>Ultimi %1$lld giorni, all’arrivo all’ultima fermata di ogni treno. Tocca un treno per aprirlo.</string>
+		</dict>
+	</dict>
+	<key>settings.backup.alerts</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>many</key>
+			<string>%1$lld avvisi</string>
+			<key>one</key>
+			<string>%1$lld avviso</string>
+			<key>other</key>
+			<string>%1$lld avvisi</string>
+		</dict>
+	</dict>
+	<key>settings.backup.routes</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>many</key>
+			<string>%1$lld tratte</string>
+			<key>one</key>
+			<string>%1$lld tratta</string>
+			<key>other</key>
+			<string>%1$lld tratte</string>
+		</dict>
+	</dict>
+	<key>settings.backup.stations</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>many</key>
+			<string>%1$lld stazioni monitorate</string>
+			<key>one</key>
+			<string>%1$lld stazione monitorata</string>
+			<key>other</key>
+			<string>%1$lld stazioni monitorate</string>
 		</dict>
 	</dict>
 </dict>

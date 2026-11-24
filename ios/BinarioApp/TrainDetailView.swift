@@ -12,6 +12,7 @@ import BinarioKit
 /// train in «I miei treni» or removes it.
 struct TrainDetailView: View {
     @EnvironmentObject private var model: AppModel
+    @EnvironmentObject private var personal: PersonalModel
     let service: TrainService
     let query: JourneyQuery
     /// The live values of the row the detail was opened from («Partenze», the planner).
@@ -60,7 +61,7 @@ struct TrainDetailView: View {
 
             if let liveRun {
                 LiveRunSection(status: liveRun, pauses: model.liveSourcePauses)
-                LiveStopsSection(stops: liveRun.run.stops)
+                LiveStopsSection(stops: liveRun.run.stops, trainNumber: service.number)
             } else if model.isLiveDataActive, liveKey != nil || shownBoardLive != nil {
                 LiveFallbackSection(
                     boardLive: shownBoardLive,
@@ -72,6 +73,15 @@ struct TrainDetailView: View {
             // The delay compensation notice and the weather at the destination (ExtrasViews.swift).
             TrainDetailExtrasSections(service: service, query: query, liveRun: liveRun?.run)
 
+            // Android's CO2 estimate, official pages and personal punctuality (PersonalViews.swift).
+            if let co2 = model.co2Estimate(from: query.origin, to: query.destination) {
+                Co2Section(estimate: co2)
+            }
+            OfficialPagesSection(service: service)
+            if service.hasTrainNumber {
+                PersonalPunctualitySection(number: service.number)
+            }
+
             if let detail = model.reliabilityDetail(for: service, query: query) {
                 NetworkReliabilitySection(detail: detail, query: query, service: service)
             }
@@ -81,6 +91,15 @@ struct TrainDetailView: View {
         .navigationTitle(Text(verbatim: service.number))
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                let share = PersonalTexts.trainShare(
+                    service: service,
+                    origin: query.origin.name,
+                    live: liveRun,
+                    timetableSource: model.latestSnapshot?.provenance.sourceLabel ?? ""
+                )
+                TrainShareButton(title: share.title, text: share.text)
+            }
             ToolbarItem(placement: .topBarTrailing) {
                 if model.canToggleFavourite(service, query: query) {
                     FavouriteTrainButton(saved: model.isFavourite(service, query: query)) { toggleFavourite() }
@@ -105,6 +124,11 @@ struct TrainDetailView: View {
         }
         .onDisappear {
             if let liveKey { model.detailLiveDidDisappear(liveKey) }
+        }
+        // The run a source published, once a day in the personal punctuality, as Android records
+        // a train opened with operational data.
+        .onChange(of: liveRun) { _, status in
+            if let status { personal.record(status) }
         }
         .alert(favouriteMessage, isPresented: $showsFavouriteMessage) {
             Button("action.ok", role: .cancel) { showsFavouriteMessage = false }
@@ -192,12 +216,24 @@ private struct LiveRunSection: View {
 /// of a live board row's run, `BoardRunDetailView`).
 struct LiveStopsSection: View {
     let stops: [LiveStopStatus]
+    /// The train a stop is shared of («Condividi la fermata»); nil offers no share.
+    var trainNumber: String? = nil
 
     var body: some View {
         if !stops.isEmpty {
             Section("result.live.stops") {
                 ForEach(stops.indices, id: \.self) { index in
-                    LiveStopRow(stop: stops[index])
+                    if let trainNumber {
+                        let text = PersonalTexts.stopShare(train: trainNumber, stop: stops[index], isFirst: index == 0)
+                        LiveStopRow(stop: stops[index])
+                            .contextMenu {
+                                ShareLink(item: text) {
+                                    Label(PersonalTexts.format("result.share.stop_action", stops[index].stationName), systemImage: "square.and.arrow.up")
+                                }
+                            }
+                    } else {
+                        LiveStopRow(stop: stops[index])
+                    }
                 }
             }
         }

@@ -82,6 +82,26 @@
 			<string>Опоздание %1$lld минуты</string>
 		</dict>
 	</dict>
+	<key>departures.types.hidden_trains</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>few</key>
+			<string>%1$lld поезда скрыты</string>
+			<key>many</key>
+			<string>%1$lld поездов скрыто</string>
+			<key>one</key>
+			<string>%1$lld поезд скрыт</string>
+			<key>other</key>
+			<string>%1$lld поезда скрыто</string>
+		</dict>
+	</dict>
 	<key>notices.alerts.strike_title</key>
 	<dict>
 		<key>NSStringLocalizedFormatKey</key>
@@ -302,6 +322,46 @@
 			<string>Опаздывает на %1$lld минуты</string>
 		</dict>
 	</dict>
+	<key>result.minutes_short</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>few</key>
+			<string>%1$lld мин</string>
+			<key>many</key>
+			<string>%1$lld мин</string>
+			<key>one</key>
+			<string>%1$lld мин</string>
+			<key>other</key>
+			<string>%1$lld мин</string>
+		</dict>
+	</dict>
+	<key>result.punctuality.observations</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>few</key>
+			<string>%1$lld наблюдения записаны на этом устройстве</string>
+			<key>many</key>
+			<string>%1$lld наблюдений записано на этом устройстве</string>
+			<key>one</key>
+			<string>%1$lld наблюдение записано на этом устройстве</string>
+			<key>other</key>
+			<string>%1$lld наблюдения записано на этом устройстве</string>
+		</dict>
+	</dict>
 	<key>result.reliability.cancelled</key>
 	<dict>
 		<key>NSStringLocalizedFormatKey</key>
@@ -422,6 +482,26 @@
 			<string>%1$lld поезда</string>
 		</dict>
 	</dict>
+	<key>saved.timetables.solutions</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>few</key>
+			<string>%1$lld варианта</string>
+			<key>many</key>
+			<string>%1$lld вариантов</string>
+			<key>one</key>
+			<string>%1$lld вариант</string>
+			<key>other</key>
+			<string>%1$lld варианта</string>
+		</dict>
+	</dict>
 	<key>saved.trains.limit_error</key>
 	<dict>
 		<key>NSStringLocalizedFormatKey</key>
@@ -460,6 +540,66 @@
 			<string>За последний %1$lld день, по прибытии на конечную остановку каждого поезда. Нажмите на поезд, чтобы открыть его.</string>
 			<key>other</key>
 			<string>За последние %1$lld дня, по прибытии на конечную остановку каждого поезда. Нажмите на поезд, чтобы открыть его.</string>
+		</dict>
+	</dict>
+	<key>settings.backup.alerts</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>few</key>
+			<string>%1$lld оповещения</string>
+			<key>many</key>
+			<string>%1$lld оповещений</string>
+			<key>one</key>
+			<string>%1$lld оповещение</string>
+			<key>other</key>
+			<string>%1$lld оповещения</string>
+		</dict>
+	</dict>
+	<key>settings.backup.routes</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>few</key>
+			<string>%1$lld маршрута</string>
+			<key>many</key>
+			<string>%1$lld маршрутов</string>
+			<key>one</key>
+			<string>%1$lld маршрут</string>
+			<key>other</key>
+			<string>%1$lld маршрута</string>
+		</dict>
+	</dict>
+	<key>settings.backup.stations</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>few</key>
+			<string>%1$lld отслеживаемые станции</string>
+			<key>many</key>
+			<string>%1$lld отслеживаемых станций</string>
+			<key>one</key>
+			<string>%1$lld отслеживаемая станция</string>
+			<key>other</key>
+			<string>%1$lld отслеживаемой станции</string>
 		</dict>
 	</dict>
 </dict>

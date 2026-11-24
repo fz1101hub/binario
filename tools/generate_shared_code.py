@@ -990,6 +990,15 @@ TABLES: tuple[Table, ...] = (
         "maximumCodeLength": Field(Integer(1, 32)),
         "maximumLineLabelLength": Field(Integer(1, 32)),
     }, check=_check_live_train_map),
+    Table("local-backup-v1.json", "LocalBackup", {
+        "kind": Field(Text(r"[a-z-]+", max_length=40)),
+        "schemaVersion": Field(Integer(1, 100)),
+        "maximumBytes": Field(Integer(1_024, 16 * 1_048_576)),
+        "maximumStations": Field(Integer(1, 10_000)),
+        "maximumStationText": Field(Integer(1, 2_000)),
+        "maximumStationAliases": Field(Integer(0, 1_000)),
+        "maximumRoutes": Field(Integer(1, 1_000)),
+    }),
     Table("notices-sources-v1.json", "NoticesSources", {
         "service": Field(NOTICE_SERVICE),
         "sources": Field(ListOf(NOTICE_SOURCE, unique_by=("id",))),

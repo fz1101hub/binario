@@ -58,6 +58,20 @@
 			<string>Terlambat %1$lld menit</string>
 		</dict>
 	</dict>
+	<key>departures.types.hidden_trains</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>other</key>
+			<string>%1$lld kereta disembunyikan</string>
+		</dict>
+	</dict>
 	<key>notices.alerts.strike_title</key>
 	<dict>
 		<key>NSStringLocalizedFormatKey</key>
@@ -212,6 +226,34 @@
 			<string>Terlambat %1$lld menit</string>
 		</dict>
 	</dict>
+	<key>result.minutes_short</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>other</key>
+			<string>%1$lld mnt</string>
+		</dict>
+	</dict>
+	<key>result.punctuality.observations</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>other</key>
+			<string>%1$lld pengamatan tercatat di perangkat ini</string>
+		</dict>
+	</dict>
 	<key>result.reliability.cancelled</key>
 	<dict>
 		<key>NSStringLocalizedFormatKey</key>
@@ -296,6 +338,20 @@
 			<string>%1$lld kereta</string>
 		</dict>
 	</dict>
+	<key>saved.timetables.solutions</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>other</key>
+			<string>%1$lld pilihan perjalanan</string>
+		</dict>
+	</dict>
 	<key>saved.trains.limit_error</key>
 	<dict>
 		<key>NSStringLocalizedFormatKey</key>
@@ -322,6 +378,48 @@
 			<string>lld</string>
 			<key>other</key>
 			<string>%1$lld hari terakhir, saat tiba di perhentian terakhir setiap kereta. Ketuk kereta untuk membukanya.</string>
+		</dict>
+	</dict>
+	<key>settings.backup.alerts</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>other</key>
+			<string>%1$lld peringatan</string>
+		</dict>
+	</dict>
+	<key>settings.backup.routes</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>other</key>
+			<string>%1$lld rute</string>
+		</dict>
+	</dict>
+	<key>settings.backup.stations</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>other</key>
+			<string>%1$lld stasiun dipantau</string>
 		</dict>
 	</dict>
 </dict>

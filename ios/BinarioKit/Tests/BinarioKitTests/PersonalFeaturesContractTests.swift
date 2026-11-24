@@ -193,4 +193,43 @@ final class PersonalFeaturesContractTests: XCTestCase {
         XCTAssertEqual(SavedTimetableCodec.decode(SavedTimetableCodec.encode(decoded)), decoded)
         XCTAssertEqual(SavedTimetableCodec.renamed(decoded, id: "t1", name: "  ").first?.name, "Casa")
     }
+
+    // MARK: Local backup
+
+    func testLocalBackupRoundTripAndAndroidsFile() throws {
+        let milano = StationIdentity(id: "S01700", name: "Milano Centrale", railwayCode: "S01700")
+        let pavia = StationIdentity(id: "S01860", name: "Pavia", railwayCode: "S01860")
+        let route = try SavedRoute(id: SavedRoute.routeIdentifier(origin: milano, destination: pavia), name: "Casa", origin: milano, destination: pavia)
+        let train = try FavouriteTrain(
+            number: "2153", operatorName: "Trenord", category: "REG", terminus: "Pavia", scheduledDeparture: "07:42",
+            bikesAllowed: nil, origin: milano, destination: pavia, savedAt: Date(timeIntervalSince1970: 0)
+        )
+        let backup = LocalBackup(
+            routes: [route], favouriteStations: [pavia], favouriteTrains: [train], trainNames: [train.id: "Il mio treno"],
+            punctualityHistory: [], savedTimetables: []
+        )
+        let data = try LocalBackupCodec.encode(backup) { Station(id: $0.id, name: $0.name, railwayCode: $0.railwayCode) }.get()
+        let root = try XCTUnwrap(try JSONSerialization.jsonObject(with: data) as? [String: Any])
+        XCTAssertEqual(root["kind"] as? String, SharedData.LocalBackup.kind)
+        XCTAssertEqual(root["schemaVersion"] as? Int, SharedData.LocalBackup.schemaVersion)
+        let read = try LocalBackupCodec.decode(data) { _ in nil }.get()
+        XCTAssertEqual(read.routes, [route])
+        XCTAssertEqual(read.favouriteStations, [pavia])
+        XCTAssertEqual(read.favouriteTrains.map(\.id), [train.id])
+        XCTAssertEqual(read.trainNames[train.id], "Il mio treno")
+
+        // Android's file: its routes and favourite stations; its favourite trains lack the iPhone's keys.
+        let android = """
+        {"schemaVersion":2,"kind":"binario-local-backup","routes":[{"id":"r1","name":"Lavoro","originId":"S01700","destinationId":"S01860","pinned":true}],
+         "favouriteStationIds":["S01860"],"monitoredServices":[{"number":"2153","label":"REG 2153"}],"stationMonitors":[],"commuterAlerts":[],
+         "stations":[{"id":"S01700","name":"Milano Centrale","city":"Milano"},{"id":"S01860","name":"Pavia","city":"Pavia"}],
+         "mobility":{"transferMarginMinutes":10,"stepFreePreferred":false,"compactTimetablePreferred":false}}
+        """
+        let fromAndroid = try LocalBackupCodec.decode(Data(android.utf8)) { _ in nil }.get()
+        XCTAssertEqual(fromAndroid.routes.map(\.name), ["Lavoro"])
+        XCTAssertEqual(fromAndroid.favouriteStations.map(\.id), ["S01860"])
+        XCTAssertTrue(fromAndroid.favouriteTrains.isEmpty)
+        XCTAssertNil(fromAndroid.savedTimetables)
+        XCTAssertEqual(LocalBackupCodec.decode(Data("{\"kind\":\"other\"}".utf8)) { _ in nil }, .failure(.unreadable))
+    }
 }

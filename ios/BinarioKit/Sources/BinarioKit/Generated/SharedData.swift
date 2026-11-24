@@ -10,6 +10,7 @@
 //   contracts/shared-data/v1/italo-gtfs-station-codes.json
 //   contracts/shared-data/v1/italo-stations-v1.json
 //   contracts/shared-data/v1/live-train-map-v1.json
+//   contracts/shared-data/v1/local-backup-v1.json
 //   contracts/shared-data/v1/notices-sources-v1.json
 //   contracts/shared-data/v1/official-links-v1.json
 //   contracts/shared-data/v1/pack-roles-v1.json
@@ -531,6 +532,20 @@ public enum SharedData {
         public static let minimumRouteMarginDegrees: Double = 0.05
         public static let maximumCodeLength: Int = 6
         public static let maximumLineLabelLength: Int = 8
+    }
+
+    /// contracts/shared-data/v1/local-backup-v1.json: The local backup file the user exports and imports by hand (no
+    /// cloud): its kind and schema version, the largest file an import reads, and the bounds of the station records it
+    /// carries for the stations outside the catalogue. Both phones write and read the same file, so a backup moves
+    /// between them; each ignores the keys it does not know.
+    public enum LocalBackup {
+        public static let kind: String = "binario-local-backup"
+        public static let schemaVersion: Int = 2
+        public static let maximumBytes: Int = 1048576
+        public static let maximumStations: Int = 128
+        public static let maximumStationText: Int = 200
+        public static let maximumStationAliases: Int = 32
+        public static let maximumRoutes: Int = 32
     }
 
     /// contracts/shared-data/v1/notices-sources-v1.json: The rail notice feeds and the tables that read them, the same

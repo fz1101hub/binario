@@ -1,6 +1,9 @@
 import SwiftUI
 import BinarioKit
 
+/// «Per te», as Android's: the Agenda and «Impostazioni», the saved routes («Le tue tratte») with the
+/// works on them, «Orari salvati», the favourite stations and «I miei treni». Everything is stored on
+/// this iPhone.
 struct SavedRoutesView: View {
     @EnvironmentObject private var model: AppModel
     @EnvironmentObject private var notices: RailNoticesModel
@@ -25,6 +28,12 @@ struct SavedRoutesView: View {
                     } icon: {
                         Image(systemName: "calendar")
                     }
+                }
+                // «Impostazioni», reached from Per te as on Android.
+                NavigationLink {
+                    SettingsView()
+                } label: {
+                    Label("settings.title", systemImage: "gearshape")
                 }
             }
 
@@ -105,8 +114,19 @@ struct SavedRoutesView: View {
                     }
                 }
             }
+
+            // The rest of Android's «Per te» (PersonalViews.swift).
+            SavedTimetablesSection()
+            FavouriteStationsSection()
+            Section {
+                NavigationLink {
+                    MyTrainsView()
+                } label: {
+                    Label("saved.trains.title", systemImage: "star")
+                }
+            }
         }
-        .navigationTitle("saved.title")
+        .navigationTitle("tab.for_you")
         .loadsRouteWorks(model.savedRoutes, model: model, notices: notices)
         // The Home-screen quick action «Agenda» opens the page as the row does.
         .navigationDestination(isPresented: $model.showingAgenda) {

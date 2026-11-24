@@ -1,5 +1,6 @@
 package it.binario.app
 
+import it.binario.app.shared.SharedData
 import it.binario.app.data.SavedRoute
 import it.binario.app.data.SavedRouteOrdering
 import it.binario.app.data.Station
@@ -66,15 +67,18 @@ sealed interface BackupExport {
 
 object LocalDataBackupCodec {
     const val MIME_TYPE = "application/json"
-    const val MAX_BYTES = 1024 * 1024
-    private const val VERSION = 2
-    private const val MAX_STATIONS = 128
-    private const val MAX_STATION_TEXT = 200
-    private const val MAX_STATION_ALIASES = 32
+    // Kind, version and bounds are the shared table contracts/shared-data/v1/local-backup-v1.json: the iPhone writes and
+    // reads the same file.
+    const val MAX_BYTES = SharedData.LocalBackup.MAXIMUM_BYTES
+    private const val KIND = SharedData.LocalBackup.KIND
+    private const val VERSION = SharedData.LocalBackup.SCHEMA_VERSION
+    private const val MAX_STATIONS = SharedData.LocalBackup.MAXIMUM_STATIONS
+    private const val MAX_STATION_TEXT = SharedData.LocalBackup.MAXIMUM_STATION_TEXT
+    private const val MAX_STATION_ALIASES = SharedData.LocalBackup.MAXIMUM_STATION_ALIASES
 
     fun encode(backup: LocalDataBackup): String = JSONObject().apply {
         put("schemaVersion", VERSION)
-        put("kind", "binario-local-backup")
+        put("kind", KIND)
         put("routes", JSONArray().apply { backup.routes.forEach { route -> put(JSONObject().apply {
             put("id", route.id); put("name", route.name); put("originId", route.outwardOrigin.id); put("destinationId", route.outwardDestination.id); put("pinned", route.isPinned); route.manualOrder?.takeIf { it in 0 until SavedRouteOrdering.MAX_ROUTES }?.let { put("manualOrder", it) }
         }) } })
@@ -148,7 +152,7 @@ object LocalDataBackupCodec {
     fun decode(raw: String, stations: List<Station>): LocalBackupResult = runCatching {
         require(raw.toByteArray(Charsets.UTF_8).size <= MAX_BYTES) { "Il backup supera il limite di 1 MiB." }
         val root = JSONObject(raw)
-        require(root.optString("kind") == "binario-local-backup") { "Il file non è un backup Binario." }
+        require(root.optString("kind") == KIND) { "Il file non è un backup Binario." }
         val schemaVersion = root.optInt("schemaVersion", -1)
         require(schemaVersion in 1..VERSION) { "Versione backup non supportata." }
         val embeddedStations = root.optJSONArray("stations").orEmpty()
@@ -181,7 +185,7 @@ object LocalDataBackupCodec {
             it.id.isNotBlank() &&
                 it.name.isNotBlank() &&
                 it.outwardOrigin != it.outwardDestination
-        }.distinctBy { it.id }.take(32)
+        }.distinctBy { it.id }.take(SharedData.LocalBackup.MAXIMUM_ROUTES)
         // A file that lists routes of which none is valid stays refused: applying it would erase the routes of this
         // device for a reason the user cannot see. A file that lists none is judged below, by what else it carries.
         require(routes.isNotEmpty() || listedRoutes.isEmpty()) { "Il backup non contiene tratte valide." }

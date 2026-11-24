@@ -402,6 +402,8 @@ private struct AvailableResultView: View {
         // leaving within 30 minutes, still to be taken (not cancelled, its live delay counted),
         // clearly more often on time there.
         let alternatives = ReliableAlternatives.find(in: snapshot, reliability: measuredTrains, live: model.resultLive, now: now)
+        // Android's CO2 estimate of a direct train: the same stations for every row.
+        let co2 = model.co2Estimate(from: snapshot.query.origin, to: snapshot.query.destination)
         Section("result.title") {
             if let route = reliability?.route {
                 RoutePunctualityView(route: route)
@@ -419,7 +421,7 @@ private struct AvailableResultView: View {
                 NavigationLink {
                     TrainDetailView(service: service, query: snapshot.query, boardLive: live)
                 } label: {
-                    ResultRow(service: service, reliability: measuredTrains[service.id], live: live)
+                    ResultRow(service: service, reliability: measuredTrains[service.id], live: live, co2: co2)
                 }
                 .accessibilityHint(Text("accessibility.open_train_detail"))
                 .listRowSeparator(alternative == nil ? .automatic : .hidden, edges: .bottom)
@@ -451,6 +453,8 @@ private struct AvailableResultView: View {
             }
             LiveSourcesFooter(state: model.resultLiveState, sources: model.resultLiveSources, pauses: model.liveSourcePauses)
         }
+        // «Salva orario» and «Condividi» of the list as shown (PersonalViews.swift).
+        ResultsActionsSection(snapshot: snapshot, services: orderedServices(reliability))
     }
 
     /// The departure order of the repository, or «Più affidabili» when chosen and measurable.
@@ -467,6 +471,7 @@ private struct ResultRow: View {
     let service: TrainService
     let reliability: StopReliability?
     let live: StationBoardLiveStatus?
+    var co2: Co2Estimate? = nil
 
     var body: some View {
         VStack(alignment: .leading, spacing: 5) {
@@ -520,6 +525,9 @@ private struct ResultRow: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .accessibilityLabel(Text(ReliabilityTexts.spoken(parts.joined(separator: ", "))))
+            }
+            if let co2 {
+                Co2Line(estimate: co2)
             }
         }
         .accessibilityElement(children: .combine)

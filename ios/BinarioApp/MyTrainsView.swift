@@ -9,7 +9,11 @@ import BinarioKit
 /// its last stop in the unofficial network statistics, hidden without them.
 struct MyTrainsView: View {
     @EnvironmentObject private var model: AppModel
+    @EnvironmentObject private var personal: PersonalModel
     @State private var showsStorageError = false
+    /// The train being renamed (Android's «Rinomina»), and the name typed.
+    @State private var renaming: FavouriteTrain?
+    @State private var newName = ""
 
     var body: some View {
         Group {
@@ -25,6 +29,10 @@ struct MyTrainsView: View {
                         ForEach(model.favouriteTrains) { train in
                             NavigationLink(value: train) {
                                 VStack(alignment: .leading, spacing: 5) {
+                                    if let name = personal.name(ofTrain: train.id) {
+                                        Text(verbatim: name)
+                                            .font(.headline)
+                                    }
                                     FavouriteTrainHeading(train: train)
                                     if model.liveDataEnabled, let live = model.favouriteLive[train.id] {
                                         FavouriteLiveLine(status: live)
@@ -35,6 +43,22 @@ struct MyTrainsView: View {
                             .accessibilityHint(Text("accessibility.open_train_detail"))
                             .accessibilityAction(named: Text("result.favourite.remove")) {
                                 remove([train.id])
+                            }
+                            .accessibilityAction(named: Text("action.rename")) { startRenaming(train) }
+                            .contextMenu {
+                                Button {
+                                    startRenaming(train)
+                                } label: {
+                                    Label("action.rename", systemImage: "pencil")
+                                }
+                            }
+                            .swipeActions(edge: .leading) {
+                                Button {
+                                    startRenaming(train)
+                                } label: {
+                                    Label("action.rename", systemImage: "pencil")
+                                }
+                                .tint(.accentColor)
                             }
                         }
                         .onDelete { offsets in
@@ -87,10 +111,33 @@ struct MyTrainsView: View {
         .alert("saved.trains.storage_error", isPresented: $showsStorageError) {
             Button("action.ok", role: .cancel) { showsStorageError = false }
         }
+        // «Nome del treno»: a blank name removes the one given before.
+        .alert("saved.trains.rename_title", isPresented: Binding(get: { renaming != nil }, set: { if !$0 { renaming = nil } })) {
+            TextField("saved.trains.name_label", text: $newName, prompt: Text(namePlaceholder))
+            Button("action.save") {
+                if let renaming { personal.renameTrain(id: renaming.id, name: newName) }
+                renaming = nil
+            }
+            Button("action.cancel", role: .cancel) { renaming = nil }
+        }
+        // Today's runs the sources published, in the personal punctuality as on Android.
+        .onChange(of: model.favouriteLive) { _, live in
+            for status in live.values { personal.record(status) }
+        }
     }
 
     private func refreshLive() async {
         await model.pullFavouritesLive()
+    }
+
+    private func startRenaming(_ train: FavouriteTrain) {
+        newName = personal.name(ofTrain: train.id) ?? ""
+        renaming = train
+    }
+
+    /// «Il mio treno delle 07:42».
+    private var namePlaceholder: String {
+        PersonalTexts.format("saved.trains.name_placeholder", renaming?.scheduledDeparture ?? "")
     }
 
     /// The sources of the live states shown, in Android's provider order.

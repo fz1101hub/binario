@@ -73,7 +73,7 @@ RIEPILOGO
 |---|---|---|---|---|
 | Intestazione, operatore, categoria, fermate e orari live | `ServiceDetailScreen.kt` | `TrainDetailView.swift` | Uguale | 4 |
 | Schede Info / Percorso / Servizi | Tre schede | Un solo elenco con le stesse sezioni | Uguale (nativo iOS) | 4 |
-| Salva in «I miei treni» | Cuore | Cuore | Uguale | 4 |
+| Salva in «I miei treni» | Cuore | Stella, come dicono i testi dell'iPhone | Uguale | 4 |
 | Condividi il treno | `TrainShareFormatter` | Stesso testo dal foglio di condivisione | Uguale (nativo iOS) | 4 |
 | Condividi una fermata | «Treno X, fermata Y: arr. 10:05, bin. 3» | Stesso testo dal menu della fermata | Uguale (nativo iOS) | 4 |
 | Stima CO₂ con nota | Sì | Sì | Uguale | 4 |

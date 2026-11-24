@@ -58,6 +58,20 @@
 			<string>%1$lld분 지연</string>
 		</dict>
 	</dict>
+	<key>departures.types.hidden_trains</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>other</key>
+			<string>숨겨진 열차 %1$lld대</string>
+		</dict>
+	</dict>
 	<key>notices.alerts.strike_title</key>
 	<dict>
 		<key>NSStringLocalizedFormatKey</key>
@@ -212,6 +226,34 @@
 			<string>%1$lld분 지연</string>
 		</dict>
 	</dict>
+	<key>result.minutes_short</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>other</key>
+			<string>%1$lld분</string>
+		</dict>
+	</dict>
+	<key>result.punctuality.observations</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>other</key>
+			<string>이 기기에 기록된 관측 %1$lld건</string>
+		</dict>
+	</dict>
 	<key>result.reliability.cancelled</key>
 	<dict>
 		<key>NSStringLocalizedFormatKey</key>
@@ -296,6 +338,20 @@
 			<string>열차 %1$lld편</string>
 		</dict>
 	</dict>
+	<key>saved.timetables.solutions</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>other</key>
+			<string>여정 %1$lld개</string>
+		</dict>
+	</dict>
 	<key>saved.trains.limit_error</key>
 	<dict>
 		<key>NSStringLocalizedFormatKey</key>
@@ -322,6 +378,48 @@
 			<string>lld</string>
 			<key>other</key>
 			<string>최근 %1$lld일, 각 열차의 종착역 도착 기준입니다. 열차를 탭하면 열립니다.</string>
+		</dict>
+	</dict>
+	<key>settings.backup.alerts</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>other</key>
+			<string>알림 %1$lld개</string>
+		</dict>
+	</dict>
+	<key>settings.backup.routes</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>other</key>
+			<string>구간 %1$lld개</string>
+		</dict>
+	</dict>
+	<key>settings.backup.stations</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>other</key>
+			<string>모니터링 중인 역 %1$lld개</string>
 		</dict>
 	</dict>
 </dict>

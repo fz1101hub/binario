@@ -10,6 +10,7 @@
 //   contracts/shared-data/v1/italo-gtfs-station-codes.json
 //   contracts/shared-data/v1/italo-stations-v1.json
 //   contracts/shared-data/v1/live-train-map-v1.json
+//   contracts/shared-data/v1/local-backup-v1.json
 //   contracts/shared-data/v1/notices-sources-v1.json
 //   contracts/shared-data/v1/official-links-v1.json
 //   contracts/shared-data/v1/pack-roles-v1.json
@@ -527,6 +528,22 @@ internal object SharedData {
         const val MINIMUM_ROUTE_MARGIN_DEGREES: Double = 0.05
         const val MAXIMUM_CODE_LENGTH: Int = 6
         const val MAXIMUM_LINE_LABEL_LENGTH: Int = 8
+    }
+
+    /**
+     * contracts/shared-data/v1/local-backup-v1.json: The local backup file the user exports and imports by hand (no
+     * cloud): its kind and schema version, the largest file an import reads, and the bounds of the station records it
+     * carries for the stations outside the catalogue. Both phones write and read the same file, so a backup moves
+     * between them; each ignores the keys it does not know.
+     */
+    object LocalBackup {
+        const val KIND: String = "binario-local-backup"
+        const val SCHEMA_VERSION: Int = 2
+        const val MAXIMUM_BYTES: Int = 1048576
+        const val MAXIMUM_STATIONS: Int = 128
+        const val MAXIMUM_STATION_TEXT: Int = 200
+        const val MAXIMUM_STATION_ALIASES: Int = 32
+        const val MAXIMUM_ROUTES: Int = 32
     }
 
     /**

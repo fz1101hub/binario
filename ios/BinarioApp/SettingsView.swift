@@ -8,6 +8,15 @@ struct SettingsView: View {
 
     var body: some View {
         List {
+            // Android's «Tema» and «Lingua dell'app» (PersonalSettings.swift).
+            AppearanceLanguageSection()
+
+            // «Biglietti e assistenza» and «Suggerisci una stazione», as Android's settings rows.
+            Section {
+                TicketsAssistanceRow()
+                SuggestStationRow()
+            }
+
             Section("settings.data.title") {
                 LabeledContent("settings.data.catalog") {
                     Text(catalogName)
@@ -114,10 +123,14 @@ struct SettingsView: View {
                 }
             }
 
+            // Android's «Backup locale»: the same file on both phones.
+            LocalBackupSection()
+
             Section("settings.about.title") {
                 LabeledContent("settings.about.version") {
                     Text(model.versionDisplay)
                 }
+                CreditsRows()
             }
         }
         .navigationTitle("settings.title")
