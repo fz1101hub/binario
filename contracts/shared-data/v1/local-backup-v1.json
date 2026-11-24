@@ -1,0 +1,11 @@
+{
+  "schema": "binario-shared-data-v1",
+  "description": "The local backup file the user exports and imports by hand (no cloud): its kind and schema version, the largest file an import reads, and the bounds of the station records it carries for the stations outside the catalogue. Both phones write and read the same file, so a backup moves between them; each ignores the keys it does not know.",
+  "kind": "binario-local-backup",
+  "schemaVersion": 2,
+  "maximumBytes": 1048576,
+  "maximumStations": 128,
+  "maximumStationText": 200,
+  "maximumStationAliases": 32,
+  "maximumRoutes": 32
+}

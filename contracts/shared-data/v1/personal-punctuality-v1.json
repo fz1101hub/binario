@@ -1,0 +1,20 @@
+{
+  "schema": "binario-shared-data-v1",
+  "description": "The personal punctuality of a train, from the observations recorded on this phone only (one per train number and service day, the latest wins): how long and how many are kept, the thresholds of the «Puntualità» section and of its distribution, and the limits of the stored texts. The rules are the cases of contracts/shared-rules/v1/personal-punctuality-v1.json.",
+  "retentionDays": 365,
+  "maximumPerTrain": 365,
+  "maximumTotal": 1500,
+  "detailedPerTrain": 30,
+  "maximumDetailedTotal": 240,
+  "maximumStops": 40,
+  "onTimeMinutes": 5,
+  "lateMinutes": 15,
+  "severeMinutes": 30,
+  "minimumObservations": 2,
+  "minimumStopSamples": 2,
+  "historyCollapsed": 7,
+  "maximumNumberLength": 32,
+  "maximumOperatorLength": 80,
+  "maximumStationLength": 40,
+  "maximumDelayMinutes": 1440
+}

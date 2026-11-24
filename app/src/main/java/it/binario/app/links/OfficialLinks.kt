@@ -23,82 +23,42 @@ data class OperatorLinks(
 
 /**
  * Official pages the app only opens in the browser on an explicit tap; the app never requests them itself and sends
- * nothing to them. Only `https` pages on the operators' own domains, preferring home and assistance pages over deep
- * links. The pages were checked against a search index in November 2026, not fetched from the build machine: an
- * operator can move them, and then the browser shows the operator's own "page not found".
+ * nothing to them. The operators, their domains and their pages are the shared table
+ * contracts/shared-data/v1/official-links-v1.json ([SharedData.OfficialLinks]), read by the iPhone too: only `https`
+ * pages on the operators' own domains, preferring home and assistance pages over deep links, checked against a search
+ * index in November 2026, not fetched from the build machine. An operator can move them, and then the browser shows the
+ * operator's own "page not found".
  *
  * No operator documents a public URL format for prefilling a journey search, so "Apri sul sito ufficiale" opens the
  * purchase home page and never builds a search URL.
  */
 object OfficialLinks {
-    val TRENITALIA = OperatorLinks(
-        id = "trenitalia", name = "Trenitalia", domains = setOf("trenitalia.com"),
-        links = listOf(
-            OperatorLink(OperatorLinkKind.BUY, "https://www.trenitalia.com/"),
-            OperatorLink(OperatorLinkKind.CHANGE, "https://www.trenitalia.com/it/informazioni/la-guida-del-viaggiatore/acquisto-utilizzoemodificabigliettonazionale.html"),
-            OperatorLink(OperatorLinkKind.SUBSCRIPTIONS, "https://www.trenitalia.com/it/informazioni/la-guida-del-viaggiatore/gli-abbonamenti-di-trenitalia.html"),
-            OperatorLink(OperatorLinkKind.BIKES, "https://www.trenitalia.com/it/servizi/bici-al-seguito.html"),
-            OperatorLink(OperatorLinkKind.CUSTOMER_CARE, "https://www.trenitalia.com/it/informazioni.html"),
-            OperatorLink(OperatorLinkKind.REFUNDS, "https://www.trenitalia.com/it/informazioni/la-guida-del-viaggiatore/i-rimborsi.html"),
-            OperatorLink(OperatorLinkKind.STRIKES, SharedData.NoticesSources.LINKS.guaranteedTrains.getValue("TRENITALIA"))
+    /** Every operator of "Biglietti e assistenza", the national ones first, with its «treni garantiti» page last. */
+    val ALL: List<OperatorLinks> = SharedData.OfficialLinks.OPERATORS.map { operator ->
+        OperatorLinks(
+            id = operator.id,
+            name = operator.name,
+            domains = operator.domains,
+            links = operator.links.map { OperatorLink(OperatorLinkKind.valueOf(it.kind), it.url) } +
+                listOfNotNull(
+                    operator.guaranteedTrains?.let { key ->
+                        OperatorLink(OperatorLinkKind.STRIKES, SharedData.NoticesSources.LINKS.guaranteedTrains.getValue(key))
+                    }
+                )
         )
-    )
+    }
 
-    val ITALO = OperatorLinks(
-        id = "italo", name = "Italo", domains = setOf("italotreno.com"),
-        links = listOf(
-            OperatorLink(OperatorLinkKind.BUY, "https://www.italotreno.com/"),
-            OperatorLink(OperatorLinkKind.CHANGE, "https://www.italotreno.com/en/the-train/fares"),
-            OperatorLink(OperatorLinkKind.SUBSCRIPTIONS, "https://www.italotreno.com/en/train-offers/season-tickets-carnet/carnet-standard"),
-            OperatorLink(OperatorLinkKind.CUSTOMER_CARE, "https://www.italotreno.com/en/support-contacts"),
-            OperatorLink(OperatorLinkKind.REFUNDS, "https://www.italotreno.com/en/support-contacts/claims-management")
-        )
-    )
-
-    val TRENORD = OperatorLinks(
-        id = "trenord", name = "Trenord", domains = setOf("trenord.it"),
-        links = listOf(
-            OperatorLink(OperatorLinkKind.BUY, "https://www.trenord.it/"),
-            OperatorLink(OperatorLinkKind.SUBSCRIPTIONS, "https://www.trenord.it/en/tickets/travel-titles/season-tickets/"),
-            OperatorLink(OperatorLinkKind.BIKES, "https://www.trenord.it/en/tickets/concessions-and-extras/bike-transportation/"),
-            OperatorLink(OperatorLinkKind.CUSTOMER_CARE, "https://www.trenord.it/en/assistance/"),
-            OperatorLink(OperatorLinkKind.REFUNDS, "https://www.trenord.it/en/assistance/services/refunds-and-indemnities/request-a-refund/"),
-            OperatorLink(OperatorLinkKind.STRIKES, SharedData.NoticesSources.LINKS.guaranteedTrains.getValue("TRENORD"))
-        )
-    )
+    val TRENITALIA: OperatorLinks = ALL.first { it.id == "trenitalia" }
+    val ITALO: OperatorLinks = ALL.first { it.id == "italo" }
+    val TRENORD: OperatorLinks = ALL.first { it.id == "trenord" }
 
     /** Regional railways of the offline timetables: the official site, and a dedicated page where one is known. */
-    val REGIONAL: List<OperatorLinks> = listOf(
-        OperatorLinks("eav", "EAV", setOf("eavsrl.it"), listOf(OperatorLink(OperatorLinkKind.WEBSITE, "https://www.eavsrl.it/"))),
-        OperatorLinks("sad", "SAD (Alto Adige)", setOf("sad.it"), listOf(OperatorLink(OperatorLinkKind.WEBSITE, "https://www.sad.it/it/mezzi/i-treni"))),
-        OperatorLinks(
-            "trentino-trasporti", "Trentino Trasporti", setOf("trentinotrasporti.it"),
-            listOf(
-                OperatorLink(OperatorLinkKind.WEBSITE, "https://www.trentinotrasporti.it/"),
-                OperatorLink(OperatorLinkKind.SUBSCRIPTIONS, "https://www.trentinotrasporti.it/it/tariffe/abbonamenti")
-            )
-        ),
-        OperatorLinks("tft", "TFT (Toscana)", setOf("trasportoferroviariotoscano.it"), listOf(OperatorLink(OperatorLinkKind.WEBSITE, "https://www.trasportoferroviariotoscano.it/"))),
-        OperatorLinks("arst", "ARST (Sardegna)", setOf("arst.sardegna.it"), listOf(OperatorLink(OperatorLinkKind.WEBSITE, "https://www.arst.sardegna.it/servizi-orari/servizi-ferroviari-tpl/"))),
-        OperatorLinks("fal", "Ferrovie Appulo Lucane", setOf("ferrovieappulolucane.it"), listOf(OperatorLink(OperatorLinkKind.WEBSITE, "https://ferrovieappulolucane.it/"))),
-        OperatorLinks(
-            "ferrotramviaria", "Ferrotramviaria (Bari Nord)", setOf("ferrovienordbarese.it"),
-            listOf(
-                OperatorLink(OperatorLinkKind.WEBSITE, "https://www.ferrovienordbarese.it/"),
-                OperatorLink(OperatorLinkKind.BUY, "https://eticket.ferrovienordbarese.it/b2c/web/index.jsp")
-            )
-        ),
-        OperatorLinks("fdg", "Ferrovie del Gargano", setOf("ferroviedelgargano.com"), listOf(OperatorLink(OperatorLinkKind.WEBSITE, "https://ferroviedelgargano.com/"))),
-        OperatorLinks("fuc", "Ferrovie Udine Cividale (Mi.Co.Tra.)", setOf("ferrovieudinecividale.it"), listOf(OperatorLink(OperatorLinkKind.WEBSITE, "https://www.ferrovieudinecividale.it/"))),
-        OperatorLinks("cotral", "Cotral", setOf("cotralspa.it"), listOf(OperatorLink(OperatorLinkKind.WEBSITE, "https://cotralspa.it/")))
-    )
-
-    /** Every operator of "Biglietti e assistenza", the national ones first. */
-    val ALL: List<OperatorLinks> = listOf(TRENITALIA, ITALO, TRENORD) + REGIONAL
+    val REGIONAL: List<OperatorLinks> = SharedData.OfficialLinks.OPERATORS.filterNot { it.national }
+        .map { regional -> ALL.first { it.id == regional.id } }
 
     /** FS News, the news site of the FS Italiane group, with its radio bulletins on rail traffic. Link only. */
     val FS_NEWS = SharedData.NoticesSources.LINKS.fsNews
-    val FS_NEWS_DOMAINS = setOf("fsnews.it")
+    val FS_NEWS_DOMAINS = SharedData.OfficialLinks.FS_NEWS_DOMAINS
 
     /**
      * Sala Blu: RFI's free assistance, on booking, for passengers with a disability or reduced mobility in the stations
@@ -109,10 +69,10 @@ object OfficialLinks {
      * machine. Opened only on a tap: the page in the browser, a number in the phone's dialer, which Binario never calls.
      */
     object SalaBlu {
-        const val PAGE = "https://www.rfi.it/it/stazioni/pagine-stazioni/accessibilita.html"
-        val DOMAINS = setOf("rfi.it")
-        const val TOLL_FREE = "800 90 60 60"
-        const val NATIONAL = "02 32 32 32"
+        const val PAGE = SharedData.OfficialLinks.SALA_BLU_PAGE
+        val DOMAINS = SharedData.OfficialLinks.SALA_BLU_DOMAINS
+        const val TOLL_FREE = SharedData.OfficialLinks.SALA_BLU_TOLL_FREE
+        const val NATIONAL = SharedData.OfficialLinks.SALA_BLU_NATIONAL
 
         /** "tel:800906060": the number for the dialer, digits only. */
         fun dialUri(number: String): String = "tel:" + number.filter(Char::isDigit)

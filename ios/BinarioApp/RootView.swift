@@ -16,17 +16,15 @@ struct RootView: View {
                 .tabItem { Label("tab.departures", systemImage: "list.bullet.rectangle") }
                 .tag(AppModel.Tab.departures)
 
+            // «Per te», as on Android: the saved routes, the Agenda, «Orari salvati», the favourite
+            // stations, «I miei treni» and «Impostazioni» (SavedRoutesView.swift).
             NavigationStack { SavedRoutesView() }
-                .tabItem { Label("tab.saved", systemImage: "star") }
+                .tabItem { Label("tab.for_you", systemImage: "person") }
                 .tag(AppModel.Tab.saved)
-
-            NavigationStack { MyTrainsView() }
-                .tabItem { Label("tab.trains", systemImage: "train.side.front.car") }
-                .tag(AppModel.Tab.trains)
-
-            NavigationStack { SettingsView() }
-                .tabItem { Label("tab.settings", systemImage: "gearshape") }
-                .tag(AppModel.Tab.settings)
+        }
+        // «I miei treni» and «Impostazioni» are pages of «Per te»: a request for their former tabs opens it.
+        .onChange(of: model.selectedTab) { _, tab in
+            if tab == .trains || tab == .settings { model.selectedTab = .saved }
         }
         // Live data only in the foreground: the requests on their way stop when the app leaves it,
         // and the screen on display asks again when it comes back. No background mode, no refresh

@@ -1,0 +1,240 @@
+{
+  "schema": "binario-shared-rules-v1",
+  "description": "The CO2 estimate of a solution (co2/Co2Estimate.kt): the great-circle distance between station positions (haversine on the mean Earth radius), the train on the sum of its vehicle legs times the rail detour, car and plane on the great circle between first and last station times their own factor, the plane factor between its two published distances and constant outside them; no estimate without every position (a null), with no leg or under the minimum distance; kilograms with one decimal under 10 kg in the language's decimal separator, whole above. Factors and distances: contracts/shared-data/v1/co2-estimate-v1.json. Expected kilometres and kilograms agree within «tolerance».",
+  "readers": [
+    "app/src/test/java/it/binario/app/co2/Co2EstimateContractTest.kt",
+    "ios/BinarioKit/Tests/BinarioKitTests/PersonalFeaturesContractTests.swift"
+  ],
+  "tolerance": 1e-06,
+  "greatCircle": [
+    {
+      "name": "Roma Termini to Milano Centrale",
+      "from": [
+        41.901,
+        12.5016
+      ],
+      "to": [
+        45.4862,
+        9.2045
+      ],
+      "expectedKm": 478.645307
+    },
+    {
+      "name": "the same point",
+      "from": [
+        41.901,
+        12.5016
+      ],
+      "to": [
+        41.901,
+        12.5016
+      ],
+      "expectedKm": 0.0
+    },
+    {
+      "name": "Torino Porta Nuova to Bari Centrale",
+      "from": [
+        45.0625,
+        7.6786
+      ],
+      "to": [
+        41.1179,
+        16.8697
+      ],
+      "expectedKm": 864.909609
+    }
+  ],
+  "planeFactor": [
+    {
+      "km": 300.0,
+      "expected": 340.0
+    },
+    {
+      "km": 500.0,
+      "expected": 340.0
+    },
+    {
+      "km": 750.0,
+      "expected": 305.0
+    },
+    {
+      "km": 1000.0,
+      "expected": 270.0
+    },
+    {
+      "km": 1500.0,
+      "expected": 270.0
+    }
+  ],
+  "estimates": [
+    {
+      "name": "a direct train",
+      "legs": [
+        [
+          [
+            41.901,
+            12.5016
+          ],
+          [
+            45.4862,
+            9.2045
+          ]
+        ]
+      ],
+      "expected": {
+        "trainKg": 10.338739,
+        "carKg": 66.412036,
+        "planeKg": 174.532811,
+        "railKm": 574.374368
+      }
+    },
+    {
+      "name": "a change sums the legs, car and plane go straight",
+      "legs": [
+        [
+          [
+            41.901,
+            12.5016
+          ],
+          [
+            43.7764,
+            11.248
+          ]
+        ],
+        [
+          [
+            43.7764,
+            11.248
+          ],
+          [
+            45.4862,
+            9.2045
+          ]
+        ]
+      ],
+      "expected": {
+        "trainKg": 10.406906,
+        "carKg": 66.412036,
+        "planeKg": 174.532811,
+        "railKm": 578.161426
+      }
+    },
+    {
+      "name": "a long trip with the plane at its long factor",
+      "legs": [
+        [
+          [
+            45.0625,
+            7.6786
+          ],
+          [
+            45.4862,
+            9.2045
+          ]
+        ],
+        [
+          [
+            45.4862,
+            9.2045
+          ],
+          [
+            40.8528,
+            14.2722
+          ]
+        ],
+        [
+          [
+            40.8528,
+            14.2722
+          ],
+          [
+            38.11,
+            13.34
+          ]
+        ]
+      ],
+      "expected": {
+        "trainKg": 23.812135,
+        "carKg": 125.518298,
+        "planeKg": 266.936935,
+        "railKm": 1322.89638
+      }
+    },
+    {
+      "name": "a missing station position",
+      "legs": [
+        [
+          [
+            41.901,
+            12.5016
+          ],
+          [
+            43.7764,
+            11.248
+          ]
+        ],
+        [
+          null,
+          [
+            45.4862,
+            9.2045
+          ]
+        ]
+      ],
+      "expected": null
+    },
+    {
+      "name": "no leg",
+      "legs": [],
+      "expected": null
+    },
+    {
+      "name": "too short",
+      "legs": [
+        [
+          [
+            41.901,
+            12.5016
+          ],
+          [
+            41.902,
+            12.502
+          ]
+        ]
+      ],
+      "expected": null
+    }
+  ],
+  "displayKg": [
+    {
+      "kg": 4.8123,
+      "language": "it",
+      "expected": "4,8"
+    },
+    {
+      "kg": 4.8123,
+      "language": "en",
+      "expected": "4.8"
+    },
+    {
+      "kg": 0.04,
+      "language": "it",
+      "expected": "0,0"
+    },
+    {
+      "kg": 9.94,
+      "language": "de",
+      "expected": "9,9"
+    },
+    {
+      "kg": 66.2,
+      "language": "it",
+      "expected": "66"
+    },
+    {
+      "kg": 66.7,
+      "language": "en",
+      "expected": "67"
+    }
+  ]
+}

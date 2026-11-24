@@ -37,6 +37,10 @@ struct DeparturesView: View {
                     StationPickerField(titleKey: "departures.station", selection: stationSelection)
                     // EXPO_PORT_PLAN I7: the board of the nearest station, from one position on a tap.
                     NearestStationButton(titleKey: "departures.nearest", foundKey: "departures.nearest.found", selection: stationSelection)
+                    // Android's star of a board: «Stazioni preferite» (PersonalViews.swift).
+                    if let station = model.boardStation {
+                        FavouriteStationButton(station: station)
+                    }
                     // Android's «Partenze» and «Arrivi» chips: the arrivals are the live board alone.
                     if model.isLiveDataActive, model.boardStation != nil {
                         Picker("departures.kind.title", selection: boardKindSelection) {
@@ -66,6 +70,12 @@ struct DeparturesView: View {
                 }
                 // «Treni in movimento» and «Bici in condivisione» of the board's station (ExtrasViews.swift).
                 BoardExtrasSections()
+                // Android's «Assistenza Sala Blu», favourite and nearby stations (PersonalViews.swift).
+                if let station = model.boardStation {
+                    SalaBluSection(station: model.station(for: station))
+                }
+                FavouriteStationsSection()
+                NearbyStationsSection()
                 // The bottom of Android's departures board: the station's Trenord notices and «Avvisi e infomobilità».
                 BoardNoticesSections(station: model.boardStation.map { model.station(for: $0) })
             case .unavailable:
@@ -200,13 +210,20 @@ private struct BoardContent: View {
 /// the listed trains and the «orario programmato» disclosure.
 private struct DepartureListSection: View {
     @EnvironmentObject private var model: AppModel
+    @EnvironmentObject private var personal: PersonalModel
 
     var body: some View {
+        // Android's «Tipi di treno»: the types hidden at this station; a train of unknown type stays.
+        let excluded = model.boardStation.map { personal.excludedTrainTypes(at: $0.id) } ?? []
+        let shown = model.boardDepartures.filter { !TrainTypeGroups.isHidden(TrainTypeGroups.group(of: $0.service), excluded: excluded) }
         Section {
+            if let station = model.boardStation {
+                TrainTypesControl(station: station, hiddenCount: model.boardDepartures.count - shown.count)
+            }
             if model.boardSomeTimetablesEnded {
                 ExpiredTimetablesNotice()
             }
-            ForEach(model.boardDepartures) { departure in
+            ForEach(shown) { departure in
                 // As a planner row: the detail of the train, boarded at this station.
                 if let query = model.boardDetailQuery(for: departure) {
                     NavigationLink {

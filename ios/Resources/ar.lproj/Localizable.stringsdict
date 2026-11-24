@@ -98,6 +98,30 @@
 			<string>تأخير %1$lld دقيقة</string>
 		</dict>
 	</dict>
+	<key>departures.types.hidden_trains</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>few</key>
+			<string>%1$lld قطارات مخفية</string>
+			<key>many</key>
+			<string>%1$lld قطارًا مخفيًا</string>
+			<key>one</key>
+			<string>%1$lld قطار مخفي</string>
+			<key>other</key>
+			<string>%1$lld قطار مخفي</string>
+			<key>two</key>
+			<string>%1$lld قطاران مخفيان</string>
+			<key>zero</key>
+			<string>%1$lld قطار مخفي</string>
+		</dict>
+	</dict>
 	<key>notices.alerts.strike_title</key>
 	<dict>
 		<key>NSStringLocalizedFormatKey</key>
@@ -362,6 +386,54 @@
 			<string>متأخر %1$lld دقيقة</string>
 		</dict>
 	</dict>
+	<key>result.minutes_short</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>few</key>
+			<string>%1$lld د</string>
+			<key>many</key>
+			<string>%1$lld د</string>
+			<key>one</key>
+			<string>%1$lld د</string>
+			<key>other</key>
+			<string>%1$lld د</string>
+			<key>two</key>
+			<string>%1$lld د</string>
+			<key>zero</key>
+			<string>%1$lld د</string>
+		</dict>
+	</dict>
+	<key>result.punctuality.observations</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>few</key>
+			<string>%1$lld ملاحظات مسجّلة على هذا الجهاز</string>
+			<key>many</key>
+			<string>%1$lld ملاحظة مسجّلة على هذا الجهاز</string>
+			<key>one</key>
+			<string>%1$lld ملاحظة مسجّلة على هذا الجهاز</string>
+			<key>other</key>
+			<string>%1$lld ملاحظة مسجّلة على هذا الجهاز</string>
+			<key>two</key>
+			<string>%1$lld ملاحظتان مسجّلتان على هذا الجهاز</string>
+			<key>zero</key>
+			<string>%1$lld ملاحظة مسجّلة على هذا الجهاز</string>
+		</dict>
+	</dict>
 	<key>result.reliability.cancelled</key>
 	<dict>
 		<key>NSStringLocalizedFormatKey</key>
@@ -506,6 +578,30 @@
 			<string>%1$lld قطار</string>
 		</dict>
 	</dict>
+	<key>saved.timetables.solutions</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>few</key>
+			<string>%1$lld رحلات</string>
+			<key>many</key>
+			<string>%1$lld رحلة</string>
+			<key>one</key>
+			<string>%1$lld رحلة</string>
+			<key>other</key>
+			<string>%1$lld رحلة</string>
+			<key>two</key>
+			<string>%1$lld رحلتان</string>
+			<key>zero</key>
+			<string>%1$lld رحلة</string>
+		</dict>
+	</dict>
 	<key>saved.trains.limit_error</key>
 	<dict>
 		<key>NSStringLocalizedFormatKey</key>
@@ -552,6 +648,78 @@
 			<string>آخر %1$lld يومين، عند الوصول إلى المحطة الأخيرة لكل قطار. المس قطارًا لفتحه.</string>
 			<key>zero</key>
 			<string>آخر %1$lld يوم، عند الوصول إلى المحطة الأخيرة لكل قطار. المس قطارًا لفتحه.</string>
+		</dict>
+	</dict>
+	<key>settings.backup.alerts</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>few</key>
+			<string>%1$lld تنبيهات</string>
+			<key>many</key>
+			<string>%1$lld تنبيهًا</string>
+			<key>one</key>
+			<string>%1$lld تنبيه</string>
+			<key>other</key>
+			<string>%1$lld تنبيه</string>
+			<key>two</key>
+			<string>%1$lld تنبيهان</string>
+			<key>zero</key>
+			<string>%1$lld تنبيه</string>
+		</dict>
+	</dict>
+	<key>settings.backup.routes</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>few</key>
+			<string>%1$lld مسارات</string>
+			<key>many</key>
+			<string>%1$lld مسارًا</string>
+			<key>one</key>
+			<string>%1$lld مسار</string>
+			<key>other</key>
+			<string>%1$lld مسار</string>
+			<key>two</key>
+			<string>%1$lld مساران</string>
+			<key>zero</key>
+			<string>%1$lld مسار</string>
+		</dict>
+	</dict>
+	<key>settings.backup.stations</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>few</key>
+			<string>%1$lld محطات متابَعة</string>
+			<key>many</key>
+			<string>%1$lld محطة متابَعة</string>
+			<key>one</key>
+			<string>%1$lld محطة متابَعة</string>
+			<key>other</key>
+			<string>%1$lld محطة متابَعة</string>
+			<key>two</key>
+			<string>%1$lld محطتان متابَعتان</string>
+			<key>zero</key>
+			<string>%1$lld محطة متابَعة</string>
 		</dict>
 	</dict>
 </dict>

@@ -15,6 +15,9 @@ struct BinarioApp: App {
     @StateObject private var notices: RailNoticesModel
     /// Weather at the destination, bike sharing and the switches of the evening alerts.
     @StateObject private var extras: ExtrasModel
+    /// «Orari salvati», favourite stations, hidden train types, names of «I miei treni», the
+    /// personal punctuality and the theme (PersonalModel.swift).
+    @StateObject private var personal: PersonalModel
     @Environment(\.scenePhase) private var scenePhase
 
     init() {
@@ -25,14 +28,17 @@ struct BinarioApp: App {
         _model = StateObject(wrappedValue: model)
         _notices = StateObject(wrappedValue: RailNoticesModel.bootstrap())
         _extras = StateObject(wrappedValue: ExtrasModel())
+        _personal = StateObject(wrappedValue: PersonalModel())
     }
 
     var body: some Scene {
         WindowGroup {
             RootView()
+                .modifier(AppThemeModifier())
                 .environmentObject(model)
                 .environmentObject(notices)
                 .environmentObject(extras)
+                .environmentObject(personal)
         }
         // The evening alerts' one background app refresh task (EveningAlerts.swift): planned again
         // each time the app leaves the screen, run by iOS from the hour asked for.

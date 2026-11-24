@@ -2,6 +2,7 @@
 // `python3 tools/generate_shared_code.py` (contracts/shared-data/README.md). Sources:
 //   contracts/shared-data/v1/airport-routes-v1.json
 //   contracts/shared-data/v1/bike-sharing-v1.json
+//   contracts/shared-data/v1/co2-estimate-v1.json
 //   contracts/shared-data/v1/delay-compensation-v1.json
 //   contracts/shared-data/v1/destination-weather-v1.json
 //   contracts/shared-data/v1/evening-alerts-v1.json
@@ -9,16 +10,21 @@
 //   contracts/shared-data/v1/italo-gtfs-station-codes.json
 //   contracts/shared-data/v1/italo-stations-v1.json
 //   contracts/shared-data/v1/live-train-map-v1.json
+//   contracts/shared-data/v1/local-backup-v1.json
 //   contracts/shared-data/v1/notices-sources-v1.json
+//   contracts/shared-data/v1/official-links-v1.json
 //   contracts/shared-data/v1/pack-roles-v1.json
+//   contracts/shared-data/v1/personal-punctuality-v1.json
 //   contracts/shared-data/v1/planned-journeys-v1.json
 //   contracts/shared-data/v1/punctuality-v1.json
 //   contracts/shared-data/v1/realtime-feeds-v1.json
 //   contracts/shared-data/v1/rfi-monitor-v1.json
 //   contracts/shared-data/v1/rfi-place-ids-v1.json
+//   contracts/shared-data/v1/saved-timetables-v1.json
 //   contracts/shared-data/v1/source-manners-v1.json
 //   contracts/shared-data/v1/source-scores-v1.json
 //   contracts/shared-data/v1/train-number-prefixes-v1.json
+//   contracts/shared-data/v1/train-type-groups-v1.json
 //   contracts/shared-data/v1/urban-stops-v1.json
 //   contracts/shared-data/v1/viaggiatreno-v1.json
 
@@ -176,6 +182,29 @@ public enum SharedData {
         public static let maximumBytes: Int = 4194304
         public static let readTimeoutSeconds: Double = 15
         public static let totalTimeoutSeconds: Double = 20
+    }
+
+    /// contracts/shared-data/v1/co2-estimate-v1.json: The CO2 estimate of a solution (results, train detail, journey
+    /// detail): emission factors per passenger-kilometre in grams of CO2 equivalent, well-to-wheel, from the European
+    /// Environment Agency report «Transport and environment report 2020 – Train or plane?» (EEA Report No 19/2020): an
+    /// international high-speed electric train, an average fossil-fuelled car with 1.5 occupants and an A320 on 500 and
+    /// 1,000 km. The distance factors are Binario's own assumptions, stated in the credits: rail and road are longer
+    /// than the great circle between stations, a flight adds 8 % for routing and holding. No estimate under minimumKm.
+    public enum Co2Estimate {
+        public static let source: String = "EEA Report No 19/2020, Transport and environment report 2020 – Train or plane?"
+        public static let sourceUrl: String = "https://www.eea.europa.eu/en/analysis/publications/transport-and-environment-report-2020"
+        public static let sourceYear: Int = 2020
+        public static let trainGramsPerPkm: Double = 18.0
+        public static let carGramsPerPkm: Double = 111.0
+        public static let planeGramsPerPkmShort: Double = 340.0
+        public static let planeShortKm: Double = 500.0
+        public static let planeGramsPerPkmLong: Double = 270.0
+        public static let planeLongKm: Double = 1000.0
+        public static let railDetour: Double = 1.2
+        public static let roadDetour: Double = 1.25
+        public static let flightUplift: Double = 1.08
+        public static let minimumKm: Double = 5.0
+        public static let earthRadiusKm: Double = 6371.0088
     }
 
     /// contracts/shared-data/v1/delay-compensation-v1.json: Regulation (EU) 2021/782, art. 19: the share of the ticket
@@ -505,6 +534,20 @@ public enum SharedData {
         public static let maximumLineLabelLength: Int = 8
     }
 
+    /// contracts/shared-data/v1/local-backup-v1.json: The local backup file the user exports and imports by hand (no
+    /// cloud): its kind and schema version, the largest file an import reads, and the bounds of the station records it
+    /// carries for the stations outside the catalogue. Both phones write and read the same file, so a backup moves
+    /// between them; each ignores the keys it does not know.
+    public enum LocalBackup {
+        public static let kind: String = "binario-local-backup"
+        public static let schemaVersion: Int = 2
+        public static let maximumBytes: Int = 1048576
+        public static let maximumStations: Int = 128
+        public static let maximumStationText: Int = 200
+        public static let maximumStationAliases: Int = 32
+        public static let maximumRoutes: Int = 32
+    }
+
     /// contracts/shared-data/v1/notices-sources-v1.json: The rail notice feeds and the tables that read them, the same
     /// on Android and on the iPhone: each feed's address, gate (every build or only with the personal live sources),
     /// limits, rate, cache and redirect rule, the pages opened on a tap, and the limits, words and patterns of the
@@ -694,6 +737,186 @@ public enum SharedData {
         public static let trainNotices: TrainNoticeRules = TrainNoticeRules(maximumNotes: 500, textLength: 1000, maximumTrains: 20, maximumCachedTrains: 32)
     }
 
+    /// contracts/shared-data/v1/official-links-v1.json: «Biglietti e assistenza» and the other official pages the apps
+    /// open in the browser only on a tap, never requesting them: every operator Binario shows timetables of, national
+    /// ones first, with its registrable domains and its pages (buy, change, subscribe, bikes, assistance, refunds,
+    /// website), https only, checked against a search index in November 2026. guaranteedTrains names its «treni
+    /// garantiti» page in notices-sources-v1.json, added after the others. No operator documents a URL that prefills a
+    /// search: «Apri sul sito ufficiale» opens BUY. Sala Blu, RFI's free assistance for reduced mobility: page and
+    /// national numbers, dialled only by the phone's dialer. «Suggerisci una stazione» opens the project's issue form.
+    public enum OfficialLinks {
+        public struct Link: Hashable, Sendable {
+            public let kind: String
+            public let url: String
+        }
+
+        public struct Operator: Hashable, Sendable {
+            public let id: String
+            public let name: String
+            public let national: Bool
+            public let domains: Set<String>
+            public let links: [Link]
+            public let guaranteedTrains: String?
+        }
+
+        public static let linkKinds: [String] = [
+            "BUY", "CHANGE", "SUBSCRIPTIONS", "BIKES", "CUSTOMER_CARE", "REFUNDS", "STRIKES", "WEBSITE"
+        ]
+        public static let operators: [Operator] = [
+            Operator(
+                id: "trenitalia",
+                name: "Trenitalia",
+                national: true,
+                domains: ["trenitalia.com"],
+                links: [
+                    Link(kind: "BUY", url: "https://www.trenitalia.com/"),
+                    Link(kind: "CHANGE", url: "https://www.trenitalia.com/it/informazioni/la-guida-del-viaggiatore/acquisto-utilizzoemodificabigliettonazionale.html"),
+                    Link(kind: "SUBSCRIPTIONS", url: "https://www.trenitalia.com/it/informazioni/la-guida-del-viaggiatore/gli-abbonamenti-di-trenitalia.html"),
+                    Link(kind: "BIKES", url: "https://www.trenitalia.com/it/servizi/bici-al-seguito.html"),
+                    Link(kind: "CUSTOMER_CARE", url: "https://www.trenitalia.com/it/informazioni.html"),
+                    Link(kind: "REFUNDS", url: "https://www.trenitalia.com/it/informazioni/la-guida-del-viaggiatore/i-rimborsi.html")
+                ],
+                guaranteedTrains: "TRENITALIA"
+            ),
+            Operator(
+                id: "italo",
+                name: "Italo",
+                national: true,
+                domains: ["italotreno.com"],
+                links: [
+                    Link(kind: "BUY", url: "https://www.italotreno.com/"),
+                    Link(kind: "CHANGE", url: "https://www.italotreno.com/en/the-train/fares"),
+                    Link(kind: "SUBSCRIPTIONS", url: "https://www.italotreno.com/en/train-offers/season-tickets-carnet/carnet-standard"),
+                    Link(kind: "CUSTOMER_CARE", url: "https://www.italotreno.com/en/support-contacts"),
+                    Link(kind: "REFUNDS", url: "https://www.italotreno.com/en/support-contacts/claims-management")
+                ],
+                guaranteedTrains: nil
+            ),
+            Operator(
+                id: "trenord",
+                name: "Trenord",
+                national: true,
+                domains: ["trenord.it"],
+                links: [
+                    Link(kind: "BUY", url: "https://www.trenord.it/"),
+                    Link(kind: "SUBSCRIPTIONS", url: "https://www.trenord.it/en/tickets/travel-titles/season-tickets/"),
+                    Link(kind: "BIKES", url: "https://www.trenord.it/en/tickets/concessions-and-extras/bike-transportation/"),
+                    Link(kind: "CUSTOMER_CARE", url: "https://www.trenord.it/en/assistance/"),
+                    Link(kind: "REFUNDS", url: "https://www.trenord.it/en/assistance/services/refunds-and-indemnities/request-a-refund/")
+                ],
+                guaranteedTrains: "TRENORD"
+            ),
+            Operator(
+                id: "eav",
+                name: "EAV",
+                national: false,
+                domains: ["eavsrl.it"],
+                links: [
+                    Link(kind: "WEBSITE", url: "https://www.eavsrl.it/")
+                ],
+                guaranteedTrains: nil
+            ),
+            Operator(
+                id: "sad",
+                name: "SAD (Alto Adige)",
+                national: false,
+                domains: ["sad.it"],
+                links: [
+                    Link(kind: "WEBSITE", url: "https://www.sad.it/it/mezzi/i-treni")
+                ],
+                guaranteedTrains: nil
+            ),
+            Operator(
+                id: "trentino-trasporti",
+                name: "Trentino Trasporti",
+                national: false,
+                domains: ["trentinotrasporti.it"],
+                links: [
+                    Link(kind: "WEBSITE", url: "https://www.trentinotrasporti.it/"),
+                    Link(kind: "SUBSCRIPTIONS", url: "https://www.trentinotrasporti.it/it/tariffe/abbonamenti")
+                ],
+                guaranteedTrains: nil
+            ),
+            Operator(
+                id: "tft",
+                name: "TFT (Toscana)",
+                national: false,
+                domains: ["trasportoferroviariotoscano.it"],
+                links: [
+                    Link(kind: "WEBSITE", url: "https://www.trasportoferroviariotoscano.it/")
+                ],
+                guaranteedTrains: nil
+            ),
+            Operator(
+                id: "arst",
+                name: "ARST (Sardegna)",
+                national: false,
+                domains: ["arst.sardegna.it"],
+                links: [
+                    Link(kind: "WEBSITE", url: "https://www.arst.sardegna.it/servizi-orari/servizi-ferroviari-tpl/")
+                ],
+                guaranteedTrains: nil
+            ),
+            Operator(
+                id: "fal",
+                name: "Ferrovie Appulo Lucane",
+                national: false,
+                domains: ["ferrovieappulolucane.it"],
+                links: [
+                    Link(kind: "WEBSITE", url: "https://ferrovieappulolucane.it/")
+                ],
+                guaranteedTrains: nil
+            ),
+            Operator(
+                id: "ferrotramviaria",
+                name: "Ferrotramviaria (Bari Nord)",
+                national: false,
+                domains: ["ferrovienordbarese.it"],
+                links: [
+                    Link(kind: "WEBSITE", url: "https://www.ferrovienordbarese.it/"),
+                    Link(kind: "BUY", url: "https://eticket.ferrovienordbarese.it/b2c/web/index.jsp")
+                ],
+                guaranteedTrains: nil
+            ),
+            Operator(
+                id: "fdg",
+                name: "Ferrovie del Gargano",
+                national: false,
+                domains: ["ferroviedelgargano.com"],
+                links: [
+                    Link(kind: "WEBSITE", url: "https://ferroviedelgargano.com/")
+                ],
+                guaranteedTrains: nil
+            ),
+            Operator(
+                id: "fuc",
+                name: "Ferrovie Udine Cividale (Mi.Co.Tra.)",
+                national: false,
+                domains: ["ferrovieudinecividale.it"],
+                links: [
+                    Link(kind: "WEBSITE", url: "https://www.ferrovieudinecividale.it/")
+                ],
+                guaranteedTrains: nil
+            ),
+            Operator(
+                id: "cotral",
+                name: "Cotral",
+                national: false,
+                domains: ["cotralspa.it"],
+                links: [
+                    Link(kind: "WEBSITE", url: "https://cotralspa.it/")
+                ],
+                guaranteedTrains: nil
+            )
+        ]
+        public static let fsNewsDomains: Set<String> = ["fsnews.it"]
+        public static let salaBluPage: String = "https://www.rfi.it/it/stazioni/pagine-stazioni/accessibilita.html"
+        public static let salaBluDomains: Set<String> = ["rfi.it"]
+        public static let salaBluTollFree: String = "800 90 60 60"
+        public static let salaBluNational: String = "02 32 32 32"
+        public static let projectNewIssueUrl: String = "https://github.com/fz1101hub/binario/issues/new"
+    }
+
     /// contracts/shared-data/v1/pack-roles-v1.json: Roles of the offline timetable packs that Android, the iPhone and
     /// the iPhone index builder share: the national operators' packs (their copy of a train first), the foreign
     /// operators' packs (last, first at a station no national pack serves; their stops match catalogue stations with
@@ -714,6 +937,29 @@ public enum SharedData {
             "milano-atm-gtfs", "genova-amt-gtfs", "firenze-gest-gtfs", "arst-metro-gtfs", "napoli-anm-gtfs",
             "venezia-actv-gtfs", "roma-mobilita-gtfs", "gtt-gtfs", "marconi-express-gtfs"
         ]
+    }
+
+    /// contracts/shared-data/v1/personal-punctuality-v1.json: The personal punctuality of a train, from the
+    /// observations recorded on this phone only (one per train number and service day, the latest wins): how long and
+    /// how many are kept, the thresholds of the «Puntualità» section and of its distribution, and the limits of the
+    /// stored texts. The rules are the cases of contracts/shared-rules/v1/personal-punctuality-v1.json.
+    public enum PersonalPunctuality {
+        public static let retentionDays: Int = 365
+        public static let maximumPerTrain: Int = 365
+        public static let maximumTotal: Int = 1500
+        public static let detailedPerTrain: Int = 30
+        public static let maximumDetailedTotal: Int = 240
+        public static let maximumStops: Int = 40
+        public static let onTimeMinutes: Int = 5
+        public static let lateMinutes: Int = 15
+        public static let severeMinutes: Int = 30
+        public static let minimumObservations: Int = 2
+        public static let minimumStopSamples: Int = 2
+        public static let historyCollapsed: Int = 7
+        public static let maximumNumberLength: Int = 32
+        public static let maximumOperatorLength: Int = 80
+        public static let maximumStationLength: Int = 40
+        public static let maximumDelayMinutes: Int = 1440
     }
 
     /// contracts/shared-data/v1/planned-journeys-v1.json: Limits of the Agenda (planned journeys) and of its templates,
@@ -945,6 +1191,19 @@ public enum SharedData {
         ]
     }
 
+    /// contracts/shared-data/v1/saved-timetables-v1.json: «Orari salvati»: the result lists saved on the device,
+    /// read-only and never updated, kept in the app's own storage and in the local backup file (key savedTimetables).
+    /// Bounds of the list, of its rows and of its texts, the same when saving, reading a backup and writing one.
+    public enum SavedTimetables {
+        public static let maximumTimetables: Int = 15
+        public static let maximumRows: Int = 30
+        public static let maximumNameLength: Int = 60
+        public static let maximumTextLength: Int = 200
+        public static let maximumTransfers: Int = 6
+        public static let maximumArrivalDayOffset: Int = 7
+        public static let maximumChanges: Int = 20
+    }
+
     /// contracts/shared-data/v1/source-manners-v1.json: How Binario asks every public source, on Android and on the
     /// iPhone: the User-Agent (the app by name, version and platform, never a browser's), the statuses that are a
     /// refusal and the pause after one without Retry-After, and the circuit breaker (failures in a row, first and
@@ -1148,6 +1407,26 @@ public enum SharedData {
             "TER", "REX", "CJX", "IRE", "ECE", "CAT", "NJ", "IR", "ES", "FR", "FA", "FB", "AV", "RV", "RE", "IC", "EC",
             "EN", "RJ", "R", "S", "D"
         ]
+    }
+
+    /// contracts/shared-data/v1/train-type-groups-v1.json: The train types a station board («Tipi di treno») and the
+    /// widgets can hide: Frecce/AV, Intercity/notte, Regionali/suburbani, Italo, Bus, Internazionali. A row's group
+    /// comes from what the sources already publish: a bus, the operator (Italo, an operator outside Italy), then the
+    /// letters that open its category or line label. A train whose type no source tells has no group and is never
+    /// hidden. The rule has the cases of contracts/shared-rules/v1/train-type-groups-v1.json.
+    public enum TrainTypeGroups {
+        public static let groups: [String] = [
+            "HIGH_SPEED", "INTERCITY_NIGHT", "REGIONAL_SUBURBAN", "ITALO", "REPLACEMENT_BUS", "INTERNATIONAL"
+        ]
+        public static let italoOperatorIds: Set<String> = ["italo"]
+        public static let internationalOperatorIds: Set<String> = [
+            "sbb", "bls", "rhb", "sncf", "oebb", "db", "westbahn", "european-sleeper"
+        ]
+        public static let highSpeedCodes: Set<String> = ["FR", "FA", "FB", "AV", "ES", "ESC"]
+        public static let internationalCodes: Set<String> = ["EC", "EN", "NJ", "RJ", "RJX", "ICE", "TGV", "EST"]
+        public static let intercityCodes: Set<String> = ["IC", "ICN"]
+        public static let busCodes: Set<String> = ["BUS", "B", "SEV", "EV"]
+        public static let regionalCodePattern: String = "(R|RE|REX|RV|REG|RB|TER|S|SFM|FL|FM|MET)\\d{0,3}"
     }
 
     /// contracts/shared-data/v1/urban-stops-v1.json: How the apps reach the stops of the city networks

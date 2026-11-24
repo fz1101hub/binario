@@ -950,8 +950,13 @@ class IOSProjectTests(unittest.TestCase):
         self.assertIn("model.openPlanner(for: route)", saved)
         self.assertIn('.accessibilityHint(Text("accessibility.open_saved_route"))', saved)
         self.assertIn("TabView(selection: $model.selectedTab)", root)
-        for tab in ("planner", "saved", "settings"):
+        # Android's three destinations: Pianifica, Partenze and Per te, which holds «I miei treni» and «Impostazioni».
+        for tab in ("planner", "departures", "saved"):
             self.assertIn(f".tag(AppModel.Tab.{tab})", root)
+        self.assertEqual(3, root.count(".tag(AppModel.Tab."))
+        self.assertIn('Label("tab.for_you", systemImage: "person")', root)
+        self.assertIn("SettingsView()", saved)
+        self.assertIn("MyTrainsView()", saved)
         self.assertIn(".task(id: model.plannerRequest?.id) { applyPlannerRequest() }", planner)
         apply = planner.split("private func applyPlannerRequest()", 1)[1].split("private func ", 1)[0]
         self.assertIn("departureEdited = false", apply)
@@ -1508,7 +1513,7 @@ class IOSProjectTests(unittest.TestCase):
         model = (IOS / "BinarioApp/AppModel.swift").read_text(encoding="utf-8")
         detail = (IOS / "BinarioApp/TrainDetailView.swift").read_text(encoding="utf-8")
         trains = (IOS / "BinarioApp/MyTrainsView.swift").read_text(encoding="utf-8")
-        root = (IOS / "BinarioApp/RootView.swift").read_text(encoding="utf-8")
+        saved = (IOS / "BinarioApp/SavedRoutesView.swift").read_text(encoding="utf-8")
         for source, fragment in (
             (model, "self.favouriteTrains = favouriteTrainStore.load().trains"),
             (model, "FavouriteTrainsReliability.assess(favouriteTrains, stats: reliabilityStats)"),
@@ -1516,8 +1521,7 @@ class IOSProjectTests(unittest.TestCase):
             (detail, "switch model.toggleFavourite(service, query: query) {"),
             (detail, 'LocalizedStringKey(saved ? "result.favourite.remove" : "result.favourite.add")'),
             (detail, "MyTrainsTexts.limitError(FavouriteTrainCollection.maximumTrains)"),
-            (root, "NavigationStack { MyTrainsView() }"),
-            (root, ".tag(AppModel.Tab.trains)"),
+            (saved, "MyTrainsView()"),
             (trains, ".navigationDestination(for: FavouriteTrain.self)"),
             (trains, "TrainDetailView(service: train.service, query: query)"),
             (trains, "if let reliability = model.favouriteTrainsReliability {"),
@@ -1565,7 +1569,7 @@ class IOSProjectTests(unittest.TestCase):
                 resources = ElementTree.parse(ROOT / "app/src/main/res" / folder / "strings.xml").getroot()
                 android_strings = {element.get("name"): element.text for element in resources.findall("string")}
                 values = read_strings(IOS / "Resources" / f"{language}.lproj" / "Localizable.strings")
-                self.assertEqual(android_strings["favourite_trains_title"], values["tab.trains"])
+                self.assertEqual(android_strings["nav_for_you"], values["tab.for_you"])
                 self.assertEqual(android_strings["favourite_trains_title"], values["saved.trains.title"])
                 self.assertEqual(android_strings["my_trains_reliability_title"], values["saved.trains.reliability.title"])
         with (IOS / "Resources/it.lproj/Localizable.stringsdict").open("rb") as source:

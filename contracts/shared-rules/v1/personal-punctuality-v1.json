@@ -1,0 +1,312 @@
+{
+  "schema": "binario-shared-rules-v1",
+  "description": "The personal punctuality of a train (PunctualityHistory.kt): observations recorded on this phone, one per train number and service day. The train key trims, joins spaces and upper-cases the number; a bucket of the distribution by the delay (on time within onTimeMinutes, then up to lateMinutes, up to severeMinutes, over, or cancelled); the statistics of a train from minimumObservations observations, newest first: share on time and over lateMinutes of all observations, mean delay of the trains that ran, rounded half up, null when none ran; the worst stop, where the delay grows most on average over at least minimumStopSamples observations with per-stop delays (stations compared case-insensitively, the newest spelling kept), at least one minute, ties to more samples then to the name. Thresholds: contracts/shared-data/v1/personal-punctuality-v1.json.",
+  "readers": [
+    "app/src/test/java/it/binario/app/PersonalPunctualityContractTest.kt",
+    "ios/BinarioKit/Tests/BinarioKitTests/PersonalFeaturesContractTests.swift"
+  ],
+  "trainKeys": [
+    {
+      "input": " reg  2153 ",
+      "expected": "REG 2153"
+    },
+    {
+      "input": "fr9520",
+      "expected": "FR9520"
+    },
+    {
+      "input": "IC\t501",
+      "expected": "IC 501"
+    }
+  ],
+  "buckets": [
+    {
+      "delayMinutes": 0,
+      "cancelled": false,
+      "expected": "ON_TIME"
+    },
+    {
+      "delayMinutes": 5,
+      "cancelled": false,
+      "expected": "ON_TIME"
+    },
+    {
+      "delayMinutes": 6,
+      "cancelled": false,
+      "expected": "UP_TO_15"
+    },
+    {
+      "delayMinutes": 15,
+      "cancelled": false,
+      "expected": "UP_TO_15"
+    },
+    {
+      "delayMinutes": 16,
+      "cancelled": false,
+      "expected": "UP_TO_30"
+    },
+    {
+      "delayMinutes": 30,
+      "cancelled": false,
+      "expected": "UP_TO_30"
+    },
+    {
+      "delayMinutes": 31,
+      "cancelled": false,
+      "expected": "OVER_30"
+    },
+    {
+      "delayMinutes": 0,
+      "cancelled": true,
+      "expected": "CANCELLED"
+    }
+  ],
+  "stats": [
+    {
+      "name": "five days of a regional train, one cancelled",
+      "history": [
+        {
+          "date": "2026-11-20",
+          "train": "REG 2153",
+          "operator": "Trenitalia",
+          "delayMinutes": 0,
+          "cancelled": false,
+          "stops": [
+            [
+              "Milano Centrale",
+              0
+            ],
+            [
+              "Pavia",
+              2
+            ],
+            [
+              "Voghera",
+              3
+            ]
+          ]
+        },
+        {
+          "date": "2026-11-21",
+          "train": "REG 2153",
+          "operator": "Trenitalia",
+          "delayMinutes": 7,
+          "cancelled": false,
+          "stops": [
+            [
+              "Milano Centrale",
+              1
+            ],
+            [
+              "Pavia",
+              6
+            ],
+            [
+              "Voghera",
+              7
+            ]
+          ]
+        },
+        {
+          "date": "2026-11-22",
+          "train": "REG 2153",
+          "operator": "Trenitalia",
+          "delayMinutes": 18,
+          "cancelled": false,
+          "stops": [
+            [
+              "Milano Centrale",
+              2
+            ],
+            [
+              "Pavia",
+              12
+            ],
+            [
+              "Voghera",
+              18
+            ]
+          ]
+        },
+        {
+          "date": "2026-11-23",
+          "train": "REG 2153",
+          "operator": "Trenitalia",
+          "delayMinutes": 0,
+          "cancelled": true,
+          "stops": []
+        },
+        {
+          "date": "2026-11-24",
+          "train": "REG 2153",
+          "operator": "Trenitalia",
+          "delayMinutes": 45,
+          "cancelled": false,
+          "stops": []
+        },
+        {
+          "date": "2026-11-24",
+          "train": "FR 9520",
+          "operator": "Trenitalia",
+          "delayMinutes": 3,
+          "cancelled": false,
+          "stops": []
+        }
+      ],
+      "train": "reg 2153",
+      "expected": {
+        "count": 5,
+        "onTimePercent": 20,
+        "averageDelayMinutes": 18,
+        "cancelledCount": 1,
+        "latePercent": 40,
+        "distribution": {
+          "ON_TIME": 1,
+          "UP_TO_15": 1,
+          "UP_TO_30": 1,
+          "OVER_30": 1,
+          "CANCELLED": 1
+        },
+        "worstStop": {
+          "station": "Pavia",
+          "averageIncreaseMinutes": 6,
+          "samples": 3
+        },
+        "historyDates": [
+          "2026-11-24",
+          "2026-11-23",
+          "2026-11-22",
+          "2026-11-21",
+          "2026-11-20"
+        ]
+      }
+    },
+    {
+      "name": "every observation cancelled",
+      "history": [
+        {
+          "date": "2026-11-23",
+          "train": "FR 9520",
+          "operator": "Trenitalia",
+          "delayMinutes": 0,
+          "cancelled": true,
+          "stops": []
+        },
+        {
+          "date": "2026-11-24",
+          "train": "FR 9520",
+          "operator": "Trenitalia",
+          "delayMinutes": 0,
+          "cancelled": true,
+          "stops": []
+        }
+      ],
+      "train": "FR 9520",
+      "expected": {
+        "count": 2,
+        "onTimePercent": 0,
+        "averageDelayMinutes": null,
+        "cancelledCount": 2,
+        "latePercent": 0,
+        "distribution": {
+          "ON_TIME": 0,
+          "UP_TO_15": 0,
+          "UP_TO_30": 0,
+          "OVER_30": 0,
+          "CANCELLED": 2
+        },
+        "worstStop": null,
+        "historyDates": [
+          "2026-11-24",
+          "2026-11-23"
+        ]
+      }
+    },
+    {
+      "name": "a single observation says nothing",
+      "history": [
+        {
+          "date": "2026-11-24",
+          "train": "IC 501",
+          "operator": "Trenitalia",
+          "delayMinutes": 4,
+          "cancelled": false,
+          "stops": []
+        }
+      ],
+      "train": "IC 501",
+      "expected": null
+    },
+    {
+      "name": "a stop spelt in two cases is one stop, named as the newest observation spells it",
+      "history": [
+        {
+          "date": "2026-11-21",
+          "train": "R 10",
+          "operator": "Trenitalia",
+          "delayMinutes": 2,
+          "cancelled": false,
+          "stops": [
+            [
+              "A",
+              0
+            ],
+            [
+              "B",
+              2
+            ],
+            [
+              "C",
+              2
+            ]
+          ]
+        },
+        {
+          "date": "2026-11-22",
+          "train": "R 10",
+          "operator": "Trenitalia",
+          "delayMinutes": 4,
+          "cancelled": false,
+          "stops": [
+            [
+              "A",
+              1
+            ],
+            [
+              "b",
+              4
+            ],
+            [
+              "C",
+              4
+            ]
+          ]
+        }
+      ],
+      "train": "R 10",
+      "expected": {
+        "count": 2,
+        "onTimePercent": 100,
+        "averageDelayMinutes": 3,
+        "cancelledCount": 0,
+        "latePercent": 0,
+        "distribution": {
+          "ON_TIME": 2,
+          "UP_TO_15": 0,
+          "UP_TO_30": 0,
+          "OVER_30": 0,
+          "CANCELLED": 0
+        },
+        "worstStop": {
+          "station": "b",
+          "averageIncreaseMinutes": 3,
+          "samples": 2
+        },
+        "historyDates": [
+          "2026-11-22",
+          "2026-11-21"
+        ]
+      }
+    }
+  ]
+}

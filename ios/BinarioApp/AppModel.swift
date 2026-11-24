@@ -2245,6 +2245,17 @@ final class AppModel: ObservableObject {
         return true
     }
 
+    /// A local backup import replaces the saved routes and «I miei treni» as a whole
+    /// (LocalBackup.swift); false when the lists cannot be written.
+    func replaceFromBackup(routes: [SavedRoute], trains: [FavouriteTrain]) -> Bool {
+        do {
+            try setRoutes(routes)
+        } catch {
+            return false
+        }
+        return setFavourites(FavouriteTrainCollection.normalized(trains))
+    }
+
     private func setRoutes(_ routes: [SavedRoute]) throws {
         let validated = try SavedRouteCollection(validating: routes)
         try savedRouteStore.save(validated.routes)

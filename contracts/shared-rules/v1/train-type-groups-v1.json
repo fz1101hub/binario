@@ -1,0 +1,112 @@
+{
+  "schema": "binario-shared-rules-v1",
+  "description": "The train type group of a station board row (WidgetTrainTypes.groupOf for a row of unknown service kind, the iPhone's TrainTypeGroups.group): a bus first, then the operator id (Italo, an operator outside Italy), then the letters that open the category or line label without spaces, in capitals: a bus code, an international code, a high-speed code, an intercity code, the whole label matching the regional pattern (a line label such as «S5» or «RE8», not a category with its train number); otherwise no group (null), and such a row is never hidden. Codes and pattern: contracts/shared-data/v1/train-type-groups-v1.json.",
+  "readers": [
+    "app/src/test/java/it/binario/app/widget/TrainTypeGroupsContractTest.kt",
+    "ios/BinarioKit/Tests/BinarioKitTests/PersonalFeaturesContractTests.swift"
+  ],
+  "cases": [
+    {
+      "label": "FR",
+      "operatorId": "trenitalia",
+      "bus": false,
+      "expected": "HIGH_SPEED"
+    },
+    {
+      "label": "ESC 9452",
+      "operatorId": "trenitalia",
+      "bus": false,
+      "expected": "HIGH_SPEED"
+    },
+    {
+      "label": "IC",
+      "operatorId": "trenitalia",
+      "bus": false,
+      "expected": "INTERCITY_NIGHT"
+    },
+    {
+      "label": "ICN 795",
+      "operatorId": null,
+      "bus": false,
+      "expected": "INTERCITY_NIGHT"
+    },
+    {
+      "label": "REG",
+      "operatorId": "trenitalia",
+      "bus": false,
+      "expected": "REGIONAL_SUBURBAN"
+    },
+    {
+      "label": "S5",
+      "operatorId": "trenord",
+      "bus": false,
+      "expected": "REGIONAL_SUBURBAN"
+    },
+    {
+      "label": "rv",
+      "operatorId": null,
+      "bus": false,
+      "expected": "REGIONAL_SUBURBAN"
+    },
+    {
+      "label": "RE 8",
+      "operatorId": null,
+      "bus": false,
+      "expected": "REGIONAL_SUBURBAN"
+    },
+    {
+      "label": "AV",
+      "operatorId": "italo",
+      "bus": false,
+      "expected": "ITALO"
+    },
+    {
+      "label": "EC",
+      "operatorId": "oebb",
+      "bus": false,
+      "expected": "INTERNATIONAL"
+    },
+    {
+      "label": "TGV 9241",
+      "operatorId": null,
+      "bus": false,
+      "expected": "INTERNATIONAL"
+    },
+    {
+      "label": "REX",
+      "operatorId": "sbb",
+      "bus": false,
+      "expected": "INTERNATIONAL"
+    },
+    {
+      "label": "BUS",
+      "operatorId": "trenitalia",
+      "bus": false,
+      "expected": "REPLACEMENT_BUS"
+    },
+    {
+      "label": "FR",
+      "operatorId": "trenitalia",
+      "bus": true,
+      "expected": "REPLACEMENT_BUS"
+    },
+    {
+      "label": "REG 2153",
+      "operatorId": null,
+      "bus": false,
+      "expected": null
+    },
+    {
+      "label": "M1",
+      "operatorId": null,
+      "bus": false,
+      "expected": null
+    },
+    {
+      "label": "",
+      "operatorId": null,
+      "bus": false,
+      "expected": null
+    }
+  ]
+}

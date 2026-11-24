@@ -1,5 +1,20 @@
 # Changelog
 
+## In sviluppo — iPhone: «Per te», CO₂, condivisione, orari salvati, puntualità personale e impostazioni come su Android
+
+- **Confronto completo Android ↔ iPhone e Wear OS ↔ Apple Watch** in [docs/PARITA_ANDROID_IPHONE.md](docs/PARITA_ANDROID_IPHONE.md): una riga per funzione, con lo stato e l'area di lavoro; in fondo ciò che resta.
+- **Navigazione come su Android:** tre schede, **Pianifica**, **Partenze** e **Per te**; Per te raccoglie le tratte salvate, l'Agenda, **Impostazioni**, **Orari salvati**, **Stazioni preferite** e **I miei treni**, dove ogni treno si può rinominare.
+- **Stima CO₂** in ogni riga dei risultati e nel dettaglio del treno («CO₂ stimata: X kg (auto ~Y kg, aereo ~Z kg)»), calcolata sull'iPhone con i fattori EEA; crediti in Impostazioni › Informazioni.
+- **Condivisione:** il treno (stesso testo di Android), una fermata del treno (tieni premuta la fermata) e l'intero elenco dei risultati, dal foglio di condivisione di iOS.
+- **Orari salvati:** «Salva orario» sotto i risultati; in Per te l'elenco in sola lettura, segnato «Salvato il … · non aggiornato», da rinominare, condividere ed eliminare.
+- **Puntualità personale** nel dettaglio del treno: ritardo medio, quota in orario e oltre 15 minuti, fermata dove il ritardo cresce di più, distribuzione e storico per data, dalle osservazioni registrate sull'iPhone quando l'app legge lo stato del treno (al più 365 giorni).
+- **Partenze:** stella delle stazioni preferite, **Tipi di treno** per stazione con il conteggio dei treni nascosti e «Mostra tutti», **Stazioni più vicine** da una sola posizione su tocco, **Assistenza Sala Blu** di RFI.
+- **Dettaglio del treno:** «Apri sul sito ufficiale» per Trenitalia e Italo e «Bici a bordo: condizioni» quando l'orario non lo dice.
+- **Impostazioni:** tema Sistema/Chiaro/Scuro, lingua dell'app (nelle Impostazioni di iOS), **Biglietti e assistenza**, **Backup locale** nello stesso file JSON di Android, **Suggerisci una stazione**.
+- **Base comune:** nuove tabelle `co2-estimate-v1.json`, `official-links-v1.json`, `saved-timetables-v1.json`, `personal-punctuality-v1.json`, `train-type-groups-v1.json` e `local-backup-v1.json`, lette da Android e iPhone; nuove regole con i casi comuni `co2-estimate-v1.json`, `personal-punctuality-v1.json` e `train-type-groups-v1.json`.
+- **Non ancora sull'iPhone** (area di questo lavoro): ricerca per numero di treno, andata e ritorno, arrivo e durata nei risultati, collegamenti diretti di una stazione, tabellone della tratta attiva, mappe del percorso, della stazione e dei risultati, aggiungi al calendario, monitoraggio di una stazione, ricerche recenti, riepilogo settimanale, profilo vocale Alexa.
+- Testi di Android in 17 lingue. Aggiornati [l'informativa privacy](PRIVACY.md) (nuovi dati locali, file di backup, collegamenti ufficiali), le note per App Review, il README, l'ADR della base comune e i README dei contratti.
+
 ## In sviluppo — Metro, tram e funicolari anche su iPhone
 
 - **Indice orari dell'iPhone con le reti urbane pubbliche di Android:** metropolitana e tram di Milano (ATM), metropolitana, funicolari e ascensori di Genova (AMT), tramvia di Firenze (GEST), metrotranvie di Cagliari e Sassari (ARST) e Marconi Express di Bologna. Stessi tipi di linea di Android (metro 1, 12, 400–499; tram 0, 900–999; funicolare 5, 6, 7, 1300–1499). L'indice passa a 22 pack: 16,2 MB compressi e 59,4 MB di SQLite (prima 7,3 e 27,8), sotto i limiti di 32 e 256 MiB.

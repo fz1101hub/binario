@@ -1,5 +1,6 @@
 package it.binario.app
 
+import it.binario.app.shared.SharedData
 import android.content.Context
 import androidx.core.content.edit
 import it.binario.app.data.RailTime
@@ -57,23 +58,25 @@ data class PunctualityStats(
  * overall, so the history (and the local backup that carries it) stays small.
  */
 object PunctualityHistory {
-    const val RETENTION_DAYS = 365L
-    const val MAX_PER_TRAIN = 365
-    const val MAX_TOTAL = 1500
-    const val DETAILED_PER_TRAIN = 30
-    const val MAX_DETAILED_TOTAL = 240
-    const val MAX_STOPS = 40
-    const val ON_TIME_MINUTES = 5
-    const val LATE_MINUTES = 15
-    const val SEVERE_MINUTES = 30
-    const val MIN_FOR_STATS = 2
+    // The limits and thresholds are the shared table contracts/shared-data/v1/personal-punctuality-v1.json, and the
+    // rules have the cases of contracts/shared-rules/v1/personal-punctuality-v1.json: the iPhone reads both.
+    val RETENTION_DAYS: Long = SharedData.PersonalPunctuality.RETENTION_DAYS.toLong()
+    const val MAX_PER_TRAIN = SharedData.PersonalPunctuality.MAXIMUM_PER_TRAIN
+    const val MAX_TOTAL = SharedData.PersonalPunctuality.MAXIMUM_TOTAL
+    const val DETAILED_PER_TRAIN = SharedData.PersonalPunctuality.DETAILED_PER_TRAIN
+    const val MAX_DETAILED_TOTAL = SharedData.PersonalPunctuality.MAXIMUM_DETAILED_TOTAL
+    const val MAX_STOPS = SharedData.PersonalPunctuality.MAXIMUM_STOPS
+    const val ON_TIME_MINUTES = SharedData.PersonalPunctuality.ON_TIME_MINUTES
+    const val LATE_MINUTES = SharedData.PersonalPunctuality.LATE_MINUTES
+    const val SEVERE_MINUTES = SharedData.PersonalPunctuality.SEVERE_MINUTES
+    const val MIN_FOR_STATS = SharedData.PersonalPunctuality.MINIMUM_OBSERVATIONS
     const val RECENT_SHOWN = 5
     /** A stop must appear in this many detailed observations before it can be the worst one. */
-    const val MIN_STOP_SAMPLES = 2
-    private const val MAX_NUMBER_LENGTH = 32
-    private const val MAX_OPERATOR_LENGTH = 80
-    private const val MAX_STATION_LENGTH = 40
-    private const val MAX_DELAY_MINUTES = 24 * 60
+    const val MIN_STOP_SAMPLES = SharedData.PersonalPunctuality.MINIMUM_STOP_SAMPLES
+    private const val MAX_NUMBER_LENGTH = SharedData.PersonalPunctuality.MAXIMUM_NUMBER_LENGTH
+    private const val MAX_OPERATOR_LENGTH = SharedData.PersonalPunctuality.MAXIMUM_OPERATOR_LENGTH
+    private const val MAX_STATION_LENGTH = SharedData.PersonalPunctuality.MAXIMUM_STATION_LENGTH
+    private const val MAX_DELAY_MINUTES = SharedData.PersonalPunctuality.MAXIMUM_DELAY_MINUTES
     private const val MAX_DECODED = MAX_TOTAL * 4
 
     fun trainKey(number: String): String = number.trim().replace(Regex("\\s+"), " ").uppercase(Locale.ROOT)

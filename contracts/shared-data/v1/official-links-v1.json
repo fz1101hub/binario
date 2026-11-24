@@ -1,0 +1,281 @@
+{
+  "schema": "binario-shared-data-v1",
+  "description": "«Biglietti e assistenza» and the other official pages the apps open in the browser only on a tap, never requesting them: every operator Binario shows timetables of, national ones first, with its registrable domains and its pages (buy, change, subscribe, bikes, assistance, refunds, website), https only, checked against a search index in November 2026. guaranteedTrains names its «treni garantiti» page in notices-sources-v1.json, added after the others. No operator documents a URL that prefills a search: «Apri sul sito ufficiale» opens BUY. Sala Blu, RFI's free assistance for reduced mobility: page and national numbers, dialled only by the phone's dialer. «Suggerisci una stazione» opens the project's issue form.",
+  "linkKinds": [
+    "BUY",
+    "CHANGE",
+    "SUBSCRIPTIONS",
+    "BIKES",
+    "CUSTOMER_CARE",
+    "REFUNDS",
+    "STRIKES",
+    "WEBSITE"
+  ],
+  "operators": [
+    {
+      "id": "trenitalia",
+      "name": "Trenitalia",
+      "national": true,
+      "domains": [
+        "trenitalia.com"
+      ],
+      "links": [
+        {
+          "kind": "BUY",
+          "url": "https://www.trenitalia.com/"
+        },
+        {
+          "kind": "CHANGE",
+          "url": "https://www.trenitalia.com/it/informazioni/la-guida-del-viaggiatore/acquisto-utilizzoemodificabigliettonazionale.html"
+        },
+        {
+          "kind": "SUBSCRIPTIONS",
+          "url": "https://www.trenitalia.com/it/informazioni/la-guida-del-viaggiatore/gli-abbonamenti-di-trenitalia.html"
+        },
+        {
+          "kind": "BIKES",
+          "url": "https://www.trenitalia.com/it/servizi/bici-al-seguito.html"
+        },
+        {
+          "kind": "CUSTOMER_CARE",
+          "url": "https://www.trenitalia.com/it/informazioni.html"
+        },
+        {
+          "kind": "REFUNDS",
+          "url": "https://www.trenitalia.com/it/informazioni/la-guida-del-viaggiatore/i-rimborsi.html"
+        }
+      ],
+      "guaranteedTrains": "TRENITALIA"
+    },
+    {
+      "id": "italo",
+      "name": "Italo",
+      "national": true,
+      "domains": [
+        "italotreno.com"
+      ],
+      "links": [
+        {
+          "kind": "BUY",
+          "url": "https://www.italotreno.com/"
+        },
+        {
+          "kind": "CHANGE",
+          "url": "https://www.italotreno.com/en/the-train/fares"
+        },
+        {
+          "kind": "SUBSCRIPTIONS",
+          "url": "https://www.italotreno.com/en/train-offers/season-tickets-carnet/carnet-standard"
+        },
+        {
+          "kind": "CUSTOMER_CARE",
+          "url": "https://www.italotreno.com/en/support-contacts"
+        },
+        {
+          "kind": "REFUNDS",
+          "url": "https://www.italotreno.com/en/support-contacts/claims-management"
+        }
+      ],
+      "guaranteedTrains": null
+    },
+    {
+      "id": "trenord",
+      "name": "Trenord",
+      "national": true,
+      "domains": [
+        "trenord.it"
+      ],
+      "links": [
+        {
+          "kind": "BUY",
+          "url": "https://www.trenord.it/"
+        },
+        {
+          "kind": "SUBSCRIPTIONS",
+          "url": "https://www.trenord.it/en/tickets/travel-titles/season-tickets/"
+        },
+        {
+          "kind": "BIKES",
+          "url": "https://www.trenord.it/en/tickets/concessions-and-extras/bike-transportation/"
+        },
+        {
+          "kind": "CUSTOMER_CARE",
+          "url": "https://www.trenord.it/en/assistance/"
+        },
+        {
+          "kind": "REFUNDS",
+          "url": "https://www.trenord.it/en/assistance/services/refunds-and-indemnities/request-a-refund/"
+        }
+      ],
+      "guaranteedTrains": "TRENORD"
+    },
+    {
+      "id": "eav",
+      "name": "EAV",
+      "national": false,
+      "domains": [
+        "eavsrl.it"
+      ],
+      "links": [
+        {
+          "kind": "WEBSITE",
+          "url": "https://www.eavsrl.it/"
+        }
+      ],
+      "guaranteedTrains": null
+    },
+    {
+      "id": "sad",
+      "name": "SAD (Alto Adige)",
+      "national": false,
+      "domains": [
+        "sad.it"
+      ],
+      "links": [
+        {
+          "kind": "WEBSITE",
+          "url": "https://www.sad.it/it/mezzi/i-treni"
+        }
+      ],
+      "guaranteedTrains": null
+    },
+    {
+      "id": "trentino-trasporti",
+      "name": "Trentino Trasporti",
+      "national": false,
+      "domains": [
+        "trentinotrasporti.it"
+      ],
+      "links": [
+        {
+          "kind": "WEBSITE",
+          "url": "https://www.trentinotrasporti.it/"
+        },
+        {
+          "kind": "SUBSCRIPTIONS",
+          "url": "https://www.trentinotrasporti.it/it/tariffe/abbonamenti"
+        }
+      ],
+      "guaranteedTrains": null
+    },
+    {
+      "id": "tft",
+      "name": "TFT (Toscana)",
+      "national": false,
+      "domains": [
+        "trasportoferroviariotoscano.it"
+      ],
+      "links": [
+        {
+          "kind": "WEBSITE",
+          "url": "https://www.trasportoferroviariotoscano.it/"
+        }
+      ],
+      "guaranteedTrains": null
+    },
+    {
+      "id": "arst",
+      "name": "ARST (Sardegna)",
+      "national": false,
+      "domains": [
+        "arst.sardegna.it"
+      ],
+      "links": [
+        {
+          "kind": "WEBSITE",
+          "url": "https://www.arst.sardegna.it/servizi-orari/servizi-ferroviari-tpl/"
+        }
+      ],
+      "guaranteedTrains": null
+    },
+    {
+      "id": "fal",
+      "name": "Ferrovie Appulo Lucane",
+      "national": false,
+      "domains": [
+        "ferrovieappulolucane.it"
+      ],
+      "links": [
+        {
+          "kind": "WEBSITE",
+          "url": "https://ferrovieappulolucane.it/"
+        }
+      ],
+      "guaranteedTrains": null
+    },
+    {
+      "id": "ferrotramviaria",
+      "name": "Ferrotramviaria (Bari Nord)",
+      "national": false,
+      "domains": [
+        "ferrovienordbarese.it"
+      ],
+      "links": [
+        {
+          "kind": "WEBSITE",
+          "url": "https://www.ferrovienordbarese.it/"
+        },
+        {
+          "kind": "BUY",
+          "url": "https://eticket.ferrovienordbarese.it/b2c/web/index.jsp"
+        }
+      ],
+      "guaranteedTrains": null
+    },
+    {
+      "id": "fdg",
+      "name": "Ferrovie del Gargano",
+      "national": false,
+      "domains": [
+        "ferroviedelgargano.com"
+      ],
+      "links": [
+        {
+          "kind": "WEBSITE",
+          "url": "https://ferroviedelgargano.com/"
+        }
+      ],
+      "guaranteedTrains": null
+    },
+    {
+      "id": "fuc",
+      "name": "Ferrovie Udine Cividale (Mi.Co.Tra.)",
+      "national": false,
+      "domains": [
+        "ferrovieudinecividale.it"
+      ],
+      "links": [
+        {
+          "kind": "WEBSITE",
+          "url": "https://www.ferrovieudinecividale.it/"
+        }
+      ],
+      "guaranteedTrains": null
+    },
+    {
+      "id": "cotral",
+      "name": "Cotral",
+      "national": false,
+      "domains": [
+        "cotralspa.it"
+      ],
+      "links": [
+        {
+          "kind": "WEBSITE",
+          "url": "https://cotralspa.it/"
+        }
+      ],
+      "guaranteedTrains": null
+    }
+  ],
+  "fsNewsDomains": [
+    "fsnews.it"
+  ],
+  "salaBluPage": "https://www.rfi.it/it/stazioni/pagine-stazioni/accessibilita.html",
+  "salaBluDomains": [
+    "rfi.it"
+  ],
+  "salaBluTollFree": "800 90 60 60",
+  "salaBluNational": "02 32 32 32",
+  "projectNewIssueUrl": "https://github.com/fz1101hub/binario/issues/new"
+}

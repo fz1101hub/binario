@@ -97,6 +97,19 @@ Il 23 novembre 2026, con le reti urbane sull'iPhone:
 
 Nomi, badge e minuti a piedi delle fermate urbane sono casi di prova in `contracts/shared-rules/v1/urban-stops-v1.json`; linea e etichetta di una corsa urbana sono in `journey-leg-vehicles-v1.json` (`urbanLines`, `urbanLabels`).
 
+Con le funzioni minori di Android portate sull'iPhone (confronto in [PARITA_ANDROID_IPHONE.md](../PARITA_ANDROID_IPHONE.md)), il 24 novembre 2026:
+
+| Tabella | Prima | Ora letta da |
+|---|---|---|
+| `co2-estimate-v1.json`: fattori EEA, deviazioni, distanza minima | `EmissionFactors`, `Co2Estimator` in `Co2Estimate.kt` | Android, iPhone (`Co2Estimate.swift`) |
+| `official-links-v1.json`: operatori e pagine di «Biglietti e assistenza», Sala Blu, FS News, modulo delle segnalazioni | `OfficialLinks.kt`, `ProjectLinks.kt` | Android, iPhone (`OfficialLinks.swift`) |
+| `saved-timetables-v1.json`: limiti di «Orari salvati» | `SavedTimetableCodec` | Android, iPhone (`SavedTimetables.swift`) |
+| `personal-punctuality-v1.json`: conservazione e soglie della puntualità personale | `PunctualityHistory.kt`, `PunctualityCard.kt` | Android, iPhone (`PersonalPunctuality.swift`) |
+| `train-type-groups-v1.json`: gruppi e codici di «Tipi di treno» | `WidgetTrainTypes.kt` | Android, iPhone (`TrainTypeGroups.swift`) |
+| `local-backup-v1.json`: tipo, versione e limiti del backup locale | `LocalDataBackupCodec` | Android, iPhone (`LocalBackup.swift`), che leggono e scrivono lo stesso file |
+
+Le regole hanno i casi in `contracts/shared-rules/v1/` (`co2-estimate-v1.json`, `personal-punctuality-v1.json`, `train-type-groups-v1.json`). Gli orari salvati e lo storico della puntualità tengono sull'iPhone il JSON di Android, così il backup passa da un telefono all'altro.
+
 Restano fuori, coperti da casi di prova in `contracts/shared-rules/v1/`, la parola che segna una soppressione esplicita e l'operatore di una riga del monitor RFI (`live-text-v1.json`), i modelli di «Preparazione del viaggio» (`checklist-presets-v1.json`) e il calcolo della Pasqua (`calendar-v1.json`). Le espressioni regolari non diventano dati perché Java e ICU non leggono `\b` e `\w` allo stesso modo sui caratteri non ASCII. L'operatore della riga RFI non è una tabella pulita: Android distingue tre servizi Trenitalia, l'iPhone uno. I modelli di preparazione sono enum legati ai testi tradotti di ogni app. Restano fuori anche i limiti dello snapshot per gli orologi: Wear OS e Apple Watch non dipendono da `app/` né da BinarioKit, quindi non possono leggere il codice generato, e quei limiti li governa già il contratto `contracts/wear-snapshot/v1` con le sue fixture.
 
 ### Cosa resta specifico di ogni piattaforma

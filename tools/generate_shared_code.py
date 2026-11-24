@@ -512,6 +512,65 @@ def _check_evening_alerts(values: Mapping[str, Any]) -> list[str]:
     return problems
 
 
+def _check_co2_estimate(values: Mapping[str, Any]) -> list[str]:
+    problems = []
+    if values["planeShortKm"] >= values["planeLongKm"]:
+        problems.append("planeShortKm non minore di planeLongKm")
+    if not values["trainGramsPerPkm"] < values["carGramsPerPkm"] < values["planeGramsPerPkmLong"] <= values["planeGramsPerPkmShort"]:
+        problems.append("fattori non in ordine treno < auto < aereo lungo <= aereo breve")
+    return problems
+
+
+def _check_official_links(values: Mapping[str, Any]) -> list[str]:
+    problems = []
+    kinds = set(values["linkKinds"])
+    for operator in values["operators"]:
+        fields = operator.values
+        for link in fields["links"]:
+            kind, url = link.values["kind"], link.values["url"]
+            if kind not in kinds:
+                problems.append(f"{fields['id']}: tipo {kind} non in linkKinds")
+            if kind == "STRIKES":
+                problems.append(f"{fields['id']}: la pagina dei treni garantiti viene da notices-sources-v1.json")
+            host = _host(url)
+            if not any(host == domain or host.endswith("." + domain) for domain in fields["domains"]):
+                problems.append(f"{fields['id']}: {url} fuori dai suoi domini")
+    nationals = [operator.values["national"] for operator in values["operators"]]
+    if nationals != sorted(nationals, reverse=True):
+        problems.append("gli operatori nazionali vengono prima")
+    host = _host(values["salaBluPage"])
+    if not any(host == domain or host.endswith("." + domain) for domain in values["salaBluDomains"]):
+        problems.append("salaBluPage fuori da salaBluDomains")
+    return problems
+
+
+def _check_personal_punctuality(values: Mapping[str, Any]) -> list[str]:
+    problems = []
+    if not values["onTimeMinutes"] < values["lateMinutes"] < values["severeMinutes"]:
+        problems.append("soglie non in ordine onTimeMinutes < lateMinutes < severeMinutes")
+    if values["maximumPerTrain"] > values["maximumTotal"]:
+        problems.append("maximumPerTrain maggiore di maximumTotal")
+    if values["detailedPerTrain"] > values["maximumDetailedTotal"]:
+        problems.append("detailedPerTrain maggiore di maximumDetailedTotal")
+    return problems
+
+
+def _check_train_type_groups(values: Mapping[str, Any]) -> list[str]:
+    problems = []
+    sets = ("highSpeedCodes", "internationalCodes", "intercityCodes", "busCodes")
+    for index, first in enumerate(sets):
+        for second in sets[index + 1:]:
+            if set(values[first]) & set(values[second]):
+                problems.append(f"{first} e {second} hanno codici in comune")
+    if set(values["italoOperatorIds"]) & set(values["internationalOperatorIds"]):
+        problems.append("un operatore sia Italo sia internazionale")
+    try:
+        re.compile(values["regionalCodePattern"])
+    except re.error as error:
+        problems.append(f"regionalCodePattern: {error}")
+    return problems
+
+
 def _check_rfi_monitor(values: Mapping[str, Any]) -> list[str]:
     host = "https://iechub.rfi.it/"
     return [f"{key}: fuori da {host}" for key in ("catalogueUrl", "monitorUrl") if not values[key].startswith(host)]
@@ -739,6 +798,21 @@ BIKE_SYSTEM = Record("System", {
 MINUTES = Integer(0, 24 * 60)
 HOUR = Integer(0, 23)
 
+CO2_FACTOR = Real(0.0, 10_000.0)
+LINK_KIND = Text(r"[A-Z_]+", max_length=32)
+DOMAIN = Text(r"[a-z0-9.-]+\.[a-z]+", max_length=80)
+OPERATOR_LINK = Record("Link", {"kind": Field(LINK_KIND), "url": Field(HTTPS_URL)})
+OFFICIAL_OPERATOR = Record("Operator", {
+    "id": Field(Text(r"[a-z]+(?:-[a-z]+)*", max_length=40)),
+    "name": Field(Text(max_length=64)),
+    "national": Field(Boolean()),
+    "domains": Field(ListOf(DOMAIN, as_set=True)),
+    "links": Field(ListOf(OPERATOR_LINK, unique_by=("kind",))),
+    "guaranteedTrains": Field(Nullable(Text(r"[A-Z]+", max_length=32))),
+}, notes=True)
+OPERATOR_ID = Text(r"[a-z]+(?:-[a-z]+)*", max_length=40)
+CATEGORY_CODE = Text(r"[A-Z]+", max_length=8)
+
 TRIP_UPDATES_FEED = Record("TripUpdatesFeed", {
     "id": Field(Text(SOURCE_ID)),
     "pack": Field(Text(SOURCE_ID)),
@@ -837,6 +911,22 @@ TABLES: tuple[Table, ...] = (
         "readTimeoutSeconds": Field(Seconds(1)),
         "totalTimeoutSeconds": Field(Seconds(1)),
     }, check=_check_bike_sharing),
+    Table("co2-estimate-v1.json", "Co2Estimate", {
+        "source": Field(Text(max_length=200)),
+        "sourceUrl": Field(HTTPS_URL),
+        "sourceYear": Field(Integer(2000, 2100)),
+        "trainGramsPerPkm": Field(CO2_FACTOR),
+        "carGramsPerPkm": Field(CO2_FACTOR),
+        "planeGramsPerPkmShort": Field(CO2_FACTOR),
+        "planeShortKm": Field(Real(1.0, 20_000.0)),
+        "planeGramsPerPkmLong": Field(CO2_FACTOR),
+        "planeLongKm": Field(Real(1.0, 20_000.0)),
+        "railDetour": Field(Real(1.0, 3.0)),
+        "roadDetour": Field(Real(1.0, 3.0)),
+        "flightUplift": Field(Real(1.0, 3.0)),
+        "minimumKm": Field(Real(0.0, 1_000.0)),
+        "earthRadiusKm": Field(Real(6_300.0, 6_400.0)),
+    }, check=_check_co2_estimate),
     Table("delay-compensation-v1.json", "DelayCompensation", {
         "quarterFromMinutes": Field(MINUTES),
         "quarterPercent": Field(Integer(1, 100)),
@@ -900,6 +990,15 @@ TABLES: tuple[Table, ...] = (
         "maximumCodeLength": Field(Integer(1, 32)),
         "maximumLineLabelLength": Field(Integer(1, 32)),
     }, check=_check_live_train_map),
+    Table("local-backup-v1.json", "LocalBackup", {
+        "kind": Field(Text(r"[a-z-]+", max_length=40)),
+        "schemaVersion": Field(Integer(1, 100)),
+        "maximumBytes": Field(Integer(1_024, 16 * 1_048_576)),
+        "maximumStations": Field(Integer(1, 10_000)),
+        "maximumStationText": Field(Integer(1, 2_000)),
+        "maximumStationAliases": Field(Integer(0, 1_000)),
+        "maximumRoutes": Field(Integer(1, 1_000)),
+    }),
     Table("notices-sources-v1.json", "NoticesSources", {
         "service": Field(NOTICE_SERVICE),
         "sources": Field(ListOf(NOTICE_SOURCE, unique_by=("id",))),
@@ -914,6 +1013,16 @@ TABLES: tuple[Table, ...] = (
         "display": Field(NOTICE_DISPLAY),
         "trainNotices": Field(NOTICE_TRAIN),
     }, check=_check_notices_sources),
+    Table("official-links-v1.json", "OfficialLinks", {
+        "linkKinds": Field(ListOf(LINK_KIND)),
+        "operators": Field(ListOf(OFFICIAL_OPERATOR, unique_by=("id",))),
+        "fsNewsDomains": Field(ListOf(DOMAIN, as_set=True)),
+        "salaBluPage": Field(HTTPS_URL),
+        "salaBluDomains": Field(ListOf(DOMAIN, as_set=True)),
+        "salaBluTollFree": Field(Text(r"[0-9 ]+", max_length=20)),
+        "salaBluNational": Field(Text(r"[0-9 ]+", max_length=20)),
+        "projectNewIssueUrl": Field(HTTPS_URL),
+    }, check=_check_official_links),
     Table("pack-roles-v1.json", "PackRoles", {
         "nationalPacks": Field(PACK_SET),
         "foreignPacks": Field(PACK_SET),
@@ -921,6 +1030,24 @@ TABLES: tuple[Table, ...] = (
         "scheduledCoachPacks": Field(PACK_SET),
         "urbanPacks": Field(PACK_SET),
     }, alexa=True, check=_check_pack_roles),
+    Table("personal-punctuality-v1.json", "PersonalPunctuality", {
+        "retentionDays": Field(Integer(1, 3_650)),
+        "maximumPerTrain": Field(Integer(1, 10_000)),
+        "maximumTotal": Field(Integer(1, 100_000)),
+        "detailedPerTrain": Field(Integer(0, 10_000)),
+        "maximumDetailedTotal": Field(Integer(0, 100_000)),
+        "maximumStops": Field(Integer(1, 500)),
+        "onTimeMinutes": Field(MINUTES),
+        "lateMinutes": Field(MINUTES),
+        "severeMinutes": Field(MINUTES),
+        "minimumObservations": Field(Integer(1, 100)),
+        "minimumStopSamples": Field(Integer(1, 100)),
+        "historyCollapsed": Field(Integer(1, 100)),
+        "maximumNumberLength": Field(Integer(1, 100)),
+        "maximumOperatorLength": Field(Integer(1, 200)),
+        "maximumStationLength": Field(Integer(1, 200)),
+        "maximumDelayMinutes": Field(MINUTES),
+    }, check=_check_personal_punctuality),
     Table("planned-journeys-v1.json", "PlannedJourneys", {
         "schemaVersion": Field(Integer(1, 99)),
         "transferKind": Field(Text(r"[a-z_]+")),
@@ -978,6 +1105,15 @@ TABLES: tuple[Table, ...] = (
     Table("rfi-place-ids-v1.json", "RfiPlaceIds", {
         "placeIdsByName": Field(MapOf(Integer(1, 99_999), key=STATION_NAME)),
     }),
+    Table("saved-timetables-v1.json", "SavedTimetables", {
+        "maximumTimetables": Field(Integer(1, 1_000)),
+        "maximumRows": Field(Integer(1, 1_000)),
+        "maximumNameLength": Field(Integer(1, 500)),
+        "maximumTextLength": Field(Integer(1, 2_000)),
+        "maximumTransfers": Field(Integer(0, 100)),
+        "maximumArrivalDayOffset": Field(Integer(0, 31)),
+        "maximumChanges": Field(Integer(0, 100)),
+    }),
     Table("source-manners-v1.json", "SourceManners", {
         "userAgent": Field(Text(r"[\x20-\x7e]+", max_length=120)),
         "refusalStatuses": Field(ListOf(Integer(400, 599), as_set=True)),
@@ -998,6 +1134,16 @@ TABLES: tuple[Table, ...] = (
         # Letters only: each platform joins them into one regular-expression alternation.
         "categories": Field(ListOf(Text(r"[A-Z]{1,16}"))),
     }, alexa=True),
+    Table("train-type-groups-v1.json", "TrainTypeGroups", {
+        "groups": Field(ListOf(Text(r"[A-Z_]+", max_length=32))),
+        "italoOperatorIds": Field(ListOf(OPERATOR_ID, as_set=True)),
+        "internationalOperatorIds": Field(ListOf(OPERATOR_ID, as_set=True)),
+        "highSpeedCodes": Field(ListOf(CATEGORY_CODE, as_set=True)),
+        "internationalCodes": Field(ListOf(CATEGORY_CODE, as_set=True)),
+        "intercityCodes": Field(ListOf(CATEGORY_CODE, as_set=True)),
+        "busCodes": Field(ListOf(CATEGORY_CODE, as_set=True)),
+        "regionalCodePattern": Field(PATTERN),
+    }, check=_check_train_type_groups),
     Table("urban-stops-v1.json", "UrbanStops", {
         "maximumWalkMeters": Field(Integer(0, 2_000)),
         "walkingSpeedKmh": Field(Real(1.0, 10.0)),
