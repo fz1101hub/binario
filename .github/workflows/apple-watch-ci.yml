@@ -15,6 +15,7 @@ on:
       # The shared tables (the generated BinarioKit/Sources/BinarioKit/Generated/) and their generator.
       - "contracts/shared-data/**"
       - "tools/generate_shared_code.py"
+      - "tools/ios_widget_strings.py"
       - "tools/build_ios_gtfs_schedule.py"
       - "tools/android_station_codes.py"
       - "tools/android_stop_matcher.py"
@@ -51,6 +52,7 @@ on:
       # The shared tables (the generated BinarioKit/Sources/BinarioKit/Generated/) and their generator.
       - "contracts/shared-data/**"
       - "tools/generate_shared_code.py"
+      - "tools/ios_widget_strings.py"
       - "tools/build_ios_gtfs_schedule.py"
       - "tools/android_station_codes.py"
       - "tools/android_stop_matcher.py"
@@ -245,7 +247,7 @@ jobs:
         working-directory: ios
         run: |
           cat Binario.xcodeproj/xcshareddata/xcschemes/Binario.xcscheme
-          for target in Binario BinarioAppTests BinarioKitTests BinarioWatch; do
+          for target in Binario BinarioWidgets BinarioAppTests BinarioKitTests BinarioWatch; do
             echo "--- $target platform settings ---"
             xcodebuild -project Binario.xcodeproj -target "$target" -showBuildSettings \
               | grep -E '^ *(SDKROOT|SUPPORTED_PLATFORMS|IPHONEOS_DEPLOYMENT_TARGET|WATCHOS_DEPLOYMENT_TARGET|TARGETED_DEVICE_FAMILY|SUPPORTS_MACCATALYST|PRODUCT_TYPE|PRODUCT_NAME) ='
@@ -291,6 +293,8 @@ jobs:
           app="$RUNNER_TEMP/Binario.xcarchive/Products/Applications/Binario.app"
           watch="$app/Watch/BinarioWatch.app"
           widget="$watch/PlugIns/BinarioWatchWidgets.appex"
+          # The iPhone's home-screen widgets (ios/BinarioWidgets): one WidgetKit extension inside the app.
+          phone_widgets="$app/PlugIns/BinarioWidgets.appex"
           # Every check reports what it found, so a failing layout names the bundle and the key.
           failures=0
           fail() { echo "::error title=App Store bundle layout::$1"; failures=$((failures + 1)); }
@@ -303,7 +307,8 @@ jobs:
           icon() { for key in CFBundleIconName CFBundleIcons.CFBundlePrimaryIcon.CFBundleIconName; do v="$(plutil -extract "$key" raw -o - "$1/Info.plist" 2>/dev/null)" && { echo "$v"; return; }; done; echo "<missing>"; }
           [ -d "$watch" ] || fail "embedded Watch app missing: Watch/BinarioWatch.app"
           [ -d "$widget" ] || fail "Watch widget extension missing: PlugIns/BinarioWatchWidgets.appex"
-          for bundle in "$app" "$watch" "$widget"; do
+          [ -d "$phone_widgets" ] || fail "iPhone widget extension missing: PlugIns/BinarioWidgets.appex"
+          for bundle in "$app" "$watch" "$widget" "$phone_widgets"; do
             [ -f "$bundle/PrivacyInfo.xcprivacy" ] || fail "${bundle##*/}: PrivacyInfo.xcprivacy missing"
             value="$(plutil -extract ITSAppUsesNonExemptEncryption raw -o - "$bundle/Info.plist" 2>/dev/null || echo "<missing>")"
             [ "$value" = "false" ] || fail "${bundle##*/}: ITSAppUsesNonExemptEncryption is $value, expected false"
@@ -317,9 +322,14 @@ jobs:
           [ "$value" = "it" ] || fail "Binario.app: CFBundleDevelopmentRegion is $value, expected it"
           value="$(info "$watch" WKCompanionAppBundleIdentifier)"
           [ "$value" = "it.binario.ios" ] || fail "BinarioWatch.app: WKCompanionAppBundleIdentifier is $value, expected it.binario.ios"
+          value="$(info "$phone_widgets" NSExtension.NSExtensionPointIdentifier)"
+          [ "$value" = "com.apple.widgetkit-extension" ] || fail "BinarioWidgets.appex: NSExtensionPointIdentifier is $value, expected com.apple.widgetkit-extension"
+          value="$(info "$phone_widgets" CFBundleIdentifier)"
+          [ "$value" = "it.binario.ios.widgets" ] || fail "BinarioWidgets.appex: CFBundleIdentifier is $value, expected it.binario.ios.widgets"
+          [ -f "$phone_widgets/curated_it_rail_stations.json" ] || fail "BinarioWidgets.appex: the station catalogue of its edit sheet is missing"
           # App Store Connect refuses a build number already uploaded: each archive takes the workflow run number, the
-          # same for the iPhone and Watch apps (ios/project.yml keeps 1 for local builds).
-          for bundle in "$app" "$watch"; do
+          # same for the iPhone and Watch apps and the iPhone's widget extension (ios/project.yml keeps 1 for local builds).
+          for bundle in "$app" "$watch" "$phone_widgets"; do
             value="$(info "$bundle" CFBundleVersion)"
             [ "$value" = "$GITHUB_RUN_NUMBER" ] || fail "${bundle##*/}: CFBundleVersion is $value, expected the run number $GITHUB_RUN_NUMBER"
           done
