@@ -55,6 +55,8 @@ struct SavedRoutesView: View {
                         let pinned = model.pinnedWatchRouteID == route.id
                         // One tap opens the planner on this route and searches it from now.
                         Button {
+                            // As on Android, the route opened becomes the active one.
+                            personal.setActiveRoute(route.id)
                             model.openPlanner(for: route)
                         } label: {
                             VStack(alignment: .leading, spacing: 4) {

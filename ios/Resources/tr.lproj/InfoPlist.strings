@@ -1,2 +1,5 @@
 "Agenda" = "Ajanda";
+"Tratta attiva" = "Etkin güzergâh";
+"Prossime partenze" = "Sonraki kalkışlar";
+"Ricerca treno" = "Tren arama";
 "NSLocationWhenInUseUsageDescription" = "Binario, en yakın istasyonu istediğinizde konumunuzu yalnızca bir kez, telefonda kayıtlı istasyon listesinde bulmak için kullanır. Konum kaydedilmez veya gönderilmez.";

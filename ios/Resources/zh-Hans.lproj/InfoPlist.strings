@@ -1,2 +1,5 @@
 "Agenda" = "日程";
+"Tratta attiva" = "当前路线";
+"Prossime partenze" = "即将出发";
+"Ricerca treno" = "查询车次";
 "NSLocationWhenInUseUsageDescription" = "Binario 仅在你查找最近的车站时使用一次你的位置，在手机上保存的车站列表中查找。位置不会被保存或发送。";

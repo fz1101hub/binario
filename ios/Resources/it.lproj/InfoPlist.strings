@@ -1,2 +1,5 @@
 "Agenda" = "Agenda";
+"Tratta attiva" = "Tratta attiva";
+"Prossime partenze" = "Prossime partenze";
+"Ricerca treno" = "Ricerca treno";
 "NSLocationWhenInUseUsageDescription" = "Binario usa la tua posizione una sola volta, quando chiedi la stazione più vicina, per trovarla nell’elenco delle stazioni salvato sul telefono. La posizione non viene salvata né inviata.";

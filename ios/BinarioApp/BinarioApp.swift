@@ -35,6 +35,8 @@ struct BinarioApp: App {
         WindowGroup {
             RootView()
                 .modifier(AppThemeModifier())
+                // Android's `binario://` links and the quick actions besides «Agenda» (RouteBoard.swift).
+                .modifier(AppLinksHandler())
                 .environmentObject(model)
                 .environmentObject(notices)
                 .environmentObject(extras)
@@ -85,8 +87,8 @@ final class BinarioAppDelegate: NSObject, UIApplicationDelegate {
         configurationForConnecting connectingSceneSession: UISceneSession,
         options: UIScene.ConnectionOptions
     ) -> UISceneConfiguration {
-        if let item = options.shortcutItem {
-            _ = AgendaQuickAction.handle(item)
+        if let item = options.shortcutItem, !AgendaQuickAction.handle(item) {
+            _ = AppLinks.handle(item)
         }
         let configuration = UISceneConfiguration(name: nil, sessionRole: connectingSceneSession.role)
         configuration.delegateClass = BinarioSceneDelegate.self
@@ -96,7 +98,8 @@ final class BinarioAppDelegate: NSObject, UIApplicationDelegate {
 
 final class BinarioSceneDelegate: NSObject, UIWindowSceneDelegate {
     func windowScene(_ windowScene: UIWindowScene, performActionFor shortcutItem: UIApplicationShortcutItem) async -> Bool {
-        AgendaQuickAction.handle(shortcutItem)
+        if AgendaQuickAction.handle(shortcutItem) { return true }
+        return AppLinks.handle(shortcutItem)
     }
 }
 #endif

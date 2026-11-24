@@ -593,9 +593,15 @@ class IOSProjectTests(unittest.TestCase):
         for language in sorted(LANGUAGES):
             folder = IOS / "Resources" / f"{language}.lproj"
             titles = read_strings(folder / "InfoPlist.strings")
-            # The quick action's title and the location permission text (I7) are the only Info.plist strings.
-            self.assertEqual({"Agenda", "NSLocationWhenInUseUsageDescription"}, set(titles), language)
+            # The quick actions' titles (Android's four shortcuts) and the location permission text (I7)
+            # are the only Info.plist strings.
+            self.assertEqual(
+                {"Agenda", "Tratta attiva", "Prossime partenze", "Ricerca treno", "NSLocationWhenInUseUsageDescription"},
+                set(titles), language,
+            )
             self.assertEqual(read_strings(folder / "Localizable.strings")["saved.agenda.title"], titles["Agenda"], language)
+            for title in ("Tratta attiva", "Prossime partenze", "Ricerca treno"):
+                self.assertTrue(titles[title].strip(), language)
         app = (IOS / "BinarioApp/BinarioApp.swift").read_text(encoding="utf-8")
         self.assertIn('static let type = "it.binario.ios.agenda"', app)
         self.assertIn("@UIApplicationDelegateAdaptor(BinarioAppDelegate.self)", app)
@@ -603,6 +609,13 @@ class IOSProjectTests(unittest.TestCase):
         self.assertIn("performActionFor shortcutItem: UIApplicationShortcutItem", app)
         root = (IOS / "BinarioApp/RootView.swift").read_text(encoding="utf-8")
         self.assertIn("NotificationCenter.default.publisher(for: AgendaQuickAction.notification)", root)
+        # The other three, and Android's `binario://` links, through RouteBoard.swift's AppLinks.
+        board = (IOS / "BinarioApp/RouteBoard.swift").read_text(encoding="utf-8")
+        for kind in ("active-route", "next-departures", "train-search"):
+            self.assertIn(f'case "it.binario.ios.{kind}":', board)
+        self.assertIn("AppLinks.handle(item)", app)
+        self.assertIn("return AppLinks.handle(shortcutItem)", app)
+        self.assertIn(".modifier(AppLinksHandler())", app)
         saved = (IOS / "BinarioApp/SavedRoutesView.swift").read_text(encoding="utf-8")
         self.assertIn(".navigationDestination(isPresented: $model.showingAgenda)", saved)
 
@@ -655,7 +668,10 @@ class IOSProjectTests(unittest.TestCase):
         forbidden_words = re.compile(r"android|wear\s*os|google\s*play|widget|companion", re.IGNORECASE)
         for language in sorted(LANGUAGES):
             values = read_strings(IOS / "Resources" / f"{language}.lproj" / "InfoPlist.strings")
-            self.assertEqual({"Agenda", "NSLocationWhenInUseUsageDescription"}, set(values), language)
+            self.assertEqual(
+                {"Agenda", "Tratta attiva", "Prossime partenze", "Ricerca treno", "NSLocationWhenInUseUsageDescription"},
+                set(values), language,
+            )
             text = values["NSLocationWhenInUseUsageDescription"]
             self.assertTrue(text.strip(), language)
             self.assertIn("Binario", text, language)
@@ -794,7 +810,21 @@ class IOSProjectTests(unittest.TestCase):
             "UIApplicationShortcutItemType": "it.binario.ios.agenda",
             "UIApplicationShortcutItemTitle": "Agenda",
             "UIApplicationShortcutItemIconSymbolName": "calendar",
+        }, {
+            "UIApplicationShortcutItemType": "it.binario.ios.active-route",
+            "UIApplicationShortcutItemTitle": "Tratta attiva",
+            "UIApplicationShortcutItemIconSymbolName": "point.topleft.down.to.point.bottomright.curvepath",
+        }, {
+            "UIApplicationShortcutItemType": "it.binario.ios.next-departures",
+            "UIApplicationShortcutItemTitle": "Prossime partenze",
+            "UIApplicationShortcutItemIconSymbolName": "list.bullet.rectangle",
+        }, {
+            "UIApplicationShortcutItemType": "it.binario.ios.train-search",
+            "UIApplicationShortcutItemTitle": "Ricerca treno",
+            "UIApplicationShortcutItemIconSymbolName": "magnifyingglass",
         }],
+            # Android's `binario://` links (BinarioDeepLinkParser's allowlist, RouteBoard.swift).
+            "CFBundleURLTypes": [{"CFBundleURLName": "it.binario.ios.links", "CFBundleURLSchemes": ["binario"]}],
             # The evening alerts (EveningAlerts.swift): one app refresh task, its only identifier.
             "UIBackgroundModes": ["fetch"],
             "BGTaskSchedulerPermittedIdentifiers": ["it.binario.ios.evening-alerts"],
@@ -1820,11 +1850,13 @@ class IOSProjectTests(unittest.TestCase):
             "guard plannerLiveVisible, liveDataEnabled, let liveData, let snapshot = latestSnapshot else { return }",
             "guard liveDataEnabled, let liveData, let key = detailLiveKey else { return }",
             "guard favouritesLiveVisible, liveDataEnabled, let liveData else { return }",
+            # «Treno» (PlannerExtras.swift): asked on the user's tap only.
+            "guard liveDataEnabled, let liveData else { return nil }",
         ):
             with self.subTest(guard=guard):
                 self.assertIn(guard, model)
-        self.assertEqual(5, model.count("await liveData."), "board, planner, train status, board row run and train notices")
-        self.assertEqual(1, model.count("await liveData.trainStatus("))
+        self.assertEqual(6, model.count("await liveData."), "board, planner, train status, board row run, train notices, «Treno»")
+        self.assertEqual(2, model.count("await liveData.trainStatus("), "the train's detail and the search by number")
         # Stale answers are dropped as the board's are.
         for fragment in (
             "guard requestID == boardLiveRequestID, boardStation == identity, liveDataEnabled else { return }",

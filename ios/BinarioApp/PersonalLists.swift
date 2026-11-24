@@ -120,6 +120,7 @@ struct SavedRouteAccessibilityActions: ViewModifier {
 /// «Nuova tratta»: origin, destination and an optional name; «Salva e attiva tratta».
 struct RouteComposerSheet: View {
     @EnvironmentObject private var model: AppModel
+    @EnvironmentObject private var personal: PersonalModel
     @Environment(\.dismiss) private var dismiss
     @State private var origin: Station?
     @State private var destination: Station?
@@ -145,6 +146,8 @@ struct RouteComposerSheet: View {
                     Button("saved.composer.save") {
                         guard let origin, let destination else { return }
                         if model.saveRoute(origin: StationIdentity(origin), destination: StationIdentity(destination), name: name) {
+                            // «Salva e attiva tratta».
+                            personal.setActiveRoute(SavedRoute.routeIdentifier(origin: StationIdentity(origin), destination: StationIdentity(destination)))
                             dismiss()
                         }
                     }

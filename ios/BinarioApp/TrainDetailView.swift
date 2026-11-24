@@ -78,6 +78,10 @@ struct TrainDetailView: View {
                 Co2Section(estimate: co2)
             }
             OfficialPagesSection(service: service)
+            // Android's «Aggiungi al calendario» (RouteBoard.swift).
+            Section {
+                CalendarEventButton(service: service, query: query)
+            }
             if service.hasTrainNumber {
                 PersonalPunctualitySection(number: service.number)
             }

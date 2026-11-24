@@ -1,2 +1,5 @@
 "Agenda" = "Agenda";
+"Tratta attiva" = "Active route";
+"Prossime partenze" = "Next departures";
+"Ricerca treno" = "Train search";
 "NSLocationWhenInUseUsageDescription" = "Binario uses your location once, when you ask for the nearest station, to find it in the station list stored on your phone. Your location is not saved or sent.";

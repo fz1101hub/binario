@@ -75,6 +75,10 @@ struct ResultsActionsSection: View {
 
     var body: some View {
         let rows = services.map { PersonalTexts.timetableRow($0, live: model.resultLive[$0.id], source: snapshot.provenance.sourceLabel) }
+        // The return of a round trip, when the planner searched one.
+        let back = personal.plannerReturn.map { returned in
+            returned.services.map { PersonalTexts.timetableRow($0, live: nil, source: returned.provenance.sourceLabel) }
+        } ?? []
         let date = ItalianWallClock.date(of: snapshot.query.departure) ?? PersonalModel.today()
         let from = LiveTexts.clock(snapshot.query.departure)
         let share = PersonalTexts.listShare(
@@ -82,11 +86,11 @@ struct ResultsActionsSection: View {
             destination: snapshot.query.destination.name,
             dateLabel: PersonalTexts.searchDate(date, from: from),
             rows: rows,
-            returnRows: []
+            returnRows: back
         )
         Section {
             Button {
-                save(rows: rows, date: date, from: from)
+                save(rows: rows, returnRows: back, date: date, from: from)
             } label: {
                 Label("result.save_timetable", systemImage: savedID == nil ? "square.and.arrow.down" : "checkmark")
             }
@@ -104,7 +108,7 @@ struct ResultsActionsSection: View {
         .onChange(of: snapshot.generatedAt) { _, _ in savedID = nil }
     }
 
-    private func save(rows: [TimetableRow], date: PlannedLocalDate, from: String) {
+    private func save(rows: [TimetableRow], returnRows: [TimetableRow], date: PlannedLocalDate, from: String) {
         let id = UUID().uuidString
         personal.saveTimetable(SavedTimetable(
             id: id,
@@ -114,7 +118,8 @@ struct ResultsActionsSection: View {
             serviceDate: date,
             fromTime: from,
             savedAt: Date(),
-            rows: rows
+            rows: rows,
+            returnRows: returnRows
         ))
         savedID = id
         DeparturesTexts.announce(String(localized: "result.timetable_saved"))

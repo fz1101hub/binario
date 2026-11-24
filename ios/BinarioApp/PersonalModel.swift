@@ -54,6 +54,10 @@ final class PersonalModel: ObservableObject {
     @Published private(set) var stationMonitors: [StationMonitor]
     /// «Comandi vocali e Alexa»: the wish to share the voice profile, which needs an Alexa account link.
     @Published private(set) var voiceProfileRequested: Bool
+    /// «Tratta attiva»: the saved route of «Le tue partenze»; nil follows the first saved route.
+    @Published private(set) var activeRouteID: String?
+    /// The return trains of the planner's round trip, for «Salva orario» and «Condividi»; never stored.
+    @Published var plannerReturn: JourneySnapshot?
 
     private let defaults: UserDefaults
 
@@ -68,6 +72,7 @@ final class PersonalModel: ObservableObject {
         static let pinnedRoutes = "it.binario.ios.pinned-routes.v1"
         static let stationMonitors = "it.binario.ios.station-monitors.v1"
         static let voiceProfile = "it.binario.ios.voice-profile-requested.v1"
+        static let activeRoute = "it.binario.ios.active-route.v1"
     }
 
     /// A route searched recently.
@@ -121,6 +126,17 @@ final class PersonalModel: ObservableObject {
         pinnedRouteIDs = Set(defaults.stringArray(forKey: Key.pinnedRoutes) ?? [])
         stationMonitors = PersonalModel.decode([StationMonitor].self, defaults.data(forKey: Key.stationMonitors)) ?? []
         voiceProfileRequested = defaults.bool(forKey: Key.voiceProfile)
+        activeRouteID = defaults.string(forKey: Key.activeRoute)
+    }
+
+    /// The active route among `routes`: the one chosen, else the first as Per te lists them.
+    func activeRoute(in routes: [SavedRoute]) -> SavedRoute? {
+        routes.first { $0.id == activeRouteID } ?? ordered(routes).first
+    }
+
+    func setActiveRoute(_ id: String) {
+        activeRouteID = id
+        defaults.set(id, forKey: Key.activeRoute)
     }
 
     private static func decode<Value: Decodable>(_ type: Value.Type, _ data: Data?) -> Value? {

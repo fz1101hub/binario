@@ -1,2 +1,5 @@
 "Agenda" = "予定";
+"Tratta attiva" = "選択中の区間";
+"Prossime partenze" = "次の発車";
+"Ricerca treno" = "列車を検索";
 "NSLocationWhenInUseUsageDescription" = "Binario は、最寄り駅を調べるときに一度だけ位置情報を使い、スマートフォンに保存された駅一覧から探します。位置情報は保存も送信もされません。";

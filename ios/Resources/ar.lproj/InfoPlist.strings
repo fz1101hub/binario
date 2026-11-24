@@ -1,2 +1,5 @@
 "Agenda" = "الأجندة";
+"Tratta attiva" = "المسار النشط";
+"Prossime partenze" = "المغادرات التالية";
+"Ricerca treno" = "البحث عن قطار";
 "NSLocationWhenInUseUsageDescription" = "يستخدم Binario موقعك مرة واحدة فقط عندما تطلب أقرب محطة، للعثور عليها في قائمة المحطات المحفوظة على الهاتف. لا يُحفَظ الموقع ولا يُرسَل.";
