@@ -612,6 +612,14 @@ final class TripMonitor: ObservableObject {
         }
     }
 
+    /// The commuter alerts of a local backup (Android's import): they replace this iPhone's and are planned again.
+    func replaceCommuterAlerts(_ alerts: [CommuterAlert]) async {
+        TripNotifier.remove(store.commuterAlerts.flatMap { [TripNotifier.commuterID($0.id, occurrence: 0), TripNotifier.commuterID($0.id, occurrence: 1)] })
+        store.commuterAlerts = Array(alerts.prefix(CommuterAlert.maximumAlerts))
+        commuterAlerts = store.commuterAlerts
+        await planCommuterAlerts(now: Date())
+    }
+
     func removeCommuterAlert(_ id: String) {
         store.commuterAlerts = store.commuterAlerts.filter { $0.id != id }
         commuterAlerts = store.commuterAlerts

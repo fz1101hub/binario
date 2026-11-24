@@ -158,6 +158,12 @@ final class PersonalModel: ObservableObject {
     func isPinned(routeID: String) -> Bool { pinnedRouteIDs.contains(routeID) }
 
     /// The star of a saved route: pinned routes come first.
+    /// The pins of a local backup, which replace this iPhone's.
+    func replacePins(_ ids: Set<String>) {
+        pinnedRouteIDs = ids
+        defaults.set(ids.sorted(), forKey: Key.pinnedRoutes)
+    }
+
     func togglePin(routeID: String) {
         if pinnedRouteIDs.contains(routeID) { pinnedRouteIDs.remove(routeID) } else { pinnedRouteIDs.insert(routeID) }
         defaults.set(pinnedRouteIDs.sorted(), forKey: Key.pinnedRoutes)

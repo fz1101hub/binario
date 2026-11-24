@@ -143,6 +143,8 @@ struct TicketsAssistanceView: View {
 struct LocalBackupSection: View {
     @EnvironmentObject private var model: AppModel
     @EnvironmentObject private var personal: PersonalModel
+    @EnvironmentObject private var trips: TripMonitor
+    @EnvironmentObject private var journeys: JourneysModel
     @State private var importing = false
     @State private var feedback: String?
 
@@ -190,7 +192,10 @@ struct LocalBackupSection: View {
             trainNames: personal.trainNames,
             punctualityHistory: personal.punctuality,
             savedTimetables: personal.savedTimetables,
-            stationMonitors: personal.stationMonitors.map { BackupStationMonitor(station: $0.station, mode: $0.mode.rawValue) }
+            stationMonitors: personal.stationMonitors.map { BackupStationMonitor(station: $0.station, mode: $0.mode.rawValue) },
+            pinnedRouteIDs: personal.pinnedRouteIDs,
+            commuterAlerts: trips.commuterAlerts,
+            travelPreferences: journeys.preferences
         )
         return LocalBackupCodec.encode(backup) { model.station(for: $0) }
     }
@@ -225,6 +230,10 @@ struct LocalBackupSection: View {
             personal.replaceStationMonitors(backup.stationMonitors.compactMap { monitor in
                 PersonalModel.MonitorMode(rawValue: monitor.mode).map { PersonalModel.StationMonitor(station: monitor.station, mode: $0) }
             })
+            personal.replacePins(backup.pinnedRouteIDs)
+            if let travel = backup.travelPreferences { journeys.setPreferences(travel) }
+            let alerts = backup.commuterAlerts
+            Task { await trips.replaceCommuterAlerts(alerts) }
             if backup.routes.isEmpty {
                 report(NSLocalizedString("settings.backup.imported_without_route", comment: ""))
             } else {
@@ -232,7 +241,7 @@ struct LocalBackupSection: View {
                     "settings.backup.import_summary",
                     String.localizedStringWithFormat(NSLocalizedString("settings.backup.routes", comment: ""), backup.routes.count),
                     String.localizedStringWithFormat(NSLocalizedString("settings.backup.stations", comment: ""), backup.favouriteStations.count),
-                    String.localizedStringWithFormat(NSLocalizedString("settings.backup.alerts", comment: ""), 0)
+                    String.localizedStringWithFormat(NSLocalizedString("settings.backup.alerts", comment: ""), backup.commuterAlerts.count)
                 ))
             }
         }
