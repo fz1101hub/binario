@@ -257,6 +257,10 @@
 "departures.direct.search_trains" = "%1$@ から %2$@ への列車を検索";
 "departures.direct.today" = "今日 %1$@";
 "departures.direct.close" = "閉じる";
+"saved.trains.reliability.summary" = "直近 30 日間の、ネットワーク全体とこのスマートフォンに記録された運行の定時状況です。傾向は直近 4 週間をその前の 4 週間と比べます。タップすると列車が開きます。";
+"saved.trains.reliability.worse" = "悪化傾向";
+"saved.trains.reliability.better" = "改善傾向";
+"saved.trains.reliability.no_data" = "まだデータがありません";
 "saved.timetables.solutions" = "%1$lld 件の経路";
 "departures.types.hidden_trains" = "%1$lld 本を非表示";
 "result.punctuality.observations" = "この端末に記録した観測 %1$lld 件";
@@ -267,6 +271,7 @@
 "saved.digest.network" = "ネットワークの過去 %1$lld 日間：定時 %2$lld%%";
 "departures.direct.train_count" = "%1$lld 本";
 "departures.direct.run_count" = "%1$lld 本";
+"saved.trains.reliability.personal" = "このスマートフォンの記録：%2$lld 回中 %1$lld 回定刻";
 "planner.title" = "経路検索";
 "planner.intro.title" = "ルートを検索";
 "planner.intro.body" = "厳選カタログから出発駅と到着駅を選んでください。収録している時刻表は計画ダイヤで、下記の路線を対象としています：Trenitalia、Italo、地域鉄道、国境を越える列車（Trenitalia と Italo のバスを含む）。地下鉄と路面電車は含まれず、時刻表のない駅は検索結果で表示されます。";
@@ -590,7 +595,6 @@
 "result.favourite.add" = "マイ列車に保存";
 "result.favourite.remove" = "マイ列車から削除";
 "saved.trains.reliability.title" = "マイ列車の信頼性";
-"saved.trains.reliability.description" = "直近 %1$lld 日間、各列車の終点到着時の値です。列車をタップすると開きます。";
 "tab.departures" = "発車案内";
 "departures.title" = "発車案内";
 "departures.station" = "駅";

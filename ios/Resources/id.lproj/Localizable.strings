@@ -257,6 +257,10 @@
 "departures.direct.search_trains" = "Cari kereta dari %1$@ ke %2$@";
 "departures.direct.today" = "Hari ini %1$@";
 "departures.direct.close" = "Tutup";
+"saved.trains.reliability.summary" = "30 hari terakhir, di jaringan dan pada perjalanan yang tercatat di ponsel ini; tren membandingkan 4 minggu terakhir dengan 4 minggu sebelumnya. Ketuk kereta untuk membukanya.";
+"saved.trains.reliability.worse" = "Memburuk";
+"saved.trains.reliability.better" = "Membaik";
+"saved.trains.reliability.no_data" = "Belum ada data";
 "saved.timetables.solutions" = "%1$lld pilihan perjalanan";
 "departures.types.hidden_trains" = "%1$lld kereta disembunyikan";
 "result.punctuality.observations" = "%1$lld pengamatan tercatat di perangkat ini";
@@ -267,6 +271,7 @@
 "saved.digest.network" = "%1$lld hari terakhir di jaringan: %2$lld%% tepat waktu";
 "departures.direct.train_count" = "%1$lld kereta";
 "departures.direct.run_count" = "%1$lld perjalanan";
+"saved.trains.reliability.personal" = "Tercatat di ponsel ini: tepat waktu %1$lld dari %2$lld kali";
 "planner.title" = "Rencanakan";
 "planner.intro.title" = "Cari rute";
 "planner.intro.body" = "Pilih stasiun asal dan tujuan dari katalog kurasi. Jadwal yang disertakan adalah jadwal terencana dan mencakup jaringan yang tercantum di bawah: Trenitalia, Italo, kereta regional, dan kereta lintas batas, termasuk bus Trenitalia dan Italo; metro dan trem tidak disertakan, dan stasiun tanpa jadwal ditandai dalam pencarian.";
@@ -590,7 +595,6 @@
 "result.favourite.add" = "Simpan di Kereta saya";
 "result.favourite.remove" = "Hapus dari Kereta saya";
 "saved.trains.reliability.title" = "Keandalan kereta saya";
-"saved.trains.reliability.description" = "%1$lld hari terakhir, saat tiba di perhentian terakhir setiap kereta. Ketuk kereta untuk membukanya.";
 "tab.departures" = "Keberangkatan";
 "departures.title" = "Keberangkatan";
 "departures.station" = "Stasiun";

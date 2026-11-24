@@ -527,3 +527,35 @@ extension StationBoardTests {
         XCTAssertTrue(nowhere.isEmpty)
     }
 }
+
+/// «Treno» in the bundled timetable (Android's `EmbeddedGtfsRouteAdapter.searchByNumber`).
+extension StationBoardTests {
+    func testScheduledRunsOfANumberAreTheDaysTripsFromFirstToLastStop() async throws {
+        let fixture = try BoardFixture()
+        try fixture.insertTrip(id: 1, externalID: "monday", number: "2153", calls: [
+            BoardCall(stop: 1, seconds: 9 * 3_600 + 30 * 60), BoardCall(stop: 5, seconds: 10 * 3_600),
+            BoardCall(stop: 2, seconds: 11 * 3_600),
+        ])
+        try fixture.insertTrip(id: 2, externalID: "sunday", number: "2153", service: 2, calls: [
+            BoardCall(stop: 1, seconds: 8 * 3_600), BoardCall(stop: 2, seconds: 9 * 3_600),
+        ])
+        // Another number that only contains the digits.
+        try fixture.insertTrip(id: 3, externalID: "longer", number: "21530", calls: [
+            BoardCall(stop: 1, seconds: 12 * 3_600), BoardCall(stop: 2, seconds: 13 * 3_600),
+        ])
+        let monday = try XCTUnwrap(PlannedLocalDate(iso: "2024-04-01"))
+        let runs = await fixture.repository.scheduledRuns(numbered: "2153", on: monday)
+        XCTAssertEqual(runs.map(\.service.number), ["2153"])
+        let run = try XCTUnwrap(runs.first)
+        XCTAssertEqual(run.service.scheduledDeparture, "09:30")
+        XCTAssertEqual(run.service.status, "PROGRAMMED")
+        XCTAssertEqual(run.origin, StationIdentity(id: "catalog-board", name: "Milano Centrale", railwayCode: "S01700"))
+        XCTAssertEqual(run.destination, StationIdentity(id: "catalog-terminus", name: "Bergamo", railwayCode: "S01529"))
+        XCTAssertEqual(run.arrival.map { $0.timeIntervalSince(run.departure) }, 90 * 60)
+        XCTAssertEqual(run.attribution, "Synthetic official feed")
+        // The detail opens on the trip: its id names the pack, the trip, the day and the first departure.
+        XCTAssertEqual(TimetableServiceReference(serviceID: run.service.id)?.trip, TimetableTripKey(sourceID: "source", tripID: "monday"))
+        let none = await fixture.repository.scheduledRuns(numbered: "9999", on: monday)
+        XCTAssertTrue(none.isEmpty)
+    }
+}

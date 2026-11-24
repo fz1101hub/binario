@@ -561,16 +561,8 @@ private struct AvailableResultView: View {
             }
             LiveSourcesFooter(state: model.resultLiveState, sources: model.resultLiveSources, pauses: model.liveSourcePauses)
         }
-        // «Salva orario» and «Condividi» of the direct trains as the list shows them (PersonalViews.swift).
-        ResultsActionsSection(snapshot: snapshot, services: shownServices(shown))
-    }
-
-    /// The direct trains of the list as shown, in its order (chips, change filter, travel preferences).
-    private func shownServices(_ entries: [JourneyResultEntry]) -> [TrainService] {
-        entries.compactMap { entry in
-            if case let .train(service, _) = entry { return service }
-            return nil
-        }
+        // «Salva orario» and «Condividi» of the list as shown, journeys with changes included (PersonalViews.swift).
+        ResultsActionsSection(snapshot: snapshot, entries: shown)
     }
 
     /// The direct trains of the search, then those «Più presto» / «Più tardi» loaded around it.

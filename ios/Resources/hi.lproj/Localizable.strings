@@ -257,6 +257,10 @@
 "departures.direct.search_trains" = "%1$@ से %2$@ तक की ट्रेनें खोजें";
 "departures.direct.today" = "आज %1$@";
 "departures.direct.close" = "बंद करें";
+"saved.trains.reliability.summary" = "पिछले 30 दिन, नेटवर्क पर और इस फ़ोन पर दर्ज यात्राओं में; रुझान पिछले 4 सप्ताहों की तुलना उनसे पहले के 4 सप्ताहों से करता है। खोलने के लिए किसी ट्रेन पर टैप करें।";
+"saved.trains.reliability.worse" = "बिगड़ रही है";
+"saved.trains.reliability.better" = "सुधर रही है";
+"saved.trains.reliability.no_data" = "अभी कोई डेटा नहीं";
 "saved.timetables.solutions" = "%1$lld विकल्प";
 "departures.types.hidden_trains" = "%1$lld ट्रेनें छिपाई गईं";
 "result.punctuality.observations" = "इस डिवाइस पर %1$lld अवलोकन दर्ज";
@@ -267,6 +271,7 @@
 "saved.digest.network" = "नेटवर्क पर पिछले %1$lld दिन: %2$lld%% समय पर";
 "departures.direct.train_count" = "%1$lld ट्रेनें";
 "departures.direct.run_count" = "%1$lld फेरे";
+"saved.trains.reliability.personal" = "इस फ़ोन पर दर्ज: %2$lld में से %1$lld बार समय पर";
 "planner.title" = "योजना बनाएँ";
 "planner.intro.title" = "रूट खोजें";
 "planner.intro.body" = "चुने हुए कैटलॉग से प्रस्थान और गंतव्य चुनें। शामिल समय-सारणियाँ निर्धारित हैं और नीचे सूचीबद्ध नेटवर्क को कवर करती हैं: Trenitalia, Italo, क्षेत्रीय रेलवे और सीमा-पार ट्रेनें, Trenitalia और Italo की बसों सहित; मेट्रो और ट्राम शामिल नहीं हैं, और बिना समय-सारणी वाले स्टेशन खोज में चिह्नित किए जाते हैं।";
@@ -590,7 +595,6 @@
 "result.favourite.add" = "मेरी ट्रेनें में सहेजें";
 "result.favourite.remove" = "मेरी ट्रेनें से हटाएँ";
 "saved.trains.reliability.title" = "मेरी ट्रेनों की विश्वसनीयता";
-"saved.trains.reliability.description" = "पिछले %1$lld दिन, हर ट्रेन के आख़िरी स्टॉप पर पहुँचने पर। खोलने के लिए किसी ट्रेन पर टैप करें।";
 "tab.departures" = "प्रस्थान";
 "departures.title" = "प्रस्थान";
 "departures.station" = "स्टेशन";

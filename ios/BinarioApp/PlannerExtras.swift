@@ -33,8 +33,9 @@ struct PlannerModesSection: View {
     }
 }
 
-/// «Treno»: today's runs of a number from the live sources, independent of any route; a tap opens
-/// the train as a planner row does.
+/// «Treno»: today's runs of a number from the bundled timetable and the live sources, independent
+/// of any route, in departure order as Android lists its sources' matches; a tap opens the train as
+/// a planner row does.
 struct TrainNumberSearchView: View {
     @EnvironmentObject private var model: AppModel
     /// A number from a link or a quick action, searched at once.
@@ -42,8 +43,33 @@ struct TrainNumberSearchView: View {
     @State private var number = ""
     @State private var searching = false
     @State private var runs: [LiveRunStatus] = []
+    @State private var scheduled: [ScheduledNumberRun] = []
     @State private var messageKey: String?
     @State private var partial = false
+
+    /// One match: a run a live source published, or one of the bundled timetable.
+    private enum Match: Identifiable {
+        case live(LiveRunStatus)
+        case scheduled(ScheduledNumberRun)
+
+        var id: String {
+            switch self {
+            case let .live(run): return "live:" + run.id
+            case let .scheduled(run): return "timetable:" + run.id
+            }
+        }
+
+        var departure: Date {
+            switch self {
+            case let .live(run): return run.scheduledDeparture
+            case let .scheduled(run): return run.departure
+            }
+        }
+    }
+
+    private var matches: [Match] {
+        (runs.map(Match.live) + scheduled.map(Match.scheduled)).sorted { $0.departure < $1.departure }
+    }
 
     var body: some View {
         Form {
@@ -68,10 +94,13 @@ struct TrainNumberSearchView: View {
                 }
                 .disabled(searching || query == nil)
             }
-            if !runs.isEmpty {
+            if !matches.isEmpty {
                 Section {
-                    ForEach(runs, id: \.id) { run in
-                        TrainNumberRunRow(run: run)
+                    ForEach(matches) { match in
+                        switch match {
+                        case let .live(run): TrainNumberRunRow(run: run)
+                        case let .scheduled(run): ScheduledNumberRunRow(run: run)
+                        }
                     }
                     if partial {
                         Text("planner.train.partial")
@@ -79,7 +108,7 @@ struct TrainNumberSearchView: View {
                             .foregroundStyle(.secondary)
                     }
                 } header: {
-                    Text(PersonalTexts.format("planner.train.heading", runs.first?.number ?? number))
+                    Text(PersonalTexts.format("planner.train.heading", runs.first?.number ?? scheduled.first?.service.number ?? number))
                 } footer: {
                     Text("planner.train.subtitle")
                 }
@@ -110,23 +139,70 @@ struct TrainNumberSearchView: View {
         searching = true
         messageKey = nil
         Task {
+            // The bundled timetable first, as Android shows its offline rows before the live ones.
+            scheduled = await model.scheduledNumberRuns(query, on: PersonalModel.today())
+            runs = []
+            partial = false
             let result = await model.trainNumberRuns(LiveTrainStatusRequest(number: query, serviceDate: Date()))
             searching = false
+            var failed = false
             switch result {
             case nil:
-                runs = []
-                messageKey = "planner.train.unavailable"
+                // «Dati in tempo reale» off: the bundled timetable alone.
+                break
             case let .unavailable(reason)?:
-                runs = []
-                messageKey = reason == .notFound || reason == .notCovered ? "planner.train.not_found" : "planner.train.unavailable"
+                failed = !(reason == .notFound || reason == .notCovered)
             case let .available(lookup)?:
-                runs = lookup.runs.sorted { $0.scheduledDeparture < $1.scheduledDeparture }
+                runs = lookup.runs
                 partial = !lookup.unavailableSources.isEmpty
-                messageKey = runs.isEmpty ? "planner.train.not_found" : nil
             }
-            DeparturesTexts.announce(runs.isEmpty ? NSLocalizedString(messageKey ?? "planner.train.not_found", comment: "")
-                                                  : PersonalTexts.format("planner.train.heading", query))
+            if matches.isEmpty {
+                messageKey = failed ? "planner.train.unavailable" : "planner.train.not_found"
+            } else {
+                messageKey = nil
+                partial = partial || failed
+            }
+            DeparturesTexts.announce(matches.isEmpty ? NSLocalizedString(messageKey ?? "planner.train.not_found", comment: "")
+                                                     : PersonalTexts.format("planner.train.heading", query))
         }
+    }
+}
+
+/// One run of the bundled timetable: route, departure date and time, «Orari programmati»; opens
+/// the train's detail from its first stop.
+private struct ScheduledNumberRunRow: View {
+    let run: ScheduledNumberRun
+
+    var body: some View {
+        let label = VStack(alignment: .leading, spacing: 3) {
+            Text(verbatim: "\(run.service.category) \(run.service.number) · \(run.service.operatorName)")
+                .font(.headline)
+            Text(verbatim: "\(run.origin.name) → \(run.destination.name)")
+            Text(PersonalTexts.format("planner.train.run_date", run.departure.formatted(
+                Date.FormatStyle(date: .abbreviated, time: .shortened, timeZone: ItalianWallClock.timeZone))))
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            Label("result.programmed.disclosure", systemImage: "clock")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+        .accessibilityElement(children: .combine)
+        if let query = try? JourneyQuery(origin: run.origin, destination: run.destination, departure: run.departure) {
+            NavigationLink {
+                TrainDetailView(service: run.service, query: query)
+            } label: { label }
+            .accessibilityHint(Text("accessibility.open_train_detail"))
+        } else {
+            label
+        }
+    }
+}
+
+extension AppModel {
+    /// «Treno» in the bundled timetable and the installed foreign ones, off the main actor.
+    func scheduledNumberRuns(_ number: String, on date: PlannedLocalDate) async -> [ScheduledNumberRun] {
+        guard let timetable = repository as? SQLiteGTFSJourneyRepository else { return [] }
+        return await timetable.scheduledRuns(numbered: number, on: date)
     }
 }
 

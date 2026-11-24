@@ -257,6 +257,10 @@
 "departures.direct.search_trains" = "Chercher les trains de %1$@ à %2$@";
 "departures.direct.today" = "Aujourd’hui %1$@";
 "departures.direct.close" = "Fermer";
+"saved.trains.reliability.summary" = "30 derniers jours, sur le réseau et dans les trajets enregistrés sur ce téléphone ; la tendance compare les 4 dernières semaines aux 4 précédentes. Touchez un train pour l’ouvrir.";
+"saved.trains.reliability.worse" = "Se dégrade";
+"saved.trains.reliability.better" = "S’améliore";
+"saved.trains.reliability.no_data" = "Pas encore de données";
 "saved.timetables.solutions" = "%1$lld solutions";
 "departures.types.hidden_trains" = "%1$lld trains masqués";
 "result.punctuality.observations" = "%1$lld observations enregistrées sur cet appareil";
@@ -267,6 +271,7 @@
 "saved.digest.network" = "%1$lld derniers jours sur le réseau : %2$lld %% à l’heure";
 "departures.direct.train_count" = "%1$lld trains";
 "departures.direct.run_count" = "%1$lld passages";
+"saved.trains.reliability.personal" = "Enregistré sur ce téléphone : à l’heure %1$lld fois sur %2$lld";
 "planner.title" = "Planifier";
 "planner.intro.title" = "Rechercher un trajet";
 "planner.intro.body" = "Choisissez le départ et la destination dans le catalogue vérifié. Les horaires inclus sont des données programmées et couvrent les réseaux listés ci-dessous : Trenitalia, Italo, les chemins de fer régionaux et les trains transfrontaliers, avec les cars de Trenitalia et d'Italo ; le métro et le tram ne sont pas inclus, et les gares sans horaires sont signalées dans la recherche.";
@@ -590,7 +595,6 @@
 "result.favourite.add" = "Enregistrer dans Mes trains";
 "result.favourite.remove" = "Retirer de Mes trains";
 "saved.trains.reliability.title" = "Fiabilité de mes trains";
-"saved.trains.reliability.description" = "%1$lld derniers jours, à l’arrivée au dernier arrêt de chaque train. Touchez un train pour l’ouvrir.";
 "tab.departures" = "Départs";
 "departures.title" = "Départs";
 "departures.station" = "Gare";
