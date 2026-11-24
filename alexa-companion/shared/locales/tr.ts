@@ -201,6 +201,17 @@ export const tr: LocaleMessages = {
     platformLabel: "Peron",
     platformNotGiven: "belirtilmemiş",
     hint: "“Alexa, ask Binario Trains for the next trains from Milano Centrale to Bologna Centrale”",
-    vehicles: { busTrenitalia: "Trenitalia otobüsü", freccialink: "FrecciaLink", italobus: "ItaloBus", bus: "Otobüs", replacementBus: "Yerine çalışan otobüs" },
+    vehicles: { busTrenitalia: "Trenitalia otobüsü", freccialink: "FrecciaLink", italobus: "ItaloBus", bus: "Otobüs", replacementBus: "Yerine çalışan otobüs", metro: "Metro", tram: "Tramvay", funicular: "Füniküler" },
+    cityDeparture: {
+      metro: { one: "saat {time} kalkışlı {train}", other: "saat {time} kalkışlı {train}" },
+      tram: { one: "saat {time} kalkışlı {train}", other: "saat {time} kalkışlı {train}" },
+      funicular: { one: "saat {time} kalkışlı {train}", other: "saat {time} kalkışlı {train}" },
+    },
+    cityDepartures: { one: "Tarifeye göre bir sonraki sefer: {trains}.", other: "Tarifeye göre sonraki seferler: {trains}." },
+    walk: { one: "Biniş, {station} istasyonuna {count} dakika yürüme mesafesindeki {stop} durağından.", other: "Biniş, {station} istasyonuna {count} dakika yürüme mesafesindeki {stop} durağından." },
+    routeWalk: { one: "Biniş, kalkış istasyonuna {count} dakika yürüme mesafesindeki bir duraktan.", other: "Biniş, kalkış istasyonuna {count} dakika yürüme mesafesindeki bir duraktan." },
+    cityProgrammedOnly: "Şehir hatları için Binario'da yalnızca tarife var.",
+    walkLabel: "Yürüyerek",
+    walkValue: "{minutes} dk",
   },
 };

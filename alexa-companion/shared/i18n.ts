@@ -316,8 +316,40 @@ export type LocaleMessages = {
     platformNotGiven: string;
     /** Echo Show hint: a StationTrainsIntent sample with the locale's invocation name. */
     hint: string;
-    /** The bus labels of the timetable (the iPhone's result.vehicle.*, Android's journey_leg_*). */
-    vehicles: { busTrenitalia: string; freccialink: string; italobus: string; bus: string; replacementBus: string };
+    /**
+     * The bus and city-line labels of the timetable (the iPhone's result.vehicle.*, Android's
+     * journey_leg_*): a city line is said with its line («Metro MEX», «Tram 14»).
+     */
+    vehicles: {
+      busTrenitalia: string;
+      freccialink: string;
+      italobus: string;
+      bus: string;
+      replacementBus: string;
+      metro: string;
+      tram: string;
+      funicular: string;
+    };
+    /** One run of a city line, by mode (the article agrees with the mode): {train} (its label) and {time}. */
+    cityDeparture: { metro: PluralMessages; tram: PluralMessages; funicular: PluralMessages };
+    /**
+     * `departures` when every departure said is a city run, with the apps' word for them (Android's
+     * «Cerca le corse», `planner_airport_search_runs`): {trains}.
+     */
+    cityDepartures: PluralMessages;
+    /**
+     * Two stations asked: the city stop the runs are boarded at, a short walk from the station
+     * ({stop}, {station}); plural on the minutes, {count}.
+     */
+    walk: PluralMessages;
+    /** A saved route: the same walk without naming the stop or the station (the answer never names a route's stations); {count}. */
+    routeWalk: PluralMessages;
+    /** Said after city runs: no live state of a city line is known, only its timetable. */
+    cityProgrammedOnly: string;
+    /** Echo Show: a city run's row shows the walk instead of the platform. */
+    walkLabel: string;
+    /** {minutes}: the minutes of the walk, abbreviated. */
+    walkValue: string;
   };
 };
 
@@ -507,7 +539,18 @@ const it: LocaleMessages = {
     platformLabel: "Binario",
     platformNotGiven: "non indicato",
     hint: "«Alexa, chiedi a Binario Treni i prossimi treni da Milano Centrale a Bologna Centrale»",
-    vehicles: { busTrenitalia: "Bus Trenitalia", freccialink: "FrecciaLink", italobus: "ItaloBus", bus: "Autobus", replacementBus: "Bus sostitutivo" },
+    vehicles: { busTrenitalia: "Bus Trenitalia", freccialink: "FrecciaLink", italobus: "ItaloBus", bus: "Autobus", replacementBus: "Bus sostitutivo", metro: "Metro", tram: "Tram", funicular: "Funicolare" },
+    cityDeparture: {
+      metro: { one: "la {train} dell'{time}", other: "la {train} delle {time}" },
+      tram: { one: "il {train} dell'{time}", other: "il {train} delle {time}" },
+      funicular: { one: "la {train} dell'{time}", other: "la {train} delle {time}" },
+    },
+    cityDepartures: { one: "Secondo l'orario programmato la prossima corsa è {trains}.", other: "Secondo l'orario programmato le prossime corse sono {trains}." },
+    walk: { one: "Si sale alla fermata {stop}, a {count} minuto a piedi da {station}.", other: "Si sale alla fermata {stop}, a {count} minuti a piedi da {station}." },
+    routeWalk: { one: "Si sale a una fermata a {count} minuto a piedi dalla stazione di partenza.", other: "Si sale a una fermata a {count} minuti a piedi dalla stazione di partenza." },
+    cityProgrammedOnly: "Per le corse urbane Binario ha solo l'orario programmato.",
+    walkLabel: "A piedi",
+    walkValue: "{minutes} min",
   },
 };
 
@@ -582,7 +625,18 @@ const en: LocaleMessages = {
     platformLabel: "Platform",
     platformNotGiven: "not given",
     hint: "“Alexa, ask Binario Trains for the next trains from Milano Centrale to Bologna Centrale”",
-    vehicles: { busTrenitalia: "Trenitalia bus", freccialink: "FrecciaLink", italobus: "ItaloBus", bus: "Bus", replacementBus: "Replacement bus" },
+    vehicles: { busTrenitalia: "Trenitalia bus", freccialink: "FrecciaLink", italobus: "ItaloBus", bus: "Bus", replacementBus: "Replacement bus", metro: "Metro", tram: "Tram", funicular: "Funicular" },
+    cityDeparture: {
+      metro: { one: "the {train} at {time}", other: "the {train} at {time}" },
+      tram: { one: "the {train} at {time}", other: "the {train} at {time}" },
+      funicular: { one: "the {train} at {time}", other: "the {train} at {time}" },
+    },
+    cityDepartures: { one: "According to the timetable, the next departure is {trains}.", other: "According to the timetable, the next departures are {trains}." },
+    walk: { one: "Board at the {stop} stop, a {count}-minute walk from {station}.", other: "Board at the {stop} stop, a {count}-minute walk from {station}." },
+    routeWalk: { one: "Board at a stop a {count}-minute walk from the departure station.", other: "Board at a stop a {count}-minute walk from the departure station." },
+    cityProgrammedOnly: "For city lines, Binario only has the timetable.",
+    walkLabel: "On foot",
+    walkValue: "{minutes} min",
   },
 };
 
@@ -656,7 +710,18 @@ const de: LocaleMessages = {
     platformLabel: "Gleis",
     platformNotGiven: "nicht angegeben",
     hint: "„Alexa, frage Binario Züge nach den nächsten Zügen von Milano Centrale nach Bologna Centrale“",
-    vehicles: { busTrenitalia: "Trenitalia-Bus", freccialink: "FrecciaLink", italobus: "ItaloBus", bus: "Bus", replacementBus: "Ersatzbus" },
+    vehicles: { busTrenitalia: "Trenitalia-Bus", freccialink: "FrecciaLink", italobus: "ItaloBus", bus: "Bus", replacementBus: "Ersatzbus", metro: "Metro", tram: "Tram", funicular: "Standseilbahn" },
+    cityDeparture: {
+      metro: { one: "die {train} um {time}", other: "die {train} um {time}" },
+      tram: { one: "die {train} um {time}", other: "die {train} um {time}" },
+      funicular: { one: "die {train} um {time}", other: "die {train} um {time}" },
+    },
+    cityDepartures: { one: "Laut Fahrplan ist die nächste Fahrt {trains}.", other: "Laut Fahrplan sind die nächsten Fahrten {trains}." },
+    walk: { one: "Einstieg an der Haltestelle {stop}, {count} Minute zu Fuß von {station}.", other: "Einstieg an der Haltestelle {stop}, {count} Minuten zu Fuß von {station}." },
+    routeWalk: { one: "Einstieg an einer Haltestelle {count} Minute zu Fuß vom Abfahrtsbahnhof.", other: "Einstieg an einer Haltestelle {count} Minuten zu Fuß vom Abfahrtsbahnhof." },
+    cityProgrammedOnly: "Für Stadtlinien hat Binario nur den Fahrplan.",
+    walkLabel: "Zu Fuß",
+    walkValue: "{minutes} Min.",
   },
 };
 
@@ -730,7 +795,18 @@ const fr: LocaleMessages = {
     platformLabel: "Quai",
     platformNotGiven: "non indiqué",
     hint: "« Alexa, demande à Binario Trains les prochains trains de Milano Centrale à Bologna Centrale »",
-    vehicles: { busTrenitalia: "Car Trenitalia", freccialink: "FrecciaLink", italobus: "ItaloBus", bus: "Bus", replacementBus: "Bus de substitution" },
+    vehicles: { busTrenitalia: "Car Trenitalia", freccialink: "FrecciaLink", italobus: "ItaloBus", bus: "Bus", replacementBus: "Bus de substitution", metro: "Métro", tram: "Tram", funicular: "Funiculaire" },
+    cityDeparture: {
+      metro: { one: "le {train} de {time}", other: "le {train} de {time}" },
+      tram: { one: "le {train} de {time}", other: "le {train} de {time}" },
+      funicular: { one: "le {train} de {time}", other: "le {train} de {time}" },
+    },
+    cityDepartures: { one: "Selon l’horaire prévu, le prochain passage est {trains}.", other: "Selon l’horaire prévu, les prochains passages sont {trains}." },
+    walk: { one: "On monte à l’arrêt {stop}, à {count} minute à pied de {station}.", other: "On monte à l’arrêt {stop}, à {count} minutes à pied de {station}." },
+    routeWalk: { one: "On monte à un arrêt à {count} minute à pied de la gare de départ.", other: "On monte à un arrêt à {count} minutes à pied de la gare de départ." },
+    cityProgrammedOnly: "Pour les lignes urbaines, Binario n’a que l’horaire prévu.",
+    walkLabel: "À pied",
+    walkValue: "{minutes} min",
   },
 };
 
@@ -804,7 +880,18 @@ const es: LocaleMessages = {
     platformLabel: "Andén",
     platformNotGiven: "no indicado",
     hint: "«Alexa, pregunta a Binario Trenes por los próximos trenes de Milano Centrale a Bologna Centrale»",
-    vehicles: { busTrenitalia: "Autobús Trenitalia", freccialink: "FrecciaLink", italobus: "ItaloBus", bus: "Autobús", replacementBus: "Autobús sustitutivo" },
+    vehicles: { busTrenitalia: "Autobús Trenitalia", freccialink: "FrecciaLink", italobus: "ItaloBus", bus: "Autobús", replacementBus: "Autobús sustitutivo", metro: "Metro", tram: "Tranvía", funicular: "Funicular" },
+    cityDeparture: {
+      metro: { one: "el {train} de la {time}", other: "el {train} de las {time}" },
+      tram: { one: "el {train} de la {time}", other: "el {train} de las {time}" },
+      funicular: { one: "el {train} de la {time}", other: "el {train} de las {time}" },
+    },
+    cityDepartures: { one: "Según el horario previsto, la próxima salida es {trains}.", other: "Según el horario previsto, las próximas salidas son {trains}." },
+    walk: { one: "Se sube en la parada {stop}, a {count} minuto a pie de {station}.", other: "Se sube en la parada {stop}, a {count} minutos a pie de {station}." },
+    routeWalk: { one: "Se sube en una parada a {count} minuto a pie de la estación de salida.", other: "Se sube en una parada a {count} minutos a pie de la estación de salida." },
+    cityProgrammedOnly: "Para las líneas urbanas, Binario solo tiene el horario previsto.",
+    walkLabel: "A pie",
+    walkValue: "{minutes} min",
   },
 };
 

@@ -54,7 +54,8 @@
           "samples": [
             "{origin}から{destination}までの電車",
             "{origin}から{destination}までの電車を教えて",
-            "{origin}から{destination}へ行く次の電車"
+            "{origin}から{destination}へ行く次の電車",
+            "{origin}から{destination}までの次の便"
           ]
         },
         {
@@ -188,6 +189,7 @@
             { "name": { "value": "Tivoli" } },
             { "name": { "value": "Roma Ostiense" } },
             { "name": { "value": "Fiumicino Aeroporto" } },
+            { "name": { "value": "Bologna Aeroporto" } },
             { "name": { "value": "Milano Cadorna" } },
             { "name": { "value": "Napoli Afragola" } },
             { "name": { "value": "Reggio Emilia AV Mediopadana" } },

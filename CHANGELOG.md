@@ -1,5 +1,9 @@
 # Changelog
 
+## In sviluppo — Alexa: le corse urbane a pochi passi dalla stazione, come nelle app
+
+- **Alexa, prossimi treni con le camminate urbane.** «Prossimi treni da Bologna Centrale a Bologna Aeroporto» (e «prossime corse da … a …») risponde ora con il Marconi Express, come le app: una stazione a non più di 600 m da una fermata di metro, tram, funicolare o del Marconi Express è servita anche da quella linea, con i minuti a piedi della regola comune (`urban-stops-v1.json`, tabella `urban_walk` dello stesso indice dell'iPhone). La voce dice «corse», la linea e mai un numero, la fermata e il cammino: «Secondo l'orario programmato le prossime corse sono la Metro MEX delle 9:05, la Metro MEX delle 9:13 e la Metro MEX delle 9:21. Si sale alla fermata Bologna Centrale FS, a 4 minuti a piedi da Bologna Centrale. Per le corse urbane Binario ha solo l'orario programmato.» Una corsa non raggiungibile a piedi in tempo resta fuori. Per una tratta salvata la fermata e le stazioni non sono nominate; su Echo Show la riga mostra «A piedi 4 min» al posto del binario. Sempre orari programmati: il server non chiede nulla a ViaggiaTreno. Nuovi casi comuni in `contracts/shared-rules/v1/next-trains-v1.json`, letti dai test della skill e dell'iPhone; testi nei 12 locale della skill (traduzioni automatiche fuori dall'italiano).
+
 ## In sviluppo — iPhone: «Per te», CO₂, condivisione, orari salvati, puntualità personale, mappe, collegamenti diretti e impostazioni come su Android
 
 - **Confronto completo Android ↔ iPhone e Wear OS ↔ Apple Watch** in [docs/PARITA_ANDROID_IPHONE.md](docs/PARITA_ANDROID_IPHONE.md): una riga per funzione, con lo stato e l'area di lavoro; in fondo ciò che resta.

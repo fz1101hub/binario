@@ -201,6 +201,17 @@ export const ja: LocaleMessages = {
     platformLabel: "番線",
     platformNotGiven: "不明",
     hint: "「アレクサ、ビナリオトレインでMilano CentraleからBologna Centraleまでの電車を教えて」",
-    vehicles: { busTrenitalia: "Trenitalia バス", freccialink: "FrecciaLink", italobus: "ItaloBus", bus: "バス", replacementBus: "代行バス" },
+    vehicles: { busTrenitalia: "Trenitalia バス", freccialink: "FrecciaLink", italobus: "ItaloBus", bus: "バス", replacementBus: "代行バス", metro: "地下鉄", tram: "路面電車", funicular: "ケーブルカー" },
+    cityDeparture: {
+      metro: { one: "{time} 発の{train}", other: "{time} 発の{train}" },
+      tram: { one: "{time} 発の{train}", other: "{time} 発の{train}" },
+      funicular: { one: "{time} 発の{train}", other: "{time} 発の{train}" },
+    },
+    cityDepartures: { one: "時刻表では、次の便は{trains}です。", other: "時刻表では、次の便は{trains}です。" },
+    walk: { one: "乗り場は{stop}停留所で、{station}から徒歩{count}分です。", other: "乗り場は{stop}停留所で、{station}から徒歩{count}分です。" },
+    routeWalk: { one: "乗り場は出発駅から徒歩{count}分の停留所です。", other: "乗り場は出発駅から徒歩{count}分の停留所です。" },
+    cityProgrammedOnly: "都市交通の路線は、ビナリオには時刻表しかありません。",
+    walkLabel: "徒歩",
+    walkValue: "{minutes} 分",
   },
 };

@@ -201,6 +201,17 @@ export const hi: LocaleMessages = {
     platformLabel: "प्लेटफ़ॉर्म",
     platformNotGiven: "नहीं बताया गया",
     hint: "“अलेक्सा, बिनारियो ट्रेन से Milano Centrale से Bologna Centrale तक की अगली ट्रेनें पूछो”",
-    vehicles: { busTrenitalia: "Trenitalia बस", freccialink: "FrecciaLink", italobus: "ItaloBus", bus: "बस", replacementBus: "बदले में बस" },
+    vehicles: { busTrenitalia: "Trenitalia बस", freccialink: "FrecciaLink", italobus: "ItaloBus", bus: "बस", replacementBus: "बदले में बस", metro: "मेट्रो", tram: "ट्राम", funicular: "फ़्यूनिक्युलर" },
+    cityDeparture: {
+      metro: { one: "{time} वाली {train}", other: "{time} वाली {train}" },
+      tram: { one: "{time} वाली {train}", other: "{time} वाली {train}" },
+      funicular: { one: "{time} वाली {train}", other: "{time} वाली {train}" },
+    },
+    cityDepartures: { one: "निर्धारित समय-सारणी के अनुसार अगला फेरा {trains} है।", other: "निर्धारित समय-सारणी के अनुसार अगले फेरे {trains} हैं।" },
+    walk: { one: "सवारी {stop} स्टॉप से है, जो {station} से पैदल {count} मिनट की दूरी पर है।", other: "सवारी {stop} स्टॉप से है, जो {station} से पैदल {count} मिनट की दूरी पर है।" },
+    routeWalk: { one: "सवारी एक स्टॉप से है, जो प्रस्थान स्टेशन से पैदल {count} मिनट की दूरी पर है।", other: "सवारी एक स्टॉप से है, जो प्रस्थान स्टेशन से पैदल {count} मिनट की दूरी पर है।" },
+    cityProgrammedOnly: "शहरी लाइनों के लिए बिनारियो के पास केवल निर्धारित समय-सारणी है।",
+    walkLabel: "पैदल",
+    walkValue: "{minutes} मिनट",
   },
 };

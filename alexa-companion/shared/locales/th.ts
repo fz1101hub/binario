@@ -201,6 +201,17 @@ export const th: LocaleMessages = {
     platformLabel: "ชานชาลา",
     platformNotGiven: "ไม่ระบุ",
     hint: "“Alexa, ask Binario Trains for the next trains from Milano Centrale to Bologna Centrale”",
-    vehicles: { busTrenitalia: "รถบัส Trenitalia", freccialink: "FrecciaLink", italobus: "ItaloBus", bus: "รถบัส", replacementBus: "รถบัสทดแทน" },
+    vehicles: { busTrenitalia: "รถบัส Trenitalia", freccialink: "FrecciaLink", italobus: "ItaloBus", bus: "รถบัส", replacementBus: "รถบัสทดแทน", metro: "รถไฟใต้ดิน", tram: "รถราง", funicular: "รถรางไต่เขา" },
+    cityDeparture: {
+      metro: { one: "{train} เวลา {time}", other: "{train} เวลา {time}" },
+      tram: { one: "{train} เวลา {time}", other: "{train} เวลา {time}" },
+      funicular: { one: "{train} เวลา {time}", other: "{train} เวลา {time}" },
+    },
+    cityDepartures: { one: "ตามตารางเวลา เที่ยวรถถัดไปคือ {trains}", other: "ตามตารางเวลา เที่ยวรถถัดไปคือ {trains}" },
+    walk: { one: "ขึ้นที่ป้าย {stop} ซึ่งเดินจาก {station} {count} นาที", other: "ขึ้นที่ป้าย {stop} ซึ่งเดินจาก {station} {count} นาที" },
+    routeWalk: { one: "ขึ้นที่ป้ายซึ่งเดินจากสถานีต้นทาง {count} นาที", other: "ขึ้นที่ป้ายซึ่งเดินจากสถานีต้นทาง {count} นาที" },
+    cityProgrammedOnly: "สำหรับเส้นทางในเมือง Binario มีเพียงตารางเวลา",
+    walkLabel: "เดิน",
+    walkValue: "{minutes} นาที",
   },
 };

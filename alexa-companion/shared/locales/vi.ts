@@ -201,6 +201,17 @@ export const vi: LocaleMessages = {
     platformLabel: "Sân ga",
     platformNotGiven: "không cho biết",
     hint: "“Alexa, ask Binario Trains for the next trains from Milano Centrale to Bologna Centrale”",
-    vehicles: { busTrenitalia: "Xe buýt Trenitalia", freccialink: "FrecciaLink", italobus: "ItaloBus", bus: "Xe buýt", replacementBus: "Xe buýt thay thế" },
+    vehicles: { busTrenitalia: "Xe buýt Trenitalia", freccialink: "FrecciaLink", italobus: "ItaloBus", bus: "Xe buýt", replacementBus: "Xe buýt thay thế", metro: "Tàu điện ngầm", tram: "Tàu điện mặt đất", funicular: "Tàu leo núi" },
+    cityDeparture: {
+      metro: { one: "{train} lúc {time}", other: "{train} lúc {time}" },
+      tram: { one: "{train} lúc {time}", other: "{train} lúc {time}" },
+      funicular: { one: "{train} lúc {time}", other: "{train} lúc {time}" },
+    },
+    cityDepartures: { one: "Theo lịch trình, chuyến tiếp theo là {trains}.", other: "Theo lịch trình, các chuyến tiếp theo là {trains}." },
+    walk: { one: "Lên xe tại trạm {stop}, cách {station} {count} phút đi bộ.", other: "Lên xe tại trạm {stop}, cách {station} {count} phút đi bộ." },
+    routeWalk: { one: "Lên xe tại một trạm cách ga khởi hành {count} phút đi bộ.", other: "Lên xe tại một trạm cách ga khởi hành {count} phút đi bộ." },
+    cityProgrammedOnly: "Với các tuyến nội đô, Binario chỉ có lịch trình.",
+    walkLabel: "Đi bộ",
+    walkValue: "{minutes} phút",
   },
 };

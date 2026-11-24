@@ -8,7 +8,7 @@ Il companion gestisce:
 
 - webhook HTTPS della Custom Skill Alexa;
 - risposte sulla puntualità di un treno o di una tratta salvata e sul treno più puntuale di una tratta nelle prossime tre ore, dalle statistiche non ufficiali di Binario su dati ViaggiaTreno incluse nel bundle ([`docs/ALEXA_SETUP.md`](docs/ALEXA_SETUP.md#statistiche-di-puntualità));
-- prossimi treni di una tratta salvata o fra due stazioni dette a voce, e corsa programmata di un numero di treno, dall'orario programmato che l'iPhone include (lo stesso indice, costruito dai pack di Android), detti sempre come orari programmati, senza binario e senza stato in tempo reale ([`docs/ALEXA_SETUP.md`](docs/ALEXA_SETUP.md#orario-programmato));
+- prossimi treni di una tratta salvata o fra due stazioni dette a voce, e corsa programmata di un numero di treno, dall'orario programmato che l'iPhone include (lo stesso indice, costruito dai pack di Android), detti sempre come orari programmati, senza binario e senza stato in tempo reale; come nelle app, anche le corse di metro, tram, funicolari e Marconi Express che partono da una fermata a pochi minuti a piedi dalla stazione, con la fermata e i minuti a piedi («prossimi treni da Bologna Centrale a Bologna Aeroporto») ([`docs/ALEXA_SETUP.md`](docs/ALEXA_SETUP.md#orario-programmato));
 - schermate Echo Show (APL) che proiettano le stesse risposte vocali, solo sui dispositivi che dichiarano APL;
 - account linking OAuth 2.0 con consenso esplicito e protezione CSRF;
 - revoca e nuovo collegamento dell'account;

@@ -55,7 +55,8 @@
             "nächste züge von {origin} nach {destination}",
             "den nächsten zügen von {origin} nach {destination}",
             "wann fährt der nächste zug von {origin} nach {destination}",
-            "züge von {origin} nach {destination}"
+            "züge von {origin} nach {destination}",
+            "nächste fahrten von {origin} nach {destination}"
           ]
         },
         {
@@ -193,6 +194,7 @@
             { "name": { "value": "Tivoli" } },
             { "name": { "value": "Roma Ostiense" } },
             { "name": { "value": "Fiumicino Aeroporto" } },
+            { "name": { "value": "Bologna Aeroporto" } },
             { "name": { "value": "Milano Cadorna" } },
             { "name": { "value": "Napoli Afragola" } },
             { "name": { "value": "Reggio Emilia AV Mediopadana" } },
