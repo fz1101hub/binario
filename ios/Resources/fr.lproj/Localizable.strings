@@ -986,3 +986,4 @@
 "result.paging.later" = "Plus tard";
 "result.paging.no_more_earlier" = "Aucune autre solution plus tôt";
 "result.paging.no_more_later" = "Aucune autre solution plus tard";
+"result.arrival.live" = "Arrivée prévue à %1$@ selon les données d’exploitation.";

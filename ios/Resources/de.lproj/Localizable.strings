@@ -986,3 +986,4 @@
 "result.paging.later" = "Später";
 "result.paging.no_more_earlier" = "Keine weiteren Verbindungen früher";
 "result.paging.no_more_later" = "Keine weiteren Verbindungen später";
+"result.arrival.live" = "Erwartete Ankunft um %1$@ laut Betriebsdaten.";

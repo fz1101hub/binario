@@ -986,3 +986,4 @@
 "result.paging.later" = "बाद के";
 "result.paging.no_more_earlier" = "इससे पहले कोई और विकल्प नहीं";
 "result.paging.no_more_later" = "इसके बाद कोई और विकल्प नहीं";
+"result.arrival.live" = "परिचालन डेटा के अनुसार अनुमानित आगमन %1$@ बजे।";

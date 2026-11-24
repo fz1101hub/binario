@@ -177,10 +177,10 @@ class ViaggiaTrenoRealtimeAdapter(
             // Ask for the selected time first. A source may return a bounded board;
             // starting two hours earlier must not hide the user's upcoming trains.
             val boardRows = departures(originCode, requested).toMutableList()
-            if (!requested.isAfter(fetched.plusSeconds(600))) {
+            if (!requested.isAfter(fetched.plusSeconds(SharedData.LiveRoute.VIAGGIA_TRENO_LOOK_BACK_WITHIN_SECONDS.toLong()))) {
                 // The look-back crosses midnight like the boards' lateSince: at 00:20 a 23:50 train 40 minutes late
                 // is still to leave (audit android-data-8).
-                val earlier = requested.minusSeconds(2 * 3600)
+                val earlier = requested.minusSeconds(SharedData.LiveRoute.VIAGGIA_TRENO_LOOK_BACK_MINUTES * 60L)
                 try { withTimeoutOrNull(LOOKBACK_TIMEOUT_MILLIS) { departures(originCode, earlier) }?.let(boardRows::addAll) }
                 catch (error: CancellationException) { throw error }
                 catch (_: IOException) { /* Optional lookback must not erase the current board. */ }
@@ -191,14 +191,14 @@ class ViaggiaTrenoRealtimeAdapter(
                 .sortedBy { it.millis("orarioPartenza") ?: Long.MAX_VALUE }
             // A hub's first twelve departures can all serve other routes. Use trusted
             // scheduled run numbers as hints, still validating every stop in the live run.
-            val candidateNumbers = if (rows.size > 12 && routeCandidateSource != null) {
-                val planned = withTimeoutOrNull(4_000) { routeCandidateSource.loadRoute(route, direction, query) }
+            val candidateNumbers = if (rows.size > SharedData.LiveRoute.VIAGGIA_TRENO_MAXIMUM_RUNS && routeCandidateSource != null) {
+                val planned = withTimeoutOrNull(SharedData.LiveRoute.VIAGGIA_TRENO_HINT_TIMEOUT_SECONDS * 1_000L) { routeCandidateSource.loadRoute(route, direction, query) }
                 (planned as? DataResult.Success)?.snapshot?.services?.mapNotNull { it.publicNumericNumber() }?.toSet().orEmpty()
             } else emptySet()
             val prioritized = rows.sortedByDescending { it.text("numeroTreno") in candidateNumbers }
             val completedServices = java.util.concurrent.ConcurrentLinkedQueue<TrainService>()
             withTimeoutOrNull(routeDetailsTimeoutMillis) {
-                coroutineScope { prioritized.take(12).map { row -> async {
+                coroutineScope { prioritized.take(SharedData.LiveRoute.VIAGGIA_TRENO_MAXIMUM_RUNS).map { row -> async {
                     val number = row.text("numeroTreno")?.takeIf { it.matches(Regex("[0-9]{1,6}")) } ?: return@async null
                     val runOrigin = code(row.text("codOrigine")) ?: return@async null
                     val runDate = row.millis("dataPartenzaTreno") ?: row.millis("millisDataPartenza") ?: return@async null
@@ -479,7 +479,8 @@ class ViaggiaTrenoRealtimeAdapter(
         val visibleDelay = publishedDelay ?: 0
         val actualDeparture = boarding.millis("partenzaReale")?.let(Instant::ofEpochMilli)
         val expectedDeparture = actualDeparture ?: departure.plusSeconds(visibleDelay * 60L)
-        if (expectedDeparture.isBefore(requested) || expectedDeparture.isAfter(requested.plusSeconds(8 * 3600))) return null
+        if (expectedDeparture.isBefore(requested) ||
+            expectedDeparture.isAfter(requested.plusSeconds(SharedData.LiveRoute.VIAGGIA_TRENO_HORIZON_MINUTES * 60L))) return null
         val trainStops = segment.mapIndexed { index, stop ->
             val scheduledMillis = (if (index == 0) stop.millis("partenza_teorica") else stop.millis("arrivo_teorico"))
                 ?: stop.millis("programmata")
@@ -558,7 +559,9 @@ class ViaggiaTrenoRealtimeAdapter(
         }
     }
 
-    private fun recent(observed: Instant, fetched: Instant) = !observed.isBefore(fetched.minusSeconds(300)) && !observed.isAfter(fetched.plusSeconds(60))
+    private fun recent(observed: Instant, fetched: Instant) =
+        !observed.isBefore(fetched.minusSeconds(SharedData.LiveRoute.FRESH_OBSERVATION_SECONDS.toLong())) &&
+            !observed.isAfter(fetched.plusSeconds(SharedData.LiveRoute.FUTURE_OBSERVATION_SECONDS.toLong()))
     private fun TrainService.publicNumericNumber(): String? = TrainNumberQuery(number.substringAfterLast(" - "), clock.instant().atZone(zone).toLocalDate()).numeric
     private fun code(value: String?) = value?.takeIf { it.matches(Regex("S[0-9]{5}")) }
     private fun time(value: Instant) = value.atZone(zone).format(DateTimeFormatter.ofPattern("HH:mm", Locale.ROOT))

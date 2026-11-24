@@ -986,3 +986,4 @@
 "result.paging.later" = "更晚";
 "result.paging.no_more_earlier" = "没有更早的方案";
 "result.paging.no_more_later" = "没有更晚的方案";
+"result.arrival.live" = "根据运行数据，预计 %1$@ 到达。";

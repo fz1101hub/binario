@@ -986,3 +986,4 @@
 "result.paging.later" = "Later";
 "result.paging.no_more_earlier" = "No other solutions earlier";
 "result.paging.no_more_later" = "No other solutions later";
+"result.arrival.live" = "Expected arrival at %1$@ according to operational data.";

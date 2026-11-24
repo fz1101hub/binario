@@ -1,0 +1,794 @@
+{
+  "schema": "binario-shared-rules-v1",
+  "description": "The live route of the direct trains (Android's RfiLiveRouteDataSource and LiveRunMerge, the iPhone's LiveRoute.swift): the same train on the RFI departures of the origin and arrivals of the destination, and the live runs merged into the timetable list. Times are Italian time on 2026-11-24; a board row has its delay in minutes (null: no expected time), its status, how many seconds ago it was observed (0 by default) and how long it stays valid (45 seconds by default).",
+  "day": "2026-11-24",
+  "rfiRoute": [
+    {
+      "name": "the same train on both boards",
+      "departures": [
+        {
+          "number": "123",
+          "operator": "trenitalia",
+          "scheduled": "10:30",
+          "delay": 12,
+          "status": "DELAYED"
+        }
+      ],
+      "arrivals": [
+        {
+          "number": "123",
+          "operator": "trenitalia",
+          "scheduled": "11:00",
+          "delay": 4,
+          "status": "DELAYED"
+        }
+      ],
+      "now": "10:00",
+      "requested": "10:00",
+      "expected": [
+        {
+          "number": "123",
+          "scheduledDeparture": "10:30",
+          "expectedDeparture": "10:42",
+          "delayMinutes": 12,
+          "scheduledArrival": "11:00",
+          "expectedArrival": "11:04",
+          "status": "DELAYED",
+          "verified": true,
+          "lateWithoutMinutes": false,
+          "departureVerified": true,
+          "arrivalVerified": true
+        }
+      ]
+    },
+    {
+      "name": "another number, operator, order or day is not the same train",
+      "departures": [
+        {
+          "number": "123",
+          "operator": "trenitalia",
+          "scheduled": "10:30",
+          "delay": 12,
+          "status": "DELAYED"
+        }
+      ],
+      "arrivals": [
+        {
+          "number": "999",
+          "operator": "trenitalia",
+          "scheduled": "11:00",
+          "delay": 0,
+          "status": "ON_TIME"
+        },
+        {
+          "number": "123",
+          "operator": "italo",
+          "scheduled": "11:00",
+          "delay": 0,
+          "status": "ON_TIME"
+        },
+        {
+          "number": "123",
+          "operator": null,
+          "scheduled": "11:00",
+          "delay": 0,
+          "status": "ON_TIME"
+        },
+        {
+          "number": "123",
+          "operator": "trenitalia",
+          "scheduled": "10:00",
+          "delay": 0,
+          "status": "ON_TIME"
+        }
+      ],
+      "now": "10:00",
+      "requested": "10:00",
+      "expected": null
+    },
+    {
+      "name": "two arrivals of the number: none",
+      "departures": [
+        {
+          "number": "123",
+          "operator": "trenitalia",
+          "scheduled": "10:30",
+          "delay": 0,
+          "status": "ON_TIME"
+        }
+      ],
+      "arrivals": [
+        {
+          "number": "123",
+          "operator": "trenitalia",
+          "scheduled": "11:00",
+          "delay": 0,
+          "status": "ON_TIME"
+        },
+        {
+          "number": "123",
+          "operator": "trenitalia",
+          "scheduled": "11:00",
+          "delay": 0,
+          "status": "ON_TIME"
+        }
+      ],
+      "now": "10:00",
+      "requested": "10:00",
+      "expected": null
+    },
+    {
+      "name": "no delay invented when only the arrivals board is live",
+      "departures": [
+        {
+          "number": "123",
+          "operator": "trenitalia",
+          "scheduled": "10:30",
+          "delay": null,
+          "status": null
+        }
+      ],
+      "arrivals": [
+        {
+          "number": "123",
+          "operator": "trenitalia",
+          "scheduled": "11:00",
+          "delay": 7,
+          "status": "DELAYED"
+        }
+      ],
+      "now": "10:00",
+      "requested": "10:00",
+      "expected": null
+    },
+    {
+      "name": "an arrival without update is not a verified zero",
+      "departures": [
+        {
+          "number": "123",
+          "operator": "trenitalia",
+          "scheduled": "10:30",
+          "delay": 6,
+          "status": "DELAYED"
+        }
+      ],
+      "arrivals": [
+        {
+          "number": "123",
+          "operator": "trenitalia",
+          "scheduled": "11:00",
+          "delay": null,
+          "status": null
+        }
+      ],
+      "now": "10:00",
+      "requested": "10:00",
+      "expected": [
+        {
+          "number": "123",
+          "scheduledDeparture": "10:30",
+          "expectedDeparture": "10:36",
+          "delayMinutes": 6,
+          "scheduledArrival": "11:00",
+          "expectedArrival": "11:00",
+          "status": "DELAYED",
+          "verified": true,
+          "lateWithoutMinutes": false,
+          "departureVerified": true,
+          "arrivalVerified": false
+        }
+      ]
+    },
+    {
+      "name": "an official zero is verified",
+      "departures": [
+        {
+          "number": "123",
+          "operator": "trenitalia",
+          "scheduled": "10:30",
+          "delay": 0,
+          "status": "ON_TIME"
+        }
+      ],
+      "arrivals": [
+        {
+          "number": "123",
+          "operator": "trenitalia",
+          "scheduled": "11:00",
+          "delay": 0,
+          "status": "ON_TIME"
+        }
+      ],
+      "now": "10:00",
+      "requested": "10:00",
+      "expected": [
+        {
+          "number": "123",
+          "scheduledDeparture": "10:30",
+          "expectedDeparture": "10:30",
+          "delayMinutes": 0,
+          "scheduledArrival": "11:00",
+          "expectedArrival": "11:00",
+          "status": "ON_TIME",
+          "verified": true,
+          "lateWithoutMinutes": false,
+          "departureVerified": true,
+          "arrivalVerified": true
+        }
+      ]
+    },
+    {
+      "name": "observations older than five minutes are not",
+      "departures": [
+        {
+          "number": "123",
+          "operator": "trenitalia",
+          "scheduled": "10:30",
+          "delay": 0,
+          "status": "ON_TIME",
+          "observedSecondsAgo": 301
+        }
+      ],
+      "arrivals": [
+        {
+          "number": "123",
+          "operator": "trenitalia",
+          "scheduled": "11:00",
+          "delay": 0,
+          "status": "ON_TIME"
+        }
+      ],
+      "now": "10:00",
+      "requested": "10:00",
+      "expected": null
+    },
+    {
+      "name": "a cancellation on the arrivals board cancels the run",
+      "departures": [
+        {
+          "number": "123",
+          "operator": "trenitalia",
+          "scheduled": "10:30",
+          "delay": 0,
+          "status": "ON_TIME"
+        }
+      ],
+      "arrivals": [
+        {
+          "number": "123",
+          "operator": "trenitalia",
+          "scheduled": "11:00",
+          "delay": 0,
+          "status": "CANCELLED"
+        }
+      ],
+      "now": "10:00",
+      "requested": "10:00",
+      "expected": [
+        {
+          "number": "123",
+          "scheduledDeparture": "10:30",
+          "expectedDeparture": "10:30",
+          "delayMinutes": 0,
+          "scheduledArrival": "11:00",
+          "expectedArrival": "11:00",
+          "status": "CANCELLED",
+          "verified": true,
+          "lateWithoutMinutes": false,
+          "departureVerified": true,
+          "arrivalVerified": true
+        }
+      ]
+    },
+    {
+      "name": "late without minutes is never on time nor verified",
+      "departures": [
+        {
+          "number": "123",
+          "operator": "trenitalia",
+          "scheduled": "10:30",
+          "delay": null,
+          "status": "DELAYED"
+        },
+        {
+          "number": "456",
+          "operator": "trenitalia",
+          "scheduled": "10:40",
+          "delay": 3,
+          "status": "DELAYED"
+        }
+      ],
+      "arrivals": [
+        {
+          "number": "123",
+          "operator": "trenitalia",
+          "scheduled": "11:00",
+          "delay": 0,
+          "status": "ON_TIME"
+        },
+        {
+          "number": "456",
+          "operator": "trenitalia",
+          "scheduled": "11:10",
+          "delay": 3,
+          "status": "DELAYED"
+        }
+      ],
+      "now": "10:00",
+      "requested": "10:00",
+      "expected": [
+        {
+          "number": "123",
+          "scheduledDeparture": "10:30",
+          "expectedDeparture": "10:30",
+          "delayMinutes": null,
+          "scheduledArrival": "11:00",
+          "expectedArrival": "11:00",
+          "status": "ON_TIME",
+          "verified": false,
+          "lateWithoutMinutes": true,
+          "departureVerified": false,
+          "arrivalVerified": true
+        },
+        {
+          "number": "456",
+          "scheduledDeparture": "10:40",
+          "expectedDeparture": "10:43",
+          "delayMinutes": 3,
+          "scheduledArrival": "11:10",
+          "expectedArrival": "11:13",
+          "status": "DELAYED",
+          "verified": true,
+          "lateWithoutMinutes": false,
+          "departureVerified": true,
+          "arrivalVerified": true
+        }
+      ]
+    },
+    {
+      "name": "rows outside the current window are not tomorrow's trains",
+      "departures": [
+        {
+          "number": "123",
+          "operator": "trenitalia",
+          "scheduled": "23:30",
+          "delay": 0,
+          "status": "ON_TIME"
+        }
+      ],
+      "arrivals": [
+        {
+          "number": "123",
+          "operator": "trenitalia",
+          "scheduled": "23:50",
+          "delay": 0,
+          "status": "ON_TIME"
+        }
+      ],
+      "now": "10:00",
+      "requested": "10:00",
+      "expected": null
+    },
+    {
+      "name": "a train gone before the requested time is left out",
+      "departures": [
+        {
+          "number": "123",
+          "operator": "trenitalia",
+          "scheduled": "09:40",
+          "delay": 5,
+          "status": "DELAYED"
+        },
+        {
+          "number": "456",
+          "operator": "trenitalia",
+          "scheduled": "10:30",
+          "delay": 0,
+          "status": "ON_TIME"
+        }
+      ],
+      "arrivals": [
+        {
+          "number": "123",
+          "operator": "trenitalia",
+          "scheduled": "10:20",
+          "delay": 5,
+          "status": "DELAYED"
+        },
+        {
+          "number": "456",
+          "operator": "trenitalia",
+          "scheduled": "11:00",
+          "delay": 0,
+          "status": "ON_TIME"
+        }
+      ],
+      "now": "10:00",
+      "requested": "10:00",
+      "expected": [
+        {
+          "number": "456",
+          "scheduledDeparture": "10:30",
+          "expectedDeparture": "10:30",
+          "delayMinutes": 0,
+          "scheduledArrival": "11:00",
+          "expectedArrival": "11:00",
+          "status": "ON_TIME",
+          "verified": true,
+          "lateWithoutMinutes": false,
+          "departureVerified": true,
+          "arrivalVerified": true
+        }
+      ]
+    }
+  ],
+  "merge": [
+    {
+      "name": "a live run takes the place of the planned run of its number",
+      "requested": "10:00",
+      "planned": [
+        {
+          "id": "p1",
+          "number": "2153",
+          "operator": "trenord",
+          "scheduled": "10:30",
+          "verified": false
+        }
+      ],
+      "live": [
+        {
+          "id": "l1",
+          "number": "2153",
+          "operator": "trenord",
+          "scheduled": "10:35",
+          "verified": true
+        }
+      ],
+      "expected": {
+        "replaced": {
+          "p1": "l1"
+        },
+        "added": []
+      }
+    },
+    {
+      "name": "the core number: a line before the number, leading zeros",
+      "requested": "10:00",
+      "planned": [
+        {
+          "id": "p1",
+          "number": "025017",
+          "operator": "trenord",
+          "scheduled": "10:30",
+          "verified": false
+        }
+      ],
+      "live": [
+        {
+          "id": "l1",
+          "number": "S11 - 25017",
+          "operator": "trenitalia",
+          "scheduled": "10:30",
+          "verified": true
+        }
+      ],
+      "expected": {
+        "replaced": {
+          "p1": "l1"
+        },
+        "added": []
+      }
+    },
+    {
+      "name": "another operator family is another train",
+      "requested": "10:00",
+      "planned": [
+        {
+          "id": "p1",
+          "number": "9520",
+          "operator": "italo",
+          "scheduled": "10:30",
+          "verified": false
+        }
+      ],
+      "live": [
+        {
+          "id": "l1",
+          "number": "9520",
+          "operator": "trenitalia",
+          "scheduled": "10:30",
+          "verified": true
+        }
+      ],
+      "expected": {
+        "replaced": {},
+        "added": [
+          "l1"
+        ]
+      }
+    },
+    {
+      "name": "an operator outside the families is its own family",
+      "requested": "10:00",
+      "planned": [
+        {
+          "id": "p1",
+          "number": "123",
+          "operator": "sbb",
+          "scheduled": "10:30",
+          "verified": false
+        }
+      ],
+      "live": [
+        {
+          "id": "l1",
+          "number": "123",
+          "operator": "trenitalia",
+          "scheduled": "10:30",
+          "verified": true
+        }
+      ],
+      "expected": {
+        "replaced": {},
+        "added": [
+          "l1"
+        ]
+      }
+    },
+    {
+      "name": "an unknown operator matches any family",
+      "requested": "10:00",
+      "planned": [
+        {
+          "id": "p1",
+          "number": "9520",
+          "operator": null,
+          "scheduled": "10:30",
+          "verified": false
+        }
+      ],
+      "live": [
+        {
+          "id": "l1",
+          "number": "9520",
+          "operator": "italo",
+          "scheduled": "10:30",
+          "verified": true
+        }
+      ],
+      "expected": {
+        "replaced": {
+          "p1": "l1"
+        },
+        "added": []
+      }
+    },
+    {
+      "name": "three hours apart is still the planned run, a minute more is another",
+      "requested": "10:00",
+      "planned": [
+        {
+          "id": "p1",
+          "number": "2153",
+          "operator": "trenord",
+          "scheduled": "10:00",
+          "verified": false
+        },
+        {
+          "id": "p2",
+          "number": "2154",
+          "operator": "trenord",
+          "scheduled": "10:00",
+          "verified": false
+        }
+      ],
+      "live": [
+        {
+          "id": "l1",
+          "number": "2153",
+          "operator": "trenord",
+          "scheduled": "13:00",
+          "verified": true
+        },
+        {
+          "id": "l2",
+          "number": "2154",
+          "operator": "trenord",
+          "scheduled": "13:01",
+          "verified": true
+        }
+      ],
+      "expected": {
+        "replaced": {
+          "p1": "l1"
+        },
+        "added": [
+          "l2"
+        ]
+      }
+    },
+    {
+      "name": "the nearest planned run of the number",
+      "requested": "10:00",
+      "planned": [
+        {
+          "id": "p1",
+          "number": "2153",
+          "operator": "trenord",
+          "scheduled": "09:00",
+          "verified": false
+        },
+        {
+          "id": "p2",
+          "number": "2153",
+          "operator": "trenord",
+          "scheduled": "10:00",
+          "verified": false
+        }
+      ],
+      "live": [
+        {
+          "id": "l1",
+          "number": "2153",
+          "operator": "trenord",
+          "scheduled": "10:20",
+          "verified": true
+        }
+      ],
+      "expected": {
+        "replaced": {
+          "p2": "l1"
+        },
+        "added": []
+      }
+    },
+    {
+      "name": "an unverified live run does not mask what the boards verified",
+      "requested": "10:00",
+      "planned": [
+        {
+          "id": "p1",
+          "number": "2153",
+          "operator": "trenord",
+          "scheduled": "10:30",
+          "verified": true
+        }
+      ],
+      "live": [
+        {
+          "id": "l1",
+          "number": "2153",
+          "operator": "trenord",
+          "scheduled": "10:30",
+          "verified": false
+        }
+      ],
+      "expected": {
+        "replaced": {},
+        "added": []
+      }
+    },
+    {
+      "name": "an unverified live run takes the place of an unverified planned run",
+      "requested": "10:00",
+      "planned": [
+        {
+          "id": "p1",
+          "number": "2153",
+          "operator": "trenord",
+          "scheduled": "10:30",
+          "verified": false
+        }
+      ],
+      "live": [
+        {
+          "id": "l1",
+          "number": "2153",
+          "operator": "trenord",
+          "scheduled": "10:30",
+          "verified": false
+        }
+      ],
+      "expected": {
+        "replaced": {
+          "p1": "l1"
+        },
+        "added": []
+      }
+    },
+    {
+      "name": "each planned run is taken once",
+      "requested": "10:00",
+      "planned": [
+        {
+          "id": "p1",
+          "number": "2153",
+          "operator": "trenord",
+          "scheduled": "10:00",
+          "verified": false
+        }
+      ],
+      "live": [
+        {
+          "id": "l1",
+          "number": "2153",
+          "operator": "trenord",
+          "scheduled": "10:05",
+          "verified": true
+        },
+        {
+          "id": "l2",
+          "number": "2153",
+          "operator": "trenord",
+          "scheduled": "10:10",
+          "verified": true
+        }
+      ],
+      "expected": {
+        "replaced": {
+          "p1": "l1"
+        },
+        "added": [
+          "l2"
+        ]
+      }
+    },
+    {
+      "name": "a planned time without a date is read around the requested time",
+      "requested": "23:50",
+      "planned": [
+        {
+          "id": "p1",
+          "number": "123",
+          "operator": "trenord",
+          "scheduled": "00:30",
+          "verified": false,
+          "dated": false
+        }
+      ],
+      "live": [
+        {
+          "id": "l1",
+          "number": "123",
+          "operator": "trenord",
+          "scheduled": "2026-11-25T00:35",
+          "verified": true
+        }
+      ],
+      "expected": {
+        "replaced": {
+          "p1": "l1"
+        },
+        "added": []
+      }
+    },
+    {
+      "name": "a run without digits is never the same train",
+      "requested": "10:00",
+      "planned": [
+        {
+          "id": "p1",
+          "number": "BUS",
+          "operator": "trenord",
+          "scheduled": "10:30",
+          "verified": false
+        }
+      ],
+      "live": [
+        {
+          "id": "l1",
+          "number": "BUS",
+          "operator": "trenord",
+          "scheduled": "10:30",
+          "verified": true
+        }
+      ],
+      "expected": {
+        "replaced": {},
+        "added": [
+          "l1"
+        ]
+      }
+    }
+  ]
+}
