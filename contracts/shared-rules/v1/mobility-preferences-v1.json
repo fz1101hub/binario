@@ -1,0 +1,221 @@
+{
+  "schema": "binario-shared-rules-v1",
+  "readers": [
+    "app/src/test/java/it/binario/app/MobilityPreferencesContractTest.kt",
+    "ios/BinarioKit/Tests/BinarioKitTests/MobilityPreferencesContractTests.swift"
+  ],
+  "description": "«Mobilità e accessibilità» in the local backup (Android's LocalDataBackupCodec and MobilityPreferences, the iPhone's LocalBackupCodec and MobilityPreferences.swift): the «mobility» object read from a file (absent: the defaults), written to one (no «maxChanges» for any number of changes), and when the preferences alone make a backup worth writing. Bounds and defaults are in contracts/shared-data/v1/mobility-preferences-v1.json.",
+  "fromBackup": [
+    {
+      "name": "a file without «mobility» gives the defaults",
+      "mobility": null,
+      "expected": {
+        "maxChanges": null,
+        "transferMarginMinutes": 10,
+        "stepFreePreferred": false,
+        "compactTimetablePreferred": false
+      }
+    },
+    {
+      "name": "every value as written",
+      "mobility": {
+        "maxChanges": 1,
+        "transferMarginMinutes": 15,
+        "stepFreePreferred": true,
+        "compactTimetablePreferred": true
+      },
+      "expected": {
+        "maxChanges": 1,
+        "transferMarginMinutes": 15,
+        "stepFreePreferred": true,
+        "compactTimetablePreferred": true
+      }
+    },
+    {
+      "name": "direct trains only",
+      "mobility": {
+        "maxChanges": 0,
+        "transferMarginMinutes": 5,
+        "stepFreePreferred": false,
+        "compactTimetablePreferred": false
+      },
+      "expected": {
+        "maxChanges": 0,
+        "transferMarginMinutes": 5,
+        "stepFreePreferred": false,
+        "compactTimetablePreferred": false
+      }
+    },
+    {
+      "name": "Android's own file: no «maxChanges» is any number of changes",
+      "mobility": {
+        "transferMarginMinutes": 10,
+        "stepFreePreferred": false,
+        "compactTimetablePreferred": false
+      },
+      "expected": {
+        "maxChanges": null,
+        "transferMarginMinutes": 10,
+        "stepFreePreferred": false,
+        "compactTimetablePreferred": false
+      }
+    },
+    {
+      "name": "a negative number of changes is any",
+      "mobility": {
+        "maxChanges": -1,
+        "transferMarginMinutes": 20
+      },
+      "expected": {
+        "maxChanges": null,
+        "transferMarginMinutes": 20,
+        "stepFreePreferred": false,
+        "compactTimetablePreferred": false
+      }
+    },
+    {
+      "name": "a number of changes outside the choices is kept",
+      "mobility": {
+        "maxChanges": 5
+      },
+      "expected": {
+        "maxChanges": 5,
+        "transferMarginMinutes": 10,
+        "stepFreePreferred": false,
+        "compactTimetablePreferred": false
+      }
+    },
+    {
+      "name": "a margin over the maximum is the maximum",
+      "mobility": {
+        "transferMarginMinutes": 60
+      },
+      "expected": {
+        "maxChanges": null,
+        "transferMarginMinutes": 45,
+        "stepFreePreferred": false,
+        "compactTimetablePreferred": false
+      }
+    },
+    {
+      "name": "a negative margin is none",
+      "mobility": {
+        "transferMarginMinutes": -5
+      },
+      "expected": {
+        "maxChanges": null,
+        "transferMarginMinutes": 0,
+        "stepFreePreferred": false,
+        "compactTimetablePreferred": false
+      }
+    },
+    {
+      "name": "missing values take the defaults",
+      "mobility": {},
+      "expected": {
+        "maxChanges": null,
+        "transferMarginMinutes": 10,
+        "stepFreePreferred": false,
+        "compactTimetablePreferred": false
+      }
+    }
+  ],
+  "toBackup": [
+    {
+      "name": "the defaults: no «maxChanges»",
+      "preferences": {
+        "maxChanges": null,
+        "transferMarginMinutes": 10,
+        "stepFreePreferred": false,
+        "compactTimetablePreferred": false
+      },
+      "expected": {
+        "transferMarginMinutes": 10,
+        "stepFreePreferred": false,
+        "compactTimetablePreferred": false
+      }
+    },
+    {
+      "name": "every value",
+      "preferences": {
+        "maxChanges": 2,
+        "transferMarginMinutes": 20,
+        "stepFreePreferred": true,
+        "compactTimetablePreferred": true
+      },
+      "expected": {
+        "maxChanges": 2,
+        "transferMarginMinutes": 20,
+        "stepFreePreferred": true,
+        "compactTimetablePreferred": true
+      }
+    },
+    {
+      "name": "direct trains only",
+      "preferences": {
+        "maxChanges": 0,
+        "transferMarginMinutes": 5,
+        "stepFreePreferred": false,
+        "compactTimetablePreferred": false
+      },
+      "expected": {
+        "maxChanges": 0,
+        "transferMarginMinutes": 5,
+        "stepFreePreferred": false,
+        "compactTimetablePreferred": false
+      }
+    }
+  ],
+  "carriesMoreThanRoutes": [
+    {
+      "name": "the defaults carry nothing",
+      "preferences": {
+        "maxChanges": null,
+        "transferMarginMinutes": 10,
+        "stepFreePreferred": false,
+        "compactTimetablePreferred": false
+      },
+      "expected": false
+    },
+    {
+      "name": "a number of changes",
+      "preferences": {
+        "maxChanges": 1,
+        "transferMarginMinutes": 10,
+        "stepFreePreferred": false,
+        "compactTimetablePreferred": false
+      },
+      "expected": true
+    },
+    {
+      "name": "another margin",
+      "preferences": {
+        "maxChanges": null,
+        "transferMarginMinutes": 15,
+        "stepFreePreferred": false,
+        "compactTimetablePreferred": false
+      },
+      "expected": true
+    },
+    {
+      "name": "step-free routes first",
+      "preferences": {
+        "maxChanges": null,
+        "transferMarginMinutes": 10,
+        "stepFreePreferred": true,
+        "compactTimetablePreferred": false
+      },
+      "expected": true
+    },
+    {
+      "name": "compact boards",
+      "preferences": {
+        "maxChanges": null,
+        "transferMarginMinutes": 10,
+        "stepFreePreferred": false,
+        "compactTimetablePreferred": true
+      },
+      "expected": true
+    }
+  ]
+}

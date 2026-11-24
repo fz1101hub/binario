@@ -2,4 +2,4 @@
 "Tratta attiva" = "Aktive Strecke";
 "Prossime partenze" = "Nächste Abfahrten";
 "Ricerca treno" = "Zugsuche";
-"NSLocationWhenInUseUsageDescription" = "Binario verwendet Ihren Standort, wenn Sie den nächstgelegenen Bahnhof suchen, und, wenn Sie die Schätzung aus Ihrer Position einschalten, während der verfolgten Reise bei geöffneter App. Der Standort bleibt auf dem Telefon: Er wird weder gespeichert noch gesendet.";
+"NSLocationWhenInUseUsageDescription" = "Binario verwendet Ihren Standort, wenn Sie den nächstgelegenen Bahnhof suchen, und, wenn Sie die Schätzung aus Ihrer Position einschalten, während der verfolgten Reise bei geöffneter App. Für den GPS-Wecker prüft iOS selbst, wenn Sie ihn einschalten, wann Sie den Bereich des Halts erreichen, auch bei geschlossener App: Binario erhält Ihren Standort nicht. Der Standort bleibt auf dem Telefon: Er wird weder gespeichert noch gesendet.";

@@ -595,6 +595,12 @@ def _check_trip_alerts(values: Mapping[str, Any]) -> list[str]:
         problems.append("commuterLeadOptionsMinutes non in ordine crescente")
     if values["followedTripMinimumRefreshMinutes"] > values["followedTripRefreshMinutes"]:
         problems.append("followedTripMinimumRefreshMinutes maggiore di followedTripRefreshMinutes")
+    radii = values["gpsAlarmRadiusOptionsMeters"]
+    if radii != sorted(set(radii)):
+        problems.append("gpsAlarmRadiusOptionsMeters non in ordine crescente o con doppioni")
+    for key in ("gpsAlarmRegionalDefaultRadiusMeters", "gpsAlarmLongDistanceDefaultRadiusMeters"):
+        if values[key] not in radii:
+            problems.append(f"{key} fuori da gpsAlarmRadiusOptionsMeters")
     if values["positionDwellRadiusMeters"] > values["positionOffRouteMeters"]:
         problems.append("positionDwellRadiusMeters maggiore di positionOffRouteMeters")
     if values["estimateFreshSeconds"] > values["positionFreshSeconds"]:
@@ -640,6 +646,20 @@ def _check_results_paging(data: Mapping[str, Any]) -> list[str]:
         errors.append("earlierSpansMinutes: windows from the shortest, each once")
     if data["minimumEarlierSpanMinutes"] > spans[0]:
         errors.append("minimumEarlierSpanMinutes: no longer than the first window")
+    return errors
+
+
+def _check_mobility_preferences(data: Mapping[str, Any]) -> list[str]:
+    errors = []
+    for key in ("changeChoices", "transferMarginChoices"):
+        if data[key] != sorted(set(data[key])):
+            errors.append(f"{key}: from the smallest, each once")
+    if not data["defaultTransferMarginMinutes"] <= data["maximumTransferMarginMinutes"]:
+        errors.append("defaultTransferMarginMinutes: no more than the maximum")
+    if data["transferMarginChoices"][-1] > data["maximumTransferMarginMinutes"]:
+        errors.append("transferMarginChoices: no more than the maximum")
+    if data["defaultTransferMarginMinutes"] not in data["transferMarginChoices"]:
+        errors.append("defaultTransferMarginMinutes: one of the choices")
     return errors
 
 
@@ -1181,6 +1201,7 @@ TABLES: tuple[Table, ...] = (
     Table("live-route-v1.json", "LiveRoute", {
         "retimingWindowMinutes": Field(Integer(0, 24 * 60)),
         "operatorFamilies": Field(MapOf(Text(r"[a-z][a-z-]*"), key=Text(r"[a-z]+"))),
+        "timetableOperators": Field(MapOf(Text(r"[a-z]+"), key=Text(r"[a-z]+"))),
         "liveSourceTimeoutSeconds": Field(Integer(1, 120)),
         "rfiBoardLookBackMinutes": Field(Integer(0, 24 * 60)),
         "rfiBoardLookAheadMinutes": Field(Integer(1, 24 * 60)),
@@ -1201,6 +1222,12 @@ TABLES: tuple[Table, ...] = (
         "minimumEarlierSpanMinutes": Field(Integer(1, 24 * 60)),
         "earlierJourneyResults": Field(Integer(1, 50)),
     }, check=_check_results_paging),
+    Table("mobility-preferences-v1.json", "MobilityPreferences", {
+        "defaultTransferMarginMinutes": Field(Integer(0, 120)),
+        "maximumTransferMarginMinutes": Field(Integer(0, 120)),
+        "changeChoices": Field(ListOf(Integer(0, 9))),
+        "transferMarginChoices": Field(ListOf(Integer(0, 120))),
+    }, check=_check_mobility_preferences),
     Table("live-train-map-v1.json", "LiveTrainMap", {
         "lookBackMinutes": Field(Integer(0, 720)),
         "lookAheadMinutes": Field(Integer(0, 720)),
@@ -1438,6 +1465,9 @@ TABLES: tuple[Table, ...] = (
         "trainAlertsMaximumSubscriptions": Field(Integer(1, 64)),
         "trainAlertsMaximumSeen": Field(Integer(1, 10_000)),
         "trainAlertsSeenRetentionDays": Field(Integer(1, 365)),
+        "gpsAlarmRadiusOptionsMeters": Field(ListOf(Integer(100, 100_000))),
+        "gpsAlarmRegionalDefaultRadiusMeters": Field(Integer(100, 100_000)),
+        "gpsAlarmLongDistanceDefaultRadiusMeters": Field(Integer(100, 100_000)),
         "positionMaximumAccuracyMeters": Field(Integer(1, 10_000)),
         "positionMaximumFixAgeSeconds": Field(Seconds(1)),
         "positionOffRouteMeters": Field(Integer(1, 100_000)),

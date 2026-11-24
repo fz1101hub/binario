@@ -2,4 +2,4 @@
 "Tratta attiva" = "Tratta attiva";
 "Prossime partenze" = "Prossime partenze";
 "Ricerca treno" = "Ricerca treno";
-"NSLocationWhenInUseUsageDescription" = "Binario usa la tua posizione quando chiedi la stazione più vicina e, se attivi la stima dalla tua posizione, durante il viaggio che segui con l’app aperta. La posizione resta sul telefono: non viene salvata né inviata.";
+"NSLocationWhenInUseUsageDescription" = "Binario usa la tua posizione quando chiedi la stazione più vicina e, se attivi la stima dalla tua posizione, durante il viaggio che segui con l’app aperta. Per la sveglia GPS, se la attivi, è iOS a controllare quando entri nell’area della fermata, anche ad app chiusa: Binario non riceve la posizione. La posizione resta sul telefono: non viene salvata né inviata.";

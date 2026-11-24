@@ -492,6 +492,34 @@
 			<string>ลงในอีก %1$lld จุดจอด</string>
 		</dict>
 	</dict>
+	<key>result.trip.gps_radius_km</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>other</key>
+			<string>%1$lld กม.</string>
+		</dict>
+	</dict>
+	<key>result.trip.gps_too_early</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>other</key>
+			<string>การแจ้งเตือนตามตำแหน่งใช้ได้ตั้งแต่ %1$lld ชั่วโมงก่อนเวลาถึงที่คาดไว้เท่านั้น โปรดตั้งปลุกอีกครั้งในภายหลังเพื่อเพิ่มการแจ้งเตือนนี้</string>
+		</dict>
+	</dict>
 	<key>result.trip.minutes</key>
 	<dict>
 		<key>NSStringLocalizedFormatKey</key>
@@ -602,6 +630,20 @@
 			<string>lld</string>
 			<key>other</key>
 			<string>สถานีที่ติดตาม %1$lld แห่ง</string>
+		</dict>
+	</dict>
+	<key>settings.mobility.summary_max_changes</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>other</key>
+			<string>เปลี่ยนขบวนสูงสุด %1$lld ครั้ง</string>
 		</dict>
 	</dict>
 	<key>settings.travel.minutes</key>

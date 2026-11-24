@@ -212,6 +212,24 @@ enum PersonalTexts {
         )
     }
 
+    /// One solution (Android's `TimetableShareFormatter.solution`): stations and date, times, duration and
+    /// changes, the trains, the changes of train, platform, source.
+    static func solutionShare(_ row: TimetableRow, origin: String, destination: String, dateLabel: String) -> (title: String, text: String) {
+        let title = format("result.share.route", origin, destination)
+        var lines = [title, dateLabel, times(row)]
+        if !row.trains.isEmpty { lines.append(row.trains) }
+        lines += row.transfers
+        if let platform = platform(row) { lines.append(platform) }
+        if !row.source.isEmpty { lines.append(format("result.share.timetable_source", row.source)) }
+        if row.scheduledOnly { lines.append(NSLocalizedString("result.share.scheduled_data", comment: "")) }
+        return (title, lines.joined(separator: "\n"))
+    }
+
+    /// «lun 2 nov»: the day of a departure, Italian time (Android's `weekdayDayMonth`).
+    static func weekdayDayMonth(_ date: Date) -> String {
+        date.formatted(Date.FormatStyle(timeZone: ItalianWallClock.timeZone).weekday(.abbreviated).day().month(.abbreviated))
+    }
+
     /// The whole list (Android's `TimetableShareFormatter.list`): a header with stations, date and
     /// starting time, one line per solution, the return of a round trip, the sources, and when the
     /// data were read or saved.
@@ -278,6 +296,27 @@ enum PersonalTexts {
         if minutes < 60 { return "\(minutes)min" }
         if minutes % 60 == 0 { return "\(minutes / 60)h" }
         return "\(minutes / 60)h \(minutes % 60)min"
+    }
+
+    // MARK: Mobilità e accessibilità
+
+    /// «Max 2».
+    static func mobilityMaxChanges(_ changes: Int) -> String {
+        format("settings.mobility.changes_max", changes)
+    }
+
+    /// «Massimo 1 cambio, margine di interscambio 10 min, priorità percorsi senza barriere.» (Android's `localizedSummary`).
+    static func mobilitySummary(_ value: MobilityPreferences) -> String {
+        let changes = value.maxChanges.map {
+            String.localizedStringWithFormat(NSLocalizedString("settings.mobility.summary_max_changes", comment: ""), $0)
+        } ?? NSLocalizedString("settings.mobility.summary_any_changes", comment: "")
+        return format(
+            "settings.mobility.summary",
+            changes,
+            minutes(value.transferMarginMinutes),
+            value.stepFreePreferred ? NSLocalizedString("settings.mobility.summary_step_free", comment: "") : "",
+            value.compactTimetablePreferred ? NSLocalizedString("settings.mobility.summary_compact", comment: "") : ""
+        )
     }
 
     // MARK: Personal punctuality

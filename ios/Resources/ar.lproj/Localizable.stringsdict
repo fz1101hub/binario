@@ -842,6 +842,54 @@
 			<string>انزل بعد %1$lld محطة</string>
 		</dict>
 	</dict>
+	<key>result.trip.gps_radius_km</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>few</key>
+			<string>%1$lld كم</string>
+			<key>many</key>
+			<string>%1$lld كم</string>
+			<key>one</key>
+			<string>%1$lld كم</string>
+			<key>other</key>
+			<string>%1$lld كم</string>
+			<key>two</key>
+			<string>%1$lld كم</string>
+			<key>zero</key>
+			<string>%1$lld كم</string>
+		</dict>
+	</dict>
+	<key>result.trip.gps_too_early</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>few</key>
+			<string>لا يتوفر التنبيه حسب الموقع إلا قبل %1$lld ساعات من الوصول المتوقع: اضبط المنبّه مجددًا لاحقًا لإضافته.</string>
+			<key>many</key>
+			<string>لا يتوفر التنبيه حسب الموقع إلا قبل %1$lld ساعة من الوصول المتوقع: اضبط المنبّه مجددًا لاحقًا لإضافته.</string>
+			<key>one</key>
+			<string>لا يتوفر التنبيه حسب الموقع إلا قبل %1$lld ساعة من الوصول المتوقع: اضبط المنبّه مجددًا لاحقًا لإضافته.</string>
+			<key>other</key>
+			<string>لا يتوفر التنبيه حسب الموقع إلا قبل %1$lld ساعة من الوصول المتوقع: اضبط المنبّه مجددًا لاحقًا لإضافته.</string>
+			<key>two</key>
+			<string>لا يتوفر التنبيه حسب الموقع إلا قبل %1$lld ساعتين من الوصول المتوقع: اضبط المنبّه مجددًا لاحقًا لإضافته.</string>
+			<key>zero</key>
+			<string>لا يتوفر التنبيه حسب الموقع إلا قبل %1$lld ساعة من الوصول المتوقع: اضبط المنبّه مجددًا لاحقًا لإضافته.</string>
+		</dict>
+	</dict>
 	<key>result.trip.minutes</key>
 	<dict>
 		<key>NSStringLocalizedFormatKey</key>
@@ -1032,6 +1080,30 @@
 			<string>%1$lld محطتان متابَعتان</string>
 			<key>zero</key>
 			<string>%1$lld محطة متابَعة</string>
+		</dict>
+	</dict>
+	<key>settings.mobility.summary_max_changes</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>few</key>
+			<string>%1$lld تبديلات كحد أقصى</string>
+			<key>many</key>
+			<string>%1$lld تبديلًا كحد أقصى</string>
+			<key>one</key>
+			<string>%1$lld تبديل كحد أقصى</string>
+			<key>other</key>
+			<string>%1$lld تبديل كحد أقصى</string>
+			<key>two</key>
+			<string>%1$lld تبديلان كحد أقصى</string>
+			<key>zero</key>
+			<string>%1$lld تبديل كحد أقصى</string>
 		</dict>
 	</dict>
 	<key>settings.travel.minutes</key>

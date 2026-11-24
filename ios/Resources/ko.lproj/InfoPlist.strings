@@ -2,4 +2,4 @@
 "Tratta attiva" = "활성 구간";
 "Prossime partenze" = "다음 출발";
 "Ricerca treno" = "열차 검색";
-"NSLocationWhenInUseUsageDescription" = "Binario는 가장 가까운 역을 찾을 때, 그리고 내 위치로 추정을 켠 경우 앱을 연 상태로 따라가는 여정 동안 위치를 사용합니다. 위치는 휴대폰에만 남으며 저장되거나 전송되지 않습니다.";
+"NSLocationWhenInUseUsageDescription" = "Binario는 가장 가까운 역을 찾을 때, 그리고 내 위치로 추정을 켠 경우 앱을 연 상태로 따라가는 여정 동안 위치를 사용합니다. GPS 알람을 켜면 정류장 구역에 들어갔는지는 앱이 닫혀 있어도 iOS가 직접 확인하며, Binario는 위치를 받지 않습니다. 위치는 휴대폰에만 남으며 저장되거나 전송되지 않습니다.";

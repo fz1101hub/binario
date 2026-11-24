@@ -707,9 +707,13 @@ class IOSProjectTests(unittest.TestCase):
         """EXPO_PORT_PLAN I7, F4, R20 and §3.9: «Stazione più vicina» asks for When-In-Use authorization on a tap
         only, reads one position, and picks the nearest catalogue station on the phone; the position is neither
         stored nor sent. Every language explains why in its InfoPlist.strings; no Always or background location.
-        The followed trip's «Stima dalla tua posizione» (TripLocation.swift) is the one other user: When-In-Use, precise,
+        The followed trip's «Stima dalla tua posizione» (TripLocation.swift) is another user: When-In-Use, precise,
         continuous updates only while the app is in the foreground and the trip is followed, each position handed to
-        BinarioKit's tracker and kept nowhere."""
+        BinarioKit's tracker and kept nowhere. The GPS stop alarm (GpsStopAlarmNotifier.swift) is the third, by the
+        owner's rule that the iPhone equals Android (November 2026): a `UNLocationNotificationTrigger` on entering a
+        circle around the stop, which iOS watches; the app asks the precise When-In-Use authorization only when the
+        alarm is turned on and never receives a position: no Always authorization, no region monitoring or location
+        updates of its own, no background mode. Every language's permission text says so."""
         settings = self.targets["Binario"]["settings"]["base"]
         italian = settings["INFOPLIST_KEY_NSLocationWhenInUseUsageDescription"]
         forbidden_words = re.compile(r"android|wear\s*os|google\s*play|widget|companion", re.IGNORECASE)
@@ -729,7 +733,25 @@ class IOSProjectTests(unittest.TestCase):
 
         sources = [path for base in (IOS / "BinarioApp", IOS / "BinarioKit/Sources") for path in base.rglob("*.swift")]
         importing = sorted(path.name for path in sources if "import CoreLocation" in path.read_text(encoding="utf-8"))
-        self.assertEqual(["NearestStation.swift", "TripLocation.swift"], importing)
+        self.assertEqual(["GpsStopAlarmNotifier.swift", "NearestStation.swift", "TripLocation.swift"], importing)
+        # The GPS stop alarm (owner's rule, iPhone = Android, November 2026): iOS watches the stop's circle and shows
+        # one notification on entry; the app's manager only asks the authorization, and no position reaches the app.
+        alarm = (IOS / "BinarioApp/GpsStopAlarmNotifier.swift").read_text(encoding="utf-8")
+        self.assertEqual(1, alarm.count("manager.requestWhenInUseAuthorization()"))
+        self.assertIn("manager.accuracyAuthorization == .fullAccuracy", alarm)
+        self.assertEqual(1, alarm.count("UNLocationNotificationTrigger(region: region, repeats: false)"))
+        self.assertIn("region.notifyOnEntry = true", alarm)
+        self.assertIn("region.notifyOnExit = false", alarm)
+        for forbidden in (
+            "requestAlwaysAuthorization", "allowsBackgroundLocationUpdates", "startMonitoringSignificantLocationChanges",
+            "startMonitoringVisits", "startMonitoring(for:", "CLMonitor", "CLBackgroundActivitySession", "startUpdatingLocation",
+            "requestLocation()", "didUpdateLocations", "didEnterRegion", "UserDefaults", "@AppStorage",
+        ):
+            self.assertNotIn(forbidden, alarm)
+        for language in sorted(LANGUAGES):
+            text = read_strings(IOS / "Resources" / f"{language}.lproj" / "InfoPlist.strings")["NSLocationWhenInUseUsageDescription"]
+            self.assertIn("iOS", text, language)
+            self.assertIn("GPS", text, language)
         trip = (IOS / "BinarioApp/TripLocation.swift").read_text(encoding="utf-8")
         self.assertEqual(1, trip.count("manager.requestWhenInUseAuthorization()"))
         self.assertIn("manager.accuracyAuthorization == .fullAccuracy", trip)

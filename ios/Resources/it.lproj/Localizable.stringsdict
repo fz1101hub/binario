@@ -632,6 +632,42 @@
 			<string>Scendi tra %1$lld fermate</string>
 		</dict>
 	</dict>
+	<key>result.trip.gps_radius_km</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>many</key>
+			<string>%1$lld km</string>
+			<key>one</key>
+			<string>%1$lld km</string>
+			<key>other</key>
+			<string>%1$lld km</string>
+		</dict>
+	</dict>
+	<key>result.trip.gps_too_early</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>many</key>
+			<string>L’avviso in base alla posizione è disponibile solo da %1$lld ore prima dell’arrivo previsto: imposta di nuovo la sveglia più tardi per aggiungerlo.</string>
+			<key>one</key>
+			<string>L’avviso in base alla posizione è disponibile solo da %1$lld ora prima dell’arrivo previsto: imposta di nuovo la sveglia più tardi per aggiungerlo.</string>
+			<key>other</key>
+			<string>L’avviso in base alla posizione è disponibile solo da %1$lld ore prima dell’arrivo previsto: imposta di nuovo la sveglia più tardi per aggiungerlo.</string>
+		</dict>
+	</dict>
 	<key>result.trip.minutes</key>
 	<dict>
 		<key>NSStringLocalizedFormatKey</key>
@@ -774,6 +810,24 @@
 			<string>%1$lld stazione monitorata</string>
 			<key>other</key>
 			<string>%1$lld stazioni monitorate</string>
+		</dict>
+	</dict>
+	<key>settings.mobility.summary_max_changes</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>many</key>
+			<string>Massimo %1$lld cambi</string>
+			<key>one</key>
+			<string>Massimo %1$lld cambio</string>
+			<key>other</key>
+			<string>Massimo %1$lld cambi</string>
 		</dict>
 	</dict>
 	<key>settings.travel.minutes</key>

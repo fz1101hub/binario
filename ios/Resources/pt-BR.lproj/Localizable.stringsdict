@@ -632,6 +632,42 @@
 			<string>Desça em %1$lld paradas</string>
 		</dict>
 	</dict>
+	<key>result.trip.gps_radius_km</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>many</key>
+			<string>%1$lld km</string>
+			<key>one</key>
+			<string>%1$lld km</string>
+			<key>other</key>
+			<string>%1$lld km</string>
+		</dict>
+	</dict>
+	<key>result.trip.gps_too_early</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>many</key>
+			<string>O aviso pela localização só fica disponível a partir de %1$lld horas antes da chegada prevista: defina o alarme de novo mais tarde para adicioná-lo.</string>
+			<key>one</key>
+			<string>O aviso pela localização só fica disponível a partir de %1$lld hora antes da chegada prevista: defina o alarme de novo mais tarde para adicioná-lo.</string>
+			<key>other</key>
+			<string>O aviso pela localização só fica disponível a partir de %1$lld horas antes da chegada prevista: defina o alarme de novo mais tarde para adicioná-lo.</string>
+		</dict>
+	</dict>
 	<key>result.trip.minutes</key>
 	<dict>
 		<key>NSStringLocalizedFormatKey</key>
@@ -774,6 +810,24 @@
 			<string>%1$lld estação monitorada</string>
 			<key>other</key>
 			<string>%1$lld estações monitoradas</string>
+		</dict>
+	</dict>
+	<key>settings.mobility.summary_max_changes</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>many</key>
+			<string>No máximo %1$lld baldeações</string>
+			<key>one</key>
+			<string>No máximo %1$lld baldeação</string>
+			<key>other</key>
+			<string>No máximo %1$lld baldeações</string>
 		</dict>
 	</dict>
 	<key>settings.travel.minutes</key>

@@ -309,6 +309,17 @@ struct PlannerView: View {
             query: query, origin: model.station(for: query.origin), destination: model.station(for: query.destination),
             planned: planned, live: model.tripLiveData, force: force, now: now
         )
+        refreshReturnRoute(force: force, now: now)
+    }
+
+    /// The return leg of «Andata e ritorno» has its live values too, as Android's return list.
+    private func refreshReturnRoute(force: Bool = false, now: Date = Date()) {
+        if roundTrip, case let .available(back)? = returnResult {
+            journeys.refreshRoute(
+                query: back.query, origin: model.station(for: back.query.origin), destination: model.station(for: back.query.destination),
+                planned: back.services, live: model.tripLiveData, isReturn: true, force: force, now: now
+            )
+        }
     }
 
     /// A saved route tapped in its tab: fill it in and search it from now.
@@ -397,6 +408,7 @@ struct PlannerView: View {
         let result = await model.repository.journeys(for: back)
         returnResult = result
         if case let .available(snapshot) = result { personal.plannerReturn = snapshot }
+        refreshReturnRoute(force: true)
     }
 
     private func save() {
@@ -583,6 +595,7 @@ private struct AvailableResultView: View {
                     .foregroundStyle(.secondary)
             }
             LiveSourcesFooter(state: model.resultLiveState, sources: model.resultLiveSources, pauses: model.liveSourcePauses)
+            LiveRouteSourceNotes(sources: journeys.routeSources(for: snapshot.query, now: now))
         }
         // «Salva orario» and «Condividi» of the list as shown, journeys with changes included (PersonalViews.swift).
         ResultsActionsSection(snapshot: snapshot, entries: shown)
@@ -682,7 +695,7 @@ private struct JourneysOnlyResultView: View {
 /// One listed train: time, number, category (a bus: a bus icon and its label), its live state at the origin when the live board
 /// lists it (delay, cancellation, platform and their source, read as one sentence), destination and
 /// operator, then bikes on board and the unofficial statistics at the searched destination when known.
-private struct ResultRow: View {
+struct ResultRow: View {
     let service: TrainService
     let reliability: StopReliability?
     let live: StationBoardLiveStatus?
@@ -696,6 +709,12 @@ private struct ResultRow: View {
                 // «08:12 → 09:40», as Android's cards: the scheduled departure and arrival.
                 Text(verbatim: service.arrivalDate.map { "\(service.scheduledDeparture) → \(JourneyTexts.time($0))" } ?? service.scheduledDeparture)
                     .font(.headline.monospacedDigit())
+                // And the duration («1h 28min»), as Android's `JourneyTimes.durationMinutes`.
+                if let minutes = PersonalTexts.arrivalAndDuration(departure: service.departureDate, arrival: service.arrivalDate)?.minutes, minutes > 0 {
+                    Text(verbatim: JourneyTexts.duration(minutes))
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
                 // A city line has no number: its label says the mode and the line («Metro M1»).
                 Text(service.isUrban ? VehicleTexts.rowLabel(service) : service.number)
                     .font(.headline)
@@ -862,6 +881,7 @@ struct LiveRouteOverlay {
 /// The live route's trains when the timetable has no direct train for the search (Android shows the verified live
 /// route as the result).
 private struct LiveOnlyTrainsView: View {
+    @EnvironmentObject private var journeys: JourneysModel
     let query: JourneyQuery
     let runs: [LiveRouteRun]
     let now: Date
@@ -878,6 +898,30 @@ private struct LiveOnlyTrainsView: View {
                 }
                 .accessibilityHint(Text("accessibility.open_train_detail"))
             }
+            LiveRouteSourceNotes(sources: journeys.routeSources(for: query, now: now))
+        }
+    }
+}
+
+/// The live route's sources under the results, as Android's provider label of the merged list ("Trenitalia —
+/// ViaggiaTreno realtime", "RFI — Monitor Arrivi/Partenze live") with the notice of each source.
+struct LiveRouteSourceNotes: View {
+    let sources: [LiveSource]
+
+    var body: some View {
+        ForEach(sources, id: \.self) { source in
+            VStack(alignment: .leading, spacing: 2) {
+                switch source {
+                case .rfiStationBoard:
+                    Text(verbatim: "\(String(localized: "result.source_label")) RFI — \(String(localized: "result.live_route.rfi_monitor"))")
+                    Text("result.live_route.rfi_notice")
+                default:
+                    Text(verbatim: "\(String(localized: "result.source_label")) Trenitalia — ViaggiaTreno realtime")
+                    Text("result.live_route.viaggiatreno_notice")
+                }
+            }
+            .font(.footnote)
+            .foregroundStyle(.secondary)
         }
     }
 }

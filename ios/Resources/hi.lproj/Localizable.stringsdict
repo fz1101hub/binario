@@ -562,6 +562,38 @@
 			<string>%1$lld ठहराव बाद उतरें</string>
 		</dict>
 	</dict>
+	<key>result.trip.gps_radius_km</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%1$lld किमी</string>
+			<key>other</key>
+			<string>%1$lld किमी</string>
+		</dict>
+	</dict>
+	<key>result.trip.gps_too_early</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>लोकेशन-आधारित अलर्ट अनुमानित आगमन से केवल %1$lld घंटा पहले से उपलब्ध है: इसे जोड़ने के लिए बाद में अलार्म फिर सेट करें।</string>
+			<key>other</key>
+			<string>लोकेशन-आधारित अलर्ट अनुमानित आगमन से केवल %1$lld घंटे पहले से उपलब्ध है: इसे जोड़ने के लिए बाद में अलार्म फिर सेट करें।</string>
+		</dict>
+	</dict>
 	<key>result.trip.minutes</key>
 	<dict>
 		<key>NSStringLocalizedFormatKey</key>
@@ -688,6 +720,22 @@
 			<string>निगरानी वाला %1$lld स्टेशन</string>
 			<key>other</key>
 			<string>निगरानी वाले %1$lld स्टेशन</string>
+		</dict>
+	</dict>
+	<key>settings.mobility.summary_max_changes</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>अधिकतम %1$lld बदलाव</string>
+			<key>other</key>
+			<string>अधिकतम %1$lld बदलाव</string>
 		</dict>
 	</dict>
 	<key>settings.travel.minutes</key>

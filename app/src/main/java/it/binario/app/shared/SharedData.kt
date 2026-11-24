@@ -14,6 +14,7 @@
 //   contracts/shared-data/v1/journey-live-v1.json
 //   contracts/shared-data/v1/live-route-v1.json
 //   contracts/shared-data/v1/results-paging-v1.json
+//   contracts/shared-data/v1/mobility-preferences-v1.json
 //   contracts/shared-data/v1/live-train-map-v1.json
 //   contracts/shared-data/v1/local-backup-v1.json
 //   contracts/shared-data/v1/notices-sources-v1.json
@@ -613,7 +614,8 @@ internal object SharedData {
      * ViaggiaTreno route (the origin's board, the runs of up to twelve of its trains, the planned numbers first on a
      * busy board, each run checked up to the destination) and the RFI route (the departures of the origin and the
      * arrivals of the destination, the same train on both), then the live runs merged into the timetable list
-     * (LiveRunMerge): the same run within the retiming window, of a compatible operator family, replaced; a run the
+     * (LiveRunMerge): the same run within the retiming window, of a compatible operator family (a timetable operator
+     * named by none of timetableOperators is unknown and matches any family, as Android's OTHER), replaced; a run the
      * timetable does not list added.
      */
     object LiveRoute {
@@ -622,6 +624,14 @@ internal object SharedData {
             "trenitalia" to "trenitalia-trenord",
             "trenord" to "trenitalia-trenord",
             "italo" to "italo"
+        )
+        val TIMETABLE_OPERATORS: Map<String, String> = mapOf(
+            "trenord" to "trenord",
+            "italo" to "italo",
+            "ntv" to "italo",
+            "frecc" to "trenitalia",
+            "intercity" to "trenitalia",
+            "trenitalia" to "trenitalia"
         )
         const val LIVE_SOURCE_TIMEOUT_SECONDS: Int = 15
         const val RFI_BOARD_LOOK_BACK_MINUTES: Int = 120
@@ -649,6 +659,18 @@ internal object SharedData {
         const val MAXIMUM_FILL_LOADS: Int = 3
         const val MINIMUM_EARLIER_SPAN_MINUTES: Int = 15
         const val EARLIER_JOURNEY_RESULTS: Int = 20
+    }
+
+    /**
+     * contracts/shared-data/v1/mobility-preferences-v1.json: «Mobilità e accessibilità» in the settings and the local
+     * backup: the interchange margin when none is set and the most a stored or imported one may be, and the choices of
+     * the panel (changes: direct, at most one, at most two; margins in minutes).
+     */
+    object MobilityPreferences {
+        const val DEFAULT_TRANSFER_MARGIN_MINUTES: Int = 10
+        const val MAXIMUM_TRANSFER_MARGIN_MINUTES: Int = 45
+        val CHANGE_CHOICES: List<Int> = listOf(0, 1, 2)
+        val TRANSFER_MARGIN_CHOICES: List<Int> = listOf(5, 10, 15, 20)
     }
 
     /**
@@ -1684,9 +1706,9 @@ internal object SharedData {
     /**
      * contracts/shared-data/v1/trip-alerts-v1.json: The trip notifications and alarms: the stop alarm, the followed
      * trip (Android's ongoing notification, the iPhone's Live Activity) with its stop countdown, «Avvisami quando sta
-     * arrivando», the commuter alerts, the new notices of the trains with the bell and the position estimate during the
-     * trip. Leads, windows, cadences, tolerances and limits; the quiet hours (22-7) are those of
-     * evening-alerts-v1.json.
+     * arrivando», the commuter alerts, the new notices of the trains with the bell, the GPS stop alarm (its radius
+     * choices and the default radius of regional and long-distance trains) and the position estimate during the trip.
+     * Leads, windows, cadences, tolerances and limits; the quiet hours (22-7) are those of evening-alerts-v1.json.
      */
     object TripAlerts {
         const val STOP_ALARM_LEAD_MINUTES: Int = 5
@@ -1721,6 +1743,9 @@ internal object SharedData {
         const val TRAIN_ALERTS_MAXIMUM_SUBSCRIPTIONS: Int = 16
         const val TRAIN_ALERTS_MAXIMUM_SEEN: Int = 400
         const val TRAIN_ALERTS_SEEN_RETENTION_DAYS: Int = 7
+        val GPS_ALARM_RADIUS_OPTIONS_METERS: List<Int> = listOf(1000, 2000, 3000, 5000, 10000, 15000, 20000, 25000)
+        const val GPS_ALARM_REGIONAL_DEFAULT_RADIUS_METERS: Int = 2000
+        const val GPS_ALARM_LONG_DISTANCE_DEFAULT_RADIUS_METERS: Int = 20000
         const val POSITION_MAXIMUM_ACCURACY_METERS: Int = 200
         const val POSITION_MAXIMUM_FIX_AGE_SECONDS: Int = 120
         const val POSITION_OFF_ROUTE_METERS: Int = 1500

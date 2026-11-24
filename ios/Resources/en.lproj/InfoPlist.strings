@@ -2,4 +2,4 @@
 "Tratta attiva" = "Active route";
 "Prossime partenze" = "Next departures";
 "Ricerca treno" = "Train search";
-"NSLocationWhenInUseUsageDescription" = "Binario uses your location when you ask for the nearest station and, if you turn on the estimate from your position, during the trip you follow with the app open. Your location stays on the phone: it is neither saved nor sent.";
+"NSLocationWhenInUseUsageDescription" = "Binario uses your location when you ask for the nearest station and, if you turn on the estimate from your position, during the trip you follow with the app open. For the GPS stop alarm, if you turn it on, iOS itself checks when you enter the stop’s area, even with the app closed: Binario does not receive your location. Your location stays on the phone: it is neither saved nor sent.";

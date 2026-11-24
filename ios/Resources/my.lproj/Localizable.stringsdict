@@ -492,6 +492,34 @@
 			<string>ရပ်နားဘူတာ %1$lld ခု အကြာတွင် ဆင်းပါ</string>
 		</dict>
 	</dict>
+	<key>result.trip.gps_radius_km</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>other</key>
+			<string>%1$lld km</string>
+		</dict>
+	</dict>
+	<key>result.trip.gps_too_early</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>other</key>
+			<string>တည်နေရာအလိုက် သတိပေးချက်ကို ခန့်မှန်း ဆိုက်ရောက်ချိန် %1$lld နာရီ မတိုင်မီကစ၍သာ ရနိုင်သည်- ၎င်းကို ထည့်ရန် နောက်မှ နှိုးစက်ကို ထပ်သတ်မှတ်ပါ။</string>
+		</dict>
+	</dict>
 	<key>result.trip.minutes</key>
 	<dict>
 		<key>NSStringLocalizedFormatKey</key>
@@ -602,6 +630,20 @@
 			<string>lld</string>
 			<key>other</key>
 			<string>စောင့်ကြည့်ထားသော ဘူတာ %1$lld ခု</string>
+		</dict>
+	</dict>
+	<key>settings.mobility.summary_max_changes</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>other</key>
+			<string>ရထားပြောင်း အများဆုံး %1$lld ကြိမ်</string>
 		</dict>
 	</dict>
 	<key>settings.travel.minutes</key>

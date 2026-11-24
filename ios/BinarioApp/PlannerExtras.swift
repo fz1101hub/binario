@@ -283,6 +283,7 @@ struct RoundTripFields: View {
 /// «RITORNO»: the trains of the way back, as the outbound rows, each opening its detail.
 struct ReturnResultsSection: View {
     @EnvironmentObject private var model: AppModel
+    @EnvironmentObject private var journeys: JourneysModel
     let result: JourneyResult
 
     var body: some View {
@@ -290,34 +291,32 @@ struct ReturnResultsSection: View {
             switch result {
             case let .available(snapshot):
                 let co2 = model.co2Estimate(from: snapshot.query.origin, to: snapshot.query.destination)
-                ForEach(snapshot.services, id: \.id) { service in
+                let now = Date()
+                // The return leg's live values as Android's return list: its origin's board, its live route
+                // (LiveRunMerge) and the runs the timetable lacks.
+                let overlay = LiveRouteOverlay(
+                    planned: snapshot.services, board: journeys.returnBoardLive(snapshot, now: now),
+                    runs: journeys.routeRuns(for: snapshot.query, now: now), query: snapshot.query, now: now
+                )
+                let services = (snapshot.services + overlay.added).enumerated().sorted { first, second in
+                    let a = first.element.departureDate ?? .distantFuture, b = second.element.departureDate ?? .distantFuture
+                    return a != b ? a < b : first.offset < second.offset
+                }.map(\.element)
+                ForEach(services, id: \.id) { service in
+                    let live = overlay.live[service.id]
                     NavigationLink {
-                        TrainDetailView(service: service, query: snapshot.query)
+                        TrainDetailView(service: service, query: snapshot.query, boardLive: live)
                     } label: {
-                        VStack(alignment: .leading, spacing: 4) {
-                            HStack(alignment: .firstTextBaseline) {
-                                Text(service.scheduledDeparture)
-                                    .font(.headline.monospacedDigit())
-                                Text(service.isUrban ? VehicleTexts.rowLabel(service) : service.number)
-                                    .font(.headline)
-                                Spacer()
-                                Text(service.category)
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                            }
-                            Text(service.destination)
-                            Text(service.operatorName)
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                            if let co2 { Co2Line(estimate: co2) }
-                        }
-                        .accessibilityElement(children: .combine)
+                        ResultRow(service: service, reliability: nil, live: live, co2: co2, expectedArrival: overlay.arrivals[service.id])
                     }
                     .accessibilityHint(Text("accessibility.open_train_detail"))
                 }
-                Label("result.programmed.disclosure", systemImage: "clock")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
+                if snapshot.services.contains(where: { overlay.live[$0.id] == nil }) {
+                    Label("result.programmed.disclosure", systemImage: "clock")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
+                LiveRouteSourceNotes(sources: journeys.routeSources(for: snapshot.query, now: now))
             case .unavailable:
                 Text("planner.return.empty_title")
                     .font(.body.weight(.semibold))
