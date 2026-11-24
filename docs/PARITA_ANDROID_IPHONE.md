@@ -20,15 +20,15 @@ pianificatore. 2 = notifiche di viaggio, sveglia di fermata, GPS, avvisi di arri
 
 | | Funzioni | Uguali | Parziali | Mancano |
 |---|---|---|---|---|
-| Area 1 | 14 | 8 | 5 | 1 |
+| Area 1 | 14 | 14 | 0 | 0 |
 | Area 2 | 7 | 2 | 4 | 1 |
 | Area 3 | 5 | 5 | 0 | 0 |
 | Area 4 | 93 | 93 | 0 | 0 |
 | Area 5 | 2 | 2 | 0 | 0 |
-| **Telefono** | **121** | **110** | **9** | **2** |
+| **Telefono** | **121** | **116** | **4** | **1** |
 | Orologio | 16 | 16 | 0 | 0 |
 
-«Uguali» comprende gli «Uguale (nativo iOS)». I conteggi sono quelli dopo i lavori del ramo `ios-misc` (24 novembre 2026, terzo giro, con `ios-int`); le righe «Manca» e «Parziale» sono elencate in fondo al documento.
+«Uguali» comprende gli «Uguale (nativo iOS)». I conteggi sono quelli dopo i lavori dei rami `ios-misc` (terzo giro) e `ios-journeys` (quarto giro: area 1), 24 novembre 2026, con `ios-int`; le righe «Manca» e «Parziale» sono elencate in fondo al documento.
 
 ## 1. Navigazione e struttura
 
@@ -72,10 +72,10 @@ pianificatore. 2 = notifiche di viaggio, sveglia di fermata, GPS, avvisi di arri
 | «Ultimo di oggi» e «Non ci sono più treni oggi» nei risultati | Sì | «Ultimo di oggi», «primo domani alle …» e «Nessun treno fino alle …» per una ricerca di oggi | Uguale | 1 |
 | Prima / Dopo | Pagine di risultati | «Più presto» e «Più tardi» con le stesse finestre | Uguale | 1 |
 | «Salva orario» | Salva l'elenco mostrato | Pulsante «Salva orario» sotto i risultati | Uguale | 4 |
-| Arrivo e durata di ogni treno nei risultati | Sì | Solo la partenza nelle righe dei treni diretti (l'arrivo è già nei dati: lo usano «Salva orario» e «Condividi»); i viaggi con cambi li mostrano | Parziale | 1 |
+| Arrivo e durata di ogni treno nei risultati | Sì | «08:12 → 09:40» e la durata in ogni riga, con «Arrivo previsto» dal percorso live; i viaggi con cambi li mostrano | Uguale | 1 |
 | Condividi l'elenco dei risultati | `TimetableShareFormatter.list` | Stesso testo dal foglio di condivisione | Uguale (nativo iOS) | 4 |
 | Mappa dei risultati | `ResultsMapPane.kt`, solo nel doppio pannello da 840 dp (tablet) | Solo iPhone (`TARGETED_DEVICE_FAMILY = 1`): nessun doppio pannello, come sui telefoni Android | Uguale (nativo iOS) | 4 |
-| Percorso live nel pianificatore | Tabelloni RFI riconciliati e corse ViaggiaTreno fino alla destinazione (`LiveRunMerge`) | I valori del tabellone della stazione di partenza | Manca (in corso nel lavoro sui viaggi) | 1 |
+| Percorso live nel pianificatore | Tabelloni RFI riconciliati e corse ViaggiaTreno fino alla destinazione (`LiveRunMerge`) | Stesse due fonti e stessa unione (`LiveRoute.swift`): corse live sostituite o aggiunte, arrivo previsto, avvisi delle fonti; anche sulle pagine di «Più presto / Più tardi» e sul ritorno di «Andata e ritorno». Regole in `live-route-v1.json`. L'Apple Watch riceve i treni programmati | Uguale | 1 |
 | Orari dei paesi confinanti («Scarica») | Sì | Sì | Uguale | 4 |
 
 ## 4. Dettaglio treno
@@ -110,8 +110,8 @@ pianificatore. 2 = notifiche di viaggio, sveglia di fermata, GPS, avvisi di arri
 | Dettaglio del viaggio, cambi, «Resta a bordo» | `JourneyDetailScreen.kt` | Dettaglio con le tratte, i cambi e le attese, i percorsi a piedi e «Resta a bordo» (`JourneyViews.swift`) | Uguale | 1 |
 | Coincidenze a rischio | Sì | «Coincidenza a rischio / persa / confermata» con gli orari previsti | Uguale | 1 |
 | Percorsi accessibili in sedia a rotelle | Sì | «Solo percorsi accessibili in sedia a rotelle» e accessibilità di ogni tratta | Uguale | 1 |
-| Stima CO₂ del viaggio | Sì | Regola comune pronta (`Co2Estimator.estimate` con più tratti); il dettaglio del viaggio non la mostra ancora | Parziale | 1 |
-| Condividi un viaggio | `TimetableShareFormatter.solution` | Nel solo elenco condiviso dei risultati; il dettaglio del viaggio non ha «Condividi» | Parziale | 1 |
+| Stima CO₂ del viaggio | Sì | «CO₂ stimata» nel dettaglio del viaggio, dalle tratte in treno o bus (i percorsi a piedi esclusi), con la nota | Uguale | 1 |
+| Condividi un viaggio | `TimetableShareFormatter.solution` | «Condividi» nel dettaglio del viaggio, stesso testo (`PersonalTexts.solutionShare`) | Uguale | 1 |
 
 ## 6. Partenze
 
@@ -128,7 +128,7 @@ pianificatore. 2 = notifiche di viaggio, sveglia di fermata, GPS, avvisi di arri
 | Collegamenti diretti | `DirectConnectionsSheet.kt` | Stesso foglio: sette giorni, filtro, treni e linee urbane, «Cerca i treni» e «Cerca le corse» (`DirectConnections.swift`) | Uguale | 4 |
 | Assistenza Sala Blu | Pagina RFI e numeri | Stessa sezione nel tabellone | Uguale | 4 |
 | Tabellone della tratta attiva | Prossima partenza evidenziata, cambio direzione, scelta tratta | «Le tue partenze» in cima a Partenze: prossima corsa, altre corse, «Direzione», «Cambia tratta» (`RouteBoard.swift`) | Uguale | 4 |
-| «Ultimo di oggi» nei tabelloni | Sì | «Non ci sono più treni oggi: primo domani» | Parziale: manca il segno «Ultimo di oggi» | 1 |
+| «Ultimo di oggi» nei tabelloni | Sì | «Ultimo di oggi» e «Non ci sono più treni oggi: primo domani alle …» nel tabellone della stazione e in «Le tue partenze», dall'orario incluso, mai dai dati live. Regole in `last-of-day-v1.json` | Uguale | 1 |
 | Monitora questa stazione | Monitoraggio locale | «Monitora questa stazione» nel tabellone (partenze, arrivi o entrambi), elenco in Per te | Uguale | 4 |
 | Treni in movimento | Mappa | Mappa (MapKit) | Uguale (nativo iOS) | 4 |
 | Mappa della stazione e delle stazioni vicine | OpenFreeMap, su tocco | Mappa di Apple (MapKit), su tocco: le sei stazioni vicine, o le stazioni trovate con la posizione approssimativa (`StationMaps.swift`) | Uguale (nativo iOS) | 4 |
@@ -181,7 +181,7 @@ pianificatore. 2 = notifiche di viaggio, sveglia di fermata, GPS, avvisi di arri
 | Meteo a destinazione | Interruttore | Interruttore | Uguale | 4 |
 | Fermate di metro e tram nella ricerca | Interruttore | Interruttore | Uguale | 4 |
 | Privacy | Testi | Testi | Uguale | 4 |
-| Preferenze di viaggio e mobilità | Preferenze di viaggio; mobilità (cambi massimi, margine di cambio, senza gradini, orario compatto) | Preferenze di viaggio; nessuna preferenza di mobilità | Parziale | 1 |
+| Preferenze di viaggio e mobilità | Preferenze di viaggio; mobilità (cambi massimi, margine di cambio, senza gradini, orario compatto) | Preferenze di viaggio; «Mobilità e accessibilità» con le stesse scelte e lo stesso riepilogo, nel backup come su Android; come su Android nessuna ricerca le legge | Uguale | 1 |
 | Integrazioni: orologio | Wear, Apple Watch | Apple Watch | Uguale | 4 |
 | Integrazioni: profilo vocale Alexa | Sì | Stesso interruttore e stesse note; nessun collegamento dell'account, come su Android senza collegamento | Uguale | 4 |
 | Puntualità dei treni preferiti e riepilogo settimanale | Interruttori (acceso e spento di serie) | Stessi interruttori e testi in Impostazioni | Uguale | 4 |
@@ -232,8 +232,8 @@ pianificatore. 2 = notifiche di viaggio, sveglia di fermata, GPS, avvisi di arri
 Dopo i lavori di questo ramo, con `ios-int` (viaggi con cambi, notifiche e sveglie del viaggio, widget, European Sleeper e quadro orario RFI):
 
 - **Area 4 (audit e funzioni minori):** 0 mancanti e 0 parziali.
-- **Altre aree:** area 1: Arrivo e durata di ogni treno nei risultati (parziale), Percorso live nel pianificatore (manca), Stima CO₂ del viaggio (parziale), Condividi un viaggio (parziale), «Ultimo di oggi» nei tabelloni (parziale), Preferenze di viaggio e mobilità (parziale); area 2: Sveglia di fermata e sveglia GPS (parziale), «Avvisami quando sta arrivando» (parziale), Campanella degli avvisi ViaggiaTreno (parziale), Viaggio attivo e monitoraggi (parziale), Stato del lavoro in background (manca).
-- **In corso:** il percorso live dei treni diretti nel pianificatore (area 1), nel lavoro sui viaggi.
+- **Area 1 (viaggi, preferenze, «Ultimo di oggi», percorso live):** 0 mancanti e 0 parziali.
+- **Altre aree:** area 2: Sveglia di fermata e sveglia GPS (parziale), «Avvisami quando sta arrivando» (parziale), Campanella degli avvisi ViaggiaTreno (parziale), Viaggio attivo e monitoraggi (parziale), Stato del lavoro in background (manca).
 - **Limiti di iOS:** le righe «Parziale: limite di iOS» dipendono da ciò che iOS consente in background (nessun orario garantito, nessuna posizione in background per scelta); non si chiudono con altro codice.
 - **Scelte tenute:** la stella al posto del cuore di Android per «I miei treni», perché i testi dell'iPhone in 17 lingue dicono «stella»; la mappa dei risultati di Android esiste solo nel doppio pannello dei tablet, che l'app iPhone (solo telefono) non ha.
 - **Orologio:** nessuna differenza aperta.
