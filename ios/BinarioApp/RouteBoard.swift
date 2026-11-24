@@ -300,8 +300,9 @@ private struct CalendarEventEditor: UIViewControllerRepresentable {
             self.dismiss = dismiss
         }
 
-        func eventEditViewController(_ controller: EKEventEditViewController, didCompleteWith action: EKEventEditViewAction) {
-            dismiss()
+        // The editor calls its delegate on the main thread, whatever the protocol's isolation.
+        nonisolated func eventEditViewController(_ controller: EKEventEditViewController, didCompleteWith action: EKEventEditViewAction) {
+            MainActor.assumeIsolated { dismiss() }
         }
     }
 }

@@ -144,7 +144,7 @@ private struct TrainNumberRunRow: View {
                 Date.FormatStyle(date: .abbreviated, time: .shortened, timeZone: ItalianWallClock.timeZone))))
                 .font(.caption)
                 .foregroundStyle(.secondary)
-            if run.cancellation != .none || run.state == .cancelled {
+            if run.cancellation != LiveCancellation.none || run.state == .cancelled {
                 Text(LiveTexts.cancelled)
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(BinarioPalette.statusError)
