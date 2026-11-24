@@ -257,6 +257,10 @@
 "departures.direct.search_trains" = "Search trains from %1$@ to %2$@";
 "departures.direct.today" = "Today %1$@";
 "departures.direct.close" = "Close";
+"saved.trains.reliability.summary" = "Last 30 days, on the network and in the runs recorded on this phone; the trend compares the last 4 weeks with the 4 before. Tap a train to open it.";
+"saved.trains.reliability.worse" = "Getting worse";
+"saved.trains.reliability.better" = "Improving";
+"saved.trains.reliability.no_data" = "No data yet";
 "saved.timetables.solutions" = "%1$lld options";
 "departures.types.hidden_trains" = "%1$lld trains hidden";
 "result.punctuality.observations" = "%1$lld observations recorded on this device";
@@ -267,6 +271,7 @@
 "saved.digest.network" = "last %1$lld days on the network: %2$lld%% on time";
 "departures.direct.train_count" = "%1$lld trains";
 "departures.direct.run_count" = "%1$lld runs";
+"saved.trains.reliability.personal" = "Recorded on this phone: on time %1$lld times out of %2$lld";
 "planner.title" = "Plan";
 "planner.intro.title" = "Search for a route";
 "planner.intro.body" = "Choose the origin and destination from the curated catalogue. The included timetables are scheduled data and cover the networks listed below: Trenitalia, Italo, the regional railways and the cross-border trains, with Trenitalia's and Italo's buses; metro and tram lines are not included, and stations without timetables are flagged in the search.";
@@ -590,7 +595,6 @@
 "result.favourite.add" = "Save to My trains";
 "result.favourite.remove" = "Remove from My trains";
 "saved.trains.reliability.title" = "Reliability of my trains";
-"saved.trains.reliability.description" = "Last %1$lld days, on arrival at the last stop of each train. Tap a train to open it.";
 "tab.departures" = "Departures";
 "departures.title" = "Departures";
 "departures.station" = "Station";

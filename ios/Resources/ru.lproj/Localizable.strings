@@ -257,6 +257,10 @@
 "departures.direct.search_trains" = "Найти поезда: %1$@ → %2$@";
 "departures.direct.today" = "Сегодня %1$@";
 "departures.direct.close" = "Закрыть";
+"saved.trains.reliability.summary" = "Последние 30 дней — в сети и в поездках, записанных на этом телефоне; тенденция сравнивает последние 4 недели с 4 предыдущими. Нажмите на поезд, чтобы открыть его.";
+"saved.trains.reliability.worse" = "Становится хуже";
+"saved.trains.reliability.better" = "Становится лучше";
+"saved.trains.reliability.no_data" = "Данных пока нет";
 "saved.timetables.solutions" = "%1$lld варианта";
 "departures.types.hidden_trains" = "%1$lld поезда скрыто";
 "result.punctuality.observations" = "%1$lld наблюдения записано на этом устройстве";
@@ -267,6 +271,7 @@
 "saved.digest.network" = "последние %1$lld дня в сети: вовремя %2$lld%%";
 "departures.direct.train_count" = "%1$lld поезда";
 "departures.direct.run_count" = "%1$lld рейса";
+"saved.trains.reliability.personal" = "Записано на этом телефоне: вовремя %1$lld раза из %2$lld";
 "planner.title" = "Планирование";
 "planner.intro.title" = "Поиск маршрута";
 "planner.intro.body" = "Выберите станции отправления и назначения в проверенном каталоге. Включённые расписания являются плановыми и охватывают перечисленные ниже сети: Trenitalia, Italo, региональные железные дороги и трансграничные поезда, включая автобусы Trenitalia и Italo; метро и трамвай не включены, а станции без расписания отмечаются при поиске.";
@@ -590,7 +595,6 @@
 "result.favourite.add" = "Сохранить в «Мои поезда»";
 "result.favourite.remove" = "Удалить из списка «Мои поезда»";
 "saved.trains.reliability.title" = "Надёжность моих поездов";
-"saved.trains.reliability.description" = "За последние %1$lld дня, по прибытии на конечную остановку каждого поезда. Нажмите на поезд, чтобы открыть его.";
 "tab.departures" = "Отправления";
 "departures.title" = "Отправления";
 "departures.station" = "Станция";

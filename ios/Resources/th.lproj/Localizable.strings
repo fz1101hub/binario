@@ -257,6 +257,10 @@
 "departures.direct.search_trains" = "ค้นหารถไฟจาก %1$@ ไป %2$@";
 "departures.direct.today" = "วันนี้ %1$@";
 "departures.direct.close" = "ปิด";
+"saved.trains.reliability.summary" = "30 วันล่าสุด บนเครือข่ายและในเที่ยวที่บันทึกไว้ในโทรศัพท์เครื่องนี้ แนวโน้มเปรียบเทียบ 4 สัปดาห์ล่าสุดกับ 4 สัปดาห์ก่อนหน้า แตะขบวนเพื่อเปิด";
+"saved.trains.reliability.worse" = "แย่ลง";
+"saved.trains.reliability.better" = "ดีขึ้น";
+"saved.trains.reliability.no_data" = "ยังไม่มีข้อมูล";
 "saved.timetables.solutions" = "%1$lld ตัวเลือก";
 "departures.types.hidden_trains" = "ซ่อนอยู่ %1$lld ขบวน";
 "result.punctuality.observations" = "บันทึกไว้ %1$lld รายการในอุปกรณ์นี้";
@@ -267,6 +271,7 @@
 "saved.digest.network" = "%1$lld วันล่าสุดบนเครือข่าย: ตรงเวลา %2$lld%%";
 "departures.direct.train_count" = "รถไฟ %1$lld ขบวน";
 "departures.direct.run_count" = "%1$lld เที่ยว";
+"saved.trains.reliability.personal" = "บันทึกในโทรศัพท์เครื่องนี้: ตรงเวลา %1$lld จาก %2$lld ครั้ง";
 "planner.title" = "วางแผน";
 "planner.intro.title" = "ค้นหาเส้นทาง";
 "planner.intro.body" = "เลือกสถานีต้นทางและปลายทางจากแค็ตตาล็อกที่คัดสรรไว้ ตารางเวลาที่รวมอยู่เป็นตารางตามแผนและครอบคลุมเครือข่ายที่แสดงด้านล่าง: Trenitalia, Italo, รถไฟภูมิภาค และรถไฟข้ามพรมแดน รวมถึงรถบัสของ Trenitalia และ Italo ไม่รวมรถไฟใต้ดินและรถราง และสถานีที่ไม่มีตารางเวลาจะถูกระบุไว้ในการค้นหา";
@@ -590,7 +595,6 @@
 "result.favourite.add" = "บันทึกในรถไฟของฉัน";
 "result.favourite.remove" = "นำออกจากรถไฟของฉัน";
 "saved.trains.reliability.title" = "ความน่าเชื่อถือของรถไฟของฉัน";
-"saved.trains.reliability.description" = "%1$lld วันล่าสุด เมื่อถึงป้ายสุดท้ายของแต่ละขบวน แตะขบวนรถเพื่อเปิด";
 "tab.departures" = "ขบวนออก";
 "departures.title" = "ขบวนออก";
 "departures.station" = "สถานี";

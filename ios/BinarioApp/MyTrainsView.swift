@@ -79,9 +79,8 @@ struct MyTrainsView: View {
                         }
                     }
 
-                    if let reliability = model.favouriteTrainsReliability {
-                        MyTrainsReliabilitySection(reliability: reliability)
-                    }
+                    // Android's «Affidabilità dei miei treni»: network, runs recorded here and trend.
+                    MyTrainsReliabilitySection()
                 }
             }
         }
@@ -214,54 +213,93 @@ private struct FavouriteLiveLine: View {
     }
 }
 
-/// «Affidabilità dei miei treni»: what the statistics cover, one row per train measured (a tap
-/// opens it) and the attribution that says the statistics are unofficial.
+/// «Affidabilità dei miei treni» (Android's `MyTrainsReliabilitySection`): the first eight favourite
+/// trains in their order, each with its figures at its last stop in the bundled network statistics,
+/// its runs recorded on this iPhone in the last 30 days and the trend of the last four weeks against
+/// the four before (`FavouriteTrainPunctuality`); a tap opens the train. The attribution closes it
+/// whenever a network figure is shown.
 private struct MyTrainsReliabilitySection: View {
     @EnvironmentObject private var model: AppModel
-    let reliability: FavouriteTrainsReliability
+    @EnvironmentObject private var personal: PersonalModel
 
     var body: some View {
-        Section {
-            Text(MyTrainsTexts.reliabilityDescription(days: reliability.days))
-                .font(.footnote)
-                .foregroundStyle(.secondary)
-            ForEach(reliability.rows) { row in
-                NavigationLink(value: row.train) {
-                    MyTrainReliabilityRow(
-                        row: row,
-                        arrivalName: model.stationName(forReliabilityCode: row.network.stationCode)
-                    )
+        let trains = Array(model.favouriteTrains.prefix(FavouriteTrainPunctuality.maximumRows))
+        let measured = model.favouriteTrainsReliability
+        let today = PersonalModel.today()
+        let from = today.adding(days: -(FavouriteTrainPunctuality.personalDays - 1)) ?? today
+        if !trains.isEmpty {
+            Section {
+                Text("saved.trains.reliability.summary")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                ForEach(trains) { train in
+                    let network = measured?.rows.first { $0.id == train.id }?.network
+                    NavigationLink(value: train) {
+                        MyTrainReliabilityRow(
+                            train: train,
+                            network: network,
+                            arrivalName: network.flatMap { model.stationName(forReliabilityCode: $0.stationCode) },
+                            recorded: FavouriteTrainPunctuality.local(personal.punctuality, trainNumber: train.number, from: from, to: today),
+                            trend: FavouriteTrainPunctuality.trend(personal.punctuality, trainNumber: train.number, today: today)
+                        )
+                    }
+                    .accessibilityHint(Text("accessibility.open_train_detail"))
                 }
-                .accessibilityHint(Text("accessibility.open_train_detail"))
+                if let reliability = model.favouriteTrainsReliability {
+                    Text(ReliabilityTexts.attribution(reliability.windowEnd))
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
+            } header: {
+                Label("saved.trains.reliability.title", systemImage: "chart.bar")
             }
-            Text(ReliabilityTexts.attribution(reliability.windowEnd))
-                .font(.footnote)
-                .foregroundStyle(.secondary)
-        } header: {
-            Label("saved.trains.reliability.title", systemImage: "chart.bar")
         }
     }
 }
 
 /// One train of «Affidabilità dei miei treni»: the train as its row in «I miei treni», then its
-/// figures at its last stop, read by VoiceOver as one sentence that says they are unofficial.
+/// network figures, its runs recorded on this iPhone, the trend or «Ancora nessun dato», read by
+/// VoiceOver as one sentence that says the network figures are unofficial.
 private struct MyTrainReliabilityRow: View {
-    let row: FavouriteTrainReliability
+    let train: FavouriteTrain
+    let network: StopReliability?
     /// The catalogue name of the last stop, when the catalogue knows its code.
     let arrivalName: String?
+    let recorded: LocalPunctuality?
+    let trend: PunctualityTrend?
 
     var body: some View {
-        let parts = MyTrainsTexts.networkParts(row.network, at: arrivalName)
+        let parts = network.map { MyTrainsTexts.networkParts($0, at: arrivalName) } ?? []
+        let personalLine = recorded.map(MyTrainsTexts.recordedLine)
+        let trendLine = trend.map { NSLocalizedString($0.better ? "saved.trains.reliability.better" : "saved.trains.reliability.worse", comment: "") }
+        let noData: String? = network == nil && recorded == nil ? NSLocalizedString("saved.trains.reliability.no_data", comment: "") : nil
         VStack(alignment: .leading, spacing: 5) {
-            FavouriteTrainHeading(train: row.train)
-            Label {
-                Text(parts.joined(separator: " · "))
-            } icon: {
-                Image(systemName: "chart.bar")
+            FavouriteTrainHeading(train: train)
+            if !parts.isEmpty {
+                Label {
+                    Text(parts.joined(separator: " · "))
+                } icon: {
+                    Image(systemName: "chart.bar")
+                }
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .accessibilityLabel(Text(ReliabilityTexts.spoken(parts.joined(separator: ", "))))
             }
-            .font(.caption)
-            .foregroundStyle(.secondary)
-            .accessibilityLabel(Text(ReliabilityTexts.spoken(parts.joined(separator: ", "))))
+            if let personalLine {
+                Label(personalLine, systemImage: "iphone")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            if let trendLine, let trend {
+                Label(trendLine, systemImage: trend.better ? "chart.line.uptrend.xyaxis" : "chart.line.downtrend.xyaxis")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            if let noData {
+                Text(noData)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
         }
         .accessibilityElement(children: .combine)
     }
@@ -275,19 +313,26 @@ enum MyTrainsTexts {
         String.localizedStringWithFormat(NSLocalizedString("saved.trains.limit_error", comment: ""), maximum)
     }
 
-    /// «Ultimi 30 giorni, all’arrivo all’ultima fermata di ogni treno. Tocca un treno per aprirlo.»
-    static func reliabilityDescription(days: Int) -> String {
-        String.localizedStringWithFormat(NSLocalizedString("saved.trains.reliability.description", comment: ""), days)
-    }
-
     /// The figures of a favourite train at its last stop, worded as the result rows word them:
-    /// «Arrivo a Pavia: in orario 27 volte su 30 · ritardo medio 3 min» when the catalogue names
-    /// the stop, else «In orario 27 volte su 30 · ritardo medio 3 min»; cancellations after them.
+    /// «Arrivo a Pavia: in orario 27 volte su 30 (entro 15 min) · ritardo medio 3 min» when the
+    /// catalogue names the stop, else «In orario 27 volte su 30 (entro 15 min) · …»; cancellations
+    /// after them. As on Android, the on-time count says the train's own limit.
     static func networkParts(_ stop: StopReliability, at station: String?) -> [String] {
         var parts = ReliabilityTexts.trainParts(stop)
         if let station, !stop.cancelledEveryDay, !parts.isEmpty {
             parts[0] = ReliabilityTexts.arrivalOnTime(stop.onTime, of: stop.samples, at: station)
         }
+        if !stop.cancelledEveryDay, !parts.isEmpty {
+            parts[0] = WeeklyDigestTexts.within(parts[0], minutes: stop.onTimeLimitMinutes)
+        }
         return parts
+    }
+
+    /// «Registrato su questo telefono: in orario 8 volte su 10 (entro 5 min) · soppresso 1 volta».
+    static func recordedLine(_ runs: LocalPunctuality) -> String {
+        let count = String.localizedStringWithFormat(NSLocalizedString("saved.trains.reliability.personal", comment: ""), runs.onTime, runs.runs)
+        var parts = [WeeklyDigestTexts.within(count, minutes: SharedData.PersonalPunctuality.onTimeMinutes)]
+        if runs.cancelled > 0 { parts.append(ReliabilityTexts.cancelled(runs.cancelled)) }
+        return parts.joined(separator: " · ")
     }
 }

@@ -1719,11 +1719,14 @@ class IOSProjectTests(unittest.TestCase):
             (trains, ".navigationDestination(for: FavouriteTrain.self)"),
             (trains, "TrainDetailView(service: train.service, query: query)"),
             (trains, "if let reliability = model.favouriteTrainsReliability {"),
+            # Android's rows: the network, the runs recorded on this iPhone and the trend (FavouritePunctuality.swift).
+            (trains, "FavouriteTrainPunctuality.local(personal.punctuality, trainNumber: train.number, from: from, to: today)"),
+            (trains, "FavouriteTrainPunctuality.trend(personal.punctuality, trainNumber: train.number, today: today)"),
             (trains, "Text(ReliabilityTexts.attribution(reliability.windowEnd))"),
             (trains, '.accessibilityLabel(Text(ReliabilityTexts.spoken(parts.joined(separator: ", "))))'),
             (trains, '.accessibilityAction(named: Text("result.favourite.remove"))'),
             (trains, 'NSLocalizedString("saved.trains.limit_error", comment: "")'),
-            (trains, 'NSLocalizedString("saved.trains.reliability.description", comment: "")'),
+            (trains, 'Text("saved.trains.reliability.summary")'),
         ):
             with self.subTest(fragment=fragment):
                 self.assertIn(fragment, source)

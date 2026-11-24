@@ -26,6 +26,12 @@ public struct LocalBackup: Equatable, Sendable {
     public let punctualityHistory: [PunctualityObservation]?
     public let savedTimetables: [SavedTimetable]?
     public let stationMonitors: [BackupStationMonitor]
+    /// The routes fixed at the top (Android's `pinned`); the routes' order is their manual order.
+    public let pinnedRouteIDs: Set<String>
+    /// «Avvisi pendolare», in Android's form.
+    public let commuterAlerts: [CommuterAlert]
+    /// «Preferenze di viaggio» (Android's `travel`); nil when the file has none, so an import keeps this iPhone's.
+    public let travelPreferences: JourneyPreferences?
 
     public init(
         routes: [SavedRoute],
@@ -34,7 +40,10 @@ public struct LocalBackup: Equatable, Sendable {
         trainNames: [String: String],
         punctualityHistory: [PunctualityObservation]?,
         savedTimetables: [SavedTimetable]?,
-        stationMonitors: [BackupStationMonitor] = []
+        stationMonitors: [BackupStationMonitor] = [],
+        pinnedRouteIDs: Set<String> = [],
+        commuterAlerts: [CommuterAlert] = [],
+        travelPreferences: JourneyPreferences? = nil
     ) {
         self.routes = routes
         self.favouriteStations = favouriteStations
@@ -43,12 +52,17 @@ public struct LocalBackup: Equatable, Sendable {
         self.punctualityHistory = punctualityHistory
         self.savedTimetables = savedTimetables
         self.stationMonitors = stationMonitors
+        self.pinnedRouteIDs = pinnedRouteIDs
+        self.commuterAlerts = commuterAlerts
+        self.travelPreferences = travelPreferences
     }
 
-    /// Anything besides the routes: a file with none of it and no route is not written.
+    /// Anything besides the routes (Android's `carriesMoreThanRoutes`): a file with none of it and
+    /// no route is not written; preferences count only when they are not the defaults.
     public var carriesMoreThanRoutes: Bool {
         !favouriteStations.isEmpty || !favouriteTrains.isEmpty || !(punctualityHistory ?? []).isEmpty
-            || !(savedTimetables ?? []).isEmpty || !stationMonitors.isEmpty
+            || !(savedTimetables ?? []).isEmpty || !stationMonitors.isEmpty || !commuterAlerts.isEmpty
+            || (travelPreferences != nil && travelPreferences != JourneyPreferences())
     }
 }
 
@@ -63,8 +77,9 @@ public enum LocalBackupFailure: Error, Equatable, Sendable {
 /// Android's local backup file (`LocalDataBackupCodec`, `binario-local-backup`, schema 2), written
 /// and read by the iPhone so a backup moves between the two phones. Kind, version and bounds are
 /// `SharedData.LocalBackup`; the saved timetables and the punctuality history keep Android's JSON.
-/// Keys the iPhone does not keep (station monitors, commuter alerts, preferences) are written empty
-/// or left out, and ignored on import. A favourite train adds the iPhone's own optional keys
+/// The commuter alerts (`commuterAlerts`), the travel preferences (`travel`) and the routes' pins and
+/// manual order are Android's keys; the mobility preferences, which the iPhone does not have, are
+/// left out and ignored on import. A favourite train adds the iPhone's own optional keys
 /// (`originId`, `destinationId`, `operator`, `category`, `terminus`) to Android's entry; an entry
 /// without them, written by Android, cannot make an iPhone favourite and is skipped.
 public enum LocalBackupCodec {
@@ -75,8 +90,11 @@ public enum LocalBackupCodec {
         var root: [String: Any] = [
             "schemaVersion": Table.schemaVersion,
             "kind": Table.kind,
-            "routes": backup.routes.map { route -> [String: Any] in
-                ["id": route.id, "name": route.name, "originId": route.origin.id, "destinationId": route.destination.id, "pinned": false]
+            "routes": backup.routes.enumerated().map { index, route -> [String: Any] in
+                [
+                    "id": route.id, "name": route.name, "originId": route.origin.id, "destinationId": route.destination.id,
+                    "pinned": backup.pinnedRouteIDs.contains(route.id), "manualOrder": index,
+                ]
             },
             "favouriteStationIds": backup.favouriteStations.map(\.id).sorted(),
             "monitoredServices": backup.favouriteTrains.map { train -> [String: Any] in
@@ -98,8 +116,24 @@ public enum LocalBackupCodec {
             "stationMonitors": backup.stationMonitors.map { monitor -> [String: Any] in
                 ["stationId": monitor.station.id, "stationName": monitor.station.name, "mode": monitor.mode]
             },
-            "commuterAlerts": [Any](),
+            "commuterAlerts": backup.commuterAlerts.map { alert -> [String: Any] in
+                [
+                    "id": alert.id, "routeLabel": alert.routeLabel, "stationName": alert.stationName, "time": alert.time,
+                    "leadMinutes": alert.leadMinutes, "repeat": alert.repeatMode.rawValue,
+                    "quietHoursEnabled": alert.quietHoursEnabled, "enabled": alert.enabled,
+                ]
+            },
         ]
+        if let travel = backup.travelPreferences {
+            root["travel"] = [
+                "walkingSpeed": travel.walkingSpeed.rawValue,
+                "maxWalkMinutes": travel.maxWalkMinutes,
+                "ranking": travel.ranking.rawValue,
+                "preferredModes": travel.preferredModes.map(\.rawValue).sorted(),
+                "avoidedModes": travel.avoidedModes.map(\.rawValue).sorted(),
+                "wheelchairOnly": travel.wheelchairOnly,
+            ] as [String: Any]
+        }
         var identities: [StationIdentity] = []
         var seen = Set<String>()
         let used = backup.routes.flatMap { [$0.origin, $0.destination] } + backup.favouriteStations
@@ -143,7 +177,8 @@ public enum LocalBackupCodec {
             return StationIdentity(station)
         }
         let listed = root["routes"] as? [Any] ?? []
-        var routes: [SavedRoute] = []
+        var listedRoutes: [(route: SavedRoute, order: Int?)] = []
+        var pinned = Set<String>()
         var routeIDs = Set<String>()
         for item in listed {
             guard let value = item as? [String: Any],
@@ -152,9 +187,20 @@ public enum LocalBackupCodec {
             let id = SavedRoute.routeIdentifier(origin: origin, destination: destination)
             guard routeIDs.insert(id).inserted,
                   let route = try? SavedRoute(id: id, name: String(name.prefix(128)), origin: origin, destination: destination) else { continue }
-            routes.append(route)
-            if routes.count == min(Table.maximumRoutes, SavedRouteCollection.maximumRoutes) { break }
+            let order = PunctualityHistory.jsonInt(value["manualOrder"]).flatMap { (0..<Table.maximumRoutes).contains($0) ? $0 : nil }
+            listedRoutes.append((route: route, order: order))
+            if value["pinned"] as? Bool == true { pinned.insert(id) }
+            if listedRoutes.count == min(Table.maximumRoutes, SavedRouteCollection.maximumRoutes) { break }
         }
+        // Android's manual order first, then the routes without one in the file's order.
+        let routes = listedRoutes.enumerated().sorted { left, right in
+            switch (left.element.order, right.element.order) {
+            case let (l?, r?): return l != r ? l < r : left.offset < right.offset
+            case (_?, nil): return true
+            case (nil, _?): return false
+            case (nil, nil): return left.offset < right.offset
+            }
+        }.map { $0.element.route }
         // A file that lists routes of which none is valid stays refused, as on Android.
         guard !routes.isEmpty || listed.isEmpty else { return .failure(.unreadable) }
         var favouriteStations: [StationIdentity] = []
@@ -186,6 +232,27 @@ public enum LocalBackupCodec {
                   !monitors.contains(where: { $0.station.id == station.id }) else { continue }
             monitors.append(BackupStationMonitor(station: station, mode: mode))
         }
+        var alerts: [CommuterAlert] = []
+        for item in root["commuterAlerts"] as? [Any] ?? [] {
+            guard let value = item as? [String: Any], let id = text(value["id"]), let stationName = text(value["stationName"]),
+                  let time = (value["time"] as? String).flatMap(PlannedLocalTime.init(hhmm:)),
+                  let repeatMode = (value["repeat"] as? String).flatMap(CommuterAlertRepeat.init(rawValue:)),
+                  !alerts.contains(where: { $0.id == id }) else { continue }
+            alerts.append(CommuterAlert(
+                id: id,
+                routeLabel: (value["routeLabel"] as? String) ?? "",
+                stationName: stationName,
+                time: String(format: "%02d:%02d", time.hour, time.minute),
+                leadMinutes: PunctualityHistory.jsonInt(value["leadMinutes"]) ?? 15,
+                repeatMode: repeatMode,
+                quietHoursEnabled: value["quietHoursEnabled"] as? Bool ?? false,
+                enabled: value["enabled"] as? Bool ?? true
+            ))
+        }
+        let travel = (root["travel"] as? [String: Any]).flatMap { value -> JourneyPreferences? in
+            guard let data = try? JSONSerialization.data(withJSONObject: value) else { return nil }
+            return try? JSONDecoder().decode(JourneyPreferences.self, from: data)
+        }
         let history = (root["punctualityHistory"] as? [Any]).map { PunctualityHistory.observations(fromJSON: $0) }
         let timetables = (root["savedTimetables"] as? [Any]).map { SavedTimetableCodec.timetables(fromJSON: $0) }
         let backup = LocalBackup(
@@ -195,7 +262,10 @@ public enum LocalBackupCodec {
             trainNames: names,
             punctualityHistory: history,
             savedTimetables: timetables,
-            stationMonitors: Array(monitors.prefix(12))
+            stationMonitors: Array(monitors.prefix(12)),
+            pinnedRouteIDs: pinned.intersection(routes.map(\.id)),
+            commuterAlerts: Array(alerts.prefix(CommuterAlert.maximumAlerts)),
+            travelPreferences: travel
         )
         guard !routes.isEmpty || backup.carriesMoreThanRoutes else { return .failure(.nothing) }
         return .success(backup)

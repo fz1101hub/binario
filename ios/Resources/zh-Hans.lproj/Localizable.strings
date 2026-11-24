@@ -257,6 +257,10 @@
 "departures.direct.search_trains" = "搜索从 %1$@ 到 %2$@ 的列车";
 "departures.direct.today" = "今天 %1$@";
 "departures.direct.close" = "关闭";
+"saved.trains.reliability.summary" = "最近 30 天在路网上以及本手机记录的车次中的准点情况；趋势将最近 4 周与之前 4 周进行比较。点按列车即可打开。";
+"saved.trains.reliability.worse" = "正在变差";
+"saved.trains.reliability.better" = "正在改善";
+"saved.trains.reliability.no_data" = "暂无数据";
 "saved.timetables.solutions" = "%1$lld 个方案";
 "departures.types.hidden_trains" = "已隐藏 %1$lld 趟列车";
 "result.punctuality.observations" = "本设备上已记录 %1$lld 次观测";
@@ -267,6 +271,7 @@
 "saved.digest.network" = "路网最近 %1$lld 天：准点 %2$lld%%";
 "departures.direct.train_count" = "%1$lld 班列车";
 "departures.direct.run_count" = "%1$lld 班";
+"saved.trains.reliability.personal" = "本手机记录：%2$lld 次中准点 %1$lld 次";
 "planner.title" = "规划";
 "planner.intro.title" = "搜索路线";
 "planner.intro.body" = "从精选目录中选择出发站和到达站。所含时刻表为计划时刻表，覆盖下方列出的线路网：Trenitalia、Italo、区域铁路和跨境列车，包括 Trenitalia 和 Italo 的巴士；不含地铁和有轨电车，没有时刻表的车站会在搜索中标出。";
@@ -590,7 +595,6 @@
 "result.favourite.add" = "保存到“我的列车”";
 "result.favourite.remove" = "从“我的列车”中移除";
 "saved.trains.reliability.title" = "我的列车可靠性";
-"saved.trains.reliability.description" = "最近 %1$lld 天，按各列车到达终点站计算。点按列车即可打开。";
 "tab.departures" = "出发";
 "departures.title" = "出发";
 "departures.station" = "车站";

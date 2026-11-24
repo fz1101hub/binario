@@ -257,6 +257,10 @@
 "departures.direct.search_trains" = "%1$@에서 %2$@(으)로 가는 열차 검색";
 "departures.direct.today" = "오늘 %1$@";
 "departures.direct.close" = "닫기";
+"saved.trains.reliability.summary" = "최근 30일 동안 네트워크 전체와 이 휴대전화에 기록된 운행 기준입니다. 추세는 최근 4주를 그 이전 4주와 비교합니다. 열차를 탭하면 열립니다.";
+"saved.trains.reliability.worse" = "나빠지는 중";
+"saved.trains.reliability.better" = "좋아지는 중";
+"saved.trains.reliability.no_data" = "아직 데이터 없음";
 "saved.timetables.solutions" = "여정 %1$lld개";
 "departures.types.hidden_trains" = "숨겨진 열차 %1$lld대";
 "result.punctuality.observations" = "이 기기에 기록된 관측 %1$lld건";
@@ -267,6 +271,7 @@
 "saved.digest.network" = "네트워크 최근 %1$lld일: 정시 %2$lld%%";
 "departures.direct.train_count" = "열차 %1$lld편";
 "departures.direct.run_count" = "%1$lld회 운행";
+"saved.trains.reliability.personal" = "이 휴대전화의 기록: %2$lld회 중 %1$lld회 정시";
 "planner.title" = "계획";
 "planner.intro.title" = "경로 검색";
 "planner.intro.body" = "엄선된 카탈로그에서 출발역과 도착역을 선택하세요. 포함된 시간표는 계획 시간표이며 아래에 나열된 노선을 다룹니다: Trenitalia, Italo, 지역 철도와 국경 간 열차(Trenitalia와 Italo의 버스 포함). 지하철과 트램은 포함되지 않으며, 시간표가 없는 역은 검색에서 표시됩니다.";
@@ -590,7 +595,6 @@
 "result.favourite.add" = "내 열차에 저장";
 "result.favourite.remove" = "내 열차에서 삭제";
 "saved.trains.reliability.title" = "내 열차 신뢰도";
-"saved.trains.reliability.description" = "최근 %1$lld일, 각 열차의 종착역 도착 기준입니다. 열차를 탭하면 열립니다.";
 "tab.departures" = "출발";
 "departures.title" = "출발";
 "departures.station" = "역";

@@ -257,6 +257,10 @@
 "departures.direct.search_trains" = "ابحث عن القطارات من %1$@ إلى %2$@";
 "departures.direct.today" = "اليوم %1$@";
 "departures.direct.close" = "إغلاق";
+"saved.trains.reliability.summary" = "آخر 30 يومًا، على الشبكة وفي الرحلات المسجّلة على هذا الهاتف؛ يقارن الاتجاه آخر 4 أسابيع بالأسابيع الأربعة السابقة. المس قطارًا لفتحه.";
+"saved.trains.reliability.worse" = "يتراجع";
+"saved.trains.reliability.better" = "يتحسّن";
+"saved.trains.reliability.no_data" = "لا توجد بيانات بعد";
 "saved.timetables.solutions" = "%1$lld رحلة";
 "departures.types.hidden_trains" = "%1$lld قطار مخفي";
 "result.punctuality.observations" = "%1$lld ملاحظة مسجّلة على هذا الجهاز";
@@ -267,6 +271,7 @@
 "saved.digest.network" = "آخر %1$lld يوم على الشبكة: %2$lld%% في الموعد";
 "departures.direct.train_count" = "%1$lld قطار";
 "departures.direct.run_count" = "%1$lld رحلة";
+"saved.trains.reliability.personal" = "مسجّل على هذا الهاتف: في الموعد %1$lld مرة من أصل %2$lld";
 "planner.title" = "خطِّط";
 "planner.intro.title" = "ابحث عن مسار";
 "planner.intro.body" = "اختر محطة الانطلاق والوجهة من الكتالوج المنسَّق. المواعيد المضمَّنة مجدولة وتغطي الشبكات المدرجة أدناه: Trenitalia وItalo والسكك الحديدية الإقليمية والقطارات العابرة للحدود، مع حافلات Trenitalia وItalo؛ المترو والترام غير مضمَّنين، ويُشار في البحث إلى المحطات التي لا تتوفر لها مواعيد.";
@@ -590,7 +595,6 @@
 "result.favourite.add" = "حفظ في قطاراتي";
 "result.favourite.remove" = "إزالة من قطاراتي";
 "saved.trains.reliability.title" = "موثوقية قطاراتي";
-"saved.trains.reliability.description" = "آخر %1$lld يوم، عند الوصول إلى المحطة الأخيرة لكل قطار. المس قطارًا لفتحه.";
 "tab.departures" = "المغادرات";
 "departures.title" = "المغادرات";
 "departures.station" = "المحطة";

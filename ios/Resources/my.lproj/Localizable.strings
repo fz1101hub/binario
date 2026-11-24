@@ -257,6 +257,10 @@
 "departures.direct.search_trains" = "%1$@ မှ %2$@ သို့ ရထားများ ရှာရန်";
 "departures.direct.today" = "ယနေ့ %1$@";
 "departures.direct.close" = "ပိတ်ရန်";
+"saved.trains.reliability.summary" = "နောက်ဆုံး ရက် 30၊ ကွန်ရက်ပေါ်တွင်နှင့် ဤဖုန်းတွင် မှတ်တမ်းတင်ထားသော ခရီးစဉ်များတွင်။ လမ်းကြောင်းသည် နောက်ဆုံး 4 ပတ်ကို ယခင် 4 ပတ်နှင့် နှိုင်းယှဉ်သည်။ ဖွင့်ရန် ရထားကို တို့ပါ။";
+"saved.trains.reliability.worse" = "ပိုဆိုးလာနေသည်";
+"saved.trains.reliability.better" = "ပိုကောင်းလာနေသည်";
+"saved.trains.reliability.no_data" = "ဒေတာ မရှိသေးပါ";
 "saved.timetables.solutions" = "ခရီးစဉ် %1$lld ခု";
 "departures.types.hidden_trains" = "ဝှက်ထားသော ရထား %1$lld စီး";
 "result.punctuality.observations" = "ဤစက်ပေါ်တွင် မှတ်တမ်း %1$lld ခု တင်ထားသည်";
@@ -267,6 +271,7 @@
 "saved.digest.network" = "ကွန်ရက်ပေါ်တွင် ပြီးခဲ့သော ရက် %1$lld: အချိန်မှန် %2$lld%%";
 "departures.direct.train_count" = "ရထား %1$lld စင်း";
 "departures.direct.run_count" = "%1$lld ကြိမ်";
+"saved.trains.reliability.personal" = "ဤဖုန်းတွင် မှတ်တမ်းတင်ထားသည်- %2$lld ကြိမ်တွင် %1$lld ကြိမ် အချိန်မှန်";
 "planner.title" = "စီစဉ်ရန်";
 "planner.intro.title" = "လမ်းကြောင်း ရှာရန်";
 "planner.intro.body" = "ရွေးချယ်စီစဉ်ထားသော စာရင်းမှ စထွက်ဘူတာနှင့် ဦးတည်ရာဘူတာကို ရွေးပါ။ ပါဝင်သော အချိန်ဇယားများမှာ စီစဉ်ထားသော အချိန်များဖြစ်ပြီး အောက်တွင်ဖော်ပြထားသော ကွန်ရက်များ ပါဝင်သည်- Trenitalia၊ Italo၊ ဒေသတွင်း ရထားလမ်းများနှင့် နယ်စပ်ဖြတ်ကျော် ရထားများ (Trenitalia နှင့် Italo ဘတ်စ်ကားများ အပါအဝင်)။ မြေအောက်ရထားနှင့် ဓာတ်ရထား မပါဝင်ဘဲ အချိန်ဇယားမရှိသော ဘူတာများကို ရှာဖွေမှုတွင် အမှတ်အသားပြထားသည်။";
@@ -590,7 +595,6 @@
 "result.favourite.add" = "ကျွန်ုပ်၏ ရထားများတွင် သိမ်းရန်";
 "result.favourite.remove" = "ကျွန်ုပ်၏ ရထားများမှ ဖယ်ရှားရန်";
 "saved.trains.reliability.title" = "ကျွန်ုပ်၏ ရထားများ၏ ယုံကြည်စိတ်ချရမှု";
-"saved.trains.reliability.description" = "နောက်ဆုံး %1$lld ရက်အတွင်း၊ ရထားတစ်စီးစီ၏ နောက်ဆုံးမှတ်တိုင်သို့ ရောက်ချိန်။ ဖွင့်ရန် ရထားတစ်စီးကို တို့ပါ။";
 "tab.departures" = "ထွက်ခွာမှု";
 "departures.title" = "ထွက်ခွာမှု";
 "departures.station" = "ဘူတာ";

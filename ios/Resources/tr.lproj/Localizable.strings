@@ -257,6 +257,10 @@
 "departures.direct.search_trains" = "%1$@ → %2$@ trenlerini ara";
 "departures.direct.today" = "Bugün %1$@";
 "departures.direct.close" = "Kapat";
+"saved.trains.reliability.summary" = "Son 30 gün, ağda ve bu telefonda kaydedilen seferlerde; eğilim son 4 haftayı önceki 4 haftayla karşılaştırır. Açmak için bir trene dokunun.";
+"saved.trains.reliability.worse" = "Kötüleşiyor";
+"saved.trains.reliability.better" = "İyileşiyor";
+"saved.trains.reliability.no_data" = "Henüz veri yok";
 "saved.timetables.solutions" = "%1$lld seçenek";
 "departures.types.hidden_trains" = "%1$lld tren gizlendi";
 "result.punctuality.observations" = "Bu cihazda %1$lld gözlem kaydedildi";
@@ -267,6 +271,7 @@
 "saved.digest.network" = "ağda son %1$lld gün: %%%2$lld zamanında";
 "departures.direct.train_count" = "%1$lld tren";
 "departures.direct.run_count" = "%1$lld sefer";
+"saved.trains.reliability.personal" = "Bu telefonda kaydedilen: %2$lld seferin %1$lld tanesinde zamanında";
 "planner.title" = "Planla";
 "planner.intro.title" = "Güzergâh ara";
 "planner.intro.body" = "Kalkış ve varış istasyonunu seçilmiş katalogdan belirleyin. Dahil edilen tarifeler planlı tarifelerdir ve aşağıda listelenen ağları kapsar: Trenitalia, Italo, bölgesel demiryolları ve sınır ötesi trenler, Trenitalia ve Italo otobüsleri dahil; metro ve tramvay dahil değildir; tarifesi olmayan istasyonlar aramada işaretlenir.";
@@ -590,7 +595,6 @@
 "result.favourite.add" = "Trenlerim'e kaydet";
 "result.favourite.remove" = "Trenlerim'den kaldır";
 "saved.trains.reliability.title" = "Trenlerimin güvenilirliği";
-"saved.trains.reliability.description" = "Son %1$lld gün, her trenin son durağına varışta. Açmak için bir trene dokunun.";
 "tab.departures" = "Kalkışlar";
 "departures.title" = "Kalkışlar";
 "departures.station" = "İstasyon";

@@ -257,6 +257,10 @@
 "departures.direct.search_trains" = "Tìm tàu từ %1$@ đến %2$@";
 "departures.direct.today" = "Hôm nay %1$@";
 "departures.direct.close" = "Đóng";
+"saved.trains.reliability.summary" = "30 ngày gần nhất, trên mạng lưới và trong các chuyến được ghi lại trên điện thoại này; xu hướng so sánh 4 tuần gần nhất với 4 tuần trước đó. Nhấn vào một tàu để mở.";
+"saved.trains.reliability.worse" = "Đang kém đi";
+"saved.trains.reliability.better" = "Đang cải thiện";
+"saved.trains.reliability.no_data" = "Chưa có dữ liệu";
 "saved.timetables.solutions" = "%1$lld phương án";
 "departures.types.hidden_trains" = "Đã ẩn %1$lld tàu";
 "result.punctuality.observations" = "Đã ghi nhận %1$lld lần trên thiết bị này";
@@ -267,6 +271,7 @@
 "saved.digest.network" = "%1$lld ngày qua trên mạng lưới: %2$lld%% đúng giờ";
 "departures.direct.train_count" = "%1$lld chuyến tàu";
 "departures.direct.run_count" = "%1$lld chuyến";
+"saved.trains.reliability.personal" = "Ghi trên điện thoại này: đúng giờ %1$lld trên %2$lld lần";
 "planner.title" = "Lên kế hoạch";
 "planner.intro.title" = "Tìm tuyến";
 "planner.intro.body" = "Chọn ga đi và ga đến từ danh mục đã tuyển chọn. Lịch trình đi kèm là lịch theo kế hoạch và bao gồm các mạng lưới liệt kê bên dưới: Trenitalia, Italo, đường sắt khu vực và tàu xuyên biên giới, kể cả xe buýt của Trenitalia và Italo; không bao gồm tàu điện ngầm và tàu điện mặt đất, và các ga không có lịch trình được đánh dấu khi tìm kiếm.";
@@ -590,7 +595,6 @@
 "result.favourite.add" = "Lưu vào Tàu của tôi";
 "result.favourite.remove" = "Xóa khỏi Tàu của tôi";
 "saved.trains.reliability.title" = "Độ tin cậy các tàu của tôi";
-"saved.trains.reliability.description" = "%1$lld ngày gần nhất, khi đến ga cuối của mỗi tàu. Nhấn vào một tàu để mở.";
 "tab.departures" = "Tàu đi";
 "departures.title" = "Tàu đi";
 "departures.station" = "Ga";

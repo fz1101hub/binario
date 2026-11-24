@@ -168,10 +168,13 @@ enum PersonalTexts {
     /// the live values when they were shown.
     static func timetableRow(_ service: TrainService, live: StationBoardLiveStatus?, source: String) -> TimetableRow {
         let label = service.isTrain ? ReliableAlternatives.trainLabel(service) : VehicleTexts.rowLabel(service)
+        // Android's `JourneyTimes`: the arrival and duration of a train of the bundled timetable.
+        let times = arrivalAndDuration(departure: service.departureDate, arrival: service.arrivalDate)
         return TimetableRow(
             departure: service.scheduledDeparture,
-            arrival: nil,
-            durationMinutes: nil,
+            arrival: times?.arrival,
+            arrivalDayOffset: times?.dayOffset ?? 0,
+            durationMinutes: times?.minutes,
             trains: label,
             changes: 0,
             platform: live?.platform ?? service.platform,
@@ -179,6 +182,33 @@ enum PersonalTexts {
             source: live.map { $0.sourceLabel } ?? source,
             fetchedAt: live?.observedAt,
             scheduledOnly: live == nil
+        )
+    }
+
+    /// «10:12», the days after the departure's (Italian time) and the minutes between the two.
+    static func arrivalAndDuration(departure: Date?, arrival: Date?) -> (arrival: String, dayOffset: Int, minutes: Int)? {
+        guard let departure, let arrival, arrival >= departure,
+              let from = ItalianWallClock.date(of: departure), let to = ItalianWallClock.date(of: arrival) else { return nil }
+        return (JourneyTexts.time(arrival), max(0, to.daysSinceEpoch - from.daysSinceEpoch), Int(arrival.timeIntervalSince(departure) / 60))
+    }
+
+    /// A journey with changes as a saved or shared row (Android's `journeyTimetableRow`): every vehicle,
+    /// the changes and where they happen with the wait, the offline timetable as its source.
+    static func journeyRow(_ row: JourneyOptionRow) -> TimetableRow {
+        let times = arrivalAndDuration(departure: row.departure, arrival: row.arrival)
+        return TimetableRow(
+            departure: JourneyTexts.time(row.departure),
+            arrival: times?.arrival ?? JourneyTexts.time(row.arrival),
+            arrivalDayOffset: times?.dayOffset ?? 0,
+            durationMinutes: row.durationMinutes,
+            trains: JourneyTexts.trainsLabel(row),
+            changes: row.changes,
+            transfers: row.transfers.map { JourneyTexts.transferAt($0.stationLabel) + " · " + JourneyTexts.wait($0.waitMinutes) },
+            platform: nil,
+            scheduledPlatform: nil,
+            source: NSLocalizedString("result.journey.source_offline", comment: ""),
+            fetchedAt: nil,
+            scheduledOnly: row.live.isEmpty
         )
     }
 

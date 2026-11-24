@@ -246,4 +246,59 @@ final class PersonalFeaturesContractTests: XCTestCase {
         XCTAssertNil(fromAndroid.savedTimetables)
         XCTAssertEqual(LocalBackupCodec.decode(Data("{\"kind\":\"other\"}".utf8)) { _ in nil }, .failure(.unreadable))
     }
+
+    func testTheBackupCarriesCommuterAlertsTravelPreferencesPinsAndOrderAsAndroid() throws {
+        let milano = StationIdentity(id: "S01700", name: "Milano Centrale", railwayCode: "S01700")
+        let pavia = StationIdentity(id: "S01860", name: "Pavia", railwayCode: "S01860")
+        let first = try SavedRoute(id: SavedRoute.routeIdentifier(origin: milano, destination: pavia), name: "Casa", origin: milano, destination: pavia)
+        let second = try SavedRoute(id: SavedRoute.routeIdentifier(origin: pavia, destination: milano), name: "Ritorno", origin: pavia, destination: milano)
+        let alert = CommuterAlert(id: "a1", routeLabel: "Casa", stationName: "Milano Centrale", time: "07:42", leadMinutes: 10,
+                                  repeatMode: .weekdays, quietHoursEnabled: true)
+        let travel = JourneyPreferences(walkingSpeed: .slow, ranking: .fewestChanges, avoidedModes: [.highSpeed], wheelchairOnly: true)
+        let backup = LocalBackup(
+            routes: [first, second], favouriteStations: [], favouriteTrains: [], trainNames: [:],
+            punctualityHistory: nil, savedTimetables: nil, pinnedRouteIDs: [second.id], commuterAlerts: [alert], travelPreferences: travel
+        )
+        let data = try LocalBackupCodec.encode(backup) { Station(id: $0.id, name: $0.name, railwayCode: $0.railwayCode) }.get()
+        let root = try XCTUnwrap(try JSONSerialization.jsonObject(with: data) as? [String: Any])
+        // Android's keys and values.
+        let alerts = try XCTUnwrap(root["commuterAlerts"] as? [[String: Any]])
+        XCTAssertEqual(alerts.first?["repeat"] as? String, "WEEKDAYS")
+        XCTAssertEqual(alerts.first?["time"] as? String, "07:42")
+        let travelJSON = try XCTUnwrap(root["travel"] as? [String: Any])
+        XCTAssertEqual(travelJSON["walkingSpeed"] as? String, "SLOW")
+        XCTAssertEqual(travelJSON["ranking"] as? String, "FEWEST_CHANGES")
+        XCTAssertEqual(travelJSON["avoidedModes"] as? [String], ["HIGH_SPEED"])
+        let routes = try XCTUnwrap(root["routes"] as? [[String: Any]])
+        XCTAssertEqual(routes.map { $0["pinned"] as? Bool }, [false, true])
+        XCTAssertEqual(routes.map { $0["manualOrder"] as? Int }, [0, 1])
+
+        let read = try LocalBackupCodec.decode(data) { _ in nil }.get()
+        XCTAssertEqual(read.commuterAlerts, [alert])
+        XCTAssertEqual(read.travelPreferences, travel)
+        XCTAssertEqual(read.pinnedRouteIDs, [second.id])
+        XCTAssertEqual(read.routes.map(\.name), ["Casa", "Ritorno"])
+
+        // Android's manual order wins over the file's order; an Android alert reads as its own.
+        let android = """
+        {"schemaVersion":2,"kind":"binario-local-backup",
+         "routes":[{"id":"r1","name":"Lavoro","originId":"S01700","destinationId":"S01860","pinned":false,"manualOrder":1},
+                   {"id":"r2","name":"Casa","originId":"S01860","destinationId":"S01700","pinned":true,"manualOrder":0}],
+         "favouriteStationIds":[],"monitoredServices":[],"stationMonitors":[],
+         "commuterAlerts":[{"id":"x","routeLabel":"Lavoro","stationName":"Pavia","time":"18:05","leadMinutes":15,"repeat":"DAILY","quietHoursEnabled":false,"enabled":false},
+                           {"id":"bad","routeLabel":"","stationName":"Pavia","time":"25:00","leadMinutes":15,"repeat":"DAILY","quietHoursEnabled":false,"enabled":true}],
+         "stations":[{"id":"S01700","name":"Milano Centrale","city":"Milano"},{"id":"S01860","name":"Pavia","city":"Pavia"}],
+         "travel":{"walkingSpeed":"FAST","maxWalkMinutes":7,"ranking":"UNKNOWN","preferredModes":["REGIONAL"],"avoidedModes":[],"wheelchairOnly":false},
+         "mobility":{"transferMarginMinutes":10,"stepFreePreferred":false,"compactTimetablePreferred":false}}
+        """
+        let fromAndroid = try LocalBackupCodec.decode(Data(android.utf8)) { _ in nil }.get()
+        XCTAssertEqual(fromAndroid.routes.map(\.name), ["Casa", "Lavoro"])
+        XCTAssertEqual(fromAndroid.pinnedRouteIDs.count, 1)
+        XCTAssertEqual(fromAndroid.commuterAlerts.map(\.id), ["x"])
+        XCTAssertEqual(fromAndroid.commuterAlerts.first?.repeatMode, .daily)
+        XCTAssertEqual(fromAndroid.commuterAlerts.first?.enabled, false)
+        XCTAssertEqual(fromAndroid.travelPreferences?.walkingSpeed, .fast)
+        XCTAssertEqual(fromAndroid.travelPreferences?.ranking, .fastest)
+        XCTAssertEqual(fromAndroid.travelPreferences?.preferredModes, [.regional])
+    }
 }

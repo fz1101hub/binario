@@ -2400,3 +2400,149 @@ extension SQLiteGTFSJourneyRepository {
         }
     }
 }
+
+// MARK: - «Treno» in the bundled timetable
+
+/// A run of a train number in the bundled timetable on one service day (Android's static
+/// `TrainNumberMatch`, «Orari ferroviari inclusi»): from its first stop to its last.
+public struct ScheduledNumberRun: Equatable, Identifiable, Sendable {
+    /// Listed from the first stop, with the planner's naming; its id names the trip and the day.
+    public let service: TrainService
+    public let origin: StationIdentity
+    public let destination: StationIdentity
+    public let departure: Date
+    public let arrival: Date?
+    public let attribution: String
+
+    public var id: String { service.id }
+}
+
+extension SQLiteGTFSJourneyRepository {
+    /// Runs of one number shown at most (a number runs a few times a day at most).
+    private static let maximumNumberRuns = 24
+
+    /// The runs numbered `number` on the service day `date` in the bundled index and the installed
+    /// foreign timetables (Android's `EmbeddedGtfsRouteAdapter.searchByNumber`); a train two packs
+    /// publish is listed once. Scheduled times only; empty when no pack has the number that day.
+    public func scheduledRuns(numbered number: String, on date: PlannedLocalDate) async -> [ScheduledNumberRun] {
+        let key = NetworkReliability.numberKey(number)
+        guard !key.isEmpty else { return [] }
+        var files: [(url: URL, excluded: [String])] = [(url: databaseURL, excluded: foreignFiles.map(\.sourceID))]
+        for file in foreignFiles { files.append((url: file.url, excluded: [])) }
+        var runs: [ScheduledNumberRun] = []
+        for file in files {
+            runs += (try? Self.numberRuns(databaseURL: file.url, excluded: file.excluded, key: key, date: date)) ?? []
+        }
+        var kept: [ScheduledNumberRun] = []
+        for run in runs.sorted(by: { $0.departure < $1.departure }) {
+            let copy = kept.contains {
+                $0.service.number == run.service.number && abs($0.departure.timeIntervalSince(run.departure)) <= 5 * 60
+            }
+            if !copy { kept.append(run) }
+        }
+        return Array(kept.prefix(Self.maximumNumberRuns))
+    }
+
+    private static func numberRuns(databaseURL: URL, excluded: [String], key: String, date: PlannedLocalDate) throws -> [ScheduledNumberRun] {
+        let database = try SQLiteDatabase(readOnlyURL: databaseURL)
+        database.excludedSourceIDs = excluded
+        _ = try validatedOnce(database, at: databaseURL)
+        let statement = try database.statement(
+            """
+            SELECT t.id, t.external_id, t.short_name, r.short_name, r.long_name, r.route_type, a.name, a.timezone,
+                   p.source_id, p.attribution, svc.start_date, svc.day_count, svc.active_days, t.bikes_allowed
+            FROM trip AS t
+            JOIN route AS r ON r.id = t.route_id
+            JOIN agency AS a ON a.id = r.agency_id
+            JOIN pack AS p ON p.id = t.pack_id
+            JOIN service AS svc ON svc.id = t.service_id
+            WHERE instr(t.short_name, ?) > 0\(database.excludedPacksClause("p.source_id"))
+            ORDER BY t.id
+            LIMIT ?
+            """
+        )
+        var binding: Int32 = 1
+        try statement.bind(key, at: binding); binding += 1
+        try database.bindExcludedPacks(statement, from: &binding)
+        try statement.bind(Int64(maximumCandidateRows + 1), at: binding)
+        var runs: [ScheduledNumberRun] = []
+        var rows = 0
+        while try statement.step() {
+            rows += 1
+            guard rows <= maximumCandidateRows else { throw SQLiteGTFSFailure.limitExceeded }
+            guard let externalTripID = statement.text(at: 1), !externalTripID.isEmpty,
+                  let agencyName = statement.text(at: 6), let zoneName = statement.text(at: 7), let timeZone = TimeZone(identifier: zoneName),
+                  let sourceID = statement.text(at: 8), !sourceID.isEmpty,
+                  let attribution = statement.text(at: 9)?.normalizedWhitespace,
+                  let activeDays = statement.blob(at: 12) else { continue }
+            let calendar = serviceCalendar(timeZone: timeZone)
+            guard let serviceDay = calendar.date(from: DateComponents(year: date.year, month: date.month, day: date.day)),
+                  serviceRuns(serviceDay: serviceDay, startDate: statement.int(at: 10), dayCount: statement.int(at: 11),
+                              activeDays: activeDays, calendar: calendar) else { continue }
+            let operatorName = bounded(TimetableNaming.operatorName(agencyName, sourceID: sourceID), maximum: 64)
+            guard let vehicle = timetableVehicle(routeType: statement.int(at: 5), sourceID: sourceID, operatorName: operatorName, route: statement.text(at: 3)),
+                  !vehicle.isUrban else { continue }
+            let naming = serviceNaming(vehicle: vehicle, trip: statement.text(at: 2), route: statement.text(at: 3),
+                                       longName: statement.text(at: 4), type: statement.int(at: 5), externalTripID: externalTripID)
+            guard naming.hasTrainNumber, NetworkReliability.numberKey(naming.number) == key else { continue }
+            let tripID = statement.int(at: 0)
+            guard let first = try endStop(database: database, tripID: tripID, last: false),
+                  let last = try endStop(database: database, tripID: tripID, last: true),
+                  last.stop.sequence > first.stop.sequence else { continue }
+            let departure = try gtfsDate(serviceDay: serviceDay, seconds: TimeInterval(first.seconds), calendar: calendar)
+            let arrival = try gtfsDate(serviceDay: serviceDay, seconds: TimeInterval(last.seconds), calendar: calendar)
+            let time = timeString(departure, timeZone: timeZone)
+            let destination = bounded(last.stop.name, maximum: 96)
+            let service = TrainService(
+                id: "\(sourceID):\(externalTripID):\(encodedDate(serviceDay, calendar: calendar)):\(first.seconds)",
+                number: naming.number,
+                operatorName: operatorName,
+                category: naming.category,
+                destination: destination,
+                scheduledDeparture: time,
+                expectedDeparture: time,
+                status: OperationalState.programmed.rawValue,
+                platform: nil,
+                delayMinutes: 0,
+                bikesAllowed: bikes(statement.int(at: 13)),
+                hasTrainNumber: true,
+                vehicle: vehicle
+            )
+            runs.append(ScheduledNumberRun(
+                service: service,
+                origin: terminusIdentity(first.stop, sourceID: sourceID, name: bounded(first.stop.name, maximum: 96)),
+                destination: terminusIdentity(last.stop, sourceID: sourceID, name: destination),
+                departure: departure,
+                arrival: arrival,
+                attribution: String(attribution.prefix(96))
+            ))
+        }
+        return runs
+    }
+
+    /// The first stop a trip leaves from, or the last it reaches, with its GTFS seconds there.
+    private static func endStop(database: SQLiteDatabase, tripID: Int64, last: Bool) throws -> (stop: TripLastStop, seconds: Int64)? {
+        let column = last ? "COALESCE(st.arrival_seconds, st.departure_seconds)" : "COALESCE(st.departure_seconds, st.arrival_seconds)"
+        let statement = try database.statement(
+            """
+            SELECT st.stop_id, st.stop_sequence, s.name, s.external_id, s.catalog_station_id, s.railway_code, \(column)
+            FROM stop_time AS st
+            JOIN stop AS s ON s.id = st.stop_id
+            WHERE st.trip_id = ? AND \(column) IS NOT NULL
+            ORDER BY st.stop_sequence \(last ? "DESC" : "ASC")
+            LIMIT 1
+            """
+        )
+        try statement.bind(tripID, at: 1)
+        guard try statement.step() else { return nil }
+        guard let name = statement.text(at: 2)?.normalizedWhitespace, !name.isEmpty,
+              let externalID = statement.text(at: 3), !externalID.isEmpty else { return nil }
+        let seconds = statement.int(at: 6)
+        guard seconds >= 0, seconds <= Int64(maximumGTFSSeconds) else { return nil }
+        let stop = TripLastStop(
+            stopID: statement.int(at: 0), sequence: statement.int(at: 1), name: name, externalID: externalID,
+            catalogStationID: statement.text(at: 4)?.nonEmpty, railwayCode: statement.text(at: 5)?.nonEmpty
+        )
+        return (stop: stop, seconds: seconds)
+    }
+}

@@ -257,6 +257,10 @@
 "departures.direct.search_trains" = "Züge von %1$@ nach %2$@ suchen";
 "departures.direct.today" = "Heute %1$@";
 "departures.direct.close" = "Schließen";
+"saved.trains.reliability.summary" = "Letzte 30 Tage, im Netz und bei den auf diesem Telefon erfassten Fahrten; der Trend vergleicht die letzten 4 Wochen mit den 4 davor. Tippe auf einen Zug, um ihn zu öffnen.";
+"saved.trains.reliability.worse" = "Verschlechtert sich";
+"saved.trains.reliability.better" = "Verbessert sich";
+"saved.trains.reliability.no_data" = "Noch keine Daten";
 "saved.timetables.solutions" = "%1$lld Verbindungen";
 "departures.types.hidden_trains" = "%1$lld Züge ausgeblendet";
 "result.punctuality.observations" = "%1$lld Beobachtungen auf diesem Gerät erfasst";
@@ -267,6 +271,7 @@
 "saved.digest.network" = "letzte %1$lld Tage im Netz: %2$lld%% pünktlich";
 "departures.direct.train_count" = "%1$lld Züge";
 "departures.direct.run_count" = "%1$lld Fahrten";
+"saved.trains.reliability.personal" = "Auf diesem Telefon erfasst: %1$lld von %2$lld Mal pünktlich";
 "planner.title" = "Planen";
 "planner.intro.title" = "Strecke suchen";
 "planner.intro.body" = "Wählen Sie Start und Ziel aus dem kuratierten Katalog. Die enthaltenen Fahrpläne sind Plandaten und decken die unten aufgeführten Netze ab: Trenitalia, Italo, die Regionalbahnen und die grenzüberschreitenden Züge, mit den Bussen von Trenitalia und Italo; Metro und Tram sind nicht enthalten, Bahnhöfe ohne Fahrplan werden in der Suche gekennzeichnet.";
@@ -590,7 +595,6 @@
 "result.favourite.add" = "In „Meine Züge“ speichern";
 "result.favourite.remove" = "Aus „Meine Züge“ entfernen";
 "saved.trains.reliability.title" = "Zuverlässigkeit meiner Züge";
-"saved.trains.reliability.description" = "Letzte %1$lld Tage, bei Ankunft an der letzten Haltestelle jedes Zuges. Tippen Sie auf einen Zug, um ihn zu öffnen.";
 "tab.departures" = "Abfahrten";
 "departures.title" = "Abfahrten";
 "departures.station" = "Bahnhof";
