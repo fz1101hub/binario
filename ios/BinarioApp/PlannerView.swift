@@ -3,6 +3,8 @@ import BinarioKit
 
 struct PlannerView: View {
     @EnvironmentObject private var model: AppModel
+    /// The journeys with changes, searched next to the direct trains (JourneysModel.swift).
+    @EnvironmentObject private var journeys: JourneysModel
     @EnvironmentObject private var notices: RailNoticesModel
     @Environment(\.scenePhase) private var scenePhase
     @State private var origin: Station?
@@ -59,6 +61,14 @@ struct PlannerView: View {
                         Text("planner.departure.italian_time")
                             .font(.footnote)
                             .foregroundStyle(.secondary)
+                    }
+                    // The changes filter of Android's planner: it filters the journeys shown.
+                    Picker("planner.changes.title", selection: $journeys.changeFilter) {
+                        ForEach(JourneyChangeFilter.allCases, id: \.self) { filter in
+                            Text(verbatim: JourneyTexts.changeFilter(filter))
+                                .accessibilityLabel(Text(verbatim: JourneyTexts.changeFilterAccessible(filter)))
+                                .tag(filter)
+                        }
                     }
                 }
 
@@ -128,7 +138,11 @@ struct PlannerView: View {
                     // «Treni in movimento» of the route (LiveTrainMapView.swift).
                     RouteLiveTrainsEntry(snapshot: snapshot)
                 } else if case let .unavailable(reason) = model.searchState {
-                    UnavailableResultView(reason: reason)
+                    // No direct train: the journeys with changes may still get there.
+                    if journeys.rows.isEmpty {
+                        UnavailableResultView(reason: reason)
+                    }
+                    JourneysOnlyResultView()
                 }
             case .unavailable:
                 ContentUnavailableView(
@@ -280,6 +294,7 @@ struct PlannerView: View {
         validationKey = nil
         isSearching = false
         model.invalidateSearchResult()
+        journeys.reset()
     }
 
     private func makeQuery() -> JourneyQuery? {
@@ -310,6 +325,7 @@ struct PlannerView: View {
         searchRequestID &+= 1
         let requestID = searchRequestID
         isSearching = true
+        journeys.search(query, repository: model.repository, catalog: model.catalogState, stats: model.reliabilityStats)
         Task {
             await model.run(query: query)
             guard requestID == searchRequestID else { return }
@@ -380,19 +396,13 @@ private struct AirportLinksSection: View {
     }
 }
 
-/// How the results are listed: by departure, or «Più affidabili» by the network statistics.
-private enum ResultOrder: Hashable {
-    case departure
-    case mostReliable
-}
-
 private struct AvailableResultView: View {
     @EnvironmentObject private var model: AppModel
+    @EnvironmentObject private var journeys: JourneysModel
     let snapshot: JourneySnapshot
     /// The current minute: a listed train is gone a minute after its departure (scheduled, or
     /// delayed by the minutes a live source publishes).
     let now: Date
-    @State private var order: ResultOrder = .departure
 
     var body: some View {
         // The statistics of this result: computed by the model when the search or the file arrives.
@@ -406,34 +416,62 @@ private struct AvailableResultView: View {
             if let route = reliability?.route {
                 RoutePunctualityView(route: route)
             }
-            if !measuredTrains.isEmpty {
-                Picker("result.order.title", selection: $order) {
-                    Text("result.order.departure").tag(ResultOrder.departure)
-                    Text("result.order.most_reliable").tag(ResultOrder.mostReliable)
-                }
-                .pickerStyle(.segmented)
+            // The direct trains and the journeys with changes in one list, with Android's chips.
+            let merged = mergedEntries
+            let scores = reliabilityScores(measuredTrains)
+            let shown = JourneyResultsMerge.apply(merged.entries, filter: journeys.filter, preferences: journeys.preferences, reliability: scores)
+            JourneyFilterChips(
+                selection: journeys.filter, counts: JourneyResultsMerge.counts(merged.entries), showsMostReliable: !scores.isEmpty
+            ) { journeys.filter = $0 }
+            JourneyActiveFiltersView(hiddenTrains: snapshot.services.count - JourneyResultsMerge.shownServices(snapshot.services, preferences: journeys.preferences).count)
+            if let first = merged.firstNextDay {
+                Text(verbatim: JourneyTexts.noMoreToday(first))
+                    .font(.footnote.weight(.medium))
+            } else if let first = merged.noTrainsUntil {
+                Text(verbatim: JourneyTexts.noTrainsUntil(first))
+                    .font(.footnote.weight(.medium))
             }
-            ForEach(orderedServices(reliability), id: \.id) { service in
-                let alternative = alternatives[service.id]
-                let live = model.resultLive[service.id]
-                NavigationLink {
-                    TrainDetailView(service: service, query: snapshot.query, boardLive: live)
-                } label: {
-                    ResultRow(service: service, reliability: measuredTrains[service.id], live: live)
-                }
-                .accessibilityHint(Text("accessibility.open_train_detail"))
-                .listRowSeparator(alternative == nil ? .automatic : .hidden, edges: .bottom)
-                if let alternative {
-                    // Opens the suggested train as a tap on its own row does.
+            if shown.isEmpty, !merged.entries.isEmpty {
+                Text(verbatim: JourneyTexts.empty(.noSolution, hasOptions: true))
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            }
+            ForEach(shown) { entry in
+                switch entry {
+                case let .train(service, lastOfDay):
+                    let alternative = alternatives[service.id]
+                    let live = model.resultLive[service.id]
                     NavigationLink {
-                        TrainDetailView(service: alternative.service, query: snapshot.query)
+                        TrainDetailView(service: service, query: snapshot.query, boardLive: live)
                     } label: {
-                        ReliableAlternativeLine(alternative: alternative)
+                        VStack(alignment: .leading, spacing: 4) {
+                            ResultRow(service: service, reliability: measuredTrains[service.id], live: live)
+                            if lastOfDay {
+                                LastOfDayMark()
+                            }
+                        }
                     }
-                    .accessibilityHint(Text(ReliabilityTexts.alternativeOpen(alternative)))
-                    .listRowSeparator(.hidden, edges: .top)
+                    .accessibilityHint(Text("accessibility.open_train_detail"))
+                    .listRowSeparator(alternative == nil ? .automatic : .hidden, edges: .bottom)
+                    if let alternative {
+                        // Opens the suggested train as a tap on its own row does.
+                        NavigationLink {
+                            TrainDetailView(service: alternative.service, query: snapshot.query)
+                        } label: {
+                            ReliableAlternativeLine(alternative: alternative)
+                        }
+                        .accessibilityHint(Text(ReliabilityTexts.alternativeOpen(alternative)))
+                        .listRowSeparator(.hidden, edges: .top)
+                    }
+                case let .journey(row):
+                    NavigationLink {
+                        JourneyDetailView(row: row, reliability: journeys.reliability[row.id])
+                    } label: {
+                        JourneyResultRow(row: row, reliability: journeys.reliability[row.id])
+                    }
                 }
             }
+            JourneyNoticesView(hasEntries: !merged.entries.isEmpty)
 
             if let reliability, !reliability.isEmpty {
                 Text(ReliabilityTexts.attribution(reliability.windowEnd))
@@ -453,10 +491,64 @@ private struct AvailableResultView: View {
         }
     }
 
-    /// The departure order of the repository, or «Più affidabili» when chosen and measurable.
-    private func orderedServices(_ reliability: JourneyReliability?) -> [TrainService] {
-        guard order == .mostReliable, let reliability, !reliability.byServiceID.isEmpty else { return snapshot.services }
-        return reliability.mostReliableFirst(snapshot.services)
+    /// The direct trains of this search merged with its journeys with changes (Android's `ResultsMerge`), with
+    /// «Ultimo di oggi», «primo domani» and «Nessun treno fino alle …» only for a search of today.
+    private var mergedEntries: (entries: [JourneyResultEntry], firstNextDay: Date?, noTrainsUntil: Date?) {
+        let markedDay = journeys.markedDay(now: now)
+        var rows: [JourneyOptionRow] = []
+        if journeys.query == snapshot.query {
+            rows = journeys.rows.map { row in
+                var copy = row
+                if markedDay == nil { copy.lastOfDay = false }
+                return copy
+            }
+        }
+        // The changes filter of the planner applies to the journeys with changes as to the direct trains.
+        let filtered = rows.filter { journeys.changeFilter.accepts($0.changes) }
+        let day = markedDay ?? JourneyResultsMerge.encodedDay(snapshot.query.departure)
+        let entries = JourneyResultsMerge.entries(services: snapshot.services, journeys: filtered, serviceDate: day, preferences: journeys.preferences)
+        let firstNextDay = markedDay.flatMap { JourneyResultsMerge.firstDepartureNextDay(entries, journeys: rows, serviceDate: $0) }
+        let noTrainsUntil = JourneyResultsMerge.noTrainsUntil(entries, journeys: rows, requested: snapshot.query.departure, firstNextDay: firstNextDay)
+        return (entries, firstNextDay, noTrainsUntil)
+    }
+
+    /// «Più affidabili»: each measured entry's chance of arriving on time (a direct train at the destination, a
+    /// journey with every train and change), by the id of its entry.
+    private func reliabilityScores(_ trains: [String: StopReliability]) -> [String: EntryReliability] {
+        var scores: [String: EntryReliability] = [:]
+        for (id, stop) in trains { scores["train-\(id)"] = EntryReliability(train: stop) }
+        for (id, journey) in journeys.reliability { scores["journey-\(id)"] = EntryReliability(journey: journey) }
+        return scores
+    }
+}
+
+/// The journeys with changes when no direct train serves the search.
+private struct JourneysOnlyResultView: View {
+    @EnvironmentObject private var journeys: JourneysModel
+
+    var body: some View {
+        if journeys.state != .idle {
+            Section("result.journey.title") {
+                let filtered = journeys.filteredRows
+                let rows = JourneyResultsPresenter.apply(filtered, filter: journeys.filter, preferences: journeys.preferences)
+                if !journeys.rows.isEmpty {
+                    JourneyFilterChips(
+                        selection: journeys.filter,
+                        counts: JourneyResultsMerge.counts(filtered.map { JourneyResultEntry.journey($0) }),
+                        showsMostReliable: false
+                    ) { journeys.filter = $0 }
+                }
+                JourneyActiveFiltersView(hiddenTrains: 0)
+                ForEach(rows) { row in
+                    NavigationLink {
+                        JourneyDetailView(row: row, reliability: journeys.reliability[row.id])
+                    } label: {
+                        JourneyResultRow(row: row, reliability: journeys.reliability[row.id])
+                    }
+                }
+                JourneyNoticesView(hasEntries: !rows.isEmpty)
+            }
+        }
     }
 }
 

@@ -15,6 +15,8 @@ struct BinarioApp: App {
     @StateObject private var notices: RailNoticesModel
     /// Weather at the destination, bike sharing and the switches of the evening alerts.
     @StateObject private var extras: ExtrasModel
+    /// The journeys with changes of the planner and the travel preferences.
+    @StateObject private var journeys = JourneysModel()
     @Environment(\.scenePhase) private var scenePhase
 
     init() {
@@ -33,6 +35,7 @@ struct BinarioApp: App {
                 .environmentObject(model)
                 .environmentObject(notices)
                 .environmentObject(extras)
+                .environmentObject(journeys)
         }
         // The evening alerts' one background app refresh task (EveningAlerts.swift): planned again
         // each time the app leaves the screen, run by iOS from the hour asked for.

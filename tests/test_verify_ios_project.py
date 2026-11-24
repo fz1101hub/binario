@@ -1328,7 +1328,10 @@ class IOSProjectTests(unittest.TestCase):
         planner = (IOS / "BinarioApp/PlannerView.swift").read_text(encoding="utf-8")
         texts = (IOS / "BinarioApp/ReliabilityTexts.swift").read_text(encoding="utf-8")
         detail = (IOS / "BinarioApp/TrainDetailView.swift").read_text(encoding="utf-8")
-        self.assertIn("reliability.mostReliableFirst(snapshot.services)", planner)
+        # «Più affidabili» is a chip of the merged list, ordered as Android's ResultsReliability.mostReliableFirst.
+        self.assertIn("JourneyResultsMerge.apply(merged.entries, filter: journeys.filter, preferences: journeys.preferences, reliability: scores)", planner)
+        self.assertIn("let first = Int64((a.score * 1_000_000).rounded()), second = Int64((b.score * 1_000_000).rounded())",
+                      (IOS / "BinarioKit/Sources/BinarioKit/JourneyPlanner/JourneyResults.swift").read_text(encoding="utf-8"))
         self.assertIn("TrainDetailView(service: service, query: snapshot.query, boardLive: live)", planner)
         self.assertIn("RoutePunctualityView(route: route)", planner)
         self.assertIn('parts.joined(separator: " · ")', planner)

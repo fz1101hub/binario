@@ -28,6 +28,20 @@ struct SettingsView: View {
                     .foregroundStyle(.secondary)
             }
 
+            // «Preferenze di viaggio» of the journeys with changes, as on Android (Impostazioni).
+            Section {
+                NavigationLink {
+                    TravelPreferencesView()
+                } label: {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("settings.travel.title")
+                        Text("settings.travel.detail")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            }
+
             // Guideline 5.2.2 and CC BY: every bundled feed is attributed with its licence and
             // source page, not only the feed that happens to answer the current search.
             Section("settings.sources.title") {
