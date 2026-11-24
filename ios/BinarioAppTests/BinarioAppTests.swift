@@ -804,6 +804,57 @@ final class BinarioAppTests: XCTestCase {
 
     // MARK: Live data
 
+    func testArrivalsAreTheLiveBoardOfTheStationAskedForItsArrivalsOnlyWithLiveDataOn() async throws {
+        let defaults = try makeDefaults()
+        defer { clear(defaults) }
+        let base = try rome(2026, 11, 10, 8, 0)
+        let rows = (0..<3).map { boardDeparture($0, after: base) }
+        let arriving = LiveFixtures.row("2101", scheduled: base.addingTimeInterval(1_800), delay: 4, platform: "2", status: .delayed, at: base)
+        let arrivals = LiveDepartureBoard(
+            stationID: milanoCode.id, from: base, to: base.addingTimeInterval(6 * 3_600), departures: [arriving],
+            sources: [.rfiStationBoard, .viaggiaTreno], unavailableSources: [:], warnings: [], fetchedAt: base, kind: .arrivals
+        )
+        let live = FakeLiveRailData(board: .available(arrivals))
+        let model = makeLiveModel(defaults: defaults, live: live, boardProvider: StubBoardProvider(rows: rows))
+        model.selectBoardStation(milanoCode)
+        await model.boardLoadFinished()
+        await model.reloadBoard(now: base)
+        model.boardLiveDidAppear()
+        await model.boardLiveLoadFinished()
+        XCTAssertEqual(model.boardKind, .departures)
+        // An arrivals board is never laid over the departures.
+        XCTAssertTrue(model.boardDepartures.allSatisfy(\.isScheduled))
+        XCTAssertTrue(model.boardArrivals.isEmpty)
+
+        model.selectBoardKind(.arrivals)
+        await model.boardLiveLoadFinished()
+        let asked = await live.departureRequests
+        XCTAssertEqual(asked.last?.kind, .arrivals)
+        XCTAssertEqual(asked.last?.station.id, milanoCode.id)
+        XCTAssertEqual(model.boardArrivals.map(\.number), ["2101"])
+        XCTAssertEqual(ArrivalsTexts.origin("Bergamo"), String.localizedStringWithFormat(
+            NSLocalizedString("departures.arrivals.from", comment: ""), "Bergamo"
+        ))
+
+        // Back to the departures: the arrivals go and the departures board is asked.
+        model.selectBoardKind(.departures)
+        await model.boardLiveLoadFinished()
+        XCTAssertTrue(model.boardArrivals.isEmpty)
+        let again = await live.departureRequests
+        XCTAssertEqual(again.last?.kind, .departures)
+
+        // Off: the kind is the departures again, and a board row's run and a train's notices are never asked.
+        model.selectBoardKind(.arrivals)
+        await model.boardLiveLoadFinished()
+        model.setLiveDataEnabled(false)
+        XCTAssertEqual(model.boardKind, .departures)
+        XCTAssertTrue(model.boardArrivals.isEmpty)
+        let run = await model.boardRun(arriving, kind: .arrivals)
+        XCTAssertNil(run)
+        let notices = await model.trainNotices(LiveTrainNoticesRequest(number: "2101", serviceDate: base))
+        XCTAssertNil(notices)
+    }
+
     func testPartenzeLaysTheLiveBoardOverItsRowsOnlyOnScreenAndFallsBackWhenEverySourceFails() async throws {
         let defaults = try makeDefaults()
         defer { clear(defaults) }
@@ -1039,6 +1090,240 @@ final class BinarioAppTests: XCTestCase {
         let laterAsked = await laterLive.requestCount
         XCTAssertEqual(laterAsked, 0)
         XCTAssertEqual(laterModel.resultLiveState, .idle)
+    }
+
+    func testPlannerResultsTakeTheTripUpdatesOfTheirPackWhenNoBoardTimesThem() async throws {
+        let defaults = try makeDefaults()
+        defer { clear(defaults) }
+        // Trenitalia France's train 70458 of 23 November 2026, from Paris at 17:08 Italian time, asked at 16:00.
+        let now = Date(timeIntervalSince1970: 1_795_446_000)
+        let query = try JourneyQuery(origin: milanoCode, destination: bergamoCode, departure: now)
+        let id = "trenitalia-france-gtfs:70458:20261123:61680"
+        let service = TrainService(
+            id: id, number: "9241", operatorName: "Trenitalia France", category: "FR", destination: "Milano Centrale",
+            scheduledDeparture: "17:08", expectedDeparture: "17:08", status: "PROGRAMMED", platform: nil, delayMinutes: 0
+        )
+        let snapshot = JourneySnapshot(
+            query: query, generatedAt: now, expiresAt: now.addingTimeInterval(3_600), operationalState: .programmed,
+            provenance: DataProvenance(producer: .iosApp, nature: .programmed, sourceLabel: "Official GTFS", observedAt: now,
+                                       freshness: .unknown, confidence: .staticOnly),
+            services: [service]
+        )
+        let transport = TripUpdatesTransport(payload: try tripUpdatesFixture())
+        let model = AppModel(
+            catalogState: .loading,
+            savedRouteStore: SavedRouteStore(defaults: defaults),
+            favouriteTrainStore: FavouriteTrainStore(defaults: defaults),
+            boardStationStore: StationBoardStationStore(defaults: defaults),
+            watchSharingStore: WatchSharingPreferenceStore(defaults: defaults),
+            repository: TimetableStubRepository(result: .available(snapshot)),
+            watchPublisher: nil,
+            liveData: FakeLiveRailData(board: .unavailable(.sourceUnavailable)),
+            timetableRealtime: TimetableRealtime.standard(transport: transport, pauses: LiveSourcePauses(), now: { now }),
+            liveDataStore: LiveDataPreferenceStore(defaults: defaults),
+            livePauses: LiveSourcePauses(),
+            versionDisplay: "test"
+        )
+        await model.run(query: query)
+        model.plannerLiveDidAppear()
+        await model.resultLiveLoadFinished()
+        // No board answers: the feed of the train's own pack times it at its origin.
+        await model.refreshResultLive(now: now)
+        let status = try XCTUnwrap(model.resultLive[id])
+        XCTAssertEqual(status.delayMinutes, 4)
+        XCTAssertEqual(status.source, .trenitaliaFranceRealtime)
+        XCTAssertEqual(model.resultLiveSources, [.trenitaliaFranceRealtime])
+        guard case .available = model.resultLiveState else { return XCTFail("expected live values, got \(model.resultLiveState)") }
+
+        // «Dati in tempo reale» off: the feeds are not asked and the values go.
+        model.setLiveDataEnabled(false)
+        XCTAssertTrue(model.resultLive.isEmpty)
+    }
+
+    /// The Trenitalia France feed of contracts/shared-rules/v1/gtfs-realtime-v1.json.
+    private func tripUpdatesFixture() throws -> Data {
+        let data = try Data(contentsOf: repositoryRoot.appendingPathComponent("contracts/shared-rules/v1/gtfs-realtime-v1.json"))
+        let json = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
+        let cases = try XCTUnwrap(json["protobufUpdates"] as? [[String: Any]])
+        let hex = try XCTUnwrap(cases.first { $0["feed"] as? String == "trenitalia-france-gtfs-rt" }?["hex"] as? String)
+        var bytes: [UInt8] = []
+        var index = hex.startIndex
+        while index < hex.endIndex {
+            let next = hex.index(index, offsetBy: 2)
+            bytes.append(try XCTUnwrap(UInt8(hex[index..<next], radix: 16)))
+            index = next
+        }
+        return Data(bytes)
+    }
+
+    func testTheWatchGetsTheLiveValuesTheIPhoneAlreadyHasAndTheOptionalFieldsItDeclares() async throws {
+        let defaults = try makeDefaults()
+        defer { clear(defaults) }
+        WatchSharingPreferenceStore(defaults: defaults).save(true)
+        let session = FakeAppSession()
+        let now = Date()
+        let query = try JourneyQuery(origin: milanoCode, destination: bergamoCode, departure: now)
+        let snapshot = fixtureSnapshot(query: query, serviceNumber: "RE_11 - 2153")
+        let scheduled = now.addingTimeInterval(30 * 60)
+        let live = FakeLiveRailData(board: .available(LiveFixtures.board([
+            LiveFixtures.row("2153", scheduled: scheduled, delay: 4, platform: "7", status: .delayed, at: now),
+        ], stationID: milanoCode.id, at: now)))
+        let model = AppModel(
+            catalogState: .loading,
+            savedRouteStore: SavedRouteStore(defaults: defaults),
+            favouriteTrainStore: FavouriteTrainStore(defaults: defaults),
+            boardStationStore: StationBoardStationStore(defaults: defaults),
+            watchSharingStore: WatchSharingPreferenceStore(defaults: defaults),
+            repository: StubJourneyRepository(result: .available(snapshot)),
+            watchPublisher: WatchSnapshotPublisher(session: session),
+            liveData: live,
+            liveDataStore: LiveDataPreferenceStore(defaults: defaults),
+            livePauses: LiveSourcePauses(),
+            versionDisplay: "test"
+        )
+        session.completeActivation(.activated)
+
+        // The search alone: the timetable, as before.
+        await model.run(query: query)
+        var object = try publishedObject(session)
+        XCTAssertEqual(object["operationalState"] as? String, "PROGRAMMED")
+        XCTAssertEqual(object["service0Status"] as? String, "PROGRAMMED")
+
+        // The planner on screen reads the live board of the origin: the Watch gets its values.
+        model.plannerLiveDidAppear()
+        await model.resultLiveLoadFinished()
+        object = try publishedObject(session)
+        XCTAssertEqual(object["provenanceDataNature"] as? String, "OPERATIONAL")
+        XCTAssertEqual(object["operationalState"] as? String, "OPERATIONAL")
+        XCTAssertEqual(object["freshness"] as? String, "FRESH")
+        XCTAssertEqual(object["confidence"] as? String, "OPERATOR_PRIMARY", "ViaggiaTreno's values, as Android rates them")
+        XCTAssertEqual(object["service0Expected"] as? String, romeTime(scheduled.addingTimeInterval(4 * 60)))
+        XCTAssertEqual(object["service0DelayMinutes"] as? Int, 4)
+        XCTAssertEqual(object["service0Platform"] as? String, "7")
+        XCTAssertNotEqual(object["service0Status"] as? String, "PROGRAMMED")
+        XCTAssertEqual(object["notice"] as? String, "")
+        XCTAssertLessThanOrEqual(try XCTUnwrap(object["ttlMillis"] as? Int), 15 * 60 * 1_000)
+        XCTAssertFalse(object.keys.contains { $0.hasSuffix("Vehicle") }, "an earlier Watch app gets no optional field")
+
+        // A Watch app that declares the vehicle gets it, with the values the iPhone already has.
+        session.watchCapabilities = [WatchCapabilities.vehicle]
+        await model.refreshWatchSnapshot()
+        object = try publishedObject(session)
+        XCTAssertEqual(object["service0Vehicle"] as? String, "TRAIN")
+        XCTAssertEqual(object["operationalState"] as? String, "OPERATIONAL")
+        // A Watch app that shows the programmed times once the live values end keeps the snapshot until the
+        // train's programmed departure; the live values are dated when the board was read.
+        session.watchCapabilities = [WatchCapabilities.vehicle, WatchCapabilities.programmedFallback]
+        await model.refreshWatchSnapshot()
+        object = try publishedObject(session)
+        XCTAssertEqual(object["operationalState"] as? String, "OPERATIONAL")
+        XCTAssertGreaterThan(try XCTUnwrap(object["ttlMillis"] as? Int), 15 * 60 * 1_000)
+        XCTAssertLessThanOrEqual(try XCTUnwrap(object["generatedAtEpochMillis"] as? Int), Int(Date().timeIntervalSince1970 * 1_000))
+        let asked = await live.departureRequests.count
+        XCTAssertEqual(asked, 1, "nothing is asked for the Watch")
+
+        // «Dati in tempo reale» off: the timetable again.
+        model.setLiveDataEnabled(false)
+        await model.refreshWatchSnapshot()
+        XCTAssertEqual(try publishedObject(session)["operationalState"] as? String, "PROGRAMMED")
+    }
+
+    func testACancelledTrainIsLeftOffTheWatchAndALateOneStillComes() throws {
+        let opened = try rome(2026, 10, 6, 8, 0)
+        let query = try JourneyQuery(origin: milanoCode, destination: bergamoCode, departure: opened)
+        let journey = programmedJourney(query: query, generatedAt: opened, times: ["08:05", "08:20", "08:40"])
+        let services = journey.services
+        let late = StationBoardLiveStatus(
+            expectedDeparture: try rome(2026, 10, 6, 8, 25), delayMinutes: 20, cancelled: false, platform: "3",
+            sourceLabel: "RFI", observedAt: opened, source: .rfiStationBoard
+        )
+        let cancelled = StationBoardLiveStatus(
+            expectedDeparture: nil, delayMinutes: nil, cancelled: true, platform: nil,
+            sourceLabel: "ViaggiaTreno", observedAt: opened, source: .viaggiaTreno
+        )
+
+        // At 08:10 the 08:05 train, 20 minutes late, has not left; the 08:20 one is cancelled.
+        let upcoming = AppModel.upcomingDepartures(
+            in: journey, now: try rome(2026, 10, 6, 8, 10), live: [services[0].id: late, services[1].id: cancelled]
+        )
+        XCTAssertEqual(upcoming.map(\.service.id), [services[1].id, services[0].id, services[2].id], "in the order they leave")
+        let selection = AppModel.watchSelection(upcoming)
+        XCTAssertEqual(selection.sent.map(\.service.id), [services[0].id, services[2].id])
+        XCTAssertEqual(selection.cancelled?.service.id, services[1].id)
+        XCTAssertEqual(AppModel.watchConfidence(selection.sent, otherwise: .staticOnly), .infrastructurePrimary)
+        XCTAssertTrue(AppModel.isVerified(late))
+        XCTAssertFalse(AppModel.isVerified(cancelled))
+        // A cancellation after the two trains sent is not named.
+        XCTAssertNil(AppModel.watchSelection([upcoming[1], upcoming[2], upcoming[0]]).cancelled)
+        // Without live values nothing changes.
+        XCTAssertEqual(AppModel.upcomingDepartures(in: journey, now: opened).map(\.service.id), services.map(\.id))
+        XCTAssertEqual(AppModel.watchConfidence(AppModel.upcomingDepartures(in: journey, now: opened), otherwise: .staticOnly), .staticOnly)
+    }
+
+    func testALiveSnapshotLastsUntilTheLastProgrammedDepartureOnlyForAWatchThatFallsBack() throws {
+        let opened = try rome(2026, 10, 6, 8, 0)
+        let query = try JourneyQuery(origin: milanoCode, destination: bergamoCode, departure: opened)
+        let journey = programmedJourney(query: query, generatedAt: opened, times: ["08:05", "08:40"])
+        let late = StationBoardLiveStatus(
+            expectedDeparture: try rome(2026, 10, 6, 8, 25), delayMinutes: 20, cancelled: false, platform: "3",
+            sourceLabel: "RFI", observedAt: opened, source: .rfiStationBoard
+        )
+        let now = try rome(2026, 10, 6, 8, 10)
+        let liveAt = try rome(2026, 10, 6, 8, 8)
+        let sent = AppModel.watchSelection(AppModel.upcomingDepartures(in: journey, now: now, live: [journey.services[0].id: late])).sent
+        XCTAssertEqual(sent.map(\.departure), [try rome(2026, 10, 6, 8, 25), try rome(2026, 10, 6, 8, 40)])
+        XCTAssertEqual(sent.map(\.timetable), [try rome(2026, 10, 6, 8, 5), try rome(2026, 10, 6, 8, 40)])
+
+        // Live values: 15 minutes after the board was read, unless the Watch shows the programmed times from then.
+        XCTAssertEqual(
+            AppModel.watchDeadline(for: journey, departures: sent, liveAt: liveAt, now: now, programmedFallback: false),
+            try rome(2026, 10, 6, 8, 23)
+        )
+        XCTAssertEqual(
+            AppModel.watchDeadline(for: journey, departures: sent, liveAt: liveAt, now: now, programmedFallback: true),
+            try rome(2026, 10, 6, 8, 42)
+        )
+        // The timetable alone lasts until its last train in any case; a cancellation alone 15 minutes at most.
+        let programmed = AppModel.upcomingDepartures(in: journey, now: now)
+        XCTAssertEqual(
+            AppModel.watchDeadline(for: journey, departures: programmed, liveAt: nil, now: now, programmedFallback: false),
+            try rome(2026, 10, 6, 8, 42)
+        )
+        XCTAssertEqual(
+            AppModel.watchDeadline(for: journey, departures: [], liveAt: liveAt, now: now, programmedFallback: true),
+            try rome(2026, 10, 6, 8, 23)
+        )
+    }
+
+    func testABusReachesTheWatchWithItsLabelAndItsVehicle() async throws {
+        let defaults = try makeDefaults()
+        defer { clear(defaults) }
+        WatchSharingPreferenceStore(defaults: defaults).save(true)
+        let session = FakeAppSession()
+        session.watchCapabilities = [WatchCapabilities.vehicle, WatchCapabilities.reliability]
+        let query = try JourneyQuery(origin: roma, destination: napoli, departure: Date())
+        let fixture = fixtureSnapshot(query: query, serviceNumber: "3601")
+        let train = fixture.services[0]
+        let bus = TrainService(
+            id: "bus", number: "3601", operatorName: "Trenitalia", category: "BUS", destination: "Napoli Centrale",
+            scheduledDeparture: train.scheduledDeparture, expectedDeparture: train.expectedDeparture, status: "PROGRAMMED",
+            platform: nil, delayMinutes: 0, vehicle: .busTrenitalia
+        )
+        let journey = JourneySnapshot(
+            query: query, generatedAt: fixture.generatedAt, expiresAt: fixture.expiresAt,
+            operationalState: fixture.operationalState, provenance: fixture.provenance, services: [bus]
+        )
+        let model = makeModel(defaults: defaults, publisher: WatchSnapshotPublisher(session: session), repository: StubJourneyRepository(result: .available(journey)))
+        session.completeActivation(.activated)
+
+        await model.run(query: query)
+
+        let object = try publishedObject(session)
+        XCTAssertEqual(object["service0Vehicle"] as? String, "BUS_TRENITALIA")
+        XCTAssertEqual(object["service0Category"] as? String, VehicleTexts.busLabel(bus))
+        XCTAssertNotEqual(object["service0Category"] as? String, "BUS")
+        // A bus has no train statistics (`WearReliabilityV1.route`), whatever the Watch decodes.
+        XCTAssertNil(object["service0ReliabilityOnTime"])
     }
 
     func testTrainDetailShowsItsOwnRunAtTheBoardingStationAndNeverAnotherDays() async throws {
@@ -1525,6 +1810,31 @@ private struct StubJourneyRepository: JourneyRepository {
     func journeys(for query: JourneyQuery) async -> JourneyResult { result }
 }
 
+/// The search's result and the stops of Trenitalia France's train 70458 in the timetable index.
+private struct TimetableStubRepository: JourneyRepository, TimetableTripReading {
+    let result: JourneyResult
+    func journeys(for query: JourneyQuery) async -> JourneyResult { result }
+
+    func tripStops(_ trips: [TimetableTripKey]) -> [TimetableTripKey: TimetableTripStops] {
+        var found: [TimetableTripKey: TimetableTripStops] = [:]
+        for trip in trips where trip.tripID == "70458" {
+            found[trip] = TimetableTripStops(stops: [
+                .init(stopID: "10009", sequence: 0, seconds: 17 * 3_600 + 8 * 60, catalogStationID: nil),
+                .init(stopID: "10007", sequence: 62, seconds: 19 * 3_600 + 18 * 60, catalogStationID: nil),
+            ], agencyTimeZones: ["Europe/Rome"])
+        }
+        return found
+    }
+}
+
+/// A transport answering every request with one feed; nothing leaves the machine.
+private struct TripUpdatesTransport: LiveHTTPTransport {
+    let payload: Data
+    func send(_ request: LiveHTTPRequest) async -> LiveTransportOutcome {
+        .response(status: 200, headers: [:], body: payload)
+    }
+}
+
 /// A result per destination station.
 private struct RoutingJourneyRepository: JourneyRepository {
     let results: [String: JourneyResult]
@@ -1602,6 +1912,8 @@ private final class FakeAppSession: WatchSnapshotSession {
     var activationHandler: (@MainActor (WatchSessionActivationState) -> Void)?
     var watchStateHandler: (@MainActor () -> Void)?
     var refreshRequestHandler: (@MainActor () -> Void)?
+    var watchCapabilities: Set<String> = []
+    var capabilitiesHandler: (@MainActor () -> Void)?
     var contexts: [[String: Data]] = []
 
     func activate() {}

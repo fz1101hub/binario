@@ -74,6 +74,9 @@ public struct StationBoardLiveStatus: Equatable, Sendable {
     public let platformSource: LiveSource?
     /// Late without an expected time: the bare «RITARDO» of an RFI board, never «on time».
     public let lateWithoutMinutes: Bool
+    /// The ViaggiaTreno identity of the row's run, when ViaggiaTreno listed it: the train detail asks
+    /// that run directly, as Android's board row details do, without the number search.
+    public let viaggiaTrenoRun: ViaggiaTrenoRunReference?
 
     public init(
         expectedDeparture: Date?,
@@ -84,7 +87,8 @@ public struct StationBoardLiveStatus: Equatable, Sendable {
         observedAt: Date,
         source: LiveSource? = nil,
         platformSource: LiveSource? = nil,
-        lateWithoutMinutes: Bool = false
+        lateWithoutMinutes: Bool = false,
+        viaggiaTrenoRun: ViaggiaTrenoRunReference? = nil
     ) {
         self.expectedDeparture = expectedDeparture
         self.delayMinutes = delayMinutes
@@ -95,6 +99,7 @@ public struct StationBoardLiveStatus: Equatable, Sendable {
         self.source = source
         self.platformSource = platformSource
         self.lateWithoutMinutes = lateWithoutMinutes
+        self.viaggiaTrenoRun = viaggiaTrenoRun
     }
 }
 

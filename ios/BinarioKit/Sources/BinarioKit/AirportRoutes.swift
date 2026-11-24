@@ -27,8 +27,9 @@ public struct AirportLink: Equatable, Identifiable, Sendable {
 /// «Collegamenti con gli aeroporti» of the planner: the same list as the Android app
 /// (app/src/main/java/it/binario/app/data/AirportRoutes.kt). An entry shows only when one of its
 /// packs contributes trips to the bundled iOS index and both stations are in the catalogue and
-/// bound to stops of that index, so the pairs served only by packs that the iPhone app does not
-/// carry (Trenitalia, Ferrotramviaria, the Marconi Express city pack) never appear. Station names are the catalogue's; the
+/// served by that index (bound to its stops, or a short walk from a city line's: Bologna Aeroporto
+/// and the Marconi Express), so a pair served only by packs the iPhone app does not carry never
+/// appears. Station names are the catalogue's; the
 /// timetables carry no service brand ("Malpensa Express"), so none is shown.
 public enum AirportRoutes {
     /// The shared table contracts/shared-data/v1/airport-routes-v1.json (`SharedData.AirportRoutes`).
@@ -41,7 +42,7 @@ public enum AirportRoutes {
     static let cityLinePacks: Set<String> = Set(SharedData.AirportRoutes.packs.filter(\.cityLine).map(\.id))
 
     /// Whether `route` is served only by a city line (a people mover, a metro), so its rows do not
-    /// say "trains" (Android's `byCityLine`). No pack the iPhone carries is a city line yet.
+    /// say "trains" (Android's `byCityLine`): the Marconi Express of the bundled index.
     public static func byCityLine(_ route: AirportRoute) -> Bool {
         !route.packs.isEmpty && route.packs.isSubset(of: cityLinePacks)
     }

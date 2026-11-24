@@ -107,6 +107,21 @@ class IOSProjectTests(unittest.TestCase):
         cls.project = yaml.safe_load((IOS / "project.yml").read_text(encoding="utf-8"))
         cls.targets = cls.project["targets"]
 
+    def test_every_localizable_strings_line_is_a_key_line_as_the_swift_reader_takes_it(self) -> None:
+        # BinarioKit's LocalizationTests reads every line as «"key" = "value";» or blank and fails on anything else
+        # (a «//» comment once reached the macOS CI); checked here first, with its pattern and no duplicate keys.
+        pattern = re.compile(r'^"([^"]+)"\s*=\s*"(.*)";$')
+        for path in sorted((IOS / "Resources").glob("*.lproj/Localizable.strings")):
+            keys: set[str] = set()
+            for number, raw in enumerate(path.read_text(encoding="utf-8").split("\n"), start=1):
+                line = raw.strip(" ")
+                if not line:
+                    continue
+                match = pattern.match(line)
+                self.assertIsNotNone(match, f"{path.relative_to(ROOT)}:{number}: {line[:80]}")
+                self.assertNotIn(match.group(1), keys, f"{path.relative_to(ROOT)}:{number}: duplicate key")
+                keys.add(match.group(1))
+
     def test_app_identity_version_and_swift6_phone_deployment_are_explicit(self) -> None:
         app = self.targets["Binario"]
         settings = app["settings"]["base"]
@@ -273,6 +288,7 @@ class IOSProjectTests(unittest.TestCase):
         self.assertEqual({
             "mit-strikes-rss": "all-builds", "rfi-infomobility-rss": "all-builds",
             "trenitalia-infomobility-news": "personal", "trenord-line-notices": "personal",
+            "viaggiatreno-train-notices": "personal",
         }, gates)
         for source in table["sources"]:
             self.assertTrue(source["url"].startswith("https://"), source["id"])
@@ -402,9 +418,11 @@ class IOSProjectTests(unittest.TestCase):
             used.update(SWIFT_REQUIRED_KEY.findall(path.read_text(encoding="utf-8")))
         self.assertTrue(used <= canonical, sorted(used - canonical))
         intentionally_dynamic = {
-            # The bus labels, read through TimetableVehicle.labelKey (VehicleTexts.busLabel).
+            # The bus and city-line labels, read through TimetableVehicle.labelKey (VehicleTexts.busLabel).
             "result.vehicle.bus_trenitalia", "result.vehicle.freccialink", "result.vehicle.italobus", "result.vehicle.bus",
-            "result.vehicle.replacement_bus",
+            "result.vehicle.replacement_bus", "result.vehicle.metro", "result.vehicle.tram", "result.vehicle.funicular",
+            # A city stop's badge, read through UrbanStopBadge.descriptionKey.
+            "planner.station.badge.metro", "planner.station.badge.tram", "planner.station.badge.funicular",
             "settings.about.version_unavailable",
             "watch.status.disabled", "watch.status.activating", "watch.status.pending",
             "watch.status.context_updated", "watch.status.cleared",
@@ -417,7 +435,8 @@ class IOSProjectTests(unittest.TestCase):
         # (contracts/shared-rules/v1/journey-leg-vehicles-v1.json), read by SharedRulesContractTests.swift.
         contract = json.loads((ROOT / "contracts/shared-rules/v1/journey-leg-vehicles-v1.json").read_text(encoding="utf-8"))
         keys = {case["iosLabel"]: case["androidLabel"] for case in contract["legVehicles"] if case["iosLabel"]}
-        self.assertEqual(5, len(keys))
+        # Five buses and the three modes of the city lines.
+        self.assertEqual(8, len(keys))
         vehicle = (IOS / "BinarioKit/Sources/BinarioKit/TimetableVehicle.swift").read_text(encoding="utf-8")
         for key in keys:
             self.assertIn(f'return "{key}"', vehicle)
@@ -437,11 +456,12 @@ class IOSProjectTests(unittest.TestCase):
         for name in ("PlannerView.swift", "TrainDetailView.swift"):
             self.assertIn("VehicleTexts.busLabel(service)", (IOS / "BinarioApp" / name).read_text(encoding="utf-8"), name)
         board = (IOS / "BinarioApp/DeparturesView.swift").read_text(encoding="utf-8")
-        self.assertIn("Label(VehicleTexts.rowLabel(service), systemImage: VehicleTexts.busSymbol)", board)
-        self.assertIn('service.isBus ? "departures.row.spoken_vehicle" : "departures.row.spoken"', board)
-        # A bus has no train statistics, as on Android.
-        self.assertIn("for service in snapshot.services where !service.isBus", (IOS / "BinarioKit/Sources/BinarioKit/NetworkReliability.swift").read_text(encoding="utf-8"))
-        self.assertIn("guard let reliabilityStats, !service.isBus else { return nil }", (IOS / "BinarioApp/AppModel.swift").read_text(encoding="utf-8"))
+        self.assertIn("Label(VehicleTexts.rowLabel(service), systemImage: VehicleTexts.symbol(service))", board)
+        self.assertIn('service.isTrain ? "departures.row.spoken" : "departures.row.spoken_vehicle"', board)
+        # A bus or a city line has no train statistics, as on Android.
+        self.assertIn("for service in snapshot.services where service.isTrain", (IOS / "BinarioKit/Sources/BinarioKit/NetworkReliability.swift").read_text(encoding="utf-8"))
+        self.assertIn("guard let reliabilityStats, service.isTrain else { return nil }", (IOS / "BinarioApp/AppModel.swift").read_text(encoding="utf-8"))
+        self.assertIn("public var isTrain: Bool { vehicle == nil }", (IOS / "BinarioKit/Sources/BinarioKit/JourneyRepository.swift").read_text(encoding="utf-8"))
 
     def test_the_timetable_copies_follow_androids_pack_classes(self) -> None:
         # The pack roles are one shared table (contracts/shared-data/v1/pack-roles-v1.json): the index builder reads the
@@ -488,10 +508,16 @@ class IOSProjectTests(unittest.TestCase):
             if path.is_file() and ".build" not in path.parts
             and path.suffix in {".swift", ".yml", ".plist", ".entitlements", ".xcprivacy"}
         ]
+        info_plist = IOS / "Configuration/Binario-Info.plist"
         for path in paths:
             text = path.read_text(encoding="utf-8")
             for forbidden in ("aps-environment", "registerForRemoteNotifications", "remote-notification", "UIBackgroundModes"):
+                # The one background mode, `fetch`, of the evening alerts' app refresh task (owner decision,
+                # November 2026), declared only in the iPhone app's partial Info.plist.
+                if forbidden == "UIBackgroundModes" and path == info_plist:
+                    continue
                 self.assertNotIn(forbidden, text, path)
+        self.assertEqual(["fetch"], plistlib.loads(info_plist.read_bytes())["UIBackgroundModes"])
         self.assertNotIn("entitlements", self.targets["Binario"])
         for name, target in self.targets.items():
             if "entitlements" in target:
@@ -768,7 +794,11 @@ class IOSProjectTests(unittest.TestCase):
             "UIApplicationShortcutItemType": "it.binario.ios.agenda",
             "UIApplicationShortcutItemTitle": "Agenda",
             "UIApplicationShortcutItemIconSymbolName": "calendar",
-        }]}, info)
+        }],
+            # The evening alerts (EveningAlerts.swift): one app refresh task, its only identifier.
+            "UIBackgroundModes": ["fetch"],
+            "BGTaskSchedulerPermittedIdentifiers": ["it.binario.ios.evening-alerts"],
+        }, info)
         android = ElementTree.parse(ROOT / "app/src/main/res/xml/network_security_config.xml").getroot()
         self.assertEqual(
             [domain.text.strip() for domain in android.iter("domain") if domain.text],
@@ -843,7 +873,7 @@ class IOSProjectTests(unittest.TestCase):
         # The expiry is checked for the whole index before stations are resolved, so a query
         # after the last service day is "expired" even for stations the index never served.
         load_body = gtfs.split("private static func load(", 1)[1]
-        self.assertLess(load_body.index("indexEnded(before: query.departure"), load_body.index("try resolve(query.origin"))
+        self.assertLess(load_body.index("indexEnded(before: query.departure"), load_body.index("try endpointStops(query.origin"))
         self.assertIn("WHERE EXISTS (SELECT 1 FROM trip AS t WHERE t.pack_id = p.id)", gtfs)
         self.assertIn("testQueriesAfterTheIndexEndsReportExpiryEvenForStationsItNeverServed", (IOS / "BinarioKit/Tests/BinarioKitTests/SQLiteGTFSJourneyRepositoryTests.swift").read_text(encoding="utf-8"))
         self.assertIn("var firstPackExpiry: Date?", model)
@@ -869,8 +899,10 @@ class IOSProjectTests(unittest.TestCase):
         planner = (IOS / "BinarioApp/PlannerView.swift").read_text(encoding="utf-8")
         model_tests = (IOS / "BinarioAppTests/BinarioAppTests.swift").read_text(encoding="utf-8")
         publish = model.split("private func publishAvailableSnapshot(", 1)[1].split("static func isCurrent(", 1)[0]
-        self.assertIn("Self.upcomingDepartures(in: journey, now: nowDate).prefix(WearSnapshotV1.maximumServices)", publish)
-        self.assertIn("Self.watchExpiry(for: journey, departures: departures, now: nowDate)", publish)
+        self.assertIn("let upcoming = Self.upcomingDepartures(in: journey, now: nowDate, live: values)", publish)
+        self.assertIn("Array(upcoming.filter { $0.live?.cancelled != true }.prefix(WearSnapshotV1.maximumServices))", publish)
+        self.assertIn("let expiryDate = Self.watchDeadline(", publish)
+        self.assertIn("var deadline = watchExpiry(for: journey, departures: departures, now: now)", publish)
         self.assertNotIn("journey.services.prefix(", model)
         self.assertIn("offset >= -5 * 60 && offset <= 15 * 60", model)
         # Only the user's edits invalidate a result: the planner moves its own time to now.
@@ -1577,8 +1609,9 @@ class IOSProjectTests(unittest.TestCase):
             "try statement.bind(Int64(maximumCandidateRows + 1), at: binding)",
             "guard rowsRead <= maximumCandidateRows else { throw SQLiteGTFSFailure.limitExceeded }",
             "serviceRuns(serviceDay: serviceDay, startDate: startDate, dayCount: dayCount,",
-            "let number = trainNumber(trip: statement.text(at: 2), route: statement.text(at: 3), externalTripID: externalTripID)",
-            "let category = trainCategory(route: statement.text(at: 3), longName: statement.text(at: 4), type: statement.int(at: 5))",
+            "let naming = serviceNaming(vehicle: vehicle, trip: statement.text(at: 2), route: statement.text(at: 3),",
+            "longName: statement.text(at: 4), type: statement.int(at: 5), externalTripID: externalTripID)",
+            "let category = naming.category",
             "bikesAllowed: bikes(statement.int(at: 15))",
             "platform: nil,",
             "status: OperationalState.programmed.rawValue,",
@@ -1594,7 +1627,13 @@ class IOSProjectTests(unittest.TestCase):
         self.assertNotIn("route_type =", gtfs)
         # The planner rows and the board name trains with the same helpers.
         planner_query = gtfs.split("private static func queryCandidates(", 1)[1].split("private static func trainNumber(", 1)[0]
-        self.assertIn("let number = trainNumber(trip: statement.text(at: 2), route: statement.text(at: 4), externalTripID: externalTripID)", planner_query)
+        self.assertIn("let naming = serviceNaming(vehicle: vehicle, trip: statement.text(at: 2), route: statement.text(at: 4),", planner_query)
+        self.assertIn("longName: statement.text(at: 5), type: statement.int(at: 6), externalTripID: externalTripID)", planner_query)
+        # A train keeps trainNumber and trainCategory; a city run is named by its line, never as a train number.
+        naming = gtfs.split("private static func serviceNaming(", 1)[1].split("private static func", 1)[0]
+        self.assertIn("trainNumber(trip: tripShortName, route: routeShortName, externalTripID: externalTripID)", naming)
+        self.assertIn("trainCategory(route: routeShortName, longName: longName, type: routeType)", naming)
+        self.assertIn("return (line, line, false)", naming)
         self.assertIn("let bikesAllowed = bikes(statement.int(at: 16))", planner_query)
 
         model = (IOS / "BinarioApp/AppModel.swift").read_text(encoding="utf-8")
@@ -1729,15 +1768,33 @@ class IOSProjectTests(unittest.TestCase):
         code = {name: "\n".join(line for line in source.splitlines() if not line.strip().startswith("//")) for name, source in app.items()}
         self.assertEqual(1, sum(source.count("LiveRailData.standard(") for source in code.values()))
         self.assertIn("liveData: LiveRailData.standard(),", model.split("static func bootstrap(", 1)[1].split("func loadCatalog(", 1)[0])
-        # No background mode, task or schedule was added for it.
-        for path in [IOS / "project.yml", IOS / "Configuration/Binario-Info.plist"]:
-            text = path.read_text(encoding="utf-8")
-            for absent in ("UIBackgroundModes", "BGTaskScheduler", "fetch", "remote-notification"):
-                self.assertNotIn(absent, text, f"{path.name}: {absent}")
+        # No background mode, task or schedule was added for it. The only background work of the app is
+        # the evening alerts' app refresh task (owner decision, November 2026): `fetch` and exactly one
+        # permitted identifier in the partial Info.plist, scheduled and run by EveningAlerts.swift alone,
+        # which reads only the MIT and RFI feeds and posts local notifications.
+        project_text = (IOS / "project.yml").read_text(encoding="utf-8")
+        for absent in ("UIBackgroundModes", "BGTaskScheduler", "fetch", "remote-notification"):
+            self.assertNotIn(absent, project_text, f"project.yml: {absent}")
+        info = plistlib.loads((IOS / "Configuration/Binario-Info.plist").read_bytes())
+        self.assertEqual(["fetch"], info["UIBackgroundModes"])
+        self.assertEqual(["it.binario.ios.evening-alerts"], info["BGTaskSchedulerPermittedIdentifiers"])
+        self.assertNotIn(b"remote-notification", (IOS / "Configuration/Binario-Info.plist").read_bytes())
         for name, source in app.items():
             with self.subTest(source=name):
-                self.assertNotIn("BGTaskScheduler", source)
+                if name != "EveningAlerts.swift":
+                    self.assertNotIn("BGTaskScheduler", source)
                 self.assertNotIn("registerForRemoteNotifications", source)
+                self.assertNotIn("BGProcessingTask", source)
+        alerts = app["EveningAlerts.swift"]
+        self.assertIn('static let taskIdentifier = "it.binario.ios.evening-alerts"', alerts)
+        self.assertEqual(1, alerts.count("BGAppRefreshTaskRequest(identifier: taskIdentifier)"))
+        self.assertIn("UNNotificationRequest(identifier: id, content: content, trigger: nil)", alerts)
+        self.assertIn("service.strikeCalendar()", alerts)
+        self.assertIn("service.general(personal: false, includeTrenord: false)", alerts)
+        for absent in ("LiveRailData", "stationNotices", "personal: true", "URLSession"):
+            self.assertNotIn(absent, alerts)
+        self.assertEqual(1, app["BinarioApp.swift"].count(".backgroundTask(.appRefresh(EveningAlerts.taskIdentifier))"))
+        self.assertEqual(["BinarioApp.swift"], sorted(name for name, source in app.items() if ".backgroundTask(" in source))
 
         # The switch: its own key, on unless the app wrote a boolean false, saved like the other stores.
         store = model.split("final class LiveDataPreferenceStore {", 1)[1].split("extension WatchSyncStatus", 1)[0]
@@ -1762,7 +1819,7 @@ class IOSProjectTests(unittest.TestCase):
         ):
             with self.subTest(guard=guard):
                 self.assertIn(guard, model)
-        self.assertEqual(3, model.count("await liveData."), "board, planner and the train status lookup")
+        self.assertEqual(5, model.count("await liveData."), "board, planner, train status, board row run and train notices")
         self.assertEqual(1, model.count("await liveData.trainStatus("))
         # Stale answers are dropped as the board's are.
         for fragment in (
@@ -1830,9 +1887,14 @@ class IOSProjectTests(unittest.TestCase):
         self.assertIn("parts += LiveTexts.spoken(live, includingPlatform: false)", app["DeparturesView.swift"])
         self.assertIn(".accessibilityLabel(Text(LiveTexts.spokenStop(stop)))", app["TrainDetailView.swift"])
         self.assertIn('.accessibilityLabel(Text(LiveTexts.spoken(status, includingPlatform: showsPlatform).joined(separator: ". ")))', app["LiveTexts.swift"])
-        # The Watch keeps the programmed snapshot.
+        # The Watch gets the live values the iPhone already has, never a request of its own.
         publish = model.split("private func publishAvailableSnapshot(", 1)[1].split("static func isCurrent(", 1)[0]
-        self.assertNotIn("Live", publish)
+        self.assertNotIn("liveData", publish)
+        self.assertNotIn(".departures(", publish)
+        self.assertIn("let live = watchLiveBoard(for: journey.query.origin, at: nowDate)", publish)
+        board = publish.split("private func watchLiveBoard(", 1)[1].split("static func isVerified(", 1)[0]
+        self.assertIn("guard isLiveDataActive else { return nil }", board)
+        self.assertIn("Self.isLiveDisplayable(since: $0.at, now: now)", board)
 
         model_tests = (IOS / "BinarioAppTests/BinarioAppTests.swift").read_text(encoding="utf-8")
         for name in (
@@ -2013,6 +2075,98 @@ class IOSProjectTests(unittest.TestCase):
             "testWatchRefreshWithoutASearchForNowPublishesThePinnedRoute",
         ):
             self.assertIn(name, tests)
+
+
+# The iPhone's arrivals board, board row details and per-train notices (ViaggiaTreno and RFI as on Android).
+# The iPhone keys of these screens and the Android strings they are (station_board_*, notices_*).
+LIVE_BOARD_TEXTS = {
+    "departures.kind.title": "station_board_section",
+    "departures.kind.departures": "station_board_departures",
+    "departures.kind.arrivals": "station_board_arrivals",
+    "departures.arrivals.from": "station_board_arrival_from",
+    "departures.arrivals.loading.title": "station_board_loading_title",
+    "departures.arrivals.loading.body": "station_board_loading_message",
+    "departures.arrivals.unavailable.title": "station_board_unavailable_title",
+    "departures.arrivals.unavailable.body": "station_board_unavailable_message",
+    "departures.arrivals.empty.title": "station_board_empty_title",
+    "departures.arrivals.empty.body": "station_board_empty_message",
+    "departures.arrivals.platform_changed": "platform_changed_short",
+    "departures.arrivals.platform_changed_spoken": "platform_changed_accessible",
+    "departures.arrivals.platform_spoken": "station_board_platform_accessible",
+    "departures.arrivals.platform_unknown": "station_board_platform_unavailable",
+    "departures.arrivals.scheduled_spoken": "station_board_scheduled_time",
+    "departures.arrivals.number": "station_board_train_number",
+    "departures.run.title": "station_board_run_details_title",
+    "departures.run.loading": "station_board_run_details_loading",
+    "departures.run.unavailable": "station_board_run_details_unavailable",
+    "notices.train.title": "notices_train_title",
+    "notices.train.empty": "notices_train_empty",
+    "notices.train.source": "notices_source_viaggiatreno",
+    "notices.train.network_heading": "notices_train_network_heading",
+    "notices.train.trenord_heading": "notices_train_trenord_heading",
+    "notices.train.published_at": "notices_published_at",
+    "notices.retry": "notices_retry",
+    "notices.loading": "notices_loading",
+    "notices.stale": "notices_stale",
+    "notices.unavailable": "notices_unavailable",
+}
+
+
+def apple_placeholders(text: str) -> str:
+    text = re.sub(r"%(\d)\$d", r"%\1$lld", re.sub(r"%(\d)\$s", r"%\1$@", text))
+    return text.replace("%d", "%1$lld")
+
+
+class IOSLiveBoardsTests(unittest.TestCase):
+    def test_the_texts_are_androids_in_every_language(self) -> None:
+        for language, folder in sorted(ANDROID_VALUES.items()):
+            with self.subTest(language=language):
+                resources = ElementTree.parse(ROOT / "app/src/main/res" / folder / "strings.xml").getroot()
+                android = {element.get("name"): element.text for element in resources.findall("string")}
+                values = read_strings(IOS / "Resources" / f"{language}.lproj" / "Localizable.strings")
+                for key, name in LIVE_BOARD_TEXTS.items():
+                    self.assertEqual(apple_placeholders(android[name]), values[key], key)
+
+    def test_the_requests_go_through_the_live_switch_and_the_screen_on_display(self) -> None:
+        model = (IOS / "BinarioApp/AppModel.swift").read_text(encoding="utf-8")
+        for fragment in (
+            "guard liveDataEnabled, let liveData, let identity = boardStation else { return nil }",
+            "let result = await liveData.boardRun(request)",
+            "guard liveDataEnabled, let liveData else { return nil }",
+            "let result = await liveData.trainNotices(request)",
+            "let request = LiveDeparturesRequest(station: station(for: identity), from: StationBoardQuery.minuteStart(of: now), kind: kind)",
+            "guard boardKind == kind else { return }",
+            "live.board.kind == .departures",
+            "viaggiaTrenoRun: key.viaggiaTrenoRun",
+        ):
+            with self.subTest(fragment=fragment):
+                self.assertIn(fragment, model)
+        departures = (IOS / "BinarioApp/DeparturesView.swift").read_text(encoding="utf-8")
+        self.assertIn("if model.isLiveDataActive, model.boardKind == .arrivals {", departures)
+        detail = (IOS / "BinarioApp/TrainDetailView.swift").read_text(encoding="utf-8")
+        self.assertIn("run: boardLive?.viaggiaTrenoRun", detail)
+        self.assertIn("TrainNoticesSection(", detail)
+        section = (IOS / "BinarioApp/TrainNoticesSection.swift").read_text(encoding="utf-8")
+        self.assertIn("guard model.isLiveDataActive, service.hasTrainNumber, let source = notices.service else { return false }", section)
+
+    def test_the_sources_read_the_shared_tables(self) -> None:
+        kit = IOS / "BinarioKit/Sources/BinarioKit"
+        swift = "\n".join(path.read_text(encoding="utf-8") for path in kit.glob("*.swift"))
+        viaggiatreno = json.loads((ROOT / "contracts/shared-data/v1/viaggiatreno-v1.json").read_text(encoding="utf-8"))
+        rfi = json.loads((ROOT / "contracts/shared-data/v1/rfi-monitor-v1.json").read_text(encoding="utf-8"))
+        # The addresses live in the tables only, on both phones.
+        for address in (viaggiatreno["baseUrl"], rfi["catalogueUrl"], rfi["monitorUrl"]):
+            with self.subTest(address=address):
+                self.assertNotIn(f'"{address}', swift)
+        android = "\n".join(
+            (ROOT / "app/src/main/java/it/binario/app/data/live" / name).read_text(encoding="utf-8")
+            for name in ("ViaggiaTrenoRealtimeAdapter.kt", "RfiStationBoardAdapter.kt", "RfiStationCatalog.kt", "ViaggiaTrenoTrainNoticesAdapter.kt")
+        )
+        for address in (viaggiatreno["baseUrl"], rfi["catalogueUrl"], rfi["monitorUrl"], "/news/smartcaring"):
+            with self.subTest(android=address):
+                self.assertNotIn(address, android)
+        for fragment in ("SharedData.ViaggiaTreno.baseUrl", "SharedData.RfiMonitor.monitorUrl", "SharedData.ViaggiaTreno.trenordClients"):
+            self.assertIn(fragment, swift)
 
 
 if __name__ == "__main__":

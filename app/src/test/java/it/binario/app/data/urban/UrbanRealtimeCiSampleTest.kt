@@ -3,8 +3,8 @@ package it.binario.app.data.urban
 import it.binario.app.data.core.BoardKind
 import it.binario.app.data.core.StationId
 import it.binario.app.data.gtfs.EmbeddedGtfsPack
+import it.binario.app.data.gtfs.EmbeddedGtfsPacks
 import it.binario.app.data.gtfs.EmbeddedGtfsRouteAdapter
-import it.binario.app.data.gtfs.TransitGtfsPacks
 import it.binario.app.data.live.MutablePublicSourceClock
 import it.binario.app.data.provider.ProviderResult
 import it.binario.app.data.provider.StationBoardRequest
@@ -31,7 +31,8 @@ class UrbanRealtimeCiSampleTest {
         requireNotNull(javaClass.getResource("/sources/gtfs-rt/$name")) { "Fixture assente: $name" }.readBytes()
 
     private fun pack(id: String): Pair<EmbeddedGtfsPack, ByteArray>? {
-        val pack = TransitGtfsPacks.all.first { it.sourceId.value == id }
+        // With the roles of the shared table: a city pack is URBAN.
+        val pack = EmbeddedGtfsPacks.transit.first { it.sourceId.value == id }
         val file = File("src/personal/assets", pack.assetPath).takeIf(File::isFile) ?: return null
         return pack to file.readBytes()
     }

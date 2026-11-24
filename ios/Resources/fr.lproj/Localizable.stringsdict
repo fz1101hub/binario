@@ -20,6 +20,96 @@
 			<string>%1$lld trains de plus</string>
 		</dict>
 	</dict>
+	<key>departures.map.capped</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>many</key>
+			<string>Affichés : les %1$lld plus proches.</string>
+			<key>one</key>
+			<string>Affiché : %1$lld train, le plus proche.</string>
+			<key>other</key>
+			<string>Affichés : les %1$lld plus proches.</string>
+		</dict>
+	</dict>
+	<key>departures.map.count</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>many</key>
+			<string>%1$lld de trains en circulation</string>
+			<key>one</key>
+			<string>%1$lld train en circulation</string>
+			<key>other</key>
+			<string>%1$lld trains en circulation</string>
+		</dict>
+	</dict>
+	<key>departures.map.delay</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>many</key>
+			<string>%1$lld minutes de retard</string>
+			<key>one</key>
+			<string>%1$lld minute de retard</string>
+			<key>other</key>
+			<string>%1$lld minutes de retard</string>
+		</dict>
+	</dict>
+	<key>notices.alerts.strike_title</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>many</key>
+			<string>%1$lld grèves ferroviaires demain</string>
+			<key>one</key>
+			<string>%1$lld grève ferroviaire demain</string>
+			<key>other</key>
+			<string>%1$lld grèves ferroviaires demain</string>
+		</dict>
+	</dict>
+	<key>notices.alerts.works_title_more</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>many</key>
+			<string>Demain, travaux sur %2$@ et sur %1$lld autres trajets</string>
+			<key>one</key>
+			<string>Demain, travaux sur %2$@ et sur %1$lld autre trajet</string>
+			<key>other</key>
+			<string>Demain, travaux sur %2$@ et sur %1$lld autres trajets</string>
+		</dict>
+	</dict>
 	<key>notices.works.show_more</key>
 	<dict>
 		<key>NSStringLocalizedFormatKey</key>
@@ -54,6 +144,24 @@
 			<string>à l’heure %1$lld fois sur %2$lld</string>
 			<key>other</key>
 			<string>à l’heure %1$lld fois sur %2$lld</string>
+		</dict>
+	</dict>
+	<key>result.compensation.minutes</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>many</key>
+			<string>%1$lld min</string>
+			<key>one</key>
+			<string>%1$lld min</string>
+			<key>other</key>
+			<string>%1$lld min</string>
 		</dict>
 	</dict>
 	<key>result.detail.arrival_on_time</key>

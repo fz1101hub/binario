@@ -1,0 +1,8 @@
+{
+  "schema": "binario-shared-data-v1",
+  "description": "Regulation (EU) 2021/782, art. 19: the share of the ticket price owed for a delay at the final destination, from the minutes the train detail shows the compensation notice on a verified actual arrival.",
+  "quarterFromMinutes": 60,
+  "quarterPercent": 25,
+  "halfFromMinutes": 120,
+  "halfPercent": 50
+}

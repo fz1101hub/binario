@@ -43,22 +43,31 @@ struct WatchHomeView: View {
                                     Text("\(service.expectedDeparture)  \(service.destination)")
                                         .font(.body.weight(.semibold))
                                         .foregroundStyle(BinarioPalette.brandGreen)
-                                    Text("\(service.category) \(service.number) · \(platformText(service))")
+                                    serviceLine(service)
                                         .font(.footnote)
                                     if let departure = upcoming.departure {
                                         Text("watch.countdown.departsIn \(Text(departure, style: .relative))")
                                             .font(.footnote)
                                             .foregroundStyle(.secondary)
                                     }
+                                    // «In orario 22 volte su 27», as on Wear OS: only here, never in a widget.
+                                    if let reliability = service.reliability {
+                                        Text(reliability.text)
+                                            .font(.footnote)
+                                            .foregroundStyle(.secondary)
+                                    }
                                 }
                             }
-                            .accessibilityLabel(service.accessibilitySummary)
+                            .accessibilityLabel(service.accessibilityLabelWithReliability)
                         }
                     }
                 }
 
                 Section {
-                    Text(WatchLocalization.text("watch.label.source \(store.snapshot.displayProviderName)"))
+                    // The programmed times shown once the live values end name no source, as on Wear OS.
+                    if !store.snapshot.providerName.isEmpty {
+                        Text(WatchLocalization.text("watch.label.source \(store.snapshot.displayProviderName)"))
+                    }
                     Text(WatchLocalization.text("watch.label.quality \(store.snapshot.confidenceLabel)"))
                     if let notice = store.snapshot.displayNotice {
                         Text(notice)
@@ -107,6 +116,17 @@ struct WatchHomeView: View {
         }
         return WatchLocalization.text("watch.platform.value \(platform)")
     }
+
+    /// Category, number and platform; a bus shows the bus symbol before its label, as on the iPhone.
+    @ViewBuilder
+    private func serviceLine(_ service: WatchService) -> some View {
+        let line = "\(service.label) · \(platformText(service))"
+        if service.isBus {
+            Label(line, systemImage: WatchVehicle.busSymbol)
+        } else {
+            Text(line)
+        }
+    }
 }
 
 private struct WatchServiceDetailView: View {
@@ -115,10 +135,19 @@ private struct WatchServiceDetailView: View {
     var body: some View {
         List {
             Text(service.destination).font(.headline)
-            LabeledContent(
-                WatchLocalization.text("watch.detail.train"),
-                value: "\(service.category) \(service.number)"
-            )
+            if service.isBus {
+                // A bus is named by its label, never as a train.
+                LabeledContent {
+                    Text(service.number)
+                } label: {
+                    Label(service.category, systemImage: WatchVehicle.busSymbol)
+                }
+            } else {
+                LabeledContent(
+                    WatchLocalization.text("watch.detail.train"),
+                    value: service.label
+                )
+            }
             LabeledContent(WatchLocalization.text("watch.detail.expected"), value: service.expectedDeparture)
             LabeledContent(WatchLocalization.text("watch.detail.scheduled"), value: service.scheduledDeparture)
             LabeledContent(

@@ -172,7 +172,7 @@ class NetworkReliabilityPlatformWeekdayTest {
         )
         val detail = TrainNetworkStatistics.of(stats, service, lookup, stations)!!
         assertEquals(UsualPlatform("12", 24, 30), detail.usualPlatform)
-        assertEquals(DayOfWeek.FRIDAY, detail.card?.weekdayRemark?.weekday)
+        assertEquals(listOf(DayOfWeek.FRIDAY), detail.card?.weekdayRemarks?.map { it.weekday })
         assertEquals(LocalDate.of(2026, 11, 9), detail.windowEnd)
         // Boarded at Milano: 4 days on its platform are not enough.
         val fromMilano = service.copy(origin = milano.name, stops = service.stops.drop(1))

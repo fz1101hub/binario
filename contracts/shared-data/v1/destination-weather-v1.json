@@ -1,0 +1,18 @@
+{
+  "schema": "binario-shared-data-v1",
+  "description": "Weather at the destination from Open-Meteo (CC BY 4.0, no key): the daily forecast asked for the arrival station's catalogue coordinates rounded to a few decimals, never the device position; how far ahead, what is asked, how long an answer is kept and the limits of a request.",
+  "forecastUrl": "https://api.open-meteo.com/v1/forecast",
+  "attributionUrl": "https://open-meteo.com/",
+  "dailyVariables": ["weather_code", "temperature_2m_max", "temperature_2m_min", "precipitation_probability_max"],
+  "timeZone": "Europe/Rome",
+  "forecastDays": 2,
+  "coordinateDecimals": 2,
+  "maximumDays": 16,
+  "timeToLiveSeconds": 10800,
+  "maximumStaleSeconds": 10800,
+  "minimumIntervalSeconds": 60,
+  "maximumEntries": 16,
+  "maximumBytes": 65536,
+  "readTimeoutSeconds": 12,
+  "totalTimeoutSeconds": 15
+}

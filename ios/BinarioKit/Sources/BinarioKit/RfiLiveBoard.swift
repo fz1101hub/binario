@@ -29,12 +29,14 @@ struct RfiMonitorRow: Equatable, Sendable {
     }
 }
 
-/// The public RFI pages: the monitor of a station and the station selector.
+/// The public RFI pages: the monitor of a station (its departures or its arrivals, read alike: an
+/// arrivals row names the train's origin where a departures row names its destination) and the
+/// station selector.
 enum RfiMonitorParser {
     static let maximumRows = 400
     static let maximumCatalogueEntries = 10_000
     /// Android's `RfiStationBoardAdapter` cache and `SourceRef.expiresAt`: 45 seconds.
-    static let timeToLive: TimeInterval = 45
+    static let timeToLive: TimeInterval = SharedData.RfiMonitor.timeToLiveSeconds
 
     static func rows(_ html: String) -> [RfiMonitorRow] {
         let page = LiveHTML(html)
@@ -184,8 +186,8 @@ final class RfiPlaceCatalogue: @unchecked Sendable {
         return places
     }()
 
-    static let refreshInterval: TimeInterval = 24 * 3_600
-    static let retryInterval: TimeInterval = 60
+    static let refreshInterval: TimeInterval = SharedData.RfiMonitor.catalogueRefreshSeconds
+    static let retryInterval: TimeInterval = SharedData.RfiMonitor.catalogueRetrySeconds
 
     private let lock = NSLock()
     private var names: [String: Set<Int>] = [:]
@@ -237,19 +239,27 @@ final class RfiPlaceCatalogue: @unchecked Sendable {
     }
 }
 
-/// The RFI «Arrivi e partenze» monitor, Android's `RfiStationBoardAdapter`: the departures of a
-/// station in the official selector, HTTPS to iechub.rfi.it only.
+/// The RFI «Arrivi e partenze» monitor, Android's `RfiStationBoardAdapter`: the departures or the
+/// arrivals of a station in the official selector, HTTPS to iechub.rfi.it only. Its pages and
+/// limits are the shared table contracts/shared-data/v1/rfi-monitor-v1.json.
 public struct RfiLiveSource: LiveDepartureBoardSource {
     public let source: LiveSource = .rfiStationBoard
 
-    static let catalogueURL = "https://iechub.rfi.it/ArriviPartenze"
-    static let monitorURL = "https://iechub.rfi.it/ArriviPartenze/ArrivalsDepartures/Monitor"
+    static let catalogueURL = SharedData.RfiMonitor.catalogueUrl
+    static let monitorURL = SharedData.RfiMonitor.monitorUrl
     /// Android's `RatePolicy`: one request per board every 20 seconds.
-    static let minimumInterval: TimeInterval = 20
+    static let minimumInterval: TimeInterval = SharedData.RfiMonitor.minimumIntervalSeconds
+    /// Android's read timeout within its whole-request deadline (`HttpRfiMonitorFetcher`).
     static let policy = LiveRequestPolicy(
-        accept: "text/html,application/xhtml+xml", extraHeaders: ["Cache-Control": "no-cache"],
-        requestTimeout: 10, totalTimeout: 10, maximumBytes: 2 * 1_048_576
+        accept: SharedData.RfiMonitor.accept, extraHeaders: ["Cache-Control": "no-cache"],
+        requestTimeout: min(SharedData.RfiMonitor.readTimeoutSeconds, SharedData.RfiMonitor.totalTimeoutSeconds),
+        totalTimeout: SharedData.RfiMonitor.totalTimeoutSeconds, maximumBytes: SharedData.RfiMonitor.maximumBytes
     )
+
+    /// The monitor page of `placeID`: its arrivals or its departures.
+    static func monitorAddress(placeID: Int, kind: LiveBoardKind) -> String {
+        "\(monitorURL)?placeId=\(placeID)&arrivals=\(kind == .arrivals ? "True" : "False")"
+    }
 
     let client: LiveSourceClient
     let gate: LiveSourceGate
@@ -287,7 +297,7 @@ public struct RfiLiveSource: LiveDepartureBoardSource {
             if let until = gate.pausedUntil() { return .unavailable(.paused(until: until)) }
             return .unavailable(Task.isCancelled ? .cancelled : .notCovered)
         }
-        switch await body("\(Self.monitorURL)?placeId=\(placeID)&arrivals=False") {
+        switch await body(Self.monitorAddress(placeID: placeID, kind: window.kind)) {
         case let .failure(failure):
             return .unavailable(failure.unavailableReason)
         case let .body(body):

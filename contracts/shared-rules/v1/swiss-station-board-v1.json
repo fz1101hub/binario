@@ -1,0 +1,578 @@
+{
+  "schema": "binario-shared-rules-swiss-station-board-v1",
+  "about": "Casi comuni dei tabelloni svizzeri di transport.opendata.ch (README.md): numero UIC della stazione, ricerca per nome delle stazioni di confine, lettura del tabellone, indirizzi chiesti. Ingressi: le fixture dei test Android e risposte sintetiche; la tabella è contracts/shared-data/v1/realtime-feeds-v1.json (swissBoard).",
+  "readers": {
+    "android": "app/src/test/java/it/binario/app/data/live/SwissStationBoardContractTest.kt",
+    "iphone": "ios/BinarioKit/Tests/BinarioKitTests/SwissStationBoardContractTests.swift"
+  },
+  "table": "contracts/shared-data/v1/realtime-feeds-v1.json",
+  "boards": [
+    {
+      "name": "Lugano: journey numbers, line labels, platforms and trusted prognoses (the bogus arrival prognosis of every row is never a time)",
+      "station": {
+        "id": "curated:NC000225",
+        "name": "Lugano",
+        "trenitaliaLocationId": "850005300",
+        "latitude": 46.005499,
+        "longitude": 8.946841
+      },
+      "now": 1792959000,
+      "window": {
+        "from": 1792958400,
+        "to": 1792980600,
+        "lateSince": null
+      },
+      "file": "app/src/test/resources/sources/opendata-ch-stationboard-lugano-departures.json",
+      "url": "https://transport.opendata.ch/v1/stationboard?id=8505300&limit=40&transportations%5B%5D=train",
+      "rows": [
+        {
+          "number": "25138",
+          "lineLabel": "S 10",
+          "destination": "Biasca",
+          "operator": "sbb",
+          "scheduled": 1792959900,
+          "expected": 1792959900,
+          "platform": "3",
+          "scheduledPlatform": null,
+          "status": "ON_TIME"
+        },
+        {
+          "number": "29",
+          "lineLabel": "EC 29",
+          "destination": "Como S. Giovanni",
+          "operator": "sbb",
+          "scheduled": 1792960200,
+          "expected": 1792960200,
+          "platform": "2",
+          "scheduledPlatform": null,
+          "status": "ON_TIME"
+        },
+        {
+          "number": "28",
+          "lineLabel": "EC 28",
+          "destination": "Zürich HB",
+          "operator": "sbb",
+          "scheduled": 1792960200,
+          "expected": 1792960260,
+          "platform": "3",
+          "scheduledPlatform": null,
+          "status": "DELAYED"
+        }
+      ]
+    },
+    {
+      "name": "a prognosis on the wrong side or outside the window is dropped without inventing a delay",
+      "station": {
+        "id": "curated:NC000225",
+        "name": "Lugano",
+        "trenitaliaLocationId": "850005300",
+        "latitude": 46.005499,
+        "longitude": 8.946841
+      },
+      "now": 1792959000,
+      "window": {
+        "from": 1792958400,
+        "to": 1792980600,
+        "lateSince": null
+      },
+      "json": "{\"station\": {\"id\": \"8505300\", \"name\": \"Lugano\", \"score\": null, \"coordinate\": {\"type\": \"WGS84\", \"x\": 46.005502, \"y\": 8.946996}, \"distance\": null}, \"stationboard\": [{\"stop\": {\"station\": {\"id\": \"8505300\", \"name\": \"Lugano\", \"score\": null, \"coordinate\": {\"type\": \"WGS84\", \"x\": 46.005502, \"y\": 8.946996}, \"distance\": null}, \"arrival\": null, \"arrivalTimestamp\": null, \"departure\": \"2026-10-25T21:25:00+0100\", \"departureTimestamp\": 1792959900, \"delay\": null, \"platform\": \"3\", \"prognosis\": {\"platform\": null, \"arrival\": \"2026-10-25T20:09:27+0100\", \"departure\": \"2026-10-25T20:09:27+0100\", \"capacity1st\": null, \"capacity2nd\": null}, \"realtimeAvailability\": null, \"location\": {\"id\": \"8505209\", \"name\": null, \"score\": null, \"coordinate\": {\"type\": \"WGS84\", \"x\": null, \"y\": null}, \"distance\": null}}, \"name\": \"025138\", \"category\": \"S\", \"subcategory\": null, \"categoryCode\": null, \"number\": \"10\", \"operator\": \"SBB\", \"to\": \"Biasca\", \"passList\": [{\"station\": {\"id\": \"8505209\", \"name\": null, \"score\": null, \"coordinate\": {\"type\": \"WGS84\", \"x\": null, \"y\": null}, \"distance\": null}, \"arrival\": null, \"arrivalTimestamp\": null, \"departure\": \"2026-10-25T21:25:00+0100\", \"departureTimestamp\": 1792959900, \"delay\": 0, \"platform\": \"3\", \"prognosis\": {\"platform\": null, \"arrival\": \"2026-10-25T20:09:27+0100\", \"departure\": \"2026-10-25T21:25:00+0100\", \"capacity1st\": null, \"capacity2nd\": null}, \"realtimeAvailability\": null, \"location\": {\"id\": \"8505209\", \"name\": null, \"score\": null, \"coordinate\": {\"type\": \"WGS84\", \"x\": null, \"y\": null}, \"distance\": null}}, {\"station\": {\"id\": \"8505214\", \"name\": \"Giubiasco\", \"score\": null, \"coordinate\": {\"type\": \"WGS84\", \"x\": 46.173814, \"y\": 9.003599}, \"distance\": null}, \"arrival\": \"2026-10-25T21:37:00+0100\", \"arrivalTimestamp\": 1792960620, \"departure\": \"2026-10-25T21:39:00+0100\", \"departureTimestamp\": 1792960740, \"delay\": 0, \"platform\": null, \"prognosis\": {\"platform\": null, \"arrival\": \"2026-10-25T21:37:00+0100\", \"departure\": \"2026-10-25T21:39:00+0100\", \"capacity1st\": null, \"capacity2nd\": null}, \"realtimeAvailability\": null, \"location\": {\"id\": \"8505214\", \"name\": \"Giubiasco\", \"score\": null, \"coordinate\": {\"type\": \"WGS84\", \"x\": 46.173814, \"y\": 9.003599}, \"distance\": null}}, {\"station\": {\"id\": \"8505213\", \"name\": \"Bellinzona\", \"score\": null, \"coordinate\": {\"type\": \"WGS84\", \"x\": 46.195433, \"y\": 9.029515}, \"distance\": null}, \"arrival\": \"2026-10-25T21:43:00+0100\", \"arrivalTimestamp\": 1792960980, \"departure\": \"2026-10-25T21:50:00+0100\", \"departureTimestamp\": 1792961400, \"delay\": 1, \"platform\": null, \"prognosis\": {\"platform\": null, \"arrival\": \"2026-10-25T21:43:00+0100\", \"departure\": \"2026-10-25T21:51:00+0100\", \"capacity1st\": null, \"capacity2nd\": null}, \"realtimeAvailability\": null, \"location\": {\"id\": \"8505213\", \"name\": \"Bellinzona\", \"score\": null, \"coordinate\": {\"type\": \"WGS84\", \"x\": 46.195433, \"y\": 9.029515}, \"distance\": null}}, {\"station\": {\"id\": \"8505212\", \"name\": \"Castione-Arbedo\", \"score\": null, \"coordinate\": {\"type\": \"WGS84\", \"x\": 46.222923, \"y\": 9.041462}, \"distance\": null}, \"arrival\": \"2026-10-25T21:54:00+0100\", \"arrivalTimestamp\": 1792961640, \"departure\": \"2026-10-25T21:55:00+0100\", \"departureTimestamp\": 1792961700, \"delay\": 0, \"platform\": null, \"prognosis\": {\"platform\": null, \"arrival\": \"2026-10-25T21:54:00+0100\", \"departure\": \"2026-10-25T21:55:00+0100\", \"capacity1st\": null, \"capacity2nd\": null}, \"realtimeAvailability\": null, \"location\": {\"id\": \"8505212\", \"name\": \"Castione-Arbedo\", \"score\": null, \"coordinate\": {\"type\": \"WGS84\", \"x\": 46.222923, \"y\": 9.041462}, \"distance\": null}}, {\"station\": {\"id\": \"8505209\", \"name\": \"Biasca\", \"score\": null, \"coordinate\": {\"type\": \"WGS84\", \"x\": 46.351981, \"y\": 8.974179}, \"distance\": null}, \"arrival\": \"2026-10-25T22:07:00+0100\", \"arrivalTimestamp\": 1792962420, \"departure\": null, \"departureTimestamp\": null, \"delay\": 0, \"platform\": null, \"prognosis\": {\"platform\": null, \"arrival\": \"2026-10-25T22:07:00+0100\", \"departure\": \"2026-10-25T20:09:27+0100\", \"capacity1st\": null, \"capacity2nd\": null}, \"realtimeAvailability\": null, \"location\": {\"id\": \"8505209\", \"name\": \"Biasca\", \"score\": null, \"coordinate\": {\"type\": \"WGS84\", \"x\": 46.351981, \"y\": 8.974179}, \"distance\": null}}], \"capacity1st\": null, \"capacity2nd\": null}, {\"stop\": {\"station\": {\"id\": \"8505300\", \"name\": \"Lugano\", \"score\": null, \"coordinate\": {\"type\": \"WGS84\", \"x\": 46.005502, \"y\": 8.946996}, \"distance\": null}, \"arrival\": null, \"arrivalTimestamp\": null, \"departure\": \"2026-10-25T21:30:00+0100\", \"departureTimestamp\": 1792960200, \"delay\": null, \"platform\": \"2\", \"prognosis\": {\"platform\": null, \"arrival\": \"2026-10-25T20:09:27+0100\", \"departure\": \"2026-10-26T09:30:00+0100\", \"capacity1st\": null, \"capacity2nd\": null}, \"realtimeAvailability\": null, \"location\": {\"id\": \"8301307\", \"name\": null, \"score\": null, \"coordinate\": {\"type\": \"WGS84\", \"x\": null, \"y\": null}, \"distance\": null}}, \"name\": \"000029\", \"category\": \"EC\", \"subcategory\": null, \"categoryCode\": null, \"number\": \"000029\", \"operator\": \"SBB\", \"to\": \"Como S. Giovanni\", \"passList\": [{\"station\": {\"id\": \"8301307\", \"name\": null, \"score\": null, \"coordinate\": {\"type\": \"WGS84\", \"x\": null, \"y\": null}, \"distance\": null}, \"arrival\": null, \"arrivalTimestamp\": null, \"departure\": \"2026-10-25T21:30:00+0100\", \"departureTimestamp\": 1792960200, \"delay\": 0, \"platform\": \"2\", \"prognosis\": {\"platform\": null, \"arrival\": \"2026-10-25T20:09:27+0100\", \"departure\": \"2026-10-25T21:30:00+0100\", \"capacity1st\": null, \"capacity2nd\": null}, \"realtimeAvailability\": null, \"location\": {\"id\": \"8301307\", \"name\": null, \"score\": null, \"coordinate\": {\"type\": \"WGS84\", \"x\": null, \"y\": null}, \"distance\": null}}, {\"station\": {\"id\": \"8505307\", \"name\": \"Chiasso\", \"score\": null, \"coordinate\": {\"type\": \"WGS84\", \"x\": 45.83217, \"y\": 9.031446}, \"distance\": null}, \"arrival\": \"2026-10-25T21:55:00+0100\", \"arrivalTimestamp\": 1792961700, \"departure\": \"2026-10-25T22:02:00+0100\", \"departureTimestamp\": 1792962120, \"delay\": 0, \"platform\": null, \"prognosis\": {\"platform\": null, \"arrival\": \"2026-10-25T21:55:00+0100\", \"departure\": \"2026-10-25T22:02:00+0100\", \"capacity1st\": null, \"capacity2nd\": null}, \"realtimeAvailability\": null, \"location\": {\"id\": \"8505307\", \"name\": \"Chiasso\", \"score\": null, \"coordinate\": {\"type\": \"WGS84\", \"x\": 45.83217, \"y\": 9.031446}, \"distance\": null}}, {\"station\": {\"id\": \"8301307\", \"name\": \"Como S. Giovanni\", \"score\": null, \"coordinate\": {\"type\": \"WGS84\", \"x\": 45.808969, \"y\": 9.072715}, \"distance\": null}, \"arrival\": \"2026-10-25T22:08:00+0100\", \"arrivalTimestamp\": 1792962480, \"departure\": null, \"departureTimestamp\": null, \"delay\": 0, \"platform\": null, \"prognosis\": {\"platform\": null, \"arrival\": \"2026-10-25T22:08:00+0100\", \"departure\": \"2026-10-25T20:09:27+0100\", \"capacity1st\": null, \"capacity2nd\": null}, \"realtimeAvailability\": null, \"location\": {\"id\": \"8301307\", \"name\": \"Como S. Giovanni\", \"score\": null, \"coordinate\": {\"type\": \"WGS84\", \"x\": 45.808969, \"y\": 9.072715}, \"distance\": null}}], \"capacity1st\": null, \"capacity2nd\": null}, {\"stop\": {\"station\": {\"id\": \"8505300\", \"name\": \"Lugano\", \"score\": null, \"coordinate\": {\"type\": \"WGS84\", \"x\": 46.005502, \"y\": 8.946996}, \"distance\": null}, \"arrival\": null, \"arrivalTimestamp\": null, \"departure\": \"2026-10-25T21:30:00+0100\", \"departureTimestamp\": 1792960200, \"delay\": 1, \"platform\": \"3\", \"prognosis\": {\"platform\": null, \"arrival\": \"2026-10-25T20:09:27+0100\", \"departure\": \"2026-10-25T21:31:00+0100\", \"capacity1st\": null, \"capacity2nd\": null}, \"realtimeAvailability\": null, \"location\": {\"id\": \"8503000\", \"name\": null, \"score\": null, \"coordinate\": {\"type\": \"WGS84\", \"x\": null, \"y\": null}, \"distance\": null}}, \"name\": \"000028\", \"category\": \"EC\", \"subcategory\": null, \"categoryCode\": null, \"number\": \"000028\", \"operator\": \"SBB\", \"to\": \"Zürich HB\", \"passList\": [], \"capacity1st\": null, \"capacity2nd\": null}]}",
+      "url": "https://transport.opendata.ch/v1/stationboard?id=8505300&limit=40&transportations%5B%5D=train",
+      "rows": [
+        {
+          "number": "25138",
+          "lineLabel": "S 10",
+          "destination": "Biasca",
+          "operator": "sbb",
+          "scheduled": 1792959900,
+          "expected": null,
+          "platform": "3",
+          "scheduledPlatform": null,
+          "status": null
+        },
+        {
+          "number": "29",
+          "lineLabel": "EC 29",
+          "destination": "Como S. Giovanni",
+          "operator": "sbb",
+          "scheduled": 1792960200,
+          "expected": null,
+          "platform": "2",
+          "scheduledPlatform": null,
+          "status": null
+        },
+        {
+          "number": "28",
+          "lineLabel": "EC 28",
+          "destination": "Zürich HB",
+          "operator": "sbb",
+          "scheduled": 1792960200,
+          "expected": 1792960260,
+          "platform": "3",
+          "scheduledPlatform": null,
+          "status": "DELAYED"
+        }
+      ]
+    },
+    {
+      "name": "non-rail rows, rows without a journey number, a destination or an offset are dropped; a moved platform keeps the planned one",
+      "station": {
+        "id": "curated:NC000225",
+        "name": "Lugano",
+        "trenitaliaLocationId": "850005300",
+        "latitude": 46.005499,
+        "longitude": 8.946841
+      },
+      "now": 1792959000,
+      "window": {
+        "from": 1792958400,
+        "to": 1792980600,
+        "lateSince": null
+      },
+      "json": "{\"station\": {\"id\": \"8505300\", \"name\": \"Lugano\"}, \"stationboard\": [{\"stop\": {\"station\": {\"id\": \"8505300\", \"name\": \"Lugano\"}, \"arrival\": null, \"departure\": \"2026-10-25T21:40:00+0100\", \"delay\": 4, \"platform\": \"3\", \"prognosis\": {\"platform\": \"4\", \"arrival\": null, \"departure\": null}}, \"name\": \"000123\", \"category\": \"IR\", \"number\": \"26\", \"operator\": \"SBB\", \"to\": \"Basel SBB\"}, {\"stop\": {\"station\": {\"id\": \"8505300\", \"name\": \"Lugano\"}, \"arrival\": null, \"departure\": \"2026-10-25T21:41:00+0100\", \"delay\": 0, \"platform\": \"1\", \"prognosis\": {\"platform\": null, \"arrival\": null, \"departure\": null}}, \"name\": \"000124\", \"category\": \"B\", \"number\": \"1\", \"operator\": \"SBB\", \"to\": \"Paradiso\"}, {\"stop\": {\"station\": {\"id\": \"8505300\", \"name\": \"Lugano\"}, \"arrival\": null, \"departure\": \"2026-10-25T21:42:00+0100\", \"delay\": 0, \"platform\": \"1\", \"prognosis\": {\"platform\": null, \"arrival\": null, \"departure\": null}}, \"name\": \"000125\", \"category\": \"tram\", \"number\": \"2\", \"operator\": \"SBB\", \"to\": \"Centro\"}, {\"stop\": {\"station\": {\"id\": \"8505300\", \"name\": \"Lugano\"}, \"arrival\": null, \"departure\": \"2026-10-25T21:43:00+0100\", \"delay\": 0, \"platform\": \"1\", \"prognosis\": {\"platform\": null, \"arrival\": null, \"departure\": null}}, \"name\": \"abc\", \"category\": \"S\", \"number\": \"10\", \"operator\": \"SBB\", \"to\": \"Biasca\"}, {\"stop\": {\"station\": {\"id\": \"8505300\", \"name\": \"Lugano\"}, \"arrival\": null, \"departure\": \"2026-10-25T21:44:00+0100\", \"delay\": 0, \"platform\": \"1\", \"prognosis\": {\"platform\": null, \"arrival\": null, \"departure\": null}}, \"name\": \"000126\", \"category\": \"S\", \"number\": \"10\", \"operator\": \"SBB\", \"to\": null}, {\"stop\": {\"station\": {\"id\": \"8505300\", \"name\": \"Lugano\"}, \"arrival\": null, \"departure\": \"2026-10-25T21:45:00\", \"delay\": 0, \"platform\": \"1\", \"prognosis\": {\"platform\": null, \"arrival\": null, \"departure\": null}}, \"name\": \"000127\", \"category\": \"S\", \"number\": \"10\", \"operator\": \"SBB\", \"to\": \"Biasca\"}, {\"stop\": {\"station\": {\"id\": \"8505300\", \"name\": \"Lugano\"}, \"arrival\": null, \"departure\": \"2026-10-25T21:46:00+01:00\", \"delay\": 361, \"platform\": \"1\", \"prognosis\": {\"platform\": null, \"arrival\": null, \"departure\": null}}, \"name\": \"000128\", \"category\": \"S\", \"number\": \"10\", \"operator\": \"SBB\", \"to\": \"Biasca\"}, {\"stop\": {\"station\": {\"id\": \"8505300\", \"name\": \"Lugano\"}, \"arrival\": null, \"departure\": \"2026-10-25T21:47:00Z\", \"delay\": null, \"platform\": \"1\", \"prognosis\": {\"platform\": null, \"arrival\": null, \"departure\": \"2026-10-25T21:47:30Z\"}}, \"name\": \"000129\", \"category\": null, \"number\": \"10\", \"operator\": \"TILO\", \"to\": \"Biasca\"}, {\"stop\": {\"station\": {\"id\": \"8505300\", \"name\": \"Lugano\"}, \"arrival\": null, \"departure\": \"2026-10-25T21:48:00+0100\", \"delay\": -2, \"platform\": \"1\", \"prognosis\": {\"platform\": null, \"arrival\": null, \"departure\": null}}, \"name\": \"000130\", \"category\": \"RE\", \"number\": \"R80\", \"operator\": \"Trenord\", \"to\": \"Milano Centrale\"}]}",
+      "url": "https://transport.opendata.ch/v1/stationboard?id=8505300&limit=40&transportations%5B%5D=train",
+      "rows": [
+        {
+          "number": "123",
+          "lineLabel": "IR 26",
+          "destination": "Basel SBB",
+          "operator": "sbb",
+          "scheduled": 1792960800,
+          "expected": 1792961040,
+          "platform": "4",
+          "scheduledPlatform": "3",
+          "status": "DELAYED"
+        },
+        {
+          "number": "128",
+          "lineLabel": "S 10",
+          "destination": "Biasca",
+          "operator": "sbb",
+          "scheduled": 1792961160,
+          "expected": null,
+          "platform": "1",
+          "scheduledPlatform": null,
+          "status": null
+        },
+        {
+          "number": "130",
+          "lineLabel": "RE R80",
+          "destination": "Milano Centrale",
+          "operator": "trenord",
+          "scheduled": 1792961280,
+          "expected": null,
+          "platform": "1",
+          "scheduledPlatform": null,
+          "status": null
+        },
+        {
+          "number": "129",
+          "lineLabel": null,
+          "destination": "Biasca",
+          "operator": "tilo",
+          "scheduled": 1792964820,
+          "expected": 1792964850,
+          "platform": "1",
+          "scheduledPlatform": null,
+          "status": "ON_TIME"
+        }
+      ]
+    },
+    {
+      "name": "a board not about now is asked from its time, written in Swiss time",
+      "station": {
+        "id": "curated:NC000225",
+        "name": "Lugano",
+        "trenitaliaLocationId": "850005300",
+        "latitude": 46.005499,
+        "longitude": 8.946841
+      },
+      "now": 1792959000,
+      "window": {
+        "from": 1792947600,
+        "to": 1792969200,
+        "lateSince": null
+      },
+      "file": "app/src/test/resources/sources/opendata-ch-stationboard-lugano-departures.json",
+      "url": "https://transport.opendata.ch/v1/stationboard?id=8505300&limit=40&transportations%5B%5D=train&datetime=2026-10-25%2018%3A00",
+      "rows": [
+        {
+          "number": "25138",
+          "lineLabel": "S 10",
+          "destination": "Biasca",
+          "operator": "sbb",
+          "scheduled": 1792959900,
+          "expected": 1792959900,
+          "platform": "3",
+          "scheduledPlatform": null,
+          "status": "ON_TIME"
+        },
+        {
+          "number": "29",
+          "lineLabel": "EC 29",
+          "destination": "Como S. Giovanni",
+          "operator": "sbb",
+          "scheduled": 1792960200,
+          "expected": 1792960200,
+          "platform": "2",
+          "scheduledPlatform": null,
+          "status": "ON_TIME"
+        },
+        {
+          "number": "28",
+          "lineLabel": "EC 28",
+          "destination": "Zürich HB",
+          "operator": "sbb",
+          "scheduled": 1792960200,
+          "expected": 1792960260,
+          "platform": "3",
+          "scheduledPlatform": null,
+          "status": "DELAYED"
+        }
+      ]
+    },
+    {
+      "name": "an empty board",
+      "station": {
+        "id": "curated:NC000225",
+        "name": "Lugano",
+        "trenitaliaLocationId": "850005300",
+        "latitude": 46.005499,
+        "longitude": 8.946841
+      },
+      "now": 1792959000,
+      "window": {
+        "from": 1792958400,
+        "to": 1792980600,
+        "lateSince": null
+      },
+      "json": "{\"station\":{\"id\":\"8505300\",\"name\":\"Lugano\"},\"stationboard\":[]}",
+      "url": "https://transport.opendata.ch/v1/stationboard?id=8505300&limit=40&transportations%5B%5D=train",
+      "rows": []
+    },
+    {
+      "name": "a maintenance page",
+      "station": {
+        "id": "curated:NC000225",
+        "name": "Lugano",
+        "trenitaliaLocationId": "850005300",
+        "latitude": 46.005499,
+        "longitude": 8.946841
+      },
+      "now": 1792959000,
+      "window": {
+        "from": 1792958400,
+        "to": 1792980600,
+        "lateSince": null
+      },
+      "json": "<html>maintenance</html>",
+      "url": "https://transport.opendata.ch/v1/stationboard?id=8505300&limit=40&transportations%5B%5D=train",
+      "unreadable": true
+    },
+    {
+      "name": "a cut answer",
+      "station": {
+        "id": "curated:NC000225",
+        "name": "Lugano",
+        "trenitaliaLocationId": "850005300",
+        "latitude": 46.005499,
+        "longitude": 8.946841
+      },
+      "now": 1792959000,
+      "window": {
+        "from": 1792958400,
+        "to": 1792980600,
+        "lateSince": null
+      },
+      "json": "{\"station\":{\"id\":\"8505300\",\"name\":\"Lugano\",\"score\":null,\"coordinate\":{\"type\":\"WGS84\",\"x\":46.005502,\"y\":8.946996},\"distance\":null},\"stationboard\":[{\"stop\":{\"station\":{\"id\":\"8505300\",\"name\":\"Lugano\",\"score\":null,\"coordinate\":{\"type\":\"WGS84\",\"x\":46.005502,\"y\":8.946996},\"distance\":null},\"arrival\":null,\"arrivalTimestamp\":null,\"departure\":\"2026-10-25T21:25:00+0100\",\"departureTimestamp\":1792959900,\"delay\":0,\"platform\":\"3\",\"prognosis\":{\"platform\":null,\"arrival\":\"2026-10-25T20:09:27+0100\",\"departure\":\"2026-10-25T21:25:00+0100\",\"capacity1st\":null,\"capacity2nd\":null},\"realtimeAvailability\":null,\"location\":{\"id\":\"8505209\",\"name\":null,\"score\":null,\"coordinate\":{\"type\":\"WGS84\",\"x\":null,\"y\":null},\"distance\":null}},\"name\":\"025138\",\"category\":\"S\",\"subcategory\":null,\"categoryCode\":null,\"number\":\"10\",\"operator\":\"SBB\",\"to\":\"Biasca\",\"passList\":[{\"station\":{\"id\":\"8505209\",\"name\":null,\"score\":null,\"coordinate\"",
+      "url": "https://transport.opendata.ch/v1/stationboard?id=8505300&limit=40&transportations%5B%5D=train",
+      "unreadable": true
+    },
+    {
+      "name": "another station's board",
+      "station": {
+        "id": "curated:NC000225",
+        "name": "Lugano",
+        "trenitaliaLocationId": "850005300",
+        "latitude": 46.005499,
+        "longitude": 8.946841
+      },
+      "now": 1792959000,
+      "window": {
+        "from": 1792958400,
+        "to": 1792980600,
+        "lateSince": null
+      },
+      "json": "{\"station\":{\"id\":\"8503000\"},\"stationboard\":[]}",
+      "url": "https://transport.opendata.ch/v1/stationboard?id=8505300&limit=40&transportations%5B%5D=train",
+      "unreadable": true
+    },
+    {
+      "name": "a board without its station",
+      "station": {
+        "id": "curated:NC000225",
+        "name": "Lugano",
+        "trenitaliaLocationId": "850005300",
+        "latitude": 46.005499,
+        "longitude": 8.946841
+      },
+      "now": 1792959000,
+      "window": {
+        "from": 1792958400,
+        "to": 1792980600,
+        "lateSince": null
+      },
+      "json": "{\"stationboard\":[]}",
+      "url": "https://transport.opendata.ch/v1/stationboard?id=8505300&limit=40&transportations%5B%5D=train",
+      "unreadable": true
+    }
+  ],
+  "uic": [
+    {
+      "stationId": "gtfs:ch-otd-gtfs:8505213:0:1",
+      "trenitaliaLocationId": null,
+      "uic": "8505213",
+      "swissWithoutUic": false
+    },
+    {
+      "stationId": "gtfs:ch-otd-gtfs:8505300",
+      "trenitaliaLocationId": null,
+      "uic": "8505300",
+      "swissWithoutUic": false
+    },
+    {
+      "stationId": "curated:S01250",
+      "trenitaliaLocationId": "850007100",
+      "uic": "8507100",
+      "swissWithoutUic": false
+    },
+    {
+      "stationId": "curated:NC000035",
+      "trenitaliaLocationId": "850090001",
+      "uic": null,
+      "swissWithoutUic": true
+    },
+    {
+      "stationId": "gtfs:ch-otd-gtfs:8301003",
+      "trenitaliaLocationId": null,
+      "uic": null,
+      "swissWithoutUic": false
+    },
+    {
+      "stationId": "curated:S01700",
+      "trenitaliaLocationId": "830001700",
+      "uic": null,
+      "swissWithoutUic": false
+    },
+    {
+      "stationId": "curated:S01250",
+      "trenitaliaLocationId": " 850007100 ",
+      "uic": "8507100",
+      "swissWithoutUic": false
+    }
+  ],
+  "locations": [
+    {
+      "file": "app/src/test/resources/sources/opendata-ch-locations-chiasso.json",
+      "keep": "all",
+      "name": "Chiasso",
+      "latitude": 45.830736,
+      "longitude": 9.03421,
+      "selected": "8505307"
+    },
+    {
+      "file": "app/src/test/resources/sources/opendata-ch-locations-chiasso.json",
+      "keep": "not-train",
+      "name": "Chiasso, Stazione",
+      "latitude": 45.832433,
+      "longitude": 9.031734,
+      "selected": null
+    },
+    {
+      "file": "app/src/test/resources/sources/opendata-ch-locations-chiasso.json",
+      "keep": "italian-ids",
+      "name": "Chiasso",
+      "latitude": 45.830736,
+      "longitude": 9.03421,
+      "selected": null
+    },
+    {
+      "file": "app/src/test/resources/sources/opendata-ch-locations-chiasso.json",
+      "keep": "all",
+      "name": "Chiasso",
+      "latitude": null,
+      "longitude": null,
+      "selected": "8505307"
+    },
+    {
+      "file": "app/src/test/resources/sources/opendata-ch-locations-chiasso.json",
+      "keep": "all",
+      "name": "Como S. Giovanni",
+      "latitude": 45.808946,
+      "longitude": 9.072331,
+      "selected": null
+    }
+  ],
+  "lookups": [
+    {
+      "name": "a near-border station is found once by name: only a nearby Swiss train station",
+      "station": {
+        "id": "curated:S01301",
+        "name": "Chiasso",
+        "trenitaliaLocationId": "830001301",
+        "latitude": 45.830736,
+        "longitude": 9.03421
+      },
+      "now": 1792959000,
+      "window": {
+        "from": 1792958400,
+        "to": 1792980600,
+        "lateSince": null
+      },
+      "answers": {
+        "https://transport.opendata.ch/v1/locations?query=Chiasso&type=station": {
+          "file": "app/src/test/resources/sources/opendata-ch-locations-chiasso.json"
+        },
+        "https://transport.opendata.ch/v1/stationboard?id=8505307&limit=40&transportations%5B%5D=train": {
+          "json": "{\"station\":{\"id\":\"8505307\",\"name\":\"Lugano\",\"score\":null,\"coordinate\":{\"type\":\"WGS84\",\"x\":46.005502,\"y\":8.946996},\"distance\":null},\"stationboard\":[{\"stop\":{\"station\":{\"id\":\"8505307\",\"name\":\"Lugano\",\"score\":null,\"coordinate\":{\"type\":\"WGS84\",\"x\":46.005502,\"y\":8.946996},\"distance\":null},\"arrival\":null,\"arrivalTimestamp\":null,\"departure\":\"2026-10-25T21:25:00+0100\",\"departureTimestamp\":1792959900,\"delay\":0,\"platform\":\"3\",\"prognosis\":{\"platform\":null,\"arrival\":\"2026-10-25T20:09:27+0100\",\"departure\":\"2026-10-25T21:25:00+0100\",\"capacity1st\":null,\"capacity2nd\":null},\"realtimeAvailability\":null,\"location\":{\"id\":\"8505209\",\"name\":null,\"score\":null,\"coordinate\":{\"type\":\"WGS84\",\"x\":null,\"y\":null},\"distance\":null}},\"name\":\"025138\",\"category\":\"S\",\"subcategory\":null,\"categoryCode\":null,\"number\":\"10\",\"operator\":\"SBB\",\"to\":\"Biasca\",\"passList\":[{\"station\":{\"id\":\"8505209\",\"name\":null,\"score\":null,\"coordinate\":{\"type\":\"WGS84\",\"x\":null,\"y\":null},\"distance\":null},\"arrival\":null,\"arrivalTimestamp\":null,\"departure\":\"2026-10-25T21:25:00+0100\",\"departureTimestamp\":1792959900,\"delay\":0,\"platform\":\"3\",\"prognosis\":{\"platform\":null,\"arrival\":\"2026-10-25T20:09:27+0100\",\"departure\":\"2026-10-25T21:25:00+0100\",\"capacity1st\":null,\"capacity2nd\":null},\"realtimeAvailability\":null,\"location\":{\"id\":\"8505209\",\"name\":null,\"score\":null,\"coordinate\":{\"type\":\"WGS84\",\"x\":null,\"y\":null},\"distance\":null}},{\"station\":{\"id\":\"8505214\",\"name\":\"Giubiasco\",\"score\":null,\"coordinate\":{\"type\":\"WGS84\",\"x\":46.173814,\"y\":9.003599},\"distance\":null},\"arrival\":\"2026-10-25T21:37:00+0100\",\"arrivalTimestamp\":1792960620,\"departure\":\"2026-10-25T21:39:00+0100\",\"departureTimestamp\":1792960740,\"delay\":0,\"platform\":null,\"prognosis\":{\"platform\":null,\"arrival\":\"2026-10-25T21:37:00+0100\",\"departure\":\"2026-10-25T21:39:00+0100\",\"capacity1st\":null,\"capacity2nd\":null},\"realtimeAvailability\":null,\"location\":{\"id\":\"8505214\",\"name\":\"Giubiasco\",\"score\":null,\"coordinate\":{\"type\":\"WGS84\",\"x\":46.173814,\"y\":9.003599},\"distance\":null}},{\"station\":{\"id\":\"8505213\",\"name\":\"Bellinzona\",\"score\":null,\"coordinate\":{\"type\":\"WGS84\",\"x\":46.195433,\"y\":9.029515},\"distance\":null},\"arrival\":\"2026-10-25T21:43:00+0100\",\"arrivalTimestamp\":1792960980,\"departure\":\"2026-10-25T21:50:00+0100\",\"departureTimestamp\":1792961400,\"delay\":1,\"platform\":null,\"prognosis\":{\"platform\":null,\"arrival\":\"2026-10-25T21:43:00+0100\",\"departure\":\"2026-10-25T21:51:00+0100\",\"capacity1st\":null,\"capacity2nd\":null},\"realtimeAvailability\":null,\"location\":{\"id\":\"8505213\",\"name\":\"Bellinzona\",\"score\":null,\"coordinate\":{\"type\":\"WGS84\",\"x\":46.195433,\"y\":9.029515},\"distance\":null}},{\"station\":{\"id\":\"8505212\",\"name\":\"Castione-Arbedo\",\"score\":null,\"coordinate\":{\"type\":\"WGS84\",\"x\":46.222923,\"y\":9.041462},\"distance\":null},\"arrival\":\"2026-10-25T21:54:00+0100\",\"arrivalTimestamp\":1792961640,\"departure\":\"2026-10-25T21:55:00+0100\",\"departureTimestamp\":1792961700,\"delay\":0,\"platform\":null,\"prognosis\":{\"platform\":null,\"arrival\":\"2026-10-25T21:54:00+0100\",\"departure\":\"2026-10-25T21:55:00+0100\",\"capacity1st\":null,\"capacity2nd\":null},\"realtimeAvailability\":null,\"location\":{\"id\":\"8505212\",\"name\":\"Castione-Arbedo\",\"score\":null,\"coordinate\":{\"type\":\"WGS84\",\"x\":46.222923,\"y\":9.041462},\"distance\":null}},{\"station\":{\"id\":\"8505209\",\"name\":\"Biasca\",\"score\":null,\"coordinate\":{\"type\":\"WGS84\",\"x\":46.351981,\"y\":8.974179},\"distance\":null},\"arrival\":\"2026-10-25T22:07:00+0100\",\"arrivalTimestamp\":1792962420,\"departure\":null,\"departureTimestamp\":null,\"delay\":0,\"platform\":null,\"prognosis\":{\"platform\":null,\"arrival\":\"2026-10-25T22:07:00+0100\",\"departure\":\"2026-10-25T20:09:27+0100\",\"capacity1st\":null,\"capacity2nd\":null},\"realtimeAvailability\":null,\"location\":{\"id\":\"8505209\",\"name\":\"Biasca\",\"score\":null,\"coordinate\":{\"type\":\"WGS84\",\"x\":46.351981,\"y\":8.974179},\"distance\":null}}],\"capacity1st\":null,\"capacity2nd\":null},{\"stop\":{\"station\":{\"id\":\"8505307\",\"name\":\"Lugano\",\"score\":null,\"coordinate\":{\"type\":\"WGS84\",\"x\":46.005502,\"y\":8.946996},\"distance\":null},\"arrival\":null,\"arrivalTimestamp\":null,\"departure\":\"2026-10-25T21:30:00+0100\",\"departureTimestamp\":1792960200,\"delay\":0,\"platform\":\"2\",\"prognosis\":{\"platform\":null,\"arrival\":\"2026-10-25T20:09:27+0100\",\"departure\":\"2026-10-25T21:30:00+0100\",\"capacity1st\":null,\"capacity2nd\":null},\"realtimeAvailability\":null,\"location\":{\"id\":\"8301307\",\"name\":null,\"score\":null,\"coordinate\":{\"type\":\"WGS84\",\"x\":null,\"y\":null},\"distance\":null}},\"name\":\"000029\",\"category\":\"EC\",\"subcategory\":null,\"categoryCode\":null,\"number\":\"000029\",\"operator\":\"SBB\",\"to\":\"Como S. Giovanni\",\"passList\":[{\"station\":{\"id\":\"8301307\",\"name\":null,\"score\":null,\"coordinate\":{\"type\":\"WGS84\",\"x\":null,\"y\":null},\"distance\":null},\"arrival\":null,\"arrivalTimestamp\":null,\"departure\":\"2026-10-25T21:30:00+0100\",\"departureTimestamp\":1792960200,\"delay\":0,\"platform\":\"2\",\"prognosis\":{\"platform\":null,\"arrival\":\"2026-10-25T20:09:27+0100\",\"departure\":\"2026-10-25T21:30:00+0100\",\"capacity1st\":null,\"capacity2nd\":null},\"realtimeAvailability\":null,\"location\":{\"id\":\"8301307\",\"name\":null,\"score\":null,\"coordinate\":{\"type\":\"WGS84\",\"x\":null,\"y\":null},\"distance\":null}},{\"station\":{\"id\":\"8505307\",\"name\":\"Chiasso\",\"score\":null,\"coordinate\":{\"type\":\"WGS84\",\"x\":45.83217,\"y\":9.031446},\"distance\":null},\"arrival\":\"2026-10-25T21:55:00+0100\",\"arrivalTimestamp\":1792961700,\"departure\":\"2026-10-25T22:02:00+0100\",\"departureTimestamp\":1792962120,\"delay\":0,\"platform\":null,\"prognosis\":{\"platform\":null,\"arrival\":\"2026-10-25T21:55:00+0100\",\"departure\":\"2026-10-25T22:02:00+0100\",\"capacity1st\":null,\"capacity2nd\":null},\"realtimeAvailability\":null,\"location\":{\"id\":\"8505307\",\"name\":\"Chiasso\",\"score\":null,\"coordinate\":{\"type\":\"WGS84\",\"x\":45.83217,\"y\":9.031446},\"distance\":null}},{\"station\":{\"id\":\"8301307\",\"name\":\"Como S. Giovanni\",\"score\":null,\"coordinate\":{\"type\":\"WGS84\",\"x\":45.808969,\"y\":9.072715},\"distance\":null},\"arrival\":\"2026-10-25T22:08:00+0100\",\"arrivalTimestamp\":1792962480,\"departure\":null,\"departureTimestamp\":null,\"delay\":0,\"platform\":null,\"prognosis\":{\"platform\":null,\"arrival\":\"2026-10-25T22:08:00+0100\",\"departure\":\"2026-10-25T20:09:27+0100\",\"capacity1st\":null,\"capacity2nd\":null},\"realtimeAvailability\":null,\"location\":{\"id\":\"8301307\",\"name\":\"Como S. Giovanni\",\"score\":null,\"coordinate\":{\"type\":\"WGS84\",\"x\":45.808969,\"y\":9.072715},\"distance\":null}}],\"capacity1st\":null,\"capacity2nd\":null},{\"stop\":{\"station\":{\"id\":\"8505307\",\"name\":\"Lugano\",\"score\":null,\"coordinate\":{\"type\":\"WGS84\",\"x\":46.005502,\"y\":8.946996},\"distance\":null},\"arrival\":null,\"arrivalTimestamp\":null,\"departure\":\"2026-10-25T21:30:00+0100\",\"departureTimestamp\":1792960200,\"delay\":1,\"platform\":\"3\",\"prognosis\":{\"platform\":null,\"arrival\":\"2026-10-25T20:09:27+0100\",\"departure\":\"2026-10-25T21:31:00+0100\",\"capacity1st\":null,\"capacity2nd\":null},\"realtimeAvailability\":null,\"location\":{\"id\":\"8503000\",\"name\":null,\"score\":null,\"coordinate\":{\"type\":\"WGS84\",\"x\":null,\"y\":null},\"distance\":null}},\"name\":\"000028\",\"category\":\"EC\",\"subcategory\":null,\"categoryCode\":null,\"number\":\"000028\",\"operator\":\"SBB\",\"to\":\"Zürich HB\",\"passList\":[],\"capacity1st\":null,\"capacity2nd\":null}]}"
+        }
+      },
+      "asked": [
+        "https://transport.opendata.ch/v1/locations?query=Chiasso&type=station",
+        "https://transport.opendata.ch/v1/stationboard?id=8505307&limit=40&transportations%5B%5D=train"
+      ],
+      "rows": 3
+    },
+    {
+      "name": "a border station 4 km from the Swiss train station the lookup gives is not covered",
+      "station": {
+        "id": "curated:S01307",
+        "name": "Como S. Giovanni",
+        "trenitaliaLocationId": "830001307",
+        "latitude": 45.808946,
+        "longitude": 9.072331
+      },
+      "now": 1792959000,
+      "window": {
+        "from": 1792958400,
+        "to": 1792980600,
+        "lateSince": null
+      },
+      "answers": {
+        "https://transport.opendata.ch/v1/locations?query=Como+S.+Giovanni&type=station": {
+          "file": "app/src/test/resources/sources/opendata-ch-locations-chiasso.json"
+        }
+      },
+      "asked": [
+        "https://transport.opendata.ch/v1/locations?query=Como+S.+Giovanni&type=station"
+      ],
+      "rows": null
+    },
+    {
+      "name": "a Swiss city aggregate is found by its name when it has no coordinates",
+      "station": {
+        "id": "curated:NC000035",
+        "name": "Basel SBB",
+        "trenitaliaLocationId": "850090001",
+        "latitude": null,
+        "longitude": null
+      },
+      "now": 1792959000,
+      "window": {
+        "from": 1792958400,
+        "to": 1792980600,
+        "lateSince": null
+      },
+      "answers": {
+        "https://transport.opendata.ch/v1/locations?query=Basel+SBB&type=station": {
+          "json": "{\"stations\": [{\"id\": \"8500010\", \"name\": \"Basel SBB\", \"coordinate\": {\"type\": \"WGS84\", \"x\": 47.547408, \"y\": 7.589547}, \"icon\": \"train\"}, {\"id\": \"8578143\", \"name\": \"Basel, Bahnhof SBB\", \"coordinate\": {\"type\": \"WGS84\", \"x\": 47.54802, \"y\": 7.58981}, \"icon\": \"tram\"}]}"
+        },
+        "https://transport.opendata.ch/v1/stationboard?id=8500010&limit=40&transportations%5B%5D=train": {
+          "json": "{\"station\":{\"id\":\"8500010\"},\"stationboard\":[]}"
+        }
+      },
+      "asked": [
+        "https://transport.opendata.ch/v1/locations?query=Basel+SBB&type=station",
+        "https://transport.opendata.ch/v1/stationboard?id=8500010&limit=40&transportations%5B%5D=train"
+      ],
+      "rows": 0
+    },
+    {
+      "name": "an Italian station far from the border asks nothing",
+      "station": {
+        "id": "curated:S01700",
+        "name": "Milano Centrale",
+        "trenitaliaLocationId": "830001700",
+        "latitude": 45.486,
+        "longitude": 9.204
+      },
+      "now": 1792959000,
+      "window": {
+        "from": 1792958400,
+        "to": 1792980600,
+        "lateSince": null
+      },
+      "answers": {},
+      "asked": [],
+      "rows": null
+    }
+  ],
+  "operators": {
+    "json": "{\"station\": {\"id\": \"8505300\", \"name\": \"Lugano\"}, \"stationboard\": [{\"stop\": {\"station\": {\"id\": \"8505300\", \"name\": \"Lugano\"}, \"arrival\": null, \"departure\": \"2026-10-25T21:30:00+0100\", \"delay\": 0, \"platform\": \"1\", \"prognosis\": {\"platform\": null, \"arrival\": null, \"departure\": null}}, \"name\": \"1000\", \"category\": \"S\", \"number\": \"10\", \"operator\": \"SBB\", \"to\": \"Biasca\"}, {\"stop\": {\"station\": {\"id\": \"8505300\", \"name\": \"Lugano\"}, \"arrival\": null, \"departure\": \"2026-10-25T21:30:00+0100\", \"delay\": 0, \"platform\": \"1\", \"prognosis\": {\"platform\": null, \"arrival\": null, \"departure\": null}}, \"name\": \"1001\", \"category\": \"S\", \"number\": \"10\", \"operator\": \"TILO\", \"to\": \"Biasca\"}, {\"stop\": {\"station\": {\"id\": \"8505300\", \"name\": \"Lugano\"}, \"arrival\": null, \"departure\": \"2026-10-25T21:30:00+0100\", \"delay\": 0, \"platform\": \"1\", \"prognosis\": {\"platform\": null, \"arrival\": null, \"departure\": null}}, \"name\": \"1002\", \"category\": \"S\", \"number\": \"10\", \"operator\": \"BLS AG\", \"to\": \"Biasca\"}, {\"stop\": {\"station\": {\"id\": \"8505300\", \"name\": \"Lugano\"}, \"arrival\": null, \"departure\": \"2026-10-25T21:30:00+0100\", \"delay\": 0, \"platform\": \"1\", \"prognosis\": {\"platform\": null, \"arrival\": null, \"departure\": null}}, \"name\": \"1003\", \"category\": \"S\", \"number\": \"10\", \"operator\": \"RhB\", \"to\": \"Biasca\"}, {\"stop\": {\"station\": {\"id\": \"8505300\", \"name\": \"Lugano\"}, \"arrival\": null, \"departure\": \"2026-10-25T21:30:00+0100\", \"delay\": 0, \"platform\": \"1\", \"prognosis\": {\"platform\": null, \"arrival\": null, \"departure\": null}}, \"name\": \"1004\", \"category\": \"S\", \"number\": \"10\", \"operator\": \"Rhätische Bahn\", \"to\": \"Biasca\"}, {\"stop\": {\"station\": {\"id\": \"8505300\", \"name\": \"Lugano\"}, \"arrival\": null, \"departure\": \"2026-10-25T21:30:00+0100\", \"delay\": 0, \"platform\": \"1\", \"prognosis\": {\"platform\": null, \"arrival\": null, \"departure\": null}}, \"name\": \"1005\", \"category\": \"S\", \"number\": \"10\", \"operator\": \"FART\", \"to\": \"Biasca\"}, {\"stop\": {\"station\": {\"id\": \"8505300\", \"name\": \"Lugano\"}, \"arrival\": null, \"departure\": \"2026-10-25T21:30:00+0100\", \"delay\": 0, \"platform\": \"1\", \"prognosis\": {\"platform\": null, \"arrival\": null, \"departure\": null}}, \"name\": \"1006\", \"category\": \"S\", \"number\": \"10\", \"operator\": \"Trenord\", \"to\": \"Biasca\"}, {\"stop\": {\"station\": {\"id\": \"8505300\", \"name\": \"Lugano\"}, \"arrival\": null, \"departure\": \"2026-10-25T21:30:00+0100\", \"delay\": 0, \"platform\": \"1\", \"prognosis\": {\"platform\": null, \"arrival\": null, \"departure\": null}}, \"name\": \"1007\", \"category\": \"S\", \"number\": \"10\", \"operator\": \"Trenitalia\", \"to\": \"Biasca\"}, {\"stop\": {\"station\": {\"id\": \"8505300\", \"name\": \"Lugano\"}, \"arrival\": null, \"departure\": \"2026-10-25T21:30:00+0100\", \"delay\": 0, \"platform\": \"1\", \"prognosis\": {\"platform\": null, \"arrival\": null, \"departure\": null}}, \"name\": \"1008\", \"category\": \"S\", \"number\": \"10\", \"operator\": \"SBB GmbH\", \"to\": \"Biasca\"}, {\"stop\": {\"station\": {\"id\": \"8505300\", \"name\": \"Lugano\"}, \"arrival\": null, \"departure\": \"2026-10-25T21:30:00+0100\", \"delay\": 0, \"platform\": \"1\", \"prognosis\": {\"platform\": null, \"arrival\": null, \"departure\": null}}, \"name\": \"1009\", \"category\": \"S\", \"number\": \"10\", \"operator\": \"Thurbo AG\", \"to\": \"Biasca\"}, {\"stop\": {\"station\": {\"id\": \"8505300\", \"name\": \"Lugano\"}, \"arrival\": null, \"departure\": \"2026-10-25T21:30:00+0100\", \"delay\": 0, \"platform\": \"1\", \"prognosis\": {\"platform\": null, \"arrival\": null, \"departure\": null}}, \"name\": \"1010\", \"category\": \"S\", \"number\": \"10\", \"operator\": \"SOB—Südostbahn\", \"to\": \"Biasca\"}, {\"stop\": {\"station\": {\"id\": \"8505300\", \"name\": \"Lugano\"}, \"arrival\": null, \"departure\": \"2026-10-25T21:30:00+0100\", \"delay\": 0, \"platform\": \"1\", \"prognosis\": {\"platform\": null, \"arrival\": null, \"departure\": null}}, \"name\": \"1011\", \"category\": \"S\", \"number\": \"10\", \"operator\": \"Matterhorn Gotthard Bahn (bvz)\", \"to\": \"Biasca\"}, {\"stop\": {\"station\": {\"id\": \"8505300\", \"name\": \"Lugano\"}, \"arrival\": null, \"departure\": \"2026-10-25T21:30:00+0100\", \"delay\": 0, \"platform\": \"1\", \"prognosis\": {\"platform\": null, \"arrival\": null, \"departure\": null}}, \"name\": \"1012\", \"category\": \"S\", \"number\": \"10\", \"operator\": \"abcdefghijklmnopqrstuvw x\", \"to\": \"Biasca\"}, {\"stop\": {\"station\": {\"id\": \"8505300\", \"name\": \"Lugano\"}, \"arrival\": null, \"departure\": \"2026-10-25T21:30:00+0100\", \"delay\": 0, \"platform\": \"1\", \"prognosis\": {\"platform\": null, \"arrival\": null, \"departure\": null}}, \"name\": \"1013\", \"category\": \"S\", \"number\": \"10\", \"operator\": \"xsbbx\", \"to\": \"Biasca\"}, {\"stop\": {\"station\": {\"id\": \"8505300\", \"name\": \"Lugano\"}, \"arrival\": null, \"departure\": \"2026-10-25T21:30:00+0100\", \"delay\": 0, \"platform\": \"1\", \"prognosis\": {\"platform\": null, \"arrival\": null, \"departure\": null}}, \"name\": \"1014\", \"category\": \"S\", \"number\": \"10\", \"operator\": \"---\", \"to\": \"Biasca\"}]}",
+    "now": 1792959000,
+    "station": {
+      "id": "curated:NC000225",
+      "name": "Lugano",
+      "trenitaliaLocationId": "850005300",
+      "latitude": 46.005499,
+      "longitude": 8.946841
+    },
+    "window": {
+      "from": 1792958400,
+      "to": 1792980600,
+      "lateSince": null
+    },
+    "expected": [
+      "sbb",
+      "tilo",
+      "bls",
+      "rhb",
+      "rhb",
+      "fart-ssif",
+      "trenord",
+      "trenitalia",
+      "sbb",
+      "thurbo-ag",
+      "sob-s-dostbahn",
+      "matterhorn-gotthard-bahn",
+      "abcdefghijklmnopqrstuvw-",
+      "xsbbx",
+      null
+    ]
+  },
+  "names": [
+    {
+      "name": "Zürich HB",
+      "normalized": "ZURICH HB"
+    },
+    {
+      "name": "Como S. Giovanni",
+      "normalized": "COMO S GIOVANNI"
+    },
+    {
+      "name": "Chiasso, Stazione",
+      "normalized": "CHIASSO STAZIONE"
+    },
+    {
+      "name": "  Lugano  ",
+      "normalized": "LUGANO"
+    },
+    {
+      "name": "Genève-Cornavin",
+      "normalized": "GENEVE CORNAVIN"
+    },
+    {
+      "name": "Straße",
+      "normalized": "STRASSE"
+    }
+  ]
+}

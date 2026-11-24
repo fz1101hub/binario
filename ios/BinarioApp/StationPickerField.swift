@@ -61,18 +61,28 @@ private struct StationSearchView: View {
                             selection = station
                             dismiss()
                         } label: {
-                            VStack(alignment: .leading, spacing: 3) {
-                                Text(station.name)
-                                    .foregroundStyle(.primary)
-                                if let code = station.railwayCode {
-                                    Text(code)
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
+                            HStack(spacing: 10) {
+                                // A city stop: its «M», «T» or «F» badge and what it is, as on Android.
+                                if let badge = model.urbanStops.badge(of: station.id) {
+                                    UrbanStopBadgeMark(badge: badge)
                                 }
-                                if model.hasTimetable(station) == false {
-                                    Text("planner.station.no_timetable")
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
+                                VStack(alignment: .leading, spacing: 3) {
+                                    Text(station.name)
+                                        .foregroundStyle(.primary)
+                                    if let badge = model.urbanStops.badge(of: station.id) {
+                                        Text(LocalizedStringKey(badge.descriptionKey))
+                                            .font(.caption)
+                                            .foregroundStyle(.secondary)
+                                    } else if let code = station.railwayCode {
+                                        Text(code)
+                                            .font(.caption)
+                                            .foregroundStyle(.secondary)
+                                    }
+                                    if model.hasTimetable(station) == false {
+                                        Text("planner.station.no_timetable")
+                                            .font(.caption)
+                                            .foregroundStyle(.secondary)
+                                    }
                                 }
                             }
                         }
@@ -88,8 +98,27 @@ private struct StationSearchView: View {
     }
 
     private func accessibilityLabel(for station: Station) -> String {
-        let label = "\(String(localized: "accessibility.selected_station")): \(station.name)"
+        var label = "\(String(localized: "accessibility.selected_station")): \(station.name)"
+        if let badge = model.urbanStops.badge(of: station.id) {
+            label += ", " + NSLocalizedString(badge.descriptionKey, comment: "")
+        }
         guard model.hasTimetable(station) == false else { return label }
         return "\(label), \(String(localized: "planner.station.no_timetable"))"
+    }
+}
+
+/// The «M», «T» or «F» mark of a city stop in the station suggestions (Android's
+/// `UrbanStopBadgeMark`); what it means is said by the row.
+private struct UrbanStopBadgeMark: View {
+    let badge: UrbanStopBadge
+
+    var body: some View {
+        Text(verbatim: badge.rawValue)
+            .font(.caption.weight(.bold))
+            .foregroundStyle(.white)
+            .padding(.horizontal, 5)
+            .frame(minWidth: 20, minHeight: 20)
+            .background(Color.accentColor, in: RoundedRectangle(cornerRadius: 5))
+            .accessibilityHidden(true)
     }
 }

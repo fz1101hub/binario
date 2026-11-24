@@ -30,6 +30,7 @@ import java.time.Clock
 import java.time.Duration
 import java.time.Instant
 import java.time.ZoneId
+import it.binario.app.data.live.RealtimeFeedTable.timeToLive
 
 fun interface StaRealtimeFetcher {
     suspend fun fetch(feed: StaRealtimeFeed): String
@@ -42,7 +43,13 @@ enum class StaRealtimeFeed(val path: String) {
 /** HTTPS only, same-host redirects, a byte cap, a total time limit and a request that stops when the caller is cancelled. */
 internal class HttpStaRealtimeFetcher(
     private val http: PublicSourceFetcher = HttpPublicSourceFetcher(
-        PublicSourceRequestPolicy(maxBytes = 8 * 1024 * 1024, readTimeoutMillis = 15_000, totalTimeoutMillis = 20_000)
+        RealtimeFeedTable.STA.let { feed ->
+            PublicSourceRequestPolicy(
+                accept = feed.accept, connectTimeoutMillis = feed.connectTimeoutSeconds * 1_000,
+                readTimeoutMillis = feed.readTimeoutSeconds * 1_000, totalTimeoutMillis = feed.totalTimeoutSeconds * 1_000L,
+                maxBytes = feed.maximumBytes, maxRequests = feed.maximumRequests
+            )
+        }
     )
 ) : StaRealtimeFetcher {
     override suspend fun fetch(feed: StaRealtimeFeed): String = http.get("${StaRealtimeAdapter.REALTIME_ROOT}/${feed.path}")
@@ -55,10 +62,10 @@ internal class HttpStaRealtimeFetcher(
 class StaRealtimeAdapter(
     private val fetcher: StaRealtimeFetcher = HttpStaRealtimeFetcher(),
     private val clock: Clock = Clock.systemUTC(),
-    private val cacheTtl: Duration = Duration.ofSeconds(90)
+    private val cacheTtl: Duration = RealtimeFeedTable.STA.timeToLive()
 ) : TripUpdateProvider {
     /** The first refusal of the host (403, 429, 503 with Retry-After) pauses the feed: no further request until then. */
-    private val refusals = PublicSourceRefusalGate(clock, "Open Data Hub Alto Adige")
+    private val refusals = PublicSourceRefusalGate(clock, RealtimeFeedTable.STA.refusalGroup)
 
     override val descriptor = ProviderDescriptor(
         id = SOURCE_ID,
@@ -73,7 +80,7 @@ class StaRealtimeAdapter(
     private val tripUpdateMutex = Mutex()
 
     private var tripUpdateCache: CachedTripUpdates? = null
-    private val tripUpdateGuard = RealtimeFeedGuard(clock, "Open Data Hub Alto Adige")
+    private val tripUpdateGuard = RealtimeFeedGuard(clock, RealtimeFeedTable.STA.pauseLabel)
 
     override suspend fun getTripUpdates(): ProviderResult<List<RealtimeStopUpdate>> = tripUpdateMutex.withLock {
         val now = clock.instant()
@@ -145,7 +152,7 @@ class StaRealtimeAdapter(
 
     private fun observedAt(json: String, fallback: Instant): Instant = observedAt(JSONObject(json), fallback)
     private fun observedAt(root: JSONObject, fallback: Instant): Instant = root.optJSONObject("header")?.optLong("timestamp", 0L)?.takeIf { it > 0 }?.let(Instant::ofEpochSecond) ?: fallback
-    private fun sourceRef(nativeId: String, observed: Instant, validity: Duration = cacheTtl) = SourceRef(SOURCE_ID, nativeId, observed, clock.instant(), observed.plus(validity), Confidence.OPEN_DATA, licenseId = "CC0-1.0", traceId = "sta:${fingerprint(nativeId).take(16)}")
+    private fun sourceRef(nativeId: String, observed: Instant, validity: Duration = cacheTtl) = SourceRef(SOURCE_ID, nativeId, observed, clock.instant(), observed.plus(validity), Confidence.OPEN_DATA, licenseId = RealtimeFeedTable.STA.licence, traceId = "sta:${fingerprint(nativeId).take(16)}")
     private fun fingerprint(value: String): String = MessageDigest.getInstance("SHA-256").digest(value.toByteArray()).joinToString("") { "%02x".format(it) }
     private fun JSONObject.arrayOrEmpty(name: String): JSONArray = optJSONArray(name) ?: JSONArray()
     private fun <T> JSONArray.mapObjects(transform: (JSONObject) -> T?): List<T> = buildList {
@@ -157,7 +164,8 @@ class StaRealtimeAdapter(
     private data class CachedTripUpdates(val updates: List<RealtimeStopUpdate>, val observedAt: Instant, val expiresAt: Instant)
 
     companion object {
-        val SOURCE_ID = SourceId("alto-adige-sta-realtime")
-        const val REALTIME_ROOT = "https://gtfs.api.opendatahub.com/v1/realtime/sta-time-tables"
+        val SOURCE_ID = SourceId(RealtimeFeedTable.STA.id)
+        /** The feed's root: the table's address without its last segment ([StaRealtimeFeed.path]). */
+        val REALTIME_ROOT: String = RealtimeFeedTable.STA.url.substringBeforeLast('/')
     }
 }

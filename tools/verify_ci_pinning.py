@@ -996,11 +996,14 @@ def _check_linux_trigger_budget(
             "app/src/main/java/it/binario/app/shared/**",
             "alexa-companion/shared/generated/**",
         },
-        # The skill bundles the punctuality statistics and the station catalogue (ci-tests-build-6).
+        # The skill bundles the punctuality statistics and the station catalogue (ci-tests-build-6),
+        # and the iPhone's programmed timetable index with its metadata.
         "alexa-companion-ci.yml": {
             "alexa-companion/**",
             "app/src/main/assets/punctuality/**",
             "app/src/main/assets/stations/curated_it_rail_stations.json",
+            "ios/Resources/binario_gtfs_schedule_v1.sqlite.zlib",
+            "ios/Resources/binario_gtfs_schedule_v1.metadata.json",
             "contracts/shared-rules/**",
             # The tables the skill reads (shared/generated/sharedData.ts).
             "contracts/shared-data/**",

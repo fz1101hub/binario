@@ -26,6 +26,126 @@
 			<string>%1$lld قطار إضافي</string>
 		</dict>
 	</dict>
+	<key>departures.map.capped</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>few</key>
+			<string>المعروض: أقرب %1$lld قطارات.</string>
+			<key>many</key>
+			<string>المعروض: أقرب %1$lld قطارًا.</string>
+			<key>one</key>
+			<string>المعروض: أقرب %1$lld قطار.</string>
+			<key>other</key>
+			<string>المعروض: أقرب %1$lld قطار.</string>
+			<key>two</key>
+			<string>المعروض: أقرب %1$lld قطارين.</string>
+			<key>zero</key>
+			<string>المعروض: أقرب %1$lld قطار.</string>
+		</dict>
+	</dict>
+	<key>departures.map.count</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>few</key>
+			<string>%1$lld قطارات في الطريق</string>
+			<key>many</key>
+			<string>%1$lld قطارًا في الطريق</string>
+			<key>one</key>
+			<string>%1$lld قطار في الطريق</string>
+			<key>other</key>
+			<string>%1$lld قطار في الطريق</string>
+			<key>two</key>
+			<string>%1$lld قطاران في الطريق</string>
+			<key>zero</key>
+			<string>%1$lld قطار في الطريق</string>
+		</dict>
+	</dict>
+	<key>departures.map.delay</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>few</key>
+			<string>تأخير %1$lld دقائق</string>
+			<key>many</key>
+			<string>تأخير %1$lld دقيقة</string>
+			<key>one</key>
+			<string>تأخير %1$lld دقيقة</string>
+			<key>other</key>
+			<string>تأخير %1$lld دقيقة</string>
+			<key>two</key>
+			<string>تأخير %1$lld دقيقتين</string>
+			<key>zero</key>
+			<string>تأخير %1$lld دقيقة</string>
+		</dict>
+	</dict>
+	<key>notices.alerts.strike_title</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>few</key>
+			<string>%1$lld إضرابات في السكك الحديدية غدًا</string>
+			<key>many</key>
+			<string>%1$lld إضرابًا في السكك الحديدية غدًا</string>
+			<key>one</key>
+			<string>%1$lld إضراب في السكك الحديدية غدًا</string>
+			<key>other</key>
+			<string>%1$lld إضراب في السكك الحديدية غدًا</string>
+			<key>two</key>
+			<string>%1$lld إضرابان في السكك الحديدية غدًا</string>
+			<key>zero</key>
+			<string>%1$lld إضراب في السكك الحديدية غدًا</string>
+		</dict>
+	</dict>
+	<key>notices.alerts.works_title_more</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>few</key>
+			<string>أعمال غدًا على %2$@ وعلى %1$lld مسارات أخرى</string>
+			<key>many</key>
+			<string>أعمال غدًا على %2$@ وعلى %1$lld مسارًا آخر</string>
+			<key>one</key>
+			<string>أعمال غدًا على %2$@ وعلى %1$lld مسار آخر</string>
+			<key>other</key>
+			<string>أعمال غدًا على %2$@ وعلى %1$lld مسار آخر</string>
+			<key>two</key>
+			<string>أعمال غدًا على %2$@ وعلى %1$lld مسارين آخرين</string>
+			<key>zero</key>
+			<string>أعمال غدًا على %2$@ وعلى %1$lld مسار آخر</string>
+		</dict>
+	</dict>
 	<key>notices.works.show_more</key>
 	<dict>
 		<key>NSStringLocalizedFormatKey</key>
@@ -72,6 +192,30 @@
 			<string>في الموعد %1$lld مرتين من أصل %2$lld</string>
 			<key>zero</key>
 			<string>في الموعد %1$lld مرة من أصل %2$lld</string>
+		</dict>
+	</dict>
+	<key>result.compensation.minutes</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>few</key>
+			<string>%1$lld د</string>
+			<key>many</key>
+			<string>%1$lld د</string>
+			<key>one</key>
+			<string>%1$lld د</string>
+			<key>other</key>
+			<string>%1$lld د</string>
+			<key>two</key>
+			<string>%1$lld د</string>
+			<key>zero</key>
+			<string>%1$lld د</string>
 		</dict>
 	</dict>
 	<key>result.detail.arrival_on_time</key>

@@ -2,7 +2,8 @@
   "schema": "binario-shared-rules-v1",
   "readers": {
     "android": "app/src/test/java/it/binario/app/journeys/JourneyLegVehiclesContractTest.kt",
-    "iphone": "ios/BinarioKit/Tests/BinarioKitTests/SharedRulesContractTests.swift"
+    "iphone": "ios/BinarioKit/Tests/BinarioKitTests/SharedRulesContractTests.swift",
+    "alexa": "alexa-companion/server/timetable/naming.test.ts"
   },
   "scheduledCoachPacks": [
     "italo-gtfs",
@@ -142,6 +143,105 @@
       "why": "the pack decides, not the operator"
     },
     {
+      "routeType": "1",
+      "pack": "milano-atm-gtfs",
+      "operator": "ATM",
+      "line": "1",
+      "mode": "METRO",
+      "vehicle": "METRO",
+      "androidLabel": "journey_leg_metro",
+      "iosLabel": "result.vehicle.metro",
+      "why": "a metro line of a city network"
+    },
+    {
+      "routeType": "12",
+      "pack": "marconi-express-gtfs",
+      "operator": "Marconi Express",
+      "line": "MEX",
+      "mode": "METRO",
+      "vehicle": "METRO",
+      "androidLabel": "journey_leg_metro",
+      "iosLabel": "result.vehicle.metro",
+      "why": "a monorail (the Marconi Express people mover) counts as a metro"
+    },
+    {
+      "routeType": "401",
+      "pack": "roma-mobilita-gtfs",
+      "operator": "Atac",
+      "line": "MEA",
+      "mode": "METRO",
+      "vehicle": "METRO",
+      "androidLabel": "journey_leg_metro",
+      "iosLabel": "result.vehicle.metro",
+      "why": "every extended metro type (400-499)"
+    },
+    {
+      "routeType": "0",
+      "pack": "milano-atm-gtfs",
+      "operator": "ATM",
+      "line": "14",
+      "mode": "TRAM",
+      "vehicle": "TRAM",
+      "androidLabel": "journey_leg_tram",
+      "iosLabel": "result.vehicle.tram",
+      "why": "a tram line"
+    },
+    {
+      "routeType": "900",
+      "pack": "firenze-gest-gtfs",
+      "operator": "GEST S.p.A.",
+      "line": "T2",
+      "mode": "TRAM",
+      "vehicle": "TRAM",
+      "androidLabel": "journey_leg_tram",
+      "iosLabel": "result.vehicle.tram",
+      "why": "every extended tram type (900-999)"
+    },
+    {
+      "routeType": "7",
+      "pack": "genova-amt-gtfs",
+      "operator": "AMT Genova",
+      "line": "FRI",
+      "mode": "FUNICULAR",
+      "vehicle": "FUNICULAR",
+      "androidLabel": "journey_leg_funicular",
+      "iosLabel": "result.vehicle.funicular",
+      "why": "a funicular"
+    },
+    {
+      "routeType": "6",
+      "pack": "genova-amt-gtfs",
+      "operator": "AMT Genova",
+      "line": "ANG",
+      "mode": "FUNICULAR",
+      "vehicle": "FUNICULAR",
+      "androidLabel": "journey_leg_funicular",
+      "iosLabel": "result.vehicle.funicular",
+      "why": "an aerial lift or a lift of the city network"
+    },
+    {
+      "routeType": "5",
+      "pack": "napoli-anm-gtfs",
+      "operator": "Azienda Napoletana Mobilità",
+      "line": "F1",
+      "mode": "FUNICULAR",
+      "vehicle": "FUNICULAR",
+      "androidLabel": "journey_leg_funicular",
+      "iosLabel": "result.vehicle.funicular",
+      "why": "a cable tram"
+    },
+    {
+      "routeType": "1400",
+      "pack": "napoli-anm-gtfs",
+      "operator": "Azienda Napoletana Mobilità",
+      "line": null,
+      "mode": "FUNICULAR",
+      "vehicle": "FUNICULAR",
+      "androidLabel": "journey_leg_funicular",
+      "iosLabel": "result.vehicle.funicular",
+      "why": "every extended funicular type (1300-1499)"
+    },
+    {
       "routeType": "4",
       "pack": "trenitalia-gtfs",
       "operator": "Trenitalia",
@@ -162,6 +262,133 @@
       "androidLabel": null,
       "iosLabel": null,
       "why": "neither is a flight"
+    }
+  ],
+  "urbanLines": [
+    {
+      "mode": "METRO",
+      "published": "1",
+      "line": "M1",
+      "why": "Milan publishes its metro lines as digits"
+    },
+    {
+      "mode": "METRO",
+      "published": " 5 ",
+      "line": "M5",
+      "why": "trimmed first"
+    },
+    {
+      "mode": "METRO",
+      "published": "MEA",
+      "line": "A",
+      "why": "Rome publishes its metro lines as MEA, MEB, MEB1, MEC"
+    },
+    {
+      "mode": "METRO",
+      "published": "MEB1",
+      "line": "B1",
+      "why": "the Rome branch line"
+    },
+    {
+      "mode": "METRO",
+      "published": "MEX",
+      "line": "MEX",
+      "why": "the Marconi Express is no Rome line"
+    },
+    {
+      "mode": "METRO",
+      "published": "M1",
+      "line": "M1",
+      "why": "a line already named so"
+    },
+    {
+      "mode": "METRO",
+      "published": "123",
+      "line": "123",
+      "why": "only one or two digits are a Milan line"
+    },
+    {
+      "mode": "TRAM",
+      "published": "14",
+      "line": "14",
+      "why": "a tram line as published, digits too"
+    },
+    {
+      "mode": "TRAM",
+      "published": " ",
+      "line": null,
+      "why": "no line"
+    },
+    {
+      "mode": "FUNICULAR",
+      "published": "MEA",
+      "line": "MEA",
+      "why": "only a metro line is renamed"
+    }
+  ],
+  "urbanLabels": [
+    {
+      "label": "Metro",
+      "line": "M1",
+      "repeatsMode": false,
+      "shown": "Metro M1",
+      "why": "the label and the line, no number"
+    },
+    {
+      "label": "Tram",
+      "line": "14",
+      "repeatsMode": false,
+      "shown": "Tram 14",
+      "why": "a tram line"
+    },
+    {
+      "label": "Funicolare",
+      "line": "FRI",
+      "repeatsMode": false,
+      "shown": "Funicolare FRI",
+      "why": "a funicular line"
+    },
+    {
+      "label": "Metro",
+      "line": "METRO",
+      "repeatsMode": true,
+      "shown": "Metro",
+      "why": "a line that only repeats the label"
+    },
+    {
+      "label": "Tram",
+      "line": "Tram via",
+      "repeatsMode": true,
+      "shown": "Tram",
+      "why": "spaces are ignored: «tramvia» is the mode"
+    },
+    {
+      "label": "Metro",
+      "line": "Metropolitana",
+      "repeatsMode": true,
+      "shown": "Metro",
+      "why": "the mode in another word"
+    },
+    {
+      "label": "Tram",
+      "line": "Straßenbahn",
+      "repeatsMode": true,
+      "shown": "Tram",
+      "why": "the mode in another language"
+    },
+    {
+      "label": "Funicular",
+      "line": "funiculaire",
+      "repeatsMode": true,
+      "shown": "Funicular",
+      "why": "in any language of the list"
+    },
+    {
+      "label": "Tram",
+      "line": "METROSS",
+      "repeatsMode": false,
+      "shown": "Tram METROSS",
+      "why": "Metrosassari is a line name"
     }
   ]
 }

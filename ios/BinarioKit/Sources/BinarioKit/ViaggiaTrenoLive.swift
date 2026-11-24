@@ -51,22 +51,23 @@ struct LiveTrainNumberQuery: Equatable, Sendable {
 }
 
 /// The ViaggiaTreno payloads, read as Android's `ViaggiaTrenoRealtimeAdapter` reads them. Pure
-/// functions: every value is checked, a run that does not match the asked identity is refused.
+/// functions: every value is checked, a run that does not match the asked identity is refused. The
+/// bounds both phones share are the table contracts/shared-data/v1/viaggiatreno-v1.json.
 enum ViaggiaTrenoParser {
-    static let maximumAutocompleteLines = 200
-    static let maximumReferences = 24
-    static let maximumBoardRows = 2_000
+    static let maximumAutocompleteLines = SharedData.ViaggiaTreno.maximumAutocompleteLines
+    static let maximumReferences = SharedData.ViaggiaTreno.maximumRunReferences
+    static let maximumBoardRows = SharedData.ViaggiaTreno.maximumBoardRows
     static let maximumStops = 400
     static let maximumNameLength = 96
     static let maximumPlatformLength = 12
     /// Delays beyond a day are not delays but errors of the payload.
     static let delayRange = -1_440...1_440
     /// How long a ViaggiaTreno value stays live (Android: 30 seconds).
-    static let timeToLive: TimeInterval = 30
+    static let timeToLive: TimeInterval = SharedData.ViaggiaTreno.timeToLiveSeconds
     /// `actualFermataType` of a cancelled stop (Android's `SUPPRESSED_STOP_TYPE`).
-    static let suppressedStopType = 3
+    static let suppressedStopType = SharedData.ViaggiaTreno.suppressedStopType
     /// `actualFermataType` of an extraordinary stop (Android's `EXTRAORDINARY_STOP_TYPE`).
-    static let extraordinaryStopType = 2
+    static let extraordinaryStopType = SharedData.ViaggiaTreno.extraordinaryStopType
 
     /// The runs of `cercaNumeroTrenoTrenoAutocomplete`: «12345 - VITERBO|12345-S08001-1760565600000».
     static func references(_ text: String, query: LiveTrainNumberQuery) -> [ViaggiaTrenoRunReference] {
@@ -133,7 +134,8 @@ enum ViaggiaTrenoParser {
         let scheduledPlatform = platform == nil
             ? nil : LiveText.bounded(first.text("binarioProgrammatoPartenzaDescrizione"), maximumLength: maximumPlatformLength)
         let brand = LiveText.bounded(root.text("compImpresa"), maximumLength: 64)
-        let isTrenord = brand?.range(of: "trenord", options: .caseInsensitive) != nil
+        // Android's `searchByNumber`: the operator the run states (`boardOperatorID`), else Trenitalia.
+        let isTrenord = boardOperatorID(root) == "trenord"
         let category = LiveText.bounded(root.text("categoria"), maximumLength: 16)?.uppercased() ?? ""
         let state: LiveRunState = cancelled ? .cancelled : (verified && (delay ?? 0) > 0 ? .delayed : .onTime)
         let cancellation: LiveCancellation = cancelled ? .full : (stops.contains(where: \.skipped) ? .partial : .none)
@@ -193,7 +195,9 @@ enum ViaggiaTrenoParser {
         )
     }
 
-    /// The departures of `partenze` as Android's `stationBoard` lists them, nil when unreadable.
+    /// The rows of `partenze` or `arrivi` (`window.kind`) as Android's `stationBoard` lists them, nil
+    /// when unreadable. An arrivals row names the train's origin where a departures row names its
+    /// destination, and gives its arrival time and platform.
     static func departures(_ text: String, window: LiveBoardWindow, fetchedAt: Date) -> [LiveDeparture]? {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         if trimmed.isEmpty || trimmed == "null" { return [] }
@@ -207,7 +211,8 @@ enum ViaggiaTrenoParser {
     }
 
     private static func departure(_ row: LiveJSONObject, window: LiveBoardWindow, fetchedAt: Date) -> LiveDeparture? {
-        guard let scheduledMillis = row.millis("orarioPartenza"),
+        let arrivals = window.kind == .arrivals
+        guard let scheduledMillis = row.millis(arrivals ? "orarioArrivo" : "orarioPartenza"),
               let number = row.text("numeroTreno"), LiveText.isDigits(number, count: 1...6) else { return nil }
         let scheduled = LiveRailTime.date(millis: scheduledMillis)
         guard scheduled >= window.from.addingTimeInterval(-86_400), scheduled <= window.to.addingTimeInterval(86_400) else { return nil }
@@ -224,7 +229,9 @@ enum ViaggiaTrenoParser {
             source: .viaggiaTreno, fetchedAt: fetchedAt, observedAt: verified ? (observed ?? fetchedAt) : fetchedAt,
             expiresAt: fetchedAt.addingTimeInterval(timeToLive)
         )
-        let platform = LiveText.bounded(row.text("binarioEffettivoPartenzaDescrizione"), maximumLength: maximumPlatformLength)
+        let platformKey = arrivals ? "binarioEffettivoArrivoDescrizione" : "binarioEffettivoPartenzaDescrizione"
+        let scheduledPlatformKey = arrivals ? "binarioProgrammatoArrivoDescrizione" : "binarioProgrammatoPartenzaDescrizione"
+        let platform = LiveText.bounded(row.text(platformKey), maximumLength: maximumPlatformLength)
         let status: LiveDepartureStatus? = verified ? (cancelled ? .cancelled : ((delay ?? 0) > 0 ? .delayed : .onTime)) : nil
         let run = row.text("codOrigine").flatMap { origin -> ViaggiaTrenoRunReference? in
             guard let date = row.millis("dataPartenzaTreno") ?? row.millis("millisDataPartenza") else { return nil }
@@ -233,23 +240,62 @@ enum ViaggiaTrenoParser {
         return LiveDeparture(
             id: "viaggiatreno:\(number):\(LiveRailTime.isoDay(scheduled))", number: number, operatorID: boardOperatorID(row),
             category: LiveText.bounded(row.text("categoria"), maximumLength: 16) ?? "",
-            destination: LiveText.bounded(row.text("destinazione"), maximumLength: maximumNameLength) ?? "",
+            destination: LiveText.bounded(row.text(arrivals ? "origine" : "destinazione"), maximumLength: maximumNameLength) ?? "",
             scheduled: scheduled, expected: expectedTime.map { LiveSourced($0, observation: observation) },
             platform: platform.map { LiveSourced($0, observation: observation) },
             scheduledPlatform: platform == nil
-                ? nil : LiveText.bounded(row.text("binarioProgrammatoPartenzaDescrizione"), maximumLength: maximumPlatformLength),
+                ? nil : LiveText.bounded(row.text(scheduledPlatformKey), maximumLength: maximumPlatformLength),
             status: status.map { LiveSourced($0, observation: observation) }, sources: [.viaggiaTreno], viaggiaTrenoRun: run,
             observation: observation
         )
     }
 
-    /// The operator a board row names itself (`compImpresa`, read as `run` reads it), else nil: the
-    /// board lists Trenord's trains too, and an operator the row does not state must never keep it
-    /// apart from RFI's row of the same train («TRENORD»).
+    /// The ViaggiaTreno identity of the one row of a board (`partenze` or `arrivi`) with `number`
+    /// at `scheduled` (Android's `getStationBoardRun` without a known identity); nil when none or
+    /// several rows have them.
+    static func boardRunReference(_ text: String, number: String, scheduled: Date, kind: LiveBoardKind) -> ViaggiaTrenoRunReference? {
+        guard let array = LiveJSON.parse(text.trimmingCharacters(in: .whitespacesAndNewlines)) as? [Any] else { return nil }
+        let key = kind == .arrivals ? "orarioArrivo" : "orarioPartenza"
+        let millis = LiveRailTime.millis(scheduled)
+        let rows = array.prefix(maximumBoardRows).compactMap { LiveJSONObject($0) }.filter {
+            $0.text("numeroTreno") == number && $0.millis(key) == millis
+        }
+        guard rows.count == 1, let row = rows.first, let origin = row.text("codOrigine"),
+              let date = row.millis("dataPartenzaTreno") ?? row.millis("millisDataPartenza") else { return nil }
+        return ViaggiaTrenoRunReference(originCode: origin, number: number, departureDateMillis: date)
+    }
+
+    /// The run of a board row (Android's `parseBoardRun`): the run as `run` reads it, and its one
+    /// stop at the station `stationCode` at the row's time, the arrival on an arrivals board, the
+    /// departure on a departures board. Nil when the run is not the asked one or has no such stop.
+    static func boardRun(
+        _ root: LiveJSONObject, reference: ViaggiaTrenoRunReference, stationCode: String, kind: LiveBoardKind,
+        scheduled: Date, fetchedAt: Date
+    ) -> LiveBoardRunDetails? {
+        guard let parsed = run(root, reference: reference, serviceDay: scheduled, fetchedAt: fetchedAt) else { return nil }
+        let matching = parsed.stops.filter { stop in
+            let time: Date = kind == .arrivals ? stop.scheduled : (stop.scheduledDeparture ?? stop.scheduled)
+            return stop.stationCode == stationCode && time == scheduled
+        }
+        guard matching.count == 1 else { return nil }
+        return LiveBoardRunDetails(kind: kind, run: parsed, stop: matching[0])
+    }
+
+    /// The operator a board row or a run names itself, Android's `operatorOf`: `compImpresa`, else
+    /// `codiceCliente`, the field the real answers carry (the shared table's Trenord and Trenitalia
+    /// codes); nil for a row that states neither, or another company. The board lists Trenord's
+    /// trains too, and an operator the row does not state must never keep it apart from RFI's row of
+    /// the same train («TRENORD»).
     static func boardOperatorID(_ row: LiveJSONObject) -> String? {
-        guard let brand = LiveText.bounded(row.text("compImpresa"), maximumLength: 64) else { return nil }
-        if brand.range(of: "trenord", options: .caseInsensitive) != nil { return "trenord" }
-        if brand.range(of: "trenitalia", options: .caseInsensitive) != nil { return "trenitalia" }
+        if let brand = LiveText.bounded(row.text("compImpresa"), maximumLength: 64) {
+            if brand.range(of: "trenord", options: .caseInsensitive) != nil { return "trenord" }
+            if brand.range(of: "trenitalia", options: .caseInsensitive) != nil { return "trenitalia" }
+            return nil
+        }
+        guard let client = row.int("codiceCliente") else { return nil }
+        if SharedData.ViaggiaTreno.trenordClients.contains(client) { return "trenord" }
+        if SharedData.ViaggiaTreno.trenitaliaRegionalClients.contains(client)
+            || SharedData.ViaggiaTreno.trenitaliaLongDistanceClients.contains(client) { return "trenitalia" }
         return nil
     }
 
@@ -303,27 +349,36 @@ enum ViaggiaTrenoParser {
 }
 
 /// ViaggiaTreno realtime, Android's `ViaggiaTrenoRealtimeAdapter`: train status by number
-/// (autocomplete, then each run) and station departures. HTTPS to www.viaggiatreno.it, with the
-/// one cleartext hop Android allows; one request per resource every 30 seconds.
-public struct ViaggiaTrenoLiveSource: LiveTrainStatusSource, LiveDepartureBoardSource {
+/// (autocomplete, then each run), station departures and arrivals, the run of a board row
+/// (`getStationBoardRun`), and the per-train notices of Android's `ViaggiaTrenoTrainNoticesAdapter`.
+/// HTTPS to www.viaggiatreno.it, with the one cleartext hop Android allows; one request per resource
+/// every 30 seconds; one gate for all of them, so a refusal pauses the host for each, as Android's
+/// `ViaggiaTrenoRequests`. Its address and limits are the shared table
+/// contracts/shared-data/v1/viaggiatreno-v1.json.
+public struct ViaggiaTrenoLiveSource: LiveTrainStatusSource, LiveDepartureBoardSource, LiveBoardRunSource, LiveTrainNoticeSource {
     public let source: LiveSource = .viaggiaTreno
 
-    static let baseURL = "https://www.viaggiatreno.it/infomobilita/resteasy/viaggiatreno/"
-    static let resources = ["partenze/", "arrivi/", "andamentoTreno/", "cercaNumeroTrenoTrenoAutocomplete/"]
-    static let autocomplete = "cercaNumeroTrenoTrenoAutocomplete/"
+    static let baseURL = SharedData.ViaggiaTreno.baseUrl
+    static let departuresResource = SharedData.ViaggiaTreno.departuresResource
+    static let arrivalsResource = SharedData.ViaggiaTreno.arrivalsResource
+    static let runResource = SharedData.ViaggiaTreno.runResource
+    static let autocomplete = SharedData.ViaggiaTreno.numberSearchResource
+    static let resources = [departuresResource, arrivalsResource, runResource, autocomplete]
     /// Android's `RatePolicy`: one request per resource every 30 seconds.
-    static let minimumInterval: TimeInterval = 30
+    static let minimumInterval: TimeInterval = SharedData.ViaggiaTreno.minimumIntervalSeconds
     /// All the run details of a number lookup (Android's `routeDetailsTimeoutMillis`).
-    static let defaultDetailsTimeout: TimeInterval = 8
+    static let defaultDetailsTimeout: TimeInterval = SharedData.ViaggiaTreno.runDetailsTimeoutSeconds
     /// The optional earlier board for late trains.
-    static let defaultLookbackTimeout: TimeInterval = 2
+    static let defaultLookbackTimeout: TimeInterval = SharedData.ViaggiaTreno.lookbackTimeoutSeconds
     /// The main board and the optional lookback together, within `LiveRailData`'s 12-second board
     /// deadline with a second to spare: the lookback only gets the time the main board left, so a
     /// slow but complete main board is never thrown away for it.
     static let defaultBoardBudget: TimeInterval = 11
     /// Android's `DETAIL_PERMITS`.
-    static let detailConcurrency = 3
+    static let detailConcurrency = SharedData.ViaggiaTreno.detailPermits
     static let maximumBoardRows = 300
+    /// The operators whose runs ViaggiaTreno publishes (Android's `getStationBoardRun`).
+    static let runOperators: Set<String> = ["trenitalia", "trenord", "tilo"]
 
     let client: LiveSourceClient
     let gate: LiveSourceGate
@@ -331,11 +386,13 @@ public struct ViaggiaTrenoLiveSource: LiveTrainStatusSource, LiveDepartureBoardS
     let detailsTimeout: TimeInterval
     let lookbackTimeout: TimeInterval
     let boardBudget: TimeInterval
+    /// The per-train notices: their reader (nil without the notice rules: none is asked) and cache.
+    let notices: ViaggiaTrenoTrainNotices?
 
     init(
         client: LiveSourceClient, gate: LiveSourceGate, now: @escaping @Sendable () -> Date,
         detailsTimeout: TimeInterval = Self.defaultDetailsTimeout, lookbackTimeout: TimeInterval = Self.defaultLookbackTimeout,
-        boardBudget: TimeInterval = Self.defaultBoardBudget
+        boardBudget: TimeInterval = Self.defaultBoardBudget, notices: ViaggiaTrenoTrainNotices? = nil
     ) {
         self.client = client
         self.gate = gate
@@ -343,16 +400,17 @@ public struct ViaggiaTrenoLiveSource: LiveTrainStatusSource, LiveDepartureBoardS
         self.detailsTimeout = detailsTimeout
         self.lookbackTimeout = lookbackTimeout
         self.boardBudget = boardBudget
+        self.notices = notices
     }
 
     public init(
         transport: any LiveHTTPTransport = URLSessionLiveTransport(), pauses: LiveSourcePauses = .shared,
-        now: @escaping @Sendable () -> Date = { Date() }
+        now: @escaping @Sendable () -> Date = { Date() }, noticeRules: NoticeRules? = nil
     ) {
         self.init(
             client: LiveSourceClient(transport: transport, now: now),
             gate: LiveSourceGate(source: .viaggiaTreno, configuration: .init(minimumInterval: Self.minimumInterval), pauses: pauses, now: now),
-            now: now
+            now: now, notices: noticeRules.flatMap { ViaggiaTrenoTrainNotices(rules: $0) }
         )
     }
 
@@ -360,7 +418,8 @@ public struct ViaggiaTrenoLiveSource: LiveTrainStatusSource, LiveDepartureBoardS
         LiveRequestPolicy(
             accept: path.hasPrefix(autocomplete) ? "text/plain" : "application/json",
             userAgent: LiveSourceUserAgent.viaggiaTrenoRealtime, extraHeaders: ["Cache-Control": "no-cache"],
-            requestTimeout: 12, totalTimeout: 12, maximumBytes: 2 * 1_048_576, maximumRequests: 4,
+            requestTimeout: SharedData.ViaggiaTreno.readTimeoutSeconds, totalTimeout: SharedData.ViaggiaTreno.totalTimeoutSeconds,
+            maximumBytes: SharedData.ViaggiaTreno.maximumBytes, maximumRequests: SharedData.ViaggiaTreno.maximumRequests,
             allowsViaggiaTrenoCleartextHop: true, allowsViaggiaTrenoAlternateHost: true
         )
     }
@@ -389,7 +448,7 @@ public struct ViaggiaTrenoLiveSource: LiveTrainStatusSource, LiveDepartureBoardS
         let serviceDay = request.serviceDate
         references = references.filter {
             let days = LiveRailTime.days(from: LiveRailTime.date(millis: $0.departureDateMillis), to: serviceDay)
-            return (0...2).contains(days)
+            return (0...SharedData.ViaggiaTreno.numberSearchPastDays).contains(days)
         }
         if let code = request.stationCode {
             let fromStation = references.filter { $0.originCode == code }
@@ -414,7 +473,7 @@ public struct ViaggiaTrenoLiveSource: LiveTrainStatusSource, LiveDepartureBoardS
     private func detail(
         _ reference: ViaggiaTrenoRunReference, order: Int, serviceDay: Date, into collector: LiveCollector<LiveRunStatus>
     ) async {
-        switch await body("andamentoTreno/\(reference.originCode)/\(reference.number)/\(reference.departureDateMillis)") {
+        switch await body(Self.runPath(reference)) {
         case let .failure(failure):
             // A detail stopped by the deadline is no failure of the source: the answer is incomplete.
             if failure != .cancelled { collector.fail(failure.unavailableReason) }
@@ -426,13 +485,24 @@ public struct ViaggiaTrenoLiveSource: LiveTrainStatusSource, LiveDepartureBoardS
         }
     }
 
+    /// `andamentoTreno/{origin}/{number}/{date}`.
+    static func runPath(_ reference: ViaggiaTrenoRunReference) -> String {
+        "\(runResource)\(reference.originCode)/\(reference.number)/\(reference.departureDateMillis)"
+    }
+
+    /// `partenze/…` or `arrivi/…` of the station `code` from `date`.
+    static func boardPath(_ kind: LiveBoardKind, code: String, from date: Date) -> String {
+        let resource = kind == .arrivals ? arrivalsResource : departuresResource
+        return "\(resource)\(code)/\(ViaggiaTrenoParser.boardTimePathComponent(date))"
+    }
+
     public func departures(for window: LiveBoardWindow) async -> LiveSourceAnswer<[LiveDeparture]> {
         guard let code = NetworkReliability.stationCode(StationIdentity(window.station)) else { return .unavailable(.notCovered) }
         // Elapsed time on a monotonic clock: `now` may be a test's fixed clock. DispatchTime, not
         // ProcessInfo.systemUptime: that one is a required-reason API (system boot time) the privacy
         // manifest would have to declare, or App Store Connect refuses the upload (ITMS-91053).
         let started = DispatchTime.now().uptimeNanoseconds
-        let board = await body("partenze/\(code)/\(ViaggiaTrenoParser.boardTimePathComponent(window.from))")
+        let board = await body(Self.boardPath(window.kind, code: code, from: window.from))
         guard case let .body(main) = board else {
             if case let .failure(failure) = board { return .unavailable(failure.unavailableReason) }
             return .unavailable(.sourceUnavailable)
@@ -441,11 +511,11 @@ public struct ViaggiaTrenoLiveSource: LiveTrainStatusSource, LiveDepartureBoardS
             return .unavailable(.unreadable)
         }
         // From the window start, then (optional, short) from `lateSince` for the trains still late to
-        // leave: an earlier board alone could hide the next trains of a busy station.
+        // leave or arrive: an earlier board alone could hide the next trains of a busy station.
         let elapsed = TimeInterval(DispatchTime.now().uptimeNanoseconds &- started) / 1_000_000_000
         let remaining = boardBudget - elapsed
         if let since = window.lateSince, since < window.from, remaining > 0 {
-            let path = "partenze/\(code)/\(ViaggiaTrenoParser.boardTimePathComponent(since))"
+            let path = Self.boardPath(window.kind, code: code, from: since)
             let lookback = await LiveTasks.withDeadline(seconds: min(lookbackTimeout, remaining)) { [self] in await self.body(path) }
             if case let .body(earlier)? = lookback,
                let extra = ViaggiaTrenoParser.departures(earlier.text, window: window, fetchedAt: earlier.fetchedAt) {
@@ -456,5 +526,71 @@ public struct ViaggiaTrenoLiveSource: LiveTrainStatusSource, LiveDepartureBoardS
         let unique = rows.filter { seen.insert("\($0.number):\(LiveRailTime.millis($0.scheduled))").inserted }
         if Task.isCancelled { return .unavailable(.cancelled) }
         return .answered(Array(unique.prefix(Self.maximumBoardRows)), complete: true)
+    }
+
+    /// The run of a board row, Android's `getStationBoardRun`: the row's ViaggiaTreno identity, else
+    /// the one row of the station's board (from a minute before it) with its number and time; then
+    /// the run (`andamentoTreno`) with its stop at the station at the row's time. A row of another
+    /// operator than ViaggiaTreno's has none.
+    public func boardRun(_ request: LiveBoardRunRequest) async -> LiveSourceAnswer<LiveBoardRunDetails> {
+        guard let code = NetworkReliability.stationCode(StationIdentity(request.station)) else { return .unavailable(.notCovered) }
+        if let operatorID = request.operatorID?.lowercased(), !Self.runOperators.contains(operatorID) {
+            return .unavailable(.notCovered)
+        }
+        guard let number = LiveTrainNumberQuery(request.number).numeric, LiveText.isDigits(number, count: 1...6) else {
+            return .unavailable(.invalidRequest)
+        }
+        var known = request.viaggiaTrenoRun
+        if known == nil {
+            switch await body(Self.boardPath(request.kind, code: code, from: request.scheduled.addingTimeInterval(-60))) {
+            case let .failure(failure):
+                return .unavailable(failure.unavailableReason)
+            case let .body(board):
+                known = ViaggiaTrenoParser.boardRunReference(board.text, number: number, scheduled: request.scheduled, kind: request.kind)
+            }
+        }
+        guard let reference = known, reference.number == number else { return .unavailable(.notFound) }
+        switch await body(Self.runPath(reference)) {
+        case let .failure(failure):
+            return .unavailable(failure.unavailableReason)
+        case let .body(body):
+            guard let root = LiveJSONObject(LiveJSON.parse(body.text)) else { return .unavailable(.unreadable) }
+            guard let details = ViaggiaTrenoParser.boardRun(
+                root, reference: reference, stationCode: code, kind: request.kind, scheduled: request.scheduled, fetchedAt: body.fetchedAt
+            ) else { return .unavailable(.notFound) }
+            if Task.isCancelled { return .unavailable(.cancelled) }
+            return .answered(details, complete: true)
+        }
+    }
+
+    /// The notices ViaggiaTreno publishes for the train of `request` (`smartcaring`), through the
+    /// same gate as the realtime API; nil when the notice rules are missing (nothing is asked).
+    public func trainNotices(_ request: LiveTrainNoticesRequest) async -> LiveSourceAnswer<LiveTrainNotices> {
+        guard let notices else { return .unavailable(.notCovered) }
+        guard let number = ViaggiaTrenoTrainNotices.number(request.number) else { return .unavailable(.invalidRequest) }
+        let gate = self.gate
+        let client = self.client
+        let now = self.now
+        guard let url = notices.url(number: number) else { return .unavailable(.invalidRequest) }
+        let policy = notices.policy
+        let rules = notices.rules
+        let read = await notices.cache.read(number: number, at: now()) {
+            switch await gate.fetch(url.absoluteString, load: { await client.get(url, policy: policy) }) {
+            case let .failure(failure):
+                return .failed(failure.unavailableReason)
+            case let .body(body):
+                guard let parsed = ViaggiaTrenoTrainNotices.parse(body.text, rules: rules) else { return .failed(.unreadable) }
+                return .loaded(parsed, fetchedAt: body.fetchedAt)
+            }
+        }
+        switch read {
+        case let .failed(reason):
+            return .unavailable(reason)
+        case let .fresh(notes), let .stale(notes):
+            let selected = ViaggiaTrenoTrainNotices.select(
+                notes, number: number, origin: ViaggiaTrenoTrainNotices.origin(request.originCode), serviceDate: request.serviceDate
+            )
+            return .answered(LiveTrainNotices(notices: selected, stale: read.isStale), complete: true)
+        }
     }
 }

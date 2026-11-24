@@ -57,16 +57,17 @@ fun interface RfiMonitorFetcher {
  * a bounded body and a whole-request deadline that also closes a blocked socket (audit android-data-7).
  */
 internal class HttpRfiMonitorFetcher(
-    requestTimeoutMillis: Long = 10_000,
+    requestTimeoutMillis: Long = SharedData.RfiMonitor.TOTAL_TIMEOUT_SECONDS * 1_000L,
     openConnection: (URL) -> HttpURLConnection = { it.openConnection() as HttpURLConnection }
 ) : RfiMonitorFetcher {
+    // The limits of the shared table contracts/shared-data/v1/rfi-monitor-v1.json, the iPhone's too.
     private val http = HttpPublicSourceFetcher(
         PublicSourceRequestPolicy(
-            accept = "text/html,application/xhtml+xml",
-            connectTimeoutMillis = 12_000,
-            readTimeoutMillis = 20_000,
+            accept = SharedData.RfiMonitor.ACCEPT,
+            connectTimeoutMillis = SharedData.RfiMonitor.CONNECT_TIMEOUT_SECONDS * 1_000,
+            readTimeoutMillis = SharedData.RfiMonitor.READ_TIMEOUT_SECONDS * 1_000,
             totalTimeoutMillis = requestTimeoutMillis,
-            maxBytes = 2 * 1024 * 1024
+            maxBytes = SharedData.RfiMonitor.MAXIMUM_BYTES
         ),
         openConnection
     )
@@ -131,7 +132,7 @@ internal object RfiStationIds {
 class RfiStationBoardAdapter(
     private val fetcher: RfiMonitorFetcher = HttpRfiMonitorFetcher(),
     private val clock: Clock = Clock.system(RailTime.defaultZone),
-    private val cacheTtlMillis: Long = 45_000L
+    private val cacheTtlMillis: Long = SharedData.RfiMonitor.TIME_TO_LIVE_SECONDS * 1_000L
 ) : TrainDataSource, StationBoardProvider {
     override val descriptor = ProviderDescriptor(
         id = SourceId("rfi-station-board"),
@@ -139,7 +140,7 @@ class RfiStationBoardAdapter(
         capabilities = setOf(ProviderCapability.STATION_BOARD),
         coverage = CoverageDescriptor(countryCodes = setOf("IT"), description = "Tabelloni partenze delle stazioni presenti nel catalogo ufficiale RFI"),
         accessMode = AccessMode.PUBLIC_BEST_EFFORT,
-        ratePolicy = RatePolicy(Duration.ofSeconds(20), defaultTimeToLive = Duration.ofMillis(cacheTtlMillis)),
+        ratePolicy = RatePolicy(Duration.ofSeconds(SharedData.RfiMonitor.MINIMUM_INTERVAL_SECONDS.toLong()), defaultTimeToLive = Duration.ofMillis(cacheTtlMillis)),
         schemaVersion = 1
     )
 
@@ -168,7 +169,7 @@ class RfiStationBoardAdapter(
             ?: return ProviderResult.Failure(ProviderError(ProviderErrorKind.NOT_SUPPORTED, "Stazione assente dal catalogo live RFI disponibile."))
         return try {
             val arrivals = if (request.kind == BoardKind.ARRIVALS) "True" else "False"
-            val url = "https://iechub.rfi.it/ArriviPartenze/ArrivalsDepartures/Monitor?placeId=$placeId&arrivals=$arrivals"
+            val url = "${SharedData.RfiMonitor.MONITOR_URL}?placeId=$placeId&arrivals=$arrivals"
             val page = page(url)
             val html = page.value
             val fetchedAt = Instant.ofEpochMilli(page.fetchedAtEpochMillis)
@@ -232,7 +233,7 @@ class RfiStationBoardAdapter(
         }
 
         return try {
-            val url = "https://iechub.rfi.it/ArriviPartenze/ArrivalsDepartures/Monitor?placeId=$placeId&arrivals=False"
+            val url = "${SharedData.RfiMonitor.MONITOR_URL}?placeId=$placeId&arrivals=False"
             val page = page(url)
             val html = page.value
             // The time the page was fetched, which is not now when another reader fetched it a moment ago.

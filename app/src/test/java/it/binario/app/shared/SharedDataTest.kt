@@ -1,9 +1,21 @@
 package it.binario.app.shared
 
 import it.binario.app.data.AirportRoutes
+import it.binario.app.data.CompensationShare
+import it.binario.app.data.DelayCompensationRule
+import it.binario.app.data.bikesharing.BikeSharingService
+import it.binario.app.data.bikesharing.BikeSharingSystems
+import it.binario.app.data.journey.ScheduledRunRequest
+import it.binario.app.data.weather.OpenMeteoForecastAdapter
+import it.binario.app.maps.LiveTrainAreas
+import it.binario.app.maps.LiveTrainRefresh
+import it.binario.app.maps.LiveTrainSelector
+import it.binario.app.notifications.RouteWorksAlertPlanner
+import it.binario.app.notifications.StrikeReminderPlanner
 import it.binario.app.data.core.SourceId
 import it.binario.app.data.gtfs.EmbeddedGtfsPacks
 import it.binario.app.data.gtfs.ItaloGtfsStationCodes
+import it.binario.app.data.journey.GtfsJourneyPlannerSettings
 import it.binario.app.data.live.MitStrikeRssAdapter
 import it.binario.app.data.live.RfiInfomobilityRssAdapter
 import it.binario.app.data.live.SourceCircuitBreaker
@@ -30,6 +42,7 @@ import it.binario.app.data.reliability.NetworkReliabilityAggregates
 import it.binario.app.data.repository.TrainNumberQuery
 import it.binario.app.data.sources.RailInformationCategory
 import it.binario.app.data.sources.RailSourceSelectionPolicy
+import it.binario.app.data.urban.UrbanStopPlatforms
 import it.binario.app.plannedjourney.PlannedJourneyPersistenceSchema
 import it.binario.app.plannedjourney.PlannedJourneyReminderMinutes
 import it.binario.app.plannedjourney.PlannedJourneyTemplates
@@ -128,6 +141,7 @@ class SharedDataTest {
         assertEquals(0.6, NetworkReliability.MIN_PLATFORM_SHARE, 0.0)
         assertEquals(json.getInt("minimumWeekdaySamples"), NetworkReliability.MIN_WEEKDAY_SAMPLES)
         assertEquals(json.getInt("minimumWeekdayGapPoints"), NetworkReliability.MIN_WEEKDAY_GAP_POINTS)
+        assertEquals(json.getInt("maximumWeekdayRemarks"), NetworkReliability.MAX_WEEKDAY_REMARKS)
         assertEquals(json.getInt("minimumAggregateSamples"), NetworkReliabilityAggregates.MIN_AGGREGATE_SAMPLES)
         assertEquals(json.getInt("minimumBandSamples"), NetworkReliabilityAggregates.MIN_BAND_SAMPLES)
         assertEquals(json.getInt("minimumBandGapPoints"), NetworkReliabilityAggregates.MIN_BAND_GAP_POINTS)
@@ -220,6 +234,25 @@ class SharedDataTest {
         for (pack in packs) {
             assertEquals(pack.sourceId.value, pack.sourceId.value in set("foreignPacks"), PlannedPackOrder.classOf(pack.sourceId) == PlannedPackClass.FOREIGN)
         }
+        // The city networks are the URBAN packs of every build, as the two manifests file them ("kind": "urban").
+        assertEquals(set("urbanPacks"), SharedData.PackRoles.URBAN_PACKS)
+        assertEquals(set("urbanPacks"), EmbeddedGtfsPacks.forBuild(personalSources = true).filter { it.isUrban }.map { it.sourceId.value }.toSet())
+        val manifests = listOf("src/main/assets/gtfs-transit/manifest.json", "src/personal/assets/gtfs-personal/manifest.json")
+        val urban = manifests.flatMap { path ->
+            val packList = JSONObject(File(repositoryRoot, "app/$path").readText(Charsets.UTF_8)).getJSONArray("packs")
+            (0 until packList.length()).map(packList::getJSONObject).filter { it.getString("kind") == "urban" }.map { it.getString("sourceId") }
+        }.toSet()
+        assertEquals(set("urbanPacks"), urban)
+    }
+
+    @Test fun `the walks to the city stops are the shared table`() {
+        val json = table("urban-stops-v1.json")
+        val settings = GtfsJourneyPlannerSettings()
+        assertEquals(json.getInt("maximumWalkMeters"), settings.maxWalkMeters)
+        assertEquals(json.getDouble("walkingSpeedKmh"), settings.walkingSpeedKmh, 0.0)
+        assertEquals(json.getInt("walkMarginMinutes"), settings.walkMarginMinutes)
+        assertEquals(json.getInt("samePlaceMeters"), SharedData.UrbanStops.SAME_PLACE_METERS)
+        assertEquals(json.getInt("platformMeters").toDouble(), UrbanStopPlatforms.SIBLING_METERS, 0.0)
     }
 
     @Test fun `every source is asked with the shared manners`() {
@@ -322,5 +355,97 @@ class SharedDataTest {
         assertEquals(display.getInt("bodyCollapsedCharacters"), SharedData.NoticesSources.DISPLAY.bodyCollapsedCharacters)
         assertEquals(display.getInt("maximumLineCodes"), SharedData.NoticesSources.DISPLAY.maximumLineCodes)
         assertEquals(display.getInt("worksCollapsed"), SharedData.NoticesSources.DISPLAY.worksCollapsed)
+    }
+
+    @Test fun `the delay compensation thresholds are the shared table`() {
+        val json = table("delay-compensation-v1.json")
+        assertEquals(json.getInt("quarterFromMinutes"), DelayCompensationRule.QUARTER_FROM_MINUTES)
+        assertEquals(json.getInt("halfFromMinutes"), DelayCompensationRule.HALF_FROM_MINUTES)
+        assertEquals(json.getInt("quarterPercent"), CompensationShare.QUARTER.percent)
+        assertEquals(json.getInt("halfPercent"), CompensationShare.HALF.percent)
+    }
+
+    @Test fun `the destination weather source is the shared table`() {
+        val json = table("destination-weather-v1.json")
+        assertEquals(json.getString("forecastUrl"), SharedData.DestinationWeather.FORECAST_URL)
+        assertEquals(json.getString("attributionUrl"), OpenMeteoForecastAdapter.ATTRIBUTION_URL)
+        assertEquals(json.getInt("forecastDays"), OpenMeteoForecastAdapter.FORECAST_DAYS)
+        assertEquals(json.getJSONArray("dailyVariables").strings(), SharedData.DestinationWeather.DAILY_VARIABLES)
+        assertEquals("45.46", OpenMeteoForecastAdapter.rounded(45.4641))
+        assertEquals(json.getInt("timeToLiveSeconds"), SharedData.DestinationWeather.TIME_TO_LIVE_SECONDS)
+        assertEquals(json.getInt("maximumBytes"), SharedData.DestinationWeather.MAXIMUM_BYTES)
+    }
+
+    @Test fun `the bike sharing systems are the shared table`() {
+        val json = table("bike-sharing-v1.json")
+        val systems = json.getJSONArray("systems").objects()
+        assertEquals(systems.map { it.getString("id") }, BikeSharingSystems.all.map { it.id.value })
+        for ((entry, system) in systems.zip(BikeSharingSystems.all)) {
+            assertEquals(entry.getString("name"), system.name)
+            assertEquals(entry.getString("operatorName"), system.operator)
+            assertEquals(entry.getString("discoveryUrl"), system.discoveryUrl)
+            assertEquals(entry.getString("websiteUrl"), system.websiteUrl)
+            assertEquals(entry.getString("attribution"), system.attribution)
+            assertEquals(entry.getBoolean("personalOnly"), system.personalOnly)
+            val areas = entry.getJSONArray("areas").objects()
+            assertEquals(areas.map { it.getString("name") }, system.areas.map { it.name })
+            assertEquals(areas.map { it.getDouble("radiusKm") }, system.areas.map { it.radiusKm })
+        }
+        assertEquals(listOf("gbfs-bird-roma"), BikeSharingSystems.all.filter { it.personalOnly }.map { it.id.value })
+        assertEquals(json.getInt("radiusMeters"), BikeSharingService.DEFAULT_RADIUS_METERS)
+        assertEquals(json.getJSONArray("feedLanguages").strings(), SharedData.BikeSharing.FEED_LANGUAGES)
+        assertEquals(json.getInt("maximumBytes"), SharedData.BikeSharing.MAXIMUM_BYTES)
+    }
+
+    @Test fun `the live train map is the shared table`() {
+        val json = table("live-train-map-v1.json")
+        assertEquals(json.getInt("lookBackMinutes"), ScheduledRunRequest.DEFAULT_LOOK_BACK_MINUTES)
+        assertEquals(json.getInt("lookAheadMinutes"), ScheduledRunRequest.DEFAULT_LOOK_AHEAD_MINUTES)
+        assertEquals(json.getInt("lookBackMinutes"), LiveTrainSelector.MAX_APPLIED_DELAY)
+        assertEquals(json.getInt("minimumAppliedDelayMinutes"), LiveTrainSelector.MIN_APPLIED_DELAY)
+        assertEquals(json.getInt("maximumTrains"), LiveTrainSelector.MAX_TRAINS)
+        assertEquals(json.getDouble("sameTrainKilometres"), LiveTrainSelector.SAME_TRAIN_KM, 0.0)
+        assertEquals(json.getInt("positionsRefreshSeconds") * 1_000L, LiveTrainRefresh.POSITIONS_MILLIS)
+        assertEquals(json.getDouble("stationRadiusKilometres"), LiveTrainAreas.STATION_RADIUS_KM, 0.0)
+        assertEquals(json.getDouble("maximumLatitudeSpan"), LiveTrainAreas.MAX_LATITUDE_SPAN, 0.0)
+        assertEquals(json.getDouble("maximumLongitudeSpan"), LiveTrainAreas.MAX_LONGITUDE_SPAN, 0.0)
+    }
+
+    @Test fun `the evening alerts are the shared table`() {
+        val json = table("evening-alerts-v1.json")
+        assertEquals(json.getInt("strikeReminderHour"), StrikeReminderPlanner.RUN_AT.hour)
+        assertEquals(json.getInt("quietFromHour"), StrikeReminderPlanner.QUIET_FROM.hour)
+        assertEquals(json.getLong("strikeNotifiedRetentionDays"), StrikeReminderPlanner.NOTIFIED_RETENTION_DAYS)
+        assertEquals(json.getInt("routeWorksAlertHour"), RouteWorksAlertPlanner.RUN_AT.hour)
+        assertEquals(json.getInt("quietFromHour"), RouteWorksAlertPlanner.QUIET_FROM.hour)
+        assertEquals(json.getInt("quietUntilHour"), RouteWorksAlertPlanner.QUIET_UNTIL.hour)
+        assertEquals(json.getInt("routeWorksMaximumItems"), RouteWorksAlertPlanner.MAX_ITEMS)
+        assertEquals(json.getLong("routeWorksMaximumKeepDays"), RouteWorksAlertPlanner.MAX_KEEP_DAYS)
+        assertEquals(json.getInt("routeWorksMaximumNotified"), RouteWorksAlertPlanner.MAX_NOTIFIED)
+    }
+
+    @Test fun `the realtime feeds and the swiss boards are the shared table`() {
+        val json = table("realtime-feeds-v1.json")
+        assertEquals(Duration.ofSeconds(json.getLong("observationWindowSeconds")), it.binario.app.data.core.GtfsRealtimeFreshness.OBSERVATION_WINDOW)
+        assertEquals(json.getLong("observationWindowSeconds"), it.binario.app.data.urban.UrbanRealtimeSnapshot.MAX_AGE.seconds)
+        val feeds = json.getJSONArray("tripUpdates").objects().associateBy { it.getString("id") }
+        val sta = feeds.getValue(it.binario.app.data.live.StaRealtimeAdapter.SOURCE_ID.value)
+        assertEquals(sta.getString("url"), "${it.binario.app.data.live.StaRealtimeAdapter.REALTIME_ROOT}/${it.binario.app.data.live.StaRealtimeFeed.TRIP_UPDATES.path}")
+        val sncf = feeds.getValue(it.binario.app.data.live.SncfGtfsRealtimeAdapter.SOURCE_ID.value)
+        assertEquals(sncf.getString("url"), it.binario.app.data.live.SncfRealtimeFeed.TRIP_UPDATES.url)
+        val france = feeds.getValue(it.binario.app.data.live.TrenitaliaFranceGtfsRealtimeAdapter.SOURCE_ID.value)
+        assertEquals(france.getString("url"), it.binario.app.data.live.HttpTrenitaliaFranceRealtimeFetcher.FEED_URL)
+        assertEquals(france.getString("pack"), it.binario.app.data.live.TrenitaliaFranceGtfsRealtimeAdapter.STATIC_PACK.value)
+        assertEquals(Duration.ofSeconds(france.getLong("timeToLiveSeconds")), it.binario.app.data.live.TrenitaliaFranceGtfsRealtimeAdapter.DESCRIPTOR.ratePolicy.defaultTimeToLive)
+        assertEquals(feeds.keys, SharedData.RealtimeFeeds.TRIP_UPDATES.map { it.id }.toSet())
+        val urban = json.getJSONArray("urban").objects()
+        assertEquals(urban.map { it.getString("id") }, it.binario.app.data.urban.UrbanRealtimeFeeds.all.map { it.sourceId.value })
+        assertEquals(urban.map { it.getString("url") }, it.binario.app.data.urban.UrbanRealtimeFeeds.all.map { it.tripUpdatesUrl })
+        assertEquals(urban.map { it.getBoolean("personalOnly") }, it.binario.app.data.urban.UrbanRealtimeFeeds.all.map { it.personalOnly })
+        assertEquals(json.getJSONObject("urbanFetch").getInt("maximumTrips"), it.binario.app.data.urban.UrbanGtfsRealtimeDecoder.MAX_TRIPS)
+        val swiss = json.getJSONObject("swissBoard")
+        assertEquals(swiss.getString("id"), it.binario.app.data.live.SwissOpenTransportStationBoardAdapter.SOURCE_ID.value)
+        assertEquals(swiss.getString("baseUrl"), it.binario.app.data.live.SwissOpenTransportStationBoardAdapter.BASE_URL)
+        assertEquals(swiss.getJSONArray("nonRailCategories").strings().toSet(), SharedData.RealtimeFeeds.SWISS_BOARD.nonRailCategories)
     }
 }

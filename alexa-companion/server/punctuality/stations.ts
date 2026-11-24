@@ -8,7 +8,8 @@ import { isStationCode } from "./stats";
  * A name matches when it equals, after normalisation, a catalogue name or alias of a station with
  * a ViaggiaTreno code ("S08409"); nothing is guessed from a partial name, so «Milano» matches no
  * station while «Milano Centrale» does. A name shared by several codes (an alias such as
- * «Bologne») yields all of them.
+ * «Bologne») yields all of them. The timetable reads the same names (`stationsFor`), with every
+ * station of the catalogue, coded or not.
  */
 
 const MAX_STATIONS = 50_000;
@@ -25,8 +26,23 @@ export function normalizeStationName(value: string): string {
     .trim();
 }
 
+/** A catalogue station as the timetable index binds its stops: its id, ViaggiaTreno code (if any) and name. */
+export type CatalogStation = { id: string; railwayCode: string | null; name: string };
+
 export class StationIndex {
-  constructor(private readonly codesByName: ReadonlyMap<string, readonly string[]>) {}
+  private readonly namesById = new Map<string, string>();
+
+  constructor(
+    private readonly codesByName: ReadonlyMap<string, readonly string[]>,
+    private readonly stationsByName: ReadonlyMap<string, readonly CatalogStation[]> = new Map()
+  ) {
+    for (const stations of stationsByName.values()) for (const station of stations) this.namesById.set(station.id, station.name);
+  }
+
+  /** The catalogue name of a station id («S08409» is «Roma Termini»). */
+  nameOf(id: string | null): string | undefined {
+    return id === null ? undefined : this.namesById.get(id);
+  }
 
   get size() {
     return this.codesByName.size;
@@ -35,6 +51,14 @@ export class StationIndex {
   /** ViaggiaTreno codes of the station with this name, or none. */
   codesFor(name: string): readonly string[] {
     return this.codesByName.get(normalizeStationName(name)) ?? [];
+  }
+
+  /**
+   * The catalogue stations with this name or alias, with or without a ViaggiaTreno code (the
+   * timetable index also binds stations without one), matched exactly as `codesFor`.
+   */
+  stationsFor(name: string): readonly CatalogStation[] {
+    return this.stationsByName.get(normalizeStationName(name)) ?? [];
   }
 }
 
@@ -49,20 +73,33 @@ export function parseStationCatalog(text: string): StationIndex | null {
   const stations = (document as { stations?: unknown } | null)?.stations;
   if (!Array.isArray(stations) || stations.length > MAX_STATIONS) return null;
   const codesByName = new Map<string, string[]>();
+  const stationsByName = new Map<string, CatalogStation[]>();
   for (const station of stations) {
     if (typeof station !== "object" || station === null) continue;
-    const { name, aliases, railwayCode } = station as { name?: unknown; aliases?: unknown; railwayCode?: unknown };
-    const code = typeof railwayCode === "string" ? railwayCode.trim() : undefined;
-    if (!isStationCode(code)) continue;
+    const { id, name, aliases, railwayCode } = station as { id?: unknown; name?: unknown; aliases?: unknown; railwayCode?: unknown };
+    const trimmed = typeof railwayCode === "string" ? railwayCode.trim() : undefined;
+    const code = isStationCode(trimmed) ? trimmed : undefined;
+    const entry =
+      typeof id === "string" && id.trim() && id.length <= MAX_NAME_LENGTH && typeof name === "string" && name.trim() && name.length <= MAX_NAME_LENGTH
+        ? { id: id.trim(), railwayCode: code ?? null, name: name.trim() }
+        : undefined;
+    if (!code && !entry) continue;
     const names = [name, ...(Array.isArray(aliases) ? aliases : [])];
     for (const candidate of names) {
       if (typeof candidate !== "string" || candidate.length > MAX_NAME_LENGTH) continue;
       const key = normalizeStationName(candidate);
       if (!key) continue;
-      const codes = codesByName.get(key);
-      if (!codes) codesByName.set(key, [code]);
-      else if (!codes.includes(code)) codes.push(code);
+      if (code) {
+        const codes = codesByName.get(key);
+        if (!codes) codesByName.set(key, [code]);
+        else if (!codes.includes(code)) codes.push(code);
+      }
+      if (entry) {
+        const known = stationsByName.get(key);
+        if (!known) stationsByName.set(key, [entry]);
+        else if (!known.some(item => item.id === entry.id)) known.push(entry);
+      }
     }
   }
-  return codesByName.size ? new StationIndex(codesByName) : null;
+  return codesByName.size ? new StationIndex(codesByName, stationsByName) : null;
 }

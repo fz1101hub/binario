@@ -16,6 +16,7 @@
     <string name="tile_no_departures">Không có chuyến nào để hiển thị</string>
     <string name="tile_service_details">%1$s · %2$s · %3$s</string>
     <string name="status_programmed">Lịch theo kế hoạch</string>
+    <string name="service_status_programmed">Chỉ có lịch</string>
     <string name="status_live_as_of">Dữ liệu cập nhật lúc %1$s</string>
     <string name="status_not_recent_as_of">Dữ liệu không mới, lúc %1$s</string>
     <string name="status_local_snapshot">Ảnh chụp nhanh cục bộ gần nhất</string>

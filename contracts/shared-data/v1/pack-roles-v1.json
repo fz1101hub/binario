@@ -1,8 +1,19 @@
 {
   "schema": "binario-shared-data-v1",
-  "description": "Roles of the offline timetable packs that Android, the iPhone and the iPhone index builder share: the national operators' packs (their copy of a train first), the foreign operators' packs (last, first at a station no national pack serves; their stops match catalogue stations with codes only), the packs that republish partner operators' trains under their own numbers, and those whose bus routes are the operator's own scheduled coaches (a bus of any other pack replaces a train).",
+  "description": "Roles of the offline timetable packs that Android, the iPhone and the iPhone index builder share: the national operators' packs (their copy of a train first), the foreign operators' packs (last, first at a station no national pack serves; their stops match catalogue stations with codes only), the packs that republish partner operators' trains under their own numbers, those whose bus routes are the operator's own scheduled coaches (a bus of any other pack replaces a train), and the city networks (metro, tram, funiculars, people movers), whose stops are never railway stations and are reached on foot from the stations near them.",
   "nationalPacks": ["trenitalia-gtfs", "italo-gtfs"],
   "foreignPacks": ["ch-otd-gtfs", "oebb-gtfs", "sncf-gtfs", "trenitalia-france-gtfs"],
   "crossPublishingPacks": ["ch-otd-gtfs", "sncf-gtfs", "oebb-gtfs", "alto-adige-sta-gtfs"],
-  "scheduledCoachPacks": ["trenitalia-gtfs", "italo-gtfs"]
+  "scheduledCoachPacks": ["trenitalia-gtfs", "italo-gtfs"],
+  "urbanPacks": [
+    "milano-atm-gtfs",
+    "genova-amt-gtfs",
+    "firenze-gest-gtfs",
+    "arst-metro-gtfs",
+    "napoli-anm-gtfs",
+    "venezia-actv-gtfs",
+    "roma-mobilita-gtfs",
+    "gtt-gtfs",
+    "marconi-express-gtfs"
+  ]
 }

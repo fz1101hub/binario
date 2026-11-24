@@ -6,6 +6,7 @@ import { ENV } from "./env";
 import { assertRuntimeEnvironment } from "./envCheck";
 import { startupTimestampProblem } from "./dbEngine";
 import { preloadRailData } from "../punctuality/source";
+import { preloadTimetable } from "../timetable/source";
 import { isAlexaConfigured } from "../voice/config";
 import { closeDb } from "../db";
 import { installGracefulShutdown } from "./shutdown";
@@ -76,7 +77,10 @@ async function startServer() {
   });
   installGracefulShutdown(server, { closeDatabase: closeDb, exit: code => process.exit(code), signals: process });
   // The skill reads the statistics and the catalogue: read them now rather than on the first question.
-  if (isAlexaConfigured()) void preloadRailData();
+  if (isAlexaConfigured()) {
+    void preloadRailData();
+    void preloadTimetable();
+  }
 }
 
 startServer().catch(error => {

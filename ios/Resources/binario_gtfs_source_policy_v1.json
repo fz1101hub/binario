@@ -25,6 +25,13 @@
     },
     {
       "accessMode": "OPEN_DIRECT",
+      "landingPage": "https://www.arst.sardegna.it/open-data/",
+      "licence": "CC BY 4.0",
+      "sourceId": "arst-metro-gtfs",
+      "sourceUrl": "https://arstspa.info/arst-cagliari-it.zip"
+    },
+    {
+      "accessMode": "OPEN_DIRECT",
       "landingPage": "https://data.opentransportdata.swiss/dataset/timetable-2026-gtfs2020",
       "licence": "opendata.swiss terms_by — uso libero, anche commerciale, con obbligo di citare la fonte",
       "sourceId": "ch-otd-gtfs",
@@ -60,6 +67,20 @@
     },
     {
       "accessMode": "OPEN_DIRECT",
+      "landingPage": "https://dati.toscana.it/dataset/rt-oraritb",
+      "licence": "CC BY 4.0",
+      "sourceId": "firenze-gest-gtfs",
+      "sourceUrl": "https://dati.toscana.it/dataset/8bb8f8fe-fe7d-41d0-90dc-49f2456180d1/resource/1f62d551-65f4-49f8-9a99-e19b02077be3/download/gest.gtfs"
+    },
+    {
+      "accessMode": "GATEWAY_ONLY",
+      "landingPage": "https://dati.comune.genova.it/",
+      "licence": "CC BY 4.0",
+      "sourceId": "genova-amt-gtfs",
+      "sourceUrl": "http://opendatagoogletransit.comune.genova.it/downloads/google_transit.zip"
+    },
+    {
+      "accessMode": "OPEN_DIRECT",
       "landingPage": "https://www.cciss.it/nap/mmtis/public/en/catalog/Dataset/1814124",
       "licence": "Dati aperti NAP CCISS (art. 52 c. 2 CAD, Reg. UE 2017/1926); conversione GTFS CC BY 4.0",
       "sourceId": "italo-gtfs",
@@ -74,10 +95,24 @@
     },
     {
       "accessMode": "OPEN_DIRECT",
+      "landingPage": "https://solweb.tper.it/web/tools/open-data/open-data.aspx",
+      "licence": "CC BY 3.0 IT",
+      "sourceId": "marconi-express-gtfs",
+      "sourceUrl": "https://solweb.tper.it/web/tools/open-data/open-data-download.aspx?source=solweb.tper.it&filename=gtfsmex&version=20260421&format=zip"
+    },
+    {
+      "accessMode": "OPEN_DIRECT",
       "landingPage": "https://www.cciss.it/nap/mmtis/public/it/catalog/Dataset/204008",
       "licence": "NAP CCISS: no licence - no contract (dati aperti per default, art. 52 c. 2 CAD; Reg. UE 2017/1926)",
       "sourceId": "micotra-udine-villach",
       "sourceUrl": "https://www.cciss.it/nap/mmtis/public/api/v1/download/blob/Asset/204098/checkedResource"
+    },
+    {
+      "accessMode": "OPEN_DIRECT",
+      "landingPage": "https://dati.comune.milano.it/dataset/ds929-orari-del-trasporto-pubblico-locale-nel-comune-di-milano-in-formato-gtfs",
+      "licence": "CC BY 4.0",
+      "sourceId": "milano-atm-gtfs",
+      "sourceUrl": "https://dati.comune.milano.it/dataset/ae3f3db9-de61-45b7-94e7-9395c0e3ef53/resource/6251f156-4c74-4a0b-904e-01bcb701a686/download/gtfs.zip"
     },
     {
       "accessMode": "OPEN_DIRECT",

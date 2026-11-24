@@ -192,9 +192,14 @@ enum ReliabilityTexts {
 
     // MARK: Planner
 
-    /// «Cerca i treni da Milano Centrale a Malpensa Aeroporto».
-    static func airportSearch(from origin: String, to destination: String) -> String {
-        String.localizedStringWithFormat(NSLocalizedString("planner.airports.search", comment: ""), origin, destination)
+    /// «Cerca i treni da Milano Centrale a Malpensa Aeroporto»; «Cerca le corse da Bologna Centrale
+    /// a Bologna Aeroporto» for a route a city line serves (`AirportRoutes.byCityLine`: a people
+    /// mover runs, it is not a train), as on Android.
+    static func airportSearch(from origin: String, to destination: String, cityLine: Bool = false) -> String {
+        String.localizedStringWithFormat(
+            NSLocalizedString(cityLine ? "planner.airports.search_runs" : "planner.airports.search", comment: ""),
+            origin, destination
+        )
     }
 }
 

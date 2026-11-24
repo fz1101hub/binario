@@ -27,7 +27,8 @@ final class RailNoticeServiceTests: XCTestCase {
         let (notices, transport) = try service(clock) { _ in FakeLiveTransport.ok("[]") }
         _ = await notices.general(personal: true)
         _ = await notices.strikeCalendar()
-        XCTAssertEqual(Set(transport.paths), Set(NoticeTable.sources.map(\.url)))
+        // Every feed of the table but the per-train notices, which ViaggiaTrenoLiveSource asks.
+        XCTAssertEqual(Set(transport.paths), Set(NoticeTable.sources.filter { $0.id != NoticeSourceID.trainNotices }.map(\.url)))
         for request in transport.requests {
             let source = try XCTUnwrap(NoticeTable.sources.first { $0.url == request.url.absoluteString })
             XCTAssertEqual(request.url.scheme, "https")

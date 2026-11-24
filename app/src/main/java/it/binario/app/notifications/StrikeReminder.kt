@@ -16,6 +16,7 @@ import it.binario.app.data.live.StrikeCalendar
 import it.binario.app.data.live.StrikeNotice
 import it.binario.app.data.provider.ProviderResult
 import it.binario.app.data.repository.BinarioDataGraph
+import it.binario.app.shared.SharedData
 import java.time.Duration
 import java.time.LocalDate
 import java.time.LocalTime
@@ -31,9 +32,10 @@ import org.json.JSONObject
  * Android delays past the start of the quiet hours (22:00) notifies nothing, like the commuter alerts.
  */
 object StrikeReminderPlanner {
-    val RUN_AT: LocalTime = LocalTime.of(18, 0)
-    val QUIET_FROM: LocalTime = LocalTime.of(22, 0)
-    const val NOTIFIED_RETENTION_DAYS = 3L
+    // contracts/shared-data/v1/evening-alerts-v1.json; the planner's cases are contracts/shared-rules/v1/evening-alerts-v1.json.
+    val RUN_AT: LocalTime = LocalTime.of(SharedData.EveningAlerts.STRIKE_REMINDER_HOUR, 0)
+    val QUIET_FROM: LocalTime = LocalTime.of(SharedData.EveningAlerts.QUIET_FROM_HOUR, 0)
+    const val NOTIFIED_RETENTION_DAYS = SharedData.EveningAlerts.STRIKE_NOTIFIED_RETENTION_DAYS.toLong()
 
     fun nextRunAt(now: ZonedDateTime): ZonedDateTime {
         val today = now.toLocalDate().atTime(RUN_AT).atZone(now.zone)

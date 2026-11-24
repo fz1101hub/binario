@@ -125,6 +125,8 @@ struct PlannerView: View {
                     AvailableResultView(snapshot: snapshot, now: clock)
                     // Android's board of a saved route: the works its notices name, nothing when none does.
                     RouteWorksSection(routes: resultRoutes, scope: .thisRoute)
+                    // «Treni in movimento» of the route (LiveTrainMapView.swift).
+                    RouteLiveTrainsEntry(snapshot: snapshot)
                 } else if case let .unavailable(reason) = model.searchState {
                     UnavailableResultView(reason: reason)
                 }
@@ -363,7 +365,7 @@ private struct AirportLinksSection: View {
                         }
                     }
                     .buttonStyle(.borderless)
-                    .accessibilityLabel(Text(ReliabilityTexts.airportSearch(from: link.city.name, to: link.airport.name)))
+                    .accessibilityLabel(Text(ReliabilityTexts.airportSearch(from: link.city.name, to: link.airport.name, cityLine: AirportRoutes.byCityLine(link.route))))
                     Spacer()
                     Button {
                         search(link.airport, link.city)
@@ -371,7 +373,7 @@ private struct AirportLinksSection: View {
                         Image(systemName: "arrow.uturn.backward")
                     }
                     .buttonStyle(.borderless)
-                    .accessibilityLabel(Text(ReliabilityTexts.airportSearch(from: link.airport.name, to: link.city.name)))
+                    .accessibilityLabel(Text(ReliabilityTexts.airportSearch(from: link.airport.name, to: link.city.name, cityLine: AirportRoutes.byCityLine(link.route))))
                 }
             }
         }
@@ -471,12 +473,18 @@ private struct ResultRow: View {
             HStack(alignment: .firstTextBaseline) {
                 Text(service.scheduledDeparture)
                     .font(.headline.monospacedDigit())
-                Text(service.number)
+                // A city line has no number: its label says the mode and the line («Metro M1»).
+                Text(service.isUrban ? VehicleTexts.rowLabel(service) : service.number)
                     .font(.headline)
                 Spacer()
                 // A bus shows a bus and its label, never a train's category (as on Android).
-                if let busLabel = VehicleTexts.busLabel(service) {
-                    Label(busLabel, systemImage: VehicleTexts.busSymbol)
+                if service.isUrban {
+                    Image(systemName: VehicleTexts.symbol(service))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .accessibilityHidden(true)
+                } else if let busLabel = VehicleTexts.busLabel(service) {
+                    Label(busLabel, systemImage: VehicleTexts.symbol(service))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 } else {
@@ -487,6 +495,11 @@ private struct ResultRow: View {
             }
             if let live {
                 LiveStatusLine(status: live, showsPlatform: true)
+            }
+            if let boardingStop = VehicleTexts.boardingStop(service) {
+                Label(boardingStop, systemImage: "figure.walk")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
             Text(service.destination)
             Text(service.operatorName)

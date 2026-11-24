@@ -92,6 +92,7 @@ internal object LastGoodSnapshotCodec {
                     .put("departure", service.scheduledDeparture)
                     .put("departureAt", service.scheduledDepartureDateTime?.toString())
                     .put("bus", service.scheduledBus)
+                    .put("busLine", service.busLine)
                     .put("stops", JSONArray().apply {
                         service.stops.forEach { stop -> put(JSONObject().put("station", stop.station).put("time", stop.scheduled)) }
                     }))
@@ -126,7 +127,8 @@ internal object LastGoodSnapshotCodec {
                 // A saved copy is a timetable: no observed operational state.
                 operationalStatusVerified = false,
                 scheduledDepartureDateTime = item.textOrNull("departureAt")?.let { runCatching { LocalDateTime.parse(it) }.getOrNull() },
-                scheduledBus = item.optBoolean("bus", false)
+                scheduledBus = item.optBoolean("bus", false),
+                busLine = item.textOrNull("busLine")
             )
         }
         if (services.isEmpty()) return null

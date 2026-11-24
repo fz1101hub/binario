@@ -65,15 +65,112 @@ final class SharedRulesContractTests: XCTestCase {
             let vehicle = TimetableVehicle.of(mode: mode, operatorName: item.operatorName, lineLabel: item.line)
             XCTAssertEqual(vehicle.rawValue, item.vehicle, label)
             XCTAssertEqual(vehicle.labelKey, item.iosLabel, label)
-            XCTAssertEqual(vehicle.isBus, item.iosLabel != nil, label)
+            XCTAssertEqual(vehicle.isBus, mode == .bus || mode == .replacementBus, label)
+            XCTAssertEqual(vehicle.isUrban, mode.isUrban, label)
+        }
+    }
+
+    /// journey-leg-vehicles-v1.json: a city line's public name (Android's `urbanLineName`) and its
+    /// label, the line left out when it only repeats the mode (`urbanLineRepeatsMode`).
+    func testEverySharedCityLineIsNamedAndLabelledAsTheRuleSays() throws {
+        let rules = try JSONDecoder().decode(
+            CityLineRules.self, from: Data(contentsOf: contract.appendingPathComponent("journey-leg-vehicles-v1.json"))
+        )
+        XCTAssertFalse(rules.urbanLines.isEmpty)
+        for item in rules.urbanLines {
+            let mode = try XCTUnwrap(TimetableLegMode(rawValue: item.mode), item.why)
+            XCTAssertEqual(TimetableNaming.urbanLine(item.published, mode: mode), item.line, item.why)
+        }
+        XCTAssertFalse(rules.urbanLabels.isEmpty)
+        for item in rules.urbanLabels {
+            XCTAssertEqual(TimetableVehicle.urbanLineRepeatsMode(item.line, label: item.label), item.repeatsMode, item.why)
+            XCTAssertEqual(TimetableVehicle.urbanLabel(item.label, line: item.line), item.shown, item.why)
+        }
+    }
+
+    /// urban-stops-v1.json: the badge a city stop's modes give it in the station search
+    /// (UrbanStopsContractTest.kt). Its names and walks are the index builder's (the pipeline reader).
+    func testEverySharedBadgeIsTheBadgeOfItsModes() throws {
+        let rules = try JSONDecoder().decode(
+            UrbanStopRules.self, from: Data(contentsOf: contract.appendingPathComponent("urban-stops-v1.json"))
+        )
+        XCTAssertFalse(rules.badges.isEmpty)
+        for item in rules.badges {
+            XCTAssertEqual(UrbanStopBadge.of(modes: item.modes)?.rawValue, item.badge, item.why)
+        }
+    }
+
+    /// weekday-remarks-v1.json: the weekday remarks of a train's detail, as Android shows them
+    /// (WeekdayRemarksContractTest.kt): at most two, the largest difference first.
+    func testEverySharedWeekdayCaseGivesTheSharedRemarks() throws {
+        let rules = try JSONDecoder().decode(WeekdayRules.self, from: Data(contentsOf: contract.appendingPathComponent("weekday-remarks-v1.json")))
+        let document = try Data(contentsOf: contract.appendingPathComponent(rules.document))
+        let stats = try XCTUnwrap(NetworkReliabilityParser.parse(json: [UInt8](document)))
+        XCTAssertFalse(rules.cases.isEmpty)
+        for item in rules.cases {
+            let trains = stats.trains.filter { $0.number == item.number }
+            XCTAssertEqual(trains.count, 1, item.number)
+            let train = try XCTUnwrap(trains.first, item.number)
+            let actual = NetworkReliability.weekdayRemarks(train, index: item.stop).map {
+                WeekdayCase(weekday: $0.weekday, samples: $0.samples, onTime: $0.onTime)
+            }
+            XCTAssertEqual(actual, item.expected, item.why)
         }
     }
 
     // MARK: - The contract file
 
+    private struct WeekdayRules: Decodable {
+        let document: String
+        let cases: [WeekdayRule]
+    }
+
+    private struct WeekdayRule: Decodable {
+        let number: String
+        let stop: Int
+        let why: String
+        let expected: [WeekdayCase]
+    }
+
+    private struct WeekdayCase: Decodable, Equatable {
+        let weekday: Int
+        let samples: Int
+        let onTime: Int
+    }
+
     private struct LegVehicleRules: Decodable {
         let scheduledCoachPacks: [String]
         let legVehicles: [LegVehicleCase]
+    }
+
+    private struct CityLineRules: Decodable {
+        let urbanLines: [CityLineCase]
+        let urbanLabels: [CityLabelCase]
+    }
+
+    private struct CityLineCase: Decodable {
+        let mode: String
+        let published: String
+        let line: String?
+        let why: String
+    }
+
+    private struct CityLabelCase: Decodable {
+        let label: String
+        let line: String
+        let repeatsMode: Bool
+        let shown: String
+        let why: String
+    }
+
+    private struct UrbanStopRules: Decodable {
+        let badges: [BadgeCase]
+    }
+
+    private struct BadgeCase: Decodable {
+        let modes: String
+        let badge: String?
+        let why: String
     }
 
     private struct LegVehicleCase: Decodable {

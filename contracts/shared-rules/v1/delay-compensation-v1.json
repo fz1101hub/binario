@@ -1,0 +1,340 @@
+{
+  "schema": "binario-shared-rules-v1",
+  "description": "When the train detail states the compensation of Regulation (EU) 2021/782, art. 19 (data/DelayCompensation.kt): only on the actual arrival a source verified at the last stop shown, at least 60 minutes late (25 % of the ticket price), 50 % from 120 minutes; never on demonstration data, a cancelled train, a stop it skipped or a stop without an actual arrival. A stop's «verified» null means the run's own verification. The thresholds are contracts/shared-data/v1/delay-compensation-v1.json.",
+  "readers": [
+    "app/src/test/java/it/binario/app/data/DelayCompensationContractTest.kt",
+    "ios/BinarioKit/Tests/BinarioKitTests/ExtrasContractTests.swift"
+  ],
+  "cases": [
+    {
+      "name": "59 minutes is not enough",
+      "stops": [
+        {
+          "name": "Milano Centrale",
+          "delayMinutes": 0,
+          "arrived": true,
+          "verified": true,
+          "skipped": false
+        },
+        {
+          "name": "Pavia",
+          "delayMinutes": 59,
+          "arrived": true,
+          "verified": true,
+          "skipped": false
+        }
+      ],
+      "cancelled": false,
+      "demonstration": false,
+      "serviceVerified": true,
+      "expected": null
+    },
+    {
+      "name": "60 minutes is a quarter of the price",
+      "stops": [
+        {
+          "name": "Milano Centrale",
+          "delayMinutes": 0,
+          "arrived": true,
+          "verified": true,
+          "skipped": false
+        },
+        {
+          "name": "Pavia",
+          "delayMinutes": 60,
+          "arrived": true,
+          "verified": true,
+          "skipped": false
+        }
+      ],
+      "cancelled": false,
+      "demonstration": false,
+      "serviceVerified": true,
+      "expected": {
+        "station": "Pavia",
+        "delayMinutes": 60,
+        "percent": 25
+      }
+    },
+    {
+      "name": "119 minutes is still a quarter",
+      "stops": [
+        {
+          "name": "Milano Centrale",
+          "delayMinutes": 0,
+          "arrived": true,
+          "verified": true,
+          "skipped": false
+        },
+        {
+          "name": "Pavia",
+          "delayMinutes": 119,
+          "arrived": true,
+          "verified": true,
+          "skipped": false
+        }
+      ],
+      "cancelled": false,
+      "demonstration": false,
+      "serviceVerified": true,
+      "expected": {
+        "station": "Pavia",
+        "delayMinutes": 119,
+        "percent": 25
+      }
+    },
+    {
+      "name": "120 minutes is a half",
+      "stops": [
+        {
+          "name": "Milano Centrale",
+          "delayMinutes": 0,
+          "arrived": true,
+          "verified": true,
+          "skipped": false
+        },
+        {
+          "name": "Pavia",
+          "delayMinutes": 120,
+          "arrived": true,
+          "verified": true,
+          "skipped": false
+        }
+      ],
+      "cancelled": false,
+      "demonstration": false,
+      "serviceVerified": true,
+      "expected": {
+        "station": "Pavia",
+        "delayMinutes": 120,
+        "percent": 50
+      }
+    },
+    {
+      "name": "184 minutes is a half",
+      "stops": [
+        {
+          "name": "Milano Centrale",
+          "delayMinutes": 0,
+          "arrived": true,
+          "verified": true,
+          "skipped": false
+        },
+        {
+          "name": "Pavia",
+          "delayMinutes": 184,
+          "arrived": true,
+          "verified": true,
+          "skipped": false
+        }
+      ],
+      "cancelled": false,
+      "demonstration": false,
+      "serviceVerified": true,
+      "expected": {
+        "station": "Pavia",
+        "delayMinutes": 184,
+        "percent": 50
+      }
+    },
+    {
+      "name": "the notice names the last stop shown, the terminus after a number search",
+      "stops": [
+        {
+          "name": "Milano Centrale",
+          "delayMinutes": 0,
+          "arrived": true,
+          "verified": true,
+          "skipped": false
+        },
+        {
+          "name": "Pavia",
+          "delayMinutes": 75,
+          "arrived": true,
+          "verified": true,
+          "skipped": false
+        },
+        {
+          "name": "Voghera",
+          "delayMinutes": 81,
+          "arrived": true,
+          "verified": true,
+          "skipped": false
+        }
+      ],
+      "cancelled": false,
+      "demonstration": false,
+      "serviceVerified": true,
+      "expected": {
+        "station": "Voghera",
+        "delayMinutes": 81,
+        "percent": 25
+      }
+    },
+    {
+      "name": "no actual arrival yet: an expected delay is not enough",
+      "stops": [
+        {
+          "name": "Milano Centrale",
+          "delayMinutes": 0,
+          "arrived": true,
+          "verified": true,
+          "skipped": false
+        },
+        {
+          "name": "Pavia",
+          "delayMinutes": 90,
+          "arrived": false,
+          "verified": true,
+          "skipped": false
+        }
+      ],
+      "cancelled": false,
+      "demonstration": false,
+      "serviceVerified": true,
+      "expected": null
+    },
+    {
+      "name": "a stop the train skipped",
+      "stops": [
+        {
+          "name": "Milano Centrale",
+          "delayMinutes": 0,
+          "arrived": true,
+          "verified": true,
+          "skipped": false
+        },
+        {
+          "name": "Pavia",
+          "delayMinutes": 90,
+          "arrived": true,
+          "verified": true,
+          "skipped": true
+        }
+      ],
+      "cancelled": false,
+      "demonstration": false,
+      "serviceVerified": true,
+      "expected": null
+    },
+    {
+      "name": "an arrival the source did not verify",
+      "stops": [
+        {
+          "name": "Milano Centrale",
+          "delayMinutes": 0,
+          "arrived": true,
+          "verified": true,
+          "skipped": false
+        },
+        {
+          "name": "Pavia",
+          "delayMinutes": 90,
+          "arrived": true,
+          "verified": false,
+          "skipped": false
+        }
+      ],
+      "cancelled": false,
+      "demonstration": false,
+      "serviceVerified": true,
+      "expected": null
+    },
+    {
+      "name": "a stop without its own verification takes the run's",
+      "stops": [
+        {
+          "name": "Milano Centrale",
+          "delayMinutes": 0,
+          "arrived": true,
+          "verified": true,
+          "skipped": false
+        },
+        {
+          "name": "Pavia",
+          "delayMinutes": 90,
+          "arrived": true,
+          "verified": null,
+          "skipped": false
+        }
+      ],
+      "cancelled": false,
+      "demonstration": false,
+      "serviceVerified": true,
+      "expected": {
+        "station": "Pavia",
+        "delayMinutes": 90,
+        "percent": 25
+      }
+    },
+    {
+      "name": "a stop without its own verification on an unverified run",
+      "stops": [
+        {
+          "name": "Milano Centrale",
+          "delayMinutes": 0,
+          "arrived": true,
+          "verified": true,
+          "skipped": false
+        },
+        {
+          "name": "Pavia",
+          "delayMinutes": 90,
+          "arrived": true,
+          "verified": null,
+          "skipped": false
+        }
+      ],
+      "cancelled": false,
+      "demonstration": false,
+      "serviceVerified": false,
+      "expected": null
+    },
+    {
+      "name": "a cancelled train",
+      "stops": [
+        {
+          "name": "Milano Centrale",
+          "delayMinutes": 0,
+          "arrived": true,
+          "verified": true,
+          "skipped": false
+        },
+        {
+          "name": "Pavia",
+          "delayMinutes": 130,
+          "arrived": true,
+          "verified": true,
+          "skipped": false
+        }
+      ],
+      "cancelled": true,
+      "demonstration": false,
+      "serviceVerified": true,
+      "expected": null
+    },
+    {
+      "name": "demonstration data",
+      "stops": [
+        {
+          "name": "Milano Centrale",
+          "delayMinutes": 0,
+          "arrived": true,
+          "verified": true,
+          "skipped": false
+        },
+        {
+          "name": "Pavia",
+          "delayMinutes": 130,
+          "arrived": true,
+          "verified": true,
+          "skipped": false
+        }
+      ],
+      "cancelled": false,
+      "demonstration": true,
+      "serviceVerified": true,
+      "expected": null
+    }
+  ]
+}

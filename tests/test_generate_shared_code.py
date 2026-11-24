@@ -77,7 +77,8 @@ class CommittedCodeTest(unittest.TestCase):
     def test_alexa_gets_only_the_tables_it_reads(self) -> None:
         typescript = (ROOT / generator.TYPESCRIPT_OUTPUT).read_text(encoding="utf-8")
         alexa = {table.name for table in generator.TABLES if table.alexa}
-        self.assertEqual({"ItalianHolidays", "Punctuality"}, alexa)
+        # The pack roles and the number prefixes since the skill reads the programmed timetable.
+        self.assertEqual({"ItalianHolidays", "PackRoles", "Punctuality", "TrainNumberPrefixes"}, alexa)
         for table in generator.TABLES:
             with self.subTest(table=table.name):
                 self.assertEqual(table.alexa, f"export const {table.name}: {{" in typescript)
@@ -224,6 +225,18 @@ class ValidationTest(unittest.TestCase):
             ("notices-sources-v1.json", lambda d: d["trenord"]["area"].update(minimumLatitude=50.0), "minimo non minore"),
             ("source-manners-v1.json", lambda d: d.update(userAgent="Binario (rail timetable app)"), "un solo <version>"),
             ("pack-roles-v1.json", lambda d: d["foreignPacks"].append("italo-gtfs"), "sia nazionale sia estero"),
+            ("delay-compensation-v1.json", lambda d: d.update(halfFromMinutes=60), "quarterFromMinutes non minore"),
+            ("delay-compensation-v1.json", lambda d: d.update(halfPercent=25), "quarterPercent non minore"),
+            ("destination-weather-v1.json", lambda d: d.update(forecastDays=17), "16"),
+            ("destination-weather-v1.json", lambda d: d.update(readTimeoutSeconds=20), "readTimeoutSeconds maggiore"),
+            ("bike-sharing-v1.json", lambda d: d["systems"][0].update(attribution="CC0"), "non nomina il sistema"),
+            ("bike-sharing-v1.json", lambda d: d["systems"][1].update(discoveryUrl="http://gbfs.nextbike.net/x.json"), "systems"),
+            ("live-train-map-v1.json", lambda d: d.update(timetableSlotMinutes=7), "non divide l'ora"),
+            ("evening-alerts-v1.json", lambda d: d.update(strikeReminderHour=23), "nelle ore di quiete"),
+            ("realtime-feeds-v1.json", lambda d: d["tripUpdates"][1].update(refusalGroup="opendatahub.com"), "dominio del feed"),
+            ("realtime-feeds-v1.json", lambda d: d["tripUpdates"][0].update(redirects="same-https-host"), "stessa risorsa"),
+            ("realtime-feeds-v1.json", lambda d: d["urban"][0].update(pack="sncf-gtfs"), "con due feed"),
+            ("realtime-feeds-v1.json", lambda d: d["swissBoard"]["borderRegion"].update(minimumLongitude=11.0), "minimo non minore"),
         )
         for name, change, fragment in cases:
             with self.subTest(name=name, fragment=fragment), Workspace() as workspace:

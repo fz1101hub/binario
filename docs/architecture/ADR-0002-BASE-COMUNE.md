@@ -34,7 +34,7 @@ Le tre app restano native: niente Kotlin Multiplatform, niente runtime condiviso
 
    Ogni file generato comincia con un'intestazione che nomina il generatore e le tabelle e dice di non modificarlo. I file generati sono nel repository. Prima di scrivere qualsiasi cosa, il generatore controlla ogni JSON con lo schema che definisce: tipi, chiavi obbligatorie, nessuna chiave sconosciuta o ripetuta, nessuna voce doppia, più i controlli incrociati della tabella. `--check` fallisce quando un file generato non corrisponde alle tabelle e gira nella CI (`gtfs-assets-ci.yml`). Le app leggono le costanti come codice, mai interpretando JSON a runtime.
 3. **Regole condivise.** I casi di prova stanno in `contracts/shared-rules/v1/` ([README](../../contracts/shared-rules/v1/README.md)), e i test di ogni piattaforma li leggono così come sono. L'implementazione della regola resta nel linguaggio di ogni app.
-4. **Contratti tra dispositivi.** `contracts/wear-snapshot/` (telefono → Wear OS e Apple Watch) e `contracts/voice-input/` (dettatura).
+4. **Contratti tra dispositivi.** `contracts/wear-snapshot/` (telefono → Wear OS e Apple Watch, con i campi facoltativi che ogni orologio dichiara di leggere; `tests/test_wear_snapshot_contract.py` controlla le fixture e gli stessi nomi in ogni programma) e `contracts/voice-input/` (dettatura).
 
 ### Tabelle migrate il 23 novembre 2026
 
@@ -44,7 +44,7 @@ Le tre app restano native: niente Kotlin Multiplatform, niente runtime condiviso
 | `rfi-place-ids-v1.json`: 25 place ID del monitor RFI per nome | `RfiStationIds.byName`; `RfiLiveBoard.swift` | Android, iPhone |
 | `source-scores-v1.json`: punteggi delle fonti per categoria, bonus dell'operatore, fonti di sola copertura | `RailSourceSelectionPolicy.kt`; `LiveSourcePolicy` in `LiveRailData.swift` | Android, iPhone |
 | `punctuality-v1.json`: categorie a 5 minuti (FR FA FB EC ES ESC EN ITALO), soglie e campioni minimi | `NetworkReliabilityStats.kt`, `NetworkReliabilityAggregates.kt`; `NetworkReliability.swift`; `server/punctuality/stats.ts` | Android, iPhone, Alexa |
-| `train-number-prefixes-v1.json`: categorie ammesse davanti al numero di un treno | `TrainNumberSearchService.kt`; `ViaggiaTrenoLive.swift` | Android, iPhone |
+| `train-number-prefixes-v1.json`: categorie ammesse davanti al numero di un treno | `TrainNumberSearchService.kt`; `ViaggiaTrenoLive.swift` | Android, iPhone, Alexa (dal 23 novembre, orario programmato) |
 | `airport-routes-v1.json`: collegamenti con gli aeroporti e pack di linee urbane | `AirportRoutes.kt`; `AirportRoutes.swift` | Android, iPhone (anche `byCityLine`) |
 | `italian-holidays-v1.json`: festività nazionali e giorni contati dalla Pasqua | `ItalianRailServiceCalendar.kt`; `server/punctuality/stats.ts` | Android, Alexa (generata anche per l'iPhone) |
 | `planned-journeys-v1.json`: limiti dell'Agenda, del file di trasferimento e dei modelli | `PlannedJourneyDomain.kt`, `PlannedJourneyTransfer.kt`, `PlannedJourneyTemplates.kt`; `PlannedJourneys.swift`, `PlannedJourneyTemplates.swift` | Android, iPhone |
@@ -56,7 +56,28 @@ Dopo l'unione dei lavori sull'orario e sugli avvisi dell'iPhone, lo stesso giorn
 | `italo-gtfs-station-codes.json`: i 63 codici delle stazioni del pack Italo e il codice lasciato al pack | `ItaloGtfsStationCodes` in `GtfsStationCodeIndex.kt`, uguale al JSON per un test Python | Android; il builder dell'indice iPhone legge il JSON |
 | `notices-sources-v1.json`: fonti degli avvisi, pagine, limiti, parole ed espressioni regolari dei lettori, quanto mostrano le sezioni | costanti di una ventina di file Android, uguali al JSON per un test a riflessione; l'iPhone leggeva il file incluso nell'app all'avvio | Android, iPhone |
 | `source-manners-v1.json`: User-Agent, rifiuti 403 e 429, pausa dopo un rifiuto, interruttore | `PublicSourceHttp.kt`, `SourceCircuitBreaker`; `LiveSourceHTTP.swift`, `LiveSourceGate.swift`; una sezione `manners` della tabella degli avvisi | Android, iPhone |
-| `pack-roles-v1.json`: pack nazionali, esteri, che ripubblicano i treni dei partner, con autobus dell'operatore | `PlannedPackOrder`, `EmbeddedGtfsRouteAdapter`, `EmbeddedGtfsPacks`; `TimetableCopies.swift`, `TimetableVehicle.swift`; `build_ios_gtfs_schedule.py`, `verify_ios_gtfs_schedule.py` | Android, iPhone; builder e verificatore dell'indice leggono il JSON |
+| `pack-roles-v1.json`: pack nazionali, esteri, che ripubblicano i treni dei partner, con autobus dell'operatore | `PlannedPackOrder`, `EmbeddedGtfsRouteAdapter`, `EmbeddedGtfsPacks`; `TimetableCopies.swift`, `TimetableVehicle.swift`; `build_ios_gtfs_schedule.py`, `verify_ios_gtfs_schedule.py` | Android, iPhone, Alexa (orario programmato); builder e verificatore dell'indice leggono il JSON |
+| `realtime-feeds-v1.json`: feed GTFS-Realtime e tabelloni svizzeri (indirizzi, limiti, cache, pause, finestra di osservazione) | costanti di `StaRealtimeAdapter`, `SncfGtfsRealtimeAdapter`, `TrenitaliaFranceGtfsRealtimeAdapter`, `UrbanRealtime.kt`, `SwissOpenTransportStationBoardAdapter`; nuova per l'iPhone (`GTFSRealtimeFeeds.swift`, `SwissStationBoard.swift`) | Android, iPhone |
+
+Con le funzioni di Android portate sull'iPhone (meteo a destinazione, bici in condivisione, indennizzo per ritardo, treni in movimento, promemoria serali), il 23 novembre 2026:
+
+| Tabella | Prima | Ora letta da |
+|---|---|---|
+| `destination-weather-v1.json`: Open-Meteo, variabili, giorni, decimali, cache e limiti | `OpenMeteoForecastAdapter.kt` | Android, iPhone |
+| `bike-sharing-v1.json`: i cinque sistemi GBFS, raggio, quanti mezzi, cache e limiti | `BikeSharingSystems`, `BikeSharingService`, `BinarioDataGraph.kt` | Android, iPhone |
+| `delay-compensation-v1.json`: soglie e quote del regolamento UE 2021/782 | `DelayCompensation.kt` | Android, iPhone |
+| `live-train-map-v1.json`: finestra dell'orario, ritardi applicati, copie, cadenza e aree | `LiveTrainPositions.kt`, `ScheduledRailRuns.kt`, `EmbeddedGtfsJourneyProvider.kt` | Android, iPhone |
+| `evening-alerts-v1.json`: ore dei promemoria serali e di quiete, memoria degli avvisi | `StrikeReminder.kt`, `RouteWorksAlert.kt` | Android, iPhone |
+
+Le loro regole hanno i casi in `contracts/shared-rules/v1/` (`delay-compensation-v1.json`, `destination-weather-v1.json`, `bike-sharing-v1.json`, `live-train-positions-v1.json`, `evening-alerts-v1.json`). Restano specifiche dell'iPhone la mappa di base (MapKit invece di OpenFreeMap) e il modo di girare in background (un solo compito di aggiornamento in background invece di WorkManager).
+
+Con gli arrivi, i dettagli della corsa e gli avvisi per treno sull'iPhone:
+
+| Tabella | Prima | Ora letta da |
+|---|---|---|
+| `viaggiatreno-v1.json`: indirizzo e risorse dell'API realtime, limiti, intervallo, durata dei valori, dettagli in parallelo, limiti di lettura, tipi di fermata, codici cliente | `ViaggiaTrenoRealtimeAdapter.kt`; `ViaggiaTrenoLive.swift` (i codici cliente solo su Android) | Android, iPhone |
+| `rfi-monitor-v1.json`: selettore e monitor RFI, limiti, intervallo, durata dei valori e del selettore | `RfiStationBoardAdapter.kt`, `RfiStationCatalog.kt`; `RfiLiveBoard.swift` | Android, iPhone |
+| `notices-sources-v1.json`, in più: il feed degli avvisi per treno di ViaggiaTreno e i limiti del suo lettore | `ViaggiaTrenoTrainNoticesAdapter.kt` | Android, iPhone |
 
 Il modo di chiedere alle fonti non è degli avvisi: vale per ogni fonte live su entrambi i telefoni, perciò sta in una
 tabella sua. L'iPhone non include più la tabella degli avvisi e non ha più il caricatore: resta spenta ogni sezione di
@@ -66,6 +87,15 @@ motori non leggono allo stesso modo `\b`, `\w`, `\W` e `\s` vicino a caratteri n
 `contracts/shared-rules/v1/notices-v1.json` usano testi su cui coincidono. Android non ha un elenco dei pack esteri: li
 ricava dal primo paese del catalogo delle fonti. Per ogni pack ferroviario dell'app il risultato è l'elenco della
 tabella, e un test Kotlin lo verifica.
+
+Il 23 novembre 2026, con le reti urbane sull'iPhone:
+
+| Tabella | Prima | Ora letta da |
+|---|---|---|
+| `pack-roles-v1.json` (`urbanPacks`): le reti urbane (metro, tram, funicolari) | `kind = EmbeddedGtfsPackKind.URBAN` di ogni pack in `TransitGtfsPacks.kt` | Android (`EmbeddedGtfsPacks.withPackRoles`), iPhone; builder e verificatore dell'indice leggono il JSON |
+| `urban-stops-v1.json`: distanza massima, velocità e margine del cammino verso una fermata urbana, stessa fermata, banchine dello stesso nome | `GtfsJourneyPlannerSettings`, `SAME_PLACE_METERS` in `EmbeddedGtfsJourneyProvider.kt`, `UrbanStopBoardAdapter.SIBLING_METERS` | Android, iPhone; builder e verificatore dell'indice leggono il JSON |
+
+Nomi, badge e minuti a piedi delle fermate urbane sono casi di prova in `contracts/shared-rules/v1/urban-stops-v1.json`; linea e etichetta di una corsa urbana sono in `journey-leg-vehicles-v1.json` (`urbanLines`, `urbanLabels`).
 
 Restano fuori, coperti da casi di prova in `contracts/shared-rules/v1/`, la parola che segna una soppressione esplicita e l'operatore di una riga del monitor RFI (`live-text-v1.json`), i modelli di «Preparazione del viaggio» (`checklist-presets-v1.json`) e il calcolo della Pasqua (`calendar-v1.json`). Le espressioni regolari non diventano dati perché Java e ICU non leggono `\b` e `\w` allo stesso modo sui caratteri non ASCII. L'operatore della riga RFI non è una tabella pulita: Android distingue tre servizi Trenitalia, l'iPhone uno. I modelli di preparazione sono enum legati ai testi tradotti di ogni app. Restano fuori anche i limiti dello snapshot per gli orologi: Wear OS e Apple Watch non dipendono da `app/` né da BinarioKit, quindi non possono leggere il codice generato, e quei limiti li governa già il contratto `contracts/wear-snapshot/v1` con le sue fixture.
 
@@ -125,4 +155,4 @@ Si potrà riconsiderare per il nucleo del dominio (regole delle statistiche, num
 - Le tabelle si modificano solo nel JSON. `python3 tools/generate_shared_code.py` riscrive il codice, e `--check` (CI `gtfs-assets-ci.yml`, job Python) impedisce di dimenticarlo.
 - I workflow Android, Apple e Alexa partono quando cambiano `contracts/shared-data/**` o il generatore; `tools/verify_ci_pinning.py` verifica questi filtri e lo step `--check`.
 - Il codice generato Swift compila solo sulla CI macOS (Swift 6, iOS 17, watchOS 10). Non richiede modifiche a `ios/project.yml`, perché il pacchetto BinarioKit include tutte le sottocartelle di `Sources/BinarioKit`, compresa `Generated/`.
-- Il comportamento delle app non cambia: i valori migrati erano identici su tutte le piattaforme, verificati prima della migrazione. L'unica funzione nuova è `AirportRoutes.byCityLine` sull'iPhone, che oggi non trova linee urbane perché nessun pack urbano arriva sull'iPhone.
+- Il comportamento delle app non cambia: i valori migrati erano identici su tutte le piattaforme, verificati prima della migrazione. L'unica funzione nuova è `AirportRoutes.byCityLine` sull'iPhone, che dal 23 novembre 2026, con le reti urbane nell'indice dell'iPhone, trova il Marconi Express di Bologna.

@@ -542,6 +542,8 @@ public struct ItaloLiveSource: LiveTrainStatusSource, LiveDepartureBoardSource {
     }
 
     public func departures(for window: LiveBoardWindow) async -> LiveSourceAnswer<[LiveDeparture]> {
+        // Android's `ItaloPublicStationAdapter` lists departures only.
+        guard window.kind == .departures else { return .unavailable(.notCovered) }
         let names = [window.station.name] + window.station.aliases
         let stations = await catalogue.stations(now: now()) { [self] in await self.body("/it/stazione") }
         let keys = Set(names.map(ItaloParser.stationKey))

@@ -70,20 +70,37 @@ private struct BinarioWatchWidgetView: View {
     @ViewBuilder
     private var familyContent: some View {
         let next = entry.snapshot.services.first
+        // A bus shows the bus symbol in every family, as in the app.
+        let isBus = next?.isBus == true
         switch family {
         case .accessoryCircular:
             VStack(spacing: 0) {
+                if isBus {
+                    Image(systemName: WatchVehicle.busSymbol).font(.caption2)
+                }
                 Text(next?.expectedDeparture ?? "—").font(.headline)
                 Text(next?.number ?? WatchLocalization.text("watch.widget.compactName")).font(.caption2)
             }
         case .accessoryInline:
-            Text(next.map { "\($0.expectedDeparture) · \($0.destination)" } ?? WatchLocalization.text("watch.widget.noData"))
+            let line = next.map { "\($0.expectedDeparture) · \($0.destination)" } ?? WatchLocalization.text("watch.widget.noData")
+            if isBus {
+                Label(line, systemImage: WatchVehicle.busSymbol)
+            } else {
+                Text(line)
+            }
         default:
             VStack(alignment: .leading) {
                 Text(entry.snapshot.displayRouteLabel).lineLimit(1)
-                Text(next.map { "\($0.expectedDeparture)  \($0.destination)" } ?? WatchLocalization.text("watch.widget.noData"))
-                    .font(.headline)
-                    .lineLimit(1)
+                let line = next.map { "\($0.expectedDeparture)  \($0.destination)" } ?? WatchLocalization.text("watch.widget.noData")
+                Group {
+                    if isBus {
+                        Label(line, systemImage: WatchVehicle.busSymbol)
+                    } else {
+                        Text(line)
+                    }
+                }
+                .font(.headline)
+                .lineLimit(1)
                 if next != nil, let departure = entry.nextDeparture {
                     // The system keeps the relative text counting down between timeline entries.
                     Text("watch.countdown.departsIn \(Text(departure, style: .relative))")

@@ -3,6 +3,8 @@ import BinarioKit
 
 struct SettingsView: View {
     @EnvironmentObject private var model: AppModel
+    @EnvironmentObject private var extras: ExtrasModel
+    @AppStorage(UrbanStopsSetting.key) private var urbanStopsInSearch = UrbanStopsSetting.defaultValue
 
     var body: some View {
         List {
@@ -37,6 +39,10 @@ struct SettingsView: View {
                         SourcePackRow(pack: pack, source: model.sourcePolicy?.source(id: pack.sourceID))
                     }
                 }
+                // The city stops among the station suggestions, as on Android (`UrbanStopsSetting`).
+                if !model.urbanStops.stops.isEmpty {
+                    Toggle("settings.urban_stops.title", isOn: $urbanStopsInSearch)
+                }
             }
 
             // The full timetables of the neighbouring countries, downloaded only after a tap
@@ -59,16 +65,33 @@ struct SettingsView: View {
                 LiveSourceRow(name: LiveTexts.sourceName(.viaggiaTreno), detailKey: "settings.live.viaggiatreno")
                 LiveSourceRow(name: LiveTexts.sourceName(.rfiStationBoard), detailKey: "settings.live.rfi")
                 LiveSourceRow(name: LiveTexts.sourceName(.italo), detailKey: "settings.live.italo")
+                // Android's personal board of transport.opendata.ch, and its open Trip Updates feeds, each asked only
+                // for the trains of its own pack and so listed only when that pack is in the timetable.
+                LiveSourceRow(name: LiveTexts.sourceName(.swissOpenTransport), detailKey: "settings.live.swiss")
+                ForEach(tripUpdateSources, id: \.self) { source in
+                    LiveSourceRow(name: LiveTexts.sourceName(source), detailKey: "settings.live.trip_updates")
+                }
+                // The city networks' feeds of a personal build whose city pack is in the timetable.
+                ForEach(UrbanRealtimeBuild.feeds(packs: Set(model.includedPacks.map(\.sourceID))), id: \.id) { feed in
+                    LiveSourceRow(name: feed.displayName, detailKey: "settings.live.trip_updates")
+                }
                 // The notice sources Android counts among its personal ones, behind the same switch.
                 LiveSourceRow(name: NoticePublisher.trenitalia.brand, detailKey: "settings.live.trenitalia_news")
                 LiveSourceRow(name: NoticePublisher.trenord.brand, detailKey: "settings.live.trenord")
-                Text("settings.live.notices_always")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
+                // True only while no evening alert reads these feeds in the background; the alerts
+                // say themselves when they read them (ExtrasSettingsSection).
+                if !extras.anyEveningAlertEnabled {
+                    Text("settings.live.notices_always")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
                 Text("settings.live.privacy")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             }
+
+            // «Meteo a destinazione» and the evening alerts, as Android's settings.
+            ExtrasSettingsSection()
 
             Section("settings.privacy.title") {
                 Text("settings.privacy.body")
@@ -98,6 +121,12 @@ struct SettingsView: View {
             }
         }
         .navigationTitle("settings.title")
+    }
+
+    /// The open Trip Updates feeds of the packs in the timetable, in the shared table's order.
+    private var tripUpdateSources: [LiveSource] {
+        let packs = Set(model.includedPacks.map(\.sourceID))
+        return SharedData.RealtimeFeeds.tripUpdates.filter { packs.contains($0.pack) }.compactMap { LiveSource(rawValue: $0.id) }
     }
 
     // Both rows describe the data actually loaded: the catalogue names itself and the feed

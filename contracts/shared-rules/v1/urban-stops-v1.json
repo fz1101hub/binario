@@ -1,0 +1,38 @@
+{
+  "schema": "binario-shared-rules-v1",
+  "readers": {
+    "android": "app/src/test/java/it/binario/app/data/gtfs/UrbanStopsContractTest.kt",
+    "iphone": "ios/BinarioKit/Tests/BinarioKitTests/SharedRulesContractTests.swift",
+    "pipeline": "tests/test_ios_gtfs_schedule.py"
+  },
+  "stopNames": [
+    {"published": "DUOMO M1", "shown": "Duomo M1", "why": "a name all in capitals: words capitalised, line codes in capitals"},
+    {"published": "stazione centrale p.za duca d'aosta m2 m3", "shown": "Stazione Centrale P.za Duca D'Aosta M2 M3", "why": "a name all in lower case, with abbreviations and an apostrophe"},
+    {"published": "GENOVA/PIAZZA MANIN", "shown": "Genova Piazza Manin", "why": "a slash between two names becomes a space"},
+    {"published": "BUSALLETTA/", "shown": "Busalletta", "why": "a trailing slash is dropped"},
+    {"published": "SANT'OLCESE/CHIESA", "shown": "Sant'Olcese Chiesa", "why": "upper case again after an apostrophe"},
+    {"published": "CENTRALE FS", "shown": "Centrale FS", "why": "FS stays in capitals"},
+    {"published": "VIA CROCCO-CASTELLETTO", "shown": "Via Crocco-Castelletto", "why": "upper case again after a hyphen"},
+    {"published": "  BRIN  ", "shown": "Brin", "why": "spaces at the ends are dropped"},
+    {"published": "Peretola Aeroporto", "shown": "Peretola Aeroporto", "why": "a name that mixes cases is kept as published"},
+    {"published": "Valfonda - Stazione Smn", "shown": "Valfonda - Stazione Smn", "why": "kept as published, «Smn» too"},
+    {"published": "1234", "shown": "1234", "why": "no letters: kept as published"}
+  ],
+  "badges": [
+    {"modes": "M", "badge": "M", "why": "a metro stop"},
+    {"modes": "MT", "badge": "M", "why": "a stop of metro and tram: metro first"},
+    {"modes": "TM", "badge": "M", "why": "whatever the order"},
+    {"modes": "T", "badge": "T", "why": "a tram stop"},
+    {"modes": "FT", "badge": "T", "why": "tram before funicular"},
+    {"modes": "F", "badge": "F", "why": "a funicular or a lift"},
+    {"modes": "", "badge": null, "why": "no mode: not offered in the search"}
+  ],
+  "walks": [
+    {"meters": 0.0, "minutes": 2, "why": "the margin alone"},
+    {"meters": 1.0, "minutes": 3, "why": "any distance is at least a minute"},
+    {"meters": 75.0, "minutes": 3, "why": "75 metres a minute at 4.5 km/h"},
+    {"meters": 75.5, "minutes": 4, "why": "rounded up"},
+    {"meters": 130.0, "minutes": 4, "why": "the Marconi Express stop at Bologna Centrale"},
+    {"meters": 600.0, "minutes": 10, "why": "the longest walk"}
+  ]
+}

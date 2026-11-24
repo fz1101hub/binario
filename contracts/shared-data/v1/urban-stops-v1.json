@@ -1,0 +1,14 @@
+{
+  "schema": "binario-shared-data-v1",
+  "description": "How the apps reach the stops of the city networks (pack-roles-v1.json, urbanPacks) on foot: a station and a city stop at most maximumWalkMeters apart (straight line) are joined by a walk, timed at walkingSpeedKmh, rounded up to the minute, plus walkMarginMinutes; stops of one name at most samePlaceMeters apart are one place; a stop picked in the search is boarded at its platforms, the stops of the same name at most platformMeters from it.",
+  "readers": {
+    "android": "app/src/main/java/it/binario/app/data/journey/EmbeddedGtfsJourneyProvider.kt, app/src/main/java/it/binario/app/data/urban/UrbanStopBoardAdapter.kt",
+    "iphone": "ios/BinarioKit/Sources/BinarioKit/UrbanStops.swift",
+    "pipeline": "tools/build_ios_gtfs_schedule.py"
+  },
+  "maximumWalkMeters": 600,
+  "walkingSpeedKmh": 4.5,
+  "walkMarginMinutes": 2,
+  "samePlaceMeters": 150,
+  "platformMeters": 400
+}

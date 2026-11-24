@@ -33,7 +33,7 @@ struct TrainDetailView: View {
                             .font(.title3.weight(.semibold))
                         Spacer()
                         if let busLabel = VehicleTexts.busLabel(service) {
-                            Label(busLabel, systemImage: VehicleTexts.busSymbol)
+                            Label(busLabel, systemImage: VehicleTexts.symbol(service))
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         } else {
@@ -69,9 +69,14 @@ struct TrainDetailView: View {
                 )
             }
 
+            // The delay compensation notice and the weather at the destination (ExtrasViews.swift).
+            TrainDetailExtrasSections(service: service, query: query, liveRun: liveRun?.run)
+
             if let detail = model.reliabilityDetail(for: service, query: query) {
                 NetworkReliabilitySection(detail: detail, query: query, service: service)
             }
+
+            TrainNoticesSection(service: service, query: query, run: liveRun?.run, boardRun: boardLive?.viaggiaTrenoRun)
         }
         .navigationTitle(Text(verbatim: service.number))
         .navigationBarTitleDisplayMode(.inline)
@@ -94,7 +99,7 @@ struct TrainDetailView: View {
         }
         .refreshable { await refreshLive() }
         .onAppear {
-            let key = model.liveTrainKey(for: service, query: query)
+            let key = model.liveTrainKey(for: service, query: query, run: boardLive?.viaggiaTrenoRun)
             liveKey = key
             if let key { model.detailLiveDidAppear(key) }
         }
@@ -183,8 +188,9 @@ private struct LiveRunSection: View {
 }
 
 /// «Fermate»: every stop of the run with its scheduled time, the source's actual or expected time
-/// and delay, its platform, and whether the train has passed it or it is cancelled.
-private struct LiveStopsSection: View {
+/// and delay, its platform, and whether the train has passed it or it is cancelled (also the stops
+/// of a live board row's run, `BoardRunDetailView`).
+struct LiveStopsSection: View {
     let stops: [LiveStopStatus]
 
     var body: some View {

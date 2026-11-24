@@ -288,7 +288,8 @@ public enum NetworkReliability {
     public static let minimumWeekdaySamples = SharedData.Punctuality.minimumWeekdaySamples
     /// …and remarked when its on-time share differs from the overall one by this many points.
     public static let minimumWeekdayGapPoints = SharedData.Punctuality.minimumWeekdayGapPoints
-    public static let maximumWeekdayRemarks = 2
+    /// …and a train's detail shows at most this many, the largest differences first.
+    public static let maximumWeekdayRemarks = SharedData.Punctuality.maximumWeekdayRemarks
 
     /// Categories measured at 5 minutes, as the operators and Treniamo do; every other category at 15.
     private static let highSpeedCategories: Set<String> = SharedData.Punctuality.highSpeedCategories
@@ -652,8 +653,8 @@ public struct JourneyReliability: Equatable, Sendable {
         let originCode = NetworkReliability.stationCode(snapshot.query.origin)
         let destinationCode = NetworkReliability.stationCode(snapshot.query.destination)
         var byServiceID: [String: StopReliability] = [:]
-        // A bus of the timetable has no train statistics, even one numbered like a train (as on Android).
-        for service in snapshot.services where !service.isBus {
+        // A bus or a city line of the timetable has no train statistics, even one numbered like a train (as on Android).
+        for service in snapshot.services where service.isTrain {
             if let stop = train(service, stats: stats, originCode: originCode, destinationCode: destinationCode) {
                 byServiceID[service.id] = stop
             }

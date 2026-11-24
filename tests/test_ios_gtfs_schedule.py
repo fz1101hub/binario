@@ -1152,12 +1152,17 @@ class StationCodePortTest(unittest.TestCase):
                     if (match := re.search(r"catalogueNameSuffixes = listOf\(([^)]*)\)", body)) and "personalOnly = true" not in body}
         self.assertEqual(suffixes, dict(builder.CATALOGUE_NAME_SUFFIXES))
         self.assertIn("private const val MAX_DWELL_SKEW_MINUTES = 20", (KOTLIN_GTFS / "EmbeddedGtfsRouteAdapter.kt").read_text(encoding="utf-8"))
-        # The railway packs of gtfs-transit/ are the Android railway transit packs of every build.
+        # The railway packs of gtfs-transit/ are the Android railway transit packs of every build, its city networks the
+        # shared urbanPacks of every build (pack-roles-v1.json, which Android reads too: EmbeddedGtfsPacks.withPackRoles).
         manifest = json.loads((ROOT / "app/src/main/assets/gtfs-transit/manifest.json").read_text(encoding="utf-8"))
+        public = {source_id for source_id, body in transit.items() if "personalOnly = true" not in body}
         rail = {pack["sourceId"] for pack in manifest["packs"] if pack["kind"] == builder.TRANSIT_RAIL_KIND}
-        self.assertEqual(rail, {source_id for source_id, body in transit.items()
-                                if "EmbeddedGtfsPackKind.URBAN" not in body and "personalOnly = true" not in body})
-        self.assertEqual({pack["kind"] for pack in manifest["packs"]} - {builder.TRANSIT_RAIL_KIND}, set(builder.TRANSIT_OUT_OF_SCOPE_KINDS))
+        urban = {pack["sourceId"] for pack in manifest["packs"] if pack["kind"] == builder.TRANSIT_URBAN_KIND}
+        self.assertEqual(rail, public - builder.URBAN_PACKS)
+        self.assertEqual(urban, public & builder.URBAN_PACKS)
+        self.assertEqual(set(roles["urbanPacks"]), set(builder.URBAN_PACKS))
+        self.assertLessEqual({pack["kind"] for pack in manifest["packs"]}, {builder.TRANSIT_RAIL_KIND, builder.TRANSIT_URBAN_KIND})
+        self.assertIn("EmbeddedGtfsPackKind.URBAN else pack.kind", (KOTLIN_GTFS / "EmbeddedGtfsPacks.kt").read_text(encoding="utf-8"))
 
 
 class StationCodeContractTest(unittest.TestCase):
@@ -1353,9 +1358,41 @@ class ItineraryCopiesTest(unittest.TestCase):
             self.assertEqual(reference, aligned(seed))
 
 
-class TransitRailPacksTest(unittest.TestCase):
-    """The railway packs of the gtfs-transit/ manifest join the index; its city networks stay out by rule, and a pack
-    of any other kind fails closed. A GATEWAY_ONLY source (HTTP origin, Genova–Casella) needs its HTTPS copy."""
+def write_city_feed(path: Path) -> None:
+    """A city network: a people mover (route type 12) and a tram (0) calling at stops near the fixture catalogue's
+    S1 (45.0, 9.0): "STAZIONE/" 100 m north, its second platform 50 m further, "PIAZZA CENTRALE" 2 km away, and a
+    funicular stop listed without modes. Names are published in capitals, as Milan's and Genoa's are."""
+    stop_times = [
+        ["MEX1", "10:00:00", "10:00:00", "A", "1"], ["MEX1", "10:07:00", "10:07:00", "C", "2"],
+        ["MEX2", "10:10:00", "10:10:00", "C", "1"], ["MEX2", "10:17:00", "10:17:00", "A2", "2"],
+        ["T1", "11:00:00", "11:00:00", "A2", "1"], ["T1", "11:05:00", "11:05:00", "C", "2"],
+        ["F1", "12:00:00", "12:00:00", "C", "1"], ["F1", "12:03:00", "12:03:00", "F", "2"],
+    ]
+    members = {
+        "agency.txt": csv_bytes(["agency_id", "agency_name", "agency_url", "agency_timezone"], [["M", "City Mover", "https://example.test", "Europe/Rome"]]),
+        "routes.txt": csv_bytes(["route_id", "agency_id", "route_short_name", "route_long_name", "route_type"],
+                                [["MEX", "M", "MEX", "People mover", "12"], ["T", "M", "1", "Tram", "0"], ["F", "M", "", "Funicolare", "7"]]),
+        "trips.txt": csv_bytes(["route_id", "service_id", "trip_id"], [["MEX", "WK", "MEX1"], ["MEX", "WK", "MEX2"], ["T", "WK", "T1"], ["F", "WK", "F1"]]),
+        "stops.txt": csv_bytes(["stop_id", "stop_name", "stop_lat", "stop_lon"], [
+            ["A", "STAZIONE/", "45.0009", "9.0"], ["A2", "STAZIONE/", "45.00135", "9.0"],
+            ["C", "PIAZZA CENTRALE", "45.018", "9.0"], ["F", "Collina", "45.03", "9.0"],
+        ]),
+        "stop_times.txt": csv_bytes(["trip_id", "arrival_time", "departure_time", "stop_id", "stop_sequence"], stop_times),
+        "calendar.txt": csv_bytes(["service_id", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday", "start_date", "end_date"],
+                                  [["WK", "1", "1", "1", "1", "1", "1", "1", "20260105", "20260107"]]),
+        builder.STOP_MODES_FILE: csv_bytes(["stop_id", "modes"], [["A", "MT"], ["A2", "MT"], ["C", "M"], ["F", ""]]),
+    }
+    with zipfile.ZipFile(path, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+        for name, content in members.items():
+            archive.writestr(name, content)
+
+
+class TransitPacksTest(unittest.TestCase):
+    """The railway packs and the city networks of the gtfs-transit/ manifest join the index; a pack of any other kind,
+    or a city network the shared pack roles do not name, fails closed. A GATEWAY_ONLY source (HTTP origin,
+    Genova–Casella) needs its HTTPS copy."""
+
+    CITY = "marconi-express-gtfs"
 
     def setUp(self) -> None:
         self.temp = Path(tempfile.mkdtemp(prefix="ios-gtfs-transit-"))
@@ -1365,19 +1402,25 @@ class TransitRailPacksTest(unittest.TestCase):
         self.addCleanup(patcher.stop)
         self.manifest, self.catalog = write_inputs(self.temp)
         core = json.loads(self.manifest.read_text(encoding="utf-8"))
-        # The last fixture pack moves to the transit manifest, with a city network next to it.
+        # The last fixture pack moves to the transit manifest; the one before it becomes a city network there.
         moved = core["packs"].pop()
+        replaced = core["packs"].pop()
+        (self.temp / "gtfs" / Path(replaced["asset"]).name).unlink()
         self.manifest.write_text(json.dumps(core), encoding="utf-8")
         transit_dir = self.temp / "gtfs-transit"
         transit_dir.mkdir()
         shutil.move(str(self.temp / "gtfs" / Path(moved["asset"]).name), transit_dir / Path(moved["asset"]).name)
         self.rail = dict(moved, kind="rail", asset=f"gtfs-transit/{Path(moved['asset']).name}")
-        self.urban = {"sourceId": "city-metro", "kind": "urban", "asset": "gtfs-transit/missing.zip"}
+        city = transit_dir / f"{self.CITY}.zip"
+        write_city_feed(city)
+        self.urban = {"sourceId": self.CITY, "kind": "urban", "asset": f"gtfs-transit/{city.name}",
+                      "sourceUrl": f"https://example.test/{self.CITY}.zip", "accessMode": "OPEN_DIRECT", "attribution": "City data",
+                      "lastServiceDate": "2026-01-07", "sha256": hashlib.sha256(city.read_bytes()).hexdigest()}
         self.transit = transit_dir / "manifest.json"
         self.write_transit([self.rail, self.urban])
         self.sources = [
             {"sourceId": pack["sourceId"], "sourceUrl": pack["sourceUrl"], "accessMode": pack["accessMode"], "licence": "CC BY 4.0",
-             "landingPage": "https://example.test/" + pack["sourceId"]} for pack in [*core["packs"], self.rail]
+             "landingPage": "https://example.test/" + pack["sourceId"]} for pack in [*core["packs"], self.urban, self.rail]
         ]
         self.policy = self.temp / "policy.json"
         self.policy.write_text(json.dumps({"schemaVersion": 1, "sources": self.sources}), encoding="utf-8")
@@ -1390,17 +1433,98 @@ class TransitRailPacksTest(unittest.TestCase):
                                       source_policy_path=self.policy, max_compressed_bytes=4 * 1024 * 1024,
                                       transit_manifest_path=self.transit)
 
-    def test_rail_packs_are_indexed_and_city_networks_left_out(self) -> None:
+    def verify(self) -> dict:
+        return verifier.verify(self.temp / "out.zlib", self.temp / "out.json", source_policy_path=self.policy,
+                               max_compressed_bytes=4 * 1024 * 1024, max_database_bytes=16 * 1024 * 1024)
+
+    def database(self) -> sqlite3.Connection:
+        database = self.temp / "out.sqlite"
+        database.write_bytes(zlib.decompress((self.temp / "out.zlib").read_bytes()))
+        connection = sqlite3.connect(database)
+        self.addCleanup(connection.close)
+        return connection
+
+    def test_rail_packs_and_city_networks_are_indexed(self) -> None:
         result = self.build()
         self.assertEqual(builder.INDEXED_PACK_COUNT, result["rowCounts"]["pack"])
         self.assertEqual([self.rail["sourceId"]], result["filter"]["transitRailPacks"])
+        self.assertEqual([self.CITY], result["filter"]["transitUrbanPacks"])
+        self.assertEqual(dict(builder.URBAN_STOPS), result["filter"]["urbanStops"])
+        self.assertEqual([*builder.SCHEMA_TABLES, *builder.URBAN_SCHEMA_TABLES], result["database"]["schemaTables"])
         self.assertIn("gtfs-transit/manifest.json", [item["path"] for item in result["inputs"]["files"]])
-        verifier.verify(self.temp / "out.zlib", self.temp / "out.json", source_policy_path=self.policy,
-                        max_compressed_bytes=4 * 1024 * 1024, max_database_bytes=16 * 1024 * 1024)
-        # Without the transit manifest the index misses a pack and fails closed.
+        self.verify()
+        # Without the transit manifest the index misses two packs and fails closed.
         with self.assertRaisesRegex(builder.BuildError, f"exactly {builder.INDEXED_PACK_COUNT} packs"):
             builder.build_database(self.manifest, self.catalog, self.temp / "out.zlib", self.temp / "out.json",
                                    source_policy_path=self.policy, max_compressed_bytes=4 * 1024 * 1024)
+
+    def test_a_city_network_keeps_every_trip_and_never_names_a_railway_station(self) -> None:
+        self.build()
+        connection = self.database()
+        city = "SELECT {} FROM stop s JOIN pack p ON p.id = s.pack_id WHERE p.source_id = ?"
+        # Every trip, the funicular's too; no stop is a catalogue station, whatever its name.
+        self.assertEqual(4, connection.execute(
+            "SELECT count(*) FROM trip t JOIN pack p ON p.id = t.pack_id WHERE p.source_id = ?", (self.CITY,)).fetchone()[0])
+        self.assertEqual([(None, None, None)] * 4, connection.execute(
+            city.format("s.catalog_station_id, s.railway_code, s.trenitalia_location_id"), (self.CITY,)).fetchall())
+        # Names as Android shows them, the stops in stops.txt order (the search offers the first of a name).
+        self.assertEqual([("A", "Stazione"), ("A2", "Stazione"), ("C", "Piazza Centrale"), ("F", "Collina")],
+                         connection.execute(city.format("s.external_id, s.name") + " ORDER BY s.id", (self.CITY,)).fetchall())
+        self.assertEqual({"A": "MT", "A2": "MT", "C": "M", "F": ""}, dict(connection.execute(
+            "SELECT s.external_id, u.modes FROM urban_stop u JOIN stop s ON s.id = u.stop_id")))
+        self.assertEqual({(12,), (0,), (7,)}, set(connection.execute(
+            "SELECT r.route_type FROM route r JOIN pack p ON p.id = r.pack_id WHERE p.source_id = ?", (self.CITY,))))
+        # S1 (45.0, 9.0): "Stazione" is one place 100 m and 150 m away, reached in 4 minutes at both platforms (the
+        # place's shortest walk); "Piazza Centrale", 2 km away, is no walk. N1 is far from every stop.
+        self.assertEqual({("S1", "A", 4), ("S1", "A2", 4)}, set(connection.execute(
+            "SELECT w.catalog_station_id, s.external_id, w.minutes FROM urban_walk w JOIN stop s ON s.id = w.stop_id")))
+
+    def test_the_verifier_derives_the_names_and_walks_again(self) -> None:
+        self.build()
+        self.verify()
+        metadata = json.loads((self.temp / "out.json").read_text(encoding="utf-8"))
+        inputs = verifier.verify_inputs(metadata, self.temp / "out.json", self.policy)[1]
+        rules = verifier.urban_rules(metadata, inputs)
+        connection = self.database()
+        verifier.verify_urban_rows(connection, rules)
+        connection.execute("UPDATE urban_walk SET minutes = minutes + 1")
+        with self.assertRaisesRegex(verifier.VerificationError, "urban_walk differs"):
+            verifier.verify_urban_rows(connection, rules)
+        connection.execute("UPDATE urban_walk SET minutes = minutes - 1")
+        connection.execute("UPDATE stop SET name = 'STAZIONE/' WHERE external_id = 'A' AND pack_id = (SELECT id FROM pack WHERE source_id = ?)", (self.CITY,))
+        with self.assertRaisesRegex(verifier.VerificationError, "not named as Android shows it"):
+            verifier.verify_urban_rows(connection, rules)
+        connection.execute("UPDATE stop SET catalog_station_id = 'S1' WHERE external_id = 'C' AND pack_id = (SELECT id FROM pack WHERE source_id = ?)", (self.CITY,))
+        with self.assertRaisesRegex(verifier.VerificationError, "carries a catalogue identity"):
+            verifier.verify_urban_tables(connection, [self.CITY])
+
+    def test_the_rows_of_a_city_stop_are_bounded(self) -> None:
+        self.build()
+        connection = self.database()
+        verifier.verify_city_row_bounds(connection, [self.CITY])
+        with mock.patch.object(verifier, "MAX_CANDIDATE_ROWS", 0):
+            with self.assertRaisesRegex(verifier.VerificationError, "rows a day, above 0"):
+                verifier.verify_city_row_bounds(connection, [self.CITY])
+
+    def test_a_city_network_the_shared_roles_do_not_name_fails_closed(self) -> None:
+        self.write_transit([self.rail, dict(self.urban, sourceId="city-metro")])
+        with self.assertRaisesRegex(builder.BuildError, "shared pack roles say otherwise"):
+            self.build()
+        self.write_transit([dict(self.rail, sourceId=self.CITY), self.urban])
+        with self.assertRaisesRegex(builder.BuildError, "shared pack roles say otherwise"):
+            self.build()
+
+    def test_a_city_network_holds_metro_tram_and_funicular_routes_only(self) -> None:
+        city = self.temp / "gtfs-transit" / f"{self.CITY}.zip"
+        with zipfile.ZipFile(city) as archive:
+            members = {name: archive.read(name) for name in archive.namelist()}
+        members["routes.txt"] = members["routes.txt"].replace(b",12\n", b",3\n")
+        with zipfile.ZipFile(city, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+            for name, content in members.items():
+                archive.writestr(name, content)
+        self.write_transit([self.rail, dict(self.urban, sha256=hashlib.sha256(city.read_bytes()).hexdigest())])
+        with self.assertRaisesRegex(builder.BuildError, "no metro, tram or funicular"):
+            self.build()
 
     def test_an_unreviewed_kind_fails_closed(self) -> None:
         self.write_transit([self.rail, dict(self.urban, kind="ferry")])
@@ -1416,13 +1540,48 @@ class TransitRailPacksTest(unittest.TestCase):
             self.build()
         self.write_transit([dict(gateway, acquisition={"downloadSha256": "a" * 64, "corroboratedBy": {"url": "https://mirror.test/feed.zip", "sha256": "a" * 64}}), self.urban])
         self.build()
-        verifier.verify(self.temp / "out.zlib", self.temp / "out.json", source_policy_path=self.policy,
-                        max_compressed_bytes=4 * 1024 * 1024, max_database_bytes=16 * 1024 * 1024)
+        self.verify()
         # A cleartext URL is never an OPEN_DIRECT source.
         self.sources[-1].update(accessMode="OPEN_DIRECT")
         self.policy.write_text(json.dumps({"schemaVersion": 1, "sources": self.sources}), encoding="utf-8")
         with self.assertRaisesRegex(builder.BuildError, "not an authorised HTTPS direct"):
             self.build()
+
+
+class UrbanStopsContractTest(unittest.TestCase):
+    """contracts/shared-rules/v1/urban-stops-v1.json: the names and walks the index builder gives the city stops, the
+    cases Android's UrbanStopsContractTest runs."""
+
+    RULES = json.loads((ROOT / "contracts/shared-rules/v1/urban-stops-v1.json").read_text(encoding="utf-8"))
+
+    def test_every_shared_stop_name_is_shown_as_the_rule_says(self) -> None:
+        self.assertTrue(self.RULES["stopNames"])
+        for case in self.RULES["stopNames"]:
+            self.assertEqual(case["shown"], builder.stop_name_display(case["published"]), case["why"])
+
+    def test_every_shared_walk_takes_the_shared_minutes(self) -> None:
+        self.assertTrue(self.RULES["walks"])
+        for case in self.RULES["walks"]:
+            self.assertEqual(case["minutes"], builder.walk_minutes(case["meters"]), case["why"])
+
+    def test_the_walk_constants_are_the_kotlin_ones(self) -> None:
+        provider = (ROOT / "app/src/main/java/it/binario/app/data/journey/EmbeddedGtfsJourneyProvider.kt").read_text(encoding="utf-8")
+        self.assertIn("val maxWalkMeters: Int = SharedData.UrbanStops.MAXIMUM_WALK_METERS,", provider)
+        self.assertIn("val walkingSpeedKmh: Double = SharedData.UrbanStops.WALKING_SPEED_KMH,", provider)
+        self.assertIn("val walkMarginMinutes: Int = SharedData.UrbanStops.WALK_MARGIN_MINUTES,", provider)
+        self.assertIn("private val SAME_PLACE_METERS: Double = SharedData.UrbanStops.SAME_PLACE_METERS.toDouble()", provider)
+        self.assertIn("Math.ceil(meters / (walkingSpeedKmh * 1000.0 / 60.0)).toInt() + walkMarginMinutes", provider)
+
+    def test_a_place_is_one_name_within_the_same_place_distance(self) -> None:
+        stops = {
+            "a": {"stop_id": "a", "stop_name": "Duomo", "stop_lat": "45.0", "stop_lon": "9.0"},
+            "b": {"stop_id": "b", "stop_name": "DUOMO", "stop_lat": "45.001", "stop_lon": "9.0"},
+            "c": {"stop_id": "c", "stop_name": "Duomo", "stop_lat": "45.01", "stop_lon": "9.0"},
+            "d": {"stop_id": "d", "stop_name": "Duomo", "stop_lat": "45.0105", "stop_lon": "9.0", "parent_station": "p"},
+            "p": {"stop_id": "p", "stop_name": "Duomo station", "stop_lat": "45.0105", "stop_lon": "9.0"},
+        }
+        self.assertEqual({"a": "x:name:duomo", "b": "x:name:duomo", "c": "x:name:duomo#2", "d": "x:group:p", "p": "x:group:p"},
+                         builder.urban_places("x", stops))
 
 
 class NationalPacksIndexTest(unittest.TestCase):
@@ -1451,10 +1610,10 @@ class NationalPacksIndexTest(unittest.TestCase):
             "SELECT s.external_id, s.catalog_station_id FROM stop s JOIN pack p ON p.id = s.pack_id WHERE p.source_id = ?",
             (source_id,)).fetchall())
 
-    def test_every_android_railway_pack_is_indexed_and_reviewed(self) -> None:
+    def test_every_android_pack_of_every_build_is_indexed_and_reviewed(self) -> None:
         core = json.loads((ROOT / "app/src/main/assets/gtfs/manifest.json").read_text(encoding="utf-8"))["packs"]
         transit = json.loads((ROOT / "app/src/main/assets/gtfs-transit/manifest.json").read_text(encoding="utf-8"))["packs"]
-        expected = {pack["sourceId"] for pack in core} | {pack["sourceId"] for pack in transit if pack["kind"] == "rail"}
+        expected = {pack["sourceId"] for pack in core} | {pack["sourceId"] for pack in transit}
         packs = {row[0] for row in self.connection.execute("SELECT source_id FROM pack")}
         self.assertEqual(expected, packs)
         self.assertEqual(expected, set(self.metadata["packRowCounts"]))
@@ -1509,6 +1668,98 @@ class NationalPacksIndexTest(unittest.TestCase):
             with self.subTest(source=source_id):
                 self.assertTrue(any(station is not None for station in self.bound(source_id).values()))
 
+    def test_the_city_networks_are_indexed_whole_with_their_walks(self) -> None:
+        self.assertEqual(sorted({"milano-atm-gtfs", "genova-amt-gtfs", "firenze-gest-gtfs", "arst-metro-gtfs", "marconi-express-gtfs"}),
+                         self.metadata["filter"]["transitUrbanPacks"])
+        for source_id in self.metadata["filter"]["transitUrbanPacks"]:
+            with self.subTest(source=source_id):
+                self.assertEqual({None}, set(self.bound(source_id).values()), "a city stop is never a catalogue station")
+        # The Marconi Express (monorail, a metro line): Bologna Centrale and Bologna Aeroporto are a short walk from its
+        # two ends, as on Android (airport-routes-v1.json).
+        walks = dict(((row[0], row[1]), row[2]) for row in self.connection.execute(
+            "SELECT w.catalog_station_id, s.name, w.minutes FROM urban_walk w JOIN stop s ON s.id = w.stop_id "
+            "JOIN pack p ON p.id = s.pack_id WHERE p.source_id = 'marconi-express-gtfs'"))
+        self.assertEqual(4, walks[("S05043", "Bologna Centrale FS")])
+        self.assertEqual(5, walks[("NC000683", "Bologna Aeroporto")])
+        self.assertEqual({(12,)}, set(self.connection.execute(
+            "SELECT r.route_type FROM route r JOIN pack p ON p.id = r.pack_id WHERE p.source_id = 'marconi-express-gtfs'")))
+        # Milan's metro lines (route type 1) and trams (0), its stop names as Android shows them.
+        self.assertEqual({(0,), (1,)}, set(self.connection.execute(
+            "SELECT DISTINCT r.route_type FROM route r JOIN pack p ON p.id = r.pack_id WHERE p.source_id = 'milano-atm-gtfs'")))
+        self.assertIn(("Duomo M1", "M"), self.connection.execute(
+            "SELECT s.name, u.modes FROM urban_stop u JOIN stop s ON s.id = u.stop_id JOIN pack p ON p.id = s.pack_id "
+            "WHERE p.source_id = 'milano-atm-gtfs'").fetchall())
+
+
+
+class PersonalIndexTest(unittest.TestCase):
+    """The personal index of the iPhone's Personal configuration (ios/Personal), as Android's personal flavour: the
+    public packs and the city networks of gtfs-personal/, reviewed in their own policy; Cotral's railway, whose
+    plain-HTTP origin has no HTTPS copy recorded, stays on Android. The public index carries none of them."""
+
+    DIRECTORY = ROOT / "ios/Personal"
+    PUBLIC_POLICY = ROOT / "ios/Resources/binario_gtfs_source_policy_v1.json"
+
+    def test_the_personal_policy_is_the_public_one_and_the_personal_packs(self) -> None:
+        manifest = json.loads((ROOT / "app/src/personal/assets/gtfs-personal/manifest.json").read_text(encoding="utf-8"))
+        personal = json.loads((self.DIRECTORY / "binario_gtfs_source_policy_personal_v1.json").read_text(encoding="utf-8"))
+        public = json.loads(self.PUBLIC_POLICY.read_text(encoding="utf-8"))
+        personal_ids = {source["sourceId"] for source in personal["sources"]}
+        public_ids = {source["sourceId"] for source in public["sources"]}
+        added = personal_ids - public_ids
+        self.assertLessEqual(public_ids, personal_ids)
+        self.assertEqual(builder.PERSONAL_INDEXED_PACK_COUNT, len(added))
+        self.assertLessEqual(added, set(builder.URBAN_PACKS))
+        left = {source["sourceId"] for source in personal["androidOnlySources"]}
+        self.assertEqual({pack["sourceId"] for pack in manifest["packs"]}, added | left)
+        self.assertEqual({"cotral-ferro-gtfs"}, left)
+        for source in public["sources"]:
+            self.assertIn(source, personal["sources"])
+
+    def test_the_personal_index_is_verified_and_the_public_one_has_no_personal_pack(self) -> None:
+        metadata = json.loads((self.DIRECTORY / "binario_gtfs_schedule_personal_v1.metadata.json").read_text(encoding="utf-8"))
+        self.assertEqual(sorted({"gtt-gtfs", "napoli-anm-gtfs", "roma-mobilita-gtfs", "venezia-actv-gtfs"}),
+                         metadata["filter"]["personalPacks"])
+        result = verifier.verify(
+            self.DIRECTORY / "binario_gtfs_schedule_personal_v1.sqlite.zlib",
+            self.DIRECTORY / "binario_gtfs_schedule_personal_v1.metadata.json",
+            source_policy_path=self.DIRECTORY / "binario_gtfs_source_policy_personal_v1.json",
+            max_compressed_bytes=verifier.DEFAULT_MAX_COMPRESSED_BYTES,
+            max_database_bytes=verifier.DEFAULT_MAX_DATABASE_BYTES,
+            personal=True,
+        )
+        self.assertEqual(builder.INDEXED_PACK_COUNT + builder.PERSONAL_INDEXED_PACK_COUNT, result["rowCounts"]["pack"])
+        public = json.loads((ROOT / "ios/Resources/binario_gtfs_schedule_v1.metadata.json").read_text(encoding="utf-8"))
+        self.assertNotIn("personalPacks", public["filter"])
+        with self.assertRaisesRegex(verifier.VerificationError, "personal packs"):
+            verifier.verify(self.DIRECTORY / "binario_gtfs_schedule_personal_v1.sqlite.zlib",
+                            self.DIRECTORY / "binario_gtfs_schedule_personal_v1.metadata.json",
+                            source_policy_path=self.DIRECTORY / "binario_gtfs_source_policy_personal_v1.json",
+                            max_compressed_bytes=verifier.DEFAULT_MAX_COMPRESSED_BYTES,
+                            max_database_bytes=verifier.DEFAULT_MAX_DATABASE_BYTES)
+
+    def test_only_the_personal_configuration_copies_the_personal_index(self) -> None:
+        project = (ROOT / "ios/project.yml").read_text(encoding="utf-8")
+        import yaml  # requirements-ci.txt
+        spec = yaml.safe_load(project)
+        self.assertEqual({"Debug": "debug", "Release": "release", "Personal": "debug"}, spec["configs"])
+        app = spec["targets"]["Binario"]
+        self.assertEqual("DEBUG BINARIO_PERSONAL_SOURCES", app["settings"]["configs"]["Personal"]["SWIFT_ACTIVE_COMPILATION_CONDITIONS"])
+        self.assertNotIn("BINARIO_PERSONAL_SOURCES", json.dumps(app["settings"]["base"]) + json.dumps(app["settings"]["configs"]["debug"]))
+        script = app["postBuildScripts"][0]["script"]
+        self.assertIn('if [ "$CONFIGURATION" != "Personal" ]; then exit 0; fi', script)
+        self.assertNotIn("${", script)
+        for target in spec["targets"].values():
+            for source in target.get("sources", []):
+                path = source["path"] if isinstance(source, dict) else source
+                self.assertNotIn("Personal", path)
+        self.assertFalse(any("personal" in path.name for path in (ROOT / "ios/Resources").iterdir()))
+        self.assertEqual("Personal", spec["schemes"]["Binario Personal"]["archive"]["config"])
+        swift = (ROOT / "ios/BinarioApp/PersonalTimetable.swift").read_text(encoding="utf-8")
+        self.assertIn("#if BINARIO_PERSONAL_SOURCES", swift)
+        for name in ("binario_gtfs_schedule_personal_v1", "binario_gtfs_source_policy_personal_v1"):
+            self.assertIn(name, swift)
+            self.assertIn(name, script)
 
 if __name__ == "__main__":
     unittest.main()

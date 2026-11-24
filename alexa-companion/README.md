@@ -8,6 +8,7 @@ Il companion gestisce:
 
 - webhook HTTPS della Custom Skill Alexa;
 - risposte sulla puntualità di un treno o di una tratta salvata e sul treno più puntuale di una tratta nelle prossime tre ore, dalle statistiche non ufficiali di Binario su dati ViaggiaTreno incluse nel bundle ([`docs/ALEXA_SETUP.md`](docs/ALEXA_SETUP.md#statistiche-di-puntualità));
+- prossimi treni di una tratta salvata o fra due stazioni dette a voce, e corsa programmata di un numero di treno, dall'orario programmato che l'iPhone include (lo stesso indice, costruito dai pack di Android), detti sempre come orari programmati, senza binario e senza stato in tempo reale ([`docs/ALEXA_SETUP.md`](docs/ALEXA_SETUP.md#orario-programmato));
 - schermate Echo Show (APL) che proiettano le stesse risposte vocali, solo sui dispositivi che dichiarano APL;
 - account linking OAuth 2.0 con consenso esplicito e protezione CSRF;
 - revoca e nuovo collegamento dell'account;
@@ -19,7 +20,7 @@ Non è una seconda app Binario, non sostituisce l'app smartphone e non mantiene 
 
 ## Fonte dei dati
 
-Le risposte Alexa devono derivare dallo stesso contratto dati dell'app principale o da snapshot sincronizzati che includano provider, timestamp, TTL e stato operativo. In assenza di una fonte autorizzata e fresca, la risposta resta fail-closed: **“dati non disponibili in tempo reale”**. Le domande di puntualità usano invece il file settimanale delle statistiche dell'app (`app/src/main/assets/punctuality/stats_v1.json.gz`), che la build copia in `dist/data/` e verifica; senza file la skill dice che le statistiche non sono ancora disponibili.
+Le risposte Alexa devono derivare dallo stesso contratto dati dell'app principale o da snapshot sincronizzati che includano provider, timestamp, TTL e stato operativo. In assenza di una fonte autorizzata e fresca, la risposta resta fail-closed: **“dati non disponibili in tempo reale”**. Le domande di puntualità usano invece il file settimanale delle statistiche dell'app (`app/src/main/assets/punctuality/stats_v1.json.gz`), che la build copia in `dist/data/` e verifica; senza file la skill dice che le statistiche non sono ancora disponibili. I prossimi treni e la corsa di un numero vengono dall'orario programmato dell'iPhone (`ios/Resources/binario_gtfs_schedule_v1.sqlite.zlib` con i suoi metadati), copiato e verificato allo stesso modo in `dist/data/timetable/`: la skill dice sempre che gli orari sono programmati e che lo stato in tempo reale è nell'app, e non interroga mai ViaggiaTreno dal server.
 
 Wear OS e Apple Watch sono companion separati. Le loro preferenze locali non fanno parte dell'API pubblica Alexa.
 
@@ -36,9 +37,11 @@ pnpm test
 pnpm run build
 ```
 
-Il comando di build verifica anche che il bundle di produzione non contenga runtime o token di anteprima Manus, e che le copie in `dist/data/` delle statistiche di puntualità e del catalogo stazioni coincidano con i file di `app/src/main/assets/` (la build va quindi eseguita dal checkout completo del repository).
+Il comando di build verifica anche che il bundle di produzione non contenga runtime o token di anteprima Manus, che le copie in `dist/data/` delle statistiche di puntualità e del catalogo stazioni coincidano con i file di `app/src/main/assets/`, e che l'indice orario copiato in `dist/data/timetable/` coincida con quello di `ios/Resources/` e sia il file che i suoi metadati descrivono (la build va quindi eseguita dal checkout completo del repository).
 
-In esecuzione `GET /healthz` dice soltanto che il processo risponde; `GET /readyz` risponde 200 se il database risponde entro 3 secondi e, con la skill configurata, statistiche e catalogo di `dist/data/` sono leggibili, altrimenti 503 con lo stato di ciascuno (`database`, `railData`), così il proxy o un monitor vedono un deploy difettoso. Su SIGTERM o SIGINT il server smette di accettare connessioni, lascia finire fino a 10 secondi le richieste in corso (risposte Alexa, scambi di token), chiude il pool del database ed esce.
+Il server richiede **Node 22.13 o successivo** (`engines` di `package.json`; la CI usa 22.23.2): l'indice orario si legge con il modulo integrato `node:sqlite`, disponibile senza flag da Node 22.13. Node lo segnala ancora come sperimentale e stampa una sola volta `ExperimentalWarning: SQLite is an experimental feature` all'avvio; nessuna dipendenza npm è stata aggiunta.
+
+In esecuzione `GET /healthz` dice soltanto che il processo risponde; `GET /readyz` risponde 200 se il database risponde entro 3 secondi e, con la skill configurata, statistiche e catalogo di `dist/data/` sono leggibili e l'indice orario di `dist/data/timetable/` supera i controlli, altrimenti 503 con lo stato di ciascuno (`database`, `railData`, `timetable`), così il proxy o un monitor vedono un deploy difettoso. Su SIGTERM o SIGINT il server smette di accettare connessioni, lascia finire fino a 10 secondi le richieste in corso (risposte Alexa, scambi di token), chiude il pool del database ed esce.
 
 `pnpm run check` controlla i tipi sia del codice sia dei test (`tsconfig.test.json`): Vitest da solo non li controlla.
 

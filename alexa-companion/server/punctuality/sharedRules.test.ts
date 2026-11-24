@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { daysOnTime, MIN_SAMPLES, onTimeLimitMinutes, parsePunctualityStats, trainNumberKey, trainPunctuality } from "./stats";
+import { TrainNumberQuery } from "../timetable/trainNumbers";
 
 /**
  * contracts/shared-rules/v1: the train-number keys and the statistics rules Android, iPhone and
@@ -19,7 +20,7 @@ type Figures = {
 };
 
 type Rules = {
-  trainNumbers: { published: string; key: string }[];
+  trainNumbers: { published: string; key: string; query: string; queryNumeric: string | null; queryValid: boolean }[];
   statistics: {
     document: string;
     minimumSamples: number;
@@ -33,6 +34,15 @@ const rules = JSON.parse(readFileSync(path.join(contract, "rules-v1.json"), "utf
 describe("shared rules contract", () => {
   it("gives every train number the shared statistics key", () => {
     for (const { published, key } of rules.trainNumbers) expect(trainNumberKey(published), published).toBe(key);
+  });
+
+  it("asks the timetable for a number as Android and the iPhone ask for it", () => {
+    for (const { published, query, queryNumeric, queryValid } of rules.trainNumbers) {
+      const asked = new TrainNumberQuery(published);
+      expect([asked.normalized, asked.numeric, asked.valid], published).toEqual([query, queryNumeric, queryValid]);
+      // A number always matches what it was asked as.
+      if (queryValid) expect(asked.matches(published), published).toBe(true);
+    }
   });
 
   it("uses the shared on-time limits and minimum samples", () => {
