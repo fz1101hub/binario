@@ -293,11 +293,11 @@ public struct FavouriteTrainReliability: Equatable, Identifiable, Sendable {
 
 /// «Affidabilità dei miei treni»: the first `maximumRows` favourite trains, in their order, each
 /// with its on-time share at its last stop in the bundled network statistics (Android's
-/// `FavouriteTrainPunctuality.rows` and `ReliabilityMarks.favouriteStop`). The iPhone records no
-/// run of its own, so Android's «Registrato su questo telefono» and the trend of the last four weeks
-/// against the four before, both computed from the runs Android records, have no counterpart here:
-/// the bundled file is one 30-day aggregate per train and stop. A favourite without statistics, or
-/// below `NetworkReliability.minimumSamples` at its last stop, has no row.
+/// `FavouriteTrainPunctuality.rows` and `ReliabilityMarks.favouriteStop`): the network part of the
+/// rows. The runs recorded on this iPhone and the trend of the last four weeks come from
+/// `FavouriteTrainPunctuality` (FavouritePunctuality.swift), and «Affidabilità dei miei treni» joins
+/// the two. A favourite without statistics, or below `NetworkReliability.minimumSamples` at its last
+/// stop, has no network row.
 public struct FavouriteTrainsReliability: Equatable, Sendable {
     /// As on Android (`FavouriteTrainPunctuality.MAX_ROWS`), from the shared table.
     public static let maximumRows = SharedData.FavouritePunctuality.maximumRows

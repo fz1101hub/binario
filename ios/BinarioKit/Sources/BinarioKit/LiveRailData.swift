@@ -163,6 +163,87 @@ public struct LiveRailData: LiveTrainStatusProviding, LiveDeparturesProviding {
         return .unavailable(Self.reason(reasons, answered: false))
     }
 
+    /// Android's live route sources (`LocalOnlyRailDataPolicy.liveRouteSources`) for a search of today: the ViaggiaTreno
+    /// route and the RFI route asked together, each within the live source time limit; the ViaggiaTreno route when it
+    /// verified a run, else the RFI route when it did (Android's precedence, never the faster answer).
+    public func liveRoute(_ request: LiveRouteRequest) async -> LiveRouteResult {
+        let now = Date()
+        guard LiveRailTime.isoDay(request.requested) == LiveRailTime.isoDay(now) else { return .unavailable(.notCovered) }
+        let timeout = TimeInterval(SharedData.LiveRoute.liveSourceTimeoutSeconds)
+        let vtBoard = boardSources.first { $0.source == .viaggiaTreno }
+        let vtRuns = runDetailSources.first { $0.source == .viaggiaTreno }
+        let rfi = boardSources.first { $0.source == .rfiStationBoard }
+        async let viaggiaTreno: [LiveRouteRun]?? = LiveTasks.withDeadline(seconds: timeout) {
+            guard let vtBoard, let vtRuns else { return nil }
+            return await Self.viaggiaTrenoRoute(request, board: vtBoard, runs: vtRuns, now: now)
+        }
+        async let rfiRoute: [LiveRouteRun]?? = LiveTasks.withDeadline(seconds: timeout) {
+            guard let rfi else { return nil }
+            return await Self.rfiRoute(request, source: rfi, now: now)
+        }
+        if let runs = await viaggiaTreno ?? nil, runs.contains(where: \.verified) { return .available(runs, source: .viaggiaTreno) }
+        if let runs = await rfiRoute ?? nil, runs.contains(where: \.verified) { return .available(runs, source: .rfiStationBoard) }
+        return Task.isCancelled ? .unavailable(.cancelled) : .unavailable(.notFound)
+    }
+
+    /// Android's `RfiLiveRouteDataSource`: the RFI departures of the origin and arrivals of the destination, two hours
+    /// back and eight ahead of now, the same train on both (`LiveRoute.rfiRuns`).
+    static func rfiRoute(_ request: LiveRouteRequest, source: any LiveDepartureBoardSource, now: Date) async -> [LiveRouteRun]? {
+        guard NetworkReliability.isStationCode(request.origin.railwayCode), NetworkReliability.isStationCode(request.destination.railwayCode)
+        else { return nil }
+        let from = now.addingTimeInterval(-LiveRoute.rfiLookBack)
+        let to = now.addingTimeInterval(LiveRoute.rfiLookAhead)
+        async let departures = source.departures(for: LiveBoardWindow(station: request.origin, from: from, to: to, lateSince: nil))
+        async let arrivals = source.departures(for: LiveBoardWindow(station: request.destination, from: from, to: to, lateSince: nil, kind: .arrivals))
+        guard case let .answered(leaving, _) = await departures, case let .answered(arriving, _) = await arrivals else { return nil }
+        return LiveRoute.rfiRuns(
+            departures: leaving, arrivals: arriving, origin: request.origin, destination: request.destination,
+            requested: request.requested, now: now
+        )
+    }
+
+    /// The route of `ViaggiaTrenoRealtimeAdapter`: the origin's ViaggiaTreno board from the time asked (and two hours
+    /// before it when that is now), the trains still to leave, the planned numbers first on a busy board, the runs of
+    /// the first twelve, each checked up to the destination (`LiveRoute.viaggiaTrenoRun`).
+    static func viaggiaTrenoRoute(
+        _ request: LiveRouteRequest, board: any LiveDepartureBoardSource, runs: any LiveBoardRunSource, now: Date
+    ) async -> [LiveRouteRun]? {
+        guard NetworkReliability.isStationCode(request.origin.railwayCode) else { return nil }
+        let requested = request.requested
+        let lateSince = requested <= now.addingTimeInterval(LiveRoute.viaggiaTrenoLookBackWithin)
+            ? requested.addingTimeInterval(-LiveRoute.viaggiaTrenoLookBack) : nil
+        let window = LiveBoardWindow(
+            station: request.origin, from: requested, to: requested.addingTimeInterval(LiveRoute.viaggiaTrenoHorizon), lateSince: lateSince
+        )
+        guard case let .answered(rows, _) = await board.departures(for: window) else { return nil }
+        let leaving = rows.filter { $0.viaggiaTrenoRun != nil && ($0.expected?.value ?? $0.scheduled) >= requested }
+            .enumerated().sorted { first, second in
+                first.element.scheduled != second.element.scheduled ? first.element.scheduled < second.element.scheduled : first.offset < second.offset
+            }.map(\.element)
+        let maximum = SharedData.LiveRoute.viaggiaTrenoMaximumRuns
+        let hints = Set(request.plannedNumbers.map(NetworkReliability.numberKey))
+        let prioritized = leaving.count > maximum
+            ? leaving.filter { hints.contains($0.numberKey) } + leaving.filter { !hints.contains($0.numberKey) } : leaving
+        let chosen = Array(prioritized.prefix(maximum))
+        let detailTimeout = TimeInterval(SharedData.ViaggiaTreno.runDetailsTimeoutSeconds)
+        let found = await withTaskGroup(of: LiveRouteRun?.self, returning: [LiveRouteRun].self) { group in
+            for row in chosen {
+                let detail = LiveBoardRunRequest(row, station: request.origin, kind: .departures)
+                group.addTask {
+                    let answer = await LiveTasks.withDeadline(seconds: detailTimeout) { await runs.boardRun(detail) }
+                    guard case let .answered(details, _)? = answer else { return nil }
+                    return LiveRoute.viaggiaTrenoRun(details.run, origin: request.origin, destination: request.destination, requested: requested)
+                }
+            }
+            var collected: [LiveRouteRun] = []
+            for await run in group { if let run { collected.append(run) } }
+            return collected
+        }
+        var seen: Set<String> = []
+        let unique = found.filter { seen.insert($0.id).inserted }.sorted { $0.scheduledDeparture < $1.scheduledDeparture }
+        return unique.isEmpty ? nil : unique
+    }
+
     /// The notices of a train, Android's `RailNoticesService.forTrain` for the per-train sources:
     /// asked together within the notices' time limit, each notice once, newest first; unavailable
     /// only when no source answered.
@@ -429,7 +510,7 @@ public enum LiveOverlay {
     /// on one day at one station a train number is one train, so a run the day's timetable moved
     /// (works, a change after the pack was built) is still the bundled train; the next day's run,
     /// about 24 hours away, stays apart.
-    public static let timetableTolerance: TimeInterval = 3 * 60 * 60
+    public static let timetableTolerance = TimeInterval(SharedData.LiveRoute.retimingWindowMinutes * 60)
 
     /// A bundled timetable train to find on a live board: its number (any form), its scheduled
     /// departure and its operator as the timetable names it.

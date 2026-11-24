@@ -70,11 +70,19 @@ struct ResultsActionsSection: View {
     @EnvironmentObject private var model: AppModel
     @EnvironmentObject private var personal: PersonalModel
     let snapshot: JourneySnapshot
-    let services: [TrainService]
+    /// The list as shown, in its order: direct trains and journeys with changes (Android's `timetableRows`).
+    let entries: [JourneyResultEntry]
     @State private var savedID: String?
 
     var body: some View {
-        let rows = services.map { PersonalTexts.timetableRow($0, live: model.resultLive[$0.id], source: snapshot.provenance.sourceLabel) }
+        let rows: [TimetableRow] = entries.map { entry in
+            switch entry {
+            case let .train(service, _):
+                return PersonalTexts.timetableRow(service, live: model.resultLive[service.id], source: snapshot.provenance.sourceLabel)
+            case let .journey(row):
+                return PersonalTexts.journeyRow(row)
+            }
+        }
         // The return of a round trip, when the planner searched one.
         let back = personal.plannerReturn.map { returned in
             returned.services.map { PersonalTexts.timetableRow($0, live: nil, source: returned.provenance.sourceLabel) }

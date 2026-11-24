@@ -145,7 +145,8 @@ struct SavedRoutesView: View {
 
             // The rest of Android's «Per te» (PersonalViews.swift).
             SavedTimetablesSection()
-            StationMonitorsSection()
+            // Android's «Viaggio e monitoraggi»: the followed trip and the monitored stations (PersonalLists.swift).
+            PersonalTravelSection()
             FavouriteStationsSection()
             Section {
                 NavigationLink {

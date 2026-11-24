@@ -12,6 +12,7 @@
 //   contracts/shared-data/v1/italo-stations-v1.json
 //   contracts/shared-data/v1/journey-planner-v1.json
 //   contracts/shared-data/v1/journey-live-v1.json
+//   contracts/shared-data/v1/live-route-v1.json
 //   contracts/shared-data/v1/results-paging-v1.json
 //   contracts/shared-data/v1/live-train-map-v1.json
 //   contracts/shared-data/v1/local-backup-v1.json
@@ -605,6 +606,35 @@ internal object SharedData {
         const val TRAIN_TIMEOUT_SECONDS: Int = 25
         const val MAXIMUM_AGE_MINUTES: Int = 5
         const val MINIMUM_INTERVAL_SECONDS: Int = 60
+    }
+
+    /**
+     * contracts/shared-data/v1/live-route-v1.json: The live route of the direct trains of a search of today: the
+     * ViaggiaTreno route (the origin's board, the runs of up to twelve of its trains, the planned numbers first on a
+     * busy board, each run checked up to the destination) and the RFI route (the departures of the origin and the
+     * arrivals of the destination, the same train on both), then the live runs merged into the timetable list
+     * (LiveRunMerge): the same run within the retiming window, of a compatible operator family, replaced; a run the
+     * timetable does not list added.
+     */
+    object LiveRoute {
+        const val RETIMING_WINDOW_MINUTES: Int = 180
+        val OPERATOR_FAMILIES: Map<String, String> = mapOf(
+            "trenitalia" to "trenitalia-trenord",
+            "trenord" to "trenitalia-trenord",
+            "italo" to "italo"
+        )
+        const val LIVE_SOURCE_TIMEOUT_SECONDS: Int = 15
+        const val RFI_BOARD_LOOK_BACK_MINUTES: Int = 120
+        const val RFI_BOARD_LOOK_AHEAD_MINUTES: Int = 480
+        const val RFI_MAXIMUM_JOURNEY_HOURS: Int = 24
+        const val RFI_MAXIMUM_RUNS: Int = 12
+        const val FRESH_OBSERVATION_SECONDS: Int = 300
+        const val FUTURE_OBSERVATION_SECONDS: Int = 60
+        const val VIAGGIA_TRENO_LOOK_BACK_MINUTES: Int = 120
+        const val VIAGGIA_TRENO_LOOK_BACK_WITHIN_SECONDS: Int = 600
+        const val VIAGGIA_TRENO_HORIZON_MINUTES: Int = 480
+        const val VIAGGIA_TRENO_MAXIMUM_RUNS: Int = 12
+        const val VIAGGIA_TRENO_HINT_TIMEOUT_SECONDS: Int = 4
     }
 
     /**

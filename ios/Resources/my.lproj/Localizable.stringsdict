@@ -100,6 +100,20 @@
 			<string>ဝှက်ထားသော ရထား %1$lld စီး</string>
 		</dict>
 	</dict>
+	<key>notices.alerts.status_delay</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>other</key>
+			<string>%1$lld မိနစ် နောက်ကျ</string>
+		</dict>
+	</dict>
 	<key>notices.alerts.strike_title</key>
 	<dict>
 		<key>NSStringLocalizedFormatKey</key>
@@ -112,6 +126,20 @@
 			<string>lld</string>
 			<key>other</key>
 			<string>မနက်ဖြန် ရထား သပိတ် %1$lld ခု</string>
+		</dict>
+	</dict>
+	<key>notices.alerts.train_title</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>other</key>
+			<string>ကြေညာချက်အသစ် %1$lld ခု- %2$@</string>
 		</dict>
 	</dict>
 	<key>notices.alerts.works_title_more</key>
@@ -240,6 +268,90 @@
 			<string>%3$@: %2$lld ကြိမ်တွင် %1$lld ကြိမ် အချိန်မှန် (ပျမ်းမျှ %4$lld%%)</string>
 		</dict>
 	</dict>
+	<key>result.journey.changes</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>other</key>
+			<string>ရထားပြောင်း %1$lld ကြိမ်</string>
+		</dict>
+	</dict>
+	<key>result.journey.connection</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>other</key>
+			<string>%3$@ တွင် ရထားပြောင်းစီးမှု %2$lld ကြိမ်တွင် %1$lld ကြိမ် အောင်မြင်</string>
+		</dict>
+	</dict>
+	<key>result.journey.hidden_by_preferences</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>other</key>
+			<string>ခရီးသွား ဦးစားပေးချက်များကြောင့် တိုက်ရိုက်ရထား %1$lld စီး ဖျောက်ထားသည်</string>
+		</dict>
+	</dict>
+	<key>result.journey.leg_cancelled_share</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>other</key>
+			<string>%3$@ - %2$lld ကြိမ်တွင် %1$lld ကြိမ် ဖျက်သိမ်း</string>
+		</dict>
+	</dict>
+	<key>result.journey.leg_on_time</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>other</key>
+			<string>%3$@ - %2$lld ကြိမ်တွင် %1$lld ကြိမ် အချိန်မှန်</string>
+		</dict>
+	</dict>
+	<key>result.journey.transfer_wait</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>other</key>
+			<string>%1$lld မိနစ် စောင့်ရ</string>
+		</dict>
+	</dict>
 	<key>result.live.delay</key>
 	<dict>
 		<key>NSStringLocalizedFormatKey</key>
@@ -366,6 +478,34 @@
 			<string>ရထား %1$lld စီး</string>
 		</dict>
 	</dict>
+	<key>result.trip.countdown_stops</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>other</key>
+			<string>ရပ်နားဘူတာ %1$lld ခု အကြာတွင် ဆင်းပါ</string>
+		</dict>
+	</dict>
+	<key>result.trip.minutes</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>other</key>
+			<string>%1$lld မိနစ်</string>
+		</dict>
+	</dict>
 	<key>saved.digest.network</key>
 	<dict>
 		<key>NSStringLocalizedFormatKey</key>
@@ -408,7 +548,7 @@
 			<string>ရထား အများဆုံး %1$lld စီး သိမ်းနိုင်သည်။</string>
 		</dict>
 	</dict>
-	<key>saved.trains.reliability.description</key>
+	<key>saved.trains.reliability.personal</key>
 	<dict>
 		<key>NSStringLocalizedFormatKey</key>
 		<string>%1$#@count@</string>
@@ -419,7 +559,7 @@
 			<key>NSStringFormatValueTypeKey</key>
 			<string>lld</string>
 			<key>other</key>
-			<string>နောက်ဆုံး %1$lld ရက်အတွင်း၊ ရထားတစ်စီးစီ၏ နောက်ဆုံးမှတ်တိုင်သို့ ရောက်ချိန်။ ဖွင့်ရန် ရထားတစ်စီးကို တို့ပါ။</string>
+			<string>ဤဖုန်းတွင် မှတ်တမ်းတင်ထားသည်- %2$lld ကြိမ်တွင် %1$lld ကြိမ် အချိန်မှန်</string>
 		</dict>
 	</dict>
 	<key>settings.backup.alerts</key>
@@ -462,146 +602,6 @@
 			<string>lld</string>
 			<key>other</key>
 			<string>စောင့်ကြည့်ထားသော ဘူတာ %1$lld ခု</string>
-		</dict>
-	</dict>
-	<key>result.trip.minutes</key>
-	<dict>
-		<key>NSStringLocalizedFormatKey</key>
-		<string>%1$#@count@</string>
-		<key>count</key>
-		<dict>
-			<key>NSStringFormatSpecTypeKey</key>
-			<string>NSStringPluralRuleType</string>
-			<key>NSStringFormatValueTypeKey</key>
-			<string>lld</string>
-			<key>other</key>
-			<string>%1$lld မိနစ်</string>
-		</dict>
-	</dict>
-	<key>result.trip.countdown_stops</key>
-	<dict>
-		<key>NSStringLocalizedFormatKey</key>
-		<string>%1$#@count@</string>
-		<key>count</key>
-		<dict>
-			<key>NSStringFormatSpecTypeKey</key>
-			<string>NSStringPluralRuleType</string>
-			<key>NSStringFormatValueTypeKey</key>
-			<string>lld</string>
-			<key>other</key>
-			<string>ရပ်နားဘူတာ %1$lld ခု အကြာတွင် ဆင်းပါ</string>
-		</dict>
-	</dict>
-	<key>notices.alerts.train_title</key>
-	<dict>
-		<key>NSStringLocalizedFormatKey</key>
-		<string>%1$#@count@</string>
-		<key>count</key>
-		<dict>
-			<key>NSStringFormatSpecTypeKey</key>
-			<string>NSStringPluralRuleType</string>
-			<key>NSStringFormatValueTypeKey</key>
-			<string>lld</string>
-			<key>other</key>
-			<string>ကြေညာချက်အသစ် %1$lld ခု- %2$@</string>
-		</dict>
-	</dict>
-	<key>notices.alerts.status_delay</key>
-	<dict>
-		<key>NSStringLocalizedFormatKey</key>
-		<string>%1$#@count@</string>
-		<key>count</key>
-		<dict>
-			<key>NSStringFormatSpecTypeKey</key>
-			<string>NSStringPluralRuleType</string>
-			<key>NSStringFormatValueTypeKey</key>
-			<string>lld</string>
-			<key>other</key>
-			<string>%1$lld မိနစ် နောက်ကျ</string>
-		</dict>
-	</dict>
-	<key>result.journey.changes</key>
-	<dict>
-		<key>NSStringLocalizedFormatKey</key>
-		<string>%1$#@count@</string>
-		<key>count</key>
-		<dict>
-			<key>NSStringFormatSpecTypeKey</key>
-			<string>NSStringPluralRuleType</string>
-			<key>NSStringFormatValueTypeKey</key>
-			<string>lld</string>
-			<key>other</key>
-			<string>ရထားပြောင်း %1$lld ကြိမ်</string>
-		</dict>
-	</dict>
-	<key>result.journey.connection</key>
-	<dict>
-		<key>NSStringLocalizedFormatKey</key>
-		<string>%1$#@count@</string>
-		<key>count</key>
-		<dict>
-			<key>NSStringFormatSpecTypeKey</key>
-			<string>NSStringPluralRuleType</string>
-			<key>NSStringFormatValueTypeKey</key>
-			<string>lld</string>
-			<key>other</key>
-			<string>%3$@ တွင် ရထားပြောင်းစီးမှု %2$lld ကြိမ်တွင် %1$lld ကြိမ် အောင်မြင်</string>
-		</dict>
-	</dict>
-	<key>result.journey.hidden_by_preferences</key>
-	<dict>
-		<key>NSStringLocalizedFormatKey</key>
-		<string>%1$#@count@</string>
-		<key>count</key>
-		<dict>
-			<key>NSStringFormatSpecTypeKey</key>
-			<string>NSStringPluralRuleType</string>
-			<key>NSStringFormatValueTypeKey</key>
-			<string>lld</string>
-			<key>other</key>
-			<string>ခရီးသွား ဦးစားပေးချက်များကြောင့် တိုက်ရိုက်ရထား %1$lld စီး ဖျောက်ထားသည်</string>
-		</dict>
-	</dict>
-	<key>result.journey.leg_cancelled_share</key>
-	<dict>
-		<key>NSStringLocalizedFormatKey</key>
-		<string>%1$#@count@</string>
-		<key>count</key>
-		<dict>
-			<key>NSStringFormatSpecTypeKey</key>
-			<string>NSStringPluralRuleType</string>
-			<key>NSStringFormatValueTypeKey</key>
-			<string>lld</string>
-			<key>other</key>
-			<string>%3$@ - %2$lld ကြိမ်တွင် %1$lld ကြိမ် ဖျက်သိမ်း</string>
-		</dict>
-	</dict>
-	<key>result.journey.leg_on_time</key>
-	<dict>
-		<key>NSStringLocalizedFormatKey</key>
-		<string>%1$#@count@</string>
-		<key>count</key>
-		<dict>
-			<key>NSStringFormatSpecTypeKey</key>
-			<string>NSStringPluralRuleType</string>
-			<key>NSStringFormatValueTypeKey</key>
-			<string>lld</string>
-			<key>other</key>
-			<string>%3$@ - %2$lld ကြိမ်တွင် %1$lld ကြိမ် အချိန်မှန်</string>
-		</dict>
-	</dict>
-	<key>result.journey.transfer_wait</key>
-	<dict>
-		<key>NSStringLocalizedFormatKey</key>
-		<string>%1$#@count@</string>
-		<key>count</key>
-		<dict>
-			<key>NSStringFormatSpecTypeKey</key>
-			<string>NSStringPluralRuleType</string>
-			<key>NSStringFormatValueTypeKey</key>
-			<string>lld</string>
-			<key>other</key>
-			<string>%1$lld မိနစ် စောင့်ရ</string>
 		</dict>
 	</dict>
 	<key>settings.travel.minutes</key>

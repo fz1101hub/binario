@@ -625,11 +625,18 @@ extension LiveTrainStatusProviding {
 public protocol LiveDeparturesProviding: Sendable {
     func departures(_ request: LiveDeparturesRequest) async -> LiveDeparturesResult
     func boardRun(_ request: LiveBoardRunRequest) async -> LiveBoardRunResult
+    /// The live route of the direct trains of a search of today (LiveRoute.swift).
+    func liveRoute(_ request: LiveRouteRequest) async -> LiveRouteResult
 }
 
 extension LiveDeparturesProviding {
     /// No source of run details: nothing is asked.
     public func boardRun(_ request: LiveBoardRunRequest) async -> LiveBoardRunResult {
+        .unavailable(.notCovered)
+    }
+
+    /// No live route source: nothing is asked.
+    public func liveRoute(_ request: LiveRouteRequest) async -> LiveRouteResult {
         .unavailable(.notCovered)
     }
 }

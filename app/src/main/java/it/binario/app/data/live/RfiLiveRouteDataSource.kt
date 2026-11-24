@@ -4,6 +4,7 @@ import it.binario.app.data.*
 import it.binario.app.data.core.*
 import it.binario.app.data.planned.BoundedSingleFlightCache
 import it.binario.app.data.provider.*
+import it.binario.app.shared.SharedData
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import java.time.Clock
@@ -34,8 +35,8 @@ class RfiLiveRouteDataSource(
         val requested = query.requestedAt.atZone(zone)
         // The monitor is current, not a historical/date-query API. Anchor its
         // clock-only rows to now so an old evening row cannot become tomorrow's train.
-        val boardFrom = clock.instant().minusSeconds(2 * 3600)
-        val boardTo = clock.instant().plusSeconds(8 * 3600)
+        val boardFrom = clock.instant().minusSeconds(SharedData.LiveRoute.RFI_BOARD_LOOK_BACK_MINUTES * 60L)
+        val boardTo = clock.instant().plusSeconds(SharedData.LiveRoute.RFI_BOARD_LOOK_AHEAD_MINUTES * 60L)
         suspend fun board(station: Station, kind: BoardKind): ProviderResult<StationBoard> =
             cache.getOrLoad("${station.id}:${station.name}:${station.aliases}:$kind:${query.serviceDate}") {
                 provider.getStationBoard(StationBoardRequest(StationId(station.id), station.name, station.aliases, station.railwayCode,
@@ -56,7 +57,7 @@ class RfiLiveRouteDataSource(
                 arrival.publicNumber == number && arrival.operatorId == operator &&
                     !arrival.scheduledTime.toInstant().isBefore(boardFrom) && !arrival.scheduledTime.toInstant().isAfter(boardTo) &&
                     arrival.scheduledTime.isAfter(departure.scheduledTime) &&
-                    Duration.between(departure.scheduledTime, arrival.scheduledTime) <= Duration.ofHours(24)
+                    Duration.between(departure.scheduledTime, arrival.scheduledTime) <= Duration.ofHours(SharedData.LiveRoute.RFI_MAXIMUM_JOURNEY_HOURS.toLong())
             }
             val arrival = candidates.singleOrNull() ?: return@mapNotNull null
             val timing = departure.expectedTime?.takeIf { fresh(it.source) }
@@ -91,7 +92,7 @@ class RfiLiveRouteDataSource(
                 operationalObservedAtEpochMillis = if (verified) sources.maxOfOrNull { (it.observedAt ?: it.fetchedAt).toEpochMilli() } else null,
                 delayMinutesUnpublished = lateWithoutMinutes
             )
-        }.distinctBy { it.id }.sortedBy { it.scheduledDepartureDateTime }.take(12)
+        }.distinctBy { it.id }.sortedBy { it.scheduledDepartureDateTime }.take(SharedData.LiveRoute.RFI_MAXIMUM_RUNS)
         if (services.none { it.operationalStatusVerified }) return@coroutineScope DataResult.Failure(
             "Nessuna corsa live riconciliata nei tabelloni RFI: partenze=${departures.entries.size}, arrivi=${arrivals.entries.size}.")
         DataResult.Success(RouteSnapshot(route, direction, services, "RFI — Arrivi/Partenze live", clock.millis(),
@@ -104,7 +105,8 @@ class RfiLiveRouteDataSource(
     private fun fresh(source: SourceRef): Boolean {
         val now = clock.instant()
         val observed = source.observedAt ?: source.fetchedAt
-        return !observed.isBefore(now.minusSeconds(300)) && !observed.isAfter(now.plusSeconds(60)) && source.expiresAt?.isAfter(now) != false
+        return !observed.isBefore(now.minusSeconds(SharedData.LiveRoute.FRESH_OBSERVATION_SECONDS.toLong())) &&
+            !observed.isAfter(now.plusSeconds(SharedData.LiveRoute.FUTURE_OBSERVATION_SECONDS.toLong())) && source.expiresAt?.isAfter(now) != false
     }
     private fun italianStation(station: Station): Boolean = station.railwayCode?.matches(Regex("S\\d{5}")) == true ||
         station.id.matches(Regex("S\\d{5}")) || RfiStationIds.placeId(station) != null

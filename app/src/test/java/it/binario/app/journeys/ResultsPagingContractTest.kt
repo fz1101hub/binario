@@ -23,13 +23,15 @@ class ResultsPagingContractTest {
 
     private fun JSONArray.minutes(): List<Int> = (0 until length()).map { getInt(it) }
 
-    private fun at(minutes: Int): LocalDateTime = day.atStartOfDay().plusMinutes(minutes.toLong())
+    private fun at(minutes: Int, on: LocalDate = day): LocalDateTime = on.atStartOfDay().plusMinutes(minutes.toLong())
 
-    private fun loader(source: JSONObject): suspend (LocalDateTime) -> List<LocalDateTime>? {
-        val departures = source.getJSONArray("departures").minutes().sorted().map { at(it) }
+    private fun dayOf(case: JSONObject): LocalDate = if (case.has("day")) LocalDate.parse(case.getString("day")) else day
+
+    private fun loader(source: JSONObject, on: LocalDate = day): suspend (LocalDateTime) -> List<LocalDateTime>? {
+        val departures = source.getJSONArray("departures").minutes().sorted().map { at(it, on) }
         val pageSize = source.getInt("pageSize")
         val fails = source.optBoolean("fails", false)
-        val failsBefore = if (source.isNull("failsBefore")) null else at(source.getInt("failsBefore"))
+        val failsBefore = if (source.isNull("failsBefore")) null else at(source.getInt("failsBefore"), on)
         return { from ->
             if (fails || (failsBefore != null && from.isBefore(failsBefore))) null
             else departures.filter { !it.isBefore(from) }.take(pageSize)
@@ -37,7 +39,7 @@ class ResultsPagingContractTest {
     }
 
     private fun expected(case: JSONObject): List<LocalDateTime>? =
-        if (case.isNull("expected")) null else case.getJSONArray("expected").minutes().map { at(it) }
+        if (case.isNull("expected")) null else case.getJSONArray("expected").minutes().map { at(it, dayOf(case)) }
 
     @Test fun `the paging reads the shared table`() {
         val table = JSONObject(File(repositoryRoot, "contracts/shared-data/v1/results-paging-v1.json").readText(Charsets.UTF_8))
@@ -59,11 +61,12 @@ class ResultsPagingContractTest {
 
     @Test fun `earlier`() = runBlocking {
         val cases = rules.getJSONArray("earlier").objects()
-        assertEquals(7, cases.size)
+        assertEquals(8, cases.size)
         cases.forEach { case ->
+            val on = dayOf(case)
             val found = ResultsPaging.earlier<LocalDateTime>(
-                at(case.getInt("first")), { it }, notBefore = at(case.getInt("notBefore")), wanted = case.getInt("wanted"),
-                load = loader(case.getJSONObject("source"))
+                at(case.getInt("first"), on), { it }, notBefore = at(case.getInt("notBefore"), on), wanted = case.getInt("wanted"),
+                load = loader(case.getJSONObject("source"), on)
             )
             assertEquals(case.getString("name"), expected(case), found)
         }

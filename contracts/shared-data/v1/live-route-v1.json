@@ -1,0 +1,26 @@
+{
+  "schema": "binario-shared-data-v1",
+  "description": "The live route of the direct trains of a search of today: the ViaggiaTreno route (the origin's board, the runs of up to twelve of its trains, the planned numbers first on a busy board, each run checked up to the destination) and the RFI route (the departures of the origin and the arrivals of the destination, the same train on both), then the live runs merged into the timetable list (LiveRunMerge): the same run within the retiming window, of a compatible operator family, replaced; a run the timetable does not list added.",
+  "readers": {
+    "android": "data/live/RfiLiveRouteDataSource.kt, data/live/ViaggiaTrenoRealtimeAdapter.kt, data/repository/StationBoardRealtimeReconciler.kt (app/src/main/java/it/binario/app/)",
+    "iphone": "ios/BinarioKit/Sources/BinarioKit/LiveRoute.swift, LiveRailData.swift"
+  },
+  "retimingWindowMinutes": 180,
+  "operatorFamilies": {
+    "trenitalia": "trenitalia-trenord",
+    "trenord": "trenitalia-trenord",
+    "italo": "italo"
+  },
+  "liveSourceTimeoutSeconds": 15,
+  "rfiBoardLookBackMinutes": 120,
+  "rfiBoardLookAheadMinutes": 480,
+  "rfiMaximumJourneyHours": 24,
+  "rfiMaximumRuns": 12,
+  "freshObservationSeconds": 300,
+  "futureObservationSeconds": 60,
+  "viaggiaTrenoLookBackMinutes": 120,
+  "viaggiaTrenoLookBackWithinSeconds": 600,
+  "viaggiaTrenoHorizonMinutes": 480,
+  "viaggiaTrenoMaximumRuns": 12,
+  "viaggiaTrenoHintTimeoutSeconds": 4
+}

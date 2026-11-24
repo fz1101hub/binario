@@ -28,6 +28,7 @@ import it.binario.app.data.provider.StationBoardProvider
 import it.binario.app.data.provider.StationBoardRequest
 import it.binario.app.data.sources.RailInformationCategory
 import it.binario.app.data.sources.RailSourceSelectionPolicy
+import it.binario.app.shared.SharedData
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.flow.Flow
@@ -57,7 +58,7 @@ class StationBoardEnrichedTrainDataSource(
     private val clock: Clock = Clock.system(RailTime.defaultZone),
     private val zone: ZoneId = RailTime.defaultZone,
     private val liveRouteSources: List<TrainDataSource> = emptyList(),
-    private val liveSourceTimeoutMillis: Long = 15_000
+    private val liveSourceTimeoutMillis: Long = SharedData.LiveRoute.LIVE_SOURCE_TIMEOUT_SECONDS * 1_000L
 ) : TrainDataSource {
     override suspend fun loadRoute(route: SavedRoute, direction: Direction): DataResult =
         loadRoute(route, direction, JourneyQuery.now())
@@ -200,7 +201,7 @@ internal object LiveRunMerge {
      * (works, an old pack) is still the planned train, not a second one (audit fix-android-2). Both sides carry the
      * full date and time, so the run of the next day, about 24 hours away, stays apart.
      */
-    private val RETIMING_WINDOW: Duration = Duration.ofHours(3)
+    private val RETIMING_WINDOW: Duration = Duration.ofMinutes(SharedData.LiveRoute.RETIMING_WINDOW_MINUTES.toLong())
 
     fun merge(planned: DataResult, live: DataResult.Success?, query: JourneyQuery): DataResult {
         if (live == null) return planned
@@ -267,12 +268,21 @@ internal object LiveRunMerge {
         return plannedOperator == liveOperator
     }
 
-    /** ViaggiaTreno publishes Trenitalia and Trenord runs under one identity, so the two count as one family here. */
+    /**
+     * ViaggiaTreno publishes Trenitalia and Trenord runs under one identity, so the two count as one family here
+     * (contracts/shared-data/v1/live-route-v1.json, `operatorFamilies`); another operator is its own family, an unknown
+     * one matches any.
+     */
     private fun operatorFamily(operator: RailOperator): String? = when (operator) {
-        RailOperator.TRENITALIA_REGIONALE, RailOperator.TRENITALIA_LONG_DISTANCE, RailOperator.TRENITALIA_AV,
-        RailOperator.TRENORD -> "trenitalia-trenord"
-        RailOperator.ITALO -> "italo"
         RailOperator.OTHER -> null
+        else -> operatorId(operator).let { id -> SharedData.LiveRoute.OPERATOR_FAMILIES[id] ?: id }
+    }
+
+    /** The operator as the live sources name it ("trenitalia", "trenord", "italo"), else its own name. */
+    private fun operatorId(operator: RailOperator): String = when (operator) {
+        RailOperator.TRENITALIA_REGIONALE, RailOperator.TRENITALIA_LONG_DISTANCE, RailOperator.TRENITALIA_AV -> "trenitalia"
+        RailOperator.TRENORD -> "trenord"
+        RailOperator.ITALO -> "italo"
         else -> operator.name
     }
 

@@ -54,6 +54,9 @@ final class PersonalModel: ObservableObject {
     @Published private(set) var stationMonitors: [StationMonitor]
     /// «Comandi vocali e Alexa»: the wish to share the voice profile, which needs an Alexa account link.
     @Published private(set) var voiceProfileRequested: Bool
+    /// «Fermata raggiunta» of the followed trip (Android's `ActiveTrip.advance`): the stops marked reached by hand,
+    /// for one train of one trip (`trip id#train index`).
+    @Published private(set) var reachedStops: [String: Int]
     /// «Tratta attiva»: the saved route of «Le tue partenze»; nil follows the first saved route.
     @Published private(set) var activeRouteID: String?
     /// The return trains of the planner's round trip, for «Salva orario» and «Condividi»; never stored.
@@ -73,6 +76,7 @@ final class PersonalModel: ObservableObject {
         static let stationMonitors = "it.binario.ios.station-monitors.v1"
         static let voiceProfile = "it.binario.ios.voice-profile-requested.v1"
         static let activeRoute = "it.binario.ios.active-route.v1"
+        static let reachedStops = "it.binario.ios.followed-trip-reached.v1"
     }
 
     /// A route searched recently.
@@ -127,6 +131,17 @@ final class PersonalModel: ObservableObject {
         stationMonitors = PersonalModel.decode([StationMonitor].self, defaults.data(forKey: Key.stationMonitors)) ?? []
         voiceProfileRequested = defaults.bool(forKey: Key.voiceProfile)
         activeRouteID = defaults.string(forKey: Key.activeRoute)
+        reachedStops = (defaults.dictionary(forKey: Key.reachedStops) ?? [:]).compactMapValues { ($0 as? NSNumber)?.intValue }
+    }
+
+    /// The stops of a followed train marked reached by hand; another trip or train starts again from none.
+    func reached(tripID: String, legIndex: Int) -> Int {
+        reachedStops["\(tripID)#\(legIndex)"] ?? 0
+    }
+
+    func setReached(_ count: Int, tripID: String, legIndex: Int) {
+        reachedStops = ["\(tripID)#\(legIndex)": max(count, 0)]
+        defaults.set(reachedStops, forKey: Key.reachedStops)
     }
 
     /// The active route among `routes`: the one chosen, else the first as Per te lists them.
@@ -158,6 +173,12 @@ final class PersonalModel: ObservableObject {
     func isPinned(routeID: String) -> Bool { pinnedRouteIDs.contains(routeID) }
 
     /// The star of a saved route: pinned routes come first.
+    /// The pins of a local backup, which replace this iPhone's.
+    func replacePins(_ ids: Set<String>) {
+        pinnedRouteIDs = ids
+        defaults.set(ids.sorted(), forKey: Key.pinnedRoutes)
+    }
+
     func togglePin(routeID: String) {
         if pinnedRouteIDs.contains(routeID) { pinnedRouteIDs.remove(routeID) } else { pinnedRouteIDs.insert(routeID) }
         defaults.set(pinnedRouteIDs.sorted(), forKey: Key.pinnedRoutes)

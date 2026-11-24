@@ -154,9 +154,14 @@ struct PlannerView: View {
                         ReturnResultsSection(result: returnResult)
                     }
                 } else if case let .unavailable(reason) = model.searchState {
-                    // No direct train: the journeys with changes may still get there.
-                    if journeys.rows.isEmpty {
+                    // No direct train in the timetable: the live route (Android's live sources come first for
+                    // today) and the journeys with changes may still get there.
+                    let liveOnly = journeys.query.map { journeys.routeRuns(for: $0, now: clock) } ?? []
+                    if journeys.rows.isEmpty && liveOnly.isEmpty {
                         UnavailableResultView(reason: reason)
+                    }
+                    if let query = journeys.query, !liveOnly.isEmpty {
+                        LiveOnlyTrainsView(query: query, runs: liveOnly, now: clock)
                     }
                     JourneysOnlyResultView()
                 }
@@ -286,10 +291,24 @@ struct PlannerView: View {
             let current = Date()
             clock = current
             // The live legs of the journeys with changes, at most once a minute (JourneyLiveRefresh), in the foreground.
-            if scenePhase == .active { journeys.refreshLive(live: model.tripLiveData, now: current) }
+            if scenePhase == .active {
+                journeys.refreshLive(live: model.tripLiveData, now: current)
+                refreshLiveRoute(now: current)
+            }
             let seconds = 60 - current.timeIntervalSince1970.truncatingRemainder(dividingBy: 60)
             try? await Task.sleep(nanoseconds: UInt64((seconds + 0.5) * 1_000_000_000))
         }
+    }
+
+    /// The live route of the direct trains of the search on screen (Android's live route sources), at most once a minute
+    /// unless `force`; with the timetable's trains when the search found some.
+    private func refreshLiveRoute(force: Bool = false, now: Date = Date()) {
+        guard let query = journeys.query else { return }
+        let planned = model.latestSnapshot?.query == query ? model.latestSnapshot?.services ?? [] : []
+        journeys.refreshRoute(
+            query: query, origin: model.station(for: query.origin), destination: model.station(for: query.destination),
+            planned: planned, live: model.tripLiveData, force: force, now: now
+        )
     }
 
     /// A saved route tapped in its tab: fill it in and search it from now.
@@ -357,6 +376,7 @@ struct PlannerView: View {
         Task {
             await model.run(query: query)
             guard requestID == searchRequestID else { return }
+            refreshLiveRoute(force: true)
             await searchReturn(after: query)
             guard requestID == searchRequestID else { return }
             isSearching = false
@@ -461,6 +481,7 @@ private struct AvailableResultView: View {
         // Android's CO2 estimate of a direct train: the same stations for every row.
         let co2 = model.co2Estimate(from: snapshot.query.origin, to: snapshot.query.destination)
         // The direct trains and the journeys with changes in one list, with Android's chips.
+        let routeOverlay = liveRoute
         let merged = mergedEntries
         let services = allServices
         let paging = ResultsPaging.Status(
@@ -500,12 +521,14 @@ private struct AvailableResultView: View {
                 switch entry {
                 case let .train(service, lastOfDay):
                     let alternative = alternatives[service.id]
-                    let live = model.resultLive[service.id]
+                    // The board's values, or those of the live route's run in its place (LiveRunMerge).
+                    let live = routeOverlay.live[service.id]
                     NavigationLink {
                         TrainDetailView(service: service, query: snapshot.query, boardLive: live)
                     } label: {
                         VStack(alignment: .leading, spacing: 4) {
-                            ResultRow(service: service, reliability: measuredTrains[service.id], live: live, co2: co2)
+                            ResultRow(service: service, reliability: measuredTrains[service.id], live: live, co2: co2,
+                                      expectedArrival: routeOverlay.arrivals[service.id])
                             if lastOfDay {
                                 LastOfDayMark()
                             }
@@ -561,21 +584,23 @@ private struct AvailableResultView: View {
             }
             LiveSourcesFooter(state: model.resultLiveState, sources: model.resultLiveSources, pauses: model.liveSourcePauses)
         }
-        // «Salva orario» and «Condividi» of the direct trains as the list shows them (PersonalViews.swift).
-        ResultsActionsSection(snapshot: snapshot, services: shownServices(shown))
-    }
-
-    /// The direct trains of the list as shown, in its order (chips, change filter, travel preferences).
-    private func shownServices(_ entries: [JourneyResultEntry]) -> [TrainService] {
-        entries.compactMap { entry in
-            if case let .train(service, _) = entry { return service }
-            return nil
-        }
+        // «Salva orario» and «Condividi» of the list as shown, journeys with changes included (PersonalViews.swift).
+        ResultsActionsSection(snapshot: snapshot, entries: shown)
     }
 
     /// The direct trains of the search, then those «Più presto» / «Più tardi» loaded around it.
     private var allServices: [TrainService] {
-        snapshot.services + journeys.pagedServices(for: snapshot.query)
+        snapshot.services + journeys.pagedServices(for: snapshot.query) + liveRoute.added
+    }
+
+    /// Android's live route over the direct trains of the list: the board's values of the search's and the paged trains,
+    /// then the live runs of the route in the place of the same runs, and the runs the timetable does not list.
+    private var liveRoute: LiveRouteOverlay {
+        LiveRouteOverlay(
+            planned: snapshot.services + journeys.pagedServices(for: snapshot.query),
+            board: model.resultLive.merging(journeys.pagedLive(now: now)) { first, _ in first },
+            runs: journeys.routeRuns(for: snapshot.query, now: now), query: snapshot.query, now: now
+        )
     }
 
     /// The direct trains of this search merged with its journeys with changes (Android's `ResultsMerge`), with
@@ -662,11 +687,14 @@ private struct ResultRow: View {
     let reliability: StopReliability?
     let live: StationBoardLiveStatus?
     var co2: Co2Estimate? = nil
+    /// The arrival at the destination the live route verified, when it is not the timetable's.
+    var expectedArrival: Date? = nil
 
     var body: some View {
         VStack(alignment: .leading, spacing: 5) {
             HStack(alignment: .firstTextBaseline) {
-                Text(service.scheduledDeparture)
+                // «08:12 → 09:40», as Android's cards: the scheduled departure and arrival.
+                Text(verbatim: service.arrivalDate.map { "\(service.scheduledDeparture) → \(JourneyTexts.time($0))" } ?? service.scheduledDeparture)
                     .font(.headline.monospacedDigit())
                 // A city line has no number: its label says the mode and the line («Metro M1»).
                 Text(service.isUrban ? VehicleTexts.rowLabel(service) : service.number)
@@ -690,6 +718,11 @@ private struct ResultRow: View {
             }
             if let live {
                 LiveStatusLine(status: live, showsPlatform: true, scheduledPlatform: service.platform)
+            }
+            if let expectedArrival, let scheduled = service.arrivalDate, Int(expectedArrival.timeIntervalSince(scheduled) / 60) != 0 {
+                Text(verbatim: String.localizedStringWithFormat(NSLocalizedString("result.arrival.live", comment: ""), JourneyTexts.time(expectedArrival)))
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(BinarioPalette.statusError)
             }
             if let boardingStop = VehicleTexts.boardingStop(service) {
                 Label(boardingStop, systemImage: "figure.walk")
@@ -796,6 +829,55 @@ private struct UnavailableResultView: View {
         case .noJourney: "result.unavailable.body"
         case .scheduleExpired: "result.expired.body"
         case .noAuthorizedProvider, .providerInvalid: "result.provider_error.body"
+        }
+    }
+}
+
+/// The direct trains of a search with Android's live route over them (`LiveRunMerge`): each train's live values (the
+/// board's, or the verified run's in its place), the arrivals the route verified, and the runs the timetable lacks as rows.
+struct LiveRouteOverlay {
+    let live: [String: StationBoardLiveStatus]
+    let arrivals: [String: Date]
+    let added: [TrainService]
+
+    init(planned: [TrainService], board: [String: StationBoardLiveStatus], runs: [LiveRouteRun], query: JourneyQuery, now: Date) {
+        let verified = Set(board.filter { $0.value.expectedDeparture != nil || $0.value.cancelled }.keys)
+        let merge = LiveRunMerge.merge(planned: planned, verified: verified, runs: runs, requested: query.departure)
+        var live = board
+        var arrivals: [String: Date] = [:]
+        for (id, run) in merge.replaced {
+            if let status = run.boardStatus(at: now) { live[id] = status }
+            if run.verified, run.arrivalVerified { arrivals[id] = run.expectedArrival }
+        }
+        for run in merge.added {
+            live[run.id] = run.boardStatus(at: now)
+            if run.verified, run.arrivalVerified { arrivals[run.id] = run.expectedArrival }
+        }
+        self.live = live
+        self.arrivals = arrivals
+        added = merge.added.map { $0.trainService(destination: query.destination.name) }
+    }
+}
+
+/// The live route's trains when the timetable has no direct train for the search (Android shows the verified live
+/// route as the result).
+private struct LiveOnlyTrainsView: View {
+    let query: JourneyQuery
+    let runs: [LiveRouteRun]
+    let now: Date
+
+    var body: some View {
+        let overlay = LiveRouteOverlay(planned: [], board: [:], runs: runs, query: query, now: now)
+        Section("result.title") {
+            ForEach(overlay.added, id: \.id) { service in
+                let live = overlay.live[service.id]
+                NavigationLink {
+                    TrainDetailView(service: service, query: query, boardLive: live)
+                } label: {
+                    ResultRow(service: service, reliability: nil, live: live, expectedArrival: overlay.arrivals[service.id])
+                }
+                .accessibilityHint(Text("accessibility.open_train_detail"))
+            }
         }
     }
 }

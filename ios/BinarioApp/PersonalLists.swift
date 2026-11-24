@@ -196,14 +196,48 @@ struct StationMonitorMenu: View {
     }
 }
 
-/// «Stazioni monitorate» of Per te: a tap opens the station's board.
-struct StationMonitorsSection: View {
+/// «Viaggio e monitoraggi» of Per te (Android's `PersonalTravelPanel`): the followed trip with its next stop,
+/// «Fermata raggiunta» and «Termina», then the monitored stations, a tap opening the station's board.
+struct PersonalTravelSection: View {
     @EnvironmentObject private var model: AppModel
     @EnvironmentObject private var personal: PersonalModel
+    @EnvironmentObject private var trips: TripMonitor
 
     var body: some View {
-        if !personal.stationMonitors.isEmpty {
-            Section("saved.monitors.title") {
+        Section {
+            if let trip = trips.followedTrip, !trip.legs.isEmpty {
+                let legIndex = ActiveTripProgress.legIndex(trip, now: Date())
+                let leg = trip.legs[legIndex]
+                let stops = ActiveTripProgress.stops(leg, run: trips.followedRun(legIndex: legIndex))
+                let next = ActiveTripProgress.nextIndex(stops, reached: personal.reached(tripID: trip.id, legIndex: legIndex))
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(PersonalTexts.format("saved.travel.active", leg.number))
+                        .font(.subheadline.weight(.semibold))
+                    Text(Self.nextStopLine(stops, next: next))
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
+                .accessibilityElement(children: .combine)
+                HStack {
+                    Button("saved.travel.stop_reached") {
+                        personal.setReached(next + 1, tripID: trip.id, legIndex: legIndex)
+                    }
+                    .buttonStyle(.bordered)
+                    .disabled(next >= stops.count)
+                    Spacer()
+                    Button("saved.travel.end", role: .destructive) {
+                        Task { await trips.stopFollowing() }
+                    }
+                    .buttonStyle(.borderless)
+                }
+            } else {
+                Text("saved.travel.none")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            }
+            if !personal.stationMonitors.isEmpty {
+                Text("saved.monitors.title")
+                    .font(.subheadline.weight(.semibold))
                 ForEach(personal.stationMonitors) { monitor in
                     Button {
                         model.selectBoardStation(monitor.station)
@@ -220,9 +254,25 @@ struct StationMonitorsSection: View {
                             Label(PersonalTexts.format("saved.monitors.remove", monitor.station.name), systemImage: "trash")
                         }
                     }
+                    .accessibilityAction(named: Text(PersonalTexts.format("saved.monitors.remove", monitor.station.name))) {
+                        personal.setMonitor(monitor.station, mode: nil)
+                    }
                 }
             }
+        } header: {
+            Text("saved.travel.title")
         }
+    }
+
+    /// «Prossima fermata: Seregno, prevista 08:20, binario 2», or «Viaggio completato».
+    static func nextStopLine(_ stops: [ActiveTripStop], next: Int) -> String {
+        guard stops.indices.contains(next) else { return NSLocalizedString("saved.travel.completed", comment: "") }
+        let stop = stops[next]
+        let time = TripTime.clock(stop.expected)
+        if let platform = stop.platform?.trimmingCharacters(in: .whitespaces), !platform.isEmpty {
+            return PersonalTexts.format("saved.travel.next_stop_platform", stop.station, time, platform)
+        }
+        return PersonalTexts.format("saved.travel.next_stop", stop.station, time)
     }
 }
 
