@@ -77,7 +77,9 @@ final class NextTrainsContractTests: XCTestCase {
         ])
         XCTAssertTrue(LastOfDayMarks.isLast(day, publicNumber: "REG 2199", scheduledDeparture: last["Gamma"]))
         XCTAssertFalse(LastOfDayMarks.isLast(day, publicNumber: "2115", scheduledDeparture: parser.date(from: "2024-03-28T16:00:00+01:00")))
-        XCTAssertEqual(day.firstNextDay?.departure, parser.date(from: "2024-03-29T07:50:00+01:00"))
+        // Alfa Centrale has a railway code, so it reads only the stops of that code, as the board does: the 07:50 coach
+        // from «Alfa Centrale Piazzale» belongs to the station only for an identity without a code (next-trains-v1.json).
+        XCTAssertEqual(day.firstNextDay?.departure, parser.date(from: "2024-03-29T08:00:00+01:00"))
         XCTAssertNil(LastOfDayMarks.firstNextDay(day, now: now))
 
         let route = await repository.staticDayDepartures(origin: alfa, destination: gamma, at: now)
