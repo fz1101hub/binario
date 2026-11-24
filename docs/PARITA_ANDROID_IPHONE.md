@@ -18,7 +18,17 @@ pianificatore. 2 = notifiche di viaggio, sveglia di fermata, GPS, avvisi di arri
 
 ## Riepilogo
 
-RIEPILOGO
+| | Funzioni | Uguali | Parziali | Mancano |
+|---|---|---|---|---|
+| Area 1 | 13 | 0 | 3 | 10 |
+| Area 2 | 7 | 0 | 0 | 7 |
+| Area 3 | 5 | 0 | 0 | 5 |
+| Area 4 | 93 | 70 | 9 | 14 |
+| Area 5 | 2 | 0 | 0 | 2 |
+| **Telefono** | **120** | **70** | **12** | **38** |
+| Orologio | 16 | 16 | 0 | 0 |
+
+«Uguali» comprende gli «Uguale (nativo iOS)». I conteggi sono quelli dopo i lavori del ramo `ios-misc` (24 novembre 2026); le righe «Manca» e «Parziale» dell'area 4 sono l'elenco di ciò che resta, in fondo al documento.
 
 ## 1. Navigazione e struttura
 
@@ -62,6 +72,7 @@ RIEPILOGO
 | «Ultimo di oggi» e «Non ci sono più treni oggi» nei risultati | Sì | Nessuno | Manca | 1 |
 | Prima / Dopo | Pagine di risultati | Nessuno | Manca | 1 |
 | «Salva orario» | Salva l'elenco mostrato | Pulsante «Salva orario» sotto i risultati | Uguale | 4 |
+| Arrivo e durata di ogni treno nei risultati | Sì | Solo la partenza | Manca | 4 |
 | Condividi l'elenco dei risultati | `TimetableShareFormatter.list` | Stesso testo dal foglio di condivisione | Uguale (nativo iOS) | 4 |
 | Mappa dei risultati | `ResultsMapPane.kt` (OpenFreeMap) | Nessuna | Manca | 4 |
 | Percorso live nel pianificatore | Sì | Nessuno | Manca | 1 |
@@ -120,6 +131,7 @@ RIEPILOGO
 | «Ultimo di oggi» nei tabelloni | Sì | «Non ci sono più treni oggi: primo domani» | Parziale: manca il segno «Ultimo di oggi» | 1 |
 | Monitora questa stazione | Monitoraggio locale | Nessuno | Manca | 4 |
 | Treni in movimento | Mappa | Mappa (MapKit) | Uguale (nativo iOS) | 4 |
+| Mappa della stazione e delle stazioni vicine | OpenFreeMap | Nessuna | Manca | 4 |
 | Bici in condivisione | Sì | Sì | Uguale | 4 |
 | Cambio binario «Bin. 7 (era 5)» | Partenze, risultati, dettaglio, tabelloni | Solo negli arrivi | Parziale | 4 |
 | Tabelloni programmati RFI | Sì | Nessuno | Manca | 5 |
@@ -147,10 +159,10 @@ RIEPILOGO
 | Fissa, sposta, elimina una tratta | Menu della tratta | Elimina; «Mostra su Watch» | Parziale: niente fissare e spostare | 4 |
 | Agenda | Sì | Sì | Uguale | 4 |
 | Pronto per partire | Sì | Sì | Uguale | 4 |
-| Orari salvati | Elenco, sola lettura, rinomina, condividi, elimina | Stesso elenco e stesse azioni | Uguale | 4 |
+| Orari salvati | Elenco, sola lettura, rinomina, condividi, elimina | Stesso elenco, stesse azioni, stesso formato | Parziale: le righe salvate sull'iPhone non hanno arrivo e durata, che i suoi risultati non mostrano | 4 |
 | Stazioni preferite | Sezione | Sezione | Uguale | 4 |
 | I miei treni: apri, rinomina, rimuovi | Sì | Apri, rinomina, rimuovi | Uguale | 4 |
-| Affidabilità dei miei treni | Rete e corse registrate sul telefono | Rete e corse registrate sul telefono | Uguale | 4 |
+| Affidabilità dei miei treni | Rete e corse registrate sul telefono, con l'andamento | Solo la rete; le corse registrate sono nel dettaglio di ogni treno | Parziale | 4 |
 | Viaggio attivo e monitoraggi | Pannello | Nessuno | Manca | 2 |
 | Riepilogo settimanale | Notifica della domenica | Nessuno | Manca | 4 |
 
@@ -161,7 +173,7 @@ RIEPILOGO
 | Tema Sistema / Chiaro / Scuro | Scelta locale | Stessa scelta, applicata a tutta l'app | Uguale | 4 |
 | Lingua nell'app | Da Android 13, elenco nell'app e nel sistema | Riga che apre la lingua di Binario nelle Impostazioni di iOS | Uguale (nativo iOS) | 4 |
 | Biglietti e assistenza | Pagine ufficiali degli operatori | Stesse pagine, dalla tabella comune | Uguale | 4 |
-| Esporta e importa i dati (JSON) | `LocalDataBackup.kt` | Stesso file `binario-local-backup` | Uguale (nativo iOS) | 4 |
+| Esporta e importa i dati (JSON) | `LocalDataBackup.kt` | Stesso file `binario-local-backup`, dal foglio di condivisione e da File | Parziale: un file di Android porta sull'iPhone tratte, stazioni preferite, orari salvati e puntualità, non i treni preferiti (al file mancano destinazione e operatore); monitoraggi, avvisi e preferenze non esistono sull'iPhone | 4 |
 | Suggerisci una stazione | Modulo pubblico del progetto | Stesso collegamento | Uguale | 4 |
 | Informazioni e crediti | Versione, OSM, mappe, orari, CO₂ | Versione, fonti, CO₂ | Uguale | 4 |
 | Fonti aggiuntive e dati in tempo reale | Sì | Sì (con interruttore) | Uguale | 4 |
@@ -211,9 +223,15 @@ RIEPILOGO
 | Contratto dello snapshot | `contracts/wear-snapshot/v1` | Stesso contratto | Uguale | 4 |
 | Tratta fissata dal telefono | Tratta attiva | «Mostra su Watch» | Uguale | 4 |
 | Lingue | 17 | 17 | Uguale | 4 |
-| Tema | Material 3 for Wear | Palette Binario | Parziale: nessuna scelta del tema | 4 |
+| Tema | Material 3 for Wear, senza scelta | Palette Binario, senza scelta | Uguale (nativo iOS) | 4 |
 | Corse oltre le due | No | No | Uguale | 4 |
 
 ## Cosa resta
 
-RESTA
+Area 4 (audit e funzioni minori), dopo i lavori di questo ramo:
+
+- **Mancano (14):** Collegamenti profondi (`binario://`); Modalità «Treno» (ricerca per numero); Andata e ritorno; Arrivo e durata di ogni treno nei risultati; Mappa dei risultati; Aggiungi al calendario; Mappa del percorso; Collegamenti diretti; Tabellone della tratta attiva; Monitora questa stazione; Mappa della stazione e delle stazioni vicine; Recenti; Riepilogo settimanale; Integrazioni: profilo vocale Alexa.
+- **Parziali (9):** Scorciatoie dell'icona; Ricerche recenti e preferite nel pianificatore; Puntualità personale; Cambio binario «Bin. 7 (era 5)»; Nuova tratta (foglio); Fissa, sposta, elimina una tratta; Orari salvati; Affidabilità dei miei treni; Esporta e importa i dati (JSON). Il dettaglio è nella colonna «Stato».
+- **Orologio:** nessuna differenza aperta.
+
+Le righe delle altre aree restano ai lavori in corso: area 1 13, area 2 7, area 3 5, area 5 2 righe non ancora uguali.
