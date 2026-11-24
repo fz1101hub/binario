@@ -1,0 +1,1348 @@
+{
+  "schema": "binario-shared-rules-v1",
+  "description": "The trip notifications and alarms (notifications/StopCountdown.kt, FollowedTrip.kt, ApproachAlert.kt, TrainAlertWatch.kt, StopAlarmPlanner.kt, CommuterAlertStatus.kt, gpsalarm/GpsTrainRoute.kt): the quiet hours of every alert (22-7), the stop alarm five minutes before the expected time, the «Scendi tra N fermate» countdown (live progress, the position projected on the line, the timetable), the window and refresh of the followed trip, «Avvisami quando sta arrivando» (window, decision, next check, alarm), the new ViaggiaTreno notices of the trains with the bell (window, due checks, next check, dedupe), the train's status in a commuter alert, and the position estimate during the trip (projection on the line between the stops, progress, delay, countdown). Times are railway-local (Europe/Rome); the values are contracts/shared-data/v1/trip-alerts-v1.json and evening-alerts-v1.json.",
+  "readers": [
+    "app/src/test/java/it/binario/app/notifications/TripAlertsContractTest.kt",
+    "ios/BinarioKit/Tests/BinarioKitTests/TripAlertsContractTests.swift"
+  ],
+  "quietHours": [
+    {
+      "time": "06:59",
+      "quiet": true
+    },
+    {
+      "time": "07:00",
+      "quiet": false
+    },
+    {
+      "time": "12:00",
+      "quiet": false
+    },
+    {
+      "time": "21:59",
+      "quiet": false
+    },
+    {
+      "time": "22:00",
+      "quiet": true
+    },
+    {
+      "time": "23:30",
+      "quiet": true
+    },
+    {
+      "time": "00:00",
+      "quiet": true
+    }
+  ],
+  "stopAlarm": {
+    "plan": [
+      {
+        "name": "five minutes before the expected time",
+        "now": "2026-11-24T08:00",
+        "expected": "8:30",
+        "expectedAt": "2026-11-24T08:30",
+        "triggerAt": "2026-11-24T08:25"
+      },
+      {
+        "name": "two digits for the hour",
+        "now": "2026-11-24T08:00",
+        "expected": "08:30",
+        "expectedAt": "2026-11-24T08:30",
+        "triggerAt": "2026-11-24T08:25"
+      },
+      {
+        "name": "less than five minutes ahead: one second from now",
+        "now": "2026-11-24T08:28",
+        "expected": "8:30",
+        "expectedAt": "2026-11-24T08:30",
+        "triggerAt": "2026-11-24T08:28:01"
+      },
+      {
+        "name": "a small hour late in the evening is the next day",
+        "now": "2026-11-24T23:30",
+        "expected": "0:20",
+        "expectedAt": "2026-11-25T00:20",
+        "triggerAt": "2026-11-25T00:15"
+      },
+      {
+        "name": "a passed time is no alarm",
+        "now": "2026-11-24T09:00",
+        "expected": "8:30",
+        "expectedAt": null,
+        "triggerAt": null
+      },
+      {
+        "name": "a small hour in the afternoon stays today, and has passed",
+        "now": "2026-11-24T17:00",
+        "expected": "3:00",
+        "expectedAt": null,
+        "triggerAt": null
+      },
+      {
+        "name": "the expected time itself is too late",
+        "now": "2026-11-24T08:30",
+        "expected": "8:30",
+        "expectedAt": null,
+        "triggerAt": null
+      },
+      {
+        "name": "not a time",
+        "now": "2026-11-24T08:00",
+        "expected": "8.30",
+        "expectedAt": null,
+        "triggerAt": null
+      }
+    ],
+    "restoreTrigger": [
+      {
+        "trigger": "2026-11-24T08:25",
+        "expectedAt": "2026-11-24T08:30",
+        "now": "2026-11-24T08:00",
+        "expected": "2026-11-24T08:25"
+      },
+      {
+        "trigger": "2026-11-24T08:25",
+        "expectedAt": "2026-11-24T08:30",
+        "now": "2026-11-24T08:27",
+        "expected": "2026-11-24T08:27"
+      },
+      {
+        "trigger": "2026-11-24T08:25",
+        "expectedAt": "2026-11-24T08:30",
+        "now": "2026-11-24T08:30",
+        "expected": null
+      },
+      {
+        "trigger": "2026-11-24T08:25",
+        "expectedAt": "2026-11-24T08:30",
+        "now": "2026-11-24T09:00",
+        "expected": null
+      }
+    ],
+    "isOver": [
+      {
+        "expectedAt": "2026-11-24T08:30",
+        "now": "2026-11-24T10:30",
+        "over": false
+      },
+      {
+        "expectedAt": "2026-11-24T08:30",
+        "now": "2026-11-24T10:31",
+        "over": true
+      }
+    ]
+  },
+  "stopCountdown": {
+    "stops": [
+      {
+        "name": "Milano Centrale",
+        "at": "2026-11-24T08:00",
+        "skipped": false
+      },
+      {
+        "name": "Monza",
+        "at": "2026-11-24T08:10",
+        "skipped": false
+      },
+      {
+        "name": "Arcore",
+        "at": "2026-11-24T08:20",
+        "skipped": true
+      },
+      {
+        "name": "Carnate Usmate",
+        "at": "2026-11-24T08:30",
+        "skipped": false
+      },
+      {
+        "name": "Lecco",
+        "at": "2026-11-24T08:40",
+        "skipped": false
+      }
+    ],
+    "cases": [
+      {
+        "name": "from the timetable: three stops, the skipped one not counted",
+        "board": 0,
+        "alight": 4,
+        "now": "2026-11-24T08:05",
+        "livePassed": null,
+        "positionPassed": null,
+        "expected": {
+          "stopsLeft": 3,
+          "nextIndex": 1,
+          "nextStop": "Monza",
+          "alightStop": "Lecco",
+          "source": "SCHEDULED"
+        }
+      },
+      {
+        "name": "past a stop: the skipped one is never the next",
+        "board": 0,
+        "alight": 4,
+        "now": "2026-11-24T08:12",
+        "livePassed": null,
+        "positionPassed": null,
+        "expected": {
+          "stopsLeft": 2,
+          "nextIndex": 3,
+          "nextStop": "Carnate Usmate",
+          "alightStop": "Lecco",
+          "source": "SCHEDULED"
+        }
+      },
+      {
+        "name": "get off at the next stop",
+        "board": 0,
+        "alight": 4,
+        "now": "2026-11-24T08:31",
+        "livePassed": null,
+        "positionPassed": null,
+        "expected": {
+          "stopsLeft": 1,
+          "nextIndex": 4,
+          "nextStop": "Lecco",
+          "alightStop": "Lecco",
+          "source": "SCHEDULED"
+        }
+      },
+      {
+        "name": "before the first stop's time: no countdown",
+        "board": 0,
+        "alight": 4,
+        "now": "2026-11-24T07:50",
+        "livePassed": null,
+        "positionPassed": null,
+        "expected": null
+      },
+      {
+        "name": "a late train: the live progress, not the clock",
+        "board": 0,
+        "alight": 4,
+        "now": "2026-11-24T08:35",
+        "livePassed": 1,
+        "positionPassed": null,
+        "expected": {
+          "stopsLeft": 2,
+          "nextIndex": 3,
+          "nextStop": "Carnate Usmate",
+          "alightStop": "Lecco",
+          "source": "LIVE"
+        }
+      },
+      {
+        "name": "the position ahead of the live progress wins",
+        "board": 0,
+        "alight": 4,
+        "now": "2026-11-24T08:20",
+        "livePassed": 1,
+        "positionPassed": 3,
+        "expected": {
+          "stopsLeft": 1,
+          "nextIndex": 4,
+          "nextStop": "Lecco",
+          "alightStop": "Lecco",
+          "source": "POSITION"
+        }
+      },
+      {
+        "name": "the live progress ahead of the position wins",
+        "board": 0,
+        "alight": 4,
+        "now": "2026-11-24T08:20",
+        "livePassed": 3,
+        "positionPassed": 1,
+        "expected": {
+          "stopsLeft": 1,
+          "nextIndex": 4,
+          "nextStop": "Lecco",
+          "alightStop": "Lecco",
+          "source": "LIVE"
+        }
+      },
+      {
+        "name": "the position alone",
+        "board": 0,
+        "alight": 4,
+        "now": "2026-11-24T07:55",
+        "livePassed": null,
+        "positionPassed": 0,
+        "expected": {
+          "stopsLeft": 3,
+          "nextIndex": 1,
+          "nextStop": "Monza",
+          "alightStop": "Lecco",
+          "source": "POSITION"
+        }
+      },
+      {
+        "name": "the alighting stop reached: no countdown",
+        "board": 0,
+        "alight": 4,
+        "now": "2026-11-24T08:41",
+        "livePassed": null,
+        "positionPassed": null,
+        "expected": null
+      },
+      {
+        "name": "not on board yet: the boarding stop not left",
+        "board": 1,
+        "alight": 4,
+        "now": "2026-11-24T08:05",
+        "livePassed": null,
+        "positionPassed": null,
+        "expected": null
+      },
+      {
+        "name": "alighting before boarding: none",
+        "board": 3,
+        "alight": 1,
+        "now": "2026-11-24T08:31",
+        "livePassed": null,
+        "positionPassed": null,
+        "expected": null
+      },
+      {
+        "name": "an index outside the stops is ignored",
+        "board": 0,
+        "alight": 4,
+        "now": "2026-11-24T08:05",
+        "livePassed": 9,
+        "positionPassed": null,
+        "expected": {
+          "stopsLeft": 3,
+          "nextIndex": 1,
+          "nextStop": "Monza",
+          "alightStop": "Lecco",
+          "source": "SCHEDULED"
+        }
+      }
+    ]
+  },
+  "followedTrip": {
+    "departure": "2026-11-24T08:00",
+    "arrival": "2026-11-24T09:00",
+    "step": [
+      {
+        "name": "before the window: wait for its start",
+        "now": "2026-11-24T07:00",
+        "lastDelayMinutes": null,
+        "expected": {
+          "step": "wait",
+          "at": "2026-11-24T07:30"
+        }
+      },
+      {
+        "name": "the window opens 30 minutes before the departure",
+        "now": "2026-11-24T07:30",
+        "lastDelayMinutes": null,
+        "expected": {
+          "step": "refresh",
+          "at": "2026-11-24T07:45"
+        }
+      },
+      {
+        "name": "every 15 minutes",
+        "now": "2026-11-24T08:40",
+        "lastDelayMinutes": null,
+        "expected": {
+          "step": "refresh",
+          "at": "2026-11-24T08:55"
+        }
+      },
+      {
+        "name": "the run after the end comes a minute after it",
+        "now": "2026-11-24T09:20",
+        "lastDelayMinutes": null,
+        "expected": {
+          "step": "refresh",
+          "at": "2026-11-24T09:31"
+        }
+      },
+      {
+        "name": "30 minutes after the arrival it ends",
+        "now": "2026-11-24T09:31",
+        "lastDelayMinutes": null,
+        "expected": {
+          "step": "finish",
+          "at": null
+        }
+      },
+      {
+        "name": "the delay stretches the window",
+        "now": "2026-11-24T09:31",
+        "lastDelayMinutes": 10,
+        "expected": {
+          "step": "refresh",
+          "at": "2026-11-24T09:41"
+        }
+      },
+      {
+        "name": "at most six hours of delay",
+        "now": "2026-11-24T15:00",
+        "lastDelayMinutes": 600,
+        "expected": {
+          "step": "refresh",
+          "at": "2026-11-24T15:15"
+        }
+      },
+      {
+        "name": "beyond six hours it ends",
+        "now": "2026-11-24T15:31",
+        "lastDelayMinutes": 600,
+        "expected": {
+          "step": "finish",
+          "at": null
+        }
+      },
+      {
+        "name": "a negative delay counts as none",
+        "now": "2026-11-24T09:31",
+        "lastDelayMinutes": -5,
+        "expected": {
+          "step": "finish",
+          "at": null
+        }
+      }
+    ],
+    "isUpcomingOrRunning": [
+      {
+        "now": "2026-11-24T06:00",
+        "expected": true
+      },
+      {
+        "now": "2026-11-24T09:30",
+        "expected": true
+      },
+      {
+        "now": "2026-11-24T09:31",
+        "expected": false
+      }
+    ],
+    "nextRefreshAt": [
+      {
+        "name": "near the alighting stop: just after the next stop",
+        "regular": "2026-11-24T08:45",
+        "now": "2026-11-24T08:30",
+        "stopsLeft": 2,
+        "nextStopAt": "2026-11-24T08:33",
+        "expected": "2026-11-24T08:33:30"
+      },
+      {
+        "name": "never sooner than two minutes",
+        "regular": "2026-11-24T08:45",
+        "now": "2026-11-24T08:30",
+        "stopsLeft": 1,
+        "nextStopAt": "2026-11-24T08:30:10",
+        "expected": "2026-11-24T08:32"
+      },
+      {
+        "name": "far from the alighting stop: the regular refresh",
+        "regular": "2026-11-24T08:45",
+        "now": "2026-11-24T08:30",
+        "stopsLeft": 4,
+        "nextStopAt": "2026-11-24T08:33",
+        "expected": "2026-11-24T08:45"
+      },
+      {
+        "name": "the next stop after the regular refresh",
+        "regular": "2026-11-24T08:45",
+        "now": "2026-11-24T08:30",
+        "stopsLeft": 3,
+        "nextStopAt": "2026-11-24T09:00",
+        "expected": "2026-11-24T08:45"
+      },
+      {
+        "name": "no time for the next stop",
+        "regular": "2026-11-24T08:45",
+        "now": "2026-11-24T08:30",
+        "stopsLeft": 2,
+        "nextStopAt": null,
+        "expected": "2026-11-24T08:45"
+      },
+      {
+        "name": "no countdown",
+        "regular": "2026-11-24T08:45",
+        "now": "2026-11-24T08:30",
+        "stopsLeft": null,
+        "nextStopAt": null,
+        "expected": "2026-11-24T08:45"
+      }
+    ]
+  },
+  "approach": {
+    "window": [
+      {
+        "name": "30 minutes before the moment to notify, until three hours after the time",
+        "stationTime": "08:30",
+        "departure": "08:00",
+        "lead": 10,
+        "date": "2026-11-24",
+        "expected": {
+          "start": "2026-11-24T07:50",
+          "end": "2026-11-24T11:30"
+        }
+      },
+      {
+        "name": "never before 07:00",
+        "stationTime": "07:05",
+        "departure": "06:30",
+        "lead": 5,
+        "date": "2026-11-24",
+        "expected": {
+          "start": "2026-11-24T07:00",
+          "end": "2026-11-24T10:05"
+        }
+      },
+      {
+        "name": "never after 22:00",
+        "stationTime": "22:05",
+        "departure": "21:00",
+        "lead": 10,
+        "date": "2026-11-24",
+        "expected": {
+          "start": "2026-11-24T21:25",
+          "end": "2026-11-24T22:00"
+        }
+      },
+      {
+        "name": "the train passes before the quiet hours end",
+        "stationTime": "06:50",
+        "departure": "06:00",
+        "lead": 10,
+        "date": "2026-11-24",
+        "expected": null
+      },
+      {
+        "name": "the moment to notify falls in the quiet hours",
+        "stationTime": "22:15",
+        "departure": "21:00",
+        "lead": 10,
+        "date": "2026-11-24",
+        "expected": null
+      },
+      {
+        "name": "a station after midnight is the next day",
+        "stationTime": "00:20",
+        "departure": "23:00",
+        "lead": 10,
+        "date": "2026-11-24",
+        "expected": null
+      },
+      {
+        "name": "a lead outside the options is clamped",
+        "stationTime": "08:30",
+        "departure": "08:00",
+        "lead": 60,
+        "date": "2026-11-24",
+        "expected": {
+          "start": "2026-11-24T07:45",
+          "end": "2026-11-24T11:30"
+        }
+      }
+    ],
+    "serviceDate": [
+      {
+        "stationTime": "08:30",
+        "departure": "08:00",
+        "lead": 10,
+        "day": "2026-11-25",
+        "expected": "2026-11-25"
+      },
+      {
+        "stationTime": "00:20",
+        "departure": "23:00",
+        "lead": 10,
+        "day": "2026-11-25",
+        "expected": "2026-11-24"
+      }
+    ],
+    "quietOnTimetable": [
+      {
+        "stationTime": "08:30",
+        "lead": 10,
+        "expected": false
+      },
+      {
+        "stationTime": "07:05",
+        "lead": 10,
+        "expected": true
+      },
+      {
+        "stationTime": "22:05",
+        "lead": 5,
+        "expected": true
+      },
+      {
+        "stationTime": "22:05",
+        "lead": 10,
+        "expected": false
+      }
+    ],
+    "minutesUntil": [
+      {
+        "now": "2026-11-24T08:19:30",
+        "expected": "2026-11-24T08:30",
+        "minutes": 11
+      },
+      {
+        "now": "2026-11-24T08:20",
+        "expected": "2026-11-24T08:30",
+        "minutes": 10
+      },
+      {
+        "now": "2026-11-24T08:29:59",
+        "expected": "2026-11-24T08:30",
+        "minutes": 1
+      },
+      {
+        "now": "2026-11-24T08:31",
+        "expected": "2026-11-24T08:30",
+        "minutes": 0
+      }
+    ],
+    "alert": {
+      "stationTime": "08:30",
+      "departure": "08:00",
+      "lead": 10,
+      "date": "2026-11-24"
+    },
+    "decide": [
+      {
+        "name": "before the window: its start",
+        "now": "2026-11-24T07:40",
+        "observation": null,
+        "notified": false,
+        "expected": {
+          "decision": "wait",
+          "at": "2026-11-24T07:50"
+        }
+      },
+      {
+        "name": "a check every 15 minutes",
+        "now": "2026-11-24T08:00",
+        "observation": null,
+        "notified": false,
+        "expected": {
+          "decision": "wait",
+          "at": "2026-11-24T08:15"
+        }
+      },
+      {
+        "name": "the moment to notify before the next check",
+        "now": "2026-11-24T08:15",
+        "observation": null,
+        "notified": false,
+        "expected": {
+          "decision": "wait",
+          "at": "2026-11-24T08:20"
+        }
+      },
+      {
+        "name": "a minute early still notifies",
+        "now": "2026-11-24T08:19:30",
+        "observation": null,
+        "notified": false,
+        "expected": {
+          "decision": "notify",
+          "minutesLeft": 11
+        }
+      },
+      {
+        "name": "on the moment",
+        "now": "2026-11-24T08:20",
+        "observation": null,
+        "notified": false,
+        "expected": {
+          "decision": "notify",
+          "minutesLeft": 10
+        }
+      },
+      {
+        "name": "the live delay moves the moment",
+        "now": "2026-11-24T08:20",
+        "observation": {
+          "expectedAt": "2026-11-24T08:42",
+          "delayMinutes": 12,
+          "platform": "3",
+          "passed": false,
+          "cancelled": false
+        },
+        "notified": false,
+        "expected": {
+          "decision": "wait",
+          "at": "2026-11-24T08:32"
+        }
+      },
+      {
+        "name": "with the delay, on the new moment",
+        "now": "2026-11-24T08:32",
+        "observation": {
+          "expectedAt": "2026-11-24T08:42",
+          "delayMinutes": 12,
+          "platform": "3",
+          "passed": false,
+          "cancelled": false
+        },
+        "notified": false,
+        "expected": {
+          "decision": "notify",
+          "minutesLeft": 10
+        }
+      },
+      {
+        "name": "the train has passed the station",
+        "now": "2026-11-24T08:20",
+        "observation": {
+          "expectedAt": "2026-11-24T08:30",
+          "delayMinutes": 0,
+          "platform": null,
+          "passed": true,
+          "cancelled": false
+        },
+        "notified": false,
+        "expected": {
+          "decision": "done"
+        }
+      },
+      {
+        "name": "cancelled",
+        "now": "2026-11-24T08:20",
+        "observation": {
+          "expectedAt": "2026-11-24T08:30",
+          "delayMinutes": null,
+          "platform": null,
+          "passed": false,
+          "cancelled": true
+        },
+        "notified": false,
+        "expected": {
+          "decision": "done"
+        }
+      },
+      {
+        "name": "already notified today",
+        "now": "2026-11-24T08:20",
+        "observation": null,
+        "notified": true,
+        "expected": {
+          "decision": "done"
+        }
+      },
+      {
+        "name": "too late after the expected time",
+        "now": "2026-11-24T08:33",
+        "observation": null,
+        "notified": false,
+        "expected": {
+          "decision": "done"
+        }
+      },
+      {
+        "name": "after the window",
+        "now": "2026-11-24T11:31",
+        "observation": null,
+        "notified": false,
+        "expected": {
+          "decision": "done"
+        }
+      }
+    ],
+    "nextRun": [
+      {
+        "name": "the first check of the day",
+        "now": "2026-11-24T07:00",
+        "doneOn": null,
+        "notifiedOn": null,
+        "observation": null,
+        "expected": "2026-11-24T07:50"
+      },
+      {
+        "name": "the moment to notify: now",
+        "now": "2026-11-24T08:20",
+        "doneOn": null,
+        "notifiedOn": null,
+        "observation": null,
+        "expected": "2026-11-24T08:20"
+      },
+      {
+        "name": "the day is done: tomorrow's window",
+        "now": "2026-11-24T09:00",
+        "doneOn": "2026-11-24",
+        "notifiedOn": null,
+        "observation": null,
+        "expected": "2026-11-25T07:50"
+      },
+      {
+        "name": "notified today: tomorrow's window",
+        "now": "2026-11-24T08:21",
+        "doneOn": null,
+        "notifiedOn": "2026-11-24",
+        "observation": null,
+        "expected": "2026-11-25T07:50"
+      },
+      {
+        "name": "after today's window",
+        "now": "2026-11-24T12:00",
+        "doneOn": null,
+        "notifiedOn": null,
+        "observation": null,
+        "expected": "2026-11-25T07:50"
+      }
+    ],
+    "alarmAt": [
+      {
+        "name": "at the moment to notify from the last observation",
+        "now": "2026-11-24T08:00",
+        "doneOn": null,
+        "notifiedOn": null,
+        "observation": {
+          "expectedAt": "2026-11-24T08:42",
+          "delayMinutes": 12,
+          "platform": null,
+          "passed": false,
+          "cancelled": false
+        },
+        "expected": "2026-11-24T08:32"
+      },
+      {
+        "name": "without an observation no alarm",
+        "now": "2026-11-24T08:00",
+        "doneOn": null,
+        "notifiedOn": null,
+        "observation": null,
+        "expected": null
+      },
+      {
+        "name": "a moment already passed",
+        "now": "2026-11-24T08:33",
+        "doneOn": null,
+        "notifiedOn": null,
+        "observation": {
+          "expectedAt": "2026-11-24T08:42",
+          "delayMinutes": 12,
+          "platform": null,
+          "passed": false,
+          "cancelled": false
+        },
+        "expected": null
+      },
+      {
+        "name": "notified today",
+        "now": "2026-11-24T08:00",
+        "doneOn": null,
+        "notifiedOn": "2026-11-24",
+        "observation": {
+          "expectedAt": "2026-11-24T08:42",
+          "delayMinutes": 12,
+          "platform": null,
+          "passed": false,
+          "cancelled": false
+        },
+        "expected": null
+      }
+    ]
+  },
+  "trainAlerts": {
+    "key": [
+      {
+        "number": "REG 2153",
+        "expected": "2153"
+      },
+      {
+        "number": "2153",
+        "expected": "2153"
+      },
+      {
+        "number": "02153",
+        "expected": "2153"
+      },
+      {
+        "number": "FR 9558",
+        "expected": "9558"
+      },
+      {
+        "number": "RE_11 - 2153",
+        "expected": "2153"
+      }
+    ],
+    "window": [
+      {
+        "name": "four hours before the departure to three after, from 07:00",
+        "departure": "08:00",
+        "date": "2026-11-24",
+        "followed": [],
+        "expected": {
+          "start": "2026-11-24T07:00",
+          "end": "2026-11-24T11:00"
+        }
+      },
+      {
+        "name": "until 22:00",
+        "departure": "21:00",
+        "date": "2026-11-24",
+        "followed": [],
+        "expected": {
+          "start": "2026-11-24T17:00",
+          "end": "2026-11-24T22:00"
+        }
+      },
+      {
+        "name": "without a departure: the whole day",
+        "departure": "",
+        "date": "2026-11-24",
+        "followed": [],
+        "expected": {
+          "start": "2026-11-24T07:00",
+          "end": "2026-11-24T22:00"
+        }
+      },
+      {
+        "name": "a train in the quiet hours: no window",
+        "departure": "02:00",
+        "date": "2026-11-24",
+        "followed": [],
+        "expected": null
+      },
+      {
+        "name": "the followed trip's times win",
+        "departure": "08:00",
+        "date": "2026-11-24",
+        "followed": [
+          {
+            "number": "REG 2153",
+            "departure": "2026-11-24T12:00",
+            "arrival": "2026-11-24T14:00"
+          }
+        ],
+        "expected": {
+          "start": "2026-11-24T08:00",
+          "end": "2026-11-24T14:30"
+        }
+      },
+      {
+        "name": "a followed trip of another day does not count",
+        "departure": "08:00",
+        "date": "2026-11-24",
+        "followed": [
+          {
+            "number": "2153",
+            "departure": "2026-11-25T12:00",
+            "arrival": "2026-11-25T14:00"
+          }
+        ],
+        "expected": {
+          "start": "2026-11-24T07:00",
+          "end": "2026-11-24T11:00"
+        }
+      }
+    ],
+    "number": "REG 2153",
+    "due": [
+      {
+        "name": "in the window",
+        "now": "2026-11-24T08:00",
+        "departures": [
+          "08:00",
+          "21:00"
+        ],
+        "expected": [
+          "08:00"
+        ]
+      },
+      {
+        "name": "in the quiet hours: none",
+        "now": "2026-11-24T22:30",
+        "departures": [
+          "",
+          "21:00"
+        ],
+        "expected": []
+      },
+      {
+        "name": "both open",
+        "now": "2026-11-24T18:00",
+        "departures": [
+          "",
+          "21:00"
+        ],
+        "expected": [
+          "",
+          "21:00"
+        ]
+      }
+    ],
+    "nextRun": [
+      {
+        "name": "the window opens at 07:00",
+        "now": "2026-11-24T06:00",
+        "departures": [
+          "08:00"
+        ],
+        "lastCheckAt": null,
+        "expected": "2026-11-24T07:00"
+      },
+      {
+        "name": "15 minutes after the last check",
+        "now": "2026-11-24T08:00",
+        "departures": [
+          "08:00"
+        ],
+        "lastCheckAt": "2026-11-24T07:50",
+        "expected": "2026-11-24T08:05"
+      },
+      {
+        "name": "no check recorded: now",
+        "now": "2026-11-24T08:00",
+        "departures": [
+          "08:00"
+        ],
+        "lastCheckAt": null,
+        "expected": "2026-11-24T08:00"
+      },
+      {
+        "name": "an old check: now",
+        "now": "2026-11-24T08:00",
+        "departures": [
+          "08:00"
+        ],
+        "lastCheckAt": "2026-11-24T07:40",
+        "expected": "2026-11-24T08:00"
+      },
+      {
+        "name": "after the window: tomorrow's",
+        "now": "2026-11-24T12:00",
+        "departures": [
+          "08:00"
+        ],
+        "lastCheckAt": null,
+        "expected": "2026-11-25T07:00"
+      },
+      {
+        "name": "nothing to watch",
+        "now": "2026-11-24T08:00",
+        "departures": [],
+        "lastCheckAt": null,
+        "expected": null
+      }
+    ],
+    "newNotices": [
+      {
+        "name": "unseen notices published after the bell, each once",
+        "subscribedAt": "2026-11-24T07:00",
+        "notices": [
+          {
+            "id": "a",
+            "publishedAt": "2026-11-24T08:00"
+          },
+          {
+            "id": "b",
+            "publishedAt": null
+          },
+          {
+            "id": "c",
+            "publishedAt": "2026-11-24T06:00"
+          },
+          {
+            "id": "a",
+            "publishedAt": "2026-11-24T08:00"
+          },
+          {
+            "id": "d",
+            "publishedAt": "2026-11-24T09:00"
+          }
+        ],
+        "seen": {
+          "d": 20781
+        },
+        "expected": [
+          "a",
+          "b"
+        ]
+      }
+    ],
+    "remember": [
+      {
+        "name": "seen today, a week dropped",
+        "today": "2026-11-24",
+        "notices": [
+          "a",
+          "b"
+        ],
+        "seen": {
+          "a": 20775,
+          "x": 20774,
+          "y": 20775
+        },
+        "expected": {
+          "a": 20781,
+          "b": 20781,
+          "y": 20775
+        }
+      }
+    ]
+  },
+  "commuterStatus": {
+    "strings": {
+      "unavailable": "stato non disponibile",
+      "onTime": "in orario",
+      "cancelled": "treno soppresso",
+      "delay": "ritardo di %d min",
+      "withPlatform": "%s, binario %s"
+    },
+    "format": [
+      {
+        "status": null,
+        "expected": "stato non disponibile"
+      },
+      {
+        "status": {
+          "delayMinutes": 0,
+          "platform": null,
+          "cancelled": true
+        },
+        "expected": "treno soppresso"
+      },
+      {
+        "status": {
+          "delayMinutes": 0,
+          "platform": null,
+          "cancelled": false
+        },
+        "expected": "in orario"
+      },
+      {
+        "status": {
+          "delayMinutes": 0,
+          "platform": "4",
+          "cancelled": false
+        },
+        "expected": "in orario, binario 4"
+      },
+      {
+        "status": {
+          "delayMinutes": 5,
+          "platform": "3",
+          "cancelled": false
+        },
+        "expected": "ritardo di 5 min, binario 3"
+      },
+      {
+        "status": {
+          "delayMinutes": 12,
+          "platform": null,
+          "cancelled": false
+        },
+        "expected": "ritardo di 12 min"
+      }
+    ],
+    "routeStations": [
+      {
+        "label": "Milano Centrale → Pavia",
+        "expected": [
+          "Milano Centrale",
+          "Pavia"
+        ]
+      },
+      {
+        "label": "Milano Centrale",
+        "expected": null
+      },
+      {
+        "label": " → Pavia",
+        "expected": null
+      }
+    ]
+  },
+  "position": {
+    "route": [
+      {
+        "name": "A",
+        "latitude": 45.0,
+        "longitude": 9.0,
+        "at": "2026-11-24T08:00"
+      },
+      {
+        "name": "B",
+        "latitude": 45.09,
+        "longitude": 9.0,
+        "at": "2026-11-24T08:10"
+      },
+      {
+        "name": "C",
+        "latitude": 45.18,
+        "longitude": 9.0,
+        "at": "2026-11-24T08:20"
+      },
+      {
+        "name": "D",
+        "latitude": 45.27,
+        "longitude": 9.0,
+        "at": "2026-11-24T08:30"
+      }
+    ],
+    "board": 0,
+    "target": 3,
+    "fixes": [
+      {
+        "name": "on the platform of the boarding stop: no estimate yet",
+        "latitude": 45.0,
+        "longitude": 9.0,
+        "accuracy": 20,
+        "ageSeconds": 0,
+        "now": "2026-11-24T08:01",
+        "expected": {
+          "status": "ON_ROUTE",
+          "passedIndex": 0,
+          "delayMinutes": null,
+          "arrivalAt": null
+        }
+      },
+      {
+        "name": "half way between two stops, two minutes late",
+        "latitude": 45.045,
+        "longitude": 9.0,
+        "accuracy": 20,
+        "ageSeconds": 5,
+        "now": "2026-11-24T08:07",
+        "expected": {
+          "status": "ON_ROUTE",
+          "passedIndex": 0,
+          "delayMinutes": 2,
+          "arrivalAt": "2026-11-24T08:32"
+        }
+      },
+      {
+        "name": "an inaccurate fix changes nothing",
+        "latitude": 45.2,
+        "longitude": 9.0,
+        "accuracy": 500,
+        "ageSeconds": 0,
+        "now": "2026-11-24T08:09",
+        "expected": {
+          "status": "ON_ROUTE",
+          "passedIndex": 0,
+          "delayMinutes": 2,
+          "arrivalAt": "2026-11-24T08:32"
+        }
+      },
+      {
+        "name": "a stale fix changes nothing",
+        "latitude": 45.2,
+        "longitude": 9.0,
+        "accuracy": 20,
+        "ageSeconds": 121,
+        "now": "2026-11-24T08:09",
+        "expected": {
+          "status": "ON_ROUTE",
+          "passedIndex": 0,
+          "delayMinutes": 2,
+          "arrivalAt": "2026-11-24T08:32"
+        }
+      },
+      {
+        "name": "at a stop: the time since its scheduled time",
+        "latitude": 45.18,
+        "longitude": 9.0,
+        "accuracy": 20,
+        "ageSeconds": 0,
+        "now": "2026-11-24T08:24",
+        "expected": {
+          "status": "ON_ROUTE",
+          "passedIndex": 2,
+          "delayMinutes": 4,
+          "arrivalAt": "2026-11-24T08:34"
+        }
+      },
+      {
+        "name": "far from the line: no estimate",
+        "latitude": 45.2,
+        "longitude": 9.1,
+        "accuracy": 20,
+        "ageSeconds": 0,
+        "now": "2026-11-24T08:25",
+        "expected": {
+          "status": "OFF_ROUTE",
+          "passedIndex": null,
+          "delayMinutes": null,
+          "arrivalAt": null
+        }
+      },
+      {
+        "name": "back on the line after the stop",
+        "latitude": 45.2,
+        "longitude": 9.0,
+        "accuracy": 20,
+        "ageSeconds": 0,
+        "now": "2026-11-24T08:26",
+        "expected": {
+          "status": "ON_ROUTE",
+          "passedIndex": 2,
+          "delayMinutes": 4,
+          "arrivalAt": "2026-11-24T08:34"
+        }
+      }
+    ],
+    "countdown": {
+      "now": "2026-11-24T08:27",
+      "expected": {
+        "stopsLeft": 1,
+        "nextIndex": 3,
+        "nextStop": "D",
+        "alightStop": "D",
+        "source": "POSITION"
+      }
+    },
+    "arrival": {
+      "latitude": 45.27,
+      "longitude": 9.0,
+      "accuracy": 20,
+      "ageSeconds": 0,
+      "now": "2026-11-24T08:33",
+      "expected": {
+        "status": "ARRIVED",
+        "passedIndex": 3,
+        "delayMinutes": 3,
+        "arrivalAt": "2026-11-24T08:33"
+      }
+    },
+    "canStartEstimate": [
+      {
+        "departure": "2026-11-24T08:00",
+        "arrival": "2026-11-24T08:30",
+        "officialDelayMinutes": null,
+        "now": "2026-11-24T07:49",
+        "expected": false
+      },
+      {
+        "departure": "2026-11-24T08:00",
+        "arrival": "2026-11-24T08:30",
+        "officialDelayMinutes": null,
+        "now": "2026-11-24T07:50",
+        "expected": true
+      },
+      {
+        "departure": "2026-11-24T08:00",
+        "arrival": "2026-11-24T08:30",
+        "officialDelayMinutes": null,
+        "now": "2026-11-24T08:39:59",
+        "expected": true
+      },
+      {
+        "departure": "2026-11-24T08:00",
+        "arrival": "2026-11-24T08:30",
+        "officialDelayMinutes": null,
+        "now": "2026-11-24T08:40",
+        "expected": false
+      },
+      {
+        "departure": "2026-11-24T08:00",
+        "arrival": "2026-11-24T08:30",
+        "officialDelayMinutes": 5,
+        "now": "2026-11-24T08:44",
+        "expected": true
+      }
+    ]
+  }
+}

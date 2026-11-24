@@ -8,6 +8,7 @@ import it.binario.app.notifications.CountdownStop
 import it.binario.app.notifications.StopCountdown
 import it.binario.app.notifications.StopCountdownCalculator
 import it.binario.app.notifications.TrainAlertWatch
+import it.binario.app.shared.SharedData
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -54,7 +55,7 @@ data class GpsTrainRoute(
     fun isFor(number: String): Boolean = TrainAlertWatch.key(number) == TrainAlertWatch.key(trainNumber)
 
     companion object {
-        const val MAX_STOPS = 80
+        const val MAX_STOPS = SharedData.TripAlerts.POSITION_MAXIMUM_ROUTE_STOPS
     }
 }
 
@@ -230,26 +231,26 @@ internal object GpsTrainRoutes {
  * gives no estimate. Everything happens in memory on the device.
  */
 internal object GpsTrainTracking {
-    const val MAX_ACCURACY_METERS = 200.0
-    const val OFF_ROUTE_METERS = 1_500.0
-    const val DWELL_RADIUS_METERS = 400.0
+    const val MAX_ACCURACY_METERS = SharedData.TripAlerts.POSITION_MAXIMUM_ACCURACY_METERS.toDouble()
+    const val OFF_ROUTE_METERS = SharedData.TripAlerts.POSITION_OFF_ROUTE_METERS.toDouble()
+    const val DWELL_RADIUS_METERS = SharedData.TripAlerts.POSITION_DWELL_RADIUS_METERS.toDouble()
 
     /** Noise that moves the projection back by less than this is ignored: a train does not reverse. */
-    const val BACKTRACK_TOLERANCE_METERS = 500.0
+    const val BACKTRACK_TOLERANCE_METERS = SharedData.TripAlerts.POSITION_BACKTRACK_TOLERANCE_METERS.toDouble()
 
     /** The position keeps deciding the countdown for this long after the last accepted fix. */
-    const val POSITION_FRESH_MILLIS = 3 * 60_000L
+    const val POSITION_FRESH_MILLIS = SharedData.TripAlerts.POSITION_FRESH_SECONDS * 1_000L
 
     /** An estimate older than this shows the time it was made. */
-    const val ESTIMATE_FRESH_MILLIS = 2 * 60_000L
+    const val ESTIMATE_FRESH_MILLIS = SharedData.TripAlerts.ESTIMATE_FRESH_SECONDS * 1_000L
 
-    const val MAX_DELAY_MINUTES = 600
+    const val MAX_DELAY_MINUTES = SharedData.TripAlerts.ESTIMATE_MAXIMUM_DELAY_MINUTES
 
     /** The estimate session ("Stima dalla tua posizione") ends this long after the arrival. */
-    const val AFTER_ARRIVAL_MILLIS = 10 * 60_000L
+    const val AFTER_ARRIVAL_MILLIS = SharedData.TripAlerts.ESTIMATE_AFTER_ARRIVAL_MINUTES * 60_000L
 
     /** The session can be started from this long before the departure. */
-    const val BEFORE_DEPARTURE_MILLIS = 10 * 60_000L
+    const val BEFORE_DEPARTURE_MILLIS = SharedData.TripAlerts.ESTIMATE_BEFORE_DEPARTURE_MINUTES * 60_000L
 
     private const val EARTH_MEAN_RADIUS_METERS = 6_371_008.8
 

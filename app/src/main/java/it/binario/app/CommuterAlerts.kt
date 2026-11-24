@@ -16,6 +16,7 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import androidx.core.content.edit
 import it.binario.app.data.RailTime
+import it.binario.app.shared.SharedData
 import java.time.DayOfWeek
 import java.time.Instant
 import java.time.LocalDate
@@ -92,7 +93,9 @@ object CommuterAlertPlanner {
         return CommuterAlertTriggerResult.NoUpcomingTrigger
     }
 
-    fun isQuiet(time: LocalTime): Boolean = time >= LocalTime.of(22, 0) || time < LocalTime.of(7, 0)
+    /** The quiet hours of every alert (22:00 to 07:00), contracts/shared-data/v1/evening-alerts-v1.json. */
+    fun isQuiet(time: LocalTime): Boolean =
+        time >= LocalTime.of(SharedData.EveningAlerts.QUIET_FROM_HOUR, 0) || time < LocalTime.of(SharedData.EveningAlerts.QUIET_UNTIL_HOUR, 0)
 
     /**
      * How long after its trigger a reminder that has not rung yet is still delivered: an inexact alarm may come late,

@@ -9,6 +9,7 @@ import it.binario.app.data.StopRouteChange
 import it.binario.app.data.TrainService
 import it.binario.app.data.repository.TrainNumberSearchUpdate
 import it.binario.app.journeys.LiveStopTimes
+import it.binario.app.shared.SharedData
 import java.time.Duration
 import java.time.Instant
 import java.time.LocalDate
@@ -78,22 +79,22 @@ sealed interface ApproachDecision {
  * 07:00), and at most once a day per train.
  */
 object ApproachAlertPlanner {
-    val LEAD_OPTIONS: List<Int> = listOf(5, 10, 15)
-    const val DEFAULT_LEAD = 10
-    val CHECK_INTERVAL: Duration = Duration.ofMinutes(15)
-    val FIRST_CHECK_BEFORE: Duration = Duration.ofMinutes(30)
+    val LEAD_OPTIONS: List<Int> = SharedData.TripAlerts.APPROACH_LEAD_OPTIONS_MINUTES
+    const val DEFAULT_LEAD = SharedData.TripAlerts.APPROACH_DEFAULT_LEAD_MINUTES
+    val CHECK_INTERVAL: Duration = Duration.ofMinutes(SharedData.TripAlerts.APPROACH_CHECK_MINUTES.toLong())
+    val FIRST_CHECK_BEFORE: Duration = Duration.ofMinutes(SharedData.TripAlerts.APPROACH_FIRST_CHECK_BEFORE_MINUTES.toLong())
 
     /** Delays up to this long keep the day's checks going. */
-    val MAX_DELAY: Duration = Duration.ofHours(3)
+    val MAX_DELAY: Duration = Duration.ofMinutes(SharedData.TripAlerts.APPROACH_MAXIMUM_DELAY_MINUTES.toLong())
 
     /** A run this close to the moment counts as on time; one later than this after the expected time is too late. */
-    val EARLY_TOLERANCE: Duration = Duration.ofMinutes(1)
-    val LATE_TOLERANCE: Duration = Duration.ofMinutes(2)
-    val MIN_DELAY_BETWEEN_RUNS: Duration = Duration.ofMinutes(1)
+    val EARLY_TOLERANCE: Duration = Duration.ofMinutes(SharedData.TripAlerts.APPROACH_EARLY_TOLERANCE_MINUTES.toLong())
+    val LATE_TOLERANCE: Duration = Duration.ofMinutes(SharedData.TripAlerts.APPROACH_LATE_TOLERANCE_MINUTES.toLong())
+    val MIN_DELAY_BETWEEN_RUNS: Duration = Duration.ofMinutes(SharedData.TripAlerts.APPROACH_MINIMUM_GAP_MINUTES.toLong())
 
     /** The notification leaves the shade this long after the train's expected time at the station. */
-    val NOTIFICATION_TIMEOUT: Duration = Duration.ofMinutes(15)
-    const val MAX_ALERTS = 12
+    val NOTIFICATION_TIMEOUT: Duration = Duration.ofMinutes(SharedData.TripAlerts.APPROACH_NOTIFICATION_TIMEOUT_MINUTES.toLong())
+    const val MAX_ALERTS = SharedData.TripAlerts.APPROACH_MAXIMUM_ALERTS
 
     fun lead(alert: ApproachAlert): Duration = Duration.ofMinutes(alert.leadMinutes.coerceIn(LEAD_OPTIONS.first(), LEAD_OPTIONS.last()).toLong())
 
