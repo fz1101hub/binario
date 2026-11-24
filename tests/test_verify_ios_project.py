@@ -187,6 +187,7 @@ class IOSProjectTests(unittest.TestCase):
             "BinarioWatch",
             "BinarioWatchTests",
             "BinarioWatchWidgets",
+            "BinarioLiveActivity",
         ):
             with self.subTest(target=name):
                 settings = self.targets[name]["settings"]
@@ -243,6 +244,7 @@ class IOSProjectTests(unittest.TestCase):
             "BinarioWatch": ("watchOS", "watchos", "watchos watchsimulator"),
             "BinarioWatchTests": ("watchOS", "watchos", "watchos watchsimulator"),
             "BinarioWatchWidgets": ("watchOS", "watchos", "watchos watchsimulator"),
+            "BinarioLiveActivity": ("iOS", "iphoneos", "iphoneos iphonesimulator"),
         }
         for name, (platform, sdk, supported) in platforms.items():
             with self.subTest(target=name):
@@ -606,6 +608,41 @@ class IOSProjectTests(unittest.TestCase):
         saved = (IOS / "BinarioApp/SavedRoutesView.swift").read_text(encoding="utf-8")
         self.assertIn(".navigationDestination(isPresented: $model.showingAgenda)", saved)
 
+    def test_followed_trip_is_a_live_activity_updated_by_the_app_without_push(self) -> None:
+        """Android's ongoing notification of the followed trip is a Live Activity on the iPhone: its own extension
+        (apart from the home-screen widgets), embedded in the app, with «Aggiorna» and «Interrompi» as intents that run
+        in the app; started and updated by the app itself, never with a push token, and no entitlement is added."""
+        app = self.targets["Binario"]
+        self.assertIs(True, app["settings"]["base"]["INFOPLIST_KEY_NSSupportsLiveActivities"])
+        self.assertIn({"target": "BinarioLiveActivity", "embed": True}, app["dependencies"])
+        self.assertIn({"path": "BinarioLiveActivity/Shared"}, app["sources"])
+        extension = self.targets["BinarioLiveActivity"]
+        self.assertEqual("app-extension", extension["type"])
+        self.assertEqual("17.0", extension["deploymentTarget"])
+        self.assertNotIn("entitlements", extension)
+        settings = extension["settings"]["base"]
+        self.assertEqual("it.binario.ios.liveactivity", settings["PRODUCT_BUNDLE_IDENTIFIER"])
+        self.assertEqual("BinarioLiveActivity/Info.plist", settings["INFOPLIST_FILE"])
+        self.assertIs(True, settings["SKIP_INSTALL"])
+        info = plistlib.loads((IOS / "BinarioLiveActivity/Info.plist").read_bytes())
+        self.assertEqual("com.apple.widgetkit-extension", info["NSExtension"]["NSExtensionPointIdentifier"])
+        self.assertIs(False, info["ITSAppUsesNonExemptEncryption"])
+        manifest = privacy_manifest(IOS / "BinarioLiveActivity/PrivacyInfo.xcprivacy")
+        self.assertEqual(([], [], []), (manifest["NSPrivacyTrackingDomains"], manifest["NSPrivacyCollectedDataTypes"], manifest["NSPrivacyAccessedAPITypes"]))
+        shared = (IOS / "BinarioLiveActivity/Shared/TripActivity.swift").read_text(encoding="utf-8")
+        for fragment in ("struct TripActivityAttributes: ActivityAttributes", "struct TripRefreshIntent: LiveActivityIntent",
+                         "struct TripStopIntent: LiveActivityIntent"):
+            self.assertIn(fragment, shared)
+        widget = (IOS / "BinarioLiveActivity/TripLiveActivityWidget.swift").read_text(encoding="utf-8")
+        self.assertIn("ActivityConfiguration(for: TripActivityAttributes.self)", widget)
+        self.assertIn("dynamicIsland:", widget)
+        for code in (shared, widget):
+            for absent in ("URLSession", "UserDefaults", "CoreLocation", "NSLocalizedString"):
+                self.assertNotIn(absent, code)
+        monitor = (IOS / "BinarioApp/TripMonitor.swift").read_text(encoding="utf-8")
+        self.assertEqual(1, monitor.count("Activity.request("))
+        self.assertIn("pushType: nil)", monitor)
+
     def test_text_import_adds_reviewed_journeys_on_catalogue_stations_only(self) -> None:
         """EXPO_PORT_PLAN F22 and §3.4: a pasted text becomes a preview on catalogue stations; journeys are added
         only after «Ho verificato», never replacing one, at most the Agenda's free places."""
@@ -649,7 +686,10 @@ class IOSProjectTests(unittest.TestCase):
     def test_nearest_station_is_one_when_in_use_position_used_on_the_iphone_only(self) -> None:
         """EXPO_PORT_PLAN I7, F4, R20 and §3.9: «Stazione più vicina» asks for When-In-Use authorization on a tap
         only, reads one position, and picks the nearest catalogue station on the phone; the position is neither
-        stored nor sent. Every language explains why in its InfoPlist.strings; no Always or background location."""
+        stored nor sent. Every language explains why in its InfoPlist.strings; no Always or background location.
+        The followed trip's «Stima dalla tua posizione» (TripLocation.swift) is the one other user: When-In-Use, precise,
+        continuous updates only while the app is in the foreground and the trip is followed, each position handed to
+        BinarioKit's tracker and kept nowhere."""
         settings = self.targets["Binario"]["settings"]["base"]
         italian = settings["INFOPLIST_KEY_NSLocationWhenInUseUsageDescription"]
         forbidden_words = re.compile(r"android|wear\s*os|google\s*play|widget|companion", re.IGNORECASE)
@@ -666,7 +706,20 @@ class IOSProjectTests(unittest.TestCase):
 
         sources = [path for base in (IOS / "BinarioApp", IOS / "BinarioKit/Sources") for path in base.rglob("*.swift")]
         importing = sorted(path.name for path in sources if "import CoreLocation" in path.read_text(encoding="utf-8"))
-        self.assertEqual(["NearestStation.swift"], importing)
+        self.assertEqual(["NearestStation.swift", "TripLocation.swift"], importing)
+        trip = (IOS / "BinarioApp/TripLocation.swift").read_text(encoding="utf-8")
+        self.assertEqual(1, trip.count("manager.requestWhenInUseAuthorization()"))
+        self.assertIn("manager.accuracyAuthorization == .fullAccuracy", trip)
+        self.assertIn("onTrack?(tracker.onFix(fix, now: Date()))", trip)
+        for forbidden in (
+            "requestAlwaysAuthorization", "allowsBackgroundLocationUpdates", "startMonitoringSignificantLocationChanges",
+            "startMonitoringVisits", "CLBackgroundActivitySession", "UserDefaults", "@AppStorage", "requestLocation()",
+        ):
+            self.assertNotIn(forbidden, trip)
+        monitor = (IOS / "BinarioApp/TripMonitor.swift").read_text(encoding="utf-8")
+        leaving = monitor.split("private func didEnterBackground() {", 1)[1].split("\n    }\n", 1)[0]
+        self.assertIn("location.stop()", leaving)
+        self.assertNotIn("UserDefaults", monitor)
         locator = (IOS / "BinarioApp/NearestStation.swift").read_text(encoding="utf-8")
         self.assertEqual(1, locator.count("requestWhenInUseAuthorization()"))
         self.assertEqual(1, locator.count("manager.requestLocation()"))
@@ -1771,7 +1824,10 @@ class IOSProjectTests(unittest.TestCase):
         # No background mode, task or schedule was added for it. The only background work of the app is
         # the evening alerts' app refresh task (owner decision, November 2026): `fetch` and exactly one
         # permitted identifier in the partial Info.plist, scheduled and run by EveningAlerts.swift alone,
-        # which reads only the MIT and RFI feeds and posts local notifications.
+        # which reads only the MIT and RFI feeds and posts local notifications. The same task runs the
+        # trip checks that are due (TripMonitor.swift, owner decision of 24 November 2026: Android's trip
+        # notifications and alarms), which ask the live sources only through `tripLiveData`, nil with
+        # «Dati in tempo reale» off; no other identifier and no push.
         project_text = (IOS / "project.yml").read_text(encoding="utf-8")
         for absent in ("UIBackgroundModes", "BGTaskScheduler", "fetch", "remote-notification"):
             self.assertNotIn(absent, project_text, f"project.yml: {absent}")
@@ -1793,6 +1849,14 @@ class IOSProjectTests(unittest.TestCase):
         self.assertIn("service.general(personal: false, includeTrenord: false)", alerts)
         for absent in ("LiveRailData", "stationNotices", "personal: true", "URLSession"):
             self.assertNotIn(absent, alerts)
+        self.assertIn("await TripMonitor.runInBackground(now: now)", alerts.split("static func run(now: Date = Date()) async {", 1)[1].split("guard await notificationsAllowed()", 1)[0])
+        self.assertIn("if let next = TripBackgroundSchedule.nextRunAt(now) { dates.append(next) }", alerts)
+        trips = app["TripMonitor.swift"]
+        self.assertIn("private var liveData: (any LiveRailProviding)? { model?.tripLiveData }", trips)
+        self.assertIn("var tripLiveData: (any LiveRailProviding)? { liveDataEnabled ? liveData : nil }", model)
+        self.assertEqual(4, trips.count("await liveData."), "train status, notices, board, approach lookup")
+        for absent in ("LiveRailData", "URLSession", "BGTask", "registerForRemoteNotifications", "pushType: .token"):
+            self.assertNotIn(absent, trips)
         self.assertEqual(1, app["BinarioApp.swift"].count(".backgroundTask(.appRefresh(EveningAlerts.taskIdentifier))"))
         self.assertEqual(["BinarioApp.swift"], sorted(name for name, source in app.items() if ".backgroundTask(" in source))
 

@@ -33,6 +33,8 @@ struct BinarioApp: App {
                 .environmentObject(model)
                 .environmentObject(notices)
                 .environmentObject(extras)
+                // The trip notifications and alarms (TripMonitor.swift), made at launch by AppModel.bootstrap.
+                .environmentObject(TripMonitor.shared)
         }
         // The evening alerts' one background app refresh task (EveningAlerts.swift): planned again
         // each time the app leaves the screen, run by iOS from the hour asked for.

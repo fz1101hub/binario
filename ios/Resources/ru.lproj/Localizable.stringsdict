@@ -462,5 +462,85 @@
 			<string>За последние %1$lld дня, по прибытии на конечную остановку каждого поезда. Нажмите на поезд, чтобы открыть его.</string>
 		</dict>
 	</dict>
+	<key>result.trip.minutes</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%1$lld мин</string>
+			<key>few</key>
+			<string>%1$lld мин</string>
+			<key>many</key>
+			<string>%1$lld мин</string>
+			<key>other</key>
+			<string>%1$lld мин</string>
+		</dict>
+	</dict>
+	<key>result.trip.countdown_stops</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>Выходите через %1$lld остановку</string>
+			<key>few</key>
+			<string>Выходите через %1$lld остановки</string>
+			<key>many</key>
+			<string>Выходите через %1$lld остановок</string>
+			<key>other</key>
+			<string>Выходите через %1$lld остановки</string>
+		</dict>
+	</dict>
+	<key>notices.alerts.train_title</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%1$lld новое объявление по %2$@</string>
+			<key>few</key>
+			<string>%1$lld новых объявления по %2$@</string>
+			<key>many</key>
+			<string>%1$lld новых объявлений по %2$@</string>
+			<key>other</key>
+			<string>%1$lld нового объявления по %2$@</string>
+		</dict>
+	</dict>
+	<key>notices.alerts.status_delay</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>опоздание %1$lld минута</string>
+			<key>few</key>
+			<string>опоздание %1$lld минуты</string>
+			<key>many</key>
+			<string>опоздание %1$lld минут</string>
+			<key>other</key>
+			<string>опоздание %1$lld минуты</string>
+		</dict>
+	</dict>
 </dict>
 </plist>

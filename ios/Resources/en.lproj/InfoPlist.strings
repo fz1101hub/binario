@@ -1,2 +1,2 @@
 "Agenda" = "Agenda";
-"NSLocationWhenInUseUsageDescription" = "Binario uses your location once, when you ask for the nearest station, to find it in the station list stored on your phone. Your location is not saved or sent.";
+"NSLocationWhenInUseUsageDescription" = "Binario uses your location when you ask for the nearest station and, if you turn on the estimate from your position, during the trip you follow with the app open. Your location stays on the phone: it is neither saved nor sent.";
