@@ -338,7 +338,7 @@ DATI E TRASPARENZA
 • Ogni risultato indica la fonte e la natura del dato. Gli orari hanno una scadenza, visibile nelle impostazioni: un aggiornamento dell'app porta gli orari nuovi.
 
 PRIVACY
-• Nessun account, nessuna pubblicità, nessuna analisi d'uso. I dati in tempo reale si chiedono solo con l'app aperta, inviando alle fonti soltanto un numero di treno o un codice di stazione, e si spengono nelle impostazioni.
+• Nessun account, nessuna pubblicità, nessuna analisi d'uso. I dati in tempo reale si chiedono con l'app aperta (e in background solo per i treni scelti nelle notifiche del viaggio), inviando alle fonti soltanto un numero di treno o un codice di stazione, e si spengono nelle impostazioni.
 • Tratte e preferenze restano sull'iPhone; i backup di sistema possono includerle.
 • L'orario completo di un paese confinante si scarica da GitHub solo quando tocchi «Scarica»: GitHub vede l'indirizzo IP e il paese scelto.
 
@@ -367,7 +367,7 @@ DATA AND TRANSPARENCY
 • Every result states its source and the nature of the data. Timetables expire, as shown in Settings: an app update brings the new ones.
 
 PRIVACY
-• No account, no advertising, no analytics. Real-time data is requested only while the app is open, sending the sources nothing but a train number or a station code, and can be turned off in Settings.
+• No account, no advertising, no analytics. Real-time data is requested while the app is open (and in the background only for the trains chosen for trip notifications), sending the sources nothing but a train number or a station code, and can be turned off in Settings.
 • Routes and preferences stay on the iPhone; system backups may include them.
 • A neighbouring country's full timetable is downloaded from GitHub only when you ask for it with a tap: GitHub sees your IP address and the chosen country.
 
@@ -396,7 +396,7 @@ DATEN UND TRANSPARENZ
 • Jedes Ergebnis nennt Quelle und Art der Daten. Fahrpläne laufen ab, wie in den Einstellungen angezeigt: Ein App-Update bringt die neuen.
 
 DATENSCHUTZ
-• Kein Konto, keine Werbung, keine Nutzungsanalyse. Echtzeitdaten werden nur bei geöffneter App abgefragt, die Quellen erhalten nur eine Zugnummer oder einen Bahnhofscode, und sie lassen sich in den Einstellungen ausschalten.
+• Kein Konto, keine Werbung, keine Nutzungsanalyse. Echtzeitdaten werden bei geöffneter App abgefragt (im Hintergrund nur für die für Reisemitteilungen gewählten Züge), die Quellen erhalten nur eine Zugnummer oder einen Bahnhofscode, und sie lassen sich in den Einstellungen ausschalten.
 • Strecken und Einstellungen bleiben auf dem iPhone; Systembackups können sie enthalten.
 • Der vollständige Fahrplan eines Nachbarlandes wird nur nach deinem Tippen von GitHub geladen: GitHub sieht die IP-Adresse und das gewählte Land.
 
@@ -425,7 +425,7 @@ DONNÉES ET TRANSPARENCE
 • Chaque résultat indique sa source et la nature de la donnée. Les horaires expirent, comme indiqué dans les réglages : une mise à jour de l'app apporte les nouveaux.
 
 CONFIDENTIALITÉ
-• Pas de compte, pas de publicité, pas d'analyse d'usage. Les données en temps réel ne sont demandées qu'avec l'app ouverte, en n'envoyant aux sources qu'un numéro de train ou un code de gare, et se désactivent dans les réglages.
+• Pas de compte, pas de publicité, pas d'analyse d'usage. Les données en temps réel sont demandées avec l'app ouverte (et en arrière-plan seulement pour les trains choisis pour les notifications de trajet), en n'envoyant aux sources qu'un numéro de train ou un code de gare, et se désactivent dans les réglages.
 • Trajets et réglages restent sur l'iPhone ; les sauvegardes système peuvent les inclure.
 • L'horaire complet d'un pays voisin n'est téléchargé depuis GitHub que lorsque vous le demandez d'un toucher : GitHub voit l'adresse IP et le pays choisi.
 
@@ -454,7 +454,7 @@ DATOS Y TRANSPARENCIA
 • Cada resultado indica su fuente y la naturaleza del dato. Los horarios caducan, como se muestra en los ajustes: una actualización de la app trae los nuevos.
 
 PRIVACIDAD
-• Sin cuenta, sin publicidad, sin análisis de uso. Los datos en tiempo real se piden solo con la app abierta, enviando a las fuentes únicamente un número de tren o un código de estación, y se desactivan en los ajustes.
+• Sin cuenta, sin publicidad, sin análisis de uso. Los datos en tiempo real se piden con la app abierta (y en segundo plano solo para los trenes elegidos para las notificaciones del viaje), enviando a las fuentes únicamente un número de tren o un código de estación, y se desactivan en los ajustes.
 • Las rutas y los ajustes permanecen en el iPhone; las copias de seguridad del sistema pueden incluirlos.
 • El horario completo de un país vecino se descarga de GitHub solo cuando lo pides con un toque: GitHub ve la dirección IP y el país elegido.
 
@@ -628,7 +628,7 @@ DADOS E TRANSPARÊNCIA
 • Cada resultado indica a fonte e a natureza dos dados. Os horários têm validade, visível nos Ajustes: uma atualização do app traz os novos.
 
 PRIVACIDADE
-• Sem conta, sem publicidade, sem análises. Os dados em tempo real são pedidos só com o app aberto, enviando às fontes apenas um número de trem ou um código de estação, e podem ser desativados nos Ajustes.
+• Sem conta, sem publicidade, sem análises. Os dados em tempo real são pedidos com o app aberto (e em segundo plano só para os trens escolhidos nas notificações da viagem), enviando às fontes apenas um número de trem ou um código de estação, e podem ser desativados nos Ajustes.
 • Trajetos e preferências ficam no iPhone; os backups do sistema podem incluí-los.
 • O horário completo de um país vizinho só é baixado do GitHub quando você pede com um toque: o GitHub vê o endereço IP e o país escolhido.
 
@@ -879,97 +879,97 @@ tàu hỏa,lịch tàu,đường sắt,nhà ga,đi làm,khu vực,tuyến,ngoạ
 #### Novità (it)
 
 ```text
-Prima pubblicazione di Binario 0.1.0 su App Store: pianificatore con gli orari GTFS ufficiali inclusi di Trenitalia, Italo e delle reti regionali ed estere, catalogo di 5.290 stazioni con segnalazione delle stazioni senza orari, partenze di una stazione, tratte e treni salvati e app per Apple Watch. Ritardi, soppressioni e binari in tempo reale da ViaggiaTreno, RFI e Italo, solo con l'app aperta e disattivabili nelle impostazioni. Nessun account, nessuna pubblicità.
+Prima pubblicazione di Binario 0.1.0 su App Store: pianificatore con gli orari GTFS ufficiali inclusi di Trenitalia, Italo e delle reti regionali ed estere, catalogo di 5.290 stazioni con segnalazione delle stazioni senza orari, partenze di una stazione, tratte e treni salvati e app per Apple Watch. Ritardi, soppressioni e binari in tempo reale da ViaggiaTreno, RFI e Italo, con l'app aperta (in background solo per i treni scelti nelle notifiche del viaggio) e disattivabili nelle impostazioni. Notifiche del viaggio: attività in tempo reale, sveglia alla fermata, «Avvisami quando sta arrivando», avvisi dei treni e avvisi pendolare. Nessun account, nessuna pubblicità.
 ```
 
 #### Novità (en)
 
 ```text
-First App Store release of Binario 0.1.0: planner with the bundled official GTFS timetables of Trenitalia, Italo and the regional and cross-border networks, a catalogue of 5,290 stations that flags those without timetables, station departures, saved routes and trains and an Apple Watch app. Real-time delays, cancellations and platforms from ViaggiaTreno, RFI and Italo, only while the app is open and with a switch to turn them off. No account, no ads.
+First App Store release of Binario 0.1.0: planner with the bundled official GTFS timetables of Trenitalia, Italo and the regional and cross-border networks, a catalogue of 5,290 stations that flags those without timetables, station departures, saved routes and trains and an Apple Watch app. Real-time delays, cancellations and platforms from ViaggiaTreno, RFI and Italo, while the app is open (in the background only for the trains chosen for trip notifications) and with a switch to turn them off. Trip notifications: Live Activity, stop alarm, arrival alert, train notices and commuter alerts. No account, no ads.
 ```
 
 #### Novità (de)
 
 ```text
-Erste App-Store-Veröffentlichung von Binario 0.1.0: Reiseplaner mit den enthaltenen offiziellen GTFS-Fahrplänen von Trenitalia, Italo und den regionalen und grenzüberschreitenden Netzen, Katalog mit 5.290 Bahnhöfen mit Kennzeichnung der Bahnhöfe ohne Fahrplan, Abfahrten eines Bahnhofs, gespeicherte Strecken und Züge und App für die Apple Watch. Verspätungen, Ausfälle und Gleise in Echtzeit von ViaggiaTreno, RFI und Italo, nur bei geöffneter App und abschaltbar. Kein Konto, keine Werbung.
+Erste App-Store-Veröffentlichung von Binario 0.1.0: Reiseplaner mit den enthaltenen offiziellen GTFS-Fahrplänen von Trenitalia, Italo und den regionalen und grenzüberschreitenden Netzen, Katalog mit 5.290 Bahnhöfen mit Kennzeichnung der Bahnhöfe ohne Fahrplan, Abfahrten eines Bahnhofs, gespeicherte Strecken und Züge und App für die Apple Watch. Verspätungen, Ausfälle und Gleise in Echtzeit von ViaggiaTreno, RFI und Italo, bei geöffneter App (im Hintergrund nur für die für Reisemitteilungen gewählten Züge) und abschaltbar. Reisemitteilungen: Live-Aktivität, Haltestellenwecker, Ankunftshinweis, Zughinweise und Pendlerhinweise. Kein Konto, keine Werbung.
 ```
 
 #### Novità (fr)
 
 ```text
-Première publication de Binario 0.1.0 sur l'App Store : planificateur avec les horaires GTFS officiels intégrés de Trenitalia, d'Italo et des réseaux régionaux et transfrontaliers, catalogue de 5 290 gares signalant celles sans horaires, départs d'une gare, trajets et trains enregistrés et app Apple Watch. Retards, suppressions et voies en temps réel de ViaggiaTreno, RFI et Italo, seulement avec l'app ouverte et désactivables. Pas de compte, pas de publicité.
+Première publication de Binario 0.1.0 sur l'App Store : planificateur avec les horaires GTFS officiels intégrés de Trenitalia, d'Italo et des réseaux régionaux et transfrontaliers, catalogue de 5 290 gares signalant celles sans horaires, départs d'une gare, trajets et trains enregistrés et app Apple Watch. Retards, suppressions et voies en temps réel de ViaggiaTreno, RFI et Italo, avec l'app ouverte (en arrière-plan seulement pour les trains choisis pour les notifications de trajet) et désactivables. Notifications de trajet : activité en direct, alarme d'arrêt, alerte d'arrivée, avis des trains et alertes de navetteur. Pas de compte, pas de publicité.
 ```
 
 #### Novità (es)
 
 ```text
-Primera publicación de Binario 0.1.0 en App Store: planificador con los horarios GTFS oficiales incluidos de Trenitalia, Italo y las redes regionales y transfronterizas, catálogo de 5.290 estaciones que señala las que no tienen horarios, salidas de una estación, rutas y trenes guardados y app para Apple Watch. Retrasos, cancelaciones y vías en tiempo real de ViaggiaTreno, RFI e Italo, solo con la app abierta y desactivables. Sin cuenta, sin publicidad.
+Primera publicación de Binario 0.1.0 en App Store: planificador con los horarios GTFS oficiales incluidos de Trenitalia, Italo y las redes regionales y transfronterizas, catálogo de 5.290 estaciones que señala las que no tienen horarios, salidas de una estación, rutas y trenes guardados y app para Apple Watch. Retrasos, cancelaciones y vías en tiempo real de ViaggiaTreno, RFI e Italo, con la app abierta (en segundo plano solo para los trenes elegidos para las notificaciones del viaje) y desactivables. Notificaciones del viaje: actividad en directo, alarma de parada, aviso de llegada, avisos de trenes y avisos de viajero habitual. Sin cuenta, sin publicidad.
 ```
 
 #### Novità (ar)
 
 ```text
-أول إصدار من Binario 0.1.0 على App Store: مخطِّط بجداول GTFS الرسمية المضمَّنة لـ Trenitalia وItalo والشبكات الإقليمية والعابرة للحدود، وكتالوج يضم 5290 محطة يشير إلى المحطات التي لا تتوفر لها مواعيد، ومغادرات المحطة، ومسارات وقطارات محفوظة وتطبيق لـ Apple Watch. تأخيرات وإلغاءات وأرصفة مباشرة من ViaggiaTreno وRFI وItalo، فقط والتطبيق مفتوح ويمكن إيقافها. بلا حساب وبلا إعلانات.
+أول إصدار من Binario 0.1.0 على App Store: مخطِّط بجداول GTFS الرسمية المضمَّنة لـ Trenitalia وItalo والشبكات الإقليمية والعابرة للحدود، وكتالوج يضم 5290 محطة يشير إلى المحطات التي لا تتوفر لها مواعيد، ومغادرات المحطة، ومسارات وقطارات محفوظة وتطبيق لـ Apple Watch. تأخيرات وإلغاءات وأرصفة مباشرة من ViaggiaTreno وRFI وItalo، والتطبيق مفتوح (وفي الخلفية فقط للقطارات المختارة في إشعارات الرحلة) ويمكن إيقافها. إشعارات الرحلة: نشاط مباشر، ومنبّه المحطة، وتنبيه الوصول، وتنبيهات القطارات وتنبيهات التنقل اليومي. بلا حساب وبلا إعلانات.
 ```
 
 #### Novità (hi)
 
 ```text
-App Store पर Binario 0.1.0 की पहली रिलीज़: Trenitalia, Italo और क्षेत्रीय व सीमा-पार नेटवर्क की शामिल आधिकारिक GTFS समय-सारणियों वाला प्लानर, 5,290 स्टेशनों का कैटलॉग जो बिना समय-सारणी वाले स्टेशनों को चिह्नित करता है, स्टेशन के प्रस्थान, सहेजे गए रूट और ट्रेनें तथा Apple Watch ऐप। ViaggiaTreno, RFI और Italo से रीयल-टाइम देरी, रद्दीकरण और प्लेटफ़ॉर्म, केवल ऐप खुला होने पर और बंद करने के विकल्प के साथ। न खाता, न विज्ञापन।
+App Store पर Binario 0.1.0 की पहली रिलीज़: Trenitalia, Italo और क्षेत्रीय व सीमा-पार नेटवर्क की शामिल आधिकारिक GTFS समय-सारणियों वाला प्लानर, 5,290 स्टेशनों का कैटलॉग जो बिना समय-सारणी वाले स्टेशनों को चिह्नित करता है, स्टेशन के प्रस्थान, सहेजे गए रूट और ट्रेनें तथा Apple Watch ऐप। ViaggiaTreno, RFI और Italo से रीयल-टाइम देरी, रद्दीकरण और प्लेटफ़ॉर्म, ऐप खुला होने पर (बैकग्राउंड में केवल यात्रा सूचनाओं के लिए चुनी गई ट्रेनों के लिए) और बंद करने के विकल्प के साथ। यात्रा सूचनाएँ: लाइव एक्टिविटी, स्टॉप अलार्म, आगमन सूचना, ट्रेन सूचनाएँ और रोज़ाना यात्री सूचनाएँ। न खाता, न विज्ञापन।
 ```
 
 #### Novità (id)
 
 ```text
-Rilis pertama Binario 0.1.0 di App Store: perencana dengan jadwal GTFS resmi yang disertakan dari Trenitalia, Italo, serta jaringan regional dan lintas batas, katalog 5.290 stasiun yang menandai stasiun tanpa jadwal, keberangkatan stasiun, rute dan kereta tersimpan, dan aplikasi Apple Watch. Keterlambatan, pembatalan, dan peron real-time dari ViaggiaTreno, RFI, dan Italo, hanya saat aplikasi terbuka dan dapat dimatikan. Tanpa akun, tanpa iklan.
+Rilis pertama Binario 0.1.0 di App Store: perencana dengan jadwal GTFS resmi yang disertakan dari Trenitalia, Italo, serta jaringan regional dan lintas batas, katalog 5.290 stasiun yang menandai stasiun tanpa jadwal, keberangkatan stasiun, rute dan kereta tersimpan, dan aplikasi Apple Watch. Keterlambatan, pembatalan, dan peron real-time dari ViaggiaTreno, RFI, dan Italo, saat aplikasi terbuka (di latar belakang hanya untuk kereta yang dipilih untuk notifikasi perjalanan) dan dapat dimatikan. Notifikasi perjalanan: Aktivitas Langsung, alarm halte, peringatan kedatangan, pemberitahuan kereta, dan peringatan komuter. Tanpa akun, tanpa iklan.
 ```
 
 #### Novità (ja)
 
 ```text
-Binario 0.1.0 を App Store で初めて公開しました。Trenitalia、Italo、地域路線と国境を越える鉄道網の公式 GTFS 時刻表を収録した経路検索、時刻表のない駅を表示する 5,290 駅のカタログ、駅の発車案内、ルートと列車の保存、Apple Watch アプリを備えています。ViaggiaTreno、RFI、Italo によるリアルタイムの遅延、運休、番線は、アプリを開いているときだけ取得し、オフにもできます。アカウント不要、広告なし。
+Binario 0.1.0 を App Store で初めて公開しました。Trenitalia、Italo、地域路線と国境を越える鉄道網の公式 GTFS 時刻表を収録した経路検索、時刻表のない駅を表示する 5,290 駅のカタログ、駅の発車案内、ルートと列車の保存、Apple Watch アプリを備えています。ViaggiaTreno、RFI、Italo によるリアルタイムの遅延、運休、番線は、アプリを開いているとき（バックグラウンドでは旅程通知で選んだ列車のみ）に取得し、オフにもできます。旅程通知：ライブアクティビティ、降車駅アラーム、到着通知、列車のお知らせ、通勤通知。アカウント不要、広告なし。
 ```
 
 #### Novità (ko)
 
 ```text
-App Store에 Binario 0.1.0을 처음 출시합니다. Trenitalia, Italo, 지역 및 국경 간 철도망의 공식 GTFS 시간표를 담은 플래너, 시간표가 없는 역을 표시하는 5,290개 역 카탈로그, 역 출발 안내, 경로와 열차 저장, Apple Watch 앱을 제공합니다. ViaggiaTreno, RFI, Italo의 실시간 지연, 운행 취소, 승강장 정보는 앱이 열려 있을 때만 요청하며 끌 수 있습니다. 계정과 광고가 없습니다.
+App Store에 Binario 0.1.0을 처음 출시합니다. Trenitalia, Italo, 지역 및 국경 간 철도망의 공식 GTFS 시간표를 담은 플래너, 시간표가 없는 역을 표시하는 5,290개 역 카탈로그, 역 출발 안내, 경로와 열차 저장, Apple Watch 앱을 제공합니다. ViaggiaTreno, RFI, Italo의 실시간 지연, 운행 취소, 승강장 정보는 앱이 열려 있을 때 요청하며(백그라운드에서는 여정 알림으로 선택한 열차만) 끌 수 있습니다. 여정 알림: 실시간 현황, 하차역 알람, 도착 알림, 열차 공지, 통근 알림. 계정과 광고가 없습니다.
 ```
 
 #### Novità (pt-BR)
 
 ```text
-Primeira versão do Binario 0.1.0 na App Store: planejador com os horários GTFS oficiais incluídos da Trenitalia, da Italo e das redes regionais e internacionais, catálogo de 5.290 estações que sinaliza as que não têm horários, partidas de uma estação, trajetos e trens salvos e app para Apple Watch. Atrasos, cancelamentos e plataformas em tempo real de ViaggiaTreno, RFI e Italo, só com o app aberto e desativáveis. Sem conta, sem anúncios.
+Primeira versão do Binario 0.1.0 na App Store: planejador com os horários GTFS oficiais incluídos da Trenitalia, da Italo e das redes regionais e internacionais, catálogo de 5.290 estações que sinaliza as que não têm horários, partidas de uma estação, trajetos e trens salvos e app para Apple Watch. Atrasos, cancelamentos e plataformas em tempo real de ViaggiaTreno, RFI e Italo, com o app aberto (em segundo plano só para os trens escolhidos nas notificações da viagem) e desativáveis. Notificações da viagem: Atividade ao Vivo, alarme de parada, aviso de chegada, avisos de trens e avisos de passageiro frequente. Sem conta, sem anúncios.
 ```
 
 #### Novità (ru)
 
 ```text
-Первый выпуск Binario 0.1.0 в App Store: планировщик со встроенными официальными расписаниями GTFS Trenitalia, Italo, региональных и трансграничных сетей, каталог из 5 290 станций с отметкой станций без расписания, отправления со станции, сохранённые маршруты и поезда и приложение для Apple Watch. Опоздания, отмены и пути в реальном времени от ViaggiaTreno, RFI и Italo, только при открытом приложении и с возможностью отключения. Без аккаунта и рекламы.
+Первый выпуск Binario 0.1.0 в App Store: планировщик со встроенными официальными расписаниями GTFS Trenitalia, Italo, региональных и трансграничных сетей, каталог из 5 290 станций с отметкой станций без расписания, отправления со станции, сохранённые маршруты и поезда и приложение для Apple Watch. Опоздания, отмены и пути в реальном времени от ViaggiaTreno, RFI и Italo, при открытом приложении (в фоне — только для поездов, выбранных для уведомлений о поездке) и с возможностью отключения. Уведомления о поездке: активность в реальном времени, будильник остановки, уведомление о прибытии, объявления по поездам и напоминания для поездок на работу. Без аккаунта и рекламы.
 ```
 
 #### Novità (th)
 
 ```text
-Binario 0.1.0 เปิดตัวครั้งแรกบน App Store: ตัววางแผนพร้อมตารางเวลา GTFS อย่างเป็นทางการที่รวมมาของ Trenitalia, Italo และเครือข่ายระดับภูมิภาคและข้ามพรมแดน แค็ตตาล็อก 5,290 สถานีที่ระบุสถานีที่ไม่มีตารางเวลา ขบวนออกจากสถานี การบันทึกเส้นทางและรถไฟ และแอป Apple Watch ความล่าช้า การยกเลิก และชานชาลาแบบเรียลไทม์จาก ViaggiaTreno, RFI และ Italo เฉพาะเมื่อเปิดแอปและปิดได้ ไม่มีบัญชี ไม่มีโฆษณา
+Binario 0.1.0 เปิดตัวครั้งแรกบน App Store: ตัววางแผนพร้อมตารางเวลา GTFS อย่างเป็นทางการที่รวมมาของ Trenitalia, Italo และเครือข่ายระดับภูมิภาคและข้ามพรมแดน แค็ตตาล็อก 5,290 สถานีที่ระบุสถานีที่ไม่มีตารางเวลา ขบวนออกจากสถานี การบันทึกเส้นทางและรถไฟ และแอป Apple Watch ความล่าช้า การยกเลิก และชานชาลาแบบเรียลไทม์จาก ViaggiaTreno, RFI และ Italo เมื่อเปิดแอป (ในพื้นหลังเฉพาะรถไฟที่เลือกไว้สำหรับการแจ้งเตือนการเดินทาง) และปิดได้ การแจ้งเตือนการเดินทาง: กิจกรรมสด นาฬิกาปลุกสถานี การแจ้งเตือนการมาถึง ประกาศรถไฟ และการแจ้งเตือนผู้เดินทางประจำ ไม่มีบัญชี ไม่มีโฆษณา
 ```
 
 #### Novità (tr)
 
 ```text
-Binario 0.1.0'ın App Store'daki ilk sürümü: Trenitalia, Italo ile bölgesel ve sınır ötesi ağların dahil edilen resmî GTFS tarifeleriyle planlayıcı, tarifesi olmayan istasyonları işaretleyen 5.290 istasyonluk katalog, istasyon kalkışları, kayıtlı güzergâhlar ile trenler ve Apple Watch uygulaması. ViaggiaTreno, RFI ve Italo'dan gerçek zamanlı gecikme, iptal ve peronlar; yalnızca uygulama açıkken ve kapatılabilir. Hesap yok, reklam yok.
+Binario 0.1.0'ın App Store'daki ilk sürümü: Trenitalia, Italo ile bölgesel ve sınır ötesi ağların dahil edilen resmî GTFS tarifeleriyle planlayıcı, tarifesi olmayan istasyonları işaretleyen 5.290 istasyonluk katalog, istasyon kalkışları, kayıtlı güzergâhlar ile trenler ve Apple Watch uygulaması. ViaggiaTreno, RFI ve Italo'dan gerçek zamanlı gecikme, iptal ve peronlar; uygulama açıkken (arka planda yalnızca yolculuk bildirimleri için seçilen trenler) ve kapatılabilir. Yolculuk bildirimleri: Canlı Etkinlik, durak alarmı, varış uyarısı, tren duyuruları ve işe gidiş uyarıları. Hesap yok, reklam yok.
 ```
 
 #### Novità (vi)
 
 ```text
-Phát hành Binario 0.1.0 lần đầu trên App Store: trình lập kế hoạch với lịch trình GTFS chính thức có sẵn của Trenitalia, Italo và các mạng lưới khu vực và xuyên biên giới, danh mục 5.290 ga có đánh dấu các ga không có lịch trình, giờ tàu đi tại ga, lưu tuyến và tàu, cùng ứng dụng Apple Watch. Thông tin trễ, hủy chuyến và sân ga theo thời gian thực từ ViaggiaTreno, RFI và Italo, chỉ khi ứng dụng đang mở và có thể tắt. Không tài khoản, không quảng cáo.
+Phát hành Binario 0.1.0 lần đầu trên App Store: trình lập kế hoạch với lịch trình GTFS chính thức có sẵn của Trenitalia, Italo và các mạng lưới khu vực và xuyên biên giới, danh mục 5.290 ga có đánh dấu các ga không có lịch trình, giờ tàu đi tại ga, lưu tuyến và tàu, cùng ứng dụng Apple Watch. Thông tin trễ, hủy chuyến và sân ga theo thời gian thực từ ViaggiaTreno, RFI và Italo, khi ứng dụng đang mở (ở chế độ nền chỉ cho các tàu được chọn cho thông báo chuyến đi) và có thể tắt. Thông báo chuyến đi: Hoạt động trực tiếp, báo thức ga xuống, cảnh báo tàu đến, thông báo về tàu và nhắc nhở đi làm. Không tài khoản, không quảng cáo.
 ```
 
 #### Novità (zh-Hans)
 
 ```text
-Binario 0.1.0 首次在 App Store 发布：规划工具，内含 Trenitalia、Italo 以及区域和跨境铁路网的官方 GTFS 时刻表；5,290 个车站的目录，并标出没有时刻表的车站；车站出发信息、路线和列车保存功能及 Apple Watch App。来自 ViaggiaTreno、RFI 和 Italo 的实时晚点、停运和站台信息，仅在 App 打开时获取，并可关闭。无需账户，没有广告。
+Binario 0.1.0 首次在 App Store 发布：规划工具，内含 Trenitalia、Italo 以及区域和跨境铁路网的官方 GTFS 时刻表；5,290 个车站的目录，并标出没有时刻表的车站；车站出发信息、路线和列车保存功能及 Apple Watch App。来自 ViaggiaTreno、RFI 和 Italo 的实时晚点、停运和站台信息，在 App 打开时获取（后台仅针对在行程通知中选择的列车），并可关闭。行程通知：实时活动、下车站提醒、到站提醒、列车通知和通勤提醒。无需账户，没有广告。
 ```
 
 ## 3. Grafica del listing
@@ -994,14 +994,14 @@ Binario 0.1.0 首次在 App Store 发布：规划工具，内含 Trenitalia、It
 #### Note per la revisione
 
 ```text
-Binario è un pianificatore ferroviario con gli orari inclusi nell'app: senza account né login. Con "Dati in tempo reale" attivo (Impostazioni, attivo di serie) l'app, solo in primo piano, chiede ritardi e binari alle fonti pubbliche ViaggiaTreno (Trenitalia), RFI, Italo, transport.opendata.ch e ai feed aperti STA, SNCF e Trenitalia France inviando solo un numero di treno o un codice di stazione, senza dati dell'utente; spento, non chiede nulla a queste fonti. Avvisi: feed pubblici RFI e MIT e, con i dati attivi, Trenitalia e Trenord. Meteo a destinazione: Open-Meteo riceve solo le coordinate della stazione di arrivo, arrotondate. Bici in condivisione: dopo un tocco, i feed GBFS pubblici della città, senza dati. "Treni in movimento": posizioni stimate dall'orario sul dispositivo, su mappa Apple. Promemoria serali (scioperi alle 18, lavori sulle tratte salvate alle 19): l'unico aggiornamento in background (fetch) legge i feed MIT e RFI e mostra notifiche locali, nessuna push. Orari: dati programmati (GTFS ufficiali di Trenitalia, Italo e delle reti regionali ed estere); metro e tram solo di alcune città. Tratte di prova: Milano Centrale → Bergamo (Trenord) e Bolzano Bozen → Merano Meran (STA), con data e ora attuali. Apple Watch: attivare "Condividi le tratte con Apple Watch" in Impostazioni › Privacy e cercare per l'orario corrente, oppure tenere premuta una tratta salvata e scegliere "Mostra su Watch". "Partenze": Milano Centrale per i prossimi treni; un tocco apre il treno, la stella lo salva in "I miei treni". "In orario … volte su …" sono statistiche non ufficiali incluse nell'app. Eccezione ATS (solo www.viaggiatreno.it, senza sottodomini): ViaggiaTreno reindirizza alcune richieste HTTPS alla stessa risorsa in HTTP e l'app segue solo quel salto, in sola lettura, senza dati dell'utente.
+Binario è un pianificatore ferroviario con gli orari inclusi nell'app: senza account né login. Con "Dati in tempo reale" attivo (Impostazioni, attivo di serie) l'app chiede ritardi e binari alle fonti pubbliche ViaggiaTreno (Trenitalia), RFI, Italo, transport.opendata.ch e ai feed aperti STA, SNCF e Trenitalia France inviando solo un numero di treno o un codice di stazione, senza dati dell'utente; spento, non chiede nulla a queste fonti. Avvisi: feed pubblici RFI e MIT e, con i dati attivi, Trenitalia e Trenord. Meteo a destinazione: Open-Meteo riceve solo le coordinate della stazione di arrivo, arrotondate. Bici in condivisione: dopo un tocco, i feed GBFS pubblici della città, senza dati. "Treni in movimento": posizioni stimate dall'orario sul dispositivo, su mappa Apple. Promemoria serali (scioperi alle 18, lavori sulle tratte salvate alle 19): l'unico aggiornamento in background (fetch) legge i feed MIT e RFI e mostra notifiche locali, nessuna push. Notifiche del viaggio (dettaglio di un treno: Live Activity, sveglia fermata, «sta arrivando», campanella; avvisi pendolare): notifiche locali, stesso fetch; posizione «mentre usi l'app» solo per la stima del viaggio seguito. Orari: dati programmati (GTFS ufficiali di Trenitalia, Italo e delle reti regionali ed estere); metro e tram solo di alcune città. Tratte di prova: Milano Centrale → Bergamo (Trenord) e Bolzano Bozen → Merano Meran (STA), con data e ora attuali. Apple Watch: attivare "Condividi le tratte con Apple Watch" in Impostazioni › Privacy e cercare per l'orario corrente, oppure tenere premuta una tratta salvata e scegliere "Mostra su Watch". "Partenze": Milano Centrale per i prossimi treni; un tocco apre il treno, la stella lo salva in "I miei treni". "In orario … volte su …" sono statistiche non ufficiali incluse nell'app. Eccezione ATS (solo www.viaggiatreno.it, senza sottodomini): ViaggiaTreno reindirizza alcune richieste HTTPS alla stessa risorsa in HTTP e l'app segue solo quel salto, in sola lettura, senza dati dell'utente.
 
-Binario is a rail journey planner with its timetables bundled in the app: no account, no login. With "Real-time data" on (Settings, on by default) the app, only in the foreground, asks the public sources ViaggiaTreno (Trenitalia), RFI, Italo, transport.opendata.ch and the open STA, SNCF and Trenitalia France feeds for delays and platforms, sending only a train number or a station code, no user data; turned off, it asks nothing of these sources. Notices: public RFI and MIT feeds and, with the data on, Trenitalia and Trenord. Weather at the destination: Open-Meteo receives only the arrival station's rounded coordinates. Bike sharing: after a tap, the city's public GBFS feeds, no user data. "Trains in motion": positions estimated on the device from the timetable, on Apple's map. Evening alerts (strikes at 18:00, works on saved routes at 19:00): the only background refresh (fetch) reads the MIT and RFI feeds and posts local notifications, no push. Timetables: scheduled data (official GTFS feeds of Trenitalia, Italo and the regional and cross-border networks); metro and tram only for some cities. Covered test routes: Milano Centrale → Bergamo (Trenord) and Bolzano Bozen → Merano Meran (STA), at the current date and time. Apple Watch: turn on "Share routes with Apple Watch" in Settings › Privacy and search for now, or touch and hold a saved route and choose "Show on Watch". "Departures": Milano Centrale for the next trains; a tap opens the train, its star saves it in "My trains". "On time … times out of …" are unofficial statistics bundled with the app. ATS exception (www.viaggiatreno.it only, no subdomains): ViaggiaTreno redirects some HTTPS requests to the same resource over HTTP and the app follows only that hop, read-only, with no user data.
+Binario is a rail journey planner with its timetables bundled in the app: no account, no login. With "Real-time data" on (Settings, on by default) the app asks the public sources ViaggiaTreno (Trenitalia), RFI, Italo, transport.opendata.ch and the open STA, SNCF and Trenitalia France feeds for delays and platforms, sending only a train number or a station code, no user data; turned off, it asks nothing of these sources. Notices: public RFI and MIT feeds and, with the data on, Trenitalia and Trenord. Weather at the destination: Open-Meteo receives only the arrival station's rounded coordinates. Bike sharing: after a tap, the city's public GBFS feeds, no user data. "Trains in motion": positions estimated on the device from the timetable, on Apple's map. Evening alerts (strikes at 18:00, works on saved routes at 19:00): the only background refresh (fetch) reads the MIT and RFI feeds and posts local notifications, no push. Trip notifications (train detail: Live Activity, stop alarm, arrival alert, bell; commuter alerts): local notifications, same fetch; when-in-use location only for the followed trip's estimate. Timetables: scheduled data (official GTFS feeds of Trenitalia, Italo and the regional and cross-border networks); metro and tram only for some cities. Covered test routes: Milano Centrale → Bergamo (Trenord) and Bolzano Bozen → Merano Meran (STA), at the current date and time. Apple Watch: turn on "Share routes with Apple Watch" in Settings › Privacy and search for now, or touch and hold a saved route and choose "Show on Watch". "Departures": Milano Centrale for the next trains; a tap opens the train, its star saves it in "My trains". "On time … times out of …" are unofficial statistics bundled with the app. ATS exception (www.viaggiatreno.it only, no subdomains): ViaggiaTreno redirects some HTTPS requests to the same resource over HTTP and the app follows only that hop, read-only, with no user data.
 ```
 
-Le note restano entro i 4.000 caratteri del campo e non descrivono l'Agenda. Se la revisione chiede della modalità in background: l'unico compito è l'aggiornamento in background dei promemoria serali (Impostazioni › «Scioperi del giorno dopo», «Lavori di domani sulle tue tratte»), che legge due feed pubblici e mostra notifiche locali; si spegne con i suoi interruttori. *The only background task is the evening alerts' background app refresh, which reads two public feeds and posts local notifications.* Se la revisione chiede del permesso per le notifiche: i promemoria dell'Agenda (Tratte › Agenda › "+", campo "Promemoria") sono notifiche locali programmate sull'iPhone all'ora italiana di partenza meno l'anticipo; il permesso è chiesto solo quando si salva un viaggio con un promemoria; non ci sono notifiche push né entitlement `aps-environment`. *The Agenda's reminders (Routes › Agenda › "+", "Reminder" field) are local notifications scheduled on the iPhone; permission is asked only when a journey with a reminder is saved; there are no push notifications.*
+Le note restano entro i 4.000 caratteri del campo e non descrivono l'Agenda. Se la revisione chiede della modalità in background: l'unico compito è l'aggiornamento in background dei promemoria serali (Impostazioni › «Scioperi del giorno dopo», «Lavori di domani sulle tue tratte»), che legge due feed pubblici e mostra notifiche locali, e che esegue anche i controlli delle notifiche del viaggio attivate dall'utente (Impostazioni › Notifiche e sveglie, dettaglio di un treno): stato del treno scelto da ViaggiaTreno e Italo con il solo numero e il giorno, notifiche locali e aggiornamento della Live Activity, che l'app aggiorna da sé senza push. *The only background task is the evening alerts' background app refresh, which reads two public feeds and posts local notifications; it also runs the trip checks the user turned on (the chosen train's status by number and day, local notifications, the Live Activity updated by the app, no push).* Se la revisione chiede del permesso per le notifiche: i promemoria dell'Agenda (Tratte › Agenda › "+", campo "Promemoria") sono notifiche locali programmate sull'iPhone all'ora italiana di partenza meno l'anticipo; il permesso è chiesto solo quando si salva un viaggio con un promemoria; non ci sono notifiche push né entitlement `aps-environment`. *The Agenda's reminders (Routes › Agenda › "+", "Reminder" field) are local notifications scheduled on the iPhone; permission is asked only when a journey with a reminder is saved; there are no push notifications.*
 
-Se la revisione chiede del permesso di localizzazione: «Stazione più vicina» (Pianifica e Agenda per la partenza, Partenze per la stazione) chiede il permesso «mentre usi l'app» solo al tocco, legge una sola posizione e sceglie sul dispositivo la stazione del catalogo incluso più vicina, entro 50 km; la posizione non viene salvata né inviata e non è mai usata in background. «Scrivi o detta la tratta» usa la dettatura della tastiera di sistema: l'app non chiede permessi per microfono o riconoscimento vocale. *"Nearest station" (Plan and Agenda for the origin, Departures for the station) asks for when-in-use location only when tapped, reads one position and picks the nearest bundled station on the device; the position is neither stored nor sent and never used in the background. "Type or dictate the route" uses the system keyboard's dictation: the app asks for no microphone or speech-recognition permission.*
+Se la revisione chiede del permesso di localizzazione: «Stazione più vicina» (Pianifica e Agenda per la partenza, Partenze per la stazione) chiede il permesso «mentre usi l'app» solo al tocco, legge una sola posizione e sceglie sul dispositivo la stazione del catalogo incluso più vicina, entro 50 km; la posizione non viene salvata né inviata e non è mai usata in background. «Stima dalla tua posizione» (dettaglio di un treno seguito) usa la posizione precisa «mentre usi l'app» solo con l'app aperta, la confronta sul dispositivo con il percorso del treno e non la conserva. «Scrivi o detta la tratta» usa la dettatura della tastiera di sistema: l'app non chiede permessi per microfono o riconoscimento vocale. *"Nearest station" (Plan and Agenda for the origin, Departures for the station) asks for when-in-use location only when tapped, reads one position and picks the nearest bundled station on the device; the position is neither stored nor sent and never used in the background. "Estimate from your position" (detail of a followed train) uses precise when-in-use location only while the app is open, compares it on the device with the train's route and keeps nothing. "Type or dictate the route" uses the system keyboard's dictation: the app asks for no microphone or speech-recognition permission.*
 
 ## 6. Apple Watch nel listing
 

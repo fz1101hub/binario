@@ -32,7 +32,7 @@ final class TripMonitor: ObservableObject {
 
     private weak var model: AppModel?
     private let store = TripAlertsStore()
-    private let location = TripLocationSession()
+    private let location: TripLocationSession
     /// The runs the last refresh read, in memory only: the position repaints the Live Activity without asking again.
     private var lastRuns: (tripID: String, runs: [LiveRunStatus?], at: Date)?
     private var loop: Task<Void, Never>?
@@ -42,6 +42,7 @@ final class TripMonitor: ObservableObject {
     private var lastRepaint: Date?
 
     private init() {
+        location = TripLocationSession()
         followedTrip = store.followedTrip
         stopAlarms = store.stopAlarms
         approachAlerts = store.approachAlerts
