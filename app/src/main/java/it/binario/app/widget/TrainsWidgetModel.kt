@@ -12,6 +12,7 @@ import it.binario.app.data.ServiceStatus
 import it.binario.app.data.StopRouteChange
 import it.binario.app.data.TrainCategory
 import it.binario.app.data.TrainService
+import it.binario.app.shared.SharedData
 import it.binario.app.ui.common.LocalizedDates
 import java.time.Duration
 import java.time.Instant
@@ -210,7 +211,7 @@ data class TrainsWidgetStrings(
  * with the date of the data, and is never counted as running.
  */
 object TrainsWidgetPresenter {
-    private val arrivalGrace: Duration = Duration.ofMinutes(10)
+    private val arrivalGrace: Duration = Duration.ofMinutes(SharedData.Widgets.TRAINS_ARRIVAL_GRACE_MINUTES.toLong())
     private val timeFormatter = DateTimeFormatter.ofPattern("HH:mm").withZone(RailTime.defaultZone)
 
     /**
@@ -399,10 +400,10 @@ object TrainsWidgetPresenter {
  * asked for asks for every favourite. Italo is asked only for a train that may be one.
  */
 internal object TrainsWidgetLookupPlanner {
-    val BEFORE_DEPARTURE: Duration = Duration.ofHours(1)
-    val AFTER_ARRIVAL: Duration = Duration.ofMinutes(30)
-    val DEFAULT_DURATION: Duration = Duration.ofHours(3)
-    private val MAX_DURATION: Duration = Duration.ofHours(36)
+    val BEFORE_DEPARTURE: Duration = Duration.ofMinutes(SharedData.Widgets.LOOKUP_BEFORE_DEPARTURE_MINUTES.toLong())
+    val AFTER_ARRIVAL: Duration = Duration.ofMinutes(SharedData.Widgets.LOOKUP_AFTER_ARRIVAL_MINUTES.toLong())
+    val DEFAULT_DURATION: Duration = Duration.ofMinutes(SharedData.Widgets.LOOKUP_DEFAULT_DURATION_MINUTES.toLong())
+    private val MAX_DURATION: Duration = Duration.ofMinutes(SharedData.Widgets.LOOKUP_MAXIMUM_DURATION_MINUTES.toLong())
 
     /** The service day to ask for [monitor] at [now]; null when an automatic refresh leaves the train alone. */
     fun lookupDate(monitor: ServiceMonitor, status: FavouriteTrainStatus?, now: Instant, automatic: Boolean, zone: ZoneId = RailTime.defaultZone): LocalDate? {

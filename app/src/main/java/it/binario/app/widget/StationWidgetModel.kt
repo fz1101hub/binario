@@ -10,6 +10,7 @@ import it.binario.app.data.Station
 import it.binario.app.data.core.RunStatus
 import it.binario.app.data.repository.StationBoardAggregate
 import it.binario.app.data.repository.withoutExpiredObservations
+import it.binario.app.shared.SharedData
 import java.time.Instant
 import java.time.format.DateTimeFormatter
 
@@ -53,8 +54,8 @@ data class StationWidgetSnapshot(
         if (unavailable) Freshness.UNAVAILABLE else WidgetFreshness.fromAge(retrievedAt, nowEpochMillis)
 
     companion object {
-        const val MAX_STORED = 12
-        private const val DEPARTED_GRACE_MILLIS = 60_000L
+        const val MAX_STORED = SharedData.Widgets.STATION_STORED_DEPARTURES
+        private const val DEPARTED_GRACE_MILLIS = SharedData.Widgets.DEPARTED_GRACE_SECONDS * 1_000L
 
         /** The next departures of a freshly loaded board, without observations its sources already expired. */
         fun fromBoard(board: StationBoardAggregate, now: Instant): StationWidgetSnapshot {
@@ -159,8 +160,8 @@ data class StationWidgetStrings(
  * after a failed refresh, every row shows its timetable time marked as scheduled.
  */
 object StationWidgetPresenter {
-    const val MAX_ROWS = 4
-    private const val DEPARTED_GRACE_MILLIS = 60_000L
+    const val MAX_ROWS = SharedData.Widgets.STATION_MAXIMUM_ROWS
+    private const val DEPARTED_GRACE_MILLIS = SharedData.Widgets.DEPARTED_GRACE_SECONDS * 1_000L
     private val timeFormatter = DateTimeFormatter.ofPattern("HH:mm").withZone(RailTime.defaultZone)
     private val changedStatuses = setOf(RunStatus.PARTIALLY_CANCELLED, RunStatus.DIVERTED, RunStatus.REPLACED_BY_BUS)
 

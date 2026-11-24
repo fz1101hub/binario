@@ -1,0 +1,1246 @@
+{
+  "schema": "binario-shared-rules-v1",
+  "description": "The rules of the three home-screen widgets both phones run (Android's app/src/main/java/it/binario/app/widget/, the iPhone's WidgetKit extension through BinarioKit's WidgetRules.swift): when an automatic refresh may run and when the next one is due (one or two daily windows on the chosen days, a window ending before it starts goes on after midnight and belongs to the day it starts on, the interval counted from the last refresh, a window start in the hour daylight saving skips moves on with the clocks), the automatic return direction («Mostra il ritorno dalle») and the manual direction that holds until the next change, the train type group of a board row from its operator and line code (a row of no known group is never hidden), which runs the route widget lists (hidden types, the time range, a departed train gone one minute after its departure or, with «fino all'arrivo», kept «In viaggio» until its arrival unless cancelled), which departures the station widget lists (live times only while the data are fresh or aging), when a favourite train is running, which service day a refresh asks for a favourite, what one run of the scheduler does for one widget and when it runs next, the retries of a refresh the user asked for, and how fresh the data of a widget are. Times are railway-local (Europe/Rome); the numbers are contracts/shared-data/v1/widgets-v1.json.",
+  "readers": [
+    "app/src/test/java/it/binario/app/widget/WidgetRulesContractTest.kt",
+    "ios/BinarioKit/Tests/BinarioKitTests/WidgetRulesContractTests.swift"
+  ],
+  "settings": {
+    "commuter": {
+      "mode": "WINDOWS",
+      "intervalMinutes": 30,
+      "days": [
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "windows": [
+        [
+          "07:00",
+          "09:30"
+        ],
+        [
+          "17:00",
+          "19:30"
+        ]
+      ]
+    },
+    "night": {
+      "mode": "WINDOWS",
+      "intervalMinutes": 30,
+      "days": [
+        5
+      ],
+      "windows": [
+        [
+          "22:00",
+          "01:00"
+        ]
+      ]
+    },
+    "off": {
+      "mode": "OFF",
+      "intervalMinutes": 30,
+      "days": [
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "windows": [
+        [
+          "07:00",
+          "09:30"
+        ]
+      ]
+    },
+    "always": {
+      "mode": "ALWAYS",
+      "intervalMinutes": 15,
+      "days": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "windows": []
+    },
+    "noDays": {
+      "mode": "WINDOWS",
+      "intervalMinutes": 30,
+      "days": [],
+      "windows": [
+        [
+          "07:00",
+          "09:30"
+        ],
+        [
+          "17:00",
+          "19:30"
+        ]
+      ]
+    },
+    "dawn": {
+      "mode": "WINDOWS",
+      "intervalMinutes": 60,
+      "days": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "windows": [
+        [
+          "01:30",
+          "04:00"
+        ]
+      ]
+    },
+    "gap": {
+      "mode": "WINDOWS",
+      "intervalMinutes": 30,
+      "days": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "windows": [
+        [
+          "02:30",
+          "05:00"
+        ]
+      ]
+    },
+    "threeWindows": {
+      "mode": "WINDOWS",
+      "intervalMinutes": 15,
+      "days": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "windows": [
+        [
+          "06:00",
+          "07:00"
+        ],
+        [
+          "12:00",
+          "13:00"
+        ],
+        [
+          "20:00",
+          "21:00"
+        ]
+      ]
+    }
+  },
+  "isActiveAt": [
+    {
+      "settings": "commuter",
+      "at": "2026-11-02T07:00",
+      "expected": true
+    },
+    {
+      "settings": "commuter",
+      "at": "2026-11-02T09:29",
+      "expected": true
+    },
+    {
+      "settings": "commuter",
+      "at": "2026-11-02T09:30",
+      "expected": false,
+      "note": "the end of a window is excluded"
+    },
+    {
+      "settings": "commuter",
+      "at": "2026-11-02T12:00",
+      "expected": false
+    },
+    {
+      "settings": "commuter",
+      "at": "2026-11-06T18:15",
+      "expected": true
+    },
+    {
+      "settings": "commuter",
+      "at": "2026-11-07T08:00",
+      "expected": false,
+      "note": "Saturday is not a weekday"
+    },
+    {
+      "settings": "night",
+      "at": "2026-11-06T23:30",
+      "expected": true
+    },
+    {
+      "settings": "night",
+      "at": "2026-11-07T00:30",
+      "expected": true,
+      "note": "Saturday 00:30 continues Friday's window"
+    },
+    {
+      "settings": "night",
+      "at": "2026-11-07T01:00",
+      "expected": false
+    },
+    {
+      "settings": "night",
+      "at": "2026-11-06T00:30",
+      "expected": false,
+      "note": "Friday 00:30 continues Thursday's window, not chosen"
+    },
+    {
+      "settings": "night",
+      "at": "2026-11-07T23:00",
+      "expected": false
+    },
+    {
+      "settings": "off",
+      "at": "2026-11-02T08:00",
+      "expected": false
+    },
+    {
+      "settings": "always",
+      "at": "2026-11-07T03:00",
+      "expected": true
+    },
+    {
+      "settings": "noDays",
+      "at": "2026-11-02T08:00",
+      "expected": false
+    },
+    {
+      "settings": "threeWindows",
+      "at": "2026-11-02T12:30",
+      "expected": true
+    },
+    {
+      "settings": "threeWindows",
+      "at": "2026-11-02T20:30",
+      "expected": false,
+      "note": "only the first two windows count"
+    },
+    {
+      "settings": "dawn",
+      "at": "2026-03-29T03:10",
+      "expected": true,
+      "note": "after the clocks moved from 02:00 to 03:00"
+    }
+  ],
+  "nextDueAt": [
+    {
+      "settings": "commuter",
+      "lastRefresh": "2026-11-02T07:10",
+      "now": "2026-11-02T07:15",
+      "expected": "2026-11-02T07:40"
+    },
+    {
+      "settings": "commuter",
+      "lastRefresh": "2026-11-02T07:10",
+      "now": "2026-11-02T07:39",
+      "expected": "2026-11-02T07:40"
+    },
+    {
+      "settings": "commuter",
+      "lastRefresh": "2026-11-02T07:10",
+      "now": "2026-11-02T07:40",
+      "expected": "2026-11-02T07:40"
+    },
+    {
+      "settings": "commuter",
+      "lastRefresh": "2026-11-02T09:10",
+      "now": "2026-11-02T09:15",
+      "expected": "2026-11-02T17:00",
+      "note": "the interval ends after the window: the next window"
+    },
+    {
+      "settings": "commuter",
+      "lastRefresh": "2026-11-02T09:20",
+      "now": "2026-11-02T09:31",
+      "expected": "2026-11-02T17:00"
+    },
+    {
+      "settings": "commuter",
+      "lastRefresh": "2026-11-06T19:20",
+      "now": "2026-11-06T19:45",
+      "expected": "2026-11-09T07:00",
+      "note": "Friday evening to Monday morning"
+    },
+    {
+      "settings": "commuter",
+      "lastRefresh": null,
+      "now": "2026-11-02T08:00",
+      "expected": "2026-11-02T08:00",
+      "note": "never refreshed: due at once inside a window"
+    },
+    {
+      "settings": "commuter",
+      "lastRefresh": null,
+      "now": "2026-11-02T06:00",
+      "expected": "2026-11-02T07:00"
+    },
+    {
+      "settings": "off",
+      "lastRefresh": null,
+      "now": "2026-11-02T08:00",
+      "expected": null
+    },
+    {
+      "settings": "noDays",
+      "lastRefresh": null,
+      "now": "2026-11-02T08:00",
+      "expected": null
+    },
+    {
+      "settings": "always",
+      "lastRefresh": "2026-11-07T03:00",
+      "now": "2026-11-07T03:05",
+      "expected": "2026-11-07T03:15"
+    },
+    {
+      "settings": "always",
+      "lastRefresh": null,
+      "now": "2026-11-07T03:05",
+      "expected": "2026-11-07T03:05"
+    },
+    {
+      "settings": "dawn",
+      "lastRefresh": "2026-03-29T01:45",
+      "now": "2026-03-29T03:10",
+      "expected": "2026-03-29T03:45",
+      "note": "01:45 to 03:10 is 25 real minutes on the day the clocks go forward"
+    },
+    {
+      "settings": "gap",
+      "lastRefresh": null,
+      "now": "2026-03-29T01:00",
+      "expected": "2026-03-29T03:30",
+      "note": "02:30 does not exist that day: the window starts when the clocks have moved on"
+    },
+    {
+      "settings": "night",
+      "lastRefresh": null,
+      "now": "2026-11-06T21:00",
+      "expected": "2026-11-06T22:00"
+    },
+    {
+      "settings": "night",
+      "lastRefresh": "2026-11-07T00:50",
+      "now": "2026-11-07T00:55",
+      "expected": "2026-11-13T22:00"
+    }
+  ],
+  "direction": {
+    "effective": [
+      {
+        "returnFrom": "14:00",
+        "stored": "OUTBOUND",
+        "manual": null,
+        "manualUntil": null,
+        "now": "2026-11-02T13:59",
+        "expected": "OUTBOUND"
+      },
+      {
+        "returnFrom": "14:00",
+        "stored": "OUTBOUND",
+        "manual": null,
+        "manualUntil": null,
+        "now": "2026-11-02T14:00",
+        "expected": "RETURN"
+      },
+      {
+        "returnFrom": "14:00",
+        "stored": "RETURN",
+        "manual": "OUTBOUND",
+        "manualUntil": "2026-11-03T00:00",
+        "now": "2026-11-02T15:00",
+        "expected": "OUTBOUND",
+        "note": "the button holds until the next change"
+      },
+      {
+        "returnFrom": "14:00",
+        "stored": "OUTBOUND",
+        "manual": "RETURN",
+        "manualUntil": "2026-11-02T14:00",
+        "now": "2026-11-02T09:00",
+        "expected": "RETURN"
+      },
+      {
+        "returnFrom": "14:00",
+        "stored": "RETURN",
+        "manual": "RETURN",
+        "manualUntil": "2026-11-02T14:00",
+        "now": "2026-11-02T14:00",
+        "expected": "RETURN",
+        "note": "the choice has ended: the automatic direction"
+      },
+      {
+        "returnFrom": "14:00",
+        "stored": "RETURN",
+        "manual": "OUTBOUND",
+        "manualUntil": "2026-11-03T00:00",
+        "now": "2026-11-03T00:00",
+        "expected": "OUTBOUND"
+      },
+      {
+        "returnFrom": "14:00",
+        "stored": "OUTBOUND",
+        "manual": "OUTBOUND",
+        "manualUntil": "2026-11-03T00:00",
+        "now": "2026-11-03T15:00",
+        "expected": "RETURN"
+      },
+      {
+        "returnFrom": null,
+        "stored": "RETURN",
+        "manual": null,
+        "manualUntil": null,
+        "now": "2026-11-02T09:00",
+        "expected": "RETURN",
+        "note": "without «Mostra il ritorno dalle» the shown direction stays"
+      },
+      {
+        "returnFrom": null,
+        "stored": "OUTBOUND",
+        "manual": "RETURN",
+        "manualUntil": "2026-11-03T00:00",
+        "now": "2026-11-02T20:00",
+        "expected": "OUTBOUND"
+      }
+    ],
+    "nextBoundary": [
+      {
+        "returnFrom": "14:00",
+        "now": "2026-11-02T09:00",
+        "expected": "2026-11-02T14:00"
+      },
+      {
+        "returnFrom": "14:00",
+        "now": "2026-11-02T14:00",
+        "expected": "2026-11-03T00:00"
+      },
+      {
+        "returnFrom": "14:00",
+        "now": "2026-11-02T23:59",
+        "expected": "2026-11-03T00:00"
+      },
+      {
+        "returnFrom": "00:00",
+        "now": "2026-11-02T09:00",
+        "expected": "2026-11-03T00:00"
+      }
+    ]
+  },
+  "typeGroups": [
+    {
+      "operator": "italo",
+      "line": "AV",
+      "replacementBus": false,
+      "expected": "ITALO"
+    },
+    {
+      "operator": "Italo",
+      "line": null,
+      "replacementBus": false,
+      "expected": "ITALO"
+    },
+    {
+      "operator": "trenitalia",
+      "line": "FR",
+      "replacementBus": false,
+      "expected": "HIGH_SPEED"
+    },
+    {
+      "operator": "tper",
+      "line": "fr",
+      "replacementBus": false,
+      "expected": "HIGH_SPEED"
+    },
+    {
+      "operator": "trenitalia",
+      "line": "IC",
+      "replacementBus": false,
+      "expected": "INTERCITY_NIGHT"
+    },
+    {
+      "operator": "trenitalia",
+      "line": "ICN",
+      "replacementBus": false,
+      "expected": "INTERCITY_NIGHT"
+    },
+    {
+      "operator": "trenitalia",
+      "line": "RV",
+      "replacementBus": false,
+      "expected": "REGIONAL_SUBURBAN"
+    },
+    {
+      "operator": "trenord",
+      "line": "S11",
+      "replacementBus": false,
+      "expected": "REGIONAL_SUBURBAN"
+    },
+    {
+      "operator": "trenord",
+      "line": "RE 12",
+      "replacementBus": false,
+      "expected": "REGIONAL_SUBURBAN"
+    },
+    {
+      "operator": null,
+      "line": "SFM2",
+      "replacementBus": false,
+      "expected": "REGIONAL_SUBURBAN"
+    },
+    {
+      "operator": "trenitalia",
+      "line": "MET",
+      "replacementBus": false,
+      "expected": "REGIONAL_SUBURBAN"
+    },
+    {
+      "operator": "trenitalia",
+      "line": "REG1234",
+      "replacementBus": false,
+      "expected": null,
+      "note": "more than three digits: no known code"
+    },
+    {
+      "operator": "trenord",
+      "line": "R_1",
+      "replacementBus": false,
+      "expected": null
+    },
+    {
+      "operator": "sbb",
+      "line": "IR",
+      "replacementBus": false,
+      "expected": "INTERNATIONAL"
+    },
+    {
+      "operator": "european-sleeper",
+      "line": "ES",
+      "replacementBus": false,
+      "expected": "INTERNATIONAL",
+      "note": "the operator decides before the code"
+    },
+    {
+      "operator": null,
+      "line": "EC",
+      "replacementBus": false,
+      "expected": "INTERNATIONAL"
+    },
+    {
+      "operator": null,
+      "line": "ICE",
+      "replacementBus": false,
+      "expected": "INTERNATIONAL"
+    },
+    {
+      "operator": "trenitalia",
+      "line": "BUS",
+      "replacementBus": false,
+      "expected": "REPLACEMENT_BUS"
+    },
+    {
+      "operator": "italo",
+      "line": "BUS",
+      "replacementBus": false,
+      "expected": "REPLACEMENT_BUS"
+    },
+    {
+      "operator": "trenitalia",
+      "line": "FR",
+      "replacementBus": true,
+      "expected": "REPLACEMENT_BUS"
+    },
+    {
+      "operator": null,
+      "line": null,
+      "replacementBus": false,
+      "expected": null,
+      "note": "a train of no known group is never hidden"
+    },
+    {
+      "operator": "trenitalia",
+      "line": "",
+      "replacementBus": false,
+      "expected": null
+    }
+  ],
+  "routeRows": {
+    "rows": [
+      {
+        "id": "r1",
+        "departure": "2026-11-02T07:30",
+        "arrival": "2026-11-02T08:30",
+        "cancelled": false,
+        "group": null
+      },
+      {
+        "id": "r2",
+        "departure": "2026-11-02T07:59:30",
+        "arrival": "2026-11-02T09:00",
+        "cancelled": false,
+        "group": "REGIONAL_SUBURBAN"
+      },
+      {
+        "id": "r3",
+        "departure": "2026-11-02T08:10",
+        "arrival": "2026-11-02T09:10",
+        "cancelled": false,
+        "group": "HIGH_SPEED"
+      },
+      {
+        "id": "r4",
+        "departure": "2026-11-02T10:00",
+        "arrival": null,
+        "cancelled": false,
+        "group": null
+      },
+      {
+        "id": "r5",
+        "departure": "2026-11-02T12:00",
+        "arrival": null,
+        "cancelled": false,
+        "group": null
+      },
+      {
+        "id": "r6",
+        "departure": null,
+        "arrival": null,
+        "cancelled": false,
+        "group": null
+      },
+      {
+        "id": "r7",
+        "departure": "2026-11-02T07:40",
+        "arrival": "2026-11-02T08:20",
+        "cancelled": true,
+        "group": null
+      }
+    ],
+    "cases": [
+      {
+        "name": "the next trains: a departed train leaves one minute after its departure",
+        "excluded": [],
+        "untilArrival": false,
+        "timeRange": "NEXT",
+        "now": "2026-11-02T08:00",
+        "expected": [
+          [
+            "r2",
+            false
+          ],
+          [
+            "r3",
+            false
+          ],
+          [
+            "r4",
+            false
+          ],
+          [
+            "r5",
+            false
+          ],
+          [
+            "r6",
+            false
+          ]
+        ]
+      },
+      {
+        "name": "until arrival, three hours, high speed hidden",
+        "excluded": [
+          "HIGH_SPEED"
+        ],
+        "untilArrival": true,
+        "timeRange": "NEXT_3H",
+        "now": "2026-11-02T08:00",
+        "expected": [
+          [
+            "r1",
+            true
+          ],
+          [
+            "r2",
+            false
+          ],
+          [
+            "r4",
+            false
+          ],
+          [
+            "r6",
+            false
+          ]
+        ]
+      },
+      {
+        "name": "the whole day, until arrival",
+        "excluded": [],
+        "untilArrival": true,
+        "timeRange": "WHOLE_DAY",
+        "now": "2026-11-02T08:40",
+        "expected": [
+          [
+            "r2",
+            true
+          ],
+          [
+            "r3",
+            true
+          ],
+          [
+            "r4",
+            false
+          ],
+          [
+            "r5",
+            false
+          ],
+          [
+            "r6",
+            false
+          ]
+        ]
+      },
+      {
+        "name": "six hours",
+        "excluded": [
+          "REGIONAL_SUBURBAN"
+        ],
+        "untilArrival": false,
+        "timeRange": "NEXT_6H",
+        "now": "2026-11-02T06:00",
+        "expected": [
+          [
+            "r1",
+            false
+          ],
+          [
+            "r3",
+            false
+          ],
+          [
+            "r4",
+            false
+          ],
+          [
+            "r5",
+            false
+          ],
+          [
+            "r6",
+            false
+          ],
+          [
+            "r7",
+            false
+          ]
+        ],
+        "note": "a train at the end of the range is listed"
+      }
+    ]
+  },
+  "stationRows": {
+    "departures": [
+      {
+        "id": "a",
+        "scheduled": "2026-11-02T07:55",
+        "expected": "2026-11-02T08:05",
+        "status": "DELAYED",
+        "group": null
+      },
+      {
+        "id": "b",
+        "scheduled": "2026-11-02T07:58",
+        "expected": null,
+        "status": null,
+        "group": null
+      },
+      {
+        "id": "c",
+        "scheduled": "2026-11-02T07:59:30",
+        "expected": null,
+        "status": null,
+        "group": null
+      },
+      {
+        "id": "d",
+        "scheduled": "2026-11-02T08:02",
+        "expected": null,
+        "status": null,
+        "group": "REGIONAL_SUBURBAN"
+      },
+      {
+        "id": "e",
+        "scheduled": "2026-11-02T08:01",
+        "expected": "2026-11-02T08:01",
+        "status": "ON_TIME",
+        "group": null
+      },
+      {
+        "id": "f",
+        "scheduled": "2026-11-02T08:30",
+        "expected": null,
+        "status": null,
+        "group": "HIGH_SPEED"
+      },
+      {
+        "id": "g",
+        "scheduled": "2026-11-02T09:00",
+        "expected": null,
+        "status": "SCHEDULED",
+        "group": null
+      }
+    ],
+    "cases": [
+      {
+        "name": "fresh data: the live times order the board",
+        "freshness": "FRESH",
+        "limit": 4,
+        "excluded": [],
+        "now": "2026-11-02T08:00",
+        "expected": [
+          "c",
+          "e",
+          "d",
+          "a"
+        ]
+      },
+      {
+        "name": "old data: the timetable times",
+        "freshness": "STALE",
+        "limit": 4,
+        "excluded": [],
+        "now": "2026-11-02T08:00",
+        "expected": [
+          "c",
+          "e",
+          "d",
+          "f"
+        ]
+      },
+      {
+        "name": "a failed refresh drops the live times",
+        "freshness": "UNAVAILABLE",
+        "limit": 4,
+        "excluded": [],
+        "now": "2026-11-02T07:50",
+        "expected": [
+          "a",
+          "b",
+          "c",
+          "e"
+        ]
+      },
+      {
+        "name": "two rows, regional trains hidden",
+        "freshness": "AGING",
+        "limit": 2,
+        "excluded": [
+          "REGIONAL_SUBURBAN"
+        ],
+        "now": "2026-11-02T08:00",
+        "expected": [
+          "c",
+          "e"
+        ]
+      },
+      {
+        "name": "never more than four rows",
+        "freshness": "FRESH",
+        "limit": 9,
+        "excluded": [
+          "HIGH_SPEED"
+        ],
+        "now": "2026-11-02T08:00",
+        "expected": [
+          "c",
+          "e",
+          "d",
+          "a"
+        ]
+      }
+    ]
+  },
+  "trains": {
+    "isRunning": [
+      {
+        "now": "2026-11-02T08:00",
+        "status": {
+          "departure": "2026-11-02T07:30",
+          "arrival": "2026-11-02T09:00",
+          "departed": true,
+          "arrived": null,
+          "cancelled": false
+        },
+        "expected": true
+      },
+      {
+        "now": "2026-11-02T08:00",
+        "status": {
+          "departure": "2026-11-02T08:30",
+          "arrival": "2026-11-02T10:00",
+          "departed": null,
+          "arrived": null,
+          "cancelled": false
+        },
+        "expected": false,
+        "note": "not left yet"
+      },
+      {
+        "now": "2026-11-02T08:00",
+        "status": {
+          "departure": "2026-11-02T08:30",
+          "arrival": "2026-11-02T10:00",
+          "departed": true,
+          "arrived": null,
+          "cancelled": false
+        },
+        "expected": true,
+        "note": "an observed departure counts"
+      },
+      {
+        "now": "2026-11-02T08:00",
+        "status": {
+          "departure": "2026-11-02T06:00",
+          "arrival": "2026-11-02T07:45",
+          "departed": null,
+          "arrived": null,
+          "cancelled": false
+        },
+        "expected": false,
+        "note": "ten minutes past its arrival"
+      },
+      {
+        "now": "2026-11-02T08:00",
+        "status": {
+          "departure": "2026-11-02T06:00",
+          "arrival": "2026-11-02T07:55",
+          "departed": null,
+          "arrived": null,
+          "cancelled": false
+        },
+        "expected": true
+      },
+      {
+        "now": "2026-11-02T08:00",
+        "status": {
+          "departure": "2026-11-02T07:00",
+          "arrival": "2026-11-02T09:00",
+          "departed": true,
+          "arrived": true,
+          "cancelled": false
+        },
+        "expected": false
+      },
+      {
+        "now": "2026-11-02T08:00",
+        "status": {
+          "departure": "2026-11-02T07:00",
+          "arrival": "2026-11-02T09:00",
+          "departed": null,
+          "arrived": null,
+          "cancelled": true
+        },
+        "expected": false
+      },
+      {
+        "now": "2026-11-02T08:00",
+        "status": null,
+        "expected": true,
+        "note": "an unknown state never hides a train"
+      },
+      {
+        "now": "2026-11-02T08:00",
+        "status": {
+          "departure": null,
+          "arrival": null,
+          "departed": null,
+          "arrived": null,
+          "cancelled": false
+        },
+        "expected": true
+      },
+      {
+        "now": "2026-11-02T08:00",
+        "status": {
+          "departure": "2026-11-01T23:30",
+          "arrival": "2026-11-02T00:40",
+          "departed": true,
+          "arrived": null,
+          "cancelled": false
+        },
+        "expected": false,
+        "note": "yesterday's run is over"
+      },
+      {
+        "now": "2026-11-02T08:00",
+        "status": {
+          "departure": "2026-11-01T23:30",
+          "arrival": "2026-11-02T08:30",
+          "departed": true,
+          "arrived": null,
+          "cancelled": false
+        },
+        "expected": true,
+        "note": "yesterday's run still travelling"
+      }
+    ],
+    "lookupDate": [
+      {
+        "savedDeparture": "08:30",
+        "status": null,
+        "now": "2026-11-02T08:00",
+        "automatic": true,
+        "expected": "2026-11-02"
+      },
+      {
+        "savedDeparture": "12:00",
+        "status": null,
+        "now": "2026-11-02T08:00",
+        "automatic": true,
+        "expected": null,
+        "note": "an automatic refresh leaves a train far from its run alone"
+      },
+      {
+        "savedDeparture": "12:00",
+        "status": null,
+        "now": "2026-11-02T08:00",
+        "automatic": false,
+        "expected": "2026-11-02"
+      },
+      {
+        "savedDeparture": "23:30",
+        "status": {
+          "departure": "2026-11-01T23:30",
+          "arrival": "2026-11-02T08:15"
+        },
+        "now": "2026-11-02T08:00",
+        "automatic": true,
+        "expected": "2026-11-01"
+      },
+      {
+        "savedDeparture": "",
+        "status": null,
+        "now": "2026-11-02T08:00",
+        "automatic": true,
+        "expected": "2026-11-02",
+        "note": "only a lookup can teach a train without a departure"
+      },
+      {
+        "savedDeparture": "00:30",
+        "status": null,
+        "now": "2026-11-02T23:45",
+        "automatic": true,
+        "expected": "2026-11-03"
+      },
+      {
+        "savedDeparture": "06:00",
+        "status": {
+          "departure": "2026-11-01T06:00",
+          "arrival": "2026-11-01T07:00"
+        },
+        "now": "2026-11-02T07:20",
+        "automatic": true,
+        "expected": "2026-11-02"
+      },
+      {
+        "savedDeparture": "06:00",
+        "status": {
+          "departure": "2026-11-01T06:00",
+          "arrival": "2026-11-01T07:00"
+        },
+        "now": "2026-11-02T07:31",
+        "automatic": true,
+        "expected": null
+      }
+    ]
+  },
+  "planner": [
+    {
+      "settings": "commuter",
+      "lastRefresh": "2026-11-02T07:10",
+      "pendingDirection": null,
+      "nextDirectionBoundary": null,
+      "now": "2026-11-02T07:15",
+      "fetch": false,
+      "applyDirection": null,
+      "nextRun": "2026-11-02T07:40"
+    },
+    {
+      "settings": "commuter",
+      "lastRefresh": "2026-11-02T07:10",
+      "pendingDirection": null,
+      "nextDirectionBoundary": null,
+      "now": "2026-11-02T07:40",
+      "fetch": true,
+      "applyDirection": null,
+      "nextRun": "2026-11-02T07:40"
+    },
+    {
+      "settings": "off",
+      "lastRefresh": null,
+      "pendingDirection": "RETURN",
+      "nextDirectionBoundary": "2026-11-03T00:00",
+      "now": "2026-11-02T14:00",
+      "fetch": true,
+      "applyDirection": "RETURN",
+      "nextRun": "2026-11-02T14:00",
+      "note": "the swap to the return loads the return trains once"
+    },
+    {
+      "settings": "off",
+      "lastRefresh": null,
+      "pendingDirection": "OUTBOUND",
+      "nextDirectionBoundary": "2026-11-03T14:00",
+      "now": "2026-11-03T00:00",
+      "fetch": false,
+      "applyDirection": "OUTBOUND",
+      "nextRun": "2026-11-03T00:00",
+      "note": "the swap back at midnight only changes the label"
+    },
+    {
+      "settings": "commuter",
+      "lastRefresh": "2026-11-02T07:00",
+      "pendingDirection": "OUTBOUND",
+      "nextDirectionBoundary": "2026-11-02T14:00",
+      "now": "2026-11-02T07:05",
+      "fetch": true,
+      "applyDirection": "OUTBOUND",
+      "nextRun": "2026-11-02T07:05"
+    },
+    {
+      "settings": "off",
+      "lastRefresh": null,
+      "pendingDirection": null,
+      "nextDirectionBoundary": "2026-11-02T14:00",
+      "now": "2026-11-02T09:00",
+      "fetch": false,
+      "applyDirection": null,
+      "nextRun": "2026-11-02T14:00"
+    },
+    {
+      "settings": "always",
+      "lastRefresh": "2026-11-02T08:00",
+      "pendingDirection": null,
+      "nextDirectionBoundary": "2026-11-02T14:00",
+      "now": "2026-11-02T08:05",
+      "fetch": false,
+      "applyDirection": null,
+      "nextRun": "2026-11-02T08:15"
+    },
+    {
+      "settings": "off",
+      "lastRefresh": null,
+      "pendingDirection": null,
+      "nextDirectionBoundary": null,
+      "now": "2026-11-02T09:00",
+      "fetch": false,
+      "applyDirection": null,
+      "nextRun": null,
+      "note": "nothing automatic: nothing is scheduled"
+    }
+  ],
+  "retry": [
+    {
+      "settings": "commuter",
+      "attempt": 1,
+      "now": "2026-11-02T07:00",
+      "expectedDelayMinutes": 15
+    },
+    {
+      "settings": "commuter",
+      "attempt": 2,
+      "now": "2026-11-02T07:00",
+      "expectedDelayMinutes": 30
+    },
+    {
+      "settings": "commuter",
+      "attempt": 3,
+      "now": "2026-11-02T07:00",
+      "expectedDelayMinutes": null,
+      "note": "three runs in all"
+    },
+    {
+      "settings": "commuter",
+      "attempt": 1,
+      "now": "2026-11-02T09:20",
+      "expectedDelayMinutes": null,
+      "note": "the retry would fall outside the windows"
+    },
+    {
+      "settings": "off",
+      "attempt": 1,
+      "now": "2026-11-02T07:00",
+      "expectedDelayMinutes": null,
+      "note": "with automatic refresh off nothing is retried in the background"
+    },
+    {
+      "settings": "always",
+      "attempt": 2,
+      "now": "2026-11-02T03:00",
+      "expectedDelayMinutes": 30
+    },
+    {
+      "settings": "always",
+      "attempt": 0,
+      "now": "2026-11-02T03:00",
+      "expectedDelayMinutes": null
+    }
+  ],
+  "freshness": [
+    {
+      "retrievedAt": null,
+      "now": "2026-11-02T08:00",
+      "expected": "UNAVAILABLE"
+    },
+    {
+      "retrievedAt": "2026-11-02T08:00",
+      "now": "2026-11-02T08:04:59",
+      "expected": "FRESH"
+    },
+    {
+      "retrievedAt": "2026-11-02T08:00",
+      "now": "2026-11-02T08:05",
+      "expected": "AGING"
+    },
+    {
+      "retrievedAt": "2026-11-02T08:00",
+      "now": "2026-11-02T08:14:59",
+      "expected": "AGING"
+    },
+    {
+      "retrievedAt": "2026-11-02T08:00",
+      "now": "2026-11-02T08:15",
+      "expected": "STALE"
+    },
+    {
+      "retrievedAt": "2026-11-02T08:10",
+      "now": "2026-11-02T08:00",
+      "expected": "FRESH",
+      "note": "data from a clock ahead count as new"
+    }
+  ]
+}

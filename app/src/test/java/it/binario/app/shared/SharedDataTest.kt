@@ -47,6 +47,24 @@ import it.binario.app.plannedjourney.PlannedJourneyPersistenceSchema
 import it.binario.app.plannedjourney.PlannedJourneyReminderMinutes
 import it.binario.app.plannedjourney.PlannedJourneyTemplates
 import it.binario.app.plannedjourney.PlannedJourneyTransferContract
+import it.binario.app.data.RailOperator
+import it.binario.app.widget.AutoRefreshSettings
+import it.binario.app.widget.DayPreset
+import it.binario.app.widget.RefreshInterval
+import it.binario.app.widget.RouteTimeRange
+import it.binario.app.widget.RouteWidgetDayCache
+import it.binario.app.widget.RouteWidgetPaging
+import it.binario.app.widget.RouteWidgetPresenter
+import it.binario.app.widget.StationWidgetPresenter
+import it.binario.app.widget.StationWidgetSnapshot
+import it.binario.app.widget.TimeWindow
+import it.binario.app.widget.TrainTypeGroup
+import it.binario.app.widget.TrainsWidgetLookupPlanner
+import it.binario.app.widget.WidgetAutoRefreshPlanner
+import it.binario.app.widget.WidgetLayoutMode
+import it.binario.app.widget.WidgetRefreshRetryPolicy
+import it.binario.app.widget.WidgetTrainTypes
+import java.time.DayOfWeek
 import java.io.File
 import java.time.Clock
 import java.time.Duration
@@ -447,5 +465,41 @@ class SharedDataTest {
         assertEquals(swiss.getString("id"), it.binario.app.data.live.SwissOpenTransportStationBoardAdapter.SOURCE_ID.value)
         assertEquals(swiss.getString("baseUrl"), it.binario.app.data.live.SwissOpenTransportStationBoardAdapter.BASE_URL)
         assertEquals(swiss.getJSONArray("nonRailCategories").strings().toSet(), SharedData.RealtimeFeeds.SWISS_BOARD.nonRailCategories)
+    }
+
+    @Test fun `the widgets read the shared table`() {
+        val json = table("widgets-v1.json")
+        // The enums of the settings are the table's values, in its order.
+        assertEquals(json.getJSONArray("refreshIntervalsMinutes").ints(), RefreshInterval.entries.map { it.minutes })
+        assertEquals(json.getJSONArray("typeGroups").strings(), TrainTypeGroup.entries.map { it.name })
+        assertEquals(json.getJSONArray("timeRanges").objects().map { it.getString("id") }, RouteTimeRange.entries.map { it.name })
+        assertEquals(listOf(null, 3L, 6L, null), RouteTimeRange.entries.map { it.hours })
+        assertEquals(listOf(0, 1, 2, 3), RouteTimeRange.entries.map { range -> RouteWidgetPaging.maxExtraPages(range) })
+        val defaults = AutoRefreshSettings()
+        assertEquals(json.getInt("defaultIntervalMinutes"), defaults.interval.minutes)
+        assertEquals(json.getInt("alwaysIntervalMinutes"), AutoRefreshSettings.LEGACY.interval.minutes)
+        assertEquals(json.getJSONArray("weekdays").ints().map { DayOfWeek.of(it) }.toSet(), DayPreset.WEEKDAYS.days)
+        assertEquals(json.getInt("maximumWindows"), AutoRefreshSettings.MAX_WINDOWS)
+        val morning = json.getJSONObject("defaultMorningWindow")
+        assertEquals(morning.getString("start"), TimeWindow.DEFAULT_MORNING.start.toString())
+        assertEquals(morning.getString("end"), TimeWindow.DEFAULT_MORNING.end.toString())
+        assertEquals(json.getJSONObject("defaultEveningWindow").getString("start"), TimeWindow.DEFAULT_EVENING.start.toString())
+        assertEquals(listOf(morning.getString("start") to morning.getString("end")), defaults.windows.map { it.start.toString() to it.end.toString() })
+        assertEquals(Duration.ofSeconds(json.getLong("minimumRescheduleSeconds")), WidgetAutoRefreshPlanner.MIN_RESCHEDULE)
+        assertEquals(json.getLong("departedGraceSeconds") * 1_000, RouteWidgetPresenter.DEPARTED_GRACE_MILLIS)
+        assertEquals(json.getInt("dayCacheMaximumRows"), RouteWidgetDayCache.MAX_ROWS)
+        assertEquals(json.getInt("stationStoredDepartures"), StationWidgetSnapshot.MAX_STORED)
+        assertEquals(json.getInt("stationMaximumRows"), StationWidgetPresenter.MAX_ROWS)
+        assertEquals(json.getInt("compactRows"), WidgetLayoutMode.COMPACT.visibleRows)
+        assertEquals(json.getInt("pageRows"), WidgetLayoutMode.STANDARD.visibleRows)
+        assertEquals(json.getInt("retryMaximumAttempts"), WidgetRefreshRetryPolicy.MAX_ATTEMPTS)
+        assertEquals(Duration.ofMinutes(json.getLong("retryFirstDelayMinutes")), WidgetRefreshRetryPolicy.FIRST_DELAY)
+        assertEquals(Duration.ofMinutes(json.getLong("lookupBeforeDepartureMinutes")), TrainsWidgetLookupPlanner.BEFORE_DEPARTURE)
+        assertEquals(Duration.ofMinutes(json.getLong("lookupAfterArrivalMinutes")), TrainsWidgetLookupPlanner.AFTER_ARRIVAL)
+        assertEquals(Duration.ofMinutes(json.getLong("lookupDefaultDurationMinutes")), TrainsWidgetLookupPlanner.DEFAULT_DURATION)
+        assertEquals(json.getString("italoOperatorId"), WidgetTrainTypes.operatorId(RailOperator.ITALO))
+        // Every international operator id names an operator of the app.
+        val operatorIds = RailOperator.entries.map { operator -> WidgetTrainTypes.operatorId(operator) }.toSet()
+        assertTrue(operatorIds.containsAll(json.getJSONArray("internationalOperatorIds").strings()))
     }
 }

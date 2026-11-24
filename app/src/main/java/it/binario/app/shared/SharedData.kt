@@ -21,6 +21,7 @@
 //   contracts/shared-data/v1/train-number-prefixes-v1.json
 //   contracts/shared-data/v1/urban-stops-v1.json
 //   contracts/shared-data/v1/viaggiatreno-v1.json
+//   contracts/shared-data/v1/widgets-v1.json
 
 package it.binario.app.shared
 
@@ -1177,5 +1178,67 @@ internal object SharedData {
         val TRENORD_CLIENTS: Set<Int> = setOf(63)
         val TRENITALIA_REGIONAL_CLIENTS: Set<Int> = setOf(2, 18)
         val TRENITALIA_LONG_DISTANCE_CLIENTS: Set<Int> = setOf(1, 4)
+    }
+
+    /**
+     * contracts/shared-data/v1/widgets-v1.json: The three home-screen widgets (Tratta, Tabellone stazione, I miei
+     * treni) on both phones: the automatic refresh (intervals, days, one or two daily windows, also across midnight),
+     * the automatic return direction, the train type groups a widget can hide and the codes that tell them, which runs
+     * a widget lists and for how long, when its live values count as fresh, which favourite trains a refresh asks for,
+     * and the retries of a refresh the user asked for. Times are railway-local (Europe/Rome).
+     */
+    object Widgets {
+        data class RefreshWindow(val start: String, val end: String)
+        data class TimeRange(val id: String, val hours: Int?, val extraPages: Int)
+
+        val REFRESH_INTERVALS_MINUTES: List<Int> = listOf(15, 30, 60)
+        const val DEFAULT_INTERVAL_MINUTES: Int = 30
+        const val ALWAYS_INTERVAL_MINUTES: Int = 15
+        val WEEKDAYS: Set<Int> = setOf(1, 2, 3, 4, 5)
+        const val MAXIMUM_WINDOWS: Int = 2
+        val DEFAULT_MORNING_WINDOW: RefreshWindow = RefreshWindow(start = "07:00", end = "09:30")
+        val DEFAULT_EVENING_WINDOW: RefreshWindow = RefreshWindow(start = "17:00", end = "19:30")
+        const val WINDOW_LOOKAHEAD_DAYS: Int = 8
+        const val MINIMUM_RESCHEDULE_SECONDS: Int = 60
+        const val DEFAULT_RETURN_FROM: String = "14:00"
+        const val MAXIMUM_TITLE_LENGTH: Int = 42
+        const val DEPARTED_GRACE_SECONDS: Int = 60
+        const val FRESH_SECONDS: Int = 300
+        const val AGING_SECONDS: Int = 900
+        val TIME_RANGES: List<TimeRange> = listOf(
+            // What the source returns now: the list of the widgets added before the settings.
+            TimeRange(id = "NEXT", hours = null, extraPages = 0),
+            TimeRange(id = "NEXT_3H", hours = 3, extraPages = 1),
+            TimeRange(id = "NEXT_6H", hours = 6, extraPages = 2),
+            // Until 23:59 of the day, kept for the day and readable offline.
+            TimeRange(id = "WHOLE_DAY", hours = null, extraPages = 3)
+        )
+        const val DAY_CACHE_MAXIMUM_ROWS: Int = 60
+        const val COMPACT_ROWS: Int = 2
+        const val PAGE_ROWS: Int = 5
+        const val STATION_STORED_DEPARTURES: Int = 12
+        const val STATION_MAXIMUM_ROWS: Int = 4
+        const val TRAINS_ARRIVAL_GRACE_MINUTES: Int = 10
+        const val LOOKUP_BEFORE_DEPARTURE_MINUTES: Int = 60
+        const val LOOKUP_AFTER_ARRIVAL_MINUTES: Int = 30
+        const val LOOKUP_DEFAULT_DURATION_MINUTES: Int = 180
+        const val LOOKUP_MAXIMUM_DURATION_MINUTES: Int = 2160
+        const val RETRY_MAXIMUM_ATTEMPTS: Int = 3
+        const val RETRY_FIRST_DELAY_MINUTES: Int = 15
+        val TYPE_GROUPS: List<String> = listOf(
+            "HIGH_SPEED", "INTERCITY_NIGHT", "REGIONAL_SUBURBAN", "ITALO", "REPLACEMENT_BUS", "INTERNATIONAL"
+        )
+        const val ITALO_OPERATOR_ID: String = "italo"
+        val INTERNATIONAL_OPERATOR_IDS: Set<String> = setOf(
+            "sbb", "bls", "rhb", "sncf", "oebb", "db", "westbahn", "european-sleeper"
+        )
+        val BUS_CODES: Set<String> = setOf("BUS", "B", "SEV", "EV")
+        val INTERNATIONAL_CODES: Set<String> = setOf("EC", "EN", "NJ", "RJ", "RJX", "ICE", "TGV", "EST")
+        val HIGH_SPEED_CODES: Set<String> = setOf("FR", "FA", "FB", "AV", "ES", "ESC")
+        val INTERCITY_CODES: Set<String> = setOf("IC", "ICN")
+        val REGIONAL_CODES: Set<String> = setOf(
+            "R", "RE", "REX", "RV", "REG", "RB", "TER", "S", "SFM", "FL", "FM", "MET"
+        )
+        const val REGIONAL_MAXIMUM_DIGITS: Int = 3
     }
 }

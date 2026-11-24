@@ -21,6 +21,7 @@
 //   contracts/shared-data/v1/train-number-prefixes-v1.json
 //   contracts/shared-data/v1/urban-stops-v1.json
 //   contracts/shared-data/v1/viaggiatreno-v1.json
+//   contracts/shared-data/v1/widgets-v1.json
 
 /// The tables of contracts/shared-data/v1, one namespace per file: the common base of the apps, read as code
 /// (docs/architecture/ADR-0002-BASE-COMUNE.md).
@@ -1192,5 +1193,73 @@ public enum SharedData {
         public static let trenordClients: Set<Int> = [63]
         public static let trenitaliaRegionalClients: Set<Int> = [2, 18]
         public static let trenitaliaLongDistanceClients: Set<Int> = [1, 4]
+    }
+
+    /// contracts/shared-data/v1/widgets-v1.json: The three home-screen widgets (Tratta, Tabellone stazione, I miei
+    /// treni) on both phones: the automatic refresh (intervals, days, one or two daily windows, also across midnight),
+    /// the automatic return direction, the train type groups a widget can hide and the codes that tell them, which runs
+    /// a widget lists and for how long, when its live values count as fresh, which favourite trains a refresh asks for,
+    /// and the retries of a refresh the user asked for. Times are railway-local (Europe/Rome).
+    public enum Widgets {
+        public struct RefreshWindow: Hashable, Sendable {
+            public let start: String
+            public let end: String
+        }
+
+        public struct TimeRange: Hashable, Sendable {
+            public let id: String
+            public let hours: Int?
+            public let extraPages: Int
+        }
+
+        public static let refreshIntervalsMinutes: [Int] = [15, 30, 60]
+        public static let defaultIntervalMinutes: Int = 30
+        public static let alwaysIntervalMinutes: Int = 15
+        public static let weekdays: Set<Int> = [1, 2, 3, 4, 5]
+        public static let maximumWindows: Int = 2
+        public static let defaultMorningWindow: RefreshWindow = RefreshWindow(start: "07:00", end: "09:30")
+        public static let defaultEveningWindow: RefreshWindow = RefreshWindow(start: "17:00", end: "19:30")
+        public static let windowLookaheadDays: Int = 8
+        public static let minimumRescheduleSeconds: Double = 60
+        public static let defaultReturnFrom: String = "14:00"
+        public static let maximumTitleLength: Int = 42
+        public static let departedGraceSeconds: Double = 60
+        public static let freshSeconds: Double = 300
+        public static let agingSeconds: Double = 900
+        public static let timeRanges: [TimeRange] = [
+            // What the source returns now: the list of the widgets added before the settings.
+            TimeRange(id: "NEXT", hours: nil, extraPages: 0),
+            TimeRange(id: "NEXT_3H", hours: 3, extraPages: 1),
+            TimeRange(id: "NEXT_6H", hours: 6, extraPages: 2),
+            // Until 23:59 of the day, kept for the day and readable offline.
+            TimeRange(id: "WHOLE_DAY", hours: nil, extraPages: 3)
+        ]
+        public static let dayCacheMaximumRows: Int = 60
+        public static let compactRows: Int = 2
+        public static let pageRows: Int = 5
+        public static let stationStoredDepartures: Int = 12
+        public static let stationMaximumRows: Int = 4
+        public static let trainsArrivalGraceMinutes: Int = 10
+        public static let lookupBeforeDepartureMinutes: Int = 60
+        public static let lookupAfterArrivalMinutes: Int = 30
+        public static let lookupDefaultDurationMinutes: Int = 180
+        public static let lookupMaximumDurationMinutes: Int = 2160
+        public static let retryMaximumAttempts: Int = 3
+        public static let retryFirstDelayMinutes: Int = 15
+        public static let typeGroups: [String] = [
+            "HIGH_SPEED", "INTERCITY_NIGHT", "REGIONAL_SUBURBAN", "ITALO", "REPLACEMENT_BUS", "INTERNATIONAL"
+        ]
+        public static let italoOperatorId: String = "italo"
+        public static let internationalOperatorIds: Set<String> = [
+            "sbb", "bls", "rhb", "sncf", "oebb", "db", "westbahn", "european-sleeper"
+        ]
+        public static let busCodes: Set<String> = ["BUS", "B", "SEV", "EV"]
+        public static let internationalCodes: Set<String> = ["EC", "EN", "NJ", "RJ", "RJX", "ICE", "TGV", "EST"]
+        public static let highSpeedCodes: Set<String> = ["FR", "FA", "FB", "AV", "ES", "ESC"]
+        public static let intercityCodes: Set<String> = ["IC", "ICN"]
+        public static let regionalCodes: Set<String> = [
+            "R", "RE", "REX", "RV", "REG", "RB", "TER", "S", "SFM", "FL", "FM", "MET"
+        ]
+        public static let regionalMaximumDigits: Int = 3
     }
 }

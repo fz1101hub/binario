@@ -5,25 +5,36 @@ import it.binario.app.data.TrainCategory
 import it.binario.app.data.core.RouteChangeKind
 import it.binario.app.data.core.RunStatus
 import it.binario.app.data.core.ServiceKind
+import it.binario.app.shared.SharedData
 import java.util.Locale
 
 /**
  * Maps the categories, service kinds and operators the sources already publish onto the train type
  * groups of the widget settings. Every function returns null when the data do not say which group a
- * train belongs to: such a train is never hidden by an exclusion.
+ * train belongs to: such a train is never hidden by an exclusion. The codes and operators are
+ * contracts/shared-data/v1/widgets-v1.json; the board rule's cases, which the iPhone runs too, are
+ * contracts/shared-rules/v1/widgets-v1.json (`typeGroups`).
  */
 object WidgetTrainTypes {
     /** Operators outside Italy, or running cross-border international services. */
-    private val internationalOperators = setOf(
-        RailOperator.SBB, RailOperator.BLS, RailOperator.RHB, RailOperator.SNCF, RailOperator.OEBB,
-        RailOperator.DB, RailOperator.WESTBAHN, RailOperator.EUROPEAN_SLEEPER
-    )
-    private val internationalOperatorIds = setOf("sbb", "bls", "rhb", "sncf", "oebb", "db", "westbahn", "european-sleeper")
-    private val highSpeedCodes = setOf("FR", "FA", "FB", "AV", "ES", "ESC")
-    private val internationalCodes = setOf("EC", "EN", "NJ", "RJ", "RJX", "ICE", "TGV", "EST")
-    private val intercityCodes = setOf("IC", "ICN")
-    private val busCodes = setOf("BUS", "B", "SEV", "EV")
-    private val regionalCode = Regex("(R|RE|REX|RV|REG|RB|TER|S|SFM|FL|FM|MET)\\d{0,3}")
+    private val internationalOperatorIds = SharedData.Widgets.INTERNATIONAL_OPERATOR_IDS
+    /** The operators of [internationalOperatorIds], by their identifier ("european-sleeper" is EUROPEAN_SLEEPER). */
+    private val internationalOperators = RailOperator.entries.filter { operatorId(it) in internationalOperatorIds }.toSet()
+    private val highSpeedCodes = SharedData.Widgets.HIGH_SPEED_CODES
+    private val internationalCodes = SharedData.Widgets.INTERNATIONAL_CODES
+    private val intercityCodes = SharedData.Widgets.INTERCITY_CODES
+    private val busCodes = SharedData.Widgets.BUS_CODES
+    private val regionalCodes = SharedData.Widgets.REGIONAL_CODES
+
+    /** The identifier of an operator in the shared table: the constant's name in lower case, hyphenated. */
+    internal fun operatorId(operator: RailOperator): String = operator.name.lowercase(Locale.ROOT).replace('_', '-')
+
+    /** A regional code: one of [regionalCodes] and at most `REGIONAL_MAXIMUM_DIGITS` digits («R», «RE12», «S11»). */
+    private fun isRegionalCode(code: String): Boolean {
+        val letters = code.takeWhile { it in 'A'..'Z' }
+        val digits = code.substring(letters.length)
+        return letters in regionalCodes && digits.length <= SharedData.Widgets.REGIONAL_MAXIMUM_DIGITS && digits.all { it in '0'..'9' }
+    }
 
     /** Route widget rows: category and operator of the route snapshot, plus a replacement-service flag. */
     fun groupOf(category: TrainCategory, operator: RailOperator, replacementService: Boolean = false): TrainTypeGroup? = when {
@@ -46,7 +57,7 @@ object WidgetTrainTypes {
         val prefix = code.takeWhile(Char::isLetter)
         return when {
             status == RunStatus.REPLACED_BY_BUS || kind == ServiceKind.REPLACEMENT_BUS || prefix in busCodes -> TrainTypeGroup.REPLACEMENT_BUS
-            operator == "italo" -> TrainTypeGroup.ITALO
+            operator == SharedData.Widgets.ITALO_OPERATOR_ID -> TrainTypeGroup.ITALO
             operator in internationalOperatorIds -> TrainTypeGroup.INTERNATIONAL
             kind == ServiceKind.HIGH_SPEED -> TrainTypeGroup.HIGH_SPEED
             kind == ServiceKind.INTERCITY || kind == ServiceKind.NIGHT -> TrainTypeGroup.INTERCITY_NIGHT
@@ -54,7 +65,7 @@ object WidgetTrainTypes {
             prefix in internationalCodes -> TrainTypeGroup.INTERNATIONAL
             prefix in highSpeedCodes -> TrainTypeGroup.HIGH_SPEED
             prefix in intercityCodes -> TrainTypeGroup.INTERCITY_NIGHT
-            code.isNotEmpty() && regionalCode.matches(code) -> TrainTypeGroup.REGIONAL_SUBURBAN
+            code.isNotEmpty() && isRegionalCode(code) -> TrainTypeGroup.REGIONAL_SUBURBAN
             else -> null
         }
     }

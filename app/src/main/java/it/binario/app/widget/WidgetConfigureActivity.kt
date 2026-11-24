@@ -49,6 +49,7 @@ import it.binario.app.R
 import it.binario.app.ThemeSettings
 import it.binario.app.TrainViewModel
 import it.binario.app.data.Station
+import it.binario.app.shared.SharedData
 import it.binario.app.ui.common.ltrUnit
 
 internal class WidgetConfiguratorViewModelFactory(
@@ -160,7 +161,7 @@ class WidgetConfigureActivity : ComponentActivity() {
                         item {
                             OutlinedTextField(
                                 value = displayName,
-                                onValueChange = { if (it.length <= 42) displayName = it },
+                                onValueChange = { if (it.length <= SharedData.Widgets.MAXIMUM_TITLE_LENGTH) displayName = it },
                                 modifier = Modifier.fillMaxWidth(),
                                 label = { Text(stringResource(R.string.widget_display_name_label)) },
                                 supportingText = { Text(stringResource(R.string.widget_display_name_description)) },
@@ -323,4 +324,4 @@ private fun RouteTimeRangeSection(settings: RouteWidgetSettings, onChange: (Rout
     }
 }
 
-private val DEFAULT_RETURN_FROM: java.time.LocalTime = java.time.LocalTime.of(14, 0)
+private val DEFAULT_RETURN_FROM: java.time.LocalTime = java.time.LocalTime.parse(SharedData.Widgets.DEFAULT_RETURN_FROM)
