@@ -213,7 +213,10 @@ final class PersonalFeaturesContractTests: XCTestCase {
         XCTAssertEqual(root["kind"] as? String, SharedData.LocalBackup.kind)
         XCTAssertEqual(root["schemaVersion"] as? Int, SharedData.LocalBackup.schemaVersion)
         let read = try LocalBackupCodec.decode(data) { _ in nil }.get()
-        XCTAssertEqual(read.routes, [route])
+        // The file carries no creation date: an imported route is created again.
+        XCTAssertEqual(read.routes.map(\.id), [route.id])
+        XCTAssertEqual(read.routes.map(\.name), ["Casa"])
+        XCTAssertEqual(read.routes.first?.origin, milano)
         XCTAssertEqual(read.favouriteStations, [pavia])
         XCTAssertEqual(read.favouriteTrains.map(\.id), [train.id])
         XCTAssertEqual(read.trainNames[train.id], "Il mio treno")

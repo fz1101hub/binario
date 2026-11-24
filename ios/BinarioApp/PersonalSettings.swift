@@ -33,18 +33,26 @@ struct AppearanceLanguageSection: View {
             Text("settings.language.description")
                 .font(.footnote)
                 .foregroundStyle(.secondary)
-            #if canImport(UIKit)
-            if let settings = URL(string: UIApplication.openSettingsURLString) {
+            if let settings = Self.appSettingsURL {
                 Button {
                     openURL(settings)
                 } label: {
                     Label("settings.language.open", systemImage: "globe")
                 }
             }
-            #endif
         } header: {
             Text("settings.language.title")
         }
+    }
+
+    /// The app's page in the iPhone's Settings, where iOS keeps the app's language.
+    @MainActor
+    static var appSettingsURL: URL? {
+        #if canImport(UIKit)
+        URL(string: UIApplication.openSettingsURLString)
+        #else
+        nil
+        #endif
     }
 }
 
