@@ -1887,6 +1887,32 @@ class BorderSubsetTest(unittest.TestCase):
             builder.derive_border_subset(full, subset, "oebb-gtfs", self.zone_catalogue)
         self.assertEqual({"T1"}, {row["trip_id"] for row in read_rows(subset, "trips.txt")})
 
+    def test_an_empty_frequencies_table_of_the_full_pack_is_kept_and_one_with_runs_refused(self) -> None:
+        # The Swiss archive of November 2026 publishes frequencies.txt with its header only: the full pack keeps it as
+        # published, and the border subset must accept it rather than refuse the whole pack.
+        raw = self.temp / "raw.zip"
+        write_raw_foreign_feed(raw)
+        with zipfile.ZipFile(raw, "a") as archive:
+            archive.writestr("frequencies.txt", "trip_id,start_time,end_time,headway_secs\r\n")
+        full = self.temp / "oebb-gtfs.zip"
+        builder.filter_archive(raw, full, "oebb-gtfs", trips_run_from=date(2026, 1, 1))
+        subset = self.temp / "subset.zip"
+        builder.derive_border_subset(full, subset, "oebb-gtfs", self.zone_catalogue)
+        self.assertEqual([], read_rows(subset, "frequencies.txt"))
+        self.assertEqual({"T1", "T3"}, {row["trip_id"] for row in read_rows(subset, "trips.txt")})
+        # A full pack carrying runs in frequencies.txt (never written by the builder) is refused.
+        tampered = self.temp / "tampered.zip"
+        with zipfile.ZipFile(full) as source, zipfile.ZipFile(tampered, "w") as target:
+            for info in source.infolist():
+                data = source.read(info.filename)
+                if info.filename == "frequencies.txt":
+                    data += b"T1,08:00:00,09:00:00,600\r\n"
+                target.writestr(info, data)
+        with mock.patch.object(builder, "verify_filter_from_asset", return_value="0" * 64):
+            with self.assertRaises(builder.BuildError) as raised:
+                builder.derive_border_subset(tampered, self.temp / "refused.zip", "oebb-gtfs", self.zone_catalogue)
+        self.assertIn("frequencies.txt con corse non espanse", str(raised.exception))
+
     def test_subset_is_deterministic_and_refuses_a_subset_as_full_pack(self) -> None:
         full = self.full_pack()
         first, second = self.temp / "one.zip", self.temp / "two.zip"

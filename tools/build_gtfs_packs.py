@@ -3232,9 +3232,14 @@ def derive_border_subset(
         if BORDER_ZONE_FIELD in full_metadata:
             raise BuildError(f"{source_id}: {full_pack.name} è già un sottoinsieme di confine, non il pack completo")
         members = sorted(info.filename for info in archive.infolist() if not info.is_dir() and info.filename != entry)
-        unknown = sorted(set(members) - BORDER_SUBSET_TABLES)
+        unknown = sorted(set(members) - BORDER_SUBSET_TABLES - {"frequencies.txt"})
         if unknown:
             raise BuildError(f"{source_id}: tabelle non previste per il sottoinsieme di confine: {', '.join(map(log_safe, unknown))}")
+        # The full pack expands every frequencies.txt run into a trip and keeps only a feed's empty one (a header only,
+        # as published; the Swiss archive of November 2026 has one): the subset keeps it too, never one with runs.
+        frequencies = read_table(archive, "frequencies.txt")
+        if frequencies is not None and frequencies.rows:
+            raise BuildError(f"{source_id}: frequencies.txt con corse non espanse nel pack completo")
         stops = read_table(archive, "stops.txt", required=True)
         assert stops is not None
         zone = pack_zone_of(stops, source_id, catalogue).stops
@@ -3297,6 +3302,8 @@ def derive_border_subset(
             table = read_table(archive, name)
             if table is not None:
                 tables[name] = table
+        if frequencies is not None:
+            tables["frequencies.txt"] = frequencies
     calendar = tables.get("calendar.txt") or empty_calendar()
     calendar_dates = tables.get("calendar_dates.txt") or empty_calendar_dates()
     metadata = dict(full_metadata)
