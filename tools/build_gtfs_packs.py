@@ -125,8 +125,8 @@ class LargeArchiveReview:
     max_retained_rows: int | None = None
     max_retained_cells: int | None = None
     max_retained_utf8_bytes: int | None = None
-    # The calendar held while read, as one bit per service and day from tripsRunFrom (read_service_days).
-    max_service_days: int = 20_000_000
+    # The calendar held while read, as bits per service and day from tripsRunFrom (read_service_days).
+    max_service_days: int = 100_000_000
 
     def budget(self) -> "RetentionBudget":
         """The retention budget of one build of the source (None: the default MAX_RETAINED_BUILD_*)."""
@@ -163,7 +163,9 @@ class LargeArchiveReview:
 # them about 190,000 rows at 33 a service, or about 410,000 if they are as dense as the run of 24 November suggests
 # (over 135 source rows a service, recoded at the same 55 %): within the 500,000 rows of calendar_dates.txt that the
 # Android reader and the iPhone index builder accept, but not by much in the second case.
-# max_service_days, 20,000,000 bits (2.5 MB of bitmaps), holds 50,000 services over a year, or 5,500 over ten.
+# max_service_days, 100,000,000 bits (12.5 MB), counts the three bitmaps of a service (calendar days, added days, days
+# with an exception): the rail services of a year (265,070 rail trips on 24 November at 8.6 trips a service, about
+# 31,000) hold at most about 34 million.
 REVIEWED_LARGE_ARCHIVES: Mapping[str, LargeArchiveReview] = {
     "ch-otd-gtfs": LargeArchiveReview(
         reason=(
@@ -186,6 +188,7 @@ REVIEWED_LARGE_ARCHIVES: Mapping[str, LargeArchiveReview] = {
         max_streamed_table_rows=120_000_000,
         max_retained_rows=1_500_000,
         max_retained_cells=9_000_000,
+        max_service_days=100_000_000,
     ),
 }
 
@@ -1964,8 +1967,9 @@ def read_service_days(
     """The days from ``runs_from`` on of the services ``service_ids`` (:class:`ServiceDays`), read without holding a row:
     the same days as :func:`service_days` (a calendar row by its weekday flags from its start_date to its end_date, minus
     the days of an exception other than 1, plus the days of an exception 1; an empty date is skipped).  A calendar row
-    ending before ``runs_from`` and an exception before it give no such day.  The bitmaps of calendar days and added days
-    together span at most ``max_service_days`` days (services by days from ``runs_from``), else the build stops."""
+    ending before ``runs_from`` and an exception before it give no such day.  The bitmaps of calendar days, added days
+    and days with an exception together span at most ``max_service_days`` bits (services by days from ``runs_from``),
+    else the build stops."""
     base = runs_from.toordinal()
     calendar_bits: dict[str, int] = {}
     added_bits: dict[str, int] = {}

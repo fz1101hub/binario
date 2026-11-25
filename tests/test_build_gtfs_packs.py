@@ -2634,6 +2634,8 @@ class ReviewedLargeArchiveRegistryTest(unittest.TestCase):
         self.assertGreaterEqual(review.max_retained_rows, 2 * builder.MAX_RETAINED_TABLE_ROWS)
         self.assertGreater(review.max_retained_cells, builder.MAX_RETAINED_BUILD_CELLS)
         self.assertIsNone(review.max_retained_utf8_bytes)
+        # Three bitmaps a service for a year of the 31,000 rail services of 24 November.
+        self.assertGreaterEqual(review.max_service_days, 3 * 366 * 31_000)
         self.assertEqual((review.max_retained_rows, review.max_retained_cells, None),
                          (review.budget().max_rows, review.budget().max_cells, review.budget().max_utf8_bytes))
         self.assertNotIn(SWISS, builder.ITINERARY_COPY_SOURCES)
