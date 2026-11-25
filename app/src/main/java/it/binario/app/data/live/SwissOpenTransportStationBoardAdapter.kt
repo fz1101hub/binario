@@ -53,16 +53,19 @@ import org.json.JSONObject
  *
  * The curated catalogue stores Swiss stations with a Trenitalia location id `85` + `00` + the five-digit Swiss
  * station number (for example Bellinzona `850005213` = UIC `8505213`); stations picked from the embedded Swiss
- * GTFS pack carry the UIC as GTFS stop id (`gtfs:ch-otd-gtfs:8505213:0:1`). Trenitalia's `85 009xxxx` ids are
- * aggregated city locations (Basilea, Ginevra, Zurigo), not stations, and are not mapped.
+ * GTFS pack carry the UIC as GTFS stop id (`gtfs:ch-otd-gtfs:8505213:0:1`) or, since the 2026 archive, a SLOID whose
+ * number is the station number without the country code (`gtfs:ch-otd-gtfs:ch:1:sloid:5213:0:1` = UIC `8505213`).
+ * Trenitalia's `85 009xxxx` ids are aggregated city locations (Basilea, Ginevra, Zurigo), not stations, and are not mapped.
  */
 internal object SwissStationIds {
     private val gtfsStop = Regex("^gtfs:ch-otd-gtfs:(?:Parent)?(85\\d{5})(?::.*)?$")
+    private val gtfsSloid = Regex("^gtfs:ch-otd-gtfs:(?:Parent)?ch:1:sloid:([1-9]\\d{0,4})(?::.*)?$")
     private val trenitaliaSwiss = Regex("^8500([0-8]\\d{4})$")
     private val uic = Regex("^85\\d{5}$")
 
     fun fromRequest(request: StationBoardRequest): String? =
         gtfsStop.matchEntire(request.stationId.value)?.groupValues?.get(1)
+            ?: gtfsSloid.matchEntire(request.stationId.value)?.let { "85" + it.groupValues[1].padStart(5, '0') }
             ?: request.trenitaliaLocationId?.trim()?.let { trenitaliaSwiss.matchEntire(it) }?.let { "85${it.groupValues[1]}" }
 
     /** True when the catalogue says the station is Swiss but carries no directly usable UIC. */

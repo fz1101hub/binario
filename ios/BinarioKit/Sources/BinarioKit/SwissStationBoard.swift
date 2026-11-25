@@ -7,16 +7,21 @@ import Foundation
 
 /// Swiss station numbers usable with transport.opendata.ch (`SwissStationIds`): the catalogue stores a Swiss station
 /// with a Trenitalia location id `85` + `00` + its five-digit number (Bellinzona `850005213` is UIC `8505213`); a
-/// stop of the Swiss pack carries the UIC in its identifier. Trenitalia's `85 009xxxx` ids are city aggregates
-/// (Basilea), not stations.
+/// stop of the Swiss pack carries the UIC in its identifier or, since the 2026 archive, a SLOID whose number is the station
+/// number without the country code (`ch:1:sloid:5213:0:1` is UIC `8505213`). Trenitalia's `85 009xxxx` ids are city
+/// aggregates (Basilea), not stations.
 enum SwissStationIds {
     private static let gtfsStop = LiveRegex("^gtfs:ch-otd-gtfs:(?:Parent)?(85\\d{5})(?::.*)?$")
+    private static let gtfsSloid = LiveRegex("^gtfs:ch-otd-gtfs:(?:Parent)?ch:1:sloid:([1-9]\\d{0,4})(?::.*)?$")
     private static let trenitaliaSwiss = LiveRegex("^8500([0-8]\\d{4})$")
     private static let uic = LiveRegex("^85\\d{5}$")
 
     /// The UIC of a station, nil when its identifiers do not give one.
     static func uic(stationID: String, trenitaliaLocationID: String?) -> String? {
         if let match = gtfsStop.firstMatch(in: stationID), let number = match[1] { return number }
+        if let match = gtfsSloid.firstMatch(in: stationID), let digits = match[1] {
+            return "85" + String(repeating: "0", count: 5 - digits.count) + digits
+        }
         guard let location = trenitaliaLocationID?.trimmingCharacters(in: .whitespacesAndNewlines),
               let match = trenitaliaSwiss.firstMatch(in: location), let digits = match[1] else { return nil }
         return "85" + digits

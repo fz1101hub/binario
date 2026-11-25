@@ -190,7 +190,8 @@ La tabella dei feed (indirizzi, limiti, durate, pause) è `contracts/shared-data
 
 ## Tabelloni svizzeri (`swiss-station-board-v1.json`)
 
-- **Numero UIC** (`uic`): lo `stop_id` svizzero (`85` e cinque cifre) di `ch-otd-gtfs` o il `trenitaliaLocationId`
+- **Numero UIC** (`uic`): lo `stop_id` svizzero (`85` e cinque cifre) di `ch-otd-gtfs`, il suo SLOID dall'archivio 2026
+  (`ch:1:sloid:` e il numero di stazione senza `85`: `ch:1:sloid:5213:0:1` è `8505213`) o il `trenitaliaLocationId`
   `8500` e cinque cifre del catalogo (Bellinzona `850005213` è `8505213`); un aggregato di città (`85009…`) non è un
   numero.
 - **Ricerca per nome** (`locations`, `lookups`): per un aggregato svizzero o una stazione della zona di confine, solo una

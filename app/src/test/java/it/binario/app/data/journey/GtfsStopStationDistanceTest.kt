@@ -84,12 +84,12 @@ class GtfsStopStationDistanceTest {
         val whole = EmbeddedGtfsPacks.all.single { it.sourceId == swiss }
         val provider = EmbeddedGtfsJourneyProvider.create({ path -> TestAssets.openFull(path) }, listOf(whole))
         val byStop = provider.catalogueStationByStopForTest(swiss)
-        for (stop in listOf("8509265", "Parent8509265", "8516271:0:1", "Parent8516271")) {
+        for (stop in listOf("ch:1:sloid:9265", "Parentch:1:sloid:9265", "ch:1:sloid:16271:0:1", "Parentch:1:sloid:16271")) {
             assertNull("$stop: ${byStop[stop]}", byStop[stop])
         }
         // Catalogue entries without coordinates keep their name binding: Zürich Altstetten, and Folsogno-Dissimo in Italy.
-        assertEquals("curated:S03001", byStop["Parent8503001"])
-        assertEquals("curated:NC000541", byStop["Parent8505589"])
+        assertEquals("curated:S03001", byStop["Parentch:1:sloid:3001"])
+        assertEquals("curated:NC000541", byStop["Parentch:1:sloid:5589"])
         // Stops near their catalogue station keep it: Tirano.
         assertTrue("curated:S01440" in byStop.values)
     }
