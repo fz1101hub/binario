@@ -1942,8 +1942,8 @@ class IOSProjectTests(unittest.TestCase):
                 ).fetchone()[0]
             finally:
                 connection.close()
-        self.assertIn("private static let maximumCandidateRows = 4_096", gtfs)
-        self.assertLessEqual(busiest, 4_096)
+        self.assertIn("private static let maximumCandidateRows = 16_384", gtfs)
+        self.assertLessEqual(busiest, 16_384)
 
         # Disclosed as stored on the iPhone only.
         privacy = (ROOT / "PRIVACY.md").read_text(encoding="utf-8")

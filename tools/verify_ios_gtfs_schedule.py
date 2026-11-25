@@ -77,7 +77,8 @@ REQUIRED_INDICES = {
 # The reader's limits (SQLiteGTFSJourneyRepository.swift): rows a board or planner query reads for one station and
 # agency time zone, stops bound to one catalogue station, agency time zones.  An index above them fails on the iPhone
 # with limitExceeded; the verifier refuses it first.
-MAX_CANDIDATE_ROWS = 4_096
+# 16,384 since November 2026: the full Swiss timetable gives Zürich HB about 7,000 boarding rows.
+MAX_CANDIDATE_ROWS = 16_384
 MAX_RESOLVED_STOPS = 128
 MAX_TIME_ZONES = 16
 # The reader computes every service day in the first agency time zone: all of them must keep Rome's UTC offset.

@@ -47,7 +47,9 @@ public struct SQLiteGTFSJourneyRepository: JourneyRepository, Sendable {
     private static let maximumTimeZones = 16
     private static let maximumPacks = 64
     private static let maximumCoveredStations = 8_192
-    private static let maximumCandidateRows = 4_096
+    /// Rows of one station and agency time zone a board or planner query reads, whatever the day: the full Swiss
+    /// timetable gives Zürich HB about 7,000 (November 2026). tools/verify_ios_gtfs_schedule.py checks the same limit.
+    private static let maximumCandidateRows = 16_384
     static let maximumGTFSSeconds = 168 * 60 * 60 - 1
     private static let maximumServiceDayLookback = maximumGTFSSeconds / (24 * 60 * 60)
     /// «Partenze» reads the next service day only this far after the page's time: the trains just
