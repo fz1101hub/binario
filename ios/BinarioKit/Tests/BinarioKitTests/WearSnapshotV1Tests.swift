@@ -63,6 +63,47 @@ final class WearSnapshotV1Tests: XCTestCase {
         XCTAssertFalse(plainObject.keys.contains { $0.hasSuffix("Vehicle") || $0.contains("Reliability") })
     }
 
+    /// A city line goes with its mode as the category and its line as the number, the vehicle being
+    /// METRO, TRAM or FUNICULAR for a Watch app that declares the vehicle (no capability of their own:
+    /// an earlier such app reads them as UNKNOWN, a train).
+    func testCityFixtureCanBeRecreatedWithTheModeAsCategoryAndTheLineAsNumber() throws {
+        let metro = WearServiceV1(
+            number: "M2", operatorName: "ATM", category: "Metro", destination: "Abbiategrasso",
+            scheduled: "09:04", expected: "09:04", status: "PROGRAMMED", delayMinutes: 0, vehicle: .metro
+        )
+        let tram = WearServiceV1(
+            number: "10", operatorName: "ATM", category: "Tram", destination: "Piazza 24 Maggio",
+            scheduled: "09:07", expected: "09:07", status: "PROGRAMMED", delayMinutes: 0, vehicle: .tram
+        )
+        let snapshot = WearSnapshotV1(
+            generatedAtEpochMillis: now,
+            expiresAtEpochMillis: now + 540_000,
+            ttlMillis: 540_000,
+            provenanceProducer: .iosApp,
+            provenanceDataNature: .programmed,
+            provenanceSourceLabel: "Comune di Milano / AMAT, dati ATM - CC BY 4.0",
+            provenanceObservedAtEpochMillis: now,
+            operationalState: .programmed,
+            freshness: .unknown,
+            confidence: .staticOnly,
+            routeId: "S01700--S01645",
+            routeLabel: "Milano Centrale → Milano Porta Garibaldi",
+            direction: .outbound,
+            notice: "Orari programmati statici. Non sono dati in tempo reale.",
+            services: [metro, tram]
+        )
+        let data = try WearSnapshotEncoder().encode(snapshot, nowEpochMillis: now)
+        let object = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
+        let goldenData = try Data(contentsOf: repositoryRoot
+            .appendingPathComponent("contracts/wear-snapshot/v1/ios-to-apple-watch-v1-city.json"))
+        let golden = try XCTUnwrap(JSONSerialization.jsonObject(with: goldenData) as? [String: Any])
+
+        XCTAssertEqual(Set(object.keys), Set(golden.keys))
+        XCTAssertTrue(NSDictionary(dictionary: object).isEqual(to: golden))
+        // The wire values are the iPhone's own TimetableVehicle values.
+        XCTAssertEqual([TimetableVehicle.metro, .tram, .funicular].map(\.rawValue), ["METRO", "TRAM", "FUNICULAR"])
+    }
+
     func testReliabilityOutsideTheContractRangeIsRejectedBeforeTheSession() {
         for pair in [WearReliabilityV1(onTime: 4, samples: 4), WearReliabilityV1(onTime: 28, samples: 27),
                      WearReliabilityV1(onTime: -1, samples: 27), WearReliabilityV1(onTime: 1, samples: 10_001)] {

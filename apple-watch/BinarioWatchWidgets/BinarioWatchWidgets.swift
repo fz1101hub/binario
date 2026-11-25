@@ -70,21 +70,24 @@ private struct BinarioWatchWidgetView: View {
     @ViewBuilder
     private var familyContent: some View {
         let next = entry.snapshot.services.first
-        // A bus shows the bus symbol in every family, as in the app.
-        let isBus = next?.isBus == true
+        // A bus or a city line shows its symbol in every family, as in the app; VoiceOver says its
+        // label («Metro M1»), never a train.
+        let symbol = next?.vehicleSymbol
         switch family {
         case .accessoryCircular:
             VStack(spacing: 0) {
-                if isBus {
-                    Image(systemName: WatchVehicle.busSymbol).font(.caption2)
+                if let symbol {
+                    Image(systemName: symbol).font(.caption2)
+                        .accessibilityLabel(next?.vehicleTitle ?? "")
                 }
                 Text(next?.expectedDeparture ?? "—").font(.headline)
                 Text(next?.number ?? WatchLocalization.text("watch.widget.compactName")).font(.caption2)
             }
         case .accessoryInline:
             let line = next.map { "\($0.expectedDeparture) · \($0.destination)" } ?? WatchLocalization.text("watch.widget.noData")
-            if isBus {
-                Label(line, systemImage: WatchVehicle.busSymbol)
+            if let symbol {
+                Label(line, systemImage: symbol)
+                    .accessibilityLabel(spoken(line, next))
             } else {
                 Text(line)
             }
@@ -93,8 +96,9 @@ private struct BinarioWatchWidgetView: View {
                 Text(entry.snapshot.displayRouteLabel).lineLimit(1)
                 let line = next.map { "\($0.expectedDeparture)  \($0.destination)" } ?? WatchLocalization.text("watch.widget.noData")
                 Group {
-                    if isBus {
-                        Label(line, systemImage: WatchVehicle.busSymbol)
+                    if let symbol {
+                        Label(line, systemImage: symbol)
+                            .accessibilityLabel(spoken(line, next))
                     } else {
                         Text(line)
                     }
@@ -109,6 +113,13 @@ private struct BinarioWatchWidgetView: View {
                 }
             }
         }
+    }
+
+    /// What VoiceOver reads for the line of a bus or a city line: its label first («Metro M1, 08:10
+    /// · Abbiategrasso»), as Wear OS says the label in its complication; the symbol alone says nothing.
+    private func spoken(_ line: String, _ service: WatchService?) -> String {
+        guard let service, service.vehicleTitle != nil else { return line }
+        return "\(service.label), \(line)"
     }
 }
 

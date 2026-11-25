@@ -20,6 +20,7 @@ import it.binario.app.data.TrainService
 import it.binario.app.data.TrainStop
 import it.binario.app.data.core.LegMode
 import it.binario.app.data.core.SourceId
+import it.binario.app.data.journey.urbanLineName
 import it.binario.app.data.repository.TrainNumberQuery
 import it.binario.app.data.repository.TrainNumberMatch
 import it.binario.app.data.planned.BoundedSingleFlightCache
@@ -978,8 +979,14 @@ class EmbeddedGtfsRouteAdapter(
             val departureMinutes = stopTimes.preferredDeparture(segment.originEntry)
             val segmentEntries = segmentEntries(segment)
             val agencyName = agencyName(route)
-            val number = publicNumber(trip, route)
-            val scheduledBus = scheduledCoaches && journeyLegMode(route?.type, scheduledCoaches) == LegMode.BUS
+            val mode = journeyLegMode(route?.type, scheduledCoaches)
+            val scheduledBus = scheduledCoaches && mode == LegMode.BUS
+            // A metro, tram or funicular run of a city pack has a line, not a number: the line stands for it, as on the
+            // iPhone (`TimetableNaming.urbanLine`, else the long name, else the mode).
+            val cityMode = mode?.takeIf { it == LegMode.METRO || it == LegMode.TRAM || it == LegMode.FUNICULAR }
+            val number = cityMode?.let { city ->
+                urbanLineName(city, route?.shortName) ?: route?.longName?.trim()?.takeIf(String::isNotEmpty) ?: city.name.lowercase(Locale.ROOT)
+            } ?: publicNumber(trip, route)
             return TrainService(
                 id = "$sourceId:${trip.id}:$serviceDate",
                 number = number,
@@ -988,6 +995,7 @@ class EmbeddedGtfsRouteAdapter(
                 trainCategory = if (scheduledBus) TrainCategory.OTHER else category(route?.type, route, agencyName),
                 scheduledBus = scheduledBus,
                 busLine = if (scheduledBus) lineLabel(route) else null,
+                cityMode = cityMode,
                 bikesAllowed = bikesOnBoard(packBikesValue(sourceId, trip.bikes)),
                 origin = stops.name(stopTimes.stop(segment.originEntry)),
                 destination = stops.name(stopTimes.stop(segment.destinationEntry)),

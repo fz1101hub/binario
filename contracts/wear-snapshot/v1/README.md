@@ -25,7 +25,9 @@ Gli orari `service{n}Scheduled` e `service{n}Expected` del produttore Android so
 
 Il produttore Android non invia come `service{n}` una corsa di cui la fonte ha confermato la soppressione: Tile e complication mostrano la prima corsa come «prossimo treno» senza il suo stato. Il campo `notice` del produttore Android contiene l'avviso nella lingua del telefono (la prima soppressione confermata fra le corse lasciate fuori, «Soppresso: R 2345 delle 08:15»; altrimenti fonte di copertura non ufficiale, fonti in conflitto, altrimenti il primo avviso di qualità dello snapshot), mai il testo libero della fonte dati; senza avvisi il campo è vuoto.
 
-Il set di chiavi è chiuso: comprende le chiavi obbligatorie e i soli campi facoltativi descritti in *Campo facoltativo: affidabilità* e *Campo facoltativo: mezzo*. Non sono ammessi segreti o materiale sensibile: token, password, credenziali, header/autorizzazioni, identificativi di sessione, posizione/coordinate, tracce GPS, audio, trascrizioni o comandi vocali. In particolare non esistono campi per location, latitude, longitude, audio, transcript o voice. I valori non elencati non possono essere aggiunti in v1: richiedono una nuova `schemaVersion` e fixture. Le sole eccezioni sono i campi facoltativi di affidabilità e di mezzo, inviati solo ai decoder che dichiarano di conoscerli (vedi *Come un orologio dichiara i campi facoltativi*).
+Il set di chiavi è chiuso: comprende le chiavi obbligatorie e i soli campi facoltativi descritti in *Campo facoltativo: affidabilità* e *Campo facoltativo: mezzo*. Non sono ammessi segreti o materiale sensibile: token, password, credenziali, header/autorizzazioni, identificativi di sessione, posizione/coordinate, tracce GPS, audio, trascrizioni o comandi vocali. In particolare non esistono campi per location, latitude, longitude, audio, transcript o voice. Le chiavi non elencate non possono essere aggiunte in v1: richiedono una nuova `schemaVersion` e fixture. Le sole eccezioni sono i campi facoltativi di affidabilità e di mezzo, inviati solo ai decoder che dichiarano di conoscerli (vedi *Come un orologio dichiara i campi facoltativi*).
+
+Un valore nuovo di un enum esistente, invece, si aggiunge in v1 quando ogni decoder che può riceverlo lo legge già come `UNKNOWN` senza rifiutare il payload, e `UNKNOWN` è un ripiego sicuro per ciò che l'orologio mostra: così sono stati aggiunti `METRO`, `TRAM` e `FUNICULAR` al mezzo (vedi *Linee urbane*). Ogni aggiunta aggiorna questa specifica, una fixture e tutti i decoder.
 
 ## Campi e enum
 
@@ -47,7 +49,7 @@ La forma canonica è un oggetto JSON piatto; sulle Data Layer Android le stesse 
 | `serviceCount` | integer | Da 0 a 2. |
 | `service{n}Number`, `Operator`, `Category`, `Destination`, `Scheduled`, `Expected`, `Status`, `Platform`, `DelayMinutes` | string/string/string/string/string/string/string/string/integer | Tutti obbligatori per ogni `n < serviceCount`, eccetto `Platform` che può essere stringa vuota. `DelayMinutes` è tra -720 e 1.440. |
 | `service{n}ReliabilityOnTime`, `service{n}ReliabilitySamples` | integer/integer | **Facoltativi**, sempre in coppia (entrambi o nessuno) per un `n < serviceCount`; vedi sotto. |
-| `service{n}Vehicle` | enum | **Facoltativo**, per un `n < serviceCount`: `TRAIN`, `BUS_TRENITALIA`, `FRECCIALINK`, `ITALOBUS`, `BUS`, `REPLACEMENT_BUS`, `UNKNOWN`; vedi sotto. |
+| `service{n}Vehicle` | enum | **Facoltativo**, per un `n < serviceCount`: `TRAIN`, `BUS_TRENITALIA`, `FRECCIALINK`, `ITALOBUS`, `BUS`, `REPLACEMENT_BUS`, `METRO`, `TRAM`, `FUNICULAR`, `UNKNOWN`; vedi sotto. |
 
 `UNAVAILABLE` richiede `serviceCount: 0` e provenienza `UNAVAILABLE`. `PROGRAMMED` dichiara esplicitamente che i dati non sono realtime. Le fixture sono esempi stabili: i test usano un clock fissato, non l'orologio reale.
 
@@ -68,16 +70,31 @@ Una corsa può portare la propria affidabilità nelle statistiche di rete non uf
 
 ## Campo facoltativo: mezzo (aggiunto il 23 novembre 2026)
 
-Una corsa può dire su che cosa viaggia, con i valori di `JourneyLegVehicle` di Android per i modi di un pack ferroviario e di `TimetableVehicle` dell'iPhone (casi comuni in `contracts/shared-rules/v1/journey-leg-vehicles-v1.json`).
+Una corsa può dire su che cosa viaggia, con i valori di `JourneyLegVehicle` di Android e di `TimetableVehicle` dell'iPhone (casi comuni in `contracts/shared-rules/v1/journey-leg-vehicles-v1.json`).
 
 | Chiave | Tipo | Vincoli |
 |---|---|---|
-| `service{n}Vehicle` | string | 1–32 caratteri normalizzati: `TRAIN` (treno), `BUS_TRENITALIA` («Bus Trenitalia»), `FRECCIALINK`, `ITALOBUS`, `BUS` (pullman di un altro operatore), `REPLACEMENT_BUS` (bus sostitutivo). |
+| `service{n}Vehicle` | string | 1–32 caratteri normalizzati: `TRAIN` (treno), `BUS_TRENITALIA` («Bus Trenitalia»), `FRECCIALINK`, `ITALOBUS`, `BUS` (pullman di un altro operatore), `REPLACEMENT_BUS` (bus sostitutivo); dal 24 novembre 2026 `METRO` (metropolitana, anche il people mover Marconi Express), `TRAM`, `FUNICULAR` (funicolare, cremagliera o ascensore di una rete urbana), vedi *Linee urbane*. |
 
 - **Compatibilità**: la versione resta `schemaVersion: 1`. Il campo vale per una corsa sola e può mancare su qualunque corsa: un payload senza il campo, di un produttore precedente o di una copia salvata prima, è valido come prima e la corsa è un **treno**. Un valore sconosciuto diventa `UNKNOWN` e la corsa si mostra come un treno, senza icona del bus; un valore vuoto, non normalizzato, oltre 32 caratteri, non testuale o per un indice `n >= serviceCount` fa rifiutare il payload intero.
 - **Etichetta**: per un bus `service{n}Category` è l'etichetta del mezzo nella lingua del telefono («Bus Trenitalia», «ItaloBus», «Bus sostitutivo»; sull'iPhone con la sigla della linea quando aggiunge qualcosa, «Bus Trenitalia BUS», come nelle righe dell'app), mai «Treno». Vale anche per i telefoni che non inviano il campo, perché la categoria è un testo libero: un orologio precedente mostra già l'etichetta, senza icona.
-- **Produttori**: Android lo ricava da `TrainService.scheduledBus` (pullman dell'operatore dei pack `scheduledCoachPacks`, con la linea `busLine` per FrecciaLink) e `JourneyLegVehicle.of`; un treno è `TRAIN`. L'iPhone lo ricava da `TrainService.vehicle` (`TimetableVehicle`); un servizio senza mezzo è `TRAIN`. Per una linea urbana l'iPhone invia anche `METRO`, `TRAM` o `FUNICULAR`, con il modo come categoria («Metro») e la linea come numero («M1»): gli orologi di oggi li leggono `UNKNOWN`, senza icona del bus. Nessuno dei due lo invia a un orologio che non ha dichiarato `binario_wear_vehicle_v1`.
+- **Produttori**: Android lo ricava da `TrainService.scheduledBus` (pullman dell'operatore dei pack `scheduledCoachPacks`, con la linea `busLine` per FrecciaLink), da `TrainService.cityMode` per una linea urbana e da `JourneyLegVehicle.of`; un treno è `TRAIN`. L'iPhone lo ricava da `TrainService.vehicle` (`TimetableVehicle`); un servizio senza mezzo è `TRAIN`. Nessuno dei due lo invia a un orologio che non ha dichiarato `binario_wear_vehicle_v1`.
 - **Decoder**: Wear OS `WearService.vehicle` (`WearVehicle`), Apple Watch `WatchService.vehicle` (`WatchVehicle`). Su Wear OS l'app mostra l'icona del bus prima dell'orario e l'etichetta come categoria; il Tile e la complication sono solo testo, per i treni come per i bus, e mostrano l'etichetta prima del numero («08:10 · Bus Trenitalia 3601»). Su Apple Watch l'app, il dettaglio della corsa e i widget (circolare, rettangolare, in linea) mostrano il simbolo `bus` con l'etichetta. L'accessibilità dice l'etichetta e il numero, mai «treno».
+
+### Linee urbane (aggiunte il 24 novembre 2026)
+
+I telefoni elencano anche corse di metropolitana, tram e funicolare delle reti urbane (Milano, Genova, Firenze, il Marconi Express di Bologna…). Una tale corsa viaggia con `METRO`, `TRAM` o `FUNICULAR` (`JourneyLegVehicle` e `TimetableVehicle`, gli stessi valori dei viaggi con cambi).
+
+- **Come la inviano i telefoni**: una corsa urbana non ha numero pubblico. `service{n}Number` è la linea («M1», «14», «MEX»; senza linea il nome lungo o la parola del modo, come nelle righe dell'iPhone), `service{n}Category` il modo nella lingua del telefono (`journey_leg_metro`, `journey_leg_tram`, `journey_leg_funicular` di Android, `result.vehicle.*` dell'iPhone: «Metro», «Tram», «Funicolare»), anche a un orologio che non legge il mezzo: nessun orologio la chiama «Treno». Nessuna affidabilità: le statistiche di rete sono dei treni. L'iPhone la invia quando la ricerca del pianificatore ne elenca una; la scheda Treni di Android legge solo i pack ferroviari, quindi oggi Android non ne invia, ma un `TrainService` di una linea urbana (`cityMode`, impostato dall'adapter dell'orario per una route urbana) uscirebbe allo stesso modo.
+- **Nessuna nuova capability.** I tre valori vanno a ogni orologio che dichiara `binario_wear_vehicle_v1`, senza una capability propria, perché:
+  1. la capability dichiara la chiave `service{n}Vehicle`, e ogni decoder che la dichiara (Wear OS `WearVehicle.fromWire`, Apple Watch `WatchVehicle(rawValue:) ?? .unknown`, dal 23 novembre 2026) legge un valore che non conosce come `UNKNOWN` e accetta il payload: un orologio precedente non si rompe e non perde la cache valida;
+  2. per quell'orologio `UNKNOWN` è un treno, esattamente come una corsa senza il campo: una capability nuova, che togliesse il valore o lo sostituisse, non cambierebbe ciò che mostra («08:10 · M1» con la categoria «Metro», senza icona del bus), mentre obbligherebbe Android a riscrivere il payload conservato prima di reinviarlo e l'iPhone a una regola in più;
+  3. l'iPhone invia questi valori agli orologi con `binario_wear_vehicle_v1` dal 23 novembre 2026: la scelta lo conferma invece di cambiarlo.
+
+  Ciò che un orologio precedente perde è solo la presentazione: niente simbolo del modo, e l'accessibilità dice «Treno M1». Una capability nuova servirebbe solo per un valore che un decoder precedente rifiutasse o mostrasse in modo sbagliato oltre a «treno».
+- **Decoder**: `WearVehicle.METRO`, `TRAM`, `FUNICULAR` (`WearService.isUrban`) e `WatchVehicle.metro`, `.tram`, `.funicular` (`WatchService.isUrban`), mai bus. L'orologio nomina il modo da sé, nella propria lingua, con i testi di Android in 17 lingue (Wear OS `vehicle_metro`, `vehicle_tram`, `vehicle_funicular`; Apple Watch `watch.vehicle.*`), e lo fa seguire dalla linea ricevuta come numero: «Metro M1», con la regola dei telefoni (`urbanLabels` in `journey-leg-vehicles-v1.json`, letti anche dai test dei due orologi: la linea resta fuori se ripete il modo, se è un nome di oltre dieci caratteri o un segnaposto). Il simbolo è quello del telefono:
+  - **Wear OS**: nell'app l'icona del modo prima dell'orario (metro, tram, funicolare, come `Subway`, `Tram` e `DirectionsRailway` di Android, disegnate nell'app) e il modo come categoria («ATM · Metro»); nel Tile e nella complication «08:10 · Metro M1»; TalkBack dice «Metro M1», mai «Treno».
+  - **Apple Watch**: nelle righe e nel dettaglio il simbolo dell'iPhone (`tram.fill.tunnel`, `tram`, `cablecar`) con «Metro M1» (nel dettaglio il modo accanto al simbolo e la linea come valore); nei tre widget il simbolo, come per un bus, e nel circolare la linea sotto l'orario. VoiceOver dice «Metro M1» nelle righe e nei widget rettangolare e in linea, il modo per il simbolo del widget circolare, mai «treno».
 
 ## Come un orologio dichiara i campi facoltativi
 
@@ -86,7 +103,7 @@ Un decoder precedente rifiuta una chiave che non conosce, quindi un produttore a
 | Campo | Capability |
 |---|---|
 | Affidabilità (`service{n}ReliabilityOnTime`, `service{n}ReliabilitySamples`) | `binario_wear_reliability_v1` |
-| Mezzo (`service{n}Vehicle`) | `binario_wear_vehicle_v1` |
+| Mezzo (`service{n}Vehicle`, con `METRO`, `TRAM` e `FUNICULAR`: vedi *Linee urbane*) | `binario_wear_vehicle_v1` |
 | Nessun campo: durata fino all'ultima corsa (*Ricaduta sull'orario programmato*) | `binario_wear_programmed_fallback_v1` |
 
 - **Wear OS**: capability del Data Layer pubblicate dall'app Wear in `wear/src/main/res/values/wear.xml`. Il telefono Android aggiunge un campo solo se tutti i nodi connessi pubblicano la sua capability; senza orologi connessi o con la verifica non riuscita non lo invia.
@@ -118,6 +135,7 @@ L'iPhone chiede le fonti live (RFI, Italo, ViaggiaTreno) soltanto in primo piano
 - `android-to-wear-v1-vehicle.json`: app Android → Wear OS, orario programmato con un Bus Trenitalia e un treno, con il campo facoltativo del mezzo.
 - `ios-to-apple-watch-v1.json`: iOS → Apple Watch tramite il contesto WCSession esistente, stato operativo senza campi facoltativi (ciò che riceve un'app Watch che non li dichiara).
 - `ios-to-apple-watch-v1-optional.json`: iOS → Apple Watch, stato operativo con i campi facoltativi: affidabilità sulla prima corsa, mezzo di entrambe (un treno e un ItaloBus).
+- `ios-to-apple-watch-v1-city.json`: iOS → Apple Watch, orario programmato di Milano con una metropolitana (M2) e un tram (10): il modo come categoria, la linea come numero, il mezzo `METRO` e `TRAM`. Anche il test Android la confronta con ciò che invia per le stesse corse urbane.
 
 Ogni modulo ha test di compatibilità propri contro queste fixture. Una modifica intenzionale deve aggiornare prima questa specifica, poi la fixture e tutti i decoder interessati; non deve essere nascosta dietro campi extra tollerati.
 
@@ -133,6 +151,7 @@ Dal 23 novembre 2026 i due orologi ricevono gli stessi dati: stati operativi, or
 | Durata dello snapshot | Due minuti dopo l'orario programmato dell'ultima corsa inviata (al più 12 ore), con i valori live per i primi 15 minuti dalla scrittura; a un'app Wear precedente, 15 minuti dalla scrittura | Due minuti dopo l'ultima corsa elencata (al più 12 ore), con i valori live per i primi 15 minuti dalla lettura del tabellone; a un'app Watch precedente, con valori live, 15 minuti dalla lettura |
 | Dopo i 15 minuti dei valori live | Orario programmato senza avviso, come gli snapshot programmati di Android | Orario programmato con l'avviso «Orari programmati statici…», come gli snapshot programmati dell'iPhone |
 | Cosa pubblica il telefono | La tratta attiva della scheda Treni, per l'orario corrente (mai una ricerca di Pianifica) | La ricerca del pianificatore per l'orario corrente, altrimenti la tratta scelta con «Mostra su Watch» |
+| Linee urbane | La scheda Treni legge solo i pack ferroviari: nessuna corsa di metro, tram o funicolare da inviare | Quelle che la ricerca del pianificatore elenca, con `METRO`, `TRAM` o `FUNICULAR` |
 | Corsa partita | Lasciata un minuto dopo la partenza prevista | Lasciata alla partenza prevista |
 | Categoria e numero | Nome della categoria nella lingua del telefono («Freccia») e numero con la sigla («FR 9505») | Sigla della linea dell'orario («FR») e numero («9505»), come nelle righe dell'iPhone |
 | `routeId` | Sempre `"active"` | Identificativo derivato dalle due stazioni (`S08409--S09218`), non dalla tratta salvata |

@@ -31,6 +31,9 @@
     <string name="service_operator_category">%1$s · %2$s</string>
     <string name="service_operator_category_platform">%1$s · %2$s · Gleis %3$s</string>
     <string name="accessibility_reliability">%1$s (inoffizielle Statistik)</string>
+    <string name="vehicle_metro">Metro</string>
+    <string name="vehicle_tram">Tram</string>
+    <string name="vehicle_funicular">Standseilbahn</string>
     <plurals name="service_reliability_on_time">
         <item quantity="one">%1$d von %2$d Mal pünktlich</item>
         <item quantity="other">%1$d von %2$d Mal pünktlich</item>

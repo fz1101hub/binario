@@ -150,17 +150,19 @@ private fun WearHome(snapshot: WearSnapshot?, expired: Boolean, phoneApp: WearPh
                             .padding(horizontal = 14.dp, vertical = 10.dp),
                         verticalArrangement = Arrangement.spacedBy(2.dp),
                     ) {
-                        // A bus shows the bus before its time, as the phone draws a bus; its label is the category below.
+                        // A bus or a city line shows its vehicle before its time, as the phone draws its legs; its label is
+                        // the category below (for a city line its mode in the watch's language, the line standing as the number).
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                            if (service.isBus) {
-                                Image(WearBusIcon, contentDescription = null, colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.primary), modifier = Modifier.size(16.dp))
+                            service.vehicleIcon?.let { icon ->
+                                Image(icon, contentDescription = null, colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.primary), modifier = Modifier.size(16.dp))
                             }
                             Text(stringResource(R.string.service_time_number, service.expectedDeparture, service.number), style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
                         }
                         Text(stringResource(R.string.service_destination_status, service.destination, service.status), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
+                        val category = service.shownCategory(context.wearStrings())
                         Text(
-                            service.platform?.let { stringResource(R.string.service_operator_category_platform, service.operator, service.category, it) }
-                                ?: stringResource(R.string.service_operator_category, service.operator, service.category),
+                            service.platform?.let { stringResource(R.string.service_operator_category_platform, service.operator, category, it) }
+                                ?: stringResource(R.string.service_operator_category, service.operator, category),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurface,
                         )

@@ -3,7 +3,9 @@
   "readers": {
     "android": "app/src/test/java/it/binario/app/journeys/JourneyLegVehiclesContractTest.kt",
     "iphone": "ios/BinarioKit/Tests/BinarioKitTests/SharedRulesContractTests.swift",
-    "alexa": "alexa-companion/server/timetable/naming.test.ts"
+    "alexa": "alexa-companion/server/timetable/naming.test.ts",
+    "wearOs": "wear/src/test/java/it/binario/wear/model/WearVehicleTest.kt",
+    "appleWatch": "apple-watch/BinarioWatchTests/WatchSnapshotTests.swift"
   },
   "scheduledCoachPacks": [
     "italo-gtfs",
@@ -389,6 +391,20 @@
       "repeatsMode": false,
       "shown": "Tram METROSS",
       "why": "Metrosassari is a line name"
+    },
+    {
+      "label": "Funicolare",
+      "line": "Zecca - Righi",
+      "repeatsMode": false,
+      "shown": "Funicolare",
+      "why": "a line longer than ten characters is a name, left out (Android drops it with the line, the iPhone and the watches with the label)"
+    },
+    {
+      "label": "Tram",
+      "line": "INCONNU",
+      "repeatsMode": false,
+      "shown": "Tram",
+      "why": "a placeholder line is left out too"
     }
   ]
 }

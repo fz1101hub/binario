@@ -51,6 +51,11 @@ targets:
         buildPhase: resources
       - path: ../contracts/wear-snapshot/v1/ios-to-apple-watch-v1-optional.json
         buildPhase: resources
+      - path: ../contracts/wear-snapshot/v1/ios-to-apple-watch-v1-city.json
+        buildPhase: resources
+      # The phones' cases of a city line's label, which the Watch names as they do.
+      - path: ../contracts/shared-rules/v1/journey-leg-vehicles-v1.json
+        buildPhase: resources
     dependencies:
       - target: BinarioWatch
     settings:

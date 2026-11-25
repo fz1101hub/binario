@@ -340,6 +340,36 @@
       "swissWithoutUic": false
     },
     {
+      "stationId": "gtfs:ch-otd-gtfs:ch:1:sloid:5213:0:1",
+      "trenitaliaLocationId": null,
+      "uic": "8505213",
+      "swissWithoutUic": false
+    },
+    {
+      "stationId": "gtfs:ch-otd-gtfs:Parentch:1:sloid:16271",
+      "trenitaliaLocationId": null,
+      "uic": "8516271",
+      "swissWithoutUic": false
+    },
+    {
+      "stationId": "gtfs:ch-otd-gtfs:ch:1:sloid:3001",
+      "trenitaliaLocationId": null,
+      "uic": "8503001",
+      "swissWithoutUic": false
+    },
+    {
+      "stationId": "gtfs:ch-otd-gtfs:ch:1:sloid:123456",
+      "trenitaliaLocationId": null,
+      "uic": null,
+      "swissWithoutUic": false
+    },
+    {
+      "stationId": "gtfs:ch-otd-gtfs:8002301_gen:missingSLOID_pf:21",
+      "trenitaliaLocationId": null,
+      "uic": null,
+      "swissWithoutUic": false
+    },
+    {
       "stationId": "curated:S01250",
       "trenitaliaLocationId": "850007100",
       "uic": "8507100",

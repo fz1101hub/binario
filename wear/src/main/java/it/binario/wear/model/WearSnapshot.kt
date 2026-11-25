@@ -78,14 +78,30 @@ data class WearService(
 ) {
     /** A bus of the phone's timetable: the glance shows a bus and its label ([category]), never «Treno». */
     val isBus: Boolean get() = vehicle?.isBus == true
+
+    /**
+     * A metro, tram or funicular line of a city network (since 24 Nov 2026): its mode's icon, and its mode and line
+     * («Metro M1»: the phone sends the line as the [number]), never «Treno».
+     */
+    val isUrban: Boolean get() = vehicle?.isUrban == true
 }
 
 /**
- * The vehicle of a service (contracts/wear-snapshot/v1, `service{n}Vehicle`): the phone's `JourneyLegVehicle` for the
- * modes of a railway pack. An unknown value is [UNKNOWN] and shown as a train, as a service without the field.
+ * The vehicle of a service (contracts/wear-snapshot/v1, `service{n}Vehicle`): the phone's `JourneyLegVehicle`, a train,
+ * a bus or, since 24 Nov 2026, a line of a city network. An unknown value is [UNKNOWN] and shown as a train, as a
+ * service without the field.
  */
 enum class WearVehicle(val isBus: Boolean) {
-    TRAIN(false), BUS_TRENITALIA(true), FRECCIALINK(true), ITALOBUS(true), BUS(true), REPLACEMENT_BUS(true), UNKNOWN(false);
+    TRAIN(false), BUS_TRENITALIA(true), FRECCIALINK(true), ITALOBUS(true), BUS(true), REPLACEMENT_BUS(true),
+    /** A metro line, the Marconi Express people mover too. */
+    METRO(false),
+    TRAM(false),
+    /** A funicular, a rack railway or a lift of a city network. */
+    FUNICULAR(false),
+    UNKNOWN(false);
+
+    /** A metro, tram or funicular line of a city network, as the phone's `JourneyLegVehicle` names one. */
+    val isUrban: Boolean get() = this == METRO || this == TRAM || this == FUNICULAR
 
     companion object { fun fromWire(value: String) = entries.firstOrNull { it.name == value } ?: UNKNOWN }
 }

@@ -214,7 +214,7 @@ pianificatore. 2 = notifiche di viaggio, sveglia di fermata, GPS, avvisi di arri
 | Stato del dato, fonte e qualità | Sì | Sì | Uguale | 4 |
 | Valori live, «Programmato» quando scadono | Sì | Sì | Uguale | 4 |
 | Affidabilità della corsa | Sì | Sì | Uguale | 4 |
-| Bus dell'orario con il suo simbolo | Sì | Sì | Uguale | 4 |
+| Bus, metro, tram e funicolari dell'orario con il loro simbolo e la loro etichetta («Metro M1») | Sì | Sì | Uguale | 4 |
 | Aggiorna dal telefono | Data Layer | Watch Connectivity | Uguale (nativo iOS) | 4 |
 | App del telefono assente | Messaggio | Messaggio | Uguale | 4 |
 | Dettaglio della corsa | Sì | Sì | Uguale | 4 |

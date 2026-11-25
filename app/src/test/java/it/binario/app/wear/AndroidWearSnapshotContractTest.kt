@@ -12,6 +12,7 @@ import it.binario.app.data.SnapshotWarning
 import it.binario.app.data.Station
 import it.binario.app.data.TrainCategory
 import it.binario.app.data.TrainService
+import it.binario.app.data.core.LegMode
 import it.binario.app.data.reliability.ReliabilityFixtures
 import it.binario.app.journeys.JourneyLegVehicle
 import it.binario.app.widget.ReliabilityMark
@@ -166,6 +167,7 @@ class AndroidWearSnapshotContractTest {
         val reliability = AndroidWearSnapshotContract.reliabilityOf(stats, snapshot)
         assertEquals(ReliabilityMark(22, 30, 5, 22, 30), reliability(train))
         assertNull(reliability(train.copy(scheduledBus = true)))
+        assertNull(reliability(train.copy(cityMode = LegMode.METRO)))
         assertNull(reliability(train.copy(transferCount = 1)))
         // The return direction boards at Milano: the statistics have no FR 9558 from there to Roma.
         assertNull(AndroidWearSnapshotContract.reliabilityOf(stats, snapshot.copy(direction = Direction.RETURN))(train))
@@ -227,6 +229,33 @@ class AndroidWearSnapshotContractTest {
         assertEquals("TRAIN", payload["service0Vehicle"])
         assertEquals("TRAIN", payload["service1Vehicle"])
         assertEquals(goldenSnapshot.services.size, payload.keys.count { it.endsWith("Vehicle") })
+    }
+
+    @Test
+    fun `a city line is sent as the iPhone sends it, its mode as the category and its line as the number`() {
+        val metro = service("m2", "M2", RailOperator.OTHER, TrainCategory.OTHER, "09:04", "09:04", "", 0, ServiceStatus.ON_TIME)
+            .copy(cityMode = LegMode.METRO, operatorDisplayName = "ATM", operationalStatusVerified = false, platform = null, destination = "Abbiategrasso")
+        val tram = metro.copy(id = "t10", number = "10", cityMode = LegMode.TRAM, destination = "Piazza 24 Maggio", scheduledDeparture = "09:07",
+            expectedDeparture = "09:07", scheduledDepartureDateTime = LocalDateTime.of(2030, 1, 1, 9, 7))
+        val snapshot = goldenSnapshot.copy(services = listOf(metro, tram), confidence = DataConfidence.STATIC_ONLY)
+
+        val payload = AndroidWearSnapshotContract.operational(snapshot, generatedAt, strings(locale = null), vehicles = true)
+
+        // The service fields of the iPhone's city fixture: the two phones send a city line alike.
+        val iphone = fixture("ios-to-apple-watch-v1-city.json")
+        for (index in 0..1) for (field in listOf("Number", "Category", "Operator", "Destination", "Scheduled", "Vehicle")) {
+            assertEquals("service$index$field", iphone["service$index$field"], payload["service$index$field"])
+        }
+        // A watch without the field gets no vehicle, but the city line is never «Treno» or «Altro».
+        val plain = AndroidWearSnapshotContract.operational(snapshot, generatedAt, strings(locale = null))
+        assertFalse(AndroidWearSnapshotContract.hasVehicles(plain))
+        assertEquals("Metro", plain["service0Category"])
+        assertEquals("Funicular", AndroidWearSnapshotContract.operational(
+            snapshot.copy(services = listOf(metro.copy(cityMode = LegMode.FUNICULAR))), generatedAt, strings("en")
+        )["service0Category"])
+        assertEquals(JourneyLegVehicle.FUNICULAR, AndroidWearSnapshotContract.vehicleOf(metro.copy(cityMode = LegMode.FUNICULAR)))
+        // Only a city mode names a city line: any other is a train.
+        assertEquals(JourneyLegVehicle.TRAIN, AndroidWearSnapshotContract.vehicleOf(metro.copy(cityMode = LegMode.TRAIN)))
     }
 
     @Test
@@ -407,7 +436,9 @@ class AndroidWearSnapshotContractTest {
             missingValue = catalogue.getValue("wear_payload_value_unavailable"),
             cancelledNotice = catalogue.getValue("wear_notice_cancelled"),
             otherOperator = catalogue.getValue("wear_operator_other"),
-            vehicleLabels = JourneyLegVehicle.entries.mapNotNull { vehicle -> vehicle.resourceName?.takeIf { vehicle.isBus }?.let { vehicle to catalogue.getValue(it) } }.toMap()
+            vehicleLabels = JourneyLegVehicle.entries.mapNotNull { vehicle ->
+                vehicle.resourceName?.takeIf { vehicle.isBus || vehicle.isUrban }?.let { vehicle to catalogue.getValue(it) }
+            }.toMap()
         )
     }
 

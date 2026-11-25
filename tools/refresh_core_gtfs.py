@@ -21,7 +21,9 @@ manifest that lists it; ``tools/apply_ci_gtfs_refresh.py`` then adds it to the r
 ``attributionDated`` (Etalab Licence Ouverte: source and date of the last update) carries in its attribution the day the
 build took a new archive of it.
 
-Downloads use ``acquire_transit_sources.download`` (HTTPS only, byte cap, resume, retries on 5xx).  An archive equal
+Downloads use ``acquire_transit_sources.download`` (HTTPS only, byte cap, resume, retries on 5xx); a reviewed large
+archive (``build_gtfs_packs.REVIEWED_LARGE_ARCHIVES``, Switzerland) has its own byte cap and its own archive limits,
+and is read in place, one row at a time.  An archive equal
 to the one recorded in the manifest (``sourceArchiveSha256``) is not rebuilt.  Every changed source is built alone
 with ``build_gtfs_packs.build_packs(only=[id])`` on a staging copy of the directory, so a failing source leaves its
 previous pack and manifest entry in place and is reported; a rebuilt pack whose canonical content is identical to the
@@ -104,6 +106,13 @@ Resolve = Callable[[Mapping[str, Any]], dict[str, Any]]
 
 class RefreshError(RuntimeError):
     """A source cannot be refreshed safely; its previous pack stays published."""
+
+
+def source_download(source_id: str) -> Fetch:
+    """``acquire.download`` under the byte cap of ``source_id``: acquire.MAX_DOWNLOAD_BYTES, or the reviewed limit of a
+    large archive (build_gtfs_packs.REVIEWED_LARGE_ARCHIVES)."""
+    limit = builder.source_download_limit(source_id, acquire.MAX_DOWNLOAD_BYTES)
+    return lambda url, target: acquire.download(url, target, max_bytes=limit)
 
 
 def load_candidates(path: Path = CANDIDATES_PATH) -> dict[str, dict[str, Any]]:
@@ -355,8 +364,8 @@ def refresh(
     candidates: Mapping[str, Mapping[str, Any]] | None = None,
 ) -> dict[str, Any]:
     """Refresh the selected core packs (empty selection: all) into ``out``, and build the candidates the selection names;
-    never raises for a single source."""
-    fetch = fetch or (lambda url, target: acquire.download(url, target))
+    never raises for a single source.  Without ``fetch`` each source is downloaded under its own cap
+    (:func:`source_download`)."""
     token = os.environ.get("GITHUB_TOKEN") or None
     resolve = resolve or (lambda upstream: resolve_upstream(upstream, token=token))
     manifest = builder.read_manifest(asset_dir / "manifest.json")
@@ -431,7 +440,7 @@ def refresh(
                 }
             print(f"ACQUIRE {source_id} {builder.log_safe(url)}", flush=True)
             target = downloads / f"{source_id}.zip"
-            record = fetch(url, target)
+            record = (fetch or source_download(source_id))(url, target)
             entry["download"] = record
             if not zipfile.is_zipfile(target):
                 raise RefreshError("il download non è un archivio ZIP")

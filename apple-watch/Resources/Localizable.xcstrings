@@ -6243,214 +6243,532 @@
         }
       }
     },
-    "watch.accessibility.vehicle.withDelay %@ %@ %@ %@ %@ %@ %@": {
+    "watch.accessibility.vehicle.withDelay %@ %@ %@ %@ %@ %@": {
       "localizations": {
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@, %@ %@, destinazione %@, previsto alle %@, %@, binario %@."
+            "value": "%@, %@, destinazione %@, previsto alle %@, %@, binario %@."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@, %@ %@, destination %@, expected at %@, %@, platform %@."
+            "value": "%@, %@, destination %@, expected at %@, %@, platform %@."
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@, %@ %@, Ziel %@, erwartet um %@, %@, Gleis %@."
+            "value": "%@, %@, Ziel %@, erwartet um %@, %@, Gleis %@."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@, %@ %@, destination %@, prévu à %@, %@, quai %@."
+            "value": "%@, %@, destination %@, prévu à %@, %@, quai %@."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@, %@ %@, destino %@, previsto a las %@, %@, andén %@."
+            "value": "%@, %@, destino %@, previsto a las %@, %@, andén %@."
           }
         },
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@، %@ %@، الوجهة %@، الموعد المتوقع %@، %@، الرصيف %@."
+            "value": "%@، %@، الوجهة %@، الموعد المتوقع %@، %@، الرصيف %@."
           }
         },
         "hi": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@, %@ %@, गंतव्य %@, अपेक्षित समय %@, %@, प्लेटफ़ॉर्म %@।"
+            "value": "%@, %@, गंतव्य %@, अपेक्षित समय %@, %@, प्लेटफ़ॉर्म %@।"
           }
         },
         "id": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@, %@ %@, tujuan %@, perkiraan pukul %@, %@, peron %@."
+            "value": "%@, %@, tujuan %@, perkiraan pukul %@, %@, peron %@."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@、%@ %@、行き先 %@、予定 %@、%@、%@ 番線。"
+            "value": "%@、%@、行き先 %@、予定 %@、%@、%@ 番線。"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@, %@ %@, 행선지 %@, 예정 시각 %@, %@, 승강장 %@."
+            "value": "%@, %@, 행선지 %@, 예정 시각 %@, %@, 승강장 %@."
           }
         },
         "my": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@၊ %@ %@၊ ဦးတည်ရာ %@၊ မျှော်မှန်းချိန် %@၊ %@၊ စင်္ကြံ %@။"
+            "value": "%@၊ %@၊ ဦးတည်ရာ %@၊ မျှော်မှန်းချိန် %@၊ %@၊ စင်္ကြံ %@။"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@, %@ %@, destino %@, previsto às %@, %@, plataforma %@."
+            "value": "%@, %@, destino %@, previsto às %@, %@, plataforma %@."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@, %@ %@, направление %@, ожидается в %@, %@, платформа %@."
+            "value": "%@, %@, направление %@, ожидается в %@, %@, платформа %@."
           }
         },
         "th": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@, %@ %@, ปลายทาง %@, คาดว่าเวลา %@, %@, ชานชาลา %@"
+            "value": "%@, %@, ปลายทาง %@, คาดว่าเวลา %@, %@, ชานชาลา %@"
           }
         },
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@, %@ %@, varış yeri %@, beklenen saat %@, %@, peron %@."
+            "value": "%@, %@, varış yeri %@, beklenen saat %@, %@, peron %@."
           }
         },
         "vi": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@, %@ %@, đi %@, dự kiến lúc %@, %@, sân ga %@."
+            "value": "%@, %@, đi %@, dự kiến lúc %@, %@, sân ga %@."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@，%@ %@，开往 %@，预计 %@，%@，站台 %@。"
+            "value": "%@，%@，开往 %@，预计 %@，%@，站台 %@。"
           }
         }
       }
     },
-    "watch.accessibility.vehicle.withoutDelay %@ %@ %@ %@ %@ %@": {
+    "watch.accessibility.vehicle.withoutDelay %@ %@ %@ %@ %@": {
       "localizations": {
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@, %@ %@, destinazione %@, previsto alle %@, binario %@."
+            "value": "%@, %@, destinazione %@, previsto alle %@, binario %@."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@, %@ %@, destination %@, expected at %@, platform %@."
+            "value": "%@, %@, destination %@, expected at %@, platform %@."
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@, %@ %@, Ziel %@, erwartet um %@, Gleis %@."
+            "value": "%@, %@, Ziel %@, erwartet um %@, Gleis %@."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@, %@ %@, destination %@, prévu à %@, quai %@."
+            "value": "%@, %@, destination %@, prévu à %@, quai %@."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@, %@ %@, destino %@, previsto a las %@, andén %@."
+            "value": "%@, %@, destino %@, previsto a las %@, andén %@."
           }
         },
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@، %@ %@، الوجهة %@، الموعد المتوقع %@، الرصيف %@."
+            "value": "%@، %@، الوجهة %@، الموعد المتوقع %@، الرصيف %@."
           }
         },
         "hi": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@, %@ %@, गंतव्य %@, अपेक्षित समय %@, प्लेटफ़ॉर्म %@।"
+            "value": "%@, %@, गंतव्य %@, अपेक्षित समय %@, प्लेटफ़ॉर्म %@।"
           }
         },
         "id": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@, %@ %@, tujuan %@, perkiraan pukul %@, peron %@."
+            "value": "%@, %@, tujuan %@, perkiraan pukul %@, peron %@."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@、%@ %@、行き先 %@、予定 %@、%@ 番線。"
+            "value": "%@、%@、行き先 %@、予定 %@、%@ 番線。"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@, %@ %@, 행선지 %@, 예정 시각 %@, 승강장 %@."
+            "value": "%@, %@, 행선지 %@, 예정 시각 %@, 승강장 %@."
           }
         },
         "my": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@၊ %@ %@၊ ဦးတည်ရာ %@၊ မျှော်မှန်းချိန် %@၊ စင်္ကြံ %@။"
+            "value": "%@၊ %@၊ ဦးတည်ရာ %@၊ မျှော်မှန်းချိန် %@၊ စင်္ကြံ %@။"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@, %@ %@, destino %@, previsto às %@, plataforma %@."
+            "value": "%@, %@, destino %@, previsto às %@, plataforma %@."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@, %@ %@, направление %@, ожидается в %@, платформа %@."
+            "value": "%@, %@, направление %@, ожидается в %@, платформа %@."
           }
         },
         "th": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@, %@ %@, ปลายทาง %@, คาดว่าเวลา %@, ชานชาลา %@"
+            "value": "%@, %@, ปลายทาง %@, คาดว่าเวลา %@, ชานชาลา %@"
           }
         },
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@, %@ %@, varış yeri %@, beklenen saat %@, peron %@."
+            "value": "%@, %@, varış yeri %@, beklenen saat %@, peron %@."
           }
         },
         "vi": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@, %@ %@, đi %@, dự kiến lúc %@, sân ga %@."
+            "value": "%@, %@, đi %@, dự kiến lúc %@, sân ga %@."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@，%@ %@，开往 %@，预计 %@，站台 %@。"
+            "value": "%@，%@，开往 %@，预计 %@，站台 %@。"
+          }
+        }
+      }
+    },
+    "watch.vehicle.metro": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Metro"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Metro"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Metro"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Métro"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Metro"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "مترو"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "मेट्रो"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Metro"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "地下鉄"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "지하철"
+          }
+        },
+        "my": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "မြေအောက်ရထား"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Metrô"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Метро"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "รถไฟใต้ดิน"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Metro"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tàu điện ngầm"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "地铁"
+          }
+        }
+      }
+    },
+    "watch.vehicle.tram": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tram"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tram"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tram"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tram"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tranvía"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ترام"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ट्राम"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Trem"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "路面電車"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "트램"
+          }
+        },
+        "my": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ဓာတ်ရထား"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bonde"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Трамвай"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "รถราง"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tramvay"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tàu điện mặt đất"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "有轨电车"
+          }
+        }
+      }
+    },
+    "watch.vehicle.funicular": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Funicolare"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Funicular"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Standseilbahn"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Funiculaire"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Funicular"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "قطار جبلي"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "फ़्यूनिक्युलर"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Funikular"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ケーブルカー"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "푸니쿨라"
+          }
+        },
+        "my": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ကေဘယ်ရထား"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Funicular"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Фуникулёр"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "รถรางไต่เขา"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Füniküler"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tàu leo núi"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "缆索铁路"
           }
         }
       }

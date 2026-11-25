@@ -31,6 +31,9 @@
     <string name="service_operator_category">%1$s · %2$s</string>
     <string name="service_operator_category_platform">%1$s · %2$s · путь %3$s</string>
     <string name="accessibility_reliability">%1$s (неофициальная статистика)</string>
+    <string name="vehicle_metro">Метро</string>
+    <string name="vehicle_tram">Трамвай</string>
+    <string name="vehicle_funicular">Фуникулёр</string>
     <plurals name="service_reliability_on_time">
         <item quantity="one">Вовремя %1$d раз из %2$d</item>
         <item quantity="few">Вовремя %1$d раза из %2$d</item>

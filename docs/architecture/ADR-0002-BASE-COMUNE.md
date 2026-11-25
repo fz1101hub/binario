@@ -111,7 +111,7 @@ Il 24 novembre 2026, con i widget della schermata Home sull'iPhone:
 
 Le regole dei widget hanno i casi in `contracts/shared-rules/v1/widgets-v1.json`. Restano specifici dell'iPhone il modo di aggiornarsi (la timeline di WidgetKit al posto di WorkManager) e «📍 Più vicina», che apre l'app invece di leggere la posizione nel widget.
 
-Nomi, badge e minuti a piedi delle fermate urbane sono casi di prova in `contracts/shared-rules/v1/urban-stops-v1.json`; linea e etichetta di una corsa urbana sono in `journey-leg-vehicles-v1.json` (`urbanLines`, `urbanLabels`).
+Nomi, badge e minuti a piedi delle fermate urbane sono casi di prova in `contracts/shared-rules/v1/urban-stops-v1.json`; linea e etichetta di una corsa urbana sono in `journey-leg-vehicles-v1.json` (`urbanLines`, `urbanLabels`). I casi delle etichette li leggono anche i test di Wear OS e Apple Watch, che mostrano una corsa urbana ricevuta nello snapshot («Metro M1») con la stessa regola.
 
 Con le funzioni minori di Android portate sull'iPhone (confronto in [PARITA_ANDROID_IPHONE.md](../PARITA_ANDROID_IPHONE.md)), il 24 novembre 2026:
 

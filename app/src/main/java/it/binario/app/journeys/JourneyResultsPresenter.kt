@@ -110,6 +110,9 @@ enum class JourneyLegVehicle(val resourceName: String?, val isBus: Boolean) {
     /** Walking or unknown: no vehicle label. */
     OTHER(null, false);
 
+    /** A metro, tram or funicular line of a city network: its mode and line («Metro M1»), never a train number. */
+    val isUrban: Boolean get() = this == METRO || this == TRAM || this == FUNICULAR
+
     companion object {
         fun of(mode: LegMode, operatorName: String?, lineLabel: String?): JourneyLegVehicle {
             val operator = operatorName.orEmpty().lowercase(Locale.ROOT)

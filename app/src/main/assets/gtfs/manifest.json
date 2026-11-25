@@ -1,6 +1,6 @@
 {
   "schemaVersion": 4,
-  "generatedAt": "2026-11-23",
+  "generatedAt": "2026-11-25",
   "purpose": "Offline GTFS data packs validated in Binario source test",
   "refreshCadence": "every-timetable-change",
   "filteringVersion": 2,
@@ -272,7 +272,7 @@
       "attribution": "Open Data Platform Mobility Switzerland / SBB Infrastructure",
       "licence": "opendata.swiss terms_by — uso libero, anche commerciale, con obbligo di citare la fonte",
       "licenceEvidence": "https://ckan.opendata.swiss/dataset/fahrplan-2026-gtfs2020 (condizioni https://opendata.swiss/terms-of-use#terms_by; una risorsa 2025 della stessa serie è etichettata «Open use. Must provide the source» / «Commercial Allowed, Reference Required»); ridistribuzione confermata dal titolare il 22 novembre 2026",
-      "sha256": "5cbf472690d62207f334c319be4a14bf370bd9dbb3e4cb827d7e42e03aa79f86",
+      "sha256": "7817f91cd779c4751e248146281bd1bf8cccc81afc0bc96453e17a91004a1fc3",
       "lastServiceDate": "2026-12-12",
       "fullServiceUntil": "2026-12-12",
       "notes": "Filtered offline to rail route types. Includes 407 rail routes, 24,019 trips and 3,114 referenced stops; contains Swiss and transborder services to be filtered by service leg when presented in Italy.",
@@ -386,13 +386,13 @@
           "rule": "frontalieri-corridors-v1"
         }
       },
-      "sourceArchiveSha256": "08f6251fe8adb491024e445863966a234e2a8af24a0e4939ff65122e119fd6f8",
-      "contentSha256": "00aad889bc6c9b3e8ff6d03516506753e3c75321d748d4ec00e739ad52bdb8da",
+      "sourceArchiveSha256": "f289e83c94c77b2a6031a191791b3448c4d626feef8d8019096a3df9957324ef",
+      "contentSha256": "9d969adbae967277ccd679b7bfaaada7c69687bad7f352351b278e55311ecf4f",
       "fullPack": {
         "path": "data/gtfs-foreign/android/ch-otd-gtfs.zip",
-        "sha256": "438565154810ce73001fc4d99627bf85db1b3b98e6d0de4a944686137e2b3dbf",
-        "sizeBytes": 2659987,
-        "contentSha256": "a6ffd3197fa8360f6fcf9258b05b1f4ad072757af4b55412b2701606a1b09a7a",
+        "sha256": "d34c902925478ecd0baffb446515ec101470160b74e0d3af26a2826243453d7c",
+        "sizeBytes": 4868776,
+        "contentSha256": "ee69cb2f9e9f66a0160812c1e95d5c0b3813915036a2e098e6d4d7946482ce5d",
         "lastServiceDate": "2026-12-12",
         "fullServiceUntil": "2026-12-12"
       }

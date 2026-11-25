@@ -137,6 +137,64 @@ final class WatchSnapshotTests: XCTestCase {
         XCTAssertEqual(later.services.map(\.vehicle), snapshot.services.map(\.vehicle))
     }
 
+    func testCityLinesHaveTheirModeSymbolAndLabelAndAreNeverCalledTrains() throws {
+        let snapshot = try XCTUnwrap(BinarioWatchSnapshot.decodeContract(try fixtureData("ios-to-apple-watch-v1-city"), nowEpochMillis: fixtureNow))
+        let metro = try XCTUnwrap(snapshot.services.first)
+        let tram = try XCTUnwrap(snapshot.services.last)
+
+        XCTAssertEqual(metro.vehicle, .metro)
+        XCTAssertEqual(tram.vehicle, .tram)
+        XCTAssertTrue(metro.isUrban && tram.isUrban)
+        XCTAssertFalse(metro.isBus || tram.isBus)
+        // The iPhone sends the line as the number and the mode as the category, for a Watch without the field too.
+        XCTAssertEqual(metro.number, "M2")
+        XCTAssertEqual(metro.category, "Metro")
+        // The symbols the iPhone draws (VehicleTexts.symbol).
+        XCTAssertEqual(metro.vehicleSymbol, "tram.fill.tunnel")
+        XCTAssertEqual(tram.vehicleSymbol, "tram")
+        XCTAssertEqual(WatchVehicle.funicular.symbol, "cablecar")
+        XCTAssertEqual(WatchVehicle.italobus.symbol, WatchVehicle.busSymbol)
+        XCTAssertNil(WatchVehicle.train.symbol)
+        XCTAssertNil(WatchVehicle.unknown.symbol)
+        // The Watch names the mode in its own language (Android's journey_leg_metro), followed by the line.
+        let metroLabel = WatchLocalization.text("watch.vehicle.metro")
+        XCTAssertEqual(metro.vehicleTitle, metroLabel)
+        XCTAssertEqual(metro.vehicleLine, "M2")
+        XCTAssertEqual(metro.label, "\(metroLabel) M2")
+        XCTAssertEqual(tram.label, "\(WatchLocalization.text("watch.vehicle.tram")) 10")
+        // VoiceOver says the label, never a train; as an earlier Watch app read it (UNKNOWN), it was a train.
+        XCTAssertTrue(metro.accessibilitySummary.contains("\(metroLabel) M2"), metro.accessibilitySummary)
+        XCTAssertNotEqual(metro.accessibilitySummary, cityService(metro, number: "M2", vehicle: .unknown).accessibilitySummary)
+        XCTAssertEqual(cityService(metro, number: "M2", vehicle: .unknown).label, "M2")
+        // A line that only repeats the mode or is a long name is left out, as on the phones.
+        XCTAssertEqual(cityService(metro, number: "METRO", vehicle: .metro).label, metroLabel)
+        let funicular = cityService(metro, number: "Zecca - Righi", vehicle: .funicular)
+        XCTAssertEqual(funicular.label, WatchLocalization.text("watch.vehicle.funicular"))
+        XCTAssertEqual(funicular.vehicleLine, "")
+        // A funicular from the iPhone, and the App Group copy keeps them.
+        let object = try XCTUnwrap(JSONSerialization.jsonObject(with: fixtureData("ios-to-apple-watch-v1-city")) as? [String: Any])
+        var variant = object
+        variant["service1Vehicle"] = "FUNICULAR"
+        let withFunicular = try XCTUnwrap(BinarioWatchSnapshot.decodeContract(try JSONSerialization.data(withJSONObject: variant), nowEpochMillis: fixtureNow))
+        XCTAssertEqual(withFunicular.services.map(\.vehicle), [.metro, .funicular])
+        let stored = try JSONEncoder().encode(snapshot)
+        XCTAssertEqual(BinarioWatchSnapshot.decodeContract(stored, nowEpochMillis: fixtureNow), snapshot)
+    }
+
+    func testCityLineLabelsFollowThePhonesSharedCases() throws {
+        let url = try XCTUnwrap(Bundle(for: Self.self).url(forResource: "journey-leg-vehicles-v1", withExtension: "json"))
+        let rules = try XCTUnwrap(JSONSerialization.jsonObject(with: Data(contentsOf: url)) as? [String: Any])
+        let cases = try XCTUnwrap(rules["urbanLabels"] as? [[String: Any]])
+        XCTAssertFalse(cases.isEmpty)
+        for item in cases {
+            let label = try XCTUnwrap(item["label"] as? String)
+            let line = try XCTUnwrap(item["line"] as? String)
+            let why = item["why"] as? String ?? ""
+            XCTAssertEqual(WatchVehicle.urbanLineRepeatsMode(line, label: label), item["repeatsMode"] as? Bool, why)
+            XCTAssertEqual(WatchVehicle.urbanLabel(label, line: line), item["shown"] as? String, why)
+        }
+    }
+
     func testLiveDataNameTheTimeTheirSourceObservedThem() throws {
         let snapshot = try XCTUnwrap(BinarioWatchSnapshot.decodeContract(try fixtureData(), nowEpochMillis: fixtureNow))
         // 1_893_484_795_000 is 08:59:55 in Rome on 1 January 2030.
@@ -520,6 +578,16 @@ final class WatchSnapshotTests: XCTestCase {
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = try XCTUnwrap(TimeZone(identifier: "Europe/Rome"))
         return try XCTUnwrap(calendar.date(from: DateComponents(year: year, month: month, day: day, hour: hour, minute: minute)))
+    }
+
+    /// `service` with another number and vehicle.
+    private func cityService(_ service: WatchService, number: String, vehicle: WatchVehicle) -> WatchService {
+        WatchService(
+            number: number, operatorName: service.operatorName, category: service.category,
+            destination: service.destination, scheduledDeparture: service.scheduledDeparture,
+            expectedDeparture: service.expectedDeparture, platform: service.platform,
+            delayMinutes: service.delayMinutes, status: service.status, vehicle: vehicle
+        )
     }
 
     private func fixtureData(_ name: String = "ios-to-apple-watch-v1") throws -> Data {

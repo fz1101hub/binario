@@ -40,7 +40,10 @@ internal data class WearSnapshotStrings(
     val cancelledNotice: String,
     /** The operator of a train whose source names none and whose legacy enum is the generic «other». */
     val otherOperator: String,
-    /** The label of each bus vehicle (`journey_leg_*`): the category the watch shows for a bus instead of «Treno». */
+    /**
+     * The label of each bus and city vehicle (`journey_leg_*`): the category the watch shows for a bus or a city line
+     * instead of «Treno» («Bus Trenitalia», «Metro»).
+     */
     val vehicleLabels: Map<JourneyLegVehicle, String> = emptyMap()
 ) {
     companion object {
@@ -63,7 +66,10 @@ internal data class WearSnapshotStrings(
                 JourneyLegVehicle.FRECCIALINK to resources.getString(R.string.journey_leg_freccialink),
                 JourneyLegVehicle.ITALOBUS to resources.getString(R.string.journey_leg_italobus),
                 JourneyLegVehicle.BUS to resources.getString(R.string.journey_leg_bus),
-                JourneyLegVehicle.REPLACEMENT_BUS to resources.getString(R.string.journey_leg_replacement_bus)
+                JourneyLegVehicle.REPLACEMENT_BUS to resources.getString(R.string.journey_leg_replacement_bus),
+                JourneyLegVehicle.METRO to resources.getString(R.string.journey_leg_metro),
+                JourneyLegVehicle.TRAM to resources.getString(R.string.journey_leg_tram),
+                JourneyLegVehicle.FUNICULAR to resources.getString(R.string.journey_leg_funicular)
             )
         )
     }
@@ -100,8 +106,10 @@ internal object AndroidWearSnapshotContract {
     /**
      * The v1 payload of [snapshot]. [reliabilityOf] gives the optional «In orario N volte su M» of a service (the
      * `service{n}ReliabilityOnTime` / `service{n}ReliabilitySamples` pair); it stays out when it gives none. With
-     * [vehicles] every service carries its optional `service{n}Vehicle` ([vehicleOf]). A bus is sent with its vehicle
-     * label as its category in any case, so a watch without the field still never calls it «Treno».
+     * [vehicles] every service carries its optional `service{n}Vehicle` ([vehicleOf]), the city modes (METRO, TRAM,
+     * FUNICULAR) included: a watch app that decodes the field and predates them reads them as UNKNOWN, a train. A bus or a
+     * city line is sent with its vehicle label as its category in any case («Bus Trenitalia», «Metro», a city line's line
+     * being its number), so a watch without the field still never calls it «Treno».
      *
      * The watch shows it for 15 minutes from [generatedAtEpochMillis] and never more than 15 minutes past the
      * snapshot's own validity. That validity is the source cache's (30-60 s for a live board): used as the deadline,
@@ -147,7 +155,8 @@ internal object AndroidWearSnapshotContract {
             put("serviceCount", services.size)
             services.forEachIndexed { index, service ->
                 val vehicle = vehicleOf(service)
-                val category = strings.vehicleLabels[vehicle]?.takeIf { vehicle.isBus } ?: strings.categoryLabels.getValue(service.trainCategory)
+                val category = strings.vehicleLabels[vehicle]?.takeIf { vehicle.isBus || vehicle.isUrban }
+                    ?: strings.categoryLabels.getValue(service.trainCategory)
                 put("service${index}Number", required(service.number, 24, strings.missingValue))
                 put("service${index}Operator", required(operatorLabel(service, strings), 64, strings.missingValue))
                 put("service${index}Category", required(category, 64, strings.missingValue))
@@ -221,14 +230,15 @@ internal object AndroidWearSnapshotContract {
 
     /**
      * The reliability of a service of [snapshot] in the embedded statistics: a direct train boarded at the route's
-     * origin, measured at its destination; none for coaches, journeys with changes or demonstration data.
+     * origin, measured at its destination; none for coaches, city lines, journeys with changes or demonstration data.
      */
     fun reliabilityOf(stats: NetworkReliabilityStats, snapshot: RouteSnapshot): (TrainService) -> ReliabilityMark? {
         if (snapshot.confidence == DataConfidence.DEMONSTRATION) return { null }
         val origin = NetworkReliability.stationCode(snapshot.route.origin(snapshot.direction))
         val destination = NetworkReliability.stationCode(snapshot.route.destination(snapshot.direction))
         return { service ->
-            if (service.scheduledBus || service.transferCount > 0) null else ReliabilityMarks.route(stats, service.number, origin, destination)
+            if (service.scheduledBus || service.cityMode != null || service.transferCount > 0) null
+            else ReliabilityMarks.route(stats, service.number, origin, destination)
         }
     }
 
@@ -243,11 +253,15 @@ internal object AndroidWearSnapshotContract {
     fun hasVehicles(payload: Map<String, Any?>): Boolean = payload.keys.any(vehicleKey::matches)
 
     /**
-     * What [service] travels on, as the phone names a leg of a railway pack (`JourneyLegVehicle.of`): the operator's
-     * own coach of a timetable ([TrainService.scheduledBus], FrecciaLink by its line), else a train.
+     * What [service] travels on, as the phone names a leg (`JourneyLegVehicle.of`): the operator's own coach of a
+     * timetable ([TrainService.scheduledBus], FrecciaLink by its line), a metro, tram or funicular run of a city pack
+     * ([TrainService.cityMode]; the Trains tab lists none today), else a train.
      */
-    fun vehicleOf(service: TrainService): JourneyLegVehicle =
-        if (service.scheduledBus) JourneyLegVehicle.of(LegMode.BUS, service.accessibleOperator, service.busLine) else JourneyLegVehicle.TRAIN
+    fun vehicleOf(service: TrainService): JourneyLegVehicle {
+        if (service.scheduledBus) return JourneyLegVehicle.of(LegMode.BUS, service.accessibleOperator, service.busLine)
+        val city = service.cityMode?.let { mode -> JourneyLegVehicle.of(mode, service.accessibleOperator, null) }
+        return city?.takeIf(JourneyLegVehicle::isUrban) ?: JourneyLegVehicle.TRAIN
+    }
 
     /**
      * Whether an optional field may be sent: a v1 decoder of an earlier watch app rejects unknown keys, so only when

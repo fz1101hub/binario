@@ -117,12 +117,13 @@ struct WatchHomeView: View {
         return WatchLocalization.text("watch.platform.value \(platform)")
     }
 
-    /// Category, number and platform; a bus shows the bus symbol before its label, as on the iPhone.
+    /// Category, number and platform; a bus or a city line shows its symbol before its label
+    /// («Metro M1»), as on the iPhone.
     @ViewBuilder
     private func serviceLine(_ service: WatchService) -> some View {
         let line = "\(service.label) · \(platformText(service))"
-        if service.isBus {
-            Label(line, systemImage: WatchVehicle.busSymbol)
+        if let symbol = service.vehicleSymbol {
+            Label(line, systemImage: symbol)
         } else {
             Text(line)
         }
@@ -135,12 +136,12 @@ private struct WatchServiceDetailView: View {
     var body: some View {
         List {
             Text(service.destination).font(.headline)
-            if service.isBus {
-                // A bus is named by its label, never as a train.
+            if let title = service.vehicleTitle, let symbol = service.vehicleSymbol {
+                // A bus is named by its label and a city line by its mode, never as a train.
                 LabeledContent {
-                    Text(service.number)
+                    Text(service.vehicleLine)
                 } label: {
-                    Label(service.category, systemImage: WatchVehicle.busSymbol)
+                    Label(title, systemImage: symbol)
                 }
             } else {
                 LabeledContent(

@@ -59,7 +59,7 @@ import uuid
 import zipfile
 from collections import defaultdict
 from contextlib import contextmanager
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Any, BinaryIO, Callable, Iterable, Mapping, Sequence
@@ -80,7 +80,7 @@ MAX_ARCHIVE_ENTRIES = 128
 MAX_ARCHIVE_UNCOMPRESSED_BYTES = 1024 * 1024 * 1024
 MAX_ARCHIVE_MEMBER_BYTES = 512 * 1024 * 1024
 MAX_COMPRESSION_RATIO = 200
-# Members named, largest first, when an archive exceeds MAX_ARCHIVE_UNCOMPRESSED_BYTES.
+# Members named, largest first, when an archive exceeds its uncompressed limit (and in the log of a reviewed large archive).
 ARCHIVE_LIMIT_REPORTED_MEMBERS = 4
 # Rows read from one source table (only the rows a filter keeps are retained, see MAX_RETAINED_*). City feeds are
 # mostly buses: Rome's stop_times.txt has 5.1 million rows, of which the metro and tram pack keeps a fraction.
@@ -93,6 +93,117 @@ MAX_CSV_FIELD_UTF8_BYTES = 16 * 1024
 MAX_CSV_PHYSICAL_LINE_UTF8_BYTES = 256 * 1024
 MAX_RETAINED_BUILD_CELLS = 6_000_000
 MAX_RETAINED_BUILD_UTF8_BYTES = 128 * 1024 * 1024
+# The large tables filter_archive reads row by row with a filter, retaining only the rows it keeps (MAX_RETAINED_*): the
+# ones a reviewed large archive (REVIEWED_LARGE_ARCHIVES) may have past MAX_ARCHIVE_MEMBER_BYTES and MAX_TABLE_ROWS.  Every
+# other member keeps the default limits (routes.txt and stops.txt, read reduced for a reviewed source too, and agency.txt).
+STREAMED_TABLES = frozenset({
+    "trips.txt", "stop_times.txt", "calendar.txt", "calendar_dates.txt", "frequencies.txt", "transfers.txt", "pathways.txt",
+})
+
+
+@dataclass(frozen=True)
+class LargeArchiveReview:
+    """The reviewed limits of a source whose complete archive is larger than the default ones (``reason`` says why).
+
+    They replace, for that source only, MAX_ARCHIVE_UNCOMPRESSED_BYTES (``max_uncompressed_bytes``), and for the
+    STREAMED_TABLES only MAX_ARCHIVE_MEMBER_BYTES (``max_streamed_member_bytes``) and MAX_TABLE_ROWS
+    (``max_streamed_table_rows``); the download cap (``max_download_bytes``) replaces DEFAULT_MAX_DOWNLOAD_BYTES and the
+    core refresh's acquire_transit_sources.MAX_DOWNLOAD_BYTES; ``max_retained_*`` replace the build totals
+    MAX_RETAINED_BUILD_ROWS, _CELLS and _UTF8_BYTES.  The entry count, the compression ratio, the other members and
+    MAX_RETAINED_TABLE_ROWS (which every reader of the published pack applies) keep their limits.  The build reads every
+    table of such a source reduced to what the pack keeps (:func:`filter_archive`), and writes its calendar from
+    tripsRunFrom only, each service in its smallest exact encoding (:func:`compact_calendars`, CALENDARS_FROM_FIELD):
+    the pack has the same trips, stops and days from tripsRunFrom (tests/test_build_gtfs_packs.py,
+    ReviewedLargeArchiveTest).  ``max_service_days`` caps the calendar held while read (one bit a service and a day).
+    """
+
+    reason: str
+    max_download_bytes: int
+    max_uncompressed_bytes: int
+    max_streamed_member_bytes: int
+    max_streamed_table_rows: int
+    max_retained_rows: int | None = None
+    max_retained_cells: int | None = None
+    max_retained_utf8_bytes: int | None = None
+    # The calendar held while read, as bits per service and day from tripsRunFrom (read_service_days).
+    max_service_days: int = 100_000_000
+
+    def budget(self) -> "RetentionBudget":
+        """The retention budget of one build of the source (None: the default MAX_RETAINED_BUILD_*)."""
+        return RetentionBudget(
+            max_rows=self.max_retained_rows, max_cells=self.max_retained_cells, max_utf8_bytes=self.max_retained_utf8_bytes,
+        )
+
+
+# Reviewed 24 November 2026 (docs/data-sources/GTFS_PACK_REFRESH.md, «Archivio svizzero: limiti rivisti»).  Never applied
+# to another source: a new entry is a reviewed change, and the test of this registry names its sources.
+#
+# ch-otd-gtfs, measured by the core-packs run 45512857331 (gtfs_fp2026_20261121.zip): 4,602,775,061 bytes decompressed,
+# stop_times.txt 3,751,672,566, trips.txt 393,487,544, calendar_dates.txt 276,073,942, transfers.txt 162,090,787.  At the
+# row widths of the published full pack (59.6, 89.8, 18.6 and 49.2 bytes) that is about 63 million stop times, 4.4
+# million trips, 14.8 million exceptions and 3.3 million transfers: past MAX_TABLE_ROWS for calendar_dates.txt too.
+# That run held every rail trip of the year with its calendar before dropping the expired ones and stopped at the
+# 1,000,000 rows of MAX_RETAINED_BUILD_ROWS; the build now reads only what the pack keeps.  What it keeps from the 2027
+# file (all of it runs from 13 December): the August 2025 file of the 2026 timetable had 24,019 rail trips (about
+# 270,000 stop times at 11.2 calls a trip, 3.1 exceptions a trip in the published pack); the December 2025 file of the
+# same series was 1.75 times larger (135 MB against 77.5 MB compressed), hence about 42,000 trips, 470,000 stop times,
+# 130,000 exceptions, some 10,000 transfers and 5,000 stops: about 0.7 million rows, 4.2 million cells and 35 MB, within
+# the defaults by less than half again, with no measure of the 2027 file before it is first built on 14 December.  The
+# reviewed totals let stop_times.txt reach MAX_RETAINED_TABLE_ROWS (750,000 rows, the bound every reader of the
+# published pack applies) with the other tables at twice the estimate: 1,500,000 rows and 9,000,000 cells; the bytes
+# keep the default 128 MiB (about 60 MB at those rows, 57 bytes a stop time).  At about 600 bytes of memory a retained
+# row (580 measured on stop_times rows) that is under 1 GB held, within a 7 GB runner.
+#
+# The next run, 45516917094, held 47,878 trips and 542,797 stop times and stopped at the 750,000 rows of
+# calendar_dates.txt (5,562 services: the Swiss file lists most days of most services one by one, over 135 rows a
+# service for its year).  The calendar is now held as one bit a service and a day from tripsRunFrom while read, and
+# written from that day in the smallest exact encoding of each service.  On the published full pack (the August 2025
+# file, 1,022 services, 60 source rows a service) that is 62,093 rows down to 1,054 from 23 November and 34,112 for its
+# whole year (33 a service, 55 %): about 6,000 rows for the 5,562 services from 23 November, and for a full year of
+# them about 190,000 rows at 33 a service, or about 410,000 if they are as dense as the run of 24 November suggests
+# (over 135 source rows a service, recoded at the same 55 %): within the 500,000 rows of calendar_dates.txt that the
+# Android reader and the iPhone index builder accept, but not by much in the second case.
+# max_service_days, 100,000,000 bits (12.5 MB), counts the three bitmaps of a service (calendar days, added days, days
+# with an exception): the rail services of a year (265,070 rail trips on 24 November at 8.6 trips a service, about
+# 31,000) hold at most about 34 million.
+REVIEWED_LARGE_ARCHIVES: Mapping[str, LargeArchiveReview] = {
+    "ch-otd-gtfs": LargeArchiveReview(
+        reason=(
+            "Orario nazionale svizzero di tutti i mezzi, di cui il pack tiene solo i treni: l'archivio del permalink "
+            "timetable-2026-gtfs2020 del 21 novembre 2026 si decomprime a 4,6 GB (limite predefinito 1 GiB) ed è "
+            "stato scaricato entro i 400 MiB del refresh settimanale; l'archivio di un anno orario cresce fino al "
+            "cambio orario (catalogo opendata.swiss: 278 MB compressi il 29 novembre 2025, 135 MB il 10 dicembre 2025 "
+            "per l'anno successivo). Limiti rivisti: 8 GiB decompressi in tutto, circa il doppio dell'osservato; "
+            "6 GiB e 120 milioni di righe per ogni tabella letta in streaming (circa 55 byte per riga di "
+            "stop_times.txt); 768 MiB di download, quasi il doppio dei 400 MiB entro cui è stato scaricato l'archivio "
+            "del 21 novembre (un download che si decomprime oltre gli 8 GiB è rifiutato dal limite complessivo); "
+            "1,5 milioni di righe e 9 milioni di celle trattenute in tutto (i byte restano 128 MiB), perché "
+            "stop_times.txt possa arrivare alle 750.000 righe di ogni tabella con le altre al doppio della stima del "
+            "file 2027 (vedi sopra). "
+            "L'archivio è letto sul posto e mai estratto: sul runner occupa disco solo il download."
+        ),
+        max_download_bytes=768 * 1024 * 1024,
+        max_uncompressed_bytes=8 * 1024 * 1024 * 1024,
+        max_streamed_member_bytes=6 * 1024 * 1024 * 1024,
+        max_streamed_table_rows=120_000_000,
+        max_retained_rows=1_500_000,
+        max_retained_cells=9_000_000,
+        max_service_days=100_000_000,
+    ),
+}
+
+
+def large_archive_review(source_id: str | None) -> LargeArchiveReview | None:
+    """The reviewed limits of ``source_id`` (REVIEWED_LARGE_ARCHIVES), None for every other source."""
+    return None if source_id is None else REVIEWED_LARGE_ARCHIVES.get(source_id)
+
+
+def source_download_limit(source_id: str, default: int) -> int:
+    """The download cap of ``source_id``: its reviewed limit (REVIEWED_LARGE_ARCHIVES), else ``default``."""
+    review = large_archive_review(source_id)
+    return default if review is None else review.max_download_bytes
+
+
 TOOL_VERSION = 2
 RELEASE_MANIFEST_VERSION = 4
 WEEKDAY_COLUMNS = ("monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday")
@@ -113,6 +224,9 @@ FULL_SERVICE_REFERENCE_DAYS = 28
 # recorded in the pack's filter manifest (tripsRunFrom).
 EXPIRED_TRIP_GRACE_DAYS = 2
 TRIPS_RUN_FROM_FIELD = "tripsRunFrom"
+# A reviewed large archive (REVIEWED_LARGE_ARCHIVES) keeps its calendar from tripsRunFrom only, each service in its
+# smallest exact encoding (compact_calendars): the day is recorded in the filter manifest under this field.
+CALENDARS_FROM_FIELD = "calendarsFrom"
 FILTER_MANIFEST_MEMBER = "binario_filter_manifest.json"
 MEMBER_DIGEST_FIELD = "memberSha256"
 
@@ -574,27 +688,42 @@ def find_entry(archive: zipfile.ZipFile, basename: str) -> str | None:
     return matches[0] if matches else None
 
 
-def validate_archive_limits(archive: zipfile.ZipFile, *, omit_geometry: bool = False) -> None:
+def largest_members(archive: zipfile.ZipFile) -> str:
+    """The largest members with their uncompressed sizes, largest first, on one line (names from the archive, hence
+    log_safe): what grew, read from the log alone without fetching the source again."""
+    files = sorted((entry for entry in archive.infolist() if not entry.is_dir()), key=lambda entry: entry.file_size, reverse=True)
+    return ", ".join(f"{log_safe(entry.filename)} {entry.file_size}" for entry in files[:ARCHIVE_LIMIT_REPORTED_MEMBERS])
+
+
+def validate_archive_limits(archive: zipfile.ZipFile, *, omit_geometry: bool = False, source_id: str | None = None) -> None:
+    """Entry count, uncompressed size, member sizes and compression ratio of an archive before any member is read.
+
+    With the ``source_id`` of a reviewed large archive (REVIEWED_LARGE_ARCHIVES) its reviewed limits replace the total
+    and, for the STREAMED_TABLES, the member limit; entry count, ratio and the other members keep the defaults."""
+    review = large_archive_review(source_id)
+    total_limit = MAX_ARCHIVE_UNCOMPRESSED_BYTES if review is None else review.max_uncompressed_bytes
+    reviewed = "" if review is None else f" (limite rivisto di {source_id}, REVIEWED_LARGE_ARCHIVES)"
     entries = archive.infolist()
     if len(entries) > MAX_ARCHIVE_ENTRIES:
         raise BuildError(f"archivio GTFS con troppe entry: {len(entries)} > {MAX_ARCHIVE_ENTRIES}")
     files = [entry for entry in entries if not entry.is_dir()]
     total = sum(entry.file_size for entry in files)
-    if total > MAX_ARCHIVE_UNCOMPRESSED_BYTES:
-        # The largest members, so that the reviewer sees from the log alone what grew (the source is not fetched again
-        # to find out); names come from the archive, hence log_safe.
-        largest = sorted(files, key=lambda entry: entry.file_size, reverse=True)[:ARCHIVE_LIMIT_REPORTED_MEMBERS]
+    if total > total_limit:
         raise BuildError(
-            f"archivio GTFS decompresso oltre limite: {total} > {MAX_ARCHIVE_UNCOMPRESSED_BYTES} bytes "
-            f"(membri più grandi: {', '.join(f'{log_safe(entry.filename)} {entry.file_size}' for entry in largest)})"
+            f"archivio GTFS decompresso oltre limite: {total} > {total_limit} bytes{reviewed} "
+            f"(membri più grandi: {largest_members(archive)})"
         )
     for entry in files:
         # Timetable packs never open shapes.txt. Keep the total-size, entry and
         # compression-ratio guards even for that unused geometry member.
-        ignored_shape = omit_geometry and entry.filename.rsplit("/", 1)[-1] == "shapes.txt"
-        if entry.file_size > MAX_ARCHIVE_MEMBER_BYTES and not ignored_shape:
+        basename = entry.filename.rsplit("/", 1)[-1]
+        ignored_shape = omit_geometry and basename == "shapes.txt"
+        streamed = review is not None and basename in STREAMED_TABLES
+        member_limit = review.max_streamed_member_bytes if streamed and review is not None else MAX_ARCHIVE_MEMBER_BYTES
+        if entry.file_size > member_limit and not ignored_shape:
             raise BuildError(
-                f"membro GTFS oltre limite: {entry.filename!r} {entry.file_size} > {MAX_ARCHIVE_MEMBER_BYTES} bytes"
+                f"membro GTFS oltre limite: {entry.filename!r} {entry.file_size} > {member_limit} bytes"
+                + (reviewed if streamed else "")
             )
         ratio = entry.file_size / max(entry.compress_size, 1)
         if ratio > MAX_COMPRESSION_RATIO:
@@ -605,26 +734,46 @@ def validate_archive_limits(archive: zipfile.ZipFile, *, omit_geometry: bool = F
 
 @dataclass
 class RetentionBudget:
+    """What one build holds in memory, against MAX_RETAINED_BUILD_* (or the reviewed totals of a large archive,
+    :meth:`LargeArchiveReview.budget`); an error that stops the build names the rows each table holds."""
+
     retained_rows: int = 0
     retained_cells: int = 0
     retained_utf8_bytes: int = 0
+    max_rows: int | None = None
+    max_cells: int | None = None
+    max_utf8_bytes: int | None = None
+    rows_by_table: dict[str, int] = field(default_factory=dict)
+
+    def held(self) -> str:
+        """The rows each table holds, largest first: where a budget went, read from the log alone."""
+        tables = sorted(((count, name) for name, count in self.rows_by_table.items() if count), key=lambda item: (-item[0], item[1]))
+        return "righe trattenute per tabella: " + (", ".join(f"{name} {count}" for count, name in tables) or "nessuna")
+
+    def release(self, basename: str, rows: Iterable[Mapping[str, str]]) -> None:
+        """Rows of ``basename`` retained earlier and dropped since (no reference to them is kept): the budget counts what
+        is held."""
+        for row in rows:
+            self.retained_rows -= 1
+            self.retained_cells -= len(row)
+            self.retained_utf8_bytes -= sum(len(value.encode("utf-8")) for value in row.values())
+            self.rows_by_table[basename] -= 1
 
     def retain(self, basename: str, row: Mapping[str, str]) -> None:
         self.retained_rows += 1
         self.retained_cells += len(row)
         self.retained_utf8_bytes += sum(len(value.encode("utf-8")) for value in row.values())
-        if self.retained_rows > MAX_RETAINED_BUILD_ROWS:
+        self.rows_by_table[basename] = self.rows_by_table.get(basename, 0) + 1
+        max_rows = MAX_RETAINED_BUILD_ROWS if self.max_rows is None else self.max_rows
+        max_cells = MAX_RETAINED_BUILD_CELLS if self.max_cells is None else self.max_cells
+        max_bytes = MAX_RETAINED_BUILD_UTF8_BYTES if self.max_utf8_bytes is None else self.max_utf8_bytes
+        if self.retained_rows > max_rows:
+            raise BuildError(f"build GTFS oltre budget righe trattenute: {self.retained_rows} > {max_rows} ({self.held()})")
+        if self.retained_cells > max_cells:
+            raise BuildError(f"build GTFS oltre budget celle trattenute: {self.retained_cells} > {max_cells} ({self.held()})")
+        if self.retained_utf8_bytes > max_bytes:
             raise BuildError(
-                f"build GTFS oltre budget righe trattenute: {self.retained_rows} > {MAX_RETAINED_BUILD_ROWS}"
-            )
-        if self.retained_cells > MAX_RETAINED_BUILD_CELLS:
-            raise BuildError(
-                f"build GTFS oltre budget celle trattenute: {self.retained_cells} > {MAX_RETAINED_BUILD_CELLS}"
-            )
-        if self.retained_utf8_bytes > MAX_RETAINED_BUILD_UTF8_BYTES:
-            raise BuildError(
-                "build GTFS oltre budget byte UTF-8 trattenuti: "
-                f"{self.retained_utf8_bytes} > {MAX_RETAINED_BUILD_UTF8_BYTES}"
+                f"build GTFS oltre budget byte UTF-8 trattenuti: {self.retained_utf8_bytes} > {max_bytes} ({self.held()})"
             )
 
 
@@ -637,7 +786,9 @@ def bounded_csv_lines(text: io.TextIOBase, basename: str) -> Iterable[str]:
             raise BuildError(
                 f"riga fisica CSV oltre limite in {basename}: {MAX_CSV_PHYSICAL_LINE_UTF8_BYTES} caratteri"
             )
-        if len(line.encode("utf-8")) > MAX_CSV_PHYSICAL_LINE_UTF8_BYTES:
+        # A character is at most 4 UTF-8 bytes: a short line is never encoded (the streamed tables have tens of
+        # millions of lines).
+        if len(line) * 4 > MAX_CSV_PHYSICAL_LINE_UTF8_BYTES and len(line.encode("utf-8")) > MAX_CSV_PHYSICAL_LINE_UTF8_BYTES:
             raise BuildError(
                 f"riga fisica CSV oltre limite UTF-8 in {basename}: {MAX_CSV_PHYSICAL_LINE_UTF8_BYTES} bytes"
             )
@@ -651,7 +802,15 @@ def read_table(
     required: bool = False,
     predicate: Callable[[Mapping[str, str]], bool] | None = None,
     budget: RetentionBudget | None = None,
+    max_rows: int | None = None,
+    counts: dict[str, int] | None = None,
 ) -> CsvTable | None:
+    """The rows of one table, read one at a time from the archive (never the whole member): every row is checked, only
+    the rows ``predicate`` keeps are retained (MAX_RETAINED_TABLE_ROWS, ``budget``).  ``max_rows`` replaces
+    MAX_TABLE_ROWS, the rows read (a reviewed large archive, REVIEWED_LARGE_ARCHIVES); ``counts`` receives the rows read
+    and kept."""
+    row_limit = MAX_TABLE_ROWS if max_rows is None else max_rows
+    field_limit = MAX_CSV_FIELD_UTF8_BYTES
     entry = find_entry(archive, basename)
     if entry is None:
         if required:
@@ -674,9 +833,10 @@ def read_table(
             if len(header) > MAX_CSV_COLUMNS:
                 raise BuildError(f"troppe colonne in {basename}: {len(header)} > {MAX_CSV_COLUMNS}")
             rows_list: list[dict[str, str]] = []
+            index = 0
             for index, row in enumerate(reader, 1):
-                if index > MAX_TABLE_ROWS:
-                    raise BuildError(f"tabella oltre limite righe: {basename} > {MAX_TABLE_ROWS}")
+                if index > row_limit:
+                    raise BuildError(f"tabella oltre limite righe: {basename} > {row_limit}")
                 if None in row:
                     raise BuildError(f"riga con campi oltre l'header in {basename}")
                 normalized = {key: value or "" for key, value in row.items() if key is not None}
@@ -688,8 +848,12 @@ def read_table(
                     raise BuildError(
                         f"campo CSV multilinea non supportato dal runtime in {basename}, colonna {multiline_field!r}"
                     )
+                # At most 4 UTF-8 bytes a character: only a long value is encoded.
                 oversized_field = next(
-                    (key for key, value in normalized.items() if len(value.encode("utf-8")) > MAX_CSV_FIELD_UTF8_BYTES),
+                    (
+                        key for key, value in normalized.items()
+                        if len(value) * 4 > field_limit and len(value.encode("utf-8")) > field_limit
+                    ),
                     None,
                 )
                 if oversized_field is not None:
@@ -701,11 +865,14 @@ def read_table(
                 if len(rows_list) >= MAX_RETAINED_TABLE_ROWS:
                     raise BuildError(
                         f"tabella oltre budget righe trattenute: {basename} > {MAX_RETAINED_TABLE_ROWS}"
+                        + ("" if budget is None else f" ({budget.held()})")
                     )
                 if budget is not None:
                     budget.retain(basename, normalized)
                 rows_list.append(normalized)
             rows = tuple(rows_list)
+            if counts is not None:
+                counts.update(read=index, kept=len(rows))
             return CsvTable(header, rows)
     except UnicodeDecodeError as error:
         raise BuildError(f"codifica CSV non valida in {basename}") from error
@@ -1247,6 +1414,19 @@ def verify_local_times(
         day += timedelta(days=1)
 
 
+def verify_calendars_from(source_id: str, value: object, calendar: CsvTable, calendar_dates: CsvTable) -> None:
+    """A pack declaring CALENDARS_FROM_FIELD is of a reviewed large archive and names no calendar day before it."""
+    if large_archive_review(source_id) is None:
+        raise BuildError(f"{source_id}: {CALENDARS_FROM_FIELD} su una fonte non rivista (REVIEWED_LARGE_ARCHIVES)")
+    try:
+        first = date.fromisoformat(str(value))
+    except ValueError as error:
+        raise BuildError(f"{source_id}: {CALENDARS_FROM_FIELD} non valido") from error
+    span = calendar_span(calendar, calendar_dates, source_id)
+    if span is not None and span[0] < first:
+        raise BuildError(f"{source_id}: calendario dal {span[0]}, prima del {first} ({CALENDARS_FROM_FIELD})")
+
+
 def verify_train_numbers(source_id: str, metadata: Mapping[str, Any], trip_rows: Sequence[Mapping[str, str]]) -> None:
     """A TRAIN_NUMBER_ROUTE_ID_SOURCES pack declares TRAIN_NUMBERS_RULE and has no trip left with an empty
     trip_short_name and a plain-number route_id; no other pack declares it."""
@@ -1262,11 +1442,24 @@ def verify_train_numbers(source_id: str, metadata: Mapping[str, Any], trip_rows:
         raise BuildError(f"{source_id}: {filled} trip senza trip_short_name con un route_id numero treno")
 
 
-def selected_routes(source_id: str, routes: CsvTable) -> tuple[tuple[dict[str, str], ...], dict[str, Any]]:
-    require_columns(routes, "routes.txt", "route_id", "route_type")
+def route_selector(source_id: str) -> Callable[[Mapping[str, str]], bool]:
+    """The row filter of :func:`selected_routes` for ``source_id``: a reviewed large archive reads routes.txt with it."""
     explicit = EXCLUSIVE_ROUTE_IDS.get(source_id)
     if explicit is not None:
-        selected = tuple(row for row in routes.rows if row.get("route_id", "") in explicit)
+        return lambda row: row.get("route_id", "") in explicit
+    if source_id in URBAN_SOURCES:
+        excluded = URBAN_SOURCES[source_id]
+        return lambda row: row.get("route_type", "").strip() in URBAN_ROUTE_TYPES and row.get("agency_id", "").strip() not in excluded
+    allowed = RAIL_ROUTE_TYPES | SCHEDULED_COACH_ROUTE_TYPES if source_id in SCHEDULED_COACH_SOURCES else RAIL_ROUTE_TYPES
+    return lambda row: row.get("route_type", "").strip() in allowed
+
+
+def selected_routes(source_id: str, routes: CsvTable) -> tuple[tuple[dict[str, str], ...], dict[str, Any]]:
+    require_columns(routes, "routes.txt", "route_id", "route_type")
+    keep = route_selector(source_id)
+    explicit = EXCLUSIVE_ROUTE_IDS.get(source_id)
+    if explicit is not None:
+        selected = tuple(row for row in routes.rows if keep(row))
         found = {row.get("route_id", "") for row in selected}
         missing = explicit - found
         if missing:
@@ -1286,10 +1479,7 @@ def selected_routes(source_id: str, routes: CsvTable) -> tuple[tuple[dict[str, s
             metadata["routeTypeOverrides"] = dict(sorted(overrides.items()))
     elif source_id in URBAN_SOURCES:
         excluded = URBAN_SOURCES[source_id]
-        selected = tuple(
-            row for row in routes.rows
-            if row.get("route_type", "").strip() in URBAN_ROUTE_TYPES and row.get("agency_id", "").strip() not in excluded
-        )
+        selected = tuple(row for row in routes.rows if keep(row))
         metadata = {
             "kind": "gtfs-urban-route-types",
             "description": (
@@ -1301,7 +1491,7 @@ def selected_routes(source_id: str, routes: CsvTable) -> tuple[tuple[dict[str, s
         }
     elif source_id in SCHEDULED_COACH_SOURCES:
         allowed = RAIL_ROUTE_TYPES | SCHEDULED_COACH_ROUTE_TYPES
-        selected = tuple(row for row in routes.rows if row.get("route_type", "").strip() in allowed)
+        selected = tuple(row for row in routes.rows if keep(row))
         metadata = {
             "kind": "gtfs-rail-and-operator-coach-route-types",
             "description": (
@@ -1311,7 +1501,7 @@ def selected_routes(source_id: str, routes: CsvTable) -> tuple[tuple[dict[str, s
             "routeTypes": sorted(allowed, key=int),
         }
     else:
-        selected = tuple(row for row in routes.rows if row.get("route_type", "").strip() in RAIL_ROUTE_TYPES)
+        selected = tuple(row for row in routes.rows if keep(row))
         metadata = {
             "kind": "gtfs-rail-route-types",
             "description": "route_type GTFS ferroviari standard ed estesi (2, 100-199).",
@@ -1728,6 +1918,340 @@ def original_archive_sha256(archive: zipfile.ZipFile, source_id: str, input_hash
     return provenance
 
 
+def read_calendars(
+    archive: zipfile.ZipFile, service_ids: set[str], budget: RetentionBudget, max_rows: int | None,
+) -> tuple[CsvTable, CsvTable]:
+    """calendar.txt and calendar_dates.txt of ``service_ids`` (empty tables when absent)."""
+    calendar = read_table(
+        archive,
+        "calendar.txt",
+        predicate=lambda row: row.get("service_id", "") in service_ids,
+        budget=budget,
+        max_rows=max_rows,
+    ) or empty_calendar()
+    calendar_dates = read_table(
+        archive,
+        "calendar_dates.txt",
+        predicate=lambda row: row.get("service_id", "") in service_ids,
+        budget=budget,
+        max_rows=max_rows,
+    ) or empty_calendar_dates()
+    return calendar, calendar_dates
+
+
+@dataclass
+class ServiceDays:
+    """The days each service runs from ``first`` on (:func:`service_days` from that day), as bitmaps: bit n is
+    ``first`` + n days.  ``source_rows`` counts the rows of calendar.txt and calendar_dates.txt that give a service a
+    day from ``first`` on (its encoding in the source, clipped there); ``irregular`` names the services whose encoding
+    every reader would not read alike (more than one calendar row, a weekday flag other than 0 or 1, an exception other
+    than 1 or 2, two exceptions on one day, a date with spaces); the headers are those of the source tables."""
+
+    first: date
+    days: dict[str, int]
+    source_rows: dict[str, int]
+    irregular: set[str]
+    calendar_header: tuple[str, ...]
+    calendar_dates_header: tuple[str, ...]
+    exceptions_read: int
+
+
+def read_service_days(
+    archive: zipfile.ZipFile,
+    source_id: str,
+    service_ids: set[str],
+    runs_from: date,
+    max_rows: int | None,
+    max_service_days: int,
+) -> ServiceDays:
+    """The days from ``runs_from`` on of the services ``service_ids`` (:class:`ServiceDays`), read without holding a row:
+    the same days as :func:`service_days` (a calendar row by its weekday flags from its start_date to its end_date, minus
+    the days of an exception other than 1, plus the days of an exception 1; an empty date is skipped).  A calendar row
+    ending before ``runs_from`` and an exception before it give no such day.  The bitmaps of calendar days, added days
+    and days with an exception together span at most ``max_service_days`` bits (services by days from ``runs_from``),
+    else the build stops."""
+    base = runs_from.toordinal()
+    calendar_bits: dict[str, int] = {}
+    added_bits: dict[str, int] = {}
+    listed_bits: dict[str, int] = {}
+    source_rows: dict[str, int] = {}
+    calendar_rows: dict[str, int] = {}
+    irregular: set[str] = set()
+    held = [0]
+
+    def reserve(table: dict[str, int], service_id: str, last: int) -> None:
+        """Room for day ``last`` in the bitmap of ``service_id``, checked before the bitmap grows."""
+        grown = max(0, last + 1 - table.get(service_id, 0).bit_length())
+        if held[0] + grown > max_service_days:
+            raise BuildError(
+                f"{source_id}: calendario oltre {max_service_days} giorni di servizio tenuti (servizi per giorni dal "
+                f"{runs_from}: LargeArchiveReview.max_service_days)"
+            )
+        held[0] += grown
+
+    def calendar_row(row: Mapping[str, str]) -> bool:
+        service_id = row.get("service_id", "")
+        start_value, end_value = row.get("start_date", "").strip(), row.get("end_date", "").strip()
+        if service_id not in service_ids or not start_value or not end_value:
+            return False
+        start = parse_gtfs_date(start_value, f"{source_id}:calendar.txt")
+        end = parse_gtfs_date(end_value, f"{source_id}:calendar.txt")
+        first, last = max(start.toordinal(), base) - base, end.toordinal() - base
+        if first > last:
+            return False
+        source_rows[service_id] = source_rows.get(service_id, 0) + 1
+        calendar_rows[service_id] = calendar_rows.get(service_id, 0) + 1
+        if (
+            calendar_rows[service_id] > 1 or any(row.get(column, "") not in ("0", "1") for column in WEEKDAY_COLUMNS)
+            or row.get("start_date", "") != start_value or row.get("end_date", "") != end_value
+        ):
+            irregular.add(service_id)
+        runs = tuple(row.get(column, "").strip() == "1" for column in WEEKDAY_COLUMNS)
+        if any(runs):
+            reserve(calendar_bits, service_id, last)
+            bits = calendar_bits.get(service_id, 0)
+            for offset in range(first, last + 1):
+                if runs[(base + offset + 6) % 7]:  # weekday of ordinal n: (n + 6) % 7, Monday 0
+                    bits |= 1 << offset
+            calendar_bits[service_id] = bits
+        return False
+
+    def exception_row(row: Mapping[str, str]) -> bool:
+        service_id = row.get("service_id", "")
+        value = row.get("date", "").strip()
+        if service_id not in service_ids or not value:
+            return False
+        offset = parse_gtfs_date(value, f"{source_id}:calendar_dates.txt").toordinal() - base
+        if offset < 0:
+            return False
+        source_rows[service_id] = source_rows.get(service_id, 0) + 1
+        reserve(listed_bits, service_id, offset)
+        listed = listed_bits.get(service_id, 0)
+        if listed >> offset & 1 or row.get("exception_type", "") not in ("1", "2") or row.get("date", "") != value:
+            irregular.add(service_id)
+        listed_bits[service_id] = listed | 1 << offset
+        if row.get("exception_type", "").strip() == "1":
+            reserve(added_bits, service_id, offset)
+            added_bits[service_id] = added_bits.get(service_id, 0) | 1 << offset
+        elif calendar_bits.get(service_id, 0) >> offset & 1:
+            calendar_bits[service_id] ^= 1 << offset
+        return False
+
+    counts: dict[str, int] = {}
+    calendar = read_table(archive, "calendar.txt", predicate=calendar_row, max_rows=max_rows) or empty_calendar()
+    calendar_dates = read_table(
+        archive, "calendar_dates.txt", predicate=exception_row, max_rows=max_rows, counts=counts,
+    ) or empty_calendar_dates()
+    require_columns(calendar, "calendar.txt", "service_id", "start_date", "end_date", *WEEKDAY_COLUMNS)
+    require_columns(calendar_dates, "calendar_dates.txt", "service_id", "date", "exception_type")
+    days = {service_id: calendar_bits.get(service_id, 0) | added_bits.get(service_id, 0) for service_id in service_ids}
+    return ServiceDays(runs_from, days, source_rows, irregular, calendar.header, calendar_dates.header, counts.get("read", 0))
+
+
+def running_services(
+    archive: zipfile.ZipFile, source_id: str, service_ids: set[str], runs_from: date, max_rows: int | None,
+    max_service_days: int = 1 << 40,
+) -> set[str]:
+    """The services among ``service_ids`` with a day from ``runs_from`` on: those :func:`expired_trips` keeps."""
+    found = read_service_days(archive, source_id, service_ids, runs_from, max_rows, max_service_days)
+    return {service_id for service_id, bits in found.days.items() if bits}
+
+
+def recoded_service(service_id: str, bits: int, first: date) -> tuple[list[dict[str, str]], list[dict[str, str]]]:
+    """The smallest of two exact encodings of the days ``bits`` (bit n: ``first`` + n days) of one service, as rows of
+    calendar.txt and calendar_dates.txt: one calendar row from the first to the last day, with the weekdays that run on
+    most of their dates in that range, and exceptions 1 and 2 for the other days; or exceptions 1 alone when that is no
+    more rows.  Deterministic: a weekday running on exactly half its dates is left out; exceptions by date."""
+    if not bits:
+        return [], []
+    low, high = (bits & -bits).bit_length() - 1, bits.bit_length() - 1
+    base = first.toordinal()
+    running = format(bits >> low, "b")[::-1]  # character n: day low + n
+    on, total = [0] * 7, [0] * 7
+    for index, flag in enumerate(running):
+        weekday = (base + low + index + 6) % 7
+        total[weekday] += 1
+        on[weekday] += flag == "1"
+    pattern = [2 * on[weekday] > total[weekday] for weekday in range(7)]
+    differences = sum(total[weekday] - on[weekday] if pattern[weekday] else on[weekday] for weekday in range(7))
+    day = lambda index: date.fromordinal(base + low + index).strftime("%Y%m%d")  # noqa: E731
+    if 1 + differences < running.count("1"):
+        calendar = [{
+            "service_id": service_id,
+            **{column: "1" if pattern[weekday] else "0" for weekday, column in enumerate(WEEKDAY_COLUMNS)},
+            "start_date": day(0),
+            "end_date": day(len(running) - 1),
+        }]
+        exceptions = [
+            {"service_id": service_id, "date": day(index), "exception_type": "1" if flag == "1" else "2"}
+            for index, flag in enumerate(running)
+            if (flag == "1") != pattern[(base + low + index + 6) % 7]
+        ]
+        return calendar, exceptions
+    return [], [
+        {"service_id": service_id, "date": day(index), "exception_type": "1"} for index, flag in enumerate(running) if flag == "1"
+    ]
+
+
+def compact_calendars(
+    archive: zipfile.ZipFile,
+    source_id: str,
+    found: ServiceDays,
+    service_ids: set[str],
+    budget: RetentionBudget,
+    max_rows: int | None,
+) -> tuple[CsvTable, CsvTable]:
+    """calendar.txt and calendar_dates.txt of ``service_ids`` with the days each runs from ``found.first`` on (the
+    earlier days no kept trip needs, :func:`expired_trips`): each service in the smaller of its encoding in the source,
+    clipped at that day (calendar rows ending before it and earlier exceptions left out, start_date moved up to it), and
+    :func:`recoded_service`; the source's encoding when no larger and read alike by every reader (not
+    ``found.irregular``).  Services by service_id; the rows of a service as the source lists them, or as recoded."""
+    recoded: dict[str, tuple[list[dict[str, str]], list[dict[str, str]]]] = {}
+    kept_as_source: set[str] = set()
+    for service_id in sorted(service_ids):
+        rows = recoded_service(service_id, found.days.get(service_id, 0), found.first)
+        if service_id not in found.irregular and found.source_rows.get(service_id, 0) <= len(rows[0]) + len(rows[1]):
+            kept_as_source.add(service_id)
+        else:
+            recoded[service_id] = rows
+    first = found.first.strftime("%Y%m%d")
+    source_calendar: dict[str, list[dict[str, str]]] = {}
+    source_dates: dict[str, list[dict[str, str]]] = {}
+    if kept_as_source:
+        def clipped_calendar_row(row: Mapping[str, str]) -> bool:
+            start, end = row.get("start_date", "").strip(), row.get("end_date", "").strip()
+            return (
+                row.get("service_id", "") in kept_as_source and bool(start) and bool(end) and end >= first
+                and max(start, first) <= end
+            )
+
+        def clipped_exception_row(row: Mapping[str, str]) -> bool:
+            value = row.get("date", "").strip()
+            return row.get("service_id", "") in kept_as_source and bool(value) and value >= first
+
+        for row in (read_table(archive, "calendar.txt", predicate=clipped_calendar_row, budget=budget, max_rows=max_rows)
+                    or empty_calendar()).rows:
+            moved = {**row, "start_date": first} if row.get("start_date", "").strip() < first else row
+            source_calendar.setdefault(row.get("service_id", ""), []).append(moved)
+        for row in (read_table(archive, "calendar_dates.txt", predicate=clipped_exception_row, budget=budget, max_rows=max_rows)
+                    or empty_calendar_dates()).rows:
+            source_dates.setdefault(row.get("service_id", ""), []).append(row)
+    calendar_rows: list[dict[str, str]] = []
+    date_rows: list[dict[str, str]] = []
+    for service_id in sorted(service_ids):
+        source = service_id in kept_as_source
+        for name, table, rows in (
+            ("calendar.txt", calendar_rows, source_calendar.get(service_id, []) if source else recoded[service_id][0]),
+            ("calendar_dates.txt", date_rows, source_dates.get(service_id, []) if source else recoded[service_id][1]),
+        ):
+            for row in rows:
+                if len(table) >= MAX_RETAINED_TABLE_ROWS:
+                    raise BuildError(f"tabella oltre budget righe trattenute: {name} > {MAX_RETAINED_TABLE_ROWS} ({budget.held()})")
+                if not source:
+                    budget.retain(name, row)  # the source's rows were retained as read
+                table.append(row)
+    print(
+        f"{source_id}: calendar_dates.txt {found.exceptions_read} righe lette; {len(service_ids)} servizi tenuti dal "
+        f"{found.first}, {len(recoded)} ricodificati: {len(calendar_rows)} righe di calendar.txt e {len(date_rows)} di "
+        "calendar_dates.txt",
+        file=sys.stderr,
+    )
+    return CsvTable(found.calendar_header, tuple(calendar_rows)), CsvTable(found.calendar_dates_header, tuple(date_rows))
+
+
+def read_running_trips(
+    archive: zipfile.ZipFile,
+    source_id: str,
+    route_ids: set[str],
+    runs_from: date,
+    budget: RetentionBudget,
+    max_rows: int | None,
+    with_route_trip_ids: bool,
+    max_service_days: int,
+) -> tuple[CsvTable, set[str], ServiceDays]:
+    """trips.txt of the kept routes whose service runs from ``runs_from`` on, with the ids of every trip of those routes
+    when ``with_route_trip_ids`` (for frequencies.txt) and the days of their services from ``runs_from`` on.  A first
+    pass names the services of the trips of the kept routes and retains nothing; :func:`read_service_days` reads the
+    calendar into bitmaps; the second pass retains the trips that still run.  A trip id with a row of a service that no
+    longer runs goes whole, as in :func:`expired_trips`."""
+    services: set[str] = set()
+    route_trip_ids: set[str] = set()
+    named: list[bool] = [False]
+
+    def scan(row: Mapping[str, str]) -> bool:
+        if row.get("route_id", "") in route_ids:
+            if row.get("service_id"):
+                services.add(row["service_id"])
+            if row.get("trip_id"):
+                named[0] = True
+                if with_route_trip_ids:
+                    route_trip_ids.add(row["trip_id"])
+        return False
+
+    table = read_table(archive, "trips.txt", required=True, predicate=scan, max_rows=max_rows)
+    assert table is not None
+    require_columns(table, "trips.txt", "route_id", "trip_id", "service_id")
+    if not named[0]:
+        raise BuildError(f"{source_id}: le route filtrate non hanno trip")
+    found = read_service_days(archive, source_id, services, runs_from, max_rows, max_service_days)
+    running = {service_id for service_id, bits in found.days.items() if bits}
+    dead: set[str] = set()
+
+    def keep(row: Mapping[str, str]) -> bool:
+        if row.get("route_id", "") not in route_ids:
+            return False
+        if row.get("service_id", "") in running:
+            return True
+        dead.add(row.get("trip_id", ""))
+        return False
+
+    trips = read_table(archive, "trips.txt", required=True, predicate=keep, budget=budget, max_rows=max_rows)
+    assert trips is not None
+    shared = [row for row in trips.rows if row.get("trip_id", "") in dead]
+    if shared:
+        budget.release("trips.txt", shared)
+        trips = CsvTable(trips.header, tuple(row for row in trips.rows if row.get("trip_id", "") not in dead))
+    if dead:
+        print(f"{source_id}: {len(dead)} trip che non circolano più dal {runs_from} rimossi", file=sys.stderr)
+    return trips, route_trip_ids, found
+
+
+def read_kept_stops(
+    archive: zipfile.ZipFile, source_id: str, stop_ids: set[str], budget: RetentionBudget,
+) -> tuple[CsvTable, set[str]]:
+    """stops.txt reduced while read to the stops of ``stop_ids`` and their parent stations (with theirs), as
+    filter_archive keeps them from the whole table: passes that retain nothing find each level of parents (a parent
+    absent from stops.txt is left out), then one pass retains the rows kept.  Returns them and the kept stop ids."""
+    kept = set(stop_ids)
+    pending = set(stop_ids)
+    first = True
+    while pending:
+        parents: dict[str, str] = {}
+
+        def scan(row: Mapping[str, str]) -> bool:
+            stop_id = row.get("stop_id", "")
+            if stop_id in pending:
+                # The last row of a repeated stop_id, as stops_by_id in filter_archive.
+                parents[stop_id] = row.get("parent_station", "").strip()
+            return False
+
+        table = read_table(archive, "stops.txt", required=True, predicate=scan)
+        assert table is not None
+        if first:
+            require_columns(table, "stops.txt", "stop_id")
+            unknown = sorted(stop_ids - parents.keys())
+            if unknown:
+                raise BuildError(f"{source_id}: stop_times riferisce stop assenti: {unknown[:3]}")
+            first = False
+        kept |= parents.keys()
+        if "parent_station" not in table.header:
+            break
+        pending = {parent for parent in parents.values() if parent and parent not in kept} - pending
+    stops = read_table(archive, "stops.txt", required=True, predicate=lambda row: row.get("stop_id", "") in kept, budget=budget)
+    assert stops is not None
+    return stops, kept
+
+
 def filter_archive(
     source: Path,
     destination: Path,
@@ -1745,40 +2269,79 @@ def filter_archive(
     if not source.is_file() or not zipfile.is_zipfile(source):
         raise BuildError(f"{source_id}: archivio ZIP GTFS non valido: {source}")
     input_hash = sha256_file(source)
+    # A reviewed large archive (REVIEWED_LARGE_ARCHIVES): its own limits for the archive, the STREAMED_TABLES and the
+    # build totals, and every table reduced while read to what the pack keeps: routes.txt to the kept routes, trips.txt
+    # to the trips that still run from tripsRunFrom (never for the itinerary copies of ITINERARY_COPY_SOURCES, which
+    # compare a trip with the others of each of its days), the calendar to their services, stops.txt to their stops.
+    # The rules below then find nothing more to drop, and the pack is the one the default path builds.
+    review = large_archive_review(source_id)
+    streamed_rows = None if review is None else review.max_streamed_table_rows
     with zipfile.ZipFile(source) as archive:
-        validate_archive_limits(archive, omit_geometry=True)
+        validate_archive_limits(archive, omit_geometry=True, source_id=source_id)
+        if review is not None:
+            total = sum(entry.file_size for entry in archive.infolist() if not entry.is_dir())
+            print(
+                f"{source_id}: archivio rivisto, {total} byte decompressi (limite {review.max_uncompressed_bytes}), "
+                f"letto in streaming; membri più grandi: {largest_members(archive)}",
+                file=sys.stderr,
+            )
         provenance = published_provenance(published_entries, input_hash)
         source_hash = original_archive_sha256(archive, source_id, input_hash, provenance)
-        budget = RetentionBudget()
-        routes = read_table(archive, "routes.txt", required=True, budget=budget)
+        budget = RetentionBudget() if review is None else review.budget()
+        routes = read_table(
+            archive, "routes.txt", required=True, budget=budget, predicate=None if review is None else route_selector(source_id),
+        )
         assert routes
         kept_routes, policy = selected_routes(source_id, routes)
         route_ids = {row["route_id"] for row in kept_routes if row.get("route_id")}
-        trips = read_table(
-            archive,
-            "trips.txt",
-            required=True,
-            predicate=lambda row: row.get("route_id", "") in route_ids,
-            budget=budget,
-        )
-        assert trips
-        require_columns(trips, "trips.txt", "route_id", "trip_id", "service_id")
-        kept_trips = trips.rows
-        trip_ids = {row["trip_id"] for row in kept_trips if row.get("trip_id")}
-        service_ids = {row["service_id"] for row in kept_trips if row.get("service_id")}
-        if not trip_ids:
-            raise BuildError(f"{source_id}: le route filtrate non hanno trip")
+        if review is not None and trips_run_from is not None and source_id not in ITINERARY_COPY_SOURCES:
+            # frequencies.txt is read for every trip of the kept routes, as on the default path, so that its expansion
+            # (and MAX_FREQUENCY_RUNS) does not depend on when the expired trips go.
+            trips, route_trip_ids, found_days = read_running_trips(
+                archive, source_id, route_ids, trips_run_from, budget, streamed_rows,
+                with_route_trip_ids=find_entry(archive, "frequencies.txt") is not None,
+                max_service_days=review.max_service_days,
+            )
+            kept_trips = trips.rows
+            trip_ids = {row["trip_id"] for row in kept_trips if row.get("trip_id")}
+            service_ids = {row["service_id"] for row in kept_trips if row.get("service_id")}
+        else:
+            trips = read_table(
+                archive,
+                "trips.txt",
+                required=True,
+                predicate=lambda row: row.get("route_id", "") in route_ids,
+                budget=budget,
+                max_rows=streamed_rows,
+            )
+            assert trips
+            require_columns(trips, "trips.txt", "route_id", "trip_id", "service_id")
+            kept_trips = trips.rows
+            trip_ids = {row["trip_id"] for row in kept_trips if row.get("trip_id")}
+            service_ids = {row["service_id"] for row in kept_trips if row.get("service_id")}
+            if not trip_ids:
+                raise BuildError(f"{source_id}: le route filtrate non hanno trip")
+            route_trip_ids = trip_ids
+            found_days = None
 
+        stop_time_counts: dict[str, int] = {}
         stop_times = read_table(
             archive,
             "stop_times.txt",
             required=True,
             predicate=lambda row: row.get("trip_id", "") in trip_ids,
             budget=budget,
+            max_rows=streamed_rows,
+            counts=stop_time_counts,
         )
         assert stop_times
         require_columns(stop_times, "stop_times.txt", "trip_id", "stop_id")
         kept_stop_times = stop_times.rows
+        if review is not None:
+            print(
+                f"{source_id}: stop_times.txt {stop_time_counts['read']} righe lette, {stop_time_counts['kept']} tenute",
+                file=sys.stderr,
+            )
 
         # Rules that drop or change trips are named in the filter manifest; their counts go to the log, so that filtering
         # a published pack again gives the same bytes.
@@ -1786,8 +2349,9 @@ def filter_archive(
         frequencies = read_table(
             archive,
             "frequencies.txt",
-            predicate=lambda row: row.get("trip_id", "") in trip_ids,
+            predicate=lambda row: row.get("trip_id", "") in route_trip_ids,
             budget=budget,
+            max_rows=streamed_rows,
         )
         if frequencies is not None:
             require_columns(frequencies, "frequencies.txt", "trip_id", "start_time", "end_time", "headway_secs")
@@ -1799,18 +2363,12 @@ def filter_archive(
             trip_ids = {row["trip_id"] for row in kept_trips if row.get("trip_id")}
             frequencies = None
 
-        calendar = read_table(
-            archive,
-            "calendar.txt",
-            predicate=lambda row: row.get("service_id", "") in service_ids,
-            budget=budget,
-        ) or empty_calendar()
-        calendar_dates = read_table(
-            archive,
-            "calendar_dates.txt",
-            predicate=lambda row: row.get("service_id", "") in service_ids,
-            budget=budget,
-        ) or empty_calendar_dates()
+        if found_days is not None:
+            # The days the kept trips run from tripsRunFrom, each service in its smallest exact encoding: the Swiss
+            # file lists most days of most services one by one (run 45516917094: over 750,000 rows for 5,562 services).
+            calendar, calendar_dates = compact_calendars(archive, source_id, found_days, service_ids, budget, streamed_rows)
+        else:
+            calendar, calendar_dates = read_calendars(archive, service_ids, budget, streamed_rows)
         require_columns(calendar, "calendar.txt", "service_id", "end_date")
         require_columns(calendar_dates, "calendar_dates.txt", "service_id", "date", "exception_type")
 
@@ -1834,6 +2392,8 @@ def filter_archive(
                 trip_ids = {row["trip_id"] for row in kept_trips if row.get("trip_id")}
                 service_ids = {row["service_id"] for row in kept_trips if row.get("service_id")}
             run_metadata[TRIPS_RUN_FROM_FIELD] = trips_run_from.isoformat()
+            if found_days is not None:
+                run_metadata[CALENDARS_FROM_FIELD] = trips_run_from.isoformat()
 
         if source_id in THIN_TAIL_CLIP_SOURCES:
             # Measured on what the pack would publish (the calendar of the kept trips), as the weekly refresh measures it.
@@ -1892,32 +2452,37 @@ def filter_archive(
         if not stop_ids:
             raise BuildError(f"{source_id}: i trip filtrati non hanno stop_times")
 
-        stops = read_table(archive, "stops.txt", required=True, budget=budget)
+        if review is None:
+            stops = read_table(archive, "stops.txt", required=True, budget=budget)
+        else:
+            stops, stop_ids = read_kept_stops(archive, source_id, stop_ids, budget)
+            kept_stops = stops.rows
         agency = read_table(archive, "agency.txt", required=True, budget=budget)
         assert agency and stops
         require_columns(agency, "agency.txt", "agency_name")
         require_columns(stops, "stops.txt", "stop_id")
 
-        # Retain all parent stations of a referenced platform so stop hierarchy
-        # remains valid after filtering.
-        stops_by_id = {row.get("stop_id", ""): row for row in stops.rows if row.get("stop_id")}
-        if not stop_ids <= stops_by_id.keys():
-            unknown = sorted(stop_ids - stops_by_id.keys())
-            raise BuildError(f"{source_id}: stop_times riferisce stop assenti: {unknown[:3]}")
-        if "parent_station" in stops.header:
-            pending = list(stop_ids)
-            while pending:
-                current = pending.pop()
-                parent = stops_by_id[current].get("parent_station", "").strip()
-                if parent and parent not in stop_ids:
-                    # A few producers reference a synthetic parent that is not
-                    # included in stops.txt.  The child stop remains a valid
-                    # GTFS stop; do not manufacture a parent record that could
-                    # masquerade as source data.
-                    if parent in stops_by_id:
-                        stop_ids.add(parent)
-                        pending.append(parent)
-        kept_stops = tuple(row for row in stops.rows if row.get("stop_id", "") in stop_ids)
+        if review is None:
+            # Retain all parent stations of a referenced platform so stop hierarchy
+            # remains valid after filtering.
+            stops_by_id = {row.get("stop_id", ""): row for row in stops.rows if row.get("stop_id")}
+            if not stop_ids <= stops_by_id.keys():
+                unknown = sorted(stop_ids - stops_by_id.keys())
+                raise BuildError(f"{source_id}: stop_times riferisce stop assenti: {unknown[:3]}")
+            if "parent_station" in stops.header:
+                pending = list(stop_ids)
+                while pending:
+                    current = pending.pop()
+                    parent = stops_by_id[current].get("parent_station", "").strip()
+                    if parent and parent not in stop_ids:
+                        # A few producers reference a synthetic parent that is not
+                        # included in stops.txt.  The child stop remains a valid
+                        # GTFS stop; do not manufacture a parent record that could
+                        # masquerade as source data.
+                        if parent in stops_by_id:
+                            stop_ids.add(parent)
+                            pending.append(parent)
+            kept_stops = tuple(row for row in stops.rows if row.get("stop_id", "") in stop_ids)
 
         selected_agencies = {row.get("agency_id", "").strip() for row in kept_routes if row.get("agency_id", "").strip()}
         if selected_agencies and "agency_id" in agency.header:
@@ -1988,6 +2553,7 @@ def filter_archive(
             predicate=lambda row: row.get("from_stop_id", "") in stop_ids
             and row.get("to_stop_id", "") in stop_ids,
             budget=budget,
+            max_rows=streamed_rows,
         )
         if transfers is not None:
             require_columns(transfers, "transfers.txt", "from_stop_id", "to_stop_id")
@@ -1999,6 +2565,7 @@ def filter_archive(
             predicate=lambda row: row.get("from_stop_id", "") in stop_ids
             and row.get("to_stop_id", "") in stop_ids,
             budget=budget,
+            max_rows=streamed_rows,
         )
         if pathways is not None:
             require_columns(pathways, "pathways.txt", "from_stop_id", "to_stop_id")
@@ -2008,6 +2575,15 @@ def filter_archive(
             table = read_table(archive, table_name, budget=budget)
             if table is not None:
                 tables[table_name] = table
+        if review is not None:
+            # What the reviewed totals hold room for, read from the log of each refresh.
+            print(
+                f"{source_id}: trattenute {budget.retained_rows} righe (limite {review.max_retained_rows or MAX_RETAINED_BUILD_ROWS}), "
+                f"{budget.retained_cells} celle (limite {review.max_retained_cells or MAX_RETAINED_BUILD_CELLS}), "
+                f"{budget.retained_utf8_bytes} byte (limite {review.max_retained_utf8_bytes or MAX_RETAINED_BUILD_UTF8_BYTES}); "
+                f"{budget.held()}",
+                file=sys.stderr,
+            )
 
         if source_id in URBAN_SOURCES:
             tables[STOP_MODES_MEMBER] = stop_modes_table(kept_routes, kept_trips, kept_stop_times, kept_stops)
@@ -2570,6 +3146,8 @@ def verify_filter_from_asset(path: Path, source_id: str) -> str:
                 raise BuildError(f"{source_id}: {len(expired)} trip non circolano più dal {runs_from} ({TRIPS_RUN_FROM_FIELD})")
         calendar = read_table(archive, "calendar.txt") or empty_calendar()
         calendar_dates = read_table(archive, "calendar_dates.txt") or empty_calendar_dates()
+        if CALENDARS_FROM_FIELD in metadata:
+            verify_calendars_from(source_id, metadata[CALENDARS_FROM_FIELD], calendar, calendar_dates)
         agency = read_table(archive, "agency.txt", required=True)
         assert agency is not None
         verify_local_times(source_id, metadata, agency.rows, calendar, calendar_dates)
@@ -2654,9 +3232,14 @@ def derive_border_subset(
         if BORDER_ZONE_FIELD in full_metadata:
             raise BuildError(f"{source_id}: {full_pack.name} è già un sottoinsieme di confine, non il pack completo")
         members = sorted(info.filename for info in archive.infolist() if not info.is_dir() and info.filename != entry)
-        unknown = sorted(set(members) - BORDER_SUBSET_TABLES)
+        unknown = sorted(set(members) - BORDER_SUBSET_TABLES - {"frequencies.txt"})
         if unknown:
             raise BuildError(f"{source_id}: tabelle non previste per il sottoinsieme di confine: {', '.join(map(log_safe, unknown))}")
+        # The full pack expands every frequencies.txt run into a trip and keeps only a feed's empty one (a header only,
+        # as published; the Swiss archive of November 2026 has one): the subset keeps it too, never one with runs.
+        frequencies = read_table(archive, "frequencies.txt")
+        if frequencies is not None and frequencies.rows:
+            raise BuildError(f"{source_id}: frequencies.txt con corse non espanse nel pack completo")
         stops = read_table(archive, "stops.txt", required=True)
         assert stops is not None
         zone = pack_zone_of(stops, source_id, catalogue).stops
@@ -2719,6 +3302,8 @@ def derive_border_subset(
             table = read_table(archive, name)
             if table is not None:
                 tables[name] = table
+        if frequencies is not None:
+            tables["frequencies.txt"] = frequencies
     calendar = tables.get("calendar.txt") or empty_calendar()
     calendar_dates = tables.get("calendar_dates.txt") or empty_calendar_dates()
     metadata = dict(full_metadata)
@@ -3174,8 +3759,10 @@ def refresh_overrides(
     manifest: Mapping[str, Any],
     source_ids: set[str],
     *,
-    max_download_bytes: int,
+    max_download_bytes: int | None,
 ) -> tuple[dict[str, Path], Path]:
+    """Download the selected OPEN_DIRECT sources; each under ``max_download_bytes`` when given, else under its own cap
+    (:func:`source_download_limit`: DEFAULT_MAX_DOWNLOAD_BYTES or the reviewed limit of a large archive)."""
     known = {pack["sourceId"] for pack in manifest["packs"]}
     unknown = source_ids - known
     if unknown:
@@ -3195,7 +3782,8 @@ def refresh_overrides(
                 )
             require_https_url(url, context=f"{source_id}: download rifiutato")
             target = download_dir / safe_asset_name(pack["asset"])
-            download_to_file(url, target, max_bytes=max_download_bytes)
+            limit = source_download_limit(source_id, DEFAULT_MAX_DOWNLOAD_BYTES) if max_download_bytes is None else max_download_bytes
+            download_to_file(url, target, max_bytes=limit)
             overrides[source_id] = target
         return overrides, download_dir
     except BaseException:
@@ -3264,7 +3852,11 @@ def main(argv: Sequence[str] | None = None) -> int:
         metavar="SOURCE_ID",
         help="ricostruisce solo queste sourceId; gli altri pack pubblicati restano invariati byte per byte (ripetibile)",
     )
-    parser.add_argument("--max-download-bytes", type=int, default=DEFAULT_MAX_DOWNLOAD_BYTES, help="cap hard per ogni download")
+    parser.add_argument(
+        "--max-download-bytes",
+        type=int,
+        help=f"cap hard per ogni download (default: {DEFAULT_MAX_DOWNLOAD_BYTES}, o il limite rivisto di REVIEWED_LARGE_ARCHIVES)",
+    )
     parser.add_argument("--check", action="store_true", help="verifica asset, hash e validita release senza rete")
     parser.add_argument("--as-of", type=parse_date, default=date.today(), help="data di riferimento per --check")
     parser.add_argument("--min-valid-days", type=int, default=DEFAULT_MIN_VALID_DAYS, help="giorni minimi residui richiesti da --check")

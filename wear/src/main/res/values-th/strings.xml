@@ -31,6 +31,9 @@
     <string name="service_operator_category">%1$s · %2$s</string>
     <string name="service_operator_category_platform">%1$s · %2$s · ชานชาลา %3$s</string>
     <string name="accessibility_reliability">%1$s (สถิติไม่เป็นทางการ)</string>
+    <string name="vehicle_metro">รถไฟใต้ดิน</string>
+    <string name="vehicle_tram">รถราง</string>
+    <string name="vehicle_funicular">รถรางไต่เขา</string>
     <plurals name="service_reliability_on_time">
         <item quantity="other">ตรงเวลา %1$d จาก %2$d ครั้ง</item>
     </plurals>
