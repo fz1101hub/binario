@@ -2129,9 +2129,14 @@ def write_swiss_like_feed(
                                   ["BUS", *weekdays, "20251214", "20261212"]]),
         "calendar_dates.txt": csv_text(["service_id", "date", "exception_type"],
                                        [["TA", "20251225", "2"], ["TA+old", "20251226", "2"], ["BUS", "20251225", "2"]]),
-        "transfers.txt": csv_text(["from_stop_id", "to_stop_id", "transfer_type", "min_transfer_time"],
-                                  [["8503000:0:3", "8503006", "2", "300"], ["Parent8503000", "8503006", "2", "240"],
-                                   ["8590000", "8590001", "2", "120"]]),
+        # Between kept stops: two of stops, one of two running trips (kept), one naming a bus and one naming an expired
+        # trip (left out on the reviewed path); and one between bus stops.
+        "transfers.txt": csv_text(["from_stop_id", "to_stop_id", "transfer_type", "min_transfer_time", "from_trip_id", "to_trip_id"],
+                                  [["8503000:0:3", "8503006", "2", "300", "", ""], ["Parent8503000", "8503006", "2", "240", "", ""],
+                                   ["8503000:0:3", "8503006", "4", "", alive[0], alive[1]],
+                                   ["8503000:0:3", "8503006", "4", "", buses[0] if buses else alive[0], alive[1]],
+                                   ["8503000:0:3", "8503006", "4", "", expired[0] if expired else alive[0], alive[2]],
+                                   ["8590000", "8590001", "2", "120", "", ""]]),
         "feed_info.txt": csv_text(["feed_publisher_name", "feed_publisher_url", "feed_lang", "feed_version"],
                                   [["Fixture", "https://example.test", "DE", "20261121"]]),
     }
@@ -2184,21 +2189,73 @@ def from_day(days: Mapping[str, set[date]], first: date | None) -> dict[str, set
 
 
 def assert_same_pack_but_calendars(test: unittest.TestCase, default: Path, reviewed: Path, runs_from: date | None) -> None:
-    """Every member but the calendars and the filter manifest the same bytes; each service the same days from
-    ``runs_from`` on; the filter manifest the same but for the calendar digests and calendarsFrom."""
+    """Every member but the calendars, the transfers and the filter manifest the same bytes; each service the same days
+    from ``runs_from`` on; the transfers but those naming a trip or a route the pack does not keep; the filter manifest
+    the same but for those digests and calendarsFrom."""
     with zipfile.ZipFile(default) as left, zipfile.ZipFile(reviewed) as right:
         names = set(left.namelist())
         test.assertEqual(names, set(right.namelist()))
-        for name in sorted(names - set(CALENDAR_MEMBERS)):
+        for name in sorted(names - set(CALENDAR_MEMBERS) - {"transfers.txt"}):
             test.assertEqual(left.read(name), right.read(name), name)
         before = json.loads(left.read(builder.FILTER_MANIFEST_MEMBER))
         after = json.loads(right.read(builder.FILTER_MANIFEST_MEMBER))
+    if "transfers.txt" in names:
+        trips = {row["trip_id"] for row in read_rows(reviewed, "trips.txt")}
+        routes = {row["route_id"] for row in read_rows(reviewed, "routes.txt")}
+        expected = [row for row in read_rows(default, "transfers.txt")
+                    if all(not row.get(key) or row[key] in trips for key in ("from_trip_id", "to_trip_id"))
+                    and all(not row.get(key) or row[key] in routes for key in ("from_route_id", "to_route_id"))]
+        actual = read_rows(reviewed, "transfers.txt")
+        # A cheap comparison: a failing assertEqual would diff two lists of 100,000 rows of the published pack.
+        test.assertEqual(len(expected), len(actual), "transfers.txt")
+        test.assertTrue(expected == actual, "transfers.txt: rows differ")
     test.assertEqual(runs_from.isoformat() if runs_from else None, after.pop(builder.CALENDARS_FROM_FIELD, None))
     for metadata in (before, after):
-        for name in ("calendar.txt", "calendar_dates.txt"):
-            metadata[builder.MEMBER_DIGEST_FIELD].pop(name)
+        for name in ("calendar.txt", "calendar_dates.txt", "transfers.txt"):
+            metadata[builder.MEMBER_DIGEST_FIELD].pop(name, None)
     test.assertEqual(before, after)
     test.assertEqual(from_day(pack_days(default), runs_from), pack_days(reviewed))
+
+
+def write_swiss_year_feed(target: Path) -> dict[str, str]:
+    """A synthetic Swiss-shaped feed of a whole timetable year (14 December 2025 to 12 December 2026): one rail trip a
+    service, daily (DAILY), Monday to Friday without two days and with a Saturday in June (WEEKDAYS), one service a month
+    (M01 to M12), one listed day by day every third day (LISTED), one from November (LATE), two days of November listed
+    alone (AUTUMN), one ended in January (EARLY); and a bus.  Returns the service of each rail trip."""
+    first, last = date(2025, 12, 14), date(2026, 12, 12)
+    weekdays = list("1111111")
+    calendar = [["DAILY", *weekdays, "20251214", "20261212"], ["WEEKDAYS", *"1111100", "20251214", "20261212"],
+                ["LATE", *weekdays, "20261101", "20261212"], ["EARLY", *weekdays, "20251214", "20260131"]]
+    for month in range(1, 13):
+        start = date(2026, month, 1)
+        end = min(date(2026, month % 12 + 1, 1) - timedelta(days=1) if month < 12 else last, last)
+        calendar.append([f"M{month:02d}", *weekdays, start.strftime("%Y%m%d"), end.strftime("%Y%m%d")])
+    exceptions = [["WEEKDAYS", "20260325", "2"], ["WEEKDAYS", "20260407", "2"], ["WEEKDAYS", "20260606", "1"],
+                  ["DAILY", "20260401", "2"], ["AUTUMN", "20261103", "1"], ["AUTUMN", "20261110", "1"]]
+    exceptions += [["LISTED", (first + timedelta(days=offset)).strftime("%Y%m%d"), "1"] for offset in range(0, 364, 3)]
+    services = [row[0] for row in calendar] + ["LISTED", "AUTUMN"]
+    trips = {f"{index}.TA.91-{index}-j26-1.1.H": service for index, service in enumerate(services, 1)}
+    stop_times = [[trip, f"{8 + call:02d}:{index:02d}:00", f"{8 + call:02d}:{index:02d}:00", SWISS_RAIL_STOPS[call], str(call + 1)]
+                  for index, trip in enumerate(trips) for call in range(3)]
+    stop_times += [["bus.1", f"{9 + call:02d}:00:00", f"{9 + call:02d}:00:00", f"859{call:04d}", str(call + 1)] for call in range(3)]
+    members = {
+        "agency.txt": csv_text(["agency_id", "agency_name", "agency_url", "agency_timezone"],
+                               [["11", "Schweizerische Bundesbahnen SBB", "https://example.test", "Europe/Zurich"]]),
+        "stops.txt": csv_text(["stop_id", "stop_name", "stop_lat", "stop_lon"],
+                              [[stop, f"Bahnhof {stop}", "47.0", "8.0"] for stop in SWISS_RAIL_STOPS]
+                              + [[f"859{index:04d}", f"Bushalt {index}", "46.9", "7.9"] for index in range(3)]),
+        "routes.txt": csv_text(["route_id", "agency_id", "route_short_name", "route_type"],
+                               [["91-j26-1", "11", "IC1", "102"], ["92-j26-1", "11", "101", "700"]]),
+        "trips.txt": csv_text(["route_id", "service_id", "trip_id"],
+                              [["91-j26-1", service, trip] for trip, service in trips.items()] + [["92-j26-1", "DAILY", "bus.1"]]),
+        "stop_times.txt": csv_text(["trip_id", "arrival_time", "departure_time", "stop_id", "stop_sequence"], stop_times),
+        "calendar.txt": csv_text(["service_id", *builder.WEEKDAY_COLUMNS, "start_date", "end_date"], calendar),
+        "calendar_dates.txt": csv_text(["service_id", "date", "exception_type"], exceptions),
+    }
+    with zipfile.ZipFile(target, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+        for name, text in members.items():
+            archive.writestr(name, text)
+    return trips
 
 
 class RecordingBudget(builder.RetentionBudget):
@@ -2266,12 +2323,14 @@ class ReviewedLargeArchiveTest(unittest.TestCase):
         # the 400 buses, not the trips whose service ended before tripsRunFrom), their calendar, their 12 calls out of
         # 4,024, their stops with the parent station, the two transfers between them.  Nothing is held and dropped.
         self.assertEqual({"routes.txt": 2, "trips.txt": 3, "stop_times.txt": 12, "calendar.txt": 1,
-                          "stops.txt": 5, "agency.txt": 2, "transfers.txt": 2, "feed_info.txt": 1}, RecordingBudget.retained)
+                          "stops.txt": 5, "agency.txt": 2, "transfers.txt": 3, "feed_info.txt": 1}, RecordingBudget.retained)
         self.assertEqual([], RecordingBudget.released)
         self.assertIn(f"{SWISS}: {len(trips['expired'])} trip che non circolano più dal {SWISS_RUNS_FROM} rimossi", log)
         self.assertIn(f"{SWISS}: stop_times.txt {4 * 6 + 10 * 400} righe lette, 12 tenute", log)
-        self.assertRegex(log, rf"{SWISS}: trattenute 28 righe \(limite 1000000\), \d+ celle \(limite 6000000\), \d+ byte "
-                              r"\(limite 134217728\); righe trattenute per tabella: stop_times\.txt 12, stops\.txt 5, trips\.txt 3, ")
+        self.assertIn(f"{SWISS}: transfers.txt 3 righe tenute, 2 di corse o linee non tenute lasciate fuori", log)
+        self.assertRegex(log, rf"{SWISS}: trattenute 29 righe \(limite 1000000\), \d+ celle \(limite 6000000\), \d+ byte "
+                              r"\(limite 134217728\); righe trattenute per tabella: stop_times\.txt 12, stops\.txt 5, "
+                              r"transfers\.txt 3, trips\.txt 3, ")
         self.assertIn(f"{SWISS}: archivio rivisto, ", log)
         self.assertIn("membri più grandi: stop_times.txt ", log)
         self.assertEqual(trips["alive"], [row["trip_id"] for row in read_rows(output, "trips.txt")])
@@ -2350,6 +2409,15 @@ class ReviewedLargeArchiveTest(unittest.TestCase):
                     self.assertRaisesRegex(builder.BuildError, r"tabella oltre budget righe trattenute: stop_times\.txt > 11"):
                 self.filter(source)
 
+    def test_only_the_reviewed_source_leaves_out_the_transfers_of_trips_it_does_not_keep(self) -> None:
+        source, trips = self.feed(bus_trips=5)
+        reviewed, _, _ = self.filter(source)
+        other, _, _ = self.filter(source, "other-gtfs", name="other.zip")
+        named = lambda path: [(row["from_trip_id"], row["to_trip_id"]) for row in read_rows(path, "transfers.txt")]  # noqa: E731
+        self.assertEqual([("", ""), ("", ""), (trips["alive"][0], trips["alive"][1])], named(reviewed))
+        self.assertEqual([("", ""), ("", ""), (trips["alive"][0], trips["alive"][1]), (trips["buses"][0], trips["alive"][1]),
+                          (trips["expired"][0], trips["alive"][2])], named(other))
+
     def test_every_source_names_the_rows_each_table_holds_when_its_budget_stops_the_build(self) -> None:
         source = self.temp / "amt.zip"
         write_fixture_zip(source)
@@ -2360,9 +2428,9 @@ class ReviewedLargeArchiveTest(unittest.TestCase):
             self.filter(source, "amt-genova-casella-gtfs")
 
     def test_the_reviewed_path_keeps_the_trips_stops_and_days_of_the_current_builder(self) -> None:
-        # Under the old limits the same archive goes through both paths: every member but the calendars is the same bytes,
-        # and each kept service runs on the same days from tripsRunFrom (its calendar re-encoded from that day); without
-        # tripsRunFrom the pack is the same bytes.
+        # Under the old limits the same archive goes through both paths: every member but the calendars and the
+        # transfers is the same bytes, each kept service runs on the same days from tripsRunFrom (its calendar re-encoded
+        # from that day), and the transfers are those but the ones naming a trip or route the pack does not keep.
         cases = {
             "trips that expired": ({}, SWISS_RUNS_FROM),
             "no tripsRunFrom": ({}, None),
@@ -2382,11 +2450,8 @@ class ReviewedLargeArchiveTest(unittest.TestCase):
                 with mock.patch.object(builder, "REVIEWED_LARGE_ARCHIVES", {}):
                     default, default_result, default_log = self.filter(source, runs_from=runs_from, name="default.zip")
                 self.assertNotIn("archivio rivisto", default_log)
-                if runs_from is None:
-                    self.assertEqual(default.read_bytes(), reviewed.read_bytes())
-                    self.assertEqual(default_result, reviewed_result)
-                else:
-                    assert_same_pack_but_calendars(self, default, reviewed, runs_from)
+                assert_same_pack_but_calendars(self, default, reviewed, runs_from)
+                if runs_from is not None:
                     self.assertEqual((default_result.last_service_date, default_result.full_service_until),
                                      (reviewed_result.last_service_date, reviewed_result.full_service_until))
                     # Filtered again on the same day, the pack holds the same members (its provenance is the new input).
@@ -2464,6 +2529,51 @@ class ReviewedLargeArchiveTest(unittest.TestCase):
             with self.subTest(calendar=bool(calendar)), zipfile.ZipFile(far) as archive, \
                     self.assertRaisesRegex(builder.BuildError, r"calendario oltre 1000000 giorni di servizio tenuti"):
                 builder.read_service_days(archive, SWISS, {"TA"}, SWISS_RUNS_FROM, None, 1_000_000)
+
+    def test_a_reviewed_horizon_keeps_the_trips_of_its_window_with_their_days(self) -> None:
+        # A year of trips built on 12 March 2026 (tripsRunFrom 10 March) with a horizon of 30 days: the window runs from
+        # 10 March to 11 April.  Only the trips running in it stay, each with the days of the source in it, and the pack
+        # ends with it: lastServiceDate and fullServiceUntil, which the 30-day release gate reads, are the end of the
+        # horizon, recorded with its start in the filter manifest.
+        source = self.temp / "year.zip"
+        trips = write_swiss_year_feed(source)
+        runs_from, until = date(2026, 3, 10), date(2026, 4, 11)
+        with mock.patch.object(builder, "REVIEWED_LARGE_ARCHIVES", {SWISS: small_review(horizon_days=30)}):
+            self.assertEqual(until, builder.REVIEWED_LARGE_ARCHIVES[SWISS].horizon_end(runs_from))
+            output, result, log = self.filter(source, runs_from=runs_from)
+            builder.verify_filter_from_asset(output, SWISS)
+        self.assertIn(f"{SWISS}: orizzonte rivisto dal 2026-03-10 al 2026-04-11 (30 giorni dalla costruzione)", log)
+        self.assertIn(f"{SWISS}: 13 trip che non circolano fra il 2026-03-10 e il 2026-04-11 rimossi", log)
+        kept = {row["trip_id"]: row["service_id"] for row in read_rows(output, "trips.txt")}
+        self.assertEqual({"DAILY", "WEEKDAYS", "M03", "M04", "LISTED"}, set(kept.values()))
+        self.assertEqual({trip for trip, service in trips.items() if service in kept.values()}, set(kept))
+        with zipfile.ZipFile(source) as archive:
+            calendar = builder.read_table(archive, "calendar.txt") or builder.empty_calendar()
+            dates = builder.read_table(archive, "calendar_dates.txt") or builder.empty_calendar_dates()
+        window = {service: {day for day in days if runs_from <= day <= until}
+                  for service, days in builder.service_days(calendar, dates, SWISS).items()}
+        self.assertEqual({service: window[service] for service in kept.values()}, pack_days(output))
+        self.assertEqual((runs_from.isoformat(), until.isoformat()),
+                         (result.filter_metadata[builder.CALENDARS_FROM_FIELD], result.filter_metadata[builder.CALENDARS_UNTIL_FIELD]))
+        self.assertEqual((until, until), (result.last_service_date, result.full_service_until))
+        self.assertEqual(until.isoformat(), result.filter_metadata["lastServiceDate"])
+        # Without a horizon the same build keeps the rest of the year (to 12 December): every trip but EARLY, M01 and
+        # M02, and declares no end.
+        default, default_result, _ = self.filter(source, runs_from=runs_from, name="whole.zip")
+        self.assertNotIn(builder.CALENDARS_UNTIL_FIELD, default_result.filter_metadata)
+        self.assertEqual(date(2026, 12, 12), default_result.last_service_date)
+        self.assertEqual(len(trips) - 3, len(read_rows(default, "trips.txt")))
+        # --check: an end only for a reviewed source with a horizon, not before the start, with no day after it.
+        with self.assertRaisesRegex(builder.BuildError, r"calendarsUntil su una fonte senza orizzonte rivisto"):
+            builder.verify_filter_from_asset(output, SWISS)
+        out_calendar = builder.CsvTable(("service_id", *builder.WEEKDAY_COLUMNS, "start_date", "end_date"),
+                                        ({"service_id": "S", **dict.fromkeys(builder.WEEKDAY_COLUMNS, "1"),
+                                          "start_date": "20260310", "end_date": "20260412"},))
+        with mock.patch.object(builder, "REVIEWED_LARGE_ARCHIVES", {SWISS: small_review(horizon_days=30)}):
+            with self.assertRaisesRegex(builder.BuildError, r"calendario fino al 2026-04-12, dopo il 2026-04-11 \(calendarsUntil\)"):
+                builder.verify_calendars_until(SWISS, "2026-04-11", "2026-03-10", out_calendar, builder.empty_calendar_dates())
+            with self.assertRaisesRegex(builder.BuildError, r"calendarsUntil 2026-03-01 prima di calendarsFrom 2026-03-10"):
+                builder.verify_calendars_until(SWISS, "2026-03-01", "2026-03-10", out_calendar, builder.empty_calendar_dates())
 
     def test_a_recoded_service_is_the_smaller_of_its_two_forms(self) -> None:
         first = date(2026, 12, 5)  # a Saturday
@@ -2662,6 +2772,9 @@ class ReviewedLargeArchiveRegistryTest(unittest.TestCase):
         self.assertIsNone(review.max_retained_utf8_bytes)
         # Three bitmaps a service for a year of the 31,000 rail services of 24 November.
         self.assertGreaterEqual(review.max_service_days, 3 * 366 * 31_000)
+        # The horizon outlasts the 30-day release gate by the week between two refreshes.
+        self.assertGreaterEqual(review.horizon_days, builder.DEFAULT_MIN_VALID_DAYS + 7)
+        self.assertEqual(date(2026, 12, 14) + timedelta(days=review.horizon_days), review.horizon_end(date(2026, 12, 12)))
         self.assertEqual((review.max_retained_rows, review.max_retained_cells, None),
                          (review.budget().max_rows, review.budget().max_cells, review.budget().max_utf8_bytes))
         self.assertNotIn(SWISS, builder.ITINERARY_COPY_SOURCES)
