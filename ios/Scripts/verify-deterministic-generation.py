@@ -42,6 +42,11 @@ def generate(xcodegen: str, destination: Path) -> str:
         REPOSITORY_ROOT / "contracts/wear-snapshot/v1",
         repository / "contracts/wear-snapshot/v1",
     )
+    # The shared rule cases the Watch tests read as resources (BinarioWatchTests in project.yml).
+    shutil.copytree(
+        REPOSITORY_ROOT / "contracts/shared-rules/v1",
+        repository / "contracts/shared-rules/v1",
+    )
     subprocess.run(
         [xcodegen, "generate", "--spec", "project.yml"],
         cwd=workspace,
