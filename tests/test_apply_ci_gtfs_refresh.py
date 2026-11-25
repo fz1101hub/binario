@@ -205,6 +205,10 @@ class ApplyTest(unittest.TestCase):
         policy = self.root / "ios/Resources/binario_gtfs_source_policy_v1.json"
         policy.parent.mkdir(parents=True)
         policy.write_text(json.dumps({"androidOnlySources": [{"sourceId": "pinned-gtfs", "sourceUrl": pinned_url(OLD_COMMIT)}]}, indent=2) + "\n", encoding="utf-8")
+        # The personal policy repeats the public one (plus the personal packs, none here).
+        personal_policy = self.root / apply.PERSONAL_IOS_POLICY
+        personal_policy.parent.mkdir(parents=True)
+        personal_policy.write_bytes(policy.read_bytes())
         catalog = self.root / "app/src/main/java/it/binario/app/data/sources/RailSourceCatalog.kt"
         catalog.parent.mkdir(parents=True)
         catalog.write_text(f'val uri = uri("{pinned_url(OLD_COMMIT)}")\n', encoding="utf-8")
@@ -245,7 +249,7 @@ class ApplyTest(unittest.TestCase):
         embedded = (self.root / "app/src/main/java/it/binario/app/data/gtfs/EmbeddedGtfsPacks.kt").read_text(encoding="utf-8")
         self.assertIn('SourceId("plain-gtfs"), "gtfs/plain-gtfs.zip", LocalDate.of(2028, 12, 31)', embedded)
         self.assertIn('SourceId("oebb-gtfs"), "gtfs/oebb-gtfs.zip", LocalDate.of(2027, 12, 31)', embedded)
-        for relative in apply.PIN_MIRRORS:
+        for relative in (*apply.PIN_MIRRORS, apply.PERSONAL_IOS_POLICY):
             text = (self.root / relative).read_text(encoding="utf-8")
             self.assertIn(pinned_url(NEW_COMMIT), text)
             self.assertNotIn(pinned_url(OLD_COMMIT), text)
@@ -349,12 +353,22 @@ class ApplyTest(unittest.TestCase):
         # The foreign-pack generator rebuilds the iPhone indexes, pins and ledger first; the checks follow.
         self.assertEqual("tools/build_foreign_packs.py", scripts[0])
         self.assertEqual(["tools/verify_ios_gtfs_schedule.py", "tools/build_ios_gtfs_schedule.py",
-                          "tools/verify_ios_gtfs_rebuild.py"], scripts[-3:])
-        self.assertIn("ios/Resources/.apply-rebuild.sqlite.zlib", commands[-1])
+                          "tools/verify_ios_gtfs_rebuild.py"], scripts[-5:-2])
+        self.assertIn("ios/Resources/.apply-rebuild.sqlite.zlib", commands[-3])
+        # The personal index holds every pack of the public one: it is rebuilt and verified after it.
+        self.assertEqual([["tools/build_ios_gtfs_schedule.py", "--personal"], ["tools/verify_ios_gtfs_schedule.py", "--personal"]],
+                         [command[1:] for command in commands[-2:]])
         apply.run_checks(self.root, ios=False, runner=runner)
         later = [command[1] for command in commands[len(scripts):]]
         self.assertNotIn("tools/build_ios_gtfs_schedule.py", later)
         self.assertNotIn("tools/build_foreign_packs.py", later)
+        # A refresh of gtfs-personal/ alone rebuilds only the personal index.
+        before = len(commands)
+        apply.run_checks(self.root, ios=False, personal=True, runner=runner)
+        personal_only = commands[before:]
+        self.assertEqual([["tools/build_ios_gtfs_schedule.py", "--personal"], ["tools/verify_ios_gtfs_schedule.py", "--personal"]],
+                         [command[1:] for command in personal_only[-2:]])
+        self.assertNotIn("tools/build_foreign_packs.py", [command[1] for command in personal_only])
 
     def test_a_change_to_a_manifest_the_iphone_index_reads_rebuilds_it(self) -> None:
         # The index reads the main manifest and, for its railway packs, the transit one: a refresh of a regional
@@ -433,6 +447,8 @@ class ApplyTest(unittest.TestCase):
         policy = self.root / apply.PIN_MIRRORS[0]
         policy.write_text(json.dumps({"sources": [{"sourceId": "plain-gtfs", "sourceUrl": current, "landingPage": landing}]},
                                      indent=2) + "\n", encoding="utf-8")
+        personal_policy = self.root / apply.PERSONAL_IOS_POLICY
+        personal_policy.write_bytes(policy.read_bytes())
         catalog = self.root / apply.PIN_MIRRORS[1]
         catalog.write_text(f'landingPage = uri("{landing}"),\ndownloadOrProbeUri = uri("{current}"),\n', encoding="utf-8")
         sources = self.temp / "upstream"
@@ -451,7 +467,7 @@ class ApplyTest(unittest.TestCase):
                      if pack["sourceId"] == "plain-gtfs")
         self.assertEqual(following["sourceUrl"], entry["sourceUrl"])
         self.assertNotIn("nextTimetable", entry)
-        for mirror in (policy, catalog):
+        for mirror in (policy, personal_policy, catalog):
             text = mirror.read_text(encoding="utf-8")
             self.assertIn(following["sourceUrl"], text)
             self.assertIn(following["landingPage"], text)
@@ -517,9 +533,10 @@ class ApplyTest(unittest.TestCase):
         embedded = (self.root / apply.CORE_PACKS_KT).read_text(encoding="utf-8")
         self.assertIn('        EmbeddedGtfsPack(SourceId("new-gtfs"), "gtfs/new-gtfs.zip", LocalDate.of(2027, 12, 11)),\n'
                       '        EmbeddedGtfsPack(SourceId("plain-gtfs")', embedded)
-        policy = json.loads((self.root / apply.IOS_POLICY).read_text(encoding="utf-8"))
-        self.assertIn({"accessMode": "OPEN_DIRECT", "reason": reviewed["iosAndroidOnlyReason"], "sourceId": "new-gtfs",
-                       "sourceUrl": reviewed["sourceUrl"]}, policy["androidOnlySources"])
+        for relative in (apply.IOS_POLICY, apply.PERSONAL_IOS_POLICY):
+            policy = json.loads((self.root / relative).read_text(encoding="utf-8"))
+            self.assertIn({"accessMode": "OPEN_DIRECT", "reason": reviewed["iosAndroidOnlyReason"], "sourceId": "new-gtfs",
+                           "sourceUrl": reviewed["sourceUrl"]}, policy["androidOnlySources"], str(relative))
         self.assertEqual([], json.loads(registry.read_text(encoding="utf-8"))["packs"])
         # Applied again, the pack is registered: nothing changes.
         before = {path: path.read_bytes() for path in (*self.assets.iterdir(), registry, self.root / apply.CORE_PACKS_KT)}

@@ -26,13 +26,15 @@ container).  This helper:
      ``TransitGtfsPacks.kt`` (from the entry's ``android`` block);
    either way its ``RailSourceCatalog.kt`` entry must exist, and ``--add-new`` naming a core candidate is refused;
 3. carries the reviewed Trenitalia/Italo pins (``core-refresh.json``) and the switch of a pack to its reviewed next
-   timetable source (``nextTimetable``, Switzerland) into the iOS source policy and ``RailSourceCatalog.kt``, and
+   timetable source (``nextTimetable``, Switzerland) into the iOS source policies (public and personal) and
+   ``RailSourceCatalog.kt``, and
    aligns ``lastServiceDate`` in ``EmbeddedGtfsPacks.kt`` and ``TransitGtfsPacks.kt``;
 4. runs ``build_gtfs_packs.py --check`` (integrity and the 30-day release gate) for each directory,
    ``verify_embedded_assets.py`` and, when the main or the transit manifest (whose railway packs are in the iPhone
    index too) or the iOS policy changed, ``build_foreign_packs.py``
    (iPhone base and per-country indexes, foreign-pack pins, ledger and their checks), ``verify_ios_gtfs_schedule.py``
-   and ``verify_ios_gtfs_rebuild.py``;
+   and ``verify_ios_gtfs_rebuild.py``; then, also after a refresh of ``gtfs-personal/`` alone, the personal index of
+   ``ios/Personal/`` (``build_ios_gtfs_schedule.py --personal`` and ``verify_ios_gtfs_schedule.py --personal``);
 5. prints a table: pack, lastServiceDate old -> new, trips, changed, full and zone size and trips kept of a border
    pack, notes and failures.
 
@@ -93,6 +95,9 @@ PIN_MIRRORS = (
 # --add-new (which is for the candidates of tools/transit_packs.json only).
 CANDIDATES = Path("tools/core_pack_candidates.json")
 IOS_POLICY = Path("ios/Resources/binario_gtfs_source_policy_v1.json")
+# The personal iOS policy (the iPhone's Personal configuration) repeats the public one plus the packs of gtfs-personal/:
+# it follows the same URL changes and new candidates, and the personal index is rebuilt with the public one.
+PERSONAL_IOS_POLICY = Path("ios/Personal/binario_gtfs_source_policy_personal_v1.json")
 CORE_PACKS_KT = Path("app/src/main/java/it/binario/app/data/gtfs/EmbeddedGtfsPacks.kt")
 CATALOG_KT = Path("app/src/main/java/it/binario/app/data/sources/RailSourceCatalog.kt")
 IOS_INPUTS = (
@@ -675,6 +680,8 @@ def candidate_edits(root: Path, added: Sequence[Mapping[str, Any]], candidates: 
     kotlin = kotlin_path.read_text(encoding="utf-8")
     catalog = (root / CATALOG_KT).read_text(encoding="utf-8")
     policy = json.loads(policy_path.read_text(encoding="utf-8"))
+    personal_path = root / PERSONAL_IOS_POLICY
+    personal = json.loads(personal_path.read_text(encoding="utf-8")) if personal_path.is_file() else None
     registry = json.loads(registry_path.read_text(encoding="utf-8"))
     for pack in added:
         source_id = str(pack["sourceId"])
@@ -685,17 +692,24 @@ def candidate_edits(root: Path, added: Sequence[Mapping[str, Any]], candidates: 
         listed = {item.get("sourceId") for key in ("sources", "androidOnlySources") for item in policy.get(key, [])}
         if source_id in listed:
             raise ApplyError(f"{IOS_POLICY}: {source_id} già presente")
-        policy.setdefault("androidOnlySources", []).append({
+        entry = {
             "accessMode": pack["accessMode"], "reason": candidate["iosAndroidOnlyReason"],
             "sourceId": source_id, "sourceUrl": pack["sourceUrl"],
-        })
-        policy["androidOnlySources"].sort(key=lambda item: str(item.get("sourceId")))
+        }
+        for document in (policy, personal):
+            if document is None:
+                continue
+            document.setdefault("androidOnlySources", []).append(dict(entry))
+            document["androidOnlySources"].sort(key=lambda item: str(item.get("sourceId")))
         registry["packs"] = [item for item in registry.get("packs", []) if item.get("sourceId") != source_id]
-    return {
+    edits = {
         kotlin_path: kotlin,
         policy_path: json.dumps(policy, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
         registry_path: json.dumps(registry, ensure_ascii=False, indent=2) + "\n",
     }
+    if personal is not None:
+        edits[personal_path] = json.dumps(personal, ensure_ascii=False, indent=2, sort_keys=True) + "\n"
+    return edits
 
 
 def planned_edits(
@@ -752,10 +766,12 @@ def planned_edits(
             old_page = landing.get(update.source_id)
             if update.landing_page and old_page and old_page != update.landing_page:
                 replacements.append((old_page, update.landing_page))
-    for relative in PIN_MIRRORS:
+    for relative in (*PIN_MIRRORS, PERSONAL_IOS_POLICY):
         if not replacements:
             break
         path = root / relative
+        if relative == PERSONAL_IOS_POLICY and not path.is_file():
+            continue
         text = edits.get(path) or path.read_text(encoding="utf-8")
         for old_text, new_text in replacements:
             text = replace_once(text, old_text, new_text, relative)
@@ -766,8 +782,14 @@ def planned_edits(
 # --- Checks -------------------------------------------------------------------------------------------------------
 
 
-def run_checks(root: Path, *, ios: bool, runner: Callable[..., Any] = subprocess.run) -> list[tuple[str, bool, str]]:
+def run_checks(
+    root: Path, *, ios: bool, personal: bool | None = None, runner: Callable[..., Any] = subprocess.run
+) -> list[tuple[str, bool, str]]:
+    """The checks of an applied refresh. With `ios`, the iPhone indexes are rebuilt and verified; with `personal` (by
+    default as `ios`: the personal index holds every pack of the public one) the personal index of ios/Personal/ too,
+    when this copy has it."""
     python = sys.executable
+    personal = ios if personal is None else personal
     commands: list[list[str]] = []
     for relative in DESTINATIONS.values():
         directory = root / relative
@@ -788,6 +810,11 @@ def run_checks(root: Path, *, ios: bool, runner: Callable[..., Any] = subprocess
             [python, "tools/verify_ios_gtfs_schedule.py"],
             [python, "tools/build_ios_gtfs_schedule.py", "--output", str(rebuild_zlib), "--metadata", str(rebuild_metadata)],
             [python, "tools/verify_ios_gtfs_rebuild.py", "--rebuild", str(rebuild_zlib), "--rebuild-metadata", str(rebuild_metadata)],
+        ]
+    if personal and (root / PERSONAL_IOS_POLICY).is_file():
+        commands += [
+            [python, "tools/build_ios_gtfs_schedule.py", "--personal"],
+            [python, "tools/verify_ios_gtfs_schedule.py", "--personal"],
         ]
     results = []
     try:
@@ -958,8 +985,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     checks_ok = True
     if not args.no_checks:
         ios = any(item.name in IOS_INDEX_DIRECTORIES and item.staged is not None for item in merged) or bool(pins)
+        personal = ios or any(item.name == "gtfs-personal" and item.staged is not None for item in merged)
         print("\nVerifiche:")
-        for label, ok, output in run_checks(root, ios=ios):
+        for label, ok, output in run_checks(root, ios=ios, personal=personal):
             print(f"  [{'ok' if ok else 'ERRORE'}] {label}")
             if not ok:
                 checks_ok = False

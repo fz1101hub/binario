@@ -88,8 +88,11 @@ export type BinarioScreen =
 
 export type RouteAction = "nextTrains" | "punctuality" | "mostPunctual";
 
-/** One programmed departure: its time (minutes since midnight, Italian time) and its label («REG 2157»). */
-export type DepartureRow = { minuteOfDay: number; train: string };
+/**
+ * One programmed departure: its time (minutes since midnight, Italian time), its label («REG 2157»,
+ * «Metro MEX») and, for a city run boarded a walk from the station, the minutes of the walk.
+ */
+export type DepartureRow = { minuteOfDay: number; train: string; walkMinutes?: number };
 
 /** One train of a most-punctual answer: the number, its usual departure and on-time percentage the voice reads. */
 export type PunctualityTrainRow = {
@@ -283,13 +286,26 @@ function punctualityTrainRows(rows: readonly PunctualityTrainRow[] | undefined, 
   });
 }
 
-/** The programmed departures under the timetable banner: time, label, and the platform the timetable does not give. */
+/**
+ * The programmed departures under the timetable banner: time, label, and the platform the timetable
+ * does not give, or, for a city run boarded a walk from the station, the minutes of the walk.
+ */
 function departureTrainRows(rows: readonly DepartureRow[] | undefined, locale: SupportedLocale): ScreenDatasource["trains"] {
   if (!rows?.length) return [];
   const tt = messagesForLocale(locale).timetable;
   return rows.map(row => {
     const time = displayedTime(locale, row.minuteOfDay);
     const train = plainLabel(row.train);
+    if (row.walkMinutes !== undefined && row.walkMinutes > 0) {
+      const walk = formatMessage(tt.walkValue, { minutes: new Intl.NumberFormat(locale).format(row.walkMinutes) });
+      return {
+        time: aplText(time),
+        train: aplText(train),
+        value: aplText(walk),
+        label: aplText(tt.walkLabel),
+        accessibilityLabel: `${time}, ${train}, ${tt.walkLabel}: ${walk}`,
+      };
+    }
     return {
       time: aplText(time),
       train: aplText(train),

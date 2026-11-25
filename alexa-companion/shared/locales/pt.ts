@@ -201,6 +201,17 @@ export const pt: LocaleMessages = {
     platformLabel: "Plataforma",
     platformNotGiven: "não indicada",
     hint: "“Alexa, pergunte ao Binario Trens quais são os próximos trens de Milano Centrale para Bologna Centrale”",
-    vehicles: { busTrenitalia: "Ônibus Trenitalia", freccialink: "FrecciaLink", italobus: "ItaloBus", bus: "Ônibus", replacementBus: "Ônibus substituto" },
+    vehicles: { busTrenitalia: "Ônibus Trenitalia", freccialink: "FrecciaLink", italobus: "ItaloBus", bus: "Ônibus", replacementBus: "Ônibus substituto", metro: "Metrô", tram: "Bonde", funicular: "Funicular" },
+    cityDeparture: {
+      metro: { one: "o {train} da {time}", other: "o {train} das {time}" },
+      tram: { one: "o {train} da {time}", other: "o {train} das {time}" },
+      funicular: { one: "o {train} da {time}", other: "o {train} das {time}" },
+    },
+    cityDepartures: { one: "Segundo o horário programado, a próxima partida é {trains}.", other: "Segundo o horário programado, as próximas partidas são {trains}." },
+    walk: { one: "O embarque é na parada {stop}, a {count} minuto a pé de {station}.", other: "O embarque é na parada {stop}, a {count} minutos a pé de {station}." },
+    routeWalk: { one: "O embarque é em uma parada a {count} minuto a pé da estação de partida.", other: "O embarque é em uma parada a {count} minutos a pé da estação de partida." },
+    cityProgrammedOnly: "Para as linhas urbanas, o Binario só tem o horário programado.",
+    walkLabel: "A pé",
+    walkValue: "{minutes} min",
   },
 };

@@ -55,7 +55,8 @@
             "os próximos trens de {origin} para {destination}",
             "quais são os próximos trens de {origin} para {destination}",
             "quando sai o próximo trem de {origin} para {destination}",
-            "trens de {origin} para {destination}"
+            "trens de {origin} para {destination}",
+            "próximas partidas de {origin} para {destination}"
           ]
         },
         {
@@ -191,6 +192,7 @@
             { "name": { "value": "Tivoli" } },
             { "name": { "value": "Roma Ostiense" } },
             { "name": { "value": "Fiumicino Aeroporto" } },
+            { "name": { "value": "Bologna Aeroporto" } },
             { "name": { "value": "Milano Cadorna" } },
             { "name": { "value": "Napoli Afragola" } },
             { "name": { "value": "Reggio Emilia AV Mediopadana" } },

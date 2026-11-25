@@ -201,6 +201,17 @@ export const ru: LocaleMessages = {
     platformLabel: "Путь",
     platformNotGiven: "не указан",
     hint: "“Alexa, ask Binario Trains for the next trains from Milano Centrale to Bologna Centrale”",
-    vehicles: { busTrenitalia: "Автобус Trenitalia", freccialink: "FrecciaLink", italobus: "ItaloBus", bus: "Автобус", replacementBus: "Автобус вместо поезда" },
+    vehicles: { busTrenitalia: "Автобус Trenitalia", freccialink: "FrecciaLink", italobus: "ItaloBus", bus: "Автобус", replacementBus: "Автобус вместо поезда", metro: "Метро", tram: "Трамвай", funicular: "Фуникулёр" },
+    cityDeparture: {
+      metro: { one: "{train} в {time}", other: "{train} в {time}" },
+      tram: { one: "{train} в {time}", other: "{train} в {time}" },
+      funicular: { one: "{train} в {time}", other: "{train} в {time}" },
+    },
+    cityDepartures: { one: "По расписанию следующий рейс: {trains}.", other: "По расписанию следующие рейсы: {trains}." },
+    walk: { one: "Посадка на остановке {stop}, в {count} минуте ходьбы от {station}.", few: "Посадка на остановке {stop}, в {count} минутах ходьбы от {station}.", many: "Посадка на остановке {stop}, в {count} минутах ходьбы от {station}.", other: "Посадка на остановке {stop}, в {count} минуты ходьбы от {station}." },
+    routeWalk: { one: "Посадка на остановке в {count} минуте ходьбы от станции отправления.", few: "Посадка на остановке в {count} минутах ходьбы от станции отправления.", many: "Посадка на остановке в {count} минутах ходьбы от станции отправления.", other: "Посадка на остановке в {count} минуты ходьбы от станции отправления." },
+    cityProgrammedOnly: "Для городских линий у Binario есть только расписание.",
+    walkLabel: "Пешком",
+    walkValue: "{minutes} мин",
   },
 };

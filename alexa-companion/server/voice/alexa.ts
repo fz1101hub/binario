@@ -295,19 +295,22 @@ async function catalogStations(origin: string, destination: string): Promise<{ o
 /**
  * The live-data caveat for `subject`, then what the programmed timetable says: the next departures
  * (category and number, programmed time; the platform is not known and the live state is in the
- * app), none in the next 24 hours, or an ended timetable. The screen lists the same departures
- * under the «programmed, not real time» banner, with `hero` as its heading.
+ * app), none in the next 24 hours, or an ended timetable. A city run boarded a walk from the
+ * station comes with the walk: from `walkFrom` (the station asked, named with the stop) or, for a
+ * saved route, from its departure station, unnamed. The screen lists the same departures under
+ * the «programmed, not real time» banner, with `hero` as its heading.
  */
 function timetableResponse(
   input: HandlerInput,
   subject: (text: (value: string) => string) => string,
   hero: string,
-  answer: Exclude<TimetableAnswer, { kind: "unavailable" }>
+  answer: Exclude<TimetableAnswer, { kind: "unavailable" }>,
+  walkFrom?: string
 ) {
   const locale = getAlexaLocale(input);
   const t = messagesForLocale(locale).timetable;
   const sentences = (text: (value: string) => string) =>
-    answer.kind === "trains" ? departureSentences(locale, answer.services, text) : [answer.kind === "none" ? t.none : t.expired];
+    answer.kind === "trains" ? departureSentences(locale, answer.services, text, walkFrom) : [answer.kind === "none" ? t.none : t.expired];
   const compose = (text: (value: string) => string) =>
     joinSentences([`${liveDataUnavailableSpeech(locale, subject(text))}${SENTENCE_END[locale] ?? "."}`, ...sentences(text)]);
   setScreen(input, {
@@ -451,8 +454,10 @@ const nextTrainsHandler: RequestHandler = {
 
 /**
  * «Prossimi treni da Roma Termini a Tivoli»: the next departures between two stations of the
- * catalogue from the programmed timetable. The stations are not personal: no linked account is
- * needed. A name the catalogue does not know is said back; without both names the skill asks.
+ * catalogue from the programmed timetable, with the city runs boarded a short walk from them
+ * («da Bologna Centrale a Bologna Aeroporto»: the Marconi Express). The stations are not personal:
+ * no linked account is needed. A name the catalogue does not know is said back; without both names
+ * the skill asks.
  */
 const stationTrainsHandler: RequestHandler = {
   canHandle: input => isIntent(input, "StationTrainsIntent"),
@@ -485,7 +490,7 @@ const stationTrainsHandler: RequestHandler = {
     const [origin, destination] = [stations.origins[0].name, stations.destinations[0].name];
     const subject = (text: (value: string) => string) => formatMessage(t.stationsSubject, { origin: text(origin), destination: text(destination) });
     const programmed = await programmedDepartures(stations.origins, stations.destinations, requestTime(input));
-    if (programmed.kind !== "unavailable") return timetableResponse(input, subject, `${origin} → ${destination}`, programmed);
+    if (programmed.kind !== "unavailable") return timetableResponse(input, subject, `${origin} → ${destination}`, programmed, origin);
     const answer = (text: (value: string) => string) =>
       joinSentences([`${liveDataUnavailableSpeech(locale, subject(text))}${SENTENCE_END[locale] ?? "."}`, t.unavailable]);
     setScreen(input, { kind: "departures", routeName: `${origin} → ${destination}` });

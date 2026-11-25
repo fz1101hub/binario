@@ -7,22 +7,41 @@ import { PackRoles } from "@shared/generated/sharedData";
  * contracts/shared-rules/v1/journey-leg-vehicles-v1.json holds the cases the three apps test.
  */
 
-export type TimetableLegMode = "TRAIN" | "BUS" | "REPLACEMENT_BUS";
+/** A line of a city network: a metro (the Marconi Express people mover too), a tram, a funicular or lift. */
+export type UrbanMode = "METRO" | "TRAM" | "FUNICULAR";
 
-export type TimetableVehicle = "TRAIN" | "BUS_TRENITALIA" | "FRECCIALINK" | "ITALOBUS" | "BUS" | "REPLACEMENT_BUS";
+export type TimetableLegMode = "TRAIN" | "BUS" | "REPLACEMENT_BUS" | UrbanMode;
 
-/** Rail (2, 100–199) or bus (3, 700–799); a bus is the operator's coach only in `scheduledCoachPacks`. */
+export type TimetableVehicle = "TRAIN" | "BUS_TRENITALIA" | "FRECCIALINK" | "ITALOBUS" | "BUS" | "REPLACEMENT_BUS" | UrbanMode;
+
+/**
+ * Rail (2, 100–199), metro (1, 12, 400–499), tram (0, 900–999), funicular and lift (5, 6, 7,
+ * 1300–1499) or bus (3, 700–799); a bus is the operator's coach only in `scheduledCoachPacks`.
+ * Any other type (a ferry, a flight) has no mode.
+ */
 export function legMode(routeType: number, sourceId: string): TimetableLegMode | null {
   if (routeType === 2 || (routeType >= 100 && routeType <= 199)) return "TRAIN";
+  if (routeType === 1 || routeType === 12 || (routeType >= 400 && routeType <= 499)) return "METRO";
+  if (routeType === 0 || (routeType >= 900 && routeType <= 999)) return "TRAM";
+  if (routeType === 5 || routeType === 6 || routeType === 7 || (routeType >= 1300 && routeType <= 1499)) return "FUNICULAR";
   if (routeType === 3 || (routeType >= 700 && routeType <= 799))
     return PackRoles.SCHEDULED_COACH_PACKS.has(sourceId) ? "BUS" : "REPLACEMENT_BUS";
   return null;
 }
 
-/** A coach is FrecciaLink by its line («FL», «FRECCIALINK»), ItaloBus by its operator or line, a Trenitalia bus by its operator, else a bus. */
+/** A metro, tram or funicular line of a city network: said with its line, never a train number. */
+export function isUrban(value: TimetableLegMode | TimetableVehicle): value is UrbanMode {
+  return value === "METRO" || value === "TRAM" || value === "FUNICULAR";
+}
+
+/**
+ * A city line is its mode; a coach is FrecciaLink by its line («FL», «FRECCIALINK»), ItaloBus by
+ * its operator or line, a Trenitalia bus by its operator, else a bus.
+ */
 export function vehicleOf(mode: TimetableLegMode, operatorName: string | null, lineLabel: string | null): TimetableVehicle {
   if (mode === "TRAIN") return "TRAIN";
   if (mode === "REPLACEMENT_BUS") return "REPLACEMENT_BUS";
+  if (isUrban(mode)) return mode;
   const operator = (operatorName ?? "").toLowerCase();
   const line = (lineLabel ?? "").toUpperCase().replaceAll(" ", "");
   if (line === "FL" || line.includes("FRECCIALINK")) return "FRECCIALINK";
@@ -47,6 +66,61 @@ export function busLabel(label: string, vehicle: TimetableVehicle, line: string 
   )
     return label;
   if (vehicle !== "REPLACEMENT_BUS" && trimmed.replaceAll(" ", "").toUpperCase() === label.replaceAll(" ", "").toUpperCase()) return label;
+  return `${label} ${trimmed}`;
+}
+
+/**
+ * The public name of a city line from its route short name (`TimetableNaming.urbanLine`, Android's
+ * `urbanLineName`): Milan publishes its metro lines as «1»…«5» («M1»), Rome as «MEA», «MEB»,
+ * «MEB1», «MEC» («A», «B1»); every other name is kept as published («M1», «14», the Marconi
+ * Express «MEX»). Null without a name.
+ */
+export function urbanLine(shortName: string | null, mode: TimetableLegMode): string | null {
+  const value = shortName === null ? "" : trimSpaces(shortName);
+  if (!value) return null;
+  if (mode !== "METRO") return value;
+  const scalars = Array.from(value);
+  if (scalars.length <= 2 && scalars.every(scalar => scalar >= "0" && scalar <= "9")) return `M${value}`;
+  // ME followed by A, B or C and at most one digit: Rome's lines.
+  if (
+    (scalars.length === 3 || scalars.length === 4) &&
+    scalars[0] === "M" &&
+    scalars[1] === "E" &&
+    scalars[2] >= "A" &&
+    scalars[2] <= "C" &&
+    (scalars.length === 3 || (scalars[3] >= "0" && scalars[3] <= "9"))
+  )
+    return scalars.slice(2).join("");
+  return value;
+}
+
+/** The words that name a city mode in any language of the apps: a line that is one of them only repeats the mode. */
+const URBAN_MODE_WORDS = new Set([
+  "metro", "metropolitana", "métro", "u-bahn", "subway", "tram", "tramvia", "tranvia", "tranvía", "tramway",
+  "straßenbahn", "funicolare", "funicular", "funiculaire", "standseilbahn",
+]);
+
+/** The line, without spaces and in lower case, is the label itself or a word that names a city mode. */
+export function urbanLineRepeatsMode(line: string, label: string): boolean {
+  const compact = line.replaceAll(" ", "").toLowerCase();
+  return compact === label.replaceAll(" ", "").toLowerCase() || URBAN_MODE_WORDS.has(compact);
+}
+
+/**
+ * The label of a city line (`TimetableVehicle.urbanLabel`, Android's `journeyLegLabel`): «Metro M1»,
+ * «Tram 14», «Funicolare»; a city run has no public number. A line that is a long name, a
+ * placeholder or only repeats the mode is left out. `label` is the localized mode.
+ */
+export function urbanLabel(label: string, line: string | null): string {
+  const trimmed = line ? trimSpaces(line) : "";
+  if (
+    !trimmed ||
+    Array.from(trimmed).length > 10 ||
+    trimmed.includes("(") ||
+    trimmed.toUpperCase() === "INCONNU" ||
+    urbanLineRepeatsMode(trimmed, label)
+  )
+    return label;
   return `${label} ${trimmed}`;
 }
 
