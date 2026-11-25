@@ -24,7 +24,9 @@ build took a new archive of it.
 Downloads use ``acquire_transit_sources.download`` (HTTPS only, byte cap, resume, retries on 5xx); a reviewed large
 archive (``build_gtfs_packs.REVIEWED_LARGE_ARCHIVES``, Switzerland) has its own byte cap and its own archive limits,
 and is read in place, one row at a time.  An archive equal
-to the one recorded in the manifest (``sourceArchiveSha256``) is not rebuilt.  Every changed source is built alone
+to the one recorded in the manifest (``sourceArchiveSha256``) is not rebuilt, unless its pack keeps a reviewed horizon
+(``LargeArchiveReview.horizon_days``: the trips of so many days from the build day), which each refresh moves on.  Every
+changed source is built alone
 with ``build_gtfs_packs.build_packs(only=[id])`` on a staging copy of the directory, so a failing source leaves its
 previous pack and manifest entry in place and is reported; a rebuilt pack whose canonical content is identical to the
 previous one (``contentSha256``) is put back byte for byte.  Everything downloaded is untrusted data read only by this
@@ -449,7 +451,11 @@ def refresh(
                 entry["proposedUpstream"] = proposed
                 entry["upstreamMetadata"] = upstream_metadata(target)
             if record["sha256"] == pack.get("sourceArchiveSha256") and switch is None:
-                if published_pack_current(asset_dir, pack):
+                review = builder.large_archive_review(source_id)
+                if review is not None and review.horizon_days is not None:
+                    # A reviewed horizon runs from the build day: the same archive gives a pack that runs further.
+                    print(f"  {source_id}: archivio identico, orizzonte di {review.horizon_days} giorni spostato: ricostruito", flush=True)
+                elif published_pack_current(asset_dir, pack):
                     entry["status"] = "unchanged"
                     print(f"  {source_id}: archivio identico a quello pubblicato", flush=True)
                     continue

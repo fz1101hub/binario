@@ -377,6 +377,23 @@ class RefreshCoreTest(unittest.TestCase):
         self.assertIn("plain-gtfs: archivio rivisto", log.getvalue())
         self.assertNotIn("broken-gtfs: archivio rivisto", log.getvalue())
 
+    def test_a_reviewed_horizon_is_moved_on_even_from_the_same_archive(self) -> None:
+        # A pack with a reviewed horizon keeps the trips of so many days from the build day: the weekly refresh builds it
+        # again from an identical archive, and its lastServiceDate moves with the build day.
+        review = builder.LargeArchiveReview("fixture", 5 * 1024 * 1024, 1 << 30, 1 << 30, 10_000_000, horizon_days=30)
+        payloads = {"https://example.test/plain-gtfs.zip": self.archives["plain-gtfs"]}
+        with mock.patch.object(builder, "REVIEWED_LARGE_ARCHIVES", {"plain-gtfs": review}), \
+                contextlib.redirect_stderr(io.StringIO()):
+            report, _ = self.run_refresh(payloads, selection=["plain-gtfs"])
+        self.assertEqual("changed", report["packs"]["plain-gtfs"]["status"])
+        staged = {pack["sourceId"]: pack for pack in json.loads((self.temp / "out/staging/gtfs/manifest.json").read_text(encoding="utf-8"))["packs"]}
+        # Built on 3 November: tripsRunFrom 1 November, the horizon to 3 December.
+        self.assertEqual(("2026-12-03", "2026-12-03"), (staged["plain-gtfs"]["lastServiceDate"], staged["plain-gtfs"]["fullServiceUntil"]))
+        self.assertEqual(self.manifest["packs"][0]["sourceArchiveSha256"], staged["plain-gtfs"]["sourceArchiveSha256"])
+        # Without the horizon the same archive is left as published.
+        report, _ = self.run_refresh(payloads, selection=["plain-gtfs"])
+        self.assertEqual("unchanged", report["packs"]["plain-gtfs"]["status"])
+
     def test_the_download_stops_at_the_cap_it_is_given(self) -> None:
         class Response(io.BytesIO):
             status = 200

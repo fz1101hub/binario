@@ -127,6 +127,15 @@ class LargeArchiveReview:
     max_retained_utf8_bytes: int | None = None
     # The calendar held while read, as bits per service and day from tripsRunFrom (read_service_days).
     max_service_days: int = 100_000_000
+    # The reviewed horizon: only the trips running from tripsRunFrom to the build day plus this many days are kept, and
+    # the calendar ends there (CALENDARS_UNTIL_FIELD); None: the whole archive.
+    horizon_days: int | None = None
+
+    def horizon_end(self, runs_from: date) -> date | None:
+        """The last day kept for a build whose tripsRunFrom is ``runs_from``: its build day plus ``horizon_days``."""
+        if self.horizon_days is None:
+            return None
+        return runs_from + timedelta(days=EXPIRED_TRIP_GRACE_DAYS + self.horizon_days)
 
     def budget(self) -> "RetentionBudget":
         """The retention budget of one build of the source (None: the default MAX_RETAINED_BUILD_*)."""
@@ -166,6 +175,16 @@ class LargeArchiveReview:
 # max_service_days, 100,000,000 bits (12.5 MB), counts the three bitmaps of a service (calendar days, added days, days
 # with an exception): the rail services of a year (265,070 rail trips on 24 November at 8.6 trips a service, about
 # 31,000) hold at most about 34 million.
+#
+# horizon_days, 42: a file of a whole timetable year holds about 265,000 rail trips (24 November 2026), far past the
+# 750,000 stop times a table holds (MAX_RETAINED_TABLE_ROWS, which the iPhone index builder applies too) and the
+# 16,384 rows of one station the iPhone reader reads (SQLiteGTFSJourneyRepository.maximumCandidateRows).  The pack
+# applied from run 45524521259 (5a6a5d65) runs from 23 November: its trips with a day in the first d days number
+# 19,536 (d = 1), 38,207 (7), 45,472 (14) and 47,878 (20), 11.34 stop times a trip, and Zürich HB boards 1,935, 4,931,
+# 6,414 and 6,943 of them; after the first week about 744 trips and 155 Zürich HB rows join a day (674 a day over the
+# year).  At that pace 42 days from the build day keep about 64,000 trips, 729,000 stop times and 10,400 Zürich HB rows
+# (120 days: 122,000 trips, 1,380,000 stop times, 22,400 rows).  42 is also the 30 days of the release gate plus the
+# week between two refreshes and five days to spare: each weekly refresh moves the horizon on.
 REVIEWED_LARGE_ARCHIVES: Mapping[str, LargeArchiveReview] = {
     "ch-otd-gtfs": LargeArchiveReview(
         reason=(
@@ -189,6 +208,7 @@ REVIEWED_LARGE_ARCHIVES: Mapping[str, LargeArchiveReview] = {
         max_retained_rows=1_500_000,
         max_retained_cells=9_000_000,
         max_service_days=100_000_000,
+        horizon_days=42,
     ),
 }
 
@@ -227,6 +247,9 @@ TRIPS_RUN_FROM_FIELD = "tripsRunFrom"
 # A reviewed large archive (REVIEWED_LARGE_ARCHIVES) keeps its calendar from tripsRunFrom only, each service in its
 # smallest exact encoding (compact_calendars): the day is recorded in the filter manifest under this field.
 CALENDARS_FROM_FIELD = "calendarsFrom"
+# With a reviewed horizon (LargeArchiveReview.horizon_days) the last day of that calendar, the build day plus the horizon:
+# a trip running only after it is left out, the calendar ends there, and so do lastServiceDate and fullServiceUntil.
+CALENDARS_UNTIL_FIELD = "calendarsUntil"
 FILTER_MANIFEST_MEMBER = "binario_filter_manifest.json"
 MEMBER_DIGEST_FIELD = "memberSha256"
 
@@ -1427,6 +1450,26 @@ def verify_calendars_from(source_id: str, value: object, calendar: CsvTable, cal
         raise BuildError(f"{source_id}: calendario dal {span[0]}, prima del {first} ({CALENDARS_FROM_FIELD})")
 
 
+def verify_calendars_until(
+    source_id: str, value: object, start: object, calendar: CsvTable, calendar_dates: CsvTable,
+) -> None:
+    """A pack declaring CALENDARS_UNTIL_FIELD is of a reviewed large archive with a horizon, the day is not before
+    CALENDARS_FROM_FIELD and no calendar day comes after it."""
+    review = large_archive_review(source_id)
+    if review is None or review.horizon_days is None:
+        raise BuildError(f"{source_id}: {CALENDARS_UNTIL_FIELD} su una fonte senza orizzonte rivisto (REVIEWED_LARGE_ARCHIVES)")
+    try:
+        last = date.fromisoformat(str(value))
+        first = date.fromisoformat(str(start))
+    except ValueError as error:
+        raise BuildError(f"{source_id}: {CALENDARS_UNTIL_FIELD} o {CALENDARS_FROM_FIELD} non valido") from error
+    if last < first:
+        raise BuildError(f"{source_id}: {CALENDARS_UNTIL_FIELD} {last} prima di {CALENDARS_FROM_FIELD} {first}")
+    span = calendar_span(calendar, calendar_dates, source_id)
+    if span is not None and span[1] > last:
+        raise BuildError(f"{source_id}: calendario fino al {span[1]}, dopo il {last} ({CALENDARS_UNTIL_FIELD})")
+
+
 def verify_train_numbers(source_id: str, metadata: Mapping[str, Any], trip_rows: Sequence[Mapping[str, str]]) -> None:
     """A TRAIN_NUMBER_ROUTE_ID_SOURCES pack declares TRAIN_NUMBERS_RULE and has no trip left with an empty
     trip_short_name and a plain-number route_id; no other pack declares it."""
@@ -1941,13 +1984,15 @@ def read_calendars(
 
 @dataclass
 class ServiceDays:
-    """The days each service runs from ``first`` on (:func:`service_days` from that day), as bitmaps: bit n is
+    """The days each service runs from ``first`` on (to ``last``: a reviewed horizon; :func:`service_days` in those
+    days), as bitmaps: bit n is
     ``first`` + n days.  ``source_rows`` counts the rows of calendar.txt and calendar_dates.txt that give a service a
     day from ``first`` on (its encoding in the source, clipped there); ``irregular`` names the services whose encoding
     every reader would not read alike (more than one calendar row, a weekday flag other than 0 or 1, an exception other
     than 1 or 2, two exceptions on one day, a date with spaces); the headers are those of the source tables."""
 
     first: date
+    last: date | None
     days: dict[str, int]
     source_rows: dict[str, int]
     irregular: set[str]
@@ -1963,14 +2008,17 @@ def read_service_days(
     runs_from: date,
     max_rows: int | None,
     max_service_days: int,
+    until: date | None = None,
 ) -> ServiceDays:
-    """The days from ``runs_from`` on of the services ``service_ids`` (:class:`ServiceDays`), read without holding a row:
+    """The days from ``runs_from`` on (to ``until``, when given: a reviewed horizon) of the services ``service_ids``
+    (:class:`ServiceDays`), read without holding a row:
     the same days as :func:`service_days` (a calendar row by its weekday flags from its start_date to its end_date, minus
     the days of an exception other than 1, plus the days of an exception 1; an empty date is skipped).  A calendar row
     ending before ``runs_from`` and an exception before it give no such day.  The bitmaps of calendar days, added days
     and days with an exception together span at most ``max_service_days`` bits (services by days from ``runs_from``),
     else the build stops."""
     base = runs_from.toordinal()
+    stop = date.max.toordinal() if until is None else until.toordinal()
     calendar_bits: dict[str, int] = {}
     added_bits: dict[str, int] = {}
     listed_bits: dict[str, int] = {}
@@ -1996,7 +2044,7 @@ def read_service_days(
             return False
         start = parse_gtfs_date(start_value, f"{source_id}:calendar.txt")
         end = parse_gtfs_date(end_value, f"{source_id}:calendar.txt")
-        first, last = max(start.toordinal(), base) - base, end.toordinal() - base
+        first, last = max(start.toordinal(), base) - base, min(end.toordinal(), stop) - base
         if first > last:
             return False
         source_rows[service_id] = source_rows.get(service_id, 0) + 1
@@ -2022,7 +2070,7 @@ def read_service_days(
         if service_id not in service_ids or not value:
             return False
         offset = parse_gtfs_date(value, f"{source_id}:calendar_dates.txt").toordinal() - base
-        if offset < 0:
+        if offset < 0 or offset > stop - base:
             return False
         source_rows[service_id] = source_rows.get(service_id, 0) + 1
         reserve(listed_bits, service_id, offset)
@@ -2045,7 +2093,9 @@ def read_service_days(
     require_columns(calendar, "calendar.txt", "service_id", "start_date", "end_date", *WEEKDAY_COLUMNS)
     require_columns(calendar_dates, "calendar_dates.txt", "service_id", "date", "exception_type")
     days = {service_id: calendar_bits.get(service_id, 0) | added_bits.get(service_id, 0) for service_id in service_ids}
-    return ServiceDays(runs_from, days, source_rows, irregular, calendar.header, calendar_dates.header, counts.get("read", 0))
+    return ServiceDays(
+        runs_from, until, days, source_rows, irregular, calendar.header, calendar_dates.header, counts.get("read", 0),
+    )
 
 
 def running_services(
@@ -2102,8 +2152,9 @@ def compact_calendars(
     max_rows: int | None,
 ) -> tuple[CsvTable, CsvTable]:
     """calendar.txt and calendar_dates.txt of ``service_ids`` with the days each runs from ``found.first`` on (the
-    earlier days no kept trip needs, :func:`expired_trips`): each service in the smaller of its encoding in the source,
-    clipped at that day (calendar rows ending before it and earlier exceptions left out, start_date moved up to it), and
+    earlier days no kept trip needs, :func:`expired_trips`) to ``found.last`` when given (a reviewed horizon): each
+    service in the smaller of its encoding in the source, clipped to those days (calendar rows outside them and the
+    exceptions outside them left out, start_date moved up and end_date down to them), and
     :func:`recoded_service`; the source's encoding when no larger and read alike by every reader (not
     ``found.irregular``).  Services by service_id; the rows of a service as the source lists them, or as recoded."""
     recoded: dict[str, tuple[list[dict[str, str]], list[dict[str, str]]]] = {}
@@ -2115,6 +2166,7 @@ def compact_calendars(
         else:
             recoded[service_id] = rows
     first = found.first.strftime("%Y%m%d")
+    last = "99991231" if found.last is None else found.last.strftime("%Y%m%d")
     source_calendar: dict[str, list[dict[str, str]]] = {}
     source_dates: dict[str, list[dict[str, str]]] = {}
     if kept_as_source:
@@ -2122,16 +2174,17 @@ def compact_calendars(
             start, end = row.get("start_date", "").strip(), row.get("end_date", "").strip()
             return (
                 row.get("service_id", "") in kept_as_source and bool(start) and bool(end) and end >= first
-                and max(start, first) <= end
+                and max(start, first) <= min(end, last)
             )
 
         def clipped_exception_row(row: Mapping[str, str]) -> bool:
             value = row.get("date", "").strip()
-            return row.get("service_id", "") in kept_as_source and bool(value) and value >= first
+            return row.get("service_id", "") in kept_as_source and bool(value) and first <= value <= last
 
         for row in (read_table(archive, "calendar.txt", predicate=clipped_calendar_row, budget=budget, max_rows=max_rows)
                     or empty_calendar()).rows:
             moved = {**row, "start_date": first} if row.get("start_date", "").strip() < first else row
+            moved = {**moved, "end_date": last} if moved.get("end_date", "").strip() > last else moved
             source_calendar.setdefault(row.get("service_id", ""), []).append(moved)
         for row in (read_table(archive, "calendar_dates.txt", predicate=clipped_exception_row, budget=budget, max_rows=max_rows)
                     or empty_calendar_dates()).rows:
@@ -2168,12 +2221,14 @@ def read_running_trips(
     max_rows: int | None,
     with_route_trip_ids: bool,
     max_service_days: int,
+    until: date | None = None,
 ) -> tuple[CsvTable, set[str], ServiceDays]:
     """trips.txt of the kept routes whose service runs from ``runs_from`` on, with the ids of every trip of those routes
     when ``with_route_trip_ids`` (for frequencies.txt) and the days of their services from ``runs_from`` on.  A first
     pass names the services of the trips of the kept routes and retains nothing; :func:`read_service_days` reads the
     calendar into bitmaps; the second pass retains the trips that still run.  A trip id with a row of a service that no
-    longer runs goes whole, as in :func:`expired_trips`."""
+    longer runs goes whole, as in :func:`expired_trips`.  With ``until`` (a reviewed horizon) a trip whose service runs
+    only after it goes too, and the days are those to ``until``."""
     services: set[str] = set()
     route_trip_ids: set[str] = set()
     named: list[bool] = [False]
@@ -2193,7 +2248,7 @@ def read_running_trips(
     require_columns(table, "trips.txt", "route_id", "trip_id", "service_id")
     if not named[0]:
         raise BuildError(f"{source_id}: le route filtrate non hanno trip")
-    found = read_service_days(archive, source_id, services, runs_from, max_rows, max_service_days)
+    found = read_service_days(archive, source_id, services, runs_from, max_rows, max_service_days, until)
     running = {service_id for service_id, bits in found.days.items() if bits}
     dead: set[str] = set()
 
@@ -2211,7 +2266,9 @@ def read_running_trips(
     if shared:
         budget.release("trips.txt", shared)
         trips = CsvTable(trips.header, tuple(row for row in trips.rows if row.get("trip_id", "") not in dead))
-    if dead:
+    if dead and until is not None:
+        print(f"{source_id}: {len(dead)} trip che non circolano fra il {runs_from} e il {until} rimossi", file=sys.stderr)
+    elif dead:
         print(f"{source_id}: {len(dead)} trip che non circolano più dal {runs_from} rimossi", file=sys.stderr)
     return trips, route_trip_ids, found
 
@@ -2297,10 +2354,14 @@ def filter_archive(
         if review is not None and trips_run_from is not None and source_id not in ITINERARY_COPY_SOURCES:
             # frequencies.txt is read for every trip of the kept routes, as on the default path, so that its expansion
             # (and MAX_FREQUENCY_RUNS) does not depend on when the expired trips go.
+            horizon_end = review.horizon_end(trips_run_from)
+            if horizon_end is not None:
+                print(f"{source_id}: orizzonte rivisto dal {trips_run_from} al {horizon_end} ({review.horizon_days} giorni dalla "
+                      "costruzione)", file=sys.stderr)
             trips, route_trip_ids, found_days = read_running_trips(
                 archive, source_id, route_ids, trips_run_from, budget, streamed_rows,
                 with_route_trip_ids=find_entry(archive, "frequencies.txt") is not None,
-                max_service_days=review.max_service_days,
+                max_service_days=review.max_service_days, until=horizon_end,
             )
             kept_trips = trips.rows
             trip_ids = {row["trip_id"] for row in kept_trips if row.get("trip_id")}
@@ -2394,6 +2455,8 @@ def filter_archive(
             run_metadata[TRIPS_RUN_FROM_FIELD] = trips_run_from.isoformat()
             if found_days is not None:
                 run_metadata[CALENDARS_FROM_FIELD] = trips_run_from.isoformat()
+                if found_days.last is not None:
+                    run_metadata[CALENDARS_UNTIL_FIELD] = found_days.last.isoformat()
 
         if source_id in THIN_TAIL_CLIP_SOURCES:
             # Measured on what the pack would publish (the calendar of the kept trips), as the weekly refresh measures it.
@@ -2547,23 +2610,41 @@ def filter_archive(
         # Do not inflate hundreds of MB of shape points just to discard bus
         # shapes. Remove shape_id references together with the optional table.
 
+        # A reviewed large archive also leaves out a transfer naming a trip or a route the pack does not keep, as the
+        # border subset does (the Swiss file of November 2026: 156,297 of the 176,111 transfers between kept stops name
+        # a trip that has ended, or a bus); no reader of the packs follows such a reference.
+        kept_route_ids = {row.get("route_id", "") for row in kept_routes}
+        dangling = [0]
+
+        def between_kept(row: Mapping[str, str]) -> bool:
+            if row.get("from_stop_id", "") not in stop_ids or row.get("to_stop_id", "") not in stop_ids:
+                return False
+            if review is not None and not (
+                all(not row.get(key) or row[key] in trip_ids for key in ("from_trip_id", "to_trip_id"))
+                and all(not row.get(key) or row[key] in kept_route_ids for key in ("from_route_id", "to_route_id"))
+            ):
+                dangling[0] += 1
+                return False
+            return True
+
         transfers = read_table(
             archive,
             "transfers.txt",
-            predicate=lambda row: row.get("from_stop_id", "") in stop_ids
-            and row.get("to_stop_id", "") in stop_ids,
+            predicate=between_kept,
             budget=budget,
             max_rows=streamed_rows,
         )
         if transfers is not None:
             require_columns(transfers, "transfers.txt", "from_stop_id", "to_stop_id")
             tables["transfers.txt"] = transfers
+            if review is not None:
+                print(f"{source_id}: transfers.txt {len(transfers.rows)} righe tenute, {dangling[0]} di corse o linee non tenute "
+                      "lasciate fuori", file=sys.stderr)
 
         pathways = read_table(
             archive,
             "pathways.txt",
-            predicate=lambda row: row.get("from_stop_id", "") in stop_ids
-            and row.get("to_stop_id", "") in stop_ids,
+            predicate=between_kept,
             budget=budget,
             max_rows=streamed_rows,
         )
@@ -3148,6 +3229,10 @@ def verify_filter_from_asset(path: Path, source_id: str) -> str:
         calendar_dates = read_table(archive, "calendar_dates.txt") or empty_calendar_dates()
         if CALENDARS_FROM_FIELD in metadata:
             verify_calendars_from(source_id, metadata[CALENDARS_FROM_FIELD], calendar, calendar_dates)
+        if CALENDARS_UNTIL_FIELD in metadata:
+            verify_calendars_until(
+                source_id, metadata[CALENDARS_UNTIL_FIELD], metadata.get(CALENDARS_FROM_FIELD), calendar, calendar_dates,
+            )
         agency = read_table(archive, "agency.txt", required=True)
         assert agency is not None
         verify_local_times(source_id, metadata, agency.rows, calendar, calendar_dates)
