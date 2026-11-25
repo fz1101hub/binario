@@ -2046,12 +2046,16 @@ def small_review(**changes: int) -> "builder.LargeArchiveReview":
 
 def write_swiss_like_feed(
     target: Path, *, bus_trips: int = 400, expired_trips: int = 3, frequencies: tuple[str, ...] = (),
-    extra: Mapping[str, bytes] | None = None,
+    extra: Mapping[str, bytes] | None = None, hierarchy: bool = False, shared_trip_id: bool = False,
+    unknown_stop: bool = False,
 ) -> dict[str, list[str]]:
     """A synthetic feed shaped like the Swiss national one (its identifier style, invented values): three rail trips
     running to 12 December 2026, ``expired_trips`` rail trips whose service ended on 30 November, and ``bus_trips`` buses
     of ten calls each that the rail filter drops, so stop_times.txt is the large table; ``frequencies`` names the kinds
-    of rail trip ("alive", "expired") that run by frequencies.txt.  Returns the trip ids by kind."""
+    of rail trip ("alive", "expired") that run by frequencies.txt.  ``hierarchy`` adds two levels of parent stations, a
+    parent absent from stops.txt, a stop listed twice (the second row names a parent) and a parent cycle;
+    ``shared_trip_id`` gives the third running trip's id to a trip of the expired service as well; ``unknown_stop``
+    makes a running trip call at a stop stops.txt lacks.  Returns the trip ids by kind."""
     alive = ["1.TA.91-10-A-j26-1.1.H", "2.TA.91-10-A-j26-1.1.R", "1.TA.91-1-P-j26-1.1.H"]
     expired = [f"{index}.TA+old.91-10-A-j26-1.2.H" for index in range(1, expired_trips + 1)]
     buses = [f"{index}.TA.92-{index % 7}-j26-1.1.H" for index in range(bus_trips)]
@@ -2065,16 +2069,27 @@ def write_swiss_like_feed(
     stop_times += [[trip, f"{6 + call:02d}:{index % 60:02d}:00", f"{6 + call:02d}:{index % 60:02d}:00",
                     f"859{(index + call) % 6:04d}", str(call + 1)]
                    for index, trip in enumerate(buses) for call in range(10)]
+    if shared_trip_id:
+        trips.append(["91-1-P-j26-1", "TA+old", alive[2], "12999"])
+    if unknown_stop:
+        stop_times.append([alive[0], "12:00:00", "12:00:00", "8509999", "5"])
+    stops = [["Parent8503000", "Zürich HB", "47.378", "8.540", "1", ""],
+             ["8503000:0:3", "Zürich HB", "47.378", "8.540", "", "Parent8503000"]]
+    stops += [[stop, f"Bahnhof {stop}", "47.0", "8.0", "", ""] for stop in SWISS_RAIL_STOPS[1:]]
+    stops += [[f"859{index:04d}", f"Bushalt {index}", "46.9", "7.9", "", ""] for index in range(6)]
+    if hierarchy:
+        parent_of = {"8505000": "Parent8505000", "8507000": "Missing8507000"}
+        stops = [row[:5] + [parent_of.get(row[0], row[5])] for row in stops]
+        stops += [["Parent8505000", "Luzern", "47.05", "8.31", "1", "Area8505000"],
+                  ["Area8505000", "Luzern Bahnhofplatz", "47.05", "8.31", "1", ""],
+                  ["8503006", "Zürich Oerlikon", "47.41", "8.54", "", "Parent8503006"],
+                  ["Parent8503006", "Zürich Oerlikon", "47.41", "8.54", "1", "8503006"]]
     weekdays = ["1"] * 7
     members = {
         "agency.txt": csv_text(["agency_id", "agency_name", "agency_url", "agency_timezone"],
                                [["11", "Schweizerische Bundesbahnen SBB", "https://example.test", "Europe/Zurich"],
                                 ["801", "PostAuto", "https://example.test", "Europe/Zurich"]]),
-        "stops.txt": csv_text(["stop_id", "stop_name", "stop_lat", "stop_lon", "location_type", "parent_station"],
-                              [["Parent8503000", "Zürich HB", "47.378", "8.540", "1", ""],
-                               ["8503000:0:3", "Zürich HB", "47.378", "8.540", "", "Parent8503000"]]
-                              + [[stop, f"Bahnhof {stop}", "47.0", "8.0", "", ""] for stop in SWISS_RAIL_STOPS[1:]]
-                              + [[f"859{index:04d}", f"Bushalt {index}", "46.9", "7.9", "", ""] for index in range(6)]),
+        "stops.txt": csv_text(["stop_id", "stop_name", "stop_lat", "stop_lon", "location_type", "parent_station"], stops),
         "routes.txt": csv_text(["route_id", "agency_id", "route_short_name", "route_type"],
                                [["91-10-A-j26-1", "11", "S10", "109"], ["91-1-P-j26-1", "11", "IC1", "102"]]
                                + [[f"92-{index}-j26-1", "801", str(100 + index), "700"] for index in range(7)]),
@@ -2086,7 +2101,8 @@ def write_swiss_like_feed(
         "calendar_dates.txt": csv_text(["service_id", "date", "exception_type"],
                                        [["TA", "20251225", "2"], ["TA+old", "20251226", "2"], ["BUS", "20251225", "2"]]),
         "transfers.txt": csv_text(["from_stop_id", "to_stop_id", "transfer_type", "min_transfer_time"],
-                                  [["8503000:0:3", "8503006", "2", "300"], ["8590000", "8590001", "2", "120"]]),
+                                  [["8503000:0:3", "8503006", "2", "300"], ["Parent8503000", "8503006", "2", "240"],
+                                   ["8590000", "8590001", "2", "120"]]),
         "feed_info.txt": csv_text(["feed_publisher_name", "feed_publisher_url", "feed_lang", "feed_version"],
                                   [["Fixture", "https://example.test", "DE", "20261121"]]),
     }
@@ -2103,6 +2119,11 @@ def write_swiss_like_feed(
     return {"alive": alive, "expired": expired, "buses": buses}
 
 
+def CsvTableOf(table: "builder.CsvTable", services: set[str]) -> "builder.CsvTable":
+    """``table`` with the rows of ``services`` only, as filter_archive reads the calendar of its kept trips."""
+    return builder.CsvTable(table.header, tuple(row for row in table.rows if row.get("service_id", "") in services))
+
+
 class RecordingBudget(builder.RetentionBudget):
     """The retention budget, counting what each table retained and what was released."""
 
@@ -2113,10 +2134,10 @@ class RecordingBudget(builder.RetentionBudget):
         RecordingBudget.retained[basename] = RecordingBudget.retained.get(basename, 0) + 1
         super().retain(basename, row)
 
-    def release(self, rows) -> None:  # type: ignore[no-untyped-def]
+    def release(self, basename, rows) -> None:  # type: ignore[no-untyped-def]
         rows = list(rows)
         RecordingBudget.released.append(len(rows))
-        super().release(rows)
+        super().release(basename, rows)
 
 
 class ReviewedLargeArchiveTest(unittest.TestCase):
@@ -2164,13 +2185,16 @@ class ReviewedLargeArchiveTest(unittest.TestCase):
         RecordingBudget.retained, RecordingBudget.released = {}, []
         with self.small_defaults(), mock.patch.object(builder, "RetentionBudget", RecordingBudget):
             output, result, log = self.filter(source)
-        # Only the stop times of the three rail trips that still run were ever held: not the 4,000 bus calls, not the
-        # calls of the rail trips whose service ended before tripsRunFrom (dropped, with their calendar, before
-        # stop_times.txt was read).
-        self.assertEqual(12, RecordingBudget.retained["stop_times.txt"])
-        self.assertEqual(len(trips["alive"]) + len(trips["expired"]), RecordingBudget.retained["trips.txt"])
-        self.assertIn(len(trips["expired"]), RecordingBudget.released)
+        # Every table is held only for what the pack keeps: the rail routes, the three rail trips that still run (not
+        # the 400 buses, not the trips whose service ended before tripsRunFrom), their calendar, their 12 calls out of
+        # 4,024, their stops with the parent station, the two transfers between them.  Nothing is held and dropped.
+        self.assertEqual({"routes.txt": 2, "trips.txt": 3, "stop_times.txt": 12, "calendar.txt": 1, "calendar_dates.txt": 1,
+                          "stops.txt": 5, "agency.txt": 2, "transfers.txt": 2, "feed_info.txt": 1}, RecordingBudget.retained)
+        self.assertEqual([], RecordingBudget.released)
+        self.assertIn(f"{SWISS}: {len(trips['expired'])} trip che non circolano più dal {SWISS_RUNS_FROM} rimossi", log)
         self.assertIn(f"{SWISS}: stop_times.txt {4 * 6 + 10 * 400} righe lette, 12 tenute", log)
+        self.assertRegex(log, rf"{SWISS}: trattenute 29 righe \(limite 1000000\), \d+ celle \(limite 6000000\), \d+ byte "
+                              r"\(limite 134217728\); righe trattenute per tabella: stop_times\.txt 12, stops\.txt 5, trips\.txt 3, ")
         self.assertIn(f"{SWISS}: archivio rivisto, ", log)
         self.assertIn("membri più grandi: stop_times.txt ", log)
         self.assertEqual(trips["alive"], [row["trip_id"] for row in read_rows(output, "trips.txt")])
@@ -2219,15 +2243,45 @@ class ReviewedLargeArchiveTest(unittest.TestCase):
                 self.filter(archive)
 
     def test_the_retained_row_cell_and_byte_budgets_still_apply_to_what_is_kept(self) -> None:
+        # The error names the rows each table holds when the build stops.
         source, _ = self.feed()
+        held = r"\(righe trattenute per tabella: stop_times\.txt \d+, trips\.txt 3, routes\.txt 2"
         for name, value, pattern in (
-            ("MAX_RETAINED_TABLE_ROWS", 11, r"tabella oltre budget righe trattenute: stop_times\.txt > 11"),
-            ("MAX_RETAINED_BUILD_ROWS", 20, r"build GTFS oltre budget righe trattenute: \d+ > 20"),
-            ("MAX_RETAINED_BUILD_CELLS", 100, r"build GTFS oltre budget celle trattenute"),
-            ("MAX_RETAINED_BUILD_UTF8_BYTES", 600, r"build GTFS oltre budget byte UTF-8 trattenuti"),
+            ("MAX_RETAINED_TABLE_ROWS", 11, r"^tabella oltre budget righe trattenute: stop_times\.txt > 11 \(righe trattenute per tabella: "
+                                            r"stop_times\.txt 11, trips\.txt 3, routes\.txt 2\)$"),
+            ("MAX_RETAINED_BUILD_ROWS", 20, r"^build GTFS oltre budget righe trattenute: 21 > 20 \(righe trattenute per tabella: "
+                                            r"stop_times\.txt 12, trips\.txt 3, routes\.txt 2, stops\.txt 2, calendar\.txt 1, "
+                                            r"calendar_dates\.txt 1\)$"),
+            ("MAX_RETAINED_BUILD_CELLS", 60, r"^build GTFS oltre budget celle trattenute: \d+ > 60 " + held),
+            ("MAX_RETAINED_BUILD_UTF8_BYTES", 400, r"^build GTFS oltre budget byte UTF-8 trattenuti: \d+ > 400 " + held),
         ):
             with self.subTest(name), self.small_defaults(**{name: value}), self.assertRaisesRegex(builder.BuildError, pattern):
                 self.filter(source)
+
+    def test_the_reviewed_budget_replaces_the_build_totals_and_names_the_tables(self) -> None:
+        source, _ = self.feed()
+        with self.small_defaults(MAX_RETAINED_BUILD_ROWS=20, MAX_RETAINED_BUILD_CELLS=60):
+            with mock.patch.object(builder, "REVIEWED_LARGE_ARCHIVES", {SWISS: small_review(max_retained_rows=40, max_retained_cells=200)}):
+                self.filter(source)
+            with mock.patch.object(builder, "REVIEWED_LARGE_ARCHIVES", {SWISS: small_review(max_retained_rows=25, max_retained_cells=200)}), \
+                    self.assertRaisesRegex(builder.BuildError, r"^build GTFS oltre budget righe trattenute: 26 > 25 \(righe trattenute "
+                                                               r"per tabella: stop_times\.txt 12, stops\.txt 5, trips\.txt 3, "
+                                                               r"agency\.txt 2, routes\.txt 2, calendar\.txt 1, calendar_dates\.txt 1\)$"):
+                self.filter(source)
+            # The per-table limit stays: every reader of the published pack applies it.
+            with self.small_defaults(MAX_RETAINED_TABLE_ROWS=11), \
+                    mock.patch.object(builder, "REVIEWED_LARGE_ARCHIVES", {SWISS: small_review(max_retained_rows=40, max_retained_cells=200)}), \
+                    self.assertRaisesRegex(builder.BuildError, r"tabella oltre budget righe trattenute: stop_times\.txt > 11"):
+                self.filter(source)
+
+    def test_every_source_names_the_rows_each_table_holds_when_its_budget_stops_the_build(self) -> None:
+        source = self.temp / "amt.zip"
+        write_fixture_zip(source)
+        with mock.patch.object(builder, "MAX_RETAINED_BUILD_ROWS", 6), \
+                self.assertRaisesRegex(builder.BuildError, r"^build GTFS oltre budget righe trattenute: 7 > 6 \(righe trattenute per "
+                                                           r"tabella: routes\.txt 2, stop_times\.txt 2, calendar\.txt 1, "
+                                                           r"frequencies\.txt 1, trips\.txt 1\)$"):
+            self.filter(source, "amt-genova-casella-gtfs")
 
     def test_the_reviewed_path_keeps_exactly_what_the_current_builder_keeps(self) -> None:
         # Under the old limits the same archive goes through both paths: the pack must be the same bytes.
@@ -2238,6 +2292,8 @@ class ReviewedLargeArchiveTest(unittest.TestCase):
             "frequencies of a trip that runs and of one that expired": ({"frequencies": ("alive", "expired")}, SWISS_RUNS_FROM),
             "frequencies of an expired trip only": ({"frequencies": ("expired",)}, SWISS_RUNS_FROM),
             "no expired trip in the feed": ({"expired_trips": 0}, SWISS_RUNS_FROM),
+            "parent stations on two levels, absent, repeated and in a cycle": ({"hierarchy": True}, SWISS_RUNS_FROM),
+            "a trip id shared by a running and an expired service": ({"shared_trip_id": True}, SWISS_RUNS_FROM),
         }
         for name, (options, runs_from) in cases.items():
             with self.subTest(name):
@@ -2250,12 +2306,63 @@ class ReviewedLargeArchiveTest(unittest.TestCase):
                 self.assertEqual(default.read_bytes(), reviewed.read_bytes())
                 self.assertEqual(default_result, reviewed_result)
                 kept = {row["trip_id"].split("@")[0] for row in read_rows(reviewed, "trips.txt")}
-                self.assertEqual(set(trips["alive"]) | (set() if runs_from == SWISS_RUNS_FROM else set(trips["expired"])), kept)
-        source, _ = self.feed("dead.zip", bus_trips=5)
-        for table in ({SWISS: self.review}, {}):
-            with self.subTest(table=bool(table)), mock.patch.object(builder, "REVIEWED_LARGE_ARCHIVES", table), \
-                    self.assertRaisesRegex(builder.BuildError, "i trip filtrati non hanno stop_times"):
-                self.filter(source, runs_from=date(2026, 12, 20))
+                expected = set(trips["alive"]) | (set() if runs_from == SWISS_RUNS_FROM else set(trips["expired"]))
+                self.assertEqual(expected - ({trips["alive"][2]} if options.get("shared_trip_id") else set()), kept)
+                if options.get("hierarchy"):
+                    self.assertEqual({"8503000:0:3", "Parent8503000", "8503006", "Parent8503006", "8505000", "Parent8505000",
+                                      "Area8505000", "8507000"}, {row["stop_id"] for row in read_rows(reviewed, "stops.txt")})
+        dead, _ = self.feed("dead.zip", bus_trips=5)
+        unknown, _ = self.feed("unknown.zip", bus_trips=5, unknown_stop=True)
+        for source, runs_from, message in ((dead, date(2026, 12, 20), "i trip filtrati non hanno stop_times"),
+                                           (unknown, SWISS_RUNS_FROM, r"stop_times riferisce stop assenti: \['8509999'\]")):
+            for table in ({SWISS: self.review}, {}):
+                with self.subTest(message, reviewed=bool(table)), mock.patch.object(builder, "REVIEWED_LARGE_ARCHIVES", table), \
+                        self.assertRaisesRegex(builder.BuildError, message):
+                    self.filter(source, runs_from=runs_from)
+
+    def test_the_running_services_read_without_retaining_are_those_service_days_gives(self) -> None:
+        # running_services reads the calendar without holding it: the same services as expired_trips over service_days,
+        # on random calendars (several rows per service, removed and added days, unknown exception types, empty dates).
+        import random
+
+        def check(calendar: list[list[str]], exceptions: list[list[str]], asked: set[str], runs_from: date, name: object) -> None:
+            path = self.temp / "calendar.zip"
+            with zipfile.ZipFile(path, "w") as archive:
+                archive.writestr("calendar.txt", csv_text(["service_id", *builder.WEEKDAY_COLUMNS, "start_date", "end_date"], calendar))
+                archive.writestr("calendar_dates.txt", csv_text(["service_id", "date", "exception_type"], exceptions))
+            with zipfile.ZipFile(path) as archive:
+                table = builder.read_table(archive, "calendar.txt") or builder.empty_calendar()
+                dates = builder.read_table(archive, "calendar_dates.txt") or builder.empty_calendar_dates()
+                days = builder.service_days(CsvTableOf(table, asked), CsvTableOf(dates, asked), SWISS)
+                expected = {service for service, run in days.items() if run and max(run) >= runs_from}
+                with self.subTest(name):
+                    self.assertEqual(expected, builder.running_services(archive, SWISS, asked, runs_from, None))
+
+        # Mondays only from 30 November 2026: the two left from 5 December removed (gone), one of them added back
+        # (runs), removed by an unknown exception type (gone), or a single added day after a calendar that ended.
+        mondays = [["M", "1", "0", "0", "0", "0", "0", "0", "20261130", "20261214"]]
+        check(mondays, [["M", "20261207", "2"], ["M", "20261214", "2"]], {"M"}, SWISS_RUNS_FROM, "removed")
+        check(mondays, [["M", "20261207", "2"], ["M", "20261214", "2"], ["M", "20261214", "1"]], {"M"}, SWISS_RUNS_FROM, "added back")
+        check(mondays, [["M", "20261207", "3"], ["M", "20261214", ""]], {"M"}, SWISS_RUNS_FROM, "unknown types")
+        check([["E", *"1111111", "20261101", "20261130"]], [["E", "20261206", "1"]], {"E"}, SWISS_RUNS_FROM, "added later")
+        check(mondays, [], set(), SWISS_RUNS_FROM, "not asked")
+        generator = random.Random(20261124)
+        first = date(2026, 11, 1)
+        for attempt in range(300):
+            services = [f"S{index}" for index in range(generator.randint(1, 8))]
+            calendar, exceptions = [], []
+            for service in services:
+                for _ in range(generator.randint(0, 2)):
+                    start = first + timedelta(days=generator.randint(0, 40))
+                    end = start + timedelta(days=generator.randint(-3, 12))
+                    calendar.append([service, *(generator.choice("01") for _ in range(7)),
+                                     start.strftime("%Y%m%d"), "" if generator.random() < 0.05 else end.strftime("%Y%m%d")])
+                for _ in range(generator.randint(0, 12)):
+                    day = first + timedelta(days=generator.randint(0, 55))
+                    exceptions.append([service, "" if generator.random() < 0.05 else day.strftime("%Y%m%d"),
+                                       generator.choice(["1", "2", "2", "2", "3", ""])])
+            runs_from = first + timedelta(days=generator.randint(0, 55))
+            check(calendar, exceptions, set(generator.sample(services, generator.randint(0, len(services)))), runs_from, attempt)
 
     def test_the_published_swiss_full_pack_filters_to_the_same_bytes_on_both_paths(self) -> None:
         # Real Swiss rows: the full pack published in data/gtfs-foreign, filtered from the last day of its median trip,
@@ -2304,6 +2411,12 @@ class ReviewedLargeArchiveRegistryTest(unittest.TestCase):
         self.assertLessEqual(review.max_streamed_member_bytes, review.max_uncompressed_bytes)
         self.assertGreater(review.max_streamed_table_rows, builder.MAX_TABLE_ROWS)
         self.assertGreater(review.max_download_bytes, builder.DEFAULT_MAX_DOWNLOAD_BYTES)
+        # The build totals: stop_times.txt up to the per-table limit, which every reader of the published pack keeps.
+        self.assertGreaterEqual(review.max_retained_rows, 2 * builder.MAX_RETAINED_TABLE_ROWS)
+        self.assertGreater(review.max_retained_cells, builder.MAX_RETAINED_BUILD_CELLS)
+        self.assertIsNone(review.max_retained_utf8_bytes)
+        self.assertEqual((review.max_retained_rows, review.max_retained_cells, None),
+                         (review.budget().max_rows, review.budget().max_cells, review.budget().max_utf8_bytes))
         self.assertNotIn(SWISS, builder.ITINERARY_COPY_SOURCES)
         self.assertFalse({"routes.txt", "stops.txt", "agency.txt"} & builder.STREAMED_TABLES)
         manifest = json.loads((ROOT / "app/src/main/assets/gtfs/manifest.json").read_text(encoding="utf-8"))
